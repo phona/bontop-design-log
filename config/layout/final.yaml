@@ -1,0 +1,12 @@
+layout:
+  version: "v0.1-draft"
+  status: "draft"
+  approved_date: null
+  selected_concept: null
+  notes: "量房前占位文件。量房并确认承重墙后，从 concept_a/b/c 中选定并锁定。"
+
+rooms: []
+
+circulation:
+  main_path_length: null
+  kitchen_to_dining: null

@@ -1,0 +1,22 @@
+{
+  "version": "v0.1-init",
+  "locked_date": null,
+  "currency": "CNY",
+  "total_budget": 120000,
+  "notes": "10万硬装生存模式基线，量房和施工图完成后需重新核算",
+  "categories": {
+    "demolition": {"budget": 5500, "actual": 0, "status": "pending", "notes": "拆改+清运，方案B拆墙取上限"},
+    "water_electric": {"budget": 8500, "actual": 0, "status": "pending", "notes": "原始点位为主，书房加插座取上限"},
+    "waterproof": {"budget": 3000, "actual": 0, "status": "pending", "notes": "两卫+厨房+阳台"},
+    "masonry": {"budget": 22000, "actual": 0, "status": "pending", "notes": "地砖40元/片，墙砖10元/片"},
+    "carpentry": {"budget": 4500, "actual": 0, "status": "pending", "notes": "厨卫铝扣板吊顶 only"},
+    "painting": {"budget": 12000, "actual": 0, "status": "pending", "notes": "大白墙，不做调色/艺术漆"},
+    "doors_windows": {"budget": 11500, "actual": 0, "status": "pending", "notes": "室内门4扇×1000，卫生间门2扇×1500，入户花园封窗约3000"},
+    "sanitary": {"budget": 10000, "actual": 0, "status": "pending", "notes": "国产基础款（九牧/箭牌）"},
+    "kitchen_cabinet": {"budget": 5000, "actual": 0, "status": "pending", "notes": "U型地柜4m，多层板+石英石"},
+    "lighting": {"budget": 2000, "actual": 0, "status": "pending", "notes": "吸顶灯为主"},
+    "miscellaneous": {"budget": 5000, "actual": 0, "status": "pending", "notes": "美缝、踢脚线、五金"},
+    "property_fees": {"budget": 3000, "actual": 0, "status": "pending", "notes": "装修押金、垃圾清运费、管理费"},
+    "contingency": {"budget": 10000, "actual": 0, "status": "reserved", "notes": "不可预见费"}
+  }
+}

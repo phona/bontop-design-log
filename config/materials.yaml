@@ -1,0 +1,128 @@
+materials:
+  - id: "floor_tile_01"
+    category: "地砖"
+    name: "浅胡桃木纹砖"
+    brand: "马可波罗"
+    model: "CH8880"
+    spec: "800x800mm"
+    unit: "片"
+    price_per_unit: 45
+    coverage_per_unit: 0.64
+    loss_rate: 1.08
+    supplier: "快环建材市场A区3号"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+
+  - id: "wall_tile_01"
+    category: "墙砖"
+    name: "厨卫白色釉面砖"
+    brand: "东鹏"
+    model: ""
+    spec: "300x600mm"
+    unit: "片"
+    price_per_unit: 10
+    coverage_per_unit: 0.18
+    loss_rate: 1.05
+    supplier: ""
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+
+  - id: "latex_paint_01"
+    category: "乳胶漆"
+    name: "金装五合一"
+    brand: "多乐士"
+    model: "NN0030-4"
+    spec: "18L"
+    unit: "桶"
+    price_per_unit: 680
+    coverage_per_unit: 80
+    loss_rate: 1.1
+    supplier: ""
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+
+  - id: "cabinet_board_01"
+    category: "柜体板材"
+    name: "多层实木板"
+    brand: ""
+    model: "E0级"
+    spec: "18mm"
+    unit: "㎡"
+    price_per_unit: 180
+    coverage_per_unit: 1
+    loss_rate: 1.05
+    supplier: ""
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+
+  - id: "quartz_stone_01"
+    category: "台面"
+    name: "石英石台面"
+    brand: ""
+    model: ""
+    spec: "20mm"
+    unit: "延米"
+    price_per_unit: 350
+    coverage_per_unit: 1
+    loss_rate: 1.02
+    supplier: ""
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+
+  - id: "interior_door_01"
+    category: "室内门"
+    name: "实木复合门"
+    brand: ""
+    model: ""
+    spec: "2100x900mm"
+    unit: "扇"
+    price_per_unit: 1000
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: ""
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+
+  - id: "bathroom_door_01"
+    category: "卫生间门"
+    name: "铝合金平开门"
+    brand: ""
+    model: ""
+    spec: "2100x800mm"
+    unit: "扇"
+    price_per_unit: 1500
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: ""
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+
+  - id: "window_aluminum_01"
+    category: "窗户"
+    name: "普通铝合金推拉窗"
+    brand: ""
+    model: ""
+    spec: "定制"
+    unit: "㎡"
+    price_per_unit: 450
+    coverage_per_unit: 1
+    loss_rate: 1.05
+    supplier: ""
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"

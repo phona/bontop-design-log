@@ -1,0 +1,6 @@
+[2026-07-03 00:00:00] [INIT] 项目目录与核心文件初始化完成
+  触发：业主发起项目初始化
+  操作：创建 config/、survey/、cad/、budget/、contracts/、renders/、docs/、audit/、scripts/、schedule/ 目录
+  文件：README.md、config/house.yaml、config/materials.yaml、budget/base.json、docs/decision_log.md
+  关联：无
+  Git：待提交

@@ -1,0 +1,312 @@
+project:
+  name: "和萃套内120㎡"
+  city: "南宁"
+  building_area: null
+  usable_area: 120
+  floor: 7
+  building_type: "板楼"
+  unit_position: "西户"
+  orientation: "南北通透"
+  layout_type: "竖厅改横厅"
+  data_source: "销售户型图（轴线尺寸，待量房复核）"
+  accuracy_warning: "所有尺寸为轴线估算，净尺寸需量房后修正±5-10cm"
+
+  floor_analysis:
+    floor_level: "中低层"
+    elevator_dependency: "低"
+    lighting: "中等偏上"
+    ventilation: "优秀"
+    privacy: "中等"
+    mosquito_risk: "中等"
+    water_pressure: "良好"
+
+  corrections:
+    - date: "2026-07-02"
+      item: "套内面积"
+      from: "估算95㎡"
+      to: "确认120㎡"
+    - date: "2026-07-02"
+      item: "楼层与建筑类型"
+      from: "未知"
+      to: "7楼，板楼，西户"
+
+rooms:
+  - name: "客厅"
+    id: "living"
+    type: "public"
+    width: 6.4
+    length: 4.8
+    height: 2.8
+    area: 30.72
+    status: "concept"
+    orientation: "南"
+    notes: "大横厅，面宽约6.4m，南向整面窗"
+    windows:
+      - width: 3.8
+        height: 1.5
+        position: "南墙整面"
+    doors: []
+    furniture_concept:
+      - "L型沙发 3.4m × 0.95m"
+      - "茶几 1.3m × 0.7m"
+      - "电视柜 2.6m 或 投影幕布"
+
+  - name: "餐厅"
+    id: "dining"
+    type: "public"
+    width: 3.2
+    length: 4.0
+    height: 2.8
+    area: 12.8
+    status: "concept"
+    orientation: "南"
+    notes: "与客厅一体，横厅组成部分"
+    windows: []
+    doors: []
+    furniture_concept:
+      - "餐桌 1.6m × 0.8m"
+      - "餐边柜 1.2m × 0.4m × 0.9m"
+
+  - name: "厨房"
+    id: "kitchen"
+    type: "public"
+    width: 3.1
+    length: 3.4
+    height: 2.8
+    area: 10.54
+    status: "concept"
+    orientation: "北"
+    notes: "U型，北连生活阳台"
+    windows:
+      - width: 1.2
+        height: 1.4
+        position: "北墙"
+    doors:
+      - width: 0.9
+        position: "东墙"
+    furniture_concept:
+      - "U型地柜 约4m"
+      - "冰箱位 0.7m × 0.7m"
+
+  - name: "入户花园"
+    id: "entry_garden"
+    type: "public"
+    width: 3.0
+    length: 4.8
+    height: 2.8
+    area: 14.4
+    status: "concept"
+    orientation: "西"
+    notes: "约12-14㎡，西向飘窗，核心改造点，封闭需物业确认"
+    windows:
+      - width: 2.4
+        height: 1.5
+        position: "西墙"
+    doors:
+      - width: 0.9
+        position: "入户门"
+    furniture_concept:
+      - "待定：茶室/书房/储物间"
+
+  - name: "阳台"
+    id: "balcony"
+    type: "public"
+    width: 4.6
+    length: 1.8
+    height: 2.8
+    area: 8.28
+    status: "concept"
+    orientation: "南"
+    notes: "客厅南面，可封闭或开放"
+    windows: []
+    doors:
+      - width: 2.4
+        position: "客厅连接"
+    furniture_concept:
+      - "待定：洗晒/休闲/绿植"
+
+  - name: "生活阳台"
+    id: "service_balcony"
+    type: "public"
+    width: 1.2
+    length: 3.4
+    height: 2.8
+    area: 4.08
+    status: "concept"
+    orientation: "北"
+    notes: "厨房北面，洗衣晾晒与设备"
+    windows: []
+    doors:
+      - width: 0.8
+        position: "厨房连接"
+    furniture_concept:
+      - "洗衣机位"
+      - "热水器/空调外机位"
+
+  - name: "过道"
+    id: "corridor"
+    type: "public"
+    width: 2.2
+    length: 5.0
+    height: 2.8
+    area: 11.0
+    status: "concept"
+    orientation: "中"
+    notes: "连接各卧室，可优化利用"
+    windows: []
+    doors: []
+    furniture_concept: []
+
+  - name: "主卧"
+    id: "master_bedroom"
+    type: "private"
+    width: 4.6
+    length: 6.2
+    height: 2.8
+    area: 28.52
+    status: "concept"
+    orientation: "北+西"
+    notes: "270°转角飘窗，带主卫，飘窗能否砸需确认"
+    windows:
+      - width: 2.4
+        height: 1.5
+        position: "北墙"
+      - width: 1.8
+        height: 1.5
+        position: "西墙"
+    doors:
+      - width: 0.9
+        position: "南墙连接过道"
+    furniture_concept:
+      - "床 1.8m × 2.0m"
+      - "衣柜 2.4m × 0.6m × 2.7m"
+      - "梳妆台/书桌"
+
+  - name: "主卫"
+    id: "master_bath"
+    type: "private"
+    width: 2.2
+    length: 2.8
+    height: 2.8
+    area: 6.16
+    status: "concept"
+    orientation: "内"
+    notes: "可干湿分离，带浴缸或淋浴"
+    windows:
+      - width: 0.6
+        height: 1.0
+        position: "北墙"
+    doors:
+      - width: 0.7
+        position: "主卧连接"
+    furniture_concept:
+      - "浴室柜 0.8m"
+      - "马桶"
+      - "淋浴房/浴缸"
+
+  - name: "次卧1"
+    id: "bedroom_1"
+    type: "private"
+    width: 4.6
+    length: 3.4
+    height: 2.8
+    area: 15.64
+    status: "concept"
+    orientation: "南"
+    notes: "飘窗，采光好，可做客房/儿童房"
+    windows:
+      - width: 1.8
+        height: 1.5
+        position: "南墙"
+    doors:
+      - width: 0.9
+        position: "北墙连接过道"
+    furniture_concept:
+      - "床 1.5m × 2.0m"
+      - "衣柜 1.8m × 0.6m × 2.7m"
+
+  - name: "次卧2"
+    id: "bedroom_2"
+    type: "private"
+    width: 3.2
+    length: 3.4
+    height: 2.8
+    area: 10.88
+    status: "concept"
+    orientation: "北"
+    notes: "靠电梯井，低频噪音，需隔音处理"
+    windows:
+      - width: 1.2
+        height: 1.4
+        position: "北墙"
+    doors:
+      - width: 0.9
+        position: "南墙连接过道"
+    furniture_concept:
+      - "床 1.2m × 2.0m 或 书桌"
+      - "衣柜 1.5m × 0.6m × 2.7m"
+
+  - name: "儿童房"
+    id: "children_bedroom"
+    type: "private"
+    width: 3.2
+    length: 3.0
+    height: 2.8
+    area: 9.6
+    status: "concept"
+    orientation: "东"
+    notes: "飘窗，东侧采光弱，与次卧2之间墙体承重待确认"
+    windows:
+      - width: 1.2
+        height: 1.4
+        position: "东墙"
+    doors:
+      - width: 0.9
+        position: "西墙连接过道"
+    furniture_concept:
+      - "床 1.2m × 2.0m"
+      - "书桌"
+      - "衣柜 1.2m × 0.6m × 2.7m"
+
+  - name: "客卫"
+    id: "guest_bath"
+    type: "private"
+    width: 2.2
+    length: 3.2
+    height: 2.8
+    area: 7.04
+    status: "concept"
+    orientation: "内"
+    notes: "公共卫生间，三件套"
+    windows:
+      - width: 0.6
+        height: 1.0
+        position: "东墙"
+    doors:
+      - width: 0.7
+        position: "过道连接"
+    furniture_concept:
+      - "浴室柜 0.8m"
+      - "马桶"
+      - "淋浴房"
+
+constraints:
+  load_bearing_walls:
+    - "次卧2与儿童房之间墙体：待物业竣工图确认"
+    - "入户花园与客厅之间墙体：待确认"
+    - "主卧飘窗结构：待确认为内飘窗或外飘窗"
+  beams:
+    - "待量房实测，重点记录梁底高度"
+  pipes:
+    - "厨房下水位置：待现场确认"
+    - "客卫下水位置：待现场确认"
+    - "主卫下水位置：待现场确认"
+    - "燃气管道位置：待现场确认"
+  compliance:
+    - "入户花园封闭需物业/城管许可"
+    - "外立面改动需审批"
+  notes:
+    - "本户型核心优势：南北通透、大横厅面宽约6.4m、270°主卧飘窗"
+    - "核心改造点：入户花园约12-14㎡可多功能利用"
+    - "量房重点：横厅净面宽、主卧飘窗实际尺寸、各梁位高度"
+    - "西户注意：西晒强烈、东侧采光弱、电梯噪音"
