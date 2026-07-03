@@ -1,0 +1,46 @@
+# 大型媒体文件（建议用 Git LFS 或外部存储管理）
+*.blend
+*.blend1
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# 高分辨率图片原片（现场照片保留，但 RAW/PSD 排除）
+*.raw
+*.cr2
+*.nef
+*.psd
+*.xcf
+
+# CAD 原始大文件与备份
+*.dwl
+*.dwl2
+*.bak
+*.sv$
+
+# 输出与缓存
+renders/blender/output/*
+renders/web/models/*
+renders/web/textures/*
+!renders/blender/output/.gitkeep
+!renders/web/models/.gitkeep
+!renders/web/textures/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 临时文件
+*.tmp
+*.log
+*.swp
+*~

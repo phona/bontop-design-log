@@ -1,0 +1,18 @@
+# Python 依赖
+# 安装：pip install -r requirements.txt
+
+# 配置解析
+pyyaml>=6.0
+
+# 数据处理
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# CAD 解析
+ezdxf>=1.1.0
+
+# 预算与计算
+numpy>=1.24.0
+
+# 日志与审计（可选）
+python-dateutil>=2.8.0
