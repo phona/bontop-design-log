@@ -45,11 +45,14 @@ rooms:
     area: 18.16
     status: "design"
     orientation: "西南"
-    notes: "设计图标注面积 18.16㎡，宽深为按面积估算，待量房复核"
+    notes: "设计图标注面积 18.16㎡，宽深为按面积估算，待量房复核；飘窗为上飘窗，保留不拆除"
     windows:
       - width: 2.40
         height: 1.50
         position: "南墙"
+      - width: 1.80
+        height: 1.50
+        position: "飘窗"
     doors:
       - width: 0.90
         position: "连接过道"
@@ -99,8 +102,8 @@ rooms:
       - "床 1.5m × 2.0m"
       - "衣柜 1.8m × 0.6m × 2.7m"
 
-  - name: "东北次卧"
-    id: "bedroom_ne"
+  - name: "书房"
+    id: "study"
     type: "private"
     width: 3.00
     length: 2.78
@@ -108,7 +111,7 @@ rooms:
     area: 8.35
     status: "design"
     orientation: "东北"
-    notes: "设计图标注面积 8.35㎡"
+    notes: "暂按书房设计，预留未来改客房/儿童房的可能（预留衣柜位、网线、窗帘电源）"
     windows:
       - width: 1.50
         height: 1.40
@@ -117,9 +120,9 @@ rooms:
       - width: 0.90
         position: "连接过道"
     furniture_concept:
-      - "床 1.2m × 2.0m"
-      - "书桌"
-      - "衣柜 1.5m × 0.6m × 2.7m"
+      - "书桌 1.4m × 0.6m"
+      - "书架"
+      - "沙发床/折叠床（备用）"
 
   - name: "客餐厅"
     id: "living_dining"
@@ -151,17 +154,17 @@ rooms:
     area: 6.09
     status: "design"
     orientation: "北"
-    notes: "设计图标注面积 6.09㎡，北连入户花园"
+    notes: "开放式厨房，设计图标注面积 6.09㎡，北连入户花园；需配大功率侧吸油烟机 ≥22m³/min"
     windows:
       - width: 1.20
         height: 1.40
         position: "北墙"
-    doors:
-      - width: 0.90
-        position: "连接客餐厅"
+    doors: []
     furniture_concept:
       - "L 型地柜约 3.5m"
       - "冰箱位 0.7m × 0.7m"
+      - "大功率侧吸油烟机 ≥22m³/min"
+      - "洗碗机/净水器预留上下水"
 
   - name: "主卫"
     id: "master_bath"
@@ -272,6 +275,67 @@ gift_areas:
     orientation: "西"
     notes: "701 唯一可用设备平台，赠送面积，面积约 2.48㎡。因面积有限且西户专属，空调方案建议采用中央空调/多联机（一台外机），避免多台分体外机放不下。详见 docs/hvac_options_analysis.md"
 
+mechanical_electrical_plumbing:
+  hvac:
+    system: "中央空调 / 多联机（一拖五/六）"
+    outdoor_unit_location: "西设备平台"
+    indoor_units:
+      - room: "客餐厅"
+        type: "风管机 / 薄型天花机"
+        note: "藏入局部吊顶"
+      - room: "主卧"
+        type: "风管机或壁挂机（视预算）"
+      - room: "书房"
+        type: "风管机或壁挂机（视预算）"
+      - room: "西北次卧"
+        type: "风管机或壁挂机（视预算）"
+      - room: "东南次卧"
+        type: "风管机或壁挂机（视预算）"
+    notes:
+      - "因仅有一个 2.48㎡ 设备平台，分体机外机位不足"
+      - "卧室若预算紧张可用壁挂机，但需确认外机布置可行性"
+
+  hot_water:
+    system: "燃气热水器"
+    location: "厨房或入户花园（待设计师确定）"
+    notes:
+      - "是否做零冷水循环待业主和设计师确认"
+      - "燃气管道位置需现场确认"
+
+  electrical:
+    power:
+      - "强电箱位置、容量、回路数待现场确认"
+      - "客厅、主卧、书房预留网线（AP/Mesh）"
+      - "客厅电视墙预留 4–5 个插座"
+      - "厨房预留 6–8 个插座（含洗碗机、净水器、垃圾处理器）"
+      - "卫生间预留智能马桶、电热毛巾架电源"
+    smart_home:
+      level: "B"
+      description: "智能开关零线 + 网关位 + 电动窗帘电源 + 人体传感器位"
+      notes:
+        - "全屋玻璃幕墙，窗帘为刚需，主卧/客厅/书房预留电动窗帘电源"
+        - "不上全屋调光和自动化，控制成本"
+
+  plumbing:
+    - "厨房下水、卫生间下水位置待现场确认"
+    - "洗碗机/净水器上下水预留（可先不装设备，留好点位）"
+
+  curtains:
+    requirement: "全屋玻璃幕墙，窗帘为遮阳隔热 + 隐私刚需"
+    rooms:
+      - room: "客餐厅"
+        type: "纱帘 + 遮光帘（可考虑电动）"
+      - room: "主卧"
+        type: "遮光帘 + 纱帘"
+      - room: "书房"
+        type: "半遮光帘 + 纱帘"
+      - room: "西北次卧"
+        type: "遮光帘 + 纱帘"
+      - room: "东南次卧"
+        type: "遮光帘 + 纱帘"
+      - room: "厨房/卫生间"
+        type: "防水卷帘或百叶"
+
 constraints:
   load_bearing_walls:
     - "所有承重墙、梁位以物业竣工图或现场量房为准"
@@ -293,3 +357,5 @@ constraints:
     - "层高 3.0m，比常规 2.8m 更高，吊顶和柜体设计需考虑净高"
     - "核心设计点：入户花园作为玄关过渡区，兼顾消防通道"
     - "HVAC：仅西设备平台可用，面积约 2.48㎡，分体机外机难以全部安置，建议中央空调/多联机方案"
+    - "窗帘为刚需：全屋玻璃幕墙，主卧/次卧/书房/客厅均需窗帘，主卧/客厅/书房预留电动窗帘电源"
+    - "预算目标：11 万务实档，非豪华装修，保证基础质量"

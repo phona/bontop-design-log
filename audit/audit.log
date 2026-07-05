@@ -35,4 +35,17 @@
   文件：config/house.yaml、config/layout/final.yaml、docs/designer_brief.md、
         docs/hvac_options_analysis.md、audit/audit.log
   关联：cad/original/701_dimensions.csv
+  Git：已提交 0f709fe
+
+[2026-07-05 00:00:00] [FINAL-SCHEME] 80% 方案共创定稿
+  触发：业主确认书房、开放式厨房、电视、保留飘窗、燃气热水器、智能预留 B 级、局部吊顶、全屋窗帘、11 万务实档
+  操作：
+    - config/house.yaml：东北次卧改为书房；主卧飘窗保留；增加 MEP 占位（中央空调、燃气热水器、智能预留、全屋窗帘）
+    - config/layout/final.yaml：更新设计 rationale、增加 MEP 策略
+    - docs/designer_brief.md：填充所有重点设计问题答案，增加开放厨房排烟、窗帘刚需、预算档位
+    - budget/base.json：总预算定稿 110,000 元，新增油烟机、窗帘、智能预留科目，调整各科分配
+    - docs/decision_log.md：新增 DEC-2026-07-05-005 80% 方案定稿决策
+  文件：config/house.yaml、config/layout/final.yaml、docs/designer_brief.md、
+        budget/base.json、docs/decision_log.md、audit/audit.log
+  关联：docs/hvac_options_analysis.md
   Git：待提交
