@@ -1,15 +1,16 @@
 project:
-  name: "和萃套内120㎡"
+  name: "和萃 701"
   city: "南宁"
-  building_area: null
-  usable_area: 120
+  building_area: 119.38
+  usable_area: 94.76
+  floor_height: 3.0
   floor: 7
   building_type: "板楼"
   unit_position: "西户"
   orientation: "南北通透"
-  layout_type: "竖厅改横厅"
-  data_source: "销售户型图（轴线尺寸，待量房复核）"
-  accuracy_warning: "所有尺寸为轴线估算，净尺寸需量房后修正±5-10cm"
+  layout_type: "四房两厅两卫"
+  data_source: "装修图纸.dxf（套内布局） + 合同分户图（结构及赠送面积）"
+  accuracy_warning: "套内房间面积来自设计图，尺寸为按面积估算；赠送面积、承重墙、梁位、管道以合同图及现场量房为准"
 
   floor_analysis:
     floor_level: "中低层"
@@ -23,290 +24,282 @@ project:
   corrections:
     - date: "2026-07-02"
       item: "套内面积"
-      from: "估算95㎡"
-      to: "确认120㎡"
+      from: "估算 95㎡"
+      to: "确认 94.76㎡"
     - date: "2026-07-02"
       item: "楼层与建筑类型"
       from: "未知"
-      to: "7楼，板楼，西户"
+      to: "7 楼，板楼，西户"
+    - date: "2026-07-05"
+      item: "建筑面积与层高"
+      from: "建面约 140-150㎡、层高 2.8m"
+      to: "预测建面 119.38㎡、套内 94.76㎡、层高 3.0m"
 
 rooms:
-  - name: "客厅"
-    id: "living"
-    type: "public"
-    width: 6.4
-    length: 4.8
-    height: 2.8
-    area: 30.72
-    status: "concept"
-    orientation: "南"
-    notes: "大横厅，面宽约6.4m，南向整面窗"
-    windows:
-      - width: 3.8
-        height: 1.5
-        position: "南墙整面"
-    doors: []
-    furniture_concept:
-      - "L型沙发 3.4m × 0.95m"
-      - "茶几 1.3m × 0.7m"
-      - "电视柜 2.6m 或 投影幕布"
-
-  - name: "餐厅"
-    id: "dining"
-    type: "public"
-    width: 3.2
-    length: 4.0
-    height: 2.8
-    area: 12.8
-    status: "concept"
-    orientation: "南"
-    notes: "与客厅一体，横厅组成部分"
-    windows: []
-    doors: []
-    furniture_concept:
-      - "餐桌 1.6m × 0.8m"
-      - "餐边柜 1.2m × 0.4m × 0.9m"
-
-  - name: "厨房"
-    id: "kitchen"
-    type: "public"
-    width: 3.1
-    length: 3.4
-    height: 2.8
-    area: 10.54
-    status: "concept"
-    orientation: "北"
-    notes: "U型，北连生活阳台"
-    windows:
-      - width: 1.2
-        height: 1.4
-        position: "北墙"
-    doors:
-      - width: 0.9
-        position: "东墙"
-    furniture_concept:
-      - "U型地柜 约4m"
-      - "冰箱位 0.7m × 0.7m"
-
-  - name: "入户花园"
-    id: "entry_garden"
-    type: "public"
-    width: 3.0
-    length: 4.8
-    height: 2.8
-    area: 14.4
-    status: "concept"
-    orientation: "西"
-    notes: "约12-14㎡，西向飘窗，核心改造点，封闭需物业确认"
-    windows:
-      - width: 2.4
-        height: 1.5
-        position: "西墙"
-    doors:
-      - width: 0.9
-        position: "入户门"
-    furniture_concept:
-      - "待定：茶室/书房/储物间"
-
-  - name: "阳台"
-    id: "balcony"
-    type: "public"
-    width: 4.6
-    length: 1.8
-    height: 2.8
-    area: 8.28
-    status: "concept"
-    orientation: "南"
-    notes: "客厅南面，可封闭或开放"
-    windows: []
-    doors:
-      - width: 2.4
-        position: "客厅连接"
-    furniture_concept:
-      - "待定：洗晒/休闲/绿植"
-
-  - name: "生活阳台"
-    id: "service_balcony"
-    type: "public"
-    width: 1.2
-    length: 3.4
-    height: 2.8
-    area: 4.08
-    status: "concept"
-    orientation: "北"
-    notes: "厨房北面，洗衣晾晒与设备"
-    windows: []
-    doors:
-      - width: 0.8
-        position: "厨房连接"
-    furniture_concept:
-      - "洗衣机位"
-      - "热水器/空调外机位"
-
-  - name: "过道"
-    id: "corridor"
-    type: "public"
-    width: 2.2
-    length: 5.0
-    height: 2.8
-    area: 11.0
-    status: "concept"
-    orientation: "中"
-    notes: "连接各卧室，可优化利用"
-    windows: []
-    doors: []
-    furniture_concept: []
-
   - name: "主卧"
     id: "master_bedroom"
     type: "private"
-    width: 4.6
-    length: 6.2
-    height: 2.8
-    area: 28.52
-    status: "concept"
-    orientation: "北+西"
-    notes: "270°转角飘窗，带主卫，飘窗能否砸需确认"
+    width: 4.50
+    length: 4.05
+    height: 3.0
+    area: 18.16
+    status: "design"
+    orientation: "西南"
+    notes: "设计图标注面积 18.16㎡，宽深为按面积估算，待量房复核"
     windows:
-      - width: 2.4
-        height: 1.5
-        position: "北墙"
-      - width: 1.8
-        height: 1.5
-        position: "西墙"
+      - width: 2.40
+        height: 1.50
+        position: "南墙"
     doors:
-      - width: 0.9
-        position: "南墙连接过道"
+      - width: 0.90
+        position: "连接过道"
     furniture_concept:
       - "床 1.8m × 2.0m"
       - "衣柜 2.4m × 0.6m × 2.7m"
-      - "梳妆台/书桌"
 
-  - name: "主卫"
-    id: "master_bath"
+  - name: "西北次卧"
+    id: "bedroom_nw"
     type: "private"
-    width: 2.2
-    length: 2.8
-    height: 2.8
-    area: 6.16
-    status: "concept"
-    orientation: "内"
-    notes: "可干湿分离，带浴缸或淋浴"
+    width: 3.00
+    length: 2.80
+    height: 3.0
+    area: 8.39
+    status: "design"
+    orientation: "西北"
+    notes: "设计图标注面积 8.39㎡"
     windows:
-      - width: 0.6
-        height: 1.0
+      - width: 1.50
+        height: 1.40
         position: "北墙"
     doors:
-      - width: 0.7
-        position: "主卧连接"
-    furniture_concept:
-      - "浴室柜 0.8m"
-      - "马桶"
-      - "淋浴房/浴缸"
-
-  - name: "次卧1"
-    id: "bedroom_1"
-    type: "private"
-    width: 4.6
-    length: 3.4
-    height: 2.8
-    area: 15.64
-    status: "concept"
-    orientation: "南"
-    notes: "飘窗，采光好，可做客房/儿童房"
-    windows:
-      - width: 1.8
-        height: 1.5
-        position: "南墙"
-    doors:
-      - width: 0.9
-        position: "北墙连接过道"
+      - width: 0.90
+        position: "连接过道"
     furniture_concept:
       - "床 1.5m × 2.0m"
       - "衣柜 1.8m × 0.6m × 2.7m"
 
-  - name: "次卧2"
-    id: "bedroom_2"
+  - name: "东南次卧"
+    id: "bedroom_se"
     type: "private"
-    width: 3.2
-    length: 3.4
-    height: 2.8
-    area: 10.88
-    status: "concept"
-    orientation: "北"
-    notes: "靠电梯井，低频噪音，需隔音处理"
+    width: 3.00
+    length: 2.80
+    height: 3.0
+    area: 8.39
+    status: "design"
+    orientation: "东南"
+    notes: "设计图标注面积 8.39㎡"
     windows:
-      - width: 1.2
-        height: 1.4
-        position: "北墙"
+      - width: 1.50
+        height: 1.40
+        position: "南墙"
     doors:
-      - width: 0.9
-        position: "南墙连接过道"
+      - width: 0.90
+        position: "连接过道"
     furniture_concept:
-      - "床 1.2m × 2.0m 或 书桌"
-      - "衣柜 1.5m × 0.6m × 2.7m"
+      - "床 1.5m × 2.0m"
+      - "衣柜 1.8m × 0.6m × 2.7m"
 
-  - name: "儿童房"
-    id: "children_bedroom"
+  - name: "东北次卧"
+    id: "bedroom_ne"
     type: "private"
-    width: 3.2
-    length: 3.0
-    height: 2.8
-    area: 9.6
-    status: "concept"
-    orientation: "东"
-    notes: "飘窗，东侧采光弱，与次卧2之间墙体承重待确认"
+    width: 3.00
+    length: 2.78
+    height: 3.0
+    area: 8.35
+    status: "design"
+    orientation: "东北"
+    notes: "设计图标注面积 8.35㎡"
     windows:
-      - width: 1.2
-        height: 1.4
-        position: "东墙"
+      - width: 1.50
+        height: 1.40
+        position: "东墙/北墙"
     doors:
-      - width: 0.9
-        position: "西墙连接过道"
+      - width: 0.90
+        position: "连接过道"
     furniture_concept:
       - "床 1.2m × 2.0m"
       - "书桌"
-      - "衣柜 1.2m × 0.6m × 2.7m"
+      - "衣柜 1.5m × 0.6m × 2.7m"
 
-  - name: "客卫"
-    id: "guest_bath"
-    type: "private"
-    width: 2.2
-    length: 3.2
-    height: 2.8
-    area: 7.04
-    status: "concept"
-    orientation: "内"
-    notes: "公共卫生间，三件套"
+  - name: "客餐厅"
+    id: "living_dining"
+    type: "public"
+    width: 6.20
+    length: 5.68
+    height: 3.0
+    area: 35.20
+    status: "design"
+    orientation: "南"
+    notes: "设计图客餐厅合并标注 35.2㎡，南向采光"
     windows:
-      - width: 0.6
-        height: 1.0
-        position: "东墙"
+      - width: 4.50
+        height: 1.80
+        position: "南墙"
+    doors: []
+    furniture_concept:
+      - "L 型沙发 3.2m × 0.95m"
+      - "茶几 1.3m × 0.7m"
+      - "餐桌 1.6m × 0.8m"
+      - "电视柜 / 投影幕布位"
+
+  - name: "厨房"
+    id: "kitchen"
+    type: "service"
+    width: 2.30
+    length: 2.65
+    height: 3.0
+    area: 6.09
+    status: "design"
+    orientation: "北"
+    notes: "设计图标注面积 6.09㎡，北连入户花园"
+    windows:
+      - width: 1.20
+        height: 1.40
+        position: "北墙"
     doors:
-      - width: 0.7
-        position: "过道连接"
+      - width: 0.90
+        position: "连接客餐厅"
+    furniture_concept:
+      - "L 型地柜约 3.5m"
+      - "冰箱位 0.7m × 0.7m"
+
+  - name: "主卫"
+    id: "master_bath"
+    type: "private"
+    width: 1.80
+    length: 2.52
+    height: 3.0
+    area: 4.53
+    status: "design"
+    orientation: "内"
+    notes: "靠近主卧，设计图标注 4.53㎡"
+    windows:
+      - width: 0.60
+        height: 1.00
+        position: "北墙"
+    doors:
+      - width: 0.70
+        position: "主卧连接"
     furniture_concept:
       - "浴室柜 0.8m"
       - "马桶"
       - "淋浴房"
 
+  - name: "客卫"
+    id: "guest_bath"
+    type: "private"
+    width: 1.50
+    length: 1.77
+    height: 3.0
+    area: 2.66
+    status: "design"
+    orientation: "内"
+    notes: "设计图标注 2.66㎡"
+    windows:
+      - width: 0.60
+        height: 1.00
+        position: "东墙"
+    doors:
+      - width: 0.70
+        position: "过道连接"
+    furniture_concept:
+      - "浴室柜 0.6m"
+      - "马桶"
+      - "淋浴区"
+
+  - name: "阳台"
+    id: "balcony"
+    type: "public"
+    width: 1.20
+    length: 2.02
+    height: 3.0
+    area: 2.42
+    status: "design"
+    orientation: "北"
+    notes: "设计图标注 2.42㎡，开发商已用玻璃幕墙封闭，计入套内"
+    windows: []
+    doors:
+      - width: 0.90
+        position: "连接厨房/客餐厅"
+    furniture_concept:
+      - "洗晒区"
+
+gift_areas:
+  - name: "入户花园"
+    id: "entry_garden"
+    type: "public"
+    width: 6.70
+    length: 1.65
+    height: 3.0
+    area: 11.06
+    status: "design"
+    orientation: "北"
+    notes: "合同图北面开敞外廊，赠送面积，开发商已用玻璃幕墙封闭；内含电梯厅及消防通道，实际可入户使用面积约 11㎡，不得完全封闭"
+    windows: []
+    doors:
+      - width: 0.90
+        position: "入户门"
+    furniture_concept:
+      - "玄关柜"
+      - "换鞋凳"
+
+  - name: "南向大阳台"
+    id: "south_balcony"
+    type: "public"
+    width: 6.40
+    length: 2.18
+    height: 3.0
+    area: 13.95
+    status: "design"
+    orientation: "南"
+    notes: "合同图南面大阳台，赠送面积，开发商已用玻璃幕墙封闭；西户专属，东侧阳台属隔壁户"
+    windows: []
+    doors:
+      - width: 2.00
+        position: "连接客厅"
+    furniture_concept:
+      - "休闲区"
+      - "绿植"
+
+  - name: "西设备平台"
+    id: "equipment_platform_w"
+    type: "service"
+    width: 1.60
+    length: 1.55
+    height: 3.0
+    area: 2.48
+    status: "design"
+    orientation: "西"
+    notes: "合同图西侧设备平台，赠送面积，用于空调外机 / 热水器等设备"
+
+  - name: "东设备平台"
+    id: "equipment_platform_e"
+    type: "service"
+    width: 1.60
+    length: 1.55
+    height: 3.0
+    area: 2.48
+    status: "design"
+    orientation: "东"
+    notes: "合同图东侧设备平台，是否属于本户待物业确认"
+
 constraints:
   load_bearing_walls:
-    - "次卧2与儿童房之间墙体：待物业竣工图确认"
-    - "入户花园与客厅之间墙体：待确认"
-    - "主卧飘窗结构：待确认为内飘窗或外飘窗"
-  beams:
-    - "待量房实测，重点记录梁底高度"
+    - "所有承重墙、梁位以物业竣工图或现场量房为准"
+    - "主卧与次卧之间隔墙、客厅与厨房之间隔墙是否为承重墙待确认"
+  exterior:
+    - "外围为开发商玻璃幕墙，不得拆改外立面"
+    - "入户花园（开敞外廊）含消防通道，不能全部封闭或改变动线"
+    - "南向大阳台、入户花园已由开发商用玻璃幕墙封闭，无需自行封窗"
   pipes:
     - "厨房下水位置：待现场确认"
     - "客卫下水位置：待现场确认"
     - "主卫下水位置：待现场确认"
     - "燃气管道位置：待现场确认"
   compliance:
-    - "入户花园封闭需物业/城管许可"
-    - "外立面改动需审批"
+    - "任何外立面改动需物业/设计院审批"
+    - "开敞外廊消防通道必须保持畅通"
   notes:
-    - "本户型核心优势：南北通透、大横厅面宽约6.4m、270°主卧飘窗"
-    - "核心改造点：入户花园约12-14㎡可多功能利用"
-    - "量房重点：横厅净面宽、主卧飘窗实际尺寸、各梁位高度"
-    - "西户注意：西晒强烈、东侧采光弱、电梯噪音"
+    - "套内 94.76㎡ + 赠送面积约 30㎡（入户花园 11㎡、南向大阳台 13.95㎡、设备平台约 5㎡）≈ 预测建面 119.38㎡"
+    - "层高 3.0m，比常规 2.8m 更高，吊顶和柜体设计需考虑净高"
+    - "核心设计点：入户花园作为玄关过渡区，兼顾消防通道"

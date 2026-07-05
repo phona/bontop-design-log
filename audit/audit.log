@@ -4,3 +4,22 @@
   文件：README.md、config/house.yaml、config/materials.yaml、budget/base.json、docs/decision_log.md
   关联：无
   Git：待提交
+
+[2026-07-05 00:00:00] [DESIGN] 采用第三方设计图作为套内布局底图，并修正面积数据
+  触发：业主提供 装修图纸.dxf，并确认合同分户图上的开敞外廊为入户花园
+  操作：
+    - 归档 装修图纸.dxf 到 cad/design/01_floor_plan/floor_plan_design_2026-07-05.dxf
+    - 恢复合同扫描图 survey/photos/contract_structure_preview_2026-07-03.png
+    - 重写 config/house.yaml：建面 119.38㎡、套内 94.76㎡、层高 3.0m、四房两厅两卫 + 入户花园
+    - 更新 config/layout/final.yaml：状态 design，来源为设计图 + 合同分户图
+    - 更新 config/materials.yaml：增加玻璃幕墙已由开发商完成备注
+    - 更新 budget/base.json：按新面积和门窗数量重新匡算，删除封窗预算
+    - 更新 README.md、docs/designer_brief.md、docs/decision_log.md
+    - 删除过时文件：scripts/floorplan_to_dxf.py、scripts/generate_dxf.py、scripts/slice_floorplan.py、
+      scripts/recognition_schema.json、cad/original/contract_floor_plan.dxf、cad/original/floorplan_data.json、
+      budget/changes/CHG-2026-0715-001.json、renders/web/floor_sketch.html、tools/floorplan-editor/index.html、
+      floor.dxf、floor1.dxf、newone.dxf、survey/photos/slices/*
+  文件：config/house.yaml、config/layout/final.yaml、config/materials.yaml、budget/base.json、README.md、
+        docs/designer_brief.md、docs/decision_log.md、audit/audit.log
+  关联：cad/design/01_floor_plan/floor_plan_design_2026-07-05.dxf、survey/photos/contract_structure_preview_2026-07-03.png
+  Git：待提交

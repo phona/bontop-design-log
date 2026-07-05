@@ -4,15 +4,17 @@
 
 ## 脚本规划
 
-| 脚本名 | 用途 | 输入 | 输出 |
-|--------|------|------|------|
-| `parse_cad.py` | 解析 CAD 图纸，提取工程量 | `cad/design/*.dwg` | `budget/quantities.json` |
-| `calc_budget.py` | 根据工程量计算预算 | `config/house.yaml`、`config/materials.yaml` | `budget/base.json` 更新 |
-| `compare_quote.py` | 对比多家施工队报价 | `budget/quotes/*.xlsx` | `budget/quote_comparison.md` |
-| `track_progress.py` | 跟踪施工进度与付款 | `contracts/*.yaml`、`budget/payments/` | `schedule/progress.json` |
-| `render_batch.py` | 批量驱动 Blender 渲染 | `config/layout/final.yaml` | `renders/blender/output/` |
-| `export_web.py` | 导出 Three.js 漫游数据 | `renders/blender/project.blend` | `renders/web/` |
-| `audit_check.py` | 检查变更与预算一致性 | `budget/changes/*.json` | 审计报告 |
+| 脚本名 | 状态 | 用途 | 输入 | 输出 |
+|--------|------|------|------|------|
+| `parse_cad.py` | 规划中 | 解析 CAD 图纸，提取工程量 | `cad/design/*.dwg` | `budget/quantities.json` |
+| `calc_budget.py` | 规划中 | 根据工程量计算预算 | `config/house.yaml`、`config/materials.yaml` | `budget/base.json` 更新 |
+| `compare_quote.py` | 规划中 | 对比多家施工队报价 | `budget/quotes/*.xlsx` | `budget/quote_comparison.md` |
+| `track_progress.py` | 规划中 | 跟踪施工进度与付款 | `contracts/*.yaml`、`budget/payments/` | `schedule/progress.json` |
+| `render_batch.py` | 规划中 | 批量驱动 Blender 渲染 | `config/layout/final.yaml` | `renders/blender/output/` |
+| `export_web.py` | 规划中 | 导出 Three.js 漫游数据 | `renders/blender/project.blend` | `renders/web/` |
+| `audit_check.py` | 规划中 | 检查变更与预算一致性 | `budget/changes/*.json` | 审计报告 |
+
+> 注：旧脚本 `floorplan_to_dxf.py`、`generate_dxf.py`、`slice_floorplan.py` 及 `recognition_schema.json` 已删除。合同扫描图直接作为原始依据，套内布局以设计图 DXF 为准。
 
 ## 运行环境
 

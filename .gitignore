@@ -44,3 +44,6 @@ desktop.ini
 *.log
 *.swp
 *~
+
+# OpenCode internal run state
+.omo/
