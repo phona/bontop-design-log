@@ -57,11 +57,7 @@ gift_areas:
     name: 西设备平台
     area: 2.48
     orientation: 西
-  - id: equipment_platform_e
-    name: 东设备平台
-    area: 2.48
-    orientation: 东
-    note: 待确认是否属于本户
+    note: 701 唯一可用设备平台，空调外机位紧张，建议中央空调/多联机
 
 circulation:
   main_entry: "入户花园 → 客餐厅"
@@ -80,5 +76,4 @@ design_rationale:
 pending_verification:
   - "所有房间净尺寸需现场量房复核"
   - "承重墙、梁位需物业竣工图确认"
-  - "东设备平台权属需物业确认"
   - "玻璃幕墙分格及门窗口位置需设计院图纸确认"

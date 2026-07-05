@@ -22,4 +22,17 @@
   文件：config/house.yaml、config/layout/final.yaml、config/materials.yaml、budget/base.json、README.md、
         docs/designer_brief.md、docs/decision_log.md、audit/audit.log
   关联：cad/design/01_floor_plan/floor_plan_design_2026-07-05.dxf、survey/photos/contract_structure_preview_2026-07-03.png
+  Git：已提交 884462e
+
+[2026-07-05 00:00:00] [HVAC] 确认西户唯一设备平台，完成空调方案模拟
+  触发：业主确认东户不属于 701，仅西设备平台可用，且倾向中央空调方案
+  操作：
+    - 从 config/house.yaml 中删除东设备平台
+    - 更新西设备平台备注：说明仅 2.48㎡，建议中央空调/多联机
+    - 更新 config/layout/final.yaml：删除东设备平台待确认项
+    - 更新 docs/designer_brief.md：删除东设备平台问题，增加空调方案问题
+    - 新增 docs/hvac_options_analysis.md：冷负荷估算、外机平台容量分析、方案比选
+  文件：config/house.yaml、config/layout/final.yaml、docs/designer_brief.md、
+        docs/hvac_options_analysis.md、audit/audit.log
+  关联：cad/original/701_dimensions.csv
   Git：待提交
