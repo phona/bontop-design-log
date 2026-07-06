@@ -194,6 +194,13 @@ export interface ViewContext {
   updatedAt: string;
 }
 
+export interface SelectionPatch {
+  topic: string;
+  optionId: string | null;
+  roomId?: string | null;
+  reason?: string;
+}
+
 export interface DesignOption {
   id: string;
   topicId: string;
