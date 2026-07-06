@@ -38,6 +38,10 @@ export class App {
 
     await this.houseScene.buildFromCatalog(this.projectData);
 
+    this.schemePanel.init(this.projectData.topics, (topicId: string, optionId: string) => {
+      this.stateSync.updateScheme([{ topic: topicId, optionId }]);
+    });
+
     this.stateSync.start();
 
     this.renderLoop();
@@ -48,6 +52,7 @@ export class App {
       for (const [topicId, selection] of Object.entries(scheme.selections)) {
         if (selection.default) {
           this.houseScene.setSelection(topicId, selection.default);
+          this.schemePanel.setActiveOption(topicId, selection.default, []);
         }
       }
     });
@@ -75,5 +80,12 @@ export class App {
   private renderLoop(): void {
     this.houseScene.render();
     this.rafId = requestAnimationFrame(() => this.renderLoop());
+  }
+
+  dispose(): void {
+    if (this.rafId !== undefined) {
+      cancelAnimationFrame(this.rafId);
+    }
+    this.stateSync.dispose();
   }
 }

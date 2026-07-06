@@ -176,4 +176,86 @@ describe('App', () => {
 
     expect(mockRequestAnimationFrame).toHaveBeenCalled();
   });
+
+  it('should call schemePanel.init with topics on start', async () => {
+    const app = new App(canvas);
+    await app.start();
+
+    expect(app['schemePanel'].getActiveTopicId()).toBeDefined();
+  });
+
+  it('should call dispose and cancel animation frame', async () => {
+    const app = new App(canvas);
+    await app.start();
+
+    app.dispose();
+    expect(mockCancelAnimationFrame).toHaveBeenCalled();
+  });
+
+  it('should update scene and panel on scheme change', async () => {
+    const app = new App(canvas);
+    await app.start();
+
+    const setSelectionSpy = vi.spyOn(app['houseScene'], 'setSelection');
+    const setActiveOptionSpy = vi.spyOn(app['schemePanel'], 'setActiveOption');
+
+    const schemeCallback = app['stateSync']['schemeCallbacks'][0];
+    schemeCallback({
+      updatedAt: '2024-01-01',
+      selections: {
+        hvac: { default: 'A1', roomOverrides: {} },
+      },
+    });
+
+    expect(setSelectionSpy).toHaveBeenCalledWith('hvac', 'A1');
+    expect(setActiveOptionSpy).toHaveBeenCalledWith('hvac', 'A1', []);
+  });
+
+  it('should handle visual command set_camera_target', async () => {
+    const app = new App(canvas);
+    await app.start();
+
+    const setCameraTargetSpy = vi.spyOn(app['houseScene'], 'setCameraTarget');
+
+    const visualCommandCallback = app['stateSync']['visualCommandCallbacks'][0];
+    visualCommandCallback({
+      commandId: 'cmd-1',
+      type: 'set_camera_target',
+      payload: { targetId: 'living_room' },
+      createdAt: '2024-01-01',
+      expiresAt: '2024-12-31',
+    });
+
+    expect(setCameraTargetSpy).toHaveBeenCalledWith('living_room');
+  });
+
+  it('should handle visual command highlight_object', async () => {
+    const app = new App(canvas);
+    await app.start();
+
+    const highlightObjectSpy = vi.spyOn(app['houseScene'], 'highlightObject');
+
+    const visualCommandCallback = app['stateSync']['visualCommandCallbacks'][0];
+    visualCommandCallback({
+      commandId: 'cmd-2',
+      type: 'highlight_object',
+      payload: { objectId: 'obj-1' },
+      createdAt: '2024-01-01',
+      expiresAt: '2024-12-31',
+    });
+
+    expect(highlightObjectSpy).toHaveBeenCalledWith('obj-1');
+  });
+
+  it('should update offline indicator on offline change', async () => {
+    const app = new App(canvas);
+    await app.start();
+
+    const setOfflineSpy = vi.spyOn(app['offlineIndicator'], 'setOffline');
+
+    const offlineCallback = app['stateSync']['offlineCallbacks'][0];
+    offlineCallback(true);
+
+    expect(setOfflineSpy).toHaveBeenCalledWith(true);
+  });
 });
