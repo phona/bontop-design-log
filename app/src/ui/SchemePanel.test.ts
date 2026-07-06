@@ -1,7 +1,81 @@
-// @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { SchemePanel } from './SchemePanel';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { SchemePanel, type SchemePanelElements } from './SchemePanel';
 import type { Topic } from '@shared/types';
+
+function createMockElement(): HTMLElement {
+  const el: any = {
+    _tag: 'div',
+    _className: '',
+    textContent: '',
+    _innerHTML: '',
+    _children: [] as HTMLElement[],
+    onclick: null,
+    appendChild(child: HTMLElement) {
+      this._children.push(child);
+    },
+    querySelectorAll(selector: string): HTMLElement[] {
+      return this._children.filter((c: any) => {
+        if (selector === 'button') return c._tag === 'button';
+        if (selector === 'li') return c._tag === 'li';
+        if (selector === '.warning') return c._tag === 'div' && c._className === 'warning';
+        return false;
+      });
+    },
+  };
+  Object.defineProperty(el, 'innerHTML', {
+    get() { return this._innerHTML; },
+    set(v: string) {
+      this._innerHTML = v;
+      this._children = [];
+    },
+  });
+  Object.defineProperty(el, 'className', {
+    get() { return this._className; },
+    set(v: string) { this._className = v; },
+  });
+  return el as HTMLElement;
+}
+
+function setupMockDocument() {
+  const mockCreateElement = (tag: string): HTMLElement => {
+    const el: any = {
+      _tag: tag,
+      _className: '',
+      textContent: '',
+      innerHTML: '',
+      _innerHTML: '',
+      _children: [] as HTMLElement[],
+      onclick: null,
+      appendChild(child: HTMLElement) {
+        this._children.push(child);
+      },
+      querySelectorAll(selector: string): HTMLElement[] {
+        return this._children.filter((c: any) => {
+          if (selector === 'button') return c._tag === 'button';
+          if (selector === 'li') return c._tag === 'li';
+          if (selector === '.warning') return c._tag === 'div' && c._className === 'warning';
+          return false;
+        });
+      },
+    };
+    Object.defineProperty(el, 'innerHTML', {
+      get() { return this._innerHTML; },
+      set(v: string) {
+        this._innerHTML = v;
+        this._children = [];
+      },
+    });
+    Object.defineProperty(el, 'className', {
+      get() { return this._className; },
+      set(v: string) { this._className = v; },
+    });
+    return el as HTMLElement;
+  };
+
+  (globalThis as any).document = {
+    createElement: mockCreateElement,
+  };
+}
 
 describe('SchemePanel', () => {
   let panel: SchemePanel;
@@ -34,31 +108,31 @@ describe('SchemePanel', () => {
   ];
 
   beforeEach(() => {
-    document.body.innerHTML = `
-      <div id="topic-tabs"></div>
-      <div id="topic-options"></div>
-      <div id="scheme-name"></div>
-      <div id="scheme-desc"></div>
-      <div id="scheme-pros"></div>
-      <div id="scheme-cons"></div>
-      <div id="warnings"></div>
-    `;
-    tabsEl = document.getElementById('topic-tabs')!;
-    optionsEl = document.getElementById('topic-options')!;
-    nameEl = document.getElementById('scheme-name')!;
-    descEl = document.getElementById('scheme-desc')!;
-    prosEl = document.getElementById('scheme-pros')!;
-    consEl = document.getElementById('scheme-cons')!;
-    warningsEl = document.getElementById('warnings')!;
+    setupMockDocument();
+    tabsEl = createMockElement();
+    optionsEl = createMockElement();
+    nameEl = createMockElement();
+    descEl = createMockElement();
+    prosEl = createMockElement();
+    consEl = createMockElement();
+    warningsEl = createMockElement();
 
-    panel = new SchemePanel();
+    panel = new SchemePanel({
+      topicTabs: tabsEl,
+      topicOptions: optionsEl,
+      schemeName: nameEl,
+      schemeDesc: descEl,
+      schemePros: prosEl,
+      schemeCons: consEl,
+      warnings: warningsEl,
+    });
   });
 
   it('should render topic tabs on init', () => {
     const onSelect = () => {};
     panel.init(mockTopics, onSelect);
 
-    const buttons = tabsEl.querySelectorAll('button');
+    const buttons = (tabsEl as any)._children.filter((c: any) => c._tag === 'button');
     expect(buttons.length).toBe(2);
     expect(buttons[0].textContent).toBe('空调方案');
     expect(buttons[1].textContent).toBe('地面方案');
@@ -68,7 +142,7 @@ describe('SchemePanel', () => {
     const onSelect = () => {};
     panel.init(mockTopics, onSelect);
 
-    const buttons = optionsEl.querySelectorAll('button');
+    const buttons = (optionsEl as any)._children.filter((c: any) => c._tag === 'button');
     expect(buttons.length).toBe(2);
     expect(buttons[0].innerHTML).toContain('A1 方案');
     expect(buttons[1].innerHTML).toContain('E1 方案');
@@ -80,7 +154,7 @@ describe('SchemePanel', () => {
 
     panel.setActiveTopic('floor');
 
-    const buttons = optionsEl.querySelectorAll('button');
+    const buttons = (optionsEl as any)._children.filter((c: any) => c._tag === 'button');
     expect(buttons.length).toBe(1);
     expect(buttons[0].innerHTML).toContain('瓷砖');
   });
@@ -94,8 +168,8 @@ describe('SchemePanel', () => {
     };
     panel.init(mockTopics, onSelect);
 
-    const buttons = optionsEl.querySelectorAll('button');
-    (buttons[0] as HTMLElement).click();
+    const buttons = (optionsEl as any)._children.filter((c: any) => c._tag === 'button');
+    buttons[0].onclick!();
 
     expect(selectedTopic).toBe('hvac');
     expect(selectedOption).toBe('A1');
@@ -109,12 +183,15 @@ describe('SchemePanel', () => {
 
     expect(nameEl.textContent).toBe('A1 方案');
     expect(descEl.textContent).toBe('标准方案');
-    expect(prosEl.querySelectorAll('li').length).toBe(1);
-    expect(prosEl.textContent).toContain('高效');
-    expect(consEl.querySelectorAll('li').length).toBe(1);
-    expect(consEl.textContent).toContain('价格高');
-    expect(warningsEl.querySelectorAll('.warning').length).toBe(1);
-    expect(warningsEl.textContent).toContain('注意安装位置');
+    const prosItems = (prosEl as any)._children.filter((c: any) => c._tag === 'li');
+    expect(prosItems.length).toBe(1);
+    expect(prosItems[0].textContent).toContain('高效');
+    const consItems = (consEl as any)._children.filter((c: any) => c._tag === 'li');
+    expect(consItems.length).toBe(1);
+    expect(consItems[0].textContent).toContain('价格高');
+    const warningDivs = (warningsEl as any)._children.filter((c: any) => c._tag === 'div' && c._className === 'warning');
+    expect(warningDivs.length).toBe(1);
+    expect(warningDivs[0].textContent).toContain('注意安装位置');
   });
 
   it('should clear info when switching topic', () => {
@@ -126,9 +203,9 @@ describe('SchemePanel', () => {
 
     expect(nameEl.textContent).toBe('请选择一个方案');
     expect(descEl.textContent).toBe('');
-    expect(prosEl.innerHTML).toBe('');
-    expect(consEl.innerHTML).toBe('');
-    expect(warningsEl.innerHTML).toBe('');
+    expect((prosEl as any)._children.length).toBe(0);
+    expect((consEl as any)._children.length).toBe(0);
+    expect((warningsEl as any)._children.length).toBe(0);
   });
 
   it('should mark active tab and option', () => {
@@ -137,10 +214,10 @@ describe('SchemePanel', () => {
 
     panel.setActiveOption('hvac', 'A1', []);
 
-    const tabs = tabsEl.querySelectorAll('button');
-    expect(tabs[0].className).toContain('active');
+    const tabs = (tabsEl as any)._children.filter((c: any) => c._tag === 'button');
+    expect(tabs[0]._className).toContain('active');
 
-    const options = optionsEl.querySelectorAll('button');
-    expect(options[0].className).toContain('active');
+    const options = (optionsEl as any)._children.filter((c: any) => c._tag === 'button');
+    expect(options[0]._className).toContain('active');
   });
 });

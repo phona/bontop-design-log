@@ -8,12 +8,21 @@ export class App implements StateListener {
   private scene: HouseScene;
   private stateManager = new StateManager();
   private registry: TopicRegistry;
-  private panel = new SchemePanel();
+  private panel: SchemePanel;
   private rafId?: number;
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new HouseScene(canvas);
     this.registry = new TopicRegistry(this.scene);
+    this.panel = new SchemePanel({
+      topicTabs: document.getElementById('topic-tabs')!,
+      topicOptions: document.getElementById('topic-options')!,
+      schemeName: document.getElementById('scheme-name')!,
+      schemeDesc: document.getElementById('scheme-desc')!,
+      schemePros: document.getElementById('scheme-pros')!,
+      schemeCons: document.getElementById('scheme-cons')!,
+      warnings: document.getElementById('warnings')!,
+    });
     this.scene.setOnObjectClick((objectId, type, room) => {
       this.stateManager.writeSnapshot();
       // eslint-disable-next-line no-console

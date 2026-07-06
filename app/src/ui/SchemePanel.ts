@@ -1,18 +1,25 @@
 import type { Topic, TopicOption } from '@shared/types';
 
+export interface SchemePanelElements {
+  topicTabs: HTMLElement;
+  topicOptions: HTMLElement;
+  schemeName: HTMLElement;
+  schemeDesc: HTMLElement;
+  schemePros: HTMLElement;
+  schemeCons: HTMLElement;
+  warnings: HTMLElement;
+}
+
 export class SchemePanel {
   private topics: Topic[] = [];
   private activeTopicId = 'hvac';
   private activeOptionId = '';
   private onSelect?: (topicId: string, optionId: string) => void;
+  private els: SchemePanelElements;
 
-  private topicTabsEl = document.getElementById('topic-tabs')!;
-  private topicOptionsEl = document.getElementById('topic-options')!;
-  private schemeNameEl = document.getElementById('scheme-name')!;
-  private schemeDescEl = document.getElementById('scheme-desc')!;
-  private schemeProsEl = document.getElementById('scheme-pros')!;
-  private schemeConsEl = document.getElementById('scheme-cons')!;
-  private warningsEl = document.getElementById('warnings')!;
+  constructor(els: SchemePanelElements) {
+    this.els = els;
+  }
 
   init(topics: Topic[], onSelect: (topicId: string, optionId: string) => void) {
     this.topics = topics;
@@ -42,19 +49,27 @@ export class SchemePanel {
     }
   }
 
+  getActiveTopicId() {
+    return this.activeTopicId;
+  }
+
+  getActiveOptionId() {
+    return this.activeOptionId;
+  }
+
   private renderTabs() {
-    this.topicTabsEl.innerHTML = '';
+    this.els.topicTabs.innerHTML = '';
     for (const topic of this.topics) {
       const btn = document.createElement('button');
       btn.className = `topic-tab${topic.id === this.activeTopicId ? ' active' : ''}`;
       btn.textContent = topic.name;
       btn.onclick = () => this.setActiveTopic(topic.id);
-      this.topicTabsEl.appendChild(btn);
+      this.els.topicTabs.appendChild(btn);
     }
   }
 
   private renderOptions() {
-    this.topicOptionsEl.innerHTML = '';
+    this.els.topicOptions.innerHTML = '';
     const topic = this.topics.find((t) => t.id === this.activeTopicId);
     if (!topic) return;
     for (const option of topic.options) {
@@ -62,42 +77,42 @@ export class SchemePanel {
       btn.className = `scheme-btn${option.id === this.activeOptionId ? ' active' : ''}`;
       btn.innerHTML = `<strong>${option.name}</strong><br><small>${option.description ?? ''}</small>`;
       btn.onclick = () => this.onSelect?.(topic.id, option.id);
-      this.topicOptionsEl.appendChild(btn);
+      this.els.topicOptions.appendChild(btn);
     }
   }
 
   private showInfo(option: TopicOption, warnings: string[]) {
-    this.schemeNameEl.textContent = option.name;
-    this.schemeDescEl.textContent = option.description ?? '';
+    this.els.schemeName.textContent = option.name;
+    this.els.schemeDesc.textContent = option.description ?? '';
 
-    this.schemeProsEl.innerHTML = '';
+    this.els.schemePros.innerHTML = '';
     (option.pros ?? []).forEach((p) => {
       const li = document.createElement('li');
       li.textContent = p;
-      this.schemeProsEl.appendChild(li);
+      this.els.schemePros.appendChild(li);
     });
 
-    this.schemeConsEl.innerHTML = '';
+    this.els.schemeCons.innerHTML = '';
     (option.cons ?? []).forEach((c) => {
       const li = document.createElement('li');
       li.textContent = c;
-      this.schemeConsEl.appendChild(li);
+      this.els.schemeCons.appendChild(li);
     });
 
-    this.warningsEl.innerHTML = '';
+    this.els.warnings.innerHTML = '';
     for (const w of warnings) {
       const div = document.createElement('div');
       div.className = 'warning';
       div.textContent = w;
-      this.warningsEl.appendChild(div);
+      this.els.warnings.appendChild(div);
     }
   }
 
   private clearInfo() {
-    this.schemeNameEl.textContent = '请选择一个方案';
-    this.schemeDescEl.textContent = '';
-    this.schemeProsEl.innerHTML = '';
-    this.schemeConsEl.innerHTML = '';
-    this.warningsEl.innerHTML = '';
+    this.els.schemeName.textContent = '请选择一个方案';
+    this.els.schemeDesc.textContent = '';
+    this.els.schemePros.innerHTML = '';
+    this.els.schemeCons.innerHTML = '';
+    this.els.warnings.innerHTML = '';
   }
 }
