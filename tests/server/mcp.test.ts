@@ -1,4 +1,4 @@
-import { describe, it, before } from 'node:test';
+import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -38,23 +38,126 @@ describe('MCP remote', () => {
     });
   });
 
-  it('lists tools and calls set_selection', async () => {
+  after(() => {
+    server.close();
+  });
+
+  async function makeClient() {
     const client = new Client({ name: 'test', version: '0.1.0' });
     const transport = new StreamableHTTPClientTransport(new URL('http://localhost:13000/mcp'));
     await client.connect(transport);
+    return client;
+  }
 
-    const tools = await client.listTools();
-    assert.ok(tools.tools.some((t) => t.name === 'set_selection'));
+  it('lists tools and calls set_selection', async () => {
+    const client = await makeClient();
+    try {
+      const tools = await client.listTools();
+      assert.ok(tools.tools.some((t) => t.name === 'set_selection'));
 
-    const result = await client.callTool({
-      name: 'set_selection',
-      arguments: { topic: 'hvac', optionId: 'A1', reason: 'test' },
-    });
-    const text = (result.content as { text: string }[])[0].text;
-    const parsed = JSON.parse(text);
-    assert.equal(parsed.updated, true);
+      const result = await client.callTool({
+        name: 'set_selection',
+        arguments: { topic: 'hvac', optionId: 'A1', reason: 'test' },
+      });
+      const text = (result.content as { text: string }[])[0].text;
+      const parsed = JSON.parse(text);
+      assert.equal(parsed.updated, true);
+    } finally {
+      await client.close();
+    }
+  });
 
-    await client.close();
-    server.close();
+  it('list_options returns error for invalid topic', async () => {
+    const client = await makeClient();
+    try {
+      const result = await client.callTool({
+        name: 'list_options',
+        arguments: { topic: 'nonexistent_topic' },
+      });
+      const text = (result.content as { text: string }[])[0].text;
+      const parsed = JSON.parse(text);
+      assert.equal(parsed.error, 'topic not found');
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('get_option_details returns error for invalid optionId', async () => {
+    const client = await makeClient();
+    try {
+      const result = await client.callTool({
+        name: 'get_option_details',
+        arguments: { topic: 'hvac', optionId: 'ZZZZZ' },
+      });
+      const text = (result.content as { text: string }[])[0].text;
+      const parsed = JSON.parse(text);
+      assert.equal(parsed.error, 'option not found');
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('set_selection returns error for invalid topic', async () => {
+    const client = await makeClient();
+    try {
+      const result = await client.callTool({
+        name: 'set_selection',
+        arguments: { topic: 'nonexistent_topic', optionId: 'A1' },
+      });
+      assert.ok(result.isError);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('set_selection returns error for invalid optionId', async () => {
+    const client = await makeClient();
+    try {
+      const result = await client.callTool({
+        name: 'set_selection',
+        arguments: { topic: 'hvac', optionId: 'ZZZZZ' },
+      });
+      assert.ok(result.isError);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('batch_set_selections works for valid selections', async () => {
+    const client = await makeClient();
+    try {
+      const result = await client.callTool({
+        name: 'batch_set_selections',
+        arguments: {
+          selections: [
+            { topic: 'hvac', optionId: 'A1', reason: 'batch test' },
+          ],
+          reason: 'batch test',
+        },
+      });
+      const text = (result.content as { text: string }[])[0].text;
+      const parsed = JSON.parse(text);
+      assert.ok(parsed.updated !== undefined);
+      assert.ok(Array.isArray(parsed.entries));
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('batch_set_selections returns error for invalid topic', async () => {
+    const client = await makeClient();
+    try {
+      const result = await client.callTool({
+        name: 'batch_set_selections',
+        arguments: {
+          selections: [
+            { topic: 'nonexistent_topic', optionId: 'A1' },
+          ],
+        },
+      });
+      assert.ok(result.isError);
+    } finally {
+      await client.close();
+    }
   });
 });
