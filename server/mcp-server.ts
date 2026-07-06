@@ -20,6 +20,7 @@ export function createMcpServer(catalog: ProjectCatalog, state: DesignState): Mc
       return text({
         rooms: catalog.getRooms().map((r) => ({ id: r.id, name: r.name })),
         topics: catalog.getTopics().map((t) => ({ id: t.id, name: t.name, perRoom: t.perRoom })),
+        budgetCategories: catalog.getBudgetCategories(),
       });
     }
   );
@@ -91,7 +92,7 @@ export function createMcpServer(catalog: ProjectCatalog, state: DesignState): Mc
       description: 'Set a single topic default or per-room override.',
       inputSchema: z.object({
         topic: z.string(),
-        optionId: z.string(),
+        optionId: z.string().nullable(),
         roomId: z.string().optional(),
         reason: z.string().optional(),
         source: z.string().optional(),

@@ -72,7 +72,8 @@ export class DesignState {
       };
     }
     const scheme: CurrentScheme = { updatedAt: nowIso(), selections };
-    this.persistScheme(scheme);
+    mkdirSync(dirname(this.schemePath()), { recursive: true });
+    writeFileSync(this.schemePath(), JSON.stringify(scheme, null, 2));
     return scheme;
   }
 
@@ -85,17 +86,13 @@ export class DesignState {
   }
 
   private persist(): void {
-    this.persistScheme(this.scheme);
-    writeFileSync(this.decisionLogPath(), JSON.stringify(this.decisionLog, null, 2));
-  }
-
-  private persistScheme(scheme: CurrentScheme): void {
     mkdirSync(dirname(this.schemePath()), { recursive: true });
-    writeFileSync(this.schemePath(), JSON.stringify(scheme, null, 2));
+    writeFileSync(this.decisionLogPath(), JSON.stringify(this.decisionLog, null, 2));
+    writeFileSync(this.schemePath(), JSON.stringify(this.scheme, null, 2));
   }
 
   getCurrentScheme(): CurrentScheme {
-    return this.scheme;
+    return structuredClone(this.scheme);
   }
 
   getDecisionLog(): DecisionLogEntry[] {
