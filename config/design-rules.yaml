@@ -1,0 +1,26 @@
+version: "1.0"
+
+objectMapping:
+  - pattern: "room:*"
+    topics: [floor, wall, paint]
+  - pattern: "hvac:*"
+    topics: [hvac]
+
+budget:
+  baseCategoriesFrom: budget/base.json
+  topicCategories:
+    floor: masonry
+    wall: masonry
+    paint: painting
+    hvac: hvac
+  lineItems:
+    - topic: floor
+      quantityField: floorArea
+    - topic: wall
+      quantityField: wetWallArea
+    - topic: paint
+      quantityField: paintWallArea
+    - topic: hvac
+
+risks: []
+constraints: []
