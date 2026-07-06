@@ -1,0 +1,28 @@
+{
+  "name": "bontop-design-log",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev:server": "tsx server/index.ts",
+    "dev:app": "cd app && npm run dev",
+    "build:app": "cd app && npm run build",
+    "typecheck": "tsc --noEmit && cd app && tsc --noEmit",
+    "test:server": "node --test dist/tests/server/**/*.test.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@opencode-ai/sdk": "^1.17.13",
+    "express": "^4.21.0",
+    "js-yaml": "^5.2.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}
