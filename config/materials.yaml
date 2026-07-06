@@ -7,129 +7,358 @@ materials:
     category: "地砖"
     name: "浅胡桃木纹砖"
     brand: "马可波罗"
-    model: "CH8880"
+    model: "800x800 浅胡桃色系（型号待门店确认）"
     spec: "800x800mm"
     unit: "片"
-    price_per_unit: 45
+    price_per_unit: 65
     coverage_per_unit: 0.64
     loss_rate: 1.08
-    supplier: "快环建材市场A区3号"
+    supplier: "快环建材市场A区3号 / 马可波罗门店"
     online_link: ""
     sample_acquired: false
     sample_date: null
     status: "candidate"
+    notes: "原 CH8880 为抛釉砖非木纹，已排除；建议到店确认具体型号"
 
   - id: "wall_tile_01"
     category: "墙砖"
     name: "厨卫白色釉面砖"
     brand: "东鹏"
-    model: ""
+    model: "300x600 白色釉面砖"
     spec: "300x600mm"
     unit: "片"
-    price_per_unit: 10
+    price_per_unit: 12
     coverage_per_unit: 0.18
     loss_rate: 1.05
-    supplier: ""
+    supplier: "快环建材市场 / 东鹏门店"
     online_link: ""
     sample_acquired: false
     sample_date: null
     status: "candidate"
+    notes: "厨房用亮面好擦洗，卫生间可选哑光防滑；具体型号待门店确认"
 
   - id: "latex_paint_01"
     category: "乳胶漆"
-    name: "金装五合一"
+    name: "金装净味五合一"
     brand: "多乐士"
-    model: "NN0030-4"
+    model: "18L 大桶（具体型号如 A750/A8188，到店确认）"
     spec: "18L"
     unit: "桶"
-    price_per_unit: 680
-    coverage_per_unit: 80
+    price_per_unit: 580
+    coverage_per_unit: 120
     loss_rate: 1.1
-    supplier: ""
+    supplier: "快环建材市场 / 多乐士授权店"
     online_link: ""
     sample_acquired: false
     sample_date: null
     status: "candidate"
+    notes: "参考价 500–680 元/桶；大白墙为主，局部跳色；VOC 未检出优等品"
 
   - id: "cabinet_board_01"
     category: "柜体板材"
-    name: "多层实木板"
-    brand: ""
-    model: "E0级"
+    name: "多层实木板柜体 + PET 肤感柜门"
+    brand: "本地全屋定制工厂 / 兔宝宝 / 千年舟"
+    model: "ENF/E0 级多层实木 18mm"
     spec: "18mm"
     unit: "㎡"
-    price_per_unit: 180
+    price_per_unit: 800
     coverage_per_unit: 1
     loss_rate: 1.05
-    supplier: ""
+    supplier: "快环建材市场 / 本地定制工厂"
     online_link: ""
     sample_acquired: false
     sample_date: null
     status: "candidate"
+    notes: "按投影面积计价，含基础五金、设计、安装；L 型橱柜投影约 6㎡"
 
   - id: "quartz_stone_01"
     category: "台面"
     name: "石英石台面"
-    brand: ""
-    model: ""
+    brand: "本地石材厂 / 赛凯隆 / 中迅"
+    model: "20mm 厚单色/小颗粒"
     spec: "20mm"
     unit: "延米"
-    price_per_unit: 350
+    price_per_unit: 400
     coverage_per_unit: 1
     loss_rate: 1.02
-    supplier: ""
+    supplier: "快环建材市场石材区"
     online_link: ""
     sample_acquired: false
     sample_date: null
     status: "candidate"
+    notes: "L 型台面约 4 延米；注意石英砂含量 ≥90%"
 
   - id: "interior_door_01"
     category: "室内门"
-    name: "实木复合门"
-    brand: ""
-    model: ""
+    name: "实木复合免漆门"
+    brand: "本地大厂 / 大自然 / 美心"
+    model: "2100x900mm，门套 260mm 内"
     spec: "2100x900mm"
+    unit: "扇"
+    price_per_unit: 1100
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "快环建材市场 / 木门门店"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "3 卧室 + 1 书房共 4 扇；含门套、五金不含锁；建议磁吸静音锁"
+
+  - id: "bathroom_door_01"
+    category: "卫生间门"
+    name: "钛镁铝合金极窄平开门"
+    brand: "本地门窗厂 / 佛山型材"
+    model: "2100x800mm，极窄 35/40 系列，长虹/磨砂玻璃"
+    spec: "2100x800mm"
     unit: "扇"
     price_per_unit: 1000
     coverage_per_unit: 1
     loss_rate: 1
-    supplier: ""
+    supplier: "快环建材市场 / 铝合金门窗店"
     online_link: ""
     sample_acquired: false
     sample_date: null
     status: "candidate"
-
-  - id: "bathroom_door_01"
-    category: "卫生间门"
-    name: "铝合金平开门"
-    brand: ""
-    model: ""
-    spec: "2100x800mm"
-    unit: "扇"
-    price_per_unit: 1500
-    coverage_per_unit: 1
-    loss_rate: 1
-    supplier: ""
-    online_link: ""
-    sample_acquired: false
-    sample_date: null
-    status: "candidate"
+    notes: "2 个卫生间；含门套、五金；极窄边框更现代"
 
   - id: "entry_door_01"
     category: "入户门"
-    name: "防盗门"
-    brand: ""
-    model: ""
+    name: "甲级防盗门"
+    brand: "盼盼 / 王力 / 步阳（门店比价）"
+    model: "2100x960mm，甲级，C 级锁芯"
     spec: "2100x960mm"
     unit: "扇"
     price_per_unit: 3000
     coverage_per_unit: 1
     loss_rate: 1
-    supplier: ""
+    supplier: "快环建材市场 / 防盗门专卖店"
     online_link: ""
     sample_acquired: false
     sample_date: null
     status: "candidate"
+    notes: "若开发商入户门为甲级且外观可接受，可暂不更换"
+
+  - id: "curtain_01"
+    category: "窗帘"
+    name: "雪尼尔遮光帘 + 幻影纱 + 铝百叶"
+    brand: "本地窗帘市场 / 绍兴工厂直发"
+    model: "雪尼尔遮光布 + 幻影纱，2.0 倍褶皱"
+    spec: "按米"
+    unit: "套"
+    price_per_unit: 3930
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "快环建材市场窗帘区 / 网购"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "全屋玻璃幕墙窗帘为刚需；客厅/卧室双层，厨卫铝百叶/防水卷帘"
+
+  - id: "sanitary_toilet_01"
+    category: "卫浴洁具"
+    name: "虹吸式马桶"
+    brand: "九牧 / 箭牌"
+    model: "普通虹吸马桶（主卫可预留智能盖插座）"
+    spec: "305/400 坑距"
+    unit: "个"
+    price_per_unit: 950
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "九牧 / 箭牌门店"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "2 个卫生间；主卫约 1000 元，次卫约 900 元，取均价"
+
+  - id: "sanitary_shower_01"
+    category: "卫浴洁具"
+    name: "淋浴花洒套装"
+    brand: "九牧 / 箭牌"
+    model: "三出水恒温/普通花洒"
+    spec: "标准"
+    unit: "套"
+    price_per_unit: 750
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "九牧 / 箭牌门店"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "2 套；主卫约 800 元，次卫约 700 元，取均价"
+
+  - id: "sanitary_vanity_01"
+    category: "卫浴洁具"
+    name: "浴室柜组合（含镜柜）"
+    brand: "九牧 / 箭牌"
+    model: "80cm 陶瓷一体盆 + 镜柜"
+    spec: "80cm"
+    unit: "套"
+    price_per_unit: 1200
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "九牧 / 箭牌门店"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "2 套；主卫约 1300 元，次卫约 1100 元，取均价"
+
+  - id: "sanitary_faucet_01"
+    category: "卫浴洁具"
+    name: "冷热面盆龙头"
+    brand: "九牧 / 箭牌"
+    model: "全铜冷热龙头"
+    spec: "标准"
+    unit: "个"
+    price_per_unit: 150
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "九牧 / 箭牌门店"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "2 个卫生间；含在浴室柜中或单独购买"
+
+  - id: "lighting_01"
+    category: "灯具"
+    name: "全屋吸顶灯套餐"
+    brand: "欧普 / 雷士 / 佛山照明"
+    model: "客厅大灯 + 餐厅灯 + 3 卧室 + 2 卫浴平板灯 + 阳台灯"
+    spec: "套餐"
+    unit: "套"
+    price_per_unit: 2500
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "京东 / 天猫 / 本地灯具城"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "层高 3.0m，不建议复杂吊灯；客厅选大灯或超薄吸顶灯"
+
+  - id: "switch_socket_01"
+    category: "开关插座"
+    name: "正泰 T5/NEW7M 无边框大板"
+    brand: "正泰"
+    model: "五孔/单开/空调插座/USB 等，约 50 位"
+    spec: "86 型"
+    unit: "位"
+    price_per_unit: 18
+    coverage_per_unit: 1
+    loss_rate: 1.05
+    supplier: "正泰门店 / 京东 / 1688"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "智能预留只需开关留零线；厨房用带开关五孔，卫生间配防溅盒"
+
+  - id: "hardware_01"
+    category: "五金件"
+    name: "门锁/合页/地漏/角阀/晾衣架/毛巾架套装"
+    brand: "固特 / 卡贝 / 九牧五金"
+    model: "磁吸静音锁 + 不锈钢地漏 + 全铜角阀 + 晾衣架"
+    spec: "全屋"
+    unit: "套"
+    price_per_unit: 1800
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "快环建材市场五金区 / 网购"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "4 把锁、6-8 个地漏、10 个角阀、晾衣架、毛巾架等"
+
+  - id: "hvac_01"
+    category: "暖通空调"
+    name: "国产多联机一拖五"
+    brand: "格力 / 美的 / 奥克斯"
+    model: "6 匹一拖五（71/36/28/22/22）"
+    spec: "6HP"
+    unit: "套"
+    price_per_unit: 29000
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "格力/美的南宁总代 / 本地暖通公司"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "推荐首选；西向设备平台放 1 台外机；含设备、安装、辅材、风口；国产性价比最高"
+
+  - id: "hvac_02"
+    category: "暖通空调"
+    name: "一拖三挂机 + 一拖二挂机"
+    brand: "美的 / 格力 / 海尔"
+    model: "一拖三（3x1匹） + 一拖二（1.5匹+2匹）"
+    spec: "2 台外机"
+    unit: "套"
+    price_per_unit: 17500
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "京东 / 天猫 / 本地家电卖场"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "预算紧替代方案；外机 2 台可放西设备平台；室内为壁挂机，美观度下降"
+
+  - id: "gas_water_heater_01"
+    category: "热水器"
+    name: "16L 恒温强排燃气热水器"
+    brand: "万家乐 / 万和"
+    model: "16L，二级能效，水气双调"
+    spec: "16L"
+    unit: "台"
+    price_per_unit: 1200
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "京东 / 天猫 / 本地燃气具门店"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "一厨两卫 16L 够用；零冷水需回水管，预算紧可不要"
+
+  - id: "range_hood_01"
+    category: "厨房电器"
+    name: "侧吸式大吸力油烟机"
+    brand: "美的 / 华帝"
+    model: "侧吸，≥22m³/min，静压 ≥400Pa"
+    spec: "900mm"
+    unit: "台"
+    price_per_unit: 1200
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "京东 / 天猫 / 本地家电卖场"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "开放式厨房必须大功率侧吸；建议配 5.0kW 灶具"
+
+  - id: "smart_home_01"
+    category: "智能家居"
+    name: "智能预留 B 级套装"
+    brand: "米家 / Aqara / 易来"
+    model: "智能开关零线 + 网关 + 电动窗帘电源 + 人体传感器位"
+    spec: "全屋"
+    unit: "套"
+    price_per_unit: 2000
+    coverage_per_unit: 1
+    loss_rate: 1
+    supplier: "小米之家 / Aqara 门店 / 网购"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    notes: "只预留硬件位和零线，不上调光自动化；后期可 incremental 升级"
 
   - id: "curtain_wall_01"
     category: "玻璃幕墙"

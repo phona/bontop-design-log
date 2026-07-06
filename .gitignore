@@ -34,6 +34,19 @@ __pycache__/
 .venv/
 venv/
 
+# Node.js / JavaScript
+node_modules/
+*/node_modules/
+dist/
+build/
+.cache/
+*.tsbuildinfo
+
+# 环境变量和本地配置
+.env
+.env.local
+.env.*.local
+
 # 系统文件
 .DS_Store
 Thumbs.db

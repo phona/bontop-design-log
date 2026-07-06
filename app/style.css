@@ -1,0 +1,153 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: #111;
+  color: #eee;
+}
+
+#gl {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+#ui {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 360px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: rgba(20, 20, 25, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  backdrop-filter: blur(8px);
+}
+
+#ui h1 {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+#topic-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.topic-tab {
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #eee;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.topic-tab:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.topic-tab.active {
+  background: rgba(59, 130, 246, 0.45);
+  border-color: rgba(59, 130, 246, 0.7);
+}
+
+#topic-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.scheme-btn {
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #eee;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.scheme-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.scheme-btn.active {
+  background: rgba(59, 130, 246, 0.35);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+
+#info h2 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+#info p, #info li {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #ccc;
+}
+
+#info ul {
+  margin: 8px 0 8px 18px;
+}
+
+#info li {
+  margin-bottom: 4px;
+}
+
+#warnings {
+  margin-top: 10px;
+}
+
+.warning {
+  font-size: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  margin-bottom: 6px;
+}
+
+#legend {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+
+#legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot.ceiling { background: #22d3ee; }
+.dot.wall { background: #f97316; }
+.dot.cabinet { background: #ef4444; }
+.dot.outdoor { background: #a855f7; }

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>和萃 701 装修方案漫游</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="ui">
+      <h1>和萃 701 装修方案漫游</h1>
+      <div id="topic-tabs"></div>
+      <div id="topic-options"></div>
+      <div id="info">
+        <h2 id="scheme-name">请选择一个方案</h2>
+        <p id="scheme-desc"></p>
+        <ul id="scheme-pros"></ul>
+        <ul id="scheme-cons"></ul>
+        <div id="warnings"></div>
+      </div>
+      <div id="legend">
+        <span><i class="dot ceiling"></i> 吊顶内机</span>
+        <span><i class="dot wall"></i> 壁挂内机</span>
+        <span><i class="dot cabinet"></i> 柜机</span>
+        <span><i class="dot outdoor"></i> 外机</span>
+      </div>
+    </div>
+    <canvas id="gl"></canvas>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

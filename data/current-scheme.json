@@ -1,0 +1,21 @@
+{
+  "updatedAt": "2026-07-06T10:10:49.676Z",
+  "selections": {
+    "floor": {
+      "default": "floor_tile_01",
+      "roomOverrides": {}
+    },
+    "wall": {
+      "default": "wall_tile_01",
+      "roomOverrides": {}
+    },
+    "paint": {
+      "default": "latex_paint_01",
+      "roomOverrides": {}
+    },
+    "hvac": {
+      "default": "A1",
+      "roomOverrides": {}
+    }
+  }
+}

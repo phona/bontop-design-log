@@ -1,0 +1,26 @@
+[
+  {
+    "id": "dec_20260706114656_0001",
+    "topic": "hvac",
+    "roomId": null,
+    "optionId": "A2",
+    "previousOptionId": "A1",
+    "archiveId": null,
+    "path": "hvac.default",
+    "reason": "test",
+    "source": "ai",
+    "createdAt": "2026-07-06T11:46:56.833Z"
+  },
+  {
+    "id": "dec_20260706114656_0002",
+    "topic": "hvac",
+    "roomId": null,
+    "optionId": "A1",
+    "previousOptionId": "A2",
+    "archiveId": null,
+    "path": "hvac.default",
+    "reason": "batch test",
+    "source": "ai",
+    "createdAt": "2026-07-06T11:46:56.869Z"
+  }
+]

@@ -15,6 +15,7 @@
     "sanitary": {"budget": 10000, "actual": 0, "status": "draft", "notes": "国产基础款（九牧/箭牌），含两卫三件套"},
     "kitchen_cabinet": {"budget": 6500, "actual": 0, "status": "draft", "notes": "L 型地柜约 3.5m，多层板+石英石；含洗碗机/净水器预留"},
     "range_hood": {"budget": 2500, "actual": 0, "status": "draft", "notes": "开放式厨房必须配大功率侧吸油烟机，≥22m³/min"},
+    "hvac": {"budget": 0, "actual": 0, "status": "draft", "notes": "中央空调/多联机，actual 由 HVAC 选项自动计算；budget 0 表示不占用 11 万基础包，可手动调整"},
     "lighting": {"budget": 2800, "actual": 0, "status": "draft", "notes": "吸顶灯为主 + 局部筒灯，控制成本"},
     "curtains": {"budget": 4000, "actual": 0, "status": "draft", "notes": "全屋玻璃幕墙，窗帘为刚需；纱帘+遮光帘，厨卫用防水卷帘/百叶"},
     "smart_home": {"budget": 2000, "actual": 0, "status": "draft", "notes": "智能开关零线 + 网关位 + 电动窗帘电源 + 人体传感器位；不上调光和自动化"},

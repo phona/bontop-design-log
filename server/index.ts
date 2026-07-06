@@ -15,8 +15,8 @@ const app = express();
 app.use(express.json());
 app.use('/api', createApiRouter(catalog, state));
 
-await attachMcpTransports(app, () => createMcpServer(catalog, state));
-
-app.listen(PORT, () => {
-  console.log(`Bontop design server listening on http://localhost:${PORT}`);
+attachMcpTransports(app, () => createMcpServer(catalog, state)).then(() => {
+  app.listen(PORT, () => {
+    console.log(`Bontop design server listening on http://localhost:${PORT}`);
+  });
 });
