@@ -14,7 +14,7 @@ export class StateSync {
   private visualCommandCallbacks: VisualCommandCallback[] = [];
   private offlineCallbacks: OfflineCallback[] = [];
   private currentScheme: CurrentScheme | null = null;
-  private processedCommandIds = new Set<string>();
+  private processedCommandIds = new Map<string, number>();
 
   async getCurrentScheme(): Promise<CurrentScheme> {
     const response = await fetch('/api/scheme/current');
@@ -69,6 +69,7 @@ export class StateSync {
 
   start(): void {
     this.pollScheme();
+    this.pollVisualCommands();
   }
 
   private async pollScheme(): Promise<void> {
@@ -98,18 +99,16 @@ export class StateSync {
     }
   }
 
-  startVisualCommandPolling(): void {
-    this.pollVisualCommands();
-  }
-
   private async pollVisualCommands(): Promise<void> {
     try {
       const commands = await this.getVisualCommands();
 
+      this.cleanupProcessedCommandIds();
+
       const newCommands = commands.filter(cmd => !this.processedCommandIds.has(cmd.commandId));
 
       for (const command of newCommands) {
-        this.processedCommandIds.add(command.commandId);
+        this.processedCommandIds.set(command.commandId, new Date(command.expiresAt).getTime());
         this.visualCommandCallbacks.forEach(cb => cb(command));
         await this.ackVisualCommands([command.commandId]);
       }
@@ -121,8 +120,18 @@ export class StateSync {
     }
   }
 
+  private cleanupProcessedCommandIds(): void {
+    const now = Date.now();
+    for (const [id, expiresAt] of this.processedCommandIds.entries()) {
+      if (expiresAt <= now) {
+        this.processedCommandIds.delete(id);
+      }
+    }
+  }
+
   dispose(): void {
     if (this.schemeInterval) clearTimeout(this.schemeInterval);
     if (this.visualCommandInterval) clearTimeout(this.visualCommandInterval);
+    this.processedCommandIds.clear();
   }
 }
