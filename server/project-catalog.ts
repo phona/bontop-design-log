@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import type {
   MaterialsYaml,
-  HouseYaml,
   RoomLayout,
   DesignOption,
   CatalogTopic,
@@ -46,7 +45,6 @@ export class ProjectCatalog {
 
   constructor(
     materials: MaterialsYaml,
-    house: HouseYaml,
     budgetBase: {
       total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
@@ -95,12 +93,11 @@ export class ProjectCatalog {
 
   static load(configDir = '.'): ProjectCatalog {
     const materials = load(readFileSync(`${configDir}/config/materials.yaml`, 'utf8')) as MaterialsYaml;
-    const house = load(readFileSync(`${configDir}/config/house.yaml`, 'utf8')) as HouseYaml;
     const budgetBase = JSON.parse(readFileSync(`${configDir}/budget/base.json`, 'utf8')) as {
       total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     };
-    return new ProjectCatalog(materials, house, budgetBase);
+    return new ProjectCatalog(materials, budgetBase);
   }
 
   getTopics(): CatalogTopic[] {
