@@ -2,10 +2,20 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { SceneApi, RoomObject, CameraState } from '@shared/types';
 import { rooms, platform } from '@shared/houseData';
+import { CameraAnimator } from '../scene/CameraAnimator.js';
+import { TopicRegistry } from '../topics/TopicRegistry.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
+
+type ObjectClickCallback = (objectId: string) => void;
+
+interface ProjectData {
+  house: { rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string }> };
+  topics: Array<{ id: string; name: string; perRoom: boolean; options: unknown[] }>;
+  budgetCategories: unknown[];
+}
 
 export class HouseScene implements SceneApi {
   scene: THREE.Scene;
@@ -13,14 +23,20 @@ export class HouseScene implements SceneApi {
   renderer: THREE.WebGLRenderer;
   controls: OrbitControls;
   rooms: Record<string, RoomObject> = {};
+  private canvas: HTMLCanvasElement;
   private topicGroup = new THREE.Group();
   private floorMeshes: THREE.Mesh[] = [];
   private wallMeshes: THREE.Mesh[] = [];
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
-  private onObjectClick?: (objectId: string, type: string, room?: string) => void;
+  private cameraAnimator: CameraAnimator;
+  private topicRegistry: TopicRegistry;
+  private objectClickCallbacks: ObjectClickCallback[] = [];
+  private onClickCallback?: (objectId: string, type: string, room?: string) => void;
+  private boundOnWindowResize: () => void;
 
   constructor(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#1a1a20');
 
@@ -45,18 +61,75 @@ export class HouseScene implements SceneApi {
     this.controls.minDistance = 1;
     this.controls.maxDistance = 60;
 
+    this.cameraAnimator = new CameraAnimator(this.camera);
+    this.topicRegistry = new TopicRegistry(this);
+
     this.setupLights();
     this.buildBase();
     this.buildRooms();
     this.buildPlatform();
     this.scene.add(this.topicGroup);
 
-    window.addEventListener('resize', () => this.onResize());
+    this.boundOnWindowResize = () => this.onResize();
+    window.addEventListener('resize', this.boundOnWindowResize);
     canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
   }
 
+  getScene(): THREE.Scene {
+    return this.scene;
+  }
+
+  getCamera(): THREE.PerspectiveCamera {
+    return this.camera;
+  }
+
   setOnObjectClick(cb: (objectId: string, type: string, room?: string) => void) {
-    this.onObjectClick = cb;
+    this.onClickCallback = cb;
+  }
+
+  onObjectClick(callback: ObjectClickCallback): void {
+    this.objectClickCallbacks.push(callback);
+  }
+
+  async buildFromCatalog(projectData: ProjectData): Promise<void> {
+    const toRemove: THREE.Object3D[] = [];
+    this.scene.traverse((obj) => {
+      if (obj !== this.scene && obj.parent === this.scene) {
+        toRemove.push(obj);
+      }
+    });
+    for (const obj of toRemove) {
+      this.scene.remove(obj);
+    }
+
+    this.rooms = {};
+    this.floorMeshes = [];
+    this.wallMeshes = [];
+
+    this.setupLights();
+    this.buildBase();
+
+    this.topicGroup = new THREE.Group();
+    this.scene.add(this.topicGroup);
+
+    for (const room of projectData.house.rooms) {
+      this.createRoom({
+        id: room.id,
+        name: room.name,
+        x: room.x,
+        z: room.z,
+        width: room.width,
+        depth: room.depth,
+        height: room.height,
+      });
+    }
+  }
+
+  setSelection(topic: string, optionId: string): void {
+    const topicImpl = this.topicRegistry.get(topic);
+    if (topicImpl) {
+      topicImpl.apply(this, optionId);
+    }
   }
 
   private setupLights() {
@@ -121,10 +194,10 @@ export class HouseScene implements SceneApi {
     const halfD = r.depth / 2;
 
     const walls: Array<{ x: number; z: number; w: number; d: number }> = [
-      { x: 0, z: -halfD, w: r.width, d: WALL_THICKNESS }, // north
-      { x: 0, z: halfD, w: r.width, d: WALL_THICKNESS }, // south
-      { x: -halfW, z: 0, w: WALL_THICKNESS, d: r.depth }, // west
-      { x: halfW, z: 0, w: WALL_THICKNESS, d: r.depth }, // east
+      { x: 0, z: -halfD, w: r.width, d: WALL_THICKNESS },
+      { x: 0, z: halfD, w: r.width, d: WALL_THICKNESS },
+      { x: -halfW, z: 0, w: WALL_THICKNESS, d: r.depth },
+      { x: halfW, z: 0, w: WALL_THICKNESS, d: r.depth },
     ];
 
     for (const w of walls) {
@@ -140,13 +213,21 @@ export class HouseScene implements SceneApi {
       this.wallMeshes.push(wall);
     }
 
-    // simple window/door markers (colored planes on walls)
     if (r.id === 'living_dining') {
       this.addOpeningMarker(group, 0, 1.2, halfD + 0.01, r.width * 0.7, 1.6, 'south_window');
     }
     if (r.id === 'south_balcony') {
       this.addOpeningMarker(group, 0, 1.2, -halfD - 0.01, 2, 2, 'door_to_balcony');
     }
+
+    const roomLabel = new THREE.Mesh(
+      new THREE.PlaneGeometry(r.width, r.depth),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    roomLabel.rotation.x = -Math.PI / 2;
+    roomLabel.position.set(0, 0.01, 0);
+    roomLabel.userData = { objectId: `room:${r.id}` };
+    group.add(roomLabel);
 
     this.scene.add(group);
     this.rooms[r.id] = { ...r };
@@ -258,20 +339,34 @@ export class HouseScene implements SceneApi {
   setCameraTarget(targetId: string) {
     const r = this.rooms[targetId];
     if (r) {
-      this.controls.target.set(r.x, 0, r.z);
-      this.camera.position.set(r.x, 10, r.z + 10);
+      const target = new THREE.Vector3(r.x, 0, r.z);
+      const camPos = new THREE.Vector3(r.x + 6, 8, r.z + 8);
+      this.cameraAnimator.animateTo(camPos, target, 500);
+      this.controls.target.copy(target);
     } else {
-      // try topic object
       let found = false;
-      this.topicGroup.traverse((obj) => {
+      this.scene.traverse((obj) => {
         if (!found && obj.userData?.objectId === targetId) {
           const pos = new THREE.Vector3();
-          obj.getWorldPosition(pos);
+          (obj as THREE.Object3D).getWorldPosition(pos);
+          const camPos = new THREE.Vector3(pos.x + 4, pos.y + 4, pos.z + 4);
+          this.cameraAnimator.animateTo(camPos, pos, 500);
           this.controls.target.copy(pos);
-          this.camera.position.set(pos.x + 4, pos.y + 4, pos.z + 4);
           found = true;
         }
       });
+      if (!found) {
+        this.topicGroup.traverse((obj) => {
+          if (!found && obj.userData?.objectId === targetId) {
+            const pos = new THREE.Vector3();
+            obj.getWorldPosition(pos);
+            const camPos = new THREE.Vector3(pos.x + 4, pos.y + 4, pos.z + 4);
+            this.cameraAnimator.animateTo(camPos, pos, 500);
+            this.controls.target.copy(pos);
+            found = true;
+          }
+        });
+      }
     }
     this.controls.update();
   }
@@ -318,7 +413,7 @@ export class HouseScene implements SceneApi {
     for (const hit of intersects) {
       const data = hit.object.userData;
       if (data?.objectId || data?.roomId) {
-        this.onObjectClick?.(
+        this.onClickCallback?.(
           (data.objectId as string) ?? (data.roomId as string),
           (data.type as string) ?? (data.part as string) ?? 'room',
           data.roomId as string | undefined
@@ -330,6 +425,12 @@ export class HouseScene implements SceneApi {
 
   render() {
     this.controls.update();
+    this.cameraAnimator.update(16);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  dispose(): void {
+    window.removeEventListener('resize', this.boundOnWindowResize);
+    this.renderer.dispose();
   }
 }

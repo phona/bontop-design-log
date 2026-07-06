@@ -7,12 +7,13 @@ import type { Command, CameraState } from '@shared/types';
 export class App implements StateListener {
   private scene: HouseScene;
   private stateManager = new StateManager();
-  private registry = new TopicRegistry();
+  private registry: TopicRegistry;
   private panel = new SchemePanel();
   private rafId?: number;
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new HouseScene(canvas);
+    this.registry = new TopicRegistry(this.scene);
     this.scene.setOnObjectClick((objectId, type, room) => {
       this.stateManager.writeSnapshot();
       // eslint-disable-next-line no-console

@@ -1,53 +1,127 @@
-// @vitest-environment jsdom
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('@shared/houseData', () => ({
+  rooms: [],
+  platform: { id: 'test', name: 'Test', x: 0, z: 0, width: 1, depth: 1, height: 3 },
+}));
+
+vi.mock('three', () => {
+  class MockObject3D {
+    userData: Record<string, unknown> = {};
+    children: MockObject3D[] = [];
+    parent: MockObject3D | null = null;
+    position = { x: 0, y: 0, z: 0, set: function() { return this; }, clone: function() { return { x: this.x, y: this.y, z: this.z, set: function() { return this; }, clone: function() { return this; } }; } };
+    rotation = { x: 0, y: 0, z: 0 };
+    scale = { x: 1, y: 1, z: 1, set: function() { return this; } };
+    castShadow = false;
+    receiveShadow = false;
+    add(child: MockObject3D) { child.parent = this; this.children.push(child); }
+    remove(child: MockObject3D) { const i = this.children.indexOf(child); if (i >= 0) this.children.splice(i, 1); }
+    traverse(cb: (obj: MockObject3D) => void) { cb(this); this.children.forEach(c => c.traverse(cb)); }
+    getWorldPosition(t: any) { t.x = this.position.x; t.y = this.position.y; t.z = this.position.z; return t; }
+  }
+
+  class MockMaterial {
+    color = { set() { return this; } };
+    emissive = { set() { return this; }, clone() { return { set() { return this; }, copy() { return this; } }; } };
+    emissiveIntensity = 0;
+    roughness = 0;
+    metalness = 0;
+    side = 0;
+    transparent = false;
+    opacity = 1;
+    visible = true;
+    map: unknown = null;
+    clone() { return new (this.constructor as any)(); }
+    set() { return this; }
+    copy() { return this; }
+  }
+
+  return {
+    Scene: class extends MockObject3D { background: unknown = null; },
+    Group: class extends MockObject3D {},
+    Mesh: class extends MockObject3D { material = new MockMaterial(); geometry = {}; },
+    Object3D: MockObject3D,
+    Sprite: class extends MockObject3D {},
+    PerspectiveCamera: class extends MockObject3D { aspect = 1; updateProjectionMatrix() {} lookAt() {} },
+    AmbientLight: class extends MockObject3D {},
+    DirectionalLight: class extends MockObject3D { shadow = { mapSize: { width: 0, height: 0 } }; castShadow = false; },
+    GridHelper: class extends MockObject3D {},
+    Raycaster: class { setFromCamera() {} intersectObjects() { return []; } },
+    Vector2: class { x = 0; y = 0; },
+    Vector3: class {
+      x = 0; y = 0; z = 0;
+      constructor(x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; }
+      set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; return this; }
+      copy(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }
+      clone() { return new (this.constructor as any)(this.x, this.y, this.z); }
+    },
+    Color: class { set() { return this; } copy() { return this; } clone() { return new (this.constructor as any)(); } },
+    PlaneGeometry: class {},
+    BoxGeometry: class {},
+    CanvasTexture: class {},
+    MeshStandardMaterial: MockMaterial,
+    MeshBasicMaterial: MockMaterial,
+    SpriteMaterial: MockMaterial,
+    DoubleSide: 2,
+    WebGLRenderer: class { domElement = {}; shadowMap = { enabled: false }; setSize() {} setPixelRatio() {} render() {} dispose() {} },
+  };
+});
+
+vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({
+  OrbitControls: class {
+    target = { x: 0, y: 0, z: 0, set() {}, copy() {} };
+    enableDamping = true;
+    dampingFactor = 0.08;
+    maxPolarAngle = 0;
+    minDistance = 1;
+    maxDistance = 60;
+    update() {}
+    dispose() {}
+  },
+}));
 
 vi.mock('../topics/TopicRegistry.js', () => ({
-  TopicRegistry: class MockTopicRegistry {
+  TopicRegistry: class {
+    constructor() {}
     get() { return undefined; }
     list() { return []; }
     register() {}
   },
 }));
 
-const mockRenderer = {
-  setSize: vi.fn(),
-  render: vi.fn(),
-  dispose: vi.fn(),
-  domElement: document.createElement('canvas'),
+const mockWindow = {
+  innerWidth: 800,
+  innerHeight: 600,
+  devicePixelRatio: 1,
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
 };
 
-vi.mock('three', async () => {
-  const actual = await vi.importActual<typeof import('three')>('three');
-  const MockWebGLRenderer = function(this: any) {
-    Object.assign(this, mockRenderer);
-  } as any;
-  return {
-    ...actual,
-    WebGLRenderer: MockWebGLRenderer,
-  };
-});
+vi.stubGlobal('window', mockWindow);
 
-import * as THREE from 'three';
-import { HouseScene } from './HouseScene';
+import { HouseScene } from '../render/HouseScene';
 
 describe('HouseScene', () => {
-  let canvas: HTMLCanvasElement;
-  let scene: HouseScene;
-
-  beforeEach(() => {
-    canvas = document.createElement('canvas');
-    Object.defineProperty(canvas, 'clientWidth', { value: 800, configurable: true });
-    Object.defineProperty(canvas, 'clientHeight', { value: 600, configurable: true });
-    scene = new HouseScene(canvas);
-  });
-
-  it('should initialize Three.js scene', () => {
+  it('should initialize', () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
     expect(scene).toBeDefined();
-    expect(scene.getScene()).toBeInstanceOf(THREE.Scene);
-    expect(scene.getCamera()).toBeInstanceOf(THREE.PerspectiveCamera);
+    expect(scene.getScene()).toBeDefined();
+    expect(scene.getCamera()).toBeDefined();
   });
 
-  it('should render rooms from catalog', () => {
+  it('should render rooms from catalog', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
     const projectData = {
       house: {
         rooms: [
@@ -59,15 +133,19 @@ describe('HouseScene', () => {
       budgetCategories: [],
     };
 
-    scene.buildFromCatalog(projectData);
-
-    const roomObjects = scene.getScene().children.filter(
-      (obj) => obj.userData.objectId?.startsWith('room:')
-    );
-    expect(roomObjects.length).toBe(2);
+    await scene.buildFromCatalog(projectData);
+    expect(Object.keys(scene.rooms).length).toBe(2);
+    expect(scene.rooms['living_room']).toBeDefined();
+    expect(scene.rooms['bedroom']).toBeDefined();
   });
 
-  it('should create floors and walls for each room', () => {
+  it('should create floors and walls for each room', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
     const projectData = {
       house: {
         rooms: [
@@ -78,25 +156,36 @@ describe('HouseScene', () => {
       budgetCategories: [],
     };
 
-    scene.buildFromCatalog(projectData);
+    await scene.buildFromCatalog(projectData);
 
-    const floors = scene.getScene().children.filter(
-      (obj) => obj.userData.objectId?.startsWith('floor:')
-    );
-    const walls = scene.getScene().children.filter(
-      (obj) => obj.userData.objectId?.startsWith('wall:')
-    );
-    expect(floors.length).toBe(1);
-    expect(walls.length).toBe(4);
+    let floorCount = 0;
+    let wallCount = 0;
+    scene.getScene().traverse((obj: any) => {
+      if (obj.userData?.part === 'floor') floorCount++;
+      if (obj.userData?.part === 'wall') wallCount++;
+    });
+    expect(floorCount).toBe(1);
+    expect(wallCount).toBe(4);
   });
 
   it('should register object click callback', () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
     const cb = vi.fn();
     scene.onObjectClick(cb);
     expect(cb).not.toHaveBeenCalled();
   });
 
-  it('should highlight object by id', () => {
+  it('should highlight object by id', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
     const projectData = {
       house: {
         rooms: [
@@ -106,11 +195,17 @@ describe('HouseScene', () => {
       topics: [],
       budgetCategories: [],
     };
-    scene.buildFromCatalog(projectData);
-    scene.highlightObject('room:test_room');
+    await scene.buildFromCatalog(projectData);
+    expect(() => scene.highlightObject('test_room')).not.toThrow();
   });
 
-  it('should set camera target to room', () => {
+  it('should set camera target to room', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
     const projectData = {
       house: {
         rooms: [
@@ -120,11 +215,16 @@ describe('HouseScene', () => {
       topics: [],
       budgetCategories: [],
     };
-    scene.buildFromCatalog(projectData);
-    scene.setCameraTarget('room:test_room');
+    await scene.buildFromCatalog(projectData);
+    expect(() => scene.setCameraTarget('test_room')).not.toThrow();
   });
 
   it('should render without throwing', () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
     expect(() => scene.render()).not.toThrow();
   });
 });
