@@ -70,6 +70,8 @@ export class HouseScene implements SceneApi {
     this.buildPlatform();
     this.scene.add(this.topicGroup);
 
+    this.controls.addEventListener('start', () => this.cameraAnimator.interrupt());
+
     this.boundOnWindowResize = () => this.onResize();
     window.addEventListener('resize', this.boundOnWindowResize);
     canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
@@ -193,11 +195,11 @@ export class HouseScene implements SceneApi {
     const halfW = r.width / 2;
     const halfD = r.depth / 2;
 
-    const walls: Array<{ x: number; z: number; w: number; d: number }> = [
-      { x: 0, z: -halfD, w: r.width, d: WALL_THICKNESS },
-      { x: 0, z: halfD, w: r.width, d: WALL_THICKNESS },
-      { x: -halfW, z: 0, w: WALL_THICKNESS, d: r.depth },
-      { x: halfW, z: 0, w: WALL_THICKNESS, d: r.depth },
+    const walls: Array<{ x: number; z: number; w: number; d: number; dir: string }> = [
+      { x: 0, z: -halfD, w: r.width, d: WALL_THICKNESS, dir: 'north' },
+      { x: 0, z: halfD, w: r.width, d: WALL_THICKNESS, dir: 'south' },
+      { x: -halfW, z: 0, w: WALL_THICKNESS, d: r.depth, dir: 'west' },
+      { x: halfW, z: 0, w: WALL_THICKNESS, d: r.depth, dir: 'east' },
     ];
 
     for (const w of walls) {
@@ -206,7 +208,7 @@ export class HouseScene implements SceneApi {
         wallMat.clone()
       );
       wall.position.set(w.x, r.height / 2, w.z);
-      wall.userData = { roomId: r.id, part: 'wall' };
+      wall.userData = { roomId: r.id, part: 'wall', objectId: `wall:${r.id}:${w.dir}` };
       wall.castShadow = true;
       wall.receiveShadow = true;
       group.add(wall);
@@ -413,19 +415,28 @@ export class HouseScene implements SceneApi {
     for (const hit of intersects) {
       const data = hit.object.userData;
       if (data?.objectId || data?.roomId) {
+        const id = (data.objectId as string) ?? (data.roomId as string);
         this.onClickCallback?.(
-          (data.objectId as string) ?? (data.roomId as string),
+          id,
           (data.type as string) ?? (data.part as string) ?? 'room',
           data.roomId as string | undefined
         );
+        for (const cb of this.objectClickCallbacks) {
+          cb(id);
+        }
         return;
       }
     }
   }
 
+  private lastRenderTime = performance.now();
+
   render() {
+    const now = performance.now();
+    const deltaTime = now - this.lastRenderTime;
+    this.lastRenderTime = now;
     this.controls.update();
-    this.cameraAnimator.update(16);
+    this.cameraAnimator.update(deltaTime);
     this.renderer.render(this.scene, this.camera);
   }
 

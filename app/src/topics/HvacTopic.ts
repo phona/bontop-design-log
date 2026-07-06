@@ -64,8 +64,6 @@ export class HvacTopic implements Topic {
       objectIds.push(objectId);
 
       const label = createLabel(`${unit.type === 'ceiling' ? '吊顶' : unit.type === 'wall' ? '壁挂' : '柜机'}`);
-      const mesh = scene as unknown as { topicGroup: THREE.Group };
-      // approximate label placement handled below via separate helper
       const labelPos = new THREE.Vector3(room.x, room.height - 0.5, room.z);
       label.position.copy(labelPos);
       scene.addObject(this.id, `${objectId}:label`, label);

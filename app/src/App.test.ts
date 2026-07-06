@@ -71,6 +71,8 @@ vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({
     maxDistance = 60;
     update() {}
     dispose() {}
+    addEventListener() {}
+    removeEventListener() {}
   },
 }));
 

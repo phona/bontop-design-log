@@ -72,8 +72,27 @@ vi.mock('../render/ObjectFactory.js', () => ({
   },
 }));
 
+vi.mock('../data/designData.js', () => ({
+  floorOptions: [
+    { id: 'floor_tile_01', name: '浅胡桃木纹砖', color: '#c49a6c' },
+    { id: 'floor_tile_02', name: '深灰岩纹砖', color: '#8b8b8b' },
+  ],
+  wallOptions: [
+    { id: 'wall_tile_01', name: '厨卫白色釉面砖', color: '#f5f5f5' },
+    { id: 'wall_tile_02', name: '浅灰哑光砖', color: '#d0d0d0' },
+  ],
+  paintOptions: [
+    { id: 'latex_paint_01', name: '金装净味五合一', color: '#f7f5ef' },
+    { id: 'latex_paint_02', name: '奶油白', color: '#fff4e6' },
+    { id: 'latex_paint_03', name: '浅蓝', color: '#e6f3ff' },
+  ],
+}));
+
 import { TopicRegistry } from './TopicRegistry';
 import { HvacTopic } from './HvacTopic';
+import { FloorTopic } from './FloorTopic';
+import { WallTopic } from './WallTopic';
+import { PaintTopic } from './PaintTopic';
 
 function createMockSceneApi() {
   const addedObjects: Map<string, any> = new Map();
@@ -299,5 +318,187 @@ describe('HvacTopic.validate', () => {
     const mock = createMockSceneApi();
     const warnings = topic.validate!(mock.api as any, 'E1');
     expect(warnings.some((w) => w.includes('宽度'))).toBe(true);
+  });
+});
+
+describe('FloorTopic', () => {
+  let topic: FloorTopic;
+
+  beforeEach(() => {
+    topic = new FloorTopic();
+  });
+
+  it('should have correct id and name', () => {
+    expect(topic.id).toBe('floor');
+    expect(topic.name).toBe('地砖方案');
+  });
+
+  it('should have options from floorOptions', () => {
+    expect(topic.options.length).toBe(2);
+    expect(topic.options[0].id).toBe('floor_tile_01');
+  });
+
+  it('should apply floor color and return floor:all', () => {
+    const scene = {
+      setFloorColor: vi.fn(),
+    };
+    const ids = topic.apply(scene as any, 'floor_tile_01');
+    expect(scene.setFloorColor).toHaveBeenCalledWith('#c49a6c');
+    expect(ids).toEqual(['floor:all']);
+  });
+
+  it('should apply second floor option', () => {
+    const scene = {
+      setFloorColor: vi.fn(),
+    };
+    const ids = topic.apply(scene as any, 'floor_tile_02');
+    expect(scene.setFloorColor).toHaveBeenCalledWith('#8b8b8b');
+    expect(ids).toEqual(['floor:all']);
+  });
+
+  it('should return empty array for unknown option', () => {
+    const scene = {
+      setFloorColor: vi.fn(),
+    };
+    const ids = topic.apply(scene as any, 'nonexistent');
+    expect(ids).toEqual([]);
+    expect(scene.setFloorColor).not.toHaveBeenCalled();
+  });
+
+  it('should return empty array for option without color', () => {
+    const scene = {
+      setFloorColor: vi.fn(),
+    };
+    const ids = topic.apply(scene as any, 'floor_tile_01');
+    expect(ids).toEqual(['floor:all']);
+  });
+
+  it('validate should return empty array', () => {
+    expect(topic.validate()).toEqual([]);
+  });
+});
+
+describe('WallTopic', () => {
+  let topic: WallTopic;
+
+  beforeEach(() => {
+    topic = new WallTopic();
+  });
+
+  it('should have correct id and name', () => {
+    expect(topic.id).toBe('wall');
+    expect(topic.name).toBe('墙砖方案');
+  });
+
+  it('should have options from wallOptions', () => {
+    expect(topic.options.length).toBe(2);
+    expect(topic.options[0].id).toBe('wall_tile_01');
+  });
+
+  it('should apply wall color to WALL_ROOMS and return wall ids', () => {
+    const scene = {
+      setWallColor: vi.fn(),
+    };
+    const ids = topic.apply(scene as any, 'wall_tile_01');
+    expect(scene.setWallColor).toHaveBeenCalledWith(
+      ['kitchen', 'master_bath', 'guest_bath'],
+      '#f5f5f5'
+    );
+    expect(ids).toEqual(['wall:kitchen', 'wall:master_bath', 'wall:guest_bath']);
+  });
+
+  it('should apply second wall option', () => {
+    const scene = {
+      setWallColor: vi.fn(),
+    };
+    const ids = topic.apply(scene as any, 'wall_tile_02');
+    expect(scene.setWallColor).toHaveBeenCalledWith(
+      ['kitchen', 'master_bath', 'guest_bath'],
+      '#d0d0d0'
+    );
+    expect(ids.length).toBe(3);
+  });
+
+  it('should return empty array for unknown option', () => {
+    const scene = {
+      setWallColor: vi.fn(),
+    };
+    const ids = topic.apply(scene as any, 'nonexistent');
+    expect(ids).toEqual([]);
+    expect(scene.setWallColor).not.toHaveBeenCalled();
+  });
+
+  it('validate should return empty array', () => {
+    expect(topic.validate()).toEqual([]);
+  });
+});
+
+describe('PaintTopic', () => {
+  let topic: PaintTopic;
+
+  beforeEach(() => {
+    topic = new PaintTopic();
+  });
+
+  it('should have correct id and name', () => {
+    expect(topic.id).toBe('paint');
+    expect(topic.name).toBe('乳胶漆方案');
+  });
+
+  it('should have options from paintOptions', () => {
+    expect(topic.options.length).toBe(3);
+    expect(topic.options[0].id).toBe('latex_paint_01');
+  });
+
+  it('should apply paint color excluding wet rooms and return paint:rooms', () => {
+    const scene = {
+      setPaintColor: vi.fn(),
+    };
+    const ids = topic.apply(scene as any, 'latex_paint_01');
+    expect(scene.setPaintColor).toHaveBeenCalledWith('#f7f5ef', [
+      'master_bath',
+      'guest_bath',
+      'kitchen',
+    ]);
+    expect(ids).toEqual(['paint:rooms']);
+  });
+
+  it('should apply cream paint option', () => {
+    const scene = {
+      setPaintColor: vi.fn(),
+    };
+    const ids = topic.apply(scene as any, 'latex_paint_02');
+    expect(scene.setPaintColor).toHaveBeenCalledWith('#fff4e6', [
+      'master_bath',
+      'guest_bath',
+      'kitchen',
+    ]);
+    expect(ids).toEqual(['paint:rooms']);
+  });
+
+  it('should apply light blue paint option', () => {
+    const scene = {
+      setPaintColor: vi.fn(),
+    };
+    const ids = topic.apply(scene as any, 'latex_paint_03');
+    expect(scene.setPaintColor).toHaveBeenCalledWith('#e6f3ff', [
+      'master_bath',
+      'guest_bath',
+      'kitchen',
+    ]);
+    expect(ids).toEqual(['paint:rooms']);
+  });
+
+  it('should return empty array for unknown option', () => {
+    const scene = {
+      setPaintColor: vi.fn(),
+    };
+    const ids = topic.apply(scene as any, 'nonexistent');
+    expect(ids).toEqual([]);
+    expect(scene.setPaintColor).not.toHaveBeenCalled();
+  });
+
+  it('validate should return empty array', () => {
+    expect(topic.validate()).toEqual([]);
   });
 });
