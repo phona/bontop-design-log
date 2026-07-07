@@ -1,32 +1,145 @@
+import type { Topic, TopicOption, CurrentScheme, TopicSelection } from '@shared/types';
+import { getTopicsForObject } from '../data/objectMapping.js';
+
+export interface HoverTarget {
+  objectId: string;
+  name: string;
+  type: string;
+  room?: string;
+}
+
+export interface InfoPanelCallbacks {
+  onSelectOption: (topicId: string, optionId: string, roomId: string | null) => void;
+}
+
 export class InfoPanel {
-  private element: HTMLElement;
+  private el: HTMLDivElement;
+  private titleEl: HTMLSpanElement;
+  private typeEl: HTMLSpanElement;
+  private roomEl: HTMLSpanElement;
+  private topicsEl: HTMLDivElement;
+  private topics: Topic[] = [];
+  private scheme: CurrentScheme | null = null;
+  private callbacks: InfoPanelCallbacks;
+  private currentTarget: HoverTarget | null = null;
 
-  constructor(elementId: string) {
-    this.element = document.getElementById(elementId)!;
+  constructor(callbacks: InfoPanelCallbacks) {
+    this.callbacks = callbacks;
+    this.el = document.getElementById('info-panel') as HTMLDivElement;
+    this.titleEl = document.getElementById('info-panel-title') as HTMLSpanElement;
+    this.typeEl = document.getElementById('info-panel-type') as HTMLSpanElement;
+    this.roomEl = document.getElementById('info-panel-room') as HTMLSpanElement;
+    this.topicsEl = document.getElementById('info-panel-topics') as HTMLDivElement;
+    this.el.style.display = 'none';
   }
 
-  showObjectInfo(objectId: string): void {
-    const [type, subtype, ...rest] = objectId.split(':');
-
-    let info = `
-      <h3>物体信息</h3>
-      <p><strong>对象ID:</strong> ${objectId}</p>
-      <p><strong>类型:</strong> ${type}</p>
-    `;
-
-    if (subtype) {
-      info += `<p><strong>子类型:</strong> ${subtype}</p>`;
-    }
-
-    if (rest.length > 0) {
-      info += `<p><strong>详情:</strong> ${rest.join(':')}</p>`;
-    }
-
-    this.element.innerHTML = info;
-    this.element.style.display = 'block';
+  setTopics(topics: Topic[]) {
+    this.topics = topics;
   }
 
-  hide(): void {
-    this.element.style.display = 'none';
+  setScheme(scheme: CurrentScheme) {
+    this.scheme = scheme;
+    if (this.currentTarget) {
+      this.render();
+    }
+  }
+
+  showObject(target: HoverTarget) {
+    this.currentTarget = target;
+    this.el.style.display = 'block';
+    this.render();
+  }
+
+  hide() {
+    this.currentTarget = null;
+    this.el.style.display = 'none';
+  }
+
+  private render() {
+    if (!this.currentTarget) return;
+
+    this.titleEl.textContent = this.currentTarget.name;
+    this.typeEl.textContent = this.currentTarget.type;
+    this.roomEl.textContent = this.currentTarget.room ?? '';
+
+    const relatedTopicIds = getTopicsForObject(this.currentTarget.objectId);
+    this.topicsEl.innerHTML = '';
+
+    for (const topicId of relatedTopicIds) {
+      const topic = this.topics.find((t) => t.id === topicId);
+      if (!topic) continue;
+
+      const selection = this.scheme?.selections[topicId];
+      if (!selection) continue;
+
+      const section = this.renderTopicSection(topic, selection, this.currentTarget.room);
+      this.topicsEl.appendChild(section);
+    }
+  }
+
+  private renderTopicSection(
+    topic: Topic,
+    selection: TopicSelection,
+    roomId?: string
+  ): HTMLDivElement {
+    const section = document.createElement('div');
+    section.className = 'info-topic-section';
+
+    const header = document.createElement('h4');
+    const effectiveOptionId = roomId && selection.roomOverrides[roomId]
+      ? selection.roomOverrides[roomId]
+      : selection.default;
+    const effectiveOption = topic.options.find((o) => o.id === effectiveOptionId);
+    header.textContent = `${topic.name}：${effectiveOption?.name ?? '未选择'}`;
+    section.appendChild(header);
+
+    if (roomId && selection.roomOverrides[roomId]) {
+      const badge = document.createElement('span');
+      badge.className = 'info-badge';
+      badge.textContent = '房间覆盖';
+      section.appendChild(badge);
+    }
+
+    const optionsList = document.createElement('div');
+    optionsList.className = 'info-options-list';
+
+    for (const option of topic.options) {
+      if (roomId) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'info-option-wrapper';
+
+        const btn = document.createElement('button');
+        btn.className = `info-option-btn${option.id === effectiveOptionId ? ' active' : ''}`;
+        btn.textContent = option.name;
+        wrapper.appendChild(btn);
+
+        const scopeRow = document.createElement('div');
+        scopeRow.className = 'info-scope-row';
+
+        const roomBtn = document.createElement('button');
+        roomBtn.className = 'info-scope-btn';
+        roomBtn.textContent = '仅当前房间';
+        roomBtn.onclick = () => this.callbacks.onSelectOption(topic.id, option.id, roomId);
+
+        const globalBtn = document.createElement('button');
+        globalBtn.className = 'info-scope-btn';
+        globalBtn.textContent = '所有房间';
+        globalBtn.onclick = () => this.callbacks.onSelectOption(topic.id, option.id, null);
+
+        scopeRow.appendChild(roomBtn);
+        scopeRow.appendChild(globalBtn);
+        wrapper.appendChild(scopeRow);
+        optionsList.appendChild(wrapper);
+      } else {
+        const btn = document.createElement('button');
+        btn.className = `info-option-btn${option.id === effectiveOptionId ? ' active' : ''}`;
+        btn.textContent = option.name;
+        btn.onclick = () => this.callbacks.onSelectOption(topic.id, option.id, null);
+        optionsList.appendChild(btn);
+      }
+    }
+
+    section.appendChild(optionsList);
+    return section;
   }
 }

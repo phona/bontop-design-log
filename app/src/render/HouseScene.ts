@@ -4,12 +4,11 @@ import type { SceneApi, RoomObject, CameraState } from '@shared/types';
 import { rooms, platform } from '@shared/houseData';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
+import type { HoverTarget } from '../ui/HoverTooltip.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
-
-type ObjectClickCallback = (objectId: string) => void;
 
 interface ProjectData {
   house: { rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string }> };
@@ -29,11 +28,11 @@ export class HouseScene implements SceneApi {
   private wallMeshes: THREE.Mesh[] = [];
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
-  private cameraAnimator: CameraAnimator;
+  cameraAnimator: CameraAnimator;
   private topicRegistry: TopicRegistry;
-  private objectClickCallbacks: ObjectClickCallback[] = [];
   private onClickCallback?: (objectId: string, type: string, room?: string) => void;
   private boundOnWindowResize: () => void;
+  private _mode: 'orbit' | 'first-person' = 'orbit';
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -61,7 +60,7 @@ export class HouseScene implements SceneApi {
     this.controls.minDistance = 1;
     this.controls.maxDistance = 60;
 
-    this.cameraAnimator = new CameraAnimator(this.camera);
+    this.cameraAnimator = new CameraAnimator(this.camera, this.controls);
     this.topicRegistry = new TopicRegistry(this);
 
     this.setupLights();
@@ -87,10 +86,6 @@ export class HouseScene implements SceneApi {
 
   setOnObjectClick(cb: (objectId: string, type: string, room?: string) => void) {
     this.onClickCallback = cb;
-  }
-
-  onObjectClick(callback: ObjectClickCallback): void {
-    this.objectClickCallbacks.push(callback);
   }
 
   async buildFromCatalog(projectData: ProjectData): Promise<void> {
@@ -380,6 +375,32 @@ export class HouseScene implements SceneApi {
     };
   }
 
+  get mode(): 'orbit' | 'first-person' {
+    return this._mode;
+  }
+
+  setMode(mode: 'orbit' | 'first-person') {
+    this._mode = mode;
+    this.controls.enabled = mode === 'orbit';
+  }
+
+  raycastFromScreenCenter(): HoverTarget | null {
+    this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+    const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+    for (const hit of intersects) {
+      const data = hit.object.userData;
+      if (data?.objectId || data?.roomId) {
+        const id = (data.objectId as string) ?? (data.roomId as string);
+        const type = (data.type as string) ?? (data.part as string) ?? 'room';
+        const room = data.roomId as string | undefined;
+        const roomObj = room ? this.rooms[room] : undefined;
+        const name = roomObj?.name ?? id;
+        return { objectId: id, name, type, room };
+      }
+    }
+    return null;
+  }
+
   getVisibleObjects(): string[] {
     return [
       ...Object.keys(this.rooms),
@@ -421,9 +442,6 @@ export class HouseScene implements SceneApi {
           (data.type as string) ?? (data.part as string) ?? 'room',
           data.roomId as string | undefined
         );
-        for (const cb of this.objectClickCallbacks) {
-          cb(id);
-        }
         return;
       }
     }
@@ -435,7 +453,9 @@ export class HouseScene implements SceneApi {
     const now = performance.now();
     const deltaTime = now - this.lastRenderTime;
     this.lastRenderTime = now;
-    this.controls.update();
+    if (this._mode === 'orbit') {
+      this.controls.update();
+    }
     this.cameraAnimator.update(deltaTime);
     this.renderer.render(this.scene, this.camera);
   }

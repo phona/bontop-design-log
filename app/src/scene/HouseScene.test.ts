@@ -70,7 +70,7 @@ vi.mock('three', () => {
 
 vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({
   OrbitControls: class {
-    target = { x: 0, y: 0, z: 0, set() {}, copy() {} };
+    target = { x: 0, y: 0, z: 0, set() {}, copy() {}, clone() { return { x: 0, y: 0, z: 0, set() {}, copy() {} }; } };
     enableDamping = true;
     dampingFactor = 0.08;
     maxPolarAngle = 0;
@@ -177,7 +177,7 @@ describe('HouseScene', () => {
     } as unknown as HTMLCanvasElement;
     const scene = new HouseScene(canvas);
     const cb = vi.fn();
-    scene.onObjectClick(cb);
+    scene.setOnObjectClick(cb);
     expect(cb).not.toHaveBeenCalled();
   });
 

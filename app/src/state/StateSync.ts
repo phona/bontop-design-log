@@ -1,4 +1,4 @@
-import type { CurrentScheme, VisualCommand, SelectionPatch } from '@shared/types';
+import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry } from '@shared/types';
 
 type SchemeCallback = (scheme: CurrentScheme) => void;
 type VisualCommandCallback = (command: VisualCommand) => void;
@@ -29,6 +29,16 @@ export class StateSync {
       body: JSON.stringify({ selections, source: 'user' }),
     });
     if (!response.ok) throw new Error('Failed to update scheme');
+  }
+
+  async fetchScheme(): Promise<CurrentScheme> {
+    return this.getCurrentScheme();
+  }
+
+  async fetchDecisions(): Promise<DecisionLogEntry[]> {
+    const response = await fetch('/api/decisions');
+    if (!response.ok) throw new Error('Failed to fetch decisions');
+    return response.json();
   }
 
   async getVisualCommands(): Promise<VisualCommand[]> {

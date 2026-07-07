@@ -63,7 +63,7 @@ vi.mock('three', () => {
 
 vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({
   OrbitControls: class {
-    target = { x: 0, y: 0, z: 0, set() {}, copy() {} };
+    target = { x: 0, y: 0, z: 0, set() {}, copy() {}, clone() { return { x: 0, y: 0, z: 0, set() {}, copy() {} }; } };
     enableDamping = true;
     dampingFactor = 0.08;
     maxPolarAngle = 0;
@@ -73,6 +73,19 @@ vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({
     dispose() {}
     addEventListener() {}
     removeEventListener() {}
+  },
+}));
+
+vi.mock('three/examples/jsm/controls/PointerLockControls.js', () => ({
+  PointerLockControls: class {
+    isLocked = false;
+    lock() {}
+    unlock() {}
+    getObject() {
+      return { position: { x: 0, y: 1.6, z: 0, set() {} }, quaternion: { x: 0, y: 0, z: 0, w: 1 } };
+    }
+    connect() {}
+    disconnect() {}
   },
 }));
 
@@ -97,6 +110,7 @@ const mockWindow = {
 };
 vi.stubGlobal('window', mockWindow);
 
+const documentEventListeners: Record<string, Array<(e: any) => void>> = {};
 const mockDocument = {
   getElementById: vi.fn((id: string) => ({
     id,
@@ -113,6 +127,12 @@ const mockDocument = {
     textContent: '',
     appendChild: vi.fn(),
   })),
+  addEventListener: vi.fn((event: string, handler: (e: any) => void) => {
+    if (!documentEventListeners[event]) documentEventListeners[event] = [];
+    documentEventListeners[event].push(handler);
+  }),
+  removeEventListener: vi.fn(),
+  pointerLockElement: null,
 };
 vi.stubGlobal('document', mockDocument);
 
@@ -150,6 +170,12 @@ describe('App', () => {
         return { ok: true, json: async () => ({ updatedAt: '', selections: {} }) } as Response;
       }
       if (urlStr.includes('/api/visual-commands')) {
+        return { ok: true, json: async () => [] } as Response;
+      }
+      if (urlStr.includes('/api/topics')) {
+        return { ok: true, json: async () => [{ id: 'hvac', name: 'HVAC', options: [{ id: 'A1', name: 'A1' }] }] } as Response;
+      }
+      if (urlStr.includes('/api/decisions')) {
         return { ok: true, json: async () => [] } as Response;
       }
       return { ok: true, json: async () => ({}) } as Response;

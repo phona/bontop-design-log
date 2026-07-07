@@ -4,25 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>和萃 701 - 3D 装修设计</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
-    #app { width: 100vw; height: 100vh; position: relative; }
-    #canvas { width: 100%; height: 100%; }
-    .panel { position: absolute; background: rgba(255,255,255,0.95); padding: 16px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    #scheme-panel { left: 16px; top: 16px; width: 300px; max-height: calc(100vh - 32px); overflow-y: auto; }
-    #info-panel { right: 16px; top: 16px; width: 300px; display: none; }
-    #offline-indicator { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: #ff4444; color: white; padding: 8px 16px; border-radius: 4px; display: none; }
-    .tab { display: inline-block; padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; }
-    .tab.active { border-bottom-color: #007bff; color: #007bff; }
-    .option { padding: 8px; margin: 4px 0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; }
-    .option:hover { background: #f0f0f0; }
-    .option.active { background: #007bff; color: white; border-color: #007bff; }
-  </style>
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <div id="app">
-    <canvas id="canvas"></canvas>
+    <canvas id="gl"></canvas>
+
     <div id="scheme-panel" class="panel">
       <div id="topic-tabs"></div>
       <div id="topic-options"></div>
@@ -32,7 +19,45 @@
       <ul id="scheme-cons"></ul>
       <div id="warnings"></div>
     </div>
-    <div id="info-panel" class="panel"></div>
+
+    <div id="info-panel" class="panel">
+      <div id="info-panel-header">
+        <span id="info-panel-title"></span>
+        <span id="info-panel-type"></span>
+        <span id="info-panel-room"></span>
+      </div>
+      <div id="info-panel-topics"></div>
+    </div>
+
+    <div id="overview-menu" class="panel">
+      <h3>总览</h3>
+      <div id="overview-section-scheme">
+        <h4>当前方案</h4>
+        <div id="overview-scheme"></div>
+      </div>
+      <div id="overview-section-decisions">
+        <h4>决策记录</h4>
+        <div id="overview-decisions"></div>
+      </div>
+      <div id="overview-section-budget">
+        <h4>预算</h4>
+        <p class="overview-placeholder">预算功能即将上线</p>
+      </div>
+      <div id="overview-section-risks">
+        <h4>风险提示</h4>
+        <p class="overview-placeholder">风险分析即将上线</p>
+      </div>
+      <div id="overview-section-archives">
+        <h4>归档方案</h4>
+        <p class="overview-placeholder">归档功能即将上线</p>
+      </div>
+    </div>
+
+    <div id="crosshair">+</div>
+    <div id="hover-tooltip"></div>
+
+    <div id="mode-indicator">轨道模式 · 按 V 切换第一人称</div>
+    <div id="pointer-lock-toast" style="display:none">请允许鼠标锁定以使用第一人称</div>
     <div id="offline-indicator">后端连接断开</div>
   </div>
   <script type="module" src="/src/main.ts"></script>
