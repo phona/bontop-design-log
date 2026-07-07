@@ -111,21 +111,29 @@ const mockWindow = {
 vi.stubGlobal('window', mockWindow);
 
 const documentEventListeners: Record<string, Array<(e: any) => void>> = {};
-const mockDocument = {
-  getElementById: vi.fn((id: string) => ({
-    id,
+function createMockElement(id?: string) {
+  return {
+    id: id ?? '',
     style: {},
     innerHTML: '',
     textContent: '',
+    value: '',
     appendChild: vi.fn(),
     querySelectorAll: vi.fn(() => []),
-  })),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  };
+}
+
+const mockDocument = {
+  getElementById: vi.fn((id: string) => createMockElement(id)),
   createElement: vi.fn((tag: string) => ({
     tagName: tag,
     style: {},
     innerHTML: '',
     textContent: '',
     appendChild: vi.fn(),
+    addEventListener: vi.fn(),
   })),
   addEventListener: vi.fn((event: string, handler: (e: any) => void) => {
     if (!documentEventListeners[event]) documentEventListeners[event] = [];
@@ -176,6 +184,15 @@ describe('App', () => {
         return { ok: true, json: async () => [{ id: 'hvac', name: 'HVAC', options: [{ id: 'A1', name: 'A1' }] }] } as Response;
       }
       if (urlStr.includes('/api/decisions')) {
+        return { ok: true, json: async () => [] } as Response;
+      }
+      if (urlStr.includes('/api/budget')) {
+        return { ok: true, json: async () => ({ totalBudget: 0, totalActual: 0, categories: [], lineItems: [] }) } as Response;
+      }
+      if (urlStr.includes('/api/risks')) {
+        return { ok: true, json: async () => ({ risks: [], constraintViolations: [] }) } as Response;
+      }
+      if (urlStr.includes('/api/schemes')) {
         return { ok: true, json: async () => [] } as Response;
       }
       return { ok: true, json: async () => ({}) } as Response;

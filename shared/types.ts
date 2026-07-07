@@ -218,3 +218,91 @@ export interface CatalogTopic {
   perRoom: boolean;
   options: DesignOption[];
 }
+
+export interface Risk {
+  id: string;
+  severity: 'warning' | 'error' | 'info';
+  message: string;
+  topic: string;
+  roomId: string | null;
+}
+
+export interface ConstraintViolation {
+  id: string;
+  description: string;
+  topic: string;
+  roomId: string | null;
+  requirement: {
+    topic: string;
+    minValue?: { field: string; value: number };
+  };
+}
+
+export interface DesignCheckResult {
+  risks: Risk[];
+  constraintViolations: ConstraintViolation[];
+}
+
+export interface BudgetLineItem {
+  topic: string;
+  roomId: string | null;
+  optionId: string;
+  quantity: number;
+  unitPrice: number;
+  coveragePerUnit: number;
+  lossRate: number;
+  cost: number;
+}
+
+export interface BudgetCategory {
+  key: string;
+  budget: number;
+  actual: number;
+  manualActual: number;
+  autoActual: number;
+  status: string;
+  notes: string;
+}
+
+export interface BudgetSnapshot {
+  totalBudget: number;
+  totalActual: number;
+  categories: BudgetCategory[];
+  lineItems: BudgetLineItem[];
+}
+
+export interface ArchivedScheme {
+  id: string;
+  name: string;
+  selections: Record<string, TopicSelection>;
+  reason?: string;
+  createdAt: string;
+}
+
+export interface DiffEntry {
+  path: string;
+  current: string | null;
+  archived: string | null;
+}
+
+export interface DesignRulesConfig {
+  version: string;
+  objectMapping?: Array<{ pattern: string; topics: string[] }>;
+  budget?: {
+    baseCategoriesFrom?: string;
+    topicCategories?: Record<string, string>;
+    lineItems?: Array<{ topic: string; quantityField?: string }>;
+  };
+  risks?: Array<{
+    id: string;
+    severity: 'warning' | 'error' | 'info';
+    message: string;
+    when: { topic: string; options?: string[]; condition?: string };
+  }>;
+  constraints?: Array<{
+    id: string;
+    description: string;
+    when: { topic: string; condition: string };
+    require: { topic: string; minValue?: { field: string; value: number } };
+  }>;
+}

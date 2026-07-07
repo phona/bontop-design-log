@@ -1,12 +1,15 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { rmSync } from 'node:fs';
+import { rmSync, mkdirSync } from 'node:fs';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import express from 'express';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { DesignState } from '../../server/design-state.js';
+import { RuleEngine } from '../../server/rule-engine.js';
+import { BudgetCalculator } from '../../server/budget-calculator.js';
+import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
 import { createMcpServer } from '../../server/mcp-server.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -19,16 +22,28 @@ describe('MCP remote', () => {
 
   before(async () => {
     rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    mkdirSync(TEST_DATA_DIR, { recursive: true });
 
     const catalog = ProjectCatalog.load('.');
     const state = DesignState.load(catalog, TEST_DATA_DIR);
-    const mcp = createMcpServer(catalog, state);
+    const engine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
+    const calc = new BudgetCalculator(catalog, engine.getConfig());
+    const archiveStore = new ArchivedSchemesStore(TEST_DATA_DIR);
+    const deps = {
+      catalog,
+      state,
+      getRuleEngine: () => engine,
+      getBudgetCalculator: () => calc,
+      archiveStore,
+    };
+
+    const mcp = createMcpServer(deps);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID() });
     await mcp.connect(transport);
 
     const app = express();
     app.use(express.json());
-    app.use('/api', createApiRouter(catalog, state));
+    app.use('/api', createApiRouter(deps));
 
     const handleMcp = async (req: express.Request, res: express.Response) => {
       await transport.handleRequest(req, res, req.method === 'POST' ? req.body : undefined);

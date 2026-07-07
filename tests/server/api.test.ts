@@ -2,8 +2,12 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import express from 'express';
+import { mkdirSync, rmSync } from 'node:fs';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { DesignState } from '../../server/design-state.js';
+import { RuleEngine } from '../../server/rule-engine.js';
+import { BudgetCalculator } from '../../server/budget-calculator.js';
+import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
 
 const TEST_DATA_DIR = './tmp/test-data-api';
@@ -12,11 +16,26 @@ describe('REST API', () => {
   let app: express.Express;
 
   before(() => {
+    rmSync(TEST_DATA_DIR, { recursive: true, force: true });
+    mkdirSync(TEST_DATA_DIR, { recursive: true });
     const catalog = ProjectCatalog.load('.');
     const state = DesignState.load(catalog, TEST_DATA_DIR);
+    const engine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
+    const calc = new BudgetCalculator(catalog, engine.getConfig());
+    const archiveStore = new ArchivedSchemesStore(TEST_DATA_DIR);
+
     app = express();
     app.use(express.json());
-    app.use('/api', createApiRouter(catalog, state));
+    app.use(
+      '/api',
+      createApiRouter({
+        catalog,
+        state,
+        getRuleEngine: () => engine,
+        getBudgetCalculator: () => calc,
+        archiveStore,
+      })
+    );
   });
 
   after(() => {

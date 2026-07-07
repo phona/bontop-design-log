@@ -309,6 +309,98 @@ html, body {
   font-style: italic;
 }
 
+#archive-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+#archive-name-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #eee;
+  font-size: 13px;
+}
+
+#archive-current-btn {
+  padding: 6px 12px;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.25);
+  color: #bfdbfe;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+#archive-current-btn:hover {
+  background: rgba(59, 130, 246, 0.4);
+}
+
+.overview-archive-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+}
+
+.overview-archive-name {
+  flex: 1;
+  color: #eee;
+}
+
+.overview-archive-time {
+  color: #888;
+  font-size: 11px;
+}
+
+.overview-archive-btn {
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #ccc;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.overview-archive-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.overview-archive-btn-danger {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.overview-archive-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.overview-risk {
+  font-size: 12px;
+  padding: 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.overview-risk-risk {
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #fde047;
+}
+
+.overview-risk-constraint {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
 #crosshair {
   position: fixed;
   top: 50%;

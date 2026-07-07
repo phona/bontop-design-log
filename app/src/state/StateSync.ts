@@ -1,4 +1,4 @@
-import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry } from '@shared/types';
+import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry, BudgetSnapshot, DesignCheckResult, ArchivedScheme } from '@shared/types';
 
 type SchemeCallback = (scheme: CurrentScheme) => void;
 type VisualCommandCallback = (command: VisualCommand) => void;
@@ -39,6 +39,44 @@ export class StateSync {
     const response = await fetch('/api/decisions');
     if (!response.ok) throw new Error('Failed to fetch decisions');
     return response.json();
+  }
+
+  async fetchBudget(): Promise<BudgetSnapshot> {
+    const response = await fetch('/api/budget');
+    if (!response.ok) throw new Error('Failed to fetch budget');
+    return response.json();
+  }
+
+  async fetchRisks(): Promise<DesignCheckResult> {
+    const response = await fetch('/api/risks');
+    if (!response.ok) throw new Error('Failed to fetch risks');
+    return response.json();
+  }
+
+  async fetchArchivedSchemes(): Promise<Pick<ArchivedScheme, 'id' | 'name' | 'createdAt'>[]> {
+    const response = await fetch('/api/schemes');
+    if (!response.ok) throw new Error('Failed to fetch archived schemes');
+    return response.json();
+  }
+
+  async archiveScheme(name: string, reason?: string): Promise<ArchivedScheme> {
+    const response = await fetch('/api/schemes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, reason }),
+    });
+    if (!response.ok) throw new Error('Failed to archive scheme');
+    return response.json();
+  }
+
+  async restoreScheme(id: string): Promise<void> {
+    const response = await fetch(`/api/schemes/${id}/restore`, { method: 'POST' });
+    if (!response.ok) throw new Error('Failed to restore scheme');
+  }
+
+  async deleteArchivedScheme(id: string): Promise<void> {
+    const response = await fetch(`/api/schemes/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete archived scheme');
   }
 
   async getVisualCommands(): Promise<VisualCommand[]> {

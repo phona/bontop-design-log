@@ -2,14 +2,26 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ProjectCatalog } from './project-catalog.js';
 import type { DesignState } from './design-state.js';
+import type { RuleEngine } from './rule-engine.js';
+import type { BudgetCalculator } from './budget-calculator.js';
+import type { ArchivedSchemesStore } from './archived-schemes.js';
 
 function text(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
 }
 
-export function createMcpServer(catalog: ProjectCatalog, state: DesignState): McpServer {
+export interface McpDeps {
+  catalog: ProjectCatalog;
+  state: DesignState;
+  getRuleEngine: () => RuleEngine;
+  getBudgetCalculator: () => BudgetCalculator;
+  archiveStore: ArchivedSchemesStore;
+}
+
+export function createMcpServer(deps: McpDeps): McpServer {
+  const { catalog, state, getRuleEngine, getBudgetCalculator, archiveStore } = deps;
   const server = new McpServer(
-    { name: 'bontop-design', version: '0.1.0' },
+    { name: 'bontop-design', version: '0.2.0' },
     { capabilities: { tools: {} } }
   );
 
@@ -177,6 +189,124 @@ export function createMcpServer(catalog: ProjectCatalog, state: DesignState): Mc
     async (args) => {
       const cmd = state.appendVisualCommand('highlight_object', { objectId: args.objectId });
       return text({ commandId: cmd.commandId });
+    }
+  );
+
+  server.registerTool(
+    'get_budget',
+    {
+      title: 'Get budget',
+      description: 'Return budget breakdown with categories and line items.',
+    },
+    async () => {
+      const scheme = state.getCurrentScheme();
+      const calc = getBudgetCalculator();
+      return text(calc.calculate(scheme));
+    }
+  );
+
+  server.registerTool(
+    'get_risks',
+    {
+      title: 'Get risks',
+      description: 'Return current risks and constraint violations.',
+    },
+    async () => {
+      const scheme = state.getCurrentScheme();
+      const engine = getRuleEngine();
+      return text(engine.evaluate(scheme, catalog));
+    }
+  );
+
+  server.registerTool(
+    'run_design_check',
+    {
+      title: 'Run design check',
+      description: 'Evaluate all risk and constraint rules against current scheme.',
+    },
+    async () => {
+      const scheme = state.getCurrentScheme();
+      const engine = getRuleEngine();
+      return text(engine.evaluate(scheme, catalog));
+    }
+  );
+
+  server.registerTool(
+    'get_archived_schemes',
+    {
+      title: 'Get archived schemes',
+      description: 'List all archived design schemes.',
+    },
+    async () => text(archiveStore.list())
+  );
+
+  server.registerTool(
+    'archive_scheme',
+    {
+      title: 'Archive current scheme',
+      description: 'Save current scheme as a named archive.',
+      inputSchema: z.object({
+        name: z.string(),
+        reason: z.string().optional(),
+      }),
+    },
+    async (args) => {
+      const scheme = state.getCurrentScheme();
+      const result = archiveStore.create(scheme, args.name, args.reason);
+      if (result.error) return text({ error: result.error });
+      return text(result.scheme);
+    }
+  );
+
+  server.registerTool(
+    'restore_scheme',
+    {
+      title: 'Restore archived scheme',
+      description: 'Restore an archived scheme as the current scheme.',
+      inputSchema: z.object({ schemeId: z.string() }),
+    },
+    async (args) => {
+      const archived = archiveStore.get(args.schemeId);
+      if (!archived) return text({ error: 'archived scheme not found' });
+
+      const current = state.getCurrentScheme();
+      const patches: Array<{ topic: string; optionId: string | null; roomId?: string | null; reason?: string }> = [];
+
+      const allTopics = new Set([
+        ...Object.keys(archived.selections),
+        ...Object.keys(current.selections),
+      ]);
+
+      for (const topic of allTopics) {
+        const archSel = archived.selections[topic] ?? { default: null, roomOverrides: {} };
+        const curSel = current.selections[topic] ?? { default: null, roomOverrides: {} };
+
+        if (archSel.default !== curSel.default) {
+          patches.push({ topic, optionId: archSel.default, reason: `restored from ${archived.id}` });
+        }
+
+        const allRooms = new Set([
+          ...Object.keys(archSel.roomOverrides),
+          ...Object.keys(curSel.roomOverrides),
+        ]);
+        for (const roomId of allRooms) {
+          const archVal = archSel.roomOverrides[roomId] ?? null;
+          const curVal = curSel.roomOverrides[roomId] ?? null;
+          if (archVal !== curVal) {
+            patches.push({ topic, optionId: archVal, roomId, reason: `restored from ${archived.id}` });
+          }
+        }
+      }
+
+      if (patches.length > 0) {
+        const result = state.applySelections(patches, `restored from ${archived.id}`, 'restore');
+        for (const entry of result.entries) {
+          entry.archiveId = archived.id;
+        }
+        state.persist();
+      }
+
+      return text({ restored: true, archiveId: archived.id, scheme: state.getCurrentScheme() });
     }
   );
 

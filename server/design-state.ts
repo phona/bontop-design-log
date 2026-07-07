@@ -85,8 +85,8 @@ export class DesignState {
     return [];
   }
 
-  private persist(): void {
-    mkdirSync(dirname(this.schemePath()), { recursive: true });
+  persist(): void {
+    mkdirSync(dirname(this.decisionLogPath()), { recursive: true });
     writeFileSync(this.decisionLogPath(), JSON.stringify(this.decisionLog, null, 2));
     writeFileSync(this.schemePath(), JSON.stringify(this.scheme, null, 2));
   }

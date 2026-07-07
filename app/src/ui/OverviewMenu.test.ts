@@ -15,12 +15,22 @@ function setupDOM() {
   const menu = createDiv() as HTMLDivElement;
   const scheme = createDiv() as HTMLDivElement;
   const decisions = createDiv() as HTMLDivElement;
+  const budget = createDiv() as HTMLDivElement;
+  const risks = createDiv() as HTMLDivElement;
+  const archives = createDiv() as HTMLDivElement;
+  const archiveInput = { value: '', addEventListener: vi.fn() } as unknown as HTMLInputElement;
+  const archiveBtn = { addEventListener: vi.fn() } as unknown as HTMLButtonElement;
 
   vi.stubGlobal('document', {
     getElementById: vi.fn((id: string) => {
       if (id === 'overview-menu') return menu;
       if (id === 'overview-scheme') return scheme;
       if (id === 'overview-decisions') return decisions;
+      if (id === 'overview-budget') return budget;
+      if (id === 'overview-risks') return risks;
+      if (id === 'overview-archives') return archives;
+      if (id === 'archive-name-input') return archiveInput;
+      if (id === 'archive-current-btn') return archiveBtn;
       return null;
     }),
     createElement: vi.fn((tag: string) => ({
@@ -30,10 +40,11 @@ function setupDOM() {
       innerHTML: '',
       style: {},
       appendChild: vi.fn(),
+      addEventListener: vi.fn(),
     })),
   });
 
-  return { menu, scheme, decisions };
+  return { menu, scheme, decisions, budget, risks, archives, archiveInput, archiveBtn };
 }
 
 const mockTopics: Topic[] = [

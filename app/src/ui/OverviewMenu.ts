@@ -1,19 +1,50 @@
-import type { Topic, CurrentScheme, DecisionLogEntry } from '@shared/types';
+import type {
+  Topic,
+  CurrentScheme,
+  DecisionLogEntry,
+  BudgetSnapshot,
+  DesignCheckResult,
+  ArchivedScheme,
+  Risk,
+  ConstraintViolation,
+} from '@shared/types';
+
+export interface OverviewMenuCallbacks {
+  onArchive?: (name: string, reason?: string) => void;
+  onRestore?: (id: string) => void;
+  onDeleteArchive?: (id: string) => void;
+}
 
 export class OverviewMenu {
   private el: HTMLDivElement;
   private schemeEl: HTMLDivElement;
   private decisionsEl: HTMLDivElement;
+  private budgetEl: HTMLDivElement;
+  private risksEl: HTMLDivElement;
+  private archivesEl: HTMLDivElement;
+  private archiveInput: HTMLInputElement;
   private topics: Topic[] = [];
   private scheme: CurrentScheme | null = null;
   private decisions: DecisionLogEntry[] = [];
+  private budget: BudgetSnapshot | null = null;
+  private risks: DesignCheckResult | null = null;
+  private archives: Pick<ArchivedScheme, 'id' | 'name' | 'createdAt'>[] = [];
   private visible = false;
+  private callbacks: OverviewMenuCallbacks;
 
-  constructor() {
+  constructor(callbacks: OverviewMenuCallbacks = {}) {
+    this.callbacks = callbacks;
     this.el = document.getElementById('overview-menu') as HTMLDivElement;
     this.schemeEl = document.getElementById('overview-scheme') as HTMLDivElement;
     this.decisionsEl = document.getElementById('overview-decisions') as HTMLDivElement;
+    this.budgetEl = document.getElementById('overview-budget') as HTMLDivElement;
+    this.risksEl = document.getElementById('overview-risks') as HTMLDivElement;
+    this.archivesEl = document.getElementById('overview-archives') as HTMLDivElement;
+    this.archiveInput = document.getElementById('archive-name-input') as HTMLInputElement;
     this.el.style.display = 'none';
+
+    const archiveBtn = document.getElementById('archive-current-btn');
+    archiveBtn?.addEventListener('click', () => this.handleArchiveClick());
   }
 
   setTopics(topics: Topic[]) {
@@ -27,6 +58,21 @@ export class OverviewMenu {
 
   setDecisionLog(decisions: DecisionLogEntry[]) {
     this.decisions = decisions;
+    if (this.visible) this.render();
+  }
+
+  setBudget(budget: BudgetSnapshot) {
+    this.budget = budget;
+    if (this.visible) this.render();
+  }
+
+  setRisks(risks: DesignCheckResult) {
+    this.risks = risks;
+    if (this.visible) this.render();
+  }
+
+  setArchivedSchemes(archives: Pick<ArchivedScheme, 'id' | 'name' | 'createdAt'>[]) {
+    this.archives = archives;
     if (this.visible) this.render();
   }
 
@@ -54,6 +100,9 @@ export class OverviewMenu {
   private render() {
     this.renderScheme();
     this.renderDecisions();
+    this.renderBudget();
+    this.renderRisks();
+    this.renderArchives();
   }
 
   private renderScheme() {
@@ -131,5 +180,131 @@ export class OverviewMenu {
       row.appendChild(time);
       this.decisionsEl.appendChild(row);
     }
+  }
+
+  private renderBudget() {
+    this.budgetEl.innerHTML = '';
+    if (!this.budget) {
+      const empty = document.createElement('div');
+      empty.className = 'overview-empty';
+      empty.textContent = '暂无预算数据';
+      this.budgetEl.appendChild(empty);
+      return;
+    }
+
+    const summary = document.createElement('div');
+    summary.className = 'overview-row';
+    summary.innerHTML = `
+      <span class="overview-label">总预算</span>
+      <span class="overview-value">¥${this.budget.totalBudget.toLocaleString()}</span>
+    `;
+    this.budgetEl.appendChild(summary);
+
+    const actual = document.createElement('div');
+    actual.className = 'overview-row';
+    actual.innerHTML = `
+      <span class="overview-label">已用</span>
+      <span class="overview-value">¥${this.budget.totalActual.toLocaleString()}</span>
+    `;
+    this.budgetEl.appendChild(actual);
+
+    const remaining = document.createElement('div');
+    remaining.className = 'overview-row';
+    remaining.innerHTML = `
+      <span class="overview-label">剩余</span>
+      <span class="overview-value">¥${(this.budget.totalBudget - this.budget.totalActual).toLocaleString()}</span>
+    `;
+    this.budgetEl.appendChild(remaining);
+
+    for (const category of this.budget.categories) {
+      if (category.actual === 0 && category.budget === 0) continue;
+      const row = document.createElement('div');
+      row.className = 'overview-row';
+      row.innerHTML = `
+        <span class="overview-label">${category.key}</span>
+        <span class="overview-value">¥${category.actual.toLocaleString()} / ¥${category.budget.toLocaleString()}</span>
+      `;
+      this.budgetEl.appendChild(row);
+    }
+  }
+
+  private renderRisks() {
+    this.risksEl.innerHTML = '';
+    if (!this.risks) {
+      const empty = document.createElement('div');
+      empty.className = 'overview-empty';
+      empty.textContent = '暂无风险数据';
+      this.risksEl.appendChild(empty);
+      return;
+    }
+
+    const all = [
+      ...this.risks.risks.map((r) => ({ ...r, kind: 'risk' as const })),
+      ...this.risks.constraintViolations.map((v) => ({ ...v, kind: 'constraint' as const })),
+    ];
+
+    if (all.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'overview-empty';
+      empty.textContent = '当前方案无风险或约束违规';
+      this.risksEl.appendChild(empty);
+      return;
+    }
+
+    for (const item of all) {
+      const row = document.createElement('div');
+      row.className = `overview-risk overview-risk-${item.kind}`;
+      row.textContent = item.kind === 'risk'
+        ? `[${item.severity}] ${(item as Risk).message}`
+        : `[约束] ${(item as ConstraintViolation).description}`;
+      this.risksEl.appendChild(row);
+    }
+  }
+
+  private renderArchives() {
+    this.archivesEl.innerHTML = '';
+    if (this.archives.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'overview-empty';
+      empty.textContent = '暂无归档方案';
+      this.archivesEl.appendChild(empty);
+      return;
+    }
+
+    for (const archive of this.archives) {
+      const row = document.createElement('div');
+      row.className = 'overview-archive-row';
+
+      const name = document.createElement('span');
+      name.className = 'overview-archive-name';
+      name.textContent = archive.name;
+
+      const time = document.createElement('span');
+      time.className = 'overview-archive-time';
+      time.textContent = new Date(archive.createdAt).toLocaleDateString();
+
+      const restoreBtn = document.createElement('button');
+      restoreBtn.className = 'overview-archive-btn';
+      restoreBtn.textContent = '恢复';
+      restoreBtn.onclick = () => this.callbacks.onRestore?.(archive.id);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'overview-archive-btn overview-archive-btn-danger';
+      deleteBtn.textContent = '删除';
+      deleteBtn.onclick = () => this.callbacks.onDeleteArchive?.(archive.id);
+
+      row.appendChild(name);
+      row.appendChild(time);
+      row.appendChild(restoreBtn);
+      row.appendChild(deleteBtn);
+      this.archivesEl.appendChild(row);
+    }
+  }
+
+  private handleArchiveClick() {
+    const name = this.archiveInput.value.trim();
+    if (!name) return;
+    this.callbacks.onArchive?.(name);
+    this.archiveInput.value = '';
   }
 }

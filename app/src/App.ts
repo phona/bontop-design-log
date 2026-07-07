@@ -57,7 +57,11 @@ export class App {
     this.offlineIndicator = new OfflineIndicator('offline-indicator');
     this.crosshair = new Crosshair();
     this.hoverTooltip = new HoverTooltip();
-    this.overviewMenu = new OverviewMenu();
+    this.overviewMenu = new OverviewMenu({
+      onArchive: (name, reason) => void this.handleArchive(name, reason),
+      onRestore: (id) => void this.handleRestore(id),
+      onDeleteArchive: (id) => void this.handleDeleteArchive(id),
+    });
     this.modeIndicator = document.getElementById('mode-indicator') as HTMLDivElement;
     this.toastEl = document.getElementById('pointer-lock-toast') as HTMLDivElement;
 
@@ -101,6 +105,8 @@ export class App {
 
     const decisions = await this.stateSync.fetchDecisions();
     this.overviewMenu.setDecisionLog(decisions);
+
+    await this.refreshOverviewData();
 
     this.updateModeIndicator();
     this.rafId = requestAnimationFrame(this.renderLoop);
@@ -254,13 +260,42 @@ export class App {
   }
 
   private async refreshOverviewData(): Promise<void> {
-    const [scheme, decisions] = await Promise.all([
+    const [scheme, decisions, budget, risks, archives] = await Promise.all([
       this.stateSync.fetchScheme(),
       this.stateSync.fetchDecisions(),
+      this.stateSync.fetchBudget(),
+      this.stateSync.fetchRisks(),
+      this.stateSync.fetchArchivedSchemes(),
     ]);
     this.infoPanel.setScheme(scheme);
     this.overviewMenu.setScheme(scheme);
     this.overviewMenu.setDecisionLog(decisions);
+    this.overviewMenu.setBudget(budget);
+    this.overviewMenu.setRisks(risks);
+    this.overviewMenu.setArchivedSchemes(archives);
+  }
+
+  private async handleArchive(name: string, reason?: string): Promise<void> {
+    await this.stateSync.archiveScheme(name, reason);
+    const archives = await this.stateSync.fetchArchivedSchemes();
+    this.overviewMenu.setArchivedSchemes(archives);
+  }
+
+  private async handleRestore(id: string): Promise<void> {
+    await this.stateSync.restoreScheme(id);
+    const scheme = await this.stateSync.fetchScheme();
+    if (scheme) {
+      this.applyScheme(scheme);
+      this.infoPanel.setScheme(scheme);
+      this.overviewMenu.setScheme(scheme);
+    }
+    await this.refreshOverviewData();
+  }
+
+  private async handleDeleteArchive(id: string): Promise<void> {
+    await this.stateSync.deleteArchivedScheme(id);
+    const archives = await this.stateSync.fetchArchivedSchemes();
+    this.overviewMenu.setArchivedSchemes(archives);
   }
 
   private applyScheme(scheme: CurrentScheme): void {

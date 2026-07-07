@@ -1,15 +1,25 @@
 import { Router, type Request, type Response } from 'express';
 import type { ProjectCatalog } from './project-catalog.js';
 import type { DesignState } from './design-state.js';
+import type { RuleEngine } from './rule-engine.js';
+import type { BudgetCalculator } from './budget-calculator.js';
+import type { ArchivedSchemesStore } from './archived-schemes.js';
 
-export function createApiRouter(catalog: ProjectCatalog, state: DesignState): Router {
+export interface ApiDeps {
+  catalog: ProjectCatalog;
+  state: DesignState;
+  getRuleEngine: () => RuleEngine;
+  getBudgetCalculator: () => BudgetCalculator;
+  archiveStore: ArchivedSchemesStore;
+}
+
+export function createApiRouter(deps: ApiDeps): Router {
+  const { catalog, state, getRuleEngine, getBudgetCalculator, archiveStore } = deps;
   const router = Router();
 
   router.get('/project', (_req, res) => {
     res.json({
-      house: {
-        rooms: catalog.getRooms(),
-      },
+      house: { rooms: catalog.getRooms() },
       topics: catalog.getTopics().map((t) => ({
         id: t.id,
         name: t.name,
@@ -128,6 +138,136 @@ export function createApiRouter(catalog: ProjectCatalog, state: DesignState): Ro
     }
     state.ackVisualCommands(ids);
     res.json({ acked: ids.length });
+  });
+
+  router.get('/budget', (_req, res) => {
+    const scheme = state.getCurrentScheme();
+    const calc = getBudgetCalculator();
+    const snapshot = calc.calculate(scheme);
+    res.json(snapshot);
+  });
+
+  router.get('/risks', (_req, res) => {
+    const scheme = state.getCurrentScheme();
+    const engine = getRuleEngine();
+    const result = engine.evaluate(scheme, catalog);
+    res.json(result);
+  });
+
+  router.get('/design-check', (_req, res) => {
+    const scheme = state.getCurrentScheme();
+    const engine = getRuleEngine();
+    const result = engine.evaluate(scheme, catalog);
+    res.json(result);
+  });
+
+  router.get('/schemes', (_req, res) => {
+    res.json(archiveStore.list());
+  });
+
+  router.post('/schemes', (req, res) => {
+    const { name, reason } = req.body ?? {};
+    if (!name || typeof name !== 'string') {
+      res.status(400).json({ error: 'name is required' });
+      return;
+    }
+    const scheme = state.getCurrentScheme();
+    const result = archiveStore.create(scheme, name, reason);
+    if (result.error === 'name_conflict') {
+      res.status(409).json({ error: 'archive name already exists' });
+      return;
+    }
+    res.status(201).json(result.scheme);
+  });
+
+  router.get('/schemes/:id', (req, res) => {
+    const archived = archiveStore.get(req.params.id);
+    if (!archived) {
+      res.status(404).json({ error: 'archived scheme not found' });
+      return;
+    }
+    res.json(archived);
+  });
+
+  router.get('/schemes/:id/diff', (req, res) => {
+    const current = state.getCurrentScheme();
+    const diff = archiveStore.diff(req.params.id, current);
+    if (!diff) {
+      res.status(404).json({ error: 'archived scheme not found' });
+      return;
+    }
+    res.json(diff);
+  });
+
+  router.post('/schemes/:id/restore', (req, res) => {
+    const archived = archiveStore.get(req.params.id);
+    if (!archived) {
+      res.status(404).json({ error: 'archived scheme not found' });
+      return;
+    }
+
+    const current = state.getCurrentScheme();
+    const patches: Array<{ topic: string; optionId: string | null; roomId?: string | null; reason?: string }> = [];
+
+    const allTopics = new Set([
+      ...Object.keys(archived.selections),
+      ...Object.keys(current.selections),
+    ]);
+
+    for (const topic of allTopics) {
+      const archSel = archived.selections[topic] ?? { default: null, roomOverrides: {} };
+      const curSel = current.selections[topic] ?? { default: null, roomOverrides: {} };
+
+      if (archSel.default !== curSel.default) {
+        patches.push({
+          topic,
+          optionId: archSel.default,
+          reason: `restored from archive ${archived.id}`,
+        });
+      }
+
+      const allRooms = new Set([
+        ...Object.keys(archSel.roomOverrides),
+        ...Object.keys(curSel.roomOverrides),
+      ]);
+
+      for (const roomId of allRooms) {
+        const archOverride = archSel.roomOverrides[roomId] ?? null;
+        const curOverride = curSel.roomOverrides[roomId] ?? null;
+        if (archOverride !== curOverride) {
+          patches.push({
+            topic,
+            optionId: archOverride,
+            roomId,
+            reason: `restored from archive ${archived.id}`,
+          });
+        }
+      }
+    }
+
+    if (patches.length > 0) {
+      const result = state.applySelections(patches, `restored from ${archived.id}`, 'restore');
+      const log = state.getDecisionLog();
+      for (const entry of result.entries) {
+        entry.archiveId = archived.id;
+      }
+      state.persist();
+    }
+
+    res.json({
+      restored: true,
+      archiveId: archived.id,
+      scheme: state.getCurrentScheme(),
+    });
+  });
+
+  router.delete('/schemes/:id', (req, res) => {
+    const deleted = archiveStore.delete(req.params.id);
+    if (!deleted) {
+      res.status(404).json({ error: 'archived scheme not found' });
+      return;
+    }
+    res.json({ deleted: true });
   });
 
   return router;
