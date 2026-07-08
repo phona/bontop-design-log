@@ -61,4 +61,4 @@
 - `config/house.yaml`：户型基础数据
 - `config/layout/final.yaml`：定稿布局（量房后锁定）
 - `config/materials.yaml`：材料规格库
-- `budget/base.json`：预算基线
+- `config/budget/base.json`：预算基线

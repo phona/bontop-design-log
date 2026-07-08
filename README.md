@@ -25,7 +25,13 @@ interior-design-project/
 ├── config/                    # 结构化配置
 │   ├── house.yaml             # 户型基础数据
 │   ├── layout/                # 概念方案与定稿布局
-│   └── materials.yaml         # 材料规格库
+│   ├── materials.yaml         # 材料规格库
+│   ├── design-rules.yaml      # 设计规则
+│   └── budget/                # 预算基线
+│       └── base.json          # 基线预算
+├── budget/                    # 预算变更与支付
+│   ├── payments/              # 付款凭证
+│   └── changes/               # 变更记录
 ├── survey/                    # 现场量房数据
 │   ├── photos/
 │   └── videos/
@@ -33,10 +39,6 @@ interior-design-project/
 │   ├── original/              # 开发商/物业竣工图
 │   ├── survey/                # 量房复核图
 │   └── design/                # 设计师深化图纸
-├── budget/                    # 预算与支付
-│   ├── base.json              # 基线预算
-│   ├── payments/              # 付款凭证
-│   └── changes/               # 变更记录
 ├── contracts/                 # 合同归档
 │   ├── design_service/
 │   ├── construction/
@@ -76,7 +78,7 @@ interior-design-project/
 cat config/house.yaml
 
 # 查看当前预算
-cat budget/base.json
+cat config/budget/base.json
 
 # 查看审计日志
 cat audit/audit.log

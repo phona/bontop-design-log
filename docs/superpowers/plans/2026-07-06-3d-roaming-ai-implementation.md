@@ -67,7 +67,7 @@
 1. **第一人称漫游**：在 `HouseScene` 中增加 PointerLockControls/WASD 移动，切换 `snapshot.mode`。
 2. **窗帘话题**：读取 `config/house.yaml` 的 `curtains` 配置，在窗洞位置渲染窗帘盒/帘布。
 3. **卫浴/橱柜/灯具话题**：分别对应 `sanitary_*`、`cabinet_*`、`lighting_*` 材料，在场景中摆放简易洁具、橱柜、灯具模型。
-4. **预算实时联动**：把 `budget/base.json` 与材料/HVAC 选择关联，计算当前总预算。
+4. **预算实时联动**：把 `config/budget/base.json` 与材料/HVAC 选择关联，计算当前总预算。
 5. **AI 自动优化预设**：MCP 增加 `suggest_improvements` 工具，基于规则给出选择建议。
 6. **更精细户型**：根据 CAD 尺寸优化房间坐标与门窗开口。
 

@@ -98,7 +98,7 @@ Spec 1 完成后，应完成以下迁移：
 - `config/house.yaml` → 房屋、房间、平台、约束
 - `config/materials.yaml` → 材料/HVAC 选项
 - `config/layout/final.yaml` → 布局确认
-- `budget/base.json` → 预算基线
+- `config/budget/base.json` → 预算基线
 - `shared/houseData.ts` → HVAC 方案详细定义（含数值化 `price_per_unit`）、户型坐标
 
 在内存中提供：
@@ -231,7 +231,7 @@ objectMapping:
     topics: [hvac]
 
 budget:
-  baseCategoriesFrom: budget/base.json
+  baseCategoriesFrom: config/budget/base.json
   lineItems: []
 
 risks: []

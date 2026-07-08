@@ -7,7 +7,7 @@
 | 脚本名 | 状态 | 用途 | 输入 | 输出 |
 |--------|------|------|------|------|
 | `parse_cad.py` | 规划中 | 解析 CAD 图纸，提取工程量 | `cad/design/*.dwg` | `budget/quantities.json` |
-| `calc_budget.py` | 规划中 | 根据工程量计算预算 | `config/house.yaml`、`config/materials.yaml` | `budget/base.json` 更新 |
+| `calc_budget.py` | 规划中 | 根据工程量计算预算 | `config/house.yaml`、`config/materials.yaml` | `config/budget/base.json` 更新 |
 | `compare_quote.py` | 规划中 | 对比多家施工队报价 | `budget/quotes/*.xlsx` | `budget/quote_comparison.md` |
 | `track_progress.py` | 规划中 | 跟踪施工进度与付款 | `contracts/*.yaml`、`budget/payments/` | `schedule/progress.json` |
 | `render_batch.py` | 规划中 | 批量驱动 Blender 渲染 | `config/layout/final.yaml` | `renders/blender/output/` |

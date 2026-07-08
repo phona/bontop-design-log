@@ -42,7 +42,7 @@ objectMapping:
     topics: [hvac]
 
 budget:
-  baseCategoriesFrom: budget/base.json
+  baseCategoriesFrom: config/budget/base.json
   topicCategories:
     floor: masonry
     wall: masonry
@@ -66,7 +66,7 @@ constraints: []
 ### 2.1 空状态默认行为
 
 - `objectMapping` 为空：使用默认映射（`room:*` → 所有话题，`hvac:*` → hvac）
-- `budget.lineItems` 为空：只显示 `budget/base.json` 固定类目
+- `budget.lineItems` 为空：只显示 `config/budget/base.json` 固定类目
 - `budget.lineItems` 中引用了未在话题目录注册的话题：该 line item 的 actual 为 0，不报错
 - `risks` 为空：风险列表为空
 - `constraints` 为空：不检查约束
@@ -154,15 +154,15 @@ constraints:
 
 ## 4. 预算计算
 
-### 4.1 与 `budget/base.json` 的对齐方式
+### 4.1 与 `config/budget/base.json` 的对齐方式
 
-`budget/base.json` 中的 16 个类目继续作为预算科目（`budget` 为计划金额，`actual` 为实际金额）。
+`config/budget/base.json` 中的 16 个类目继续作为预算科目（`budget` 为计划金额，`actual` 为实际金额）。
 
 - 没有对应话题的类目（如 `demolition`、`water_electric`、`waterproof`、`carpentry`、`kitchen_cabinet`、`miscellaneous`、`property_fees`、`contingency`）保持手动 `actual`，默认 0，后续可通过独立接口更新
 - 有对应话题的类目，其 `actual` 由系统自动计算：
   - `masonry` ← `floor` + `wall` 选项材料费
   - `painting` ← `paint` 选项材料费
-  - `hvac` ← `hvac` 选项价格（需要在 `budget/base.json` 中新增该类目）
+  - `hvac` ← `hvac` 选项价格（需要在 `config/budget/base.json` 中新增该类目）
   - `curtains` ← `curtains` 选项价格（Spec 4 之后扩展）
   - `doors_windows`、`sanitary`、`range_hood`、`lighting`、`smart_home` 同理，当这些话题被加入系统后映射到对应类目
 
@@ -171,8 +171,8 @@ constraints:
 ### 4.2 总预算公式
 
 ```
-总预算 = Σ (budget/base.json 各类目 budget)
-总实际 = Σ (budget/base.json 各类目 actual)
+总预算 = Σ (config/budget/base.json 各类目 budget)
+总实际 = Σ (config/budget/base.json 各类目 actual)
 
 类目 actual = 手动 actual（若有） + Σ 该话题选项价格
 

@@ -77,7 +77,7 @@
 - **选定方案**：方案2
 - **决策依据**：开发商已统一用玻璃幕墙封闭外立面，包括阳台和开敞外廊
 - **预算影响**：删除封窗相关预算，增加幕墙保护及门窗口协调费用
-- **关联文件**：`config/house.yaml`、`config/materials.yaml`、`budget/base.json`
+- **关联文件**：`config/house.yaml`、`config/materials.yaml`、`config/budget/base.json`
 - **决策人**：业主
 
 ---
@@ -107,7 +107,7 @@
   - 预算 = 11 万务实档
 - **决策依据**：两人居住，不需要一步到位；玻璃幕墙导致窗帘和遮阳为刚需；仅一个设备平台限制空调方案
 - **预算影响**：预算从 11 万 draft 定稿为 11 万务实档，新增窗帘、智能预留、油烟机科目
-- **关联文件**：`config/house.yaml`、`config/layout/final.yaml`、`docs/designer_brief.md`、`budget/base.json`
+- **关联文件**：`config/house.yaml`、`config/layout/final.yaml`、`docs/designer_brief.md`、`config/budget/base.json`
 - **决策人**：业主
 
 ---
