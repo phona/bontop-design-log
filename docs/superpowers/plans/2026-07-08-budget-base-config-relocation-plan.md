@@ -133,7 +133,7 @@ curl -s http://localhost:3000/api/budget | python3 -m json.tool | grep -E '"tota
 kill $SERVER_PID
 ```
 
-Expected: `totalBudget` is `110000` and `categories` has 16 entries.
+Expected: `totalBudget` is `110000` and `categories` has 17 entries.
 
 - [ ] **Step 6: Commit the code changes**
 
@@ -212,11 +212,11 @@ for f in \
 done
 ```
 
-Verify no stale references remain in the listed files:
+Verify no stale references to the old location remain in the listed files. The new canonical path `config/budget/base.json` contains the substring `budget/base.json`, so use a path-aware regex that excludes lines where the path is already `config/...`:
 
 ```bash
 for f in README.md budget/changes/README.md docs/decision_log.md docs/designer_brief.md docs/superpowers/specs/2026-07-06-backend-data-foundation-design.md docs/superpowers/specs/2026-07-06-rule-engine-archive-design.md docs/superpowers/plans/2026-07-06-backend-data-foundation-implementation.md docs/superpowers/plans/2026-07-06-3d-roaming-ai-implementation.md scripts/README.md; do
-  result=$(grep -n 'budget/base\.json' "$f" || true)
+  result=$(grep -nE '(^|[^/])budget/base\.json' "$f" || true)
   if [ -n "$result" ]; then
     echo "STALE: $f"
     echo "$result"
