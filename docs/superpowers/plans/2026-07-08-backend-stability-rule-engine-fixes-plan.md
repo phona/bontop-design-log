@@ -4,7 +4,7 @@
 
 **Goal:** Fix backend P0 stability issues (MCP async errors, startup config crashes, rule engine condition parser bugs) and replace ad-hoc config loading with a unified `ConfigLoader` plus user-facing config error guidance.
 
-**Architecture:** Introduce a reusable `ConfigLoader<T>` + `ConfigRegistry` that watches YAML/JSON files, falls back on errors, and exposes status via a new `/api/config-status` endpoint. Refactor `server/index.ts` to use the registry for `design-rules.yaml`, `materials.yaml`, and `budget/base.json`. Patch MCP route handlers to catch async errors and normalize session headers. Rewrite the rule condition parser to be quote-aware and whitespace-tolerant. Add a persistent frontend banner for config errors.
+**Architecture:** Introduce a reusable `ConfigLoader<T>` + `ConfigRegistry` that watches YAML/JSON files, falls back on errors, and exposes status via a new `/api/config-status` endpoint. Refactor `server/index.ts` to use the registry for `design-rules.yaml`, `materials.yaml`, and `config/budget/base.json`. Patch MCP route handlers to catch async errors and normalize session headers. Rewrite the rule condition parser to be quote-aware and whitespace-tolerant. Add a persistent frontend banner for config errors.
 
 **Tech Stack:** TypeScript, Node.js, Express 4, chokidar, js-yaml, three.js frontend, node:test
 
@@ -322,7 +322,7 @@ const budgetBaseLoader = new ConfigLoader<{ total_budget: number; categories: Re
   (raw) => JSON.parse(raw),
   () => {
     rebuildDerived();
-    console.log('[server] budget/base.json reloaded');
+    console.log('[server] config/budget/base.json reloaded');
   }
 );
 registry.register(budgetBaseLoader);
@@ -1029,7 +1029,7 @@ git commit -m "fix: address review feedback and finalize backend stability fixes
 | Unified ConfigLoader / ConfigRegistry | Task 1 |
 | Startup resilience for design-rules.yaml | Task 2 |
 | Startup resilience for materials.yaml | Task 2 |
-| Startup resilience for budget/base.json | Task 2 |
+| Startup resilience for config/budget/base.json | Task 2 |
 | Startup resilience for DesignState | Task 2 |
 | `/api/config-status` endpoint | Task 2 |
 | MCP POST/GET/DELETE error handling | Task 3 |

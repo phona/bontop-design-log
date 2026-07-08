@@ -81,7 +81,7 @@ After relocation:
 ## 6. Verification
 
 1. Start the server: `npm run dev:server` — expect no `config/budget/base.json` ENOENT.
-2. Query budget: `curl http://localhost:3000/api/budget` — expect total budget `110000` and 16 categories.
+2. Query budget: `curl http://localhost:3000/api/budget` — expect total budget `110000` and 17 categories.
 3. Run backend tests: `npm run test:server` — expect all pass.
 4. Typecheck: `npm run typecheck` — expect no errors.
 

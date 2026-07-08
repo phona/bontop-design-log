@@ -156,7 +156,7 @@ constraints:
 
 ### 4.1 与 `config/budget/base.json` 的对齐方式
 
-`config/budget/base.json` 中的 16 个类目继续作为预算科目（`budget` 为计划金额，`actual` 为实际金额）。
+`config/budget/base.json` 中的 17 个类目继续作为预算科目（`budget` 为计划金额，`actual` 为实际金额）。
 
 - 没有对应话题的类目（如 `demolition`、`water_electric`、`waterproof`、`carpentry`、`kitchen_cabinet`、`miscellaneous`、`property_fees`、`contingency`）保持手动 `actual`，默认 0，后续可通过独立接口更新
 - 有对应话题的类目，其 `actual` 由系统自动计算：

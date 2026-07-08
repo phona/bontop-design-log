@@ -113,7 +113,7 @@ Expected output contains:
 ```text
 [server] design-rules.yaml reloaded
 [server] materials.yaml reloaded
-[server] budget/base.json reloaded
+[server] config/budget/base.json reloaded
 Bontop design server listening on http://localhost:3000
 ```
 
@@ -272,7 +272,7 @@ Expected: no errors.
 - [ ] **Step 3: Final grep across the repo for stale references**
 
 ```bash
-rg 'budget/base\.json' --type md --type ts --type yaml --type json
+rg '(^|[^/])budget/base\.json' --type md --type ts --type yaml --type json
 ```
 
 Expected: only matches in historical files that intentionally keep the old path (none expected). If unexpected matches appear, fix them or document why they stay.

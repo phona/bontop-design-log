@@ -34,7 +34,7 @@ This spec covers the first iteration of bug fixes following the code review of c
 
 The recent backend additions introduced several problems:
 
-1. **Ad-hoc config loading:** `design-rules.yaml` has a custom watcher, while `materials.yaml` and `budget/base.json` are loaded once by `ProjectCatalog` with no reload path. Some required config files are not loaded at all.
+1. **Ad-hoc config loading:** `design-rules.yaml` has a custom watcher, while `materials.yaml` and `config/budget/base.json` are loaded once by `ProjectCatalog` with no reload path. Some required config files are not loaded at all.
 2. **No user guidance:** When a config file fails, only a server-side `console.error` is produced. The user has no indication in the UI that the config is broken or how to repair it.
 3. **MCP fragility:** The Express 4 routes for MCP discard async errors and delete sessions before requests finish, leading to hanging requests and potential process crashes.
 4. **Rule parser bugs:** The condition parser splits on operator substrings without respecting quoted literals, so a value like `"a >= b"` is mis-parsed.
