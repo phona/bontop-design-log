@@ -75,7 +75,7 @@ const budgetBase = JSON.parse(readFileSync(`${configDir}/config/budget/base.json
 Use `edit` or apply the patch. Verify with:
 
 ```bash
-grep -n 'budget/base.json' server/project-catalog.ts
+grep -nE '(^|[^/])budget/base\.json' server/project-catalog.ts
 ```
 
 Expected: no matches.
@@ -208,7 +208,7 @@ for f in \
   docs/superpowers/plans/2026-07-06-backend-data-foundation-implementation.md \
   docs/superpowers/plans/2026-07-06-3d-roaming-ai-implementation.md \
   scripts/README.md; do
-  sed -i 's|budget/base\.json|config/budget/base.json|g' "$f"
+  sed -i 's|\([^/]\)budget/base\.json|\1config/budget/base.json|g' "$f"
 done
 ```
 
