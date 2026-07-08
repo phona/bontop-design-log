@@ -133,6 +133,14 @@ export class App {
       this.offlineIndicator.setOffline(offline);
     });
 
+    this.stateSync.onConfigError((errors) => {
+      if (errors.length > 0) {
+        this.showConfigErrorBanner(errors);
+      } else {
+        this.hideConfigErrorBanner();
+      }
+    });
+
     this.houseScene.setOnObjectClick((objectId, type, room) => {
       this.infoPanel.showObject({ objectId, name: room ? this.houseScene.getRoom(room)?.name ?? objectId : objectId, type, room });
       this.stateSync.postViewContext(objectId);
@@ -323,6 +331,22 @@ export class App {
     this.toastTimer = window.setTimeout(() => {
       this.toastEl.style.display = 'none';
     }, 3000);
+  }
+
+  private showConfigErrorBanner(errors: Array<{ path: string; error: string }>): void {
+    let banner = document.getElementById('config-error-banner') as HTMLDivElement | null;
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'config-error-banner';
+      document.body.prepend(banner);
+    }
+    banner.textContent = `配置文件加载失败：${errors.map((e) => `${e.path} — ${e.error}`).join('; ')}`;
+    banner.style.display = 'block';
+  }
+
+  private hideConfigErrorBanner(): void {
+    const banner = document.getElementById('config-error-banner') as HTMLDivElement | null;
+    if (banner) banner.style.display = 'none';
   }
 
   private renderLoop = (time: number) => {

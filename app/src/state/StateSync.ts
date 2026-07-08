@@ -3,16 +3,19 @@ import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry, Bu
 type SchemeCallback = (scheme: CurrentScheme) => void;
 type VisualCommandCallback = (command: VisualCommand) => void;
 type OfflineCallback = (offline: boolean) => void;
+type ConfigErrorCallback = (errors: Array<{ path: string; error: string }>) => void;
 
 export class StateSync {
   private schemeInterval: ReturnType<typeof setTimeout> | null = null;
   private visualCommandInterval: ReturnType<typeof setTimeout> | null = null;
+  private configStatusInterval: ReturnType<typeof setTimeout> | null = null;
   private schemeBackoff = 1000;
   private visualCommandBackoff = 500;
   private isOffline = false;
   private schemeCallbacks: SchemeCallback[] = [];
   private visualCommandCallbacks: VisualCommandCallback[] = [];
   private offlineCallbacks: OfflineCallback[] = [];
+  private configErrorCallbacks: ConfigErrorCallback[] = [];
   private currentScheme: CurrentScheme | null = null;
   private processedCommandIds = new Map<string, number>();
 
@@ -50,6 +53,12 @@ export class StateSync {
   async fetchRisks(): Promise<DesignCheckResult> {
     const response = await fetch('/api/risks');
     if (!response.ok) throw new Error('Failed to fetch risks');
+    return response.json();
+  }
+
+  async fetchConfigStatus(): Promise<{ configs: Array<{ path: string; status: 'ok' | 'failed'; error?: string }> }> {
+    const response = await fetch('/api/config-status');
+    if (!response.ok) throw new Error('Failed to fetch config status');
     return response.json();
   }
 
@@ -115,9 +124,14 @@ export class StateSync {
     this.offlineCallbacks.push(callback);
   }
 
+  onConfigError(callback: ConfigErrorCallback): void {
+    this.configErrorCallbacks.push(callback);
+  }
+
   start(): void {
     this.pollScheme();
     this.pollVisualCommands();
+    this.pollConfigStatus();
   }
 
   private async pollScheme(): Promise<void> {
@@ -168,6 +182,19 @@ export class StateSync {
     }
   }
 
+  private async pollConfigStatus(): Promise<void> {
+    try {
+      const result = await this.fetchConfigStatus();
+      const errors = result.configs
+        .filter((c) => c.status === 'failed')
+        .map((c) => ({ path: c.path, error: c.error ?? 'unknown error' }));
+      this.configErrorCallbacks.forEach((cb) => cb(errors));
+      this.configStatusInterval = setTimeout(() => this.pollConfigStatus(), this.schemeBackoff);
+    } catch {
+      this.configStatusInterval = setTimeout(() => this.pollConfigStatus(), this.schemeBackoff);
+    }
+  }
+
   private cleanupProcessedCommandIds(): void {
     const now = Date.now();
     for (const [id, expiresAt] of this.processedCommandIds.entries()) {
@@ -180,6 +207,7 @@ export class StateSync {
   dispose(): void {
     if (this.schemeInterval) clearTimeout(this.schemeInterval);
     if (this.visualCommandInterval) clearTimeout(this.visualCommandInterval);
+    if (this.configStatusInterval) clearTimeout(this.configStatusInterval);
     this.processedCommandIds.clear();
   }
 }

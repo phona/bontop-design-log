@@ -277,4 +277,22 @@ describe('StateSync', () => {
     await vi.advanceTimersByTimeAsync(500);
     expect(commandCallback).toHaveBeenCalledTimes(2);
   });
+
+  it('emits configError when a config is failed', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+      if (urlStr.includes('/api/config-status')) {
+        return { ok: true, json: async () => ({ configs: [{ path: 'config/x.yaml', status: 'failed', error: 'bad' }] }) } as Response;
+      }
+      return { ok: true, json: async () => [] } as Response;
+    });
+
+    const sync = new StateSync();
+    const configErrorCallback = vi.fn();
+    sync.onConfigError(configErrorCallback);
+    sync.start();
+    await vi.advanceTimersByTimeAsync(0);
+    sync.dispose();
+    expect(configErrorCallback).toHaveBeenCalledWith([{ path: 'config/x.yaml', error: 'bad' }]);
+  });
 });

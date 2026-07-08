@@ -470,3 +470,17 @@ html, body {
   display: none;
   z-index: 90;
 }
+
+#config-error-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(180, 60, 60, 0.92);
+  color: white;
+  padding: 12px 16px;
+  text-align: center;
+  z-index: 10000;
+  font-size: 14px;
+  display: none;
+}
