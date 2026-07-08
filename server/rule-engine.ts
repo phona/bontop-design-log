@@ -51,23 +51,41 @@ function parseList(value: string): unknown[] {
   return inner.split(',').map((s) => parseLiteral(s));
 }
 
-function evaluateCondition(condition: string, ctx: ConditionContext): boolean {
+function extractQuotedLiterals(condition: string): { text: string; literals: string[] } {
+  const literals: string[] = [];
+  const text = condition.replace(/(["'])(.*?)\1/g, (match, _quote, content) => {
+    const index = literals.length;
+    literals.push(content);
+    return `__QUOTED_${index}__`;
+  });
+  return { text, literals };
+}
+
+function restoreQuotedLiterals(text: string, literals: string[]): string {
+  return text.replace(/__QUOTED_(\d+)__/g, (_, index) => literals[Number(index)]);
+}
+
+export function evaluateCondition(condition: string, ctx: ConditionContext): boolean {
+  const { text, literals } = extractQuotedLiterals(condition);
   const operators = ['not in', 'in', '>=', '<=', '!=', '==', '>', '<'];
   for (const op of operators) {
-    const idx = condition.indexOf(` ${op} `);
-    if (idx === -1) continue;
-    const leftStr = condition.slice(0, idx).trim();
-    const rightStr = condition.slice(idx + op.length + 2).trim();
+    const escaped = op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\s*${escaped}\\s*`);
+    const match = text.match(regex);
+    if (!match || match.index === undefined) continue;
+    const leftStr = text.slice(0, match.index).trim();
+    const rightStr = text.slice(match.index + match[0].length).trim();
     const leftVal = resolveVariable(leftStr, ctx);
+    const restoredRight = restoreQuotedLiterals(rightStr, literals);
     if (op === 'in') {
-      const list = parseList(rightStr);
+      const list = parseList(restoredRight);
       return list.some((item) => String(item) === String(leftVal));
     }
     if (op === 'not in') {
-      const list = parseList(rightStr);
+      const list = parseList(restoredRight);
       return !list.some((item) => String(item) === String(leftVal));
     }
-    const rightVal = parseLiteral(rightStr);
+    const rightVal = parseLiteral(restoredRight);
     switch (op) {
       case '==': return leftVal == rightVal;
       case '!=': return leftVal != rightVal;
@@ -77,7 +95,7 @@ function evaluateCondition(condition: string, ctx: ConditionContext): boolean {
       case '<=': return Number(leftVal) <= Number(rightVal);
     }
   }
-  return false;
+  throw new Error(`No recognized operator in condition: ${condition}`);
 }
 
 export class RuleEngine {
@@ -227,4 +245,4 @@ export class RuleEngine {
   }
 }
 
-export { evaluateCondition, type ConditionContext };
+export { type ConditionContext };

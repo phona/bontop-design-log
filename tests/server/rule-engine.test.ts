@@ -138,3 +138,17 @@ describe('RuleEngine', () => {
     assert.equal(result.constraintViolations.length, 0);
   });
 });
+
+it('handles quoted strings containing operator substrings', () => {
+  assert.equal(evaluateCondition('$topic == "a >= b"', makeContext()), false);
+  assert.equal(evaluateCondition('$topic == "a >= b"', makeContext({ topic: 'a >= b' })), true);
+});
+
+it('handles operators without surrounding spaces', () => {
+  assert.equal(evaluateCondition('$topic=="A2"', makeContext()), true);
+  assert.equal(evaluateCondition('$topic!="A2"', makeContext()), false);
+});
+
+it('throws when no operator is recognized', () => {
+  assert.throws(() => evaluateCondition('$topic "A2"', makeContext()), /No recognized operator/);
+});
