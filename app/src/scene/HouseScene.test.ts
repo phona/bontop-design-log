@@ -278,6 +278,7 @@ describe('HouseScene', () => {
     // Mock the raycaster to return a room label first, then a wall
     const mockedThree = await import('three');
     const originalRaycaster = mockedThree.Raycaster;
+    const originalSceneRaycaster = (scene as any).raycaster;
     (mockedThree as any).Raycaster = class {
       setFromCamera() {}
       intersectObjects() {
@@ -297,6 +298,7 @@ describe('HouseScene', () => {
       expect(withFilter?.objectId).toBe('wall:test_room:north');
     } finally {
       (mockedThree as any).Raycaster = originalRaycaster;
+      (scene as any).raycaster = originalSceneRaycaster;
     }
   });
 });
