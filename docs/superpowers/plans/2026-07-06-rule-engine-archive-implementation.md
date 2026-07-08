@@ -4,7 +4,7 @@
 
 **Goal:** Implement a rule engine for budget calculation, risk/constraint evaluation, config hot-reload, and scheme archive/restore/diff.
 
-**Architecture:** The RuleEngine loads `config/design-rules.yaml` and evaluates risks and constraints against the CurrentScheme. BudgetCalculator computes per-topic costs using room dimensions and material properties, mapping to `budget/base.json` categories. ArchivedSchemesStore provides CRUD with pinyin slug IDs. A file watcher enables hot-reload of design rules during development. New REST endpoints and MCP tools expose all functionality.
+**Architecture:** The RuleEngine loads `config/design-rules.yaml` and evaluates risks and constraints against the CurrentScheme. BudgetCalculator computes per-topic costs using room dimensions and material properties, mapping to `config/budget/base.json` categories. ArchivedSchemesStore provides CRUD with pinyin slug IDs. A file watcher enables hot-reload of design rules during development. New REST endpoints and MCP tools expose all functionality.
 
 **Tech Stack:** TypeScript (NodeNext), `node:test`, `chokidar` (file watching), `pinyin-pro` (slug generation), `js-yaml` (config parsing), Express (REST), MCP SDK (tools)
 

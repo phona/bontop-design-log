@@ -58,7 +58,7 @@ const budgetBaseLoader = new ConfigLoader<{ total_budget: number; categories: Re
   (raw) => JSON.parse(raw),
   () => {
     rebuildDerived();
-    console.log('[server] budget/base.json reloaded');
+    console.log('[server] config/budget/base.json reloaded');
   }
 );
 registry.register(budgetBaseLoader);
