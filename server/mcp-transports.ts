@@ -43,7 +43,8 @@ export async function attachMcpTransports(app: Express, createMcpServer: () => M
       sessions.set(newSessionId, { server, transport });
       await transport.handleRequest(req, res, req.body);
     } catch (err) {
-      next(err);
+      console.error('[mcp] POST /mcp error:', err);
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -57,7 +58,8 @@ export async function attachMcpTransports(app: Express, createMcpServer: () => M
       const session = sessions.get(sessionId)!;
       await session.transport.handleRequest(req, res);
     } catch (err) {
-      next(err);
+      console.error('[mcp] GET /mcp error:', err);
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -72,7 +74,8 @@ export async function attachMcpTransports(app: Express, createMcpServer: () => M
       await session.transport.handleRequest(req, res);
       sessions.delete(sessionId);
     } catch (err) {
-      next(err);
+      console.error('[mcp] DELETE /mcp error:', err);
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -83,8 +86,8 @@ export async function attachMcpTransports(app: Express, createMcpServer: () => M
       await sseServer.connect(sseTransport);
       await sseTransport.start();
     } catch (err) {
-      console.error('SSE connection failed:', err);
-      next(err);
+      console.error('[mcp] GET /sse error:', err);
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 

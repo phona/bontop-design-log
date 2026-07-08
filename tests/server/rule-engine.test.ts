@@ -66,6 +66,12 @@ describe('evaluateCondition', () => {
     assert.equal(evaluateCondition('$option.input == 5', ctx), true);
     assert.equal(evaluateCondition('$option.notion == 7', ctx), true);
   });
+
+  it('handles field names that are alphabetic operators', () => {
+    const ctx = makeContext({ option: { in: 5 } });
+    assert.equal(evaluateCondition('$option.in == 5', ctx), true);
+    assert.equal(evaluateCondition('$option.in == 6', ctx), false);
+  });
 });
 
 describe('RuleEngine', () => {

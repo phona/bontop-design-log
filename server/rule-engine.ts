@@ -76,6 +76,13 @@ export function evaluateCondition(condition: string, ctx: ConditionContext): boo
     );
     const match = text.match(regex);
     if (!match || match.index === undefined) continue;
+    // Regression guard: alphabetic operators must not be parsed as operators
+    // when they are actually object field names following a dot (e.g. $option.in).
+    if (isAlpha) {
+      const leadingSpace = match[0].match(/^\s*/)?.[0].length ?? 0;
+      const opStart = match.index + leadingSpace;
+      if (opStart > 0 && text[opStart - 1] === '.') continue;
+    }
     const leftStr = text.slice(0, match.index).trim();
     const rightStr = text.slice(match.index + match[0].length).trim();
     const leftVal = resolveVariable(leftStr, ctx);
