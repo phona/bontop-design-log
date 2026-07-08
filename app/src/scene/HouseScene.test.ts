@@ -289,12 +289,14 @@ describe('HouseScene', () => {
     };
     (scene as any).raycaster = new (mockedThree as any).Raycaster();
 
-    const withoutFilter = scene.raycastFromScreenCenter();
-    expect(withoutFilter?.objectId).toBe('room:test_room');
+    try {
+      const withoutFilter = scene.raycastFromScreenCenter();
+      expect(withoutFilter?.objectId).toBe('room:test_room');
 
-    const withFilter = scene.raycastFromScreenCenter({ hoverableOnly: true });
-    expect(withFilter?.objectId).toBe('wall:test_room:north');
-
-    (mockedThree as any).Raycaster = originalRaycaster;
+      const withFilter = scene.raycastFromScreenCenter({ hoverableOnly: true });
+      expect(withFilter?.objectId).toBe('wall:test_room:north');
+    } finally {
+      (mockedThree as any).Raycaster = originalRaycaster;
+    }
   });
 });
