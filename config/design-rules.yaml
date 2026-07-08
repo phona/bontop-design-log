@@ -7,7 +7,7 @@ objectMapping:
     topics: [hvac]
 
 budget:
-  baseCategoriesFrom: budget/base.json
+  baseCategoriesFrom: config/budget/base.json
   topicCategories:
     floor: masonry
     wall: masonry

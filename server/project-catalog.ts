@@ -93,7 +93,7 @@ export class ProjectCatalog {
 
   static load(configDir = '.'): ProjectCatalog {
     const materials = load(readFileSync(`${configDir}/config/materials.yaml`, 'utf8')) as MaterialsYaml;
-    const budgetBase = JSON.parse(readFileSync(`${configDir}/budget/base.json`, 'utf8')) as {
+    const budgetBase = JSON.parse(readFileSync(`${configDir}/config/budget/base.json`, 'utf8')) as {
       total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     };
