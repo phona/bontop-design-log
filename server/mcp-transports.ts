@@ -76,11 +76,16 @@ export async function attachMcpTransports(app: Express, createMcpServer: () => M
     }
   });
 
-  app.get('/sse', async (req: Request, res: Response) => {
-    const sseServer = createMcpServer();
-    const sseTransport = new SSEServerTransport('/messages', res);
-    await sseServer.connect(sseTransport);
-    await sseTransport.start();
+  app.get('/sse', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const sseServer = createMcpServer();
+      const sseTransport = new SSEServerTransport('/messages', res);
+      await sseServer.connect(sseTransport);
+      await sseTransport.start();
+    } catch (err) {
+      console.error('SSE connection failed:', err);
+      next(err);
+    }
   });
 
   app.post('/messages', async (_req: Request, res: Response) => {
