@@ -190,7 +190,8 @@ export class StateSync {
         .map((c) => ({ path: c.path, error: c.error ?? 'unknown error' }));
       this.configErrorCallbacks.forEach((cb) => cb(errors));
       this.configStatusInterval = setTimeout(() => this.pollConfigStatus(), this.schemeBackoff);
-    } catch {
+    } catch (err) {
+      console.error('[StateSync] Failed to poll config status:', err);
       this.configStatusInterval = setTimeout(() => this.pollConfigStatus(), this.schemeBackoff);
     }
   }
