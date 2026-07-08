@@ -60,6 +60,12 @@ describe('evaluateCondition', () => {
       true
     );
   });
+
+  it('does not match operators inside identifiers', () => {
+    const ctx = makeContext({ option: { input: 5, notion: 7 } });
+    assert.equal(evaluateCondition('$option.input == 5', ctx), true);
+    assert.equal(evaluateCondition('$option.notion == 7', ctx), true);
+  });
 });
 
 describe('RuleEngine', () => {

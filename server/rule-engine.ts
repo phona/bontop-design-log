@@ -70,7 +70,10 @@ export function evaluateCondition(condition: string, ctx: ConditionContext): boo
   const operators = ['not in', 'in', '>=', '<=', '!=', '==', '>', '<'];
   for (const op of operators) {
     const escaped = op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\s*${escaped}\\s*`);
+    const isAlpha = /^[a-z]/.test(op);
+    const regex = new RegExp(
+      isAlpha ? `\\b\\s*${escaped}\\s*\\b` : `\\b\\s*${escaped}\\s*`
+    );
     const match = text.match(regex);
     if (!match || match.index === undefined) continue;
     const leftStr = text.slice(0, match.index).trim();
