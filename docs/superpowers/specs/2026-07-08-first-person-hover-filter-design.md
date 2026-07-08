@@ -60,7 +60,12 @@ raycastFromScreenCenter(options?: { hoverableOnly?: boolean }): HoverTarget | nu
     const data = hit.object.userData;
     if (hoverableOnly && data?.hoverable === false) continue;
     if (data?.objectId || data?.roomId) {
-      // ... existing hover-target construction
+      const id = (data.objectId as string) ?? (data.roomId as string);
+      const type = (data.type as string) ?? (data.part as string) ?? 'room';
+      const room = data.roomId as string | undefined;
+      const roomObj = room ? this.rooms[room] : undefined;
+      const name = roomObj?.name ?? id;
+      return { objectId: id, name, type, room };
     }
   }
   return null;
