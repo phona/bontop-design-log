@@ -229,4 +229,72 @@ describe('HouseScene', () => {
     const scene = new HouseScene(canvas);
     expect(() => scene.render()).not.toThrow();
   });
+
+  it('marks room label as non-hoverable', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    const projectData = {
+      house: {
+        rooms: [
+          { id: 'test_room', name: 'Test', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'public' },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+    await scene.buildFromCatalog(projectData);
+
+    let roomLabelHoverable: boolean | undefined = undefined;
+    scene.getScene().traverse((obj: any) => {
+      if (obj.userData?.objectId === 'room:test_room') {
+        roomLabelHoverable = obj.userData.hoverable;
+      }
+    });
+    expect(roomLabelHoverable).toBe(false);
+  });
+
+  it('raycastFromScreenCenter with hoverableOnly skips non-hoverable objects', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    const projectData = {
+      house: {
+        rooms: [
+          { id: 'test_room', name: 'Test', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'public' },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+    await scene.buildFromCatalog(projectData);
+
+    // Mock the raycaster to return a room label first, then a wall
+    const mockedThree = await import('three');
+    const originalRaycaster = mockedThree.Raycaster;
+    (mockedThree as any).Raycaster = class {
+      setFromCamera() {}
+      intersectObjects() {
+        return [
+          { object: { userData: { objectId: 'room:test_room', hoverable: false } } },
+          { object: { userData: { objectId: 'wall:test_room:north', part: 'wall', roomId: 'test_room' } } },
+        ];
+      }
+    };
+    (scene as any).raycaster = new (mockedThree as any).Raycaster();
+
+    const withoutFilter = scene.raycastFromScreenCenter();
+    expect(withoutFilter?.objectId).toBe('room:test_room');
+
+    const withFilter = scene.raycastFromScreenCenter({ hoverableOnly: true });
+    expect(withFilter?.objectId).toBe('wall:test_room:north');
+
+    (mockedThree as any).Raycaster = originalRaycaster;
+  });
 });

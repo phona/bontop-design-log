@@ -223,7 +223,7 @@ export class HouseScene implements SceneApi {
     );
     roomLabel.rotation.x = -Math.PI / 2;
     roomLabel.position.set(0, 0.01, 0);
-    roomLabel.userData = { objectId: `room:${r.id}` };
+    roomLabel.userData = { objectId: `room:${r.id}`, hoverable: false };
     group.add(roomLabel);
 
     this.scene.add(group);
@@ -384,11 +384,13 @@ export class HouseScene implements SceneApi {
     this.controls.enabled = mode === 'orbit';
   }
 
-  raycastFromScreenCenter(): HoverTarget | null {
+  raycastFromScreenCenter(options?: { hoverableOnly?: boolean }): HoverTarget | null {
+    const { hoverableOnly = false } = options ?? {};
     this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
     const intersects = this.raycaster.intersectObjects(this.scene.children, true);
     for (const hit of intersects) {
       const data = hit.object.userData;
+      if (hoverableOnly && data?.hoverable === false) continue;
       if (data?.objectId || data?.roomId) {
         const id = (data.objectId as string) ?? (data.roomId as string);
         const type = (data.type as string) ?? (data.part as string) ?? 'room';

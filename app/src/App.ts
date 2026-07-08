@@ -357,7 +357,7 @@ export class App {
 
     if (this.houseScene.mode === 'first-person' && !this.houseScene.cameraAnimator.isAnimating()) {
       this.fpController.update(dt);
-      const target = this.houseScene.raycastFromScreenCenter();
+      const target = this.houseScene.raycastFromScreenCenter({ hoverableOnly: true });
       this.hoverTooltip.update(target);
     }
 
