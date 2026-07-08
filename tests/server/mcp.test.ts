@@ -12,6 +12,7 @@ import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
 import { createMcpServer } from '../../server/mcp-server.js';
+import { ConfigRegistry } from '../../server/config-loader.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 
 const TEST_DATA_DIR = './tmp/test-data-mcp';
@@ -35,6 +36,7 @@ describe('MCP remote', () => {
       getRuleEngine: () => engine,
       getBudgetCalculator: () => calc,
       archiveStore,
+      getConfigRegistry: () => new ConfigRegistry(),
     };
 
     const mcp = createMcpServer(deps);

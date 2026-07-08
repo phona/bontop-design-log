@@ -9,6 +9,7 @@ import { RuleEngine } from '../../server/rule-engine.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
+import { ConfigRegistry } from '../../server/config-loader.js';
 
 const TEST_DATA_DIR = './tmp/test-data-api';
 
@@ -34,6 +35,7 @@ describe('REST API', () => {
         getRuleEngine: () => engine,
         getBudgetCalculator: () => calc,
         archiveStore,
+        getConfigRegistry: () => new ConfigRegistry(),
       })
     );
   });

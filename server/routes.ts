@@ -4,6 +4,7 @@ import type { DesignState } from './design-state.js';
 import type { RuleEngine } from './rule-engine.js';
 import type { BudgetCalculator } from './budget-calculator.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
+import type { ConfigRegistry } from './config-loader.js';
 
 export interface ApiDeps {
   catalog: ProjectCatalog;
@@ -11,11 +12,16 @@ export interface ApiDeps {
   getRuleEngine: () => RuleEngine;
   getBudgetCalculator: () => BudgetCalculator;
   archiveStore: ArchivedSchemesStore;
+  getConfigRegistry: () => ConfigRegistry;
 }
 
 export function createApiRouter(deps: ApiDeps): Router {
   const { catalog, state, getRuleEngine, getBudgetCalculator, archiveStore } = deps;
   const router = Router();
+
+  router.get('/config-status', (_req, res) => {
+    res.json({ configs: deps.getConfigRegistry().getStatuses() });
+  });
 
   router.get('/project', (_req, res) => {
     res.json({

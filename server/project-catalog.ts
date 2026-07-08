@@ -100,6 +100,16 @@ export class ProjectCatalog {
     return new ProjectCatalog(materials, budgetBase);
   }
 
+  static fromMaterials(
+    materials: MaterialsYaml,
+    budgetBase: {
+      total_budget: number;
+      categories: Record<string, Omit<BudgetCategory, 'key'>>;
+    }
+  ): ProjectCatalog {
+    return new ProjectCatalog(materials, budgetBase);
+  }
+
   getTopics(): CatalogTopic[] {
     return [...this.topics.values()];
   }
