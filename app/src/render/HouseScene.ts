@@ -10,7 +10,10 @@ const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
 
 interface ProjectData {
-  house: { rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string }> };
+  house: {
+    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string }>;
+    platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
+  };
   topics: Array<{ id: string; name: string; perRoom: boolean; options: unknown[] }>;
   budgetCategories: unknown[];
 }
@@ -117,6 +120,10 @@ export class HouseScene implements SceneApi {
         height: room.height,
       });
     }
+
+    if (projectData.house.platform) {
+      this.createPlatform(projectData.house.platform);
+    }
   }
 
   setSelection(topic: string, optionId: string): void {
@@ -219,6 +226,26 @@ export class HouseScene implements SceneApi {
 
     this.scene.add(group);
     this.rooms[r.id] = { ...r };
+  }
+
+  private createPlatform(p: ProjectData['house']['platform'] & { id: string; name: string }) {
+    const geo = new THREE.BoxGeometry(p.width, 0.15, p.depth);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(p.x, 0.075, p.z);
+    mesh.userData = { roomId: p.id, objectId: 'platform_boundary', type: 'platform' };
+    mesh.receiveShadow = true;
+    this.scene.add(mesh);
+
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(p.width + 0.1, 0.05, p.depth + 0.1),
+      new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.4 })
+    );
+    frame.position.set(p.x, 0.2, p.z);
+    frame.userData = { roomId: p.id, objectId: 'platform_boundary', type: 'platform' };
+    this.scene.add(frame);
+
+    this.rooms[p.id] = { ...p };
   }
 
   private addOpeningMarker(
