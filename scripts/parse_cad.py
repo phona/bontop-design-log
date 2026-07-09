@@ -109,6 +109,14 @@ def parse_area(text: str) -> float | None:
     return None
 
 
+def extract_leading_chinese_name(text: str) -> str:
+    """Extract the leading Chinese name from a label like '主卧^J面积18.16m²'."""
+    match = re.match(r"[\u4e00-\u9fff]+", text.strip())
+    if match:
+        return match.group(0)
+    return text.strip().splitlines()[0].strip()
+
+
 def extract_room_labels(modelspace) -> tuple[dict[str, tuple[str, float, float]], list[str]]:
     """Find room labels on SH-文字标注 and return id -> (name, x, z) plus skipped labels."""
     labels: dict[str, tuple[str, float, float]] = {}
@@ -133,7 +141,7 @@ def extract_room_labels(modelspace) -> tuple[dict[str, tuple[str, float, float]]
             labels[project_id] = (name, float(point.x), float(point.y))
             continue
         if contains_chinese(text):
-            first_line = text.strip().splitlines()[0].strip()
+            first_line = extract_leading_chinese_name(text)
             if first_line:
                 area = parse_area(text)
                 point = entity.dxf.insert
@@ -339,8 +347,16 @@ def merge_with_previous_layout(
     rooms: list[Room],
     platform: Platform | None,
     output_path: Path,
+    preserve_existing: bool = False,
 ) -> tuple[list[Room], Platform | None]:
-    """Keep unlabeled gift areas and platform from the previous YAML."""
+    """Keep unlabeled gift areas and platform from the previous YAML.
+
+    When ``preserve_existing`` is True, rooms whose IDs already exist in the
+    previous YAML keep the previous geometry and name instead of using the
+    newly extracted CAD geometry. This is useful when the CAD wall geometry is
+    too noisy to yield reliable room dimensions but the room labels are still
+    needed to identify rooms.
+    """
     if not output_path.exists():
         return rooms, platform
     try:
@@ -353,12 +369,34 @@ def merge_with_previous_layout(
         return rooms, platform
 
     new_ids = {r.id for r in rooms}
-    merged = list(rooms)
-    for prev_room in prev.get("rooms", []):
-        if prev_room.get("id") not in new_ids:
+    prev_by_id = {r.get("id"): r for r in prev.get("rooms", []) if r.get("id")}
+
+    merged: list[Room] = []
+    for r in rooms:
+        if preserve_existing and r.id in prev_by_id:
+            p = prev_by_id[r.id]
             merged.append(
                 Room(
-                    id=prev_room["id"],
+                    id=r.id,
+                    name=p["name"],
+                    x=p["x"],
+                    z=p["z"],
+                    width=p["width"],
+                    depth=p["depth"],
+                    height=p["height"],
+                    area=p.get("area"),
+                    perimeter=p.get("perimeter"),
+                )
+            )
+        else:
+            merged.append(r)
+
+    for prev_room in prev.get("rooms", []):
+        prev_id = prev_room.get("id")
+        if prev_id and prev_id not in new_ids:
+            merged.append(
+                Room(
+                    id=prev_id,
                     name=prev_room["name"],
                     x=prev_room["x"],
                     z=prev_room["z"],
@@ -404,6 +442,7 @@ def write_layout_yaml(
     platform: Platform | None,
     output_path: Path,
     skipped_labels: list[str] | None = None,
+    preserve_existing: bool = False,
 ) -> dict[str, Any]:
     """Write the layout YAML and return a report summary."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -415,7 +454,9 @@ def write_layout_yaml(
     else:
         diff_error = None
 
-    rooms, platform = merge_with_previous_layout(rooms, platform, output_path)
+    rooms, platform = merge_with_previous_layout(
+        rooms, platform, output_path, preserve_existing=preserve_existing
+    )
 
     data = {
         "version": "1.0",
@@ -484,7 +525,14 @@ def main() -> None:
     print(dxf_path)
     rooms, platforms, skipped = extract_rooms(dxf_path, default_height=args.height)
     platform = platforms[0] if platforms else None
-    report = write_layout_yaml(dxf_path, rooms, platform, args.output, skipped_labels=skipped)
+    report = write_layout_yaml(
+        dxf_path,
+        rooms,
+        platform,
+        args.output,
+        skipped_labels=skipped,
+        preserve_existing=True,
+    )
     args.report.parent.mkdir(parents=True, exist_ok=True)
     with open(args.report, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)

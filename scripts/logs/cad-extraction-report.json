@@ -1,23 +1,14 @@
 {
   "source": "cad/design/01_floor_plan/floor_plan_design_2026-07-05.dxf",
-  "rooms_found": 0,
+  "rooms_found": 11,
   "missing_project_id": 0,
   "skipped_labels": [
-    "主卧^J面积18.16m²^J周长18.39m",
-    "卫生间^J面积2.66m²^J周长6.79m",
-    "卫生间^J面积4.53m²^J周长8.39m",
-    "厨房^J面积6.09m²^J周长9.99m",
-    "墙体定位(1:50)",
+    "墙体定位",
     "墙体定位图",
-    "客餐厅^J面积35.2m²^J周长29.23m",
-    "平面布置(1:50)",
-    "平面布置图",
-    "次卧^J面积8.35m²^J周长11.84m",
-    "次卧^J面积8.39m²^J周长11.81m",
-    "次卧^J面积8.39m²^J周长11.85m",
-    "阳台^J面积2.42m²^J周长6.39m"
+    "平面布置",
+    "平面布置图"
   ],
   "geometry_warnings": 0,
-  "total_interior_area": 0,
+  "total_interior_area": 119.2,
   "diff": []
 }
