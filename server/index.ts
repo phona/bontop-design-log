@@ -9,7 +9,7 @@ import { RuleEngine } from './rule-engine.js';
 import { BudgetCalculator } from './budget-calculator.js';
 import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
-import type { DesignRulesConfig, MaterialsYaml } from '../shared/types.js';
+import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml } from '../shared/types.js';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DATA_DIR = process.env.DATA_DIR ?? './data';
@@ -27,7 +27,9 @@ let budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
 function rebuildDerived(): void {
   const materials = materialsLoader.getConfig() ?? { materials: [] };
   const budgetBase = budgetBaseLoader.getConfig() ?? { total_budget: 0, categories: {} };
-  catalog = ProjectCatalog.fromMaterials(materials, budgetBase);
+  const layout = layoutLoader.getConfig();
+  const houseMeta = houseMetaLoader.getConfig();
+  catalog = ProjectCatalog.fromMaterials(materials, budgetBase, layout, houseMeta);
   const rulesConfig = designRulesLoader.getConfig() ?? { version: '1.0', risks: [], constraints: [] };
   ruleEngine = new RuleEngine(rulesConfig);
   budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
@@ -63,9 +65,31 @@ const budgetBaseLoader = new ConfigLoader<{ total_budget: number; categories: Re
 );
 registry.register(budgetBaseLoader);
 
+const layoutLoader = new ConfigLoader<CadLayoutYaml>(
+  'config/layout/cad-extracted.yaml',
+  (raw) => load(raw) as CadLayoutYaml,
+  () => {
+    rebuildDerived();
+    console.log('[server] config/layout/cad-extracted.yaml reloaded');
+  }
+);
+registry.register(layoutLoader);
+
+const houseMetaLoader = new ConfigLoader<HouseYaml>(
+  'config/house.yaml',
+  (raw) => load(raw) as HouseYaml,
+  () => {
+    rebuildDerived();
+    console.log('[server] config/house.yaml reloaded');
+  }
+);
+registry.register(houseMetaLoader);
+
 designRulesLoader.load();
 materialsLoader.load();
 budgetBaseLoader.load();
+layoutLoader.load();
+houseMetaLoader.load();
 
 let state: DesignState;
 try {
@@ -98,6 +122,8 @@ attachMcpTransports(app, () => createMcpServer(apiDeps)).then(() => {
   designRulesLoader.startWatching();
   materialsLoader.startWatching();
   budgetBaseLoader.startWatching();
+  layoutLoader.startWatching();
+  houseMetaLoader.startWatching();
 
   const shutdown = async () => {
     await registry.stopAll();
