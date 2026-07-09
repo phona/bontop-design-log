@@ -60,9 +60,15 @@ def parse_room_label(text: str) -> tuple[str, str] | None:
     return match.group(2).strip(), match.group(1).strip()
 
 
-def extract_room_labels(modelspace) -> dict[str, tuple[str, float, float]]:
-    """Find room labels on SH-文字标注 and return id -> (name, x_mm, z_mm)."""
+def contains_chinese(text: str) -> bool:
+    """Return True if text contains any CJK unified ideographs."""
+    return bool(re.search(r"[\u4e00-\u9fff]", text))
+
+
+def extract_room_labels(modelspace) -> tuple[dict[str, tuple[str, float, float]], list[str]]:
+    """Find room labels on SH-文字标注 and return id -> (name, x, z) plus skipped labels."""
     labels: dict[str, tuple[str, float, float]] = {}
+    skipped: set[str] = set()
     for entity in modelspace:
         if entity.dxf.layer != "SH-文字标注":
             continue
@@ -74,12 +80,15 @@ def extract_room_labels(modelspace) -> dict[str, tuple[str, float, float]]:
         else:
             continue
         parsed = parse_room_label(text)
-        if not parsed:
-            continue
-        project_id, name = parsed
-        point = entity.dxf.insert
-        labels[project_id] = (name, float(point.x), float(point.y))
-    return labels
+        if parsed:
+            project_id, name = parsed
+            point = entity.dxf.insert
+            labels[project_id] = (name, float(point.x), float(point.y))
+        elif contains_chinese(text):
+            first_line = text.strip().splitlines()[0].strip()
+            if first_line:
+                skipped.add(first_line)
+    return labels, sorted(skipped)
 
 
 def collect_wall_segments(modelspace) -> list[tuple[tuple[float, float], tuple[float, float]]]:
@@ -162,27 +171,51 @@ def extract_room_geometry(
     return rooms
 
 
-def extract_rooms(dxf_path: Path, default_height: float = 3.0) -> tuple[list[Room], list[Platform]]:
+def extract_rooms(dxf_path: Path, default_height: float = 3.0) -> tuple[list[Room], list[Platform], list[str]]:
     """Extract rooms and platforms from the DXF."""
     doc = ezdxf.readfile(dxf_path)
     msp = doc.modelspace()
-    labels = extract_room_labels(msp)
+    labels, skipped = extract_room_labels(msp)
     rooms = extract_room_geometry(labels, msp, default_height=default_height)
-    return rooms, []
+    return rooms, [], skipped
 
 
-HOUSE_DATA_TS = Path("shared/houseData.ts")
+HOUSE_CONFIG = Path("config/house.yaml")
 
 
-def load_house_room_ids() -> set[str]:
-    """Load the set of valid room IDs from shared/houseData.ts."""
-    if not HOUSE_DATA_TS.exists():
-        return set()
-    text = HOUSE_DATA_TS.read_text(encoding="utf-8")
-    match = re.search(r"rooms:\s*RoomLayout\[\]\s*=\s*\[(.*?)\];", text, re.DOTALL)
-    if not match:
-        return set()
-    return set(re.findall(r"id:\s*['\"]([^'\"]+)['\"]", match.group(1)))
+def load_house_room_ids(config_path: Path | None = None) -> set[str]:
+    """Load the set of valid room IDs from config/house.yaml."""
+    path = config_path or HOUSE_CONFIG
+    if not path.exists():
+        raise FileNotFoundError(
+            f"House config not found: {path}. "
+            "Room IDs cannot be validated without the allowed room list."
+        )
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        raise ValueError(f"Failed to parse house config {path}: {exc}") from exc
+
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"Invalid house config in {path}: expected a mapping, got {type(data).__name__}."
+        )
+
+    ids: set[str] = set()
+    for room in data.get("rooms", []) or []:
+        if isinstance(room, dict) and "id" in room:
+            ids.add(room["id"])
+    for area in data.get("gift_areas", []) or []:
+        if isinstance(area, dict) and "id" in area:
+            ids.add(area["id"])
+
+    if not ids:
+        raise ValueError(
+            f"No valid room IDs found in {path}. Expected 'rooms[].id' or 'gift_areas[].id' entries."
+        )
+
+    return ids
 
 
 def _format_diff_value(value: Any) -> str:
@@ -239,8 +272,8 @@ def load_previous_rooms(path: Path) -> list[dict] | None:
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
         return data.get("rooms", []) if data else []
-    except Exception:
-        return []
+    except Exception as exc:
+        raise RuntimeError("previous YAML corrupted, cannot diff") from exc
 
 
 def write_layout_yaml(
@@ -248,10 +281,17 @@ def write_layout_yaml(
     rooms: list[Room],
     platform: Platform | None,
     output_path: Path,
+    skipped_labels: list[str] | None = None,
 ) -> dict[str, Any]:
     """Write the layout YAML and return a report summary."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    prev_rooms = load_previous_rooms(output_path)
+    try:
+        prev_rooms = load_previous_rooms(output_path)
+    except RuntimeError as exc:
+        prev_rooms = None
+        diff_error = str(exc)
+    else:
+        diff_error = None
     data = {
         "version": "1.0",
         "source": str(dxf_path),
@@ -298,9 +338,10 @@ def write_layout_yaml(
         "source": str(dxf_path),
         "rooms_found": len(rooms),
         "missing_project_id": missing_project_id,
+        "skipped_labels": skipped_labels or [],
         "geometry_warnings": 0,
         "total_interior_area": total_area,
-        "diff": diff_rooms(prev_rooms, rooms),
+        "diff": diff_rooms(prev_rooms, rooms) if diff_error is None else diff_error,
     }
     return report
 
@@ -316,9 +357,9 @@ def main() -> None:
     dxf_path = latest_dxf(args.cad_dir)
     print(f"CAD extraction report")
     print(dxf_path)
-    rooms, platforms = extract_rooms(dxf_path, default_height=args.height)
+    rooms, platforms, skipped = extract_rooms(dxf_path, default_height=args.height)
     platform = platforms[0] if platforms else None
-    report = write_layout_yaml(dxf_path, rooms, platform, args.output)
+    report = write_layout_yaml(dxf_path, rooms, platform, args.output, skipped_labels=skipped)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     with open(args.report, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)

@@ -5,7 +5,16 @@ from pathlib import Path
 import pytest
 import yaml
 
-from parse_cad import extract_room_labels, extract_room_geometry, latest_dxf, parse_room_label
+from parse_cad import (
+    extract_room_labels,
+    extract_room_geometry,
+    latest_dxf,
+    load_house_room_ids,
+    parse_room_label,
+    write_layout_yaml,
+    Room,
+    Platform,
+)
 
 
 def test_latest_dxf_returns_most_recent_file():
@@ -49,9 +58,11 @@ def test_extract_room_labels_from_dxf():
     doc.layers.add("SH-文字标注")
     msp.add_text("主卧[master_bedroom]", dxfattribs={"layer": "SH-文字标注", "insert": (1000, 2000, 0)})
     msp.add_text("次卧[bedroom_nw]", dxfattribs={"layer": "SH-文字标注", "insert": (-500, 1000, 0)})
-    labels = extract_room_labels(msp)
+    msp.add_text("衣帽间", dxfattribs={"layer": "SH-文字标注", "insert": (0, 0, 0)})
+    labels, skipped = extract_room_labels(msp)
     assert labels["master_bedroom"] == ("主卧", 1000.0, 2000.0)
     assert labels["bedroom_nw"] == ("次卧", -500.0, 1000.0)
+    assert "衣帽间" in skipped
 
 
 def test_extract_room_geometry():
@@ -77,8 +88,6 @@ def test_extract_room_geometry():
 
 
 def test_write_layout_yaml(tmp_path: Path):
-    from parse_cad import Room, Platform, write_layout_yaml
-
     out = tmp_path / "cad-extracted.yaml"
     rooms = [
         Room(
@@ -112,8 +121,6 @@ def test_write_layout_yaml(tmp_path: Path):
 
 
 def test_write_layout_yaml_no_previous_diff(tmp_path: Path):
-    from parse_cad import Room, write_layout_yaml
-
     out = tmp_path / "cad-extracted.yaml"
     rooms = [
         Room(
@@ -133,8 +140,6 @@ def test_write_layout_yaml_no_previous_diff(tmp_path: Path):
 
 
 def test_write_layout_yaml_diff_changes(tmp_path: Path):
-    from parse_cad import Room, write_layout_yaml
-
     out = tmp_path / "cad-extracted.yaml"
     previous = {
         "version": "1.0",
@@ -171,4 +176,73 @@ def test_write_layout_yaml_diff_changes(tmp_path: Path):
     assert report["diff"] == [
         "master_bedroom: x -5.30 → -5.35, width 4.45 → 4.50, area 18.02 → 18.16"
     ]
+
+
+def test_load_house_room_ids_from_config():
+    ids = load_house_room_ids()
+    assert "master_bedroom" in ids
+    assert "bedroom_nw" in ids
+    assert "entry_garden" in ids
+    assert "south_balcony" in ids
+    assert "equipment_platform_w" in ids
+
+
+def test_load_house_room_ids_missing_config(tmp_path: Path):
+    missing = tmp_path / "missing.yaml"
+    with pytest.raises(FileNotFoundError, match="House config not found"):
+        load_house_room_ids(missing)
+
+
+def test_load_house_room_ids_malformed_config(tmp_path: Path):
+    malformed = tmp_path / "malformed.yaml"
+    malformed.write_text("rooms: [not a mapping", encoding="utf-8")
+    with pytest.raises(ValueError, match="Failed to parse house config"):
+        load_house_room_ids(malformed)
+
+
+def test_load_house_room_ids_empty_config(tmp_path: Path):
+    empty = tmp_path / "empty.yaml"
+    empty.write_text("rooms: []\ngift_areas: []\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="No valid room IDs found"):
+        load_house_room_ids(empty)
+
+
+def test_write_layout_yaml_corrupted_previous(tmp_path: Path):
+    out = tmp_path / "cad-extracted.yaml"
+    out.write_text("not valid yaml: [", encoding="utf-8")
+    rooms = [
+        Room(
+            id="master_bedroom",
+            name="主卧",
+            x=-5.35,
+            z=2.0,
+            width=4.5,
+            depth=4.05,
+            height=3.0,
+            area=18.16,
+            perimeter=18.39,
+        )
+    ]
+    report = write_layout_yaml(tmp_path / "source.dxf", rooms, None, out)
+    assert report["diff"] == "previous YAML corrupted, cannot diff"
+
+
+def test_write_layout_yaml_reports_skipped_labels(tmp_path: Path):
+    out = tmp_path / "cad-extracted.yaml"
+    rooms = [
+        Room(
+            id="master_bedroom",
+            name="主卧",
+            x=-5.35,
+            z=2.0,
+            width=4.5,
+            depth=4.05,
+            height=3.0,
+            area=18.16,
+            perimeter=18.39,
+        )
+    ]
+    skipped = ["衣帽间", "杂物间"]
+    report = write_layout_yaml(tmp_path / "source.dxf", rooms, None, out, skipped_labels=skipped)
+    assert report["skipped_labels"] == skipped
 
