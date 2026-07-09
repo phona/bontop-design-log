@@ -1,9 +1,15 @@
 version: "1.0"
 
 objectMapping:
-  - pattern: "room:*"
-    topics: [floor, wall, paint]
+  - pattern: "floor:*"
+    topics: [floor]
+  - pattern: "wall:*"
+    topics: [wall, paint]
+  - pattern: "ceiling:*"
+    topics: [paint]
   - pattern: "hvac:*"
+    topics: [hvac]
+  - pattern: "platform_boundary"
     topics: [hvac]
 
 budget:
