@@ -150,9 +150,16 @@ export interface MaterialsYaml {
   materials: MaterialItem[];
 }
 
+export interface HouseRoom {
+  id: string;
+  name?: string;
+  type?: 'public' | 'private' | 'service';
+  [key: string]: unknown;
+}
+
 export interface HouseYaml {
   project: Record<string, unknown>;
-  rooms: Array<Record<string, unknown>>;
+  rooms: Array<HouseRoom>;
   gift_areas: Array<Record<string, unknown>>;
   mechanical_electrical_plumbing: Record<string, unknown>;
   constraints: Record<string, unknown>;

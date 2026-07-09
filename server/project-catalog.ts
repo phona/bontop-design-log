@@ -6,6 +6,10 @@ import type {
   DesignOption,
   CatalogTopic,
   MaterialItem,
+  CadLayoutYaml,
+  HouseYaml,
+  LayoutRoom,
+  PlatformLayout,
 } from '../shared/types.js';
 import { hvacSchemes, rooms, platform } from '../shared/houseData.js';
 
@@ -38,6 +42,32 @@ function materialToOption(m: MaterialItem): DesignOption | null {
   };
 }
 
+function mergeRoom(layoutRoom: LayoutRoom, meta?: HouseYaml['rooms'][number]): RoomLayout {
+  return {
+    id: layoutRoom.id,
+    name: meta?.name ?? layoutRoom.name,
+    x: layoutRoom.x,
+    z: layoutRoom.z,
+    width: layoutRoom.width,
+    depth: layoutRoom.depth,
+    height: layoutRoom.height,
+    type: meta?.type ?? 'public',
+  };
+}
+
+function mergePlatform(layoutPlatform: PlatformLayout): RoomLayout {
+  return {
+    id: layoutPlatform.id,
+    name: layoutPlatform.name,
+    x: layoutPlatform.x,
+    z: layoutPlatform.z,
+    width: layoutPlatform.width,
+    depth: layoutPlatform.depth,
+    height: layoutPlatform.height,
+    type: 'service',
+  };
+}
+
 export class ProjectCatalog {
   private topics = new Map<string, CatalogTopic>();
   private rooms = new Map<string, RoomLayout>();
@@ -48,7 +78,9 @@ export class ProjectCatalog {
     budgetBase: {
       total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
-    }
+    },
+    layout?: CadLayoutYaml,
+    houseMeta?: HouseYaml
   ) {
     for (const m of materials.materials) {
       const opt = materialToOption(m);
@@ -82,8 +114,19 @@ export class ProjectCatalog {
       })),
     });
 
-    for (const r of rooms) this.rooms.set(r.id, r);
-    this.rooms.set(platform.id, platform);
+    if (layout) {
+      const metaMap = new Map(houseMeta?.rooms?.map((r) => [r.id, r]) ?? []);
+      for (const r of layout.rooms) {
+        this.rooms.set(r.id, mergeRoom(r, metaMap.get(r.id)));
+      }
+      if (layout.platform) {
+        this.rooms.set(layout.platform.id, mergePlatform(layout.platform));
+      }
+    } else {
+      // Fallback to legacy hardcoded data until full migration is complete
+      for (const r of rooms) this.rooms.set(r.id, r);
+      this.rooms.set(platform.id, platform);
+    }
 
     this.budgetCategories = Object.entries(budgetBase.categories).map(([key, c]) => ({
       key,
@@ -97,7 +140,9 @@ export class ProjectCatalog {
       total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     };
-    return new ProjectCatalog(materials, budgetBase);
+    const layout = load(readFileSync(`${configDir}/config/layout/cad-extracted.yaml`, 'utf8')) as CadLayoutYaml;
+    const houseMeta = load(readFileSync(`${configDir}/config/house.yaml`, 'utf8')) as HouseYaml;
+    return new ProjectCatalog(materials, budgetBase, layout, houseMeta);
   }
 
   static fromMaterials(
@@ -105,9 +150,11 @@ export class ProjectCatalog {
     budgetBase: {
       total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
-    }
+    },
+    layout?: CadLayoutYaml,
+    houseMeta?: HouseYaml
   ): ProjectCatalog {
-    return new ProjectCatalog(materials, budgetBase);
+    return new ProjectCatalog(materials, budgetBase, layout, houseMeta);
   }
 
   getTopics(): CatalogTopic[] {
