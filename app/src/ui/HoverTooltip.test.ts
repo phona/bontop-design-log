@@ -22,25 +22,25 @@ describe('HoverTooltip', () => {
   });
 
   it('shows tooltip with object name', () => {
-    tooltip.update({ objectId: 'room_a', name: '客餐厅', type: 'room', room: 'living_dining' });
+    tooltip.update({ objectId: 'floor:room_a', name: '客餐厅', type: 'floor', room: 'living_dining' });
     expect(el.style.display).toBe('block');
     expect(el.textContent).toBe('客餐厅');
   });
 
   it('hides tooltip when target is null', () => {
-    tooltip.update({ objectId: 'room_a', name: '客餐厅', type: 'room' });
+    tooltip.update({ objectId: 'floor:room_a', name: '客餐厅', type: 'floor' });
     tooltip.update(null);
     expect(el.style.display).toBe('none');
   });
 
   it('does not update if same objectId', () => {
-    tooltip.update({ objectId: 'room_a', name: '客餐厅', type: 'room' });
-    tooltip.update({ objectId: 'room_a', name: 'Different', type: 'room' });
+    tooltip.update({ objectId: 'floor:room_a', name: '客餐厅', type: 'floor' });
+    tooltip.update({ objectId: 'floor:room_a', name: 'Different', type: 'floor' });
     expect(el.textContent).toBe('客餐厅');
   });
 
   it('clear resets state', () => {
-    tooltip.update({ objectId: 'room_a', name: '客餐厅', type: 'room' });
+    tooltip.update({ objectId: 'floor:room_a', name: '客餐厅', type: 'floor' });
     tooltip.clear();
     expect(tooltip.getCurrent()).toBeNull();
   });

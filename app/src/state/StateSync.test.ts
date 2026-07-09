@@ -176,12 +176,12 @@ describe('StateSync', () => {
   it('should call postViewContext with correct payload', async () => {
     const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true } as Response);
 
-    await stateSync.postViewContext('room:master_bedroom');
+    await stateSync.postViewContext('wall:master_bedroom:north');
 
     expect(fetchMock).toHaveBeenCalledWith('/api/view-context', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ objectId: 'room:master_bedroom' }),
+      body: JSON.stringify({ objectId: 'wall:master_bedroom:north' }),
     });
   });
 

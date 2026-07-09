@@ -89,7 +89,7 @@ describe('InfoPanel', () => {
     panel.setTopics(mockTopics);
     panel.setScheme(mockScheme);
 
-    panel.showObject({ objectId: 'room:living_dining', name: '客餐厅', type: 'room', room: 'living_dining' });
+    panel.showObject({ objectId: 'floor:living_dining', name: '客餐厅', type: 'floor', room: 'living_dining' });
     expect(elements.infoPanel.style.display).toBe('block');
 
     panel.hide();
@@ -101,10 +101,10 @@ describe('InfoPanel', () => {
     panel.setTopics(mockTopics);
     panel.setScheme(mockScheme);
 
-    panel.showObject({ objectId: 'room:living_dining', name: '客餐厅', type: 'room', room: 'living_dining' });
+    panel.showObject({ objectId: 'floor:living_dining', name: '客餐厅', type: 'floor', room: 'living_dining' });
 
     expect(elements.title.textContent).toBe('客餐厅');
-    expect(elements.type.textContent).toBe('room');
+    expect(elements.type.textContent).toBe('floor');
   });
 
   it('calls onSelectOption with room scope', () => {
@@ -113,7 +113,7 @@ describe('InfoPanel', () => {
     panel.setTopics(mockTopics);
     panel.setScheme(mockScheme);
 
-    panel.showObject({ objectId: 'room:living_dining', name: '客餐厅', type: 'room', room: 'living_dining' });
+    panel.showObject({ objectId: 'floor:living_dining', name: '客餐厅', type: 'floor', room: 'living_dining' });
 
     expect(onSelect).not.toHaveBeenCalled();
   });

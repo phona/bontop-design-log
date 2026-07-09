@@ -368,9 +368,11 @@ def merge_with_previous_layout(
 ) -> tuple[list[Room], Platform | None]:
     """Keep unlabeled gift areas and platform from the previous YAML.
 
-    Rooms that were successfully extracted from CAD take precedence. Only
-    rooms whose IDs do not appear in the newly extracted list are carried
-    over from the previous layout.
+    IDs extracted from CAD take precedence for identification: a room ID
+    present in the new CAD output is included in the merged result, and
+    only IDs not present in the new output are carried over from the
+    previous layout. For rooms that match by ID, the previous YAML's
+    geometry is preserved while the CAD name is kept.
     """
     if not output_path.exists():
         return rooms, platform
