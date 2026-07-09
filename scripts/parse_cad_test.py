@@ -261,4 +261,47 @@ def test_write_layout_yaml_reports_skipped_labels(tmp_path: Path):
     assert report["skipped_labels"] == skipped
 
 
+def test_merge_keeps_unlabeled_rooms(tmp_path: Path):
+    from parse_cad import Room, merge_with_previous_layout, write_layout_yaml
+
+    output = tmp_path / "layout.yaml"
+    prev = {
+        "version": "1.0",
+        "source": "old.dxf",
+        "unit": "m",
+        "scale": 0.001,
+        "origin": {"x": 0, "z": 0},
+        "export_date": "2026-07-09",
+        "rooms": [
+            {
+                "id": "entry_garden",
+                "name": "入户花园",
+                "x": 0,
+                "z": -8.8,
+                "width": 6.7,
+                "depth": 1.65,
+                "height": 3.0,
+                "area": 11.06,
+                "perimeter": 16.7,
+            }
+        ],
+        "platform": {
+            "id": "west_platform",
+            "name": "西设备平台",
+            "x": -8.5,
+            "z": 2.0,
+            "width": 1.6,
+            "depth": 1.55,
+            "height": 3.0,
+            "area": 2.48,
+        },
+    }
+    output.write_text(yaml.dump(prev), encoding="utf-8")
+
+    rooms = [Room(id="master_bedroom", name="主卧", x=0, z=0, width=1, depth=1, height=3, area=1, perimeter=4)]
+    merged_rooms, platform = merge_with_previous_layout(rooms, None, output)
+    assert len(merged_rooms) == 2
+    assert any(r.id == "entry_garden" for r in merged_rooms)
+    assert platform is not None
+    assert platform.id == "west_platform"
 

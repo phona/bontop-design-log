@@ -335,6 +335,57 @@ def diff_rooms(prev_rooms: list[dict] | None, rooms: list[Room]) -> Any:
     return changes
 
 
+def merge_with_previous_layout(
+    rooms: list[Room],
+    platform: Platform | None,
+    output_path: Path,
+) -> tuple[list[Room], Platform | None]:
+    """Keep unlabeled gift areas and platform from the previous YAML."""
+    if not output_path.exists():
+        return rooms, platform
+    try:
+        with open(output_path, "r", encoding="utf-8") as f:
+            prev = yaml.safe_load(f)
+    except Exception:
+        return rooms, platform
+
+    if not prev:
+        return rooms, platform
+
+    new_ids = {r.id for r in rooms}
+    merged = list(rooms)
+    for prev_room in prev.get("rooms", []):
+        if prev_room.get("id") not in new_ids:
+            merged.append(
+                Room(
+                    id=prev_room["id"],
+                    name=prev_room["name"],
+                    x=prev_room["x"],
+                    z=prev_room["z"],
+                    width=prev_room["width"],
+                    depth=prev_room["depth"],
+                    height=prev_room["height"],
+                    area=prev_room.get("area"),
+                    perimeter=prev_room.get("perimeter"),
+                )
+            )
+
+    if platform is None and prev.get("platform"):
+        p = prev["platform"]
+        platform = Platform(
+            id=p["id"],
+            name=p["name"],
+            x=p["x"],
+            z=p["z"],
+            width=p["width"],
+            depth=p["depth"],
+            height=p["height"],
+            area=p.get("area"),
+        )
+
+    return merged, platform
+
+
 def load_previous_rooms(path: Path) -> list[dict] | None:
     """Load the rooms list from a previous YAML output, if it exists."""
     if not path.exists():
@@ -363,6 +414,9 @@ def write_layout_yaml(
         diff_error = str(exc)
     else:
         diff_error = None
+
+    rooms, platform = merge_with_previous_layout(rooms, platform, output_path)
+
     data = {
         "version": "1.0",
         "source": str(dxf_path),
