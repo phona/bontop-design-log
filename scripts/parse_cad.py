@@ -60,15 +60,62 @@ def parse_room_label(text: str) -> tuple[str, str] | None:
     return match.group(2).strip(), match.group(1).strip()
 
 
+def chinese_name_to_id(
+    name: str,
+    area: float | None,
+    x: float,
+    y: float,
+    master_bedroom_pos: tuple[float, float] | None = None,
+) -> str | None:
+    """Map Chinese room names to project IDs."""
+    name = name.strip().replace(" ", "")
+    if name == "主卧":
+        return "master_bedroom"
+    if name == "客餐厅":
+        return "living_dining"
+    if name == "厨房":
+        return "kitchen"
+    if name == "阳台":
+        return "balcony"
+    if name == "卫生间":
+        if area is None:
+            return None
+        # Larger area near master is master_bath; smaller is guest_bath
+        return "master_bath" if area >= 3.5 else "guest_bath"
+    if name == "次卧":
+        if area is None:
+            return None
+        if abs(area - 8.35) < 0.04:
+            return "study"
+        # Two 8.39 bedrooms: northwest vs southeast relative to master bedroom
+        if master_bedroom_pos and area >= 8.38:
+            mx, my = master_bedroom_pos
+            if x < mx and y > my:
+                return "bedroom_nw"
+            return "bedroom_se"
+        return None
+    return None
+
+
 def contains_chinese(text: str) -> bool:
     """Return True if text contains any CJK unified ideographs."""
     return bool(re.search(r"[\u4e00-\u9fff]", text))
+
+
+def parse_area(text: str) -> float | None:
+    match = re.search(r"面积(\d+\.?\d*)m²", text)
+    if match:
+        return float(match.group(1))
+    return None
 
 
 def extract_room_labels(modelspace) -> tuple[dict[str, tuple[str, float, float]], list[str]]:
     """Find room labels on SH-文字标注 and return id -> (name, x, z) plus skipped labels."""
     labels: dict[str, tuple[str, float, float]] = {}
     skipped: set[str] = set()
+
+    # First pass: collect all Chinese labels with their positions and areas
+    candidates: list[tuple[str, float, float, float | None]] = []
     for entity in modelspace:
         if entity.dxf.layer != "SH-文字标注":
             continue
@@ -84,10 +131,34 @@ def extract_room_labels(modelspace) -> tuple[dict[str, tuple[str, float, float]]
             project_id, name = parsed
             point = entity.dxf.insert
             labels[project_id] = (name, float(point.x), float(point.y))
-        elif contains_chinese(text):
+            continue
+        if contains_chinese(text):
             first_line = text.strip().splitlines()[0].strip()
             if first_line:
-                skipped.add(first_line)
+                area = parse_area(text)
+                point = entity.dxf.insert
+                candidates.append((first_line, float(point.x), float(point.y), area))
+
+    # Find master bedroom position for disambiguation
+    master_pos = None
+    for name, x, y, area in candidates:
+        if name == "主卧":
+            master_pos = (x, y)
+            break
+    if master_pos is None:
+        for project_id, (name, x, y) in labels.items():
+            if project_id == "master_bedroom":
+                master_pos = (x, y)
+                break
+
+    # Map Chinese names to IDs
+    for name, x, y, area in candidates:
+        project_id = chinese_name_to_id(name, area, x, y, master_pos)
+        if project_id:
+            labels[project_id] = (name, x, y)
+        else:
+            skipped.add(name)
+
     return labels, sorted(skipped)
 
 

@@ -227,6 +227,20 @@ def test_write_layout_yaml_corrupted_previous(tmp_path: Path):
     assert report["diff"] == "previous YAML corrupted, cannot diff"
 
 
+def test_chinese_name_mapping():
+    from parse_cad import chinese_name_to_id
+    assert chinese_name_to_id("主卧", 18.16, 0, 0) == "master_bedroom"
+    assert chinese_name_to_id("客餐厅", 35.2, 0, 0) == "living_dining"
+    assert chinese_name_to_id("厨房", 6.09, 0, 0) == "kitchen"
+    assert chinese_name_to_id("阳台", 2.42, 0, 0) == "balcony"
+    assert chinese_name_to_id("卫生间", 4.53, 0, 0) == "master_bath"
+    assert chinese_name_to_id("卫生间", 2.66, 0, 0) == "guest_bath"
+    assert chinese_name_to_id("次卧", 8.35, 0, 0) == "study"
+    assert chinese_name_to_id("次卧", 8.39, -1, 1, (0, 0)) == "bedroom_nw"
+    assert chinese_name_to_id("次卧", 8.39, 1, -1, (0, 0)) == "bedroom_se"
+    assert chinese_name_to_id("走廊", 10.0, 0, 0) is None
+
+
 def test_write_layout_yaml_reports_skipped_labels(tmp_path: Path):
     out = tmp_path / "cad-extracted.yaml"
     rooms = [
@@ -245,4 +259,6 @@ def test_write_layout_yaml_reports_skipped_labels(tmp_path: Path):
     skipped = ["衣帽间", "杂物间"]
     report = write_layout_yaml(tmp_path / "source.dxf", rooms, None, out, skipped_labels=skipped)
     assert report["skipped_labels"] == skipped
+
+
 
