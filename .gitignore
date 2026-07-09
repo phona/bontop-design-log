@@ -60,3 +60,6 @@ desktop.ini
 
 # OpenCode internal run state
 .omo/
+
+# Test-generated runtime data
+tmp/
