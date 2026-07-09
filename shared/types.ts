@@ -306,3 +306,37 @@ export interface DesignRulesConfig {
     require: { topic: string; minValue?: { field: string; value: number } };
   }>;
 }
+
+export interface LayoutRoom {
+  id: string;
+  name: string;
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+  height: number;
+  area?: number;
+  perimeter?: number;
+}
+
+export interface PlatformLayout {
+  id: string;
+  name: string;
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+  height: number;
+  area?: number;
+}
+
+export interface CadLayoutYaml {
+  version: string;
+  source: string;
+  unit: string;
+  scale: number;
+  origin: { x: number; z: number };
+  export_date: string;
+  rooms: LayoutRoom[];
+  platform?: PlatformLayout;
+}
