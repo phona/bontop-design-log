@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from parse_cad import extract_room_labels, latest_dxf, parse_room_label
+from parse_cad import extract_room_labels, extract_room_geometry, latest_dxf, parse_room_label
 
 
 def test_latest_dxf_returns_most_recent_file():
@@ -51,3 +51,26 @@ def test_extract_room_labels_from_dxf():
     labels = extract_room_labels(msp)
     assert labels["master_bedroom"] == ("主卧", 1000.0, 2000.0)
     assert labels["bedroom_nw"] == ("次卧", -500.0, 1000.0)
+
+
+def test_extract_room_geometry():
+    from ezdxf.document import Drawing
+    from parse_cad import extract_room_geometry
+
+    doc = Drawing.new("R2018")
+    msp = doc.modelspace()
+    doc.layers.add("SH-文字标注")
+    doc.layers.add("BS-非承重墙")
+    msp.add_text("主卧[master_bedroom]", dxfattribs={"layer": "SH-文字标注", "insert": (4500, 2000, 0)})
+    msp.add_line((2000, 0), (7000, 0), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((7000, 0), (7000, 4000), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((7000, 4000), (2000, 4000), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((2000, 4000), (2000, 0), dxfattribs={"layer": "BS-非承重墙"})
+    labels = {"master_bedroom": ("主卧", 4500.0, 2000.0)}
+    rooms = extract_room_geometry(labels, msp)
+    assert len(rooms) == 1
+    r = rooms[0]
+    assert r.id == "master_bedroom"
+    assert r.width == 5.0
+    assert r.depth == 4.0
+
