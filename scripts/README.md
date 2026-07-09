@@ -18,14 +18,16 @@
 
 ## `parse_cad.py`
 
-Extracts the 2D/3D house layout from `cad/design/01_floor_plan/floor_plan_design_*.dxf` and writes it to `config/layout/cad-extracted.yaml`.
+Extracts the 2D/3D house layout from `cad/design/01_floor_plan/floor_plan_design_*.dxf`.
+
+The parser reads the Chinese room labels on layer `SH-文字标注` (e.g., `主卧`, `次卧`) and maps them to project IDs. It preserves unlabeled gift areas (e.g., `入户花园`, `南向大阳台`) from the previous `config/layout/cad-extracted.yaml`.
 
 ```bash
 python -m pip install -r requirements.txt
 python scripts/parse_cad.py
 ```
 
-Requires the CAD file to follow the conventions documented in `docs/superpowers/specs/2026-07-09-cad-driven-3d-layout-design.md`.
+Output: `config/layout/cad-extracted.yaml` and `scripts/logs/cad-extraction-report.json`.
 
 ## 运行环境
 

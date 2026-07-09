@@ -63,36 +63,29 @@ The designer must follow the conventions below for the extraction script to run 
 | `SH-尺寸标注` | Dimension lines and numeric labels | `DIMENSION` / `TEXT` (optional) |
 | `0` / other | Construction helpers | Ignored |
 
-Room label text must follow the format:
-
-```text
-<Chinese name>[<project-id>]
-面积<area>m²
-周长<perimeter>m
-```
+Room labels are written on layer `SH-文字标注` in Chinese. The parser reads the Chinese room name (e.g., `主卧`, `客餐厅`, `厨房`) and maps it to a project ID. It also extracts the optional `面积` and `周长` annotations when they are present.
 
 For example:
 
 ```text
-主卧[master_bedroom]
+主卧
 面积18.16m²
 周长18.39m
 ```
 
-Allowed `project-id` values are taken from the current `shared/houseData.ts` IDs so that existing HVAC mapping and rules continue to work:
+The parser recognizes the following Chinese names and maps them to project IDs:
 
-- `living_dining`
-- `master_bedroom`
-- `bedroom_nw` (north-west bedroom)
-- `bedroom_se` (south-east bedroom)
-- `study`
-- `kitchen`
-- `master_bath`
-- `guest_bath`
-- `balcony`
-- `entry_garden`
-- `south_balcony`
-- `west_platform`
+- `主卧` → `master_bedroom`
+- `客餐厅` → `living_dining`
+- `厨房` → `kitchen`
+- `阳台` → `balcony`
+- `卫生间` → `master_bath` or `guest_bath` (disambiguated by area and proximity to the `主卧` label)
+- `次卧` → `bedroom_nw`, `bedroom_se`, or `study` (disambiguated by area and position relative to the `主卧` label)
+- `入户花园` → `entry_garden`
+- `南向大阳台` → `south_balcony`
+- `西设备平台` / `西侧平台` → `west_platform`
+
+Ambiguous names, such as multiple `次卧` labels or two `卫生间`, are disambiguated by their area and position relative to the `主卧` label. The parser still accepts the legacy `[project-id]` annotation for backward compatibility, but designers should not rely on it.
 
 Each room must be enclosed by a closed wall polyline or a set of connected `LINE` segments. A room is defined as the rectangular bounding box of its inner wall surface. The first version of the parser supports only rectangular rooms; non-rectangular rooms produce a warning and must be corrected in CAD or manually added to the YAML.
 
