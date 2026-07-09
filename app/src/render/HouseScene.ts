@@ -372,6 +372,24 @@ export class HouseScene implements SceneApi {
     this.controls.enabled = mode === 'orbit';
   }
 
+  private objectDisplayName(objectId: string, type: string, roomId?: string): string {
+    const room = roomId ? this.rooms[roomId] : undefined;
+    const roomName = room?.name ?? '';
+    const typeLabel: Record<string, string> = {
+      floor: '地面',
+      wall: '墙面',
+      ceiling: '顶面',
+      door: '门',
+      window: '窗',
+      hvac_indoor: '空调内机',
+      hvac_outdoor: '空调外机',
+      platform: '平台',
+    };
+    const label = typeLabel[type] ?? type;
+    if (roomName) return `${roomName}${label}`;
+    return objectId;
+  }
+
   raycastFromScreenCenter(options?: { hoverableOnly?: boolean }): HoverTarget | null {
     const { hoverableOnly = false } = options ?? {};
     this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
@@ -384,7 +402,7 @@ export class HouseScene implements SceneApi {
         const type = (data.type as string) ?? (data.part as string) ?? 'room';
         const room = data.roomId as string | undefined;
         const roomObj = room ? this.rooms[room] : undefined;
-        const name = roomObj?.name ?? id;
+        const name = this.objectDisplayName(id, type, room);
         return { objectId: id, name, type, room };
       }
     }

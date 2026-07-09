@@ -299,6 +299,48 @@ describe('HouseScene', () => {
     }
   });
 
+  it('shows object-first hover name for floor', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    const projectData = {
+      house: {
+        rooms: [
+          { id: 'master_bedroom', name: '主卧', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+    await scene.buildFromCatalog(projectData);
+
+    const mockedThree = await import('three');
+    const originalRaycaster = mockedThree.Raycaster;
+    const originalSceneRaycaster = (scene as any).raycaster;
+    (mockedThree as any).Raycaster = class {
+      setFromCamera() {}
+      intersectObjects() {
+        return [
+          { object: { userData: { objectId: 'floor:master_bedroom', type: 'floor', roomId: 'master_bedroom' } } },
+        ];
+      }
+    };
+    (scene as any).raycaster = new (mockedThree as any).Raycaster();
+
+    try {
+      const result = scene.raycastFromScreenCenter();
+      expect(result?.name).toBe('主卧地面');
+      expect(result?.objectId).toBe('floor:master_bedroom');
+      expect(result?.type).toBe('floor');
+    } finally {
+      (mockedThree as any).Raycaster = originalRaycaster;
+      (scene as any).raycaster = originalSceneRaycaster;
+    }
+  });
+
   it('tags floor meshes with floor objectId', async () => {
     const canvas = {
       addEventListener: vi.fn(),
