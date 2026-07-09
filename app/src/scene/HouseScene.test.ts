@@ -165,6 +165,35 @@ describe('HouseScene', () => {
     expect(wallCount).toBe(4);
   });
 
+  it('should render platform from catalog', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    const projectData = {
+      house: {
+        rooms: [
+          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' },
+        ],
+        platform: { id: 'west_platform', name: 'West Platform', x: -3, z: 0, width: 2, depth: 1.5, height: 3 },
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+
+    await scene.buildFromCatalog(projectData);
+    expect(scene.rooms['west_platform']).toBeDefined();
+    expect(scene.rooms['west_platform'].name).toBe('West Platform');
+
+    let platformCount = 0;
+    scene.getScene().traverse((obj: any) => {
+      if (obj.userData?.type === 'platform') platformCount++;
+    });
+    expect(platformCount).toBe(2); // mesh + frame
+  });
+
   it('should register object click callback', () => {
     const canvas = {
       addEventListener: vi.fn(),
