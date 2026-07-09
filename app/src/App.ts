@@ -140,9 +140,9 @@ export class App {
       }
     });
 
-    this.houseScene.setOnObjectClick((objectId, type, room) => {
-      this.infoPanel.showObject({ objectId, name: room ? this.houseScene.getRoom(room)?.name ?? objectId : objectId, type, room });
-      this.stateSync.postViewContext(objectId);
+    this.houseScene.setOnObjectClick((target) => {
+      this.infoPanel.showObject(target);
+      this.stateSync.postViewContext(target.objectId);
     });
   }
 

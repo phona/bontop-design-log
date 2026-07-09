@@ -1,21 +1,36 @@
-// @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OfflineIndicator } from './OfflineIndicator';
+
+function createMockElement(tag: string) {
+  return {
+    tagName: tag,
+    id: '',
+    style: { display: '' },
+    innerHTML: '',
+    textContent: '',
+    appendChild: vi.fn(),
+    removeChild: vi.fn(),
+  } as unknown as HTMLElement;
+}
 
 describe('OfflineIndicator', () => {
   let indicator: OfflineIndicator;
   let container: HTMLElement;
 
   beforeEach(() => {
-    document.body.innerHTML = '';
-    container = document.createElement('div');
+    container = createMockElement('div');
     container.id = 'offline-indicator';
+    vi.stubGlobal('document', {
+      body: { innerHTML: '', appendChild: vi.fn() },
+      createElement: vi.fn(() => container),
+      getElementById: vi.fn((id: string) => (id === 'offline-indicator' ? container : null)),
+    });
     document.body.appendChild(container);
     indicator = new OfflineIndicator('offline-indicator');
   });
 
   afterEach(() => {
-    document.body.innerHTML = '';
+    vi.unstubAllGlobals();
   });
 
   it('should show when offline', () => {

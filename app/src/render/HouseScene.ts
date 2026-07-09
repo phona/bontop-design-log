@@ -32,7 +32,7 @@ export class HouseScene implements SceneApi {
   private pointer = new THREE.Vector2();
   cameraAnimator: CameraAnimator;
   private topicRegistry: TopicRegistry;
-  private onClickCallback?: (objectId: string, type: string, room?: string) => void;
+  private onClickCallback?: (target: HoverTarget) => void;
   private boundOnWindowResize: () => void;
   private _mode: 'orbit' | 'first-person' = 'orbit';
 
@@ -84,7 +84,7 @@ export class HouseScene implements SceneApi {
     return this.camera;
   }
 
-  setOnObjectClick(cb: (objectId: string, type: string, room?: string) => void) {
+  setOnObjectClick(cb: (target: HoverTarget) => void) {
     this.onClickCallback = cb;
   }
 
@@ -445,11 +445,10 @@ export class HouseScene implements SceneApi {
       const data = hit.object.userData;
       if (data?.objectId || data?.roomId) {
         const id = (data.objectId as string) ?? (data.roomId as string);
-        this.onClickCallback?.(
-          id,
-          (data.type as string) ?? (data.part as string) ?? 'room',
-          data.roomId as string | undefined
-        );
+        const type = (data.type as string) ?? (data.part as string) ?? 'room';
+        const room = data.roomId as string | undefined;
+        const name = this.objectDisplayName(id, type, room);
+        this.onClickCallback?.({ objectId: id, name, type, room });
         return;
       }
     }
