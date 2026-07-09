@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from parse_cad import latest_dxf, parse_room_label
+from parse_cad import extract_room_labels, latest_dxf, parse_room_label
 
 
 def test_latest_dxf_returns_most_recent_file():
@@ -38,3 +38,16 @@ def test_parse_room_label_multiline():
 
 def test_parse_room_label_missing_id():
     assert parse_room_label("主卧") is None
+
+
+def test_extract_room_labels_from_dxf():
+    from ezdxf.document import Drawing
+
+    doc = Drawing.new("R2018")
+    msp = doc.modelspace()
+    doc.layers.add("SH-文字标注")
+    msp.add_text("主卧[master_bedroom]", dxfattribs={"layer": "SH-文字标注", "insert": (1000, 2000, 0)})
+    msp.add_text("次卧[bedroom_nw]", dxfattribs={"layer": "SH-文字标注", "insert": (-500, 1000, 0)})
+    labels = extract_room_labels(msp)
+    assert labels["master_bedroom"] == ("主卧", 1000.0, 2000.0)
+    assert labels["bedroom_nw"] == ("次卧", -500.0, 1000.0)

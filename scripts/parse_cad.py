@@ -60,6 +60,28 @@ def parse_room_label(text: str) -> tuple[str, str] | None:
     return match.group(2).strip(), match.group(1).strip()
 
 
+def extract_room_labels(modelspace) -> dict[str, tuple[str, float, float]]:
+    """Find room labels on SH-文字标注 and return id -> (name, x_mm, z_mm)."""
+    labels: dict[str, tuple[str, float, float]] = {}
+    for entity in modelspace:
+        if entity.dxf.layer != "SH-文字标注":
+            continue
+        text = ""
+        if entity.dxftype() == "TEXT":
+            text = entity.dxf.text
+        elif entity.dxftype() == "MTEXT":
+            text = entity.text
+        else:
+            continue
+        parsed = parse_room_label(text)
+        if not parsed:
+            continue
+        project_id, name = parsed
+        point = entity.dxf.insert
+        labels[project_id] = (name, float(point.x), float(point.y))
+    return labels
+
+
 def extract_rooms(dxf_path: Path, default_height: float = 3.0) -> tuple[list[Room], list[Platform]]:
     """Placeholder: extract rooms and platforms from the DXF."""
     return [], []
