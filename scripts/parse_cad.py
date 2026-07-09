@@ -69,6 +69,7 @@ def chinese_name_to_id(
     x: float,
     y: float,
     master_bedroom_pos: tuple[float, float] | None = None,
+    seen_ids: set[str] | None = None,
 ) -> str | None:
     """Map Chinese room names to project IDs."""
     name = name.strip().replace(" ", "")
@@ -80,6 +81,10 @@ def chinese_name_to_id(
         return "kitchen"
     if name == "阳台":
         return "balcony"
+    if name == "入户花园":
+        return "entry_garden"
+    if name == "南向大阳台":
+        return "south_balcony"
     if name == "卫生间":
         if area is None:
             return None
@@ -94,9 +99,15 @@ def chinese_name_to_id(
         # Two 8.39 bedrooms: northwest vs southeast relative to master bedroom
         if master_bedroom_pos and abs(area - 8.39) < 0.1:
             mx, my = master_bedroom_pos
-            if x < mx and y > my:
+            is_nw = x < mx and y > my
+            seen = seen_ids or set()
+            if is_nw and "bedroom_nw" not in seen:
                 return "bedroom_nw"
-            return "bedroom_se"
+            if "bedroom_se" not in seen:
+                return "bedroom_se"
+            if "bedroom_nw" not in seen:
+                return "bedroom_nw"
+            return None
         return None
     return None
 
@@ -164,10 +175,12 @@ def extract_room_labels(modelspace) -> tuple[dict[str, tuple[str, float, float]]
                 break
 
     # Map Chinese names to IDs
+    seen_ids: set[str] = set(labels.keys())
     for name, x, y, area in candidates:
-        project_id = chinese_name_to_id(name, area, x, y, master_pos)
+        project_id = chinese_name_to_id(name, area, x, y, master_pos, seen_ids)
         if project_id:
             labels[project_id] = (name, x, y)
+            seen_ids.add(project_id)
         else:
             skipped.add(name)
             logger.warning("Chinese room label %r could not be mapped to a project ID", name)
@@ -372,9 +385,27 @@ def merge_with_previous_layout(
 
     new_ids = {r.id for r in rooms}
 
+    prev_by_id = {r.get("id"): r for r in prev.get("rooms", []) if r.get("id")}
+
     merged: list[Room] = []
     for r in rooms:
-        merged.append(r)
+        prev_room = prev_by_id.get(r.id)
+        if prev_room:
+            merged.append(
+                Room(
+                    id=r.id,
+                    name=r.name,
+                    x=prev_room["x"],
+                    z=prev_room["z"],
+                    width=prev_room["width"],
+                    depth=prev_room["depth"],
+                    height=prev_room["height"],
+                    area=prev_room.get("area"),
+                    perimeter=prev_room.get("perimeter"),
+                )
+            )
+        else:
+            merged.append(r)
 
     for prev_room in prev.get("rooms", []):
         prev_id = prev_room.get("id")
@@ -477,15 +508,15 @@ def write_layout_yaml(
     with open(output_path, "w", encoding="utf-8") as f:
         yaml.dump(data, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
 
-    total_area = sum(r.area for r in rooms if r.area)
+    total_area = round(sum(r.area for r in rooms if r.area), 2)
     valid_ids = load_house_room_ids()
-    missing_project_id = (
+    missing_house_config_id = (
         sum(1 for r in rooms if r.id not in valid_ids) if valid_ids else 0
     )
     report = {
         "source": str(dxf_path),
         "rooms_found": len(rooms),
-        "missing_project_id": missing_project_id,
+        "missing_house_config_id": missing_house_config_id,
         "skipped_labels": skipped_labels or [],
         "geometry_warnings": 0,
         "total_interior_area": total_area,

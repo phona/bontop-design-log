@@ -5,10 +5,10 @@ scale: 0.001
 origin:
   x: 0.0
   z: 0.0
-export_date: '2026-07-09'
+export_date: '2026-07-10'
 rooms:
 - id: guest_bath
-  name: 客卫
+  name: 卫生间
   x: 4.0
   z: -4.5
   width: 1.5
@@ -17,9 +17,18 @@ rooms:
   area: 2.66
   perimeter: 6.54
 - id: bedroom_se
-  name: 东南次卧
+  name: 次卧
   x: 5.6
   z: 2.0
+  width: 3.0
+  depth: 2.8
+  height: 3.0
+  area: 8.39
+  perimeter: 11.6
+- id: bedroom_nw
+  name: 次卧
+  x: -5.35
+  z: -3.5
   width: 3.0
   depth: 2.8
   height: 3.0
@@ -53,7 +62,7 @@ rooms:
   area: 6.09
   perimeter: 9.9
 - id: master_bath
-  name: 主卫
+  name: 卫生间
   x: -9.5
   z: -2.0
   width: 1.8
@@ -71,7 +80,7 @@ rooms:
   area: 2.42
   perimeter: 6.44
 - id: study
-  name: 书房
+  name: 次卧
   x: 5.6
   z: -3.0
   width: 3.0
@@ -79,15 +88,6 @@ rooms:
   height: 3.0
   area: 8.35
   perimeter: 11.56
-- id: bedroom_nw
-  name: 西北次卧
-  x: -5.35
-  z: -3.5
-  width: 3.0
-  depth: 2.8
-  height: 3.0
-  area: 8.39
-  perimeter: 11.6
 - id: entry_garden
   name: 入户花园
   x: 0.0

@@ -1,7 +1,7 @@
 {
   "source": "cad/design/01_floor_plan/floor_plan_design_2026-07-05.dxf",
   "rooms_found": 11,
-  "missing_project_id": 0,
+  "missing_house_config_id": 0,
   "skipped_labels": [
     "墙体定位",
     "墙体定位图",

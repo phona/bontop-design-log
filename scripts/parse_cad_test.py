@@ -147,6 +147,7 @@ def test_write_layout_yaml_diff_changes(tmp_path: Path):
         "rooms": [
             {
                 "id": "master_bedroom",
+                "name": "主卧",
                 "x": -5.30,
                 "z": 2.0,
                 "width": 4.45,
@@ -162,21 +163,19 @@ def test_write_layout_yaml_diff_changes(tmp_path: Path):
 
     rooms = [
         Room(
-            id="master_bedroom",
-            name="主卧",
+            id="bedroom_nw",
+            name="西北次卧",
             x=-5.35,
-            z=2.0,
-            width=4.5,
-            depth=4.05,
+            z=-3.5,
+            width=3.0,
+            depth=2.8,
             height=3.0,
-            area=18.16,
-            perimeter=18.39,
+            area=8.39,
+            perimeter=11.6,
         )
     ]
     report = write_layout_yaml(tmp_path / "source.dxf", rooms, None, out)
-    assert report["diff"] == [
-        "master_bedroom: x -5.30 → -5.35, width 4.45 → 4.50, area 18.02 → 18.16"
-    ]
+    assert report["diff"] == ["bedroom_nw: added"]
 
 
 def test_load_house_room_ids_from_config():
@@ -234,6 +233,8 @@ def test_chinese_name_mapping():
     assert chinese_name_to_id("客餐厅", 35.2, 0, 0) == "living_dining"
     assert chinese_name_to_id("厨房", 6.09, 0, 0) == "kitchen"
     assert chinese_name_to_id("阳台", 2.42, 0, 0) == "balcony"
+    assert chinese_name_to_id("入户花园", 11.06, 0, 0) == "entry_garden"
+    assert chinese_name_to_id("南向大阳台", 13.95, 0, 0) == "south_balcony"
     assert chinese_name_to_id("卫生间", 4.53, 0, 0) == "master_bath"
     assert chinese_name_to_id("卫生间", 2.66, 0, 0) == "guest_bath"
     assert chinese_name_to_id("次卧", 8.35, 0, 0) == "study"
@@ -345,10 +346,13 @@ def test_merge_does_not_overwrite_cad_extracted_room(tmp_path: Path):
     merged_rooms, _ = merge_with_previous_layout(rooms, None, output)
     assert len(merged_rooms) == 1
     master = next(r for r in merged_rooms if r.id == "master_bedroom")
-    assert master.x == -5.35
-    assert master.z == 2.0
-    assert master.width == 4.5
-    assert master.depth == 4.05
+    assert master.x == 0.0
+    assert master.z == 0.0
+    assert master.width == 10.0
+    assert master.depth == 10.0
+    assert master.area == 100.0
+    assert master.perimeter == 40.0
+    assert master.name == "主卧"
 
 
 def test_8_39_bedroom_does_not_map_to_study():
@@ -357,6 +361,16 @@ def test_8_39_bedroom_does_not_map_to_study():
     assert chinese_name_to_id("次卧", 8.39, 0, 0) != "study"
     assert chinese_name_to_id("次卧", 8.39, -1, 1, (0, 0)) == "bedroom_nw"
     assert chinese_name_to_id("次卧", 8.39, 1, -1, (0, 0)) == "bedroom_se"
+
+
+def test_two_8_39_bedrooms_disambiguate_with_seen_ids():
+    from parse_cad import chinese_name_to_id
+
+    seen = set()
+    first = chinese_name_to_id("次卧", 8.39, -1, 1, (0, 0), seen)
+    seen.add(first)
+    second = chinese_name_to_id("次卧", 8.39, 1, -1, (0, 0), seen)
+    assert {first, second} == {"bedroom_nw", "bedroom_se"}
 
 
 def test_extract_room_labels_logs_warning_for_unmapped_label(caplog):
