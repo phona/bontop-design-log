@@ -43,9 +43,14 @@ describe('REST API', () => {
   after(() => {
   });
 
-  it('GET /api/project returns topics', async () => {
+  it('GET /api/project returns rooms and platform separately', async () => {
     const res = await request(app).get('/api/project').expect(200);
     assert.ok(Array.isArray(res.body.topics));
+    assert.ok(Array.isArray(res.body.house.rooms));
+    assert.ok(res.body.house.rooms.some((r: { id: string }) => r.id === 'master_bedroom'));
+    assert.ok(!res.body.house.rooms.some((r: { id: string }) => r.id === 'west_platform'));
+    assert.equal(res.body.house.platform?.id, 'west_platform');
+    assert.equal(res.body.house.platform?.name, '西设备平台');
   });
 
   it('PATCH /api/scheme/current changes selection', async () => {

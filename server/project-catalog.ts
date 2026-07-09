@@ -71,6 +71,7 @@ function mergePlatform(layoutPlatform: PlatformLayout): RoomLayout {
 export class ProjectCatalog {
   private topics = new Map<string, CatalogTopic>();
   private rooms = new Map<string, RoomLayout>();
+  private platform: RoomLayout | undefined;
   private budgetCategories: BudgetCategory[] = [];
 
   constructor(
@@ -119,7 +120,7 @@ export class ProjectCatalog {
       this.rooms.set(r.id, mergeRoom(r, metaMap.get(r.id)));
     }
     if (layout.platform) {
-      this.rooms.set(layout.platform.id, mergePlatform(layout.platform));
+      this.platform = mergePlatform(layout.platform);
     }
 
     this.budgetCategories = Object.entries(budgetBase.categories).map(([key, c]) => ({
@@ -173,6 +174,10 @@ export class ProjectCatalog {
 
   getRooms(): RoomLayout[] {
     return [...this.rooms.values()];
+  }
+
+  getPlatform(): RoomLayout | undefined {
+    return this.platform;
   }
 
   getBudgetCategories(): BudgetCategory[] {

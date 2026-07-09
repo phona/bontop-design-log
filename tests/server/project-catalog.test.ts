@@ -69,9 +69,13 @@ describe('ProjectCatalog', () => {
   it('builds catalog from an inline layout fixture', () => {
     const catalog = ProjectCatalog.fromMaterials(materialsFixture, budgetBaseFixture, layoutFixture);
     assert.ok(catalog.isValidRoom('master_bedroom'));
-    assert.ok(catalog.isValidRoom('west_platform'));
     assert.equal(catalog.getRoom('master_bedroom')?.type, 'public');
-    assert.equal(catalog.getRoom('west_platform')?.type, 'service');
+    const platform = catalog.getPlatform();
+    assert.ok(platform);
+    assert.equal(platform?.id, 'west_platform');
+    assert.equal(platform?.type, 'service');
+    assert.equal(platform?.name, '西设备平台');
+    assert.ok(!catalog.getRooms().some((r) => r.id === 'west_platform'));
     assert.ok(catalog.isValidTopic('floor'));
     assert.ok(catalog.isValidOption('floor', 'floor_tile_01'));
   });
@@ -80,8 +84,10 @@ describe('ProjectCatalog', () => {
     const layout = load(readFileSync('tests/fixtures/layout.yaml', 'utf8')) as CadLayoutYaml;
     const catalog = ProjectCatalog.fromMaterials(materialsFixture, budgetBaseFixture, layout);
     assert.ok(catalog.isValidRoom('master_bedroom'));
-    assert.ok(catalog.isValidRoom('west_platform'));
     assert.equal(catalog.getRoom('master_bedroom')?.name, '主卧');
-    assert.equal(catalog.getRoom('west_platform')?.name, '西设备平台');
+    const platform = catalog.getPlatform();
+    assert.ok(platform);
+    assert.equal(platform?.name, '西设备平台');
+    assert.ok(!catalog.getRooms().some((r) => r.id === 'west_platform'));
   });
 });

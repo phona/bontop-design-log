@@ -25,7 +25,7 @@ export function createApiRouter(deps: ApiDeps): Router {
 
   router.get('/project', (_req, res) => {
     res.json({
-      house: { rooms: catalog.getRooms() },
+      house: { rooms: catalog.getRooms(), platform: catalog.getPlatform() },
       topics: catalog.getTopics().map((t) => ({
         id: t.id,
         name: t.name,
