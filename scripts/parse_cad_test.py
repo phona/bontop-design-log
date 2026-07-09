@@ -184,7 +184,7 @@ def test_load_house_room_ids_from_config():
     assert "bedroom_nw" in ids
     assert "entry_garden" in ids
     assert "south_balcony" in ids
-    assert "equipment_platform_w" in ids
+    assert "west_platform" in ids
 
 
 def test_load_house_room_ids_missing_config(tmp_path: Path):
