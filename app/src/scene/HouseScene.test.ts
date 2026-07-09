@@ -366,4 +366,89 @@ describe('HouseScene', () => {
     });
     expect(found).toBe(true);
   });
+
+  it('shows wall hover name with direction', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    const projectData = {
+      house: {
+        rooms: [
+          { id: 'master_bedroom', name: '主卧', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+    await scene.buildFromCatalog(projectData);
+
+    const mockedThree = await import('three');
+    const originalRaycaster = mockedThree.Raycaster;
+    const originalSceneRaycaster = (scene as any).raycaster;
+    (mockedThree as any).Raycaster = class {
+      setFromCamera() {}
+      intersectObjects() {
+        return [
+          { object: { userData: { objectId: 'wall:master_bedroom:north', type: 'wall', roomId: 'master_bedroom' } } },
+        ];
+      }
+    };
+    (scene as any).raycaster = new (mockedThree as any).Raycaster();
+
+    try {
+      const result = scene.raycastFromScreenCenter();
+      expect(result?.name).toBe('主卧北墙');
+      expect(result?.objectId).toBe('wall:master_bedroom:north');
+      expect(result?.type).toBe('wall');
+    } finally {
+      (mockedThree as any).Raycaster = originalRaycaster;
+      (scene as any).raycaster = originalSceneRaycaster;
+    }
+  });
+
+  it('shows readable platform hover name', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    const projectData = {
+      house: {
+        rooms: [
+          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' },
+        ],
+        platform: { id: 'west_platform', name: '西设备平台', x: -3, z: 0, width: 2, depth: 1.5, height: 3 },
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+    await scene.buildFromCatalog(projectData);
+
+    const mockedThree = await import('three');
+    const originalRaycaster = mockedThree.Raycaster;
+    const originalSceneRaycaster = (scene as any).raycaster;
+    (mockedThree as any).Raycaster = class {
+      setFromCamera() {}
+      intersectObjects() {
+        return [
+          { object: { userData: { objectId: 'platform_boundary', type: 'platform', roomId: 'west_platform' } } },
+        ];
+      }
+    };
+    (scene as any).raycaster = new (mockedThree as any).Raycaster();
+
+    try {
+      const result = scene.raycastFromScreenCenter();
+      expect(result?.name).toBe('西设备平台');
+      expect(result?.objectId).toBe('platform_boundary');
+      expect(result?.type).toBe('platform');
+    } finally {
+      (mockedThree as any).Raycaster = originalRaycaster;
+      (scene as any).raycaster = originalSceneRaycaster;
+    }
+  });
 });

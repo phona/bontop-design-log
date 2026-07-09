@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 from pathlib import Path
@@ -304,4 +305,70 @@ def test_merge_keeps_unlabeled_rooms(tmp_path: Path):
     assert any(r.id == "entry_garden" for r in merged_rooms)
     assert platform is not None
     assert platform.id == "west_platform"
+
+
+def test_merge_does_not_overwrite_cad_extracted_room(tmp_path: Path):
+    from parse_cad import merge_with_previous_layout
+
+    output = tmp_path / "layout.yaml"
+    previous = {
+        "version": "1.0",
+        "rooms": [
+            {
+                "id": "master_bedroom",
+                "name": "主卧",
+                "x": 0.0,
+                "z": 0.0,
+                "width": 10.0,
+                "depth": 10.0,
+                "height": 3.0,
+                "area": 100.0,
+                "perimeter": 40.0,
+            }
+        ],
+    }
+    output.write_text(yaml.dump(previous), encoding="utf-8")
+
+    rooms = [
+        Room(
+            id="master_bedroom",
+            name="主卧",
+            x=-5.35,
+            z=2.0,
+            width=4.5,
+            depth=4.05,
+            height=3.0,
+            area=18.16,
+            perimeter=18.39,
+        )
+    ]
+    merged_rooms, _ = merge_with_previous_layout(rooms, None, output)
+    assert len(merged_rooms) == 1
+    master = next(r for r in merged_rooms if r.id == "master_bedroom")
+    assert master.x == -5.35
+    assert master.z == 2.0
+    assert master.width == 4.5
+    assert master.depth == 4.05
+
+
+def test_8_39_bedroom_does_not_map_to_study():
+    from parse_cad import chinese_name_to_id
+
+    assert chinese_name_to_id("次卧", 8.39, 0, 0) != "study"
+    assert chinese_name_to_id("次卧", 8.39, -1, 1, (0, 0)) == "bedroom_nw"
+    assert chinese_name_to_id("次卧", 8.39, 1, -1, (0, 0)) == "bedroom_se"
+
+
+def test_extract_room_labels_logs_warning_for_unmapped_label(caplog):
+    from ezdxf.document import Drawing
+
+    doc = Drawing.new("R2018")
+    msp = doc.modelspace()
+    doc.layers.add("SH-文字标注")
+    msp.add_text("走廊", dxfattribs={"layer": "SH-文字标注", "insert": (0, 0, 0)})
+
+    with caplog.at_level(logging.WARNING, logger="parse_cad"):
+        labels, skipped = extract_room_labels(msp)
+        assert "走廊" in skipped
+        assert any("走廊" in rec.message for rec in caplog.records)
 

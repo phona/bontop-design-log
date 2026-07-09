@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import date
@@ -17,6 +18,8 @@ import yaml
 CAD_DIR = Path("cad/design/01_floor_plan")
 OUTPUT_YAML = Path("config/layout/cad-extracted.yaml")
 REPORT_JSON = Path("scripts/logs/cad-extraction-report.json")
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -85,10 +88,11 @@ def chinese_name_to_id(
     if name == "次卧":
         if area is None:
             return None
-        if abs(area - 8.35) < 0.04:
+        # Study area clusters around 8.35; guard against the 8.39 bedrooms.
+        if abs(area - 8.35) < 0.1 and abs(area - 8.39) >= 0.04:
             return "study"
         # Two 8.39 bedrooms: northwest vs southeast relative to master bedroom
-        if master_bedroom_pos and area >= 8.38:
+        if master_bedroom_pos and abs(area - 8.39) < 0.1:
             mx, my = master_bedroom_pos
             if x < mx and y > my:
                 return "bedroom_nw"
@@ -166,6 +170,7 @@ def extract_room_labels(modelspace) -> tuple[dict[str, tuple[str, float, float]]
             labels[project_id] = (name, x, y)
         else:
             skipped.add(name)
+            logger.warning("Chinese room label %r could not be mapped to a project ID", name)
 
     return labels, sorted(skipped)
 
@@ -347,15 +352,12 @@ def merge_with_previous_layout(
     rooms: list[Room],
     platform: Platform | None,
     output_path: Path,
-    preserve_existing: bool = False,
 ) -> tuple[list[Room], Platform | None]:
     """Keep unlabeled gift areas and platform from the previous YAML.
 
-    When ``preserve_existing`` is True, rooms whose IDs already exist in the
-    previous YAML keep the previous geometry and name instead of using the
-    newly extracted CAD geometry. This is useful when the CAD wall geometry is
-    too noisy to yield reliable room dimensions but the room labels are still
-    needed to identify rooms.
+    Rooms that were successfully extracted from CAD take precedence. Only
+    rooms whose IDs do not appear in the newly extracted list are carried
+    over from the previous layout.
     """
     if not output_path.exists():
         return rooms, platform
@@ -373,23 +375,7 @@ def merge_with_previous_layout(
 
     merged: list[Room] = []
     for r in rooms:
-        if preserve_existing and r.id in prev_by_id:
-            p = prev_by_id[r.id]
-            merged.append(
-                Room(
-                    id=r.id,
-                    name=p["name"],
-                    x=p["x"],
-                    z=p["z"],
-                    width=p["width"],
-                    depth=p["depth"],
-                    height=p["height"],
-                    area=p.get("area"),
-                    perimeter=p.get("perimeter"),
-                )
-            )
-        else:
-            merged.append(r)
+        merged.append(r)
 
     for prev_room in prev.get("rooms", []):
         prev_id = prev_room.get("id")
@@ -442,7 +428,6 @@ def write_layout_yaml(
     platform: Platform | None,
     output_path: Path,
     skipped_labels: list[str] | None = None,
-    preserve_existing: bool = False,
 ) -> dict[str, Any]:
     """Write the layout YAML and return a report summary."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -454,9 +439,7 @@ def write_layout_yaml(
     else:
         diff_error = None
 
-    rooms, platform = merge_with_previous_layout(
-        rooms, platform, output_path, preserve_existing=preserve_existing
-    )
+    rooms, platform = merge_with_previous_layout(rooms, platform, output_path)
 
     data = {
         "version": "1.0",
@@ -531,7 +514,6 @@ def main() -> None:
         platform,
         args.output,
         skipped_labels=skipped,
-        preserve_existing=True,
     )
     args.report.parent.mkdir(parents=True, exist_ok=True)
     with open(args.report, "w", encoding="utf-8") as f:

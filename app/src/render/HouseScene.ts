@@ -24,6 +24,7 @@ export class HouseScene implements SceneApi {
   renderer: THREE.WebGLRenderer;
   controls: OrbitControls;
   rooms: Record<string, RoomObject> = {};
+  private platform?: ProjectData['house']['platform'];
   private canvas: HTMLCanvasElement;
   private topicGroup = new THREE.Group();
   private floorMeshes: THREE.Mesh[] = [];
@@ -100,6 +101,7 @@ export class HouseScene implements SceneApi {
     }
 
     this.rooms = {};
+    this.platform = undefined;
     this.floorMeshes = [];
     this.wallMeshes = [];
 
@@ -227,6 +229,8 @@ export class HouseScene implements SceneApi {
     mesh.userData = { roomId: p.id, objectId: 'platform_boundary', type: 'platform' };
     mesh.receiveShadow = true;
     this.scene.add(mesh);
+
+    this.platform = p;
 
     const frame = new THREE.Mesh(
       new THREE.BoxGeometry(p.width + 0.1, 0.05, p.depth + 0.1),
@@ -385,6 +389,26 @@ export class HouseScene implements SceneApi {
       hvac_outdoor: '空调外机',
       platform: '平台',
     };
+    const dirLabel: Record<string, string> = {
+      north: '北',
+      south: '南',
+      west: '西',
+      east: '东',
+    };
+
+    if (type === 'platform' && this.platform) {
+      return this.platform.name;
+    }
+
+    if (type === 'wall' && objectId.startsWith('wall:')) {
+      const parts = objectId.split(':');
+      const dir = parts[2];
+      const direction = dir && dirLabel[dir];
+      if (direction) {
+        return roomName ? `${roomName}${direction}墙` : objectId;
+      }
+    }
+
     const label = typeLabel[type] ?? type;
     if (roomName) return `${roomName}${label}`;
     return objectId;
