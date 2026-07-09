@@ -265,7 +265,7 @@ gift_areas:
       - "绿植"
 
   - name: "西设备平台"
-    id: "equipment_platform_w"
+    id: "west_platform"
     type: "service"
     width: 1.60
     length: 1.55
