@@ -93,5 +93,4 @@
 ## 八、关联文件
 
 - `config/house.yaml` → `west_platform` 尺寸限制
-- `config/layout/final.yaml` → 待确认事项
 - `docs/designer_brief.md` → 重点设计问题 7

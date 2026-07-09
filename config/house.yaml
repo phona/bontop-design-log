@@ -10,7 +10,7 @@ project:
   orientation: "南北通透"
   layout_type: "四房两厅两卫"
   data_source: "装修图纸.dxf（套内布局） + 合同分户图（结构及赠送面积）"
-  accuracy_warning: "套内房间面积来自设计图，尺寸为按面积估算；赠送面积、承重墙、梁位、管道以合同图及现场量房为准"
+  accuracy_warning: "房间尺寸与面积来自 CAD 设计图；承重墙、梁位、管道、门窗口位置以合同图及现场量房为准"
 
   floor_analysis:
     floor_level: "中低层"
