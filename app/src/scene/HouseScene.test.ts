@@ -158,8 +158,8 @@ describe('HouseScene', () => {
     let floorCount = 0;
     let wallCount = 0;
     scene.getScene().traverse((obj: any) => {
-      if (obj.userData?.part === 'floor') floorCount++;
-      if (obj.userData?.part === 'wall') wallCount++;
+      if (obj.userData?.type === 'floor') floorCount++;
+      if (obj.userData?.type === 'wall') wallCount++;
     });
     expect(floorCount).toBe(1);
     expect(wallCount).toBe(4);
@@ -254,33 +254,6 @@ describe('HouseScene', () => {
     expect(() => scene.render()).not.toThrow();
   });
 
-  it('marks room label as non-hoverable', async () => {
-    const canvas = {
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    } as unknown as HTMLCanvasElement;
-    const scene = new HouseScene(canvas);
-
-    const projectData = {
-      house: {
-        rooms: [
-          { id: 'test_room', name: 'Test', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'public' },
-        ],
-      },
-      topics: [],
-      budgetCategories: [],
-    };
-    await scene.buildFromCatalog(projectData);
-
-    let roomLabelHoverable: boolean | undefined = undefined;
-    scene.getScene().traverse((obj: any) => {
-      if (obj.userData?.objectId === 'room:test_room') {
-        roomLabelHoverable = obj.userData.hoverable;
-      }
-    });
-    expect(roomLabelHoverable).toBe(false);
-  });
-
   it('raycastFromScreenCenter with hoverableOnly skips non-hoverable objects', async () => {
     const canvas = {
       addEventListener: vi.fn(),
@@ -299,7 +272,7 @@ describe('HouseScene', () => {
     };
     await scene.buildFromCatalog(projectData);
 
-    // Mock the raycaster to return a room label first, then a wall
+    // Mock the raycaster to return a non-hoverable floor first, then a wall
     const mockedThree = await import('three');
     const originalRaycaster = mockedThree.Raycaster;
     const originalSceneRaycaster = (scene as any).raycaster;
@@ -307,8 +280,8 @@ describe('HouseScene', () => {
       setFromCamera() {}
       intersectObjects() {
         return [
-          { object: { userData: { objectId: 'room:test_room', hoverable: false } } },
-          { object: { userData: { objectId: 'wall:test_room:north', part: 'wall', roomId: 'test_room' } } },
+          { object: { userData: { objectId: 'floor:test_room', type: 'floor', roomId: 'test_room', hoverable: false } } },
+          { object: { userData: { objectId: 'wall:test_room:north', type: 'wall', roomId: 'test_room' } } },
         ];
       }
     };
@@ -316,7 +289,7 @@ describe('HouseScene', () => {
 
     try {
       const withoutFilter = scene.raycastFromScreenCenter();
-      expect(withoutFilter?.objectId).toBe('room:test_room');
+      expect(withoutFilter?.objectId).toBe('floor:test_room');
 
       const withFilter = scene.raycastFromScreenCenter({ hoverableOnly: true });
       expect(withFilter?.objectId).toBe('wall:test_room:north');
@@ -324,5 +297,31 @@ describe('HouseScene', () => {
       (mockedThree as any).Raycaster = originalRaycaster;
       (scene as any).raycaster = originalSceneRaycaster;
     }
+  });
+
+  it('tags floor meshes with floor objectId', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const projectData = {
+      house: {
+        rooms: [
+          { id: 'master_bedroom', name: 'Master Bedroom', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+    await scene.buildFromCatalog(projectData);
+
+    let found = false;
+    scene.getScene().traverse((obj: any) => {
+      if (obj.userData?.type === 'floor' && obj.userData?.objectId === 'floor:master_bedroom') {
+        found = true;
+      }
+    });
+    expect(found).toBe(true);
   });
 });

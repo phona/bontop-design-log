@@ -175,7 +175,7 @@ export class HouseScene implements SceneApi {
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = 0.005;
-    floor.userData = { roomId: r.id, part: 'floor' };
+    floor.userData = { roomId: r.id, objectId: `floor:${r.id}`, type: 'floor' };
     floor.receiveShadow = true;
     group.add(floor);
     this.floorMeshes.push(floor);
@@ -201,7 +201,7 @@ export class HouseScene implements SceneApi {
         wallMat.clone()
       );
       wall.position.set(w.x, r.height / 2, w.z);
-      wall.userData = { roomId: r.id, part: 'wall', objectId: `wall:${r.id}:${w.dir}` };
+      wall.userData = { roomId: r.id, objectId: `wall:${r.id}:${w.dir}`, type: 'wall' };
       wall.castShadow = true;
       wall.receiveShadow = true;
       group.add(wall);
@@ -214,15 +214,6 @@ export class HouseScene implements SceneApi {
     if (r.id === 'south_balcony') {
       this.addOpeningMarker(group, 0, 1.2, -halfD - 0.01, 2, 2, 'door_to_balcony');
     }
-
-    const roomLabel = new THREE.Mesh(
-      new THREE.PlaneGeometry(r.width, r.depth),
-      new THREE.MeshBasicMaterial({ visible: false })
-    );
-    roomLabel.rotation.x = -Math.PI / 2;
-    roomLabel.position.set(0, 0.01, 0);
-    roomLabel.userData = { objectId: `room:${r.id}`, hoverable: false };
-    group.add(roomLabel);
 
     this.scene.add(group);
     this.rooms[r.id] = { ...r };
