@@ -3,6 +3,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 from parse_cad import extract_room_labels, extract_room_geometry, latest_dxf, parse_room_label
 
@@ -73,4 +74,101 @@ def test_extract_room_geometry():
     assert r.id == "master_bedroom"
     assert r.width == 5.0
     assert r.depth == 4.0
+
+
+def test_write_layout_yaml(tmp_path: Path):
+    from parse_cad import Room, Platform, write_layout_yaml
+
+    out = tmp_path / "cad-extracted.yaml"
+    rooms = [
+        Room(
+            id="master_bedroom",
+            name="主卧",
+            x=-5.35,
+            z=2.0,
+            width=4.5,
+            depth=4.05,
+            height=3.0,
+            area=18.16,
+            perimeter=18.39,
+        )
+    ]
+    platform = Platform(
+        id="west_platform",
+        name="西设备平台",
+        x=-8.5,
+        z=2.0,
+        width=1.6,
+        depth=1.55,
+        height=3.0,
+        area=2.48,
+    )
+    report = write_layout_yaml(tmp_path / "source.dxf", rooms, platform, out)
+    assert out.exists()
+    assert report["rooms_found"] == 1
+    content = out.read_text(encoding="utf-8")
+    assert "master_bedroom" in content
+    assert "west_platform" in content
+
+
+def test_write_layout_yaml_no_previous_diff(tmp_path: Path):
+    from parse_cad import Room, write_layout_yaml
+
+    out = tmp_path / "cad-extracted.yaml"
+    rooms = [
+        Room(
+            id="master_bedroom",
+            name="主卧",
+            x=-5.35,
+            z=2.0,
+            width=4.5,
+            depth=4.05,
+            height=3.0,
+            area=18.16,
+            perimeter=18.39,
+        )
+    ]
+    report = write_layout_yaml(tmp_path / "source.dxf", rooms, None, out)
+    assert report["diff"] == "no previous layout to diff against"
+
+
+def test_write_layout_yaml_diff_changes(tmp_path: Path):
+    from parse_cad import Room, write_layout_yaml
+
+    out = tmp_path / "cad-extracted.yaml"
+    previous = {
+        "version": "1.0",
+        "rooms": [
+            {
+                "id": "master_bedroom",
+                "x": -5.30,
+                "z": 2.0,
+                "width": 4.45,
+                "depth": 4.05,
+                "height": 3.0,
+                "area": 18.02,
+                "perimeter": 18.39,
+            }
+        ],
+    }
+    with open(out, "w", encoding="utf-8") as f:
+        yaml.dump(previous, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
+
+    rooms = [
+        Room(
+            id="master_bedroom",
+            name="主卧",
+            x=-5.35,
+            z=2.0,
+            width=4.5,
+            depth=4.05,
+            height=3.0,
+            area=18.16,
+            perimeter=18.39,
+        )
+    ]
+    report = write_layout_yaml(tmp_path / "source.dxf", rooms, None, out)
+    assert report["diff"] == [
+        "master_bedroom: x -5.30 → -5.35, width 4.45 → 4.50, area 18.02 → 18.16"
+    ]
 

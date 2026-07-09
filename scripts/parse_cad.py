@@ -171,14 +171,138 @@ def extract_rooms(dxf_path: Path, default_height: float = 3.0) -> tuple[list[Roo
     return rooms, []
 
 
+HOUSE_DATA_TS = Path("shared/houseData.ts")
+
+
+def load_house_room_ids() -> set[str]:
+    """Load the set of valid room IDs from shared/houseData.ts."""
+    if not HOUSE_DATA_TS.exists():
+        return set()
+    text = HOUSE_DATA_TS.read_text(encoding="utf-8")
+    match = re.search(r"rooms:\s*RoomLayout\[\]\s*=\s*\[(.*?)\];", text, re.DOTALL)
+    if not match:
+        return set()
+    return set(re.findall(r"id:\s*['\"]([^'\"]+)['\"]", match.group(1)))
+
+
+def _format_diff_value(value: Any) -> str:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return f"{value:.2f}"
+    return str(value)
+
+
+DIFF_FIELDS = ["x", "z", "width", "depth", "height", "area"]
+
+
+def diff_rooms(prev_rooms: list[dict] | None, rooms: list[Room]) -> Any:
+    """Compare the new rooms with the previous YAML rooms and return a diff.
+
+    Returns a string if there is no previous layout, otherwise a list of
+    human-readable change descriptions for rooms that differ.
+    """
+    if prev_rooms is None:
+        return "no previous layout to diff against"
+
+    prev_by_id = {r.get("id"): r for r in prev_rooms if r.get("id")}
+    new_ids = {r.id for r in rooms}
+    changes: list[str] = []
+
+    for r in rooms:
+        prev = prev_by_id.get(r.id)
+        if prev is None:
+            changes.append(f"{r.id}: added")
+            continue
+
+        diffs: list[str] = []
+        for field in DIFF_FIELDS:
+            old = prev.get(field)
+            new = getattr(r, field)
+            if old != new:
+                diffs.append(
+                    f"{field} {_format_diff_value(old)} → {_format_diff_value(new)}"
+                )
+        if diffs:
+            changes.append(f"{r.id}: " + ", ".join(diffs))
+
+    for prev_id in prev_by_id:
+        if prev_id not in new_ids:
+            changes.append(f"{prev_id}: removed")
+
+    return changes
+
+
+def load_previous_rooms(path: Path) -> list[dict] | None:
+    """Load the rooms list from a previous YAML output, if it exists."""
+    if not path.exists():
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        return data.get("rooms", []) if data else []
+    except Exception:
+        return []
+
+
 def write_layout_yaml(
     dxf_path: Path,
     rooms: list[Room],
     platform: Platform | None,
     output_path: Path,
 ) -> dict[str, Any]:
-    """Placeholder: write the layout YAML."""
-    return {}
+    """Write the layout YAML and return a report summary."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    prev_rooms = load_previous_rooms(output_path)
+    data = {
+        "version": "1.0",
+        "source": str(dxf_path),
+        "unit": "mm",
+        "scale": 0.001,
+        "origin": {"x": 0.0, "z": 0.0},
+        "export_date": date.today().isoformat(),
+        "rooms": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "x": r.x,
+                "z": r.z,
+                "width": r.width,
+                "depth": r.depth,
+                "height": r.height,
+                "area": r.area,
+                "perimeter": r.perimeter,
+            }
+            for r in rooms
+        ],
+    }
+    if platform:
+        data["platform"] = {
+            "id": platform.id,
+            "name": platform.name,
+            "x": platform.x,
+            "z": platform.z,
+            "width": platform.width,
+            "depth": platform.depth,
+            "height": platform.height,
+            "area": platform.area,
+        }
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
+
+    total_area = sum(r.area for r in rooms if r.area)
+    valid_ids = load_house_room_ids()
+    missing_project_id = (
+        sum(1 for r in rooms if r.id not in valid_ids) if valid_ids else 0
+    )
+    report = {
+        "source": str(dxf_path),
+        "rooms_found": len(rooms),
+        "missing_project_id": missing_project_id,
+        "geometry_warnings": 0,
+        "total_interior_area": total_area,
+        "diff": diff_rooms(prev_rooms, rooms),
+    }
+    return report
 
 
 def main() -> None:
@@ -195,6 +319,9 @@ def main() -> None:
     rooms, platforms = extract_rooms(dxf_path, default_height=args.height)
     platform = platforms[0] if platforms else None
     report = write_layout_yaml(dxf_path, rooms, platform, args.output)
+    args.report.parent.mkdir(parents=True, exist_ok=True)
+    with open(args.report, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2, ensure_ascii=False)
     print(json.dumps(report, indent=2, ensure_ascii=False))
 
 
