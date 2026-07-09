@@ -295,7 +295,7 @@ def write_layout_yaml(
     data = {
         "version": "1.0",
         "source": str(dxf_path),
-        "unit": "mm",
+        "unit": "m",
         "scale": 0.001,
         "origin": {"x": 0.0, "z": 0.0},
         "export_date": date.today().isoformat(),
