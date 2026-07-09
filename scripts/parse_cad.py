@@ -371,7 +371,6 @@ def merge_with_previous_layout(
         return rooms, platform
 
     new_ids = {r.id for r in rooms}
-    prev_by_id = {r.get("id"): r for r in prev.get("rooms", []) if r.get("id")}
 
     merged: list[Room] = []
     for r in rooms:
