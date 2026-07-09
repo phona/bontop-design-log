@@ -19,7 +19,8 @@ const registry = new ConfigRegistry();
 
 let catalog = ProjectCatalog.fromMaterials(
   { materials: [] },
-  { total_budget: 0, categories: {} }
+  { total_budget: 0, categories: {} },
+  { rooms: [] } as unknown as CadLayoutYaml
 );
 let ruleEngine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
 let budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
@@ -27,7 +28,7 @@ let budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
 function rebuildDerived(): void {
   const materials = materialsLoader.getConfig() ?? { materials: [] };
   const budgetBase = budgetBaseLoader.getConfig() ?? { total_budget: 0, categories: {} };
-  const layout = layoutLoader.getConfig();
+  const layout = layoutLoader.getConfig() ?? ({ rooms: [] } as unknown as CadLayoutYaml);
   const houseMeta = houseMetaLoader.getConfig();
   catalog = ProjectCatalog.fromMaterials(materials, budgetBase, layout, houseMeta);
   const rulesConfig = designRulesLoader.getConfig() ?? { version: '1.0', risks: [], constraints: [] };

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import type { Topic, SceneApi, TopicOption } from '@shared/types';
-import { hvacSchemes, platform } from '@shared/houseData';
+import { hvacSchemes } from '@shared/houseData';
+
+const PLATFORM_ROOM_ID = 'west_platform';
 import { createOutdoorUnit, createIndoorUnit, createLabel } from '../render/ObjectFactory.js';
 
 function schemeToOption(scheme: (typeof hvacSchemes)[number]): TopicOption {
@@ -27,9 +29,12 @@ export class HvacTopic implements Topic {
     scene.clearTopicObjects(this.id);
     const objectIds: string[] = [];
 
+    const resolveLocation = (location: string) =>
+      location === 'platform' ? scene.getRoom(PLATFORM_ROOM_ID) : scene.getRoom(location);
+
     // outdoor units
     scheme.outdoorUnits.forEach((unit, idx) => {
-      const loc = unit.location === 'platform' ? platform : scene.getRoom(unit.location);
+      const loc = resolveLocation(unit.location);
       if (!loc) return;
       const mesh = createOutdoorUnit(unit.w, unit.h, unit.d);
       const xOffset = scheme.outdoorUnits.length > 1 ? (idx - (scheme.outdoorUnits.length - 1) / 2) * (unit.w + 0.05) : 0;
@@ -72,17 +77,19 @@ export class HvacTopic implements Topic {
     return objectIds;
   }
 
-  validate(_scene: SceneApi, optionId: string): string[] {
+  validate(scene: SceneApi, optionId: string): string[] {
     const scheme = hvacSchemes.find((s) => s.id === optionId);
     if (!scheme) return ['未知 HVAC 方案'];
     const warnings: string[] = [];
+    const platformRoom = scene.getRoom(PLATFORM_ROOM_ID);
+    const platformWidth = platformRoom?.width ?? 1.6;
     const platformUnits = scheme.outdoorUnits.filter((u) => u.location === 'platform').length;
     if (platformUnits > 1) {
       const totalW = scheme.outdoorUnits
         .filter((u) => u.location === 'platform')
         .reduce((sum, u) => sum + u.w, 0);
-      if (totalW > platform.width - 0.1) {
-        warnings.push(`西平台宽度 ${platform.width}m，${platformUnits} 台外机并排约 ${totalW.toFixed(2)}m，摆放紧张或放不下。`);
+      if (totalW > platformWidth - 0.1) {
+        warnings.push(`西平台宽度 ${platformWidth}m，${platformUnits} 台外机并排约 ${totalW.toFixed(2)}m，摆放紧张或放不下。`);
       }
     }
     if (optionId === 'E1') {

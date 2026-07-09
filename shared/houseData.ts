@@ -1,36 +1,12 @@
-import type { RoomLayout, HvacScheme } from './types.js';
+import type { HvacScheme } from './types.js';
 
 /**
- * 701 户型空间布局与 HVAC 方案常量。
- * 这些数据不依赖 YAML 解析，浏览器和 Node.js 共用。
+ * 701 户型 HVAC 方案常量。
+ * 房间几何布局已迁移到 CAD → config/layout/cad-extracted.yaml，
+ * 此处仅保留 HVAC 多方案数据。
  */
 
 export const FLOOR_HEIGHT = 3.0;
-
-export const rooms: RoomLayout[] = [
-  { id: 'living_dining', name: '客餐厅', x: 0, z: 0, width: 6.2, depth: 5.68, height: FLOOR_HEIGHT, type: 'public' },
-  { id: 'master_bedroom', name: '主卧', x: -5.35, z: 2.0, width: 4.5, depth: 4.05, height: FLOOR_HEIGHT, type: 'private' },
-  { id: 'bedroom_nw', name: '西北次卧', x: -5.35, z: -3.5, width: 3.0, depth: 2.8, height: FLOOR_HEIGHT, type: 'private' },
-  { id: 'bedroom_se', name: '东南次卧', x: 5.6, z: 2.0, width: 3.0, depth: 2.8, height: FLOOR_HEIGHT, type: 'private' },
-  { id: 'study', name: '书房', x: 5.6, z: -3.0, width: 3.0, depth: 2.78, height: FLOOR_HEIGHT, type: 'private' },
-  { id: 'kitchen', name: '厨房', x: 0, z: -4.5, width: 2.3, depth: 2.65, height: FLOOR_HEIGHT, type: 'service' },
-  { id: 'master_bath', name: '主卫', x: -9.5, z: -2.0, width: 1.8, depth: 2.52, height: FLOOR_HEIGHT, type: 'service' },
-  { id: 'guest_bath', name: '客卫', x: 4.0, z: -4.5, width: 1.5, depth: 1.77, height: FLOOR_HEIGHT, type: 'service' },
-  { id: 'balcony', name: '阳台', x: 0, z: -6.6, width: 1.2, depth: 2.02, height: FLOOR_HEIGHT, type: 'public' },
-  { id: 'entry_garden', name: '入户花园', x: 0, z: -8.8, width: 6.7, depth: 1.65, height: FLOOR_HEIGHT, type: 'public' },
-  { id: 'south_balcony', name: '南向大阳台', x: 0, z: 4.3, width: 6.4, depth: 2.18, height: FLOOR_HEIGHT, type: 'public' },
-];
-
-export const platform: RoomLayout = {
-  id: 'west_platform',
-  name: '西设备平台',
-  x: -8.5,
-  z: 2.0,
-  width: 1.6,
-  depth: 1.55,
-  height: FLOOR_HEIGHT,
-  type: 'service',
-};
 
 export const hvacSchemes: HvacScheme[] = [
   {

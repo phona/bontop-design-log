@@ -10,6 +10,7 @@ import { RuleEngine } from '../../server/rule-engine.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from '../../server/config-loader.js';
+import type { CadLayoutYaml } from '../../shared/types.js';
 import { rmSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -29,7 +30,16 @@ describe('server startup resilience', () => {
     designRulesLoader.load();
     registry.register(designRulesLoader);
 
-    const catalog = ProjectCatalog.fromMaterials({ materials: [] }, { total_budget: 0, categories: {} });
+    const emptyLayout: CadLayoutYaml = {
+      version: '1.0',
+      source: 'test.dxf',
+      unit: 'm',
+      scale: 0.001,
+      origin: { x: 0, z: 0 },
+      export_date: '2026-07-09',
+      rooms: [],
+    };
+    const catalog = ProjectCatalog.fromMaterials({ materials: [] }, { total_budget: 0, categories: {} }, emptyLayout);
     const engine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
     const calc = new BudgetCalculator(catalog, engine.getConfig());
     const archiveStore = new ArchivedSchemesStore(dir);

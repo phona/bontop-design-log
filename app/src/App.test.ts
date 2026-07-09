@@ -90,8 +90,6 @@ vi.mock('three/examples/jsm/controls/PointerLockControls.js', () => ({
 }));
 
 vi.mock('@shared/houseData', () => ({
-  rooms: [],
-  platform: { id: 'test', name: 'Test', x: 0, z: 0, width: 1, depth: 1, height: 3 },
   hvacSchemes: [],
 }));
 

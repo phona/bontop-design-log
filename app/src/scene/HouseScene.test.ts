@@ -1,10 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('@shared/houseData', () => ({
-  rooms: [],
-  platform: { id: 'test', name: 'Test', x: 0, z: 0, width: 1, depth: 1, height: 3 },
-}));
-
 vi.mock('three', () => {
   class MockObject3D {
     userData: Record<string, unknown> = {};

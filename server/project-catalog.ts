@@ -11,7 +11,7 @@ import type {
   LayoutRoom,
   PlatformLayout,
 } from '../shared/types.js';
-import { hvacSchemes, rooms, platform } from '../shared/houseData.js';
+import { hvacSchemes } from '../shared/houseData.js';
 
 const MATERIAL_TOPIC_MAP: Record<string, string> = {
   地砖: 'floor',
@@ -79,7 +79,7 @@ export class ProjectCatalog {
       total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     },
-    layout?: CadLayoutYaml,
+    layout: CadLayoutYaml,
     houseMeta?: HouseYaml
   ) {
     for (const m of materials.materials) {
@@ -114,18 +114,12 @@ export class ProjectCatalog {
       })),
     });
 
-    if (layout) {
-      const metaMap = new Map(houseMeta?.rooms?.map((r) => [r.id, r]) ?? []);
-      for (const r of layout.rooms) {
-        this.rooms.set(r.id, mergeRoom(r, metaMap.get(r.id)));
-      }
-      if (layout.platform) {
-        this.rooms.set(layout.platform.id, mergePlatform(layout.platform));
-      }
-    } else {
-      // Fallback to legacy hardcoded data until full migration is complete
-      for (const r of rooms) this.rooms.set(r.id, r);
-      this.rooms.set(platform.id, platform);
+    const metaMap = new Map(houseMeta?.rooms?.map((r) => [r.id, r]) ?? []);
+    for (const r of layout.rooms) {
+      this.rooms.set(r.id, mergeRoom(r, metaMap.get(r.id)));
+    }
+    if (layout.platform) {
+      this.rooms.set(layout.platform.id, mergePlatform(layout.platform));
     }
 
     this.budgetCategories = Object.entries(budgetBase.categories).map(([key, c]) => ({
@@ -151,7 +145,7 @@ export class ProjectCatalog {
       total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     },
-    layout?: CadLayoutYaml,
+    layout: CadLayoutYaml,
     houseMeta?: HouseYaml
   ): ProjectCatalog {
     return new ProjectCatalog(materials, budgetBase, layout, houseMeta);

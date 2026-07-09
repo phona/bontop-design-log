@@ -1,0 +1,25 @@
+[
+  {
+    "id": "archived_20260709_180513_chijiuhuaceshi",
+    "name": "持久化测试",
+    "selections": {
+      "hvac": {
+        "default": "A1",
+        "roomOverrides": {}
+      },
+      "floor": {
+        "default": "floor_tile_01",
+        "roomOverrides": {}
+      },
+      "wall": {
+        "default": "wall_tile_01",
+        "roomOverrides": {}
+      },
+      "paint": {
+        "default": "latex_paint_01",
+        "roomOverrides": {}
+      }
+    },
+    "createdAt": "2026-07-09T10:05:13.942Z"
+  }
+]

@@ -9,11 +9,9 @@ import { HoverTooltip } from './ui/HoverTooltip.js';
 import { OverviewMenu } from './ui/OverviewMenu.js';
 import { CollisionDetector } from './scene/CollisionDetector.js';
 import { FirstPersonController } from './scene/FirstPersonController.js';
-import { rooms } from '@shared/houseData';
 import { TopicRegistry } from './topics/TopicRegistry.js';
 import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
 
-const ENTRY_GARDEN = rooms.find((r) => r.id === 'entry_garden')!;
 const ORBIT_DISTANCE = 15;
 
 export class App {
@@ -38,7 +36,7 @@ export class App {
   constructor(canvas: HTMLCanvasElement) {
     this.stateSync = new StateSync();
     this.houseScene = new HouseScene(canvas);
-    this.collision = new CollisionDetector(rooms);
+    this.collision = new CollisionDetector();
     this.fpController = new FirstPersonController(this.houseScene.camera, canvas, this.collision);
     this.schemePanel = new SchemePanel({
       topicTabs: document.getElementById('topic-tabs')!,
@@ -84,6 +82,7 @@ export class App {
   async start(): Promise<void> {
     const response = await fetch('/api/project');
     this.projectData = await response.json();
+    this.collision.setRooms(this.projectData?.house?.rooms ?? []);
 
     await this.houseScene.buildFromCatalog(this.projectData);
 
@@ -212,8 +211,10 @@ export class App {
   }
 
   private switchToFirstPerson(): void {
-    const spawnX = ENTRY_GARDEN.x;
-    const spawnZ = ENTRY_GARDEN.z;
+    const rooms = (this.projectData?.house?.rooms ?? []) as Array<{ id: string; x: number; z: number }>;
+    const entryGarden = rooms.find((r) => r.id === 'entry_garden');
+    const spawnX = entryGarden?.x ?? 0;
+    const spawnZ = entryGarden?.z ?? 0;
     const fpPos = new THREE.Vector3(spawnX, 1.6, spawnZ);
     const fpDir = new THREE.Vector3(0, 0, 1);
 

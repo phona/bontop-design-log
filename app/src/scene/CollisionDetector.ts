@@ -13,7 +13,11 @@ const WALL_THICKNESS = 0.12;
 export class CollisionDetector {
   private walls: AABB[] = [];
 
-  constructor(roomLayouts: RoomLayout[]) {
+  constructor(roomLayouts: RoomLayout[] = []) {
+    this.walls = this.buildWallAABBs(roomLayouts);
+  }
+
+  setRooms(roomLayouts: RoomLayout[]): void {
     this.walls = this.buildWallAABBs(roomLayouts);
   }
 

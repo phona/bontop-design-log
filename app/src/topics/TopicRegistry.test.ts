@@ -2,11 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as THREE from 'three';
 
 vi.mock('@shared/houseData', () => ({
-  rooms: [
-    { id: 'living_dining', name: '客餐厅', x: 0, z: 0, width: 6.2, depth: 5.68, height: 3.0, type: 'public' },
-    { id: 'master_bedroom', name: '主卧', x: -5.35, z: 2.0, width: 4.5, depth: 4.05, height: 3.0, type: 'private' },
-  ],
-  platform: { id: 'west_platform', name: '西设备平台', x: -8.5, z: 2.0, width: 1.6, depth: 1.55, height: 3.0, type: 'service' },
   hvacSchemes: [
     {
       id: 'A1',
@@ -100,6 +95,7 @@ function createMockSceneApi() {
   const roomsMap: Record<string, any> = {
     living_dining: { id: 'living_dining', name: '客餐厅', x: 0, z: 0, width: 6.2, depth: 5.68, height: 3.0 },
     master_bedroom: { id: 'master_bedroom', name: '主卧', x: -5.35, z: 2.0, width: 4.5, depth: 4.05, height: 3.0 },
+    west_platform: { id: 'west_platform', name: '西设备平台', x: -8.5, z: 2.0, width: 1.6, depth: 1.55, height: 3.0 },
   };
 
   return {

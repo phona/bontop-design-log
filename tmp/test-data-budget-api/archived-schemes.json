@@ -1,0 +1,49 @@
+[
+  {
+    "id": "archived_20260709_180526_ceshiguidang",
+    "name": "测试归档",
+    "selections": {
+      "floor": {
+        "default": "floor_tile_01",
+        "roomOverrides": {}
+      },
+      "wall": {
+        "default": "wall_tile_01",
+        "roomOverrides": {}
+      },
+      "paint": {
+        "default": "latex_paint_01",
+        "roomOverrides": {}
+      },
+      "hvac": {
+        "default": "A1",
+        "roomOverrides": {}
+      }
+    },
+    "reason": "测试",
+    "createdAt": "2026-07-09T10:05:26.592Z"
+  },
+  {
+    "id": "archived_20260709_180526_chongfufangan",
+    "name": "重复方案",
+    "selections": {
+      "floor": {
+        "default": "floor_tile_01",
+        "roomOverrides": {}
+      },
+      "wall": {
+        "default": "wall_tile_01",
+        "roomOverrides": {}
+      },
+      "paint": {
+        "default": "latex_paint_01",
+        "roomOverrides": {}
+      },
+      "hvac": {
+        "default": "A1",
+        "roomOverrides": {}
+      }
+    },
+    "createdAt": "2026-07-09T10:05:26.614Z"
+  }
+]

@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { SceneApi, RoomObject, CameraState } from '@shared/types';
-import { rooms, platform } from '@shared/houseData';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
@@ -65,8 +64,6 @@ export class HouseScene implements SceneApi {
 
     this.setupLights();
     this.buildBase();
-    this.buildRooms();
-    this.buildPlatform();
     this.scene.add(this.topicGroup);
 
     this.controls.addEventListener('start', () => this.cameraAnimator.interrupt());
@@ -158,12 +155,6 @@ export class HouseScene implements SceneApi {
     this.scene.add(plane);
   }
 
-  private buildRooms() {
-    for (const r of rooms) {
-      this.createRoom(r);
-    }
-  }
-
   private createRoom(r: RoomObject) {
     const group = new THREE.Group();
     group.position.set(r.x, 0, r.z);
@@ -249,27 +240,6 @@ export class HouseScene implements SceneApi {
     mesh.position.set(x, y, z);
     if (Math.abs(z) > Math.abs(x)) mesh.rotation.y = Math.PI;
     group.add(mesh);
-  }
-
-  private buildPlatform() {
-    const p = platform;
-    const geo = new THREE.BoxGeometry(p.width, 0.15, p.depth);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(p.x, 0.075, p.z);
-    mesh.userData = { roomId: p.id, objectId: 'platform_boundary', type: 'platform' };
-    mesh.receiveShadow = true;
-    this.scene.add(mesh);
-
-    const frame = new THREE.Mesh(
-      new THREE.BoxGeometry(p.width + 0.1, 0.05, p.depth + 0.1),
-      new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.4 })
-    );
-    frame.position.set(p.x, 0.2, p.z);
-    frame.userData = { roomId: p.id, objectId: 'platform_boundary', type: 'platform' };
-    this.scene.add(frame);
-
-    this.rooms[p.id] = { ...p };
   }
 
   clearTopicObjects(topicId: string) {
