@@ -12,6 +12,7 @@ from parse_cad import (
     latest_dxf,
     load_house_room_ids,
     parse_room_label,
+    merge_with_previous_layout,
     write_layout_yaml,
     Room,
     Platform,
@@ -346,12 +347,12 @@ def test_merge_does_not_overwrite_cad_extracted_room(tmp_path: Path):
     merged_rooms, _ = merge_with_previous_layout(rooms, None, output)
     assert len(merged_rooms) == 1
     master = next(r for r in merged_rooms if r.id == "master_bedroom")
-    assert master.x == 0.0
-    assert master.z == 0.0
-    assert master.width == 10.0
-    assert master.depth == 10.0
-    assert master.area == 100.0
-    assert master.perimeter == 40.0
+    assert master.x == -5.35
+    assert master.z == 2.0
+    assert master.width == 4.5
+    assert master.depth == 4.05
+    assert master.area == 18.16
+    assert master.perimeter == 18.39
     assert master.name == "主卧"
 
 
@@ -385,4 +386,121 @@ def test_extract_room_labels_logs_warning_for_unmapped_label(caplog):
         labels, skipped = extract_room_labels(msp)
         assert "走廊" in skipped
         assert any("走廊" in rec.message for rec in caplog.records)
+
+
+def test_cad_geometry_is_authoritative(tmp_path: Path):
+    """CAD-extracted geometry must be used, not overwritten by previous YAML."""
+    from parse_cad import merge_with_previous_layout
+
+    output = tmp_path / "layout.yaml"
+    previous = {
+        "version": "1.0",
+        "rooms": [
+            {
+                "id": "master_bedroom",
+                "name": "主卧",
+                "x": 0.0,
+                "z": 0.0,
+                "width": 10.0,
+                "depth": 10.0,
+                "height": 3.0,
+                "area": 100.0,
+                "perimeter": 40.0,
+            }
+        ],
+    }
+    output.write_text(yaml.dump(previous), encoding="utf-8")
+
+    rooms = [
+        Room(
+            id="master_bedroom",
+            name="主卧",
+            x=-5.5,
+            z=2.0,
+            width=4.6,
+            depth=4.0,
+            height=3.0,
+            area=None,
+            perimeter=None,
+        )
+    ]
+    platform = Platform(
+        id="west_platform",
+        name="西设备平台",
+        x=-8.5,
+        z=2.0,
+        width=1.6,
+        depth=1.55,
+        height=3.0,
+        area=2.48,
+    )
+    merged, _ = merge_with_previous_layout(rooms, platform, output)
+    mb = next((r for r in merged if r.id == "master_bedroom"), None)
+    assert mb is not None
+    assert mb.x == -5.5
+    assert mb.width == 4.6
+
+
+def test_output_flag(tmp_path: Path):
+    """--output flag writes to custom path."""
+    custom_out = tmp_path / "custom" / "output.yaml"
+    rooms = [
+        Room(
+            id="master_bedroom",
+            name="主卧",
+            x=-5.35,
+            z=2.0,
+            width=4.5,
+            depth=4.05,
+            height=3.0,
+            area=18.16,
+            perimeter=18.39,
+        )
+    ]
+    report = write_layout_yaml(tmp_path / "source.dxf", rooms, None, custom_out)
+    assert custom_out.exists()
+    assert "master_bedroom" in custom_out.read_text(encoding="utf-8")
+
+
+def test_geometry_changes_in_report(tmp_path: Path):
+    """Report includes geometry_changes when CAD differs from previous YAML."""
+    out = tmp_path / "cad-extracted.yaml"
+    previous = {
+        "version": "1.0",
+        "rooms": [
+            {
+                "id": "master_bedroom",
+                "name": "主卧",
+                "x": -5.30,
+                "z": 2.5,
+                "width": 4.45,
+                "depth": 4.05,
+                "height": 3.0,
+                "area": 18.02,
+                "perimeter": 18.39,
+            }
+        ],
+    }
+    with open(out, "w", encoding="utf-8") as f:
+        yaml.dump(previous, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
+
+    rooms = [
+        Room(
+            id="master_bedroom",
+            name="主卧",
+            x=-5.35,
+            z=2.0,
+            width=4.5,
+            depth=4.05,
+            height=3.0,
+            area=18.16,
+            perimeter=18.39,
+        )
+    ]
+    report = write_layout_yaml(tmp_path / "source.dxf", rooms, None, out)
+    changes = report.get("geometry_changes", [])
+    assert len(changes) > 0
+    field_ids = {(c["room_id"], c["field"]) for c in changes}
+    assert ("master_bedroom", "x") in field_ids
+    assert ("master_bedroom", "z") in field_ids
 

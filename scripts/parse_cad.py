@@ -368,11 +368,9 @@ def merge_with_previous_layout(
 ) -> tuple[list[Room], Platform | None]:
     """Keep unlabeled gift areas and platform from the previous YAML.
 
-    IDs extracted from CAD take precedence for identification: a room ID
-    present in the new CAD output is included in the merged result, and
-    only IDs not present in the new output are carried over from the
-    previous layout. For rooms that match by ID, the previous YAML's
-    geometry is preserved while the CAD name is kept.
+    CAD geometry is authoritative for all labeled rooms. Room IDs
+    present in the CAD output use CAD geometry. Only room IDs not
+    present in the CAD output are carried over from the previous layout.
     """
     if not output_path.exists():
         return rooms, platform
@@ -391,23 +389,7 @@ def merge_with_previous_layout(
 
     merged: list[Room] = []
     for r in rooms:
-        prev_room = prev_by_id.get(r.id)
-        if prev_room:
-            merged.append(
-                Room(
-                    id=r.id,
-                    name=r.name,
-                    x=prev_room["x"],
-                    z=prev_room["z"],
-                    width=prev_room["width"],
-                    depth=prev_room["depth"],
-                    height=prev_room["height"],
-                    area=prev_room.get("area"),
-                    perimeter=prev_room.get("perimeter"),
-                )
-            )
-        else:
-            merged.append(r)
+        merged.append(r)
 
     for prev_room in prev.get("rooms", []):
         prev_id = prev_room.get("id")
@@ -471,6 +453,23 @@ def write_layout_yaml(
     else:
         diff_error = None
 
+    geometry_changes = []
+    if prev_rooms is not None:
+        prev_by_id_geo = {r.get("id"): r for r in prev_rooms if r.get("id")}
+        for r in rooms:
+            prev_room = prev_by_id_geo.get(r.id)
+            if prev_room:
+                for field in ["x", "z", "width", "depth"]:
+                    old_val = prev_room.get(field)
+                    new_val = getattr(r, field)
+                    if old_val != new_val:
+                        geometry_changes.append({
+                            "room_id": r.id,
+                            "field": field,
+                            "old": old_val,
+                            "new": new_val,
+                        })
+
     rooms, platform = merge_with_previous_layout(rooms, platform, output_path)
 
     data = {
@@ -523,6 +522,7 @@ def write_layout_yaml(
         "geometry_warnings": 0,
         "total_interior_area": total_area,
         "diff": diff_rooms(prev_rooms, rooms) if diff_error is None else diff_error,
+        "geometry_changes": geometry_changes,
     }
     return report
 
