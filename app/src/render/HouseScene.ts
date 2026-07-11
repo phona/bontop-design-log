@@ -1,9 +1,17 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { SceneApi, RoomObject, CameraState } from '@shared/types';
+import type {
+  SceneApi,
+  RoomObject,
+  CameraState,
+  ElectricalMarker,
+  CurrentScheme,
+} from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
+import { createMaterialTexture } from './TextureFactory.js';
+import { placeFurnishings } from './FurnitureFactory.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
 const DEFAULT_FLOOR = '#e8e0d5';
@@ -13,6 +21,8 @@ interface ProjectData {
   house: {
     rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string }>;
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
+    furnishings?: Record<string, Record<string, number>>;
+    electrical?: ElectricalMarker[];
   };
   topics: Array<{ id: string; name: string; perRoom: boolean; options: unknown[] }>;
   budgetCategories: unknown[];
@@ -36,6 +46,7 @@ export class HouseScene implements SceneApi {
   private onClickCallback?: (target: HoverTarget) => void;
   private boundOnWindowResize: () => void;
   private _mode: 'orbit' | 'first-person' = 'orbit';
+  private compareSchemeData?: CurrentScheme;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -125,6 +136,14 @@ export class HouseScene implements SceneApi {
 
     if (projectData.house.platform) {
       this.createPlatform(projectData.house.platform);
+    }
+
+    if (projectData.house.furnishings) {
+      placeFurnishings(this.scene, projectData.house.furnishings, this.rooms);
+    }
+
+    if (projectData.house.electrical) {
+      this.placeElectricalMarkers(projectData.house.electrical);
     }
   }
 
@@ -243,6 +262,43 @@ export class HouseScene implements SceneApi {
     this.rooms[p.id] = { ...p };
   }
 
+  private placeElectricalMarkers(markers: ElectricalMarker[]): void {
+    const colorMap: Record<string, number> = {
+      switch: 0xffffff,
+      outlet: 0xaaaaaa,
+      network: 0x4488ff,
+      curtain_power: 0xaa44ff,
+    };
+    for (const m of markers) {
+      const room = this.rooms[m.roomId];
+      if (!room) continue;
+      const geo = new THREE.BoxGeometry(0.08, 0.08, 0.02);
+      const mat = new THREE.MeshBasicMaterial({ color: colorMap[m.type] ?? 0xffffff });
+      const cube = new THREE.Mesh(geo, mat);
+      cube.userData = { objectId: `electrical:${m.roomId}:${m.type}`, hoverable: false, type: 'electrical' };
+      const dirVectors: Record<string, [number, number]> = {
+        north: [0, -1],
+        south: [0, 1],
+        west: [-1, 0],
+        east: [1, 0],
+      };
+      const [dx, dz] = dirVectors[m.wall] ?? [0, 0];
+      cube.position.set(
+        room.x + m.offset,
+        m.height,
+        room.z + dz * (room.depth / 2 + 0.01)
+      );
+      if (dx !== 0) {
+        cube.position.set(
+          room.x + dx * (room.width / 2 + 0.01),
+          m.height,
+          room.z + m.offset
+        );
+      }
+      this.scene.add(cube);
+    }
+  }
+
   private addOpeningMarker(
     group: THREE.Group,
     x: number,
@@ -273,6 +329,49 @@ export class HouseScene implements SceneApi {
     });
     for (const obj of toRemove) {
       this.topicGroup.remove(obj);
+    }
+  }
+
+  setCompareScheme(scheme: CurrentScheme): void {
+    this.compareSchemeData = scheme;
+  }
+
+  applyCompareScheme(): void {
+    if (!this.compareSchemeData) return;
+    for (const [topicId, selection] of Object.entries(this.compareSchemeData.selections)) {
+      const effective = selection.default;
+      if (effective) {
+        this.applySchemeTextures(topicId, effective);
+      }
+    }
+  }
+
+  applySchemeTextures(topicId: string, optionId: string): void {
+    const topic = this.topicRegistry.get(topicId);
+    if (!topic) return;
+    const option = topic.options.find((o) => o.id === optionId);
+    if (!option) return;
+    const data = (option.data as Record<string, unknown> | undefined);
+    const appearance = data?.appearance as { type: string; color: string } | undefined;
+    if (!appearance) return;
+
+    const tex = createMaterialTexture(appearance);
+    tex.repeat.set(2, 2);
+
+    if (topicId === 'floor') {
+      for (const mesh of this.floorMeshes) {
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        mat.map = tex;
+        mat.color.set(appearance.color);
+        mat.needsUpdate = true;
+      }
+    } else if (topicId === 'wall' || topicId === 'paint') {
+      for (const mesh of this.wallMeshes) {
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        mat.map = tex;
+        mat.color.set(appearance.color);
+        mat.needsUpdate = true;
+      }
     }
   }
 
