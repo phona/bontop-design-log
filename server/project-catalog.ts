@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, basename } from 'node:path';
 import { load } from 'js-yaml';
 import type {
   MaterialsYaml,
@@ -10,6 +11,9 @@ import type {
   HouseYaml,
   LayoutRoom,
   PlatformLayout,
+  LayoutOption,
+  FurnishingsYaml,
+  ElectricalMarker,
 } from '../shared/types.js';
 import { hvacSchemes } from '../shared/houseData.js';
 
@@ -17,6 +21,21 @@ const MATERIAL_TOPIC_MAP: Record<string, string> = {
   地砖: 'floor',
   墙砖: 'wall',
   乳胶漆: 'paint',
+  柜体板材: 'cabinet',
+  台面: 'countertop',
+  室内门: 'interior_door',
+  卫生间门: 'bathroom_door',
+  入户门: 'entry_door',
+  窗帘: 'curtain',
+  卫浴洁具: 'sanitary',
+  灯具: 'lighting',
+  开关插座: 'switch_socket',
+  五金件: 'hardware',
+  暖通空调: 'hvac',
+  热水器: 'water_heater',
+  厨房电器: 'range_hood',
+  智能家居: 'smart_home',
+  家具: 'miscellaneous',
 };
 
 export interface BudgetCategory {
@@ -38,7 +57,15 @@ function materialToOption(m: MaterialItem): DesignOption | null {
     price_per_unit: m.price_per_unit,
     coverage_per_unit: m.coverage_per_unit,
     loss_rate: m.loss_rate,
-    data: m,
+    data: {
+      ...m,
+      alternative_group: m.alternative_group,
+      calc_mode: m.calc_mode,
+      pros: m.pros,
+      cons: m.cons,
+      price_source: m.price_source,
+      appearance: m.appearance,
+    },
   };
 }
 
@@ -73,6 +100,9 @@ export class ProjectCatalog {
   private rooms = new Map<string, RoomLayout>();
   private platform: RoomLayout | undefined;
   private budgetCategories: BudgetCategory[] = [];
+  private furnishings: FurnishingsYaml = {};
+  private electricalMarkers: ElectricalMarker[] = [];
+  private layoutSource: string = '';
 
   constructor(
     materials: MaterialsYaml,
@@ -81,7 +111,8 @@ export class ProjectCatalog {
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     },
     layout: CadLayoutYaml,
-    houseMeta?: HouseYaml
+    houseMeta?: HouseYaml,
+    layoutSource?: string
   ) {
     for (const m of materials.materials) {
       const opt = materialToOption(m);
@@ -115,6 +146,10 @@ export class ProjectCatalog {
       })),
     });
 
+    this.furnishings = houseMeta?.furnishings ?? {};
+    this.electricalMarkers = houseMeta?.electrical ?? [];
+    this.layoutSource = layoutSource ?? layout.source;
+
     const metaMap = new Map(houseMeta?.rooms?.map((r) => [r.id, r]) ?? []);
     for (const r of layout.rooms) {
       this.rooms.set(r.id, mergeRoom(r, metaMap.get(r.id)));
@@ -129,15 +164,38 @@ export class ProjectCatalog {
     }));
   }
 
-  static load(configDir = '.'): ProjectCatalog {
+  static getLayouts(configDir = '.'): LayoutOption[] {
+    const layoutDir = join(configDir, 'config/layout');
+    const results: LayoutOption[] = [];
+    try {
+      const files = readdirSync(layoutDir).filter((f) => f.endsWith('.yaml'));
+      for (const file of files) {
+        const yaml = load(readFileSync(join(layoutDir, file), 'utf8')) as CadLayoutYaml;
+        results.push({
+          name: basename(file, '.yaml'),
+          path: `config/layout/${file}`,
+          rooms: yaml.rooms.map((r) => ({ id: r.id, name: r.name })),
+          platform: yaml.platform ? { id: yaml.platform.id, name: yaml.platform.name } : undefined,
+        });
+      }
+    } catch {
+      // directory may not exist or be empty
+    }
+    return results;
+  }
+
+  static load(configDir = '.', layoutName?: string): ProjectCatalog {
     const materials = load(readFileSync(`${configDir}/config/materials.yaml`, 'utf8')) as MaterialsYaml;
     const budgetBase = JSON.parse(readFileSync(`${configDir}/config/budget/base.json`, 'utf8')) as {
       total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     };
-    const layout = load(readFileSync(`${configDir}/config/layout/cad-extracted.yaml`, 'utf8')) as CadLayoutYaml;
+    const layoutPath = layoutName
+      ? `${configDir}/config/layout/${layoutName}.yaml`
+      : `${configDir}/config/layout/cad-extracted.yaml`;
+    const layout = load(readFileSync(layoutPath, 'utf8')) as CadLayoutYaml;
     const houseMeta = load(readFileSync(`${configDir}/config/house.yaml`, 'utf8')) as HouseYaml;
-    return new ProjectCatalog(materials, budgetBase, layout, houseMeta);
+    return new ProjectCatalog(materials, budgetBase, layout, houseMeta, basename(layoutPath));
   }
 
   static fromMaterials(
@@ -147,9 +205,10 @@ export class ProjectCatalog {
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     },
     layout: CadLayoutYaml,
-    houseMeta?: HouseYaml
+    houseMeta?: HouseYaml,
+    layoutSource?: string
   ): ProjectCatalog {
-    return new ProjectCatalog(materials, budgetBase, layout, houseMeta);
+    return new ProjectCatalog(materials, budgetBase, layout, houseMeta, layoutSource);
   }
 
   getTopics(): CatalogTopic[] {
@@ -178,6 +237,18 @@ export class ProjectCatalog {
 
   getPlatform(): RoomLayout | undefined {
     return this.platform;
+  }
+
+  getFurnishings(): FurnishingsYaml {
+    return this.furnishings;
+  }
+
+  getElectricalMarkers(): ElectricalMarker[] {
+    return this.electricalMarkers;
+  }
+
+  getLayoutSource(): string {
+    return this.layoutSource;
   }
 
   getBudgetCategories(): BudgetCategory[] {
