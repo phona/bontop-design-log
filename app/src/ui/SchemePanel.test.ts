@@ -107,6 +107,8 @@ describe('SchemePanel', () => {
     },
   ];
 
+  let comparePanelEl: HTMLElement;
+
   beforeEach(() => {
     setupMockDocument();
     tabsEl = createMockElement();
@@ -116,6 +118,7 @@ describe('SchemePanel', () => {
     prosEl = createMockElement();
     consEl = createMockElement();
     warningsEl = createMockElement();
+    comparePanelEl = createMockElement();
 
     panel = new SchemePanel({
       topicTabs: tabsEl,
@@ -125,6 +128,7 @@ describe('SchemePanel', () => {
       schemePros: prosEl,
       schemeCons: consEl,
       warnings: warningsEl,
+      comparePanel: comparePanelEl,
     });
   });
 

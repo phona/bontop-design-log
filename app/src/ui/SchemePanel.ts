@@ -1,4 +1,4 @@
-import type { Topic, TopicOption } from '@shared/types';
+import type { Topic, TopicOption, SchemeDiff } from '@shared/types';
 
 export interface SchemePanelElements {
   topicTabs: HTMLElement;
@@ -8,6 +8,7 @@ export interface SchemePanelElements {
   schemePros: HTMLElement;
   schemeCons: HTMLElement;
   warnings: HTMLElement;
+  comparePanel: HTMLElement;
 }
 
 export class SchemePanel {
@@ -16,6 +17,8 @@ export class SchemePanel {
   private activeOptionId = '';
   private onSelect?: (topicId: string, optionId: string) => void;
   private els: SchemePanelElements;
+  private compareActive = false;
+  private compareArchiveName = '';
 
   constructor(els: SchemePanelElements) {
     this.els = els;
@@ -108,11 +111,54 @@ export class SchemePanel {
     }
   }
 
+  initCompare(archiveName: string, diff: SchemeDiff): void {
+    this.compareActive = true;
+    this.compareArchiveName = archiveName;
+    this.renderCompare(diff);
+  }
+
+  clearCompare(): void {
+    this.compareActive = false;
+    this.compareArchiveName = '';
+    this.els.comparePanel.innerHTML = '';
+  }
+
   private clearInfo() {
     this.els.schemeName.textContent = '请选择一个方案';
     this.els.schemeDesc.textContent = '';
     this.els.schemePros.innerHTML = '';
     this.els.schemeCons.innerHTML = '';
     this.els.warnings.innerHTML = '';
+  }
+
+  private renderCompare(diff: SchemeDiff): void {
+    const rowsHtml = diff.selections.map((s) => `
+          <div class="compare-row">
+            <span>${s.current ?? '—'}</span>
+            <span>${s.compare ?? '—'}</span>
+            <span class="${s.priceDelta > 0 ? 'up' : 'down'}">${s.priceDelta > 0 ? '+' : ''}${s.priceDelta} 元</span>
+          </div>
+        `).join('');
+
+    const risksAdded = diff.risks.added.map((r) => `<div class="risk-added">${r.id} (${r.severity})</div>`).join('');
+    const risksRemoved = diff.risks.removed.map((r) => `<div class="risk-removed">${r.id} (${r.severity})</div>`).join('');
+
+    this.els.comparePanel.innerHTML = `
+      <div class="compare-header">
+        <span>当前方案</span>
+        <span>vs</span>
+        <span>${this.compareArchiveName}</span>
+      </div>
+      <div class="compare-budget">
+        预算差异: ${diff.budget > 0 ? '+' + diff.budget : diff.budget} 元
+      </div>
+      <div class="compare-rows">
+        ${rowsHtml}
+      </div>
+      <div class="compare-risks">
+        ${risksAdded ? `<div class="risks-added-section"><h4>新增风险</h4>${risksAdded}</div>` : ''}
+        ${risksRemoved ? `<div class="risks-removed-section"><h4>消除风险</h4>${risksRemoved}</div>` : ''}
+      </div>
+    `;
   }
 }
