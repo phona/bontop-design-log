@@ -132,4 +132,131 @@ describe('BudgetCalculator', () => {
     const expectedTotal = snapshot.categories.reduce((s, c) => s + c.budget, 0);
     assert.equal(snapshot.totalBudget, expectedTotal);
   });
+
+  it('fixed calcMode adds option price directly', () => {
+    const catalog = ProjectCatalog.load('.');
+    const fixedConfig: DesignRulesConfig = {
+      version: '1.0',
+      budget: {
+        topicCategories: { hvac: 'hvac' },
+        lineItems: [{ topic: 'hvac', calcMode: 'fixed' }],
+      },
+      risks: [],
+      constraints: [],
+    };
+    const calc = new BudgetCalculator(catalog, fixedConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        hvac: { default: 'A2', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    const hvacCategory = snapshot.categories.find((c) => c.key === 'hvac');
+    assert.ok(hvacCategory);
+    assert.equal(hvacCategory.autoActual, 29000);
+    const hvacItem = snapshot.lineItems.find((li) => li.topic === 'hvac');
+    assert.ok(hvacItem);
+    assert.equal(hvacItem.unitPrice, 29000);
+  });
+
+  it('count calcMode computes cost from furnishings', () => {
+    const catalog = ProjectCatalog.load('.');
+    const countConfig: DesignRulesConfig = {
+      version: '1.0',
+      budget: {
+        topicCategories: { range_hood: 'range_hood' },
+        lineItems: [{ topic: 'range_hood', calcMode: 'count' }],
+      },
+      risks: [],
+      constraints: [],
+    };
+    const calc = new BudgetCalculator(catalog, countConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        range_hood: { default: 'range_hood_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    const rangeHoodCategory = snapshot.categories.find((c) => c.key === 'range_hood');
+    assert.ok(rangeHoodCategory);
+    assert.equal(rangeHoodCategory.autoActual, 1200);
+    const hoodItem = snapshot.lineItems.find((li) => li.topic === 'range_hood');
+    assert.ok(hoodItem);
+    assert.equal(hoodItem.quantity, 1);
+    assert.equal(hoodItem.unitPrice, 1200);
+    assert.equal(hoodItem.cost, 1200);
+  });
+
+  it('labor costs are added to categories', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        hvac: { default: 'A1', roomOverrides: {} },
+        floor: { default: 'floor_tile_01', roomOverrides: {} },
+        wall: { default: 'wall_tile_01', roomOverrides: {} },
+        paint: { default: 'latex_paint_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+
+    const masonry = snapshot.categories.find((c) => c.key === 'masonry');
+    assert.ok(masonry);
+    assert.ok(masonry.actual > masonry.autoActual, 'masonry should have labor cost added');
+
+    const painting = snapshot.categories.find((c) => c.key === 'painting');
+    assert.ok(painting);
+    assert.ok(painting.actual > painting.autoActual, 'painting should have labor cost added');
+
+    const hvac = snapshot.categories.find((c) => c.key === 'hvac');
+    assert.ok(hvac);
+  });
+
+  it('fixed labor rate is added as flat value', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        hvac: { default: 'A1', roomOverrides: {} },
+        floor: { default: 'floor_tile_01', roomOverrides: {} },
+        wall: { default: 'wall_tile_01', roomOverrides: {} },
+        paint: { default: 'latex_paint_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+
+    const waterElectric = snapshot.categories.find((c) => c.key === 'water_electric');
+    assert.ok(waterElectric);
+    assert.equal(waterElectric.actual, 5000, 'water_electric has fixed labor of 5000');
+  });
+
+  it('categories have autoActual and manualActual tracked separately', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        hvac: { default: 'A1', roomOverrides: {} },
+        floor: { default: 'floor_tile_01', roomOverrides: {} },
+        wall: { default: 'wall_tile_01', roomOverrides: {} },
+        paint: { default: 'latex_paint_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    for (const cat of snapshot.categories) {
+      assert.equal(
+        cat.manualActual,
+        0,
+        `manualActual should be 0 for ${cat.key}`
+      );
+      assert.ok(
+        cat.actual >= cat.manualActual + cat.autoActual,
+        `actual should be >= manualActual + autoActual for ${cat.key} (labor adds on top)`
+      );
+    }
+  });
 });
