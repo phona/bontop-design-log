@@ -259,6 +259,72 @@ export function createMcpServer(deps: McpDeps): McpServer {
   );
 
   server.registerTool(
+    'compare_schemes',
+    {
+      title: 'Compare schemes',
+      description: 'Compare current scheme against an archived scheme. Returns budget diff, selection diffs, and risk changes.',
+      inputSchema: z.object({ archiveId: z.string() }),
+    },
+    async (args) => {
+      const archived = archiveStore.get(args.archiveId);
+      if (!archived) return text({ error: 'archived scheme not found' });
+
+      const current = state.getCurrentScheme();
+      const currentBudget = getBudgetCalculator().calculate(current);
+      const currentRisks = getRuleEngine().evaluate(current, catalog);
+      const compareBudget = getBudgetCalculator().calculate({
+        ...archived,
+        updatedAt: archived.createdAt,
+      } as CurrentScheme);
+      const compareRisks = getRuleEngine().evaluate(
+        { ...archived, updatedAt: archived.createdAt } as CurrentScheme, catalog
+      );
+
+      const allTopics = new Set([
+        ...Object.keys(current.selections),
+        ...Object.keys(archived.selections),
+      ]);
+
+      const selectionDiffs: Array<{
+        topic: string;
+        current: string | null;
+        compare: string | null;
+        priceDelta: number;
+      }> = [];
+
+      for (const topic of allTopics) {
+        const curOptId = current.selections[topic]?.default ?? null;
+        const cmpOptId = archived.selections[topic]?.default ?? null;
+        if (curOptId === cmpOptId) continue;
+        const curOpt = curOptId ? catalog.getOption(topic, curOptId) : null;
+        const cmpOpt = cmpOptId ? catalog.getOption(topic, cmpOptId) : null;
+        selectionDiffs.push({
+          topic,
+          current: curOpt?.name ?? curOptId,
+          compare: cmpOpt?.name ?? cmpOptId,
+          priceDelta: (cmpOpt?.price_per_unit ?? 0) - (curOpt?.price_per_unit ?? 0),
+        });
+      }
+
+      const currentRiskIds = new Set(currentRisks.risks.map((r) => r.id));
+      const compareRiskIds = new Set(compareRisks.risks.map((r) => r.id));
+
+      return text({
+        current: { scheme: current, budget: currentBudget, risks: currentRisks },
+        compare: { scheme: archived, budget: compareBudget, risks: compareRisks },
+        diff: {
+          budget: compareBudget.totalActual - currentBudget.totalActual,
+          selections: selectionDiffs,
+          risks: {
+            added: compareRisks.risks.filter((r) => !currentRiskIds.has(r.id)),
+            removed: currentRisks.risks.filter((r) => !compareRiskIds.has(r.id)),
+          },
+        },
+      });
+    }
+  );
+
+  server.registerTool(
     'restore_scheme',
     {
       title: 'Restore archived scheme',
