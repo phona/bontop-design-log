@@ -5,6 +5,7 @@ import type { DesignState } from './design-state.js';
 import type { RuleEngine } from './rule-engine.js';
 import type { BudgetCalculator } from './budget-calculator.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
+import type { CurrentScheme } from '../shared/types.js';
 
 function text(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
