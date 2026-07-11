@@ -25,7 +25,7 @@ function ensureAppearance(options: TopicOption[]): TopicOption[] {
     const m = opt.data as MaterialItem | undefined;
     if (m?.appearance) {
       const tex = createMaterialTexture(m.appearance);
-      return { ...opt, color: '#' + tex.image ? 'texture' : m.appearance.color, data: { ...m, texture: tex } };
+      return { ...opt, color: m.appearance.color, data: { ...m, texture: tex } };
     }
     return { ...opt, color: '#cccccc' };
   });

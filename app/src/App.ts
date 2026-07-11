@@ -33,6 +33,7 @@ export class App {
   private toastEl: HTMLDivElement;
   private toastTimer?: number;
   private compareActive = false;
+  private compareShowing = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.stateSync = new StateSync();
@@ -181,10 +182,12 @@ export class App {
       }
       if (e.code === 'Tab' && this.compareActive) {
         e.preventDefault();
-        this.houseScene.applyCompareScheme();
-        setTimeout(() => {
+        this.compareShowing = !this.compareShowing;
+        if (this.compareShowing) {
+          this.houseScene.applyCompareScheme();
+        } else {
           this.stateSync.fetchScheme().then((s) => { if (s) this.applyScheme(s); });
-        }, 0);
+        }
       }
       if (this.houseScene.cameraAnimator.isAnimating()) {
         if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code) || e.code === 'KeyV') {
@@ -347,6 +350,7 @@ export class App {
   private handleClearCompare(): void {
     this.schemePanel.clearCompare();
     this.compareActive = false;
+    this.compareShowing = false;
     this.stateSync.fetchScheme().then((s) => { if (s) this.applyScheme(s); });
   }
 

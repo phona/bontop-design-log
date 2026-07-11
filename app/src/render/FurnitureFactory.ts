@@ -98,7 +98,7 @@ export function placeFurnishings(
       if (['ceiling_light', 'curtain_set', 'switch', 'power_outlet', 'network',
            'sink', 'toilet', 'shower_set', 'vanity', 'faucet', 'exhaust_fan',
            'range_hood', 'gas_stove', 'shoe_cabinet', 'cabinet_base', 'cabinet_wall',
-           'countertop_quartz', 'desk', 'chair', 'bookshelf'].includes(type)) continue;
+           'countertop_quartz', 'bookshelf'].includes(type)) continue;
 
       const model = createFurniture(type);
       if (!model) continue;

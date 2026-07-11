@@ -228,11 +228,12 @@ export function createApiRouter(deps: ApiDeps): Router {
       res.status(404).json({ error: 'archived scheme not found' });
       return;
     }
+    state.setCompareArchive(archiveId, { ...archived, updatedAt: archived.createdAt } as CurrentScheme);
     const current = state.getCurrentScheme();
     const currentBudget = getBudgetCalculator().calculate(current);
     const currentRisks = getRuleEngine().evaluate(current, catalog);
-    const compareBudget = getBudgetCalculator().calculate(archived as unknown as CurrentScheme);
-    const compareRisks = getRuleEngine().evaluate(archived as unknown as CurrentScheme, catalog);
+    const compareBudget = getBudgetCalculator().calculate({ ...archived, updatedAt: archived.createdAt } as CurrentScheme);
+    const compareRisks = getRuleEngine().evaluate({ ...archived, updatedAt: archived.createdAt } as CurrentScheme, catalog);
 
     const allTopics = new Set([
       ...Object.keys(current.selections),
@@ -337,6 +338,11 @@ export function createApiRouter(deps: ApiDeps): Router {
       archiveId: archived.id,
       scheme: state.getCurrentScheme(),
     });
+  });
+
+  router.post('/schemes/compare/clear', (_req, res) => {
+    state.clearCompare();
+    res.json({ cleared: true });
   });
 
   router.delete('/schemes/:id', (req, res) => {
