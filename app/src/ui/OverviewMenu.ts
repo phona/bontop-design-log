@@ -9,10 +9,13 @@ import type {
   ConstraintViolation,
 } from '@shared/types';
 
-export interface OverviewMenuCallbacks {
+export interface OverviewMenuOptions {
   onArchive?: (name: string, reason?: string) => void;
   onRestore?: (id: string) => void;
   onDeleteArchive?: (id: string) => void;
+  onLayoutChange?: (layoutName: string) => void;
+  onCompare?: (archiveId: string) => void;
+  onClearCompare?: () => void;
 }
 
 export class OverviewMenu {
@@ -30,9 +33,10 @@ export class OverviewMenu {
   private risks: DesignCheckResult | null = null;
   private archives: Pick<ArchivedScheme, 'id' | 'name' | 'createdAt'>[] = [];
   private visible = false;
-  private callbacks: OverviewMenuCallbacks;
+  private callbacks: OverviewMenuOptions;
+  private layoutSelect: HTMLSelectElement | null;
 
-  constructor(callbacks: OverviewMenuCallbacks = {}) {
+  constructor(callbacks: OverviewMenuOptions = {}) {
     this.callbacks = callbacks;
     this.el = document.getElementById('overview-menu') as HTMLDivElement;
     this.schemeEl = document.getElementById('overview-scheme') as HTMLDivElement;
@@ -41,7 +45,14 @@ export class OverviewMenu {
     this.risksEl = document.getElementById('overview-risks') as HTMLDivElement;
     this.archivesEl = document.getElementById('overview-archives') as HTMLDivElement;
     this.archiveInput = document.getElementById('archive-name-input') as HTMLInputElement;
+    this.layoutSelect = document.getElementById('layout-select') as HTMLSelectElement | null;
     this.el.style.display = 'none';
+
+    if (this.layoutSelect) {
+      this.layoutSelect.addEventListener('change', () => {
+        this.callbacks.onLayoutChange?.(this.layoutSelect!.value);
+      });
+    }
 
     const archiveBtn = document.getElementById('archive-current-btn');
     archiveBtn?.addEventListener('click', () => this.handleArchiveClick());
@@ -95,6 +106,16 @@ export class OverviewMenu {
 
   isVisible(): boolean {
     return this.visible;
+  }
+
+  setLayouts(layouts: Array<{ name: string; path: string }>): void {
+    if (!this.layoutSelect) return;
+    this.layoutSelect.innerHTML = layouts.map((l) => `<option value="${l.name}">${l.name}</option>`).join('');
+  }
+
+  setActiveLayout(name: string): void {
+    if (!this.layoutSelect) return;
+    this.layoutSelect.value = name;
   }
 
   private render() {
