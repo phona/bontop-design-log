@@ -32,6 +32,7 @@ export class App {
   private modeIndicator: HTMLDivElement;
   private toastEl: HTMLDivElement;
   private toastTimer?: number;
+  private compareActive = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.stateSync = new StateSync();
@@ -59,6 +60,9 @@ export class App {
       onArchive: (name, reason) => void this.handleArchive(name, reason),
       onRestore: (id) => void this.handleRestore(id),
       onDeleteArchive: (id) => void this.handleDeleteArchive(id),
+      onLayoutChange: (layoutName) => void this.handleLayoutChange(layoutName),
+      onCompare: (archiveId) => void this.handleCompare(archiveId),
+      onClearCompare: () => this.handleClearCompare(),
     });
     this.modeIndicator = document.getElementById('mode-indicator') as HTMLDivElement;
     this.toastEl = document.getElementById('pointer-lock-toast') as HTMLDivElement;
@@ -92,6 +96,15 @@ export class App {
     });
     this.infoPanel.setTopics(this.topics);
     this.overviewMenu.setTopics(this.topics);
+
+    try {
+      const layoutsRes = await fetch('/api/layouts');
+      const layoutsData = await layoutsRes.json();
+      this.overviewMenu.setLayouts(layoutsData.layouts);
+      this.overviewMenu.setActiveLayout(this.projectData.house.layoutSource ?? 'cad-extracted');
+    } catch (e) {
+      // layouts not critical
+    }
 
     this.stateSync.start();
 
@@ -165,6 +178,13 @@ export class App {
         if (this.overviewMenu.isVisible()) {
           this.overviewMenu.hide();
         }
+      }
+      if (e.code === 'Tab' && this.compareActive) {
+        e.preventDefault();
+        this.houseScene.applyCompareScheme();
+        setTimeout(() => {
+          this.stateSync.fetchScheme().then((s) => { if (s) this.applyScheme(s); });
+        }, 0);
       }
       if (this.houseScene.cameraAnimator.isAnimating()) {
         if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code) || e.code === 'KeyV') {
@@ -305,6 +325,29 @@ export class App {
     await this.stateSync.deleteArchivedScheme(id);
     const archives = await this.stateSync.fetchArchivedSchemes();
     this.overviewMenu.setArchivedSchemes(archives);
+  }
+
+  private async handleLayoutChange(layoutName: string): Promise<void> {
+    const response = await fetch(`/api/project?layout=${layoutName}`);
+    this.projectData = await response.json();
+    this.collision.setRooms(this.projectData?.house?.rooms ?? []);
+    await this.houseScene.buildFromCatalog(this.projectData);
+    const scheme = await this.stateSync.fetchScheme();
+    if (scheme) this.applyScheme(scheme);
+  }
+
+  private async handleCompare(archiveId: string): Promise<void> {
+    const response = await fetch(`/api/schemes/compare?other=${archiveId}`);
+    const data = await response.json();
+    this.schemePanel.initCompare(archiveId, data.diff);
+    this.houseScene.setCompareScheme(data.compare.scheme);
+    this.compareActive = true;
+  }
+
+  private handleClearCompare(): void {
+    this.schemePanel.clearCompare();
+    this.compareActive = false;
+    this.stateSync.fetchScheme().then((s) => { if (s) this.applyScheme(s); });
   }
 
   private applyScheme(scheme: CurrentScheme): void {
