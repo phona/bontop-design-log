@@ -121,7 +121,7 @@ describe('RuleEngine', () => {
     const result = engine.evaluate(scheme, { getOption: () => ({ name: 'B1 方案' }), getTopic: () => undefined } as any);
     assert.equal(result.risks.length, 1);
     assert.equal(result.risks[0].id, 'platform_width');
-    assert.equal(result.risks[0].severity, 'warning');
+    assert.equal(result.risks[0].severity, 'medium');
   });
 
   it('returns empty constraints when required topic not registered', () => {

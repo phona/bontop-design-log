@@ -93,6 +93,14 @@ vi.mock('@shared/houseData', () => ({
   hvacSchemes: [],
 }));
 
+vi.mock('./data/designData.js', () => ({
+  floorOptions: [],
+  wallOptions: [],
+  paintOptions: [],
+  materialCategories: { floor: [], wall: [], paint: [] },
+  getMaterialOptions: () => ({ floor: [], wall: [], paint: [] }),
+}));
+
 const mockRequestAnimationFrame = vi.fn(() => 1);
 const mockCancelAnimationFrame = vi.fn();
 
