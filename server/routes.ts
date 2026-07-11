@@ -1,10 +1,11 @@
 import { Router, type Request, type Response } from 'express';
-import type { ProjectCatalog } from './project-catalog.js';
+import { ProjectCatalog } from './project-catalog.js';
 import type { DesignState } from './design-state.js';
 import type { RuleEngine } from './rule-engine.js';
 import type { BudgetCalculator } from './budget-calculator.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { ConfigRegistry } from './config-loader.js';
+import type { CurrentScheme } from '../shared/types.js';
 
 export interface ApiDeps {
   catalog: ProjectCatalog;
@@ -23,16 +24,27 @@ export function createApiRouter(deps: ApiDeps): Router {
     res.json({ configs: deps.getConfigRegistry().getStatuses() });
   });
 
-  router.get('/project', (_req, res) => {
+  router.get('/layouts', (_req, res) => {
+    res.json({ layouts: ProjectCatalog.getLayouts('.') });
+  });
+
+  router.get('/project', (req, res) => {
+    const layoutName = req.query.layout as string | undefined;
+    const projectCatalog = layoutName
+      ? ProjectCatalog.load('.', layoutName)
+      : deps.catalog;
     res.json({
-      house: { rooms: catalog.getRooms(), platform: catalog.getPlatform() },
-      topics: catalog.getTopics().map((t) => ({
-        id: t.id,
-        name: t.name,
-        perRoom: t.perRoom,
-        optionCount: t.options.length,
+      house: {
+        rooms: projectCatalog.getRooms(),
+        platform: projectCatalog.getPlatform(),
+        furnishings: projectCatalog.getFurnishings(),
+        electrical: projectCatalog.getElectricalMarkers(),
+        layoutSource: projectCatalog.getLayoutSource(),
+      },
+      topics: projectCatalog.getTopics().map((t) => ({
+        id: t.id, name: t.name, perRoom: t.perRoom, optionCount: t.options.length,
       })),
-      budgetCategories: catalog.getBudgetCategories(),
+      budgetCategories: projectCatalog.getBudgetCategories(),
     });
   });
 
@@ -203,6 +215,66 @@ export function createApiRouter(deps: ApiDeps): Router {
       return;
     }
     res.json(diff);
+  });
+
+  router.get('/schemes/compare', (req, res) => {
+    const archiveId = req.query.other as string;
+    if (!archiveId) {
+      res.status(400).json({ error: 'query param "other" (archiveId) required' });
+      return;
+    }
+    const archived = archiveStore.get(archiveId);
+    if (!archived) {
+      res.status(404).json({ error: 'archived scheme not found' });
+      return;
+    }
+    const current = state.getCurrentScheme();
+    const currentBudget = getBudgetCalculator().calculate(current);
+    const currentRisks = getRuleEngine().evaluate(current, catalog);
+    const compareBudget = getBudgetCalculator().calculate(archived as unknown as CurrentScheme);
+    const compareRisks = getRuleEngine().evaluate(archived as unknown as CurrentScheme, catalog);
+
+    const allTopics = new Set([
+      ...Object.keys(current.selections),
+      ...Object.keys(archived.selections),
+    ]);
+
+    const selectionDiffs: Array<{
+      topic: string;
+      current: string | null;
+      compare: string | null;
+      priceDelta: number;
+    }> = [];
+
+    for (const topic of allTopics) {
+      const curOptId = current.selections[topic]?.default ?? null;
+      const cmpOptId = archived.selections[topic]?.default ?? null;
+      if (curOptId === cmpOptId) continue;
+      const curOpt = curOptId ? catalog.getOption(topic, curOptId) : null;
+      const cmpOpt = cmpOptId ? catalog.getOption(topic, cmpOptId) : null;
+      selectionDiffs.push({
+        topic,
+        current: curOpt?.name ?? curOptId,
+        compare: cmpOpt?.name ?? cmpOptId,
+        priceDelta: (cmpOpt?.price_per_unit ?? 0) - (curOpt?.price_per_unit ?? 0),
+      });
+    }
+
+    const currentRiskIds = new Set(currentRisks.risks.map((r) => r.id));
+    const compareRiskIds = new Set(compareRisks.risks.map((r) => r.id));
+
+    res.json({
+      current: { scheme: current, budget: currentBudget, risks: currentRisks },
+      compare: { scheme: archived, budget: compareBudget, risks: compareRisks },
+      diff: {
+        budget: compareBudget.totalActual - currentBudget.totalActual,
+        selections: selectionDiffs,
+        risks: {
+          added: compareRisks.risks.filter((r) => !currentRiskIds.has(r.id)).map((r) => ({ id: r.id, severity: r.severity })),
+          removed: currentRisks.risks.filter((r) => !compareRiskIds.has(r.id)).map((r) => ({ id: r.id, severity: r.severity })),
+        },
+      },
+    });
   });
 
   router.post('/schemes/:id/restore', (req, res) => {
