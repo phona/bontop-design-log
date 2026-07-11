@@ -19,14 +19,158 @@ budget:
     wall: masonry
     paint: painting
     hvac: hvac
+    cabinet: kitchen_cabinet
+    countertop: kitchen_cabinet
+    interior_door: doors_windows
+    bathroom_door: doors_windows
+    entry_door: doors_windows
+    curtain: curtains
+    toilet: sanitary
+    shower: sanitary
+    vanity: sanitary
+    faucet: sanitary
+    lighting: lighting
+    switch_socket: water_electric
+    range_hood: range_hood
+    water_heater: water_electric
+    smart_home: smart_home
+    hardware: miscellaneous
+    bed: miscellaneous
+    mattress: miscellaneous
+    wardrobe: miscellaneous
+    sofa: miscellaneous
+    dining_table: miscellaneous
+    dining_chair: miscellaneous
+    tv_stand: miscellaneous
+    desk: miscellaneous
   lineItems:
     - topic: floor
       quantityField: floorArea
+      calcMode: area
     - topic: wall
       quantityField: wetWallArea
+      calcMode: area
     - topic: paint
       quantityField: paintWallArea
+      calcMode: area
     - topic: hvac
+      calcMode: fixed
+    - topic: cabinet
+      quantityField: linearKitchen
+      calcMode: length
+    - topic: countertop
+      quantityField: linearKitchen
+      calcMode: length
+    - topic: interior_door
+      quantityField: doorCount
+      calcMode: count
+    - topic: bathroom_door
+      quantityField: doorCount
+      calcMode: count
+    - topic: entry_door
+      quantityField: doorCount
+      calcMode: count
+    - topic: toilet
+      quantityField: fixtureCount
+      calcMode: count
+    - topic: shower
+      quantityField: fixtureCount
+      calcMode: count
+    - topic: vanity
+      quantityField: fixtureCount
+      calcMode: count
+    - topic: faucet
+      quantityField: fixtureCount
+      calcMode: count
+    - topic: lighting
+      calcMode: fixed
+    - topic: switch_socket
+      calcMode: fixed
+    - topic: range_hood
+      calcMode: fixed
+    - topic: water_heater
+      calcMode: fixed
+    - topic: smart_home
+      calcMode: fixed
+    - topic: hardware
+      calcMode: fixed
+    - topic: curtain
+      calcMode: fixed
+    - topic: bed
+      calcMode: count
+    - topic: mattress
+      calcMode: count
+    - topic: wardrobe
+      calcMode: count
+    - topic: sofa
+      calcMode: count
+    - topic: dining_table
+      calcMode: count
+    - topic: dining_chair
+      calcMode: count
+    - topic: tv_stand
+      calcMode: count
 
-risks: []
-constraints: []
+risks:
+  - id: "kitchen_hood_weak"
+    severity: "high"
+    when:
+      topic: "range_hood"
+      condition: "$option.airflow < 22"
+    message: "开放式厨房必须配 ≥22m³/min 侧吸油烟机，当前油烟机风量不足"
+
+  - id: "outdoor_unit_overflow"
+    severity: "high"
+    when:
+      topic: "hvac"
+      condition: "$selection.hvac == 'E1'"
+    message: "叠叠乐方案外机过多，散热、噪音、维修风险高，不建议"
+
+  - id: "garden_outdoor_warning"
+    severity: "medium"
+    when:
+      topic: "hvac"
+      condition: "$selection.hvac == 'F2'"
+    message: "外机放入户花园存在噪音、热风及物业/消防风险，需现场确认"
+
+  - id: "floor_tile_no_frost"
+    severity: "medium"
+    when:
+      topic: "floor"
+      condition: "$selection.floor == 'floor_tile_03'"
+    message: "亮光砖反光较强，客厅大面积使用可能刺眼；建议搭配哑光家具和窗帘"
+
+  - id: "dark_tile_small_room"
+    severity: "low"
+    when:
+      topic: "wall"
+      condition: "$selection.wall == 'wall_tile_03'"
+    message: "灰色仿古砖在小卫生间使用可能显暗，建议搭配亮色灯光"
+
+  - id: "wall_tile_cost_warning"
+    severity: "low"
+    when:
+      topic: "wall"
+      condition: "$selection.wall == 'wall_tile_02'"
+    message: "柔光白瓷片价格 22 元/片，比标配贵 83%，全屋墙砖预算将明显增加"
+
+constraints:
+  - id: "open_kitchen_hood"
+    when:
+      topic: "kitchen"
+      condition: "$selection.kitchen == 'open'"
+    require:
+      topic: "range_hood"
+      minValue:
+        field: "airflow"
+        value: 22
+    description: "开放式厨房必须选配 ≥22m³/min 油烟机"
+
+  - id: "hvac_platform_check"
+    when:
+      topic: "hvac"
+      condition: "$selection.hvac == 'E1'"
+    require:
+      topic: "hvac"
+      fields: ["outdoor_width"]
+    description: "E1 方案多台外机需确认西平台宽度是否足够"
