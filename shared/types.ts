@@ -16,36 +16,6 @@ export interface CameraState {
   direction?: Vec3;
 }
 
-/** @deprecated 旧文件桥接模型，Spec 1 清理阶段删除 */
-export interface Snapshot {
-  mode: 'orbit' | 'first-person';
-  camera: CameraState;
-  lookingAt?: {
-    objectId: string;
-    type: string;
-    room?: string;
-  };
-  visibleObjects: string[];
-  selectedObjects: string[];
-  activeTopic: string;
-  selections: Record<string, string>;
-  updatedAt: string;
-}
-
-/** @deprecated 旧文件桥接模型，Spec 1 清理阶段删除 */
-export interface Command {
-  id: string;
-  type:
-    | 'set_selection'
-    | 'batch_set_selections'
-    | 'set_camera_target'
-    | 'highlight_object'
-    | 'run_design_check';
-  payload: unknown;
-  reason?: string;
-  createdAt: string;
-}
-
 export interface RoomLayout {
   id: string;
   name: string;
@@ -143,6 +113,13 @@ export interface MaterialItem {
   sample_date: string | null;
   status: string;
   notes: string;
+  alternative_group?: string;
+  calc_mode?: 'area' | 'length' | 'count' | 'fixed';
+  pros?: string[];
+  cons?: string[];
+  price_source?: string;
+  appearance?: { type: string; color: string };
+  data?: Record<string, unknown>;
 }
 
 export interface MaterialsYaml {
@@ -163,6 +140,8 @@ export interface HouseYaml {
   gift_areas: Array<Record<string, unknown>>;
   mechanical_electrical_plumbing: Record<string, unknown>;
   constraints: Record<string, unknown>;
+  furnishings?: FurnishingsYaml;
+  electrical?: ElectricalMarker[];
 }
 
 export interface TopicSelection {
@@ -228,7 +207,7 @@ export interface CatalogTopic {
 
 export interface Risk {
   id: string;
-  severity: 'warning' | 'error' | 'info';
+  severity: 'high' | 'medium' | 'low';
   message: string;
   topic: string;
   roomId: string | null;
@@ -298,11 +277,11 @@ export interface DesignRulesConfig {
   budget?: {
     baseCategoriesFrom?: string;
     topicCategories?: Record<string, string>;
-    lineItems?: Array<{ topic: string; quantityField?: string }>;
+    lineItems?: Array<{ topic: string; quantityField?: string; calcMode?: string }>;
   };
   risks?: Array<{
     id: string;
-    severity: 'warning' | 'error' | 'info';
+    severity: 'high' | 'medium' | 'low';
     message: string;
     when: { topic: string; options?: string[]; condition?: string };
   }>;
@@ -310,7 +289,7 @@ export interface DesignRulesConfig {
     id: string;
     description: string;
     when: { topic: string; condition: string };
-    require: { topic: string; minValue?: { field: string; value: number } };
+    require: { topic: string; minValue?: { field: string; value: number }; fields?: string[] };
   }>;
 }
 
@@ -346,4 +325,81 @@ export interface CadLayoutYaml {
   export_date: string;
   rooms: LayoutRoom[];
   platform?: PlatformLayout;
+}
+
+export type CalcMode = 'area' | 'length' | 'count' | 'fixed';
+
+export interface FurnitureDef {
+  roomId: string;
+  type: string;
+  position: { x: number; z: number };
+  rotation?: number;
+}
+
+export interface ElectricalMarker {
+  roomId: string;
+  type: 'switch' | 'outlet' | 'network' | 'curtain_power';
+  wall: 'north' | 'south' | 'east' | 'west';
+  height: number;
+  offset: number;
+}
+
+export interface FurnishingsYaml {
+  [roomId: string]: Record<string, number>;
+}
+
+export interface LaborRate {
+  rate: number;
+  unit: string;
+  area: string;
+}
+
+export interface BudgetCategoryRaw {
+  budget: number;
+  material: number;
+  labor?: LaborRate;
+  actual: number;
+  status: string;
+  notes: string;
+}
+
+export interface LayoutOption {
+  name: string;
+  path: string;
+  rooms: Array<{ id: string; name: string }>;
+  platform?: { id: string; name: string };
+}
+
+export interface SelectionDiff {
+  topic: string;
+  current: string | null;
+  compare: string | null;
+  priceDelta: number;
+}
+
+export interface SchemeDiff {
+  budget: number;
+  selections: SelectionDiff[];
+  risks: {
+    added: Array<{ id: string; severity: string }>;
+    removed: Array<{ id: string; severity: string }>;
+  };
+}
+
+export interface StructuralDiffEntry {
+  roomId: string;
+  current: { area: number };
+  compare: { area: number };
+  delta: number;
+}
+
+export interface CompareSchemesResult {
+  current: { scheme: CurrentScheme; budget: BudgetSnapshot; risks: DesignCheckResult };
+  compare: { scheme: CurrentScheme; budget: BudgetSnapshot; risks: DesignCheckResult };
+  diff: SchemeDiff;
+  structural?: {
+    roomsOnlyInCurrent: string[];
+    roomsOnlyInCompare: string[];
+    areaDelta: StructuralDiffEntry[];
+  };
 }

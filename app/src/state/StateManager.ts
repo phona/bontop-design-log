@@ -1,4 +1,32 @@
-import type { Snapshot, Command, CameraState } from '@shared/types';
+import type { CameraState } from '@shared/types';
+
+interface Snapshot {
+  mode: 'orbit' | 'first-person';
+  camera: CameraState;
+  lookingAt?: {
+    objectId: string;
+    type: string;
+    room?: string;
+  };
+  visibleObjects: string[];
+  selectedObjects: string[];
+  activeTopic: string;
+  selections: Record<string, string>;
+  updatedAt: string;
+}
+
+interface Command {
+  id: string;
+  type:
+    | 'set_selection'
+    | 'batch_set_selections'
+    | 'set_camera_target'
+    | 'highlight_object'
+    | 'run_design_check';
+  payload: unknown;
+  reason?: string;
+  createdAt: string;
+}
 
 export interface StateListener {
   onSelectionChanged(topic: string, optionId: string): void;

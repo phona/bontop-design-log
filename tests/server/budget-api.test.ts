@@ -28,7 +28,7 @@ const rulesConfig: DesignRulesConfig = {
   risks: [
     {
       id: 'platform_width',
-      severity: 'warning',
+      severity: 'medium',
       message: '{{hvac.name}} 外机摆放紧张',
       when: { topic: 'hvac', options: ['B1', 'B2', 'E1'] },
     },
