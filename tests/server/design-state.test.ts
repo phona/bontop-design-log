@@ -74,4 +74,16 @@ describe('DesignState', () => {
     state.ackVisualCommands([cmd.commandId]);
     assert.ok(!state.getVisualCommands().some((c) => c.commandId === cmd.commandId));
   });
+
+  it('setCompareArchive and clearCompare', () => {
+    const catalog = ProjectCatalog.load('.');
+    const state = DesignState.load(catalog, TEST_DATA_DIR);
+    const scheme = state.getCurrentScheme();
+    state.setCompareArchive('arch-001', scheme);
+    assert.equal(state.getCompareArchiveId(), 'arch-001');
+    assert.ok(state.getCompareScheme());
+    state.clearCompare();
+    assert.equal(state.getCompareArchiveId(), null);
+    assert.equal(state.getCompareScheme(), null);
+  });
 });

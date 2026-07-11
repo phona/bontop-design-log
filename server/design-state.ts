@@ -38,6 +38,8 @@ export class DesignState {
   private decisionLog: DecisionLogEntry[];
   private visualCommands: VisualCommand[] = [];
   private viewContext: ViewContext | null = null;
+  private compareArchiveId: string | null = null;
+  private compareScheme: CurrentScheme | null = null;
 
   constructor(
     private catalog: ProjectCatalog,
@@ -278,5 +280,23 @@ export class DesignState {
   setViewContext(objectId: string): ViewContext {
     this.viewContext = { objectId, updatedAt: nowIso() };
     return this.viewContext;
+  }
+
+  setCompareArchive(archiveId: string, archivedScheme: CurrentScheme): void {
+    this.compareArchiveId = archiveId;
+    this.compareScheme = archivedScheme;
+  }
+
+  clearCompare(): void {
+    this.compareArchiveId = null;
+    this.compareScheme = null;
+  }
+
+  getCompareArchiveId(): string | null {
+    return this.compareArchiveId;
+  }
+
+  getCompareScheme(): CurrentScheme | null {
+    return this.compareScheme;
   }
 }
