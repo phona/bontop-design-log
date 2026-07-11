@@ -8,7 +8,7 @@ export interface SchemePanelElements {
   schemePros: HTMLElement;
   schemeCons: HTMLElement;
   warnings: HTMLElement;
-  comparePanel: HTMLElement;
+  comparePanel?: HTMLElement;
 }
 
 export class SchemePanel {
@@ -120,7 +120,7 @@ export class SchemePanel {
   clearCompare(): void {
     this.compareActive = false;
     this.compareArchiveName = '';
-    this.els.comparePanel.innerHTML = '';
+    if (this.els.comparePanel) this.els.comparePanel.innerHTML = '';
   }
 
   private clearInfo() {
@@ -143,6 +143,7 @@ export class SchemePanel {
     const risksAdded = diff.risks.added.map((r) => `<div class="risk-added">${r.id} (${r.severity})</div>`).join('');
     const risksRemoved = diff.risks.removed.map((r) => `<div class="risk-removed">${r.id} (${r.severity})</div>`).join('');
 
+    if (!this.els.comparePanel) return;
     this.els.comparePanel.innerHTML = `
       <div class="compare-header">
         <span>当前方案</span>

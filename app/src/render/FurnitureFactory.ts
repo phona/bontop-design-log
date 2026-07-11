@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { RoomLayout } from '@shared/types';
+import type { RoomObject } from '@shared/types';
 
 export function createFurniture(type: string): THREE.Group | null {
   const group = new THREE.Group();
@@ -87,7 +87,7 @@ export interface FurnishingItems {
 export function placeFurnishings(
   scene: THREE.Scene,
   furnishings: FurnishingItems,
-  rooms: Record<string, RoomLayout>
+  rooms: Record<string, RoomObject>
 ): void {
   for (const [roomId, items] of Object.entries(furnishings)) {
     const room = rooms[roomId];

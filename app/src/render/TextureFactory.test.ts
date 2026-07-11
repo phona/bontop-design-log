@@ -21,7 +21,7 @@ const mockCtx: Partial<CanvasRenderingContext2D> = {
 const mockCanvas: Partial<HTMLCanvasElement> = {
   width: 0,
   height: 0,
-  getContext: vi.fn(() => mockCtx),
+  getContext: vi.fn(() => mockCtx) as unknown as HTMLCanvasElement['getContext'],
 };
 
 (globalThis as any).document = {
@@ -48,7 +48,7 @@ vi.mock('three', () => ({
   SRGBColorSpace: 'srgb',
 }));
 
-import { createMaterialTexture } from './TextureFactory.ts';
+import { createMaterialTexture } from './TextureFactory';
 
 describe('TextureFactory', () => {
   it('creates a CanvasTexture for wood_grain appearance', () => {
