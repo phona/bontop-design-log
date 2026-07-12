@@ -39,6 +39,7 @@ export function createApiRouter(deps: ApiDeps): Router {
         platform: projectCatalog.getPlatform(),
         furnishings: projectCatalog.getFurnishings(),
         electrical: projectCatalog.getElectricalMarkers(),
+        walls: projectCatalog.getWalls(),
         layoutSource: projectCatalog.getLayoutSource(),
       },
       topics: projectCatalog.getTopics().map((t) => ({

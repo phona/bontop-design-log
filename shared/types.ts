@@ -316,6 +316,13 @@ export interface PlatformLayout {
   area?: number;
 }
 
+export interface WallSegment {
+  x1: number;
+  z1: number;
+  x2: number;
+  z2: number;
+}
+
 export interface CadLayoutYaml {
   version: string;
   source: string;
@@ -325,6 +332,7 @@ export interface CadLayoutYaml {
   export_date: string;
   rooms: LayoutRoom[];
   platform?: PlatformLayout;
+  walls?: WallSegment[];
 }
 
 export type CalcMode = 'area' | 'length' | 'count' | 'fixed';

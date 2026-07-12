@@ -165,6 +165,65 @@ describe('HouseScene', () => {
     expect(wallCount).toBe(4);
   });
 
+  it('builds walls from global wall segments when provided', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    const projectData = {
+      house: {
+        rooms: [
+          { id: 'a', name: 'A', x: 0, z: 0, width: 4, depth: 3, height: 3, type: 'public' },
+        ],
+        walls: [
+          { x1: -2, z1: -1.5, x2: 2, z2: -1.5 },
+          { x1: -2, z1: 1.5, x2: 2, z2: 1.5 },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+
+    await scene.buildFromCatalog(projectData);
+
+    let wallCount = 0;
+    scene.getScene().traverse((obj: any) => {
+      if (obj.userData?.type === 'wall') wallCount++;
+    });
+    expect(wallCount).toBe(2);
+  });
+
+  it('renders a shared wall once between adjacent rooms', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    const projectData = {
+      house: {
+        rooms: [
+          { id: 'a', name: 'A', x: -2.5, z: 0, width: 3, depth: 4, height: 3, type: 'public' },
+          { id: 'b', name: 'B', x: 2.5, z: 0, width: 3, depth: 4, height: 3, type: 'public' },
+        ],
+        // A single shared wall segment between the two rooms.
+        walls: [{ x1: 0, z1: -2, x2: 0, z2: 2 }],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+
+    await scene.buildFromCatalog(projectData);
+
+    let wallCount = 0;
+    scene.getScene().traverse((obj: any) => {
+      if (obj.userData?.type === 'wall') wallCount++;
+    });
+    expect(wallCount).toBe(1);
+  });
+
   it('should render platform from catalog', async () => {
     const canvas = {
       addEventListener: vi.fn(),

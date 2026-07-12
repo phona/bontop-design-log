@@ -14,6 +14,7 @@ import type {
   LayoutOption,
   FurnishingsYaml,
   ElectricalMarker,
+  WallSegment,
 } from '../shared/types.js';
 import { hvacSchemes } from '../shared/houseData.js';
 
@@ -102,6 +103,7 @@ export class ProjectCatalog {
   private budgetCategories: BudgetCategory[] = [];
   private furnishings: FurnishingsYaml = {};
   private electricalMarkers: ElectricalMarker[] = [];
+  private walls: WallSegment[] = [];
   private layoutSource: string = '';
 
   constructor(
@@ -148,6 +150,7 @@ export class ProjectCatalog {
 
     this.furnishings = houseMeta?.furnishings ?? {};
     this.electricalMarkers = houseMeta?.electrical ?? [];
+    this.walls = layout.walls ?? [];
     this.layoutSource = layoutSource ?? layout.source;
 
     const metaMap = new Map(houseMeta?.rooms?.map((r) => [r.id, r]) ?? []);
@@ -245,6 +248,10 @@ export class ProjectCatalog {
 
   getElectricalMarkers(): ElectricalMarker[] {
     return this.electricalMarkers;
+  }
+
+  getWalls(): WallSegment[] {
+    return this.walls;
   }
 
   getLayoutSource(): string {

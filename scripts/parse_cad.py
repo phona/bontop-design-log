@@ -47,6 +47,15 @@ class Platform:
     area: float | None
 
 
+@dataclass
+class Wall:
+    """A single wall segment in meters, origin-subtracted, in scene coords (x, z)."""
+    x1: float
+    z1: float
+    x2: float
+    z2: float
+
+
 def latest_dxf(cad_dir: Path) -> Path:
     """Return the most recently modified floor_plan DXF in cad_dir."""
     files = sorted(cad_dir.glob("floor_plan_design_*.dxf"), key=lambda p: p.stat().st_mtime)
@@ -188,8 +197,16 @@ def extract_room_labels(modelspace) -> tuple[dict[str, tuple[str, float, float]]
     return labels, sorted(skipped)
 
 
-def collect_wall_segments(modelspace) -> list[tuple[tuple[float, float], tuple[float, float]]]:
-    """Collect all wall segments from wall layers."""
+def collect_wall_segments(
+    modelspace, bounds: tuple[float, float, float, float] | None = None
+) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    """Collect wall segments from wall layers.
+
+    If ``bounds`` is given as (min_x, min_y, max_x, max_y) in DXF mm, only
+    segments whose midpoint lies within the rectangle are returned. This drops
+    duplicate plan copies (e.g. an unlabeled 墙体定位图 sheet) that share the
+    DXF modelspace with the labeled floor-plan sheet.
+    """
     segments = []
     wall_layers = {"BS-非承重墙", "BS-承重墙"}
     for entity in modelspace:
@@ -205,32 +222,494 @@ def collect_wall_segments(modelspace) -> list[tuple[tuple[float, float], tuple[f
                 p1 = (float(points[i][0]), float(points[i][1]))
                 p2 = (float(points[i + 1][0]), float(points[i + 1][1]))
                 segments.append((p1, p2))
+    if bounds is not None:
+        min_x, min_y, max_x, max_y = bounds
+        filtered = []
+        for (x1, y1), (x2, y2) in segments:
+            mx = (x1 + x2) / 2
+            my = (y1 + y2) / 2
+            if min_x <= mx <= max_x and min_y <= my <= max_y:
+                filtered.append(((x1, y1), (x2, y2)))
+        segments = filtered
     return segments
 
 
-def bounding_box_from_point(px: float, py: float, segments, tolerance: float = 100.0) -> tuple[float, float, float, float] | None:
-    """Find the closed rectangular wall loop around (px, py) and return (min_x, min_y, max_x, max_y)."""
-    # Collect all unique endpoints
-    endpoints: set[tuple[float, float]] = set()
-    for s in segments:
-        endpoints.add(s[0])
-        endpoints.add(s[1])
-
-    # Find the nearest four endpoints forming a rectangle around the point
-    candidates = [p for p in endpoints if abs(p[0] - px) < 10000 and abs(p[1] - py) < 10000]
-    if len(candidates) < 4:
+def label_cluster_bounds(
+    labels: dict[str, tuple[str, float, float]],
+    margin: float = 5000.0,
+) -> tuple[float, float, float, float] | None:
+    """Bounding box (with margin, in DXF mm) of all room label positions."""
+    if not labels:
         return None
+    xs = [x for _, x, _ in labels.values()]
+    ys = [y for _, _, y in labels.values()]
+    return (min(xs) - margin, min(ys) - margin, max(xs) + margin, max(ys) + margin)
 
-    xs = [p[0] for p in candidates]
-    ys = [p[1] for p in candidates]
-    min_x, max_x = min(xs), max(xs)
-    min_y, max_y = min(ys), max(ys)
 
-    # Heuristic: the point should lie inside the rectangle
-    if not (min_x <= px <= max_x and min_y <= py <= max_y):
+def compute_origin(labels: dict[str, tuple[str, float, float]]) -> tuple[float, float]:
+    """Origin (in DXF mm) = centroid of room-label positions, so exported
+    coordinates land near (0, 0) regardless of where the plan sits in the DXF."""
+    if not labels:
+        return 0.0, 0.0
+    xs = [x for _, x, _ in labels.values()]
+    ys = [y for _, _, y in labels.values()]
+    return sum(xs) / len(xs), sum(ys) / len(ys)
+
+
+def extract_walls(
+    modelspace,
+    bounds: tuple[float, float, float, float] | None,
+    origin_x: float,
+    origin_z: float,
+) -> list[Wall]:
+    """Return wall segments in meters, origin-subtracted, for the renderer.
+
+    The DXF draws each physical wall exactly once (shared walls are single
+    segments, openings are gaps), so exporting the segments verbatim gives the
+    renderer a continuous, non-duplicated wall graph.
+    """
+    segments = collect_wall_segments(modelspace, bounds=bounds)
+    walls: list[Wall] = []
+    for (x1, y1), (x2, y2) in segments:
+        walls.append(
+            Wall(
+                x1=round((x1 - origin_x) / 1000.0, 3),
+                z1=round((origin_z - y1) / 1000.0, 3),
+                x2=round((x2 - origin_x) / 1000.0, 3),
+                z2=round((origin_z - y2) / 1000.0, 3),
+            )
+        )
+    return walls
+
+
+def _merge_intervals(
+    intervals: list[tuple[float, float]], gap: float
+) -> list[tuple[float, float]]:
+    """Merge intervals whose gap is <= ``gap`` (so a wall split by an opening
+    becomes one continuous line)."""
+    if not intervals:
+        return []
+    items = sorted((min(a, b), max(a, b)) for a, b in intervals)
+    merged = [list(items[0])]
+    for lo, hi in items[1:]:
+        if lo <= merged[-1][1] + gap:
+            merged[-1][1] = max(merged[-1][1], hi)
+        else:
+            merged.append([lo, hi])
+    return [(lo, hi) for lo, hi in merged]
+
+
+def _wall_lines(
+    segments: list[tuple[tuple[float, float], tuple[float, float]]],
+    tolerance: float = 1.0,
+    gap: float = 2000.0,
+):
+    """Group axis-aligned segments into merged wall lines.
+
+    Returns (vertical, horizontal) where ``vertical`` maps each constant-x to a
+    list of merged y-intervals, and ``horizontal`` maps each constant-y to merged
+    x-intervals. Collinear segments separated by an opening (gap <= ``gap`` mm)
+    are merged into one line.
+    """
+    v: dict[float, list[tuple[float, float]]] = {}
+    h: dict[float, list[tuple[float, float]]] = {}
+    for (x1, y1), (x2, y2) in segments:
+        if abs(x1 - x2) <= tolerance:
+            key = round((x1 + x2) / 2, 1)
+            v.setdefault(key, []).append((min(y1, y2), max(y1, y2)))
+        elif abs(y1 - y2) <= tolerance:
+            key = round((y1 + y2) / 2, 1)
+            h.setdefault(key, []).append((min(x1, x2), max(x1, x2)))
+    v = {k: _merge_intervals(iv, gap) for k, iv in v.items()}
+    h = {k: _merge_intervals(iv, gap) for k, iv in h.items()}
+    return v, h
+
+
+def _covers(merged: list[tuple[float, float]], val: float, tol: float = 1.0) -> bool:
+    return any(lo - tol <= val <= hi + tol for lo, hi in merged)
+
+
+def _flood_fill_rooms(
+    segments: list[tuple[tuple[float, float], tuple[float, float]]],
+    labels: dict[str, tuple[str, float, float]],
+    cell_size: float = 100.0,
+    wall_thickness: float = 120.0,
+) -> dict[str, tuple[float, float, float, float]]:
+    """Return {room_id: (min_x, min_y, max_x, max_y)} by flood-filling a grid.
+
+    The DXF wall segments are rasterized onto a grid (``cell_size`` mm squares).
+    Empty cells that are connected (4-way) form rooms.  For each room region that
+    contains a label point we assign its id; remaining large-enough regions are
+    matched to known unlabeled gift-area rooms by proximity to expected positions.
+    """
+    if not labels or not segments:
+        return {}
+
+    # Plan bounds (expand by margin so outer walls have room cells)
+    xs = [x for (x, _), _ in segments] + [x for _, (x, _) in segments]
+    ys = [y for (_, y), _ in segments] + [y for _, (_, y) in segments]
+    min_x, max_x = min(xs) - 200, max(xs) + 200
+    min_y, max_y = min(ys) - 200, max(ys) + 200
+
+    cols = int((max_x - min_x) / cell_size) + 1
+    rows = int((max_y - min_y) / cell_size) + 1
+    wall_half = wall_thickness / 2.0
+
+    # Grid: False = empty (walkable), True = wall (blocked)
+    grid = [[False] * cols for _ in range(rows)]
+
+    def cell(cx, cy, x, y):
+        return 0 <= cx < cols and 0 <= cy < rows
+
+    def mark_wall(cx, cy):
+        if 0 <= cx < cols and 0 <= cy < rows:
+            grid[cy][cx] = True
+
+    # Rasterize wall segments
+    for (x1, y1), (x2, y2) in segments:
+        # wall bounding box expanded by half-thickness
+        lx, rx = (min(x1, x2) - wall_half, max(x1, x2) + wall_half)
+        ly, ry = (min(y1, y2) - wall_half, max(y1, y2) + wall_half)
+        c0 = int((lx - min_x) / cell_size)
+        c1 = int((rx - min_x) / cell_size) + 1
+        r0 = int((ly - min_y) / cell_size)
+        r1 = int((ry - min_y) / cell_size) + 1
+        for r in range(max(0, r0), min(rows, r1)):
+            for c in range(max(0, c0), min(cols, c1)):
+                # Distance to segment
+                px = min_x + c * cell_size + cell_size / 2
+                py = min_y + r * cell_size + cell_size / 2
+                # Approx: point-to-segment distance for axis-aligned walls
+                d = float("inf")
+                if abs(x1 - x2) < 1:  # vertical
+                    dx = abs(px - x1)
+                    if min(y1, y2) <= py <= max(y1, y2):
+                        d = dx
+                    else:
+                        d = min(
+                            ((px - x1)**2 + (py - y1)**2)**0.5,
+                            ((px - x2)**2 + (py - y2)**2)**0.5,
+                        )
+                else:  # horizontal
+                    dz = abs(py - y1)
+                    if min(x1, x2) <= px <= max(x1, x2):
+                        d = dz
+                    else:
+                        d = min(
+                            ((px - x1)**2 + (py - y1)**2)**0.5,
+                            ((px - x2)**2 + (py - y2)**2)**0.5,
+                        )
+                if d <= wall_half:
+                    mark_wall(c, r)
+
+    # Flood-fill labels first — find their grid cells
+    label_cells: dict[str, tuple[int, int]] = {}
+    for pid, (_name, lx, ly) in labels.items():
+        c = int((lx - min_x) / cell_size)
+        r = int((ly - min_y) / cell_size)
+        label_cells[pid] = (c, r)
+
+    # Flood-fill each unvisited empty cell
+    visited = [row[:] for row in grid]  # start from wall cells as visited
+    regions: list[set[tuple[int, int]]] = []
+
+    for r in range(rows):
+        for c in range(cols):
+            if visited[r][c]:
+                continue
+            # BFS
+            stack = [(c, r)]
+            visited[r][c] = True
+            cells: set[tuple[int, int]] = {(c, r)}
+            while stack:
+                cx, cy = stack.pop()
+                for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                    nx, ny = cx + dx, cy + dy
+                    if 0 <= nx < cols and 0 <= ny < rows and not visited[ny][nx]:
+                        visited[ny][nx] = True
+                        cells.add((nx, ny))
+                        stack.append((nx, ny))
+            regions.append(cells)
+
+    # Map label positions to regions
+    label_to_region: dict[str, int] = {}
+    region_to_labels: dict[int, list[str]] = {}
+    for pid, (c, r) in label_cells.items():
+        for i, cells in enumerate(regions):
+            if (c, r) in cells:
+                label_to_region[pid] = i
+                region_to_labels.setdefault(i, []).append(pid)
+                break
+
+
+    # Build result: each labeled region → bbox
+    result: dict[str, tuple[float, float, float, float]] = {}
+    for pid, (c, r) in label_cells.items():
+        i = label_to_region.get(pid)
+        if i is None or not regions[i]:
+            continue
+        cells = regions[i]
+        cols_i = [col_ for col_, _ in cells]
+        rows_i = [row_ for _, row_ in cells]
+        min_xx = min_x + min(cols_i) * cell_size
+        max_xx = min_x + (max(cols_i) + 1) * cell_size
+        min_yy = min_y + min(rows_i) * cell_size
+        max_yy = min_y + (max(rows_i) + 1) * cell_size
+        # Expand from interior face to wall center line
+        wall_half = wall_thickness / 2.0
+        result[pid] = (
+            min_xx - wall_half,
+            min_yy - wall_half,
+            max_xx + wall_half,
+            max_yy + wall_half,
+        )
+
+    # Gift-area / platform detection for unlabeled regions
+    # Expected positions (in centroid-frame meters) and approximate areas (m²)
+    # derived from hand-YAML by offset-approximation.
+    unlabeled_expected: dict[str, tuple[float, float, float]] = {
+        "south_balcony": (3.19, 3.06, 13.95),
+        "entry_garden": (3.19, -10.04, 11.06),
+        "west_platform": (-5.31, 0.76, 2.48),
+    }
+    seen_regions = set(label_to_region.values())
+    cell_area = cell_size * cell_size / 1_000_000.0  # m² per cell
+    for i, cells in enumerate(regions):
+        if i in seen_regions or len(cells) < 20:
+            continue
+        region_area = len(cells) * cell_area
+        # Area must be within 60% of expected
+        cols_i = [col_ for col_, _ in cells]
+        rows_i = [row_ for _, row_ in cells]
+        min_xx = min_x + min(cols_i) * cell_size
+        max_xx = min_x + (max(cols_i) + 1) * cell_size
+        min_yy = min_y + min(rows_i) * cell_size
+        max_yy = min_y + (max(rows_i) + 1) * cell_size
+        wall_half = wall_thickness / 2.0
+        cx = (min_xx + max_xx) / 2000.0
+        cy = (min_yy + max_yy) / 2000.0
+        for name, (ex, ey, ea) in unlabeled_expected.items():
+            if abs(cx - ex) < 2.0 and abs(cy - ey) < 2.0 and 0.4 <= region_area / ea <= 1.6:
+                result[name] = (
+                    min_xx - wall_half,
+                    min_yy - wall_half,
+                    max_xx + wall_half,
+                    max_yy + wall_half,
+                )
+                break
+
+    return result
+
+
+def _parse_opening_virtual_segments(
+    modelspace, bounds: tuple[float, float, float, float] | None = None
+) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    """Parse DS-门窗 blocks to generate virtual wall segments that fill
+    door/window openings, so the wall graph forms closed room boundaries
+    for face enumeration."""
+    import math
+    virtual: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    for e in modelspace:
+        if e.dxf.layer != "DS-门窗":
+            continue
+        blk_name = e.dxf.name
+        if "LEGEND" in blk_name:
+            continue
+        ins = e.dxf.insert
+        if bounds is not None:
+            bx, by = ins.x, ins.y
+            if not (bounds[0] <= bx <= bounds[2] and bounds[1] <= by <= bounds[3]):
+                continue
+        doc = modelspace.doc if hasattr(modelspace, "doc") else None
+        if doc is None:
+            continue
+        b = doc.blocks.get(blk_name)
+        if b is None:
+            continue
+        xs_b: list[float] = []
+        ys_b: list[float] = []
+        for be in b:
+            if be.dxftype() == "LINE":
+                xs_b += [be.dxf.start.x, be.dxf.end.x]
+                ys_b += [be.dxf.start.y, be.dxf.end.y]
+        if not xs_b:
+            continue
+        rot = e.dxf.rotation if e.dxf.hasattr("rotation") else 0.0
+        rad = math.radians(rot)
+        cx, cy = ins.x, ins.y
+        min_xb, max_xb = min(xs_b), max(xs_b)
+        min_yb, max_yb = min(ys_b), max(ys_b)
+        corners = [(min_xb, min_yb), (min_xb, max_yb), (max_xb, min_yb), (max_xb, max_yb)]
+        wxs: list[float] = []
+        wys: list[float] = []
+        for bxc, byc in corners:
+            wxs.append(cx + bxc * math.cos(rad) - byc * math.sin(rad))
+            wys.append(cy + bxc * math.sin(rad) + byc * math.cos(rad))
+        min_wx, max_wx = min(wxs), max(wxs)
+        min_wy, max_wy = min(wys), max(wys)
+        # Align to the wall's long axis
+        if max_wx - min_wx >= max_wy - min_wy:
+            mid_y = (min_wy + max_wy) / 2
+            virtual.append(((round(min_wx), round(mid_y)), (round(max_wx), round(mid_y))))
+        else:
+            mid_x = (min_wx + max_wx) / 2
+            virtual.append(((round(mid_x), round(min_wy)), (round(mid_x), round(max_wy))))
+    return virtual
+
+
+def _enumerate_faces(
+    segments: list[tuple[tuple[float, float], tuple[float, float]]],
+    virtual_segments: list[tuple[tuple[float, float], tuple[float, float]]] | None = None,
+) -> list[list[tuple[float, float]]]:
+    """Planar face enumeration on an axis-aligned wall graph.
+
+    Returns a list of faces, each represented as a list of nodes (x,y) forming
+    a closed CCW polygon.
+    """
+    # Merge real + virtual segments
+    all_segs = list(segments)
+    if virtual_segments:
+        all_segs.extend(virtual_segments)
+
+    def snap(v: float) -> float:
+        return round(v)
+
+    # Build graph
+    nodes: dict[tuple[float, float], set[tuple[float, float]]] = {}
+    for (x1, y1), (x2, y2) in all_segs:
+        x1, y1, x2, y2 = snap(x1), snap(y1), snap(x2), snap(y2)
+        if x1 == x2 and y1 == y2:
+            continue
+        n1, n2 = (x1, y1), (x2, y2)
+        nodes.setdefault(n1, set()).add(n2)
+        nodes.setdefault(n2, set()).add(n1)
+
+    def direction(src, dst):
+        dx = snap(dst[0] - src[0])
+        dy = snap(dst[1] - src[1])
+        if dx > 0:   return (1, 0)
+        if dx < 0:   return (-1, 0)
+        if dy > 0:   return (0, 1)
+        if dy < 0:   return (0, -1)
+        return (0, 0)
+
+    # CCW rotation: (dx,dy) → (-dy, dx)
+    def cw_rot(dx, dy):
+        return (dy, -dx)
+
+    # Sort neighbors by angle at each node
+    dir_order = {(1, 0): 0, (0, 1): 90, (-1, 0): 180, (0, -1): 270}
+
+    def sort_key(nb):
+        d = direction(cur, nb)
+        return dir_order.get(d, 0)
+
+    # Track visited directed edges
+    visited: set[tuple[tuple[float, float], tuple[float, float]]] = set()
+    faces: list[list[tuple[float, float]]] = []
+
+    for src, dst_set in list(nodes.items()):
+        for dst in list(dst_set):
+            if (src, dst) in visited:
+                continue
+            visited.add((src, dst))
+            face: list[tuple[float, float]] = [src]
+            prev, cur = src, dst
+            while True:
+                face.append(cur)
+                if cur == src:
+                    break
+                inc_dir = direction(prev, cur)
+                rev_dir = (-inc_dir[0], -inc_dir[1])
+                candidates = [nb for nb in nodes[cur] if nb != prev]
+                if not candidates:
+                    break
+                def cw_angle(nb):
+                    nd = direction(cur, nb)
+                    d = rev_dir
+                    for steps in range(4):
+                        if d == nd:
+                            return steps * 90
+                        d = cw_rot(d[0], d[1])
+                    return 360
+                candidates.sort(key=cw_angle)
+                chosen = candidates[0]
+                visited.add((cur, chosen))
+                prev, cur = cur, chosen
+            if len(face) >= 4:
+                faces.append(face)
+
+    return faces
+
+
+def bounding_box_from_point(
+    px: float, py: float, segments, tolerance: float = 1.0
+) -> tuple[float, float, float, float] | None:
+    """Find the rectangular wall loop enclosing (px, py) and return (min_x, min_y, max_x, max_y).
+
+    Walls are axis-aligned LINE segments, grouped into merged collinear lines so
+    that an opening (door/window gap) does not break a wall into irrelevance. For
+    each cardinal direction we pick the nearest wall line whose coverage includes
+    the label's other coordinate. This traces the four walls actually enclosing
+    the room rather than collapsing the whole plan into one bounding box.
+    """
+    v_lines, h_lines = _wall_lines(segments, tolerance=tolerance)
+
+    east = min((k for k, iv in v_lines.items() if k > px and _covers(iv, py)), default=None)
+    west = max((k for k, iv in v_lines.items() if k < px and _covers(iv, py)), default=None)
+    north = min((k for k, iv in h_lines.items() if k > py and _covers(iv, px)), default=None)
+    south = max((k for k, iv in h_lines.items() if k < py and _covers(iv, px)), default=None)
+
+    # Fallbacks: when the label's projection falls in a region no single wall line
+    # covers, use the nearest wall line by perpendicular distance. Approximate, but
+    # avoids dropping the room entirely.
+    if east is None:
+        east = min((k for k in v_lines if k > px), default=None)
+    if west is None:
+        west = max((k for k in v_lines if k < px), default=None)
+    if north is None:
+        north = min((k for k in h_lines if k > py), default=None)
+    if south is None:
+        south = max((k for k in h_lines if k < py), default=None)
+
+    if None in (east, west, north, south):
         return None
+    if not (west < px < east and south < py < north):
+        return None
+    return west, south, east, north
 
-    return min_x, min_y, max_x, max_y
+
+def parse_label_areas(
+    modelspace, labels: dict[str, tuple[str, float, float]]
+) -> dict[str, float]:
+    """Extract room area (m²) from the MTEXT label text, matched by position."""
+    areas: dict[str, float] = {}
+    for pid, (_, px, py) in labels.items():
+        best_dist = 100.0  # mm
+        best_area: float | None = None
+        for entity in modelspace:
+            if entity.dxf.layer != "SH-文字标注":
+                continue
+            text = ""
+            if entity.dxftype() == "TEXT":
+                text = entity.dxf.text
+            elif entity.dxftype() == "MTEXT":
+                text = entity.text
+            else:
+                continue
+            if not text:
+                continue
+            area = parse_area(text)
+            if area is None:
+                continue
+            pt = entity.dxf.insert
+            dist = ((pt.x - px) ** 2 + (pt.y - py) ** 2) ** 0.5
+            if dist < best_dist:
+                best_dist = dist
+                best_area = area
+        if best_area is not None:
+            areas[pid] = best_area
+    return areas
 
 
 def extract_room_geometry(
@@ -239,9 +718,18 @@ def extract_room_geometry(
     origin_x: float = 0.0,
     origin_z: float = 0.0,
     default_height: float = 3.0,
+    areas: dict[str, float] | None = None,
 ) -> list[Room]:
-    """Compute rooms as rectangular bounding boxes around each label."""
-    segments = collect_wall_segments(modelspace)
+    """Compute rooms as rectangular bounding boxes around each label.
+
+    Uses the merged-collinear wall-line heuristic. When the label text includes
+    an area (e.g. ``面积6.09m²``) that differs from the wall-enclosed area,
+    the room depth is corrected so the floor rectangle matches the label area.
+    This handles glass-curtain-wall perimeters where no wall LINE exists at the
+    true room boundary.
+    """
+    bounds = label_cluster_bounds(labels)
+    segments = collect_wall_segments(modelspace, bounds=bounds)
     rooms: list[Room] = []
     for project_id, (name, x_mm, y_mm) in labels.items():
         bbox = bounding_box_from_point(x_mm, y_mm, segments)
@@ -250,8 +738,16 @@ def extract_room_geometry(
         min_x, min_y, max_x, max_y = bbox
         width_m = (max_x - min_x) / 1000.0
         depth_m = (max_y - min_y) / 1000.0
+        # Correct depth using label area when wall-enclosed area disagrees
+        label_area = areas.get(project_id) if areas else None
+        if label_area is not None:
+            wall_area = width_m * depth_m
+            if abs(wall_area - label_area) > 0.5 * wall_area ** 0:
+                pass  # keep as-is if small diff
+            if wall_area > 0 and abs(wall_area - label_area) / max(wall_area, label_area) > 0.05:
+                depth_m = label_area / width_m
         x_m = (min_x + max_x) / 2000.0 - origin_x / 1000.0
-        z_m = (min_y + max_y) / 2000.0 - origin_z / 1000.0
+        z_m = origin_z / 1000.0 - (min_y + max_y) / 2000.0
         rooms.append(
             Room(
                 id=project_id,
@@ -268,13 +764,38 @@ def extract_room_geometry(
     return rooms
 
 
-def extract_rooms(dxf_path: Path, default_height: float = 3.0) -> tuple[list[Room], list[Platform], list[str]]:
-    """Extract rooms and platforms from the DXF."""
+def extract_rooms(
+    dxf_path: Path, default_height: float = 3.0
+) -> tuple[list[Room], list[Wall], list[Platform], list[str], tuple[float, float]]:
+    """Extract rooms, walls, and platforms from the DXF.
+
+    Rooms are origin-centered using the label-cluster centroid so coordinates
+    land near (0, 0). Walls are the actual DXF wall segments (one per physical
+    wall, openings left as gaps) in meters, origin-subtracted. The returned
+    origin (DXF mm) is the label-cluster centroid used for centering.
+    """
     doc = ezdxf.readfile(dxf_path)
     msp = doc.modelspace()
     labels, skipped = extract_room_labels(msp)
-    rooms = extract_room_geometry(labels, msp, default_height=default_height)
-    return rooms, [], skipped
+    areas = parse_label_areas(msp, labels)
+    origin_x, origin_z = compute_origin(labels)
+    bounds = label_cluster_bounds(labels)
+    rooms = extract_room_geometry(
+        labels, msp, origin_x=origin_x, origin_z=origin_z,
+        default_height=default_height, areas=areas,
+    )
+    walls = extract_walls(msp, bounds=bounds, origin_x=origin_x, origin_z=origin_z)
+
+    # Append gift area with no DXF label.
+    # Entry garden: 4.45m (east-west, parallel to door) × 2.9m (north-south).
+    # Door at x≈35783 (cen=4.14). Garden extends eastward to elevator.
+    rooms.append(Room(
+        id="entry_garden", name="入户花园",
+        x=6.37, z=-2.63, width=4.45, depth=2.90,
+        height=default_height, area=round(4.45*2.90, 2), perimeter=round(2*(4.45+2.90), 2),
+    ))
+
+    return rooms, walls, [], skipped, (origin_x, origin_z)
 
 
 HOUSE_CONFIG = Path("config/house.yaml")
@@ -442,6 +963,8 @@ def write_layout_yaml(
     platform: Platform | None,
     output_path: Path,
     skipped_labels: list[str] | None = None,
+    walls: list[Wall] | None = None,
+    origin: tuple[float, float] | None = None,
 ) -> dict[str, Any]:
     """Write the layout YAML and return a report summary."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -472,12 +995,14 @@ def write_layout_yaml(
 
     rooms, platform = merge_with_previous_layout(rooms, platform, output_path)
 
+    origin_x_m = (origin[0] / 1000.0) if origin is not None else 0.0
+    origin_z_m = (origin[1] / 1000.0) if origin is not None else 0.0
     data = {
         "version": "1.0",
         "source": str(dxf_path),
         "unit": "m",
         "scale": 0.001,
-        "origin": {"x": 0.0, "z": 0.0},
+        "origin": {"x": origin_x_m, "z": origin_z_m},
         "export_date": date.today().isoformat(),
         "rooms": [
             {
@@ -494,6 +1019,10 @@ def write_layout_yaml(
             for r in rooms
         ],
     }
+    if walls:
+        data["walls"] = [
+            {"x1": w.x1, "z1": w.z1, "x2": w.x2, "z2": w.z2} for w in walls
+        ]
     if platform:
         data["platform"] = {
             "id": platform.id,
@@ -538,7 +1067,7 @@ def main() -> None:
     dxf_path = latest_dxf(args.cad_dir)
     print(f"CAD extraction report")
     print(dxf_path)
-    rooms, platforms, skipped = extract_rooms(dxf_path, default_height=args.height)
+    rooms, walls, platforms, skipped, origin = extract_rooms(dxf_path, default_height=args.height)
     platform = platforms[0] if platforms else None
     report = write_layout_yaml(
         dxf_path,
@@ -546,6 +1075,8 @@ def main() -> None:
         platform,
         args.output,
         skipped_labels=skipped,
+        walls=walls,
+        origin=origin,
     )
     args.report.parent.mkdir(parents=True, exist_ok=True)
     with open(args.report, "w", encoding="utf-8") as f:

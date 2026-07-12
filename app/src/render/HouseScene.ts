@@ -6,6 +6,7 @@ import type {
   CameraState,
   ElectricalMarker,
   CurrentScheme,
+  WallSegment,
 } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
@@ -23,6 +24,7 @@ interface ProjectData {
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
     furnishings?: Record<string, Record<string, number>>;
     electrical?: ElectricalMarker[];
+    walls?: WallSegment[];
   };
   topics: Array<{ id: string; name: string; perRoom: boolean; options: unknown[] }>;
   budgetCategories: unknown[];
@@ -122,16 +124,27 @@ export class HouseScene implements SceneApi {
     this.topicGroup = new THREE.Group();
     this.scene.add(this.topicGroup);
 
+    const useWallSegments = Array.isArray(projectData.house.walls)
+      && projectData.house.walls.length > 0;
+    const wallHeight = projectData.house.rooms[0]?.height ?? 3.0;
+
     for (const room of projectData.house.rooms) {
-      this.createRoom({
-        id: room.id,
-        name: room.name,
-        x: room.x,
-        z: room.z,
-        width: room.width,
-        depth: room.depth,
-        height: room.height,
-      });
+      this.createRoom(
+        {
+          id: room.id,
+          name: room.name,
+          x: room.x,
+          z: room.z,
+          width: room.width,
+          depth: room.depth,
+          height: room.height,
+        },
+        { fabricateWalls: !useWallSegments }
+      );
+    }
+
+    if (useWallSegments) {
+      this.createWalls(projectData.house.walls!, wallHeight);
     }
 
     if (projectData.house.platform) {
@@ -183,7 +196,8 @@ export class HouseScene implements SceneApi {
     this.scene.add(plane);
   }
 
-  private createRoom(r: RoomObject) {
+  private createRoom(r: RoomObject, opts: { fabricateWalls?: boolean } = {}) {
+    const { fabricateWalls = true } = opts;
     const group = new THREE.Group();
     group.position.set(r.x, 0, r.z);
 
@@ -201,43 +215,71 @@ export class HouseScene implements SceneApi {
     group.add(floor);
     this.floorMeshes.push(floor);
 
-    const wallMat = new THREE.MeshStandardMaterial({
-      color: DEFAULT_PAINT,
-      roughness: 0.85,
-    });
+    if (fabricateWalls) {
+      const wallMat = new THREE.MeshStandardMaterial({
+        color: DEFAULT_PAINT,
+        roughness: 0.85,
+      });
 
-    const halfW = r.width / 2;
-    const halfD = r.depth / 2;
+      const halfW = r.width / 2;
+      const halfD = r.depth / 2;
 
-    const walls: Array<{ x: number; z: number; w: number; d: number; dir: string }> = [
-      { x: 0, z: -halfD, w: r.width, d: WALL_THICKNESS, dir: 'north' },
-      { x: 0, z: halfD, w: r.width, d: WALL_THICKNESS, dir: 'south' },
-      { x: -halfW, z: 0, w: WALL_THICKNESS, d: r.depth, dir: 'west' },
-      { x: halfW, z: 0, w: WALL_THICKNESS, d: r.depth, dir: 'east' },
-    ];
+      const walls: Array<{ x: number; z: number; w: number; d: number; dir: string }> = [
+        { x: 0, z: -halfD, w: r.width, d: WALL_THICKNESS, dir: 'north' },
+        { x: 0, z: halfD, w: r.width, d: WALL_THICKNESS, dir: 'south' },
+        { x: -halfW, z: 0, w: WALL_THICKNESS, d: r.depth, dir: 'west' },
+        { x: halfW, z: 0, w: WALL_THICKNESS, d: r.depth, dir: 'east' },
+      ];
 
-    for (const w of walls) {
-      const wall = new THREE.Mesh(
-        new THREE.BoxGeometry(w.w, r.height, w.d),
-        wallMat.clone()
-      );
-      wall.position.set(w.x, r.height / 2, w.z);
-      wall.userData = { roomId: r.id, objectId: `wall:${r.id}:${w.dir}`, type: 'wall' };
-      wall.castShadow = true;
-      wall.receiveShadow = true;
-      group.add(wall);
-      this.wallMeshes.push(wall);
-    }
+      for (const w of walls) {
+        const wall = new THREE.Mesh(
+          new THREE.BoxGeometry(w.w, r.height, w.d),
+          wallMat.clone()
+        );
+        wall.position.set(w.x, r.height / 2, w.z);
+        wall.userData = { roomId: r.id, objectId: `wall:${r.id}:${w.dir}`, type: 'wall' };
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        group.add(wall);
+        this.wallMeshes.push(wall);
+      }
 
-    if (r.id === 'living_dining') {
-      this.addOpeningMarker(group, 0, 1.2, halfD + 0.01, r.width * 0.7, 1.6, 'south_window');
-    }
-    if (r.id === 'south_balcony') {
-      this.addOpeningMarker(group, 0, 1.2, -halfD - 0.01, 2, 2, 'door_to_balcony');
+      if (r.id === 'living_dining') {
+        this.addOpeningMarker(group, 0, 1.2, halfD + 0.01, r.width * 0.7, 1.6, 'south_window');
+      }
+      if (r.id === 'south_balcony') {
+        this.addOpeningMarker(group, 0, 1.2, -halfD - 0.01, 2, 2, 'door_to_balcony');
+      }
     }
 
     this.scene.add(group);
     this.rooms[r.id] = { ...r };
+  }
+
+  private createWalls(walls: WallSegment[], height: number) {
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: DEFAULT_PAINT,
+      roughness: 0.85,
+    });
+    for (let i = 0; i < walls.length; i++) {
+      const { x1, z1, x2, z2 } = walls[i];
+      const cx = (x1 + x2) / 2;
+      const cz = (z1 + z2) / 2;
+      const lengthX = Math.abs(x2 - x1);
+      const lengthZ = Math.abs(z2 - z1);
+      const geo = new THREE.BoxGeometry(
+        Math.max(lengthX, WALL_THICKNESS),
+        height,
+        Math.max(lengthZ, WALL_THICKNESS)
+      );
+      const wall = new THREE.Mesh(geo, wallMat.clone());
+      wall.position.set(cx, height / 2, cz);
+      wall.userData = { type: 'wall', objectId: `wall:seg:${i}` };
+      wall.castShadow = true;
+      wall.receiveShadow = true;
+      this.scene.add(wall);
+      this.wallMeshes.push(wall);
+    }
   }
 
   private createPlatform(p: ProjectData['house']['platform'] & { id: string; name: string }) {

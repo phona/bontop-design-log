@@ -11,7 +11,7 @@ import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
 import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml } from '../shared/types.js';
 
-const PORT = Number(process.env.PORT ?? 3000);
+const PORT = Number(process.env.PORT ?? 4000);
 const DATA_DIR = process.env.DATA_DIR ?? './data';
 const CONFIG_PATH = process.env.CONFIG_PATH ?? 'config/design-rules.yaml';
 
@@ -103,7 +103,7 @@ try {
 const archiveStore = new ArchivedSchemesStore(DATA_DIR);
 
 const apiDeps = {
-  catalog,
+  get catalog() { return catalog; },
   state,
   getRuleEngine: () => ruleEngine,
   getBudgetCalculator: () => budgetCalculator,

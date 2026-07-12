@@ -462,6 +462,178 @@ def test_output_flag(tmp_path: Path):
     assert "master_bedroom" in custom_out.read_text(encoding="utf-8")
 
 
+def test_collect_wall_segments_filters_to_labeled_copy():
+    """When the DXF contains a duplicate unlabeled plan copy, only wall segments
+    whose midpoint lies within the labeled-copy bounds are returned."""
+    from ezdxf.document import Drawing
+
+    from parse_cad import collect_wall_segments
+
+    doc = Drawing.new("R2018")
+    msp = doc.modelspace()
+    doc.layers.add("BS-非承重墙")
+    # labeled copy around x=30000
+    msp.add_line((29000, 0), (31000, 0), dxfattribs={"layer": "BS-非承重墙"})
+    # duplicate unlabeled copy around x=0 (e.g. the 墙体定位图 sheet)
+    msp.add_line((-1000, 0), (1000, 0), dxfattribs={"layer": "BS-非承重墙"})
+    bounds = (27000, -5000, 40000, 5000)
+    segs = collect_wall_segments(msp, bounds=bounds)
+    assert len(segs) == 1
+    assert segs[0] == ((29000.0, 0.0), (31000.0, 0.0))
+
+
+def test_compute_origin_is_label_centroid():
+    """Origin is the mean of all room-label positions so coords land near (0,0)."""
+    from parse_cad import compute_origin
+
+    labels = {
+        "a": ("A", 0.0, 0.0),
+        "b": ("B", 6000.0, 4000.0),
+    }
+    ox, oz = compute_origin(labels)
+    assert ox == 3000.0
+    assert oz == 2000.0
+
+
+def test_extract_walls_returns_origin_subtracted_meters():
+    """Wall segments are exported in meters, origin-subtracted, axis-aligned."""
+    from ezdxf.document import Drawing
+
+    from parse_cad import extract_walls
+
+    doc = Drawing.new("R2018")
+    msp = doc.modelspace()
+    doc.layers.add("BS-非承重墙")
+    # vertical wall at x=3000mm, y[1000,5000]; origin (1000,1000)mm -> x=2.0m z[0,4]
+    msp.add_line((3000, 1000), (3000, 5000), dxfattribs={"layer": "BS-非承重墙"})
+    walls = extract_walls(msp, bounds=None, origin_x=1000.0, origin_z=1000.0)
+    assert len(walls) == 1
+    w = walls[0]
+    assert (w.x1, w.z1, w.x2, w.z2) == (2.0, 0.0, 2.0, -4.0)
+
+
+def test_write_layout_yaml_includes_walls_and_origin(tmp_path: Path):
+    """YAML output contains the walls list and the computed origin."""
+    out = tmp_path / "cad-extracted.yaml"
+    rooms = [
+        Room(id="master_bedroom", name="主卧", x=-5.35, z=2.0, width=4.5, depth=4.05,
+             height=3.0, area=18.16, perimeter=18.39)
+    ]
+    from parse_cad import Wall
+
+    walls = [Wall(x1=0.0, z1=0.0, x2=5.0, z2=0.0)]
+    report = write_layout_yaml(
+        tmp_path / "source.dxf", rooms, None, out,
+        walls=walls, origin=(3000.0, 2000.0),
+    )
+    data = yaml.safe_load(out.read_text(encoding="utf-8"))
+    assert report["rooms_found"] == 1
+    assert "walls" in data and len(data["walls"]) == 1
+    assert data["walls"][0]["x1"] == 0.0
+    assert data["origin"]["x"] == 3.0
+    assert data["origin"]["z"] == 2.0
+
+
+def test_extract_room_geometry_uses_merged_wall_line_across_opening_gap():
+    """A wall split by an opening (window/door gap) must still be detected as the
+    room boundary via its merged line, instead of falling back to a closer spur
+    wall that does not span the label."""
+    from ezdxf.document import Drawing
+
+    from parse_cad import extract_room_geometry
+
+    doc = Drawing.new("R2018")
+    msp = doc.modelspace()
+    doc.layers.add("BS-非承重墙")
+    walls = [
+        (0, 0, 5000, 0),                      # south
+        (0, 4000, 2000, 4000), (3000, 4000, 5000, 4000),  # north, window gap [2000,3000]
+        (0, 0, 0, 4000), (5000, 0, 5000, 4000),           # west, east
+        (0, 3000, 1000, 3000),               # closer spur that does NOT span label x=2500
+    ]
+    for x1, y1, x2, y2 in walls:
+        msp.add_line((x1, y1), (x2, y2), dxfattribs={"layer": "BS-非承重墙"})
+    labels = {"master_bedroom": ("主卧", 2500.0, 2000.0)}
+    rooms = extract_room_geometry(labels, msp)
+    assert len(rooms) == 1
+    assert rooms[0].depth == 4.0
+
+
+def test_enumerate_faces_simple_rectangle():
+    """A single closed rectangle → one interior face."""
+    from parse_cad import _enumerate_faces
+
+    segs = [((0, 0), (5, 0)), ((5, 0), (5, 4)), ((5, 4), (0, 4)), ((0, 4), (0, 0))]
+    faces = _enumerate_faces(segs)
+    assert len(faces) >= 1
+    # Find the smallest face (the interior)
+    interiors = [f for f in faces if f[0] != f[-1] or len(f) >= 4]
+    # Look for the face that has area (a closed loop)
+    for f in faces:
+        if len(f) >= 5:  # minimal CCW rectangle has 5 nodes (start repeated)
+            # Check it's the right size: x in [0,5], y in [0,4]
+            xs = [p[0] for p in f]
+            ys = [p[1] for p in f]
+            if min(xs) == 0 and max(xs) == 5 and min(ys) == 0 and max(ys) == 4:
+                return
+    assert False, "no valid interior face found"
+
+
+def test_enumerate_faces_two_adjacent_rooms():
+    """Two rooms sharing a wall → two interior faces."""
+    from parse_cad import _enumerate_faces
+
+    segs = [
+        ((0, 0), (5, 0)), ((5, 0), (9, 0)),
+        ((0, 4), (5, 4)), ((5, 4), (9, 4)),
+        ((0, 0), (0, 4)), ((5, 0), (5, 4)), ((9, 0), (9, 4)),
+    ]
+    faces = _enumerate_faces(segs)
+    # Should find exactly 3 faces: room A, room B, and exterior (or more)
+    interior_faces = [f for f in faces if len(f) >= 5]
+    assert len(interior_faces) >= 2
+    # Verify at least one has xs in [0,5] and one in [5,9]
+    xs_ranges = [(min(p[0] for p in f), max(p[0] for p in f)) for f in interior_faces]
+    has_room_a = any((lo, hi) == (0, 5) for lo, hi in xs_ranges)
+    has_room_b = any((lo, hi) == (5, 9) for lo, hi in xs_ranges)
+    assert has_room_a, f"no room A in {xs_ranges}"
+    assert has_room_b, f"no room B in {xs_ranges}"
+
+
+def test_extract_room_geometry_finds_per_room_rectangle_not_whole_plan():
+    """Two adjacent rooms must each get their own rectangle, not the union bbox.
+
+    Reproduces the real DXF bug where the 10m-window min/max heuristic swallowed
+    the entire plan into every room. With a proper nearest-wall-per-direction
+    trace, each room is bounded by the four walls enclosing its label.
+    """
+    from ezdxf.document import Drawing
+
+    from parse_cad import extract_room_geometry
+
+    doc = Drawing.new("R2018")
+    msp = doc.modelspace()
+    doc.layers.add("BS-非承重墙")
+    # Room A: x[0,5000] y[0,4000]; Room B: x[5000,9000] y[0,4000] (share wall at x=5000)
+    walls = [
+        (0, 0, 5000, 0), (5000, 0, 9000, 0),
+        (0, 4000, 5000, 4000), (5000, 4000, 9000, 4000),
+        (0, 0, 0, 4000), (5000, 0, 5000, 4000), (9000, 0, 9000, 4000),
+    ]
+    for x1, y1, x2, y2 in walls:
+        msp.add_line((x1, y1), (x2, y2), dxfattribs={"layer": "BS-非承重墙"})
+    labels = {
+        "master_bedroom": ("主卧", 2500.0, 2000.0),
+        "bedroom_nw": ("次卧", 7000.0, 2000.0),
+    }
+    rooms = extract_room_geometry(labels, msp)
+    by_id = {r.id: r for r in rooms}
+    assert by_id["master_bedroom"].width == 5.0
+    assert by_id["master_bedroom"].depth == 4.0
+    assert by_id["bedroom_nw"].width == 4.0
+    assert by_id["bedroom_nw"].depth == 4.0
+
+
 def test_geometry_changes_in_report(tmp_path: Path):
     """Report includes geometry_changes when CAD differs from previous YAML."""
     out = tmp_path / "cad-extracted.yaml"
