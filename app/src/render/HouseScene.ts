@@ -265,15 +265,19 @@ export class HouseScene implements SceneApi {
       const { x1, z1, x2, z2 } = walls[i];
       const cx = (x1 + x2) / 2;
       const cz = (z1 + z2) / 2;
-      const lengthX = Math.abs(x2 - x1);
-      const lengthZ = Math.abs(z2 - z1);
+      const dx = x2 - x1;
+      const dz = z2 - z1;
+      const length = Math.sqrt(dx * dx + dz * dz);
       const geo = new THREE.BoxGeometry(
-        Math.max(lengthX, WALL_THICKNESS),
+        Math.max(length, WALL_THICKNESS),
         height,
-        Math.max(lengthZ, WALL_THICKNESS)
+        WALL_THICKNESS
       );
       const wall = new THREE.Mesh(geo, wallMat.clone());
       wall.position.set(cx, height / 2, cz);
+      if (length > WALL_THICKNESS) {
+        wall.rotation.y = Math.atan2(dz, dx);
+      }
       wall.userData = { type: 'wall', objectId: `wall:seg:${i}` };
       wall.castShadow = true;
       wall.receiveShadow = true;
