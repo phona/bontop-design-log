@@ -704,3 +704,28 @@ def test_geometry_changes_in_report(tmp_path: Path):
     assert ("master_bedroom", "x") in field_ids
     assert ("master_bedroom", "z") in field_ids
 
+
+def test_extract_walls_loads_curtain_corners_from_config(tmp_path: Path):
+    """extract_walls loads curtain_wall_corners from house.yaml and filters smoothing."""
+    from ezdxf.document import Drawing
+    from parse_cad import extract_walls
+
+    house_config = tmp_path / "house.yaml"
+    house_config.write_text(yaml.dump({
+        "curtain_wall_corners": [
+            {"x": 0.25, "z": 0.25},
+        ]
+    }, allow_unicode=True))
+
+    doc = Drawing.new("R2018")
+    msp = doc.modelspace()
+    doc.layers.add("BS-非承重墙")
+    msp.add_line((0, 0), (500, 500), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((10000, 10000), (10500, 10500), dxfattribs={"layer": "BS-非承重墙"})
+
+    walls = extract_walls(
+        msp, bounds=None, origin_x=0.0, origin_z=0.0,
+        house_config_path=house_config,
+    )
+    assert len(walls) == 13
+

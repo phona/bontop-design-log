@@ -256,20 +256,57 @@ def compute_origin(labels: dict[str, tuple[str, float, float]]) -> tuple[float, 
     return sum(xs) / len(xs), sum(ys) / len(ys)
 
 
+def load_curtain_corners(
+    config_path: Path,
+    origin_x: float,
+    origin_z: float,
+) -> list[tuple[float, float]] | None:
+    if not config_path.exists():
+        return None
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    corners = data.get("curtain_wall_corners")
+    if not corners:
+        return None
+
+    result = []
+    for corner in corners:
+        scene_x = corner["x"]
+        scene_z = corner["z"]
+        dxf_x = scene_x * 1000 + origin_x
+        dxf_y = origin_z - scene_z * 1000
+        result.append((dxf_x, dxf_y))
+
+    return result
+
+
 def extract_walls(
     modelspace,
     bounds: tuple[float, float, float, float] | None,
     origin_x: float,
     origin_z: float,
+    house_config_path: Path | None = None,
 ) -> list[Wall]:
     """Return wall segments in meters, origin-subtracted, for the renderer.
 
     The DXF draws each physical wall exactly once (shared walls are single
     segments, openings are gaps), so exporting the segments verbatim gives the
     renderer a continuous, non-duplicated wall graph.
+
+    If ``house_config_path`` is given, curtain_wall_corners are loaded and
+    passed to _smooth_diagonals() for filtering.
     """
     segments = collect_wall_segments(modelspace, bounds=bounds)
-    segments = _smooth_diagonals(segments)
+
+    curtain_corners_dxf = None
+    if house_config_path is not None:
+        curtain_corners_dxf = load_curtain_corners(
+            house_config_path, origin_x, origin_z
+        )
+
+    segments = _smooth_diagonals(segments, curtain_corners_dxf=curtain_corners_dxf)
     walls: list[Wall] = []
     for (x1, y1), (x2, y2) in segments:
         walls.append(
@@ -280,7 +317,6 @@ def extract_walls(
                 z2=round((origin_z - y2) / 1000.0, 3),
             )
         )
-    return walls
     return walls
 
 
@@ -845,7 +881,10 @@ def extract_rooms(
         labels, msp, origin_x=origin_x, origin_z=origin_z,
         default_height=default_height, areas=areas,
     )
-    walls = extract_walls(msp, bounds=bounds, origin_x=origin_x, origin_z=origin_z)
+    walls = extract_walls(
+        msp, bounds=bounds, origin_x=origin_x, origin_z=origin_z,
+        house_config_path=HOUSE_CONFIG,
+    )
 
     # Append gift area with no DXF label.
     # Entry garden: 4.45m (east-west, parallel to door) × 2.9m (north-south).
