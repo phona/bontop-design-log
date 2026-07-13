@@ -478,6 +478,14 @@ export class HouseScene implements SceneApi {
     }
   }
 
+  getRoomIdsWithWallFinish(finish: 'paint' | 'tile'): string[] {
+    const ids: string[] = [];
+    for (const [id, meta] of this.roomMeta.entries()) {
+      if (meta.wall_finish === finish) ids.push(id);
+    }
+    return ids;
+  }
+
   highlightObject(objectId: string) {
     this.scene.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
