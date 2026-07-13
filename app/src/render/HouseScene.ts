@@ -7,6 +7,7 @@ import type {
   ElectricalMarker,
   CurrentScheme,
   WallSegment,
+  OpeningDef,
 } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
@@ -23,7 +24,7 @@ const WALL_THICKNESS = 0.12;
 
 interface ProjectData {
   house: {
-    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string }>;
+    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string; openings?: OpeningDef[] }>;
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
     furnishings?: Record<string, Record<string, number>>;
     electrical?: ElectricalMarker[];
@@ -52,7 +53,7 @@ export class HouseScene implements SceneApi {
   private boundOnWindowResize: () => void;
   private _mode: 'orbit' | 'first-person' = 'orbit';
   private compareSchemeData?: CurrentScheme;
-  private roomMeta = new Map<string, { wall_finish?: string }>();
+  private roomMeta = new Map<string, { wall_finish?: string; openings?: OpeningDef[] }>();
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -134,6 +135,7 @@ export class HouseScene implements SceneApi {
     const wallHeight = projectData.house.rooms[0]?.height ?? 3.0;
 
     for (const room of projectData.house.rooms) {
+      this.roomMeta.set(room.id, { wall_finish: room.wall_finish, openings: room.openings });
       this.createRoom(
         {
           id: room.id,
@@ -146,7 +148,6 @@ export class HouseScene implements SceneApi {
         },
         { fabricateWalls: !useWallSegments }
       );
-      this.roomMeta.set(room.id, { wall_finish: room.wall_finish });
     }
 
     if (useWallSegments) {
@@ -250,11 +251,12 @@ export class HouseScene implements SceneApi {
         this.wallMeshes.push(wall);
       }
 
-      if (r.id === 'living_dining') {
-        this.addOpeningMarker(group, 0, 1.2, halfD + 0.01, r.width * 0.7, 1.6, 'south_window');
-      }
-      if (r.id === 'south_balcony') {
-        this.addOpeningMarker(group, 0, 1.2, -halfD - 0.01, 2, 2, 'door_to_balcony');
+      const meta = this.roomMeta.get(r.id);
+      if (meta?.openings) {
+        for (const opening of meta.openings) {
+          const pos = this._openingPosition(r, opening.wall, opening.center_offset ?? 0);
+          this.addOpeningMarker(group, pos.x, 1.2, pos.z, opening.width, opening.height, `${opening.type}_${r.id}`);
+        }
       }
     }
 
@@ -357,6 +359,19 @@ export class HouseScene implements SceneApi {
         );
       }
       this.scene.add(cube);
+    }
+  }
+
+  private _openingPosition(r: RoomObject, wall: string, centerOffset: number): { x: number; z: number } {
+    const halfW = r.width / 2;
+    const halfD = r.depth / 2;
+    const offset = 0.01;
+    switch (wall) {
+      case 'south': return { x: centerOffset, z: halfD + offset };
+      case 'north': return { x: centerOffset, z: -(halfD + offset) };
+      case 'east':  return { x: halfW + offset, z: centerOffset };
+      case 'west':  return { x: -(halfW + offset), z: centerOffset };
+      default:      return { x: centerOffset, z: halfD + offset };
     }
   }
 

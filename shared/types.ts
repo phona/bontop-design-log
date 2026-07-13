@@ -26,6 +26,7 @@ export interface RoomLayout {
   height: number;
   type: 'public' | 'private' | 'service';
   needs_waterproof?: boolean;
+  openings?: OpeningDef[];
 }
 
 export interface IndoorUnit {
@@ -130,19 +131,28 @@ export interface MaterialsYaml {
   materials: MaterialItem[];
 }
 
+export interface OpeningDef {
+  type: string;
+  wall: string;
+  width: number;
+  height: number;
+  center_offset?: number;
+}
+
 export interface HouseRoom {
   id: string;
   name?: string;
   type?: 'public' | 'private' | 'service';
   wall_finish?: 'paint' | 'tile';
   needs_waterproof?: boolean;
+  openings?: OpeningDef[];
   [key: string]: unknown;
 }
 
 export interface HouseYaml {
   project: Record<string, unknown>;
   rooms: Array<HouseRoom>;
-  gift_areas: Array<Record<string, unknown>>;
+  gift_areas: Array<HouseRoom>;
   mechanical_electrical_plumbing: Record<string, unknown>;
   constraints: Record<string, unknown>;
   furnishings?: FurnishingsYaml;

@@ -60,6 +60,7 @@ function mergeRoom(layoutRoom: LayoutRoom, meta?: HouseYaml['rooms'][number]): R
     height: layoutRoom.height,
     type: meta?.type ?? 'public',
     needs_waterproof: meta?.needs_waterproof,
+    openings: meta?.openings,
   };
 }
 
@@ -133,7 +134,8 @@ export class ProjectCatalog {
     this.walls = layout.walls ?? [];
     this.layoutSource = layoutSource ?? layout.source;
 
-    const metaMap = new Map(houseMeta?.rooms?.map((r) => [r.id, r]) ?? []);
+    const allMeta = [...(houseMeta?.rooms ?? []), ...(houseMeta?.gift_areas ?? [])];
+    const metaMap = new Map(allMeta.map((r) => [r.id, r] as [string, HouseYaml['rooms'][number]]));
     for (const r of layout.rooms) {
       this.rooms.set(r.id, mergeRoom(r, metaMap.get(r.id)));
     }
