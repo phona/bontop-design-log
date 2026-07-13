@@ -4,6 +4,7 @@ notes:
 
 materials:
   - id: "floor_tile_01"
+    topic_id: "floor"
     alternative_group: "floor_tile"
     category: "地砖"
     name: "浅胡桃木纹砖"
@@ -27,6 +28,7 @@ materials:
     appearance: { type: "wood_grain", color: "#c49a6c" }
 
   - id: "wall_tile_01"
+    topic_id: "wall"
     alternative_group: "wall_tile"
     category: "墙砖"
     name: "厨卫白色釉面砖"
@@ -50,6 +52,7 @@ materials:
     appearance: { type: "ceramic_tile", color: "#f5f5f5" }
 
   - id: "latex_paint_01"
+    topic_id: "paint"
     alternative_group: "latex_paint"
     category: "乳胶漆"
     name: "金装净味五合一"
@@ -73,6 +76,7 @@ materials:
     appearance: { type: "solid_color", color: "#f7f5ef" }
 
   - id: "cabinet_board_01"
+    topic_id: "cabinet"
     alternative_group: "cabinet_board"
     category: "柜体板材"
     name: "多层实木板柜体 + PET 肤感柜门"
@@ -95,6 +99,7 @@ materials:
     notes: "按投影面积计价，含基础五金、设计、安装；L 型橱柜投影约 6㎡"
 
   - id: "quartz_stone_01"
+    topic_id: "countertop"
     alternative_group: "quartz_stone"
     category: "台面"
     name: "石英石台面"
@@ -117,6 +122,7 @@ materials:
     notes: "L 型台面约 4 延米；注意石英砂含量 ≥90%"
 
   - id: "interior_door_01"
+    topic_id: "interior_door"
     alternative_group: "interior_door"
     category: "室内门"
     name: "实木复合免漆门"
@@ -139,6 +145,7 @@ materials:
     notes: "3 卧室 + 1 书房共 4 扇；含门套、五金不含锁；建议磁吸静音锁"
 
   - id: "bathroom_door_01"
+    topic_id: "bathroom_door"
     alternative_group: "bathroom_door"
     category: "卫生间门"
     name: "钛镁铝合金极窄平开门"
@@ -161,6 +168,7 @@ materials:
     notes: "2 个卫生间；含门套、五金；极窄边框更现代"
 
   - id: "entry_door_01"
+    topic_id: "entry_door"
     alternative_group: "entry_door"
     category: "入户门"
     name: "甲级防盗门"
@@ -183,6 +191,7 @@ materials:
     notes: "若开发商入户门为甲级且外观可接受，可暂不更换"
 
   - id: "curtain_01"
+    topic_id: "curtain"
     alternative_group: "curtain"
     category: "窗帘"
     name: "雪尼尔遮光帘 + 幻影纱 + 铝百叶"
@@ -205,6 +214,7 @@ materials:
     notes: "全屋玻璃幕墙窗帘为刚需；客厅/卧室双层，厨卫铝百叶/防水卷帘"
 
   - id: "sanitary_toilet_01"
+    topic_id: "sanitary"
     alternative_group: "toilet"
     category: "卫浴洁具"
     name: "虹吸式马桶"
@@ -227,6 +237,7 @@ materials:
     notes: "2 个卫生间；主卫约 1000 元，次卫约 900 元，取均价"
 
   - id: "sanitary_shower_01"
+    topic_id: "sanitary"
     alternative_group: "shower"
     category: "卫浴洁具"
     name: "淋浴花洒套装"
@@ -249,6 +260,7 @@ materials:
     notes: "2 套；主卫约 800 元，次卫约 700 元，取均价"
 
   - id: "sanitary_vanity_01"
+    topic_id: "sanitary"
     alternative_group: "vanity"
     category: "卫浴洁具"
     name: "浴室柜组合（含镜柜）"
@@ -271,6 +283,7 @@ materials:
     notes: "2 套；主卫约 1300 元，次卫约 1100 元，取均价"
 
   - id: "sanitary_faucet_01"
+    topic_id: "sanitary"
     alternative_group: "faucet"
     category: "卫浴洁具"
     name: "冷热面盆龙头"
@@ -293,6 +306,7 @@ materials:
     notes: "2 个卫生间；含在浴室柜中或单独购买"
 
   - id: "lighting_01"
+    topic_id: "lighting"
     alternative_group: "lighting"
     category: "灯具"
     name: "全屋吸顶灯套餐"
@@ -315,6 +329,7 @@ materials:
     notes: "层高 3.0m，不建议复杂吊灯；客厅选大灯或超薄吸顶灯"
 
   - id: "switch_socket_01"
+    topic_id: "switch_socket"
     alternative_group: "switch_socket"
     category: "开关插座"
     name: "正泰 T5/NEW7M 无边框大板"
@@ -337,6 +352,7 @@ materials:
     notes: "智能预留只需开关留零线；厨房用带开关五孔，卫生间配防溅盒"
 
   - id: "hardware_01"
+    topic_id: "hardware"
     alternative_group: "hardware"
     category: "五金件"
     name: "门锁/合页/地漏/角阀/晾衣架/毛巾架套装"
@@ -359,6 +375,7 @@ materials:
     notes: "4 把锁、6-8 个地漏、10 个角阀、晾衣架、毛巾架等"
 
   - id: "hvac_01"
+    topic_id: "hvac"
     alternative_group: "hvac"
     category: "暖通空调"
     name: "国产多联机一拖五"
@@ -381,6 +398,7 @@ materials:
     notes: "推荐首选；西向设备平台放 1 台外机；含设备、安装、辅材、风口；国产性价比最高"
 
   - id: "hvac_02"
+    topic_id: "hvac"
     alternative_group: "hvac"
     category: "暖通空调"
     name: "一拖三挂机 + 一拖二挂机"
@@ -403,6 +421,7 @@ materials:
     notes: "预算紧替代方案；外机 2 台可放西设备平台；室内为壁挂机，美观度下降"
 
   - id: "gas_water_heater_01"
+    topic_id: "water_heater"
     alternative_group: "gas_water_heater"
     category: "热水器"
     name: "16L 恒温强排燃气热水器"
@@ -425,6 +444,7 @@ materials:
     notes: "一厨两卫 16L 够用；零冷水需回水管，预算紧可不要"
 
   - id: "range_hood_01"
+    topic_id: "range_hood"
     alternative_group: "range_hood"
     category: "厨房电器"
     name: "侧吸式大吸力油烟机"
@@ -447,6 +467,7 @@ materials:
     notes: "开放式厨房必须大功率侧吸；建议配 5.0kW 灶具"
 
   - id: "smart_home_01"
+    topic_id: "smart_home"
     alternative_group: "smart_home"
     category: "智能家居"
     name: "智能预留 B 级套装"
@@ -490,6 +511,7 @@ materials:
     price_source: "开发商报价"
 
   - id: "floor_tile_02"
+    topic_id: "floor"
     alternative_group: "floor_tile"
     category: "地砖"
     name: "灰色柔光砖"
@@ -513,6 +535,7 @@ materials:
     appearance: { type: "ceramic_tile", color: "#b0a89c" }
 
   - id: "floor_tile_03"
+    topic_id: "floor"
     alternative_group: "floor_tile"
     category: "地砖"
     name: "浅灰亮光砖"
@@ -536,6 +559,7 @@ materials:
     appearance: { type: "ceramic_tile", color: "#d4cfc7" }
 
   - id: "wall_tile_02"
+    topic_id: "wall"
     alternative_group: "wall_tile"
     category: "墙砖"
     name: "柔光白瓷片"
@@ -559,6 +583,7 @@ materials:
     appearance: { type: "ceramic_tile", color: "#f0ede6" }
 
   - id: "wall_tile_03"
+    topic_id: "wall"
     alternative_group: "wall_tile"
     category: "墙砖"
     name: "灰色仿古砖"
@@ -582,6 +607,7 @@ materials:
     appearance: { type: "ceramic_tile", color: "#a8a09a" }
 
   - id: "bed_180_01"
+    topic_id: "miscellaneous"
     alternative_group: "bed"
     category: "家具"
     name: "1.8m 实木床"
@@ -604,6 +630,7 @@ materials:
     notes: "含床头柜, 不含床垫"
 
   - id: "mattress_180_01"
+    topic_id: "miscellaneous"
     alternative_group: "mattress"
     category: "家具"
     name: "1.8m 独立袋装弹簧床垫"
@@ -626,6 +653,7 @@ materials:
     notes: "建议到店试躺后再确定"
 
   - id: "wardrobe_240_01"
+    topic_id: "miscellaneous"
     alternative_group: "wardrobe"
     category: "家具"
     name: "2.4m 定制衣柜"
@@ -648,6 +676,7 @@ materials:
     notes: "按投影面积约 1700 元/㎡ × 2.4m × 2.7m 估算"
 
   - id: "sofa_3seat_01"
+    topic_id: "miscellaneous"
     alternative_group: "sofa"
     category: "家具"
     name: "三人位科技布沙发"
@@ -670,6 +699,7 @@ materials:
     notes: "科技布是务实档首选，真皮预算翻倍"
 
   - id: "dining_table_01"
+    topic_id: "miscellaneous"
     alternative_group: "dining_table"
     category: "家具"
     name: "1.4m 岩板餐桌"
@@ -692,6 +722,7 @@ materials:
     notes: "1.4m 适合 4 人常用，6 人挤一挤"
 
   - id: "dining_chair_01"
+    topic_id: "miscellaneous"
     alternative_group: "dining_chair"
     category: "家具"
     name: "简约餐椅"
@@ -714,6 +745,7 @@ materials:
     notes: "4 把起步，可根据实际增减"
 
   - id: "tv_stand_01"
+    topic_id: "miscellaneous"
     alternative_group: "tv_stand"
     category: "家具"
     name: "1.8m 电视柜"

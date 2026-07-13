@@ -100,6 +100,7 @@ export interface Topic {
 export interface MaterialItem {
   id: string;
   category: string;
+  topic_id?: string;
   name: string;
   brand: string;
   model: string;
