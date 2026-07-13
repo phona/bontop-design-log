@@ -113,6 +113,7 @@ function createMockSceneApi() {
         topicObjects.get(topicId)!.add(objectId);
       }),
       getRoom: vi.fn((roomId: string) => roomsMap[roomId]),
+      getPlatformRoomId: vi.fn(() => 'west_platform'),
       highlightObject: vi.fn(),
       setCameraTarget: vi.fn(),
       rooms: roomsMap,

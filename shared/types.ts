@@ -84,6 +84,7 @@ export interface SceneApi {
   clearTopicObjects(topicId: string): void;
   addObject(topicId: string, objectId: string, obj: Object3DRef): void;
   getRoom(roomId: string): RoomObject | undefined;
+  getPlatformRoomId(): string | undefined;
   highlightObject(objectId: string): void;
   setCameraTarget(targetId: string): void;
   rooms: Record<string, RoomObject>;

@@ -451,6 +451,10 @@ export class HouseScene implements SceneApi {
     return this.rooms[roomId];
   }
 
+  getPlatformRoomId(): string | undefined {
+    return this.platform?.id;
+  }
+
   setFloorColor(color: string) {
     for (const mesh of this.floorMeshes) {
       (mesh.material as THREE.MeshStandardMaterial).color.set(color);

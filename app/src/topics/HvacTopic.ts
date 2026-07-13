@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import type { Topic, SceneApi, TopicOption } from '@shared/types';
 import { hvacSchemes } from '@shared/houseData';
-
-const PLATFORM_ROOM_ID = 'west_platform';
 import { createOutdoorUnit, createIndoorUnit, createLabel } from '../render/ObjectFactory.js';
 
 function schemeToOption(scheme: (typeof hvacSchemes)[number]): TopicOption {
@@ -30,7 +28,9 @@ export class HvacTopic implements Topic {
     const objectIds: string[] = [];
 
     const resolveLocation = (location: string) =>
-      location === 'platform' ? scene.getRoom(PLATFORM_ROOM_ID) : scene.getRoom(location);
+      location === 'platform'
+        ? (() => { const pid = scene.getPlatformRoomId(); return pid ? scene.getRoom(pid) : undefined; })()
+        : scene.getRoom(location);
 
     // outdoor units
     scheme.outdoorUnits.forEach((unit, idx) => {
@@ -81,7 +81,8 @@ export class HvacTopic implements Topic {
     const scheme = hvacSchemes.find((s) => s.id === optionId);
     if (!scheme) return ['未知 HVAC 方案'];
     const warnings: string[] = [];
-    const platformRoom = scene.getRoom(PLATFORM_ROOM_ID);
+    const platformId = scene.getPlatformRoomId();
+    const platformRoom = platformId ? scene.getRoom(platformId) : undefined;
     const platformWidth = platformRoom?.width ?? 1.6;
     const platformUnits = scheme.outdoorUnits.filter((u) => u.location === 'platform').length;
     if (platformUnits > 1) {
