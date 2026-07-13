@@ -267,6 +267,9 @@ def load_curtain_corners(
     with open(config_path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
+    if not data:
+        return None
+
     corners = data.get("curtain_wall_corners")
     if not corners:
         return None
