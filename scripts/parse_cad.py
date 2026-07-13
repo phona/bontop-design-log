@@ -280,64 +280,46 @@ def extract_walls(
                 z2=round((origin_z - y2) / 1000.0, 3),
             )
         )
-    # Add glass curtain wall perimeter segments from DS-门窗 WINDOW blocks.
-    # These define the building envelope where no wall LINE exists (south facade).
-    vitals = _parse_opening_virtual_segments(modelspace, bounds=bounds)
-    for (x1, y1), (x2, y2) in vitals:
-        walls.append(
-            Wall(
-                x1=round((x1 - origin_x) / 1000.0, 3),
-                z1=round((origin_z - y1) / 1000.0, 3),
-                x2=round((x2 - origin_x) / 1000.0, 3),
-                z2=round((origin_z - y2) / 1000.0, 3),
-            )
-        )
+    return walls
     return walls
 
 
 def _smooth_diagonals(
     segments: list[tuple[tuple[float, float], tuple[float, float]]],
-    subdivide_longer_than: float = 300.0,
 ) -> list[tuple[tuple[float, float], tuple[float, float]]]:
-    """Subdivide diagonal wall segments into smaller pieces so the renderer
-    can approximate curved glass curtain walls.  Each diagonal longer than
-    ``subdivide_longer_than`` mm is split into N equal sub-segments (N so
-    that each piece is roughly 500mm long), with the midpoint bowed outward
-    by ``bulge`` mm to suggest a gentle curve."""
+    """Split each diagonal wall segment into ``subdiv`` straight sub-segments.
+    The chord midpoint is bowed outward by ``bulge`` mm so the glass curtain
+    wall corner renders as an approximated smooth curve."""
     import math
+    bulge = 80.0        # mm – outward bow at chord midpoint
+    subdiv = 12           # sub-segments per diagonal
     result: list[tuple[tuple[float, float], tuple[float, float]]] = []
     for (x1, y1), (x2, y2) in segments:
         dx, dy = x2 - x1, y2 - y1
         length = math.hypot(dx, dy)
         is_diagonal = abs(x1 - x2) > 1 and abs(y1 - y2) > 1
-        bulge = 80.0  # mm of outward bow (perpendicular)
-        if is_diagonal and length > subdivide_longer_than:
-            n = max(3, int(length / 500.0))
-            # Outward normal (perpendicular)
-            nx, ny = dy / length, -dx / length
-            for i in range(n):
-                t0 = i / n
-                t1 = (i + 1) / n
-                # Midpoint of this sub-segment, shifted outward
-                tm = (t0 + t1) / 2
-                # Sub-segment offset from the chord
-                # Maximum bulge at the center of the full segment, tapering to ends
-                bulge_factor = 1.0 - abs(tm - 0.5) * 2  # 0 at ends, 1 at center
-                soff = bulge * bulge_factor
-                sx0 = x1 + dx * t0
-                sy0 = y1 + dy * t0
-                sx1 = x1 + dx * t1
-                sy1 = y1 + dy * t1
-                # Apply bulge to both endpoints of the sub-segment
-                # (each shifted outward proportionally to its bulge factor)
-                b0 = 1.0 - abs(t0 - 0.5) * 2
-                b1 = 1.0 - abs(t1 - 0.5) * 2
-                result.append((
-                    (round(sx0 + nx * bulge * b0), round(sy0 + ny * bulge * b0)),
-                    (round(sx1 + nx * bulge * b1), round(sy1 + ny * bulge * b1)),
-                ))
-        else:
+        if not is_diagonal or length < 200:
             result.append(((x1, y1), (x2, y2)))
+            continue
+
+        # Perpendicular direction, bow outward (west = more-negative x)
+        nx, ny = -dy / length, dx / length
+        if nx > 0:
+            nx, ny = -nx, -ny
+
+        # Compute sub-segment endpoints along the chord with parabolic bulge
+        pts = [(x1, y1)]
+        for k in range(1, subdiv):
+            t = k / subdiv  # 0…1
+            # Parabolic bulge: max at t=0.5, zero at t=0,1
+            offset = 4 * bulge * t * (1 - t)
+            px = x1 + dx * t + nx * offset
+            py = y1 + dy * t + ny * offset
+            pts.append((round(px), round(py)))
+        pts.append((x2, y2))
+
+        for i in range(len(pts) - 1):
+            result.append((pts[i], pts[i+1]))
     return result
 
 
