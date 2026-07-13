@@ -51,9 +51,7 @@ export class BudgetCalculator {
           quantity = rooms.reduce((sum, r) => sum + (r.width + r.depth) * 2 * r.height * 0.75, 0);
           break;
         case 'wet_floor': {
-          const wetRooms = rooms.filter((r) =>
-            ['master_bath', 'guest_bath', 'kitchen', 'balcony', 'south_balcony'].includes(r.id)
-          );
+          const wetRooms = rooms.filter((r) => r.needs_waterproof === true);
           quantity = wetRooms.reduce((sum, r) => sum + r.width * r.depth, 0);
           break;
         }

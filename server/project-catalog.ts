@@ -80,6 +80,7 @@ function mergeRoom(layoutRoom: LayoutRoom, meta?: HouseYaml['rooms'][number]): R
     depth: layoutRoom.depth,
     height: layoutRoom.height,
     type: meta?.type ?? 'public',
+    needs_waterproof: meta?.needs_waterproof,
   };
 }
 

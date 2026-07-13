@@ -25,6 +25,7 @@ export interface RoomLayout {
   depth: number;
   height: number;
   type: 'public' | 'private' | 'service';
+  needs_waterproof?: boolean;
 }
 
 export interface IndoorUnit {

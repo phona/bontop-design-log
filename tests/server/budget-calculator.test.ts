@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import type { CurrentScheme, DesignRulesConfig } from '../../shared/types.js';
@@ -258,5 +259,11 @@ describe('BudgetCalculator', () => {
         `actual should be >= manualActual + autoActual for ${cat.key} (labor adds on top)`
       );
     }
+  });
+
+  it('should read wet rooms from config, not hardcoded list', () => {
+    const source = readFileSync('./server/budget-calculator.ts', 'utf8');
+    assert.ok(!source.includes("'master_bath', 'guest_bath'"), 'should not contain hardcoded room IDs');
+    assert.ok(source.includes('needs_waterproof'), 'should reference needs_waterproof');
   });
 });
