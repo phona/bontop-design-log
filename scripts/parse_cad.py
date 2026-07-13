@@ -286,10 +286,17 @@ def extract_walls(
 
 def _smooth_diagonals(
     segments: list[tuple[tuple[float, float], tuple[float, float]]],
+    curtain_corners_dxf: list[tuple[float, float]] | None = None,
+    corner_tolerance: float = 500.0,
 ) -> list[tuple[tuple[float, float], tuple[float, float]]]:
-    """Split each diagonal wall segment into ``subdiv`` straight sub-segments.
+    """Split diagonal wall segments near curtain corners into sub-segments.
+
     The chord midpoint is bowed outward by ``bulge`` mm so the glass curtain
-    wall corner renders as an approximated smooth curve."""
+    wall corner renders as an approximated smooth curve.
+
+    If ``curtain_corners_dxf`` is given, only diagonals within ``corner_tolerance``
+    mm of a corner are smoothed; others pass through unchanged.
+    """
     import math
     bulge = 80.0        # mm – outward bow at chord midpoint
     subdiv = 12           # sub-segments per diagonal
@@ -301,6 +308,16 @@ def _smooth_diagonals(
         if not is_diagonal or length < 200:
             result.append(((x1, y1), (x2, y2)))
             continue
+
+        if curtain_corners_dxf is not None:
+            mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
+            near_corner = any(
+                math.hypot(mid_x - cx, mid_y - cy) <= corner_tolerance
+                for cx, cy in curtain_corners_dxf
+            )
+            if not near_corner:
+                result.append(((x1, y1), (x2, y2)))
+                continue
 
         # Perpendicular direction, bow outward (west = more-negative x)
         nx, ny = -dy / length, dx / length

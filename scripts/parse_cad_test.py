@@ -634,6 +634,34 @@ def test_extract_room_geometry_finds_per_room_rectangle_not_whole_plan():
     assert by_id["bedroom_nw"].depth == 4.0
 
 
+def test_smooth_diagonals_without_corners_keeps_original_behavior():
+    """When curtain_corners_dxf is None, all diagonals >= 200mm are smoothed."""
+    from parse_cad import _smooth_diagonals
+
+    segments = [
+        ((0, 0), (1000, 0)),      # horizontal, skip
+        ((0, 0), (0, 1000)),      # vertical, skip
+        ((0, 0), (500, 500)),     # diagonal 707mm, should smooth
+    ]
+    result = _smooth_diagonals(segments)
+    assert result[0] == ((0, 0), (1000, 0))
+    assert result[1] == ((0, 0), (0, 1000))
+    assert len(result) == 14  # 2 unchanged + 12 sub-segments
+
+
+def test_smooth_diagonals_with_corners_filters_by_distance():
+    """Only diagonals near a curtain corner are smoothed."""
+    from parse_cad import _smooth_diagonals
+
+    segments = [
+        ((0, 0), (500, 500)),     # diagonal near corner at (250, 250), should smooth
+        ((10000, 10000), (10500, 10500)),  # diagonal far from corner, should NOT smooth
+    ]
+    corners = [(250, 250)]  # DXF mm
+    result = _smooth_diagonals(segments, curtain_corners_dxf=corners)
+    assert len(result) == 13  # 12 sub-segments + 1 unchanged
+
+
 def test_geometry_changes_in_report(tmp_path: Path):
     """Report includes geometry_changes when CAD differs from previous YAML."""
     out = tmp_path / "cad-extracted.yaml"
