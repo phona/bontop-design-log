@@ -18,27 +18,6 @@ import type {
 } from '../shared/types.js';
 import { hvacSchemes } from '../shared/houseData.js';
 
-const MATERIAL_TOPIC_MAP: Record<string, string> = {
-  地砖: 'floor',
-  墙砖: 'wall',
-  乳胶漆: 'paint',
-  柜体板材: 'cabinet',
-  台面: 'countertop',
-  室内门: 'interior_door',
-  卫生间门: 'bathroom_door',
-  入户门: 'entry_door',
-  窗帘: 'curtain',
-  卫浴洁具: 'sanitary',
-  灯具: 'lighting',
-  开关插座: 'switch_socket',
-  五金件: 'hardware',
-  暖通空调: 'hvac',
-  热水器: 'water_heater',
-  厨房电器: 'range_hood',
-  智能家居: 'smart_home',
-  家具: 'miscellaneous',
-};
-
 export interface BudgetCategory {
   key: string;
   budget: number;
@@ -48,7 +27,7 @@ export interface BudgetCategory {
 }
 
 function materialToOption(m: MaterialItem): DesignOption | null {
-  const topicId = MATERIAL_TOPIC_MAP[m.category];
+  const topicId = m.topic_id;
   if (!topicId) return null;
   return {
     id: m.id,
