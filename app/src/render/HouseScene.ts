@@ -15,6 +15,8 @@ import { createMaterialTexture } from './TextureFactory.js';
 import { placeFurnishings } from './FurnitureFactory.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
+const CURTAIN_WALL_COLOR = 0x88ccff;
+const CURTAIN_WALL_OPACITY = 0.3;
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
 
@@ -261,8 +263,16 @@ export class HouseScene implements SceneApi {
       color: DEFAULT_PAINT,
       roughness: 0.85,
     });
+    const curtainWallMat = new THREE.MeshPhysicalMaterial({
+      color: CURTAIN_WALL_COLOR,
+      transparent: true,
+      opacity: CURTAIN_WALL_OPACITY,
+      roughness: 0.05,
+      metalness: 0.1,
+      side: THREE.DoubleSide,
+    });
     for (let i = 0; i < walls.length; i++) {
-      const { x1, z1, x2, z2 } = walls[i];
+      const { x1, z1, x2, z2, curtain } = walls[i];
       const cx = (x1 + x2) / 2;
       const cz = (z1 + z2) / 2;
       const dx = x2 - x1;
@@ -273,13 +283,14 @@ export class HouseScene implements SceneApi {
         height,
         WALL_THICKNESS
       );
-      const wall = new THREE.Mesh(geo, wallMat.clone());
+      const mat = curtain ? curtainWallMat.clone() : wallMat.clone();
+      const wall = new THREE.Mesh(geo, mat);
       wall.position.set(cx, height / 2, cz);
       if (length > WALL_THICKNESS) {
         wall.rotation.y = Math.atan2(dz, dx);
       }
-      wall.userData = { type: 'wall', objectId: `wall:seg:${i}` };
-      wall.castShadow = true;
+      wall.userData = { type: 'wall', objectId: `wall:seg:${i}`, curtain: !!curtain };
+      wall.castShadow = !curtain;
       wall.receiveShadow = true;
       this.scene.add(wall);
       this.wallMeshes.push(wall);
