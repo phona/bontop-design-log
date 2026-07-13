@@ -275,7 +275,11 @@ def load_curtain_corners(
         return None
 
     result = []
-    for corner in corners:
+    for i, corner in enumerate(corners):
+        if "x" not in corner or "z" not in corner:
+            raise ValueError(
+                f"curtain_wall_corners entry {i} missing 'x' or 'z' key: {corner}"
+            )
         scene_x = corner["x"]
         scene_z = corner["z"]
         dxf_x = scene_x * 1000 + origin_x
