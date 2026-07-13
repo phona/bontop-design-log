@@ -66,11 +66,18 @@ def latest_dxf(cad_dir: Path) -> Path:
 
 
 def parse_room_label(text: str) -> tuple[str, str] | None:
-    """Extract (project_id, chinese_name) from a label like '主卧[master_bedroom]'."""
-    match = re.search(r"([^\[\n]+?)\[([a-z_][a-z0-9_]*)\]", text)
-    if not match:
+    """Extract (project_id, chinese_name) from a label.
+
+    Supports format: 'id\\n中文名\\n面积X.XXm²' (^J = newline in DXF).
+    """
+    lines = text.strip().splitlines()
+    if len(lines) < 2:
         return None
-    return match.group(2).strip(), match.group(1).strip()
+    project_id = lines[0].strip()
+    if not re.match(r'^[a-z_][a-z0-9_]*$', project_id):
+        return None
+    chinese_name = lines[1].strip()
+    return project_id, chinese_name
 
 
 def chinese_name_to_id(
