@@ -395,8 +395,10 @@ describe('WallTopic', () => {
   it('should apply wall color to WALL_ROOMS and return wall ids', () => {
     const scene = {
       setWallColor: vi.fn(),
+      getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['kitchen', 'master_bath', 'guest_bath']),
     };
     const ids = topic.apply(scene as any, 'wall_tile_01');
+    expect(scene.getRoomIdsWithWallFinish).toHaveBeenCalledWith('tile');
     expect(scene.setWallColor).toHaveBeenCalledWith(
       ['kitchen', 'master_bath', 'guest_bath'],
       '#f5f5f5'
@@ -407,8 +409,10 @@ describe('WallTopic', () => {
   it('should apply second wall option', () => {
     const scene = {
       setWallColor: vi.fn(),
+      getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['kitchen', 'master_bath', 'guest_bath']),
     };
     const ids = topic.apply(scene as any, 'wall_tile_02');
+    expect(scene.getRoomIdsWithWallFinish).toHaveBeenCalledWith('tile');
     expect(scene.setWallColor).toHaveBeenCalledWith(
       ['kitchen', 'master_bath', 'guest_bath'],
       '#d0d0d0'
