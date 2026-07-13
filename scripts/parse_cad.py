@@ -280,11 +280,11 @@ def _mark_curtain_from_config(
                     w.curtain = True
                     break
             elif edge == "north":
-                if abs(w.z1 - min_z) < tolerance or abs(w.z2 - min_z) < tolerance:
+                if abs(w.z1 - max_z) < tolerance or abs(w.z2 - max_z) < tolerance:
                     w.curtain = True
                     break
             elif edge == "south":
-                on_south = abs(w.z1 - max_z) < tolerance or abs(w.z2 - max_z) < tolerance
+                on_south = abs(w.z1 - min_z) < tolerance or abs(w.z2 - min_z) < tolerance
                 if on_south and (w.x1 + w.x2) / 2 <= cfg.get("max_x", float("inf")):
                     w.curtain = True
                     break

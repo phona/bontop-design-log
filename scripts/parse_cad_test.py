@@ -720,9 +720,9 @@ def test_mark_curtain_walls_from_config(tmp_path: Path):
     msp = doc.modelspace()
     doc.layers.add("BS-非承重墙")
     msp.add_line((-5880, 4870), (-5880, -3360), dxfattribs={"layer": "BS-非承重墙"})
-    msp.add_line((-5000, 5390), (-4500, 5390), dxfattribs={"layer": "BS-非承重墙"})
-    msp.add_line((-500, -4320), (500, -4320), dxfattribs={"layer": "BS-非承重墙"})
-    msp.add_line((4000, -4320), (5000, -4320), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((-5000, -5390), (-4500, -5390), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((-500, 5390), (500, 5390), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((4000, 5390), (5000, 5390), dxfattribs={"layer": "BS-非承重墙"})
     msp.add_line((8540, 4450), (8540, 4210), dxfattribs={"layer": "BS-非承重墙"})
     msp.add_line((0, 0), (1000, 0), dxfattribs={"layer": "BS-非承重墙"})
 
