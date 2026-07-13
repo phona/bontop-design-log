@@ -331,7 +331,7 @@ def extract_walls(
 
 def mark_curtain_walls(
     walls: list[Wall],
-    tolerance: float = 0.15,
+    tolerance: float = 0.5,
 ) -> list[Wall]:
     """Mark wall segments on the building's exterior curtain wall boundary.
 
