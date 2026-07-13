@@ -16,7 +16,8 @@ import { placeFurnishings } from './FurnitureFactory.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
 const CURTAIN_WALL_COLOR = 0x88ccff;
-const CURTAIN_WALL_OPACITY = 0.3;
+const CURTAIN_WALL_OPACITY = 0.6;
+const CURTAIN_WALL_THICKNESS = 0.08; // 8cm glass panel
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
 
@@ -279,9 +280,9 @@ export class HouseScene implements SceneApi {
       const dz = z2 - z1;
       const length = Math.sqrt(dx * dx + dz * dz);
       const geo = new THREE.BoxGeometry(
-        Math.max(length, WALL_THICKNESS),
+        Math.max(length, curtain ? CURTAIN_WALL_THICKNESS : WALL_THICKNESS),
         height,
-        WALL_THICKNESS
+        curtain ? CURTAIN_WALL_THICKNESS : WALL_THICKNESS
       );
       const mat = curtain ? curtainWallMat.clone() : wallMat.clone();
       const wall = new THREE.Mesh(geo, mat);
