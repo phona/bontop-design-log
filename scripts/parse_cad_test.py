@@ -243,22 +243,6 @@ def test_write_layout_yaml_corrupted_previous(tmp_path: Path):
     assert report["diff"] == "previous YAML corrupted, cannot diff"
 
 
-def test_chinese_name_mapping():
-    from parse_cad import chinese_name_to_id
-    assert chinese_name_to_id("主卧", 18.16, 0, 0) == "master_bedroom"
-    assert chinese_name_to_id("客餐厅", 35.2, 0, 0) == "living_dining"
-    assert chinese_name_to_id("厨房", 6.09, 0, 0) == "kitchen"
-    assert chinese_name_to_id("阳台", 2.42, 0, 0) == "balcony"
-    assert chinese_name_to_id("入户花园", 11.06, 0, 0) == "entry_garden"
-    assert chinese_name_to_id("南向大阳台", 13.95, 0, 0) == "south_balcony"
-    assert chinese_name_to_id("卫生间", 4.53, 0, 0) == "master_bath"
-    assert chinese_name_to_id("卫生间", 2.66, 0, 0) == "guest_bath"
-    assert chinese_name_to_id("次卧", 8.35, 0, 0) == "study"
-    assert chinese_name_to_id("次卧", 8.39, -1, 1, (0, 0)) == "bedroom_nw"
-    assert chinese_name_to_id("次卧", 8.39, 1, -1, (0, 0)) == "bedroom_se"
-    assert chinese_name_to_id("走廊", 10.0, 0, 0) is None
-
-
 def test_write_layout_yaml_reports_skipped_labels(tmp_path: Path):
     out = tmp_path / "cad-extracted.yaml"
     rooms = [
@@ -371,22 +355,19 @@ def test_merge_does_not_overwrite_cad_extracted_room(tmp_path: Path):
     assert master.name == "主卧"
 
 
-def test_8_39_bedroom_does_not_map_to_study():
-    from parse_cad import chinese_name_to_id
+def test_extract_room_labels_skips_chinese_only_labels():
+    """Labels without ID prefix are skipped, not guessed."""
+    from ezdxf.document import Drawing
 
-    assert chinese_name_to_id("次卧", 8.39, 0, 0) != "study"
-    assert chinese_name_to_id("次卧", 8.39, -1, 1, (0, 0)) == "bedroom_nw"
-    assert chinese_name_to_id("次卧", 8.39, 1, -1, (0, 0)) == "bedroom_se"
-
-
-def test_two_8_39_bedrooms_disambiguate_with_seen_ids():
-    from parse_cad import chinese_name_to_id
-
-    seen = set()
-    first = chinese_name_to_id("次卧", 8.39, -1, 1, (0, 0), seen)
-    seen.add(first)
-    second = chinese_name_to_id("次卧", 8.39, 1, -1, (0, 0), seen)
-    assert {first, second} == {"bedroom_nw", "bedroom_se"}
+    doc = Drawing.new("R2018")
+    msp = doc.modelspace()
+    doc.layers.add("SH-文字标注")
+    msp.add_mtext("master_bedroom\n主卧", dxfattribs={"layer": "SH-文字标注", "insert": (1000, 2000, 0)})
+    msp.add_text("走廊", dxfattribs={"layer": "SH-文字标注", "insert": (0, 0, 0)})
+    labels, skipped = extract_room_labels(msp)
+    assert "master_bedroom" in labels
+    assert "走廊" in skipped
+    assert len(labels) == 1
 
 
 def test_extract_room_labels_logs_warning_for_unmapped_label(caplog):

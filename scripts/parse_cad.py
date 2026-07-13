@@ -80,60 +80,6 @@ def parse_room_label(text: str) -> tuple[str, str] | None:
     return project_id, chinese_name
 
 
-def chinese_name_to_id(
-    name: str,
-    area: float | None,
-    x: float,
-    y: float,
-    master_bedroom_pos: tuple[float, float] | None = None,
-    seen_ids: set[str] | None = None,
-) -> str | None:
-    """Map Chinese room names to project IDs."""
-    name = name.strip().replace(" ", "")
-    if name == "主卧":
-        return "master_bedroom"
-    if name == "客餐厅":
-        return "living_dining"
-    if name == "厨房":
-        return "kitchen"
-    if name == "阳台":
-        return "balcony"
-    if name == "入户花园":
-        return "entry_garden"
-    if name == "南向大阳台":
-        return "south_balcony"
-    if name == "卫生间":
-        if area is None:
-            return None
-        # Larger area near master is master_bath; smaller is guest_bath
-        return "master_bath" if area >= 3.5 else "guest_bath"
-    if name == "次卧":
-        if area is None:
-            return None
-        # Study area clusters around 8.35; guard against the 8.39 bedrooms.
-        if abs(area - 8.35) < 0.1 and abs(area - 8.39) >= 0.04:
-            return "study"
-        # Two 8.39 bedrooms: northwest vs southeast relative to master bedroom
-        if master_bedroom_pos and abs(area - 8.39) < 0.1:
-            mx, my = master_bedroom_pos
-            is_nw = x < mx and y > my
-            seen = seen_ids or set()
-            if is_nw and "bedroom_nw" not in seen:
-                return "bedroom_nw"
-            if "bedroom_se" not in seen:
-                return "bedroom_se"
-            if "bedroom_nw" not in seen:
-                return "bedroom_nw"
-            return None
-        return None
-    return None
-
-
-def contains_chinese(text: str) -> bool:
-    """Return True if text contains any CJK unified ideographs."""
-    return bool(re.search(r"[\u4e00-\u9fff]", text))
-
-
 def parse_area(text: str) -> float | None:
     match = re.search(r"面积(\d+\.?\d*)m²", text)
     if match:
@@ -141,21 +87,11 @@ def parse_area(text: str) -> float | None:
     return None
 
 
-def extract_leading_chinese_name(text: str) -> str:
-    """Extract the leading Chinese name from a label like '主卧^J面积18.16m²'."""
-    match = re.match(r"[\u4e00-\u9fff]+", text.strip())
-    if match:
-        return match.group(0)
-    return text.strip().splitlines()[0].strip()
-
-
 def extract_room_labels(modelspace) -> tuple[dict[str, tuple[str, float, float]], list[str]]:
     """Find room labels on SH-文字标注 and return id -> (name, x, z) plus skipped labels."""
     labels: dict[str, tuple[str, float, float]] = {}
     skipped: set[str] = set()
 
-    # First pass: collect all Chinese labels with their positions and areas
-    candidates: list[tuple[str, float, float, float | None]] = []
     for entity in modelspace:
         if entity.dxf.layer != "SH-文字标注":
             continue
@@ -171,36 +107,11 @@ def extract_room_labels(modelspace) -> tuple[dict[str, tuple[str, float, float]]
             project_id, name = parsed
             point = entity.dxf.insert
             labels[project_id] = (name, float(point.x), float(point.y))
-            continue
-        if contains_chinese(text):
-            first_line = extract_leading_chinese_name(text)
-            if first_line:
-                area = parse_area(text)
-                point = entity.dxf.insert
-                candidates.append((first_line, float(point.x), float(point.y), area))
-
-    # Find master bedroom position for disambiguation
-    master_pos = None
-    for name, x, y, area in candidates:
-        if name == "主卧":
-            master_pos = (x, y)
-            break
-    if master_pos is None:
-        for project_id, (name, x, y) in labels.items():
-            if project_id == "master_bedroom":
-                master_pos = (x, y)
-                break
-
-    # Map Chinese names to IDs
-    seen_ids: set[str] = set(labels.keys())
-    for name, x, y, area in candidates:
-        project_id = chinese_name_to_id(name, area, x, y, master_pos, seen_ids)
-        if project_id:
-            labels[project_id] = (name, x, y)
-            seen_ids.add(project_id)
         else:
-            skipped.add(name)
-            logger.warning("Chinese room label %r could not be mapped to a project ID", name)
+            first_line = text.strip().splitlines()[0].strip() if text.strip() else ""
+            if first_line:
+                skipped.add(first_line)
+                logger.warning("Room label %r has no valid ID prefix, skipped", first_line)
 
     return labels, sorted(skipped)
 
