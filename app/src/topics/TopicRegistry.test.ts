@@ -446,16 +446,12 @@ describe('PaintTopic', () => {
     expect(topic.options[0].id).toBe('latex_paint_01');
   });
 
-  it('should apply paint color excluding wet rooms and return paint:rooms', () => {
+  it('should apply paint color and return paint:rooms', () => {
     const scene = {
       setPaintColor: vi.fn(),
     };
     const ids = topic.apply(scene as any, 'latex_paint_01');
-    expect(scene.setPaintColor).toHaveBeenCalledWith('#f7f5ef', [
-      'master_bath',
-      'guest_bath',
-      'kitchen',
-    ]);
+    expect(scene.setPaintColor).toHaveBeenCalledWith('#f7f5ef');
     expect(ids).toEqual(['paint:rooms']);
   });
 
@@ -464,11 +460,7 @@ describe('PaintTopic', () => {
       setPaintColor: vi.fn(),
     };
     const ids = topic.apply(scene as any, 'latex_paint_02');
-    expect(scene.setPaintColor).toHaveBeenCalledWith('#fff4e6', [
-      'master_bath',
-      'guest_bath',
-      'kitchen',
-    ]);
+    expect(scene.setPaintColor).toHaveBeenCalledWith('#fff4e6');
     expect(ids).toEqual(['paint:rooms']);
   });
 
@@ -477,11 +469,7 @@ describe('PaintTopic', () => {
       setPaintColor: vi.fn(),
     };
     const ids = topic.apply(scene as any, 'latex_paint_03');
-    expect(scene.setPaintColor).toHaveBeenCalledWith('#e6f3ff', [
-      'master_bath',
-      'guest_bath',
-      'kitchen',
-    ]);
+    expect(scene.setPaintColor).toHaveBeenCalledWith('#e6f3ff');
     expect(ids).toEqual(['paint:rooms']);
   });
 

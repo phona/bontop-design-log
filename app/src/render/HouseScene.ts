@@ -23,7 +23,7 @@ const WALL_THICKNESS = 0.12;
 
 interface ProjectData {
   house: {
-    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string }>;
+    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string }>;
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
     furnishings?: Record<string, Record<string, number>>;
     electrical?: ElectricalMarker[];
@@ -52,6 +52,7 @@ export class HouseScene implements SceneApi {
   private boundOnWindowResize: () => void;
   private _mode: 'orbit' | 'first-person' = 'orbit';
   private compareSchemeData?: CurrentScheme;
+  private roomMeta = new Map<string, { wall_finish?: string }>();
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -120,6 +121,7 @@ export class HouseScene implements SceneApi {
     this.platform = undefined;
     this.floorMeshes = [];
     this.wallMeshes = [];
+    this.roomMeta.clear();
 
     this.setupLights();
     this.buildBase();
@@ -144,6 +146,7 @@ export class HouseScene implements SceneApi {
         },
         { fabricateWalls: !useWallSegments }
       );
+      this.roomMeta.set(room.id, { wall_finish: room.wall_finish });
     }
 
     if (useWallSegments) {
@@ -425,6 +428,11 @@ export class HouseScene implements SceneApi {
       }
     } else if (topicId === 'wall' || topicId === 'paint') {
       for (const mesh of this.wallMeshes) {
+        if (topicId === 'paint') {
+          const roomId = mesh.userData.roomId as string;
+          const room = this.roomMeta.get(roomId);
+          if (room?.wall_finish === 'tile') continue;
+        }
         const mat = mesh.material as THREE.MeshStandardMaterial;
         mat.map = tex;
         mat.color.set(appearance.color);
@@ -460,14 +468,13 @@ export class HouseScene implements SceneApi {
     }
   }
 
-  setPaintColor(color: string, exclude?: string[]) {
-    const excludeSet = new Set(exclude ?? []);
+  setPaintColor(color: string) {
     for (const mesh of this.wallMeshes) {
-      // Skip curtain walls - they keep their glass material
       if (mesh.userData.curtain) continue;
-      if (!excludeSet.has(mesh.userData.roomId as string)) {
-        (mesh.material as THREE.MeshStandardMaterial).color.set(color);
-      }
+      const roomId = mesh.userData.roomId as string;
+      const room = this.roomMeta.get(roomId);
+      if (room?.wall_finish === 'tile') continue;
+      (mesh.material as THREE.MeshStandardMaterial).color.set(color);
     }
   }
 
