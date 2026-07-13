@@ -351,9 +351,9 @@ def mark_curtain_walls(
     min_z, max_z = min(all_z), max(all_z)
 
     for w in walls:
-        on_west = abs(w.x1 - min_x) < tolerance and abs(w.x2 - min_x) < tolerance
-        on_north = abs(w.z1 - max_z) < tolerance and abs(w.z2 - max_z) < tolerance
-        on_south = abs(w.z1 - min_z) < tolerance and abs(w.z2 - min_z) < tolerance
+        on_west = abs(w.x1 - min_x) < tolerance or abs(w.x2 - min_x) < tolerance
+        on_north = abs(w.z1 - max_z) < tolerance or abs(w.z2 - max_z) < tolerance
+        on_south = abs(w.z1 - min_z) < tolerance or abs(w.z2 - min_z) < tolerance
 
         if on_west or on_north:
             w.curtain = True
@@ -1170,7 +1170,7 @@ def write_layout_yaml(
     }
     if walls:
         data["walls"] = [
-            {"x1": w.x1, "z1": w.z1, "x2": w.x2, "z2": w.z2, "curtain": w.curtain} for w in walls
+            {**{"x1": w.x1, "z1": w.z1, "x2": w.x2, "z2": w.z2}, **({"curtain": True} if w.curtain else {})} for w in walls
         ]
     if platform:
         data["platform"] = {
