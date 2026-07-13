@@ -705,6 +705,28 @@ def test_geometry_changes_in_report(tmp_path: Path):
     assert ("master_bedroom", "z") in field_ids
 
 
+def test_mark_curtain_walls_marks_exterior_walls():
+    """Walls on west/north/south boundaries are marked as curtain walls,
+    except south walls in the entry garden area (x > 3.5)."""
+    from parse_cad import Wall, mark_curtain_walls
+
+    walls = [
+        Wall(x1=-5.88, z1=4.87, x2=-5.85, z2=4.93),   # west boundary → curtain
+        Wall(x1=-5.00, z1=5.39, x2=-4.50, z2=5.39),   # north boundary → curtain
+        Wall(x1=-0.50, z1=-4.32, x2=0.50, z2=-4.32),  # south boundary → curtain
+        Wall(x1=4.00, z1=-4.32, x2=5.00, z2=-4.32),   # south but x>3.5 → NOT curtain
+        Wall(x1=8.54, z1=4.45, x2=8.54, z2=4.21),     # east boundary → NOT curtain
+        Wall(x1=0.00, z1=0.00, x2=1.00, z2=0.00),     # interior → NOT curtain
+    ]
+    result = mark_curtain_walls(walls)
+    assert result[0].curtain is True   # west
+    assert result[1].curtain is True   # north
+    assert result[2].curtain is True   # south (x<3.5)
+    assert result[3].curtain is False  # south (x>3.5, entry garden)
+    assert result[4].curtain is False  # east
+    assert result[5].curtain is False  # interior
+
+
 def test_extract_walls_loads_curtain_corners_from_config(tmp_path: Path):
     """extract_walls loads curtain_wall_corners from house.yaml and filters smoothing."""
     from ezdxf.document import Drawing

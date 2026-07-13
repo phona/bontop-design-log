@@ -54,6 +54,7 @@ class Wall:
     z1: float
     x2: float
     z2: float
+    curtain: bool = False
 
 
 def latest_dxf(cad_dir: Path) -> Path:
@@ -324,6 +325,47 @@ def extract_walls(
                 z2=round((origin_z - y2) / 1000.0, 3),
             )
         )
+    walls = mark_curtain_walls(walls)
+    return walls
+
+
+def mark_curtain_walls(
+    walls: list[Wall],
+    tolerance: float = 0.15,
+) -> list[Wall]:
+    """Mark wall segments on the building's exterior curtain wall boundary.
+
+    Curtain wall范围:
+    - 西墙 (x ≈ min_x): 所有墙段
+    - 北墙 (z ≈ max_z): 所有墙段
+    - 南墙 (z ≈ min_z): 除入户花园区域 (x > 3.5) 外
+
+    东墙和入户花园外围不标记为幕墙。
+    """
+    if not walls:
+        return walls
+
+    all_x = [x for w in walls for x in (w.x1, w.x2)]
+    all_z = [z for w in walls for z in (w.z1, w.z2)]
+    min_x, max_x = min(all_x), max(all_x)
+    min_z, max_z = min(all_z), max(all_z)
+
+    for w in walls:
+        on_west = abs(w.x1 - min_x) < tolerance and abs(w.x2 - min_x) < tolerance
+        on_north = abs(w.z1 - max_z) < tolerance and abs(w.z2 - max_z) < tolerance
+        on_south = abs(w.z1 - min_z) < tolerance and abs(w.z2 - min_z) < tolerance
+
+        if on_west or on_north:
+            w.curtain = True
+        elif on_south:
+            mid_x = (w.x1 + w.x2) / 2
+            if mid_x <= 3.5:
+                w.curtain = True
+            else:
+                w.curtain = False
+        else:
+            w.curtain = False
+
     return walls
 
 
@@ -1128,7 +1170,7 @@ def write_layout_yaml(
     }
     if walls:
         data["walls"] = [
-            {"x1": w.x1, "z1": w.z1, "x2": w.x2, "z2": w.z2} for w in walls
+            {"x1": w.x1, "z1": w.z1, "x2": w.x2, "z2": w.z2, "curtain": w.curtain} for w in walls
         ]
     if platform:
         data["platform"] = {
