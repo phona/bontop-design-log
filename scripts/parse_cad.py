@@ -243,46 +243,51 @@ def extract_walls(
                 z2=round((origin_z - y2) / 1000.0, 3),
             )
         )
-    walls = mark_curtain_walls(walls)
+    curtain_config = _load_curtain_config(house_config_path)
+    walls = _mark_curtain_from_config(walls, curtain_config)
     return walls
 
 
-def mark_curtain_walls(
+def _load_curtain_config(house_config_path: Path | None = None) -> list[dict]:
+    path = house_config_path or HOUSE_CONFIG
+    if not path.exists():
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    return data.get("curtain_walls", []) or []
+
+
+def _mark_curtain_from_config(
     walls: list[Wall],
+    curtain_config: list[dict],
     tolerance: float = 0.5,
 ) -> list[Wall]:
-    """Mark wall segments on the building's exterior curtain wall boundary.
-
-    Curtain wall范围:
-    - 西墙 (x ≈ min_x): 所有墙段
-    - 北墙 (z ≈ max_z): 所有墙段
-    - 南墙 (z ≈ min_z): 除入户花园区域 (x > 3.5) 外
-
-    东墙和入户花园外围不标记为幕墙。
-    """
-    if not walls:
+    if not walls or not curtain_config:
         return walls
 
     all_x = [x for w in walls for x in (w.x1, w.x2)]
     all_z = [z for w in walls for z in (w.z1, w.z2)]
-    min_x, max_x = min(all_x), max(all_x)
-    min_z, max_z = min(all_z), max(all_z)
+    min_x = min(all_x)
+    max_z = max(all_z)
+    min_z = min(all_z)
 
     for w in walls:
-        on_west = abs(w.x1 - min_x) < tolerance or abs(w.x2 - min_x) < tolerance
-        on_north = abs(w.z1 - max_z) < tolerance or abs(w.z2 - max_z) < tolerance
-        on_south = abs(w.z1 - min_z) < tolerance or abs(w.z2 - min_z) < tolerance
-
-        if on_west or on_north:
-            w.curtain = True
-        elif on_south:
-            mid_x = (w.x1 + w.x2) / 2
-            if mid_x <= 3.5:
-                w.curtain = True
-            else:
-                w.curtain = False
-        else:
-            w.curtain = False
+        w.curtain = False
+        for cfg in curtain_config:
+            edge = cfg.get("edge", "")
+            if edge == "west":
+                if abs(w.x1 - min_x) < tolerance or abs(w.x2 - min_x) < tolerance:
+                    w.curtain = True
+                    break
+            elif edge == "north":
+                if abs(w.z1 - min_z) < tolerance or abs(w.z2 - min_z) < tolerance:
+                    w.curtain = True
+                    break
+            elif edge == "south":
+                on_south = abs(w.z1 - max_z) < tolerance or abs(w.z2 - max_z) < tolerance
+                if on_south and (w.x1 + w.x2) / 2 <= cfg.get("max_x", float("inf")):
+                    w.curtain = True
+                    break
 
     return walls
 

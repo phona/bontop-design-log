@@ -560,6 +560,12 @@ pending_verification:
 
 # 幕墙拐角位置（场景坐标，米）
 # 用于 parse_cad.py 的 _smooth_diagonals() 过滤
+curtain_walls:
+  - edge: "west"
+  - edge: "north"
+  - edge: "south"
+    max_x: 3.5
+
 curtain_wall_corners:
   # NW 玻璃幕墙拐角
   - x: -5.88

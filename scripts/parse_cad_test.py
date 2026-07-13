@@ -701,26 +701,36 @@ def test_geometry_changes_in_report(tmp_path: Path):
     assert ("master_bedroom", "z") in field_ids
 
 
-def test_mark_curtain_walls_marks_exterior_walls():
-    """Walls on west/north/south boundaries are marked as curtain walls,
-    except south walls in the entry garden area (x > 3.5)."""
-    from parse_cad import Wall, mark_curtain_walls
+def test_mark_curtain_walls_from_config(tmp_path: Path):
+    """Curtain walls are marked based on house.yaml config, not boundary detection."""
+    from ezdxf.document import Drawing
+    from parse_cad import extract_walls
 
-    walls = [
-        Wall(x1=-5.88, z1=4.87, x2=-5.85, z2=4.93),   # west boundary → curtain
-        Wall(x1=-5.00, z1=5.39, x2=-4.50, z2=5.39),   # north boundary → curtain
-        Wall(x1=-0.50, z1=-4.32, x2=0.50, z2=-4.32),  # south boundary → curtain
-        Wall(x1=4.00, z1=-4.32, x2=5.00, z2=-4.32),   # south but x>3.5 → NOT curtain
-        Wall(x1=8.54, z1=4.45, x2=8.54, z2=4.21),     # east boundary → NOT curtain
-        Wall(x1=0.00, z1=0.00, x2=1.00, z2=0.00),     # interior → NOT curtain
-    ]
-    result = mark_curtain_walls(walls)
-    assert result[0].curtain is True   # west
-    assert result[1].curtain is True   # north
-    assert result[2].curtain is True   # south (x<3.5)
-    assert result[3].curtain is False  # south (x>3.5, entry garden)
-    assert result[4].curtain is False  # east
-    assert result[5].curtain is False  # interior
+    house_config = tmp_path / "house.yaml"
+    house_config.write_text(yaml.dump({
+        "curtain_walls": [
+            {"edge": "west"},
+            {"edge": "north"},
+            {"edge": "south", "max_x": 3.5},
+        ],
+        "curtain_wall_corners": [],
+    }, allow_unicode=True))
+
+    doc = Drawing.new("R2018")
+    msp = doc.modelspace()
+    doc.layers.add("BS-非承重墙")
+    msp.add_line((-5880, 4870), (-5880, -3360), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((-5000, 5390), (-4500, 5390), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((-500, -4320), (500, -4320), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((4000, -4320), (5000, -4320), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((8540, 4450), (8540, 4210), dxfattribs={"layer": "BS-非承重墙"})
+    msp.add_line((0, 0), (1000, 0), dxfattribs={"layer": "BS-非承重墙"})
+
+    walls = extract_walls(msp, bounds=None, origin_x=0.0, origin_z=0.0, house_config_path=house_config)
+    curtain_walls = [w for w in walls if w.curtain]
+    non_curtain = [w for w in walls if not w.curtain]
+    assert len(curtain_walls) == 3
+    assert len(non_curtain) == 3
 
 
 def test_extract_walls_loads_curtain_corners_from_config(tmp_path: Path):
