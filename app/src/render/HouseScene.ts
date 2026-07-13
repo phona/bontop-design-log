@@ -452,6 +452,8 @@ export class HouseScene implements SceneApi {
   setWallColor(roomIds: string[], color: string) {
     const set = new Set(roomIds);
     for (const mesh of this.wallMeshes) {
+      // Skip curtain walls - they keep their glass material
+      if (mesh.userData.curtain) continue;
       if (set.has(mesh.userData.roomId as string)) {
         (mesh.material as THREE.MeshStandardMaterial).color.set(color);
       }
@@ -461,6 +463,8 @@ export class HouseScene implements SceneApi {
   setPaintColor(color: string, exclude?: string[]) {
     const excludeSet = new Set(exclude ?? []);
     for (const mesh of this.wallMeshes) {
+      // Skip curtain walls - they keep their glass material
+      if (mesh.userData.curtain) continue;
       if (!excludeSet.has(mesh.userData.roomId as string)) {
         (mesh.material as THREE.MeshStandardMaterial).color.set(color);
       }
