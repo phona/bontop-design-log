@@ -321,6 +321,7 @@ export interface WallSegment {
   z1: number;
   x2: number;
   z2: number;
+  curtain?: boolean;
 }
 
 export interface CadLayoutYaml {
