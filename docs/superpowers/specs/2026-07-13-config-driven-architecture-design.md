@@ -54,18 +54,16 @@ curtain_walls:
     max_x: 3.5                 # 排除入户花园
 ```
 
-### 房间名映射
+### 房间标签格式
 
-```yaml
-room_name_map:
-  "主卧": "master_bedroom"
-  "卫生间":
-    by_area:
-      - min_area: 3.5
-        id: "master_bath"
-      - max_area: 3.5
-        id: "guest_bath"
+CAD 里所有房间标签必须标注 ID：
+
 ```
+master_bedroom^J主卧^J面积18.16m²
+master_bath^J卫生间^J面积4.20m²
+```
+
+代码直接读 ID，不做中文名→ID 的映射。
 
 ### 赠送区域位置
 
@@ -81,7 +79,7 @@ gift_areas:
 
 | 文件 | 改动 | 删除的硬编码 |
 |------|------|-------------|
-| `parse_cad.py` | 读 `room_name_map`、`curtain_walls`、`gift_areas.expected_centroid` | `chinese_name_to_id()` 启发式、`mark_curtain_walls()` 边界检测、`_flood_fill_rooms()` 坐标猜测 |
+| `parse_cad.py` | 读 `curtain_walls`、`gift_areas.expected_centroid` | `chinese_name_to_id()` 完全删除、`mark_curtain_walls()` 边界检测、`_flood_fill_rooms()` 坐标猜测 |
 | `PaintTopic.ts` | 读 `room.wall_finish` | `EXCLUDE_PAINT` 列表 |
 | `WallTopic.ts` | 读 `room.wall_finish` | `WALL_ROOMS` 列表 |
 | `budget-calculator.ts` | 读 `room.needs_waterproof` | 湿区列表 |
@@ -105,6 +103,7 @@ gift_areas:
 
 1. 所有 Topic 从配置读取房间列表，无硬编码
 2. CAD 解析器不猜测房间 ID、幕墙、未标注区域
-3. 预算计算器从配置读取湿区
-4. 渲染器从配置读取开口标记
-5. 所有测试通过
+3. CAD 里所有房间标签都标注 ID（`id^J中文名^J面积` 格式）
+4. 预算计算器从配置读取湿区
+5. 渲染器从配置读取开口标记
+6. 所有测试通过
