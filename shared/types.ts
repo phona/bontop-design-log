@@ -131,6 +131,8 @@ export interface HouseRoom {
   id: string;
   name?: string;
   type?: 'public' | 'private' | 'service';
+  wall_finish?: 'paint' | 'tile';
+  needs_waterproof?: boolean;
   [key: string]: unknown;
 }
 

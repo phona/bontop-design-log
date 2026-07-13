@@ -39,6 +39,8 @@ rooms:
   - name: "主卧"
     id: "master_bedroom"
     type: "private"
+    wall_finish: "paint"
+    needs_waterproof: false
     width: 4.50
     length: 4.05
     height: 3.0
@@ -63,6 +65,8 @@ rooms:
   - name: "西北次卧"
     id: "bedroom_nw"
     type: "private"
+    wall_finish: "paint"
+    needs_waterproof: false
     width: 3.00
     length: 2.80
     height: 3.0
@@ -84,6 +88,8 @@ rooms:
   - name: "东南次卧"
     id: "bedroom_se"
     type: "private"
+    wall_finish: "paint"
+    needs_waterproof: false
     width: 3.00
     length: 2.80
     height: 3.0
@@ -105,6 +111,8 @@ rooms:
   - name: "书房"
     id: "study"
     type: "private"
+    wall_finish: "paint"
+    needs_waterproof: false
     width: 3.00
     length: 2.78
     height: 3.0
@@ -127,6 +135,8 @@ rooms:
   - name: "客餐厅"
     id: "living_dining"
     type: "public"
+    wall_finish: "paint"
+    needs_waterproof: false
     width: 6.20
     length: 5.68
     height: 3.0
@@ -148,6 +158,8 @@ rooms:
   - name: "厨房"
     id: "kitchen"
     type: "service"
+    wall_finish: "tile"
+    needs_waterproof: true
     width: 2.30
     length: 2.65
     height: 3.0
@@ -169,6 +181,8 @@ rooms:
   - name: "主卫"
     id: "master_bath"
     type: "private"
+    wall_finish: "tile"
+    needs_waterproof: true
     width: 1.80
     length: 2.52
     height: 3.0
@@ -191,6 +205,8 @@ rooms:
   - name: "客卫"
     id: "guest_bath"
     type: "private"
+    wall_finish: "tile"
+    needs_waterproof: true
     width: 1.50
     length: 1.77
     height: 3.0
@@ -213,6 +229,8 @@ rooms:
   - name: "阳台"
     id: "balcony"
     type: "public"
+    wall_finish: "tile"
+    needs_waterproof: true
     width: 1.20
     length: 2.02
     height: 3.0
@@ -234,6 +252,8 @@ gift_areas:
       x: 3.19
       z: -10.04
     type: "public"
+    wall_finish: "paint"
+    needs_waterproof: false
     width: 6.70
     length: 1.65
     height: 3.0
@@ -255,6 +275,8 @@ gift_areas:
       x: 3.19
       z: 3.06
     type: "public"
+    wall_finish: "tile"
+    needs_waterproof: true
     width: 6.40
     length: 2.18
     height: 3.0
@@ -276,6 +298,8 @@ gift_areas:
       x: -5.31
       z: 0.76
     type: "service"
+    wall_finish: "paint"
+    needs_waterproof: false
     width: 1.60
     length: 1.55
     height: 3.0
