@@ -532,12 +532,16 @@ def _flood_fill_rooms(
 
     # Gift-area / platform detection for unlabeled regions
     # Expected positions (in centroid-frame meters) and approximate areas (m²)
-    # derived from hand-YAML by offset-approximation.
-    unlabeled_expected: dict[str, tuple[float, float, float]] = {
-        "south_balcony": (3.19, 3.06, 13.95),
-        "entry_garden": (3.19, -10.04, 11.06),
-        "west_platform": (-5.31, 0.76, 2.48),
-    }
+    # read from house.yaml gift_areas[].expected_centroid.
+    house_data = {}
+    if HOUSE_CONFIG.exists():
+        with open(HOUSE_CONFIG, "r", encoding="utf-8") as f:
+            house_data = yaml.safe_load(f) or {}
+    unlabeled_expected: dict[str, tuple[float, float, float]] = {}
+    for area in house_data.get("gift_areas", []) or []:
+        ec = area.get("expected_centroid")
+        if ec and "id" in area:
+            unlabeled_expected[area["id"]] = (ec["x"], ec["z"], area.get("area", 0))
     seen_regions = set(label_to_region.values())
     cell_area = cell_size * cell_size / 1_000_000.0  # m² per cell
     for i, cells in enumerate(regions):

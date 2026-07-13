@@ -230,6 +230,9 @@ rooms:
 gift_areas:
   - name: "入户花园"
     id: "entry_garden"
+    expected_centroid:
+      x: 3.19
+      z: -10.04
     type: "public"
     width: 6.70
     length: 1.65
@@ -248,6 +251,9 @@ gift_areas:
 
   - name: "南向大阳台"
     id: "south_balcony"
+    expected_centroid:
+      x: 3.19
+      z: 3.06
     type: "public"
     width: 6.40
     length: 2.18
@@ -266,6 +272,9 @@ gift_areas:
 
   - name: "西设备平台"
     id: "west_platform"
+    expected_centroid:
+      x: -5.31
+      z: 0.76
     type: "service"
     width: 1.60
     length: 1.55

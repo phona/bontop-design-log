@@ -733,6 +733,39 @@ def test_mark_curtain_walls_from_config(tmp_path: Path):
     assert len(non_curtain) == 3
 
 
+def test_flood_fill_reads_centroids_from_config(tmp_path: Path, monkeypatch):
+    """_flood_fill_rooms reads expected_centroid from house.yaml, not hardcoded."""
+    from parse_cad import _flood_fill_rooms
+    import parse_cad
+
+    house_config = tmp_path / "house.yaml"
+    house_config.write_text(yaml.dump({
+        "gift_areas": [
+            {"id": "south_balcony", "expected_centroid": {"x": 3.19, "z": 3.06}, "area": 13.95},
+            {"id": "entry_garden", "expected_centroid": {"x": 3.19, "z": -10.04}, "area": 11.06},
+            {"id": "west_platform", "expected_centroid": {"x": -5.31, "z": 0.76}, "area": 2.48},
+        ],
+        "rooms": [],
+    }, allow_unicode=True), encoding="utf-8")
+
+    monkeypatch.setattr(parse_cad, "HOUSE_CONFIG", house_config)
+
+    labels = {"master_bedroom": ("主卧", -3000.0, -3000.0)}
+    segs = [
+        ((-6000, -6000), (0, -6000)),
+        ((0, -6000), (0, 0)),
+        ((0, 0), (-6000, 0)),
+        ((-6000, 0), (-6000, -6000)),
+        ((1000, 1000), (5500, 1000)),
+        ((5500, 1000), (5500, 5500)),
+        ((5500, 5500), (1000, 5500)),
+        ((1000, 5500), (1000, 1000)),
+    ]
+    result = _flood_fill_rooms(segs, labels)
+    assert "master_bedroom" in result
+    assert "south_balcony" in result
+
+
 def test_extract_walls_loads_curtain_corners_from_config(tmp_path: Path):
     """extract_walls loads curtain_wall_corners from house.yaml and filters smoothing."""
     from ezdxf.document import Drawing
