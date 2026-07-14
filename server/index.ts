@@ -9,6 +9,8 @@ import { RuleEngine } from './rule-engine.js';
 import { BudgetCalculator } from './budget-calculator.js';
 import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
+import { parseOverlay } from './overlay-merge.js';
+import type { OverlayConfig } from './overlay-merge.js';
 import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml } from '../shared/types.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
@@ -90,7 +92,17 @@ designRulesLoader.load();
 materialsLoader.load();
 budgetBaseLoader.load();
 layoutLoader.load();
+const overlayLoader = new ConfigLoader<OverlayConfig>(
+  'config/layout/overlay.yaml',
+  (raw) => parseOverlay(raw),
+  () => {
+    console.log('[server] config/layout/overlay.yaml reloaded');
+  }
+);
+registry.register(overlayLoader);
+
 houseMetaLoader.load();
+overlayLoader.load();
 
 let state: DesignState;
 try {
@@ -109,6 +121,7 @@ const apiDeps = {
   getBudgetCalculator: () => budgetCalculator,
   archiveStore,
   getConfigRegistry: () => registry,
+  getOverlay: () => overlayLoader.getConfig(),
 };
 
 const app = express();
@@ -125,6 +138,7 @@ attachMcpTransports(app, () => createMcpServer(apiDeps)).then(() => {
   budgetBaseLoader.startWatching();
   layoutLoader.startWatching();
   houseMetaLoader.startWatching();
+  overlayLoader.startWatching();
 
   const shutdown = async () => {
     await registry.stopAll();

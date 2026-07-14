@@ -10,6 +10,7 @@ import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
 import { ConfigRegistry } from '../../server/config-loader.js';
+import { parseOverlay } from '../../server/overlay-merge.js';
 
 const TEST_DATA_DIR = './tmp/test-data-api';
 
@@ -36,6 +37,7 @@ describe('REST API', () => {
         getBudgetCalculator: () => calc,
         archiveStore,
         getConfigRegistry: () => new ConfigRegistry(),
+        getOverlay: () => undefined,
       })
     );
   });
@@ -54,7 +56,7 @@ describe('REST API', () => {
       assert.equal(res.body.house.platform?.id, 'west_platform');
       assert.equal(res.body.house.platform?.name, '西设备平台');
     }
-    assert.ok(Array.isArray(res.body.house.walls));
+    assert.ok(Array.isArray(res.body.house.sceneElements));
   });
 
   it('PATCH /api/scheme/current changes selection', async () => {
@@ -71,6 +73,42 @@ describe('REST API', () => {
       .send({ topic: 'hvac', optionId: 'A1', reason: 'test' })
       .expect(201);
     assert.equal(res.body.topic, 'hvac');
+  });
+
+  it('GET /api/project returns sceneElements merged from walls and overlay', async () => {
+    const catalog = ProjectCatalog.load('.');
+    const state = DesignState.load(catalog, TEST_DATA_DIR);
+    const engine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
+    const calc = new BudgetCalculator(catalog, engine.getConfig());
+    const archiveStore = new ArchivedSchemesStore(TEST_DATA_DIR);
+    const overlay = parseOverlay(`version: 1
+elements:
+  - id: "curtain:1"
+    type: curtain_run
+    points:
+      - {x: 0, z: 0}
+      - {x: 5, z: 0}
+`);
+    const localApp = express();
+    localApp.use(express.json());
+    localApp.use(
+      '/api',
+      createApiRouter({
+        catalog,
+        state,
+        getRuleEngine: () => engine,
+        getBudgetCalculator: () => calc,
+        archiveStore,
+        getConfigRegistry: () => new ConfigRegistry(),
+        getOverlay: () => overlay,
+      })
+    );
+    const res = await request(localApp).get('/api/project').expect(200);
+    const els = res.body.house.sceneElements;
+    assert.ok(Array.isArray(els));
+    assert.ok(els.every((e: { type: string }) => typeof e.type === 'string'));
+    assert.ok(els.some((e: { id: string }) => e.id === 'curtain:1'));
+    assert.equal(res.body.house.walls, undefined);
   });
 
   it('POST /api/visual-commands creates a command', async () => {

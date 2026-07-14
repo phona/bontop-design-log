@@ -51,6 +51,7 @@ describe('server startup resilience', () => {
       getBudgetCalculator: () => calc,
       archiveStore,
       getConfigRegistry: () => registry,
+      getOverlay: () => undefined,
     };
 
     const app = express();

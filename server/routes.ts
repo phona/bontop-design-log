@@ -5,6 +5,8 @@ import type { RuleEngine } from './rule-engine.js';
 import type { BudgetCalculator } from './budget-calculator.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { ConfigRegistry } from './config-loader.js';
+import { mergeSceneElements } from './overlay-merge.js';
+import type { OverlayConfig } from './overlay-merge.js';
 import type { CurrentScheme } from '../shared/types.js';
 
 export interface ApiDeps {
@@ -14,6 +16,7 @@ export interface ApiDeps {
   getBudgetCalculator: () => BudgetCalculator;
   archiveStore: ArchivedSchemesStore;
   getConfigRegistry: () => ConfigRegistry;
+  getOverlay: () => OverlayConfig | undefined;
 }
 
 export function createApiRouter(deps: ApiDeps): Router {
@@ -39,7 +42,7 @@ export function createApiRouter(deps: ApiDeps): Router {
         platform: projectCatalog.getPlatform(),
         furnishings: projectCatalog.getFurnishings(),
         electrical: projectCatalog.getElectricalMarkers(),
-        walls: projectCatalog.getWalls(),
+        sceneElements: mergeSceneElements(projectCatalog.getWalls(), deps.getOverlay()),
         layoutSource: projectCatalog.getLayoutSource(),
       },
       topics: projectCatalog.getTopics().map((t) => ({

@@ -60,6 +60,7 @@ describe('Budget + Risks + Schemes API', () => {
         getBudgetCalculator: () => calc,
         archiveStore,
         getConfigRegistry: () => new ConfigRegistry(),
+        getOverlay: () => undefined,
       })
     );
   });

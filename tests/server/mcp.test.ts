@@ -37,6 +37,7 @@ describe('MCP remote', () => {
       getBudgetCalculator: () => calc,
       archiveStore,
       getConfigRegistry: () => new ConfigRegistry(),
+      getOverlay: () => undefined,
     };
 
     const mcp = createMcpServer(deps);
