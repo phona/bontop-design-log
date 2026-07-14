@@ -4,7 +4,7 @@
 
 **Goal:** 将 `curtain_run` 从多段 `BoxGeometry` 改为单一 `THREE.Shape` + `ExtrudeGeometry` 渲染，拐点使用 `absarc` 原生圆弧。
 
-**Architecture:** 对 `curtain_run.points` 描述的折线做双侧等距偏移（miter + 圆角），形成玻璃幕墙的 ribbon 边界；再用一个 `ExtrudeGeometry` 挤出整片幕墙。开放路径两端用直线封口，闭合路径用外边界 + 内洞方式闭合。
+**Architecture:** 用 `THREE.Path` 构建 `curtain_run.points` 描述的中心线折线，拐点用 `absarc` 画圆弧；再沿中心线采样、按法向双侧偏移 `GLASS_THICKNESS/2` 生成 ribbon 边界；最终用一个 `ExtrudeGeometry` 挤出整片幕墙。开放路径两端用直线封口，闭合路径用外边界 + 内洞方式闭合。
 
 **Tech Stack:** TypeScript, Three.js (`Shape`, `ExtrudeGeometry`, `Path`, `absarc`), Zod, Vitest, Node.js test runner.
 
@@ -135,13 +135,17 @@ private renderCurtainRun(el: Extract<SceneElement, { type: 'curtain_run' }>) {
 }
 ```
 
-- [ ] **Step 2.3: 实现 `buildCurtainShape`（miter offset + absarc）**
+- [ ] **Step 2.3: 实现 `buildCurtainShape`（中心线 Path + 采样偏移）**
 
-对每个原始顶点计算左/右边界：
-- 有 `radius` 的内部顶点 → 用同心圆弧（`absarc` 插值）；
-- 无 `radius` 或退化圆角 → 用 miter 点（两条偏移直线的交点）；
-- 开放路径的首尾 → 用垂直端封口；
-- 闭合路径 → 外边界 + 内洞。
+实现步骤：
+1. 用 `THREE.Path` 构建中心线：
+   - 第一个顶点用 `moveTo`；
+   - 后续顶点先 `lineTo` 到圆角切点，再用 `absarc` 画圆弧；
+   - 非圆角顶点直接 `lineTo`；
+   - 闭合路径最后再 `lineTo` 回起点。
+2. 用 `path.getPoints()` 采样中心线。
+3. 每个采样点按局部切线法向左右各偏移 `GLASS_THICKNESS/2`，得到 ribbon 边界。
+4. 开放路径用双边界 + 端封口闭合；闭合路径用较大面积边界作为 Shape、较小作为 hole。
 
 ```typescript
 private buildCurtainShape(points: CurtainPoint[], closed: boolean): THREE.Shape {
@@ -319,7 +323,11 @@ private signedArea(pts: { x: number; z: number }[]): number {
 }
 ```
 
-- [ ] **Step 2.4: 提交**
+- [ ] **Step 2.4: 添加闭合路径渲染测试**
+
+在 `app/src/scene/HouseScene.test.ts` 增加 `closed: true` 的 `curtain_run` 测试，断言仅渲染一个 mesh。
+
+- [ ] **Step 2.5: 提交**
 
 ```bash
 git add app/src/render/HouseScene.ts
@@ -340,7 +348,7 @@ git commit -m "feat(curtain_run): render as single Shape + ExtrudeGeometry"
 
 - [ ] **Step 3.1: 修改 `app/src/scene/HouseScene.test.ts` 中 curtain_run 测试**
 
-删除或更新上一版 radius 测试；改为：
+确保已有测试覆盖单 mesh 和单 objectId；若 Step 2.4 已新增闭合路径测试，此处只做复核。改为：
 
 ```typescript
 it('renders curtain_run as a single continuous mesh', async () => {

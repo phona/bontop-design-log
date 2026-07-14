@@ -348,6 +348,8 @@ export class HouseScene implements SceneApi {
 
     const centerline = new THREE.Path();
     let started = false;
+    let startX = 0;
+    let startZ = 0;
 
     for (let i = 0; i < n; i++) {
       const prev = points[(i - 1 + n) % n];
@@ -359,7 +361,9 @@ export class HouseScene implements SceneApi {
         const arc = this.centerlineArc(prev, curr, next);
         if (arc) {
           if (!started) {
-            centerline.moveTo(arc.start.x, arc.start.z);
+            startX = arc.start.x;
+            startZ = arc.start.z;
+            centerline.moveTo(startX, startZ);
             started = true;
           } else {
             centerline.lineTo(arc.start.x, arc.start.z);
@@ -367,7 +371,9 @@ export class HouseScene implements SceneApi {
           centerline.absarc(arc.center.x, arc.center.z, arc.radius, arc.startAngle, arc.endAngle, arc.clockwise);
         } else {
           if (!started) {
-            centerline.moveTo(curr.x, curr.z);
+            startX = curr.x;
+            startZ = curr.z;
+            centerline.moveTo(startX, startZ);
             started = true;
           } else {
             centerline.lineTo(curr.x, curr.z);
@@ -375,7 +381,9 @@ export class HouseScene implements SceneApi {
         }
       } else {
         if (!started) {
-          centerline.moveTo(curr.x, curr.z);
+          startX = curr.x;
+          startZ = curr.z;
+          centerline.moveTo(startX, startZ);
           started = true;
         } else {
           centerline.lineTo(curr.x, curr.z);
@@ -384,6 +392,10 @@ export class HouseScene implements SceneApi {
     }
 
     if (!started) return new THREE.Shape();
+
+    if (closed) {
+      centerline.lineTo(startX, startZ);
+    }
 
     const samples = centerline.getPoints(Math.max(16, n * 8));
     if (samples.length < 2) return new THREE.Shape();
