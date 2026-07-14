@@ -12,6 +12,7 @@ import type {
   ElectricalMarker,
   CurrentScheme,
   SceneElement,
+  CurtainPoint,
   OpeningDef,
 } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
@@ -324,15 +325,134 @@ export class HouseScene implements SceneApi {
   }
 
   private renderCurtainRun(el: Extract<SceneElement, { type: 'curtain_run' }>) {
-    for (let i = 0; i < el.points.length - 1; i++) {
-      const a = el.points[i];
-      const b = el.points[i + 1];
+    const points = this.expandRoundedCorners(el.points);
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
       const mesh = this.renderBox(a.x, a.z, b.x, b.z, el.height, GLASS_THICKNESS, this.makeGlassMaterial());
       mesh.userData = { type: 'curtain_run', objectId: `${el.id}:${i}` };
       mesh.castShadow = false;
       mesh.receiveShadow = true;
       this.glassMeshes.push(mesh);
     }
+  }
+
+  /**
+   * 把 curtain_run 中带 radius 的拐点展开成圆弧插值点序列。
+   * 只处理内部点；首尾 radius 被忽略。圆心方向由半平面测试自动判定，
+   * 因此同时支持顺时针/逆时针多段线。
+   */
+  private expandRoundedCorners(points: CurtainPoint[]): { x: number; z: number }[] {
+    if (points.length < 3) {
+      return points.map((p) => ({ x: p.x, z: p.z }));
+    }
+
+    const expanded: { x: number; z: number }[] = [];
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      if (i === 0 || i === points.length - 1 || !p.radius || p.radius <= 0) {
+        expanded.push({ x: p.x, z: p.z });
+        continue;
+      }
+      const arc = this.roundCorner(points[i - 1], p, points[i + 1]);
+      expanded.push(...arc);
+    }
+    return expanded;
+  }
+
+  private roundCorner(a: CurtainPoint, c: CurtainPoint, b: CurtainPoint, segments = 8): { x: number; z: number }[] {
+    const r = c.radius ?? 0;
+    if (r <= 0) return [{ x: c.x, z: c.z }];
+
+    const v1x = c.x - a.x;
+    const v1z = c.z - a.z;
+    const v2x = b.x - c.x;
+    const v2z = b.z - c.z;
+    const len1 = Math.hypot(v1x, v1z);
+    const len2 = Math.hypot(v2x, v2z);
+    if (len1 < 1e-9 || len2 < 1e-9) return [{ x: c.x, z: c.z }];
+
+    const u1x = v1x / len1;
+    const u1z = v1z / len1;
+    const u2x = v2x / len2;
+    const u2z = v2z / len2;
+
+    const dot = u1x * u2x + u1z * u2z;
+    const theta = Math.acos(Math.max(-1, Math.min(1, dot)));
+    if (theta < 0.001 || Math.abs(theta - Math.PI) < 0.001) return [{ x: c.x, z: c.z }];
+
+    const bix = -u1x + u2x;
+    const biz = -u1z + u2z;
+    const biLen = Math.hypot(bix, biz);
+    if (biLen < 1e-9) return [{ x: c.x, z: c.z }];
+    const bisX = bix / biLen;
+    const bisZ = biz / biLen;
+
+    // 测试 bis 与 -bis 哪个在多边形外部；此处用相邻两条边的半平面判定。
+    const isCCW = this.polygonSignedArea([a, c, b]) > 0;
+    const test1 = { x: c.x + bisX * 0.001, z: c.z + bisZ * 0.001 };
+    const test2 = { x: c.x - bisX * 0.001, z: c.z - bisZ * 0.001 };
+    const inside1 = this.isInsideCorner(a, c, b, test1, isCCW);
+    const inside2 = this.isInsideCorner(a, c, b, test2, isCCW);
+
+    let extX: number;
+    let extZ: number;
+    if (inside1 && !inside2) {
+      extX = -bisX;
+      extZ = -bisZ;
+    } else if (!inside1 && inside2) {
+      extX = bisX;
+      extZ = bisZ;
+    } else {
+      return [{ x: c.x, z: c.z }];
+    }
+
+    const d = r / Math.tan(theta / 2);
+    if (d >= len1 || d >= len2) return [{ x: c.x, z: c.z }];
+
+    const ta = { x: c.x - u1x * d, z: c.z - u1z * d };
+    const tb = { x: c.x + u2x * d, z: c.z + u2z * d };
+    const centerDist = r / Math.sin(theta / 2);
+    const center = { x: c.x + extX * centerDist, z: c.z + extZ * centerDist };
+
+    const angleA = Math.atan2(ta.z - center.z, ta.x - center.x);
+    let angleB = Math.atan2(tb.z - center.z, tb.x - center.x);
+    let delta = angleB - angleA;
+    while (delta <= -Math.PI) delta += 2 * Math.PI;
+    while (delta > Math.PI) delta -= 2 * Math.PI;
+
+    const arc: { x: number; z: number }[] = [ta];
+    for (let i = 1; i < segments; i++) {
+      const t = i / segments;
+      const angle = angleA + delta * t;
+      arc.push({ x: center.x + r * Math.cos(angle), z: center.z + r * Math.sin(angle) });
+    }
+    arc.push(tb);
+    return arc;
+  }
+
+  private isInsideCorner(
+    a: CurtainPoint,
+    c: CurtainPoint,
+    b: CurtainPoint,
+    p: { x: number; z: number },
+    isCCW: boolean
+  ): boolean {
+    const cross1 = (p.x - a.x) * (c.z - a.z) - (p.z - a.z) * (c.x - a.x);
+    const cross2 = (p.x - c.x) * (b.z - c.z) - (p.z - c.z) * (b.x - c.x);
+    if (isCCW) {
+      return cross1 >= -1e-9 && cross2 >= -1e-9;
+    }
+    return cross1 <= 1e-9 && cross2 <= 1e-9;
+  }
+
+  private polygonSignedArea(points: CurtainPoint[]): number {
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+      const j = (i + 1) % points.length;
+      area += points[i].x * points[j].z - points[j].x * points[i].z;
+    }
+    return area;
   }
 
   private renderWallRun(el: Extract<SceneElement, { type: 'wall_run' }>) {

@@ -52,6 +52,39 @@ elements:
     );
   });
 
+  it('accepts optional radius on curtain_run points', () => {
+    const cfg = parseOverlay(`
+version: 1
+elements:
+  - id: west_curtain
+    type: curtain_run
+    points:
+      - {x: 3.75, z: -4.32}
+      - {x: -5.88, z: -4.32, radius: 0.8}
+      - {x: -5.88, z: 5.39, radius: 0.8}
+      - {x: 3.75, z: 5.39}
+`);
+    assert.equal(cfg.elements.length, 1);
+    const el = cfg.elements[0];
+    if (el.type === 'curtain_run') {
+      assert.equal(el.points[1].radius, 0.8);
+      assert.equal(el.points[2].radius, 0.8);
+      assert.equal(el.points[0].radius, undefined);
+    }
+  });
+
+  it('rejects unknown extra fields on curtain_run point (strict)', () => {
+    assert.throws(() =>
+      parseOverlay(`
+version: 1
+elements:
+  - id: x
+    type: curtain_run
+    points: [{x: 0, z: 0, radius: 0.8, foo: 1}]
+`)
+    );
+  });
+
   it('rejects suppress without reason', () => {
     assert.throws(() =>
       parseOverlay(`

@@ -196,6 +196,42 @@ describe('HouseScene', () => {
     expect(wallCount).toBe(2);
   });
 
+  it('renders curtain_run with rounded corners using radius points', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    const projectData = {
+      house: {
+        rooms: [],
+        sceneElements: [
+          {
+            type: 'curtain_run' as const,
+            id: 'curtain:rounded',
+            points: [
+              { x: 0, z: 0 },
+              { x: 5, z: 0, radius: 1 },
+              { x: 5, z: 5 },
+            ],
+            height: 2.8,
+          },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+
+    await scene.buildFromCatalog(projectData);
+
+    let curtainCount = 0;
+    scene.getScene().traverse((obj: any) => {
+      if (obj.userData?.type === 'curtain_run') curtainCount++;
+    });
+    expect(curtainCount).toBeGreaterThan(2);
+  });
+
   it('renders a shared wall once between adjacent rooms', async () => {
     const canvas = {
       addEventListener: vi.fn(),

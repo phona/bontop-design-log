@@ -9,6 +9,10 @@ import type { SceneElement, WallSegment } from '../shared/types.js';
 
 const PointSchema = z.object({ x: z.number(), z: z.number() }).strict();
 
+const CurtainPointSchema = z
+  .object({ x: z.number(), z: z.number(), radius: z.number().nonnegative().optional() })
+  .strict();
+
 const SuppressSchema = z
   .object({
     id: z.string().min(1),
@@ -23,7 +27,7 @@ const CurtainRunSchema = z
   .object({
     id: z.string().min(1),
     type: z.literal('curtain_run'),
-    points: z.array(PointSchema).min(2),
+    points: z.array(CurtainPointSchema).min(2),
     height: z.number().positive().default(3.0),
   })
   .strict();

@@ -70,3 +70,4 @@ app/bun.lock
 bun.lock
 data/decision-log.json
 opencode.json.openchamber.backup
+.superpowers/

@@ -343,9 +343,13 @@ export interface OverlayPoint {
   z: number;
 }
 
+export interface CurtainPoint extends OverlayPoint {
+  radius?: number;
+}
+
 export type SceneElement =
   | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number }
-  | { type: 'curtain_run'; id: string; points: OverlayPoint[]; height: number }
+  | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   | {
       type: 'glass_infill';
