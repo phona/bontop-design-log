@@ -57,6 +57,7 @@ vi.mock('three', () => {
     CanvasTexture: class {},
     MeshStandardMaterial: MockMaterial,
     MeshBasicMaterial: MockMaterial,
+    MeshPhysicalMaterial: MockMaterial,
     SpriteMaterial: MockMaterial,
     DoubleSide: 2,
     WebGLRenderer: class { domElement = {}; shadowMap = { enabled: false }; setSize() {} setPixelRatio() {} render() {} dispose() {} },
