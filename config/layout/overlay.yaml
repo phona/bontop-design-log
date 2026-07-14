@@ -59,7 +59,7 @@ elements:
     height: 2.55
     reason: "西北次卧西墙上飘窗"
 
-  - id: master_top_bay
+  - id: northwest_bay
     type: bay_sill
     points:
       - { x: -8.2, z: -5.2 }
@@ -67,4 +67,4 @@ elements:
     depth: 0.3
     sill: 0.45
     height: 2.55
-    reason: "主卧北墙上飘窗"
+    reason: "北侧书房/次卧北墙飘窗"
