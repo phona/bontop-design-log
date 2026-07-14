@@ -1,3 +1,8 @@
+/**
+ * 3D 场景渲染。
+ * 铁律：场景元素按 /api/project 下发的声明 type 渲染（见 AGENTS.md）。
+ * 本文件禁止出现任何"根据位置猜这是什么"的逻辑。
+ */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type {

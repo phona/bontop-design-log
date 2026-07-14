@@ -1,3 +1,8 @@
+/**
+ * 合并 CAD 几何与声明式覆盖配置。
+ * 铁律：只执行 suppress 和 add 两条机械规则；禁止自动分类启发式。
+ * 本文件禁止添加任何基于几何位置/边界/邻接关系的自动分类逻辑。
+ */
 import { z } from 'zod';
 import { load } from 'js-yaml';
 import type { SceneElement, WallSegment } from '../shared/types.js';
