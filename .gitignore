@@ -63,3 +63,10 @@ desktop.ini
 
 # Test-generated runtime data
 tmp/
+data/
+opencode.json
+scripts/logs/
+app/bun.lock
+bun.lock
+data/decision-log.json
+opencode.json.openchamber.backup
