@@ -1,0 +1,36 @@
+# 场景覆盖层：DXF 表达不了/画错的信息在此声明。
+# 铁律：这里声明什么就渲染什么；不声明的 DXF 墙永远是实墙。
+# schema 见 server/overlay-merge.ts（zod strict，未知字段/类型直接报错）。
+version: 1
+
+suppress: []
+# 如重新生成后幕墙位置有 DXF 残线，按下述格式声明移除：
+# - id: xxx
+#   region: {x1: ..., z1: ..., x2: ..., z2: ...}
+#   reason: "..."
+
+elements:
+  # 玻璃幕墙立面：南 → SW 斜面 → 西 → NW 拐角 → 北，一条连续折线。
+  # 入户花园（x>3.75 的南边界）与西设备平台外墙不在此列——它们是实墙，
+  # 由 DXF 墙线默认渲染，无需声明。
+  - id: glass_facade
+    type: curtain_run
+    points:
+      - {x: 3.75, z: -4.32}    # 南段东端（入户花园以西）
+      - {x: -0.58, z: -4.32}   # S 拐角
+      - {x: -5.75, z: -3.17}   # SW 拐角（斜面）
+      - {x: -5.88, z: -2.99}
+      - {x: -5.88, z: 4.87}    # 西段北端
+      - {x: -5.36, z: 5.39}    # NW 拐角（斜面）
+      - {x: 5.98, z: 5.39}     # 北段东端
+    height: 3.0
+
+  # 窗洞玻璃填充（源自 house.yaml rooms[].openings 中 type=window 的条目）
+  - id: living_south_glass
+    type: glass_infill
+    room: living_dining
+    wall: south
+    center_offset: 0
+    width: 3.5
+    height: 1.6
+    sill: 0.9
