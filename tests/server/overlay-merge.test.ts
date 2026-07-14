@@ -120,6 +120,62 @@ elements:
     points: [{x: 0, z: 0}, {x: 1, z: 0}]
 `));
   });
+
+  it('rejects floor_region with fewer than 3 points', () => {
+    assert.throws(() =>
+      parseOverlay(`
+version: 1
+elements:
+  - id: bad_floor
+    type: floor_region
+    points: [{x: 0, z: 0}, {x: 1, z: 0}]
+`)
+    );
+  });
+
+  it('rejects bay_sill with fewer than 2 points', () => {
+    assert.throws(() =>
+      parseOverlay(`
+version: 1
+elements:
+  - id: bad_bay
+    type: bay_sill
+    points: [{x: 0, z: 0}]
+    depth: 1.0
+    sill: 0.45
+    height: 2.55
+`)
+    );
+  });
+
+  it('rejects floor_region with unknown extra fields', () => {
+    assert.throws(() =>
+      parseOverlay(`
+version: 1
+elements:
+  - id: bad_floor
+    type: floor_region
+    points: [{x: 0, z: 0}, {x: 1, z: 0}, {x: 1, z: 1}]
+    auto_fill: true
+`)
+    );
+  });
+
+  it('rejects bay_sill with unknown extra fields', () => {
+    assert.throws(() =>
+      parseOverlay(`
+version: 1
+elements:
+  - id: bad_bay
+    type: bay_sill
+    points: [{x: 0, z: 0}, {x: 1, z: 0}]
+    depth: 1.0
+    sill: 0.45
+    height: 2.55
+    width: 3.0
+`)
+    );
+  });
 });
 
 describe('mergeSceneElements', () => {

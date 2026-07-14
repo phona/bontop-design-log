@@ -55,12 +55,40 @@ const GlassInfillSchema = z
   })
   .strict();
 
+const FloorRegionSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('floor_region'),
+    points: z.array(CurtainPointSchema).min(3),
+    room: z.string().min(1).optional(),
+  })
+  .strict();
+
+const BaySillSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('bay_sill'),
+    points: z.array(PointSchema).min(2),
+    depth: z.number().positive(),
+    sill: z.number().min(0),
+    height: z.number().positive(),
+  })
+  .strict();
+
 const OverlaySchema = z
   .object({
     version: z.literal(1),
     suppress: z.array(SuppressSchema).default([]),
     elements: z
-      .array(z.discriminatedUnion('type', [CurtainRunSchema, WallRunSchema, GlassInfillSchema]))
+      .array(
+        z.discriminatedUnion('type', [
+          CurtainRunSchema,
+          WallRunSchema,
+          GlassInfillSchema,
+          FloorRegionSchema,
+          BaySillSchema,
+        ])
+      )
       .default([]),
   })
   .strict();
