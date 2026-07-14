@@ -299,6 +299,7 @@ export class HouseScene implements SceneApi {
         case 'curtain_run': this.renderCurtainRun(el); break;
         case 'wall_run': this.renderWallRun(el); break;
         case 'glass_infill': this.renderGlassInfill(el); break;
+        case 'floor_region': this.renderFloorRegion(el); break;
         default: {
           const exhaustive: never = el;
           console.error('[HouseScene] 未知场景元素类型（渲染器缺 case）', exhaustive);
@@ -460,6 +461,47 @@ export class HouseScene implements SceneApi {
     return shape;
   }
 
+  private buildRoundedShape(points: CurtainPoint[]): THREE.Shape {
+    const n = points.length;
+    const shape = new THREE.Shape();
+    if (n < 3) return shape;
+
+    let first = true;
+    for (let i = 0; i < n; i++) {
+      const prev = points[(i - 1 + n) % n];
+      const curr = points[i];
+      const next = points[(i + 1) % n];
+      if (curr.radius && curr.radius > 0) {
+        const arc = this.centerlineArc(prev, curr, next);
+        if (arc) {
+          if (first) {
+            shape.moveTo(arc.start.x, arc.start.z);
+            first = false;
+          } else {
+            shape.lineTo(arc.start.x, arc.start.z);
+          }
+          shape.absarc(arc.center.x, arc.center.z, arc.radius, arc.startAngle, arc.endAngle, arc.clockwise);
+        } else {
+          if (first) {
+            shape.moveTo(curr.x, curr.z);
+            first = false;
+          } else {
+            shape.lineTo(curr.x, curr.z);
+          }
+        }
+      } else {
+        if (first) {
+          shape.moveTo(curr.x, curr.z);
+          first = false;
+        } else {
+          shape.lineTo(curr.x, curr.z);
+        }
+      }
+    }
+    shape.closePath();
+    return shape;
+  }
+
   private centerlineArc(
     a: CurtainPoint,
     c: CurtainPoint,
@@ -560,6 +602,24 @@ export class HouseScene implements SceneApi {
     mesh.castShadow = false;
     this.scene.add(mesh);
     this.glassMeshes.push(mesh);
+  }
+
+  private renderFloorRegion(el: Extract<SceneElement, { type: 'floor_region' }>) {
+    const shape = this.buildRoundedShape(el.points);
+    const geometry = new THREE.ShapeGeometry(shape);
+    geometry.rotateX(-Math.PI / 2);
+    const mat = new THREE.MeshStandardMaterial({
+      color: DEFAULT_FLOOR,
+      roughness: 0.75,
+      metalness: 0.05,
+    });
+    const mesh = new THREE.Mesh(geometry, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = 0.006;
+    mesh.userData = { type: 'floor_region', objectId: el.id, roomId: el.room };
+    mesh.receiveShadow = true;
+    this.scene.add(mesh);
+    this.floorMeshes.push(mesh);
   }
 
   private createPlatform(p: ProjectData['house']['platform'] & { id: string; name: string }) {
