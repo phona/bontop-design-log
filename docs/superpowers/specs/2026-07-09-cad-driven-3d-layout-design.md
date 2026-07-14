@@ -268,3 +268,7 @@ The following files become redundant once CAD is the source of truth and will be
 | `cad/original/701_dimensions.csv` | Manual dimension fragments are replaced by the CAD floor plan. |
 
 No other files are deleted. `config/house.yaml` remains the metadata source, and `shared/houseData.ts` is reduced but kept for `hvacSchemes`.
+
+> **Note (2026-07-14):** 本文件描述的“CAD 单源”架构已被
+> `2026-07-14-model-geometry-authoritative-design.md` 反转。
+> `config/layout/model-geometry.yaml` 现为人工维护的权威户型几何源。
