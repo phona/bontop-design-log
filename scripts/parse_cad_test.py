@@ -11,9 +11,11 @@ from parse_cad import (
     extract_room_geometry,
     latest_dxf,
     load_house_room_ids,
+    parse_args,
     parse_room_label,
     merge_with_previous_layout,
     write_layout_yaml,
+    OUTPUT_YAML,
     Room,
     Platform,
 )
@@ -883,12 +885,13 @@ def test_collapse_double_wall_segments_is_idempotent_for_single_lines():
 
 def test_parse_cad_default_output_does_not_overwrite_model_geometry(tmp_path: Path, monkeypatch):
     """默认输出必须避开人工维护的 model-geometry.yaml。"""
-    from parse_cad import OUTPUT_YAML
-
     # 模拟存在 model-geometry.yaml
     model = tmp_path / "config" / "layout" / "model-geometry.yaml"
     model.parent.mkdir(parents=True)
     model.write_text("version: '1.0'\n", encoding="utf-8")
 
     assert OUTPUT_YAML.name != "model-geometry.yaml" or OUTPUT_YAML != Path("config/layout/model-geometry.yaml")
+    # 默认 CLI 输出不应指向权威模型路径
+    args = parse_args([])
+    assert args.output.resolve() != Path("config/layout/model-geometry.yaml").resolve()
 

@@ -2,7 +2,7 @@ import type { HvacScheme } from './types.js';
 
 /**
  * 701 户型 HVAC 方案常量。
- * 房间几何布局已迁移到 CAD → config/layout/model-geometry.yaml，
+ * 房间几何布局的权威源为 config/layout/model-geometry.yaml（人工维护；CAD 仅作参考/导出），
  * 此处仅保留 HVAC 多方案数据。
  */
 

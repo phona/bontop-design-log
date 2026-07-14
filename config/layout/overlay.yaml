@@ -1,3 +1,5 @@
+# overlay.yaml: 渲染意图声明（intent-only），严格 schema。
+# 所有"这是什么/怎么渲染"的分类由本文件声明，代码只读、只执行。
 version: 1
 
 suppress:

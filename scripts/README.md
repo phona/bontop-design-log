@@ -27,11 +27,9 @@ python -m pip install -r requirements.txt
 python scripts/parse_cad.py
 ```
 
-By default, `parse_cad.py` writes the extracted layout to `model-geometry-from-cad.yaml` in the repo root. To overwrite the authoritative `config/layout/model-geometry.yaml`, run:
+By default, `parse_cad.py` writes the extracted layout to `model-geometry-from-cad.yaml` in the repo root. The `--force` guard only matters when the output target is the authoritative `config/layout/model-geometry.yaml`; to overwrite it, run:
 
 ```bash
-python scripts/parse_cad.py --force
-# or
 python scripts/parse_cad.py --output config/layout/model-geometry.yaml --force
 ```
 

@@ -28,6 +28,7 @@ import yaml
 CAD_DIR = Path("cad/design/01_floor_plan")
 OUTPUT_YAML = Path("model-geometry-from-cad.yaml")
 REPORT_JSON = Path("scripts/logs/cad-extraction-report.json")
+MODEL_GEOMETRY_PATH = Path("config/layout/model-geometry.yaml").resolve()
 
 logger = logging.getLogger(__name__)
 
@@ -1119,7 +1120,7 @@ def write_layout_yaml(
     return report
 
 
-def main() -> None:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Extract house layout from CAD DXF")
     parser.add_argument("--cad-dir", type=Path, default=CAD_DIR)
     parser.add_argument("--output", type=Path, default=OUTPUT_YAML)
@@ -1127,10 +1128,14 @@ def main() -> None:
     parser.add_argument("--height", type=float, default=3.0, help="Default room height in meters")
     parser.add_argument("--anchor", type=Path, default=CAD_ANCHOR_CONFIG)
     parser.add_argument("--force", action="store_true", help="允许覆盖已存在的 model-geometry.yaml")
-    args = parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def main() -> None:
+    args = parse_args()
 
     if (
-        args.output == Path("config/layout/model-geometry.yaml")
+        Path(args.output).resolve() == MODEL_GEOMETRY_PATH
         and args.output.exists()
         and not args.force
     ):
