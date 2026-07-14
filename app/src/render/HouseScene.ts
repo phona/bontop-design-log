@@ -652,9 +652,7 @@ export class HouseScene implements SceneApi {
       cy,
       cz + nz * el.depth / 2
     );
-    if (length > 0) {
-      mesh.rotation.y = Math.atan2(dz, dx);
-    }
+    mesh.rotation.y = Math.atan2(dz, dx);
     mesh.userData = { type: 'bay_sill', objectId: el.id };
     mesh.castShadow = true;
     mesh.receiveShadow = true;

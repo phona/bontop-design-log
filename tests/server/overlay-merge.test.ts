@@ -161,6 +161,38 @@ elements:
     );
   });
 
+  it('accepts optional radius on floor_region points', () => {
+    const cfg = parseOverlay(`
+version: 1
+elements:
+  - id: floor_with_radius
+    type: floor_region
+    points:
+      - {x: 0, z: 0}
+      - {x: 2, z: 0, radius: 0.5}
+      - {x: 2, z: 1}
+      - {x: 0, z: 1}
+`);
+    assert.equal(cfg.elements.length, 1);
+    const el = cfg.elements[0];
+    if (el.type === 'floor_region') {
+      assert.equal(el.points[0].radius, undefined);
+      assert.equal(el.points[1].radius, 0.5);
+    }
+  });
+
+  it('rejects negative radius on floor_region points', () => {
+    assert.throws(() =>
+      parseOverlay(`
+version: 1
+elements:
+  - id: bad_floor
+    type: floor_region
+    points: [{x: 0, z: 0}, {x: 1, z: 0, radius: -0.1}, {x: 1, z: 1}]
+`)
+    );
+  });
+
   it('rejects bay_sill with unknown extra fields', () => {
     assert.throws(() =>
       parseOverlay(`
