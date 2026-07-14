@@ -8,7 +8,7 @@
 
 将 `curtain_run` 渲染改为：
 - **连续整块玻璃幕墙**（一个 mesh）；
-- **拐点使用 Three.js 原生圆弧**（`THREE.Shape.absarc`）；
+- **拐点使用 Three.js 原生圆弧**：中心线 `THREE.Path` 在拐点处用 `absarc` 绘制圆弧；
 - **保留配置驱动**：`overlay.yaml` 中的 `curtain_run.points` 及可选 `radius` 字段不变；
 - **移除分段交互**：不再支持逐段 hover/选中（业务上幕墙为开发商封好，无需交互）。
 
@@ -20,11 +20,12 @@
 
 关键步骤：
 1. 读取 `curtain_run.points` 得到中心线折线 `P₀, P₁, …, Pₙ`；
-2. 对中心线做**双侧等距偏移**（offset = `GLASS_THICKNESS / 2`），得到外侧折线 `O` 和内侧折线 `I`；
-3. 在带 `radius` 的拐点处，用 `THREE.Shape.absarc` 把外侧尖角替换为圆弧，内侧尖角替换为同心圆弧；
-4. 沿 `O → 末端封口 → I → 起始封口 → O` 构建闭合 `THREE.Shape`；
-5. 用 `ExtrudeGeometry` 一次性挤出，得到单一 mesh；
-6. 设置 `userData = { type: 'curtain_run', objectId: el.id }`（单一 objectId）。
+2. 用 `THREE.Path` 构建连续中心线，带 `radius` 的内部拐点用 `absarc` 绘制圆弧；
+3. 沿中心线采样，得到密集点列；
+4. 每个采样点按局部切线法向左右各偏移 `GLASS_THICKNESS / 2`，得到左边界 `L` 与右边界 `R`；
+5. 沿 `L → 端封口 → R → 端封口 → L` 构建闭合 `THREE.Shape`；
+6. 用 `ExtrudeGeometry` 一次性挤出，得到单一 mesh；
+7. 设置 `userData = { type: 'curtain_run', objectId: el.id }`（单一 objectId）。
 
 ```
       O  ─────────────── O
@@ -68,7 +69,7 @@
 - **开放路径**：外侧折线 `O` 与内侧折线 `I` 在两端用直线段封口，形成闭合 `Shape`；
 - **闭合路径**：`O` 与 `I` 在首尾相接，不额外封口。
 
-判定方式：配置中新增可选字段 `closed: boolean`（默认 `false`）。对于目前 4 点玻璃幕墙，可显式声明 `closed: true`。
+判定方式：配置中新增可选字段 `closed: boolean`（默认 `false`）。目前 4 点玻璃幕墙为开放立面，不声明 `closed: true`。闭合玻璃盒可显式声明 `closed: true`。
 
 ### 4. API / Schema 变更
 
@@ -86,18 +87,31 @@ export type CurtainRun = {
 
 `server/overlay-merge.ts` 中 zod schema 同步增加 `.strict()` 下的 `closed: z.boolean().optional()`。
 
-`overlay.yaml` 中玻璃幕墙示例：
+`overlay.yaml` 中玻璃幕墙示例（当前玻璃幕墙是 南→SW 圆角→西→NW 圆角→北 的**开放立面**，入户花园东西边界为实墙）：
 
 ```yaml
 - id: glass_facade
   type: curtain_run
-  closed: true
   height: 3.0
   points:
     - { x: 3.75, z: -4.32 }
     - { x: -5.88, z: -4.32, radius: 0.8 }
     - { x: -5.88, z: 5.39, radius: 0.8 }
     - { x: 3.75, z: 5.39 }
+```
+
+闭合玻璃盒示例（仅作参考）：
+
+```yaml
+- id: glass_box
+  type: curtain_run
+  closed: true
+  height: 3.0
+  points:
+    - { x: 0, z: 0, radius: 0.5 }
+    - { x: 3, z: 0, radius: 0.5 }
+    - { x: 3, z: 3, radius: 0.5 }
+    - { x: 0, z: 3, radius: 0.5 }
 ```
 
 ### 5. 替代方案
@@ -131,5 +145,5 @@ export type CurtainRun = {
 
 - 仅 `app/src/render/HouseScene.ts` 中 `renderCurtainRun` 及相关辅助函数；
 - `shared/types.ts` 和 `server/overlay-merge.ts` 增加 `closed?: boolean`；
-- `config/layout/overlay.yaml` 玻璃幕墙声明增加 `closed: true`；
+- `config/layout/overlay.yaml` 玻璃幕墙声明保持开放路径（不添加 `closed: true`），东西两端为实墙；
 - 删除 `expandRoundedCorners`、`roundCorner`、`isInsideCorner`、`polygonSignedArea` 等手动圆弧辅助函数。

@@ -24,9 +24,18 @@ import { placeFurnishings } from './FurnitureFactory.js';
 const DEFAULT_PAINT = '#f7f5ef';
 const GLASS_COLOR = 0x88ccff;
 const GLASS_OPACITY = 0.6;
-const GLASS_THICKNESS = 0.08; // 8cm glass panel
+export const GLASS_THICKNESS = 0.08; // 8cm glass panel
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
+
+type ArcDescriptor = {
+  center: { x: number; z: number };
+  radius: number;
+  start: { x: number; z: number };
+  startAngle: number;
+  endAngle: number;
+  clockwise: boolean;
+};
 
 interface ProjectData {
   house: {
@@ -455,7 +464,7 @@ export class HouseScene implements SceneApi {
     a: CurtainPoint,
     c: CurtainPoint,
     b: CurtainPoint
-  ): { center: { x: number; z: number }; radius: number; start: { x: number; z: number }; startAngle: number; endAngle: number; clockwise: boolean } | null {
+  ): ArcDescriptor | null {
     const r = c.radius ?? 0;
     if (r <= 0) return null;
 
@@ -511,7 +520,6 @@ export class HouseScene implements SceneApi {
     return area;
   }
 
- 
   private renderWallRun(el: Extract<SceneElement, { type: 'wall_run' }>) {
     for (let i = 0; i < el.points.length - 1; i++) {
       const a = el.points[i];

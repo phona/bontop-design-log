@@ -57,16 +57,23 @@ vi.mock('three', () => {
     Color: class { set() { return this; } copy() { return this; } clone() { return new (this.constructor as any)(); } },
     PlaneGeometry: class {},
     BoxGeometry: class {},
-    Shape: class { holes: any[] = []; moveTo() {} lineTo() {} closePath() {} },
+    Shape: class { holes: any[] = []; points: { x: number; y: number; cmd: string }[] = []; moveTo(x: number, y: number) { this.points.push({ x, y, cmd: 'moveTo' }); } lineTo(x: number, y: number) { this.points.push({ x, y, cmd: 'lineTo' }); } closePath() { this.points.push({ x: 0, y: 0, cmd: 'closePath' }); } },
     Path: class {
       points: { x: number; y: number }[] = [];
       current = { x: 0, y: 0 };
       moveTo(x: number, y: number) { this.current = { x, y }; this.points.push({ x, y }); }
       lineTo(x: number, y: number) { this.current = { x, y }; this.points.push({ x, y }); }
       absarc(cx: number, cy: number, r: number, a1: number, a2: number, _clockwise: boolean) {
-        this.points.push({ x: cx + r * Math.cos(a1), y: cy + r * Math.sin(a1) });
-        this.points.push({ x: cx, y: cy });
-        this.points.push({ x: cx + r * Math.cos(a2), y: cy + r * Math.sin(a2) });
+        const segments = 4;
+        let delta = a2 - a1;
+        while (delta <= -Math.PI) delta += 2 * Math.PI;
+        while (delta > Math.PI) delta -= 2 * Math.PI;
+        for (let i = 0; i <= segments; i++) {
+          const t = i / segments;
+          const a = a1 + delta * t;
+          this.current = { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+          this.points.push({ ...this.current });
+        }
       }
       closePath() {}
       getPoints() { return this.points; }
@@ -116,7 +123,7 @@ const mockWindow = {
 
 vi.stubGlobal('window', mockWindow);
 
-import { HouseScene } from '../render/HouseScene';
+import { HouseScene, GLASS_THICKNESS } from '../render/HouseScene';
 
 describe('HouseScene', () => {
   it('should initialize', () => {
@@ -296,15 +303,82 @@ describe('HouseScene', () => {
     };
     await scene.buildFromCatalog(projectData);
     let curtainCount = 0;
-    let holeCount = 0;
+    let shape: any = null;
     scene.getScene().traverse((obj: any) => {
       if (obj.userData?.type === 'curtain_run') {
         curtainCount++;
-        holeCount = obj.geometry?.shape?.holes?.length ?? 0;
+        shape = obj.geometry?.shape;
       }
     });
     expect(curtainCount).toBe(1);
-    expect(holeCount).toBe(1);
+    expect(shape?.holes?.length).toBe(1);
+  });
+
+  it('builds correct ribbon boundary for straight curtain_run', async () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const projectData = {
+      house: {
+        rooms: [],
+        sceneElements: [
+          {
+            type: 'curtain_run' as const,
+            id: 'curtain:straight',
+            points: [{ x: 0, z: 0 }, { x: 4, z: 0 }],
+            height: 2.8,
+          },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+    await scene.buildFromCatalog(projectData);
+    let shape: any = null;
+    scene.getScene().traverse((obj: any) => {
+      if (obj.userData?.type === 'curtain_run') {
+        shape = obj.geometry?.shape;
+      }
+    });
+    expect(shape).not.toBeNull();
+    const offset = GLASS_THICKNESS / 2;
+    const commands = shape.points.map((p: any) => ({ x: p.x, y: p.y, cmd: p.cmd }));
+    expect(commands[0]).toEqual({ x: 0, y: offset, cmd: 'moveTo' });
+    expect(commands[1]).toEqual({ x: 4, y: offset, cmd: 'lineTo' });
+    expect(commands[2]).toEqual({ x: 4, y: -offset, cmd: 'lineTo' });
+    expect(commands[3]).toEqual({ x: 0, y: -offset, cmd: 'lineTo' });
+    expect(commands[4]).toEqual({ x: 0, y: offset, cmd: 'lineTo' });
+    expect(commands[5]).toEqual({ x: 0, y: 0, cmd: 'closePath' });
+  });
+
+  it('rounded curtain_run produces more boundary points than straight one', async () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const projectData = {
+      house: {
+        rooms: [],
+        sceneElements: [
+          {
+            type: 'curtain_run' as const,
+            id: 'curtain:rounded',
+            points: [
+              { x: 0, z: 0 },
+              { x: 5, z: 0, radius: 1 },
+              { x: 5, z: 5 },
+            ],
+            height: 2.8,
+          },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+    await scene.buildFromCatalog(projectData);
+    let shape: any = null;
+    scene.getScene().traverse((obj: any) => {
+      if (obj.userData?.type === 'curtain_run') shape = obj.geometry?.shape;
+    });
+    expect(shape).not.toBeNull();
+    expect(shape.points.length).toBeGreaterThan(8);
   });
 
   it('renders a shared wall once between adjacent rooms', async () => {
