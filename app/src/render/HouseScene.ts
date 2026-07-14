@@ -300,6 +300,7 @@ export class HouseScene implements SceneApi {
         case 'wall_run': this.renderWallRun(el); break;
         case 'glass_infill': this.renderGlassInfill(el); break;
         case 'floor_region': this.renderFloorRegion(el); break;
+        case 'bay_sill': this.renderBaySill(el); break;
         default: {
           const exhaustive: never = el;
           console.error('[HouseScene] 未知场景元素类型（渲染器缺 case）', exhaustive);
@@ -619,6 +620,45 @@ export class HouseScene implements SceneApi {
     mesh.receiveShadow = true;
     this.scene.add(mesh);
     this.floorMeshes.push(mesh);
+  }
+
+  private renderBaySill(el: Extract<SceneElement, { type: 'bay_sill' }>) {
+    if (el.points.length < 2) return;
+    const a = el.points[0];
+    const b = el.points[el.points.length - 1];
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const length = Math.hypot(dx, dz);
+    if (length < 1e-9) return;
+
+    // curtain_run 为顺时针，室内在行进方向右侧 => 内法向为 (dz, -dx)
+    const nx = dz / length;
+    const nz = -dx / length;
+
+    const cx = (a.x + b.x) / 2;
+    const cz = (a.z + b.z) / 2;
+    const cy = el.sill + el.height / 2;
+
+    const concrete = new THREE.MeshStandardMaterial({
+      color: 0xcccccc,
+      roughness: 0.9,
+    });
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(length, el.height, el.depth),
+      concrete
+    );
+    mesh.position.set(
+      cx + nx * el.depth / 2,
+      cy,
+      cz + nz * el.depth / 2
+    );
+    if (length > 0) {
+      mesh.rotation.y = Math.atan2(dz, dx);
+    }
+    mesh.userData = { type: 'bay_sill', objectId: el.id };
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    this.scene.add(mesh);
   }
 
   private createPlatform(p: ProjectData['house']['platform'] & { id: string; name: string }) {
