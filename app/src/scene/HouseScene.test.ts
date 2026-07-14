@@ -166,7 +166,7 @@ describe('HouseScene', () => {
     expect(wallCount).toBe(4);
   });
 
-  it('builds walls from global wall segments when provided', async () => {
+  it('builds walls from scene elements when provided', async () => {
     const canvas = {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
@@ -178,9 +178,9 @@ describe('HouseScene', () => {
         rooms: [
           { id: 'a', name: 'A', x: 0, z: 0, width: 4, depth: 3, height: 3, type: 'public' },
         ],
-        walls: [
-          { x1: -2, z1: -1.5, x2: 2, z2: -1.5 },
-          { x1: -2, z1: 1.5, x2: 2, z2: 1.5 },
+        sceneElements: [
+          { type: 'wall' as const, id: 'wall:0', x1: -2, z1: -1.5, x2: 2, z2: -1.5 },
+          { type: 'wall' as const, id: 'wall:1', x1: -2, z1: 1.5, x2: 2, z2: 1.5 },
         ],
       },
       topics: [],
@@ -210,7 +210,7 @@ describe('HouseScene', () => {
           { id: 'b', name: 'B', x: 2.5, z: 0, width: 3, depth: 4, height: 3, type: 'public' },
         ],
         // A single shared wall segment between the two rooms.
-        walls: [{ x1: 0, z1: -2, x2: 0, z2: 2 }],
+        sceneElements: [{ type: 'wall' as const, id: 'wall:shared', x1: 0, z1: -2, x2: 0, z2: 2 }],
       },
       topics: [],
       budgetCategories: [],

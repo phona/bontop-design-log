@@ -6,7 +6,7 @@ import type {
   CameraState,
   ElectricalMarker,
   CurrentScheme,
-  WallSegment,
+  SceneElement,
   OpeningDef,
 } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
@@ -16,9 +16,9 @@ import { createMaterialTexture } from './TextureFactory.js';
 import { placeFurnishings } from './FurnitureFactory.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
-const CURTAIN_WALL_COLOR = 0x88ccff;
-const CURTAIN_WALL_OPACITY = 0.6;
-const CURTAIN_WALL_THICKNESS = 0.08; // 8cm glass panel
+const GLASS_COLOR = 0x88ccff;
+const GLASS_OPACITY = 0.6;
+const GLASS_THICKNESS = 0.08; // 8cm glass panel
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
 
@@ -28,7 +28,7 @@ interface ProjectData {
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
     furnishings?: Record<string, Record<string, number>>;
     electrical?: ElectricalMarker[];
-    walls?: WallSegment[];
+    sceneElements?: SceneElement[];
   };
   topics: Array<{ id: string; name: string; perRoom: boolean; options: unknown[] }>;
   budgetCategories: unknown[];
@@ -45,6 +45,7 @@ export class HouseScene implements SceneApi {
   private topicGroup = new THREE.Group();
   private floorMeshes: THREE.Mesh[] = [];
   private wallMeshes: THREE.Mesh[] = [];
+  private glassMeshes: THREE.Mesh[] = [];
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   cameraAnimator: CameraAnimator;
@@ -122,6 +123,7 @@ export class HouseScene implements SceneApi {
     this.platform = undefined;
     this.floorMeshes = [];
     this.wallMeshes = [];
+    this.glassMeshes = [];
     this.roomMeta.clear();
 
     this.setupLights();
@@ -130,8 +132,8 @@ export class HouseScene implements SceneApi {
     this.topicGroup = new THREE.Group();
     this.scene.add(this.topicGroup);
 
-    const useWallSegments = Array.isArray(projectData.house.walls)
-      && projectData.house.walls.length > 0;
+    const useSceneElements = Array.isArray(projectData.house.sceneElements)
+      && projectData.house.sceneElements.length > 0;
     const wallHeight = projectData.house.rooms[0]?.height ?? 3.0;
 
     for (const room of projectData.house.rooms) {
@@ -146,12 +148,12 @@ export class HouseScene implements SceneApi {
           depth: room.depth,
           height: room.height,
         },
-        { fabricateWalls: !useWallSegments }
+        { fabricateWalls: !useSceneElements }
       );
     }
 
-    if (useWallSegments) {
-      this.createWalls(projectData.house.walls!, wallHeight);
+    if (useSceneElements) {
+      this.buildSceneElements(projectData.house.sceneElements!, wallHeight);
     }
 
     if (projectData.house.platform) {
@@ -264,43 +266,110 @@ export class HouseScene implements SceneApi {
     this.rooms[r.id] = { ...r };
   }
 
-  private createWalls(walls: WallSegment[], height: number) {
-    const wallMat = new THREE.MeshStandardMaterial({
-      color: DEFAULT_PAINT,
-      roughness: 0.85,
-    });
-    const curtainWallMat = new THREE.MeshPhysicalMaterial({
-      color: CURTAIN_WALL_COLOR,
+  private makeGlassMaterial(): THREE.MeshPhysicalMaterial {
+    return new THREE.MeshPhysicalMaterial({
+      color: GLASS_COLOR,
       transparent: true,
-      opacity: CURTAIN_WALL_OPACITY,
+      opacity: GLASS_OPACITY,
       roughness: 0.05,
       metalness: 0.1,
       side: THREE.DoubleSide,
     });
-    for (let i = 0; i < walls.length; i++) {
-      const { x1, z1, x2, z2, curtain } = walls[i] as WallSegment & { curtain?: boolean };
-      const cx = (x1 + x2) / 2;
-      const cz = (z1 + z2) / 2;
-      const dx = x2 - x1;
-      const dz = z2 - z1;
-      const length = Math.sqrt(dx * dx + dz * dz);
-      const geo = new THREE.BoxGeometry(
-        Math.max(length, curtain ? CURTAIN_WALL_THICKNESS : WALL_THICKNESS),
-        height,
-        curtain ? CURTAIN_WALL_THICKNESS : WALL_THICKNESS
-      );
-      const mat = curtain ? curtainWallMat.clone() : wallMat.clone();
-      const wall = new THREE.Mesh(geo, mat);
-      wall.position.set(cx, height / 2, cz);
-      if (length > WALL_THICKNESS) {
-        wall.rotation.y = Math.atan2(dz, dx);
+  }
+
+  private buildSceneElements(elements: SceneElement[], defaultHeight: number) {
+    for (const el of elements) {
+      switch (el.type) {
+        case 'wall': this.renderWallSegment(el, defaultHeight); break;
+        case 'curtain_run': this.renderCurtainRun(el); break;
+        case 'wall_run': this.renderWallRun(el); break;
+        case 'glass_infill': this.renderGlassInfill(el); break;
+        default: {
+          const exhaustive: never = el;
+          console.error('[HouseScene] 未知场景元素类型（渲染器缺 case）', exhaustive);
+        }
       }
-      wall.userData = { type: 'wall', objectId: `wall:seg:${i}`, curtain: !!curtain };
-      wall.castShadow = !curtain;
-      wall.receiveShadow = true;
-      this.scene.add(wall);
-      this.wallMeshes.push(wall);
     }
+  }
+
+  private renderBox(
+    x1: number, z1: number, x2: number, z2: number,
+    height: number, thickness: number, mat: THREE.Material,
+  ): THREE.Mesh {
+    const cx = (x1 + x2) / 2;
+    const cz = (z1 + z2) / 2;
+    const length = Math.hypot(x2 - x1, z2 - z1);
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(Math.max(length, thickness), height, thickness),
+      mat
+    );
+    mesh.position.set(cx, height / 2, cz);
+    if (length > thickness) mesh.rotation.y = Math.atan2(z2 - z1, x2 - x1);
+    this.scene.add(mesh);
+    return mesh;
+  }
+
+  private renderWallSegment(el: Extract<SceneElement, { type: 'wall' }>, height: number) {
+    const mat = new THREE.MeshStandardMaterial({ color: DEFAULT_PAINT, roughness: 0.85 });
+    const mesh = this.renderBox(el.x1, el.z1, el.x2, el.z2, height, WALL_THICKNESS, mat);
+    mesh.userData = { type: 'wall', objectId: el.id };
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    this.wallMeshes.push(mesh);
+  }
+
+  private renderCurtainRun(el: Extract<SceneElement, { type: 'curtain_run' }>) {
+    for (let i = 0; i < el.points.length - 1; i++) {
+      const a = el.points[i];
+      const b = el.points[i + 1];
+      const mesh = this.renderBox(a.x, a.z, b.x, b.z, el.height, GLASS_THICKNESS, this.makeGlassMaterial());
+      mesh.userData = { type: 'curtain_run', objectId: `${el.id}:${i}` };
+      mesh.castShadow = false;
+      mesh.receiveShadow = true;
+      this.glassMeshes.push(mesh);
+    }
+  }
+
+  private renderWallRun(el: Extract<SceneElement, { type: 'wall_run' }>) {
+    for (let i = 0; i < el.points.length - 1; i++) {
+      const a = el.points[i];
+      const b = el.points[i + 1];
+      const mat = new THREE.MeshStandardMaterial({ color: DEFAULT_PAINT, roughness: 0.85 });
+      const mesh = this.renderBox(a.x, a.z, b.x, b.z, el.height, WALL_THICKNESS, mat);
+      mesh.userData = { type: 'wall', objectId: `${el.id}:${i}` };
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.wallMeshes.push(mesh);
+    }
+  }
+
+  private renderGlassInfill(el: Extract<SceneElement, { type: 'glass_infill' }>) {
+    const room = this.rooms[el.room];
+    if (!room) {
+      console.error(`[HouseScene] glass_infill "${el.id}" 引用不存在的房间 "${el.room}"，未渲染`);
+      return;
+    }
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    let x = room.x;
+    let z = room.z;
+    let rotate = false;
+    switch (el.wall) {
+      case 'south': x += el.center_offset; z += halfD; break;
+      case 'north': x += el.center_offset; z -= halfD; break;
+      case 'east': x += halfW; z += el.center_offset; rotate = true; break;
+      case 'west': x -= halfW; z += el.center_offset; rotate = true; break;
+    }
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(el.width, el.height, GLASS_THICKNESS),
+      this.makeGlassMaterial()
+    );
+    mesh.position.set(x, el.sill + el.height / 2, z);
+    if (rotate) mesh.rotation.y = Math.PI / 2;
+    mesh.userData = { type: 'glass_infill', objectId: el.id };
+    mesh.castShadow = false;
+    this.scene.add(mesh);
+    this.glassMeshes.push(mesh);
   }
 
   private createPlatform(p: ProjectData['house']['platform'] & { id: string; name: string }) {
@@ -479,8 +548,6 @@ export class HouseScene implements SceneApi {
   setWallColor(roomIds: string[], color: string) {
     const set = new Set(roomIds);
     for (const mesh of this.wallMeshes) {
-      // Skip curtain walls - they keep their glass material
-      if (mesh.userData.curtain) continue;
       if (set.has(mesh.userData.roomId as string)) {
         (mesh.material as THREE.MeshStandardMaterial).color.set(color);
       }
@@ -489,7 +556,6 @@ export class HouseScene implements SceneApi {
 
   setPaintColor(color: string) {
     for (const mesh of this.wallMeshes) {
-      if (mesh.userData.curtain) continue;
       const roomId = mesh.userData.roomId as string;
       const room = this.roomMeta.get(roomId);
       if (room?.wall_finish === 'tile') continue;
