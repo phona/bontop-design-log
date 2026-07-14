@@ -170,7 +170,20 @@ def collect_wall_segments(
     segments whose midpoint lies within the rectangle are returned. This drops
     duplicate plan copies (e.g. an unlabeled 墙体定位图 sheet) that share the
     DXF modelspace with the labeled floor-plan sheet.
+
+    Segments are then collapsed to centerlines so that walls drawn as double
+    lines (two parallel lines representing the two faces of a wall) do not
+    produce duplicate geometry in the output. This is purely geometric cleanup
+    and does not add or infer any intent.
     """
+    segments = _collect_wall_segments_raw(modelspace, bounds)
+    return collapse_double_wall_segments(segments)
+
+
+def _collect_wall_segments_raw(
+    modelspace, bounds: tuple[float, float, float, float] | None = None
+) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    """Raw collection of wall segments without double-line collapse."""
     segments = []
     wall_layers = {"BS-非承重墙", "BS-承重墙"}
     for entity in modelspace:
@@ -196,6 +209,117 @@ def collect_wall_segments(
                 filtered.append(((x1, y1), (x2, y2)))
         segments = filtered
     return segments
+
+
+def _merge_intervals(
+    intervals: list[tuple[float, float]], gap: float
+) -> list[tuple[float, float]]:
+    """Merge intervals whose gap is <= ``gap``."""
+    if not intervals:
+        return []
+    items = sorted((min(a, b), max(a, b)) for a, b in intervals)
+    merged = [list(items[0])]
+    for lo, hi in items[1:]:
+        if lo <= merged[-1][1] + gap:
+            merged[-1][1] = max(merged[-1][1], hi)
+        else:
+            merged.append([lo, hi])
+    return [(lo, hi) for lo, hi in merged]
+
+
+def _snap(v: float, grid: float = 1.0) -> float:
+    return round(v / grid) * grid
+
+
+def collapse_double_wall_segments(
+    segments: list[tuple[tuple[float, float], tuple[float, float]]],
+    tolerance: float = 1.0,
+    max_double_gap: float = 300.0,
+    interval_gap: float = 2000.0,
+) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    """Collapse walls drawn as two (or more) parallel lines into a single centerline.
+
+    Many CAD drawings draw each wall as two parallel lines (the two faces of the
+    wall). Exporting both lines produces duplicate 3D walls that overlap and look
+    messy. This function groups close parallel lines and emits one centerline per
+    wall, still outputting only ``x1/z1/x2/z2`` geometry.
+
+    Steps:
+    1. Separate axis-aligned segments into vertical (constant x) and horizontal (constant y) groups.
+    2. Merge collinear intervals within each group.
+    3. Cluster adjacent parallel groups whose coordinate distance is <= ``max_double_gap``.
+    4. Emit one centerline per cluster, with intervals spanning the union of member intervals.
+
+    Non-axis-aligned (diagonal) segments are left unchanged.
+    """
+    vertical_groups: dict[float, list[tuple[float, float]]] = {}
+    horizontal_groups: dict[float, list[tuple[float, float]]] = {}
+    diagonals: list[tuple[tuple[float, float], tuple[float, float]]] = []
+
+    for (x1, y1), (x2, y2) in segments:
+        if abs(x1 - x2) <= tolerance:
+            x = _snap((x1 + x2) / 2.0)
+            vertical_groups.setdefault(x, []).append((min(y1, y2), max(y1, y2)))
+        elif abs(y1 - y2) <= tolerance:
+            y = _snap((y1 + y2) / 2.0)
+            horizontal_groups.setdefault(y, []).append((min(x1, x2), max(x1, x2)))
+        else:
+            diagonals.append(((x1, y1), (x2, y2)))
+
+    def merge_groups(
+        groups: dict[float, list[tuple[float, float]]], axis: str
+    ) -> list[tuple[float, float, float]]:
+        """Return list of (coord, start, end) centerline segments."""
+        # Merge intervals within each group first
+        merged_groups: list[tuple[float, list[tuple[float, float]]]] = []
+        for coord in sorted(groups.keys()):
+            intervals = _merge_intervals(groups[coord], interval_gap)
+            merged_groups.append((coord, intervals))
+
+        result: list[tuple[float, float, float]] = []
+        i = 0
+        while i < len(merged_groups):
+            coord, intervals = merged_groups[i]
+            # Try to merge with subsequent groups that are within the double-wall gap
+            cluster_coords = [coord]
+            cluster_intervals = list(intervals)
+            j = i + 1
+            while j < len(merged_groups):
+                next_coord, next_intervals = merged_groups[j]
+                if next_coord - coord <= max_double_gap:
+                    # Only merge if the intervals actually overlap or touch
+                    overlap = False
+                    for lo, hi in cluster_intervals:
+                        for nlo, nhi in next_intervals:
+                            if hi + interval_gap >= nlo and nhi + interval_gap >= lo:
+                                overlap = True
+                                break
+                        if overlap:
+                            break
+                    if overlap:
+                        cluster_coords.append(next_coord)
+                        cluster_intervals = _merge_intervals(
+                            cluster_intervals + next_intervals, interval_gap
+                        )
+                        j += 1
+                        continue
+                break
+            center_coord = sum(cluster_coords) / len(cluster_coords)
+            for lo, hi in cluster_intervals:
+                result.append((center_coord, lo, hi))
+            i = j
+        return result
+
+    vertical_lines = merge_groups(vertical_groups, "x")
+    horizontal_lines = merge_groups(horizontal_groups, "y")
+
+    output: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    for x, y1, y2 in vertical_lines:
+        output.append(((x, y1), (x, y2)))
+    for y, x1, x2 in horizontal_lines:
+        output.append(((x1, y), (x2, y)))
+    output.extend(diagonals)
+    return output
 
 
 def extract_walls(

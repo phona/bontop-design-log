@@ -845,3 +845,38 @@ def test_committed_layout_walls_share_frame_with_rooms():
     assert max(wx) - min(wx) < 20.0
     assert max(wz) - min(wz) < 20.0
 
+
+def test_collapse_double_wall_segments_merges_parallel_lines():
+    """Two parallel wall lines 200mm apart should collapse to a single centerline."""
+    from parse_cad import collapse_double_wall_segments
+
+    segments = [
+        ((0, 0), (0, 5000)),          # vertical at x=0
+        ((200, 0), (200, 5000)),      # vertical at x=200
+        ((1000, 5000), (6000, 5000)), # horizontal at y=5000
+        ((1000, 4800), (6000, 4800)), # horizontal at y=4800
+    ]
+    collapsed = collapse_double_wall_segments(segments, max_double_gap=300.0)
+    # After collapse there should be only two segments, one vertical and one horizontal.
+    assert len(collapsed) == 2
+    vertical = next((s for s in collapsed if abs(s[0][0] - s[1][0]) < 1), None)
+    horizontal = next((s for s in collapsed if abs(s[0][1] - s[1][1]) < 1), None)
+    assert vertical is not None
+    assert (vertical[0][0] + vertical[1][0]) / 2 == 100.0
+    assert horizontal is not None
+    assert (horizontal[0][1] + horizontal[1][1]) / 2 == 4900.0
+
+
+def test_collapse_double_wall_segments_is_idempotent_for_single_lines():
+    """Single wall lines should not be moved or duplicated."""
+    from parse_cad import collapse_double_wall_segments
+
+    segments = [
+        ((0, 0), (0, 5000)),
+        ((5000, 1000), (5000, 6000)),
+    ]
+    collapsed = collapse_double_wall_segments(segments)
+    assert len(collapsed) == 2
+    assert ((0, 0), (0, 5000)) in collapsed
+    assert ((5000, 1000), (5000, 6000)) in collapsed
+
