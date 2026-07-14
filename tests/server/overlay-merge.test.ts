@@ -240,4 +240,41 @@ elements:
       assert.equal(glass.center_offset, 0);
     }
   });
+
+  it('accepts floor_region and bay_sill in overlay', () => {
+    const cfg = parseOverlay(`
+version: 1
+elements:
+  - id: corridor_floor
+    type: floor_region
+    points:
+      - {x: 0, z: 0}
+      - {x: 2, z: 0}
+      - {x: 2, z: 1}
+      - {x: 0, z: 1}
+    room: living_dining
+  - id: master_bay
+    type: bay_sill
+    points:
+      - {x: -5.88, z: -0.93}
+      - {x: -5.88, z: 4.39}
+    depth: 1.10
+    sill: 0.45
+    height: 2.55
+`);
+    const out = mergeSceneElements(WALLS, cfg);
+    const floor = out.find((e) => e.id === 'corridor_floor');
+    assert.equal(floor?.type, 'floor_region');
+    if (floor?.type === 'floor_region') {
+      assert.equal(floor.room, 'living_dining');
+      assert.equal(floor.points.length, 4);
+    }
+    const bay = out.find((e) => e.id === 'master_bay');
+    assert.equal(bay?.type, 'bay_sill');
+    if (bay?.type === 'bay_sill') {
+      assert.equal(bay.depth, 1.10);
+      assert.equal(bay.sill, 0.45);
+      assert.equal(bay.height, 2.55);
+    }
+  });
 });
