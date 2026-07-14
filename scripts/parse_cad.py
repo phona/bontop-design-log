@@ -262,32 +262,84 @@ def _mark_curtain_from_config(
     curtain_config: list[dict],
     tolerance: float = 0.5,
 ) -> list[Wall]:
+    """Mark walls as curtain based on house.yaml curtain_walls config.
+
+    A wall is marked as curtain only if it's on the configured boundary edge
+    AND it's the outermost wall at that location (no other wall beyond it).
+    This prevents interior walls that happen to align with the boundary
+    from being misclassified as curtain walls.
+    """
     if not walls or not curtain_config:
         return walls
 
     all_x = [x for w in walls for x in (w.x1, w.x2)]
     all_z = [z for w in walls for z in (w.z1, w.z2)]
-    min_x = min(all_x)
-    max_z = max(all_z)
-    min_z = min(all_z)
+    min_x, max_x = min(all_x), max(all_x)
+    min_z, max_z = min(all_z), max(all_z)
+
+    def _is_outermost(w: Wall, edge: str) -> bool:
+        """Check if wall w is the outermost wall on the given edge."""
+        if edge == "west":
+            # No other wall should have smaller x at overlapping z range
+            for other in walls:
+                if other is w:
+                    continue
+                other_x = min(other.x1, other.x2)
+                # Check if other wall is further west (with small tolerance)
+                if other_x < min(w.x1, w.x2) - 0.1:
+                    # Check z overlap
+                    w_z_min, w_z_max = min(w.z1, w.z2), max(w.z1, w.z2)
+                    o_z_min, o_z_max = min(other.z1, other.z2), max(other.z1, other.z2)
+                    if w_z_min < o_z_max + tolerance and w_z_max > o_z_min - tolerance:
+                        return False
+            return True
+        elif edge == "north":
+            # No other wall should have larger z at overlapping x range
+            for other in walls:
+                if other is w:
+                    continue
+                other_z = max(other.z1, other.z2)
+                if other_z > max(w.z1, w.z2) + 0.1:
+                    w_x_min, w_x_max = min(w.x1, w.x2), max(w.x1, w.x2)
+                    o_x_min, o_x_max = min(other.x1, other.x2), max(other.x1, other.x2)
+                    if w_x_min < o_x_max + tolerance and w_x_max > o_x_min - tolerance:
+                        return False
+            return True
+        elif edge == "south":
+            # No other wall should have smaller z at overlapping x range
+            for other in walls:
+                if other is w:
+                    continue
+                other_z = min(other.z1, other.z2)
+                if other_z < min(w.z1, w.z2) - 0.1:
+                    w_x_min, w_x_max = min(w.x1, w.x2), max(w.x1, w.x2)
+                    o_x_min, o_x_max = min(other.x1, other.x2), max(other.x1, other.x2)
+                    if w_x_min < o_x_max + tolerance and w_x_max > o_x_min - tolerance:
+                        return False
+            return True
+        return False
 
     for w in walls:
         w.curtain = False
         for cfg in curtain_config:
             edge = cfg.get("edge", "")
             if edge == "west":
-                if abs(w.x1 - min_x) < tolerance or abs(w.x2 - min_x) < tolerance:
+                on_west = abs(w.x1 - min_x) < tolerance or abs(w.x2 - min_x) < tolerance
+                if on_west and _is_outermost(w, "west"):
                     w.curtain = True
                     break
             elif edge == "north":
-                if abs(w.z1 - max_z) < tolerance or abs(w.z2 - max_z) < tolerance:
+                on_north = abs(w.z1 - max_z) < tolerance or abs(w.z2 - max_z) < tolerance
+                if on_north and _is_outermost(w, "north"):
                     w.curtain = True
                     break
             elif edge == "south":
                 on_south = abs(w.z1 - min_z) < tolerance or abs(w.z2 - min_z) < tolerance
-                if on_south and (w.x1 + w.x2) / 2 <= cfg.get("max_x", float("inf")):
-                    w.curtain = True
-                    break
+                mid_x = (w.x1 + w.x2) / 2
+                if on_south and mid_x <= cfg.get("max_x", float("inf")):
+                    if _is_outermost(w, "south"):
+                        w.curtain = True
+                        break
 
     return walls
 

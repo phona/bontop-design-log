@@ -719,18 +719,24 @@ def test_mark_curtain_walls_from_config(tmp_path: Path):
     doc = Drawing.new("R2018")
     msp = doc.modelspace()
     doc.layers.add("BS-非承重墙")
-    msp.add_line((-5880, 4870), (-5880, -3360), dxfattribs={"layer": "BS-非承重墙"})
-    msp.add_line((-5000, -5390), (-4500, -5390), dxfattribs={"layer": "BS-非承重墙"})
-    msp.add_line((-500, 5390), (500, 5390), dxfattribs={"layer": "BS-非承重墙"})
+    # West wall: from SW corner (-5.88, -5.39) to NW corner (-5.88, 5.39)
+    msp.add_line((-5880, 5390), (-5880, -5390), dxfattribs={"layer": "BS-非承重墙"})
+    # North wall: from NW corner (-5.88, 5.39) to (-4.5, 5.39)
+    msp.add_line((-5880, -5390), (-4500, -5390), dxfattribs={"layer": "BS-非承重墙"})
+    # South wall: from SW corner (-5.88, -5.39) to (0.5, -5.39) - x<3.5, has corner endpoint
+    msp.add_line((-5880, 5390), (500, 5390), dxfattribs={"layer": "BS-非承重墙"})
+    # South wall: from (4, -5.39) to (5, -5.39) - x>3.5, NOT curtain (no corner endpoint either)
     msp.add_line((4000, 5390), (5000, 5390), dxfattribs={"layer": "BS-非承重墙"})
+    # East wall: NOT curtain
     msp.add_line((8540, 4450), (8540, 4210), dxfattribs={"layer": "BS-非承重墙"})
+    # Interior wall: NOT curtain
     msp.add_line((0, 0), (1000, 0), dxfattribs={"layer": "BS-非承重墙"})
 
     walls = extract_walls(msp, bounds=None, origin_x=0.0, origin_z=0.0, house_config_path=house_config)
     curtain_walls = [w for w in walls if w.curtain]
     non_curtain = [w for w in walls if not w.curtain]
-    assert len(curtain_walls) == 3
-    assert len(non_curtain) == 3
+    assert len(curtain_walls) == 3  # west, north, south(x<3.5)
+    assert len(non_curtain) == 3   # east, interior, south(x>3.5)
 
 
 def test_flood_fill_reads_centroids_from_config(tmp_path: Path, monkeypatch):
