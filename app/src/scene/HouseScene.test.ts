@@ -58,7 +58,7 @@ vi.mock('three', () => {
     PlaneGeometry: class {},
     BoxGeometry: class {},
     Shape: class { holes: any[] = []; moveTo() {} lineTo() {} closePath() {} },
-    Path: class { moveTo() {} lineTo() {} closePath() {} },
+    Path: class { moveTo() {} lineTo() {} closePath() {} absarc() {} getPoints() { return []; } },
     ExtrudeGeometry: class extends MockObject3D { constructor(_shape: any, _opts: any) { super(); } },
     CanvasTexture: class {},
     MeshStandardMaterial: MockMaterial,
