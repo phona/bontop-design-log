@@ -58,7 +58,19 @@ vi.mock('three', () => {
     PlaneGeometry: class {},
     BoxGeometry: class {},
     Shape: class { holes: any[] = []; moveTo() {} lineTo() {} closePath() {} },
-    Path: class { moveTo() {} lineTo() {} closePath() {} absarc() {} getPoints() { return []; } },
+    Path: class {
+      points: { x: number; y: number }[] = [];
+      current = { x: 0, y: 0 };
+      moveTo(x: number, y: number) { this.current = { x, y }; this.points.push({ x, y }); }
+      lineTo(x: number, y: number) { this.current = { x, y }; this.points.push({ x, y }); }
+      absarc(cx: number, cy: number, r: number, a1: number, a2: number, _clockwise: boolean) {
+        this.points.push({ x: cx + r * Math.cos(a1), y: cy + r * Math.sin(a1) });
+        this.points.push({ x: cx, y: cy });
+        this.points.push({ x: cx + r * Math.cos(a2), y: cy + r * Math.sin(a2) });
+      }
+      closePath() {}
+      getPoints() { return this.points; }
+    },
     ExtrudeGeometry: class extends MockObject3D { constructor(_shape: any, _opts: any) { super(); } },
     CanvasTexture: class {},
     MeshStandardMaterial: MockMaterial,

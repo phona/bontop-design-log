@@ -346,157 +346,148 @@ export class HouseScene implements SceneApi {
     const n = points.length;
     if (n < 2) return new THREE.Shape();
 
-    const left = new THREE.Path();
-    const right = new THREE.Path();
+    const centerline = new THREE.Path();
+    let started = false;
 
     for (let i = 0; i < n; i++) {
       const prev = points[(i - 1 + n) % n];
       const curr = points[i];
       const next = points[(i + 1) % n];
-
-      const d1x = curr.x - prev.x;
-      const d1z = curr.z - prev.z;
-      const d2x = next.x - curr.x;
-      const d2z = next.z - curr.z;
-      const len1 = Math.hypot(d1x, d1z);
-      const len2 = Math.hypot(d2x, d2z);
-
-      if (len1 < 1e-9 || len2 < 1e-9) continue;
-
-      const u1x = d1x / len1;
-      const u1z = d1z / len1;
-      const u2x = d2x / len2;
-      const u2z = d2z / len2;
-
-      const n1x = -u1z;
-      const n1z = u1x;
-      const n2x = -u2z;
-      const n2z = u2x;
-
-      const cross = u1x * u2z - u1z * u2x;
-
-      const radius = curr.radius ?? 0;
       const isOpenEndpoint = !closed && (i === 0 || i === n - 1);
 
-      if (radius > 0 && !isOpenEndpoint) {
-        const dot = u1x * u2x + u1z * u2z;
-        const theta = Math.acos(Math.max(-1, Math.min(1, dot)));
-        const d = radius / Math.tan(theta / 2);
-        if (d < len1 && d < len2 && theta > 0.001 && Math.abs(theta - Math.PI) > 0.001) {
-          const ta = { x: curr.x - u1x * d, z: curr.z - u1z * d };
-          const tb = { x: curr.x + u2x * d, z: curr.z + u2z * d };
-          const bisOut = this.outwardBisector(u1x, u1z, u2x, u2z, cross > 0);
-          const centerDist = radius / Math.sin(theta / 2);
-          const center = { x: curr.x + bisOut.x * centerDist, z: curr.z + bisOut.z * centerDist };
-
-          const rLeft = cross > 0 ? radius + T / 2 : Math.max(0, radius - T / 2);
-          const rRight = cross > 0 ? Math.max(0, radius - T / 2) : radius + T / 2;
-
-          const lTa = { x: ta.x + n1x * (T / 2), z: ta.z + n1z * (T / 2) };
-          const lTb = { x: tb.x + n2x * (T / 2), z: tb.z + n2z * (T / 2) };
-          const rTa = { x: ta.x - n1x * (T / 2), z: ta.z - n1z * (T / 2) };
-          const rTb = { x: tb.x - n2x * (T / 2), z: tb.z - n2z * (T / 2) };
-
-          const lCenter = { x: center.x + bisOut.x * (T / 2), z: center.z + bisOut.z * (T / 2) };
-          const rCenter = { x: center.x - bisOut.x * (T / 2), z: center.z - bisOut.z * (T / 2) };
-
-          this.cornerBoundaryArcs(left, lCenter, rLeft, lTa, lTb);
-          this.cornerBoundaryArcs(right, rCenter, rRight, rTa, rTb);
-          continue;
+      if (!isOpenEndpoint && curr.radius && curr.radius > 0) {
+        const arc = this.centerlineArc(prev, curr, next);
+        if (arc) {
+          if (!started) {
+            centerline.moveTo(arc.start.x, arc.start.z);
+            started = true;
+          } else {
+            centerline.lineTo(arc.start.x, arc.start.z);
+          }
+          centerline.absarc(arc.center.x, arc.center.z, arc.radius, arc.startAngle, arc.endAngle, arc.clockwise);
+        } else {
+          if (!started) {
+            centerline.moveTo(curr.x, curr.z);
+            started = true;
+          } else {
+            centerline.lineTo(curr.x, curr.z);
+          }
         }
-      }
-
-      if (isOpenEndpoint) {
-        const ux = i === 0 ? u2x : u1x;
-        const uz = i === 0 ? u2z : u1z;
-        const nx = -uz;
-        const nz = ux;
-        left.moveTo(curr.x + nx * (T / 2), curr.z + nz * (T / 2));
-        right.moveTo(curr.x - nx * (T / 2), curr.z - nz * (T / 2));
       } else {
-        const miterLeft = this.miterPoint(curr.x, curr.z, u1x, u1z, n1x, n1z, u2x, u2z, n2x, n2z, T / 2);
-        const miterRight = this.miterPoint(curr.x, curr.z, u1x, u1z, n1x, n1z, u2x, u2z, n2x, n2z, -T / 2);
-        left.moveTo(miterLeft.x, miterLeft.z);
-        right.moveTo(miterRight.x, miterRight.z);
+        if (!started) {
+          centerline.moveTo(curr.x, curr.z);
+          started = true;
+        } else {
+          centerline.lineTo(curr.x, curr.z);
+        }
       }
     }
 
-    const leftPoints = left.getPoints();
-    const rightPoints = right.getPoints();
-    if (leftPoints.length < 2 || rightPoints.length < 2) return new THREE.Shape();
+    if (!started) return new THREE.Shape();
+
+    const samples = centerline.getPoints(Math.max(16, n * 8));
+    if (samples.length < 2) return new THREE.Shape();
+
+    const left: { x: number; z: number }[] = [];
+    const right: { x: number; z: number }[] = [];
+    for (let i = 0; i < samples.length; i++) {
+      const p = samples[i];
+      let dx: number;
+      let dy: number;
+      if (i === 0) {
+        dx = samples[1].x - samples[0].x;
+        dy = samples[1].y - samples[0].y;
+      } else if (i === samples.length - 1) {
+        dx = samples[i].x - samples[i - 1].x;
+        dy = samples[i].y - samples[i - 1].y;
+      } else {
+        dx = samples[i + 1].x - samples[i - 1].x;
+        dy = samples[i + 1].y - samples[i - 1].y;
+      }
+      const len = Math.hypot(dx, dy);
+      if (len < 1e-9) continue;
+      const nx = -dy / len;
+      const ny = dx / len;
+      left.push({ x: p.x + nx * (T / 2), z: p.y + ny * (T / 2) });
+      right.push({ x: p.x - nx * (T / 2), z: p.y - ny * (T / 2) });
+    }
+
+    if (left.length < 2 || right.length < 2) return new THREE.Shape();
 
     const shape = new THREE.Shape();
     if (closed) {
-      const leftArea = Math.abs(this.signedArea(leftPoints.map(p => ({ x: p.x, y: p.y }))));
-      const rightArea = Math.abs(this.signedArea(rightPoints.map(p => ({ x: p.x, y: p.y }))));
-      const outer = leftArea >= rightArea ? leftPoints : rightPoints;
-      const inner = leftArea >= rightArea ? rightPoints : leftPoints;
-      shape.moveTo(outer[0].x, outer[0].y);
-      for (let i = 1; i < outer.length; i++) shape.lineTo(outer[i].x, outer[i].y);
+      const leftArea = Math.abs(this.signedArea(left.map((p) => ({ x: p.x, y: p.z }))));
+      const rightArea = Math.abs(this.signedArea(right.map((p) => ({ x: p.x, y: p.z }))));
+      const outer = leftArea >= rightArea ? left : right;
+      const inner = leftArea >= rightArea ? right : left;
+      shape.moveTo(outer[0].x, outer[0].z);
+      for (let i = 1; i < outer.length; i++) shape.lineTo(outer[i].x, outer[i].z);
       shape.closePath();
       const hole = new THREE.Path();
-      hole.moveTo(inner[0].x, inner[0].y);
-      for (let i = 1; i < inner.length; i++) hole.lineTo(inner[i].x, inner[i].y);
+      hole.moveTo(inner[0].x, inner[0].z);
+      for (let i = 1; i < inner.length; i++) hole.lineTo(inner[i].x, inner[i].z);
       hole.closePath();
       shape.holes.push(hole);
     } else {
-      shape.moveTo(leftPoints[0].x, leftPoints[0].y);
-      for (let i = 1; i < leftPoints.length; i++) shape.lineTo(leftPoints[i].x, leftPoints[i].y);
-      shape.lineTo(rightPoints[rightPoints.length - 1].x, rightPoints[rightPoints.length - 1].y);
-      for (let i = rightPoints.length - 2; i >= 0; i--) shape.lineTo(rightPoints[i].x, rightPoints[i].y);
-      shape.lineTo(leftPoints[0].x, leftPoints[0].y);
+      shape.moveTo(left[0].x, left[0].z);
+      for (let i = 1; i < left.length; i++) shape.lineTo(left[i].x, left[i].z);
+      shape.lineTo(right[right.length - 1].x, right[right.length - 1].z);
+      for (let i = right.length - 2; i >= 0; i--) shape.lineTo(right[i].x, right[i].z);
+      shape.lineTo(left[0].x, left[0].z);
       shape.closePath();
     }
     return shape;
   }
 
-  private miterPoint(
-    cx: number, cz: number,
-    u1x: number, u1z: number, n1x: number, n1z: number,
-    u2x: number, u2z: number, n2x: number, n2z: number,
-    offset: number
-  ): { x: number; z: number } {
-    const denom = u1x * u2z - u1z * u2x;
-    if (Math.abs(denom) < 1e-9) {
-      return { x: cx + n1x * offset, z: cz + n1z * offset };
-    }
-    const dx = (cx + n2x * offset) - (cx + n1x * offset);
-    const dz = (cz + n2z * offset) - (cz + n1z * offset);
-    const t = (dx * u2z - dz * u2x) / denom;
-    return { x: cx + n1x * offset + t * u1x, z: cz + n1z * offset + t * u1z };
-  }
+  private centerlineArc(
+    a: CurtainPoint,
+    c: CurtainPoint,
+    b: CurtainPoint
+  ): { center: { x: number; z: number }; radius: number; start: { x: number; z: number }; startAngle: number; endAngle: number; clockwise: boolean } | null {
+    const r = c.radius ?? 0;
+    if (r <= 0) return null;
 
-  private cornerBoundaryArcs(
-    path: THREE.Path,
-    center: { x: number; z: number },
-    radius: number,
-    start: { x: number; z: number },
-    end: { x: number; z: number }
-  ) {
-    if (radius <= 0) {
-      path.moveTo(start.x, start.z);
-      path.lineTo(end.x, end.z);
-      return;
-    }
-    const a1 = Math.atan2(start.z - center.z, start.x - center.x);
-    let a2 = Math.atan2(end.z - center.z, end.x - center.x);
-    let delta = a2 - a1;
+    const v1x = c.x - a.x;
+    const v1z = c.z - a.z;
+    const v2x = b.x - c.x;
+    const v2z = b.z - c.z;
+    const len1 = Math.hypot(v1x, v1z);
+    const len2 = Math.hypot(v2x, v2z);
+    if (len1 < 1e-9 || len2 < 1e-9) return null;
+
+    const u1x = v1x / len1;
+    const u1z = v1z / len1;
+    const u2x = v2x / len2;
+    const u2z = v2z / len2;
+
+    const dot = u1x * u2x + u1z * u2z;
+    const theta = Math.acos(Math.max(-1, Math.min(1, dot)));
+    if (theta < 0.001 || Math.abs(theta - Math.PI) < 0.001) return null;
+
+    const d = r / Math.tan(theta / 2);
+    if (d >= len1 || d >= len2) return null;
+
+    const n1x = -u1z;
+    const n1z = u1x;
+    const cross = u1x * u2z - u1z * u2x;
+    const sign = cross > 0 ? 1 : -1;
+
+    const center = {
+      x: c.x - u1x * d + sign * n1x * r,
+      z: c.z - u1z * d + sign * n1z * r,
+    };
+
+    const start = { x: c.x - u1x * d, z: c.z - u1z * d };
+    const end = { x: c.x + u2x * d, z: c.z + u2z * d };
+
+    const startAngle = Math.atan2(start.z - center.z, start.x - center.x);
+    let endAngle = Math.atan2(end.z - center.z, end.x - center.x);
+    let delta = endAngle - startAngle;
     while (delta <= -Math.PI) delta += 2 * Math.PI;
     while (delta > Math.PI) delta -= 2 * Math.PI;
     const clockwise = delta < 0;
-    path.moveTo(start.x, start.z);
-    path.absarc(center.x, center.z, radius, a1, a2, clockwise);
-  }
-  private outwardBisector(
-    u1x: number, u1z: number, u2x: number, u2z: number,
-    turnLeft: boolean
-  ): { x: number; z: number } {
-    const bx = -u1x + u2x;
-    const bz = -u1z + u2z;
-    const len = Math.hypot(bx, bz);
-    if (len < 1e-9) return { x: 0, z: 0 };
-    const bis = { x: bx / len, z: bz / len };
-    return turnLeft ? { x: -bis.x, z: -bis.z } : bis;
+
+    return { center, radius: r, start, startAngle, endAngle, clockwise };
   }
 
   private signedArea(pts: { x: number; y: number }[]): number {
@@ -508,6 +499,7 @@ export class HouseScene implements SceneApi {
     return area;
   }
 
+ 
   private renderWallRun(el: Extract<SceneElement, { type: 'wall_run' }>) {
     for (let i = 0; i < el.points.length - 1; i++) {
       const a = el.points[i];
