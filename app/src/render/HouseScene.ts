@@ -607,7 +607,6 @@ export class HouseScene implements SceneApi {
   private renderFloorRegion(el: Extract<SceneElement, { type: 'floor_region' }>) {
     const shape = this.buildRoundedShape(el.points);
     const geometry = new THREE.ShapeGeometry(shape);
-    geometry.rotateX(-Math.PI / 2);
     const mat = new THREE.MeshStandardMaterial({
       color: DEFAULT_FLOOR,
       roughness: 0.75,
