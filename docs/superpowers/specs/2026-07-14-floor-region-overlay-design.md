@@ -36,15 +36,15 @@ version: 1
 suppress: []
 
 elements:
-  - id: corridor_floor
+  - id: living_dining_floor
     type: floor_region
     room: living_dining          # 可选：归属房间，用于未来按房间选材料
-    points:                      # 多边形顶点，按顺序围成封闭区域，至少 3 个
-      - {x: 0.63, z: -1.96}
-      - {x: 3.08, z: -1.96}
-      - {x: 3.08, z: -1.08}
-      - {x: 0.63, z: -1.08}
-    reason: "客餐厅与走廊过渡区，房间矩形未覆盖"
+    points:                      # 多边形顶点，按顺序首尾闭合，至少 3 个；带 radius 表示圆角
+      - {x: 3.75, z: -4.32}
+      - {x: -5.88, z: -4.32, radius: 0.8}   # SW 圆角，与 curtain_run 同语义
+      - {x: -5.88, z: 5.39, radius: 0.8}    # NW 圆角
+      - {x: 3.75, z: 5.39}
+    reason: "客餐厅地板补全，含幕墙圆角边界"
 ```
 
 ### 字段说明
@@ -53,7 +53,7 @@ elements:
 |------|------|------|------|
 | `id` | string | 是 | 唯一标识 |
 | `type` | `'floor_region'` | 是 | 元素类型 |
-| `points` | `{x: number, z: number}[]` | 是 | 多边形顶点，按顺序首尾闭合，≥ 3 个 |
+| `points` | `{x: number, z: number, radius?: number}[]` | 是 | 多边形顶点，按顺序首尾闭合，≥ 3 个；`radius` 表示该点处圆角半径，复用 `curtain_run` 语义 |
 | `room` | string | 否 | 归属房间 ID，未来用于按房间应用不同地砖 |
 | `reason` | string | 否 | 声明动机，推荐填写 |
 
@@ -69,7 +69,7 @@ export type SceneElement =
   | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   | { type: 'glass_infill'; id: string; room: string; wall: Side; center_offset: number; width: number; height: number; sill: number }
-  | { type: 'floor_region'; id: string; points: OverlayPoint[]; room?: string };
+  | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string };
 ```
 
 ### server/overlay-merge.ts
@@ -77,12 +77,16 @@ export type SceneElement =
 1. 新增 `FloorRegionSchema`：
    - `id`: string，min(1)
    - `type`: z.literal('floor_region')
-   - `points`: `PointSchema` 数组，min(3)
+   - `points`: `CurtainPointSchema` 数组，min(3)
    - `room`: string，optional
    - `reason`: string，optional
    - 所有对象 `.strict()`，未知字段/类型报错。
 2. 把 `FloorRegionSchema` 加入 `OverlaySchema.elements` 的 `z.discriminatedUnion`。
 3. `mergeSceneElements` 无需额外逻辑：floor_region 作为元素自动追加到输出数组末尾。
+
+### 圆角语义
+
+`points[i]` 带 `radius` 时，表示该点处的拐角用圆弧平滑过渡，半径为声明值。圆弧起点和终点由相邻两段折线的夹角自动计算，与 `curtain_run` 一致。渲染器复用同一套圆角生成逻辑，保证地板边界与幕墙边界几何一致。
 
 ### app HouseScene.ts
 
@@ -91,12 +95,9 @@ export type SceneElement =
 ```ts
 private renderFloorRegion(el: Extract<SceneElement, { type: 'floor_region' }>) {
   const shape = new THREE.Shape();
-  shape.moveTo(el.points[0].x, el.points[0].z);
-  for (let i = 1; i < el.points.length; i++) {
-    shape.lineTo(el.points[i].x, el.points[i].z);
-  }
-  shape.closePath();
-  const geo = new THREE.ShapeGeometry(shape);
+  // 复用 curtain_run 的圆角折线路径生成
+  const path = buildCurvedPath(el.points); // 将 points + radius 转为 THREE.ShapePath
+  const geo = new THREE.ShapeGeometry(path.toShapes());
   const mat = new THREE.MeshStandardMaterial({
     color: DEFAULT_FLOOR,
     roughness: 0.75,
@@ -114,7 +115,8 @@ private renderFloorRegion(el: Extract<SceneElement, { type: 'floor_region' }>) {
 
 要点：
 
-- 使用 `THREE.ShapeGeometry` 支持任意多边形。
+- 使用 `THREE.ShapeGeometry` 支持任意多边形及圆角边界。
+- `points` 带 `radius` 时，按相邻线段夹角生成内切圆弧，与 `curtain_run` 圆角算法一致。
 - y 高度 `0.006` 略高于房间地板 `0.005`，避免重叠时闪烁。
 - 材质复用当前 `DEFAULT_FLOOR` 颜色；未来按房间/方案选地砖时统一遍历 `this.floorMeshes` 处理。
 
@@ -122,13 +124,14 @@ private renderFloorRegion(el: Extract<SceneElement, { type: 'floor_region' }>) {
 
 1. **overlay-merge 测试**：
    - `floor_region` 至少 3 个点，否则 schema 校验失败。
+   - `floor_region` 带 `radius` 时正常解析，非法 radius 报错。
    - `floor_region` 未知字段报错。
    - 未声明时场景输出中不包含 `floor_region`（即不自动补地板）。
 2. **parse_cad_test.py**：
    - 继续保持 walls 字段白名单（x1/z1/x2/z2），不输出 floor 相关意图字段。
 3. **HouseScene 测试**：
    - 传入一个 `floor_region` 后，场景中出现对应 mesh。
-   - mesh 顶点与 `points` 一致。
+   - mesh 顶点与 `points` 一致（含圆角细分点）。
    - mesh 的 `userData.type` 为 `'floor_region'`。
 
 ## 初版 overlay.yaml 增补内容
@@ -146,4 +149,4 @@ private renderFloorRegion(el: Extract<SceneElement, { type: 'floor_region' }>) {
 - 不自动从墙线计算地板多边形。
 - 不删除/替换现有房间矩形地板（suppress 机制保持仅用于墙段）。
 - 不改动地砖材质/纹理系统（`FloorTopic`、`TextureFactory`）。
-- 不引入 `floor_region` 的圆弧或布尔运算（首期仅支持简单多边形）。
+- 不支持 `floor_region` 之间的布尔并集/交集运算。
