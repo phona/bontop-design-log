@@ -38,7 +38,7 @@ vi.mock('three', () => {
   return {
     Scene: class extends MockObject3D { background: unknown = null; },
     Group: class extends MockObject3D {},
-    Mesh: class extends MockObject3D { material = new MockMaterial(); geometry = {}; },
+    Mesh: class extends MockObject3D { material = new MockMaterial(); geometry: any = {}; constructor(geometry?: any, material?: any) { super(); if (geometry) this.geometry = geometry; if (material) this.material = material; } },
     Object3D: MockObject3D,
     Sprite: class extends MockObject3D {},
     PerspectiveCamera: class extends MockObject3D { aspect = 1; updateProjectionMatrix() {} lookAt() {} },
@@ -71,7 +71,7 @@ vi.mock('three', () => {
       closePath() {}
       getPoints() { return this.points; }
     },
-    ExtrudeGeometry: class extends MockObject3D { constructor(_shape: any, _opts: any) { super(); } },
+    ExtrudeGeometry: class extends MockObject3D { shape: any; options: any; constructor(shape: any, opts: any) { super(); this.shape = shape; this.options = opts; } },
     CanvasTexture: class {},
     MeshStandardMaterial: MockMaterial,
     MeshBasicMaterial: MockMaterial,
@@ -270,7 +270,7 @@ describe('HouseScene', () => {
     expect(objectId).toBe('curtain:west');
   });
 
-  it('renders closed curtain_run as a single mesh', async () => {
+  it('renders closed curtain_run as a single mesh with a hole', async () => {
     const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
     const scene = new HouseScene(canvas);
     const projectData = {
@@ -296,10 +296,15 @@ describe('HouseScene', () => {
     };
     await scene.buildFromCatalog(projectData);
     let curtainCount = 0;
+    let holeCount = 0;
     scene.getScene().traverse((obj: any) => {
-      if (obj.userData?.type === 'curtain_run') curtainCount++;
+      if (obj.userData?.type === 'curtain_run') {
+        curtainCount++;
+        holeCount = obj.geometry?.shape?.holes?.length ?? 0;
+      }
     });
     expect(curtainCount).toBe(1);
+    expect(holeCount).toBe(1);
   });
 
   it('renders a shared wall once between adjacent rooms', async () => {

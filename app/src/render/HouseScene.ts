@@ -436,8 +436,8 @@ export class HouseScene implements SceneApi {
       for (let i = 1; i < outer.length; i++) shape.lineTo(outer[i].x, outer[i].z);
       shape.closePath();
       const hole = new THREE.Path();
-      hole.moveTo(inner[0].x, inner[0].z);
-      for (let i = 1; i < inner.length; i++) hole.lineTo(inner[i].x, inner[i].z);
+      hole.moveTo(inner[inner.length - 1].x, inner[inner.length - 1].z);
+      for (let i = inner.length - 2; i >= 0; i--) hole.lineTo(inner[i].x, inner[i].z);
       hole.closePath();
       shape.holes.push(hole);
     } else {
