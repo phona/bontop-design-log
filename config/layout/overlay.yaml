@@ -43,3 +43,64 @@ elements:
     width: 3.5
     height: 1.6
     sill: 0.9
+
+  # 地板补区：覆盖房间矩形之间的缝隙/过渡区
+  - id: corridor_floor
+    type: floor_region
+    points:
+      - {x: 0.63, z: -1.96}
+      - {x: 3.08, z: -1.96}
+      - {x: 3.08, z: -1.08}
+      - {x: 0.63, z: -1.08}
+    reason: "客餐厅与走廊过渡区，房间矩形未覆盖"
+
+  # 上飘窗：沿 curtain_run 向内凹陷
+  - id: master_left_bay
+    type: bay_sill
+    points:
+      - {x: -5.88, z: -0.93}
+      - {x: -5.88, z: 4.39}
+    depth: 1.10
+    sill: 0.45
+    height: 2.55
+    reason: "主卧西墙上飘窗"
+
+  - id: bedroom_nw_bay
+    type: bay_sill
+    points:
+      - {x: -5.88, z: -2.99}
+      - {x: -5.88, z: -0.93}
+    depth: 1.10
+    sill: 0.45
+    height: 2.55
+    reason: "西北次卧西墙上飘窗"
+
+  - id: master_top_bay
+    type: bay_sill
+    points:
+      - {x: -5.363, z: 5.39}
+      - {x: -2.23, z: 5.39}
+    depth: 1.10
+    sill: 0.45
+    height: 2.55
+    reason: "主卧北墙上飘窗"
+
+  - id: bedroom_se_bay
+    type: bay_sill
+    points:
+      - {x: -2.23, z: 5.39}
+      - {x: 0.39, z: 5.39}
+    depth: 1.10
+    sill: 0.45
+    height: 2.55
+    reason: "东南次卧北墙上飘窗"
+
+  - id: master_bottom_bay
+    type: bay_sill
+    points:
+      - {x: -0.578, z: -4.323}
+      - {x: -5.75, z: -3.17}
+    depth: 1.10
+    sill: 0.45
+    height: 2.55
+    reason: "主卧 SW 对角线上飘窗"

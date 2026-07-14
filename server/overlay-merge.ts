@@ -61,6 +61,7 @@ const FloorRegionSchema = z
     type: z.literal('floor_region'),
     points: z.array(CurtainPointSchema).min(3),
     room: z.string().min(1).optional(),
+    reason: z.string().min(1).optional(),
   })
   .strict();
 
@@ -72,6 +73,7 @@ const BaySillSchema = z
     depth: z.number().positive(),
     sill: z.number().min(0),
     height: z.number().positive(),
+    reason: z.string().min(1).optional(),
   })
   .strict();
 

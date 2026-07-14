@@ -361,8 +361,8 @@ export type SceneElement =
       height: number;
       sill: number;
     }
-  | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string }
-  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number };
+  | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string }
+  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string };
 
 export interface CadLayoutYaml {
   version: string;
