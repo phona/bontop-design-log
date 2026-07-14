@@ -15,6 +15,13 @@
    启发式去补）；窗洞是空洞，没有任何地方声明"洞里该填玻璃"。
 3. **牵一发动全身**：全局几何推断（min/max 边界、最外侧判定、斜线弧化）导致改动
    一处坐标，其它位置的分类结果跟着变，无法定位、无法预测。
+4. **坐标系静默塌陷**（实施前排查发现）：DXF 房间标签是纯中文、无 ID 前缀，
+   "不猜房间 ID"改造后全部被跳过（行为正确），但 `compute_origin` 和
+   `label_cluster_bounds` **隐式依赖标签**——labels 为空时静默退化为
+   origin=(0,0)、bounds=None，导致 walls 不做原点平移、不过滤图纸副本副本。
+   当前提交的 cad-extracted.yaml 中 274 段墙（含两份图纸副本）位于
+   x 2.77~40.18 的错误坐标系，与 rooms（x -4.63~10.82，靠 merge 机制保留的
+   旧正确几何）完全脱节。另发现 `extract()` 内硬编码追加 entry_garden 几何。
 
 ## 架构铁律（本 spec 的核心约束）
 
@@ -25,6 +32,7 @@
 ## 分层模型
 
 ```
+第 0 层  锚点配置      → config/layout/cad-anchor.yaml         DXF→场景坐标系的显式声明
 第 1 层  DXF 底稿      → parse_cad.py → cad-extracted.yaml    纯几何，零意图字段
 第 2 层  overlay 配置  → config/layout/overlay.yaml           人工声明的权威事实
 第 3 层  合并          → server/overlay-merge.ts              确定性合并（suppress + add）
@@ -39,6 +47,28 @@
   （语义："图纸没有/画不清，以我为准"）。
 
 改 overlay.yaml 只影响声明的区域。不存在全局推断，因此不存在连锁副作用。
+
+## cad-anchor.yaml Schema（第 0 层，提取修复）
+
+DXF→场景坐标系的换算不再从标签簇推断，改为显式声明：
+
+```yaml
+version: 1
+# 场景原点在 DXF 图纸上的位置（DXF 毫米坐标）。
+# 取自 2026-07-13 正确提取版本的标签质心（git fe31b2d），经门位坐标交叉验证。
+dxf_origin: {x: 31642.04, y: -12484.34}
+# 有效图框（DXF 毫米坐标）：只提取该矩形内的墙线。
+# 用于排除同一 modelspace 里的重复图纸副本（墙体定位图等）。
+dxf_frame: {min_x: 25500, min_y: -18200, max_x: 40500, max_y: -7900}
+```
+
+- `extract_walls` 的原点平移和副本过滤只用这两个声明值，不再调用
+  `compute_origin` / `label_cluster_bounds` 的结果。
+- **cad-anchor.yaml 缺失或字段不全 → parse_cad.py 直接报错退出（fail loud），
+  绝不静默输出未平移的墙体。**
+- 坐标换算公式固定为：`x_scene = (x_dxf - origin.x) / 1000`，
+  `z_scene = (origin.y - y_dxf) / 1000`（与现有 rooms 提取一致）。
+- 标签仍用于房间提取（有 ID 前缀才提取，无则跳过，靠 merge 保留已核对几何）。
 
 ## overlay.yaml Schema
 
@@ -148,6 +178,8 @@ type SceneElement =
 | `load_curtain_corners` | L178-206 | 只服务于弧化过滤 |
 | `Wall.curtain` 字段及输出 | L57, L1152 | cad-extracted 回归纯几何 |
 | `_smooth_diagonals` 弧线合成 | L347-401 | 弧角改由 overlay 声明 |
+| `extract()` 内 entry_garden 硬编码 | L919-926 | 几何知识内嵌代码，merge 机制已能保留该房间 |
+| walls 提取对 `compute_origin`/`label_cluster_bounds` 的依赖 | L906-914 | 改读 cad-anchor.yaml，缺失即报错 |
 
 house.yaml 删除 `curtain_walls` 与 `curtain_wall_corners` 段（坐标迁移进
 overlay.yaml）。
@@ -167,9 +199,9 @@ overlay.yaml）。
 
 ## 初版 overlay.yaml 内容
 
-- 西/北/南幕墙 `curtain_run`：坐标从现有 cad-extracted.yaml 的 23 段
-  `curtain: true` 段和 house.yaml `curtain_wall_corners` 迁移，人工核对合并
-  为 2-3 条折线。
+- 西/北/南幕墙 `curtain_run`：**以 house.yaml `curtain_wall_corners`（房间
+  坐标系）和修复坐标系后重新生成的 walls 为基准**人工核对，合并为 2-3 条折线。
+  当前 cad-extracted.yaml 里的 23 段 `curtain: true` 位于错误坐标系，不可迁移。
 - 入户花园、西设备平台外墙：**不声明**——猜测器删除后 DXF 真实墙线默认渲染
   为实墙，误判问题从根上消失。
 - 窗洞 `glass_infill`：按 house.yaml 各房间现有 `openings` 中 type=window
@@ -190,6 +222,9 @@ overlay.yaml）。
 
 ## 测试计划
 
+- **提取修复**（TDD 先行）：cad-anchor.yaml 加载/字段校验/缺失报错；
+  extract_walls 用锚点平移、用图框过滤副本；重新生成后 walls 与 rooms
+  同坐标系（范围重叠断言）。
 - **overlay-merge 单测**（TDD 先行）：suppress 命中/不命中/边界容差、
   elements 追加、schema 校验失败、未知 type 报错、空 overlay 直通。
 - **parse_cad_test.py**：删幕墙相关用例；新增字段白名单守卫测试；
