@@ -3,70 +3,69 @@
 version: 1
 
 suppress:
-  - id: suppress_south_wall
-    region: { x1: -8.5, z1: 5.5, x2: 8.5, z2: 4.8 }
-    reason: "南外墙改玻璃幕墙"
-  - id: suppress_west_wall
-    region: { x1: -8.5, z1: 5.5, x2: -7.8, z2: -5.5 }
-    reason: "西外墙改玻璃幕墙"
+  # 外框（顺时针）——用玻璃幕墙替换
   - id: suppress_north_wall
-    region: { x1: -8.5, z1: -4.8, x2: 5.6, z2: -5.5 }
-    reason: "北外墙改玻璃幕墙（入户花园以西）"
+    region: { x1: -0.5, z1: -0.5, x2: 11.3, z2: 0.5 }
+    reason: "北外墙改玻璃幕墙"
+  - id: suppress_west_wall
+    region: { x1: -0.5, z1: -0.5, x2: 0.5, z2: 10.3 }
+    reason: "西外墙改玻璃幕墙"
+  - id: suppress_south_wall
+    region: { x1: -0.5, z1: 9.3, x2: 16.9, z2: 10.3 }
+    reason: "南外墙改玻璃幕墙"
+  - id: suppress_east_kitchen
+    region: { x1: 10.3, z1: -0.5, x2: 11.3, z2: 2.5 }
+    reason: "厨房东墙改玻璃幕墙"
+  - id: suppress_east_connector
+    region: { x1: 10.3, z1: 1.5, x2: 13.9, z2: 2.5 }
+    reason: "起居东墙台阶改玻璃幕墙"
+  - id: suppress_east_living
+    region: { x1: 12.9, z1: 1.5, x2: 13.9, z2: 5.9 }
+    reason: "起居东墙改玻璃幕墙"
+  - id: suppress_bedroom_se_north
+    region: { x1: 12.9, z1: 4.9, x2: 16.9, z2: 5.9 }
+    reason: "东南次卧北墙改玻璃幕墙"
+  - id: suppress_bedroom_se_east
+    region: { x1: 15.9, z1: 4.9, x2: 16.9, z2: 10.3 }
+    reason: "东南次卧东墙改玻璃幕墙"
+
+  - id: suppress_entry_garden_east
+    region: { x1: 14.75, z1: -3.4, x2: 15.75, z2: 0.5 }
+    reason: "入户花园东墙改玻璃护栏"
+  - id: suppress_entry_garden_north
+    region: { x1: 10.3, z1: -3.4, x2: 15.75, z2: -2.4 }
+    reason: "入户花园北墙改玻璃护栏"
 
 elements:
   - id: glass_facade
     type: curtain_run
+    closed: true
     points:
-      - { x: 8.2, z: 5.2 }
-      - { x: -8.2, z: 5.2, radius: 0.8 }
-      - { x: -8.2, z: -5.2, radius: 0.8 }
-      - { x: 5.6, z: -5.2 }
+      - { x: 0.0, z: 0.0, radius: 0.8 }
+      - { x: 10.8, z: 0.0 }
+      - { x: 10.8, z: 2.0 }
+      - { x: 13.4, z: 2.0 }
+      - { x: 13.4, z: 5.4 }
+      - { x: 16.4, z: 5.4 }
+      - { x: 16.4, z: 9.8 }
+      - { x: 0.0, z: 9.8, radius: 0.8 }
     height: 3.0
 
-  - id: living_south_glass
-    type: glass_infill
-    room: living_dining
-    wall: south
-    center_offset: 0
-    width: 3.5
-    height: 1.6
-    sill: 0.9
+  - id: entry_garden_glass
+    type: curtain_run
+    closed: true
+    points:
+      - { x: 10.8, z: 0.0 }
+      - { x: 15.25, z: 0.0 }
+      - { x: 15.25, z: -2.9 }
+      - { x: 10.8, z: -2.9 }
+    height: 1.1
 
   - id: corridor_floor
     type: floor_region
     points:
-      - { x: -1.0, z: 3.2 }
-      - { x: 3.45, z: 3.2 }
-      - { x: 3.45, z: 4.1 }
-      - { x: -1.0, z: 4.1 }
-    reason: "客餐厅与走廊过渡区"
-
-  - id: master_left_bay
-    type: bay_sill
-    points:
-      - { x: -8.2, z: 0.9 }
-      - { x: -8.2, z: 5.2 }
-    depth: 0.3
-    sill: 0.45
-    height: 2.55
-    reason: "主卧西墙上飘窗"
-
-  - id: bedroom_nw_bay
-    type: bay_sill
-    points:
-      - { x: -8.2, z: -3.35 }
-      - { x: -8.2, z: 0.9 }
-    depth: 0.3
-    sill: 0.45
-    height: 2.55
-    reason: "西北次卧西墙上飘窗"
-
-  - id: northwest_bay
-    type: bay_sill
-    points:
-      - { x: -8.2, z: -5.2 }
-      - { x: -4.0, z: -5.2 }
-    depth: 0.3
-    sill: 0.45
-    height: 2.55
-    reason: "北侧书房/次卧北墙飘窗"
+      - { x: 4.2, z: 5.5 }
+      - { x: 7.2, z: 5.5 }
+      - { x: 7.2, z: 7.8 }
+      - { x: 4.2, z: 7.8 }
+    reason: "过道与卫生间过渡区"
