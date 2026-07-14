@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 from dataclasses import dataclass
 from datetime import date
@@ -233,7 +234,7 @@ def _snap(v: float, grid: float = 1.0) -> float:
 
 def collapse_double_wall_segments(
     segments: list[tuple[tuple[float, float], tuple[float, float]]],
-    tolerance: float = 1.0,
+    tolerance: float = 10.0,
     max_double_gap: float = 300.0,
     interval_gap: float = 2000.0,
 ) -> list[tuple[tuple[float, float], tuple[float, float]]]:
@@ -1094,8 +1095,10 @@ def write_layout_yaml(
             "area": platform.area,
         }
 
-    with open(output_path, "w", encoding="utf-8") as f:
+    tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
         yaml.dump(data, f, allow_unicode=True, sort_keys=False, default_flow_style=False)
+    os.replace(tmp_path, output_path)
 
     total_area = round(sum(r.area for r in rooms if r.area), 2)
     valid_ids = load_house_room_ids()
