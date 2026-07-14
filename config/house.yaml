@@ -318,7 +318,7 @@ gift_areas:
     area: 2.48
     status: "design"
     orientation: "西"
-    notes: "701 唯一可用设备平台，赠送面积，面积约 2.48㎡。因面积有限且西户专属，空调方案建议采用中央空调/多联机（一台外机），避免多台分体外机放不下。详见 docs/hvac_options_analysis.md"
+    notes: "701 唯一可用设备平台，赠送面积，面积约 2.48㎡。因面积有限且西户专属，空调方案建议采用中央空调/多联机（一台外机），避免多台分体外机放不下。详见 docs/hvac_options_analysis.md（本区域未在当前效果图模型中渲染，以合同/物业图为准）"
 
 mechanical_electrical_plumbing:
   hvac:
