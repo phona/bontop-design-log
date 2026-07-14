@@ -360,7 +360,9 @@ export type SceneElement =
       width: number;
       height: number;
       sill: number;
-    };
+    }
+  | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string }
+  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number };
 
 export interface CadLayoutYaml {
   version: string;
