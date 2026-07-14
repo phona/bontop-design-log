@@ -95,6 +95,31 @@ suppress:
 `)
     );
   });
+
+  it('accepts closed: true on curtain_run', () => {
+    const cfg = parseOverlay(`
+version: 1
+elements:
+  - id: glass_facade
+    type: curtain_run
+    closed: true
+    points: [{x: 0, z: 0}, {x: 1, z: 0}]
+`);
+    assert.equal(cfg.elements.length, 1);
+    const el = cfg.elements[0];
+    if (el.type === 'curtain_run') assert.equal(el.closed, true);
+  });
+
+  it('rejects non-boolean closed on curtain_run', () => {
+    assert.throws(() => parseOverlay(`
+version: 1
+elements:
+  - id: x
+    type: curtain_run
+    closed: "yes"
+    points: [{x: 0, z: 0}, {x: 1, z: 0}]
+`));
+  });
 });
 
 describe('mergeSceneElements', () => {

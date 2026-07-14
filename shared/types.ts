@@ -349,7 +349,7 @@ export interface CurtainPoint extends OverlayPoint {
 
 export type SceneElement =
   | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number }
-  | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number }
+  | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   | {
       type: 'glass_infill';

@@ -29,6 +29,7 @@ const CurtainRunSchema = z
     type: z.literal('curtain_run'),
     points: z.array(CurtainPointSchema).min(2),
     height: z.number().positive().default(3.0),
+    closed: z.boolean().optional(),
   })
   .strict();
 
