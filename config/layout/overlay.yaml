@@ -16,8 +16,8 @@ elements:
     type: curtain_run
     points:
       - { x: 8.2, z: 5.2 }
-      - { x: -8.2, z: 5.2 }
-      - { x: -8.2, z: -5.2 }
+      - { x: -8.2, z: 5.2, radius: 0.8 }
+      - { x: -8.2, z: -5.2, radius: 0.8 }
       - { x: 5.6, z: -5.2 }
     height: 3.0
 
@@ -44,7 +44,7 @@ elements:
     points:
       - { x: -8.2, z: 0.9 }
       - { x: -8.2, z: 5.2 }
-    depth: 0.6
+    depth: 0.3
     sill: 0.45
     height: 2.55
     reason: "主卧西墙上飘窗"
@@ -54,7 +54,7 @@ elements:
     points:
       - { x: -8.2, z: -3.35 }
       - { x: -8.2, z: 0.9 }
-    depth: 0.6
+    depth: 0.3
     sill: 0.45
     height: 2.55
     reason: "西北次卧西墙上飘窗"
@@ -64,7 +64,7 @@ elements:
     points:
       - { x: -8.2, z: -5.2 }
       - { x: -4.0, z: -5.2 }
-    depth: 0.6
+    depth: 0.3
     sill: 0.45
     height: 2.55
     reason: "主卧北墙上飘窗"

@@ -81,7 +81,7 @@ rooms:
     perimeter: 8.2
   - id: entry_garden
     name: 入户花园
-    x: 8.325
+    x: 7.825
     z: -3.65
     width: 4.45
     depth: 2.9
@@ -120,12 +120,4 @@ walls:
   - { x1: 2.0, z1: -0.3, x2: 5.6, z2: -0.3 }
   # 内墙：东南次卧-起居
   - { x1: 5.2, z1: 4.1, x2: 5.2, z2: 5.2 }
-platform:
-  id: west_platform
-  name: 西设备平台
-  x: -8.2
-  z: 0.0
-  width: 1.0
-  depth: 9.8
-  height: 0.15
-  area: 9.8
+
