@@ -125,6 +125,11 @@ type SceneElement =
 ### server/overlay-merge.ts（新增）
 
 - 输入：cad-extracted 的纯几何 walls + overlay.yaml。
+- **校验用 zod**（已有依赖，mcp-server.ts 在用）：`z.discriminatedUnion('type', ...)`
+  对应 SceneElement 联合，所有对象 `.strict()`——未知 type、拼错/多余的字段、
+  缺失必填项一律校验失败，错误带路径（如 `elements[2].points`）进配置错误
+  通道。TS 类型经 `z.infer` 从 schema 导出，schema 与类型单一来源。
+  不引入 pydantic：overlay.yaml 无 Python 消费方。
 - 步骤：① suppress 过滤（段中点在 region 内即移除）→ ② 剩余段标记为
   `wall` → ③ elements 校验并追加。
 - overlay.yaml 通过现有泛型 `ConfigLoader` 加载，加入 server/index.ts 的
