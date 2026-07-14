@@ -177,7 +177,7 @@ export class ProjectCatalog {
     };
     const layoutPath = layoutName
       ? `${configDir}/config/layout/${layoutName}.yaml`
-      : `${configDir}/config/layout/cad-extracted.yaml`;
+      : `${configDir}/config/layout/model-geometry.yaml`;
     const layout = load(readFileSync(layoutPath, 'utf8')) as CadLayoutYaml;
     const houseMeta = load(readFileSync(`${configDir}/config/house.yaml`, 'utf8')) as HouseYaml;
     return new ProjectCatalog(materials, budgetBase, layout, houseMeta, basename(layoutPath));

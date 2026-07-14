@@ -102,7 +102,7 @@ export class App {
       const layoutsRes = await fetch('/api/layouts');
       const layoutsData = await layoutsRes.json();
       this.overviewMenu.setLayouts(layoutsData.layouts);
-      this.overviewMenu.setActiveLayout(this.projectData.house.layoutSource ?? 'cad-extracted');
+      this.overviewMenu.setActiveLayout(this.projectData.house.layoutSource ?? 'model-geometry');
     } catch (e) {
       // layouts not critical
     }

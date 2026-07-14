@@ -83,7 +83,7 @@ python -m pip install -r scripts/requirements.txt
 python scripts/parse_cad.py
 
 # 查看提取后的结构化布局
-cat config/layout/cad-extracted.yaml
+cat config/layout/model-geometry.yaml
 
 # 查看当前预算
 cat config/budget/base.json

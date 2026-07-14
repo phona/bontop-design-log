@@ -69,11 +69,11 @@ const budgetBaseLoader = new ConfigLoader<{ total_budget: number; categories: Re
 registry.register(budgetBaseLoader);
 
 const layoutLoader = new ConfigLoader<CadLayoutYaml>(
-  'config/layout/cad-extracted.yaml',
+  'config/layout/model-geometry.yaml',
   (raw) => load(raw) as CadLayoutYaml,
   () => {
     rebuildDerived();
-    console.log('[server] config/layout/cad-extracted.yaml reloaded');
+    console.log('[server] config/layout/model-geometry.yaml reloaded');
   }
 );
 registry.register(layoutLoader);
