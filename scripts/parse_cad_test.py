@@ -105,7 +105,7 @@ def test_extract_room_geometry():
 
 
 def test_write_layout_yaml(tmp_path: Path):
-    out = tmp_path / "cad-extracted.yaml"
+    out = tmp_path / "model-geometry-from-cad.yaml"
     rooms = [
         Room(
             id="master_bedroom",
@@ -138,7 +138,7 @@ def test_write_layout_yaml(tmp_path: Path):
 
 
 def test_write_layout_yaml_no_previous_diff(tmp_path: Path):
-    out = tmp_path / "cad-extracted.yaml"
+    out = tmp_path / "model-geometry-from-cad.yaml"
     rooms = [
         Room(
             id="master_bedroom",
@@ -157,7 +157,7 @@ def test_write_layout_yaml_no_previous_diff(tmp_path: Path):
 
 
 def test_write_layout_yaml_diff_changes(tmp_path: Path):
-    out = tmp_path / "cad-extracted.yaml"
+    out = tmp_path / "model-geometry-from-cad.yaml"
     previous = {
         "version": "1.0",
         "rooms": [
@@ -224,7 +224,7 @@ def test_load_house_room_ids_empty_config(tmp_path: Path):
 
 
 def test_write_layout_yaml_corrupted_previous(tmp_path: Path):
-    out = tmp_path / "cad-extracted.yaml"
+    out = tmp_path / "model-geometry-from-cad.yaml"
     out.write_text("not valid yaml: [", encoding="utf-8")
     rooms = [
         Room(
@@ -244,7 +244,7 @@ def test_write_layout_yaml_corrupted_previous(tmp_path: Path):
 
 
 def test_write_layout_yaml_reports_skipped_labels(tmp_path: Path):
-    out = tmp_path / "cad-extracted.yaml"
+    out = tmp_path / "model-geometry-from-cad.yaml"
     rooms = [
         Room(
             id="master_bedroom",
@@ -498,7 +498,7 @@ def test_extract_walls_returns_origin_subtracted_meters():
 
 def test_write_layout_yaml_includes_walls_and_origin(tmp_path: Path):
     """YAML output contains the walls list and the computed origin."""
-    out = tmp_path / "cad-extracted.yaml"
+    out = tmp_path / "model-geometry-from-cad.yaml"
     rooms = [
         Room(id="master_bedroom", name="主卧", x=-5.35, z=2.0, width=4.5, depth=4.05,
              height=3.0, area=18.16, perimeter=18.39)
@@ -623,7 +623,7 @@ def test_extract_room_geometry_finds_per_room_rectangle_not_whole_plan():
 
 def test_geometry_changes_in_report(tmp_path: Path):
     """Report includes geometry_changes when CAD differs from previous YAML."""
-    out = tmp_path / "cad-extracted.yaml"
+    out = tmp_path / "model-geometry-from-cad.yaml"
     previous = {
         "version": "1.0",
         "rooms": [
