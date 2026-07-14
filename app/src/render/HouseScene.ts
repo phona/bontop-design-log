@@ -278,7 +278,7 @@ export class HouseScene implements SceneApi {
       side: THREE.DoubleSide,
     });
     for (let i = 0; i < walls.length; i++) {
-      const { x1, z1, x2, z2, curtain } = walls[i];
+      const { x1, z1, x2, z2, curtain } = walls[i] as WallSegment & { curtain?: boolean };
       const cx = (x1 + x2) / 2;
       const cz = (z1 + z2) / 2;
       const dx = x2 - x1;

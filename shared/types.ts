@@ -336,8 +336,27 @@ export interface WallSegment {
   z1: number;
   x2: number;
   z2: number;
-  curtain?: boolean;
 }
+
+export interface OverlayPoint {
+  x: number;
+  z: number;
+}
+
+export type SceneElement =
+  | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number }
+  | { type: 'curtain_run'; id: string; points: OverlayPoint[]; height: number }
+  | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
+  | {
+      type: 'glass_infill';
+      id: string;
+      room: string;
+      wall: 'north' | 'south' | 'east' | 'west';
+      center_offset: number;
+      width: number;
+      height: number;
+      sill: number;
+    };
 
 export interface CadLayoutYaml {
   version: string;
