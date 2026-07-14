@@ -22,6 +22,7 @@ const materialsFixture: MaterialsYaml = {
   materials: [
     {
       id: 'floor_tile_01',
+      topic_id: 'floor',
       category: '地砖',
       name: '浅胡桃木纹砖',
       brand: '马可波罗',
