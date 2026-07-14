@@ -32,7 +32,7 @@ function rebuildDerived(): void {
   const budgetBase = budgetBaseLoader.getConfig() ?? { total_budget: 0, categories: {} };
   const layout = layoutLoader.getConfig() ?? ({ rooms: [] } as unknown as CadLayoutYaml);
   const houseMeta = houseMetaLoader.getConfig();
-  catalog = ProjectCatalog.fromMaterials(materials, budgetBase, layout, houseMeta);
+  catalog = ProjectCatalog.fromMaterials(materials, budgetBase, layout, houseMeta, 'model-geometry');
   const rulesConfig = designRulesLoader.getConfig() ?? { version: '1.0', risks: [], constraints: [] };
   ruleEngine = new RuleEngine(rulesConfig);
   budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());

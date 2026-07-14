@@ -21,7 +21,7 @@ describe('ProjectCatalog default layout source', () => {
     writeFileSync(join(dir, 'config/budget/base.json'), `{"total_budget": 0, "categories": {}}`);
 
     const catalog = ProjectCatalog.load(dir);
-    assert.strictEqual(catalog.getLayoutSource(), 'model-geometry.yaml');
+    assert.strictEqual(catalog.getLayoutSource(), 'model-geometry');
 
     rmSync(dir, { recursive: true, force: true });
   });
