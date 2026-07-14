@@ -57,6 +57,44 @@ class Wall:
     curtain: bool = False
 
 
+CAD_ANCHOR_CONFIG = Path("config/layout/cad-anchor.yaml")
+
+
+@dataclass
+class CadAnchor:
+    """DXF→场景坐标系锚点。全部字段为 DXF 毫米，值只来自 cad-anchor.yaml 声明。"""
+    origin_x: float
+    origin_y: float
+    frame: tuple[float, float, float, float]  # (min_x, min_y, max_x, max_y)
+
+
+def load_cad_anchor(path: Path) -> CadAnchor:
+    """Load the declared DXF anchor. Fail loud —— 绝不静默退化为 (0,0)/None。"""
+    if not path.exists():
+        raise FileNotFoundError(
+            f"cad-anchor config not found: {path}. "
+            "Walls cannot be extracted without an explicit dxf_origin/dxf_frame. "
+            "Declare them in config/layout/cad-anchor.yaml."
+        )
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    if not isinstance(data, dict):
+        raise ValueError(f"Invalid cad-anchor config {path}: expected a mapping")
+    try:
+        origin = data["dxf_origin"]
+        frame = data["dxf_frame"]
+        return CadAnchor(
+            origin_x=float(origin["x"]),
+            origin_y=float(origin["y"]),
+            frame=(
+                float(frame["min_x"]), float(frame["min_y"]),
+                float(frame["max_x"]), float(frame["max_y"]),
+            ),
+        )
+    except (KeyError, TypeError) as exc:
+        raise ValueError(f"cad-anchor config {path} missing required key: {exc}") from exc
+
+
 def latest_dxf(cad_dir: Path) -> Path:
     """Return the most recently modified floor_plan DXF in cad_dir."""
     files = sorted(cad_dir.glob("floor_plan_design_*.dxf"), key=lambda p: p.stat().st_mtime)

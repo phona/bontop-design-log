@@ -772,6 +772,35 @@ def test_flood_fill_reads_centroids_from_config(tmp_path: Path, monkeypatch):
     assert "south_balcony" in result
 
 
+def test_load_cad_anchor_valid(tmp_path: Path):
+    from parse_cad import load_cad_anchor
+    p = tmp_path / "cad-anchor.yaml"
+    p.write_text(
+        "version: 1\n"
+        "dxf_origin: {x: 31642.04, y: -12484.34}\n"
+        "dxf_frame: {min_x: 25500, min_y: -18200, max_x: 40500, max_y: -7900}\n",
+        encoding="utf-8",
+    )
+    anchor = load_cad_anchor(p)
+    assert anchor.origin_x == 31642.04
+    assert anchor.origin_y == -12484.34
+    assert anchor.frame == (25500.0, -18200.0, 40500.0, -7900.0)
+
+
+def test_load_cad_anchor_missing_file_fails_loud(tmp_path: Path):
+    from parse_cad import load_cad_anchor
+    with pytest.raises(FileNotFoundError, match="cad-anchor"):
+        load_cad_anchor(tmp_path / "nope.yaml")
+
+
+def test_load_cad_anchor_missing_field_fails_loud(tmp_path: Path):
+    from parse_cad import load_cad_anchor
+    p = tmp_path / "cad-anchor.yaml"
+    p.write_text("version: 1\ndxf_origin: {x: 1.0, y: 2.0}\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_cad_anchor(p)
+
+
 def test_extract_walls_loads_curtain_corners_from_config(tmp_path: Path):
     """extract_walls loads curtain_wall_corners from house.yaml and filters smoothing."""
     from ezdxf.document import Drawing
