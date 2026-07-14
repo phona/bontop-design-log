@@ -63,7 +63,7 @@
 ```yaml
 suppress:
   - id: suppress_south_wall
-    region: {x1: -0.7, z1: -4.5, x2: 3.9, z2: -4.1}
+    region: {x1: -1.2, z1: -4.5, x2: 3.9, z2: -4.1}
     reason: "南外墙改玻璃幕墙"
   - id: suppress_sw_corner
     region: {x1: -6.0, z1: -3.5, x2: -5.0, z2: -2.9}
