@@ -478,31 +478,19 @@ def test_collect_wall_segments_filters_to_labeled_copy():
     assert segs[0] == ((29000.0, 0.0), (31000.0, 0.0))
 
 
-def test_compute_origin_is_label_centroid():
-    """Origin is the mean of all room-label positions so coords land near (0,0)."""
-    from parse_cad import compute_origin
-
-    labels = {
-        "a": ("A", 0.0, 0.0),
-        "b": ("B", 6000.0, 4000.0),
-    }
-    ox, oz = compute_origin(labels)
-    assert ox == 3000.0
-    assert oz == 2000.0
-
-
 def test_extract_walls_returns_origin_subtracted_meters():
     """Wall segments are exported in meters, origin-subtracted, axis-aligned."""
     from ezdxf.document import Drawing
 
-    from parse_cad import extract_walls
+    from parse_cad import CadAnchor, extract_walls
 
     doc = Drawing.new("R2018")
     msp = doc.modelspace()
     doc.layers.add("BS-非承重墙")
     # vertical wall at x=3000mm, y[1000,5000]; origin (1000,1000)mm -> x=2.0m z[0,4]
     msp.add_line((3000, 1000), (3000, 5000), dxfattribs={"layer": "BS-非承重墙"})
-    walls = extract_walls(msp, bounds=None, origin_x=1000.0, origin_z=1000.0)
+    anchor = CadAnchor(origin_x=1000.0, origin_y=1000.0, frame=(0, 0, 5000, 6000))
+    walls = extract_walls(msp, anchor)
     assert len(walls) == 1
     w = walls[0]
     assert (w.x1, w.z1, w.x2, w.z2) == (2.0, 0.0, 2.0, -4.0)
@@ -704,7 +692,7 @@ def test_geometry_changes_in_report(tmp_path: Path):
 def test_mark_curtain_walls_from_config(tmp_path: Path):
     """Curtain walls are marked based on house.yaml config, not boundary detection."""
     from ezdxf.document import Drawing
-    from parse_cad import extract_walls
+    from parse_cad import CadAnchor, extract_walls
 
     house_config = tmp_path / "house.yaml"
     house_config.write_text(yaml.dump({
@@ -732,7 +720,8 @@ def test_mark_curtain_walls_from_config(tmp_path: Path):
     # Interior wall: NOT curtain
     msp.add_line((0, 0), (1000, 0), dxfattribs={"layer": "BS-非承重墙"})
 
-    walls = extract_walls(msp, bounds=None, origin_x=0.0, origin_z=0.0, house_config_path=house_config)
+    anchor = CadAnchor(origin_x=0.0, origin_y=0.0, frame=(-6000, -6000, 9000, 6000))
+    walls = extract_walls(msp, anchor, house_config_path=house_config)
     curtain_walls = [w for w in walls if w.curtain]
     non_curtain = [w for w in walls if not w.curtain]
     assert len(curtain_walls) == 3  # west, north, south(x<3.5)
@@ -804,7 +793,7 @@ def test_load_cad_anchor_missing_field_fails_loud(tmp_path: Path):
 def test_extract_walls_loads_curtain_corners_from_config(tmp_path: Path):
     """extract_walls loads curtain_wall_corners from house.yaml and filters smoothing."""
     from ezdxf.document import Drawing
-    from parse_cad import extract_walls
+    from parse_cad import CadAnchor, extract_walls
 
     house_config = tmp_path / "house.yaml"
     house_config.write_text(yaml.dump({
@@ -819,9 +808,74 @@ def test_extract_walls_loads_curtain_corners_from_config(tmp_path: Path):
     msp.add_line((0, 0), (500, 500), dxfattribs={"layer": "BS-非承重墙"})
     msp.add_line((10000, 10000), (10500, 10500), dxfattribs={"layer": "BS-非承重墙"})
 
+    anchor = CadAnchor(origin_x=0.0, origin_y=0.0, frame=(-500, -500, 11000, 11000))
     walls = extract_walls(
-        msp, bounds=None, origin_x=0.0, origin_z=0.0,
+        msp, anchor,
         house_config_path=house_config,
     )
     assert len(walls) == 13
+
+
+def _write_anchor(tmp_path: Path, ox: float, oy: float,
+                  frame: tuple[float, float, float, float]) -> Path:
+    p = tmp_path / "cad-anchor.yaml"
+    p.write_text(
+        f"version: 1\n"
+        f"dxf_origin: {{x: {ox}, y: {oy}}}\n"
+        f"dxf_frame: {{min_x: {frame[0]}, min_y: {frame[1]}, "
+        f"max_x: {frame[2]}, max_y: {frame[3]}}}\n",
+        encoding="utf-8",
+    )
+    return p
+
+
+def test_extract_walls_uses_anchor_origin():
+    """墙体坐标 = (DXF - 锚点原点) / 1000，y 轴翻转。"""
+    from parse_cad import CadAnchor, extract_walls
+
+    class FakeLine:
+        def __init__(self, s, e):
+            self.dxf = type("D", (), {})()
+            self.dxf.layer = "BS-非承重墙"
+            self.dxf.start = type("P", (), {"x": s[0], "y": s[1]})()
+            self.dxf.end = type("P", (), {"x": e[0], "y": e[1]})()
+        def dxftype(self):
+            return "LINE"
+
+    anchor = CadAnchor(origin_x=30000.0, origin_y=-10000.0,
+                       frame=(25000.0, -20000.0, 40000.0, -5000.0))
+    msp = [FakeLine((31000.0, -12000.0), (33000.0, -12000.0))]
+    walls = extract_walls(msp, anchor)
+    assert len(walls) == 1
+    assert (walls[0].x1, walls[0].z1) == (1.0, 2.0)
+    assert (walls[0].x2, walls[0].z2) == (3.0, 2.0)
+
+
+def test_extract_walls_frame_filters_duplicate_copy():
+    """图框外的重复图纸副本墙线被排除。"""
+    from parse_cad import CadAnchor, extract_walls
+
+    class FakeLine:
+        def __init__(self, s, e):
+            self.dxf = type("D", (), {})()
+            self.dxf.layer = "BS-非承重墙"
+            self.dxf.start = type("P", (), {"x": s[0], "y": s[1]})()
+            self.dxf.end = type("P", (), {"x": e[0], "y": e[1]})()
+        def dxftype(self):
+            return "LINE"
+
+    anchor = CadAnchor(origin_x=30000.0, origin_y=-10000.0,
+                       frame=(25000.0, -20000.0, 40000.0, -5000.0))
+    inside = FakeLine((31000.0, -12000.0), (33000.0, -12000.0))
+    duplicate_copy = FakeLine((5000.0, -12000.0), (7000.0, -12000.0))
+    walls = extract_walls([inside, duplicate_copy], anchor)
+    assert len(walls) == 1
+
+
+def test_extract_has_no_hardcoded_entry_garden():
+    """extract() 源码不得硬编码任何房间几何。"""
+    src = Path("scripts/parse_cad.py").read_text(encoding="utf-8")
+    assert 'id="entry_garden"' not in src
+    assert "compute_origin" not in src
+    assert "label_cluster_bounds" not in src
 

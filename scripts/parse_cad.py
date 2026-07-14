@@ -191,28 +191,6 @@ def collect_wall_segments(
     return segments
 
 
-def label_cluster_bounds(
-    labels: dict[str, tuple[str, float, float]],
-    margin: float = 5000.0,
-) -> tuple[float, float, float, float] | None:
-    """Bounding box (with margin, in DXF mm) of all room label positions."""
-    if not labels:
-        return None
-    xs = [x for _, x, _ in labels.values()]
-    ys = [y for _, _, y in labels.values()]
-    return (min(xs) - margin, min(ys) - margin, max(xs) + margin, max(ys) + margin)
-
-
-def compute_origin(labels: dict[str, tuple[str, float, float]]) -> tuple[float, float]:
-    """Origin (in DXF mm) = centroid of room-label positions, so exported
-    coordinates land near (0, 0) regardless of where the plan sits in the DXF."""
-    if not labels:
-        return 0.0, 0.0
-    xs = [x for _, x, _ in labels.values()]
-    ys = [y for _, _, y in labels.values()]
-    return sum(xs) / len(xs), sum(ys) / len(ys)
-
-
 def load_curtain_corners(
     config_path: Path,
     origin_x: float,
@@ -248,26 +226,21 @@ def load_curtain_corners(
 
 def extract_walls(
     modelspace,
-    bounds: tuple[float, float, float, float] | None,
-    origin_x: float,
-    origin_z: float,
+    anchor: CadAnchor,
     house_config_path: Path | None = None,
 ) -> list[Wall]:
-    """Return wall segments in meters, origin-subtracted, for the renderer.
+    """Return wall segments in meters, anchor-origin-subtracted, frame-filtered.
 
     The DXF draws each physical wall exactly once (shared walls are single
     segments, openings are gaps), so exporting the segments verbatim gives the
     renderer a continuous, non-duplicated wall graph.
-
-    If ``house_config_path`` is given, curtain_wall_corners are loaded and
-    passed to _smooth_diagonals() for filtering.
     """
-    segments = collect_wall_segments(modelspace, bounds=bounds)
+    segments = collect_wall_segments(modelspace, bounds=anchor.frame)
 
     curtain_corners_dxf = None
     if house_config_path is not None:
         curtain_corners_dxf = load_curtain_corners(
-            house_config_path, origin_x, origin_z
+            house_config_path, anchor.origin_x, anchor.origin_y
         )
 
     segments = _smooth_diagonals(segments, curtain_corners_dxf=curtain_corners_dxf)
@@ -275,10 +248,10 @@ def extract_walls(
     for (x1, y1), (x2, y2) in segments:
         walls.append(
             Wall(
-                x1=round((x1 - origin_x) / 1000.0, 3),
-                z1=round((origin_z - y1) / 1000.0, 3),
-                x2=round((x2 - origin_x) / 1000.0, 3),
-                z2=round((origin_z - y2) / 1000.0, 3),
+                x1=round((x1 - anchor.origin_x) / 1000.0, 3),
+                z1=round((anchor.origin_y - y1) / 1000.0, 3),
+                x2=round((x2 - anchor.origin_x) / 1000.0, 3),
+                z2=round((anchor.origin_y - y2) / 1000.0, 3),
             )
         )
     curtain_config = _load_curtain_config(house_config_path)
@@ -882,6 +855,7 @@ def extract_room_geometry(
     origin_z: float = 0.0,
     default_height: float = 3.0,
     areas: dict[str, float] | None = None,
+    bounds: tuple[float, float, float, float] | None = None,
 ) -> list[Room]:
     """Compute rooms as rectangular bounding boxes around each label.
 
@@ -891,7 +865,6 @@ def extract_room_geometry(
     This handles glass-curtain-wall perimeters where no wall LINE exists at the
     true room boundary.
     """
-    bounds = label_cluster_bounds(labels)
     segments = collect_wall_segments(modelspace, bounds=bounds)
     rooms: list[Room] = []
     for project_id, (name, x_mm, y_mm) in labels.items():
@@ -927,41 +900,26 @@ def extract_room_geometry(
     return rooms
 
 
-def extract_rooms(
-    dxf_path: Path, default_height: float = 3.0
+def extract(
+    dxf_path, default_height: float = 3.0, anchor_path: Path | None = None,
 ) -> tuple[list[Room], list[Wall], list[Platform], list[str], tuple[float, float]]:
-    """Extract rooms, walls, and platforms from the DXF.
+    """Extract rooms, walls, and platforms from the DXF using the declared cad-anchor.
 
-    Rooms are origin-centered using the label-cluster centroid so coordinates
-    land near (0, 0). Walls are the actual DXF wall segments (one per physical
-    wall, openings left as gaps) in meters, origin-subtracted. The returned
-    origin (DXF mm) is the label-cluster centroid used for centering.
+    Rooms and walls are centered on ``cad-anchor.yaml``'s dxf_origin and
+    frame-filtered to its dxf_frame. The returned origin (DXF mm) is the
+    declared anchor origin.
     """
     doc = ezdxf.readfile(dxf_path)
     msp = doc.modelspace()
+    anchor = load_cad_anchor(anchor_path or CAD_ANCHOR_CONFIG)
     labels, skipped = extract_room_labels(msp)
     areas = parse_label_areas(msp, labels)
-    origin_x, origin_z = compute_origin(labels)
-    bounds = label_cluster_bounds(labels)
     rooms = extract_room_geometry(
-        labels, msp, origin_x=origin_x, origin_z=origin_z,
-        default_height=default_height, areas=areas,
+        labels, msp, origin_x=anchor.origin_x, origin_z=anchor.origin_y,
+        default_height=default_height, areas=areas, bounds=anchor.frame,
     )
-    walls = extract_walls(
-        msp, bounds=bounds, origin_x=origin_x, origin_z=origin_z,
-        house_config_path=HOUSE_CONFIG,
-    )
-
-    # Append gift area with no DXF label.
-    # Entry garden: 4.45m (east-west, parallel to door) × 2.9m (north-south).
-    # Door at x≈35783 (cen=4.14). Garden extends eastward to elevator.
-    rooms.append(Room(
-        id="entry_garden", name="入户花园",
-        x=6.37, z=-2.63, width=4.45, depth=2.90,
-        height=default_height, area=round(4.45*2.90, 2), perimeter=round(2*(4.45+2.90), 2),
-    ))
-
-    return rooms, walls, [], skipped, (origin_x, origin_z)
+    walls = extract_walls(msp, anchor, house_config_path=HOUSE_CONFIG)
+    return rooms, walls, [], skipped, (anchor.origin_x, anchor.origin_y)
 
 
 HOUSE_CONFIG = Path("config/house.yaml")
@@ -1228,12 +1186,13 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=OUTPUT_YAML)
     parser.add_argument("--report", type=Path, default=REPORT_JSON)
     parser.add_argument("--height", type=float, default=3.0, help="Default room height in meters")
+    parser.add_argument("--anchor", type=Path, default=CAD_ANCHOR_CONFIG)
     args = parser.parse_args()
 
     dxf_path = latest_dxf(args.cad_dir)
     print(f"CAD extraction report")
     print(dxf_path)
-    rooms, walls, platforms, skipped, origin = extract_rooms(dxf_path, default_height=args.height)
+    rooms, walls, platforms, skipped, origin = extract(dxf_path, default_height=args.height, anchor_path=args.anchor)
     platform = platforms[0] if platforms else None
     report = write_layout_yaml(
         dxf_path,
