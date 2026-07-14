@@ -13,6 +13,9 @@ vi.mock('three', () => {
     add(child: MockObject3D) { child.parent = this; this.children.push(child); }
     remove(child: MockObject3D) { const i = this.children.indexOf(child); if (i >= 0) this.children.splice(i, 1); }
     traverse(cb: (obj: MockObject3D) => void) { cb(this); this.children.forEach(c => c.traverse(cb)); }
+    rotateX(x: number) { this.rotation.x += x; }
+    rotateY(y: number) { this.rotation.y += y; }
+    rotateZ(z: number) { this.rotation.z += z; }
     getWorldPosition(t: any) { t.x = this.position.x; t.y = this.position.y; t.z = this.position.z; return t; }
   }
 
@@ -54,6 +57,9 @@ vi.mock('three', () => {
     Color: class { set() { return this; } copy() { return this; } clone() { return new (this.constructor as any)(); } },
     PlaneGeometry: class {},
     BoxGeometry: class {},
+    Shape: class { holes: any[] = []; moveTo() {} lineTo() {} closePath() {} },
+    Path: class { moveTo() {} lineTo() {} closePath() {} },
+    ExtrudeGeometry: class extends MockObject3D { constructor(_shape: any, _opts: any) { super(); } },
     CanvasTexture: class {},
     MeshStandardMaterial: MockMaterial,
     MeshBasicMaterial: MockMaterial,
@@ -229,7 +235,7 @@ describe('HouseScene', () => {
     scene.getScene().traverse((obj: any) => {
       if (obj.userData?.type === 'curtain_run') curtainCount++;
     });
-    expect(curtainCount).toBeGreaterThan(2);
+    expect(curtainCount).toBe(1);
   });
 
   it('renders a shared wall once between adjacent rooms', async () => {

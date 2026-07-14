@@ -325,132 +325,187 @@ export class HouseScene implements SceneApi {
   }
 
   private renderCurtainRun(el: Extract<SceneElement, { type: 'curtain_run' }>) {
-    const points = this.expandRoundedCorners(el.points);
-    for (let i = 0; i < points.length - 1; i++) {
-      const a = points[i];
-      const b = points[i + 1];
-      const mesh = this.renderBox(a.x, a.z, b.x, b.z, el.height, GLASS_THICKNESS, this.makeGlassMaterial());
-      mesh.userData = { type: 'curtain_run', objectId: `${el.id}:${i}` };
-      mesh.castShadow = false;
-      mesh.receiveShadow = true;
-      this.glassMeshes.push(mesh);
-    }
+    const shape = this.buildCurtainShape(el.points, el.closed ?? false);
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+      depth: el.height,
+      bevelEnabled: false,
+      steps: 1,
+    });
+    geometry.rotateX(-Math.PI / 2);
+
+    const mesh = new THREE.Mesh(geometry, this.makeGlassMaterial());
+    mesh.userData = { type: 'curtain_run', objectId: el.id };
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    this.scene.add(mesh);
+    this.glassMeshes.push(mesh);
   }
 
-  /**
-   * 把 curtain_run 中带 radius 的拐点展开成圆弧插值点序列。
-   * 只处理内部点；首尾 radius 被忽略。圆心方向由半平面测试自动判定，
-   * 因此同时支持顺时针/逆时针多段线。
-   */
-  private expandRoundedCorners(points: CurtainPoint[]): { x: number; z: number }[] {
-    if (points.length < 3) {
-      return points.map((p) => ({ x: p.x, z: p.z }));
-    }
+  private buildCurtainShape(points: CurtainPoint[], closed: boolean): THREE.Shape {
+    const T = GLASS_THICKNESS;
+    const n = points.length;
+    if (n < 2) return new THREE.Shape();
 
-    const expanded: { x: number; z: number }[] = [];
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i];
-      if (i === 0 || i === points.length - 1 || !p.radius || p.radius <= 0) {
-        expanded.push({ x: p.x, z: p.z });
-        continue;
+    const left: { x: number; z: number }[] = [];
+    const right: { x: number; z: number }[] = [];
+
+    for (let i = 0; i < n; i++) {
+      const prev = points[(i - 1 + n) % n];
+      const curr = points[i];
+      const next = points[(i + 1) % n];
+
+      const d1x = curr.x - prev.x;
+      const d1z = curr.z - prev.z;
+      const d2x = next.x - curr.x;
+      const d2z = next.z - curr.z;
+      const len1 = Math.hypot(d1x, d1z);
+      const len2 = Math.hypot(d2x, d2z);
+
+      if (len1 < 1e-9 || len2 < 1e-9) continue;
+
+      const u1x = d1x / len1;
+      const u1z = d1z / len1;
+      const u2x = d2x / len2;
+      const u2z = d2z / len2;
+
+      const n1x = -u1z;
+      const n1z = u1x;
+      const n2x = -u2z;
+      const n2z = u2x;
+
+      const cross = u1x * u2z - u1z * u2x;
+
+      const radius = curr.radius ?? 0;
+      const isOpenEndpoint = !closed && (i === 0 || i === n - 1);
+
+      if (radius > 0 && !isOpenEndpoint) {
+        const dot = u1x * u2x + u1z * u2z;
+        const theta = Math.acos(Math.max(-1, Math.min(1, dot)));
+        const d = radius / Math.tan(theta / 2);
+        if (d < len1 && d < len2 && theta > 0.001 && Math.abs(theta - Math.PI) > 0.001) {
+          const ta = { x: curr.x - u1x * d, z: curr.z - u1z * d };
+          const tb = { x: curr.x + u2x * d, z: curr.z + u2z * d };
+          const bisOut = this.outwardBisector(u1x, u1z, u2x, u2z, cross > 0);
+          const centerDist = radius / Math.sin(theta / 2);
+          const center = { x: curr.x + bisOut.x * centerDist, z: curr.z + bisOut.z * centerDist };
+
+          const rLeft = cross > 0 ? radius + T / 2 : Math.max(0, radius - T / 2);
+          const rRight = cross > 0 ? Math.max(0, radius - T / 2) : radius + T / 2;
+
+          const lTa = { x: ta.x + n1x * (T / 2), z: ta.z + n1z * (T / 2) };
+          const lTb = { x: tb.x + n2x * (T / 2), z: tb.z + n2z * (T / 2) };
+          const rTa = { x: ta.x - n1x * (T / 2), z: ta.z - n1z * (T / 2) };
+          const rTb = { x: tb.x - n2x * (T / 2), z: tb.z - n2z * (T / 2) };
+
+          const lCenter = { x: center.x + bisOut.x * (T / 2), z: center.z + bisOut.z * (T / 2) };
+          const rCenter = { x: center.x - bisOut.x * (T / 2), z: center.z - bisOut.z * (T / 2) };
+
+          left.push(lTa);
+          this.pushArc(left, lCenter, rLeft, lTa, lTb, 8);
+          left.push(lTb);
+          right.push(rTa);
+          this.pushArc(right, rCenter, rRight, rTa, rTb, 8);
+          right.push(rTb);
+          continue;
+        }
       }
-      const arc = this.roundCorner(points[i - 1], p, points[i + 1]);
-      expanded.push(...arc);
+
+      if (isOpenEndpoint) {
+        const ux = i === 0 ? u2x : u1x;
+        const uz = i === 0 ? u2z : u1z;
+        const nx = -uz;
+        const nz = ux;
+        left.push({ x: curr.x + nx * (T / 2), z: curr.z + nz * (T / 2) });
+        right.push({ x: curr.x - nx * (T / 2), z: curr.z - nz * (T / 2) });
+      } else {
+        const miterLeft = this.miterPoint(curr.x, curr.z, u1x, u1z, n1x, n1z, u2x, u2z, n2x, n2z, T / 2);
+        const miterRight = this.miterPoint(curr.x, curr.z, u1x, u1z, n1x, n1z, u2x, u2z, n2x, n2z, -T / 2);
+        left.push(miterLeft);
+        right.push(miterRight);
+      }
     }
-    return expanded;
+
+    if (left.length < 2 || right.length < 2) return new THREE.Shape();
+
+    const shape = new THREE.Shape();
+    if (closed) {
+      const leftArea = Math.abs(this.signedArea(left));
+      const rightArea = Math.abs(this.signedArea(right));
+      const outer = leftArea >= rightArea ? left : right;
+      const inner = leftArea >= rightArea ? right : left;
+      shape.moveTo(outer[0].x, outer[0].z);
+      for (let i = 1; i < outer.length; i++) shape.lineTo(outer[i].x, outer[i].z);
+      shape.closePath();
+      const hole = new THREE.Path();
+      hole.moveTo(inner[0].x, inner[0].z);
+      for (let i = 1; i < inner.length; i++) hole.lineTo(inner[i].x, inner[i].z);
+      hole.closePath();
+      shape.holes.push(hole);
+    } else {
+      shape.moveTo(left[0].x, left[0].z);
+      for (let i = 1; i < left.length; i++) shape.lineTo(left[i].x, left[i].z);
+      shape.lineTo(right[right.length - 1].x, right[right.length - 1].z);
+      for (let i = right.length - 2; i >= 0; i--) shape.lineTo(right[i].x, right[i].z);
+      shape.lineTo(left[0].x, left[0].z);
+      shape.closePath();
+    }
+    return shape;
   }
 
-  private roundCorner(a: CurtainPoint, c: CurtainPoint, b: CurtainPoint, segments = 8): { x: number; z: number }[] {
-    const r = c.radius ?? 0;
-    if (r <= 0) return [{ x: c.x, z: c.z }];
-
-    const v1x = c.x - a.x;
-    const v1z = c.z - a.z;
-    const v2x = b.x - c.x;
-    const v2z = b.z - c.z;
-    const len1 = Math.hypot(v1x, v1z);
-    const len2 = Math.hypot(v2x, v2z);
-    if (len1 < 1e-9 || len2 < 1e-9) return [{ x: c.x, z: c.z }];
-
-    const u1x = v1x / len1;
-    const u1z = v1z / len1;
-    const u2x = v2x / len2;
-    const u2z = v2z / len2;
-
-    const dot = u1x * u2x + u1z * u2z;
-    const theta = Math.acos(Math.max(-1, Math.min(1, dot)));
-    if (theta < 0.001 || Math.abs(theta - Math.PI) < 0.001) return [{ x: c.x, z: c.z }];
-
-    const bix = -u1x + u2x;
-    const biz = -u1z + u2z;
-    const biLen = Math.hypot(bix, biz);
-    if (biLen < 1e-9) return [{ x: c.x, z: c.z }];
-    const bisX = bix / biLen;
-    const bisZ = biz / biLen;
-
-    // 测试 bis 与 -bis 哪个在多边形外部；此处用相邻两条边的半平面判定。
-    const isCCW = this.polygonSignedArea([a, c, b]) > 0;
-    const test1 = { x: c.x + bisX * 0.001, z: c.z + bisZ * 0.001 };
-    const test2 = { x: c.x - bisX * 0.001, z: c.z - bisZ * 0.001 };
-    const inside1 = this.isInsideCorner(a, c, b, test1, isCCW);
-    const inside2 = this.isInsideCorner(a, c, b, test2, isCCW);
-
-    let extX: number;
-    let extZ: number;
-    if (inside1 && !inside2) {
-      extX = -bisX;
-      extZ = -bisZ;
-    } else if (!inside1 && inside2) {
-      extX = bisX;
-      extZ = bisZ;
-    } else {
-      return [{ x: c.x, z: c.z }];
+  private miterPoint(
+    cx: number, cz: number,
+    u1x: number, u1z: number, n1x: number, n1z: number,
+    u2x: number, u2z: number, n2x: number, n2z: number,
+    offset: number
+  ): { x: number; z: number } {
+    const denom = u1x * u2z - u1z * u2x;
+    if (Math.abs(denom) < 1e-9) {
+      return { x: cx + n1x * offset, z: cz + n1z * offset };
     }
+    const dx = (cx + n2x * offset) - (cx + n1x * offset);
+    const dz = (cz + n2z * offset) - (cz + n1z * offset);
+    const t = (dx * u2z - dz * u2x) / denom;
+    return { x: cx + n1x * offset + t * u1x, z: cz + n1z * offset + t * u1z };
+  }
 
-    const d = r / Math.tan(theta / 2);
-    if (d >= len1 || d >= len2) return [{ x: c.x, z: c.z }];
-
-    const ta = { x: c.x - u1x * d, z: c.z - u1z * d };
-    const tb = { x: c.x + u2x * d, z: c.z + u2z * d };
-    const centerDist = r / Math.sin(theta / 2);
-    const center = { x: c.x + extX * centerDist, z: c.z + extZ * centerDist };
-
-    const angleA = Math.atan2(ta.z - center.z, ta.x - center.x);
-    let angleB = Math.atan2(tb.z - center.z, tb.x - center.x);
-    let delta = angleB - angleA;
+  private pushArc(
+    arr: { x: number; z: number }[],
+    center: { x: number; z: number },
+    radius: number,
+    start: { x: number; z: number },
+    end: { x: number; z: number },
+    segments: number
+  ) {
+    if (radius <= 0) return;
+    const a1 = Math.atan2(start.z - center.z, start.x - center.x);
+    let a2 = Math.atan2(end.z - center.z, end.x - center.x);
+    let delta = a2 - a1;
     while (delta <= -Math.PI) delta += 2 * Math.PI;
     while (delta > Math.PI) delta -= 2 * Math.PI;
-
-    const arc: { x: number; z: number }[] = [ta];
     for (let i = 1; i < segments; i++) {
       const t = i / segments;
-      const angle = angleA + delta * t;
-      arc.push({ x: center.x + r * Math.cos(angle), z: center.z + r * Math.sin(angle) });
+      const a = a1 + delta * t;
+      arr.push({ x: center.x + radius * Math.cos(a), z: center.z + radius * Math.sin(a) });
     }
-    arc.push(tb);
-    return arc;
   }
 
-  private isInsideCorner(
-    a: CurtainPoint,
-    c: CurtainPoint,
-    b: CurtainPoint,
-    p: { x: number; z: number },
-    isCCW: boolean
-  ): boolean {
-    const cross1 = (p.x - a.x) * (c.z - a.z) - (p.z - a.z) * (c.x - a.x);
-    const cross2 = (p.x - c.x) * (b.z - c.z) - (p.z - c.z) * (b.x - c.x);
-    if (isCCW) {
-      return cross1 >= -1e-9 && cross2 >= -1e-9;
-    }
-    return cross1 <= 1e-9 && cross2 <= 1e-9;
+  private outwardBisector(
+    u1x: number, u1z: number, u2x: number, u2z: number,
+    turnLeft: boolean
+  ): { x: number; z: number } {
+    const bx = -u1x + u2x;
+    const bz = -u1z + u2z;
+    const len = Math.hypot(bx, bz);
+    if (len < 1e-9) return { x: 0, z: 0 };
+    const bis = { x: bx / len, z: bz / len };
+    return turnLeft ? { x: -bis.x, z: -bis.z } : bis;
   }
 
-  private polygonSignedArea(points: CurtainPoint[]): number {
+  private signedArea(pts: { x: number; z: number }[]): number {
     let area = 0;
-    for (let i = 0; i < points.length; i++) {
-      const j = (i + 1) % points.length;
-      area += points[i].x * points[j].z - points[j].x * points[i].z;
+    for (let i = 0; i < pts.length; i++) {
+      const j = (i + 1) % pts.length;
+      area += pts[i].x * pts[j].z - pts[j].x * pts[i].z;
     }
     return area;
   }
