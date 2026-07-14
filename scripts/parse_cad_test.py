@@ -825,15 +825,15 @@ def test_no_intent_guessing_code_in_parse_cad():
 
 
 def test_committed_layout_walls_share_frame_with_rooms():
-    """守卫：cad-extracted.yaml 的 walls 与 rooms 必须在同一坐标系。
+    """守卫：model-geometry.yaml 的 walls 与 rooms 必须在同一坐标系。
 
     2026-07-14 曾发生 origin 静默塌陷导致 walls 跑到 30 米外。
     """
     data = yaml.safe_load(
-        Path("config/layout/cad-extracted.yaml").read_text(encoding="utf-8")
+        Path("config/layout/model-geometry.yaml").read_text(encoding="utf-8")
     )
     rooms, walls = data["rooms"], data.get("walls", [])
-    assert walls, "cad-extracted.yaml 应包含墙体"
+    assert walls, "model-geometry.yaml 应包含墙体"
     wx = [w[k] for w in walls for k in ("x1", "x2")]
     wz = [w[k] for w in walls for k in ("z1", "z2")]
     rx = [v for r in rooms for v in (r["x"] - r["width"] / 2, r["x"] + r["width"] / 2)]

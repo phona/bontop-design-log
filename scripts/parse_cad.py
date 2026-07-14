@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import re
+import sys
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -25,7 +26,7 @@ import ezdxf
 import yaml
 
 CAD_DIR = Path("cad/design/01_floor_plan")
-OUTPUT_YAML = Path("config/layout/cad-extracted.yaml")
+OUTPUT_YAML = Path("model-geometry-from-cad.yaml")
 REPORT_JSON = Path("scripts/logs/cad-extraction-report.json")
 
 logger = logging.getLogger(__name__)
@@ -1125,7 +1126,16 @@ def main() -> None:
     parser.add_argument("--report", type=Path, default=REPORT_JSON)
     parser.add_argument("--height", type=float, default=3.0, help="Default room height in meters")
     parser.add_argument("--anchor", type=Path, default=CAD_ANCHOR_CONFIG)
+    parser.add_argument("--force", action="store_true", help="允许覆盖已存在的 model-geometry.yaml")
     args = parser.parse_args()
+
+    if (
+        args.output == Path("config/layout/model-geometry.yaml")
+        and args.output.exists()
+        and not args.force
+    ):
+        print("[parse_cad] model-geometry.yaml already exists. Use --force to overwrite.")
+        sys.exit(1)
 
     dxf_path = latest_dxf(args.cad_dir)
     print(f"CAD extraction report")

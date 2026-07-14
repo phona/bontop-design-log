@@ -57,6 +57,7 @@ desktop.ini
 *.log
 *.swp
 *~
+model-geometry-from-cad.yaml
 
 # OpenCode internal run state
 .omo/
