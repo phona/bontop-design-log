@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Extract room layout from the latest CAD floor plan DXF."""
+"""Extract house layout geometry from CAD DXF.
+
+架构铁律（docs/superpowers/specs/2026-07-14-dxf-overlay-rendering-design.md）：
+  CAD 只出几何，config 出一切意图。本模块只读图纸、只做坐标换算，禁止推断。
+  - 坐标系换算只用 config/layout/cad-anchor.yaml 的显式声明（fail loud）。
+  - 输出的 Wall 只有 x1/z1/x2/z2 纯几何字段，禁止追加任何分类/意图字段。
+  - 幕墙、玻璃、补墙等一切"这是什么"的知识属于 config/layout/overlay.yaml。
+  - 要新行为 → 加声明式配置；禁止添加基于几何位置/邻接的自动分类启发式。
+"""
 
 from __future__ import annotations
 
@@ -54,7 +62,6 @@ class Wall:
     z1: float
     x2: float
     z2: float
-    curtain: bool = False
 
 
 CAD_ANCHOR_CONFIG = Path("config/layout/cad-anchor.yaml")
@@ -191,43 +198,9 @@ def collect_wall_segments(
     return segments
 
 
-def load_curtain_corners(
-    config_path: Path,
-    origin_x: float,
-    origin_z: float,
-) -> list[tuple[float, float]] | None:
-    if not config_path.exists():
-        return None
-
-    with open(config_path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-
-    if not data:
-        return None
-
-    corners = data.get("curtain_wall_corners")
-    if not corners:
-        return None
-
-    result = []
-    for i, corner in enumerate(corners):
-        if "x" not in corner or "z" not in corner:
-            raise ValueError(
-                f"curtain_wall_corners entry {i} missing 'x' or 'z' key: {corner}"
-            )
-        scene_x = corner["x"]
-        scene_z = corner["z"]
-        dxf_x = scene_x * 1000 + origin_x
-        dxf_y = origin_z - scene_z * 1000
-        result.append((dxf_x, dxf_y))
-
-    return result
-
-
 def extract_walls(
     modelspace,
     anchor: CadAnchor,
-    house_config_path: Path | None = None,
 ) -> list[Wall]:
     """Return wall segments in meters, anchor-origin-subtracted, frame-filtered.
 
@@ -236,14 +209,6 @@ def extract_walls(
     renderer a continuous, non-duplicated wall graph.
     """
     segments = collect_wall_segments(modelspace, bounds=anchor.frame)
-
-    curtain_corners_dxf = None
-    if house_config_path is not None:
-        curtain_corners_dxf = load_curtain_corners(
-            house_config_path, anchor.origin_x, anchor.origin_y
-        )
-
-    segments = _smooth_diagonals(segments, curtain_corners_dxf=curtain_corners_dxf)
     walls: list[Wall] = []
     for (x1, y1), (x2, y2) in segments:
         walls.append(
@@ -254,161 +219,7 @@ def extract_walls(
                 z2=round((anchor.origin_y - y2) / 1000.0, 3),
             )
         )
-    curtain_config = _load_curtain_config(house_config_path)
-    walls = _mark_curtain_from_config(walls, curtain_config)
     return walls
-
-
-def _load_curtain_config(house_config_path: Path | None = None) -> list[dict]:
-    path = house_config_path or HOUSE_CONFIG
-    if not path.exists():
-        return []
-    with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    return data.get("curtain_walls", []) or []
-
-
-def _mark_curtain_from_config(
-    walls: list[Wall],
-    curtain_config: list[dict],
-    tolerance: float = 0.5,
-) -> list[Wall]:
-    """Mark walls as curtain based on house.yaml curtain_walls config.
-
-    A wall is marked as curtain only if it's on the configured boundary edge
-    AND it's the outermost wall at that location (no other wall beyond it).
-    This prevents interior walls that happen to align with the boundary
-    from being misclassified as curtain walls.
-    """
-    if not walls or not curtain_config:
-        return walls
-
-    all_x = [x for w in walls for x in (w.x1, w.x2)]
-    all_z = [z for w in walls for z in (w.z1, w.z2)]
-    min_x, max_x = min(all_x), max(all_x)
-    min_z, max_z = min(all_z), max(all_z)
-
-    def _is_outermost(w: Wall, edge: str) -> bool:
-        """Check if wall w is the outermost wall on the given edge."""
-        if edge == "west":
-            # No other wall should have smaller x at overlapping z range
-            for other in walls:
-                if other is w:
-                    continue
-                other_x = min(other.x1, other.x2)
-                # Check if other wall is further west (with small tolerance)
-                if other_x < min(w.x1, w.x2) - 0.1:
-                    # Check z overlap
-                    w_z_min, w_z_max = min(w.z1, w.z2), max(w.z1, w.z2)
-                    o_z_min, o_z_max = min(other.z1, other.z2), max(other.z1, other.z2)
-                    if w_z_min < o_z_max + tolerance and w_z_max > o_z_min - tolerance:
-                        return False
-            return True
-        elif edge == "north":
-            # No other wall should have larger z at overlapping x range
-            for other in walls:
-                if other is w:
-                    continue
-                other_z = max(other.z1, other.z2)
-                if other_z > max(w.z1, w.z2) + 0.1:
-                    w_x_min, w_x_max = min(w.x1, w.x2), max(w.x1, w.x2)
-                    o_x_min, o_x_max = min(other.x1, other.x2), max(other.x1, other.x2)
-                    if w_x_min < o_x_max + tolerance and w_x_max > o_x_min - tolerance:
-                        return False
-            return True
-        elif edge == "south":
-            # No other wall should have smaller z at overlapping x range
-            for other in walls:
-                if other is w:
-                    continue
-                other_z = min(other.z1, other.z2)
-                if other_z < min(w.z1, w.z2) - 0.1:
-                    w_x_min, w_x_max = min(w.x1, w.x2), max(w.x1, w.x2)
-                    o_x_min, o_x_max = min(other.x1, other.x2), max(other.x1, other.x2)
-                    if w_x_min < o_x_max + tolerance and w_x_max > o_x_min - tolerance:
-                        return False
-            return True
-        return False
-
-    for w in walls:
-        w.curtain = False
-        for cfg in curtain_config:
-            edge = cfg.get("edge", "")
-            if edge == "west":
-                on_west = abs(w.x1 - min_x) < tolerance or abs(w.x2 - min_x) < tolerance
-                if on_west and _is_outermost(w, "west"):
-                    w.curtain = True
-                    break
-            elif edge == "north":
-                on_north = abs(w.z1 - max_z) < tolerance or abs(w.z2 - max_z) < tolerance
-                if on_north and _is_outermost(w, "north"):
-                    w.curtain = True
-                    break
-            elif edge == "south":
-                on_south = abs(w.z1 - min_z) < tolerance or abs(w.z2 - min_z) < tolerance
-                mid_x = (w.x1 + w.x2) / 2
-                if on_south and mid_x <= cfg.get("max_x", float("inf")):
-                    if _is_outermost(w, "south"):
-                        w.curtain = True
-                        break
-
-    return walls
-
-
-def _smooth_diagonals(
-    segments: list[tuple[tuple[float, float], tuple[float, float]]],
-    curtain_corners_dxf: list[tuple[float, float]] | None = None,
-    corner_tolerance: float = 500.0,
-) -> list[tuple[tuple[float, float], tuple[float, float]]]:
-    """Split diagonal wall segments near curtain corners into sub-segments.
-
-    The chord midpoint is bowed outward by ``bulge`` mm so the glass curtain
-    wall corner renders as an approximated smooth curve.
-
-    If ``curtain_corners_dxf`` is given, only diagonals within ``corner_tolerance``
-    mm of a corner are smoothed; others pass through unchanged.
-    """
-    import math
-    bulge = 80.0        # mm – outward bow at chord midpoint
-    subdiv = 12           # sub-segments per diagonal
-    result: list[tuple[tuple[float, float], tuple[float, float]]] = []
-    for (x1, y1), (x2, y2) in segments:
-        dx, dy = x2 - x1, y2 - y1
-        length = math.hypot(dx, dy)
-        is_diagonal = abs(x1 - x2) > 1 and abs(y1 - y2) > 1
-        if not is_diagonal or length < 200:
-            result.append(((x1, y1), (x2, y2)))
-            continue
-
-        if curtain_corners_dxf is not None:
-            mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
-            near_corner = any(
-                math.hypot(mid_x - cx, mid_y - cy) <= corner_tolerance
-                for cx, cy in curtain_corners_dxf
-            )
-            if not near_corner:
-                result.append(((x1, y1), (x2, y2)))
-                continue
-
-        # Perpendicular direction, bow outward (west = more-negative x)
-        nx, ny = -dy / length, dx / length
-        if nx > 0:
-            nx, ny = -nx, -ny
-
-        # Compute sub-segment endpoints along the chord with parabolic bulge
-        pts = [(x1, y1)]
-        for k in range(1, subdiv):
-            t = k / subdiv  # 0…1
-            # Parabolic bulge: max at t=0.5, zero at t=0,1
-            offset = 4 * bulge * t * (1 - t)
-            px = x1 + dx * t + nx * offset
-            py = y1 + dy * t + ny * offset
-            pts.append((round(px), round(py)))
-        pts.append((x2, y2))
-
-        for i in range(len(pts) - 1):
-            result.append((pts[i], pts[i+1]))
-    return result
 
 
 def _merge_intervals(
@@ -862,7 +673,7 @@ def extract_room_geometry(
     Uses the merged-collinear wall-line heuristic. When the label text includes
     an area (e.g. ``面积6.09m²``) that differs from the wall-enclosed area,
     the room depth is corrected so the floor rectangle matches the label area.
-    This handles glass-curtain-wall perimeters where no wall LINE exists at the
+    This handles 幕墙 perimeters where no wall LINE exists at the
     true room boundary.
     """
     segments = collect_wall_segments(modelspace, bounds=bounds)
@@ -918,7 +729,7 @@ def extract(
         labels, msp, origin_x=anchor.origin_x, origin_z=anchor.origin_y,
         default_height=default_height, areas=areas, bounds=anchor.frame,
     )
-    walls = extract_walls(msp, anchor, house_config_path=HOUSE_CONFIG)
+    walls = extract_walls(msp, anchor)
     return rooms, walls, [], skipped, (anchor.origin_x, anchor.origin_y)
 
 
@@ -1145,7 +956,7 @@ def write_layout_yaml(
     }
     if walls:
         data["walls"] = [
-            {**{"x1": w.x1, "z1": w.z1, "x2": w.x2, "z2": w.z2}, **({"curtain": True} if w.curtain else {})} for w in walls
+            {"x1": w.x1, "z1": w.z1, "x2": w.x2, "z2": w.z2} for w in walls
         ]
     if platform:
         data["platform"] = {

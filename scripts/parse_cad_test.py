@@ -618,32 +618,7 @@ def test_extract_room_geometry_finds_per_room_rectangle_not_whole_plan():
     assert by_id["bedroom_nw"].depth == 4.0
 
 
-def test_smooth_diagonals_without_corners_keeps_original_behavior():
-    """When curtain_corners_dxf is None, all diagonals >= 200mm are smoothed."""
-    from parse_cad import _smooth_diagonals
 
-    segments = [
-        ((0, 0), (1000, 0)),      # horizontal, skip
-        ((0, 0), (0, 1000)),      # vertical, skip
-        ((0, 0), (500, 500)),     # diagonal 707mm, should smooth
-    ]
-    result = _smooth_diagonals(segments)
-    assert result[0] == ((0, 0), (1000, 0))
-    assert result[1] == ((0, 0), (0, 1000))
-    assert len(result) == 14  # 2 unchanged + 12 sub-segments
-
-
-def test_smooth_diagonals_with_corners_filters_by_distance():
-    """Only diagonals near a curtain corner are smoothed."""
-    from parse_cad import _smooth_diagonals
-
-    segments = [
-        ((0, 0), (500, 500)),     # diagonal near corner at (250, 250), should smooth
-        ((10000, 10000), (10500, 10500)),  # diagonal far from corner, should NOT smooth
-    ]
-    corners = [(250, 250)]  # DXF mm
-    result = _smooth_diagonals(segments, curtain_corners_dxf=corners)
-    assert len(result) == 13  # 12 sub-segments + 1 unchanged
 
 
 def test_geometry_changes_in_report(tmp_path: Path):
@@ -689,43 +664,7 @@ def test_geometry_changes_in_report(tmp_path: Path):
     assert ("master_bedroom", "z") in field_ids
 
 
-def test_mark_curtain_walls_from_config(tmp_path: Path):
-    """Curtain walls are marked based on house.yaml config, not boundary detection."""
-    from ezdxf.document import Drawing
-    from parse_cad import CadAnchor, extract_walls
 
-    house_config = tmp_path / "house.yaml"
-    house_config.write_text(yaml.dump({
-        "curtain_walls": [
-            {"edge": "west"},
-            {"edge": "north"},
-            {"edge": "south", "max_x": 3.5},
-        ],
-        "curtain_wall_corners": [],
-    }, allow_unicode=True))
-
-    doc = Drawing.new("R2018")
-    msp = doc.modelspace()
-    doc.layers.add("BS-非承重墙")
-    # West wall: from SW corner (-5.88, -5.39) to NW corner (-5.88, 5.39)
-    msp.add_line((-5880, 5390), (-5880, -5390), dxfattribs={"layer": "BS-非承重墙"})
-    # North wall: from NW corner (-5.88, 5.39) to (-4.5, 5.39)
-    msp.add_line((-5880, -5390), (-4500, -5390), dxfattribs={"layer": "BS-非承重墙"})
-    # South wall: from SW corner (-5.88, -5.39) to (0.5, -5.39) - x<3.5, has corner endpoint
-    msp.add_line((-5880, 5390), (500, 5390), dxfattribs={"layer": "BS-非承重墙"})
-    # South wall: from (4, -5.39) to (5, -5.39) - x>3.5, NOT curtain (no corner endpoint either)
-    msp.add_line((4000, 5390), (5000, 5390), dxfattribs={"layer": "BS-非承重墙"})
-    # East wall: NOT curtain
-    msp.add_line((8540, 4450), (8540, 4210), dxfattribs={"layer": "BS-非承重墙"})
-    # Interior wall: NOT curtain
-    msp.add_line((0, 0), (1000, 0), dxfattribs={"layer": "BS-非承重墙"})
-
-    anchor = CadAnchor(origin_x=0.0, origin_y=0.0, frame=(-6000, -6000, 9000, 6000))
-    walls = extract_walls(msp, anchor, house_config_path=house_config)
-    curtain_walls = [w for w in walls if w.curtain]
-    non_curtain = [w for w in walls if not w.curtain]
-    assert len(curtain_walls) == 3  # west, north, south(x<3.5)
-    assert len(non_curtain) == 3   # east, interior, south(x>3.5)
 
 
 def test_flood_fill_reads_centroids_from_config(tmp_path: Path, monkeypatch):
@@ -790,30 +729,7 @@ def test_load_cad_anchor_missing_field_fails_loud(tmp_path: Path):
         load_cad_anchor(p)
 
 
-def test_extract_walls_loads_curtain_corners_from_config(tmp_path: Path):
-    """extract_walls loads curtain_wall_corners from house.yaml and filters smoothing."""
-    from ezdxf.document import Drawing
-    from parse_cad import CadAnchor, extract_walls
 
-    house_config = tmp_path / "house.yaml"
-    house_config.write_text(yaml.dump({
-        "curtain_wall_corners": [
-            {"x": 0.25, "z": 0.25},
-        ]
-    }, allow_unicode=True))
-
-    doc = Drawing.new("R2018")
-    msp = doc.modelspace()
-    doc.layers.add("BS-非承重墙")
-    msp.add_line((0, 0), (500, 500), dxfattribs={"layer": "BS-非承重墙"})
-    msp.add_line((10000, 10000), (10500, 10500), dxfattribs={"layer": "BS-非承重墙"})
-
-    anchor = CadAnchor(origin_x=0.0, origin_y=0.0, frame=(-500, -500, 11000, 11000))
-    walls = extract_walls(
-        msp, anchor,
-        house_config_path=house_config,
-    )
-    assert len(walls) == 13
 
 
 def _write_anchor(tmp_path: Path, ox: float, oy: float,
@@ -878,4 +794,32 @@ def test_extract_has_no_hardcoded_entry_garden():
     assert 'id="entry_garden"' not in src
     assert "compute_origin" not in src
     assert "label_cluster_bounds" not in src
+
+
+def test_wall_dataclass_is_pure_geometry():
+    """Wall 只允许纯几何字段——出现意图字段（如 curtain）即失败。"""
+    from dataclasses import fields
+    from parse_cad import Wall
+    assert {f.name for f in fields(Wall)} == {"x1", "z1", "x2", "z2"}
+
+
+def test_walls_yaml_output_contains_only_geometry_fields(tmp_path: Path):
+    from parse_cad import Room, Wall, write_layout_yaml
+    rooms = [Room(id="r1", name="房", x=0, z=0, width=1, depth=1, height=3, area=1.0, perimeter=4.0)]
+    walls = [Wall(x1=0, z1=0, x2=1, z2=0)]
+    out = tmp_path / "layout.yaml"
+    write_layout_yaml(
+        tmp_path / "source.dxf", rooms, None, out,
+        walls=walls, origin=(0.0, 0.0),
+    )
+    data = yaml.safe_load(out.read_text(encoding="utf-8"))
+    for w in data["walls"]:
+        assert set(w.keys()) == {"x1", "z1", "x2", "z2"}, f"意图字段泄漏: {w}"
+
+
+def test_no_intent_guessing_code_in_parse_cad():
+    """铁律守卫：parse_cad.py 不得包含任何幕墙分类/最外侧判定/弧化合成代码。"""
+    src = Path("scripts/parse_cad.py").read_text(encoding="utf-8")
+    for banned in ["curtain", "_is_outermost", "_smooth_diagonals", "bulge"]:
+        assert banned not in src, f"禁止的意图猜测标识重新出现: {banned}"
 
