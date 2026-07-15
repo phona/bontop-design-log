@@ -20,3 +20,6 @@ python-dateutil>=2.8.0
 # CDP / WebSocket
 requests>=2.32.0
 websocket-client>=1.8.0
+
+# 文件系统监听
+watchdog>=3.0.0
