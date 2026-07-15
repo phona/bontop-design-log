@@ -23,6 +23,7 @@
 renders/blender/output/*
 renders/web/models/*
 renders/web/textures/*
+screenshots/
 !renders/blender/output/.gitkeep
 !renders/web/models/.gitkeep
 !renders/web/textures/.gitkeep

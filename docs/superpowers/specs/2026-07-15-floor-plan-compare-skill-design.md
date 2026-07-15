@@ -34,12 +34,12 @@ Automatic file watch:
 | Path | Purpose |
 |------|---------|
 | `assets/baseline/floor-plan-developer.jpg` | Baseline floor-plan image (user-provided, not tracked by git unless requested). |
-| `scripts/capture-floor-plan-screenshot.py` | Python helper that connects to Windows Chromium CDP and calls `window.__app.captureFloorPlan(outputPath)`. |
-| `scripts/watch-floor-plan-and-compare.py` | File watcher that monitors the two YAMLs, debounces, and orchestrates capture + subagent comparison. |
+| `scripts/capture_floor_plan_screenshot.py` | Python helper that connects to Windows Chromium CDP and calls `window.__app.captureFloorPlan()`. |
+| `scripts/watch_floor_plan_and_compare.py` | File watcher that monitors the two YAMLs, debounces, verifies reachability, and orchestrates capture + event logging. |
 | `screenshots/floor-plan-YYYY-MM-DD-HHMMSS.png` | Timestamped output of each capture. |
 | `docs/superpowers/specs/2026-07-15-floor-plan-compare-skill-design.md` | This design document. |
 
-### 4.1 `capture-floor-plan-screenshot.py`
+### 4.1 `capture_floor_plan_screenshot.py`
 
 Responsibilities:
 
@@ -61,17 +61,17 @@ Outputs:
 - Absolute path to the saved PNG on success.
 - Non-zero exit code and stderr message on failure.
 
-### 4.2 `watch-floor-plan-and-compare.py`
+### 4.2 `watch_floor_plan_and_compare.py`
 
 Responsibilities:
 
 1. Watch `config/layout/model-geometry.yaml` and `config/layout/overlay.yaml`.
 2. Debounce writes by 500 ms.
 3. Verify the baseline image exists.
-4. Verify the dev server is reachable (HTTP HEAD on `http://localhost:5173` or a quick CDP list call).
-5. Call `capture-floor-plan-screenshot.py` to produce `screenshots/floor-plan-YYYY-MM-DD-HHMMSS.png`.
-6. Dispatch a subagent with the current screenshot, baseline image, and optionally the YAMLs.
-7. Print the subagent report to stdout / stderr and optionally append it to a log file.
+4. Verify the dev server is reachable (HTTP HEAD on `http://localhost:5173`) and the CDP endpoint is reachable (GET on `http://<cdp-host>:9222/json`).
+5. Call `capture_floor_plan_screenshot.py` to produce `screenshots/floor-plan-YYYY-MM-DD-HHMMSS.png`.
+6. Append the event to `scripts/logs/floor-plan-compare-events.jsonl` and, if `--log` is provided, to the optional log file.
+7. The skill reads the event log and dispatches a subagent with the current screenshot, baseline image, and optionally the YAMLs.
 
 Inputs:
 
@@ -95,14 +95,14 @@ This method is added to `app/src/main.ts` or `app/src/App.ts` and registered on 
 
 ## 6. Subagent Comparison
 
-The watcher dispatches a general-purpose subagent with this context:
+The skill reads the latest event from `scripts/logs/floor-plan-compare-events.jsonl` and dispatches a general-purpose subagent with this context:
 
 - **Current screenshot:** `screenshots/floor-plan-YYYY-MM-DD-HHMMSS.png`
 - **Baseline image:** `assets/baseline/floor-plan-developer.jpg`
 - **Geometry source:** `config/layout/model-geometry.yaml` (read-only for detail checks)
 - **Overlay source:** `config/layout/overlay.yaml` (read-only for detail checks)
 
-Subagent prompt instructs it to:
+Skill prompt instructs it to:
 
 1. Compare the two images visually.
 2. Focus on: room count, room positions, exterior silhouette, entry garden protrusion, glass curtain wall, balcony placement.
@@ -139,11 +139,15 @@ Subagent prompt instructs it to:
 ```
 User edits model-geometry.yaml or overlay.yaml
             ↓
-watch-floor-plan-and-compare.py detects change (debounced)
+watch_floor_plan_and_compare.py detects change (debounced)
             ↓
 Verify baseline image + dev server + CDP
             ↓
-capture-floor-plan-screenshot.py → screenshots/floor-plan-*.png
+capture_floor_plan_screenshot.py → screenshots/floor-plan-*.png
+            ↓
+Event appended to scripts/logs/floor-plan-compare-events.jsonl
+            ↓
+floor-plan-compare skill reads the event and dispatches a subagent
             ↓
 Subagent compares screenshot + baseline + YAMLs
             ↓
@@ -154,10 +158,11 @@ User decides next edit
 
 ## 9. Testing
 
-- **Script test:** Run `capture-floor-plan-screenshot.py` manually and confirm a PNG is produced.
-- **Watcher test:** Touch a YAML file and confirm exactly one comparison run occurs within 1 second.
+- **Script test:** Run `capture_floor_plan_screenshot.py` manually and confirm a PNG is produced.
+- **Watcher test:** Touch a YAML file and confirm exactly one comparison event is appended within 1 second.
 - **Subagent test:** Use a deliberately wrong layout and confirm the subagent reports the deviation.
-- **Baseline-missing test:** Rename the baseline image, trigger a change, and confirm the error message.
+- **Baseline-missing test:** Rename the baseline image, trigger a change, and confirm the Chinese error message.
+- **Reachability test:** Stop the dev server or CDP and confirm the watcher prints the corresponding Chinese error without launching the capture script.
 
 ## 10. Open Questions
 

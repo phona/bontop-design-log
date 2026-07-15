@@ -3,7 +3,6 @@
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 import time
@@ -11,10 +10,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from threading import Event, Lock
 
+import requests
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-
-from capture_floor_plan_screenshot import build_cdp_url, find_page_ws_url
 
 WATCHED_FILES = {'model-geometry.yaml', 'overlay.yaml'}
 LOG_DIR = Path('scripts/logs')
@@ -29,6 +27,7 @@ def parse_args(argv=None):
     parser.add_argument('--cdp-port', type=int, default=9222, help='CDP port')
     parser.add_argument('--app-url', default='http://localhost:5173', help='App URL')
     parser.add_argument('--screenshots-dir', default='screenshots', help='Where to save screenshots')
+    parser.add_argument('--log', default=None, help='Optional additional log file path')
     parser.add_argument('--one-shot', action='store_true', help='Capture once and exit instead of watching')
     return parser.parse_args(argv)
 
@@ -48,23 +47,12 @@ class WatcherHandler(FileSystemEventHandler):
             self.callback(event.src_path)
 
 
-def debounce_events(events, debounce_seconds: float):
-    """Return the latest event if debounce window has passed; otherwise None."""
-    if not events:
-        return None
-    latest_time, latest_path = max(events, key=lambda x: x[0])
-    if time.monotonic() - latest_time >= debounce_seconds:
-        return latest_path
-    return None
-
-
 class FloorPlanWatcher:
     def __init__(self, args):
         self.args = args
         self.pending_events = []
         self.lock = Lock()
         self.stop_event = Event()
-        self.last_capture_time = 0.0
 
     def run(self):
         if self.args.one_shot:
@@ -97,23 +85,41 @@ class FloorPlanWatcher:
         with self.lock:
             if not self.pending_events:
                 return
-            # Simple debounce: wait until the latest event is older than 500ms.
             latest_time, latest_path = max(self.pending_events, key=lambda x: x[0])
             if time.monotonic() - latest_time < 0.5:
                 return
             self.pending_events.clear()
 
-        # Capture screenshot.
         try:
             self.capture_once(source=str(latest_path))
         except Exception as e:
-            print(f'Capture failed: {e}', file=sys.stderr)
+            print(f'捕获失败: {e}', file=sys.stderr)
+
+    def verify_reachability(self):
+        try:
+            resp = requests.head(self.args.app_url, timeout=5, allow_redirects=True)
+            if not resp.ok:
+                raise RuntimeError(f'状态码 {resp.status_code}')
+        except requests.RequestException as e:
+            raise RuntimeError(f'请先在 app/ 运行 npm run dev: {e}')
+
+        cdp_url = f'http://{self.args.cdp_host}:{self.args.cdp_port}/json'
+        try:
+            resp = requests.get(cdp_url, timeout=5)
+            if not resp.ok:
+                raise RuntimeError(f'状态码 {resp.status_code}')
+        except requests.RequestException as e:
+            raise RuntimeError(
+                f'无法连接 Windows Chrome 调试端口，请确认已启动 --remote-debugging-port=9222: {e}'
+            )
 
     def capture_once(self, source: str = 'manual'):
         self.ensure_log_dir()
         baseline = Path(self.args.baseline)
         if not baseline.exists():
-            raise FileNotFoundError(f'Baseline image missing: {baseline}')
+            raise FileNotFoundError(f'缺少基线图，请放置 {baseline}')
+
+        self.verify_reachability()
 
         timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d-%H%M%S')
         output = Path(self.args.screenshots_dir) / f'floor-plan-{timestamp}.png'
@@ -138,6 +144,11 @@ class FloorPlanWatcher:
         }
         with open(EVENT_LOG, 'a', encoding='utf-8') as f:
             f.write(json.dumps(event, ensure_ascii=False) + '\n')
+        if self.args.log:
+            log_path = Path(self.args.log)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(event, ensure_ascii=False) + '\n')
         print(json.dumps(event, ensure_ascii=False))
 
 

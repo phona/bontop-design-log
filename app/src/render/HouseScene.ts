@@ -163,7 +163,9 @@ export class HouseScene implements SceneApi {
     let renderTarget: THREE.WebGLRenderTarget | null = null;
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (!wasTopDown) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
 
       const { minX, maxX, minZ, maxZ } = this.topDownLayoutBounds;
       const width = maxX - minX;
