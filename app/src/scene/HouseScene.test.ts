@@ -8,7 +8,7 @@ vi.mock('three', () => {
     material = new MockMaterial();
     position = { x: 0, y: 0, z: 0, set: function() { return this; }, copy: function(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }, clone: function() { return { x: this.x, y: this.y, z: this.z, set: function() { return this; }, copy: function(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }, clone: function() { return this; } }; } };
     rotation = { x: 0, y: 0, z: 0 };
-    scale = { x: 1, y: 1, z: 1, set: function() { return this; } };
+    scale = { x: 1, y: 1, z: 1, set: function(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; return this; } };
     castShadow = false;
     receiveShadow = false;
     add(child: MockObject3D) { child.parent = this; this.children.push(child); }
@@ -80,6 +80,7 @@ vi.mock('three', () => {
       getPoints() { return this.points; }
     },
     ExtrudeGeometry: class extends MockObject3D { shape: any; options: any; constructor(shape: any, opts: any) { super(); this.shape = shape; this.options = opts; } },
+    ShapeGeometry: class extends MockObject3D { constructor(_shape: any) { super(); } },
     CanvasTexture: class {},
     MeshStandardMaterial: MockMaterial,
     MeshBasicMaterial: MockMaterial,
@@ -450,6 +451,67 @@ describe('HouseScene', () => {
     });
     expect(shape).not.toBeNull();
     expect(shape.points.length).toBeGreaterThan(8);
+  });
+
+  it('curtain_run applies scale-y-flip to preserve overlay z', async () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const projectData = {
+      house: {
+        rooms: [],
+        sceneElements: [
+          {
+            type: 'curtain_run' as const,
+            id: 'curtain:z-sign',
+            closed: false,
+            points: [{ x: 0, z: 0 }, { x: 0, z: 5 }],
+            height: 3,
+          },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+    await scene.buildFromCatalog(projectData);
+    let mesh: any;
+    scene.getScene().traverse((obj: any) => {
+      if (obj.userData?.type === 'curtain_run') mesh = obj;
+    });
+    expect(mesh).toBeDefined();
+    expect(mesh.rotation.x).toBeCloseTo(-Math.PI / 2, 5);
+    expect(mesh.scale.y).toBeCloseTo(-1, 5);
+  });
+
+  it('floor_region applies scale-y-flip to preserve overlay z', async () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const projectData = {
+      house: {
+        rooms: [],
+        sceneElements: [
+          {
+            type: 'floor_region' as const,
+            id: 'floor:z-sign',
+            points: [
+              { x: 0, z: 0 },
+              { x: 2, z: 0 },
+              { x: 2, z: 2 },
+              { x: 0, z: 2 },
+            ],
+          },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+    await scene.buildFromCatalog(projectData);
+    let mesh: any;
+    scene.getScene().traverse((obj: any) => {
+      if (obj.userData?.type === 'floor_region') mesh = obj;
+    });
+    expect(mesh).toBeDefined();
+    expect(mesh.rotation.x).toBeCloseTo(-Math.PI / 2, 5);
+    expect(mesh.scale.y).toBeCloseTo(-1, 5);
   });
 
   it('renders a shared wall once between adjacent rooms', async () => {

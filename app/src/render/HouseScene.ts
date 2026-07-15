@@ -609,9 +609,10 @@ export class HouseScene implements SceneApi {
       bevelEnabled: false,
       steps: 1,
     });
-    geometry.rotateX(-Math.PI / 2);
 
     const mesh = new THREE.Mesh(geometry, this.makeGlassMaterial());
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.scale.set(1, -1, 1);
     mesh.userData = { type: 'curtain_run', objectId: el.id };
     mesh.castShadow = false;
     mesh.receiveShadow = true;
@@ -882,6 +883,7 @@ export class HouseScene implements SceneApi {
     });
     const mesh = new THREE.Mesh(geometry, mat);
     mesh.rotation.x = -Math.PI / 2;
+    mesh.scale.set(1, -1, 1);
     mesh.position.y = 0.006;
     mesh.userData = { type: 'floor_region', objectId: el.id, roomId: el.room };
     mesh.receiveShadow = true;
