@@ -29,6 +29,9 @@ export const GLASS_THICKNESS = 0.08; // 8cm glass panel
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
 
+type LayoutBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
+const DEFAULT_LAYOUT_BOUNDS: LayoutBounds = { minX: 0, maxX: 16.4, minZ: -2.9, maxZ: 9.8 };
+
 type ArcDescriptor = {
   center: { x: number; z: number };
   radius: number;
@@ -73,7 +76,7 @@ export class HouseScene implements SceneApi {
   private compareSchemeData?: CurrentScheme;
   private roomMeta = new Map<string, { wall_finish?: string; openings?: OpeningDef[] }>();
   private gridHelper?: THREE.GridHelper;
-  private topDownLayoutBounds = { minX: 0, maxX: 16.4, minZ: -2.9, maxZ: 9.8 };
+  private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
   private readonly ORBIT_POSITION = new THREE.Vector3(8.2, 14, 19.2);
   private readonly ORBIT_TARGET = new THREE.Vector3(8.2, 0, 6.4);
 
@@ -221,6 +224,32 @@ export class HouseScene implements SceneApi {
     return canvas.toDataURL('image/png');
   }
 
+  private computeLayoutBounds(data: ProjectData): LayoutBounds {
+    const rects: Array<{ x: number; z: number; width: number; depth: number }> = [
+      ...data.house.rooms,
+    ];
+    if (data.house.platform) {
+      rects.push(data.house.platform);
+    }
+    if (rects.length === 0) {
+      return DEFAULT_LAYOUT_BOUNDS;
+    }
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (const r of rects) {
+      const halfW = r.width / 2;
+      const halfD = r.depth / 2;
+      minX = Math.min(minX, r.x - halfW);
+      maxX = Math.max(maxX, r.x + halfW);
+      minZ = Math.min(minZ, r.z - halfD);
+      maxZ = Math.max(maxZ, r.z + halfD);
+    }
+    return { minX, maxX, minZ, maxZ };
+  }
+
   private onTopDownChange(enabled: boolean): void {
     this.topicGroup.visible = !enabled;
     if (this.gridHelper) {
@@ -290,6 +319,9 @@ export class HouseScene implements SceneApi {
     if (projectData.house.platform) {
       this.createPlatform(projectData.house.platform);
     }
+
+    this.topDownLayoutBounds = this.computeLayoutBounds(projectData);
+    this.topDownView.updateBounds(this.topDownLayoutBounds);
 
     if (projectData.house.furnishings) {
       placeFurnishings(this.scene, projectData.house.furnishings, this.rooms);

@@ -163,6 +163,48 @@ describe('HouseScene', () => {
     expect(scene.rooms['bedroom']).toBeDefined();
   });
 
+  it('uses default layout bounds before a catalog is loaded', () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    expect((scene as any).topDownLayoutBounds).toEqual({
+      minX: 0,
+      maxX: 16.4,
+      minZ: -2.9,
+      maxZ: 9.8,
+    });
+  });
+
+  it('computes layout bounds from rooms and platform after buildFromCatalog', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    const projectData = {
+      house: {
+        rooms: [
+          { id: 'entry_garden', name: 'Entry Garden', x: -2, z: -3, width: 4, depth: 6, height: 3, type: 'outdoor' },
+          { id: 'living_room', name: 'Living', x: 5, z: 2, width: 6, depth: 4, height: 3, type: 'public' },
+        ],
+        platform: { id: 'east_platform', name: 'East Platform', x: 12, z: -1, width: 4, depth: 2, height: 0.15 },
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+
+    await scene.buildFromCatalog(projectData);
+    const bounds = (scene as any).topDownLayoutBounds;
+    expect(bounds.minX).toBeCloseTo(-4);
+    expect(bounds.maxX).toBeCloseTo(14);
+    expect(bounds.minZ).toBeCloseTo(-6);
+    expect(bounds.maxZ).toBeCloseTo(4);
+    expect((scene as any).topDownView.options.bounds).toEqual(bounds);
+  });
+
   it('should create floors and walls for each room', async () => {
     const canvas = {
       addEventListener: vi.fn(),
