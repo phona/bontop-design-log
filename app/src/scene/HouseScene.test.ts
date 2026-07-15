@@ -205,6 +205,34 @@ describe('HouseScene', () => {
     expect((scene as any).topDownView.options.bounds).toEqual(bounds);
   });
 
+  it('includes wall scene elements in layout bounds', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    const projectData = {
+      house: {
+        rooms: [
+          { id: 'room1', name: 'Room 1', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'public' },
+        ],
+        sceneElements: [
+          { type: 'wall' as const, id: 'wall:outer', x1: -2, z1: -2, x2: -2, z2: 2 },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    };
+
+    await scene.buildFromCatalog(projectData);
+    const bounds = (scene as any).topDownLayoutBounds;
+    expect(bounds.minX).toBeCloseTo(-2.06);
+    expect(bounds.maxX).toBeCloseTo(2);
+    expect(bounds.minZ).toBeCloseTo(-2);
+    expect(bounds.maxZ).toBeCloseTo(2);
+  });
+
   it('should create floors and walls for each room', async () => {
     const canvas = {
       addEventListener: vi.fn(),

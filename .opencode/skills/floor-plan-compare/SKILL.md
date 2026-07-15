@@ -21,7 +21,11 @@ description: Use when config/layout/model-geometry.yaml or config/layout/overlay
    ```bash
    python scripts/watch_floor_plan_and_compare.py --cdp-host ${FLOOR_PLAN_CDP_HOST:-localhost}
    ```
-   Run it in the background if needed. If it is already running, skip this step.
+   Run it in the background if needed. To check whether a watcher is already running, look for the process:
+   ```bash
+   ps aux | grep watch_floor_plan_and_compare
+   ```
+   If a process is already listening, skip this step.
 
 2. When a YAML change occurs, the watcher captures a screenshot to `screenshots/floor-plan-YYYY-MM-DD-HHMMSS.png` and appends an event to `scripts/logs/floor-plan-compare-events.jsonl`.
 

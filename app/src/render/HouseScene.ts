@@ -158,18 +158,9 @@ export class HouseScene implements SceneApi {
   }
 
   async captureFloorPlan(): Promise<string> {
-    const wasTopDown = this.isTopDown();
-    this.setTopDown(true);
-
-    const originalSize = new THREE.Vector2();
-    this.renderer.getSize(originalSize);
     let renderTarget: THREE.WebGLRenderTarget | null = null;
 
     try {
-      if (!wasTopDown) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-
       const { minX, maxX, minZ, maxZ } = this.topDownLayoutBounds;
       const width = maxX - minX;
       const depth = maxZ - minZ;
@@ -202,8 +193,6 @@ export class HouseScene implements SceneApi {
       if (renderTarget) {
         renderTarget.dispose();
       }
-      this.renderer.setSize(originalSize.width, originalSize.height);
-      this.setTopDown(wasTopDown);
     }
   }
 
@@ -231,9 +220,6 @@ export class HouseScene implements SceneApi {
     if (data.house.platform) {
       rects.push(data.house.platform);
     }
-    if (rects.length === 0) {
-      return DEFAULT_LAYOUT_BOUNDS;
-    }
 
     let minX = Infinity;
     let maxX = -Infinity;
@@ -246,6 +232,79 @@ export class HouseScene implements SceneApi {
       maxX = Math.max(maxX, r.x + halfW);
       minZ = Math.min(minZ, r.z - halfD);
       maxZ = Math.max(maxZ, r.z + halfD);
+    }
+
+    const expandSegment = (x1: number, z1: number, x2: number, z2: number, halfThick: number) => {
+      const dx = x2 - x1;
+      const dz = z2 - z1;
+      const len = Math.hypot(dx, dz);
+      if (len < 1e-9) return;
+      const nx = (-dz / len) * halfThick;
+      const nz = (dx / len) * halfThick;
+      const corners = [
+        { x: x1 + nx, z: z1 + nz },
+        { x: x1 - nx, z: z1 - nz },
+        { x: x2 + nx, z: z2 + nz },
+        { x: x2 - nx, z: z2 - nz },
+      ];
+      for (const c of corners) {
+        minX = Math.min(minX, c.x);
+        maxX = Math.max(maxX, c.x);
+        minZ = Math.min(minZ, c.z);
+        maxZ = Math.max(maxZ, c.z);
+      }
+    };
+
+    const elements = data.house.sceneElements;
+    if (Array.isArray(elements)) {
+      for (const el of elements) {
+        switch (el.type) {
+          case 'wall': {
+            expandSegment(el.x1, el.z1, el.x2, el.z2, WALL_THICKNESS / 2);
+            break;
+          }
+          case 'wall_run': {
+            const halfThick = WALL_THICKNESS / 2;
+            for (let i = 0; i < el.points.length - 1; i++) {
+              const a = el.points[i];
+              const b = el.points[i + 1];
+              expandSegment(a.x, a.z, b.x, b.z, halfThick);
+            }
+            break;
+          }
+          case 'curtain_run': {
+            const halfThick = GLASS_THICKNESS / 2;
+            for (let i = 0; i < el.points.length - 1; i++) {
+              const a = el.points[i];
+              const b = el.points[i + 1];
+              expandSegment(a.x, a.z, b.x, b.z, halfThick);
+            }
+            break;
+          }
+          case 'floor_region':
+          case 'bay_sill': {
+            for (const p of el.points) {
+              minX = Math.min(minX, p.x);
+              maxX = Math.max(maxX, p.x);
+              minZ = Math.min(minZ, p.z);
+              maxZ = Math.max(maxZ, p.z);
+            }
+            break;
+          }
+          case 'glass_infill': {
+            // footprint is already covered by the enclosing room
+            break;
+          }
+          default: {
+            const exhaustive: never = el;
+            console.error('[HouseScene] 未知场景元素类型（bounds 缺 case）', exhaustive);
+          }
+        }
+      }
+    }
+
+    if (minX === Infinity) {
+      return DEFAULT_LAYOUT_BOUNDS;
     }
     return { minX, maxX, minZ, maxZ };
   }

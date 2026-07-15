@@ -5,6 +5,7 @@ import argparse
 import base64
 import json
 import sys
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -39,28 +40,66 @@ def find_page_ws_url(cdp_url: str, app_url: str) -> str:
     raise RuntimeError(f'No CDP page found for {app_url}. Available pages: {[p.get("url") for p in pages]}')
 
 
+def _send_and_wait(ws, req_id: int, payload: dict) -> dict:
+    ws.send(json.dumps({**payload, 'id': req_id}))
+    while True:
+        raw = ws.recv()
+        msg = json.loads(raw)
+        if msg.get('id') == req_id:
+            return msg
+
+
+def _wait_for_load_event(ws, reload_id: int) -> None:
+    while True:
+        raw = ws.recv()
+        msg = json.loads(raw)
+        if msg.get('id') == reload_id:
+            continue
+        if msg.get('method') == 'Page.loadEventFired':
+            return
+
+
+def _wait_for_app_ready(ws, timeout: float = 30.0) -> None:
+    deadline = time.monotonic() + timeout
+    check_id = 10
+    while time.monotonic() < deadline:
+        msg = _send_and_wait(ws, check_id, {
+            'method': 'Runtime.evaluate',
+            'params': {
+                'expression': 'window.__app && typeof window.__app.captureFloorPlan === "function"',
+                'returnByValue': True,
+            }
+        })
+        if msg.get('result', {}).get('result', {}).get('value'):
+            return
+        time.sleep(0.1)
+    raise TimeoutError('App did not become ready after reload')
+
+
 def capture_floor_plan_screenshot(ws_url: str) -> str:
     ws = create_connection(ws_url, timeout=30)
     try:
-        # Evaluate the app method and return the base64 PNG.
-        expr = "window.__app.captureFloorPlan().then(dataUrl => ({dataUrl}))"
-        ws.send(json.dumps({
-            'id': 1,
+        _send_and_wait(ws, 1, {'method': 'Page.enable'})
+        _send_and_wait(ws, 2, {
+            'method': 'Page.reload',
+            'params': {'ignoreCache': True}
+        })
+
+        _wait_for_load_event(ws, 2)
+        _wait_for_app_ready(ws)
+
+        msg = _send_and_wait(ws, 3, {
             'method': 'Runtime.evaluate',
             'params': {
-                'expression': expr,
+                'expression': "window.__app.captureFloorPlan().then(dataUrl => ({dataUrl}))",
                 'awaitPromise': True,
                 'returnByValue': True,
             }
-        }))
-        while True:
-            raw = ws.recv()
-            msg = json.loads(raw)
-            if msg.get('id') == 1:
-                result = msg.get('result', {}).get('result', {})
-                if result.get('value'):
-                    return result['value']['dataUrl']
-                raise RuntimeError(f'CDP evaluation failed: {result}')
+        })
+        result = msg.get('result', {}).get('result', {})
+        if result.get('value'):
+            return result['value']['dataUrl']
+        raise RuntimeError(f'CDP evaluation failed: {result}')
     finally:
         ws.close()
 

@@ -46,8 +46,9 @@ Responsibilities:
 1. Connect to the CDP endpoint at `http://<windows-ip>:9222/json`.
 2. Find the page whose URL is `http://localhost:5173` and retrieve its `webSocketDebuggerUrl`.
 3. Open a WebSocket to that page.
-4. Evaluate `window.__app.captureFloorPlan(outputPath)`.
-5. Return the absolute path of the written PNG.
+4. Send `Page.reload` and wait for the page load to complete, then wait for `window.__app.captureFloorPlan` to be available.
+5. Evaluate `window.__app.captureFloorPlan(outputPath)`.
+6. Return the absolute path of the written PNG.
 
 Inputs:
 
@@ -82,7 +83,7 @@ Inputs:
 
 ## 5. Browser Capture Mode
 
-The frontend must expose a `captureFloorPlan()` method on the global app object:
+The frontend must expose a `captureFloorPlan()` method on the global app object. The method creates an independent orthographic camera and render target, so it does not need to enter the top-down view mode or wait for camera transitions:
 
 - Camera: directly above the unit, looking down (negative Y axis).
 - Projection: orthographic so walls are parallel and dimensions are preserved.
@@ -143,7 +144,9 @@ watch_floor_plan_and_compare.py detects change (debounced)
             ↓
 Verify baseline image + dev server + CDP
             ↓
-capture_floor_plan_screenshot.py → screenshots/floor-plan-*.png
+capture_floor_plan_screenshot.py reloads the app page and waits for it to be ready
+            ↓
+capture_floor_plan_screenshot.py calls `window.__app.captureFloorPlan()` → screenshots/floor-plan-*.png
             ↓
 Event appended to scripts/logs/floor-plan-compare-events.jsonl
             ↓
