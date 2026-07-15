@@ -1304,7 +1304,45 @@ export class HouseScene implements SceneApi {
       this.controls.update();
     }
     this.cameraAnimator.update(deltaTime);
+    this.updateCompassLabels();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private readonly COMPASS_ANCHORS: Record<'n' | 's' | 'e' | 'w', THREE.Vector3> = {
+    n: new THREE.Vector3(8.2, 0.05, -4.5),
+    s: new THREE.Vector3(8.2, 0.05, 12.0),
+    e: new THREE.Vector3(17.6, 0.05, 3.45),
+    w: new THREE.Vector3(-1.2, 0.05, 3.45),
+  };
+
+  private readonly compassEls: Partial<Record<'n' | 's' | 'e' | 'w', HTMLElement>> = {};
+
+  private initCompassLabels() {
+    if (Object.keys(this.compassEls).length > 0) return;
+    for (const key of ['n', 's', 'e', 'w'] as const) {
+      this.compassEls[key] = document.getElementById(`compass-${key}`) as HTMLElement | null;
+    }
+  }
+
+  private updateCompassLabels() {
+    this.initCompassLabels();
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    for (const key of ['n', 's', 'e', 'w'] as const) {
+      const el = this.compassEls[key];
+      if (!el) continue;
+      const anchor = this.COMPASS_ANCHORS[key];
+      const projected = anchor.clone().project(this.camera);
+      if (projected.z > 1) {
+        el.style.opacity = '0';
+        continue;
+      }
+      const x = (projected.x + 1) * 0.5 * w;
+      const y = (1 - projected.y) * 0.5 * h;
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      el.style.opacity = '0.95';
+    }
   }
 
   dispose(): void {
