@@ -16,6 +16,7 @@ import type {
   OpeningDef,
 } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
+import { TopDownView } from '../scene/TopDownView.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { createMaterialTexture } from './TextureFactory.js';
@@ -64,12 +65,17 @@ export class HouseScene implements SceneApi {
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   cameraAnimator: CameraAnimator;
+  topDownView: TopDownView;
   private topicRegistry: TopicRegistry;
   private onClickCallback?: (target: HoverTarget) => void;
   private boundOnWindowResize: () => void;
-  private _mode: 'orbit' | 'first-person' = 'orbit';
+  private _mode: 'orbit' | 'first-person' | 'top-down' = 'orbit';
   private compareSchemeData?: CurrentScheme;
   private roomMeta = new Map<string, { wall_finish?: string; openings?: OpeningDef[] }>();
+  private gridHelper?: THREE.GridHelper;
+  private topDownLayoutBounds = { minX: 0, maxX: 16.4, minZ: -2.9, maxZ: 9.8 };
+  private readonly ORBIT_POSITION = new THREE.Vector3(8.2, 14, 19.2);
+  private readonly ORBIT_TARGET = new THREE.Vector3(8.2, 0, 6.4);
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -82,7 +88,7 @@ export class HouseScene implements SceneApi {
       0.1,
       200
     );
-    this.camera.position.set(0, 14, 20);
+    this.camera.position.copy(this.ORBIT_POSITION);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -92,12 +98,20 @@ export class HouseScene implements SceneApi {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
-    this.controls.target.set(0, 0, 0);
+    this.controls.target.copy(this.ORBIT_TARGET);
     this.controls.maxPolarAngle = Math.PI / 2 - 0.05;
     this.controls.minDistance = 1;
     this.controls.maxDistance = 60;
 
     this.cameraAnimator = new CameraAnimator(this.camera, this.controls);
+    this.topDownView = new TopDownView(this.cameraAnimator, this.camera, {
+      bounds: this.topDownLayoutBounds,
+      orbitPosition: this.ORBIT_POSITION,
+      orbitTarget: this.ORBIT_TARGET,
+      topDownHeight: 28,
+      durationMs: 400,
+    });
+    this.topDownView.setOnChange((enabled) => this.onTopDownChange(enabled));
     this.topicRegistry = new TopicRegistry(this);
 
     this.setupLights();
@@ -121,6 +135,41 @@ export class HouseScene implements SceneApi {
 
   setOnObjectClick(cb: (target: HoverTarget) => void) {
     this.onClickCallback = cb;
+  }
+
+  isTopDown(): boolean {
+    return this.topDownView?.isEnabled() ?? false;
+  }
+
+  setTopDown(enabled: boolean): void {
+    if (!this.topDownView) return;
+    if (enabled) {
+      this.topDownView.enable();
+    } else {
+      this.topDownView.disable();
+    }
+  }
+
+  toggleTopDown(): void {
+    this.topDownView?.toggle();
+  }
+
+  private onTopDownChange(enabled: boolean): void {
+    this.topicGroup.visible = !enabled;
+    if (this.gridHelper) {
+      const mat = this.gridHelper.material as THREE.Material | THREE.Material[];
+      if (Array.isArray(mat)) {
+        for (const m of mat) m.opacity = enabled ? 0.15 : 1.0;
+      } else {
+        mat.opacity = enabled ? 0.15 : 1.0;
+      }
+      this.gridHelper.material.transparent = true;
+    }
+    if (enabled) {
+      this.controls.maxPolarAngle = 0.1;
+    } else {
+      this.controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    }
   }
 
   async buildFromCatalog(projectData: ProjectData): Promise<void> {
@@ -209,7 +258,18 @@ export class HouseScene implements SceneApi {
 
   private buildBase() {
     const grid = new THREE.GridHelper(40, 40, 0x444444, 0x2a2a2a);
+    const gridMat = grid.material as THREE.Material | THREE.Material[];
+    if (Array.isArray(gridMat)) {
+      for (const m of gridMat) {
+        m.transparent = true;
+        m.opacity = 1.0;
+      }
+    } else {
+      gridMat.transparent = true;
+      gridMat.opacity = 1.0;
+    }
     this.scene.add(grid);
+    this.gridHelper = grid;
     const plane = new THREE.Mesh(
       new THREE.PlaneGeometry(80, 80),
       new THREE.MeshStandardMaterial({ color: 0x222226, roughness: 0.9 })
@@ -915,11 +975,11 @@ export class HouseScene implements SceneApi {
     };
   }
 
-  get mode(): 'orbit' | 'first-person' {
+  get mode(): 'orbit' | 'first-person' | 'top-down' {
     return this._mode;
   }
 
-  setMode(mode: 'orbit' | 'first-person') {
+  setMode(mode: 'orbit' | 'first-person' | 'top-down') {
     this._mode = mode;
     this.controls.enabled = mode === 'orbit';
   }
