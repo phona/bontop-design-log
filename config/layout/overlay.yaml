@@ -21,6 +21,24 @@ suppress:
   - id: suppress_entry_garden_north
     region: { x1: 10.3, z1: -3.4, x2: 15.75, z2: -2.4 }
     reason: "入户花园北墙改玻璃护栏"
+  - id: suppress_entry_garden_west
+    region: { x1: 10.7, z1: -3.0, x2: 10.9, z2: 0.5 }
+    reason: "入户花园西墙改玻璃护栏"
+  - id: suppress_entry_garden_south
+    region: { x1: 10.7, z1: -0.5, x2: 15.75, z2: 0.5 }
+    reason: "入户花园与主楼之间的共用墙改玻璃"
+  - id: suppress_east_notch
+    region: { x1: 10.7, z1: -0.5, x2: 13.3, z2: 2.5 }
+    reason: "东向凹口玻璃幕墙替代实墙"
+  - id: suppress_east_wall_north
+    region: { x1: 13.3, z1: 1.5, x2: 13.5, z2: 5.5 }
+    reason: "东墙北段改玻璃幕墙"
+  - id: suppress_east_wall_mid
+    region: { x1: 13.5, z1: 5.3, x2: 16.5, z2: 5.5 }
+    reason: "东墙中段改玻璃幕墙"
+  - id: suppress_east_wall_south
+    region: { x1: 16.3, z1: 5.3, x2: 16.5, z2: 9.9 }
+    reason: "东墙南段改玻璃幕墙"
 
 elements:
   - id: glass_facade
