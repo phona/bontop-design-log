@@ -47,8 +47,8 @@ Responsibilities:
 2. Find the page whose URL is `http://localhost:5173` and retrieve its `webSocketDebuggerUrl`.
 3. Open a WebSocket to that page.
 4. Send `Page.reload` and wait for the page load to complete, then wait for `window.__app.captureFloorPlan` to be available.
-5. Evaluate `window.__app.captureFloorPlan(outputPath)`.
-6. Return the absolute path of the written PNG.
+5. Evaluate `window.__app.captureFloorPlan()`.
+6. Receive the returned PNG data URL, save it to `--output`, and return the absolute path of the written PNG.
 
 Inputs:
 

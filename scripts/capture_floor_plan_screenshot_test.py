@@ -46,7 +46,10 @@ class FakeWs:
         self.sent.append(json.loads(payload))
 
     def recv(self):
-        return json.dumps(self.responses.pop(0))
+        response = self.responses.pop(0)
+        if 'id' not in response and 'result' in response and self.sent:
+            response = {**response, 'id': self.sent[-1].get('id')}
+        return json.dumps(response)
 
 
 def test_send_and_wait_returns_matching_response():
@@ -76,8 +79,8 @@ def test_wait_for_load_event_returns_on_load_event():
 
 def test_wait_for_app_ready_succeeds_when_ready():
     ws = FakeWs([
-        {'id': 10, 'result': {'result': {'value': False}}},
-        {'id': 10, 'result': {'result': {'value': True}}},
+        {'result': {'result': {'value': False}}},
+        {'result': {'result': {'value': True}}},
     ])
     _wait_for_app_ready(ws, timeout=0.5)
     assert len(ws.sent) == 2
@@ -85,12 +88,13 @@ def test_wait_for_app_ready_succeeds_when_ready():
 
 def test_wait_for_app_ready_raises_on_timeout():
     ws = FakeWs([
-        {'id': 10, 'result': {'result': {'value': False}}},
+        {'result': {'result': {'value': False}}},
     ])
     with pytest.raises(TimeoutError):
         _wait_for_app_ready(ws, timeout=0.01)
 
 
+def test_save_data_url():
     data_url = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
     with tempfile.TemporaryDirectory() as tmpdir:
         path = Path(tmpdir) / 'out.png'

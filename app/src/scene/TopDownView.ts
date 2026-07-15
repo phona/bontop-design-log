@@ -45,6 +45,14 @@ export class TopDownView {
 
   updateBounds(bounds: { minX: number; maxX: number; minZ: number; maxZ: number }): void {
     this.options.bounds = bounds;
+    if (this.enabled) {
+      const centerX = (bounds.minX + bounds.maxX) / 2;
+      const centerZ = (bounds.minZ + bounds.maxZ) / 2;
+      this.camera.up.copy(TOP_DOWN_UP);
+      const pos = new THREE.Vector3(centerX, this.options.topDownHeight, centerZ + 0.01);
+      const tgt = new THREE.Vector3(centerX, 0, centerZ);
+      this.animator.transitionToTopDown(pos, tgt);
+    }
   }
 
   isEnabled(): boolean {

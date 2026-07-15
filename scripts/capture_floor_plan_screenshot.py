@@ -4,6 +4,7 @@
 import argparse
 import base64
 import json
+import random
 import sys
 import time
 from pathlib import Path
@@ -11,6 +12,8 @@ from urllib.parse import urlparse
 
 import requests
 from websocket import create_connection
+
+DEFAULT_RECV_TIMEOUT = 30.0
 
 
 def parse_args(argv=None):
@@ -40,17 +43,23 @@ def find_page_ws_url(cdp_url: str, app_url: str) -> str:
     raise RuntimeError(f'No CDP page found for {app_url}. Available pages: {[p.get("url") for p in pages]}')
 
 
-def _send_and_wait(ws, req_id: int, payload: dict) -> dict:
+def _send_and_wait(ws, req_id: int, payload: dict, timeout: float = DEFAULT_RECV_TIMEOUT) -> dict:
     ws.send(json.dumps({**payload, 'id': req_id}))
+    deadline = time.monotonic() + timeout if timeout else None
     while True:
+        if deadline and time.monotonic() > deadline:
+            raise TimeoutError(f'Timeout waiting for CDP response id={req_id}')
         raw = ws.recv()
         msg = json.loads(raw)
         if msg.get('id') == req_id:
             return msg
 
 
-def _wait_for_load_event(ws, reload_id: int) -> None:
+def _wait_for_load_event(ws, reload_id: int, timeout: float = DEFAULT_RECV_TIMEOUT) -> None:
+    deadline = time.monotonic() + timeout if timeout else None
     while True:
+        if deadline and time.monotonic() > deadline:
+            raise TimeoutError('Timeout waiting for Page.loadEventFired')
         raw = ws.recv()
         msg = json.loads(raw)
         if msg.get('id') == reload_id:
@@ -61,7 +70,7 @@ def _wait_for_load_event(ws, reload_id: int) -> None:
 
 def _wait_for_app_ready(ws, timeout: float = 30.0) -> None:
     deadline = time.monotonic() + timeout
-    check_id = 10
+    check_id = random.randint(1, 1_000_000)
     while time.monotonic() < deadline:
         msg = _send_and_wait(ws, check_id, {
             'method': 'Runtime.evaluate',
@@ -69,7 +78,7 @@ def _wait_for_app_ready(ws, timeout: float = 30.0) -> None:
                 'expression': 'window.__app && typeof window.__app.captureFloorPlan === "function"',
                 'returnByValue': True,
             }
-        })
+        }, timeout=min(5.0, deadline - time.monotonic()))
         if msg.get('result', {}).get('result', {}).get('value'):
             return
         time.sleep(0.1)

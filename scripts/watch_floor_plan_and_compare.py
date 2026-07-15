@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -17,6 +18,7 @@ from watchdog.events import FileSystemEventHandler
 WATCHED_FILES = {'model-geometry.yaml', 'overlay.yaml'}
 LOG_DIR = Path('scripts/logs')
 EVENT_LOG = LOG_DIR / 'floor-plan-compare-events.jsonl'
+PID_FILE = LOG_DIR / 'floor-plan-watcher.pid'
 
 
 def parse_args(argv=None):
@@ -29,6 +31,7 @@ def parse_args(argv=None):
     parser.add_argument('--screenshots-dir', default='screenshots', help='Where to save screenshots')
     parser.add_argument('--log', default=None, help='Optional additional log file path')
     parser.add_argument('--one-shot', action='store_true', help='Capture once and exit instead of watching')
+    parser.add_argument('--force', action='store_true', help='Start even if another watcher appears to be running')
     return parser.parse_args(argv)
 
 
@@ -46,6 +49,12 @@ class WatcherHandler(FileSystemEventHandler):
         if should_watch(event.src_path):
             self.callback(event.src_path)
 
+    def on_created(self, event):
+        if event.is_directory:
+            return
+        if should_watch(event.src_path):
+            self.callback(event.src_path)
+
 
 class FloorPlanWatcher:
     def __init__(self, args):
@@ -53,26 +62,62 @@ class FloorPlanWatcher:
         self.pending_events = []
         self.lock = Lock()
         self.stop_event = Event()
+        self._pid_acquired = False
+
+    def _is_pid_alive(self, pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return False
+        return True
+
+    def acquire_pid(self):
+        self.ensure_log_dir()
+        if PID_FILE.exists():
+            try:
+                existing_pid = int(PID_FILE.read_text().strip())
+            except ValueError:
+                existing_pid = None
+            if existing_pid and self._is_pid_alive(existing_pid):
+                if not self.args.force:
+                    print(f'已有 watcher 在运行 (PID {existing_pid})，使用 --force 可强制启动。', file=sys.stderr)
+                    sys.exit(1)
+                print(f'警告：PID 文件存在且进程 {existing_pid} 仍在运行，但 --force 已设置，继续启动。', file=sys.stderr)
+        PID_FILE.write_text(str(os.getpid()))
+        self._pid_acquired = True
+
+    def release_pid(self):
+        if self._pid_acquired and PID_FILE.exists():
+            try:
+                current = int(PID_FILE.read_text().strip())
+                if current == os.getpid():
+                    PID_FILE.unlink()
+                    self._pid_acquired = False
+            except (ValueError, OSError):
+                pass
 
     def run(self):
         if self.args.one_shot:
             self.capture_once()
             return
 
-        self.ensure_log_dir()
-        watch_dir = Path(self.args.watch_dir).resolve()
-        handler = WatcherHandler(self.on_file_changed)
-        observer = Observer()
-        observer.schedule(handler, str(watch_dir), recursive=False)
-        observer.start()
-        print(f'Watching {watch_dir} for changes...')
+        self.acquire_pid()
         try:
-            while not self.stop_event.is_set():
-                self.process_pending()
-                time.sleep(0.1)
+            watch_dir = Path(self.args.watch_dir).resolve()
+            handler = WatcherHandler(self.on_file_changed)
+            observer = Observer()
+            observer.schedule(handler, str(watch_dir), recursive=False)
+            observer.start()
+            print(f'Watching {watch_dir} for changes...')
+            try:
+                while not self.stop_event.is_set():
+                    self.process_pending()
+                    time.sleep(0.1)
+            finally:
+                observer.stop()
+                observer.join()
         finally:
-            observer.stop()
-            observer.join()
+            self.release_pid()
 
     def ensure_log_dir(self):
         LOG_DIR.mkdir(parents=True, exist_ok=True)

@@ -159,6 +159,13 @@ export class HouseScene implements SceneApi {
 
   async captureFloorPlan(): Promise<string> {
     let renderTarget: THREE.WebGLRenderTarget | null = null;
+    const prevTopicVisible = this.topicGroup.visible;
+    const prevGridOpacity = this.gridHelper ? this.getGridHelperOpacity() : 1.0;
+
+    this.topicGroup.visible = false;
+    if (this.gridHelper) {
+      this.setGridHelperOpacity(0);
+    }
 
     try {
       const { minX, maxX, minZ, maxZ } = this.topDownLayoutBounds;
@@ -189,11 +196,35 @@ export class HouseScene implements SceneApi {
       this.renderer.readRenderTargetPixels(renderTarget, 0, 0, renderWidth, renderHeight, buffer);
       return this.rgbaToPng(buffer, renderWidth, renderHeight);
     } finally {
+      this.topicGroup.visible = prevTopicVisible;
+      if (this.gridHelper) {
+        this.setGridHelperOpacity(prevGridOpacity);
+      }
       this.renderer.setRenderTarget(null);
       if (renderTarget) {
         renderTarget.dispose();
       }
     }
+  }
+
+  private getGridHelperOpacity(): number {
+    if (!this.gridHelper) return 1.0;
+    const mat = this.gridHelper.material as THREE.Material | THREE.Material[];
+    if (Array.isArray(mat)) {
+      return mat[0]?.opacity ?? 1.0;
+    }
+    return mat.opacity;
+  }
+
+  private setGridHelperOpacity(opacity: number): void {
+    if (!this.gridHelper) return;
+    const mat = this.gridHelper.material as THREE.Material | THREE.Material[];
+    if (Array.isArray(mat)) {
+      for (const m of mat) m.opacity = opacity;
+    } else {
+      mat.opacity = opacity;
+    }
+    this.gridHelper.material.transparent = true;
   }
 
   private rgbaToPng(rgba: Uint8Array, width: number, height: number): string {
