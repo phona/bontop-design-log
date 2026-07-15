@@ -1,12 +1,15 @@
 import json
 import tempfile
+import time
 from pathlib import Path
 import pytest
+import requests
 from capture_floor_plan_screenshot import (
     _send_and_wait,
     _wait_for_app_ready,
     _wait_for_load_event,
     build_cdp_url,
+    find_page_ws_url,
     parse_args,
     save_data_url,
 )
@@ -35,6 +38,25 @@ def test_parse_args_custom():
 
 def test_build_cdp_url():
     assert build_cdp_url('localhost', 9222) == 'http://localhost:9222/json'
+
+
+def test_find_page_ws_url_raises_chinese_on_cdp_unreachable(monkeypatch):
+    def mock_get(*args, **kwargs):
+        raise requests.ConnectionError('Connection refused')
+    monkeypatch.setattr(requests, 'get', mock_get)
+    with pytest.raises(RuntimeError, match='无法连接 CDP'):
+        find_page_ws_url('http://localhost:9222/json', 'http://localhost:5173')
+
+
+def test_find_page_ws_url_raises_chinese_on_page_not_found(monkeypatch):
+    class MockResp:
+        def json(self):
+            return [{'type': 'page', 'url': 'http://other/'}]
+        def raise_for_status(self):
+            pass
+    monkeypatch.setattr(requests, 'get', lambda *a, **k: MockResp())
+    with pytest.raises(RuntimeError, match='未在 CDP 页面列表中找到'):
+        find_page_ws_url('http://localhost:9222/json', 'http://localhost:5173')
 
 
 class FakeWs:
@@ -77,6 +99,34 @@ def test_wait_for_load_event_returns_on_load_event():
     _wait_for_load_event(ws, 2)
 
 
+def test_wait_for_load_event_raises_on_reload_error():
+    ws = FakeWs([
+        {'id': 2, 'error': {'code': -32000, 'message': 'Cannot navigate to invalid URL'}},
+    ])
+    with pytest.raises(RuntimeError, match='CDP Page.reload 失败'):
+        _wait_for_load_event(ws, 2, timeout=0.5)
+
+
+def test_wait_for_load_event_raises_on_cdp_error():
+    ws = FakeWs([
+        {'id': 2, 'result': {}},
+        {'error': {'code': -32000, 'message': 'Something went wrong'}},
+    ])
+    with pytest.raises(RuntimeError, match='CDP 发生错误'):
+        _wait_for_load_event(ws, 2, timeout=0.5)
+
+
+def test_wait_for_load_event_timeout_message_is_chinese(monkeypatch):
+    ws = FakeWs([])
+    counter = [0.0]
+    def fake_monotonic():
+        counter[0] += 1.0
+        return counter[0]
+    monkeypatch.setattr(time, 'monotonic', fake_monotonic)
+    with pytest.raises(TimeoutError, match='等待页面加载超时'):
+        _wait_for_load_event(ws, 2, timeout=0.01)
+
+
 def test_wait_for_app_ready_succeeds_when_ready():
     ws = FakeWs([
         {'result': {'result': {'value': False}}},
@@ -90,8 +140,13 @@ def test_wait_for_app_ready_raises_on_timeout():
     ws = FakeWs([
         {'result': {'result': {'value': False}}},
     ])
-    with pytest.raises(TimeoutError):
+    with pytest.raises(TimeoutError, match='window.__app.captureFloorPlan'):
         _wait_for_app_ready(ws, timeout=0.01)
+
+
+def test_save_data_url_error_message_is_chinese():
+    with pytest.raises(ValueError, match='应为 PNG base64 data URL'):
+        save_data_url('data:image/jpeg;base64,xxx', '/tmp/out.png')
 
 
 def test_save_data_url():

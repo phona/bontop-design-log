@@ -36,8 +36,11 @@ def build_cdp_url(host: str, port: int) -> str:
 
 
 def find_page_ws_url(cdp_url: str, app_url: str) -> str:
-    resp = requests.get(cdp_url, timeout=10)
-    resp.raise_for_status()
+    try:
+        resp = requests.get(cdp_url, timeout=10)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        raise RuntimeError(f'无法连接 CDP，请确认已启动 --remote-debugging-port: {e}')
     pages = resp.json()
     target = urlparse(app_url)
     for page in pages:
@@ -46,7 +49,7 @@ def find_page_ws_url(cdp_url: str, app_url: str) -> str:
         page_url = page.get('url', '')
         if page_url == app_url or page_url.rstrip('/') == app_url.rstrip('/'):
             return page['webSocketDebuggerUrl']
-    raise RuntimeError(f'No CDP page found for {app_url}. Available pages: {[p.get("url") for p in pages]}')
+    raise RuntimeError(f'未在 CDP 页面列表中找到 {app_url}，可用页面: {[p.get("url") for p in pages]}')
 
 
 def _send_and_wait(ws, req_id: int, payload: dict, timeout: float = DEFAULT_RECV_TIMEOUT) -> dict:
@@ -65,11 +68,15 @@ def _wait_for_load_event(ws, reload_id: int, timeout: float = DEFAULT_RECV_TIMEO
     deadline = time.monotonic() + timeout if timeout else None
     while True:
         if deadline and time.monotonic() > deadline:
-            raise TimeoutError('Timeout waiting for Page.loadEventFired')
+            raise TimeoutError('等待页面加载超时，请检查开发服务器是否可达')
         raw = ws.recv()
         msg = json.loads(raw)
         if msg.get('id') == reload_id:
+            if 'error' in msg:
+                raise RuntimeError(f"CDP Page.reload 失败: {msg['error']}")
             continue
+        if 'error' in msg:
+            raise RuntimeError(f"CDP 发生错误: {msg['error']}")
         if msg.get('method') == 'Page.loadEventFired':
             return
 
@@ -88,7 +95,7 @@ def _wait_for_app_ready(ws, timeout: float = 30.0) -> None:
         if msg.get('result', {}).get('result', {}).get('value'):
             return
         time.sleep(0.1)
-    raise TimeoutError('App did not become ready after reload')
+    raise TimeoutError('应用未在超时前就绪，请确认 window.__app.captureFloorPlan 已暴露')
 
 
 def capture_floor_plan_screenshot(ws_url: str) -> str:
@@ -114,14 +121,14 @@ def capture_floor_plan_screenshot(ws_url: str) -> str:
         result = msg.get('result', {}).get('result', {})
         if result.get('value'):
             return result['value']['dataUrl']
-        raise RuntimeError(f'CDP evaluation failed: {result}')
+        raise RuntimeError(f'CDP 执行失败: {result}')
     finally:
         ws.close()
 
 
 def save_data_url(data_url: str, output_path: str) -> Path:
     if not data_url.startswith('data:image/png;base64,'):
-        raise ValueError('Expected PNG base64 data URL')
+        raise ValueError('应为 PNG base64 data URL')
     b64 = data_url.split(',', 1)[1]
     png_bytes = base64.b64decode(b64)
     out = Path(output_path)
@@ -133,7 +140,7 @@ def save_data_url(data_url: str, output_path: str) -> Path:
 def main(argv=None):
     args = parse_args(argv)
     if not args.output:
-        print('error: --output is required', file=sys.stderr)
+        print('错误：必须指定 --output', file=sys.stderr)
         return 2
     cdp_url = build_cdp_url(args.cdp_host, args.cdp_port)
     ws_url = find_page_ws_url(cdp_url, args.app_url)
