@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-export type CameraMode = 'orbit' | 'first-person';
+export type CameraMode = 'orbit' | 'first-person' | 'top-down';
 
 const DEFAULT_DURATION = 0.5;
 
@@ -68,6 +68,17 @@ export class CameraAnimator {
     this.duration = DEFAULT_DURATION * 1000;
     this.animating = true;
     this.mode = 'orbit';
+  }
+
+  transitionToTopDown(topDownPosition: THREE.Vector3, topDownTarget: THREE.Vector3) {
+    this.startPos = this.camera.position.clone();
+    this.endPos = topDownPosition.clone();
+    this.startTarget = this.controls?.target.clone() ?? new THREE.Vector3(0, 0, 0);
+    this.endTarget = topDownTarget.clone();
+    this.elapsed = 0;
+    this.duration = DEFAULT_DURATION * 1000;
+    this.animating = true;
+    this.mode = 'top-down';
   }
 
   update(deltaTime: number): void {

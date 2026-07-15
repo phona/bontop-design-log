@@ -50,11 +50,11 @@ describe('REST API', () => {
     assert.ok(Array.isArray(res.body.topics));
     assert.ok(Array.isArray(res.body.house.rooms));
     assert.ok(res.body.house.rooms.some((r: { id: string }) => r.id === 'master_bedroom'));
-    assert.ok(!res.body.house.rooms.some((r: { id: string }) => r.id === 'west_platform'));
+    assert.ok(!res.body.house.rooms.some((r: { id: string }) => r.id === 'elevator'));
     // Platform may be absent when the DXF has no unlabeled-area extraction yet.
     if (res.body.house.platform) {
-      assert.equal(res.body.house.platform?.id, 'west_platform');
-      assert.equal(res.body.house.platform?.name, '西设备平台');
+      assert.equal(res.body.house.platform?.id, 'elevator');
+      assert.equal(res.body.house.platform?.name, '电梯井');
     }
     assert.ok(Array.isArray(res.body.house.sceneElements));
   });
