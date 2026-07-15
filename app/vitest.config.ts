@@ -9,7 +9,7 @@ export default defineConfig({
   },
   server: {
     fs: {
-      allow: [path.resolve(__dirname, '../config')],
+      allow: [path.resolve(__dirname), path.resolve(__dirname, '../config')],
     },
   },
   test: {
