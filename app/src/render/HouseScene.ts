@@ -1315,12 +1315,12 @@ export class HouseScene implements SceneApi {
     w: new THREE.Vector3(-1.2, 0.05, 3.45),
   };
 
-  private readonly compassEls: Partial<Record<'n' | 's' | 'e' | 'w', HTMLElement>> = {};
+  private readonly compassEls: Partial<Record<'n' | 's' | 'e' | 'w', HTMLElement | null>> = {};
 
   private initCompassLabels() {
     if (Object.keys(this.compassEls).length > 0) return;
     for (const key of ['n', 's', 'e', 'w'] as const) {
-      this.compassEls[key] = document.getElementById(`compass-${key}`) as HTMLElement | null;
+      this.compassEls[key] = document.getElementById(`compass-${key}`);
     }
   }
 
