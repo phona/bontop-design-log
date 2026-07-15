@@ -30,7 +30,7 @@ const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
 
 type LayoutBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
-const DEFAULT_LAYOUT_BOUNDS: LayoutBounds = { minX: 0.1, maxX: 12.8, minZ: 0, maxZ: 16.4 };
+const DEFAULT_LAYOUT_BOUNDS: LayoutBounds = { minX: 0, maxX: 16.4, minZ: 0.1, maxZ: 12.8 };
 
 type ArcDescriptor = {
   center: { x: number; z: number };
@@ -79,8 +79,8 @@ export class HouseScene implements SceneApi {
   private roomMeta = new Map<string, { wall_finish?: string; openings?: OpeningDef[] }>();
   private gridHelper?: THREE.GridHelper;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
-  private readonly ORBIT_POSITION = new THREE.Vector3(6.4, 14, 21.0);
-  private readonly ORBIT_TARGET = new THREE.Vector3(6.4, 0, 8.2);
+  private readonly ORBIT_POSITION = new THREE.Vector3(8.2, 14, 19.2);
+  private readonly ORBIT_TARGET = new THREE.Vector3(8.2, 0, 6.4);
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -1309,10 +1309,10 @@ export class HouseScene implements SceneApi {
   }
 
   private readonly COMPASS_ANCHORS: Record<'n' | 's' | 'e' | 'w', THREE.Vector3> = {
-    n: new THREE.Vector3(-4.5, 0.05, 8.2),
-    s: new THREE.Vector3(12.0, 0.05, 8.2),
-    e: new THREE.Vector3(3.45, 0.05, 17.6),
-    w: new THREE.Vector3(3.45, 0.05, -1.2),
+    n: new THREE.Vector3(8.2, 0.05, -4.5),
+    s: new THREE.Vector3(8.2, 0.05, 12.0),
+    e: new THREE.Vector3(17.6, 0.05, 3.45),
+    w: new THREE.Vector3(-1.2, 0.05, 3.45),
   };
 
   private readonly compassEls: Partial<Record<'n' | 's' | 'e' | 'w', HTMLElement | null>> = {};

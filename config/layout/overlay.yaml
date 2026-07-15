@@ -1,124 +1,87 @@
+# overlay.yaml: 渲染意图声明（intent-only），严格 schema。
+# 2026-07-15：所有 z 字段 +3.0（与 model-geometry.yaml 同步）。
 version: 1
+
 suppress:
   - id: suppress_north_wall
-    region:
-      x1: 2.5
-      z1: -0.5
-      x2: 3.5
-      z2: 11.3
-    reason: 北外墙改玻璃幕墙
+    region: { x1: -0.5, z1: 2.5, x2: 11.3, z2: 3.5 }
+    reason: "北外墙改玻璃幕墙"
   - id: suppress_west_wall
-    region:
-      x1: 2.5
-      z1: -0.5
-      x2: 13.3
-      z2: 0.5
-    reason: 西外墙改玻璃幕墙
+    region: { x1: -0.5, z1: 2.5, x2: 0.5, z2: 13.3 }
+    reason: "西外墙改玻璃幕墙"
   - id: suppress_south_wall
-    region:
-      x1: 12.3
-      z1: -0.5
-      x2: 13.3
-      z2: 13.9
-    reason: 南外墙改玻璃幕墙
+    region: { x1: -0.5, z1: 12.3, x2: 13.9, z2: 13.3 }
+    reason: "南外墙改玻璃幕墙"
   - id: suppress_bedroom_se_corner
-    region:
-      x1: 12.7
-      z1: 15.9
-      x2: 13
-      z2: 16.9
-    reason: 东南次卧南向凸窗（仅右下角 1.1m 那段，剩余东墙保留实墙）
+    region: { x1: 15.9, z1: 12.7, x2: 16.9, z2: 13.0 }
+    reason: "东南次卧南向凸窗（仅右下角 1.1m 那段，剩余东墙保留实墙）"
   - id: suppress_entry_garden_east
-    region:
-      x1: -0.4
-      z1: 14.75
-      x2: 3.5
-      z2: 15.75
-    reason: 入户花园东墙改玻璃护栏
+    region: { x1: 14.75, z1: -0.4, x2: 15.75, z2: 3.5 }
+    reason: "入户花园东墙改玻璃护栏"
   - id: suppress_entry_garden_north
-    region:
-      x1: -0.4
-      z1: 10.3
-      x2: 0.6
-      z2: 15.75
-    reason: 入户花园北墙改玻璃护栏
+    region: { x1: 10.3, z1: -0.4, x2: 15.75, z2: 0.6 }
+    reason: "入户花园北墙改玻璃护栏"
+
 elements:
   - id: glass_facade
     type: curtain_run
     closed: true
     points:
-      - x: 3
-        z: 0
-      - x: 3
-        z: 10.8
-      - x: 5
-        z: 10.8
-      - x: 5
-        z: 13.4
-      - x: 8.4
-        z: 13.4
-      - x: 8.4
-        z: 16.4
-      - x: 12.8
-        z: 16.4
-      - x: 12.8
-        z: 0
-    height: 3
+      - { x: 0.0, z: 3.0, radius: 0.8 }
+      - { x: 10.8, z: 3.0 }
+      - { x: 10.8, z: 5.0 }
+      - { x: 13.4, z: 5.0 }
+      - { x: 13.4, z: 8.4 }
+      - { x: 16.4, z: 8.4 }
+      - { x: 16.4, z: 12.8 }
+      - { x: 0.0, z: 12.8, radius: 0.8 }
+    height: 3.0
+
   - id: entry_garden_glass
     type: curtain_run
     closed: true
     points:
-      - x: 3
-        z: 10.8
-      - x: 3
-        z: 15.25
-      - x: 0.1
-        z: 15.25
-      - x: 0.1
-        z: 10.8
+      - { x: 10.8, z: 3.0 }
+      - { x: 15.25, z: 3.0 }
+      - { x: 15.25, z: 0.1 }
+      - { x: 10.8, z: 0.1 }
     height: 1.1
+
   - id: master_bedroom_west_bay
     type: bay_sill
     points:
-      - x: 8.55
-        z: 0
-      - x: 12.8
-        z: 0
+      - { x: 0.0, z: 8.55 }
+      - { x: 0.0, z: 12.8 }
     depth: 0.3
     sill: 0.45
     height: 2.55
-    reason: 主卧西墙环幕飘窗
+    reason: "主卧西墙环幕飘窗"
+
   - id: master_bedroom_south_bay
     type: bay_sill
     points:
-      - x: 12.8
-        z: 0
-      - x: 12.8
-        z: 4.2
+      - { x: 0.0, z: 12.8 }
+      - { x: 4.2, z: 12.8 }
     depth: 0.3
     sill: 0.45
     height: 2.55
-    reason: 主卧南墙环幕飘窗
+    reason: "主卧南墙环幕飘窗"
+
   - id: bedroom_se_south_bay
     type: bay_sill
     points:
-      - x: 12.8
-        z: 13.4
-      - x: 12.8
-        z: 16.4
+      - { x: 13.4, z: 12.8 }
+      - { x: 16.4, z: 12.8 }
     depth: 0.3
     sill: 0.45
     height: 2.55
-    reason: 东南次卧南向凸窗
+    reason: "东南次卧南向凸窗"
+
   - id: corridor_floor
     type: floor_region
     points:
-      - x: 8.55
-        z: 4.2
-      - x: 8.55
-        z: 7.2
-      - x: 10.8
-        z: 7.2
-      - x: 10.8
-        z: 4.2
-    reason: 主卧与客卫之间的过道
+      - { x: 4.2, z: 8.55 }
+      - { x: 7.2, z: 8.55 }
+      - { x: 7.2, z: 10.8 }
+      - { x: 4.2, z: 10.8 }
+    reason: "主卧与客卫之间的过道"

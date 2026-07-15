@@ -1,184 +1,117 @@
 version: '1.0'
-source: 人工维护：参考 cad/design/01_floor_plan/floor_plan_design_2026-07-05.dxf
+source: '人工维护：参考 cad/design/01_floor_plan/floor_plan_design_2026-07-05.dxf'
 unit: m
 scale: 0.001
 origin:
   x: 31.64204
   z: -12.48434
 export_date: '2026-07-15'
-notes: 整体 z 坐标 +3.0，使全部内容落在第一象限。entry_garden 仍在 z=0.1~3.0（DXF 原 z=-2.9~0 + 3.0）。
+notes: '整体 z 坐标 +3.0，使全部内容落在第一象限。entry_garden 仍在 z=0.1~3.0（DXF 原 z=-2.9~0 + 3.0）。'
 rooms:
   - id: master_bath
     name: 主卫
-    x: 5.15
-    z: 1.3
-    width: 4.3
-    depth: 2.6
-    height: 3
+    x: 1.3
+    z: 5.15
+    width: 2.6
+    depth: 4.3
+    height: 3.0
     area: 11.18
     perimeter: 13.8
   - id: master_bedroom
     name: 主卧
-    x: 10.675
-    z: 2.1
-    width: 4.25
-    depth: 4.2
-    height: 3
+    x: 2.1
+    z: 10.675
+    width: 4.2
+    depth: 4.25
+    height: 3.0
     area: 17.85
     perimeter: 16.9
   - id: bedroom_nw
     name: 西北次卧
-    x: 5.775
-    z: 4.1
-    width: 5.55
-    depth: 3
-    height: 3
+    x: 4.1
+    z: 5.775
+    width: 3.0
+    depth: 5.55
+    height: 3.0
     area: 16.65
     perimeter: 17.1
   - id: guest_bath
     name: 客卫
-    x: 11.8
-    z: 5.7
-    width: 2
-    depth: 3
-    height: 3
-    area: 6
-    perimeter: 10
+    x: 5.7
+    z: 11.8
+    width: 3.0
+    depth: 2.0
+    height: 3.0
+    area: 6.0
+    perimeter: 10.0
   - id: kitchen
     name: 厨房
-    x: 4
-    z: 9
-    width: 2
-    depth: 3.6
-    height: 3
+    x: 9.0
+    z: 4.0
+    width: 3.6
+    depth: 2.0
+    height: 3.0
     area: 7.2
     perimeter: 11.2
   - id: living_dining
     name: 客餐厅
-    x: 8.9
-    z: 10.3
-    width: 7.8
-    depth: 6.2
-    height: 3
+    x: 10.3
+    z: 8.9
+    width: 6.2
+    depth: 7.8
+    height: 3.0
     area: 48.36
-    perimeter: 28
+    perimeter: 28.0
   - id: bedroom_se
     name: 东南次卧
-    x: 10.6
-    z: 14.9
-    width: 4.4
-    depth: 3
-    height: 3
+    x: 14.9
+    z: 10.6
+    width: 3.0
+    depth: 4.4
+    height: 3.0
     area: 13.2
     perimeter: 14.8
   - id: entry_garden
     name: 入户花园
-    x: 1.55
-    z: 13.025
-    width: 2.9
-    depth: 4.45
-    height: 3
+    x: 13.025
+    z: 1.55
+    width: 4.45
+    depth: 2.9
+    height: 3.0
     area: 12.9
     perimeter: 14.7
 platform:
   id: elevator
   name: 电梯井
-  x: 4
-  z: 12.1
-  width: 2
-  depth: 2.6
+  x: 12.1
+  z: 4.0
+  width: 2.6
+  depth: 2.0
   height: 0.15
   area: 5.2
 walls:
-  - x1: 3
-    z1: 0
-    x2: 3
-    z2: 10.8
-  - x1: 3
-    z1: 10.8
-    x2: 0.1
-    z2: 10.8
-  - x1: 0.1
-    z1: 10.8
-    x2: 0.1
-    z2: 15.25
-  - x1: 0.1
-    z1: 15.25
-    x2: 3
-    z2: 15.25
-  - x1: 3
-    z1: 15.25
-    x2: 3
-    z2: 10.8
-  - x1: 3
-    z1: 10.8
-    x2: 5
-    z2: 10.8
-  - x1: 5
-    z1: 10.8
-    x2: 5
-    z2: 13.4
-  - x1: 5
-    z1: 13.4
-    x2: 8.4
-    z2: 13.4
-  - x1: 8.4
-    z1: 13.4
-    x2: 8.4
-    z2: 16.4
-  - x1: 8.4
-    z1: 16.4
-    x2: 12.8
-    z2: 16.4
-  - x1: 12.8
-    z1: 16.4
-    x2: 12.8
-    z2: 0
-  - x1: 12.8
-    z1: 0
-    x2: 3
-    z2: 0
-  - x1: 7.3
-    z1: 0
-    x2: 7.3
-    z2: 2.6
-  - x1: 3
-    z1: 2.6
-    x2: 8.55
-    z2: 2.6
-  - x1: 3
-    z1: 5.6
-    x2: 8.55
-    z2: 5.6
-  - x1: 8.55
-    z1: 2.6
-    x2: 8.55
-    z2: 7.2
-  - x1: 8.55
-    z1: 4.2
-    x2: 12.8
-    z2: 4.2
-  - x1: 10.8
-    z1: 4.2
-    x2: 10.8
-    z2: 7.2
-  - x1: 10.8
-    z1: 7.2
-    x2: 12.8
-    z2: 7.2
-  - x1: 3
-    z1: 7.2
-    x2: 5
-    z2: 7.2
-  - x1: 5
-    z1: 7.2
-    x2: 12.8
-    z2: 7.2
-  - x1: 3
-    z1: 13.4
-    x2: 5
-    z2: 13.4
-  - x1: 8.4
-    z1: 13.4
-    x2: 12.8
-    z2: 13.4
+  # 外框（顺时针，从西北角出发）
+  - { x1: 0.0, z1: 3.0, x2: 10.8, z2: 3.0 }
+  - { x1: 10.8, z1: 3.0, x2: 10.8, z2: 0.1 }
+  - { x1: 10.8, z1: 0.1, x2: 15.25, z2: 0.1 }
+  - { x1: 15.25, z1: 0.1, x2: 15.25, z2: 3.0 }
+  - { x1: 15.25, z1: 3.0, x2: 10.8, z2: 3.0 }
+  - { x1: 10.8, z1: 3.0, x2: 10.8, z2: 5.0 }
+  - { x1: 10.8, z1: 5.0, x2: 13.4, z2: 5.0 }
+  - { x1: 13.4, z1: 5.0, x2: 13.4, z2: 8.4 }
+  - { x1: 13.4, z1: 8.4, x2: 16.4, z2: 8.4 }
+  - { x1: 16.4, z1: 8.4, x2: 16.4, z2: 12.8 }
+  - { x1: 16.4, z1: 12.8, x2: 0.0, z2: 12.8 }
+  - { x1: 0.0, z1: 12.8, x2: 0.0, z2: 3.0 }
+  # 内墙
+  - { x1: 0.0, z1: 7.3, x2: 2.6, z2: 7.3 }
+  - { x1: 2.6, z1: 3.0, x2: 2.6, z2: 8.55 }
+  - { x1: 5.6, z1: 3.0, x2: 5.6, z2: 8.55 }
+  - { x1: 2.6, z1: 8.55, x2: 7.2, z2: 8.55 }
+  - { x1: 4.2, z1: 8.55, x2: 4.2, z2: 12.8 }
+  - { x1: 4.2, z1: 10.8, x2: 7.2, z2: 10.8 }
+  - { x1: 7.2, z1: 10.8, x2: 7.2, z2: 12.8 }
+  - { x1: 7.2, z1: 3.0, x2: 7.2, z2: 5.0 }
+  - { x1: 7.2, z1: 5.0, x2: 7.2, z2: 12.8 }
+  - { x1: 13.4, z1: 3.0, x2: 13.4, z2: 5.0 }
+  - { x1: 13.4, z1: 8.4, x2: 13.4, z2: 12.8 }
