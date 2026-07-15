@@ -9,6 +9,9 @@ export default defineConfig({
       '/mcp': 'http://localhost:4000',
       '/sse': 'http://localhost:4000',
     },
+    fs: {
+      allow: [path.resolve(__dirname, '../config')],
+    },
   },
   resolve: {
     alias: {
