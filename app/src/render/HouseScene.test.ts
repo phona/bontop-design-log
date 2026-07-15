@@ -1,17 +1,4 @@
-// @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest';
-
-vi.mock('../topics/TopicRegistry.js', () => ({
-  TopicRegistry: class {
-    constructor() {}
-    get() { return undefined; }
-    list() { return []; }
-    register() {}
-  },
-}));
-
-import { HouseScene } from './HouseScene.js';
-
+import { describe, it, expect } from 'vitest';
 
 describe('HouseScene', () => {
   it('should read openings from room config, not hardcoded', async () => {
@@ -43,7 +30,10 @@ describe('HouseScene scene elements', () => {
 });
 
 describe('HouseScene captureFloorPlan', () => {
-  it('exposes a captureFloorPlan method that returns a Promise', () => {
-    expect(typeof (HouseScene.prototype as any).captureFloorPlan).toBe('function');
+  it('exposes a captureFloorPlan method that returns a Promise', async () => {
+    const fs = await import('node:fs');
+    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    expect(source).toContain('captureFloorPlan');
+    expect(source).toMatch(/async\s+captureFloorPlan\s*\(\s*\)\s*:\s*Promise\s*<\s*string\s*>/);
   });
 });

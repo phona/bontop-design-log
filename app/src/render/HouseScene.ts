@@ -155,46 +155,54 @@ export class HouseScene implements SceneApi {
   }
 
   async captureFloorPlan(): Promise<string> {
+    const wasTopDown = this.isTopDown();
     this.setTopDown(true);
-    await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const { minX, maxX, minZ, maxZ } = this.topDownLayoutBounds;
-    const width = maxX - minX;
-    const depth = maxZ - minZ;
-    const size = 2048;
-    const aspect = width / depth;
-    const renderWidth = Math.round(size * Math.max(aspect, 1));
-    const renderHeight = Math.round(size / Math.min(aspect, 1));
+    const originalSize = new THREE.Vector2();
+    this.renderer.getSize(originalSize);
+    let renderTarget: THREE.WebGLRenderTarget | null = null;
 
-    const orthoCam = new THREE.OrthographicCamera(
-      width / -2, width / 2,
-      depth / 2, depth / -2,
-      0.1, 200
-    );
-    const centerX = (minX + maxX) / 2;
-    const centerZ = (minZ + maxZ) / 2;
-    orthoCam.position.set(centerX, 50, centerZ);
-    orthoCam.lookAt(centerX, 0, centerZ);
-    orthoCam.up.set(0, 0, -1);
-    orthoCam.updateProjectionMatrix();
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const originalSize = { width: this.canvas.width, height: this.canvas.height };
-    const renderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
-    this.renderer.setRenderTarget(renderTarget);
-    this.renderer.render(this.scene, orthoCam);
+      const { minX, maxX, minZ, maxZ } = this.topDownLayoutBounds;
+      const width = maxX - minX;
+      const depth = maxZ - minZ;
+      const size = 2048;
+      const aspect = width / depth;
+      const renderWidth = Math.round(size * Math.max(aspect, 1));
+      const renderHeight = Math.round(size / Math.min(aspect, 1));
 
-    const buffer = new Uint8Array(renderWidth * renderHeight * 4);
-    this.renderer.readRenderTargetPixels(renderTarget, 0, 0, renderWidth, renderHeight, buffer);
-    const pngData = await this.rgbaToPng(buffer, renderWidth, renderHeight);
+      const orthoCam = new THREE.OrthographicCamera(
+        width / -2, width / 2,
+        depth / 2, depth / -2,
+        0.1, 200
+      );
+      const centerX = (minX + maxX) / 2;
+      const centerZ = (minZ + maxZ) / 2;
+      orthoCam.position.set(centerX, 50, centerZ);
+      orthoCam.lookAt(centerX, 0, centerZ);
+      orthoCam.up.set(0, 0, -1);
+      orthoCam.updateProjectionMatrix();
 
-    this.renderer.setRenderTarget(null);
-    renderTarget.dispose();
-    this.renderer.setSize(originalSize.width, originalSize.height);
+      renderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
+      this.renderer.setRenderTarget(renderTarget);
+      this.renderer.render(this.scene, orthoCam);
 
-    return pngData;
+      const buffer = new Uint8Array(renderWidth * renderHeight * 4);
+      this.renderer.readRenderTargetPixels(renderTarget, 0, 0, renderWidth, renderHeight, buffer);
+      return this.rgbaToPng(buffer, renderWidth, renderHeight);
+    } finally {
+      this.renderer.setRenderTarget(null);
+      if (renderTarget) {
+        renderTarget.dispose();
+      }
+      this.renderer.setSize(originalSize.width, originalSize.height);
+      this.setTopDown(wasTopDown);
+    }
   }
 
-  private async rgbaToPng(rgba: Uint8Array, width: number, height: number): Promise<string> {
+  private rgbaToPng(rgba: Uint8Array, width: number, height: number): string {
     const flipped = new Uint8Array(width * height * 4);
     for (let y = 0; y < height; y++) {
       const srcRow = (height - 1 - y) * width * 4;
