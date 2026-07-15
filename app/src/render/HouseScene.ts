@@ -30,7 +30,7 @@ const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
 
 type LayoutBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
-const DEFAULT_LAYOUT_BOUNDS: LayoutBounds = { minX: 0, maxX: 16.4, minZ: -2.9, maxZ: 9.8 };
+const DEFAULT_LAYOUT_BOUNDS: LayoutBounds = { minX: 0, maxX: 16.4, minZ: 0.1, maxZ: 12.8 };
 
 type ArcDescriptor = {
   center: { x: number; z: number };

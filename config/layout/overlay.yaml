@@ -1,28 +1,25 @@
 # overlay.yaml: 渲染意图声明（intent-only），严格 schema。
-# 所有"这是什么/怎么渲染"的分类由本文件声明，代码只读、只执行。
-# 2026-07-15：撤销 +3.0 z 偏移，回到 DXF 原值。
-#          玻璃幕墙 suppress 收敛到"红框三面 + SE 角凸窗"，东侧 + 部分 SE 改为实墙。
+# 2026-07-15：所有 z 字段 +3.0（与 model-geometry.yaml 同步）。
 version: 1
 
 suppress:
-  # 外框（顺时针）——用玻璃幕墙替换；东侧 + SE 北墙是实墙，不 suppress
   - id: suppress_north_wall
-    region: { x1: -0.5, z1: -0.5, x2: 11.3, z2: 0.5 }
+    region: { x1: -0.5, z1: 2.5, x2: 11.3, z2: 3.5 }
     reason: "北外墙改玻璃幕墙"
   - id: suppress_west_wall
-    region: { x1: -0.5, z1: -0.5, x2: 0.5, z2: 10.3 }
+    region: { x1: -0.5, z1: 2.5, x2: 0.5, z2: 13.3 }
     reason: "西外墙改玻璃幕墙"
   - id: suppress_south_wall
-    region: { x1: -0.5, z1: 9.3, x2: 13.9, z2: 10.3 }
+    region: { x1: -0.5, z1: 12.3, x2: 13.9, z2: 13.3 }
     reason: "南外墙改玻璃幕墙"
   - id: suppress_bedroom_se_corner
-    region: { x1: 15.9, z1: 9.7, x2: 16.9, z2: 10.0 }
+    region: { x1: 15.9, z1: 12.7, x2: 16.9, z2: 13.0 }
     reason: "东南次卧南向凸窗（仅右下角 1.1m 那段，剩余东墙保留实墙）"
   - id: suppress_entry_garden_east
-    region: { x1: 14.75, z1: -3.4, x2: 15.75, z2: 0.5 }
+    region: { x1: 14.75, z1: -0.4, x2: 15.75, z2: 3.5 }
     reason: "入户花园东墙改玻璃护栏"
   - id: suppress_entry_garden_north
-    region: { x1: 10.3, z1: -3.4, x2: 15.75, z2: -2.4 }
+    region: { x1: 10.3, z1: -0.4, x2: 15.75, z2: 0.6 }
     reason: "入户花园北墙改玻璃护栏"
 
 elements:
@@ -30,31 +27,31 @@ elements:
     type: curtain_run
     closed: true
     points:
-      - { x: 0.0, z: 0.0, radius: 0.8 }
-      - { x: 10.8, z: 0.0 }
-      - { x: 10.8, z: 2.0 }
-      - { x: 13.4, z: 2.0 }
-      - { x: 13.4, z: 5.4 }
-      - { x: 16.4, z: 5.4 }
-      - { x: 16.4, z: 9.8 }
-      - { x: 0.0, z: 9.8, radius: 0.8 }
+      - { x: 0.0, z: 3.0, radius: 0.8 }
+      - { x: 10.8, z: 3.0 }
+      - { x: 10.8, z: 5.0 }
+      - { x: 13.4, z: 5.0 }
+      - { x: 13.4, z: 8.4 }
+      - { x: 16.4, z: 8.4 }
+      - { x: 16.4, z: 12.8 }
+      - { x: 0.0, z: 12.8, radius: 0.8 }
     height: 3.0
 
   - id: entry_garden_glass
     type: curtain_run
     closed: true
     points:
-      - { x: 10.8, z: 0.0 }
-      - { x: 15.25, z: 0.0 }
-      - { x: 15.25, z: -2.9 }
-      - { x: 10.8, z: -2.9 }
+      - { x: 10.8, z: 3.0 }
+      - { x: 15.25, z: 3.0 }
+      - { x: 15.25, z: 0.1 }
+      - { x: 10.8, z: 0.1 }
     height: 1.1
 
   - id: master_bedroom_west_bay
     type: bay_sill
     points:
-      - { x: 0.0, z: 5.55 }
-      - { x: 0.0, z: 9.8 }
+      - { x: 0.0, z: 8.55 }
+      - { x: 0.0, z: 12.8 }
     depth: 0.3
     sill: 0.45
     height: 2.55
@@ -63,8 +60,8 @@ elements:
   - id: master_bedroom_south_bay
     type: bay_sill
     points:
-      - { x: 0.0, z: 9.8 }
-      - { x: 4.2, z: 9.8 }
+      - { x: 0.0, z: 12.8 }
+      - { x: 4.2, z: 12.8 }
     depth: 0.3
     sill: 0.45
     height: 2.55
@@ -73,8 +70,8 @@ elements:
   - id: bedroom_se_south_bay
     type: bay_sill
     points:
-      - { x: 13.4, z: 9.8 }
-      - { x: 16.4, z: 9.8 }
+      - { x: 13.4, z: 12.8 }
+      - { x: 16.4, z: 12.8 }
     depth: 0.3
     sill: 0.45
     height: 2.55
@@ -83,8 +80,8 @@ elements:
   - id: corridor_floor
     type: floor_region
     points:
-      - { x: 4.2, z: 5.55 }
-      - { x: 7.2, z: 5.55 }
-      - { x: 7.2, z: 7.8 }
-      - { x: 4.2, z: 7.8 }
+      - { x: 4.2, z: 8.55 }
+      - { x: 7.2, z: 8.55 }
+      - { x: 7.2, z: 10.8 }
+      - { x: 4.2, z: 10.8 }
     reason: "主卧与客卫之间的过道"
