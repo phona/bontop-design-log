@@ -154,6 +154,63 @@ export class HouseScene implements SceneApi {
     this.topDownView?.toggle();
   }
 
+  async captureFloorPlan(): Promise<string> {
+    this.setTopDown(true);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const { minX, maxX, minZ, maxZ } = this.topDownLayoutBounds;
+    const width = maxX - minX;
+    const depth = maxZ - minZ;
+    const size = 2048;
+    const aspect = width / depth;
+    const renderWidth = Math.round(size * Math.max(aspect, 1));
+    const renderHeight = Math.round(size / Math.min(aspect, 1));
+
+    const orthoCam = new THREE.OrthographicCamera(
+      width / -2, width / 2,
+      depth / 2, depth / -2,
+      0.1, 200
+    );
+    const centerX = (minX + maxX) / 2;
+    const centerZ = (minZ + maxZ) / 2;
+    orthoCam.position.set(centerX, 50, centerZ);
+    orthoCam.lookAt(centerX, 0, centerZ);
+    orthoCam.up.set(0, 0, -1);
+    orthoCam.updateProjectionMatrix();
+
+    const originalSize = { width: this.canvas.width, height: this.canvas.height };
+    const renderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
+    this.renderer.setRenderTarget(renderTarget);
+    this.renderer.render(this.scene, orthoCam);
+
+    const buffer = new Uint8Array(renderWidth * renderHeight * 4);
+    this.renderer.readRenderTargetPixels(renderTarget, 0, 0, renderWidth, renderHeight, buffer);
+    const pngData = await this.rgbaToPng(buffer, renderWidth, renderHeight);
+
+    this.renderer.setRenderTarget(null);
+    renderTarget.dispose();
+    this.renderer.setSize(originalSize.width, originalSize.height);
+
+    return pngData;
+  }
+
+  private async rgbaToPng(rgba: Uint8Array, width: number, height: number): Promise<string> {
+    const flipped = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      const srcRow = (height - 1 - y) * width * 4;
+      const dstRow = y * width * 4;
+      flipped.set(rgba.subarray(srcRow, srcRow + width * 4), dstRow);
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+    const imageData = new ImageData(new Uint8ClampedArray(flipped), width, height);
+    ctx.putImageData(imageData, 0, 0);
+    return canvas.toDataURL('image/png');
+  }
+
   private onTopDownChange(enabled: boolean): void {
     this.topicGroup.visible = !enabled;
     if (this.gridHelper) {

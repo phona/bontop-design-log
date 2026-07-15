@@ -5,7 +5,8 @@ vi.mock('three', () => {
     userData: Record<string, unknown> = {};
     children: MockObject3D[] = [];
     parent: MockObject3D | null = null;
-    position = { x: 0, y: 0, z: 0, set() { return this; }, clone() { return this; } };
+    material = new MockMaterial();
+    position = { x: 0, y: 0, z: 0, set() { return this; }, copy(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }, clone() { return this; } };
     rotation = { x: 0, y: 0, z: 0 };
     scale = { x: 1, y: 1, z: 1, set() { return this; } };
     castShadow = false;
@@ -120,6 +121,7 @@ const documentEventListeners: Record<string, Array<(e: any) => void>> = {};
 function createMockElement(id?: string) {
   return {
     id: id ?? '',
+    classList: { toggle: vi.fn(), add: vi.fn(), remove: vi.fn() },
     style: {},
     innerHTML: '',
     textContent: '',

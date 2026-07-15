@@ -125,6 +125,10 @@ export class App {
     this.rafId = requestAnimationFrame(this.renderLoop);
   }
 
+  async captureFloorPlan(): Promise<string> {
+    return this.houseScene.captureFloorPlan();
+  }
+
   private setupEventHandlers(): void {
     this.stateSync.onSchemeChange((scheme: CurrentScheme) => {
       this.applyScheme(scheme);

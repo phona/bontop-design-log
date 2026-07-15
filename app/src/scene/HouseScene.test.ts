@@ -5,7 +5,8 @@ vi.mock('three', () => {
     userData: Record<string, unknown> = {};
     children: MockObject3D[] = [];
     parent: MockObject3D | null = null;
-    position = { x: 0, y: 0, z: 0, set: function() { return this; }, clone: function() { return { x: this.x, y: this.y, z: this.z, set: function() { return this; }, clone: function() { return this; } }; } };
+    material = new MockMaterial();
+    position = { x: 0, y: 0, z: 0, set: function() { return this; }, copy: function(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }, clone: function() { return { x: this.x, y: this.y, z: this.z, set: function() { return this; }, copy: function(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }, clone: function() { return this; } }; } };
     rotation = { x: 0, y: 0, z: 0 };
     scale = { x: 1, y: 1, z: 1, set: function() { return this; } };
     castShadow = false;
