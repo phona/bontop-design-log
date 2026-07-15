@@ -88,7 +88,8 @@ export function placeFurnishings(
   scene: THREE.Scene,
   furnishings: FurnishingItems,
   rooms: Record<string, RoomObject>
-): void {
+): THREE.Group[] {
+  const placed: THREE.Group[] = [];
   for (const [roomId, items] of Object.entries(furnishings)) {
     const room = rooms[roomId];
     if (!room) continue;
@@ -106,6 +107,8 @@ export function placeFurnishings(
       model.position.set(room.x, 0, room.z);
       model.userData = { objectId: `furniture:${roomId}:${type}`, hoverable: false, type: 'furniture' };
       scene.add(model);
+      placed.push(model);
     }
   }
+  return placed;
 }

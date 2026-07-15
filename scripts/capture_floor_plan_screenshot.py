@@ -4,7 +4,6 @@
 import argparse
 import base64
 import json
-import random
 import sys
 import time
 from pathlib import Path
@@ -14,6 +13,13 @@ import requests
 from websocket import create_connection
 
 DEFAULT_RECV_TIMEOUT = 30.0
+_check_id_counter = 0
+
+
+def _next_check_id() -> int:
+    global _check_id_counter
+    _check_id_counter += 1
+    return _check_id_counter
 
 
 def parse_args(argv=None):
@@ -70,7 +76,7 @@ def _wait_for_load_event(ws, reload_id: int, timeout: float = DEFAULT_RECV_TIMEO
 
 def _wait_for_app_ready(ws, timeout: float = 30.0) -> None:
     deadline = time.monotonic() + timeout
-    check_id = random.randint(1, 1_000_000)
+    check_id = _next_check_id()
     while time.monotonic() < deadline:
         msg = _send_and_wait(ws, check_id, {
             'method': 'Runtime.evaluate',

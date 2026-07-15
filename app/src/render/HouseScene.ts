@@ -65,6 +65,8 @@ export class HouseScene implements SceneApi {
   private floorMeshes: THREE.Mesh[] = [];
   private wallMeshes: THREE.Mesh[] = [];
   private glassMeshes: THREE.Mesh[] = [];
+  private furnitureMeshes: THREE.Group[] = [];
+  private electricalMeshes: THREE.Mesh[] = [];
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   cameraAnimator: CameraAnimator;
@@ -161,10 +163,18 @@ export class HouseScene implements SceneApi {
     let renderTarget: THREE.WebGLRenderTarget | null = null;
     const prevTopicVisible = this.topicGroup.visible;
     const prevGridOpacity = this.gridHelper ? this.getGridHelperOpacity() : 1.0;
+    const prevFurnitureVisible = this.furnitureMeshes.map((m) => m.visible);
+    const prevElectricalVisible = this.electricalMeshes.map((m) => m.visible);
 
     this.topicGroup.visible = false;
     if (this.gridHelper) {
       this.setGridHelperOpacity(0);
+    }
+    for (const mesh of this.furnitureMeshes) {
+      mesh.visible = false;
+    }
+    for (const mesh of this.electricalMeshes) {
+      mesh.visible = false;
     }
 
     try {
@@ -184,8 +194,8 @@ export class HouseScene implements SceneApi {
       const centerX = (minX + maxX) / 2;
       const centerZ = (minZ + maxZ) / 2;
       orthoCam.position.set(centerX, 50, centerZ);
-      orthoCam.lookAt(centerX, 0, centerZ);
       orthoCam.up.set(0, 0, -1);
+      orthoCam.lookAt(centerX, 0, centerZ);
       orthoCam.updateProjectionMatrix();
 
       renderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
@@ -199,6 +209,12 @@ export class HouseScene implements SceneApi {
       this.topicGroup.visible = prevTopicVisible;
       if (this.gridHelper) {
         this.setGridHelperOpacity(prevGridOpacity);
+      }
+      for (let i = 0; i < this.furnitureMeshes.length; i++) {
+        this.furnitureMeshes[i].visible = prevFurnitureVisible[i];
+      }
+      for (let i = 0; i < this.electricalMeshes.length; i++) {
+        this.electricalMeshes[i].visible = prevElectricalVisible[i];
       }
       this.renderer.setRenderTarget(null);
       if (renderTarget) {
@@ -374,6 +390,8 @@ export class HouseScene implements SceneApi {
     this.floorMeshes = [];
     this.wallMeshes = [];
     this.glassMeshes = [];
+    this.furnitureMeshes = [];
+    this.electricalMeshes = [];
     this.roomMeta.clear();
 
     this.setupLights();
@@ -414,7 +432,7 @@ export class HouseScene implements SceneApi {
     this.topDownView.updateBounds(this.topDownLayoutBounds);
 
     if (projectData.house.furnishings) {
-      placeFurnishings(this.scene, projectData.house.furnishings, this.rooms);
+      this.furnitureMeshes = placeFurnishings(this.scene, projectData.house.furnishings, this.rooms);
     }
 
     if (projectData.house.electrical) {
@@ -964,6 +982,7 @@ export class HouseScene implements SceneApi {
         );
       }
       this.scene.add(cube);
+      this.electricalMeshes.push(cube);
     }
   }
 
