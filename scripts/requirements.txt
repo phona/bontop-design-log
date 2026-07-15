@@ -16,3 +16,7 @@ numpy>=1.24.0
 
 # 日志与审计（可选）
 python-dateutil>=2.8.0
+
+# CDP / WebSocket
+requests>=2.32.0
+websocket-client>=1.8.0
