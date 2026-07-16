@@ -65,12 +65,12 @@ rooms:
   - id: living_dining
     name: 客餐厅
     x: 10.30
-    z: 4.84
+    z: 5.00
     width: 6.20
-    depth: 5.68
+    depth: 6.00
     height: 3.0
-    area: 35.22
-    perimeter: 23.76
+    area: 37.20
+    perimeter: 24.40
   - id: bedroom_se
     name: 东南次卧
     x: 14.90
