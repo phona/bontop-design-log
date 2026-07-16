@@ -1,6 +1,8 @@
 # overlay.yaml: 渲染意图声明（intent-only），严格 schema。
 # 2026-07-15：overlay.yaml 与 model-geometry.yaml 共用同一坐标系，z 字段不再单独偏移。
 # 2026-07-16：按新外墙轮廓重写：西/南玻璃幕墙，西南/东南圆弧，飘窗，门洞补区。
+# 2026-07-17：大修——删除南阳台（客厅落地玻璃齐平 z=9.95），新增书房南飘窗，
+#   新增客厅南墙玻璃幕，东南次卧凸窗 base 移至 z=9.95，北生活阳台/VRV 平台地板位置更新。
 version: 1
 
 suppress:
@@ -12,25 +14,19 @@ suppress:
     reason: "西南圆弧（0,5.0→4.2,9.8）改玻璃幕墙"
   - id: suppress_south_wall_west
     region: { x1: 4.0, z1: 9.75, x2: 7.3, z2: 9.85 }
-    reason: "南外墙西段（x=4.2~7.2, z=9.8）改玻璃幕墙"
-  - id: suppress_balcony_west
-    region: { x1: 7.15, z1: 9.75, x2: 7.25, z2: 10.95 }
-    reason: "阳台西墙改玻璃幕墙"
-  - id: suppress_balcony_south
-    region: { x1: 7.15, z1: 10.85, x2: 13.45, z2: 10.95 }
-    reason: "阳台南墙改玻璃幕墙"
-  - id: suppress_balcony_east
-    region: { x1: 13.35, z1: 9.75, x2: 13.45, z2: 10.95 }
-    reason: "阳台东墙改玻璃幕墙"
+    reason: "南外墙西段（x=4.2~7.2, z=9.8）改玻璃幕墙（书房飘窗）"
+  - id: suppress_living_south
+    region: { x1: 7.15, z1: 9.90, x2: 13.45, z2: 10.00 }
+    reason: "客厅南墙落地玻璃幕（z=9.95）"
   - id: suppress_south_wall_east
-    region: { x1: 13.35, z1: 9.75, x2: 15.3, z2: 9.85 }
-    reason: "南外墙东段（x=13.4~15.2, z=9.8）改玻璃幕墙"
+    region: { x1: 13.35, z1: 9.90, x2: 15.3, z2: 10.00 }
+    reason: "南外墙东段（x=13.4~15.2, z=9.95）改玻璃幕墙"
   - id: suppress_bedroom_se_south_bay
-    region: { x1: 13.4, z1: 9.75, x2: 16.4, z2: 9.85 }
-    reason: "东南次卧南向凸窗"
+    region: { x1: 13.4, z1: 9.90, x2: 16.4, z2: 10.00 }
+    reason: "东南次卧南向凸窗（凸窗南缘 z=11.05，替换原南墙为玻璃）"
 
 elements:
-  # 西墙 + 西南圆弧 + 南墙西段（到阳台西北角）
+  # 西墙 + 西南圆弧 + 南墙西段（到书房东侧）
   - id: west_curtain
     type: curtain_run
     closed: false
@@ -44,42 +40,25 @@ elements:
       - { x: 7.2, z: 9.8 }
     height: 3.0
 
-  # 阳台西墙
-  - id: balcony_west_curtain
+  # 客厅南墙落地玻璃幕（z=9.95）
+  - id: living_south_curtain
     type: curtain_run
     closed: false
     points:
-      - { x: 7.2, z: 9.8 }
-      - { x: 7.2, z: 10.9 }
+      - { x: 7.2, z: 9.95 }
+      - { x: 13.4, z: 9.95 }
     height: 3.0
 
-  # 阳台南墙
-  - id: balcony_south_curtain
-    type: curtain_run
-    closed: false
-    points:
-      - { x: 7.2, z: 10.9 }
-      - { x: 13.4, z: 10.9 }
-    height: 3.0
-
-  # 阳台东墙
-  - id: balcony_east_curtain
-    type: curtain_run
-    closed: false
-    points:
-      - { x: 13.4, z: 10.9 }
-      - { x: 13.4, z: 9.8 }
-    height: 3.0
-
-  # 南墙东段（阳台东北角到东南圆弧）
+  # 南墙东段（东南次卧凸窗内墙到东南圆弧）
   - id: south_east_curtain
     type: curtain_run
     closed: false
     points:
-      - { x: 13.4, z: 9.8 }
-      - { x: 15.2, z: 9.8 }
+      - { x: 13.4, z: 9.95 }
+      - { x: 15.2, z: 9.95 }
     height: 3.0
 
+  # 飘窗
   - id: master_bedroom_west_bay
     type: bay_sill
     points:
@@ -95,20 +74,30 @@ elements:
     points:
       - { x: 0.0, z: 9.8 }
       - { x: 4.2, z: 9.8 }
-    depth: 0.5
+    depth: 1.1
     sill: 0.45
     height: 2.55
-    reason: "主卧南墙环幕飘窗"
+    reason: "主卧南墙环幕飘窗（南缘 z=10.90）"
+
+  - id: study_south_bay
+    type: bay_sill
+    points:
+      - { x: 4.2, z: 9.8 }
+      - { x: 7.2, z: 9.8 }
+    depth: 1.1
+    sill: 0.45
+    height: 2.55
+    reason: "书房南墙飘窗（南缘 z=10.90，与主卧齐平）"
 
   - id: bedroom_se_south_bay
     type: bay_sill
     points:
-      - { x: 13.4, z: 9.8 }
-      - { x: 16.4, z: 9.8 }
-    depth: 0.5
+      - { x: 13.4, z: 9.95 }
+      - { x: 16.4, z: 9.95 }
+    depth: 1.1
     sill: 0.45
     height: 2.55
-    reason: "东南次卧南向凸窗"
+    reason: "东南次卧南向凸窗（南缘 z=11.05）"
 
   - id: bedroom_nw_west_bay
     type: bay_sill
@@ -120,13 +109,14 @@ elements:
     height: 2.55
     reason: "西北次卧西墙飘窗"
 
+  # 地板补区
   - id: entry_garden_floor
     type: floor_region
     points:
-      - { x: 10.8, z: -2.9 }
-      - { x: 15.25, z: -2.9 }
-      - { x: 15.25, z: 0.0 }
-      - { x: 10.8, z: 0.0 }
+      - { x: 10.8, z: 0.65 }
+      - { x: 15.25, z: 0.65 }
+      - { x: 15.25, z: 3.55 }
+      - { x: 10.8, z: 3.55 }
     reason: "入户花园地板"
 
   - id: corridor_floor
@@ -141,8 +131,8 @@ elements:
   - id: north_platform_floor
     type: floor_region
     points:
-      - { x: 8.20, z: -1.55 }
-      - { x: 9.80, z: -1.55 }
-      - { x: 9.80, z: 0.0 }
-      - { x: 8.20, z: 0.0 }
-    reason: "北设备平台地板"
+      - { x: 5.6, z: 0.0 }
+      - { x: 7.2, z: 0.0 }
+      - { x: 7.2, z: 1.0 }
+      - { x: 5.6, z: 1.0 }
+    reason: "VRV 设备平台地板"
