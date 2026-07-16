@@ -30,7 +30,7 @@ const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
 
 type LayoutBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
-const DEFAULT_LAYOUT_BOUNDS: LayoutBounds = { minX: 0, maxX: 16.4, minZ: -2.9, maxZ: 9.8 };
+const DEFAULT_LAYOUT_BOUNDS: LayoutBounds = { minX: -1.6, maxX: 16.4, minZ: -2.9, maxZ: 10.2 };
 
 type ArcDescriptor = {
   center: { x: number; z: number };
@@ -79,8 +79,8 @@ export class HouseScene implements SceneApi {
   private roomMeta = new Map<string, { wall_finish?: string; openings?: OpeningDef[] }>();
   private gridHelper?: THREE.GridHelper;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
-  private readonly ORBIT_POSITION = new THREE.Vector3(8.2, 14, 19.2);
-  private readonly ORBIT_TARGET = new THREE.Vector3(8.2, 0, 3.45);
+  private readonly ORBIT_POSITION = new THREE.Vector3(7.4, 14, 19.2);
+  private readonly ORBIT_TARGET = new THREE.Vector3(7.4, 0, 3.65);
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -939,14 +939,6 @@ export class HouseScene implements SceneApi {
 
     this.platform = p;
 
-    const frame = new THREE.Mesh(
-      new THREE.BoxGeometry(p.width + 0.1, 0.05, p.depth + 0.1),
-      new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.4 })
-    );
-    frame.position.set(p.x, 0.2, p.z);
-    frame.userData = { roomId: p.id, objectId: 'platform_boundary', type: 'platform' };
-    this.scene.add(frame);
-
     this.rooms[p.id] = { ...p };
   }
 
@@ -1311,10 +1303,10 @@ export class HouseScene implements SceneApi {
   }
 
   private readonly COMPASS_ANCHORS: Record<'n' | 's' | 'e' | 'w', THREE.Vector3> = {
-    n: new THREE.Vector3(8.2, 0.05, -4.5),
-    s: new THREE.Vector3(8.2, 0.05, 12.0),
-    e: new THREE.Vector3(17.6, 0.05, 3.45),
-    w: new THREE.Vector3(-1.2, 0.05, 3.45),
+    n: new THREE.Vector3(7.4, 0.05, -5.0),
+    s: new THREE.Vector3(7.4, 0.05, 12.5),
+    e: new THREE.Vector3(18.6, 0.05, 3.65),
+    w: new THREE.Vector3(-3.0, 0.05, 3.65),
   };
 
   private readonly compassEls: Partial<Record<'n' | 's' | 'e' | 'w', HTMLElement | null>> = {};
