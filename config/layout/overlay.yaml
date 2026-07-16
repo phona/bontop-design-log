@@ -1,18 +1,21 @@
 # overlay.yaml: 渲染意图声明（intent-only），严格 schema。
 # 2026-07-15：overlay.yaml 与 model-geometry.yaml 共用同一坐标系，z 字段不再单独偏移。
-# 2026-07-15b：入户花园恢复为实墙；主楼仅西、南两面做玻璃幕墙。
+# 2026-07-16：按新外墙轮廓重写：西/南玻璃幕墙，西南/东南圆弧，飘窗，门洞补区。
 version: 1
 
 suppress:
   - id: suppress_west_wall
-    region: { x1: -0.5, z1: -0.5, x2: 0.5, z2: 10.3 }
-    reason: "西外墙改玻璃幕墙"
+    region: { x1: -0.5, z1: -0.5, x2: 0.5, z2: 5.5 }
+    reason: "西外墙北段（x=0, z=0~5.0）改玻璃幕墙"
+  - id: suppress_southwest_arc
+    region: { x1: 0.5, z1: 5.5, x2: 4.0, z2: 9.85 }
+    reason: "西南圆弧（0,5.0→4.2,9.8）改玻璃幕墙"
   - id: suppress_south_wall
-    region: { x1: -0.5, z1: 9.3, x2: 13.9, z2: 10.3 }
-    reason: "南外墙改玻璃幕墙"
-  - id: suppress_bedroom_se_corner
-    region: { x1: 15.9, z1: 9.7, x2: 16.9, z2: 10.0 }
-    reason: "东南次卧南向凸窗（仅右下角 1.1m 那段，剩余东墙保留实墙）"
+    region: { x1: 4.0, z1: 9.75, x2: 15.3, z2: 9.85 }
+    reason: "南外墙（x=4.2~15.2, z=9.8）改玻璃幕墙"
+  - id: suppress_bedroom_se_south_bay
+    region: { x1: 13.4, z1: 9.75, x2: 16.4, z2: 9.85 }
+    reason: "东南次卧南向凸窗"
 
 elements:
   - id: west_south_curtain
@@ -20,8 +23,13 @@ elements:
     closed: false
     points:
       - { x: 0.0, z: 0.0 }
-      - { x: 0.0, z: 9.8 }
-      - { x: 16.4, z: 9.8 }
+      - { x: 0.0, z: 5.0 }
+      - { x: 0.2, z: 6.0 }
+      - { x: 0.8, z: 7.0 }
+      - { x: 2.0, z: 7.8 }
+      - { x: 4.2, z: 9.8 }
+      - { x: 10.3, z: 9.8 }
+      - { x: 15.2, z: 9.8 }
     height: 3.0
 
   - id: master_bedroom_west_bay
@@ -54,6 +62,25 @@ elements:
     height: 2.55
     reason: "东南次卧南向凸窗"
 
+  - id: bedroom_nw_west_bay
+    type: bay_sill
+    points:
+      - { x: 0.0, z: 0.0 }
+      - { x: 0.0, z: 4.3 }
+    depth: 0.3
+    sill: 0.45
+    height: 2.55
+    reason: "西北次卧西墙飘窗"
+
+  - id: entry_garden_floor
+    type: floor_region
+    points:
+      - { x: 10.8, z: -2.9 }
+      - { x: 15.25, z: -2.9 }
+      - { x: 15.25, z: 0.0 }
+      - { x: 10.8, z: 0.0 }
+    reason: "入户花园地板"
+
   - id: corridor_floor
     type: floor_region
     points:
@@ -61,4 +88,13 @@ elements:
       - { x: 7.2, z: 5.55 }
       - { x: 7.2, z: 7.8 }
       - { x: 4.2, z: 7.8 }
-    reason: "主卧与客卫之间的过道"
+    reason: "主卧与书房之间的走廊"
+
+  - id: north_platform_floor
+    type: floor_region
+    points:
+      - { x: 7.2, z: -1.55 }
+      - { x: 8.8, z: -1.55 }
+      - { x: 8.8, z: 0.0 }
+      - { x: 7.2, z: 0.0 }
+    reason: "北设备平台地板"
