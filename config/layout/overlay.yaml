@@ -141,8 +141,8 @@ elements:
   - id: north_platform_floor
     type: floor_region
     points:
-      - { x: 7.2, z: -1.55 }
-      - { x: 8.8, z: -1.55 }
-      - { x: 8.8, z: 0.0 }
-      - { x: 7.2, z: 0.0 }
+      - { x: 8.20, z: -1.55 }
+      - { x: 9.80, z: -1.55 }
+      - { x: 9.80, z: 0.0 }
+      - { x: 8.20, z: 0.0 }
     reason: "北设备平台地板"
