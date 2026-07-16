@@ -174,7 +174,7 @@ describe('HouseScene', () => {
       minX: -1.6,
       maxX: 16.4,
       minZ: -2.9,
-      maxZ: 10.2,
+      maxZ: 12.0,
     });
   });
 

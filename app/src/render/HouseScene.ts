@@ -25,12 +25,12 @@ import { placeFurnishings } from './FurnitureFactory.js';
 const DEFAULT_PAINT = '#f7f5ef';
 const GLASS_COLOR = 0x88ccff;
 const GLASS_OPACITY = 0.6;
-export const GLASS_THICKNESS = 0.08; // 8cm glass panel
+export const GLASS_THICKNESS = 0.15; // 15cm glass panel (increased for top-down visibility)
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
 
 type LayoutBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
-const DEFAULT_LAYOUT_BOUNDS: LayoutBounds = { minX: -1.6, maxX: 16.4, minZ: -2.9, maxZ: 10.2 };
+const DEFAULT_LAYOUT_BOUNDS: LayoutBounds = { minX: -1.6, maxX: 16.4, minZ: -2.9, maxZ: 12.0 };
 
 type ArcDescriptor = {
   center: { x: number; z: number };
@@ -929,10 +929,11 @@ export class HouseScene implements SceneApi {
   }
 
   private createPlatform(p: ProjectData['house']['platform'] & { id: string; name: string }) {
-    const geo = new THREE.BoxGeometry(p.width, 0.15, p.depth);
+    const height = p.height ?? 0.15;
+    const geo = new THREE.BoxGeometry(p.width, height, p.depth);
     const mat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(p.x, 0.075, p.z);
+    mesh.position.set(p.x, height / 2, p.z);
     mesh.userData = { roomId: p.id, objectId: 'platform_boundary', type: 'platform' };
     mesh.receiveShadow = true;
     this.scene.add(mesh);

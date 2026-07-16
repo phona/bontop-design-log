@@ -85,7 +85,7 @@ elements:
     points:
       - { x: 0.0, z: 5.55 }
       - { x: 0.0, z: 9.8 }
-    depth: 0.3
+    depth: 0.5
     sill: 0.45
     height: 2.55
     reason: "主卧西墙环幕飘窗"
@@ -95,7 +95,7 @@ elements:
     points:
       - { x: 0.0, z: 9.8 }
       - { x: 4.2, z: 9.8 }
-    depth: 0.3
+    depth: 0.5
     sill: 0.45
     height: 2.55
     reason: "主卧南墙环幕飘窗"
@@ -105,7 +105,7 @@ elements:
     points:
       - { x: 13.4, z: 9.8 }
       - { x: 16.4, z: 9.8 }
-    depth: 0.3
+    depth: 0.5
     sill: 0.45
     height: 2.55
     reason: "东南次卧南向凸窗"
@@ -115,7 +115,7 @@ elements:
     points:
       - { x: 0.0, z: 0.0 }
       - { x: 0.0, z: 4.3 }
-    depth: 0.3
+    depth: 0.5
     sill: 0.45
     height: 2.55
     reason: "西北次卧西墙飘窗"
