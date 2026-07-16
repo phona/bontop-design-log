@@ -17,8 +17,11 @@ interface Wall {
   z2: number;
 }
 
+// Tolerance for treating two wall segments as collinear (same x or same z).
 const POSITION_TOLERANCE = 0.05;
+// Minimum overlap between a room edge and a supporting wall segment.
 const OVERLAP_TOLERANCE = 0.10;
+// Tolerance for the coarse wall-bounding-box check.
 const BOUNDS_TOLERANCE = 0.01;
 
 function loadGeometry() {
@@ -44,6 +47,73 @@ function isHorizontal(w: Wall) {
 
 function isVertical(w: Wall) {
   return Math.abs(w.x1 - w.x2) < POSITION_TOLERANCE;
+}
+
+interface Interval {
+  min: number;
+  max: number;
+}
+
+function mergeIntervals(intervals: Interval[]): Interval[] {
+  if (intervals.length === 0) return [];
+  const sorted = [...intervals].sort((a, b) => a.min - b.min);
+  const merged: Interval[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const last = merged[merged.length - 1];
+    const curr = sorted[i];
+    if (curr.min <= last.max + POSITION_TOLERANCE) {
+      last.max = Math.max(last.max, curr.max);
+    } else {
+      merged.push(curr);
+    }
+  }
+  return merged;
+}
+
+function mergeWalls(walls: Wall[]): Wall[] {
+  const merged: Wall[] = [];
+
+  // Merge horizontal wall segments that share the same z within tolerance.
+  const horizontal = walls.filter(isHorizontal);
+  horizontal.sort((a, b) => (a.z1 + a.z2) / 2 - (b.z1 + b.z2) / 2);
+  const hGroups: Wall[][] = [];
+  for (const w of horizontal) {
+    const z = (w.z1 + w.z2) / 2;
+    if (hGroups.length === 0 || Math.abs(z - (hGroups[hGroups.length - 1][0].z1 + hGroups[hGroups.length - 1][0].z2) / 2) >= POSITION_TOLERANCE) {
+      hGroups.push([w]);
+    } else {
+      hGroups[hGroups.length - 1].push(w);
+    }
+  }
+  for (const group of hGroups) {
+    const z = (group[0].z1 + group[0].z2) / 2;
+    const intervals = group.map(w => ({ min: Math.min(w.x1, w.x2), max: Math.max(w.x1, w.x2) }));
+    for (const iv of mergeIntervals(intervals)) {
+      merged.push({ x1: iv.min, z1: z, x2: iv.max, z2: z });
+    }
+  }
+
+  // Merge vertical wall segments that share the same x within tolerance.
+  const vertical = walls.filter(isVertical);
+  vertical.sort((a, b) => (a.x1 + a.x2) / 2 - (b.x1 + b.x2) / 2);
+  const vGroups: Wall[][] = [];
+  for (const w of vertical) {
+    const x = (w.x1 + w.x2) / 2;
+    if (vGroups.length === 0 || Math.abs(x - (vGroups[vGroups.length - 1][0].x1 + vGroups[vGroups.length - 1][0].x2) / 2) >= POSITION_TOLERANCE) {
+      vGroups.push([w]);
+    } else {
+      vGroups[vGroups.length - 1].push(w);
+    }
+  }
+  for (const group of vGroups) {
+    const x = (group[0].x1 + group[0].x2) / 2;
+    const intervals = group.map(w => ({ min: Math.min(w.z1, w.z2), max: Math.max(w.z1, w.z2) }));
+    for (const iv of mergeIntervals(intervals)) {
+      merged.push({ x1: x, z1: iv.min, x2: x, z2: iv.max });
+    }
+  }
+
+  return merged;
 }
 
 interface Edge {
@@ -120,6 +190,8 @@ function main() {
   const { minX, maxX, minZ, maxZ } = wallBounds(walls);
   console.log('Wall bounding box:', { minX: minX.toFixed(2), maxX: maxX.toFixed(2), minZ: minZ.toFixed(2), maxZ: maxZ.toFixed(2) });
 
+  const mergedWalls = mergeWalls(walls);
+
   let outsideCount = 0;
   let misalignedCount = 0;
 
@@ -138,7 +210,7 @@ function main() {
 
     const edges = getEdges(r);
     for (const edge of edges) {
-      const result = checkEdgeAlignment(edge, walls);
+      const result = checkEdgeAlignment(edge, mergedWalls);
       if (!result.ok) {
         misalignedCount++;
         const n = result.nearest;
