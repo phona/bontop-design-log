@@ -10,9 +10,21 @@ suppress:
   - id: suppress_southwest_arc
     region: { x1: 0.5, z1: 5.5, x2: 4.0, z2: 9.85 }
     reason: "西南圆弧（0,5.0→4.2,9.8）改玻璃幕墙"
-  - id: suppress_south_wall
-    region: { x1: 4.0, z1: 9.75, x2: 15.3, z2: 9.85 }
-    reason: "南外墙（x=4.2~15.2, z=9.8）改玻璃幕墙"
+  - id: suppress_south_wall_west
+    region: { x1: 4.0, z1: 9.75, x2: 7.3, z2: 9.85 }
+    reason: "南外墙西段（x=4.2~7.2, z=9.8）改玻璃幕墙"
+  - id: suppress_balcony_west
+    region: { x1: 7.15, z1: 9.75, x2: 7.25, z2: 12.05 }
+    reason: "阳台西墙改玻璃幕墙"
+  - id: suppress_balcony_south
+    region: { x1: 7.15, z1: 11.95, x2: 13.45, z2: 12.05 }
+    reason: "阳台南墙改玻璃幕墙"
+  - id: suppress_balcony_east
+    region: { x1: 13.35, z1: 9.75, x2: 13.45, z2: 12.05 }
+    reason: "阳台东墙改玻璃幕墙"
+  - id: suppress_south_wall_east
+    region: { x1: 13.35, z1: 9.75, x2: 15.3, z2: 9.85 }
+    reason: "南外墙东段（x=13.4~15.2, z=9.8）改玻璃幕墙"
   - id: suppress_bedroom_se_south_bay
     region: { x1: 13.4, z1: 9.75, x2: 16.4, z2: 9.85 }
     reason: "东南次卧南向凸窗"
@@ -26,9 +38,12 @@ elements:
       - { x: 0.0, z: 5.0 }
       - { x: 0.2, z: 6.0 }
       - { x: 0.8, z: 7.0 }
-      - { x: 2.0, z: 7.8 }
+      - { x: 2.0, z: 8.5 }
       - { x: 4.2, z: 9.8 }
-      - { x: 10.3, z: 9.8 }
+      - { x: 7.2, z: 9.8 }
+      - { x: 7.2, z: 12.0 }
+      - { x: 13.4, z: 12.0 }
+      - { x: 13.4, z: 9.8 }
       - { x: 15.2, z: 9.8 }
     height: 3.0
 
