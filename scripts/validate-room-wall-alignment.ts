@@ -1,7 +1,7 @@
 import { load } from 'js-yaml';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export interface Room {
   id: string;
@@ -248,6 +248,6 @@ export function main() {
   }
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }
