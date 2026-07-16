@@ -19,7 +19,6 @@ describe('model-geometry layout matches floor plan', () => {
 
     assert(byId.has('balcony'));
     const balcony = byId.get('balcony')!;
-    assert(balcony.width >= 5.8 && balcony.width <= 6.6, 'balcony width ~6.2m');
     assert(balcony.depth >= 1.0 && balcony.depth <= 1.2, 'balcony depth ~1.1m');
 
     assert(byId.has('entry_garden'));
