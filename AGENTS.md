@@ -19,3 +19,23 @@
 - 全局坐标与局部坐标换算：
   - `DXF_mm = (local_m + origin) / scale`
   - `local_m = DXF_mm * scale - origin`
+
+## 坐标系补充约定
+
+- `model-geometry.yaml` 的 `rooms` 使用**中心坐标**：
+  - `x` 和 `z` 是房间中心点。
+  - `width` 和 `depth` 是房间总尺寸。
+  - 西边缘 = `x - width / 2`，东边缘 = `x + width / 2`。
+  - 北边缘 = `z - depth / 2`，南边缘 = `z + depth / 2`。
+- `model-geometry.yaml` 的 `walls` 使用**角点坐标**：
+  - `x1, z1` 和 `x2, z2` 是墙体线段的两个端点。
+- 修改房间时，先确定对应的墙体边界，再计算中心点：
+  - `x = (west_edge + east_edge) / 2`
+  - `z = (north_edge + south_edge) / 2`
+- 任何几何修改后，必须运行：
+  ```bash
+  npx tsx scripts/verify-layout.ts
+  npx tsx scripts/validate-room-wall-alignment.ts
+  npm run test:server
+  npm run typecheck
+  ```
