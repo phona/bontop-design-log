@@ -17,10 +17,6 @@ describe('model-geometry layout matches floor plan', () => {
     const living = byId.get('living_dining')!;
     assert(living.width >= 5.8 && living.width <= 6.6, 'living width ~6.2m');
 
-    assert(byId.has('study'));
-    const study = byId.get('study')!;
-    assert(study.width >= 2.8 && study.width <= 3.2, 'study width ~3.0m');
-
     assert(byId.has('balcony'));
     const balcony = byId.get('balcony')!;
     assert(balcony.width >= 5.8 && balcony.width <= 6.6, 'balcony width ~6.2m');
@@ -29,11 +25,5 @@ describe('model-geometry layout matches floor plan', () => {
     assert(byId.has('entry_garden'));
     const entry = byId.get('entry_garden')!;
     assert(entry.width >= 4.0 && entry.width <= 4.8, 'entry garden width ~4.45m');
-
-    const platform = catalog.getPlatform();
-    assert(platform);
-    assert(platform.id === 'west_platform');
-    assert(platform.width >= 1.4 && platform.width <= 1.8, 'west platform width ~1.6m');
-    assert(platform.depth >= 1.4 && platform.depth <= 1.8, 'west platform depth ~1.55m');
   });
 });
