@@ -1,8 +1,9 @@
 import { load } from 'js-yaml';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-interface Room {
+export interface Room {
   id: string;
   x: number;
   z: number;
@@ -10,7 +11,7 @@ interface Room {
   depth: number;
 }
 
-interface Wall {
+export interface Wall {
   x1: number;
   z1: number;
   x2: number;
@@ -30,7 +31,7 @@ function loadGeometry() {
   return data;
 }
 
-function wallBounds(walls: Wall[]) {
+export function wallBounds(walls: Wall[]) {
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (const w of walls) {
     minX = Math.min(minX, w.x1, w.x2);
@@ -49,12 +50,12 @@ function isVertical(w: Wall) {
   return Math.abs(w.x1 - w.x2) < POSITION_TOLERANCE;
 }
 
-interface Interval {
+export interface Interval {
   min: number;
   max: number;
 }
 
-function mergeIntervals(intervals: Interval[]): Interval[] {
+export function mergeIntervals(intervals: Interval[]): Interval[] {
   if (intervals.length === 0) return [];
   const sorted = [...intervals].sort((a, b) => a.min - b.min);
   const merged: Interval[] = [sorted[0]];
@@ -70,7 +71,7 @@ function mergeIntervals(intervals: Interval[]): Interval[] {
   return merged;
 }
 
-function mergeWalls(walls: Wall[]): Wall[] {
+export function mergeCollinearWalls(walls: Wall[]): Wall[] {
   const merged: Wall[] = [];
 
   // Merge horizontal wall segments that share the same z within tolerance.
@@ -116,7 +117,7 @@ function mergeWalls(walls: Wall[]): Wall[] {
   return merged;
 }
 
-interface Edge {
+export interface Edge {
   roomId: string;
   side: 'north' | 'south' | 'west' | 'east';
   pos: number;
@@ -124,14 +125,14 @@ interface Edge {
   max: number;
 }
 
-interface WallMatch {
+export interface WallMatch {
   wall: Wall;
   distance: number;
   overlap: number;
   wallPos: number;
 }
 
-function getEdges(r: Room): Edge[] {
+export function getEdges(r: Room): Edge[] {
   const x1 = r.x - r.width / 2;
   const x2 = r.x + r.width / 2;
   const z1 = r.z - r.depth / 2;
@@ -148,7 +149,7 @@ function axisLabel(side: Edge['side']) {
   return side === 'north' || side === 'south' ? 'z' : 'x';
 }
 
-function checkEdgeAlignment(edge: Edge, walls: Wall[]): { ok: boolean; nearest?: WallMatch } {
+export function checkEdgeAlignment(edge: Edge, walls: Wall[]): { ok: boolean; nearest?: WallMatch } {
   let bestSupport: WallMatch | null = null;
   let nearest: WallMatch | null = null;
 
@@ -185,12 +186,12 @@ function checkEdgeAlignment(edge: Edge, walls: Wall[]): { ok: boolean; nearest?:
   return { ok: bestSupport !== null, nearest: nearest || undefined };
 }
 
-function main() {
-  const { rooms, walls } = loadGeometry();
+export function validateRoomWallAlignment(rooms: Room[], walls: Wall[]): { ok: boolean; messages: string[] } {
   const { minX, maxX, minZ, maxZ } = wallBounds(walls);
-  console.log('Wall bounding box:', { minX: minX.toFixed(2), maxX: maxX.toFixed(2), minZ: minZ.toFixed(2), maxZ: maxZ.toFixed(2) });
+  const messages: string[] = [];
+  messages.push(`Wall bounding box: { minX: ${minX.toFixed(2)}, maxX: ${maxX.toFixed(2)}, minZ: ${minZ.toFixed(2)}, maxZ: ${maxZ.toFixed(2)} }`);
 
-  const mergedWalls = mergeWalls(walls);
+  const mergedWalls = mergeCollinearWalls(walls);
 
   let outsideCount = 0;
   let misalignedCount = 0;
@@ -204,7 +205,7 @@ function main() {
     const outside = rx1 < minX - BOUNDS_TOLERANCE || rx2 > maxX + BOUNDS_TOLERANCE || rz1 < minZ - BOUNDS_TOLERANCE || rz2 > maxZ + BOUNDS_TOLERANCE;
     if (outside) {
       outsideCount++;
-      console.log(`OUTSIDE WALLS: ${r.id} x=[${rx1.toFixed(2)},${rx2.toFixed(2)}] z=[${rz1.toFixed(2)},${rz2.toFixed(2)}]`);
+      messages.push(`OUTSIDE WALLS: ${r.id} x=[${rx1.toFixed(2)},${rx2.toFixed(2)}] z=[${rz1.toFixed(2)},${rz2.toFixed(2)}]`);
       continue;
     }
 
@@ -217,22 +218,36 @@ function main() {
         const nearestInfo = n
           ? ` (nearest wall ${axisLabel(edge.side)}=${n.wallPos.toFixed(2)} overlap=${n.overlap.toFixed(2)} distance=${n.distance.toFixed(2)})`
           : '';
-        console.log(`MISALIGNED: ${r.id} ${edge.side} edge at ${axisLabel(edge.side)}=${edge.pos.toFixed(2)} range=[${edge.min.toFixed(2)},${edge.max.toFixed(2)}]${nearestInfo}`);
+        messages.push(`MISALIGNED: ${r.id} ${edge.side} edge at ${axisLabel(edge.side)}=${edge.pos.toFixed(2)} range=[${edge.min.toFixed(2)},${edge.max.toFixed(2)}]${nearestInfo}`);
       }
     }
   }
 
   if (outsideCount === 0 && misalignedCount === 0) {
-    console.log('All rooms are inside the wall bounding box and aligned with wall edges.');
+    messages.push('All rooms are inside the wall bounding box and aligned with wall edges.');
   } else {
     if (outsideCount > 0) {
-      console.log(`Found ${outsideCount} room(s) outside wall bounds.`);
+      messages.push(`Found ${outsideCount} room(s) outside wall bounds.`);
     }
     if (misalignedCount > 0) {
-      console.log(`Found ${misalignedCount} misaligned room edge(s).`);
+      messages.push(`Found ${misalignedCount} misaligned room edge(s).`);
     }
+  }
+
+  return { ok: outsideCount === 0 && misalignedCount === 0, messages };
+}
+
+export function main() {
+  const { rooms, walls } = loadGeometry();
+  const { ok, messages } = validateRoomWallAlignment(rooms, walls);
+  for (const msg of messages) {
+    console.log(msg);
+  }
+  if (!ok) {
     process.exit(1);
   }
 }
 
-main();
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main();
+}
