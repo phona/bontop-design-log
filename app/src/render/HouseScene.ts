@@ -165,6 +165,7 @@ export class HouseScene implements SceneApi {
     const prevGridOpacity = this.gridHelper ? this.getGridHelperOpacity() : 1.0;
     const prevFurnitureVisible = this.furnitureMeshes.map((m) => m.visible);
     const prevElectricalVisible = this.electricalMeshes.map((m) => m.visible);
+    const prevShadowMapEnabled = this.renderer.shadowMap.enabled;
 
     this.topicGroup.visible = false;
     if (this.gridHelper) {
@@ -176,6 +177,7 @@ export class HouseScene implements SceneApi {
     for (const mesh of this.electricalMeshes) {
       mesh.visible = false;
     }
+    this.renderer.shadowMap.enabled = false;
 
     try {
       const { minX, maxX, minZ, maxZ } = this.topDownLayoutBounds;
@@ -216,6 +218,7 @@ export class HouseScene implements SceneApi {
       for (let i = 0; i < this.electricalMeshes.length; i++) {
         this.electricalMeshes[i].visible = prevElectricalVisible[i];
       }
+      this.renderer.shadowMap.enabled = prevShadowMapEnabled;
       this.renderer.setRenderTarget(null);
       if (renderTarget) {
         renderTarget.dispose();
