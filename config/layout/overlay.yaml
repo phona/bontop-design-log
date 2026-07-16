@@ -30,7 +30,8 @@ suppress:
     reason: "东南次卧南向凸窗"
 
 elements:
-  - id: west_south_curtain
+  # 西墙 + 西南圆弧 + 南墙西段（到阳台西北角）
+  - id: west_curtain
     type: curtain_run
     closed: false
     points:
@@ -41,8 +42,40 @@ elements:
       - { x: 2.0, z: 8.5 }
       - { x: 4.2, z: 9.8 }
       - { x: 7.2, z: 9.8 }
+    height: 3.0
+
+  # 阳台西墙
+  - id: balcony_west_curtain
+    type: curtain_run
+    closed: false
+    points:
+      - { x: 7.2, z: 9.8 }
+      - { x: 7.2, z: 12.0 }
+    height: 3.0
+
+  # 阳台南墙
+  - id: balcony_south_curtain
+    type: curtain_run
+    closed: false
+    points:
       - { x: 7.2, z: 12.0 }
       - { x: 13.4, z: 12.0 }
+    height: 3.0
+
+  # 阳台东墙
+  - id: balcony_east_curtain
+    type: curtain_run
+    closed: false
+    points:
+      - { x: 13.4, z: 12.0 }
+      - { x: 13.4, z: 9.8 }
+    height: 3.0
+
+  # 南墙东段（阳台东北角到东南圆弧）
+  - id: south_east_curtain
+    type: curtain_run
+    closed: false
+    points:
       - { x: 13.4, z: 9.8 }
       - { x: 15.2, z: 9.8 }
     height: 3.0

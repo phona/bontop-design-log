@@ -105,7 +105,7 @@ platform:
   z: -0.775
   width: 1.60
   depth: 1.55
-  height: 0.15
+  height: 0.05
   area: 2.48
 walls:
   # 北设备平台/生活阳台外凸
