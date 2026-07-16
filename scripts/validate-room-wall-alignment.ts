@@ -1,7 +1,7 @@
 import { load } from 'js-yaml';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
 export interface Room {
   id: string;
