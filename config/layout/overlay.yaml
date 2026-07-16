@@ -14,13 +14,13 @@ suppress:
     region: { x1: 4.0, z1: 9.75, x2: 7.3, z2: 9.85 }
     reason: "南外墙西段（x=4.2~7.2, z=9.8）改玻璃幕墙"
   - id: suppress_balcony_west
-    region: { x1: 7.15, z1: 9.75, x2: 7.25, z2: 12.05 }
+    region: { x1: 7.15, z1: 9.75, x2: 7.25, z2: 10.95 }
     reason: "阳台西墙改玻璃幕墙"
   - id: suppress_balcony_south
-    region: { x1: 7.15, z1: 11.95, x2: 13.45, z2: 12.05 }
+    region: { x1: 7.15, z1: 10.85, x2: 13.45, z2: 10.95 }
     reason: "阳台南墙改玻璃幕墙"
   - id: suppress_balcony_east
-    region: { x1: 13.35, z1: 9.75, x2: 13.45, z2: 12.05 }
+    region: { x1: 13.35, z1: 9.75, x2: 13.45, z2: 10.95 }
     reason: "阳台东墙改玻璃幕墙"
   - id: suppress_south_wall_east
     region: { x1: 13.35, z1: 9.75, x2: 15.3, z2: 9.85 }
@@ -50,7 +50,7 @@ elements:
     closed: false
     points:
       - { x: 7.2, z: 9.8 }
-      - { x: 7.2, z: 12.0 }
+      - { x: 7.2, z: 10.9 }
     height: 3.0
 
   # 阳台南墙
@@ -58,8 +58,8 @@ elements:
     type: curtain_run
     closed: false
     points:
-      - { x: 7.2, z: 12.0 }
-      - { x: 13.4, z: 12.0 }
+      - { x: 7.2, z: 10.9 }
+      - { x: 13.4, z: 10.9 }
     height: 3.0
 
   # 阳台东墙
@@ -67,7 +67,7 @@ elements:
     type: curtain_run
     closed: false
     points:
-      - { x: 13.4, z: 12.0 }
+      - { x: 13.4, z: 10.9 }
       - { x: 13.4, z: 9.8 }
     height: 3.0
 
