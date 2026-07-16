@@ -171,10 +171,10 @@ describe('HouseScene', () => {
     } as unknown as HTMLCanvasElement;
     const scene = new HouseScene(canvas);
     expect((scene as any).topDownLayoutBounds).toEqual({
-      minX: 0,
+      minX: -1.6,
       maxX: 16.4,
       minZ: -2.9,
-      maxZ: 9.8,
+      maxZ: 10.2,
     });
   });
 
@@ -569,7 +569,7 @@ describe('HouseScene', () => {
     scene.getScene().traverse((obj: any) => {
       if (obj.userData?.type === 'platform') platformCount++;
     });
-    expect(platformCount).toBe(2); // mesh + frame
+    expect(platformCount).toBe(1); // platform mesh only, no debug frame
   });
 
   it('should register object click callback', () => {
