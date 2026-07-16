@@ -51,10 +51,10 @@ describe('REST API', () => {
     assert.ok(Array.isArray(res.body.house.rooms));
     assert.ok(res.body.house.rooms.some((r: { id: string }) => r.id === 'master_bedroom'));
     assert.ok(!res.body.house.rooms.some((r: { id: string }) => r.id === 'elevator'));
-    // Platform is now the north equipment platform (北设备平台) for 701.
+    // Platform is now the VRV equipment platform (VRV设备平台) for 701.
     if (res.body.house.platform) {
       assert.equal(res.body.house.platform?.id, 'west_platform');
-      assert.equal(res.body.house.platform?.name, '北设备平台');
+      assert.equal(res.body.house.platform?.name, 'VRV设备平台');
     }
     assert.ok(Array.isArray(res.body.house.sceneElements));
   });
