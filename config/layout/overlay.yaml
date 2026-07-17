@@ -2,42 +2,34 @@
 # 2026-07-15：overlay.yaml 与 model-geometry.yaml 共用同一坐标系，z 字段不再单独偏移。
 # 2026-07-16：按新外墙轮廓重写：西/南玻璃幕墙，西南/东南圆弧，飘窗，门洞补区。
 # 2026-07-17：大修——删除南阳台（客厅落地玻璃齐平 z=9.95），新增书房南飘窗，
-#   新增客厅南墙玻璃幕，东南次卧凸窗 base 移至 z=9.95，北生活阳台/VRV 平台地板位置更新。
+#   新增客厅南墙玻璃幕，东南次卧凸窗 base 移至 z=9.95，生活阳台移至 VRV 南侧，
+#   西南/东南圆弧压缩到角部 1m，suppress 加宽防 Z-fighting。
 version: 1
 
 suppress:
   - id: suppress_west_wall
-    region: { x1: -0.5, z1: -0.5, x2: 0.5, z2: 5.5 }
-    reason: "西外墙北段（x=0, z=0~5.0）改玻璃幕墙"
-  - id: suppress_southwest_arc
-    region: { x1: 0.5, z1: 5.5, x2: 4.0, z2: 9.85 }
-    reason: "西南圆弧（0,5.0→4.2,9.8）改玻璃幕墙"
-  - id: suppress_south_wall_west
-    region: { x1: 4.0, z1: 9.75, x2: 7.3, z2: 9.85 }
-    reason: "南外墙西段（x=4.2~7.2, z=9.8）改玻璃幕墙（书房飘窗）"
+    region: { x1: -0.5, z1: -0.5, x2: 1.2, z2: 10.0 }
+    reason: "西墙+西南小圆角实体墙删除，改玻璃幕墙"
+  - id: suppress_south_west
+    region: { x1: 0.8, z1: 9.5, x2: 7.4, z2: 10.2 }
+    reason: "主卧+书房南墙实体删除，为飘窗让路"
   - id: suppress_living_south
-    region: { x1: 7.15, z1: 9.90, x2: 13.45, z2: 10.00 }
+    region: { x1: 7.0, z1: 9.5, x2: 13.6, z2: 10.2 }
     reason: "客厅南墙落地玻璃幕（z=9.95）"
-  - id: suppress_south_wall_east
-    region: { x1: 13.35, z1: 9.90, x2: 15.3, z2: 10.00 }
-    reason: "南外墙东段（x=13.4~15.2, z=9.95）改玻璃幕墙"
-  - id: suppress_bedroom_se_south_bay
-    region: { x1: 13.4, z1: 9.90, x2: 16.4, z2: 10.00 }
-    reason: "东南次卧南向凸窗（凸窗南缘 z=11.05，替换原南墙为玻璃）"
+  - id: suppress_south_east
+    region: { x1: 13.2, z1: 9.5, x2: 16.6, z2: 10.2 }
+    reason: "东南次卧凸窗+东南圆角实体墙删除"
 
 elements:
-  # 西墙 + 西南圆弧 + 南墙西段（到书房东侧）
+  # 西墙 + 西南小圆角（z=8.8~9.8，仅 1m）
   - id: west_curtain
     type: curtain_run
     closed: false
     points:
       - { x: 0.0, z: 0.0 }
-      - { x: 0.0, z: 5.0 }
-      - { x: 0.2, z: 6.0 }
-      - { x: 0.8, z: 7.0 }
-      - { x: 2.0, z: 8.5 }
-      - { x: 4.2, z: 9.8 }
-      - { x: 7.2, z: 9.8 }
+      - { x: 0.0, z: 8.8 }
+      - { x: 0.2, z: 9.4 }
+      - { x: 1.0, z: 9.8 }
     height: 3.0
 
   # 客厅南墙落地玻璃幕（z=9.95）
@@ -49,13 +41,13 @@ elements:
       - { x: 13.4, z: 9.95 }
     height: 3.0
 
-  # 南墙东段（东南次卧凸窗内墙到东南圆弧）
+  # 南墙东段（东南次卧南侧到东南小圆角）
   - id: south_east_curtain
     type: curtain_run
     closed: false
     points:
       - { x: 13.4, z: 9.95 }
-      - { x: 15.2, z: 9.95 }
+      - { x: 15.4, z: 9.95 }
     height: 3.0
 
   # 飘窗
@@ -63,11 +55,11 @@ elements:
     type: bay_sill
     points:
       - { x: 0.0, z: 5.55 }
-      - { x: 0.0, z: 9.8 }
+      - { x: 0.0, z: 8.80 }
     depth: 0.5
     sill: 0.45
     height: 2.55
-    reason: "主卧西墙环幕飘窗"
+    reason: "主卧西墙飘窗（z=5.55~8.80 直墙段，圆角段由 west_curtain 处理）"
 
   - id: master_bedroom_south_bay
     type: bay_sill
