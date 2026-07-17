@@ -17,6 +17,8 @@ import type {
   WallSegment,
 } from '../shared/types.js';
 import { hvacSchemes } from '../shared/houseData.js';
+import { resolveLayout } from './layout-resolver.js';
+import type { VertexLayoutYaml, ResolvedRoom } from '../shared/types.js';
 
 export interface BudgetCategory {
   key: string;
@@ -136,11 +138,33 @@ export class ProjectCatalog {
 
     const allMeta = [...(houseMeta?.rooms ?? []), ...(houseMeta?.gift_areas ?? [])];
     const metaMap = new Map(allMeta.map((r) => [r.id, r] as [string, HouseYaml['rooms'][number]]));
-    for (const r of layout.rooms) {
-      this.rooms.set(r.id, mergeRoom(r, metaMap.get(r.id)));
-    }
-    if (layout.platform) {
-      this.platform = mergePlatform(layout.platform);
+    if ('vertices' in layout && (layout as unknown as VertexLayoutYaml).vertices) {
+      const vlayout = layout as unknown as VertexLayoutYaml;
+      const resolved = resolveLayout(vlayout);
+      this.rooms.clear();
+      for (const r of resolved.rooms) {
+        const meta = metaMap.get(r.id);
+        this.rooms.set(r.id, {
+          ...r,
+          type: (meta?.type ?? 'public') as RoomLayout['type'],
+          needs_waterproof: meta?.needs_waterproof,
+          openings: meta?.openings,
+        });
+      }
+      if (resolved.platform) {
+        this.platform = {
+          ...resolved.platform,
+          type: 'service',
+        };
+      }
+      this.walls = resolved.walls.map((w) => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2 }));
+    } else {
+      for (const r of layout.rooms) {
+        this.rooms.set(r.id, mergeRoom(r, metaMap.get(r.id)));
+      }
+      if (layout.platform) {
+        this.platform = mergePlatform(layout.platform);
+      }
     }
 
     this.budgetCategories = Object.entries(budgetBase.categories).map(([key, c]) => ({
