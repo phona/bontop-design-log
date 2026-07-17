@@ -34,8 +34,9 @@
   - `z = (north_edge + south_edge) / 2`
 - 任何几何修改后，必须运行：
   ```bash
+  npx tsx scripts/verify-topology.ts
   npx tsx scripts/verify-layout.ts
-  npx tsx scripts/validate-room-wall-alignment.ts
   npm run test:server
   npm run typecheck
   ```
+- `model-geometry.yaml` 采用 v2.0 vertex 格式：rooms 使用中心坐标 (x, z, width, depth)，walls 使用角点坐标 (x1, z1, x2, z2)。几何修改须同时更新拓扑一致性。使用 `scripts/verify-topology.ts` 替代旧的 `validate-room-wall-alignment.ts`。`scripts/archive/` 保留旧脚本供参考。

@@ -6,7 +6,7 @@ import {
   mergeIntervals,
   validateRoomWallAlignment,
   wallBounds,
-} from '../../scripts/validate-room-wall-alignment.js';
+} from '../../../scripts/archive/validate-room-wall-alignment.js';
 
 describe('validate-room-wall-alignment', () => {
   describe('wallBounds', () => {
