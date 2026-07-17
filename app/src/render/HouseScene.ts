@@ -495,7 +495,10 @@ export class HouseScene implements SceneApi {
     const group = new THREE.Group();
     group.position.set(r.x, 0, r.z);
 
-    const floorGeo = new THREE.PlaneGeometry(r.width, r.depth);
+    const pts = (r as { points?: { x: number; z: number; radius?: number }[] }).points;
+    const floorGeo = pts
+      ? new THREE.ShapeGeometry(this.buildRoundedShape(pts))
+      : new THREE.PlaneGeometry(r.width, r.depth);
     const floorMat = new THREE.MeshStandardMaterial({
       color: DEFAULT_FLOOR,
       roughness: 0.75,
@@ -598,6 +601,17 @@ export class HouseScene implements SceneApi {
 
   private renderWallSegment(el: Extract<SceneElement, { type: 'wall' }>, height: number) {
     const mat = new THREE.MeshStandardMaterial({ color: DEFAULT_PAINT, roughness: 0.85 });
+    const segs = (el as { segments?: Array<{ x1: number; z1: number; x2: number; z2: number }> }).segments;
+    if (segs && segs.length > 1) {
+      for (const s of segs) {
+        const mesh = this.renderBox(s.x1, s.z1, s.x2, s.z2, height, WALL_THICKNESS, mat);
+        mesh.userData = { type: 'wall', objectId: el.id };
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        this.wallMeshes.push(mesh);
+      }
+      return;
+    }
     const mesh = this.renderBox(el.x1, el.z1, el.x2, el.z2, height, WALL_THICKNESS, mat);
     mesh.userData = { type: 'wall', objectId: el.id };
     mesh.castShadow = true;
