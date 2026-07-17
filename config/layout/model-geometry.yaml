@@ -1,147 +1,155 @@
-version: '1.0'
-source: '人工维护：参考合同分户图 + 效果图，DXF 仅核对面积'
+version: '2.0'
 unit: m
 scale: 0.001
-origin:
-  x: 31.64204
-  z: -12.48434
-export_date: '2026-07-15'
-notes: '701 左单元 U 型户型。以合同图/效果图为主源，DXF 仅参考面积。主卧/书房南缘齐平 z=10.90（飘窗凸 1.1m），客厅落地玻璃 z=9.95，东南次卧凸窗 z=11.05。生活阳台在 VRV 南侧 z=1.0~2.20，厨房 z=0~4.30（含餐厅），客餐厅 z=4.30~9.95。入户花园北墙 z=0.65。右侧动区南墙 z=9.95 比左侧 z=9.80 低 150mm。西南/东南角小圆弧。'
+origin: { x: 31.64204, z: -12.48434 }
+export_date: '2026-07-17'
+
+vertices:
+  - { id: v_nw,      x: 0.00,  z: 0.00 }
+  - { id: v_mb_sw,   x: 0.00,  z: 4.30 }
+  - { id: v_mb_nw,   x: 0.00,  z: 5.55 }
+  - { id: v_sw,      x: 0.00,  z: 9.80, radius: 1.00 }
+  - { id: v_step_b,  x: 7.20,  z: 9.80 }
+  - { id: v_step_t,  x: 7.20,  z: 9.95 }
+  - { id: v_be_se_s, x: 13.40, z: 9.95 }
+  - { id: v_se_r,    x: 16.40, z: 9.95, radius: 1.00 }
+  - { id: v_be_ne,   x: 16.40, z: 5.55 }
+  - { id: v_e_bot,   x: 16.40, z: 0.65 }
+  - { id: v_ent_ne,  x: 15.25, z: 0.65 }
+  - { id: v_ent_se,  x: 15.25, z: 3.55 }
+  - { id: v_ent_sw,  x: 10.80, z: 3.55 }
+  - { id: v_ent_nw,  x: 10.80, z: 0.00 }
+  - { id: v_bath_n,  x: 2.60,  z: 0.00 }
+  - { id: v_bath_s,  x: 2.60,  z: 4.30 }
+  - { id: v_vrv_n,   x: 5.60,  z: 0.00 }
+  - { id: v_vrv_sw,  x: 5.60,  z: 1.00 }
+  - { id: v_balc_sw, x: 5.60,  z: 2.20 }
+  - { id: v_nw_s,    x: 5.60,  z: 4.30 }
+  - { id: v_vrv_se,  x: 7.20,  z: 1.00 }
+  - { id: v_balc_ne, x: 7.20,  z: 2.20 }
+  - { id: v_balc_se, x: 7.10,  z: 2.20 }
+  - { id: v_gbath_se,x: 7.10,  z: 4.30 }
+  - { id: v_kit_w,   x: 7.20,  z: 0.00 }
+  - { id: v_kit_s,   x: 7.20,  z: 4.30 }
+  - { id: v_ent_kit, x: 10.80, z: 4.30 }
+  - { id: v_liv_se,  x: 13.40, z: 4.30 }
+  - { id: v_be_sw,   x: 13.40, z: 5.55 }
+  - { id: v_mb_ne,   x: 4.20,  z: 5.55 }
+  - { id: v_mb_se,   x: 4.20,  z: 9.80 }
+  - { id: v_st_ne,   x: 7.20,  z: 5.55 }
+
 rooms:
-  - id: master_bath
-    name: 主卫
-    x: 1.30
-    z: 2.15
-    width: 2.60
-    depth: 4.30
-    height: 3.0
-    area: 11.18
-    perimeter: 13.8
-  - id: bedroom_nw
-    name: 西北次卧
-    x: 4.10
-    z: 2.15
-    width: 3.00
-    depth: 4.30
-    height: 3.0
-    area: 12.90
-    perimeter: 14.6
   - id: master_bedroom
     name: 主卧
-    x: 2.10
-    z: 7.675
-    width: 4.20
-    depth: 4.25
+    boundary: [v_mb_nw, v_mb_ne, v_mb_se, v_sw]
     height: 3.0
-    area: 17.85
-    perimeter: 16.9
+    type: private
   - id: study
     name: 书房
-    x: 5.70
-    z: 7.675
-    width: 3.00
-    depth: 4.25
+    boundary: [v_mb_ne, v_st_ne, v_step_b, v_mb_se]
     height: 3.0
-    area: 12.75
-    perimeter: 14.5
-  - id: guest_bath
-    name: 客卫
-    x: 6.35
-    z: 3.25
-    width: 1.50
-    depth: 2.10
-    height: 3.0
-    area: 3.15
-    perimeter: 7.20
-  - id: kitchen
-    name: 厨房
-    x: 9.00
-    z: 2.15
-    width: 3.60
-    depth: 4.30
-    height: 3.0
-    area: 15.48
-    perimeter: 15.80
+    type: public
   - id: living_dining
     name: 客餐厅
-    x: 10.30
-    z: 7.125
-    width: 6.20
-    depth: 5.65
+    boundary: [v_kit_s, v_liv_se, v_be_se_s, v_step_t]
     height: 3.0
-    area: 35.03
-    perimeter: 23.70
-  - id: bedroom_se
-    name: 东南次卧
-    x: 14.90
-    z: 7.75
-    width: 3.00
-    depth: 4.40
+    type: public
+  - id: master_bath
+    name: 主卫
+    boundary: [v_nw, v_bath_n, v_bath_s, v_mb_sw]
     height: 3.0
-    area: 13.20
-    perimeter: 14.8
+    type: service
+  - id: bedroom_nw
+    name: 西北次卧
+    boundary: [v_bath_n, v_vrv_n, v_nw_s, v_bath_s]
+    height: 3.0
+    type: private
+  - id: guest_bath
+    name: 客卫
+    boundary: [v_balc_sw, v_balc_se, v_gbath_se, v_nw_s]
+    height: 3.0
+    type: service
+  - id: kitchen
+    name: 厨房
+    boundary: [v_kit_w, v_ent_nw, v_ent_kit, v_kit_s]
+    height: 3.0
+    type: service
   - id: balcony
     name: 生活阳台
-    x: 6.40
-    z: 1.60
-    width: 1.60
-    depth: 1.20
+    boundary: [v_vrv_sw, v_vrv_se, v_balc_ne, v_balc_se, v_balc_sw]
     height: 3.0
-    area: 1.92
-    perimeter: 5.60
+    type: service
   - id: entry_garden
     name: 入户花园
-    x: 13.025
-    z: 2.10
-    width: 4.45
-    depth: 2.90
+    boundary: [v_ent_nw, v_ent_sw, v_ent_se, v_ent_ne, v_e_bot]
     height: 3.0
-    area: 12.90
-    perimeter: 14.7
+    type: public
+  - id: bedroom_se
+    name: 东南次卧
+    boundary: [v_be_sw, v_be_ne, v_se_r, v_be_se_s]
+    height: 3.0
+    type: private
+
 platform:
   id: west_platform
   name: VRV设备平台
-  x: 6.40
-  z: 0.50
-  width: 1.60
-  depth: 1.00
+  boundary: [v_vrv_n, v_kit_w, v_vrv_se, v_vrv_sw]
   height: 0.05
-  area: 1.60
+
 walls:
-  # 外框（顺时针，从西北角出发，西南/东南小圆弧）
-  - { x1: 0.00, z1: 0.00, x2: 0.00, z2: 8.80 }            # 西墙（直下到角部）
-  - { x1: 0.00, z1: 8.80, x2: 0.20, z2: 9.40 }            # 西南圆角段 1
-  - { x1: 0.20, z1: 9.40, x2: 1.00, z2: 9.80 }            # 西南圆角段 2
-  - { x1: 1.00, z1: 9.80, x2: 7.20, z2: 9.80 }            # 南墙西段（主卧+书房南侧；飘窗凸出至 z=10.90）
-  - { x1: 7.20, z1: 9.80, x2: 7.20, z2: 9.95 }            # 南墙台阶（150mm）
-  - { x1: 7.20, z1: 9.95, x2: 15.40, z2: 9.95 }           # 南墙东段（客厅落地玻璃/东南次卧南侧）
-  - { x1: 15.40, z1: 9.95, x2: 16.00, z2: 9.55 }          # 东南圆角段 1
-  - { x1: 16.00, z1: 9.55, x2: 16.40, z2: 8.95 }          # 东南圆角段 2
-  - { x1: 16.40, z1: 8.95, x2: 16.40, z2: 0.65 }          # 东墙
-  - { x1: 16.40, z1: 0.65, x2: 15.25, z2: 0.65 }          # 入户花园北墙
-  - { x1: 15.25, z1: 0.65, x2: 15.25, z2: 3.55 }          # 入户花园东墙
-  - { x1: 15.25, z1: 3.55, x2: 10.80, z2: 3.55 }          # 入户花园南墙
-  - { x1: 10.80, z1: 3.55, x2: 10.80, z2: 0.00 }          # 入户花园西墙
-  - { x1: 10.80, z1: 0.00, x2: 0.00, z2: 0.00 }           # 主楼北墙
-
-  # 内墙 — 左侧卧室区（不变）
-  - { x1: 0.00, z1: 4.30, x2: 2.60, z2: 4.30 }            # 主卫南墙
-  - { x1: 2.60, z1: 0.00, x2: 2.60, z2: 4.30 }            # 主卫-西北次卧分隔
-  - { x1: 2.60, z1: 4.30, x2: 5.60, z2: 4.30 }            # 西北次卧南墙
-  - { x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 }            # 主卧东墙
-  - { x1: 4.20, z1: 5.55, x2: 7.20, z2: 5.55 }            # 主卧-书房分隔
-  - { x1: 7.20, z1: 5.55, x2: 7.20, z2: 9.80 }            # 书房东墙
-
-  # 内墙 — VRV平台 / 生活阳台 / 客卫
-  - { x1: 5.60, z1: 0.00, x2: 5.60, z2: 4.30 }            # VRV/阳台/客卫西墙（贯通 z=0~4.30）
-  - { x1: 5.60, z1: 1.00, x2: 7.20, z2: 1.00 }            # VRV南墙 = 生活阳台北墙
-  - { x1: 5.60, z1: 2.20, x2: 7.10, z2: 2.20 }            # 生活阳台南墙 = 客卫北墙
-  - { x1: 5.60, z1: 4.30, x2: 7.10, z2: 4.30 }            # 客卫南墙 = 走道北墙
-  - { x1: 7.10, z1: 2.20, x2: 7.10, z2: 4.30 }            # 客卫东墙
-
+  # 外框 — 西墙（在 T 接点 v_mb_sw, v_mb_nw 处切开）
+  - { id: w_west_lower, from: v_nw,      to: v_mb_sw,  height: 3.0 }
+  - { id: w_west_mid,   from: v_mb_sw,   to: v_mb_nw,  height: 3.0 }
+  - { id: w_west_upper, from: v_mb_nw,   to: v_sw,     height: 3.0 }
+  # 外框 — 南墙（在 v_mb_se, v_step_b, v_step_t, v_be_se_s 处切开）
+  - { id: w_mb_south,   from: v_sw,      to: v_mb_se,  height: 3.0 }
+  - { id: w_st_south,   from: v_mb_se,   to: v_step_b, height: 3.0 }
+  - { id: w_step,       from: v_step_b,  to: v_step_t, height: 3.0 }
+  - { id: w_liv_south,  from: v_step_t,  to: v_be_se_s,height: 3.0 }
+  - { id: w_be_south,   from: v_be_se_s, to: v_se_r,   height: 3.0 }
+  # 外框 — 东墙（在 v_be_ne 处切开）
+  - { id: w_east_upper, from: v_se_r,    to: v_be_ne,  height: 3.0 }
+  - { id: w_east_lower, from: v_be_ne,   to: v_e_bot,  height: 3.0 }
+  # 入户花园围墙
+  - { id: w_ent_north,  from: v_e_bot,   to: v_ent_ne, height: 3.0 }
+  - { id: w_ent_east,   from: v_ent_ne,  to: v_ent_se, height: 3.0 }
+  - { id: w_ent_south,  from: v_ent_se,  to: v_ent_sw, height: 3.0 }
+  - { id: w_ent_west,   from: v_ent_sw,  to: v_ent_nw, height: 3.0 }
+  # 外框 — 北墙（在 v_bath_n, v_vrv_n, v_kit_w 处切开）
+  - { id: w_mbath_north,from: v_nw,      to: v_bath_n, height: 3.0 }
+  - { id: w_nw_north,   from: v_bath_n,  to: v_vrv_n,  height: 3.0 }
+  - { id: w_vrv_north,  from: v_vrv_n,   to: v_kit_w,  height: 3.0 }
+  - { id: w_kit_north,  from: v_kit_w,   to: v_ent_nw, height: 3.0 }
+  # 内墙 — 左侧卧室区
+  - { id: w_mbath_south,from: v_mb_sw,   to: v_bath_s, height: 3.0 }
+  - { id: w_mbath_east, from: v_bath_n,  to: v_bath_s, height: 3.0 }
+  - { id: w_nw_south,   from: v_bath_s,  to: v_nw_s,   height: 3.0 }
+  - { id: w_st_north,   from: v_mb_ne,   to: v_st_ne,  height: 3.0 }
+  - { id: w_st_east,    from: v_st_ne,   to: v_step_b, height: 3.0 }
+  # 内墙 — 主卧东墙（共享墙，按主卧命名）
+  - id: w_mb_east
+    from: v_mb_ne
+    to: v_mb_se
+    height: 3.0
+    openings:
+      - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.9, width: 0.9, height: 2.1, room: master_bedroom }
+      - { id: w_mb_win, type: window, anchor: v_mb_se, offset: 1.5, width: 2.4, height: 1.5, sill: 0.9 }
+  # 内墙 — VRV 平台 / 生活阳台 / 客卫
+  - { id: w_vrv_west,   from: v_vrv_n,   to: v_vrv_sw, height: 3.0 }
+  - { id: w_balc_west,  from: v_vrv_sw,  to: v_balc_sw,height: 3.0 }
+  - { id: w_gbath_west, from: v_balc_sw, to: v_nw_s,   height: 3.0 }
+  - { id: w_vrv_south,  from: v_vrv_sw,  to: v_vrv_se, height: 3.0 }
+  - { id: w_balc_south, from: v_balc_sw, to: v_balc_se,height: 3.0 }
+  - { id: w_gbath_south,from: v_nw_s,    to: v_gbath_se,height: 3.0 }
+  - { id: w_gbath_east, from: v_balc_se, to: v_gbath_se,height: 3.0 }
+  # 内墙 — x=7.20 纵向墙（厨房西墙，在 v_vrv_se, v_balc_ne, v_kit_s 处切开）
+  - { id: w_vrv_east,   from: v_kit_w,   to: v_vrv_se, height: 3.0 }
+  - { id: w_balc_east,  from: v_vrv_se,  to: v_balc_ne,height: 3.0 }
+  - { id: w_kit_west,   from: v_balc_ne, to: v_kit_s,  height: 3.0 }
+  - { id: w_liv_west,   from: v_kit_s,   to: v_st_ne,  height: 3.0 }
   # 内墙 — 厨房 / 客餐厅 / 东南次卧
-  - { x1: 7.20, z1: 0.00, x2: 7.20, z2: 9.95 }            # 厨房/客餐厅西墙（贯通 z=0~9.95）
-  - { x1: 7.20, z1: 4.30, x2: 10.80, z2: 4.30 }           # 厨房-客餐厅分隔
-  - { x1: 10.80, z1: 3.55, x2: 10.80, z2: 4.30 }          # 厨房-门厅分隔
-  - { x1: 13.40, z1: 4.30, x2: 13.40, z2: 9.95 }          # 客餐厅-东南次卧分隔
-  - { x1: 13.40, z1: 5.55, x2: 16.40, z2: 5.55 }          # 东南次卧北墙
+  - { id: w_kit_south,  from: v_kit_s,   to: v_ent_kit,height: 3.0 }
+  - { id: w_kit_east,   from: v_ent_sw,  to: v_ent_kit,height: 3.0 }
+  - { id: w_liv_east,   from: v_liv_se,  to: v_be_sw,  height: 3.0 }
+  - { id: w_be_west,    from: v_be_sw,   to: v_be_se_s,height: 3.0 }
+  - { id: w_be_north,   from: v_be_sw,   to: v_be_ne,  height: 3.0 }
