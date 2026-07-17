@@ -73,6 +73,39 @@
 - **不动 9 个渲染器文件**（除 `HouseScene.ts` 的 `createRoom` 加 3 行分支 + `OpeningDef.wall` 字段语义迁移）
 - **不重配 `cad-anchor.yaml`**（独立任务，拆出本 spec 范围）
 
+### 2.3 分工：AI 是语义标记执行者
+
+本 spec 的隐含前提是**配置驱动 + AI copilot**。所有几何引用（vertex id、wall id、anchor+offset）都是给 AI 看的语义锚点，不是要人脑内维护的引用链。没有这个前提，28 个命名顶点 + 25 段命名墙确实是认知负担；有了这个前提，它们是**精确的、可验证的、可自修的**锚点。
+
+| 角色 | 做什么 | 不做什么 |
+|---|---|---|
+| **人** | 高层决策："南墙推 0.3m"、"主卧改方形"、"换地板颜色" | 不读 vertex id、不算 offset、不碰坐标 |
+| **AI** | 把高层意图翻译成顶点/墙变更；跑 `verify-topology`；自修验证错误；报告"搞定"或卡住的具体顶点 | 不擅自重命名 vertex、不猜测开放边、不跳过验证 |
+| **验证脚本** | 拒绝加载半错半对状态；列错具体 id + room + wall | 不自动修复（让 AI 自修，修不对再问人） |
+
+**典型工作流**（你最初的痛点："改南墙 9.95→10.20"）：
+
+```
+你:   "客厅南墙推 0.3m"
+AI:   1. 识别 w_liv_south（wall id）→ 确认它的两端顶点 v_step_t、v_be_se_s
+      2. 同时识别 w_be_south（东南次卧南墙）→ 端点 v_be_se_s、v_se_r
+      3. 改 v_step_t.z: 9.95 → 10.25
+         改 v_be_se_s.z: 9.95 → 10.25
+         改 v_se_r.z: 9.95 → 10.25（圆角顶点同步）
+      4. npx tsx scripts/verify-topology.ts
+      5. 若报错（如 opening 超出 wall）→ 自修或问你
+      6. 报告"改了 3 个顶点，verify 通过，3D 渲染已刷新"
+你:   看一眼渲染，确认或继续
+```
+
+这个工作流决定了 spec 的许多设计选择：
+- **vertex id 是稳定锚点**——AI 改完不会漂移，下次你说"主卧东南角再推 0.1m"，AI 知道是 `v_mb_se`
+- **`open_edges` 必须显式声明**——防止 AI 忘掉开放边导致渲染泄露（AI 容易漏边界条件，脚本兜底）
+- **resolver 层 + 单测可测**——AI 改完有自动化检查，不靠人眼比对渲染
+- **naming convention（§5.1.1）约束 AI**——跨会话不漂移；你扫一眼也能定位
+
+> **注**：人也可以直接改 YAML——这套数据对人是透明的（就是坐标系 + 引用名），不强制走 AI。但默认工作流是 AI 执行 + 验证脚本兜底。
+
 ---
 
 ## 3. 架构总览
@@ -182,7 +215,7 @@ rooms:
     name: 客餐厅
     boundary: [v_kit_w, v_kit_s, v_liv_se, v_be_se_s, v_step_t]  # v_kit_w→v_kit_s 是开放边；南边到 v_step_t
     height: 3.0
-  # ... 其余 7 房间 + 1 平台同理（见附录 §12）
+   # ... 其余 7 房间 + 1 平台：Phase 3 脚本从现有 x/z/width/depth 推导 4 角顶点，AI 核对共享关系 + 开放边（见 §12.2 checklist）
 
 # walls 引用 vertices 的端点。开放边没有 wall。
 # 墙在"要素变化点"切开：西墙在 v_mb_nw 切成上下两段，让两个 bay_sill 各引用一整段。
@@ -200,9 +233,42 @@ walls:
         - { id: d_mb, type: door,   anchor: v_mb_ne, offset: 0.9, width: 0.9, height: 2.1, room: master_bedroom }
         - { id: w_mb_win, type: window, anchor: v_mb_se, offset: 0.6, width: 2.4, height: 1.5, sill: 0.9 }
     }
-  # ... 其余 walls（见附录 §12）
+  # ... 其余 walls：Phase 3 从现有 walls 段转写（见 §12.3）
   # v_mb_nw→v_mb_ne（主卧北边）没有 wall —— 开放边
 ```
+
+#### 5.1.1 Vertex / Wall 命名约定
+
+AI 跨会话生成 id 会漂移（第一次 `v_abc_001`，第二次 `v_nw_corner`，三个月后谁也看不懂）。以下规则 constrain AI，也让你扫一眼能定位：
+
+**Vertex id 规则**：`v_<room_prefix?>_<direction>`
+
+| 模式 | 例子 | 含义 |
+|---|---|---|
+| `v_<dir>` | `v_nw`, `v_sw`, `v_se_r` | 外框角点（不属任何单一房间） |
+| `v_<room>_<dir>` | `v_mb_nw`, `v_st_ne` | 某房间专属角点 |
+| `v_<loc>_<dir>` | `v_kit_s`, `v_ent_nw` | T 接点或地标点 |
+
+- `<dir>` ∈ `n/s/e/w/ne/nw/se/sw`；`n` 北、`s` 南（与 AGENTS.md 坐标系一致，+z=南）
+- `<room>` 用 2-3 字母缩写：`mb`=master_bedroom, `st`=study, `be`=bedroom_se, `nw`=bedroom_nw, `bath`=master_bath, `gbath`=guest_bath, `kit`=kitchen, `liv`=living_dining, `balc`=balcony, `ent`=entry_garden, `vrv`=VRV platform
+- 圆角顶点后缀 `_r`（如 `v_se_r`、`v_sw`）——`v_sw` 是历史名保留（西南圆角点），新增一律用 `_r`
+- **禁止**：纯编号（`v_001`）、无语义名（`v_a1`）、含数字坐标（`v_x0y0`）
+
+**Wall id 规则**：`w_<room>_<side>` 或 `w_<loc>_<side>`
+
+| 例子 | 含义 |
+|---|---|
+| `w_mb_south` | 主卧南墙 |
+| `w_liv_south` | 客餐厅南墙 |
+| `w_west_upper`, `w_west_lower` | 西墙在 v_mb_nw 切成的上下段（要素变化点切墙） |
+| `w_mb_east` | 主卧东墙 |
+| `w_round1` | 圆角墙段（保留历史名；新增用 `w_<loc>_round`） |
+
+- 共享墙以"主侧房间"命名（如 `w_mb_east` 同时是书房西墙，按主卧命名）
+- 切墙后用 `_upper/_lower/_mid` 区分段
+- **禁止**：`w_001`、`w_wall_1`
+
+**人**编辑时遵守此规则；**AI** 改顶点时若发现现有 id 违反规则，应在变更前先重命名（同会话内一次性改完 + 跑 verify），不要混合两种风格。
 
 ### 5.2 `config/layout/overlay.yaml` 新 schema
 
@@ -550,10 +616,10 @@ r=1.0m × 16 段 → 每段弦长 ~19.6cm，弦弧最大偏差 4.8mm。肉眼看
 
 ### 11.3 开放边的误删风险
 
-如果误删一条 wall 但没在 room 的 `open_edges` 声明，`verify-topology.ts` 会报错（避免地面外漏）。这是安全网，但要求迁移时显式列出所有开放边。当前开放边：
-- `master_bedroom` 北边（v_mb_nw → v_mb_ne）
+如果误删一条 wall 但没在 room 的 `open_edges` 声明，`verify-topology.ts` 会报错（避免地面外漏）。这是安全网，但要求迁移时显式列出所有开放边。当前已知开放边：
+- `master_bedroom` 北边（v_mb_nw → v_mb_ne）—— 向走廊开放
 - `living_dining` 西边（v_kit_w → v_kit_s）—— 实际是厨房-客餐厅分隔的下半段
-- （迁移时需全量盘点，附录 §12 待补）
+- 其余待 Phase 3 全量盘点（见 §12.2 备注：脚本推导时 AI 应逐边核对，不能默认无开放边）
 
 ### 11.4 `glass_infill` 与新系统的并存
 
@@ -569,35 +635,41 @@ r=1.0m × 16 段 → 每段弦长 ~19.6cm，弦弧最大偏差 4.8mm。肉眼看
 
 ---
 
-## 12. 附录：完整 vertex/room/wall 列表
+## 12. 附录：vertex / room / wall 全量清单的状态
 
-> **本附录是初步盘点，不是最终数据。** Phase 3 启动时由脚本从当前 `model-geometry.yaml` 的 rooms + walls 字段生成 vertex 候选集，人工核对去重 + 命名后 finalized。§5.1 的示例已用仓库实际坐标证明了数据模型可行；本附录的"待盘"条目是工作量估算，不是 spec 缺口。
+> **本附录不重复列数据**。§5.1 已用仓库实际坐标验证过数据模型，本附录只说明各类清单的来源与风险。
 
-### 12.1 Vertices（~28 个）
+### 12.1 Vertices — **已全列**（见 §5.1）
 
-外框 7（含 2 圆角顶点替代原 6 个弦段端点）+ T 接点 12 + 卧室区 4 + 入户花园 4 + 内墙角点 ~1 = ~28。具体清单见 §5.1 的 `vertices:` 段（已列出全部）。
+§5.1 的 `vertices:` 段已列出全部 28 个顶点（外框 7 + T 接点 12 + 卧室区 4 + 入户花园 4 + 内墙 1），坐标已用现有 `model-geometry.yaml` 的 walls 端点反推并通过几何校验（圆角半径 r=1.0 已验证，切点吻合）。
 
-### 12.2 Rooms（10 + 1 platform）
+**Phase 3 不再生成 vertex 坐标**——直接采用 §5.1。AI 的任务只限于：核对命名约定（§5.1.1）+ 把现有 walls 段对到 §5.1 的 wall 条目上（验证 from/to 顶点存在）。
 
-> "待盘" = Phase 3 迁移时从现有 `model-geometry.yaml` 的 `x/z/width/depth` 自动生成 boundary，无需 spec 预先定义——所有矩形房间的 boundary 就是 4 个角顶点，脚本可自动推导。
+### 12.2 Rooms boundary — **Phase 3 机械推导**（不预填）
 
-| id | boundary（顶点序列） | 开放边 |
+| id | 状态 | 推导方式 |
 |---|---|---|
-| master_bedroom | [v_mb_nw, v_mb_ne, v_mb_se, v_sw] | (v_mb_nw, v_mb_ne) 北边 |
-| study | [v_mb_ne, v_st_ne, v_step_b, v_mb_se] | 无 |
-| living_dining | [v_kit_w, v_kit_s, v_liv_se, v_be_se_s, v_step_t] | (v_kit_w, v_kit_s) 西边 |
-| bedroom_se | [v_be_sw, v_be_se_s, v_se_r, v_be_ne] | 待盘（Phase 3 推导） |
-| entry_garden | [v_ent_nw, v_ent_ne, v_ent_se, v_ent_sw] | 待盘（Phase 3 推导） |
-| master_bath | 待盘（Phase 3 脚本自动推导 4 角顶点） | 待盘 |
-| bedroom_nw | 待盘（同上） | 待盘 |
-| guest_bath | 待盘（同上） | 待盘 |
-| kitchen | 待盘（同上） | 待盘 |
-| balcony | 待盘（同上） | 待盘 |
-| west_platform | 待盘（同上） | 待盘 |
+| master_bedroom | 已列（§5.1 示例） | 5 顶点含圆角 |
+| study | 已列（§5.1 示例） | 4 顶点矩形 |
+| living_dining | 已列（§5.1 示例） | 5 顶点含开放边 |
+| bedroom_se | 已列（§12 附录） | 4 顶点（v_be_sw, v_be_se_s, v_se_r, v_be_ne） |
+| entry_garden | 已列（§12 附录） | 4 顶点（v_ent_nw/ne/se/sw） |
+| 其余 6 个矩形房间 + west_platform | **待 Phase 3 推导** | 脚本从 `x/z/width/depth` 算 4 角顶点 → AI 核对共享关系 → 跑 verify-topology |
 
-### 12.3 Walls（~25 段）
+**为什么不预填**：矩形房间的 4 角顶点 = `center ± half-size`，是机械计算；但**相邻房间共享哪些顶点**需要核对 walls 段（如 bedroom_nw 和 master_bath 是否共享顶点，取决于它们之间有没有 wall）。Phase 3 脚本自动推导 + AI 核对，比 spec 里拍脑袋假设更可靠（拍脑袋错了 implementer 照着错）。
 
-外框 7（含 2 圆角顶点替代原 4 段弦墙）+ 内墙左侧 6 + 内墙 VRV/阳台/客卫 5 + 内墙厨房/客餐厅/东南 5 = ~23 段。墙在房间角点 + bay_sill 变化点切开。
+**Phase 3 推导清单（给 implementer 的 checklist）**：
+
+1. 对每个矩形房间，从 `model-geometry.yaml` 的 `x/z/width/depth` 算 4 个角顶点
+2. 去 §5.1 vertex 列表里找匹配（按坐标容差 0.01m）—— 已有的复用 id，没有的新增 id（遵守 §5.1.1 命名规则）
+3. 对每条 wall，按 from/to 坐标匹配顶点（同上容差）
+4. 逐房间逐边核对：有对应 wall → 物理边；无对应 wall → 加入 `open_edges` 声明
+5. 跑 `verify-topology.ts`，逐条修复报错
+6. 截图比对 3D 渲染与转换前一致（用 floor-plan-compare skill）
+
+### 12.3 Walls — **已列主干**（§5.1 示例 + §12 附录）
+
+外框 7（含 2 圆角顶点替代原 4 段弦墙）+ 内墙左侧 6 + 内墙 VRV/阳台/客卫 5 + 内墙厨房/客餐厅/东南 5 = ~23 段。墙在房间角点 + bay_sill 变化点切开。§5.1 示例已列出外框主干 + 主卧/书房内墙；剩余内墙（master_bath/bedroom_nw/guest_bath/kitchen/balcony/entry_garden 周边）Phase 3 从现有 walls 段转写，每段按 §5.1.1 命名。
 
 ---
 
