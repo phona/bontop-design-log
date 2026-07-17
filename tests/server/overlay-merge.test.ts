@@ -67,9 +67,9 @@ elements:
     assert.equal(cfg.elements.length, 1);
     const el = cfg.elements[0];
     if (el.type === 'curtain_run') {
-      assert.equal(el.points[1].radius, 0.8);
-      assert.equal(el.points[2].radius, 0.8);
-      assert.equal(el.points[0].radius, undefined);
+      assert.equal(el.points![1].radius, 0.8);
+      assert.equal(el.points![2].radius, 0.8);
+      assert.equal(el.points![0].radius, undefined);
     }
   });
 

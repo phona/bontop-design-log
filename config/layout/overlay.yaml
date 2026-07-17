@@ -8,16 +8,16 @@ version: 1
 
 suppress:
   - id: suppress_west_wall
-    region: { x1: -0.5, z1: -0.5, x2: 1.2, z2: 10.0 }
+    wall: w_west_lower
     reason: "西墙+西南小圆角实体墙删除，改玻璃幕墙"
   - id: suppress_south_west
-    region: { x1: 0.8, z1: 9.5, x2: 7.4, z2: 10.2 }
+    wall: w_mb_south
     reason: "主卧+书房南墙实体删除，为飘窗让路"
   - id: suppress_living_south
-    region: { x1: 7.0, z1: 9.5, x2: 13.6, z2: 10.2 }
+    wall: w_liv_south
     reason: "客厅南墙落地玻璃幕（z=9.95）"
   - id: suppress_south_east
-    region: { x1: 13.2, z1: 9.5, x2: 16.6, z2: 10.2 }
+    wall: w_be_south
     reason: "东南次卧凸窗+东南圆角实体墙删除"
 
 elements:
@@ -25,37 +25,27 @@ elements:
   - id: west_curtain
     type: curtain_run
     closed: false
-    points:
-      - { x: 0.0, z: 0.0 }
-      - { x: 0.0, z: 8.8 }
-      - { x: 0.2, z: 9.4 }
-      - { x: 1.0, z: 9.8 }
+    walls: [w_west_lower, w_west_mid, w_west_upper]
     height: 3.0
 
   # 客厅南墙落地玻璃幕（z=9.95）
   - id: living_south_curtain
     type: curtain_run
     closed: false
-    points:
-      - { x: 7.2, z: 9.95 }
-      - { x: 13.4, z: 9.95 }
+    wall: w_liv_south
     height: 3.0
 
   # 南墙东段（东南次卧南侧到东南小圆角）
   - id: south_east_curtain
     type: curtain_run
     closed: false
-    points:
-      - { x: 13.4, z: 9.95 }
-      - { x: 15.4, z: 9.95 }
+    wall: w_be_south
     height: 3.0
 
   # 飘窗
   - id: master_bedroom_west_bay
     type: bay_sill
-    points:
-      - { x: 0.0, z: 5.55 }
-      - { x: 0.0, z: 8.80 }
+    wall: w_west_upper
     depth: 0.5
     sill: 0.45
     height: 2.55
@@ -63,9 +53,7 @@ elements:
 
   - id: master_bedroom_south_bay
     type: bay_sill
-    points:
-      - { x: 0.0, z: 9.8 }
-      - { x: 4.2, z: 9.8 }
+    wall: w_mb_south
     depth: 1.1
     sill: 0.45
     height: 2.55
@@ -73,9 +61,7 @@ elements:
 
   - id: study_south_bay
     type: bay_sill
-    points:
-      - { x: 4.2, z: 9.8 }
-      - { x: 7.2, z: 9.8 }
+    wall: w_st_south
     depth: 1.1
     sill: 0.45
     height: 2.55
@@ -83,9 +69,7 @@ elements:
 
   - id: bedroom_se_south_bay
     type: bay_sill
-    points:
-      - { x: 13.4, z: 9.95 }
-      - { x: 16.4, z: 9.95 }
+    wall: w_be_south
     depth: 1.1
     sill: 0.45
     height: 2.55
@@ -93,9 +77,7 @@ elements:
 
   - id: bedroom_nw_west_bay
     type: bay_sill
-    points:
-      - { x: 0.0, z: 0.0 }
-      - { x: 0.0, z: 4.3 }
+    wall: w_west_lower
     depth: 0.5
     sill: 0.45
     height: 2.55

@@ -18,20 +18,28 @@ const SuppressSchema = z
     id: z.string().min(1),
     region: z
       .object({ x1: z.number(), z1: z.number(), x2: z.number(), z2: z.number() })
-      .strict(),
+      .strict()
+      .optional(),
+    wall: z.string().min(1).optional(),
     reason: z.string().min(1),
   })
-  .strict();
+  .strict()
+  .refine(d => d.region || d.wall, { message: 'Must specify region or wall' });
 
 const CurtainRunSchema = z
   .object({
     id: z.string().min(1),
     type: z.literal('curtain_run'),
-    points: z.array(CurtainPointSchema).min(2),
+    points: z.array(CurtainPointSchema).min(2).optional(),
+    wall: z.string().min(1).optional(),
+    walls: z.array(z.string().min(1)).min(1).optional(),
     height: z.number().positive().default(3.0),
     closed: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .refine(d => d.points || d.wall || (d.walls && d.walls.length > 0), {
+    message: 'Must specify points, wall, or walls',
+  });
 
 const WallRunSchema = z
   .object({
@@ -69,13 +77,15 @@ const BaySillSchema = z
   .object({
     id: z.string().min(1),
     type: z.literal('bay_sill'),
-    points: z.array(PointSchema).min(2),
+    points: z.array(PointSchema).min(2).optional(),
+    wall: z.string().min(1).optional(),
     depth: z.number().positive(),
     sill: z.number().min(0),
     height: z.number().positive(),
     reason: z.string().min(1).optional(),
   })
-  .strict();
+  .strict()
+  .refine(d => d.points || d.wall, { message: 'Must specify points or wall' });
 
 const OverlaySchema = z
   .object({
@@ -110,19 +120,43 @@ export function mergeSceneElements(
 
   const kept: SceneElement[] = [];
   walls.forEach((w, i) => {
-    const mx = (w.x1 + w.x2) / 2;
-    const mz = (w.z1 + w.z2) / 2;
-    const suppressed = suppress.some(({ region }) => {
-      const [minX, maxX] = [Math.min(region.x1, region.x2), Math.max(region.x1, region.x2)];
-      const [minZ, maxZ] = [Math.min(region.z1, region.z2), Math.max(region.z1, region.z2)];
-      return mx >= minX && mx <= maxX && mz >= minZ && mz <= maxZ;
+    const suppressed = suppress.some(s => {
+      if (s.wall) {
+        return w.id === s.wall;
+      }
+      if (s.region) {
+        const mx = (w.x1 + w.x2) / 2;
+        const mz = (w.z1 + w.z2) / 2;
+        const [minX, maxX] = [Math.min(s.region.x1, s.region.x2), Math.max(s.region.x1, s.region.x2)];
+        const [minZ, maxZ] = [Math.min(s.region.z1, s.region.z2), Math.max(s.region.z1, s.region.z2)];
+        return mx >= minX && mx <= maxX && mz >= minZ && mz <= maxZ;
+      }
+      return false;
     });
     if (!suppressed) {
       kept.push({ type: 'wall', id: `wall:seg:${i}`, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2 });
     }
   });
 
-  return [...kept, ...elements];
+  // Resolve wall refs in elements (only for types that use wall as id reference)
+  const resolvedWalls = walls
+    .filter((w): w is WallSegment & { id: string } => w.id !== undefined)
+    .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2 }));
+
+  for (const el of elements) {
+    if (el.type === 'curtain_run' || el.type === 'bay_sill') {
+      const elAny = el as Record<string, unknown>;
+      const wallRef = elAny.wall ?? elAny.walls;
+      if (wallRef) {
+        (elAny as Record<string, unknown>).points = resolveWallRef(
+          wallRef as string | string[],
+          resolvedWalls
+        );
+      }
+    }
+  }
+
+  return [...kept, ...elements] as SceneElement[];
 }
 
 export function resolveWallRef(
