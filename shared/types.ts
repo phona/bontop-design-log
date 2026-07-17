@@ -332,6 +332,7 @@ export interface PlatformLayout {
 }
 
 export interface WallSegment {
+  id?: string;
   x1: number;
   z1: number;
   x2: number;
@@ -374,6 +375,94 @@ export interface CadLayoutYaml {
   rooms: LayoutRoom[];
   platform?: PlatformLayout;
   walls?: WallSegment[];
+}
+
+// ── Vertex 关系引擎新类型（Phase 1）──
+
+export interface Vertex {
+  id: string;
+  x: number;
+  z: number;
+  radius?: number;
+}
+
+export interface OpeningDefV2 {
+  id: string;
+  type: string;
+  wall: string;
+  anchor: string;
+  offset: number;
+  width: number;
+  height: number;
+  sill?: number;
+  room?: string;
+}
+
+export interface WallDef {
+  id: string;
+  from: string;
+  to: string;
+  height: number;
+  openings?: OpeningDefV2[];
+}
+
+export interface RoomDef {
+  id: string;
+  name: string;
+  boundary: string[];
+  height: number;
+  type?: string;
+}
+
+export interface PlatformDef {
+  id: string;
+  name: string;
+  boundary: string[];
+  height: number;
+}
+
+export interface VertexLayoutYaml {
+  version: string;
+  unit: string;
+  scale: number;
+  origin: { x: number; z: number };
+  vertices: Vertex[];
+  rooms: RoomDef[];
+  platform?: PlatformDef;
+  walls: WallDef[];
+}
+
+export interface ResolvedRoom extends RoomLayout {
+  points?: CurtainPoint[];
+  area?: number;
+}
+
+export interface ResolvedWall {
+  id: string;
+  x1: number;
+  z1: number;
+  x2: number;
+  z2: number;
+  height: number;
+  segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>;
+  openings?: Array<{
+    id: string;
+    type: string;
+    x: number;
+    z: number;
+    width: number;
+    height: number;
+    sill?: number;
+    room?: string;
+  }>;
+}
+
+export interface ResolvedLayout {
+  rooms: ResolvedRoom[];
+  platform?: ResolvedRoom;
+  walls: ResolvedWall[];
+  vertices: Vertex[];
+  openEdges: Array<{ room: string; from: string; to: string }>;
 }
 
 export type CalcMode = 'area' | 'length' | 'count' | 'fixed';
