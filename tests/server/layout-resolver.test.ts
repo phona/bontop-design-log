@@ -182,3 +182,41 @@ describe('resolveLayout openings', () => {
     assert.throws(() => resolveLayout(yaml), /exceeds wall/);
   });
 });
+
+describe('regression: change south wall z → auto-propagate', () => {
+  it('moving v_step_t.z propagates to living_dining depth + wall endpoints', () => {
+    const base: VertexLayoutYaml = {
+      version: '2.0', unit: 'm', scale: 0.001, origin: { x: 0, z: 0 },
+      vertices: [
+        { id: 'v_kit_w', x: 7.20, z: 0 },
+        { id: 'v_kit_s', x: 7.20, z: 4.30 },
+        { id: 'v_liv_se', x: 13.40, z: 4.30 },
+        { id: 'v_be_se_s', x: 13.40, z: 9.95 },
+        { id: 'v_step_t', x: 7.20, z: 9.95 },
+      ],
+      rooms: [
+        { id: 'living_dining', name: '客餐厅', boundary: ['v_kit_s', 'v_liv_se', 'v_be_se_s', 'v_step_t'], height: 3.0 },
+      ],
+      walls: [
+        { id: 'w_liv_south', from: 'v_step_t', to: 'v_be_se_s', height: 3.0 },
+        { id: 'w_liv_west', from: 'v_kit_s', to: 'v_step_t', height: 3.0 },
+        { id: 'w_liv_north', from: 'v_kit_s', to: 'v_liv_se', height: 3.0 },
+        { id: 'w_liv_east', from: 'v_liv_se', to: 'v_be_se_s', height: 3.0 },
+      ],
+    };
+
+    // Before: z=9.95
+    const before = resolveLayout(base);
+    assert.ok(Math.abs(before.rooms[0].depth - 5.65) < 1e-10); // 9.95 - 4.30
+    assert.equal(before.walls[0].z1, 9.95); // w_liv_south from v_step_t
+
+    // After: move v_step_t.z to 10.25 (south wall pushed 0.3m south)
+    const after = resolveLayout({
+      ...base,
+      vertices: base.vertices.map(v => v.id === 'v_step_t' ? { ...v, z: 10.25 } : v),
+    });
+    assert.ok(Math.abs(after.rooms[0].depth - 5.95) < 1e-10); // 10.25 - 4.30
+    assert.equal(after.walls[0].z1, 10.25); // wall endpoint auto-updated
+    assert.equal(after.walls[1].z2, 10.25); // w_liv_west endpoint also auto-updated (shared vertex)
+  });
+});
