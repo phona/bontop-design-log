@@ -142,6 +142,7 @@ function resolveRoom(
     type: rawType,
     points: isRect ? undefined : ccw,
     area,
+    boundary_count: def.boundary.length,
   };
 }
 
@@ -217,6 +218,8 @@ function resolveWall(
       const arc = arcSegments(center, from.radius, startAngle, endAngle, 16);
       // Wall's straight segment from t2 to original 'to'
       segments = [...arc, { x1: t2.x, z1: t2.z, x2: to.x, z2: to.z }];
+    } else {
+      segments = [{ x1, z1, x2, z2 }];
     }
   } else if (to.radius) {
     // Trim 'to' to tangent point (arc owned by the next wall whose 'from' is 'to')

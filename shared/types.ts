@@ -435,6 +435,7 @@ export interface VertexLayoutYaml {
 export interface ResolvedRoom extends RoomLayout {
   points?: CurtainPoint[];
   area?: number;
+  boundary_count: number;
 }
 
 export interface ResolvedWall {

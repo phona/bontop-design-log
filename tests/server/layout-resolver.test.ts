@@ -183,6 +183,46 @@ describe('resolveLayout openings', () => {
   });
 });
 
+describe('resolveLayout edge cases', () => {
+  it('resolveWall with unknown vertex id throws', () => {
+    const yaml = makeRectRoom();
+    yaml.walls.push({ id: 'w_bad', from: 'v1', to: 'v_unknown', height: 3.0 });
+    assert.throws(() => resolveLayout(yaml), /unknown vertex/);
+  });
+
+  it('room with fewer than 3 vertices throws', () => {
+    const yaml = makeRectRoom();
+    yaml.rooms[0].boundary = ['v1', 'v2'];
+    assert.throws(() => resolveLayout(yaml), /< 3 vertices/);
+  });
+
+  it('platform open edges are derived', () => {
+    const yaml: VertexLayoutYaml = {
+      version: '2.0', unit: 'm', scale: 0.001, origin: { x: 0, z: 0 },
+      vertices: [
+        { id: 'v1', x: 0, z: 0 },
+        { id: 'v2', x: 3, z: 0 },
+        { id: 'v3', x: 3, z: 2 },
+        { id: 'v4', x: 0, z: 2 },
+      ],
+      rooms: [
+        { id: 'room', name: 'Room', boundary: ['v1', 'v2', 'v3', 'v4'], height: 3.0 },
+      ],
+      walls: [
+        { id: 'w1', from: 'v1', to: 'v2', height: 3.0 },
+        { id: 'w2', from: 'v2', to: 'v3', height: 3.0 },
+        { id: 'w3', from: 'v3', to: 'v4', height: 3.0 },
+        { id: 'w4', from: 'v4', to: 'v1', height: 3.0 },
+      ],
+      platform: { id: 'plat', name: 'Platform', boundary: ['v1', 'v2', 'v3', 'v4'], height: 0.3 },
+    };
+    // All walls present → no open edges for platform (walls are shared)
+    const result = resolveLayout(yaml);
+    const platEdges = result.openEdges.filter(e => e.room === 'plat');
+    assert.equal(platEdges.length, 0);
+  });
+});
+
 describe('regression: change south wall z → auto-propagate', () => {
   it('moving v_step_t.z propagates to living_dining depth + wall endpoints', () => {
     const base: VertexLayoutYaml = {

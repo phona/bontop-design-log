@@ -16,6 +16,6 @@
     "outDir": "./dist",
     "rootDir": "."
   },
-  "include": ["shared/**/*.ts", "server/**/*.ts", "tests/**/*.ts"],
+  "include": ["shared/**/*.ts", "server/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
   "exclude": ["node_modules", "app", "dist", "mcp-server"]
 }

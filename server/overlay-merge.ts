@@ -180,5 +180,20 @@ export function resolveWallRef(
     }
     merged.push(curr);
   }
+
+  for (let i = 1; i < merged.length - 1; i++) {
+    const prev = merged[i - 1];
+    const curr = merged[i];
+    const next = merged[i + 1];
+    const dx1 = curr.x - prev.x;
+    const dz1 = curr.z - prev.z;
+    const dx2 = next.x - curr.x;
+    const dz2 = next.z - curr.z;
+    const cross = Math.abs(dx1 * dz2 - dz1 * dx2);
+    if (cross > 0.01) {
+      throw new Error('Non-collinear walls referenced — use separate elements');
+    }
+  }
+
   return merged;
 }
