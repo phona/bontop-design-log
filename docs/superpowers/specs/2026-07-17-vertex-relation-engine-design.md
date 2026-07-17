@@ -75,7 +75,7 @@
 
 ### 2.3 分工：AI 是语义标记执行者
 
-本 spec 的隐含前提是**配置驱动 + AI copilot**。所有几何引用（vertex id、wall id、anchor+offset）都是给 AI 看的语义锚点，不是要人脑内维护的引用链。没有这个前提，31 个命名顶点 + ~25 段命名墙确实是认知负担；有了这个前提，它们是**精确的、可验证的、可自修的**锚点。
+本 spec 的隐含前提是**配置驱动 + AI copilot**。所有几何引用（vertex id、wall id、anchor+offset）都是给 AI 看的语义锚点，不是要人脑内维护的引用链。没有这个前提，32 个命名顶点 + ~25 段命名墙确实是认知负担；有了这个前提，它们是**精确的、可验证的、可自修的**锚点。
 
 | 角色 | 做什么 | 不做什么 |
 |---|---|---|
@@ -111,7 +111,7 @@ AI:   1. 识别 w_liv_south（wall id）→ 确认它的两端顶点 v_step_t、
 ## 3. 架构总览
 
 ```
-                    vertices  ←  唯一几何源（~30 个 {id, x, z, radius?}）
+                    vertices  ←  唯一几何源（32 个 {id, x, z, radius?}）
                        │
           ┌────────────┼────────────┐
           ↓            ↓            ↓
@@ -142,7 +142,7 @@ AI:   1. 识别 w_liv_south（wall id）→ 确认它的两端顶点 v_step_t、
 |---|---|---|
 | 1 | 先定数据架构，编辑方式后说 | 本 spec 只定数据 + resolver + 渲染器接口 |
 | 2 | B：walls 作为唯一几何源 | 消除 rooms↔walls 冗余，匹配"响应式布局"愿景 |
-| 3 | Vertex 模型 | vertices 是顶层实体（~30 个 `{id, x, z, radius?}`），walls 和 rooms 都引用它 |
+| 3 | Vertex 模型 | vertices 是顶层实体（32 个 `{id, x, z, radius?}`），walls 和 rooms 都引用它 |
 | 4 | rooms 引用 vertices（非 walls） | 因为有开放边（主卧北边无墙，向走廊开放）；room boundary 含顶点但那段没有 wall |
 | 5 | 门 ≠ 顶点 | 门是墙的 hosted element（`OpeningDef` 结构不变），携带 width/height/sill/type/swing |
 | 6 | 门 offset 锁定顶点 | `anchor: v_id, offset: 0.9`；移另一个顶点门不动，移 anchor 顶点门跟着走 |
@@ -166,7 +166,8 @@ export_date: '2026-07-17'
 # 唯一几何源。每个顶点是户型平面上的一个角点或 T 接点。
 # radius 有值 = 圆角顶点，位于两面墙的几何交点处（如西墙 x=0 与南墙 z=9.80 交于 (0, 9.80)）。
 # 切点（如 (0, 8.80)、(1.00, 9.80)）由 resolver 自动计算，不作为 vertex 存储。
-# 共 31 个顶点：30 个从现有 walls 端点反推 + 1 个结构性顶点 v_mb_nw（主卧西北角，西墙需在此切但现有 walls 未在此断开）。
+# 共 32 个顶点：30 个从现有 walls 端点反推 + 2 个结构性顶点（v_mb_nw 主卧西北角、
+# v_balc_ne 阳台东南角，均为 room-only 顶点，现有 walls 未在此断开但 room boundary 需要）。
 # 已通过脚本去重核对。
 vertices:
   # 外框角点（顺时针，从西北角出发）
@@ -192,6 +193,7 @@ vertices:
   - { id: v_balc_sw, x: 5.60,  z: 2.20 }                    # 阳台南墙西端（VRV 西墙 T 接点）
   - { id: v_nw_s,    x: 5.60,  z: 4.30 }
   - { id: v_vrv_se,  x: 7.20,  z: 1.00 }                    # VRV 南墙东端（厨房西墙 T 接点）
+  - { id: v_balc_ne, x: 7.20,  z: 2.20 }                    # 阳台东南角（厨房西墙上，room-only 顶点）
   - { id: v_balc_se, x: 7.10,  z: 2.20 }
   - { id: v_gbath_se,x: 7.10,  z: 4.30 }
   - { id: v_kit_w,   x: 7.20,  z: 0.00 }
@@ -221,7 +223,43 @@ rooms:
     name: 客餐厅
     boundary: [v_kit_w, v_kit_s, v_liv_se, v_be_se_s, v_step_t]  # v_kit_w→v_kit_s 是开放边；南边到 v_step_t
     height: 3.0
-   # ... 其余 7 房间 + 1 平台：Phase 3 脚本从现有 x/z/width/depth 推导 4 角顶点，AI 核对共享关系 + 开放边（见 §12.2 checklist）
+  # --- 以下 6 房间 + 1 平台：boundary 直接从 §5.1 的 32 个顶点"点名"组成，不从 center+size 推导
+  #     （DeepSeek 建议采纳：消除 Phase 3 从 center+size 推导新顶点的出错源）
+  - id: master_bath
+    name: 主卫
+    boundary: [v_nw, v_bath_n, v_bath_s, v_mb_sw]     # 4 角矩形，全用已有顶点
+    height: 3.0
+  - id: bedroom_nw
+    name: 西北次卧
+    boundary: [v_bath_n, v_vrv_n, v_nw_s, v_bath_s]    # 与主卫共享 v_bath_n→v_bath_s 边
+    height: 3.0
+  - id: guest_bath
+    name: 客卫
+    boundary: [v_balc_sw, v_balc_se, v_gbath_se, v_nw_s]  # walls 为准（center+size 不一致，见 §11.6）
+    height: 3.0
+  - id: kitchen
+    name: 厨房
+    boundary: [v_kit_w, v_ent_nw, v_ent_kit, v_kit_s]   # 东边由 L124+L145 两段墙覆盖
+    height: 3.0
+  - id: balcony
+    name: 生活阳台
+    boundary: [v_vrv_sw, v_vrv_se, v_balc_ne, v_balc_se, v_balc_sw]  # 5 角多边形：南墙到 x=7.10 止，x=7.10→7.20 是开放边（门洞）
+    height: 3.0
+  - id: entry_garden
+    name: 入户花园
+    boundary: [v_ent_nw, v_ent_sw, v_ent_se, v_ent_ne, v_e_bot]  # 5 角多边形，v_e_bot→v_ent_nw 是对角开放边（连主楼室内）
+    height: 3.0
+  - id: bedroom_se
+    name: 东南次卧
+    boundary: [v_be_sw, v_be_ne, v_se_r, v_be_se_s]  # 4 顶点矩形，v_se_r 带圆角
+    height: 3.0
+
+# platform 保留为独立顶层段（与现有 model-geometry.yaml 一致），不是 rooms 列表项。
+platform:
+  id: west_platform
+  name: VRV设备平台
+  boundary: [v_vrv_n, v_kit_w, v_vrv_se, v_vrv_sw]   # 4 角矩形，全用已有顶点；height=0.05 是地台
+  height: 0.05
 
 # walls 引用 vertices 的端点。开放边没有 wall。
 # 墙在"结构性顶点"切开——房间角点、T 接点（内墙接入外墙处）。不为 overlay 元素切。
@@ -659,33 +697,38 @@ r=1.0m × 16 段 → 每段弦长 ~19.6cm，弦弧最大偏差 4.8mm。肉眼看
 
 ## 12. 附录：vertex / room / wall 全量清单的状态
 
-> **本附录不重复列数据**。§5.1 已用仓库实际坐标验证过数据模型，本附录只说明各类清单的来源与风险。
+> **所有清单已在 §5.1 完整列出。** 本附录说明各类清单的来源与风险，不重复数据。
 
-### 12.1 Vertices — **已全列**（见 §5.1）
+### 12.1 Vertices — **已全列**（见 §5.1，32 个）
 
-§5.1 的 `vertices:` 段已列出全部 31 个顶点（外框 14 + 卧室区 3 + 内墙 T 接点 14），坐标从现有 `model-geometry.yaml` 的 walls 端点反推 + 圆角替代后通过脚本去重核对（圆角半径 r=1.0 已验证，切点吻合）。
+§5.1 的 `vertices:` 段列出全部 32 个顶点（外框 14 + 卧室区 3 + 内墙 T 接点 13 + room-only 顶点 2），坐标从现有 `model-geometry.yaml` 的 walls 端点反推 + 圆角替代后通过脚本去重核对。
 
-**Phase 3 不再生成 vertex 坐标**——直接采用 §5.1。AI 的任务只限于：核对命名约定（§5.1.1）+ 把现有 walls 段对到 §5.1 的 wall 条目上（验证 from/to 顶点存在）。
+**Phase 3 不再生成 vertex 坐标**——直接采用 §5.1。
 
-### 12.2 Rooms boundary — **Phase 3 机械推导**（不预填）
+### 12.2 Rooms boundary — **已全列**（见 §5.1，10 房间 + 1 平台）
 
-| id | 状态 | 推导方式 |
+| id | 顶点数 | 特征 |
 |---|---|---|
-| master_bedroom | 已列（§5.1 示例） | 5 顶点含圆角 |
-| study | 已列（§5.1 示例） | 4 顶点矩形 |
-| living_dining | 已列（§5.1 示例） | 5 顶点含开放边 |
-| bedroom_se | 已列（§12 附录） | 4 顶点（v_be_sw, v_be_se_s, v_se_r, v_be_ne） |
-| entry_garden | 已列（§12 附录） | 4 顶点（v_ent_nw/ne/se/sw） |
-| 其余 6 个矩形房间 + west_platform | **待 Phase 3 推导** | 脚本从 `x/z/width/depth` 算 4 角顶点 → AI 核对共享关系 → 跑 verify-topology |
+| master_bedroom | 4 | v_sw 带圆角 |
+| study | 4 | 矩形 |
+| living_dining | 5 | v_kit_w→v_kit_s 开放边 |
+| master_bath | 4 | 矩形，与主卧共享 v_mb_sw |
+| bedroom_nw | 4 | 矩形，与主卫共享 v_bath_n→v_bath_s |
+| guest_bath | 4 | 矩形（以 walls 为准，center+size 不一致，见 §11.6） |
+| kitchen | 4 | 矩形 |
+| balcony | 5 | 多边形：南墙到 x=7.10 止，x=7.10→7.20 开放边（门洞） |
+| entry_garden | 5 | 多边形：v_e_bot→v_ent_nw 对角开放边（连主楼室内） |
+| bedroom_se | 4 | v_se_r 带圆角 |
+| west_platform | 4 | 矩形地台（height=0.05） |
 
-**为什么不预填**：矩形房间的 4 角顶点 = `center ± half-size`，是机械计算；但**相邻房间共享哪些顶点**需要核对 walls 段（如 bedroom_nw 和 master_bath 是否共享顶点，取决于它们之间有没有 wall）。Phase 3 脚本自动推导 + AI 核对，比 spec 里拍脑袋假设更可靠（拍脑袋错了 implementer 照着错）。
+**全部 boundary 直接从 §5.1 的 32 个顶点"点名"组成**（DeepSeek 建议采纳）——不从 center+size 推导，消除 Phase 3 最大的出错源。
 
-**Phase 3 推导清单（给 implementer 的 checklist）**：
+**Phase 3 给 implementer 的 checklist**（只剩 walls 转写 + 验证）：
 
-1. 对每个矩形房间，从 `model-geometry.yaml` 的 `x/z/width/depth` 算 4 个角顶点
-2. 去 §5.1 vertex 列表里找匹配（按坐标容差 0.01m）—— 已有的复用 id，没有的新增 id（遵守 §5.1.1 命名规则）
-3. 对每条 wall，按 from/to 坐标匹配顶点（同上容差）
-4. 逐房间逐边核对：有对应 wall → 物理边；无对应 wall → 开放边（resolver 自动推导，无需声明——但 AI 应在 verify 输出中 review 开放边列表，确认没有意料之外的开放边）
+1. 把现有 walls 段（35 条）按坐标匹配到 §5.1 的 vertex（容差 0.01m），每条 wall 写成 `from: v_id, to: v_id` 格式
+2. 在结构性顶点（T 接点、房间角点）处切开 wall——§5.1 已示例外框 + 主卧内墙，其余内墙照做
+3. 逐房间逐边核对：有对应 wall → 物理边；无对应 wall → 开放边（resolver 自动推导，无需声明——但 AI 应在 verify 输出中 review 开放边列表，确认没有意料之外的开放边）
+4. 特别注意 §11.6 的 3 个房间（guest_bath, kitchen, entry_garden）——以 walls 坐标为准，不沿用 center+size
 5. 跑 `verify-topology.ts`，逐条修复报错
 6. 截图比对 3D 渲染与转换前一致（用 floor-plan-compare skill）
 
@@ -699,7 +742,7 @@ r=1.0m × 16 段 → 每段弦长 ~19.6cm，弦弧最大偏差 4.8mm。肉眼看
 
 | 维度 | 旧提案（overlay 层引用） | 本 spec（vertex 关系引擎） |
 |---|---|---|
-| 引入的顶层实体 | 无（rooms/walls 格式不变） | vertices（~30 个） |
+| 引入的顶层实体 | 无（rooms/walls 格式不变） | vertices（32 个） |
 | 消除的冗余 | 无（room/wall 仍冗余） | rooms↔walls 几何冗余消除 |
 | overlay 引用 | `room + wall direction` | `wall id`（间接引用 vertices） |
 | 改南墙 9.95→10.20 | 改 room + wall 2 处 + overlay 自动 | 改南墙上 3 个顶点 z（v_step_t, v_be_se_s, v_se_r）→ 全自动 |
