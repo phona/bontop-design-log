@@ -75,7 +75,7 @@
 
 ### 2.3 分工：AI 是语义标记执行者
 
-本 spec 的隐含前提是**配置驱动 + AI copilot**。所有几何引用（vertex id、wall id、anchor+offset）都是给 AI 看的语义锚点，不是要人脑内维护的引用链。没有这个前提，28 个命名顶点 + 25 段命名墙确实是认知负担；有了这个前提，它们是**精确的、可验证的、可自修的**锚点。
+本 spec 的隐含前提是**配置驱动 + AI copilot**。所有几何引用（vertex id、wall id、anchor+offset）都是给 AI 看的语义锚点，不是要人脑内维护的引用链。没有这个前提，31 个命名顶点 + ~25 段命名墙确实是认知负担；有了这个前提，它们是**精确的、可验证的、可自修的**锚点。
 
 | 角色 | 做什么 | 不做什么 |
 |---|---|---|
@@ -100,7 +100,7 @@ AI:   1. 识别 w_liv_south（wall id）→ 确认它的两端顶点 v_step_t、
 
 这个工作流决定了 spec 的许多设计选择：
 - **vertex id 是稳定锚点**——AI 改完不会漂移，下次你说"主卧东南角再推 0.1m"，AI 知道是 `v_mb_se`
-- **`open_edges` 必须显式声明**——防止 AI 忘掉开放边导致渲染泄露（AI 容易漏边界条件，脚本兜底）
+- **开放边由 resolver 自动推导 + verify 列出**——AI 误删 wall → 该边自动变开放边 → verify 输出多出一条 → AI review 时发现（不要求显式声明 `open_edges`，避免人造不一致）
 - **resolver 层 + 单测可测**——AI 改完有自动化检查，不靠人眼比对渲染
 - **naming convention（§5.1.1）约束 AI**——跨会话不漂移；你扫一眼也能定位
 
@@ -166,23 +166,32 @@ export_date: '2026-07-17'
 # 唯一几何源。每个顶点是户型平面上的一个角点或 T 接点。
 # radius 有值 = 圆角顶点，位于两面墙的几何交点处（如西墙 x=0 与南墙 z=9.80 交于 (0, 9.80)）。
 # 切点（如 (0, 8.80)、(1.00, 9.80)）由 resolver 自动计算，不作为 vertex 存储。
+# 共 31 个顶点：30 个从现有 walls 端点反推 + 1 个结构性顶点 v_mb_nw（主卧西北角，西墙需在此切但现有 walls 未在此断开）。
+# 已通过脚本去重核对。
 vertices:
+  # 外框角点（顺时针，从西北角出发）
   - { id: v_nw,      x: 0.00,  z: 0.00 }
-  - { id: v_sw,      x: 0.00,  z: 9.80, radius: 1.00 }   # 西南圆角，几何角点 (0, 9.80)，r=1.0
+  - { id: v_mb_sw,   x: 0.00,  z: 4.30 }                    # 主卫西南角（西墙 T 接点）
+  - { id: v_mb_nw,   x: 0.00,  z: 5.55 }                    # 主卧西北角（西墙 T 接点）
+  - { id: v_sw,      x: 0.00,  z: 9.80, radius: 1.00 }     # 西南圆角，几何角点 (0, 9.80)，r=1.0
   - { id: v_step_b,  x: 7.20,  z: 9.80 }
   - { id: v_step_t,  x: 7.20,  z: 9.95 }
-  - { id: v_se_r,    x: 16.40, z: 9.95, radius: 1.00 }    # 东南圆角，几何角点 (16.40, 9.95)，r=1.0
+  - { id: v_be_se_s, x: 13.40, z: 9.95 }
+  - { id: v_se_r,    x: 16.40, z: 9.95, radius: 1.00 }     # 东南圆角，几何角点 (16.40, 9.95)，r=1.0
+  - { id: v_be_ne,   x: 16.40, z: 5.55 }                    # 东墙 T 接点（东南次卧北墙接入）
   - { id: v_e_bot,   x: 16.40, z: 0.65 }
   - { id: v_ent_ne,  x: 15.25, z: 0.65 }
   - { id: v_ent_se,  x: 15.25, z: 3.55 }
   - { id: v_ent_sw,  x: 10.80, z: 3.55 }
   - { id: v_ent_nw,  x: 10.80, z: 0.00 }
   # T 接点（内墙接入外墙处）
-  - { id: v_bath_s,  x: 2.60,  z: 4.30 }
   - { id: v_bath_n,  x: 2.60,  z: 0.00 }
-  - { id: v_nw_s,    x: 5.60,  z: 4.30 }
+  - { id: v_bath_s,  x: 2.60,  z: 4.30 }
   - { id: v_vrv_n,   x: 5.60,  z: 0.00 }
-  - { id: v_vrv_se,  x: 7.20,  z: 1.00 }
+  - { id: v_vrv_sw,  x: 5.60,  z: 1.00 }                    # VRV 南墙西端（VRV 西墙 T 接点）
+  - { id: v_balc_sw, x: 5.60,  z: 2.20 }                    # 阳台南墙西端（VRV 西墙 T 接点）
+  - { id: v_nw_s,    x: 5.60,  z: 4.30 }
+  - { id: v_vrv_se,  x: 7.20,  z: 1.00 }                    # VRV 南墙东端（厨房西墙 T 接点）
   - { id: v_balc_se, x: 7.10,  z: 2.20 }
   - { id: v_gbath_se,x: 7.10,  z: 4.30 }
   - { id: v_kit_w,   x: 7.20,  z: 0.00 }
@@ -190,10 +199,7 @@ vertices:
   - { id: v_ent_kit, x: 10.80, z: 4.30 }
   - { id: v_liv_se,  x: 13.40, z: 4.30 }
   - { id: v_be_sw,   x: 13.40, z: 5.55 }
-  - { id: v_be_se_s, x: 13.40, z: 9.95 }
-  - { id: v_be_ne,   x: 16.40, z: 5.55 }
   # 卧室区角点
-  - { id: v_mb_nw,   x: 0.00,  z: 5.55 }
   - { id: v_mb_ne,   x: 4.20,  z: 5.55 }
   - { id: v_mb_se,   x: 4.20,  z: 9.80 }
   - { id: v_st_ne,   x: 7.20,  z: 5.55 }
@@ -218,23 +224,26 @@ rooms:
    # ... 其余 7 房间 + 1 平台：Phase 3 脚本从现有 x/z/width/depth 推导 4 角顶点，AI 核对共享关系 + 开放边（见 §12.2 checklist）
 
 # walls 引用 vertices 的端点。开放边没有 wall。
-# 墙在"要素变化点"切开：西墙在 v_mb_nw 切成上下两段，让两个 bay_sill 各引用一整段。
+# 墙在"结构性顶点"切开——房间角点、T 接点（内墙接入外墙处）。不为 overlay 元素切。
 # 圆角顶点（v_sw, v_se_r）是两墙共享的端点；resolver 修剪墙到切点，弧段由 resolver 展开。
+# wall 不携带 finish——finish 在 room 层（house.yaml 的 wall_finish），共享墙两侧 finish 可能不同。
 walls:
-  - { id: w_west_lower,   from: v_nw,      to: v_mb_nw,    height: 3.0, finish: paint }
-  - { id: w_west_upper,   from: v_mb_nw,   to: v_sw,       height: 3.0, finish: paint }  # resolver 修剪到切点 (0, 8.80)
-  - { id: w_mb_south,     from: v_sw,      to: v_mb_se,    height: 3.0, finish: paint }  # resolver 修剪从切点 (1.00, 9.80) 起
-  - { id: w_step,         from: v_step_b,  to: v_step_t,   height: 3.0, finish: paint }
-  - { id: w_liv_south,    from: v_step_t,  to: v_be_se_s,  height: 3.0, finish: paint }  # 客厅南墙（到 bedroom_se 分隔处）
-  - { id: w_be_south,     from: v_be_se_s, to: v_se_r,     height: 3.0, finish: paint }  # 东南次卧南墙，resolver 修剪到切点 (15.40, 9.95)
-  - { id: w_east,         from: v_se_r,    to: v_e_bot,    height: 3.0, finish: paint }  # resolver 修剪从切点 (16.40, 8.95) 起
-  - { id: w_mb_east,      from: v_mb_ne,   to: v_mb_se,    height: 3.0, finish: paint,
+  - { id: w_west_lower,   from: v_nw,      to: v_mb_sw,    height: 3.0 }   # 西墙下段（主卫西边）
+  - { id: w_west_mid,     from: v_mb_sw,   to: v_mb_nw,    height: 3.0 }   # 西墙中段（主卫-主卧之间）
+  - { id: w_west_upper,   from: v_mb_nw,   to: v_sw,       height: 3.0 }   # resolver 修剪到切点 (0, 8.80)
+  - { id: w_mb_south,     from: v_sw,      to: v_mb_se,    height: 3.0 }   # resolver 修剪从切点 (1.00, 9.80) 起
+  - { id: w_step,         from: v_step_b,  to: v_step_t,   height: 3.0 }
+  - { id: w_liv_south,    from: v_step_t,  to: v_be_se_s,  height: 3.0 }   # 客厅南墙（到 bedroom_se 分隔处）
+  - { id: w_be_south,     from: v_be_se_s, to: v_se_r,     height: 3.0 }   # 东南次卧南墙，resolver 修剪到切点
+  - { id: w_east_upper,   from: v_se_r,    to: v_be_ne,    height: 3.0 }   # resolver 修剪从切点 (16.40, 8.95) 起
+  - { id: w_east_lower,   from: v_be_ne,   to: v_e_bot,    height: 3.0 }
+  - { id: w_mb_east,      from: v_mb_ne,   to: v_mb_se,    height: 3.0,
       openings:
         - { id: d_mb, type: door,   anchor: v_mb_ne, offset: 0.9, width: 0.9, height: 2.1, room: master_bedroom }
         - { id: w_mb_win, type: window, anchor: v_mb_se, offset: 0.6, width: 2.4, height: 1.5, sill: 0.9 }
     }
   # ... 其余 walls：Phase 3 从现有 walls 段转写（见 §12.3）
-  # v_mb_nw→v_mb_ne（主卧北边）没有 wall —— 开放边
+  # v_mb_nw→v_mb_ne（主卧北边）没有 wall —— 开放边（resolver 自动推导，无需显式声明）
 ```
 
 #### 5.1.1 Vertex / Wall 命名约定
@@ -260,7 +269,7 @@ AI 跨会话生成 id 会漂移（第一次 `v_abc_001`，第二次 `v_nw_corner
 |---|---|
 | `w_mb_south` | 主卧南墙 |
 | `w_liv_south` | 客餐厅南墙 |
-| `w_west_upper`, `w_west_lower` | 西墙在 v_mb_nw 切成的上下段（要素变化点切墙） |
+| `w_west_upper`, `w_west_mid`, `w_west_lower` | 西墙在 T 接点 v_mb_sw, v_mb_nw 切成 3 段（结构性顶点切墙） |
 | `w_mb_east` | 主卧东墙 |
 | `w_round1` | 圆角墙段（保留历史名；新增用 `w_<loc>_round`） |
 
@@ -283,7 +292,7 @@ elements:
 
   - id: west_curtain
     type: curtain_run
-    walls: [w_west_lower, w_west_upper]   # 跨多面墙，resolver 合并 collinear
+    walls: [w_west_lower, w_west_mid, w_west_upper]   # 跨 3 段西墙，resolver 合并 collinear
     height: 3.0
 
   - id: master_bedroom_south_bay
@@ -302,7 +311,7 @@ elements:
 
   - id: bedroom_nw_west_bay
     type: bay_sill
-    wall: w_west_lower         # 占西墙下段（v_nw→v_mb_nw）
+    wall: w_west_lower         # 占西墙下段（v_nw→v_mb_sw）
     depth: 0.5
     sill: 0.45
     height: 2.55
@@ -452,6 +461,8 @@ export function resolveWallRef(
 | `offset + width/2 ≤ wall_length` 且 `offset - width/2 ≥ 0` | 抛错：`Opening d_xxx 超出 wall w_xxx` |
 | overlay 的 wall 引用存在 | 抛错 |
 
+**开放边不报错，输出 info**：resolver 自动推导每条 boundary 边是否有 wall 覆盖——有 wall → 物理边（渲染立面）；无 wall → 开放边（不渲染立面）。开放边不是错误（主卧北边、入户花园北边等是故意的）。`verify-topology.ts` 在输出中列出所有开放边供 AI/人 review，但不阻止加载。这避免了 `open_edges` 显式声明的不一致风险。
+
 **失败即拒绝加载**——不允许半错半对的状态进入渲染器。这与 AGENTS.md 现有"验证脚本"风格一致。
 
 ---
@@ -537,7 +548,7 @@ resolver 把弧展开成 16 段直弦后，`ResolvedWall.segments` 是多段。`
 
 - 每个 room.boundary 闭合多边形且不自交
 - 每个 wall.from/to 顶点存在
-- **开放边显式声明**：每个 room 的 boundary 边要么对应一条 wall，要么在 `open_edges` 列表里声明（避免误删墙导致地面外漏）。`open_edges` 是 room 的可选字段，列出 boundary 索引对（如 `[(0,1), (2,3)]`）表示这些边是开放边。
+- **开放边自动推导 + 列出**：resolver 自动判断每条 boundary 边是否有 wall 覆盖；`verify-topology.ts` 在输出中列出所有开放边（`info` 级别，不报错），供 AI/人 review——如果出现了意料之外的开放边，说明 wall 可能被误删
 - openings 的 anchor 顶点在目标 wall 上 + offset+width/2 ≤ wall 长度
 - 所有 overlay 的 wall 引用存在
 
@@ -616,10 +627,12 @@ r=1.0m × 16 段 → 每段弦长 ~19.6cm，弦弧最大偏差 4.8mm。肉眼看
 
 ### 11.3 开放边的误删风险
 
-如果误删一条 wall 但没在 room 的 `open_edges` 声明，`verify-topology.ts` 会报错（避免地面外漏）。这是安全网，但要求迁移时显式列出所有开放边。当前已知开放边：
+开放边由 resolver 自动推导（不要求显式声明 `open_edges`），`verify-topology.ts` 在输出中列出所有开放边供 review。如果 AI 误删一条 wall，该 boundary 边自动变成开放边——verify 输出会多出一条开放边，AI 应在 review 时发现"这条边本该有墙"。这是 info 级提示，不阻止加载——因为开放边本身是合法的（主卧北边、入户花园部分边界等是故意开放的）。
+
+当前已知开放边：
 - `master_bedroom` 北边（v_mb_nw → v_mb_ne）—— 向走廊开放
 - `living_dining` 西边（v_kit_w → v_kit_s）—— 实际是厨房-客餐厅分隔的下半段
-- 其余待 Phase 3 全量盘点（见 §12.2 备注：脚本推导时 AI 应逐边核对，不能默认无开放边）
+- `guest_bath` / `kitchen` / `entry_garden` 部分边——现有 `model-geometry.yaml` 的 center+size 与 walls 坐标不一致，Phase 3 迁移时以 walls 为准，可能暴露额外开放边（见 §11.6）
 
 ### 11.4 `glass_infill` 与新系统的并存
 
@@ -629,9 +642,18 @@ r=1.0m × 16 段 → 每段弦长 ~19.6cm，弦弧最大偏差 4.8mm。肉眼看
 
 ### 11.5 多 wall 合并 collinear 的边界情况
 
-`west_curtain` 跨 `[w_west_lower, w_west_upper]`，两段共线（都 x=0）。resolver 合并成一段 points。但如果两面墙不共线（如 L 形），合并规则未定义。
+`west_curtain` 跨 `[w_west_lower, w_west_mid, w_west_upper]`，3 段共线（都 x=0）。resolver 合并成一段 points。但如果两面墙不共线（如 L 形），合并规则未定义。
 
 **对策**：resolver 检测不共线时抛错（严格校验），要求用户拆成多个 element。不自动处理 L 形（避免隐藏复杂度）。
+
+### 11.6 现有数据的 center+size 与 walls 不一致
+
+脚本核查发现 3 个房间的 `model-geometry.yaml` center+size 与 walls 坐标不一致：
+- `guest_bath`：center+size 给出 W=5.55 E=7.15 N=2.08 S=4.42，但 walls 在 x=5.60/7.10, z=2.20/4.30
+- `kitchen`：center+size 给出 N=1.05 S=3.25，但 walls 在 z=4.30（厨房-客餐厅分隔）和 z=3.55（厨房-门厅分隔）
+- `entry_garden`：center+size 给出 N=0.65，但北墙 walls 在 x=15.25→16.40（超出 room 的 E=15.25）
+
+这是现有数据的不一致（正是 `validate-room-wall-alignment.ts` 要查的）。Phase 3 迁移时**以 walls 坐标为唯一权威**——room boundary 从 walls 推导，不沿用 center+size。这 3 个房间的 boundary 可能不是简单矩形（如 entry_garden 是 L 形或多边形）。Phase 3 脚本 + AI 核对时要特别注意这 3 个房间。
 
 ---
 
@@ -641,7 +663,7 @@ r=1.0m × 16 段 → 每段弦长 ~19.6cm，弦弧最大偏差 4.8mm。肉眼看
 
 ### 12.1 Vertices — **已全列**（见 §5.1）
 
-§5.1 的 `vertices:` 段已列出全部 28 个顶点（外框 7 + T 接点 12 + 卧室区 4 + 入户花园 4 + 内墙 1），坐标已用现有 `model-geometry.yaml` 的 walls 端点反推并通过几何校验（圆角半径 r=1.0 已验证，切点吻合）。
+§5.1 的 `vertices:` 段已列出全部 31 个顶点（外框 14 + 卧室区 3 + 内墙 T 接点 14），坐标从现有 `model-geometry.yaml` 的 walls 端点反推 + 圆角替代后通过脚本去重核对（圆角半径 r=1.0 已验证，切点吻合）。
 
 **Phase 3 不再生成 vertex 坐标**——直接采用 §5.1。AI 的任务只限于：核对命名约定（§5.1.1）+ 把现有 walls 段对到 §5.1 的 wall 条目上（验证 from/to 顶点存在）。
 
@@ -663,7 +685,7 @@ r=1.0m × 16 段 → 每段弦长 ~19.6cm，弦弧最大偏差 4.8mm。肉眼看
 1. 对每个矩形房间，从 `model-geometry.yaml` 的 `x/z/width/depth` 算 4 个角顶点
 2. 去 §5.1 vertex 列表里找匹配（按坐标容差 0.01m）—— 已有的复用 id，没有的新增 id（遵守 §5.1.1 命名规则）
 3. 对每条 wall，按 from/to 坐标匹配顶点（同上容差）
-4. 逐房间逐边核对：有对应 wall → 物理边；无对应 wall → 加入 `open_edges` 声明
+4. 逐房间逐边核对：有对应 wall → 物理边；无对应 wall → 开放边（resolver 自动推导，无需声明——但 AI 应在 verify 输出中 review 开放边列表，确认没有意料之外的开放边）
 5. 跑 `verify-topology.ts`，逐条修复报错
 6. 截图比对 3D 渲染与转换前一致（用 floor-plan-compare skill）
 
