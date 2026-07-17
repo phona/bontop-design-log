@@ -5,7 +5,7 @@
  */
 import { z } from 'zod';
 import { load } from 'js-yaml';
-import type { SceneElement, WallSegment } from '../shared/types.js';
+import type { SceneElement, WallSegment, CurtainPoint } from '../shared/types.js';
 
 const PointSchema = z.object({ x: z.number(), z: z.number() }).strict();
 
@@ -123,4 +123,28 @@ export function mergeSceneElements(
   });
 
   return [...kept, ...elements];
+}
+
+export function resolveWallRef(
+  wallIds: string | string[],
+  walls: Array<{ id: string; x1: number; z1: number; x2: number; z2: number }>
+): CurtainPoint[] {
+  const ids = Array.isArray(wallIds) ? wallIds : [wallIds];
+  const pts: CurtainPoint[] = [];
+  for (const id of ids) {
+    const wall = walls.find(w => w.id === id);
+    if (!wall) throw new Error(`Unknown wall id: ${id}`);
+    pts.push({ x: wall.x1, z: wall.z1 });
+    pts.push({ x: wall.x2, z: wall.z2 });
+  }
+  const merged: CurtainPoint[] = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const prev = merged[merged.length - 1];
+    const curr = pts[i];
+    if (Math.abs(prev.x - curr.x) < 0.001 && Math.abs(prev.z - curr.z) < 0.001) {
+      continue;
+    }
+    merged.push(curr);
+  }
+  return merged;
 }

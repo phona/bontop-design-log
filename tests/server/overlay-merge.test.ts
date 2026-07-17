@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseOverlay, mergeSceneElements } from '../../server/overlay-merge.js';
+import { parseOverlay, mergeSceneElements, resolveWallRef } from '../../server/overlay-merge.js';
 import type { WallSegment } from '../../shared/types.js';
 
 const WALLS: WallSegment[] = [
@@ -308,5 +308,28 @@ elements:
       assert.equal(bay.sill, 0.45);
       assert.equal(bay.height, 2.55);
     }
+  });
+});
+
+describe('resolveWallRef', () => {
+  const walls = [
+    { id: 'w1', x1: 0, z1: 0, x2: 0, z2: 5 },
+    { id: 'w2', x1: 0, z1: 5, x2: 0, z2: 10 },
+  ];
+
+  it('resolves single wall to two points', () => {
+    const pts = resolveWallRef('w1', walls);
+    assert.deepEqual(pts, [{ x: 0, z: 0 }, { x: 0, z: 5 }]);
+  });
+
+  it('merges collinear multi-wall into single segment', () => {
+    const pts = resolveWallRef(['w1', 'w2'], walls);
+    assert.equal(pts.length, 3);
+    assert.deepEqual(pts[0], { x: 0, z: 0 });
+    assert.deepEqual(pts[pts.length - 1], { x: 0, z: 10 });
+  });
+
+  it('throws on unknown wall id', () => {
+    assert.throws(() => resolveWallRef('w999', walls), /Unknown wall id: w999/);
   });
 });
