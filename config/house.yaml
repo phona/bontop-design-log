@@ -149,12 +149,6 @@ rooms:
         height: 1.80
         position: "南墙"
     doors: []
-    openings:
-      - type: "window"
-        wall: "south"
-        width: 3.5
-        height: 1.6
-        center_offset: 0
     furniture_concept:
       - "L 型沙发 3.2m × 0.95m"
       - "茶几 1.3m × 0.7m"
@@ -294,12 +288,6 @@ gift_areas:
     doors:
       - width: 2.00
         position: "连接客厅"
-    openings:
-      - type: "door"
-        wall: "north"
-        width: 2.0
-        height: 2.0
-        center_offset: 0
     furniture_concept:
       - "休闲区"
       - "绿植"

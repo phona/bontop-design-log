@@ -54,9 +54,7 @@ const GlassInfillSchema = z
   .object({
     id: z.string().min(1),
     type: z.literal('glass_infill'),
-    room: z.string().min(1),
-    wall: z.enum(['north', 'south', 'east', 'west']),
-    center_offset: z.number().default(0),
+    wall: z.string().min(1),
     width: z.number().positive(),
     height: z.number().positive(),
     sill: z.number().min(0).default(0.9),
@@ -144,7 +142,7 @@ export function mergeSceneElements(
     .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2 }));
 
   for (const el of elements) {
-    if (el.type === 'curtain_run' || el.type === 'bay_sill') {
+    if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill') {
       const elAny = el as Record<string, unknown>;
       const wallRef = elAny.wall ?? elAny.walls;
       if (wallRef) {

@@ -4,8 +4,8 @@ import { parseOverlay, mergeSceneElements, resolveWallRef } from '../../server/o
 import type { WallSegment } from '../../shared/types.js';
 
 const WALLS: WallSegment[] = [
-  { x1: -5.88, z1: -3.0, x2: -5.88, z2: 5.0 },
-  { x1: 0, z1: 0, x2: 3, z2: 0 },
+  { id: 'w_west', x1: -5.88, z1: -3.0, x2: -5.88, z2: 5.0 },
+  { id: 'w_east', x1: 0, z1: 0, x2: 3, z2: 0 },
 ];
 
 describe('parseOverlay', () => {
@@ -256,8 +256,7 @@ elements:
     points: [{x: -5.88, z: 4.87}, {x: -5.37, z: -3.36}]
   - id: living_glass
     type: glass_infill
-    room: living_dining
-    wall: south
+    wall: w_east
     width: 3.5
     height: 1.6
 `);
@@ -269,7 +268,7 @@ elements:
     const glass = out.find((e) => e.id === 'living_glass');
     if (glass?.type === 'glass_infill') {
       assert.equal(glass.sill, 0.9);
-      assert.equal(glass.center_offset, 0);
+      assert.equal(glass.wall, 'w_east');
     }
   });
 

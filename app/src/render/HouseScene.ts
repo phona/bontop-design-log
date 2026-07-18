@@ -13,7 +13,6 @@ import type {
   CurrentScheme,
   SceneElement,
   CurtainPoint,
-  OpeningDef,
   ResolvedOpening,
 } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
@@ -44,7 +43,7 @@ type ArcDescriptor = {
 
 interface ProjectData {
   house: {
-    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string; openings?: OpeningDef[]; wallOpenings?: ResolvedOpening[] }>;
+    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string; wallOpenings?: ResolvedOpening[] }>;
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
     furnishings?: Record<string, Record<string, number>>;
     electrical?: ElectricalMarker[];
@@ -77,7 +76,7 @@ export class HouseScene implements SceneApi {
   private boundOnWindowResize: () => void;
   private _mode: 'orbit' | 'first-person' | 'top-down' = 'orbit';
   private compareSchemeData?: CurrentScheme;
-  private roomMeta = new Map<string, { wall_finish?: string; openings?: OpeningDef[]; wallOpenings?: ResolvedOpening[] }>();
+  private roomMeta = new Map<string, { wall_finish?: string; wallOpenings?: ResolvedOpening[] }>();
   private gridHelper?: THREE.GridHelper;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
   private readonly ORBIT_POSITION = new THREE.Vector3(7.4, 14, 19.2);
@@ -409,7 +408,7 @@ export class HouseScene implements SceneApi {
     const wallHeight = projectData.house.rooms[0]?.height ?? 3.0;
 
     for (const room of projectData.house.rooms) {
-      this.roomMeta.set(room.id, { wall_finish: room.wall_finish, openings: room.openings, wallOpenings: room.wallOpenings });
+      this.roomMeta.set(room.id, { wall_finish: room.wall_finish, wallOpenings: room.wallOpenings });
       this.createRoom(
         {
           id: room.id,
@@ -546,11 +545,6 @@ export class HouseScene implements SceneApi {
       if (meta?.wallOpenings) {
         for (const opening of meta.wallOpenings) {
           this.addOpeningMarker(group, opening.x - r.x, 1.2, opening.z - r.z, opening.width, opening.height, `${opening.type}_${r.id}`);
-        }
-      } else if (meta?.openings) {
-        for (const opening of meta.openings) {
-          const pos = this._openingPosition(r, opening.wall, opening.center_offset ?? 0);
-          this.addOpeningMarker(group, pos.x, 1.2, pos.z, opening.width, opening.height, `${opening.type}_${r.id}`);
         }
       }
     }
@@ -867,28 +861,21 @@ export class HouseScene implements SceneApi {
   }
 
   private renderGlassInfill(el: Extract<SceneElement, { type: 'glass_infill' }>) {
-    const room = this.rooms[el.room];
-    if (!room) {
-      console.error(`[HouseScene] glass_infill "${el.id}" 引用不存在的房间 "${el.room}"，未渲染`);
+    const pts = (el as { points?: CurtainPoint[] }).points;
+    if (!pts || pts.length < 2) {
+      console.error(`[HouseScene] glass_infill "${el.id}" 缺少 points（wall 引用未解析）`);
       return;
     }
-    const halfW = room.width / 2;
-    const halfD = room.depth / 2;
-    let x = room.x;
-    let z = room.z;
-    let rotate = false;
-    switch (el.wall) {
-      case 'south': x += el.center_offset; z += halfD; break;
-      case 'north': x += el.center_offset; z -= halfD; break;
-      case 'east': x += halfW; z += el.center_offset; rotate = true; break;
-      case 'west': x -= halfW; z += el.center_offset; rotate = true; break;
-    }
+    const [a, b] = pts;
+    const cx = (a.x + b.x) / 2;
+    const cz = (a.z + b.z) / 2;
+    const len = Math.hypot(b.x - a.x, b.z - a.z);
     const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(el.width, el.height, GLASS_THICKNESS),
+      new THREE.BoxGeometry(Math.max(len, GLASS_THICKNESS), el.height, GLASS_THICKNESS),
       this.makeGlassMaterial()
     );
-    mesh.position.set(x, el.sill + el.height / 2, z);
-    if (rotate) mesh.rotation.y = Math.PI / 2;
+    mesh.position.set(cx, el.sill + el.height / 2, cz);
+    mesh.rotation.y = Math.atan2(b.z - a.z, b.x - a.x);
     mesh.userData = { type: 'glass_infill', objectId: el.id };
     mesh.castShadow = false;
     this.scene.add(mesh);
@@ -1000,19 +987,6 @@ export class HouseScene implements SceneApi {
       }
       this.scene.add(cube);
       this.electricalMeshes.push(cube);
-    }
-  }
-
-  private _openingPosition(r: RoomObject, wall: string, centerOffset: number): { x: number; z: number } {
-    const halfW = r.width / 2;
-    const halfD = r.depth / 2;
-    const offset = 0.01;
-    switch (wall) {
-      case 'south': return { x: centerOffset, z: halfD + offset };
-      case 'north': return { x: centerOffset, z: -(halfD + offset) };
-      case 'east':  return { x: halfW + offset, z: centerOffset };
-      case 'west':  return { x: -(halfW + offset), z: centerOffset };
-      default:      return { x: centerOffset, z: halfD + offset };
     }
   }
 

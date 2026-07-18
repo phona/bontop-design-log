@@ -37,7 +37,6 @@ export interface RoomLayout {
   height: number;
   type: 'public' | 'private' | 'service';
   needs_waterproof?: boolean;
-  openings?: OpeningDef[];
   area?: number;
   wallOpenings?: ResolvedOpening[];
 }
@@ -145,11 +144,15 @@ export interface MaterialsYaml {
 }
 
 export interface OpeningDef {
+  id: string;
   type: string;
   wall: string;
+  anchor: string;
+  offset: number;
   width: number;
   height: number;
-  center_offset?: number;
+  sill?: number;
+  room?: string;
 }
 
 export interface HouseRoom {
@@ -158,7 +161,6 @@ export interface HouseRoom {
   type?: 'public' | 'private' | 'service';
   wall_finish?: 'paint' | 'tile';
   needs_waterproof?: boolean;
-  openings?: OpeningDef[];
   [key: string]: unknown;
 }
 
@@ -369,9 +371,7 @@ export type SceneElement =
   | {
       type: 'glass_infill';
       id: string;
-      room: string;
-      wall: 'north' | 'south' | 'east' | 'west';
-      center_offset: number;
+      wall: string;
       width: number;
       height: number;
       sill: number;
@@ -400,24 +400,12 @@ export interface Vertex {
   radius?: number;
 }
 
-export interface OpeningDefV2 {
-  id: string;
-  type: string;
-  wall: string;
-  anchor: string;
-  offset: number;
-  width: number;
-  height: number;
-  sill?: number;
-  room?: string;
-}
-
 export interface WallDef {
   id: string;
   from: string;
   to: string;
   height: number;
-  openings?: OpeningDefV2[];
+  openings?: OpeningDef[];
 }
 
 export interface RoomDef {
