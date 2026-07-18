@@ -234,7 +234,8 @@ function resolveWall(
     segments = [{ x1, z1, x2, z2 }];
   }
 
-  return { id: def.id, x1, z1, x2, z2, height: def.height, segments };
+  return { id: def.id, x1, z1, x2, z2, height: def.height, segments,
+    ...(from.radius ? { fromX: from.x, fromZ: from.z, fromRadius: from.radius } : {}) };
 }
 
 function resolveOpening(

@@ -353,6 +353,9 @@ export interface WallSegment {
   x2: number;
   z2: number;
   segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>;
+  fromX?: number;
+  fromZ?: number;
+  fromRadius?: number;
 }
 
 export interface OverlayPoint {
@@ -449,6 +452,9 @@ export interface ResolvedWall {
   height: number;
   segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>;
   openings?: ResolvedOpening[];
+  fromX?: number;
+  fromZ?: number;
+  fromRadius?: number;
 }
 
 export interface ResolvedLayout {

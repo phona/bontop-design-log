@@ -165,14 +165,19 @@ export function mergeSceneElements(
 
 export function resolveWallRef(
   wallIds: string | string[],
-  walls: Array<{ id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }> }>
+  walls: Array<{ id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; fromX?: number; fromZ?: number; fromRadius?: number }>
 ): CurtainPoint[] {
   const ids = Array.isArray(wallIds) ? wallIds : [wallIds];
   const pts: CurtainPoint[] = [];
   for (const id of ids) {
     const wall = walls.find(w => w.id === id);
     if (!wall) throw new Error(`Unknown wall id: ${id}`);
-    if (wall.segments && wall.segments.length > 1) {
+    if (wall.fromRadius && wall.fromX !== undefined && wall.fromZ !== undefined && wall.segments && wall.segments.length >= 16) {
+      pts.push({ x: wall.fromX!, z: wall.fromZ!, radius: wall.fromRadius });
+      const arcEnd = wall.segments[15];
+      pts.push({ x: arcEnd.x2, z: arcEnd.z2 });
+      pts.push({ x: wall.x2, z: wall.z2 });
+    } else if (wall.segments && wall.segments.length > 1) {
       for (const seg of wall.segments) {
         pts.push({ x: seg.x1, z: seg.z1 });
         pts.push({ x: seg.x2, z: seg.z2 });
@@ -187,6 +192,9 @@ export function resolveWallRef(
     const prev = merged[merged.length - 1];
     const curr = pts[i];
     if (Math.abs(prev.x - curr.x) < 0.001 && Math.abs(prev.z - curr.z) < 0.001) {
+      if (curr.radius !== undefined && prev.radius === undefined) {
+        merged[merged.length - 1] = curr;
+      }
       continue;
     }
     merged.push(curr);
