@@ -14,6 +14,7 @@ import type {
   SceneElement,
   CurtainPoint,
   OpeningDef,
+  ResolvedOpening,
 } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopDownView } from '../scene/TopDownView.js';
@@ -43,7 +44,7 @@ type ArcDescriptor = {
 
 interface ProjectData {
   house: {
-    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string; openings?: OpeningDef[] }>;
+    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string; openings?: OpeningDef[]; wallOpenings?: ResolvedOpening[] }>;
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
     furnishings?: Record<string, Record<string, number>>;
     electrical?: ElectricalMarker[];
@@ -76,7 +77,7 @@ export class HouseScene implements SceneApi {
   private boundOnWindowResize: () => void;
   private _mode: 'orbit' | 'first-person' | 'top-down' = 'orbit';
   private compareSchemeData?: CurrentScheme;
-  private roomMeta = new Map<string, { wall_finish?: string; openings?: OpeningDef[] }>();
+  private roomMeta = new Map<string, { wall_finish?: string; openings?: OpeningDef[]; wallOpenings?: ResolvedOpening[] }>();
   private gridHelper?: THREE.GridHelper;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
   private readonly ORBIT_POSITION = new THREE.Vector3(7.4, 14, 19.2);
@@ -408,7 +409,7 @@ export class HouseScene implements SceneApi {
     const wallHeight = projectData.house.rooms[0]?.height ?? 3.0;
 
     for (const room of projectData.house.rooms) {
-      this.roomMeta.set(room.id, { wall_finish: room.wall_finish, openings: room.openings });
+      this.roomMeta.set(room.id, { wall_finish: room.wall_finish, openings: room.openings, wallOpenings: room.wallOpenings });
       this.createRoom(
         {
           id: room.id,
@@ -542,7 +543,11 @@ export class HouseScene implements SceneApi {
       }
 
       const meta = this.roomMeta.get(r.id);
-      if (meta?.openings) {
+      if (meta?.wallOpenings) {
+        for (const opening of meta.wallOpenings) {
+          this.addOpeningMarker(group, opening.x - r.x, 1.2, opening.z - r.z, opening.width, opening.height, `${opening.type}_${r.id}`);
+        }
+      } else if (meta?.openings) {
         for (const opening of meta.openings) {
           const pos = this._openingPosition(r, opening.wall, opening.center_offset ?? 0);
           this.addOpeningMarker(group, pos.x, 1.2, pos.z, opening.width, opening.height, `${opening.type}_${r.id}`);

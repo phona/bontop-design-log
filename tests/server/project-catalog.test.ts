@@ -92,3 +92,35 @@ describe('ProjectCatalog', () => {
     assert.ok(!catalog.getRooms().some((r) => r.id === 'west_platform'));
   });
 });
+
+describe('ProjectCatalog — vertex v2.0 data path', () => {
+  it('wall segments from arc expansion reach getWalls() (Gap 1)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const walls = catalog.getWalls();
+    const wMbSouth = walls.find(w => w.id === 'w_mb_south');
+    assert.ok(wMbSouth, 'w_mb_south should exist');
+    assert.ok(wMbSouth.segments, 'w_mb_south (from=v_sw radius) should have arc segments');
+    assert.ok(wMbSouth.segments!.length >= 16, `expected >=16 arc segments, got ${wMbSouth.segments!.length}`);
+  });
+
+  it('resolved room area is set for non-rectangular rooms (Gap 2)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const entryGarden = catalog.getRoom('entry_garden');
+    assert.ok(entryGarden);
+    assert.ok(entryGarden.area && entryGarden.area > 0, 'entry_garden should have area');
+    assert.ok(Math.abs(entryGarden.area! - (entryGarden.width * entryGarden.depth)) > 0.01,
+      'non-rectangular room area should differ from bbox');
+  });
+
+  it('wall openings are dispatched to rooms as wallOpenings (Gap 3)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const masterBedroom = catalog.getRoom('master_bedroom');
+    assert.ok(masterBedroom);
+    assert.ok(masterBedroom.wallOpenings, 'master_bedroom should have wallOpenings');
+    assert.ok(masterBedroom.wallOpenings!.length >= 2,
+      `expected >=2 openings (door+window), got ${masterBedroom.wallOpenings!.length}`);
+    const door = masterBedroom.wallOpenings!.find(o => o.type === 'door');
+    assert.ok(door, 'should have a door opening');
+    assert.ok(door!.x !== undefined && door!.z !== undefined, 'door should have absolute x/z');
+  });
+});

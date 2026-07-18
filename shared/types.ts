@@ -16,6 +16,17 @@ export interface CameraState {
   direction?: Vec3;
 }
 
+export interface ResolvedOpening {
+  id: string;
+  type: string;
+  x: number;
+  z: number;
+  width: number;
+  height: number;
+  sill?: number;
+  room?: string;
+}
+
 export interface RoomLayout {
   id: string;
   name: string;
@@ -27,6 +38,8 @@ export interface RoomLayout {
   type: 'public' | 'private' | 'service';
   needs_waterproof?: boolean;
   openings?: OpeningDef[];
+  area?: number;
+  wallOpenings?: ResolvedOpening[];
 }
 
 export interface IndoorUnit {
@@ -337,6 +350,7 @@ export interface WallSegment {
   z1: number;
   x2: number;
   z2: number;
+  segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>;
 }
 
 export interface OverlayPoint {
@@ -349,7 +363,7 @@ export interface CurtainPoint extends OverlayPoint {
 }
 
 export type SceneElement =
-  | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number }
+  | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }> }
   | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   | {
@@ -446,16 +460,7 @@ export interface ResolvedWall {
   z2: number;
   height: number;
   segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>;
-  openings?: Array<{
-    id: string;
-    type: string;
-    x: number;
-    z: number;
-    width: number;
-    height: number;
-    sill?: number;
-    room?: string;
-  }>;
+  openings?: ResolvedOpening[];
 }
 
 export interface ResolvedLayout {

@@ -266,4 +266,16 @@ describe('BudgetCalculator', () => {
     assert.ok(!source.includes("'master_bath', 'guest_bath'"), 'should not contain hardcoded room IDs');
     assert.ok(source.includes('needs_waterproof'), 'should reference needs_waterproof');
   });
+
+  it('uses room.area for non-rectangular rooms instead of width*depth (Gap 2)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const entryGarden = catalog.getRoom('entry_garden');
+    assert.ok(entryGarden, 'entry_garden should exist');
+    assert.ok(entryGarden.area, 'entry_garden should have resolved area');
+    const bboxArea = entryGarden.width * entryGarden.depth;
+    assert.ok(
+      Math.abs(entryGarden.area! - bboxArea) > 0.01,
+      `area (${entryGarden.area}) should differ from bbox (${bboxArea}) for L-shaped room`
+    );
+  });
 });

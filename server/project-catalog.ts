@@ -18,7 +18,7 @@ import type {
 } from '../shared/types.js';
 import { hvacSchemes } from '../shared/houseData.js';
 import { resolveLayout } from './layout-resolver.js';
-import type { VertexLayoutYaml, ResolvedRoom } from '../shared/types.js';
+import type { VertexLayoutYaml, ResolvedRoom, WallDef, RoomDef, ResolvedOpening } from '../shared/types.js';
 
 export interface BudgetCategory {
   key: string;
@@ -63,7 +63,14 @@ function mergeRoom(layoutRoom: LayoutRoom, meta?: HouseYaml['rooms'][number]): R
     type: meta?.type ?? 'public',
     needs_waterproof: meta?.needs_waterproof,
     openings: meta?.openings,
+    area: layoutRoom.area,
   };
+}
+
+function findRoomsForWall(wall: WallDef, rooms: RoomDef[]): string[] {
+  return rooms
+    .filter(r => r.boundary.includes(wall.from) && r.boundary.includes(wall.to))
+    .map(r => r.id);
 }
 
 function mergePlatform(layoutPlatform: PlatformLayout): RoomLayout {
@@ -141,6 +148,23 @@ export class ProjectCatalog {
     if ('vertices' in layout && (layout as unknown as VertexLayoutYaml).vertices) {
       const vlayout = layout as unknown as VertexLayoutYaml;
       const resolved = resolveLayout(vlayout);
+
+      const wallOpeningsByRoom = new Map<string, ResolvedOpening[]>();
+      for (let i = 0; i < resolved.walls.length; i++) {
+        const w = resolved.walls[i];
+        if (!w.openings) continue;
+        const rawWall = vlayout.walls[i];
+        for (const op of w.openings) {
+          const roomIds = op.room
+            ? [op.room]
+            : findRoomsForWall(rawWall, vlayout.rooms);
+          for (const rid of roomIds) {
+            if (!wallOpeningsByRoom.has(rid)) wallOpeningsByRoom.set(rid, []);
+            wallOpeningsByRoom.get(rid)!.push(op);
+          }
+        }
+      }
+
       this.rooms.clear();
       for (const r of resolved.rooms) {
         const meta = metaMap.get(r.id);
@@ -149,6 +173,7 @@ export class ProjectCatalog {
           type: (meta?.type ?? 'public') as RoomLayout['type'],
           needs_waterproof: meta?.needs_waterproof,
           openings: meta?.openings,
+          wallOpenings: wallOpeningsByRoom.get(r.id),
         });
       }
       if (resolved.platform) {
@@ -157,7 +182,7 @@ export class ProjectCatalog {
           type: 'service',
         };
       }
-      this.walls = resolved.walls.map((w) => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2 }));
+      this.walls = resolved.walls.map((w) => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments }));
     } else {
       for (const r of layout.rooms) {
         this.rooms.set(r.id, mergeRoom(r, metaMap.get(r.id)));

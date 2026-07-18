@@ -133,7 +133,7 @@ walls:
     height: 3.0
     openings:
       - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.9, width: 0.9, height: 2.1, room: master_bedroom }
-      - { id: w_mb_win, type: window, anchor: v_mb_se, offset: 1.5, width: 2.4, height: 1.5, sill: 0.9 }
+      - { id: w_mb_win, type: window, anchor: v_mb_se, offset: 1.5, width: 2.4, height: 1.5, sill: 0.9, room: master_bedroom }
   # 内墙 — VRV 平台 / 生活阳台 / 客卫
   - { id: w_vrv_west,   from: v_vrv_n,   to: v_vrv_sw, height: 3.0 }
   - { id: w_balc_west,  from: v_vrv_sw,  to: v_balc_sw,height: 3.0 }

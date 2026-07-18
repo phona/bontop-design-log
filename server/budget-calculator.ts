@@ -12,10 +12,10 @@ import type {
 import type { ProjectCatalog } from './project-catalog.js';
 
 const QUANTITY_FORMULAS: Record<string, (room: RoomLayout) => number> = {
-  floorArea: (room) => room.width * room.depth,
+  floorArea: (room) => room.area ?? room.width * room.depth,
   wetWallArea: (room) => (room.width + room.depth) * 2 * room.height * 0.7,
   paintWallArea: (room) => (room.width + room.depth) * 2 * room.height * 0.75,
-  ceilingArea: (room) => room.width * room.depth,
+  ceilingArea: (room) => room.area ?? room.width * room.depth,
   linearKitchen: (room) => room.depth * 0.8,
   doorCount: () => 1,
   fixtureCount: () => 1,
