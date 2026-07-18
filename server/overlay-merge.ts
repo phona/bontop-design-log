@@ -21,10 +21,13 @@ const SuppressSchema = z
       .strict()
       .optional(),
     wall: z.string().min(1).optional(),
+    walls: z.array(z.string().min(1)).min(1).optional(),
     reason: z.string().min(1),
   })
   .strict()
-  .refine(d => d.region || d.wall, { message: 'Must specify region or wall' });
+  .refine(d => d.region || d.wall || (d.walls && d.walls.length > 0), {
+    message: 'Must specify region, wall, or walls',
+  });
 
 const CurtainRunSchema = z
   .object({
@@ -122,6 +125,9 @@ export function mergeSceneElements(
       if (s.wall) {
         return w.id === s.wall;
       }
+      if (s.walls) {
+        return s.walls.includes(w.id ?? '');
+      }
       if (s.region) {
         const mx = (w.x1 + w.x2) / 2;
         const mz = (w.z1 + w.z2) / 2;
@@ -139,7 +145,7 @@ export function mergeSceneElements(
   // Resolve wall refs in elements (only for types that use wall as id reference)
   const resolvedWalls = walls
     .filter((w): w is WallSegment & { id: string } => w.id !== undefined)
-    .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2 }));
+    .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments }));
 
   for (const el of elements) {
     if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill') {
@@ -159,15 +165,22 @@ export function mergeSceneElements(
 
 export function resolveWallRef(
   wallIds: string | string[],
-  walls: Array<{ id: string; x1: number; z1: number; x2: number; z2: number }>
+  walls: Array<{ id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }> }>
 ): CurtainPoint[] {
   const ids = Array.isArray(wallIds) ? wallIds : [wallIds];
   const pts: CurtainPoint[] = [];
   for (const id of ids) {
     const wall = walls.find(w => w.id === id);
     if (!wall) throw new Error(`Unknown wall id: ${id}`);
-    pts.push({ x: wall.x1, z: wall.z1 });
-    pts.push({ x: wall.x2, z: wall.z2 });
+    if (wall.segments && wall.segments.length > 1) {
+      for (const seg of wall.segments) {
+        pts.push({ x: seg.x1, z: seg.z1 });
+        pts.push({ x: seg.x2, z: seg.z2 });
+      }
+    } else {
+      pts.push({ x: wall.x1, z: wall.z1 });
+      pts.push({ x: wall.x2, z: wall.z2 });
+    }
   }
   const merged: CurtainPoint[] = [pts[0]];
   for (let i = 1; i < pts.length; i++) {
@@ -177,20 +190,6 @@ export function resolveWallRef(
       continue;
     }
     merged.push(curr);
-  }
-
-  for (let i = 1; i < merged.length - 1; i++) {
-    const prev = merged[i - 1];
-    const curr = merged[i];
-    const next = merged[i + 1];
-    const dx1 = curr.x - prev.x;
-    const dz1 = curr.z - prev.z;
-    const dx2 = next.x - curr.x;
-    const dz2 = next.z - curr.z;
-    const cross = Math.abs(dx1 * dz2 - dz1 * dx2);
-    if (cross > 0.01) {
-      throw new Error('Non-collinear walls referenced — use separate elements');
-    }
   }
 
   return merged;

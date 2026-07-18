@@ -12,7 +12,7 @@ vertices:
   - { id: v_step_b,  x: 7.20,  z: 9.80 }
   - { id: v_step_t,  x: 7.20,  z: 9.95 }
   - { id: v_be_se_s, x: 13.40, z: 9.95 }
-  - { id: v_se_r,    x: 16.40, z: 9.95, radius: 1.00 }
+  - { id: v_se_r,    x: 16.40, z: 9.95 }
   - { id: v_be_ne,   x: 16.40, z: 5.55 }
   - { id: v_e_bot,   x: 16.40, z: 0.65 }
   - { id: v_ent_ne,  x: 15.25, z: 0.65 }
@@ -37,6 +37,10 @@ vertices:
   - { id: v_mb_ne,   x: 4.20,  z: 5.55 }
   - { id: v_mb_se,   x: 4.20,  z: 9.80 }
   - { id: v_st_ne,   x: 7.20,  z: 5.55 }
+  # 左翼北墙凹进顶点（主卫/西北次卧北墙 z=1.10，相比于 VRV/厨房 z=0 凹进 1.10m）
+  - { id: v_bath_nw,  x: 0.00,  z: 1.10 }
+  - { id: v_bath_ne,  x: 2.60,  z: 1.10 }
+  - { id: v_nw_ne,    x: 5.60,  z: 1.10 }
 
 rooms:
   - id: master_bedroom
@@ -56,12 +60,12 @@ rooms:
     type: public
   - id: master_bath
     name: 主卫
-    boundary: [v_nw, v_bath_n, v_bath_s, v_mb_sw]
+    boundary: [v_bath_nw, v_bath_ne, v_bath_s, v_mb_sw]
     height: 3.0
     type: service
   - id: bedroom_nw
     name: 西北次卧
-    boundary: [v_bath_n, v_vrv_n, v_nw_s, v_bath_s]
+    boundary: [v_bath_ne, v_nw_ne, v_nw_s, v_bath_s]
     height: 3.0
     type: private
   - id: guest_bath
@@ -97,8 +101,9 @@ platform:
   height: 0.05
 
 walls:
-  # 外框 — 西墙（在 T 接点 v_mb_sw, v_mb_nw 处切开）
-  - { id: w_west_lower, from: v_nw,      to: v_mb_sw,  height: 3.0 }
+  # 外框 — 西墙（v_nw→v_bath_nw 幕墙，v_bath_nw→v_mb_sw 主卫西墙，v_mb_sw→v_mb_nw 空隙，v_mb_nw→v_sw 主卧西墙）
+  - { id: w_west_top,  from: v_nw,      to: v_bath_nw, height: 3.0 }
+  - { id: w_west_lower, from: v_bath_nw,  to: v_mb_sw,  height: 3.0 }
   - { id: w_west_mid,   from: v_mb_sw,   to: v_mb_nw,  height: 3.0 }
   - { id: w_west_upper, from: v_mb_nw,   to: v_sw,     height: 3.0 }
   # 外框 — 南墙（在 v_mb_se, v_step_b, v_step_t, v_be_se_s 处切开）
@@ -115,14 +120,14 @@ walls:
   - { id: w_ent_east,   from: v_ent_ne,  to: v_ent_se, height: 3.0 }
   - { id: w_ent_south,  from: v_ent_se,  to: v_ent_sw, height: 3.0 }
   - { id: w_ent_west,   from: v_ent_sw,  to: v_ent_nw, height: 3.0 }
-  # 外框 — 北墙（在 v_bath_n, v_vrv_n, v_kit_w 处切开）
-  - { id: w_mbath_north,from: v_nw,      to: v_bath_n, height: 3.0 }
-  - { id: w_nw_north,   from: v_bath_n,  to: v_vrv_n,  height: 3.0 }
+  # 外框 — 北墙（左翼凹进 z=1.10，v_nw→v_bath_nw→v_bath_ne 为幕墙；VRV/厨房北墙 z=0）
+  - { id: w_bath_north, from: v_bath_nw,  to: v_bath_ne, height: 3.0 }
+  - { id: w_nw_north,   from: v_bath_ne,  to: v_nw_ne,  height: 3.0 }
   - { id: w_vrv_north,  from: v_vrv_n,   to: v_kit_w,  height: 3.0 }
   - { id: w_kit_north,  from: v_kit_w,   to: v_ent_nw, height: 3.0 }
   # 内墙 — 左侧卧室区
   - { id: w_mbath_south,from: v_mb_sw,   to: v_bath_s, height: 3.0 }
-  - { id: w_mbath_east, from: v_bath_n,  to: v_bath_s, height: 3.0 }
+  - { id: w_mbath_east, from: v_bath_ne,  to: v_bath_s, height: 3.0 }
   - { id: w_nw_south,   from: v_bath_s,  to: v_nw_s,   height: 3.0 }
   - { id: w_st_north,   from: v_mb_ne,   to: v_st_ne,  height: 3.0 }
   - { id: w_st_east,    from: v_st_ne,   to: v_step_b, height: 3.0 }
@@ -138,7 +143,7 @@ walls:
   - { id: w_vrv_west,   from: v_vrv_n,   to: v_vrv_sw, height: 3.0 }
   - { id: w_balc_west,  from: v_vrv_sw,  to: v_balc_sw,height: 3.0 }
   - { id: w_gbath_west, from: v_balc_sw, to: v_nw_s,   height: 3.0 }
-  - { id: w_vrv_south,  from: v_vrv_sw,  to: v_vrv_se, height: 3.0 }
+  # w_vrv_south 已删除——VRV 与阳台间为栏杆（开放边）
   - { id: w_balc_south, from: v_balc_sw, to: v_balc_se,height: 3.0 }
   - { id: w_gbath_south,from: v_nw_s,    to: v_gbath_se,height: 3.0 }
   - { id: w_gbath_east, from: v_balc_se, to: v_gbath_se,height: 3.0 }

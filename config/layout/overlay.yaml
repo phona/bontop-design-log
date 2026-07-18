@@ -8,8 +8,8 @@ version: 1
 
 suppress:
   - id: suppress_west_wall
-    wall: w_west_lower
-    reason: "西墙+西南小圆角实体墙删除，改玻璃幕墙"
+    walls: [w_west_top, w_west_lower]
+    reason: "西墙实体删除，改玻璃幕墙"
   - id: suppress_south_west
     wall: w_mb_south
     reason: "主卧+书房南墙实体删除，为飘窗让路"
@@ -21,11 +21,11 @@ suppress:
     reason: "东南次卧凸窗+东南圆角实体墙删除"
 
 elements:
-  # 西墙 + 西南小圆角（z=8.8~9.8，仅 1m）
+  # 西墙 + 西南小圆角（含 w_mb_south 弧段，16段平滑过渡）
   - id: west_curtain
     type: curtain_run
     closed: false
-    walls: [w_west_lower, w_west_mid, w_west_upper]
+    walls: [w_west_top, w_west_lower, w_west_mid, w_west_upper, w_mb_south]
     height: 3.0
 
   # 客厅南墙落地玻璃幕（z=9.95）
