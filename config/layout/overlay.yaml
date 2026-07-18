@@ -20,8 +20,11 @@ suppress:
     wall: w_be_south
     reason: "东南次卧凸窗+东南圆角实体墙删除"
   - id: suppress_vrv_nw
-    walls: [w_vrv_nw_gap, w_vrv_north]
-    reason: "VRV西北角实体墙删除，改玻璃幕墙圆角"
+    walls: [w_vrv_nw_gap, w_vrv_north, w_kit_north]
+    reason: "VRV西北角+厨房北墙实体删除，改玻璃幕墙"
+  - id: suppress_north_recess
+    walls: [w_bath_north, w_nw_north]
+    reason: "主卫/西北次卧北墙实体删除，改玻璃幕墙"
 
 elements:
   # 西墙 + 西南小圆角（含 w_mb_south 弧段，16段平滑过渡）
@@ -31,11 +34,18 @@ elements:
     walls: [w_west_top, w_west_lower, w_west_mid, w_west_upper, w_mb_south]
     height: 3.0
 
-  # VRV 西北角玻璃幕墙圆角（弧 r=1.0，absarc 真弧）
+  # VRV 西北角 + 厨房北墙玻璃幕墙（弧 r=1.0 + 直段）
   - id: vrv_nw_curtain
     type: curtain_run
     closed: false
-    walls: [w_vrv_nw_gap, w_vrv_north]
+    walls: [w_vrv_nw_gap, w_vrv_north, w_kit_north]
+    height: 3.0
+
+  # 主卫/西北次卧北墙凹进玻璃幕墙 (z=1.10)
+  - id: north_recess_curtain
+    type: curtain_run
+    closed: false
+    walls: [w_bath_north, w_nw_north]
     height: 3.0
 
   # 客厅南墙落地玻璃幕（z=9.95）

@@ -75,7 +75,7 @@ rooms:
     type: service
   - id: kitchen
     name: 厨房
-    boundary: [v_kit_w, v_ent_nw, v_ent_kit, v_kit_s]
+    boundary: [v_kit_w, v_vrv_se, v_balc_ne, v_kit_s, v_ent_kit, v_ent_nw]
     height: 3.0
     type: service
   - id: balcony
@@ -115,11 +115,15 @@ walls:
   # 外框 — 东墙（在 v_be_ne 处切开）
   - { id: w_east_upper, from: v_se_r,    to: v_be_ne,  height: 3.0 }
   - { id: w_east_lower, from: v_be_ne,   to: v_e_bot,  height: 3.0 }
-  # 入户花园围墙
-  - { id: w_ent_north,  from: v_e_bot,   to: v_ent_ne, height: 3.0 }
+  # 入户花园围墙（北墙为栏杆开放边）
   - { id: w_ent_east,   from: v_ent_ne,  to: v_ent_se, height: 3.0 }
   - { id: w_ent_south,  from: v_ent_se,  to: v_ent_sw, height: 3.0 }
-  - { id: w_ent_west,   from: v_ent_sw,  to: v_ent_nw, height: 3.0 }
+  - id: w_ent_west
+    from: v_ent_sw
+    to: v_ent_nw
+    height: 3.0
+    openings:
+      - { id: d_ent, type: door, anchor: v_ent_nw, offset: 1.8, width: 1.0, height: 2.1, room: entry_garden }
   # 外框 — 北墙（左翼凹进 z=1.10，v_nw→v_bath_nw→v_bath_ne 为幕墙；VRV/厨房北墙 z=0）
   - { id: w_bath_north, from: v_bath_nw,  to: v_bath_ne, height: 3.0 }
   - { id: w_nw_north,   from: v_bath_ne,  to: v_nw_ne,  height: 3.0 }
@@ -127,9 +131,24 @@ walls:
   - { id: w_kit_north,  from: v_kit_w,   to: v_ent_nw, height: 3.0 }
   # 内墙 — 左侧卧室区
   - { id: w_mbath_south,from: v_mb_sw,   to: v_bath_s, height: 3.0 }
-  - { id: w_mbath_east, from: v_bath_ne,  to: v_bath_s, height: 3.0 }
-  - { id: w_nw_south,   from: v_bath_s,  to: v_nw_s,   height: 3.0 }
-  - { id: w_st_north,   from: v_mb_ne,   to: v_st_ne,  height: 3.0 }
+  - id: w_mbath_east
+    from: v_bath_ne
+    to: v_bath_s
+    height: 3.0
+    openings:
+      - { id: d_mbath, type: door, anchor: v_bath_ne, offset: 1.6, width: 0.8, height: 2.1, room: master_bath }
+  - id: w_nw_south
+    from: v_bath_s
+    to: v_nw_s
+    height: 3.0
+    openings:
+      - { id: d_bnw, type: door, anchor: v_nw_s, offset: 1.5, width: 0.9, height: 2.1, room: bedroom_nw }
+  - id: w_st_north
+    from: v_mb_ne
+    to: v_st_ne
+    height: 3.0
+    openings:
+      - { id: d_study, type: door, anchor: v_mb_ne, offset: 1.5, width: 0.9, height: 2.1, room: study }
   - { id: w_st_east,    from: v_st_ne,   to: v_step_b, height: 3.0 }
   # 内墙 — 主卧东墙（共享墙，按主卧命名）
   - id: w_mb_east
@@ -147,15 +166,29 @@ walls:
   # w_vrv_south 已删除——VRV 与阳台间为栏杆（开放边）
   - { id: w_balc_south, from: v_balc_sw, to: v_balc_se,height: 3.0 }
   - { id: w_gbath_south,from: v_nw_s,    to: v_gbath_se,height: 3.0 }
-  - { id: w_gbath_east, from: v_balc_se, to: v_gbath_se,height: 3.0 }
+  - id: w_gbath_east
+    from: v_balc_se
+    to: v_gbath_se
+    height: 3.0
+    openings:
+      - { id: d_gbath, type: door, anchor: v_balc_se, offset: 1.0, width: 0.7, height: 2.1, room: guest_bath }
   # 内墙 — x=7.20 纵向墙（厨房西墙，在 v_vrv_se, v_balc_ne, v_kit_s 处切开）
   - { id: w_vrv_east,   from: v_kit_w,   to: v_vrv_se, height: 3.0 }
-  - { id: w_balc_east,  from: v_vrv_se,  to: v_balc_ne,height: 3.0 }
+  - id: w_balc_east
+    from: v_vrv_se
+    to: v_balc_ne
+    height: 3.0
+    openings:
+      - { id: d_kit_balc, type: door, anchor: v_vrv_se, offset: 0.6, width: 0.8, height: 2.1, room: kitchen }
   - { id: w_kit_west,   from: v_balc_ne, to: v_kit_s,  height: 3.0 }
   - { id: w_liv_west,   from: v_kit_s,   to: v_st_ne,  height: 3.0 }
   # 内墙 — 厨房 / 客餐厅 / 东南次卧
-  - { id: w_kit_south,  from: v_kit_s,   to: v_ent_kit,height: 3.0 }
-  - { id: w_kit_east,   from: v_ent_sw,  to: v_ent_kit,height: 3.0 }
+  - { id: w_kit_east,   from: v_ent_nw,  to: v_ent_kit,height: 3.0 }
   - { id: w_liv_east,   from: v_liv_se,  to: v_be_sw,  height: 3.0 }
-  - { id: w_be_west,    from: v_be_sw,   to: v_be_se_s,height: 3.0 }
+  - id: w_be_west
+    from: v_be_sw
+    to: v_be_se_s
+    height: 3.0
+    openings:
+      - { id: d_bese, type: door, anchor: v_be_se_s, offset: 2.2, width: 0.9, height: 2.1, room: bedroom_se }
   - { id: w_be_north,   from: v_be_sw,   to: v_be_ne,  height: 3.0 }
