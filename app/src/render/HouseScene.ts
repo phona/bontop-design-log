@@ -813,7 +813,7 @@ export class HouseScene implements SceneApi {
     if (theta < 0.001 || Math.abs(theta - Math.PI) < 0.001) return null;
 
     const d = r / Math.tan(theta / 2);
-    if (d > len1 || d > len2) return null;
+    if (d - len1 > 0.001 || d - len2 > 0.001) return null;
 
     const n1x = -u1z;
     const n1z = u1x;
