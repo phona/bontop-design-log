@@ -145,7 +145,7 @@ export function mergeSceneElements(
   // Resolve wall refs in elements (only for types that use wall as id reference)
   const resolvedWalls = walls
     .filter((w): w is WallSegment & { id: string } => w.id !== undefined)
-    .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments }));
+    .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius }));
 
   for (const el of elements) {
     if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill') {
