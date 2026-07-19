@@ -161,14 +161,13 @@ function tangentPoints(
   const dNext = normalize({ x: next.x - corner.x, z: next.z - corner.z });
 
   // Arc center: intersection of wall offset lines
-  const signX = (corner.x + dNext.x * r) > corner.x ? 1 : -1;
-  const signZ = corner.z < 5 ? 1 : -1;
+  const signX = corner.x + dNext.x * r > corner.x ? 1 : -1;
+  const signZ = corner.z + dPrev.z * r > corner.z ? 1 : -1;
   const center = { x: corner.x + signX * r, z: corner.z + signZ * r };
 
   // Tangent points: where the arc meets the walls (perpendicular from center)
   const t1 = { x: corner.x, z: center.z };
   const t2 = { x: center.x, z: corner.z };
-
   return { t1, t2, center };
 }
 
