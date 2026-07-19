@@ -620,6 +620,10 @@ export class HouseScene implements SceneApi {
 
   private renderCurtainRun(el: Extract<SceneElement, { type: 'curtain_run' }>) {
     const shape = this.buildCurtainShape(el.points, el.closed ?? false);
+    const isDebug = el.id === 'vrv_nw_curtain';
+    const mat = isDebug
+      ? new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide })
+      : this.makeGlassMaterial();
     console.log('renderCurtainRun', el.id, 'points:', el.points?.length, 'closed:', el.closed);
     const geometry = new THREE.ExtrudeGeometry(shape, {
       depth: el.height,
@@ -627,7 +631,7 @@ export class HouseScene implements SceneApi {
       steps: 1,
     });
 
-    const mesh = new THREE.Mesh(geometry, this.makeGlassMaterial());
+    const mesh = new THREE.Mesh(geometry, mat);
     mesh.rotation.x = -Math.PI / 2;
     mesh.scale.set(1, -1, 1);
     mesh.userData = { type: 'curtain_run', objectId: el.id };
