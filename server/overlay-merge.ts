@@ -173,6 +173,7 @@ export function resolveWallRef(
     const wall = walls.find(w => w.id === id);
     if (!wall) throw new Error(`Unknown wall id: ${id}`);
     if (wall.fromRadius && wall.fromX !== undefined && wall.fromZ !== undefined && wall.segments && wall.segments.length >= 16) {
+      pts.push({ x: wall.x1, z: wall.z1 });
       pts.push({ x: wall.fromX!, z: wall.fromZ!, radius: wall.fromRadius });
       const arcEnd = wall.segments[15];
       pts.push({ x: arcEnd.x2, z: arcEnd.z2 });
