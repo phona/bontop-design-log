@@ -668,6 +668,7 @@ export class HouseScene implements SceneApi {
             centerline.lineTo(arc.start.x, arc.start.z);
           }
           centerline.absarc(arc.center.x, arc.center.z, arc.radius, arc.startAngle, arc.endAngle, arc.clockwise);
+          console.log('ARC OK at', curr.x.toFixed(2), 'center:', arc.center.x.toFixed(2), arc.center.z.toFixed(2), 'r:', arc.radius);
         } else {
           console.log('ARC NULL at', curr.x.toFixed(2), curr.z.toFixed(2), 'prev=', prev.x.toFixed(2), prev.z.toFixed(2), 'next=', next.x.toFixed(2), next.z.toFixed(2));
           if (!started) {
