@@ -8,7 +8,7 @@ version: 1
 
 suppress:
   - id: suppress_west_wall
-    walls: [w_west_top, w_west_lower]
+    walls: [w_west_top, w_west_ap, w_west_lower]
     reason: "西墙实体删除，改玻璃幕墙"
   - id: suppress_south_west
     wall: w_mb_south
@@ -41,11 +41,11 @@ elements:
     walls: [w_vrv_nw_gap, w_vrv_north, w_kit_north]
     height: 3.0
 
-  # 主卫/西北次卧北墙凹进玻璃幕墙 (含 w_west_top 进路面 + w_bath_north 弧段)
+  # 主卫西北角玻璃幕墙弧 (w_west_ap 进路从室内侧 + w_bath_north 弧段)
   - id: north_recess_curtain
     type: curtain_run
     closed: false
-    walls: [w_west_top, w_bath_north, w_nw_north]
+    walls: [w_west_ap, w_bath_north, w_nw_north]
     height: 3.0
 
   # 客厅南墙落地玻璃幕（z=9.95）

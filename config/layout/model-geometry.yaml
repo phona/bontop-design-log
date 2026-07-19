@@ -39,6 +39,7 @@ vertices:
   - { id: v_st_ne,   x: 7.20,  z: 5.55 }
   # 左翼北墙凹进顶点（主卫/西北次卧北墙 z=1.10，相比于 VRV/厨房 z=0 凹进 1.10m）
   - { id: v_bath_nw,  x: 0.00,  z: 1.10, radius: 1.00 }
+  - { id: v_bath_ap,  x: 0.00,  z: 2.10 }
   - { id: v_bath_ne,  x: 2.60,  z: 1.10 }
   - { id: v_nw_ne,    x: 5.60,  z: 1.10 }
 
@@ -101,8 +102,9 @@ platform:
   height: 0.05
 
 walls:
-  # 外框 — 西墙（v_nw→v_bath_nw 幕墙，v_bath_nw→v_mb_sw 主卫西墙，v_mb_sw→v_mb_nw 空隙，v_mb_nw→v_sw 主卧西墙）
-  - { id: w_west_top,  from: v_nw,      to: v_bath_nw, height: 3.0 }
+  # 外框 — 西墙（v_nw→v_bath_ap 幕墙竖段，v_bath_ap→v_bath_nw 弧进路，v_bath_nw→v_mb_sw 主卫西墙）
+  - { id: w_west_top,  from: v_nw,      to: v_bath_ap, height: 3.0 }
+  - { id: w_west_ap,   from: v_bath_ap, to: v_bath_nw, height: 3.0 }
   - { id: w_west_lower, from: v_bath_nw,  to: v_mb_sw,  height: 3.0 }
   - { id: w_west_mid,   from: v_mb_sw,   to: v_mb_nw,  height: 3.0 }
   - { id: w_west_upper, from: v_mb_nw,   to: v_sw,     height: 3.0 }
