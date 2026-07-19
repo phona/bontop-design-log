@@ -105,7 +105,7 @@ walls:
   # 外框 — 西墙（v_nw→v_bath_ap 幕墙竖段，v_bath_ap→v_bath_nw 弧进路，v_bath_nw→v_mb_sw 主卫西墙）
   - { id: w_west_top,  from: v_nw,      to: v_bath_ap, height: 3.0 }
   - { id: w_west_ap,   from: v_bath_ap, to: v_bath_nw, height: 3.0 }
-  - { id: w_west_lower, from: v_bath_nw,  to: v_mb_sw,  height: 3.0 }
+  - { id: w_west_lower, from: v_bath_ap,  to: v_mb_sw,  height: 3.0 }
   - { id: w_west_mid,   from: v_mb_sw,   to: v_mb_nw,  height: 3.0 }
   - { id: w_west_upper, from: v_mb_nw,   to: v_sw,     height: 3.0 }
   # 外框 — 南墙（在 v_mb_se, v_step_b, v_step_t, v_be_se_s 处切开）
