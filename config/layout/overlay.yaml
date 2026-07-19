@@ -8,7 +8,7 @@ version: 1
 
 suppress:
   - id: suppress_west_wall
-    walls: [w_west_top, w_west_ap, w_west_lower]
+    walls: [w_west_top, w_west_ap, w_west_lower, w_west_mid, w_west_upper]
     reason: "西墙实体删除，改玻璃幕墙"
   - id: suppress_south_west
     walls: [w_mb_south, w_st_south]
@@ -22,6 +22,9 @@ suppress:
   - id: suppress_kitchen_north
     wall: w_kit_north
     reason: "厨房北墙实体删除，改玻璃幕墙"
+  - id: suppress_vrv_railing
+    walls: [w_vrv_nw_gap, w_vrv_north]
+    reason: "VRV西北角实墙删除，改栏杆"
   - id: suppress_north_recess
     walls: [w_bath_north, w_nw_north]
     reason: "主卫/西北次卧北墙实体删除，改玻璃幕墙"
@@ -33,6 +36,12 @@ elements:
     closed: false
     walls: [w_west_lower, w_west_mid, w_west_upper, w_mb_south, w_st_south]
     height: 3.0
+
+  # VRV 西北角栏杆 (弧 r=1.0)
+  - id: vrv_nw_railing
+    type: railing_run
+    walls: [w_vrv_nw_gap, w_vrv_north]
+    height: 1.0
 
   # 厨房北墙玻璃幕墙
   - id: kitchen_north_curtain

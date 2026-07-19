@@ -345,6 +345,15 @@ export class HouseScene implements SceneApi {
             // footprint is already covered by the enclosing room
             break;
           }
+          case 'railing_run': {
+            for (const p of el.points) {
+              minX = Math.min(minX, p.x);
+              maxX = Math.max(maxX, p.x);
+              minZ = Math.min(minZ, p.z);
+              maxZ = Math.max(maxZ, p.z);
+            }
+            break;
+          }
           default: {
             const exhaustive: never = el;
             console.error('[HouseScene] 未知场景元素类型（bounds 缺 case）', exhaustive);
@@ -573,6 +582,7 @@ export class HouseScene implements SceneApi {
         case 'glass_infill': this.renderGlassInfill(el); break;
         case 'floor_region': this.renderFloorRegion(el); break;
         case 'bay_sill': this.renderBaySill(el); break;
+        case 'railing_run': this.renderRailingRun(el); break;
         default: {
           const exhaustive: never = el;
           console.error('[HouseScene] 未知场景元素类型（渲染器缺 case）', exhaustive);
@@ -616,6 +626,25 @@ export class HouseScene implements SceneApi {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     this.wallMeshes.push(mesh);
+  }
+
+  private renderRailingRun(el: Extract<SceneElement, { type: 'railing_run' }>) {
+    const pts = el.points;
+    if (pts.length < 2) return;
+    const shape = this.buildCurtainShape(pts, false);
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+      depth: el.height,
+      bevelEnabled: false,
+      steps: 1,
+    });
+    const mat = new THREE.MeshStandardMaterial({ color: 0x8899aa, roughness: 0.3, metalness: 0.6, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geometry, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.scale.set(1, -1, 1);
+    mesh.userData = { type: 'railing_run', objectId: el.id };
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    this.scene.add(mesh);
   }
 
   private renderCurtainRun(el: Extract<SceneElement, { type: 'curtain_run' }>) {

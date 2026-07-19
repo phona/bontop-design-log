@@ -88,6 +88,19 @@ const BaySillSchema = z
   .strict()
   .refine(d => d.points || d.wall, { message: 'Must specify points or wall' });
 
+const RailingRunSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('railing_run'),
+    wall: z.string().min(1).optional(),
+    walls: z.array(z.string().min(1)).min(1).optional(),
+    height: z.number().positive().default(1.0),
+  })
+  .strict()
+  .refine(d => d.wall || (d.walls && d.walls.length > 0), {
+    message: 'Must specify wall or walls',
+  });
+
 const OverlaySchema = z
   .object({
     version: z.literal(1),
@@ -100,6 +113,7 @@ const OverlaySchema = z
           GlassInfillSchema,
           FloorRegionSchema,
           BaySillSchema,
+          RailingRunSchema,
         ])
       )
       .default([]),
@@ -148,7 +162,7 @@ export function mergeSceneElements(
     .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius }));
 
   for (const el of elements) {
-    if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill') {
+    if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill' || el.type === 'railing_run') {
       const elAny = el as Record<string, unknown>;
       const wallRef = elAny.wall ?? elAny.walls;
       if (wallRef) {
