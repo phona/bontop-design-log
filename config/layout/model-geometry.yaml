@@ -10,9 +10,9 @@ vertices:
   - { id: v_mb_nw,   x: 0.00,  z: 5.55 }
   - { id: v_sw,      x: 0.00,  z: 9.80, radius: 1.00 }
   - { id: v_step_b,  x: 7.20,  z: 9.80 }
-  - { id: v_step_t,  x: 7.20,  z: 9.95 }
-  - { id: v_be_se_s, x: 13.40, z: 9.95 }
-  - { id: v_se_r,    x: 16.40, z: 9.95 }
+  - { id: v_step_t,   x: 7.20,  z: 9.80 }
+  - { id: v_be_se_s,  x: 13.40, z: 9.80 }
+  - { id: v_se_r,     x: 16.40, z: 9.80 }
   - { id: v_be_ne,   x: 16.40, z: 5.55 }
   - { id: v_e_bot,   x: 16.40, z: 0.65 }
   - { id: v_ent_ne,  x: 15.25, z: 0.65 }
@@ -111,7 +111,6 @@ walls:
   # 外框 — 南墙（在 v_mb_se, v_step_b, v_step_t, v_be_se_s 处切开）
   - { id: w_mb_south,   from: v_sw,      to: v_mb_se,  height: 3.0 }
   - { id: w_st_south,   from: v_mb_se,   to: v_step_b, height: 3.0 }
-  - { id: w_step,       from: v_step_b,  to: v_step_t, height: 3.0 }
   - { id: w_liv_south,  from: v_step_t,  to: v_be_se_s,height: 3.0 }
   - { id: w_be_south,   from: v_be_se_s, to: v_se_r,   height: 3.0 }
   # 外框 — 东墙（在 v_be_ne 处切开）

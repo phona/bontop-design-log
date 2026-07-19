@@ -14,8 +14,8 @@ suppress:
     walls: [w_mb_south, w_st_south]
     reason: "主卧+书房南墙实体删除，为飘窗让路"
   - id: suppress_living_south
-    walls: [w_step, w_liv_south]
-    reason: "客厅南墙+台阶落地玻璃幕（z=9.80→9.95）"
+    wall: w_liv_south
+    reason: "客厅南墙落地玻璃幕"
   - id: suppress_south_east
     wall: w_be_south
     reason: "东南次卧凸窗+东南圆角实体墙删除"
@@ -48,11 +48,11 @@ elements:
     walls: [w_west_ap, w_bath_north, w_nw_north]
     height: 3.0
 
-  # 客厅南墙落地玻璃幕 + 150mm台阶 (z=9.80→9.95)
+  # 客厅南墙落地玻璃幕 (z=9.80)
   - id: living_south_curtain
     type: curtain_run
     closed: false
-    walls: [w_step, w_liv_south]
+    wall: w_liv_south
     height: 3.0
 
   # 南墙东段（东南次卧南侧幕墙）
