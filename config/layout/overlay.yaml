@@ -37,7 +37,7 @@ elements:
     walls: [w_west_lower, w_west_mid, w_west_upper, w_mb_south, w_st_south]
     height: 3.0
 
-  # VRV 西北角栏杆 (弧 r=1.0)
+  # VRV 西北角 + 西墙栏杆 (弧 r=1.0)
   - id: vrv_nw_railing
     type: railing_run
     walls: [w_vrv_nw_gap, w_vrv_north]
