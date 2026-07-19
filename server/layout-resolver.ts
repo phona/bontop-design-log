@@ -160,15 +160,14 @@ function tangentPoints(
   const dPrev = normalize({ x: prev.x - corner.x, z: prev.z - corner.z });
   const dNext = normalize({ x: next.x - corner.x, z: next.z - corner.z });
 
-  const t1 = { x: corner.x + dPrev.x * r, z: corner.z + dPrev.z * r };
-  const t2 = { x: corner.x + dNext.x * r, z: corner.z + dNext.z * r };
-
-  // Arc center: intersection of wall offset lines.
-  // signX: interior side of vertical wall (t2 is on interior side if t2.x > corner.x)
-  // signZ: interior side of horizontal wall (t1 is on interior side if t1.z > corner.z)
-  const signX = t2.x > corner.x ? 1 : -1;
-  const signZ = t1.z > corner.z ? 1 : -1;
+  // Arc center: intersection of wall offset lines
+  const signX = (corner.x + dNext.x * r) > corner.x ? 1 : -1;
+  const signZ = corner.z < 5 ? 1 : -1;
   const center = { x: corner.x + signX * r, z: corner.z + signZ * r };
+
+  // Tangent points: where the arc meets the walls (perpendicular from center)
+  const t1 = { x: corner.x, z: center.z };
+  const t2 = { x: center.x, z: corner.z };
 
   return { t1, t2, center };
 }
@@ -232,7 +231,17 @@ function resolveWall(
     if (nextWall) {
       const nextTo = vmap.get(nextWall.to)!;
       const { t1 } = tangentPoints(to, from, nextTo);
-      x2 = t1.x; z2 = t1.z;
+      // Only trim if tangent is on the wall segment (within dot range + on the line)
+      const dx = t1.x - x1, dz = t1.z - z1;
+      const origDx = x2 - x1, origDz = z2 - z1;
+      const lenSq = origDx * origDx + origDz * origDz;
+      if (lenSq > 0.001) {
+        const dot = (dx * origDx + dz * origDz) / lenSq;
+        const perpDist = Math.abs(dx * origDz - dz * origDx) / Math.sqrt(lenSq);
+        if (dot >= 0 && dot <= 1 && perpDist < 0.01) {
+          x2 = t1.x; z2 = t1.z;
+        }
+      }
     }
     segments = [{ x1, z1, x2, z2 }];
   } else {
