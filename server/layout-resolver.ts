@@ -209,15 +209,20 @@ function resolveWall(
     const prevWall = allWalls.find(w => w.to === def.from);
     if (prevWall) {
       const prevFrom = vmap.get(prevWall.from)!;
-      const { t1, t2, center } = tangentPoints(from, prevFrom, to);
-      // Trim: wall starts at t1 (tangent on prev side), arc from t1 to t2
-      x1 = t1.x; z1 = t1.z;
-      // Arc segments
-      const startAngle = Math.atan2(t1.z - center.z, t1.x - center.x);
-      const endAngle = Math.atan2(t2.z - center.z, t2.x - center.x);
-      const arc = arcSegments(center, from.radius, startAngle, endAngle, 16);
-      // Wall's straight segment from t2 to original 'to'
-      segments = [...arc, { x1: t2.x, z1: t2.z, x2: to.x, z2: to.z }];
+      // Skip arc if prev and current walls are collinear (dot ≈ ±1, same line)
+      const dPrev = normalize({ x: prevFrom.x - from.x, z: prevFrom.z - from.z });
+      const dCurr = normalize({ x: to.x - from.x, z: to.z - from.z });
+      const dot = dPrev.x * dCurr.x + dPrev.z * dCurr.z;
+      if (Math.abs(dot) > 0.99) {
+        segments = [{ x1, z1, x2, z2 }];
+      } else {
+        const { t1, t2, center } = tangentPoints(from, prevFrom, to);
+        x1 = t1.x; z1 = t1.z;
+        const startAngle = Math.atan2(t1.z - center.z, t1.x - center.x);
+        const endAngle = Math.atan2(t2.z - center.z, t2.x - center.x);
+        const arc = arcSegments(center, from.radius, startAngle, endAngle, 16);
+        segments = [...arc, { x1: t2.x, z1: t2.z, x2: to.x, z2: to.z }];
+      }
     } else {
       segments = [{ x1, z1, x2, z2 }];
     }
