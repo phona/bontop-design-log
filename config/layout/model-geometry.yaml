@@ -21,7 +21,7 @@ vertices:
   - { id: v_ent_nw,  x: 10.80, z: 0.00 }
   - { id: v_bath_n,  x: 2.60,  z: 0.00 }
   - { id: v_bath_s,  x: 2.60,  z: 4.30 }
-  - { id: v_vrv_n,   x: 5.60,  z: 0.00 }
+  - { id: v_vrv_n,   x: 5.60,  z: 0.00, radius: 1.00 }
   - { id: v_vrv_sw,  x: 5.60,  z: 1.00 }
   - { id: v_balc_sw, x: 5.60,  z: 2.20 }
   - { id: v_nw_s,    x: 5.60,  z: 4.30 }

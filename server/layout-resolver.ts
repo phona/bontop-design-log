@@ -163,13 +163,12 @@ function tangentPoints(
   const t1 = { x: corner.x + dPrev.x * r, z: corner.z + dPrev.z * r };
   const t2 = { x: corner.x + dNext.x * r, z: corner.z + dNext.z * r };
 
-  // Arc center: intersection of wall offsets. Use wall normals (perpendicular
-  // to directions, pointing into corner), NOT the bisector of directions.
-  // nPrev = dPrev rotated 90° CW, nNext = dNext rotated 90° CCW.
-  // For 90° corners: center = corner + r * (nPrev + nNext)
-  const nPrev = { x: -dPrev.z, z: dPrev.x };
-  const nNext = { x: dNext.z, z: -dNext.x };
-  const center = { x: corner.x + r * (nPrev.x + nNext.x), z: corner.z + r * (nPrev.z + nNext.z) };
+  // Arc center: intersection of wall offset lines.
+  // signX: interior side of vertical wall (t2 is on interior side if t2.x > corner.x)
+  // signZ: interior side of horizontal wall (t1 is on interior side if t1.z > corner.z)
+  const signX = t2.x > corner.x ? 1 : -1;
+  const signZ = t1.z > corner.z ? 1 : -1;
+  const center = { x: corner.x + signX * r, z: corner.z + signZ * r };
 
   return { t1, t2, center };
 }
