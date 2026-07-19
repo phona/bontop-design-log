@@ -620,6 +620,7 @@ export class HouseScene implements SceneApi {
 
   private renderCurtainRun(el: Extract<SceneElement, { type: 'curtain_run' }>) {
     const shape = this.buildCurtainShape(el.points, el.closed ?? false);
+    console.log('renderCurtainRun', el.id, 'points:', el.points?.length, 'closed:', el.closed);
     const geometry = new THREE.ExtrudeGeometry(shape, {
       depth: el.height,
       bevelEnabled: false,
@@ -640,6 +641,9 @@ export class HouseScene implements SceneApi {
     const T = GLASS_THICKNESS;
     const n = points.length;
     if (n < 2) return new THREE.Shape();
+    console.log('buildCurtainShape', 'pts:', n, 'closed:', closed);
+    const hasRadiusPt = points.some(p => p.radius && p.radius > 0);
+    if (hasRadiusPt) console.log('  HAS radius point!', points.find(p => p.radius)?.x, points.find(p => p.radius)?.z);
 
     const centerline = new THREE.Path();
     let started = false;
