@@ -38,7 +38,7 @@ vertices:
   - { id: v_mb_se,   x: 4.20,  z: 9.80 }
   - { id: v_st_ne,   x: 7.20,  z: 5.55 }
   # 左翼北墙凹进顶点（主卫/西北次卧北墙 z=1.10，相比于 VRV/厨房 z=0 凹进 1.10m）
-  - { id: v_bath_nw,  x: 0.00,  z: 1.10 }
+  - { id: v_bath_nw,  x: 0.00,  z: 1.10, radius: 1.00 }
   - { id: v_bath_ne,  x: 2.60,  z: 1.10 }
   - { id: v_nw_ne,    x: 5.60,  z: 1.10 }
 
