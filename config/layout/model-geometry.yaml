@@ -161,7 +161,6 @@ walls:
       - { id: w_mb_win, type: window, anchor: v_mb_se, offset: 1.5, width: 2.4, height: 1.5, sill: 0.9, room: master_bedroom }
   # 内墙 — VRV 平台 / 生活阳台 / 客卫
   - { id: w_vrv_nw_gap, from: v_nw_ne,   to: v_vrv_n,  height: 3.0 }
-  - { id: w_vrv_west,   from: v_vrv_n,   to: v_vrv_sw, height: 3.0 }
   - { id: w_balc_west,  from: v_vrv_sw,  to: v_balc_sw,height: 3.0 }
   - { id: w_gbath_west, from: v_balc_sw, to: v_nw_s,   height: 3.0 }
   # w_vrv_south 已删除——VRV 与阳台间为栏杆（开放边）
