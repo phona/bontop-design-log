@@ -17,8 +17,8 @@ suppress:
     wall: w_liv_south
     reason: "客厅南墙落地玻璃幕（z=9.95）"
   - id: suppress_south_east
-    wall: w_be_south
-    reason: "东南次卧凸窗+东南圆角实体墙删除"
+    walls: [w_be_south, w_east_upper]
+    reason: "东南次卧南+东外墙实体删除，改玻璃幕墙"
   - id: suppress_vrv_nw
     walls: [w_vrv_nw_gap, w_vrv_north, w_kit_north]
     reason: "VRV西北角+厨房北墙实体删除，改玻璃幕墙"
@@ -55,11 +55,11 @@ elements:
     wall: w_liv_south
     height: 3.0
 
-  # 南墙东段（东南次卧南侧到东南小圆角）
+  # 南墙东段 + 东墙 (东南次卧南外墙 + 东外墙)
   - id: south_east_curtain
     type: curtain_run
     closed: false
-    wall: w_be_south
+    walls: [w_be_south, w_east_upper]
     height: 3.0
 
   # 飘窗
