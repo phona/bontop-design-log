@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev:server": "tsx server/index.ts",
+    "dev": "tsx --watch server/index.ts & cd app && npm run dev",
+    "dev:server": "tsx --watch server/index.ts",
     "dev:app": "cd app && npm run dev",
     "build:app": "cd app && npm run build",
     "typecheck": "tsc --noEmit && cd app && tsc --noEmit",
