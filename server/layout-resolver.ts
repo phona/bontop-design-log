@@ -157,18 +157,19 @@ function tangentPoints(
   next: VMap
 ): { t1: Pt; t2: Pt; center: Pt } {
   const r = corner.radius!;
-  // Direction from corner toward prev, normalized
   const dPrev = normalize({ x: prev.x - corner.x, z: prev.z - corner.z });
-  // Direction from corner toward next, normalized
   const dNext = normalize({ x: next.x - corner.x, z: next.z - corner.z });
 
-  // Tangent points: distance r from corner along each direction
   const t1 = { x: corner.x + dPrev.x * r, z: corner.z + dPrev.z * r };
   const t2 = { x: corner.x + dNext.x * r, z: corner.z + dNext.z * r };
 
-  // Arc center: corner + r * bisector (normalized sum of directions)
-  const bisector = normalize({ x: dPrev.x + dNext.x, z: dPrev.z + dNext.z });
-  const center = { x: corner.x + bisector.x * r, z: corner.z + bisector.z * r };
+  // Arc center: intersection of wall offsets. Use wall normals (perpendicular
+  // to directions, pointing into corner), NOT the bisector of directions.
+  // nPrev = dPrev rotated 90° CW, nNext = dNext rotated 90° CCW.
+  // For 90° corners: center = corner + r * (nPrev + nNext)
+  const nPrev = { x: -dPrev.z, z: dPrev.x };
+  const nNext = { x: dNext.z, z: -dNext.x };
+  const center = { x: corner.x + r * (nPrev.x + nNext.x), z: corner.z + r * (nPrev.z + nNext.z) };
 
   return { t1, t2, center };
 }
