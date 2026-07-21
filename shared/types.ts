@@ -90,6 +90,7 @@ export interface RoomObject {
   width: number;
   depth: number;
   height: number;
+  points?: CurtainPoint[];
   mesh?: Object3DRef;
 }
 
@@ -356,6 +357,8 @@ export interface WallSegment {
   fromX?: number;
   fromZ?: number;
   fromRadius?: number;
+  arcCenterX?: number;
+  arcCenterZ?: number;
 }
 
 export interface OverlayPoint {
@@ -365,6 +368,8 @@ export interface OverlayPoint {
 
 export interface CurtainPoint extends OverlayPoint {
   radius?: number;
+  cx?: number;
+  cz?: number;
 }
 
 export type SceneElement =
@@ -456,6 +461,8 @@ export interface ResolvedWall {
   fromX?: number;
   fromZ?: number;
   fromRadius?: number;
+  arcCenterX?: number;
+  arcCenterZ?: number;
 }
 
 export interface ResolvedLayout {

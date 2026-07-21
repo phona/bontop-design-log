@@ -80,13 +80,16 @@ const BaySillSchema = z
     type: z.literal('bay_sill'),
     points: z.array(PointSchema).min(2).optional(),
     wall: z.string().min(1).optional(),
+    walls: z.array(z.string().min(1)).min(1).optional(),
     depth: z.number().positive(),
     sill: z.number().min(0),
     height: z.number().positive(),
     reason: z.string().min(1).optional(),
   })
   .strict()
-  .refine(d => d.points || d.wall, { message: 'Must specify points or wall' });
+  .refine(d => d.points || d.wall || (d.walls && d.walls.length > 0), {
+    message: 'Must specify points, wall, or walls',
+  });
 
 const RailingRunSchema = z
   .object({
@@ -159,7 +162,7 @@ export function mergeSceneElements(
   // Resolve wall refs in elements (only for types that use wall as id reference)
   const resolvedWalls = walls
     .filter((w): w is WallSegment & { id: string } => w.id !== undefined)
-    .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius }));
+    .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ }));
 
   for (const el of elements) {
     if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill' || el.type === 'railing_run') {
@@ -179,7 +182,7 @@ export function mergeSceneElements(
 
 export function resolveWallRef(
   wallIds: string | string[],
-  walls: Array<{ id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; fromX?: number; fromZ?: number; fromRadius?: number }>
+  walls: Array<{ id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; fromX?: number; fromZ?: number; fromRadius?: number; arcCenterX?: number; arcCenterZ?: number }>
 ): CurtainPoint[] {
   const ids = Array.isArray(wallIds) ? wallIds : [wallIds];
   const pts: CurtainPoint[] = [];
@@ -188,7 +191,7 @@ export function resolveWallRef(
     if (!wall) throw new Error(`Unknown wall id: ${id}`);
     if (wall.fromRadius && wall.fromX !== undefined && wall.fromZ !== undefined && wall.segments && wall.segments.length >= 16) {
       pts.push({ x: wall.x1, z: wall.z1 });
-      pts.push({ x: wall.fromX!, z: wall.fromZ!, radius: wall.fromRadius });
+      pts.push({ x: wall.fromX!, z: wall.fromZ!, radius: wall.fromRadius, cx: wall.arcCenterX, cz: wall.arcCenterZ });
       const arcEnd = wall.segments[15];
       pts.push({ x: arcEnd.x2, z: arcEnd.z2 });
       pts.push({ x: wall.x2, z: wall.z2 });

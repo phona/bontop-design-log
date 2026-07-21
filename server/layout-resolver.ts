@@ -199,6 +199,8 @@ function resolveWall(
 
   let x1 = from.x, z1 = from.z, x2 = to.x, z2 = to.z;
   let segments: Array<{ x1: number; z1: number; x2: number; z2: number }> | undefined;
+  let arcCenterX: number | undefined;
+  let arcCenterZ: number | undefined;
 
   // If 'from' has radius, trim 'from' end to tangent + prepend arc
   // If 'to' has radius, trim 'to' end to tangent (arc owned by the next wall whose 'from' is 'to')
@@ -215,6 +217,7 @@ function resolveWall(
         segments = [{ x1, z1, x2, z2 }];
       } else {
         const { t1, t2, center } = tangentPoints(from, prevFrom, to);
+        arcCenterX = center.x; arcCenterZ = center.z;
         x1 = t1.x; z1 = t1.z;
         const startAngle = Math.atan2(t1.z - center.z, t1.x - center.x);
         const endAngle = Math.atan2(t2.z - center.z, t2.x - center.x);
@@ -248,7 +251,7 @@ function resolveWall(
   }
 
   return { id: def.id, x1, z1, x2, z2, height: def.height, segments,
-    ...(from.radius ? { fromX: from.x, fromZ: from.z, fromRadius: from.radius } : {}) };
+    ...(from.radius ? { fromX: from.x, fromZ: from.z, fromRadius: from.radius, arcCenterX, arcCenterZ } : {}) };
 }
 
 function resolveOpening(

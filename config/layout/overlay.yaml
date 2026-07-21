@@ -76,41 +76,73 @@ elements:
     type: bay_sill
     wall: w_west_upper
     depth: 0.5
-    sill: 0.45
-    height: 2.55
-    reason: "主卧西墙飘窗（z=5.55~8.80 直墙段，圆角段由 west_curtain 处理）"
+    sill: 2.55
+    height: 0.45
+    reason: "主卧西墙飘窗（z=5.55~8.80 直墙段）"
 
   - id: master_bedroom_south_bay
     type: bay_sill
     wall: w_mb_south
     depth: 1.1
-    sill: 0.45
-    height: 2.55
+    sill: 2.55
+    height: 0.45
     reason: "主卧南墙环幕飘窗（南缘 z=10.90）"
 
   - id: study_south_bay
     type: bay_sill
     wall: w_st_south
     depth: 1.1
-    sill: 0.45
-    height: 2.55
+    sill: 2.55
+    height: 0.45
     reason: "书房南墙飘窗（南缘 z=10.90，与主卧齐平）"
 
   - id: bedroom_se_south_bay
     type: bay_sill
     wall: w_be_south
     depth: 1.1
-    sill: 0.45
-    height: 2.55
+    sill: 2.55
+    height: 0.45
     reason: "东南次卧南向凸窗（南缘 z=11.05）"
 
   - id: bedroom_nw_west_bay
     type: bay_sill
     wall: w_west_lower
     depth: 0.5
-    sill: 0.45
-    height: 2.55
+    sill: 2.55
+    height: 0.45
     reason: "西北次卧西墙飘窗"
+
+  - id: corridor_west_bay
+    type: bay_sill
+    wall: w_west_mid
+    depth: 0.5
+    sill: 2.55
+    height: 0.45
+    reason: "走廊西墙飘窗"
+
+  - id: master_bath_west_bay
+    type: bay_sill
+    walls: [w_west_ap, w_bath_north]
+    depth: 0.5
+    sill: 2.55
+    height: 0.45
+    reason: "主卫西北角飘窗"
+
+  - id: bedroom_nw_north_bay
+    type: bay_sill
+    wall: w_nw_north
+    depth: 0.5
+    sill: 2.55
+    height: 0.45
+    reason: "西北次卧北墙飘窗（z=1.10 凹进段）"
+
+  - id: kitchen_north_bay
+    type: bay_sill
+    wall: w_kit_north
+    depth: 0.5
+    sill: 2.55
+    height: 0.45
+    reason: "厨房北墙飘窗（z=0 北缘）"
 
   # 地板补区
   - id: entry_garden_floor
@@ -130,6 +162,15 @@ elements:
       - { x: 7.2, z: 7.8 }
       - { x: 4.2, z: 7.8 }
     reason: "主卧与书房之间的走廊"
+
+  - id: main_corridor_floor
+    type: floor_region
+    points:
+      - { x: 0.0, z: 4.30 }
+      - { x: 7.2, z: 4.30 }
+      - { x: 7.2, z: 5.55 }
+      - { x: 0.0, z: 5.55 }
+    reason: "主走廊连接左翼和右翼"
 
   - id: north_platform_floor
     type: floor_region

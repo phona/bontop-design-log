@@ -427,6 +427,7 @@ export class HouseScene implements SceneApi {
           width: room.width,
           depth: room.depth,
           height: room.height,
+          points: (room as { points?: CurtainPoint[] }).points,
         },
         { fabricateWalls: !useSceneElements }
       );
@@ -504,9 +505,9 @@ export class HouseScene implements SceneApi {
     const group = new THREE.Group();
     group.position.set(r.x, 0, r.z);
 
-    const pts = (r as { points?: { x: number; z: number; radius?: number }[] }).points;
+    const pts = r.points;
     const floorGeo = pts
-      ? new THREE.ShapeGeometry(this.buildRoundedShape(pts))
+      ? new THREE.ShapeGeometry(this.buildRoundedShape(pts.map(p => ({ x: p.x - r.x, z: r.z - p.z, radius: p.radius }))))
       : new THREE.PlaneGeometry(r.width, r.depth);
     const floorMat = new THREE.MeshStandardMaterial({
       color: DEFAULT_FLOOR,
@@ -665,8 +666,8 @@ export class HouseScene implements SceneApi {
     this.glassMeshes.push(mesh);
   }
 
-  private buildCurtainShape(points: CurtainPoint[], closed: boolean): THREE.Shape {
-    const T = GLASS_THICKNESS;
+  private buildCurtainShape(points: CurtainPoint[], closed: boolean, thickness: number = GLASS_THICKNESS, sided: boolean = false, flip: boolean = false): THREE.Shape {
+    const T = thickness;
     const n = points.length;
     if (n < 2) return new THREE.Shape();
 
@@ -744,8 +745,10 @@ export class HouseScene implements SceneApi {
       if (len < 1e-9) continue;
       const nx = -dy / len;
       const ny = dx / len;
-      left.push({ x: p.x + nx * (T / 2), z: p.y + ny * (T / 2) });
-      right.push({ x: p.x - nx * (T / 2), z: p.y - ny * (T / 2) });
+      const offL = sided ? (flip ? 0 : T) : T / 2;
+      const offR = sided ? (flip ? T : 0) : T / 2;
+      left.push({ x: p.x + nx * offL, z: p.y + ny * offL });
+      right.push({ x: p.x - nx * offR, z: p.y - ny * offR });
     }
 
     if (left.length < 2 || right.length < 2) return new THREE.Shape();
@@ -844,15 +847,16 @@ export class HouseScene implements SceneApi {
     const d = r / Math.tan(theta / 2);
     if (d - len1 > 0.001 || d - len2 > 0.001) return null;
 
-    const n1x = -u1z;
-    const n1z = u1x;
-    const cross = u1x * u2z - u1z * u2x;
-    const sign = cross > 0 ? 1 : -1;
-
-    const center = {
-      x: c.x - u1x * d + sign * n1x * r,
-      z: c.z - u1z * d + sign * n1z * r,
-    };
+    // Use resolver-computed arc center if available, otherwise compute
+    let center: { x: number; z: number };
+    if (c.cx !== undefined && c.cz !== undefined) {
+      center = { x: c.cx, z: c.cz };
+    } else {
+      const n1x = -u1z; const n1z = u1x;
+      const cross = u1x * u2z - u1z * u2x;
+      const sign = cross > 0 ? 1 : -1;
+      center = { x: c.x - u1x * d + sign * n1x * r, z: c.z - u1z * d + sign * n1z * r };
+    }
 
     const start = { x: c.x - u1x * d, z: c.z - u1z * d };
     const end = { x: c.x + u2x * d, z: c.z + u2z * d };
@@ -929,37 +933,40 @@ export class HouseScene implements SceneApi {
     this.floorMeshes.push(mesh);
   }
 
+  private detectInteriorFlip(pts: CurtainPoint[]): boolean {
+    const p0 = pts[0];
+    const pn = pts[pts.length - 1];
+    const dx = pn.x - p0.x;
+    const dz = pn.z - p0.z;
+    if (Math.hypot(dx, dz) < 1e-9) return false;
+    let mx = 0, mz = 0;
+    for (const p of pts) { mx += p.x; mz += p.z; }
+    mx /= pts.length;
+    mz /= pts.length;
+    const rooms = Object.values(this.rooms);
+    if (rooms.length === 0) return false;
+    let best: RoomObject | undefined;
+    let bestDist = Infinity;
+    for (const r of rooms) {
+      const d = Math.hypot(r.x - mx, r.z - mz);
+      if (d < bestDist) { bestDist = d; best = r; }
+    }
+    if (!best) return false;
+    const cross = dx * (best.z - mz) - dz * (best.x - mx);
+    return cross < 0;
+  }
+
   private renderBaySill(el: Extract<SceneElement, { type: 'bay_sill' }>) {
     if (el.points.length < 2) return;
-    const a = el.points[0];
-    const b = el.points[el.points.length - 1];
-    const dx = b.x - a.x;
-    const dz = b.z - a.z;
-    const length = Math.hypot(dx, dz);
-    if (length < 1e-9) return;
-
-    // curtain_run 为顺时针，室内在行进方向右侧 => 内法向为 (dz, -dx)
-    const nx = dz / length;
-    const nz = -dx / length;
-
-    const cx = (a.x + b.x) / 2;
-    const cz = (a.z + b.z) / 2;
-    const cy = el.sill + el.height / 2;
-
-    const concrete = new THREE.MeshStandardMaterial({
-      color: 0xcccccc,
-      roughness: 0.9,
-    });
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(length, el.height, el.depth),
-      concrete
-    );
-    mesh.position.set(
-      cx + nx * el.depth / 2,
-      cy,
-      cz + nz * el.depth / 2
-    );
-    mesh.rotation.y = Math.atan2(dz, dx);
+    const pts = el.points as CurtainPoint[];
+    const flip = this.detectInteriorFlip(pts);
+    const shape = this.buildCurtainShape(pts, false, el.depth, true, flip);
+    const geometry = new THREE.ExtrudeGeometry(shape, { depth: el.height, bevelEnabled: false, steps: 1 });
+    const concrete = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.9 });
+    const mesh = new THREE.Mesh(geometry, concrete);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.scale.set(1, -1, 1);
+    mesh.position.y = el.sill;
     mesh.userData = { type: 'bay_sill', objectId: el.id };
     mesh.castShadow = true;
     mesh.receiveShadow = true;
