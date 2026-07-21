@@ -75,7 +75,7 @@ elements:
   - id: master_bedroom_west_bay
     type: bay_sill
     wall: w_west_upper
-    depth: 0.5
+    depth: 1.1
     sill: 2.55
     height: 0.45
     reason: "主卧西墙飘窗（z=5.55~8.80 直墙段）"
@@ -107,7 +107,7 @@ elements:
   - id: bedroom_nw_west_bay
     type: bay_sill
     wall: w_west_lower
-    depth: 0.5
+    depth: 1.1
     sill: 2.55
     height: 0.45
     reason: "西北次卧西墙飘窗"
@@ -115,7 +115,7 @@ elements:
   - id: corridor_west_bay
     type: bay_sill
     wall: w_west_mid
-    depth: 0.5
+    depth: 1.1
     sill: 2.55
     height: 0.45
     reason: "走廊西墙飘窗"
@@ -123,7 +123,7 @@ elements:
   - id: master_bath_west_bay
     type: bay_sill
     walls: [w_west_ap, w_bath_north]
-    depth: 0.5
+    depth: 1.1
     sill: 2.55
     height: 0.45
     reason: "主卫西北角飘窗"
@@ -131,7 +131,7 @@ elements:
   - id: bedroom_nw_north_bay
     type: bay_sill
     wall: w_nw_north
-    depth: 0.5
+    depth: 1.1
     sill: 2.55
     height: 0.45
     reason: "西北次卧北墙飘窗（z=1.10 凹进段）"
@@ -139,7 +139,7 @@ elements:
   - id: kitchen_north_bay
     type: bay_sill
     wall: w_kit_north
-    depth: 0.5
+    depth: 1.1
     sill: 2.55
     height: 0.45
     reason: "厨房北墙飘窗（z=0 北缘）"
