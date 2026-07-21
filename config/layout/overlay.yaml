@@ -148,11 +148,20 @@ elements:
   - id: entry_garden_floor
     type: floor_region
     points:
-      - { x: 10.8, z: 0.65 }
-      - { x: 15.25, z: 0.65 }
-      - { x: 15.25, z: 3.55 }
-      - { x: 10.8, z: 3.55 }
+      - { x: 10.8, z: 0.00 }
+      - { x: 15.25, z: 0.00 }
+      - { x: 15.25, z: 2.90 }
+      - { x: 10.8, z: 2.90 }
     reason: "入户花园地板"
+
+  - id: entry_foyer_floor
+    type: floor_region
+    points:
+      - { x: 10.80, z: 2.90 }
+      - { x: 13.40, z: 2.90 }
+      - { x: 13.40, z: 4.30 }
+      - { x: 10.80, z: 4.30 }
+    reason: "入户到客厅的过渡地面"
 
   - id: corridor_floor
     type: floor_region
