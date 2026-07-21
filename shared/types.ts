@@ -359,6 +359,7 @@ export interface WallSegment {
   fromRadius?: number;
   arcCenterX?: number;
   arcCenterZ?: number;
+  openings?: ResolvedOpening[];
 }
 
 export interface OverlayPoint {
@@ -373,7 +374,7 @@ export interface CurtainPoint extends OverlayPoint {
 }
 
 export type SceneElement =
-  | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }> }
+  | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; openings?: ResolvedOpening[] }
   | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   | {

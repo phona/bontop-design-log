@@ -622,11 +622,124 @@ export class HouseScene implements SceneApi {
       }
       return;
     }
-    const mesh = this.renderBox(el.x1, el.z1, el.x2, el.z2, height, WALL_THICKNESS, mat);
-    mesh.userData = { type: 'wall', objectId: el.id };
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    this.wallMeshes.push(mesh);
+    const openings = (el as { openings?: ResolvedOpening[] }).openings;
+    const doors = (openings ?? []).filter(o => o.type === 'door');
+    if (doors.length === 0) {
+      const mesh = this.renderBox(el.x1, el.z1, el.x2, el.z2, height, WALL_THICKNESS, mat);
+      mesh.userData = { type: 'wall', objectId: el.id };
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.wallMeshes.push(mesh);
+      return;
+    }
+    const dx = el.x2 - el.x1;
+    const dz = el.z2 - el.z1;
+    const len = Math.hypot(dx, dz);
+    if (len < 0.001) return;
+    const ux = dx / len;
+    const uz = dz / len;
+    const projected = doors.map(o => ({
+      o,
+      t: (o.x - el.x1) * ux + (o.z - el.z1) * uz,
+      half: o.width / 2,
+    })).sort((a, b) => a.t - b.t);
+    let cursor = 0;
+    for (const { o, t, half } of projected) {
+      const gapStart = Math.max(0, t - half);
+      const gapEnd = Math.min(len, t + half);
+      if (gapStart > cursor + 0.001) {
+        const sx1 = el.x1 + ux * cursor;
+        const sz1 = el.z1 + uz * cursor;
+        const sx2 = el.x1 + ux * gapStart;
+        const sz2 = el.z1 + uz * gapStart;
+        const mesh = this.renderBox(sx1, sz1, sx2, sz2, height, WALL_THICKNESS, mat);
+        mesh.userData = { type: 'wall', objectId: el.id };
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        this.wallMeshes.push(mesh);
+      }
+      this.renderDoor(o, ux, uz, el.x1, el.z1, t, half, height);
+      cursor = gapEnd;
+    }
+    if (cursor < len - 0.001) {
+      const sx1 = el.x1 + ux * cursor;
+      const sz1 = el.z1 + uz * cursor;
+      const mesh = this.renderBox(sx1, sz1, el.x2, el.z2, height, WALL_THICKNESS, mat);
+      mesh.userData = { type: 'wall', objectId: el.id };
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.wallMeshes.push(mesh);
+    }
+  }
+
+  private renderDoor(
+    o: ResolvedOpening,
+    ux: number, uz: number,
+    wallX1: number, wallZ1: number,
+    t: number, half: number,
+    wallHeight: number,
+  ) {
+    const hingeT = t - half;
+    const hx = wallX1 + ux * hingeT;
+    const hz = wallZ1 + uz * hingeT;
+    const doorHeight = o.height;
+    const sill = o.sill ?? 0;
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.6 });
+    const panelThick = 0.04;
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(o.width, doorHeight, panelThick),
+      doorMat,
+    );
+    const perpX = -uz;
+    const perpZ = ux;
+    const panelCx = hx + perpX * (o.width / 2);
+    const panelCz = hz + perpZ * (o.width / 2);
+    panel.position.set(panelCx, sill + doorHeight / 2, panelCz);
+    panel.rotation.y = Math.atan2(perpZ, perpX);
+    panel.userData = { type: 'door', objectId: o.id };
+    panel.castShadow = true;
+    panel.receiveShadow = true;
+    this.scene.add(panel);
+    this.wallMeshes.push(panel);
+    const frameDepth = 0.15;
+    const frameThick = 0.05;
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.7 });
+    const frameHeight = doorHeight + frameThick * 2;
+    const sillBottom = sill;
+    const sillTop = sill + doorHeight + frameThick * 2;
+    const leftFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(frameThick, frameHeight, frameDepth),
+      frameMat,
+    );
+    leftFrame.position.set(hx, (sillBottom + sillTop) / 2, hz);
+    leftFrame.rotation.y = Math.atan2(uz, ux);
+    leftFrame.userData = { type: 'door', objectId: `${o.id}:frame:left` };
+    this.scene.add(leftFrame);
+    this.wallMeshes.push(leftFrame);
+    const rightHingeT = t + half;
+    const rhx = wallX1 + ux * rightHingeT;
+    const rhz = wallZ1 + uz * rightHingeT;
+    const rightFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(frameThick, frameHeight, frameDepth),
+      frameMat,
+    );
+    rightFrame.position.set(rhx, (sillBottom + sillTop) / 2, rhz);
+    rightFrame.rotation.y = Math.atan2(uz, ux);
+    rightFrame.userData = { type: 'door', objectId: `${o.id}:frame:right` };
+    this.scene.add(rightFrame);
+    this.wallMeshes.push(rightFrame);
+    const topCenterT = t;
+    const tcx = wallX1 + ux * topCenterT;
+    const tcz = wallZ1 + uz * topCenterT;
+    const topFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(o.width + frameThick * 2, frameThick, frameDepth),
+      frameMat,
+    );
+    topFrame.position.set(tcx, sillTop - frameThick / 2, tcz);
+    topFrame.rotation.y = Math.atan2(uz, ux);
+    topFrame.userData = { type: 'door', objectId: `${o.id}:frame:top` };
+    this.scene.add(topFrame);
+    this.wallMeshes.push(topFrame);
   }
 
   private renderRailingRun(el: Extract<SceneElement, { type: 'railing_run' }>) {

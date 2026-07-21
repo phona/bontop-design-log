@@ -180,7 +180,7 @@ export class ProjectCatalog {
           type: 'service',
         };
       }
-      this.walls = resolved.walls.map((w) => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ }));
+      this.walls = resolved.walls.map((w) => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ, openings: w.openings }));
     } else {
       for (const r of layout.rooms) {
         this.rooms.set(r.id, mergeRoom(r, metaMap.get(r.id)));
