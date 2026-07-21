@@ -1,4 +1,4 @@
-# Design: Budget Advisor Enhancement
+# Design: AI Design Advisor Enhancement
 
 ## Status
 
@@ -6,31 +6,35 @@ Draft → pending implementation
 
 ## Scope
 
-This spec covers the budget-planning dimension enhancement for the bontop-design-log system. The current system has a complete budget calculation engine (17 categories, 3 calc modes, labor cost), but lacks an AI analysis feedback loop: AI can only read numbers via MCP, not provide analysis, attribution, what-if simulation, or pitfall guidance.
+This spec covers the AI-collaboration enhancement for the bontop-design-log system. The current system has a complete budget calculation engine (17 categories, 3 calc modes, labor cost) and a complete spatial geometry engine (vertex-based rooms/walls/openings), but AI can access almost none of this through MCP. The result: AI is a "data administrator" (reads numbers, records selections), not a "design advisor" (reasons about space, budget, and tradeoffs).
 
 ### In Scope
 
-Four server-side changes totaling ~550 lines, with **zero frontend changes, zero breaking changes, zero new npm dependencies**:
+Five server-side changes totaling ~700 lines, with **zero frontend changes, zero breaking changes, zero new npm dependencies**:
 
 1. **Overrun detection + attribution** — enhance `get_budget` to return `status` (`ok`/`near`/`over`) and `attribution` (top line items causing overrun)
 2. **Fast feedback on selection** — `set_selection` and `batch_set_selections` return `budgetImpact` (total delta, category deltas, new risks)
 3. **What-if simulation tool** — new `what_if` MCP tool that simulates selection changes without persisting; returns full budget snapshot + risks + diff
 4. **Pitfall knowledge base** — new `config/budget-pitfalls.yaml` + `server/pitfall-engine.ts` + 2 MCP tools (`get_pitfalls`, `recommend_allocation`), covering three knowledge types: budget traps, construction shortcuts, acceptance checkpoints
+5. **Spatial data exposure** — new MCP tools (`get_room_layout`, `get_furniture_inventory`) that expose room geometry (dimensions, walls, door/window openings), furniture inventory (counts + parsed dimensions from spec), and electrical markers, enabling AI to reason about fit, clearance, and layout without 3D visualization
 
 ### Out of Scope
 
-- Visual feedback loop (GLTF loading, screenshots, per-room 3D override) — user will use multimodal model with manual screenshots instead
+- Visual feedback loop (GLTF loading, screenshots, per-room 3D override) — the spatial data exposure (Change 5) gives AI enough information to reason about design from data alone; visual rendering remains a human-facing concern
 - Material archive enhancement (image_url, product_url, procurement status) — separate future work
 - AI analysis quality validation — validate empirically after implementation; add `analyze_budget` precomputation tool only if AI reasoning proves insufficient
 - Real-time push notifications (SSE/WebSocket) — current polling is sufficient
 - Trigger expression parsing for pitfalls (`selection.kitchen == 'open'` syntax) — pitfalls return all entries; AI filters contextually
 - Localized price data for Nanning — prices are research snapshots in `materials.yaml`
+- Furniture placement engine (automatic layout suggestion) — Change 5 exposes data; AI does the reasoning
 
 ## Background
 
 ### Current State
 
-The system's budget engine is functionally complete for calculation, but the AI feedback loop is broken at six points:
+The system has two rich data layers that AI cannot access:
+
+**Budget layer**: The budget engine is functionally complete for calculation, but the AI feedback loop is broken at six points:
 
 | Breakpoint | Evidence | Impact |
 |---|---|---|
@@ -40,6 +44,17 @@ The system's budget engine is functionally complete for calculation, but the AI 
 | No fast feedback | `mcp-server.ts:120` `set_selection` returns only `{ updated, entries }` | AI must make a second `get_budget` call to see impact |
 | No pitfall knowledge | `design-rules.yaml:114-176` has only 6 product-level risks (range hood airflow, tile glare) | AI has no renovation experience to draw on |
 | No allocation templates | `config/budget/base.json` is a single fixed 110k CNY baseline | AI cannot recommend alternative budget allocations |
+
+**Spatial layer**: The vertex engine produces rich room geometry, but MCP exposes almost none of it:
+
+| Data | Where it exists | MCP exposure | AI capability |
+|---|---|---|---|
+| Room dimensions (x, z, width, depth, height, area) | `ProjectCatalog.rooms` (derived from `resolveLayout`) | `get_project_summary` returns only `{id, name}` | AI cannot judge if furniture fits |
+| Door/window openings (position, width, height) | `RoomLayout.wallOpenings` (`shared/types.ts:41`) | Not exposed | AI cannot judge if furniture blocks door/window |
+| Wall segments (x1/z1/x2/z2, segments, openings) | `ProjectCatalog.walls` (`project-catalog.ts:183`) | Not exposed | AI cannot reason about wall placement |
+| Furniture inventory per room | `ProjectCatalog.furnishings` (`project-catalog.ts:140`) | Not exposed | AI does not know what furniture exists |
+| Furniture dimensions | `materials.yaml` spec field (e.g., `"2800×900×400mm"`) | `get_option_details` returns spec as raw text | AI cannot parse dimensions for spatial reasoning |
+| Electrical markers | `ProjectCatalog.electricalMarkers` (`project-catalog.ts:141`) | Not exposed | AI cannot reason about switch/outlet placement |
 
 Additionally, `mcp-server.ts:306` in `compare_schemes` has a bug: `priceDelta` is computed as unit-price difference, not total-cost difference, which is misleading. (The original design in `2026-07-12-full-renovation-tradeoff-system-design.md:390-391` intended `priceDelta` as a useful signal, but implementation made it unit-price difference rather than total-cost difference. Since fixing it to total-cost would require line-item attribution per topic — which is non-trivial — and `diff.budget` already provides the total-cost delta, this spec removes the misleading field rather than fixing it.)
 
@@ -55,10 +70,10 @@ Rather than rewriting these engines, this spec layers analysis on top of existin
 
 ### Goal
 
-Transform AI from "data administrator" to "budget advisor":
+Transform AI from "data administrator" to "design advisor":
 
-- **Before**: AI calls `get_budget`, reads numbers, user asks follow-up questions
-- **After**: AI calls `set_selection`, automatically receives budget impact + risks; calls `what_if` to compare alternatives; calls `get_pitfalls` to ground advice in renovation experience
+- **Before**: AI calls `get_budget`, reads numbers, user asks follow-up questions; AI cannot reason about space because room geometry and furniture dimensions are invisible via MCP
+- **After**: AI calls `set_selection`, automatically receives budget impact + risks; calls `what_if` to compare alternatives; calls `get_pitfalls` to ground advice in renovation experience; calls `get_room_layout` and `get_furniture_inventory` to reason about fit, clearance, and layout — all from data, no screenshots needed
 
 ## Design
 
@@ -862,6 +877,217 @@ Load `PitfallEngine` at startup, add to chokidar watch list (alongside `design-r
 
 ---
 
+### Change 5: Spatial Data Exposure
+
+#### Problem
+
+The vertex engine produces rich room geometry (dimensions, walls, door/window openings), `ProjectCatalog` already loads all of it (`rooms` with `wallOpenings`, `walls` with segments, `furnishings` with counts, `electricalMarkers`), but MCP exposes almost none of it. `get_project_summary` (`mcp-server.ts:29-39`) returns only `{id, name}` for rooms and `{id, name, perRoom}` for topics. The REST endpoint `/api/project` returns full geometry but is not accessible via MCP.
+
+The result: AI cannot reason about design from data. It cannot answer "does a 2.8m sofa fit in the living room?" or "will the bed block the window?" — it has no spatial information to reason with.
+
+#### Solution
+
+**5a. Spec parser utility** (new function, ~25 lines)
+
+Add a utility function that parses furniture dimension strings from `materials.yaml` spec fields:
+
+```typescript
+// server/spec-parser.ts (new file)
+export interface ParsedDimensions {
+  width: number;   // meters
+  height: number;  // meters
+  depth: number;   // meters
+}
+
+export function parseSpecDimensions(spec: string): ParsedDimensions | null {
+  // Parse patterns like "2800×900×400mm", "2.8×0.9×0.4m", "800x800mm"
+  const cleaned = spec.replace(/\s/g, '');
+  const match = cleaned.match(/(\d+(?:\.\d+)?)[×xX](\d+(?:\.\d+)?)(?:[×xX](\d+(?:\.\d+)?))?/);
+  if (!match) return null;
+
+  const toMeters = (val: number, str: string): number =>
+    str.endsWith('mm') ? val / 1000 : val;
+
+  const w = toMeters(parseFloat(match[1]), cleaned);
+  const h = toMeters(parseFloat(match[2]), cleaned);
+  const d = match[3] ? toMeters(parseFloat(match[3]), cleaned) : 0;
+
+  return { width: w, height: h, depth: d };
+}
+```
+
+**5b. `project-catalog.ts` — add `getRoomLayoutDetail(roomId)` method (~30 lines)**
+
+Add a method that returns the full spatial detail for a room, combining data already loaded in the catalog:
+
+```typescript
+// In ProjectCatalog class
+getRoomLayoutDetail(roomId: string): {
+  room: RoomLayout;
+  walls: WallSegment[];
+  furnishings: Record<string, number>;
+  electricalMarkers: ElectricalMarker[];
+  adjacentRooms: string[];
+} | undefined {
+  const room = this.rooms.get(roomId);
+  if (!room) return undefined;
+
+  // Find walls that form this room's boundary
+  const roomWalls = this.walls.filter(w => {
+    // A wall belongs to this room if either endpoint lies within the room's bounding box
+    const inX = (x: number) => x >= room.x - room.width / 2 - 0.01 && x <= room.x + room.width / 2 + 0.01;
+    const inZ = (z: number) => z >= room.z - room.depth / 2 - 0.01 && z <= room.z + room.depth / 2 + 0.01;
+    return (inX(w.x1) && inZ(w.z1)) || (inX(w.x2) && inZ(w.z2));
+  });
+
+  // Find adjacent rooms by checking which other rooms share wall endpoints
+  const adjacentRooms = new Set<string>();
+  for (const w of roomWalls) {
+    for (const [otherId, other] of this.rooms) {
+      if (otherId === roomId) continue;
+      const inX = (x: number) => x >= other.x - other.width / 2 - 0.01 && x <= other.x + other.width / 2 + 0.01;
+      const inZ = (z: number) => z >= other.z - other.depth / 2 - 0.01 && z <= other.z + other.depth / 2 + 0.01;
+      if ((inX(w.x1) && inZ(w.z1)) || (inX(w.x2) && inZ(w.z2))) {
+        adjacentRooms.add(otherId);
+      }
+    }
+  }
+
+  return {
+    room,
+    walls: roomWalls,
+    furnishings: this.furnishings[roomId] ?? {},
+    electricalMarkers: this.electricalMarkers.filter(m => m.roomId === roomId),
+    adjacentRooms: [...adjacentRooms],
+  };
+}
+```
+
+**5c. `mcp-server.ts` — 2 new tools (~80 lines)**
+
+Register `get_room_layout`:
+```typescript
+server.registerTool(
+  'get_room_layout',
+  {
+    title: 'Get room layout',
+    description: 'Return full spatial detail for a room: dimensions, walls, door/window openings, furnishings, electrical markers, and adjacent rooms. If roomId omitted, returns all rooms.',
+    inputSchema: z.object({ roomId: z.string().optional() }),
+  },
+  async (args) => {
+    if (args.roomId) {
+      const detail = catalog.getRoomLayoutDetail(args.roomId);
+      if (!detail) return text({ error: `room not found: ${args.roomId}` });
+      return text(detail);
+    }
+    // Return all rooms
+    const allRooms = catalog.getRooms().map(r => {
+      const detail = catalog.getRoomLayoutDetail(r.id);
+      return detail ?? { room: r, walls: [], furnishings: {}, electricalMarkers: [], adjacentRooms: [] };
+    });
+    return text(allRooms);
+  }
+);
+```
+
+Register `get_furniture_inventory`:
+```typescript
+server.registerTool(
+  'get_furniture_inventory',
+  {
+    title: 'Get furniture inventory',
+    description: 'Return all furniture across all rooms with parsed dimensions from spec field. Combines house.yaml furnishings counts with materials.yaml dimensions.',
+    inputSchema: z.object({ roomId: z.string().optional() }),
+  },
+  async (args) => {
+    const { parseSpecDimensions } = await import('./spec-parser.js');
+    const furnishings = catalog.getFurnishings();
+    const result: Record<string, Array<{
+      type: string;
+      count: number;
+      dimensions?: { width: number; height: number; depth: number };
+      spec?: string;
+      materialId?: string;
+    }>> = {};
+
+    const roomIds = args.roomId ? [args.roomId] : Object.keys(furnishings);
+    for (const rid of roomIds) {
+      const items = furnishings[rid];
+      if (!items) continue;
+      result[rid] = [];
+      for (const [type, count] of Object.entries(items)) {
+        if (!count || count <= 0) continue;
+        // Find material with matching type in spec or model field
+        const material = findMaterialByFurnitureType(type);
+        const dimensions = material ? parseSpecDimensions(material.spec) : null;
+        result[rid].push({
+          type,
+          count,
+          dimensions: dimensions ?? undefined,
+          spec: material?.spec,
+          materialId: material?.id,
+        });
+      }
+    }
+    return text(result);
+  }
+);
+```
+
+Where `findMaterialByFurnitureType` is a helper (~20 lines) that maps furniture type names to material IDs by searching `materials.yaml` entries whose `model` or `name` contains the type:
+
+```typescript
+function findMaterialByFurnitureType(type: string): MaterialItem | undefined {
+  const materials = catalog.getAllMaterials(); // need to add this getter
+  return materials.find(m =>
+    m.model.toLowerCase().includes(type.replace(/_/g, ' ')) ||
+    m.name.toLowerCase().includes(type.replace(/_/g, ' ')) ||
+    m.alternative_group === type
+  );
+}
+```
+
+Add `getAllMaterials()` to `ProjectCatalog` (~5 lines):
+```typescript
+getAllMaterials(): MaterialItem[] {
+  // Return raw materials from the loaded materials.yaml
+  return this.rawMaterials ?? [];
+}
+```
+
+Store raw materials in constructor:
+```typescript
+this.rawMaterials = materials.materials;
+```
+
+#### Design Decisions
+
+- **Adjacency via bounding-box overlap**: The `getRoomLayoutDetail` method uses a simple heuristic (endpoint within room bounding box) to find walls and adjacent rooms. This is not perfect for non-rectangular rooms (e.g., L-shaped kitchen, 5-sided balcony), but it is a useful approximation. A future iteration could use the vertex engine's `boundary` arrays for exact adjacency. The current approach is safe because the vertex engine already resolves rooms to `x/z/width/depth` bounding boxes.
+
+- **Spec parsing is best-effort**: `materials.yaml` spec fields are human-written text (e.g., `"2800×900×400mm"`, `"800x800mm"`, `"18L"`). The parser handles `×` and `x` separators and converts mm to meters. Unparseable specs (e.g., `"18L"`, `"L型"`) return `null`, and the MCP response omits `dimensions` for those items. AI can still see the raw `spec` string for manual interpretation.
+
+- **`getAllMaterials` getter**: `ProjectCatalog` currently only stores materials as `DesignOption` in topics. The raw `MaterialItem[]` array is needed for spec parsing. Adding `rawMaterials` to the constructor and a getter is the minimal change.
+
+- **No furniture positions**: `house.yaml` furnishings currently only store counts (`{bed_180: 1}`), not positions. Change 5 does not add furniture position data (that is future work). AI knows what furniture exists in each room and its dimensions, but not where it is placed. This is sufficient for "does it fit?" and "how much space is left?" reasoning, but not for "is the sofa too close to the TV?" reasoning.
+
+#### Impact
+
+- New `server/spec-parser.ts` (~25 lines)
+- `server/project-catalog.ts`: add `getRoomLayoutDetail` + `getAllMaterials` + `rawMaterials` field (~40 lines)
+- `server/mcp-server.ts`: 2 new tools (~80 lines)
+- `shared/types.ts`: optional, re-export `ParsedDimensions` from spec-parser
+- **0 frontend changes, 0 breaking changes**
+
+#### Verification
+
+- `npm run typecheck` passes
+- `npm run test:server` passes
+- Manual MCP call `get_room_layout({ roomId: "master_bedroom" })` returns room dimensions, wall segments, door/window openings, furnishings, electrical markers, and adjacent rooms
+- Manual MCP call `get_furniture_inventory({ roomId: "living_dining" })` returns sofa with parsed dimensions `{ width: 2.8, height: 0.9, depth: 0.4 }`
+- Manual MCP call `get_room_layout()` (no roomId) returns all 11 rooms
+
+---
+
 ## Execution Order
 
 | Step | Change | Depends On | Verification |
@@ -870,8 +1096,9 @@ Load `PitfallEngine` at startup, add to chokidar watch list (alongside `design-r
 | 2 | Change 2: Fast feedback on selection | Change 1 (uses `status`) | typecheck + test:server |
 | 3 | Change 3: What-if simulation tool | Change 1 (uses `attribution`) | typecheck + manual MCP |
 | 4 | Change 4: Pitfall knowledge base | None (independent) | typecheck + manual MCP |
+| 5 | Change 5: Spatial data exposure | None (independent) | typecheck + manual MCP |
 
-Changes 1 and 4 can be done in parallel. Changes 2 and 3 depend on Change 1.
+Changes 1, 4, and 5 are independent and can be done in parallel. Changes 2 and 3 depend on Change 1.
 
 After each step, also run:
 ```bash
@@ -884,11 +1111,11 @@ npx tsx scripts/verify-layout.ts
 
 | Metric | Value |
 |---|---|
-| New code (server) | ~550 lines |
+| New code (server) | ~700 lines |
 | New config files | 1 (`config/budget-pitfalls.yaml`) |
-| New server files | 1 (`server/pitfall-engine.ts`) |
-| Modified files | 4 (`shared/types.ts`, `budget-calculator.ts`, `design-state.ts`, `mcp-server.ts`) + `server/index.ts` |
-| New MCP tools | 3 (`what_if`, `get_pitfalls`, `recommend_allocation`) |
+| New server files | 2 (`server/pitfall-engine.ts`, `server/spec-parser.ts`) |
+| Modified files | 5 (`shared/types.ts`, `budget-calculator.ts`, `design-state.ts`, `mcp-server.ts`, `project-catalog.ts`) + `server/index.ts` |
+| New MCP tools | 5 (`what_if`, `get_pitfalls`, `recommend_allocation`, `get_room_layout`, `get_furniture_inventory`) |
 | Enhanced MCP tools | 2 (`set_selection`, `batch_set_selections`) |
 | Frontend changes | 0 |
 | Breaking changes | 0 |
@@ -909,3 +1136,9 @@ npx tsx scripts/verify-layout.ts
 6. **Pitfall triggers are informational**: The `trigger` field (e.g., `selection.kitchen == 'open'`) is not evaluated by `PitfallEngine`. All pitfalls are returned regardless of trigger; AI must filter contextually. This is intentional to avoid coupling `PitfallEngine` to `RuleEngine`'s DSL.
 
 7. **`what_if` does not validate option existence**: The tool constructs a temporary scheme by deep-copying and overriding selections. If `optionId` does not exist in the catalog, `BudgetCalculator.calculate()` will skip that line item (returns 0 cost). This is safe but may produce misleading results. A future iteration could add validation.
+
+8. **No furniture positions**: `house.yaml` furnishings store counts only (`{bed_180: 1}`), not positions. Change 5 exposes furniture dimensions and counts, but not where furniture is placed in a room. AI can reason about fit ("does a 2.8m sofa fit in a 4.5m wall?") and clearance ("how much space remains after placing bed and wardrobe?"), but not about placement conflicts ("is the sofa blocking the door swing?"). Adding furniture positions is future work.
+
+9. **Adjacency heuristic is approximate**: `getRoomLayoutDetail` uses bounding-box endpoint checks to find walls and adjacent rooms. For non-rectangular rooms (L-shaped kitchen, 5-sided balcony), this may miss or include extra walls. A future iteration could use the vertex engine's `boundary` arrays for exact adjacency.
+
+10. **Spec parsing is best-effort**: Not all `materials.yaml` spec fields contain dimensions (e.g., `"18L"`, `"L型"`). The parser returns `null` for these, and the MCP response omits `dimensions`. AI can still read the raw `spec` string.
