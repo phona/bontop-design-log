@@ -28,6 +28,9 @@ const GLASS_OPACITY = 0.6;
 export const GLASS_THICKNESS = 0.15; // 15cm glass panel (increased for top-down visibility)
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
+const SHAFT_FLOOR = '#3a3a3a';
+const SHAFT_WALL = '#555555';
+const ELEVATOR_DOOR_COLOR = 0x888899;
 
 type LayoutBounds = { minX: number; maxX: number; minZ: number; maxZ: number };
 const DEFAULT_LAYOUT_BOUNDS: LayoutBounds = { minX: -1.6, maxX: 16.4, minZ: -2.9, maxZ: 12.0 };
@@ -509,10 +512,11 @@ export class HouseScene implements SceneApi {
     const floorGeo = pts
       ? new THREE.ShapeGeometry(this.buildRoundedShape(pts.map(p => ({ x: p.x - r.x, z: r.z - p.z, radius: p.radius }))))
       : new THREE.PlaneGeometry(r.width, r.depth);
+    const isShaft = r.id === 'elevator_shaft';
     const floorMat = new THREE.MeshStandardMaterial({
-      color: DEFAULT_FLOOR,
-      roughness: 0.75,
-      metalness: 0.05,
+      color: isShaft ? SHAFT_FLOOR : DEFAULT_FLOOR,
+      roughness: isShaft ? 0.9 : 0.75,
+      metalness: isShaft ? 0.1 : 0.05,
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
@@ -610,7 +614,8 @@ export class HouseScene implements SceneApi {
   }
 
   private renderWallSegment(el: Extract<SceneElement, { type: 'wall' }>, height: number) {
-    const mat = new THREE.MeshStandardMaterial({ color: DEFAULT_PAINT, roughness: 0.85 });
+    const isShaftWall = el.id.includes('elev') || el.id.includes('foyer_outer_east') || el.id.includes('foyer_north_east');
+    const mat = new THREE.MeshStandardMaterial({ color: isShaftWall ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 });
     const segs = (el as { segments?: Array<{ x1: number; z1: number; x2: number; z2: number }> }).segments;
     if (segs && segs.length > 1) {
       for (const s of segs) {
@@ -684,6 +689,57 @@ export class HouseScene implements SceneApi {
     const hz = wallZ1 + uz * hingeT;
     const doorHeight = o.height;
     const sill = o.sill ?? 0;
+    const isElevator = o.id === 'd_elev';
+    if (isElevator) {
+      const elevMat = new THREE.MeshStandardMaterial({ color: ELEVATOR_DOOR_COLOR, roughness: 0.3, metalness: 0.7 });
+      const panelThick = 0.03;
+      const panel = new THREE.Mesh(
+        new THREE.BoxGeometry(o.width, doorHeight, panelThick),
+        elevMat,
+      );
+      const cx = wallX1 + ux * t;
+      const cz = wallZ1 + uz * t;
+      panel.position.set(cx, sill + doorHeight / 2, cz);
+      panel.rotation.y = Math.atan2(uz, ux);
+      panel.userData = { type: 'door', objectId: o.id };
+      panel.castShadow = true;
+      this.scene.add(panel);
+      this.wallMeshes.push(panel);
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.5 });
+      const frameThick = 0.04;
+      const frameDepth = 0.12;
+      const leftFrame = new THREE.Mesh(
+        new THREE.BoxGeometry(frameThick, doorHeight + frameThick * 2, frameDepth),
+        frameMat,
+      );
+      leftFrame.position.set(hx, sill + (doorHeight + frameThick * 2) / 2, hz);
+      leftFrame.rotation.y = Math.atan2(uz, ux);
+      leftFrame.userData = { type: 'door', objectId: `${o.id}:frame:left` };
+      this.scene.add(leftFrame);
+      this.wallMeshes.push(leftFrame);
+      const rightFrame = new THREE.Mesh(
+        new THREE.BoxGeometry(frameThick, doorHeight + frameThick * 2, frameDepth),
+        frameMat,
+      );
+      const rightHingeT = t + half;
+      const rhx = wallX1 + ux * rightHingeT;
+      const rhz = wallZ1 + uz * rightHingeT;
+      rightFrame.position.set(rhx, sill + (doorHeight + frameThick * 2) / 2, rhz);
+      rightFrame.rotation.y = Math.atan2(uz, ux);
+      rightFrame.userData = { type: 'door', objectId: `${o.id}:frame:right` };
+      this.scene.add(rightFrame);
+      this.wallMeshes.push(rightFrame);
+      const topFrame = new THREE.Mesh(
+        new THREE.BoxGeometry(o.width + frameThick * 2, frameThick, frameDepth),
+        frameMat,
+      );
+      topFrame.position.set(cx, sill + doorHeight + frameThick, cz);
+      topFrame.rotation.y = Math.atan2(uz, ux);
+      topFrame.userData = { type: 'door', objectId: `${o.id}:frame:top` };
+      this.scene.add(topFrame);
+      this.wallMeshes.push(topFrame);
+      return;
+    }
     const doorMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.6 });
     const panelThick = 0.04;
     const panel = new THREE.Mesh(

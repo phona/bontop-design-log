@@ -95,6 +95,11 @@ rooms:
     boundary: [v_be_sw, v_be_ne, v_se_r, v_be_se_s]
     height: 3.0
     type: private
+  - id: elevator_shaft
+    name: 电梯井
+    boundary: [v_foyer_se, v_ent_se, v_foyer_ne, v_be_sw]
+    height: 3.0
+    type: service
 
 platform:
   id: west_platform
@@ -118,15 +123,23 @@ walls:
   - { id: w_east_upper, from: v_se_r,    to: v_be_ne,  height: 3.0 }
   - { id: w_foyer_outer_east, from: v_ent_se, to: v_foyer_ne, height: 3.0 }
   - { id: w_foyer_north_east, from: v_foyer_ne, to: v_be_ne, height: 3.0 }
+  - { id: w_elev_south, from: v_be_sw, to: v_foyer_ne, height: 3.0 }
   # 入户花园围墙（北墙为栏杆开放边）
   - { id: w_ent_east,   from: v_ent_ne,  to: v_ent_se, height: 3.0 }
-  - id: w_ent_south
-    from: v_ent_se
-    to: v_ent_sw
+  - id: w_ent_south_w
+    from: v_ent_sw
+    to: v_foyer_se
     height: 3.0
     openings:
       - { id: d_ent, type: door, anchor: v_ent_sw, offset: 1.5, width: 1.0, height: 2.1, room: entry_garden }
+  - id: w_ent_south_e
+    from: v_foyer_se
+    to: v_ent_se
+    height: 3.0
+    openings:
+      - { id: d_elev, type: door, anchor: v_foyer_se, offset: 0.925, width: 1.0, height: 2.1, room: elevator_shaft }
   - { id: w_ent_west,  from: v_ent_sw,   to: v_ent_nw, height: 3.0 }
+  - { id: w_ent_north_railing, from: v_ent_ne, to: v_ent_nw, height: 1.0 }
   # 入户过渡区东墙（承重墙）
   - { id: w_foyer_east, from: v_foyer_se, to: v_liv_se, height: 3.0 }
   # 外框 — 北墙（左翼凹进 z=1.10，v_nw→v_bath_nw→v_bath_ne 为幕墙；VRV/厨房北墙 z=0）

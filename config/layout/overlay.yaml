@@ -28,6 +28,9 @@ suppress:
   - id: suppress_north_recess
     walls: [w_bath_north, w_nw_north]
     reason: "主卫/西北次卧北墙实体删除，改玻璃幕墙"
+  - id: suppress_entry_north_railing
+    wall: w_ent_north_railing
+    reason: "入户花园北边实墙删除，改栏杆"
 
 elements:
   # 西墙 + 西南圆角 + 南墙西段 (w_mb_south + w_st_south)
@@ -41,6 +44,12 @@ elements:
   - id: vrv_nw_railing
     type: railing_run
     walls: [w_vrv_nw_gap, w_vrv_north]
+    height: 1.0
+
+  # 入户花园北边栏杆（z=0 开放边）
+  - id: entry_garden_north_railing
+    type: railing_run
+    wall: w_ent_north_railing
     height: 1.0
 
   # 厨房北墙玻璃幕墙
