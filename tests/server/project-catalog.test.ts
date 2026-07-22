@@ -91,6 +91,42 @@ describe('ProjectCatalog', () => {
     assert.equal(platform?.name, '西设备平台');
     assert.ok(!catalog.getRooms().some((r) => r.id === 'west_platform'));
   });
+
+  it('getAllMaterials returns raw material items', () => {
+    const catalog = ProjectCatalog.load('.');
+    const materials = catalog.getAllMaterials();
+    assert.ok(materials.length >= 28);
+    const sofa = materials.find((m) => m.id === 'sofa_3seat_01');
+    assert.ok(sofa);
+    assert.equal(sofa.spec, '2800×900×400mm');
+    assert.equal(sofa.alternative_group, 'sofa');
+  });
+
+  it('getRoomLayoutDetail returns room with walls, openings, furnishings', () => {
+    const catalog = ProjectCatalog.load('.');
+    const detail = catalog.getRoomLayoutDetail('master_bedroom');
+    assert.ok(detail);
+    assert.equal(detail.room.id, 'master_bedroom');
+    assert.ok(detail.room.width > 0);
+    assert.ok(detail.room.depth > 0);
+    assert.ok(detail.walls.length > 0, 'must find boundary walls');
+    assert.ok(detail.furnishings.bed_180 === 1);
+    assert.ok(Array.isArray(detail.electricalMarkers));
+    assert.ok(Array.isArray(detail.adjacentRooms));
+  });
+
+  it('getRoomLayoutDetail returns undefined for unknown room', () => {
+    const catalog = ProjectCatalog.load('.');
+    assert.equal(catalog.getRoomLayoutDetail('nonexistent_room'), undefined);
+  });
+
+  it('getRoomLayoutDetail includes wall openings for rooms with doors', () => {
+    const catalog = ProjectCatalog.load('.');
+    const detail = catalog.getRoomLayoutDetail('master_bedroom');
+    assert.ok(detail);
+    const openings = detail.walls.flatMap((w) => w.openings ?? []);
+    assert.ok(openings.length > 0, 'master_bedroom must have at least one door opening');
+  });
 });
 
 describe('ProjectCatalog — vertex v2.0 data path', () => {

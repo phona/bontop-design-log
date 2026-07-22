@@ -94,6 +94,7 @@ export class ProjectCatalog {
   private electricalMarkers: ElectricalMarker[] = [];
   private walls: WallSegment[] = [];
   private layoutSource: string = '';
+  private rawMaterials: MaterialItem[] = [];
 
   constructor(
     materials: MaterialsYaml,
@@ -105,6 +106,7 @@ export class ProjectCatalog {
     houseMeta?: HouseYaml,
     layoutSource?: string
   ) {
+    this.rawMaterials = materials.materials;
     for (const m of materials.materials) {
       const opt = materialToOption(m);
       if (!opt) continue;
@@ -301,5 +303,49 @@ export class ProjectCatalog {
 
   isValidRoom(roomId: string): boolean {
     return this.rooms.has(roomId);
+  }
+
+  getAllMaterials(): MaterialItem[] {
+    return this.rawMaterials;
+  }
+
+  getRoomLayoutDetail(roomId: string): {
+    room: RoomLayout;
+    walls: WallSegment[];
+    furnishings: Record<string, number>;
+    electricalMarkers: ElectricalMarker[];
+    adjacentRooms: string[];
+  } | undefined {
+    const room = this.rooms.get(roomId);
+    if (!room) return undefined;
+
+    const EPS = 0.01;
+    const inRoom = (x: number, z: number, r: RoomLayout): boolean =>
+      x >= r.x - r.width / 2 - EPS &&
+      x <= r.x + r.width / 2 + EPS &&
+      z >= r.z - r.depth / 2 - EPS &&
+      z <= r.z + r.depth / 2 + EPS;
+
+    const roomWalls = this.walls.filter(
+      (w) => inRoom(w.x1, w.z1, room) || inRoom(w.x2, w.z2, room)
+    );
+
+    const adjacentRooms = new Set<string>();
+    for (const w of roomWalls) {
+      for (const [otherId, other] of this.rooms) {
+        if (otherId === roomId) continue;
+        if (inRoom(w.x1, w.z1, other) || inRoom(w.x2, w.z2, other)) {
+          adjacentRooms.add(otherId);
+        }
+      }
+    }
+
+    return {
+      room,
+      walls: roomWalls,
+      furnishings: this.furnishings[roomId] ?? {},
+      electricalMarkers: this.electricalMarkers.filter((m) => m.roomId === roomId),
+      adjacentRooms: [...adjacentRooms],
+    };
   }
 }
