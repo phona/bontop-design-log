@@ -458,6 +458,18 @@ export function createMcpServer(deps: McpDeps): McpServer {
       }),
     },
     async (args) => {
+      for (const change of args.changes) {
+        if (!catalog.isValidTopic(change.topic)) {
+          return text({ error: `what_if: unknown topic "${change.topic}"` });
+        }
+        if (change.optionId !== null && !catalog.isValidOption(change.topic, change.optionId)) {
+          return text({ error: `what_if: unknown option "${change.optionId}" for topic "${change.topic}"` });
+        }
+        if (change.roomId !== undefined && !catalog.isValidRoom(change.roomId)) {
+          return text({ error: `what_if: unknown room "${change.roomId}"` });
+        }
+      }
+
       const current = state.getCurrentScheme();
       const calc = getBudgetCalculator();
       const engine = getRuleEngine();

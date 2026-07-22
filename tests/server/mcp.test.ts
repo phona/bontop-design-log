@@ -222,6 +222,36 @@ describe('MCP remote', () => {
     assert.ok(floorItems.length > 0, 'simulated budget must contain master_bedroom floor line item');
   });
 
+  it('what_if rejects invalid optionId', async () => {
+    const result = await client.callTool({
+      name: 'what_if',
+      arguments: { changes: [{ topic: 'hvac', optionId: 'ZZZZZ' }] },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.error, 'what_if must return error for invalid optionId');
+  });
+
+  it('what_if rejects invalid topic', async () => {
+    const result = await client.callTool({
+      name: 'what_if',
+      arguments: { changes: [{ topic: 'nonexistent', optionId: 'A1' }] },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.error, 'what_if must return error for invalid topic');
+  });
+
+  it('what_if rejects invalid roomId', async () => {
+    const result = await client.callTool({
+      name: 'what_if',
+      arguments: { changes: [{ topic: 'floor', optionId: 'floor_tile_01', roomId: 'nonexistent_room' }] },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.error, 'what_if must return error for invalid roomId');
+  });
+
   it('compare_schemes priceDelta reflects total-cost delta', async () => {
     // Ensure current scheme has a known floor selection
     await client.callTool({
