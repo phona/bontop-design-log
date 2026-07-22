@@ -1,0 +1,339 @@
+version: "1.0"
+
+pitfalls:
+  # === Budget Traps (type: budget) ===
+  - id: waterproof_overshoot
+    type: budget
+    stage: waterproof
+    category: waterproof
+    trigger: always
+    severity: high
+    title: "防水常超 30%"
+    description: "拆改后需修补防水层;老房水管老化易漏水,实际防水面积常比设计图大"
+    mitigation: "预算上浮 30%;拆改前做闭水试验;确认防水范围含墙面 1.8m"
+
+  - id: open_kitchen_hood
+    type: budget
+    stage: installation
+    category: range_hood
+    trigger: "selection.kitchen == 'open'"
+    severity: high
+    title: "开放厨房油烟机别省"
+    description: "开放式厨房必须 ≥22m³/min 侧吸,否则全屋串味,窗帘家具沾油"
+    mitigation: "选 22m³/min 以上;预算 2500+;侧吸比顶吸好"
+
+  - id: curtain_hardcoded
+    type: budget
+    stage: installation
+    category: curtains
+    trigger: always
+    severity: medium
+    title: "玻璃幕窗帘是刚需"
+    description: "全屋玻璃幕墙,窗帘不可省;纱帘+遮光帘;厨卫用防水卷帘/百叶"
+    mitigation: "预算 4000+;主卧/客厅/书房预留电动窗帘电源"
+
+  - id: smart_zero_line
+    type: budget
+    stage: water_electric
+    category: smart_home
+    trigger: always
+    severity: medium
+    title: "智能零线预留成本"
+    description: "智能开关需零线,后期改造成本 10 倍(需拆墙走线)"
+    mitigation: "水电阶段全屋预留零线;预算 2000;不上调光/自动化"
+
+  - id: contingency_reserve
+    type: budget
+    stage: planning
+    category: contingency
+    trigger: always
+    severity: high
+    title: "不可预见费留 10%"
+    description: "老房拆改常发现隐藏问题(承重墙位置/管道老化/梁位);10% 不可预见费是底线"
+    mitigation: "totalBudget * 10% 作为 contingency;拆改前做全面检查"
+
+  - id: demolition_unknown
+    type: budget
+    stage: demolition
+    category: demolition
+    trigger: always
+    severity: medium
+    title: "拆改范围不确定"
+    description: "设计图标注的非承重墙需物业/设计院确认;承重墙绝对不能拆"
+    mitigation: "拆改前获取竣工图;物业审批;预留拆改后的修补费用"
+
+  - id: hvac_platform
+    type: budget
+    stage: installation
+    category: hvac
+    trigger: always
+    severity: high
+    title: "中央空调外机散热"
+    description: "西设备平台仅 2.48㎡,外机叠放散热差、噪音大、维修难"
+    mitigation: "优先多联机;外机不叠放;预留检修空间;确认平台承重"
+
+  - id: tile_waste_rate
+    type: budget
+    stage: masonry
+    category: masonry
+    trigger: always
+    severity: medium
+    title: "瓷砖损耗率 5-8%"
+    description: "异形房间(弧角/飘窗)瓷砖切割损耗大;大砖(800x800)比小砖损耗高"
+    mitigation: "预算含 5-8% 损耗;弧角区域用小砖;连纹大砖损耗更高"
+
+  - id: floor_vs_furniture_tradeoff
+    type: budget
+    stage: planning
+    category: tradeoff
+    trigger: manual
+    severity: low
+    title: "地板 vs 家具升级优先级"
+    description: "地板每天踩,铺了难换(需砸砖);家具可后期逐步升级;硬装优先于软装"
+    mitigation: "优先升级地板和硬装;家具先用基础款;沙发/床垫可后期换"
+
+  # === Construction Shortcuts (type: construction) ===
+  - id: waterproof_shortcut
+    type: construction
+    stage: waterproof
+    category: waterproof
+    trigger: always
+    severity: high
+    title: "防水偷工减料重灾区"
+    description: "涂刷遍数不够(应 2-3 遍)、墙面高度不够(淋浴区应 1.8m)、防水层破损未修补、管根/阴角未做圆弧处理"
+    mitigation: "要求施工队:遍数≥2遍;淋浴区墙面≥1.8m;管根/阴角做圆弧+网格布;涂刷后做保护层"
+
+  - id: electric_shortcut
+    type: construction
+    stage: water_electric
+    category: water_electric
+    trigger: always
+    severity: high
+    title: "水电偷工减料重灾区"
+    description: "线管质量差(应阻燃PVC)、单管穿线过多(不超过管径40%)、零线未预留(智能开关需要)、线管接头未用胶水、强弱电未分管"
+    mitigation: "要求:阻燃PVC线管;单管穿线≤40%;全屋预留零线;强弱电分管间距≥30cm"
+
+  - id: masonry_shortcut
+    type: construction
+    stage: masonry
+    category: masonry
+    trigger: always
+    severity: high
+    title: "泥瓦偷工减料重灾区"
+    description: "找平层太薄(应≥2cm)、瓷砖背胶未刷/刷不够、留缝太小(应1.5-2mm)、空鼓(>15%不合格)、地漏处坡度不够"
+    mitigation: "要求:找平≥2cm;大砖刷背胶;留缝1.5-2mm;铺贴后24h检查空鼓;卫生间坡度≥1%"
+
+  - id: painting_shortcut
+    type: construction
+    stage: painting
+    category: painting
+    trigger: always
+    severity: medium
+    title: "油漆偷工减料重灾区"
+    description: "腻子遍数不够(应2-3遍)、底漆不刷或兑水太多、阴阳角不直、接缝处不开裂处理"
+    mitigation: "要求:腻子≥2遍;底漆必刷;阴阳角用PVC角条;接缝处贴网格布"
+
+  - id: carpentry_shortcut
+    type: construction
+    stage: carpentry
+    category: carpentry
+    trigger: always
+    severity: medium
+    title: "木工偷工减料重灾区"
+    description: "吊顶龙骨间距过大(应≤400mm)、石膏板拼接处未留缝、柜体背板太薄(应≥9mm)、五金件以次充好"
+    mitigation: "要求:龙骨间距≤400mm;石膏板留V型缝;背板≥9mm;五金用品牌(海蒂诗/百隆)"
+
+  - id: door_window_shortcut
+    type: construction
+    stage: installation
+    category: doors_windows
+    trigger: always
+    severity: medium
+    title: "门窗安装偷工减料重灾区"
+    description: "门框灌浆不实、合页螺丝少打、密封胶打得不均匀、门吸位置不合理"
+    mitigation: "要求:门框灌浆密实;合页螺丝全打;密封胶均匀无断点;门吸避开踢脚线"
+
+  - id: cabinet_install_shortcut
+    type: construction
+    stage: installation
+    category: kitchen_cabinet
+    trigger: always
+    severity: medium
+    title: "橱柜安装偷工减料重灾区"
+    description: "柜体不水平、台面拼接缝明显、五金件未调阻尼、下水管未做存水弯"
+    mitigation: "要求:水平仪校正;台面拼接打磨;五金调阻尼;下水管做存水弯防臭"
+
+  - id: sanitary_install_shortcut
+    type: construction
+    stage: installation
+    category: sanitary
+    trigger: always
+    severity: medium
+    title: "卫浴安装偷工减料重灾区"
+    description: "马桶法兰圈未装/装歪、地漏未做存水弯、花洒混水阀高度不对、浴室柜未固定"
+    mitigation: "要求:法兰圈正确安装;地漏存水弯;混水阀高度110cm;浴室柜膨胀螺丝固定"
+
+  # === Acceptance Checkpoints (type: acceptance) ===
+  - id: waterproof_acceptance
+    type: acceptance
+    stage: waterproof
+    category: waterproof
+    trigger: always
+    severity: high
+    title: "防水验收要点"
+    description: "闭水试验:蓄水深度≥2cm,持续24-48小时,楼下无渗漏;墙面防水高度:淋浴区≥1.8m,其他≥0.3m"
+    mitigation: "工具:闭水试验;检查墙面高度;目测防水层无破损"
+    checklist:
+      - "闭水试验 24-48h 无渗漏"
+      - "淋浴区墙面防水 ≥1.8m"
+      - "管根/阴角做圆弧处理"
+      - "防水层无破损/气泡"
+
+  - id: electric_acceptance
+    type: acceptance
+    stage: water_electric
+    category: water_electric
+    trigger: always
+    severity: high
+    title: "水电验收要点"
+    description: "水管打压:0.8MPa 保压30分钟无压降;电线绝缘测试;线管材质确认;穿线数量检查"
+    mitigation: "工具:打压泵、绝缘摇表;检查线管阻燃标识;数穿线数量"
+    checklist:
+      - "水管打压 0.8MPa 30min 无压降"
+      - "电线绝缘测试合格"
+      - "线管阻燃PVC(看标识)"
+      - "单管穿线 ≤40%管径"
+      - "强弱电分管间距 ≥30cm"
+      - "全屋零线预留"
+
+  - id: masonry_acceptance
+    type: acceptance
+    stage: masonry
+    category: masonry
+    trigger: always
+    severity: medium
+    title: "泥瓦验收要点"
+    description: "空鼓率<5%(空鼓锤)、平整度2m靠尺±2mm、阴阳角方正、卫生间坡度泼水试验、留缝均匀"
+    mitigation: "工具:空鼓锤、2m靠尺、塞尺、水平仪"
+    checklist:
+      - "空鼓率 <5%(空鼓锤全敲)"
+      - "平整度 2m靠尺 ±2mm"
+      - "阴阳角方正(用角尺)"
+      - "卫生间泼水试验无积水"
+      - "留缝均匀 1.5-2mm"
+      - "地漏处坡度正确"
+
+  - id: painting_acceptance
+    type: acceptance
+    stage: painting
+    category: painting
+    trigger: always
+    severity: low
+    title: "油漆验收要点"
+    description: "墙面无明显色差、无流坠、无砂眼、阴阳角顺直、收边整齐"
+    mitigation: "工具:手电筒侧照、目测"
+    checklist:
+      - "无色差(自然光下)"
+      - "无流坠/砂眼"
+      - "阴阳角顺直"
+      - "收边整齐"
+
+  - id: carpentry_acceptance
+    type: acceptance
+    stage: carpentry
+    category: carpentry
+    trigger: always
+    severity: medium
+    title: "木工验收要点"
+    description: "吊顶无开裂、柜门开关顺畅、缝隙均匀(≤2mm)、五金件功能正常"
+    mitigation: "工具:目测、手感、开关门测试"
+    checklist:
+      - "吊顶无开裂(拼接缝处)"
+      - "柜门开关顺畅无异响"
+      - "柜门缝隙均匀 ≤2mm"
+      - "五金件(铰链/滑轨)功能正常"
+
+  - id: installation_acceptance
+    type: acceptance
+    stage: installation
+    category: doors_windows
+    trigger: always
+    severity: medium
+    title: "安装验收要点"
+    description: "门开关无异响、密封胶均匀、洁具无划痕、下水通畅"
+    mitigation: "工具:目测、手感、冲水测试"
+    checklist:
+      - "门开关无异响"
+      - "密封胶均匀无断点"
+      - "洁具无划痕/瑕疵"
+      - "下水通畅(冲水/倒水测试)"
+
+templates:
+  - id: pragmatic
+    name: "务实档(11 万)"
+    total: 110000
+    description: "保证基础质量,非豪华装修;套内 94.76㎡、层高 3.0m"
+    allocation:
+      demolition: 5000
+      water_electric: 8500
+      waterproof: 3500
+      masonry: 18500
+      carpentry: 5000
+      painting: 11500
+      doors_windows: 10500
+      sanitary: 10000
+      kitchen_cabinet: 6500
+      range_hood: 2500
+      hvac: 0
+      lighting: 2800
+      curtains: 4000
+      smart_home: 2000
+      miscellaneous: 5700
+      property_fees: 3000
+      contingency: 11000
+
+  - id: balanced
+    name: "均衡档(15 万)"
+    total: 150000
+    description: "品质硬装 + 基础家电 + 中端家具"
+    allocation:
+      demolition: 5000
+      water_electric: 12000
+      waterproof: 4500
+      masonry: 25000
+      carpentry: 8000
+      painting: 15000
+      doors_windows: 14000
+      sanitary: 15000
+      kitchen_cabinet: 10000
+      range_hood: 3500
+      hvac: 0
+      lighting: 5000
+      curtains: 6000
+      smart_home: 4000
+      miscellaneous: 7600
+      property_fees: 3000
+      contingency: 15000
+
+  - id: quality
+    name: "品质档(20 万)"
+    total: 200000
+    description: "品牌硬装 + 中高端家电 + 定制家具"
+    allocation:
+      demolition: 5000
+      water_electric: 15000
+      waterproof: 5000
+      masonry: 32000
+      carpentry: 12000
+      painting: 18000
+      doors_windows: 20000
+      sanitary: 22000
+      kitchen_cabinet: 15000
+      range_hood: 5000
+      hvac: 0
+      lighting: 8000
+      curtains: 8000
+      smart_home: 8000
+      miscellaneous: 10000
+      property_fees: 3000
+      contingency: 20000
