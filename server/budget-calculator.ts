@@ -4,6 +4,7 @@ import type {
   BudgetSnapshot,
   BudgetLineItem,
   BudgetCategory,
+  BudgetAttribution,
   DesignRulesConfig,
   RoomLayout,
   FurnishingsYaml,
@@ -219,16 +220,39 @@ export class BudgetCalculator {
         actual: bc.actual + autoActual,
         manualActual: bc.actual,
         autoActual,
-        status: bc.status,
+        status: bc.status as BudgetCategory['status'],
         notes: bc.notes,
       };
     });
 
     this.computeLabor(categories, budgetRaw.categories, this.catalog.getRooms(), this.catalog.getFurnishings());
 
+    // Status computed AFTER computeLabor: labor can push a category over budget.
+    for (const cat of categories) {
+      if (cat.status === 'reserved') continue;
+      const ratio = cat.budget > 0 ? cat.actual / cat.budget : 0;
+      cat.status = ratio > 1.0 ? 'over' : ratio > 0.9 ? 'near' : 'ok';
+    }
+
+    const topicCategoriesMap = this.rulesConfig.budget?.topicCategories ?? {};
+    const attribution: Record<string, BudgetAttribution> = {};
+    for (const cat of categories) {
+      if (cat.status === 'over' || cat.status === 'near') {
+        const catLineItems = allLineItems
+          .filter((li) => topicCategoriesMap[li.topic] === cat.key)
+          .sort((a, b) => b.cost - a.cost)
+          .slice(0, 3);
+        attribution[cat.key] = {
+          topItems: catLineItems,
+          overBy: cat.actual - cat.budget,
+          ratio: cat.budget > 0 ? cat.actual / cat.budget : 0,
+        };
+      }
+    }
+
     const totalBudget = categories.reduce((sum, c) => sum + c.budget, 0);
     const totalActual = categories.reduce((sum, c) => sum + c.actual, 0);
 
-    return { totalBudget, totalActual, categories, lineItems: allLineItems };
+    return { totalBudget, totalActual, categories, lineItems: allLineItems, attribution };
   }
 }

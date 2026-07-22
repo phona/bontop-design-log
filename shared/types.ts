@@ -277,8 +277,14 @@ export interface BudgetCategory {
   actual: number;
   manualActual: number;
   autoActual: number;
-  status: string;
+  status: 'draft' | 'ok' | 'near' | 'over' | 'reserved';
   notes: string;
+}
+
+export interface BudgetAttribution {
+  topItems: BudgetLineItem[];
+  overBy: number;
+  ratio: number;
 }
 
 export interface BudgetSnapshot {
@@ -286,6 +292,7 @@ export interface BudgetSnapshot {
   totalActual: number;
   categories: BudgetCategory[];
   lineItems: BudgetLineItem[];
+  attribution?: Record<string, BudgetAttribution>;
 }
 
 export interface ArchivedScheme {

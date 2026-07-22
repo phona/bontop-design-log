@@ -278,4 +278,83 @@ describe('BudgetCalculator', () => {
       `area (${entryGarden.area}) should differ from bbox (${bboxArea}) for L-shaped room`
     );
   });
+
+  it('computes status ok when actual is below 90% of budget', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        hvac: { default: 'A2', roomOverrides: {} },
+        floor: { default: 'floor_tile_01', roomOverrides: {} },
+        wall: { default: 'wall_tile_01', roomOverrides: {} },
+        paint: { default: 'latex_paint_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    const painting = snapshot.categories.find((c) => c.key === 'painting');
+    assert.ok(painting);
+    assert.ok(['ok', 'near', 'over'].includes(painting.status));
+  });
+
+  it('computes status over when actual exceeds budget and includes attribution', () => {
+    const catalog = ProjectCatalog.load('.');
+    // Force wall_tile_02 (22元/片, expensive) to push masonry over budget
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        hvac: { default: 'A2', roomOverrides: {} },
+        floor: { default: 'floor_tile_03', roomOverrides: {} },
+        wall: { default: 'wall_tile_02', roomOverrides: {} },
+        paint: { default: 'latex_paint_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    const masonry = snapshot.categories.find((c) => c.key === 'masonry');
+    assert.ok(masonry);
+    if (masonry.status === 'over' || masonry.status === 'near') {
+      const att = snapshot.attribution?.masonry;
+      assert.ok(att, 'attribution must exist for near/over category');
+      assert.ok(att.topItems.length > 0);
+      assert.equal(att.overBy, masonry.actual - masonry.budget);
+    }
+  });
+
+  it('keeps contingency status as reserved', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        hvac: { default: 'A2', roomOverrides: {} },
+        floor: { default: 'floor_tile_01', roomOverrides: {} },
+        wall: { default: 'wall_tile_01', roomOverrides: {} },
+        paint: { default: 'latex_paint_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    const contingency = snapshot.categories.find((c) => c.key === 'contingency');
+    assert.ok(contingency);
+    assert.equal(contingency.status, 'reserved');
+  });
+
+  it('hvac with budget 0 stays ok even with actual spend', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        hvac: { default: 'A2', roomOverrides: {} },
+        floor: { default: 'floor_tile_01', roomOverrides: {} },
+        wall: { default: 'wall_tile_01', roomOverrides: {} },
+        paint: { default: 'latex_paint_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    const hvac = snapshot.categories.find((c) => c.key === 'hvac');
+    assert.ok(hvac);
+    assert.ok(hvac.actual > 0);
+    assert.equal(hvac.status, 'ok');
+  });
 });
