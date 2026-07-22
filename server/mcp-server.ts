@@ -117,7 +117,31 @@ export function createMcpServer(deps: McpDeps): McpServer {
         args.reason,
         args.source ?? 'ai'
       );
-      return text({ updated: result.updated, entries: result.entries });
+      const calc = getBudgetCalculator();
+      const engine = getRuleEngine();
+      const newScheme = state.getCurrentScheme();
+      const prevBudget = calc.calculate(result.previousScheme);
+      const newBudget = calc.calculate(newScheme);
+      const newRisks = engine.evaluate(newScheme, catalog);
+      const categoryDeltas = newBudget.categories
+        .map((c, i) => ({
+          key: c.key,
+          delta: c.actual - prevBudget.categories[i].actual,
+          status: c.status,
+        }))
+        .filter((d) => d.delta !== 0);
+      return text({
+        updated: result.updated,
+        entries: result.entries,
+        budgetImpact: {
+          totalDelta: newBudget.totalActual - prevBudget.totalActual,
+          totalActual: newBudget.totalActual,
+          totalBudget: newBudget.totalBudget,
+          categoryDeltas,
+          overCategories: newBudget.categories.filter((c) => c.status === 'over'),
+          risks: newRisks.risks,
+        },
+      });
     }
   );
 
@@ -141,7 +165,31 @@ export function createMcpServer(deps: McpDeps): McpServer {
     },
     async (args) => {
       const result = state.applySelections(args.selections, args.reason, args.source ?? 'ai');
-      return text({ updated: result.updated, entries: result.entries });
+      const calc = getBudgetCalculator();
+      const engine = getRuleEngine();
+      const newScheme = state.getCurrentScheme();
+      const prevBudget = calc.calculate(result.previousScheme);
+      const newBudget = calc.calculate(newScheme);
+      const newRisks = engine.evaluate(newScheme, catalog);
+      const categoryDeltas = newBudget.categories
+        .map((c, i) => ({
+          key: c.key,
+          delta: c.actual - prevBudget.categories[i].actual,
+          status: c.status,
+        }))
+        .filter((d) => d.delta !== 0);
+      return text({
+        updated: result.updated,
+        entries: result.entries,
+        budgetImpact: {
+          totalDelta: newBudget.totalActual - prevBudget.totalActual,
+          totalActual: newBudget.totalActual,
+          totalBudget: newBudget.totalBudget,
+          categoryDeltas,
+          overCategories: newBudget.categories.filter((c) => c.status === 'over'),
+          risks: newRisks.risks,
+        },
+      });
     }
   );
 

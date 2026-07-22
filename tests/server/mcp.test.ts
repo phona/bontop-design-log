@@ -118,6 +118,37 @@ describe('MCP remote', () => {
     assert.ok(result.isError);
   });
 
+  it('set_selection returns budgetImpact with deltas', async () => {
+    const result = await client.callTool({
+      name: 'set_selection',
+      arguments: { topic: 'hvac', optionId: 'A1', reason: 'budget impact test' },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.equal(parsed.updated, true);
+    assert.ok(parsed.budgetImpact, 'budgetImpact must be present');
+    assert.equal(typeof parsed.budgetImpact.totalDelta, 'number');
+    assert.equal(typeof parsed.budgetImpact.totalActual, 'number');
+    assert.ok(Array.isArray(parsed.budgetImpact.categoryDeltas));
+    assert.ok(Array.isArray(parsed.budgetImpact.overCategories));
+    assert.ok(Array.isArray(parsed.budgetImpact.risks));
+  });
+
+  it('batch_set_selections returns budgetImpact', async () => {
+    const result = await client.callTool({
+      name: 'batch_set_selections',
+      arguments: {
+        selections: [{ topic: 'hvac', optionId: 'A2' }],
+        reason: 'batch impact test',
+      },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.equal(parsed.updated, true);
+    assert.ok(parsed.budgetImpact);
+    assert.equal(typeof parsed.budgetImpact.totalDelta, 'number');
+  });
+
   it('batch_set_selections works for valid selections', async () => {
     const result = await client.callTool({
       name: 'batch_set_selections',
@@ -145,4 +176,5 @@ describe('MCP remote', () => {
     });
     assert.ok(result.isError);
   });
+
 });
