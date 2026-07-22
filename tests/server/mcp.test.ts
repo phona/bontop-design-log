@@ -216,4 +216,39 @@ describe('MCP remote', () => {
     assert.ok(floorItems.length > 0, 'simulated budget must contain master_bedroom floor line item');
   });
 
+  it('compare_schemes priceDelta reflects total-cost delta', async () => {
+    // Ensure current scheme has a known floor selection
+    await client.callTool({
+      name: 'set_selection',
+      arguments: { topic: 'floor', optionId: 'floor_tile_02', reason: 'setup compare' },
+    });
+    const arch = await client.callTool({
+      name: 'archive_scheme',
+      arguments: { name: 'compare-test', reason: 'test' },
+    });
+    const archived = JSON.parse((arch.content as { text: string }[])[0].text);
+
+    // Switch to a different floor option
+    await client.callTool({
+      name: 'set_selection',
+      arguments: { topic: 'floor', optionId: 'floor_tile_01', reason: 'compare target' },
+    });
+
+    const cmp = await client.callTool({
+      name: 'compare_schemes',
+      arguments: { archiveId: archived.id },
+    });
+    const parsed = JSON.parse((cmp.content as { text: string }[])[0].text);
+    const floorDiff = parsed.diff.selections.find((s: { topic: string }) => s.topic === 'floor');
+    assert.ok(floorDiff, 'floor must appear in selection diffs');
+    // priceDelta must equal the line-item cost difference, not the unit-price difference
+    const curCost = parsed.current.budget.lineItems
+      .filter((li: { topic: string }) => li.topic === 'floor')
+      .reduce((sum: number, li: { cost: number }) => sum + li.cost, 0);
+    const cmpCost = parsed.compare.budget.lineItems
+      .filter((li: { topic: string }) => li.topic === 'floor')
+      .reduce((sum: number, li: { cost: number }) => sum + li.cost, 0);
+    assert.equal(floorDiff.priceDelta, cmpCost - curCost);
+  });
+
 });

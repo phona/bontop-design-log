@@ -244,6 +244,11 @@ export function createApiRouter(deps: ApiDeps): Router {
       ...Object.keys(archived.selections),
     ]);
 
+    const topicCost = (snapshot: typeof currentBudget, topic: string): number =>
+      snapshot.lineItems
+        .filter((li) => li.topic === topic)
+        .reduce((sum, li) => sum + li.cost, 0);
+
     const selectionDiffs: Array<{
       topic: string;
       current: string | null;
@@ -261,7 +266,7 @@ export function createApiRouter(deps: ApiDeps): Router {
         topic,
         current: curOpt?.name ?? curOptId,
         compare: cmpOpt?.name ?? cmpOptId,
-        priceDelta: (cmpOpt?.price_per_unit ?? 0) - (curOpt?.price_per_unit ?? 0),
+        priceDelta: topicCost(compareBudget, topic) - topicCost(currentBudget, topic),
       });
     }
 
