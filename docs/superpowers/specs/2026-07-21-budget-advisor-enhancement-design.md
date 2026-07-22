@@ -56,7 +56,7 @@ The system has two rich data layers that AI cannot access:
 | Furniture dimensions | `materials.yaml` spec field (e.g., `"2800×900×400mm"`) | `get_option_details` returns spec as raw text | AI cannot parse dimensions for spatial reasoning |
 | Electrical markers | `ProjectCatalog.electricalMarkers` (`project-catalog.ts:141`) | Not exposed | AI cannot reason about switch/outlet placement |
 
-Additionally, `mcp-server.ts:306` in `compare_schemes` has a bug: `priceDelta` is computed as unit-price difference, not total-cost difference, which is misleading. (The original design in `2026-07-12-full-renovation-tradeoff-system-design.md:390-391` intended `priceDelta` as a useful signal, but implementation made it unit-price difference rather than total-cost difference. Since fixing it to total-cost would require line-item attribution per topic — which is non-trivial — and `diff.budget` already provides the total-cost delta, this spec removes the misleading field rather than fixing it.)
+Additionally, `compare_schemes` has a bug in both `mcp-server.ts:306` and `routes.ts:264`: `priceDelta` is computed as unit-price difference, not total-cost difference, which is misleading. (The original design in `2026-07-12-full-renovation-tradeoff-system-design.md:390-391` intended `priceDelta` as a useful signal. The field is required by `SelectionDiff` in `shared/types.ts:520-525` and rendered by the frontend at `app/src/ui/SchemePanel.ts:139`, so this spec fixes the computation — per-topic total-cost delta derived from budget line items — in both endpoints rather than removing the field.)
 
 ### Root Cause
 
@@ -114,21 +114,27 @@ export interface BudgetSnapshot {
 
 **1b. `budget-calculator.ts` — modify `calculate()`**
 
-At `budget-calculator.ts:214-225`, compute `status` before returning:
+At `budget-calculator.ts:214-225`, keep the `categories.map()` mostly as-is but defer `status` computation (labor is added later by `computeLabor` at line 227, and labor is significant — e.g., `water_electric` gets +5000 fixed, `masonry` gets ~45×95㎡):
+
 ```typescript
 const categories: BudgetCategory[] = baseCategories.map((bc) => {
   const autoActual = categoryAutoActual.get(bc.key) ?? 0;
   const actual = bc.actual + autoActual;
-  const ratio = bc.budget > 0 ? actual / bc.budget : 0;
-  const status: BudgetCategory['status'] =
-    bc.status === 'reserved' ? 'reserved' :
-    ratio > 1.0 ? 'over' :
-    ratio > 0.9 ? 'near' : 'ok';
-  return { key: bc.key, budget: bc.budget, actual, manualActual: bc.actual, autoActual, status, notes: bc.notes };
+  // status computed AFTER computeLabor (see below); temporary placeholder
+  return { key: bc.key, budget: bc.budget, actual, manualActual: bc.actual, autoActual, status: bc.status as BudgetCategory['status'], notes: bc.notes };
 });
+
+this.computeLabor(categories, budgetRaw.categories, this.catalog.getRooms(), this.catalog.getFurnishings());
+
+// NOW compute status with final actual (includes labor)
+for (const cat of categories) {
+  if (cat.status === 'reserved') continue; // honor base.json 'reserved' (contingency)
+  const ratio = cat.budget > 0 ? cat.actual / cat.budget : 0;
+  cat.status = ratio > 1.0 ? 'over' : ratio > 0.9 ? 'near' : 'ok';
+}
 ```
 
-After `computeLabor` (line 227) and before `return` (line 232), add attribution:
+Then, before `return` (line 232), add attribution:
 ```typescript
 const topicCategoriesMap = this.rulesConfig.budget?.topicCategories ?? {};
 const attribution: Record<string, BudgetAttribution> = {};
@@ -150,8 +156,11 @@ return { totalBudget, totalActual, categories, lineItems: allLineItems, attribut
 
 #### Design Decisions
 
+- **Status computed after `computeLabor`**: labor is significant (e.g., `water_electric` gets +5000 fixed, `masonry` gets ~45×95㎡). Computing status before labor would report `ok` for categories pushed over by labor alone, and they would also miss attribution (which only runs for near/over).
 - **Threshold 0.9 for `near`**: gives AI early warning before actual overrun. Tunable via config if needed later.
 - **`reserved` preserved for `contingency`**: `base.json:24` sets contingency status to `"reserved"`; we honor this rather than collapsing it to `ok`.
+- **Categories with `budget: 0` (hvac) stay `ok` by design**: `base.json:18` sets `hvac.budget = 0` with the note "budget 0 表示不占用 11 万基础包，可手动调整". With budget 0, ratio is 0 → `ok` regardless of actual (~28000 auto-computed from the HVAC option). This is intentional: HVAC is tracked separately from the base package. AI sees the actual cost in `totalActual` and in line items; it just won't see an `over` flag for hvac. Documented as a known limitation.
+- **Attribution explains only auto line items, not labor/manual**: `attribution.topItems` is filtered from `allLineItems`, which contains only option-driven auto costs. Labor (added by `computeLabor`) and `manualActual` are not line items, so for categories where labor dominates (e.g., `water_electric`, labor ≈ 71% of budget), topItems will not fully explain the overrun. AI can still see `manualActual` vs `autoActual` split on the category itself. Documented as a known limitation.
 - **Attribution optional**: existing consumers ignore the new field; no breaking change.
 - **No rule-engine extension**: adding `$category.actual` variable resolution to `RuleEngine` was considered but rejected — it would entangle budget state with rule evaluation. Overrun is a property of the budget snapshot, not a selection rule.
 
@@ -165,7 +174,7 @@ return { totalBudget, totalActual, categories, lineItems: allLineItems, attribut
 #### Verification
 
 - `npm run typecheck` passes
-- `npm run test:server` passes (update `tests/server/budget-calculator.test.ts` status assertions from `"draft"` to `"ok"`/`"near"`/`"over"`)
+- `npm run test:server` passes (existing `budget-calculator.test.ts` has **no** status assertions — add new assertions for `ok`/`near`/`over`/`reserved` statuses and `attribution` presence)
 - Manual MCP call `get_budget` confirms `status` and `attribution` present
 
 ---
@@ -180,16 +189,23 @@ return { totalBudget, totalActual, categories, lineItems: allLineItems, attribut
 
 **2a. `server/design-state.ts` — `applySelections` returns `previousScheme`**
 
-At the start of `applySelections`, deep-copy the current scheme:
+The current `ApplyResult` (`design-state.ts:19-23`) is `{ updated: boolean; conflict?: boolean; entries: DecisionLogEntry[] }`. We **keep `updated` boolean and `conflict` unchanged** (callers at `routes.ts:66-71` and `tests/server/mcp.test.ts:82` depend on them) and only add `previousScheme`:
+
 ```typescript
-applySelections(patches, reason, source): {
-  updated: string;
-  entries: DecisionLogEntry[];
-  previousScheme: CurrentScheme;
-} {
-  const previousScheme = JSON.parse(JSON.stringify(this.currentScheme)) as CurrentScheme;
-  // ... existing logic unchanged ...
-  return { updated: this.currentScheme.updatedAt, entries, previousScheme };
+export interface ApplyResult {
+  updated: boolean;            // unchanged
+  conflict?: boolean;          // unchanged
+  entries: DecisionLogEntry[]; // unchanged
+  previousScheme: CurrentScheme; // NEW
+}
+```
+
+At the start of `applySelections`, deep-copy the current scheme (the field is `this.scheme`, not `this.currentScheme`):
+```typescript
+applySelections(patches, reason, source, expectedUpdatedAt?): ApplyResult {
+  const previousScheme = JSON.parse(JSON.stringify(this.scheme)) as CurrentScheme;
+  // ... existing logic unchanged (conflict check, apply, persist) ...
+  return { updated: changed, conflict, entries, previousScheme };
 }
 ```
 
@@ -337,42 +353,65 @@ server.registerTool(
 );
 ```
 
-**3b. Fix `compare_schemes` priceDelta bug** (`mcp-server.ts:306`)
+**3b. Fix `compare_schemes` priceDelta bug — in BOTH MCP and REST endpoints**
 
 Current code computes unit-price difference, which is misleading:
 ```typescript
-// Current (buggy):
+// Current (buggy) — mcp-server.ts:306 AND routes.ts:264 (identical bug):
 priceDelta: (cmpOpt?.price_per_unit ?? 0) - (curOpt?.price_per_unit ?? 0),
 ```
 
-Remove the `priceDelta` field. AI can infer cost impact from `diff.budget` (total actual difference) and the full budget snapshots already returned in `current.budget` and `compare.budget`:
+The `priceDelta` field is required in `shared/types.ts:520-525` (`SelectionDiff.priceDelta: number`) and is rendered by the frontend (`app/src/ui/SchemePanel.ts:139`). Removing it would break the frontend and diverge MCP from REST. Instead, **fix the computation in both endpoints** to be the per-topic total-cost delta derived from the budget snapshots' line items (which both endpoints already compute):
+
 ```typescript
-selectionDiffs.push({
-  topic,
-  current: curOpt?.name ?? curOptId,
-  compare: cmpOpt?.name ?? cmpOptId,
-  // priceDelta removed: unit-price difference does not reflect total cost
-  // AI should use diff.budget and full budget snapshots for cost analysis
-});
+// Helper (add near the compare logic in each file, or extract to shared util):
+function topicCost(snapshot: BudgetSnapshot, topic: string): number {
+  return snapshot.lineItems
+    .filter(li => li.topic === topic)
+    .reduce((sum, li) => sum + li.cost, 0);
+}
+
+// In mcp-server.ts compare_schemes (~line 296-308):
+for (const topic of allTopics) {
+  const curOptId = current.selections[topic]?.default ?? null;
+  const cmpOptId = archived.selections[topic]?.default ?? null;
+  if (curOptId === cmpOptId) continue;
+  const curOpt = curOptId ? catalog.getOption(topic, curOptId) : null;
+  const cmpOpt = cmpOptId ? catalog.getOption(topic, cmpOptId) : null;
+  selectionDiffs.push({
+    topic,
+    current: curOpt?.name ?? curOptId,
+    compare: cmpOpt?.name ?? cmpOptId,
+    priceDelta: topicCost(compareBudget, topic) - topicCost(currentBudget, topic),
+  });
+}
+
+// Same fix in routes.ts /schemes/compare (~line 254-266), using its own
+// currentBudget / compareBudget variables.
 ```
+
+The `SelectionDiff` type (`shared/types.ts:520-525`) stays unchanged; the frontend now displays real total-cost deltas instead of misleading unit-price deltas.
 
 #### Design Decisions
 
 - **Full snapshot in `simulated`**: user confirmed this choice. Token cost is acceptable because AI needs line-item detail for attribution analysis. If token cost becomes an issue, add a `detailed: boolean` parameter later.
 - **Deep copy of `current.selections`**: safe because `CurrentScheme.selections` is JSON-serializable.
 - **Two `calculate()` + two `evaluate()` calls**: <5ms total. Acceptable.
-- **`priceDelta` removal from `compare_schemes`**: this is a bug fix. The field was misleading. AI can compute cost impact from the full budget snapshots. The `selectionDiffs` array still shows which topics changed (by name), which is the useful signal.
+- **`priceDelta` fixed (not removed) in both endpoints**: the field is required by `SelectionDiff` (`shared/types.ts:520-525`) and rendered by the frontend (`SchemePanel.ts:139`). Both `mcp-server.ts` and `routes.ts` compute it the same buggy way; both are fixed to per-topic total-cost delta from budget line items, keeping MCP/REST consistent and the frontend working.
 
 #### Impact
 
-- `server/mcp-server.ts`: 1 new tool + 1 bug fix (~65 lines)
-- **0 frontend changes, 0 breaking changes** (`what_if` is new; `priceDelta` removal is backward-compatible)
+- `server/mcp-server.ts`: 1 new tool + `compare_schemes` priceDelta fix (~65 lines)
+- `server/routes.ts`: identical priceDelta fix in `/schemes/compare` (~10 lines)
+- `shared/types.ts`: no change to `SelectionDiff`
+- **0 frontend changes, 0 breaking changes** (`what_if` is new; `priceDelta` semantics improve but type/shape unchanged)
 
 #### Verification
 
 - `npm run typecheck` passes
 - Manual MCP call `what_if` with sample changes; confirm `simulated.budget`, `simulated.risks`, `delta.totalDelta`, `delta.risksAdded` are correct
-- Manual MCP call `compare_schemes`; confirm `priceDelta` is absent and `diff.budget` is present
+- Manual MCP call `compare_schemes`; confirm `priceDelta` reflects total-cost delta (e.g., switching floor tile changes it by the full flooring line-item cost difference, not the per-tile unit price difference)
+- Manual REST call `GET /schemes/compare?archiveId=...`; confirm `priceDelta` matches the MCP result
 
 ---
 
@@ -735,10 +774,9 @@ templates:
 
 **4b. `server/pitfall-engine.ts` (new file, ~60 lines)**
 
-```typescript
-import { readFileSync } from 'node:fs';
-import { load } from 'js-yaml';
+The engine accepts a parsed config object (not a file path) so that `ConfigLoader` owns file IO and hot-reload, matching the `RuleEngine` pattern:
 
+```typescript
 export interface Pitfall {
   id: string;
   type: 'budget' | 'construction' | 'acceptance';
@@ -760,7 +798,7 @@ export interface BudgetTemplate {
   allocation: Record<string, number>;
 }
 
-interface PitfallConfig {
+export interface PitfallConfig {
   version: string;
   pitfalls: Pitfall[];
   templates: BudgetTemplate[];
@@ -769,9 +807,8 @@ interface PitfallConfig {
 export class PitfallEngine {
   private config: PitfallConfig;
 
-  constructor(configPath = 'config/budget-pitfalls.yaml') {
-    const raw = readFileSync(configPath, 'utf8');
-    this.config = load(raw) as PitfallConfig;
+  constructor(config: PitfallConfig) {
+    this.config = config;
   }
 
   getPitfalls(opts?: { category?: string; type?: string; stage?: string }): Pitfall[] {
@@ -803,9 +840,20 @@ export class PitfallEngine {
 
 **4c. `mcp-server.ts` — 2 new tools + McpDeps extension**
 
-Add `pitfallEngine: PitfallEngine` to `McpDeps` interface.
+Add `getPitfallEngine: () => PitfallEngine` to the `McpDeps` interface (`mcp-server.ts:14-20`). **It must be a getter**, matching the existing `getRuleEngine`/`getBudgetCalculator` pattern, because `index.ts` reconstructs engines in `rebuildDerived()` when chokidar fires — a plain value field captured at server creation would go stale after hot-reload.
 
-Register `get_pitfalls`:
+```typescript
+export interface McpDeps {
+  catalog: ProjectCatalog;
+  state: DesignState;
+  getRuleEngine: () => RuleEngine;
+  getBudgetCalculator: () => BudgetCalculator;
+  getPitfallEngine: () => PitfallEngine;  // NEW — getter, not value
+  archiveStore: ArchivedSchemesStore;
+}
+```
+
+In the tool handlers, resolve via the getter:
 ```typescript
 server.registerTool(
   'get_pitfalls',
@@ -818,12 +866,9 @@ server.registerTool(
       stage: z.string().optional(),
     }),
   },
-  async (args) => text(pitfallEngine.getPitfalls(args))
+  async (args) => text(getPitfallEngine().getPitfalls(args))
 );
-```
 
-Register `recommend_allocation`:
-```typescript
 server.registerTool(
   'recommend_allocation',
   {
@@ -835,7 +880,7 @@ server.registerTool(
     }),
   },
   async (args) => {
-    const template = pitfallEngine.getTemplate(args.tier, args.totalBudget);
+    const template = getPitfallEngine().getTemplate(args.tier, args.totalBudget);
     if (!template) return text({ error: 'no matching template' });
     return text(template);
   }
@@ -844,7 +889,33 @@ server.registerTool(
 
 **4d. `server/index.ts` — load + hot-reload integration**
 
-Load `PitfallEngine` at startup, add to chokidar watch list (alongside `design-rules.yaml`, `materials.yaml`, `base.json`), pass to `McpDeps`.
+The existing setup (`index.ts:20-105`) uses `ConfigLoader` (not chokidar directly) with 6 watched files: `design-rules.yaml`, `materials.yaml`, `budget/base.json`, `layout/model-geometry.yaml`, `house.yaml`, `layout/overlay.yaml`. Add a 7th loader following the same pattern:
+
+```typescript
+const pitfallsLoader = new ConfigLoader<PitfallConfig>(
+  'config/budget-pitfalls.yaml',
+  (raw) => load(raw) as PitfallConfig,
+  () => {
+    rebuildDerived();
+    console.log('[server] config/budget-pitfalls.yaml reloaded');
+  }
+);
+registry.register(pitfallsLoader);
+```
+
+In `rebuildDerived()` (`index.ts:30-39`), construct the engine from the loaded config. To avoid coupling `PitfallEngine` to file IO at construction, either (a) keep the `PitfallEngine(path)` constructor and re-instantiate with the same path, or (b) refactor `PitfallEngine` to accept the parsed config object — **(b) is preferred** to match the `ConfigLoader` pattern where parsing happens in the loader:
+
+```typescript
+let pitfallEngine = new PitfallEngine({ version: '1.0', pitfalls: [], templates: [] });
+
+function rebuildDerived(): void {
+  // ... existing rebuilds ...
+  const pitfallConfig = pitfallsLoader.getConfig() ?? { version: '1.0', pitfalls: [], templates: [] };
+  pitfallEngine = new PitfallEngine(pitfallConfig);
+}
+```
+
+Add `getPitfallEngine: () => pitfallEngine` to `apiDeps` (`index.ts:117-125`), and `pitfallsLoader.load()` + `pitfallsLoader.startWatching()` alongside the other loaders.
 
 #### Design Decisions
 
@@ -894,9 +965,9 @@ Add a utility function that parses furniture dimension strings from `materials.y
 ```typescript
 // server/spec-parser.ts (new file)
 export interface ParsedDimensions {
-  width: number;   // meters
-  height: number;  // meters
-  depth: number;   // meters
+  width: number;   // meters — first number in spec
+  height: number;  // meters — second number in spec (see caveat below)
+  depth: number;   // meters — third number, 0 if absent
 }
 
 export function parseSpecDimensions(spec: string): ParsedDimensions | null {
@@ -905,16 +976,22 @@ export function parseSpecDimensions(spec: string): ParsedDimensions | null {
   const match = cleaned.match(/(\d+(?:\.\d+)?)[×xX](\d+(?:\.\d+)?)(?:[×xX](\d+(?:\.\d+)?))?/);
   if (!match) return null;
 
-  const toMeters = (val: number, str: string): number =>
-    str.endsWith('mm') ? val / 1000 : val;
+  // Unit heuristic: treat values as mm when the spec contains "mm",
+  // otherwise assume meters. Current materials.yaml specs all use mm
+  // or explicit m, so this works; specs with trailing text after mm
+  // (e.g. "800x800mm 亮光") still parse since "mm" is present.
+  const toMeters = (val: number): number =>
+    cleaned.includes('mm') ? val / 1000 : val;
 
-  const w = toMeters(parseFloat(match[1]), cleaned);
-  const h = toMeters(parseFloat(match[2]), cleaned);
-  const d = match[3] ? toMeters(parseFloat(match[3]), cleaned) : 0;
+  const w = toMeters(parseFloat(match[1]));
+  const h = toMeters(parseFloat(match[2]));
+  const d = match[3] ? toMeters(parseFloat(match[3])) : 0;
 
   return { width: w, height: h, depth: d };
 }
 ```
+
+**Caveat on field semantics**: the second parsed number is labeled `height`, but for beds (`1800×2000mm`) it is actually length, and for the sofa (`2800×900×400mm`) 900 is arguably depth. The parser is dimension-order-agnostic — it returns numbers in spec order. AI should treat `width/height/depth` as "the 3 spec dimensions" and interpret them per furniture type, not assume they map to literal physical axes.
 
 **5b. `project-catalog.ts` — add `getRoomLayoutDetail(roomId)` method (~30 lines)**
 
@@ -1034,18 +1111,19 @@ server.registerTool(
 );
 ```
 
-Where `findMaterialByFurnitureType` is a helper (~20 lines) that maps furniture type names to material IDs by searching `materials.yaml` entries whose `model` or `name` contains the type:
+Where `findMaterialByFurnitureType` is a helper (~25 lines) that maps `house.yaml` furnishing keys to `materials.yaml` entries. The furnishing keys embed a **numeric size suffix** (e.g., `bed_180`, `mattress_180`, `wardrobe_240`, `sofa_3seat`), while `materials.yaml` uses `alternative_group` values that match the base name (`bed`, `mattress`, `wardrobe`, `sofa`, `dining_table`, `dining_chair`, `tv_stand`). Normalization: strip the trailing **digit-led** suffix (`_\d+\w*$`), then compare with `alternative_group`:
 
 ```typescript
 function findMaterialByFurnitureType(type: string): MaterialItem | undefined {
-  const materials = catalog.getAllMaterials(); // need to add this getter
-  return materials.find(m =>
-    m.model.toLowerCase().includes(type.replace(/_/g, ' ')) ||
-    m.name.toLowerCase().includes(type.replace(/_/g, ' ')) ||
-    m.alternative_group === type
-  );
+  const materials = catalog.getAllMaterials(); // new getter, see below
+  // "bed_180" -> "bed", "sofa_3seat" -> "sofa", "wardrobe_240" -> "wardrobe"
+  // "dining_chair" -> "dining_chair" (unchanged — suffix is not digit-led)
+  const base = type.replace(/_\d+\w*$/, '');
+  return materials.find(m => m.alternative_group === base);
 }
 ```
+
+Verified against actual data (`config/house.yaml:378-438` keys × `config/materials.yaml` alternative_groups): `bed_180→bed`, `mattress_180→mattress`, `wardrobe_240→wardrobe`, `sofa_3seat→sofa`, `dining_table→dining_table`, `dining_chair→dining_chair`, `tv_stand→tv_stand` all match. Items with no matching material (e.g., `curtain_set`, `ceiling_light`, `cabinet_base`, `countertop_quartz`, `desk`, `chair`, `bookshelf`) simply return no `dimensions` in the response — AI sees the raw type string and count.
 
 Add `getAllMaterials()` to `ProjectCatalog` (~5 lines):
 ```typescript
@@ -1069,6 +1147,8 @@ this.rawMaterials = materials.materials;
 - **`getAllMaterials` getter**: `ProjectCatalog` currently only stores materials as `DesignOption` in topics. The raw `MaterialItem[]` array is needed for spec parsing. Adding `rawMaterials` to the constructor and a getter is the minimal change.
 
 - **No furniture positions**: `house.yaml` furnishings currently only store counts (`{bed_180: 1}`), not positions. Change 5 does not add furniture position data (that is future work). AI knows what furniture exists in each room and its dimensions, but not where it is placed. This is sufficient for "does it fit?" and "how much space is left?" reasoning, but not for "is the sofa too close to the TV?" reasoning.
+
+- **Platform room is excluded**: the VRV equipment platform is stored separately in `ProjectCatalog.platform` (`project-catalog.ts:91`), not in the `rooms` map. `getRoomLayoutDetail(platformId)` returns undefined and `get_room_layout()` (all rooms) omits it. This is acceptable because the platform is not a designable living space; documented as a known limitation.
 
 #### Impact
 
@@ -1142,3 +1222,11 @@ npx tsx scripts/verify-layout.ts
 9. **Adjacency heuristic is approximate**: `getRoomLayoutDetail` uses bounding-box endpoint checks to find walls and adjacent rooms. For non-rectangular rooms (L-shaped kitchen, 5-sided balcony), this may miss or include extra walls. A future iteration could use the vertex engine's `boundary` arrays for exact adjacency.
 
 10. **Spec parsing is best-effort**: Not all `materials.yaml` spec fields contain dimensions (e.g., `"18L"`, `"L型"`). The parser returns `null` for these, and the MCP response omits `dimensions`. AI can still read the raw `spec` string.
+
+11. **Categories with `budget: 0` (hvac) always report `ok`**: `hvac.budget = 0` means "outside the 110k base package" (`base.json:18`). Ratio is 0 → `ok` regardless of actual spend (~28000). AI sees the cost in `totalActual` and line items, but gets no `over` flag for hvac. By design, but AI must be aware of it.
+
+12. **Attribution does not explain labor/manual overruns**: `attribution.topItems` covers only auto line items from option selection. Labor (`computeLabor`) and `manualActual` are not line items. For labor-dominated categories (e.g., `water_electric`), topItems under-represent the overrun cause. The `manualActual`/`autoActual` split on each category still gives AI the high-level picture.
+
+13. **Platform room not exposed via `get_room_layout`**: the VRV equipment platform is stored separately from the `rooms` map (`project-catalog.ts:91`) and is excluded from the new tool. It is not a designable living space, so this is acceptable.
+
+14. **Furniture-type↔material matching is heuristic**: `findMaterialByFurnitureType` strips the `_NNN` size suffix and prefix-matches `alternative_group`. Furniture types without a corresponding material `alternative_group` (e.g., `curtain_set`, `ceiling_light`, `cabinet_base`, `countertop_quartz`) return no dimensions. The mapping can be extended later via an explicit `furniture_type` field on materials if needed.
