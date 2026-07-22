@@ -8,10 +8,12 @@ import { ProjectCatalog } from '../../server/project-catalog.js';
 import { DesignState } from '../../server/design-state.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
+import { PitfallEngine } from '../../server/pitfall-engine.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from '../../server/config-loader.js';
 import type { CadLayoutYaml } from '../../shared/types.js';
-import { rmSync, mkdtempSync } from 'node:fs';
+import { rmSync, mkdtempSync, readFileSync } from 'node:fs';
+import { load } from 'js-yaml';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -49,6 +51,9 @@ describe('server startup resilience', () => {
       state: new DesignState(catalog, dir),
       getRuleEngine: () => engine,
       getBudgetCalculator: () => calc,
+      getPitfallEngine: () => new PitfallEngine(
+        load(readFileSync('config/budget-pitfalls.yaml', 'utf8')) as never
+      ),
       archiveStore,
       getConfigRegistry: () => registry,
       getOverlay: () => undefined,

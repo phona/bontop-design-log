@@ -7,6 +7,8 @@ import { createMcpServer } from './mcp-server.js';
 import { attachMcpTransports } from './mcp-transports.js';
 import { RuleEngine } from './rule-engine.js';
 import { BudgetCalculator } from './budget-calculator.js';
+import { PitfallEngine } from './pitfall-engine.js';
+import type { PitfallConfig } from './pitfall-engine.js';
 import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
 import { parseOverlay } from './overlay-merge.js';
@@ -26,6 +28,7 @@ let catalog = ProjectCatalog.fromMaterials(
 );
 let ruleEngine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
 let budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
+let pitfallEngine = new PitfallEngine({ version: '1.0', pitfalls: [], templates: [] });
 
 function rebuildDerived(): void {
   const materials = materialsLoader.getConfig() ?? { materials: [] };
@@ -36,6 +39,8 @@ function rebuildDerived(): void {
   const rulesConfig = designRulesLoader.getConfig() ?? { version: '1.0', risks: [], constraints: [] };
   ruleEngine = new RuleEngine(rulesConfig);
   budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
+  const pitfallConfig = pitfallsLoader.getConfig() ?? { version: '1.0', pitfalls: [], templates: [] };
+  pitfallEngine = new PitfallEngine(pitfallConfig);
 }
 
 const designRulesLoader = new ConfigLoader<DesignRulesConfig>(
@@ -88,6 +93,16 @@ const houseMetaLoader = new ConfigLoader<HouseYaml>(
 );
 registry.register(houseMetaLoader);
 
+const pitfallsLoader = new ConfigLoader<PitfallConfig>(
+  'config/budget-pitfalls.yaml',
+  (raw) => load(raw) as PitfallConfig,
+  () => {
+    rebuildDerived();
+    console.log('[server] config/budget-pitfalls.yaml reloaded');
+  }
+);
+registry.register(pitfallsLoader);
+
 designRulesLoader.load();
 materialsLoader.load();
 budgetBaseLoader.load();
@@ -102,6 +117,7 @@ const overlayLoader = new ConfigLoader<OverlayConfig>(
 registry.register(overlayLoader);
 
 houseMetaLoader.load();
+pitfallsLoader.load();
 overlayLoader.load();
 
 let state: DesignState;
@@ -119,6 +135,7 @@ const apiDeps = {
   state,
   getRuleEngine: () => ruleEngine,
   getBudgetCalculator: () => budgetCalculator,
+  getPitfallEngine: () => pitfallEngine,
   archiveStore,
   getConfigRegistry: () => registry,
   getOverlay: () => overlayLoader.getConfig(),
@@ -138,6 +155,7 @@ attachMcpTransports(app, () => createMcpServer(apiDeps)).then(() => {
   budgetBaseLoader.startWatching();
   layoutLoader.startWatching();
   houseMetaLoader.startWatching();
+  pitfallsLoader.startWatching();
   overlayLoader.startWatching();
 
   const shutdown = async () => {

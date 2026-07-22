@@ -1,7 +1,8 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { rmSync, mkdirSync } from 'node:fs';
+import { rmSync, mkdirSync, readFileSync } from 'node:fs';
+import { load } from 'js-yaml';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import express from 'express';
@@ -9,6 +10,7 @@ import { ProjectCatalog } from '../../server/project-catalog.js';
 import { DesignState } from '../../server/design-state.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
+import { PitfallEngine } from '../../server/pitfall-engine.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
 import { createMcpServer } from '../../server/mcp-server.js';
@@ -30,11 +32,15 @@ describe('MCP remote', () => {
     const engine = RuleEngine.load();
     const calc = new BudgetCalculator(catalog, engine.getConfig());
     const archiveStore = new ArchivedSchemesStore(TEST_DATA_DIR);
+    const pitfallEngine = new PitfallEngine(
+      load(readFileSync('config/budget-pitfalls.yaml', 'utf8')) as never
+    );
     const deps = {
       catalog,
       state,
       getRuleEngine: () => engine,
       getBudgetCalculator: () => calc,
+      getPitfallEngine: () => pitfallEngine,
       archiveStore,
       getConfigRegistry: () => new ConfigRegistry(),
       getOverlay: () => undefined,
@@ -249,6 +255,41 @@ describe('MCP remote', () => {
       .filter((li: { topic: string }) => li.topic === 'floor')
       .reduce((sum: number, li: { cost: number }) => sum + li.cost, 0);
     assert.equal(floorDiff.priceDelta, cmpCost - curCost);
+  });
+
+  it('get_pitfalls returns pitfalls filtered by category', async () => {
+    const result = await client.callTool({
+      name: 'get_pitfalls',
+      arguments: { category: 'waterproof' },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.ok(Array.isArray(parsed));
+    assert.ok(parsed.length >= 3);
+    assert.ok(parsed.every((p: { category: string }) => p.category === 'waterproof'));
+  });
+
+  it('get_pitfalls returns acceptance checklists', async () => {
+    const result = await client.callTool({
+      name: 'get_pitfalls',
+      arguments: { type: 'acceptance' },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.length >= 5);
+    assert.ok(parsed.every((p: { checklist?: string[] }) => Array.isArray(p.checklist)));
+  });
+
+  it('recommend_allocation returns pragmatic template', async () => {
+    const result = await client.callTool({
+      name: 'recommend_allocation',
+      arguments: { tier: 'pragmatic' },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.equal(parsed.id, 'pragmatic');
+    assert.equal(parsed.total, 110000);
+    assert.ok(parsed.allocation.masonry);
   });
 
 });

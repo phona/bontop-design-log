@@ -4,6 +4,7 @@ import type { ProjectCatalog } from './project-catalog.js';
 import type { DesignState } from './design-state.js';
 import type { RuleEngine } from './rule-engine.js';
 import type { BudgetCalculator } from './budget-calculator.js';
+import type { PitfallEngine } from './pitfall-engine.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { CurrentScheme } from '../shared/types.js';
 
@@ -16,11 +17,12 @@ export interface McpDeps {
   state: DesignState;
   getRuleEngine: () => RuleEngine;
   getBudgetCalculator: () => BudgetCalculator;
+  getPitfallEngine: () => PitfallEngine;
   archiveStore: ArchivedSchemesStore;
 }
 
 export function createMcpServer(deps: McpDeps): McpServer {
-  const { catalog, state, getRuleEngine, getBudgetCalculator, archiveStore } = deps;
+  const { catalog, state, getRuleEngine, getBudgetCalculator, getPitfallEngine, archiveStore } = deps;
   const server = new McpServer(
     { name: 'bontop-design', version: '0.2.0' },
     { capabilities: { tools: {} } }
@@ -502,6 +504,37 @@ export function createMcpServer(deps: McpDeps): McpServer {
           risksRemoved: currentRisks.risks.filter((r) => !simRiskIds.has(r.id)),
         },
       });
+    }
+  );
+
+  server.registerTool(
+    'get_pitfalls',
+    {
+      title: 'Get budget pitfalls',
+      description: 'Return renovation pitfalls: budget traps, construction shortcuts, acceptance checkpoints. Filter by category/type/stage.',
+      inputSchema: z.object({
+        category: z.string().optional(),
+        type: z.string().optional(),
+        stage: z.string().optional(),
+      }),
+    },
+    async (args) => text(getPitfallEngine().getPitfalls(args))
+  );
+
+  server.registerTool(
+    'recommend_allocation',
+    {
+      title: 'Recommend budget allocation',
+      description: 'Return budget allocation template for a target total and tier (pragmatic/balanced/quality).',
+      inputSchema: z.object({
+        totalBudget: z.number().optional(),
+        tier: z.string().optional(),
+      }),
+    },
+    async (args) => {
+      const template = getPitfallEngine().getTemplate(args.tier, args.totalBudget);
+      if (!template) return text({ error: 'no matching template' });
+      return text(template);
     }
   );
 
