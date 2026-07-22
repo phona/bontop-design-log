@@ -7,9 +7,19 @@ import type { BudgetCalculator } from './budget-calculator.js';
 import type { PitfallEngine } from './pitfall-engine.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { CurrentScheme } from '../shared/types.js';
+import { parseSpecDimensions } from './spec-parser.js';
 
 function text(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
+}
+
+function findMaterialByFurnitureType(
+  catalog: ProjectCatalog,
+  type: string
+): ReturnType<ProjectCatalog['getAllMaterials']>[number] | undefined {
+  const materials = catalog.getAllMaterials();
+  const base = type.replace(/_\d+\w*$/, '');
+  return materials.find((m) => m.alternative_group === base);
 }
 
 export interface McpDeps {
@@ -535,6 +545,69 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const template = getPitfallEngine().getTemplate(args.tier, args.totalBudget);
       if (!template) return text({ error: 'no matching template' });
       return text(template);
+    }
+  );
+
+  server.registerTool(
+    'get_room_layout',
+    {
+      title: 'Get room layout',
+      description: 'Return full spatial detail for a room: dimensions, walls, door/window openings, furnishings, electrical markers, and adjacent rooms. If roomId omitted, returns all rooms.',
+      inputSchema: z.object({ roomId: z.string().optional() }),
+    },
+    async (args) => {
+      if (args.roomId) {
+        const detail = catalog.getRoomLayoutDetail(args.roomId);
+        if (!detail) return text({ error: `room not found: ${args.roomId}` });
+        return text(detail);
+      }
+      const allRooms = catalog
+        .getRooms()
+        .map((r) => catalog.getRoomLayoutDetail(r.id))
+        .filter((d) => d !== undefined);
+      return text(allRooms);
+    }
+  );
+
+  server.registerTool(
+    'get_furniture_inventory',
+    {
+      title: 'Get furniture inventory',
+      description: 'Return furniture per room with parsed dimensions from materials spec. Combines house.yaml furnishings counts with materials.yaml dimensions.',
+      inputSchema: z.object({ roomId: z.string().optional() }),
+    },
+    async (args) => {
+      const furnishings = catalog.getFurnishings();
+      const result: Record<
+        string,
+        Array<{
+          type: string;
+          count: number;
+          dimensions?: { width: number; height: number; depth: number };
+          spec?: string;
+          materialId?: string;
+        }>
+      > = {};
+
+      const roomIds = args.roomId ? [args.roomId] : Object.keys(furnishings);
+      for (const rid of roomIds) {
+        const items = furnishings[rid];
+        if (!items) continue;
+        result[rid] = [];
+        for (const [type, count] of Object.entries(items)) {
+          if (!count || count <= 0) continue;
+          const material = findMaterialByFurnitureType(catalog, type);
+          const dimensions = material ? parseSpecDimensions(material.spec) : null;
+          result[rid].push({
+            type,
+            count,
+            dimensions: dimensions ?? undefined,
+            spec: material?.spec,
+            materialId: material?.id,
+          });
+        }
+      }
+      return text(result);
     }
   );
 

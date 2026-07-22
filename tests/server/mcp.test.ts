@@ -292,4 +292,68 @@ describe('MCP remote', () => {
     assert.ok(parsed.allocation.masonry);
   });
 
+  it('get_room_layout returns master_bedroom detail', async () => {
+    const result = await client.callTool({
+      name: 'get_room_layout',
+      arguments: { roomId: 'master_bedroom' },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.equal(parsed.room.id, 'master_bedroom');
+    assert.ok(parsed.room.width > 0);
+    assert.ok(parsed.walls.length > 0);
+    assert.equal(parsed.furnishings.bed_180, 1);
+    assert.ok(Array.isArray(parsed.adjacentRooms));
+  });
+
+  it('get_room_layout without roomId returns all rooms', async () => {
+    const result = await client.callTool({ name: 'get_room_layout', arguments: {} });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.ok(Array.isArray(parsed));
+    assert.ok(parsed.length >= 10, 'expected at least 10 rooms');
+  });
+
+  it('get_room_layout returns error for unknown room', async () => {
+    const result = await client.callTool({
+      name: 'get_room_layout',
+      arguments: { roomId: 'nonexistent' },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.equal(parsed.error, 'room not found: nonexistent');
+  });
+
+  it('get_furniture_inventory returns sofa with parsed dimensions', async () => {
+    const result = await client.callTool({
+      name: 'get_furniture_inventory',
+      arguments: { roomId: 'living_dining' },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    const items = parsed.living_dining;
+    assert.ok(Array.isArray(items));
+    const sofa = items.find((i: { type: string }) => i.type === 'sofa_3seat');
+    assert.ok(sofa, 'sofa_3seat must be present in living_dining');
+    assert.equal(sofa.count, 1);
+    assert.ok(sofa.dimensions, 'sofa dimensions must be parsed');
+    assert.equal(sofa.dimensions.width, 2.8);
+    assert.equal(sofa.dimensions.height, 0.9);
+    assert.equal(sofa.dimensions.depth, 0.4);
+    assert.equal(sofa.materialId, 'sofa_3seat_01');
+  });
+
+  it('get_furniture_inventory omits dimensions for unparseable specs', async () => {
+    const result = await client.callTool({
+      name: 'get_furniture_inventory',
+      arguments: { roomId: 'living_dining' },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    const items = parsed.living_dining;
+    const chair = items.find((i: { type: string }) => i.type === 'dining_chair');
+    assert.ok(chair);
+    assert.equal(chair.dimensions, undefined, 'dining_chair spec "标准" yields no dimensions');
+  });
+
 });
