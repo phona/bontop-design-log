@@ -1,4 +1,4 @@
-import type { RoomLayout, Vec3 } from '@shared/types';
+import type { WallSegment, ResolvedOpening, Vec3 } from '@shared/types';
 
 export interface AABB {
   minX: number;
@@ -13,48 +13,81 @@ const WALL_THICKNESS = 0.12;
 export class CollisionDetector {
   private walls: AABB[] = [];
 
-  constructor(roomLayouts: RoomLayout[] = []) {
-    this.walls = this.buildWallAABBs(roomLayouts);
+  constructor(walls: WallSegment[] = []) {
+    this.walls = this.buildWallAABBs(walls);
   }
 
-  setRooms(roomLayouts: RoomLayout[]): void {
-    this.walls = this.buildWallAABBs(roomLayouts);
+  setWalls(walls: WallSegment[]): void {
+    this.walls = this.buildWallAABBs(walls);
   }
 
-  private buildWallAABBs(roomLayouts: RoomLayout[]): AABB[] {
+  private buildWallAABBs(walls: WallSegment[]): AABB[] {
     const result: AABB[] = [];
 
-    for (const r of roomLayouts) {
-      const halfW = r.width / 2;
-      const halfD = r.depth / 2;
+    for (const w of walls) {
+      const dx = w.x2 - w.x1;
+      const dz = w.z2 - w.z1;
+      const len = Math.hypot(dx, dz);
+      if (len < 0.001) continue;
 
-      result.push({
-        minX: r.x - halfW,
-        maxX: r.x + halfW,
-        minZ: r.z - halfD - WALL_THICKNESS / 2,
-        maxZ: r.z - halfD + WALL_THICKNESS / 2,
-      });
-      result.push({
-        minX: r.x - halfW,
-        maxX: r.x + halfW,
-        minZ: r.z + halfD - WALL_THICKNESS / 2,
-        maxZ: r.z + halfD + WALL_THICKNESS / 2,
-      });
-      result.push({
-        minX: r.x - halfW - WALL_THICKNESS / 2,
-        maxX: r.x - halfW + WALL_THICKNESS / 2,
-        minZ: r.z - halfD,
-        maxZ: r.z + halfD,
-      });
-      result.push({
-        minX: r.x + halfW - WALL_THICKNESS / 2,
-        maxX: r.x + halfW + WALL_THICKNESS / 2,
-        minZ: r.z - halfD,
-        maxZ: r.z + halfD,
-      });
+      const ux = dx / len;
+      const uz = dz / len;
+      const doors = (w.openings ?? []).filter(o => o.type === 'door');
+
+      const isHorizontal = Math.abs(ux) > Math.abs(uz);
+      const gaps = doors
+        .map(o => {
+          const t = (o.x - w.x1) * ux + (o.z - w.z1) * uz;
+          return { min: t - o.width / 2, max: t + o.width / 2 };
+        })
+        .sort((a, b) => a.min - b.min);
+
+      for (const seg of this.splitRange(0, len, gaps)) {
+        const sx1 = w.x1 + ux * seg.min;
+        const sz1 = w.z1 + uz * seg.min;
+        const sx2 = w.x1 + ux * seg.max;
+        const sz2 = w.z1 + uz * seg.max;
+        const cx = (sx1 + sx2) / 2;
+        const cz = (sz1 + sz2) / 2;
+        const segLen = Math.hypot(sx2 - sx1, sz2 - sz1);
+        if (segLen < 0.01) continue;
+
+        if (isHorizontal) {
+          result.push({
+            minX: Math.min(sx1, sx2) - WALL_THICKNESS / 2,
+            maxX: Math.max(sx1, sx2) + WALL_THICKNESS / 2,
+            minZ: cz - WALL_THICKNESS / 2,
+            maxZ: cz + WALL_THICKNESS / 2,
+          });
+        } else {
+          result.push({
+            minX: cx - WALL_THICKNESS / 2,
+            maxX: cx + WALL_THICKNESS / 2,
+            minZ: Math.min(sz1, sz2) - WALL_THICKNESS / 2,
+            maxZ: Math.max(sz1, sz2) + WALL_THICKNESS / 2,
+          });
+        }
+      }
     }
 
     return result;
+  }
+
+  private splitRange(min: number, max: number, gaps: Array<{ min: number; max: number }>): Array<{ min: number; max: number }> {
+    const segments: Array<{ min: number; max: number }> = [];
+    let cursor = min;
+    for (const gap of gaps) {
+      const gapStart = Math.max(cursor, Math.min(gap.min, max));
+      const gapEnd = Math.min(max, Math.max(gap.max, cursor));
+      if (gapStart > cursor) {
+        segments.push({ min: cursor, max: gapStart });
+      }
+      cursor = Math.max(cursor, gapEnd);
+    }
+    if (cursor < max) {
+      segments.push({ min: cursor, max });
+    }
+    return segments;
   }
 
   tryMove(from: Vec3, desired: Vec3): Vec3 {

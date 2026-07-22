@@ -55,14 +55,7 @@ export class CameraAnimator {
   transitionToOrbit(orbitPosition: THREE.Vector3, orbitTarget: THREE.Vector3) {
     this.startPos = this.camera.position.clone();
     this.endPos = orbitPosition.clone();
-    this.startTarget = new THREE.Vector3(
-      this.camera.position.x,
-      this.camera.position.y - 1.6,
-      this.camera.position.z
-    );
-    if (this.controls) {
-      this.controls.target.copy(this.startTarget);
-    }
+    this.startTarget = this.controls?.target.clone() ?? new THREE.Vector3(0, 0, 0);
     this.endTarget = orbitTarget.clone();
     this.elapsed = 0;
     this.duration = DEFAULT_DURATION * 1000;
@@ -96,15 +89,13 @@ export class CameraAnimator {
     this.camera.position.lerpVectors(this.startPos, this.endPos, eased);
 
     const currentTarget = new THREE.Vector3().lerpVectors(this.startTarget, this.endTarget, eased);
-    if (this.controls) {
-      this.controls.target.copy(currentTarget);
-      this.controls.update();
-    } else {
-      this.camera.lookAt(currentTarget);
-    }
+    this.camera.lookAt(currentTarget);
 
     if (progress >= 1) {
       this.animating = false;
+      if (this.controls) {
+        this.controls.target.copy(this.endTarget);
+      }
       this.onComplete?.(this.mode);
     }
   }
@@ -115,9 +106,11 @@ export class CameraAnimator {
     if (this.startPos && this.endPos) {
       this.camera.position.copy(this.endPos);
     }
+    if (this.endTarget) {
+      this.camera.lookAt(this.endTarget);
+    }
     if (this.controls && this.endTarget) {
       this.controls.target.copy(this.endTarget);
-      this.controls.update();
     }
     this.onComplete?.(this.mode);
   }

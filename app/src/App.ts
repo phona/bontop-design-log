@@ -87,7 +87,7 @@ export class App {
   async start(): Promise<void> {
     const response = await fetch('/api/project');
     this.projectData = await response.json();
-    this.collision.setRooms(this.projectData?.house?.rooms ?? []);
+    this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
 
     await this.houseScene.buildFromCatalog(this.projectData);
 
@@ -237,20 +237,25 @@ export class App {
     }
   }
 
+  private savedOrbitPos: THREE.Vector3 | null = null;
+  private savedOrbitTarget: THREE.Vector3 | null = null;
+
   private switchToFirstPerson(): void {
     const rooms = (this.projectData?.house?.rooms ?? []) as Array<{ id: string; x: number; z: number }>;
     const entryGarden = rooms.find((r) => r.id === 'entry_garden');
     const spawnX = entryGarden?.x ?? 0;
     const spawnZ = entryGarden?.z ?? 0;
-    const fpPos = new THREE.Vector3(spawnX, 1.6, spawnZ);
+    const fpPos = new THREE.Vector3(spawnX, 1.7, spawnZ);
     const fpDir = new THREE.Vector3(0, 0, 1);
 
     const camPos = this.houseScene.camera.position;
     if (camPos.y < 3) {
-      fpPos.set(camPos.x, 1.6, camPos.z);
+      fpPos.set(camPos.x, 1.7, camPos.z);
     }
 
-    this.houseScene.setMode('first-person');
+    this.savedOrbitPos = this.houseScene.camera.position.clone();
+    this.savedOrbitTarget = this.houseScene.controls.target.clone();
+
     this.fpController.enable();
     this.fpController.requestLock();
     this.houseScene.cameraAnimator.transitionToFirstPerson(fpPos, fpDir);
@@ -263,11 +268,9 @@ export class App {
     this.crosshair.hide();
     this.hoverTooltip.clear();
 
-    const camPos = this.houseScene.camera.position;
-    const orbitPos = new THREE.Vector3(camPos.x, ORBIT_DISTANCE, camPos.z + ORBIT_DISTANCE);
-    const orbitTarget = new THREE.Vector3(camPos.x, 0, camPos.z);
+    const orbitPos = this.savedOrbitPos ?? new THREE.Vector3(7.4, 14, 19.2);
+    const orbitTarget = this.savedOrbitTarget ?? new THREE.Vector3(7.4, 0, 3.65);
 
-    this.houseScene.setMode('orbit');
     this.houseScene.cameraAnimator.transitionToOrbit(orbitPos, orbitTarget);
     this.updateModeIndicator();
   }
@@ -337,7 +340,7 @@ export class App {
   private async handleLayoutChange(layoutName: string): Promise<void> {
     const response = await fetch(`/api/project?layout=${layoutName}`);
     this.projectData = await response.json();
-    this.collision.setRooms(this.projectData?.house?.rooms ?? []);
+    this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
     await this.houseScene.buildFromCatalog(this.projectData);
     const scheme = await this.stateSync.fetchScheme();
     if (scheme) this.applyScheme(scheme);
@@ -399,6 +402,19 @@ export class App {
   private hideConfigErrorBanner(): void {
     const banner = document.getElementById('config-error-banner') as HTMLDivElement | null;
     if (banner) banner.style.display = 'none';
+  }
+
+  private extractWalls(sceneElements: any[] | undefined): import('@shared/types').WallSegment[] {
+    if (!sceneElements) return [];
+    return sceneElements
+      .filter((el: any) => el.type === 'wall')
+      .map((el: any) => ({
+        id: el.id,
+        x1: el.x1, z1: el.z1,
+        x2: el.x2, z2: el.z2,
+        segments: el.segments,
+        openings: el.openings,
+      }));
   }
 
   private renderLoop = (time: number) => {

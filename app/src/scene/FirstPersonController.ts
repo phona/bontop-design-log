@@ -3,7 +3,7 @@ import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockCont
 import type { CollisionDetector } from './CollisionDetector.js';
 
 const MOVE_SPEED = 2.0;
-const EYE_HEIGHT = 1.6;
+const EYE_HEIGHT = 1.7;
 
 export interface MovementKeys {
   forward: boolean;

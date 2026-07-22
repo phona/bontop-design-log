@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { RoomLayout } from '@shared/types';
+import type { WallSegment } from '@shared/types';
 
 const mockObject3D = {
   position: { x: 0, y: 1.6, z: 0, set(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; } },
@@ -46,8 +46,11 @@ vi.mock('three/examples/jsm/controls/PointerLockControls.js', () => {
   };
 });
 
-const rooms: RoomLayout[] = [
-  { id: 'r', name: 'R', x: 0, z: 0, width: 10, depth: 10, height: 3, type: 'public' },
+const walls: WallSegment[] = [
+  { id: 'north', x1: -5, z1: -5, x2: 5, z2: -5 },
+  { id: 'south', x1: 5, z1: 5, x2: -5, z2: 5 },
+  { id: 'east', x1: 5, z1: -5, x2: 5, z2: 5 },
+  { id: 'west', x1: -5, z1: 5, x2: -5, z2: -5 },
 ];
 
 describe('FirstPersonController', () => {
@@ -77,7 +80,7 @@ describe('FirstPersonController', () => {
   it('creates without error', async () => {
     const { FirstPersonController } = await import('./FirstPersonController.js');
     const { CollisionDetector } = await import('./CollisionDetector.js');
-    const fp = new FirstPersonController(camera, canvas, new CollisionDetector(rooms));
+    const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
     expect(fp).toBeDefined();
     expect(fp.isLocked).toBe(false);
     fp.dispose();
@@ -86,7 +89,7 @@ describe('FirstPersonController', () => {
   it('enable/disable toggles state', async () => {
     const { FirstPersonController } = await import('./FirstPersonController.js');
     const { CollisionDetector } = await import('./CollisionDetector.js');
-    const fp = new FirstPersonController(camera, canvas, new CollisionDetector(rooms));
+    const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
     fp.enable();
     expect(fp.isAnyKeyDown).toBe(false);
     fp.disable();
