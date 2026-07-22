@@ -585,7 +585,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
     'get_furniture_inventory',
     {
       title: 'Get furniture inventory',
-      description: 'Return furniture per room with parsed dimensions from materials spec. Combines house.yaml furnishings counts with materials.yaml dimensions.',
+      description: 'Return furniture per room with counts, placed positions (x/z/rotation), and parsed dimensions from materials spec. Combines house.yaml furnishings with materials.yaml dimensions.',
       inputSchema: z.object({ roomId: z.string().optional() }),
     },
     async (args) => {
@@ -595,6 +595,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
         Array<{
           type: string;
           count: number;
+          positions?: Array<{ x: number; z: number; rotation: number }>;
           dimensions?: { width: number; height: number; depth: number };
           spec?: string;
           materialId?: string;
@@ -606,13 +607,23 @@ export function createMcpServer(deps: McpDeps): McpServer {
         const items = furnishings[rid];
         if (!items) continue;
         result[rid] = [];
-        for (const [type, count] of Object.entries(items)) {
+        const counts = catalog.getFurnishingCounts(rid);
+        const byType = new Map<string, Array<{ x: number; z: number; rotation: number }>>();
+        for (const item of items) {
+          if (item.x === undefined || item.z === undefined) continue;
+          const list = byType.get(item.type) ?? [];
+          list.push({ x: item.x, z: item.z, rotation: item.rotation ?? 0 });
+          byType.set(item.type, list);
+        }
+        for (const [type, count] of Object.entries(counts)) {
           if (!count || count <= 0) continue;
           const material = findMaterialByFurnitureType(catalog, type);
           const dimensions = material ? parseSpecDimensions(material.spec) : null;
+          const positions = byType.get(type);
           result[rid].push({
             type,
             count,
+            positions: positions && positions.length > 0 ? positions : undefined,
             dimensions: dimensions ?? undefined,
             spec: material?.spec,
             materialId: material?.id,

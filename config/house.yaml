@@ -376,66 +376,75 @@ mep_strategy:
   - "全屋窗帘：遮光帘 + 纱帘，厨卫用防水卷帘/百叶"
 
 furnishings:
+  # 坐标为 model-geometry 局部坐标系（米）；有 x/z 的为 placed 实例（渲染），无 x/z 的为 count-only（只喂预算/库存）
   master_bedroom:
-    bed_180: 1
-    mattress_180: 1
-    wardrobe_240: 1
-    curtain_set: 1
-    ceiling_light: 1
+    # 房间 x∈[0,4.20] z∈[5.55,9.80]，北门 d_mb @(2.7,5.55) swing x∈[2.25,3.15] z∈[5.55,6.45]
+    - { type: bed_180, x: 2.10, z: 8.65, rotation: 180 }      # 床头靠南墙居中
+    - { type: wardrobe_240, x: 0.30, z: 6.75, rotation: 90 }   # 沿西墙
+    - { type: mattress_180 }
+    - { type: curtain_set }
+    - { type: ceiling_light }
   bedroom_nw:
-    bed_180: 1
-    mattress_180: 1
-    wardrobe_240: 1
-    curtain_set: 1
-    ceiling_light: 1
+    # 房间 x∈[2.60,5.60] z∈[1.10,4.30]，南门 d_bnw @(4.1,4.30) swing x∈[3.65,4.55] z∈[3.40,4.30]
+    - { type: bed_180, x: 3.55, z: 2.15, rotation: 0 }         # 床头靠北墙
+    - { type: wardrobe_240, x: 5.30, z: 2.70, rotation: 270 }  # 沿东墙
+    - { type: mattress_180 }
+    - { type: curtain_set }
+    - { type: ceiling_light }
   bedroom_se:
-    bed_180: 1
-    mattress_180: 1
-    wardrobe_240: 1
-    curtain_set: 1
-    ceiling_light: 1
+    # 房间 x∈[13.40,16.40] z∈[5.55,9.80]，西门 d_bese @(13.4,7.6) swing x∈[13.40,14.30] z∈[7.15,8.05]
+    - { type: bed_180, x: 15.35, z: 8.65, rotation: 270 }      # 床头靠东墙
+    - { type: wardrobe_240, x: 14.60, z: 5.85, rotation: 0 }   # 沿北墙
+    - { type: mattress_180 }
+    - { type: curtain_set }
+    - { type: ceiling_light }
   study:
-    desk: 1
-    chair: 1
-    bookshelf: 1
-    curtain_set: 1
-    ceiling_light: 1
+    # 房间 x∈[4.20,7.20] z∈[5.55,9.80]，北门 d_study @(5.7,5.55) swing x∈[5.25,6.15] z∈[5.55,6.45]
+    - { type: desk, x: 5.70, z: 9.45, rotation: 0 }            # 靠南墙
+    - { type: chair }
+    - { type: bookshelf }
+    - { type: curtain_set }
+    - { type: ceiling_light }
   living_dining:
-    sofa_3seat: 1
-    dining_table: 1
-    dining_chair: 4
-    tv_stand: 1
-    curtain_set: 2
-    ceiling_light: 2
+    # 房间 x∈[7.20,13.40] z∈[4.30,9.80]，开放连通走廊，无门 swing
+    - { type: sofa_3seat, x: 11.70, z: 5.20, rotation: 0 }     # 靠背朝北，面向电视
+    - { type: tv_stand, x: 11.60, z: 9.60, rotation: 180 }     # 靠南墙
+    - { type: dining_table, x: 8.80, z: 7.10, rotation: 0 }    # 用餐区居中（西侧）
+    - { type: dining_chair, x: 8.80, z: 6.35, rotation: 0 }
+    - { type: dining_chair, x: 8.80, z: 7.85, rotation: 180 }
+    - { type: dining_chair, x: 7.60, z: 7.10, rotation: 90 }
+    - { type: dining_chair, x: 10.00, z: 7.10, rotation: 270 }
+    - { type: curtain_set, count: 2 }
+    - { type: ceiling_light, count: 2 }
   kitchen:
-    cabinet_base: 3.5
-    cabinet_wall: 2.0
-    countertop_quartz: 3.5
-    sink: 1
-    range_hood: 1
-    gas_stove: 1
-    ceiling_light: 1
+    - { type: cabinet_base, count: 3.5 }
+    - { type: cabinet_wall, count: 2.0 }
+    - { type: countertop_quartz, count: 3.5 }
+    - { type: sink }
+    - { type: range_hood }
+    - { type: gas_stove }
+    - { type: ceiling_light }
   master_bath:
-    toilet: 1
-    shower_set: 1
-    vanity: 1
-    faucet: 1
-    ceiling_light: 1
-    exhaust_fan: 1
+    - { type: toilet }
+    - { type: shower_set }
+    - { type: vanity }
+    - { type: faucet }
+    - { type: ceiling_light }
+    - { type: exhaust_fan }
   guest_bath:
-    toilet: 1
-    shower_set: 1
-    vanity: 1
-    faucet: 1
-    ceiling_light: 1
-    exhaust_fan: 1
+    - { type: toilet }
+    - { type: shower_set }
+    - { type: vanity }
+    - { type: faucet }
+    - { type: ceiling_light }
+    - { type: exhaust_fan }
   balcony:
-    ceiling_light: 1
+    - { type: ceiling_light }
   entry_garden:
-    shoe_cabinet: 1
-    ceiling_light: 1
+    - { type: shoe_cabinet }
+    - { type: ceiling_light }
   south_balcony:
-    ceiling_light: 1
+    - { type: ceiling_light }
 
 electrical:
   # Light switches — one per room, interior side of door, 1.3m high

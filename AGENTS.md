@@ -39,4 +39,9 @@
   npm run test:server
   npm run typecheck
   ```
+- 修改 `config/house.yaml` 的 `furnishings`（家具摆位）后，必须运行：
+  ```bash
+  npm run verify:furniture
+  ```
+  furnishings 条目带 `x/z/rotation` 的为 placed 实例（3D 渲染 + MCP 暴露位置）；无 `x/z` 的为 count-only（只喂预算/库存）。坐标使用 model-geometry 同一局部坐标系（米），预算 counts 由列表 derive（`ProjectCatalog.getFurnishingCounts`），禁止双写。
 - `model-geometry.yaml` 采用 v2.0 vertex 格式：rooms 使用中心坐标 (x, z, width, depth)，walls 使用角点坐标 (x1, z1, x2, z2)。几何修改须同时更新拓扑一致性。使用 `scripts/verify-topology.ts` 替代旧的 `validate-room-wall-alignment.ts`。`scripts/archive/` 保留旧脚本供参考。

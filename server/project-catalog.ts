@@ -13,6 +13,7 @@ import type {
   PlatformLayout,
   LayoutOption,
   FurnishingsYaml,
+  RoomFurnishings,
   ElectricalMarker,
   WallSegment,
 } from '../shared/types.js';
@@ -277,6 +278,17 @@ export class ProjectCatalog {
     return this.furnishings;
   }
 
+  getFurnishingCounts(roomId: string): Record<string, number> {
+    const items = this.furnishings[roomId];
+    if (!items) return {};
+    const counts: Record<string, number> = {};
+    for (const item of items) {
+      const placed = item.x !== undefined && item.z !== undefined;
+      counts[item.type] = (counts[item.type] ?? 0) + (placed ? 1 : (item.count ?? 1));
+    }
+    return counts;
+  }
+
   getElectricalMarkers(): ElectricalMarker[] {
     return this.electricalMarkers;
   }
@@ -312,7 +324,7 @@ export class ProjectCatalog {
   getRoomLayoutDetail(roomId: string): {
     room: RoomLayout;
     walls: WallSegment[];
-    furnishings: Record<string, number>;
+    furnishings: RoomFurnishings;
     electricalMarkers: ElectricalMarker[];
     adjacentRooms: string[];
   } | undefined {
@@ -340,10 +352,15 @@ export class ProjectCatalog {
       }
     }
 
+    const items = this.furnishings[roomId] ?? [];
+    const placed = items
+      .filter((i) => i.x !== undefined && i.z !== undefined)
+      .map((i) => ({ type: i.type, x: i.x!, z: i.z!, rotation: i.rotation ?? 0 }));
+
     return {
       room,
       walls: roomWalls,
-      furnishings: this.furnishings[roomId] ?? {},
+      furnishings: { placed, counts: this.getFurnishingCounts(roomId) },
       electricalMarkers: this.electricalMarkers.filter((m) => m.roomId === roomId),
       adjacentRooms: [...adjacentRooms],
     };

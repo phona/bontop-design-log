@@ -332,7 +332,10 @@ describe('MCP remote', () => {
     assert.equal(parsed.room.id, 'master_bedroom');
     assert.ok(parsed.room.width > 0);
     assert.ok(parsed.walls.length > 0);
-    assert.equal(parsed.furnishings.bed_180, 1);
+    assert.equal(parsed.furnishings.counts.bed_180, 1);
+    const bed = parsed.furnishings.placed.find((p: { type: string }) => p.type === 'bed_180');
+    assert.ok(bed, 'bed_180 must be a placed item');
+    assert.equal(typeof bed.x, 'number');
     assert.ok(Array.isArray(parsed.adjacentRooms));
   });
 
@@ -371,6 +374,14 @@ describe('MCP remote', () => {
     assert.equal(sofa.dimensions.height, 0.9);
     assert.equal(sofa.dimensions.depth, 0.4);
     assert.equal(sofa.materialId, 'sofa_3seat_01');
+    assert.ok(Array.isArray(sofa.positions), 'placed sofa must expose positions');
+    assert.equal(sofa.positions.length, 1);
+    assert.equal(typeof sofa.positions[0].x, 'number');
+    assert.equal(typeof sofa.positions[0].z, 'number');
+    const chairs = items.find((i: { type: string }) => i.type === 'dining_chair');
+    assert.ok(chairs);
+    assert.equal(chairs.count, 4);
+    assert.equal(chairs.positions.length, 4, '4 placed dining chairs');
   });
 
   it('get_furniture_inventory omits dimensions for unparseable specs', async () => {

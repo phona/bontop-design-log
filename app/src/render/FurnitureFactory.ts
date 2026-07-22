@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { RoomObject } from '@shared/types';
+import type { FurnishingsYaml } from '@shared/types';
 
 export function createFurniture(type: string): THREE.Group | null {
   const group = new THREE.Group();
@@ -80,34 +80,25 @@ export function createFurniture(type: string): THREE.Group | null {
   }
 }
 
-export interface FurnishingItems {
-  [roomId: string]: Record<string, number>;
-}
-
 export function placeFurnishings(
   scene: THREE.Scene,
-  furnishings: FurnishingItems,
-  rooms: Record<string, RoomObject>
+  furnishings: FurnishingsYaml
 ): THREE.Group[] {
   const placed: THREE.Group[] = [];
   for (const [roomId, items] of Object.entries(furnishings)) {
-    const room = rooms[roomId];
-    if (!room) continue;
+    let index = 0;
+    for (const item of items) {
+      if (item.x === undefined || item.z === undefined) continue;
 
-    for (const [type, count] of Object.entries(items)) {
-      if (!count || count <= 0) continue;
-      if (['ceiling_light', 'curtain_set', 'switch', 'power_outlet', 'network',
-           'sink', 'toilet', 'shower_set', 'vanity', 'faucet', 'exhaust_fan',
-           'range_hood', 'gas_stove', 'shoe_cabinet', 'cabinet_base', 'cabinet_wall',
-           'countertop_quartz', 'bookshelf'].includes(type)) continue;
-
-      const model = createFurniture(type);
+      const model = createFurniture(item.type);
       if (!model) continue;
 
-      model.position.set(room.x, 0, room.z);
-      model.userData = { objectId: `furniture:${roomId}:${type}`, hoverable: false, type: 'furniture' };
+      model.position.set(item.x, 0, item.z);
+      model.rotation.y = THREE.MathUtils.degToRad(item.rotation ?? 0);
+      model.userData = { objectId: `furniture:${roomId}:${item.type}:${index}`, hoverable: false, type: 'furniture' };
       scene.add(model);
       placed.push(model);
+      index++;
     }
   }
   return placed;

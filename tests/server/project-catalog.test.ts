@@ -110,9 +110,27 @@ describe('ProjectCatalog', () => {
     assert.ok(detail.room.width > 0);
     assert.ok(detail.room.depth > 0);
     assert.ok(detail.walls.length > 0, 'must find boundary walls');
-    assert.ok(detail.furnishings.bed_180 === 1);
+    assert.ok(detail.furnishings.counts.bed_180 === 1);
+    const bed = detail.furnishings.placed.find((p) => p.type === 'bed_180');
+    assert.ok(bed, 'bed_180 must be a placed item');
+    assert.equal(typeof bed.x, 'number');
+    assert.equal(typeof bed.z, 'number');
+    assert.equal(typeof bed.rotation, 'number');
     assert.ok(Array.isArray(detail.electricalMarkers));
     assert.ok(Array.isArray(detail.adjacentRooms));
+  });
+
+  it('getFurnishingCounts derives counts from furnishing list', () => {
+    const catalog = ProjectCatalog.load('.');
+    const counts = catalog.getFurnishingCounts('living_dining');
+    assert.equal(counts.sofa_3seat, 1);
+    assert.equal(counts.dining_chair, 4, '4 placed dining_chair entries derive to count 4');
+    assert.equal(counts.curtain_set, 2, 'count-only entry uses count field');
+    assert.equal(counts.ceiling_light, 2);
+    const mbCounts = catalog.getFurnishingCounts('master_bedroom');
+    assert.equal(mbCounts.bed_180, 1);
+    assert.equal(mbCounts.mattress_180, 1, 'count-only mattress still counted');
+    assert.deepEqual(catalog.getFurnishingCounts('nonexistent_room'), {});
   });
 
   it('getRoomLayoutDetail returns undefined for unknown room', () => {

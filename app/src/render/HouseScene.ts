@@ -14,6 +14,7 @@ import type {
   SceneElement,
   CurtainPoint,
   ResolvedOpening,
+  FurnishingsYaml,
 } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopDownView } from '../scene/TopDownView.js';
@@ -48,7 +49,7 @@ interface ProjectData {
   house: {
     rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string; wallOpenings?: ResolvedOpening[] }>;
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
-    furnishings?: Record<string, Record<string, number>>;
+    furnishings?: FurnishingsYaml;
     electrical?: ElectricalMarker[];
     sceneElements?: SceneElement[];
   };
@@ -448,7 +449,7 @@ export class HouseScene implements SceneApi {
     this.topDownView.updateBounds(this.topDownLayoutBounds);
 
     if (projectData.house.furnishings) {
-      this.furnitureMeshes = placeFurnishings(this.scene, projectData.house.furnishings, this.rooms);
+      this.furnitureMeshes = placeFurnishings(this.scene, projectData.house.furnishings);
     }
 
     if (projectData.house.electrical) {
