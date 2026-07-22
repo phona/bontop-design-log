@@ -20,6 +20,7 @@ export interface ApplyResult {
   updated: boolean;
   conflict?: boolean;
   entries: DecisionLogEntry[];
+  previousScheme: CurrentScheme;
 }
 
 let globalCounter = 0;
@@ -130,8 +131,9 @@ export class DesignState {
     source = 'ai',
     expectedUpdatedAt?: string
   ): ApplyResult {
+    const previousScheme = JSON.parse(JSON.stringify(this.scheme)) as CurrentScheme;
     if (expectedUpdatedAt && this.scheme.updatedAt !== expectedUpdatedAt) {
-      return { updated: false, conflict: true, entries: [] };
+      return { updated: false, conflict: true, entries: [], previousScheme };
     }
 
     patches.forEach((p, i) => this.validatePatch(p, i));
@@ -196,7 +198,7 @@ export class DesignState {
       this.persist();
     }
 
-    return { updated: changed, entries };
+    return { updated: changed, entries, previousScheme };
   }
 
   recordDecision(partial: {

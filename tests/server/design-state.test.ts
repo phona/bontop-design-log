@@ -75,6 +75,31 @@ describe('DesignState', () => {
     assert.ok(!state.getVisualCommands().some((c) => c.commandId === cmd.commandId));
   });
 
+  it('returns previousScheme snapshot before mutation', () => {
+    const catalog = ProjectCatalog.load('.');
+    const state = DesignState.load(catalog, TEST_DATA_DIR);
+    const before = state.getCurrentScheme().selections.hvac.default;
+    const result = state.applySelections([{ topic: 'hvac', optionId: 'A3' }], 'test', 'user');
+    assert.ok(result.previousScheme);
+    assert.equal(result.previousScheme.selections.hvac.default, before);
+    assert.equal(state.getCurrentScheme().selections.hvac.default, 'A3');
+    // previousScheme must be a deep copy, not a live reference
+    assert.notEqual(result.previousScheme.selections.hvac.default, state.getCurrentScheme().selections.hvac.default);
+  });
+
+  it('returns previousScheme even on conflict', () => {
+    const catalog = ProjectCatalog.load('.');
+    const state = DesignState.load(catalog, TEST_DATA_DIR);
+    const result = state.applySelections(
+      [{ topic: 'hvac', optionId: 'A1' }],
+      undefined,
+      'user',
+      '2000-01-01T00:00:00Z'
+    );
+    assert.equal(result.conflict, true);
+    assert.ok(result.previousScheme);
+  });
+
   it('setCompareArchive and clearCompare', () => {
     const catalog = ProjectCatalog.load('.');
     const state = DesignState.load(catalog, TEST_DATA_DIR);
