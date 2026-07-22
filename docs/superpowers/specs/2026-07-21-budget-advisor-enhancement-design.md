@@ -1194,7 +1194,7 @@ npx tsx scripts/verify-layout.ts
 | New code (server) | ~700 lines |
 | New config files | 1 (`config/budget-pitfalls.yaml`) |
 | New server files | 2 (`server/pitfall-engine.ts`, `server/spec-parser.ts`) |
-| Modified files | 5 (`shared/types.ts`, `budget-calculator.ts`, `design-state.ts`, `mcp-server.ts`, `project-catalog.ts`) + `server/index.ts` |
+| Modified files | 6 (`shared/types.ts`, `budget-calculator.ts`, `design-state.ts`, `mcp-server.ts`, `routes.ts`, `project-catalog.ts`) + `server/index.ts` |
 | New MCP tools | 5 (`what_if`, `get_pitfalls`, `recommend_allocation`, `get_room_layout`, `get_furniture_inventory`) |
 | Enhanced MCP tools | 2 (`set_selection`, `batch_set_selections`) |
 | Frontend changes | 0 |
@@ -1205,7 +1205,7 @@ npx tsx scripts/verify-layout.ts
 
 1. **Pitfall content is general, not project-specific**: The yaml content is based on general renovation knowledge. It should be cross-verified against `docs/material_selection_log.md` and `docs/decision_log.md` after implementation. This is content review work, not code work.
 
-2. **AI analysis quality depends on model capability**: The 4 changes provide data and knowledge, but AI must reason over them to produce useful advice. If AI analysis proves insufficient in practice, a future `analyze_budget` tool can pre-compute analysis reports to reduce AI reasoning burden. This is deferred until empirically needed.
+2. **AI analysis quality depends on model capability**: The 5 changes provide data and knowledge, but AI must reason over them to produce useful advice. If AI analysis proves insufficient in practice, a future `analyze_budget` tool can pre-compute analysis reports to reduce AI reasoning burden. This is deferred until empirically needed.
 
 3. **No real-time price data**: `materials.yaml` prices are research snapshots. AI cannot know current Nanning market prices. This is a data limitation, not an architectural one.
 
@@ -1229,4 +1229,4 @@ npx tsx scripts/verify-layout.ts
 
 13. **Platform room not exposed via `get_room_layout`**: the VRV equipment platform is stored separately from the `rooms` map (`project-catalog.ts:91`) and is excluded from the new tool. It is not a designable living space, so this is acceptable.
 
-14. **Furniture-type↔material matching is heuristic**: `findMaterialByFurnitureType` strips the `_NNN` size suffix and prefix-matches `alternative_group`. Furniture types without a corresponding material `alternative_group` (e.g., `curtain_set`, `ceiling_light`, `cabinet_base`, `countertop_quartz`) return no dimensions. The mapping can be extended later via an explicit `furniture_type` field on materials if needed.
+14. **Furniture-type↔material matching is heuristic**: `findMaterialByFurnitureType` strips the trailing digit-led suffix (`/_\d+\w*$/`, e.g., `bed_180` → `bed`) and exact-matches `alternative_group`. Furniture types without a corresponding material `alternative_group` (e.g., `curtain_set`, `ceiling_light`, `cabinet_base`, `countertop_quartz`, `desk`, `chair`, `bookshelf`) return no dimensions. The mapping can be extended later via an explicit `furniture_type` field on materials if needed.
