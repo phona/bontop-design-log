@@ -425,5 +425,80 @@ export function createMcpServer(deps: McpDeps): McpServer {
     }
   );
 
+  server.registerTool(
+    'what_if',
+    {
+      title: 'What-if analysis',
+      description: 'Simulate selection changes without persisting. Returns full budget snapshot, risks, and diff vs current scheme.',
+      inputSchema: z.object({
+        changes: z.array(
+          z.object({
+            topic: z.string(),
+            optionId: z.string().nullable(),
+            roomId: z.string().optional(),
+          })
+        ),
+      }),
+    },
+    async (args) => {
+      const current = state.getCurrentScheme();
+      const calc = getBudgetCalculator();
+      const engine = getRuleEngine();
+
+      const tempScheme: CurrentScheme = {
+        updatedAt: new Date().toISOString(),
+        selections: JSON.parse(JSON.stringify(current.selections)),
+      };
+      for (const change of args.changes) {
+        const sel = tempScheme.selections[change.topic] ?? {
+          default: null as string | null,
+          roomOverrides: {} as Record<string, string>,
+        };
+        if (change.roomId) {
+          if (change.optionId === null) delete sel.roomOverrides[change.roomId];
+          else sel.roomOverrides[change.roomId] = change.optionId;
+        } else {
+          sel.default = change.optionId;
+        }
+        tempScheme.selections[change.topic] = sel;
+      }
+
+      const currentBudget = calc.calculate(current);
+      const currentRisks = engine.evaluate(current, catalog);
+      const simBudget = calc.calculate(tempScheme);
+      const simRisks = engine.evaluate(tempScheme, catalog);
+
+      const currentRiskIds = new Set(currentRisks.risks.map((r) => r.id));
+      const simRiskIds = new Set(simRisks.risks.map((r) => r.id));
+
+      return text({
+        current: {
+          totalBudget: currentBudget.totalBudget,
+          totalActual: currentBudget.totalActual,
+        },
+        simulated: {
+          totalBudget: simBudget.totalBudget,
+          totalActual: simBudget.totalActual,
+          budget: simBudget,
+          risks: simRisks,
+        },
+        delta: {
+          totalDelta: simBudget.totalActual - currentBudget.totalActual,
+          categoryDeltas: simBudget.categories
+            .map((c, i) => ({
+              key: c.key,
+              currentActual: currentBudget.categories[i].actual,
+              simulatedActual: c.actual,
+              delta: c.actual - currentBudget.categories[i].actual,
+              status: c.status,
+            }))
+            .filter((d) => d.delta !== 0),
+          risksAdded: simRisks.risks.filter((r) => !currentRiskIds.has(r.id)),
+          risksRemoved: currentRisks.risks.filter((r) => !simRiskIds.has(r.id)),
+        },
+      });
+    }
+  );
+
   return server;
 }

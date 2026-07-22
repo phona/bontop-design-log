@@ -27,7 +27,7 @@ describe('MCP remote', () => {
 
     const catalog = ProjectCatalog.load('.');
     const state = DesignState.load(catalog, TEST_DATA_DIR);
-    const engine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
+    const engine = RuleEngine.load();
     const calc = new BudgetCalculator(catalog, engine.getConfig());
     const archiveStore = new ArchivedSchemesStore(TEST_DATA_DIR);
     const deps = {
@@ -175,6 +175,45 @@ describe('MCP remote', () => {
       },
     });
     assert.ok(result.isError);
+  });
+
+  it('what_if simulates changes without persisting', async () => {
+    const before = await client.callTool({ name: 'get_current_scheme', arguments: {} });
+    const beforeScheme = JSON.parse((before.content as { text: string }[])[0].text);
+    const beforeHvac = beforeScheme.selections.hvac.default;
+
+    const result = await client.callTool({
+      name: 'what_if',
+      arguments: { changes: [{ topic: 'hvac', optionId: 'B1' }] },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.current);
+    assert.ok(parsed.simulated);
+    assert.ok(parsed.simulated.budget);
+    assert.ok(parsed.delta);
+    assert.equal(typeof parsed.delta.totalDelta, 'number');
+    assert.ok(Array.isArray(parsed.delta.risksAdded));
+
+    const after = await client.callTool({ name: 'get_current_scheme', arguments: {} });
+    const afterScheme = JSON.parse((after.content as { text: string }[])[0].text);
+    assert.equal(afterScheme.selections.hvac.default, beforeHvac, 'what_if must not persist');
+  });
+
+  it('what_if supports room override simulation', async () => {
+    const result = await client.callTool({
+      name: 'what_if',
+      arguments: {
+        changes: [{ topic: 'floor', optionId: 'floor_tile_02', roomId: 'master_bedroom' }],
+      },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.simulated.budget);
+    const floorItems = parsed.simulated.budget.lineItems.filter(
+      (li: { topic: string; roomId: string | null }) => li.topic === 'floor' && li.roomId === 'master_bedroom'
+    );
+    assert.ok(floorItems.length > 0, 'simulated budget must contain master_bedroom floor line item');
   });
 
 });
