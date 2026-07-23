@@ -184,11 +184,11 @@ elements:
   - id: main_corridor_floor
     type: floor_region
     points:
-      - { x: 0.0, z: 4.30 }
+      - { x: 2.6, z: 4.30 }
       - { x: 7.2, z: 4.30 }
       - { x: 7.2, z: 5.55 }
-      - { x: 0.0, z: 5.55 }
-    reason: "主走廊连接左翼和右翼"
+      - { x: 2.6, z: 5.55 }
+    reason: "主走廊连接左翼和右翼（x[0,2.6] 段已并入主卫套间）"
 
   - id: north_platform_floor
     type: floor_region
