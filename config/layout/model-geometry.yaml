@@ -148,9 +148,21 @@ walls:
   - { id: w_nw_north,   from: v_bath_ne,  to: v_nw_ne,  height: 3.0 }
   - { id: w_vrv_north,  from: v_vrv_n,   to: v_kit_w,  height: 3.0 }
   - { id: w_kit_north,  from: v_kit_w,   to: v_ent_nw, height: 3.0 }
-  # 内墙 — 左侧卧室区（w_mbath_south 已删除——走廊条带 x[0,2.6] z[4.30,5.55] 并入主卫，主卧直通主卫套间）
+  # 内墙 — 左侧卧室区（走廊条带 x[0,2.6] z[4.30,5.55] 已并入主卫作套间过道；
+  # w_mbath_south 恢复为套内干湿分区隔断，d_mbath 与 d_mb_bath 对称——过道尽头左主卧右主卫）
   - { id: w_mbath_east, from: v_bath_ne,   to: v_bath_s, height: 3.0 }
-  - { id: w_mbath_east_ext, from: v_bath_s, to: v_suite_se, height: 3.0 }
+  - id: w_mbath_south
+    from: v_mb_sw
+    to: v_bath_s
+    height: 3.0
+    openings:
+      - { id: d_mbath, type: door, anchor: v_mb_sw, offset: 0.9, width: 0.8, height: 2.1, room: master_bath }
+  - id: w_mbath_east_ext
+    from: v_bath_s
+    to: v_suite_se
+    height: 3.0
+    openings:
+      - { id: d_mb, type: door, anchor: v_bath_s, offset: 0.625, width: 0.9, height: 2.1, room: master_bath }
   - id: w_nw_south
     from: v_bath_s
     to: v_nw_s
@@ -164,19 +176,9 @@ walls:
     openings:
       - { id: d_study, type: door, anchor: v_mb_ne, offset: 1.5, width: 0.9, height: 2.1, room: study }
   - { id: w_st_east,    from: v_st_ne,   to: v_step_b, height: 3.0 }
-  # 内墙 — 主卧北墙（w_mb_north_w 为主卫↔主卧套内门，w_mb_north_e 的 d_mb 为套间唯一走廊门）
-  - id: w_mb_north_w
-    from: v_mb_nw
-    to: v_suite_se
-    height: 3.0
-    openings:
-      - { id: d_mb_bath, type: door, anchor: v_mb_nw, offset: 0.9, width: 0.8, height: 2.1, room: master_bath }
-  - id: w_mb_north_e
-    from: v_suite_se
-    to: v_mb_ne
-    height: 3.0
-    openings:
-      - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.7, width: 0.9, height: 2.1, room: master_bedroom }
+  # 内墙 — 主卧北墙（w_mb_north_w 已删除——过道衣帽间与主卧全开放贯通，同 w_liv_west 开放做法）
+  # 内墙 — 主卧北墙东段（实体墙；套间唯一走廊门 d_mb 在 w_mbath_east_ext 条带东墙）
+  - { id: w_mb_north_e, from: v_suite_se, to: v_mb_ne, height: 3.0 }
   # 内墙 — 主卧东墙（共享墙，按主卧命名）
   - id: w_mb_east
     from: v_mb_ne

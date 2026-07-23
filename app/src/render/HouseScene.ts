@@ -629,7 +629,7 @@ export class HouseScene implements SceneApi {
       return;
     }
     const openings = (el as { openings?: ResolvedOpening[] }).openings;
-    const doors = (openings ?? []).filter(o => o.type === 'door');
+    const doors = (openings ?? []).filter(o => o.type === 'door' || o.type === 'cased_opening');
     if (doors.length === 0) {
       const mesh = this.renderBox(el.x1, el.z1, el.x2, el.z2, height, WALL_THICKNESS, mat);
       mesh.userData = { type: 'wall', objectId: el.id };
@@ -664,9 +664,8 @@ export class HouseScene implements SceneApi {
         mesh.receiveShadow = true;
         this.wallMeshes.push(mesh);
       }
-      this.renderDoor(o, ux, uz, el.x1, el.z1, t, half, height);
-      cursor = gapEnd;
-    }
+      if (o.type === 'door') this.renderDoor(o, ux, uz, el.x1, el.z1, t, half, height);
+      cursor = gapEnd;    }
     if (cursor < len - 0.001) {
       const sx1 = el.x1 + ux * cursor;
       const sz1 = el.z1 + uz * cursor;

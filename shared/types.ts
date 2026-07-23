@@ -18,7 +18,7 @@ export interface CameraState {
 
 export interface ResolvedOpening {
   id: string;
-  type: string;
+  type: string; // 'door' | 'window' | 'cased_opening'（垭口：只开墙洞，无门扇）
   x: number;
   z: number;
   width: number;

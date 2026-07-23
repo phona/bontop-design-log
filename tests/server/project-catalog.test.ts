@@ -171,10 +171,13 @@ describe('ProjectCatalog — vertex v2.0 data path', () => {
     const masterBedroom = catalog.getRoom('master_bedroom');
     assert.ok(masterBedroom);
     assert.ok(masterBedroom.wallOpenings, 'master_bedroom should have wallOpenings');
-    assert.ok(masterBedroom.wallOpenings!.length >= 2,
-      `expected >=2 openings (door+window), got ${masterBedroom.wallOpenings!.length}`);
-    const door = masterBedroom.wallOpenings!.find(o => o.type === 'door');
-    assert.ok(door, 'should have a door opening');
-    assert.ok(door!.x !== undefined && door!.z !== undefined, 'door should have absolute x/z');
+    assert.ok(masterBedroom.wallOpenings!.length >= 1,
+      `expected >=1 opening (window; suite entry is open-plan, no door), got ${masterBedroom.wallOpenings!.length}`);
+    const masterBath = catalog.getRoom('master_bath');
+    assert.ok(masterBath);
+    const doors = (masterBath.wallOpenings ?? []).filter(o => o.type === 'door');
+    assert.ok(doors.length >= 2, `master_bath should have suite entry d_mb + bath door d_mbath, got ${doors.length}`);
+    const door = doors.find(o => o.id === 'd_mb') ?? doors[0];
+    assert.ok(door.x !== undefined && door.z !== undefined, 'door should have absolute x/z');
   });
 });
