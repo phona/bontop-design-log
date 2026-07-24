@@ -462,7 +462,24 @@ export class HouseScene implements SceneApi {
     }
 
     this.textureManager.setMeshes(this.floorMeshes, this.wallMeshes);
+    const materials = HouseScene.extractMaterials(projectData.topics);
+    this.textureManager.loadMaterials(materials);
     this.textureManager.preload();
+  }
+
+  private static extractMaterials(topics: ProjectData['topics']): Array<{ id: string; appearance: { type: string; color: string } }> {
+    const seen = new Set<string>();
+    const materials: Array<{ id: string; appearance: { type: string; color: string } }> = [];
+    for (const topic of topics) {
+      for (const option of topic.options as Array<{ id: string; data?: { appearance?: { type: string; color: string } } }>) {
+        const app = option.data?.appearance;
+        if (app && !seen.has(app.type + ':' + app.color)) {
+          seen.add(app.type + ':' + app.color);
+          materials.push({ id: option.id, appearance: app });
+        }
+      }
+    }
+    return materials;
   }
 
   setSelection(topic: string, optionId: string): void {

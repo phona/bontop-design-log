@@ -1,12 +1,5 @@
 import * as THREE from 'three';
-import { readFileSync } from 'fs';
-import { load } from 'js-yaml';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
 import { createMaterialTexture, type MaterialAppearance, type ProceduralTextures } from './TextureFactory.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 interface MaterialYamlEntry {
   id: string;
@@ -17,18 +10,25 @@ interface MaterialYamlEntry {
 
 export class TextureManager {
   private cache = new Map<string, THREE.MeshStandardMaterial>();
-  private materialsData: MaterialYamlEntry[] | null = null;
+  private materialsData: MaterialYamlEntry[] = [];
   private floorMeshes: THREE.Mesh[] = [];
   private wallMeshes: THREE.Mesh[] = [];
+
+  constructor(materialsData?: MaterialYamlEntry[]) {
+    if (materialsData) this.materialsData = materialsData;
+  }
 
   setMeshes(floorMeshes: THREE.Mesh[], wallMeshes: THREE.Mesh[]): void {
     this.floorMeshes = floorMeshes;
     this.wallMeshes = wallMeshes;
   }
 
+  loadMaterials(materials: MaterialYamlEntry[]): void {
+    this.materialsData = materials;
+  }
+
   preload(): void {
-    const materials = this.loadMaterialsData();
-    for (const entry of materials) {
+    for (const entry of this.materialsData) {
       if (entry.appearance) {
         this.getMaterial(entry.id);
       }
@@ -39,8 +39,7 @@ export class TextureManager {
     const cached = this.cache.get(appearanceId);
     if (cached) return cached;
 
-    const materials = this.loadMaterialsData();
-    const entry = materials.find((m) => m.id === appearanceId);
+    const entry = this.materialsData.find((m) => m.id === appearanceId);
 
     if (entry?.appearance) {
       return this.buildMaterial(appearanceId, entry.appearance);
@@ -57,6 +56,7 @@ export class TextureManager {
     if (!mat) {
       mat = this.buildMaterial(cacheKey, appearance);
     }
+
     if (meshType === undefined || meshType === 'all' || meshType === 'wall') {
       for (const mesh of this.wallMeshes) {
         if (mesh.userData.roomId === roomId) {
@@ -73,18 +73,6 @@ export class TextureManager {
     }
   }
 
-  private loadMaterialsData(): MaterialYamlEntry[] {
-    if (this.materialsData) return this.materialsData;
-    try {
-      const raw = readFileSync(resolve(__dirname, '../../../config/materials.yaml'), 'utf-8');
-      const parsed = load(raw) as { materials: MaterialYamlEntry[] };
-      this.materialsData = parsed.materials ?? [];
-    } catch {
-      this.materialsData = [];
-    }
-    return this.materialsData;
-  }
-
   get cachedMaterialCount(): number {
     return this.cache.size;
   }
@@ -92,18 +80,15 @@ export class TextureManager {
   private buildMaterial(key: string, appearance: MaterialAppearance): THREE.MeshStandardMaterial {
     try {
       const result = createMaterialTexture(appearance);
-      if ('map' in result) {
-        result.map.repeat.set(2, 2);
-        if (result.normalMap) result.normalMap.repeat.set(2, 2);
-        const mat = new THREE.MeshStandardMaterial({
-          map: result.map,
-          normalMap: result.normalMap,
-        });
+      const tex = 'map' in result ? result.map : result;
+      if ('map' in result && result.normalMap) {
+        tex.repeat.set(2, 2);
+        const mat = new THREE.MeshStandardMaterial({ map: tex, normalMap: result.normalMap });
         this.cache.set(key, mat);
         return mat;
       }
-      result.repeat.set(2, 2);
-      const mat = new THREE.MeshStandardMaterial({ map: result });
+      tex.repeat.set(2, 2);
+      const mat = new THREE.MeshStandardMaterial({ map: tex });
       this.cache.set(key, mat);
       return mat;
     } catch {
