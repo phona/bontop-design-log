@@ -98,6 +98,9 @@ export class App {
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
 
     await this.houseScene.buildFromCatalog(this.projectData);
+    this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
+    this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
+    this.analysisTools.checkFurnitureCollisions();
 
     this.topics = new TopicRegistry(this.houseScene).list();
     this.schemePanel.init(this.topics, (topicId: string, optionId: string) => {
@@ -192,6 +195,11 @@ export class App {
         if (this.overviewMenu.isVisible()) {
           this.overviewMenu.hide();
         }
+      }
+      if (e.code === 'KeyW' && !e.repeat) {
+        e.preventDefault();
+        this.analysisTools.toggleSeeThrough();
+        this.updateModeIndicator();
       }
       if (e.code === 'KeyL' && !e.repeat) {
         e.preventDefault();
@@ -362,6 +370,9 @@ export class App {
     this.projectData = await response.json();
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
     await this.houseScene.buildFromCatalog(this.projectData);
+    this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
+    this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
+    this.analysisTools.checkFurnitureCollisions();
     const scheme = await this.stateSync.fetchScheme();
     if (scheme) this.applyScheme(scheme);
   }
@@ -393,10 +404,11 @@ export class App {
 
   private updateModeIndicator(): void {
     const measSuffix = this.analysisTools?.measurement.active ? ' · 📏 测量开启' : '';
+    const seeThroughSuffix = this.analysisTools?.isSeeThrough() ? ' · 👁 透视' : '';
     if (this.houseScene.mode === 'orbit') {
-      this.modeIndicator.textContent = `轨道模式 · 按 V 切换第一人称${measSuffix}`;
+      this.modeIndicator.textContent = `轨道模式 · 按 V 切换第一人称${measSuffix}${seeThroughSuffix}`;
     } else {
-      this.modeIndicator.textContent = `第一人称 · WASD 移动 · 按 V 切换轨道 · 按 M 总览${measSuffix}`;
+      this.modeIndicator.textContent = `第一人称 · WASD 移动 · 按 V 切换轨道 · 按 M 总览${measSuffix}${seeThroughSuffix}`;
     }
   }
 
@@ -458,6 +470,7 @@ export class App {
     this.lastTime = time;
 
     this.houseScene.render();
+    this.analysisTools.updatePulse();
 
     if (this.houseScene.mode === 'first-person' && !this.houseScene.cameraAnimator.isAnimating()) {
       this.fpController.update(dt);

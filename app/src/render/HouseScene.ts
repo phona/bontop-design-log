@@ -562,7 +562,7 @@ export class HouseScene implements SceneApi {
           wallMat.clone()
         );
         wall.position.set(w.x, r.height / 2, w.z);
-        wall.userData = { roomId: r.id, objectId: `wall:${r.id}:${w.dir}`, type: 'wall' };
+        wall.userData = { roomId: r.id, objectId: `wall:${r.id}:${w.dir}`, type: 'wall', wallType: 'interior' };
         wall.castShadow = true;
         wall.receiveShadow = true;
         group.add(wall);
@@ -629,12 +629,13 @@ export class HouseScene implements SceneApi {
 
   private renderWallSegment(el: Extract<SceneElement, { type: 'wall' }>, height: number) {
     const isShaftWall = el.id.includes('elev') || el.id.includes('foyer_outer_east') || el.id.includes('foyer_north_east');
+    const wallType = isShaftWall ? 'structure' : 'interior';
     const mat = new THREE.MeshStandardMaterial({ color: isShaftWall ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 });
     const segs = (el as { segments?: Array<{ x1: number; z1: number; x2: number; z2: number }> }).segments;
     if (segs && segs.length > 1) {
       for (const s of segs) {
         const mesh = this.renderBox(s.x1, s.z1, s.x2, s.z2, height, WALL_THICKNESS, mat);
-        mesh.userData = { type: 'wall', objectId: el.id };
+        mesh.userData = { type: 'wall', objectId: el.id, wallType };
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         this.wallMeshes.push(mesh);
@@ -645,7 +646,7 @@ export class HouseScene implements SceneApi {
     const doors = (openings ?? []).filter(o => o.type === 'door' || o.type === 'cased_opening');
     if (doors.length === 0) {
       const mesh = this.renderBox(el.x1, el.z1, el.x2, el.z2, height, WALL_THICKNESS, mat);
-      mesh.userData = { type: 'wall', objectId: el.id };
+      mesh.userData = { type: 'wall', objectId: el.id, wallType };
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.wallMeshes.push(mesh);
@@ -672,7 +673,7 @@ export class HouseScene implements SceneApi {
         const sx2 = el.x1 + ux * gapStart;
         const sz2 = el.z1 + uz * gapStart;
         const mesh = this.renderBox(sx1, sz1, sx2, sz2, height, WALL_THICKNESS, mat);
-        mesh.userData = { type: 'wall', objectId: el.id };
+        mesh.userData = { type: 'wall', objectId: el.id, wallType };
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         this.wallMeshes.push(mesh);
@@ -683,7 +684,7 @@ export class HouseScene implements SceneApi {
       const sx1 = el.x1 + ux * cursor;
       const sz1 = el.z1 + uz * cursor;
       const mesh = this.renderBox(sx1, sz1, el.x2, el.z2, height, WALL_THICKNESS, mat);
-      mesh.userData = { type: 'wall', objectId: el.id };
+      mesh.userData = { type: 'wall', objectId: el.id, wallType };
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.wallMeshes.push(mesh);
@@ -714,7 +715,7 @@ export class HouseScene implements SceneApi {
       const cz = wallZ1 + uz * t;
       panel.position.set(cx, sill + doorHeight / 2, cz);
       panel.rotation.y = Math.atan2(uz, ux);
-      panel.userData = { type: 'door', objectId: o.id };
+      panel.userData = { type: 'door', objectId: o.id, wallType: 'interior' };
       panel.castShadow = true;
       this.scene.add(panel);
       this.wallMeshes.push(panel);
@@ -727,7 +728,7 @@ export class HouseScene implements SceneApi {
       );
       leftFrame.position.set(hx, sill + (doorHeight + frameThick * 2) / 2, hz);
       leftFrame.rotation.y = Math.atan2(uz, ux);
-      leftFrame.userData = { type: 'door', objectId: `${o.id}:frame:left` };
+      leftFrame.userData = { type: 'door', objectId: `${o.id}:frame:left`, wallType: 'interior' };
       this.scene.add(leftFrame);
       this.wallMeshes.push(leftFrame);
       const rightFrame = new THREE.Mesh(
@@ -739,7 +740,7 @@ export class HouseScene implements SceneApi {
       const rhz = wallZ1 + uz * rightHingeT;
       rightFrame.position.set(rhx, sill + (doorHeight + frameThick * 2) / 2, rhz);
       rightFrame.rotation.y = Math.atan2(uz, ux);
-      rightFrame.userData = { type: 'door', objectId: `${o.id}:frame:right` };
+      rightFrame.userData = { type: 'door', objectId: `${o.id}:frame:right`, wallType: 'interior' };
       this.scene.add(rightFrame);
       this.wallMeshes.push(rightFrame);
       const topFrame = new THREE.Mesh(
@@ -748,7 +749,7 @@ export class HouseScene implements SceneApi {
       );
       topFrame.position.set(cx, sill + doorHeight + frameThick, cz);
       topFrame.rotation.y = Math.atan2(uz, ux);
-      topFrame.userData = { type: 'door', objectId: `${o.id}:frame:top` };
+      topFrame.userData = { type: 'door', objectId: `${o.id}:frame:top`, wallType: 'interior' };
       this.scene.add(topFrame);
       this.wallMeshes.push(topFrame);
       return;
@@ -765,7 +766,7 @@ export class HouseScene implements SceneApi {
     const panelCz = hz + perpZ * (o.width / 2);
     panel.position.set(panelCx, sill + doorHeight / 2, panelCz);
     panel.rotation.y = Math.atan2(perpZ, perpX);
-    panel.userData = { type: 'door', objectId: o.id };
+    panel.userData = { type: 'door', objectId: o.id, wallType: 'interior' };
     panel.castShadow = true;
     panel.receiveShadow = true;
     this.scene.add(panel);
@@ -782,7 +783,7 @@ export class HouseScene implements SceneApi {
     );
     leftFrame.position.set(hx, (sillBottom + sillTop) / 2, hz);
     leftFrame.rotation.y = Math.atan2(uz, ux);
-    leftFrame.userData = { type: 'door', objectId: `${o.id}:frame:left` };
+    leftFrame.userData = { type: 'door', objectId: `${o.id}:frame:left`, wallType: 'interior' };
     this.scene.add(leftFrame);
     this.wallMeshes.push(leftFrame);
     const rightHingeT = t + half;
@@ -794,7 +795,7 @@ export class HouseScene implements SceneApi {
     );
     rightFrame.position.set(rhx, (sillBottom + sillTop) / 2, rhz);
     rightFrame.rotation.y = Math.atan2(uz, ux);
-    rightFrame.userData = { type: 'door', objectId: `${o.id}:frame:right` };
+    rightFrame.userData = { type: 'door', objectId: `${o.id}:frame:right`, wallType: 'interior' };
     this.scene.add(rightFrame);
     this.wallMeshes.push(rightFrame);
     const topCenterT = t;
@@ -806,7 +807,7 @@ export class HouseScene implements SceneApi {
     );
     topFrame.position.set(tcx, sillTop - frameThick / 2, tcz);
     topFrame.rotation.y = Math.atan2(uz, ux);
-    topFrame.userData = { type: 'door', objectId: `${o.id}:frame:top` };
+    topFrame.userData = { type: 'door', objectId: `${o.id}:frame:top`, wallType: 'interior' };
     this.scene.add(topFrame);
     this.wallMeshes.push(topFrame);
   }
@@ -1068,7 +1069,7 @@ export class HouseScene implements SceneApi {
       const b = el.points[i + 1];
       const mat = new THREE.MeshStandardMaterial({ color: DEFAULT_PAINT, roughness: 0.85 });
       const mesh = this.renderBox(a.x, a.z, b.x, b.z, el.height, WALL_THICKNESS, mat);
-      mesh.userData = { type: 'wall', objectId: `${el.id}:${i}` };
+      mesh.userData = { type: 'wall', objectId: `${el.id}:${i}`, wallType: 'interior' };
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.wallMeshes.push(mesh);
@@ -1301,6 +1302,10 @@ export class HouseScene implements SceneApi {
 
   getPlatformRoomId(): string | undefined {
     return this.platform?.id;
+  }
+
+  getFurnitureMeshes(): THREE.Group[] {
+    return this.furnitureMeshes;
   }
 
   setFloorColor(color: string) {
