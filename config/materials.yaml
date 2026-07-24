@@ -25,7 +25,7 @@ materials:
     cons: ["需确认具体型号", "800x800 对工人手艺要求高"]
     price_source: "快环建材市场A区3号 / 马可波罗门店报价"
     notes: "原 CH8880 为抛釉砖非木纹，已排除；建议到店确认具体型号"
-    appearance: { type: "wood_grain", color: "#c49a6c" }
+    appearance: { type: "wood_grain_v2", color: "#c49a6c" }
 
   - id: "wall_tile_01"
     topic_id: "wall"
@@ -49,7 +49,7 @@ materials:
     cons: []
     price_source: "快环建材市场 / 东鹏门店报价"
     notes: "厨房用亮面好擦洗，卫生间可选哑光防滑；具体型号待门店确认"
-    appearance: { type: "ceramic_tile", color: "#f5f5f5" }
+    appearance: { type: "ceramic_tile_v2", color: "#f5f5f5", pattern: "basket" }
 
   - id: "latex_paint_01"
     topic_id: "paint"
@@ -532,7 +532,7 @@ materials:
     cons: ["价格较高", "大砖工费加价"]
     price_source: "冠珠门店报价"
     notes: "灰色系搭配大白墙，风格统一"
-    appearance: { type: "ceramic_tile", color: "#b0a89c" }
+    appearance: { type: "ceramic_tile_v2", color: "#b0a89c", pattern: "herringbone" }
 
   - id: "floor_tile_03"
     topic_id: "floor"
