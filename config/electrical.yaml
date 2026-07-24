@@ -1,0 +1,18 @@
+- id: sock_tv_01
+  room: living_dining
+  wall: w_st_east
+  type: socket
+  x: 7.20
+  z: 5.80
+  height: 0.3
+  count: 4
+  note: "电视墙插座，含USB×2"
+
+- id: switch_living_01
+  room: living_dining
+  wall: w_ent_kit
+  type: switch_2way
+  x: 7.20
+  z: 4.30
+  height: 1.3
+  note: "客厅灯光双控（入户侧）"

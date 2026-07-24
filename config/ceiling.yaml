@@ -1,0 +1,24 @@
+- id: ceiling_living
+  room: living_dining
+  type: drop
+  thickness: 0.30
+  area: [7.20, 4.30, 13.40, 9.80]
+  note: "客厅局部吊顶（走管区）"
+
+- id: ac_living
+  room: living_dining
+  type: ac_indoor
+  x: 10.3
+  z: 7.0
+  height: 2.85
+  model: "4HP 风管机"
+  note: "客厅空调内机"
+
+- id: ac_master
+  room: master_bedroom
+  type: ac_indoor
+  x: 1.5
+  z: 7.0
+  height: 2.85
+  model: "2.8HP 风管机"
+  note: "主卧空调内机"

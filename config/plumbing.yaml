@@ -1,0 +1,14 @@
+- id: wc_master
+  room: master_bath
+  type: toilet
+  x: 0.8
+  z: 2.0
+  note: "主卫马桶"
+
+- id: faucet_garden
+  room: entry_garden
+  type: faucet
+  x: 12.5
+  z: 1.5
+  height: 0.8
+  note: "入户花园浇花水龙头"

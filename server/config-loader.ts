@@ -1,5 +1,6 @@
 import { watch, type FSWatcher } from 'chokidar';
 import { readFileSync } from 'node:fs';
+import { load as parseYaml } from 'js-yaml';
 
 export interface ConfigStatus {
   path: string;
@@ -73,4 +74,59 @@ export class ConfigRegistry {
   async stopAll(): Promise<void> {
     await Promise.all(this.loaders.map((l) => l.stopWatching()));
   }
+}
+
+// ── Domain config interfaces ──────────────────────────────────────
+
+export interface ElectricalPoint {
+  id: string;
+  room: string;
+  wall: string;
+  type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb';
+  x: number;
+  z: number;
+  height: number;
+  count?: number;
+  note?: string;
+}
+
+export interface PlumbingPoint {
+  id: string;
+  room: string;
+  type: 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor';
+  x: number;
+  z: number;
+  height?: number;
+  note?: string;
+}
+
+export interface CeilingZone {
+  id: string;
+  room: string;
+  type: 'drop' | 'integrated' | 'cove' | 'none' | 'ac_indoor';
+  thickness?: number;
+  area?: [number, number, number, number];
+  x?: number;
+  z?: number;
+  height?: number;
+  model?: string;
+  note?: string;
+}
+
+// ── Domain config loaders ─────────────────────────────────────────
+
+function loadConfig<T>(path: string): T {
+  return parseYaml(readFileSync(path, 'utf8')) as T;
+}
+
+export function loadElectricalConfig(): ElectricalPoint[] {
+  return loadConfig<ElectricalPoint[]>('config/electrical.yaml');
+}
+
+export function loadPlumbingConfig(): PlumbingPoint[] {
+  return loadConfig<PlumbingPoint[]>('config/plumbing.yaml');
+}
+
+export function loadCeilingConfig(): CeilingZone[] {
+  return loadConfig<CeilingZone[]>('config/ceiling.yaml');
 }
