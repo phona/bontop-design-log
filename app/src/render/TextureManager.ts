@@ -43,15 +43,7 @@ export class TextureManager {
     const entry = materials.find((m) => m.id === appearanceId);
 
     if (entry?.appearance) {
-      try {
-        const tex = createMaterialTexture(entry.appearance);
-        tex.repeat.set(2, 2);
-        const mat = new THREE.MeshStandardMaterial({ map: tex });
-        this.cache.set(appearanceId, mat);
-        return mat;
-      } catch {
-        // fall through — DOM may be unavailable (e.g. in tests)
-      }
+      return this.buildMaterial(appearanceId, entry.appearance);
     }
 
     const fallback = new THREE.MeshStandardMaterial();
@@ -59,8 +51,12 @@ export class TextureManager {
     return fallback;
   }
 
-  applyToRoom(roomId: string, appearanceId: string, meshType?: 'floor' | 'wall' | 'all'): void {
-    const mat = this.getMaterial(appearanceId);
+  applyToRoom(roomId: string, appearance: MaterialAppearance, meshType?: 'floor' | 'wall' | 'all'): void {
+    const cacheKey = `${appearance.type}:${appearance.color}`;
+    let mat = this.cache.get(cacheKey);
+    if (!mat) {
+      mat = this.buildMaterial(cacheKey, appearance);
+    }
     if (meshType === undefined || meshType === 'all' || meshType === 'wall') {
       for (const mesh of this.wallMeshes) {
         if (mesh.userData.roomId === roomId) {
@@ -91,6 +87,20 @@ export class TextureManager {
 
   get cachedMaterialCount(): number {
     return this.cache.size;
+  }
+
+  private buildMaterial(key: string, appearance: MaterialAppearance): THREE.MeshStandardMaterial {
+    try {
+      const tex = createMaterialTexture(appearance);
+      tex.repeat.set(2, 2);
+      const mat = new THREE.MeshStandardMaterial({ map: tex });
+      this.cache.set(key, mat);
+      return mat;
+    } catch {
+      const mat = new THREE.MeshStandardMaterial();
+      this.cache.set(key, mat);
+      return mat;
+    }
   }
 
   private copyToMesh(mesh: THREE.Mesh, mat: THREE.MeshStandardMaterial): void {

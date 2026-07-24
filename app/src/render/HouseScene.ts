@@ -458,6 +458,7 @@ export class HouseScene implements SceneApi {
     }
 
     this.textureManager.setMeshes(this.floorMeshes, this.wallMeshes);
+    this.textureManager.preload();
   }
 
   setSelection(topic: string, optionId: string): void {
@@ -1275,7 +1276,7 @@ export class HouseScene implements SceneApi {
 
     const meshType = topicId === 'floor' ? 'floor' : 'wall';
     for (const roomId of roomIds) {
-      this.textureManager.applyToRoom(roomId, optionId, meshType);
+      this.textureManager.applyToRoom(roomId, appearance, meshType);
     }
   }
 
