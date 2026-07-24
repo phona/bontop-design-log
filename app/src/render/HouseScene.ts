@@ -471,6 +471,7 @@ export class HouseScene implements SceneApi {
     const seen = new Set<string>();
     const materials: Array<{ id: string; appearance: { type: string; color: string } }> = [];
     for (const topic of topics) {
+      if (!topic.options) continue;
       for (const option of topic.options as Array<{ id: string; data?: { appearance?: { type: string; color: string } } }>) {
         const app = option.data?.appearance;
         if (app && !seen.has(app.type + ':' + app.color)) {

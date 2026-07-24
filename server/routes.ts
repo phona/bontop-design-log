@@ -28,7 +28,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     res.json({ configs: deps.getConfigRegistry().getStatuses() });
   });
 
-  router.get('/api/annotations/electrical', (_req, res) => {
+  router.get('/annotations/electrical', (_req, res) => {
     try {
       res.json(loadElectricalConfig());
     } catch (err) {
@@ -36,7 +36,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     }
   });
 
-  router.get('/api/annotations/plumbing', (_req, res) => {
+  router.get('/annotations/plumbing', (_req, res) => {
     try {
       res.json(loadPlumbingConfig());
     } catch (err) {
@@ -44,7 +44,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     }
   });
 
-  router.get('/api/annotations/ceiling', (_req, res) => {
+  router.get('/annotations/ceiling', (_req, res) => {
     try {
       res.json(loadCeilingConfig());
     } catch (err) {
