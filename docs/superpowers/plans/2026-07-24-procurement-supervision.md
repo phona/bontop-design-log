@@ -467,7 +467,95 @@ git commit -m "feat: AcceptanceEngine — config-driven acceptance checklists"
 
 ---
 
-### Task 4: MCP tools for procurement
+### Task 4: Appliance installation pitfalls
+
+**Files:**
+- Modify: `config/budget-pitfalls.yaml` (add appliance pitfalls)
+- Test: `tests/server/pitfall-engine.test.ts` (verify new pitfalls load)
+
+**Interfaces:**
+- Consumes: existing `PitfallEngine`
+- Produces: new appliance pitfalls accessible via MCP `get_pitfalls`
+
+- [ ] **Step 1: Write failing tests**
+
+```typescript
+it('returns pitfalls for central AC installation', () => {
+  const engine = new PitfallEngine();
+  const pitfalls = engine.getPitfalls({ category: 'appliance_hvac' });
+  assert.ok(pitfalls.length >= 5);
+  assert.ok(pitfalls.some(p => p.item.includes('抽真空')));
+});
+
+it('returns pitfalls for appliance by name', () => {
+  const engine = new PitfallEngine();
+  const pitfalls = engine.getPitfalls({ appliance: 'gas_water_heater' });
+  assert.ok(pitfalls.length > 0);
+});
+```
+
+- [ ] **Step 2: Append appliance pitfalls to `config/budget-pitfalls.yaml`**
+
+```yaml
+- category: appliance_hvac
+  name: "中央空调安装"
+  pitfalls:
+    - item: "铜管焊接未充氮保护"
+      risk: "铜管氧化堵塞系统，压缩机损坏"
+      prevention: "要求充氮焊接，写在合同里"
+      severity: critical
+    - item: "抽真空不足15分钟"
+      risk: "系统含水，制冷差、压缩机磨损"
+      prevention: "验收时看真空泵运行时间"
+    - item: "冷凝水管未做坡度"
+      risk: "漏水泡吊顶"
+      prevention: "吊顶前确认1%坡度"
+    - item: "风口尺寸与吊顶开口不对"
+      risk: "装不进去或漏缝"
+      prevention: "木工进场前给风口尺寸图"
+    - item: "外机散热空间不足"
+      risk: "过热停机、费电"
+      prevention: "百叶通风面积 ≥ 80%"
+
+- category: appliance_water_heater
+  name: "燃气热水器安装"
+  pitfalls:
+    - item: "排烟管用铝箔管(应用不锈钢)"
+      risk: "高温烧穿，CO泄漏"
+      prevention: "指定不锈钢排烟管"
+    - item: "排烟管未伸出室外"
+      risk: "CO中毒"
+      prevention: "排烟口伸出外墙 ≥ 30cm"
+    - item: "未预埋回水管"
+      risk: "零冷水装不了"
+      prevention: "水电阶段预埋回水管"
+
+- category: appliance_smart_home
+  name: "智能家居预留"
+  pitfalls:
+    - item: "开关盒未拉零线"
+      risk: "智能开关装不了"
+      prevention: "水电阶段要求所有开关盒拉零线"
+    - item: "窗帘电机未留电源"
+      risk: "电动窗帘装不了"
+      prevention: "窗帘盒旁预留插座"
+```
+
+- [ ] **Step 3: Run tests to verify**
+
+Run: `npx tsx --test tests/server/pitfall-engine.test.ts`
+Expected: PASS
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add config/budget-pitfalls.yaml
+git commit -m "feat: appliance installation pitfalls (AC, water heater, smart home)"
+```
+
+---
+
+### Task 5: MCP tools for procurement
 
 **Files:**
 - Modify: `server/mcp-server.ts` (add tools)
@@ -574,7 +662,7 @@ git commit -m "feat: MCP tools — get_procurement_status, run_tradeoff, get_acc
 
 ### Self-Review
 
-- [ ] Spec coverage: LifecycleEngine (Task 1), TradeoffEngine (Task 2), AcceptanceEngine covering demolition/waterproofing/tile/paint/electrical/occupancy (Task 3), MCP tools (Task 4) — all covered
+- [ ] Spec coverage: LifecycleEngine (Task 1), TradeoffEngine (Task 2), AcceptanceEngine (Task 3), Appliance pitfalls (Task 4), MCP tools (Task 5) — all covered
 - [ ] No placeholders: all code blocks contain real implementation
 - [ ] Type consistency: engine interfaces match across tasks
 - [ ] Each task produces independently shippable, testable code
