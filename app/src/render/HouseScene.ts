@@ -20,7 +20,7 @@ import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopDownView } from '../scene/TopDownView.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
-import { createMaterialTexture } from './TextureFactory.js';
+import { TextureManager } from './TextureManager.js';
 import { placeFurnishings } from './FurnitureFactory.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
@@ -81,6 +81,7 @@ export class HouseScene implements SceneApi {
   private _mode: 'orbit' | 'first-person' | 'top-down' = 'orbit';
   private compareSchemeData?: CurrentScheme;
   private roomMeta = new Map<string, { wall_finish?: string; wallOpenings?: ResolvedOpening[] }>();
+  private textureManager = new TextureManager();
   private gridHelper?: THREE.GridHelper;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
   private readonly ORBIT_POSITION = new THREE.Vector3(7.4, 14, 19.2);
@@ -455,6 +456,8 @@ export class HouseScene implements SceneApi {
     if (projectData.house.electrical) {
       this.placeElectricalMarkers(projectData.house.electrical);
     }
+
+    this.textureManager.setMeshes(this.floorMeshes, this.wallMeshes);
   }
 
   setSelection(topic: string, optionId: string): void {
@@ -1251,28 +1254,27 @@ export class HouseScene implements SceneApi {
     const appearance = data?.appearance as { type: string; color: string } | undefined;
     if (!appearance) return;
 
-    const tex = createMaterialTexture(appearance);
-    tex.repeat.set(2, 2);
+    const roomIds = new Set<string>();
 
     if (topicId === 'floor') {
       for (const mesh of this.floorMeshes) {
-        const mat = mesh.material as THREE.MeshStandardMaterial;
-        mat.map = tex;
-        mat.color.set(appearance.color);
-        mat.needsUpdate = true;
+        const rid = mesh.userData.roomId as string;
+        if (rid) roomIds.add(rid);
       }
-    } else if (topicId === 'wall' || topicId === 'paint') {
+    } else {
       for (const mesh of this.wallMeshes) {
         if (topicId === 'paint') {
-          const roomId = mesh.userData.roomId as string;
-          const room = this.roomMeta.get(roomId);
+          const rid = mesh.userData.roomId as string;
+          const room = this.roomMeta.get(rid);
           if (room?.wall_finish === 'tile') continue;
         }
-        const mat = mesh.material as THREE.MeshStandardMaterial;
-        mat.map = tex;
-        mat.color.set(appearance.color);
-        mat.needsUpdate = true;
+        const rid = mesh.userData.roomId as string;
+        if (rid) roomIds.add(rid);
       }
+    }
+
+    for (const roomId of roomIds) {
+      this.textureManager.applyToRoom(roomId, optionId);
     }
   }
 
