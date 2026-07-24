@@ -1,7 +1,12 @@
 import * as THREE from 'three';
 import { readFileSync } from 'fs';
 import { load } from 'js-yaml';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 import { createMaterialTexture, type MaterialAppearance } from './TextureFactory.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 interface MaterialYamlEntry {
   id: string;
@@ -21,7 +26,7 @@ export class TextureManager {
     this.wallMeshes = wallMeshes;
   }
 
-  async preload(): Promise<void> {
+  preload(): void {
     const materials = this.loadMaterialsData();
     for (const entry of materials) {
       if (entry.appearance) {
@@ -40,6 +45,7 @@ export class TextureManager {
     if (entry?.appearance) {
       try {
         const tex = createMaterialTexture(entry.appearance);
+        tex.repeat.set(2, 2);
         const mat = new THREE.MeshStandardMaterial({ map: tex });
         this.cache.set(appearanceId, mat);
         return mat;
@@ -53,16 +59,20 @@ export class TextureManager {
     return fallback;
   }
 
-  applyToRoom(roomId: string, appearanceId: string): void {
+  applyToRoom(roomId: string, appearanceId: string, meshType?: 'floor' | 'wall' | 'all'): void {
     const mat = this.getMaterial(appearanceId);
-    for (const mesh of this.wallMeshes) {
-      if (mesh.userData.roomId === roomId) {
-        this.copyToMesh(mesh, mat);
+    if (meshType === undefined || meshType === 'all' || meshType === 'wall') {
+      for (const mesh of this.wallMeshes) {
+        if (mesh.userData.roomId === roomId) {
+          this.copyToMesh(mesh, mat);
+        }
       }
     }
-    for (const mesh of this.floorMeshes) {
-      if (mesh.userData.roomId === roomId) {
-        this.copyToMesh(mesh, mat);
+    if (meshType === undefined || meshType === 'all' || meshType === 'floor') {
+      for (const mesh of this.floorMeshes) {
+        if (mesh.userData.roomId === roomId) {
+          this.copyToMesh(mesh, mat);
+        }
       }
     }
   }
@@ -70,13 +80,17 @@ export class TextureManager {
   private loadMaterialsData(): MaterialYamlEntry[] {
     if (this.materialsData) return this.materialsData;
     try {
-      const raw = readFileSync('config/materials.yaml', 'utf-8');
+      const raw = readFileSync(resolve(__dirname, '../../../config/materials.yaml'), 'utf-8');
       const parsed = load(raw) as { materials: MaterialYamlEntry[] };
       this.materialsData = parsed.materials ?? [];
     } catch {
       this.materialsData = [];
     }
     return this.materialsData;
+  }
+
+  get cachedMaterialCount(): number {
+    return this.cache.size;
   }
 
   private copyToMesh(mesh: THREE.Mesh, mat: THREE.MeshStandardMaterial): void {

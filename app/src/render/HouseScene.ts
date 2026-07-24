@@ -1261,7 +1261,7 @@ export class HouseScene implements SceneApi {
         const rid = mesh.userData.roomId as string;
         if (rid) roomIds.add(rid);
       }
-    } else {
+    } else if (topicId === 'wall' || topicId === 'paint') {
       for (const mesh of this.wallMeshes) {
         if (topicId === 'paint') {
           const rid = mesh.userData.roomId as string;
@@ -1273,8 +1273,9 @@ export class HouseScene implements SceneApi {
       }
     }
 
+    const meshType = topicId === 'floor' ? 'floor' : 'wall';
     for (const roomId of roomIds) {
-      this.textureManager.applyToRoom(roomId, optionId);
+      this.textureManager.applyToRoom(roomId, optionId, meshType);
     }
   }
 
