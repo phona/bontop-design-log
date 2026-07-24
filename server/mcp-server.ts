@@ -5,6 +5,9 @@ import type { DesignState } from './design-state.js';
 import type { RuleEngine } from './rule-engine.js';
 import type { BudgetCalculator } from './budget-calculator.js';
 import type { PitfallEngine } from './pitfall-engine.js';
+import type { LifecycleEngine } from './lifecycle-engine.js';
+import type { TradeoffEngine } from './tradeoff-engine.js';
+import type { AcceptanceEngine } from './acceptance-engine.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { CurrentScheme } from '../shared/types.js';
 import { parseSpecDimensions } from './spec-parser.js';
@@ -28,11 +31,14 @@ export interface McpDeps {
   getRuleEngine: () => RuleEngine;
   getBudgetCalculator: () => BudgetCalculator;
   getPitfallEngine: () => PitfallEngine;
+  getLifecycleEngine: () => LifecycleEngine;
+  getTradeoffEngine: () => TradeoffEngine;
+  getAcceptanceEngine: () => AcceptanceEngine;
   archiveStore: ArchivedSchemesStore;
 }
 
 export function createMcpServer(deps: McpDeps): McpServer {
-  const { catalog, state, getRuleEngine, getBudgetCalculator, getPitfallEngine, archiveStore } = deps;
+  const { catalog, state, getRuleEngine, getBudgetCalculator, getPitfallEngine, getLifecycleEngine, getTradeoffEngine, getAcceptanceEngine, archiveStore } = deps;
   const server = new McpServer(
     { name: 'bontop-design', version: '0.2.0' },
     { capabilities: { tools: {} } }
@@ -631,6 +637,47 @@ export function createMcpServer(deps: McpDeps): McpServer {
         }
       }
       return text(result);
+    }
+  );
+
+  server.registerTool(
+    'get_procurement_status',
+    {
+      title: 'Get procurement status',
+      description: 'Return procurement stages for all materials.',
+    },
+    async () => {
+      const materials = getLifecycleEngine().getAllStatuses();
+      return text({ materials });
+    }
+  );
+
+  server.registerTool(
+    'run_tradeoff',
+    {
+      title: 'Run tradeoff analysis',
+      description: 'Return tradeoff options for a given topic.',
+      inputSchema: z.object({ topic: z.string() }),
+    },
+    async (args) => {
+      const tradeoffs = getTradeoffEngine().getTradeoffs(args.topic);
+      return text({ tradeoffs });
+    }
+  );
+
+  server.registerTool(
+    'get_acceptance_list',
+    {
+      title: 'Get acceptance checklist',
+      description: 'Return acceptance check items for a phase, optionally filtered by room.',
+      inputSchema: z.object({ phase: z.string(), roomId: z.string().optional() }),
+    },
+    async (args) => {
+      const engine = getAcceptanceEngine();
+      const items = args.roomId
+        ? engine.getChecklistForRoom(args.phase, args.roomId)
+        : engine.getChecklist(args.phase);
+      return text({ items });
     }
   );
 

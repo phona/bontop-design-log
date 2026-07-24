@@ -9,6 +9,9 @@ import { RuleEngine } from './rule-engine.js';
 import { BudgetCalculator } from './budget-calculator.js';
 import { PitfallEngine } from './pitfall-engine.js';
 import type { PitfallConfig } from './pitfall-engine.js';
+import { LifecycleEngine } from './lifecycle-engine.js';
+import { TradeoffEngine } from './tradeoff-engine.js';
+import { AcceptanceEngine } from './acceptance-engine.js';
 import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
 import { parseOverlay } from './overlay-merge.js';
@@ -29,6 +32,9 @@ let catalog = ProjectCatalog.fromMaterials(
 let ruleEngine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
 let budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
 let pitfallEngine = new PitfallEngine({ version: '1.0', pitfalls: [], templates: [] });
+const lifecycleEngine = new LifecycleEngine();
+const tradeoffEngine = new TradeoffEngine();
+const acceptanceEngine = new AcceptanceEngine();
 
 function rebuildDerived(): void {
   const materials = materialsLoader.getConfig() ?? { materials: [] };
@@ -136,6 +142,9 @@ const apiDeps = {
   getRuleEngine: () => ruleEngine,
   getBudgetCalculator: () => budgetCalculator,
   getPitfallEngine: () => pitfallEngine,
+  getLifecycleEngine: () => lifecycleEngine,
+  getTradeoffEngine: () => tradeoffEngine,
+  getAcceptanceEngine: () => acceptanceEngine,
   archiveStore,
   getConfigRegistry: () => registry,
   getOverlay: () => overlayLoader.getConfig(),

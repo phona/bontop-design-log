@@ -9,6 +9,9 @@ import { DesignState } from '../../server/design-state.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { PitfallEngine } from '../../server/pitfall-engine.js';
+import { LifecycleEngine } from '../../server/lifecycle-engine.js';
+import { TradeoffEngine } from '../../server/tradeoff-engine.js';
+import { AcceptanceEngine } from '../../server/acceptance-engine.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from '../../server/config-loader.js';
 import type { CadLayoutYaml } from '../../shared/types.js';
@@ -54,6 +57,9 @@ describe('server startup resilience', () => {
       getPitfallEngine: () => new PitfallEngine(
         load(readFileSync('config/budget-pitfalls.yaml', 'utf8')) as never
       ),
+      getLifecycleEngine: () => new LifecycleEngine(),
+      getTradeoffEngine: () => new TradeoffEngine(),
+      getAcceptanceEngine: () => new AcceptanceEngine(),
       archiveStore,
       getConfigRegistry: () => registry,
       getOverlay: () => undefined,

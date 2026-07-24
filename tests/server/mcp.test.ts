@@ -11,6 +11,9 @@ import { DesignState } from '../../server/design-state.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { PitfallEngine } from '../../server/pitfall-engine.js';
+import { LifecycleEngine } from '../../server/lifecycle-engine.js';
+import { TradeoffEngine } from '../../server/tradeoff-engine.js';
+import { AcceptanceEngine } from '../../server/acceptance-engine.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
 import { createMcpServer } from '../../server/mcp-server.js';
@@ -35,12 +38,18 @@ describe('MCP remote', () => {
     const pitfallEngine = new PitfallEngine(
       load(readFileSync('config/budget-pitfalls.yaml', 'utf8')) as never
     );
+    const lifecycleEngine = new LifecycleEngine();
+    const tradeoffEngine = new TradeoffEngine();
+    const acceptanceEngine = new AcceptanceEngine();
     const deps = {
       catalog,
       state,
       getRuleEngine: () => engine,
       getBudgetCalculator: () => calc,
       getPitfallEngine: () => pitfallEngine,
+      getLifecycleEngine: () => lifecycleEngine,
+      getTradeoffEngine: () => tradeoffEngine,
+      getAcceptanceEngine: () => acceptanceEngine,
       archiveStore,
       getConfigRegistry: () => new ConfigRegistry(),
       getOverlay: () => undefined,
@@ -395,6 +404,38 @@ describe('MCP remote', () => {
     const chair = items.find((i: { type: string }) => i.type === 'dining_chair');
     assert.ok(chair);
     assert.equal(chair.dimensions, undefined, 'dining_chair spec "标准" yields no dimensions');
+  });
+
+  it('get_procurement_status returns material stages', async () => {
+    const result = await client.callTool({
+      name: 'get_procurement_status',
+      arguments: {},
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.ok(Array.isArray(parsed.materials));
+    assert.ok(parsed.materials[0].id);
+    assert.ok(parsed.materials[0].stage);
+  });
+
+  it('run_tradeoff returns options for a topic', async () => {
+    const result = await client.callTool({
+      name: 'run_tradeoff',
+      arguments: { topic: 'tile_installation' },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.tradeoffs.length > 0);
+  });
+
+  it('get_acceptance_list returns items for phase', async () => {
+    const result = await client.callTool({
+      name: 'get_acceptance_list',
+      arguments: { phase: 'tile_installation' },
+    });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.ok(parsed.items.length > 0);
   });
 
 });
