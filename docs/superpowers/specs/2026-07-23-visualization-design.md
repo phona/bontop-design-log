@@ -5,7 +5,7 @@
 > 后续子项目分别在独立 spec 中处理：
 > - Phase 2: AI Design Advisor（已有 spec，已实现，跳过）
 > - Phase 3: 点位配置与3D可视化（见 `2026-07-23-electrical-plumbing-ceiling-design.md`）
-> - Phase 4: 预算精化 → 采购清单
+> - Phase 4: 采购监理系统（见 `2026-07-23-procurement-supervision-design.md`）
 >
 > **标注名：** 所有房间显示名称从 `model-geometry.yaml` 的 `rooms[].name` 读取，不改代码只改配置。
 
@@ -57,7 +57,7 @@ class TextureManager {
 
 - `preload()` — 初始化时异步加载所有配置纹理，结果缓存到 `Map<string, THREE.Texture>`
 - 加载失败 → 降级到现有 `TextureFactory` 程序化纹理，不中断渲染
-- 方案切换：`applySchemeTextures()` 改为调用 `textureManager.applyToRoom()`
+- 方案切换：`applySchemeTextures()` 内部调用 `textureManager.applyToRoom(roomId, option.data.appearance.id)` — topic → appearance 映射由调用方完成，TextureManager 只负责 roomId + appearanceId 到材质的转换
 
 ---
 
@@ -97,7 +97,7 @@ class EnvironmentManager {
 ### 4.1 激光测量
 
 **俯视图模式：**
-- 鼠标悬停 → 显示光标坐标 `(X: 3.20, Z: 8.50)`
+- 鼠标悬停 → 显示光标坐标 `(X: 3.20, Z: 8.50)`（model-geometry 局部坐标系，米）
 - 点击 A → 拉线到 B → 显示距离 `3.45m`
 - 继续点击 C → 显示累计 `AB + BC = 6.72m`
 - 右键/Esc 退出
@@ -122,7 +122,7 @@ class EnvironmentManager {
 - 快捷键 `W` 切换
 - 非承重墙透明度 → 0.15
 - 结构柱/剪力墙保持不透明（以 model-geometry.yaml wall type 区分）
-- 俯视图自动进入透墙模式
+- 俯视图默认启用透墙模式，用户可手动关闭
 
 ### 4.3 碰撞高亮
 
