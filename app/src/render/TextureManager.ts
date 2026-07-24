@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import { load } from 'js-yaml';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
-import { createMaterialTexture, type MaterialAppearance } from './TextureFactory.js';
+import { createMaterialTexture, type MaterialAppearance, type ProceduralTextures } from './TextureFactory.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -91,9 +91,19 @@ export class TextureManager {
 
   private buildMaterial(key: string, appearance: MaterialAppearance): THREE.MeshStandardMaterial {
     try {
-      const tex = createMaterialTexture(appearance);
-      tex.repeat.set(2, 2);
-      const mat = new THREE.MeshStandardMaterial({ map: tex });
+      const result = createMaterialTexture(appearance);
+      if ('map' in result) {
+        result.map.repeat.set(2, 2);
+        if (result.normalMap) result.normalMap.repeat.set(2, 2);
+        const mat = new THREE.MeshStandardMaterial({
+          map: result.map,
+          normalMap: result.normalMap,
+        });
+        this.cache.set(key, mat);
+        return mat;
+      }
+      result.repeat.set(2, 2);
+      const mat = new THREE.MeshStandardMaterial({ map: result });
       this.cache.set(key, mat);
       return mat;
     } catch {
