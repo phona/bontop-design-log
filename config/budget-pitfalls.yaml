@@ -173,6 +173,267 @@ pitfalls:
     description: "马桶法兰圈未装/装歪、地漏未做存水弯、花洒混水阀高度不对、浴室柜未固定"
     mitigation: "要求:法兰圈正确安装;地漏存水弯;混水阀高度110cm;浴室柜膨胀螺丝固定"
 
+  # === Appliance Installation Pitfalls (type: construction) ===
+  - id: ac_weld_nitrogen
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: high
+    title: "铜管焊接未充氮保护"
+    description: "铜管焊接不充氮保护，内壁氧化 → 堵塞系统 → 压缩机损坏"
+    mitigation: "要求充氮焊接，写进合同"
+
+  - id: ac_vacuum
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: high
+    title: "抽真空不足15分钟"
+    description: "系统含水 → 制冷差、压缩机磨损"
+    mitigation: "验收时要求看真空泵运行时间"
+
+  - id: ac_drain_slope
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: high
+    title: "冷凝水管未做坡度"
+    description: "漏水泡吊顶"
+    mitigation: "吊顶前确认1%坡度"
+
+  - id: ac_level
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: medium
+    title: "内机安装不水平"
+    description: "漏水、异响"
+    mitigation: "安装后用水平尺检查"
+
+  - id: ac_vent_open
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: high
+    title: "风口尺寸与吊顶开口不对"
+    description: "装不进去或漏缝难看"
+    mitigation: "吊顶木工进场前，给木工风口尺寸图纸"
+
+  - id: ac_heat_dissipation
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: high
+    title: "外机散热空间不足"
+    description: "过热停机、费电"
+    mitigation: "确认外机位百叶通风面积 ≥ 80%"
+
+  - id: ac_access
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: medium
+    title: "没留检修口"
+    description: "坏了要拆吊顶"
+    mitigation: "检修口位置提前规划"
+
+  - id: wh_exhaust_pipe
+    type: construction
+    stage: installation
+    category: appliance_water_heater
+    trigger: always
+    severity: high
+    title: "排烟管用铝箔管(应用不锈钢)"
+    description: "高温烧穿 → CO泄漏"
+    mitigation: "指定用不锈钢排烟管"
+
+  - id: wh_exhaust_outdoor
+    type: construction
+    stage: installation
+    category: appliance_water_heater
+    trigger: always
+    severity: high
+    title: "排烟管未伸出室外"
+    description: "CO中毒"
+    mitigation: "装完检查排烟口伸出外墙 ≥ 30cm"
+
+  - id: wh_gas_pipe
+    type: construction
+    stage: installation
+    category: appliance_water_heater
+    trigger: always
+    severity: high
+    title: "燃气管用软管(应用专用硬管)"
+    description: "漏气爆炸"
+    mitigation: "要求燃气管必须是燃气专用管"
+
+  - id: wh_return_water
+    type: construction
+    stage: installation
+    category: appliance_water_heater
+    trigger: always
+    severity: high
+    title: "未预埋回水管"
+    description: "零冷水装不了"
+    mitigation: "水电阶段提前铺好回水管"
+
+  - id: wh_gas_meter
+    type: construction
+    stage: installation
+    category: appliance_water_heater
+    trigger: always
+    severity: medium
+    title: "安装位置离燃气表太远"
+    description: "改表费上千"
+    mitigation: "热水器尽量靠近燃气表"
+
+  - id: hood_duct
+    type: construction
+    stage: installation
+    category: appliance_range_hood
+    trigger: always
+    severity: high
+    title: "烟管未预埋到外墙"
+    description: "油烟排不出去"
+    mitigation: "贴砖前预埋烟管到外墙排烟口"
+
+  - id: hood_check_valve
+    type: construction
+    stage: installation
+    category: appliance_range_hood
+    trigger: always
+    severity: medium
+    title: "止逆阀未装"
+    description: "邻居油烟灌进你家"
+    mitigation: "买烟机时一起买止逆阀"
+
+  - id: hood_cutout
+    type: construction
+    stage: installation
+    category: appliance_range_hood
+    trigger: always
+    severity: high
+    title: "灶具开孔尺寸未给橱柜厂"
+    description: "台面开错孔要重做"
+    mitigation: "橱柜复尺前发灶具开孔图给厂家"
+
+  - id: hood_height
+    type: construction
+    stage: installation
+    category: appliance_range_hood
+    trigger: always
+    severity: medium
+    title: "烟机高度未算对"
+    description: "碰头或吸力不够"
+    mitigation: "侧吸离灶台35-45cm，顶吸65-75cm"
+
+  - id: purifier_outlet
+    type: construction
+    stage: installation
+    category: appliance_water_purifier
+    trigger: always
+    severity: high
+    title: "未预留插座"
+    description: "净水器装不了"
+    mitigation: "水电阶段在厨下留插座"
+
+  - id: purifier_space
+    type: construction
+    stage: installation
+    category: appliance_water_purifier
+    trigger: always
+    severity: medium
+    title: "橱柜下空间不够"
+    description: "净水器塞不进去"
+    mitigation: "买之前量柜下高度（需 > 45cm）"
+
+  - id: purifier_drain
+    type: construction
+    stage: installation
+    category: appliance_water_purifier
+    trigger: always
+    severity: high
+    title: "未留排污管(反渗透)"
+    description: "废水没地方排"
+    mitigation: "水电阶段厨下预留排水管"
+
+  - id: purifier_prefilter
+    type: construction
+    stage: installation
+    category: appliance_water_purifier
+    trigger: always
+    severity: medium
+    title: "前置过滤器未装"
+    description: "全屋用水无粗滤"
+    mitigation: "进水总阀后装、需预留排水"
+
+  - id: laundry_stack
+    type: construction
+    stage: installation
+    category: appliance_laundry
+    trigger: always
+    severity: high
+    title: "叠放未确认承重"
+    description: "机器倾倒"
+    mitigation: "买专用叠放支架，确认洗衣机承重 ≥ 120kg"
+
+  - id: laundry_outlet
+    type: construction
+    stage: installation
+    category: appliance_laundry
+    trigger: always
+    severity: medium
+    title: "插座在机器正后方"
+    description: "插头顶住推不进去"
+    mitigation: "插座留在侧面柜体或离地30cm侧边"
+
+  - id: laundry_drain
+    type: construction
+    stage: installation
+    category: appliance_laundry
+    trigger: always
+    severity: high
+    title: "排水管未做墙排"
+    description: "地漏反水"
+    mitigation: "预埋排水管到机器位，不走地漏"
+
+  - id: smart_zero_line
+    type: construction
+    stage: installation
+    category: appliance_smart_home
+    trigger: always
+    severity: high
+    title: "开关未拉零线"
+    description: "智能开关装不了"
+    mitigation: "水电阶段跟电工说：所有开关盒拉零线"
+
+  - id: smart_gateway
+    type: construction
+    stage: installation
+    category: appliance_smart_home
+    trigger: always
+    severity: medium
+    title: "未考虑网关位置"
+    description: "信号覆盖不到"
+    mitigation: "网关放房子中央（走廊/客厅），提前留插座"
+
+  - id: smart_curtain
+    type: construction
+    stage: installation
+    category: appliance_smart_home
+    trigger: always
+    severity: medium
+    title: "窗帘电机未留电源"
+    description: "电动窗帘装不了"
+    mitigation: "窗帘盒旁边预留插座"
+
   # === Acceptance Checkpoints (type: acceptance) ===
   - id: waterproof_acceptance
     type: acceptance

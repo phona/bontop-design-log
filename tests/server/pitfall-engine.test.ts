@@ -54,4 +54,46 @@ describe('PitfallEngine', () => {
     assert.ok(t);
     assert.equal(t.id, 'balanced');
   });
+
+  it('returns pitfalls for central AC installation', () => {
+    const engine = loadEngine();
+    const pitfalls = engine.getPitfalls({ category: 'appliance_hvac' });
+    assert.ok(pitfalls.length >= 5);
+    assert.ok(pitfalls.some((p) => p.title.includes('抽真空')));
+  });
+
+  it('returns pitfalls for water heater installation', () => {
+    const engine = loadEngine();
+    const pitfalls = engine.getPitfalls({ category: 'appliance_water_heater' });
+    assert.ok(pitfalls.length >= 3);
+    assert.ok(pitfalls.some((p) => p.title.includes('排烟管')));
+  });
+
+  it('returns pitfalls for range hood installation', () => {
+    const engine = loadEngine();
+    const pitfalls = engine.getPitfalls({ category: 'appliance_range_hood' });
+    assert.ok(pitfalls.length >= 3);
+    assert.ok(pitfalls.some((p) => p.title.includes('止逆阀')));
+  });
+
+  it('returns pitfalls for water purifier installation', () => {
+    const engine = loadEngine();
+    const pitfalls = engine.getPitfalls({ category: 'appliance_water_purifier' });
+    assert.ok(pitfalls.length >= 3);
+    assert.ok(pitfalls.some((p) => p.title.includes('预留插座')));
+  });
+
+  it('returns pitfalls for laundry installation', () => {
+    const engine = loadEngine();
+    const pitfalls = engine.getPitfalls({ category: 'appliance_laundry' });
+    assert.ok(pitfalls.length >= 2);
+    assert.ok(pitfalls.some((p) => p.title.includes('插座')));
+  });
+
+  it('returns pitfalls for smart home reservation', () => {
+    const engine = loadEngine();
+    const pitfalls = engine.getPitfalls({ category: 'appliance_smart_home' });
+    assert.ok(pitfalls.length >= 2);
+    assert.ok(pitfalls.some((p) => p.title.includes('零线')));
+  });
 });
