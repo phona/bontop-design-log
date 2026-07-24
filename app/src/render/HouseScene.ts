@@ -22,6 +22,7 @@ import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
 import { placeFurnishings } from './FurnitureFactory.js';
+import { EnvironmentManager } from './EnvironmentManager.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
 const GLASS_COLOR = 0x88ccff;
@@ -83,6 +84,7 @@ export class HouseScene implements SceneApi {
   private roomMeta = new Map<string, { wall_finish?: string; wallOpenings?: ResolvedOpening[] }>();
   private textureManager = new TextureManager();
   private gridHelper?: THREE.GridHelper;
+  private envManager: EnvironmentManager;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
   private readonly ORBIT_POSITION = new THREE.Vector3(7.4, 14, 19.2);
   private readonly ORBIT_TARGET = new THREE.Vector3(7.4, 0, 3.65);
@@ -104,6 +106,7 @@ export class HouseScene implements SceneApi {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
@@ -124,6 +127,7 @@ export class HouseScene implements SceneApi {
     this.topDownView.setOnChange((enabled) => this.onTopDownChange(enabled));
     this.topicRegistry = new TopicRegistry(this);
 
+    this.envManager = new EnvironmentManager(this.scene, this.renderer);
     this.setupLights();
     this.buildBase();
     this.scene.add(this.topicGroup);
@@ -469,19 +473,7 @@ export class HouseScene implements SceneApi {
   }
 
   private setupLights() {
-    const ambient = new THREE.AmbientLight(0xffffff, 0.55);
-    this.scene.add(ambient);
-
-    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
-    dir.position.set(12, 20, 8);
-    dir.castShadow = true;
-    dir.shadow.mapSize.width = 2048;
-    dir.shadow.mapSize.height = 2048;
-    this.scene.add(dir);
-
-    const fill = new THREE.DirectionalLight(0xffffff, 0.3);
-    fill.position.set(-10, 8, -10);
-    this.scene.add(fill);
+    this.envManager.setup();
   }
 
   private buildBase() {
