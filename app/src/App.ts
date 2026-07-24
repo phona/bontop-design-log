@@ -10,6 +10,7 @@ import { OverviewMenu } from './ui/OverviewMenu.js';
 import { CollisionDetector } from './scene/CollisionDetector.js';
 import { FirstPersonController } from './scene/FirstPersonController.js';
 import { TopicRegistry } from './topics/TopicRegistry.js';
+import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
 
 const ORBIT_DISTANCE = 15;
@@ -33,6 +34,7 @@ export class App {
   private toastEl: HTMLDivElement;
   private toastTimer?: number;
   private compareActive = false;
+  private analysisTools: AnalysisTools;
   private compareShowing = false;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -57,6 +59,11 @@ export class App {
     this.offlineIndicator = new OfflineIndicator('offline-indicator');
     this.crosshair = new Crosshair();
     this.hoverTooltip = new HoverTooltip();
+    this.analysisTools = new AnalysisTools(
+      this.houseScene.scene,
+      this.houseScene.camera,
+      document.getElementById('app')!,
+    );
     this.overviewMenu = new OverviewMenu({
       onArchive: (name, reason) => void this.handleArchive(name, reason),
       onRestore: (id) => void this.handleRestore(id),
@@ -71,6 +78,7 @@ export class App {
     this.setupEventHandlers();
     this.setupKeyboard();
     this.setupPointerLockEvents();
+    this.setupMeasurementHandlers(canvas);
 
     this.houseScene.cameraAnimator.setOnComplete((mode) => {
       this.houseScene.setMode(mode);
@@ -159,6 +167,7 @@ export class App {
     });
 
     this.houseScene.setOnObjectClick((target) => {
+      if (this.analysisTools.measurement.active) return;
       this.infoPanel.showObject(target);
       this.stateSync.postViewContext(target.objectId);
     });
@@ -183,6 +192,12 @@ export class App {
         if (this.overviewMenu.isVisible()) {
           this.overviewMenu.hide();
         }
+      }
+      if (e.code === 'KeyL' && !e.repeat) {
+        e.preventDefault();
+        this.analysisTools.toggleMeasurement();
+        this.updateModeIndicator();
+        this.updateCrosshairStyle();
       }
       if (e.code === 'Tab' && this.compareActive) {
         e.preventDefault();
@@ -261,6 +276,7 @@ export class App {
     this.houseScene.cameraAnimator.transitionToFirstPerson(fpPos, fpDir);
     this.crosshair.show();
     this.updateModeIndicator();
+    this.updateCrosshairStyle();
   }
 
   private switchToOrbit(): void {
@@ -276,6 +292,10 @@ export class App {
   }
 
   private handleCenterClick(): void {
+    if (this.analysisTools.measurement.active) {
+      this.analysisTools.measurement.onFirstPersonAction();
+      return;
+    }
     const target = this.houseScene.raycastFromScreenCenter();
     if (!target) return;
 
@@ -372,11 +392,27 @@ export class App {
   }
 
   private updateModeIndicator(): void {
+    const measSuffix = this.analysisTools?.measurement.active ? ' · 📏 测量开启' : '';
     if (this.houseScene.mode === 'orbit') {
-      this.modeIndicator.textContent = '轨道模式 · 按 V 切换第一人称';
+      this.modeIndicator.textContent = `轨道模式 · 按 V 切换第一人称${measSuffix}`;
     } else {
-      this.modeIndicator.textContent = '第一人称 · WASD 移动 · 按 V 切换轨道 · 按 M 总览';
+      this.modeIndicator.textContent = `第一人称 · WASD 移动 · 按 V 切换轨道 · 按 M 总览${measSuffix}`;
     }
+  }
+
+  private updateCrosshairStyle(): void {
+    const isMeasuring = this.analysisTools?.measurement.active;
+    if (this.houseScene.mode === 'first-person') {
+      this.crosshair.setStyle(isMeasuring ? 'measure' : 'default');
+    }
+  }
+
+  private setupMeasurementHandlers(canvas: HTMLCanvasElement): void {
+    canvas.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (this.houseScene.mode === 'orbit' && this.analysisTools.measurement.active) {
+        this.analysisTools.measurement.onPointerClick(e);
+      }
+    });
   }
 
   private showToast(msg: string): void {

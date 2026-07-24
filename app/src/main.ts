@@ -1,4 +1,5 @@
 import { App } from './App.js';
+import './render/analysis/analysis.css';
 
 declare global {
   interface Window {

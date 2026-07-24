@@ -1,0 +1,72 @@
+.measurement-panel {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 25, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px 18px;
+  backdrop-filter: blur(8px);
+  color: #eee;
+  z-index: 150;
+  min-width: 260px;
+  text-align: center;
+  user-select: none;
+}
+
+.measurement-header {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.measurement-value {
+  color: #00ff00;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+.measurement-detail {
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 10px;
+}
+
+.measurement-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.measurement-btn {
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ddd;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.2s;
+}
+
+.measurement-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.measurement-btn-clear {
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+.measurement-btn-clear:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.measurement-btn-save {
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #93c5fd;
+}
+
+.measurement-btn-save:hover {
+  background: rgba(59, 130, 246, 0.2);
+}

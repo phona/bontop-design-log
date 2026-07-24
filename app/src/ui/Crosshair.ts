@@ -12,4 +12,8 @@ export class Crosshair {
   hide() {
     this.el.style.display = 'none';
   }
+
+  setStyle(style: 'default' | 'measure') {
+    this.el.textContent = style === 'measure' ? '⊙' : '+';
+  }
 }
