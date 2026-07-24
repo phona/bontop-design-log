@@ -130,3 +130,22 @@ export function loadPlumbingConfig(): PlumbingPoint[] {
 export function loadCeilingConfig(): CeilingZone[] {
   return loadConfig<CeilingZone[]>('config/ceiling.yaml');
 }
+
+export interface ProcurementMaterial {
+  id: string;
+  name: string;
+  room: string | null;
+  category: string;
+  current_stage: string;
+  waste_rate: number;
+  unit: string;
+  notes: string[];
+}
+
+export interface ProcurementConfig {
+  materials: ProcurementMaterial[];
+}
+
+export function loadProcurementConfig(path = 'config/procurement.yaml'): ProcurementConfig {
+  return loadConfig<ProcurementConfig>(path);
+}

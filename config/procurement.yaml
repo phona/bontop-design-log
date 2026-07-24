@@ -1,0 +1,27 @@
+materials:
+  - id: floor_tile_01
+    name: "客厅地砖"
+    room: living_dining
+    category: floor
+    current_stage: selection
+    waste_rate: 1.05
+    unit: sqm
+    notes: []
+
+  - id: wall_tile_01
+    name: "主卫墙砖"
+    room: master_bath
+    category: wall_tile
+    current_stage: selection
+    waste_rate: 1.08
+    unit: sqm
+    notes: []
+
+  - id: paint_01
+    name: "全屋墙面漆"
+    room: null
+    category: paint
+    current_stage: selection
+    waste_rate: 1.1
+    unit: L
+    notes: []
