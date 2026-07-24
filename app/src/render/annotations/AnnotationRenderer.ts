@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { createSocketIcon, createSwitchIcon, createFaucetIcon, createDrainIcon, createCeilingZoneIndicator, createACIndoorIcon } from './icons.js';
+import { ProblemDetector } from './ProblemDetector.js';
+import type { Problem, FurnitureItem, WallInfo } from './ProblemDetector.js';
 
 interface ElectricalPoint {
   id: string;
@@ -45,13 +47,19 @@ export class AnnotationRenderer {
     plumbing: new THREE.Group(),
     ceiling: new THREE.Group(),
   };
+  private problemGroup = new THREE.Group();
   private labelSprites: THREE.Sprite[] = [];
+  private detector = new ProblemDetector();
+  private electricalData: ElectricalPoint[] = [];
+  private plumbingData: PlumbingPoint[] = [];
+  private ceilingData: CeilingZone[] = [];
 
   constructor(
     private scene: THREE.Scene,
     private camera: THREE.Camera,
   ) {
     Object.values(this.layerGroups).forEach(g => this.group.add(g));
+    this.group.add(this.problemGroup);
     this.group.visible = true;
     this.scene.add(this.group);
   }
@@ -63,14 +71,48 @@ export class AnnotationRenderer {
       fetch('/api/annotations/ceiling').then(r => r.json()) as Promise<CeilingZone[]>,
     ]);
 
+    this.electricalData = electrical;
+    this.plumbingData = plumbing;
+    this.ceilingData = ceiling;
+
     this.renderElectrical(electrical);
     this.renderPlumbing(plumbing);
     this.renderCeiling(ceiling);
   }
 
-  setVisible(category: 'electrical' | 'plumbing' | 'ceiling' | 'all', visible: boolean): void {
+  detectProblems(furniture: FurnitureItem[], walls: WallInfo[]): Problem[] {
+    const problems = this.detector.detectAll(
+      this.electricalData,
+      this.plumbingData,
+      this.ceilingData,
+      furniture,
+      walls,
+    );
+    this.renderProblems(problems);
+    console.log('[ProblemDetector]', problems.length, 'problems found:', problems);
+    return problems;
+  }
+
+  private renderProblems(problems: Problem[]): void {
+    while (this.problemGroup.children.length) {
+      this.problemGroup.remove(this.problemGroup.children[0]);
+    }
+    for (const p of problems) {
+      const color = p.severity === 'error' ? 0xff0000 : 0xff8800;
+      const geo = new THREE.SphereGeometry(0.06, 8, 8);
+      const mat = new THREE.MeshBasicMaterial({ color });
+      const marker = new THREE.Mesh(geo, mat);
+      marker.position.set(p.position.x, p.position.y, p.position.z);
+      marker.userData = { type: 'problem', problemType: p.type, severity: p.severity };
+      this.problemGroup.add(marker);
+    }
+  }
+
+  setVisible(category: 'electrical' | 'plumbing' | 'ceiling' | 'problems' | 'all', visible: boolean): void {
     if (category === 'all') {
       this.group.visible = visible;
+    } else if (category === 'problems') {
+      this.problemGroup.visible = visible;
     } else {
       this.layerGroups[category].visible = visible;
     }
@@ -172,6 +214,12 @@ export class AnnotationRenderer {
     Object.values(this.layerGroups).forEach(g => {
       while (g.children.length) g.remove(g.children[0]);
     });
+    while (this.problemGroup.children.length) {
+      this.problemGroup.remove(this.problemGroup.children[0]);
+    }
     this.labelSprites = [];
+    this.electricalData = [];
+    this.plumbingData = [];
+    this.ceilingData = [];
   }
 }
