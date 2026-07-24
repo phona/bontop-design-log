@@ -1,0 +1,189 @@
+phases:
+  - phase: demolition
+    name: "拆改验收"
+    items:
+      - id: check_demo_wall
+        item: "拆除范围核对"
+        method: |
+          对照拆墙图，用卷尺量拆除边界。
+          重点检查：是否多拆了不该拆的墙，尤其是承重墙。
+        standard: "拆除范围与图纸一致，误差 < 5cm"
+        severity: critical
+        knowledge: |
+          怎么判断是不是承重墙：
+          1. 看图纸——粗实线标注的墙不能动
+          2. 敲一下——承重墙声音沉闷厚实
+          3. 看厚度——承重墙一般 > 20cm
+          4. 钢筋外露——如果看到钢筋，立刻停止
+
+      - id: check_demo_structure
+        item: "梁柱状况检查"
+        method: "拆完后检查裸露的梁、柱、楼板是否有裂缝或损伤"
+        standard: "无结构性裂缝，钢筋无锈蚀"
+        severity: critical
+
+  - phase: waterproofing
+    name: "防水施工+闭水试验"
+    items:
+      - id: check_wp_coats
+        item: "涂刷遍数检查"
+        method: |
+          墙面刷到 1.8m 高（淋浴区），地面满刷。
+          每一遍干透后再刷下一遍，至少 2 遍。
+        standard: "涂刷均匀，无漏刷、无堆积"
+        severity: critical
+
+      - id: check_wp_flood
+        item: "闭水试验"
+        method: |
+          1. 堵住所有地漏，放水 3~5cm 深
+          2. 标记水位线
+          3. 等待 48 小时
+          4. 去楼下邻居家看天花板有无渗水
+        standard: "48h 后水位无明显下降，楼下无渗水"
+        severity: critical
+        knowledge: |
+          常见坑：
+          - 闭水前一定要通知楼下邻居，留联系方式
+          - 48h 内不要放水
+          - 如果发现渗水，补刷后重新做 48h 闭水
+
+  - phase: tile_installation
+    name: "瓷砖铺贴验收"
+    items:
+      - id: check_tile_hollow
+        item: "空鼓检查"
+        method: "用空鼓锤轻敲每块砖的四角+中心"
+        standard: "单片空鼓率 < 15%，整面墙 < 5%"
+        severity: critical
+
+      - id: check_tile_gap
+        item: "缝隙均匀"
+        method: "用塞尺测量相邻砖缝"
+        standard: "2mm ± 0.5mm"
+        severity: major
+
+      - id: check_tile_flatness
+        item: "平整度"
+        method: "2m靠尺贴墙面，测量最大空隙"
+        standard: "< 2mm"
+        severity: major
+
+      - id: check_tile_slope
+        item: "坡度检查"
+        method: "倒水测试是否流向地漏"
+        standard: "不积水"
+        severity: critical
+        rooms: [master_bath, guest_bath, balcony]
+
+  - phase: painting
+    name: "油漆验收"
+    items:
+      - id: check_paint_surface
+        item: "漆膜质量检查"
+        method: |
+          用侧光（手机手电筒贴墙斜照）检查墙面。
+          看是否有：刷痕、流挂、起泡、颗粒、色差。
+        standard: "侧光 45° 下无明显瑕疵，颜色均匀"
+        severity: major
+
+      - id: check_paint_env
+        item: "施工环境记录"
+        method: |
+          刷漆时记录室内温湿度。
+          低于 5°C 或湿度 > 85% 不宜施工。
+        standard: "施工期间温度 ≥ 5°C，湿度 ≤ 85%"
+        severity: warning
+        knowledge: |
+          为什么重要：
+          - 低温：漆膜干燥慢，容易流挂
+          - 高湿：漆膜发白、起泡
+          - 南宁回南天绝对不能刷漆
+
+      - id: check_paint_reserve
+        item: "留罐记录"
+        method: "留半罐调好的漆，用保鲜膜封口盖紧，标注色号和涂刷位置"
+        standard: "每个颜色留 0.5L 以上，标注色号+房间"
+        severity: info
+        knowledge: |
+          为什么要留：
+          - 入住后磕碰补漆，机器调色和原漆有色差
+          - 留原漆最准
+
+  - phase: hvac_installation
+    name: "中央空调验收"
+    items:
+      - id: check_hvac_weld
+        item: "铜管焊接质量"
+        method: "检查焊接处有无氧化、砂眼"
+        standard: "充氮焊接，无氧化皮"
+        severity: critical
+
+      - id: check_hvac_vacuum
+        item: "抽真空时间"
+        method: "看真空泵运行记录"
+        standard: "≥ 15min，保持 -756mmHg"
+        severity: critical
+
+      - id: check_hvac_drain
+        item: "冷凝水排水"
+        method: "内机注水测试"
+        standard: "排水通畅无积水"
+        severity: critical
+
+      - id: check_hvac_level
+        item: "内机水平度"
+        method: "水平尺测量四角"
+        standard: "误差 < 2mm"
+        severity: major
+
+      - id: check_hvac_vent
+        item: "风口尺寸"
+        method: "测量风口开孔 vs 内机接口"
+        standard: "对齐无缝隙"
+        severity: major
+
+      - id: check_hvac_cooling
+        item: "制冷测试"
+        method: "开机 30min 测出风口温度"
+        standard: "出风口 6-12°C（与环境温差）"
+        severity: critical
+
+      - id: check_hvac_outdoor
+        item: "外机散热"
+        method: "测量外机位通风尺寸"
+        standard: "百叶通风面积 ≥ 80%"
+        severity: major
+
+  - phase: electrical_check
+    name: "电路验收"
+    items:
+      - id: check_elec_continuity
+        item: "通断测试"
+        method: "用测电笔逐个插座测试"
+        standard: "全部通电，零火线正确"
+        severity: critical
+
+      - id: check_elec_switch
+        item: "开关功能"
+        method: "逐个开关测试"
+        standard: "双控/单控功能正常"
+        severity: major
+
+  - phase: occupancy
+    name: "入住前检测"
+    items:
+      - id: check_occ_formaldehyde
+        item: "甲醛检测"
+        method: |
+          建议找 CMA 资质机构上门检测。
+          检测前封闭门窗 12 小时（关闭新风）。
+          每个房间设一个检测点（中央位置，离地 1m）。
+        standard: "甲醛 < 0.08mg/m³（国标 GB/T 18883）"
+        severity: critical
+        knowledge: |
+          什么时候测：
+          - 完工后夏季通风 1~2 个月
+          - 冬季可能需要 3~6 个月
+          - 有小孩/老人建议更严格标准 < 0.05mg/m³
+          - 通风是最有效的方法，活性炭/绿植辅助
