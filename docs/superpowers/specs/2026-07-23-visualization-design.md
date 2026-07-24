@@ -4,7 +4,7 @@
 >
 > 后续子项目分别在独立 spec 中处理：
 > - Phase 2: AI Design Advisor（已有 spec，已实现，跳过）
-> - Phase 3: 施工文档（见 `2026-07-23-construction-docs-design.md`）
+> - Phase 3: 水电天花设计稿（见 `2026-07-23-electrical-plumbing-ceiling-design.md`）
 > - Phase 4: 预算精化 → 采购清单
 
 ---
