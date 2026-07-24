@@ -327,7 +327,40 @@ it('returns empty for unknown phase', () => {
 - [ ] **Step 2: Create `config/acceptance.yaml`**
 
 ```yaml
-checklists:
+phases:
+  - phase: demolition
+    name: "拆改验收"
+    items:
+      - id: check_demo_wall
+        item: "拆除范围核对"
+        method: |
+          对照拆墙图用卷尺量，重点检查承重墙是否误拆
+        standard: "与图纸一致，误差 < 5cm"
+        severity: critical
+        knowledge: "承重墙：图纸粗实线、敲击声沉闷、厚度 > 20cm"
+
+      - id: check_demo_structure
+        item: "梁柱状况检查"
+        method: "裸露梁柱是否有裂缝、钢筋是否锈蚀"
+        standard: "无结构性裂缝，钢筋无锈蚀"
+        severity: critical
+
+  - phase: waterproofing
+    name: "防水+闭水"
+    items:
+      - id: check_wp_coats
+        item: "涂刷遍数检查"
+        method: "墙面刷到1.8m，地面满刷。干透再刷下一遍，至少2遍"
+        standard: "均匀无漏刷"
+        severity: critical
+
+      - id: check_wp_flood
+        item: "闭水试验"
+        method: "堵地漏→放水3~5cm→标记水位→等48h→去楼下看天花板"
+        standard: "水位无下降，楼下无渗水"
+        severity: critical
+        knowledge: "闭水前通知楼下邻居。失败则补刷后重做48h"
+
   - phase: tile_installation
     items:
       - item: "空鼓检查"
@@ -348,16 +381,18 @@ checklists:
         severity: critical
         rooms: [master_bath, guest_bath, balcony]
 
-  - phase: paint
+  - phase: painting
+    name: "油漆验收"
     items:
-      - item: "色差检查"
-        method: "侧光45°看墙面，无明显色差"
-        standard: "无明显色带/刷痕"
+      - item: "漆膜质量"
+        method: "手机手电筒贴墙斜照，看刷痕/流挂/起泡/色差"
+        standard: "侧光45°无明显瑕疵"
         severity: major
-      - item: "漆膜完整"
-        method: "目测无流挂、起泡、开裂"
-        standard: "漆膜均匀完整"
-        severity: major
+      - item: "环境记录"
+        method: "刷漆时记录温湿度"
+        standard: "温度 ≥ 5°C，湿度 ≤ 85%"
+        severity: warning
+        knowledge: "南宁回南天绝对不能刷漆"
 
   - phase: electrical_check
     items:
@@ -369,6 +404,15 @@ checklists:
         method: "逐个开关测试"
         standard: "双控/单控功能正常"
         severity: major
+
+  - phase: occupancy
+    name: "入住前检测"
+    items:
+      - item: "甲醛检测"
+        method: "找CMA机构，封闭12h后测，每个房间中央离地1m"
+        standard: "甲醛 < 0.08mg/m³ (GB/T 18883)"
+        severity: critical
+        knowledge: "有小孩建议 < 0.05mg/m³; 夏季通风1~2月"
 ```
 
 - [ ] **Step 3: Implement `AcceptanceEngine`**
@@ -378,8 +422,11 @@ export interface AcceptanceItem {
   item: string;
   method: string;
   standard: string;
-  severity: 'critical' | 'major' | 'minor';
+  severity: 'critical' | 'major' | 'minor' | 'warning';
   rooms?: string[];
+  knowledge?: string;     // 背景知识/实操技巧
+  picture_url?: string;   // 参考图片
+  source?: string;        // 来源（国标/经验）
 }
 
 export interface AcceptanceChecklist {
@@ -527,7 +574,7 @@ git commit -m "feat: MCP tools — get_procurement_status, run_tradeoff, get_acc
 
 ### Self-Review
 
-- [ ] Spec coverage: LifecycleEngine (Task 1), TradeoffEngine (Task 2), AcceptanceEngine (Task 3), MCP tools (Task 4) — all covered
+- [ ] Spec coverage: LifecycleEngine (Task 1), TradeoffEngine (Task 2), AcceptanceEngine covering demolition/waterproofing/tile/paint/electrical/occupancy (Task 3), MCP tools (Task 4) — all covered
 - [ ] No placeholders: all code blocks contain real implementation
 - [ ] Type consistency: engine interfaces match across tasks
 - [ ] Each task produces independently shippable, testable code
