@@ -556,7 +556,7 @@ materials:
     cons: ["反光刺眼", "纹理不够自然"]
     price_source: "东鹏门店报价"
     notes: "预算最低方案，适合出租/务实档"
-    appearance: { type: "ceramic_tile", color: "#d4cfc7" }
+    appearance: { type: "ceramic_tile_v2", color: "#d4cfc7", pattern: "straight" }
 
   - id: "wall_tile_02"
     topic_id: "wall"
@@ -580,7 +580,7 @@ materials:
     cons: ["价格高 83%", "需确认库存"]
     price_source: "马可波罗门店报价"
     notes: "预算允许下推荐，质感明显提升"
-    appearance: { type: "ceramic_tile", color: "#f0ede6" }
+    appearance: { type: "ceramic_tile_v2", color: "#f0ede6", pattern: "straight" }
 
   - id: "wall_tile_03"
     topic_id: "wall"
@@ -604,7 +604,7 @@ materials:
     cons: ["厨房显暗", "不宜大面积用"]
     price_source: "冠珠门店报价"
     notes: "建议卫生间用，厨房搭配亮色"
-    appearance: { type: "ceramic_tile", color: "#a8a09a" }
+    appearance: { type: "ceramic_tile_v2", color: "#a8a09a", pattern: "straight" }
 
   - id: "bed_180_01"
     topic_id: "miscellaneous"
