@@ -11,6 +11,7 @@ import { CollisionDetector } from './scene/CollisionDetector.js';
 import { FirstPersonController } from './scene/FirstPersonController.js';
 import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
+import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
 import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
 
 const ORBIT_DISTANCE = 15;
@@ -36,6 +37,8 @@ export class App {
   private compareActive = false;
   private analysisTools: AnalysisTools;
   private compareShowing = false;
+  private annotationRenderer?: AnnotationRenderer;
+  private annotationGroupVisible = true;
 
   constructor(canvas: HTMLCanvasElement) {
     this.stateSync = new StateSync();
@@ -98,6 +101,11 @@ export class App {
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
 
     await this.houseScene.buildFromCatalog(this.projectData);
+    this.annotationRenderer = new AnnotationRenderer(
+      this.houseScene.scene,
+      this.houseScene.camera,
+    );
+    await this.annotationRenderer.load();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
     this.analysisTools.checkFurnitureCollisions();
@@ -200,6 +208,11 @@ export class App {
         e.preventDefault();
         this.analysisTools.toggleSeeThrough();
         this.updateModeIndicator();
+      }
+      if (e.code === 'KeyP' && !e.repeat) {
+        e.preventDefault();
+        this.annotationGroupVisible = !this.annotationGroupVisible;
+        this.annotationRenderer?.setVisible('all', this.annotationGroupVisible);
       }
       if (e.code === 'KeyL' && !e.repeat) {
         e.preventDefault();
@@ -373,6 +386,12 @@ export class App {
     this.projectData = await response.json();
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
     await this.houseScene.buildFromCatalog(this.projectData);
+    this.annotationRenderer?.clear();
+    this.annotationRenderer = new AnnotationRenderer(
+      this.houseScene.scene,
+      this.houseScene.camera,
+    );
+    await this.annotationRenderer.load();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
     this.analysisTools.checkFurnitureCollisions();
@@ -473,6 +492,7 @@ export class App {
     this.lastTime = time;
 
     this.houseScene.render();
+    this.annotationRenderer?.updateLabels();
     this.analysisTools.updatePulse();
 
     if (this.houseScene.mode === 'first-person' && !this.houseScene.cameraAnimator.isAnimating()) {

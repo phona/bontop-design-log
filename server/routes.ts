@@ -5,6 +5,7 @@ import type { RuleEngine } from './rule-engine.js';
 import type { BudgetCalculator } from './budget-calculator.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { ConfigRegistry } from './config-loader.js';
+import { loadElectricalConfig, loadPlumbingConfig, loadCeilingConfig } from './config-loader.js';
 import { mergeSceneElements } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import type { CurrentScheme } from '../shared/types.js';
@@ -25,6 +26,30 @@ export function createApiRouter(deps: ApiDeps): Router {
 
   router.get('/config-status', (_req, res) => {
     res.json({ configs: deps.getConfigRegistry().getStatuses() });
+  });
+
+  router.get('/api/annotations/electrical', (_req, res) => {
+    try {
+      res.json(loadElectricalConfig());
+    } catch (err) {
+      res.status(500).json({ error: 'failed to load electrical config' });
+    }
+  });
+
+  router.get('/api/annotations/plumbing', (_req, res) => {
+    try {
+      res.json(loadPlumbingConfig());
+    } catch (err) {
+      res.status(500).json({ error: 'failed to load plumbing config' });
+    }
+  });
+
+  router.get('/api/annotations/ceiling', (_req, res) => {
+    try {
+      res.json(loadCeilingConfig());
+    } catch (err) {
+      res.status(500).json({ error: 'failed to load ceiling config' });
+    }
   });
 
   router.get('/layouts', (_req, res) => {
