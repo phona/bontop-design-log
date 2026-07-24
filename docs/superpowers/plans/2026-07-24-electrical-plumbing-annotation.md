@@ -102,12 +102,30 @@ it('loads ceiling config with zone data', () => {
 
 `config/ceiling.yaml`:
 ```yaml
-- id: ceiling_living
+  - id: ceiling_living
   room: living_dining
   type: drop
   thickness: 0.30
   area: [7.20, 4.30, 13.40, 9.80] # x1,z1,x2,z2 bounding box
   note: "客厅局部吊顶（走管区）"
+
+  - id: ac_living
+  room: living_dining
+  type: ac_indoor
+  x: 10.3
+  z: 7.0
+  height: 2.85          # 吊顶内，距天花板 5cm
+  model: "4HP 风管机"
+  note: "客厅空调内机"
+
+  - id: ac_master
+  room: master_bedroom
+  type: ac_indoor
+  x: 1.5
+  z: 7.0
+  height: 2.85
+  model: "2.8HP 风管机"
+  note: "主卧空调内机"
 ```
 
 - [ ] **Step 3: Implement loaders in config-loader.ts**
@@ -138,9 +156,14 @@ export interface PlumbingPoint {
 export interface CeilingZone {
   id: string;
   room: string;
-  type: 'drop' | 'integrated' | 'cove' | 'none';
+  type: 'drop' | 'integrated' | 'cove' | 'none' | 'ac_indoor';
   thickness?: number;
-  area: [number, number, number, number]; // x1,z1,x2,z2
+  area?: [number, number, number, number]; // x1,z1,x2,z2 — for drop zones
+  // for ac_indoor:
+  x?: number;
+  z?: number;
+  height?: number;
+  model?: string;
   note?: string;
 }
 
@@ -244,6 +267,24 @@ export function createCeilingZoneIndicator(width: number, depth: number): THREE.
   });
   return new THREE.Mesh(geo, mat);
 }
+
+export function createACIndoorIcon(): THREE.Group {
+  const group = new THREE.Group();
+  // Cassette body: flat rectangle (0.8m × 0.3m × 0.05m)
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.05, 0.3),
+    new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.5 })
+  );
+  group.add(body);
+  // Ventilation slots indicator
+  const slotMat = new THREE.MeshBasicMaterial({ color: 0x666666 });
+  for (let i = -0.3; i <= 0.3; i += 0.15) {
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.01, 0.2), slotMat);
+    slot.position.set(i, 0.03, 0);
+    group.add(slot);
+  }
+  return group;
+}
 ```
 
 - [ ] **Step 2: Create `AnnotationRenderer.ts`**
@@ -311,9 +352,16 @@ export class AnnotationRenderer {
   private renderCeiling(zones: CeilingZone[]): void {
     const g = this.layerGroups.ceiling;
     zones.forEach(z => {
-      const [x1, z1, x2, z2] = z.area;
+      if (z.type === 'ac_indoor') {
+        const icon = createACIndoorIcon();
+        icon.position.set(z.x!, z.height ?? 2.85, z.z!);
+        icon.userData = { type: 'annotation', category: 'ceiling', zoneId: z.id, note: `❄ ${z.note}` };
+        g.add(icon);
+        return;
+      }
+      const [x1, z1, x2, z2] = z.area!;
       const mesh = createCeilingZoneIndicator(x2 - x1, z2 - z1);
-      mesh.position.set((x1 + x2) / 2, 2.9, (z1 + z2) / 2); // Just below ceiling
+      mesh.position.set((x1 + x2) / 2, 2.9, (z1 + z2) / 2);
       mesh.rotation.x = -Math.PI / 2;
       mesh.userData = { type: 'annotation', category: 'ceiling', zoneId: z.id, note: z.note };
       g.add(mesh);

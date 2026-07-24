@@ -394,6 +394,38 @@ phases:
         severity: warning
         knowledge: "南宁回南天绝对不能刷漆"
 
+  - phase: hvac_installation
+    name: "中央空调验收"
+    items:
+      - item: "铜管焊接质量"
+        method: "检查焊接处有无氧化、砂眼"
+        standard: "充氮焊接，无氧化皮"
+        severity: critical
+      - item: "抽真空时间"
+        method: "看真空泵运行记录"
+        standard: "≥ 15min，保持 -756mmHg"
+        severity: critical
+      - item: "冷凝水排水"
+        method: "内机注水测试"
+        standard: "排水通畅无积水"
+        severity: critical
+      - item: "内机水平度"
+        method: "水平尺测量四角"
+        standard: "误差 < 2mm"
+        severity: major
+      - item: "风口尺寸"
+        method: "测量风口开孔 vs 内机接口"
+        standard: "对齐无缝隙"
+        severity: major
+      - item: "制冷测试"
+        method: "开机 30min 测出风口温度"
+        standard: "出风口 6-12°C（与环境温差）"
+        severity: critical
+      - item: "外机散热"
+        method: "测量外机位通风尺寸"
+        standard: "百叶通风面积 ≥ 80%"
+        severity: major
+
   - phase: electrical_check
     items:
       - item: "通断测试"
