@@ -204,6 +204,9 @@ export class App {
       if (e.code === 'KeyL' && !e.repeat) {
         e.preventDefault();
         this.analysisTools.toggleMeasurement();
+        if (this.houseScene.mode === 'orbit') {
+          this.houseScene.controls.enabled = !this.analysisTools.measurement.active;
+        }
         this.updateModeIndicator();
         this.updateCrosshairStyle();
       }
