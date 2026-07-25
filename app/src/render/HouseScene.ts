@@ -425,7 +425,7 @@ export class HouseScene implements SceneApi {
       && projectData.house.sceneElements.length > 0;
     const wallHeight = projectData.house.rooms[0]?.height ?? 3.0;
 
-    const skipRooms = new Set(['elevator_shaft', 'west_platform']);
+    const skipRooms = new Set(['elevator_shaft']);
     for (const room of projectData.house.rooms) {
       if (skipRooms.has(room.id)) continue;
       this.roomMeta.set(room.id, { wall_finish: room.wall_finish, wallOpenings: room.wallOpenings });
