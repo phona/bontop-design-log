@@ -3,7 +3,7 @@ project:
   city: "南宁"
   building_area: 119.38
   usable_area: 94.76
-  floor_height: 3.0
+  floor_height: 2.8
   floor: 7
   building_type: "板楼"
   unit_position: "西户"
@@ -43,7 +43,7 @@ rooms:
     needs_waterproof: false
     width: 4.50
     length: 4.05
-    height: 3.0
+    height: 2.8
     area: 18.16
     status: "design"
     orientation: "西南"
@@ -69,7 +69,7 @@ rooms:
     needs_waterproof: false
     width: 3.00
     length: 2.80
-    height: 3.0
+    height: 2.8
     area: 8.39
     status: "design"
     orientation: "西北"
@@ -92,7 +92,7 @@ rooms:
     needs_waterproof: false
     width: 3.00
     length: 2.80
-    height: 3.0
+    height: 2.8
     area: 8.39
     status: "design"
     orientation: "东南"
@@ -115,7 +115,7 @@ rooms:
     needs_waterproof: false
     width: 3.00
     length: 2.78
-    height: 3.0
+    height: 2.8
     area: 8.35
     status: "design"
     orientation: "东北"
@@ -139,7 +139,7 @@ rooms:
     needs_waterproof: false
     width: 6.20
     length: 5.68
-    height: 3.0
+    height: 2.8
     area: 35.20
     status: "design"
     orientation: "南"
@@ -162,7 +162,7 @@ rooms:
     needs_waterproof: true
     width: 2.30
     length: 2.65
-    height: 3.0
+    height: 2.8
     area: 6.09
     status: "design"
     orientation: "北"
@@ -185,7 +185,7 @@ rooms:
     needs_waterproof: true
     width: 2.60
     length: 4.45
-    height: 3.0
+    height: 2.8
     area: 11.57
     status: "design"
     orientation: "内"
@@ -209,7 +209,7 @@ rooms:
     needs_waterproof: true
     width: 1.50
     length: 1.77
-    height: 3.0
+    height: 2.8
     area: 2.66
     status: "design"
     orientation: "内"
@@ -233,7 +233,7 @@ rooms:
     needs_waterproof: true
     width: 1.20
     length: 2.02
-    height: 3.0
+    height: 2.8
     area: 2.42
     status: "design"
     orientation: "北"
@@ -256,7 +256,7 @@ gift_areas:
     needs_waterproof: false
     width: 6.70
     length: 1.65
-    height: 3.0
+    height: 2.8
     area: 11.06
     status: "design"
     orientation: "北"
@@ -279,7 +279,7 @@ gift_areas:
     needs_waterproof: true
     width: 6.40
     length: 2.18
-    height: 3.0
+    height: 2.8
     area: 13.95
     status: "design"
     orientation: "南"
@@ -302,7 +302,7 @@ gift_areas:
     needs_waterproof: false
     width: 1.60
     length: 1.55
-    height: 3.0
+    height: 2.8
     area: 2.48
     status: "design"
     orientation: "西"

@@ -161,6 +161,15 @@ materials:
     unit: set
     notes: ["智能开关零线+网关+电动窗帘电源，水电时布零线"]
 
+  - id: paint_01
+    name: "全屋乳胶漆"
+    room: null
+    category: paint
+    current_stage: selection
+    waste_rate: 1.1
+    unit: L
+    notes: ["多乐士金装净味五合一，大白墙为主"]
+
   - id: curtain_01
     name: "全屋窗帘套装"
     room: null

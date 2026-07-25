@@ -38,7 +38,7 @@ elements:
     type: curtain_run
     closed: false
     walls: [w_west_lower, w_west_mid, w_west_upper, w_mb_south, w_st_south]
-    height: 3.0
+    height: 2.8
 
   # VRV 西北角 + 西墙栏杆 (弧 r=1.0)
   - id: vrv_nw_railing
@@ -57,28 +57,28 @@ elements:
     type: curtain_run
     closed: false
     wall: w_kit_north
-    height: 3.0
+    height: 2.8
 
   # 主卫西北角玻璃幕墙弧 (w_west_ap 进路从室内侧 + w_bath_north 弧段)
   - id: north_recess_curtain
     type: curtain_run
     closed: false
     walls: [w_west_ap, w_bath_north, w_nw_north]
-    height: 3.0
+    height: 2.8
 
   # 客厅南墙落地玻璃幕 (z=9.80)
   - id: living_south_curtain
     type: curtain_run
     closed: false
     wall: w_liv_south
-    height: 3.0
+    height: 2.8
 
   # 南墙东段（东南次卧南侧幕墙）
   - id: south_east_curtain
     type: curtain_run
     closed: false
     wall: w_be_south
-    height: 3.0
+    height: 2.8
 
   # 飘窗
   - id: master_bedroom_west_bay
