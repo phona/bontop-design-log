@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createSocketIcon, createSwitchIcon, createFaucetIcon, createShowerIcon, createToiletIcon, createDrainIcon, createWasherIcon, createCeilingZoneIndicator, createACIndoorIcon } from './icons.js';
+import { createSocketIcon, createSwitchIcon, createFloorSocketIcon, createNetworkIcon, createFaucetIcon, createShowerIcon, createToiletIcon, createDrainIcon, createWasherIcon, createCeilingZoneIndicator, createACIndoorIcon } from './icons.js';
 import { ProblemDetector } from './ProblemDetector.js';
 import type { Problem, FurnitureItem, WallInfo } from './ProblemDetector.js';
 
@@ -7,7 +7,7 @@ interface ElectricalPoint {
   id: string;
   room: string;
   wall: string;
-  type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb';
+  type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb' | 'floor_socket';
   x: number;
   z: number;
   height: number;
@@ -135,8 +135,12 @@ export class AnnotationRenderer {
     points.forEach(p => {
       const icon = p.type === 'switch' || p.type === 'switch_2way'
         ? createSwitchIcon()
+        : p.type === 'floor_socket'
+        ? createFloorSocketIcon()
+        : p.type === 'network'
+        ? createNetworkIcon()
         : createSocketIcon(p.count ?? 1);
-      icon.position.set(p.x, p.height, p.z);
+      icon.position.set(p.x, p.type === 'floor_socket' ? 0.05 : p.height, p.z);
       icon.userData = { type: 'annotation', category: 'electrical', pointId: p.id, note: p.note };
       const label = this.createLabel(p.note ?? '');
       label.position.set(0, 0.3, 0);

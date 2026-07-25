@@ -50,6 +50,10 @@ export function createWasherIcon(): THREE.Sprite {
   return makeSprite('👕', 'rgba(140,80,180,0.85)');
 }
 
+export function createFloorSocketIcon(): THREE.Sprite {
+  return makeSprite('📍', 'rgba(180,120,60,0.85)');
+}
+
 export function createNetworkIcon(): THREE.Sprite {
   return makeSprite('🌐', 'rgba(60,140,60,0.85)');
 }
