@@ -49,13 +49,13 @@
 
 - id: sock_living_curtain
   room: living_dining
-  wall: w_liv_south
+  wall: w_liv_east
   type: socket
-  x: 7.80
-  z: 9.80
-  height: 1.3
+  x: 13.40
+  z: 5.30
+  height: 2.5
   count: 1
-  note: "电动窗帘预留（南幕墙）"
+  note: "电动窗帘电源（东墙取电，天花板内走线到窗帘电机）"
 
 - id: sock_living_ac
   room: living_dining
