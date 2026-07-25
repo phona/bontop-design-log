@@ -1,27 +1,171 @@
 materials:
   - id: floor_tile_01
-    name: "客厅地砖"
+    name: "浅胡桃木纹砖"
     room: living_dining
     category: floor
     current_stage: selection
-    waste_rate: 1.05
+    waste_rate: 1.08
     unit: sqm
-    notes: []
+    notes: ["客餐厅通铺木纹砖，人字拼"]
 
-  - id: wall_tile_01
-    name: "主卫墙砖"
-    room: master_bath
-    category: wall_tile
+  - id: floor_tile_02
+    name: "灰色柔光砖"
+    room: null
+    category: floor
     current_stage: selection
     waste_rate: 1.08
     unit: sqm
-    notes: []
+    notes: ["可选替代"]
 
-  - id: paint_01
-    name: "全屋墙面漆"
+  - id: wall_tile_01
+    name: "厨卫白色釉面砖"
+    room: null
+    category: wall_tile
+    current_stage: selection
+    waste_rate: 1.05
+    unit: sqm
+    notes: ["厨房+卫生间通用"]
+
+  - id: latex_paint_01
+    name: "金装净味五合一"
     room: null
     category: paint
     current_stage: selection
     waste_rate: 1.1
     unit: L
-    notes: []
+    notes: ["全屋墙面漆"]
+
+  - id: cabinet_board_01
+    name: "多层实木板柜体+PET柜门"
+    room: null
+    category: cabinet
+    current_stage: selection
+    waste_rate: 1.05
+    unit: sqm
+    notes: ["全屋定制柜，需提前30天"]
+
+  - id: quartz_stone_01
+    name: "石英石台面"
+    room: kitchen
+    category: countertop
+    current_stage: selection
+    waste_rate: 1.02
+    unit: m
+    notes: ["橱柜台面，L型约4延米"]
+
+  - id: interior_door_01
+    name: "实木复合免漆门"
+    room: null
+    category: door
+    current_stage: selection
+    waste_rate: 1
+    unit: count
+    notes: ["4扇卧室门"]
+
+  - id: bathroom_door_01
+    name: "钛镁铝合金极窄平开门"
+    room: null
+    category: door
+    current_stage: selection
+    waste_rate: 1
+    unit: count
+    notes: ["2扇卫生间门"]
+
+  - id: hvac_01
+    name: "美的理想家III一拖五"
+    room: null
+    category: hvac
+    current_stage: selection
+    waste_rate: 1
+    unit: set
+    notes: ["最迟拆改前定，吊顶前装内机"]
+
+  - id: gas_water_heater_01
+    name: "16L恒温燃气热水器"
+    room: balcony
+    category: water_heater
+    current_stage: selection
+    waste_rate: 1
+    unit: set
+    notes: ["水电结束前买，零冷水需预埋回水管"]
+
+  - id: range_hood_01
+    name: "侧吸式大吸力油烟机"
+    room: kitchen
+    category: appliance
+    current_stage: selection
+    waste_rate: 1
+    unit: set
+    notes: ["橱柜复尺前给开孔尺寸"]
+
+  - id: sanitary_toilet_01
+    name: "虹吸式马桶"
+    room: null
+    category: sanitary
+    current_stage: selection
+    waste_rate: 1
+    unit: count
+    notes: ["2个卫生间，主卫预留智能盖插座"]
+
+  - id: sanitary_shower_01
+    name: "淋浴花洒套装"
+    room: null
+    category: sanitary
+    current_stage: selection
+    waste_rate: 1
+    unit: set
+    notes: ["2套，主卫/客卫各一"]
+
+  - id: sanitary_vanity_01
+    name: "浴室柜组合"
+    room: null
+    category: sanitary
+    current_stage: selection
+    waste_rate: 1
+    unit: set
+    notes: ["2套，80cm陶瓷一体盆+镜柜"]
+
+  - id: lighting_01
+    name: "全屋吸顶灯套餐"
+    room: null
+    category: lighting
+    current_stage: selection
+    waste_rate: 1
+    unit: set
+    notes: ["客厅+餐厅+3卧室+2卫浴+阳台"]
+
+  - id: switch_socket_01
+    name: "正泰无边框大板开关插座"
+    room: null
+    category: electrical
+    current_stage: selection
+    waste_rate: 1.05
+    unit: count
+    notes: ["约50位，含USB、防溅盒"]
+
+  - id: hardware_01
+    name: "全屋五金套装"
+    room: null
+    category: hardware
+    current_stage: selection
+    waste_rate: 1
+    unit: set
+    notes: ["门锁/地漏/角阀/晾衣架/毛巾架"]
+
+  - id: smart_home_01
+    name: "智能家居预留套装"
+    room: null
+    category: smart_home
+    current_stage: selection
+    waste_rate: 1
+    unit: set
+    notes: ["智能开关零线+网关+电动窗帘电源，水电时布零线"]
+
+  - id: curtain_01
+    name: "全屋窗帘套装"
+    room: null
+    category: curtain
+    current_stage: selection
+    waste_rate: 1
+    unit: set
+    notes: ["雪尼尔遮光+幻影纱+铝百叶"]

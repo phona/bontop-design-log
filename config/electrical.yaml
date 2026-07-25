@@ -1,4 +1,4 @@
-- id: sock_tv_01
+- id: sock_living_tv
   room: living_dining
   wall: w_st_east
   type: socket
@@ -6,13 +6,402 @@
   z: 5.80
   height: 0.3
   count: 4
-  note: "电视墙插座，含USB×2"
+  note: "电视墙（西南次卧东墙）: 电视+音响+机顶盒+预留，含USB×2"
 
-- id: switch_living_01
+- id: sock_living_sofa_l
+  room: living_dining
+  wall: w_liv_east
+  type: socket
+  x: 13.40
+  z: 5.0
+  height: 0.3
+  count: 2
+  note: "沙发左侧: 手机充电+落地灯"
+
+- id: sock_living_sofa_r
+  room: living_dining
+  wall: w_liv_east
+  type: socket
+  x: 13.40
+  z: 7.0
+  height: 0.3
+  count: 2
+  note: "沙发右侧: 手机充电+落地灯"
+
+- id: sock_living_water
+  room: living_dining
+  type: socket
+  x: 13.0
+  z: 9.0
+  height: 0.3
+  count: 1
+  note: "饮水机位（东南角）"
+
+- id: sock_living_table
+  room: living_dining
+  type: socket
+  x: 9.5
+  z: 6.5
+  height: 0.1
+  count: 1
+  note: "餐桌旁地插: 电磁炉/火锅"
+
+- id: sock_living_curtain
+  room: living_dining
+  type: socket
+  x: 8.0
+  z: 9.80
+  height: 1.3
+  count: 1
+  note: "电动窗帘预留（南幕墙）"
+
+- id: sock_living_ac
+  room: living_dining
+  type: socket
+  x: 10.0
+  z: 7.0
+  height: 2.5
+  count: 1
+  note: "客厅空调内机电源（吊顶内）"
+
+- id: switch_living_entrance
   room: living_dining
   wall: w_ent_kit
   type: switch_2way
-  x: 7.20
+  x: 10.80
   z: 4.30
   height: 1.3
   note: "客厅灯光双控（入户侧）"
+
+- id: switch_living_corridor
+  room: living_dining
+  type: switch_2way
+  x: 7.20
+  z: 5.55
+  height: 1.3
+  note: "客厅灯光双控（走廊侧）"
+
+# 主卧
+- id: sock_master_bed_l
+  room: master_bedroom
+  type: socket
+  x: 0.5
+  z: 6.5
+  height: 0.7
+  count: 2
+  note: "床头左侧: 手机充电+台灯，含USB"
+
+- id: sock_master_bed_r
+  room: master_bedroom
+  type: socket
+  x: 0.5
+  z: 8.5
+  height: 0.7
+  count: 2
+  note: "床头右侧: 手机充电+台灯，含USB"
+
+- id: switch_master_bed_l
+  room: master_bedroom
+  type: switch_2way
+  x: 0.5
+  z: 6.5
+  height: 0.7
+  count: 1
+  note: "主卧灯光双控（床头左侧）"
+
+- id: switch_master_door
+  room: master_bedroom
+  type: switch_2way
+  x: 0.5
+  z: 5.55
+  height: 1.3
+  count: 1
+  note: "主卧灯光双控（门口）"
+
+- id: sock_master_tv
+  room: master_bedroom
+  wall: w_mb_east
+  type: socket
+  x: 4.20
+  z: 7.5
+  height: 0.3
+  count: 2
+  note: "主卧电视位预留"
+
+- id: net_master_tv
+  room: master_bedroom
+  wall: w_mb_east
+  type: network
+  x: 4.20
+  z: 7.5
+  height: 0.3
+  note: "主卧电视网口"
+
+- id: sock_master_bay
+  room: master_bedroom
+  type: socket
+  x: 2.0
+  z: 9.5
+  height: 0.3
+  count: 1
+  note: "飘窗旁插座"
+
+# 西南次卧（父母房）
+- id: sock_parent_bed_l
+  room: study
+  type: socket
+  x: 5.0
+  z: 6.5
+  height: 0.7
+  count: 1
+  note: "西南次卧床左侧"
+
+- id: sock_parent_bed_r
+  room: study
+  type: socket
+  x: 5.0
+  z: 8.5
+  height: 0.7
+  count: 1
+  note: "西南次卧床右侧"
+
+- id: switch_parent_bed
+  room: study
+  type: switch_2way
+  x: 5.0
+  z: 6.5
+  height: 0.7
+  note: "西南次卧灯光双控（床头）"
+
+- id: switch_parent_door
+  room: study
+  type: switch_2way
+  x: 6.6
+  z: 5.55
+  height: 1.3
+  note: "西南次卧灯光双控（门口）"
+
+- id: sock_parent_desk
+  room: study
+  type: socket
+  x: 6.0
+  z: 9.0
+  height: 0.3
+  count: 2
+  note: "西南次卧书桌位"
+
+# 书房（原东南次卧）
+- id: sock_study_desk
+  room: bedroom_se
+  type: socket
+  x: 14.0
+  z: 6.5
+  height: 0.3
+  count: 3
+  note: "书房桌面: 电脑+显示器+手机，含网口"
+
+- id: net_study
+  room: bedroom_se
+  type: network
+  x: 14.0
+  z: 6.5
+  height: 0.3
+  note: "书房网口"
+
+- id: sock_study_extra
+  room: bedroom_se
+  type: socket
+  x: 15.5
+  z: 9.0
+  height: 0.3
+  count: 1
+  note: "书房备用插座"
+
+- id: switch_study
+  room: bedroom_se
+  type: switch
+  x: 14.0
+  z: 6.5
+  height: 1.3
+  note: "书房灯光开关（门口）"
+
+# 儿童房（西北次卧）
+- id: sock_child_bed
+  room: bedroom_nw
+  type: socket
+  x: 3.5
+  z: 2.5
+  height: 1.2
+  count: 1
+  note: "儿童床头插座（离地1.2m安全高度）"
+
+- id: sock_child_desk
+  room: bedroom_nw
+  type: socket
+  x: 5.0
+  z: 3.5
+  height: 0.3
+  count: 2
+  note: "儿童房书桌位"
+
+- id: switch_child
+  room: bedroom_nw
+  type: switch
+  x: 3.0
+  z: 1.10
+  height: 1.3
+  note: "儿童房灯光开关"
+
+# 厨房
+- id: sock_kitchen_counter
+  room: kitchen
+  type: socket
+  x: 8.5
+  z: 4.30
+  height: 1.2
+  count: 4
+  note: "厨房台面带开关插座，分散布置"
+
+- id: sock_kitchen_fridge
+  room: kitchen
+  type: socket
+  x: 10.5
+  z: 0.5
+  height: 0.3
+  count: 1
+  note: "冰箱插座（单独回路）"
+
+- id: sock_kitchen_hood
+  room: kitchen
+  type: socket
+  x: 8.0
+  z: 2.0
+  height: 2.2
+  count: 1
+  note: "油烟机插座"
+
+- id: sock_kitchen_purifier
+  room: kitchen
+  type: socket
+  x: 8.5
+  z: 0.5
+  height: 0.3
+  count: 1
+  note: "净水器插座（厨下）"
+
+- id: sock_kitchen_gas
+  room: kitchen
+  type: socket
+  x: 9.0
+  z: 4.30
+  height: 2.0
+  count: 1
+  note: "燃气报警器插座"
+
+- id: switch_kitchen
+  room: kitchen
+  type: switch
+  x: 10.80
+  z: 1.0
+  height: 1.3
+  note: "厨房灯光开关"
+
+# 主卫
+- id: sock_mbath_vanity
+  room: master_bath
+  type: socket
+  x: 1.0
+  z: 1.5
+  height: 1.2
+  count: 2
+  note: "主卫洗手台插座（带防溅盒）"
+
+- id: sock_mbath_toilet
+  room: master_bath
+  type: socket
+  x: 2.0
+  z: 1.5
+  height: 0.3
+  count: 1
+  note: "主卫马桶旁插座（智能盖预留，带防溅盒）"
+
+- id: switch_mbath
+  room: master_bath
+  type: switch
+  x: 1.0
+  z: 1.5
+  height: 1.3
+  note: "主卫灯光开关"
+
+# 客卫
+- id: sock_gbath_vanity
+  room: guest_bath
+  type: socket
+  x: 5.8
+  z: 4.0
+  height: 1.2
+  count: 1
+  note: "客卫洗手台插座（带防溅盒）"
+
+- id: switch_gbath
+  room: guest_bath
+  type: switch
+  x: 5.8
+  z: 4.0
+  height: 1.3
+  note: "客卫灯光开关"
+
+# 生活阳台
+- id: sock_balcony_washer
+  room: balcony
+  type: socket
+  x: 6.0
+  z: 1.5
+  height: 1.2
+  count: 1
+  note: "洗衣机插座"
+
+- id: sock_balcony_dryer
+  room: balcony
+  type: socket
+  x: 6.0
+  z: 1.8
+  height: 1.2
+  count: 1
+  note: "烘干机插座（叠放）"
+
+- id: sock_balcony_waterheater
+  room: balcony
+  type: socket
+  x: 6.5
+  z: 1.0
+  height: 1.8
+  count: 1
+  note: "燃气热水器插座"
+
+# 入户花园
+- id: sock_garden
+  room: entry_garden
+  type: socket
+  x: 12.0
+  z: 1.5
+  height: 1.3
+  count: 1
+  note: "入户花园插座（吸尘器/充电）"
+
+- id: switch_garden
+  room: entry_garden
+  type: switch
+  x: 12.0
+  z: 0.5
+  height: 1.3
+  note: "入户花园灯光开关"
+
+# 走廊
+- id: switch_corridor
+  room: living_dining
+  type: switch
+  x: 7.20
+  z: 4.30
+  height: 1.3
+  note: "走廊灯光开关（靠近厨房入口）"

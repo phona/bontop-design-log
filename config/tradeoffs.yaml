@@ -46,3 +46,35 @@ tradeoffs:
         risk: high
         tips: "关注本地装修群、小区群开团信息"
         note: "价格最低，但发货周期不确定"
+
+  - topic: hvac_brand
+    label: "中央空调品牌"
+    options:
+      - label: "美的理想家III"
+        cost: 29000
+        risk: low
+        note: "全直流变频，性价比最高，售后网点多"
+      - label: "格力Star Ⅱ"
+        cost: 31000
+        risk: low
+        note: "品牌更稳，价格略高"
+      - label: "奥克斯DLR"
+        cost: 24000
+        risk: medium
+        note: "最便宜，但压缩机/噪音/售后差一档"
+
+  - topic: floor_material
+    label: "客餐厅地面材料"
+    options:
+      - label: "木纹砖通铺"
+        cost: 5500
+        risk: low
+        note: "木纹颜值+瓷砖耐用，美缝做好像木地板"
+      - label: "实木复合地板"
+        cost: 7000
+        risk: medium
+        note: "脚感好但怕水怕刮，南宁回南天需注意"
+      - label: "灰色柔光砖"
+        cost: 4800
+        risk: low
+        note: "现代感强，耐脏，但不如木纹温馨"

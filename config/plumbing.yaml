@@ -1,14 +1,126 @@
-- id: wc_master
+- id: faucet_mbath_vanity
+  room: master_bath
+  type: faucet
+  x: 1.0
+  z: 1.5
+  height: 0.8
+  note: "主卫洗手台冷热水"
+
+- id: shower_mbath
+  room: master_bath
+  type: shower
+  x: 1.5
+  z: 3.0
+  height: 1.0
+  note: "主卫淋浴花洒"
+
+- id: toilet_mbath
   room: master_bath
   type: toilet
-  x: 0.8
+  x: 2.5
+  z: 1.5
+  note: "主卫马桶给水"
+
+- id: drain_mbath_shower
+  room: master_bath
+  type: drain
+  x: 1.5
+  z: 3.2
+  note: "主卫淋浴地漏"
+
+- id: drain_mbath_floor
+  room: master_bath
+  type: drain
+  x: 2.0
+  z: 1.0
+  note: "主卫干区地漏"
+
+- id: faucet_gbath_vanity
+  room: guest_bath
+  type: faucet
+  x: 5.8
+  z: 4.0
+  height: 0.8
+  note: "客卫洗手台冷热水"
+
+- id: shower_gbath
+  room: guest_bath
+  type: shower
+  x: 6.3
+  z: 3.0
+  height: 1.0
+  note: "客卫淋浴花洒"
+
+- id: toilet_gbath
+  room: guest_bath
+  type: toilet
+  x: 6.8
+  z: 2.5
+  note: "客卫马桶给水"
+
+- id: drain_gbath_shower
+  room: guest_bath
+  type: drain
+  x: 6.3
+  z: 3.2
+  note: "客卫淋浴地漏"
+
+- id: drain_gbath_floor
+  room: guest_bath
+  type: drain
+  x: 6.5
   z: 2.0
-  note: "主卫马桶"
+  note: "客卫干区地漏"
+
+- id: faucet_kitchen_sink
+  room: kitchen
+  type: faucet
+  x: 8.5
+  z: 3.5
+  height: 0.8
+  note: "厨房洗菜盆冷热水"
+
+- id: faucet_kitchen_purifier
+  room: kitchen
+  type: faucet
+  x: 8.5
+  z: 3.5
+  height: 0.3
+  note: "厨房净水器给水（厨下）"
+
+- id: drain_kitchen_sink
+  room: kitchen
+  type: drain
+  x: 8.5
+  z: 3.5
+  note: "厨房洗菜盆下水"
+
+- id: faucet_balcony_washer
+  room: balcony
+  type: faucet
+  x: 6.0
+  z: 1.5
+  height: 0.8
+  note: "生活阳台洗衣机给水"
+
+- id: drain_balcony_floor
+  room: balcony
+  type: drain
+  x: 6.5
+  z: 1.5
+  note: "生活阳台地漏"
 
 - id: faucet_garden
   room: entry_garden
   type: faucet
-  x: 12.5
+  x: 12.0
   z: 1.5
   height: 0.8
   note: "入户花园浇花水龙头"
+
+- id: drain_garden
+  room: entry_garden
+  type: drain
+  x: 13.0
+  z: 1.5
+  note: "入户花园地漏"

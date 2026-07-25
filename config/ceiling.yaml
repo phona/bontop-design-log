@@ -22,3 +22,37 @@
   height: 2.85
   model: "2.8HP 风管机"
   note: "主卧空调内机"
+
+- id: ac_study
+  room: bedroom_se
+  type: ac_indoor
+  x: 14.8
+  z: 7.5
+  height: 2.85
+  model: "2.2HP 风管机"
+  note: "书房空调内机"
+
+- id: ac_parent
+  room: study
+  type: ac_indoor
+  x: 5.5
+  z: 7.5
+  height: 2.85
+  model: "2.2HP 风管机"
+  note: "西南次卧空调内机"
+
+- id: ac_child
+  room: bedroom_nw
+  type: ac_indoor
+  x: 4.0
+  z: 2.5
+  height: 2.85
+  model: "2.2HP 风管机"
+  note: "儿童房空调内机"
+
+- id: drying_rack_living
+  room: living_dining
+  type: drop
+  thickness: 0.15
+  area: [7.20, 9.20, 9.00, 9.80]
+  note: "客厅南侧隐藏式晾衣架吊顶（预埋加固板+电源）"
