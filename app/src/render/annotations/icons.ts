@@ -1,40 +1,45 @@
 import * as THREE from 'three';
 
-export function createSocketIcon(): THREE.Group {
-  const group = new THREE.Group();
-  const geo = new THREE.BoxGeometry(0.08, 0.02, 0.12);
-  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x4488ff, emissiveIntensity: 0.3 });
-  group.add(new THREE.Mesh(geo, mat));
-  const dotMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-  [-0.02, 0.02].forEach(x => {
-    const dot = new THREE.Mesh(new THREE.CircleGeometry(0.008, 8), dotMat);
-    dot.position.set(x, 0.01, 0.04);
-    group.add(dot);
-  });
-  return group;
+function makeSprite(text: string, bgColor: string, size: number = 0.15): THREE.Sprite {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = bgColor;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, 128, 64, 8);
+  ctx.fill();
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 64, 32);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(size, size * 0.5, 1);
+  return sprite;
 }
 
-export function createSwitchIcon(): THREE.Group {
-  const group = new THREE.Group();
-  const geo = new THREE.BoxGeometry(0.06, 0.02, 0.06);
-  const mat = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
-  group.add(new THREE.Mesh(geo, mat));
-  return group;
+export function createSocketIcon(count: number = 1): THREE.Sprite {
+  return makeSprite(`🔌×${count}`, 'rgba(68,136,255,0.85)');
 }
 
-export function createFaucetIcon(): THREE.Group {
-  const group = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2244aa, emissiveIntensity: 0.2 });
-  group.add(new THREE.Mesh(new THREE.CircleGeometry(0.04, 16), mat));
-  return group;
+export function createSwitchIcon(): THREE.Sprite {
+  return makeSprite('🔘', 'rgba(100,100,100,0.85)');
 }
 
-export function createDrainIcon(): THREE.Group {
-  const group = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0x888888 });
-  const ring = new THREE.RingGeometry(0.03, 0.05, 16);
-  group.add(new THREE.Mesh(ring, mat));
-  return group;
+export function createFaucetIcon(): THREE.Sprite {
+  return makeSprite('💧', 'rgba(68,136,255,0.85)');
+}
+
+export function createDrainIcon(): THREE.Sprite {
+  return makeSprite('🕳', 'rgba(136,136,136,0.85)');
+}
+
+export function createNetworkIcon(): THREE.Sprite {
+  return makeSprite('🌐', 'rgba(68,68,68,0.85)');
 }
 
 export function createCeilingZoneIndicator(width: number, depth: number): THREE.Mesh {
@@ -49,18 +54,6 @@ export function createCeilingZoneIndicator(width: number, depth: number): THREE.
   return new THREE.Mesh(geo, mat);
 }
 
-export function createACIndoorIcon(): THREE.Group {
-  const group = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.8, 0.05, 0.3),
-    new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.5 })
-  );
-  group.add(body);
-  const slotMat = new THREE.MeshBasicMaterial({ color: 0x666666 });
-  for (let i = -0.3; i <= 0.3; i += 0.15) {
-    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.01, 0.2), slotMat);
-    slot.position.set(i, 0.03, 0);
-    group.add(slot);
-  }
-  return group;
+export function createACIndoorIcon(model: string = ''): THREE.Sprite {
+  return makeSprite(`❄ ${model}`, 'rgba(100,180,255,0.85)', 0.25);
 }
