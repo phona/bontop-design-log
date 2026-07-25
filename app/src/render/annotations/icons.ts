@@ -27,31 +27,31 @@ export function createSocketIcon(count: number = 1): THREE.Sprite {
 }
 
 export function createSwitchIcon(): THREE.Sprite {
-  return makeSprite('🔘', 'rgba(100,100,100,0.85)');
+  return makeSprite('🔘', 'rgba(80,80,80,0.85)');
 }
 
 export function createFaucetIcon(): THREE.Sprite {
-  return makeSprite('💧', 'rgba(68,136,255,0.85)');
+  return makeSprite('💧', 'rgba(0,150,200,0.85)');
 }
 
 export function createShowerIcon(): THREE.Sprite {
-  return makeSprite('🚿', 'rgba(68,136,255,0.85)');
+  return makeSprite('🚿', 'rgba(0,180,160,0.85)');
 }
 
 export function createToiletIcon(): THREE.Sprite {
-  return makeSprite('🚽', 'rgba(100,100,100,0.85)');
+  return makeSprite('🚽', 'rgba(160,120,80,0.85)');
 }
 
 export function createDrainIcon(): THREE.Sprite {
-  return makeSprite('🕳', 'rgba(136,136,136,0.85)');
+  return makeSprite('🕳', 'rgba(120,120,120,0.85)');
 }
 
 export function createWasherIcon(): THREE.Sprite {
-  return makeSprite('👕', 'rgba(68,136,255,0.85)');
+  return makeSprite('👕', 'rgba(140,80,180,0.85)');
 }
 
 export function createNetworkIcon(): THREE.Sprite {
-  return makeSprite('🌐', 'rgba(68,68,68,0.85)');
+  return makeSprite('🌐', 'rgba(60,140,60,0.85)');
 }
 
 export function createCeilingZoneIndicator(width: number, depth: number): THREE.Mesh {
@@ -66,6 +66,6 @@ export function createCeilingZoneIndicator(width: number, depth: number): THREE.
   return new THREE.Mesh(geo, mat);
 }
 
-export function createACIndoorIcon(model: string = ''): THREE.Sprite {
-  return makeSprite(`❄ ${model}`, 'rgba(100,180,255,0.85)', 0.25);
+export function createACIndoorIcon(): THREE.Sprite {
+  return makeSprite('❄', 'rgba(100,180,255,0.85)', 0.25);
 }
