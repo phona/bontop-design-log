@@ -29,6 +29,7 @@
   type: drain
   x: 1.5
   z: 3.2
+  height: 0.02
   note: "主卫淋浴地漏（地面）"
 
 - id: drain_mbath_floor
@@ -36,6 +37,7 @@
   type: drain
   x: 2.0
   z: 1.0
+  height: 0.02
   note: "主卫干区地漏（地面）"
 
 - id: faucet_gbath_vanity
@@ -69,6 +71,7 @@
   type: drain
   x: 6.3
   z: 3.2
+  height: 0.02
   note: "客卫淋浴地漏（地面）"
 
 - id: drain_gbath_floor
@@ -76,6 +79,7 @@
   type: drain
   x: 6.5
   z: 2.0
+  height: 0.02
   note: "客卫干区地漏（地面）"
 
 - id: faucet_kitchen_sink
@@ -101,6 +105,7 @@
   type: drain
   x: 7.5
   z: 3.0
+  height: 0.02
   note: "厨房洗菜盆下水（地面）"
 
 - id: faucet_balcony_washer
@@ -117,6 +122,7 @@
   type: drain
   x: 6.5
   z: 1.5
+  height: 0.02
   note: "生活阳台地漏（地面）"
 
 - id: faucet_garden
@@ -133,4 +139,5 @@
   type: drain
   x: 13.0
   z: 1.5
+  height: 0.02
   note: "入户花园地漏（地面）"
