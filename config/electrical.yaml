@@ -104,7 +104,7 @@
   room: master_bedroom
   type: switch_2way
   x: 0.5
-  z: 6.5
+  z: 6.3
   height: 0.7
   count: 1
   note: "主卧灯光双控（床头左侧）"
