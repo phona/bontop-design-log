@@ -1,0 +1,48 @@
+tradeoffs:
+  - topic: tile_installation
+    label: "瓷砖铺贴"
+    options:
+      - label: "装修公司包工"
+        cost: 4500
+        risk: medium
+        time_days: 3
+        acceptance_items: ["空鼓率<5%", "缝隙2mm", "平整度2m靠尺<2mm"]
+      - label: "自己找师傅"
+        cost: 3000
+        risk: high
+        time_days: 4
+        tips: "小区群里问邻居用过的师傅"
+        acceptance_items: ["同上"]
+
+  - topic: paint_brand
+    label: "乳胶漆品牌"
+    options:
+      - label: "多乐士"
+        cost: 1800
+        risk: low
+        note: "市场占有率最高，配色最准"
+      - label: "立邦"
+        cost: 1600
+        risk: low
+        note: "价格略低，颜色可选范围小"
+      - label: "三棵树"
+        cost: 1200
+        risk: medium
+        note: "最便宜，但调色偏差较大"
+
+  - topic: procurement_mode
+    label: "采购模式"
+    options:
+      - label: "装修公司代购"
+        cost: 0
+        risk: low
+        note: "省心省力，统一进场"
+      - label: "自己采购"
+        cost: 0
+        risk: medium
+        note: "可对比价格，需自行协调物流"
+      - label: "跟团购"
+        cost: 0
+        risk: high
+        tips: "关注本地装修群、小区群开团信息"
+        note: "价格最低，但发货周期不确定"
