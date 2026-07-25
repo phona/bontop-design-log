@@ -34,8 +34,20 @@ export function createFaucetIcon(): THREE.Sprite {
   return makeSprite('💧', 'rgba(68,136,255,0.85)');
 }
 
+export function createShowerIcon(): THREE.Sprite {
+  return makeSprite('🚿', 'rgba(68,136,255,0.85)');
+}
+
+export function createToiletIcon(): THREE.Sprite {
+  return makeSprite('🚽', 'rgba(100,100,100,0.85)');
+}
+
 export function createDrainIcon(): THREE.Sprite {
   return makeSprite('🕳', 'rgba(136,136,136,0.85)');
+}
+
+export function createWasherIcon(): THREE.Sprite {
+  return makeSprite('👕', 'rgba(68,136,255,0.85)');
 }
 
 export function createNetworkIcon(): THREE.Sprite {

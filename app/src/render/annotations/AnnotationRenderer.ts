@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createSocketIcon, createSwitchIcon, createFaucetIcon, createDrainIcon, createCeilingZoneIndicator, createACIndoorIcon } from './icons.js';
+import { createSocketIcon, createSwitchIcon, createFaucetIcon, createShowerIcon, createToiletIcon, createDrainIcon, createWasherIcon, createCeilingZoneIndicator, createACIndoorIcon } from './icons.js';
 import { ProblemDetector } from './ProblemDetector.js';
 import type { Problem, FurnitureItem, WallInfo } from './ProblemDetector.js';
 
@@ -135,7 +135,7 @@ export class AnnotationRenderer {
     points.forEach(p => {
       const icon = p.type === 'switch' || p.type === 'switch_2way'
         ? createSwitchIcon()
-        : createSocketIcon();
+        : createSocketIcon(p.count ?? 1);
       icon.position.set(p.x, p.height, p.z);
       icon.userData = { type: 'annotation', category: 'electrical', pointId: p.id, note: p.note };
       const label = this.createLabel(p.note ?? '');
@@ -150,7 +150,15 @@ export class AnnotationRenderer {
   private renderPlumbing(points: PlumbingPoint[]): void {
     const g = this.layerGroups.plumbing;
     points.forEach(p => {
-      const icon = p.type === 'drain' ? createDrainIcon() : createFaucetIcon();
+      const iconMap: Record<string, () => THREE.Sprite> = {
+        faucet: createFaucetIcon,
+        shower: createShowerIcon,
+        toilet: createToiletIcon,
+        drain: createDrainIcon,
+        washer: createWasherIcon,
+        faucet_outdoor: createFaucetIcon,
+      };
+      const icon = (iconMap[p.type] ?? createFaucetIcon)();
       icon.position.set(p.x, p.height ?? 0.5, p.z);
       icon.userData = { type: 'annotation', category: 'plumbing', pointId: p.id, note: p.note };
       const label = this.createLabel(p.note ?? '');
