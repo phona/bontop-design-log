@@ -60,7 +60,7 @@ export class AnnotationRenderer {
   ) {
     Object.values(this.layerGroups).forEach(g => this.group.add(g));
     this.group.add(this.problemGroup);
-    this.group.visible = true;
+    this.group.visible = false;
     this.scene.add(this.group);
   }
 
