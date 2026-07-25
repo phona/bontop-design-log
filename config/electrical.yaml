@@ -6,7 +6,16 @@
   z: 5.80
   height: 0.3
   count: 4
-  note: "电视墙（西南次卧东墙）: 电视+音响+机顶盒+预留，含USB×2"
+  note: "电视墙: 电视+音响+机顶盒+预留，含USB×2"
+
+- id: net_living
+  room: living_dining
+  wall: w_st_east
+  type: network
+  x: 7.20
+  z: 5.80
+  height: 0.3
+  note: "客厅网口"
 
 - id: sock_living_sofa_l
   room: living_dining
@@ -36,7 +45,7 @@
   z: 9.0
   height: 0.3
   count: 1
-  note: "饮水机位（东南角）"
+  note: "饮水机位"
 
 - id: sock_living_table
   room: living_dining
@@ -66,6 +75,15 @@
   count: 1
   note: "客厅空调内机电源（吊顶内）"
 
+- id: switch_living_entrance
+  room: living_dining
+  wall: w_ent_kit
+  type: switch_2way
+  x: 10.80
+  z: 4.30
+  height: 1.3
+  note: "客厅灯光双控（入户侧）"
+
 - id: switch_living_corridor
   room: living_dining
   wall: w_liv_east
@@ -78,8 +96,9 @@
 # 主卧
 - id: sock_master_bed_l
   room: master_bedroom
+  wall: w_mb_east
   type: socket
-  x: 0.5
+  x: 4.20
   z: 6.5
   height: 0.7
   count: 2
@@ -87,8 +106,9 @@
 
 - id: sock_master_bed_r
   room: master_bedroom
+  wall: w_mb_east
   type: socket
-  x: 0.5
+  x: 4.20
   z: 8.5
   height: 0.7
   count: 2
@@ -96,20 +116,20 @@
 
 - id: switch_master_bed_l
   room: master_bedroom
+  wall: w_mb_east
   type: switch_2way
-  x: 0.5
+  x: 4.20
   z: 6.3
   height: 0.7
-  count: 1
   note: "主卧灯光双控（床头左侧）"
 
 - id: switch_master_door
   room: master_bedroom
+  wall: w_mb_east
   type: switch_2way
-  x: 0.5
-  z: 5.55
+  x: 4.20
+  z: 5.7
   height: 1.3
-  count: 1
   note: "主卧灯光双控（门口）"
 
 - id: sock_master_tv
@@ -129,13 +149,14 @@
   x: 4.20
   z: 7.5
   height: 0.3
-  note: "主卧电视网口"
+  note: "主卧网口"
 
 - id: sock_master_bay
   room: master_bedroom
+  wall: w_mb_east
   type: socket
-  x: 2.0
-  z: 9.5
+  x: 4.20
+  z: 9.3
   height: 0.3
   count: 1
   note: "飘窗旁插座"
@@ -143,17 +164,19 @@
 # 西南次卧（父母房）
 - id: sock_parent_bed_l
   room: study
+  wall: w_st_east
   type: socket
-  x: 5.0
-  z: 6.5
+  x: 7.20
+  z: 7.0
   height: 0.7
   count: 1
   note: "西南次卧床左侧"
 
 - id: sock_parent_bed_r
   room: study
+  wall: w_st_east
   type: socket
-  x: 5.0
+  x: 7.20
   z: 8.5
   height: 0.7
   count: 1
@@ -161,14 +184,16 @@
 
 - id: switch_parent_bed
   room: study
+  wall: w_st_east
   type: switch_2way
-  x: 5.0
-  z: 6.5
+  x: 7.20
+  z: 7.0
   height: 0.7
   note: "西南次卧灯光双控（床头）"
 
 - id: switch_parent_door
   room: study
+  wall: w_st_north
   type: switch_2way
   x: 6.6
   z: 5.55
@@ -177,53 +202,68 @@
 
 - id: sock_parent_desk
   room: study
+  wall: w_mb_east
   type: socket
-  x: 6.0
+  x: 4.20
   z: 9.0
   height: 0.3
   count: 2
   note: "西南次卧书桌位"
 
+- id: net_parent
+  room: study
+  wall: w_mb_east
+  type: network
+  x: 4.20
+  z: 9.0
+  height: 0.3
+  note: "西南次卧网口"
+
 # 书房（原东南次卧）
 - id: sock_study_desk
   room: bedroom_se
+  wall: w_be_west
   type: socket
-  x: 14.0
+  x: 13.40
   z: 6.5
   height: 0.3
   count: 3
-  note: "书房桌面: 电脑+显示器+手机，含网口"
+  note: "书房桌面: 电脑+显示器+手机"
 
 - id: net_study
   room: bedroom_se
+  wall: w_be_west
   type: network
-  x: 14.0
+  x: 13.40
   z: 6.5
   height: 0.3
   note: "书房网口"
 
 - id: sock_study_extra
   room: bedroom_se
+  wall: w_be_north
   type: socket
-  x: 15.5
-  z: 9.0
+  x: 14.5
+  z: 5.55
   height: 0.3
   count: 1
   note: "书房备用插座"
 
 - id: switch_study
   room: bedroom_se
+  wall: w_be_west
   type: switch
-  x: 14.0
-  z: 6.5
+  x: 13.40
+  z: 7.0
   height: 1.3
-  note: "书房灯光开关（门口）"
+  note: "书房灯光开关"
 
 # 儿童房（西北次卧）
 - id: sock_child_bed
   room: bedroom_nw
+  wall: w_mbath_east
   type: socket
-  x: 3.5
+  x: 2.60
   z: 2.5
   height: 1.2
   count: 1
@@ -231,35 +271,48 @@
 
 - id: sock_child_desk
   room: bedroom_nw
+  wall: w_nw_south
   type: socket
-  x: 5.0
-  z: 3.5
+  x: 4.5
+  z: 4.30
   height: 0.3
   count: 2
   note: "儿童房书桌位"
 
+- id: net_child
+  room: bedroom_nw
+  wall: w_nw_south
+  type: network
+  x: 4.5
+  z: 4.30
+  height: 0.3
+  note: "儿童房网口"
+
 - id: switch_child
   room: bedroom_nw
+  wall: w_nw_south
   type: switch
-  x: 3.0
-  z: 1.10
+  x: 3.5
+  z: 4.30
   height: 1.3
   note: "儿童房灯光开关"
 
 # 厨房
 - id: sock_kitchen_counter
   room: kitchen
+  wall: w_kit_west
   type: socket
-  x: 8.5
-  z: 4.30
+  x: 7.20
+  z: 2.5
   height: 1.2
   count: 4
-  note: "厨房台面带开关插座，分散布置"
+  note: "厨房台面带开关插座"
 
 - id: sock_kitchen_fridge
   room: kitchen
+  wall: w_kit_east
   type: socket
-  x: 10.5
+  x: 10.80
   z: 0.5
   height: 0.3
   count: 1
@@ -267,17 +320,19 @@
 
 - id: sock_kitchen_hood
   room: kitchen
+  wall: w_kit_west
   type: socket
-  x: 8.0
-  z: 2.0
+  x: 7.20
+  z: 2.5
   height: 2.2
   count: 1
   note: "油烟机插座"
 
 - id: sock_kitchen_purifier
   room: kitchen
+  wall: w_kit_east
   type: socket
-  x: 8.5
+  x: 10.80
   z: 0.5
   height: 0.3
   count: 1
@@ -285,15 +340,17 @@
 
 - id: sock_kitchen_gas
   room: kitchen
+  wall: w_kit_east
   type: socket
-  x: 9.0
-  z: 4.30
+  x: 10.80
+  z: 3.0
   height: 2.0
   count: 1
   note: "燃气报警器插座"
 
 - id: switch_kitchen
   room: kitchen
+  wall: w_kit_east
   type: switch
   x: 10.80
   z: 1.0
@@ -303,53 +360,59 @@
 # 主卫
 - id: sock_mbath_vanity
   room: master_bath
+  wall: w_mbath_east
   type: socket
-  x: 1.0
-  z: 1.5
+  x: 2.60
+  z: 2.5
   height: 1.2
   count: 2
   note: "主卫洗手台插座（带防溅盒）"
 
 - id: sock_mbath_toilet
   room: master_bath
+  wall: w_mbath_east
   type: socket
-  x: 2.0
+  x: 2.60
   z: 1.5
   height: 0.3
   count: 1
-  note: "主卫马桶旁插座（智能盖预留，带防溅盒）"
+  note: "主卫马桶旁插座（智能盖预留）"
 
 - id: switch_mbath
   room: master_bath
+  wall: w_mbath_south
   type: switch
   x: 1.0
-  z: 1.5
+  z: 4.30
   height: 1.3
   note: "主卫灯光开关"
 
 # 客卫
 - id: sock_gbath_vanity
   room: guest_bath
+  wall: w_gbath_west
   type: socket
-  x: 5.8
-  z: 4.0
+  x: 5.60
+  z: 3.0
   height: 1.2
   count: 1
   note: "客卫洗手台插座（带防溅盒）"
 
 - id: switch_gbath
   room: guest_bath
+  wall: w_gbath_west
   type: switch
-  x: 5.8
-  z: 4.0
+  x: 5.60
+  z: 3.5
   height: 1.3
   note: "客卫灯光开关"
 
 # 生活阳台
 - id: sock_balcony_washer
   room: balcony
+  wall: w_balc_west
   type: socket
-  x: 6.0
+  x: 5.60
   z: 1.5
   height: 1.2
   count: 1
@@ -357,8 +420,9 @@
 
 - id: sock_balcony_dryer
   room: balcony
+  wall: w_balc_west
   type: socket
-  x: 6.0
+  x: 5.60
   z: 1.8
   height: 1.2
   count: 1
@@ -366,8 +430,9 @@
 
 - id: sock_balcony_waterheater
   room: balcony
+  wall: w_vrv_east
   type: socket
-  x: 6.5
+  x: 7.20
   z: 1.0
   height: 1.8
   count: 1
@@ -376,17 +441,19 @@
 # 入户花园
 - id: sock_garden
   room: entry_garden
+  wall: w_ent_west
   type: socket
-  x: 12.0
+  x: 10.80
   z: 1.5
   height: 1.3
   count: 1
-  note: "入户花园插座（吸尘器/充电）"
+  note: "入户花园插座"
 
 - id: switch_garden
   room: entry_garden
+  wall: w_ent_west
   type: switch
-  x: 12.0
+  x: 10.80
   z: 0.5
   height: 1.3
   note: "入户花园灯光开关"
@@ -394,8 +461,9 @@
 # 走廊
 - id: switch_corridor
   room: living_dining
+  wall: w_kit_west
   type: switch
   x: 7.20
   z: 4.30
   height: 1.3
-  note: "走廊灯光开关（靠近厨房入口）"
+  note: "走廊灯光开关"
