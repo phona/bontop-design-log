@@ -56,3 +56,26 @@
   thickness: 0.15
   area: [7.20, 9.20, 9.00, 9.80]
   note: "客厅南侧隐藏式晾衣架吊顶（预埋加固板+电源）"
+
+# === 厨卫吊顶（2026-07-25 基线补齐） ===
+
+- id: ceiling_kitchen
+  room: kitchen
+  type: aluminum_buckle
+  thickness: 0.15
+  area: [7.20, 0.00, 10.80, 4.30]
+  note: "厨房铝扣板吊顶（内藏油烟机烟管+灯具），净高约2.55m"
+
+- id: ceiling_master_bath
+  room: master_bath
+  type: aluminum_buckle
+  thickness: 0.15
+  area: [0.00, 1.10, 4.20, 5.55]
+  note: "主卫铝扣板吊顶（内藏排风管+浴霸），净高约2.55m"
+
+- id: ceiling_guest_bath
+  room: guest_bath
+  type: aluminum_buckle
+  thickness: 0.15
+  area: [5.60, 2.20, 7.10, 4.30]
+  note: "客卫铝扣板吊顶（内藏排风管+浴霸），净高约2.55m"

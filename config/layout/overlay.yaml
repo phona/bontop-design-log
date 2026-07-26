@@ -12,7 +12,7 @@ suppress:
     reason: "西墙实体删除，改玻璃幕墙"
   - id: suppress_south_west
     walls: [w_mb_south, w_st_south]
-    reason: "主卧+书房南墙实体删除，为飘窗让路"
+    reason: "主卧+父母房南墙实体删除，为飘窗让路"
   - id: suppress_living_south
     wall: w_liv_south
     reason: "客厅南墙落地玻璃幕"
@@ -103,7 +103,7 @@ elements:
     depth: 1.1
     sill: 2.55
     height: 0.45
-    reason: "书房南墙飘窗（南缘 z=10.90，与主卧齐平）"
+    reason: "父母房南墙飘窗（南缘 z=10.90，与主卧齐平）"
 
   - id: bedroom_se_south_bay
     type: bay_sill
@@ -111,7 +111,7 @@ elements:
     depth: 1.1
     sill: 2.55
     height: 0.45
-    reason: "东南次卧南向凸窗（南缘 z=11.05）"
+    reason: "书房南向凸窗（南缘 z=11.05）"
 
   - id: bedroom_nw_west_bay
     type: bay_sill
@@ -179,7 +179,7 @@ elements:
       - { x: 7.2, z: 5.55 }
       - { x: 7.2, z: 7.8 }
       - { x: 4.2, z: 7.8 }
-    reason: "主卧与书房之间的走廊"
+    reason: "主卧与父母房之间的走廊"
 
   - id: main_corridor_floor
     type: floor_region

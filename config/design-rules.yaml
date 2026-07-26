@@ -174,3 +174,24 @@ constraints:
       topic: "hvac"
       fields: ["outdoor_width"]
     description: "E1 方案多台外机需确认西平台宽度是否足够"
+
+  - id: "no_mount_on_curtain_wall"
+    severity: "high"
+    when:
+      topic: "electrical"
+      condition: "$item.wall in overlay.suppress.walls"
+    description: "不能在玻璃幕墙（已 suppress 的墙）上安装插座/电视/挂件"
+
+  - id: "tv_socket_near_tv_stand"
+    severity: "medium"
+    when:
+      topic: "electrical"
+      condition: "$item.id == 'sock_living_tv' && dist($item, furniture.tv_stand) > 1.5"
+    description: "电视插座与电视柜距离超过 1.5m，请确认布局一致性"
+
+  - id: "curtain_power_near_curtain_wall"
+    severity: "medium"
+    when:
+      topic: "electrical"
+      condition: "$item.note contains '窗帘' && dist_to_suppressed_wall($item) > 2.0"
+    description: "电动窗帘电源应靠近对应玻璃幕墙（距离 ≤ 2m）"

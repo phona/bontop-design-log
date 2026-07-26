@@ -1,0 +1,48 @@
+version: "1.0"
+
+bounds:
+  apply_to: [electrical, plumbing, furniture]
+  tolerance: 0.05
+  severity: error
+
+wall_ref:
+  apply_to: [electrical, plumbing]
+  suppress_source: config/layout/overlay.yaml
+  severity: error
+
+existence:
+  apply_to: [electrical, plumbing, furniture, ceiling]
+  exempt_rooms: [south_balcony]
+  severity: error
+
+proximity:
+  - id: tv_socket_to_stand
+    a: { file: electrical, match: { id: sock_living_tv } }
+    b: { file: furniture, match: { type: tv_stand } }
+    max_distance: 1.5
+    severity: warn
+
+  - id: ac_socket_to_unit
+    a: { file: electrical, match: { id_pattern: "sock_.*_ac" } }
+    b: { file: ceiling, match: { type: ac_indoor }, same_room: true }
+    max_distance: 1.0
+    severity: warn
+
+  - id: curtain_power_to_room_edge
+    a: { file: electrical, match: { note_contains: "窗帘" } }
+    b: { target: room_edge, same_room: true }
+    max_distance: 0.5
+    severity: warn
+
+clearance:
+  furniture_types: [bed_180, bed_150, wardrobe_240, wardrobe_180, sofa_3seat]
+  min_passage: 0.50
+  severity: warn
+
+name_consistency:
+  source_a: config/layout/model-geometry.yaml
+  source_b: config/house.yaml
+  match_by: id
+  check: name
+  exempt_ids: [south_balcony, west_platform, elevator_shaft]
+  severity: warn

@@ -6,7 +6,7 @@
   z: 5.80
   height: 0.3
   count: 4
-  note: "电视墙: 电视+音响+机顶盒+预留，含USB×2"
+  note: "电视墙(西墙): 电视+音响+机顶盒+预留，含USB×2"
 
 - id: net_living
   room: living_dining
@@ -61,10 +61,10 @@
   wall: w_liv_east
   type: socket
   x: 13.40
-  z: 5.30
+  z: 9.50
   height: 2.5
   count: 1
-  note: "电动窗帘电源（东墙取电，天花板内走线到窗帘电机）"
+  note: "电动窗帘电源（东墙南端，靠近南墙玻璃幕）"
 
 - id: sock_living_ac
   room: living_dining
@@ -77,7 +77,7 @@
 
 - id: switch_living_entrance
   room: living_dining
-  wall: w_ent_kit
+  wall: w_kit_east
   type: switch_2way
   x: 10.80
   z: 4.30
@@ -330,13 +330,13 @@
 
 - id: sock_kitchen_purifier
   room: kitchen
-  wall: w_kit_east
+  wall: w_kit_west
   type: socket
-  x: 10.80
-  z: 0.5
+  x: 7.50
+  z: 3.50
   height: 0.3
   count: 1
-  note: "净水器插座（厨下）"
+  note: "净水器插座（水槽下方）"
 
 - id: sock_kitchen_gas
   room: kitchen
@@ -444,10 +444,10 @@
   wall: w_ent_west
   type: socket
   x: 10.80
-  z: 1.5
+  z: 2.20
   height: 1.3
   count: 1
-  note: "入户花园插座"
+  note: "入户花园插座（远离水龙头）"
 
 - id: switch_garden
   room: entry_garden
@@ -467,3 +467,101 @@
   z: 4.30
   height: 1.3
   note: "走廊灯光开关"
+
+# === 新增点位（2026-07-25 基线补齐） ===
+
+# 厨房洗碗机
+- id: sock_kitchen_dishwasher
+  room: kitchen
+  wall: w_kit_west
+  type: socket
+  x: 7.50
+  z: 2.00
+  height: 0.3
+  count: 1
+  note: "洗碗机插座（水槽旁厨下，单独回路）"
+
+# 主卧电动窗帘
+- id: sock_master_curtain
+  room: master_bedroom
+  wall: w_mb_east
+  type: socket
+  x: 4.20
+  z: 9.50
+  height: 2.5
+  count: 1
+  note: "主卧电动窗帘电源"
+
+# 父母房电动窗帘
+- id: sock_parent_curtain
+  room: study
+  wall: w_st_east
+  type: socket
+  x: 7.20
+  z: 9.50
+  height: 2.5
+  count: 1
+  note: "父母房电动窗帘电源"
+
+# 书房电动窗帘
+- id: sock_study_curtain
+  room: bedroom_se
+  wall: w_be_west
+  type: socket
+  x: 13.40
+  z: 9.50
+  height: 2.5
+  count: 1
+  note: "书房电动窗帘电源（西墙南端，天花内走线到南墙窗帘电机）"
+
+# 书房空调内机电源
+- id: sock_study_ac
+  room: bedroom_se
+  type: socket
+  x: 14.80
+  z: 7.50
+  height: 2.5
+  count: 1
+  note: "书房空调内机电源（吊顶内）"
+
+# 父母房空调内机电源
+- id: sock_parent_ac
+  room: study
+  type: socket
+  x: 5.50
+  z: 7.50
+  height: 2.5
+  count: 1
+  note: "父母房空调内机电源（吊顶内）"
+
+# 客卫智能马桶预留
+- id: sock_gbath_toilet
+  room: guest_bath
+  wall: w_gbath_west
+  type: socket
+  x: 5.60
+  z: 2.30
+  height: 0.3
+  count: 1
+  note: "客卫马桶旁插座（智能盖预留）"
+
+# 阳台电动晾衣架
+- id: sock_balcony_drying
+  room: balcony
+  type: socket
+  x: 6.40
+  z: 1.60
+  height: 2.5
+  count: 1
+  note: "电动晾衣架电源（吊顶内）"
+
+# 智能网关/路由位
+- id: sock_gateway
+  room: living_dining
+  wall: w_kit_west
+  type: socket
+  x: 7.20
+  z: 4.80
+  height: 0.3
+  count: 1
+  note: "智能网关/路由位（走廊，房子中央，WiFi覆盖最优）"

@@ -34,8 +34,7 @@
   - `z = (north_edge + south_edge) / 2`
 - 任何几何修改后，必须运行：
   ```bash
-  npx tsx scripts/verify-topology.ts
-  npx tsx scripts/verify-layout.ts
+  npm run verify:all
   npm run test:server
   npm run typecheck
   ```
@@ -45,3 +44,14 @@
   ```
   furnishings 条目带 `x/z/rotation` 的为 placed 实例（3D 渲染 + MCP 暴露位置）；无 `x/z` 的为 count-only（只喂预算/库存）。坐标使用 model-geometry 同一局部坐标系（米），预算 counts 由列表 derive（`ProjectCatalog.getFurnishingCounts`），禁止双写。
 - `model-geometry.yaml` 采用 v2.0 vertex 格式：rooms 使用中心坐标 (x, z, width, depth)，walls 使用角点坐标 (x1, z1, x2, z2)。几何修改须同时更新拓扑一致性。使用 `scripts/verify-topology.ts` 替代旧的 `validate-room-wall-alignment.ts`。`scripts/archive/` 保留旧脚本供参考。
+
+## 电气/家具修改铁律
+
+- 移动任何电气点位或家具前，必须确认目标墙面是**实体墙**（不在 `overlay.yaml` 的 `suppress` 列表中）。
+- 玻璃幕墙（`curtain_run` / 被 suppress 的墙）**不能挂载**：电视、插座、挂件、柜体。
+- 家具布局与电气点位必须**交叉验证**：插座位置 ≈ 电器实际位置（偏差 > 1.5m 需报警）。
+- 修改前先问："这面墙是什么材质？能打孔/挂重物吗？"
+- 修改电气/家具后，必须运行：
+  ```bash
+  npm run verify:all
+  ```

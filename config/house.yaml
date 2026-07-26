@@ -33,7 +33,7 @@ project:
     - date: "2026-07-05"
       item: "建筑面积与层高"
       from: "建面约 140-150㎡、层高 2.8m"
-      to: "预测建面 119.38㎡、套内 94.76㎡、层高 3.0m"
+      to: "预测建面 119.38㎡、套内 94.76㎡、结构层高 3.0m、室内净高 2.8m"
 
 rooms:
   - name: "主卧"
@@ -85,7 +85,7 @@ rooms:
       - "床 1.5m × 2.0m"
       - "衣柜 1.8m × 0.6m × 2.7m"
 
-  - name: "东南次卧"
+  - name: "书房"
     id: "bedroom_se"
     type: "private"
     wall_finish: "paint"
@@ -96,7 +96,31 @@ rooms:
     area: 8.39
     status: "design"
     orientation: "东南"
-    notes: "设计图标注面积 8.39㎡"
+    notes: "东南角书房，靠近客餐厅，日间使用便利；设计图标注面积 8.39㎡，以 model-geometry 为准"
+    windows:
+      - width: 1.50
+        height: 1.40
+        position: "南墙"
+    doors:
+      - width: 0.90
+        position: "连接过道"
+    furniture_concept:
+      - "书桌 1.4m × 0.6m"
+      - "书架 0.8m × 0.3m"
+      - "阅读椅"
+
+  - name: "父母房"
+    id: "study"
+    type: "private"
+    wall_finish: "paint"
+    needs_waterproof: false
+    width: 3.00
+    length: 2.78
+    height: 2.8
+    area: 8.35
+    status: "design"
+    orientation: "南"
+    notes: "左侧中间卧室，预留未来改书房/客房的可能（已有网线、窗帘电源）；设计图标注面积 8.35㎡，以 model-geometry 为准"
     windows:
       - width: 1.50
         height: 1.40
@@ -107,30 +131,6 @@ rooms:
     furniture_concept:
       - "床 1.5m × 2.0m"
       - "衣柜 1.8m × 0.6m × 2.7m"
-
-  - name: "书房"
-    id: "study"
-    type: "private"
-    wall_finish: "paint"
-    needs_waterproof: false
-    width: 3.00
-    length: 2.78
-    height: 2.8
-    area: 8.35
-    status: "design"
-    orientation: "东北"
-    notes: "暂按书房设计，预留未来改客房/儿童房的可能（预留衣柜位、网线、窗帘电源）"
-    windows:
-      - width: 1.50
-        height: 1.40
-        position: "东墙/北墙"
-    doors:
-      - width: 0.90
-        position: "连接过道"
-    furniture_concept:
-      - "书桌 1.4m × 0.6m"
-      - "书架"
-      - "沙发床/折叠床（备用）"
 
   - name: "客餐厅"
     id: "living_dining"
@@ -226,7 +226,7 @@ rooms:
       - "马桶"
       - "淋浴区"
 
-  - name: "阳台"
+  - name: "生活阳台"
     id: "balcony"
     type: "public"
     wall_finish: "tile"
@@ -281,9 +281,9 @@ gift_areas:
     length: 2.18
     height: 2.8
     area: 13.95
-    status: "design"
+    status: "merged_into_interior"
     orientation: "南"
-    notes: "合同图南面大阳台，赠送面积，开发商已用玻璃幕墙封闭；西户专属，东侧阳台属隔壁户"
+    notes: "合同图南面大阳台，赠送面积，开发商已用玻璃幕墙封闭；已合并入室内（南墙改玻璃幕/飘窗），不再作为独立空间"
     windows: []
     doors:
       - width: 2.00
@@ -318,11 +318,11 @@ mechanical_electrical_plumbing:
         note: "藏入局部吊顶"
       - room: "主卧"
         type: "风管机或壁挂机（视预算）"
-      - room: "书房"
+      - room: "父母房"
         type: "风管机或壁挂机（视预算）"
       - room: "西北次卧"
         type: "风管机或壁挂机（视预算）"
-      - room: "东南次卧"
+      - room: "书房"
         type: "风管机或壁挂机（视预算）"
     notes:
       - "因仅有一个 2.48㎡ 设备平台，分体机外机位不足"
@@ -338,7 +338,7 @@ mechanical_electrical_plumbing:
   electrical:
     power:
       - "强电箱位置、容量、回路数待现场确认"
-      - "客厅、主卧、书房预留网线（AP/Mesh）"
+      - "客厅、主卧、父母房、书房预留网线（AP/Mesh）"
       - "客厅电视墙预留 4–5 个插座"
       - "厨房预留 6–8 个插座（含洗碗机、净水器、垃圾处理器）"
       - "卫生间预留智能马桶、电热毛巾架电源"
@@ -346,7 +346,7 @@ mechanical_electrical_plumbing:
       level: "B"
       description: "智能开关零线 + 网关位 + 电动窗帘电源 + 人体传感器位"
       notes:
-        - "全屋玻璃幕墙，窗帘为刚需，主卧/客厅/书房预留电动窗帘电源"
+        - "全屋玻璃幕墙，窗帘为刚需，主卧/客厅/父母房/书房预留电动窗帘电源"
         - "不上全屋调光和自动化，控制成本"
 
   plumbing:
@@ -360,19 +360,19 @@ mechanical_electrical_plumbing:
         type: "纱帘 + 遮光帘（可考虑电动）"
       - room: "主卧"
         type: "遮光帘 + 纱帘"
-      - room: "书房"
-        type: "半遮光帘 + 纱帘"
+      - room: "父母房"
+        type: "遮光帘 + 纱帘"
       - room: "西北次卧"
         type: "遮光帘 + 纱帘"
-      - room: "东南次卧"
-        type: "遮光帘 + 纱帘"
+      - room: "书房"
+        type: "半遮光帘 + 纱帘"
       - room: "厨房/卫生间"
         type: "防水卷帘或百叶"
 
 mep_strategy:
   - "中央空调 / 多联机一拖五/六，外机放西设备平台"
   - "燃气热水器供热水，位置待设计师确定"
-  - "智能预留 B 级：智能开关零线 + 网关 + 电动窗帘电源 + 传感器位"
+  - "智能预留 B 级：智能开关零线 + 网关 + 电动窗帘电源（主卧/客厅/父母房/书房） + 传感器位"
   - "全屋窗帘：遮光帘 + 纱帘，厨卫用防水卷帘/百叶"
 
 furnishings:
@@ -394,27 +394,30 @@ furnishings:
     - { type: ceiling_light }
   bedroom_se:
     # 房间 x∈[13.40,16.40] z∈[5.55,9.80]，西门 d_bese @(13.4,7.6) swing x∈[13.40,14.30] z∈[7.15,8.05]
-    - { type: bed_180, x: 15.35, z: 8.65, rotation: 270 }      # 床头靠东墙
-    - { type: wardrobe_240, x: 14.60, z: 5.85, rotation: 0 }   # 沿北墙
-    - { type: mattress_180 }
+    # 书桌靠西墙（x=13.4），西墙已有桌面插座 z=6.5 h=0.3 ×3
+    - { type: desk, x: 13.70, z: 6.30, rotation: 90 }      # 靠西墙，面向东
+    - { type: chair, x: 14.30, z: 6.30, rotation: 270 }
+    - { type: bookshelf, x: 15.50, z: 5.70, rotation: 0 }   # 沿北墙
     - { type: curtain_set }
     - { type: ceiling_light }
   study:
     # 房间 x∈[4.20,7.20] z∈[5.55,9.80]，北门 d_study @(6.6,5.55) swing x∈[6.15,7.05] z∈[5.55,6.45]
-    - { type: desk, x: 5.70, z: 9.45, rotation: 0 }            # 靠南墙
-    - { type: chair }
-    - { type: bookshelf }
+    # 床头靠东墙（x=7.2），东墙已有床头插座 z=7.0/8.5 h=0.7
+    - { type: bed_150, x: 6.20, z: 7.75, rotation: 90 }     # 床头靠东墙
+    - { type: wardrobe_180, x: 5.10, z: 5.85, rotation: 0 } # 沿北墙，避开门扇(x<6.15)
+    - { type: mattress_150 }
     - { type: curtain_set }
     - { type: ceiling_light }
   living_dining:
     # 房间 x∈[7.20,13.40] z∈[4.30,9.80]，开放连通走廊，无门 swing
-    - { type: sofa_3seat, x: 11.70, z: 5.20, rotation: 0 }     # 靠背朝北，面向电视
-    - { type: tv_stand, x: 11.60, z: 9.60, rotation: 180 }     # 靠南墙
-    - { type: dining_table, x: 8.80, z: 7.10, rotation: 0 }    # 用餐区居中（西侧）
-    - { type: dining_chair, x: 8.80, z: 6.35, rotation: 0 }
-    - { type: dining_chair, x: 8.80, z: 7.85, rotation: 180 }
-    - { type: dining_chair, x: 7.60, z: 7.10, rotation: 90 }
-    - { type: dining_chair, x: 10.00, z: 7.10, rotation: 270 }
+    # 电视在西墙（x=7.2，唯一实体墙），沙发朝西；南墙为玻璃幕不能挂电视
+    - { type: tv_stand, x: 7.40, z: 7.00, rotation: 90 }     # 靠西墙居中
+    - { type: sofa_3seat, x: 11.00, z: 7.00, rotation: 270 } # 面朝西看电视
+    - { type: dining_table, x: 9.00, z: 5.30, rotation: 0 }  # 餐厅区（北侧靠厨房）
+    - { type: dining_chair, x: 9.00, z: 4.65, rotation: 0 }
+    - { type: dining_chair, x: 9.00, z: 5.95, rotation: 180 }
+    - { type: dining_chair, x: 8.00, z: 5.30, rotation: 90 }
+    - { type: dining_chair, x: 10.00, z: 5.30, rotation: 270 }
     - { type: curtain_set, count: 2 }
     - { type: ceiling_light, count: 2 }
   kitchen:
@@ -444,8 +447,7 @@ furnishings:
   entry_garden:
     - { type: shoe_cabinet }
     - { type: ceiling_light }
-  south_balcony:
-    - { type: ceiling_light }
+  south_balcony: []
 
 constraints:
   load_bearing_walls:
@@ -465,10 +467,10 @@ constraints:
     - "开敞外廊消防通道必须保持畅通"
   notes:
     - "套内 94.76㎡ + 赠送面积约 27.5㎡（入户花园 11.06㎡、南向大阳台 13.95㎡、西设备平台 2.48㎡）≈ 预测建面 119.38㎡"
-    - "层高 3.0m，比常规 2.8m 更高，吊顶和柜体设计需考虑净高"
+    - "结构层高 3.0m，室内净高 2.8m，吊顶和柜体设计按 2.8m 净高"
     - "核心设计点：入户花园作为玄关过渡区，兼顾消防通道"
     - "HVAC：仅西设备平台可用，面积约 2.48㎡，分体机外机难以全部安置，建议中央空调/多联机方案"
-    - "窗帘为刚需：全屋玻璃幕墙，主卧/次卧/书房/客厅均需窗帘，主卧/客厅/书房预留电动窗帘电源"
+    - "窗帘为刚需：全屋玻璃幕墙，主卧/次卧/父母房/书房/客厅均需窗帘，主卧/客厅/父母房/书房预留电动窗帘电源"
     - "预算目标：11 万务实档，非豪华装修，保证基础质量"
 
 circulation:
@@ -479,12 +481,12 @@ circulation:
   fire_access: "入户花园内保留消防通道，不得封闭"
 
 design_rationale:
-  - "四房两厅两卫，目前两人居住，书房预留未来改客房/儿童房的可能"
+  - "四房两厅两卫，目前两人居住，父母房预留未来改书房/客房的可能"
   - "客餐厅合并，南向采光面大，电视墙方案"
   - "开放式厨房，增强客餐厅通透感，配大功率侧吸油烟机"
   - "入户花园作为玄关过渡区，兼顾消防通道"
   - "主卧带独立卫生间，形成主卧套房；飘窗保留"
-  - "全屋玻璃幕墙，窗帘为遮阳隔热 + 隐私刚需，主卧/客厅/书房预留电动窗帘电源"
+  - "全屋玻璃幕墙，窗帘为遮阳隔热 + 隐私刚需，主卧/客厅/父母房/书房预留电动窗帘电源"
   - "仅西设备平台可用，中央空调/多联机为最优方案"
   - "预算目标 11 万，务实档，非豪华装修"
 

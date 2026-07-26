@@ -524,12 +524,16 @@ export interface RoomFurnishings {
 
 export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = {
   bed_180: { width: 1.8, depth: 2.0 },
+  bed_150: { width: 1.5, depth: 2.0 },
   wardrobe_240: { width: 2.4, depth: 0.6 },
+  wardrobe_180: { width: 1.8, depth: 0.6 },
   sofa_3seat: { width: 2.8, depth: 0.9 },
   dining_table: { width: 1.4, depth: 0.8 },
   dining_chair: { width: 0.45, depth: 0.45 },
   tv_stand: { width: 1.8, depth: 0.4 },
   desk: { width: 1.2, depth: 0.6 },
+  bookshelf: { width: 0.8, depth: 0.3 },
+  chair: { width: 0.5, depth: 0.5 },
 };
 
 export interface LaborRate {

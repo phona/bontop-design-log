@@ -78,7 +78,7 @@
   room: guest_bath
   type: drain
   x: 6.5
-  z: 2.0
+  z: 2.40
   height: 0.02
   note: "客卫干区地漏（地面）"
 
@@ -141,3 +141,21 @@
   z: 1.5
   height: 0.02
   note: "入户花园地漏（地面）"
+
+# === 新增点位（2026-07-25 基线补齐） ===
+
+- id: drain_kitchen_dishwasher
+  room: kitchen
+  type: drain
+  x: 7.50
+  z: 2.00
+  height: 0.02
+  note: "洗碗机排水（厨下接排水管）"
+
+- id: drain_balcony_washer
+  room: balcony
+  type: drain
+  x: 5.80
+  z: 1.50
+  height: 0.60
+  note: "洗衣机墙排排水（不走地漏，防反水）"
