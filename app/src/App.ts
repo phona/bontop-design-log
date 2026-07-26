@@ -282,9 +282,9 @@ export class App {
 
   private switchToFirstPerson(): void {
     const rooms = (this.projectData?.house?.rooms ?? []) as Array<{ id: string; x: number; z: number; width: number; depth: number }>;
-    const entryGarden = rooms.find((r) => r.id === 'entry_garden');
-    const spawnX = entryGarden?.x ?? 0;
-    const spawnZ = entryGarden?.z ?? 0;
+    const spawnRoom = rooms.find((r) => r.id === 'living_dining') ?? rooms.find((r) => r.id === 'entry_garden');
+    const spawnX = spawnRoom?.x ?? 7.4;
+    const spawnZ = spawnRoom?.z ?? 3.65;
     const fpPos = new THREE.Vector3(spawnX, 1.7, spawnZ);
     const fpDir = new THREE.Vector3(0, 0, 1);
 
