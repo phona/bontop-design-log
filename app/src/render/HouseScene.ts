@@ -1364,7 +1364,6 @@ export class HouseScene implements SceneApi {
       const target = new THREE.Vector3(r.x, 0, r.z);
       const camPos = new THREE.Vector3(r.x + 6, 8, r.z + 8);
       this.cameraAnimator.animateTo(camPos, target, 500);
-      this.controls.target.copy(target);
     } else {
       let found = false;
       this.scene.traverse((obj) => {
@@ -1373,7 +1372,6 @@ export class HouseScene implements SceneApi {
           (obj as THREE.Object3D).getWorldPosition(pos);
           const camPos = new THREE.Vector3(pos.x + 4, pos.y + 4, pos.z + 4);
           this.cameraAnimator.animateTo(camPos, pos, 500);
-          this.controls.target.copy(pos);
           found = true;
         }
       });
@@ -1384,13 +1382,11 @@ export class HouseScene implements SceneApi {
             obj.getWorldPosition(pos);
             const camPos = new THREE.Vector3(pos.x + 4, pos.y + 4, pos.z + 4);
             this.cameraAnimator.animateTo(camPos, pos, 500);
-            this.controls.target.copy(pos);
             found = true;
           }
         });
       }
     }
-    this.controls.update();
   }
 
   getCameraState(): CameraState {
@@ -1517,7 +1513,7 @@ export class HouseScene implements SceneApi {
     const now = performance.now();
     const deltaTime = now - this.lastRenderTime;
     this.lastRenderTime = now;
-    if (this._mode === 'orbit') {
+    if (this._mode === 'orbit' && !this.cameraAnimator.isAnimating()) {
       this.controls.update();
     }
     this.cameraAnimator.update(deltaTime);

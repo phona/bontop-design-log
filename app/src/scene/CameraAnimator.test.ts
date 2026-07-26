@@ -79,4 +79,39 @@ describe('CameraAnimator', () => {
     animator.update(600);
     expect(completedMode).toBe('orbit');
   });
+
+  it('interrupt keeps camera at current position, not endpoint', () => {
+    const controls = makeControlsMock();
+    const animator = new CameraAnimator(camera, controls);
+    camera.position.set(0, 14, 20);
+
+    animator.transitionToFirstPerson(
+      new THREE.Vector3(5, 1.7, 5),
+      new THREE.Vector3(0, 0, 1)
+    );
+
+    animator.update(100);
+    const posBefore = camera.position.clone();
+
+    animator.interrupt();
+
+    expect(camera.position.distanceTo(posBefore)).toBeLessThan(0.01);
+    expect(camera.position.distanceTo(new THREE.Vector3(5, 1.7, 5))).toBeGreaterThan(1);
+  });
+
+  it('interrupt syncs controls.target to current camera direction', () => {
+    const controls = makeControlsMock();
+    const animator = new CameraAnimator(camera, controls);
+    camera.position.set(0, 14, 20);
+
+    animator.transitionToFirstPerson(
+      new THREE.Vector3(5, 1.7, 5),
+      new THREE.Vector3(0, 0, 1)
+    );
+
+    animator.update(100);
+    animator.interrupt();
+
+    expect(controls.target.distanceTo(camera.position)).toBeGreaterThan(0.1);
+  });
 });

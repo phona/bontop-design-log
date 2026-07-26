@@ -103,14 +103,10 @@ export class CameraAnimator {
   interrupt(): void {
     if (!this.animating) return;
     this.animating = false;
-    if (this.startPos && this.endPos) {
-      this.camera.position.copy(this.endPos);
-    }
-    if (this.endTarget) {
-      this.camera.lookAt(this.endTarget);
-    }
-    if (this.controls && this.endTarget) {
-      this.controls.target.copy(this.endTarget);
+    if (this.controls) {
+      const dir = new THREE.Vector3();
+      this.camera.getWorldDirection(dir);
+      this.controls.target.copy(this.camera.position).add(dir.multiplyScalar(5));
     }
     this.onComplete?.(this.mode);
   }

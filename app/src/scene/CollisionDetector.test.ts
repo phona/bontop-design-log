@@ -72,4 +72,35 @@ describe('CollisionDetector', () => {
     expect(result.x).toBeCloseTo(100);
     expect(result.z).toBeCloseTo(100);
   });
+
+  describe('curtain_run collision segments', () => {
+    it('blocks movement through multi-segment curtain wall', () => {
+      const curtainWalls: WallSegment[] = [
+        { id: 'cr:col:0', x1: 7.2, z1: 9.8, x2: 13.4, z2: 9.8 },
+        { id: 'cr:col:1', x1: 13.4, z1: 9.8, x2: 16.4, z2: 9.8 },
+      ];
+      const cd = new CollisionDetector(curtainWalls);
+      const result = cd.tryMove({ x: 10, y: 1.7, z: 9.4 }, { x: 10, y: 1.7, z: 9.9 });
+      expect(result.z).toBeCloseTo(9.4);
+    });
+
+    it('each curtain segment produces an AABB', () => {
+      const curtainWalls: WallSegment[] = [
+        { id: 'c:0', x1: 0, z1: 5, x2: 3, z2: 5 },
+        { id: 'c:1', x1: 3, z1: 5, x2: 3, z2: 8 },
+      ];
+      const cd = new CollisionDetector(curtainWalls);
+      expect(cd.getWalls().length).toBe(2);
+    });
+
+    it('allows movement parallel to curtain wall', () => {
+      const curtainWalls: WallSegment[] = [
+        { id: 'c:0', x1: 7.2, z1: 9.8, x2: 16.4, z2: 9.8 },
+      ];
+      const cd = new CollisionDetector(curtainWalls);
+      const result = cd.tryMove({ x: 8, y: 1.7, z: 9.4 }, { x: 12, y: 1.7, z: 9.4 });
+      expect(result.x).toBeCloseTo(12);
+      expect(result.z).toBeCloseTo(9.4);
+    });
+  });
 });

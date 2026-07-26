@@ -4,6 +4,9 @@ import type { CollisionDetector } from './CollisionDetector.js';
 
 const MOVE_SPEED = 2.0;
 const EYE_HEIGHT = 1.7;
+const PITCH_LIMIT = Math.PI * 80 / 180;
+const SMOOTH_FACTOR = 0.6;
+const MOUSE_SENSITIVITY = 0.002;
 
 export interface MovementKeys {
   forward: boolean;
@@ -22,6 +25,12 @@ export class FirstPersonController {
   private onKeyDown: (e: KeyboardEvent) => void;
   private onKeyUp: (e: KeyboardEvent) => void;
   private onLockChange: () => void;
+  private onMouseMove: (e: MouseEvent) => void;
+
+  private targetYaw = 0;
+  private targetPitch = 0;
+  private currentYaw = 0;
+  private currentPitch = 0;
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -29,12 +38,27 @@ export class FirstPersonController {
     collision: CollisionDetector
   ) {
     this.controls = new PointerLockControls(camera, domElement);
+    (this.controls as any).pointerSpeed = 0;
     this.collision = collision;
 
     this.onKeyDown = (e: KeyboardEvent) => this.handleKey(e, true);
     this.onKeyUp = (e: KeyboardEvent) => this.handleKey(e, false);
     this.onLockChange = () => {
       this._isLocked = this.controls.isLocked;
+      if (this._isLocked) {
+        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        euler.setFromQuaternion(camera.quaternion, 'YXZ');
+        this.currentYaw = euler.y;
+        this.currentPitch = euler.x;
+        this.targetYaw = euler.y;
+        this.targetPitch = euler.x;
+      }
+    };
+    this.onMouseMove = (e: MouseEvent) => {
+      if (!this._isLocked || !this.enabled) return;
+      this.targetYaw -= e.movementX * MOUSE_SENSITIVITY;
+      this.targetPitch -= e.movementY * MOUSE_SENSITIVITY;
+      this.targetPitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.targetPitch));
     };
 
     document.addEventListener('pointerlockchange', this.onLockChange);
@@ -62,6 +86,7 @@ export class FirstPersonController {
     this.enabled = true;
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
+    document.addEventListener('mousemove', this.onMouseMove);
   }
 
   disable() {
@@ -69,6 +94,7 @@ export class FirstPersonController {
     this.keys = { forward: false, backward: false, left: false, right: false };
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
+    document.removeEventListener('mousemove', this.onMouseMove);
     if (this._isLocked) {
       this.controls.unlock();
     }
@@ -89,6 +115,15 @@ export class FirstPersonController {
   update(dt: number) {
     if (!this.enabled) return;
 
+    const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
+
+    const lerpT = 1 - Math.pow(SMOOTH_FACTOR, dt * 60);
+    this.currentYaw += (this.targetYaw - this.currentYaw) * lerpT;
+    this.currentPitch += (this.targetPitch - this.currentPitch) * lerpT;
+
+    const euler = new THREE.Euler(this.currentPitch, this.currentYaw, 0, 'YXZ');
+    camera.quaternion.setFromEuler(euler);
+
     this.direction.set(0, 0, 0);
 
     if (this.keys.forward) this.direction.z -= 1;
@@ -100,7 +135,6 @@ export class FirstPersonController {
 
     this.direction.normalize();
 
-    const camera = this.controls.getObject();
     const forward = new THREE.Vector3(0, 0, -1);
     forward.applyQuaternion(camera.quaternion);
     forward.y = 0;

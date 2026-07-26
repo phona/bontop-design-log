@@ -9,6 +9,7 @@ import { HoverTooltip } from './ui/HoverTooltip.js';
 import { OverviewMenu } from './ui/OverviewMenu.js';
 import { CollisionDetector } from './scene/CollisionDetector.js';
 import { FirstPersonController } from './scene/FirstPersonController.js';
+import { extractCollisionWalls } from './scene/collision-utils.js';
 import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
@@ -475,16 +476,7 @@ export class App {
   }
 
   private extractWalls(sceneElements: any[] | undefined): import('@shared/types').WallSegment[] {
-    if (!sceneElements) return [];
-    return sceneElements
-      .filter((el: any) => el.type === 'wall')
-      .map((el: any) => ({
-        id: el.id,
-        x1: el.x1, z1: el.z1,
-        x2: el.x2, z2: el.z2,
-        segments: el.segments,
-        openings: el.openings,
-      }));
+    return extractCollisionWalls(sceneElements);
   }
 
   private renderLoop = (time: number) => {

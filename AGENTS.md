@@ -55,3 +55,18 @@
   ```bash
   npm run verify:all
   ```
+
+## 碰撞/相机修改铁律
+
+- 新增任何 `SceneElement` 类型时，必须评估是否需要碰撞：
+  - 需要碰撞：`wall`, `curtain_run`
+  - 不需要碰撞：`floor_region`, `bay_sill`, `railing_run`, `glass_infill`
+- 碰撞数据提取逻辑在 `app/src/scene/collision-utils.ts`（`extractCollisionWalls`）。
+- 修改 `FirstPersonController` 旋转逻辑后，必须跑 `npm run test:app`。
+- 修改 `CollisionDetector`、`extractCollisionWalls` 或 `CameraAnimator` 后，必须跑：
+  ```bash
+  npm run test:app
+  npm run verify:all
+  ```
+- 第一人称 pitch 限制 ±80°，旋转带平滑阻尼。禁止移除 clamp 或改为无平滑直接赋值。
+- `CameraAnimator.interrupt()` 必须停在当前位置，禁止跳到动画终点。
