@@ -281,7 +281,7 @@ export class App {
   private savedOrbitTarget: THREE.Vector3 | null = null;
 
   private switchToFirstPerson(): void {
-    const rooms = (this.projectData?.house?.rooms ?? []) as Array<{ id: string; x: number; z: number }>;
+    const rooms = (this.projectData?.house?.rooms ?? []) as Array<{ id: string; x: number; z: number; width: number; depth: number }>;
     const entryGarden = rooms.find((r) => r.id === 'entry_garden');
     const spawnX = entryGarden?.x ?? 0;
     const spawnZ = entryGarden?.z ?? 0;
@@ -289,7 +289,12 @@ export class App {
     const fpDir = new THREE.Vector3(0, 0, 1);
 
     const camPos = this.houseScene.camera.position;
-    if (camPos.y < 3) {
+    const insideRoom = camPos.y < 3 && rooms.some(r => {
+      const hw = r.width / 2, hd = r.depth / 2;
+      return camPos.x >= r.x - hw && camPos.x <= r.x + hw &&
+             camPos.z >= r.z - hd && camPos.z <= r.z + hd;
+    });
+    if (insideRoom) {
       fpPos.set(camPos.x, 1.7, camPos.z);
     }
 
