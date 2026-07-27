@@ -1,24 +1,24 @@
 export interface SpawnRoom {
+  id: string;
   x: number;
   z: number;
   width: number;
   depth: number;
 }
 
-export function pickSpawnRoom(
-  target: { x: number; z: number },
+export function findRoomAt(
+  point: { x: number; z: number },
   rooms: SpawnRoom[],
-  fallback: { x: number; z: number } | null,
-): { x: number; z: number } {
+): SpawnRoom | null {
   for (const r of rooms) {
     const hw = r.width / 2;
     const hd = r.depth / 2;
     if (
-      target.x >= r.x - hw && target.x <= r.x + hw &&
-      target.z >= r.z - hd && target.z <= r.z + hd
+      point.x >= r.x - hw && point.x <= r.x + hw &&
+      point.z >= r.z - hd && point.z <= r.z + hd
     ) {
-      return { x: target.x, z: target.z };
+      return r;
     }
   }
-  return fallback ?? { x: 0, z: 0 };
+  return null;
 }

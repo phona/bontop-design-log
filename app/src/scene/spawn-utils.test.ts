@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pickSpawnRoom } from './spawn-utils.js';
+import { findRoomAt } from './spawn-utils.js';
 
 const rooms = [
   { id: 'living_dining', x: 10.3, z: 7.05, width: 6.2, depth: 5.5 },
@@ -7,42 +7,33 @@ const rooms = [
   { id: 'kitchen', x: 9.0, z: 2.15, width: 3.6, depth: 4.3 },
 ];
 
-const fallback = { x: 10.3, z: 7.05 };
-
-describe('pickSpawnRoom', () => {
-  it('returns target coords when target is inside a room bbox', () => {
-    const result = pickSpawnRoom({ x: 10.3, z: 7.0 }, rooms, fallback);
-    expect(result.x).toBeCloseTo(10.3);
-    expect(result.z).toBeCloseTo(7.0);
+describe('findRoomAt', () => {
+  it('returns the room whose bbox contains the point', () => {
+    const r = findRoomAt({ x: 10.3, z: 7.0 }, rooms);
+    expect(r).not.toBeNull();
+    expect(r!.id).toBe('living_dining');
   });
 
-  it('returns fallback when target is outside all rooms (orbit focus in void)', () => {
-    const result = pickSpawnRoom({ x: 50, z: 50 }, rooms, fallback);
-    expect(result.x).toBeCloseTo(fallback.x);
-    expect(result.z).toBeCloseTo(fallback.z);
+  it('returns the exact room for master bedroom center', () => {
+    const r = findRoomAt({ x: 2.1, z: 7.68 }, rooms);
+    expect(r!.id).toBe('master_bedroom');
   });
 
-  it('returns fallback when target is on a wall gap between rooms', () => {
-    const result = pickSpawnRoom({ x: 6.0, z: 7.0 }, rooms, fallback);
-    expect(result.x).toBeCloseTo(fallback.x);
-    expect(result.z).toBeCloseTo(fallback.z);
+  it('returns null when point is outside all rooms (void)', () => {
+    expect(findRoomAt({ x: 50, z: 50 }, rooms)).toBeNull();
   });
 
-  it('returns fallback when rooms list is empty', () => {
-    const result = pickSpawnRoom({ x: 10.3, z: 7.0 }, [], fallback);
-    expect(result.x).toBeCloseTo(fallback.x);
-    expect(result.z).toBeCloseTo(fallback.z);
+  it('returns null when point is in a wall gap between rooms', () => {
+    expect(findRoomAt({ x: 6.0, z: 7.0 }, rooms)).toBeNull();
   });
 
-  it('returns origin when no match and no fallback', () => {
-    const result = pickSpawnRoom({ x: 50, z: 50 }, rooms, null);
-    expect(result.x).toBe(0);
-    expect(result.z).toBe(0);
+  it('returns null for empty room list', () => {
+    expect(findRoomAt({ x: 10.3, z: 7.0 }, [])).toBeNull();
   });
 
-  it('picks the room whose bbox contains the target (master bedroom)', () => {
-    const result = pickSpawnRoom({ x: 2.1, z: 7.68 }, rooms, fallback);
-    expect(result.x).toBeCloseTo(2.1);
-    expect(result.z).toBeCloseTo(7.68);
+  it('returned room exposes its center coordinates', () => {
+    const r = findRoomAt({ x: 9.0, z: 2.15 }, rooms);
+    expect(r!.x).toBeCloseTo(9.0);
+    expect(r!.z).toBeCloseTo(2.15);
   });
 });

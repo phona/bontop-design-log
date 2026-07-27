@@ -10,7 +10,7 @@ import { OverviewMenu } from './ui/OverviewMenu.js';
 import { CollisionDetector } from './scene/CollisionDetector.js';
 import { FirstPersonController } from './scene/FirstPersonController.js';
 import { extractCollisionWalls } from './scene/collision-utils.js';
-import { pickSpawnRoom } from './scene/spawn-utils.js';
+import { findRoomAt } from './scene/spawn-utils.js';
 import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
@@ -206,7 +206,7 @@ export class App {
           this.overviewMenu.hide();
         }
       }
-      if (e.code === 'KeyW' && !e.repeat) {
+      if (e.code === 'KeyW' && !e.repeat && this.houseScene.mode !== 'first-person') {
         e.preventDefault();
         this.analysisTools.toggleSeeThrough();
         this.updateModeIndicator();
@@ -234,7 +234,7 @@ export class App {
           this.stateSync.fetchScheme().then((s) => { if (s) this.applyScheme(s); });
         }
       }
-      if (this.houseScene.cameraAnimator.isAnimating()) {
+      if (this.houseScene.cameraAnimator.isAnimating() && this.houseScene.cameraAnimator.currentMode !== 'first-person') {
         if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
           this.houseScene.cameraAnimator.interrupt();
         }
@@ -284,11 +284,16 @@ export class App {
   private switchToFirstPerson(): void {
     const rooms = (this.projectData?.house?.rooms ?? []) as Array<{ id: string; x: number; z: number; width: number; depth: number }>;
     const fallbackRoom = rooms.find((r) => r.id === 'living_dining') ?? rooms[0];
-    const fallback = fallbackRoom ? { x: fallbackRoom.x, z: fallbackRoom.z } : { x: 7.4, z: 3.65 };
 
+    const pointerRoomId = this.houseScene.raycastRoomAtPointer();
+    const pointerRoom = pointerRoomId ? rooms.find((r) => r.id === pointerRoomId) : undefined;
     const target = this.houseScene.controls.target;
-    const spawn = pickSpawnRoom({ x: target.x, z: target.z }, rooms, fallback);
-    const fpPos = new THREE.Vector3(spawn.x, 1.7, spawn.z);
+    const targetRoom = findRoomAt({ x: target.x, z: target.z }, rooms);
+    const room = pointerRoom ?? targetRoom ?? fallbackRoom;
+
+    const spawnX = room?.x ?? 7.4;
+    const spawnZ = room?.z ?? 3.65;
+    const fpPos = new THREE.Vector3(spawnX, 1.7, spawnZ);
     const fpDir = new THREE.Vector3(0, 0, 1);
 
     this.savedOrbitPos = this.houseScene.camera.position.clone();

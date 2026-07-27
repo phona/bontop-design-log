@@ -74,6 +74,7 @@ export class HouseScene implements SceneApi {
   private electricalMeshes: THREE.Mesh[] = [];
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
+  private lastPointer = new THREE.Vector2(0, 0);
   cameraAnimator: CameraAnimator;
   topDownView: TopDownView;
   private topicRegistry: TopicRegistry;
@@ -137,6 +138,13 @@ export class HouseScene implements SceneApi {
     this.boundOnWindowResize = () => this.onResize();
     window.addEventListener('resize', this.boundOnWindowResize);
     canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+    canvas.addEventListener('pointermove', (e) => {
+      if (document.pointerLockElement) return;
+      this.lastPointer.set(
+        (e.clientX / window.innerWidth) * 2 - 1,
+        -(e.clientY / window.innerHeight) * 2 + 1,
+      );
+    });
   }
 
   getScene(): THREE.Scene {
@@ -1487,6 +1495,20 @@ export class HouseScene implements SceneApi {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  raycastRoomAtPointer(): string | null {
+    this.raycaster.setFromCamera(this.lastPointer, this.camera);
+    const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+    for (const hit of intersects) {
+      const data = hit.object.userData;
+      const roomId = data?.roomId as string | undefined;
+      const type = data?.type as string | undefined;
+      if (roomId && roomId !== 'elevator_shaft' && (type === 'floor' || type === 'floor_region')) {
+        return roomId;
+      }
+    }
+    return null;
   }
 
   private onPointerDown(event: PointerEvent) {
