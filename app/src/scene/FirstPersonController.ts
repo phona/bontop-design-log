@@ -32,6 +32,7 @@ export class FirstPersonController {
   private targetPitch = 0;
   private currentYaw = 0;
   private currentPitch = 0;
+  private skipNextMove = false;
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -48,6 +49,7 @@ export class FirstPersonController {
     this.onLockChange = () => {
       this._isLocked = document.pointerLockElement === this.domElement;
       if (this._isLocked) {
+        this.skipNextMove = true;
         const euler = new THREE.Euler(0, 0, 0, 'YXZ');
         euler.setFromQuaternion(camera.quaternion, 'YXZ');
         this.currentYaw = euler.y;
@@ -58,6 +60,10 @@ export class FirstPersonController {
     };
     this.onMouseMove = (e: MouseEvent) => {
       if (!this._isLocked || !this.enabled) return;
+      if (this.skipNextMove) {
+        this.skipNextMove = false;
+        return;
+      }
       this.targetYaw -= e.movementX * MOUSE_SENSITIVITY;
       this.targetPitch -= e.movementY * MOUSE_SENSITIVITY;
       this.targetPitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.targetPitch));
@@ -112,6 +118,16 @@ export class FirstPersonController {
 
   get isAnyKeyDown(): boolean {
     return this.keys.forward || this.keys.backward || this.keys.left || this.keys.right;
+  }
+
+  syncFromCamera(): void {
+    const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
+    const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+    euler.setFromQuaternion(camera.quaternion, 'YXZ');
+    this.currentYaw = euler.y;
+    this.currentPitch = euler.x;
+    this.targetYaw = euler.y;
+    this.targetPitch = euler.x;
   }
 
   update(dt: number) {

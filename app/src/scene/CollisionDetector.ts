@@ -43,10 +43,15 @@ export class CollisionDetector {
         .sort((a, b) => a.min - b.min);
 
       for (const seg of this.splitRange(0, len, gaps)) {
-        const sx1 = w.x1 + ux * seg.min;
-        const sz1 = w.z1 + uz * seg.min;
-        const sx2 = w.x1 + ux * seg.max;
-        const sz2 = w.z1 + uz * seg.max;
+        const halfT = WALL_THICKNESS / 2;
+        const atWallStart = seg.min < 1e-6;
+        const atWallEnd = seg.max > len - 1e-6;
+        const effMin = seg.min - (atWallStart ? halfT : 0);
+        const effMax = seg.max + (atWallEnd ? halfT : 0);
+        const sx1 = w.x1 + ux * effMin;
+        const sz1 = w.z1 + uz * effMin;
+        const sx2 = w.x1 + ux * effMax;
+        const sz2 = w.z1 + uz * effMax;
         const cx = (sx1 + sx2) / 2;
         const cz = (sz1 + sz2) / 2;
         const segLen = Math.hypot(sx2 - sx1, sz2 - sz1);
@@ -54,17 +59,17 @@ export class CollisionDetector {
 
         if (isHorizontal) {
           result.push({
-            minX: Math.min(sx1, sx2) - WALL_THICKNESS / 2,
-            maxX: Math.max(sx1, sx2) + WALL_THICKNESS / 2,
-            minZ: cz - WALL_THICKNESS / 2,
-            maxZ: cz + WALL_THICKNESS / 2,
+            minX: Math.min(sx1, sx2),
+            maxX: Math.max(sx1, sx2),
+            minZ: cz - halfT,
+            maxZ: cz + halfT,
           });
         } else {
           result.push({
-            minX: cx - WALL_THICKNESS / 2,
-            maxX: cx + WALL_THICKNESS / 2,
-            minZ: Math.min(sz1, sz2) - WALL_THICKNESS / 2,
-            maxZ: Math.max(sz1, sz2) + WALL_THICKNESS / 2,
+            minX: cx - halfT,
+            maxX: cx + halfT,
+            minZ: Math.min(sz1, sz2),
+            maxZ: Math.max(sz1, sz2),
           });
         }
       }

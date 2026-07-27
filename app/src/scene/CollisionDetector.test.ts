@@ -103,4 +103,33 @@ describe('CollisionDetector', () => {
       expect(result.z).toBeCloseTo(9.4);
     });
   });
+
+  describe('narrow door passability', () => {
+    it('lets a centered capsule walk straight through a 0.7m door', () => {
+      const wallWithNarrowDoor: WallSegment[] = [
+        { id: 'south', x1: -2, z1: 2, x2: 2, z2: 2, openings: [
+          { id: 'd_narrow', type: 'door', x: 0, z: 2, width: 0.7, height: 2.1 },
+        ]},
+      ];
+      const cd = new CollisionDetector(wallWithNarrowDoor);
+      let pos = { x: 0, y: 1.7, z: 1.6 };
+      for (let i = 0; i < 30; i++) {
+        pos = cd.tryMove(pos, { x: 0, y: 1.7, z: pos.z + 0.032 });
+      }
+      expect(pos.z).toBeGreaterThan(2.2);
+    });
+
+    it('does not erode the door gap with longitudinal wall expansion', () => {
+      const wallWithNarrowDoor: WallSegment[] = [
+        { id: 'south', x1: -2, z1: 2, x2: 2, z2: 2, openings: [
+          { id: 'd_narrow', type: 'door', x: 0, z: 2, width: 0.7, height: 2.1 },
+        ]},
+      ];
+      const cd = new CollisionDetector(wallWithNarrowDoor);
+      const aabbs = cd.getWalls();
+      const leftMaxX = Math.max(...aabbs.filter(a => a.maxX < 0).map(a => a.maxX));
+      const rightMinX = Math.min(...aabbs.filter(a => a.minX > 0).map(a => a.minX));
+      expect(rightMinX - leftMaxX).toBeGreaterThanOrEqual(0.7 - 0.001);
+    });
+  });
 });

@@ -193,6 +193,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      simulateMouseMove(0, 0);
 
       simulateMouseMove(0, 5000);
       for (let i = 0; i < 60; i++) fp.update(0.016);
@@ -211,6 +212,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      simulateMouseMove(0, 0);
 
       simulateMouseMove(0, -5000);
       for (let i = 0; i < 60; i++) fp.update(0.016);
@@ -231,6 +233,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      simulateMouseMove(0, 0);
 
       simulateMouseMove(200, 0);
       fp.update(0.016);
@@ -249,6 +252,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      simulateMouseMove(0, 0);
 
       simulateMouseMove(100, 0);
       for (let i = 0; i < 60; i++) fp.update(0.016);
@@ -280,6 +284,46 @@ describe('FirstPersonController', () => {
       (document as any).pointerLockElement = null;
       simulateLock();
       expect(fp.isLocked).toBe(false);
+      fp.dispose();
+    });
+
+    it('ignores the first mouse move after lock (pointer-lock garbage delta)', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+
+      simulateMouseMove(9999, 0);
+      fp.update(0.016);
+      const { yaw: yawAfterSpike } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yawAfterSpike)).toBeLessThan(0.05);
+
+      simulateMouseMove(100, 0);
+      for (let i = 0; i < 60; i++) fp.update(0.016);
+      const { yaw: yawAfterReal } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yawAfterReal)).toBeGreaterThan(0.1);
+      fp.dispose();
+    });
+
+    it('syncFromCamera adopts the live orientation and stays stable', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      camera.quaternion.setFromEuler(new MockEuler(0.2, 0.5, 0, 'YXZ'));
+
+      fp.syncFromCamera();
+      fp.update(0.016);
+      const r1 = getYawPitch(camera.quaternion);
+      fp.update(0.016);
+      const r2 = getYawPitch(camera.quaternion);
+
+      expect(Math.abs(r1.yaw)).toBeGreaterThan(0.1);
+      expect(Math.abs(r1.yaw - r2.yaw)).toBeLessThan(0.01);
+      expect(Math.abs(r1.pitch - r2.pitch)).toBeLessThan(0.01);
       fp.dispose();
     });
   });

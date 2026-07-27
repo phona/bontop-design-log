@@ -88,6 +88,7 @@ export class App {
     this.houseScene.cameraAnimator.setOnComplete((mode) => {
       this.houseScene.setMode(mode);
       if (mode === 'first-person') {
+        this.fpController.syncFromCamera();
         this.crosshair.show();
       } else {
         this.crosshair.hide();
