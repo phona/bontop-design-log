@@ -59,29 +59,7 @@ vi.mock('three', async (importOriginal: any) => {
     Color: class { set() { return this; } copy() { return this; } clone() { return new (this.constructor as any)(); } },
     PlaneGeometry: class {},
     BoxGeometry: class {},
-    Shape: class { holes: any[] = []; points: { x: number; y: number; cmd: string }[] = []; moveTo(x: number, y: number) { this.points.push({ x, y, cmd: 'moveTo' }); } lineTo(x: number, y: number) { this.points.push({ x, y, cmd: 'lineTo' }); } closePath() { this.points.push({ x: 0, y: 0, cmd: 'closePath' }); } },
-    Path: class {
-      points: { x: number; y: number }[] = [];
-      current = { x: 0, y: 0 };
-      moveTo(x: number, y: number) { this.current = { x, y }; this.points.push({ x, y }); }
-      lineTo(x: number, y: number) { this.current = { x, y }; this.points.push({ x, y }); }
-      absarc(cx: number, cy: number, r: number, a1: number, a2: number, _clockwise: boolean) {
-        const segments = 4;
-        let delta = a2 - a1;
-        while (delta <= -Math.PI) delta += 2 * Math.PI;
-        while (delta > Math.PI) delta -= 2 * Math.PI;
-        for (let i = 0; i <= segments; i++) {
-          const t = i / segments;
-          const a = a1 + delta * t;
-          this.current = { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
-          this.points.push({ ...this.current });
-        }
-      }
-      closePath() {}
-      getPoints() { return this.points; }
-    },
-    ExtrudeGeometry: class extends MockObject3D { shape: any; options: any; constructor(shape: any, opts: any) { super(); this.shape = shape; this.options = opts; } },
-    ShapeGeometry: class extends MockObject3D { constructor(_shape: any) { super(); } },
+    // Shape / Path / ExtrudeGeometry / ShapeGeometry: real three (step A) — fake command-log removed
     CanvasTexture: class {},
     MeshStandardMaterial: MockMaterial,
     MeshBasicMaterial: MockMaterial,
@@ -390,7 +368,7 @@ describe('HouseScene', () => {
     scene.getScene().traverse((obj: any) => {
       if (obj.userData?.type === 'curtain_run') {
         curtainCount++;
-        shape = obj.geometry?.shape;
+        shape = obj.geometry?.parameters?.shapes;
       }
     });
     expect(curtainCount).toBe(1);
@@ -419,18 +397,21 @@ describe('HouseScene', () => {
     let shape: any = null;
     scene.getScene().traverse((obj: any) => {
       if (obj.userData?.type === 'curtain_run') {
-        shape = obj.geometry?.shape;
+        shape = obj.geometry?.parameters?.shapes;
       }
     });
     expect(shape).not.toBeNull();
     const offset = GLASS_THICKNESS / 2;
-    const commands = shape.points.map((p: any) => ({ x: p.x, y: p.y, cmd: p.cmd }));
-    expect(commands[0]).toEqual({ x: 0, y: offset, cmd: 'moveTo' });
-    expect(commands[1]).toEqual({ x: 4, y: offset, cmd: 'lineTo' });
-    expect(commands[2]).toEqual({ x: 4, y: -offset, cmd: 'lineTo' });
-    expect(commands[3]).toEqual({ x: 0, y: -offset, cmd: 'lineTo' });
-    expect(commands[4]).toEqual({ x: 0, y: offset, cmd: 'lineTo' });
-    expect(commands[5]).toEqual({ x: 0, y: 0, cmd: 'closePath' });
+    const outline = (shape.extractPoints(1).shape as Array<{ x: number; y: number }>)
+      .map((p) => ({ x: +p.x.toFixed(4), y: +p.y.toFixed(4) }));
+    const o = +offset.toFixed(4);
+    expect(outline).toEqual([
+      { x: 0, y: o },
+      { x: 4, y: o },
+      { x: 4, y: -o },
+      { x: 0, y: -o },
+      { x: 0, y: o },
+    ]);
   });
 
   it('rounded curtain_run produces more boundary points than straight one', async () => {
@@ -456,12 +437,31 @@ describe('HouseScene', () => {
       budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
-    let shape: any = null;
-    scene.getScene().traverse((obj: any) => {
-      if (obj.userData?.type === 'curtain_run') shape = obj.geometry?.shape;
+    const outlineLen = (s: any): number => {
+      let sh: any = null;
+      s.getScene().traverse((obj: any) => {
+        if (obj.userData?.type === 'curtain_run') sh = obj.geometry?.parameters?.shapes;
+      });
+      expect(sh).not.toBeNull();
+      return (sh.extractPoints(1).shape as unknown[]).length;
+    };
+    const roundedLen = outlineLen(scene);
+
+    const straightScene = new HouseScene(canvas);
+    await straightScene.buildFromCatalog({
+      house: {
+        rooms: [],
+        sceneElements: [
+          { type: 'curtain_run' as const, id: 'curtain:straight', points: [{ x: 0, z: 0 }, { x: 5, z: 0 }], height: 2.8 },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
     });
-    expect(shape).not.toBeNull();
-    expect(shape.points.length).toBeGreaterThan(8);
+    const straightLen = outlineLen(straightScene);
+
+    expect(roundedLen).toBeGreaterThan(8);
+    expect(roundedLen).toBeGreaterThan(straightLen);
   });
 
   it('curtain_run applies scale-y-flip to preserve overlay z', async () => {
