@@ -11,6 +11,7 @@ import { CollisionDetector } from './scene/CollisionDetector.js';
 import { FirstPersonController } from './scene/FirstPersonController.js';
 import { extractCollisionWalls } from './scene/collision-utils.js';
 import { resolveSpawnRoom } from './scene/spawn-utils.js';
+import { shouldToggleSeeThrough, shouldInterruptCameraAnimation } from './scene/mode-key-policy.js';
 import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
@@ -207,7 +208,7 @@ export class App {
           this.overviewMenu.hide();
         }
       }
-      if (e.code === 'KeyW' && !e.repeat && this.houseScene.mode !== 'first-person') {
+      if (shouldToggleSeeThrough(e.code, e.repeat, this.houseScene.mode)) {
         e.preventDefault();
         this.analysisTools.toggleSeeThrough();
         this.updateModeIndicator();
@@ -235,10 +236,12 @@ export class App {
           this.stateSync.fetchScheme().then((s) => { if (s) this.applyScheme(s); });
         }
       }
-      if (this.houseScene.cameraAnimator.isAnimating() && this.houseScene.cameraAnimator.currentMode !== 'first-person') {
-        if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
-          this.houseScene.cameraAnimator.interrupt();
-        }
+      if (shouldInterruptCameraAnimation(
+        this.houseScene.cameraAnimator.isAnimating(),
+        this.houseScene.cameraAnimator.currentMode,
+        e.code,
+      )) {
+        this.houseScene.cameraAnimator.interrupt();
       }
     });
 
