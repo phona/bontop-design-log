@@ -18,6 +18,7 @@ export interface MovementKeys {
 export class FirstPersonController {
   private controls: PointerLockControls;
   private collision: CollisionDetector;
+  private domElement: HTMLCanvasElement;
   private keys: MovementKeys = { forward: false, backward: false, left: false, right: false };
   private direction = new THREE.Vector3();
   private _isLocked = false;
@@ -38,13 +39,14 @@ export class FirstPersonController {
     collision: CollisionDetector
   ) {
     this.controls = new PointerLockControls(camera, domElement);
-    (this.controls as any).pointerSpeed = 0;
+    this.controls.disconnect();
+    this.domElement = domElement;
     this.collision = collision;
 
     this.onKeyDown = (e: KeyboardEvent) => this.handleKey(e, true);
     this.onKeyUp = (e: KeyboardEvent) => this.handleKey(e, false);
     this.onLockChange = () => {
-      this._isLocked = this.controls.isLocked;
+      this._isLocked = document.pointerLockElement === this.domElement;
       if (this._isLocked) {
         const euler = new THREE.Euler(0, 0, 0, 'YXZ');
         euler.setFromQuaternion(camera.quaternion, 'YXZ');

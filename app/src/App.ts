@@ -10,6 +10,7 @@ import { OverviewMenu } from './ui/OverviewMenu.js';
 import { CollisionDetector } from './scene/CollisionDetector.js';
 import { FirstPersonController } from './scene/FirstPersonController.js';
 import { extractCollisionWalls } from './scene/collision-utils.js';
+import { pickSpawnRoom } from './scene/spawn-utils.js';
 import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
@@ -282,21 +283,13 @@ export class App {
 
   private switchToFirstPerson(): void {
     const rooms = (this.projectData?.house?.rooms ?? []) as Array<{ id: string; x: number; z: number; width: number; depth: number }>;
-    const spawnRoom = rooms.find((r) => r.id === 'living_dining') ?? rooms.find((r) => r.id === 'entry_garden');
-    const spawnX = spawnRoom?.x ?? 7.4;
-    const spawnZ = spawnRoom?.z ?? 3.65;
-    const fpPos = new THREE.Vector3(spawnX, 1.7, spawnZ);
-    const fpDir = new THREE.Vector3(0, 0, 1);
+    const fallbackRoom = rooms.find((r) => r.id === 'living_dining') ?? rooms[0];
+    const fallback = fallbackRoom ? { x: fallbackRoom.x, z: fallbackRoom.z } : { x: 7.4, z: 3.65 };
 
-    const camPos = this.houseScene.camera.position;
-    const insideRoom = camPos.y < 3 && rooms.some(r => {
-      const hw = r.width / 2, hd = r.depth / 2;
-      return camPos.x >= r.x - hw && camPos.x <= r.x + hw &&
-             camPos.z >= r.z - hd && camPos.z <= r.z + hd;
-    });
-    if (insideRoom) {
-      fpPos.set(camPos.x, 1.7, camPos.z);
-    }
+    const target = this.houseScene.controls.target;
+    const spawn = pickSpawnRoom({ x: target.x, z: target.z }, rooms, fallback);
+    const fpPos = new THREE.Vector3(spawn.x, 1.7, spawn.z);
+    const fpDir = new THREE.Vector3(0, 0, 1);
 
     this.savedOrbitPos = this.houseScene.camera.position.clone();
     this.savedOrbitTarget = this.houseScene.controls.target.clone();

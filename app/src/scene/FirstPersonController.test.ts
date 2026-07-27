@@ -92,6 +92,8 @@ vi.mock('three/examples/jsm/controls/PointerLockControls.js', () => ({
   PointerLockControls: vi.fn().mockImplementation(function (this: any, cam: any) {
     this.lock = vi.fn(() => { this.isLocked = true; });
     this.unlock = vi.fn(() => { this.isLocked = false; });
+    this.connect = vi.fn();
+    this.disconnect = vi.fn();
     this.isLocked = false;
     this.pointerSpeed = 1;
     this.getObject = () => cam;
@@ -189,6 +191,7 @@ describe('FirstPersonController', () => {
       const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
       fp.enable();
       fp.requestLock();
+      (document as any).pointerLockElement = canvas;
       simulateLock();
 
       simulateMouseMove(0, 5000);
@@ -206,6 +209,7 @@ describe('FirstPersonController', () => {
       const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
       fp.enable();
       fp.requestLock();
+      (document as any).pointerLockElement = canvas;
       simulateLock();
 
       simulateMouseMove(0, -5000);
@@ -225,6 +229,7 @@ describe('FirstPersonController', () => {
       const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
       fp.enable();
       fp.requestLock();
+      (document as any).pointerLockElement = canvas;
       simulateLock();
 
       simulateMouseMove(200, 0);
@@ -242,6 +247,7 @@ describe('FirstPersonController', () => {
       const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
       fp.enable();
       fp.requestLock();
+      (document as any).pointerLockElement = canvas;
       simulateLock();
 
       simulateMouseMove(100, 0);
@@ -250,6 +256,30 @@ describe('FirstPersonController', () => {
       const { yaw } = getYawPitch(camera.quaternion);
       const target = -(100 * 0.002);
       expect(Math.abs(yaw - target)).toBeLessThan(0.02);
+      fp.dispose();
+    });
+  });
+
+  describe('pointer lock integration', () => {
+    it('disconnects PointerLockControls internal listeners on construct', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const plModule = await import('three/examples/jsm/controls/PointerLockControls.js');
+      const PL = plModule.PointerLockControls as any;
+      new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      expect(PL.mock.instances[0].disconnect).toHaveBeenCalled();
+    });
+
+    it('isLocked reflects document.pointerLockElement, not internal flag', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      expect(fp.isLocked).toBe(true);
+      (document as any).pointerLockElement = null;
+      simulateLock();
+      expect(fp.isLocked).toBe(false);
       fp.dispose();
     });
   });
