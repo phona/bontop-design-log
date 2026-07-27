@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('three', () => {
+vi.mock('three', async (importOriginal: any) => {
+  const __three = await importOriginal();
   class MockObject3D {
     userData: Record<string, unknown> = {};
     children: MockObject3D[] = [];
@@ -36,7 +37,7 @@ vi.mock('three', () => {
     copy() { return this; }
   }
 
-  return {
+  return { ...__three,
     Scene: class extends MockObject3D { background: unknown = null; },
     Group: class extends MockObject3D {},
     Mesh: class extends MockObject3D { material = new MockMaterial(); geometry: any = {}; constructor(geometry?: any, material?: any) { super(); if (geometry) this.geometry = geometry; if (material) this.material = material; } },
@@ -94,6 +95,7 @@ vi.mock('three', () => {
 vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({
   OrbitControls: class {
     target = { x: 0, y: 0, z: 0, set() {}, copy() {}, clone() { return { x: 0, y: 0, z: 0, set() {}, copy() {} }; } };
+    enabled = true;
     enableDamping = true;
     dampingFactor = 0.08;
     maxPolarAngle = 0;
@@ -112,6 +114,15 @@ vi.mock('../topics/TopicRegistry.js', () => ({
     get() { return undefined; }
     list() { return []; }
     register() {}
+  },
+}));
+
+vi.mock('../render/EnvironmentManager.js', () => ({
+  EnvironmentManager: class {
+    setup() {}
+    setTimeOfDay() {}
+    toggleIBL() {}
+    getLightingState() { return { hour: 12, azimuth: 180, elevation: 60, iblEnabled: false }; }
   },
 }));
 

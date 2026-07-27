@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-vi.mock('three', () => {
+vi.mock('three', async (importOriginal: any) => {
+  const __three = await importOriginal();
   class MockObject3D {
     userData: Record<string, unknown> = {};
     children: MockObject3D[] = [];
@@ -31,7 +32,7 @@ vi.mock('three', () => {
     set() { return this; }
     copy() { return this; }
   }
-  return {
+  return { ...__three,
     Scene: class extends MockObject3D { background: unknown = null; },
     Group: class extends MockObject3D {},
     Mesh: class extends MockObject3D { material = new MockMaterial(); geometry = {}; },
@@ -65,6 +66,7 @@ vi.mock('three', () => {
 vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({
   OrbitControls: class {
     target = { x: 0, y: 0, z: 0, set() {}, copy() {}, clone() { return { x: 0, y: 0, z: 0, set() {}, copy() {} }; } };
+    enabled = true;
     enableDamping = true;
     dampingFactor = 0.08;
     maxPolarAngle = 0;
@@ -87,6 +89,24 @@ vi.mock('three/examples/jsm/controls/PointerLockControls.js', () => ({
     }
     connect() {}
     disconnect() {}
+  },
+}));
+
+vi.mock('./render/EnvironmentManager.js', () => ({
+  EnvironmentManager: class {
+    setup() {}
+    setTimeOfDay() {}
+    toggleIBL() {}
+    getLightingState() { return { hour: 12, azimuth: 180, elevation: 60, iblEnabled: false }; }
+  },
+}));
+
+vi.mock('./render/annotations/AnnotationRenderer.js', () => ({
+  AnnotationRenderer: class {
+    async load() {}
+    setVisible() {}
+    updateLabels() {}
+    clear() {}
   },
 }));
 
@@ -137,11 +157,14 @@ const mockDocument = {
   getElementById: vi.fn((id: string) => createMockElement(id)),
   createElement: vi.fn((tag: string) => ({
     tagName: tag,
+    className: '',
     style: {},
     innerHTML: '',
     textContent: '',
     appendChild: vi.fn(),
     addEventListener: vi.fn(),
+    querySelector: vi.fn(() => createMockElement()),
+    querySelectorAll: vi.fn(() => []),
   })),
   addEventListener: vi.fn((event: string, handler: (e: any) => void) => {
     if (!documentEventListeners[event]) documentEventListeners[event] = [];
