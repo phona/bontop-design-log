@@ -234,7 +234,7 @@ export class App {
         }
       }
       if (this.houseScene.cameraAnimator.isAnimating()) {
-        if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code) || e.code === 'KeyV') {
+        if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
           this.houseScene.cameraAnimator.interrupt();
         }
       }
@@ -301,6 +301,7 @@ export class App {
     this.savedOrbitPos = this.houseScene.camera.position.clone();
     this.savedOrbitTarget = this.houseScene.controls.target.clone();
 
+    this.houseScene.controls.enabled = false;
     this.fpController.enable();
     this.fpController.requestLock();
     this.houseScene.cameraAnimator.transitionToFirstPerson(fpPos, fpDir);
