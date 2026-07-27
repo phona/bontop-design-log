@@ -18,6 +18,7 @@ import type {
 } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopDownView } from '../scene/TopDownView.js';
+import { pickRoomIdFromHits } from '../scene/spawn-utils.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
@@ -1500,15 +1501,11 @@ export class HouseScene implements SceneApi {
   raycastRoomAtPointer(): string | null {
     this.raycaster.setFromCamera(this.lastPointer, this.camera);
     const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-    for (const hit of intersects) {
-      const data = hit.object.userData;
-      const roomId = data?.roomId as string | undefined;
-      const type = data?.type as string | undefined;
-      if (roomId && roomId !== 'elevator_shaft' && (type === 'floor' || type === 'floor_region')) {
-        return roomId;
-      }
-    }
-    return null;
+    const hits = intersects.map((hit) => ({
+      roomId: hit.object.userData?.roomId as string | undefined,
+      type: hit.object.userData?.type as string | undefined,
+    }));
+    return pickRoomIdFromHits(hits);
   }
 
   private onPointerDown(event: PointerEvent) {

@@ -10,7 +10,7 @@ import { OverviewMenu } from './ui/OverviewMenu.js';
 import { CollisionDetector } from './scene/CollisionDetector.js';
 import { FirstPersonController } from './scene/FirstPersonController.js';
 import { extractCollisionWalls } from './scene/collision-utils.js';
-import { findRoomAt } from './scene/spawn-utils.js';
+import { resolveSpawnRoom } from './scene/spawn-utils.js';
 import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
@@ -286,10 +286,13 @@ export class App {
     const fallbackRoom = rooms.find((r) => r.id === 'living_dining') ?? rooms[0];
 
     const pointerRoomId = this.houseScene.raycastRoomAtPointer();
-    const pointerRoom = pointerRoomId ? rooms.find((r) => r.id === pointerRoomId) : undefined;
     const target = this.houseScene.controls.target;
-    const targetRoom = findRoomAt({ x: target.x, z: target.z }, rooms);
-    const room = pointerRoom ?? targetRoom ?? fallbackRoom;
+    const room = resolveSpawnRoom(
+      pointerRoomId,
+      { x: target.x, z: target.z },
+      rooms,
+      fallbackRoom ?? null,
+    );
 
     const spawnX = room?.x ?? 7.4;
     const spawnZ = room?.z ?? 3.65;
