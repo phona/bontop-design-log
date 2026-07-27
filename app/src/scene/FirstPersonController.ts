@@ -53,9 +53,9 @@ export class FirstPersonController {
         const euler = new THREE.Euler(0, 0, 0, 'YXZ');
         euler.setFromQuaternion(camera.quaternion, 'YXZ');
         this.currentYaw = euler.y;
-        this.currentPitch = euler.x;
+        this.currentPitch = this.clampPitch(euler.x);
         this.targetYaw = euler.y;
-        this.targetPitch = euler.x;
+        this.targetPitch = this.clampPitch(euler.x);
       }
     };
     this.onMouseMove = (e: MouseEvent) => {
@@ -66,7 +66,7 @@ export class FirstPersonController {
       }
       this.targetYaw -= e.movementX * MOUSE_SENSITIVITY;
       this.targetPitch -= e.movementY * MOUSE_SENSITIVITY;
-      this.targetPitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.targetPitch));
+      this.targetPitch = this.clampPitch(this.targetPitch);
     };
 
     document.addEventListener('pointerlockchange', this.onLockChange);
@@ -92,6 +92,7 @@ export class FirstPersonController {
 
   enable() {
     this.enabled = true;
+    this.controls.disconnect();
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
     document.addEventListener('mousemove', this.onMouseMove);
@@ -125,9 +126,13 @@ export class FirstPersonController {
     const euler = new THREE.Euler(0, 0, 0, 'YXZ');
     euler.setFromQuaternion(camera.quaternion, 'YXZ');
     this.currentYaw = euler.y;
-    this.currentPitch = euler.x;
+    this.currentPitch = this.clampPitch(euler.x);
     this.targetYaw = euler.y;
-    this.targetPitch = euler.x;
+    this.targetPitch = this.clampPitch(euler.x);
+  }
+
+  private clampPitch(v: number): number {
+    return Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, v));
   }
 
   update(dt: number) {
@@ -138,6 +143,7 @@ export class FirstPersonController {
     const lerpT = 1 - Math.pow(SMOOTH_FACTOR, dt * 60);
     this.currentYaw += (this.targetYaw - this.currentYaw) * lerpT;
     this.currentPitch += (this.targetPitch - this.currentPitch) * lerpT;
+    this.currentPitch = this.clampPitch(this.currentPitch);
 
     const euler = new THREE.Euler(this.currentPitch, this.currentYaw, 0, 'YXZ');
     camera.quaternion.setFromEuler(euler);

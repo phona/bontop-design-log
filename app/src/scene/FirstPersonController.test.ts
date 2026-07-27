@@ -326,5 +326,40 @@ describe('FirstPersonController', () => {
       expect(Math.abs(r1.pitch - r2.pitch)).toBeLessThan(0.01);
       fp.dispose();
     });
+
+    it('clamps a steep syncFromCamera pitch so update never writes ~90 degrees', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      const steep = 89 * Math.PI / 180;
+      camera.quaternion.setFromEuler(new MockEuler(steep, 0, 0, 'YXZ'));
+
+      fp.syncFromCamera();
+      fp.update(0.016);
+
+      const { pitch } = getYawPitch(camera.quaternion);
+      const limit = 80 * Math.PI / 180;
+      expect(Math.abs(pitch)).toBeLessThanOrEqual(limit + 0.02);
+      fp.dispose();
+    });
+
+    it('clamps a steep onLockChange pitch so update never writes ~90 degrees', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      const steep = -88 * Math.PI / 180;
+      camera.quaternion.setFromEuler(new MockEuler(steep, 0, 0, 'YXZ'));
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+
+      fp.update(0.016);
+
+      const { pitch } = getYawPitch(camera.quaternion);
+      const limit = 80 * Math.PI / 180;
+      expect(Math.abs(pitch)).toBeLessThanOrEqual(limit + 0.02);
+      fp.dispose();
+    });
   });
 });
