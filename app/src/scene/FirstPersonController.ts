@@ -31,7 +31,6 @@ export class FirstPersonController {
   private accumX = 0;
   private accumY = 0;
   private lockTime = 0;
-  private prevPitch = 0;
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -134,17 +133,12 @@ export class FirstPersonController {
 
     const mx = Math.max(-MAX_FRAME_DELTA, Math.min(MAX_FRAME_DELTA, this.accumX));
     const my = Math.max(-MAX_FRAME_DELTA, Math.min(MAX_FRAME_DELTA, this.accumY));
-    this.accumX = 0;
-    this.accumY = 0;
+    this.accumX -= mx;
+    this.accumY -= my;
 
     this.yaw -= mx * MOUSE_SENSITIVITY;
     this.pitch -= my * MOUSE_SENSITIVITY;
     this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
-
-    if (Math.abs(this.pitch - this.prevPitch) > 0.15) {
-      console.warn('[FP-DBG] pitch jump:', { prev: this.prevPitch, now: this.pitch, yaw: this.yaw, mx, my });
-    }
-    this.prevPitch = this.pitch;
 
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
 

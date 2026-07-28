@@ -292,6 +292,40 @@ describe('FirstPersonController', () => {
     });
   });
 
+  describe('per-frame carry-over', () => {
+    it('spreads an over-cap accumulation across frames and conserves the total', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      fakeTime = 200;
+      simulateMouseMove(0, 0);
+
+      simulateMouseMove(300, 0);
+      const perFrame = MAX_FRAME_DELTA * MOUSE_SENSITIVITY;
+
+      fp.update(0.016);
+      const y1 = getYawPitch(camera.quaternion).yaw;
+      expect(Math.abs(y1)).toBeCloseTo(perFrame, 3);
+
+      fp.update(0.016);
+      const y2 = getYawPitch(camera.quaternion).yaw;
+      expect(Math.abs(y2)).toBeCloseTo(perFrame * 2, 3);
+
+      fp.update(0.016);
+      const y3 = getYawPitch(camera.quaternion).yaw;
+      expect(Math.abs(y3)).toBeCloseTo(300 * MOUSE_SENSITIVITY, 3);
+
+      fp.update(0.016);
+      const y4 = getYawPitch(camera.quaternion).yaw;
+      expect(Math.abs(y4 - y3)).toBeLessThan(0.0001);
+      fp.dispose();
+    });
+  });
+
   describe('undefined/NaN movementX/Y guard', () => {
     it('does not corrupt yaw when movementX is undefined', async () => {
       const { FirstPersonController } = await import('./FirstPersonController.js');
