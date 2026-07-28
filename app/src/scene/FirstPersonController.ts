@@ -28,7 +28,8 @@ export class FirstPersonController {
 
   private yaw = 0;
   private pitch = 0;
-  private skipNextMove = false;
+  private lockTime = 0;
+  private prevPitch = 0;
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -45,21 +46,21 @@ export class FirstPersonController {
     this.onLockChange = () => {
       this._isLocked = document.pointerLockElement === this.domElement;
       if (this._isLocked) {
-        this.skipNextMove = true;
+        this.lockTime = performance.now();
         this.syncFromCamera();
       }
     };
     this.onMouseMove = (e: MouseEvent) => {
       if (!this.enabled) return;
       if (document.pointerLockElement !== this.domElement) return;
-      if (this.skipNextMove) {
-        this.skipNextMove = false;
-        return;
-      }
+      if (performance.now() - this.lockTime < 150) return;
       const rawX = e.movementX || 0;
       const rawY = e.movementY || 0;
       const mx = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, rawX));
       const my = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, rawY));
+      if (Math.abs(my) > 80) {
+        console.warn('[FP-DBG] large delta:', { mx, my, yaw: this.yaw, pitch: this.pitch });
+      }
       this.yaw -= mx * MOUSE_SENSITIVITY;
       this.pitch -= my * MOUSE_SENSITIVITY;
       this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
@@ -133,6 +134,11 @@ export class FirstPersonController {
     if (!Number.isFinite(this.yaw)) this.yaw = 0;
     if (!Number.isFinite(this.pitch)) this.pitch = 0;
     this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
+
+    if (Math.abs(this.pitch - this.prevPitch) > 0.3) {
+      console.warn('[FP-DBG] pitch jump:', { prev: this.prevPitch, now: this.pitch, yaw: this.yaw });
+    }
+    this.prevPitch = this.pitch;
 
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
 

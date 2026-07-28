@@ -112,8 +112,11 @@ describe('FirstPersonController', () => {
   let camera: any;
   let canvas: any;
   let eventListeners: Record<string, Array<(e: any) => void>>;
+  let fakeTime = 0;
 
   beforeEach(() => {
+    fakeTime = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => fakeTime);
     camera = {
       position: new MockVector3(0, 1.7, 0),
       quaternion: new MockQuaternion(),
@@ -194,6 +197,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
       simulateMouseMove(0, 0);
 
       simulateMouseMove(30, 0);
@@ -213,6 +217,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
       simulateMouseMove(0, 0);
 
       simulateMouseMove(20, 0);
@@ -234,6 +239,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
       simulateMouseMove(0, 0);
 
       simulateMouseMove(0, 10000);
@@ -252,6 +258,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
       simulateMouseMove(0, 0);
 
       simulateMouseMove(0, -10000);
@@ -272,6 +279,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
       simulateMouseMove(0, 0);
 
       simulateMouseMove(100000, 0);
@@ -293,6 +301,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
       simulateMouseMove(0, 0);
 
       const handlers = eventListeners['mousemove'] ?? [];
@@ -315,6 +324,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
       simulateMouseMove(0, 0);
 
       const handlers = eventListeners['mousemove'] ?? [];
@@ -337,6 +347,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
       simulateMouseMove(0, 0);
 
       (fp as any).yaw = NaN;
@@ -366,14 +377,16 @@ describe('FirstPersonController', () => {
       const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
       expect(fp.isLocked).toBe(true);
       (document as any).pointerLockElement = null;
       simulateLock();
+      fakeTime = 200;
       expect(fp.isLocked).toBe(false);
       fp.dispose();
     });
 
-    it('ignores the first mouse move after lock (pointer-lock garbage delta)', async () => {
+    it('ignores mouse moves within 150ms of lock (pointer-lock garbage delta)', async () => {
       const { FirstPersonController } = await import('./FirstPersonController.js');
       const { CollisionDetector } = await import('./CollisionDetector.js');
       const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
@@ -382,15 +395,17 @@ describe('FirstPersonController', () => {
       (document as any).pointerLockElement = canvas;
       simulateLock();
 
+      fakeTime = 50;
       simulateMouseMove(9999, 0);
       fp.update(0.016);
-      const { yaw: yawAfterSpike } = getYawPitch(camera.quaternion);
-      expect(Math.abs(yawAfterSpike)).toBeLessThan(0.001);
+      const { yaw: yawInWindow } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yawInWindow)).toBeLessThan(0.001);
 
-      simulateMouseMove(100, 0);
+      fakeTime = 200;
+      simulateMouseMove(30, 0);
       fp.update(0.016);
-      const { yaw: yawAfterReal } = getYawPitch(camera.quaternion);
-      expect(Math.abs(yawAfterReal)).toBeGreaterThan(0.05);
+      const { yaw: yawAfterWindow } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yawAfterWindow)).toBeGreaterThan(0.01);
       fp.dispose();
     });
 
@@ -434,6 +449,7 @@ describe('FirstPersonController', () => {
       camera.quaternion.setFromEuler(new MockEuler(steep, 0, 0, 'YXZ'));
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
 
       fp.update(0.016);
 
@@ -466,6 +482,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
       simulateMouseMove(0, 0);
 
       (fp as any).pitch = 999;
@@ -486,6 +503,7 @@ describe('FirstPersonController', () => {
       fp.requestLock();
       (document as any).pointerLockElement = canvas;
       simulateLock();
+      fakeTime = 200;
       simulateMouseMove(0, 0);
 
       (document as any).pointerLockElement = null;
