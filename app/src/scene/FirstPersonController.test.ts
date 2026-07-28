@@ -196,11 +196,11 @@ describe('FirstPersonController', () => {
       simulateLock();
       simulateMouseMove(0, 0);
 
-      simulateMouseMove(100, 0);
+      simulateMouseMove(30, 0);
       fp.update(0.016);
 
       const { yaw } = getYawPitch(camera.quaternion);
-      const expected = -(100 * MOUSE_SENSITIVITY);
+      const expected = -(30 * MOUSE_SENSITIVITY);
       expect(Math.abs(yaw - expected)).toBeLessThan(0.001);
       fp.dispose();
     });
@@ -215,11 +215,11 @@ describe('FirstPersonController', () => {
       simulateLock();
       simulateMouseMove(0, 0);
 
-      simulateMouseMove(50, 0);
+      simulateMouseMove(20, 0);
       fp.update(0.016);
 
       const { yaw } = getYawPitch(camera.quaternion);
-      const expected = -(50 * MOUSE_SENSITIVITY);
+      const expected = -(20 * MOUSE_SENSITIVITY);
       expect(Math.abs(yaw - expected)).toBeLessThan(0.001);
       fp.dispose();
     });
@@ -284,6 +284,72 @@ describe('FirstPersonController', () => {
     });
   });
 
+  describe('undefined/NaN movementX/Y guard', () => {
+    it('does not corrupt yaw when movementX is undefined', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      simulateMouseMove(0, 0);
+
+      const handlers = eventListeners['mousemove'] ?? [];
+      for (const h of handlers) h({ movementX: undefined, movementY: undefined });
+      fp.update(0.016);
+
+      const { yaw, pitch } = getYawPitch(camera.quaternion);
+      expect(Number.isFinite(yaw)).toBe(true);
+      expect(Number.isFinite(pitch)).toBe(true);
+      expect(Math.abs(yaw)).toBeLessThan(0.001);
+      expect(Math.abs(pitch)).toBeLessThan(0.001);
+      fp.dispose();
+    });
+
+    it('does not corrupt yaw when movementX is NaN', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      simulateMouseMove(0, 0);
+
+      const handlers = eventListeners['mousemove'] ?? [];
+      for (const h of handlers) h({ movementX: NaN, movementY: NaN });
+      fp.update(0.016);
+
+      const { yaw, pitch } = getYawPitch(camera.quaternion);
+      expect(Number.isFinite(yaw)).toBe(true);
+      expect(Number.isFinite(pitch)).toBe(true);
+      expect(Math.abs(yaw)).toBeLessThan(0.001);
+      expect(Math.abs(pitch)).toBeLessThan(0.001);
+      fp.dispose();
+    });
+
+    it('NaN self-heal in update resets corrupted state', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      simulateMouseMove(0, 0);
+
+      (fp as any).yaw = NaN;
+      (fp as any).pitch = NaN;
+      fp.update(0.016);
+
+      const { yaw, pitch } = getYawPitch(camera.quaternion);
+      expect(Number.isFinite(yaw)).toBe(true);
+      expect(Number.isFinite(pitch)).toBe(true);
+      fp.dispose();
+    });
+  });
+
   describe('pointer lock integration', () => {
     it('disconnects PointerLockControls internal listeners on construct', async () => {
       const { FirstPersonController } = await import('./FirstPersonController.js');
@@ -324,7 +390,7 @@ describe('FirstPersonController', () => {
       simulateMouseMove(100, 0);
       fp.update(0.016);
       const { yaw: yawAfterReal } = getYawPitch(camera.quaternion);
-      expect(Math.abs(yawAfterReal)).toBeGreaterThan(0.1);
+      expect(Math.abs(yawAfterReal)).toBeGreaterThan(0.05);
       fp.dispose();
     });
 

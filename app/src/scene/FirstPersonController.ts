@@ -55,8 +55,10 @@ export class FirstPersonController {
         this.skipNextMove = false;
         return;
       }
-      const mx = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, e.movementX));
-      const my = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, e.movementY));
+      const rawX = e.movementX || 0;
+      const rawY = e.movementY || 0;
+      const mx = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, rawX));
+      const my = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, rawY));
       this.yaw -= mx * MOUSE_SENSITIVITY;
       this.pitch -= my * MOUSE_SENSITIVITY;
       this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
@@ -124,6 +126,9 @@ export class FirstPersonController {
 
   update(dt: number) {
     if (!this.enabled) return;
+
+    if (!Number.isFinite(this.yaw)) this.yaw = 0;
+    if (!Number.isFinite(this.pitch)) this.pitch = 0;
 
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
 
