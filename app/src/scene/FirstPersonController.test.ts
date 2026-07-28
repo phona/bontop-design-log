@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { WallSegment } from '@shared/types';
-import { PITCH_LIMIT, MAX_FRAME_DELTA, MOUSE_SENSITIVITY } from './first-person-tuning.js';
+import { PITCH_LIMIT, MAX_FRAME_ANGLE, MOUSE_SENSITIVITY } from './first-person-tuning.js';
 
 class MockVector3 {
   x = 0; y = 0; z = 0;
@@ -286,7 +286,7 @@ describe('FirstPersonController', () => {
       fp.update(0.016);
 
       const { yaw } = getYawPitch(camera.quaternion);
-      const maxExpected = MAX_FRAME_DELTA * MOUSE_SENSITIVITY;
+      const maxExpected = MAX_FRAME_ANGLE;
       expect(Math.abs(yaw)).toBeLessThanOrEqual(maxExpected + 0.001);
       fp.dispose();
     });
@@ -310,6 +310,26 @@ describe('FirstPersonController', () => {
       fp.update(0.016);
       const y2 = getYawPitch(camera.quaternion).yaw;
       expect(Math.abs(y2 - y1)).toBeLessThan(0.0001);
+      fp.dispose();
+    });
+
+    it('angle cap holds regardless of sensitivity (dynamic pixel cap)', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      fakeTime = 200;
+      simulateMouseMove(0, 0);
+
+      fp.setSensitivity(0.002);
+      simulateMouseMove(1000, 0);
+      fp.update(0.016);
+
+      const { yaw } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yaw)).toBeLessThanOrEqual(MAX_FRAME_ANGLE + 0.001);
       fp.dispose();
     });
   });
