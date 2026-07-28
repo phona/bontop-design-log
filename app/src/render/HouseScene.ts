@@ -1528,7 +1528,7 @@ export class HouseScene implements SceneApi {
 
   private lastRenderTime = performance.now();
 
-  render() {
+  updateCameras(): void {
     const now = performance.now();
     const deltaTime = now - this.lastRenderTime;
     this.lastRenderTime = now;
@@ -1536,8 +1536,16 @@ export class HouseScene implements SceneApi {
       this.controls.update();
     }
     this.cameraAnimator.update(deltaTime);
+  }
+
+  renderFrame(): void {
     this.updateCompassLabels();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  render(): void {
+    this.updateCameras();
+    this.renderFrame();
   }
 
   private readonly COMPASS_ANCHORS: Record<'n' | 's' | 'e' | 'w', THREE.Vector3> = {

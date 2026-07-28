@@ -494,15 +494,17 @@ export class App {
     const dt = this.lastTime === 0 ? 0.016 : Math.min((time - this.lastTime) / 1000, 0.1);
     this.lastTime = time;
 
-    this.houseScene.render();
-    this.annotationRenderer?.updateLabels();
-    this.analysisTools.updatePulse();
+    this.houseScene.updateCameras();
 
     if (this.houseScene.mode === 'first-person' && !this.houseScene.cameraAnimator.isAnimating()) {
       this.fpController.update(dt);
       const target = this.houseScene.raycastFromScreenCenter({ hoverableOnly: true });
       this.hoverTooltip.update(target);
     }
+
+    this.annotationRenderer?.updateLabels();
+    this.analysisTools.updatePulse();
+    this.houseScene.renderFrame();
 
     this.rafId = requestAnimationFrame(this.renderLoop);
   };
