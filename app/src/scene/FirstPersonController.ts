@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import type { CollisionDetector } from './CollisionDetector.js';
-import { PITCH_LIMIT, MAX_MOUSE_DELTA, MOUSE_SENSITIVITY } from './first-person-tuning.js';
+import { PITCH_LIMIT, MAX_FRAME_DELTA, MOUSE_SENSITIVITY } from './first-person-tuning.js';
 
 const MOVE_SPEED = 2.0;
 const EYE_HEIGHT = 1.7;
@@ -28,6 +28,8 @@ export class FirstPersonController {
 
   private yaw = 0;
   private pitch = 0;
+  private accumX = 0;
+  private accumY = 0;
   private lockTime = 0;
   private prevPitch = 0;
 
@@ -47,6 +49,8 @@ export class FirstPersonController {
       this._isLocked = document.pointerLockElement === this.domElement;
       if (this._isLocked) {
         this.lockTime = performance.now();
+        this.accumX = 0;
+        this.accumY = 0;
         this.syncFromCamera();
       }
     };
@@ -54,16 +58,8 @@ export class FirstPersonController {
       if (!this.enabled) return;
       if (document.pointerLockElement !== this.domElement) return;
       if (performance.now() - this.lockTime < 150) return;
-      const rawX = e.movementX || 0;
-      const rawY = e.movementY || 0;
-      const mx = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, rawX));
-      const my = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, rawY));
-      if (Math.abs(my) > 40) {
-        console.warn('[FP-DBG] large delta:', { mx, my, yaw: this.yaw, pitch: this.pitch });
-      }
-      this.yaw -= mx * MOUSE_SENSITIVITY;
-      this.pitch -= my * MOUSE_SENSITIVITY;
-      this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
+      this.accumX += e.movementX || 0;
+      this.accumY += e.movementY || 0;
     };
 
     document.addEventListener('pointerlockchange', this.onLockChange);
@@ -98,6 +94,8 @@ export class FirstPersonController {
   disable() {
     this.enabled = false;
     this.keys = { forward: false, backward: false, left: false, right: false };
+    this.accumX = 0;
+    this.accumY = 0;
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('mousemove', this.onMouseMove);
@@ -133,10 +131,18 @@ export class FirstPersonController {
 
     if (!Number.isFinite(this.yaw)) this.yaw = 0;
     if (!Number.isFinite(this.pitch)) this.pitch = 0;
+
+    const mx = Math.max(-MAX_FRAME_DELTA, Math.min(MAX_FRAME_DELTA, this.accumX));
+    const my = Math.max(-MAX_FRAME_DELTA, Math.min(MAX_FRAME_DELTA, this.accumY));
+    this.accumX = 0;
+    this.accumY = 0;
+
+    this.yaw -= mx * MOUSE_SENSITIVITY;
+    this.pitch -= my * MOUSE_SENSITIVITY;
     this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
 
-    if (Math.abs(this.pitch - this.prevPitch) > 0.1) {
-      console.warn('[FP-DBG] pitch jump:', { prev: this.prevPitch, now: this.pitch, yaw: this.yaw });
+    if (Math.abs(this.pitch - this.prevPitch) > 0.15) {
+      console.warn('[FP-DBG] pitch jump:', { prev: this.prevPitch, now: this.pitch, yaw: this.yaw, mx, my });
     }
     this.prevPitch = this.pitch;
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { WallSegment } from '@shared/types';
-import { PITCH_LIMIT, MAX_MOUSE_DELTA, MOUSE_SENSITIVITY } from './first-person-tuning.js';
+import { PITCH_LIMIT, MAX_FRAME_DELTA, MOUSE_SENSITIVITY } from './first-person-tuning.js';
 
 class MockVector3 {
   x = 0; y = 0; z = 0;
@@ -286,7 +286,7 @@ describe('FirstPersonController', () => {
       fp.update(0.016);
 
       const { yaw } = getYawPitch(camera.quaternion);
-      const maxExpected = MAX_MOUSE_DELTA * MOUSE_SENSITIVITY;
+      const maxExpected = MAX_FRAME_DELTA * MOUSE_SENSITIVITY;
       expect(Math.abs(yaw)).toBeLessThanOrEqual(maxExpected + 0.001);
       fp.dispose();
     });
