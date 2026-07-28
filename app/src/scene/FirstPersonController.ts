@@ -146,15 +146,18 @@ export class FirstPersonController {
 
     const rawX = this.accumX;
     const rawY = this.accumY;
-    const pxCap = MAX_FRAME_ANGLE / this.sensitivity;
-    const mx = Math.max(-pxCap, Math.min(pxCap, rawX));
-    const my = Math.max(-pxCap, Math.min(pxCap, rawY));
     this.accumX = 0;
     this.accumY = 0;
 
+    const rawAngleX = rawX * this.sensitivity;
+    const rawAngleY = rawY * this.sensitivity;
+    const soft = MAX_FRAME_ANGLE;
+    const effX = Math.sign(rawAngleX) * soft * Math.tanh(Math.abs(rawAngleX) / soft);
+    const effY = Math.sign(rawAngleY) * soft * Math.tanh(Math.abs(rawAngleY) / soft);
+
     const prevYaw = this.yaw;
-    this.yaw -= mx * this.sensitivity;
-    this.pitch -= my * this.sensitivity;
+    this.yaw -= effX;
+    this.pitch -= effY;
     this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
 
     const yawDelta = Math.abs(this.yaw - prevYaw);
@@ -162,7 +165,7 @@ export class FirstPersonController {
       console.log('[FP-JUMP]',
         'dt', +(dt * 1000).toFixed(1), 'ms',
         'raw', Math.round(rawX), Math.round(rawY),
-        'cap', Math.round(mx), Math.round(my),
+        'eff', +(effX * 180 / Math.PI).toFixed(1), +(effY * 180 / Math.PI).toFixed(1),
         'Δ', +(yawDelta * 180 / Math.PI).toFixed(1), '°',
       );
     }
