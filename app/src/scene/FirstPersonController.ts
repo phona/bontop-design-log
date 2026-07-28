@@ -1,11 +1,10 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import type { CollisionDetector } from './CollisionDetector.js';
-import { PITCH_LIMIT, TURN_RATE, MAX_MOUSE_DELTA, MOUSE_SENSITIVITY } from './first-person-tuning.js';
+import { PITCH_LIMIT, MAX_MOUSE_DELTA, MOUSE_SENSITIVITY } from './first-person-tuning.js';
 
 const MOVE_SPEED = 2.0;
 const EYE_HEIGHT = 1.7;
-const SMOOTH_FACTOR = 0.6;
 
 export interface MovementKeys {
   forward: boolean;
@@ -27,10 +26,8 @@ export class FirstPersonController {
   private onLockChange: () => void;
   private onMouseMove: (e: MouseEvent) => void;
 
-  private targetYaw = 0;
-  private targetPitch = 0;
-  private currentYaw = 0;
-  private currentPitch = 0;
+  private yaw = 0;
+  private pitch = 0;
   private skipNextMove = false;
 
   constructor(
@@ -49,12 +46,7 @@ export class FirstPersonController {
       this._isLocked = document.pointerLockElement === this.domElement;
       if (this._isLocked) {
         this.skipNextMove = true;
-        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-        euler.setFromQuaternion(camera.quaternion, 'YXZ');
-        this.currentYaw = euler.y;
-        this.currentPitch = this.clampPitch(euler.x);
-        this.targetYaw = euler.y;
-        this.targetPitch = this.clampPitch(euler.x);
+        this.syncFromCamera();
       }
     };
     this.onMouseMove = (e: MouseEvent) => {
@@ -65,9 +57,9 @@ export class FirstPersonController {
       }
       const mx = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, e.movementX));
       const my = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, e.movementY));
-      this.targetYaw -= mx * MOUSE_SENSITIVITY;
-      this.targetPitch -= my * MOUSE_SENSITIVITY;
-      this.targetPitch = this.clampPitch(this.targetPitch);
+      this.yaw -= mx * MOUSE_SENSITIVITY;
+      this.pitch -= my * MOUSE_SENSITIVITY;
+      this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
     };
 
     document.addEventListener('pointerlockchange', this.onLockChange);
@@ -126,14 +118,8 @@ export class FirstPersonController {
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
     const euler = new THREE.Euler(0, 0, 0, 'YXZ');
     euler.setFromQuaternion(camera.quaternion, 'YXZ');
-    this.currentYaw = euler.y;
-    this.currentPitch = this.clampPitch(euler.x);
-    this.targetYaw = euler.y;
-    this.targetPitch = this.clampPitch(euler.x);
-  }
-
-  private clampPitch(v: number): number {
-    return Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, v));
+    this.yaw = euler.y;
+    this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, euler.x));
   }
 
   update(dt: number) {
@@ -141,15 +127,7 @@ export class FirstPersonController {
 
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
 
-    const lerpT = 1 - Math.pow(SMOOTH_FACTOR, dt * 60);
-    const maxStep = TURN_RATE * dt;
-    const yawDelta = Math.max(-maxStep, Math.min(maxStep, (this.targetYaw - this.currentYaw) * lerpT));
-    const pitchDelta = Math.max(-maxStep, Math.min(maxStep, (this.targetPitch - this.currentPitch) * lerpT));
-    this.currentYaw += yawDelta;
-    this.currentPitch += pitchDelta;
-    this.currentPitch = this.clampPitch(this.currentPitch);
-
-    const euler = new THREE.Euler(this.currentPitch, this.currentYaw, 0, 'YXZ');
+    const euler = new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ');
     camera.quaternion.setFromEuler(euler);
 
     this.direction.set(0, 0, 0);
