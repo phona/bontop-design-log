@@ -402,8 +402,8 @@ furnishings:
     - { type: ceiling_light }
   study:
     # 房间 x∈[4.20,7.20] z∈[5.55,9.80]，北门 d_study @(6.6,5.55) swing x∈[6.15,7.05] z∈[5.55,6.45]
-    # 床头靠东墙（x=7.2），东墙已有床头插座 z=7.0/8.5 h=0.7
-    - { type: bed_150, x: 6.20, z: 7.75, rotation: 90 }     # 床头靠东墙
+    # 床头靠西墙（x=4.2），东墙已有床头插座 z=7.0/8.5 h=0.7
+    - { type: bed_150, x: 5.20, z: 7.75, rotation: 90 }     # 床头靠西墙
     - { type: wardrobe_180, x: 5.10, z: 5.85, rotation: 0 } # 沿北墙，避开门扇(x<6.15)
     - { type: mattress_150 }
     - { type: curtain_set }

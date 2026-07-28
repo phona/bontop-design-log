@@ -15,6 +15,15 @@ export function createFurniture(type: string): THREE.Group | null {
       group.add(headboard);
       return group;
     }
+    case 'bed_150': {
+      const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 2.0), mat);
+      base.position.y = 0.2;
+      group.add(base);
+      const headboard = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, 0.1), mat);
+      headboard.position.set(0, 0.5, -0.95);
+      group.add(headboard);
+      return group;
+    }
     case 'wardrobe_240': {
       const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.7, 0.6), mat);
       body.position.y = 1.35;
