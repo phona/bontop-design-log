@@ -476,4 +476,26 @@ describe('FirstPersonController', () => {
       fp.dispose();
     });
   });
+
+  describe('pointer-lock loss race window', () => {
+    it('ignores mousemove when DOM lock is gone even if cached _isLocked is stale', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      simulateMouseMove(0, 0);
+
+      (document as any).pointerLockElement = null;
+
+      simulateMouseMove(200, 0);
+      fp.update(0.016);
+
+      const { yaw } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yaw)).toBeLessThan(0.001);
+      fp.dispose();
+    });
+  });
 });

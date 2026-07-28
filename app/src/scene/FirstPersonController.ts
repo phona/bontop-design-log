@@ -50,7 +50,8 @@ export class FirstPersonController {
       }
     };
     this.onMouseMove = (e: MouseEvent) => {
-      if (!this._isLocked || !this.enabled) return;
+      if (!this.enabled) return;
+      if (document.pointerLockElement !== this.domElement) return;
       if (this.skipNextMove) {
         this.skipNextMove = false;
         return;
