@@ -120,8 +120,10 @@ export class FirstPersonController {
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
     const euler = new THREE.Euler(0, 0, 0, 'YXZ');
     euler.setFromQuaternion(camera.quaternion, 'YXZ');
-    this.yaw = euler.y;
-    this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, euler.x));
+    this.yaw = Number.isFinite(euler.y) ? euler.y : 0;
+    this.pitch = Number.isFinite(euler.x)
+      ? Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, euler.x))
+      : 0;
   }
 
   update(dt: number) {
@@ -129,6 +131,7 @@ export class FirstPersonController {
 
     if (!Number.isFinite(this.yaw)) this.yaw = 0;
     if (!Number.isFinite(this.pitch)) this.pitch = 0;
+    this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
 
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
 

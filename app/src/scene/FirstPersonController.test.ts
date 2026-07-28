@@ -441,5 +441,39 @@ describe('FirstPersonController', () => {
       expect(Math.abs(pitch)).toBeLessThanOrEqual(PITCH_LIMIT + 0.01);
       fp.dispose();
     });
+
+    it('syncFromCamera with NaN quaternion resets to 0, not NaN', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      camera.quaternion.set(NaN, NaN, NaN, NaN);
+
+      fp.syncFromCamera();
+      fp.update(0.016);
+
+      const { yaw, pitch } = getYawPitch(camera.quaternion);
+      expect(Number.isFinite(yaw)).toBe(true);
+      expect(Number.isFinite(pitch)).toBe(true);
+      fp.dispose();
+    });
+
+    it('update final clamp catches pitch set beyond limit externally', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      simulateMouseMove(0, 0);
+
+      (fp as any).pitch = 999;
+      fp.update(0.016);
+
+      const { pitch } = getYawPitch(camera.quaternion);
+      expect(Math.abs(pitch)).toBeLessThanOrEqual(PITCH_LIMIT + 0.01);
+      fp.dispose();
+    });
   });
 });
