@@ -5,6 +5,7 @@ import { SchemePanel } from './ui/SchemePanel.js';
 import { InfoPanel } from './ui/InfoPanel.js';
 import { OfflineIndicator } from './ui/OfflineIndicator.js';
 import { Crosshair } from './ui/Crosshair.js';
+import { SensitivitySlider } from './ui/SensitivitySlider.js';
 import { HoverTooltip } from './ui/HoverTooltip.js';
 import { OverviewMenu } from './ui/OverviewMenu.js';
 import { CollisionDetector } from './scene/CollisionDetector.js';
@@ -26,6 +27,7 @@ export class App {
   private infoPanel: InfoPanel;
   private offlineIndicator: OfflineIndicator;
   private crosshair: Crosshair;
+  private sensitivitySlider: SensitivitySlider;
   private hoverTooltip: HoverTooltip;
   private overviewMenu: OverviewMenu;
   private collision: CollisionDetector;
@@ -64,6 +66,9 @@ export class App {
     });
     this.offlineIndicator = new OfflineIndicator('offline-indicator');
     this.crosshair = new Crosshair();
+    this.sensitivitySlider = new SensitivitySlider();
+    this.sensitivitySlider.onChange((s) => this.fpController.setSensitivity(s));
+    this.fpController.setSensitivity(this.sensitivitySlider.getSensitivity());
     this.hoverTooltip = new HoverTooltip();
     this.analysisTools = new AnalysisTools(
       this.houseScene.scene,
@@ -91,8 +96,10 @@ export class App {
       if (mode === 'first-person') {
         this.fpController.syncFromCamera();
         this.crosshair.show();
+        this.sensitivitySlider.show();
       } else {
         this.crosshair.hide();
+        this.sensitivitySlider.hide();
         this.hoverTooltip.clear();
       }
       this.updateModeIndicator();
@@ -226,6 +233,15 @@ export class App {
         }
         this.updateModeIndicator();
         this.updateCrosshairStyle();
+      }
+      if (this.houseScene.mode === 'first-person' && !e.repeat) {
+        if (e.code === 'BracketLeft') {
+          e.preventDefault();
+          this.sensitivitySlider.step(-1);
+        } else if (e.code === 'BracketRight') {
+          e.preventDefault();
+          this.sensitivitySlider.step(1);
+        }
       }
       if (e.code === 'Tab' && this.compareActive) {
         e.preventDefault();
@@ -442,7 +458,7 @@ export class App {
     if (this.houseScene.mode === 'orbit') {
       this.modeIndicator.textContent = `轨道模式 · 按 V 切换第一人称${measSuffix}${seeThroughSuffix}`;
     } else {
-      this.modeIndicator.textContent = `第一人称 · WASD 移动 · 按 V 切换轨道 · 按 M 总览${measSuffix}${seeThroughSuffix}`;
+      this.modeIndicator.textContent = `第一人称 · WASD 移动 · [ ] 灵敏度 · 按 V 切换轨道 · 按 M 总览${measSuffix}${seeThroughSuffix}`;
     }
   }
 

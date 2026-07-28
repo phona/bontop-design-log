@@ -31,6 +31,7 @@ export class FirstPersonController {
   private accumX = 0;
   private accumY = 0;
   private lockTime = 0;
+  private sensitivity = MOUSE_SENSITIVITY;
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -115,6 +116,14 @@ export class FirstPersonController {
     return this.keys.forward || this.keys.backward || this.keys.left || this.keys.right;
   }
 
+  setSensitivity(v: number): void {
+    this.sensitivity = v;
+  }
+
+  getSensitivity(): number {
+    return this.sensitivity;
+  }
+
   syncFromCamera(): void {
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
     const euler = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -123,6 +132,8 @@ export class FirstPersonController {
     this.pitch = Number.isFinite(euler.x)
       ? Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, euler.x))
       : 0;
+    this.accumX = 0;
+    this.accumY = 0;
   }
 
   update(dt: number) {
@@ -133,11 +144,11 @@ export class FirstPersonController {
 
     const mx = Math.max(-MAX_FRAME_DELTA, Math.min(MAX_FRAME_DELTA, this.accumX));
     const my = Math.max(-MAX_FRAME_DELTA, Math.min(MAX_FRAME_DELTA, this.accumY));
-    this.accumX -= mx;
-    this.accumY -= my;
+    this.accumX = 0;
+    this.accumY = 0;
 
-    this.yaw -= mx * MOUSE_SENSITIVITY;
-    this.pitch -= my * MOUSE_SENSITIVITY;
+    this.yaw -= mx * this.sensitivity;
+    this.pitch -= my * this.sensitivity;
     this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
 
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;

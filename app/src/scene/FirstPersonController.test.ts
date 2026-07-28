@@ -270,8 +270,8 @@ describe('FirstPersonController', () => {
     });
   });
 
-  describe('per-event delta cap', () => {
-    it('caps a single giant mouse delta', async () => {
+  describe('per-frame drop-cap', () => {
+    it('caps a single giant mouse delta per frame', async () => {
       const { FirstPersonController } = await import('./FirstPersonController.js');
       const { CollisionDetector } = await import('./CollisionDetector.js');
       const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
@@ -290,10 +290,8 @@ describe('FirstPersonController', () => {
       expect(Math.abs(yaw)).toBeLessThanOrEqual(maxExpected + 0.001);
       fp.dispose();
     });
-  });
 
-  describe('per-frame carry-over', () => {
-    it('spreads an over-cap accumulation across frames and conserves the total', async () => {
+    it('does NOT carry excess into the next frame (no ghost drift after hand stops)', async () => {
       const { FirstPersonController } = await import('./FirstPersonController.js');
       const { CollisionDetector } = await import('./CollisionDetector.js');
       const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
@@ -305,23 +303,66 @@ describe('FirstPersonController', () => {
       simulateMouseMove(0, 0);
 
       simulateMouseMove(300, 0);
-      const perFrame = MAX_FRAME_DELTA * MOUSE_SENSITIVITY;
-
       fp.update(0.016);
       const y1 = getYawPitch(camera.quaternion).yaw;
-      expect(Math.abs(y1)).toBeCloseTo(perFrame, 3);
+      expect(Math.abs(y1)).toBeGreaterThan(0.001);
 
       fp.update(0.016);
       const y2 = getYawPitch(camera.quaternion).yaw;
-      expect(Math.abs(y2)).toBeCloseTo(perFrame * 2, 3);
+      expect(Math.abs(y2 - y1)).toBeLessThan(0.0001);
+      fp.dispose();
+    });
+  });
 
-      fp.update(0.016);
-      const y3 = getYawPitch(camera.quaternion).yaw;
-      expect(Math.abs(y3)).toBeCloseTo(300 * MOUSE_SENSITIVITY, 3);
+  describe('sensitivity (slider-driven)', () => {
+    it('setSensitivity changes the yaw-per-pixel factor', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      fakeTime = 200;
+      simulateMouseMove(0, 0);
 
+      fp.setSensitivity(0.002);
+      simulateMouseMove(30, 0);
       fp.update(0.016);
-      const y4 = getYawPitch(camera.quaternion).yaw;
-      expect(Math.abs(y4 - y3)).toBeLessThan(0.0001);
+
+      const { yaw } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yaw - -(30 * 0.002))).toBeLessThan(0.001);
+      fp.dispose();
+    });
+
+    it('getSensitivity returns the current factor', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.setSensitivity(0.00123);
+      expect(fp.getSensitivity()).toBeCloseTo(0.00123, 6);
+      fp.dispose();
+    });
+  });
+
+  describe('syncFromCamera discards queued movement', () => {
+    it('drops accumulation gathered before sync (entry-animation guard)', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      fakeTime = 200;
+      simulateMouseMove(0, 0);
+
+      simulateMouseMove(5000, 0);
+      fp.syncFromCamera();
+      fp.update(0.016);
+
+      const { yaw } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yaw)).toBeLessThan(0.001);
       fp.dispose();
     });
   });

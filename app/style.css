@@ -470,6 +470,37 @@ html, body {
   color: #fff;
 }
 
+#sensitivity-slider {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: rgba(20, 20, 30, 0.85);
+  color: #ddd;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  z-index: 90;
+  pointer-events: auto;
+  user-select: none;
+}
+
+#sensitivity-slider input[type='range'] {
+  width: 140px;
+  cursor: pointer;
+}
+
+#sensitivity-slider .sensitivity-value {
+  display: inline-block;
+  min-width: 2ch;
+  text-align: right;
+  color: #88ccff;
+}
+
 .compass-label {
   position: fixed;
   color: #88ccff;
