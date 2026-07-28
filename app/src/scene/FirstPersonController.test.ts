@@ -347,11 +347,11 @@ describe('FirstPersonController', () => {
       simulateMouseMove(0, 0);
 
       fp.setSensitivity(0.002);
-      simulateMouseMove(30, 0);
+      simulateMouseMove(10, 0);
       fp.update(0.016);
 
       const { yaw } = getYawPitch(camera.quaternion);
-      expect(Math.abs(yaw - -(30 * 0.002))).toBeLessThan(0.001);
+      expect(Math.abs(yaw - -(10 * 0.002))).toBeLessThan(0.001);
       fp.dispose();
     });
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import type { CollisionDetector } from './CollisionDetector.js';
-import { PITCH_LIMIT, MAX_FRAME_ANGLE, MOUSE_SENSITIVITY, DBG_RING_SIZE, DBG_JUMP_THRESHOLD } from './first-person-tuning.js';
+import { PITCH_LIMIT, MAX_FRAME_ANGLE, MOUSE_SENSITIVITY, DBG_JUMP_THRESHOLD } from './first-person-tuning.js';
 
 const MOVE_SPEED = 2.0;
 const EYE_HEIGHT = 1.7;
@@ -33,7 +33,6 @@ export class FirstPersonController {
   private lockTime = 0;
   private sensitivity = MOUSE_SENSITIVITY;
   private prevYaw = 0;
-  private ring: Array<{ dt: number; rawX: number; rawY: number; mx: number; my: number; yaw: number; pitch: number }> = [];
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -158,9 +157,14 @@ export class FirstPersonController {
     this.pitch -= my * this.sensitivity;
     this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
 
-    this.pushFrame(dt, rawX, rawY, mx, my);
-    if (Math.abs(this.yaw - prevYaw) > DBG_JUMP_THRESHOLD) {
-      this.dumpRing(Math.abs(this.yaw - prevYaw));
+    const yawDelta = Math.abs(this.yaw - prevYaw);
+    if (yawDelta > DBG_JUMP_THRESHOLD) {
+      console.log('[FP-JUMP]',
+        'dt', +(dt * 1000).toFixed(1), 'ms',
+        'raw', Math.round(rawX), Math.round(rawY),
+        'cap', Math.round(mx), Math.round(my),
+        'Δ', +(yawDelta * 180 / Math.PI).toFixed(1), '°',
+      );
     }
 
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
@@ -197,28 +201,6 @@ export class FirstPersonController {
 
     const corrected = this.collision.tryMove(from, desired);
     camera.position.set(corrected.x, corrected.y, corrected.z);
-  }
-
-  private pushFrame(dt: number, rawX: number, rawY: number, mx: number, my: number): void {
-    this.ring.push({ dt, rawX, rawY, mx, my, yaw: this.yaw, pitch: this.pitch });
-    if (this.ring.length > DBG_RING_SIZE) this.ring.shift();
-  }
-
-  private dumpRing(yawDelta: number): void {
-    const deg = (rad: number) => +(rad * 180 / Math.PI).toFixed(2);
-    console.warn(
-      '[FP-JUMP] yaw delta', yawDelta.toFixed(4), 'rad =', deg(yawDelta), '°  sens=', this.sensitivity,
-    );
-    console.table(this.ring.map((r, i) => ({
-      '#': i,
-      dt_ms: +(r.dt * 1000).toFixed(1),
-      rawX: Math.round(r.rawX),
-      rawY: Math.round(r.rawY),
-      mx: Math.round(r.mx),
-      my: Math.round(r.my),
-      yaw_deg: deg(r.yaw),
-      pitch_deg: deg(r.pitch),
-    })));
   }
 
   dispose() {
