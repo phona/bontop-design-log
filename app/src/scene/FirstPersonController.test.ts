@@ -242,10 +242,10 @@ describe('FirstPersonController', () => {
       fakeTime = 200;
       simulateMouseMove(0, 0);
 
-      simulateMouseMove(0, 10000);
-      fp.update(0.016);
+      for (let i = 0; i < 20; i++) { simulateMouseMove(0, 10000); fp.update(0.016); }
 
       const { pitch } = getYawPitch(camera.quaternion);
+      expect(pitch).toBeLessThan(-0.5);
       expect(pitch).toBeGreaterThanOrEqual(-PITCH_LIMIT - 0.01);
       fp.dispose();
     });
@@ -261,10 +261,10 @@ describe('FirstPersonController', () => {
       fakeTime = 200;
       simulateMouseMove(0, 0);
 
-      simulateMouseMove(0, -10000);
-      fp.update(0.016);
+      for (let i = 0; i < 20; i++) { simulateMouseMove(0, -10000); fp.update(0.016); }
 
       const { pitch } = getYawPitch(camera.quaternion);
+      expect(pitch).toBeGreaterThan(0.5);
       expect(pitch).toBeLessThanOrEqual(PITCH_LIMIT + 0.01);
       fp.dispose();
     });
