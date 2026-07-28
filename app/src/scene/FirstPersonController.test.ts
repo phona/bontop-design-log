@@ -121,7 +121,7 @@ describe('FirstPersonController', () => {
       position: new MockVector3(0, 1.7, 0),
       quaternion: new MockQuaternion(),
     };
-    canvas = {};
+    canvas = { requestPointerLock: vi.fn() };
     eventListeners = {};
     vi.stubGlobal('document', {
       addEventListener: vi.fn((event: string, handler: (e: any) => void) => {

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import type { CollisionDetector } from './CollisionDetector.js';
-import { PITCH_LIMIT, MAX_FRAME_ANGLE, MOUSE_SENSITIVITY, DBG_JUMP_THRESHOLD } from './first-person-tuning.js';
+import { PITCH_LIMIT, MAX_FRAME_ANGLE, MOUSE_SENSITIVITY } from './first-person-tuning.js';
 
 const MOVE_SPEED = 2.0;
 const EYE_HEIGHT = 1.7;
@@ -32,7 +32,6 @@ export class FirstPersonController {
   private accumY = 0;
   private lockTime = 0;
   private sensitivity = MOUSE_SENSITIVITY;
-  private prevYaw = 0;
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -106,7 +105,7 @@ export class FirstPersonController {
   }
 
   requestLock() {
-    this.controls.lock();
+    this.domElement.requestPointerLock({ unadjustedMovement: true });
   }
 
   get isLocked(): boolean {
@@ -133,7 +132,6 @@ export class FirstPersonController {
     this.pitch = Number.isFinite(euler.x)
       ? Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, euler.x))
       : 0;
-    this.prevYaw = this.yaw;
     this.accumX = 0;
     this.accumY = 0;
   }
@@ -149,26 +147,13 @@ export class FirstPersonController {
     this.accumX = 0;
     this.accumY = 0;
 
-    const rawAngleX = rawX * this.sensitivity;
-    const rawAngleY = rawY * this.sensitivity;
     const soft = MAX_FRAME_ANGLE;
-    const effX = Math.sign(rawAngleX) * soft * Math.tanh(Math.abs(rawAngleX) / soft);
-    const effY = Math.sign(rawAngleY) * soft * Math.tanh(Math.abs(rawAngleY) / soft);
+    const effX = Math.sign(rawX) * soft * Math.tanh(Math.abs(rawX) * this.sensitivity / soft);
+    const effY = Math.sign(rawY) * soft * Math.tanh(Math.abs(rawY) * this.sensitivity / soft);
 
-    const prevYaw = this.yaw;
     this.yaw -= effX;
     this.pitch -= effY;
     this.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, this.pitch));
-
-    const yawDelta = Math.abs(this.yaw - prevYaw);
-    if (yawDelta > DBG_JUMP_THRESHOLD) {
-      console.log('[FP-JUMP]',
-        'dt', +(dt * 1000).toFixed(1), 'ms',
-        'raw', Math.round(rawX), Math.round(rawY),
-        'eff', +(effX * 180 / Math.PI).toFixed(1), +(effY * 180 / Math.PI).toFixed(1),
-        'Δ', +(yawDelta * 180 / Math.PI).toFixed(1), '°',
-      );
-    }
 
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
 
