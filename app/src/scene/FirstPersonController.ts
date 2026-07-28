@@ -1,12 +1,11 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import type { CollisionDetector } from './CollisionDetector.js';
+import { PITCH_LIMIT, TURN_RATE, MAX_MOUSE_DELTA, MOUSE_SENSITIVITY } from './first-person-tuning.js';
 
 const MOVE_SPEED = 2.0;
 const EYE_HEIGHT = 1.7;
-const PITCH_LIMIT = Math.PI * 80 / 180;
 const SMOOTH_FACTOR = 0.6;
-const MOUSE_SENSITIVITY = 0.002;
 
 export interface MovementKeys {
   forward: boolean;
@@ -64,8 +63,10 @@ export class FirstPersonController {
         this.skipNextMove = false;
         return;
       }
-      this.targetYaw -= e.movementX * MOUSE_SENSITIVITY;
-      this.targetPitch -= e.movementY * MOUSE_SENSITIVITY;
+      const mx = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, e.movementX));
+      const my = Math.max(-MAX_MOUSE_DELTA, Math.min(MAX_MOUSE_DELTA, e.movementY));
+      this.targetYaw -= mx * MOUSE_SENSITIVITY;
+      this.targetPitch -= my * MOUSE_SENSITIVITY;
       this.targetPitch = this.clampPitch(this.targetPitch);
     };
 
@@ -141,8 +142,11 @@ export class FirstPersonController {
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;
 
     const lerpT = 1 - Math.pow(SMOOTH_FACTOR, dt * 60);
-    this.currentYaw += (this.targetYaw - this.currentYaw) * lerpT;
-    this.currentPitch += (this.targetPitch - this.currentPitch) * lerpT;
+    const maxStep = TURN_RATE * dt;
+    const yawDelta = Math.max(-maxStep, Math.min(maxStep, (this.targetYaw - this.currentYaw) * lerpT));
+    const pitchDelta = Math.max(-maxStep, Math.min(maxStep, (this.targetPitch - this.currentPitch) * lerpT));
+    this.currentYaw += yawDelta;
+    this.currentPitch += pitchDelta;
     this.currentPitch = this.clampPitch(this.currentPitch);
 
     const euler = new THREE.Euler(this.currentPitch, this.currentYaw, 0, 'YXZ');

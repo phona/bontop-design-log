@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { WallSegment } from '@shared/types';
+import { PITCH_LIMIT, TURN_RATE, MAX_MOUSE_DELTA, MOUSE_SENSITIVITY } from './first-person-tuning.js';
 
 class MockVector3 {
   x = 0; y = 0; z = 0;
@@ -185,7 +186,7 @@ describe('FirstPersonController', () => {
   });
 
   describe('pitch clamping', () => {
-    it('clamps pitch to ±80 degrees when looking down', async () => {
+    it('clamps pitch to the limit when looking down', async () => {
       const { FirstPersonController } = await import('./FirstPersonController.js');
       const { CollisionDetector } = await import('./CollisionDetector.js');
       const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
@@ -195,16 +196,17 @@ describe('FirstPersonController', () => {
       simulateLock();
       simulateMouseMove(0, 0);
 
-      simulateMouseMove(0, 5000);
+      for (let i = 0; i < 10; i++) simulateMouseMove(0, 1000);
       for (let i = 0; i < 60; i++) fp.update(0.016);
 
       const { pitch } = getYawPitch(camera.quaternion);
-      const limit = 80 * Math.PI / 180;
+      const limit = PITCH_LIMIT;
+      expect(pitch).toBeLessThan(-1.0);
       expect(pitch).toBeGreaterThanOrEqual(-limit - 0.02);
       fp.dispose();
     });
 
-    it('clamps pitch to ±80 degrees when looking up', async () => {
+    it('clamps pitch to the limit when looking up', async () => {
       const { FirstPersonController } = await import('./FirstPersonController.js');
       const { CollisionDetector } = await import('./CollisionDetector.js');
       const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
@@ -214,11 +216,12 @@ describe('FirstPersonController', () => {
       simulateLock();
       simulateMouseMove(0, 0);
 
-      simulateMouseMove(0, -5000);
+      for (let i = 0; i < 10; i++) simulateMouseMove(0, -1000);
       for (let i = 0; i < 60; i++) fp.update(0.016);
 
       const { pitch } = getYawPitch(camera.quaternion);
-      const limit = 80 * Math.PI / 180;
+      const limit = PITCH_LIMIT;
+      expect(pitch).toBeGreaterThan(1.0);
       expect(pitch).toBeLessThanOrEqual(limit + 0.02);
       fp.dispose();
     });
@@ -260,6 +263,44 @@ describe('FirstPersonController', () => {
       const { yaw } = getYawPitch(camera.quaternion);
       const target = -(100 * 0.002);
       expect(Math.abs(yaw - target)).toBeLessThan(0.02);
+      fp.dispose();
+    });
+  });
+
+  describe('pitch rate limit & input cap', () => {
+    it('rate-limits the turn so a long frame cannot snap to the vertical wall', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      simulateMouseMove(0, 0);
+
+      for (let i = 0; i < 10; i++) simulateMouseMove(0, -1000);
+      fp.update(0.1);
+
+      const { pitch } = getYawPitch(camera.quaternion);
+      expect(Math.abs(pitch)).toBeLessThanOrEqual(TURN_RATE * 0.1 + 0.1);
+      fp.dispose();
+    });
+
+    it('caps a single giant mouse delta so it does not pin to the wall', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.requestLock();
+      (document as any).pointerLockElement = canvas;
+      simulateLock();
+      simulateMouseMove(0, 0);
+
+      simulateMouseMove(0, 100000);
+      for (let i = 0; i < 60; i++) fp.update(0.016);
+
+      const { pitch } = getYawPitch(camera.quaternion);
+      expect(Math.abs(pitch)).toBeLessThanOrEqual(MAX_MOUSE_DELTA * MOUSE_SENSITIVITY + 0.1);
       fp.dispose();
     });
   });
@@ -339,7 +380,7 @@ describe('FirstPersonController', () => {
       fp.update(0.016);
 
       const { pitch } = getYawPitch(camera.quaternion);
-      const limit = 80 * Math.PI / 180;
+      const limit = PITCH_LIMIT;
       expect(Math.abs(pitch)).toBeLessThanOrEqual(limit + 0.02);
       fp.dispose();
     });
@@ -357,7 +398,7 @@ describe('FirstPersonController', () => {
       fp.update(0.016);
 
       const { pitch } = getYawPitch(camera.quaternion);
-      const limit = 80 * Math.PI / 180;
+      const limit = PITCH_LIMIT;
       expect(Math.abs(pitch)).toBeLessThanOrEqual(limit + 0.02);
       fp.dispose();
     });
