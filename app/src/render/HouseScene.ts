@@ -16,6 +16,7 @@ import type {
   ResolvedOpening,
   FurnishingsYaml,
 } from '@shared/types';
+import { FURNITURE_DIMS } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopDownView } from '../scene/TopDownView.js';
 import { pickRoomIdFromHits } from '../scene/spawn-utils.js';
@@ -88,6 +89,7 @@ export class HouseScene implements SceneApi {
   private textureManager = new TextureManager();
   private gridHelper?: THREE.GridHelper;
   private envManager: EnvironmentManager;
+  private ghostMesh: THREE.Mesh | null = null;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
   private readonly ORBIT_POSITION = new THREE.Vector3(7.4, 14, 19.2);
   private readonly ORBIT_TARGET = new THREE.Vector3(7.4, 0, 3.65);
@@ -1609,6 +1611,58 @@ export class HouseScene implements SceneApi {
       el.style.top = `${y}px`;
       el.style.opacity = '0.95';
     }
+  }
+
+  getGroundPosition(clientX: number, clientY: number): { x: number; z: number } | null {
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2(
+      (clientX / window.innerWidth) * 2 - 1,
+      -(clientY / window.innerHeight) * 2 + 1,
+    );
+    raycaster.setFromCamera(mouse, this.camera);
+    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const intersection = new THREE.Vector3();
+    const hit = raycaster.ray.intersectPlane(floorPlane, intersection);
+    if (hit) return { x: intersection.x, z: intersection.z };
+    return null;
+  }
+
+  showGhost(x: number, z: number, rotation: number, type: string): void {
+    this.hideGhost();
+    const dims = FURNITURE_DIMS[type];
+    const geo = new THREE.BoxGeometry(dims?.width ?? 1, 0.8, dims?.depth ?? 1);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x44aaff, transparent: true, opacity: 0.4, depthWrite: false,
+    });
+    this.ghostMesh = new THREE.Mesh(geo, mat);
+    this.ghostMesh.position.set(x, 0, z);
+    this.ghostMesh.rotation.y = rotation * Math.PI / 180;
+    this.scene.add(this.ghostMesh);
+  }
+
+  hideGhost(): void {
+    if (this.ghostMesh) {
+      this.scene.remove(this.ghostMesh);
+      this.ghostMesh.geometry.dispose();
+      (this.ghostMesh.material as THREE.Material).dispose();
+      this.ghostMesh = null;
+    }
+  }
+
+  updateGhostPosition(x: number, z: number, rotation?: number): void {
+    if (this.ghostMesh) {
+      this.ghostMesh.position.set(x, 0, z);
+      if (rotation !== undefined) {
+        this.ghostMesh.rotation.y = rotation * Math.PI / 180;
+      }
+    }
+  }
+
+  getGhostPosition(): { x: number; z: number } | null {
+    if (this.ghostMesh) {
+      return { x: this.ghostMesh.position.x, z: this.ghostMesh.position.z };
+    }
+    return null;
   }
 
   dispose(): void {

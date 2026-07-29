@@ -26,6 +26,13 @@ export class FirstPersonController {
   private onLockChange: () => void;
   private onMouseMove: (e: MouseEvent) => void;
 
+  private dragMode = false;
+  private draggedObjectId: string | null = null;
+  private dragRotation = 0;
+  private onDragMoveCb: ((x: number, z: number) => void) | null = null;
+  private onDragEndCb: ((x: number, z: number, rotation: number) => void) | null = null;
+  private onWheelBound: ((e: WheelEvent) => void) | null = null;
+
   private yaw = 0;
   private pitch = 0;
   private accumX = 0;
@@ -89,7 +96,16 @@ export class FirstPersonController {
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('keyup', this.onKeyUp);
     document.addEventListener('mousemove', this.onMouseMove);
+    document.addEventListener('mousemove', this.onDragMouseMove);
   }
+
+  private onDragMouseMove = (e: MouseEvent) => {
+    if (!this.enabled || !this.dragMode) return;
+    if (document.pointerLockElement !== this.domElement) return;
+    const dx = e.movementX || 0;
+    const dz = e.movementY || 0;
+    this.onDragMoveCb?.(dx, dz);
+  };
 
   disable() {
     this.enabled = false;
@@ -99,6 +115,8 @@ export class FirstPersonController {
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('mousemove', this.onMouseMove);
+    document.removeEventListener('mousemove', this.onDragMouseMove);
+    if (this.dragMode) this.exitDragMode();
     if (this._isLocked) {
       this.controls.unlock();
     }
@@ -123,6 +141,42 @@ export class FirstPersonController {
   getSensitivity(): number {
     return this.sensitivity;
   }
+
+  setDragHandlers(handlers: {
+    onMove: (x: number, z: number) => void;
+    onEnd: (x: number, z: number, rotation: number) => void;
+  }): void {
+    this.onDragMoveCb = handlers.onMove;
+    this.onDragEndCb = handlers.onEnd;
+  }
+
+  enterDragMode(objectId: string, rotation: number = 0): void {
+    this.dragMode = true;
+    this.draggedObjectId = objectId;
+    this.dragRotation = rotation;
+
+    this.onWheelBound = (e: WheelEvent) => {
+      if (!this.dragMode) return;
+      this.dragRotation += e.deltaY > 0 ? 15 : -15;
+      this.dragRotation = ((this.dragRotation % 360) + 360) % 360;
+      this.onDragMoveCb?.(0, 0);
+    };
+    document.addEventListener('wheel', this.onWheelBound, { passive: true });
+  }
+
+  exitDragMode(): void {
+    this.dragMode = false;
+    if (this.onWheelBound) {
+      document.removeEventListener('wheel', this.onWheelBound);
+      this.onWheelBound = null;
+    }
+    this.draggedObjectId = null;
+  }
+
+  isDragMode(): boolean { return this.dragMode; }
+
+  getDragRotation(): number { return this.dragRotation; }
+  getDraggedObjectId(): string | null { return this.draggedObjectId; }
 
   syncFromCamera(): void {
     const camera = this.controls.getObject() as unknown as THREE.PerspectiveCamera;

@@ -17,6 +17,7 @@ import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
 import { CommandPalette } from './ui/CommandPalette.js';
+import { FurniturePanel } from './ui/FurniturePanel.js';
 import './ui/keybindings.js';
 import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
 
@@ -47,6 +48,8 @@ export class App {
   private annotationRenderer?: AnnotationRenderer;
   private annotationGroupVisible = true;
   private commandPalette = new CommandPalette();
+  private furniturePanel = new FurniturePanel();
+  private furniturePlaceMode: { type: string } | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.stateSync = new StateSync();
@@ -89,6 +92,8 @@ export class App {
     this.modeIndicator = document.getElementById('mode-indicator') as HTMLDivElement;
     this.toastEl = document.getElementById('pointer-lock-toast') as HTMLDivElement;
 
+    this.setupFurniturePanel();
+    this.setupFurnitureDragHandlers();
     this.setupEventHandlers();
     this.setupKeyboard();
     this.setupPointerLockEvents();
@@ -162,6 +167,72 @@ export class App {
     return this.houseScene.captureFloorPlan();
   }
 
+  private setupFurniturePanel(): void {
+    this.furniturePanel.onSelect((type) => {
+      this.furniturePanel.hide();
+      this.furniturePlaceMode = { type };
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      const pos = this.houseScene.getGroundPosition(centerX, centerY);
+      if (pos) {
+        this.houseScene.showGhost(pos.x, pos.z, 0, type);
+      }
+    });
+  }
+
+  private exitFurniturePlaceMode(): void {
+    this.furniturePlaceMode = null;
+    this.houseScene.hideGhost();
+  }
+
+  private setupFurnitureDragHandlers(): void {
+    this.fpController.setDragHandlers({
+      onMove: (dx, dz) => {
+        if (!this.fpController.isDragMode()) return;
+        const rot = this.fpController.getDragRotation();
+        const camera = this.houseScene.camera;
+        const forward = new THREE.Vector3(0, 0, -1);
+        forward.applyQuaternion(camera.quaternion);
+        forward.y = 0;
+        forward.normalize();
+        const right = new THREE.Vector3(1, 0, 0);
+        right.applyQuaternion(camera.quaternion);
+        right.y = 0;
+        right.normalize();
+        const moveScale = 0.02;
+        const mx = (forward.x * (-dz) + right.x * dx) * moveScale;
+        const mz = (forward.z * (-dz) + right.z * dx) * moveScale;
+        const pos = this.houseScene.getGhostPosition();
+        if (pos) {
+          const newX = pos.x + mx;
+          const newZ = pos.z + mz;
+          this.houseScene.updateGhostPosition(newX, newZ, rot);
+        }
+      },
+      onEnd: async (x, z, rotation) => {
+        const objectId = this.fpController.getDraggedObjectId();
+        if (!objectId) return;
+        const parts = objectId.split(':');
+        if (parts.length >= 4) {
+          const room = parts[1];
+          const index = parseInt(parts[3], 10);
+          if (!isNaN(index)) {
+            try {
+              await fetch(`/api/furnishings/${room}/${index}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ x, z, rotation }),
+              });
+            } catch (err) {
+              console.error('Failed to update furnishing', err);
+            }
+          }
+        }
+        this.houseScene.hideGhost();
+      },
+    });
+  }
+
   private setupEventHandlers(): void {
     this.stateSync.onSchemeChange((scheme: CurrentScheme) => {
       this.applyScheme(scheme);
@@ -208,6 +279,9 @@ export class App {
       if (e.code === 'Escape') {
         if (this.overviewMenu.isVisible()) { this.overviewMenu.hide(); return; }
         if (this.commandPalette.isVisible()) { this.commandPalette.hide(); return; }
+        if (this.furniturePanel.isVisible()) { this.furniturePanel.hide(); return; }
+        if (this.furniturePlaceMode) { this.exitFurniturePlaceMode(); return; }
+        if (this.fpController.isDragMode()) { this.fpController.exitDragMode(); this.houseScene.hideGhost(); return; }
         return;
       }
 
@@ -256,6 +330,31 @@ export class App {
       if (this.houseScene.mode === 'first-person' && !e.repeat) {
         if (e.code === 'BracketLeft') { e.preventDefault(); this.sensitivitySlider.step(-1); return; }
         if (e.code === 'BracketRight') { e.preventDefault(); this.sensitivitySlider.step(1); return; }
+
+        if (e.code === 'KeyB') {
+          e.preventDefault();
+          if (this.furniturePlaceMode) {
+            this.exitFurniturePlaceMode();
+          }
+          this.furniturePanel.toggle();
+          return;
+        }
+
+        if (e.code === 'KeyG') {
+          e.preventDefault();
+          if (this.fpController.isDragMode()) {
+            this.fpController.exitDragMode();
+            this.houseScene.hideGhost();
+            return;
+          }
+          const hovered = this.hoverTooltip.getCurrent();
+          if (hovered?.type === 'furniture') {
+            const rot = 0;
+            this.fpController.enterDragMode(hovered.objectId, rot);
+            this.houseScene.showGhost(0, 0, rot, hovered.objectId);
+          }
+          return;
+        }
       }
 
       if (e.code === 'Tab' && this.compareActive) {
@@ -373,6 +472,57 @@ export class App {
       this.analysisTools.measurement.onFirstPersonAction();
       return;
     }
+
+    if (this.fpController.isDragMode()) {
+      const objectId = this.fpController.getDraggedObjectId();
+      const pos = this.houseScene.getGhostPosition();
+      if (objectId && pos) {
+        const x = pos.x;
+        const z = pos.z;
+        const rotation = this.fpController.getDragRotation();
+        const parts = objectId.split(':');
+        if (parts.length >= 4) {
+          const room = parts[1];
+          const index = parseInt(parts[3], 10);
+          if (!isNaN(index)) {
+            fetch(`/api/furnishings/${room}/${index}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ x, z, rotation }),
+            }).catch((err) => console.error('Failed to update furnishing', err));
+          }
+        }
+      }
+      this.fpController.exitDragMode();
+      this.houseScene.hideGhost();
+      return;
+    }
+
+    if (this.furniturePlaceMode) {
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      const pos = this.houseScene.getGroundPosition(centerX, centerY);
+      if (pos) {
+        const type = this.furniturePlaceMode.type;
+        fetch('/api/furnishings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ room: 'living_dining', type, x: pos.x, z: pos.z, rotation: 0 }),
+        }).then(async () => {
+          const response = await fetch('/api/project');
+          const data = await response.json();
+          this.projectData = data;
+          this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
+          await this.houseScene.buildFromCatalog(data);
+          this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
+          this.analysisTools.setRooms(data?.house?.rooms ?? []);
+          this.analysisTools.checkFurnitureCollisions();
+        }).catch((err) => console.error('Failed to place furnishing', err));
+      }
+      this.exitFurniturePlaceMode();
+      return;
+    }
+
     const target = this.houseScene.raycastFromScreenCenter();
     if (!target) return;
 
@@ -539,6 +689,24 @@ export class App {
 
     if (this.houseScene.mode === 'first-person' && !this.houseScene.cameraAnimator.isAnimating()) {
       this.fpController.update(dt);
+
+      if (this.furniturePlaceMode) {
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const pos = this.houseScene.getGroundPosition(centerX, centerY);
+        if (pos) {
+          this.houseScene.updateGhostPosition(pos.x, pos.z);
+        }
+      }
+
+      if (this.fpController.isDragMode()) {
+        const pos = this.houseScene.getGhostPosition();
+        if (pos) {
+          const rot = this.fpController.getDragRotation();
+          this.houseScene.updateGhostPosition(pos.x, pos.z, rot);
+        }
+      }
+
       const target = this.houseScene.raycastFromScreenCenter({ hoverableOnly: true });
       this.hoverTooltip.update(target);
     }
