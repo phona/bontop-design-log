@@ -70,11 +70,13 @@ describe('Furnishings API (with real YAML file)', () => {
   });
 
   it('GET /api/furnishings returns empty object for empty furnishings', async () => {
+    const prevYaml = readFileSync(yamlPath(), 'utf8');
     writeFileSync(yamlPath(), `furnishings: {}
 `, 'utf8');
     const res = await request(app).get('/api/furnishings');
     assert.equal(res.status, 200);
     assert.deepEqual(res.body, {});
+    writeFileSync(yamlPath(), prevYaml, 'utf8');
   });
 
   it('PUT returns 404 for non-existent room', async () => {

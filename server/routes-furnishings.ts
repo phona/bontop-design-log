@@ -32,7 +32,7 @@ export function createFurnishingsRouter(yamlPath: string): Router {
     }
   });
 
-  router.put('/:room/:index', (req: Request, res: Response) => {
+  router.put('/:room/:index', async (req: Request, res: Response) => {
     try {
       const { room, index } = req.params;
       const { x, z, rotation } = req.body;
@@ -46,14 +46,14 @@ export function createFurnishingsRouter(yamlPath: string): Router {
       if (x !== undefined) item.x = x;
       if (z !== undefined) item.z = z;
       if (rotation !== undefined) item.rotation = rotation;
-      writeYaml(yamlPath, data);
+      await writeYaml(yamlPath, data);
       res.json({ item });
     } catch {
       res.status(500).json({ error: 'Failed to update furnishing' });
     }
   });
 
-  router.delete('/:room/:index', (req: Request, res: Response) => {
+  router.delete('/:room/:index', async (req: Request, res: Response) => {
     try {
       const { room, index } = req.params;
       const data = loadData();
@@ -63,14 +63,14 @@ export function createFurnishingsRouter(yamlPath: string): Router {
         return;
       }
       data.furnishings[room] = items.filter((_, i) => i !== Number(index));
-      writeYaml(yamlPath, data);
+      await writeYaml(yamlPath, data);
       res.json({ success: true });
     } catch {
       res.status(500).json({ error: 'Failed to delete furnishing' });
     }
   });
 
-  router.post('/', (req: Request, res: Response) => {
+  router.post('/', async (req: Request, res: Response) => {
     try {
       const { room, type, x, z, rotation, count } = req.body;
       if (!room || !type) {
@@ -85,7 +85,7 @@ export function createFurnishingsRouter(yamlPath: string): Router {
       if (rotation !== undefined) item.rotation = rotation;
       if (count !== undefined) item.count = count;
       data.furnishings[room].push(item);
-      writeYaml(yamlPath, data);
+      await writeYaml(yamlPath, data);
       res.status(201).json({ item });
     } catch {
       res.status(500).json({ error: 'Failed to add furnishing' });
