@@ -1352,6 +1352,22 @@ export class HouseScene implements SceneApi {
     return ids;
   }
 
+  setFloorMaterial(roomId: string, appearance: { type: string; color: string; scale?: number }): void {
+    this.textureManager.applyToRoom(roomId, appearance, 'floor');
+  }
+
+  setWallMaterial(roomId: string, appearance: { type: string; color: string; scale?: number }): void {
+    this.textureManager.applyToRoom(roomId, appearance, 'wall');
+  }
+
+  getAllRoomIds(): string[] {
+    const ids = new Set<string>();
+    for (const mesh of this.floorMeshes) {
+      ids.add(mesh.userData.roomId as string);
+    }
+    return [...ids];
+  }
+
   highlightObject(objectId: string) {
     this.scene.traverse((obj) => {
       const mesh = obj as THREE.Mesh;

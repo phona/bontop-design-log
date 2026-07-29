@@ -335,38 +335,50 @@ describe('FloorTopic', () => {
     expect(topic.options[0].id).toBe('floor_tile_01');
   });
 
-  it('should apply floor color and return floor:all', () => {
+  it('should apply floor material and return floor:all', () => {
     const scene = {
-      setFloorColor: vi.fn(),
+      setFloorMaterial: vi.fn(),
+      getAllRoomIds: vi.fn(() => ['living_dining', 'bedroom_nw']),
     };
     const ids = topic.apply(scene as any, 'floor_tile_01');
-    expect(scene.setFloorColor).toHaveBeenCalledWith('#c49a6c');
+    expect(scene.getAllRoomIds).toHaveBeenCalled();
+    expect(scene.setFloorMaterial).toHaveBeenCalledWith(
+      'living_dining',
+      { type: 'ceramic_tile_v2', color: '#c49a6c', scale: 2 }
+    );
     expect(ids).toEqual(['floor:all']);
   });
 
   it('should apply second floor option', () => {
     const scene = {
-      setFloorColor: vi.fn(),
+      setFloorMaterial: vi.fn(),
+      getAllRoomIds: vi.fn(() => ['living_dining', 'bedroom_nw']),
     };
     const ids = topic.apply(scene as any, 'floor_tile_02');
-    expect(scene.setFloorColor).toHaveBeenCalledWith('#8b8b8b');
+    expect(scene.setFloorMaterial).toHaveBeenCalledWith(
+      'living_dining',
+      { type: 'ceramic_tile_v2', color: '#8b8b8b', scale: 2 }
+    );
     expect(ids).toEqual(['floor:all']);
   });
 
   it('should return empty array for unknown option', () => {
     const scene = {
-      setFloorColor: vi.fn(),
+      setFloorMaterial: vi.fn(),
+      getAllRoomIds: vi.fn(),
     };
     const ids = topic.apply(scene as any, 'nonexistent');
     expect(ids).toEqual([]);
-    expect(scene.setFloorColor).not.toHaveBeenCalled();
+    expect(scene.setFloorMaterial).not.toHaveBeenCalled();
   });
 
-  it('should return empty array for option without color', () => {
+  it('should apply floor material even without data.appearance using color fallback', () => {
     const scene = {
-      setFloorColor: vi.fn(),
+      setFloorMaterial: vi.fn(),
+      getAllRoomIds: vi.fn(() => ['living_dining']),
     };
     const ids = topic.apply(scene as any, 'floor_tile_01');
+    expect(scene.setFloorMaterial).toHaveBeenCalled();
     expect(ids).toEqual(['floor:all']);
   });
 
@@ -392,41 +404,42 @@ describe('WallTopic', () => {
     expect(topic.options[0].id).toBe('wall_tile_01');
   });
 
-  it('should apply wall color to WALL_ROOMS and return wall ids', () => {
+  it('should apply wall material to tile rooms and return wall ids', () => {
     const scene = {
-      setWallColor: vi.fn(),
+      setWallMaterial: vi.fn(),
       getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['kitchen', 'master_bath', 'guest_bath']),
     };
     const ids = topic.apply(scene as any, 'wall_tile_01');
     expect(scene.getRoomIdsWithWallFinish).toHaveBeenCalledWith('tile');
-    expect(scene.setWallColor).toHaveBeenCalledWith(
-      ['kitchen', 'master_bath', 'guest_bath'],
-      '#f5f5f5'
+    expect(scene.setWallMaterial).toHaveBeenCalledWith(
+      'kitchen',
+      { type: 'ceramic_tile_v2', color: '#f5f5f5', scale: 2 }
     );
     expect(ids).toEqual(['wall:kitchen', 'wall:master_bath', 'wall:guest_bath']);
   });
 
   it('should apply second wall option', () => {
     const scene = {
-      setWallColor: vi.fn(),
+      setWallMaterial: vi.fn(),
       getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['kitchen', 'master_bath', 'guest_bath']),
     };
     const ids = topic.apply(scene as any, 'wall_tile_02');
     expect(scene.getRoomIdsWithWallFinish).toHaveBeenCalledWith('tile');
-    expect(scene.setWallColor).toHaveBeenCalledWith(
-      ['kitchen', 'master_bath', 'guest_bath'],
-      '#d0d0d0'
+    expect(scene.setWallMaterial).toHaveBeenCalledWith(
+      'kitchen',
+      { type: 'ceramic_tile_v2', color: '#d0d0d0', scale: 2 }
     );
     expect(ids.length).toBe(3);
   });
 
   it('should return empty array for unknown option', () => {
     const scene = {
-      setWallColor: vi.fn(),
+      setWallMaterial: vi.fn(),
+      getRoomIdsWithWallFinish: vi.fn(),
     };
     const ids = topic.apply(scene as any, 'nonexistent');
     expect(ids).toEqual([]);
-    expect(scene.setWallColor).not.toHaveBeenCalled();
+    expect(scene.setWallMaterial).not.toHaveBeenCalled();
   });
 
   it('validate should return empty array', () => {
@@ -451,40 +464,54 @@ describe('PaintTopic', () => {
     expect(topic.options[0].id).toBe('latex_paint_01');
   });
 
-  it('should apply paint color and return paint:rooms', () => {
+  it('should apply paint material to paint rooms and return paint ids', () => {
     const scene = {
-      setPaintColor: vi.fn(),
+      setWallMaterial: vi.fn(),
+      getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['living_dining', 'bedroom_nw', 'study']),
     };
     const ids = topic.apply(scene as any, 'latex_paint_01');
-    expect(scene.setPaintColor).toHaveBeenCalledWith('#f7f5ef');
-    expect(ids).toEqual(['paint:rooms']);
+    expect(scene.getRoomIdsWithWallFinish).toHaveBeenCalledWith('paint');
+    expect(scene.setWallMaterial).toHaveBeenCalledWith(
+      'living_dining',
+      { type: 'matte_paint', color: '#f7f5ef', scale: 1 }
+    );
+    expect(ids).toEqual(['paint:living_dining', 'paint:bedroom_nw', 'paint:study']);
   });
 
   it('should apply cream paint option', () => {
     const scene = {
-      setPaintColor: vi.fn(),
+      setWallMaterial: vi.fn(),
+      getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['living_dining', 'bedroom_nw', 'study']),
     };
     const ids = topic.apply(scene as any, 'latex_paint_02');
-    expect(scene.setPaintColor).toHaveBeenCalledWith('#fff4e6');
-    expect(ids).toEqual(['paint:rooms']);
+    expect(scene.setWallMaterial).toHaveBeenCalledWith(
+      'living_dining',
+      { type: 'matte_paint', color: '#fff4e6', scale: 1 }
+    );
+    expect(ids.length).toBe(3);
   });
 
   it('should apply light blue paint option', () => {
     const scene = {
-      setPaintColor: vi.fn(),
+      setWallMaterial: vi.fn(),
+      getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['living_dining', 'bedroom_nw', 'study']),
     };
     const ids = topic.apply(scene as any, 'latex_paint_03');
-    expect(scene.setPaintColor).toHaveBeenCalledWith('#e6f3ff');
-    expect(ids).toEqual(['paint:rooms']);
+    expect(scene.setWallMaterial).toHaveBeenCalledWith(
+      'living_dining',
+      { type: 'matte_paint', color: '#e6f3ff', scale: 1 }
+    );
+    expect(ids.length).toBe(3);
   });
 
   it('should return empty array for unknown option', () => {
     const scene = {
-      setPaintColor: vi.fn(),
+      setWallMaterial: vi.fn(),
+      getRoomIdsWithWallFinish: vi.fn(),
     };
     const ids = topic.apply(scene as any, 'nonexistent');
     expect(ids).toEqual([]);
-    expect(scene.setPaintColor).not.toHaveBeenCalled();
+    expect(scene.setWallMaterial).not.toHaveBeenCalled();
   });
 
   it('validate should return empty array', () => {
