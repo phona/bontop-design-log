@@ -141,7 +141,7 @@ export class AnnotationRenderer {
         ? createNetworkIcon()
         : createSocketIcon(p.count ?? 1);
       icon.position.set(p.x, p.type === 'floor_socket' ? 0.05 : p.height, p.z);
-      icon.userData = { type: 'annotation', category: 'electrical', pointId: p.id, note: p.note };
+      icon.userData = { type: 'annotation', category: 'electrical', pointId: p.id, note: p.note, objectId: 'electrical:' + p.id };
       const label = this.createLabel(p.note ?? '');
       label.position.set(0, 0.3, 0);
       label.visible = false;
@@ -164,7 +164,7 @@ export class AnnotationRenderer {
       };
       const icon = (iconMap[p.type] ?? createFaucetIcon)();
       icon.position.set(p.x, p.height ?? 0.5, p.z);
-      icon.userData = { type: 'annotation', category: 'plumbing', pointId: p.id, note: p.note };
+      icon.userData = { type: 'annotation', category: 'plumbing', pointId: p.id, note: p.note, objectId: 'plumbing:' + p.id };
       const label = this.createLabel(p.note ?? '');
       label.position.set(0, 0.3, 0);
       label.visible = false;

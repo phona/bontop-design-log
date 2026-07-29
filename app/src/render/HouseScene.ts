@@ -1322,6 +1322,16 @@ export class HouseScene implements SceneApi {
     return this.platform?.id;
   }
 
+  getObjectPosition(objectId: string): { x: number; z: number } | null {
+    let result: { x: number; z: number } | null = null;
+    this.scene.traverse((obj) => {
+      if (!result && obj.userData?.objectId === objectId) {
+        result = { x: obj.position.x, z: obj.position.z };
+      }
+    });
+    return result;
+  }
+
   getFurnitureMeshes(): THREE.Group[] {
     return this.furnitureMeshes;
   }
@@ -1479,6 +1489,14 @@ export class HouseScene implements SceneApi {
       return this.platform.name;
     }
 
+    if (objectId.startsWith('electrical:')) {
+      const pointName = objectId.slice('electrical:'.length);
+      return roomName ? `${roomName} · 电气 ${pointName}` : `电气 ${pointName}`;
+    }
+    if (objectId.startsWith('plumbing:')) {
+      const pointName = objectId.slice('plumbing:'.length);
+      return roomName ? `${roomName} · 给排水 ${pointName}` : `给排水 ${pointName}`;
+    }
     if (type === 'wall' && objectId.startsWith('wall:')) {
       const parts = objectId.split(':');
       const dir = parts[2];

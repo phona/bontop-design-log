@@ -18,6 +18,7 @@ import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
 import { CommandPalette } from './ui/CommandPalette.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
+import { PlacementPanel } from './ui/PlacementPanel.js';
 import './ui/keybindings.js';
 import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
 
@@ -50,6 +51,8 @@ export class App {
   private commandPalette = new CommandPalette();
   private furniturePanel = new FurniturePanel();
   private furniturePlaceMode: { type: string } | null = null;
+  private placementPanel = new PlacementPanel();
+  private infrastructurePlaceMode: { category: string; type: string } | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.stateSync = new StateSync();
@@ -93,7 +96,8 @@ export class App {
     this.toastEl = document.getElementById('pointer-lock-toast') as HTMLDivElement;
 
     this.setupFurniturePanel();
-    this.setupFurnitureDragHandlers();
+    this.setupPlacementPanel();
+    this.setupDragHandlers();
     this.setupEventHandlers();
     this.setupKeyboard();
     this.setupPointerLockEvents();
@@ -185,7 +189,25 @@ export class App {
     this.houseScene.hideGhost();
   }
 
-  private setupFurnitureDragHandlers(): void {
+  private exitInfrastructurePlaceMode(): void {
+    this.infrastructurePlaceMode = null;
+    this.houseScene.hideGhost();
+  }
+
+  private setupPlacementPanel(): void {
+    this.placementPanel.onSelect((category, type) => {
+      this.placementPanel.hide();
+      this.infrastructurePlaceMode = { category, type };
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      const pos = this.houseScene.getGroundPosition(centerX, centerY);
+      if (pos) {
+        this.houseScene.showGhost(pos.x, pos.z, 0, 'dining_chair');
+      }
+    });
+  }
+
+  private setupDragHandlers(): void {
     this.fpController.setDragHandlers({
       onMove: (dx, dz) => {
         if (!this.fpController.isDragMode()) return;
@@ -212,19 +234,36 @@ export class App {
       onEnd: async (x, z, rotation) => {
         const objectId = this.fpController.getDraggedObjectId();
         if (!objectId) return;
-        const parts = objectId.split(':');
-        if (parts.length >= 4) {
-          const room = parts[1];
-          const index = parseInt(parts[3], 10);
-          if (!isNaN(index)) {
-            try {
-              await fetch(`/api/furnishings/${room}/${index}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ x, z, rotation }),
-              });
-            } catch (err) {
-              console.error('Failed to update furnishing', err);
+        if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:')) {
+          const isElectrical = objectId.startsWith('electrical:');
+          const id = objectId.split(':').slice(1).join(':');
+          const apiUrl = isElectrical ? '/api/electrical' : '/api/plumbing';
+          try {
+            await fetch(`${apiUrl}/${id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ x, z }),
+            });
+            this.annotationRenderer?.clear();
+            await this.annotationRenderer?.load();
+          } catch (err) {
+            console.error('Failed to update annotation', err);
+          }
+        } else if (objectId.startsWith('furniture:')) {
+          const parts = objectId.split(':');
+          if (parts.length >= 4) {
+            const room = parts[1];
+            const index = parseInt(parts[3], 10);
+            if (!isNaN(index)) {
+              try {
+                await fetch(`/api/furnishings/${room}/${index}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ x, z, rotation }),
+                });
+              } catch (err) {
+                console.error('Failed to update furnishing', err);
+              }
             }
           }
         }
@@ -279,8 +318,10 @@ export class App {
       if (e.code === 'Escape') {
         if (this.overviewMenu.isVisible()) { this.overviewMenu.hide(); return; }
         if (this.commandPalette.isVisible()) { this.commandPalette.hide(); return; }
+        if (this.placementPanel.isVisible()) { this.placementPanel.hide(); return; }
         if (this.furniturePanel.isVisible()) { this.furniturePanel.hide(); return; }
         if (this.furniturePlaceMode) { this.exitFurniturePlaceMode(); return; }
+        if (this.infrastructurePlaceMode) { this.exitInfrastructurePlaceMode(); return; }
         if (this.fpController.isDragMode()) { this.fpController.exitDragMode(); this.houseScene.hideGhost(); return; }
         return;
       }
@@ -340,6 +381,15 @@ export class App {
           return;
         }
 
+        if (e.code === 'KeyE') {
+          e.preventDefault();
+          if (this.infrastructurePlaceMode) {
+            this.exitInfrastructurePlaceMode();
+          }
+          this.placementPanel.toggle();
+          return;
+        }
+
         if (e.code === 'KeyG') {
           e.preventDefault();
           if (this.fpController.isDragMode()) {
@@ -348,14 +398,43 @@ export class App {
             return;
           }
           const hovered = this.hoverTooltip.getCurrent();
-          if (hovered?.type === 'furniture') {
-            const parts = hovered.objectId.split(':');
-            const type = parts[2] ?? parts[1];
-            const rot = 0;
-            this.fpController.enterDragMode(hovered.objectId, rot);
-            const pos = this.houseScene.getFurniturePosition(hovered.objectId);
-            if (pos) {
-              this.houseScene.showGhost(pos.x, pos.z, pos.rotation, type);
+          if (hovered) {
+            const isInfrastructure = hovered.objectId.startsWith('electrical:') || hovered.objectId.startsWith('plumbing:');
+            if (hovered.type === 'furniture') {
+              const parts = hovered.objectId.split(':');
+              const type = parts[2] ?? parts[1];
+              const rot = 0;
+              this.fpController.enterDragMode(hovered.objectId, rot);
+              const pos = this.houseScene.getFurniturePosition(hovered.objectId);
+              if (pos) {
+                this.houseScene.showGhost(pos.x, pos.z, pos.rotation, type);
+              }
+            } else if (isInfrastructure) {
+              this.fpController.enterDragMode(hovered.objectId, 0);
+              const pos = this.houseScene.getObjectPosition(hovered.objectId);
+              if (pos) {
+                this.houseScene.showGhost(pos.x, pos.z, 0, 'dining_chair');
+              }
+            }
+          }
+          return;
+        }
+
+        if (e.code === 'Delete') {
+          e.preventDefault();
+          const hovered = this.hoverTooltip.getCurrent();
+          if (hovered) {
+            const isElectrical = hovered.objectId.startsWith('electrical:');
+            const isPlumbing = hovered.objectId.startsWith('plumbing:');
+            if (isElectrical || isPlumbing) {
+              const id = hovered.objectId.split(':').slice(1).join(':');
+              const apiUrl = isElectrical ? '/api/electrical' : '/api/plumbing';
+              fetch(`${apiUrl}/${id}`, { method: 'DELETE' })
+                .then(async () => {
+                  this.annotationRenderer?.clear();
+                  await this.annotationRenderer?.load();
+                })
+                .catch((err) => console.error('Failed to delete annotation', err));
             }
           }
           return;
@@ -484,22 +563,61 @@ export class App {
       if (objectId && pos) {
         const x = pos.x;
         const z = pos.z;
-        const rotation = this.fpController.getDragRotation();
-        const parts = objectId.split(':');
-        if (parts.length >= 4) {
-          const room = parts[1];
-          const index = parseInt(parts[3], 10);
-          if (!isNaN(index)) {
-            fetch(`/api/furnishings/${room}/${index}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ x, z, rotation }),
-            }).catch((err) => console.error('Failed to update furnishing', err));
+        if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:')) {
+          const isElectrical = objectId.startsWith('electrical:');
+          const id = objectId.split(':').slice(1).join(':');
+          const apiUrl = isElectrical ? '/api/electrical' : '/api/plumbing';
+          fetch(`${apiUrl}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ x, z }),
+          }).then(async () => {
+            this.annotationRenderer?.clear();
+            await this.annotationRenderer?.load();
+          }).catch((err) => console.error('Failed to update annotation', err));
+        } else if (objectId.startsWith('furniture:')) {
+          const rotation = this.fpController.getDragRotation();
+          const parts = objectId.split(':');
+          if (parts.length >= 4) {
+            const room = parts[1];
+            const index = parseInt(parts[3], 10);
+            if (!isNaN(index)) {
+              fetch(`/api/furnishings/${room}/${index}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ x, z, rotation }),
+              }).catch((err) => console.error('Failed to update furnishing', err));
+            }
           }
         }
       }
       this.fpController.exitDragMode();
       this.houseScene.hideGhost();
+      return;
+    }
+
+    if (this.infrastructurePlaceMode) {
+      const centerX = window.innerWidth / 2;
+      const centerY = window.innerHeight / 2;
+      const pos = this.houseScene.getGroundPosition(centerX, centerY);
+      if (pos) {
+        const { category, type } = this.infrastructurePlaceMode;
+        const apiUrl = category === 'electrical' ? '/api/electrical' : '/api/plumbing';
+        const id = `${type}_${Date.now()}`;
+        const room = 'living_dining';
+        const height = category === 'electrical'
+          ? (type === 'switch' ? 1.3 : type === 'floor_socket' ? 0.05 : 0.3)
+          : 0;
+        fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, room, type, x: pos.x, z: pos.z, height }),
+        }).then(async () => {
+          this.annotationRenderer?.clear();
+          await this.annotationRenderer?.load();
+        }).catch((err) => console.error('Failed to place annotation', err));
+      }
+      this.exitInfrastructurePlaceMode();
       return;
     }
 
@@ -696,6 +814,15 @@ export class App {
       this.fpController.update(dt);
 
       if (this.furniturePlaceMode) {
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const pos = this.houseScene.getGroundPosition(centerX, centerY);
+        if (pos) {
+          this.houseScene.updateGhostPosition(pos.x, pos.z);
+        }
+      }
+
+      if (this.infrastructurePlaceMode) {
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
         const pos = this.houseScene.getGroundPosition(centerX, centerY);
