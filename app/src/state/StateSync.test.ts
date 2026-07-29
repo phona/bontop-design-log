@@ -296,6 +296,80 @@ describe('StateSync', () => {
     expect(configErrorCallback).toHaveBeenCalledWith([{ path: 'config/x.yaml', error: 'bad' }]);
   });
 
+  it('should register budget callback on onBudgetChange', () => {
+    const budgetCallback = vi.fn();
+    stateSync.onBudgetChange(budgetCallback);
+    expect(stateSync['budgetCallbacks'].length).toBe(1);
+  });
+
+  it('should call budget callback when poll returns different data', async () => {
+    const budget1 = { totalBudget: 100000, totalActual: 50000, categories: [], lineItems: [] };
+    const budget2 = { totalBudget: 100000, totalActual: 75000, categories: [], lineItems: [] };
+
+    let budgetCallCount = 0;
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+      if (urlStr.includes('/api/scheme/current')) {
+        return { ok: true, json: async () => ({ version: 1, selections: [] }) } as Response;
+      }
+      if (urlStr.includes('/api/visual-commands')) {
+        return { ok: true, json: async () => [] } as Response;
+      }
+      if (urlStr.includes('/api/budget')) {
+        budgetCallCount++;
+        if (budgetCallCount === 1) return { ok: true, json: async () => budget1 } as Response;
+        if (budgetCallCount === 2) return { ok: true, json: async () => budget2 } as Response;
+        return { ok: true, json: async () => budget2 } as Response;
+      }
+      return { ok: true, json: async () => [] } as Response;
+    });
+
+    const budgetCallback = vi.fn();
+    stateSync.onBudgetChange(budgetCallback);
+
+    stateSync.start();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(budgetCallback).toHaveBeenCalledTimes(1);
+    expect(budgetCallback).toHaveBeenCalledWith(budget1);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(budgetCallback).toHaveBeenCalledTimes(2);
+    expect(budgetCallback).toHaveBeenCalledWith(budget2);
+  });
+
+  it('should NOT call budget callback when data has not changed', async () => {
+    const budget = { totalBudget: 100000, totalActual: 50000, categories: [], lineItems: [] };
+
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+      if (urlStr.includes('/api/scheme/current')) {
+        return { ok: true, json: async () => ({ version: 1, selections: [] }) } as Response;
+      }
+      if (urlStr.includes('/api/visual-commands')) {
+        return { ok: true, json: async () => [] } as Response;
+      }
+      if (urlStr.includes('/api/budget')) {
+        return { ok: true, json: async () => budget } as Response;
+      }
+      return { ok: true, json: async () => [] } as Response;
+    });
+
+    const budgetCallback = vi.fn();
+    stateSync.onBudgetChange(budgetCallback);
+
+    stateSync.start();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(budgetCallback).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(budgetCallback).toHaveBeenCalledTimes(1);
+  });
+
   it('emits empty configError array when all configs are ok', async () => {
     vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;

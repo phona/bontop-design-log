@@ -12,6 +12,7 @@ export class StateSync {
   private configStatusInterval: ReturnType<typeof setTimeout> | null = null;
   private budgetInterval: ReturnType<typeof setTimeout> | null = null;
   private schemeBackoff = 1000;
+  private budgetBackoff = 1000;
   private visualCommandBackoff = 500;
   private isOffline = false;
   private schemeCallbacks: SchemeCallback[] = [];
@@ -213,9 +214,11 @@ export class StateSync {
         this.lastBudgetJson = json;
         this.budgetCallbacks.forEach(cb => cb(budget));
       }
-      this.budgetInterval = setTimeout(() => this.pollBudget(), this.schemeBackoff);
+      this.budgetBackoff = 1000;
+      this.budgetInterval = setTimeout(() => this.pollBudget(), this.budgetBackoff);
     } catch {
-      this.budgetInterval = setTimeout(() => this.pollBudget(), Math.min(this.schemeBackoff * 2, 8000));
+      this.budgetBackoff = Math.min(this.budgetBackoff * 2, 8000);
+      this.budgetInterval = setTimeout(() => this.pollBudget(), this.budgetBackoff);
     }
   }
 

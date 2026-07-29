@@ -44,8 +44,11 @@ function setupMockDocument() {
       textContent: '',
       innerHTML: '',
       _innerHTML: '',
+      _style: {},
       _children: [] as HTMLElement[],
       onclick: null,
+      get style() { return this._style; },
+      set style(v: any) { this._style = v; },
       appendChild(child: HTMLElement) {
         this._children.push(child);
       },
@@ -210,6 +213,31 @@ describe('SchemePanel', () => {
     expect((prosEl as any)._children.length).toBe(0);
     expect((consEl as any)._children.length).toBe(0);
     expect((warningsEl as any)._children.length).toBe(0);
+  });
+
+  it('should render budget bar with correct values on updateBudget', () => {
+    const containerChildren: any[] = [];
+    const container = {
+      _children: containerChildren,
+      appendChild(child: any) {
+        this._children.push(child);
+      },
+      querySelector(selector: string) {
+        if (selector === '.budget-bar') {
+          return this._children.find((c: any) => c.className === 'budget-bar') ?? null;
+        }
+        return null;
+      },
+    };
+    Object.defineProperty(warningsEl, 'parentElement', { get() { return container; }, configurable: true });
+
+    panel.updateBudget({ totalBudget: 200000, totalActual: 150000, categories: [], lineItems: [] });
+
+    const bar = container.querySelector('.budget-bar');
+    expect(bar).toBeDefined();
+    expect(bar.className).toBe('budget-bar');
+    expect(bar.innerHTML).toContain('150,000');
+    expect(bar.innerHTML).toContain('200,000');
   });
 
   it('should mark active tab and option', () => {
