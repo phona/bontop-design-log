@@ -73,6 +73,7 @@ export class HouseScene implements SceneApi {
   private glassMeshes: THREE.Mesh[] = [];
   private furnitureMeshes: THREE.Group[] = [];
   private electricalMeshes: THREE.Mesh[] = [];
+  private doorMeshes: THREE.Mesh[] = [];
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private lastPointer = new THREE.Vector2(0, 0);
@@ -422,6 +423,7 @@ export class HouseScene implements SceneApi {
     this.glassMeshes = [];
     this.furnitureMeshes = [];
     this.electricalMeshes = [];
+    this.doorMeshes = [];
     this.roomMeta.clear();
 
     this.setupLights();
@@ -731,6 +733,7 @@ export class HouseScene implements SceneApi {
       panel.castShadow = true;
       this.scene.add(panel);
       this.wallMeshes.push(panel);
+      this.doorMeshes.push(panel);
       const frameMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.5 });
       const frameThick = 0.04;
       const frameDepth = 0.12;
@@ -783,6 +786,7 @@ export class HouseScene implements SceneApi {
     panel.receiveShadow = true;
     this.scene.add(panel);
     this.wallMeshes.push(panel);
+    this.doorMeshes.push(panel);
     const frameDepth = 0.15;
     const frameThick = 0.05;
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.7 });
@@ -1358,6 +1362,12 @@ export class HouseScene implements SceneApi {
 
   setWallMaterial(roomId: string, appearance: { type: string; color: string; scale?: number }): void {
     this.textureManager.applyToRoom(roomId, appearance, 'wall');
+  }
+
+  setDoorMaterial(_roomId: string, appearance: { type: string; color: string; scale?: number }): void {
+    for (const mesh of this.doorMeshes) {
+      (mesh.material as THREE.MeshStandardMaterial).color.set(appearance.color);
+    }
   }
 
   getAllRoomIds(): string[] {

@@ -81,6 +81,20 @@ vi.mock('../data/designData.js', () => ({
     { id: 'latex_paint_02', name: '奶油白', color: '#fff4e6' },
     { id: 'latex_paint_03', name: '浅蓝', color: '#e6f3ff' },
   ],
+  cabinetOptions: [
+    { id: 'cabinet_board_01', name: '多层实木板柜体 + PET 肤感柜门', color: '#cccccc' },
+  ],
+  countertopOptions: [
+    { id: 'quartz_stone_01', name: '石英石台面', color: '#cccccc' },
+  ],
+  sanitaryOptions: [
+    { id: 'sanitary_toilet_01', name: '虹吸式马桶', color: '#cccccc' },
+  ],
+  interiorDoorOptions: [
+    { id: 'interior_door_01', name: '实木复合免漆门', color: '#cccccc' },
+    { id: 'bathroom_door_01', name: '钛镁铝合金极窄平开门', color: '#cccccc' },
+    { id: 'entry_door_01', name: '甲级防盗门', color: '#cccccc' },
+  ],
 }));
 
 import { TopicRegistry } from './TopicRegistry';
@@ -88,6 +102,10 @@ import { HvacTopic } from './HvacTopic';
 import { FloorTopic } from './FloorTopic';
 import { WallTopic } from './WallTopic';
 import { PaintTopic } from './PaintTopic';
+import { CabinetTopic } from './CabinetTopic';
+import { CountertopTopic } from './CountertopTopic';
+import { SanitaryTopic } from './SanitaryTopic';
+import { DoorTopic } from './DoorTopic';
 
 function createMockSceneApi() {
   const addedObjects: Map<string, any> = new Map();
@@ -128,12 +146,16 @@ describe('TopicRegistry', () => {
     const mock = createMockSceneApi();
     const registry = new TopicRegistry(mock.api as any);
     const topics = registry.list();
-    expect(topics.length).toBe(4);
+    expect(topics.length).toBe(8);
     const ids = topics.map((t) => t.id);
     expect(ids).toContain('hvac');
     expect(ids).toContain('floor');
     expect(ids).toContain('wall');
     expect(ids).toContain('paint');
+    expect(ids).toContain('cabinet');
+    expect(ids).toContain('countertop');
+    expect(ids).toContain('sanitary');
+    expect(ids).toContain('door');
   });
 
   it('should get topic by id', () => {
@@ -156,7 +178,7 @@ describe('TopicRegistry', () => {
     const custom = { id: 'custom', name: 'Custom', options: [], apply: vi.fn() };
     registry.register(custom as any);
     expect(registry.get('custom')).toBeDefined();
-    expect(registry.list().length).toBe(5);
+    expect(registry.list().length).toBe(9);
   });
 });
 
@@ -514,7 +536,150 @@ describe('PaintTopic', () => {
     expect(scene.setWallMaterial).not.toHaveBeenCalled();
   });
 
-  it('validate should return empty array', () => {
+  it('PaintTopic validate should return empty array', () => {
+    expect(topic.validate()).toEqual([]);
+  });
+});
+
+describe('CabinetTopic', () => {
+  let topic: CabinetTopic;
+
+  beforeEach(() => {
+    topic = new CabinetTopic();
+  });
+
+  it('should have correct id and name', () => {
+    expect(topic.id).toBe('cabinet');
+    expect(topic.name).toBe('柜体板材');
+  });
+
+  it('should have options from cabinetOptions', () => {
+    expect(topic.options.length).toBe(1);
+    expect(topic.options[0].id).toBe('cabinet_board_01');
+  });
+
+  it('should return empty array on apply (no 3D meshes)', () => {
+    const scene = {};
+    const ids = topic.apply(scene as any, 'cabinet_board_01');
+    expect(ids).toEqual([]);
+  });
+
+  it('should return empty array for unknown option', () => {
+    const scene = {};
+    const ids = topic.apply(scene as any, 'nonexistent');
+    expect(ids).toEqual([]);
+  });
+
+  it('CabinetTopic validate should return empty array', () => {
+    expect(topic.validate()).toEqual([]);
+  });
+});
+
+describe('CountertopTopic', () => {
+  let topic: CountertopTopic;
+
+  beforeEach(() => {
+    topic = new CountertopTopic();
+  });
+
+  it('should have correct id and name', () => {
+    expect(topic.id).toBe('countertop');
+    expect(topic.name).toBe('台面方案');
+  });
+
+  it('should have options from countertopOptions', () => {
+    expect(topic.options.length).toBe(1);
+    expect(topic.options[0].id).toBe('quartz_stone_01');
+  });
+
+  it('should return empty array on apply (no 3D meshes)', () => {
+    const scene = {};
+    const ids = topic.apply(scene as any, 'quartz_stone_01');
+    expect(ids).toEqual([]);
+  });
+
+  it('should return empty array for unknown option', () => {
+    const scene = {};
+    const ids = topic.apply(scene as any, 'nonexistent');
+    expect(ids).toEqual([]);
+  });
+
+  it('CountertopTopic validate should return empty array', () => {
+    expect(topic.validate()).toEqual([]);
+  });
+});
+
+describe('SanitaryTopic', () => {
+  let topic: SanitaryTopic;
+
+  beforeEach(() => {
+    topic = new SanitaryTopic();
+  });
+
+  it('should have correct id and name', () => {
+    expect(topic.id).toBe('sanitary');
+    expect(topic.name).toBe('卫浴洁具');
+  });
+
+  it('should have options from sanitaryOptions', () => {
+    expect(topic.options.length).toBe(1);
+    expect(topic.options[0].id).toBe('sanitary_toilet_01');
+  });
+
+  it('should return empty array on apply (no 3D meshes)', () => {
+    const scene = {};
+    const ids = topic.apply(scene as any, 'sanitary_toilet_01');
+    expect(ids).toEqual([]);
+  });
+
+  it('should return empty array for unknown option', () => {
+    const scene = {};
+    const ids = topic.apply(scene as any, 'nonexistent');
+    expect(ids).toEqual([]);
+  });
+
+  it('SanitaryTopic validate should return empty array', () => {
+    expect(topic.validate()).toEqual([]);
+  });
+});
+
+describe('DoorTopic', () => {
+  let topic: DoorTopic;
+
+  beforeEach(() => {
+    topic = new DoorTopic();
+  });
+
+  it('should have correct id and name', () => {
+    expect(topic.id).toBe('door');
+    expect(topic.name).toBe('门方案');
+  });
+
+  it('should have options from interiorDoorOptions (combined)', () => {
+    expect(topic.options.length).toBe(3);
+    expect(topic.options[0].id).toBe('interior_door_01');
+    expect(topic.options[1].id).toBe('bathroom_door_01');
+    expect(topic.options[2].id).toBe('entry_door_01');
+  });
+
+  it('should apply door material and return door:all', () => {
+    const scene = {
+      setDoorMaterial: vi.fn(),
+      getAllRoomIds: vi.fn(() => ['living_dining', 'bedroom_nw']),
+    };
+    const ids = topic.apply(scene as any, 'interior_door_01');
+    expect(scene.setDoorMaterial).toHaveBeenCalled();
+    expect(ids).toEqual(['door:all']);
+  });
+
+  it('should return empty array for unknown option', () => {
+    const scene = { setDoorMaterial: vi.fn(), getAllRoomIds: vi.fn() };
+    const ids = topic.apply(scene as any, 'nonexistent');
+    expect(ids).toEqual([]);
+    expect(scene.setDoorMaterial).not.toHaveBeenCalled();
+  });
+
+  it('DoorTopic validate should return empty array', () => {
     expect(topic.validate()).toEqual([]);
   });
 });

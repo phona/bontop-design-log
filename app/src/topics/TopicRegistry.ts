@@ -3,6 +3,10 @@ import { HvacTopic } from './HvacTopic.js';
 import { FloorTopic } from './FloorTopic.js';
 import { WallTopic } from './WallTopic.js';
 import { PaintTopic } from './PaintTopic.js';
+import { CabinetTopic } from './CabinetTopic.js';
+import { CountertopTopic } from './CountertopTopic.js';
+import { SanitaryTopic } from './SanitaryTopic.js';
+import { DoorTopic } from './DoorTopic.js';
 
 export class TopicRegistry {
   private topics = new Map<string, Topic>();
@@ -14,6 +18,10 @@ export class TopicRegistry {
     this.register(new FloorTopic());
     this.register(new WallTopic());
     this.register(new PaintTopic());
+    this.register(new CabinetTopic());
+    this.register(new CountertopTopic());
+    this.register(new SanitaryTopic());
+    this.register(new DoorTopic());
   }
 
   register(topic: Topic) {

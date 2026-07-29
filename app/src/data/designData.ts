@@ -34,11 +34,23 @@ function ensureAppearance(options: TopicOption[]): TopicOption[] {
 export const floorOptions = ensureAppearance(byCategory('地砖'));
 export const wallOptions = ensureAppearance(byCategory('墙砖'));
 export const paintOptions = ensureAppearance(byCategory('乳胶漆'));
+export const cabinetOptions = ensureAppearance(byCategory('柜体板材'));
+export const countertopOptions = ensureAppearance(byCategory('台面'));
+export const sanitaryOptions = ensureAppearance(byCategory('卫浴洁具'));
+export const interiorDoorOptions = [
+  ...ensureAppearance(byCategory('室内门')),
+  ...ensureAppearance(byCategory('卫生间门')),
+  ...ensureAppearance(byCategory('入户门')),
+];
 
 export const materialCategories: Record<string, TopicOption[]> = {
   floor: floorOptions,
   wall: wallOptions,
   paint: paintOptions,
+  cabinet: cabinetOptions,
+  countertop: countertopOptions,
+  sanitary: sanitaryOptions,
+  door: interiorDoorOptions,
 };
 
 export function getMaterialOptions(): Record<string, TopicOption[]> {
