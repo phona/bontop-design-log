@@ -172,6 +172,7 @@ const mockDocument = {
   }),
   removeEventListener: vi.fn(),
   pointerLockElement: null,
+  body: { appendChild: vi.fn() } as unknown as HTMLBodyElement,
 };
 vi.stubGlobal('document', mockDocument);
 

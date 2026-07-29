@@ -16,6 +16,8 @@ import { shouldToggleSeeThrough, shouldInterruptCameraAnimation } from './scene/
 import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
+import { CommandPalette } from './ui/CommandPalette.js';
+import { KEY_BINDINGS, findBinding } from './ui/keybindings.js';
 import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
 
 const ORBIT_DISTANCE = 15;
@@ -44,6 +46,7 @@ export class App {
   private compareShowing = false;
   private annotationRenderer?: AnnotationRenderer;
   private annotationGroupVisible = true;
+  private commandPalette = new CommandPalette();
 
   constructor(canvas: HTMLCanvasElement) {
     this.stateSync = new StateSync();
@@ -197,10 +200,19 @@ export class App {
 
   private setupKeyboard(): void {
     document.addEventListener('keydown', (e: KeyboardEvent) => {
+      // ── Special cases that need extra logic ──
+      if (e.code === 'Escape') {
+        if (this.overviewMenu.isVisible()) { this.overviewMenu.hide(); return; }
+        if (this.commandPalette.isVisible()) { this.commandPalette.hide(); return; }
+        return;
+      }
+
       if (e.code === 'KeyV' && !e.repeat) {
         e.preventDefault();
         this.toggleMode();
+        return;
       }
+
       if (e.code === 'KeyM' && !e.repeat) {
         e.preventDefault();
         if (this.overviewMenu.isVisible()) {
@@ -209,22 +221,23 @@ export class App {
           void this.refreshOverviewData();
           this.overviewMenu.show();
         }
+        return;
       }
-      if (e.code === 'Escape') {
-        if (this.overviewMenu.isVisible()) {
-          this.overviewMenu.hide();
-        }
-      }
+
       if (shouldToggleSeeThrough(e.code, e.repeat, this.houseScene.mode)) {
         e.preventDefault();
         this.analysisTools.toggleSeeThrough();
         this.updateModeIndicator();
+        return;
       }
+
       if (e.code === 'KeyP' && !e.repeat) {
         e.preventDefault();
         this.annotationGroupVisible = !this.annotationGroupVisible;
         this.annotationRenderer?.setVisible('all', this.annotationGroupVisible);
+        return;
       }
+
       if (e.code === 'KeyL' && !e.repeat) {
         e.preventDefault();
         this.analysisTools.toggleMeasurement();
@@ -233,16 +246,14 @@ export class App {
         }
         this.updateModeIndicator();
         this.updateCrosshairStyle();
+        return;
       }
+
       if (this.houseScene.mode === 'first-person' && !e.repeat) {
-        if (e.code === 'BracketLeft') {
-          e.preventDefault();
-          this.sensitivitySlider.step(-1);
-        } else if (e.code === 'BracketRight') {
-          e.preventDefault();
-          this.sensitivitySlider.step(1);
-        }
+        if (e.code === 'BracketLeft') { e.preventDefault(); this.sensitivitySlider.step(-1); return; }
+        if (e.code === 'BracketRight') { e.preventDefault(); this.sensitivitySlider.step(1); return; }
       }
+
       if (e.code === 'Tab' && this.compareActive) {
         e.preventDefault();
         this.compareShowing = !this.compareShowing;
@@ -251,7 +262,17 @@ export class App {
         } else {
           this.stateSync.fetchScheme().then((s) => { if (s) this.applyScheme(s); });
         }
+        return;
       }
+
+      // ── Command palette toggle (shift + /) ──
+      if (e.code === 'Slash' && e.shiftKey && !e.repeat) {
+        e.preventDefault();
+        this.commandPalette.toggle();
+        return;
+      }
+
+      // ── Camera animation interrupt ──
       if (shouldInterruptCameraAnimation(
         this.houseScene.cameraAnimator.isAnimating(),
         this.houseScene.cameraAnimator.currentMode,
