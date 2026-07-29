@@ -128,7 +128,7 @@ export class App {
       this.houseScene.scene,
       this.houseScene.camera,
     );
-    await this.annotationRenderer.load();
+    await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
     this.analysisTools.checkFurnitureCollisions();
@@ -244,8 +244,7 @@ export class App {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ x, z }),
             });
-            this.annotationRenderer?.clear();
-            await this.annotationRenderer?.load();
+            await this.refreshInfrastructure();
           } catch (err) {
             console.error('Failed to update annotation', err);
           }
@@ -431,8 +430,7 @@ export class App {
               const apiUrl = isElectrical ? '/api/electrical' : '/api/plumbing';
               fetch(`${apiUrl}/${id}`, { method: 'DELETE' })
                 .then(async () => {
-                  this.annotationRenderer?.clear();
-                  await this.annotationRenderer?.load();
+                  await this.refreshInfrastructure();
                 })
                 .catch((err) => console.error('Failed to delete annotation', err));
             }
@@ -572,8 +570,7 @@ export class App {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ x, z }),
           }).then(async () => {
-            this.annotationRenderer?.clear();
-            await this.annotationRenderer?.load();
+            await this.refreshInfrastructure();
           }).catch((err) => console.error('Failed to update annotation', err));
         } else if (objectId.startsWith('furniture:')) {
           const rotation = this.fpController.getDragRotation();
@@ -613,8 +610,7 @@ export class App {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, room, type, x: pos.x, z: pos.z, height }),
         }).then(async () => {
-          this.annotationRenderer?.clear();
-          await this.annotationRenderer?.load();
+          await this.refreshInfrastructure();
         }).catch((err) => console.error('Failed to place annotation', err));
       }
       this.exitInfrastructurePlaceMode();
@@ -717,7 +713,7 @@ export class App {
       this.houseScene.scene,
       this.houseScene.camera,
     );
-    await this.annotationRenderer.load();
+    await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
     this.analysisTools.checkFurnitureCollisions();
@@ -731,6 +727,17 @@ export class App {
     this.schemePanel.initCompare(archiveId, data.diff);
     this.houseScene.setCompareScheme(data.compare.scheme);
     this.compareActive = true;
+  }
+
+  private async refreshInfrastructure(): Promise<void> {
+    this.annotationRenderer?.clear();
+    await this.annotationRenderer?.load();
+    if (this.annotationRenderer) {
+      this.houseScene.placeInfrastructureFixtures(
+        this.annotationRenderer.getElectricalData(),
+        this.annotationRenderer.getPlumbingData(),
+      );
+    }
   }
 
   private handleClearCompare(): void {

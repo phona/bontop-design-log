@@ -222,6 +222,9 @@ export class AnnotationRenderer {
     return sprite;
   }
 
+  getElectricalData(): ElectricalPoint[] { return this.electricalData; }
+  getPlumbingData(): PlumbingPoint[] { return this.plumbingData; }
+
   clear(): void {
     Object.values(this.layerGroups).forEach(g => {
       while (g.children.length) g.remove(g.children[0]);

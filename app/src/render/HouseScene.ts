@@ -23,7 +23,7 @@ import { pickRoomIdFromHits } from '../scene/spawn-utils.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
-import { placeFurnishings } from './FurnitureFactory.js';
+import { buildFixture } from './FixtureFactory.js';
 import { EnvironmentManager } from './EnvironmentManager.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
@@ -469,11 +469,7 @@ export class HouseScene implements SceneApi {
     this.topDownView.updateBounds(this.topDownLayoutBounds);
 
     if (projectData.house.furnishings) {
-      this.furnitureMeshes = placeFurnishings(this.scene, projectData.house.furnishings);
-    }
-
-    if (projectData.house.electrical) {
-      this.placeElectricalMarkers(projectData.house.electrical);
+      this.furnitureMeshes = this.placeFurnitureFixtures(projectData.house.furnishings);
     }
 
     this.textureManager.setMeshes(this.floorMeshes, this.wallMeshes);
@@ -1189,41 +1185,65 @@ export class HouseScene implements SceneApi {
     this.rooms[p.id] = { ...p };
   }
 
-  private placeElectricalMarkers(markers: ElectricalMarker[]): void {
-    const colorMap: Record<string, number> = {
-      switch: 0xffffff,
-      outlet: 0xaaaaaa,
-      network: 0x4488ff,
-      curtain_power: 0xaa44ff,
-    };
-    for (const m of markers) {
-      const room = this.rooms[m.roomId];
-      if (!room) continue;
-      const geo = new THREE.BoxGeometry(0.08, 0.08, 0.02);
-      const mat = new THREE.MeshBasicMaterial({ color: colorMap[m.type] ?? 0xffffff });
-      const cube = new THREE.Mesh(geo, mat);
-      cube.userData = { objectId: `electrical:${m.roomId}:${m.type}`, hoverable: false, type: 'electrical' };
-      const dirVectors: Record<string, [number, number]> = {
-        north: [0, -1],
-        south: [0, 1],
-        west: [-1, 0],
-        east: [1, 0],
-      };
-      const [dx, dz] = dirVectors[m.wall] ?? [0, 0];
-      cube.position.set(
-        room.x + m.offset,
-        m.height,
-        room.z + dz * (room.depth / 2 + 0.01)
-      );
-      if (dx !== 0) {
-        cube.position.set(
-          room.x + dx * (room.width / 2 + 0.01),
-          m.height,
-          room.z + m.offset
-        );
+  private placeFurnitureFixtures(furnishings: FurnishingsYaml): THREE.Group[] {
+    const placed: THREE.Group[] = [];
+    for (const [roomId, items] of Object.entries(furnishings)) {
+      let index = 0;
+      for (const item of items) {
+        if (item.x === undefined || item.z === undefined) continue;
+        const model = buildFixture(item.type);
+        if (!model) continue;
+        model.position.set(item.x, 0, item.z);
+        model.rotation.y = THREE.MathUtils.degToRad(item.rotation ?? 0);
+        model.userData = { objectId: `furniture:${roomId}:${item.type}:${index}`, hoverable: false, type: 'furniture' };
+        this.scene.add(model);
+        placed.push(model);
+        index++;
       }
-      this.scene.add(cube);
-      this.electricalMeshes.push(cube);
+    }
+    return placed;
+  }
+
+  placeInfrastructureFixtures(
+    electrical: Array<{ id: string; room: string; type: string; x: number; z: number; height: number }>,
+    plumbing: Array<{ id: string; room: string; type: string; x: number; z: number; height?: number }>,
+  ): void {
+    const infraMeshes: THREE.Group[] = [];
+    const typeMap: Record<string, string> = {
+      socket: 'socket',
+      switch: 'switch',
+      switch_2way: 'switch_2way',
+      network: 'network',
+      usb: 'usb',
+      floor_socket: 'floor_socket',
+      faucet: 'faucet',
+      faucet_outdoor: 'faucet_outdoor',
+      toilet: 'toilet',
+      shower: 'shower',
+      drain: 'drain',
+      washer: 'washer',
+    };
+
+    for (const p of electrical) {
+      const fixtureType = typeMap[p.type];
+      if (!fixtureType) continue;
+      const model = buildFixture(fixtureType);
+      if (!model) continue;
+      model.position.set(p.x, p.type === 'floor_socket' ? 0.05 : p.height, p.z);
+      model.userData = { objectId: 'electrical:' + p.id, hoverable: false, type: 'electrical' };
+      this.scene.add(model);
+      infraMeshes.push(model);
+    }
+
+    for (const p of plumbing) {
+      const fixtureType = typeMap[p.type];
+      if (!fixtureType) continue;
+      const model = buildFixture(fixtureType);
+      if (!model) continue;
+      model.position.set(p.x, p.height ?? 0.5, p.z);
+      model.userData = { objectId: 'plumbing:' + p.id, hoverable: false, type: 'plumbing' };
+      this.scene.add(model);
+      infraMeshes.push(model);
     }
   }
 

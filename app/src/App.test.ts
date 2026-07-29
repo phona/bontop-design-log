@@ -107,6 +107,8 @@ vi.mock('./render/annotations/AnnotationRenderer.js', () => ({
     setVisible() {}
     updateLabels() {}
     clear() {}
+    getElectricalData() { return []; }
+    getPlumbingData() { return []; }
   },
 }));
 
