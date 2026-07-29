@@ -1326,6 +1326,19 @@ export class HouseScene implements SceneApi {
     return this.furnitureMeshes;
   }
 
+  getFurniturePosition(objectId: string): { x: number; z: number; rotation: number } | null {
+    for (const mesh of this.furnitureMeshes) {
+      if (mesh.userData.objectId === objectId) {
+        return {
+          x: mesh.position.x,
+          z: mesh.position.z,
+          rotation: mesh.rotation.y * 180 / Math.PI,
+        };
+      }
+    }
+    return null;
+  }
+
   setFloorColor(color: string) {
     for (const mesh of this.floorMeshes) {
       (mesh.material as THREE.MeshStandardMaterial).color.set(color);

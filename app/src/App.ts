@@ -349,9 +349,14 @@ export class App {
           }
           const hovered = this.hoverTooltip.getCurrent();
           if (hovered?.type === 'furniture') {
+            const parts = hovered.objectId.split(':');
+            const type = parts[2] ?? parts[1];
             const rot = 0;
             this.fpController.enterDragMode(hovered.objectId, rot);
-            this.houseScene.showGhost(0, 0, rot, hovered.objectId);
+            const pos = this.houseScene.getFurniturePosition(hovered.objectId);
+            if (pos) {
+              this.houseScene.showGhost(pos.x, pos.z, pos.rotation, type);
+            }
           }
           return;
         }
