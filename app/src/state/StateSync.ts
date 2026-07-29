@@ -4,11 +4,13 @@ type SchemeCallback = (scheme: CurrentScheme) => void;
 type VisualCommandCallback = (command: VisualCommand) => void;
 type OfflineCallback = (offline: boolean) => void;
 type ConfigErrorCallback = (errors: Array<{ path: string; error: string }>) => void;
+export type BudgetCallback = (snapshot: BudgetSnapshot) => void;
 
 export class StateSync {
   private schemeInterval: ReturnType<typeof setTimeout> | null = null;
   private visualCommandInterval: ReturnType<typeof setTimeout> | null = null;
   private configStatusInterval: ReturnType<typeof setTimeout> | null = null;
+  private budgetInterval: ReturnType<typeof setTimeout> | null = null;
   private schemeBackoff = 1000;
   private visualCommandBackoff = 500;
   private isOffline = false;
@@ -16,7 +18,9 @@ export class StateSync {
   private visualCommandCallbacks: VisualCommandCallback[] = [];
   private offlineCallbacks: OfflineCallback[] = [];
   private configErrorCallbacks: ConfigErrorCallback[] = [];
+  private budgetCallbacks: BudgetCallback[] = [];
   private currentScheme: CurrentScheme | null = null;
+  private lastBudgetJson = '';
   private processedCommandIds = new Map<string, number>();
 
   async getCurrentScheme(): Promise<CurrentScheme> {
@@ -128,10 +132,15 @@ export class StateSync {
     this.configErrorCallbacks.push(callback);
   }
 
+  onBudgetChange(callback: BudgetCallback): void {
+    this.budgetCallbacks.push(callback);
+  }
+
   start(): void {
     this.pollScheme();
     this.pollVisualCommands();
     this.pollConfigStatus();
+    this.pollBudget();
   }
 
   private async pollScheme(): Promise<void> {
@@ -196,6 +205,20 @@ export class StateSync {
     }
   }
 
+  private async pollBudget(): Promise<void> {
+    try {
+      const budget = await this.fetchBudget();
+      const json = JSON.stringify(budget);
+      if (json !== this.lastBudgetJson) {
+        this.lastBudgetJson = json;
+        this.budgetCallbacks.forEach(cb => cb(budget));
+      }
+      this.budgetInterval = setTimeout(() => this.pollBudget(), this.schemeBackoff);
+    } catch {
+      this.budgetInterval = setTimeout(() => this.pollBudget(), Math.min(this.schemeBackoff * 2, 8000));
+    }
+  }
+
   private cleanupProcessedCommandIds(): void {
     const now = Date.now();
     for (const [id, expiresAt] of this.processedCommandIds.entries()) {
@@ -209,6 +232,7 @@ export class StateSync {
     if (this.schemeInterval) clearTimeout(this.schemeInterval);
     if (this.visualCommandInterval) clearTimeout(this.visualCommandInterval);
     if (this.configStatusInterval) clearTimeout(this.configStatusInterval);
+    if (this.budgetInterval) clearTimeout(this.budgetInterval);
     this.processedCommandIds.clear();
   }
 }

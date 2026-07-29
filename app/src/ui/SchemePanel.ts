@@ -1,4 +1,4 @@
-import type { Topic, TopicOption, SchemeDiff } from '@shared/types';
+import type { Topic, TopicOption, SchemeDiff, BudgetSnapshot } from '@shared/types';
 
 export interface SchemePanelElements {
   topicTabs: HTMLElement;
@@ -121,6 +121,28 @@ export class SchemePanel {
     this.compareActive = false;
     this.compareArchiveName = '';
     if (this.els.comparePanel) this.els.comparePanel.innerHTML = '';
+  }
+
+  updateBudget(budget: BudgetSnapshot): void {
+    const container = this.els.warnings.parentElement;
+    if (!container) return;
+    let bar = container.querySelector('.budget-bar') as HTMLElement;
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.className = 'budget-bar';
+      bar.style.cssText = 'border-top:1px solid #444;margin-top:8px;padding-top:8px;';
+      container.appendChild(bar);
+    }
+    const pct = budget.totalBudget > 0 ? (budget.totalActual / budget.totalBudget) * 100 : 0;
+    const color = pct > 100 ? '#ff4444' : pct > 90 ? '#ffaa00' : '#44cc44';
+    bar.innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+        <span>预算</span>
+        <span>¥${budget.totalActual.toLocaleString()} / ¥${budget.totalBudget.toLocaleString()}</span>
+      </div>
+      <div style="background:#333;height:6px;border-radius:3px;overflow:hidden;">
+        <div style="width:${Math.min(pct, 100)}%;background:${color};height:100%;border-radius:3px;transition:width 0.3s;"></div>
+      </div>`;
   }
 
   private clearInfo() {

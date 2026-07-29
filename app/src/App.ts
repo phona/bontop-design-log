@@ -191,6 +191,10 @@ export class App {
       }
     });
 
+    this.stateSync.onBudgetChange((budget) => {
+      this.schemePanel.updateBudget(budget);
+    });
+
     this.houseScene.setOnObjectClick((target) => {
       if (this.analysisTools.measurement.active) return;
       this.infoPanel.showObject(target);
