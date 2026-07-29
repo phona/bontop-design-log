@@ -4,6 +4,8 @@ import { ProjectCatalog } from './project-catalog.js';
 import { DesignState } from './design-state.js';
 import { createApiRouter } from './routes.js';
 import { createFurnishingsRouter } from './routes-furnishings.js';
+import { createElectricalRouter } from './routes-electrical.js';
+import { createPlumbingRouter } from './routes-plumbing.js';
 import { createMcpServer } from './mcp-server.js';
 import { attachMcpTransports } from './mcp-transports.js';
 import { RuleEngine } from './rule-engine.js';
@@ -155,6 +157,8 @@ const app = express();
 app.use(express.json());
 app.use('/api', createApiRouter(apiDeps));
 app.use('/api/furnishings', createFurnishingsRouter('config/house.yaml'));
+app.use('/api/electrical', createElectricalRouter('config/electrical.yaml'));
+app.use('/api/plumbing', createPlumbingRouter('config/plumbing.yaml'));
 
 attachMcpTransports(app, () => createMcpServer(apiDeps)).then(() => {
   const server = app.listen(PORT, () => {
