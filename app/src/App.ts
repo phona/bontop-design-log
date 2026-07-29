@@ -17,7 +17,7 @@ import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
 import { CommandPalette } from './ui/CommandPalette.js';
-import { KEY_BINDINGS, findBinding } from './ui/keybindings.js';
+import './ui/keybindings.js';
 import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
 
 const ORBIT_DISTANCE = 15;
