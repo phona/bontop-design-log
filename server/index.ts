@@ -3,6 +3,7 @@ import { load } from 'js-yaml';
 import { ProjectCatalog } from './project-catalog.js';
 import { DesignState } from './design-state.js';
 import { createApiRouter } from './routes.js';
+import { createFurnishingsRouter } from './routes-furnishings.js';
 import { createMcpServer } from './mcp-server.js';
 import { attachMcpTransports } from './mcp-transports.js';
 import { RuleEngine } from './rule-engine.js';
@@ -153,6 +154,7 @@ const apiDeps = {
 const app = express();
 app.use(express.json());
 app.use('/api', createApiRouter(apiDeps));
+app.use('/api/furnishings', createFurnishingsRouter('config/house.yaml'));
 
 attachMcpTransports(app, () => createMcpServer(apiDeps)).then(() => {
   const server = app.listen(PORT, () => {
