@@ -607,7 +607,7 @@ materials:
     appearance: { type: "ceramic_tile_v2", color: "#a8a09a", pattern: "straight" }
 
   - id: "bed_180_01"
-    topic_id: "miscellaneous"
+    topic_id: "bed"
     alternative_group: "bed"
     category: "家具"
     name: "1.8m 实木床"
@@ -630,7 +630,7 @@ materials:
     notes: "含床头柜, 不含床垫"
 
   - id: "mattress_180_01"
-    topic_id: "miscellaneous"
+    topic_id: "mattress"
     alternative_group: "mattress"
     category: "家具"
     name: "1.8m 独立袋装弹簧床垫"
@@ -653,7 +653,7 @@ materials:
     notes: "建议到店试躺后再确定"
 
   - id: "wardrobe_240_01"
-    topic_id: "miscellaneous"
+    topic_id: "wardrobe"
     alternative_group: "wardrobe"
     category: "家具"
     name: "2.4m 定制衣柜"
@@ -676,7 +676,7 @@ materials:
     notes: "按投影面积约 1700 元/㎡ × 2.4m × 2.7m 估算"
 
   - id: "sofa_3seat_01"
-    topic_id: "miscellaneous"
+    topic_id: "sofa"
     alternative_group: "sofa"
     category: "家具"
     name: "三人位科技布沙发"
@@ -699,7 +699,7 @@ materials:
     notes: "科技布是务实档首选，真皮预算翻倍"
 
   - id: "dining_table_01"
-    topic_id: "miscellaneous"
+    topic_id: "dining_table"
     alternative_group: "dining_table"
     category: "家具"
     name: "1.4m 岩板餐桌"
@@ -722,7 +722,7 @@ materials:
     notes: "1.4m 适合 4 人常用，6 人挤一挤"
 
   - id: "dining_chair_01"
-    topic_id: "miscellaneous"
+    topic_id: "dining_chair"
     alternative_group: "dining_chair"
     category: "家具"
     name: "简约餐椅"
@@ -745,7 +745,7 @@ materials:
     notes: "4 把起步，可根据实际增减"
 
   - id: "tv_stand_01"
-    topic_id: "miscellaneous"
+    topic_id: "tv_stand"
     alternative_group: "tv_stand"
     category: "家具"
     name: "1.8m 电视柜"
@@ -766,3 +766,264 @@ materials:
     cons: []
     price_source: "林氏家居天猫旗舰店"
     notes: "与沙发风格统一"
+    appearance: { type: "solid_color", color: "#8a6f52" }
+
+  # === 家具补全（2026-08-01 P0 补报价，务实档，到店未确认） ===
+  - id: "desk_01"
+    topic_id: "desk"
+    alternative_group: "desk"
+    category: "家具"
+    name: "1.2m 书桌"
+    brand: "本地家具厂 / 林氏家居"
+    model: "1.2×0.6×0.75m 板式/实木"
+    spec: "1200×600×750mm"
+    unit: "张"
+    price_per_unit: 800
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "林氏家居天猫 / 本地家具市场"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["性价比高", "尺寸适配书房"]
+    cons: []
+    price_source: "林氏家居天猫旗舰店"
+    notes: "书房靠西墙布置，含桌面插座"
+    appearance: { type: "solid_color", color: "#b08d5e" }
+
+  - id: "chair_01"
+    topic_id: "chair"
+    alternative_group: "chair"
+    category: "家具"
+    name: "人体工学椅"
+    brand: "西昊 / 永艺"
+    model: "网布升降转椅"
+    spec: "标准"
+    unit: "把"
+    price_per_unit: 500
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "京东 / 天猫"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["久坐舒适", "可升降"]
+    cons: []
+    price_source: "西昊天猫旗舰店"
+    notes: "书房书桌配套"
+    appearance: { type: "solid_color", color: "#3a3a3a" }
+
+  - id: "bookshelf_01"
+    topic_id: "bookshelf"
+    alternative_group: "bookshelf"
+    category: "家具"
+    name: "0.8m 书架"
+    brand: "本地家具厂 / 林氏家居"
+    model: "0.8×0.3×1.8m 开放式"
+    spec: "800×300×1800mm"
+    unit: "个"
+    price_per_unit: 600
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "林氏家居天猫 / 本地家具市场"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["收纳书籍", "靠北墙不占地"]
+    cons: []
+    price_source: "林氏家居天猫旗舰店"
+    notes: "书房北墙布置"
+    appearance: { type: "solid_color", color: "#9c7b52" }
+
+  - id: "shoe_cabinet_01"
+    topic_id: "shoe_cabinet"
+    alternative_group: "shoe_cabinet"
+    category: "家具"
+    name: "玄关鞋柜"
+    brand: "本地全屋定制工厂"
+    model: "1.0×0.35×2.4m 平开门"
+    spec: "1000×350×2400mm"
+    unit: "个"
+    price_per_unit: 800
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "快环建材市场全屋定制"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["玄关收纳", "到顶不落灰"]
+    cons: ["定制周期长"]
+    price_source: "本地全屋定制工厂报价"
+    notes: "入户花园玄关区，注意避让消防通道"
+    appearance: { type: "solid_color", color: "#c4a882" }
+
+  - id: "coffee_table_01"
+    topic_id: "coffee_table"
+    alternative_group: "coffee_table"
+    category: "家具"
+    name: "1.2m 茶几"
+    brand: "本地家具厂 / 林氏家居"
+    model: "1.2×0.6×0.45m 岩板/板式"
+    spec: "1200×600×450mm"
+    unit: "个"
+    price_per_unit: 600
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "林氏家居天猫 / 本地家具市场"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["与沙发配套", "岩板易清洁"]
+    cons: []
+    price_source: "林氏家居天猫旗舰店"
+    notes: "客厅沙发前，可后期升级"
+    appearance: { type: "solid_color", color: "#7a6a58" }
+
+  # === 家电补全（2026-08-01 P0 新增 appliances 池，calc_mode=fixed 单件整屋） ===
+  - id: "gas_stove_01"
+    topic_id: "gas_stove"
+    alternative_group: "gas_stove"
+    category: "厨房电器"
+    name: "5.0kW 嵌入式燃气灶"
+    brand: "美的 / 华帝"
+    model: "双灶嵌入式，5.0kW"
+    spec: "760×450mm"
+    unit: "台"
+    price_per_unit: 800
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "fixed"
+    supplier: "京东 / 天猫 / 本地家电卖场"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["大火力", "嵌入式美观"]
+    cons: []
+    price_source: "京东 / 天猫报价"
+    notes: "与油烟机配套；橱柜复尺前给开孔尺寸"
+
+  - id: "dishwasher_01"
+    topic_id: "dishwasher"
+    alternative_group: "dishwasher"
+    category: "厨房电器"
+    name: "嵌入式洗碗机"
+    brand: "美的 / 海尔"
+    model: "8-13 套嵌入式"
+    spec: "标准"
+    unit: "台"
+    price_per_unit: 2500
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "fixed"
+    supplier: "京东 / 天猫"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["解放双手", "高温除菌"]
+    cons: ["需预留上下水+插座"]
+    price_source: "京东 / 天猫报价"
+    notes: "厨下预留插座(sock_kitchen_dishwasher)与上下水；可延后采购"
+
+  - id: "water_purifier_01"
+    topic_id: "water_purifier"
+    alternative_group: "water_purifier"
+    category: "厨房电器"
+    name: "RO 反渗透净水器"
+    brand: "小米 / 美的"
+    model: "400-600G 厨下式"
+    spec: "标准"
+    unit: "台"
+    price_per_unit: 1500
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "fixed"
+    supplier: "小米之家 / 京东"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["直饮", "厨下隐藏"]
+    cons: ["需预留插座+排污管"]
+    price_source: "小米之家 / 京东报价"
+    notes: "厨下预留插座(sock_kitchen_purifier)；柜下高度需>45cm"
+
+  - id: "washer_01"
+    topic_id: "washer"
+    alternative_group: "washer"
+    category: "生活电器"
+    name: "10kg 滚筒洗衣机"
+    brand: "小天鹅 / 海尔"
+    model: "10kg 滚筒变频"
+    spec: "标准"
+    unit: "台"
+    price_per_unit: 2500
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "fixed"
+    supplier: "京东 / 天猫 / 本地家电卖场"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["大容量", "变频静音"]
+    cons: []
+    price_source: "京东 / 天猫报价"
+    notes: "生活阳台，插座留侧面离地30cm；排水管做墙排"
+
+  - id: "dryer_01"
+    topic_id: "dryer"
+    alternative_group: "dryer"
+    category: "生活电器"
+    name: "9kg 热泵烘干机"
+    brand: "小天鹅 / 海尔"
+    model: "9kg 热泵式"
+    spec: "标准"
+    unit: "台"
+    price_per_unit: 2500
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "fixed"
+    supplier: "京东 / 天猫"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["热泵省电", "与洗衣机叠放"]
+    cons: ["需专用叠放支架"]
+    price_source: "京东 / 天猫报价"
+    notes: "与洗衣机叠放，确认承重≥120kg；南宁回南天刚需，可延后"
+
+  - id: "shower_enclosure_01"
+    topic_id: "shower_enclosure"
+    alternative_group: "shower_enclosure"
+    category: "卫浴设备"
+    name: "淋浴房玻璃隔断"
+    brand: "本地卫浴 / 莱博顿"
+    model: "304不锈钢边框 + 钢化玻璃"
+    spec: "标准"
+    unit: "套"
+    price_per_unit: 1500
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "fixed"
+    supplier: "快环建材市场卫浴区"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["干湿分离", "钢化玻璃安全"]
+    cons: ["需按卫生间尺寸定制"]
+    price_source: "快环建材市场卫浴区报价"
+    notes: "两卫淋浴区；归 appliances 池避免与 sanitary 三件套计数混淆"

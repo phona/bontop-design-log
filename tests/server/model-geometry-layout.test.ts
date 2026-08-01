@@ -23,6 +23,6 @@ describe('model-geometry layout matches floor plan', () => {
 
     assert(byId.has('entry_garden'));
     const entry = byId.get('entry_garden')!;
-    assert(entry.width >= 5.0 && entry.width <= 6.0, 'entry garden width ~5.6m (bbox includes v_e_bot at x=16.40)');
+    assert(entry.width >= 4.3 && entry.width <= 4.6, 'entry garden width ~4.45m (x:[10.80,15.25])');
   });
 });

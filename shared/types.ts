@@ -290,6 +290,8 @@ export interface BudgetAttribution {
 export interface BudgetSnapshot {
   totalBudget: number;
   totalActual: number;
+  projectCeiling?: number;
+  overCeilingBy?: number;
   categories: BudgetCategory[];
   lineItems: BudgetLineItem[];
   attribution?: Record<string, BudgetAttribution>;
@@ -315,7 +317,8 @@ export interface DesignRulesConfig {
   budget?: {
     baseCategoriesFrom?: string;
     topicCategories?: Record<string, string>;
-    lineItems?: Array<{ topic: string; quantityField?: string; calcMode?: string }>;
+    furnishingTypeToTopic?: Record<string, string>;
+    lineItems?: Array<{ topic: string; quantityField?: string; calcMode?: string; applyRooms?: string[] }>;
   };
   risks?: Array<{
     id: string;

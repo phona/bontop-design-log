@@ -12,6 +12,7 @@ import { PitfallEngine } from '../../server/pitfall-engine.js';
 import { LifecycleEngine } from '../../server/lifecycle-engine.js';
 import { TradeoffEngine } from '../../server/tradeoff-engine.js';
 import { AcceptanceEngine } from '../../server/acceptance-engine.js';
+import { BudgetAdvisor } from '../../server/budget-advisor.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from '../../server/config-loader.js';
 import type { CadLayoutYaml } from '../../shared/types.js';
@@ -60,6 +61,7 @@ describe('server startup resilience', () => {
       getLifecycleEngine: () => new LifecycleEngine(),
       getTradeoffEngine: () => new TradeoffEngine(),
       getAcceptanceEngine: () => new AcceptanceEngine(),
+      getBudgetAdvisor: () => new BudgetAdvisor(catalog, calc, engine),
       archiveStore,
       getConfigRegistry: () => registry,
       getOverlay: () => undefined,

@@ -35,21 +35,46 @@ budget:
     water_heater: water_electric
     smart_home: smart_home
     hardware: miscellaneous
-    bed: miscellaneous
-    mattress: miscellaneous
-    wardrobe: miscellaneous
-    sofa: miscellaneous
-    dining_table: miscellaneous
-    dining_chair: miscellaneous
-    tv_stand: miscellaneous
-    desk: miscellaneous
+    bed: furniture_soft
+    mattress: furniture_soft
+    wardrobe: furniture_soft
+    sofa: furniture_soft
+    dining_table: furniture_soft
+    dining_chair: furniture_soft
+    tv_stand: furniture_soft
+    desk: furniture_soft
+    chair: furniture_soft
+    bookshelf: furniture_soft
+    shoe_cabinet: furniture_soft
+    coffee_table: furniture_soft
+    gas_stove: appliances
+    dishwasher: appliances
+    water_purifier: appliances
+    washer: appliances
+    dryer: appliances
+    shower_enclosure: appliances
+  # 家具 furnishing type（house.yaml）→ 预算 topic 映射；
+  # count 模式据此把 bed_180/bed_150 等归并到 bed topic 计价（修复 type≠topic 漏算）
+  furnishingTypeToTopic:
+    bed_180: bed
+    bed_150: bed
+    mattress_180: mattress
+    mattress_150: mattress
+    wardrobe_240: wardrobe
+    wardrobe_180: wardrobe
+    sofa_3seat: sofa
+    shoe_cabinet: shoe_cabinet
+  # applyRooms：限定算量范围，避免材料满铺到不施工的房间（电梯井/卧室等）。
+  # floor=湿区+客餐厅（卧室地面待"各房间地面材料"决策后另建 topic）；wall=仅湿区贴砖；cabinet/countertop=仅厨房。
   lineItems:
     - topic: floor
       quantityField: floorArea
       calcMode: area
+      applyRooms: [master_bath, guest_bath, kitchen, balcony, living_dining, entry_garden]
     - topic: wall
       quantityField: wetWallArea
       calcMode: area
+      applyRooms: [master_bath, guest_bath, kitchen, balcony]
     - topic: paint
       quantityField: paintWallArea
       calcMode: area
@@ -58,9 +83,11 @@ budget:
     - topic: cabinet
       quantityField: linearKitchen
       calcMode: length
+      applyRooms: [kitchen]
     - topic: countertop
       quantityField: linearKitchen
       calcMode: length
+      applyRooms: [kitchen]
     - topic: interior_door
       quantityField: doorCount
       calcMode: count
@@ -110,6 +137,29 @@ budget:
       calcMode: count
     - topic: tv_stand
       calcMode: count
+    - topic: desk
+      calcMode: count
+    - topic: chair
+      calcMode: count
+    - topic: bookshelf
+      calcMode: count
+    - topic: shoe_cabinet
+      calcMode: count
+    - topic: coffee_table
+      calcMode: count
+    # 家电（appliances 池，各为独立 topic，fixed 单件整屋）
+    - topic: gas_stove
+      calcMode: fixed
+    - topic: dishwasher
+      calcMode: fixed
+    - topic: water_purifier
+      calcMode: fixed
+    - topic: washer
+      calcMode: fixed
+    - topic: dryer
+      calcMode: fixed
+    - topic: shower_enclosure
+      calcMode: fixed
 
 risks:
   - id: "kitchen_hood_weak"

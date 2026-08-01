@@ -159,10 +159,10 @@ describe('ProjectCatalog — vertex v2.0 data path', () => {
 
   it('resolved room area is set for non-rectangular rooms (Gap 2)', () => {
     const catalog = ProjectCatalog.load('.');
-    const entryGarden = catalog.getRoom('entry_garden');
-    assert.ok(entryGarden);
-    assert.ok(entryGarden.area && entryGarden.area > 0, 'entry_garden should have area');
-    assert.ok(Math.abs(entryGarden.area! - (entryGarden.width * entryGarden.depth)) > 0.01,
+    const masterBath = catalog.getRoom('master_bath');
+    assert.ok(masterBath);
+    assert.ok(masterBath.area && masterBath.area > 0, 'master_bath should have area');
+    assert.ok(Math.abs(masterBath.area! - (masterBath.width * masterBath.depth)) > 0.01,
       'non-rectangular room area should differ from bbox');
   });
 

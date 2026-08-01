@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-06T10:10:49.676Z",
+  "updatedAt": "2026-08-01T14:19:37.409Z",
   "selections": {
     "floor": {
       "default": "floor_tile_01",
@@ -13,8 +13,132 @@
       "default": "latex_paint_01",
       "roomOverrides": {}
     },
+    "cabinet": {
+      "default": "cabinet_board_01",
+      "roomOverrides": {}
+    },
+    "countertop": {
+      "default": "quartz_stone_01",
+      "roomOverrides": {}
+    },
+    "interior_door": {
+      "default": "interior_door_01",
+      "roomOverrides": {}
+    },
+    "bathroom_door": {
+      "default": "bathroom_door_01",
+      "roomOverrides": {}
+    },
+    "entry_door": {
+      "default": "entry_door_01",
+      "roomOverrides": {}
+    },
+    "curtain": {
+      "default": "curtain_01",
+      "roomOverrides": {}
+    },
+    "sanitary": {
+      "default": "sanitary_toilet_01",
+      "roomOverrides": {}
+    },
+    "lighting": {
+      "default": "lighting_01",
+      "roomOverrides": {}
+    },
+    "switch_socket": {
+      "default": "switch_socket_01",
+      "roomOverrides": {}
+    },
+    "hardware": {
+      "default": "hardware_01",
+      "roomOverrides": {}
+    },
     "hvac": {
-      "default": "A1",
+      "default": "A2",
+      "roomOverrides": {}
+    },
+    "water_heater": {
+      "default": "gas_water_heater_01",
+      "roomOverrides": {}
+    },
+    "range_hood": {
+      "default": "range_hood_01",
+      "roomOverrides": {}
+    },
+    "smart_home": {
+      "default": "smart_home_01",
+      "roomOverrides": {}
+    },
+    "bed": {
+      "default": "bed_180_01",
+      "roomOverrides": {}
+    },
+    "mattress": {
+      "default": "mattress_180_01",
+      "roomOverrides": {}
+    },
+    "wardrobe": {
+      "default": "wardrobe_240_01",
+      "roomOverrides": {}
+    },
+    "sofa": {
+      "default": "sofa_3seat_01",
+      "roomOverrides": {}
+    },
+    "dining_table": {
+      "default": "dining_table_01",
+      "roomOverrides": {}
+    },
+    "dining_chair": {
+      "default": "dining_chair_01",
+      "roomOverrides": {}
+    },
+    "tv_stand": {
+      "default": "tv_stand_01",
+      "roomOverrides": {}
+    },
+    "desk": {
+      "default": "desk_01",
+      "roomOverrides": {}
+    },
+    "chair": {
+      "default": "chair_01",
+      "roomOverrides": {}
+    },
+    "bookshelf": {
+      "default": "bookshelf_01",
+      "roomOverrides": {}
+    },
+    "shoe_cabinet": {
+      "default": "shoe_cabinet_01",
+      "roomOverrides": {}
+    },
+    "coffee_table": {
+      "default": "coffee_table_01",
+      "roomOverrides": {}
+    },
+    "gas_stove": {
+      "default": "gas_stove_01",
+      "roomOverrides": {}
+    },
+    "dishwasher": {
+      "default": "dishwasher_01",
+      "roomOverrides": {}
+    },
+    "water_purifier": {
+      "default": "water_purifier_01",
+      "roomOverrides": {}
+    },
+    "washer": {
+      "default": "washer_01",
+      "roomOverrides": {}
+    },
+    "dryer": {
+      "default": "dryer_01",
+      "roomOverrides": {}
+    },
+    "shower_enclosure": {
+      "default": "shower_enclosure_01",
       "roomOverrides": {}
     }
   }

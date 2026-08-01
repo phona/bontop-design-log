@@ -126,10 +126,16 @@ export class BudgetCalculator {
       }
 
       if (calcMode === 'count') {
+        const typeToTopic = this.rulesConfig.budget?.furnishingTypeToTopic ?? {};
         let totalCost = 0;
         for (const roomId of Object.keys(this.catalog.getFurnishings())) {
-          const qty = this.catalog.getFurnishingCounts(roomId)[li.topic];
-          if (!qty || qty <= 0) continue;
+          const counts = this.catalog.getFurnishingCounts(roomId);
+          let qty = 0;
+          for (const [type, count] of Object.entries(counts)) {
+            const resolvedTopic = type === li.topic ? li.topic : typeToTopic[type];
+            if (resolvedTopic === li.topic) qty += count;
+          }
+          if (qty <= 0) continue;
           const optionId = scheme.selections[li.topic]?.roomOverrides?.[roomId]
                          ?? scheme.selections[li.topic]?.default;
           if (!optionId) continue;
@@ -154,7 +160,9 @@ export class BudgetCalculator {
         if (!quantityFn) continue;
 
         for (const room of rooms) {
-          const overrideOptionId = scheme.selections[li.topic]?.roomOverrides[room.id];
+          const overrideOptionId = scheme.selections[li.topic]?.roomOverrides?.[room.id];
+          // applyRooms 只限制默认满铺；显式房间覆盖（用户 deliberate 选择）始终尊重
+          if (li.applyRooms && !li.applyRooms.includes(room.id) && overrideOptionId === undefined) continue;
           const defaultOptionId = scheme.selections[li.topic]?.default;
           const optionId = overrideOptionId ?? defaultOptionId;
           if (!optionId) continue;
@@ -209,7 +217,7 @@ export class BudgetCalculator {
 
     const budgetRaw = JSON.parse(
       readFileSync('config/budget/base.json', 'utf8')
-    ) as { categories: Record<string, BudgetCategoryRaw> };
+    ) as { categories: Record<string, BudgetCategoryRaw>; project_ceiling?: number };
 
     const categories: BudgetCategory[] = baseCategories.map((bc) => {
       const autoActual = categoryAutoActual.get(bc.key) ?? 0;
@@ -251,7 +259,10 @@ export class BudgetCalculator {
 
     const totalBudget = categories.reduce((sum, c) => sum + c.budget, 0);
     const totalActual = categories.reduce((sum, c) => sum + c.actual, 0);
+    const projectCeiling = budgetRaw.project_ceiling;
+    const overCeilingBy =
+      projectCeiling !== undefined ? totalActual - projectCeiling : undefined;
 
-    return { totalBudget, totalActual, categories, lineItems: allLineItems, attribution };
+    return { totalBudget, totalActual, projectCeiling, overCeilingBy, categories, lineItems: allLineItems, attribution };
   }
 }

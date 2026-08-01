@@ -10,6 +10,7 @@ import { createMcpServer } from './mcp-server.js';
 import { attachMcpTransports } from './mcp-transports.js';
 import { RuleEngine } from './rule-engine.js';
 import { BudgetCalculator } from './budget-calculator.js';
+import { BudgetAdvisor } from './budget-advisor.js';
 import { PitfallEngine } from './pitfall-engine.js';
 import type { PitfallConfig } from './pitfall-engine.js';
 import { LifecycleEngine } from './lifecycle-engine.js';
@@ -34,6 +35,7 @@ let catalog = ProjectCatalog.fromMaterials(
 );
 let ruleEngine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
 let budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
+let budgetAdvisor = new BudgetAdvisor(catalog, budgetCalculator, ruleEngine);
 let pitfallEngine = new PitfallEngine({ version: '1.0', pitfalls: [], templates: [] });
 const lifecycleEngine = new LifecycleEngine();
 const tradeoffEngine = new TradeoffEngine();
@@ -46,9 +48,10 @@ function rebuildDerived(): void {
   const houseMeta = houseMetaLoader.getConfig();
   catalog = ProjectCatalog.fromMaterials(materials, budgetBase, layout, houseMeta, 'model-geometry');
   const rulesConfig = designRulesLoader.getConfig() ?? { version: '1.0', risks: [], constraints: [] };
-  ruleEngine = new RuleEngine(rulesConfig);
-  budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
-  const pitfallConfig = pitfallsLoader.getConfig() ?? { version: '1.0', pitfalls: [], templates: [] };
+    ruleEngine = new RuleEngine(rulesConfig);
+    budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
+    budgetAdvisor = new BudgetAdvisor(catalog, budgetCalculator, ruleEngine);
+    const pitfallConfig = pitfallsLoader.getConfig() ?? { version: '1.0', pitfalls: [], templates: [] };
   pitfallEngine = new PitfallEngine(pitfallConfig);
 }
 
@@ -148,6 +151,7 @@ const apiDeps = {
   getLifecycleEngine: () => lifecycleEngine,
   getTradeoffEngine: () => tradeoffEngine,
   getAcceptanceEngine: () => acceptanceEngine,
+  getBudgetAdvisor: () => budgetAdvisor,
   archiveStore,
   getConfigRegistry: () => registry,
   getOverlay: () => overlayLoader.getConfig(),

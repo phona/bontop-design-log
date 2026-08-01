@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
+import { RuleEngine } from '../../server/rule-engine.js';
 import type { CurrentScheme, DesignRulesConfig } from '../../shared/types.js';
 
 const rulesConfig: DesignRulesConfig = {
@@ -269,13 +270,13 @@ describe('BudgetCalculator', () => {
 
   it('uses room.area for non-rectangular rooms instead of width*depth (Gap 2)', () => {
     const catalog = ProjectCatalog.load('.');
-    const entryGarden = catalog.getRoom('entry_garden');
-    assert.ok(entryGarden, 'entry_garden should exist');
-    assert.ok(entryGarden.area, 'entry_garden should have resolved area');
-    const bboxArea = entryGarden.width * entryGarden.depth;
+    const masterBath = catalog.getRoom('master_bath');
+    assert.ok(masterBath, 'master_bath should exist');
+    assert.ok(masterBath.area, 'master_bath should have resolved area');
+    const bboxArea = masterBath.width * masterBath.depth;
     assert.ok(
-      Math.abs(entryGarden.area! - bboxArea) > 0.01,
-      `area (${entryGarden.area}) should differ from bbox (${bboxArea}) for L-shaped room`
+      Math.abs(masterBath.area! - bboxArea) > 0.01,
+      `area (${masterBath.area}) should differ from bbox (${bboxArea}) for non-rectangular room`
     );
   });
 
@@ -339,7 +340,7 @@ describe('BudgetCalculator', () => {
     assert.equal(contingency.status, 'reserved');
   });
 
-  it('hvac with budget 0 stays ok even with actual spend', () => {
+  it('hvac budget reflects selected option price (P0 four-pool)', () => {
     const catalog = ProjectCatalog.load('.');
     const calc = new BudgetCalculator(catalog, rulesConfig);
     const scheme: CurrentScheme = {
@@ -354,7 +355,117 @@ describe('BudgetCalculator', () => {
     const snapshot = calc.calculate(scheme);
     const hvac = snapshot.categories.find((c) => c.key === 'hvac');
     assert.ok(hvac);
-    assert.ok(hvac.actual > 0);
-    assert.equal(hvac.status, 'ok');
+    assert.equal(hvac.budget, 29000, 'hvac budget now part of four-pool total');
+    assert.equal(hvac.actual, 29000);
+    assert.equal(hvac.status, 'near');
+  });
+
+  it('furniture count mode prices via furnishingTypeToTopic mapping (P0 bug fix)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const calc = new BudgetCalculator(catalog, realRules);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        bed: { default: 'bed_180_01', roomOverrides: {} },
+        mattress: { default: 'mattress_180_01', roomOverrides: {} },
+        wardrobe: { default: 'wardrobe_240_01', roomOverrides: {} },
+        sofa: { default: 'sofa_3seat_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+
+    const bedItems = snapshot.lineItems.filter((li) => li.topic === 'bed');
+    assert.equal(bedItems.length, 3, 'three rooms have a bed (bed_180/bed_150 → bed)');
+    assert.equal(
+      bedItems.reduce((s, li) => s + li.cost, 0),
+      7500,
+      '3 beds × 2500'
+    );
+
+    const furnitureSoft = snapshot.categories.find((c) => c.key === 'furniture_soft');
+    assert.ok(furnitureSoft, 'furniture_soft category exists');
+    assert.ok(furnitureSoft!.autoActual > 0, 'furniture now priced (was 0 before mapping fix)');
+  });
+
+  it('appliances fixed mode flows into appliances pool (P0)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const calc = new BudgetCalculator(catalog, realRules);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        gas_stove: { default: 'gas_stove_01', roomOverrides: {} },
+        dishwasher: { default: 'dishwasher_01', roomOverrides: {} },
+        water_purifier: { default: 'water_purifier_01', roomOverrides: {} },
+        washer: { default: 'washer_01', roomOverrides: {} },
+        dryer: { default: 'dryer_01', roomOverrides: {} },
+        shower_enclosure: { default: 'shower_enclosure_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    const appliances = snapshot.categories.find((c) => c.key === 'appliances');
+    assert.ok(appliances, 'appliances category exists');
+    assert.equal(appliances!.autoActual, 11300, '6 appliances sum (800+2500+1500+2500+2500+1500)');
+  });
+
+  it('four-pool total_budget includes hard + hvac + furniture + appliances (P0)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: { hvac: { default: 'A2', roomOverrides: {} } },
+    };
+    const snapshot = calc.calculate(scheme);
+    assert.equal(snapshot.totalBudget, 192000);
+    for (const key of ['furniture_soft', 'appliances', 'hvac']) {
+      assert.ok(snapshot.categories.find((c) => c.key === key), `${key} category present`);
+    }
+  });
+
+  it('applyRooms restricts floor line items to wet+public rooms (calibration)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const calc = new BudgetCalculator(catalog, realRules);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: { floor: { default: 'floor_tile_01', roomOverrides: {} } },
+    };
+    const snapshot = calc.calculate(scheme);
+    const floorRooms = new Set(
+      snapshot.lineItems.filter((li) => li.topic === 'floor').map((li) => li.roomId)
+    );
+    const excluded = ['master_bedroom', 'study', 'bedroom_nw', 'bedroom_se', 'elevator_shaft'];
+    for (const rid of excluded) {
+      assert.ok(!floorRooms.has(rid), `floor must NOT apply to ${rid}`);
+    }
+    assert.ok(floorRooms.has('kitchen'), 'floor applies to kitchen');
+    assert.ok(floorRooms.has('living_dining'), 'floor applies to living_dining');
+  });
+
+  it('cabinet scoped to kitchen only (calibration)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const calc = new BudgetCalculator(catalog, realRules);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: { cabinet: { default: 'cabinet_board_01', roomOverrides: {} } },
+    };
+    const snapshot = calc.calculate(scheme);
+    const cabinetItems = snapshot.lineItems.filter((li) => li.topic === 'cabinet');
+    assert.equal(cabinetItems.length, 1, 'cabinet only in kitchen');
+    assert.equal(cabinetItems[0].roomId, 'kitchen');
+  });
+
+  it('exposes projectCeiling and overCeilingBy in snapshot (P1)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: { hvac: { default: 'A2', roomOverrides: {} } },
+    };
+    const snapshot = calc.calculate(scheme);
+    assert.equal(snapshot.projectCeiling, 190000);
+    assert.equal(snapshot.overCeilingBy, snapshot.totalActual - 190000);
   });
 });

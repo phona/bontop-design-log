@@ -9,11 +9,16 @@ import type { LifecycleEngine } from './lifecycle-engine.js';
 import type { TradeoffEngine } from './tradeoff-engine.js';
 import type { AcceptanceEngine } from './acceptance-engine.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
-import type { CurrentScheme } from '../shared/types.js';
+import type { BudgetAdvisor } from './budget-advisor.js';
+import type { CurrentScheme, BudgetCategory } from '../shared/types.js';
 import { parseSpecDimensions } from './spec-parser.js';
 
 function text(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
+}
+
+function prevActualByKey(categories: BudgetCategory[]): Map<string, number> {
+  return new Map(categories.map((c) => [c.key, c.actual]));
 }
 
 function findMaterialByFurnitureType(
@@ -34,11 +39,12 @@ export interface McpDeps {
   getLifecycleEngine: () => LifecycleEngine;
   getTradeoffEngine: () => TradeoffEngine;
   getAcceptanceEngine: () => AcceptanceEngine;
+  getBudgetAdvisor: () => BudgetAdvisor;
   archiveStore: ArchivedSchemesStore;
 }
 
 export function createMcpServer(deps: McpDeps): McpServer {
-  const { catalog, state, getRuleEngine, getBudgetCalculator, getPitfallEngine, getLifecycleEngine, getTradeoffEngine, getAcceptanceEngine, archiveStore } = deps;
+  const { catalog, state, getRuleEngine, getBudgetCalculator, getPitfallEngine, getLifecycleEngine, getTradeoffEngine, getAcceptanceEngine, getBudgetAdvisor, archiveStore } = deps;
   const server = new McpServer(
     { name: 'bontop-design', version: '0.2.0' },
     { capabilities: { tools: {} } }
@@ -141,10 +147,11 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const prevBudget = calc.calculate(result.previousScheme);
       const newBudget = calc.calculate(newScheme);
       const newRisks = engine.evaluate(newScheme, catalog);
+      const prevMap = prevActualByKey(prevBudget.categories);
       const categoryDeltas = newBudget.categories
         .map((c, i) => ({
           key: c.key,
-          delta: c.actual - prevBudget.categories[i].actual,
+          delta: c.actual - (prevMap.get(c.key) ?? 0),
           status: c.status,
         }))
         .filter((d) => d.delta !== 0);
@@ -189,10 +196,11 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const prevBudget = calc.calculate(result.previousScheme);
       const newBudget = calc.calculate(newScheme);
       const newRisks = engine.evaluate(newScheme, catalog);
+      const prevMap = prevActualByKey(prevBudget.categories);
       const categoryDeltas = newBudget.categories
         .map((c, i) => ({
           key: c.key,
-          delta: c.actual - prevBudget.categories[i].actual,
+          delta: c.actual - (prevMap.get(c.key) ?? 0),
           status: c.status,
         }))
         .filter((d) => d.delta !== 0);
@@ -519,15 +527,18 @@ export function createMcpServer(deps: McpDeps): McpServer {
         },
         delta: {
           totalDelta: simBudget.totalActual - currentBudget.totalActual,
-          categoryDeltas: simBudget.categories
-            .map((c, i) => ({
-              key: c.key,
-              currentActual: currentBudget.categories[i].actual,
-              simulatedActual: c.actual,
-              delta: c.actual - currentBudget.categories[i].actual,
-              status: c.status,
-            }))
-            .filter((d) => d.delta !== 0),
+          categoryDeltas: (() => {
+            const curMap = prevActualByKey(currentBudget.categories);
+            return simBudget.categories
+              .map((c) => ({
+                key: c.key,
+                currentActual: curMap.get(c.key) ?? 0,
+                simulatedActual: c.actual,
+                delta: c.actual - (curMap.get(c.key) ?? 0),
+                status: c.status,
+              }))
+              .filter((d) => d.delta !== 0);
+          })(),
           risksAdded: simRisks.risks.filter((r) => !currentRiskIds.has(r.id)),
           risksRemoved: currentRisks.risks.filter((r) => !simRiskIds.has(r.id)),
         },
@@ -563,6 +574,22 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const template = getPitfallEngine().getTemplate(args.tier, args.totalBudget);
       if (!template) return text({ error: 'no matching template' });
       return text(template);
+    }
+  );
+
+  server.registerTool(
+    'suggest_to_fit_budget',
+    {
+      title: 'Suggest downgrades to fit budget',
+      description:
+        'When totalActual exceeds the target (default project_ceiling), suggest option downgrades per topic sorted by savings (greedy) to get under target. Each suggestion lists newly triggered risks. Does not persist.',
+      inputSchema: z.object({
+        target: z.number().optional(),
+      }),
+    },
+    async (args) => {
+      const scheme = state.getCurrentScheme();
+      return text(getBudgetAdvisor().suggest(scheme, args.target));
     }
   );
 
