@@ -161,6 +161,16 @@
   count: 1
   note: "飘窗旁插座"
 
+- id: sock_master_ac
+  room: master_bedroom
+  wall: w_mb_east
+  type: socket
+  x: 4.20
+  z: 7.0
+  height: 2.5
+  count: 1
+  note: "主卧空调内机电源（吊顶内；风管机布线，距内机>1m 属正常）"
+
 # 西南次卧（父母房）
 - id: sock_parent_bed_l
   room: study
@@ -296,6 +306,16 @@
   z: 4.30
   height: 1.3
   note: "儿童房灯光开关"
+
+- id: sock_child_ac
+  room: bedroom_nw
+  wall: w_nw_south
+  type: socket
+  x: 4.0
+  z: 4.30
+  height: 2.5
+  count: 1
+  note: "儿童房空调内机电源（吊顶内）"
 
 # 厨房
 - id: sock_kitchen_counter

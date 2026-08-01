@@ -675,6 +675,30 @@ materials:
     price_source: "本地全屋定制工厂报价"
     notes: "按投影面积约 1700 元/㎡ × 2.4m × 2.7m 估算"
 
+  - id: "wardrobe_180_01"
+    topic_id: "miscellaneous"
+    alternative_group: "wardrobe"
+    category: "家具"
+    name: "1.8m 定制衣柜"
+    brand: "本地全屋定制工厂"
+    model: "1.8×0.6×2.7m，平开门"
+    spec: "1800×600×2700mm"
+    unit: "个"
+    price_per_unit: 3200
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "快环建材市场全屋定制"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["尺寸精准", "适配小卧室", "板材可选"]
+    cons: ["定制周期长"]
+    price_source: "本地全屋定制工厂报价"
+    notes: "按投影面积约 1700 元/㎡ × 1.8m × 2.7m 估算；西北次卧（儿童房）用，DEC-012 由 2.4m 降"
+    appearance: { type: "solid_color", color: "#d8cbb2" }
+
   - id: "sofa_3seat_01"
     topic_id: "sofa"
     alternative_group: "sofa"

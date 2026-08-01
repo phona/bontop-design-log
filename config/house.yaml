@@ -397,7 +397,7 @@ furnishings:
   bedroom_nw:
     # 房间 x∈[2.60,5.60] z∈[1.10,4.30]，南门 d_bnw @(5.0,4.30) swing x∈[4.55,5.45] z∈[3.40,4.30]
     - { type: bed_180, x: 4.60, z: 2.30, rotation: 270 }       # 床头靠东墙，让开摆门区
-    - { type: wardrobe_240, x: 2.90, z: 2.70, rotation: 90 }   # 沿西墙飘窗下（sill 2.55 不挡窗）
+    - { type: wardrobe_180, x: 2.90, z: 2.70, rotation: 90 }   # 1.8m衣柜沿西墙飘窗下（sill 2.55 不挡窗）；原2.4m致过道<0.5m，DEC-012降1.8m
     - { type: mattress_180 }
     - { type: curtain_set }
     - { type: ceiling_light }
