@@ -33,6 +33,7 @@ export const GLASS_THICKNESS = 0.15; // 15cm glass panel (increased for top-down
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
 const SHAFT_FLOOR = '#3a3a3a';
+const DEFAULT_CEILING = '#f5f5f5';
 const SHAFT_WALL = '#555555';
 const ELEVATOR_DOOR_COLOR = 0x888899;
 
@@ -71,6 +72,7 @@ export class HouseScene implements SceneApi {
   private topicGroup = new THREE.Group();
   private floorMeshes: THREE.Mesh[] = [];
   private wallMeshes: THREE.Mesh[] = [];
+  private ceilingMeshes: THREE.Mesh[] = [];
   private glassMeshes: THREE.Mesh[] = [];
   private furnitureMeshes: THREE.Group[] = [];
   private electricalMeshes: THREE.Mesh[] = [];
@@ -186,6 +188,7 @@ export class HouseScene implements SceneApi {
     const prevGridOpacity = this.gridHelper ? this.getGridHelperOpacity() : 1.0;
     const prevFurnitureVisible = this.furnitureMeshes.map((m) => m.visible);
     const prevElectricalVisible = this.electricalMeshes.map((m) => m.visible);
+    const prevCeilingVisible = this.ceilingMeshes.map((m) => m.visible);
     const prevShadowMapEnabled = this.renderer.shadowMap.enabled;
 
     this.topicGroup.visible = false;
@@ -196,6 +199,9 @@ export class HouseScene implements SceneApi {
       mesh.visible = false;
     }
     for (const mesh of this.electricalMeshes) {
+      mesh.visible = false;
+    }
+    for (const mesh of this.ceilingMeshes) {
       mesh.visible = false;
     }
     this.renderer.shadowMap.enabled = false;
@@ -238,6 +244,9 @@ export class HouseScene implements SceneApi {
       }
       for (let i = 0; i < this.electricalMeshes.length; i++) {
         this.electricalMeshes[i].visible = prevElectricalVisible[i];
+      }
+      for (let i = 0; i < this.ceilingMeshes.length; i++) {
+        this.ceilingMeshes[i].visible = prevCeilingVisible[i];
       }
       this.renderer.shadowMap.enabled = prevShadowMapEnabled;
       this.renderer.setRenderTarget(null);
@@ -551,6 +560,24 @@ export class HouseScene implements SceneApi {
     floor.receiveShadow = true;
     group.add(floor);
     this.floorMeshes.push(floor);
+
+    // 天花板：与地板同形状，位于 y=height。分模式可见（第一人称显示，轨道/俯视隐藏，见 setMode）
+    const ceilingGeo = pts
+      ? new THREE.ShapeGeometry(this.buildRoundedShape(pts.map(p => ({ x: p.x - r.x, z: r.z - p.z, radius: p.radius }))))
+      : new THREE.PlaneGeometry(r.width, r.depth);
+    const ceilingMat = new THREE.MeshStandardMaterial({
+      color: DEFAULT_CEILING,
+      roughness: 0.9,
+      metalness: 0.02,
+      side: THREE.DoubleSide,
+    });
+    const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
+    ceiling.rotation.x = -Math.PI / 2;
+    ceiling.position.y = r.height - 0.005;
+    ceiling.userData = { roomId: r.id, objectId: `ceiling:${r.id}`, type: 'ceiling' };
+    ceiling.visible = false;
+    group.add(ceiling);
+    this.ceilingMeshes.push(ceiling);
 
     if (fabricateWalls) {
       const wallMat = new THREE.MeshStandardMaterial({
@@ -1483,6 +1510,14 @@ export class HouseScene implements SceneApi {
   setMode(mode: 'orbit' | 'first-person' | 'top-down') {
     this._mode = mode;
     this.controls.enabled = mode === 'orbit';
+    // 天花板：第一人称显示（沉浸），轨道/俯视隐藏（保持 dollhouse 俯视通透）
+    this.setCeilingVisible(mode === 'first-person');
+  }
+
+  setCeilingVisible(visible: boolean): void {
+    for (const mesh of this.ceilingMeshes) {
+      mesh.visible = visible;
+    }
   }
 
   private objectDisplayName(objectId: string, type: string, roomId?: string): string {
