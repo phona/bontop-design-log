@@ -118,14 +118,15 @@ vi.mock('@shared/houseData', () => ({
 
 vi.mock('./data/designData.js', () => ({
   floorOptions: [],
+  bedroomFloorOptions: [],
   wallOptions: [],
   paintOptions: [],
   cabinetOptions: [],
   countertopOptions: [],
   sanitaryOptions: [],
   interiorDoorOptions: [],
-  materialCategories: { floor: [], wall: [], paint: [], cabinet: [], countertop: [], sanitary: [], door: [] },
-  getMaterialOptions: () => ({ floor: [], wall: [], paint: [], cabinet: [], countertop: [], sanitary: [], door: [] }),
+  materialCategories: { floor: [], bedroom_floor: [], wall: [], paint: [], cabinet: [], countertop: [], sanitary: [], door: [] },
+  getMaterialOptions: () => ({ floor: [], bedroom_floor: [], wall: [], paint: [], cabinet: [], countertop: [], sanitary: [], door: [] }),
 }));
 
 const mockRequestAnimationFrame = vi.fn(() => 1);

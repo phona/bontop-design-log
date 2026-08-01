@@ -72,6 +72,10 @@ vi.mock('../data/designData.js', () => ({
     { id: 'floor_tile_01', name: '浅胡桃木纹砖', color: '#c49a6c' },
     { id: 'floor_tile_02', name: '深灰岩纹砖', color: '#8b8b8b' },
   ],
+  bedroomFloorOptions: [
+    { id: 'bedroom_tile_01', name: '卧室木纹砖', color: '#c49a6c' },
+    { id: 'bedroom_wood_01', name: '实木复合地板', color: '#a97c50' },
+  ],
   wallOptions: [
     { id: 'wall_tile_01', name: '厨卫白色釉面砖', color: '#f5f5f5' },
     { id: 'wall_tile_02', name: '浅灰哑光砖', color: '#d0d0d0' },
@@ -100,6 +104,7 @@ vi.mock('../data/designData.js', () => ({
 import { TopicRegistry } from './TopicRegistry';
 import { HvacTopic } from './HvacTopic';
 import { FloorTopic } from './FloorTopic';
+import { BedroomFloorTopic, BEDROOM_ROOM_IDS } from './BedroomFloorTopic';
 import { WallTopic } from './WallTopic';
 import { PaintTopic } from './PaintTopic';
 import { CabinetTopic } from './CabinetTopic';
@@ -146,10 +151,11 @@ describe('TopicRegistry', () => {
     const mock = createMockSceneApi();
     const registry = new TopicRegistry(mock.api as any);
     const topics = registry.list();
-    expect(topics.length).toBe(8);
+    expect(topics.length).toBe(9);
     const ids = topics.map((t) => t.id);
     expect(ids).toContain('hvac');
     expect(ids).toContain('floor');
+    expect(ids).toContain('bedroom_floor');
     expect(ids).toContain('wall');
     expect(ids).toContain('paint');
     expect(ids).toContain('cabinet');
@@ -178,7 +184,7 @@ describe('TopicRegistry', () => {
     const custom = { id: 'custom', name: 'Custom', options: [], apply: vi.fn() };
     registry.register(custom as any);
     expect(registry.get('custom')).toBeDefined();
-    expect(registry.list().length).toBe(9);
+    expect(registry.list().length).toBe(10);
   });
 });
 
@@ -360,7 +366,7 @@ describe('FloorTopic', () => {
   it('should apply floor material and return floor:all', () => {
     const scene = {
       setFloorMaterial: vi.fn(),
-      getAllRoomIds: vi.fn(() => ['living_dining', 'bedroom_nw']),
+      getAllRoomIds: vi.fn(() => ['living_dining', 'kitchen']),
     };
     const ids = topic.apply(scene as any, 'floor_tile_01');
     expect(scene.getAllRoomIds).toHaveBeenCalled();
@@ -374,7 +380,7 @@ describe('FloorTopic', () => {
   it('should apply second floor option', () => {
     const scene = {
       setFloorMaterial: vi.fn(),
-      getAllRoomIds: vi.fn(() => ['living_dining', 'bedroom_nw']),
+      getAllRoomIds: vi.fn(() => ['living_dining', 'kitchen']),
     };
     const ids = topic.apply(scene as any, 'floor_tile_02');
     expect(scene.setFloorMaterial).toHaveBeenCalledWith(
@@ -382,6 +388,20 @@ describe('FloorTopic', () => {
       { type: 'ceramic_tile_v2', color: '#8b8b8b', scale: 2 }
     );
     expect(ids).toEqual(['floor:all']);
+  });
+
+  it('should exclude bedroom rooms (handled by BedroomFloorTopic)', () => {
+    const scene = {
+      setFloorMaterial: vi.fn(),
+      getAllRoomIds: vi.fn(() => ['living_dining', 'master_bedroom', 'study', 'bedroom_nw', 'bedroom_se', 'kitchen']),
+    };
+    topic.apply(scene as any, 'floor_tile_01');
+    const calledRooms = (scene.setFloorMaterial as any).mock.calls.map((c: any[]) => c[0]);
+    for (const bedroom of BEDROOM_ROOM_IDS) {
+      expect(calledRooms).not.toContain(bedroom);
+    }
+    expect(calledRooms).toContain('living_dining');
+    expect(calledRooms).toContain('kitchen');
   });
 
   it('should return empty array for unknown option', () => {
@@ -402,6 +422,54 @@ describe('FloorTopic', () => {
     const ids = topic.apply(scene as any, 'floor_tile_01');
     expect(scene.setFloorMaterial).toHaveBeenCalled();
     expect(ids).toEqual(['floor:all']);
+  });
+
+  it('validate should return empty array', () => {
+    expect(topic.validate()).toEqual([]);
+  });
+});
+
+describe('BedroomFloorTopic', () => {
+  let topic: BedroomFloorTopic;
+
+  beforeEach(() => {
+    topic = new BedroomFloorTopic();
+  });
+
+  it('should have correct id and name', () => {
+    expect(topic.id).toBe('bedroom_floor');
+    expect(topic.name).toBe('卧室地面');
+  });
+
+  it('should have options from bedroomFloorOptions', () => {
+    expect(topic.options.length).toBe(2);
+    expect(topic.options[0].id).toBe('bedroom_tile_01');
+    expect(topic.options[1].id).toBe('bedroom_wood_01');
+  });
+
+  it('should apply material only to the 4 bedrooms', () => {
+    const scene = { setFloorMaterial: vi.fn() };
+    const ids = topic.apply(scene as any, 'bedroom_tile_01');
+    expect(scene.setFloorMaterial).toHaveBeenCalledTimes(4);
+    const calledRooms = (scene.setFloorMaterial as any).mock.calls.map((c: any[]) => c[0]);
+    expect(calledRooms.sort()).toEqual([...BEDROOM_ROOM_IDS].sort());
+    expect(ids.length).toBe(4);
+  });
+
+  it('should apply wood option appearance', () => {
+    const scene = { setFloorMaterial: vi.fn() };
+    topic.apply(scene as any, 'bedroom_wood_01');
+    expect(scene.setFloorMaterial).toHaveBeenCalledWith(
+      'master_bedroom',
+      { type: 'wood_grain_v2', color: '#a97c50', scale: 2 }
+    );
+  });
+
+  it('should return empty array for unknown option', () => {
+    const scene = { setFloorMaterial: vi.fn() };
+    const ids = topic.apply(scene as any, 'nonexistent');
+    expect(ids).toEqual([]);
+    expect(scene.setFloorMaterial).not.toHaveBeenCalled();
   });
 
   it('validate should return empty array', () => {

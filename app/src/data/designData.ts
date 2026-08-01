@@ -5,9 +5,11 @@ import materialsRaw from '../../../config/materials.yaml?raw';
 
 const materialsData = load(materialsRaw) as MaterialsYaml;
 
-function byCategory(category: string): TopicOption[] {
+// 按 topic_id 分组（而非中文 category），避免同 category 的不同 topic 材料互相串入
+// （如 bedroom_tile_01 与 floor_tile_01 同属"地砖"，须按 topic_id 区分 floor / bedroom_floor）
+function byTopicId(topicId: string): TopicOption[] {
   return materialsData.materials
-    .filter((m: MaterialItem) => m.category === category)
+    .filter((m: MaterialItem) => m.topic_id === topicId)
     .map((m: MaterialItem) => ({
       id: m.id,
       name: m.name,
@@ -31,20 +33,22 @@ function ensureAppearance(options: TopicOption[]): TopicOption[] {
   });
 }
 
-export const floorOptions = ensureAppearance(byCategory('地砖'));
-export const wallOptions = ensureAppearance(byCategory('墙砖'));
-export const paintOptions = ensureAppearance(byCategory('乳胶漆'));
-export const cabinetOptions = ensureAppearance(byCategory('柜体板材'));
-export const countertopOptions = ensureAppearance(byCategory('台面'));
-export const sanitaryOptions = ensureAppearance(byCategory('卫浴洁具'));
+export const floorOptions = ensureAppearance(byTopicId('floor'));
+export const bedroomFloorOptions = ensureAppearance(byTopicId('bedroom_floor'));
+export const wallOptions = ensureAppearance(byTopicId('wall'));
+export const paintOptions = ensureAppearance(byTopicId('latex_paint'));
+export const cabinetOptions = ensureAppearance(byTopicId('cabinet'));
+export const countertopOptions = ensureAppearance(byTopicId('countertop'));
+export const sanitaryOptions = ensureAppearance(byTopicId('sanitary'));
 export const interiorDoorOptions = [
-  ...ensureAppearance(byCategory('室内门')),
-  ...ensureAppearance(byCategory('卫生间门')),
-  ...ensureAppearance(byCategory('入户门')),
+  ...ensureAppearance(byTopicId('interior_door')),
+  ...ensureAppearance(byTopicId('bathroom_door')),
+  ...ensureAppearance(byTopicId('entry_door')),
 ];
 
 export const materialCategories: Record<string, TopicOption[]> = {
   floor: floorOptions,
+  bedroom_floor: bedroomFloorOptions,
   wall: wallOptions,
   paint: paintOptions,
   cabinet: cabinetOptions,
