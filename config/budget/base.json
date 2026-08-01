@@ -4,7 +4,7 @@
   "currency": "CNY",
   "total_budget": 192000,
   "project_ceiling": 190000,
-  "notes": "四池口径（P0 重构 v0.5）：硬装 118,000（16 科 107,000 + 预备费 11,000）+ 暖通 29,000（美的理想家III A2）+ 家具软装 35,000 + 家电 10,000 = 192,000。project_ceiling=190,000 为拎包入住总上限（务实档真实落地值，略低于合计以形成约束）。偏紧科目已上调：water_electric 8500→12000、waterproof 3500→4500、kitchen_cabinet 6500→8000、sanitary 10000→12000。家具家电报价为 candidate（到店未确认）。量房和施工图完成后需重新核算。",
+  "notes": "四池口径（P0 重构 v0.5）：硬装 118,000（16 科 107,000 + 预备费 11,000）+ 暖通 29,000（美的理想家III A2）+ 家具软装 35,000 + 家电 10,000 = 192,000。project_ceiling=190,000 为拎包入住总上限（务实档真实落地值，略低于合计以形成约束）。偏紧科目已上调：water_electric 8500→12000、waterproof 3500→4500、kitchen_cabinet 6500→8000、sanitary 10000→12000。家具家电报价为 candidate（到店未确认）。人工费为静态费率（不随选材变）：大砖≥800/人字拼工费上浮约20-50%已含在务实估算，精确数待施工图（DEC-011）。卧室地面已建模 bedroom_floor（默认木纹砖通铺）。量房和施工图完成后需重新核算。",
   "categories": {
     "demolition": {"budget": 5000, "material": 0, "actual": 0, "status": "draft", "notes": "拆改+清运，按设计图拆除非承重墙"},
     "water_electric": {"budget": 12000, "material": 0, "labor": {"rate": 5000, "unit": "一口价", "area": "fixed"}, "actual": 0, "status": "draft", "notes": "四房两厅两卫+开放式厨房，插座点位多；含智能开关零线、电动窗帘电源布线、零冷水回水管预埋（P0 上调 8500→12000）"},

@@ -16,6 +16,7 @@ budget:
   baseCategoriesFrom: config/budget/base.json
   topicCategories:
     floor: masonry
+    bedroom_floor: masonry
     wall: masonry
     paint: painting
     hvac: hvac
@@ -71,6 +72,10 @@ budget:
       quantityField: floorArea
       calcMode: area
       applyRooms: [master_bath, guest_bath, kitchen, balcony, living_dining, entry_garden]
+    - topic: bedroom_floor
+      quantityField: floorArea
+      calcMode: area
+      applyRooms: [master_bedroom, study, bedroom_nw, bedroom_se]
     - topic: wall
       quantityField: wetWallArea
       calcMode: area

@@ -180,4 +180,20 @@ describe('ProjectCatalog — vertex v2.0 data path', () => {
     const door = doors.find(o => o.id === 'd_mb') ?? doors[0];
     assert.ok(door.x !== undefined && door.z !== undefined, 'door should have absolute x/z');
   });
+
+  it('getDataPrecision reports inferred geometry and material confirmation stats (决策闭环)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const confidence = catalog.getDataPrecision();
+    assert.equal(confidence.geometry, 'inferred');
+    assert.equal(confidence.structure, 'inferred');
+    assert.equal(confidence.surveyCompleted, false);
+    assert.equal(confidence.overallMaturity, 'inferred');
+    assert.ok(confidence.materials.total > 0, 'has materials');
+    assert.ok(confidence.materials.candidate > 0, 'candidate materials exist');
+    assert.equal(
+      confidence.materials.candidate + confidence.materials.confirmed,
+      confidence.materials.total
+    );
+    assert.ok(confidence.warning.length > 0);
+  });
 });

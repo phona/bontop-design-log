@@ -457,6 +457,27 @@ describe('BudgetCalculator', () => {
     assert.equal(cabinetItems[0].roomId, 'kitchen');
   });
 
+  it('bedroom_floor prices only the 4 bedrooms (决策闭环)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const calc = new BudgetCalculator(catalog, realRules);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: { bedroom_floor: { default: 'bedroom_tile_01', roomOverrides: {} } },
+    };
+    const snapshot = calc.calculate(scheme);
+    const rooms = new Set(
+      snapshot.lineItems.filter((li) => li.topic === 'bedroom_floor').map((li) => li.roomId)
+    );
+    assert.deepEqual(
+      [...rooms].sort(),
+      ['bedroom_nw', 'bedroom_se', 'master_bedroom', 'study'],
+      'bedroom_floor applies to exactly the 4 bedrooms'
+    );
+    const masonry = snapshot.categories.find((c) => c.key === 'masonry');
+    assert.ok(masonry && masonry.autoActual > 0);
+  });
+
   it('exposes projectCeiling and overCeilingBy in snapshot (P1)', () => {
     const catalog = ProjectCatalog.load('.');
     const calc = new BudgetCalculator(catalog, rulesConfig);

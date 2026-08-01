@@ -1027,3 +1027,52 @@ materials:
     cons: ["需按卫生间尺寸定制"]
     price_source: "快环建材市场卫浴区报价"
     notes: "两卫淋浴区；归 appliances 池避免与 sanitary 三件套计数混淆"
+
+  # === 卧室地面（2026-08-01 决策闭环：待决#6 各房间地面材料，默认木纹砖通铺） ===
+  - id: "bedroom_tile_01"
+    topic_id: "bedroom_floor"
+    alternative_group: "bedroom_floor"
+    category: "地砖"
+    name: "卧室木纹砖（与客餐厅一致）"
+    brand: "马可波罗"
+    model: "800x800 浅胡桃木纹（同 floor_tile_01）"
+    spec: "800x800mm"
+    unit: "片"
+    price_per_unit: 65
+    coverage_per_unit: 0.64
+    loss_rate: 1.08
+    calc_mode: "area"
+    supplier: "快环建材市场A区3号 / 马可波罗门店"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["与客餐厅通铺一致", "防潮好打理", "务实首选"]
+    cons: ["脚感不如木地板"]
+    price_source: "快环建材市场A区3号 / 马可波罗门店报价"
+    notes: "默认选项：卧室与客餐厅木纹砖通铺，视觉统一"
+    appearance: { type: "wood_grain_v2", color: "#c49a6c" }
+
+  - id: "bedroom_wood_01"
+    topic_id: "bedroom_floor"
+    alternative_group: "bedroom_floor"
+    category: "地板"
+    name: "实木复合地板（卧室）"
+    brand: "大自然 / 圣象"
+    model: "1220×195×15mm 多层实木复合"
+    spec: "1220×195×15mm"
+    unit: "㎡"
+    price_per_unit: 200
+    coverage_per_unit: 1
+    loss_rate: 1.05
+    calc_mode: "area"
+    supplier: "快环建材市场 / 大自然门店"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["脚感好", "卧室温馨", "颜值高"]
+    cons: ["南宁回南天需防潮", "怕水怕刮", "比砖贵"]
+    price_source: "大自然 / 圣象门店报价"
+    notes: "备选：卧室改木地板；回南天注意除湿，价格含安装"
+    appearance: { type: "wood_grain_v2", color: "#a97c50" }

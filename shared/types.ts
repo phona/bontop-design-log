@@ -297,6 +297,17 @@ export interface BudgetSnapshot {
   attribution?: Record<string, BudgetAttribution>;
 }
 
+export interface DataConfidence {
+  geometry: string;
+  structure: string;
+  mep: string;
+  materials: { candidate: number; confirmed: number; total: number };
+  surveyCompleted: boolean;
+  sourceDoc?: string;
+  overallMaturity: 'inferred' | 'partial' | 'measured';
+  warning: string;
+}
+
 export interface ArchivedScheme {
   id: string;
   name: string;

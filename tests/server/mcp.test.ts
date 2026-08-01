@@ -100,6 +100,16 @@ describe('MCP remote', () => {
     assert.equal(parsed.updated, true);
   });
 
+  it('get_data_confidence returns data maturity', async () => {
+    const result = await client.callTool({ name: 'get_data_confidence', arguments: {} });
+    const text = (result.content as { text: string }[])[0].text;
+    const parsed = JSON.parse(text);
+    assert.equal(parsed.geometry, 'inferred');
+    assert.equal(parsed.surveyCompleted, false);
+    assert.ok(parsed.materials.total > 0);
+    assert.ok(parsed.overallMaturity);
+  });
+
   it('list_options returns error for invalid topic', async () => {
     const result = await client.callTool({
       name: 'list_options',

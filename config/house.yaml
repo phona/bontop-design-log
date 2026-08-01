@@ -11,6 +11,15 @@ project:
   layout_type: "四房两厅两卫"
   data_source: "装修图纸.dxf（套内布局） + 合同分户图（结构及赠送面积）"
   accuracy_warning: "房间尺寸与面积来自 CAD 设计图；承重墙、梁位、管道、门窗口位置以合同图及现场量房为准"
+  # 数据置信度（P2 决策闭环）：精度等级 inferred（推断）/ estimated（估算）/ measured（现场量房）
+  # 量房完成后逐项升级为 measured；AI 据此判断输出基于估算还是实测
+  data_precision:
+    geometry: inferred        # 房间尺寸/面积：CAD 设计图，未现场量房
+    structure: inferred       # 梁位/承重墙/净高：推断（见 pending-site-data.md）
+    mep: inferred             # 强电箱/排水立管/燃气表/排烟道：推断
+    materials: candidate      # 材料报价：到店未确认（见 materials.yaml status）
+    survey_completed: false   # 现场量房是否完成
+    source_doc: "docs/pending-site-data.md"  # 14 项量房待填清单
 
   floor_analysis:
     floor_level: "中低层"

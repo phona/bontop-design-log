@@ -63,6 +63,16 @@ export function createMcpServer(deps: McpDeps): McpServer {
   );
 
   server.registerTool(
+    'get_data_confidence',
+    {
+      title: 'Get data confidence',
+      description:
+        'Return data maturity: geometry/structure/MEP precision (inferred/estimated/measured), material confirmation stats (candidate vs confirmed), and survey status. Use to gauge whether budget/dimension outputs are estimates or measured.',
+    },
+    async () => text(catalog.getDataPrecision())
+  );
+
+  server.registerTool(
     'get_current_scheme',
     { title: 'Get current scheme', description: 'Return current selections.' },
     async () => text(state.getCurrentScheme())

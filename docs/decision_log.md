@@ -190,16 +190,43 @@
 
 ---
 
+### DEC-2026-08-01-011 卧室地面建模 + 数据置信度机制 + 人工费假设
+
+- **日期**：2026-08-01
+- **决策事项**：卧室地面材料建模（待决#6）/ 数据置信度机制 / 人工费静态假设文档化
+- **选定方案**：
+  - 卧室地面 = 新增 `bedroom_floor` topic，默认**木纹砖通铺**（bedroom_tile_01，与客餐厅一致），
+    备选实木复合（bedroom_wood_01）；applyRooms=[master_bedroom, study, bedroom_nw, bedroom_se]，计入 masonry
+  - 数据置信度 = house.yaml 增结构化 `data_precision`（geometry/structure/mep=inferred、materials=candidate、
+    survey_completed=false）；MCP 新工具 `get_data_confidence` 汇总精度 + 材料确认率 + 量房状态
+  - 人工费 = **静态费率假设**（不改代码）：labor 不随选材变；大砖(≥800)/人字拼工费上浮约 20–50%，
+    已含在务实估算，精确数待施工图
+- **决策依据**：补全硬装预算卧室地面留白；让 AI 识别估算值避免伪精确；务实档人工难精确建模，不过度工程
+- **预算影响**：masonry actual +~5,800（卧室 34.5㎡ 木纹砖），21,680→27,488（仍 over 18,500，
+  系诚实拆算，整体 totalActual 143,710 在 ceiling 190,000 内）
+- **关联文件**：`config/materials.yaml`、`config/design-rules.yaml`、`config/house.yaml`、
+  `server/project-catalog.ts`、`server/mcp-server.ts`、`shared/types.ts`、`data/current-scheme.json`
+- **决策人**：业主
+
+---
+
 ## 待决策事项
 
-1. **入户花园消防通道处理**：保留通道宽度 / 局部柜体避让（需消防确认）。
+### 未决（2026-08-01 同步）
 
-2. **施工承包方式**：半包 / 全包 / 清包。
+1. **入户花园消防通道处理**：保留通道宽度 / 局部柜体避让。
+   - 状态：**外部行动项**，需物业/消防确认通道宽度，非配置决策。
 
-3. **燃气热水器是否做零冷水循环**：是 / 否。
+2. **主卧飘窗具体利用方式**：榻榻米 / 梳妆台 / 休闲区。
+   - 当前默认：保留 + 大理石台面 + 坐垫简装（DEC-010，控成本，可否决）。
 
-4. **中央空调品牌和室内机形式**：待设计师量房后确定。
+3. **各房间地面材料**：木纹砖 / 木地板 / 分区混搭。
+   - 状态：**已建模** `bedroom_floor` topic（DEC-011）。客餐厅=木纹砖通铺（floor_tile_01）；
+     卧室默认木纹砖通铺（bedroom_tile_01），可切换实木复合（bedroom_wood_01）。
+     到店看样后可经 MCP `set_selection` 调整。
 
-5. **主卧飘窗具体利用方式**：榻榻米 / 梳妆台 / 休闲区。
+### 已决（归档）
 
-6. **各房间地面材料**：木纹砖 / 木地板 / 分区混搭。
+- ~~施工承包方式~~ → **半包**（DEC-010）
+- ~~燃气热水器零冷水~~ → **预埋回水管、暂不上零冷水**（DEC-009）
+- ~~中央空调品牌/室内机形式~~ → **美的理想家 III 一拖五（A2）**（DEC-009）；室内机形式见 ceiling.yaml 风管机布置

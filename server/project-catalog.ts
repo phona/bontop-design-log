@@ -16,6 +16,7 @@ import type {
   RoomFurnishings,
   ElectricalMarker,
   WallSegment,
+  DataConfidence,
 } from '../shared/types.js';
 import { hvacSchemes } from '../shared/houseData.js';
 import { resolveLayout } from './layout-resolver.js';
@@ -96,6 +97,7 @@ export class ProjectCatalog {
   private walls: WallSegment[] = [];
   private layoutSource: string = '';
   private rawMaterials: MaterialItem[] = [];
+  private dataPrecision: Record<string, unknown> = {};
 
   constructor(
     materials: MaterialsYaml,
@@ -108,6 +110,7 @@ export class ProjectCatalog {
     layoutSource?: string
   ) {
     this.rawMaterials = materials.materials;
+    this.dataPrecision = (houseMeta?.project?.data_precision as Record<string, unknown>) ?? {};
     for (const m of materials.materials) {
       const opt = materialToOption(m);
       if (!opt) continue;
@@ -319,6 +322,34 @@ export class ProjectCatalog {
 
   getAllMaterials(): MaterialItem[] {
     return this.rawMaterials;
+  }
+
+  getDataPrecision(): DataConfidence {
+    const materials = this.rawMaterials;
+    const candidate = materials.filter((m) => m.status === 'candidate').length;
+    const confirmed = materials.filter((m) => m.status !== 'candidate').length;
+    const str = (k: string) => String(this.dataPrecision[k] ?? 'inferred');
+    const surveyCompleted = this.dataPrecision.survey_completed === true;
+    const geometry = str('geometry');
+    const overallMaturity: DataConfidence['overallMaturity'] =
+      surveyCompleted && geometry === 'measured' && candidate === 0
+        ? 'measured'
+        : surveyCompleted || geometry === 'measured'
+          ? 'partial'
+          : 'inferred';
+    return {
+      geometry,
+      structure: str('structure'),
+      mep: str('mep'),
+      materials: { candidate, confirmed, total: materials.length },
+      surveyCompleted,
+      sourceDoc: this.dataPrecision.source_doc as string | undefined,
+      overallMaturity,
+      warning:
+        overallMaturity === 'measured'
+          ? '数据已现场量房确认，预算/几何可靠'
+          : '几何/MEP 为推断值、材料报价到店未确认；预算与尺寸仅供估算，决策前需现场量房复核',
+    };
   }
 
   getRoomLayoutDetail(roomId: string): {
