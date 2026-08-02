@@ -95,6 +95,10 @@ cat audit/audit.log
 cat docs/decision_log.md
 ```
 
+### 日照模拟
+
+点击右下角“日照”按钮打开面板：日期/时刻滑杆实时驱动太阳位置与光影（真实天文算法，南宁经纬度），季节预设（冬至/夏至/春分/秋分）、延时播放、俯视日照时长热力图（冬至默认）。分析数据：`GET /api/analysis/sunlight?date=MM-DD`，MCP 工具 `get_sunlight_analysis`。配置见 `config/environment.yaml`。
+
 ## 核心原则
 
 1. **没有口头变更**：任何改动必须进 Git。
