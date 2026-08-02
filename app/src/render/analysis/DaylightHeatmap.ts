@@ -65,6 +65,7 @@ export class DaylightHeatmap {
 
   private async applyAnalysis(): Promise<void> {
     const res = await fetch(`/api/analysis/sunlight?date=${this.date}`);
+    if (!res.ok) return;
     const data = (await res.json()) as { rooms: RoomResult[] };
     const byId = new Map(data.rooms.map((r) => [r.id, r]));
 

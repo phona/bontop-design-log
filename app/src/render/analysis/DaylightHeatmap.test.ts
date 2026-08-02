@@ -40,6 +40,7 @@ function makeHouseScene() {
 describe('DaylightHeatmap', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
       json: async () => ({
         date: '12-22',
         rooms: [{ id: 'living_dining', name: '客餐厅', directHours: 3.5, westSunWarning: false, intervals: [], windows: [] }],
@@ -81,5 +82,15 @@ describe('DaylightHeatmap', () => {
     await heatmap.toggle();
     await heatmap.refresh('06-22');
     expect(fetch).toHaveBeenLastCalledWith('/api/analysis/sunlight?date=06-22');
+  });
+
+  it('非 ok 响应：不着色、不抛错，activate 仍完成', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => ({}) })));
+    const hs = makeHouseScene();
+    const heatmap = new DaylightHeatmap(hs as never);
+    await expect(heatmap.toggle()).resolves.toBeUndefined();
+    expect(heatmap.isActive()).toBe(true);
+    expect(hs._floor.material.color.set).not.toHaveBeenCalled();
+    expect(hs.topDownView.enable).toHaveBeenCalled();
   });
 });
