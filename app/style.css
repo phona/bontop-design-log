@@ -496,6 +496,77 @@ html, body {
   color: #fff;
 }
 
+#humidity-btn {
+  position: fixed;
+  top: 50px;
+  right: 176px;
+  background: rgba(20, 20, 30, 0.85);
+  color: #ddd;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  z-index: 90;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+#humidity-btn:hover {
+  background: rgba(40, 40, 60, 0.95);
+  border-color: #88aaff;
+}
+
+#humidity-btn.active {
+  background: rgba(60, 100, 180, 0.9);
+  border-color: #88ccff;
+  color: #fff;
+}
+
+#humidity-info-panel {
+  position: fixed;
+  left: 16px;
+  bottom: 60px;
+  z-index: 900;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  width: 240px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  display: none;
+}
+
+#humidity-info-panel .humidity-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+#humidity-info-panel #humidity-info-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+#humidity-info-panel .humidity-factor {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px solid #2a2a3e;
+}
+
+#humidity-info-panel .humidity-undeclared {
+  margin-top: 8px;
+  color: #8888aa;
+  font-size: 12px;
+}
+
 #sensitivity-slider {
   position: fixed;
   bottom: 16px;

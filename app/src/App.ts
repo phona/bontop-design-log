@@ -23,6 +23,9 @@ import { SunlightSystem } from './render/SunlightSystem.js';
 import { SunlightPanel } from './ui/SunlightPanel.js';
 import { SunlightButton } from './ui/SunlightButton.js';
 import { DaylightHeatmap } from './render/analysis/DaylightHeatmap.js';
+import { HumidityOverlay } from './render/analysis/HumidityOverlay.js';
+import { HumidityButton } from './ui/HumidityButton.js';
+import { isInHuinanWindow } from '@shared/humidity-model';
 import './ui/keybindings.js';
 import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
 
@@ -61,6 +64,9 @@ export class App {
   private sunlightSystem: SunlightSystem | null = null;
   private sunlightButton: SunlightButton | null = null;
   private daylightHeatmap: DaylightHeatmap | null = null;
+  private humidityOverlay: HumidityOverlay | null = null;
+  private humidityButton: HumidityButton | null = null;
+  private sunlightPanelDate = '12-22';
 
   constructor(canvas: HTMLCanvasElement) {
     this.stateSync = new StateSync();
@@ -172,6 +178,7 @@ export class App {
     await this.refreshOverviewData();
 
     this.setupSunlight();
+    this.setupHumidity();
     this.updateModeIndicator();
     this.rafId = requestAnimationFrame(this.renderLoop);
   }
@@ -199,11 +206,6 @@ export class App {
       center
     );
 
-    this.sunlightPanel.onDateChange((month, day) => {
-      this.sunlightSystem?.setDate(month, day);
-      const date = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      void this.daylightHeatmap?.refresh(date);
-    });
     this.sunlightPanel.onHourChange((hour) => this.sunlightSystem?.setHour(hour));
     this.sunlightPanel.onPlayToggle(() => {
       const playing = this.sunlightSystem?.togglePlay() ?? false;
@@ -227,6 +229,31 @@ export class App {
         this.sunlightButton?.sync();
       },
       getActive: () => this.sunlightPanel.isVisible(),
+    });
+  }
+
+  private setupHumidity(): void {
+    this.humidityOverlay = new HumidityOverlay(this.houseScene);
+
+    this.humidityButton = new HumidityButton({
+      onToggle: () => {
+        void this.humidityOverlay?.toggle().then(() => this.humidityButton?.sync());
+      },
+      getActive: () => this.humidityOverlay?.isActive() ?? false,
+    });
+
+    const huinanWindow = this.projectData?.environment?.climate?.huinan_window as
+      | { start: string; end: string }
+      | undefined;
+    this.sunlightPanel.onDateChange((month, day) => {
+      this.sunlightSystem?.setDate(month, day);
+      const date = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      this.sunlightPanelDate = date;
+      void this.daylightHeatmap?.refresh(date);
+      void this.humidityOverlay?.refresh(date);
+      if (huinanWindow) {
+        this.sunlightPanel.setHuinanHint(isInHuinanWindow({ month, day }, huinanWindow));
+      }
     });
   }
 
@@ -928,6 +955,7 @@ export class App {
       const r = this.sunlightSystem.getSolarReadout();
       this.sunlightPanel.setSolarReadout(r.altitudeDeg, r.azimuthDeg);
     }
+    this.humidityOverlay?.updatePulse();
 
     this.rafId = requestAnimationFrame(this.renderLoop);
   };
