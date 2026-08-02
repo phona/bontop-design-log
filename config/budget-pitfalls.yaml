@@ -29,7 +29,7 @@ pitfalls:
     trigger: always
     severity: medium
     title: "玻璃幕窗帘是刚需"
-    description: "全屋玻璃幕墙,窗帘不可省;纱帘+遮光帘;厨卫用防水卷帘/百叶"
+    description: "全屋玻璃幕墙（三层 Low-E 中空，隔热已满足），窗帘不可省；主功能为遮光+防眩光+隐私；纱帘+遮光帘；厨卫用防水卷帘/百叶"
     mitigation: "预算 4000+;主卧/客厅/父母房/书房预留电动窗帘电源"
 
   - id: smart_zero_line

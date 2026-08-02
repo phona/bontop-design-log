@@ -99,6 +99,10 @@ vi.mock('../data/designData.js', () => ({
     { id: 'bathroom_door_01', name: '钛镁铝合金极窄平开门', color: '#cccccc' },
     { id: 'entry_door_01', name: '甲级防盗门', color: '#cccccc' },
   ],
+  curtainOptions: [
+    { id: 'curtain_01', name: '雪尼尔遮光帘+幻影纱+铝百叶', color: '#e8e0d0' },
+    { id: 'curtain_02', name: '电动雪尼尔遮光+幻影纱', color: '#d8d2c4' },
+  ],
 }));
 
 import { TopicRegistry } from './TopicRegistry';
@@ -151,11 +155,12 @@ describe('TopicRegistry', () => {
     const mock = createMockSceneApi();
     const registry = new TopicRegistry(mock.api as any);
     const topics = registry.list();
-    expect(topics.length).toBe(9);
+    expect(topics.length).toBe(10);
     const ids = topics.map((t) => t.id);
     expect(ids).toContain('hvac');
     expect(ids).toContain('floor');
     expect(ids).toContain('bedroom_floor');
+    expect(ids).toContain('curtain');
     expect(ids).toContain('wall');
     expect(ids).toContain('paint');
     expect(ids).toContain('cabinet');
@@ -184,7 +189,7 @@ describe('TopicRegistry', () => {
     const custom = { id: 'custom', name: 'Custom', options: [], apply: vi.fn() };
     registry.register(custom as any);
     expect(registry.get('custom')).toBeDefined();
-    expect(registry.list().length).toBe(10);
+    expect(registry.list().length).toBe(11);
   });
 });
 

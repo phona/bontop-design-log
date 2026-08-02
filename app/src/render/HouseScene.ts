@@ -73,6 +73,7 @@ export class HouseScene implements SceneApi {
   private floorMeshes: THREE.Mesh[] = [];
   private wallMeshes: THREE.Mesh[] = [];
   private ceilingMeshes: THREE.Mesh[] = [];
+  private curtainMeshes: { sheer: THREE.Mesh[]; blackout: THREE.Mesh[]; blinds: THREE.Mesh[] } = { sheer: [], blackout: [], blinds: [] };
   private glassMeshes: THREE.Mesh[] = [];
   private furnitureMeshes: THREE.Group[] = [];
   private electricalMeshes: THREE.Mesh[] = [];
@@ -384,6 +385,15 @@ export class HouseScene implements SceneApi {
             }
             break;
           }
+          case 'curtain': {
+            for (const p of el.points) {
+              minX = Math.min(minX, p.x);
+              maxX = Math.max(maxX, p.x);
+              minZ = Math.min(minZ, p.z);
+              maxZ = Math.max(maxZ, p.z);
+            }
+            break;
+          }
           default: {
             const exhaustive: never = el;
             console.error('[HouseScene] 未知场景元素类型（bounds 缺 case）', exhaustive);
@@ -641,6 +651,7 @@ export class HouseScene implements SceneApi {
         case 'floor_region': this.renderFloorRegion(el); break;
         case 'bay_sill': this.renderBaySill(el); break;
         case 'railing_run': this.renderRailingRun(el); break;
+        case 'curtain': this.renderCurtain(el); break;
         default: {
           const exhaustive: never = el;
           console.error('[HouseScene] 未知场景元素类型（渲染器缺 case）', exhaustive);
@@ -888,6 +899,85 @@ export class HouseScene implements SceneApi {
     mesh.receiveShadow = true;
     this.scene.add(mesh);
     this.glassMeshes.push(mesh);
+  }
+
+  // 窗帘：挂在玻璃幕内侧。sheer_blackout = 纱帘（半透）+ 遮光帘（可开合）；blinds = 防水百叶
+  private renderCurtain(el: Extract<SceneElement, { type: 'curtain' }>) {
+    const kind = el.kind ?? 'sheer_blackout';
+    const height = el.height - 0.1;
+    const shape = this.buildCurtainShape(el.points, false, 0.04, true);
+    const geo = () => {
+      const g = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false, steps: 1 });
+      return g;
+    };
+    const place = (m: THREE.Mesh) => {
+      m.rotation.x = -Math.PI / 2;
+      m.scale.set(1, -1, 1);
+      m.position.y = 0.05;
+      m.castShadow = false;
+      m.receiveShadow = false;
+      this.scene.add(m);
+    };
+
+    if (kind === 'sheer_blackout') {
+      const sheer = new THREE.Mesh(geo(), this.makeSheerMaterial());
+      sheer.userData = { type: 'curtain', objectId: `${el.id}:sheer`, roomId: el.room, layer: 'sheer' };
+      place(sheer);
+      this.curtainMeshes.sheer.push(sheer);
+
+      const blackout = new THREE.Mesh(geo(), this.makeBlackoutMaterial());
+      blackout.userData = { type: 'curtain', objectId: `${el.id}:blackout`, roomId: el.room, layer: 'blackout' };
+      blackout.visible = false; // 默认收拢（开启），toggleBlackout 展开
+      place(blackout);
+      this.curtainMeshes.blackout.push(blackout);
+    } else {
+      const blind = new THREE.Mesh(geo(), this.makeBlindMaterial());
+      blind.userData = { type: 'curtain', objectId: `${el.id}:blinds`, roomId: el.room, layer: 'blinds' };
+      place(blind);
+      this.curtainMeshes.blinds.push(blind);
+    }
+  }
+
+  private makeSheerMaterial(): THREE.MeshStandardMaterial {
+    return new THREE.MeshStandardMaterial({
+      color: 0xf5f2ea, transparent: true, opacity: 0.35,
+      roughness: 0.9, side: THREE.DoubleSide, depthWrite: false,
+    });
+  }
+
+  private makeBlackoutMaterial(): THREE.MeshStandardMaterial {
+    return new THREE.MeshStandardMaterial({
+      color: 0xcfc8ba, roughness: 0.95, side: THREE.DoubleSide,
+    });
+  }
+
+  private makeBlindMaterial(): THREE.MeshStandardMaterial {
+    return new THREE.MeshStandardMaterial({
+      color: 0xdfe3e6, transparent: true, opacity: 0.75,
+      roughness: 0.6, metalness: 0.2, side: THREE.DoubleSide,
+    });
+  }
+
+  setBlackoutVisible(visible: boolean): void {
+    for (const m of this.curtainMeshes.blackout) m.visible = visible;
+  }
+
+  toggleBlackout(): void {
+    const next = this.curtainMeshes.blackout.length > 0 ? !this.curtainMeshes.blackout[0].visible : true;
+    this.setBlackoutVisible(next);
+  }
+
+  setCurtainMaterial(appearance: { color?: string; opacity?: number }): void {
+    const color = appearance.color ? new THREE.Color(appearance.color) : undefined;
+    for (const m of [...this.curtainMeshes.sheer, ...this.curtainMeshes.blackout]) {
+      const mat = m.material as THREE.MeshStandardMaterial;
+      if (color) mat.color = color;
+      if (appearance.opacity !== undefined) {
+        mat.transparent = true;
+        mat.opacity = appearance.opacity;
+      }
+      mat.needsUpdate = true;
+    }
   }
 
   private buildCurtainShape(points: CurtainPoint[], closed: boolean, thickness: number = GLASS_THICKNESS, sided: boolean = false, flip: boolean = false): THREE.Shape {

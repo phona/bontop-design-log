@@ -40,6 +40,7 @@ export const paintOptions = ensureAppearance(byTopicId('latex_paint'));
 export const cabinetOptions = ensureAppearance(byTopicId('cabinet'));
 export const countertopOptions = ensureAppearance(byTopicId('countertop'));
 export const sanitaryOptions = ensureAppearance(byTopicId('sanitary'));
+export const curtainOptions = ensureAppearance(byTopicId('curtain'));
 export const interiorDoorOptions = [
   ...ensureAppearance(byTopicId('interior_door')),
   ...ensureAppearance(byTopicId('bathroom_door')),

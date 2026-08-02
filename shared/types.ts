@@ -440,7 +440,8 @@ export type SceneElement =
     }
   | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string }
   | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string }
-  | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number };
+  | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
+  | { type: 'curtain'; id: string; points: CurtainPoint[]; height: number; room?: string; kind?: 'sheer_blackout' | 'blinds' };
 
 export interface CadLayoutYaml {
   version: string;

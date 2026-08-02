@@ -104,6 +104,23 @@ const RailingRunSchema = z
     message: 'Must specify wall or walls',
   });
 
+// 窗帘（声明式 add，引用墙 id 保持 vertices 联动）：kind 由配置显式指定，非几何推断
+const CurtainSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('curtain'),
+    wall: z.string().min(1).optional(),
+    walls: z.array(z.string().min(1)).min(1).optional(),
+    points: z.array(CurtainPointSchema).min(2).optional(),
+    room: z.string().min(1).optional(),
+    kind: z.enum(['sheer_blackout', 'blinds']).default('sheer_blackout'),
+    height: z.number().positive().default(2.8),
+  })
+  .strict()
+  .refine(d => d.points || d.wall || (d.walls && d.walls.length > 0), {
+    message: 'Must specify points, wall, or walls',
+  });
+
 const OverlaySchema = z
   .object({
     version: z.literal(1),
@@ -117,6 +134,7 @@ const OverlaySchema = z
           FloorRegionSchema,
           BaySillSchema,
           RailingRunSchema,
+          CurtainSchema,
         ])
       )
       .default([]),
@@ -165,7 +183,7 @@ export function mergeSceneElements(
     .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ }));
 
   for (const el of elements) {
-    if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill' || el.type === 'railing_run') {
+    if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill' || el.type === 'railing_run' || el.type === 'curtain') {
       const elAny = el as Record<string, unknown>;
       const wallRef = elAny.wall ?? elAny.walls;
       if (wallRef) {

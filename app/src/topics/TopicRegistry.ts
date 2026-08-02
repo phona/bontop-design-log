@@ -8,6 +8,7 @@ import { CabinetTopic } from './CabinetTopic.js';
 import { CountertopTopic } from './CountertopTopic.js';
 import { SanitaryTopic } from './SanitaryTopic.js';
 import { DoorTopic } from './DoorTopic.js';
+import { CurtainTopic } from './CurtainTopic.js';
 
 export class TopicRegistry {
   private topics = new Map<string, Topic>();
@@ -24,6 +25,7 @@ export class TopicRegistry {
     this.register(new CountertopTopic());
     this.register(new SanitaryTopic());
     this.register(new DoorTopic());
+    this.register(new CurtainTopic());
   }
 
   register(topic: Topic) {

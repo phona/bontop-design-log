@@ -198,3 +198,20 @@ elements:
       - { x: 7.2, z: 1.0 }
       - { x: 5.6, z: 1.0 }
     reason: "VRV 设备平台地板"
+
+  # === 窗帘（2026-08-02）：引用墙 id 保持 vertices 联动；kind 显式指定（湿区百叶，其余纱帘+遮光） ===
+  # 客餐厅（南向落地玻璃幕）
+  - { id: curtain_living_south, type: curtain, wall: w_liv_south, room: living_dining, kind: sheer_blackout, height: 2.8 }
+  # 主卧（西墙飘窗段 + 南墙）
+  - { id: curtain_master_west, type: curtain, wall: w_west_upper, room: master_bedroom, kind: sheer_blackout, height: 2.8 }
+  - { id: curtain_master_south, type: curtain, wall: w_mb_south, room: master_bedroom, kind: sheer_blackout, height: 2.8 }
+  # 父母房（南墙）
+  - { id: curtain_parent_south, type: curtain, wall: w_st_south, room: study, kind: sheer_blackout, height: 2.8 }
+  # 书房（东南次卧南墙）
+  - { id: curtain_study_south, type: curtain, wall: w_be_south, room: bedroom_se, kind: sheer_blackout, height: 2.8 }
+  # 西北次卧（西墙 + 北墙凹进段）
+  - { id: curtain_nw_west, type: curtain, wall: w_west_lower, room: bedroom_nw, kind: sheer_blackout, height: 2.8 }
+  - { id: curtain_nw_north, type: curtain, wall: w_nw_north, room: bedroom_nw, kind: sheer_blackout, height: 2.8 }
+  # 湿区（主卫西北角 + 厨房北墙）→ 防水百叶
+  - { id: curtain_mbath_corner, type: curtain, walls: [w_west_ap, w_bath_north], room: master_bath, kind: blinds, height: 2.8 }
+  - { id: curtain_kitchen_north, type: curtain, wall: w_kit_north, room: kitchen, kind: blinds, height: 2.8 }

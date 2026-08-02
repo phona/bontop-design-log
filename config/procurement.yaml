@@ -171,6 +171,15 @@ materials:
     unit: set
     notes: ["雪尼尔遮光+幻影纱+铝百叶"]
 
+  - id: curtain_02
+    name: "电动雪尼尔遮光+幻影纱（智能版）"
+    room: null
+    category: curtain
+    current_stage: selection
+    waste_rate: 1
+    unit: set
+    notes: ["电动版，主卧/客厅/父母房/书房已预留电源"]
+
   - id: bed_180_01
     name: "1.8m 实木床"
     room: null

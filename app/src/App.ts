@@ -349,6 +349,13 @@ export class App {
         return;
       }
 
+      // C 键切换遮光帘开合（纱帘常显，遮光帘开合）
+      if (e.code === 'KeyC' && !e.repeat) {
+        e.preventDefault();
+        this.houseScene.toggleBlackout();
+        return;
+      }
+
       if (e.code === 'KeyP' && !e.repeat) {
         e.preventDefault();
         this.annotationGroupVisible = !this.annotationGroupVisible;

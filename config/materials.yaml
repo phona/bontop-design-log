@@ -212,6 +212,31 @@ materials:
     cons: ["玻璃幕墙多总价偏高"]
     price_source: "快环建材市场窗帘区 / 网购报价"
     notes: "全屋玻璃幕墙窗帘为刚需；客厅/卧室双层，厨卫铝百叶/防水卷帘"
+    appearance: { type: "solid_color", color: "#e8e0d0", opacity: 0.5 }
+
+  - id: "curtain_02"
+    topic_id: "curtain"
+    alternative_group: "curtain"
+    category: "窗帘"
+    name: "电动雪尼尔遮光 + 幻影纱（智能版）"
+    brand: "本地窗帘市场 / 绍兴工厂直发"
+    model: "电动轨道 + 雪尼尔遮光布 + 幻影纱，2.0 倍褶皱"
+    spec: "按米"
+    unit: "套"
+    price_per_unit: 5200
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "快环建材市场窗帘区 / 网购"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["电动开合", "接入米家/Aqara", "遮光好"]
+    cons: ["价格更高", "需预留电源（已预留 4 处）"]
+    price_source: "快环建材市场窗帘区 / 网购报价"
+    notes: "主卧/客厅/父母房/书房已预留电动窗帘电源（DEC-009 智能 B 级）"
+    appearance: { type: "solid_color", color: "#d8d2c4", opacity: 0.6 }
 
   - id: "sanitary_toilet_01"
     topic_id: "sanitary"
