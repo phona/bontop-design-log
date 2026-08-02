@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { ProjectCatalog } from './project-catalog.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
-import { computeSunlightAnalysis } from './analysis-service.js';
+import { computeSunlightAnalysis, computeHumidityAnalysis } from './analysis-service.js';
 
 export interface AnalysisDeps {
   catalog: ProjectCatalog;
@@ -35,6 +35,27 @@ export function createAnalysisRouter(deps: AnalysisDeps): Router {
       return;
     }
     res.json(computeSunlightAnalysis(deps.catalog, deps.getOverlay(), env, date));
+  });
+
+  router.get('/humidity', (req, res) => {
+    const env = deps.getEnvironment();
+    if (!env) {
+      res.status(503).json({ error: 'config/environment.yaml not loaded' });
+      return;
+    }
+    let date: { month: number; day: number };
+    if (req.query.date !== undefined) {
+      const parsed = parseDateParam(req.query.date as string);
+      if (!parsed) {
+        res.status(400).json({ error: 'date must be MM-DD' });
+        return;
+      }
+      date = parsed;
+    } else {
+      const now = new Date();
+      date = { month: now.getMonth() + 1, day: now.getDate() };
+    }
+    res.json(computeHumidityAnalysis(deps.catalog, deps.getOverlay(), env, date));
   });
 
   return router;
