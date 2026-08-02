@@ -4,7 +4,7 @@ import { mergeSceneElements } from './overlay-merge.js';
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import { extractApertures } from '../shared/glazing.js';
 import { analyzeSunlight } from '../shared/sunlight-analysis.js';
-import { analyzeHumidity } from '../shared/humidity-model.js';
+import { analyzeHumidity, isInHuinanWindow } from '../shared/humidity-model.js';
 
 const COMPASS = ['北', '东北', '东', '东南', '南', '西南', '西', '西北'];
 
@@ -75,12 +75,7 @@ export function computeHumidityAnalysis(
   const nameById = new Map(rooms.map((r) => [r.id, r.name]));
   return {
     confidence: 'estimated' as const,
-    huinanActive: result.rooms.length > 0
-      ? (() => {
-          const mmdd = `${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
-          return mmdd >= env.climate.huinan_window.start && mmdd <= env.climate.huinan_window.end;
-        })()
-      : false,
+    huinanActive: isInHuinanWindow(date, env.climate.huinan_window),
     rooms: result.rooms.map((r) => ({
       id: r.roomId,
       name: nameById.get(r.roomId) ?? r.roomId,
