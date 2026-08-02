@@ -8,10 +8,14 @@ vi.mock('three', () => {
     Scene: class { add = vi.fn(); remove = vi.fn(); },
     Line: class { constructor(public geometry: unknown, public material: unknown) {} },
     Sprite: class { position = new Vector3(); scale = { set: vi.fn() }; constructor(public material: unknown) {} },
-    SpriteMaterial: class { constructor(public opts: unknown) {} },
-    CanvasTexture: class { constructor(public canvas: unknown) {} },
-    BufferGeometry: class { setFromPoints = vi.fn(); },
-    LineBasicMaterial: class { constructor(public opts: unknown) {} },
+    SpriteMaterial: class {
+      map: unknown;
+      constructor(opts: { map?: unknown } = {}) { this.map = opts.map; }
+      dispose = vi.fn();
+    },
+    CanvasTexture: class { constructor(public canvas: unknown) {} dispose = vi.fn(); },
+    BufferGeometry: class { setFromPoints = vi.fn(); dispose = vi.fn(); },
+    LineBasicMaterial: class { constructor(public opts: unknown) {} dispose = vi.fn(); },
     Vector3,
   };
 });

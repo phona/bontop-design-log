@@ -117,10 +117,15 @@ export class SunlightSystem {
   hideTrajectory(): void {
     if (this.trajectory) {
       this.scene.remove(this.trajectory);
+      this.trajectory.geometry.dispose();
+      (this.trajectory.material as THREE.LineBasicMaterial).dispose();
       this.trajectory = null;
     }
     if (this.sunDisc) {
       this.scene.remove(this.sunDisc);
+      const material = this.sunDisc.material as THREE.SpriteMaterial;
+      material.map?.dispose();
+      material.dispose();
       this.sunDisc = null;
     }
   }

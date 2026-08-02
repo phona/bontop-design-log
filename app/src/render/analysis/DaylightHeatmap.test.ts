@@ -13,7 +13,11 @@ vi.mock('three', () => {
     },
     MeshStandardMaterial: class { color = { set: vi.fn(), copy: vi.fn() }; clone() { return this; } },
     Sprite: class { position = new Vector3(); scale = { set: vi.fn() }; visible = true; constructor(public material: unknown) {} },
-    SpriteMaterial: class { constructor(public opts: unknown) {} dispose = vi.fn(); },
+    SpriteMaterial: class {
+      map: unknown;
+      constructor(opts: { map?: unknown } = {}) { this.map = opts.map; }
+      dispose = vi.fn();
+    },
     CanvasTexture: class { constructor(public canvas: unknown) {} dispose = vi.fn(); },
     Vector3,
   };
@@ -57,13 +61,18 @@ describe('DaylightHeatmap', () => {
     expect(hs.topDownView.enable).toHaveBeenCalled();
   });
 
-  it('toggle 关闭：恢复材质、退出俯视', async () => {
+  it('toggle 关闭：恢复材质、退出俯视、释放 label GPU 资源', async () => {
     const hs = makeHouseScene();
     const heatmap = new DaylightHeatmap(hs as never);
     await heatmap.toggle();
+    const sprite = (hs.scene.add as ReturnType<typeof vi.fn>).mock.calls.at(-1)![0] as {
+      material: { dispose: ReturnType<typeof vi.fn>; map: { dispose: ReturnType<typeof vi.fn> } };
+    };
     await heatmap.toggle();
     expect(heatmap.isActive()).toBe(false);
     expect(hs.topDownView.disable).toHaveBeenCalled();
+    expect(sprite.material.map.dispose).toHaveBeenCalled();
+    expect(sprite.material.dispose).toHaveBeenCalled();
   });
 
   it('refresh 使用新日期', async () => {

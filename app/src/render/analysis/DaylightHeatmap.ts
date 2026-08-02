@@ -112,6 +112,9 @@ export class DaylightHeatmap {
   private clearLabels(): void {
     for (const label of this.labels) {
       this.houseScene.scene.remove(label);
+      const material = label.material as THREE.SpriteMaterial;
+      material.map?.dispose();
+      material.dispose();
     }
     this.labels = [];
   }
