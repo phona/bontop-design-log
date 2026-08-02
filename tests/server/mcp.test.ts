@@ -20,6 +20,7 @@ import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
 import { createMcpServer } from '../../server/mcp-server.js';
 import { ConfigRegistry } from '../../server/config-loader.js';
+import { parseEnvironment } from '../../shared/environment-schema.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 
 const TEST_DATA_DIR = './tmp/test-data-mcp';
@@ -59,6 +60,7 @@ describe('MCP remote', () => {
       archiveStore,
       getConfigRegistry: () => new ConfigRegistry(),
       getOverlay: () => undefined,
+      getEnvironment: () => parseEnvironment(readFileSync('config/environment.yaml', 'utf8')),
     };
 
     const mcp = createMcpServer(deps);
@@ -452,6 +454,20 @@ describe('MCP remote', () => {
     const text = (result.content as { text: string }[])[0].text;
     const parsed = JSON.parse(text);
     assert.ok(parsed.items.length > 0);
+  });
+
+  it('get_sunlight_analysis 返回各房间日照摘要', async () => {
+    const result = await client.callTool({ name: 'get_sunlight_analysis', arguments: {} });
+    const content = result.content as Array<{ type: string; text: string }>;
+    assert.equal(content[0].type, 'text');
+    assert.ok(content[0].text.includes('living_dining'));
+    assert.ok(content[0].text.includes('directHours'));
+  });
+
+  it('get_sunlight_analysis 接受 date 参数', async () => {
+    const result = await client.callTool({ name: 'get_sunlight_analysis', arguments: { date: '06-22' } });
+    const content = result.content as Array<{ type: string; text: string }>;
+    assert.ok(content[0].text.includes('06-22'));
   });
 
 });

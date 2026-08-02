@@ -12,6 +12,9 @@ import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { BudgetAdvisor } from './budget-advisor.js';
 import type { BudgetValueAnalyzer } from './budget-value-analyzer.js';
 import type { CurrentScheme, BudgetCategory } from '../shared/types.js';
+import type { EnvironmentConfig } from '../shared/environment-schema.js';
+import type { OverlayConfig } from './overlay-merge.js';
+import { computeSunlightAnalysis } from './analysis-service.js';
 import { parseSpecDimensions } from './spec-parser.js';
 
 function text(data: unknown) {
@@ -43,6 +46,8 @@ export interface McpDeps {
   getBudgetAdvisor: () => BudgetAdvisor;
   getBudgetValueAnalyzer: () => BudgetValueAnalyzer;
   archiveStore: ArchivedSchemesStore;
+  getEnvironment?: () => EnvironmentConfig | undefined;
+  getOverlay?: () => OverlayConfig | undefined;
 }
 
 export function createMcpServer(deps: McpDeps): McpServer {
@@ -739,6 +744,29 @@ export function createMcpServer(deps: McpDeps): McpServer {
         ? engine.getChecklistForRoom(args.phase, args.roomId)
         : engine.getChecklist(args.phase);
       return text({ items });
+    }
+  );
+
+  server.registerTool(
+    'get_sunlight_analysis',
+    {
+      title: 'Get sunlight analysis',
+      description:
+        'Per-room direct-sun hours for a date (default winter solstice 12-22) with west-sun warnings and window orientations. Use for room assignment, curtain/shading and west-sun decisions.',
+      inputSchema: z.object({
+        date: z.string().optional().describe('MM-DD, default 12-22 (winter solstice)'),
+      }),
+    },
+    async (args) => {
+      const env = deps.getEnvironment?.();
+      if (!env) return text({ error: 'config/environment.yaml not loaded' });
+      const raw = args.date ?? '12-22';
+      const m = /^(\d{2})-(\d{2})$/.exec(raw);
+      if (!m) return text({ error: 'date must be MM-DD' });
+      const date = { month: Number(m[1]), day: Number(m[2]) };
+      const overlay = deps.getOverlay?.();
+      const analysis = computeSunlightAnalysis(catalog, overlay, env, date);
+      return text(analysis);
     }
   );
 
