@@ -66,7 +66,7 @@ describe('EnvironmentManager.setSolarState', () => {
     expect(dirLight.position.y).toBeCloseTo(42.4264, 1);
     expect(dirLight.position.z).toBeCloseTo(42.4264, 1);
     expect(dirLight.intensity).toBeCloseTo(0.3 + 0.7 * Math.sin(Math.PI / 4), 4);
-    expect((scene.background as { hex: string }).hex).toBe('#1a1a20');
+    expect((scene.background as unknown as { hex: string }).hex).toBe('#1a1a20');
   });
 
   it('夜间：主光关闭，ambient 降至 0.15', () => {
@@ -78,10 +78,10 @@ describe('EnvironmentManager.setSolarState', () => {
     const dirLight = added.find((o) => o.castShadow === true);
     expect(dirLight).toBeDefined();
     expect(dirLight.visible).toBe(false);
-    const ambient = added.find((o) => o instanceof THREE.AmbientLight);
+    const ambient = added.find((o) => o instanceof THREE.AmbientLight)!;
     expect(ambient).toBeDefined();
     expect(ambient.intensity).toBe(0.15);
-    expect((scene.background as { hex: string }).hex).toBe('#0a0a18');
+    expect((scene.background as unknown as { hex: string }).hex).toBe('#0a0a18');
   });
 
   it('setTimeOfDay 已移除', () => {
