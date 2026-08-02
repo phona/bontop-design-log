@@ -470,4 +470,18 @@ describe('MCP remote', () => {
     assert.ok(content[0].text.includes('06-22'));
   });
 
+  it('get_humidity_risks 返回风险摘要与建议', async () => {
+    const result = await client.callTool({ name: 'get_humidity_risks', arguments: { date: '03-15' } });
+    const content = result.content as Array<{ type: string; text: string }>;
+    assert.equal(content[0].type, 'text');
+    assert.ok(content[0].text.includes('master_bath'));
+    assert.ok(content[0].text.includes('回南天'));
+  });
+
+  it('get_humidity_risks 非法 date 返回错误文本', async () => {
+    const result = await client.callTool({ name: 'get_humidity_risks', arguments: { date: '99-99' } });
+    const content = result.content as Array<{ type: string; text: string }>;
+    assert.ok(content[0].text.includes('error'));
+  });
+
 });

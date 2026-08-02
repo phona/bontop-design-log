@@ -14,7 +14,7 @@ import type { BudgetValueAnalyzer } from './budget-value-analyzer.js';
 import type { CurrentScheme, BudgetCategory } from '../shared/types.js';
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import type { OverlayConfig } from './overlay-merge.js';
-import { computeSunlightAnalysis } from './analysis-service.js';
+import { computeSunlightAnalysis, computeHumidityAnalysis, humidityAdvisories } from './analysis-service.js';
 import { parseSpecDimensions } from './spec-parser.js';
 
 function text(data: unknown) {
@@ -767,6 +767,35 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const overlay = deps.getOverlay?.();
       const analysis = computeSunlightAnalysis(catalog, overlay, env, date);
       return text(analysis);
+    }
+  );
+
+  server.registerTool(
+    'get_humidity_risks',
+    {
+      title: 'Get humidity risk assessment',
+      description:
+        'Static condensation/mold risk assessment per room and key surface (Nanning huinan-tian focused). Returns scores, tiers, factor breakdowns and countermeasure advisories. Date defaults to today; use 02-15~04-15 dates to activate huinan cold-surface factors.',
+      inputSchema: z.object({
+        date: z.string().optional().describe('MM-DD, default today'),
+      }),
+    },
+    async (args) => {
+      const env = deps.getEnvironment?.();
+      if (!env) return text({ error: 'config/environment.yaml not loaded' });
+      let date: { month: number; day: number };
+      if (args.date !== undefined) {
+        const m = /^(\d{2})-(\d{2})$/.exec(args.date);
+        if (!m || Number(m[1]) < 1 || Number(m[1]) > 12 || Number(m[2]) < 1 || Number(m[2]) > 31) {
+          return text({ error: 'date must be MM-DD' });
+        }
+        date = { month: Number(m[1]), day: Number(m[2]) };
+      } else {
+        const now = new Date();
+        date = { month: now.getMonth() + 1, day: now.getDate() };
+      }
+      const analysis = computeHumidityAnalysis(catalog, deps.getOverlay?.(), env, date);
+      return text({ ...analysis, advisories: humidityAdvisories(analysis) });
     }
   );
 
