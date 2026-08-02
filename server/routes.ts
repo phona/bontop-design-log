@@ -9,6 +9,7 @@ import { loadElectricalConfig, loadPlumbingConfig, loadCeilingConfig } from './c
 import { mergeSceneElements } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import type { CurrentScheme } from '../shared/types.js';
+import type { EnvironmentConfig } from '../shared/environment-schema.js';
 
 export interface ApiDeps {
   catalog: ProjectCatalog;
@@ -18,6 +19,7 @@ export interface ApiDeps {
   archiveStore: ArchivedSchemesStore;
   getConfigRegistry: () => ConfigRegistry;
   getOverlay: () => OverlayConfig | undefined;
+  getEnvironment?: () => EnvironmentConfig | undefined;
 }
 
 export function createApiRouter(deps: ApiDeps): Router {
@@ -74,6 +76,7 @@ export function createApiRouter(deps: ApiDeps): Router {
         id: t.id, name: t.name, perRoom: t.perRoom, optionCount: t.options.length,
       })),
       budgetCategories: projectCatalog.getBudgetCategories(),
+      environment: deps.getEnvironment?.() ?? null,
     });
   });
 

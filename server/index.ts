@@ -21,6 +21,9 @@ import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
 import { parseOverlay } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
+import { parseEnvironment } from '../shared/environment-schema.js';
+import type { EnvironmentConfig } from '../shared/environment-schema.js';
+import { createAnalysisRouter } from './analysis-routes.js';
 import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml } from '../shared/types.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
@@ -131,6 +134,16 @@ const overlayLoader = new ConfigLoader<OverlayConfig>(
 );
 registry.register(overlayLoader);
 
+const environmentLoader = new ConfigLoader<EnvironmentConfig>(
+  'config/environment.yaml',
+  (raw) => parseEnvironment(raw),
+  () => {
+    console.log('[server] config/environment.yaml reloaded');
+  }
+);
+registry.register(environmentLoader);
+environmentLoader.load();
+
 houseMetaLoader.load();
 pitfallsLoader.load();
 overlayLoader.load();
@@ -159,11 +172,20 @@ const apiDeps = {
   archiveStore,
   getConfigRegistry: () => registry,
   getOverlay: () => overlayLoader.getConfig(),
+  getEnvironment: () => environmentLoader.getConfig(),
 };
 
 const app = express();
 app.use(express.json());
 app.use('/api', createApiRouter(apiDeps));
+app.use(
+  '/api/analysis',
+  createAnalysisRouter({
+    get catalog() { return catalog; },
+    getEnvironment: () => environmentLoader.getConfig(),
+    getOverlay: () => overlayLoader.getConfig(),
+  })
+);
 app.use('/api/furnishings', createFurnishingsRouter('config/house.yaml'));
 app.use('/api/electrical', createElectricalRouter('config/electrical.yaml'));
 app.use('/api/plumbing', createPlumbingRouter('config/plumbing.yaml'));
@@ -180,6 +202,7 @@ attachMcpTransports(app, () => createMcpServer(apiDeps)).then(() => {
   houseMetaLoader.startWatching();
   pitfallsLoader.startWatching();
   overlayLoader.startWatching();
+  environmentLoader.startWatching();
 
   const shutdown = async () => {
     await registry.stopAll();
