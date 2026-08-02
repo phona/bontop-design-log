@@ -52,17 +52,36 @@ describe('EnvironmentManager.setSolarState', () => {
   });
 
   it('白天：主光可见，位置在太阳方向 × 60', () => {
-    const { mgr } = makeManager();
+    const { mgr, scene } = makeManager();
     mgr.setSolarState({ altitudeDeg: 45, azimuthDeg: 180 });
     const state = mgr.getLightingState();
     expect(state.isNight).toBe(false);
     expect(state.altitudeDeg).toBe(45);
+
+    const added = (scene.add as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+    const dirLight = added.find((o) => o.castShadow === true);
+    expect(dirLight).toBeDefined();
+    expect(dirLight.visible).toBe(true);
+    expect(Math.abs(dirLight.position.x)).toBeLessThan(1e-6);
+    expect(dirLight.position.y).toBeCloseTo(42.4264, 1);
+    expect(dirLight.position.z).toBeCloseTo(42.4264, 1);
+    expect(dirLight.intensity).toBeCloseTo(0.3 + 0.7 * Math.sin(Math.PI / 4), 4);
+    expect((scene.background as { hex: string }).hex).toBe('#1a1a20');
   });
 
   it('夜间：主光关闭，ambient 降至 0.15', () => {
-    const { mgr } = makeManager();
+    const { mgr, scene } = makeManager();
     mgr.setSolarState({ altitudeDeg: -10, azimuthDeg: 0 });
     expect(mgr.getLightingState().isNight).toBe(true);
+
+    const added = (scene.add as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+    const dirLight = added.find((o) => o.castShadow === true);
+    expect(dirLight).toBeDefined();
+    expect(dirLight.visible).toBe(false);
+    const ambient = added.find((o) => o instanceof THREE.AmbientLight);
+    expect(ambient).toBeDefined();
+    expect(ambient.intensity).toBe(0.15);
+    expect((scene.background as { hex: string }).hex).toBe('#0a0a18');
   });
 
   it('setTimeOfDay 已移除', () => {
