@@ -176,19 +176,19 @@ materials:
     model: "2100x960mm，甲级，C 级锁芯"
     spec: "2100x960mm"
     unit: "扇"
-    price_per_unit: 3000
+    price_per_unit: 0
     coverage_per_unit: 1
     loss_rate: 1
     calc_mode: "count"
-    supplier: "快环建材市场 / 防盗门专卖店"
+    supplier: "开发商"
     online_link: ""
     sample_acquired: false
     sample_date: null
-    status: "candidate"
-    pros: ["甲级安全", "C级锁芯"]
-    cons: ["若开发商门可用可暂不换"]
-    price_source: "快环建材市场 / 防盗门专卖店报价"
-    notes: "若开发商入户门为甲级且外观可接受，可暂不更换"
+    status: "provided_by_developer"
+    pros: ["开发商已装", "一梯一户无需高安防"]
+    cons: []
+    price_source: "开发商已装，无需采购"
+    notes: "DEC-013：开发商已装入户门，一梯一户电梯直达，无需更换"
 
   - id: "curtain_01"
     topic_id: "curtain"

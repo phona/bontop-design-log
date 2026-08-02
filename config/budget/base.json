@@ -12,7 +12,7 @@
     "masonry": {"budget": 18500, "material": 0, "labor": {"rate": 45, "unit": "元/㎡", "area": "floor"}, "actual": 0, "status": "draft", "notes": "客餐厅木纹砖通铺，墙砖厨卫；按 94.76㎡ 套内 + 部分赠送面积估算"},
     "carpentry": {"budget": 5000, "material": 0, "labor": {"rate": 40, "unit": "元/㎡", "area": "ceiling"}, "actual": 0, "status": "draft", "notes": "厨卫铝扣板吊顶 + 客餐厅局部吊顶，层高 3.0m"},
     "painting": {"budget": 11500, "material": 0, "labor": {"rate": 25, "unit": "元/㎡", "area": "paint_wall"}, "actual": 0, "status": "draft", "notes": "大白墙为主，局部跳色；层高 3.0m，墙面面积比 2.8m 高约 7%"},
-    "doors_windows": {"budget": 10500, "material": 0, "labor": {"rate": 150, "unit": "元/扇", "area": "door_count"}, "actual": 0, "status": "draft", "notes": "室内门 4 扇、卫生间门 2 扇、入户门 1 扇；外立面玻璃幕墙已由开发商完成，不含封窗"},
+    "doors_windows": {"budget": 12000, "material": 0, "labor": {"rate": 150, "unit": "元/扇", "area": "door_count"}, "actual": 0, "status": "draft", "notes": "室内门 4 扇、卫生间门 2 扇；入户门开发商已装不计（DEC-013）；新增厨房三联动长虹玻璃吊轨推拉门 3500-5300（DEC-013）；外立面玻璃幕墙已由开发商完成，不含封窗"},
     "sanitary": {"budget": 12000, "material": 0, "labor": {"rate": 200, "unit": "元/件", "area": "fixture_count"}, "actual": 0, "status": "draft", "notes": "国产基础款（九牧/箭牌），两卫三件套；淋浴房玻璃隔断归 appliances 池（P0 上调 10000→12000）"},
     "kitchen_cabinet": {"budget": 8000, "material": 0, "actual": 0, "status": "draft", "notes": "L 型地柜约 3.5m + 吊柜，多层板+石英石；含洗碗机/净水器预留（P0 上调 6500→8000）"},
     "range_hood": {"budget": 2500, "material": 0, "actual": 0, "status": "draft", "notes": "开放式厨房必须配大功率侧吸油烟机，≥22m³/min"},

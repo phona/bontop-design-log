@@ -3,19 +3,19 @@
   wall: w_st_east
   type: socket
   x: 7.20
-  z: 5.80
+  z: 7.00
   height: 0.3
   count: 4
-  note: "电视墙(西墙): 电视+音响+机顶盒+预留，含USB×2"
+  note: "电视墙(西墙): 电视+音响+机顶盒+预留，含USB×2（DEC-013 由z=5.8移至z=7.0，电视柜正后方）"
 
 - id: net_living
   room: living_dining
   wall: w_st_east
   type: network
   x: 7.20
-  z: 5.80
+  z: 7.00
   height: 0.3
-  note: "客厅网口"
+  note: "客厅网口（DEC-013 由z=5.8移至z=7.0）"
 
 - id: sock_living_sofa_l
   room: living_dining
@@ -140,16 +140,9 @@
   z: 7.5
   height: 0.3
   count: 2
-  note: "主卧电视位预留"
+  note: "主卧床头USB充电插座（DEC-013 取消电视位，改USB五孔）"
 
-- id: net_master_tv
-  room: master_bedroom
-  wall: w_mb_east
-  type: network
-  x: 4.20
-  z: 7.5
-  height: 0.3
-  note: "主卧网口"
+# net_master_tv 已删除（DEC-013 主卧取消电视位，不布网口）
 
 - id: sock_master_bay
   room: master_bedroom
@@ -283,20 +276,20 @@
   room: bedroom_nw
   wall: w_nw_south
   type: socket
-  x: 4.5
+  x: 3.2
   z: 4.30
   height: 0.3
   count: 2
-  note: "儿童房书桌位"
+  note: "儿童房书桌位（DEC-013 由x=4.5移至x=3.2，书桌正后方）"
 
 - id: net_child
   room: bedroom_nw
   wall: w_nw_south
   type: network
-  x: 4.5
+  x: 3.2
   z: 4.30
   height: 0.3
-  note: "儿童房网口"
+  note: "儿童房网口（DEC-013 由x=4.5移至x=3.2）"
 
 - id: switch_child
   room: bedroom_nw
@@ -317,46 +310,45 @@
   count: 1
   note: "儿童房空调内机电源（吊顶内）"
 
-# 厨房
+# 厨房（DEC-013 布局重排：灶台→东墙，水槽→北墙，冰箱→西墙）
 - id: sock_kitchen_counter
-  room: kitchen
-  wall: w_kit_west
-  type: socket
-  x: 7.20
-  z: 2.5
-  height: 1.2
-  count: 4
-  note: "厨房台面带开关插座"
-
-- id: sock_kitchen_fridge
   room: kitchen
   wall: w_kit_east
   type: socket
   x: 10.80
-  z: 0.5
-  height: 0.3
-  count: 1
-  note: "冰箱插座（单独回路）"
+  z: 2.7
+  height: 1.2
+  count: 4
+  note: "厨房台面带开关插座（DEC-013 移至东墙切配区正后方）"
 
-- id: sock_kitchen_hood
+- id: sock_kitchen_fridge
   room: kitchen
   wall: w_kit_west
   type: socket
   x: 7.20
-  z: 2.5
+  z: 3.9
+  height: 0.3
+  count: 1
+  note: "冰箱插座（DEC-013 移至西墙南端，单独回路）"
+
+- id: sock_kitchen_hood
+  room: kitchen
+  wall: w_kit_east
+  type: socket
+  x: 10.80
+  z: 1.7
   height: 2.2
   count: 1
-  note: "油烟机插座"
+  note: "油烟机插座（DEC-013 移至东墙灶台上方）"
 
 - id: sock_kitchen_purifier
   room: kitchen
-  wall: w_kit_west
   type: socket
-  x: 7.50
-  z: 3.50
+  x: 9.50
+  z: 0.30
   height: 0.3
   count: 1
-  note: "净水器插座（水槽下方）"
+  note: "净水器插座（DEC-013 北墙落地柜台下，上下水走地面非挂墙，⚠️坐标待量房确认立管）"
 
 - id: sock_kitchen_gas
   room: kitchen
@@ -490,16 +482,15 @@
 
 # === 新增点位（2026-07-25 基线补齐） ===
 
-# 厨房洗碗机
+# 厨房洗碗机（DEC-013 移至北墙水槽旁）
 - id: sock_kitchen_dishwasher
   room: kitchen
-  wall: w_kit_west
   type: socket
-  x: 7.50
-  z: 2.00
+  x: 9.00
+  z: 0.30
   height: 0.3
   count: 1
-  note: "洗碗机插座（水槽旁厨下，单独回路）"
+  note: "洗碗机插座（DEC-013 北墙落地柜台下，单独回路，⚠️坐标待量房）"
 
 # 主卧电动窗帘
 - id: sock_master_curtain
@@ -585,3 +576,46 @@
   height: 0.3
   count: 1
   note: "智能网关/路由位（走廊，房子中央，WiFi覆盖最优）"
+
+# === 新增点位（2026-08-02 DEC-013 设计审查） ===
+
+# 电视墙灯带电源
+- id: sock_living_tv_led
+  room: living_dining
+  wall: w_st_east
+  type: socket
+  x: 7.20
+  z: 7.0
+  height: 2.0
+  count: 1
+  note: "电视墙灯带变压器电源（西墙电视柜上方）"
+
+# 餐桌吊灯（天花出线，非墙面插座）
+- id: light_dining_pendant
+  room: living_dining
+  type: ceiling_light
+  x: 9.0
+  z: 5.3
+  height: 2.8
+  note: "餐桌吊灯天花出线（DEC-013），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm"
+
+# 主卧投影仪插座（A方案，床尾西侧）
+- id: sock_master_projector
+  room: master_bedroom
+  type: socket
+  x: 1.5
+  z: 7.5
+  height: 0.3
+  count: 1
+  note: "主卧便携投影仪插座（DEC-013 A方案，床尾西侧地面）"
+
+# 客卫电热毛巾架
+- id: sock_gbath_towel
+  room: guest_bath
+  wall: w_gbath_west
+  type: socket
+  x: 5.60
+  z: 2.8
+  height: 1.2
+  count: 1
+  note: "客卫电热毛巾架插座（DEC-013，带防溅盒，回南天刚需）"

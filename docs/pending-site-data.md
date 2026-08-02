@@ -42,6 +42,12 @@
 | 12 | 房间净尺寸复核 | model-geometry.yaml 顶点坐标 | 更新 x/z | CAD 值 | inferred | 面积/家具 |
 | 13 | 入户门尺寸/开启方向 | model-geometry.yaml openings | 更新 width/room | 待量 | — | 玄关柜布局 |
 | 14 | 空调外机位净尺寸 | house.yaml west_platform | 更新 width/length | 1.6×1.55m | inferred | HVAC 选型 |
+| 15 | 幕墙可开启扇位置/尺寸 | house.yaml constraints.exterior | 每面位置+宽+高+开启方式 | 四面均有推拉窗，约1m宽 | estimated | 纱窗/窗帘轨道避让/通风方案 |
+| 16 | 厨房排水立管实际位置 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断(10.5,0.3) | inferred | 北墙水槽x坐标 |
+| 17 | 厨房排烟道实际位置 | 新文件 ductwork.yaml | `{x, z, diameter}` | 推断(9.0,0.1) | inferred | 烟管走向 |
+| 18 | 厨房燃气表实际位置 | plumbing.yaml `type: gas_meter` | `{x, z, height}` | 推断(8.0,0.2) h=1.5 | inferred | 燃气管路由 |
+| 19 | 主卫排水立管实际位置 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断(0.3,1.3) | inferred | 洗手台外移坐标 |
+| 20 | 全屋飘窗实际sill高度 | overlay.yaml bay_sill | 更新 sill 值 | 2.55m（上飘窗） | inferred | 飘窗利用方案/儿童房书桌位 |
 
 ## 量房工具清单
 
