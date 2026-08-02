@@ -1477,6 +1477,10 @@ export class HouseScene implements SceneApi {
     return this.envManager;
   }
 
+  getFloorMeshes(): THREE.Mesh[] {
+    return this.floorMeshes;
+  }
+
   getFurniturePosition(objectId: string): { x: number; z: number; rotation: number } | null {
     for (const mesh of this.furnitureMeshes) {
       if (mesh.userData.objectId === objectId) {

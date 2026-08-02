@@ -22,6 +22,7 @@ import { PlacementPanel } from './ui/PlacementPanel.js';
 import { SunlightSystem } from './render/SunlightSystem.js';
 import { SunlightPanel } from './ui/SunlightPanel.js';
 import { SunlightButton } from './ui/SunlightButton.js';
+import { DaylightHeatmap } from './render/analysis/DaylightHeatmap.js';
 import './ui/keybindings.js';
 import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
 
@@ -59,6 +60,7 @@ export class App {
   private sunlightPanel = new SunlightPanel();
   private sunlightSystem: SunlightSystem | null = null;
   private sunlightButton: SunlightButton | null = null;
+  private daylightHeatmap: DaylightHeatmap | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.stateSync = new StateSync();
@@ -197,13 +199,22 @@ export class App {
       center
     );
 
-    this.sunlightPanel.onDateChange((month, day) => this.sunlightSystem?.setDate(month, day));
+    this.sunlightPanel.onDateChange((month, day) => {
+      this.sunlightSystem?.setDate(month, day);
+      const date = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      void this.daylightHeatmap?.refresh(date);
+    });
     this.sunlightPanel.onHourChange((hour) => this.sunlightSystem?.setHour(hour));
     this.sunlightPanel.onPlayToggle(() => {
       const playing = this.sunlightSystem?.togglePlay() ?? false;
       this.sunlightPanel.setPlaying(playing);
     });
     this.sunlightSystem.setPlayingListener((playing) => this.sunlightPanel.setPlaying(playing));
+
+    this.daylightHeatmap = new DaylightHeatmap(this.houseScene);
+    this.sunlightPanel.onHeatmapToggle(() => {
+      void this.daylightHeatmap?.toggle();
+    });
 
     this.sunlightButton = new SunlightButton({
       onToggle: () => {
