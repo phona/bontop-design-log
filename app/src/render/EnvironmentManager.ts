@@ -1,4 +1,14 @@
 import * as THREE from 'three';
+import { computeLightState, sunDirection } from '@shared/solar';
+
+const SUN_RADIUS = 60;
+const DAY_BACKGROUND = new THREE.Color('#1a1a20');
+const NIGHT_BACKGROUND = new THREE.Color('#0a0a18');
+
+export interface SolarStateInput {
+  altitudeDeg: number;
+  azimuthDeg: number;
+}
 
 export class EnvironmentManager {
   private scene: THREE.Scene;
@@ -7,6 +17,11 @@ export class EnvironmentManager {
   private fillLight!: THREE.DirectionalLight;
   private ambientLight!: THREE.AmbientLight;
   private envMap: THREE.Texture | null = null;
+  private lastState: { altitudeDeg: number; azimuthDeg: number; isNight: boolean } = {
+    altitudeDeg: 60,
+    azimuthDeg: 180,
+    isNight: false,
+  };
 
   constructor(scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
     this.scene = scene;
@@ -63,31 +78,35 @@ export class EnvironmentManager {
   private setupShadows(): void {
     this.dirLight.shadow.mapSize.set(2048, 2048);
     this.dirLight.shadow.bias = -0.001;
+    const cam = this.dirLight.shadow.camera as THREE.OrthographicCamera;
+    cam.left = -25;
+    cam.right = 25;
+    cam.top = 25;
+    cam.bottom = -25;
+    cam.near = 1;
+    cam.far = 150;
+    cam.updateProjectionMatrix();
   }
 
-  setTimeOfDay(hour: number): void {
-    const azimuthDeg = ((hour - 6) / 12) * 180 + 90;
-    const elevationDeg = Math.sin(((hour - 6) / 12) * Math.PI) * 55 + 5;
-    const radius = 20;
-    const azimuthRad = azimuthDeg * Math.PI / 180;
-    const elevationRad = elevationDeg * Math.PI / 180;
-    this.dirLight.position.set(
-      Math.sin(azimuthRad) * Math.cos(elevationRad) * radius,
-      Math.sin(elevationRad) * radius,
-      Math.cos(azimuthRad) * Math.cos(elevationRad) * radius,
-    );
+  setSolarState(pos: SolarStateInput): void {
+    const light = computeLightState(pos.altitudeDeg);
+    const dir = sunDirection(pos.altitudeDeg, pos.azimuthDeg);
+
+    this.dirLight.visible = !light.isNight;
+    this.dirLight.intensity = light.sunIntensity;
+    this.dirLight.color.setHex(light.sunColorHex);
+    this.dirLight.position.set(dir.x * SUN_RADIUS, Math.max(dir.y * SUN_RADIUS, 0.5), dir.z * SUN_RADIUS);
+    this.ambientLight.intensity = light.ambientIntensity;
+    this.scene.background = light.isNight ? NIGHT_BACKGROUND : DAY_BACKGROUND;
+
+    this.lastState = { altitudeDeg: pos.altitudeDeg, azimuthDeg: pos.azimuthDeg, isNight: light.isNight };
   }
 
   toggleIBL(enabled: boolean): void {
     this.scene.environment = enabled ? this.envMap : null;
   }
 
-  getLightingState(): { hour: number; azimuth: number; elevation: number; iblEnabled: boolean } {
-    return {
-      hour: 12,
-      azimuth: 180,
-      elevation: 60,
-      iblEnabled: this.scene.environment !== null,
-    };
+  getLightingState(): { altitudeDeg: number; azimuthDeg: number; isNight: boolean; iblEnabled: boolean } {
+    return { ...this.lastState, iblEnabled: this.scene.environment !== null };
   }
 }
