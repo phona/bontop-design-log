@@ -11,6 +11,7 @@ import { attachMcpTransports } from './mcp-transports.js';
 import { RuleEngine } from './rule-engine.js';
 import { BudgetCalculator } from './budget-calculator.js';
 import { BudgetAdvisor } from './budget-advisor.js';
+import { BudgetValueAnalyzer } from './budget-value-analyzer.js';
 import { PitfallEngine } from './pitfall-engine.js';
 import type { PitfallConfig } from './pitfall-engine.js';
 import { LifecycleEngine } from './lifecycle-engine.js';
@@ -36,6 +37,7 @@ let catalog = ProjectCatalog.fromMaterials(
 let ruleEngine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
 let budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
 let budgetAdvisor = new BudgetAdvisor(catalog, budgetCalculator, ruleEngine);
+let budgetValueAnalyzer = new BudgetValueAnalyzer(catalog, budgetCalculator, ruleEngine.getConfig());
 let pitfallEngine = new PitfallEngine({ version: '1.0', pitfalls: [], templates: [] });
 const lifecycleEngine = new LifecycleEngine();
 const tradeoffEngine = new TradeoffEngine();
@@ -51,6 +53,7 @@ function rebuildDerived(): void {
     ruleEngine = new RuleEngine(rulesConfig);
     budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
     budgetAdvisor = new BudgetAdvisor(catalog, budgetCalculator, ruleEngine);
+    budgetValueAnalyzer = new BudgetValueAnalyzer(catalog, budgetCalculator, ruleEngine.getConfig());
     const pitfallConfig = pitfallsLoader.getConfig() ?? { version: '1.0', pitfalls: [], templates: [] };
   pitfallEngine = new PitfallEngine(pitfallConfig);
 }
@@ -152,6 +155,7 @@ const apiDeps = {
   getTradeoffEngine: () => tradeoffEngine,
   getAcceptanceEngine: () => acceptanceEngine,
   getBudgetAdvisor: () => budgetAdvisor,
+  getBudgetValueAnalyzer: () => budgetValueAnalyzer,
   archiveStore,
   getConfigRegistry: () => registry,
   getOverlay: () => overlayLoader.getConfig(),

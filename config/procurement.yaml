@@ -161,14 +161,6 @@ materials:
     unit: set
     notes: ["智能开关零线+网关+电动窗帘电源，水电时布零线"]
 
-  - id: paint_01
-    name: "全屋乳胶漆"
-    room: null
-    category: paint
-    current_stage: selection
-    waste_rate: 1.1
-    unit: L
-    notes: ["多乐士金装净味五合一，大白墙为主"]
 
   - id: curtain_01
     name: "全屋窗帘套装"
@@ -178,3 +170,220 @@ materials:
     waste_rate: 1
     unit: set
     notes: ["雪尼尔遮光+幻影纱+铝百叶"]
+
+  - id: bed_180_01
+    name: "1.8m 实木床"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 张
+    notes: ["P0补录，到店确认型号价格"]
+  - id: mattress_180_01
+    name: "1.8m 独立袋装弹簧床垫"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 张
+    notes: ["P0补录，到店确认型号价格"]
+  - id: wardrobe_240_01
+    name: "2.4m 定制衣柜"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 个
+    notes: ["P0补录，到店确认型号价格"]
+  - id: wardrobe_180_01
+    name: "1.8m 定制衣柜"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 个
+    notes: ["P0补录，到店确认型号价格"]
+  - id: sofa_3seat_01
+    name: "三人位科技布沙发"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 套
+    notes: ["P0补录，到店确认型号价格"]
+  - id: dining_table_01
+    name: "1.4m 岩板餐桌"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 张
+    notes: ["P0补录，到店确认型号价格"]
+  - id: dining_chair_01
+    name: "简约餐椅"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 把
+    notes: ["P0补录，到店确认型号价格"]
+  - id: tv_stand_01
+    name: "1.8m 电视柜"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 个
+    notes: ["P0补录，到店确认型号价格"]
+  - id: desk_01
+    name: "1.2m 书桌"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 张
+    notes: ["P0补录，到店确认型号价格"]
+  - id: chair_01
+    name: "人体工学椅"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 把
+    notes: ["P0补录，到店确认型号价格"]
+  - id: bookshelf_01
+    name: "0.8m 书架"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 个
+    notes: ["P0补录，到店确认型号价格"]
+  - id: shoe_cabinet_01
+    name: "玄关鞋柜"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 个
+    notes: ["P0补录，到店确认型号价格"]
+  - id: coffee_table_01
+    name: "1.2m 茶几"
+    room: null
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 个
+    notes: ["P0补录，到店确认型号价格"]
+  - id: gas_stove_01
+    name: "5.0kW 嵌入式燃气灶"
+    room: kitchen
+    category: 厨房电器
+    current_stage: selection
+    waste_rate: 1
+    unit: 台
+    notes: ["P0补录，到店确认型号价格"]
+  - id: dishwasher_01
+    name: "嵌入式洗碗机"
+    room: kitchen
+    category: 厨房电器
+    current_stage: selection
+    waste_rate: 1
+    unit: 台
+    notes: ["P0补录，到店确认型号价格"]
+  - id: water_purifier_01
+    name: "RO 反渗透净水器"
+    room: kitchen
+    category: 厨房电器
+    current_stage: selection
+    waste_rate: 1
+    unit: 台
+    notes: ["P0补录，到店确认型号价格"]
+  - id: washer_01
+    name: "10kg 滚筒洗衣机"
+    room: null
+    category: 生活电器
+    current_stage: selection
+    waste_rate: 1
+    unit: 台
+    notes: ["P0补录，到店确认型号价格"]
+  - id: dryer_01
+    name: "9kg 热泵烘干机"
+    room: null
+    category: 生活电器
+    current_stage: selection
+    waste_rate: 1
+    unit: 台
+    notes: ["P0补录，到店确认型号价格"]
+  - id: shower_enclosure_01
+    name: "淋浴房玻璃隔断"
+    room: bathroom
+    category: 卫浴设备
+    current_stage: selection
+    waste_rate: 1
+    unit: 套
+    notes: ["P0补录，到店确认型号价格"]
+  - id: bedroom_tile_01
+    name: "卧室木纹砖（与客餐厅一致）"
+    room: bedroom
+    category: 地砖
+    current_stage: selection
+    waste_rate: 1.08
+    unit: 片
+    notes: ["P0补录，到店确认型号价格"]
+  - id: bedroom_wood_01
+    name: "实木复合地板（卧室）"
+    room: bedroom
+    category: 地板
+    current_stage: selection
+    waste_rate: 1.05
+    unit: ㎡
+    notes: ["P0补录，到店确认型号价格"]
+  - id: floor_tile_03
+    name: "浅灰亮光砖"
+    room: null
+    category: 地砖
+    current_stage: selection
+    waste_rate: 1.08
+    unit: 片
+    notes: ["P0补录，到店确认型号价格"]
+  - id: wall_tile_02
+    name: "柔光白瓷片"
+    room: null
+    category: 墙砖
+    current_stage: selection
+    waste_rate: 1.05
+    unit: 片
+    notes: ["P0补录，到店确认型号价格"]
+  - id: wall_tile_03
+    name: "灰色仿古砖"
+    room: null
+    category: 墙砖
+    current_stage: selection
+    waste_rate: 1.05
+    unit: 片
+    notes: ["P0补录，到店确认型号价格"]
+  - id: hvac_02
+    name: "一拖三挂机 + 一拖二挂机"
+    room: null
+    category: 暖通空调
+    current_stage: selection
+    waste_rate: 1
+    unit: 套
+    notes: ["P0补录，到店确认型号价格"]
+  - id: sanitary_faucet_01
+    name: "冷热面盆龙头"
+    room: null
+    category: 卫浴洁具
+    current_stage: selection
+    waste_rate: 1
+    unit: 个
+    notes: ["P0补录，到店确认型号价格"]
+  - id: entry_door_01
+    name: "甲级防盗门"
+    room: null
+    category: 入户门
+    current_stage: selection
+    waste_rate: 1
+    unit: 扇
+    notes: ["P0补录，到店确认型号价格"]

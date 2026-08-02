@@ -13,6 +13,7 @@ import { LifecycleEngine } from '../../server/lifecycle-engine.js';
 import { TradeoffEngine } from '../../server/tradeoff-engine.js';
 import { AcceptanceEngine } from '../../server/acceptance-engine.js';
 import { BudgetAdvisor } from '../../server/budget-advisor.js';
+import { BudgetValueAnalyzer } from '../../server/budget-value-analyzer.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from '../../server/config-loader.js';
 import type { CadLayoutYaml } from '../../shared/types.js';
@@ -62,6 +63,7 @@ describe('server startup resilience', () => {
       getTradeoffEngine: () => new TradeoffEngine(),
       getAcceptanceEngine: () => new AcceptanceEngine(),
       getBudgetAdvisor: () => new BudgetAdvisor(catalog, calc, engine),
+      getBudgetValueAnalyzer: () => new BudgetValueAnalyzer(catalog, calc, engine.getConfig()),
       archiveStore,
       getConfigRegistry: () => registry,
       getOverlay: () => undefined,

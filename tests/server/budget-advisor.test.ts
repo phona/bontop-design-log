@@ -63,6 +63,17 @@ describe('BudgetAdvisor', () => {
     assert.equal(result.target, 190000);
   });
 
+  it('each suggestion describes what is lost (loses)', () => {
+    const { advisor, calc } = loadAdvisor();
+    const scheme = currentScheme();
+    const total = calc.calculate(scheme).totalActual;
+    const result = advisor.suggest(scheme, total - 6000);
+    assert.ok(result.suggestions.length > 0);
+    for (const s of result.suggestions) {
+      assert.ok(s.loses && s.loses.length > 0, `suggestion ${s.topic} has loses description`);
+    }
+  });
+
   it('suggests at most one option per topic (mutually exclusive swaps)', () => {
     const { advisor, calc } = loadAdvisor();
     const scheme = currentScheme();

@@ -196,4 +196,16 @@ describe('ProjectCatalog — vertex v2.0 data path', () => {
     );
     assert.ok(confidence.warning.length > 0);
   });
+
+  it('procurement entries all reference existing materials (no orphans)', () => {
+    const procurement = load(readFileSync('config/procurement.yaml', 'utf8')) as {
+      materials: Array<{ id: string }>;
+    };
+    const materials = load(readFileSync('config/materials.yaml', 'utf8')) as {
+      materials: Array<{ id: string }>;
+    };
+    const materialIds = new Set(materials.materials.map((m) => m.id));
+    const orphans = procurement.materials.filter((p) => !materialIds.has(p.id));
+    assert.deepEqual(orphans, [], 'every procurement entry must match a material');
+  });
 });

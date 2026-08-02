@@ -110,6 +110,79 @@ phases:
           - 入住后磕碰补漆，机器调色和原漆有色差
           - 留原漆最准
 
+  - phase: carpentry
+    name: "木工验收（吊顶+柜体）"
+    items:
+      - id: check_carp_keel
+        item: "吊顶龙骨间距"
+        method: "测量主龙骨间距，检查吊杆是否牢固"
+        standard: "龙骨间距 ≤ 400mm，吊杆无松动"
+        severity: critical
+        knowledge: |
+          常见偷工：
+          - 龙骨间距过大（应 ≤400mm）→ 石膏板易开裂下坠
+          - 吊杆太少或膨胀螺栓没打牢
+
+      - id: check_carp_board
+        item: "石膏板拼接"
+        method: "检查板间是否留缝、转角是否整板"
+        standard: "板间留 V 型缝，转角用整板（7字角），背板 ≥ 9mm"
+        severity: major
+        knowledge: |
+          为什么留 V 缝：
+          - 热胀冷缩需要缝隙缓冲，否则接缝处必裂
+          - 转角整板（7字型）比拼接抗裂
+
+      - id: check_carp_cabinet
+        item: "柜门开关与缝隙"
+        method: "逐个柜门开关测试，测门缝均匀度"
+        standard: "开关顺畅无异响，门缝均匀 ≤ 2mm，五金阻尼正常"
+        severity: major
+
+  - phase: doors_windows_install
+    name: "门窗安装验收"
+    items:
+      - id: check_dw_swing
+        item: "门开关与门框"
+        method: "逐个门开关测试，检查门框灌浆"
+        standard: "开关顺畅无异响，门框灌浆密实，合页螺丝全打"
+        severity: major
+
+      - id: check_dw_seal
+        item: "密封胶检查"
+        method: "检查门套/窗框密封胶打设"
+        standard: "密封胶均匀连续无断点，门吸避开踢脚线"
+        severity: major
+
+      - id: check_dw_drain
+        item: "下水通畅"
+        method: "各下水口冲水/倒水测试"
+        standard: "下水通畅无堵塞、无返水"
+        severity: critical
+
+  - phase: plumbing_pressure
+    name: "水路打压验收"
+    items:
+      - id: check_plumb_pressure
+        item: "水管打压试验"
+        method: |
+          1. 堵住所有出水口，接打压泵
+          2. 加压至 0.8MPa
+          3. 保压 30 分钟，观察压力表
+        standard: "0.8MPa 保压 30min，压降 ≤ 0.05MPa，接头无渗漏"
+        severity: critical
+        knowledge: |
+          常见坑：
+          - 打压前确认所有接头已拧紧
+          - 保压期间逐个接头目测有无渗水
+          - PPR 管热熔接头是渗漏高发点
+
+      - id: check_plumb_drain
+        item: "排水坡度与存水弯"
+        method: "检查排水管坡度、地漏/下水存水弯"
+        standard: "排水坡度 ≥ 1%，地漏/下水有存水弯防臭"
+        severity: critical
+
   - phase: hvac_installation
     name: "中央空调验收"
     items:

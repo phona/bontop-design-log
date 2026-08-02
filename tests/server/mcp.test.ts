@@ -15,6 +15,7 @@ import { LifecycleEngine } from '../../server/lifecycle-engine.js';
 import { TradeoffEngine } from '../../server/tradeoff-engine.js';
 import { AcceptanceEngine } from '../../server/acceptance-engine.js';
 import { BudgetAdvisor } from '../../server/budget-advisor.js';
+import { BudgetValueAnalyzer } from '../../server/budget-value-analyzer.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
 import { createMcpServer } from '../../server/mcp-server.js';
@@ -43,6 +44,7 @@ describe('MCP remote', () => {
     const tradeoffEngine = new TradeoffEngine();
     const acceptanceEngine = new AcceptanceEngine();
     const budgetAdvisor = new BudgetAdvisor(catalog, calc, engine);
+    const budgetValueAnalyzer = new BudgetValueAnalyzer(catalog, calc, engine.getConfig());
     const deps = {
       catalog,
       state,
@@ -53,6 +55,7 @@ describe('MCP remote', () => {
       getTradeoffEngine: () => tradeoffEngine,
       getAcceptanceEngine: () => acceptanceEngine,
       getBudgetAdvisor: () => budgetAdvisor,
+      getBudgetValueAnalyzer: () => budgetValueAnalyzer,
       archiveStore,
       getConfigRegistry: () => new ConfigRegistry(),
       getOverlay: () => undefined,

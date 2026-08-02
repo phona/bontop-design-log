@@ -10,6 +10,7 @@ import type { TradeoffEngine } from './tradeoff-engine.js';
 import type { AcceptanceEngine } from './acceptance-engine.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { BudgetAdvisor } from './budget-advisor.js';
+import type { BudgetValueAnalyzer } from './budget-value-analyzer.js';
 import type { CurrentScheme, BudgetCategory } from '../shared/types.js';
 import { parseSpecDimensions } from './spec-parser.js';
 
@@ -40,11 +41,12 @@ export interface McpDeps {
   getTradeoffEngine: () => TradeoffEngine;
   getAcceptanceEngine: () => AcceptanceEngine;
   getBudgetAdvisor: () => BudgetAdvisor;
+  getBudgetValueAnalyzer: () => BudgetValueAnalyzer;
   archiveStore: ArchivedSchemesStore;
 }
 
 export function createMcpServer(deps: McpDeps): McpServer {
-  const { catalog, state, getRuleEngine, getBudgetCalculator, getPitfallEngine, getLifecycleEngine, getTradeoffEngine, getAcceptanceEngine, getBudgetAdvisor, archiveStore } = deps;
+  const { catalog, state, getRuleEngine, getBudgetCalculator, getPitfallEngine, getLifecycleEngine, getTradeoffEngine, getAcceptanceEngine, getBudgetAdvisor, getBudgetValueAnalyzer, archiveStore } = deps;
   const server = new McpServer(
     { name: 'bontop-design', version: '0.2.0' },
     { capabilities: { tools: {} } }
@@ -600,6 +602,28 @@ export function createMcpServer(deps: McpDeps): McpServer {
     async (args) => {
       const scheme = state.getCurrentScheme();
       return text(getBudgetAdvisor().suggest(scheme, args.target));
+    }
+  );
+
+  server.registerTool(
+    'explain_budget_value',
+    {
+      title: 'Explain budget value',
+      description:
+        'Explain what a budget category\'s spend buys (room × material × cost breakdown) and, for over/near categories, the cheaper alternatives with what each would lose. Answers "what does the overspend buy" rather than just flagging over budget. Omit category to analyze all over/near categories.',
+      inputSchema: z.object({
+        category: z.string().optional(),
+      }),
+    },
+    async (args) => {
+      const scheme = state.getCurrentScheme();
+      const analyzer = getBudgetValueAnalyzer();
+      if (args.category) {
+        const value = analyzer.analyzeCategory(scheme, args.category);
+        if (!value) return text({ error: `category not found: ${args.category}` });
+        return text(value);
+      }
+      return text(analyzer.analyzeOverBudget(scheme));
     }
   );
 

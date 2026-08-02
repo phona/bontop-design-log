@@ -10,6 +10,7 @@ export interface BudgetSuggestion {
   toOptionId: string;
   toName: string;
   savings: number;
+  loses: string;
   risksAdded: Risk[];
 }
 
@@ -88,6 +89,10 @@ export class BudgetAdvisor {
         const simRisks = this.ruleEngine.evaluate(simScheme, this.catalog).risks;
         const risksAdded = simRisks.filter((r) => !currentRiskIds.has(r.id));
 
+        const affectedRooms = new Set(
+          currentSnap.lineItems.filter((li) => li.topic === topic.id && li.roomId).map((li) => li.roomId as string)
+        ).size;
+
         best = {
           topic: topic.id,
           fromOptionId: currentOptionId,
@@ -97,6 +102,7 @@ export class BudgetAdvisor {
           toOptionId: option.id,
           toName: option.name,
           savings,
+          loses: this.describeLoses(option.data as Record<string, unknown> | undefined, affectedRooms),
           risksAdded,
         };
       }
@@ -124,5 +130,12 @@ export class BudgetAdvisor {
       suggestions,
       maxSavings,
     };
+  }
+
+  private describeLoses(data: Record<string, unknown> | undefined, roomCount: number): string {
+    const cons = (data?.cons as string[] | undefined) ?? [];
+    const conPart = cons.length > 0 ? cons.join('；') : '档次/质感降低';
+    const roomPart = roomCount > 0 ? `（影响 ${roomCount} 个房间）` : '';
+    return `${conPart}${roomPart}`;
   }
 }

@@ -36,7 +36,7 @@ describe('LifecycleEngine', () => {
     const ids = all.map(s => s.id);
     assert.ok(ids.includes('floor_tile_01'));
     assert.ok(ids.includes('wall_tile_01'));
-    assert.ok(ids.includes('paint_01'));
+    assert.ok(ids.includes('latex_paint_01'));
   });
 
   it('throws for unknown material in getStatus', () => {
@@ -51,7 +51,7 @@ describe('LifecycleEngine', () => {
 
   it('calculates quantity for null-room (whole house) materials', () => {
     const engine = new LifecycleEngine();
-    const qty = engine.calculateQuantity('paint_01');
+    const qty = engine.calculateQuantity('latex_paint_01');
     assert.ok(qty.area > 0);
     assert.ok(qty.total > qty.area);
     assert.equal(qty.unit, 'L');

@@ -308,6 +308,38 @@ export interface DataConfidence {
   warning: string;
 }
 
+export interface ValueBreakdownItem {
+  roomId: string | null;
+  roomName: string;
+  topic: string;
+  optionId: string;
+  materialName: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  cost: number;
+}
+
+export interface ValueAlternative {
+  topic: string;
+  fromOptionId: string | null;
+  fromName: string;
+  toOptionId: string;
+  toName: string;
+  savings: number;
+  loses: string;
+}
+
+export interface CategoryValue {
+  category: string;
+  actual: number;
+  budget: number;
+  overBy: number;
+  status: string;
+  breakdown: ValueBreakdownItem[];
+  alternatives: ValueAlternative[];
+}
+
 export interface ArchivedScheme {
   id: string;
   name: string;
