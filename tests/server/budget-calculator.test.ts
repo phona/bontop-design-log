@@ -417,7 +417,7 @@ describe('BudgetCalculator', () => {
       selections: { hvac: { default: 'A2', roomOverrides: {} } },
     };
     const snapshot = calc.calculate(scheme);
-    assert.equal(snapshot.totalBudget, 192000);
+    assert.equal(snapshot.totalBudget, 198000);
     for (const key of ['furniture_soft', 'appliances', 'hvac']) {
       assert.ok(snapshot.categories.find((c) => c.key === key), `${key} category present`);
     }

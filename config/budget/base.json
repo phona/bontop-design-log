@@ -2,7 +2,7 @@
   "version": "v0.5-four-pool",
   "locked_date": null,
   "currency": "CNY",
-  "total_budget": 192000,
+  "total_budget": 198000,
   "project_ceiling": 190000,
   "notes": "四池口径（P0 重构 v0.5）：硬装 118,000（16 科 107,000 + 预备费 11,000）+ 暖通 29,000（美的理想家III A2）+ 家具软装 35,000 + 家电 10,000 = 192,000。project_ceiling=190,000 为拎包入住总上限（务实档真实落地值，略低于合计以形成约束）。偏紧科目已上调：water_electric 8500→12000、waterproof 3500→4500、kitchen_cabinet 6500→8000、sanitary 10000→12000。家具家电报价为 candidate（到店未确认）。人工费为静态费率（不随选材变）：大砖≥800/人字拼工费上浮约20-50%已含在务实估算，精确数待施工图（DEC-011）。卧室地面已建模 bedroom_floor（默认木纹砖通铺）。量房和施工图完成后需重新核算。",
   "categories": {
@@ -18,7 +18,7 @@
     "range_hood": {"budget": 2500, "material": 0, "actual": 0, "status": "draft", "notes": "开放式厨房必须配大功率侧吸油烟机，≥22m³/min"},
     "hvac": {"budget": 29000, "material": 0, "actual": 0, "status": "draft", "notes": "中央空调/多联机一拖五，美的理想家III（A2）；西设备平台单外机。P0 由 0→29000 纳入总控"},
     "lighting": {"budget": 2800, "material": 0, "actual": 0, "status": "draft", "notes": "吸顶灯为主 + 局部筒灯，控制成本"},
-    "curtains": {"budget": 4000, "material": 0, "actual": 0, "status": "draft", "notes": "全屋玻璃幕墙，窗帘为刚需；纱帘+遮光帘，厨卫用防水卷帘/百叶"},
+    "curtains": {"budget": 10000, "material": 0, "actual": 0, "status": "draft", "notes": "高频区（客厅/主卧）电动纱帘+遮光帘，低频区（父母房/书房）手动后期可加（电源已预留），厨卫防水百叶；DEC-013 由 4000 上调"},
     "smart_home": {"budget": 2000, "material": 0, "actual": 0, "status": "draft", "notes": "智能开关零线 + 网关位 + 电动窗帘电源 + 人体传感器位；不上调光和自动化"},
     "miscellaneous": {"budget": 5700, "material": 0, "actual": 0, "status": "draft", "notes": "美缝、踢脚线、五金、清洁（P0 起家具已拆出至 furniture_soft）"},
     "furniture_soft": {"budget": 35000, "material": 0, "actual": 0, "status": "draft", "notes": "家具软装池（P0 新增）：床×3、床垫×3、衣柜×3、沙发、餐桌椅、电视柜、书桌、椅、书架、鞋柜、茶几。报价 candidate，可分阶段采购"},
