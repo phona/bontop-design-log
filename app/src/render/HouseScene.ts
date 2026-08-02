@@ -1473,6 +1473,10 @@ export class HouseScene implements SceneApi {
     return this.furnitureMeshes;
   }
 
+  getEnvironmentManager(): EnvironmentManager {
+    return this.envManager;
+  }
+
   getFurniturePosition(objectId: string): { x: number; z: number; rotation: number } | null {
     for (const mesh of this.furnitureMeshes) {
       if (mesh.userData.objectId === objectId) {

@@ -19,6 +19,9 @@ import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
 import { CommandPalette } from './ui/CommandPalette.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
 import { PlacementPanel } from './ui/PlacementPanel.js';
+import { SunlightSystem } from './render/SunlightSystem.js';
+import { SunlightPanel } from './ui/SunlightPanel.js';
+import { SunlightButton } from './ui/SunlightButton.js';
 import './ui/keybindings.js';
 import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
 
@@ -53,6 +56,9 @@ export class App {
   private furniturePlaceMode: { type: string } | null = null;
   private placementPanel = new PlacementPanel();
   private infrastructurePlaceMode: { category: string; type: string } | null = null;
+  private sunlightPanel = new SunlightPanel();
+  private sunlightSystem: SunlightSystem | null = null;
+  private sunlightButton: SunlightButton | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     this.stateSync = new StateSync();
@@ -163,12 +169,54 @@ export class App {
 
     await this.refreshOverviewData();
 
+    this.setupSunlight();
     this.updateModeIndicator();
     this.rafId = requestAnimationFrame(this.renderLoop);
   }
 
   async captureFloorPlan(): Promise<string> {
     return this.houseScene.captureFloorPlan();
+  }
+
+  private setupSunlight(): void {
+    const env = this.projectData?.environment;
+    if (!env) return;
+
+    const rooms: Array<{ x: number; z: number }> = this.projectData?.house?.rooms ?? [];
+    const center = rooms.length > 0
+      ? {
+          x: rooms.reduce((s, r) => s + r.x, 0) / rooms.length,
+          z: rooms.reduce((s, r) => s + r.z, 0) / rooms.length,
+        }
+      : { x: 7.4, z: 3.65 };
+
+    this.sunlightSystem = new SunlightSystem(
+      this.houseScene.scene,
+      this.houseScene.getEnvironmentManager(),
+      { latitude: env.location.latitude, longitude: env.location.longitude, timezone: env.location.timezone },
+      center
+    );
+
+    this.sunlightPanel.onDateChange((month, day) => this.sunlightSystem?.setDate(month, day));
+    this.sunlightPanel.onHourChange((hour) => this.sunlightSystem?.setHour(hour));
+    this.sunlightPanel.onPlayToggle(() => {
+      const playing = this.sunlightSystem?.togglePlay() ?? false;
+      this.sunlightPanel.setPlaying(playing);
+    });
+    this.sunlightSystem.setPlayingListener((playing) => this.sunlightPanel.setPlaying(playing));
+
+    this.sunlightButton = new SunlightButton({
+      onToggle: () => {
+        this.sunlightPanel.toggle();
+        if (this.sunlightPanel.isVisible()) {
+          this.sunlightSystem?.showTrajectory();
+        } else {
+          this.sunlightSystem?.hideTrajectory();
+        }
+        this.sunlightButton?.sync();
+      },
+      getActive: () => this.sunlightPanel.isVisible(),
+    });
   }
 
   private setupFurniturePanel(): void {
@@ -860,6 +908,15 @@ export class App {
     this.annotationRenderer?.updateLabels();
     this.analysisTools.updatePulse();
     this.houseScene.renderFrame();
+
+    if (this.sunlightSystem?.isPlaying()) {
+      this.sunlightSystem.update(dt);
+      this.sunlightPanel.setHourDisplay(this.sunlightSystem.getHour());
+    }
+    if (this.sunlightPanel.isVisible() && this.sunlightSystem) {
+      const r = this.sunlightSystem.getSolarReadout();
+      this.sunlightPanel.setSolarReadout(r.altitudeDeg, r.azimuthDeg);
+    }
 
     this.rafId = requestAnimationFrame(this.renderLoop);
   };
