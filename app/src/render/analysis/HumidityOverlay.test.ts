@@ -41,7 +41,8 @@ const BODY = {
 };
 
 function makeHouseScene() {
-  const floorMat = { color: { set: vi.fn(), hex: 0 }, transparent: false, opacity: 1, clone: vi.fn() };
+  const pristineClone = { cloned: true, color: { set: vi.fn(), hex: 0 }, transparent: false, opacity: 1 };
+  const floorMat = { color: { set: vi.fn(), hex: 0 }, transparent: false, opacity: 1, clone: vi.fn(() => pristineClone) };
   const floor = { userData: { roomId: 'master_bath' }, material: floorMat };
   const domElement = document.createElement('canvas');
   return {
@@ -51,6 +52,7 @@ function makeHouseScene() {
     renderer: { domElement },
     raycastRoomAtPointer: vi.fn(() => 'master_bath'),
     _floor: floor,
+    _originalMat: pristineClone,
     _domElement: domElement,
   };
 }
@@ -79,10 +81,13 @@ describe('HumidityOverlay', () => {
   it('toggle 关闭：恢复材质、移除标记、隐藏面板', async () => {
     const hs = makeHouseScene();
     const overlay = new HumidityOverlay(hs as never);
+    const original = hs._floor.material;
     await overlay.toggle();
+    expect(hs._floor.material).toBe(original);
     await overlay.toggle();
     expect(overlay.isActive()).toBe(false);
-    expect(hs._floor.material).toBe(hs._floor.material);
+    expect(hs._floor.material).toBe(hs._originalMat);
+    expect(hs._floor.material).not.toBe(original);
     expect(hs.scene.remove).toHaveBeenCalled();
   });
 

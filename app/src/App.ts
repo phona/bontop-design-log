@@ -66,7 +66,7 @@ export class App {
   private daylightHeatmap: DaylightHeatmap | null = null;
   private humidityOverlay: HumidityOverlay | null = null;
   private humidityButton: HumidityButton | null = null;
-  private sunlightPanelDate = '12-22';
+
 
   constructor(canvas: HTMLCanvasElement) {
     this.stateSync = new StateSync();
@@ -248,7 +248,7 @@ export class App {
     this.sunlightPanel.onDateChange((month, day) => {
       this.sunlightSystem?.setDate(month, day);
       const date = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      this.sunlightPanelDate = date;
+
       void this.daylightHeatmap?.refresh(date);
       void this.humidityOverlay?.refresh(date);
       if (huinanWindow) {
