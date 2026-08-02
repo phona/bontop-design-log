@@ -1,0 +1,44 @@
+# 环境模拟配置：气候参数的唯一权威源（日照模拟 + 湿度风险评估）。
+# 月均数据级别 estimated（中国气象数据网南宁站多年均值，未逐项核对）；
+# horizon.obstruction_deg 为 inferred，待现场量房升级（见 docs/pending-site-data.md）。
+version: 1
+
+location:
+  latitude: 22.82
+  longitude: 108.37
+  timezone: 8
+
+horizon:
+  obstruction_deg: 0
+
+climate:
+  zone: 夏热冬暖
+  huinan_window: { start: '02-15', end: '04-15' }
+  prevailing_wind: { summer: SSE, winter: NNE }
+  rainfall_mm_annual: 1300
+  monthly:
+    - { month: 1,  temp_c: 12.8, rh_pct: 79 }
+    - { month: 2,  temp_c: 14.1, rh_pct: 80 }
+    - { month: 3,  temp_c: 17.4, rh_pct: 84 }
+    - { month: 4,  temp_c: 22.4, rh_pct: 83 }
+    - { month: 5,  temp_c: 26.2, rh_pct: 79 }
+    - { month: 6,  temp_c: 27.9, rh_pct: 81 }
+    - { month: 7,  temp_c: 28.6, rh_pct: 80 }
+    - { month: 8,  temp_c: 28.3, rh_pct: 81 }
+    - { month: 9,  temp_c: 27.0, rh_pct: 78 }
+    - { month: 10, temp_c: 23.7, rh_pct: 75 }
+    - { month: 11, temp_c: 18.7, rh_pct: 76 }
+    - { month: 12, temp_c: 14.3, rh_pct: 77 }
+
+humidity:
+  rooms:
+    master_bath:   { moisture: high,   ventilation: mechanical }
+    guest_bath:    { moisture: high,   ventilation: mechanical }
+    kitchen:       { moisture: medium, ventilation: range_hood }
+    entry_garden:  { moisture: medium, ventilation: open, cold_surface: slab }
+    balcony:       { moisture: low,    ventilation: open }
+    living_dining: { moisture: low,    ventilation: cross }
+  surfaces:
+    - { id: entry_garden_slab, room: entry_garden, kind: slab, risk: huinan_condensation }
+    - { id: living_north_wall, room: living_dining, kind: ext_wall, risk: cold_surface, faces: north }
+    - { id: bedroom_nw_corner, room: bedroom_nw, kind: corner, risk: thermal_bridge }
