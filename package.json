@@ -9,7 +9,7 @@
     "dev:app": "cd app && npm run dev",
     "build:app": "cd app && npm run build",
     "typecheck": "tsc --noEmit && cd app && tsc --noEmit",
-    "test:server": "tsx --test tests/server/**/*.test.ts",
+    "test:server": "tsx --test 'tests/server/**/*.test.ts'",
     "test:app": "cd app && npx vitest run",
     "verify:furniture": "tsx scripts/verify-furniture-placement.ts",
     "verify:rules": "tsx scripts/verify-rules.ts",
