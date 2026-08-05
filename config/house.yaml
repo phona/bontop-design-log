@@ -442,11 +442,11 @@ furnishings:
     # 电视在西墙（x=7.2，唯一实体墙），沙发朝西；南墙为玻璃幕不能挂电视
     - { type: tv_stand, x: 7.40, z: 7.00, rotation: 90 }     # 靠西墙居中
     - { type: sofa_3seat, x: 11.00, z: 7.00, rotation: 270 } # 面朝西看电视
-    - { type: dining_table, x: 9.00, z: 5.30, rotation: 0 }  # 餐厅区（北侧靠厨房）
-    - { type: dining_chair, x: 9.00, z: 4.65, rotation: 0 }
-    - { type: dining_chair, x: 9.00, z: 5.95, rotation: 180 }
-    - { type: dining_chair, x: 8.00, z: 5.30, rotation: 90 }
-    - { type: dining_chair, x: 10.00, z: 5.30, rotation: 270 }
+    - { type: dining_table, x: 8.50, z: 4.70, rotation: 0 }  # DEC-015 西移对齐创想图，让出东侧厨房动线（x≥9.3）
+    - { type: dining_chair, x: 8.10, z: 4.05, rotation: 0 }
+    - { type: dining_chair, x: 8.90, z: 4.05, rotation: 0 }
+    - { type: dining_chair, x: 8.10, z: 5.35, rotation: 180 }
+    - { type: dining_chair, x: 8.90, z: 5.35, rotation: 180 }
     - { type: curtain_set, count: 2 }
     - { type: ceiling_light, count: 2 }
   kitchen:
