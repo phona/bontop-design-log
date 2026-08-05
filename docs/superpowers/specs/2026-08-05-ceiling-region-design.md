@@ -106,7 +106,7 @@ type: 'drop' | 'integrated' | 'cove' | 'none' | 'ac_indoor' | 'aluminum_buckle';
 ## 四、验证
 
 - 修改后运行：`npm run verify:all`、`npm run test:app`、`npm run test:server`、`npm run typecheck`。
-- 新增校验（verify-rules）：ceiling.yaml 条目的 `area` 必须在其声明 `room` 的包围盒 ±0.5m 容差内（走廊类条目 room 为相邻归属，容差兜底）；`type` 必须在联合类型内。
+- 新增校验（verify-rules）：ceiling.yaml 条目的 `type` 必须在 `VALID_CEILING_TYPES` 内；`area` 必须在户型整体包围盒（全部 room 包围盒并集）±0.2m 容差内——走廊/门厅条目位于 room 之间，用房间级包围盒会误报，故用整体包围盒。
 - 人工验收：第一人称走进走廊/门厅抬头确认无缺口；客厅看到 0.30m 下沉吊顶与晾衣架浅吊顶；厨卫看到铝扣板吊顶（净高 2.65m 视觉）。
 
 ## 五、调整与回退
