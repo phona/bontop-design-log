@@ -329,6 +329,19 @@
 
 ---
 
+### DEC-2026-08-06-019 厨卫洁具渲染补全 + 死代码清理
+
+- **决策**：
+  - FixtureFactory 补 fridge/gas_stove/range_hood/sink/vanity/exhaust_fan 配方（此前厨房四件 placed 不渲染；渲染路径为 FixtureFactory，非 FurnitureFactory）
+  - 主卫洗手台 placed (1.75,4.70)（门洞实为 x∈[0.1,0.9]，台置门东墙段，verify 门摆校验定稿），插座随台 1.75、灯开关 2.40，faucet_mbath_vanity x→1.75；客卫洗手台 placed (5.80,3.50) 深 0.4 避门摆；两卫排风扇 placed 于吊顶 (1.30,2.70)/(6.35,3.25)
+  - 删除零引用死文件 app/src/render/FurnitureFactory.ts（DEC-018 误向其加模型，实际渲染走 FixtureFactory）
+- **决策依据**：3D 可视性闭环；马桶/花洒/龙头本由 plumbing 坐标渲染，洗手台/排风补齐同路径
+- **预算影响**：无（counts 不变）
+- **关联文件**：`app/src/render/FixtureFactory.ts`、`config/house.yaml`、`config/plumbing.yaml`、`shared/types.ts`
+- **决策人**：业主
+
+---
+
 ## 待决策事项
 
 ### 未决（2026-08-01 同步）

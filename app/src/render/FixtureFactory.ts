@@ -97,7 +97,47 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [0.5, 0.4, 0.04], position: [0, 0.62, -0.23], color: '#666666' },
     ],
   },
-  // ── Electrical ──
+  {
+    type: 'fridge',
+    parts: [
+      { shape: 'box', size: [0.7, 1.8, 0.7], position: [0, 0.9, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.3 },
+    ],
+  },
+  {
+    type: 'gas_stove',
+    parts: [
+      { shape: 'box', size: [0.75, 0.75, 0.6], position: [0, 0.375, 0], color: '#888888' },
+      { shape: 'box', size: [0.7, 0.02, 0.4], position: [0, 0.76, 0], color: '#222222', roughness: 0.3 },
+    ],
+  },
+  {
+    type: 'range_hood',
+    parts: [
+      { shape: 'box', size: [0.9, 0.3, 0.5], position: [0, 1.5, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.3 },
+      { shape: 'box', size: [0.3, 0.9, 0.3], position: [0, 2.1, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.3 },
+    ],
+  },
+  {
+    type: 'sink',
+    parts: [
+      { shape: 'box', size: [0.8, 0.8, 0.6], position: [0, 0.4, 0], color: '#8B7355' },
+      { shape: 'box', size: [0.5, 0.15, 0.4], position: [0, 0.85, 0], color: '#f0f0f0', roughness: 0.3 },
+    ],
+  },
+  {
+    type: 'vanity',
+    parts: [
+      { shape: 'box', size: [0.8, 0.75, 0.4], position: [0, 0.375, 0], color: '#f0f0f0', roughness: 0.4 },
+      { shape: 'box', size: [0.5, 0.12, 0.3], position: [0, 0.81, 0], color: '#ffffff', roughness: 0.3 },
+    ],
+  },
+  {
+    type: 'exhaust_fan',
+    parts: [
+      { shape: 'box', size: [0.3, 0.15, 0.3], position: [0, 2.5, 0], color: '#dddddd', roughness: 0.5 },
+    ],
+  },
+  // ── Electrical ─
   {
     type: 'socket',
     parts: [

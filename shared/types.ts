@@ -585,6 +585,8 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   gas_stove: { width: 0.75, depth: 0.6 },
   range_hood: { width: 0.9, depth: 0.5 },
   sink: { width: 0.8, depth: 0.6 },
+  vanity: { width: 0.8, depth: 0.4 },
+  exhaust_fan: { width: 0.3, depth: 0.3 },
 };
 
 export interface LaborRate {

@@ -465,17 +465,17 @@ furnishings:
   master_bath:
     - { type: toilet }
     - { type: shower_set }
-    - { type: vanity }
+    - { type: vanity, x: 1.75, z: 4.70, rotation: 0 }        # DEC-019 外移洗手台（门洞 x∈[0.1,0.9] 东侧墙段）
     - { type: faucet }
     - { type: ceiling_light }
-    - { type: exhaust_fan }
+    - { type: exhaust_fan, x: 1.30, z: 2.70 }                # DEC-019 湿区中心吊顶
   guest_bath:
     - { type: toilet }
     - { type: shower_set }
-    - { type: vanity }
+    - { type: vanity, x: 5.80, z: 3.50, rotation: 90 }       # DEC-019 西墙洗手台（东缘 6.0 避门摆）
     - { type: faucet }
     - { type: ceiling_light }
-    - { type: exhaust_fan }
+    - { type: exhaust_fan, x: 6.35, z: 3.25 }                # DEC-019 吊顶
   balcony:
     - { type: ceiling_light }
   entry_garden:
