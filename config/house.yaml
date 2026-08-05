@@ -438,7 +438,7 @@ furnishings:
     - { type: curtain_set }
     - { type: ceiling_light }
   living_dining:
-    # 房间 x∈[7.20,13.40] z∈[4.30,9.80]，开放连通走廊，无门 swing
+    # 房间 x∈[7.20,13.40] z∈[2.90,9.80]，开放连通走廊，无门 swing
     # 电视在西墙（x=7.2，唯一实体墙），沙发朝西；南墙为玻璃幕不能挂电视
     - { type: tv_stand, x: 7.40, z: 7.00, rotation: 90 }     # 靠西墙居中
     - { type: sofa_3seat, x: 11.00, z: 7.00, rotation: 270 } # 面朝西看电视
