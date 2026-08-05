@@ -72,6 +72,33 @@ export function createFurniture(type: string): THREE.Group | null {
       group.add(body);
       return group;
     }
+    case 'fridge': {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), mat);
+      body.position.y = 0.9;
+      group.add(body);
+      return group;
+    }
+    case 'gas_stove': {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.6), mat);
+      body.position.y = 0.375;
+      group.add(body);
+      const hob = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.02, 0.4), mat);
+      hob.position.y = 0.76;
+      group.add(hob);
+      return group;
+    }
+    case 'range_hood': {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.3, 0.5), mat);
+      body.position.y = 1.5;
+      group.add(body);
+      return group;
+    }
+    case 'sink': {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.6), mat);
+      body.position.y = 0.4;
+      group.add(body);
+      return group;
+    }
     case 'desk': {
       const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.03, 0.6), mat);
       top.position.y = 0.75;

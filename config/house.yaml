@@ -453,10 +453,10 @@ furnishings:
     - { type: cabinet_base, count: 5.0 }      # DEC-014 北墙3.6+东墙2.2 L型
     - { type: cabinet_wall, count: 2.0 }
     - { type: countertop_quartz, count: 5.0 } # DEC-014 同地柜
-    - { type: fridge }                        # DEC-014 东墙南端高柜位 0.7×0.7
-    - { type: sink }
-    - { type: range_hood }
-    - { type: gas_stove }
+    - { type: fridge, x: 10.45, z: 2.55, rotation: 90 }     # DEC-014 东墙南端高柜位 0.7×0.7
+    - { type: gas_stove, x: 10.50, z: 1.50, rotation: 90 }  # DEC-013 东墙灶台
+    - { type: range_hood, x: 10.50, z: 1.50, rotation: 90 } # DEC-013 灶台上方烟机
+    - { type: sink, x: 9.50, z: 0.30, rotation: 0 }         # DEC-013 北墙水槽
     - { type: ceiling_light }
   master_bath:
     - { type: toilet }

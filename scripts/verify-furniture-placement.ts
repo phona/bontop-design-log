@@ -28,6 +28,12 @@ function itemAabb(type: string, x: number, z: number, rotation: number): Aabb | 
   };
 }
 
+const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [['range_hood', 'gas_stove']];
+
+function isStackedPair(a: string, b: string): boolean {
+  return STACKED_PAIRS.some(([x, y]) => (a === x && b === y) || (a === y && b === x));
+}
+
 function intersects(a: Aabb, b: Aabb): boolean {
   return a.minX < b.maxX - EPS && a.maxX > b.minX + EPS && a.minZ < b.maxZ - EPS && a.maxZ > b.minZ + EPS;
 }
@@ -66,7 +72,7 @@ function main(): void {
         return { minX: inwardX > 0 ? o.x! : o.x! - o.width, maxX: inwardX > 0 ? o.x! + o.width : o.x!, minZ: o.z! - o.width / 2, maxZ: o.z! + o.width / 2 };
       });
 
-    const placedBoxes: Array<{ label: string; box: Aabb }> = [];
+    const placedBoxes: Array<{ label: string; type: string; box: Aabb }> = [];
 
     items.forEach((item, index) => {
       if (item.x === undefined || item.z === undefined) return;
@@ -91,11 +97,11 @@ function main(): void {
       }
 
       for (const other of placedBoxes) {
-        if (intersects(box, other.box)) {
+        if (intersects(box, other.box) && !isStackedPair(item.type, other.type)) {
           errors.push(`${label}: overlaps ${other.label}`);
         }
       }
-      placedBoxes.push({ label, box });
+      placedBoxes.push({ label, type: item.type, box });
     });
   }
 

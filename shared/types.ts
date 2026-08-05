@@ -581,6 +581,10 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   desk: { width: 1.2, depth: 0.6 },
   bookshelf: { width: 0.8, depth: 0.3 },
   chair: { width: 0.5, depth: 0.5 },
+  fridge: { width: 0.7, depth: 0.7 },
+  gas_stove: { width: 0.75, depth: 0.6 },
+  range_hood: { width: 0.9, depth: 0.5 },
+  sink: { width: 0.8, depth: 0.6 },
 };
 
 export interface LaborRate {
