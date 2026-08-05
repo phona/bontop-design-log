@@ -1,11 +1,11 @@
 - id: faucet_mbath_vanity
   room: master_bath
-  wall: w_strip_east
+  wall: w_mbath_south
   type: faucet
   x: 1.0
   z: 4.7
   height: 0.8
-  note: "主卫洗手台冷热水（DEC-013 外移至过道段，⚠️坐标待量房确认立管）"
+  note: "主卫洗手台冷热水（DEC-013 外移至过道段，DEC-017 墙引用修正 w_strip_east→w_mbath_south，⚠️坐标待量房确认立管）"
 
 - id: shower_mbath
   room: master_bath
