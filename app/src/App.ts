@@ -138,6 +138,7 @@ export class App {
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
 
     await this.houseScene.buildFromCatalog(this.projectData);
+    await this.houseScene.loadCeilingZones();
     this.annotationRenderer = new AnnotationRenderer(
       this.houseScene.scene,
       this.houseScene.camera,

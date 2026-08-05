@@ -25,6 +25,7 @@ import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
 import { buildFixture } from './FixtureFactory.js';
 import { EnvironmentManager } from './EnvironmentManager.js';
+import { buildCeilingZone, type CeilingZoneSpec } from './CeilingZoneBuilder.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
 const GLASS_COLOR = 0x88ccff;
@@ -1618,6 +1619,50 @@ export class HouseScene implements SceneApi {
     }
   }
 
+  private ceilingZoneGroups: THREE.Group[] = [];
+
+  async loadCeilingZones(): Promise<void> {
+    let zones: CeilingZoneSpec[];
+    try {
+      const res = await fetch('/api/annotations/ceiling');
+      zones = (await res.json()) as CeilingZoneSpec[];
+    } catch (err) {
+      console.warn('[ceiling] load failed, skipped', err);
+      return;
+    }
+    this.renderCeilingZones(zones);
+  }
+
+  private renderCeilingZones(zones: CeilingZoneSpec[]): void {
+    for (const g of this.ceilingZoneGroups) {
+      this.scene.remove(g);
+    }
+    this.ceilingZoneGroups = [];
+    this.ceilingMeshes = this.ceilingMeshes.filter((m) => m.userData.type !== 'ceiling_zone_solid');
+
+    for (const zone of zones) {
+      const group = buildCeilingZone(zone);
+      if (!group) {
+        if (zone.type !== 'ac_indoor' && zone.type !== 'none') {
+          console.warn(`[ceiling] skipped zone ${zone.id} (type=${zone.type})`);
+        }
+        continue;
+      }
+      this.scene.add(group);
+      this.ceilingZoneGroups.push(group);
+      group.traverse((obj) => {
+        const mesh = obj as THREE.Mesh;
+        if (mesh.isMesh) {
+          mesh.userData.type = 'ceiling_zone_solid';
+          mesh.userData.objectId = zone.id;
+          mesh.userData.roomId = zone.room;
+          this.ceilingMeshes.push(mesh);
+        }
+      });
+    }
+    this.setCeilingVisible(this._mode === 'first-person');
+  }
+
   private objectDisplayName(objectId: string, type: string, roomId?: string): string {
     const room = roomId ? this.rooms[roomId] : undefined;
     const roomName = room?.name ?? '';
@@ -1625,6 +1670,7 @@ export class HouseScene implements SceneApi {
       floor: '地面',
       wall: '墙面',
       ceiling: '顶面',
+      ceiling_zone_solid: '吊顶',
       door: '门',
       window: '窗',
       hvac_indoor: '空调内机',

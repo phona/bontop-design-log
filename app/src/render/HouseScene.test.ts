@@ -37,3 +37,21 @@ describe('HouseScene captureFloorPlan', () => {
     expect(source).toMatch(/async\s+captureFloorPlan\s*\(\s*\)\s*:\s*Promise\s*<\s*string\s*>/);
   });
 });
+
+describe('HouseScene ceiling zones', () => {
+  it('renders solid ceiling zones via buildCeilingZone and registers meshes in ceilingMeshes', async () => {
+    const fs = await import('node:fs');
+    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    expect(source).toContain('buildCeilingZone');
+    expect(source).toContain('loadCeilingZones');
+    expect(source).toContain("'/api/annotations/ceiling'");
+    expect(source).toContain("ceiling_zone_solid: '吊顶'");
+  });
+
+  it('ceiling zone meshes follow first-person-only visibility', async () => {
+    const fs = await import('node:fs');
+    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    expect(source).toMatch(/renderCeilingZones[\s\S]*ceilingMeshes\.push/);
+    expect(source).toContain('setCeilingVisible(this._mode');
+  });
+});
