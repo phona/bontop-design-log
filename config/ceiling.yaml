@@ -79,3 +79,26 @@
   thickness: 0.15
   area: [5.60, 2.20, 7.10, 4.30]
   note: "客卫铝扣板吊顶（内藏排风管+浴霸），净高约2.55m"
+
+# === 走廊/门厅吊顶（2026-08-05 天花板缺口修复，藏多联机风管） ===
+
+- id: ceiling_main_corridor
+  room: living_dining
+  type: drop
+  thickness: 0.30
+  area: [4.20, 4.30, 7.20, 5.55]
+  note: "主走廊吊顶（藏多联机风管），净高约2.50m"
+
+- id: ceiling_corridor
+  room: master_bedroom
+  type: drop
+  thickness: 0.30
+  area: [4.20, 5.55, 7.20, 7.80]
+  note: "主卧与父母房之间走廊吊顶（藏风管），净高约2.50m"
+
+- id: ceiling_entry_foyer
+  room: entry_garden
+  type: drop
+  thickness: 0.30
+  area: [10.80, 2.90, 13.40, 4.30]
+  note: "入户门厅吊顶（藏风管），净高约2.50m"

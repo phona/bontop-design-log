@@ -1,4 +1,5 @@
 import { ProjectCatalog } from '../server/project-catalog.js';
+import { VALID_CEILING_TYPES } from '../server/config-loader.js';
 import { FURNITURE_DIMS } from '../shared/types.js';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
@@ -141,6 +142,23 @@ function main(): void {
     if (rules.existence.exempt_rooms.includes(c.room)) continue;
     if (!roomMap.has(c.room)) {
       report(rules.existence.severity, `[existence] ceiling/${c.id}: room "${c.room}" 不在 model-geometry 中`);
+    }
+    if (!VALID_CEILING_TYPES.includes(c.type as (typeof VALID_CEILING_TYPES)[number])) {
+      report('error', `[ceiling_type] ceiling/${c.id}: 未知 type "${c.type}"`);
+    }
+  }
+
+  // === ceiling area within unit bounds ===
+  const unitMinX = Math.min(...rooms.map((r) => r.x - r.width / 2)) - 0.2;
+  const unitMaxX = Math.max(...rooms.map((r) => r.x + r.width / 2)) + 0.2;
+  const unitMinZ = Math.min(...rooms.map((r) => r.z - r.depth / 2)) - 0.2;
+  const unitMaxZ = Math.max(...rooms.map((r) => r.z + r.depth / 2)) + 0.2;
+  for (const c of ceiling) {
+    const area = (c as { area?: [number, number, number, number] }).area;
+    if (!area) continue;
+    const [ax1, az1, ax2, az2] = area;
+    if (ax1 < unitMinX || ax2 > unitMaxX || az1 < unitMinZ || az2 > unitMaxZ) {
+      report('error', `[ceiling_area] ceiling/${c.id}: area 超出户型整体范围`);
     }
   }
 

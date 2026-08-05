@@ -100,10 +100,19 @@ export interface PlumbingPoint {
   note?: string;
 }
 
+export const VALID_CEILING_TYPES = [
+  'drop',
+  'integrated',
+  'cove',
+  'none',
+  'ac_indoor',
+  'aluminum_buckle',
+] as const;
+
 export interface CeilingZone {
   id: string;
   room: string;
-  type: 'drop' | 'integrated' | 'cove' | 'none' | 'ac_indoor';
+  type: (typeof VALID_CEILING_TYPES)[number];
   thickness?: number;
   area?: [number, number, number, number];
   x?: number;

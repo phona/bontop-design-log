@@ -28,7 +28,7 @@ interface PlumbingPoint {
 interface CeilingZone {
   id: string;
   room: string;
-  type: 'drop' | 'integrated' | 'cove' | 'none' | 'ac_indoor';
+  type: 'drop' | 'integrated' | 'cove' | 'none' | 'ac_indoor' | 'aluminum_buckle';
   thickness?: number;
   area?: [number, number, number, number];
   x?: number;
