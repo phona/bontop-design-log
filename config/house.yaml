@@ -167,9 +167,9 @@ rooms:
     wall_finish: "paint"
     needs_waterproof: false
     width: 6.20
-    length: 5.68
+    length: 6.90
     height: 2.8
-    area: 35.20
+    area: 42.78
     status: "design"
     orientation: "南"
     notes: "设计图客餐厅合并标注 35.2㎡，南向采光"
@@ -189,21 +189,21 @@ rooms:
     type: "service"
     wall_finish: "tile"
     needs_waterproof: true
-    width: 2.30
-    length: 2.65
+    width: 3.60
+    length: 2.90
     height: 2.8
-    area: 6.09
+    area: 10.44
     status: "design"
     orientation: "北"
-    notes: "开放式厨房，设计图标注面积 6.09㎡，北连入户花园；需配大功率侧吸油烟机 ≥22m³/min"
+    notes: "开放式厨房，DEC-014 按创想图修正南界 z=2.9（3.6×2.9=10.44㎡）；开发商 6.09㎡ 为净面积标注口径，净尺寸待量房；需配大功率侧吸油烟机 ≥22m³/min"
     windows:
       - width: 1.20
         height: 1.40
         position: "北墙"
     doors: []
     furniture_concept:
-      - "L 型地柜约 3.5m"
-      - "冰箱位 0.7m × 0.7m"
+      - "L 型地柜约 5.0m（北墙 3.6m 水槽切配 + 东墙 2.2m 灶台）"
+      - "冰箱位 0.7m × 0.7m（东墙南端高柜位，创想图一致）"
       - "大功率侧吸油烟机 ≥22m³/min"
       - "洗碗机/净水器预留上下水"
 
@@ -450,9 +450,10 @@ furnishings:
     - { type: curtain_set, count: 2 }
     - { type: ceiling_light, count: 2 }
   kitchen:
-    - { type: cabinet_base, count: 3.5 }
+    - { type: cabinet_base, count: 5.0 }      # DEC-014 北墙3.6+东墙2.2 L型
     - { type: cabinet_wall, count: 2.0 }
-    - { type: countertop_quartz, count: 3.5 }
+    - { type: countertop_quartz, count: 5.0 } # DEC-014 同地柜
+    - { type: fridge }                        # DEC-014 东墙南端高柜位 0.7×0.7
     - { type: sink }
     - { type: range_hood }
     - { type: gas_stove }
