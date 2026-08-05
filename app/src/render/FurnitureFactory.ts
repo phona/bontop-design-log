@@ -72,6 +72,33 @@ export function createFurniture(type: string): THREE.Group | null {
       group.add(body);
       return group;
     }
+    case 'wardrobe_180': {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.7, 0.6), mat);
+      body.position.y = 1.35;
+      group.add(body);
+      return group;
+    }
+    case 'bookshelf': {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.8, 0.3), mat);
+      body.position.y = 0.9;
+      group.add(body);
+      return group;
+    }
+    case 'chair': {
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 0.5), mat);
+      seat.position.y = 0.45;
+      group.add(seat);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.04), mat);
+      back.position.set(0, 0.65, -0.23);
+      group.add(back);
+      return group;
+    }
+    case 'shoe_cabinet': {
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.2, 0.35), mat);
+      body.position.y = 0.6;
+      group.add(body);
+      return group;
+    }
     case 'fridge': {
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), mat);
       body.position.y = 0.9;

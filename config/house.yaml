@@ -418,6 +418,8 @@ furnishings:
     # 房间 x∈[2.60,5.60] z∈[1.10,4.30]，南门 d_bnw @(5.0,4.30) swing x∈[4.55,5.45] z∈[3.40,4.30]
     - { type: bed_150, x: 4.60, z: 2.30, rotation: 270 }       # 床头靠东墙，1.5m床改善通道（DEC-013）
     - { type: wardrobe_180, x: 2.90, z: 2.70, rotation: 90 }   # 1.8m衣柜沿西墙飘窗下（sill 2.55 不挡窗）；推拉门（DEC-013）
+    - { type: desk, x: 3.85, z: 4.00, rotation: 180 }          # DEC-018 南墙书桌（插座 3.2,4.3 在桌后）
+    - { type: chair, x: 3.85, z: 3.35, rotation: 0 }           # DEC-018 书桌椅
     - { type: mattress_150 }
     - { type: curtain_set }
     - { type: ceiling_light }
@@ -434,6 +436,8 @@ furnishings:
     # 床头靠西墙（x=4.2），东墙已有床头插座 z=7.0/8.5 h=0.7
     - { type: bed_150, x: 5.20, z: 7.75, rotation: 90 }     # 床头靠西墙
     - { type: wardrobe_180, x: 5.10, z: 5.85, rotation: 0 } # 沿北墙，避开门扇(x<6.15)
+    - { type: desk, x: 4.50, z: 9.20, rotation: 90 }        # DEC-018 西墙南端书桌（插座 4.2,9.0 在桌后）
+    - { type: chair, x: 5.10, z: 9.20, rotation: 270 }      # DEC-018 书桌椅
     - { type: mattress_150 }
     - { type: curtain_set }
     - { type: ceiling_light }

@@ -315,6 +315,20 @@
 
 ---
 
+### DEC-2026-08-05-018 书桌补家具 + 全屋家具 3D 模型补全 + 预算拍板
+
+- **决策**：
+  - 儿童房补 placed 书桌 (3.85,4.00)+椅 (3.85,3.35)；父母房补 placed 书桌 (4.50,9.20)+椅 (5.10,9.20)——DEC-013 书桌插座自此有对应家具
+  - FurnitureFactory 补 wardrobe_180/bookshelf/chair/shoe_cabinet 体块模型（此前 placed 不渲染）
+  - 预算拍板：kitchen_cabinet 8000→11000（地柜 5.0m）、appliances 10000→14000（冰箱务实档）、furniture_soft 35000→36500（书桌椅×2）；total_budget 198000→208000 对齐科目合计
+  - 鞋柜保持 count-only（入户花园消防通道处理未决，不摆位）
+- **决策依据**：插座-家具交叉验证闭环；3D 可视性；业主预算拍板（DEC-014 遗留项）
+- **预算影响**：四池合计 208000，ceiling 190000 不变（守实际花销）
+- **关联文件**：`config/house.yaml`、`app/src/render/FurnitureFactory.ts`、`config/budget/base.json`
+- **决策人**：业主
+
+---
+
 ## 待决策事项
 
 ### 未决（2026-08-01 同步）
