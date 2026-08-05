@@ -310,26 +310,26 @@
   count: 1
   note: "儿童房空调内机电源（吊顶内）"
 
-# 厨房（DEC-013 布局重排：灶台→东墙，水槽→北墙，冰箱→西墙）
+# 厨房（DEC-013 布局重排：灶台→东墙，水槽→北墙；DEC-014 冰箱→东墙南端，南界 z=2.9）
 - id: sock_kitchen_counter
   room: kitchen
   wall: w_kit_east
   type: socket
   x: 10.80
-  z: 2.7
+  z: 2.0
   height: 1.2
   count: 4
-  note: "厨房台面带开关插座（DEC-013 移至东墙切配区正后方）"
+  note: "厨房台面带开关插座（东墙切配区正后方；DEC-014 由 z=2.7 移至 z=2.0，避开冰箱位 z∈[2.2,2.9]）"
 
 - id: sock_kitchen_fridge
   room: kitchen
-  wall: w_kit_west
+  wall: w_kit_east
   type: socket
-  x: 7.20
-  z: 3.9
+  x: 10.80
+  z: 2.55
   height: 0.3
   count: 1
-  note: "冰箱插座（DEC-013 移至西墙南端，单独回路）"
+  note: "冰箱插座（DEC-014 由西墙移至东墙南端高柜位，与创想图一致，单独回路）"
 
 - id: sock_kitchen_hood
   room: kitchen
@@ -355,10 +355,10 @@
   wall: w_kit_east
   type: socket
   x: 10.80
-  z: 3.0
+  z: 1.9
   height: 2.0
   count: 1
-  note: "燃气报警器插座"
+  note: "燃气报警器插座（DEC-014 由 z=3.0 收回厨房界内，近灶台）"
 
 - id: switch_kitchen
   room: kitchen
@@ -473,12 +473,12 @@
 # 走廊
 - id: switch_corridor
   room: living_dining
-  wall: w_kit_west
+  wall: w_gbath_east
   type: switch
-  x: 7.20
-  z: 4.30
+  x: 7.10
+  z: 4.10
   height: 1.3
-  note: "走廊灯光开关"
+  note: "走廊灯光开关（DEC-014 w_kit_west 缩短后改挂客卫东墙）"
 
 # === 新增点位（2026-07-25 基线补齐） ===
 
@@ -569,13 +569,13 @@
 # 智能网关/路由位
 - id: sock_gateway
   room: living_dining
-  wall: w_kit_west
+  wall: w_st_east
   type: socket
   x: 7.20
-  z: 4.80
+  z: 5.70
   height: 0.3
   count: 1
-  note: "智能网关/路由位（走廊，房子中央，WiFi覆盖最优）"
+  note: "智能网关/路由位（走廊，房子中央，WiFi覆盖最优；DEC-014 由 z=4.8 移至 w_st_east 有效墙段）"
 
 # === 新增点位（2026-08-02 DEC-013 设计审查） ===
 
