@@ -88,14 +88,14 @@ def _wait_for_app_ready(ws, timeout: float = 30.0) -> None:
         msg = _send_and_wait(ws, check_id, {
             'method': 'Runtime.evaluate',
             'params': {
-                'expression': 'window.__app && typeof window.__app.captureFloorPlan === "function"',
+                'expression': 'window.__APP__ && typeof window.__APP__.captureFloorPlan === "function"',
                 'returnByValue': True,
             }
         }, timeout=min(5.0, deadline - time.monotonic()))
         if msg.get('result', {}).get('result', {}).get('value'):
             return
         time.sleep(0.1)
-    raise TimeoutError('应用未在超时前就绪，请确认 window.__app.captureFloorPlan 已暴露')
+    raise TimeoutError('应用未在超时前就绪，请确认 window.__APP__.captureFloorPlan 已暴露')
 
 
 def capture_floor_plan_screenshot(ws_url: str) -> str:
@@ -113,7 +113,7 @@ def capture_floor_plan_screenshot(ws_url: str) -> str:
         msg = _send_and_wait(ws, 3, {
             'method': 'Runtime.evaluate',
             'params': {
-                'expression': "window.__app.captureFloorPlan().then(dataUrl => ({dataUrl}))",
+                'expression': "window.__APP__.captureFloorPlan().then(dataUrl => ({dataUrl}))",
                 'awaitPromise': True,
                 'returnByValue': True,
             }
