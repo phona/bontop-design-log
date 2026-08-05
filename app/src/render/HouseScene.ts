@@ -1630,6 +1630,10 @@ export class HouseScene implements SceneApi {
       console.warn('[ceiling] load failed, skipped', err);
       return;
     }
+    if (!Array.isArray(zones)) {
+      console.warn('[ceiling] unexpected response shape, skipped');
+      return;
+    }
     this.renderCeilingZones(zones);
   }
 
