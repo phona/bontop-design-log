@@ -48,4 +48,27 @@ describe('buildCeilingZone', () => {
     expect(buildCeilingZone({ ...dropZone, thickness: undefined })).toBeNull();
     expect(buildCeilingZone({ ...dropZone, type: 'future_unknown' })).toBeNull();
   });
+
+  it('skirts are inset inside the footprint to avoid z-fighting at shared edges', () => {
+    const g = buildCeilingZone(dropZone)!;
+    const skirts = g.children.filter(
+      (c) => c.userData.part === 'skirt',
+    ) as THREE.Mesh[];
+    expect(skirts).toHaveLength(4);
+    const zSkirts = skirts.filter((s) => Math.abs(s.rotation.y) < 1e-9);
+    const xSkirts = skirts.filter((s) => Math.abs(s.rotation.y) > 1e-9);
+    expect(zSkirts.map((s) => s.position.z).sort((a, b) => a - b)).toEqual([
+      expect.closeTo(4.31, 6),
+      expect.closeTo(5.54, 6),
+    ]);
+    expect(xSkirts.map((s) => s.position.x).sort((a, b) => a - b)).toEqual([
+      expect.closeTo(4.21, 6),
+      expect.closeTo(7.19, 6),
+    ]);
+  });
+
+  it('returns null when thickness <= 0', () => {
+    expect(buildCeilingZone({ ...dropZone, thickness: 0 })).toBeNull();
+    expect(buildCeilingZone({ ...dropZone, thickness: -0.1 })).toBeNull();
+  });
 });

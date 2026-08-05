@@ -11,6 +11,7 @@ export interface CeilingZoneSpec {
 
 const SLAB_EPS = 0.002;
 const SKIRT_THICKNESS = 0.02;
+const SKIRT_INSET = SKIRT_THICKNESS / 2;
 const COLOR_DROP = '#f5f5f5';
 const COLOR_BUCKLE = '#eceff1';
 
@@ -19,6 +20,7 @@ const SOLID_TYPES = new Set(['drop', 'integrated', 'aluminum_buckle']);
 export function buildCeilingZone(zone: CeilingZoneSpec, ceilingHeight = 2.8): THREE.Group | null {
   if (!SOLID_TYPES.has(zone.type)) return null;
   if (!zone.area || zone.thickness === undefined) return null;
+  if (zone.thickness <= 0) return null;
 
   const [x1, z1, x2, z2] = zone.area;
   const w = x2 - x1;
@@ -55,10 +57,10 @@ export function buildCeilingZone(zone: CeilingZoneSpec, ceilingHeight = 2.8): TH
     return m;
   };
   const skirts = [
-    mkSkirt(w, cx, z1, 0),
-    mkSkirt(w, cx, z2, 0),
-    mkSkirt(d, x1, cz, Math.PI / 2),
-    mkSkirt(d, x2, cz, Math.PI / 2),
+    mkSkirt(w, cx, z1 + SKIRT_INSET, 0),
+    mkSkirt(w, cx, z2 - SKIRT_INSET, 0),
+    mkSkirt(d, x1 + SKIRT_INSET, cz, Math.PI / 2),
+    mkSkirt(d, x2 - SKIRT_INSET, cz, Math.PI / 2),
   ];
 
   const group = new THREE.Group();
