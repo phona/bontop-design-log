@@ -172,7 +172,7 @@ rooms:
     area: 42.78
     status: "design"
     orientation: "南"
-    notes: "设计图客餐厅合并标注 35.2㎡，南向采光"
+    notes: "DEC-014 客餐厅含餐厅带+玄关走廊（z∈[2.90,9.80]），42.78㎡；设计图合并标注 35.2㎡ 为旧口径"
     windows:
       - width: 4.50
         height: 1.80

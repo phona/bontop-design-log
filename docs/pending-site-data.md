@@ -48,6 +48,9 @@
 | 18 | 厨房燃气表实际位置 | plumbing.yaml `type: gas_meter` | `{x, z, height}` | 推断(8.0,0.2) h=1.5 | inferred | 燃气管路由 |
 | 19 | 主卫排水立管实际位置 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断(0.3,1.3) | inferred | 洗手台外移坐标 |
 | 20 | 全屋飘窗实际sill高度 | overlay.yaml bay_sill | 更新 sill 值 | 2.55m（上飘窗） | inferred | 飘窗利用方案/儿童房书桌位 |
+| 21 | 厨房实际南界/餐厅带划分 | model-geometry.yaml 顶点 v_kit_s2/v_ent_kit2 | 更新 z | 推断 z=2.90（创想图） | inferred | DEC-014 厨房面积/餐桌方案前提 |
+| 22 | 冰箱实际位置 | electrical.yaml sock_kitchen_fridge | `{x, z}` | 推断东墙南端 (10.80,2.55) | inferred | 插座/高柜设计 |
+| 23 | 厨房净面积复核 | house.yaml rooms.kitchen | 更新 width/length/area | 3.6×2.9=10.44（开发商标注 6.09 为净口径） | inferred | 预算/柜体延米 |
 
 ## 量房工具清单
 
