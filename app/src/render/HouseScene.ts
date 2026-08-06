@@ -395,6 +395,15 @@ export class HouseScene implements SceneApi {
             }
             break;
           }
+          case 'sliding_door_run': {
+            for (const p of el.points) {
+              minX = Math.min(minX, p.x);
+              maxX = Math.max(maxX, p.x);
+              minZ = Math.min(minZ, p.z);
+              maxZ = Math.max(maxZ, p.z);
+            }
+            break;
+          }
           default: {
             const exhaustive: never = el;
             console.error('[HouseScene] 未知场景元素类型（bounds 缺 case）', exhaustive);
@@ -652,6 +661,7 @@ export class HouseScene implements SceneApi {
         case 'floor_region': this.renderFloorRegion(el); break;
         case 'bay_sill': this.renderBaySill(el); break;
         case 'railing_run': this.renderRailingRun(el); break;
+        case 'sliding_door_run': this.renderSlidingDoorRun(el); break;
         case 'curtain': this.renderCurtain(el); break;
         default: {
           const exhaustive: never = el;
@@ -1206,6 +1216,52 @@ export class HouseScene implements SceneApi {
       mesh.receiveShadow = true;
       this.wallMeshes.push(mesh);
     }
+  }
+
+  private slidingDoorGroups = new Map<string, THREE.Group>();
+
+  refreshSlidingDoor(el: Extract<SceneElement, { type: 'sliding_door_run' }>): void {
+    this.renderSlidingDoorRun(el);
+  }
+
+  private renderSlidingDoorRun(el: Extract<SceneElement, { type: 'sliding_door_run' }>) {
+    const pts = el.points;
+    if (!pts || pts.length < 2) {
+      console.error(`[HouseScene] sliding_door_run "${el.id}" 缺少 points`);
+      return;
+    }
+    const oldGroup = this.slidingDoorGroups.get(el.id);
+    if (oldGroup) this.scene.remove(oldGroup);
+    const group = new THREE.Group();
+    const [a, b] = [pts[0], pts[1]];
+    const len = Math.hypot(b.x - a.x, b.z - a.z);
+    const ang = Math.atan2(b.z - a.z, b.x - a.x);
+    const nx = -(b.z - a.z) / len;
+    const nz = (b.x - a.x) / len;
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6, roughness: 0.4 });
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 0.16), railMat);
+    rail.position.set((a.x + b.x) / 2, el.height + 0.03, (a.z + b.z) / 2);
+    rail.rotation.y = ang;
+    group.add(rail);
+    const panels = el.panels ?? 3;
+    const open = el.open ?? true;
+    const panelW = len / panels;
+    const glass = this.makeGlassMaterial();
+    for (let i = 0; i < panels; i++) {
+      const along = open ? panelW / 2 + i * 0.08 : (i + 0.5) * panelW;
+      const track = i * 0.05 - 0.05;
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(panelW - 0.06, el.height, 0.03), glass);
+      panel.position.set(
+        a.x + (b.x - a.x) * (along / len) + nx * track,
+        el.height / 2,
+        a.z + (b.z - a.z) * (along / len) + nz * track
+      );
+      panel.rotation.y = ang;
+      panel.userData = { objectId: `sliding_door:${el.id}`, hoverable: true, type: 'sliding_door' };
+      group.add(panel);
+    }
+    this.scene.add(group);
+    this.slidingDoorGroups.set(el.id, group);
   }
 
   private renderGlassInfill(el: Extract<SceneElement, { type: 'glass_infill' }>) {

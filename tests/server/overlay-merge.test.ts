@@ -332,3 +332,32 @@ describe('resolveWallRef', () => {
     assert.throws(() => resolveWallRef('w999', walls), /Unknown wall id: w999/);
   });
 });
+
+describe('parseOverlay sliding_door_run (DEC-022)', () => {
+  it('parses with defaults height 2.1 / panels 3 / open true', () => {
+    const cfg = parseOverlay(`
+version: 1
+elements:
+  - id: kitchen_dining_sliding_door
+    type: sliding_door_run
+    points: [{x: 7.2, z: 2.4}, {x: 10.8, z: 2.4}]
+`);
+    const el = cfg.elements[0] as Extract<typeof cfg.elements[number], { type: 'sliding_door_run' }>;
+    assert.equal(el.type, 'sliding_door_run');
+    assert.equal(el.height, 2.1);
+    assert.equal(el.panels, 3);
+    assert.equal(el.open, true);
+  });
+
+  it('rejects sliding_door_run without points', () => {
+    assert.throws(
+      () => parseOverlay(`
+version: 1
+elements:
+  - id: d
+    type: sliding_door_run
+`),
+      /points/
+    );
+  });
+});

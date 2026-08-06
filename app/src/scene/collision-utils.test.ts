@@ -66,3 +66,23 @@ describe('extractCollisionWalls', () => {
     expect(walls[0].openings![0].id).toBe('d1');
   });
 });
+
+describe('extractCollisionWalls sliding_door_run (DEC-022)', () => {
+  it('collides only when closed', () => {
+    const closed = extractCollisionWalls([
+      { type: 'sliding_door_run', id: 'sd1', open: false, points: [{ x: 7.2, z: 2.4 }, { x: 10.8, z: 2.4 }] },
+    ] as any);
+    expect(closed.length).toBe(1);
+    expect(closed[0].id).toBe('sd1:col:0');
+    expect(closed[0].x1).toBeCloseTo(7.2);
+    expect(closed[0].x2).toBeCloseTo(10.8);
+  });
+
+  it('no collision when open (default state)', () => {
+    const open = extractCollisionWalls([
+      { type: 'sliding_door_run', id: 'sd1', open: true, points: [{ x: 7.2, z: 2.4 }, { x: 10.8, z: 2.4 }] },
+      { type: 'sliding_door_run', id: 'sd2', points: [{ x: 0, z: 0 }, { x: 1, z: 0 }] },
+    ] as any);
+    expect(open.length).toBe(0);
+  });
+});

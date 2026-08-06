@@ -215,3 +215,13 @@ elements:
   # 湿区（主卫西北角 + 厨房北墙）→ 防水百叶
   - { id: curtain_mbath_corner, type: curtain, walls: [w_west_ap, w_bath_north], room: master_bath, kind: blinds, height: 2.8 }
   - { id: curtain_kitchen_north, type: curtain, wall: w_kit_north, room: kitchen, kind: blinds, height: 2.8 }
+
+  # === DEC-022：餐厨三联动推拉门（常开；点击门扇开闭，碰撞随状态） ===
+  - id: kitchen_dining_sliding_door
+    type: sliding_door_run
+    points:
+      - { x: 7.20, z: 2.40 }
+      - { x: 10.80, z: 2.40 }
+    height: 2.1
+    panels: 3
+    open: true

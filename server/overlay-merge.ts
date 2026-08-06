@@ -53,6 +53,17 @@ const WallRunSchema = z
   })
   .strict();
 
+const SlidingDoorRunSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('sliding_door_run'),
+    points: z.array(PointSchema).min(2),
+    height: z.number().positive().default(2.1),
+    panels: z.number().int().min(2).default(3),
+    open: z.boolean().default(true),
+  })
+  .strict();
+
 const GlassInfillSchema = z
   .object({
     id: z.string().min(1),
@@ -130,6 +141,7 @@ const OverlaySchema = z
         z.discriminatedUnion('type', [
           CurtainRunSchema,
           WallRunSchema,
+          SlidingDoorRunSchema,
           GlassInfillSchema,
           FloorRegionSchema,
           BaySillSchema,

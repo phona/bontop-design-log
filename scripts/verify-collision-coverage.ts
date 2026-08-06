@@ -63,10 +63,19 @@ function main() {
 
   const collidableTypes = new Set(['wall', 'curtain_run']);
   const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'glass_infill', 'curtain']);
+  const conditionalCollidableTypes = new Set(['sliding_door_run']);
 
   for (const el of overlay.elements ?? []) {
-    if (!collidableTypes.has(el.type) && !nonCollidableTypes.has(el.type)) {
+    if (!collidableTypes.has(el.type) && !nonCollidableTypes.has(el.type) && !conditionalCollidableTypes.has(el.type)) {
       errors.push(`unknown element type "${el.type}" (id: ${el.id}) — update collision-utils.ts and this script`);
+    }
+  }
+
+  const slidingDoors = (overlay.elements ?? []).filter(el => el.type === 'sliding_door_run') as Array<OverlayElement & { open?: boolean }>;
+  console.log(`  sliding_door_run elements (collision only when closed): ${slidingDoors.length}`);
+  for (const sd of slidingDoors) {
+    if (sd.open === false && !(sd.points && sd.points.length >= 2)) {
+      errors.push(`sliding_door_run "${sd.id}" is closed but has no points — cannot generate collision`);
     }
   }
 

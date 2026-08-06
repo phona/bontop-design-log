@@ -393,6 +393,10 @@ export class App {
 
     this.houseScene.setOnObjectClick((target) => {
       if (this.analysisTools.measurement.active) return;
+      if (target.type === 'sliding_door') {
+        this.toggleSlidingDoor(target.objectId.slice('sliding_door:'.length));
+        return;
+      }
       this.infoPanel.showObject(target);
       this.stateSync.postViewContext(target.objectId);
     });
@@ -903,6 +907,15 @@ export class App {
 
   private extractWalls(sceneElements: any[] | undefined): import('@shared/types').WallSegment[] {
     return extractCollisionWalls(sceneElements);
+  }
+
+  private toggleSlidingDoor(id: string): void {
+    const els = this.projectData?.house?.sceneElements as any[] | undefined;
+    const el = els?.find((e) => e.type === 'sliding_door_run' && e.id === id);
+    if (!el) return;
+    el.open = !(el.open ?? true);
+    this.houseScene.refreshSlidingDoor(el);
+    this.collision.setWalls(this.extractWalls(els));
   }
 
   private renderLoop = (time: number) => {

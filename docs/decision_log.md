@@ -366,6 +366,20 @@
 
 ---
 
+### DEC-2026-08-06-022 三联动推拉门建模（overlay 声明式元素 + 可交互 + 随状态碰撞）
+
+- **决策**：
+  - 新 overlay 元素类型 `sliding_door_run`（id/points/height=2.1/panels=3/open=true）；首实例 kitchen_dining_sliding_door @ z=2.4 x∈[7.2,10.8]
+  - 渲染：顶轨常显 + 3 扇玻璃门（三轨错 0.05m）；open=叠收西端，closed=铺满；点击门扇切换（onClickCallback 路由 type=sliding_door）
+  - 碰撞：extractCollisionWalls 仅 open=false 时生成墙段；toggle 后 CollisionDetector.setWalls 运行时重提取
+  - model-geometry 不加墙（门非结构墙，取代 DEC-014"门不进几何"为"以 overlay 声明式元素建模"）
+- **决策依据**：AGENTS.md 铁律——新行为=新元素类型+声明式配置；业主选择可交互+随状态碰撞
+- **预算影响**：无（doors_windows 池 3500-5300 已含，DEC-013）
+- **关联文件**：`config/layout/overlay.yaml`、`shared/types.ts`、`server/overlay-merge.ts`、`app/src/render/HouseScene.ts`、`app/src/App.ts`、`app/src/scene/collision-utils.ts`
+- **决策人**：业主
+
+---
+
 ## 待决策事项
 
 ### 未决（2026-08-01 同步）
