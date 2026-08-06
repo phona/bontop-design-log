@@ -48,11 +48,11 @@
 - id: sock_living_table
   room: living_dining
   type: floor_socket
-  x: 8.5
+  x: 7.65
   z: 4.7
   height: 0.02
   count: 1
-  note: "餐桌旁地插: 电磁炉/火锅（DEC-015 随餐桌西移）"
+  note: "餐桌旁地插: 电磁炉/火锅（DEC-020 随餐桌靠墙）"
 
 - id: sock_living_curtain
   room: living_dining
@@ -600,10 +600,10 @@
 - id: light_dining_pendant
   room: living_dining
   type: ceiling_light
-  x: 8.5
+  x: 7.65
   z: 4.7
   height: 2.8
-  note: "餐桌吊灯天花出线（DEC-013，DEC-015 随餐桌西移），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm"
+  note: "餐桌吊灯天花出线（DEC-013，DEC-020 随餐桌靠墙），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm"
 
 # 主卧投影仪插座（A方案，床尾西侧）
 - id: sock_master_projector
