@@ -167,12 +167,12 @@ rooms:
     wall_finish: "paint"
     needs_waterproof: false
     width: 6.20
-    length: 6.90
+    length: 7.40
     height: 2.8
-    area: 42.78
+    area: 45.88
     status: "design"
     orientation: "南"
-    notes: "DEC-014 客餐厅含餐厅带+玄关走廊（z∈[2.90,9.80]），42.78㎡；设计图合并标注 35.2㎡ 为旧口径"
+    notes: "DEC-014/021 客餐厅含餐厅带+玄关走廊（z∈[2.40,9.80]），45.88㎡；设计图合并标注 35.2㎡ 为旧口径"
     windows:
       - width: 4.50
         height: 1.80
@@ -190,12 +190,12 @@ rooms:
     wall_finish: "tile"
     needs_waterproof: true
     width: 3.60
-    length: 2.90
+    length: 2.40
     height: 2.8
-    area: 10.44
+    area: 8.64
     status: "design"
     orientation: "北"
-    notes: "开放式厨房，DEC-014 按创想图修正南界 z=2.9（3.6×2.9=10.44㎡）；开发商 6.09㎡ 为净面积标注口径，净尺寸待量房；需配大功率侧吸油烟机 ≥22m³/min"
+    notes: "开放式厨房，DEC-014 南界 z=2.9，DEC-021 缩至 z=2.4（3.6×2.4=8.64㎡，阳台门 swing 为下限）；开发商 6.09㎡ 为净面积标注口径，净尺寸待量房；需配大功率侧吸油烟机 ≥22m³/min"
     windows:
       - width: 1.20
         height: 1.40
@@ -442,23 +442,24 @@ furnishings:
     - { type: curtain_set }
     - { type: ceiling_light }
   living_dining:
-    # 房间 x∈[7.20,13.40] z∈[2.90,9.80]，开放连通走廊，无门 swing
+    # 房间 x∈[7.20,13.40] z∈[2.40,9.80]，开放连通走廊，无门 swing（DEC-021）
     # 电视在西墙（x=7.2，唯一实体墙），沙发朝西；南墙为玻璃幕不能挂电视
     - { type: tv_stand, x: 7.40, z: 7.00, rotation: 90 }     # 靠西墙居中
     - { type: sofa_3seat, x: 11.00, z: 7.00, rotation: 270 } # 面朝西看电视
-    - { type: dining_table, x: 7.65, z: 4.70, rotation: 90 }  # DEC-020 旋转90°靠客卫东墙成餐区角，北侧过道带零家具
-    - { type: dining_chair, x: 8.40, z: 4.35, rotation: 270 }
-    - { type: dining_chair, x: 8.40, z: 5.05, rotation: 270 }
-    - { type: dining_chair, x: 7.65, z: 5.65, rotation: 180 }
+    - { type: dining_table, x: 8.50, z: 3.35, rotation: 0 }   # DEC-021 餐厅带扩至1.9m，横摆+南北两排椅
+    - { type: dining_chair, x: 8.10, z: 2.70, rotation: 0 }
+    - { type: dining_chair, x: 8.90, z: 2.70, rotation: 0 }
+    - { type: dining_chair, x: 8.10, z: 4.00, rotation: 180 }
+    - { type: dining_chair, x: 8.90, z: 4.00, rotation: 180 }
     - { type: curtain_set, count: 2 }
     - { type: ceiling_light, count: 2 }
   kitchen:
     - { type: cabinet_base, count: 5.0 }      # DEC-014 北墙3.6+东墙2.2 L型
     - { type: cabinet_wall, count: 2.0 }
     - { type: countertop_quartz, count: 5.0 } # DEC-014 同地柜
-    - { type: fridge, x: 10.45, z: 2.55, rotation: 90 }     # DEC-014 东墙南端高柜位 0.7×0.7
-    - { type: gas_stove, x: 10.50, z: 1.50, rotation: 90 }  # DEC-013 东墙灶台
-    - { type: range_hood, x: 10.50, z: 1.50, rotation: 90 } # DEC-013 灶台上方烟机
+    - { type: fridge, x: 10.45, z: 2.05, rotation: 90 }     # DEC-021 东墙南端高柜位（厨房缩至 z=2.4）
+    - { type: gas_stove, x: 10.50, z: 1.18, rotation: 90 }  # DEC-021 东墙灶台北移
+    - { type: range_hood, x: 10.50, z: 1.18, rotation: 90 } # DEC-021 灶台上方烟机
     - { type: sink, x: 9.50, z: 0.30, rotation: 0 }         # DEC-013 北墙水槽
     - { type: ceiling_light }
   master_bath:

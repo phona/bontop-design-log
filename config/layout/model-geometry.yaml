@@ -34,8 +34,8 @@ vertices:
   - { id: v_kit_s,   x: 7.20,  z: 4.30 }
   - { id: v_ent_kit, x: 10.80, z: 4.30 }
   # DEC-014 厨房新南界（创想图核对：与入户花园南墙 z=2.90 齐平）
-  - { id: v_kit_s2,  x: 7.20,  z: 2.90 }
-  - { id: v_ent_kit2, x: 10.80, z: 2.90 }
+  - { id: v_kit_s2,  x: 7.20,  z: 2.40 }
+  - { id: v_ent_kit2, x: 10.80, z: 2.40 }
   - { id: v_liv_se,  x: 13.40, z: 4.30 }
   - { id: v_be_sw,   x: 13.40, z: 5.55 }
   - { id: v_mb_ne,   x: 4.20,  z: 5.55 }
@@ -62,7 +62,7 @@ rooms:
     type: public
   - id: living_dining
     name: 客餐厅
-    boundary: [v_kit_s2, v_foyer_se, v_be_se_s, v_step_t]
+    boundary: [v_kit_s2, v_ent_kit2, v_ent_sw, v_foyer_se, v_be_se_s, v_step_t]
     height: 2.8
     type: public
   - id: master_bath

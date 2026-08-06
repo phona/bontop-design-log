@@ -48,11 +48,11 @@
 - id: sock_living_table
   room: living_dining
   type: floor_socket
-  x: 7.65
-  z: 4.7
+  x: 8.5
+  z: 3.35
   height: 0.02
   count: 1
-  note: "餐桌旁地插: 电磁炉/火锅（DEC-020 随餐桌靠墙）"
+  note: "餐桌旁地插: 电磁炉/火锅（DEC-021 随餐桌入扩大的餐厅带）"
 
 - id: sock_living_curtain
   room: living_dining
@@ -303,31 +303,31 @@
   room: kitchen
   wall: w_kit_east
   type: socket
-  x: 10.80
-  z: 2.0
+  x: 8.60
+  z: 0.3
   height: 1.2
   count: 4
-  note: "厨房台面带开关插座（东墙切配区正后方；DEC-014 由 z=2.7 移至 z=2.0，避开冰箱位 z∈[2.2,2.9]）"
+  note: "厨房台面带开关插座（DEC-021 改挂北墙切配区，东墙让位灶台+冰箱）"
 
 - id: sock_kitchen_fridge
   room: kitchen
   wall: w_kit_east
   type: socket
   x: 10.80
-  z: 2.55
+  z: 2.05
   height: 0.3
   count: 1
-  note: "冰箱插座（DEC-014 由西墙移至东墙南端高柜位，与创想图一致，单独回路）"
+  note: "冰箱插座（DEC-014 移至东墙南端高柜位，DEC-021 随厨房缩界北移，单独回路）"
 
 - id: sock_kitchen_hood
   room: kitchen
   wall: w_kit_east
   type: socket
   x: 10.80
-  z: 1.7
+  z: 1.2
   height: 2.2
   count: 1
-  note: "油烟机插座（DEC-013 移至东墙灶台上方）"
+  note: "油烟机插座（DEC-013 移至东墙灶台上方，DEC-021 随灶台北移）"
 
 - id: sock_kitchen_purifier
   room: kitchen
@@ -343,10 +343,10 @@
   wall: w_kit_east
   type: socket
   x: 10.80
-  z: 1.9
+  z: 1.6
   height: 2.0
   count: 1
-  note: "燃气报警器插座（DEC-014 由 z=3.0 收回厨房界内，近灶台）"
+  note: "燃气报警器插座（DEC-021 随灶台北移）"
 
 - id: switch_kitchen
   room: kitchen
@@ -600,10 +600,10 @@
 - id: light_dining_pendant
   room: living_dining
   type: ceiling_light
-  x: 7.65
-  z: 4.7
+  x: 8.5
+  z: 3.35
   height: 2.8
-  note: "餐桌吊灯天花出线（DEC-013，DEC-020 随餐桌靠墙），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm"
+  note: "餐桌吊灯天花出线（DEC-013，DEC-021 随餐桌），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm"
 
 # 主卧投影仪插座（A方案，床尾西侧）
 - id: sock_master_projector
