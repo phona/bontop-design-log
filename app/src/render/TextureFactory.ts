@@ -516,10 +516,14 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
   const wmm = dims[0];
   const lmm = dims[1];
   const pattern = appearance.pattern === 'herringbone' ? 'herringbone' : 'straight';
-  const groutColor = typeof appearance.grout_color === 'string' ? appearance.grout_color : '#8a7a66';
+  const [br0, bg0, bb0] = parseHex(appearance.color);
+  // 美缝默认取基色下调 12%（同色系，真实木纹砖美缝做法）；grout_color 可覆盖
+  const groutColor = typeof appearance.grout_color === 'string'
+    ? appearance.grout_color
+    : `rgb(${clamp255(br0 * 0.88)},${clamp255(bg0 * 0.88)},${clamp255(bb0 * 0.88)})`;
   const groutMm = typeof appearance.grout_mm === 'number' ? appearance.grout_mm : 2;
   const baseRough = appearance.finish === 'soft' ? 0.5 : 0.85;
-  const [br, bg, bb] = parseHex(appearance.color);
+  const [br, bg, bb] = [br0, bg0, bb0] as [number, number, number];
 
   // 世界边长 S（mm→m）：保证图案在贴图边界无缝 wrap
   let Smm: number;
@@ -552,7 +556,7 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
   // 底=缝：色=美缝色，高度=下凹，粗糙度=略高于板面
   ctx.fillStyle = groutColor;
   ctx.fillRect(0, 0, PLANK_CANVAS, PLANK_CANVAS);
-  heightCtx.fillStyle = '#3a3a3a';
+  heightCtx.fillStyle = '#7c7c7c';
   heightCtx.fillRect(0, 0, PLANK_CANVAS, PLANK_CANVAS);
   const groutRough = clamp255(Math.min(1, baseRough + 0.15) * 255);
   roughCtx.fillStyle = `rgb(${groutRough},${groutRough},${groutRough})`;
@@ -560,14 +564,14 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
 
   const drawPlank = (cx: number, cy: number, angle: number) => {
     // 逐板抖动：明度 ±6%、冷暖 ±4、粗糙度 ±0.08（全部 seeded）
-    const dl = (rng() - 0.5) * 30;
-    const warm = (rng() - 0.5) * 8;
+    const dl = (rng() - 0.5) * 12;
+    const warm = (rng() - 0.5) * 4;
     const rr = clamp255(br + dl + warm);
     const gg = clamp255(bg + dl);
     const bb2 = clamp255(bb + dl - warm);
     const rough = Math.min(1, Math.max(0.05, baseRough + (rng() - 0.5) * 0.16));
     const rv = clamp255(rough * 255);
-    const strokes = 2 + Math.floor(rng() * 3);
+    const strokes = 1 + Math.floor(rng() * 2);
 
     for (const c of [ctx, heightCtx, roughCtx]) {
       c.save();
@@ -582,10 +586,10 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
     ctx.fillStyle = `rgb(${rr},${gg},${bb2})`;
     ctx.fillRect(ix, iy, iw, ih);
     // 板内顺纹（沿板长方向，微摆动）
-    ctx.strokeStyle = `rgba(${clamp255(rr * 0.72)},${clamp255(gg * 0.72)},${clamp255(bb2 * 0.72)},0.35)`;
+    ctx.strokeStyle = `rgba(${clamp255(rr * 0.78)},${clamp255(gg * 0.78)},${clamp255(bb2 * 0.78)},0.16)`;
     for (let s = 0; s < strokes; s++) {
       const gy = (rng() - 0.5) * ih * 0.6;
-      ctx.lineWidth = 1 + rng() * 1.5;
+      ctx.lineWidth = 0.6 + rng() * 0.8;
       ctx.beginPath();
       ctx.moveTo(ix + 1, gy);
       for (let seg = 1; seg <= 4; seg++) {
@@ -593,7 +597,7 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
       }
       ctx.stroke();
     }
-    heightCtx.fillStyle = '#b4b4b4';
+    heightCtx.fillStyle = '#969696';
     heightCtx.fillRect(ix, iy, iw, ih);
     roughCtx.fillStyle = `rgb(${rv},${rv},${rv})`;
     roughCtx.fillRect(ix, iy, iw, ih);

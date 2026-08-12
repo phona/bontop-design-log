@@ -99,6 +99,9 @@ export class TextureManager {
           mat.roughness = 1.0; // 实际粗糙度由 roughnessMap 逐板承载
           mat.metalness = 0;
         }
+        if (result.worldSize && result.normalMap) {
+          mat.normalScale.set(0.5, 0.5); // 板缝沟槽柔化，防"灰网"观感
+        }
         this.cache.set(key, mat);
         return mat;
       }

@@ -25,7 +25,7 @@ materials:
     cons: ["需确认具体型号", "800x800 对工人手艺要求高"]
     price_source: "快环建材市场A区3号 / 马可波罗门店报价"
     notes: "原 CH8880 为抛釉砖非木纹，已排除；建议到店确认具体型号"
-    appearance: { type: "wood_plank", color: "#c49a6c", pattern: "straight", plank_mm: [800, 800], grout_color: "#8a7a66", grout_mm: 2, finish: "soft", seed: 42 }
+    appearance: { type: "wood_plank", color: "#c49a6c", pattern: "straight", plank_mm: [800, 800], finish: "soft", seed: 42 }
 
   - id: "floor_tile_herringbone_01"
     topic_id: "floor"
@@ -48,8 +48,8 @@ materials:
     pros: ["法式骨架视觉符号", "与掠射光互动的明暗层次", "客餐厅视觉中心"]
     cons: ["工费上浮约 20-50%（DEC-011）", "损耗 1.15", "美缝量约 2 倍", "版面数 <6-8 会显假"]
     price_source: "待门店报价（连同版面数/美缝/人字拼工费一起确认）"
-    notes: "人字拼决策包：3D A/B 截图 + 门店四问（版面数≥6-8 / 柔光面 / 美缝试色 / 铺贴工费）。仅客餐厅+走廊，卧室维持直铺。price 待报价后填"
-    appearance: { type: "wood_plank", color: "#c49a6c", pattern: "herringbone", plank_mm: [150, 900], grout_color: "#8a7a66", grout_mm: 2, finish: "soft", seed: 42 }
+    notes: "人字拼决策包：3D A/B 截图 + 门店四问（版面数≥6-8 / 柔光面 / 美缝试色 / 铺贴工费）。仅客餐厅+走廊，卧室维持直铺。price 待报价后填。【3D A/B 结论 2026-08-12：日景/夜景两轮走查，业主反馈'不惊艳'，直铺夜景反馈'很舒服'——3D 关未过。保留候选至门店样板终审：样板若不能让人哇出来则正式放弃，回归直铺+线条/灯光承担法式骨架】"
+    appearance: { type: "wood_plank", color: "#c49a6c", pattern: "herringbone", plank_mm: [150, 900], finish: "soft", seed: 42 }
 
   - id: "wall_tile_01"
     topic_id: "wall"
@@ -1147,7 +1147,7 @@ materials:
     cons: ["脚感不如木地板"]
     price_source: "快环建材市场A区3号 / 马可波罗门店报价"
     notes: "默认选项：卧室与客餐厅木纹砖通铺，视觉统一"
-    appearance: { type: "wood_plank", color: "#c49a6c", pattern: "straight", plank_mm: [800, 800], grout_color: "#8a7a66", grout_mm: 2, finish: "soft", seed: 42 }
+    appearance: { type: "wood_plank", color: "#c49a6c", pattern: "straight", plank_mm: [800, 800], finish: "soft", seed: 42 }
 
   - id: "bedroom_wood_01"
     topic_id: "bedroom_floor"
@@ -1171,4 +1171,4 @@ materials:
     cons: ["南宁回南天需防潮", "怕水怕刮", "比砖贵"]
     price_source: "大自然 / 圣象门店报价"
     notes: "备选：卧室改木地板；回南天注意除湿，价格含安装"
-    appearance: { type: "wood_plank", color: "#a97c50", pattern: "straight", plank_mm: [195, 1220], grout_color: "#7a5c40", grout_mm: 0, finish: "matte", seed: 42 }
+    appearance: { type: "wood_plank", color: "#a97c50", pattern: "straight", plank_mm: [195, 1220], finish: "matte", seed: 42 }
