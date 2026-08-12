@@ -7,12 +7,14 @@ interface ElectricalPoint {
   id: string;
   room: string;
   wall: string;
-  type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb' | 'floor_socket';
+  type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb' | 'floor_socket'
+    | 'ceiling_light' | 'pendant' | 'dome' | 'wall_lamp' | 'downlight' | 'led_strip';
   x: number;
   z: number;
   height: number;
   count?: number;
   note?: string;
+  temp?: number; // 色温（3000/4000），灯光点位用
 }
 
 interface PlumbingPoint {

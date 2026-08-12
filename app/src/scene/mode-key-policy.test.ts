@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { shouldToggleSeeThrough, shouldInterruptCameraAnimation } from './mode-key-policy.js';
+import { shouldToggleSeeThrough, shouldInterruptCameraAnimation, shouldToggleInteriorLights } from './mode-key-policy.js';
 
 describe('shouldToggleSeeThrough', () => {
   it('toggles on W in orbit mode', () => {
@@ -44,5 +44,13 @@ describe('shouldInterruptCameraAnimation', () => {
   it('does not interrupt on non-movement keys', () => {
     expect(shouldInterruptCameraAnimation(true, 'orbit', 'KeyM')).toBe(false);
     expect(shouldInterruptCameraAnimation(true, 'orbit', 'KeyV')).toBe(false);
+  });
+});
+
+describe('shouldToggleInteriorLights', () => {
+  it('L 键触发，repeat 不触发', () => {
+    expect(shouldToggleInteriorLights('KeyL', false)).toBe(true);
+    expect(shouldToggleInteriorLights('KeyL', true)).toBe(false);
+    expect(shouldToggleInteriorLights('KeyK', false)).toBe(false);
   });
 });

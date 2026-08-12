@@ -410,7 +410,7 @@ furnishings:
     # 房间 x∈[0,4.20] z∈[5.55,9.80]；条带东延至 x=4.2，d_mb @(4.2,5.10)（靠北偏置 0.45 朝西进）
     # 动线：走廊→d_mb（朝西进）→左手衣柜背右手浴墙→西端0.85m口→右转主卫/左转寝区
     - { type: bed_180, x: 3.20, z: 7.875, rotation: 270 }     # 床靠东墙，朝西看幕墙
-    - { type: wardrobe_240, x: 3.00, z: 5.85, rotation: 0 }    # 条带南缘隔断柜（延伸到门口，背对玄关）
+    - { type: wardrobe_240_split, x: 3.00, z: 5.95, rotation: 0 } # DEC-023 条带隔断柜拆段：西段 1.2m 加深 0.8m（被褥/行李箱，向南扩至 z=6.35），东段 1.2m 标准 0.6m 靠门侧；背对玄关动线零侵占
     - { type: mattress_180 }
     - { type: curtain_set }
     - { type: ceiling_light }
@@ -420,6 +420,7 @@ furnishings:
     - { type: wardrobe_180, x: 2.90, z: 2.70, rotation: 90 }   # 1.8m衣柜沿西墙飘窗下（sill 2.55 不挡窗）；推拉门（DEC-013）
     - { type: desk, x: 3.85, z: 4.00, rotation: 180 }          # DEC-018 南墙书桌（插座 3.2,4.3 在桌后）
     - { type: chair, x: 3.85, z: 3.35, rotation: 0 }           # DEC-018 书桌椅
+    - { type: shelf, x: 3.00, z: 1.30, rotation: 0 }           # DEC-023 西北角置物架（贴北墙+西墙转角，书/杂物开架收纳，上飘窗窗下墙；窗位 inferred，落位待量房复核）
     - { type: mattress_150 }
     - { type: curtain_set }
     - { type: ceiling_light }

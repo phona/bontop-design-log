@@ -62,6 +62,7 @@ budget:
     mattress_180: mattress
     mattress_150: mattress
     wardrobe_240: wardrobe
+    wardrobe_240_split: wardrobe
     wardrobe_180: wardrobe
     sofa_3seat: sofa
     shoe_cabinet: shoe_cabinet

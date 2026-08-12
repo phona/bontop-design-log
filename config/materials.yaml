@@ -25,7 +25,31 @@ materials:
     cons: ["需确认具体型号", "800x800 对工人手艺要求高"]
     price_source: "快环建材市场A区3号 / 马可波罗门店报价"
     notes: "原 CH8880 为抛釉砖非木纹，已排除；建议到店确认具体型号"
-    appearance: { type: "wood_grain_v2", color: "#c49a6c" }
+    appearance: { type: "wood_plank", color: "#c49a6c", pattern: "straight", plank_mm: [800, 800], grout_color: "#8a7a66", grout_mm: 2, finish: "soft", seed: 42 }
+
+  - id: "floor_tile_herringbone_01"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "长条木纹砖人字拼（客餐厅+走廊，DEC 待决）"
+    brand: "马可波罗 / 快环同档"
+    model: "150x900 浅胡桃长条款（型号待门店确认）"
+    spec: "150x900mm"
+    unit: "㎡"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1.15
+    calc_mode: "area"
+    supplier: "快环建材市场"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["法式骨架视觉符号", "与掠射光互动的明暗层次", "客餐厅视觉中心"]
+    cons: ["工费上浮约 20-50%（DEC-011）", "损耗 1.15", "美缝量约 2 倍", "版面数 <6-8 会显假"]
+    price_source: "待门店报价（连同版面数/美缝/人字拼工费一起确认）"
+    notes: "人字拼决策包：3D A/B 截图 + 门店四问（版面数≥6-8 / 柔光面 / 美缝试色 / 铺贴工费）。仅客餐厅+走廊，卧室维持直铺。price 待报价后填"
+    appearance: { type: "wood_plank", color: "#c49a6c", pattern: "herringbone", plank_mm: [150, 900], grout_color: "#8a7a66", grout_mm: 2, finish: "soft", seed: 42 }
 
   - id: "wall_tile_01"
     topic_id: "wall"
@@ -652,7 +676,30 @@ materials:
     pros: ["实木环保", "耐用"]
     cons: ["价格中等"]
     price_source: "源氏木语天猫旗舰店"
-    notes: "含床头柜, 不含床垫"
+    notes: "含床头柜, 不含床垫。【床箱床选型指令（2026-08-12）】主卧+父母房选液压床箱款（+700~1500/张）：①双气撑杆标称承重≥（床垫+床板）×1.5，问清杆品牌与保修（悍高/海蒂诗级）；②排骨架箱底或底板离地≥10cm通风（回南天）；③被褥一律压缩袋入箱，书不入箱（重+中频）；④父母房限低箱款（床面离地≤55cm，老人上下床）；⑤NW次卧床不升级（置物架功能不重复）"
+
+  - id: "bed_150_01"
+    topic_id: "bed"
+    alternative_group: "bed"
+    category: "家具"
+    name: "1.5m 实木床（父母房/儿童房）"
+    brand: "本地家具厂 / 源氏木语"
+    model: "1.5×2.0m 橡木/白蜡木"
+    spec: "1500×2000mm"
+    unit: "张"
+    price_per_unit: 2000
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "本地家具市场 / 源氏木语线上"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["实木环保", "小房间适配"]
+    cons: []
+    price_source: "源氏木语天猫旗舰店（估）"
+    notes: "父母房选低箱液压床箱款（床面≤55cm，指令同 bed_180_01）；NW 儿童房选普通款即可"
 
   - id: "mattress_180_01"
     topic_id: "mattress"
@@ -698,7 +745,7 @@ materials:
     pros: ["尺寸精准", "板材可选"]
     cons: ["定制周期长"]
     price_source: "本地全屋定制工厂报价"
-    notes: "按投影面积约 1700 元/㎡ × 2.4m × 2.7m 估算"
+    notes: "【核价红旗 2026-08-12】price=4200 与下方口径矛盾：按投影面积约 1700 元/㎡ × 2.4m × 2.7m = 11,016 元/组。三组衣柜潜在偏差 ±17k，为 candidate 中最大不确定项。到店必问：①计价方式（投影/延米/展开）②板材（多层/颗粒）③2.4m 与 1.8m 分组报价。落定前 furniture_soft 36.5k 视为悬空"
 
   - id: "wardrobe_180_01"
     topic_id: "miscellaneous"
@@ -1100,7 +1147,7 @@ materials:
     cons: ["脚感不如木地板"]
     price_source: "快环建材市场A区3号 / 马可波罗门店报价"
     notes: "默认选项：卧室与客餐厅木纹砖通铺，视觉统一"
-    appearance: { type: "wood_grain_v2", color: "#c49a6c" }
+    appearance: { type: "wood_plank", color: "#c49a6c", pattern: "straight", plank_mm: [800, 800], grout_color: "#8a7a66", grout_mm: 2, finish: "soft", seed: 42 }
 
   - id: "bedroom_wood_01"
     topic_id: "bedroom_floor"
@@ -1124,4 +1171,4 @@ materials:
     cons: ["南宁回南天需防潮", "怕水怕刮", "比砖贵"]
     price_source: "大自然 / 圣象门店报价"
     notes: "备选：卧室改木地板；回南天注意除湿，价格含安装"
-    appearance: { type: "wood_grain_v2", color: "#a97c50" }
+    appearance: { type: "wood_plank", color: "#a97c50", pattern: "straight", plank_mm: [195, 1220], grout_color: "#7a5c40", grout_mm: 0, finish: "matte", seed: 42 }

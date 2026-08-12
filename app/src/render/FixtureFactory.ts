@@ -43,6 +43,27 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
+    // DEC-023：2.4m 衣柜拆两段——西段（-x 侧）加深 0.8m 放被褥/行李箱，东段标准 0.6m 靠门侧；背面对齐（北缘 -0.4）
+    type: 'wardrobe_240_split',
+    parts: [
+      { shape: 'box', size: [1.2, 2.7, 0.8], position: [-0.6, 1.35, 0], color: '#7d6647' },
+      { shape: 'box', size: [1.2, 2.7, 0.6], position: [0.6, 1.35, -0.1], color: '#8B7355' },
+    ],
+  },
+  {
+    // DEC-023：置物架（开架，低摩擦收纳；两侧板+背板+4 层横板）
+    type: 'shelf',
+    parts: [
+      { shape: 'box', size: [0.04, 2.0, 0.4], position: [-0.38, 1.0, 0], color: '#8B7355' },
+      { shape: 'box', size: [0.04, 2.0, 0.4], position: [0.38, 1.0, 0], color: '#8B7355' },
+      { shape: 'box', size: [0.8, 2.0, 0.02], position: [0, 1.0, -0.19], color: '#7d6647' },
+      { shape: 'box', size: [0.72, 0.03, 0.36], position: [0, 0.3, 0], color: '#8B7355' },
+      { shape: 'box', size: [0.72, 0.03, 0.36], position: [0, 0.8, 0], color: '#8B7355' },
+      { shape: 'box', size: [0.72, 0.03, 0.36], position: [0, 1.3, 0], color: '#8B7355' },
+      { shape: 'box', size: [0.72, 0.03, 0.36], position: [0, 1.8, 0], color: '#8B7355' },
+    ],
+  },
+  {
     type: 'sofa_3seat',
     parts: [
       { shape: 'box', size: [2.8, 0.4, 0.9], position: [0, 0.2, 0], color: '#6B8E9B' },

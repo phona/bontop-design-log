@@ -12,6 +12,7 @@ export class SunlightSystem {
   private trajectory: THREE.Line | null = null;
   private sunDisc: THREE.Sprite | null = null;
   private onPlayingChange?: (playing: boolean) => void;
+  private onSolarChange?: () => void;
   private lastAltitude = 0;
   private lastAzimuth = 0;
 
@@ -63,6 +64,11 @@ export class SunlightSystem {
 
   setPlayingListener(cb: (playing: boolean) => void): void {
     this.onPlayingChange = cb;
+  }
+
+  /** 太阳状态每次 apply 后触发（室内灯光系统等订阅方据此自动开关） */
+  setSolarChangeListener(cb: () => void): void {
+    this.onSolarChange = cb;
   }
 
   update(dtSeconds: number): void {
@@ -147,6 +153,7 @@ export class SunlightSystem {
     this.lastAzimuth = pos.azimuthDeg;
     this.envManager.setSolarState(pos);
     this.updateSunDisc();
+    this.onSolarChange?.();
   }
 
   private updateSunDisc(): void {

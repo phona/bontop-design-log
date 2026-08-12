@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mulberry32 } from './seeded-rng.js';
 
 export interface MaterialAppearance {
   type: string;
@@ -13,6 +14,9 @@ export interface MaterialAppearance {
 export interface ProceduralTextures {
   map: THREE.CanvasTexture;
   normalMap?: THREE.CanvasTexture;
+  roughnessMap?: THREE.CanvasTexture;
+  /** 贴图 canvas 代表的实际边长（米）；存在时 UV 按米制标定（repeat=1/worldSize），不存在走旧 repeat(2,2) */
+  worldSize?: number;
 }
 
 const NEW_TYPES = new Set(['wood_grain_v2', 'ceramic_tile_v2', 'stone']);
@@ -24,6 +28,11 @@ export function createMaterialTexture(appearance: MaterialAppearance): Procedura
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
     return tex;
+  }
+
+  // wood_plank 走独立管线（1024 canvas + roughnessMap + worldSize 米制标定）
+  if (appearance.type === 'wood_plank') {
+    return drawWoodPlankTextures(appearance);
   }
 
   const canvas = document.createElement('canvas');
@@ -480,4 +489,152 @@ function drawMattePaint(ctx: CanvasRenderingContext2D, w: number, h: number, bas
     data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise));
   }
   ctx.putImageData(imageData, 0, 0);
+}
+
+// ── wood_plank：物理尺寸条板纹理（直铺/人字拼），PBR 三通道 + 米制 worldSize ──
+
+const PLANK_CANVAS = 1024;
+
+function gcdI(a: number, b: number): number {
+  return b === 0 ? a : gcdI(b, a % b);
+}
+
+function clamp255(v: number): number {
+  return Math.min(255, Math.max(0, Math.round(v)));
+}
+
+/**
+ * wood_plank 纹理生成。
+ * appearance 扩展字段：pattern(straight|herringbone) / plank_mm:[宽,长] / grout_color / grout_mm /
+ * finish(soft=柔光 rough0.5 | matte=哑光 rough0.85) / seed（确定性随机，默认 42）。
+ * 逐板明度/冷暖/粗糙度抖动是掠射光下"明暗流动"的材质基础；全部随机走 mulberry32(seed)。
+ */
+function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextures {
+  const seed = typeof appearance.seed === 'number' ? appearance.seed : 42;
+  const rng = mulberry32(seed);
+  const dims = Array.isArray(appearance.plank_mm) ? (appearance.plank_mm as number[]) : [150, 900];
+  const wmm = dims[0];
+  const lmm = dims[1];
+  const pattern = appearance.pattern === 'herringbone' ? 'herringbone' : 'straight';
+  const groutColor = typeof appearance.grout_color === 'string' ? appearance.grout_color : '#8a7a66';
+  const groutMm = typeof appearance.grout_mm === 'number' ? appearance.grout_mm : 2;
+  const baseRough = appearance.finish === 'soft' ? 0.5 : 0.85;
+  const [br, bg, bb] = parseHex(appearance.color);
+
+  // 世界边长 S（mm→m）：保证图案在贴图边界无缝 wrap
+  let Smm: number;
+  if (pattern === 'herringbone') {
+    // 人字拼晶格：d=(L+W)/√2 为横向周期与行高；竖向 wrap 要求 m·W ≡ 0 (mod L+W)，取 m=(L+W)/gcd(W,L+W)
+    const g = gcdI(wmm, lmm + wmm);
+    const m = (lmm + wmm) / g;
+    Smm = (m * (lmm + wmm)) / Math.SQRT2;
+  } else {
+    // 直铺工字错缝：横向周期 L，竖向行数 N=S/W 须为偶数（错缝周期 2 整除 N）
+    Smm = lmm * Math.ceil(4000 / lmm);
+    while (Smm % wmm !== 0 || (Smm / wmm) % 2 !== 0) Smm += lmm;
+  }
+  const S = Smm / 1000;
+  const PPM = PLANK_CANVAS / S;
+  const pl = (lmm / 1000) * PPM;
+  const pw = (wmm / 1000) * PPM;
+  const g2 = Math.max(0.75, ((groutMm / 1000) * PPM) / 2);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = PLANK_CANVAS;
+  const ctx = canvas.getContext('2d')!;
+  const heightCanvas = document.createElement('canvas');
+  heightCanvas.width = heightCanvas.height = PLANK_CANVAS;
+  const heightCtx = heightCanvas.getContext('2d')!;
+  const roughCanvas = document.createElement('canvas');
+  roughCanvas.width = roughCanvas.height = PLANK_CANVAS;
+  const roughCtx = roughCanvas.getContext('2d')!;
+
+  // 底=缝：色=美缝色，高度=下凹，粗糙度=略高于板面
+  ctx.fillStyle = groutColor;
+  ctx.fillRect(0, 0, PLANK_CANVAS, PLANK_CANVAS);
+  heightCtx.fillStyle = '#3a3a3a';
+  heightCtx.fillRect(0, 0, PLANK_CANVAS, PLANK_CANVAS);
+  const groutRough = clamp255(Math.min(1, baseRough + 0.15) * 255);
+  roughCtx.fillStyle = `rgb(${groutRough},${groutRough},${groutRough})`;
+  roughCtx.fillRect(0, 0, PLANK_CANVAS, PLANK_CANVAS);
+
+  const drawPlank = (cx: number, cy: number, angle: number) => {
+    // 逐板抖动：明度 ±6%、冷暖 ±4、粗糙度 ±0.08（全部 seeded）
+    const dl = (rng() - 0.5) * 30;
+    const warm = (rng() - 0.5) * 8;
+    const rr = clamp255(br + dl + warm);
+    const gg = clamp255(bg + dl);
+    const bb2 = clamp255(bb + dl - warm);
+    const rough = Math.min(1, Math.max(0.05, baseRough + (rng() - 0.5) * 0.16));
+    const rv = clamp255(rough * 255);
+    const strokes = 2 + Math.floor(rng() * 3);
+
+    for (const c of [ctx, heightCtx, roughCtx]) {
+      c.save();
+      c.translate(cx, cy);
+      c.rotate(angle);
+    }
+    const ix = -pl / 2 + g2;
+    const iy = -pw / 2 + g2;
+    const iw = pl - 2 * g2;
+    const ih = pw - 2 * g2;
+
+    ctx.fillStyle = `rgb(${rr},${gg},${bb2})`;
+    ctx.fillRect(ix, iy, iw, ih);
+    // 板内顺纹（沿板长方向，微摆动）
+    ctx.strokeStyle = `rgba(${clamp255(rr * 0.72)},${clamp255(gg * 0.72)},${clamp255(bb2 * 0.72)},0.35)`;
+    for (let s = 0; s < strokes; s++) {
+      const gy = (rng() - 0.5) * ih * 0.6;
+      ctx.lineWidth = 1 + rng() * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(ix + 1, gy);
+      for (let seg = 1; seg <= 4; seg++) {
+        ctx.lineTo(ix + (iw * seg) / 4, gy + (rng() - 0.5) * ih * 0.2);
+      }
+      ctx.stroke();
+    }
+    heightCtx.fillStyle = '#b4b4b4';
+    heightCtx.fillRect(ix, iy, iw, ih);
+    roughCtx.fillStyle = `rgb(${rv},${rv},${rv})`;
+    roughCtx.fillRect(ix, iy, iw, ih);
+    for (const c of [ctx, heightCtx, roughCtx]) c.restore();
+  };
+
+  if (pattern === 'herringbone') {
+    // 晶格常数 d = (L+W)/√2：同行中心间距 d、±45° 交替；行高 d；行偏移 j·W/√2 (mod d)
+    const d = (pl + pw) / Math.SQRT2;
+    const rowShift = pw / Math.SQRT2;
+    for (let j = -2; j * d < PLANK_CANVAS + 2 * d; j++) {
+      const y = j * d;
+      const ox = (((j * rowShift) % d) + d) % d;
+      for (let k = -2; k * d + ox < PLANK_CANVAS + 2 * d; k++) {
+        const angle = ((k % 2) + 2) % 2 === 0 ? Math.PI / 4 : -Math.PI / 4;
+        drawPlank(k * d + ox, y, angle);
+      }
+    }
+  } else {
+    // 直铺工字错缝：奇偶行错半板
+    for (let j = -1; j * pw < PLANK_CANVAS + pw; j++) {
+      const y = j * pw + pw / 2;
+      const off = (((j % 2) + 2) % 2) * (pl / 2);
+      for (let k = -2; k * pl + off - pl / 2 < PLANK_CANVAS + pl; k++) {
+        drawPlank(k * pl + off, y, 0);
+      }
+    }
+  }
+
+  const mapTex = new THREE.CanvasTexture(canvas);
+  mapTex.wrapS = THREE.RepeatWrapping;
+  mapTex.wrapT = THREE.RepeatWrapping;
+  mapTex.colorSpace = THREE.SRGBColorSpace;
+
+  const normalTex = new THREE.CanvasTexture(computeNormalMap(heightCanvas));
+  normalTex.wrapS = THREE.RepeatWrapping;
+  normalTex.wrapT = THREE.RepeatWrapping;
+
+  const roughTex = new THREE.CanvasTexture(roughCanvas);
+  roughTex.wrapS = THREE.RepeatWrapping;
+  roughTex.wrapT = THREE.RepeatWrapping;
+
+  return { map: mapTex, normalMap: normalTex, roughnessMap: roughTex, worldSize: S };
 }

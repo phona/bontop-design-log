@@ -23,6 +23,7 @@ import { pickRoomIdFromHits } from '../scene/spawn-utils.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
+import type { MaterialAppearance } from './TextureFactory.js';
 import { buildFixture } from './FixtureFactory.js';
 import { EnvironmentManager } from './EnvironmentManager.js';
 import { buildCeilingZone, type CeilingZoneSpec } from './CeilingZoneBuilder.js';
@@ -1583,11 +1584,11 @@ export class HouseScene implements SceneApi {
     return ids;
   }
 
-  setFloorMaterial(roomId: string, appearance: { type: string; color: string; scale?: number }): void {
+  setFloorMaterial(roomId: string, appearance: MaterialAppearance): void {
     this.textureManager.applyToRoom(roomId, appearance, 'floor');
   }
 
-  setWallMaterial(roomId: string, appearance: { type: string; color: string; scale?: number }): void {
+  setWallMaterial(roomId: string, appearance: MaterialAppearance): void {
     this.textureManager.applyToRoom(roomId, appearance, 'wall');
   }
 

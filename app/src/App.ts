@@ -12,7 +12,7 @@ import { CollisionDetector } from './scene/CollisionDetector.js';
 import { FirstPersonController } from './scene/FirstPersonController.js';
 import { extractCollisionWalls } from './scene/collision-utils.js';
 import { resolveSpawnRoom } from './scene/spawn-utils.js';
-import { shouldToggleSeeThrough, shouldInterruptCameraAnimation } from './scene/mode-key-policy.js';
+import { shouldToggleSeeThrough, shouldInterruptCameraAnimation, shouldToggleInteriorLights } from './scene/mode-key-policy.js';
 import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
@@ -20,6 +20,7 @@ import { CommandPalette } from './ui/CommandPalette.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
 import { PlacementPanel } from './ui/PlacementPanel.js';
 import { SunlightSystem } from './render/SunlightSystem.js';
+import { InteriorLightingSystem } from './render/InteriorLightingSystem.js';
 import { SunlightPanel } from './ui/SunlightPanel.js';
 import { SunlightButton } from './ui/SunlightButton.js';
 import { DaylightHeatmap } from './render/analysis/DaylightHeatmap.js';
@@ -62,6 +63,7 @@ export class App {
   private infrastructurePlaceMode: { category: string; type: string } | null = null;
   private sunlightPanel = new SunlightPanel();
   private sunlightSystem: SunlightSystem | null = null;
+  private interiorLighting: InteriorLightingSystem | null = null;
   private sunlightButton: SunlightButton | null = null;
   private daylightHeatmap: DaylightHeatmap | null = null;
   private humidityOverlay: HumidityOverlay | null = null;
@@ -213,6 +215,10 @@ export class App {
       this.sunlightPanel.setPlaying(playing);
     });
     this.sunlightSystem.setPlayingListener((playing) => this.sunlightPanel.setPlaying(playing));
+    this.sunlightSystem.setSolarChangeListener(() => {
+      const st = this.houseScene.getEnvironmentManager().getLightingState();
+      this.interiorLighting?.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
+    });
 
     this.daylightHeatmap = new DaylightHeatmap(this.houseScene);
     this.sunlightPanel.onHeatmapToggle(() => {
@@ -419,6 +425,11 @@ export class App {
       if (e.code === 'KeyV' && !e.repeat) {
         e.preventDefault();
         this.toggleMode();
+        return;
+      }
+
+      if (shouldToggleInteriorLights(e.code, e.repeat)) {
+        this.interiorLighting?.toggle();
         return;
       }
 
@@ -835,6 +846,13 @@ export class App {
         this.annotationRenderer.getElectricalData(),
         this.annotationRenderer.getPlumbingData(),
       );
+      this.interiorLighting?.dispose();
+      this.interiorLighting = new InteriorLightingSystem(
+        this.houseScene.scene,
+        this.annotationRenderer.getElectricalData(),
+      );
+      const st = this.houseScene.getEnvironmentManager().getLightingState();
+      this.interiorLighting.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
     }
   }
 
