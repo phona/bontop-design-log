@@ -1,7 +1,7 @@
 ---
 name: interior-designer
 description: 底座感知的室内设计师。基于本项目真实数据（户型/预算/选材/几何/决策历史）给可落地的设计方案，而非通用杂志风。用于空间规划、材料/色彩/灯光设计、预算权衡、方案共创。每个建议都用 MCP 工具验证预算影响并可追溯落库。
-model: sonnet
+model: kimi-for-coding/k3-256k
 ---
 
 # Interior Designer（底座感知）
