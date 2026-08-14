@@ -42,9 +42,55 @@ def resolve_scheme(scheme: dict, mats: dict) -> dict[str, str]:
     return resolved
 
 
-def build_yaml_materials(mats: dict, resolved: dict, helpers: dict) -> dict:
+def _build_wood_textured(mid: str, app: dict, cache_dir: str):
+    """wood_plank：生成程序化三通道贴图（与 three.js TextureFactory 同源），
+    Mapping 缩放 1/worldSize，GLB 米制 UV 直接平铺。"""
+    import bpy
+    from wood_texture import ensure_wood_textures
+
+    d, n, r, S = ensure_wood_textures(mid, app, cache_dir)
+    mat = bpy.data.materials.new(f'方案_{mid}')
+    mat.use_nodes = True
+    nt = mat.node_tree
+    bsdf = nt.nodes['Principled BSDF']
+    bsdf.inputs['Roughness'].default_value = 0.35
+    bsdf.inputs['Metallic'].default_value = 0.0
+    if 'Coat Weight' in bsdf.inputs:
+        bsdf.inputs['Coat Weight'].default_value = 0.15
+
+    mapping = nt.nodes.new('ShaderNodeMapping')
+    mapping.inputs['Scale'].default_value = (1.0 / S, 1.0 / S, 1.0)
+    uv = nt.nodes.new('ShaderNodeTexCoord')
+    nt.links.new(uv.outputs['UV'], mapping.inputs['Vector'])
+
+    tex = nt.nodes.new('ShaderNodeTexImage')
+    tex.image = bpy.data.images.load(d)
+    tex.interpolation = 'Cubic'
+    nt.links.new(mapping.outputs['Vector'], tex.inputs['Vector'])
+    nt.links.new(tex.outputs['Color'], bsdf.inputs['Base Color'])
+
+    rtex = nt.nodes.new('ShaderNodeTexImage')
+    rtex.image = bpy.data.images.load(r)
+    rtex.image.colorspace_settings.name = 'Non-Color'
+    nt.links.new(mapping.outputs['Vector'], rtex.inputs['Vector'])
+    nt.links.new(rtex.outputs['Color'], bsdf.inputs['Roughness'])
+
+    ntex = nt.nodes.new('ShaderNodeTexImage')
+    ntex.image = bpy.data.images.load(n)
+    ntex.image.colorspace_settings.name = 'Non-Color'
+    nmap = nt.nodes.new('ShaderNodeNormalMap')
+    nmap.inputs['Strength'].default_value = 0.5
+    nt.links.new(mapping.outputs['Vector'], ntex.inputs['Vector'])
+    nt.links.new(ntex.outputs['Color'], nmap.inputs['Color'])
+    nt.links.new(nmap.outputs['Normal'], bsdf.inputs['Normal'])
+    return mat
+
+
+def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
+                         cache_dir: str | None = None) -> dict:
     """resolved: classify_key -> material_id。返回 classify_key -> bpy material。
-    helpers 注入 new_principled/hex_rgb，避免与 dress_scene 循环依赖。"""
+    helpers 注入 new_principled/hex_rgb，避免与 dress_scene 循环依赖。
+    cache_dir: 木纹贴图缓存目录（wood_plank 时必需）。"""
     import bpy
     out: dict = {}
     np_ = helpers['new_principled']
@@ -58,10 +104,16 @@ def build_yaml_materials(mats: dict, resolved: dict, helpers: dict) -> dict:
         rough = {'glossy': 0.15, 'soft': 0.35, 'matte': 0.6}.get(finish, 0.4)
         if key in ('wall', 'ceiling'):
             rough = 0.9
-        if typ == 'solid_color':
-            mat = np_(f'方案_{mid}', color, rough=rough)
+        if typ == 'wood_plank' and cache_dir:
+            try:
+                mat = _build_wood_textured(mid, app, cache_dir)
+            except Exception as e:
+                print(f'[materials] WARN 木纹贴图生成失败({mid}): {e} → 回退纯色')
+                mat = np_(f'方案_{mid}', color, rough=rough, coat=0.15)
         elif typ == 'wood_plank':
             mat = np_(f'方案_{mid}', color, rough=rough, coat=0.15)
+        elif typ == 'solid_color':
+            mat = np_(f'方案_{mid}', color, rough=rough)
         elif typ == 'ceramic_tile_v2':
             mat = np_(f'方案_{mid}', color, rough=0.2 if finish != 'matte' else 0.5, coat=0.3)
         else:
@@ -91,6 +143,7 @@ def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb,
         scheme = {}
     resolved = resolve_scheme(scheme, mats_yaml)
     helpers = {'new_principled': new_principled, 'hex_rgb': hex_rgb}
-    yaml_mats = build_yaml_materials(mats_yaml, resolved, helpers)
+    tex_cache = os.path.join(config_dir, 'renders', 'blender', 'textures')
+    yaml_mats = build_yaml_materials(mats_yaml, resolved, helpers, cache_dir=tex_cache)
     mats.update(yaml_mats)
     return mats
