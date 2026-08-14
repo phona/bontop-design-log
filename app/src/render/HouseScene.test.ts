@@ -27,6 +27,35 @@ describe('HouseScene scene elements', () => {
     expect(source).not.toContain('house.walls');
     expect(source).toContain('sceneElements');
   });
+
+  it('floor topic also retextures floor_region strips (corridor follows living floor, DEC-011)', async () => {
+    const fs = await import('node:fs');
+    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    expect(source).toContain('applyToFloorRegions');
+  });
+
+  it('glass material exports as real glass: transmission (KHR_materials_transmission), zero metalness', async () => {
+    const fs = await import('node:fs');
+    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    const block = source.match(/makeGlassMaterial\(\)[^{]*\{([\s\S]*?)\n  \}/);
+    expect(block).not.toBeNull();
+    expect(block![1]).toContain('transmission');
+    expect(block![1]).toContain('metalness: 0');
+    expect(block![1]).not.toContain('metalness: 0.1');
+  });
+
+  it('rect rooms (PlaneGeometry branch) rescale UV to meters — wood_plank worldSize assumption holds for all rooms', async () => {
+    const fs = await import('node:fs');
+    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    expect(source).toContain('scalePlaneUvToMeters');
+  });
+
+  it('curtains offset 12cm interior — sheer must not be coplanar with glass (z-fighting)', async () => {
+    const fs = await import('node:fs');
+    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    expect(source).toContain('offsetCurtainPointsInterior');
+    expect(source).toContain('0.12');
+  });
 });
 
 describe('HouseScene captureFloorPlan', () => {

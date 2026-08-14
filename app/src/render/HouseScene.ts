@@ -20,6 +20,8 @@ import { FURNITURE_DIMS } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopDownView } from '../scene/TopDownView.js';
 import { pickRoomIdFromHits } from '../scene/spawn-utils.js';
+import { scalePlaneUvToMeters } from './uv-utils.js';
+import { offsetCurtainPointsInterior } from './curtain-offset.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
@@ -31,7 +33,7 @@ import { buildCeilingZone, type CeilingZoneSpec } from './CeilingZoneBuilder.js'
 const DEFAULT_PAINT = '#f7f5ef';
 const GLASS_COLOR = 0x88ccff;
 const GLASS_OPACITY = 0.6;
-export const GLASS_THICKNESS = 0.15; // 15cm glass panel (increased for top-down visibility)
+export const GLASS_THICKNESS = 0.024; // 24mm 中空双玻（2026-08-13 由 15cm 改真实厚度；俯视可见性改由材质双线承担）
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
 const SHAFT_FLOOR = '#3a3a3a';
@@ -568,6 +570,7 @@ export class HouseScene implements SceneApi {
     const floorGeo = pts
       ? new THREE.ShapeGeometry(this.buildRoundedShape(pts.map(p => ({ x: p.x - r.x, z: r.z - p.z, radius: p.radius }))))
       : new THREE.PlaneGeometry(r.width, r.depth);
+    if (!pts) scalePlaneUvToMeters(floorGeo as THREE.PlaneGeometry, r.width, r.depth);
     const isShaft = r.id === 'elevator_shaft';
     const floorMat = new THREE.MeshStandardMaterial({
       color: isShaft ? SHAFT_FLOOR : DEFAULT_FLOOR,
@@ -586,6 +589,7 @@ export class HouseScene implements SceneApi {
     const ceilingGeo = pts
       ? new THREE.ShapeGeometry(this.buildRoundedShape(pts.map(p => ({ x: p.x - r.x, z: r.z - p.z, radius: p.radius }))))
       : new THREE.PlaneGeometry(r.width, r.depth);
+    if (!pts) scalePlaneUvToMeters(ceilingGeo as THREE.PlaneGeometry, r.width, r.depth);
     const ceilingMat = new THREE.MeshStandardMaterial({
       color: DEFAULT_CEILING,
       roughness: 0.9,
@@ -642,12 +646,19 @@ export class HouseScene implements SceneApi {
   }
 
   private makeGlassMaterial(): THREE.MeshPhysicalMaterial {
+    // transmission > 0 → GLTFExporter 写 KHR_materials_transmission，Twinmotion 导入为真玻璃；
+    // metalness 必须为 0（金属度是导出后"灰镜"观感的主因）；本地渲染同为透射路径，更通透
     return new THREE.MeshPhysicalMaterial({
       color: GLASS_COLOR,
       transparent: true,
       opacity: GLASS_OPACITY,
+      transmission: 0.92,
+      ior: 1.5,
+      thickness: 0.02,
+      // 必须为有限值：默认 Infinity 经 GLTFExporter JSON 序列化成 null，Blender 导入器 1/null 崩溃
+      attenuationDistance: 0.5,
       roughness: 0.05,
-      metalness: 0.1,
+      metalness: 0,
       side: THREE.DoubleSide,
     });
   }
@@ -917,7 +928,9 @@ export class HouseScene implements SceneApi {
   private renderCurtain(el: Extract<SceneElement, { type: 'curtain' }>) {
     const kind = el.kind ?? 'sheer_blackout';
     const height = el.height - 0.1;
-    const shape = this.buildCurtainShape(el.points, false, 0.04, true);
+    // 中心线向室内侧偏移 12cm：脱离玻璃幕 15cm 厚块，消除共面 z-fighting（Twinmotion 抽动）
+    const pts = offsetCurtainPointsInterior(el.points, Object.values(this.rooms), 0.12);
+    const shape = this.buildCurtainShape(pts, false, 0.04, true);
     const geo = () => {
       const g = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false, steps: 1 });
       return g;
@@ -1500,6 +1513,9 @@ export class HouseScene implements SceneApi {
     const meshType = topicId === 'floor' ? 'floor' : 'wall';
     for (const roomId of roomIds) {
       this.textureManager.applyToRoom(roomId, appearance, meshType);
+    }
+    if (topicId === 'floor') {
+      this.textureManager.applyToFloorRegions(appearance);
     }
   }
 
