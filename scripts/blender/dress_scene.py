@@ -58,6 +58,24 @@ def hex_rgb(h: str) -> tuple[float, float, float]:
     return tuple(_srgb_to_linear(int(h[i:i + 2], 16) / 255.0) for i in (0, 2, 4))
 
 
+def new_sheer_transparent(name: str, color, opacity: float = 0.15):
+    """真半透明纱帘（Cycles）：Transparent BSDF + Principled 混合。
+    opacity = 布料权重（0.15 ≈ 85% 透），决策渲染必须能看穿纱帘见天色。"""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    bsdf = nt.nodes.get('Principled BSDF')
+    bsdf.inputs['Base Color'].default_value = (*color, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.9
+    trans = nt.nodes.new('ShaderNodeBsdfTransparent')
+    mix = nt.nodes.new('ShaderNodeMixShader')
+    mix.inputs[0].default_value = opacity
+    nt.links.new(trans.outputs[0], mix.inputs[1])
+    nt.links.new(bsdf.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], nt.nodes.get('Material Output').inputs['Surface'])
+    return mat
+
+
 def new_principled(name: str, color, rough: float, metallic: float = 0.0,
                    transmission: float = 0.0, ior: float = 1.5, alpha: float = 1.0,
                    coat: float = 0.0):
@@ -121,11 +139,18 @@ def classify(obj: bpy.types.Object) -> str:
 
 
 def build_materials(engine: str) -> dict:
+    is_cycles = engine.upper() == 'CYCLES'
     # EEVEE 默认无屏幕空间折射，transmission 渲成不透明 → 预览用 alpha 玻璃；Cycles 用真透射
     glass = (
         new_principled('硬装_LowE玻璃', hex_rgb('#dce8e6'), rough=0.05, transmission=1.0, ior=1.5)
-        if engine.upper() == 'CYCLES'
+        if is_cycles
         else new_principled('硬装_LowE玻璃', hex_rgb('#dce8e6'), rough=0.08, alpha=0.25)
+    )
+    # 纱帘：Cycles 用真半透明（可看穿见天色）；EEVEE 用 alpha 混合
+    sheer = (
+        new_sheer_transparent('软装_纱帘', hex_rgb('#f7f4ec'), opacity=0.15)
+        if is_cycles
+        else new_principled('软装_纱帘', hex_rgb('#f7f4ec'), rough=0.9, alpha=0.3)
     )
     return {
         # 木纹砖（柔光）：materials.yaml floor_tile_01 #c49a6c finish=soft
@@ -134,7 +159,7 @@ def build_materials(engine: str) -> dict:
         'wall': new_principled('硬装_乳胶漆', hex_rgb('#f7f5ef'), rough=0.92),
         'ceiling': new_principled('硬装_天花白', hex_rgb('#f7f7f5'), rough=0.9),
         'glass': glass,
-        'sheer': new_principled('软装_纱帘', hex_rgb('#f7f4ec'), rough=0.9, alpha=0.3),
+        'sheer': sheer,
         'curtain_fabric': new_principled('软装_遮光帘', hex_rgb('#d8d0c2'), rough=0.95),
         'furniture': new_principled('家具_暖灰', hex_rgb('#cbbfa9'), rough=0.8),
         'sill': new_principled('硬装_窗台石', hex_rgb('#d8d3c8'), rough=0.5),
@@ -200,23 +225,30 @@ def add_sun(sun_dir: list[float]) -> None:
     bpy.context.collection.objects.link(obj)
 
 
-def setup_world(engine: str, sun_dir: list[float]) -> None:
+def setup_world(engine: str, scenario: dict) -> None:
     world = bpy.data.worlds.new('World') if not bpy.data.worlds else bpy.data.worlds[0]
     bpy.context.scene.world = world
     world.use_nodes = True
     bg = world.node_tree.nodes.get('Background')
     if engine.upper() == 'CYCLES':
-        # Cycles 用方向性天光：天花板法线朝下不会被染蓝，玻璃透射真蓝天
-        sky = world.node_tree.nodes.new('ShaderNodeTexSky')
-        sky.sky_type = 'HOSEK_WILKIE'
-        sky.sun_direction = tuple(sun_dir)
-        sky.sun_intensity = 1.2
-        try:
-            sky.sun_size = 0.02
-        except Exception:
-            pass
-        world.node_tree.links.new(sky.outputs['Color'], bg.inputs['Color'])
-        bg.inputs['Strength'].default_value = 1.0
+        world_color = scenario.get('world_color')
+        if world_color:
+            # 自定义天光色（蓝调深蓝 / 夜晚近黑）：玻璃透出可见天色，方向性天光不染天花板
+            bg.inputs['Color'].default_value = (*hex_rgb(world_color), 1.0)
+            bg.inputs['Strength'].default_value = scenario.get('world_strength', 0.3)
+        else:
+            # 白天工况：方向性天光 HOSEK_WILKIE
+            sky = world.node_tree.nodes.new('ShaderNodeTexSky')
+            sky.sky_type = 'HOSEK_WILKIE'
+            sun_dir = scenario.get('sun_direction') or [0, 0, 1]
+            sky.sun_direction = tuple(sun_dir)
+            sky.sun_intensity = 1.2
+            try:
+                sky.sun_size = 0.02
+            except Exception:
+                pass
+            world.node_tree.links.new(sky.outputs['Color'], bg.inputs['Color'])
+            bg.inputs['Strength'].default_value = 1.0
     else:
         # EEVEE 下世界光无方向地照射室内，会染蓝天花板 → 环境光降到微弱，
         # 蓝天改为玻璃室内侧的发光平面（见 add_sky_planes），只透过玻璃可见。
@@ -336,10 +368,14 @@ def set_engine(scene, engine: str) -> str:
     raise RuntimeError('no EEVEE engine id available')
 
 
-def render_scene(args: dict, cfg: dict, cam_cfg: dict, sun_dir: list[float],
-                 lights_on: bool, out_path: str) -> None:
+def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path: str) -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=args['glb'])
+    # 遮光帘（blackout 全宽不透明布）渲染时隐藏 = 视同拉开到两侧，
+    # 否则它挡死玻璃，窗外天色完全看不见（决策渲染必须可见窗外）
+    for o in bpy.data.objects:
+        if o.name.endswith(':blackout'):
+            o.hide_render = True
     scene = bpy.context.scene
     used_engine = set_engine(scene, args['engine'])
     mats = build_materials(used_engine)
@@ -350,10 +386,12 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, sun_dir: list[float],
     else:
         print('[dress_scene] WARN: --config-dir 未传，跳过 materials.yaml 材质（使用基础材质）')
     stats = assign_materials(mats)
-    if lights_on:
+    if scenario.get('lights_on', True):
         add_lights(cfg)
-    add_sun(sun_dir)
-    setup_world(used_engine, sun_dir)
+    sun_dir = scenario.get('sun_direction')
+    if sun_dir:
+        add_sun(sun_dir)
+    setup_world(used_engine, scenario)
     add_camera(cam_cfg)
     if used_engine in ('BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE'):
         add_sky_planes()
@@ -363,8 +401,8 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, sun_dir: list[float],
     scene.render.filepath = out_path
     scene.view_settings.view_transform = 'AgX'
     try:
-        # EEVEE 世界光微弱需要提亮；Cycles 天光本身明亮
-        scene.view_settings.exposure = 0.3 if used_engine == 'CYCLES' else 0.6
+        # EEVEE 世界光微弱需要提亮；Cycles 天光本身明亮，但夜景仍需抬升曝光保证灯位可判读
+        scene.view_settings.exposure = 0.5 if used_engine == 'CYCLES' else 0.6
     except Exception:
         pass
     try:
@@ -398,7 +436,7 @@ def main() -> None:
     for job in jobs:
         cam_cfg = next(c for c in cfg['cameras'] if c['id'] == job['camera_id'])
         out_path = os.path.join(out_dir, job['out_name'] + '.png')
-        render_scene(args, cfg, cam_cfg, job['sun_direction'], job['lights_on'], out_path)
+        render_scene(args, cfg, cam_cfg, job['scenario'], out_path)
 
 
 main()

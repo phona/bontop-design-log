@@ -1,9 +1,5 @@
 {
-  "sun": [
-    -0.954,
-    0.29,
-    -0.077
-  ],
+  "sun": null,
   "lights": [
     {
       "id": "light_dining_pendant",
@@ -135,22 +131,18 @@
   "scenarios": [
     {
       "id": "blue_hour",
-      "label": "蓝调时刻 19:30（太阳地平线下，玻璃透蓝天）",
-      "sun_direction": [
-        -0.954,
-        0.29,
-        -0.077
-      ],
+      "label": "蓝调时刻 19:30（窗外深蓝、室内暖灯，冷暖对比）",
+      "sun_direction": null,
+      "world_color": "#3a5a8f",
+      "world_strength": 0.35,
       "lights_on": true
     },
     {
       "id": "night",
-      "label": "夜晚 21:30（室内灯为主光）",
-      "sun_direction": [
-        -0.734,
-        0.466,
-        -0.494
-      ],
+      "label": "夜晚 21:30（窗外近黑、室内灯为主光）",
+      "sun_direction": null,
+      "world_color": "#060a14",
+      "world_strength": 0.06,
       "lights_on": true
     }
   ],
@@ -171,16 +163,16 @@
     },
     {
       "id": "master_bed_looking_glass",
-      "label": "主卧床头看南窗",
+      "label": "主卧西北角看全景（床+南窗）",
       "position": [
-        2.6,
-        1.5,
-        7.9
+        0.7,
+        1.6,
+        5.9
       ],
       "target": [
-        2.8,
-        1.2,
-        9.4
+        3.2,
+        1,
+        9.5
       ]
     }
   ]

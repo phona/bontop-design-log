@@ -23,18 +23,24 @@ const lights = electrical
   .filter((p) => LIGHT_TYPES.has(p.type))
   .map((p) => ({ id: p.id, room: p.room, type: p.type, x: p.x, z: p.z, height: p.height ?? 2.8, temp: p.temp ?? 3000 }));
 
-// 场景固定常量：南宁 8/15 预计算的太阳方向向量（见 docs/renders/sun-constants.md 的推导）
+// 场景固定常量：蓝调时刻/夜晚。太阳已落 → sun_direction=null（不打太阳光）；
+// 天光用自定义背景色（蓝调=深蓝、夜晚=近黑蓝），保证玻璃透出可见天色而非 HOSEK_WILKIE 的黑暗天际。
+// 视频等"任意时刻"需求后续再引入时间轴，当前决策渲染不需要。
 const scenarios = [
   {
     id: 'blue_hour',
-    label: '蓝调时刻 19:30（太阳地平线下，玻璃透蓝天）',
-    sun_direction: [-0.954, 0.29, -0.077],
+    label: '蓝调时刻 19:30（窗外深蓝、室内暖灯，冷暖对比）',
+    sun_direction: null,
+    world_color: '#3a5a8f',
+    world_strength: 0.35,
     lights_on: true,
   },
   {
     id: 'night',
-    label: '夜晚 21:30（室内灯为主光）',
-    sun_direction: [-0.734, 0.466, -0.494],
+    label: '夜晚 21:30（窗外近黑、室内灯为主光）',
+    sun_direction: null,
+    world_color: '#060a14',
+    world_strength: 0.06,
     lights_on: true,
   },
 ];
@@ -48,9 +54,9 @@ const cameras = [
   },
   {
     id: 'master_bed_looking_glass',
-    label: '主卧床头看南窗',
-    position: [2.6, 1.5, 7.9],
-    target: [2.8, 1.2, 9.4],
+    label: '主卧西北角看全景（床+南窗）',
+    position: [0.7, 1.6, 5.9],
+    target: [3.2, 1.0, 9.5],
   },
 ];
 
