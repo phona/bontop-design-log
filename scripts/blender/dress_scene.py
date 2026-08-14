@@ -162,10 +162,11 @@ def classify(obj: bpy.types.Object) -> str:
 def build_materials(engine: str, sheer_opacity: float = 0.15) -> dict:
     is_cycles = engine.upper() == 'CYCLES'
     # EEVEE 默认无屏幕空间折射，transmission 渲成不透明 → 预览用 alpha 玻璃；Cycles 用真透射
+    # LowE 玻璃：真透射 + 蓝绿微调 + 低辐射涂层 coat（Cycles）；EEVEE 预览用 alpha
     glass = (
-        new_principled('硬装_LowE玻璃', hex_rgb('#dce8e6'), rough=0.05, transmission=1.0, ior=1.5)
+        new_principled('硬装_LowE玻璃', hex_rgb('#c8e0dc'), rough=0.02, transmission=1.0, ior=1.5, coat=0.3)
         if is_cycles
-        else new_principled('硬装_LowE玻璃', hex_rgb('#dce8e6'), rough=0.08, alpha=0.25)
+        else new_principled('硬装_LowE玻璃', hex_rgb('#c8e0dc'), rough=0.05, alpha=0.25)
     )
     # 纱帘：Cycles 用真半透明（可看穿见天色，布料权重配置驱动）；EEVEE 用 alpha 混合
     sheer = (
@@ -405,6 +406,139 @@ def add_swatches(scenario: dict) -> int:
     return count
 
 
+FURNITURE_PARTS = {
+    'sofa_3seat': [
+        ('seat', [2.8, 0.4, 0.9], [0, 0.2, 0], 'fabric'),
+        ('back', [2.8, 0.5, 0.15], [0, 0.55, -0.38], 'fabric'),
+        ('arm_l', [0.15, 0.4, 0.9], [-1.4, 0.4, 0], 'fabric'),
+        ('arm_r', [0.15, 0.4, 0.9], [1.4, 0.4, 0], 'fabric'),
+        ('cushion1', [0.8, 0.12, 0.65], [-0.85, 0.46, 0.02], 'fabric_light'),
+        ('cushion2', [0.8, 0.12, 0.65], [0, 0.46, 0.02], 'fabric_light'),
+        ('cushion3', [0.8, 0.12, 0.65], [0.85, 0.46, 0.02], 'fabric_light'),
+        ('back_cushion1', [0.75, 0.35, 0.1], [-0.85, 0.55, -0.3], 'fabric_light'),
+        ('back_cushion2', [0.75, 0.35, 0.1], [0, 0.55, -0.3], 'fabric_light'),
+        ('back_cushion3', [0.75, 0.35, 0.1], [0.85, 0.55, -0.3], 'fabric_light'),
+    ],
+    'bed_180': [
+        ('frame', [1.8, 0.3, 2.0], [0, 0.15, 0], 'wood'),
+        ('headboard', [1.8, 0.8, 0.1], [0, 0.6, -0.95], 'fabric'),
+        ('mattress', [1.7, 0.2, 1.9], [0, 0.35, 0.05], 'fabric_white'),
+        ('duvet', [1.6, 0.08, 1.4], [0, 0.49, 0.25], 'fabric_white'),
+        ('pillow_l', [0.55, 0.1, 0.35], [-0.4, 0.5, -0.65], 'fabric_white'),
+        ('pillow_r', [0.55, 0.1, 0.35], [0.4, 0.5, -0.65], 'fabric_white'),
+    ],
+    'bed_150': [
+        ('frame', [1.5, 0.3, 2.0], [0, 0.15, 0], 'wood'),
+        ('headboard', [1.5, 0.8, 0.1], [0, 0.6, -0.95], 'fabric'),
+        ('mattress', [1.4, 0.2, 1.9], [0, 0.35, 0.05], 'fabric_white'),
+        ('duvet', [1.3, 0.08, 1.4], [0, 0.49, 0.25], 'fabric_white'),
+        ('pillow_l', [0.45, 0.1, 0.35], [-0.32, 0.5, -0.65], 'fabric_white'),
+        ('pillow_r', [0.45, 0.1, 0.35], [0.32, 0.5, -0.65], 'fabric_white'),
+    ],
+    'dining_table': [
+        ('top', [1.4, 0.04, 0.8], [0, 0.75, 0], 'wood'),
+        ('leg1', [0.05, 0.73, 0.05], [-0.6, 0.365, -0.3], 'wood_dark'),
+        ('leg2', [0.05, 0.73, 0.05], [0.6, 0.365, -0.3], 'wood_dark'),
+        ('leg3', [0.05, 0.73, 0.05], [-0.6, 0.365, 0.3], 'wood_dark'),
+        ('leg4', [0.05, 0.73, 0.05], [0.6, 0.365, 0.3], 'wood_dark'),
+    ],
+    'dining_chair': [
+        ('seat', [0.45, 0.04, 0.45], [0, 0.45, 0], 'wood'),
+        ('back', [0.45, 0.4, 0.04], [0, 0.65, -0.2], 'wood'),
+        ('leg1', [0.04, 0.45, 0.04], [-0.18, 0.225, -0.18], 'wood_dark'),
+        ('leg2', [0.04, 0.45, 0.04], [0.18, 0.225, -0.18], 'wood_dark'),
+        ('leg3', [0.04, 0.45, 0.04], [-0.18, 0.225, 0.18], 'wood_dark'),
+        ('leg4', [0.04, 0.45, 0.04], [0.18, 0.225, 0.18], 'wood_dark'),
+    ],
+    'tv_stand': [
+        ('body', [1.8, 0.4, 0.4], [0, 0.2, 0], 'wood'),
+        ('top', [1.8, 0.02, 0.42], [0, 0.41, 0], 'wood_dark'),
+    ],
+}
+
+
+def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
+    """法式奶油风家具材质：羊羔绒/亚麻/白漆木/浅木。"""
+    mats = {}
+    # 羊羔绒沙发面料（奶油色 + 细微织物纹理 bump）
+    for name, color, rough in [
+        ('fabric', '#d4cdb8', 0.9),       # 沙发主体（奶油灰）
+        ('fabric_light', '#e8e0d2', 0.85), # 坐垫/靠垫（浅奶油）
+        ('fabric_white', '#f5f0e6', 0.85), # 床品（白奶油）
+        ('wood', '#c9a87e', 0.5),          # 浅橡木家具
+        ('wood_dark', '#6b5d4a', 0.5),     # 深木腿/框架
+    ]:
+        mat = new_principled_fn(f'家具_{name}', hex_rgb_fn(color), rough=rough)
+        if name.startswith('fabric'):
+            try:
+                nt = mat.node_tree
+                bsdf = _find_node(nt, 'ShaderNodeBsdfPrincipled')
+                if bsdf:
+                    noise = nt.nodes.new('ShaderNodeTexNoise')
+                    noise.inputs['Scale'].default_value = 200.0
+                    noise.inputs['Detail'].default_value = 4.0
+                    bump = nt.nodes.new('ShaderNodeBump')
+                    bump.inputs['Strength'].default_value = 0.12
+                    nt.links.new(noise.outputs['Fac'], bump.inputs['Height'])
+                    nt.links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+            except Exception:
+                pass
+        mats[name] = mat
+    return mats
+
+
+def replace_furniture(furniture_mats: dict) -> int:
+    """用精细几何替换色块家具：找到 furniture:* 组 → 隐藏 → 原位生成多部件几何。
+    parts 格式: (name, three_size[x,y,z], three_pos[x,y,z], material_key)。
+    坐标转换：three(x,y,z) → Blender(x,-z,y)，尺寸(x,z,y)。"""
+    import math
+    count = 0
+    for obj in list(bpy.data.objects):
+        name = obj.name
+        if not name.startswith('furniture:'):
+            continue
+        parts = name.split(':')
+        if len(parts) < 3:
+            continue
+        ftype = parts[2]
+        if ftype not in FURNITURE_PARTS:
+            continue
+        # 隐藏色块组 + 子 mesh
+        obj.hide_render = True
+        for child in obj.children_recursive:
+            child.hide_render = True
+        # 读取世界坐标 + 旋转
+        mw = obj.matrix_world
+        loc = mw.translation
+        euler = mw.to_euler()
+        rz = euler.z
+        cos_rz = math.cos(rz)
+        sin_rz = math.sin(rz)
+        # 生成部件
+        for pname, tsize, tpos, mat_key in FURNITURE_PARTS[ftype]:
+            # three local → Blender local
+            lx, ly, lz = tpos[0], -tpos[2], tpos[1]
+            # 绕 Z 旋转
+            wx = loc.x + lx * cos_rz - ly * sin_rz
+            wy = loc.y + lx * sin_rz + ly * cos_rz
+            wz = loc.z + lz
+            # Blender dimensions: three(x,y,z) → Blender(x,z,y)
+            dx, dy, dz = tsize[0], tsize[2], tsize[1]
+            bpy.ops.mesh.primitive_cube_add(size=1.0)
+            part = bpy.context.object
+            part.name = f'asset:{ftype}:{pname}'
+            part.dimensions = (dx, dy, dz)
+            part.location = (wx, wy, wz)
+            part.rotation_euler = (0, 0, rz)
+            mat = furniture_mats.get(mat_key)
+            if mat:
+                part.data.materials.append(mat)
+            count += 1
+    if count:
+        print(f'[dress_scene] furniture replaced: {count} parts')
+    return count
+
+
 def add_moldings(config_dir: str) -> int:
     """法式石膏线：从 model-geometry.yaml 读墙段坐标 + overlay.yaml suppress 列表，
     生成踢脚线(8cm) + 顶角线(10cm) + 挂镜线(2cm@1m)。仅实体墙（suppressed 跳过）。"""
@@ -529,6 +663,8 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     else:
         print('[dress_scene] WARN: --config-dir 未传，跳过 materials.yaml 材质（使用基础材质）')
     stats = assign_materials(mats)
+    furniture_mats = build_furniture_materials(hex_rgb, new_principled)
+    replace_furniture(furniture_mats)
     add_moldings(args.get('config-dir') or '')
     swatch_count = add_swatches(scenario)
     # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）
