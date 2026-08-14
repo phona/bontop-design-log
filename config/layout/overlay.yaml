@@ -212,9 +212,8 @@ elements:
   # 西北次卧（西墙 + 北墙凹进段）
   - { id: curtain_nw_west, type: curtain, wall: w_west_lower, room: bedroom_nw, kind: sheer_blackout, height: 2.8 }
   - { id: curtain_nw_north, type: curtain, wall: w_nw_north, room: bedroom_nw, kind: sheer_blackout, height: 2.8 }
-  # 湿区（主卫西北角 + 厨房北墙）→ 防水百叶
+  # 湿区（主卫西北角）→ 防水百叶；厨房北墙不设窗帘（2026-08-13 业主决定）
   - { id: curtain_mbath_corner, type: curtain, walls: [w_west_ap, w_bath_north], room: master_bath, kind: blinds, height: 2.8 }
-  - { id: curtain_kitchen_north, type: curtain, wall: w_kit_north, room: kitchen, kind: blinds, height: 2.8 }
 
   # === DEC-022：餐厨三联动推拉门（常开；点击门扇开闭，碰撞随状态） ===
   - id: kitchen_dining_sliding_door
