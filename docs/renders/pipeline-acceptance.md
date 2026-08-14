@@ -39,6 +39,7 @@
 
 - **EEVEE**：渲染时 GPU 100%（核显 780M 光栅化），正常且证明核显能流畅跑交互预览。
 - **Cycles**：CPU 稳定 100%（16 线程全满，PowerShell 计数器实测 217 采样点）。用户感知的"利用率低"多为观察时机问题——Cycles 有较长场景构建/加载期（导入 glb+建材质），此阶段 CPU 不高，真正渲染采样时才吃满。
+- **780M HIP 实测**（2026-08-14）：`AMD Radeon 780M Graphics` 被 Blender 5.2 识别为 HIP 设备且可启用（`cycles.device=GPU`）。但单张 1080p@256 采样耗时约 4 分钟，与 CPU 相当、无加速收益——核显算力限制。管线已实现 HIP/OptiX/CUDA 自动探测（set_engine），在 NVIDIA 独显（4070）上将自动走 OptiX 加速；本机 HIP 可用但不更快。
 
 ## 已知限制 / 后续
 

@@ -306,6 +306,26 @@ def set_engine(scene, engine: str) -> str:
             scene.cycles.seed = 42  # 固定 seed，保证 A/B 同配置两次渲染一致
         except Exception:
             pass
+        # 优先启用 GPU compute（HIP/OptiX），失败回退 CPU
+        try:
+            cprefs = bpy.context.preferences.addons['cycles'].preferences
+            for backend in ('HIP', 'OPTIX', 'CUDA'):
+                try:
+                    cprefs.compute_device_type = backend
+                    devs = cprefs.get_devices_for_type(backend)
+                    gpu = [d for d in devs if d.type in ('HIP', 'OPTIX', 'CUDA')]
+                    if gpu:
+                        for d in devs:
+                            d.use = d.type in ('HIP', 'OPTIX', 'CUDA')
+                        scene.cycles.device = 'GPU'
+                        print(f'[dress_scene] Cycles GPU backend={backend} device={[d.name for d in gpu]}')
+                        break
+                except Exception:
+                    continue
+            else:
+                scene.cycles.device = 'CPU'
+        except Exception:
+            scene.cycles.device = 'CPU'
         return 'CYCLES'
     for eng in ('BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE'):
         try:
