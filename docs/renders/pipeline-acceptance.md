@@ -62,6 +62,16 @@ v1（首版 Cycles）效果差的根因与修复：
 
 剩余差距（下一阶段）：家具为体块色块（无真实沙发/床造型与布料质感）；人字拼方案 floor_tile_herringbone_01 换选材即可出 A/B（管线已支持，无需改代码）。
 
+## v5 HDRi 外景（2026-08-14，4090D）
+
+**玻璃透出真实外景。** Light Path 分离：Camera+Transmission+Singular 光线用 HDRi（透玻璃所见=真外景），其余照明用纯色（不污染室内）。蓝调=the_sky_is_on_fire（海边日落晚霞+海浪礁石），夜晚=kloppenheim_02（星空+月光+地平线城市灯光）。渲染图存 `renders/blender/output/cycles-v5/`。
+
+**硬编码收敛完成**：scenario 增加 exposure/blackout_state/sheer_opacity，dress_scene 全部读配置，管线代码为纯执行器（施工说明"Blender 端零手工状态"达标）。
+
+**坑记录**：Poly Haven 下载必须校验文件大小——截断的 .hdr 在 Blender 加载为 0×0 并以品红色渲染（极易误判为"HDRi 颜色不对"）。wget 比 curl 稳。
+
+剩余断点：glb 手工从 three.js app 导出，未自动化（配置→渲染链路还差"配置→glb"）。
+
 ## 已知限制 / 后续
 
 1. **Cycles 一致性**：固定 seed=42 已配置，但 4 张 × 3 分钟 = 12 分钟，本轮 EEVEE 快速验证链路；Cycles 固定 seed 的逐像素一致性留待单独跑（单张即可验证）。
