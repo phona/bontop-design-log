@@ -533,6 +533,19 @@ def replace_furniture(furniture_mats: dict) -> int:
             mat = furniture_mats.get(mat_key)
             if mat:
                 part.data.materials.append(mat)
+            # 倒角（消除 CG 直角感）+ 软件件细分平滑
+            bevel = part.modifiers.new('Bevel', 'BEVEL')
+            is_soft = any(k in pname for k in ('cushion', 'pillow', 'mattress', 'duvet'))
+            bevel.width = 0.04 if is_soft else 0.015  # 软件 4cm 圆角，硬件 1.5cm
+            bevel.segments = 4
+            bevel.limit_method = 'ANGLE'
+            bevel.angle_limit = 0.523599  # 30°
+            if is_soft:
+                subsurf = part.modifiers.new('Subsurf', 'SUBSURF')
+                subsurf.levels = 2
+                subsurf.render_levels = 2
+                for poly in part.data.polygons:
+                    poly.use_smooth = True
             count += 1
     if count:
         print(f'[dress_scene] furniture replaced: {count} parts')
