@@ -138,7 +138,7 @@ def classify(obj: bpy.types.Object) -> str:
     return 'default'
 
 
-def build_materials(engine: str) -> dict:
+def build_materials(engine: str, sheer_opacity: float = 0.15) -> dict:
     is_cycles = engine.upper() == 'CYCLES'
     # EEVEE 默认无屏幕空间折射，transmission 渲成不透明 → 预览用 alpha 玻璃；Cycles 用真透射
     glass = (
@@ -146,11 +146,11 @@ def build_materials(engine: str) -> dict:
         if is_cycles
         else new_principled('硬装_LowE玻璃', hex_rgb('#dce8e6'), rough=0.08, alpha=0.25)
     )
-    # 纱帘：Cycles 用真半透明（可看穿见天色）；EEVEE 用 alpha 混合
+    # 纱帘：Cycles 用真半透明（可看穿见天色，布料权重配置驱动）；EEVEE 用 alpha 混合
     sheer = (
-        new_sheer_transparent('软装_纱帘', hex_rgb('#f7f4ec'), opacity=0.15)
+        new_sheer_transparent('软装_纱帘', hex_rgb('#f7f4ec'), opacity=sheer_opacity)
         if is_cycles
-        else new_principled('软装_纱帘', hex_rgb('#f7f4ec'), rough=0.9, alpha=0.3)
+        else new_principled('软装_纱帘', hex_rgb('#f7f4ec'), rough=0.9, alpha=max(0.1, sheer_opacity * 2))
     )
     return {
         # 木纹砖（柔光）：materials.yaml floor_tile_01 #c49a6c finish=soft
@@ -225,16 +225,40 @@ def add_sun(sun_dir: list[float]) -> None:
     bpy.context.collection.objects.link(obj)
 
 
-def setup_world(engine: str, scenario: dict) -> None:
+def setup_world(engine: str, scenario: dict, config_dir: str | None = None) -> None:
     world = bpy.data.worlds.new('World') if not bpy.data.worlds else bpy.data.worlds[0]
     bpy.context.scene.world = world
     world.use_nodes = True
     bg = world.node_tree.nodes.get('Background')
     if engine.upper() == 'CYCLES':
-        world_color = scenario.get('world_color')
-        if world_color:
+        hdri = scenario.get('world_hdri')
+        if hdri and config_dir:
+            # HDRi 外景 + Light Path 分离：相机光线（透玻璃所见）用 HDRi 真外景；
+            # 其余光线（环境照明）用可控纯色 world_color —— 房间不被 HDRi 颜色污染
+            import os
+            path = os.path.join(config_dir, hdri)
+            env = world.node_tree.nodes.new('ShaderNodeTexEnvironment')
+            env.image = bpy.data.images.load(path)
+            lp = world.node_tree.nodes.new('ShaderNodeLightPath')
+            # 外景可见性 = 相机光线 + 透射光线（透玻璃所见）+ 单次反射光线（玻璃/地面反射外景）
+            add1 = world.node_tree.nodes.new('ShaderNodeMath')
+            add1.operation = 'ADD'
+            world.node_tree.links.new(lp.outputs['Is Camera Ray'], add1.inputs[0])
+            world.node_tree.links.new(lp.outputs['Is Transmission Ray'], add1.inputs[1])
+            add2 = world.node_tree.nodes.new('ShaderNodeMath')
+            add2.operation = 'ADD'
+            world.node_tree.links.new(add1.outputs[0], add2.inputs[0])
+            world.node_tree.links.new(lp.outputs['Is Singular Ray'], add2.inputs[1])
+            mix = world.node_tree.nodes.new('ShaderNodeMixRGB')
+            mix.blend_type = 'MIX'
+            mix.inputs['Color1'].default_value = (*hex_rgb(scenario.get('world_color', '#3a5a8f')), 1.0)
+            world.node_tree.links.new(add2.outputs[0], mix.inputs['Fac'])
+            world.node_tree.links.new(env.outputs['Color'], mix.inputs['Color2'])
+            world.node_tree.links.new(mix.outputs['Color'], bg.inputs['Color'])
+            bg.inputs['Strength'].default_value = scenario.get('world_strength', 0.8)
+        elif scenario.get('world_color'):
             # 自定义天光色（蓝调深蓝 / 夜晚近黑）：玻璃透出可见天色，方向性天光不染天花板
-            bg.inputs['Color'].default_value = (*hex_rgb(world_color), 1.0)
+            bg.inputs['Color'].default_value = (*hex_rgb(scenario['world_color']), 1.0)
             bg.inputs['Strength'].default_value = scenario.get('world_strength', 0.3)
         else:
             # 白天工况：方向性天光 HOSEK_WILKIE
@@ -371,14 +395,16 @@ def set_engine(scene, engine: str) -> str:
 def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path: str) -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=args['glb'])
-    # 遮光帘（blackout 全宽不透明布）渲染时隐藏 = 视同拉开到两侧，
-    # 否则它挡死玻璃，窗外天色完全看不见（决策渲染必须可见窗外）
-    for o in bpy.data.objects:
-        if o.name.endswith(':blackout'):
-            o.hide_render = True
+    # 遮光帘状态配置驱动：blackout_state=open → 隐藏（视同拉开到两侧）；
+    # 全宽不透明布若渲染会挡死玻璃，窗外天色完全看不见（决策渲染必须可见窗外）
+    if scenario.get('blackout_state', 'open') == 'open':
+        for o in bpy.data.objects:
+            if o.name.endswith(':blackout'):
+                o.hide_render = True
     scene = bpy.context.scene
     used_engine = set_engine(scene, args['engine'])
-    mats = build_materials(used_engine)
+    sheer_opacity = scenario.get('sheer_opacity', 0.15)
+    mats = build_materials(used_engine, sheer_opacity=sheer_opacity)
     from materials_from_yaml import load_scheme_materials
     if args.get('config-dir'):
         mats = load_scheme_materials(used_engine, mats, new_principled, hex_rgb,
@@ -391,7 +417,7 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     sun_dir = scenario.get('sun_direction')
     if sun_dir:
         add_sun(sun_dir)
-    setup_world(used_engine, scenario)
+    setup_world(used_engine, scenario, config_dir=args.get('config-dir'))
     add_camera(cam_cfg)
     if used_engine in ('BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE'):
         add_sky_planes()
@@ -401,8 +427,9 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     scene.render.filepath = out_path
     scene.view_settings.view_transform = 'AgX'
     try:
-        # EEVEE 世界光微弱需要提亮；Cycles 天光本身明亮，但夜景仍需抬升曝光保证灯位可判读
-        scene.view_settings.exposure = 0.5 if used_engine == 'CYCLES' else 0.6
+        # 曝光配置驱动（scenario.exposure），缺省：Cycles 0.5 / EEVEE 0.6
+        default_exposure = 0.5 if used_engine == 'CYCLES' else 0.6
+        scene.view_settings.exposure = scenario.get('exposure', default_exposure)
     except Exception:
         pass
     try:

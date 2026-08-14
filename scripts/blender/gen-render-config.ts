@@ -26,22 +26,32 @@ const lights = electrical
 // 场景固定常量：蓝调时刻/夜晚。太阳已落 → sun_direction=null（不打太阳光）；
 // 天光用自定义背景色（蓝调=深蓝、夜晚=近黑蓝），保证玻璃透出可见天色而非 HOSEK_WILKIE 的黑暗天际。
 // 视频等"任意时刻"需求后续再引入时间轴，当前决策渲染不需要。
+// 渲染行为全部配置化（施工说明：Blender 端零手工状态）：
+//   exposure: AgX 曝光；blackout_state: open=遮光帘视同拉开隐藏；sheer_opacity: 纱帘布料权重
 const scenarios = [
   {
     id: 'blue_hour',
-    label: '蓝调时刻 19:30（窗外深蓝、室内暖灯，冷暖对比）',
+    label: '蓝调时刻（窗外 HDRi 海边日落外景、室内暖灯）',
     sun_direction: null,
+    world_hdri: 'hdri/the_sky_is_on_fire_1k.hdr',
     world_color: '#3a5a8f',
-    world_strength: 0.35,
+    world_strength: 0.5,
     lights_on: true,
+    exposure: 0.5,
+    blackout_state: 'open',
+    sheer_opacity: 0.15,
   },
   {
     id: 'night',
-    label: '夜晚 21:30（窗外近黑、室内灯为主光）',
+    label: '夜晚（窗外 HDRi 星夜+城市灯光、室内灯为主光）',
     sun_direction: null,
+    world_hdri: 'hdri/kloppenheim_02_1k.hdr',
     world_color: '#060a14',
-    world_strength: 0.06,
+    world_strength: 0.15,
     lights_on: true,
+    exposure: 0.5,
+    blackout_state: 'open',
+    sheer_opacity: 0.15,
   },
 ];
 

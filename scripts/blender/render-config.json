@@ -131,19 +131,27 @@
   "scenarios": [
     {
       "id": "blue_hour",
-      "label": "蓝调时刻 19:30（窗外深蓝、室内暖灯，冷暖对比）",
+      "label": "蓝调时刻（窗外 HDRi 海边日落外景、室内暖灯）",
       "sun_direction": null,
+      "world_hdri": "hdri/the_sky_is_on_fire_1k.hdr",
       "world_color": "#3a5a8f",
-      "world_strength": 0.35,
-      "lights_on": true
+      "world_strength": 0.5,
+      "lights_on": true,
+      "exposure": 0.5,
+      "blackout_state": "open",
+      "sheer_opacity": 0.15
     },
     {
       "id": "night",
-      "label": "夜晚 21:30（窗外近黑、室内灯为主光）",
+      "label": "夜晚（窗外 HDRi 星夜+城市灯光、室内灯为主光）",
       "sun_direction": null,
+      "world_hdri": "hdri/kloppenheim_02_1k.hdr",
       "world_color": "#060a14",
-      "world_strength": 0.06,
-      "lights_on": true
+      "world_strength": 0.15,
+      "lights_on": true,
+      "exposure": 0.5,
+      "blackout_state": "open",
+      "sheer_opacity": 0.15
     }
   ],
   "cameras": [
