@@ -41,6 +41,19 @@
 - **Cycles**：CPU 稳定 100%（16 线程全满，PowerShell 计数器实测 217 采样点）。用户感知的"利用率低"多为观察时机问题——Cycles 有较长场景构建/加载期（导入 glb+建材质），此阶段 CPU 不高，真正渲染采样时才吃满。
 - **780M HIP 实测**（2026-08-14）：`AMD Radeon 780M Graphics` 被 Blender 5.2 识别为 HIP 设备且可启用（`cycles.device=GPU`）。但单张 1080p@256 采样耗时约 4 分钟，与 CPU 相当、无加速收益——核显算力限制。管线已实现 HIP/OptiX/CUDA 自动探测（set_engine），在 NVIDIA 独显（4070）上将自动走 OptiX 加速；本机 HIP 可用但不更快。
 
+## v3 决策渲染观感（2026-08-14，4090D 云服务器）
+
+**结论：Cycles 批量渲染观感达标。** 4 张图（2 机位×2 场景）每张 28~55 秒（4090D OptiX），已存 `renders/blender/output/cycles-v3/`。
+
+v1（首版 Cycles）效果差的根因与修复：
+1. **遮光帘挡死玻璃**：GLB 里 `curtain_living_south:blackout` 全宽 6.2m 不透明布 → 渲染时隐藏 `:blackout`（视同拉开）
+2. **纱帘不透**：Cycles 下 Principled alpha 基本失效 → `new_sheer_transparent`（Transparent BSDF 混合，85% 透）
+3. **窗外天黑**：太阳地平线下 HOSEK_WILKIE 近黑 → 场景自定义天光色 `world_color/world_strength`（蓝调 #3a5a8f@0.35 / 夜晚 #060a14@0.06），两场景拉开差异
+4. **主卧相机怼墙**（南窗中心 x=1.5 但 target x=2.8）→ 改西北角全景机位 (0.7,1.6,5.9)→(3.2,1.0,9.5)，床+窗入画
+5. **夜景过暗** → Cycles 曝光 0.3→0.5
+
+已知欠缺（下一阶段）：材质为纯色无纹理（地板无木纹、家具为体块），与 three.js 的 TextureFactory 程序化木纹差距大——需要把程序化纹理移植进 Blender。
+
 ## 已知限制 / 后续
 
 1. **Cycles 一致性**：固定 seed=42 已配置，但 4 张 × 3 分钟 = 12 分钟，本轮 EEVEE 快速验证链路；Cycles 固定 seed 的逐像素一致性留待单独跑（单张即可验证）。
