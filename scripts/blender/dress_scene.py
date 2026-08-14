@@ -64,7 +64,11 @@ def new_sheer_transparent(name: str, color, opacity: float = 0.15):
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nt = mat.node_tree
-    bsdf = nt.nodes.get('Principled BSDF')
+    bsdf = _find_node(nt, 'ShaderNodeBsdfPrincipled')
+    if bsdf is None:
+        bsdf = nt.nodes.new('ShaderNodeBsdfPrincipled')
+        out = _find_node(nt, 'ShaderNodeOutputMaterial') or nt.nodes.new('ShaderNodeOutputMaterial')
+        nt.links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
     bsdf.inputs['Base Color'].default_value = (*color, 1.0)
     bsdf.inputs['Roughness'].default_value = 0.9
     trans = nt.nodes.new('ShaderNodeBsdfTransparent')
@@ -72,8 +76,14 @@ def new_sheer_transparent(name: str, color, opacity: float = 0.15):
     mix.inputs[0].default_value = opacity
     nt.links.new(trans.outputs[0], mix.inputs[1])
     nt.links.new(bsdf.outputs[0], mix.inputs[2])
-    nt.links.new(mix.outputs[0], nt.nodes.get('Material Output').inputs['Surface'])
+    out = _find_node(nt, 'ShaderNodeOutputMaterial') or nt.nodes.new('ShaderNodeOutputMaterial')
+    nt.links.new(mix.outputs[0], out.inputs['Surface'])
     return mat
+
+
+def _find_node(nt, bl_idname):
+    """按类型查找节点（语言无关）——5.0 中文 locale 节点名被翻译，get('Principled BSDF') 失败。"""
+    return next((n for n in nt.nodes if n.bl_idname == bl_idname), None)
 
 
 def new_principled(name: str, color, rough: float, metallic: float = 0.0,
@@ -81,7 +91,12 @@ def new_principled(name: str, color, rough: float, metallic: float = 0.0,
                    coat: float = 0.0):
     mat = bpy.data.materials.new(name)
     mat.use_nodes = True
-    bsdf = mat.node_tree.nodes.get('Principled BSDF')
+    nt = mat.node_tree
+    bsdf = _find_node(nt, 'ShaderNodeBsdfPrincipled')
+    if bsdf is None:
+        bsdf = nt.nodes.new('ShaderNodeBsdfPrincipled')
+        out = _find_node(nt, 'ShaderNodeOutputMaterial') or nt.nodes.new('ShaderNodeOutputMaterial')
+        nt.links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
     bsdf.inputs['Base Color'].default_value = (*color, 1.0)
     bsdf.inputs['Roughness'].default_value = rough
     bsdf.inputs['Metallic'].default_value = metallic
@@ -108,6 +123,12 @@ def new_principled(name: str, color, rough: float, metallic: float = 0.0,
 
 def classify(obj: bpy.types.Object) -> str:
     n = obj.name
+    if n.startswith('molding:'):
+        return 'wall'  # 石膏线用墙面材质（同色）
+    if n.startswith('swatch:'):
+        return 'skip'  # 候选色板自带专用色（add_swatches 生成），禁被 classify 刷色
+    if n.startswith('asset:'):
+        return 'skip'  # 导入家具资产保留自带材质（fixture-assets.yaml 接线，见 french-cream spec）
     if n.startswith('furniture:'):
         return 'furniture'
     # 家具组的子 mesh 未命名 → 沿父节点链找前缀
@@ -175,6 +196,8 @@ def assign_materials(mats: dict) -> dict:
         if obj.type != 'MESH':
             continue
         key = classify(obj)
+        if key == 'skip':
+            continue
         mat = mats[key]
         if obj.data.materials:
             for i in range(len(obj.data.materials)):
@@ -189,11 +212,12 @@ def to_blender(x: float, y: float, z: float) -> tuple[float, float, float]:
     return (x, -z, y)
 
 
-def add_lights(cfg: dict) -> int:
+def add_lights(cfg: dict, temp_override: float | None = None) -> int:
     count = 0
     for lp in cfg['lights']:
         energy = LIGHT_ENERGY.get(lp['type'], 15.0)
-        color = kelvin_to_rgb(lp.get('temp', 3000))
+        # temp_override：材质评审工况用 6500K 中性白，避免 3000K 暖光污染色号判断
+        color = kelvin_to_rgb(temp_override if temp_override is not None else lp.get('temp', 3000))
         if lp['type'] == 'led_strip':
             data = bpy.data.lights.new(lp['id'], type='AREA')
             data.shape = 'RECTANGLE'
@@ -229,7 +253,11 @@ def setup_world(engine: str, scenario: dict, config_dir: str | None = None) -> N
     world = bpy.data.worlds.new('World') if not bpy.data.worlds else bpy.data.worlds[0]
     bpy.context.scene.world = world
     world.use_nodes = True
-    bg = world.node_tree.nodes.get('Background')
+    bg = _find_node(world.node_tree, 'ShaderNodeBackground')
+    if bg is None:
+        bg = world.node_tree.nodes.new('ShaderNodeBackground')
+        out = _find_node(world.node_tree, 'ShaderNodeOutputWorld') or world.node_tree.nodes.new('ShaderNodeOutputWorld')
+        world.node_tree.links.new(bg.outputs['Background'], out.inputs['Surface'])
     if engine.upper() == 'CYCLES':
         hdri = scenario.get('world_hdri')
         if hdri and config_dir:
@@ -288,7 +316,11 @@ def add_sky_planes() -> None:
     from mathutils import Vector
     mat = bpy.data.materials.new('天_傍晚天空')
     mat.use_nodes = True
-    e = mat.node_tree.nodes.get('Principled BSDF')
+    e = _find_node(mat.node_tree, 'ShaderNodeBsdfPrincipled')
+    if e is None:
+        e = mat.node_tree.nodes.new('ShaderNodeBsdfPrincipled')
+        out = _find_node(mat.node_tree, 'ShaderNodeOutputMaterial') or mat.node_tree.nodes.new('ShaderNodeOutputMaterial')
+        mat.node_tree.links.new(e.outputs['BSDF'], out.inputs['Surface'])
     e.inputs['Emission Color'].default_value = (*_srgb_to_linear_tuple((0.55, 0.65, 0.92)), 1.0)
     e.inputs['Emission Strength'].default_value = 1.2
     try:
@@ -339,7 +371,7 @@ def add_sky_planes() -> None:
 def add_camera(cam_cfg: dict) -> None:
     from mathutils import Vector
     data = bpy.data.cameras.new(cam_cfg['id'])
-    data.lens = 28  # 人眼等效焦距，避免广角显大（决策渲染规范）
+    data.lens = cam_cfg.get('lens', 28)  # 缺省人眼等效；特写机位可配 35
     obj = bpy.data.objects.new(cam_cfg['id'], data)
     loc = Vector(to_blender(*cam_cfg['position']))
     target = Vector(to_blender(*cam_cfg['target']))
@@ -348,6 +380,91 @@ def add_camera(cam_cfg: dict) -> None:
     obj.rotation_quaternion = (target - loc).to_track_quat('-Z', 'Y')
     bpy.context.collection.objects.link(obj)
     bpy.context.scene.camera = obj
+
+
+def add_swatches(scenario: dict) -> int:
+    """候选色实体色板（材质评审工况）：Principled 纯色 rough 0.9 受场景光渲染，
+    与被评材质同光同镜头同 tone transform → 眼睛直接比，禁用 emission。
+    mode=floor 平放贴地（防 z-fighting y=0.002）；mode=vertical 立面（法线 +x 东，用于西墙前景）。
+    坐标 three.js 系经 to_blender 转换。"""
+    count = 0
+    for i, sw in enumerate(scenario.get('swatches') or []):
+        mat = new_principled(f'swatch_{i:02d}', hex_rgb(sw['hex']), rough=0.9)
+        size = sw.get('size', 0.35)
+        if sw.get('mode') == 'vertical':
+            loc = to_blender(sw['x'], 1.3, sw['z'])
+            rot = (0.0, math.pi / 2, 0.0)
+        else:
+            loc = to_blender(sw['x'], 0.002, sw['z'])
+            rot = (0.0, 0.0, 0.0)
+        bpy.ops.mesh.primitive_plane_add(size=size, location=loc, rotation=rot)
+        p = bpy.context.object
+        p.name = f'swatch:{sw.get("mode", "floor")}:{i:02d}'
+        p.data.materials.append(mat)
+        count += 1
+    return count
+
+
+def add_moldings(config_dir: str) -> int:
+    """法式石膏线：从 model-geometry.yaml 读墙段坐标 + overlay.yaml suppress 列表，
+    生成踢脚线(8cm) + 顶角线(10cm) + 挂镜线(2cm@1m)。仅实体墙（suppressed 跳过）。"""
+    import yaml as pyyaml
+    import math
+
+    geo_path = os.path.join(config_dir, 'config', 'layout', 'model-geometry.yaml')
+    overlay_path = os.path.join(config_dir, 'config', 'layout', 'overlay.yaml')
+    if not os.path.exists(geo_path):
+        return 0
+    with open(geo_path, 'r', encoding='utf-8') as f:
+        geo = pyyaml.safe_load(f)
+    suppressed = set()
+    if os.path.exists(overlay_path):
+        with open(overlay_path, 'r', encoding='utf-8') as f:
+            ov = pyyaml.safe_load(f)
+        for s in ov.get('suppress', []):
+            for w in (s.get('walls') or ([s['wall']] if s.get('wall') else [])):
+                suppressed.add(w)
+    verts = {v['id']: (v['x'], v['z']) for v in geo.get('vertices', [])}
+    walls = geo.get('walls', [])
+    cx, cz = 8.0, 6.0  # 房屋大致中心，判断室内侧
+    MOLDINGS = [
+        ('baseboard', 0.08, 0.0),
+        ('crown', 0.10, 2.70),
+        ('picture_rail', 0.02, 1.00),
+    ]
+    THICK = 0.025
+    OFFSET = 0.07  # 墙厚/2 + 间隙
+    count = 0
+    for wall in walls:
+        if wall['id'] in suppressed:
+            continue
+        f = verts.get(wall['from'])
+        t = verts.get(wall['to'])
+        if not f or not t:
+            continue
+        x1, z1 = f
+        x2, z2 = t
+        dx, dz = x2 - x1, z2 - z1
+        length = math.sqrt(dx * dx + dz * dz)
+        if length < 0.3:
+            continue
+        angle = math.atan2(-(z2 - z1), x2 - x1)  # three(x,z) → Blender(x,-z)
+        # 法线方向（朝室内）
+        nx, nz = dz / length, -dx / length
+        mx, mz = (x1 + x2) / 2, (z1 + z2) / 2
+        if (cx - mx) * nx + (cz - mz) * nz < 0:
+            nx, nz = -nx, -nz
+        ox, oz = mx + nx * OFFSET, mz + nz * OFFSET
+        for name, mh, base_y in MOLDINGS:
+            bpy.ops.mesh.primitive_cube_add(size=1.0)
+            box = bpy.context.object
+            box.name = f'molding:{name}:{wall["id"]}'
+            box.dimensions = (length, THICK, mh)
+            box.location = to_blender(ox, base_y + mh / 2, oz)
+            box.rotation_euler = (0, 0, angle)
+            count += 1
+    print(f'[dress_scene] moldings: {count} (baseboard+crown+picture_rail × {len(walls)} walls)')
+    return count
 
 
 def set_engine(scene, engine: str) -> str:
@@ -362,10 +479,10 @@ def set_engine(scene, engine: str) -> str:
             scene.cycles.seed = 42  # 固定 seed，保证 A/B 同配置两次渲染一致
         except Exception:
             pass
-        # 优先启用 GPU compute（HIP/OptiX），失败回退 CPU
+        # GPU compute：CUDA 优先（NVIDIA 稳，OptiX 需预编译 .ptx 易炸，HIP 仅 AMD）
         try:
             cprefs = bpy.context.preferences.addons['cycles'].preferences
-            for backend in ('HIP', 'OPTIX', 'CUDA'):
+            for backend in ('CUDA', 'OPTIX', 'HIP'):
                 try:
                     cprefs.compute_device_type = backend
                     devs = cprefs.get_devices_for_type(backend)
@@ -412,8 +529,23 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     else:
         print('[dress_scene] WARN: --config-dir 未传，跳过 materials.yaml 材质（使用基础材质）')
     stats = assign_materials(mats)
+    add_moldings(args.get('config-dir') or '')
+    swatch_count = add_swatches(scenario)
+    # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）
+    fill = scenario.get('fill_light') or cam_cfg.get('fill_light')
+    if fill:
+        fl = bpy.data.lights.new('fill_light', type='AREA')
+        fl.shape = 'RECTANGLE'
+        fl.size = 5.0
+        fl.size_y = 5.0
+        fl.energy = 200.0
+        fl.color = kelvin_to_rgb(scenario.get('light_temp', 6500))
+        tgt = cam_cfg.get('target', [0, 0, 0])
+        fl_obj = bpy.data.objects.new('fill_light', fl)
+        fl_obj.location = to_blender(tgt[0], 2.5, tgt[2])
+        bpy.context.collection.objects.link(fl_obj)
     if scenario.get('lights_on', True):
-        add_lights(cfg)
+        add_lights(cfg, temp_override=scenario.get('light_temp'))
     sun_dir = scenario.get('sun_direction')
     if sun_dir:
         add_sun(sun_dir)
@@ -425,7 +557,8 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     scene.render.resolution_x = 1920
     scene.render.resolution_y = 1080
     scene.render.filepath = out_path
-    scene.view_settings.view_transform = 'AgX'
+    # tone transform 配置驱动：氛围图 AgX（电影感）；材质评审 Standard（无调色，色号不失真）
+    scene.view_settings.view_transform = scenario.get('view_transform', 'AgX')
     try:
         # 曝光配置驱动（scenario.exposure），缺省：Cycles 0.5 / EEVEE 0.6
         default_exposure = 0.5 if used_engine == 'CYCLES' else 0.6
@@ -437,7 +570,8 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     except Exception:
         pass
 
-    print(f'[dress_scene] {out_path} engine={used_engine} materials={json.dumps(stats, ensure_ascii=False)}')
+    print(f'[dress_scene] {out_path} engine={used_engine} view_transform={scene.view_settings.view_transform} '
+          f'swatches={swatch_count} materials={json.dumps(stats, ensure_ascii=False)}')
     bpy.ops.render.render(write_still=True)
 
 
@@ -458,6 +592,10 @@ def main() -> None:
 
     from dress_config import make_jobs
     jobs = make_jobs(cfg, version=version)
+    only = args.get('only')  # 逗号分隔 camera_id 白名单：冒烟只渲指定机位
+    if only:
+        allow = {c.strip() for c in only.split(',')}
+        jobs = [j for j in jobs if j['camera_id'] in allow]
     print(f'[dress_scene] {len(jobs)} jobs (cameras×scenarios)')
     os.makedirs(out_dir, exist_ok=True)
     for job in jobs:

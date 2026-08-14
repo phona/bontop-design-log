@@ -14,7 +14,7 @@ import os
 import numpy as np
 from PIL import Image, ImageDraw
 
-PLANK_CANVAS = 1024
+PLANK_CANVAS = 2048  # 画布边长（px）：1024 时人字拼单板宽仅 ~30px 糊；2048 决策可辨（cache key 含尺寸）
 
 
 def mulberry32(seed: int):
@@ -57,7 +57,7 @@ def _rect_pts(cx, cy, x0, y0, x1, y1, ang):
             _rot(x1, y1, cx, cy, ang), _rot(x0, y1, cx, cy, ang)]
 
 
-def generate_wood_plank(appearance: dict) -> tuple[Image.Image, Image.Image, Image.Image, float]:
+def generate_wood_plank(appearance: dict, canvas: int = PLANK_CANVAS) -> tuple[Image.Image, Image.Image, Image.Image, float]:
     """返回 (diffuse, normal, roughness, worldSize_S米)。逻辑逐行对照 TextureFactory.ts。"""
     seed = appearance.get('seed', 42)
     rng = mulberry32(seed)
@@ -82,15 +82,15 @@ def generate_wood_plank(appearance: dict) -> tuple[Image.Image, Image.Image, Ima
         while smm % wmm != 0 or (smm // wmm) % 2 != 0:
             smm += lmm
     S = smm / 1000.0
-    ppm = PLANK_CANVAS / S
+    ppm = canvas / S
     pl = lmm / 1000 * ppm
     pw = wmm / 1000 * ppm
     g2 = max(0.75, (2 / 1000 * ppm) / 2)
 
-    diffuse = Image.new('RGB', (PLANK_CANVAS, PLANK_CANVAS), grout)
-    height = Image.new('RGB', (PLANK_CANVAS, PLANK_CANVAS), (0x7C, 0x7C, 0x7C))
+    diffuse = Image.new('RGB', (canvas, canvas), grout)
+    height = Image.new('RGB', (canvas, canvas), (0x7C, 0x7C, 0x7C))
     gr = _c255(min(1.0, base_rough + 0.15) * 255)
-    rough = Image.new('RGB', (PLANK_CANVAS, PLANK_CANVAS), (gr, gr, gr))
+    rough = Image.new('RGB', (canvas, canvas), (gr, gr, gr))
     dd, hd, rd = ImageDraw.Draw(diffuse), ImageDraw.Draw(height), ImageDraw.Draw(rough)
 
     def draw_plank(cx: float, cy: float, angle: float) -> None:
@@ -159,22 +159,22 @@ def generate_wood_plank(appearance: dict) -> tuple[Image.Image, Image.Image, Ima
         d = (pl + pw) / math.sqrt(2)
         row_shift = pw / math.sqrt(2)
         j = -2
-        while j * d < PLANK_CANVAS + 2 * d:
+        while j * d < canvas + 2 * d:
             y = j * d
             ox = ((j * row_shift) % d + d) % d
             k = -2
-            while k * d + ox < PLANK_CANVAS + 2 * d:
+            while k * d + ox < canvas + 2 * d:
                 angle = math.pi / 4 if ((k % 2) + 2) % 2 == 0 else -math.pi / 4
                 draw_plank(k * d + ox, y, angle)
                 k += 1
             j += 1
     else:
         j = -1
-        while j * pw < PLANK_CANVAS + pw:
+        while j * pw < canvas + pw:
             y = j * pw + pw / 2
             off = (((j % 2) + 2) % 2) * (pl / 2)
             k = -2
-            while k * pl + off - pl / 2 < PLANK_CANVAS + pl:
+            while k * pl + off - pl / 2 < canvas + pl:
                 draw_plank(k * pl + off, y, 0)
                 k += 1
             j += 1
@@ -200,15 +200,16 @@ def _sobel_normal(height: Image.Image, strength: float) -> Image.Image:
     return Image.fromarray((out * 255).astype(np.uint8), 'RGB')
 
 
-def ensure_wood_textures(material_id: str, appearance: dict, cache_dir: str) -> tuple[str, str, str, float]:
-    """生成（或复用缓存）木纹贴图 PNG，返回 (diffuse, normal, rough, worldSize)。"""
-    key = f"{material_id}_{appearance.get('pattern', 'straight')}_{appearance.get('seed', 42)}"
+def ensure_wood_textures(material_id: str, appearance: dict, cache_dir: str,
+                         canvas: int = PLANK_CANVAS) -> tuple[str, str, str, float]:
+    """生成（或复用缓存）木纹贴图 PNG，返回 (diffuse, normal, rough, worldSize)。缓存 key 含画布尺寸。"""
+    key = f"{material_id}_{appearance.get('pattern', 'straight')}_{appearance.get('seed', 42)}_{canvas}"
     os.makedirs(cache_dir, exist_ok=True)
     d = os.path.join(cache_dir, f'{key}_diffuse.png')
     n = os.path.join(cache_dir, f'{key}_normal.png')
     r = os.path.join(cache_dir, f'{key}_rough.png')
     if not (os.path.exists(d) and os.path.exists(n) and os.path.exists(r)):
-        diffuse, normal, rough, S = generate_wood_plank(appearance)
+        diffuse, normal, rough, S = generate_wood_plank(appearance, canvas=canvas)
         diffuse.save(d); normal.save(n); rough.save(r)
     else:
         S = _world_size(appearance)

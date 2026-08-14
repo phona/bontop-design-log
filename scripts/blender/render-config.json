@@ -152,6 +152,133 @@
       "exposure": 0.5,
       "blackout_state": "open",
       "sheer_opacity": 0.15
+    },
+    {
+      "id": "material_review",
+      "label": "材质评审（Standard 无调色、6500K 中性白、候选色板）",
+      "sun_direction": null,
+      "world_color": "#808080",
+      "world_strength": 0.3,
+      "lights_on": true,
+      "light_temp": 6500,
+      "view_transform": "Standard",
+      "exposure": 0,
+      "blackout_state": "open",
+      "sheer_opacity": 0.15,
+      "swatches": [
+        {
+          "hex": "#c49a6c",
+          "mode": "floor",
+          "x": 8.55,
+          "z": 7.05,
+          "size": 0.4
+        },
+        {
+          "hex": "#cfa878",
+          "mode": "floor",
+          "x": 9.05,
+          "z": 7.29,
+          "size": 0.4
+        },
+        {
+          "hex": "#b98f63",
+          "mode": "floor",
+          "x": 9.56,
+          "z": 7.53,
+          "size": 0.4
+        },
+        {
+          "hex": "#cbab86",
+          "mode": "floor",
+          "x": 10.06,
+          "z": 7.77,
+          "size": 0.4
+        },
+        {
+          "hex": "#c49a6c",
+          "mode": "floor",
+          "x": 0.64,
+          "z": 7.99,
+          "size": 0.4
+        },
+        {
+          "hex": "#cfa878",
+          "mode": "floor",
+          "x": 1.08,
+          "z": 7.8,
+          "size": 0.4
+        },
+        {
+          "hex": "#b98f63",
+          "mode": "floor",
+          "x": 1.52,
+          "z": 7.6,
+          "size": 0.4
+        },
+        {
+          "hex": "#cbab86",
+          "mode": "floor",
+          "x": 1.96,
+          "z": 7.41,
+          "size": 0.4
+        },
+        {
+          "hex": "#f7f5ef",
+          "mode": "vertical",
+          "x": 7.21,
+          "z": 6.35,
+          "size": 0.3
+        },
+        {
+          "hex": "#f5f1e8",
+          "mode": "vertical",
+          "x": 7.21,
+          "z": 6.75,
+          "size": 0.3
+        },
+        {
+          "hex": "#f3eee2",
+          "mode": "vertical",
+          "x": 7.21,
+          "z": 7.15,
+          "size": 0.3
+        },
+        {
+          "hex": "#faf8f3",
+          "mode": "vertical",
+          "x": 7.21,
+          "z": 7.55,
+          "size": 0.3
+        },
+        {
+          "hex": "#f7f5ef",
+          "mode": "vertical",
+          "x": 0.01,
+          "z": 6.8,
+          "size": 0.3
+        },
+        {
+          "hex": "#f5f1e8",
+          "mode": "vertical",
+          "x": 0.01,
+          "z": 7.2,
+          "size": 0.3
+        },
+        {
+          "hex": "#f3eee2",
+          "mode": "vertical",
+          "x": 0.01,
+          "z": 7.6,
+          "size": 0.3
+        },
+        {
+          "hex": "#faf8f3",
+          "mode": "vertical",
+          "x": 0.01,
+          "z": 8,
+          "size": 0.3
+        }
+      ]
     }
   ],
   "cameras": [
@@ -182,6 +309,80 @@
         1,
         9.5
       ]
+    },
+    {
+      "id": "living_floor_closeup",
+      "label": "客厅地板 45° 特写（拼法/色号，含地板色板）",
+      "position": [
+        9.9,
+        1.4,
+        6.1
+      ],
+      "target": [
+        9.3,
+        0,
+        7.4
+      ],
+      "lens": 35,
+      "scenarios": [
+        "material_review"
+      ]
+    },
+    {
+      "id": "living_west_wall",
+      "label": "客厅西墙+地板交界（墙面色号，含墙面色板）",
+      "position": [
+        9.8,
+        1.5,
+        6.8
+      ],
+      "target": [
+        7.2,
+        0.6,
+        7
+      ],
+      "lens": 35,
+      "scenarios": [
+        "material_review"
+      ]
+    },
+    {
+      "id": "bedroom_floor_closeup",
+      "label": "主卧地板特写（床西侧空地，含地板色板）",
+      "position": [
+        1,
+        1.4,
+        6.6
+      ],
+      "target": [
+        1.7,
+        0,
+        7.9
+      ],
+      "lens": 35,
+      "scenarios": [
+        "material_review"
+      ],
+      "fill_light": true
+    },
+    {
+      "id": "bedroom_west_wall",
+      "label": "主卧西墙+地板交界（墙面色号，含墙面色板）",
+      "position": [
+        2.5,
+        1.5,
+        7.4
+      ],
+      "target": [
+        0,
+        0.6,
+        7.6
+      ],
+      "lens": 35,
+      "scenarios": [
+        "material_review"
+      ],
+      "fill_light": true
     }
   ]
 }

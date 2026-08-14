@@ -72,6 +72,52 @@ v1（首版 Cycles）效果差的根因与修复：
 
 剩余断点：glb 手工从 three.js app 导出，未自动化（配置→渲染链路还差"配置→glb"）。
 
+## v6 材质评审模式（2026-08-14，3080Ti 云）
+
+**业主反馈 v5 不足以做 tradeoff**：色号不可信（AgX + 3000K 暖光污染）、拼法看不清（1024px 贴图 + 仅平视机位）、墙面没装饰。新增 `material_review` scenario + 4 个 35mm 特写机位 + 16 块候选色板 + `inspect_render.py` 自动质检。
+
+| 项 | 氛围图（v5） | material_review（v6） |
+|---|---|---|
+| view_transform | AgX | Standard（无调色） |
+| 灯光色温 | 3000K | 6500K（scenario `light_temp` 覆盖） |
+| world | HDRi | 纯灰 #808080 |
+| 色板 | 无 | 16 块候选 hex 受场景光渲染 |
+| 贴图 | 1024px 程序化 | 2048px 程序化 → v7 换 PBR 真扫描 |
+| 质检 | 人工目检 | inspect_render.py ΔE/diff/指纹 |
+
+**坑记录**：
+1. **Blender 5.0 中文 locale 节点名翻译**：`nodes.get('Principled BSDF')` 返回 None（实际名 '原理化 BSDF'）→ 全部改用 `_find_node(nt, bl_idname)` 按 `bl_idname` 查找（语言无关）。`Material Output` → '材质输出' 同理。**5.2 英文 locale 无此问题，但代码须兼容 5.0**。
+2. **Brick 纹理输入顺序 5.0 与预期不同**：`[0]Vector [1]Color1 [2]Color2 [3]Mortar [4]Scale [5]MortarSize`（颜色在前数值在后），无 Offset 输入 → offset 是 node 属性 `brick.offset = 0.0`（直铺关错缝）。
+3. **OptiX kernel 加载失败**（`OPTIX_ERROR_INTERNAL_COMPILER_ERROR`）→ set_engine 改 CUDA 优先（`('CUDA','OPTIX','HIP')`），3080Ti CUDA 稳定。
+4. **卧室灯少太暗**：客厅 4 盏灯够亮，主卧仅 1-2 盏 → 加 per-camera `fill_light`（5×5m 200W area light 挂天花板），仅卧室机位启用。
+5. **exposure -1.0 过暗**：试过 -1.0 压过曝 → 地板色板 ΔE 全炸（43-53）→ 回 0.0 + bedroom 补光 = 14/16 通过。
+6. **Poly Haven 下载需 `--no-proxy`**：本地 wget 默认走 127.0.0.1:7890 代理，未开时返回 0 字节文件。
+7. **`inspect_render.py` ΔE 采样**：用 three.js 算色板屏幕坐标 → inspect 区域采样 → ΔE76 对比。色板受场景光衰减，预期 ΔE < 25（非 0），超差 = 管线 bug。
+
+验收：14/16 色板 ΔE 通过，无故障指纹，A/B diff 99.4% 像素变化。渲染图存 `renders/blender/output/mr-cloud/`。
+
+## v7 PBR 真扫描贴图（2026-08-14，3080Ti 云）
+
+**程序化木纹（wood_texture.py）肌理太假**：8 个色面随机 ±14 灰度 + 正弦波木纹带 → 4392 色，远不如真实扫描。新增 `pbr_texture` 材质类型：下载 Poly Haven CC0 PBR 扫描件（diffuse+normal+rough），替掉程序化生成。
+
+| 贴图 | 来源 | 用途 | 颜色数（渲后） |
+|---|---|---|---|
+| herringbone_parquet | Poly Haven | 人字拼（拼法内置） | 20984 |
+| oak_veneer_01 | Poly Haven | 直铺（无缝木纹+800mm 砖缝） | 17925 |
+
+**混合方案（木纹砖效果）**：PBR 无缝木纹贴面 + Brick 纹理砖缝叠加 + tint 乘色 #c49a6c + coat 釉面 = 真木纹 + 方格砖缝 + 项目色号 + 瓷砖光泽。
+
+**坑记录**：
+1. **贴图文件名不匹配**：Poly Haven normal 变体名是 `nor_gl`，代码找 `normal.jpg` → 加载失败回退纯色灰 → 必须 `wget -O normal.jpg` 重命名。已记入 `assets/SOURCES.md`。
+2. **white_planks_clean 是白漆木板**：木纹被白漆覆盖不可见 → 改用 `oak_veneer_01`（木纹贴面，天生无板缝）。
+3. **直铺砖缝尺寸用错 150×900**：项目 floor_tile_01 实际是 **800×800mm 方砖**（spec: "800x800mm"），150×900 只是人字拼那条 → 直铺用 800×800，grout_frac 0.005（~4mm 缝）。
+4. **PBR 贴图自带板缝与叠加砖缝冲突**：wooden_floor_01 等地板扫描件有自己的板缝间距（≠800mm），叠加 Brick 砖缝后两套缝不重合 → 看起来"小块长砖一块块接"而非方格 → 改用 veneer 系列（无自身板缝，砖缝是唯一分割线）。
+5. **tint multiply 只能压暗**：#c49a6c 线性值 <1.0，乘色后画面变暗（mean 161→99）。不影响相对比较（A/B 同 tint），但绝对亮度偏低。
+6. **法式石膏线**：add_moldings 从 model-geometry.yaml 读墙体坐标 + overlay.yaml suppress 列表 → 生成 81 条（踢脚 8cm + 顶角 10cm + 挂镜 2cm@1m），仅实体墙（suppressed 跳过）。classify `molding:` → `wall` 用墙面材质。
+7. **墙面漆纹**：wall solid_color 材质加 Noise bump（Scale 80, Strength 0.02）模拟橙皮纹。
+
+贴图不入 git（.gitignore `assets/textures/*/`），来源 URL 记 `assets/SOURCES.md` 可重下。
+
 ## 已知限制 / 后续
 
 1. **Cycles 一致性**：固定 seed=42 已配置，但 4 张 × 3 分钟 = 12 分钟，本轮 EEVEE 快速验证链路；Cycles 固定 seed 的逐像素一致性留待单独跑（单张即可验证）。
@@ -79,3 +125,6 @@ v1（首版 Cycles）效果差的根因与修复：
 3. **PyYAML 依赖**：Blender 自带 Python 需手工 pip 安装，换机器/重装需重复；后续可选方案：ts 端预转 materials.json（Blender 零依赖）。
 4. **材质映射**：当前 scheme（floor=floor_tile_01 等）与基础材质同色，视觉无差异；后续引入真实选材差异后可见效果。
 5. **GPU 加速**：780M 核显不在 ROCm 官方支持列表；用户计划租 4070 Windows 机器做效果预览，届时可启用 Cycles GPU 加速。
+6. **glb 手工导出**：three.js app → 手工点导出按钮 → house.glb，未自动化。
+7. **tint 压暗**：multiply 模式只压暗不提亮，浅色色板会偏暗。后续可改 mix 模式（tint_color × pct + original × (1-pct)）。
+8. **版面数=1**：PBR 贴图按 800mm 平铺，每块砖木纹不同（连续纹理切割），非真实印刷砖（每块独立印花+6-8 版面交替）。决策用够，实物门店看版面数。

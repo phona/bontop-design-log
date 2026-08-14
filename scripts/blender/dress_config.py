@@ -2,14 +2,18 @@
 
 
 def make_jobs(cfg: dict, version: str) -> list[dict]:
-    """scenarios × cameras 全排列 → 渲染任务。
+    """cameras × scenarios → 渲染任务。
 
     每个任务直接持有完整 scenario dict（sun_direction/world_color/world_strength/lights_on），
     由 render_scene 消费。
+    camera 可选 `scenarios: [id]` 白名单：只出指定工况（材质评审特写不进氛围批量，反之亦然）。
     """
     jobs = []
     for cam in cfg.get('cameras', []):
+        allow = cam.get('scenarios')
         for sc in cfg.get('scenarios', []):
+            if allow is not None and sc['id'] not in allow:
+                continue
             jobs.append({
                 'camera_id': cam['id'],
                 'scenario_id': sc['id'],

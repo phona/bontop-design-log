@@ -21,8 +21,10 @@
 
 # 输出与缓存
 renders/blender/output/*
+renders/blender/textures/*
 renders/web/models/*
 renders/web/textures/*
+assets/textures/*/
 screenshots/
 output-*.png
 !renders/blender/output/.gitkeep
