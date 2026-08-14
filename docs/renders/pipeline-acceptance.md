@@ -54,6 +54,14 @@ v1（首版 Cycles）效果差的根因与修复：
 
 已知欠缺（下一阶段）：材质为纯色无纹理（地板无木纹、家具为体块），与 three.js 的 TextureFactory 程序化木纹差距大——需要把程序化纹理移植进 Blender。
 
+## v4 木纹贴图（2026-08-14，4090D）
+
+**地板木纹砖与 three.js 视觉一致。** `wood_texture.py` 逐行移植 TextureFactory.drawWoodPlankTextures（mulberry32 逐位复刻，同 seed 同图）：8 版面色族、AO 板缘、V 型倒角高度图（Sobel 法线）、纹带/木节、直铺+人字拼。Mapping 缩放 1/worldSize，GLB 米制 UV 直接平铺。渲染图存 `renders/blender/output/cycles-v4/`。
+
+依赖：Blender 自带 numpy + 需 `pip install pillow`（云服务器已装；本地 Windows Blender 未装，如需本地渲染再装）。
+
+剩余差距（下一阶段）：家具为体块色块（无真实沙发/床造型与布料质感）；人字拼方案 floor_tile_herringbone_01 换选材即可出 A/B（管线已支持，无需改代码）。
+
 ## 已知限制 / 后续
 
 1. **Cycles 一致性**：固定 seed=42 已配置，但 4 张 × 3 分钟 = 12 分钟，本轮 EEVEE 快速验证链路；Cycles 固定 seed 的逐像素一致性留待单独跑（单张即可验证）。
