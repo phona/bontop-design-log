@@ -27,6 +27,7 @@ import { DaylightHeatmap } from './render/analysis/DaylightHeatmap.js';
 import { HumidityOverlay } from './render/analysis/HumidityOverlay.js';
 import { HumidityButton } from './ui/HumidityButton.js';
 import { isInHuinanWindow } from '@shared/humidity-model';
+import { exportSceneToGlb } from './render/export-gltf.js';
 import './ui/keybindings.js';
 import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
 
@@ -113,6 +114,7 @@ export class App {
 
     this.setupFurniturePanel();
     this.setupPlacementPanel();
+    this.setupExportButton();
     this.setupDragHandlers();
     this.setupEventHandlers();
     this.setupKeyboard();
@@ -274,6 +276,20 @@ export class App {
       if (pos) {
         this.houseScene.showGhost(pos.x, pos.z, 0, type);
       }
+    });
+  }
+
+  private setupExportButton(): void {
+    const btn = document.getElementById('export-glb-btn');
+    btn?.addEventListener('click', async () => {
+      const blob = await exportSceneToGlb(this.houseScene.scene);
+      const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `house-${stamp}.glb`;
+      a.click();
+      URL.revokeObjectURL(url);
     });
   }
 

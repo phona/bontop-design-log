@@ -52,7 +52,11 @@ vi.mock('three', async (importOriginal: any) => {
       clone() { return new (this.constructor as any)(this.x, this.y, this.z); }
     },
     Color: class { set() { return this; } copy() { return this; } clone() { return new (this.constructor as any)(); } },
-    PlaneGeometry: class {},
+    PlaneGeometry: class {
+      getAttribute() {
+        return { count: 0, getX: () => 0, getY: () => 0, setXY() {}, needsUpdate: false };
+      }
+    },
     BoxGeometry: class {},
     CanvasTexture: class {},
     MeshStandardMaterial: MockMaterial,

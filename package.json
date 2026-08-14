@@ -14,7 +14,8 @@
     "verify:furniture": "tsx scripts/verify-furniture-placement.ts",
     "verify:rules": "tsx scripts/verify-rules.ts",
     "verify:collision": "tsx scripts/verify-collision-coverage.ts",
-    "verify:all": "tsx scripts/verify-topology.ts && tsx scripts/verify-layout.ts && tsx scripts/verify-furniture-placement.ts && tsx scripts/verify-rules.ts && tsx scripts/verify-collision-coverage.ts"
+    "verify:all": "tsx scripts/verify-topology.ts && tsx scripts/verify-layout.ts && tsx scripts/verify-furniture-placement.ts && tsx scripts/verify-rules.ts && tsx scripts/verify-collision-coverage.ts",
+    "export:dressing-map": "tsx scripts/generate-dressing-map.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
