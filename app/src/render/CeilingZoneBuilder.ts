@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { scaleBoxUvToMeters, scalePlaneUvToMeters } from './uv-utils.js';
 
 export interface CeilingZoneSpec {
   id: string;
@@ -37,7 +38,9 @@ export function buildCeilingZone(zone: CeilingZoneSpec, ceilingHeight = 2.8): TH
     metalness: isBuckle ? 0.3 : 0.02,
     side: THREE.DoubleSide,
   });
-  const slab = new THREE.Mesh(new THREE.PlaneGeometry(w, d), slabMat);
+  const slabGeo = new THREE.PlaneGeometry(w, d);
+  scalePlaneUvToMeters(slabGeo, w, d);
+  const slab = new THREE.Mesh(slabGeo, slabMat);
   slab.rotation.x = -Math.PI / 2;
   slab.position.set(cx, topY, cz);
   slab.userData = { part: 'slab' };
@@ -50,7 +53,9 @@ export function buildCeilingZone(zone: CeilingZoneSpec, ceilingHeight = 2.8): TH
   const skirtH = zone.thickness;
   const skirtY = ceilingHeight - skirtH / 2;
   const mkSkirt = (len: number, px: number, pz: number, rotY: number) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(len, skirtH, SKIRT_THICKNESS), skirtMat);
+    const geo = new THREE.BoxGeometry(len, skirtH, SKIRT_THICKNESS);
+    scaleBoxUvToMeters(geo, len, skirtH);
+    const m = new THREE.Mesh(geo, skirtMat);
     m.position.set(px, skirtY, pz);
     m.rotation.y = rotY;
     m.userData = { part: 'skirt' };

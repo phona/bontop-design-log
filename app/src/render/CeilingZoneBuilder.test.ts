@@ -49,6 +49,33 @@ describe('buildCeilingZone', () => {
     expect(buildCeilingZone({ ...dropZone, type: 'future_unknown' })).toBeNull();
   });
 
+  it('slab UV 标定为米制（w×d），将来贴铝扣板纹理不返工', () => {
+    const g = buildCeilingZone(dropZone)!;
+    const slab = g.children.find((c) => c.userData.part === 'slab') as THREE.Mesh;
+    const uv = slab.geometry.getAttribute('uv');
+    let maxU = -Infinity, maxV = -Infinity;
+    for (let i = 0; i < uv.count; i++) {
+      maxU = Math.max(maxU, uv.getX(i));
+      maxV = Math.max(maxV, uv.getY(i));
+    }
+    expect(maxU).toBeCloseTo(3.0, 5); // w = 7.20 - 4.20
+    expect(maxV).toBeCloseTo(1.25, 5); // d = 5.55 - 4.30
+  });
+
+  it('skirt UV 标定为米制（len×skirtH）', () => {
+    const g = buildCeilingZone(dropZone)!;
+    const skirts = g.children.filter((c) => c.userData.part === 'skirt') as THREE.Mesh[];
+    const longSkirt = skirts.find((s) => Math.abs(s.rotation.y) < 0.01)!;
+    const uv = longSkirt.geometry.getAttribute('uv');
+    let maxU = -Infinity, maxV = -Infinity;
+    for (let i = 0; i < uv.count; i++) {
+      maxU = Math.max(maxU, uv.getX(i));
+      maxV = Math.max(maxV, uv.getY(i));
+    }
+    expect(maxU).toBeCloseTo(3.0, 5); // len = w
+    expect(maxV).toBeCloseTo(0.3, 5); // skirtH = thickness
+  });
+
   it('skirts are inset inside the footprint to avoid z-fighting at shared edges', () => {
     const g = buildCeilingZone(dropZone)!;
     const skirts = g.children.filter(

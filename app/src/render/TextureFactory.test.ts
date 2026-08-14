@@ -1,41 +1,56 @@
 import { describe, it, expect, vi } from 'vitest';
 
-const mockCtx: Partial<CanvasRenderingContext2D> = {
-  fillStyle: '',
-  strokeStyle: '',
-  lineWidth: 0,
-  fillRect: vi.fn(),
-  beginPath: vi.fn(),
-  moveTo: vi.fn(),
-  lineTo: vi.fn(),
-  stroke: vi.fn(),
-  save: vi.fn(),
-  restore: vi.fn(),
-  translate: vi.fn(),
-  rotate: vi.fn(),
-  getImageData: vi.fn((_x: number, _y: number, w: number, h: number) => ({
-    data: new Uint8ClampedArray(w * h * 4),
-    width: w,
-    height: h,
-    colorSpace: 'srgb' as PredefinedColorSpace,
-  })),
-  createImageData: vi.fn((w: number, h: number) => ({
-    colorSpace: 'srgb' as PredefinedColorSpace,
-    data: new Uint8ClampedArray(w * h * 4),
-    width: w,
-    height: h,
-  })) as unknown as CanvasRenderingContext2D['createImageData'],
-  putImageData: vi.fn(),
-};
+interface CtxRecord {
+  fillRectStyles: string[];
+  strokeStyles: string[];
+}
+interface MockCanvasEntry {
+  ctx: Record<string, unknown> & { fillStyle: unknown; strokeStyle: unknown };
+  record: CtxRecord;
+}
 
-const mockCanvas: Partial<HTMLCanvasElement> = {
-  width: 0,
-  height: 0,
-  getContext: vi.fn(() => mockCtx) as unknown as HTMLCanvasElement['getContext'],
-};
+const canvases: MockCanvasEntry[] = [];
+
+function makeCanvas() {
+  const record: CtxRecord = { fillRectStyles: [], strokeStyles: [] };
+  const ctx: Record<string, unknown> & { fillStyle: unknown; strokeStyle: unknown } = {
+    fillStyle: '',
+    strokeStyle: '',
+    lineWidth: 0,
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    translate: vi.fn(),
+    rotate: vi.fn(),
+    getImageData: vi.fn((_x: number, _y: number, w: number, h: number) => ({
+      data: new Uint8ClampedArray(w * h * 4),
+      width: w,
+      height: h,
+      colorSpace: 'srgb' as PredefinedColorSpace,
+    })),
+    createImageData: vi.fn((w: number, h: number) => ({
+      colorSpace: 'srgb' as PredefinedColorSpace,
+      data: new Uint8ClampedArray(w * h * 4),
+      width: w,
+      height: h,
+    })),
+    putImageData: vi.fn(),
+  };
+  ctx.fillRect = vi.fn(() => record.fillRectStyles.push(String(ctx.fillStyle)));
+  ctx.stroke = vi.fn(() => record.strokeStyles.push(String(ctx.strokeStyle)));
+  const entry: MockCanvasEntry = { ctx, record };
+  canvases.push(entry);
+  return {
+    width: 0,
+    height: 0,
+    getContext: vi.fn(() => ctx),
+  };
+}
 
 (globalThis as any).document = {
-  createElement: vi.fn((_tag: string) => mockCanvas),
+  createElement: vi.fn((_tag: string) => makeCanvas()),
 };
 
 vi.mock('three', () => ({
@@ -59,6 +74,11 @@ vi.mock('three', () => ({
 }));
 
 import { createMaterialTexture } from './TextureFactory';
+
+// wood_plank 每次调用创建 4 张 canvas：0=色 1=高度 2=粗糙度 3=法线输出
+function lastPlankCanvases(): MockCanvasEntry[] {
+  return canvases.slice(-4);
+}
 
 describe('TextureFactory', () => {
   it('creates a CanvasTexture for wood_grain appearance', () => {
@@ -110,10 +130,11 @@ describe('TextureFactory', () => {
     const snapshot = () => {
       vi.clearAllMocks();
       createMaterialTexture({ ...base, seed: 42 });
+      const colorCtx = lastPlankCanvases()[0].ctx;
       return JSON.stringify([
-        (mockCtx.fillRect as ReturnType<typeof vi.fn>).mock.calls,
-        (mockCtx.lineTo as ReturnType<typeof vi.fn>).mock.calls,
-        (mockCtx.stroke as ReturnType<typeof vi.fn>).mock.calls.length,
+        (colorCtx.fillRect as ReturnType<typeof vi.fn>).mock.calls,
+        (colorCtx.lineTo as ReturnType<typeof vi.fn>).mock.calls,
+        (colorCtx.stroke as ReturnType<typeof vi.fn>).mock.calls.length,
       ]);
     };
     const a = snapshot();
@@ -121,11 +142,61 @@ describe('TextureFactory', () => {
     expect(a).toBe(b);
     vi.clearAllMocks();
     createMaterialTexture({ ...base, seed: 7 });
+    const colorCtx = lastPlankCanvases()[0].ctx;
     const c = JSON.stringify([
-      (mockCtx.fillRect as ReturnType<typeof vi.fn>).mock.calls,
-      (mockCtx.lineTo as ReturnType<typeof vi.fn>).mock.calls,
-      (mockCtx.stroke as ReturnType<typeof vi.fn>).mock.calls.length,
+      (colorCtx.fillRect as ReturnType<typeof vi.fn>).mock.calls,
+      (colorCtx.lineTo as ReturnType<typeof vi.fn>).mock.calls,
+      (colorCtx.stroke as ReturnType<typeof vi.fn>).mock.calls.length,
     ]);
     expect(c).not.toBe(a);
+  });
+
+  it('wood_plank 多版面：板底色至少 6 种（6–8 印刷面色族混铺，DEC-011 版面数要求）', () => {
+    createMaterialTexture({
+      type: 'wood_plank', color: '#c49a6c', pattern: 'herringbone',
+      plank_mm: [150, 900], finish: 'soft', seed: 42,
+    });
+    const styles = lastPlankCanvases()[0].record.fillRectStyles.slice(1); // 首笔为整幅美缝底
+    expect(new Set(styles).size).toBeGreaterThanOrEqual(6);
+  });
+
+  it('wood_plank 板内木纹：stroke 次数 ≥ 150 且 strokeStyle 种类 ≥ 10', () => {
+    createMaterialTexture({
+      type: 'wood_plank', color: '#c49a6c', pattern: 'herringbone',
+      plank_mm: [150, 900], finish: 'soft', seed: 42,
+    });
+    const rec = lastPlankCanvases()[0].record;
+    expect(rec.strokeStyles.length).toBeGreaterThanOrEqual(150);
+    expect(new Set(rec.strokeStyles).size).toBeGreaterThanOrEqual(10);
+  });
+
+  it('wood_plank V 型倒角：高度图板缘含中间灰阶（非板/缝两阶跳变）', () => {
+    createMaterialTexture({
+      type: 'wood_plank', color: '#c49a6c', pattern: 'herringbone',
+      plank_mm: [150, 900], finish: 'soft', seed: 42,
+    });
+    const heightStyles = new Set(lastPlankCanvases()[1].record.fillRectStyles);
+    expect(heightStyles.has('#7c7c7c')).toBe(true); // 缝底
+    expect(heightStyles.has('#8a8a8a')).toBe(true); // 倒角外阶
+    expect(heightStyles.has('#909090')).toBe(true); // 倒角内阶
+    expect(heightStyles.has('#969696')).toBe(true); // 板面
+  });
+
+  it('wood_plank 800×800 大板：板缘 AO 加粗加深（alpha 0.65），否则砖缝在 1024 画布上不可见', () => {
+    createMaterialTexture({
+      type: 'wood_plank', color: '#c49a6c', pattern: 'straight',
+      plank_mm: [800, 800], finish: 'soft', seed: 42,
+    });
+    const rec = lastPlankCanvases()[0].record;
+    expect(rec.strokeStyles.some((s) => s.endsWith(',0.65)'))).toBe(true);
+  });
+
+  it('wood_plank 800×800 大板：木纹带数随板宽放大（≥300 次 stroke，防"大理石波浪"）', () => {
+    createMaterialTexture({
+      type: 'wood_plank', color: '#c49a6c', pattern: 'straight',
+      plank_mm: [800, 800], finish: 'soft', seed: 42,
+    });
+    const rec = lastPlankCanvases()[0].record;
+    expect(rec.strokeStyles.length).toBeGreaterThanOrEqual(300);
   });
 });

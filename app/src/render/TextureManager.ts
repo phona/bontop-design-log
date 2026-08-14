@@ -51,13 +51,7 @@ export class TextureManager {
   }
 
   applyToRoom(roomId: string, appearance: MaterialAppearance, meshType?: 'floor' | 'wall' | 'all'): void {
-    // 缓存键含 pattern/plank_mm/seed：同色不同拼法（直铺 vs 人字拼）不得共用材质
-    const plankKey = Array.isArray(appearance.plank_mm) ? (appearance.plank_mm as number[]).join('x') : '';
-    const cacheKey = `${appearance.type}:${appearance.color}:${appearance.pattern ?? ''}:${plankKey}:${appearance.seed ?? ''}`;
-    let mat = this.cache.get(cacheKey);
-    if (!mat) {
-      mat = this.buildMaterial(cacheKey, appearance);
-    }
+    const mat = this.getOrBuild(appearance);
 
     if (meshType === undefined || meshType === 'all' || meshType === 'wall') {
       for (const mesh of this.wallMeshes) {
@@ -73,6 +67,27 @@ export class TextureManager {
         }
       }
     }
+  }
+
+  // floor_region（走廊/过渡带，roomId 为空）不参与按房匹配；DEC-011 跟随 floor topic 整体换材
+  applyToFloorRegions(appearance: MaterialAppearance): void {
+    const mat = this.getOrBuild(appearance);
+    for (const mesh of this.floorMeshes) {
+      if (mesh.userData.type === 'floor_region') {
+        this.copyToMesh(mesh, mat);
+      }
+    }
+  }
+
+  private getOrBuild(appearance: MaterialAppearance): THREE.MeshStandardMaterial {
+    // 缓存键含 pattern/plank_mm/seed：同色不同拼法（直铺 vs 人字拼）不得共用材质
+    const plankKey = Array.isArray(appearance.plank_mm) ? (appearance.plank_mm as number[]).join('x') : '';
+    const cacheKey = `${appearance.type}:${appearance.color}:${appearance.pattern ?? ''}:${plankKey}:${appearance.seed ?? ''}`;
+    let mat = this.cache.get(cacheKey);
+    if (!mat) {
+      mat = this.buildMaterial(cacheKey, appearance);
+    }
+    return mat;
   }
 
   get cachedMaterialCount(): number {

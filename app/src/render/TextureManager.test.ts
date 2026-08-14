@@ -33,6 +33,7 @@ vi.mock('three', () => ({
   TextureLoader: class { load() { return { wrapS: 0, wrapT: 0, repeat: { set: vi.fn() } }; } },
   MeshStandardMaterial: class {
     needsUpdate = false;
+    normalScale = { set: vi.fn() };
     constructor(public opts?: Record<string, unknown>) { if (opts) Object.assign(this, opts); }
     copy(m: this) { Object.assign(this, m); }
   },
@@ -73,5 +74,28 @@ describe('TextureManager（PBR 升级）', () => {
     tm.applyToRoom('master_bedroom', { type: 'matte_paint', color: '#f7f5ef' }, 'wall');
     expect(createdTextures.length).toBeGreaterThan(0);
     expect(createdTextures[0].repeat.set).toHaveBeenCalledWith(2, 2);
+  });
+
+  it('applyToFloorRegions 只更新 floor_region 网格，不碰房间地面（DEC-011：走廊随 floor topic）', async () => {
+    const THREE = await import('three');
+    const tm = new TextureManager();
+    const region = { userData: { type: 'floor_region', objectId: 'corridor_floor' }, material: new THREE.MeshStandardMaterial() };
+    const roomFloor = { userData: { type: 'floor', roomId: 'study', objectId: 'floor:study' }, material: new THREE.MeshStandardMaterial() };
+    tm.setMeshes([region as never, roomFloor as never], []);
+    tm.applyToFloorRegions({ type: 'wood_plank', color: '#c49a6c', pattern: 'straight', plank_mm: [800, 800], seed: 42 });
+    expect((region.material as unknown as Record<string, unknown>).map).toBeDefined();
+    expect((roomFloor.material as unknown as Record<string, unknown>).map).toBeUndefined();
+  });
+
+  it('applyToFloorRegions 与 applyToRoom 同色同参共用缓存材质', async () => {
+    const THREE = await import('three');
+    const tm = new TextureManager();
+    const region = { userData: { type: 'floor_region', objectId: 'corridor_floor' }, material: new THREE.MeshStandardMaterial() };
+    const roomFloor = { userData: { type: 'floor', roomId: 'living_dining', objectId: 'floor:living_dining' }, material: new THREE.MeshStandardMaterial() };
+    tm.setMeshes([region as never, roomFloor as never], []);
+    const appearance = { type: 'wood_plank', color: '#c49a6c', pattern: 'straight', plank_mm: [800, 800], seed: 42 };
+    tm.applyToRoom('living_dining', appearance, 'floor');
+    tm.applyToFloorRegions(appearance);
+    expect(tm.cachedMaterialCount).toBe(1);
   });
 });

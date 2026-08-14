@@ -525,6 +525,16 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
   const baseRough = appearance.finish === 'soft' ? 0.5 : 0.85;
   const [br, bg, bb] = [br0, bg0, bb0] as [number, number, number];
 
+  // 印刷面色族（6–8 版面）：族间明度/冷暖/纹理强度差异，族内再小抖动。
+  // 独立随机流（与布局 rng 解耦），seed 不变则版面身份稳定（DEC-011：版面数 <6-8 显假）。
+  const FACE_COUNT = 8;
+  const faceRng = mulberry32((seed ^ 0x9e37) >>> 0);
+  const faces = Array.from({ length: FACE_COUNT }, () => ({
+    dl: (faceRng() - 0.5) * 28,
+    warm: (faceRng() - 0.5) * 10,
+    grain: 0.1 + faceRng() * 0.12,
+  }));
+
   // 世界边长 S（mm→m）：保证图案在贴图边界无缝 wrap
   let Smm: number;
   if (pattern === 'herringbone') {
@@ -563,15 +573,15 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
   roughCtx.fillRect(0, 0, PLANK_CANVAS, PLANK_CANVAS);
 
   const drawPlank = (cx: number, cy: number, angle: number) => {
-    // 逐板抖动：明度 ±6%、冷暖 ±4、粗糙度 ±0.08（全部 seeded）
-    const dl = (rng() - 0.5) * 12;
-    const warm = (rng() - 0.5) * 4;
+    // 先选印刷面色族，再族内小抖动：明度 ±4%、冷暖 ±1.5、粗糙度 ±0.08（全部 seeded）
+    const face = faces[Math.floor(rng() * FACE_COUNT)];
+    const dl = face.dl + (rng() - 0.5) * 8;
+    const warm = face.warm + (rng() - 0.5) * 3;
     const rr = clamp255(br + dl + warm);
     const gg = clamp255(bg + dl);
     const bb2 = clamp255(bb + dl - warm);
     const rough = Math.min(1, Math.max(0.05, baseRough + (rng() - 0.5) * 0.16));
     const rv = clamp255(rough * 255);
-    const strokes = 1 + Math.floor(rng() * 2);
 
     for (const c of [ctx, heightCtx, roughCtx]) {
       c.save();
@@ -585,20 +595,71 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
 
     ctx.fillStyle = `rgb(${rr},${gg},${bb2})`;
     ctx.fillRect(ix, iy, iw, ih);
-    // 板内顺纹（沿板长方向，微摆动）
-    ctx.strokeStyle = `rgba(${clamp255(rr * 0.78)},${clamp255(gg * 0.78)},${clamp255(bb2 * 0.78)},0.16)`;
-    for (let s = 0; s < strokes; s++) {
-      const gy = (rng() - 0.5) * ih * 0.6;
-      ctx.lineWidth = 0.6 + rng() * 0.8;
+
+    // 板缘 AO：压暗描边，板间产生缝隙阴影层次。
+    // 800 方砖的 2mm 美缝在 1024 画布上亚像素不可见，缝感主要由这条 AO 承载（alpha 0.65 / ≥1.5px）
+    ctx.strokeStyle = `rgba(${clamp255(rr * 0.55)},${clamp255(gg * 0.55)},${clamp255(bb2 * 0.55)},0.65)`;
+    ctx.lineWidth = Math.max(1.5, g2 * 0.8);
+    ctx.beginPath();
+    ctx.moveTo(ix, iy);
+    ctx.lineTo(ix + iw, iy);
+    ctx.lineTo(ix + iw, iy + ih);
+    ctx.lineTo(ix, iy + ih);
+    ctx.lineTo(ix, iy);
+    ctx.stroke();
+
+    // 板内木纹：纹带数随板像素宽缩放（150 条板 ~5 条，800 方砖 ~14+ 条），深浅交替、粗细变化
+    const bands = Math.min(24, Math.max(5, Math.round(ih / 12) + Math.floor(rng() * 3)));
+    for (let b = 0; b < bands; b++) {
+      const by = iy + ((b + 0.15 + rng() * 0.7) / bands) * ih;
+      const amp = ih * (0.04 + rng() * 0.08);
+      const phase = rng() * Math.PI * 2;
+      const freq = 1 + rng() * 0.2;
+      const dark = rng() < 0.75;
+      const f = dark ? 0.62 : 1.18;
+      const a = face.grain * (0.6 + rng() * 0.8);
+      ctx.strokeStyle = `rgba(${clamp255(rr * f)},${clamp255(gg * f)},${clamp255(bb2 * f)},${a.toFixed(3)})`;
+      ctx.lineWidth = 0.5 + rng() * 1.8;
       ctx.beginPath();
-      ctx.moveTo(ix + 1, gy);
-      for (let seg = 1; seg <= 4; seg++) {
-        ctx.lineTo(ix + (iw * seg) / 4, gy + (rng() - 0.5) * ih * 0.2);
+      const segs = 8;
+      for (let s = 0; s <= segs; s++) {
+        const gx = ix + (iw * s) / segs;
+        const gy = by + Math.sin(phase + (s / segs) * Math.PI * 2 * freq) * amp;
+        if (s === 0) ctx.moveTo(gx, gy);
+        else ctx.lineTo(gx, gy);
       }
       ctx.stroke();
     }
-    heightCtx.fillStyle = '#969696';
+
+    // 偶发木节（8% 概率，仅长条板；800 方砖印刷面无结疤，画了像污渍）：两圈椭圆折线
+    if (pl > pw * 2 && rng() < 0.08) {
+      const kx = ix + iw * (0.2 + rng() * 0.6);
+      const ky = iy + ih * (0.3 + rng() * 0.4);
+      ctx.strokeStyle = `rgba(${clamp255(rr * 0.5)},${clamp255(gg * 0.5)},${clamp255(bb2 * 0.5)},0.35)`;
+      ctx.lineWidth = 0.7;
+      for (let ring = 0; ring < 2; ring++) {
+        const rad = 1.5 + ring * 1.5;
+        ctx.beginPath();
+        for (let s2 = 0; s2 <= 8; s2++) {
+          const ang = (s2 / 8) * Math.PI * 2;
+          const px2 = kx + Math.cos(ang) * rad * 2.2;
+          const py2 = ky + Math.sin(ang) * rad * 0.9;
+          if (s2 === 0) ctx.moveTo(px2, py2);
+          else ctx.lineTo(px2, py2);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // V 型倒角：高度图板缘两阶斜坡（缝 #7c → 缘 #8a/#90 → 面 #96），法线贴图出掠射光明暗线
+    const b1 = Math.min(2, iw / 6, ih / 6);
+    heightCtx.fillStyle = '#8a8a8a';
     heightCtx.fillRect(ix, iy, iw, ih);
+    heightCtx.fillStyle = '#909090';
+    heightCtx.fillRect(ix + b1, iy + b1, iw - 2 * b1, ih - 2 * b1);
+    heightCtx.fillStyle = '#969696';
+    heightCtx.fillRect(ix + 2 * b1, iy + 2 * b1, iw - 4 * b1, ih - 4 * b1);
+
     roughCtx.fillStyle = `rgb(${rv},${rv},${rv})`;
     roughCtx.fillRect(ix, iy, iw, ih);
     for (const c of [ctx, heightCtx, roughCtx]) c.restore();
