@@ -644,9 +644,10 @@ FURNITURE_GLB = {
 }
 
 
-def import_furniture_glb(glb_path: str, target_width: float, block) -> int:
+def import_furniture_glb(glb_path: str, target_width: float, block, rot_fix: float = 0) -> int:
     """导入 .glb 家具模型，归一化到 target_width，放到 block 位置。
     步骤：导入→合并→设原点→缩放→贴地→定位→旋转。"""
+    import math
     import mathutils
 
     existing = set(obj.name for obj in bpy.data.objects)
@@ -682,6 +683,7 @@ def import_furniture_glb(glb_path: str, target_width: float, block) -> int:
     obj.location.x = mw.translation.x
     obj.location.y = mw.translation.y
     obj.rotation_euler = mw.to_euler()
+    obj.rotation_euler.z += math.radians(rot_fix)
     bpy.context.view_layer.update()
     # 旋转后重新算世界包围盒 → 贴地（保证旋转不抬升）
     bb2 = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
@@ -719,7 +721,8 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
             if os.path.exists(glb_path):
                 tw = {'sofa_3seat': 2.8, 'bed_180': 1.8, 'bed_150': 1.5,
                       'dining_table': 1.4, 'dining_chair': 0.45, 'tv_stand': 1.8}.get(ftype, 1.0)
-                if import_furniture_glb(glb_path, tw, obj):
+                if import_furniture_glb(glb_path, tw, obj,
+                                         rot_fix={'bed_180': 180, 'bed_150': 180}.get(ftype, 0)):
                     count += 1
                     continue
         # 读取世界坐标 + 旋转
