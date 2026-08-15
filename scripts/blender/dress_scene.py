@@ -454,6 +454,20 @@ FURNITURE_PARTS = {
         ('body', [1.8, 0.4, 0.4], [0, 0.2, 0], 'wood'),
         ('top', [1.8, 0.02, 0.42], [0, 0.41, 0], 'wood_dark'),
     ],
+    'wardrobe_180': [
+        ('carcass', [1.8, 2.7, 0.58], [0, 1.35, 0], 'paint_cream'),
+        ('door_l', [0.88, 2.66, 0.03], [-0.45, 1.35, 0.30], 'paint_cream'),
+        ('door_r', [0.88, 2.66, 0.03], [0.45, 1.35, 0.33], 'paint_cream'),
+        ('handle_l', [0.03, 1.2, 0.03], [-0.04, 1.35, 0.33], 'wood_dark'),
+        ('handle_r', [0.03, 1.2, 0.03], [0.04, 1.35, 0.36], 'wood_dark'),
+    ],
+    'wardrobe_240_split': [
+        ('carcass', [2.4, 2.7, 0.58], [0, 1.35, 0], 'paint_cream'),
+        ('door_l', [1.18, 2.66, 0.03], [-0.6, 1.35, 0.30], 'paint_cream'),
+        ('door_r', [1.18, 2.66, 0.03], [0.6, 1.35, 0.33], 'paint_cream'),
+        ('handle_l', [0.03, 1.2, 0.03], [-0.04, 1.35, 0.33], 'wood_dark'),
+        ('handle_r', [0.03, 1.2, 0.03], [0.04, 1.35, 0.36], 'wood_dark'),
+    ],
 }
 
 
@@ -467,6 +481,7 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
         ('fabric_white', '#f5f0e6', 0.85), # 床品（白奶油）
         ('wood', '#c9a87e', 0.5),          # 浅橡木家具
         ('wood_dark', '#6b5d4a', 0.5),     # 深木腿/框架
+        ('paint_cream', '#f2ede2', 0.4),   # 奶油白漆柜门/柜体
     ]:
         mat = new_principled_fn(f'家具_{name}', hex_rgb_fn(color), rough=rough)
         if name.startswith('fabric'):
