@@ -171,6 +171,174 @@ materials:
     notes: "veneer 无自身板缝，grut 150x900 是唯一分割 → 像木纹砖方格拼。tint #c49a6c + coat 0.35 釉面。"
     appearance: { type: "pbr_texture", texture_id: "oak_veneer_01", tile_size: 3.0, tint: "#c49a6c", grout: true, tile_width: 0.8, tile_length: 0.8, grout_frac: 0.005, grout_value: 0.3, coat: 0.35, normal_strength: 1.0 }
 
+  - id: "floor_pbr_veneer_matched"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "800x800木纹砖·近色美缝（oak_veneer_01 + 2mm近色缝，现方案真实版）"
+    brand: "Poly Haven CC0"
+    model: "oak_veneer_01 2K"
+    spec: "800x800 通铺，近色美缝 ~2mm"
+    unit: "㎡"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1.0
+    calc_mode: "area"
+    supplier: "CC0 公开素材"
+    online_link: "https://polyhaven.com/a/oak_veneer_01"
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["近色美缝=缝几乎隐形", "接近真实现代木纹砖效果"]
+    cons: ["木纹跨砖缝连续（真砖每块独立印花，已是最小失真）"]
+    price_source: "免费"
+    notes: "修正版：grout_value 0.3→0.75（近色）、grout_frac 0.005→0.003（~2.4mm）。旧版深灰缝失真。"
+    appearance: { type: "pbr_texture", texture_id: "oak_veneer_01", tile_size: 3.0, tint: "#c49a6c", grout: true, tile_width: 0.8, tile_length: 0.8, grout_frac: 0.003, grout_value: 0.75, coat: 0.35, normal_strength: 1.0 }
+
+  - id: "floor_pbr_laminate02"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "浅橡木强化地板PBR（laminate_floor_02 真扫描，自带长板缝）"
+    brand: "Poly Haven CC0"
+    model: "laminate_floor_02 2K"
+    spec: "长板直铺，缝 baked-in"
+    unit: "㎡"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1.0
+    calc_mode: "area"
+    supplier: "CC0 公开素材"
+    online_link: "https://polyhaven.com/a/laminate_floor_02"
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["真扫描长板+自带缝", "无程序化网格"]
+    cons: ["强化地板质感偏均质"]
+    price_source: "免费"
+    notes: "直铺候选：不叠 grout，靠贴图自身板缝。"
+    appearance: { type: "pbr_texture", texture_id: "laminate_floor_02", tile_size: 2.0, tint: "#c49a6c", coat: 0.3, normal_strength: 1.0 }
+
+  - id: "floor_pbr_laminate02_vgroove"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "浅橡木强化地板PBR·高板缝（laminate_floor_02 normal_strength 2.5）"
+    brand: "Poly Haven CC0"
+    model: "laminate_floor_02 2K"
+    spec: "长板直铺，加强板缝立体感"
+    unit: "㎡"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1.0
+    calc_mode: "area"
+    supplier: "CC0 公开素材"
+    online_link: "https://polyhaven.com/a/laminate_floor_02"
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["板缝明显", "有拼花节奏感"]
+    cons: ["强化板缝=normal 夸大，非真实倒角"]
+    price_source: "免费"
+    notes: "对比用：laminate02 normal_strength 1.0→2.5，V槽感直铺。"
+    appearance: { type: "pbr_texture", texture_id: "laminate_floor_02", tile_size: 2.0, tint: "#c49a6c", coat: 0.3, normal_strength: 2.5 }
+
+  - id: "floor_pbr_wooden02"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "橡木地板PBR（wooden_floor_02 真扫描，直铺大板候选）"
+    brand: "Poly Haven CC0"
+    model: "wooden_floor_02 2K"
+    spec: "长板直铺"
+    unit: "㎡"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1.0
+    calc_mode: "area"
+    supplier: "CC0 公开素材"
+    online_link: "https://polyhaven.com/a/wooden_floor_02"
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["真扫描"]
+    cons: []
+    price_source: "免费"
+    notes: "直铺天花板候选。"
+    appearance: { type: "pbr_texture", texture_id: "wooden_floor_02", tile_size: 2.0, tint: "#c49a6c", coat: 0.3, normal_strength: 1.0 }
+
+  - id: "floor_pbr_oakwood"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "橡木板PBR（oak_wood_planks 真扫描，直铺大板候选）"
+    brand: "Poly Haven CC0"
+    model: "oak_wood_planks 2K"
+    spec: "长板直铺"
+    unit: "㎡"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1.0
+    calc_mode: "area"
+    supplier: "CC0 公开素材"
+    online_link: "https://polyhaven.com/a/oak_wood_planks"
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["真扫描"]
+    cons: []
+    price_source: "免费"
+    notes: "直铺天花板候选。"
+    appearance: { type: "pbr_texture", texture_id: "oak_wood_planks", tile_size: 2.0, tint: "#c49a6c", coat: 0.3, normal_strength: 1.0 }
+
+  - id: "floor_pbr_laminate03"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "强化地板PBR（laminate_floor_03 真扫描，直铺候选）"
+    brand: "Poly Haven CC0"
+    model: "laminate_floor_03 2K"
+    spec: "长板直铺"
+    unit: "㎡"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1.0
+    calc_mode: "area"
+    supplier: "CC0 公开素材"
+    online_link: "https://polyhaven.com/a/laminate_floor_03"
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["真扫描"]
+    cons: []
+    price_source: "免费"
+    notes: "直铺天花板候选。"
+    appearance: { type: "pbr_texture", texture_id: "laminate_floor_03", tile_size: 2.0, tint: "#c49a6c", coat: 0.3, normal_strength: 1.0 }
+
+  - id: "floor_pbr_plank02"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "直铺实木板PBR（plank_flooring_02 真扫描，自带板缝）"
+    brand: "Poly Haven CC0"
+    model: "plank_flooring_02 2K"
+    spec: "长板直铺，缝 baked-in"
+    unit: "㎡"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1.0
+    calc_mode: "area"
+    supplier: "CC0 公开素材"
+    online_link: "https://polyhaven.com/a/plank_flooring_02"
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["真扫描长板+自带缝", "无程序化网格"]
+    cons: ["色调偏深需 tint 拉浅"]
+    price_source: "免费"
+    notes: "直铺候选：不叠 grout，靠贴图自身板缝。"
+    appearance: { type: "pbr_texture", texture_id: "plank_flooring_02", tile_size: 2.0, tint: "#c49a6c", coat: 0.3, normal_strength: 1.0 }
+
   - id: "wall_tile_01"
     topic_id: "wall"
     alternative_group: "wall_tile"

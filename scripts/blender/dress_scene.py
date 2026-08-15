@@ -1107,4 +1107,5 @@ def main() -> None:
         render_scene(args, cfg, cam_cfg, job['scenario'], out_path)
 
 
-main()
+if __name__ == '__main__':
+    main()

@@ -575,6 +575,79 @@
       "scenarios": [
         "material_review"
       ]
+    },
+    {
+      "id": "living_from_entry",
+      "label": "入户门口望客厅全景（远距离东北→西南）",
+      "position": [
+        11.8,
+        1.6,
+        4.2
+      ],
+      "target": [
+        8.6,
+        0.9,
+        8
+      ],
+      "lens": 20,
+      "scenarios": [
+        "material_review"
+      ]
+    },
+    {
+      "id": "living_from_sw",
+      "label": "客厅西南角回望餐厅+厨房（远距离反向）",
+      "position": [
+        7.7,
+        1.6,
+        9.3
+      ],
+      "target": [
+        11.5,
+        0.9,
+        3
+      ],
+      "lens": 20,
+      "scenarios": [
+        "material_review"
+      ]
+    },
+    {
+      "id": "living_floor_mid",
+      "label": "客厅中距地板延展（站高 1.2m 看通铺）",
+      "position": [
+        10.3,
+        1.2,
+        6.2
+      ],
+      "target": [
+        10.3,
+        0,
+        3.4
+      ],
+      "lens": 24,
+      "scenarios": [
+        "material_review"
+      ]
+    },
+    {
+      "id": "corridor_view",
+      "label": "过道西望（走廊口→主卧/父母房门方向）",
+      "position": [
+        7.45,
+        1.55,
+        5.25
+      ],
+      "target": [
+        4.4,
+        0.9,
+        4.6
+      ],
+      "lens": 20,
+      "scenarios": [
+        "material_review"
+      ],
+      "fill_light": 80
     }
   ]
 }
