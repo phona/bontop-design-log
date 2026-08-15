@@ -802,11 +802,10 @@ def add_ceiling(config_dir: str, ceiling_mats: dict) -> int:
     return count
 
 
-def add_kitchen_cabinets(furniture_mats: dict) -> int:
+def add_kitchen_cabinets(cream, quartz) -> int:
     """厨房 L 型橱柜：北墙3.6水槽切配 + 东墙灶台（DEC-014），冰箱位(z>1.7)留空。
-    厨房界 x[7.2,10.8] z[0,2.4]；Blender dims=(sx, sz, sy_height)。"""
-    cream = furniture_mats.get('paint_cream')
-    quartz = furniture_mats.get('quartz')
+    厨房界 x[7.2,10.8] z[0,2.4]；Blender dims=(sx, sz, sy_height)。
+    cream/quartz 由调用方传入（优先 scheme 的 cabinet/countertop 材质）。"""
 
     def kbox(name, cx, cz, sx, sz, sy, yc, mat):
         bpy.ops.mesh.primitive_cube_add(size=1.0)
@@ -987,7 +986,9 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     tex_base = os.path.join(args.get('config-dir') or '', 'assets', 'textures')
     add_pbr_maps(mats.get('wall'), os.path.join(tex_base, 'painted_plaster_wall'),
                  size=2.5, with_diffuse=False, normal_strength=0.3)
-    add_pbr_maps(furniture_mats.get('quartz'), os.path.join(tex_base, 'marble_01'),
+    countertop_mat = mats.get('countertop') or furniture_mats.get('quartz')
+    cabinet_mat = mats.get('cabinet') or furniture_mats.get('paint_cream')
+    add_pbr_maps(countertop_mat, os.path.join(tex_base, 'marble_01'),
                  size=3.0, with_diffuse=False, normal_strength=0.4)
     add_pbr_maps(furniture_mats.get('wood'), os.path.join(tex_base, 'oak_veneer_01'),
                  size=1.0, with_diffuse=True, normal_strength=0.3)
@@ -998,7 +999,7 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '')
     add_moldings(args.get('config-dir') or '')
     add_ceiling(args.get('config-dir') or '', mats)
-    add_kitchen_cabinets(furniture_mats)
+    add_kitchen_cabinets(cabinet_mat, countertop_mat)
     add_soft_decor(furniture_mats)
     swatch_count = add_swatches(scenario)
     # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）

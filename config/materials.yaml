@@ -224,6 +224,7 @@ materials:
     alternative_group: "cabinet_board"
     category: "柜体板材"
     name: "多层实木板柜体 + PET 肤感柜门"
+    appearance: { type: "solid_color", color: "#f2ede2", finish: "soft" }
     brand: "本地全屋定制工厂 / 兔宝宝 / 千年舟"
     model: "ENF/E0 级多层实木 18mm"
     spec: "18mm"
@@ -247,6 +248,7 @@ materials:
     alternative_group: "quartz_stone"
     category: "台面"
     name: "石英石台面"
+    appearance: { type: "solid_color", color: "#e8e6e0", finish: "glossy" }
     brand: "本地石材厂 / 赛凯隆 / 中迅"
     model: "20mm 厚单色/小颗粒"
     spec: "20mm"
