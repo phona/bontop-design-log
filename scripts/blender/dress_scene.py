@@ -617,6 +617,34 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
     return count
 
 
+def add_soft_decor(furniture_mats: dict) -> int:
+    """软装点缀：客厅地毯+西墙挂画，提升真实感（决策渲染够用）。"""
+    count = 0
+    # 客厅地毯（沙发前）
+    bpy.ops.mesh.primitive_cube_add(size=1.0)
+    rug = bpy.context.object
+    rug.name = 'asset:rug:living'
+    rug.dimensions = (2.2, 1.6, 0.03)
+    rug.location = to_blender(10.2, 0.015, 7.0)
+    bev = rug.modifiers.new('Bevel', 'BEVEL')
+    bev.width = 0.01
+    bev.segments = 2
+    rug.data.materials.append(furniture_mats.get('fabric_light'))
+    count += 1
+    # 西墙挂画 x2
+    for i, z in enumerate((6.4, 7.6)):
+        bpy.ops.mesh.primitive_cube_add(size=1.0)
+        frame = bpy.context.object
+        frame.name = f'asset:art:{i}'
+        frame.dimensions = (0.03, 0.6, 0.8)
+        frame.location = to_blender(7.23, 1.5, z)
+        frame.data.materials.append(furniture_mats.get('wood_dark'))
+        count += 1
+    if count:
+        print(f'[dress_scene] soft decor: {count} (rug+art)')
+    return count
+
+
 def add_moldings(config_dir: str) -> int:
     """法式石膏线：从 model-geometry.yaml 读墙段坐标 + overlay.yaml suppress 列表，
     生成踢脚线(8cm) + 顶角线(10cm) + 挂镜线(2cm@1m)。仅实体墙（suppressed 跳过）。"""
@@ -744,6 +772,7 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     furniture_mats = build_furniture_materials(hex_rgb, new_principled)
     replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '')
     add_moldings(args.get('config-dir') or '')
+    add_soft_decor(furniture_mats)
     swatch_count = add_swatches(scenario)
     # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）
     fill = scenario.get('fill_light') or cam_cfg.get('fill_light')
