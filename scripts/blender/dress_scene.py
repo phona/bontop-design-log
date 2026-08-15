@@ -992,9 +992,9 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     add_pbr_maps(furniture_mats.get('wood'), os.path.join(tex_base, 'oak_veneer_01'),
                  size=1.0, with_diffuse=True, normal_strength=0.3)
     add_pbr_maps(furniture_mats.get('fabric_white'), os.path.join(tex_base, 'fabric_pattern_07'),
-                 size=0.6, with_diffuse=False, normal_strength=0.5)
+                 size=0.35, with_diffuse=False, normal_strength=1.0)
     add_pbr_maps(furniture_mats.get('fabric'), os.path.join(tex_base, 'fabric_pattern_07'),
-                 size=0.6, with_diffuse=False, normal_strength=0.5)
+                 size=0.35, with_diffuse=False, normal_strength=1.0)
     replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '')
     add_moldings(args.get('config-dir') or '')
     add_ceiling(args.get('config-dir') or '', mats)
