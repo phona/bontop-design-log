@@ -315,7 +315,8 @@
       ],
       "scenarios": [
         "material_review"
-      ]
+      ],
+      "fill_light": 150
     },
     {
       "id": "living_floor_closeup",
@@ -370,7 +371,7 @@
       "scenarios": [
         "material_review"
       ],
-      "fill_light": true
+      "fill_light": 80
     },
     {
       "id": "bedroom_west_wall",
@@ -389,7 +390,7 @@
       "scenarios": [
         "material_review"
       ],
-      "fill_light": true
+      "fill_light": 80
     }
   ]
 }

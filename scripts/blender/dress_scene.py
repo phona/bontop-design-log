@@ -750,7 +750,8 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
         fl.shape = 'RECTANGLE'
         fl.size = 5.0
         fl.size_y = 5.0
-        fl.energy = 200.0
+        # fill_light 可为数字（瓦数）或 true（默认200）；特写用低瓦防过曝，全景用高瓦
+        fl.energy = float(fill) if isinstance(fill, (int, float)) else 200.0
         fl.color = kelvin_to_rgb(scenario.get('light_temp', 6500))
         tgt = cam_cfg.get('target', [0, 0, 0])
         fl_obj = bpy.data.objects.new('fill_light', fl)

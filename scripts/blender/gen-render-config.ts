@@ -105,6 +105,7 @@ const cameras = [
     position: [0.7, 1.6, 5.9],
     target: [3.2, 1.0, 9.5],
     scenarios: ['material_review'],
+    fill_light: 150,
   },
   // 材质评审特写机位（35mm，只出 material_review 工况）
   {
@@ -130,7 +131,7 @@ const cameras = [
     target: [1.7, 0.0, 7.9],
     lens: 35,
     scenarios: ['material_review'],
-    fill_light: true,
+    fill_light: 80,
   },
   {
     id: 'bedroom_west_wall',
@@ -139,7 +140,7 @@ const cameras = [
     target: [0.0, 0.6, 7.6],
     lens: 35,
     scenarios: ['material_review'],
-    fill_light: true,
+    fill_light: 80,
   },
 ];
 

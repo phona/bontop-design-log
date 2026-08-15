@@ -162,7 +162,8 @@ def _build_pbr_textured(mid: str, app: dict, config_dir: str):
     if tint:
         from dress_scene import hex_rgb as _hex_rgb
         mul = nt.nodes.new('ShaderNodeMixRGB')
-        mul.blend_type = 'MULTIPLY'
+        # COLOR=保留纹理亮度/木纹、染目标色号（对准色号）; MULTIPLY=乘色偏暗（旧）
+        mul.blend_type = app.get('tint_mode', 'COLOR')
         mul.inputs['Fac'].default_value = 1.0
         nt.links.new(diff_out, mul.inputs['Color1'])
         mul.inputs['Color2'].default_value = (*_hex_rgb(tint), 1.0)
