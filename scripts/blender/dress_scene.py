@@ -236,6 +236,64 @@ def add_lights(cfg: dict, temp_override: float | None = None) -> int:
     return count
 
 
+def add_light_fixtures(cfg: dict, temp_override: float | None = None) -> int:
+    """实体灯具：吸顶盘/筒灯圈/吊灯(线+罩)/壁灯，灯罩自发光。光仍由 add_lights 的不可见光源提供。"""
+    import math
+
+    def emis(name, temp, strength):
+        m = bpy.data.materials.new(name)
+        m.use_nodes = True
+        nt = m.node_tree
+        for n in list(nt.nodes):
+            nt.nodes.remove(n)
+        out = nt.nodes.new('ShaderNodeOutputMaterial')
+        em = nt.nodes.new('ShaderNodeEmission')
+        em.inputs['Color'].default_value = (*kelvin_to_rgb(temp), 1.0)
+        em.inputs['Strength'].default_value = strength
+        nt.links.new(em.outputs[0], out.inputs['Surface'])
+        return m
+
+    diff_m = emis('灯具_diffuser', temp_override or 3000, 5.0)
+    count = 0
+    for lp in cfg['lights']:
+        t = lp['type']
+        x, z = lp.get('x'), lp.get('z')
+        h = lp.get('height', 2.8)
+        if x is None or z is None:
+            continue
+        if t == 'dome':
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.18, depth=0.06, location=to_blender(x, h - 0.03, z))
+            o = bpy.context.object
+            o.name = f'fixture:dome:{lp["id"]}'
+            o.data.materials.append(diff_m)
+            count += 1
+        elif t == 'downlight':
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.02, location=to_blender(x, h - 0.01, z))
+            o = bpy.context.object
+            o.name = f'fixture:down:{lp["id"]}'
+            o.data.materials.append(diff_m)
+            count += 1
+        elif t == 'pendant':
+            hang = 1.7
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.006, depth=(h - hang), location=to_blender(x, (h + hang) / 2, z))
+            bpy.context.object.name = f'fixture:pendant_cord:{lp["id"]}'
+            bpy.ops.mesh.primitive_cone_add(radius1=0.16, radius2=0.05, depth=0.18, location=to_blender(x, hang, z))
+            s = bpy.context.object
+            s.name = f'fixture:pendant_shade:{lp["id"]}'
+            s.data.materials.append(diff_m)
+            count += 1
+        elif t == 'wall_lamp':
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.2, location=to_blender(x, h or 1.5, z),
+                                                rotation=(0, math.radians(90), 0))
+            o = bpy.context.object
+            o.name = f'fixture:wall:{lp["id"]}'
+            o.data.materials.append(diff_m)
+            count += 1
+    if count:
+        print(f'[dress_scene] light fixtures: {count}')
+    return count
+
+
 def add_sun(sun_dir: list[float]) -> None:
     """sun_dir: 指向太阳方向的单位向量（Blender 坐标 +X 东/+Y 北/+Z 上）。
     场景常量由 gen-render-config.ts 预计算；光线方向 = 太阳方向反向。"""
@@ -943,6 +1001,7 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
         bpy.context.collection.objects.link(fl_obj)
     if scenario.get('lights_on', True):
         add_lights(cfg, temp_override=scenario.get('light_temp'))
+        add_light_fixtures(cfg, temp_override=scenario.get('light_temp'))
     sun_dir = scenario.get('sun_direction')
     if sun_dir:
         add_sun(sun_dir)
