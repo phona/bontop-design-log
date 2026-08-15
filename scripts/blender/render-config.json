@@ -391,6 +391,43 @@
         "material_review"
       ],
       "fill_light": 80
+    },
+    {
+      "id": "kitchen_l_overview",
+      "label": "厨房 L 型全景（北墙水槽+东墙灶台+冰箱）",
+      "position": [
+        7.6,
+        1.5,
+        2.2
+      ],
+      "target": [
+        10.2,
+        0.9,
+        0.5
+      ],
+      "lens": 24,
+      "scenarios": [
+        "material_review",
+        "blue_hour"
+      ]
+    },
+    {
+      "id": "kitchen_counter_closeup",
+      "label": "厨房台面+地柜门特写（台面/柜门选材）",
+      "position": [
+        8.6,
+        1.3,
+        1.6
+      ],
+      "target": [
+        9.6,
+        0.8,
+        0.4
+      ],
+      "lens": 35,
+      "scenarios": [
+        "material_review"
+      ]
     }
   ]
 }

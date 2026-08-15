@@ -468,6 +468,25 @@ FURNITURE_PARTS = {
         ('handle_l', [0.03, 1.2, 0.03], [-0.04, 1.35, 0.33], 'wood_dark'),
         ('handle_r', [0.03, 1.2, 0.03], [0.04, 1.35, 0.36], 'wood_dark'),
     ],
+    'fridge': [
+        ('body', [0.68, 1.8, 0.66], [0, 0.9, 0], 'metal'),
+        ('door_up', [0.66, 0.62, 0.04], [0, 1.44, 0.35], 'metal'),
+        ('door_lo', [0.66, 1.08, 0.04], [0, 0.6, 0.35], 'metal'),
+    ],
+    'gas_stove': [
+        ('cooktop', [0.75, 0.02, 0.45], [0, 0.86, 0], 'black_glass'),
+        ('burner1', [0.16, 0.01, 0.16], [-0.18, 0.875, 0], 'metal'),
+        ('burner2', [0.16, 0.01, 0.16], [0.18, 0.875, 0], 'metal'),
+    ],
+    'range_hood': [
+        ('panel', [0.8, 0.5, 0.06], [0, 1.5, 0.12], 'metal'),
+        ('duct', [0.4, 0.9, 0.35], [0, 2.2, 0], 'metal'),
+    ],
+    'sink': [
+        ('rim', [0.74, 0.01, 0.44], [0, 0.86, 0], 'metal'),
+        ('faucet_v', [0.03, 0.3, 0.03], [0, 1.0, -0.18], 'metal'),
+        ('faucet_h', [0.03, 0.03, 0.2], [0, 1.14, -0.1], 'metal'),
+    ],
 }
 
 
@@ -499,6 +518,10 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
             except Exception:
                 pass
         mats[name] = mat
+    mats['metal'] = new_principled_fn('家具_metal', hex_rgb_fn('#c8ccd0'), rough=0.35, metallic=1.0)
+    mats['black_glass'] = new_principled_fn('家具_black_glass', hex_rgb_fn('#1a1a1c'), rough=0.15)
+    mats['quartz'] = new_principled_fn('家具_quartz', hex_rgb_fn('#e8e6e0'), rough=0.25)
+    mats['ceramic'] = new_principled_fn('家具_ceramic', hex_rgb_fn('#f8f8f6'), rough=0.1)
     return mats
 
 
@@ -666,6 +689,35 @@ def add_ceiling(config_dir: str, ceiling_mats: dict) -> int:
     return count
 
 
+def add_kitchen_cabinets(furniture_mats: dict) -> int:
+    """厨房 L 型橱柜：北墙3.6水槽切配 + 东墙灶台（DEC-014），冰箱位(z>1.7)留空。
+    厨房界 x[7.2,10.8] z[0,2.4]；Blender dims=(sx, sz, sy_height)。"""
+    cream = furniture_mats.get('paint_cream')
+    quartz = furniture_mats.get('quartz')
+
+    def kbox(name, cx, cz, sx, sz, sy, yc, mat):
+        bpy.ops.mesh.primitive_cube_add(size=1.0)
+        b = bpy.context.object
+        b.name = name
+        b.dimensions = (sx, sz, sy)
+        b.location = to_blender(cx, yc, cz)
+        if mat:
+            b.data.materials.append(mat)
+        bev = b.modifiers.new('Bevel', 'BEVEL')
+        bev.width = 0.01
+        bev.segments = 3
+        return 1
+
+    n = 0
+    n += kbox('kitchen:base_n', 9.0, 0.3, 3.6, 0.6, 0.85, 0.425, cream)
+    n += kbox('kitchen:base_e', 10.5, 1.15, 0.6, 1.1, 0.85, 0.425, cream)
+    n += kbox('kitchen:top_n', 9.0, 0.3, 3.6, 0.62, 0.03, 0.865, quartz)
+    n += kbox('kitchen:top_e', 10.5, 1.15, 0.62, 1.1, 0.03, 0.865, quartz)
+    n += kbox('kitchen:wall_n', 8.4, 0.18, 2.0, 0.35, 0.7, 1.85, cream)
+    print(f'[dress_scene] kitchen cabinets: {n}')
+    return n
+
+
 def add_soft_decor(furniture_mats: dict) -> int:
     """软装点缀：客厅地毯+西墙挂画，提升真实感（决策渲染够用）。"""
     count = 0
@@ -822,6 +874,7 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '')
     add_moldings(args.get('config-dir') or '')
     add_ceiling(args.get('config-dir') or '', mats)
+    add_kitchen_cabinets(furniture_mats)
     add_soft_decor(furniture_mats)
     swatch_count = add_swatches(scenario)
     # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）
