@@ -25,6 +25,8 @@ renders/blender/textures/*
 renders/web/models/*
 renders/web/textures/*
 assets/textures/*/
+assets/**/*.glb
+hdri/*.hdr
 screenshots/
 output-*.png
 !renders/blender/output/.gitkeep

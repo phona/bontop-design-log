@@ -677,10 +677,10 @@ def add_moldings(config_dir: str) -> int:
     return count
 
 
-def set_engine(scene, engine: str) -> str:
+def set_engine(scene, engine: str, samples: int = 256) -> str:
     if engine.upper() == 'CYCLES':
         scene.render.engine = 'CYCLES'
-        scene.cycles.samples = 256
+        scene.cycles.samples = samples
         try:
             scene.cycles.use_denoising = True
         except Exception:
@@ -729,7 +729,7 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
             if o.name.endswith(':blackout'):
                 o.hide_render = True
     scene = bpy.context.scene
-    used_engine = set_engine(scene, args['engine'])
+    used_engine = set_engine(scene, args['engine'], samples=int(args.get('samples', 256)))
     sheer_opacity = scenario.get('sheer_opacity', 0.15)
     mats = build_materials(used_engine, sheer_opacity=sheer_opacity)
     from materials_from_yaml import load_scheme_materials
@@ -768,6 +768,7 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
 
     scene.render.resolution_x = 1920
     scene.render.resolution_y = 1080
+    scene.render.resolution_percentage = int(args.get('res', 100))
     scene.render.filepath = out_path
     # tone transform 配置驱动：氛围图 AgX（电影感）；材质评审 Standard（无调色，色号不失真）
     scene.view_settings.view_transform = scenario.get('view_transform', 'AgX')

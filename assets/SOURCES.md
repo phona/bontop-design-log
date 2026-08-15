@@ -34,3 +34,28 @@ wget --no-proxy --timeout=60 "https://dl.polyhaven.org/file/ph-assets/Textures/j
 ```
 
 > `--no-proxy` 必须加：本地代理 127.0.0.1:7890 未开时 wget 会连不上。
+
+## 3D 家具模型（BlenderKit，需 API key）
+
+| 模型 | 来源 | asset id | 文件 | 用途 |
+|---|---|---|---|---|
+| Sofa set（白布艺沙发+黑石几） | [BlenderKit](https://www.blenderkit.com/asset-gallery/127456/) | `bb772a64-bcd3-48bf-9224-12128c4377d9` | `assets/sofa_set.glb` | 客厅沙发（royalty_free） |
+
+下载流程（需免费账号 API key）：
+```bash
+KEY=<blenderkit_api_key>
+# 1. 拿临时下载 URL（scene_uuid 任意）
+curl -H "Authorization: Token $KEY" "https://www.blenderkit.com/api/v1/downloads/578092/?scene_uuid=00000000-0000-0000-0000-000000000001"
+# 2. 用返回的 filePath 下载 .glb
+curl -L "<filePath>" -O assets/sofa_set.glb
+```
+
+## HDRi 外景（Poly Haven tonemapped JPG，伪装 .hdr）
+
+| 文件 | 来源 | 说明 |
+|---|---|---|
+| `hdri/the_sky_is_on_fire_1k.hdr` | [Poly Haven](https://polyhaven.com/a/the_sky_is_on_fire) | 蓝调日落海景（实为 tonemapped JPG） |
+| `hdri/kloppenheim_02_1k.hdr` | [Poly Haven](https://polyhaven.com/a/kloppenheim_02) | 夜晚星空（实为 tonemapped JPG） |
+
+> Poly Haven 真 .hdr/.exr CDN 已 404，改用 `.../HDRIs/extra/Tonemapped%20JPG/<id>.jpg`（8-bit，决策够用）。
+> Blender 按内容读取，扩展名 .hdr 不影响加载。

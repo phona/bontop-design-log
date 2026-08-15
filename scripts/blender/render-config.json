@@ -296,7 +296,8 @@
         8.6
       ],
       "scenarios": [
-        "material_review"
+        "material_review",
+        "blue_hour"
       ]
     },
     {

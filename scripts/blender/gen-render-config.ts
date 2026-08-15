@@ -97,7 +97,7 @@ const cameras = [
     label: '客厅餐桌侧南望沙发+玻璃幕（全景）',
     position: [10.3, 1.55, 2.9],
     target: [9.6, 1.2, 8.6],
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'blue_hour'],
   },
   {
     id: 'master_bed_looking_glass',
