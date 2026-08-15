@@ -489,6 +489,8 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
 
 FURNITURE_GLB = {
     'sofa_3seat': 'assets/sofa_set.glb',
+    'bed_180': 'assets/bed_soft_modern.glb',
+    'bed_150': 'assets/bed_soft_modern.glb',
 }
 
 
@@ -525,16 +527,16 @@ def import_furniture_glb(glb_path: str, target_width: float, block) -> int:
     obj.scale = (scale, scale, scale)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
-    # 贴地（缩放后重新算 min_z）
-    bb2 = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
-    min_z = min(c.z for c in bb2)
-    obj.location.z -= min_z
-
     # 定位 + 旋转（继承 block 的世界变换）
     mw = block.matrix_world
     obj.location.x = mw.translation.x
     obj.location.y = mw.translation.y
     obj.rotation_euler = mw.to_euler()
+    bpy.context.view_layer.update()
+    # 旋转后重新算世界包围盒 → 贴地（保证旋转不抬升）
+    bb2 = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
+    min_z = min(c.z for c in bb2)
+    obj.location.z -= min_z
 
     # 材质豁免：asset: 前缀 → classify 返回 skip
     return 1
