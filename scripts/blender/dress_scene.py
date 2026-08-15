@@ -617,6 +617,40 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
     return count
 
 
+def add_ceiling(config_dir: str, ceiling_mats: dict) -> int:
+    """吊顶：读 ceiling.yaml，type=drop 的生成局部吊顶板（底面在 2.8-thickness）。"""
+    import os
+    import yaml as pyyaml
+    path = os.path.join(config_dir, 'config', 'ceiling.yaml')
+    if not os.path.exists(path):
+        return 0
+    with open(path, 'r', encoding='utf-8') as f:
+        items = pyyaml.safe_load(f) or []
+    count = 0
+    for it in items:
+        if it.get('type') != 'drop':
+            continue
+        area = it.get('area')
+        if not area or len(area) < 4:
+            continue
+        x1, z1, x2, z2 = area
+        thick = it.get('thickness', 0.3)
+        w, d = x2 - x1, z2 - z1
+        cx, cz = (x1 + x2) / 2, (z1 + z2) / 2
+        bpy.ops.mesh.primitive_cube_add(size=1.0)
+        box = bpy.context.object
+        box.name = f'ceiling:{it.get("id")}'
+        box.dimensions = (w, d, thick)
+        box.location = to_blender(cx, 2.8 - thick / 2, cz)
+        mat = ceiling_mats.get('ceiling')
+        if mat:
+            box.data.materials.append(mat)
+        count += 1
+    if count:
+        print(f'[dress_scene] ceiling drops: {count}')
+    return count
+
+
 def add_soft_decor(furniture_mats: dict) -> int:
     """软装点缀：客厅地毯+西墙挂画，提升真实感（决策渲染够用）。"""
     count = 0
@@ -772,6 +806,7 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     furniture_mats = build_furniture_materials(hex_rgb, new_principled)
     replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '')
     add_moldings(args.get('config-dir') or '')
+    add_ceiling(args.get('config-dir') or '', mats)
     add_soft_decor(furniture_mats)
     swatch_count = add_swatches(scenario)
     # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）
