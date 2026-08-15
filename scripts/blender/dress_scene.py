@@ -639,8 +639,6 @@ def add_pbr_maps(mat, tex_dir, size=2.0, with_diffuse=False, normal_strength=0.5
 
 FURNITURE_GLB = {
     'sofa_3seat': 'assets/sofa_set.glb',
-    'bed_180': 'assets/bed_soft_modern.glb',
-    'bed_150': 'assets/bed_soft_modern.glb',
 }
 
 
