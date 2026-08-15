@@ -830,6 +830,34 @@ def add_kitchen_cabinets(cream, quartz) -> int:
     return n
 
 
+def add_bath_fixtures(furniture_mats: dict) -> int:
+    """卫浴洁具：洗手台+盆+马桶（house.yaml DEC-019 点位），陶瓷/奶油柜。"""
+    ceramic = furniture_mats.get('ceramic')
+    cream = furniture_mats.get('paint_cream')
+
+    def box(name, cx, cz, sx, sz, sy, yc, mat):
+        bpy.ops.mesh.primitive_cube_add(size=1.0)
+        b = bpy.context.object
+        b.name = name
+        b.dimensions = (sx, sz, sy)
+        b.location = to_blender(cx, yc, cz)
+        if mat:
+            b.data.materials.append(mat)
+        return 1
+
+    n = 0
+    n += box('bath:mb_vanity', 1.75, 4.55, 0.8, 0.5, 0.8, 0.4, cream)
+    n += box('bath:mb_basin', 1.75, 4.55, 0.5, 0.4, 0.12, 0.85, ceramic)
+    n += box('bath:mb_toilet', 0.5, 1.9, 0.4, 0.6, 0.4, 0.2, ceramic)
+    n += box('bath:mb_tank', 0.5, 1.55, 0.4, 0.15, 0.45, 0.5, ceramic)
+    n += box('bath:gb_vanity', 5.85, 3.5, 0.5, 0.8, 0.8, 0.4, cream)
+    n += box('bath:gb_basin', 5.85, 3.5, 0.4, 0.5, 0.12, 0.85, ceramic)
+    n += box('bath:gb_toilet', 6.8, 2.6, 0.4, 0.6, 0.4, 0.2, ceramic)
+    n += box('bath:gb_tank', 6.95, 2.6, 0.15, 0.4, 0.45, 0.5, ceramic)
+    print(f'[dress_scene] bath fixtures: {n}')
+    return n
+
+
 def add_soft_decor(furniture_mats: dict) -> int:
     """软装点缀：客厅地毯+西墙挂画，提升真实感（决策渲染够用）。"""
     count = 0
@@ -1000,6 +1028,7 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     add_moldings(args.get('config-dir') or '')
     add_ceiling(args.get('config-dir') or '', mats)
     add_kitchen_cabinets(cabinet_mat, countertop_mat)
+    add_bath_fixtures(furniture_mats)
     add_soft_decor(furniture_mats)
     swatch_count = add_swatches(scenario)
     # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）
