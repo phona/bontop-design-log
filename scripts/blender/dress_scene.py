@@ -289,6 +289,15 @@ def add_light_fixtures(cfg: dict, temp_override: float | None = None) -> int:
             o.name = f'fixture:wall:{lp["id"]}'
             o.data.materials.append(diff_m)
             count += 1
+        elif t == 'led_strip':
+            # 电视墙隐藏灯槽：西墙 x=7.2 沿 z 长 2.4，高 2.0，离墙 0.03
+            bpy.ops.mesh.primitive_cube_add(size=1.0)
+            o = bpy.context.object
+            o.name = f'fixture:led_cove:{lp["id"]}'
+            o.dimensions = (0.05, 2.4, 0.05)
+            o.location = to_blender(x + 0.03, h, z)
+            o.data.materials.append(diff_m)
+            count += 1
     if count:
         print(f'[dress_scene] light fixtures: {count}')
     return count
