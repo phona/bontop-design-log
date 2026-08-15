@@ -97,12 +97,14 @@ const cameras = [
     label: '客厅餐桌侧南望沙发+玻璃幕（全景）',
     position: [10.3, 1.55, 2.9],
     target: [9.6, 1.2, 8.6],
+    scenarios: ['material_review'],
   },
   {
     id: 'master_bed_looking_glass',
     label: '主卧西北角看全景（床+南窗）',
     position: [0.7, 1.6, 5.9],
     target: [3.2, 1.0, 9.5],
+    scenarios: ['material_review'],
   },
   // 材质评审特写机位（35mm，只出 material_review 工况）
   {

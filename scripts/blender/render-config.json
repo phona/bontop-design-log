@@ -294,6 +294,9 @@
         9.6,
         1.2,
         8.6
+      ],
+      "scenarios": [
+        "material_review"
       ]
     },
     {
@@ -308,6 +311,9 @@
         3.2,
         1,
         9.5
+      ],
+      "scenarios": [
+        "material_review"
       ]
     },
     {

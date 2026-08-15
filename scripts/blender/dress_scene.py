@@ -265,7 +265,7 @@ def setup_world(engine: str, scenario: dict, config_dir: str | None = None) -> N
             # HDRi 外景 + Light Path 分离：相机光线（透玻璃所见）用 HDRi 真外景；
             # 其余光线（环境照明）用可控纯色 world_color —— 房间不被 HDRi 颜色污染
             import os
-            path = os.path.join(config_dir, hdri)
+            path = os.path.normpath(os.path.join(config_dir, hdri))
             env = world.node_tree.nodes.new('ShaderNodeTexEnvironment')
             env.image = bpy.data.images.load(path)
             lp = world.node_tree.nodes.new('ShaderNodeLightPath')
@@ -487,7 +487,60 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
     return mats
 
 
-def replace_furniture(furniture_mats: dict) -> int:
+FURNITURE_GLB = {
+    'sofa_3seat': 'assets/sofa_set.glb',
+}
+
+
+def import_furniture_glb(glb_path: str, target_width: float, block) -> int:
+    """导入 .glb 家具模型，归一化到 target_width，放到 block 位置。
+    步骤：导入→合并→设原点→缩放→贴地→定位→旋转。"""
+    import mathutils
+
+    existing = set(obj.name for obj in bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=glb_path)
+    new_objs = [obj for obj in bpy.data.objects if obj.name not in existing and obj.type == 'MESH']
+    if not new_objs:
+        print(f'[dress_scene] WARN glb 导入无 mesh: {glb_path}')
+        return 0
+
+    bpy.ops.object.select_all(action='DESELECT')
+    for obj in new_objs:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = new_objs[0]
+
+    if len(new_objs) > 1:
+        bpy.ops.object.join()
+
+    obj = bpy.context.active_object
+    obj.name = f'asset:{block.name.split(":")[2] if ":" in block.name else "imported"}:glb'
+
+    # 原点设到几何中心
+    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+
+    # 计算包围盒 → 缩放
+    bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
+    model_width = max(c.x for c in bb) - min(c.x for c in bb)
+    scale = target_width / model_width if model_width > 0.01 else 1.0
+    obj.scale = (scale, scale, scale)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+    # 贴地（缩放后重新算 min_z）
+    bb2 = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
+    min_z = min(c.z for c in bb2)
+    obj.location.z -= min_z
+
+    # 定位 + 旋转（继承 block 的世界变换）
+    mw = block.matrix_world
+    obj.location.x = mw.translation.x
+    obj.location.y = mw.translation.y
+    obj.rotation_euler = mw.to_euler()
+
+    # 材质豁免：asset: 前缀 → classify 返回 skip
+    return 1
+
+
+def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
     """用精细几何替换色块家具：找到 furniture:* 组 → 隐藏 → 原位生成多部件几何。
     parts 格式: (name, three_size[x,y,z], three_pos[x,y,z], material_key)。
     坐标转换：three(x,y,z) → Blender(x,-z,y)，尺寸(x,z,y)。"""
@@ -507,6 +560,16 @@ def replace_furniture(furniture_mats: dict) -> int:
         obj.hide_render = True
         for child in obj.children_recursive:
             child.hide_render = True
+        # 优先用真 3D 模型（.glb）
+        glb_rel = FURNITURE_GLB.get(ftype)
+        if glb_rel and config_dir:
+            glb_path = os.path.join(config_dir, glb_rel)
+            if os.path.exists(glb_path):
+                tw = {'sofa_3seat': 2.8, 'bed_180': 1.8, 'bed_150': 1.5,
+                      'dining_table': 1.4, 'dining_chair': 0.45, 'tv_stand': 1.8}.get(ftype, 1.0)
+                if import_furniture_glb(glb_path, tw, obj):
+                    count += 1
+                    continue
         # 读取世界坐标 + 旋转
         mw = obj.matrix_world
         loc = mw.translation
@@ -677,7 +740,7 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
         print('[dress_scene] WARN: --config-dir 未传，跳过 materials.yaml 材质（使用基础材质）')
     stats = assign_materials(mats)
     furniture_mats = build_furniture_materials(hex_rgb, new_principled)
-    replace_furniture(furniture_mats)
+    replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '')
     add_moldings(args.get('config-dir') or '')
     swatch_count = add_swatches(scenario)
     # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）

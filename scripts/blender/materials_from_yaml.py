@@ -101,7 +101,7 @@ def _build_pbr_textured(mid: str, app: dict, config_dir: str):
     import os
 
     tex_id = app.get('texture_id', mid)
-    tex_dir = os.path.join(config_dir, 'assets', 'textures', tex_id)
+    tex_dir = os.path.normpath(os.path.join(config_dir, 'assets', 'textures', tex_id))
     tile_size = app.get('tile_size', 2.0)
 
     mat = bpy.data.materials.new(f'方案_{mid}')
