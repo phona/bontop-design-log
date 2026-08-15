@@ -525,6 +525,51 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
     return mats
 
 
+def add_pbr_maps(mat, tex_dir, size=2.0, with_diffuse=False, normal_strength=0.5):
+    """给已有材质接 PBR 贴图（世界坐标 BOX 投影，免 UV）。
+    with_diffuse=False 时保留原 base color（墙面保色号决策），只加 normal+rough。"""
+    tex_dir = os.path.normpath(tex_dir)
+    if mat is None or not os.path.isdir(tex_dir):
+        return False
+    nt = mat.node_tree
+    bsdf = _find_node(nt, 'ShaderNodeBsdfPrincipled')
+    if bsdf is None:
+        return False
+    geo = nt.nodes.new('ShaderNodeNewGeometry')
+    mapping = nt.nodes.new('ShaderNodeMapping')
+    mapping.inputs['Scale'].default_value = (1.0 / size,) * 3
+    nt.links.new(geo.outputs['Position'], mapping.inputs['Vector'])
+
+    def img_node(fn, noncolor):
+        p = os.path.join(tex_dir, fn)
+        if not os.path.exists(p):
+            return None
+        img = bpy.data.images.load(p)
+        n = nt.nodes.new('ShaderNodeTexImage')
+        n.image = img
+        n.projection = 'BOX'
+        n.projection_blend = 0.3
+        if noncolor:
+            img.colorspace_settings.name = 'Non-Color'
+        nt.links.new(mapping.outputs['Vector'], n.inputs['Vector'])
+        return n
+
+    nm = img_node('normal.jpg', True)
+    if nm:
+        nmap = nt.nodes.new('ShaderNodeNormalMap')
+        nmap.inputs['Strength'].default_value = normal_strength
+        nt.links.new(nm.outputs['Color'], nmap.inputs['Color'])
+        nt.links.new(nmap.outputs['Normal'], bsdf.inputs['Normal'])
+    rm = img_node('rough.jpg', True)
+    if rm:
+        nt.links.new(rm.outputs['Color'], bsdf.inputs['Roughness'])
+    if with_diffuse:
+        dm = img_node('diff.jpg', False)
+        if dm:
+            nt.links.new(dm.outputs['Color'], bsdf.inputs['Base Color'])
+    return True
+
+
 FURNITURE_GLB = {
     'sofa_3seat': 'assets/sofa_set.glb',
     'bed_180': 'assets/bed_soft_modern.glb',
@@ -871,6 +916,11 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
         print('[dress_scene] WARN: --config-dir 未传，跳过 materials.yaml 材质（使用基础材质）')
     stats = assign_materials(mats)
     furniture_mats = build_furniture_materials(hex_rgb, new_principled)
+    tex_base = os.path.join(args.get('config-dir') or '', 'assets', 'textures')
+    add_pbr_maps(mats.get('wall'), os.path.join(tex_base, 'painted_plaster_wall'),
+                 size=2.5, with_diffuse=False, normal_strength=0.3)
+    add_pbr_maps(furniture_mats.get('quartz'), os.path.join(tex_base, 'marble_01'),
+                 size=3.0, with_diffuse=False, normal_strength=0.4)
     replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '')
     add_moldings(args.get('config-dir') or '')
     add_ceiling(args.get('config-dir') or '', mats)

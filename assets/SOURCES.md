@@ -21,6 +21,8 @@ wget --no-proxy "<url>/xxx_nor_gl_2k.jpg" -O assets/textures/<id>/normal.jpg
 | old_wooden_floor_01 | [Poly Haven](https://polyhaven.com/a/old_wooden_floor_01) | `.../jpg/2k/old_wooden_floor_01/old_wooden_floor_01_diff_2k.jpg` | 备选直铺（旧木纹） |
 | wooden_planks | [Poly Haven](https://polyhaven.com/a/wooden_planks) | `.../jpg/2k/wooden_planks/wooden_planks_diff_2k.jpg` | 备选直铺（橡木纹） |
 | white_planks_clean | [Poly Haven](https://polyhaven.com/a/white_planks_clean) | `.../jpg/2k/white_planks_clean/white_planks_clean_diff_2k.jpg` | 已弃用（白漆无木纹） |
+| marble_01 | [Poly Haven](https://polyhaven.com/a/marble_01) | `.../jpg/2k/marble_01/marble_01_diff_2k.jpg` | 台面石纹（仅 normal+rough，保浅色石英） |
+| painted_plaster_wall | [Poly Haven](https://polyhaven.com/a/painted_plaster_wall) | `.../jpg/2k/painted_plaster_wall/painted_plaster_wall_diff_2k.jpg` | 墙面乳胶漆肌理（仅 normal+rough，保色号） |
 
 ## 下载方式
 
