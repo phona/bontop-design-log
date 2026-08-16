@@ -139,11 +139,15 @@ def _build_pbr_textured(mid: str, app: dict, config_dir: str):
         grout_mapping.inputs['Scale'].default_value = (1.0 / tile_w, 1.0 / tile_l, 1.0)
         nt.links.new(uv.outputs['UV'], grout_mapping.inputs['Vector'])
         brick = nt.nodes.new('ShaderNodeTexBrick')
-        try:
-            brick.offset = 0.0  # 直铺无错缝（默认 0.5=running bond）
-            brick.offset_frequency = 0
-        except Exception:
-            pass  # 部分版本 offset 是只读或不存在
+        # mapping 已把 UV 换算成"砖单位"（1 单位=1 块砖），这里把砖机网格对齐到 1×1：
+        brick.inputs[8].default_value = 1.0  # Brick Width = 1 砖宽
+        brick.inputs[9].default_value = 1.0  # Row Height = 1 砖长
+        if not app.get('grout_stagger'):
+            try:
+                brick.offset = 0.0  # 直铺无错缝（grout_stagger=true 时保留默认 0.5 步步高错缝）
+                brick.offset_frequency = 0
+            except Exception:
+                pass  # 部分版本 offset 是只读或不存在
         # Blender 5.0 输入顺序：[0]Vector [1]Color1 [2]Color2 [3]Mortar [4]Scale [5]MortarSize [6]Smooth [7]Bias [8]BrickW [9]RowH
         brick.inputs[1].default_value = (1, 1, 1, 1)  # Color1 (白=不暗化砖面)
         brick.inputs[2].default_value = (1, 1, 1, 1)  # Color2

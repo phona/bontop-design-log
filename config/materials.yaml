@@ -195,6 +195,30 @@ materials:
     notes: "修正版：grout_value 0.3→0.75（近色）、grout_frac 0.005→0.003（~2.4mm）。旧版深灰缝失真。"
     appearance: { type: "pbr_texture", texture_id: "oak_veneer_01", tile_size: 3.0, tint: "#c49a6c", grout: true, tile_width: 0.8, tile_length: 0.8, grout_frac: 0.003, grout_value: 0.75, coat: 0.5, roughness: 0.25, normal_strength: 1.0 }
 
+  - id: "floor_pbr_tile_612"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "600x1200木纹砖·步步高错缝（oak_veneer_02 弱纹细直纹 + 近色美缝）"
+    brand: "Poly Haven CC0"
+    model: "oak_veneer_02 2K"
+    spec: "600x1200 错缝通铺，近色美缝 ~2mm"
+    unit: "㎡"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1.0
+    calc_mode: "area"
+    supplier: "CC0 公开素材"
+    online_link: "https://polyhaven.com/a/oak_veneer_02"
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["长条比例像木地板", "错缝去方格感", "弱纹=视频同款无缝感"]
+    cons: ["木纹跨缝连续（渲染近似）"]
+    price_source: "免费"
+    notes: "oak_veneer_01 大山纹太假 → 换 02 弱纹细直纹。grout_stagger=true。"
+    appearance: { type: "pbr_texture", texture_id: "oak_veneer_02", tile_size: 3.0, tint: "#c49a6c", grout: true, grout_stagger: true, tile_width: 0.6, tile_length: 1.2, grout_frac: 0.012, grout_value: 0.6, coat: 0.5, roughness: 0.25, normal_strength: 1.0 }
+
   - id: "floor_pbr_laminate02"
     topic_id: "floor"
     alternative_group: "floor_tile"
