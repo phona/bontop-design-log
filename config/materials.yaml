@@ -217,7 +217,7 @@ materials:
     cons: ["木纹跨缝连续（渲染近似）"]
     price_source: "免费"
     notes: "oak_veneer_01 大山纹太假 → 换 02 弱纹细直纹。grout_stagger=true。"
-    appearance: { type: "pbr_texture", texture_id: "oak_veneer_02", tile_size: 3.0, tint: "#c49a6c", grout: true, grout_stagger: true, tile_width: 0.6, tile_length: 1.2, grout_frac: 0.012, grout_value: 0.6, coat: 0.5, roughness: 0.25, normal_strength: 1.0 }
+    appearance: { type: "pbr_texture", texture_id: "oak_veneer_02", tile_size: 3.0, tint: "#c49a6c", grout: true, grout_stagger: true, tile_width: 0.6, tile_length: 1.2, grout_frac: 0.008, grout_value: 0.65, cell_tone_lo: 0.84, cell_tone_hi: 1.08, coat: 0.5, roughness: 0.25, normal_strength: 1.0 }
 
   - id: "floor_pbr_laminate02"
     topic_id: "floor"

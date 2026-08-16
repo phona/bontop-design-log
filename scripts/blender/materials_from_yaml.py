@@ -149,8 +149,11 @@ def _build_pbr_textured(mid: str, app: dict, config_dir: str):
             except Exception:
                 pass  # 部分版本 offset 是只读或不存在
         # Blender 5.0 输入顺序：[0]Vector [1]Color1 [2]Color2 [3]Mortar [4]Scale [5]MortarSize [6]Smooth [7]Bias [8]BrickW [9]RowH
-        brick.inputs[1].default_value = (1, 1, 1, 1)  # Color1 (白=不暗化砖面)
-        brick.inputs[2].default_value = (1, 1, 1, 1)  # Color2
+        # Color1/Color2 按砖随机二选一 → 板间深浅混铺（cell_tone_lo/hi），真实木纹砖多版面混包效果
+        lo = float(app.get('cell_tone_lo', 1.0))
+        hi = float(app.get('cell_tone_hi', 1.0))
+        brick.inputs[1].default_value = (lo, lo, lo, 1)  # Color1（深版）
+        brick.inputs[2].default_value = (hi, hi, hi, 1)  # Color2（浅版）
         gv = app.get('grout_value', 0.2)
         brick.inputs[3].default_value = (gv, gv, gv, 1)  # Mortar (深灰=砖缝)
         brick.inputs[4].default_value = 1.0  # Scale
