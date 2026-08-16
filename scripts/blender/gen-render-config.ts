@@ -89,6 +89,19 @@ const scenarios = [
       { hex: '#faf8f3', mode: 'vertical', x: 0.01, z: 8.0, size: 0.3 },
     ],
   },
+  // 白天自然光工况：对照真实照片（手机白天拍摄=高漫反射环境光、不开灯、柔光地板反光）
+  {
+    id: 'daylight',
+    label: '白天自然光（高亮漫反射、中性白光、对照实景照片）',
+    sun_direction: null,
+    world_color: '#c8c8c8',
+    world_strength: 0.6,
+    lights_on: true,
+    light_temp: 6500,
+    exposure: 1.0,
+    blackout_state: 'open',
+    sheer_opacity: 0.35,
+  },
 ];
 
 const cameras = [
@@ -97,7 +110,7 @@ const cameras = [
     label: '客厅餐桌侧南望沙发+玻璃幕（全景）',
     position: [10.3, 1.55, 2.9],
     target: [9.6, 1.2, 8.6],
-    scenarios: ['material_review', 'blue_hour'],
+    scenarios: ['material_review', 'blue_hour', 'daylight'],
   },
   {
     id: 'master_bed_looking_glass',
@@ -233,7 +246,7 @@ const cameras = [
     position: [11.8, 1.6, 4.2],
     target: [8.6, 0.9, 8.0],
     lens: 20,
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'daylight'],
   },
   {
     id: 'living_from_sw',
@@ -241,7 +254,7 @@ const cameras = [
     position: [7.7, 1.6, 9.3],
     target: [11.5, 0.9, 3.0],
     lens: 20,
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'daylight'],
   },
   {
     id: 'living_floor_mid',
@@ -249,7 +262,7 @@ const cameras = [
     position: [10.3, 1.2, 6.2],
     target: [10.3, 0.0, 3.4],
     lens: 24,
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'daylight'],
   },
   {
     id: 'corridor_view',

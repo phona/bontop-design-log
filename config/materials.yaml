@@ -193,7 +193,7 @@ materials:
     cons: ["木纹跨砖缝连续（真砖每块独立印花，已是最小失真）"]
     price_source: "免费"
     notes: "修正版：grout_value 0.3→0.75（近色）、grout_frac 0.005→0.003（~2.4mm）。旧版深灰缝失真。"
-    appearance: { type: "pbr_texture", texture_id: "oak_veneer_01", tile_size: 3.0, tint: "#c49a6c", grout: true, tile_width: 0.8, tile_length: 0.8, grout_frac: 0.003, grout_value: 0.75, coat: 0.35, normal_strength: 1.0 }
+    appearance: { type: "pbr_texture", texture_id: "oak_veneer_01", tile_size: 3.0, tint: "#c49a6c", grout: true, tile_width: 0.8, tile_length: 0.8, grout_frac: 0.003, grout_value: 0.75, coat: 0.5, roughness: 0.25, normal_strength: 1.0 }
 
   - id: "floor_pbr_laminate02"
     topic_id: "floor"

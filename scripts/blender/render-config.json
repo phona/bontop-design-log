@@ -279,6 +279,18 @@
           "size": 0.3
         }
       ]
+    },
+    {
+      "id": "daylight",
+      "label": "白天自然光（高亮漫反射、中性白光、对照实景照片）",
+      "sun_direction": null,
+      "world_color": "#c8c8c8",
+      "world_strength": 0.6,
+      "lights_on": true,
+      "light_temp": 6500,
+      "exposure": 1,
+      "blackout_state": "open",
+      "sheer_opacity": 0.35
     }
   ],
   "cameras": [
@@ -297,7 +309,8 @@
       ],
       "scenarios": [
         "material_review",
-        "blue_hour"
+        "blue_hour",
+        "daylight"
       ]
     },
     {
@@ -591,7 +604,8 @@
       ],
       "lens": 20,
       "scenarios": [
-        "material_review"
+        "material_review",
+        "daylight"
       ]
     },
     {
@@ -609,7 +623,8 @@
       ],
       "lens": 20,
       "scenarios": [
-        "material_review"
+        "material_review",
+        "daylight"
       ]
     },
     {
@@ -627,7 +642,8 @@
       ],
       "lens": 24,
       "scenarios": [
-        "material_review"
+        "material_review",
+        "daylight"
       ]
     },
     {

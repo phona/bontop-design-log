@@ -178,13 +178,17 @@ def _build_pbr_textured(mid: str, app: dict, config_dir: str):
         if 'Coat Roughness' in bsdf.inputs:
             bsdf.inputs['Coat Roughness'].default_value = 0.1
 
-    # Roughness
-    rough_path = os.path.join(tex_dir, 'rough.jpg')
-    rtex = nt.nodes.new('ShaderNodeTexImage')
-    rtex.image = bpy.data.images.load(rough_path)
-    rtex.image.colorspace_settings.name = 'Non-Color'
-    nt.links.new(mapping.outputs['Vector'], rtex.inputs['Vector'])
-    nt.links.new(rtex.outputs['Color'], bsdf.inputs['Roughness'])
+    # Roughness（appearance.roughness 覆盖贴图：柔光砖/漆面等需要精确光泽度的场景）
+    rough_override = app.get('roughness')
+    if rough_override is not None:
+        bsdf.inputs['Roughness'].default_value = float(rough_override)
+    else:
+        rough_path = os.path.join(tex_dir, 'rough.jpg')
+        rtex = nt.nodes.new('ShaderNodeTexImage')
+        rtex.image = bpy.data.images.load(rough_path)
+        rtex.image.colorspace_settings.name = 'Non-Color'
+        nt.links.new(mapping.outputs['Vector'], rtex.inputs['Vector'])
+        nt.links.new(rtex.outputs['Color'], bsdf.inputs['Roughness'])
 
     # Normal (OpenGL)
     norm_path = os.path.join(tex_dir, 'normal.jpg')
