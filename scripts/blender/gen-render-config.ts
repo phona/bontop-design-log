@@ -39,7 +39,7 @@ const scenarios = [
     lights_on: true,
     exposure: 0.5,
     blackout_state: 'open',
-    sheer_opacity: 0.15,
+    sheer_opacity: 0.35,
   },
   {
     id: 'night',
@@ -51,7 +51,7 @@ const scenarios = [
     lights_on: true,
     exposure: 0.5,
     blackout_state: 'open',
-    sheer_opacity: 0.15,
+    sheer_opacity: 0.35,
   },
   // 材质评审工况（material-review-mode spec）：无调色、中性白光、候选色板——决策色号/拼法用
   {
@@ -65,7 +65,7 @@ const scenarios = [
     view_transform: 'Standard',
     exposure: 0.0,
     blackout_state: 'open',
-    sheer_opacity: 0.15,
+    sheer_opacity: 0.35,
     swatches: [
       // 地板候选色（floor_tile_01 原色系 ± 明度/奶咖向）——客厅特写视野，沿视线垂线排列
       { hex: '#c49a6c', mode: 'floor', x: 8.55, z: 7.05, size: 0.4 },

@@ -139,7 +139,7 @@
       "lights_on": true,
       "exposure": 0.5,
       "blackout_state": "open",
-      "sheer_opacity": 0.15
+      "sheer_opacity": 0.35
     },
     {
       "id": "night",
@@ -151,7 +151,7 @@
       "lights_on": true,
       "exposure": 0.5,
       "blackout_state": "open",
-      "sheer_opacity": 0.15
+      "sheer_opacity": 0.35
     },
     {
       "id": "material_review",
@@ -164,7 +164,7 @@
       "view_transform": "Standard",
       "exposure": 0,
       "blackout_state": "open",
-      "sheer_opacity": 0.15,
+      "sheer_opacity": 0.35,
       "swatches": [
         {
           "hex": "#c49a6c",

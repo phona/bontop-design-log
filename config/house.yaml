@@ -446,6 +446,9 @@ furnishings:
     # 房间 x∈[7.20,13.40] z∈[2.40,9.80]，开放连通走廊，无门 swing（DEC-021）
     # 电视在西墙（x=7.2，唯一实体墙），沙发朝西；南墙为玻璃幕不能挂电视
     - { type: tv_stand, x: 7.40, z: 7.00, rotation: 90 }     # 靠西墙居中
+    - { type: tv_65, x: 7.42, z: 7.00, rotation: 90 }        # 65寸电视放电视柜上，面朝东
+    - { type: floor_lamp, x: 11.0, z: 8.65, rotation: 0 }    # 沙发南臂地插位（sock_living_sofa_r）
+    - { type: plant_fiddle, x: 12.7, z: 9.1, rotation: 0 }   # 琴叶榕，东南角玻璃旁
     - { type: sofa_3seat, x: 11.00, z: 7.00, rotation: 270 } # 面朝西看电视
     - { type: dining_table, x: 8.50, z: 3.35, rotation: 0 }   # DEC-021 餐厅带扩至1.9m，横摆+南北两排椅
     - { type: dining_chair, x: 8.10, z: 2.70, rotation: 0 }

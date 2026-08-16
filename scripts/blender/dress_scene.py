@@ -28,7 +28,7 @@ LIGHT_ENERGY = {  # 瓦（Cycles/EEVEE 通用，先求氛围对再校绝对亮�
     'dome': 55.0,
     'downlight': 22.0,
     'wall_lamp': 18.0,
-    'led_strip': 45.0,
+    'led_strip': 25.0,
 }
 
 
@@ -226,11 +226,16 @@ def add_lights(cfg: dict, temp_override: float | None = None) -> int:
             data.size_y = 0.1
         else:
             data = bpy.data.lights.new(lp['id'], type='POINT')
-            data.shadow_soft_size = 0.05 if lp['type'] == 'downlight' else 0.15
+            data.shadow_soft_size = 0.25 if lp['type'] == 'downlight' else 0.15
         data.energy = energy
         data.color = color
         obj = bpy.data.objects.new(lp['id'], data)
-        obj.location = to_blender(lp['x'], lp['height'], lp['z'])
+        # led_strip 贴墙放会打出眩光斑 → 离墙 0.15m 且朝向房间（本项目仅西墙灯带，法线 +x 朝东）
+        off = 0.15 if lp['type'] == 'led_strip' else 0.0
+        obj.location = to_blender(lp['x'] + off, lp['height'], lp['z'])
+        if lp['type'] == 'led_strip':
+            import math as _m
+            obj.rotation_euler = (0, -_m.radians(90), 0)
         bpy.context.collection.objects.link(obj)
         count += 1
     return count
@@ -254,6 +259,7 @@ def add_light_fixtures(cfg: dict, temp_override: float | None = None) -> int:
         return m
 
     diff_m = emis('灯具_diffuser', temp_override or 3000, 5.0)
+    cove_m = emis('灯具_cove', temp_override or 3000, 2.0)  # 灯槽低亮度，防眩光斑
     count = 0
     for lp in cfg['lights']:
         t = lp['type']
@@ -296,7 +302,7 @@ def add_light_fixtures(cfg: dict, temp_override: float | None = None) -> int:
             o.name = f'fixture:led_cove:{lp["id"]}'
             o.dimensions = (0.05, 2.4, 0.05)
             o.location = to_blender(x + 0.03, h, z)
-            o.data.materials.append(diff_m)
+            o.data.materials.append(cove_m)
             count += 1
     if count:
         print(f'[dress_scene] light fixtures: {count}')
@@ -521,6 +527,25 @@ FURNITURE_PARTS = {
         ('body', [1.8, 0.4, 0.4], [0, 0.2, 0], 'wood'),
         ('top', [1.8, 0.02, 0.42], [0, 0.41, 0], 'wood_dark'),
     ],
+    # 去酒店感软装：65寸电视（放电视柜上，台面高 0.42）
+    'tv_65': [
+        ('foot', [0.5, 0.05, 0.25], [0, 0.445, 0], 'black_glass'),
+        ('panel', [1.45, 0.82, 0.05], [0, 0.88, 0], 'black_glass'),
+    ],
+    # 落地灯（沙发南臂地插位）
+    'floor_lamp': [
+        ('base', [0.28, 0.03, 0.28], [0, 0.015, 0], 'metal'),
+        ('pole', [0.03, 1.5, 0.03], [0, 0.78, 0], 'metal'),
+        ('shade', [0.32, 0.24, 0.32], [0, 1.62, 0], 'fabric_light'),
+    ],
+    # 琴叶榕（东南角玻璃旁）
+    'plant_fiddle': [
+        ('pot', [0.36, 0.35, 0.36], [0, 0.175, 0], 'ceramic'),
+        ('trunk', [0.04, 0.9, 0.04], [0, 0.75, 0], 'wood_dark'),
+        ('leaf1', [0.5, 0.55, 0.5], [-0.15, 1.3, 0.1], 'plant'),
+        ('leaf2', [0.45, 0.5, 0.45], [0.2, 1.45, -0.1], 'plant'),
+        ('leaf3', [0.4, 0.45, 0.4], [0.0, 1.62, 0.05], 'plant'),
+    ],
     'wardrobe_180': [
         ('carcass', [1.8, 2.7, 0.58], [0, 1.35, 0], 'paint_cream'),
         ('door_l', [0.88, 2.66, 0.03], [-0.45, 1.35, 0.30], 'paint_cream'),
@@ -589,6 +614,7 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
     mats['black_glass'] = new_principled_fn('家具_black_glass', hex_rgb_fn('#1a1a1c'), rough=0.15)
     mats['quartz'] = new_principled_fn('家具_quartz', hex_rgb_fn('#e8e6e0'), rough=0.25)
     mats['ceramic'] = new_principled_fn('家具_ceramic', hex_rgb_fn('#f8f8f6'), rough=0.1)
+    mats['plant'] = new_principled_fn('家具_plant', hex_rgb_fn('#5a6b4a'), rough=0.7)  # 琴叶榕叶绿
     return mats
 
 
@@ -766,6 +792,103 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
     if count:
         print(f'[dress_scene] furniture replaced: {count} parts')
     return count
+
+
+def place_extra_furniture(furniture_mats: dict, config_dir: str) -> int:
+    """house.yaml 已摆位但 glb 尚未重新导出的家具类型：直接按坐标生成部件。
+    glb 里已有 furniture:* 块的类型跳过（重新导出后自动失效，不会重复）。
+    坐标：house.yaml 为 three 局部米制 (x, z, rotation°)；three(x,y,z) → Blender(x,-z,y)，rotation 同号映到 Blender Z。"""
+    import math
+    import yaml
+    if not config_dir:
+        return 0
+    existing = set()
+    for obj in bpy.data.objects:
+        if obj.name.startswith('furniture:'):
+            ps = obj.name.split(':')
+            if len(ps) >= 3:
+                existing.add(ps[2])
+    house_path = os.path.join(config_dir, 'config', 'house.yaml')
+    if not os.path.exists(house_path):
+        return 0
+    house = yaml.safe_load(open(house_path, encoding='utf-8'))
+    count = 0
+    for _room_id, items in (house.get('furnishings') or {}).items():
+        for it in items or []:
+            ftype = it.get('type')
+            if ftype not in FURNITURE_PARTS or ftype in existing:
+                continue
+            if it.get('x') is None or it.get('z') is None:
+                continue
+            rz = math.radians(it.get('rotation', 0))
+            cos_rz, sin_rz = math.cos(rz), math.sin(rz)
+            bx, by = it['x'], -it['z']  # three → blender 水平面
+            for pname, tsize, tpos, mat_key in FURNITURE_PARTS[ftype]:
+                lx, ly, lz = tpos[0], -tpos[2], tpos[1]
+                wx = bx + lx * cos_rz - ly * sin_rz
+                wy = by + lx * sin_rz + ly * cos_rz
+                wz = lz
+                dx, dy, dz = tsize[0], tsize[2], tsize[1]
+                bpy.ops.mesh.primitive_cube_add(size=1.0)
+                part = bpy.context.object
+                part.name = f'asset:{ftype}:{pname}'
+                part.dimensions = (dx, dy, dz)
+                part.location = (wx, wy, wz)
+                part.rotation_euler = (0, 0, rz)
+                mat = furniture_mats.get(mat_key)
+                if mat:
+                    part.data.materials.append(mat)
+                bevel = part.modifiers.new('Bevel', 'BEVEL')
+                bevel.width = 0.015
+                bevel.segments = 4
+                bevel.limit_method = 'ANGLE'
+                bevel.angle_limit = 0.523599
+                count += 1
+    if count:
+        print(f'[dress_scene] extra furniture placed: {count} parts')
+    return count
+
+
+def add_sheer_panels(config_dir: str, mats: dict) -> int:
+    """纱帘"拉上"staging：overlay 的 curtain_run closed=false 表示拉开（glb 里玻璃幕是裸的），
+    居家感渲染需要拉上的纱帘 → 沿指定幕墙生成纱帘薄板（室内侧偏 0.08m）。
+    只处理客厅南墙（主视角覆盖面），墙线段读 model-geometry（唯一权威源）。"""
+    import math
+    import yaml
+    if not config_dir:
+        return 0
+    geo_path = os.path.join(config_dir, 'config', 'layout', 'model-geometry.yaml')
+    if not os.path.exists(geo_path):
+        return 0
+    geo = yaml.safe_load(open(geo_path, encoding='utf-8'))
+    mat = mats.get('sheer')
+    if mat is None:
+        return 0
+    V = {v['id']: (v['x'], v['z']) for v in geo.get('vertices', [])}
+    # (wall_id, 室内侧偏移方向 three(dx,dz))；南墙 w_liv_south 室内在北侧 → (0,-0.08)
+    panels = [('w_liv_south', (0.0, -0.08))]
+    count = 0
+    for wid, (ox, oz) in panels:
+        wall = next((w for w in geo.get('walls', []) if w.get('id') == wid), None)
+        if not wall:
+            continue
+        x1, z1 = V[wall['from']]
+        x2, z2 = V[wall['to']]
+        length = math.hypot(x2 - x1, z2 - z1)
+        cx, cz = (x1 + x2) / 2 + ox, (z1 + z2) / 2 + oz
+        angle_b = math.atan2(-(z2 - z1), x2 - x1)  # three→blender 水平面方向角
+        bpy.ops.mesh.primitive_cube_add(size=1.0)
+        o = bpy.context.object
+        o.name = f'asset:sheer:{wid}'
+        o.dimensions = (length, 0.02, 2.8)  # blender: x长 y厚 z高
+        o.location = to_blender(cx, 1.4, cz)
+        o.rotation_euler = (0, 0, angle_b)
+        o.data.materials.append(mat)
+        count += 1
+    if count:
+        print(f'[dress_scene] sheer panels: {count}')
+    return count
+
 
 
 def add_ceiling(config_dir: str, ceiling_mats: dict) -> int:
@@ -1025,11 +1148,13 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     add_pbr_maps(furniture_mats.get('fabric'), os.path.join(tex_base, 'fabric_pattern_07'),
                  size=0.35, with_diffuse=False, normal_strength=1.0)
     replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '')
+    place_extra_furniture(furniture_mats, args.get('config-dir') or '')
     add_moldings(args.get('config-dir') or '')
     add_ceiling(args.get('config-dir') or '', mats)
     add_kitchen_cabinets(cabinet_mat, countertop_mat)
     add_bath_fixtures(furniture_mats)
     add_soft_decor(furniture_mats)
+    add_sheer_panels(args.get('config-dir') or '', mats)
     swatch_count = add_swatches(scenario)
     # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）
     fill = scenario.get('fill_light') or cam_cfg.get('fill_light')
