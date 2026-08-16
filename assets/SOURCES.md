@@ -23,6 +23,7 @@ wget --no-proxy "<url>/xxx_nor_gl_2k.jpg" -O assets/textures/<id>/normal.jpg
 | white_planks_clean | [Poly Haven](https://polyhaven.com/a/white_planks_clean) | `.../jpg/2k/white_planks_clean/white_planks_clean_diff_2k.jpg` | 已弃用（白漆无木纹） |
 | laminate_floor_02 | [Poly Haven](https://polyhaven.com/a/laminate_floor_02) | `.../jpg/2k/laminate_floor_02/laminate_floor_02_diff_2k.jpg` | 直铺地板（真扫描长板+自带缝，推荐直铺候选） |
 | plank_flooring_02 | [Poly Haven](https://polyhaven.com/a/plank_flooring_02) | `.../jpg/2k/plank_flooring_02/plank_flooring_02_diff_2k.jpg` | 已弃用（窄板+钉眼，像木箱板） |
+| oak_veneer_02 | [Poly Haven](https://polyhaven.com/a/oak_veneer_02) | `.../jpg/2k/oak_veneer_02/oak_veneer_02_diff_2k.jpg` | 600x1200 木纹砖用弱纹细直纹（floor_pbr_tile_612） |
 | marble_01 | [Poly Haven](https://polyhaven.com/a/marble_01) | `.../jpg/2k/marble_01/marble_01_diff_2k.jpg` | 台面石纹（仅 normal+rough，保浅色石英） |
 | painted_plaster_wall | [Poly Haven](https://polyhaven.com/a/painted_plaster_wall) | `.../jpg/2k/painted_plaster_wall/painted_plaster_wall_diff_2k.jpg` | 墙面乳胶漆肌理（仅 normal+rough，保色号） |
 | fabric_pattern_07 | [Poly Haven](https://polyhaven.com/a/fabric_pattern_07) | `.../jpg/2k/fabric_pattern_07/fabric_pattern_07_diff_2k.jpg` | 床品/布艺织纹（仅 normal+rough，保白色；diff 无源） |
