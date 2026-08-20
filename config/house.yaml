@@ -444,17 +444,22 @@ furnishings:
     - { type: ceiling_light }
   living_dining:
     # 房间 x∈[7.20,13.40] z∈[2.40,9.80]，开放连通走廊，无门 swing（DEC-021）
-    # 电视在西墙（x=7.2，唯一实体墙），沙发朝西；南墙为玻璃幕不能挂电视
-    - { type: tv_stand, x: 7.40, z: 7.00, rotation: 90 }     # 靠西墙居中
-    - { type: tv_65, x: 7.42, z: 7.00, rotation: 90 }        # 65寸电视放电视柜上，面朝东
-    - { type: floor_lamp, x: 11.0, z: 8.65, rotation: 0 }    # 沙发南臂地插位（sock_living_sofa_r）
+    # 西墙电视背景柜墙只依附已存在的实体墙 z=5.55-9.00，不侵入餐厅/门厅过道。
+    - { type: wall_cabinet_tall, x: 7.375, z: 6.225, rotation: 90 } # 通顶柜 z=5.55-6.90，浅 PET+局部开放格
+    - { type: tv_wall_low, x: 7.40, z: 7.95, rotation: 90 }         # TV 区悬空低柜 z 6.9-9.0，深胡桃背板
+    - { type: tv_65, x: 7.42, z: 7.70, rotation: 90 }        # 65寸电视嵌入 TV 区，面朝东（南移 0.7）
+    - { type: floor_lamp, x: 11.0, z: 9.35, rotation: 0 }    # 沙发南臂地插位（sock_living_sofa_r@9.35），随沙发南移
     - { type: plant_fiddle, x: 12.7, z: 9.1, rotation: 0 }   # 琴叶榕，东南角玻璃旁
-    - { type: sofa_3seat, x: 11.00, z: 7.00, rotation: 270 } # 面朝西看电视
-    - { type: dining_table, x: 8.50, z: 3.35, rotation: 0 }   # DEC-021 餐厅带扩至1.9m，横摆+南北两排椅
-    - { type: dining_chair, x: 8.10, z: 2.70, rotation: 0 }
-    - { type: dining_chair, x: 8.90, z: 2.70, rotation: 0 }
-    - { type: dining_chair, x: 8.10, z: 4.00, rotation: 180 }
-    - { type: dining_chair, x: 8.90, z: 4.00, rotation: 180 }
+    - { type: sofa_3seat, x: 11.00, z: 7.70, rotation: 270 } # 面朝西看电视（与电视同轴南移 0.7）
+    - { type: coffee_table, x: 9.70, z: 7.70, rotation: 0 }  # 沙发与电视柜之间，随沙发南移
+    # 门内右手定制半高柜：从门内向客厅延伸，柜高 1.5m；玄关侧封闭，餐厅侧开放，柜顶以上可见餐厅。
+    # footprint x=11.325-11.675、z=3.10-5.10，距入户门洞西缘 x=11.80 留 0.125m，东侧主通道 1.725m。
+    - { type: entry_half_height_cabinet, x: 11.50, z: 4.10, rotation: 90 }
+    - { type: dining_table, x: 8.90, z: 3.35, rotation: 0 }   # DEC-021 餐厅带扩至1.9m；DEC-029 东移0.4让出柜前通道（≥0.7m）
+    - { type: dining_chair, x: 8.50, z: 2.70, rotation: 0 }
+    - { type: dining_chair, x: 9.30, z: 2.70, rotation: 0 }
+    - { type: dining_chair, x: 8.50, z: 4.00, rotation: 180 }
+    - { type: dining_chair, x: 9.30, z: 4.00, rotation: 180 }
     - { type: curtain_set, count: 2 }
     - { type: ceiling_light, count: 2 }
   kitchen:
@@ -483,7 +488,10 @@ furnishings:
   balcony:
     - { type: ceiling_light }
   entry_garden:
-    - { type: shoe_cabinet }
+    # 成品矮鞋柜+自立洞洞板，靠花园东侧落地摆放，避开西墙开关/水龙头/插座。
+    # 非固定柜体，可整体移开，不改变消防通道。
+    - { type: garden_entry_station, x: 15.02, z: 1.35, rotation: 90 }
+    - { type: shoe_cabinet } # count-only：花园换鞋站+门内定制半高柜的组合预算
     - { type: ceiling_light }
   south_balcony: []
 
@@ -526,7 +534,7 @@ design_rationale:
   - "客餐厅合并，南向采光面大，电视墙方案"
   - "开放式厨房，增强客餐厅通透感，配大功率侧吸油烟机；厨房与客餐厅之间加三联动长虹玻璃吊轨推拉门（平时全开，爆炒关闭）"
   - "厨房布局：东墙（灶台+烟机+冰箱），北墙（水槽+切配，面对玻璃窗），西墙（阳台门+辅助台面）；北墙上下水走地面"
-  - "入户花园作为玄关过渡区，兼顾消防通道；西墙做玄关组合柜（2400×350×2400，翻斗门，底部架空150mm）"
+  - "入户花园作为进出门过渡区：东侧放可移动鞋柜+自立洞洞板；门内右手以 1.5m 定制半高柜衔接客厅，玄关侧随手收纳、餐厅侧餐边收纳，柜顶保留视线"
   - "主卧带独立卫生间，形成主卧套房；飘窗保留"
   - "主卫方案 A+C：洗手台外移到过道段（干湿分离），湿区只留马桶+淋浴，过道段做薄柜储物；不泡浴缸"
   - "全屋衣柜统一推拉门（主卧/父母房/儿童房），节省过道空间"

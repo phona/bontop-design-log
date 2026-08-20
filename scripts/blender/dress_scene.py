@@ -684,6 +684,47 @@ def import_furniture_glb(glb_path: str, target_width: float, block, rot_fix: flo
     bpy.ops.object.select_all(action='DESELECT')
     for obj in new_objs:
         obj.select_set(True)
+    # 玄关餐边一体柜（通顶三段式：底架空 0.15 + 浅门下柜 + 深胡桃开放格 + 浅门上柜）
+    'shoe_cabinet': [
+        ('lower', [1.5, 0.75, 0.35], [0, 0.525, 0], 'paint_cream'),
+        ('niche', [1.5, 0.5, 0.03], [0, 1.15, -0.16], 'wood_dark'),
+        ('upper', [1.5, 1.0, 0.35], [0, 1.9, 0], 'paint_cream'),
+    ],
+    # 入户花园可移动换鞋站（成品鞋柜 + 自立洞洞板）
+    'garden_entry_station': [
+        ('shoe_body', [1.1, 0.78, 0.34], [0, 0.42, 0], 'wood'),
+        ('shoe_top', [1.14, 0.04, 0.38], [0, 0.83, 0], 'wood_dark'),
+        ('pegboard', [1.1, 1.05, 0.04], [0, 1.38, -0.15], 'metal_black'),
+        ('stand_l', [0.05, 1.85, 0.05], [-0.5, 0.925, -0.15], 'metal_black'),
+        ('stand_r', [0.05, 1.85, 0.05], [0.5, 0.925, -0.15], 'metal_black'),
+    ],
+    # 门内右手定制半高柜：向客厅延伸，玄关侧封闭、餐厅侧开放，柜顶以上保持视线通透。
+    'entry_half_height_cabinet': [
+        ('lower', [2.0, 0.88, 0.35], [0, 0.44, 0], 'paint_cream'),
+        ('top', [2.04, 0.04, 0.39], [0, 0.90, 0], 'wood_dark'),
+        ('side_n', [0.08, 0.56, 0.35], [-0.96, 1.18, 0], 'paint_cream'),
+        ('side_s', [0.08, 0.56, 0.35], [0.96, 1.18, 0], 'paint_cream'),
+        ('upper', [1.76, 0.08, 0.35], [0, 1.46, 0], 'paint_cream'),
+        ('dining_back', [1.76, 0.50, 0.025], [0, 1.18, 0.162], 'wood_dark'),
+        ('dining_shelf', [1.76, 0.04, 0.31], [0, 1.00, 0.0], 'wood_dark'),
+        ('entry_panel', [1.76, 0.50, 0.02], [0, 1.18, 0.186], 'paint_cream'),
+    ],
+    # 西墙实体墙段通顶柜（z=5.55-6.90，不进入餐厅/门厅）
+    'wall_cabinet_tall': [
+        ('lower', [1.35, 1.1, 0.35], [0, 0.55, 0], 'paint_cream'),
+        ('niche', [1.35, 0.5, 0.03], [0, 1.35, -0.16], 'wood_dark'),
+        ('upper', [1.35, 1.3, 0.35], [0, 2.25, 0], 'paint_cream'),
+    ],
+    # 西墙 TV 区（z=6.90-9.00，悬空低柜 + 深胡桃背板）
+    'tv_wall_low': [
+        ('low', [2.1, 0.35, 0.4], [0, 0.325, 0], 'wood_dark'),
+        ('back', [2.1, 1.6, 0.05], [0, 1.3, -0.17], 'wood_dark'),
+    ],
+    # 主茶几（DEC-026 改款：圆形深木面+黑细柱，稳重克制；v14 精炼：更薄更轻）
+    'coffee_table': [
+        ('top', [0.8, 0.03, 0.8], [0, 0.38, 0], 'wood_dark', 'cylinder'),
+        ('base', [0.35, 0.35, 0.35], [0, 0.175, 0], 'metal_black', 'cylinder'),
+    ],
     bpy.context.view_layer.objects.active = new_objs[0]
 
     if len(new_objs) > 1:

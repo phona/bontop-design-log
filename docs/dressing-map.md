@@ -35,8 +35,8 @@
 | desk | desk_01 | 1.2m 书桌 | 本地家具厂 / 林氏家居 / 1.2×0.6×0.75m 板式/实木 | 1200×600×750mm | 底色 #b08d5e |
 | chair | chair_01 | 人体工学椅 | 西昊 / 永艺 / 网布升降转椅 | 标准 | 底色 #3a3a3a |
 | bookshelf | bookshelf_01 | 0.8m 书架 | 本地家具厂 / 林氏家居 / 0.8×0.3×1.8m 开放式 | 800×300×1800mm | 底色 #9c7b52 |
-| shoe_cabinet | shoe_cabinet_01 | 玄关鞋柜 | 本地全屋定制工厂 / 1.0×0.35×2.4m 平开门 | 1000×350×2400mm | 底色 #c4a882 |
-| coffee_table | coffee_table_01 | 1.2m 茶几 | 本地家具厂 / 林氏家居 / 1.2×0.6×0.45m 岩板/板式 | 1200×600×450mm | 底色 #7a6a58 |
+| shoe_cabinet | shoe_cabinet_01 | 玄关收纳组合（花园换鞋站+门内半高定制柜） | 成品鞋柜 / 本地全屋定制工厂 / 1.1m 可移动鞋柜+洞洞板；2.0×0.35×1.5m 浅 PET 半高柜 + 深胡桃餐厅侧开放格 | 组合预算项 | 底色 #c4a882 |
+| coffee_table | coffee_table_01 | 圆形/椭圆黑色茶几（轻巧造型） | 本地家具厂 / 林氏家居 / φ0.7-0.8m 圆形，黑色/深木色，细腿 | φ700-800×420mm | 底色 #2f2822 |
 | gas_stove | gas_stove_01 | 5.0kW 嵌入式燃气灶 | 美的 / 华帝 / 双灶嵌入式，5.0kW | 760×450mm | 按实物选材替换 |
 | dishwasher | dishwasher_01 | 嵌入式洗碗机 | 美的 / 海尔 / 8-13 套嵌入式 | 标准 | 按实物选材替换 |
 | water_purifier | water_purifier_01 | RO 反渗透净水器 | 小米 / 美的 / 400-600G 厨下式 | 标准 | 按实物选材替换 |
@@ -76,8 +76,14 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | study | mattress_150 | 1 | — | count-only（不在 glb，按实物补摆） |
 | study | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | study | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| living_dining | tv_stand | 1 | 1.8×0.4 | (7.4, 7) / 90° |
-| living_dining | sofa_3seat | 1 | 2.8×0.9 | (11, 7) / 270° |
+| living_dining | wall_cabinet_tall | 1 | 1.35×0.35 | (7.375, 6.225) / 90° |
+| living_dining | tv_wall_low | 1 | 2.1×0.4 | (7.4, 7.95) / 90° |
+| living_dining | tv_65 | 1 | 1.45×0.25 | (7.42, 7.7) / 90° |
+| living_dining | floor_lamp | 1 | 0.32×0.32 | (11, 9.35) / 0° |
+| living_dining | plant_fiddle | 1 | 0.5×0.5 | (12.7, 9.1) / 0° |
+| living_dining | sofa_3seat | 1 | 2.8×0.9 | (11, 7.7) / 270° |
+| living_dining | coffee_table | 1 | 0.7×0.7 | (9.7, 7.7) / 0° |
+| living_dining | entry_half_height_cabinet | 1 | 2.0×0.35 | (11.50, 4.10) / 90°；门内右手向客厅延伸的 1.5m 高定制半高柜 |
 | living_dining | dining_table | 1 | 1.4×0.8 | (8.5, 3.35) / 0° |
 | living_dining | dining_chair | 4 | 0.45×0.45 | (8.1, 2.7) / 0°；(8.9, 2.7) / 0°；(8.1, 4) / 180°；(8.9, 4) / 180° |
 | living_dining | curtain_set | 2 | — | count-only（不在 glb，按实物补摆） |
@@ -103,7 +109,8 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | guest_bath | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
 | guest_bath | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | balcony | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| entry_garden | shoe_cabinet | 1 | — | count-only（不在 glb，按实物补摆） |
+| entry_garden | garden_entry_station | 1 | 1.1×0.38 | (15.02, 1.35) / 90° |
+| entry_garden | shoe_cabinet | 1 | — | count-only（花园换鞋站+门内定制半高柜的组合预算） |
 | entry_garden | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 
 ## 3. 灯光点位（14 个）→ 灯具与光源摆放单

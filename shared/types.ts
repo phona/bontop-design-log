@@ -584,6 +584,12 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   tv_65: { width: 1.45, depth: 0.25 },
   floor_lamp: { width: 0.32, depth: 0.32 },
   plant_fiddle: { width: 0.5, depth: 0.5 },
+  coffee_table: { width: 0.7, depth: 0.7 },
+  shoe_cabinet: { width: 1.5, depth: 0.35 },
+  garden_entry_station: { width: 1.1, depth: 0.38 }, // 可移动鞋柜+自立洞洞板，不挂墙
+  entry_half_height_cabinet: { width: 2.0, depth: 0.35 }, // 门内右手定制半高柜，沿 z=3.10-5.10 向客厅延伸
+  wall_cabinet_tall: { width: 1.35, depth: 0.35 }, // 西墙实体墙段 z=5.55-6.90
+  tv_wall_low: { width: 2.1, depth: 0.4 }, // DEC-029 西墙柜墙 TV 区悬空低柜（沿墙长度×进深，z 6.9-9.0）
   desk: { width: 1.2, depth: 0.6 },
   bookshelf: { width: 0.8, depth: 0.3 },
   chair: { width: 0.5, depth: 0.5 },

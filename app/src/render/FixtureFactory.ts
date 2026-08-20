@@ -158,6 +158,64 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [0.3, 0.15, 0.3], position: [0, 2.5, 0], color: '#dddddd', roughness: 0.5 },
     ],
   },
+  {
+    type: 'coffee_table',
+    parts: [
+      { shape: 'box', size: [0.7, 0.04, 0.7], position: [0, 0.4, 0], color: '#3a2f26' },
+      { shape: 'box', size: [0.5, 0.38, 0.5], position: [0, 0.19, 0], color: '#222222', metalness: 0.7, roughness: 0.4 },
+    ],
+  },
+  {
+    // 西墙实体墙北段通顶柜（z=5.55–6.90，不进入餐厅/门厅过道）
+    type: 'wall_cabinet_tall',
+    parts: [
+      { shape: 'box', size: [1.35, 1.1, 0.35], position: [0, 0.55, 0], color: '#f2ede2' },
+      { shape: 'box', size: [1.35, 0.5, 0.03], position: [0, 1.35, -0.16], color: '#503e2e' },
+      { shape: 'box', size: [1.35, 1.3, 0.35], position: [0, 2.25, 0], color: '#f2ede2' },
+    ],
+  },
+  {
+    // 西墙 TV 区（z=6.90–9.00，悬空低柜 + 深胡桃背板）
+    type: 'tv_wall_low',
+    parts: [
+      { shape: 'box', size: [2.1, 0.35, 0.4], position: [0, 0.325, 0], color: '#503e2e' },
+      { shape: 'box', size: [2.1, 1.6, 0.05], position: [0, 1.3, -0.17], color: '#503e2e' },
+    ],
+  },
+  {
+    // 玄关餐边一体柜：通顶三段式（底架空 0.15 + 浅门下柜 + 深胡桃开放格 + 浅门上柜）
+    type: 'shoe_cabinet',
+    parts: [
+      { shape: 'box', size: [1.5, 0.75, 0.35], position: [0, 0.525, 0], color: '#f2ede2' },
+      { shape: 'box', size: [1.5, 0.5, 0.03], position: [0, 1.15, -0.16], color: '#503e2e' },
+      { shape: 'box', size: [1.5, 1.0, 0.35], position: [0, 1.9, 0], color: '#f2ede2' },
+    ],
+  },
+  {
+    // 入户花园可移动换鞋站：成品矮鞋柜 + 自立洞洞板，不依赖墙体固定。
+    type: 'garden_entry_station',
+    parts: [
+      { shape: 'box', size: [1.1, 0.78, 0.34], position: [0, 0.42, 0], color: '#d9c5a5' },
+      { shape: 'box', size: [1.14, 0.04, 0.38], position: [0, 0.83, 0], color: '#503e2e' },
+      { shape: 'box', size: [1.1, 1.05, 0.04], position: [0, 1.38, -0.15], color: '#292725', metalness: 0.35, roughness: 0.65 },
+      { shape: 'box', size: [0.05, 1.85, 0.05], position: [-0.5, 0.925, -0.15], color: '#292725', metalness: 0.55, roughness: 0.45 },
+      { shape: 'box', size: [0.05, 1.85, 0.05], position: [0.5, 0.925, -0.15], color: '#292725', metalness: 0.55, roughness: 0.45 },
+    ],
+  },
+  {
+    // 门内右手的定制半高柜：向客厅延伸，玄关侧封闭、餐厅侧开放，柜顶以上保持视线通透。
+    type: 'entry_half_height_cabinet',
+    parts: [
+      { shape: 'box', size: [2.0, 0.88, 0.35], position: [0, 0.44, 0], color: '#f2ede2' },
+      { shape: 'box', size: [2.04, 0.04, 0.39], position: [0, 0.90, 0], color: '#503e2e' },
+      { shape: 'box', size: [0.08, 0.56, 0.35], position: [-0.96, 1.18, 0], color: '#f2ede2' },
+      { shape: 'box', size: [0.08, 0.56, 0.35], position: [0.96, 1.18, 0], color: '#f2ede2' },
+      { shape: 'box', size: [1.76, 0.08, 0.35], position: [0, 1.46, 0], color: '#f2ede2' },
+      { shape: 'box', size: [1.76, 0.50, 0.025], position: [0, 1.18, 0.162], color: '#503e2e' },
+      { shape: 'box', size: [1.76, 0.04, 0.31], position: [0, 1.00, 0.0], color: '#503e2e' },
+      { shape: 'box', size: [1.76, 0.50, 0.02], position: [0, 1.18, 0.186], color: '#f2ede2' },
+    ],
+  },
   // ── Electrical ─
   {
     type: 'socket',
