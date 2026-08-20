@@ -128,3 +128,35 @@ v1（首版 Cycles）效果差的根因与修复：
 6. **glb 手工导出**：three.js app → 手工点导出按钮 → house.glb，未自动化。
 7. **tint 压暗**：multiply 模式只压暗不提亮，浅色色板会偏暗。后续可改 mix 模式（tint_color × pct + original × (1-pct)）。
 8. **版面数=1**：PBR 贴图按 800mm 平铺，每块砖木纹不同（连续纹理切割），非真实印刷砖（每块独立印花+6-8 版面交替）。决策用够，实物门店看版面数。
+
+## v8 真实感升级：中古胡桃家具 GLB + daylight 真光照（2026-08-20，4090D 云）
+
+触发：业主提供中古风实景参考图，要求渲染更真实、更有参考性（DEC-2026-08-20-025）。
+
+**变更**：
+1. **家具 GLB 化**（Poly Haven CC0，`assets/furniture/`）：`FURNITURE_GLB` 扩展 sofa_3seat=sofa_02（黑皮拉扣+深木框）、dining_table=WoodenTable_01、dining_chair=dining_chair_02（深棕皮）、tv_stand=modern_wooden_cabinet（深胡桃格栅）。替换旧 BlenderKit 白布艺沙发。
+2. **地板渲染参数校准**：tint #c49a6c→#d4b48a（浅暖橡木去红）、coat 0.3→0.1、roughness 0.55 覆盖贴图（柔光釉，对齐 DEC-024 门店四问）。
+3. **daylight 工况重写**：真 HDR 外景（kloofendal_48d_partly_cloudy 1k，**真 Radiance HDR**——旧两张"hdr"实为 8-bit JPG）+ `world_hdri_lighting` 真天空直接照明（不再 Light Path 分离）+ 西南向午后太阳（sun_energy 5.0 / 5500K）+ 不开灯 + exposure 2.0（对齐手机白天曝光习惯）+ 窗外/照明光比分控（`world_hdri_camera_strength` 0.2，窗外可见光线=相机+透射+单次反射）+ daylight 纱帘 0.35→0.25（减白色散射雾霾感）。
+
+**坑记录（全是首次启用太阳/真光照暴露的存量问题）**：
+1. **旧 daylight 的"亮"全靠室内灯**：lights_on=true 与"不开灯"注释自相矛盾。关灯+纯天光后画面死黑 → 真天空照明 + 曝光补偿才是正路。
+2. **Cycles 玻璃挡死直射光**：Principled transmission 不算焦散 → 太阳/HDRI 直射 100% 被玻璃挡住（太阳隔离测试=室内全黑实锤）。修复=建筑可视化标准做法 `_glass_shadow_passthrough`：shadow ray 走 Transparent BSDF。**注意 MixShader Fac=0→输入1、Fac=1→输入2**，首次接线接反导致"相机看玻璃全透明（玻璃隐形）+ 阴影光线走真玻璃（太阳照挡）"。
+3. **add_sun 方向从未验证过**：旧工况 sun_direction 全 null，add_sun 是死代码路径。Blender 日光灯 -Z 须指向光线行进方向（= sun_dir 反向），原代码对齐 sun_dir 本身=光线射向天空。
+4. **内外光比不可兼得**：照明强度 1.5 下窗外必然过曝成白墙。修复=双 Background 分控（照明强/窗外可见弱），窗外可见光线=相机+透射+单次反射三类求和（漏掉透射=透玻璃看外景仍过曝）。
+
+**渲染成本**：4090D CUDA，1920×1080 Cycles 约 20-40s/张（本地 780M 核显 15min+ 不出图）。云渲染流程：rsync 项目 → 远端 Blender 5.2 headless → rsync 回 PNG。
+
+## v9 生活感补强（2026-08-20，业主反馈"太素"后）
+
+**变更**：
+1. **灯具实体常驻**：`add_light_fixtures` 移出 lights_on 门控，加 `emit` 参数——daylight 关灯但吊灯/吸顶灯形体可见（吊灯是风格锚点）；关灯时灯罩深色金属不发光的。
+2. **绿植/茶几 GLB**：plant_fiddle=potted_plant_01（替代绿方块程序植物）、coffee_table=industrial_coffee_table（深木面+黑铁架；旧沙发套装自带黑石几随 sofa_set.glb 退役而消失，house.yaml 补 placed 茶几 (9.7,7.0)）。
+3. **餐桌换型**：WoodenTable_01 实测 0.55m 高矮凳 → wooden_table_02（1.13×0.71×0.80，比例正确）；`import_furniture_glb` 支持 width/height 双约束取小，防长宽比失真拉飞高度。
+4. **暖调阳光**：sun 5500K→4500K、能量 5→7。
+5. **电视柜回退程序化**：modern_wooden_cabinet GLB 带滑门动画+自定义 ARM 贴图，导入材质全黑且滑门跑偏 → 回退程序化体块，`wood_dark` 改深胡桃 #503e2e（`build_furniture_materials` 同步中古胡桃定调）。
+
+**坑记录**：
+5. **glTF 导入对象 rotation_mode='QUATERNION'**：直接赋 `rotation_euler` 被静默忽略 → 所有 GLB 家具朝向全错（电视柜 90° 嵌进西墙、沙发朝向错误）。修复=赋值前 `obj.rotation_mode = 'XYZ'`。**这正是当年床 GLB"朝向修 180° 又回退"悬案的根因**（commit ce583df）。排查手段：`import_furniture_glb` 加 dims/loc 打印（保留），一眼看出轴向没翻。
+6. **Poly Haven 家具挑款三坑**：标量尺寸与直觉不符（WoodenTable_01 是矮凳）、带动画的模型（滑门柜）不宜直接进管线、自定义 ARM 贴图包装方式导入即黑。挑款流程=预览图初筛 → 远程裸导入打 DIMS → 隔离小渲验材质，三步都过才进 FURNITURE_GLB。
+
+**验证**：`npm run verify:furniture`（coffee_table 补 FURNITURE_DIMS 后警告清零）、`npm run typecheck`、`npm run test:app`（339 通过，FixtureFactory 补 coffee_table 配方）、v9c 九张指纹检测通过。

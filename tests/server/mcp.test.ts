@@ -399,7 +399,7 @@ describe('MCP remote', () => {
     assert.ok(sofa.dimensions, 'sofa dimensions must be parsed');
     assert.equal(sofa.dimensions.width, 2.8);
     assert.equal(sofa.dimensions.height, 0.9);
-    assert.equal(sofa.dimensions.depth, 0.4);
+    assert.equal(sofa.dimensions.depth, 0.75);
     assert.equal(sofa.materialId, 'sofa_3seat_01');
     assert.ok(Array.isArray(sofa.positions), 'placed sofa must expose positions');
     assert.equal(sofa.positions.length, 1);

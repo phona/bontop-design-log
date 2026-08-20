@@ -3,7 +3,7 @@
   wall: w_st_east
   type: socket
   x: 7.20
-  z: 7.00
+  z: 7.7
   height: 0.3
   count: 4
   note: "电视墙(西墙): 电视+音响+机顶盒+预留，含USB×2（DEC-013 由z=5.8移至z=7.0，电视柜正后方）"
@@ -13,7 +13,7 @@
   wall: w_st_east
   type: network
   x: 7.20
-  z: 7.00
+  z: 7.7
   height: 0.3
   note: "客厅网口（DEC-013 由z=5.8移至z=7.0）"
 
@@ -30,10 +30,10 @@
   room: living_dining
   type: floor_socket
   x: 11.0
-  z: 8.65
+  z: 9.35
   height: 0.02
   count: 1
-  note: "沙发南臂旁地插: 手机充电+落地灯（DEC-017 沙发不靠墙，改地插）"
+  note: "沙发南臂旁地插: 手机充电+落地灯（DEC-017 沙发不靠墙，改地插；DEC-029 随沙发南移至 9.35）"
 
 - id: sock_living_water
   room: living_dining
@@ -591,7 +591,7 @@
   wall: w_st_east
   type: socket
   x: 7.20
-  z: 7.0
+  z: 7.7
   height: 2.0
   count: 1
   note: "电视墙灯带变压器电源（西墙电视柜上方）"
@@ -600,7 +600,7 @@
 - id: light_dining_pendant
   room: living_dining
   type: pendant
-  x: 8.5
+  x: 8.9
   z: 3.35
   height: 2.8
   temp: 3000
@@ -620,7 +620,7 @@
   room: living_dining
   type: led_strip
   x: 7.2
-  z: 7.0
+  z: 7.7
   height: 2.0
   temp: 3000
   note: "电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-013）"

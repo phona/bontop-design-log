@@ -25,6 +25,7 @@ export class FirstPersonController {
   private onKeyUp: (e: KeyboardEvent) => void;
   private onLockChange: () => void;
   private onMouseMove: (e: MouseEvent) => void;
+  private onRenderRequested: (() => void) | null = null;
 
   private dragMode = false;
   private draggedObjectId: string | null = null;
@@ -67,6 +68,7 @@ export class FirstPersonController {
       if (performance.now() - this.lockTime < 150) return;
       this.accumX += e.movementX || 0;
       this.accumY += e.movementY || 0;
+      if (e.movementX || e.movementY) this.onRenderRequested?.();
     };
 
     document.addEventListener('pointerlockchange', this.onLockChange);
@@ -77,15 +79,19 @@ export class FirstPersonController {
     switch (e.code) {
       case 'KeyW':
         this.keys.forward = pressed;
+        this.onRenderRequested?.();
         break;
       case 'KeyS':
         this.keys.backward = pressed;
+        this.onRenderRequested?.();
         break;
       case 'KeyA':
         this.keys.left = pressed;
+        this.onRenderRequested?.();
         break;
       case 'KeyD':
         this.keys.right = pressed;
+        this.onRenderRequested?.();
         break;
     }
   }
@@ -105,6 +111,7 @@ export class FirstPersonController {
     const dx = e.movementX || 0;
     const dz = e.movementY || 0;
     this.onDragMoveCb?.(dx, dz);
+    this.onRenderRequested?.();
   };
 
   disable() {
@@ -138,6 +145,10 @@ export class FirstPersonController {
     this.sensitivity = v;
   }
 
+  setOnRenderRequested(cb: () => void): void {
+    this.onRenderRequested = cb;
+  }
+
   getSensitivity(): number {
     return this.sensitivity;
   }
@@ -160,6 +171,7 @@ export class FirstPersonController {
       this.dragRotation += e.deltaY > 0 ? 15 : -15;
       this.dragRotation = ((this.dragRotation % 360) + 360) % 360;
       this.onDragMoveCb?.(0, 0);
+      this.onRenderRequested?.();
     };
     document.addEventListener('wheel', this.onWheelBound, { passive: true });
   }

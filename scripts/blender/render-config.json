@@ -5,7 +5,7 @@
       "id": "light_dining_pendant",
       "room": "living_dining",
       "type": "pendant",
-      "x": 8.5,
+      "x": 8.9,
       "z": 3.35,
       "height": 2.8,
       "temp": 3000
@@ -24,7 +24,7 @@
       "room": "living_dining",
       "type": "led_strip",
       "x": 7.2,
-      "z": 7,
+      "z": 7.7,
       "height": 2,
       "temp": 3000
     },
@@ -282,15 +282,32 @@
     },
     {
       "id": "daylight",
-      "label": "白天自然光（高亮漫反射、中性白光、对照实景照片）",
-      "sun_direction": null,
+      "label": "白天自然光（HDRi 白天外景+西南向太阳直射、不开灯、对照实景照片）",
+      "sun_direction": [
+        -0.3,
+        -0.6,
+        0.7
+      ],
+      "sun_energy": 10,
+      "sun_temp": 4500,
+      "world_hdri": "hdri/kloofendal_48d_partly_cloudy_1k.hdr",
+      "world_hdri_lighting": true,
+      "world_hdri_camera_strength": 0.2,
+      "window_portal": {
+        "energy": 700,
+        "temp": 6000,
+        "x": 10.3,
+        "z": 11,
+        "width": 6,
+        "height": 2.6
+      },
       "world_color": "#c8c8c8",
-      "world_strength": 0.6,
-      "lights_on": true,
+      "world_strength": 0.8,
+      "lights_on": false,
       "light_temp": 6500,
-      "exposure": 1,
+      "exposure": 0.8,
       "blackout_state": "open",
-      "sheer_opacity": 0.35
+      "sheer_opacity": 0.25
     }
   ],
   "cameras": [

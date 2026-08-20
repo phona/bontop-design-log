@@ -136,4 +136,8 @@ export class AnalysisTools {
       });
     }
   }
+
+  isPulsing(): boolean {
+    return this.highlightedFurniture.size > 0;
+  }
 }

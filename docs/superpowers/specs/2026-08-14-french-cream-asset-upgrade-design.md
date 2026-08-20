@@ -109,6 +109,11 @@ bed_180:
 | 7 | 验收文档更新 | pipeline-acceptance.md 增 v7 节（v6 为材质评审模式） | 0.5h |
 | 合计 | | | **~11.5h** |
 
+> **状态标注（2026-08-20，DEC-2026-08-20-025）**：风格转向中古胡桃，本 spec 法式奶油方向仅作历史参考。
+> 任务 6 ✅ 已完成（走了真扫描 herringbone_parquet 路线，DEC-024 定案）；
+> 任务 2/4 🔶 以中古方向替代落地——沙发/餐桌椅/电视柜改接 Poly Haven GLB（`assets/furniture/`，黑皮沙发+深棕皮餐椅+深胡桃格栅电视柜，dress_scene.py `FURNITURE_GLB`），未做归一化管线/fixture-assets.yaml（任务 1 ❌）与 material_override；
+> 任务 3/5 ❌ 未做（床曾接 GLB 又回退程序化；布艺仅 fabric_pattern_07 bump）。
+
 **前置依赖**：任务 0 = 材质评审模式 spec（material-review-mode-design.md）先行落地——家具漆色/面料 tint 挑选必须在色准可信管线里做，否则"奶油色"本身判断失真。
 
 ## 验收标准

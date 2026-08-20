@@ -98,7 +98,7 @@ describe('ProjectCatalog', () => {
     assert.ok(materials.length >= 28);
     const sofa = materials.find((m) => m.id === 'sofa_3seat_01');
     assert.ok(sofa);
-    assert.equal(sofa.spec, '2800×900×400mm');
+    assert.equal(sofa.spec, '2800×900×750mm（坐高≤420mm）');
     assert.equal(sofa.alternative_group, 'sofa');
   });
 

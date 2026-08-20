@@ -28,7 +28,7 @@ function itemAabb(type: string, x: number, z: number, rotation: number): Aabb | 
   };
 }
 
-const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [['range_hood', 'gas_stove'], ['tv_65', 'tv_stand']];
+const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [['range_hood', 'gas_stove'], ['tv_65', 'tv_stand'], ['tv_65', 'tv_wall_low']];
 
 function isStackedPair(a: string, b: string): boolean {
   return STACKED_PAIRS.some(([x, y]) => (a === x && b === y) || (a === y && b === x));

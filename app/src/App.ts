@@ -48,6 +48,8 @@ export class App {
   private projectData: any = null;
   private topics: Topic[] = [];
   private rafId?: number;
+  private renderQueued = false;
+  private disposed = false;
   private lastTime = 0;
   private modeIndicator: HTMLDivElement;
   private toastEl: HTMLDivElement;
@@ -76,6 +78,8 @@ export class App {
     this.houseScene = new HouseScene(canvas);
     this.collision = new CollisionDetector();
     this.fpController = new FirstPersonController(this.houseScene.camera, canvas, this.collision);
+    this.houseScene.setOnRenderRequested(() => this.requestRender());
+    this.fpController.setOnRenderRequested(() => this.requestRender());
     this.schemePanel = new SchemePanel({
       topicTabs: document.getElementById('topic-tabs')!,
       topicOptions: document.getElementById('topic-options')!,
@@ -185,11 +189,21 @@ export class App {
     this.setupSunlight();
     this.setupHumidity();
     this.updateModeIndicator();
-    this.rafId = requestAnimationFrame(this.renderLoop);
+    this.requestRender();
   }
 
   async captureFloorPlan(): Promise<string> {
     return this.houseScene.captureFloorPlan();
+  }
+
+  async exportGlbDataUrl(): Promise<string> {
+    const blob = await exportSceneToGlb(this.houseScene.scene);
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    return 'data:model/gltf-binary;base64,' + btoa(bin);
   }
 
   private setupSunlight(): void {
@@ -211,20 +225,26 @@ export class App {
       center
     );
 
-    this.sunlightPanel.onHourChange((hour) => this.sunlightSystem?.setHour(hour));
+    this.sunlightPanel.onHourChange((hour) => {
+      this.sunlightSystem?.setHour(hour);
+      this.requestRender();
+    });
     this.sunlightPanel.onPlayToggle(() => {
       const playing = this.sunlightSystem?.togglePlay() ?? false;
       this.sunlightPanel.setPlaying(playing);
+      this.requestRender();
     });
     this.sunlightSystem.setPlayingListener((playing) => this.sunlightPanel.setPlaying(playing));
     this.sunlightSystem.setSolarChangeListener(() => {
       const st = this.houseScene.getEnvironmentManager().getLightingState();
       this.interiorLighting?.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
+      this.requestRender();
     });
 
     this.daylightHeatmap = new DaylightHeatmap(this.houseScene);
     this.sunlightPanel.onHeatmapToggle(() => {
       void this.daylightHeatmap?.toggle();
+      this.requestRender();
     });
 
     this.sunlightButton = new SunlightButton({
@@ -246,7 +266,10 @@ export class App {
 
     this.humidityButton = new HumidityButton({
       onToggle: () => {
-        void this.humidityOverlay?.toggle().then(() => this.humidityButton?.sync());
+        void this.humidityOverlay?.toggle().then(() => {
+          this.humidityButton?.sync();
+          this.requestRender();
+        });
       },
       getActive: () => this.humidityOverlay?.isActive() ?? false,
     });
@@ -263,6 +286,7 @@ export class App {
       if (huinanWindow) {
         this.sunlightPanel.setHuinanHint(isInHuinanWindow({ month, day }, huinanWindow));
       }
+      this.requestRender();
     });
   }
 
@@ -275,6 +299,7 @@ export class App {
       const pos = this.houseScene.getGroundPosition(centerX, centerY);
       if (pos) {
         this.houseScene.showGhost(pos.x, pos.z, 0, type);
+        this.requestRender();
       }
     });
   }
@@ -312,6 +337,7 @@ export class App {
       const pos = this.houseScene.getGroundPosition(centerX, centerY);
       if (pos) {
         this.houseScene.showGhost(pos.x, pos.z, 0, 'dining_chair');
+        this.requestRender();
       }
     });
   }
@@ -338,6 +364,7 @@ export class App {
           const newX = pos.x + mx;
           const newZ = pos.z + mz;
           this.houseScene.updateGhostPosition(newX, newZ, rot);
+          this.requestRender();
         }
       },
       onEnd: async (x, z, rotation) => {
@@ -385,6 +412,7 @@ export class App {
       this.applyScheme(scheme);
       this.infoPanel.setScheme(scheme);
       this.overviewMenu.setScheme(scheme);
+      this.requestRender();
     });
 
     this.stateSync.onVisualCommand((command) => {
@@ -394,6 +422,7 @@ export class App {
       } else if (command.type === 'highlight_object') {
         const payload = command.payload as { objectId: string };
         this.houseScene.highlightObject(payload.objectId);
+        this.requestRender();
       }
     });
 
@@ -426,6 +455,7 @@ export class App {
 
   private setupKeyboard(): void {
     document.addEventListener('keydown', (e: KeyboardEvent) => {
+      this.requestRender();
       // ── Special cases that need extra logic ──
       if (e.code === 'Escape') {
         if (this.overviewMenu.isVisible()) { this.overviewMenu.hide(); return; }
@@ -593,6 +623,7 @@ export class App {
     });
 
     document.addEventListener('mousedown', (e: MouseEvent) => {
+      this.requestRender();
       if (e.button !== 0) return;
       if (this.houseScene.mode === 'first-person' && !this.fpController.isLocked) {
         this.fpController.requestLock();
@@ -657,6 +688,7 @@ export class App {
     this.fpController.enable();
     this.fpController.requestLock();
     this.houseScene.cameraAnimator.transitionToFirstPerson(fpPos, fpDir);
+    this.requestRender();
     this.crosshair.show();
     this.updateModeIndicator();
     this.updateCrosshairStyle();
@@ -671,6 +703,7 @@ export class App {
     const orbitTarget = this.savedOrbitTarget ?? new THREE.Vector3(7.4, 0, 3.65);
 
     this.houseScene.cameraAnimator.transitionToOrbit(orbitPos, orbitTarget);
+    this.requestRender();
     this.updateModeIndicator();
   }
 
@@ -844,6 +877,7 @@ export class App {
     this.analysisTools.checkFurnitureCollisions();
     const scheme = await this.stateSync.fetchScheme();
     if (scheme) this.applyScheme(scheme);
+    this.requestRender();
   }
 
   private async handleCompare(archiveId: string): Promise<void> {
@@ -870,6 +904,7 @@ export class App {
       const st = this.houseScene.getEnvironmentManager().getLightingState();
       this.interiorLighting.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
     }
+    this.requestRender();
   }
 
   private handleClearCompare(): void {
@@ -887,6 +922,7 @@ export class App {
         this.schemePanel.setActiveOption(topicId, effective, []);
       }
     }
+    this.requestRender();
   }
 
   private updateModeIndicator(): void {
@@ -952,7 +988,15 @@ export class App {
     this.collision.setWalls(this.extractWalls(els));
   }
 
+  private requestRender(): void {
+    if (this.disposed || this.renderQueued) return;
+    this.renderQueued = true;
+    this.rafId = requestAnimationFrame(this.renderLoop);
+  }
+
   private renderLoop = (time: number) => {
+    this.renderQueued = false;
+    this.rafId = undefined;
     const dt = this.lastTime === 0 ? 0.016 : Math.min((time - this.lastTime) / 1000, 0.1);
     this.lastTime = time;
 
@@ -1005,10 +1049,17 @@ export class App {
     }
     this.humidityOverlay?.updatePulse();
 
-    this.rafId = requestAnimationFrame(this.renderLoop);
+    const needsContinuousRender =
+      this.houseScene.cameraAnimator.isAnimating()
+      || (this.houseScene.mode === 'first-person' && (this.fpController.isAnyKeyDown || this.fpController.isDragMode()))
+      || this.sunlightSystem?.isPlaying()
+      || this.analysisTools.isPulsing()
+      || this.humidityOverlay?.isPulsing();
+    if (needsContinuousRender) this.requestRender();
   };
 
   dispose(): void {
+    this.disposed = true;
     if (this.rafId !== undefined) {
       cancelAnimationFrame(this.rafId);
     }

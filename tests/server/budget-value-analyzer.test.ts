@@ -19,6 +19,17 @@ function currentScheme(): CurrentScheme {
   return JSON.parse(readFileSync('data/current-scheme.json', 'utf8')) as CurrentScheme;
 }
 
+function schemeWithPremiumWall(): CurrentScheme {
+  const scheme = currentScheme();
+  return {
+    ...scheme,
+    selections: {
+      ...scheme.selections,
+      wall: { ...scheme.selections.wall, default: 'wall_tile_02' },
+    },
+  };
+}
+
 describe('BudgetValueAnalyzer', () => {
   it('analyzes masonry with room×material breakdown', () => {
     const { analyzer } = loadAnalyzer();
@@ -35,7 +46,7 @@ describe('BudgetValueAnalyzer', () => {
 
   it('provides cheaper alternatives with loses description', () => {
     const { analyzer } = loadAnalyzer();
-    const value = analyzer.analyzeCategory(currentScheme(), 'masonry');
+    const value = analyzer.analyzeCategory(schemeWithPremiumWall(), 'masonry');
     assert.ok(value);
     assert.ok(value!.alternatives.length > 0, 'masonry has cheaper floor/wall alternatives');
     const alt = value!.alternatives[0];

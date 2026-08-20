@@ -26,6 +26,7 @@ renders/web/models/*
 renders/web/textures/*
 assets/textures/*/
 assets/**/*.glb
+assets/furniture/*/
 hdri/*.hdr
 screenshots/
 output-*.png

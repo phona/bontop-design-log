@@ -425,10 +425,10 @@ furnishings:
     - { type: curtain_set }
     - { type: ceiling_light }
   bedroom_se:
-    # 房间 x∈[13.40,16.40] z∈[5.55,9.80]，西门 d_bese @(13.4,7.6) swing x∈[13.40,14.30] z∈[7.15,8.05]
-    # 书桌靠西墙（x=13.4），西墙已有桌面插座 z=6.5 h=0.3 ×3
-    - { type: desk, x: 13.70, z: 6.30, rotation: 90 }      # 靠西墙，面向东
-    - { type: chair, x: 14.30, z: 6.30, rotation: 270 }
+    # 房间 x∈[13.40,16.40] z∈[5.55,9.80]，西门 d_bese 北移 @(13.4,6.1) swing x∈[13.40,14.30] z∈[5.65,6.55]
+    # 书桌靠西墙（x=13.4）南让门扇；桌面插座在西墙 z=6.5 h=0.3 ×3（桌缘北约 0.5m，可及）
+    - { type: desk, x: 13.70, z: 7.30, rotation: 90 }      # 靠西墙，面向东（南让北门）
+    - { type: chair, x: 14.30, z: 7.30, rotation: 270 }
     - { type: bookshelf, x: 15.50, z: 5.70, rotation: 0 }   # 沿北墙
     - { type: curtain_set }
     - { type: ceiling_light }
@@ -552,4 +552,3 @@ pending_verification:
   - "玻璃幕墙分格及门窗口位置需设计院图纸确认"
   - "开放式厨房排烟效果需设计师复核"
   - "中央空调外机散热及检修空间需现场复核"
-

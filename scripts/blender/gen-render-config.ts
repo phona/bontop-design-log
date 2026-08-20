@@ -90,17 +90,25 @@ const scenarios = [
     ],
   },
   // 白天自然光工况：对照真实照片（手机白天拍摄=高漫反射环境光、不开灯、柔光地板反光）
+  // 外景=真 HDR（kloofendal 白天多云，仅相机/透射光线可见，照明仍用中性 world_color 防染色）；
+  // 太阳=西南向午后直射（Blender 坐标：-X 西 / -Y 南 / +Z 上），阳光入射南玻璃幕墙在地板投光斑
   {
     id: 'daylight',
-    label: '白天自然光（高亮漫反射、中性白光、对照实景照片）',
-    sun_direction: null,
+    label: '白天自然光（HDRi 白天外景+西南向太阳直射、不开灯、对照实景照片）',
+    sun_direction: [-0.3, -0.6, 0.7],
+    sun_energy: 10.0,
+    sun_temp: 4500,
+    world_hdri: 'hdri/kloofendal_48d_partly_cloudy_1k.hdr',
+    world_hdri_lighting: true, // 真天空直接照明（白天主光源=南向幕墙天光+太阳）
+    world_hdri_camera_strength: 0.2, // 窗外可见强度（照明 1.5 下防窗外过曝成白墙）
+    window_portal: { energy: 700, temp: 6000, x: 10.3, z: 11.0, width: 6.0, height: 2.6 }, // 南玻璃幕外柔光 portal（C1 定版）
     world_color: '#c8c8c8',
-    world_strength: 0.6,
-    lights_on: true,
+    world_strength: 0.8,
+    lights_on: false,
     light_temp: 6500,
-    exposure: 1.0,
+    exposure: 0.8,
     blackout_state: 'open',
-    sheer_opacity: 0.35,
+    sheer_opacity: 0.25,
   },
 ];
 

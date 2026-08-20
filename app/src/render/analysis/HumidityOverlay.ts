@@ -71,6 +71,10 @@ export class HumidityOverlay {
     }
   }
 
+  isPulsing(): boolean {
+    return this.active && this.markers.length > 0;
+  }
+
   private async activate(): Promise<void> {
     await this.applyAnalysis();
     this.houseScene.renderer.domElement.addEventListener('click', this.boundOnClick);

@@ -89,6 +89,7 @@ export class HouseScene implements SceneApi {
   topDownView: TopDownView;
   private topicRegistry: TopicRegistry;
   private onClickCallback?: (target: HoverTarget) => void;
+  private onRenderRequested?: () => void;
   private boundOnWindowResize: () => void;
   private _mode: 'orbit' | 'first-person' | 'top-down' = 'orbit';
   private compareSchemeData?: CurrentScheme;
@@ -144,7 +145,11 @@ export class HouseScene implements SceneApi {
     this.buildBase();
     this.scene.add(this.topicGroup);
 
-    this.controls.addEventListener('start', () => this.cameraAnimator.interrupt());
+    this.controls.addEventListener('start', () => {
+      this.cameraAnimator.interrupt();
+      this.requestRender();
+    });
+    this.controls.addEventListener('change', () => this.requestRender());
 
     this.boundOnWindowResize = () => this.onResize();
     window.addEventListener('resize', this.boundOnWindowResize);
@@ -168,6 +173,14 @@ export class HouseScene implements SceneApi {
 
   setOnObjectClick(cb: (target: HoverTarget) => void) {
     this.onClickCallback = cb;
+  }
+
+  setOnRenderRequested(cb: () => void): void {
+    this.onRenderRequested = cb;
+  }
+
+  private requestRender(): void {
+    this.onRenderRequested?.();
   }
 
   isTopDown(): boolean {
@@ -437,6 +450,7 @@ export class HouseScene implements SceneApi {
     } else {
       this.controls.maxPolarAngle = Math.PI / 2 - 0.05;
     }
+    this.requestRender();
   }
 
   async buildFromCatalog(projectData: ProjectData): Promise<void> {
@@ -1666,6 +1680,7 @@ export class HouseScene implements SceneApi {
         });
       }
     }
+    this.requestRender();
   }
 
   getCameraState(): CameraState {
@@ -1831,6 +1846,7 @@ export class HouseScene implements SceneApi {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.requestRender();
   }
 
   raycastRoomAtPointer(): string | null {

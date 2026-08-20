@@ -159,6 +159,25 @@ def classify(obj: bpy.types.Object) -> str:
     return 'default'
 
 
+def _glass_shadow_passthrough(mat) -> None:
+    """Cycles 直射光透玻璃修复：shadow ray 走 Transparent BSDF。
+    Principled transmission 不参与焦散时会把太阳/HDRI 直射全挡在室外（室内死黑），
+    建筑可视化标准做法：阴影光线透明直通，其他光线仍走真折射玻璃。"""
+    nt = mat.node_tree
+    bsdf = _find_node(nt, 'ShaderNodeBsdfPrincipled')
+    out = _find_node(nt, 'ShaderNodeOutputMaterial')
+    if bsdf is None or out is None:
+        return
+    trans = nt.nodes.new('ShaderNodeBsdfTransparent')
+    lp = nt.nodes.new('ShaderNodeLightPath')
+    mix = nt.nodes.new('ShaderNodeMixShader')
+    # MixShader：Fac=0→输入1，Fac=1→输入2。阴影光线(Fac=1)走 Transparent 直通，其余走真玻璃
+    nt.links.new(lp.outputs['Is Shadow Ray'], mix.inputs[0])
+    nt.links.new(bsdf.outputs[0], mix.inputs[1])
+    nt.links.new(trans.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs['Surface'])
+
+
 def build_materials(engine: str, sheer_opacity: float = 0.15) -> dict:
     is_cycles = engine.upper() == 'CYCLES'
     # EEVEE 默认无屏幕空间折射，transmission 渲成不透明 → 预览用 alpha 玻璃；Cycles 用真透射
@@ -168,6 +187,8 @@ def build_materials(engine: str, sheer_opacity: float = 0.15) -> dict:
         if is_cycles
         else new_principled('硬装_LowE玻璃', hex_rgb('#c8e0dc'), rough=0.05, alpha=0.25)
     )
+    if is_cycles:
+        _glass_shadow_passthrough(glass)
     # 纱帘：Cycles 用真半透明（可看穿见天色，布料权重配置驱动）；EEVEE 用 alpha 混合
     sheer = (
         new_sheer_transparent('软装_纱帘', hex_rgb('#f7f4ec'), opacity=sheer_opacity)
@@ -241,8 +262,9 @@ def add_lights(cfg: dict, temp_override: float | None = None) -> int:
     return count
 
 
-def add_light_fixtures(cfg: dict, temp_override: float | None = None) -> int:
-    """实体灯具：吸顶盘/筒灯圈/吊灯(线+罩)/壁灯，灯罩自发光。光仍由 add_lights 的不可见光源提供。"""
+def add_light_fixtures(cfg: dict, temp_override: float | None = None, emit: bool = True) -> int:
+    """实体灯具：吸顶盘/筒灯圈/吊灯(线+罩)/壁灯。光仍由 add_lights 的不可见光源提供。
+    emit=False（daylight 等关灯工况）时灯罩不自发光，仅保留形体——吊灯是风格锚点，白天也得看见。"""
     import math
 
     def emis(name, temp, strength):
@@ -260,6 +282,11 @@ def add_light_fixtures(cfg: dict, temp_override: float | None = None) -> int:
 
     diff_m = emis('灯具_diffuser', temp_override or 3000, 5.0)
     cove_m = emis('灯具_cove', temp_override or 3000, 2.0)  # 灯槽低亮度，防眩光斑
+    if not emit:
+        # 关灯工况（daylight）：灯具只留形体——吸顶/筒灯白色哑光，吊灯罩深色金属（中古黑）
+        diff_m = new_principled('灯具_diffuser_off', hex_rgb('#f2f0eb'), rough=0.6)
+        cove_m = new_principled('灯具_cove_off', hex_rgb('#e8e6e0'), rough=0.7)
+        shade_off_m = new_principled('灯具_shade_off', hex_rgb('#26221e'), rough=0.4, metallic=0.6)
     count = 0
     for lp in cfg['lights']:
         t = lp['type']
@@ -280,13 +307,20 @@ def add_light_fixtures(cfg: dict, temp_override: float | None = None) -> int:
             o.data.materials.append(diff_m)
             count += 1
         elif t == 'pendant':
-            hang = 1.7
+            # DEC-027：客厅主吊灯取消（无主灯方案评估）；餐桌吊灯=黑色线性长条（与餐桌方向一致）
+            if lp['id'] == 'light_living_main':
+                continue
+            hang = 1.9
+            bar_len = 1.2
             bpy.ops.mesh.primitive_cylinder_add(radius=0.006, depth=(h - hang), location=to_blender(x, (h + hang) / 2, z))
             bpy.context.object.name = f'fixture:pendant_cord:{lp["id"]}'
-            bpy.ops.mesh.primitive_cone_add(radius1=0.16, radius2=0.05, depth=0.18, location=to_blender(x, hang, z))
+            # 线性灯体（黑色细条，1.2m 沿 x 与餐桌同向）
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=to_blender(x, hang, z))
             s = bpy.context.object
-            s.name = f'fixture:pendant_shade:{lp["id"]}'
-            s.data.materials.append(diff_m)
+            s.name = f'fixture:pendant_bar:{lp["id"]}'
+            s.dimensions = (bar_len, 0.06, 0.04)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            s.data.materials.append(diff_m if emit else shade_off_m)
             count += 1
         elif t == 'wall_lamp':
             bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.2, location=to_blender(x, h or 1.5, z),
@@ -309,14 +343,87 @@ def add_light_fixtures(cfg: dict, temp_override: float | None = None) -> int:
     return count
 
 
-def add_sun(sun_dir: list[float]) -> None:
+def add_ceiling_finishing(furniture_mats: dict, emit: bool = True) -> int:
+    """顶面完成度 staging（DEC-027 评估件）：客餐厅浅跌级边吊 + 灯槽 + 长条风口。
+    仅渲染评估，不改 ceiling.yaml；设计审查通过后再落成配置。
+    living_dining 边界 x∈[7.2,13.4] z∈[2.4,9.8]，净高 2.8m → 跌级 8cm/宽 25cm。"""
+    count = 0
+    ceil_m = new_principled('顶面_跌级白', hex_rgb('#f7f5ef'), rough=0.9)
+    cove_m = bpy.data.materials.new('顶面_灯槽')
+    cove_m.use_nodes = True
+    cnt = cove_m.node_tree
+    for n in list(cnt.nodes):
+        cnt.nodes.remove(n)
+    cout = cnt.nodes.new('ShaderNodeOutputMaterial')
+    cem = cnt.nodes.new('ShaderNodeEmission')
+    cem.inputs['Color'].default_value = (*kelvin_to_rgb(3000), 1.0)
+    cem.inputs['Strength'].default_value = 2.0 if emit else 0.2
+    cnt.links.new(cem.outputs[0], cout.inputs['Surface'])
+    vent_m = new_principled('顶面_风口', hex_rgb('#2a2a2a'), rough=0.5, metallic=0.3)
+
+    # 跌级边框（四条）：z=2.76 中心，厚 8cm，宽 25cm
+    borders = [
+        ((10.3, -2.525, 2.76), (6.2, 0.25, 0.08)),   # 北（餐区侧）
+        ((10.3, -9.675, 2.76), (6.2, 0.25, 0.08)),   # 南（玻璃幕侧）
+        ((7.325, -6.1, 2.76), (0.25, 7.4, 0.08)),    # 西
+        ((13.275, -6.1, 2.76), (0.25, 7.4, 0.08)),   # 东
+    ]
+    for loc, dims in borders:
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=loc)
+        o = bpy.context.object
+        o.name = 'asset:ceiling:drop'
+        o.dimensions = dims
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        o.data.materials.append(ceil_m)
+        count += 1
+    # 灯槽（跌级内侧顶上，南北两条，自发光朝上洗顶）
+    for y in (-2.55, -9.65):
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=(10.3, y, 2.81))
+        o = bpy.context.object
+        o.name = 'asset:ceiling:cove'
+        o.dimensions = (6.0, 0.05, 0.02)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        o.data.materials.append(cove_m)
+        count += 1
+    # 长条风口（客厅，整合进跌级南侧）
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(10.3, -8.6, 2.79))
+    o = bpy.context.object
+    o.name = 'asset:ceiling:vent'
+    o.dimensions = (2.4, 0.15, 0.02)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    o.data.materials.append(vent_m)
+    count += 1
+    print(f'[dress_scene] ceiling finishing: {count}')
+    return count
+
+
+def add_window_portal(portal: dict) -> None:
+    """窗外柔光 portal：南玻璃幕外侧挂大面积 area light 模拟天空漫射，
+    让窗光真正漫进房间深处（背光机位不再死黑）。玻璃 shadow 直通已保证光线穿窗。"""
+    import math as _m
+    data = bpy.data.lights.new('window_portal', type='AREA')
+    data.shape = 'RECTANGLE'
+    data.size = portal.get('width', 6.0)
+    data.size_y = portal.get('height', 2.6)
+    data.energy = portal.get('energy', 1500.0)
+    data.color = kelvin_to_rgb(portal.get('temp', 6000))
+    obj = bpy.data.objects.new('window_portal', data)
+    obj.location = to_blender(portal.get('x', 10.3), portal.get('y', 2.2), portal.get('z', 11.0))
+    obj.rotation_euler = (_m.radians(90), 0, 0)  # 灯体 -Z 朝北（指向室内）
+    bpy.context.collection.objects.link(obj)
+
+
+def add_sun(sun_dir: list[float], energy: float = 1.2, temp: int = 3200) -> None:
     """sun_dir: 指向太阳方向的单位向量（Blender 坐标 +X 东/+Y 北/+Z 上）。
-    场景常量由 gen-render-config.ts 预计算；光线方向 = 太阳方向反向。"""
+    场景常量由 gen-render-config.ts 预计算。
+    Blender 日光灯光线沿灯体局部 -Z 发射 → -Z 必须指向"光线行进方向"= sun_dir 的反向
+    （此前对齐 sun_dir 本身，光线射向天空=太阳不存在；旧工况 sun_direction=null 从未暴露）。
+    energy/temp 由工况覆盖：白天正午约 5.0/5500K，傍晚低太阳默认 1.2/3200K。"""
     from mathutils import Vector
-    direction = Vector(sun_dir).normalized()
+    direction = -Vector(sun_dir).normalized()
     data = bpy.data.lights.new('Sun', type='SUN')
-    data.energy = 1.2
-    data.color = kelvin_to_rgb(3200)  # 傍晚低太阳偏暖
+    data.energy = energy
+    data.color = kelvin_to_rgb(temp)
     obj = bpy.data.objects.new('Sun', data)
     obj.rotation_mode = 'QUATERNION'
     obj.rotation_quaternion = direction.to_track_quat('-Z', 'Y')
@@ -337,10 +444,41 @@ def setup_world(engine: str, scenario: dict, config_dir: str | None = None) -> N
         if hdri and config_dir:
             # HDRi 外景 + Light Path 分离：相机光线（透玻璃所见）用 HDRi 真外景；
             # 其余光线（环境照明）用可控纯色 world_color —— 房间不被 HDRi 颜色污染
+            # world_hdri_lighting=true 时（白天工况）不做分离：真天空直接照明室内，
+            # 南向大玻璃幕墙的天光漫射本来就是白天的主光源（蓝/黄染色在白天即真实）
             import os
             path = os.path.normpath(os.path.join(config_dir, hdri))
             env = world.node_tree.nodes.new('ShaderNodeTexEnvironment')
             env.image = bpy.data.images.load(path)
+            if scenario.get('world_hdri_lighting'):
+                cam_str = scenario.get('world_hdri_camera_strength')
+                if cam_str is not None:
+                    # 内外光比分控：照明用高强度 HDR，相机直看窗外用低强度
+                    # （否则室内曝光正确时窗外必然过曝成白墙）
+                    bg_cam = world.node_tree.nodes.new('ShaderNodeBackground')
+                    world.node_tree.links.new(env.outputs['Color'], bg_cam.inputs['Color'])
+                    bg_cam.inputs['Strength'].default_value = cam_str
+                    lp2 = world.node_tree.nodes.new('ShaderNodeLightPath')
+                    # 窗外可见性 = 相机光线 + 透射（透玻璃所见）+ 单次反射（地面/玻璃反射外景）
+                    add1 = world.node_tree.nodes.new('ShaderNodeMath')
+                    add1.operation = 'ADD'
+                    world.node_tree.links.new(lp2.outputs['Is Camera Ray'], add1.inputs[0])
+                    world.node_tree.links.new(lp2.outputs['Is Transmission Ray'], add1.inputs[1])
+                    add2 = world.node_tree.nodes.new('ShaderNodeMath')
+                    add2.operation = 'ADD'
+                    world.node_tree.links.new(add1.outputs[0], add2.inputs[0])
+                    world.node_tree.links.new(lp2.outputs['Is Singular Ray'], add2.inputs[1])
+                    mix2 = world.node_tree.nodes.new('ShaderNodeMixShader')
+                    out2 = _find_node(world.node_tree, 'ShaderNodeOutputWorld') or world.node_tree.nodes.new('ShaderNodeOutputWorld')
+                    # Fac=0→输入1(照明强)、Fac=1→输入2(窗外可见弱)
+                    world.node_tree.links.new(add2.outputs[0], mix2.inputs[0])
+                    world.node_tree.links.new(bg.outputs['Background'], mix2.inputs[1])
+                    world.node_tree.links.new(bg_cam.outputs['Background'], mix2.inputs[2])
+                    world.node_tree.links.new(mix2.outputs[0], out2.inputs['Surface'])
+                else:
+                    world.node_tree.links.new(env.outputs['Color'], bg.inputs['Color'])
+                bg.inputs['Strength'].default_value = scenario.get('world_strength', 1.0)
+                return
             lp = world.node_tree.nodes.new('ShaderNodeLightPath')
             # 外景可见性 = 相机光线 + 透射光线（透玻璃所见）+ 单次反射光线（玻璃/地面反射外景）
             add1 = world.node_tree.nodes.new('ShaderNodeMath')
@@ -524,7 +662,7 @@ FURNITURE_PARTS = {
         ('leg4', [0.04, 0.45, 0.04], [0.18, 0.225, 0.18], 'wood_dark'),
     ],
     'tv_stand': [
-        ('body', [1.8, 0.4, 0.4], [0, 0.2, 0], 'wood'),
+        ('body', [1.8, 0.4, 0.4], [0, 0.2, 0], 'wood_dark'),
         ('top', [1.8, 0.02, 0.42], [0, 0.41, 0], 'wood_dark'),
     ],
     # 去酒店感软装：65寸电视（放电视柜上，台面高 0.42）
@@ -545,6 +683,47 @@ FURNITURE_PARTS = {
         ('leaf1', [0.5, 0.55, 0.5], [-0.15, 1.3, 0.1], 'plant'),
         ('leaf2', [0.45, 0.5, 0.45], [0.2, 1.45, -0.1], 'plant'),
         ('leaf3', [0.4, 0.45, 0.4], [0.0, 1.62, 0.05], 'plant'),
+    ],
+    # 玄关餐边一体柜（通顶三段式：底架空 0.15 + 浅门下柜 + 深胡桃开放格 + 浅门上柜）
+    'shoe_cabinet': [
+        ('lower', [1.5, 0.75, 0.35], [0, 0.525, 0], 'paint_cream'),
+        ('niche', [1.5, 0.5, 0.03], [0, 1.15, -0.16], 'wood_dark'),
+        ('upper', [1.5, 1.0, 0.35], [0, 1.9, 0], 'paint_cream'),
+    ],
+    # 入户花园可移动换鞋站（成品鞋柜 + 自立洞洞板）
+    'garden_entry_station': [
+        ('shoe_body', [1.1, 0.78, 0.34], [0, 0.42, 0], 'wood'),
+        ('shoe_top', [1.14, 0.04, 0.38], [0, 0.83, 0], 'wood_dark'),
+        ('pegboard', [1.1, 1.05, 0.04], [0, 1.38, -0.15], 'metal_black'),
+        ('stand_l', [0.05, 1.85, 0.05], [-0.5, 0.925, -0.15], 'metal_black'),
+        ('stand_r', [0.05, 1.85, 0.05], [0.5, 0.925, -0.15], 'metal_black'),
+    ],
+    # 门内右手定制半高柜：向客厅延伸，玄关侧封闭、餐厅侧开放，柜顶以上保持视线通透。
+    'entry_half_height_cabinet': [
+        ('lower', [2.0, 0.88, 0.35], [0, 0.44, 0], 'paint_cream'),
+        ('top', [2.04, 0.04, 0.39], [0, 0.90, 0], 'wood_dark'),
+        ('side_n', [0.08, 0.56, 0.35], [-0.96, 1.18, 0], 'paint_cream'),
+        ('side_s', [0.08, 0.56, 0.35], [0.96, 1.18, 0], 'paint_cream'),
+        ('upper', [1.76, 0.08, 0.35], [0, 1.46, 0], 'paint_cream'),
+        ('dining_back', [1.76, 0.50, 0.025], [0, 1.18, 0.162], 'wood_dark'),
+        ('dining_shelf', [1.76, 0.04, 0.31], [0, 1.00, 0.0], 'wood_dark'),
+        ('entry_panel', [1.76, 0.50, 0.02], [0, 1.18, 0.186], 'paint_cream'),
+    ],
+    # 西墙实体墙段通顶柜（z=5.55-6.90，不进入餐厅/门厅）
+    'wall_cabinet_tall': [
+        ('lower', [1.35, 1.1, 0.35], [0, 0.55, 0], 'paint_cream'),
+        ('niche', [1.35, 0.5, 0.03], [0, 1.35, -0.16], 'wood_dark'),
+        ('upper', [1.35, 1.3, 0.35], [0, 2.25, 0], 'paint_cream'),
+    ],
+    # 西墙 TV 区（z=6.90-9.00，悬空低柜 + 深胡桃背板）
+    'tv_wall_low': [
+        ('low', [2.1, 0.35, 0.4], [0, 0.325, 0], 'wood_dark'),
+        ('back', [2.1, 1.6, 0.05], [0, 1.3, -0.17], 'wood_dark'),
+    ],
+    # 主茶几（DEC-026 改款：圆形深木面+黑细柱，稳重克制；v14 精炼：更薄更轻）
+    'coffee_table': [
+        ('top', [0.8, 0.03, 0.8], [0, 0.38, 0], 'wood_dark', 'cylinder'),
+        ('base', [0.35, 0.35, 0.35], [0, 0.175, 0], 'metal_black', 'cylinder'),
     ],
     'wardrobe_180': [
         ('carcass', [1.8, 2.7, 0.58], [0, 1.35, 0], 'paint_cream'),
@@ -583,7 +762,8 @@ FURNITURE_PARTS = {
 
 
 def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
-    """法式奶油风家具材质：羊羔绒/亚麻/白漆木/浅木。"""
+    """中古胡桃方向家具材质（DEC-2026-08-20-025）：深胡桃/黑皮/奶油墙面作衬。
+    （原为法式奶油：羊羔绒/白漆木；沙发/餐椅已 GLB 化不吃这套色，剩余程序部件用）"""
     mats = {}
     # 羊羔绒沙发面料（奶油色 + 细微织物纹理 bump）
     for name, color, rough in [
@@ -591,7 +771,7 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
         ('fabric_light', '#e8e0d2', 0.85), # 坐垫/靠垫（浅奶油）
         ('fabric_white', '#f5f0e6', 0.85), # 床品（白奶油）
         ('wood', '#c9a87e', 0.5),          # 浅橡木家具
-        ('wood_dark', '#6b5d4a', 0.5),     # 深木腿/框架
+        ('wood_dark', '#503e2e', 0.45),    # 深胡桃（电视柜/桌腿/框架，中古方向）
         ('paint_cream', '#f2ede2', 0.4),   # 奶油白漆柜门/柜体
     ]:
         mat = new_principled_fn(f'家具_{name}', hex_rgb_fn(color), rough=rough)
@@ -611,6 +791,7 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
                 pass
         mats[name] = mat
     mats['metal'] = new_principled_fn('家具_metal', hex_rgb_fn('#c8ccd0'), rough=0.35, metallic=1.0)
+    mats['metal_black'] = new_principled_fn('家具_metal_black', hex_rgb_fn('#171412'), rough=0.35, metallic=0.85)
     mats['black_glass'] = new_principled_fn('家具_black_glass', hex_rgb_fn('#1a1a1c'), rough=0.15)
     mats['quartz'] = new_principled_fn('家具_quartz', hex_rgb_fn('#e8e6e0'), rough=0.25)
     mats['ceramic'] = new_principled_fn('家具_ceramic', hex_rgb_fn('#f8f8f6'), rough=0.1)
@@ -664,96 +845,147 @@ def add_pbr_maps(mat, tex_dir, size=2.0, with_diffuse=False, normal_strength=0.5
 
 
 FURNITURE_GLB = {
-    'sofa_3seat': 'assets/sofa_set.glb',
+    # 中古胡桃方向（DEC-2026-08-20-025/026）：Poly Haven CC0，清单见 assets/SOURCES.md
+    # width/height 为目标尺寸（米）：缩放系数取 width/模型宽 与 height/模型高 的较小者，
+    # 防止模型长宽比与目标槽位不一致时拉飞高度（wooden_table_02 按宽缩会顶到 0.99m）
+    # tint: 可选，对导入材质做乘色（如中色木桌压成深胡桃）
+    # DEC-026：沙发/餐椅/茶几换 BlenderKit 现代中古款（Burrard 直排+细腿、
+    # 藤编细腿餐椅、Noguchi 黑座玻璃圆几），弃 Chesterfield/高背拉扣/工业方几
+    'sofa_3seat': {'path': 'assets/furniture/burrard_sofa/burrard_sofa.blend', 'width': 2.3, 'height': 0.8, 'tint': '#3a2e26', 'tint_mode': 'solid'},
+    'dining_chair': {'path': 'assets/furniture/rattan_dining_chair/rattan_dining_chair.blend', 'width': 0.5, 'height': 0.9, 'tint': '#6b4c38'},
+    'dining_table': {'path': 'assets/furniture/wooden_table_02/wooden_table_02.gltf', 'width': 1.4, 'height': 0.78, 'tint': '#54382a'},
+    'plant_fiddle': {'path': 'assets/furniture/potted_plant_01/potted_plant_01.gltf', 'width': 0.6},
 }
 
 
-def import_furniture_glb(glb_path: str, target_width: float, block, rot_fix: float = 0) -> int:
-    """导入 .glb 家具模型，归一化到 target_width，放到 block 位置。
-    步骤：导入→合并→设原点→缩放→贴地→定位→旋转。"""
+def import_furniture_glb(glb_path: str, targets: dict, block=None, loc_rz=None, rot_fix: float = 0) -> int:
+    """导入 .glb/.gltf 家具模型，归一化缩放后放置。
+    targets: {'width': 米, 'height': 米, 'tint': '#hex'}（均可省），缩放取各约束的较小值；
+    tint 时对每个导入材质的 Base Color 前插 MULTIPLY 节点（保纹理、压色调）。
+    放置：block（继承其世界变换）或 loc_rz=((x,y,z), rz)（Blender 坐标，用于 place_extra_furniture）。
+    步骤：导入→剥骨架→合并→设原点→缩放→tint→贴地→定位→旋转。"""
     import math
     import mathutils
 
     existing = set(obj.name for obj in bpy.data.objects)
-    bpy.ops.import_scene.gltf(filepath=glb_path)
+    if glb_path.lower().endswith('.blend'):
+        # BlenderKit 资产多为 .blend（含打包贴图）：append 全部对象再按既有流程处理
+        with bpy.data.libraries.load(glb_path) as (data_from, data_to):
+            data_to.objects = data_from.objects
+        for o in data_to.objects:
+            if o is not None:
+                try:
+                    bpy.context.collection.objects.link(o)
+                except Exception:
+                    pass
+        # 清理 append 带入的非网格对象（相机/灯光），避免污染场景
+        for o in [o for o in bpy.data.objects
+                  if o.name not in existing and o.type in ('CAMERA', 'LIGHT')]:
+            bpy.data.objects.remove(o)
+    else:
+        bpy.ops.import_scene.gltf(filepath=glb_path)
     new_objs = [obj for obj in bpy.data.objects if obj.name not in existing and obj.type == 'MESH']
     if not new_objs:
         print(f'[dress_scene] WARN glb 导入无 mesh: {glb_path}')
         return 0
 
+    # 剥掉骨架/动画绑定：家具资产不需要 rig。Poly Haven 部分模型（滑门柜/铁架茶几）
+    # 带 Armature 修改器，transform_apply 后网格被骨骼扯回错误姿态（木板立起/跑偏）
+    new_armatures = [o for o in bpy.data.objects if o.name not in existing and o.type == 'ARMATURE']
+    for obj in new_objs:
+        for mod in list(obj.modifiers):
+            if mod.type == 'ARMATURE':
+                obj.modifiers.remove(mod)
+        if obj.parent is not None and obj.parent.type == 'ARMATURE':
+            mw_keep = obj.matrix_world.copy()
+            obj.parent = None
+            obj.matrix_world = mw_keep
+    for arm in new_armatures:
+        bpy.data.objects.remove(arm)
+
     bpy.ops.object.select_all(action='DESELECT')
     for obj in new_objs:
         obj.select_set(True)
-    # 玄关餐边一体柜（通顶三段式：底架空 0.15 + 浅门下柜 + 深胡桃开放格 + 浅门上柜）
-    'shoe_cabinet': [
-        ('lower', [1.5, 0.75, 0.35], [0, 0.525, 0], 'paint_cream'),
-        ('niche', [1.5, 0.5, 0.03], [0, 1.15, -0.16], 'wood_dark'),
-        ('upper', [1.5, 1.0, 0.35], [0, 1.9, 0], 'paint_cream'),
-    ],
-    # 入户花园可移动换鞋站（成品鞋柜 + 自立洞洞板）
-    'garden_entry_station': [
-        ('shoe_body', [1.1, 0.78, 0.34], [0, 0.42, 0], 'wood'),
-        ('shoe_top', [1.14, 0.04, 0.38], [0, 0.83, 0], 'wood_dark'),
-        ('pegboard', [1.1, 1.05, 0.04], [0, 1.38, -0.15], 'metal_black'),
-        ('stand_l', [0.05, 1.85, 0.05], [-0.5, 0.925, -0.15], 'metal_black'),
-        ('stand_r', [0.05, 1.85, 0.05], [0.5, 0.925, -0.15], 'metal_black'),
-    ],
-    # 门内右手定制半高柜：向客厅延伸，玄关侧封闭、餐厅侧开放，柜顶以上保持视线通透。
-    'entry_half_height_cabinet': [
-        ('lower', [2.0, 0.88, 0.35], [0, 0.44, 0], 'paint_cream'),
-        ('top', [2.04, 0.04, 0.39], [0, 0.90, 0], 'wood_dark'),
-        ('side_n', [0.08, 0.56, 0.35], [-0.96, 1.18, 0], 'paint_cream'),
-        ('side_s', [0.08, 0.56, 0.35], [0.96, 1.18, 0], 'paint_cream'),
-        ('upper', [1.76, 0.08, 0.35], [0, 1.46, 0], 'paint_cream'),
-        ('dining_back', [1.76, 0.50, 0.025], [0, 1.18, 0.162], 'wood_dark'),
-        ('dining_shelf', [1.76, 0.04, 0.31], [0, 1.00, 0.0], 'wood_dark'),
-        ('entry_panel', [1.76, 0.50, 0.02], [0, 1.18, 0.186], 'paint_cream'),
-    ],
-    # 西墙实体墙段通顶柜（z=5.55-6.90，不进入餐厅/门厅）
-    'wall_cabinet_tall': [
-        ('lower', [1.35, 1.1, 0.35], [0, 0.55, 0], 'paint_cream'),
-        ('niche', [1.35, 0.5, 0.03], [0, 1.35, -0.16], 'wood_dark'),
-        ('upper', [1.35, 1.3, 0.35], [0, 2.25, 0], 'paint_cream'),
-    ],
-    # 西墙 TV 区（z=6.90-9.00，悬空低柜 + 深胡桃背板）
-    'tv_wall_low': [
-        ('low', [2.1, 0.35, 0.4], [0, 0.325, 0], 'wood_dark'),
-        ('back', [2.1, 1.6, 0.05], [0, 1.3, -0.17], 'wood_dark'),
-    ],
-    # 主茶几（DEC-026 改款：圆形深木面+黑细柱，稳重克制；v14 精炼：更薄更轻）
-    'coffee_table': [
-        ('top', [0.8, 0.03, 0.8], [0, 0.38, 0], 'wood_dark', 'cylinder'),
-        ('base', [0.35, 0.35, 0.35], [0, 0.175, 0], 'metal_black', 'cylinder'),
-    ],
     bpy.context.view_layer.objects.active = new_objs[0]
 
     if len(new_objs) > 1:
         bpy.ops.object.join()
 
     obj = bpy.context.active_object
-    obj.name = f'asset:{block.name.split(":")[2] if ":" in block.name else "imported"}:glb'
+    tag = block.name.split(":")[2] if block is not None and ":" in block.name else "extra"
+    obj.name = f'asset:{tag}:glb'
 
     # 原点设到几何中心
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
 
-    # 计算包围盒 → 缩放
+    # 计算包围盒 → 缩放（宽/高约束取小，防长宽比失真）
     bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
-    model_width = max(c.x for c in bb) - min(c.x for c in bb)
-    scale = target_width / model_width if model_width > 0.01 else 1.0
+    model_w = max(c.x for c in bb) - min(c.x for c in bb)
+    model_h = max(c.z for c in bb) - min(c.z for c in bb)
+    scales = []
+    if targets.get('width') and model_w > 0.01:
+        scales.append(targets['width'] / model_w)
+    if targets.get('height') and model_h > 0.01:
+        scales.append(targets['height'] / model_h)
+    scale = min(scales) if scales else 1.0
     obj.scale = (scale, scale, scale)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
-    # 定位 + 旋转（继承 block 的世界变换）
-    mw = block.matrix_world
-    obj.location.x = mw.translation.x
-    obj.location.y = mw.translation.y
-    obj.rotation_euler = mw.to_euler()
-    obj.rotation_euler.z += math.radians(rot_fix)
+    # tint 乘色（可选）：Base Color 前插 MULTIPLY，保纹理压色调
+    # tint_mode='solid'：直接替换 Base Color 为纯色（乘色改不了色相，绿布×棕=还是绿）
+    tint = targets.get('tint')
+    if tint:
+        solid = targets.get('tint_mode') == 'solid'
+        for mat in obj.data.materials:
+            if mat is None or not mat.use_nodes:
+                continue
+            nt = mat.node_tree
+            bsdf = _find_node(nt, 'ShaderNodeBsdfPrincipled')
+            if bsdf is None:
+                continue
+            base_in = bsdf.inputs['Base Color']
+            if solid:
+                for link in list(base_in.links):
+                    nt.links.remove(link)
+                base_in.default_value = (*hex_rgb(tint), 1.0)
+                continue
+            mul = nt.nodes.new('ShaderNodeMixRGB')
+            mul.blend_type = 'MULTIPLY'
+            mul.inputs['Fac'].default_value = 1.0
+            mul.inputs['Color2'].default_value = (*hex_rgb(tint), 1.0)
+            if base_in.is_linked:
+                nt.links.new(base_in.links[0].from_socket, mul.inputs['Color1'])
+            else:
+                mul.inputs['Color1'].default_value = base_in.default_value
+            nt.links.new(mul.outputs['Color'], base_in)
+
+    # 定位 + 旋转（继承 block 的世界变换，或用显式 loc_rz）
+    # 关键：glTF 导入对象多为 rotation_mode='QUATERNION'，且模型自带 +90°X 基础旋转
+    # （Y-up→Z-up 转换）。切 XYZ 模式/覆盖 rotation_euler 会静默丢掉基础旋转
+    # （茶几木板立起来、电视柜嵌墙、床朝向悬案全是这一类）→ 一律用四元数复合：
+    # 最终旋转 = 摆位 yaw ⊗ 模型原始旋转
+    from mathutils import Quaternion
+    orig_quat = obj.matrix_world.to_quaternion()
+    if loc_rz is not None:
+        (lx, ly, lz), rz = loc_rz
+        obj.location = (lx, ly, lz)
+        yaw = Quaternion((0, 0, 1), rz + math.radians(rot_fix))
+        obj.rotation_mode = 'QUATERNION'
+        obj.rotation_quaternion = yaw @ orig_quat
+    else:
+        mw = block.matrix_world
+        obj.location.x = mw.translation.x
+        obj.location.y = mw.translation.y
+        yaw = mw.to_quaternion() @ Quaternion((0, 0, 1), math.radians(rot_fix))
+        obj.rotation_mode = 'QUATERNION'
+        obj.rotation_quaternion = yaw @ orig_quat
     bpy.context.view_layer.update()
     # 旋转后重新算世界包围盒 → 贴地（保证旋转不抬升）
     bb2 = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
     min_z = min(c.z for c in bb2)
     obj.location.z -= min_z
+    dims = [round(max(c[i] for c in bb2) - min(c[i] for c in bb2), 2) for i in range(3)]
+    print(f'[dress_scene] glb import: {obj.name} scale={scale:.2f} dims={dims} loc={tuple(round(v,2) for v in obj.location)}')
 
     # 材质豁免：asset: 前缀 → classify 返回 skip
     return 1
@@ -779,15 +1011,13 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
         obj.hide_render = True
         for child in obj.children_recursive:
             child.hide_render = True
-        # 优先用真 3D 模型（.glb）
-        glb_rel = FURNITURE_GLB.get(ftype)
-        if glb_rel and config_dir:
-            glb_path = os.path.join(config_dir, glb_rel)
+        # 优先用真 3D 模型（.glb/.gltf）
+        glb_cfg = FURNITURE_GLB.get(ftype)
+        if glb_cfg and config_dir:
+            glb_path = os.path.join(config_dir, glb_cfg['path'])
             if os.path.exists(glb_path):
-                tw = {'sofa_3seat': 2.8, 'bed_180': 1.8, 'bed_150': 1.5,
-                      'dining_table': 1.4, 'dining_chair': 0.45, 'tv_stand': 1.8}.get(ftype, 1.0)
-                if import_furniture_glb(glb_path, tw, obj,
-                                         rot_fix={'bed_180': 180, 'bed_150': 180}.get(ftype, 0)):
+                if import_furniture_glb(glb_path, glb_cfg, block=obj,
+                                        rot_fix={'bed_180': 180, 'bed_150': 180}.get(ftype, 0)):
                     count += 1
                     continue
         # 读取世界坐标 + 旋转
@@ -797,8 +1027,10 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
         rz = euler.z
         cos_rz = math.cos(rz)
         sin_rz = math.sin(rz)
-        # 生成部件
-        for pname, tsize, tpos, mat_key in FURNITURE_PARTS[ftype]:
+        # 生成部件（part 第 5 元素可选 shape='cylinder'，如圆茶几面）
+        for part in FURNITURE_PARTS[ftype]:
+            pname, tsize, tpos, mat_key = part[:4]
+            shape = part[4] if len(part) > 4 else 'box'
             # three local → Blender local
             lx, ly, lz = tpos[0], -tpos[2], tpos[1]
             # 绕 Z 旋转
@@ -807,7 +1039,10 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
             wz = loc.z + lz
             # Blender dimensions: three(x,y,z) → Blender(x,z,y)
             dx, dy, dz = tsize[0], tsize[2], tsize[1]
-            bpy.ops.mesh.primitive_cube_add(size=1.0)
+            if shape == 'cylinder':
+                bpy.ops.mesh.primitive_cylinder_add(radius=tsize[0] / 2, depth=tsize[1])
+            else:
+                bpy.ops.mesh.primitive_cube_add(size=1.0)
             part = bpy.context.object
             part.name = f'asset:{ftype}:{pname}'
             part.dimensions = (dx, dy, dz)
@@ -864,13 +1099,26 @@ def place_extra_furniture(furniture_mats: dict, config_dir: str) -> int:
             rz = math.radians(it.get('rotation', 0))
             cos_rz, sin_rz = math.cos(rz), math.sin(rz)
             bx, by = it['x'], -it['z']  # three → blender 水平面
-            for pname, tsize, tpos, mat_key in FURNITURE_PARTS[ftype]:
+            # 优先用真 3D 模型（.glb/.gltf）：与 replace_furniture 同一映射表
+            glb_cfg = FURNITURE_GLB.get(ftype)
+            if glb_cfg:
+                glb_path = os.path.join(config_dir, glb_cfg['path'])
+                if os.path.exists(glb_path):
+                    if import_furniture_glb(glb_path, glb_cfg, loc_rz=((bx, by, 0.0), rz)):
+                        count += 1
+                        continue
+            for part in FURNITURE_PARTS[ftype]:
+                pname, tsize, tpos, mat_key = part[:4]
+                shape = part[4] if len(part) > 4 else 'box'
                 lx, ly, lz = tpos[0], -tpos[2], tpos[1]
                 wx = bx + lx * cos_rz - ly * sin_rz
                 wy = by + lx * sin_rz + ly * cos_rz
                 wz = lz
                 dx, dy, dz = tsize[0], tsize[2], tsize[1]
-                bpy.ops.mesh.primitive_cube_add(size=1.0)
+                if shape == 'cylinder':
+                    bpy.ops.mesh.primitive_cylinder_add(radius=tsize[0] / 2, depth=tsize[1])
+                else:
+                    bpy.ops.mesh.primitive_cube_add(size=1.0)
                 part = bpy.context.object
                 part.name = f'asset:{ftype}:{pname}'
                 part.dimensions = (dx, dy, dz)
@@ -1213,10 +1461,16 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
         bpy.context.collection.objects.link(fl_obj)
     if scenario.get('lights_on', True):
         add_lights(cfg, temp_override=scenario.get('light_temp'))
-        add_light_fixtures(cfg, temp_override=scenario.get('light_temp'))
+    # 灯具实体始终建模（白天不开灯也要看见吊灯/吸顶灯形体），自发光仅在开灯工况
+    add_light_fixtures(cfg, temp_override=scenario.get('light_temp'),
+                       emit=scenario.get('lights_on', True))
+    # 顶面完成度 staging（DEC-027 评估件：浅跌级+灯槽+风口）
+    add_ceiling_finishing(mats, emit=scenario.get('lights_on', True))
     sun_dir = scenario.get('sun_direction')
     if sun_dir:
-        add_sun(sun_dir)
+        add_sun(sun_dir, energy=scenario.get('sun_energy', 1.2), temp=scenario.get('sun_temp', 3200))
+    if scenario.get('window_portal'):
+        add_window_portal(scenario['window_portal'])
     setup_world(used_engine, scenario, config_dir=args.get('config-dir'))
     add_camera(cam_cfg)
     if used_engine in ('BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE'):

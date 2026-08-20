@@ -1,6 +1,6 @@
 # 装扮映射表（Twinmotion 云渲染用）
 
-生成：2026-08-13，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-08-20，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
 用法：glb 导入 Twinmotion 后按本表替换材质/家具/灯光；reimport 同名 glb 时材质覆盖按节点名保留。
 
@@ -8,11 +8,11 @@
 
 | 主题 | 当前选择 | 名称 | 品牌/型号 | 规格 | Twinmotion 替换建议 |
 |---|---|---|---|---|---|
-| floor | floor_tile_01 | 浅胡桃木纹砖 | 马可波罗 / 800x800 浅胡桃色系（型号待门店确认） | 800x800mm | 底色 #c49a6c，木纹·直铺，条板 800x800mm，光泽 soft |
+| floor | floor_pbr_herringbone | 人字拼木地板（PBR 真扫描，Poly Haven herringbone_parquet） | Poly Haven CC0 / herringbone_parquet 2K | 扫描件 | 按实物选材替换 |
 | wall | wall_tile_01 | 厨卫白色釉面砖 | 东鹏 / 300x600 白色釉面砖 | 300x600mm | 底色 #f5f5f5 |
 | paint | latex_paint_01 | 金装净味五合一 | 多乐士 / 18L 大桶（具体型号如 A750/A8188，到店确认） | 18L | 底色 #f7f5ef |
-| cabinet | cabinet_board_01 | 多层实木板柜体 + PET 肤感柜门 | 本地全屋定制工厂 / 兔宝宝 / 千年舟 / ENF/E0 级多层实木 18mm | 18mm | 按实物选材替换 |
-| countertop | quartz_stone_01 | 石英石台面 | 本地石材厂 / 赛凯隆 / 中迅 / 20mm 厚单色/小颗粒 | 20mm | 按实物选材替换 |
+| cabinet | cabinet_board_01 | 多层实木板柜体 + PET 肤感柜门 | 本地全屋定制工厂 / 兔宝宝 / 千年舟 / ENF/E0 级多层实木 18mm | 18mm | 底色 #f2ede2，光泽 soft |
+| countertop | quartz_stone_01 | 石英石台面 | 本地石材厂 / 赛凯隆 / 中迅 / 20mm 厚单色/小颗粒 | 20mm | 底色 #e8e6e0，光泽 glossy |
 | interior_door | interior_door_01 | 实木复合免漆门 | 本地大厂 / 大自然 / 美心 / 2100x900mm，门套 260mm 内 | 2100x900mm | 按实物选材替换 |
 | bathroom_door | bathroom_door_01 | 钛镁铝合金极窄平开门 | 本地门窗厂 / 佛山型材 / 2100x800mm，极窄 35/40 系列，长虹/磨砂玻璃 | 2100x800mm | 按实物选材替换 |
 | entry_door | entry_door_01 | 甲级防盗门 | 盼盼 / 王力 / 步阳（门店比价） / 2100x960mm，甲级，C 级锁芯 | 2100x960mm | 按实物选材替换 |
@@ -28,10 +28,10 @@
 | bed | bed_180_01 | 1.8m 实木床 | 本地家具厂 / 源氏木语 / 1.8×2.0m 橡木/白蜡木 | 1800×2000mm | 按实物选材替换 |
 | mattress | mattress_180_01 | 1.8m 独立袋装弹簧床垫 | 喜临门 / 雅兰 / 20-25cm 独立袋装弹簧 + 乳胶 | 1800×2000mm | 按实物选材替换 |
 | wardrobe | wardrobe_240_01 | 2.4m 定制衣柜 | 本地全屋定制工厂 / 2.4×0.6×2.7m，平开门 | 2400×600×2700mm | 按实物选材替换 |
-| sofa | sofa_3seat_01 | 三人位科技布沙发 | 林氏家居 / 全友 / 2.8m 三人位 + 贵妃位 | 2800×900×400mm | 按实物选材替换 |
-| dining_table | dining_table_01 | 1.4m 岩板餐桌 | 本地家具厂 / 1.4×0.8m 岩板台面 + 碳素钢腿 | 1400×800×750mm | 按实物选材替换 |
-| dining_chair | dining_chair_01 | 简约餐椅 | 林氏家居 / 科技布软包 + 金属腿 | 标准 | 按实物选材替换 |
-| tv_stand | tv_stand_01 | 1.8m 电视柜 | 本地家具厂 / 林氏家居 / 1.8×0.4×0.4m 简约款 | 1800×400×400mm | 底色 #8a6f52 |
+| sofa | sofa_3seat_01 | 直排现代中古沙发（深棕/黑棕仿皮，低矮简洁轮廓） | 林氏家居 / 源氏木语 / 本地家具厂（按中古款筛选） / 2.8m 直排三人位，细金属腿或矮木腿，无拉扣无弧形背 | 2800×900×750mm（坐高≤420mm） | 按实物选材替换 |
+| dining_table | dining_table_01 | 1.4m 深胡桃色餐桌（木质视觉，造型简洁） | 本地家具厂 / 林氏家居 / 1.4×0.8m 深胡桃贴皮/板式台面 + 黑色金属或深木腿 | 1400×800×750mm | 按实物选材替换 |
+| dining_chair | dining_chair_01 | 细腿软包餐椅（深棕仿皮） | 林氏家居 / 本地家具厂 / 细金属腿 + 低背软包，无拉扣 | 标准 | 按实物选材替换 |
+| tv_stand | tv_stand_01 | 西墙电视背景柜墙（定制） | 本地全屋定制工厂 / 北段通顶 1.35m + TV 区低柜 2.1m，浅 PET 门 + 深胡桃开放格/背板 | 约 5 投影㎡（0.35-0.4m 深） | 底色 #8a6f52 |
 | desk | desk_01 | 1.2m 书桌 | 本地家具厂 / 林氏家居 / 1.2×0.6×0.75m 板式/实木 | 1200×600×750mm | 底色 #b08d5e |
 | chair | chair_01 | 人体工学椅 | 西昊 / 永艺 / 网布升降转椅 | 标准 | 底色 #3a3a3a |
 | bookshelf | bookshelf_01 | 0.8m 书架 | 本地家具厂 / 林氏家居 / 0.8×0.3×1.8m 开放式 | 800×300×1800mm | 底色 #9c7b52 |
@@ -43,7 +43,7 @@
 | washer | washer_01 | 10kg 滚筒洗衣机 | 小天鹅 / 海尔 / 10kg 滚筒变频 | 标准 | 按实物选材替换 |
 | dryer | dryer_01 | 9kg 热泵烘干机 | 小天鹅 / 海尔 / 9kg 热泵式 | 标准 | 按实物选材替换 |
 | shower_enclosure | shower_enclosure_01 | 淋浴房玻璃隔断 | 本地卫浴 / 莱博顿 / 304不锈钢边框 + 钢化玻璃 | 标准 | 按实物选材替换 |
-| bedroom_floor | bedroom_tile_01 | 卧室木纹砖（与客餐厅一致） | 马可波罗 / 800x800 浅胡桃木纹（同 floor_tile_01） | 800x800mm | 底色 #c49a6c，木纹·直铺，条板 800x800mm，光泽 soft |
+| bedroom_floor | floor_pbr_herringbone | 人字拼木地板（PBR 真扫描，Poly Haven herringbone_parquet） | Poly Haven CC0 / herringbone_parquet 2K | 扫描件 | 按实物选材替换 |
 
 ## 2. 家具体块清单 → 库家具替换参照
 
@@ -64,8 +64,8 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | bedroom_nw | mattress_150 | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_nw | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_nw | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| bedroom_se | desk | 1 | 1.2×0.6 | (13.7, 6.3) / 90° |
-| bedroom_se | chair | 1 | 0.5×0.5 | (14.3, 6.3) / 270° |
+| bedroom_se | desk | 1 | 1.2×0.6 | (13.7, 7.3) / 90° |
+| bedroom_se | chair | 1 | 0.5×0.5 | (14.3, 7.3) / 270° |
 | bedroom_se | bookshelf | 1 | 0.8×0.3 | (15.5, 5.7) / 0° |
 | bedroom_se | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_se | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
@@ -119,7 +119,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 |---|---|---|---|---|---|---|
 | light_dining_pendant | living_dining | 吊灯 | (8.5, 3.35) | 2.8 | 3000 | 餐桌吊灯天花出线（DEC-013，DEC-021 随餐桌），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm |
 | light_living_main | living_dining | 吊灯 | (10.3, 7) | 2.8 | 3000 | 客厅主灯（沙发区上方，复古吊灯/贝壳灯方向；灯光升级待决策项） |
-| light_tv_strip | living_dining | 灯带 | (7.2, 7) | 2 | 3000 | 电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-013） |
+| light_tv_strip | living_dining | 灯带 | (7.2, 7.7) | 2 | 3000 | 电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-013） |
 | light_master_dome | master_bedroom | 吸顶灯 | (2.6, 7.6) | 2.8 | 3000 | 主卧吸顶灯 |
 | light_master_wall_l | master_bedroom | 壁灯 | (4.2, 7.2) | 1.6 | 3000 | 主卧床头壁灯左（东墙随床头，黄铜壁灯方向；灯光升级待决策项） |
 | light_master_wall_r | master_bedroom | 壁灯 | (4.2, 8.55) | 1.6 | 3000 | 主卧床头壁灯右（东墙随床头） |

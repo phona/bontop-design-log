@@ -145,7 +145,7 @@ materials:
     cons: ["非砖质感（木地板视觉）", "色号需门店实物终审"]
     price_source: "免费"
     notes: "PBR 贴图替代程序化生成。diffuse+normal+rough 三通道 2K，tile_size=2m 平铺。"
-    appearance: { type: "pbr_texture", texture_id: "herringbone_parquet", tile_size: 2.0, tint: "#c49a6c", coat: 0.3, normal_strength: 1.0 }
+    appearance: { type: "pbr_texture", texture_id: "herringbone_parquet", tile_size: 2.0, tint: "#d9bf9c", coat: 0.1, roughness: 0.5, normal_strength: 1.0 }
 
   - id: "floor_pbr_veneer"
     topic_id: "floor"
@@ -1089,70 +1089,70 @@ materials:
     topic_id: "sofa"
     alternative_group: "sofa"
     category: "家具"
-    name: "三人位科技布沙发"
-    brand: "林氏家居 / 全友"
-    model: "2.8m 三人位 + 贵妃位"
-    spec: "2800×900×400mm"
+    name: "直排现代中古沙发（深棕/黑棕仿皮，低矮简洁轮廓）"
+    brand: "林氏家居 / 源氏木语 / 本地家具厂（按中古款筛选）"
+    model: "2.8m 直排三人位，细金属腿或矮木腿，无拉扣无弧形背"
+    spec: "2800×900×750mm（坐高≤420mm）"
     unit: "套"
-    price_per_unit: 3200
+    price_per_unit: 4200
     coverage_per_unit: 1
     loss_rate: 1
     calc_mode: "count"
-    supplier: "林氏家居天猫 / 线下门店"
+    supplier: "天猫旗舰店 / 线下门店"
     online_link: ""
     sample_acquired: false
     sample_date: null
     status: "candidate"
-    pros: ["科技布防水耐脏", "性价比高"]
-    cons: ["布艺不如真皮高级"]
-    price_source: "林氏家居天猫旗舰店"
-    notes: "科技布是务实档首选，真皮预算翻倍"
+    pros: ["现代中古轮廓克制", "仿皮/科技皮触感优先", "深色承担视觉锚点（DEC-025/026）"]
+    cons: ["仿皮不如真皮高级（业主已拍板不强制真皮）"]
+    price_source: "天猫中古款直排沙发 3.5-5k 区间"
+    notes: "DEC-026：弃 Chesterfield 拉扣款与科技布通用款；款式/比例/腿型优先，材质仿皮即可"
 
   - id: "dining_table_01"
     topic_id: "dining_table"
     alternative_group: "dining_table"
     category: "家具"
-    name: "1.4m 岩板餐桌"
-    brand: "本地家具厂"
-    model: "1.4×0.8m 岩板台面 + 碳素钢腿"
+    name: "1.4m 深胡桃色餐桌（木质视觉，造型简洁）"
+    brand: "本地家具厂 / 林氏家居"
+    model: "1.4×0.8m 深胡桃贴皮/板式台面 + 黑色金属或深木腿"
     spec: "1400×800×750mm"
     unit: "张"
-    price_per_unit: 1800
+    price_per_unit: 1500
     coverage_per_unit: 1
     loss_rate: 1
     calc_mode: "count"
-    supplier: "本地家具市场"
+    supplier: "本地家具市场 / 天猫"
     online_link: ""
     sample_acquired: false
     sample_date: null
     status: "candidate"
-    pros: ["岩板耐高温易清洁", "现代感强"]
-    cons: ["岩板较脆怕撞击"]
+    pros: ["深胡桃视觉锚点（DEC-026）", "不要求实木，贴皮性价比高"]
+    cons: ["贴皮怕边角磕碰"]
     price_source: "本地家居建材市场"
-    notes: "1.4m 适合 4 人常用，6 人挤一挤"
+    notes: "DEC-026：取消岩板+碳素钢腿方案；1.4m 适合 4 人常用，6 人挤一挤"
 
   - id: "dining_chair_01"
     topic_id: "dining_chair"
     alternative_group: "dining_chair"
     category: "家具"
-    name: "简约餐椅"
-    brand: "林氏家居"
-    model: "科技布软包 + 金属腿"
+    name: "细腿软包餐椅（深棕仿皮）"
+    brand: "林氏家居 / 本地家具厂"
+    model: "细金属腿 + 低背软包，无拉扣"
     spec: "标准"
     unit: "把"
-    price_per_unit: 300
+    price_per_unit: 350
     coverage_per_unit: 1
     loss_rate: 1
     calc_mode: "count"
-    supplier: "林氏家居天猫旗舰店"
+    supplier: "林氏家居天猫旗舰店 / 本地家具市场"
     online_link: ""
     sample_acquired: false
     sample_date: null
     status: "candidate"
-    pros: ["百搭", "价格低"]
+    pros: ["现代中古细腿轻盈", "仿皮好打理"]
     cons: []
     price_source: "林氏家居天猫旗舰店"
-    notes: "4 把起步，可根据实际增减"
+    notes: "DEC-026：弃高背拉扣厚重款；4 把起步，可根据实际增减"
 
   - id: "tv_stand_01"
     topic_id: "tv_stand"
@@ -1279,12 +1279,12 @@ materials:
     topic_id: "coffee_table"
     alternative_group: "coffee_table"
     category: "家具"
-    name: "1.2m 茶几"
+    name: "圆形/椭圆黑色茶几（轻巧造型）"
     brand: "本地家具厂 / 林氏家居"
-    model: "1.2×0.6×0.45m 岩板/板式"
-    spec: "1200×600×450mm"
+    model: "φ0.7-0.8m 圆形，黑色/深木色，细腿"
+    spec: "φ700-800×420mm"
     unit: "个"
-    price_per_unit: 600
+    price_per_unit: 500
     coverage_per_unit: 1
     loss_rate: 1
     calc_mode: "count"
@@ -1293,11 +1293,11 @@ materials:
     sample_acquired: false
     sample_date: null
     status: "candidate"
-    pros: ["与沙发配套", "岩板易清洁"]
+    pros: ["轻巧不压空间", "圆形柔化直排沙发线条"]
     cons: []
     price_source: "林氏家居天猫旗舰店"
-    notes: "客厅沙发前，可后期升级"
-    appearance: { type: "solid_color", color: "#7a6a58" }
+    notes: "DEC-026：取消工业风方几与岩板茶几；客厅沙发前，可后期升级"
+    appearance: { type: "solid_color", color: "#2f2822" }
 
   # === 家电补全（2026-08-01 P0 新增 appliances 池，calc_mode=fixed 单件整屋） ===
   - id: "gas_stove_01"

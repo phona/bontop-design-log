@@ -220,5 +220,5 @@ walls:
     to: v_be_se_s
     height: 2.8
     openings:
-      - { id: d_bese, type: door, anchor: v_be_se_s, offset: 2.2, width: 0.9, height: 2.1, room: bedroom_se }
+      - { id: d_bese, type: door, anchor: v_be_se_s, offset: 3.7, width: 0.9, height: 2.1, room: bedroom_se }
   - { id: w_be_north,   from: v_be_sw,   to: v_be_ne,  height: 2.8 }

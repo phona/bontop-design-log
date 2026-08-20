@@ -56,12 +56,52 @@ curl -H "Authorization: Token $KEY" "https://www.blenderkit.com/api/v1/downloads
 curl -L "<filePath>" -O assets/sofa_set.glb
 ```
 
+## 3D 家具模型（Poly Haven，CC0，1k gltf+bin+textures）
+
+`assets/furniture/<id>/` 每套含 `<id>.gltf` + `<id>.bin` + `textures/`（diff/nor_gl/arm），
+重下脚本逻辑：查 `https://api.polyhaven.com/files/<id>` → `gltf["1k"].gltf.url`（主文件）
++ `gltf["1k"].gltf.include`（bin 与贴图，保持相对路径）。需带 User-Agent（API 对裸 urllib 返 403）。
+
+| id | 用途 | 风格 |
+|---|---|---|
+| sofa_02 | ~~客厅三人沙发~~（弃用） | Chesterfield 弧形拉扣，DEC-026 否掉 |
+| dining_chair_02 | ~~餐椅~~（弃用） | 高背拉扣厚重款，DEC-026 否掉 |
+| industrial_coffee_table | ~~茶几~~（弃用） | 工业风方几，DEC-026 否掉；且带骨架绑定导致木板立起 |
+| wooden_table_02 | 餐桌 | 矩形四腿实木桌（Poly Haven 无深色长餐桌，此款比例正确、色偏中，tint 压深胡桃） |
+| WoodenTable_01 | ~~餐桌~~（弃用） | 实测为 0.55m 高矮凳，比例不符，v9 起停用 |
+| modern_wooden_cabinet | ~~电视柜~~（弃用） | 带滑门动画/自定义 ARM 贴图，导入材质全黑且滑门跑偏，v9c 起回退程序化深胡桃体块 |
+| mid_century_lounge_chair | 单人休闲椅（备选，未摆位） | 棕色皮 + 弯木壳（中古标配） |
+| potted_plant_01 | 琴叶榕位绿植 | 陶盆阔叶树（替代绿方块程序植物） |
+
+## 3D 家具模型（BlenderKit，royalty_free/CC0，.blend append 接入）
+
+| id | BlenderKit asset | 授权 | 用途 |
+|---|---|---|---|
+| burrard_sofa | [Burrard Forest Green Sofa 3 Seaters](https://www.blenderkit.com/asset-gallery/1ee7fa07-0b88-4f4e-af59-a5dcd65259a8) | royalty_free（免费） | 直排三坐垫+细木腿，tint 压深棕（DEC-026 沙发款） |
+| rattan_dining_chair | [Wood dining chair](https://www.blenderkit.com/asset-gallery/33ef21d4-fe67-43e4-b5f6-7d6bcd5190d4) | royalty_free（免费） | 黑细腿+藤编靠背餐椅（DEC-026 餐椅款） |
+| noguchi_coffee_table | ~~茶几~~（弃用） | CC0 | 黑座玻璃圆几——体量过小、雕塑感过强像装饰边几，DEC-026 复审否掉，主茶几改程序化圆几 |
+
+下载流程（API key 放环境变量，**不入库**）：
+```bash
+KEY=<blenderkit_api_key>
+# 1. 资产详情拿 files[].id（fileType=blend；付费资产下不了，挑 isFree=true）
+curl -H "Authorization: Token $KEY" -H "Accept: application/json" "https://www.blenderkit.com/api/v1/assets/<uuid>/"
+# 2. 拿临时下载 URL，再下 .blend
+curl -H "Authorization: Token $KEY" "https://www.blenderkit.com/api/v1/downloads/<file_id>/?scene_uuid=00000000-0000-0000-0000-000000000001"
+curl -L "<filePath>" -o assets/furniture/<id>/<id>.blend
+```
+> 注意：BlenderKit 多为 .blend（Zstandard 压缩），dress_scene.py 走 `bpy.data.libraries.load` append；
+> Cara/Cesca 餐椅为付费资产（401），选品时先查 isFree。
+
+> Blender `import_scene.gltf` 直接读 .gltf（相对引用 bin/textures 同目录解析）。
+
 ## HDRi 外景（Poly Haven tonemapped JPG，伪装 .hdr）
 
 | 文件 | 来源 | 说明 |
 |---|---|---|
 | `hdri/the_sky_is_on_fire_1k.hdr` | [Poly Haven](https://polyhaven.com/a/the_sky_is_on_fire) | 蓝调日落海景（实为 tonemapped JPG） |
 | `hdri/kloppenheim_02_1k.hdr` | [Poly Haven](https://polyhaven.com/a/kloppenheim_02) | 夜晚星空（实为 tonemapped JPG） |
+| `hdri/kloofendal_48d_partly_cloudy_1k.hdr` | [Poly Haven](https://polyhaven.com/a/kloofendal_48d_partly_cloudy) | **真 Radiance HDR**，白天多云带太阳，daylight 工况外景+环境光 |
 
-> Poly Haven 真 .hdr/.exr CDN 已 404，改用 `.../HDRIs/extra/Tonemapped%20JPG/<id>.jpg`（8-bit，决策够用）。
-> Blender 按内容读取，扩展名 .hdr 不影响加载。
+> Poly Haven 真 .hdr 直链可用（`.../HDRIs/hdr/1k/<id>_1k.hdr`）；旧两张是 8-bit JPG 冒充，
+> 仅夜景/蓝调用（氛围为主，精度要求低）。
