@@ -166,20 +166,55 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // 西墙实体墙北段通顶柜（z=5.55–6.90，不进入餐厅/门厅过道）
+    // 西墙实体墙北段通顶收纳柜：浅色平板门 + 一格胡桃开放格。
+    // 电视不嵌入柜体，保持暖白乳胶漆墙面的留白。
     type: 'wall_cabinet_tall',
     parts: [
-      { shape: 'box', size: [1.35, 1.1, 0.35], position: [0, 0.55, 0], color: '#f2ede2' },
-      { shape: 'box', size: [1.35, 0.5, 0.03], position: [0, 1.35, -0.16], color: '#503e2e' },
-      { shape: 'box', size: [1.35, 1.3, 0.35], position: [0, 2.25, 0], color: '#f2ede2' },
+      // 落地柜体由内缩 80mm 踢脚承重；电视低柜采用带细腿落地形式。
+      { shape: 'box', size: [1.22, 0.08, 0.27], position: [0, 0.04, 0.04], color: '#d5cec2' },
+      { shape: 'box', size: [1.35, 0.97, 0.35], position: [0, 0.565, 0], color: '#f2ede2' },
+      { shape: 'box', size: [1.35, 1.14, 0.35], position: [0, 2.145, 0], color: '#f2ede2' },
+      // 无拉手柜门的分缝，避免渲染成一整块白色盒子。
+      { shape: 'box', size: [0.012, 0.88, 0.012], position: [0, 0.565, -0.181], color: '#d5cec2' },
+      { shape: 'box', size: [0.012, 1.05, 0.012], position: [0, 2.145, -0.181], color: '#d5cec2' },
+      // 中部一格开放格：深胡桃背板和暖光只服务收纳柜，不构成电视背景墙。
+      { shape: 'box', size: [1.19, 0.48, 0.025], position: [0, 1.32, -0.164], color: '#503e2e' },
+      { shape: 'box', size: [1.19, 0.018, 0.03], position: [0, 1.55, -0.185], color: '#d7a461', metalness: 0.05, roughness: 0.35 },
     ],
   },
   {
-    // 西墙 TV 区（z=6.90–9.00，悬空低柜 + 深胡桃背板）
+    // 西墙电视区：挂墙电视 + 带细腿低柜；不做木饰面/背板电视墙。
     type: 'tv_wall_low',
     parts: [
-      { shape: 'box', size: [2.1, 0.35, 0.4], position: [0, 0.325, 0], color: '#503e2e' },
-      { shape: 'box', size: [2.1, 1.6, 0.05], position: [0, 1.3, -0.17], color: '#503e2e' },
+      { shape: 'box', size: [2.1, 0.32, 0.40], position: [0, 0.31, 0], color: '#503e2e' },
+      { shape: 'box', size: [2.10, 0.035, 0.43], position: [0, 0.4875, 0], color: '#654b37' },
+      // 三扇无拉手柜门的阴影缝；低柜以细腿落地，保留轻盈感但不依赖墙挂。
+      { shape: 'box', size: [0.012, 0.25, 0.012], position: [-0.35, 0.31, -0.206], color: '#382b22' },
+      { shape: 'box', size: [0.012, 0.25, 0.012], position: [0.35, 0.31, -0.206], color: '#382b22' },
+      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [-0.92, 0.075, -0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5 },
+      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [0.92, 0.075, -0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5 },
+      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [-0.92, 0.075, 0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5 },
+      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [0.92, 0.075, 0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5 },
+      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [0, 0.075, 0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5 },
+    ],
+  },
+  {
+    // 65 寸挂墙电视。独立于低柜和收纳柜，明确表达“无电视背景墙”方案。
+    type: 'tv_65',
+    parts: [
+      { shape: 'box', size: [1.45, 0.84, 0.07], position: [0, 1.52, 0], color: '#141414', metalness: 0.15, roughness: 0.25 },
+      { shape: 'box', size: [1.37, 0.77, 0.012], position: [0, 1.52, -0.041], color: '#202b32', metalness: 0.05, roughness: 0.18 },
+    ],
+  },
+  {
+    // 电视柜南侧的琴叶榕：落地软装，柔化柜体与玻璃幕墙之间的转角。
+    type: 'plant_fiddle',
+    parts: [
+      { shape: 'cylinder', size: [0.20, 0.36, 0.20], position: [0, 0.18, 0], color: '#b8794e', roughness: 0.75 },
+      { shape: 'cylinder', size: [0.035, 1.10, 0.035], position: [0, 0.91, 0], color: '#79543a', roughness: 0.85 },
+      { shape: 'box', size: [0.52, 0.18, 0.10], position: [-0.16, 1.25, 0], color: '#4c6b45', roughness: 0.9 },
+      { shape: 'box', size: [0.58, 0.18, 0.10], position: [0.17, 1.47, 0], color: '#58784d', roughness: 0.9 },
+      { shape: 'box', size: [0.48, 0.18, 0.10], position: [-0.10, 1.68, 0], color: '#46653f', roughness: 0.9 },
     ],
   },
   {

@@ -445,11 +445,11 @@ furnishings:
   living_dining:
     # 房间 x∈[7.20,13.40] z∈[2.40,9.80]，开放连通走廊，无门 swing（DEC-021）
     # 西墙电视背景柜墙只依附已存在的实体墙 z=5.55-9.00，不侵入餐厅/门厅过道。
-    - { type: wall_cabinet_tall, x: 7.375, z: 6.225, rotation: 90 } # 通顶柜 z=5.55-6.90，浅 PET+局部开放格
-    - { type: tv_wall_low, x: 7.40, z: 7.95, rotation: 90 }         # TV 区悬空低柜 z 6.9-9.0，深胡桃背板
-    - { type: tv_65, x: 7.42, z: 7.70, rotation: 90 }        # 65寸电视嵌入 TV 区，面朝东（南移 0.7）
+    - { type: wall_cabinet_tall, x: 7.375, z: 6.225, rotation: 270 } # 通顶柜 z=5.55-6.90，面朝东侧客厅；浅 PET+局部开放格
+    - { type: tv_wall_low, x: 7.40, z: 8.00, rotation: 270 }         # 2.1m 深胡桃带细腿低柜，面朝东侧客厅；与电视同轴，北侧留 5cm 阴影缝
+    - { type: tv_65, x: 7.42, z: 8.00, rotation: 270 }               # 65寸电视居中挂墙，面朝东侧沙发
     - { type: floor_lamp, x: 11.0, z: 9.35, rotation: 0 }    # 沙发南臂地插位（sock_living_sofa_r@9.35），随沙发南移
-    - { type: plant_fiddle, x: 12.7, z: 9.1, rotation: 0 }   # 琴叶榕，东南角玻璃旁
+    - { type: plant_fiddle, x: 7.65, z: 9.35, rotation: 270 } # 琴叶榕：贴近西墙，叶面朝东侧沙发；位于电视柜南侧，落地摆放
     - { type: sofa_3seat, x: 11.00, z: 7.70, rotation: 270 } # 面朝西看电视（与电视同轴南移 0.7）
     - { type: coffee_table, x: 9.70, z: 7.70, rotation: 0 }  # 沙发与电视柜之间，随沙发南移
     # 门内右手定制半高柜：从门内向客厅延伸，柜高 1.5m；玄关侧封闭，餐厅侧开放，柜顶以上可见餐厅。
