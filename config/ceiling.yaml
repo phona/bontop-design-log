@@ -70,8 +70,8 @@
   room: master_bath
   type: aluminum_buckle
   thickness: 0.15
-  area: [0.00, 1.10, 4.20, 5.55]
-  note: "主卫铝扣板吊顶（内藏排风管+浴霸），净高约2.55m"
+  area: [0.00, 1.10, 2.60, 3.26]
+  note: "主卫铝扣板吊顶（内藏排风管+浴霸），净高约2.55m；2026-08-21 隔墙北移3.26，吊顶随主卫缩小"
 
 - id: ceiling_guest_bath
   room: guest_bath

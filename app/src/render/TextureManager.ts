@@ -82,7 +82,11 @@ export class TextureManager {
   private getOrBuild(appearance: MaterialAppearance): THREE.MeshStandardMaterial {
     // 缓存键含 pattern/plank_mm/seed：同色不同拼法（直铺 vs 人字拼）不得共用材质
     const plankKey = Array.isArray(appearance.plank_mm) ? (appearance.plank_mm as number[]).join('x') : '';
-    const cacheKey = `${appearance.type}:${appearance.color}:${appearance.pattern ?? ''}:${plankKey}:${appearance.seed ?? ''}`;
+    // pbr_texture 的 color/pattern 等通用字段为空，须用 texture_id/tint/砖尺寸入键，否则所有 PBR 材质撞同一缓存
+    const pbrKey = appearance.texture_id
+      ? `${appearance.texture_id}:${appearance.tint ?? ''}:${appearance.tile_width ?? ''}x${appearance.tile_length ?? ''}`
+      : '';
+    const cacheKey = `${appearance.type}:${appearance.color}:${appearance.pattern ?? ''}:${plankKey}:${appearance.seed ?? ''}:${pbrKey}`;
     let mat = this.cache.get(cacheKey);
     if (!mat) {
       mat = this.buildMaterial(cacheKey, appearance);

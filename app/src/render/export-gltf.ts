@@ -10,6 +10,7 @@ export const EXPORT_INCLUDE_TYPES: ReadonlySet<string> = new Set([
   'curtain_run',
   'curtain',
   'glass_infill',
+  'shower_screen',
   'bay_sill',
   'railing_run',
   'sliding_door_run',

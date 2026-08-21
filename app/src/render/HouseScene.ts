@@ -23,6 +23,7 @@ import { pickRoomIdFromHits } from '../scene/spawn-utils.js';
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { offsetCurtainPointsInterior } from './curtain-offset.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
+import { BEDROOM_ROOM_IDS } from '../topics/bedroom-room-ids.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
 import type { MaterialAppearance } from './TextureFactory.js';
@@ -371,7 +372,8 @@ export class HouseScene implements SceneApi {
             }
             break;
           }
-          case 'curtain_run': {
+          case 'curtain_run':
+          case 'shower_screen': {
             const halfThick = GLASS_THICKNESS / 2;
             for (let i = 0; i < el.points.length - 1; i++) {
               const a = el.points[i];
@@ -686,6 +688,7 @@ export class HouseScene implements SceneApi {
         case 'curtain_run': this.renderCurtainRun(el); break;
         case 'wall_run': this.renderWallRun(el); break;
         case 'glass_infill': this.renderGlassInfill(el); break;
+        case 'shower_screen': this.renderShowerScreen(el); break;
         case 'floor_region': this.renderFloorRegion(el); break;
         case 'bay_sill': this.renderBaySill(el); break;
         case 'railing_run': this.renderRailingRun(el); break;
@@ -732,7 +735,7 @@ export class HouseScene implements SceneApi {
       return;
     }
     const openings = (el as { openings?: ResolvedOpening[] }).openings;
-    const doors = (openings ?? []).filter(o => o.type === 'door' || o.type === 'cased_opening');
+    const doors = (openings ?? []).filter(o => o.type === 'door' || o.type === 'cased_opening' || o.type === 'sliding_door');
     if (doors.length === 0) {
       const mesh = this.renderBox(el.x1, el.z1, el.x2, el.z2, height, WALL_THICKNESS, mat);
       mesh.userData = { type: 'wall', objectId: el.id, wallType };
@@ -768,6 +771,16 @@ export class HouseScene implements SceneApi {
         this.wallMeshes.push(mesh);
       }
       if (o.type === 'door') this.renderDoor(o, ux, uz, el.x1, el.z1, t, half, height);
+      if (o.type === 'sliding_door') {
+        // 推拉门扇：薄板覆盖洞口（2026-08-21 主卫推拉门可见性）
+        const sx1 = el.x1 + ux * (t - half);
+        const sz1 = el.z1 + uz * (t - half);
+        const sx2 = el.x1 + ux * (t + half);
+        const sz2 = el.z1 + uz * (t + half);
+        const mesh = this.renderBox(sx1, sz1, sx2, sz2, o.height, 0.04,
+          new THREE.MeshStandardMaterial({ color: 0x8a6f4d, roughness: 0.6 }));
+        mesh.userData = { type: 'door', objectId: o.id };
+      }
       cursor = gapEnd;    }
     if (cursor < len - 0.001) {
       const sx1 = el.x1 + ux * cursor;
@@ -1316,6 +1329,27 @@ export class HouseScene implements SceneApi {
     this.glassMeshes.push(mesh);
   }
 
+  // 淋浴玻璃隔断：points 折线逐段生成透明玻璃（无碰撞，2026-08-21）
+  private renderShowerScreen(el: Extract<SceneElement, { type: 'shower_screen' }>) {
+    const sill = el.sill ?? 0;
+    for (let i = 0; i < el.points.length - 1; i++) {
+      const a = el.points[i];
+      const b = el.points[i + 1];
+      const len = Math.hypot(b.x - a.x, b.z - a.z);
+      if (len < 1e-9) continue;
+      const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(Math.max(len, GLASS_THICKNESS), el.height, GLASS_THICKNESS),
+        this.makeGlassMaterial()
+      );
+      mesh.position.set((a.x + b.x) / 2, sill + el.height / 2, (a.z + b.z) / 2);
+      mesh.rotation.y = Math.atan2(b.z - a.z, b.x - a.x);
+      mesh.userData = { type: 'shower_screen', objectId: el.id };
+      mesh.castShadow = false;
+      this.scene.add(mesh);
+      this.glassMeshes.push(mesh);
+    }
+  }
+
   private renderFloorRegion(el: Extract<SceneElement, { type: 'floor_region' }>) {
     const shape = this.buildRoundedShape(el.points);
     const geometry = new THREE.ShapeGeometry(shape);
@@ -1522,8 +1556,12 @@ export class HouseScene implements SceneApi {
     if (topicId === 'floor') {
       for (const mesh of this.floorMeshes) {
         const rid = mesh.userData.roomId as string;
-        if (rid) roomIds.add(rid);
+        // 卧室地面由 bedroom_floor 分支处理，与 FloorTopic.apply 的排除逻辑保持一致
+        if (rid && !BEDROOM_ROOM_IDS.includes(rid)) roomIds.add(rid);
       }
+    } else if (topicId === 'bedroom_floor') {
+      // 卧室地面走专属 topic；floor 分支排除卧室，二者互不覆盖
+      for (const rid of BEDROOM_ROOM_IDS) roomIds.add(rid);
     } else if (topicId === 'wall' || topicId === 'paint') {
       for (const mesh of this.wallMeshes) {
         if (topicId === 'paint') {
@@ -1541,7 +1579,7 @@ export class HouseScene implements SceneApi {
       return;
     }
 
-    const meshType = topicId === 'floor' ? 'floor' : 'wall';
+    const meshType = (topicId === 'floor' || topicId === 'bedroom_floor') ? 'floor' : 'wall';
     for (const roomId of roomIds) {
       this.textureManager.applyToRoom(roomId, appearance, meshType);
     }
@@ -1795,6 +1833,7 @@ export class HouseScene implements SceneApi {
       hvac_indoor: '空调内机',
       hvac_outdoor: '空调外机',
       platform: '平台',
+      shower_screen: '淋浴玻璃隔断',
     };
     const dirLabel: Record<string, string> = {
       north: '北',

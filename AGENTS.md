@@ -60,7 +60,7 @@
 
 - 新增任何 `SceneElement` 类型时，必须评估是否需要碰撞：
   - 需要碰撞：`wall`, `curtain_run`
-  - 不需要碰撞：`floor_region`, `bay_sill`, `railing_run`, `glass_infill`
+  - 不需要碰撞：`floor_region`, `bay_sill`, `railing_run`, `glass_infill`, `shower_screen`
 - 碰撞数据提取逻辑在 `app/src/scene/collision-utils.ts`（`extractCollisionWalls`）。
 - 修改 `FirstPersonController` 旋转逻辑后，必须跑 `npm run test:app`。
 - 修改 `CollisionDetector`、`extractCollisionWalls` 或 `CameraAnimator` 后，必须跑：

@@ -199,24 +199,24 @@ materials:
     topic_id: "floor"
     alternative_group: "floor_tile"
     category: "地砖"
-    name: "600x1200木纹砖·步步高错缝（oak_veneer_02 弱纹细直纹 + 近色美缝）"
-    brand: "Poly Haven CC0"
-    model: "oak_veneer_02 2K"
-    spec: "600x1200 错缝通铺，近色美缝 ~2mm"
-    unit: "㎡"
-    price_per_unit: 0
-    coverage_per_unit: 1
-    loss_rate: 1.0
+    name: "600x1200木纹砖·步步高错缝（DEC-040 全屋定案，渲染 oak_veneer_02）"
+    brand: "马可波罗 / 快环同档"
+    model: "600×1200 浅暖橡木木纹砖（柔光/天鹅绒釉，型号待门店确认）"
+    spec: "600x1200mm"
+    unit: "片"
+    price_per_unit: 75
+    coverage_per_unit: 0.72
+    loss_rate: 1.08
     calc_mode: "area"
-    supplier: "CC0 公开素材"
-    online_link: "https://polyhaven.com/a/oak_veneer_02"
+    supplier: "快环建材市场A区3号 / 马可波罗门店"
+    online_link: ""
     sample_acquired: false
     sample_date: null
     status: "candidate"
-    pros: ["长条比例像木地板", "错缝去方格感", "弱纹=视频同款无缝感"]
-    cons: ["木纹跨缝连续（渲染近似）"]
-    price_source: "免费"
-    notes: "oak_veneer_01 大山纹太假 → 换 02 弱纹细直纹。grout_stagger=true。"
+    pros: ["长条比例像木地板", "错缝去方格感", "弱纹=视频同款无缝感", "工费/损耗与直铺同级，远低于人字拼"]
+    cons: ["木纹跨缝连续（渲染近似）", "型号/釉面待门店四问终审"]
+    price_source: "暂按 800 木纹砖同档估算（65/片≈102元/㎡），门店报价后终核（DEC-2026-08-21-040）"
+    notes: "渲染=oak_veneer_02 PBR（oak_veneer_01 大山纹太假 → 换 02 弱纹细直纹，grout_stagger=true）；落地=600×1200 木纹砖错缝通铺+近色环氧彩砂美缝。DEC-2026-08-21-040 推翻 DEC-024 人字拼后定为全屋默认（DEC-024 降级预案转正）。"
     appearance: { type: "pbr_texture", texture_id: "oak_veneer_02", tile_size: 3.0, tint: "#c49a6c", grout: true, grout_stagger: true, tile_width: 0.6, tile_length: 1.2, grout_frac: 0.008, grout_value: 0.65, cell_tone_lo: 0.84, cell_tone_hi: 1.08, coat: 0.5, roughness: 0.25, normal_strength: 1.0 }
 
   - id: "floor_pbr_laminate02"
@@ -1486,3 +1486,53 @@ materials:
     price_source: "大自然 / 圣象门店报价"
     notes: "备选：卧室改木地板；回南天注意除湿，价格含安装"
     appearance: { type: "wood_plank", color: "#a97c50", pattern: "straight", plank_mm: [195, 1220], finish: "matte", seed: 42 }
+
+  # DEC-2026-08-20-024 全屋人字拼定案：卧室与客餐厅同款（appearance 镜像 floor_pbr_herringbone）
+  - id: "bedroom_herringbone_01"
+    topic_id: "bedroom_floor"
+    alternative_group: "bedroom_floor"
+    category: "地砖"
+    name: "卧室人字拼木纹砖（与客餐厅一致，DEC-024 全屋人字拼）"
+    brand: "马可波罗 / 快环同档"
+    model: "150x900 浅暖橡木木纹砖（型号待门店确认）"
+    spec: "150x900mm"
+    unit: "㎡"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1.15
+    calc_mode: "area"
+    supplier: "快环建材市场"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["全屋通铺视觉统一", "与客餐厅同款好备货"]
+    cons: ["工费上浮约 20-50%（DEC-011）", "损耗 1.15", "美缝量约 2 倍"]
+    price_source: "待门店报价（连同版面数/美缝/人字拼工费一起确认，DEC-024 门店四问）"
+    notes: "DEC-2026-08-20-024 定案全屋人字拼；渲染 appearance 与 floor_pbr_herringbone 完全一致。DEC-2026-08-21-040 人字拼推翻后降为备选（门店样板终审前保留）"
+    appearance: { type: "pbr_texture", texture_id: "herringbone_parquet", tile_size: 2.0, tint: "#d9bf9c", coat: 0.1, roughness: 0.5, normal_strength: 1.0 }
+
+  # DEC-2026-08-21-040：卧室 612 木纹砖与客餐厅同砖通铺（appearance 镜像 floor_pbr_tile_612）
+  - id: "bedroom_tile_612"
+    topic_id: "bedroom_floor"
+    alternative_group: "bedroom_floor"
+    category: "地砖"
+    name: "卧室600x1200木纹砖（与客餐厅同砖通铺，DEC-040 定案）"
+    brand: "马可波罗 / 快环同档"
+    model: "600×1200 浅暖橡木木纹砖（同客餐厅 floor_pbr_tile_612）"
+    spec: "600x1200mm"
+    unit: "片"
+    price_per_unit: 75
+    coverage_per_unit: 0.72
+    loss_rate: 1.08
+    calc_mode: "area"
+    supplier: "快环建材市场A区3号 / 马可波罗门店"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["与客餐厅同砖通铺视觉不断", "砖基防潮好打理（回南天）", "错缝工费/损耗与直铺同级"]
+    cons: ["脚感不如木地板（备选 bedroom_wood_01，回南天需除湿）"]
+    price_source: "暂按 800 木纹砖同档估算，门店报价后终核（DEC-2026-08-21-040）"
+    notes: "DEC-2026-08-21-040 全屋 612 错缝定案；渲染 appearance 与 floor_pbr_tile_612 完全一致"
+    appearance: { type: "pbr_texture", texture_id: "oak_veneer_02", tile_size: 3.0, tint: "#c49a6c", grout: true, grout_stagger: true, tile_width: 0.6, tile_length: 1.2, grout_frac: 0.008, grout_value: 0.65, cell_tone_lo: 0.84, cell_tone_hi: 1.08, coat: 0.5, roughness: 0.25, normal_strength: 1.0 }

@@ -38,6 +38,7 @@ describe('extractCollisionWalls', () => {
       { type: 'railing_run', id: 'r1', points: [{ x: 0, z: 0 }, { x: 1, z: 0 }] },
       { type: 'bay_sill', id: 'bs1', points: [{ x: 0, z: 0 }, { x: 1, z: 0 }] },
       { type: 'glass_infill', id: 'gi1', points: [{ x: 0, z: 0 }, { x: 1, z: 0 }] },
+      { type: 'shower_screen', id: 'ss1', points: [{ x: 0, z: 0 }, { x: 1, z: 0 }] },
     ];
     const walls = extractCollisionWalls(elements);
     expect(walls.length).toBe(0);

@@ -159,6 +159,18 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     parts: [
       { shape: 'box', size: [0.8, 0.75, 0.4], position: [0, 0.375, 0], color: '#f0f0f0', roughness: 0.4 },
       { shape: 'box', size: [0.5, 0.12, 0.3], position: [0, 0.81, 0], color: '#ffffff', roughness: 0.3 },
+      // 台面 + 镜柜（靠墙侧=-z），2026-08-21 贴近成品洗漱台效果
+      { shape: 'box', size: [0.84, 0.04, 0.5], position: [0, 0.77, 0], color: '#d8d2c6', roughness: 0.3 },
+      { shape: 'box', size: [0.7, 0.9, 0.03], position: [0, 1.55, -0.24], color: '#bcd2d8', roughness: 0.1, metalness: 0.6 },
+    ],
+  },
+  {
+    // 卫浴侧柜：封闭高柜 h2.0，门板朝+z（2026-08-21 主卫干区柜带）
+    type: 'bath_side_cabinet',
+    parts: [
+      { shape: 'box', size: [0.45, 2.0, 0.5], position: [0, 1.0, 0], color: '#e8e4dc', roughness: 0.5 },
+      { shape: 'box', size: [0.41, 0.96, 0.02], position: [0, 0.5, 0.26], color: '#ded8cc', roughness: 0.5 },
+      { shape: 'box', size: [0.41, 0.96, 0.02], position: [0, 1.5, 0.26], color: '#ded8cc', roughness: 0.5 },
     ],
   },
   {

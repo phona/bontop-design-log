@@ -10,12 +10,14 @@ interface Aabb {
   maxZ: number;
 }
 
-type PlacedItem = { type: string; length?: number; depth?: number };
+type PlacedItem = { type: string; length?: number; depth?: number; width?: number };
 
 function rotatedDims(item: PlacedItem, rotation: number): { width: number; depth: number } | null {
   const dims = item.type === 'kitchen_cabinet_run' && item.length !== undefined && item.depth !== undefined
     ? { width: item.length + 0.04, depth: item.depth + 0.04 }
-    : FURNITURE_DIMS[item.type];
+    : item.width !== undefined && item.depth !== undefined
+      ? { width: item.width, depth: item.depth }
+      : FURNITURE_DIMS[item.type];
   if (!dims) return null;
   const quarterTurns = Math.round(rotation / 90) % 2 !== 0;
   return quarterTurns ? { width: dims.depth, depth: dims.width } : dims;

@@ -177,6 +177,8 @@ const apiDeps = {
 
 const app = express();
 app.use(express.json());
+// PBR 真扫描贴图（web 端 TextureFactory pbr_texture 分支经 vite 代理读取）
+app.use('/assets/textures', express.static('assets/textures'));
 app.use('/api', createApiRouter(apiDeps));
 app.use(
   '/api/analysis',

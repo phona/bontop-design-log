@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-01T15:10:41.470Z",
+  "updatedAt": "2026-08-21T10:54:55.739Z",
   "selections": {
     "floor": {
-      "default": "floor_pbr_herringbone",
+      "default": "floor_pbr_tile_612",
       "roomOverrides": {}
     },
     "wall": {
@@ -142,7 +142,7 @@
       "roomOverrides": {}
     },
     "bedroom_floor": {
-      "default": "floor_pbr_herringbone",
+      "default": "bedroom_tile_612",
       "roomOverrides": {}
     }
   }

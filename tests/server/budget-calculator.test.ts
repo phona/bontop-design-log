@@ -270,13 +270,14 @@ describe('BudgetCalculator', () => {
 
   it('uses room.area for non-rectangular rooms instead of width*depth (Gap 2)', () => {
     const catalog = ProjectCatalog.load('.');
-    const masterBath = catalog.getRoom('master_bath');
-    assert.ok(masterBath, 'master_bath should exist');
-    assert.ok(masterBath.area, 'master_bath should have resolved area');
-    const bboxArea = masterBath.width * masterBath.depth;
+    // 2026-08-21 隔墙北移后非矩形房间为主卧（含存储条带 L 形）
+    const masterBedroom = catalog.getRoom('master_bedroom');
+    assert.ok(masterBedroom, 'master_bedroom should exist');
+    assert.ok(masterBedroom.area, 'master_bedroom should have resolved area');
+    const bboxArea = masterBedroom.width * masterBedroom.depth;
     assert.ok(
-      Math.abs(masterBath.area! - bboxArea) > 0.01,
-      `area (${masterBath.area}) should differ from bbox (${bboxArea}) for non-rectangular room`
+      Math.abs(masterBedroom.area! - bboxArea) > 0.01,
+      `area (${masterBedroom.area}) should differ from bbox (${bboxArea}) for non-rectangular room`
     );
   });
 

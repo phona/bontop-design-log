@@ -442,6 +442,7 @@ export type SceneElement =
   | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }
+  | { type: 'shower_screen'; id: string; points: OverlayPoint[]; height: number; sill?: number }
   | { type: 'curtain'; id: string; points: CurtainPoint[]; height: number; room?: string; kind?: 'sheer_blackout' | 'blinds' };
 
 export interface CadLayoutYaml {
@@ -582,6 +583,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   wardrobe_240_split: { width: 2.4, depth: 0.8 }, // DEC-023 西段 1.2m 加深 0.8 + 东段 1.2m 标准 0.6（footprint 取最深）
   wardrobe_180: { width: 1.8, depth: 0.6 },
   shelf: { width: 0.8, depth: 0.4 }, // DEC-023 置物架（开架，h2.0）
+  bath_side_cabinet: { width: 0.45, depth: 0.5 }, // 2026-08-21 主卫干区封闭侧柜 h2.0
   sofa_3seat: { width: 2.8, depth: 0.9 },
   dining_table: { width: 1.4, depth: 0.8 },
   dining_chair: { width: 0.45, depth: 0.45 },
@@ -603,6 +605,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   range_hood: { width: 0.9, depth: 0.5 },
   sink: { width: 0.8, depth: 0.6 },
   vanity: { width: 0.8, depth: 0.4 },
+  toilet: { width: 0.4, depth: 0.6 }, // 2026-08-21 马桶落位（对齐 FixtureFactory 模型 footprint）
   exhaust_fan: { width: 0.3, depth: 0.3 },
 };
 

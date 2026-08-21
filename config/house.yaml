@@ -218,7 +218,7 @@ rooms:
     area: 11.57
     status: "design"
     orientation: "内"
-    notes: "主卧套间直通；走廊条带 x[0,2.6] z[4.30,5.55] 并入，2.60×4.45 = 11.57㎡"
+    notes: "主卧套间直通；2026-08-21 样板间核实终版：隔墙回4.3，主卫6.5㎡全尺寸、内部左右分离（西淋浴湿区x[0,1.2]玻璃隔断/东干区台盆贴东墙+马桶），卫门推拉[1.3,2.1]进干区，不要浴缸；条带 z[4.30,5.55] 为主卧存储区（1.7m柜带+0.75过道）"
     windows:
       - width: 0.60
         height: 1.00
@@ -413,15 +413,17 @@ furnishings:
     # 动线：走廊→d_mb（朝西进）→左手衣柜背右手浴墙→西端0.85m口→右转主卫/左转寝区
     - { type: bed_180, x: 3.20, z: 7.875, rotation: 270 }     # 床靠东墙，朝西看幕墙
     - { type: wardrobe_240_split, x: 3.00, z: 5.95, rotation: 0 } # DEC-023 条带隔断柜拆段：西段 1.2m 加深 0.8m（被褥/行李箱，向南扩至 z=6.35），东段 1.2m 标准 0.6m 靠门侧；背对玄关动线零侵占
+    - { type: bath_side_cabinet, x: 1.075, z: 4.55, rotation: 0 }  # 条带存储区柜（2026-08-21 隔墙北移后条带归主卧）
+    - { type: bath_side_cabinet, x: 2.35, z: 4.55, rotation: 0 }   # 条带存储区柜；1.7m存储柜带
     - { type: mattress_180 }
     - { type: curtain_set }
     - { type: ceiling_light }
   bedroom_nw:
     # 房间 x∈[2.60,5.60] z∈[1.10,4.30]，南门 d_bnw @(5.0,4.30) swing x∈[4.55,5.45] z∈[3.40,4.30]
     - { type: bed_150, x: 4.60, z: 2.30, rotation: 270 }       # 床头靠东墙，1.5m床改善通道（DEC-013）
-    - { type: wardrobe_180, x: 2.90, z: 2.70, rotation: 90 }   # 1.8m衣柜沿西墙飘窗下（sill 2.55 不挡窗）；推拉门（DEC-013）
-    - { type: desk, x: 3.85, z: 4.00, rotation: 180 }          # DEC-018 南墙书桌（插座 3.2,4.3 在桌后）
-    - { type: chair, x: 3.85, z: 3.35, rotation: 0 }           # DEC-018 书桌椅
+    - { type: wardrobe_180, x: 3.50, z: 4.00, rotation: 0 }    # B案（2026-08-21 业主拍板）：移南墙西段通顶2.7（南墙无飘窗，不挡窗带）；x∈[2.6,4.4]避门洞4.55；柜前通道0.65m；推拉门（DEC-013）
+    - { type: desk, x: 2.825, z: 3.00, rotation: 90, width: 1.2, depth: 0.45 }  # B案：窄桌贴西玻璃（桌高0.75 ≪ sill 2.07 不挡窗带，采光位）；西/北墙均玻璃幕不可挂载，电位改地插
+    - { type: chair, x: 3.35, z: 3.00, rotation: 270 }         # B案书桌椅（桌-床间0.5档，现实可推入桌下）
     - { type: shelf, x: 3.00, z: 1.30, rotation: 0 }           # DEC-023 西北角置物架（贴北墙+西墙转角，书/杂物开架收纳，上飘窗窗下墙；窗位 inferred，落位待量房复核）
     - { type: mattress_150 }
     - { type: curtain_set }
@@ -479,14 +481,14 @@ furnishings:
     - { type: sink, x: 9.50, z: 0.30, rotation: 0 }         # DEC-013 北墙水槽
     - { type: ceiling_light }
   master_bath:
-    - { type: toilet }
+    - { type: toilet, x: 2.30, z: 1.50, rotation: 270 }  # 2026-08-21 落位：贴东墙面朝西，对齐马桶给水/插座 z=1.5
     - { type: shower_set }
-    - { type: vanity, x: 1.75, z: 4.70, rotation: 0 }        # DEC-019 外移洗手台（门洞按 resolver 口径 x∈[0.5,1.3] 东侧墙段，台西缘距门边仅 5cm；旧注释 x∈[0.1,0.9] 系误读，量房复核门位与门摆方向）
+    - { type: vanity, x: 2.35, z: 2.80, rotation: 270 }      # 2026-08-21 样板间版：台盆回主卫内贴东墙（面朝西，镜柜挂东墙），干区；不要浴缸；南缘贴北移后隔墙
     - { type: faucet }
     - { type: ceiling_light }
     - { type: exhaust_fan, x: 1.30, z: 2.70 }                # DEC-019 湿区中心吊顶
   guest_bath:
-    - { type: toilet }
+    - { type: toilet, x: 5.90, z: 2.50, rotation: 90 }  # 2026-08-21 落位：贴西墙面朝东，对齐马桶给水 z=2.5
     - { type: shower_set }
     - { type: vanity, x: 5.80, z: 3.50, rotation: 90 }       # DEC-019 西墙洗手台（门洞按 resolver 口径 x∈[6.0,6.7]，台东缘 6.0 与门边齐平零间隙；旧注释门洞 x∈[6.35,7.05] 系误读，量房复核门摆）
     - { type: faucet }
@@ -564,4 +566,5 @@ pending_verification:
   - "燃气热水器最终位置与排烟/燃气路由（暂定阳台电位；阳台为封闭玻璃幕，涉 CO 安全与外立面审批，见 pending-site-data.md #26）"
   - "中央空调容量按客餐厅现口径 45.88㎡+开放式厨房复核（hvac_options_analysis.md 冷负荷估算基于旧口径 35.2㎡）"
   - "南向大阳台区域地面是否与室内通铺/计入地面预算（status not_modeled，模型以幕墙+飘窗带处理）"
+  - "飘窗 sill 分房间终核：卧室系≈2.07/厨房≈2.12/客厅系≈2.57（邻户图+样板间参考，overlay 已按此预改）；重点验证儿童房衣柜是否降高"
   - "交付标准核实（邻户图纸附清单但勾选状态不可辨，不作依据；以购房合同+交房现场为准）：决定水电原线路利用 vs 全改、888 铲除，影响水电/拆改预算口径"

@@ -32,7 +32,7 @@ export class CollisionDetector {
 
       const ux = dx / len;
       const uz = dz / len;
-      const doors = (w.openings ?? []).filter(o => o.type === 'door' || o.type === 'cased_opening');
+      const doors = (w.openings ?? []).filter(o => o.type === 'door' || o.type === 'cased_opening' || o.type === 'sliding_door');
 
       const isHorizontal = Math.abs(ux) > Math.abs(uz);
       const gaps = doors

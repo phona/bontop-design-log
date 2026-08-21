@@ -159,10 +159,11 @@ describe('ProjectCatalog — vertex v2.0 data path', () => {
 
   it('resolved room area is set for non-rectangular rooms (Gap 2)', () => {
     const catalog = ProjectCatalog.load('.');
-    const masterBath = catalog.getRoom('master_bath');
-    assert.ok(masterBath);
-    assert.ok(masterBath.area && masterBath.area > 0, 'master_bath should have area');
-    assert.ok(Math.abs(masterBath.area! - (masterBath.width * masterBath.depth)) > 0.01,
+    // 2026-08-21 隔墙北移后非矩形房间为主卧（含存储条带 L 形）
+    const masterBedroom = catalog.getRoom('master_bedroom');
+    assert.ok(masterBedroom);
+    assert.ok(masterBedroom.area && masterBedroom.area > 0, 'master_bedroom should have area');
+    assert.ok(Math.abs(masterBedroom.area! - (masterBedroom.width * masterBedroom.depth)) > 0.01,
       'non-rectangular room area should differ from bbox');
   });
 
@@ -175,8 +176,8 @@ describe('ProjectCatalog — vertex v2.0 data path', () => {
       `expected >=1 opening (window; suite entry is open-plan, no door), got ${masterBedroom.wallOpenings!.length}`);
     const masterBath = catalog.getRoom('master_bath');
     assert.ok(masterBath);
-    const doors = (masterBath.wallOpenings ?? []).filter(o => o.type === 'door');
-    assert.ok(doors.length >= 2, `master_bath should have suite entry d_mb + bath door d_mbath, got ${doors.length}`);
+    const doors = (masterBath.wallOpenings ?? []).filter(o => o.type === 'door' || o.type === 'sliding_door');
+    assert.ok(doors.length >= 2, `master_bath should have suite entry d_mb + bath door d_mbath (sliding), got ${doors.length}`);
     const door = doors.find(o => o.id === 'd_mb') ?? doors[0];
     assert.ok(door.x !== undefined && door.z !== undefined, 'door should have absolute x/z');
   });

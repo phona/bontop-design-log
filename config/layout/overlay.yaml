@@ -81,76 +81,79 @@ elements:
     height: 2.8
 
   # 飘窗
+  # sill 口径 2026-08-21 修正：旧全屋 2.55 系客厅值误推广（2.55+0.45=3.0 穿楼板，无效）。
+  # 邻户原始结构图读法（业主样板间视频佐证）：卧室系 sill≈2.07/窗带高0.76，厨房≈2.12/0.71，
+  # 客厅系上光带 sill≈2.57/0.26；2070+760=2830 与结构板标高自洽。量房终核（pending #20）。
   - id: master_bedroom_west_bay
     type: bay_sill
     wall: w_west_upper
     depth: 1.1
-    sill: 2.55
-    height: 0.45
+    sill: 2.07
+    height: 0.76
     reason: "主卧西墙飘窗（z=5.55~8.80 直墙段）"
 
   - id: master_bedroom_south_bay
     type: bay_sill
     wall: w_mb_south
     depth: 1.1
-    sill: 2.55
-    height: 0.45
+    sill: 2.07
+    height: 0.76
     reason: "主卧南墙环幕飘窗（南缘 z=10.90）"
 
   - id: study_south_bay
     type: bay_sill
     wall: w_st_south
     depth: 1.1
-    sill: 2.55
-    height: 0.45
+    sill: 2.07
+    height: 0.76
     reason: "父母房南墙飘窗（南缘 z=10.90，与主卧齐平）"
 
   - id: bedroom_se_south_bay
     type: bay_sill
     wall: w_be_south
     depth: 1.1
-    sill: 2.55
-    height: 0.45
+    sill: 2.07
+    height: 0.76
     reason: "书房南向凸窗（南缘 z=11.05）"
 
   - id: bedroom_nw_west_bay
     type: bay_sill
     wall: w_west_lower
     depth: 1.1
-    sill: 2.55
-    height: 0.45
+    sill: 2.07
+    height: 0.76
     reason: "西北次卧西墙飘窗"
 
   - id: corridor_west_bay
     type: bay_sill
     wall: w_west_mid
     depth: 1.1
-    sill: 2.55
-    height: 0.45
+    sill: 2.07
+    height: 0.76
     reason: "走廊西墙飘窗"
 
   - id: master_bath_west_bay
     type: bay_sill
     walls: [w_west_ap, w_bath_north]
     depth: 1.1
-    sill: 2.55
-    height: 0.45
+    sill: 2.07
+    height: 0.76
     reason: "主卫西北角飘窗"
 
   - id: bedroom_nw_north_bay
     type: bay_sill
     wall: w_nw_north
     depth: 1.1
-    sill: 2.55
-    height: 0.45
+    sill: 2.07
+    height: 0.76
     reason: "西北次卧北墙飘窗（z=1.10 凹进段）"
 
   - id: kitchen_north_bay
     type: bay_sill
     wall: w_kit_north
     depth: 1.1
-    sill: 2.55
-    height: 0.45
+    sill: 2.12
+    height: 0.71
     reason: "厨房北墙飘窗（z=0 北缘）"
 
   # 地板补区
@@ -214,6 +217,12 @@ elements:
   - { id: curtain_nw_north, type: curtain, wall: w_nw_north, room: bedroom_nw, kind: sheer_blackout, height: 2.8 }
   # 湿区（主卫西北角）→ 防水百叶；厨房北墙不设窗帘（2026-08-13 业主决定）
   - { id: curtain_mbath_corner, type: curtain, walls: [w_west_ap, w_bath_north], room: master_bath, kind: blinds, height: 2.8 }
+
+  # 主卫淋浴干湿分离玻璃隔断（x=1.2，南端留 0.6m 入口；2026-08-21）
+  - id: shower_screen_mbath
+    type: shower_screen
+    points: [{ x: 1.20, z: 1.10 }, { x: 1.20, z: 2.60 }]
+    height: 2.0
 
   # === DEC-022：餐厨三联动推拉门（常开；点击门扇开闭，碰撞随状态） ===
   - id: kitchen_dining_sliding_door

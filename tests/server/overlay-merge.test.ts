@@ -272,6 +272,27 @@ elements:
     }
   });
 
+  it('accepts shower_screen and passes points through untouched (2026-08-21)', () => {
+    const cfg = parseOverlay(`
+version: 1
+elements:
+  - id: shower_screen_mbath
+    type: shower_screen
+    points: [{x: 1.20, z: 1.10}, {x: 1.20, z: 2.60}]
+    height: 2.0
+`);
+    const out = mergeSceneElements(WALLS, cfg);
+    const screen = out.find((e) => e.id === 'shower_screen_mbath');
+    assert.equal(screen?.type, 'shower_screen');
+    if (screen?.type === 'shower_screen') {
+      assert.equal(screen.points.length, 2);
+      assert.equal(screen.points[0].x, 1.20);
+      assert.equal(screen.points[1].z, 2.60);
+      assert.equal(screen.height, 2.0);
+      assert.equal(screen.sill, 0);
+    }
+  });
+
   it('accepts floor_region and bay_sill in overlay', () => {
     const cfg = parseOverlay(`
 version: 1

@@ -17,6 +17,7 @@ describe('HouseScene scene elements', () => {
     expect(source).not.toContain('curtain?:');
     expect(source).toContain("case 'curtain_run'");
     expect(source).toContain("case 'glass_infill'");
+    expect(source).toContain("case 'shower_screen'");
     expect(source).toContain("case 'wall_run'");
     expect(source).toContain("case 'wall'");
   });

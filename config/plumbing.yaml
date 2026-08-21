@@ -1,20 +1,20 @@
 - id: faucet_mbath_vanity
   room: master_bath
-  wall: w_mbath_south
+  wall: w_mbath_east
   type: faucet
-  x: 1.75
-  z: 4.7
+  x: 2.60
+  z: 2.80
   height: 0.8
-  note: "主卫洗手台冷热水（DEC-013 外移至过道段，DEC-017 墙引用修正，DEC-019 定稿 x=1.75 门洞东侧，⚠️坐标待量房确认立管）"
+  note: "主卫洗手台冷热水（2026-08-21 样板间版：台盆回卫内贴东墙干区；⚠️坐标待量房确认立管）"
 
 - id: shower_mbath
   room: master_bath
-  wall: w_mbath_east
+  wall: w_mbath_south
   type: shower
-  x: 2.60
-  z: 3.2
+  x: 0.50
+  z: 3.16
   height: 1.0
-  note: "主卫淋浴花洒"
+  note: "主卫淋浴花洒（2026-08-21 隔墙北移3.26随墙移：湿区西端 x[0,1.2]，花洒挂南墙朝北，玻璃隔断 x=1.2 左右分离）"
 
 - id: toilet_mbath
   room: master_bath
@@ -27,10 +27,10 @@
 - id: drain_mbath_shower
   room: master_bath
   type: drain
-  x: 1.5
-  z: 3.2
+  x: 0.60
+  z: 2.60
   height: 0.02
-  note: "主卫淋浴地漏（地面）"
+  note: "主卫淋浴地漏（地面；2026-08-21 隔墙北移后湿区中心）"
 
 - id: drain_mbath_floor
   room: master_bath

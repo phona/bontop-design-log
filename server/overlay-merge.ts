@@ -53,6 +53,17 @@ const WallRunSchema = z
   })
   .strict();
 
+// 淋浴玻璃隔断（独立玻璃，points-only，无碰撞；2026-08-21）
+const ShowerScreenSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('shower_screen'),
+    points: z.array(PointSchema).min(2),
+    height: z.number().positive().default(2.0),
+    sill: z.number().min(0).default(0),
+  })
+  .strict();
+
 const SlidingDoorRunSchema = z
   .object({
     id: z.string().min(1),
@@ -141,6 +152,7 @@ const OverlaySchema = z
         z.discriminatedUnion('type', [
           CurtainRunSchema,
           WallRunSchema,
+          ShowerScreenSchema,
           SlidingDoorRunSchema,
           GlassInfillSchema,
           FloorRegionSchema,
