@@ -159,6 +159,10 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 
 ## 6. Twinmotion 云端操作指引
 
+### 厨房连续台面
+
+厨房的连续地柜与石英石台面由 `config/house.yaml` 中带坐标和尺寸的 `kitchen_cabinet_run` 条目渲染：每段为一条直柜，L 型厨房以相邻两段声明。`cabinet_base`、`cabinet_wall`、`countertop_quartz` 的 count-only 条目只用于预算与库存，不能替代 3D 柜体段。台面方案会更新全部 `kitchen_cabinet_run` 的台面材质。
+
 ### 地面（含人字拼 A/B）
 - glb 内嵌贴图仅打底（程序化生成，质感非最终）；Library > **Materials > Wood** 搜 `herringbone` 可得带多版面+倒角的真人字拼，拖到地面节点即替换
 - 直铺选浅胡桃色（#c49a6c 方向）柔光木地板款；替换后对比人字拼/直铺，作为 DEC-011 门店终审前的云端证据

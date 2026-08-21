@@ -14,6 +14,13 @@ interface FixtureRecipe {
   parts: FixturePart[];
 }
 
+export interface KitchenCabinetRunSpec {
+  length: number;
+  depth: number;
+  cabinetHeight?: number;
+  countertopThickness?: number;
+}
+
 const FIXTURE_RECIPES: FixtureRecipe[] = [
   // ── Furniture ──
   {
@@ -127,8 +134,7 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'gas_stove',
     parts: [
-      { shape: 'box', size: [0.75, 0.75, 0.6], position: [0, 0.375, 0], color: '#888888' },
-      { shape: 'box', size: [0.7, 0.02, 0.4], position: [0, 0.76, 0], color: '#222222', roughness: 0.3 },
+      { shape: 'box', size: [0.70, 0.04, 0.40], position: [0, 0.92, 0], color: '#222222', roughness: 0.3 },
     ],
   },
   {
@@ -141,8 +147,7 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'sink',
     parts: [
-      { shape: 'box', size: [0.8, 0.8, 0.6], position: [0, 0.4, 0], color: '#8B7355' },
-      { shape: 'box', size: [0.5, 0.15, 0.4], position: [0, 0.85, 0], color: '#f0f0f0', roughness: 0.3 },
+      { shape: 'box', size: [0.56, 0.16, 0.42], position: [0, 0.84, 0], color: '#f0f0f0', roughness: 0.3 },
     ],
   },
   {
@@ -359,6 +364,37 @@ export function buildFixture(type: string): THREE.Group | null {
     group.add(mesh);
   }
 
+  return group;
+}
+
+/** Builds a configurable straight run; L-shaped kitchens declare one run per wall. */
+export function buildKitchenCabinetRun(spec: KitchenCabinetRunSpec): THREE.Group {
+  const cabinetHeight = spec.cabinetHeight ?? 0.86;
+  const countertopThickness = spec.countertopThickness ?? 0.03;
+  const group = new THREE.Group();
+  const addBox = (
+    size: [number, number, number],
+    position: [number, number, number],
+    color: string,
+    surface?: 'countertop',
+  ) => {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(...size),
+      new THREE.MeshStandardMaterial({ color, roughness: surface ? 0.28 : 0.55 }),
+    );
+    mesh.position.set(...position);
+    if (surface) mesh.userData.surface = surface;
+    group.add(mesh);
+  };
+
+  addBox([Math.max(0.1, spec.length - 0.08), 0.08, Math.max(0.1, spec.depth - 0.06)], [0, 0.04, 0], '#4c4237');
+  addBox([spec.length, cabinetHeight - 0.08, spec.depth], [0, (cabinetHeight + 0.08) / 2, 0], '#b79e7c');
+  addBox([spec.length + 0.04, countertopThickness, spec.depth + 0.04], [0, cabinetHeight + countertopThickness / 2, 0], '#e8e6e0', 'countertop');
+
+  // Subtle door seams make the run read as cabinets rather than a solid block.
+  for (let x = -spec.length / 2 + 0.6; x < spec.length / 2 - 0.05; x += 0.6) {
+    addBox([0.012, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, -spec.depth / 2 - 0.006], '#8d775b');
+  }
   return group;
 }
 

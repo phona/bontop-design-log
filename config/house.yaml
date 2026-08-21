@@ -455,15 +455,18 @@ furnishings:
     # 门内右手定制半高柜：从门内向客厅延伸，柜高 1.5m；玄关侧封闭，餐厅侧开放，柜顶以上可见餐厅。
     # footprint x=11.325-11.675、z=3.10-5.10，距入户门洞西缘 x=11.80 留 0.125m，东侧主通道 1.725m。
     - { type: entry_half_height_cabinet, x: 11.50, z: 4.10, rotation: 90 }
-    - { type: dining_table, x: 8.90, z: 3.35, rotation: 0 }   # DEC-021 餐厅带扩至1.9m；DEC-029 东移0.4让出柜前通道（≥0.7m）
-    - { type: dining_chair, x: 8.50, z: 2.70, rotation: 0 }
-    - { type: dining_chair, x: 9.30, z: 2.70, rotation: 0 }
-    - { type: dining_chair, x: 8.50, z: 4.00, rotation: 180 }
-    - { type: dining_chair, x: 9.30, z: 4.00, rotation: 180 }
+    # 靠客卫东侧实体墙（x=7.1，z=2.2–4.3）；北侧不设椅，释放客厅→厨房入口。
+    - { type: dining_table, x: 7.65, z: 3.35, rotation: 90 }
+    - { type: dining_chair, x: 8.45, z: 3.00, rotation: 270 }
+    - { type: dining_chair, x: 8.45, z: 3.70, rotation: 270 }
+    - { type: dining_chair, x: 7.65, z: 4.45, rotation: 180 }
     - { type: curtain_set, count: 2 }
     - { type: ceiling_light, count: 2 }
   kitchen:
-    - { type: cabinet_base, count: 5.0 }      # DEC-014 北墙3.6+东墙2.2 L型
+    # 3D 用显式柜体段：北墙玻璃幕只做落地柜+台面；东墙实体墙承载灶台、烟机和冰箱高柜。
+    - { type: kitchen_cabinet_run, x: 9.00, z: 0.32, rotation: 0, length: 3.56, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 }
+    - { type: kitchen_cabinet_run, x: 10.48, z: 1.00, rotation: 90, length: 1.40, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 }
+    - { type: cabinet_base, count: 5.0 }      # 预算/库存：北墙3.6+东墙2.2 L型
     - { type: cabinet_wall, count: 2.0 }
     - { type: countertop_quartz, count: 5.0 } # DEC-014 同地柜
     - { type: fridge, x: 10.45, z: 2.05, rotation: 90 }     # DEC-021 东墙南端高柜位（厨房缩至 z=2.4）

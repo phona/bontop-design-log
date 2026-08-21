@@ -552,6 +552,11 @@ export interface FurnishingItem {
   x?: number;
   z?: number;
   rotation?: number;
+  /** Declarative dimensions for a continuous kitchen base-cabinet run (metres). */
+  length?: number;
+  depth?: number;
+  cabinetHeight?: number;
+  countertopThickness?: number;
 }
 
 export interface FurnishingsYaml {

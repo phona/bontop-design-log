@@ -26,7 +26,7 @@ import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
 import type { MaterialAppearance } from './TextureFactory.js';
-import { buildFixture } from './FixtureFactory.js';
+import { buildFixture, buildKitchenCabinetRun } from './FixtureFactory.js';
 import { EnvironmentManager } from './EnvironmentManager.js';
 import { buildCeilingZone, type CeilingZoneSpec } from './CeilingZoneBuilder.js';
 
@@ -80,6 +80,7 @@ export class HouseScene implements SceneApi {
   private curtainMeshes: { sheer: THREE.Mesh[]; blackout: THREE.Mesh[]; blinds: THREE.Mesh[] } = { sheer: [], blackout: [], blinds: [] };
   private glassMeshes: THREE.Mesh[] = [];
   private furnitureMeshes: THREE.Group[] = [];
+  private countertopMeshes: THREE.Mesh[] = [];
   private electricalMeshes: THREE.Mesh[] = [];
   private doorMeshes: THREE.Mesh[] = [];
   private raycaster = new THREE.Raycaster();
@@ -470,6 +471,7 @@ export class HouseScene implements SceneApi {
     this.wallMeshes = [];
     this.glassMeshes = [];
     this.furnitureMeshes = [];
+    this.countertopMeshes = [];
     this.electricalMeshes = [];
     this.doorMeshes = [];
     this.roomMeta.clear();
@@ -1393,12 +1395,22 @@ export class HouseScene implements SceneApi {
       let index = 0;
       for (const item of items) {
         if (item.x === undefined || item.z === undefined) continue;
-        const model = buildFixture(item.type);
+        const model = item.type === 'kitchen_cabinet_run' && item.length !== undefined && item.depth !== undefined
+          ? buildKitchenCabinetRun({
+            length: item.length,
+            depth: item.depth,
+            cabinetHeight: item.cabinetHeight,
+            countertopThickness: item.countertopThickness,
+          })
+          : buildFixture(item.type);
         if (!model) continue;
         model.position.set(item.x, 0, item.z);
         model.rotation.y = THREE.MathUtils.degToRad(item.rotation ?? 0);
         model.userData = { objectId: `furniture:${roomId}:${item.type}:${index}`, hoverable: false, type: 'furniture' };
         this.scene.add(model);
+        model.traverse((object) => {
+          if (object instanceof THREE.Mesh && object.userData.surface === 'countertop') this.countertopMeshes.push(object);
+        });
         placed.push(model);
         index++;
       }
@@ -1524,12 +1536,27 @@ export class HouseScene implements SceneApi {
       }
     }
 
+    if (topicId === 'countertop') {
+      this.setCountertopMaterial(appearance);
+      return;
+    }
+
     const meshType = topicId === 'floor' ? 'floor' : 'wall';
     for (const roomId of roomIds) {
       this.textureManager.applyToRoom(roomId, appearance, meshType);
     }
     if (topicId === 'floor') {
       this.textureManager.applyToFloorRegions(appearance);
+    }
+  }
+
+  setCountertopMaterial(appearance: MaterialAppearance): void {
+    for (const mesh of this.countertopMeshes) {
+      const material = mesh.material;
+      if (material instanceof THREE.MeshStandardMaterial) {
+        material.color.set(appearance.color);
+        material.needsUpdate = true;
+      }
     }
   }
 

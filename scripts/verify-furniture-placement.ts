@@ -10,15 +10,19 @@ interface Aabb {
   maxZ: number;
 }
 
-function rotatedDims(type: string, rotation: number): { width: number; depth: number } | null {
-  const dims = FURNITURE_DIMS[type];
+type PlacedItem = { type: string; length?: number; depth?: number };
+
+function rotatedDims(item: PlacedItem, rotation: number): { width: number; depth: number } | null {
+  const dims = item.type === 'kitchen_cabinet_run' && item.length !== undefined && item.depth !== undefined
+    ? { width: item.length + 0.04, depth: item.depth + 0.04 }
+    : FURNITURE_DIMS[item.type];
   if (!dims) return null;
   const quarterTurns = Math.round(rotation / 90) % 2 !== 0;
   return quarterTurns ? { width: dims.depth, depth: dims.width } : dims;
 }
 
-function itemAabb(type: string, x: number, z: number, rotation: number): Aabb | null {
-  const dims = rotatedDims(type, rotation);
+function itemAabb(item: PlacedItem, x: number, z: number, rotation: number): Aabb | null {
+  const dims = rotatedDims(item, rotation);
   if (!dims) return null;
   return {
     minX: x - dims.width / 2,
@@ -28,7 +32,16 @@ function itemAabb(type: string, x: number, z: number, rotation: number): Aabb | 
   };
 }
 
-const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [['range_hood', 'gas_stove'], ['tv_65', 'tv_stand'], ['tv_65', 'tv_wall_low']];
+const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ['range_hood', 'gas_stove'],
+  ['tv_65', 'tv_stand'],
+  ['tv_65', 'tv_wall_low'],
+  ['kitchen_cabinet_run', 'kitchen_cabinet_run'],
+  ['kitchen_cabinet_run', 'sink'],
+  ['kitchen_cabinet_run', 'gas_stove'],
+  ['kitchen_cabinet_run', 'range_hood'],
+  ['kitchen_cabinet_run', 'fridge'],
+];
 
 function isStackedPair(a: string, b: string): boolean {
   return STACKED_PAIRS.some(([x, y]) => (a === x && b === y) || (a === y && b === x));
@@ -79,7 +92,7 @@ function main(): void {
       const rotation = item.rotation ?? 0;
       const label = `${roomId}/${item.type}[${index}]`;
 
-      const box = itemAabb(item.type, item.x, item.z, rotation);
+      const box = itemAabb(item, item.x, item.z, rotation);
       if (!box) {
         warnings.push(`${label}: no dims in FURNITURE_DIMS, bounds checks skipped`);
         return;
