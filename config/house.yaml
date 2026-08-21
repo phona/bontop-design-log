@@ -242,7 +242,7 @@ rooms:
     area: 2.66
     status: "design"
     orientation: "内"
-    notes: "设计图标注 2.66㎡"
+    notes: "设计图标注 2.66㎡；设计图标注东墙 0.6×1.0 窗，但几何未声明该窗洞且东墙（x=7.1）朝室内走廊，疑为采光窗或图面残留，量房核实"
     windows:
       - width: 0.60
         height: 1.00
@@ -277,9 +277,9 @@ rooms:
 gift_areas:
   - name: "入户花园"
     id: "entry_garden"
-    expected_centroid:
-      x: 3.19
-      z: -10.04
+    expected_centroid:  # model-geometry 局部坐标系：区域 x∈[10.80,15.25] z∈[0,2.90]
+      x: 13.025
+      z: 1.45
     type: "public"
     wall_finish: "paint"
     needs_waterproof: false
@@ -310,9 +310,9 @@ gift_areas:
     length: 2.18
     height: 2.8
     area: 13.95
-    status: "merged_into_interior"
+    status: "not_modeled"
     orientation: "南"
-    notes: "合同图南面大阳台，赠送面积，开发商已用玻璃幕墙封闭；已合并入室内（南墙改玻璃幕/飘窗），不再作为独立空间"
+    notes: "合同图南面大阳台，赠送面积，开发商已用玻璃幕墙封闭；当前模型未按室内地面建模——南侧以幕墙+上飘窗带处理（overlay bay_sill 南缘 z=10.90~11.05，客厅落地玻璃 w_liv_south 位于 z=9.80）；该区域地面是否与室内通铺、是否计入地面预算，待量房确认（原 status merged_into_interior 与模型现状不符，已改）"
     windows: []
     doors:
       - width: 2.00
@@ -323,9 +323,9 @@ gift_areas:
 
   - name: "西设备平台"
     id: "west_platform"
-    expected_centroid:
-      x: -5.31
-      z: 0.76
+    expected_centroid:  # model-geometry 局部坐标系：平台 x∈[5.60,7.20] z∈[0,1.00]（旧值 -5.31,0.76 为废弃坐标系）
+      x: 6.40
+      z: 0.50
     type: "service"
     wall_finish: "paint"
     needs_waterproof: false
@@ -363,6 +363,8 @@ mechanical_electrical_plumbing:
     notes:
       - "是否做零冷水循环待业主和设计师确认"
       - "燃气管道位置需现场确认"
+      - "electrical.yaml sock_balcony_waterheater 为阳台暂定电位，位置定案前不作为施工依据（见 pending-site-data.md #26）"
+      - "生活阳台已被开发商玻璃幕封闭：若最终挂阳台，排烟出幕墙与燃气路由需物业/燃气公司确认（CO 安全红线）"
 
   electrical:
     power:
@@ -477,14 +479,14 @@ furnishings:
   master_bath:
     - { type: toilet }
     - { type: shower_set }
-    - { type: vanity, x: 1.75, z: 4.70, rotation: 0 }        # DEC-019 外移洗手台（门洞 x∈[0.1,0.9] 东侧墙段）
+    - { type: vanity, x: 1.75, z: 4.70, rotation: 0 }        # DEC-019 外移洗手台（门洞按 resolver 口径 x∈[0.5,1.3] 东侧墙段，台西缘距门边仅 5cm；旧注释 x∈[0.1,0.9] 系误读，量房复核门位与门摆方向）
     - { type: faucet }
     - { type: ceiling_light }
     - { type: exhaust_fan, x: 1.30, z: 2.70 }                # DEC-019 湿区中心吊顶
   guest_bath:
     - { type: toilet }
     - { type: shower_set }
-    - { type: vanity, x: 5.80, z: 3.50, rotation: 90 }       # DEC-019 西墙洗手台（东缘 6.0 避门摆）
+    - { type: vanity, x: 5.80, z: 3.50, rotation: 90 }       # DEC-019 西墙洗手台（门洞按 resolver 口径 x∈[6.0,6.7]，台东缘 6.0 与门边齐平零间隙；旧注释门洞 x∈[6.35,7.05] 系误读，量房复核门摆）
     - { type: faucet }
     - { type: ceiling_light }
     - { type: exhaust_fan, x: 6.35, z: 3.25 }                # DEC-019 吊顶
@@ -555,3 +557,9 @@ pending_verification:
   - "玻璃幕墙分格及门窗口位置需设计院图纸确认"
   - "开放式厨房排烟效果需设计师复核"
   - "中央空调外机散热及检修空间需现场复核"
+  - "全屋门洞实际位置与开启方向（电气/家具已按 resolver 中心距口径避让，重点 d_ent/d_gbath/d_mbath，量房终核，见 pending-site-data.md #24）"
+  - "主卧东墙窗洞 w_mb_win 是否真实存在（house.yaml/决策日志无记录，疑 CAD 残留；影响床头位与床头壁灯，见 pending-site-data.md #25）"
+  - "燃气热水器最终位置与排烟/燃气路由（暂定阳台电位；阳台为封闭玻璃幕，涉 CO 安全与外立面审批，见 pending-site-data.md #26）"
+  - "中央空调容量按客餐厅现口径 45.88㎡+开放式厨房复核（hvac_options_analysis.md 冷负荷估算基于旧口径 35.2㎡）"
+  - "南向大阳台区域地面是否与室内通铺/计入地面预算（status not_modeled，模型以幕墙+飘窗带处理）"
+  - "交付标准核实（邻户图纸附清单但勾选状态不可辨，不作依据；以购房合同+交房现场为准）：决定水电原线路利用 vs 全改、888 铲除，影响水电/拆改预算口径"

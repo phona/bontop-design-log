@@ -124,7 +124,7 @@ describe('ProjectCatalog', () => {
     const catalog = ProjectCatalog.load('.');
     const counts = catalog.getFurnishingCounts('living_dining');
     assert.equal(counts.sofa_3seat, 1);
-    assert.equal(counts.dining_chair, 4, '4 placed dining_chair entries derive to count 4 (DEC-021)');
+    assert.equal(counts.dining_chair, 3, '3 placed dining_chair entries derive to count 3 (DEC-034 餐桌靠客卫东墙：东侧2+南端1，取消北侧椅)');
     assert.equal(counts.curtain_set, 2, 'count-only entry uses count field');
     assert.equal(counts.ceiling_light, 2);
     const mbCounts = catalog.getFurnishingCounts('master_bedroom');

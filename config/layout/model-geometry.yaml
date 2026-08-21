@@ -59,7 +59,7 @@ rooms:
     name: 父母房
     boundary: [v_mb_ne, v_st_ne, v_step_b, v_mb_se]
     height: 2.8
-    type: public
+    type: private
   - id: living_dining
     name: 客餐厅
     boundary: [v_kit_s2, v_ent_kit2, v_ent_sw, v_foyer_se, v_be_se_s, v_step_t]
@@ -113,6 +113,8 @@ platform:
   height: 0.05
 
 walls:
+  # openings.offset 语义：锚点(anchor)到洞口【中心】的距离（server/layout-resolver.ts 权威解算），
+  # 禁止按"到洞口起边"理解；门洞实际位置待量房终核（pending-site-data.md #24）
   # 外框 — 西墙（v_nw→v_bath_ap 幕墙竖段，v_bath_ap→v_bath_nw 弧进路，v_bath_nw→v_mb_sw 主卫西墙）
   - { id: w_west_top,  from: v_nw,      to: v_bath_ap, height: 2.8 }
   - { id: w_west_ap,   from: v_bath_ap, to: v_bath_nw, height: 2.8 }
@@ -188,6 +190,8 @@ walls:
     to: v_mb_se
     height: 2.8
     openings:
+      # ⚠️ 待量房核实：house.yaml 与决策日志均未记录此内墙窗（疑 CAD 残留）。若真实存在（z∈[7.10,9.50]，sill 0.9），
+      # 主卧床头位（bed_180 z∈[6.98,8.78]）与床头壁灯（4.2,7.2/8.55 h=1.6 落入窗洞范围）冲突；见 pending-site-data.md #25
       - { id: w_mb_win, type: window, anchor: v_mb_se, offset: 1.5, width: 2.4, height: 1.5, sill: 0.9, room: master_bedroom }
   # 内墙 — VRV 平台 / 生活阳台 / 客卫
   - { id: w_vrv_nw_gap, from: v_nw_ne,   to: v_vrv_n,  height: 2.8 }

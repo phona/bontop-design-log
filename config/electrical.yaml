@@ -21,10 +21,10 @@
   room: living_dining
   type: floor_socket
   x: 11.0
-  z: 5.35
+  z: 6.05
   height: 0.02
   count: 1
-  note: "沙发北臂旁地插: 手机充电+落地灯（DEC-017 沙发不靠墙，改地插）"
+  note: "沙发北臂旁地插: 手机充电+落地灯（DEC-017 沙发不靠墙，改地插；DEC-029 沙发南移后原位 z=5.35 已脱离北臂（现北臂 z≈6.3），随移至臂外侧 0.25m，与南臂地插 z=9.35 口径一致）"
 
 - id: sock_living_sofa_r
   room: living_dining
@@ -48,11 +48,11 @@
 - id: sock_living_table
   room: living_dining
   type: floor_socket
-  x: 8.5
+  x: 7.65
   z: 3.35
   height: 0.02
   count: 1
-  note: "餐桌旁地插: 电磁炉/火锅（DEC-021 随餐桌入扩大的餐厅带）"
+  note: "餐桌旁地插: 电磁炉/火锅（DEC-021 随餐桌入扩大的餐厅带，DEC-034 餐桌靠客卫东墙后随移至桌心）"
 
 - id: sock_living_curtain
   room: living_dining
@@ -77,10 +77,10 @@
   room: living_dining
   wall: w_ent_south_w
   type: switch_2way
-  x: 11.90
+  x: 11.60
   z: 2.90
   height: 1.3
-  note: "客厅灯光双控（入户侧；DEC-014 改挂入户门旁 w_ent_south_w，门洞 x∈[12.3,13.3] 西侧）"
+  note: "客厅灯光双控（入户侧；DEC-014 改挂入户门旁 w_ent_south_w；门洞按 resolver 口径（offset=中心距）为 x∈[11.80,12.80]，本点位避让至门洞西侧 0.2m——旧注释 x∈[12.3,13.3] 系起边口径误读；量房复核门洞实际位置）"
 
 - id: switch_living_corridor
   room: living_dining
@@ -301,13 +301,12 @@
 # 厨房（DEC-013 布局重排：灶台→东墙，水槽→北墙；DEC-014 冰箱→东墙南端，南界 z=2.9）
 - id: sock_kitchen_counter
   room: kitchen
-  wall: w_kit_east
   type: socket
   x: 8.60
   z: 0.3
-  height: 1.2
+  height: 0.3
   count: 4
-  note: "厨房台面带开关插座（DEC-021 改挂北墙切配区，东墙让位灶台+冰箱）"
+  note: "厨房台面带开关插座（DEC-021 定位北墙切配区；但北墙为玻璃幕 suppress_kitchen_north，铁律不可挂载，且原 wall 字段 w_kit_east 与坐标不符——改柜内预留 h=0.3、电源走地面（同洗碗机/净水器），台面取电形式【升降插座/背板穿线】待橱柜深化，量房复核立管）"
 
 - id: sock_kitchen_fridge
   room: kitchen
@@ -385,7 +384,7 @@
   x: 2.40
   z: 4.30
   height: 1.3
-  note: "主卫灯光开关（DEC-019 洗手台东侧；门洞实为 x∈[0.1,0.9]）"
+  note: "主卫灯光开关（DEC-019 洗手台东侧；门洞按 resolver 口径（offset=中心距）为 x∈[0.50,1.30]——旧注释 x∈[0.1,0.9] 系误读；量房复核门洞实际位置与门摆方向）"
 
 - id: sock_mbath_exhaust
   room: master_bath
@@ -411,10 +410,10 @@
   room: guest_bath
   wall: w_gbath_south
   type: switch
-  x: 6.15
+  x: 5.80
   z: 4.30
   height: 1.3
-  note: "客卫灯光开关（DEC-017 由洗手台后移至门西，门洞 x∈[6.35,7.05]）"
+  note: "客卫灯光开关（DEC-017 由洗手台后移至门西；门洞按 resolver 口径（offset=中心距）为 x∈[6.00,6.70]，本点位避让至门洞西侧 0.2m——旧注释 x∈[6.35,7.05] 系起边口径误读；量房复核门洞实际位置）"
 
 - id: sock_gbath_exhaust
   room: guest_bath
@@ -454,7 +453,7 @@
   z: 1.0
   height: 1.8
   count: 1
-  note: "燃气热水器插座"
+  note: "燃气热水器插座（⚠️热水器位置未定案：house.yaml 为'厨房或入户花园，待设计师确定'，本点位为阳台暂定，定案前不作为施工依据；生活阳台已被玻璃幕封闭，若挂阳台，排烟出幕墙与燃气路由需物业/燃气公司确认（CO 安全）；量房定案后若改位需同步移点，见 pending-site-data.md #26）"
 
 # 入户花园
 - id: sock_garden
@@ -581,7 +580,7 @@
   z: 5.70
   height: 0.3
   count: 1
-  note: "智能网关/路由位（走廊，房子中央，WiFi覆盖最优；DEC-014 由 z=4.8 移至 w_st_east 有效墙段）"
+  note: "智能网关/路由位（走廊，房子中央，WiFi覆盖最优；DEC-014 由 z=4.8 移至 w_st_east 有效墙段；⚠️本点位位于电视墙北段通顶高柜（z5.55-6.9 深0.35，DEC-029/031）柜内，柜体深化时必须在此格位留开放格+走线孔并保证散热，不得做成封闭柜门）"
 
 # === 新增点位（2026-08-02 DEC-013 设计审查） ===
 
@@ -600,11 +599,11 @@
 - id: light_dining_pendant
   room: living_dining
   type: pendant
-  x: 8.9
+  x: 7.65
   z: 3.35
   height: 2.8
   temp: 3000
-  note: "餐桌吊灯天花出线（DEC-013，DEC-021 随餐桌），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm"
+  note: "餐桌吊灯天花出线（DEC-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm"
 
 # === 室内灯光方案（2026-08-12 灯光渲染系统；全屋 3000K 暖光，厨卫 4000K）===
 # 点位即水电交底单；type: pendant吊灯/dome吸顶/wall_lamp壁灯/downlight筒灯/led_strip灯带
@@ -675,11 +674,11 @@
 - id: light_corridor_1
   room: living_dining
   type: downlight
-  x: 7.35
+  x: 7.90
   z: 5.75
   height: 2.8
   temp: 3000
-  note: "走廊口筒灯（客厅西缘，两走廊口合并为一只控光源总数）。注：x[4.2,7.2]×z[4.3,5.55] 走廊带无归属房间（几何留白），灯位移至客厅侧走廊口"
+  note: "走廊口筒灯（客厅西缘，两走廊口合并为一只控光源总数）；原 x=7.35 落在电视墙北段通顶高柜投影内（柜深 0.35 x≤7.55，DEC-029/031），东移 0.55m 避让；注：x[4.2,7.2]×z[4.3,5.55] 走廊带无归属房间（几何留白）"
 - id: light_entry_down
   room: entry_garden
   type: downlight
