@@ -407,8 +407,8 @@ describe('MCP remote', () => {
     assert.equal(typeof sofa.positions[0].z, 'number');
     const chairs = items.find((i: { type: string }) => i.type === 'dining_chair');
     assert.ok(chairs);
-    assert.equal(chairs.count, 3); // DEC-034 餐桌靠客卫东墙：东侧2+南端1，取消北侧椅
-    assert.equal(chairs.positions.length, 3, '3 placed dining chairs (DEC-034 餐桌靠客卫东墙：东侧2+南端1)');
+    assert.equal(chairs.count, 4); // 2026-08-21 业主 app 内重排：横桌南北各2椅
+    assert.equal(chairs.positions.length, 4, '4 placed dining chairs (餐桌横置西北角：南北各2椅)');
   });
 
   it('get_furniture_inventory omits dimensions for unparseable specs', async () => {

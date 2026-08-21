@@ -457,11 +457,13 @@ furnishings:
     # 门内右手定制半高柜：从门内向客厅延伸，柜高 1.5m；玄关侧封闭，餐厅侧开放，柜顶以上可见餐厅。
     # footprint x=11.325-11.675、z=3.10-5.10，距入户门洞西缘 x=11.80 留 0.125m，东侧主通道 1.725m。
     - { type: entry_half_height_cabinet, x: 11.50, z: 4.10, rotation: 90 }
-    # 靠客卫东侧实体墙（x=7.1，z=2.2–4.3）；北侧不设椅，释放客厅→厨房入口。
-    - { type: dining_table, x: 7.65, z: 3.35, rotation: 90 }
-    - { type: dining_chair, x: 8.45, z: 3.00, rotation: 270 }
-    - { type: dining_chair, x: 8.45, z: 3.70, rotation: 270 }
-    - { type: dining_chair, x: 7.65, z: 4.45, rotation: 180 }
+    # 横置西北角，西缘齐西墙 x=7.2；桌体南移让出北侧两椅（椅背让开推拉门叠扇 z≥2.5）。
+    # 南北各两椅；东侧主通道（x>8.6）释放客厅→厨房入口。
+    - { type: dining_table, x: 7.90, z: 3.45, rotation: 0 }
+    - { type: dining_chair, x: 7.55, z: 2.75, rotation: 0 }
+    - { type: dining_chair, x: 8.25, z: 2.75, rotation: 0 }
+    - { type: dining_chair, x: 7.55, z: 4.15, rotation: 180 }
+    - { type: dining_chair, x: 8.25, z: 4.15, rotation: 180 }
     - { type: curtain_set, count: 2 }
     - { type: ceiling_light, count: 2 }
   kitchen:

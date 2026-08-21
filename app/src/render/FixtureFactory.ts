@@ -94,6 +94,10 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     parts: [
       { shape: 'box', size: [0.45, 0.04, 0.45], position: [0, 0.45, 0], color: '#888888' },
       { shape: 'box', size: [0.45, 0.4, 0.04], position: [0, 0.65, -0.2], color: '#666666' },
+      { shape: 'box', size: [0.03, 0.43, 0.03], position: [-0.19, 0.215, -0.19], color: '#444444', metalness: 0.8, roughness: 0.4 },
+      { shape: 'box', size: [0.03, 0.43, 0.03], position: [0.19, 0.215, -0.19], color: '#444444', metalness: 0.8, roughness: 0.4 },
+      { shape: 'box', size: [0.03, 0.43, 0.03], position: [-0.19, 0.215, 0.19], color: '#444444', metalness: 0.8, roughness: 0.4 },
+      { shape: 'box', size: [0.03, 0.43, 0.03], position: [0.19, 0.215, 0.19], color: '#444444', metalness: 0.8, roughness: 0.4 },
     ],
   },
   {
