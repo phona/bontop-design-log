@@ -4,26 +4,175 @@
   "currency": "CNY",
   "total_budget": 208000,
   "project_ceiling": 190000,
-  "notes": "四池口径（P0 重构 v0.5）：硬装 118,000（16 科 107,000 + 预备费 11,000）+ 暖通 29,000（美的理想家III A2）+ 家具软装 35,000 + 家电 10,000 = 192,000。project_ceiling=190,000 为拎包入住总上限（务实档真实落地值，略低于合计以形成约束）。偏紧科目已上调：water_electric 8500→12000、waterproof 3500→4500、kitchen_cabinet 6500→8000、sanitary 10000→12000。家具家电报价为 candidate（到店未确认）。人工费为静态费率（不随选材变）：大砖≥800/人字拼工费上浮约20-50%已含在务实估算，精确数待施工图（DEC-011）。卧室地面已建模 bedroom_floor（默认木纹砖通铺）。量房和施工图完成后需重新核算。DEC-018：kitchen_cabinet 8000→11000（地柜5.0m）、appliances 10000→14000（冰箱）、furniture_soft 35000→36500（书桌椅×2套）；total_budget 对齐科目合计 208000（修正旧 -1500 差）。",
+  "notes": "四池口径（P0 重构 v0.5）：硬装 118,000（16 科 107,000 + 预备费 11,000）+ 暖通 29,000（美的理想家III A2）+ 家具软装 35,000 + 家电 10,000 = 192,000。project_ceiling=190,000 为拎包入住总上限（务实档真实落地值，略低于合计以形成约束）。偏紧科目已上调：water_electric 8500→12000、waterproof 3500→4500、kitchen_cabinet 6500→8000、sanitary 10000→12000。家具家电报价为 candidate（到店未确认）。人工费为静态费率（不随选材变）：大砖≥800/人字拼工费上浮约20-50%已含在务实估算，精确数待施工图（DEC-011）。DEC-041：地面统一为单一 floor topic + 分房覆盖（roomOverrides），bedroom_floor 撤销；入户花园开发商已铺、不计地面预算。量房和施工图完成后需重新核算。DEC-018：kitchen_cabinet 8000→11000（地柜5.0m）、appliances 10000→14000（冰箱）、furniture_soft 35000→36500（书桌椅×2套）；total_budget 对齐科目合计 208000（修正旧 -1500 差）。2026-08-22（设计师三轮 review R1-高）：美缝环氧彩砂暂估 4.5k 入账 miscellaneous（5700→10200），自 contingency 调入（11000→6500），total_budget 208000 不变；门店按米报价后终核。",
   "categories": {
-    "demolition": {"budget": 5000, "material": 0, "actual": 0, "status": "draft", "notes": "拆改+清运，按设计图拆除非承重墙"},
-    "water_electric": {"budget": 12000, "material": 0, "labor": {"rate": 5000, "unit": "一口价", "area": "fixed"}, "actual": 0, "status": "draft", "notes": "四房两厅两卫+开放式厨房，插座点位多；含智能开关零线、电动窗帘电源布线、零冷水回水管预埋（P0 上调 8500→12000）"},
-    "waterproof": {"budget": 4500, "material": 0, "labor": {"rate": 20, "unit": "元/㎡", "area": "wet_floor"}, "actual": 0, "status": "draft", "notes": "两卫+厨房+北阳台；pitfall 自标常超 30%（P0 上调 3500→4500）"},
-    "masonry": {"budget": 18500, "material": 0, "labor": {"rate": 45, "unit": "元/㎡", "area": "floor"}, "actual": 0, "status": "draft", "notes": "客餐厅木纹砖通铺，墙砖厨卫；按 94.76㎡ 套内 + 部分赠送面积估算"},
-    "carpentry": {"budget": 5000, "material": 0, "labor": {"rate": 40, "unit": "元/㎡", "area": "ceiling"}, "actual": 0, "status": "draft", "notes": "厨卫铝扣板吊顶 + 客餐厅局部吊顶，层高 3.0m"},
-    "painting": {"budget": 11500, "material": 0, "labor": {"rate": 25, "unit": "元/㎡", "area": "paint_wall"}, "actual": 0, "status": "draft", "notes": "大白墙为主，局部跳色；层高 3.0m，墙面面积比 2.8m 高约 7%"},
-    "doors_windows": {"budget": 12000, "material": 0, "labor": {"rate": 150, "unit": "元/扇", "area": "door_count"}, "actual": 0, "status": "draft", "notes": "室内门 4 扇、卫生间门 2 扇；入户门开发商已装不计（DEC-013）；新增厨房三联动长虹玻璃吊轨推拉门 3500-5300（DEC-013）；外立面玻璃幕墙已由开发商完成，不含封窗"},
-    "sanitary": {"budget": 12000, "material": 0, "labor": {"rate": 200, "unit": "元/件", "area": "fixture_count"}, "actual": 0, "status": "draft", "notes": "国产基础款（九牧/箭牌），两卫三件套；淋浴房玻璃隔断归 appliances 池（P0 上调 10000→12000）"},
-    "kitchen_cabinet": {"budget": 11000, "material": 0, "actual": 0, "status": "draft", "notes": "L 型地柜约 5.0m（北墙3.6+东墙2.2，DEC-014）+ 吊柜，多层板+石英石；含洗碗机/净水器预留（P0 上调 6500→8000，DEC-018 地柜延米 8000→11000）"},
-    "range_hood": {"budget": 2500, "material": 0, "actual": 0, "status": "draft", "notes": "开放式厨房必须配大功率侧吸油烟机，≥22m³/min"},
-    "hvac": {"budget": 29000, "material": 0, "actual": 0, "status": "draft", "notes": "中央空调/多联机一拖五，美的理想家III（A2）；西设备平台单外机。P0 由 0→29000 纳入总控"},
-    "lighting": {"budget": 2800, "material": 0, "actual": 0, "status": "draft", "notes": "吸顶灯为主 + 局部筒灯，控制成本"},
-    "curtains": {"budget": 10000, "material": 0, "actual": 0, "status": "draft", "notes": "高频区（客厅/主卧）电动纱帘+遮光帘，低频区（父母房/书房）手动后期可加（电源已预留），厨卫防水百叶；DEC-013 由 4000 上调"},
-    "smart_home": {"budget": 2000, "material": 0, "actual": 0, "status": "draft", "notes": "智能开关零线 + 网关位 + 电动窗帘电源 + 人体传感器位；不上调光和自动化"},
-    "miscellaneous": {"budget": 5700, "material": 0, "actual": 0, "status": "draft", "notes": "美缝、踢脚线、五金、清洁（P0 起家具已拆出至 furniture_soft）"},
-    "furniture_soft": {"budget": 36500, "material": 0, "actual": 0, "status": "draft", "notes": "家具软装池（P0 新增）：床×3、床垫×3、衣柜×3、沙发、餐桌椅、电视柜、书桌×3、椅×3、书架、鞋柜、茶几（DEC-018 加儿童房/父母房书桌椅 +1500）。报价 candidate，可分阶段采购"},
-    "appliances": {"budget": 14000, "material": 0, "actual": 0, "status": "draft", "notes": "家电池（P0 新增）：燃气灶、洗碗机、净水器、洗衣机、烘干机、淋浴房隔断、冰箱（DEC-018 务实档 +4000）。热水器/烟机暂留原科目避免双计。可分阶段采购"},
-    "property_fees": {"budget": 3000, "material": 0, "actual": 0, "status": "draft", "notes": "装修押金、垃圾清运费、管理费"},
-    "contingency": {"budget": 11000, "material": 0, "actual": 0, "status": "reserved", "notes": "不可预见费（约硬装 10%）"}
+    "demolition": {
+      "budget": 5000,
+      "material": 0,
+      "actual": 0,
+      "status": "draft",
+      "notes": "拆改+清运，按设计图拆除非承重墙"
+    },
+    "water_electric": {
+      "budget": 12000,
+      "material": 0,
+      "labor": {
+        "rate": 5000,
+        "unit": "一口价",
+        "area": "fixed"
+      },
+      "actual": 0,
+      "status": "draft",
+      "notes": "四房两厅两卫+开放式厨房，插座点位多；含智能开关零线、电动窗帘电源布线、零冷水回水管预埋（P0 上调 8500→12000）"
+    },
+    "waterproof": {
+      "budget": 4500,
+      "material": 0,
+      "labor": {
+        "rate": 20,
+        "unit": "元/㎡",
+        "area": "wet_floor"
+      },
+      "actual": 0,
+      "status": "draft",
+      "notes": "两卫+厨房+北阳台；pitfall 自标常超 30%（P0 上调 3500→4500）"
+    },
+    "masonry": {
+      "budget": 18500,
+      "material": 0,
+      "labor": {
+        "rate": 45,
+        "unit": "元/㎡",
+        "area": "floor"
+      },
+      "actual": 0,
+      "status": "draft",
+      "notes": "客餐厅木纹砖通铺，墙砖厨卫；按 94.76㎡ 套内 + 部分赠送面积估算"
+    },
+    "carpentry": {
+      "budget": 5000,
+      "material": 0,
+      "labor": {
+        "rate": 40,
+        "unit": "元/㎡",
+        "area": "ceiling"
+      },
+      "actual": 0,
+      "status": "draft",
+      "notes": "厨卫铝扣板吊顶 + 客餐厅局部吊顶，层高 3.0m"
+    },
+    "painting": {
+      "budget": 11500,
+      "material": 0,
+      "labor": {
+        "rate": 25,
+        "unit": "元/㎡",
+        "area": "paint_wall"
+      },
+      "actual": 0,
+      "status": "draft",
+      "notes": "大白墙为主，局部跳色；层高 3.0m，墙面面积比 2.8m 高约 7%"
+    },
+    "doors_windows": {
+      "budget": 12000,
+      "material": 0,
+      "labor": {
+        "rate": 150,
+        "unit": "元/扇",
+        "area": "door_count"
+      },
+      "actual": 0,
+      "status": "draft",
+      "notes": "室内门 4 扇、卫生间门 2 扇；入户门开发商已装不计（DEC-013）；新增厨房三联动长虹玻璃吊轨推拉门 3500-5300（DEC-013）；外立面玻璃幕墙已由开发商完成，不含封窗"
+    },
+    "sanitary": {
+      "budget": 12000,
+      "material": 0,
+      "labor": {
+        "rate": 200,
+        "unit": "元/件",
+        "area": "fixture_count"
+      },
+      "actual": 0,
+      "status": "draft",
+      "notes": "国产基础款（九牧/箭牌），两卫三件套；淋浴房玻璃隔断归 appliances 池（P0 上调 10000→12000）"
+    },
+    "kitchen_cabinet": {
+      "budget": 11000,
+      "material": 0,
+      "actual": 0,
+      "status": "draft",
+      "notes": "L 型地柜约 5.0m（北墙3.6+东墙2.2，DEC-014）+ 吊柜，多层板+石英石；含洗碗机/净水器预留（P0 上调 6500→8000，DEC-018 地柜延米 8000→11000）"
+    },
+    "range_hood": {
+      "budget": 2500,
+      "material": 0,
+      "actual": 0,
+      "status": "draft",
+      "notes": "开放式厨房必须配大功率侧吸油烟机，≥22m³/min"
+    },
+    "hvac": {
+      "budget": 29000,
+      "material": 0,
+      "actual": 0,
+      "status": "draft",
+      "notes": "中央空调/多联机一拖五，美的理想家III（A2）；西设备平台单外机。P0 由 0→29000 纳入总控"
+    },
+    "lighting": {
+      "budget": 2800,
+      "material": 0,
+      "actual": 0,
+      "status": "draft",
+      "notes": "吸顶灯为主 + 局部筒灯，控制成本"
+    },
+    "curtains": {
+      "budget": 10000,
+      "material": 0,
+      "actual": 0,
+      "status": "draft",
+      "notes": "高频区（客厅/主卧）电动纱帘+遮光帘，低频区（父母房/书房）手动后期可加（电源已预留），厨卫防水百叶；DEC-013 由 4000 上调"
+    },
+    "smart_home": {
+      "budget": 2000,
+      "material": 0,
+      "actual": 0,
+      "status": "draft",
+      "notes": "智能开关零线 + 网关位 + 电动窗帘电源 + 人体传感器位；不上调光和自动化"
+    },
+    "miscellaneous": {
+      "budget": 10200,
+      "material": 0,
+      "actual": 0,
+      "status": "draft",
+      "notes": "美缝环氧彩砂调同色暂估 4500（干区~110㎡+湿区防霉，30-50元/㎡档，门店按米报价终核；2026-08-22 设计师 review 入账，自 contingency 调入）+ 踢脚线、五金、清洁 5700（P0 起家具已拆出至 furniture_soft）"
+    },
+    "furniture_soft": {
+      "budget": 36500,
+      "material": 0,
+      "actual": 0,
+      "status": "draft",
+      "notes": "家具软装池（P0 新增）：床×3、床垫×3、衣柜×3、沙发、餐桌椅、电视柜、书桌×3、椅×3、书架、鞋柜、茶几（DEC-018 加儿童房/父母房书桌椅 +1500）。报价 candidate，可分阶段采购"
+    },
+    "appliances": {
+      "budget": 14000,
+      "material": 0,
+      "actual": 0,
+      "status": "draft",
+      "notes": "家电池（P0 新增）：燃气灶、洗碗机、净水器、洗衣机、烘干机、淋浴房隔断、冰箱（DEC-018 务实档 +4000）。热水器/烟机暂留原科目避免双计。可分阶段采购"
+    },
+    "property_fees": {
+      "budget": 3000,
+      "material": 0,
+      "actual": 0,
+      "status": "draft",
+      "notes": "装修押金、垃圾清运费、管理费"
+    },
+    "contingency": {
+      "budget": 6500,
+      "material": 0,
+      "actual": 0,
+      "status": "reserved",
+      "notes": "不可预见费；2026-08-22 调出 4500 至 miscellaneous（美缝口径入账），余 6500，与 project_ceiling 190k 约束共同兜底"
+    }
   }
 }
