@@ -102,7 +102,14 @@ export function createMaterialTexture(appearance: MaterialAppearance): Procedura
     normalTex.wrapS = THREE.RepeatWrapping;
     normalTex.wrapT = THREE.RepeatWrapping;
 
-    return { map: mapTex, normalMap: normalTex };
+    const result: ProceduralTextures = { map: mapTex, normalMap: normalTex };
+    // DEC-042：ceramic_tile_v2 声明 tile_mm（物理砖边长，mm）时做米制标定——
+    // canvas 画 4×4 砖，真实边长 = 4×砖尺寸；米制 UV 地面按物理尺寸平铺。
+    // 不带 tile_mm 的旧条目（如墙砖）保持 repeat(2,2) 兼容，观感不变。
+    if (appearance.type === 'ceramic_tile_v2' && typeof appearance.tile_mm === 'number') {
+      result.worldSize = (4 * (appearance.tile_mm as number)) / 1000;
+    }
+    return result;
   }
 
   const tex = new THREE.CanvasTexture(canvas);
@@ -203,7 +210,7 @@ function drawCeramicTileV2(
 
   ctx.fillStyle = appearance.color;
   ctx.fillRect(0, 0, w, h);
-  heightCtx.fillStyle = '#c0c0c0';
+  heightCtx.fillStyle = '#b8b8b8';
   heightCtx.fillRect(0, 0, w, h);
 
   const drawTile = (x: number, y: number, tw: number, th: number, angle: number = 0) => {
@@ -212,15 +219,16 @@ function drawCeramicTileV2(
     ctx.rotate(angle);
     ctx.fillStyle = appearance.color;
     ctx.fillRect(-tw / 2 + 2, -th / 2 + 2, tw - 4, th - 4);
-    ctx.strokeStyle = '#999999';
-    ctx.lineWidth = 1.5;
+    // DEC-042：砖缝加深加粗——旧参数缝太浅，小砖地面渲染成"一片纯色"
+    ctx.strokeStyle = '#8a8a8a';
+    ctx.lineWidth = 2;
     ctx.strokeRect(-tw / 2 + 2, -th / 2 + 2, tw - 4, th - 4);
     ctx.restore();
 
     heightCtx.save();
     heightCtx.translate(x + tw / 2, y + th / 2);
     heightCtx.rotate(angle);
-    heightCtx.fillStyle = '#d0d0d0';
+    heightCtx.fillStyle = '#dcdcdc';
     heightCtx.fillRect(-tw / 2 + 2, -th / 2 + 2, tw - 4, th - 4);
     heightCtx.restore();
   };
@@ -541,7 +549,13 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
     ? appearance.grout_color
     : `rgb(${clamp255(br0 * 0.88)},${clamp255(bg0 * 0.88)},${clamp255(bb0 * 0.88)})`;
   const groutMm = typeof appearance.grout_mm === 'number' ? appearance.grout_mm : 2;
-  const baseRough = appearance.finish === 'soft' ? 0.5 : 0.85;
+  let baseRough = appearance.finish === 'soft' ? 0.5 : 0.85;
+  if (typeof appearance.roughness === 'number') baseRough = appearance.roughness;
+  // 参考实景（2026-08-22 业主提供）：仿木大板=板间几乎无色差、纹理极淡、近色美缝、柔光微反光。
+  // tone_var/grain_var/seam 为 0–1 缩放（默认 1 保持旧观感），调低即"uniform 大板"风格。
+  const toneVar = typeof appearance.tone_var === 'number' ? appearance.tone_var : 1;
+  const grainVar = typeof appearance.grain_var === 'number' ? appearance.grain_var : 1;
+  const seamVar = typeof appearance.seam === 'number' ? appearance.seam : 1;
   const [br, bg, bb] = [br0, bg0, bb0] as [number, number, number];
 
   // 印刷面色族（6–8 版面）：族间明度/冷暖/纹理强度差异，族内再小抖动。
@@ -594,8 +608,8 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
   const drawPlank = (cx: number, cy: number, angle: number) => {
     // 先选印刷面色族，再族内小抖动：明度 ±4%、冷暖 ±1.5、粗糙度 ±0.08（全部 seeded）
     const face = faces[Math.floor(rng() * FACE_COUNT)];
-    const dl = face.dl + (rng() - 0.5) * 8;
-    const warm = face.warm + (rng() - 0.5) * 3;
+    const dl = (face.dl + (rng() - 0.5) * 8) * toneVar;
+    const warm = (face.warm + (rng() - 0.5) * 3) * toneVar;
     const rr = clamp255(br + dl + warm);
     const gg = clamp255(bg + dl);
     const bb2 = clamp255(bb + dl - warm);
@@ -617,7 +631,7 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
 
     // 板缘 AO：压暗描边，板间产生缝隙阴影层次。
     // 800 方砖的 2mm 美缝在 1024 画布上亚像素不可见，缝感主要由这条 AO 承载（alpha 0.65 / ≥1.5px）
-    ctx.strokeStyle = `rgba(${clamp255(rr * 0.55)},${clamp255(gg * 0.55)},${clamp255(bb2 * 0.55)},0.65)`;
+    ctx.strokeStyle = `rgba(${clamp255(rr * 0.55)},${clamp255(gg * 0.55)},${clamp255(bb2 * 0.55)},${0.65 * seamVar})`;
     ctx.lineWidth = Math.max(1.5, g2 * 0.8);
     ctx.beginPath();
     ctx.moveTo(ix, iy);
@@ -636,7 +650,7 @@ function drawWoodPlankTextures(appearance: MaterialAppearance): ProceduralTextur
       const freq = 1 + rng() * 0.2;
       const dark = rng() < 0.75;
       const f = dark ? 0.62 : 1.18;
-      const a = face.grain * (0.6 + rng() * 0.8);
+      const a = face.grain * grainVar * (0.6 + rng() * 0.8);
       ctx.strokeStyle = `rgba(${clamp255(rr * f)},${clamp255(gg * f)},${clamp255(bb2 * f)},${a.toFixed(3)})`;
       ctx.lineWidth = 0.5 + rng() * 1.8;
       ctx.beginPath();

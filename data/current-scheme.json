@@ -1,9 +1,13 @@
 {
-  "updatedAt": "2026-08-21T10:54:55.739Z",
+  "updatedAt": "2026-08-21T15:57:37.611Z",
   "selections": {
     "floor": {
       "default": "floor_pbr_tile_612",
-      "roomOverrides": {}
+      "roomOverrides": {
+        "master_bath": "floor_tile_antislip_400",
+        "guest_bath": "floor_tile_deco_small",
+        "balcony": "floor_tile_antislip_400"
+      }
     },
     "wall": {
       "default": "wall_tile_01",
@@ -139,10 +143,6 @@
     },
     "shower_enclosure": {
       "default": "shower_enclosure_01",
-      "roomOverrides": {}
-    },
-    "bedroom_floor": {
-      "default": "bedroom_tile_612",
       "roomOverrides": {}
     }
   }

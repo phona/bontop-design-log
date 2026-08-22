@@ -13,14 +13,16 @@ export class TextureManager {
   private materialsData: MaterialYamlEntry[] = [];
   private floorMeshes: THREE.Mesh[] = [];
   private wallMeshes: THREE.Mesh[] = [];
+  private ceilingMeshes: THREE.Mesh[] = [];
 
   constructor(materialsData?: MaterialYamlEntry[]) {
     if (materialsData) this.materialsData = materialsData;
   }
 
-  setMeshes(floorMeshes: THREE.Mesh[], wallMeshes: THREE.Mesh[]): void {
+  setMeshes(floorMeshes: THREE.Mesh[], wallMeshes: THREE.Mesh[], ceilingMeshes: THREE.Mesh[] = []): void {
     this.floorMeshes = floorMeshes;
     this.wallMeshes = wallMeshes;
+    this.ceilingMeshes = ceilingMeshes;
   }
 
   loadMaterials(materials: MaterialYamlEntry[]): void {
@@ -50,7 +52,7 @@ export class TextureManager {
     return fallback;
   }
 
-  applyToRoom(roomId: string, appearance: MaterialAppearance, meshType?: 'floor' | 'wall' | 'all'): void {
+  applyToRoom(roomId: string, appearance: MaterialAppearance, meshType?: 'floor' | 'wall' | 'ceiling' | 'all'): void {
     const mat = this.getOrBuild(appearance);
 
     if (meshType === undefined || meshType === 'all' || meshType === 'wall') {
@@ -67,15 +69,28 @@ export class TextureManager {
         }
       }
     }
+    if (meshType === 'ceiling' || meshType === 'all') {
+      // 只染基础天花（type='ceiling'）；吊顶造型 solid（铝扣板等）不跟刷
+      for (const mesh of this.ceilingMeshes) {
+        if (mesh.userData.roomId === roomId && mesh.userData.type === 'ceiling') {
+          this.copyToMesh(mesh, mat);
+        }
+      }
+    }
   }
 
-  // floor_region（走廊/过渡带，roomId 为空）不参与按房匹配；DEC-011 跟随 floor topic 整体换材
-  applyToFloorRegions(appearance: MaterialAppearance): void {
-    const mat = this.getOrBuild(appearance);
+  // floor_region（走廊/过渡带，roomId 为空）不参与按房匹配；DEC-011 跟随 floor topic 整体换材。
+  // DEC-041：带 follow 的过渡带跟随目标房间的有效地材（分房覆盖感知），其余跟随 default。
+  applyToFloorRegions(
+    defaultAppearance: MaterialAppearance,
+    followAppearance?: (roomId: string) => MaterialAppearance | null
+  ): void {
+    const defaultMat = this.getOrBuild(defaultAppearance);
     for (const mesh of this.floorMeshes) {
-      if (mesh.userData.type === 'floor_region') {
-        this.copyToMesh(mesh, mat);
-      }
+      if (mesh.userData.type !== 'floor_region') continue;
+      const follow = mesh.userData.follow as string | undefined;
+      const followed = follow ? followAppearance?.(follow) : null;
+      this.copyToMesh(mesh, followed ? this.getOrBuild(followed) : defaultMat);
     }
   }
 
@@ -114,6 +129,12 @@ export class TextureManager {
           normalMap: result.normalMap,
           roughnessMap: result.roughnessMap,
         });
+        // DEC-042：appearance 声明 roughness 时覆盖（哑光釉面砖不全漫反射，暖光下不吃黄）。
+        // 仅限程序化陶瓷砖——pbr_texture 的 roughness 字段历史上被忽略（无 roughnessMap 时默认 1.0
+        // 漫反射才能显出扫描木纹）；若对 PBR 生效会把地板变高反光、木纹被环境光洗白（2026-08-22 回归）。
+        if (appearance.type === 'ceramic_tile_v2' && typeof appearance.roughness === 'number') {
+          mat.roughness = appearance.roughness;
+        }
         if (result.roughnessMap) {
           mat.roughness = 1.0; // 实际粗糙度由 roughnessMap 逐板承载
           mat.metalness = 0;

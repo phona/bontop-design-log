@@ -332,14 +332,30 @@ materials:
     waste_rate: 1
     unit: 套
     notes: ["P0补录，到店确认型号价格"]
-  - id: bedroom_tile_01
-    name: "卧室木纹砖（与客餐厅一致）"
-    room: bedroom
+  - id: floor_pbr_tile_612
+    name: "600x1200木纹砖·步步高错缝（全屋通铺，DEC-041 定案）"
+    room: null
     category: 地砖
     current_stage: selection
     waste_rate: 1.08
     unit: 片
-    notes: ["P0补录，到店确认型号价格"]
+    notes: ["DEC-041 全屋地面定案（入户花园开发商已铺不计）；暂估价 75/片，门店四问后终核"]
+  - id: floor_tile_antislip_400
+    name: "暖灰哑光防滑砖（主卫/阳台）"
+    room: bathroom
+    category: 地砖
+    current_stage: selection
+    waste_rate: 1.08
+    unit: 片
+    notes: ["DEC-042 湿区分化；400x400 R10+，型号/价格待门店终核"]
+  - id: floor_tile_deco_small
+    name: "复古小花砖（客卫点缀）"
+    room: bathroom
+    category: 地砖
+    current_stage: selection
+    waste_rate: 1.1
+    unit: ㎡
+    notes: ["DEC-042 客卫首饰盒；花色到店选样，价格终核（待决#8）"]
   - id: bedroom_wood_01
     name: "实木复合地板（卧室）"
     room: bedroom

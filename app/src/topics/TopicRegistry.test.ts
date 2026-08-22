@@ -72,10 +72,6 @@ vi.mock('../data/designData.js', () => ({
     { id: 'floor_tile_01', name: '浅胡桃木纹砖', color: '#c49a6c' },
     { id: 'floor_tile_02', name: '深灰岩纹砖', color: '#8b8b8b' },
   ],
-  bedroomFloorOptions: [
-    { id: 'bedroom_tile_01', name: '卧室木纹砖', color: '#c49a6c' },
-    { id: 'bedroom_wood_01', name: '实木复合地板', color: '#a97c50' },
-  ],
   wallOptions: [
     { id: 'wall_tile_01', name: '厨卫白色釉面砖', color: '#f5f5f5' },
     { id: 'wall_tile_02', name: '浅灰哑光砖', color: '#d0d0d0' },
@@ -108,7 +104,6 @@ vi.mock('../data/designData.js', () => ({
 import { TopicRegistry } from './TopicRegistry';
 import { HvacTopic } from './HvacTopic';
 import { FloorTopic } from './FloorTopic';
-import { BedroomFloorTopic, BEDROOM_ROOM_IDS } from './BedroomFloorTopic';
 import { WallTopic } from './WallTopic';
 import { PaintTopic } from './PaintTopic';
 import { CabinetTopic } from './CabinetTopic';
@@ -155,11 +150,10 @@ describe('TopicRegistry', () => {
     const mock = createMockSceneApi();
     const registry = new TopicRegistry(mock.api as any);
     const topics = registry.list();
-    expect(topics.length).toBe(10);
+    expect(topics.length).toBe(9);
     const ids = topics.map((t) => t.id);
     expect(ids).toContain('hvac');
     expect(ids).toContain('floor');
-    expect(ids).toContain('bedroom_floor');
     expect(ids).toContain('curtain');
     expect(ids).toContain('wall');
     expect(ids).toContain('paint');
@@ -189,7 +183,7 @@ describe('TopicRegistry', () => {
     const custom = { id: 'custom', name: 'Custom', options: [], apply: vi.fn() };
     registry.register(custom as any);
     expect(registry.get('custom')).toBeDefined();
-    expect(registry.list().length).toBe(11);
+    expect(registry.list().length).toBe(10);
   });
 });
 
@@ -368,10 +362,11 @@ describe('FloorTopic', () => {
     expect(topic.options[0].id).toBe('floor_tile_01');
   });
 
-  it('should apply floor material and return floor:all', () => {
+  it('should apply default material to every room and return per-room ids', () => {
     const scene = {
       setFloorMaterial: vi.fn(),
       getAllRoomIds: vi.fn(() => ['living_dining', 'kitchen']),
+      applyFloorRegionMaterials: vi.fn(),
     };
     const ids = topic.apply(scene as any, 'floor_tile_01');
     expect(scene.getAllRoomIds).toHaveBeenCalled();
@@ -379,99 +374,88 @@ describe('FloorTopic', () => {
       'living_dining',
       { type: 'ceramic_tile_v2', color: '#c49a6c', scale: 2 }
     );
-    expect(ids).toEqual(['floor:all']);
+    expect(ids).toEqual(['floor:living_dining', 'floor:kitchen']);
+    expect(scene.applyFloorRegionMaterials).toHaveBeenCalled();
   });
 
   it('should apply second floor option', () => {
     const scene = {
       setFloorMaterial: vi.fn(),
       getAllRoomIds: vi.fn(() => ['living_dining', 'kitchen']),
+      applyFloorRegionMaterials: vi.fn(),
     };
-    const ids = topic.apply(scene as any, 'floor_tile_02');
+    topic.apply(scene as any, 'floor_tile_02');
     expect(scene.setFloorMaterial).toHaveBeenCalledWith(
       'living_dining',
       { type: 'ceramic_tile_v2', color: '#8b8b8b', scale: 2 }
     );
-    expect(ids).toEqual(['floor:all']);
   });
 
-  it('should exclude bedroom rooms (handled by BedroomFloorTopic)', () => {
+  it('DEC-041: applies to all rooms incl. bedrooms (no hardcoded exclusion)', () => {
     const scene = {
       setFloorMaterial: vi.fn(),
       getAllRoomIds: vi.fn(() => ['living_dining', 'master_bedroom', 'study', 'bedroom_nw', 'bedroom_se', 'kitchen']),
+      applyFloorRegionMaterials: vi.fn(),
     };
     topic.apply(scene as any, 'floor_tile_01');
     const calledRooms = (scene.setFloorMaterial as any).mock.calls.map((c: any[]) => c[0]);
-    for (const bedroom of BEDROOM_ROOM_IDS) {
-      expect(calledRooms).not.toContain(bedroom);
-    }
-    expect(calledRooms).toContain('living_dining');
-    expect(calledRooms).toContain('kitchen');
+    expect(calledRooms.sort()).toEqual(
+      ['living_dining', 'master_bedroom', 'study', 'bedroom_nw', 'bedroom_se', 'kitchen'].sort()
+    );
+  });
+
+  it('DEC-041: per-room override beats default', () => {
+    const scene = {
+      setFloorMaterial: vi.fn(),
+      getAllRoomIds: vi.fn(() => ['living_dining', 'kitchen']),
+      applyFloorRegionMaterials: vi.fn(),
+    };
+    const selection = { default: 'floor_tile_01', roomOverrides: { living_dining: 'floor_tile_02' } };
+    topic.apply(scene as any, 'floor_tile_01', selection);
+    expect(scene.setFloorMaterial).toHaveBeenCalledWith(
+      'living_dining',
+      { type: 'ceramic_tile_v2', color: '#8b8b8b', scale: 2 }
+    );
+    expect(scene.setFloorMaterial).toHaveBeenCalledWith(
+      'kitchen',
+      { type: 'ceramic_tile_v2', color: '#c49a6c', scale: 2 }
+    );
+  });
+
+  it('DEC-041: floor_region follow resolver sees the room effective option', () => {
+    const scene = {
+      setFloorMaterial: vi.fn(),
+      getAllRoomIds: vi.fn(() => ['living_dining']),
+      applyFloorRegionMaterials: vi.fn(),
+    };
+    const selection = { default: 'floor_tile_01', roomOverrides: { living_dining: 'floor_tile_02' } };
+    topic.apply(scene as any, 'floor_tile_01', selection);
+    const [defaultApp, resolver] = (scene.applyFloorRegionMaterials as any).mock.calls[0];
+    expect(defaultApp).toEqual({ type: 'ceramic_tile_v2', color: '#c49a6c', scale: 2 });
+    expect(resolver('living_dining')).toEqual({ type: 'ceramic_tile_v2', color: '#8b8b8b', scale: 2 });
+    expect(resolver('kitchen')).toEqual({ type: 'ceramic_tile_v2', color: '#c49a6c', scale: 2 });
+  });
+
+  it('unknown per-room override falls back to default', () => {
+    const scene = {
+      setFloorMaterial: vi.fn(),
+      getAllRoomIds: vi.fn(() => ['living_dining']),
+      applyFloorRegionMaterials: vi.fn(),
+    };
+    const selection = { default: 'floor_tile_01', roomOverrides: { living_dining: 'nonexistent' } };
+    topic.apply(scene as any, 'floor_tile_01', selection);
+    expect(scene.setFloorMaterial).toHaveBeenCalledWith(
+      'living_dining',
+      { type: 'ceramic_tile_v2', color: '#c49a6c', scale: 2 }
+    );
   });
 
   it('should return empty array for unknown option', () => {
     const scene = {
       setFloorMaterial: vi.fn(),
       getAllRoomIds: vi.fn(),
+      applyFloorRegionMaterials: vi.fn(),
     };
-    const ids = topic.apply(scene as any, 'nonexistent');
-    expect(ids).toEqual([]);
-    expect(scene.setFloorMaterial).not.toHaveBeenCalled();
-  });
-
-  it('should apply floor material even without data.appearance using color fallback', () => {
-    const scene = {
-      setFloorMaterial: vi.fn(),
-      getAllRoomIds: vi.fn(() => ['living_dining']),
-    };
-    const ids = topic.apply(scene as any, 'floor_tile_01');
-    expect(scene.setFloorMaterial).toHaveBeenCalled();
-    expect(ids).toEqual(['floor:all']);
-  });
-
-  it('validate should return empty array', () => {
-    expect(topic.validate()).toEqual([]);
-  });
-});
-
-describe('BedroomFloorTopic', () => {
-  let topic: BedroomFloorTopic;
-
-  beforeEach(() => {
-    topic = new BedroomFloorTopic();
-  });
-
-  it('should have correct id and name', () => {
-    expect(topic.id).toBe('bedroom_floor');
-    expect(topic.name).toBe('卧室地面');
-  });
-
-  it('should have options from bedroomFloorOptions', () => {
-    expect(topic.options.length).toBe(2);
-    expect(topic.options[0].id).toBe('bedroom_tile_01');
-    expect(topic.options[1].id).toBe('bedroom_wood_01');
-  });
-
-  it('should apply material only to the 4 bedrooms', () => {
-    const scene = { setFloorMaterial: vi.fn() };
-    const ids = topic.apply(scene as any, 'bedroom_tile_01');
-    expect(scene.setFloorMaterial).toHaveBeenCalledTimes(4);
-    const calledRooms = (scene.setFloorMaterial as any).mock.calls.map((c: any[]) => c[0]);
-    expect(calledRooms.sort()).toEqual([...BEDROOM_ROOM_IDS].sort());
-    expect(ids.length).toBe(4);
-  });
-
-  it('should apply wood option appearance', () => {
-    const scene = { setFloorMaterial: vi.fn() };
-    topic.apply(scene as any, 'bedroom_wood_01');
-    expect(scene.setFloorMaterial).toHaveBeenCalledWith(
-      'master_bedroom',
-      { type: 'wood_grain_v2', color: '#a97c50', scale: 2 }
-    );
-  });
-
-  it('should return empty array for unknown option', () => {
-    const scene = { setFloorMaterial: vi.fn() };
     const ids = topic.apply(scene as any, 'nonexistent');
     expect(ids).toEqual([]);
     expect(scene.setFloorMaterial).not.toHaveBeenCalled();
@@ -527,9 +511,27 @@ describe('WallTopic', () => {
     expect(ids.length).toBe(3);
   });
 
+  it('DEC-041: per-room override beats default', () => {
+    const scene = {
+      setWallMaterial: vi.fn(),
+      getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['kitchen', 'master_bath']),
+    };
+    const selection = { default: 'wall_tile_01', roomOverrides: { kitchen: 'wall_tile_02' } };
+    topic.apply(scene as any, 'wall_tile_01', selection);
+    expect(scene.setWallMaterial).toHaveBeenCalledWith(
+      'kitchen',
+      { type: 'ceramic_tile_v2', color: '#d0d0d0', scale: 2 }
+    );
+    expect(scene.setWallMaterial).toHaveBeenCalledWith(
+      'master_bath',
+      { type: 'ceramic_tile_v2', color: '#f5f5f5', scale: 2 }
+    );
+  });
+
   it('should return empty array for unknown option', () => {
     const scene = {
       setWallMaterial: vi.fn(),
+      setCeilingMaterial: vi.fn(),
       getRoomIdsWithWallFinish: vi.fn(),
     };
     const ids = topic.apply(scene as any, 'nonexistent');
@@ -562,6 +564,7 @@ describe('PaintTopic', () => {
   it('should apply paint material to paint rooms and return paint ids', () => {
     const scene = {
       setWallMaterial: vi.fn(),
+      setCeilingMaterial: vi.fn(),
       getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['living_dining', 'bedroom_nw', 'study']),
     };
     const ids = topic.apply(scene as any, 'latex_paint_01');
@@ -576,6 +579,7 @@ describe('PaintTopic', () => {
   it('should apply cream paint option', () => {
     const scene = {
       setWallMaterial: vi.fn(),
+      setCeilingMaterial: vi.fn(),
       getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['living_dining', 'bedroom_nw', 'study']),
     };
     const ids = topic.apply(scene as any, 'latex_paint_02');
@@ -589,6 +593,7 @@ describe('PaintTopic', () => {
   it('should apply light blue paint option', () => {
     const scene = {
       setWallMaterial: vi.fn(),
+      setCeilingMaterial: vi.fn(),
       getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['living_dining', 'bedroom_nw', 'study']),
     };
     const ids = topic.apply(scene as any, 'latex_paint_03');
@@ -602,11 +607,43 @@ describe('PaintTopic', () => {
   it('should return empty array for unknown option', () => {
     const scene = {
       setWallMaterial: vi.fn(),
+      setCeilingMaterial: vi.fn(),
       getRoomIdsWithWallFinish: vi.fn(),
     };
     const ids = topic.apply(scene as any, 'nonexistent');
     expect(ids).toEqual([]);
     expect(scene.setWallMaterial).not.toHaveBeenCalled();
+  });
+
+  it('DEC-041: ceiling follows the room wall paint', () => {
+    const scene = {
+      setWallMaterial: vi.fn(),
+      setCeilingMaterial: vi.fn(),
+      getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['living_dining']),
+    };
+    topic.apply(scene as any, 'latex_paint_01');
+    expect(scene.setCeilingMaterial).toHaveBeenCalledWith(
+      'living_dining',
+      { type: 'matte_paint', color: '#f7f5ef', scale: 1 }
+    );
+  });
+
+  it('DEC-041: per-room override beats default (wall + ceiling)', () => {
+    const scene = {
+      setWallMaterial: vi.fn(),
+      setCeilingMaterial: vi.fn(),
+      getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['living_dining', 'study']),
+    };
+    const selection = { default: 'latex_paint_01', roomOverrides: { study: 'latex_paint_03' } };
+    topic.apply(scene as any, 'latex_paint_01', selection);
+    expect(scene.setWallMaterial).toHaveBeenCalledWith(
+      'study',
+      { type: 'matte_paint', color: '#e6f3ff', scale: 1 }
+    );
+    expect(scene.setWallMaterial).toHaveBeenCalledWith(
+      'living_dining',
+      { type: 'matte_paint', color: '#f7f5ef', scale: 1 }
+    );
   });
 
   it('PaintTopic validate should return empty array', () => {

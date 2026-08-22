@@ -11,6 +11,7 @@ import type {
   CameraState,
   ElectricalMarker,
   CurrentScheme,
+  TopicSelection,
   SceneElement,
   CurtainPoint,
   ResolvedOpening,
@@ -23,7 +24,6 @@ import { pickRoomIdFromHits } from '../scene/spawn-utils.js';
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { offsetCurtainPointsInterior } from './curtain-offset.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
-import { BEDROOM_ROOM_IDS } from '../topics/bedroom-room-ids.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
 import type { MaterialAppearance } from './TextureFactory.js';
@@ -471,6 +471,7 @@ export class HouseScene implements SceneApi {
     this.platform = undefined;
     this.floorMeshes = [];
     this.wallMeshes = [];
+    this.ceilingMeshes = [];
     this.glassMeshes = [];
     this.furnitureMeshes = [];
     this.countertopMeshes = [];
@@ -522,7 +523,7 @@ export class HouseScene implements SceneApi {
       this.furnitureMeshes = this.placeFurnitureFixtures(projectData.house.furnishings);
     }
 
-    this.textureManager.setMeshes(this.floorMeshes, this.wallMeshes);
+    this.textureManager.setMeshes(this.floorMeshes, this.wallMeshes, this.ceilingMeshes);
     const materials = HouseScene.extractMaterials(projectData.topics);
     this.textureManager.loadMaterials(materials);
     this.textureManager.preload();
@@ -544,10 +545,10 @@ export class HouseScene implements SceneApi {
     return materials;
   }
 
-  setSelection(topic: string, optionId: string): void {
+  setSelection(topic: string, optionId: string, selection?: TopicSelection): void {
     const topicImpl = this.topicRegistry.get(topic);
     if (topicImpl) {
-      topicImpl.apply(this, optionId);
+      topicImpl.apply(this, optionId, selection);
     }
   }
 
@@ -1362,7 +1363,7 @@ export class HouseScene implements SceneApi {
     mesh.rotation.x = -Math.PI / 2;
     mesh.scale.set(1, -1, 1);
     mesh.position.y = 0.006;
-    mesh.userData = { type: 'floor_region', objectId: el.id, roomId: el.room };
+    mesh.userData = { type: 'floor_region', objectId: el.id, roomId: el.room, follow: el.follow };
     mesh.receiveShadow = true;
     this.scene.add(mesh);
     this.floorMeshes.push(mesh);
@@ -1534,57 +1535,12 @@ export class HouseScene implements SceneApi {
 
   applyCompareScheme(): void {
     if (!this.compareSchemeData) return;
+    // DEC-041：对比路径与主路径同走 setSelection → topic.apply，分房覆盖（roomOverrides）两处一致生效
     for (const [topicId, selection] of Object.entries(this.compareSchemeData.selections)) {
       const effective = selection.default;
       if (effective) {
-        this.applySchemeTextures(topicId, effective);
+        this.setSelection(topicId, effective, selection);
       }
-    }
-  }
-
-  applySchemeTextures(topicId: string, optionId: string): void {
-    const topic = this.topicRegistry.get(topicId);
-    if (!topic) return;
-    const option = topic.options.find((o) => o.id === optionId);
-    if (!option) return;
-    const data = (option.data as Record<string, unknown> | undefined);
-    const appearance = data?.appearance as { type: string; color: string } | undefined;
-    if (!appearance) return;
-
-    const roomIds = new Set<string>();
-
-    if (topicId === 'floor') {
-      for (const mesh of this.floorMeshes) {
-        const rid = mesh.userData.roomId as string;
-        // 卧室地面由 bedroom_floor 分支处理，与 FloorTopic.apply 的排除逻辑保持一致
-        if (rid && !BEDROOM_ROOM_IDS.includes(rid)) roomIds.add(rid);
-      }
-    } else if (topicId === 'bedroom_floor') {
-      // 卧室地面走专属 topic；floor 分支排除卧室，二者互不覆盖
-      for (const rid of BEDROOM_ROOM_IDS) roomIds.add(rid);
-    } else if (topicId === 'wall' || topicId === 'paint') {
-      for (const mesh of this.wallMeshes) {
-        if (topicId === 'paint') {
-          const rid = mesh.userData.roomId as string;
-          const room = this.roomMeta.get(rid);
-          if (room?.wall_finish === 'tile') continue;
-        }
-        const rid = mesh.userData.roomId as string;
-        if (rid) roomIds.add(rid);
-      }
-    }
-
-    if (topicId === 'countertop') {
-      this.setCountertopMaterial(appearance);
-      return;
-    }
-
-    const meshType = (topicId === 'floor' || topicId === 'bedroom_floor') ? 'floor' : 'wall';
-    for (const roomId of roomIds) {
-      this.textureManager.applyToRoom(roomId, appearance, meshType);
-    }
-    if (topicId === 'floor') {
-      this.textureManager.applyToFloorRegions(appearance);
     }
   }
 
@@ -1685,6 +1641,19 @@ export class HouseScene implements SceneApi {
 
   setWallMaterial(roomId: string, appearance: MaterialAppearance): void {
     this.textureManager.applyToRoom(roomId, appearance, 'wall');
+  }
+
+  // DEC-041：天花跟随所在房间墙漆（点击天花=选该房间漆面，消除旧映射误导）
+  setCeilingMaterial(roomId: string, appearance: MaterialAppearance): void {
+    this.textureManager.applyToRoom(roomId, appearance, 'ceiling');
+  }
+
+  // DEC-041：floor_region 换材——default 兜底，带 follow 的过渡带跟随目标房间有效地材
+  applyFloorRegionMaterials(
+    defaultAppearance: MaterialAppearance,
+    followAppearance?: (roomId: string) => MaterialAppearance | null
+  ): void {
+    this.textureManager.applyToFloorRegions(defaultAppearance, followAppearance);
   }
 
   setDoorMaterial(_roomId: string, appearance: { type: string; color: string; scale?: number }): void {

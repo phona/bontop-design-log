@@ -918,7 +918,8 @@ export class App {
     for (const [topicId, selection] of Object.entries(scheme.selections)) {
       const effective = selection.default;
       if (effective) {
-        this.houseScene.setSelection(topicId, effective);
+        // DEC-041：传整份 selection（default + roomOverrides），分房覆盖在渲染层生效
+        this.houseScene.setSelection(topicId, effective, selection);
         this.schemePanel.setActiveOption(topicId, effective, []);
       }
     }

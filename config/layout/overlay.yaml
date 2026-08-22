@@ -173,7 +173,8 @@ elements:
       - { x: 13.40, z: 2.90 }
       - { x: 13.40, z: 4.30 }
       - { x: 10.80, z: 4.30 }
-    reason: "入户到客厅的过渡地面"
+    follow: living_dining
+    reason: "入户到客厅的过渡地面（DEC-041：跟随客厅有效地材，避免分房换材时断层）"
 
   - id: corridor_floor
     type: floor_region

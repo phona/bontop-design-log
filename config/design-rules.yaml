@@ -16,7 +16,6 @@ budget:
   baseCategoriesFrom: config/budget/base.json
   topicCategories:
     floor: masonry
-    bedroom_floor: masonry
     wall: masonry
     paint: painting
     hvac: hvac
@@ -66,17 +65,15 @@ budget:
     wardrobe_180: wardrobe
     sofa_3seat: sofa
     shoe_cabinet: shoe_cabinet
-  # applyRooms：限定算量范围，避免材料满铺到不施工的房间（电梯井/卧室等）。
-  # floor=湿区+客餐厅（卧室地面待"各房间地面材料"决策后另建 topic）；wall=仅湿区贴砖；cabinet/countertop=仅厨房。
+  # applyRooms：限定算量范围，避免材料满铺到不施工的房间（电梯井等）。
+  # DEC-041：地砖统一为单一 floor topic + 分房覆盖（roomOverrides）。
+  # floor=全屋铺地房间；入户花园 entry_garden 开发商已铺 → 移出算量（渲染仍可视化但不计费，见 DEC-041）。
+  # 显式房间覆盖（roomOverrides）始终尊重并计费，applyRooms 仅约束 default 满铺。wall=仅湿区贴砖；cabinet/countertop=仅厨房。
   lineItems:
     - topic: floor
       quantityField: floorArea
       calcMode: area
-      applyRooms: [master_bath, guest_bath, kitchen, balcony, living_dining, entry_garden]
-    - topic: bedroom_floor
-      quantityField: floorArea
-      calcMode: area
-      applyRooms: [master_bedroom, study, bedroom_nw, bedroom_se]
+      applyRooms: [master_bath, guest_bath, kitchen, balcony, living_dining, master_bedroom, study, bedroom_nw, bedroom_se]
     - topic: wall
       quantityField: wetWallArea
       calcMode: area

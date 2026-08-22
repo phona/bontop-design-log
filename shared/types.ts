@@ -108,7 +108,8 @@ export interface Topic {
   id: string;
   name: string;
   options: TopicOption[];
-  apply(scene: SceneApi, optionId: string): string[];
+  /** selection 为完整分房状态（default + roomOverrides）；支持分房的 topic（floor/paint/wall）消费它，其余 topic 可忽略 */
+  apply(scene: SceneApi, optionId: string, selection?: TopicSelection): string[];
   validate?(scene: SceneApi, optionId: string): string[];
 }
 
@@ -438,7 +439,7 @@ export type SceneElement =
       height: number;
       sill: number;
     }
-  | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string }
+  | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string }
   | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }

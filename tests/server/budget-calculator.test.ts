@@ -424,24 +424,37 @@ describe('BudgetCalculator', () => {
     }
   });
 
-  it('applyRooms restricts floor line items to wet+public rooms (calibration)', () => {
+  it('DEC-041: unified floor topic bills all rooms except entry_garden (developer-finished skip)', () => {
     const catalog = ProjectCatalog.load('.');
     const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
     const calc = new BudgetCalculator(catalog, realRules);
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
-      selections: { floor: { default: 'floor_tile_01', roomOverrides: {} } },
+      selections: { floor: { default: 'floor_pbr_tile_612', roomOverrides: {} } },
     };
     const snapshot = calc.calculate(scheme);
     const floorRooms = new Set(
       snapshot.lineItems.filter((li) => li.topic === 'floor').map((li) => li.roomId)
     );
-    const excluded = ['master_bedroom', 'study', 'bedroom_nw', 'bedroom_se', 'elevator_shaft'];
-    for (const rid of excluded) {
-      assert.ok(!floorRooms.has(rid), `floor must NOT apply to ${rid}`);
+    assert.ok(!floorRooms.has('entry_garden'), 'entry_garden skipped (开发商已铺)');
+    assert.ok(!floorRooms.has('elevator_shaft'), 'elevator_shaft never billed');
+    for (const rid of ['kitchen', 'living_dining', 'master_bedroom', 'study', 'bedroom_nw', 'bedroom_se']) {
+      assert.ok(floorRooms.has(rid), `floor applies to ${rid}`);
     }
-    assert.ok(floorRooms.has('kitchen'), 'floor applies to kitchen');
-    assert.ok(floorRooms.has('living_dining'), 'floor applies to living_dining');
+  });
+
+  it('DEC-041: explicit entry_garden override re-enables billing (overrides always respected)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const calc = new BudgetCalculator(catalog, realRules);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: { floor: { default: 'floor_pbr_tile_612', roomOverrides: { entry_garden: 'floor_tile_01' } } },
+    };
+    const snapshot = calc.calculate(scheme);
+    const entryItem = snapshot.lineItems.find((li) => li.topic === 'floor' && li.roomId === 'entry_garden');
+    assert.ok(entryItem, 'explicit override bypasses applyRooms skip');
+    assert.ok((entryItem?.cost ?? 0) > 0);
   });
 
   it('cabinet scoped to kitchen only (calibration)', () => {
@@ -458,23 +471,18 @@ describe('BudgetCalculator', () => {
     assert.equal(cabinetItems[0].roomId, 'kitchen');
   });
 
-  it('bedroom_floor prices only the 4 bedrooms (决策闭环)', () => {
+  it('DEC-041: per-room floor override bills the overridden option', () => {
     const catalog = ProjectCatalog.load('.');
     const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
     const calc = new BudgetCalculator(catalog, realRules);
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
-      selections: { bedroom_floor: { default: 'bedroom_tile_01', roomOverrides: {} } },
+      selections: { floor: { default: 'floor_pbr_tile_612', roomOverrides: { living_dining: 'floor_pbr_herringbone' } } },
     };
     const snapshot = calc.calculate(scheme);
-    const rooms = new Set(
-      snapshot.lineItems.filter((li) => li.topic === 'bedroom_floor').map((li) => li.roomId)
-    );
-    assert.deepEqual(
-      [...rooms].sort(),
-      ['bedroom_nw', 'bedroom_se', 'master_bedroom', 'study'],
-      'bedroom_floor applies to exactly the 4 bedrooms'
-    );
+    const livingItem = snapshot.lineItems.find((li) => li.topic === 'floor' && li.roomId === 'living_dining');
+    assert.ok(livingItem);
+    assert.equal(livingItem?.optionId, 'floor_pbr_herringbone');
     const masonry = snapshot.categories.find((c) => c.key === 'masonry');
     assert.ok(masonry && masonry.autoActual > 0);
   });

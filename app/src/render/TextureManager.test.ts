@@ -98,4 +98,35 @@ describe('TextureManager（PBR 升级）', () => {
     tm.applyToFloorRegions(appearance);
     expect(tm.cachedMaterialCount).toBe(1);
   });
+
+  it('DEC-041: 带 follow 的 floor_region 跟随目标房间材质，其余跟随 default', async () => {
+    const THREE = await import('three');
+    const tm = new TextureManager();
+    const foyer = { userData: { type: 'floor_region', objectId: 'entry_foyer_floor', follow: 'living_dining' }, material: new THREE.MeshStandardMaterial() };
+    const corridor = { userData: { type: 'floor_region', objectId: 'corridor_floor' }, material: new THREE.MeshStandardMaterial() };
+    tm.setMeshes([foyer as never, corridor as never], []);
+    const defaultApp = { type: 'wood_plank', color: '#c49a6c', pattern: 'straight', plank_mm: [800, 800], seed: 42 };
+    const herringbone = { type: 'wood_plank', color: '#c49a6c', pattern: 'herringbone', plank_mm: [150, 900], seed: 42 };
+    tm.applyToFloorRegions(defaultApp, (roomId) => (roomId === 'living_dining' ? herringbone : null));
+    const foyerMat = foyer.material as unknown as Record<string, unknown>;
+    const corridorMat = corridor.material as unknown as Record<string, unknown>;
+    expect(foyerMat.map).toBeDefined();
+    expect(corridorMat.map).toBeDefined();
+    // 两种拼法不得共用材质（缓存键区分）
+    expect(foyerMat.map).not.toBe(corridorMat.map);
+    expect(tm.cachedMaterialCount).toBe(2);
+  });
+
+  it('DEC-041: applyToRoom(ceiling) 只染基础天花，不碰墙/地板/吊顶 solid', async () => {
+    const THREE = await import('three');
+    const tm = new TextureManager();
+    const ceiling = { userData: { type: 'ceiling', roomId: 'living_dining' }, material: new THREE.MeshStandardMaterial() };
+    const zoneSolid = { userData: { type: 'ceiling_zone_solid', roomId: 'living_dining' }, material: new THREE.MeshStandardMaterial() };
+    const wall = { userData: { type: 'wall', roomId: 'living_dining' }, material: new THREE.MeshStandardMaterial() };
+    tm.setMeshes([], [wall as never], [ceiling as never, zoneSolid as never]);
+    tm.applyToRoom('living_dining', { type: 'matte_paint', color: '#f7f5ef' }, 'ceiling');
+    expect((ceiling.material as unknown as Record<string, unknown>).map).toBeDefined();
+    expect((zoneSolid.material as unknown as Record<string, unknown>).map).toBeUndefined();
+    expect((wall.material as unknown as Record<string, unknown>).map).toBeUndefined();
+  });
 });

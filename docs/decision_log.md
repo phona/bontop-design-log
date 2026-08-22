@@ -660,6 +660,43 @@
 
 ---
 
+### DEC-2026-08-21-041 地砖系统抽象重构：单一 floor topic + 分房状态（roomOverrides 全链路贯通）
+
+- **日期**：2026-08-21
+- **决策事项**：重构地面/墙面选材系统——废除"全局一刀切 + 房间硬编码"，改为"房间多边形=状态单元"的分房选材架构；顺带修复墙漆链路两个既有缺陷
+- **背景**（业主原话要点）："客厅区域可以考虑人字拼；卧室/卫生间/入户花园不用人字拼（开发商搞定了）"；"按照 vertices 架构，框出来的多边形标记房间号，就可以对它做状态更新"；对 keep_existing 特殊状态方案的否决："不用单独搞个状态，正常允许自定义，只是在决策日志跟预算表里可以 skip 它"
+- **选定方案**：
+  - **单一 floor topic 管全屋地面**：撤销 bedroom_floor topic（删 BedroomFloorTopic/BEDROOM_ROOM_IDS 硬编码、删 bedroom_tile_01/bedroom_tile_612/bedroom_herringbone_01 三条镜像材料，bedroom_wood_01 归入 floor）；`selections.floor = { default, roomOverrides }` 为唯一地面状态源，任何房间可 override 为调色板任意材料
+  - **渲染/预算/UI/对比模式全链路消费 roomOverrides**：FloorTopic/PaintTopic/WallTopic 分房分组应用；App.applyScheme 与 Tab 对比模式传整份 selection（删除 applySchemeTextures 重复路径）；floor_region 新增 `follow` 字段（entry_foyer_floor 跟随 living_dining，避免分房换材断层）
+  - **入户花园"开发商已铺"的表达方式**：不造特殊材质状态——渲染层照常可自定义；仅移出预算 applyRooms（不计费）+ 本条决策记录。显式 override 仍可随时为其计费（"显式覆盖始终尊重"既有语义）
+  - **墙面系统同步升级**：PaintTopic/WallTopic 分房覆盖；天花 mesh 跟随所在房间墙漆（消除"点天花选漆却只改墙"的旧误导）
+  - **既有 bug 顺带修复**：①designData 误用 `byTopicId('latex_paint')` 导致墙漆选项列表恒为空（材料 topic_id 实为 "paint"），墙漆方案此前从未真正应用；②buildFromCatalog 未重置 ceilingMeshes（重建泄漏）
+- **初始状态**：floor.default=floor_pbr_tile_612，roomOverrides={}。客厅人字拼**不预设**——InfoPanel 点客厅地板→"仅当前房间"即可启用评估（MCP set_selection 带 roomId 同样可用）
+- **预算影响**：地面算量范围=全屋除入户花园/电梯井（约 124.4㎡）；612 暂估口径 ≈14.0k；入户花园若日后显式 override 将重新计费
+- **关联文件**：`shared/types.ts`（Topic.apply 第三参/floor_region.follow）、`app/src/topics/{FloorTopic,PaintTopic,WallTopic,TopicRegistry}.ts`、`app/src/render/{HouseScene,TextureManager}.ts`、`app/src/App.ts`、`app/src/data/designData.ts`、`config/materials.yaml`、`config/design-rules.yaml`（lineItems/objectMapping 不变）、`config/layout/overlay.yaml`、`server/overlay-merge.ts`、`config/procurement.yaml`、`data/current-scheme.json`
+- **决策人**：业主
+
+---
+
+### DEC-2026-08-21-042 地砖分区定案：全屋浅橡木错缝通铺 + 湿区分化（防滑小砖/客卫小花砖）
+
+- **日期**：2026-08-21
+- **决策事项**：地砖分区设计方案落地（室内设计口径，基于 DEC-041 分房选材架构）
+- **设计主题**：「浅橡木为底，中古家具为主角」——底色安静温暖哑光，亮点交给家具与光；钱花在最大视觉面（客餐厅），但不靠拼花堆造型，靠大规格+近色缝+柔光釉铺出"整"
+- **选定方案**：
+  - **公共主轴+卧室（客餐厅/开放厨房/走廊/四卧室）**：维持 `floor_pbr_tile_612`——600×1200 浅暖橡木木纹砖步步高错缝通铺、近色环氧彩砂美缝（DEC-040 定案不动）；开放厨房不换砖跟随通铺；卧室门口不设过门石
+  - **主卫+生活阳台**：`floor_tile_antislip_400`——400×400 暖灰哑光防滑砖（R10+），小规格好找坡排水，暖灰与全屋暖调同源（新增材料，暂估 12 元/片）
+  - **客卫**：`floor_tile_deco_small`——复古小花砖，全屋唯一图案跳跃点（"首饰盒"时刻，3.1㎡ 成本可控；新增材料，暂估 200 元/㎡，花色到店选样）
+  - **人字拼**：全屋零启用（含客厅）；降回候选纪律不变（门店样板终审）
+  - **入户花园**：不动（DEC-041 口径）
+- **决策依据**：中古胡桃风格"浅底深器"撞色结构；南宁回南天拒亮光/深模具釉（柔光哑光全线）；湿区功能分化（防滑/找坡）但不离暖调；装饰溢价克制（小花砖仅 3㎡）
+- **预算影响**：引擎口径约 +92 元（主卫 632→454、阳台 216→154、客卫 354→686，暂估价），总额 ≈14.1k；小花砖真实溢价待门店终核（待决 #8 口径 +0.9~1.5k）
+- **遗留**：两款湿区砖型号/花色均待门店选样终核；400 砖暂估价与小花砖暂估价为设计占位，施工图前复核
+- **关联文件**：`config/materials.yaml`（新增 floor_tile_antislip_400/floor_tile_deco_small）、`data/current-scheme.json`（floor.roomOverrides：master_bath/guest_bath/balcony）、`config/procurement.yaml`
+- **决策人**：业主
+
+---
+
 ## 待决策事项
 
 ### 未决（2026-08-12 法式方案评审新增，均可单独否决）
@@ -670,7 +707,7 @@
 5. **客餐厅人字拼**：~~3D 关未过（2026-08-12 走查"不惊艳"）~~ → ~~已定案（DEC-2026-08-20-024 全屋人字拼）~~ → **已推翻**（DEC-2026-08-21-040：成本爆炸，改 600×1200 错缝通铺）。人字拼降回候选：门店样板终审，"能让人哇出来"才复活，否则正式放弃。
 6. **厨房框线柜门+黄铜拉手**：+1.5~3k（kitchen_cabinet 池）。法式柜门仅限厨房/玄关/主卫薄柜三处定制，衣柜维持成品推拉门（DEC-013 不动）。
 7. **PU 线条框线**：客厅+主卧 3 面墙，每面 1-2 框，+2~4k（paint 阶段同色刷）。纪律：少量多次，禁满墙。
-8. **卫浴风格包**：黑窄边长虹门×2（+0.6~1k，池内）+ 客卫地面小花砖（+0.9~1.5k）+ 黄铜五金拉丝金（+0.5~1k，花洒维持亮铬防水垢）+ 防霉玻璃胶 + 电热毛巾架（插座已预留 DEC-017）。可选：风暖浴霸×2（+0.8~1.6k，需水电前定，单独回路）。
+8. **卫浴风格包**：黑窄边长虹门×2（+0.6~1k，池内）+ 客卫地面小花砖（+0.9~1.5k，**DEC-042 已建模 floor_tile_deco_small 并落 scheme，待门店选样终核**）+ 黄铜五金拉丝金（+0.5~1k，花洒维持亮铬防水垢）+ 防霉玻璃胶 + 电热毛巾架（插座已预留 DEC-017）。可选：风暖浴霸×2（+0.8~1.6k，需水电前定，单独回路）。
 9. **黑色载体 design rule**：门窗不可动后，8% 哑光黑载体=厨卫门/推拉门/灯具/五金/画框，同色同细度。0 元纪律，待写入 config/design-rules.yaml。
 10. **主卫优化**：轻优化已定方向（大淋浴区+壁龛+家政薄柜 +0.5~1k）；"缩小主卫让面积给邻房"登记为量房后评估项（闸门：立管位置/隔墙承重/玻璃幕角）。
 11. **衣柜核价**（最高优先数据项）：wardrobe_240_01 price=4200 vs notes 1700元/㎡（=11,016/组）矛盾，三组衣柜 ±17k。到店问：计价方式/板材/分组报价。

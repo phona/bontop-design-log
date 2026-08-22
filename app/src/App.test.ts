@@ -130,8 +130,8 @@ vi.mock('./data/designData.js', () => ({
   sanitaryOptions: [],
   interiorDoorOptions: [],
   curtainOptions: [],
-  materialCategories: { floor: [], bedroom_floor: [], wall: [], paint: [], cabinet: [], countertop: [], sanitary: [], door: [], curtain: [] },
-  getMaterialOptions: () => ({ floor: [], bedroom_floor: [], wall: [], paint: [], cabinet: [], countertop: [], sanitary: [], door: [], curtain: [] }),
+  materialCategories: { floor: [], wall: [], paint: [], cabinet: [], countertop: [], sanitary: [], door: [], curtain: [] },
+  getMaterialOptions: () => ({ floor: [], wall: [], paint: [], cabinet: [], countertop: [], sanitary: [], door: [], curtain: [] }),
 }));
 
 const mockRequestAnimationFrame = vi.fn(() => 1);
@@ -296,7 +296,7 @@ describe('App', () => {
       },
     });
 
-    expect(setSelectionSpy).toHaveBeenCalledWith('hvac', 'A1');
+    expect(setSelectionSpy).toHaveBeenCalledWith('hvac', 'A1', { default: 'A1', roomOverrides: {} });
     expect(setActiveOptionSpy).toHaveBeenCalledWith('hvac', 'A1', []);
   });
 

@@ -93,6 +93,8 @@ const FloorRegionSchema = z
     points: z.array(CurtainPointSchema).min(3),
     room: z.string().min(1).optional(),
     reason: z.string().min(1).optional(),
+    // DEC-041：过渡带跟随某房间的有效地面选材（无 follow 则跟随 floor default）
+    follow: z.string().min(1).optional(),
   })
   .strict();
 
