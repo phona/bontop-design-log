@@ -253,7 +253,10 @@ def add_lights(cfg: dict, temp_override: float | None = None) -> int:
         obj = bpy.data.objects.new(lp['id'], data)
         # led_strip 贴墙放会打出眩光斑 → 离墙 0.15m 且朝向房间（本项目仅西墙灯带，法线 +x 朝东）
         off = 0.15 if lp['type'] == 'led_strip' else 0.0
-        obj.location = to_blender(lp['x'] + off, lp['height'], lp['z'])
+        # dome 高度=净高（2.8）时点光源正好嵌进天花网格被整体遮挡（书房北墙全黑确诊案例，
+        # v24 降到 2.55 后房间恢复照明）→ dome 一律下沉 0.25m 到天花以下
+        h = lp['height'] - 0.25 if lp['type'] == 'dome' else lp['height']
+        obj.location = to_blender(lp['x'] + off, h, lp['z'])
         if lp['type'] == 'led_strip':
             import math as _m
             obj.rotation_euler = (0, -_m.radians(90), 0)
@@ -348,7 +351,7 @@ def add_ceiling_finishing(furniture_mats: dict, emit: bool = True) -> int:
     仅渲染评估，不改 ceiling.yaml；设计审查通过后再落成配置。
     living_dining 边界 x∈[7.2,13.4] z∈[2.4,9.8]，净高 2.8m → 跌级 8cm/宽 25cm。"""
     count = 0
-    ceil_m = new_principled('顶面_跌级白', hex_rgb('#f7f5ef'), rough=0.9)
+    ceil_m = new_principled('顶面_跌级白', hex_rgb('#efece4'), rough=0.9)  # 比天花白(#f7f7f5)深半档，跌级才有阴影缝可读
     cove_m = bpy.data.materials.new('顶面_灯槽')
     cove_m.use_nodes = True
     cnt = cove_m.node_tree
@@ -357,7 +360,7 @@ def add_ceiling_finishing(furniture_mats: dict, emit: bool = True) -> int:
     cout = cnt.nodes.new('ShaderNodeOutputMaterial')
     cem = cnt.nodes.new('ShaderNodeEmission')
     cem.inputs['Color'].default_value = (*kelvin_to_rgb(3000), 1.0)
-    cem.inputs['Strength'].default_value = 2.0 if emit else 0.2
+    cem.inputs['Strength'].default_value = 6.0 if emit else 0.2  # 2.0 洗顶太弱看不到灯槽（v19 反馈吊顶效果不明显）
     cnt.links.new(cem.outputs[0], cout.inputs['Surface'])
     vent_m = new_principled('顶面_风口', hex_rgb('#2a2a2a'), rough=0.5, metallic=0.3)
 
@@ -410,6 +413,10 @@ def add_window_portal(portal: dict) -> None:
     obj = bpy.data.objects.new('window_portal', data)
     obj.location = to_blender(portal.get('x', 10.3), portal.get('y', 2.2), portal.get('z', 11.0))
     obj.rotation_euler = (_m.radians(90), 0, 0)  # 灯体 -Z 朝北（指向室内）
+    # Cycles 下 area light 对相机可见：portal 贴在玻璃幕外会把窗外渲染成白板，
+    # 关掉相机/透射可见性——只漫射照明，外景交给 HDRI
+    obj.visible_camera = False
+    obj.visible_transmission = False
     bpy.context.collection.objects.link(obj)
 
 
@@ -597,7 +604,8 @@ def add_camera(cam_cfg: dict) -> None:
 def add_swatches(scenario: dict) -> int:
     """候选色实体色板（材质评审工况）：Principled 纯色 rough 0.9 受场景光渲染，
     与被评材质同光同镜头同 tone transform → 眼睛直接比，禁用 emission。
-    mode=floor 平放贴地（防 z-fighting y=0.002）；mode=vertical 立面（法线 +x 东，用于西墙前景）。
+    mode=floor 平放贴地（y=0.012：高于 app 导出的地板面 y=0.005、低于客厅地毯顶 y=0.03）；
+    mode=vertical 立面（法线 +x 东，用于西墙前景）。
     坐标 three.js 系经 to_blender 转换。"""
     count = 0
     for i, sw in enumerate(scenario.get('swatches') or []):
@@ -607,7 +615,7 @@ def add_swatches(scenario: dict) -> int:
             loc = to_blender(sw['x'], 1.3, sw['z'])
             rot = (0.0, math.pi / 2, 0.0)
         else:
-            loc = to_blender(sw['x'], 0.002, sw['z'])
+            loc = to_blender(sw['x'], 0.012, sw['z'])
             rot = (0.0, 0.0, 0.0)
         bpy.ops.mesh.primitive_plane_add(size=size, location=loc, rotation=rot)
         p = bpy.context.object
@@ -784,7 +792,7 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
                     noise.inputs['Scale'].default_value = 200.0
                     noise.inputs['Detail'].default_value = 4.0
                     bump = nt.nodes.new('ShaderNodeBump')
-                    bump.inputs['Strength'].default_value = 0.12
+                    bump.inputs['Strength'].default_value = 0.25
                     nt.links.new(noise.outputs['Fac'], bump.inputs['Height'])
                     nt.links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
             except Exception:
@@ -799,7 +807,7 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
     return mats
 
 
-def add_pbr_maps(mat, tex_dir, size=2.0, with_diffuse=False, normal_strength=0.5):
+def add_pbr_maps(mat, tex_dir, size=2.0, with_diffuse=False, normal_strength=0.5, tint=None):
     """给已有材质接 PBR 贴图（世界坐标 BOX 投影，免 UV）。
     with_diffuse=False 时保留原 base color（墙面保色号决策），只加 normal+rough。"""
     tex_dir = os.path.normpath(tex_dir)
@@ -816,7 +824,8 @@ def add_pbr_maps(mat, tex_dir, size=2.0, with_diffuse=False, normal_strength=0.5
 
     def img_node(fn, noncolor):
         p = os.path.join(tex_dir, fn)
-        if not os.path.exists(p):
+        # 0 字节坏文件（下载残留）直接跳过，防品红
+        if not os.path.exists(p) or os.path.getsize(p) == 0:
             return None
         img = bpy.data.images.load(p)
         n = nt.nodes.new('ShaderNodeTexImage')
@@ -840,7 +849,16 @@ def add_pbr_maps(mat, tex_dir, size=2.0, with_diffuse=False, normal_strength=0.5
     if with_diffuse:
         dm = img_node('diff.jpg', False)
         if dm:
-            nt.links.new(dm.outputs['Color'], bsdf.inputs['Base Color'])
+            if tint:
+                # diff 乘色压目标色号（浅橡木×深胡桃=带木纹的深胡桃）
+                mul = nt.nodes.new('ShaderNodeMixRGB')
+                mul.blend_type = 'MULTIPLY'
+                mul.inputs['Fac'].default_value = 1.0
+                mul.inputs['Color2'].default_value = (*hex_rgb(tint), 1.0)
+                nt.links.new(dm.outputs['Color'], mul.inputs['Color1'])
+                nt.links.new(mul.outputs['Color'], bsdf.inputs['Base Color'])
+            else:
+                nt.links.new(dm.outputs['Color'], bsdf.inputs['Base Color'])
     return True
 
 
@@ -851,10 +869,13 @@ FURNITURE_GLB = {
     # tint: 可选，对导入材质做乘色（如中色木桌压成深胡桃）
     # DEC-026：沙发/餐椅/茶几换 BlenderKit 现代中古款（Burrard 直排+细腿、
     # 藤编细腿餐椅、Noguchi 黑座玻璃圆几），弃 Chesterfield/高背拉扣/工业方几
-    'sofa_3seat': {'path': 'assets/furniture/burrard_sofa/burrard_sofa.blend', 'width': 2.3, 'height': 0.8, 'tint': '#3a2e26', 'tint_mode': 'solid'},
+    # 布纹底图 col_2（灰蓝）× #a36954 乘色 ≈ 目标深棕 #3a2e26（乘色反推）
+    'sofa_3seat': {'path': 'assets/furniture/burrard_sofa/burrard_sofa.blend', 'width': 2.3, 'height': 0.8, 'tint': '#a36954', 'tint_mode': 'solid', 'fabric_tex': 'assets/textures/fabric_pattern_07', 'fabric_soften': 0.55},
     'dining_chair': {'path': 'assets/furniture/rattan_dining_chair/rattan_dining_chair.blend', 'width': 0.5, 'height': 0.9, 'tint': '#6b4c38'},
     'dining_table': {'path': 'assets/furniture/wooden_table_02/wooden_table_02.gltf', 'width': 1.4, 'height': 0.78, 'tint': '#54382a'},
-    'plant_fiddle': {'path': 'assets/furniture/potted_plant_01/potted_plant_01.gltf', 'width': 0.6},
+    'plant_fiddle': {'path': 'assets/furniture/potted_plant_01/potted_plant_01.gltf', 'width': 0.6, 'tint': '#a89a8c'},  # 陶土盆亮橙太跳，乘灰陶色压暗
+    # 床 GLB（bed_soft_modern）暂不进管线：headless 下导入姿态不稳（baked 倾角+辅助 Cube，
+    # 见 docs/renders/pipeline-acceptance.md v16 节），回退程序化床体；待 GUI Blender 定姿后再启用
 }
 
 
@@ -885,6 +906,11 @@ def import_furniture_glb(glb_path: str, targets: dict, block=None, loc_rz=None, 
     else:
         bpy.ops.import_scene.gltf(filepath=glb_path)
     new_objs = [obj for obj in bpy.data.objects if obj.name not in existing and obj.type == 'MESH']
+    # drop_nodes：资产导出残留的辅助节点（如 bed_soft_modern 的 2m 包围盒 Cube），不参与合并；
+    # 导入可能因重名加 .NNN 后缀，按前缀匹配。
+    # 注：drop_nodes/level_x/flip_axis 当前无条目引用（床 GLB 回退程序化），属预留机制，床启用时生效
+    for drop in targets.get('drop_nodes', []):
+        new_objs = [o for o in new_objs if o.name != drop and not o.name.startswith(drop + '.')]
     if not new_objs:
         print(f'[dress_scene] WARN glb 导入无 mesh: {glb_path}')
         return 0
@@ -947,7 +973,40 @@ def import_furniture_glb(glb_path: str, targets: dict, block=None, loc_rz=None, 
             if solid:
                 for link in list(base_in.links):
                     nt.links.remove(link)
-                base_in.default_value = (*hex_rgb(tint), 1.0)
+                # fabric_tex：纯色修正但保布纹（沙发原布料色相不对，替换为布纹×色号乘色）
+                ftex = targets.get('fabric_tex')
+                diff = os.path.join(ftex, 'diff.jpg') if ftex else None
+                # 0 字节坏文件回退纯色（防占位文件渲染品红）
+                if diff and os.path.exists(diff) and os.path.getsize(diff) > 0:
+                    geo = nt.nodes.new('ShaderNodeNewGeometry')
+                    mp = nt.nodes.new('ShaderNodeMapping')
+                    mp.inputs['Scale'].default_value = (1.0 / 0.35,) * 3
+                    img = bpy.data.images.load(diff)
+                    tn = nt.nodes.new('ShaderNodeTexImage')
+                    tn.image = img
+                    tn.projection = 'BOX'
+                    tn.projection_blend = 0.3
+                    mul2 = nt.nodes.new('ShaderNodeMixRGB')
+                    mul2.blend_type = 'MULTIPLY'
+                    mul2.inputs['Fac'].default_value = 1.0
+                    mul2.inputs['Color2'].default_value = (*hex_rgb(tint), 1.0)
+                    nt.links.new(geo.outputs['Position'], mp.inputs['Vector'])
+                    nt.links.new(mp.outputs['Vector'], tn.inputs['Vector'])
+                    # fabric_soften（0~1）：先把布纹往中灰抹平再乘色，压低格纹对比度
+                    # （fabric_pattern_07 棋盘格 35cm 重复太跳，沙发显"贴皮"）
+                    soften = float(targets.get('fabric_soften', 0.0))
+                    if soften > 0:
+                        flat = nt.nodes.new('ShaderNodeMixRGB')
+                        flat.blend_type = 'MIX'
+                        flat.inputs['Fac'].default_value = soften
+                        flat.inputs['Color2'].default_value = (0.62, 0.60, 0.57, 1.0)
+                        nt.links.new(tn.outputs['Color'], flat.inputs['Color1'])
+                        nt.links.new(flat.outputs['Color'], mul2.inputs['Color1'])
+                    else:
+                        nt.links.new(tn.outputs['Color'], mul2.inputs['Color1'])
+                    nt.links.new(mul2.outputs['Color'], base_in)
+                else:
+                    base_in.default_value = (*hex_rgb(tint), 1.0)
                 continue
             mul = nt.nodes.new('ShaderNodeMixRGB')
             mul.blend_type = 'MULTIPLY'
@@ -969,16 +1028,31 @@ def import_furniture_glb(glb_path: str, targets: dict, block=None, loc_rz=None, 
     if loc_rz is not None:
         (lx, ly, lz), rz = loc_rz
         obj.location = (lx, ly, lz)
-        yaw = Quaternion((0, 0, 1), rz + math.radians(rot_fix))
-        obj.rotation_mode = 'QUATERNION'
-        obj.rotation_quaternion = yaw @ orig_quat
+        base = Quaternion((0, 0, 1), rz + math.radians(rot_fix))
     else:
         mw = block.matrix_world
         obj.location.x = mw.translation.x
         obj.location.y = mw.translation.y
-        yaw = mw.to_quaternion() @ Quaternion((0, 0, 1), math.radians(rot_fix))
-        obj.rotation_mode = 'QUATERNION'
-        obj.rotation_quaternion = yaw @ orig_quat
+        base = mw.to_quaternion() @ Quaternion((0, 0, 1), math.radians(rot_fix))
+    # level_x：资产自带展示倾角（如 bed_soft_modern 根节点 baked 30.5° X 倾斜）。
+    # block 四元数可能含额外 X 分量使共轭变号，故两符号都试、取高度小者。
+    # flip_axis：180° 翻转绕长轴纠正正反面（自共轭，不受 block 旋转影响），不改变床头端
+    level_deg = targets.get('level_x', 0)
+    flip = {'X': (1, 0, 0), 'Y': (0, 1, 0), 'Z': (0, 0, 1)}.get(targets.get('flip_axis', ''))
+    flip_q = Quaternion(flip, math.pi) if flip else Quaternion()
+    obj.rotation_mode = 'QUATERNION'
+    obj.rotation_quaternion = base @ flip_q @ Quaternion((1, 0, 0), math.radians(level_deg)) @ orig_quat
+    if level_deg:
+        bpy.context.view_layer.update()
+        bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
+        h1 = max(c.z for c in bb) - min(c.z for c in bb)
+        obj.rotation_quaternion = base @ flip_q @ Quaternion((1, 0, 0), math.radians(-level_deg)) @ orig_quat
+        bpy.context.view_layer.update()
+        bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
+        if max(c.z for c in bb) - min(c.z for c in bb) < h1:
+            pass  # 负号更平，保持
+        else:
+            obj.rotation_quaternion = base @ flip_q @ Quaternion((1, 0, 0), math.radians(level_deg)) @ orig_quat
     bpy.context.view_layer.update()
     # 旋转后重新算世界包围盒 → 贴地（保证旋转不抬升）
     bb2 = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
@@ -1006,6 +1080,11 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
             continue
         ftype = parts[2]
         if ftype not in FURNITURE_PARTS:
+            # 专用构建器覆盖的类型（add_kitchen_cabinets）：隐藏 glb 色块避免双重几何压色
+            if ftype in ('kitchen_cabinet_run',):
+                obj.hide_render = True
+                for child in obj.children_recursive:
+                    child.hide_render = True
             continue
         # 隐藏色块组 + 子 mesh
         obj.hide_render = True
@@ -1015,9 +1094,11 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
         glb_cfg = FURNITURE_GLB.get(ftype)
         if glb_cfg and config_dir:
             glb_path = os.path.join(config_dir, glb_cfg['path'])
+            if glb_cfg.get('fabric_tex'):
+                glb_cfg = {**glb_cfg, 'fabric_tex': os.path.join(config_dir, glb_cfg['fabric_tex'])}
             if os.path.exists(glb_path):
-                if import_furniture_glb(glb_path, glb_cfg, block=obj,
-                                        rot_fix={'bed_180': 180, 'bed_150': 180}.get(ftype, 0)):
+                # 床 GLB 原生床头朝 +Y，与 block yaw 直接对齐，无需补正（旧 180 为悬案误值）
+                if import_furniture_glb(glb_path, glb_cfg, block=obj, rot_fix=0):
                     count += 1
                     continue
         # 读取世界坐标 + 旋转
@@ -1411,6 +1492,14 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
         for o in bpy.data.objects:
             if o.name.endswith(':blackout'):
                 o.hide_render = True
+    # 纱帘状态配置驱动：sheer_state=open → 隐藏 GLB 内的 :sheer 对象（视同收起），
+    # 并跳过下方 add_sheer_panels 的补充纱帘。
+    # daylight 西晒时太阳直射会把整面纱帘打成白色柔光箱，窗外 HDRI 完全看不见。
+    sheer_open = scenario.get('sheer_state', 'closed') == 'open'
+    if sheer_open:
+        for o in bpy.data.objects:
+            if o.name.endswith(':sheer'):
+                o.hide_render = True
     scene = bpy.context.scene
     used_engine = set_engine(scene, args['engine'], samples=int(args.get('samples', 256)))
     sheer_opacity = scenario.get('sheer_opacity', 0.15)
@@ -1428,12 +1517,35 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
                  size=2.5, with_diffuse=False, normal_strength=0.3)
     countertop_mat = mats.get('countertop') or furniture_mats.get('quartz')
     cabinet_mat = mats.get('cabinet') or furniture_mats.get('paint_cream')
+    # 石英石台面保持素面（真实石英石即素色；marble_01 深脉纹挂 diffuse 显脏，v20 试过回退）：
+    # 只挂 normal+rough 微肌理，不动色号
     add_pbr_maps(countertop_mat, os.path.join(tex_base, 'marble_01'),
                  size=3.0, with_diffuse=False, normal_strength=0.4)
     add_pbr_maps(furniture_mats.get('wood'), os.path.join(tex_base, 'oak_veneer_01'),
                  size=1.0, with_diffuse=True, normal_strength=0.3)
+    # 深胡桃程序件（TV背板/开放格/低柜/茶几面/柜门拉手）：橡木 diff 乘色压深胡桃，出木纹
+    add_pbr_maps(furniture_mats.get('wood_dark'), os.path.join(tex_base, 'oak_veneer_02'),
+                 size=1.2, with_diffuse=True, normal_strength=0.3, tint='#503e2e')
+    # 床品只挂 bump 不开 diffuse：保白色床品口径（SOURCES.md）；布纹底图 col_2 供沙发乘色用
     add_pbr_maps(furniture_mats.get('fabric_white'), os.path.join(tex_base, 'fabric_pattern_07'),
                  size=0.35, with_diffuse=False, normal_strength=1.0)
+    # 玻璃参数场景级覆盖：daylight 室内被太阳+portal 打得很亮，Low-E 玻璃（IOR 1.5 + coat 0.3）
+    # 会把窗变成镜子（反射亮室内盖过窗外 HDRI）。glass_ior≈1.02 近零反射，只留透射外景。
+    if scenario.get('glass_ior'):
+        g = mats.get('glass')
+        if g and g.use_nodes:
+            bsdf = _find_node(g.node_tree, 'ShaderNodeBsdfPrincipled')
+            if bsdf:
+                bsdf.inputs['IOR'].default_value = float(scenario['glass_ior'])
+                if 'Coat Weight' in bsdf.inputs:
+                    bsdf.inputs['Coat Weight'].default_value = float(scenario.get('glass_coat', 0.0))
+    # 硬装补充贴图：木门木纹（乘色保色号）、遮光帘布纹、窗台石石材肌理
+    add_pbr_maps(mats.get('door'), os.path.join(tex_base, 'oak_veneer_01'),
+                 size=1.0, with_diffuse=True, normal_strength=0.3, tint='#8a6f52')
+    add_pbr_maps(mats.get('curtain_fabric'), os.path.join(tex_base, 'fabric_pattern_07'),
+                 size=0.5, with_diffuse=False, normal_strength=0.6)
+    add_pbr_maps(mats.get('sill'), os.path.join(tex_base, 'marble_01'),
+                 size=1.5, with_diffuse=False, normal_strength=0.3)
     add_pbr_maps(furniture_mats.get('fabric'), os.path.join(tex_base, 'fabric_pattern_07'),
                  size=0.35, with_diffuse=False, normal_strength=1.0)
     replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '')
@@ -1443,7 +1555,11 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     add_kitchen_cabinets(cabinet_mat, countertop_mat)
     add_bath_fixtures(furniture_mats)
     add_soft_decor(furniture_mats)
-    add_sheer_panels(args.get('config-dir') or '', mats)
+    # 纱帘状态配置驱动：sheer_state=open → 不生成（视同收起）。
+    # daylight 西晒时太阳直射会把整面纱帘打成白色柔光箱，窗外 HDRI 完全看不见，
+    # 想看外景的工况应设 sheer_state: open。
+    if scenario.get('sheer_state', 'closed') != 'open':
+        add_sheer_panels(args.get('config-dir') or '', mats)
     swatch_count = add_swatches(scenario)
     # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）
     fill = scenario.get('fill_light') or cam_cfg.get('fill_light')
@@ -1457,7 +1573,17 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
         fl.color = kelvin_to_rgb(scenario.get('light_temp', 6500))
         tgt = cam_cfg.get('target', [0, 0, 0])
         fl_obj = bpy.data.objects.new('fill_light', fl)
-        fl_obj.location = to_blender(tgt[0], 2.5, tgt[2])
+        if cam_cfg.get('fill_from_camera'):
+            # 相机同轴补光：放机位、对准 target。用于高柜挡死顶灯的房间（如书房 bookshelf
+            # 把 55W dome 的光影投满北墙），默认的"target 正上方垂直向下"只照亮地面，
+            # 墙面全黑且灯平面贴天花会在墙顶炸出高光带
+            import mathutils as _mu
+            pos = cam_cfg.get('position', [0, 1.6, 0])
+            fl_obj.location = to_blender(pos[0], pos[1], pos[2])
+            direction = _mu.Vector(to_blender(tgt[0], tgt[1], tgt[2])) - fl_obj.location
+            fl_obj.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+        else:
+            fl_obj.location = to_blender(tgt[0], 2.5, tgt[2])
         bpy.context.collection.objects.link(fl_obj)
     if scenario.get('lights_on', True):
         add_lights(cfg, temp_override=scenario.get('light_temp'))

@@ -16,7 +16,9 @@ def resolve_scheme(scheme: dict, mats: dict) -> dict[str, str]:
         'floor': 'floor',
         'bedroom_floor': 'floor',
         'paint': 'wall',
-        'wall': 'wall',
+        # 墙砖独立成 'wall_tile' key：GLB 墙段（wall:seg:N）无房间归属信息，
+        # 无法只挂厨卫墙面 → 全屋墙面仍吃 paint 乳胶漆，墙砖材质只生成不挂载
+        'wall': 'wall_tile',
         'curtain': 'curtain_fabric',
         'cabinet': 'cabinet',
         'countertop': 'countertop',
@@ -210,6 +212,51 @@ def _build_pbr_textured(mid: str, app: dict, config_dir: str):
     return mat
 
 
+def _build_ceramic_tile(mid: str, app: dict, np_, color):
+    """ceramic_tile_v2：釉面砖纯色基底 + Brick 纹理程序化砖缝。
+    300x600mm 普通错缝（pattern: basket 简化为默认 0.5 步步高错缝，不过度设计）；
+    砖缝比砖面略深略灰，法线细微 bump。砖色保持 appearance.color 不变。"""
+    import bpy
+    finish = app.get('finish', 'soft')
+    mat = np_(f'方案_{mid}', color, rough=0.2 if finish != 'matte' else 0.5, coat=0.3)
+    try:
+        nt = mat.node_tree
+        bsdf = next((n for n in nt.nodes if n.bl_idname == 'ShaderNodeBsdfPrincipled'), None)
+        if bsdf is None:
+            return mat
+        tile_w = app.get('tile_width', 0.3)   # 砖宽（横缝间距）
+        tile_h = app.get('tile_height', 0.6)  # 砖高（竖缝间距）
+        uv = nt.nodes.new('ShaderNodeTexCoord')
+        mapping = nt.nodes.new('ShaderNodeMapping')
+        mapping.inputs['Scale'].default_value = (1.0 / tile_w, 1.0 / tile_h, 1.0)
+        nt.links.new(uv.outputs['UV'], mapping.inputs['Vector'])
+        brick = nt.nodes.new('ShaderNodeTexBrick')
+        # mapping 已把 UV 换算成"砖单位"（1 单位=1 块砖），砖机网格对齐到 1×1：
+        # [0]Vector [1]Color1 [2]Color2 [3]Mortar [4]Scale [5]MortarSize [6]Smooth [7]Bias [8]BrickW [9]RowH
+        brick.inputs[8].default_value = 1.0  # Brick Width = 1 砖宽
+        brick.inputs[9].default_value = 1.0  # Row Height = 1 砖高
+        brick.inputs[1].default_value = (*color, 1)  # Color1
+        brick.inputs[2].default_value = (*color, 1)  # Color2（同版无色差）
+        g = tuple(c * 0.72 for c in color)  # 砖缝：比砖面略深略灰
+        brick.inputs[3].default_value = (*g, 1)  # Mortar
+        brick.inputs[5].default_value = app.get('grout_frac', 0.01)  # 砖缝占砖宽比例（300mm×1%≈3mm）
+        nt.links.new(mapping.outputs['Vector'], brick.inputs['Vector'])
+        nt.links.new(brick.outputs['Color'], bsdf.inputs['Base Color'])
+        # 砖缝微凹：1-Fac 使砖面凸起、缝下陷，细 bump 出网格阴影
+        sub = nt.nodes.new('ShaderNodeMath')
+        sub.operation = 'SUBTRACT'
+        sub.inputs[0].default_value = 1.0
+        nt.links.new(brick.outputs['Fac'], sub.inputs[1])
+        bump = nt.nodes.new('ShaderNodeBump')
+        bump.inputs['Strength'].default_value = 0.2
+        bump.inputs['Distance'].default_value = 0.001
+        nt.links.new(sub.outputs[0], bump.inputs['Height'])
+        nt.links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+    except Exception as e:
+        print(f'[materials] WARN 砖缝网格生成失败({mid}): {e} → 回退纯色釉面')
+    return mat
+
+
 def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
                          cache_dir: str | None = None,
                          config_dir: str | None = None) -> dict:
@@ -247,7 +294,7 @@ def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
         elif typ == 'solid_color':
             mat = np_(f'方案_{mid}', color, rough=rough)
         elif typ == 'ceramic_tile_v2':
-            mat = np_(f'方案_{mid}', color, rough=0.2 if finish != 'matte' else 0.5, coat=0.3)
+            mat = _build_ceramic_tile(mid, app, np_, color)
         else:
             mat = np_(f'方案_{mid}', color, rough=rough)
         # 墙面漆面微纹理（橙皮纹）：细微程序化 bump，不下载贴图
