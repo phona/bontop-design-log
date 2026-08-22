@@ -348,7 +348,8 @@
       "scenarios": [
         "material_review"
       ],
-      "fill_light": 150
+      "fill_light": 100,
+      "exposure": -0.5
     },
     {
       "id": "living_floor_closeup",
@@ -514,9 +515,7 @@
       "lens": 24,
       "scenarios": [
         "material_review"
-      ],
-      "fill_light": 60,
-      "fill_from_camera": true
+      ]
     },
     {
       "id": "bedroom_nw_overview",
@@ -576,7 +575,7 @@
     },
     {
       "id": "balcony_overview",
-      "label": "生活阳台",
+      "label": "生活阳台（1.6×1.2m 极小阳台+玻璃门隔断，机位局限性接受；v30 门外取景被玻璃挡回退）",
       "position": [
         7,
         1.5,

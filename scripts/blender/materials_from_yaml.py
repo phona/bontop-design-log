@@ -16,8 +16,8 @@ def resolve_scheme(scheme: dict, mats: dict) -> dict[str, str]:
         'floor': 'floor',
         'bedroom_floor': 'floor',
         'paint': 'wall',
-        # 墙砖独立成 'wall_tile' key：GLB 墙段（wall:seg:N）无房间归属信息，
-        # 无法只挂厨卫墙面 → 全屋墙面仍吃 paint 乳胶漆，墙砖材质只生成不挂载
+        # 墙砖独立成 'wall_tile' key：GLB 墙段命名 wall:seg:N:room=r1|r2 带房间归属，
+        # dress_scene.classify 只给厨卫/阳台（WET_ROOM_IDS）墙段挂砖，其余墙面仍吃 paint 乳胶漆
         'wall': 'wall_tile',
         'curtain': 'curtain_fabric',
         'cabinet': 'cabinet',

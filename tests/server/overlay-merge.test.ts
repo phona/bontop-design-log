@@ -223,6 +223,16 @@ describe('mergeSceneElements', () => {
     for (const el of out) assert.equal(el.type, 'wall');
   });
 
+  it('passes wall rooms (model-geometry 拓扑归属) through to scene elements', () => {
+    const walls: WallSegment[] = [
+      { id: 'w_k_north', x1: 0, z1: 0, x2: 3, z2: 0, rooms: ['kitchen', 'living_dining'] },
+      { id: 'w_east', x1: 5, z1: 0, x2: 8, z2: 0 },
+    ];
+    const out = mergeSceneElements(walls, undefined);
+    assert.deepEqual(out[0], { type: 'wall', id: 'wall:seg:0', x1: 0, z1: 0, x2: 3, z2: 0, rooms: ['kitchen', 'living_dining'] });
+    assert.deepEqual(out[1], { type: 'wall', id: 'wall:seg:1', x1: 5, z1: 0, x2: 8, z2: 0 });
+  });
+
   it('suppress removes segments whose midpoint is inside region', () => {
     const cfg = parseOverlay(`
 version: 1

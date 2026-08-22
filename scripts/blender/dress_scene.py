@@ -13,6 +13,7 @@ import bpy
 import json
 import math
 import os
+import re
 import sys
 
 # 确保同目录的 dress_config / materials_from_yaml 可导入（Blender --python 不自动加脚本目录）
@@ -22,6 +23,19 @@ GLASS_IDS = {
     'west_curtain', 'kitchen_north_curtain', 'north_recess_curtain',
     'living_south_curtain', 'south_east_curtain',
 }
+
+# 厨卫/阳台墙面贴砖：GLB 墙段命名 wall:seg:N:room=r1|r2（export-gltf exportName，
+# 房间归属来自 model-geometry 墙→房间拓扑），命中湿区即挂 mats['wall_tile']
+WET_ROOM_IDS = {'kitchen', 'master_bath', 'guest_bath', 'balcony'}
+_WALL_SEG_ROOM_RE = re.compile(r'^wall:seg:\d+:room=([a-z0-9_|]+)')
+
+
+def _wall_seg_rooms(name: str) -> set:
+    """解析墙段导出名的房间归属（容差 Blender 重名 .NNN 后缀：正则只吃到 | 与字母数字）。"""
+    m = _WALL_SEG_ROOM_RE.match(name)
+    if not m:
+        return set()
+    return {r for r in m.group(1).split('|') if r}
 
 LIGHT_ENERGY = {  # 瓦（Cycles/EEVEE 通用，先求氛围对再校绝对亮度）
     'pendant': 110.0,
@@ -148,6 +162,9 @@ def classify(obj: bpy.types.Object) -> str:
         return 'floor'
     if n.startswith('ceiling') or n.startswith('cz:'):
         return 'ceiling'
+    if n.startswith('wall:seg:'):
+        # 厨卫/阳台墙段挂墙砖（命名带 :room= 归属，见 WET_ROOM_IDS）；无归属仍走乳胶漆
+        return 'wall_tile' if _wall_seg_rooms(n) & WET_ROOM_IDS else 'wall'
     if n.startswith('wall:') or n.startswith('wall_') or ':frame:' in n or n.startswith('wall_seg'):
         return 'wall'
     if '_bay' in n:
@@ -220,7 +237,10 @@ def assign_materials(mats: dict) -> dict:
         key = classify(obj)
         if key == 'skip':
             continue
-        mat = mats[key]
+        mat = mats.get(key)
+        if mat is None:
+            # wall_tile 仅在 scheme 选了墙砖时生成；否则湿区墙段回退乳胶漆
+            mat = mats['wall'] if key == 'wall_tile' else mats['default']
         if obj.data.materials:
             for i in range(len(obj.data.materials)):
                 obj.data.materials[i] = mat
@@ -1441,6 +1461,58 @@ def add_moldings(config_dir: str) -> int:
     return count
 
 
+def rebuild_railings(mats: dict) -> int:
+    """GLB 里的 railing_run 是 app 侧 ExtrudeGeometry 实心挤出的整片薄板（HouseScene.renderRailingRun），
+    渲染成一整面深色护墙板（entry_overview 左墙"黑色墙裙"= entry_garden_north_railing 确诊）。
+    设计意图是通透栏杆 → 隐藏实心板，按世界包围盒重建：顶扶手 + 竖杆（净距 0.11m，住宅栏杆规范上限）。
+    弧线栏杆（vrv_nw_railing）包围盒两轴都长，无法用直线段重建 → 跳过并告警。"""
+    import mathutils
+    rail_mat = mats.get('railing')
+    rebuilt = 0
+    for obj in list(bpy.data.objects):
+        if obj.type != 'MESH' or 'railing' not in obj.name or obj.name.startswith('railing:'):
+            continue
+        corners = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
+        xs = [c.x for c in corners]
+        ys = [c.y for c in corners]
+        zs = [c.z for c in corners]
+        dx, dy = max(xs) - min(xs), max(ys) - min(ys)
+        z0, z1 = min(zs), max(zs)
+        if dx > 0.5 and dy > 0.5:
+            print(f'[dress_scene] WARN: 弧线栏杆 {obj.name} 跳过重建（保留实心板）')
+            continue
+        obj.hide_render = True
+        along_x = dx >= dy
+        length = max(dx, dy)
+        cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
+        h = z1 - z0
+
+        def bar(name: str, ln: float, wd: float, ht: float, px: float, py: float, pz: float) -> None:
+            bpy.ops.mesh.primitive_cube_add(size=1.0)
+            b = bpy.context.object
+            b.name = name
+            b.dimensions = (ln, wd, ht) if along_x else (wd, ln, ht)
+            b.location = (px, py, pz)
+            if rail_mat:
+                b.data.materials.append(rail_mat)
+
+        # 顶扶手（0.06 宽 × 0.05 厚，顶面与栏板齐平）
+        bar(f'railing:{obj.name}:handrail', length, 0.06, 0.05, cx, cy, z1 - 0.025)
+        # 竖杆 0.02 见方，净距 ≤0.11m
+        step = 0.13
+        n_bars = max(2, int(length / step) + 1)
+        start = -length / 2
+        for i in range(n_bars):
+            off = start + i * (length / (n_bars - 1))
+            bar(f'railing:{obj.name}:bar:{i}', 0.02, 0.02, h - 0.05,
+                cx + off if along_x else cx,
+                cy if along_x else cy + off,
+                z0 + (h - 0.05) / 2)
+        rebuilt += 1
+    print(f'[dress_scene] railings rebuilt: {rebuilt}')
+    return rebuilt
+
+
 def set_engine(scene, engine: str, samples: int = 256) -> str:
     if engine.upper() == 'CYCLES':
         scene.render.engine = 'CYCLES'
@@ -1551,6 +1623,7 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '')
     place_extra_furniture(furniture_mats, args.get('config-dir') or '')
     add_moldings(args.get('config-dir') or '')
+    rebuild_railings(mats)
     add_ceiling(args.get('config-dir') or '', mats)
     add_kitchen_cabinets(cabinet_mat, countertop_mat)
     add_bath_fixtures(furniture_mats)
@@ -1609,9 +1682,11 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     # tone transform 配置驱动：氛围图 AgX（电影感）；材质评审 Standard（无调色，色号不失真）
     scene.view_settings.view_transform = scenario.get('view_transform', 'AgX')
     try:
-        # 曝光配置驱动（scenario.exposure），缺省：Cycles 0.5 / EEVEE 0.6
+        # 曝光配置驱动：机位级 cam_cfg.exposure 优先，其次 scenario.exposure，
+        # 缺省：Cycles 0.5 / EEVEE 0.6。机位级用于正对玻璃幕的相机
+        # （master_bed_looking_glass：灰世界光透玻璃直灌镜头，全局曝光下整面过曝）
         default_exposure = 0.5 if used_engine == 'CYCLES' else 0.6
-        scene.view_settings.exposure = scenario.get('exposure', default_exposure)
+        scene.view_settings.exposure = cam_cfg.get('exposure', scenario.get('exposure', default_exposure))
     except Exception:
         pass
     try:

@@ -724,11 +724,14 @@ export class HouseScene implements SceneApi {
     const isShaftWall = el.id.includes('elev') || el.id.includes('foyer_outer_east') || el.id.includes('foyer_north_east');
     const wallType = isShaftWall ? 'structure' : 'interior';
     const mat = new THREE.MeshStandardMaterial({ color: isShaftWall ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 });
+    // 导出命名附加房间归属：wall:seg:N:room=r1|r2（Blender 端按 room 给厨卫墙挂砖，见 dress_scene.classify）
+    const exportName = el.rooms?.length ? `${el.id}:room=${el.rooms.join('|')}` : undefined;
+    const wallUserData: Record<string, unknown> = { type: 'wall', objectId: el.id, wallType, ...(exportName ? { exportName } : {}) };
     const segs = (el as { segments?: Array<{ x1: number; z1: number; x2: number; z2: number }> }).segments;
     if (segs && segs.length > 1) {
       for (const s of segs) {
         const mesh = this.renderBox(s.x1, s.z1, s.x2, s.z2, height, WALL_THICKNESS, mat);
-        mesh.userData = { type: 'wall', objectId: el.id, wallType };
+        mesh.userData = { ...wallUserData };
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         this.wallMeshes.push(mesh);
@@ -739,7 +742,7 @@ export class HouseScene implements SceneApi {
     const doors = (openings ?? []).filter(o => o.type === 'door' || o.type === 'cased_opening' || o.type === 'sliding_door');
     if (doors.length === 0) {
       const mesh = this.renderBox(el.x1, el.z1, el.x2, el.z2, height, WALL_THICKNESS, mat);
-      mesh.userData = { type: 'wall', objectId: el.id, wallType };
+      mesh.userData = { ...wallUserData };
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.wallMeshes.push(mesh);
@@ -766,7 +769,7 @@ export class HouseScene implements SceneApi {
         const sx2 = el.x1 + ux * gapStart;
         const sz2 = el.z1 + uz * gapStart;
         const mesh = this.renderBox(sx1, sz1, sx2, sz2, height, WALL_THICKNESS, mat);
-        mesh.userData = { type: 'wall', objectId: el.id, wallType };
+        mesh.userData = { ...wallUserData };
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         this.wallMeshes.push(mesh);
@@ -787,7 +790,7 @@ export class HouseScene implements SceneApi {
       const sx1 = el.x1 + ux * cursor;
       const sz1 = el.z1 + uz * cursor;
       const mesh = this.renderBox(sx1, sz1, el.x2, el.z2, height, WALL_THICKNESS, mat);
-      mesh.userData = { type: 'wall', objectId: el.id, wallType };
+      mesh.userData = { ...wallUserData };
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.wallMeshes.push(mesh);

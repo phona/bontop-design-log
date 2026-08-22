@@ -414,6 +414,8 @@ export interface WallSegment {
   arcCenterX?: number;
   arcCenterZ?: number;
   openings?: ResolvedOpening[];
+  /** 墙段两侧的房间 id（model-geometry 拓扑：boundary 同时含 from/to 顶点的房间），供渲染端按房间挂材质 */
+  rooms?: string[];
 }
 
 export interface OverlayPoint {
@@ -428,7 +430,7 @@ export interface CurtainPoint extends OverlayPoint {
 }
 
 export type SceneElement =
-  | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; openings?: ResolvedOpening[] }
+  | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; openings?: ResolvedOpening[]; rooms?: string[] }
   | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   | {

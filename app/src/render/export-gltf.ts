@@ -55,7 +55,8 @@ export async function exportSceneToGlb(scene: THREE.Scene): Promise<Blob> {
     savedNames.set(obj, obj.name);
     savedVisible.set(obj, obj.visible);
     savedParents.set(obj, obj.parent);
-    if (obj.userData?.objectId) obj.name = String(obj.userData.objectId);
+    const exportName = (obj.userData?.exportName ?? obj.userData?.objectId) as string | undefined;
+    if (exportName) obj.name = String(exportName);
     obj.visible = true;
     exportRoot.attach(obj);
   }

@@ -308,7 +308,7 @@
 
 - id: sock_kitchen_fridge
   room: kitchen
-  wall: w_kit_east
+  wall: w_ent_west
   type: socket
   x: 10.80
   z: 2.05
@@ -318,7 +318,7 @@
 
 - id: sock_kitchen_hood
   room: kitchen
-  wall: w_kit_east
+  wall: w_ent_west
   type: socket
   x: 10.80
   z: 1.2
@@ -337,7 +337,7 @@
 
 - id: sock_kitchen_gas
   room: kitchen
-  wall: w_kit_east
+  wall: w_ent_west
   type: socket
   x: 10.80
   z: 1.6
@@ -347,7 +347,7 @@
 
 - id: switch_kitchen
   room: kitchen
-  wall: w_kit_east
+  wall: w_ent_west
   type: switch
   x: 10.80
   z: 1.0
