@@ -202,8 +202,9 @@ def _sobel_normal(height: Image.Image, strength: float) -> Image.Image:
 
 def ensure_wood_textures(material_id: str, appearance: dict, cache_dir: str,
                          canvas: int = PLANK_CANVAS) -> tuple[str, str, str, float]:
-    """生成（或复用缓存）木纹贴图 PNG，返回 (diffuse, normal, rough, worldSize)。缓存 key 含画布尺寸。"""
-    key = f"{material_id}_{appearance.get('pattern', 'straight')}_{appearance.get('seed', 42)}_{canvas}"
+    """生成（或复用缓存）木纹贴图 PNG，返回 (diffuse, normal, rough, worldSize)。
+    缓存 key 含画布尺寸+色号（2026-08-23 起含色号：--mat-override 循环改色不能复用旧色贴图）。"""
+    key = f"{material_id}_{appearance.get('pattern', 'straight')}_{appearance.get('seed', 42)}_{appearance.get('color', '')}_{canvas}"
     os.makedirs(cache_dir, exist_ok=True)
     d = os.path.join(cache_dir, f'{key}_diffuse.png')
     n = os.path.join(cache_dir, f'{key}_normal.png')

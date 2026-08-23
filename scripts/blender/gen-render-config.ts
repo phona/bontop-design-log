@@ -4,6 +4,10 @@ import * as yaml from 'js-yaml';
 // 生成 dress_scene.py 的输入配置：灯光点位（electrical.yaml）+ 固定场景常量 + 机位
 // 场景固定为两个决策工况（蓝调时刻 / 夜晚），sun_direction 为预计算常量（Blender 坐标系，
 // 指向太阳方向：+X 东 / +Y 北 / +Z 上）。视频等"任意时刻"需求后续再引入时间轴，当前决策渲染不需要。
+//
+// ⚠️ 本文件必须与 render-config.json 保持一致：2026-08-23 前 JSON 曾被手工改漂移
+// （曝光/机位/日光参数），重新生成会回退 v17→v32 的机位修复。改机位/工况请改这里再重新生成，
+// 或直接改 JSON 后把改动同步回本文件。
 
 interface ElectricalPoint {
   id: string;
@@ -17,11 +21,15 @@ interface ElectricalPoint {
 
 const LIGHT_TYPES = new Set(['pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip']);
 
+// 渲染侧局部覆盖（不改电气施工口径）：
+// light_study_dome 2.55 = v17 修"dome 灯嵌天花"时的渲染高度，electrical.yaml 的 2.8 是施工口径
+const LIGHT_HEIGHT_OVERRIDE: Record<string, number> = { light_study_dome: 2.55 };
+
 const electrical = yaml.load(fs.readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
 
 const lights = electrical
   .filter((p) => LIGHT_TYPES.has(p.type))
-  .map((p) => ({ id: p.id, room: p.room, type: p.type, x: p.x, z: p.z, height: p.height ?? 2.8, temp: p.temp ?? 3000 }));
+  .map((p) => ({ id: p.id, room: p.room, type: p.type, x: p.x, z: p.z, height: LIGHT_HEIGHT_OVERRIDE[p.id] ?? p.height ?? 2.8, temp: p.temp ?? 3000 }));
 
 // 场景固定常量：蓝调时刻/夜晚。太阳已落 → sun_direction=null（不打太阳光）；
 // 天光用自定义背景色（蓝调=深蓝、夜晚=近黑蓝），保证玻璃透出可见天色而非 HOSEK_WILKIE 的黑暗天际。
@@ -53,41 +61,21 @@ const scenarios = [
     blackout_state: 'open',
     sheer_opacity: 0.35,
   },
-  // 材质评审工况（material-review-mode spec）：无调色、中性白光、候选色板——决策色号/拼法用
+  // 材质评审工况（material-review-mode spec）：无调色、中性白光——决策色号/拼法用。
+  // 2026-08-23：实体色板机制废弃（西墙色板被电视柜墙挡死），选色改用 dress_scene --mat-override
+  // 循环渲染整场景对比。
   {
     id: 'material_review',
-    label: '材质评审（Standard 无调色、6500K 中性白、候选色板）',
+    label: '材质评审（Standard 无调色、6500K 中性白；2026-08-23 色板机制废弃，选色改 --mat-override 循环渲染）',
     sun_direction: null,
     world_color: '#808080',
     world_strength: 0.3,
     lights_on: true,
     light_temp: 6500,
     view_transform: 'Standard',
-    exposure: 0.0,
+    exposure: 1.5,
     blackout_state: 'open',
     sheer_opacity: 0.35,
-    swatches: [
-      // 地板候选色（floor_tile_01 原色系 ± 明度/奶咖向）——客厅特写视野，沿视线垂线排列
-      { hex: '#c49a6c', mode: 'floor', x: 8.55, z: 7.05, size: 0.4 },
-      { hex: '#cfa878', mode: 'floor', x: 9.05, z: 7.29, size: 0.4 },
-      { hex: '#b98f63', mode: 'floor', x: 9.56, z: 7.53, size: 0.4 },
-      { hex: '#cbab86', mode: 'floor', x: 10.06, z: 7.77, size: 0.4 },
-      // 地板候选色——主卧特写视野（床西侧空地，已避开床 footprint x≥2.2）
-      { hex: '#c49a6c', mode: 'floor', x: 0.64, z: 7.99, size: 0.4 },
-      { hex: '#cfa878', mode: 'floor', x: 1.08, z: 7.8, size: 0.4 },
-      { hex: '#b98f63', mode: 'floor', x: 1.52, z: 7.6, size: 0.4 },
-      { hex: '#cbab86', mode: 'floor', x: 1.96, z: 7.41, size: 0.4 },
-      // 墙面候选色（#f7f5ef 奶油系梯度）——客厅西墙（x=7.2 实体墙）前悬停
-      { hex: '#f7f5ef', mode: 'vertical', x: 7.21, z: 6.35, size: 0.3 },
-      { hex: '#f5f1e8', mode: 'vertical', x: 7.21, z: 6.75, size: 0.3 },
-      { hex: '#f3eee2', mode: 'vertical', x: 7.21, z: 7.15, size: 0.3 },
-      { hex: '#faf8f3', mode: 'vertical', x: 7.21, z: 7.55, size: 0.3 },
-      // 墙面候选色——主卧西墙（x=0）
-      { hex: '#f7f5ef', mode: 'vertical', x: 0.01, z: 6.8, size: 0.3 },
-      { hex: '#f5f1e8', mode: 'vertical', x: 0.01, z: 7.2, size: 0.3 },
-      { hex: '#f3eee2', mode: 'vertical', x: 0.01, z: 7.6, size: 0.3 },
-      { hex: '#faf8f3', mode: 'vertical', x: 0.01, z: 8.0, size: 0.3 },
-    ],
   },
   // 白天自然光工况：对照真实照片（手机白天拍摄=高漫反射环境光、不开灯、柔光地板反光）
   // 外景=真 HDR（kloofendal 白天多云，仅相机/透射光线可见，照明仍用中性 world_color 防染色）；
@@ -96,19 +84,21 @@ const scenarios = [
     id: 'daylight',
     label: '白天自然光（HDRi 白天外景+西南向太阳直射、不开灯、对照实景照片）',
     sun_direction: [-0.3, -0.6, 0.7],
-    sun_energy: 10.0,
+    sun_energy: 7,
     sun_temp: 4500,
     world_hdri: 'hdri/kloofendal_48d_partly_cloudy_1k.hdr',
     world_hdri_lighting: true, // 真天空直接照明（白天主光源=南向幕墙天光+太阳）
-    world_hdri_camera_strength: 0.2, // 窗外可见强度（照明 1.5 下防窗外过曝成白墙）
-    window_portal: { energy: 700, temp: 6000, x: 10.3, z: 11.0, width: 6.0, height: 2.6 }, // 南玻璃幕外柔光 portal（C1 定版）
+    world_hdri_camera_strength: 1.0,
+    window_portal: { energy: 350, temp: 6000, x: 10.3, z: 11, width: 6, height: 2.6 }, // 南玻璃幕外柔光 portal
     world_color: '#c8c8c8',
     world_strength: 0.8,
     lights_on: false,
     light_temp: 6500,
-    exposure: 0.8,
+    exposure: 0.4,
     blackout_state: 'open',
+    sheer_state: 'open',
     sheer_opacity: 0.25,
+    glass_ior: 1.02, // daylight 室内很亮，Low-E 玻璃 IOR 1.5 会变镜子盖住外景；≈1.02 近零反射只留透射
   },
 ];
 
@@ -122,33 +112,36 @@ const cameras = [
   },
   {
     id: 'master_bed_looking_glass',
-    label: '主卧西北角看全景（床+南窗）',
-    position: [0.7, 1.6, 5.9],
-    target: [3.2, 1.0, 9.5],
+    label: '主卧西侧看床+南窗（2026-08-22 随条带归主卧；避条带柜/衣柜背板）',
+    position: [1, 1.7, 6.2],
+    target: [3.3, 0.8, 8.6],
     scenarios: ['material_review'],
-    fill_light: 150,
+    fill_light: 100,
+    exposure: -0.5,
   },
   // 材质评审特写机位（35mm，只出 material_review 工况）
   {
     id: 'living_floor_closeup',
-    label: '客厅地板 45° 特写（拼法/色号，含地板色板）',
+    label: '客厅地板 45° 特写（拼法/色号）',
     position: [9.9, 1.4, 6.1],
     target: [9.3, 0.0, 7.4],
     lens: 35,
     scenarios: ['material_review'],
   },
   {
+    // 2026-08-23：原"西墙+地板交界"机位改拍电视墙——西墙漆色板被柜墙挡死（D4），
+    // 且 65 寸电视无任何正对机位（E3）。一机位解两条。
     id: 'living_west_wall',
-    label: '客厅西墙+地板交界（墙面色号，含墙面色板）',
-    position: [9.8, 1.5, 6.8],
-    target: [7.2, 0.6, 7.0],
-    lens: 35,
-    scenarios: ['material_review'],
+    label: '客厅电视墙正视（柜墙+65寸电视+灯带；2026-08-23 由西墙色板机位改，色板机制废弃见 E3/D4）',
+    position: [10.5, 1.5, 8.0],
+    target: [7.2, 1.1, 8.0],
+    lens: 28,
+    scenarios: ['material_review', 'blue_hour'],
   },
   {
     id: 'bedroom_floor_closeup',
-    label: '主卧地板特写（床西侧空地，含地板色板）',
-    position: [1.0, 1.4, 6.6],
+    label: '主卧地板特写（床西侧空地）',
+    position: [1, 1.4, 6.6],
     target: [1.7, 0.0, 7.9],
     lens: 35,
     scenarios: ['material_review'],
@@ -156,9 +149,9 @@ const cameras = [
   },
   {
     id: 'bedroom_west_wall',
-    label: '主卧西墙+地板交界（墙面色号，含墙面色板）',
-    position: [2.5, 1.5, 7.4],
-    target: [0.0, 0.6, 7.6],
+    label: '主卧西墙+地板交界（墙面色号；2026-08-22 东移避窗帘布料）',
+    position: [3.6, 1.7, 6.4],
+    target: [0.2, 1.3, 7.6],
     lens: 35,
     scenarios: ['material_review'],
     fill_light: 80,
@@ -199,9 +192,9 @@ const cameras = [
   },
   {
     id: 'bedroom_se_overview',
-    label: '书房全景',
-    position: [13.7, 1.5, 9.5],
-    target: [16.0, 0.9, 6.0],
+    label: '书房全景（南望飘窗+书桌；v27 改向：北墙视角有未解阴影异常，南向采光面更适合作全景）',
+    position: [15.9, 1.5, 6.2],
+    target: [14.0, 1.2, 9.2],
     lens: 24,
     scenarios: ['material_review'],
   },
@@ -215,12 +208,12 @@ const cameras = [
   },
   {
     id: 'master_bath_overview',
-    label: '主卫湿区（马桶+淋浴）',
-    position: [2.45, 1.6, 1.3],
-    target: [0.6, 0.7, 4.0],
+    label: '主卫干湿分离（2026-08-22 随隔墙 3.26 改版：正南平视朝北，右台盆左淋浴）',
+    position: [1.35, 1.45, 3.15],
+    target: [1.25, 0.85, 1.15],
     lens: 18,
     scenarios: ['material_review'],
-    fill_light: 60,
+    fill_light: 120,
   },
   {
     id: 'guest_bath_overview',
@@ -232,18 +225,21 @@ const cameras = [
     fill_light: 60,
   },
   {
+    // 2026-08-23 改俯视（D2）：1.6×1.2m 极小阳台+玻璃门，内外平视机位均不可行（v30 门外取景被玻璃挡）。
+    // 机位居中阳台（x 5.6–7.2 / z 1.0–2.2）垂直向下微倾，北朝上。
     id: 'balcony_overview',
-    label: '生活阳台',
-    position: [7.0, 1.5, 2.0],
-    target: [5.8, 0.9, 1.2],
-    lens: 24,
+    label: '生活阳台俯视（1.6×1.2m 极小阳台+玻璃门隔断，内外平视机位均不可行，2026-08-23 改俯视；v30 门外取景被玻璃挡回退）',
+    position: [6.4, 2.5, 1.45],
+    target: [6.4, 0, 1.7],
+    lens: 30,
     scenarios: ['material_review'],
+    fill_light: 80,
   },
   {
     id: 'entry_overview',
-    label: '入户花园/玄关',
-    position: [14.9, 1.5, 2.6],
-    target: [11.2, 0.9, 0.6],
+    label: '入户花园/玄关（2026-08-22 改向东北看望换鞋站+栏杆）',
+    position: [11.1, 1.6, 2.4],
+    target: [14.8, 0.8, 0.9],
     lens: 24,
     scenarios: ['material_review'],
   },
@@ -251,7 +247,7 @@ const cameras = [
   {
     id: 'living_from_entry',
     label: '入户门口望客厅全景（远距离东北→西南）',
-    position: [11.8, 1.6, 4.2],
+    position: [12.2, 1.65, 4.3],
     target: [8.6, 0.9, 8.0],
     lens: 20,
     scenarios: ['material_review', 'daylight'],
@@ -259,7 +255,7 @@ const cameras = [
   {
     id: 'living_from_sw',
     label: '客厅西南角回望餐厅+厨房（远距离反向）',
-    position: [7.7, 1.6, 9.3],
+    position: [7.7, 1.6, 8.95],
     target: [11.5, 0.9, 3.0],
     lens: 20,
     scenarios: ['material_review', 'daylight'],

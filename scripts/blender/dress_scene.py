@@ -8,6 +8,7 @@ dress_scene.py — Blender 自动定妆管线 v2（批量 A/B 决策）
 坐标：glb 为 Three.js 米制（x 东 / y 高 / z 南）；glTF 导入 Blender 后 (x,y,z)_three → (x, -z, y)_blender。
 材质/灯光全部按 objectId（节点名）声明式驱动，与 docs/dressing-map.md 同源。
 机位×场景批量展开见 dress_config.py；材质从 materials.yaml appearance 生成见 materials_from_yaml.py。
+候选色号对比：--mat-override "wall=#f5f1e8" 整场景覆盖该材质色号（2026-08-23 起替代实体色板）。
 """
 import bpy
 import json
@@ -139,8 +140,6 @@ def classify(obj: bpy.types.Object) -> str:
     n = obj.name
     if n.startswith('molding:'):
         return 'wall'  # 石膏线用墙面材质（同色）
-    if n.startswith('swatch:'):
-        return 'skip'  # 候选色板自带专用色（add_swatches 生成），禁被 classify 刷色
     if n.startswith('asset:'):
         return 'skip'  # 导入家具资产保留自带材质（fixture-assets.yaml 接线，见 french-cream spec）
     if n.startswith('furniture:'):
@@ -619,30 +618,6 @@ def add_camera(cam_cfg: dict) -> None:
     obj.rotation_quaternion = (target - loc).to_track_quat('-Z', 'Y')
     bpy.context.collection.objects.link(obj)
     bpy.context.scene.camera = obj
-
-
-def add_swatches(scenario: dict) -> int:
-    """候选色实体色板（材质评审工况）：Principled 纯色 rough 0.9 受场景光渲染，
-    与被评材质同光同镜头同 tone transform → 眼睛直接比，禁用 emission。
-    mode=floor 平放贴地（y=0.012：高于 app 导出的地板面 y=0.005、低于客厅地毯顶 y=0.03）；
-    mode=vertical 立面（法线 +x 东，用于西墙前景）。
-    坐标 three.js 系经 to_blender 转换。"""
-    count = 0
-    for i, sw in enumerate(scenario.get('swatches') or []):
-        mat = new_principled(f'swatch_{i:02d}', hex_rgb(sw['hex']), rough=0.9)
-        size = sw.get('size', 0.35)
-        if sw.get('mode') == 'vertical':
-            loc = to_blender(sw['x'], 1.3, sw['z'])
-            rot = (0.0, math.pi / 2, 0.0)
-        else:
-            loc = to_blender(sw['x'], 0.012, sw['z'])
-            rot = (0.0, 0.0, 0.0)
-        bpy.ops.mesh.primitive_plane_add(size=size, location=loc, rotation=rot)
-        p = bpy.context.object
-        p.name = f'swatch:{sw.get("mode", "floor")}:{i:02d}'
-        p.data.materials.append(mat)
-        count += 1
-    return count
 
 
 FURNITURE_PARTS = {
@@ -1344,9 +1319,15 @@ def add_kitchen_cabinets(cream, quartz) -> int:
 
 
 def add_bath_fixtures(furniture_mats: dict) -> int:
-    """卫浴洁具：洗手台+盆+马桶（house.yaml DEC-019 点位），陶瓷/奶油柜。"""
+    """卫浴洁具+细节：洗手台+盆+马桶+镜柜+毛巾杆+台盆小件。
+    点位对齐 house.yaml furnishings（2026-08-21 主卫终版：主卫东墙干区台盆 z=2.80/马桶 z=1.50、
+    客卫西墙台盆 z=3.50/马桶 z=2.50）；此前硬编码为 DEC-019 旧点位已过期（2026-08-23 修正）。
+    挂墙件只挂实体墙：主卫东墙 w_mbath_east、客卫西墙 w_gbath_west/东墙 w_gbath_east；
+    主卫北墙为玻璃幕墙（suppressed），不挂任何件。"""
     ceramic = furniture_mats.get('ceramic')
     cream = furniture_mats.get('paint_cream')
+    metal = furniture_mats.get('metal')
+    towel_mat = furniture_mats.get('fabric_light')
 
     def box(name, cx, cz, sx, sz, sy, yc, mat):
         bpy.ops.mesh.primitive_cube_add(size=1.0)
@@ -1359,14 +1340,26 @@ def add_bath_fixtures(furniture_mats: dict) -> int:
         return 1
 
     n = 0
-    n += box('bath:mb_vanity', 1.75, 4.55, 0.8, 0.5, 0.8, 0.4, cream)
-    n += box('bath:mb_basin', 1.75, 4.55, 0.5, 0.4, 0.12, 0.85, ceramic)
-    n += box('bath:mb_toilet', 0.5, 1.9, 0.4, 0.6, 0.4, 0.2, ceramic)
-    n += box('bath:mb_tank', 0.5, 1.55, 0.4, 0.15, 0.45, 0.5, ceramic)
+    # 主卫（x 0–2.60, z 1.10–3.26；西侧淋浴湿区，东侧干区贴 w_mbath_east）
+    n += box('bath:mb_vanity', 2.35, 2.80, 0.5, 0.8, 0.8, 0.4, cream)      # 80cm 台盆柜贴东墙，南缘 z=3.20 齐隔墙北脸
+    n += box('bath:mb_basin', 2.35, 2.80, 0.4, 0.6, 0.12, 0.85, ceramic)
+    n += box('bath:mb_toilet', 2.30, 1.50, 0.55, 0.4, 0.4, 0.2, ceramic)   # 贴东墙面朝西，对齐给水 z=1.5
+    n += box('bath:mb_tank', 2.50, 1.50, 0.18, 0.42, 0.5, 0.55, ceramic)
+    n += box('bath:mb_mirror_cab', 2.53, 2.80, 0.14, 0.6, 0.7, 1.55, cream)   # 镜柜挂东墙（台盆上方）
+    n += box('bath:mb_mirror', 2.455, 2.80, 0.02, 0.55, 0.65, 1.55, metal)    # 镜面
+    n += box('bath:mb_towel_bar', 2.58, 2.15, 0.03, 0.45, 0.03, 1.25, metal)  # 毛巾杆：东墙台盆/马桶之间空段
+    n += box('bath:mb_towel', 2.55, 2.15, 0.06, 0.28, 0.45, 1.05, towel_mat)
+    n += box('bath:mb_soap', 2.45, 3.05, 0.06, 0.06, 0.15, 0.925, ceramic)    # 台盆角洗手液瓶
+    # 客卫（x 5.60–7.10, z 2.20–4.30；台盆/马桶贴西墙 w_gbath_west）
     n += box('bath:gb_vanity', 5.85, 3.5, 0.5, 0.8, 0.8, 0.4, cream)
     n += box('bath:gb_basin', 5.85, 3.5, 0.4, 0.5, 0.12, 0.85, ceramic)
-    n += box('bath:gb_toilet', 6.8, 2.6, 0.4, 0.6, 0.4, 0.2, ceramic)
-    n += box('bath:gb_tank', 6.95, 2.6, 0.15, 0.4, 0.45, 0.5, ceramic)
+    n += box('bath:gb_toilet', 5.95, 2.50, 0.55, 0.4, 0.4, 0.2, ceramic)   # 贴西墙面朝东，对齐给水 z=2.5
+    n += box('bath:gb_tank', 5.70, 2.50, 0.18, 0.42, 0.5, 0.55, ceramic)
+    n += box('bath:gb_mirror_cab', 5.67, 3.50, 0.14, 0.6, 0.7, 1.55, cream)   # 镜柜挂西墙（台盆上方）
+    n += box('bath:gb_mirror', 5.745, 3.50, 0.02, 0.55, 0.65, 1.55, metal)
+    n += box('bath:gb_towel_bar', 7.08, 3.00, 0.03, 0.45, 0.03, 1.25, metal)  # 毛巾杆：东墙 w_gbath_east
+    n += box('bath:gb_towel', 7.05, 3.00, 0.06, 0.28, 0.45, 1.05, towel_mat)
+    n += box('bath:gb_soap', 5.75, 3.75, 0.06, 0.06, 0.15, 0.925, ceramic)
     print(f'[dress_scene] bath fixtures: {n}')
     return n
 
@@ -1579,7 +1572,8 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     from materials_from_yaml import load_scheme_materials
     if args.get('config-dir'):
         mats = load_scheme_materials(used_engine, mats, new_principled, hex_rgb,
-                                     config_dir=args['config-dir'])
+                                     config_dir=args['config-dir'],
+                                     color_overrides=_parse_mat_overrides(args.get('mat-override')))
     else:
         print('[dress_scene] WARN: --config-dir 未传，跳过 materials.yaml 材质（使用基础材质）')
     stats = assign_materials(mats)
@@ -1633,7 +1627,6 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     # 想看外景的工况应设 sheer_state: open。
     if scenario.get('sheer_state', 'closed') != 'open':
         add_sheer_panels(args.get('config-dir') or '', mats)
-    swatch_count = add_swatches(scenario)
     # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）
     fill = scenario.get('fill_light') or cam_cfg.get('fill_light')
     if fill:
@@ -1695,8 +1688,20 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
         pass
 
     print(f'[dress_scene] {out_path} engine={used_engine} view_transform={scene.view_settings.view_transform} '
-          f'swatches={swatch_count} materials={json.dumps(stats, ensure_ascii=False)}')
+          f'materials={json.dumps(stats, ensure_ascii=False)}')
     bpy.ops.render.render(write_still=True)
+
+
+def _parse_mat_overrides(raw: str | None) -> dict:
+    """--mat-override "wall=#f5f1e8,floor=#d8bd93" → {classify_key: hex}。
+    候选色号循环评审用（实体色板机制 2026-08-23 废弃）：每个候选色跑一次渲染，
+    整场景同机位同光对比，而非在场景里摆色板。"""
+    out = {}
+    for pair in (raw or '').split(','):
+        if '=' in pair:
+            k, v = pair.split('=', 1)
+            out[k.strip()] = v.strip()
+    return out
 
 
 def main() -> None:

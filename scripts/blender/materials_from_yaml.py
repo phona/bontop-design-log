@@ -259,11 +259,14 @@ def _build_ceramic_tile(mid: str, app: dict, np_, color):
 
 def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
                          cache_dir: str | None = None,
-                         config_dir: str | None = None) -> dict:
+                         config_dir: str | None = None,
+                         color_overrides: dict | None = None) -> dict:
     """resolved: classify_key -> material_id。返回 classify_key -> bpy material。
     helpers 注入 new_principled/hex_rgb，避免与 dress_scene 循环依赖。
     cache_dir: 木纹贴图缓存目录（wood_plank 时必需）。
-    config_dir: 项目根目录（pbr_texture 时找 assets/textures/）。"""
+    config_dir: 项目根目录（pbr_texture 时找 assets/textures/）。
+    color_overrides: classify_key -> hex，候选色号循环评审（dress_scene --mat-override）；
+    覆盖 appearance.color（带 tint 的 PBR 同步覆盖 tint），在贴图生成前生效。"""
     import bpy
     out: dict = {}
     np_ = helpers['new_principled']
@@ -271,6 +274,11 @@ def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
     for key, mid in resolved.items():
         rec = mats[mid]
         app = rec.get('appearance', {})
+        if color_overrides and key in color_overrides:
+            app = dict(app)
+            app['color'] = color_overrides[key]
+            if 'tint' in app:
+                app['tint'] = color_overrides[key]
         typ = app.get('type', 'solid_color')
         color = hex_rgb(app.get('color', '#bfbfbf'))
         finish = app.get('finish', 'soft')
@@ -317,10 +325,12 @@ def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
 
 
 def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb,
-                          config_dir: str | None = None) -> dict:
+                          config_dir: str | None = None,
+                          color_overrides: dict | None = None) -> dict:
     """从 config/materials.yaml + data/current-scheme.json 生成材质并覆盖同名 key。
     engine 保留供未来贴图/程序化纹理分引擎使用。
-    config_dir: 项目根目录（含 config/ 与 data/），缺省回退到脚本上级三级。"""
+    config_dir: 项目根目录（含 config/ 与 data/），缺省回退到脚本上级三级。
+    color_overrides: classify_key -> hex 候选色号覆盖（见 build_yaml_materials）。"""
     import json
     import yaml as pyyaml
 
@@ -339,6 +349,6 @@ def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb,
     helpers = {'new_principled': new_principled, 'hex_rgb': hex_rgb}
     tex_cache = os.path.join(config_dir, 'renders', 'blender', 'textures')
     yaml_mats = build_yaml_materials(mats_yaml, resolved, helpers, cache_dir=tex_cache,
-                                     config_dir=config_dir)
+                                     config_dir=config_dir, color_overrides=color_overrides)
     mats.update(yaml_mats)
     return mats

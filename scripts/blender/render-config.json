@@ -155,7 +155,7 @@
     },
     {
       "id": "material_review",
-      "label": "材质评审（Standard 无调色、6500K 中性白、候选色板）",
+      "label": "材质评审（Standard 无调色、6500K 中性白；2026-08-23 色板机制废弃，选色改 --mat-override 循环渲染）",
       "sun_direction": null,
       "world_color": "#808080",
       "world_strength": 0.3,
@@ -164,121 +164,7 @@
       "view_transform": "Standard",
       "exposure": 1.5,
       "blackout_state": "open",
-      "sheer_opacity": 0.35,
-      "swatches": [
-        {
-          "hex": "#c49a6c",
-          "mode": "floor",
-          "x": 7.9,
-          "z": 7.05,
-          "size": 0.4
-        },
-        {
-          "hex": "#cfa878",
-          "mode": "floor",
-          "x": 8.25,
-          "z": 7.29,
-          "size": 0.4
-        },
-        {
-          "hex": "#b98f63",
-          "mode": "floor",
-          "x": 8.6,
-          "z": 7.53,
-          "size": 0.4
-        },
-        {
-          "hex": "#cbab86",
-          "mode": "floor",
-          "x": 8.95,
-          "z": 7.77,
-          "size": 0.4
-        },
-        {
-          "hex": "#c49a6c",
-          "mode": "floor",
-          "x": 0.64,
-          "z": 7.99,
-          "size": 0.4
-        },
-        {
-          "hex": "#cfa878",
-          "mode": "floor",
-          "x": 1.08,
-          "z": 7.8,
-          "size": 0.4
-        },
-        {
-          "hex": "#b98f63",
-          "mode": "floor",
-          "x": 1.52,
-          "z": 7.6,
-          "size": 0.4
-        },
-        {
-          "hex": "#cbab86",
-          "mode": "floor",
-          "x": 1.96,
-          "z": 7.41,
-          "size": 0.4
-        },
-        {
-          "hex": "#f7f5ef",
-          "mode": "vertical",
-          "x": 7.21,
-          "z": 6.35,
-          "size": 0.3
-        },
-        {
-          "hex": "#f5f1e8",
-          "mode": "vertical",
-          "x": 7.21,
-          "z": 6.75,
-          "size": 0.3
-        },
-        {
-          "hex": "#f3eee2",
-          "mode": "vertical",
-          "x": 7.21,
-          "z": 7.15,
-          "size": 0.3
-        },
-        {
-          "hex": "#faf8f3",
-          "mode": "vertical",
-          "x": 7.21,
-          "z": 7.55,
-          "size": 0.3
-        },
-        {
-          "hex": "#f7f5ef",
-          "mode": "vertical",
-          "x": 0.01,
-          "z": 6.8,
-          "size": 0.3
-        },
-        {
-          "hex": "#f5f1e8",
-          "mode": "vertical",
-          "x": 0.01,
-          "z": 7.2,
-          "size": 0.3
-        },
-        {
-          "hex": "#f3eee2",
-          "mode": "vertical",
-          "x": 0.01,
-          "z": 7.6,
-          "size": 0.3
-        },
-        {
-          "hex": "#faf8f3",
-          "mode": "vertical",
-          "x": 0.01,
-          "z": 8,
-          "size": 0.3
-        }
-      ]
+      "sheer_opacity": 0.35
     },
     {
       "id": "daylight",
@@ -292,7 +178,7 @@
       "sun_temp": 4500,
       "world_hdri": "hdri/kloofendal_48d_partly_cloudy_1k.hdr",
       "world_hdri_lighting": true,
-      "world_hdri_camera_strength": 1.0,
+      "world_hdri_camera_strength": 1,
       "window_portal": {
         "energy": 350,
         "temp": 6000,
@@ -353,7 +239,7 @@
     },
     {
       "id": "living_floor_closeup",
-      "label": "客厅地板 45° 特写（拼法/色号，含地板色板）",
+      "label": "客厅地板 45° 特写（拼法/色号）",
       "position": [
         9.9,
         1.4,
@@ -371,25 +257,26 @@
     },
     {
       "id": "living_west_wall",
-      "label": "客厅西墙+地板交界（墙面色号，含墙面色板）",
+      "label": "客厅电视墙正视（柜墙+65寸电视+灯带；2026-08-23 由西墙色板机位改，色板机制废弃见 E3/D4）",
       "position": [
-        9.8,
+        10.5,
         1.5,
-        6.8
+        8
       ],
       "target": [
         7.2,
-        0.6,
-        7
+        1.1,
+        8
       ],
-      "lens": 35,
+      "lens": 28,
       "scenarios": [
-        "material_review"
+        "material_review",
+        "blue_hour"
       ]
     },
     {
       "id": "bedroom_floor_closeup",
-      "label": "主卧地板特写（床西侧空地，含地板色板）",
+      "label": "主卧地板特写（床西侧空地）",
       "position": [
         1,
         1.4,
@@ -408,7 +295,7 @@
     },
     {
       "id": "bedroom_west_wall",
-      "label": "主卧西墙+地板交界（墙面色号，含墙面色板；2026-08-22 东移避窗帘布料）",
+      "label": "主卧西墙+地板交界（墙面色号；2026-08-22 东移避窗帘布料）",
       "position": [
         3.6,
         1.7,
@@ -508,7 +395,7 @@
         6.2
       ],
       "target": [
-        14.0,
+        14,
         1.2,
         9.2
       ],
@@ -575,18 +462,18 @@
     },
     {
       "id": "balcony_overview",
-      "label": "生活阳台（1.6×1.2m 极小阳台+玻璃门隔断，机位局限性接受；v30 门外取景被玻璃挡回退）",
+      "label": "生活阳台俯视（1.6×1.2m 极小阳台+玻璃门隔断，内外平视机位均不可行，2026-08-23 改俯视；v30 门外取景被玻璃挡回退）",
       "position": [
-        7,
-        1.5,
-        2
+        6.4,
+        2.5,
+        1.45
       ],
       "target": [
-        5.8,
-        0.9,
-        1.2
+        6.4,
+        0,
+        1.7
       ],
-      "lens": 24,
+      "lens": 30,
       "scenarios": [
         "material_review"
       ],
