@@ -799,8 +799,10 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
                 pass
         mats[name] = mat
     mats['metal'] = new_principled_fn('家具_metal', hex_rgb_fn('#c8ccd0'), rough=0.35, metallic=1.0)
+    _add_brushed_metal(mats['metal'])  # 电器金属件（冰箱/烟机/龙头）拉丝纹理，去"白模盒子"感
     mats['metal_black'] = new_principled_fn('家具_metal_black', hex_rgb_fn('#171412'), rough=0.35, metallic=0.85)
-    mats['black_glass'] = new_principled_fn('家具_black_glass', hex_rgb_fn('#1a1a1c'), rough=0.15)
+    # 黑玻璃（灶面/电视屏）：加 clearcoat 出镜面反射层，避免死黑平板
+    mats['black_glass'] = new_principled_fn('家具_black_glass', hex_rgb_fn('#1a1a1c'), rough=0.08, coat=0.5)
     mats['quartz'] = new_principled_fn('家具_quartz', hex_rgb_fn('#e8e6e0'), rough=0.25)
     mats['ceramic'] = new_principled_fn('家具_ceramic', hex_rgb_fn('#f8f8f6'), rough=0.1)
     mats['plant'] = new_principled_fn('家具_plant', hex_rgb_fn('#5a6b4a'), rough=0.7)  # 琴叶榕叶绿
@@ -808,6 +810,34 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
     mats['door_gap'] = new_principled_fn('柜门_分缝', hex_rgb_fn('#35302a'), rough=0.9)
     _add_pet_bump(mats['paint_cream'])
     return mats
+
+
+def _add_brushed_metal(mat) -> None:
+    """拉丝金属：纵向拉伸 Noise → 细弱各向异性 bump（冰箱/烟机/龙头等电器金属件）。"""
+    if mat is None or not getattr(mat, 'use_nodes', False):
+        return
+    try:
+        nt = mat.node_tree
+        bsdf = _find_node(nt, 'ShaderNodeBsdfPrincipled')
+        if bsdf is None:
+            return
+        tex = nt.nodes.new('ShaderNodeTexNoise')
+        tex.noise_dimensions = '3D'
+        tex.inputs['Scale'].default_value = 15.0
+        tex.inputs['Detail'].default_value = 2.0
+        tex.inputs['Roughness'].default_value = 0.7
+        mp = nt.nodes.new('ShaderNodeMapping')
+        mp.inputs['Scale'].default_value = (4.0, 4.0, 150.0)  # 纵向拉丝
+        geo = nt.nodes.new('ShaderNodeNewGeometry')
+        bump = nt.nodes.new('ShaderNodeBump')
+        bump.inputs['Strength'].default_value = 0.15
+        bump.inputs['Distance'].default_value = 0.0002
+        nt.links.new(geo.outputs['Position'], mp.inputs['Vector'])
+        nt.links.new(mp.outputs['Vector'], tex.inputs['Vector'])
+        nt.links.new(tex.outputs['Fac'], bump.inputs['Height'])
+        nt.links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+    except Exception:
+        pass
 
 
 def _add_pet_bump(mat) -> None:
