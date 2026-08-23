@@ -1021,6 +1021,11 @@ FURNITURE_GLB = {
     'dryer': {'path': 'assets/furniture/dryer/dryer.blend', 'width': 0.60, 'height': 0.85, 'lift': 0.88,
               'drop_nodes': ['Washer AI Home 7" LCD Display AI OptiWash', 'cabinets']},
     'dishwasher': {'path': 'assets/furniture/dishwasher/dishwasher.blend', 'width': 0.60, 'height': 0.82},
+    # 厨房电器：BlenderKit 冰箱 source 原始 Z=2.76m，但 append 四元数复合前计算到的高度轴为 1.90m；
+    # height=1.24 → scale≈0.65，最终直立高度≈1.80m、宽≈0.75m，契合东墙高柜位。
+    # Build In Gas Stove 75x51 资产经摆位四元数复合后变为 51cm 高立块（EEVEE v35b），不可用；
+    # Whirlpool Range Hood 亦为 13cm 顶吸薄板、无竖向烟管，均继续回退到已验证的程序化壁挂烟机/嵌入式灶具。
+    'fridge': {'path': 'assets/furniture/fridge/fridge.blend', 'width': 0.68, 'height': 1.24},
     # BlenderKit 的 Shower Water Heater 在 append→摆位四元数复合后横躺（EEVEE v34 仅高 11cm），
     # 暂保留程序化壁挂机回退；待找到已归一化为 +Z 竖直的资产再启用，禁止以错误姿态入图。
     # 床 GLB（bed_soft_modern）暂不进管线：headless 下导入姿态不稳（baked 倾角+辅助 Cube，

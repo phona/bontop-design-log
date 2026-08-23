@@ -84,6 +84,9 @@ curl -L "<filePath>" -O assets/sofa_set.glb
 | dryer | [Samsung Washer Dryer](https://www.blenderkit.com/asset-gallery/b8240af4-93d5-41a3-8a3d-c1e4640d80d2) | royalty_free（免费） | 2026-08-23 阳台烘干机（叠放 lift 0.88；套组含洗衣机+展柜，drop_nodes 只取烘干机 mesh） |
 | dishwasher | [Dishwasher-01](https://www.blenderkit.com/asset-gallery/a67f6695-5565-4532-b57e-da9ecdb33a70) | royalty_free（免费） | 2026-08-23 厨下洗碗机（北墙地柜留位 x∈[8.5,9.1]） |
 | water_heater | [Shower Water Heater](https://www.blenderkit.com/asset-gallery/c31ce5fb-3783-4cfa-9710-358a6c6119ba) | royalty_free（免费） | 2026-08-23 燃气壁挂热水器（阳台东墙暂定位 lift 1.40，#26 未定案；首下 Gas Boiler 为落地炉型已弃） |
+| fridge | [Electrolux French Door Refrigerator](https://www.blenderkit.com/asset-gallery/7e12a0ce-47df-44ce-8bb8-2dc9ab50cc97) | royalty_free（免费） | 2026-08-23 东墙高柜位冰箱（渲染宽度归一化 0.68m、高 1.80m） |
+| gas_stove | ~~Build In Gas Stove 75x51~~（弃用） | royalty_free | 2026-08-23 原始 75×51cm 规格匹配开孔，但 append→摆位四元数复合后成为 51cm 高立块（EEVEE v35b），继续使用程序化嵌入式灶具 |
+| range_hood | ~~Whirlpool Range Hood~~（弃用） | royalty_free | 2026-08-23 筛选结果为 13cm 顶吸薄板，无竖向烟管；与东墙壁挂烟机不符，继续使用程序化壁挂烟机 |
 
 下载流程（API key 放环境变量，**不入库**）：
 ```bash
