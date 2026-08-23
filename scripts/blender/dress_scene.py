@@ -750,16 +750,19 @@ FURNITURE_PARTS = {
         ('door_lo', [0.66, 1.08, 0.04], [0, 0.6, 0.35], 'metal'),
     ],
     'gas_stove': [
-        ('cooktop', [0.75, 0.02, 0.45], [0, 0.86, 0], 'black_glass'),
-        ('burner1', [0.16, 0.01, 0.16], [-0.18, 0.875, 0], 'metal'),
-        ('burner2', [0.16, 0.01, 0.16], [0.18, 0.875, 0], 'metal'),
+        # 嵌入式灶：台面（顶 0.88）已开孔 0.75×0.45，面板坐台面齐平
+        ('cooktop', [0.75, 0.02, 0.45], [0, 0.89, 0], 'black_glass'),
+        ('burner1', [0.16, 0.01, 0.16], [-0.18, 0.905, 0], 'metal'),
+        ('burner2', [0.16, 0.01, 0.16], [0.18, 0.905, 0], 'metal'),
     ],
     'range_hood': [
         ('panel', [0.8, 0.5, 0.06], [0, 1.5, 0.12], 'metal'),
         ('duct', [0.4, 0.9, 0.35], [0, 2.2, 0], 'metal'),
     ],
     'sink': [
-        ('rim', [0.74, 0.01, 0.44], [0, 0.86, 0], 'metal'),
+        # 台下盆：台面（顶 0.88）已开孔 0.70×0.40，盆体挂台面下，压边条贴台面
+        ('basin', [0.68, 0.18, 0.38], [0, 0.79, 0], 'metal'),
+        ('rim', [0.74, 0.01, 0.44], [0, 0.882, 0], 'metal'),
         ('faucet_v', [0.03, 0.3, 0.03], [0, 1.0, -0.18], 'metal'),
         ('faucet_h', [0.03, 0.03, 0.2], [0, 1.14, -0.1], 'metal'),
     ],
@@ -1424,16 +1427,39 @@ def add_kitchen_cabinets(cream, quartz, gap=None) -> int:
     n = 0
     n += kbox('kitchen:base_n', 9.0, 0.3, 3.6, 0.6, 0.85, 0.425, cream)
     n += kbox('kitchen:base_e', 10.5, 1.15, 0.6, 1.1, 0.85, 0.425, cream)
-    n += kbox('kitchen:top_n', 9.0, 0.3, 3.6, 0.62, 0.03, 0.865, quartz)
-    n += kbox('kitchen:top_e', 10.5, 1.15, 0.62, 1.1, 0.03, 0.865, quartz)
-    n += kbox('kitchen:wall_n', 8.4, 0.18, 2.0, 0.35, 0.7, 1.85, cream)
-    # 柜门分缝（400-500mm 标准门宽）：北墙地柜 3.6m→8门 / 东墙地柜 1.1m→2门 / 北墙吊柜 2.0m→4门
+    # 台面：北墙 3.6m（水槽开孔 0.70×0.40 @9.5,0.30 台下盆）+ 东墙 1.1m（灶具开孔 0.75×0.45 @10.5,1.18 嵌平）
+    # 北墙是玻璃幕墙（curtain_run），挂不了吊柜——house.yaml「北墙玻璃幕只做落地柜+台面」，
+    # 原 kitchen:wall_n 吊柜违反此约束（电气/家具铁律：玻璃幕不挂柜），已删
+    def ktop(name, cx, cz, sx, sz, cutouts):
+        bpy.ops.mesh.primitive_cube_add(size=1.0)
+        t = bpy.context.object
+        t.name = name
+        t.dimensions = (sx, sz, 0.03)
+        t.location = to_blender(cx, 0.865, cz)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        t.data.materials.append(quartz)
+        for i, (ox, oz, ow, od) in enumerate(cutouts):
+            bpy.ops.mesh.primitive_cube_add(size=1.0)
+            c = bpy.context.object
+            c.name = f'{name}:cut{i}'
+            c.dimensions = (ow, od, 0.1)
+            c.location = to_blender(ox, 0.865, oz)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            mod = t.modifiers.new(f'cut{i}', 'BOOLEAN')
+            mod.operation = 'DIFFERENCE'
+            mod.object = c
+            bpy.context.view_layer.objects.active = t
+            bpy.ops.object.modifier_apply(modifier=mod.name)
+            bpy.data.objects.remove(c)
+        return 1
+
+    n += ktop('kitchen:top_n', 9.0, 0.3, 3.6, 0.62, [(9.5, 0.30, 0.70, 0.40)])
+    n += ktop('kitchen:top_e', 10.5, 1.15, 0.62, 1.1, [(10.5, 1.18, 0.75, 0.45)])
+    # 柜门分缝（400-500mm 标准门宽）：北墙地柜 3.6m→8门 / 东墙地柜 1.1m→2门
     if gap is not None:
         for k in range(1, 8):
             n += kgap(f'kitchen:gap_n{k}', 9.0 - 1.8 + k * 0.45, 0.6, 0.0, 0.85, 'z')
         n += kgap('kitchen:gap_e1', 10.2, 1.15, 0.0, 0.85, 'x')
-        for k in range(1, 4):
-            n += kgap(f'kitchen:gap_wn{k}', 8.4 - 1.0 + k * 0.5, 0.355, 1.5, 2.2, 'z')
     print(f'[dress_scene] kitchen cabinets: {n}')
     return n
 
