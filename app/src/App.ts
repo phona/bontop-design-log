@@ -17,6 +17,7 @@ import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
 import { CommandPalette } from './ui/CommandPalette.js';
+import { TopDownButton } from './ui/TopDownButton.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
 import { PlacementPanel } from './ui/PlacementPanel.js';
 import { SunlightSystem } from './render/SunlightSystem.js';
@@ -43,6 +44,7 @@ export class App {
   private sensitivitySlider: SensitivitySlider;
   private hoverTooltip: HoverTooltip;
   private overviewMenu: OverviewMenu;
+  private topDownButton: TopDownButton | null = null;
   private collision: CollisionDetector;
   private fpController: FirstPersonController;
   private projectData: any = null;
@@ -119,6 +121,7 @@ export class App {
     this.setupFurniturePanel();
     this.setupPlacementPanel();
     this.setupExportButton();
+    this.setupTopDownButton();
     this.setupDragHandlers();
     this.setupEventHandlers();
     this.setupKeyboard();
@@ -301,6 +304,17 @@ export class App {
         this.houseScene.showGhost(pos.x, pos.z, 0, type);
         this.requestRender();
       }
+    });
+  }
+
+  private setupTopDownButton(): void {
+    this.topDownButton = new TopDownButton({
+      onToggle: () => {
+        this.houseScene.toggleTopDown();
+        this.topDownButton?.sync();
+        this.requestRender();
+      },
+      getActive: () => this.houseScene.isTopDown(),
     });
   }
 
@@ -487,6 +501,13 @@ export class App {
           void this.refreshOverviewData();
           this.overviewMenu.show();
         }
+        return;
+      }
+
+      if (e.code === 'KeyT' && !e.repeat) {
+        e.preventDefault();
+        this.houseScene.toggleTopDown();
+        this.topDownButton?.sync();
         return;
       }
 

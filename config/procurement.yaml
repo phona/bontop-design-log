@@ -6,7 +6,7 @@ materials:
     current_stage: selection
     waste_rate: 1.08
     unit: sqm
-    notes: ["客餐厅通铺木纹砖，人字拼"]
+    notes: ["客餐厅通铺木纹砖 600×1200 错缝（DEC-040，人字拼已推翻）"]
 
   - id: floor_tile_02
     name: "灰色柔光砖"

@@ -160,3 +160,16 @@ v1（首版 Cycles）效果差的根因与修复：
 6. **Poly Haven 家具挑款三坑**：标量尺寸与直觉不符（WoodenTable_01 是矮凳）、带动画的模型（滑门柜）不宜直接进管线、自定义 ARM 贴图包装方式导入即黑。挑款流程=预览图初筛 → 远程裸导入打 DIMS → 隔离小渲验材质，三步都过才进 FURNITURE_GLB。
 
 **验证**：`npm run verify:furniture`（coffee_table 补 FURNITURE_DIMS 后警告清零）、`npm run typecheck`、`npm run test:app`（339 通过，FixtureFactory 补 coffee_table 配方）、v9c 九张指纹检测通过。
+
+## v16 床 GLB 恢复与 WSL/Windows 路径坑（2026-08-22）
+
+**变更**：床 GLB（`assets/bed_soft_modern.glb`，来源未登记）曾尝试进管线，**最终回退程序化床体**——headless 循环下导入姿态始终不稳（euler 平、渲染斜，未收敛），留 GUI Blender 定姿后再启用。机制保留在 `import_furniture_glb` 备用（drop_nodes/level_x/flip_axis 当前无条目引用，床启用时生效）。
+资产两个坑（备查）：
+1. 导出残留 2×2×2 辅助节点 `Cube` 撑爆包围盒 → `drop_nodes: ['Cube']`（按前缀匹配，导入重名会加 .NNN 后缀）。
+2. 根节点 baked 30.5° X 展示倾角 → `level_x` 回正；因 block 四元数含额外 X 分量使共轭变号，代码两符号都试、取高度小者。
+床头朝向与正反面在 headless 循环里难以目视迭代，若主卧机位床姿仍不对，用 Blender GUI 打开场景调 `rot_fix`/`flip_axis` 十分钟可定。
+
+**WSL 调 Windows Blender 的路径坑**：
+1. `bpy.data.libraries.load`（.blend 资产）**打不开 UNC 路径**（`//wsl.localhost/...`）→ 先 `net use W: \\wsl.localhost\Ubuntu`，`--config-dir` 传 `W:/home/tao/...`（gltf 导入不受影响，但 config-dir 同时拼资产路径）。
+2. `--out-dir` 不能以 `//` 开头：Blender 把 `//` 当 blend 相对路径前缀，会在 cwd 下建字面量 `wsl.localhost/` 目录 → out-dir 也走盘符路径。
+3. app 导出 glb：自动化浏览器拦截合成下载 → 页面内 patch `URL.createObjectURL` 捕获 blob，POST 到 WSL 临时接收服务（scripts/.tmp/upload_server.py，用完即杀）。
