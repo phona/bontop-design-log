@@ -38,11 +38,13 @@ const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['range_hood', 'gas_stove'],
   ['tv_65', 'tv_stand'],
   ['tv_65', 'tv_wall_low'],
+  ['washer', 'dryer'], // 2026-08-23 洗烘叠放同位（支架层叠）
   ['kitchen_cabinet_run', 'kitchen_cabinet_run'],
   ['kitchen_cabinet_run', 'sink'],
   ['kitchen_cabinet_run', 'gas_stove'],
   ['kitchen_cabinet_run', 'range_hood'],
   ['kitchen_cabinet_run', 'fridge'],
+  ['kitchen_cabinet_run', 'dishwasher'], // 2026-08-23 洗碗机嵌柜段留位（run +0.04 容差与机位边缘相接）
 ];
 
 function isStackedPair(a: string, b: string): boolean {

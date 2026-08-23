@@ -610,6 +610,10 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   vanity: { width: 0.8, depth: 0.4 },
   toilet: { width: 0.4, depth: 0.6 }, // 2026-08-21 马桶落位（对齐 FixtureFactory 模型 footprint）
   exhaust_fan: { width: 0.3, depth: 0.3 },
+  washer: { width: 0.6, depth: 0.6 }, // 2026-08-23 阳台洗烘叠放（贴 w_balc_west，与 dryer 同 footprint）
+  dryer: { width: 0.6, depth: 0.6 }, // 叠放洗衣机上方，与 washer 同位（STACKED_PAIRS 豁免重叠）
+  dishwasher: { width: 0.6, depth: 0.6 }, // 2026-08-23 厨下（北墙地柜留位 x∈[8.5,9.1]，水槽柜西侧紧邻）
+  water_heater: { width: 0.36, depth: 0.16 }, // 2026-08-23 燃气壁挂（⚠️暂定位，pending-site-data #26）
 };
 
 export interface LaborRate {

@@ -351,6 +351,30 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [0.60, 0.85, 0.60], position: [0, 0.425, 0], color: '#eeeeee', roughness: 0.4 },
     ],
   },
+  // ── 电器（house.yaml furnishings，2026-08-23 补缺员）──
+  {
+    // 热泵烘干机：专用支架叠放于洗衣机上方（y 0.88 起，总高 ≈1.73m）
+    type: 'dryer',
+    parts: [
+      { shape: 'box', size: [0.60, 0.85, 0.60], position: [0, 1.305, 0], color: '#f0f0f0', roughness: 0.4 },
+      { shape: 'box', size: [0.48, 0.48, 0.03], position: [0, 1.33, 0.29], color: '#222226', roughness: 0.15 },
+    ],
+  },
+  {
+    type: 'dishwasher',
+    parts: [
+      { shape: 'box', size: [0.60, 0.82, 0.58], position: [0, 0.41, 0], color: '#c8ccd0', metalness: 0.6, roughness: 0.35 },
+      { shape: 'box', size: [0.58, 0.68, 0.02], position: [0, 0.44, 0.29], color: '#222226', roughness: 0.15 },
+    ],
+  },
+  {
+    // 燃气壁挂炉（⚠️暂定位，pending-site-data #26 未定案）：挂墙底 1.4 顶 1.9
+    type: 'water_heater',
+    parts: [
+      { shape: 'box', size: [0.36, 0.55, 0.16], position: [0, 1.65, 0], color: '#f5f5f5', roughness: 0.3 },
+      { shape: 'box', size: [0.05, 0.30, 0.05], position: [0, 1.22, 0], color: '#c8ccd0', metalness: 0.6, roughness: 0.35 },
+    ],
+  },
 ];
 
 export function buildFixture(type: string): THREE.Group | null {

@@ -63,6 +63,10 @@ project:
       item: "厨房布局"
       from: "灶台/水槽在西墙"
       to: "东墙（灶台+烟机+冰箱），北墙（水槽+切配，上下水走地面），西墙（阳台门+辅助台面）"
+    - date: "2026-08-21"
+      item: "主卫终版/西北次卧B案/sill分房间"
+      from: "主卫隔墙 z=4.3 + 方案A+C台盆外移；西北次卧衣柜靠北墙；sill 全屋统一 2.55"
+      to: "隔墙北移 z=3.26、台盆回卫内贴东墙、条带归主卧存储区；西北次卧衣柜移南墙西段（B案）+窄桌贴西玻璃改地插；sill 分房间 卧室≈2.07/厨房≈2.12/客厅系≈2.57"
 
 rooms:
   - name: "主卧"
@@ -70,13 +74,13 @@ rooms:
     type: "private"
     wall_finish: "paint"
     needs_waterproof: false
-    width: 4.50
-    length: 4.05
+    width: 4.20
+    length: 6.54
     height: 2.8
-    area: 18.16
+    area: 25.80
     status: "design"
     orientation: "西南"
-    notes: "设计图标注面积 18.16㎡，宽深为按面积估算，待量房复核；飘窗为上飘窗，保留不拆除"
+    notes: "尺寸镜像 model-geometry（含存储条带；寝区本体约 17.9㎡，设计图标注 18.16㎡）；飘窗为上飘窗，保留不拆除"
     windows:
       - width: 2.40
         height: 1.50
@@ -97,12 +101,12 @@ rooms:
     wall_finish: "paint"
     needs_waterproof: false
     width: 3.00
-    length: 2.80
+    length: 3.20
     height: 2.8
-    area: 8.39
+    area: 9.60
     status: "design"
     orientation: "西北"
-    notes: "设计图标注面积 8.39㎡"
+    notes: "镜像 model-geometry（设计图标注 8.39㎡）"
     windows:
       - width: 1.50
         height: 1.40
@@ -120,12 +124,12 @@ rooms:
     wall_finish: "paint"
     needs_waterproof: false
     width: 3.00
-    length: 2.80
+    length: 4.25
     height: 2.8
-    area: 8.39
+    area: 12.75
     status: "design"
     orientation: "东南"
-    notes: "东南角书房，靠近客餐厅，日间使用便利；设计图标注面积 8.39㎡，以 model-geometry 为准"
+    notes: "东南角书房，靠近客餐厅，日间使用便利；镜像 model-geometry（设计图标注 8.39㎡）"
     windows:
       - width: 1.50
         height: 1.40
@@ -144,12 +148,12 @@ rooms:
     wall_finish: "paint"
     needs_waterproof: false
     width: 3.00
-    length: 2.78
+    length: 4.25
     height: 2.8
-    area: 8.35
+    area: 12.75
     status: "design"
     orientation: "南"
-    notes: "左侧中间卧室，预留未来改书房/客房的可能（已有网线、窗帘电源）；设计图标注面积 8.35㎡，以 model-geometry 为准"
+    notes: "左侧中间卧室，预留未来改书房/客房的可能（已有网线、窗帘电源）；镜像 model-geometry（设计图标注 8.35㎡）"
     windows:
       - width: 1.50
         height: 1.40
@@ -169,10 +173,10 @@ rooms:
     width: 6.20
     length: 7.40
     height: 2.8
-    area: 45.88
+    area: 44.58
     status: "design"
     orientation: "南"
-    notes: "DEC-014/021 客餐厅含餐厅带+玄关走廊（z∈[2.40,9.80]），45.88㎡；设计图合并标注 35.2㎡ 为旧口径"
+    notes: "镜像 model-geometry 多边形（入户过渡带由 overlay floor_region 渲染、不计入房间多边形）；DEC-014/021 bbox 口径 45.88㎡；设计图合并标注 35.2㎡ 为旧口径"
     windows:
       - width: 4.50
         height: 1.80
@@ -213,19 +217,19 @@ rooms:
     wall_finish: "tile"
     needs_waterproof: true
     width: 2.60
-    length: 4.45
+    length: 2.16
     height: 2.8
-    area: 11.57
+    area: 5.62
     status: "design"
     orientation: "内"
-    notes: "主卧套间直通；2026-08-21 样板间核实终版：隔墙回4.3，主卫6.5㎡全尺寸、内部左右分离（西淋浴湿区x[0,1.2]玻璃隔断/东干区台盆贴东墙+马桶），卫门推拉[1.3,2.1]进干区，不要浴缸；条带 z[4.30,5.55] 为主卧存储区（1.7m柜带+0.75过道）"
+    notes: "主卧套间直通；2026-08-21 终版：隔墙北移 z=3.26（约5.6㎡，镜像 model-geometry）、内部左右分离（西淋浴湿区x[0,1.2]玻璃隔断/东干区台盆贴东墙+马桶），卫门推拉[1.3,2.1]进干区，不要浴缸；条带 z[3.26,5.55] 归主卧存储区（1.7m柜带+0.75过道）"
     windows:
       - width: 0.60
         height: 1.00
         position: "北墙"
     doors:
-      - width: 0.70
-        position: "主卧连接"
+      - width: 0.80
+        position: "主卧连接（推拉洞[1.3,2.1]）"
     furniture_concept:
       - "浴室柜 0.8m"
       - "马桶"
@@ -237,12 +241,12 @@ rooms:
     wall_finish: "tile"
     needs_waterproof: true
     width: 1.50
-    length: 1.77
+    length: 2.10
     height: 2.8
-    area: 2.66
+    area: 3.15
     status: "design"
     orientation: "内"
-    notes: "设计图标注 2.66㎡；设计图标注东墙 0.6×1.0 窗，但几何未声明该窗洞且东墙（x=7.1）朝室内走廊，疑为采光窗或图面残留，量房核实"
+    notes: "镜像 model-geometry（设计图标注 2.66㎡）；设计图标注东墙 0.6×1.0 窗，但几何未声明该窗洞且东墙（x=7.1）朝室内走廊，疑为采光窗或图面残留，量房核实"
     windows:
       - width: 0.60
         height: 1.00
@@ -260,13 +264,13 @@ rooms:
     type: "public"
     wall_finish: "tile"
     needs_waterproof: true
-    width: 1.20
-    length: 2.02
+    width: 1.60
+    length: 1.20
     height: 2.8
-    area: 2.42
+    area: 1.92
     status: "design"
     orientation: "北"
-    notes: "设计图标注 2.42㎡，开发商已用玻璃幕墙封闭，计入套内"
+    notes: "镜像 model-geometry（设计图标注 2.42㎡），开发商已用玻璃幕墙封闭，计入套内"
     windows: []
     doors:
       - width: 0.90
@@ -470,7 +474,11 @@ furnishings:
     - { type: ceiling_light, count: 2 }
   kitchen:
     # 3D 用显式柜体段：北墙玻璃幕只做落地柜+台面；东墙实体墙承载灶台、烟机和冰箱高柜。
-    - { type: kitchen_cabinet_run, x: 9.00, z: 0.32, rotation: 0, length: 3.56, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 }
+    # 北墙 run 拆两段留洗碗机位 x∈[8.50,9.10]（2026-08-23；紧贴水槽柜 x≥9.10 西侧，上下水就近；
+    # sock_kitchen_dishwasher@9.0,0.3 台下，距机位 0.2m）
+    - { type: kitchen_cabinet_run, x: 7.86, z: 0.32, rotation: 0, length: 1.28, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 }
+    - { type: kitchen_cabinet_run, x: 9.94, z: 0.32, rotation: 0, length: 1.68, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 }
+    - { type: dishwasher, x: 8.80, z: 0.30, rotation: 0 }  # 北墙地柜台下（DEC-013，水槽柜西侧紧邻；⚠️坐标待量房）
     - { type: kitchen_cabinet_run, x: 10.48, z: 1.00, rotation: 90, length: 1.40, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 }
     - { type: cabinet_base, count: 5.0 }      # 预算/库存：北墙3.6+东墙2.2 L型
     - { type: cabinet_wall, count: 2.0 }
@@ -495,6 +503,12 @@ furnishings:
     - { type: ceiling_light }
     - { type: exhaust_fan, x: 6.35, z: 3.25 }                # DEC-019 吊顶
   balcony:
+    # 洗烘叠放贴西墙（给水 faucet_balcony_washer / 墙排 drain_balcony_washer / 插座 sock_balcony_washer 均在 w_balc_west z=1.5）
+    - { type: washer, x: 5.95, z: 1.50, rotation: 90 }   # 10kg 滚筒贴西墙面朝东；与插座/给水偏差 0.35m
+    - { type: dryer, x: 5.95, z: 1.50, rotation: 90 }    # 热泵烘干机专用支架叠放洗衣机上（承重 ≥120kg，budget-pitfalls laundry_stack）
+    # ⚠️ 暂定位（pending-site-data #26 未定案，不作为施工依据）：挂 w_balc_east 门洞北侧空段西脸，
+    # 邻近暂定电位 sock_balcony_waterheater(7.2,1.0)；燃气路由/CO 安全红线待物业+燃气公司确认
+    - { type: water_heater, x: 7.10, z: 1.25, rotation: 270 }
     - { type: ceiling_light }
   entry_garden:
     # 成品矮鞋柜+自立洞洞板，靠花园东侧落地摆放，避开西墙开关/水龙头/插座。
@@ -545,7 +559,7 @@ design_rationale:
   - "厨房布局：东墙（灶台+烟机+冰箱），北墙（水槽+切配，面对玻璃窗），西墙（阳台门+辅助台面）；北墙上下水走地面"
   - "入户花园作为进出门过渡区：东侧放可移动鞋柜+自立洞洞板；门内右手以 1.5m 定制半高柜衔接客厅，玄关侧随手收纳、餐厅侧餐边收纳，柜顶保留视线"
   - "主卧带独立卫生间，形成主卧套房；飘窗保留"
-  - "主卫方案 A+C：洗手台外移到过道段（干湿分离），湿区只留马桶+淋浴，过道段做薄柜储物；不泡浴缸"
+  - "主卫终版（2026-08-21）：隔墙北移 z=3.26，台盆回卫内贴东墙干区，淋浴在西侧玻璃隔断分离（干湿分离），不泡浴缸；原过道段归主卧做 1.7m 存储柜带"
   - "全屋衣柜统一推拉门（主卧/父母房/儿童房），节省过道空间"
   - "父母房弹性设计：成品床（可搬走）、大白墙、衣柜可拆层板，硬装按未来书房标准做"
   - "儿童房（西北次卧）床改 1.5m，改善通道（0.3→0.6m）"

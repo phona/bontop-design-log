@@ -766,6 +766,29 @@ FURNITURE_PARTS = {
         ('faucet_v', [0.03, 0.3, 0.03], [0, 1.0, -0.18], 'metal'),
         ('faucet_h', [0.03, 0.03, 0.2], [0, 1.14, -0.1], 'metal'),
     ],
+    # 2026-08-23 补电器缺员（阳台洗烘叠放/厨下洗碗机/阳台壁挂热水器，点位对齐水电配置；
+    # BlenderKit 真模型下载后走 FURNITURE_GLB 自动替换，以下为回退程序化几何）
+    'washer': [
+        ('body', [0.60, 0.85, 0.60], [0, 0.425, 0], 'ceramic'),
+        ('door', [0.48, 0.48, 0.03], [0, 0.45, 0.29], 'black_glass'),
+        ('top', [0.60, 0.02, 0.60], [0, 0.86, 0], 'metal'),
+    ],
+    # 烘干机叠放于洗衣机上（支架层 y≈0.88，总高 ≈1.73m）
+    'dryer': [
+        ('body', [0.60, 0.85, 0.60], [0, 1.305, 0], 'ceramic'),
+        ('door', [0.48, 0.48, 0.03], [0, 1.33, 0.29], 'black_glass'),
+    ],
+    # 厨下洗碗机（北墙地柜留位 x∈[8.5,9.1]，上方台面连续）
+    'dishwasher': [
+        ('body', [0.60, 0.82, 0.58], [0, 0.41, 0], 'metal'),
+        ('front', [0.58, 0.68, 0.02], [0, 0.44, 0.29], 'black_glass'),
+    ],
+    # 燃气壁挂炉（⚠️暂定位，pending-site-data #26 未定案）：挂墙底 1.4 顶 1.9，下出管
+    'water_heater': [
+        ('body', [0.36, 0.55, 0.16], [0, 1.65, 0], 'ceramic'),
+        ('display', [0.20, 0.10, 0.02], [0, 1.55, 0.085], 'black_glass'),
+        ('pipe', [0.05, 0.30, 0.05], [0, 1.22, 0], 'metal'),
+    ],
 }
 
 
@@ -991,6 +1014,15 @@ FURNITURE_GLB = {
     'dining_chair': {'path': 'assets/furniture/rattan_dining_chair/rattan_dining_chair.blend', 'width': 0.5, 'height': 0.9, 'tint': '#6b4c38'},
     'dining_table': {'path': 'assets/furniture/wooden_table_02/wooden_table_02.gltf', 'width': 1.4, 'height': 0.78, 'tint': '#54382a'},
     'plant_fiddle': {'path': 'assets/furniture/potted_plant_01/potted_plant_01.gltf', 'width': 0.6, 'tint': '#a89a8c'},  # 陶土盆亮橙太跳，乘灰陶色压暗
+    # 2026-08-23 电器缺员（BlenderKit，清单见 assets/SOURCES.md）：width/height 约束到 standard 尺寸，
+    # lift=离地抬升（dryer 叠放支架层 / water_heater 壁挂）；朝向未实测，下轮渲染核对后按需补 rot_fix
+    'washer': {'path': 'assets/furniture/washer/washer.blend', 'width': 0.60, 'height': 0.85},
+    # Samsung 套组含洗衣机+烘干机+展柜三 mesh，只留烘干机（drop_nodes 前缀/精确匹配）
+    'dryer': {'path': 'assets/furniture/dryer/dryer.blend', 'width': 0.60, 'height': 0.85, 'lift': 0.88,
+              'drop_nodes': ['Washer AI Home 7" LCD Display AI OptiWash', 'cabinets']},
+    'dishwasher': {'path': 'assets/furniture/dishwasher/dishwasher.blend', 'width': 0.60, 'height': 0.82},
+    # BlenderKit 的 Shower Water Heater 在 append→摆位四元数复合后横躺（EEVEE v34 仅高 11cm），
+    # 暂保留程序化壁挂机回退；待找到已归一化为 +Z 竖直的资产再启用，禁止以错误姿态入图。
     # 床 GLB（bed_soft_modern）暂不进管线：headless 下导入姿态不稳（baked 倾角+辅助 Cube，
     # 见 docs/renders/pipeline-acceptance.md v16 节），回退程序化床体；待 GUI Blender 定姿后再启用
 }
@@ -1175,6 +1207,10 @@ def import_furniture_glb(glb_path: str, targets: dict, block=None, loc_rz=None, 
     bb2 = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
     min_z = min(c.z for c in bb2)
     obj.location.z -= min_z
+    # lift：叠放/壁挂件的离地抬升（dryer 叠洗衣机 +0.88、water_heater 挂墙 +1.40）
+    lift = targets.get('lift')
+    if lift:
+        obj.location.z += lift
     dims = [round(max(c[i] for c in bb2) - min(c[i] for c in bb2), 2) for i in range(3)]
     print(f'[dress_scene] glb import: {obj.name} scale={scale:.2f} dims={dims} loc={tuple(round(v,2) for v in obj.location)}')
 
@@ -1455,9 +1491,13 @@ def add_kitchen_cabinets(cream, quartz, gap=None) -> int:
         return 1
 
     n = 0
-    n += kbox('kitchen:base_n', 9.0, 0.3, 3.6, 0.6, 0.85, 0.425, cream)
+    # 北墙地柜拆两段留洗碗机位 x∈[8.50,9.10]（2026-08-23；dishwasher 由 place_extra_furniture 生成，
+    # 紧贴水槽柜 x≥9.10 西侧，上下水就近）
+    n += kbox('kitchen:base_n1', 7.86, 0.3, 1.28, 0.6, 0.85, 0.425, cream)
+    n += kbox('kitchen:base_n2', 9.94, 0.3, 1.68, 0.6, 0.85, 0.425, cream)
     n += kbox('kitchen:base_e', 10.5, 1.15, 0.6, 1.1, 0.85, 0.425, cream)
-    # 台面：北墙 3.6m（水槽开孔 0.70×0.40 @9.5,0.30 台下盆）+ 东墙 1.1m（灶具开孔 0.75×0.45 @10.5,1.18 嵌平）
+    # 台面：北墙 3.6m 整片（洗碗机位 x∈[8.5,9.1] 上方台面连续，与真实安装一致；
+    # 水槽开孔 0.70×0.40 @9.5,0.30 台下盆）+ 东墙 1.1m（灶具开孔 0.75×0.45 @10.5,1.18 嵌平）
     # 北墙是玻璃幕墙（curtain_run），挂不了吊柜——house.yaml「北墙玻璃幕只做落地柜+台面」，
     # 原 kitchen:wall_n 吊柜违反此约束（电气/家具铁律：玻璃幕不挂柜），已删
     def ktop(name, cx, cz, sx, sz, cutouts):
@@ -1485,10 +1525,10 @@ def add_kitchen_cabinets(cream, quartz, gap=None) -> int:
 
     n += ktop('kitchen:top_n', 9.0, 0.3, 3.6, 0.62, [(9.5, 0.30, 0.70, 0.40)])
     n += ktop('kitchen:top_e', 10.5, 1.15, 0.62, 1.1, [(10.5, 1.18, 0.75, 0.45)])
-    # 柜门分缝（400-500mm 标准门宽）：北墙地柜 3.6m→8门 / 东墙地柜 1.1m→2门
+    # 柜门分缝：北墙 run A 1.28m→3门（gap 7.65/8.08）/ run B 1.68m→3门（gap 9.66/10.22）/ 东墙 1.1m→2门
     if gap is not None:
-        for k in range(1, 8):
-            n += kgap(f'kitchen:gap_n{k}', 9.0 - 1.8 + k * 0.45, 0.6, 0.0, 0.85, 'z')
+        for gx in (7.65, 8.08, 9.66, 10.22):
+            n += kgap(f'kitchen:gap_n{gx}', gx, 0.6, 0.0, 0.85, 'z')
         n += kgap('kitchen:gap_e1', 10.2, 1.15, 0.0, 0.85, 'x')
     print(f'[dress_scene] kitchen cabinets: {n}')
     return n

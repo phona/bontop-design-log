@@ -26,7 +26,7 @@ wget --no-proxy "<url>/xxx_nor_gl_2k.jpg" -O assets/textures/<id>/normal.jpg
 | oak_veneer_02 | [Poly Haven](https://polyhaven.com/a/oak_veneer_02) | `.../jpg/2k/oak_veneer_02/oak_veneer_02_diff_2k.jpg` | 600x1200 木纹砖用弱纹细直纹（floor_pbr_tile_612） |
 | marble_01 | [Poly Haven](https://polyhaven.com/a/marble_01) | `.../jpg/2k/marble_01/marble_01_diff_2k.jpg` | 台面石纹（仅 normal+rough，保浅色石英） |
 | painted_plaster_wall | [Poly Haven](https://polyhaven.com/a/painted_plaster_wall) | `.../jpg/2k/painted_plaster_wall/painted_plaster_wall_diff_2k.jpg` | 墙面乳胶漆肌理（仅 normal+rough，保色号） |
-| fabric_pattern_07 | [Poly Haven](https://polyhaven.com/a/fabric_pattern_07) | `.../jpg/2k/fabric_pattern_07/fabric_pattern_07_diff_2k.jpg` | 床品/布艺织纹（仅 normal+rough，保白色；diff 无源） |
+| fabric_pattern_07 | [Poly Haven](https://polyhaven.com/a/fabric_pattern_07) | `.../fabric_pattern_07_col_2_2k.jpg` | 床品 bump（保白色）+ 沙发布纹底图（2026-08-22 补下载 col_2 色号存为 diff.jpg；该资产无 Diffuse 键，色图为 col_1/2/03） |
 
 ## 下载方式
 
@@ -80,6 +80,10 @@ curl -L "<filePath>" -O assets/sofa_set.glb
 | burrard_sofa | [Burrard Forest Green Sofa 3 Seaters](https://www.blenderkit.com/asset-gallery/1ee7fa07-0b88-4f4e-af59-a5dcd65259a8) | royalty_free（免费） | 直排三坐垫+细木腿，tint 压深棕（DEC-026 沙发款） |
 | rattan_dining_chair | [Wood dining chair](https://www.blenderkit.com/asset-gallery/33ef21d4-fe67-43e4-b5f6-7d6bcd5190d4) | royalty_free（免费） | 黑细腿+藤编靠背餐椅（DEC-026 餐椅款） |
 | noguchi_coffee_table | ~~茶几~~（弃用） | CC0 | 黑座玻璃圆几——体量过小、雕塑感过强像装饰边几，DEC-026 复审否掉，主茶几改程序化圆几 |
+| washer | [Washing machine](https://www.blenderkit.com/asset-gallery/f3054fb0-2e9a-482a-855d-6faf0fc0992f) | royalty_free（免费） | 2026-08-23 阳台洗衣机（生活阳台西墙，0.60×0.85） |
+| dryer | [Samsung Washer Dryer](https://www.blenderkit.com/asset-gallery/b8240af4-93d5-41a3-8a3d-c1e4640d80d2) | royalty_free（免费） | 2026-08-23 阳台烘干机（叠放 lift 0.88；套组含洗衣机+展柜，drop_nodes 只取烘干机 mesh） |
+| dishwasher | [Dishwasher-01](https://www.blenderkit.com/asset-gallery/a67f6695-5565-4532-b57e-da9ecdb33a70) | royalty_free（免费） | 2026-08-23 厨下洗碗机（北墙地柜留位 x∈[8.5,9.1]） |
+| water_heater | [Shower Water Heater](https://www.blenderkit.com/asset-gallery/c31ce5fb-3783-4cfa-9710-358a6c6119ba) | royalty_free（免费） | 2026-08-23 燃气壁挂热水器（阳台东墙暂定位 lift 1.40，#26 未定案；首下 Gas Boiler 为落地炉型已弃） |
 
 下载流程（API key 放环境变量，**不入库**）：
 ```bash
