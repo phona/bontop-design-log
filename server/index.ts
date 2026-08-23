@@ -19,6 +19,8 @@ import { TradeoffEngine } from './tradeoff-engine.js';
 import { AcceptanceEngine } from './acceptance-engine.js';
 import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
+import { ProjectRenderFactsLoader } from './project-render-facts-loader.js';
+import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
 import { parseOverlay } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import { parseEnvironment } from '../shared/environment-schema.js';
@@ -31,6 +33,8 @@ const DATA_DIR = process.env.DATA_DIR ?? './data';
 const CONFIG_PATH = process.env.CONFIG_PATH ?? 'config/design-rules.yaml';
 
 const registry = new ConfigRegistry();
+const projectRenderFactsLoader = new ProjectRenderFactsLoader();
+registry.register(projectRenderFactsLoader);
 
 let catalog = ProjectCatalog.fromMaterials(
   { materials: [] },
@@ -147,6 +151,7 @@ environmentLoader.load();
 houseMetaLoader.load();
 pitfallsLoader.load();
 overlayLoader.load();
+projectRenderFactsLoader.load();
 
 let state: DesignState;
 try {
@@ -173,6 +178,13 @@ const apiDeps = {
   getConfigRegistry: () => registry,
   getOverlay: () => overlayLoader.getConfig(),
   getEnvironment: () => environmentLoader.getConfig(),
+  getProjectRenderFacts: () => projectRenderFactsLoader.getFacts(),
+  getProjectRenderFactsProjection: () => {
+    const facts = projectRenderFactsLoader.getFacts();
+    const overrides = projectRenderFactsLoader.getOverrides();
+    if (!facts || !overrides) return undefined;
+    return buildProjectRenderFactsProjection(facts, overrides, state.getCurrentScheme());
+  },
 };
 
 const app = express();
@@ -205,6 +217,7 @@ attachMcpTransports(app, () => createMcpServer(apiDeps)).then(() => {
   pitfallsLoader.startWatching();
   overlayLoader.startWatching();
   environmentLoader.startWatching();
+  projectRenderFactsLoader.startWatching();
 
   const shutdown = async () => {
     await registry.stopAll();

@@ -173,3 +173,27 @@ v1（首版 Cycles）效果差的根因与修复：
 1. `bpy.data.libraries.load`（.blend 资产）**打不开 UNC 路径**（`//wsl.localhost/...`）→ 先 `net use W: \\wsl.localhost\Ubuntu`，`--config-dir` 传 `W:/home/tao/...`（gltf 导入不受影响，但 config-dir 同时拼资产路径）。
 2. `--out-dir` 不能以 `//` 开头：Blender 把 `//` 当 blend 相对路径前缀，会在 cwd 下建字面量 `wsl.localhost/` 目录 → out-dir 也走盘符路径。
 3. app 导出 glb：自动化浏览器拦截合成下载 → 页面内 patch `URL.createObjectURL` 捕获 blob，POST 到 WSL 临时接收服务（scripts/.tmp/upload_server.py，用完即杀）。
+
+## 可复现云端渲染 bundle（正式工作流）
+
+Web 场景导出不再依赖手工下载。构建机应启动项目 app 并以 Chromium `--remote-debugging-port=9222` 打开 `http://localhost:5173`，然后执行：
+
+```bash
+npm run build:render-bundle -- --output-dir renders/web/models/acceptance-<timestamp>
+npm run verify:render-bundle -- --bundle renders/web/models/acceptance-<timestamp>
+```
+
+构建器会先运行 `generate:render-config` 和 `verify:project-render-facts`，然后由 `scripts/export-web-glb.py` 经 CDP reload、`Page.loadEventFired` 和 `window.__APP__.exportGlbDataUrl` readiness 导出 GLB。它不会触发 Blender 或云端渲染。
+
+bundle 目录严格包含以下四个交付文件：
+
+1. `manifest.json`：schema、HEAD revision、dirty 状态/porcelain、输入 hash、artifact bytes/SHA-256、render facts 与 GLB 摘要。
+2. `house.glb`：Web 场景的二进制 glTF 导出。
+3. `render-config.json`：Blender 的配置化固定场景常量、相机和导出的 facts。
+4. `project-render-facts.json`：从 electrical/plumbing/ceiling/render overrides/current scheme 投影的施工 facts。
+
+默认只接受 clean Git 工作树，避免未记录的源状态进入云端。当前开发工作树必须显式使用 `--allow-dirty`；manifest 会记录完整 `git status --porcelain=v1`，供云端任务和验收审计。构建拒绝覆盖非空目录。
+
+`verify:render-bundle` 不需浏览器，不写项目源文件。它校验 manifest schema、相对路径（拒绝绝对路径和 `..`）、文件存在性/真实 bytes SHA-256、facts schema、`render-config.facts` 深度一致性，以及严格 GLB header/chunk/index 引用/有限 world bbox。对 clean bundle，它还要求当前 HEAD 等于 manifest revision，并在内存中从当前输入重建两份 JSON 后逐字节比对；dirty bundle 仅执行其自包含完整性验证。
+
+云端只应消费已通过 verifier 的四文件 bundle，先记录 `manifest.json` 再运行既有 Blender 命令。不得在云端修改 bundle 内配置或把导出过程替换成手工 Web/Blender 操作；本工作流不保证 EEVEE/Cycles 的像素级确定性，只保证输入、Web GLB、配置和施工 facts 可复现、可审计。

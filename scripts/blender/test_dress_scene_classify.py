@@ -10,7 +10,7 @@ bpy_stub = types.ModuleType('bpy')
 bpy_stub.types = types.SimpleNamespace(Object=object)
 sys.modules.setdefault('bpy', bpy_stub)
 
-from dress_scene import classify  # noqa: E402
+from dress_scene import classify, floor_room_id, plumbing_by_id, projection_facts  # noqa: E402
 
 
 def _obj(name):
@@ -38,9 +38,27 @@ def test_other_wall_names_unchanged():
     assert classify(_obj('molding:living:d01')) == 'wall'
 
 
+def test_floor_room_id_requires_stable_export_tag():
+    assert floor_room_id('floor:master_bath') == 'master_bath'
+    assert floor_room_id('floor:guest_bath.001') == 'guest_bath'
+    assert floor_room_id('kitchen_floor') is None
+    assert floor_room_id('floor:master_bath:fragment') is None
+
+
+def test_projection_facts_and_plumbing_reject_missing_or_invalid_points():
+    assert projection_facts({}) == {}
+    facts = projection_facts({'facts': {'plumbing': [
+        {'id': 'faucet_mbath_vanity', 'x': 2.6, 'z': 2.8},
+        {'id': 'toilet_mbath', 'x': 'bad', 'z': 1.5},
+    ]}})
+    assert plumbing_by_id(facts) == {'faucet_mbath_vanity': {'id': 'faucet_mbath_vanity', 'x': 2.6, 'z': 2.8}}
+
+
 if __name__ == '__main__':
     test_wet_room_wall_gets_tile()
     test_dry_room_wall_stays_paint()
     test_blender_duplicate_suffix_tolerated()
     test_other_wall_names_unchanged()
+    test_floor_room_id_requires_stable_export_tag()
+    test_projection_facts_and_plumbing_reject_missing_or_invalid_points()
     print('OK')

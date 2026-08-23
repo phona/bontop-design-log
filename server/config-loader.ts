@@ -1,6 +1,10 @@
 import { watch, type FSWatcher } from 'chokidar';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
+import { VALID_CEILING_TYPES, type CeilingZone, type ElectricalPoint, type PlumbingPoint } from '../shared/types.js';
+
+export { VALID_CEILING_TYPES } from '../shared/types.js';
+export type { CeilingZone, ElectricalPoint, PlumbingPoint } from '../shared/types.js';
 
 export interface ConfigStatus {
   path: string;
@@ -58,68 +62,33 @@ export class ConfigLoader<T> {
   getStatus(): ConfigStatus {
     return this.status;
   }
+
+  getStatuses(): ConfigStatus[] {
+    return [this.status];
+  }
+}
+
+export interface StatusLoader {
+  getStatuses(): ConfigStatus[];
+  stopWatching(): Promise<void>;
 }
 
 export class ConfigRegistry {
-  private loaders: ConfigLoader<unknown>[] = [];
+  private loaders: StatusLoader[] = [];
 
-  register<T>(loader: ConfigLoader<T>): void {
-    this.loaders.push(loader as ConfigLoader<unknown>);
+  register<T>(loader: ConfigLoader<T>): void;
+  register(loader: StatusLoader): void;
+  register(loader: StatusLoader): void {
+    this.loaders.push(loader);
   }
 
   getStatuses(): ConfigStatus[] {
-    return this.loaders.map((l) => l.getStatus());
+    return this.loaders.flatMap((l) => l.getStatuses());
   }
 
   async stopAll(): Promise<void> {
     await Promise.all(this.loaders.map((l) => l.stopWatching()));
   }
-}
-
-// ── Domain config interfaces ──────────────────────────────────────
-
-export interface ElectricalPoint {
-  id: string;
-  room: string;
-  wall: string;
-  type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb';
-  x: number;
-  z: number;
-  height: number;
-  count?: number;
-  note?: string;
-}
-
-export interface PlumbingPoint {
-  id: string;
-  room: string;
-  type: 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor';
-  x: number;
-  z: number;
-  height?: number;
-  note?: string;
-}
-
-export const VALID_CEILING_TYPES = [
-  'drop',
-  'integrated',
-  'cove',
-  'none',
-  'ac_indoor',
-  'aluminum_buckle',
-] as const;
-
-export interface CeilingZone {
-  id: string;
-  room: string;
-  type: (typeof VALID_CEILING_TYPES)[number];
-  thickness?: number;
-  area?: [number, number, number, number];
-  x?: number;
-  z?: number;
-  height?: number;
-  model?: string;
-  note?: string;
 }
 
 // ── Domain config loaders ─────────────────────────────────────────

@@ -1,0 +1,58 @@
+# Render-only lighting anchors. Do not write these values back to electrical.yaml.
+- id: light_dining_pendant
+  anchorY: 2.8
+  reason: "已审计 Blender 基线：餐桌吊灯的最终渲染锚点。"
+  applies_to: [web, blender]
+- id: light_living_main
+  anchorY: 2.8
+  reason: "已审计 Blender 基线：客厅主吊灯的最终渲染锚点。"
+  applies_to: [web, blender]
+- id: light_tv_strip
+  anchorY: 2.0
+  offsetX: 0.15
+  reason: "已审计 Blender 基线：电视墙灯带保持施工高度，并向室内偏移 0.15m。"
+  applies_to: [web, blender]
+- id: light_master_dome
+  anchorY: 2.55
+  reason: "已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m。"
+  applies_to: [web, blender]
+- id: light_master_wall_l
+  anchorY: 1.6
+  reason: "已审计 Blender 基线：床头左壁灯以施工安装高度作为最终渲染锚点。"
+  applies_to: [web, blender]
+- id: light_master_wall_r
+  anchorY: 1.6
+  reason: "已审计 Blender 基线：床头右壁灯以施工安装高度作为最终渲染锚点。"
+  applies_to: [web, blender]
+- id: light_parent_dome
+  anchorY: 2.55
+  reason: "已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m。"
+  applies_to: [web, blender]
+- id: light_child_dome
+  anchorY: 2.55
+  reason: "已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m。"
+  applies_to: [web, blender]
+- id: light_study_dome
+  anchorY: 2.3
+  reason: "已审计 Blender 基线：书房吸顶灯为避免嵌入顶面，最终渲染锚点为 2.30m。"
+  applies_to: [web, blender]
+- id: light_corridor_1
+  anchorY: 2.8
+  reason: "已审计 Blender 基线：走廊筒灯最终渲染锚点。"
+  applies_to: [web, blender]
+- id: light_entry_down
+  anchorY: 2.8
+  reason: "已审计 Blender 基线：玄关筒灯最终渲染锚点。"
+  applies_to: [web, blender]
+- id: light_kitchen_panel
+  anchorY: 2.55
+  reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
+  applies_to: [web, blender]
+- id: light_mbath_panel
+  anchorY: 2.55
+  reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
+  applies_to: [web, blender]
+- id: light_gbath_panel
+  anchorY: 2.55
+  reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
+  applies_to: [web, blender]

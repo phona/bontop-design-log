@@ -8,13 +8,11 @@ classify() 见 dress_scene.py。
 import os
 
 
-def resolve_scheme(scheme: dict, mats: dict) -> dict[str, str]:
-    """把 current-scheme.json 的 selections 映射为 classify key -> material_id。
-    仅保留在材质库中存在的条目；无 coverage 的主题不产出。"""
+def resolve_scheme(scheme: dict, mats: dict, floor: dict | None = None) -> dict[str, str]:
+    """把 non-floor current scheme 与可选 projection floor 映射为 classify key -> material_id。
+    floor 不传时保留旧的纯逻辑调用兼容；Blender loader 必须显式传 projection floor。"""
     sel = scheme.get('selections', {})
     alias = {
-        'floor': 'floor',
-        'bedroom_floor': 'floor',
         'paint': 'wall',
         # 墙砖独立成 'wall_tile' key：GLB 墙段命名 wall:seg:N:room=r1|r2 带房间归属，
         # dress_scene.classify 只给厨卫/阳台（WET_ROOM_IDS）墙段挂砖，其余墙面仍吃 paint 乳胶漆
@@ -43,7 +41,35 @@ def resolve_scheme(scheme: dict, mats: dict) -> dict[str, str]:
         if key is None:
             continue
         resolved[key] = mid
+    if floor is None:
+        legacy_floor = sel.get('floor') or sel.get('bedroom_floor')
+        floor_mid = legacy_floor.get('default') if isinstance(legacy_floor, dict) else legacy_floor
+        if isinstance(floor_mid, str) and floor_mid in mats:
+            resolved['floor'] = floor_mid
+    else:
+        floor_mid = floor.get('default')
+        if isinstance(floor_mid, str) and floor_mid in mats:
+            resolved['floor'] = floor_mid
     return resolved
+
+
+def resolve_floor_overrides(floor: dict, mats: dict) -> dict[str, str]:
+    """从 render projection 解析 roomId -> material_id，不读取 current scheme。
+    未知 material 仅告警并忽略；调用方会继续给该 room 默认地材。"""
+    overrides = floor.get('roomOverrides', {}) if isinstance(floor, dict) else {}
+    if not isinstance(overrides, dict):
+        print('[materials] WARN facts.materials.floor.roomOverrides must be an object')
+        return {}
+    out = {}
+    for room_id, mid in overrides.items():
+        if not isinstance(room_id, str) or not isinstance(mid, str):
+            print(f'[materials] WARN invalid floor override {room_id!r}: {mid!r}')
+            continue
+        if mid not in mats:
+            print(f'[materials] WARN floor override {room_id} references unknown material {mid}')
+            continue
+        out[room_id] = mid
+    return out
 
 
 def _build_wood_textured(mid: str, app: dict, cache_dir: str):
@@ -324,13 +350,12 @@ def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
     return out
 
 
-def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb,
+def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb, facts: dict,
                           config_dir: str | None = None,
-                          color_overrides: dict | None = None) -> dict:
-    """从 config/materials.yaml + data/current-scheme.json 生成材质并覆盖同名 key。
-    engine 保留供未来贴图/程序化纹理分引擎使用。
-    config_dir: 项目根目录（含 config/ 与 data/），缺省回退到脚本上级三级。
-    color_overrides: classify_key -> hex 候选色号覆盖（见 build_yaml_materials）。"""
+                          color_overrides: dict | None = None) -> tuple[dict, dict]:
+    """构建 scheme 的非 floor 材质和 projection 指定的分房地材。
+    `facts.materials.floor` 是 Blender 唯一的 floor 选择输入；current-scheme 仅供 non-floor topics。
+    返回 (所有 classify 材质, roomId -> floor Blender material)。"""
     import json
     import yaml as pyyaml
 
@@ -338,6 +363,9 @@ def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb,
         config_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     mats_path = os.path.join(config_dir, 'config', 'materials.yaml')
     scheme_path = os.path.join(config_dir, 'data', 'current-scheme.json')
+    floor = facts.get('materials', {}).get('floor') if isinstance(facts, dict) else None
+    if not isinstance(floor, dict):
+        raise ValueError('render facts missing materials.floor')
     with open(mats_path, 'r', encoding='utf-8') as f:
         mats_yaml = {m['id']: m for m in pyyaml.safe_load(f)['materials']}
     if os.path.exists(scheme_path):
@@ -345,10 +373,19 @@ def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb,
             scheme = json.load(f)
     else:
         scheme = {}
-    resolved = resolve_scheme(scheme, mats_yaml)
+    resolved = resolve_scheme(scheme, mats_yaml, floor)
+    overrides = resolve_floor_overrides(floor, mats_yaml)
     helpers = {'new_principled': new_principled, 'hex_rgb': hex_rgb}
     tex_cache = os.path.join(config_dir, 'renders', 'blender', 'textures')
     yaml_mats = build_yaml_materials(mats_yaml, resolved, helpers, cache_dir=tex_cache,
                                      config_dir=config_dir, color_overrides=color_overrides)
     mats.update(yaml_mats)
-    return mats
+    floor_mats = {}
+    for room_id, mid in overrides.items():
+        key = f'floor:{room_id}'
+        room_override = build_yaml_materials(
+            mats_yaml, {key: mid}, helpers, cache_dir=tex_cache, config_dir=config_dir,
+            color_overrides=color_overrides,
+        )
+        floor_mats[room_id] = room_override[key]
+    return mats, floor_mats

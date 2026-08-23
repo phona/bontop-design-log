@@ -23,7 +23,7 @@
       "id": "light_tv_strip",
       "room": "living_dining",
       "type": "led_strip",
-      "x": 7.2,
+      "x": 7.35,
       "z": 7.7,
       "height": 2,
       "temp": 3000
@@ -34,7 +34,7 @@
       "type": "dome",
       "x": 2.6,
       "z": 7.6,
-      "height": 2.8,
+      "height": 2.55,
       "temp": 3000
     },
     {
@@ -61,7 +61,7 @@
       "type": "dome",
       "x": 5.7,
       "z": 7.675,
-      "height": 2.8,
+      "height": 2.55,
       "temp": 3000
     },
     {
@@ -70,7 +70,7 @@
       "type": "dome",
       "x": 4.1,
       "z": 2.7,
-      "height": 2.8,
+      "height": 2.55,
       "temp": 3000
     },
     {
@@ -79,7 +79,7 @@
       "type": "dome",
       "x": 14.9,
       "z": 7.675,
-      "height": 2.55,
+      "height": 2.3,
       "temp": 3000
     },
     {
@@ -106,7 +106,7 @@
       "type": "dome",
       "x": 9,
       "z": 1.2,
-      "height": 2.8,
+      "height": 2.55,
       "temp": 4000
     },
     {
@@ -115,7 +115,7 @@
       "type": "dome",
       "x": 1.3,
       "z": 3.3,
-      "height": 2.8,
+      "height": 2.55,
       "temp": 4000
     },
     {
@@ -124,10 +124,528 @@
       "type": "dome",
       "x": 6.35,
       "z": 3.25,
-      "height": 2.8,
+      "height": 2.55,
       "temp": 4000
     }
   ],
+  "facts": {
+    "version": "1.0",
+    "lightingFixtures": [
+      {
+        "id": "light_dining_pendant",
+        "room": "living_dining",
+        "type": "pendant",
+        "position": {
+          "x": 7.9,
+          "y": 2.8,
+          "z": 3.45
+        },
+        "temperatureK": 3000,
+        "enabled": true
+      },
+      {
+        "id": "light_living_main",
+        "room": "living_dining",
+        "type": "pendant",
+        "position": {
+          "x": 10.3,
+          "y": 2.8,
+          "z": 7
+        },
+        "temperatureK": 3000,
+        "enabled": true
+      },
+      {
+        "id": "light_tv_strip",
+        "room": "living_dining",
+        "type": "led_strip",
+        "position": {
+          "x": 7.35,
+          "y": 2,
+          "z": 7.7
+        },
+        "temperatureK": 3000,
+        "enabled": true
+      },
+      {
+        "id": "light_master_dome",
+        "room": "master_bedroom",
+        "type": "dome",
+        "position": {
+          "x": 2.6,
+          "y": 2.55,
+          "z": 7.6
+        },
+        "temperatureK": 3000,
+        "enabled": true
+      },
+      {
+        "id": "light_master_wall_l",
+        "room": "master_bedroom",
+        "type": "wall_lamp",
+        "position": {
+          "x": 4.2,
+          "y": 1.6,
+          "z": 7.2
+        },
+        "temperatureK": 3000,
+        "enabled": true
+      },
+      {
+        "id": "light_master_wall_r",
+        "room": "master_bedroom",
+        "type": "wall_lamp",
+        "position": {
+          "x": 4.2,
+          "y": 1.6,
+          "z": 8.55
+        },
+        "temperatureK": 3000,
+        "enabled": true
+      },
+      {
+        "id": "light_parent_dome",
+        "room": "study",
+        "type": "dome",
+        "position": {
+          "x": 5.7,
+          "y": 2.55,
+          "z": 7.675
+        },
+        "temperatureK": 3000,
+        "enabled": true
+      },
+      {
+        "id": "light_child_dome",
+        "room": "bedroom_nw",
+        "type": "dome",
+        "position": {
+          "x": 4.1,
+          "y": 2.55,
+          "z": 2.7
+        },
+        "temperatureK": 3000,
+        "enabled": true
+      },
+      {
+        "id": "light_study_dome",
+        "room": "bedroom_se",
+        "type": "dome",
+        "position": {
+          "x": 14.9,
+          "y": 2.3,
+          "z": 7.675
+        },
+        "temperatureK": 3000,
+        "enabled": true
+      },
+      {
+        "id": "light_corridor_1",
+        "room": "living_dining",
+        "type": "downlight",
+        "position": {
+          "x": 7.9,
+          "y": 2.8,
+          "z": 5.75
+        },
+        "temperatureK": 3000,
+        "enabled": true
+      },
+      {
+        "id": "light_entry_down",
+        "room": "entry_garden",
+        "type": "downlight",
+        "position": {
+          "x": 13,
+          "y": 2.8,
+          "z": 1.45
+        },
+        "temperatureK": 3000,
+        "enabled": true
+      },
+      {
+        "id": "light_kitchen_panel",
+        "room": "kitchen",
+        "type": "dome",
+        "position": {
+          "x": 9,
+          "y": 2.55,
+          "z": 1.2
+        },
+        "temperatureK": 4000,
+        "enabled": true
+      },
+      {
+        "id": "light_mbath_panel",
+        "room": "master_bath",
+        "type": "dome",
+        "position": {
+          "x": 1.3,
+          "y": 2.55,
+          "z": 3.3
+        },
+        "temperatureK": 4000,
+        "enabled": true
+      },
+      {
+        "id": "light_gbath_panel",
+        "room": "guest_bath",
+        "type": "dome",
+        "position": {
+          "x": 6.35,
+          "y": 2.55,
+          "z": 3.25
+        },
+        "temperatureK": 4000,
+        "enabled": true
+      }
+    ],
+    "plumbing": [
+      {
+        "id": "faucet_mbath_vanity",
+        "room": "master_bath",
+        "type": "faucet",
+        "x": 2.6,
+        "z": 2.8,
+        "wall": "w_mbath_east",
+        "note": "主卫洗手台冷热水（2026-08-21 样板间版：台盆回卫内贴东墙干区；⚠️坐标待量房确认立管）",
+        "height": 0.8
+      },
+      {
+        "id": "shower_mbath",
+        "room": "master_bath",
+        "type": "shower",
+        "x": 0.5,
+        "z": 3.16,
+        "wall": "w_mbath_south",
+        "note": "主卫淋浴花洒（2026-08-21 隔墙北移3.26随墙移：湿区西端 x[0,1.2]，花洒挂南墙朝北，玻璃隔断 x=1.2 左右分离）",
+        "height": 1
+      },
+      {
+        "id": "toilet_mbath",
+        "room": "master_bath",
+        "type": "toilet",
+        "x": 2.6,
+        "z": 1.5,
+        "wall": "w_mbath_east",
+        "note": "主卫马桶给水"
+      },
+      {
+        "id": "drain_mbath_shower",
+        "room": "master_bath",
+        "type": "drain",
+        "x": 0.6,
+        "z": 2.6,
+        "note": "主卫淋浴地漏（地面；2026-08-21 隔墙北移后湿区中心）",
+        "height": 0.02
+      },
+      {
+        "id": "drain_mbath_floor",
+        "room": "master_bath",
+        "type": "drain",
+        "x": 2,
+        "z": 1.15,
+        "note": "主卫干区地漏（地面）",
+        "height": 0.02
+      },
+      {
+        "id": "faucet_gbath_vanity",
+        "room": "guest_bath",
+        "type": "faucet",
+        "x": 5.6,
+        "z": 3.5,
+        "wall": "w_gbath_west",
+        "note": "客卫洗手台冷热水",
+        "height": 0.8
+      },
+      {
+        "id": "shower_gbath",
+        "room": "guest_bath",
+        "type": "shower",
+        "x": 5.6,
+        "z": 3,
+        "wall": "w_gbath_west",
+        "note": "客卫淋浴花洒",
+        "height": 1
+      },
+      {
+        "id": "toilet_gbath",
+        "room": "guest_bath",
+        "type": "toilet",
+        "x": 5.6,
+        "z": 2.5,
+        "wall": "w_gbath_west",
+        "note": "客卫马桶给水"
+      },
+      {
+        "id": "drain_gbath_shower",
+        "room": "guest_bath",
+        "type": "drain",
+        "x": 6.3,
+        "z": 3.2,
+        "note": "客卫淋浴地漏（地面）",
+        "height": 0.02
+      },
+      {
+        "id": "drain_gbath_floor",
+        "room": "guest_bath",
+        "type": "drain",
+        "x": 6.5,
+        "z": 2.4,
+        "note": "客卫干区地漏（地面）",
+        "height": 0.02
+      },
+      {
+        "id": "faucet_kitchen_sink",
+        "room": "kitchen",
+        "type": "faucet",
+        "x": 9.5,
+        "z": 0.3,
+        "note": "厨房洗菜盆冷热水（DEC-013 北墙落地柜台面，上下水走地面非挂墙，⚠️x坐标待量房确认立管）",
+        "height": 0.8
+      },
+      {
+        "id": "faucet_kitchen_purifier",
+        "room": "kitchen",
+        "type": "faucet",
+        "x": 9.5,
+        "z": 0.3,
+        "note": "厨房净水器给水（DEC-013 北墙落地柜台下，与水槽同侧）",
+        "height": 0.3
+      },
+      {
+        "id": "drain_kitchen_sink",
+        "room": "kitchen",
+        "type": "drain",
+        "x": 9.5,
+        "z": 0.3,
+        "note": "厨房洗菜盆下水（DEC-013 移至北墙地面，⚠️接排水立管待量房确认）",
+        "height": 0.02
+      },
+      {
+        "id": "faucet_balcony_washer",
+        "room": "balcony",
+        "type": "faucet",
+        "x": 5.6,
+        "z": 1.5,
+        "wall": "w_balc_west",
+        "note": "生活阳台洗衣机给水",
+        "height": 0.8
+      },
+      {
+        "id": "drain_balcony_floor",
+        "room": "balcony",
+        "type": "drain",
+        "x": 6.5,
+        "z": 1.5,
+        "note": "生活阳台地漏（地面）",
+        "height": 0.02
+      },
+      {
+        "id": "faucet_garden",
+        "room": "entry_garden",
+        "type": "faucet",
+        "x": 10.8,
+        "z": 1.5,
+        "wall": "w_ent_west",
+        "note": "入户花园浇花水龙头",
+        "height": 0.8
+      },
+      {
+        "id": "drain_garden",
+        "room": "entry_garden",
+        "type": "drain",
+        "x": 13,
+        "z": 1.5,
+        "note": "入户花园地漏（地面）",
+        "height": 0.02
+      },
+      {
+        "id": "drain_kitchen_dishwasher",
+        "room": "kitchen",
+        "type": "drain",
+        "x": 9,
+        "z": 0.3,
+        "note": "洗碗机排水（DEC-013 移至北墙厨下，接排水管）",
+        "height": 0.02
+      },
+      {
+        "id": "drain_balcony_washer",
+        "room": "balcony",
+        "type": "drain",
+        "x": 5.8,
+        "z": 1.5,
+        "note": "洗衣机墙排排水（不走地漏，防反水）",
+        "height": 0.6
+      }
+    ],
+    "ceiling": [
+      {
+        "id": "ceiling_living",
+        "room": "living_dining",
+        "type": "drop",
+        "thickness": 0.3,
+        "area": [
+          7.2,
+          4.3,
+          13.4,
+          9.8
+        ],
+        "note": "客厅局部吊顶（走管区）"
+      },
+      {
+        "id": "ac_living",
+        "room": "living_dining",
+        "type": "ac_indoor",
+        "x": 10.3,
+        "z": 7,
+        "height": 2.85,
+        "model": "4HP 风管机",
+        "note": "客厅空调内机"
+      },
+      {
+        "id": "ac_master",
+        "room": "master_bedroom",
+        "type": "ac_indoor",
+        "x": 1.5,
+        "z": 7,
+        "height": 2.85,
+        "model": "2.8HP 风管机",
+        "note": "主卧空调内机"
+      },
+      {
+        "id": "ac_study",
+        "room": "bedroom_se",
+        "type": "ac_indoor",
+        "x": 14.8,
+        "z": 7.5,
+        "height": 2.85,
+        "model": "2.2HP 风管机",
+        "note": "书房空调内机"
+      },
+      {
+        "id": "ac_parent",
+        "room": "study",
+        "type": "ac_indoor",
+        "x": 5.5,
+        "z": 7.5,
+        "height": 2.85,
+        "model": "2.2HP 风管机",
+        "note": "西南次卧空调内机"
+      },
+      {
+        "id": "ac_child",
+        "room": "bedroom_nw",
+        "type": "ac_indoor",
+        "x": 4,
+        "z": 2.5,
+        "height": 2.85,
+        "model": "2.2HP 风管机",
+        "note": "儿童房空调内机"
+      },
+      {
+        "id": "drying_rack_living",
+        "room": "living_dining",
+        "type": "drop",
+        "thickness": 0.15,
+        "area": [
+          7.2,
+          9.2,
+          9,
+          9.8
+        ],
+        "note": "客厅南侧隐藏式晾衣架吊顶（预埋加固板+电源）"
+      },
+      {
+        "id": "ceiling_kitchen",
+        "room": "kitchen",
+        "type": "aluminum_buckle",
+        "thickness": 0.15,
+        "area": [
+          7.2,
+          0,
+          10.8,
+          4.3
+        ],
+        "note": "厨房铝扣板吊顶（内藏油烟机烟管+灯具），净高约2.55m"
+      },
+      {
+        "id": "ceiling_master_bath",
+        "room": "master_bath",
+        "type": "aluminum_buckle",
+        "thickness": 0.15,
+        "area": [
+          0,
+          1.1,
+          2.6,
+          3.26
+        ],
+        "note": "主卫铝扣板吊顶（内藏排风管+浴霸），净高约2.55m；2026-08-21 隔墙北移3.26，吊顶随主卫缩小"
+      },
+      {
+        "id": "ceiling_guest_bath",
+        "room": "guest_bath",
+        "type": "aluminum_buckle",
+        "thickness": 0.15,
+        "area": [
+          5.6,
+          2.2,
+          7.1,
+          4.3
+        ],
+        "note": "客卫铝扣板吊顶（内藏排风管+浴霸），净高约2.55m"
+      },
+      {
+        "id": "ceiling_main_corridor",
+        "room": "living_dining",
+        "type": "drop",
+        "thickness": 0.3,
+        "area": [
+          4.2,
+          4.3,
+          7.2,
+          5.55
+        ],
+        "note": "主走廊吊顶（藏多联机风管），净高约2.50m"
+      },
+      {
+        "id": "ceiling_corridor",
+        "room": "master_bedroom",
+        "type": "drop",
+        "thickness": 0.3,
+        "area": [
+          4.2,
+          5.55,
+          7.2,
+          7.8
+        ],
+        "note": "主卧与父母房之间走廊吊顶（藏风管），净高约2.50m"
+      },
+      {
+        "id": "ceiling_entry_foyer",
+        "room": "entry_garden",
+        "type": "drop",
+        "thickness": 0.3,
+        "area": [
+          10.8,
+          2.9,
+          13.4,
+          4.3
+        ],
+        "note": "入户门厅吊顶（藏风管），净高约2.50m"
+      }
+    ],
+    "materials": {
+      "floor": {
+        "default": "floor_pbr_tile_612",
+        "roomOverrides": {
+          "master_bath": "floor_tile_antislip_400",
+          "guest_bath": "floor_tile_deco_small",
+          "balcony": "floor_tile_antislip_400"
+        }
+      }
+    }
+  },
   "scenarios": [
     {
       "id": "blue_hour",
@@ -320,7 +838,13 @@
       "scenarios": [
         "material_review",
         "blue_hour"
-      ]
+      ],
+      "scenario_overrides": {
+        "blue_hour": {
+          "fill_light": 40,
+          "fill_from_camera": true
+        }
+      }
     },
     {
       "id": "bedroom_floor_closeup",
@@ -339,7 +863,8 @@
       "scenarios": [
         "material_review"
       ],
-      "fill_light": 80
+      "fill_light": 80,
+      "exposure": 0
     },
     {
       "id": "bedroom_west_wall",
@@ -358,7 +883,8 @@
       "scenarios": [
         "material_review"
       ],
-      "fill_light": 80
+      "fill_light": 80,
+      "exposure": 0
     },
     {
       "id": "kitchen_l_overview",
@@ -436,7 +962,8 @@
       "scenarios": [
         "material_review",
         "bare_shell"
-      ]
+      ],
+      "exposure": -0.5
     },
     {
       "id": "bedroom_se_overview",
@@ -455,7 +982,8 @@
       "scenarios": [
         "material_review",
         "bare_shell"
-      ]
+      ],
+      "exposure": 0
     },
     {
       "id": "bedroom_nw_overview",
@@ -474,7 +1002,8 @@
       "scenarios": [
         "material_review",
         "bare_shell"
-      ]
+      ],
+      "exposure": 0
     },
     {
       "id": "master_bath_overview",
@@ -514,7 +1043,8 @@
         "material_review",
         "bare_shell"
       ],
-      "fill_light": 60
+      "fill_light": 60,
+      "exposure": -1.5
     },
     {
       "id": "balcony_overview",
@@ -533,7 +1063,12 @@
       "scenarios": [
         "material_review"
       ],
-      "fill_light": 80
+      "fill_light": 80,
+      "scenario_overrides": {
+        "material_review": {
+          "exposure": -0.5
+        }
+      }
     },
     {
       "id": "entry_overview",

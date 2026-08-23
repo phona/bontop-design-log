@@ -29,6 +29,7 @@ GLASS_IDS = {
 # 房间归属来自 model-geometry 墙→房间拓扑），命中湿区即挂 mats['wall_tile']
 WET_ROOM_IDS = {'kitchen', 'master_bath', 'guest_bath', 'balcony'}
 _WALL_SEG_ROOM_RE = re.compile(r'^wall:seg:\d+:room=([a-z0-9_|]+)')
+_FLOOR_ROOM_RE = re.compile(r'^floor:([a-z0-9_]+)(?:\.\d+)?$')
 
 
 def _wall_seg_rooms(name: str) -> set:
@@ -37,6 +38,30 @@ def _wall_seg_rooms(name: str) -> set:
     if not m:
         return set()
     return {r for r in m.group(1).split('|') if r}
+
+
+def floor_room_id(name: str) -> str | None:
+    """仅根据 GLB 的稳定 floor:<roomId> 导出名识别房间，绝不按位置猜测。"""
+    m = _FLOOR_ROOM_RE.match(name)
+    return m.group(1) if m else None
+
+
+def projection_facts(cfg: dict) -> dict:
+    facts = cfg.get('facts')
+    if not isinstance(facts, dict):
+        print('[dress_scene] WARN: render config missing facts; plumbing/ceiling/floor overrides disabled')
+        return {}
+    return facts
+
+
+def plumbing_by_id(facts: dict) -> dict:
+    points = facts.get('plumbing', [])
+    if not isinstance(points, list):
+        print('[dress_scene] WARN: facts.plumbing must be a list')
+        return {}
+    return {p['id']: p for p in points if isinstance(p, dict) and isinstance(p.get('id'), str)
+            and isinstance(p.get('x'), (int, float)) and isinstance(p.get('z'), (int, float))}
+
 
 LIGHT_ENERGY = {  # 瓦（Cycles/EEVEE 通用，先求氛围对再校绝对亮度）
     'pendant': 110.0,
@@ -217,6 +242,7 @@ def build_materials(engine: str, sheer_opacity: float = 0.15) -> dict:
         # 乳胶漆（哑光）：latex_paint_01 #f7f5ef
         'wall': new_principled('硬装_乳胶漆', hex_rgb('#f7f5ef'), rough=0.92),
         'ceiling': new_principled('硬装_天花白', hex_rgb('#f7f7f5'), rough=0.9),
+        'aluminum_buckle': new_principled('硬装_铝扣板', hex_rgb('#ecece8'), rough=0.55, metallic=0.25),
         'glass': glass,
         'sheer': sheer,
         'curtain_fabric': new_principled('软装_遮光帘', hex_rgb('#d8d0c2'), rough=0.95),
@@ -228,15 +254,22 @@ def build_materials(engine: str, sheer_opacity: float = 0.15) -> dict:
     }
 
 
-def assign_materials(mats: dict) -> dict:
+def assign_materials(mats: dict, floor_mats: dict | None = None) -> dict:
+    """按稳定导出名赋材；floor overrides 仅匹配 floor:<roomId>，不做空间推断。"""
     stats: dict[str, int] = {}
+    floor_mats = floor_mats or {}
+    expected_floor_rooms = set(floor_mats)
+    seen_floor_rooms = set()
     for obj in bpy.data.objects:
         if obj.type != 'MESH':
             continue
         key = classify(obj)
         if key == 'skip':
             continue
-        mat = mats.get(key)
+        room_id = floor_room_id(obj.name) if key == 'floor' else None
+        if room_id:
+            seen_floor_rooms.add(room_id)
+        mat = floor_mats.get(room_id) if room_id else mats.get(key)
         if mat is None:
             # wall_tile 仅在 scheme 选了墙砖时生成；否则湿区墙段回退乳胶漆
             mat = mats['wall'] if key == 'wall_tile' else mats['default']
@@ -246,6 +279,9 @@ def assign_materials(mats: dict) -> dict:
         else:
             obj.data.materials.append(mat)
         stats[key] = stats.get(key, 0) + 1
+    missing = expected_floor_rooms - seen_floor_rooms
+    if missing:
+        raise RuntimeError(f'BLOCKED: GLB missing stable floor room tag(s) for overrides: {", ".join(sorted(missing))}')
     return stats
 
 
@@ -1314,7 +1350,8 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '', only_types: se
     return count
 
 
-def place_extra_furniture(furniture_mats: dict, config_dir: str, only_types: set | None = None) -> int:
+def place_extra_furniture(furniture_mats: dict, config_dir: str, plumbing: dict,
+                          only_types: set | None = None) -> int:
     """house.yaml 已摆位但 glb 尚未重新导出的家具类型：直接按坐标生成部件。
     glb 里已有 furniture:* 块的类型跳过（重新导出后自动失效，不会重复）。
     坐标：house.yaml 为 three 局部米制 (x, z, rotation°)；three(x,y,z) → Blender(x,-z,y)，rotation 同号映到 Blender Z。
@@ -1341,11 +1378,23 @@ def place_extra_furniture(furniture_mats: dict, config_dir: str, only_types: set
                 continue
             if only_types is not None and ftype not in only_types:
                 continue
-            if it.get('x') is None or it.get('z') is None:
-                continue
+            point_anchor = {
+                'sink': 'faucet_kitchen_sink',
+                'dishwasher': 'drain_kitchen_dishwasher',
+            }.get(ftype)
+            if point_anchor:
+                anchor = plumbing.get(point_anchor)
+                if not anchor:
+                    print(f'[dress_scene] WARN: missing plumbing anchor {point_anchor}; skip {ftype}')
+                    continue
+                x, z = anchor['x'], anchor['z']
+            else:
+                if it.get('x') is None or it.get('z') is None:
+                    continue
+                x, z = it['x'], it['z']
             rz = math.radians(it.get('rotation', 0))
             cos_rz, sin_rz = math.cos(rz), math.sin(rz)
-            bx, by = it['x'], -it['z']  # three → blender 水平面
+            bx, by = x, -z  # three → blender 水平面
             # 优先用真 3D 模型（.glb/.gltf）：与 replace_furniture 同一映射表
             glb_cfg = FURNITURE_GLB.get(ftype)
             if glb_cfg:
@@ -1429,42 +1478,49 @@ def add_sheer_panels(config_dir: str, mats: dict) -> int:
 
 
 
-def add_ceiling(config_dir: str, ceiling_mats: dict) -> int:
-    """吊顶：读 ceiling.yaml，type=drop 的生成局部吊顶板（底面在 2.8-thickness）。"""
-    import os
-    import yaml as pyyaml
-    path = os.path.join(config_dir, 'config', 'ceiling.yaml')
-    if not os.path.exists(path):
+def add_ceiling(ceiling: list, ceiling_mats: dict) -> int:
+    """从 render facts 生成 drop/aluminum_buckle 吊顶；ac_indoor 不在 Blender 建实体。"""
+    if not isinstance(ceiling, list):
+        print('[dress_scene] WARN: facts.ceiling must be a list; skip ceiling construction')
         return 0
-    with open(path, 'r', encoding='utf-8') as f:
-        items = pyyaml.safe_load(f) or []
     count = 0
-    for it in items:
-        if it.get('type') != 'drop':
+    for it in ceiling:
+        if not isinstance(it, dict):
+            print('[dress_scene] WARN: invalid ceiling fact; skip')
             continue
-        area = it.get('area')
-        if not area or len(area) < 4:
+        typ, zone_id = it.get('type'), it.get('id', '<unknown>')
+        if typ == 'ac_indoor':
+            continue
+        if typ not in ('drop', 'aluminum_buckle'):
+            print(f'[dress_scene] WARN: ceiling {zone_id} has unsupported type {typ!r}; skip')
+            continue
+        area, thick = it.get('area'), it.get('thickness')
+        if (not isinstance(area, list) or len(area) != 4
+                or not all(isinstance(v, (int, float)) for v in area)
+                or not isinstance(thick, (int, float)) or thick <= 0):
+            print(f'[dress_scene] WARN: ceiling {zone_id} missing valid area/thickness; skip')
             continue
         x1, z1, x2, z2 = area
-        thick = it.get('thickness', 0.3)
         w, d = x2 - x1, z2 - z1
-        cx, cz = (x1 + x2) / 2, (z1 + z2) / 2
+        if w <= 0 or d <= 0:
+            print(f'[dress_scene] WARN: ceiling {zone_id} has non-positive area; skip')
+            continue
         bpy.ops.mesh.primitive_cube_add(size=1.0)
         box = bpy.context.object
-        box.name = f'ceiling:{it.get("id")}'
+        box.name = f'ceiling:{zone_id}'
         box.dimensions = (w, d, thick)
-        box.location = to_blender(cx, 2.8 - thick / 2, cz)
-        mat = ceiling_mats.get('ceiling')
+        box.location = to_blender((x1 + x2) / 2, 2.8 - thick / 2, (z1 + z2) / 2)
+        mat = ceiling_mats.get('aluminum_buckle' if typ == 'aluminum_buckle' else 'ceiling')
         if mat:
             box.data.materials.append(mat)
         count += 1
     if count:
-        print(f'[dress_scene] ceiling drops: {count}')
+        print(f'[dress_scene] ceiling facts: {count}')
     return count
 
 
-def add_kitchen_cabinets(cream, quartz, gap=None) -> int:
-    """厨房 L 型橱柜：北墙3.6水槽切配 + 东墙灶台（DEC-014），冰箱位(z>1.7)留空。
+def add_kitchen_cabinets(cream, quartz, plumbing: dict, gap=None) -> int:
+    """厨房 L 型橱柜：北墙水槽切配由 plumbing anchor 驱动，东墙灶台（DEC-014），冰箱位(z>1.7)留空。
     厨房界 x[7.2,10.8] z[0,2.4]；Blender dims=(sx, sz, sy_height)。
     cream/quartz 由调用方传入（优先 scheme 的 cabinet/countertop 材质）。
     gap：柜门分缝条材质（4mm 宽假凹槽），缺省不分缝。"""
@@ -1496,8 +1552,16 @@ def add_kitchen_cabinets(cream, quartz, gap=None) -> int:
         return 1
 
     n = 0
-    # 北墙地柜拆两段留洗碗机位 x∈[8.50,9.10]（2026-08-23；dishwasher 由 place_extra_furniture 生成，
-    # 紧贴水槽柜 x≥9.10 西侧，上下水就近）
+    sink = plumbing.get('faucet_kitchen_sink')
+    dishwasher = plumbing.get('drain_kitchen_dishwasher')
+    sink_cutout = []
+    if sink:
+        sink_cutout = [(sink['x'], sink['z'], 0.70, 0.40)]
+    else:
+        print('[dress_scene] WARN: missing plumbing anchor faucet_kitchen_sink; skip kitchen sink cutout')
+    if not dishwasher:
+        print('[dress_scene] WARN: missing plumbing anchor drain_kitchen_dishwasher; dishwasher reserve remains cabinet-defined only')
+    # 北墙地柜拆两段留洗碗机位 x∈[8.50,9.10]（柜体为既有非 point 几何；设备位置锚点仅用于明确预留标记）
     n += kbox('kitchen:base_n1', 7.86, 0.3, 1.28, 0.6, 0.85, 0.425, cream)
     n += kbox('kitchen:base_n2', 9.94, 0.3, 1.68, 0.6, 0.85, 0.425, cream)
     n += kbox('kitchen:base_e', 10.5, 1.15, 0.6, 1.1, 0.85, 0.425, cream)
@@ -1528,8 +1592,10 @@ def add_kitchen_cabinets(cream, quartz, gap=None) -> int:
             bpy.data.objects.remove(c)
         return 1
 
-    n += ktop('kitchen:top_n', 9.0, 0.3, 3.6, 0.62, [(9.5, 0.30, 0.70, 0.40)])
+    n += ktop('kitchen:top_n', 9.0, 0.3, 3.6, 0.62, sink_cutout)
     n += ktop('kitchen:top_e', 10.5, 1.15, 0.62, 1.1, [(10.5, 1.18, 0.75, 0.45)])
+    if dishwasher:
+        n += kbox('kitchen:dishwasher_reserve', dishwasher['x'], dishwasher['z'], 0.02, 0.02, 0.02, 0.01, None)
     # 柜门分缝：北墙 run A 1.28m→3门（gap 7.65/8.08）/ run B 1.68m→3门（gap 9.66/10.22）/ 东墙 1.1m→2门
     if gap is not None:
         for gx in (7.65, 8.08, 9.66, 10.22):
@@ -1539,12 +1605,9 @@ def add_kitchen_cabinets(cream, quartz, gap=None) -> int:
     return n
 
 
-def add_bath_fixtures(furniture_mats: dict) -> int:
-    """卫浴洁具+细节：洗手台+盆+马桶+镜柜+毛巾杆+台盆小件。
-    点位对齐 house.yaml furnishings（2026-08-21 主卫终版：主卫东墙干区台盆 z=2.80/马桶 z=1.50、
-    客卫西墙台盆 z=3.50/马桶 z=2.50）；此前硬编码为 DEC-019 旧点位已过期（2026-08-23 修正）。
-    挂墙件只挂实体墙：主卫东墙 w_mbath_east、客卫西墙 w_gbath_west/东墙 w_gbath_east；
-    主卫北墙为玻璃幕墙（suppressed），不挂任何件。"""
+def add_bath_fixtures(furniture_mats: dict, plumbing: dict) -> int:
+    """卫浴洁具+细节：四组指定 plumbing anchors 是唯一世界坐标来源。
+    anchor 缺失时跳过关联 fixture 组，绝不回退历史绝对坐标。"""
     ceramic = furniture_mats.get('ceramic')
     cream = furniture_mats.get('paint_cream')
     metal = furniture_mats.get('metal')
@@ -1561,26 +1624,47 @@ def add_bath_fixtures(furniture_mats: dict) -> int:
         return 1
 
     n = 0
-    # 主卫（x 0–2.60, z 1.10–3.26；西侧淋浴湿区，东侧干区贴 w_mbath_east）
-    n += box('bath:mb_vanity', 2.35, 2.80, 0.5, 0.8, 0.8, 0.4, cream)      # 80cm 台盆柜贴东墙，南缘 z=3.20 齐隔墙北脸
-    n += box('bath:mb_basin', 2.35, 2.80, 0.4, 0.6, 0.12, 0.85, ceramic)
-    n += box('bath:mb_toilet', 2.30, 1.50, 0.55, 0.4, 0.4, 0.2, ceramic)   # 贴东墙面朝西，对齐给水 z=1.5
-    n += box('bath:mb_tank', 2.50, 1.50, 0.18, 0.42, 0.5, 0.55, ceramic)
-    n += box('bath:mb_mirror_cab', 2.53, 2.80, 0.14, 0.6, 0.7, 1.55, cream)   # 镜柜挂东墙（台盆上方）
-    n += box('bath:mb_mirror', 2.455, 2.80, 0.02, 0.55, 0.65, 1.55, metal)    # 镜面
-    n += box('bath:mb_towel_bar', 2.58, 2.15, 0.03, 0.45, 0.03, 1.25, metal)  # 毛巾杆：东墙台盆/马桶之间空段
-    n += box('bath:mb_towel', 2.55, 2.15, 0.06, 0.28, 0.45, 1.05, towel_mat)
-    n += box('bath:mb_soap', 2.45, 3.05, 0.06, 0.06, 0.15, 0.925, ceramic)    # 台盆角洗手液瓶
-    # 客卫（x 5.60–7.10, z 2.20–4.30；台盆/马桶贴西墙 w_gbath_west）
-    n += box('bath:gb_vanity', 5.85, 3.5, 0.5, 0.8, 0.8, 0.4, cream)
-    n += box('bath:gb_basin', 5.85, 3.5, 0.4, 0.5, 0.12, 0.85, ceramic)
-    n += box('bath:gb_toilet', 5.95, 2.50, 0.55, 0.4, 0.4, 0.2, ceramic)   # 贴西墙面朝东，对齐给水 z=2.5
-    n += box('bath:gb_tank', 5.70, 2.50, 0.18, 0.42, 0.5, 0.55, ceramic)
-    n += box('bath:gb_mirror_cab', 5.67, 3.50, 0.14, 0.6, 0.7, 1.55, cream)   # 镜柜挂西墙（台盆上方）
-    n += box('bath:gb_mirror', 5.745, 3.50, 0.02, 0.55, 0.65, 1.55, metal)
-    n += box('bath:gb_towel_bar', 7.08, 3.00, 0.03, 0.45, 0.03, 1.25, metal)  # 毛巾杆：东墙 w_gbath_east
-    n += box('bath:gb_towel', 7.05, 3.00, 0.06, 0.28, 0.45, 1.05, towel_mat)
-    n += box('bath:gb_soap', 5.75, 3.75, 0.06, 0.06, 0.15, 0.925, ceramic)
+
+    def point(point_id):
+        p = plumbing.get(point_id)
+        if not p:
+            print(f'[dress_scene] WARN: missing plumbing anchor {point_id}; skip associated bath fixture')
+        return p
+
+    # 每一件都相对其唯一施工 anchor 布置；偏移仅描述洁具尺寸/贴墙关系。
+    mb_vanity, mb_toilet = point('faucet_mbath_vanity'), point('toilet_mbath')
+    if mb_vanity:
+        x, z = mb_vanity['x'] - 0.25, mb_vanity['z']
+        n += box('bath:mb_vanity', x, z, 0.5, 0.8, 0.8, 0.4, cream)
+        n += box('bath:mb_basin', x, z, 0.4, 0.6, 0.12, 0.85, ceramic)
+        n += box('bath:mb_mirror_cab', x + 0.18, z, 0.14, 0.6, 0.7, 1.55, cream)
+        n += box('bath:mb_mirror', x + 0.105, z, 0.02, 0.55, 0.65, 1.55, metal)
+        n += box('bath:mb_soap', x + 0.10, z + 0.25, 0.06, 0.06, 0.15, 0.925, ceramic)
+    if mb_toilet:
+        x, z = mb_toilet['x'] - 0.30, mb_toilet['z']
+        n += box('bath:mb_toilet', x, z, 0.55, 0.4, 0.4, 0.2, ceramic)
+        n += box('bath:mb_tank', x + 0.20, z, 0.18, 0.42, 0.5, 0.55, ceramic)
+    if mb_vanity and mb_toilet:
+        x, z = mb_vanity['x'] - 0.02, (mb_vanity['z'] + mb_toilet['z']) / 2
+        n += box('bath:mb_towel_bar', x, z, 0.03, 0.45, 0.03, 1.25, metal)
+        n += box('bath:mb_towel', x - 0.03, z, 0.06, 0.28, 0.45, 1.05, towel_mat)
+
+    gb_vanity, gb_toilet = point('faucet_gbath_vanity'), point('toilet_gbath')
+    if gb_vanity:
+        x, z = gb_vanity['x'] + 0.25, gb_vanity['z']
+        n += box('bath:gb_vanity', x, z, 0.5, 0.8, 0.8, 0.4, cream)
+        n += box('bath:gb_basin', x, z, 0.4, 0.5, 0.12, 0.85, ceramic)
+        n += box('bath:gb_mirror_cab', x - 0.18, z, 0.14, 0.6, 0.7, 1.55, cream)
+        n += box('bath:gb_mirror', x - 0.105, z, 0.02, 0.55, 0.65, 1.55, metal)
+        n += box('bath:gb_soap', x - 0.10, z + 0.25, 0.06, 0.06, 0.15, 0.925, ceramic)
+    if gb_toilet:
+        x, z = gb_toilet['x'] + 0.35, gb_toilet['z']
+        n += box('bath:gb_toilet', x, z, 0.55, 0.4, 0.4, 0.2, ceramic)
+        n += box('bath:gb_tank', x - 0.25, z, 0.18, 0.42, 0.5, 0.55, ceramic)
+    if gb_vanity:
+        x, z = gb_vanity['x'] + 1.48, gb_vanity['z'] - 0.50
+        n += box('bath:gb_towel_bar', x, z, 0.03, 0.45, 0.03, 1.25, metal)
+        n += box('bath:gb_towel', x - 0.03, z, 0.06, 0.28, 0.45, 1.05, towel_mat)
     print(f'[dress_scene] bath fixtures: {n}')
     return n
 
@@ -1769,6 +1853,31 @@ def set_engine(scene, engine: str, samples: int = 256) -> str:
     raise RuntimeError('no EEVEE engine id available')
 
 
+CAMERA_SCENARIO_OVERRIDE_FIELDS = frozenset({'exposure', 'fill_light', 'fill_from_camera'})
+
+
+def effective_camera_config(camera: dict, scenario: dict) -> dict:
+    """返回当前 job 的有效相机配置，不修改源配置也不允许覆盖全局场景状态。"""
+    effective = dict(camera)
+    overrides = camera.get('scenario_overrides')
+    if overrides is None:
+        return effective
+    if not isinstance(overrides, dict):
+        print(f'[dress_scene] WARN: camera {camera.get("id")} scenario_overrides must be an object; ignored')
+        return effective
+    override = overrides.get(scenario.get('id'))
+    if override is None:
+        return effective
+    if not isinstance(override, dict):
+        print(f'[dress_scene] WARN: camera {camera.get("id")} scenario override for {scenario.get("id")} must be an object; ignored')
+        return effective
+    unknown = set(override) - CAMERA_SCENARIO_OVERRIDE_FIELDS
+    if unknown:
+        print(f'[dress_scene] WARN: camera {camera.get("id")} scenario override for {scenario.get("id")} ignored fields: {", ".join(sorted(unknown))}')
+    effective.update({key: value for key, value in override.items() if key in CAMERA_SCENARIO_OVERRIDE_FIELDS})
+    return effective
+
+
 def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path: str) -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=args['glb'])
@@ -1800,18 +1909,24 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
         for o in bpy.data.objects:
             if o.name.endswith(':sheer'):
                 o.hide_render = True
+    facts = projection_facts(cfg)
+    plumbing = plumbing_by_id(facts)
+    ceiling = facts.get('ceiling', []) if isinstance(facts, dict) else []
     scene = bpy.context.scene
     used_engine = set_engine(scene, args['engine'], samples=int(args.get('samples', 256)))
     sheer_opacity = scenario.get('sheer_opacity', 0.15)
     mats = build_materials(used_engine, sheer_opacity=sheer_opacity)
     from materials_from_yaml import load_scheme_materials
+    floor_mats = {}
     if args.get('config-dir'):
-        mats = load_scheme_materials(used_engine, mats, new_principled, hex_rgb,
-                                     config_dir=args['config-dir'],
-                                     color_overrides=_parse_mat_overrides(args.get('mat-override')))
+        mats, floor_mats = load_scheme_materials(
+            used_engine, mats, new_principled, hex_rgb, facts,
+            config_dir=args['config-dir'],
+            color_overrides=_parse_mat_overrides(args.get('mat-override')),
+        )
     else:
         print('[dress_scene] WARN: --config-dir 未传，跳过 materials.yaml 材质（使用基础材质）')
-    stats = assign_materials(mats)
+    stats = assign_materials(mats, floor_mats)
     furniture_mats = build_furniture_materials(hex_rgb, new_principled)
     tex_base = os.path.join(args.get('config-dir') or '', 'assets', 'textures')
     add_pbr_maps(mats.get('wall'), os.path.join(tex_base, 'painted_plaster_wall'),
@@ -1859,15 +1974,15 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
                  size=0.35, with_diffuse=False, normal_strength=1.0)
     replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '',
                       only_types=BARE_SHELL_KEEP if bare_shell else None)
-    place_extra_furniture(furniture_mats, args.get('config-dir') or '',
+    place_extra_furniture(furniture_mats, args.get('config-dir') or '', plumbing,
                           only_types=BARE_SHELL_KEEP if bare_shell else None)
     add_moldings(args.get('config-dir') or '')
     rebuild_railings(mats)
-    add_ceiling(args.get('config-dir') or '', mats)
+    add_ceiling(ceiling, mats)
     # 厨房橱柜挂 scheme 柜门材质：PET 肤感（哑光+细微 bump，与定制柜同一饰面口径）
     _add_pet_bump(cabinet_mat)
-    add_kitchen_cabinets(cabinet_mat, countertop_mat, gap=furniture_mats.get('door_gap'))
-    add_bath_fixtures(furniture_mats)
+    add_kitchen_cabinets(cabinet_mat, countertop_mat, plumbing, gap=furniture_mats.get('door_gap'))
+    add_bath_fixtures(furniture_mats, plumbing)
     if not bare_shell:
         add_soft_decor(furniture_mats)  # 地毯/挂画属软装，裸房验收不出现
     # 纱帘状态配置驱动：sheer_state=open → 不生成（视同收起）。bare_shell 同为软装不生成。
@@ -1875,8 +1990,8 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     # 想看外景的工况应设 sheer_state: open。
     if not bare_shell and scenario.get('sheer_state', 'closed') != 'open':
         add_sheer_panels(args.get('config-dir') or '', mats)
-    # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）
-    fill = scenario.get('fill_light') or cam_cfg.get('fill_light')
+    # 有效相机覆盖优先于工况默认补光；None 时才回退，允许显式 0 关闭默认补光。
+    fill = cam_cfg.get('fill_light', scenario.get('fill_light'))
     if fill:
         fl = bpy.data.lights.new('fill_light', type='AREA')
         fl.shape = 'RECTANGLE'
@@ -1976,7 +2091,9 @@ def main() -> None:
     print(f'[dress_scene] {len(jobs)} jobs (cameras×scenarios)')
     os.makedirs(out_dir, exist_ok=True)
     for job in jobs:
-        cam_cfg = next(c for c in cfg['cameras'] if c['id'] == job['camera_id'])
+        camera = next(c for c in cfg['cameras'] if c['id'] == job['camera_id'])
+        # 每个 job 取得独立有效配置，白名单覆盖绝不写回 camera/scenario 源对象。
+        cam_cfg = effective_camera_config(camera, job['scenario'])
         out_path = os.path.join(out_dir, job['out_name'] + '.png')
         render_scene(args, cfg, cam_cfg, job['scenario'], out_path)
 

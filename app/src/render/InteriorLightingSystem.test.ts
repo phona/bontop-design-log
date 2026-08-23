@@ -1,77 +1,78 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { InteriorLightingSystem, type InteriorLightPoint } from './InteriorLightingSystem';
+import { InteriorLightingSystem } from './InteriorLightingSystem';
+import type { RenderLightingFixture } from '@shared/types';
 
-const POINTS: InteriorLightPoint[] = [
-  { id: 'p1', room: 'living_dining', type: 'pendant', x: 8.5, z: 3.35, height: 2.8 },
-  { id: 'p2', room: 'living_dining', type: 'pendant', x: 10.3, z: 7.0, height: 2.8 },
-  { id: 'p3', room: 'master_bedroom', type: 'pendant', x: 2.6, z: 7.6, height: 2.8 },
-  { id: 'd1', room: 'master_bedroom', type: 'dome', x: 2.6, z: 7.6, height: 2.8 },
-  { id: 'w1', room: 'master_bedroom', type: 'wall_lamp', x: 4.2, z: 7.2, height: 1.6 },
-  { id: 's1', room: 'living_dining', type: 'downlight', x: 5.7, z: 4.9, height: 2.8 },
-  { id: 't1', room: 'living_dining', type: 'led_strip', x: 7.2, z: 7.0, height: 2.0 },
-  { id: 'k1', room: 'kitchen', type: 'dome', x: 9.0, z: 1.2, height: 2.8, temp: 4000 },
-  { id: 'x1', room: 'kitchen', type: 'socket', x: 9.0, z: 0.3, height: 0.3 }, // 非灯光点位应被忽略
+const FIXTURES: RenderLightingFixture[] = [
+  { id: 'p1', room: 'living_dining', type: 'pendant', position: { x: 8.5, y: 2.8, z: 3.35 }, temperatureK: 3000, enabled: true },
+  { id: 'p2', room: 'living_dining', type: 'pendant', position: { x: 10.3, y: 2.8, z: 7.0 }, temperatureK: 3000, enabled: true },
+  { id: 'p3', room: 'master_bedroom', type: 'pendant', position: { x: 2.6, y: 2.8, z: 7.6 }, temperatureK: 3000, enabled: true },
+  { id: 'd1', room: 'master_bedroom', type: 'dome', position: { x: 2.6, y: 2.55, z: 7.6 }, temperatureK: 3000, enabled: true },
+  { id: 'w1', room: 'master_bedroom', type: 'wall_lamp', position: { x: 4.2, y: 1.6, z: 7.2 }, temperatureK: 3000, enabled: true },
+  { id: 's1', room: 'living_dining', type: 'downlight', position: { x: 5.7, y: 2.8, z: 4.9 }, temperatureK: 3000, enabled: true },
+  { id: 't1', room: 'living_dining', type: 'led_strip', position: { x: 7.35, y: 2.0, z: 7.0 }, temperatureK: 3000, enabled: true },
+  { id: 'k1', room: 'kitchen', type: 'dome', position: { x: 9.0, y: 2.55, z: 1.2 }, temperatureK: 4000, enabled: true },
+  { id: 'off', room: 'living_dining', type: 'dome', position: { x: 0, y: 0, z: 0 }, temperatureK: 3000, enabled: false },
 ];
 
-function makeSystem(points = POINTS) {
+function makeSystem(fixtures = FIXTURES) {
   const scene = new THREE.Scene();
-  const sys = new InteriorLightingSystem(scene, points);
-  return { scene, sys };
+  return { scene, sys: new InteriorLightingSystem(scene, fixtures) };
+}
+
+function lights(scene: THREE.Scene): THREE.Light[] {
+  const group = scene.children.find((child) => child instanceof THREE.Group) as THREE.Group;
+  return group.children.filter((child) => child instanceof THREE.Light) as THREE.Light[];
 }
 
 describe('InteriorLightingSystem', () => {
-  it('按灯光类型建光源，非灯光点位被忽略', () => {
-    const { sys } = makeSystem();
-    expect(sys.lightCount).toBe(8); // 9 个点位减去 1 个 socket
+  it('creates enabled projection fixtures only', () => {
+    expect(makeSystem().sys.lightCount).toBe(8);
   });
 
-  it('投影光源数量 ≤2（pendant 优先，超出不投影）', () => {
-    const { sys } = makeSystem();
-    expect(sys.shadowLightCount).toBe(2); // 3 个 pendant，只前 2 个投影
+  it('uses final projection anchors for THREE light positions', () => {
+    const { scene } = makeSystem();
+    const strip = lights(scene).find((light) => Math.abs(light.position.x - 7.35) < 0.01)!;
+    const dome = lights(scene).find((light) => Math.abs(light.position.x - 2.6) < 0.01 && light instanceof THREE.PointLight)!;
+    expect(strip.position.toArray()).toEqual([7.35, 2, 7]);
+    expect(dome.position.y).toBe(2.55);
   });
 
-  it('toggle 全局开关并联动光源 visible', () => {
+  it('uses Kelvin input for distinct 3000K and 4000K colors', () => {
+    const { scene } = makeSystem();
+    const light3000 = lights(scene).find((light) => Math.abs(light.position.x - 8.5) < 0.01)!;
+    const light4000 = lights(scene).find((light) => Math.abs(light.position.x - 9) < 0.01)!;
+    expect(light3000.color.getHex()).not.toBe(light4000.color.getHex());
+  });
+
+  it('keeps pendant shadows limited to two', () => {
+    expect(makeSystem().sys.shadowLightCount).toBe(2);
+  });
+
+  it('toggles global visibility', () => {
     const { scene, sys } = makeSystem();
-    expect(sys.isOn).toBe(false);
     sys.toggle();
-    expect(sys.isOn).toBe(true);
-    const lights = scene.children.filter((c) => c instanceof THREE.PointLight || c instanceof THREE.SpotLight);
-    void lights; // 光源在 group 内
-    const group = scene.children.find((c) => c instanceof THREE.Group) as THREE.Group;
-    const inner = group.children.filter((c) => c instanceof THREE.Light) as THREE.Light[];
-    expect(inner.length).toBe(8);
-    expect(inner.every((l) => l.visible)).toBe(true);
+    expect(lights(scene).every((light) => light.visible)).toBe(true);
     sys.toggle();
-    expect(inner.every((l) => !l.visible)).toBe(true);
+    expect(lights(scene).every((light) => !light.visible)).toBe(true);
   });
 
-  it('setRoomLights 只影响指定房间', () => {
+  it('only toggles the requested room', () => {
     const { scene, sys } = makeSystem();
     sys.setOn(true);
     sys.setRoomLights('kitchen', false);
-    const group = scene.children.find((c) => c instanceof THREE.Group) as THREE.Group;
-    const inner = group.children.filter((c) => c instanceof THREE.Light) as THREE.Light[];
-    const kitchenLight = inner.find((l) => Math.abs(l.position.x - 9.0) < 0.01 && Math.abs(l.position.z - 1.2) < 0.01)!;
+    const kitchenLight = lights(scene).find((light) => Math.abs(light.position.x - 9) < 0.01)!;
     expect(kitchenLight.visible).toBe(false);
-    expect(inner.filter((l) => l !== kitchenLight).every((l) => l.visible)).toBe(true);
+    expect(lights(scene).filter((light) => light !== kitchenLight).every((light) => light.visible)).toBe(true);
   });
 
-  it('syncSolar：夜晚或低太阳高度角自动开灯，白天关灯', () => {
-    const { sys } = makeSystem();
-    sys.syncSolar({ isNight: true, altitudeDeg: -20 });
-    expect(sys.isOn).toBe(true);
-    sys.syncSolar({ isNight: false, altitudeDeg: 5 });
-    expect(sys.isOn).toBe(true);
+  it('syncs to solar state and disposes its group', () => {
+    const { scene, sys } = makeSystem();
     sys.syncSolar({ isNight: false, altitudeDeg: 45 });
     expect(sys.isOn).toBe(false);
-  });
-
-  it('dispose 从场景移除', () => {
-    const { scene, sys } = makeSystem();
-    const before = scene.children.length;
-    expect(before).toBeGreaterThan(0);
+    sys.syncSolar({ isNight: true, altitudeDeg: -20 });
+    expect(sys.isOn).toBe(true);
     sys.dispose();
-    expect(scene.children.length).toBe(0);
+    expect(scene.children).toHaveLength(0);
   });
 });

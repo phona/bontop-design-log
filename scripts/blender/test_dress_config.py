@@ -1,6 +1,15 @@
+import copy
+import os
 import sys
-sys.path.insert(0, '.')
+import types
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dress_config import make_jobs
+
+bpy_stub = types.ModuleType('bpy')
+bpy_stub.types = types.SimpleNamespace(Object=object)
+sys.modules.setdefault('bpy', bpy_stub)
+from dress_scene import effective_camera_config  # noqa: E402
 
 CONFIG = {
     'scenarios': [
@@ -42,8 +51,43 @@ def test_make_jobs_camera_scenario_filter():
     assert len(pan) == 3
 
 
+def test_effective_camera_config_matches_scenario_and_has_priority():
+    camera = {
+        'id': 'living_west_wall', 'exposure': 0.2, 'fill_light': 10,
+        'scenario_overrides': {'blue_hour': {'exposure': -0.5, 'fill_light': 40, 'fill_from_camera': True}},
+    }
+    effective = effective_camera_config(camera, {'id': 'blue_hour', 'exposure': 0.5, 'fill_light': 80})
+    assert effective['exposure'] == -0.5
+    assert effective['fill_light'] == 40
+    assert effective['fill_from_camera'] is True
+
+
+def test_effective_camera_config_rejects_illegal_fields_and_does_not_mutate_inputs(capsys):
+    camera = {
+        'id': 'camera', 'exposure': 0.2,
+        'scenario_overrides': {'blue_hour': {'exposure': -0.5, 'world_color': '#000000', 'lights_on': False}},
+    }
+    original = copy.deepcopy(camera)
+    scenario = {'id': 'blue_hour', 'world_color': '#3a5a8f', 'lights_on': True}
+    effective = effective_camera_config(camera, scenario)
+    assert effective['exposure'] == -0.5
+    assert 'world_color' not in effective
+    assert 'lights_on' not in effective
+    assert camera == original
+    assert scenario == {'id': 'blue_hour', 'world_color': '#3a5a8f', 'lights_on': True}
+    assert 'ignored fields: lights_on, world_color' in capsys.readouterr().out
+
+
+def test_effective_camera_config_without_matching_override_is_unchanged():
+    camera = {'id': 'camera', 'exposure': 0.2, 'scenario_overrides': {'night': {'exposure': -0.5}}}
+    effective = effective_camera_config(camera, {'id': 'blue_hour', 'exposure': 0.5})
+    assert effective == camera
+    assert effective is not camera
+
+
 if __name__ == '__main__':
     test_make_jobs_count()
     test_make_jobs_filename_and_scenario()
     test_make_jobs_camera_scenario_filter()
+    test_effective_camera_config_matches_scenario_and_has_priority()
     print('PASS')

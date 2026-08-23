@@ -550,6 +550,103 @@ export interface ElectricalMarker {
   offset: number;
 }
 
+export type ElectricalPointType =
+  | 'socket'
+  | 'switch'
+  | 'switch_2way'
+  | 'network'
+  | 'usb'
+  | 'floor_socket'
+  | 'ceiling_light'
+  | 'pendant'
+  | 'dome'
+  | 'wall_lamp'
+  | 'downlight'
+  | 'led_strip';
+
+export interface ElectricalPoint {
+  id: string;
+  room: string;
+  type: ElectricalPointType;
+  x: number;
+  z: number;
+  wall?: string;
+  temp?: number;
+  count?: number;
+  note?: string;
+  height?: number;
+}
+
+export type PlumbingPointType = 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor';
+
+export interface PlumbingPoint {
+  id: string;
+  room: string;
+  type: PlumbingPointType;
+  x: number;
+  z: number;
+  wall?: string;
+  note?: string;
+  height?: number;
+}
+
+export const VALID_CEILING_TYPES = [
+  'drop',
+  'integrated',
+  'cove',
+  'none',
+  'ac_indoor',
+  'aluminum_buckle',
+] as const;
+
+export interface CeilingZone {
+  id: string;
+  room: string;
+  type: (typeof VALID_CEILING_TYPES)[number];
+  thickness?: number;
+  area?: [number, number, number, number];
+  x?: number;
+  z?: number;
+  height?: number;
+  model?: string;
+  note?: string;
+}
+
+export interface ProjectRenderFacts {
+  electrical: ElectricalPoint[];
+  plumbing: PlumbingPoint[];
+  ceiling: CeilingZone[];
+}
+
+/** Render-only anchor adjustments; never write these values back to MEP facts. */
+export interface RenderLightingOverride {
+  id: string;
+  anchorY: number;
+  offsetX?: number;
+  offsetZ?: number;
+  reason: string;
+  applies_to: ['web', 'blender'];
+}
+
+export interface RenderLightingFixture {
+  id: string;
+  room: string;
+  type: ElectricalPointType;
+  position: Vec3;
+  temperatureK: number;
+  enabled: boolean;
+}
+
+export interface ProjectRenderFactsProjection {
+  version: string;
+  lightingFixtures: RenderLightingFixture[];
+  plumbing: PlumbingPoint[];
+  ceiling: CeilingZone[];
+  materials: {
+    floor: TopicSelection;
+  };
+}
+
 export interface FurnishingItem {
   type: string;
   count?: number;

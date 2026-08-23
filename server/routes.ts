@@ -8,7 +8,7 @@ import type { ConfigRegistry } from './config-loader.js';
 import { loadElectricalConfig, loadPlumbingConfig, loadCeilingConfig } from './config-loader.js';
 import { mergeSceneElements } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
-import type { CurrentScheme } from '../shared/types.js';
+import type { CurrentScheme, ProjectRenderFacts, ProjectRenderFactsProjection } from '../shared/types.js';
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 
 export interface ApiDeps {
@@ -20,6 +20,8 @@ export interface ApiDeps {
   getConfigRegistry: () => ConfigRegistry;
   getOverlay: () => OverlayConfig | undefined;
   getEnvironment?: () => EnvironmentConfig | undefined;
+  getProjectRenderFacts?: () => ProjectRenderFacts | undefined;
+  getProjectRenderFactsProjection?: () => ProjectRenderFactsProjection | undefined;
 }
 
 export function createApiRouter(deps: ApiDeps): Router {
@@ -30,7 +32,30 @@ export function createApiRouter(deps: ApiDeps): Router {
     res.json({ configs: deps.getConfigRegistry().getStatuses() });
   });
 
+  router.get('/render-facts', (_req, res) => {
+    const facts = deps.getProjectRenderFacts?.();
+    if (!facts) {
+      res.status(503).json({ error: 'render facts are not ready' });
+      return;
+    }
+    res.json(facts);
+  });
+
+  router.get('/render-facts/projection', (_req, res) => {
+    const projection = deps.getProjectRenderFactsProjection?.();
+    if (!projection) {
+      res.status(503).json({ error: 'render facts projection is not ready' });
+      return;
+    }
+    res.json(projection);
+  });
+
   router.get('/annotations/electrical', (_req, res) => {
+    const facts = deps.getProjectRenderFacts?.();
+    if (facts) {
+      res.json(facts.electrical);
+      return;
+    }
     try {
       res.json(loadElectricalConfig());
     } catch (err) {
@@ -39,6 +64,11 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.get('/annotations/plumbing', (_req, res) => {
+    const facts = deps.getProjectRenderFacts?.();
+    if (facts) {
+      res.json(facts.plumbing);
+      return;
+    }
     try {
       res.json(loadPlumbingConfig());
     } catch (err) {
@@ -47,6 +77,11 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.get('/annotations/ceiling', (_req, res) => {
+    const facts = deps.getProjectRenderFacts?.();
+    if (facts) {
+      res.json(facts.ceiling);
+      return;
+    }
     try {
       res.json(loadCeilingConfig());
     } catch (err) {

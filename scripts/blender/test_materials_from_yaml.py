@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0, '.')
-from materials_from_yaml import resolve_scheme
+from materials_from_yaml import resolve_floor_overrides, resolve_scheme
 
 MATS = {
     'floor_tile_01': {'id': 'floor_tile_01', 'appearance': {'type': 'wood_plank', 'color': '#c49a6c'}},
@@ -34,8 +34,23 @@ def test_resolve_scheme_empty():
     assert resolve_scheme({'selections': {}}, MATS) == {}
 
 
+def test_projection_floor_overrides_are_independent_of_scheme_floor():
+    scheme = {'selections': {'floor': {'default': 'missing_01'}, 'paint': {'default': 'latex_paint_01'}}}
+    floor = {'default': 'floor_tile_01', 'roomOverrides': {'master_bath': 'floor_tile_01'}}
+    resolved = resolve_scheme(scheme, MATS, floor)
+    assert resolved['floor'] == 'floor_tile_01'
+    assert resolved['wall'] == 'latex_paint_01'
+    assert resolve_floor_overrides(floor, MATS) == {'master_bath': 'floor_tile_01'}
+
+
+def test_floor_overrides_skip_unknown_materials():
+    assert resolve_floor_overrides({'roomOverrides': {'master_bath': 'unknown'}}, MATS) == {}
+
+
 if __name__ == '__main__':
     test_resolve_scheme_basic()
     test_resolve_scheme_skips_missing()
     test_resolve_scheme_empty()
+    test_projection_floor_overrides_are_independent_of_scheme_floor()
+    test_floor_overrides_skip_unknown_materials()
     print('PASS')

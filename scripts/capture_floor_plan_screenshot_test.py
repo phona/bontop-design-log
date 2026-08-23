@@ -140,7 +140,7 @@ def test_wait_for_app_ready_raises_on_timeout():
     ws = FakeWs([
         {'result': {'result': {'value': False}}},
     ])
-    with pytest.raises(TimeoutError, match='window.__app.captureFloorPlan'):
+    with pytest.raises(TimeoutError, match=r'window\.__APP__\.captureFloorPlan'):
         _wait_for_app_ready(ws, timeout=0.01)
 
 

@@ -218,6 +218,9 @@ describe('App', () => {
       if (urlStr.includes('/api/project')) {
         return { ok: true, json: async () => mockProjectData } as Response;
       }
+      if (urlStr.includes('/api/render-facts/projection')) {
+        return { ok: true, json: async () => ({ lightingFixtures: [] }) } as Response;
+      }
       if (urlStr.includes('/api/scheme/current')) {
         return { ok: true, json: async () => ({ updatedAt: '', selections: {} }) } as Response;
       }

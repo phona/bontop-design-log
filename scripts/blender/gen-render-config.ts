@@ -1,7 +1,8 @@
 import * as fs from 'fs';
-import * as yaml from 'js-yaml';
+import { parseProjectRenderFactsProjection } from '../../shared/project-render-facts-schema.js';
+import type { ProjectRenderFactsProjection } from '../../shared/types.js';
 
-// 生成 dress_scene.py 的输入配置：灯光点位（electrical.yaml）+ 固定场景常量 + 机位
+// 生成 dress_scene.py 的输入配置：共享 render projection 灯光点位 + 固定场景常量 + 机位
 // 场景固定为两个决策工况（蓝调时刻 / 夜晚），sun_direction 为预计算常量（Blender 坐标系，
 // 指向太阳方向：+X 东 / +Y 北 / +Z 上）。视频等"任意时刻"需求后续再引入时间轴，当前决策渲染不需要。
 //
@@ -9,27 +10,16 @@ import * as yaml from 'js-yaml';
 // （曝光/机位/日光参数），重新生成会回退 v17→v32 的机位修复。改机位/工况请改这里再重新生成，
 // 或直接改 JSON 后把改动同步回本文件。
 
-interface ElectricalPoint {
-  id: string;
-  room: string;
-  type: string;
-  x?: number;
-  z?: number;
-  height?: number;
-  temp?: number;
-}
-
-const LIGHT_TYPES = new Set(['pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip']);
-
-// 渲染侧局部覆盖（不改电气施工口径）：
-// light_study_dome 2.55 = v17 修"dome 灯嵌天花"时的渲染高度，electrical.yaml 的 2.8 是施工口径
-const LIGHT_HEIGHT_OVERRIDE: Record<string, number> = { light_study_dome: 2.55 };
-
-const electrical = yaml.load(fs.readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
-
-const lights = electrical
-  .filter((p) => LIGHT_TYPES.has(p.type))
-  .map((p) => ({ id: p.id, room: p.room, type: p.type, x: p.x, z: p.z, height: LIGHT_HEIGHT_OVERRIDE[p.id] ?? p.height ?? 2.8, temp: p.temp ?? 3000 }));
+export function buildRenderConfig(projection: ProjectRenderFactsProjection) {
+const lights = projection.lightingFixtures.map((fixture) => ({
+  id: fixture.id,
+  room: fixture.room,
+  type: fixture.type,
+  x: fixture.position.x,
+  z: fixture.position.z,
+  height: fixture.position.y,
+  temp: fixture.temperatureK,
+}));
 
 // 场景固定常量：蓝调时刻/夜晚。太阳已落 → sun_direction=null（不打太阳光）；
 // 天光用自定义背景色（蓝调=深蓝、夜晚=近黑蓝），保证玻璃透出可见天色而非 HOSEK_WILKIE 的黑暗天际。
@@ -175,6 +165,11 @@ const cameras = [
     target: [7.2, 1.1, 8.0],
     lens: 28,
     scenarios: ['material_review', 'blue_hour'],
+    // Render-only A/B：blue_hour 平均亮度 0.223；40W 相机同轴区域补光只提亮本机位电视墙，
+    // 不改全局工况，也不影响其他机位。
+    scenario_overrides: {
+      blue_hour: { fill_light: 40, fill_from_camera: true },
+    },
   },
   {
     id: 'bedroom_floor_closeup',
@@ -184,6 +179,8 @@ const cameras = [
     lens: 35,
     scenarios: ['material_review'],
     fill_light: 80,
+    // Cloud A/B（32 samples）压过曝：高亮 80.8% → 3.9%，保留材质暗部细节。
+    exposure: 0.0,
   },
   {
     id: 'bedroom_west_wall',
@@ -193,6 +190,8 @@ const cameras = [
     lens: 35,
     scenarios: ['material_review'],
     fill_light: 80,
+    // Cloud A/B（32 samples）压过曝：高亮 49.1% → 9.9%。
+    exposure: 0.0,
   },
   // 厨房决策机位（L 型：北墙水槽+东墙灶台+冰箱）
   {
@@ -227,6 +226,8 @@ const cameras = [
     target: [4.6, 0.9, 6.0],
     lens: 24,
     scenarios: ['material_review', 'bare_shell'],
+    // Cloud A/B 二次验证：高亮降至 4–5%，父母房仍保持可读。
+    exposure: -0.5,
   },
   {
     id: 'bedroom_se_overview',
@@ -235,6 +236,8 @@ const cameras = [
     target: [14.0, 1.2, 9.2],
     lens: 24,
     scenarios: ['material_review', 'bare_shell'],
+    // Cloud A/B（32 samples）压过曝：material_review 高亮 60.6% → 19.1%。
+    exposure: 0.0,
   },
   {
     id: 'bedroom_nw_overview',
@@ -243,6 +246,8 @@ const cameras = [
     target: [2.9, 0.9, 1.4],
     lens: 24,
     scenarios: ['material_review', 'bare_shell'],
+    // Cloud A/B（32 samples）压过曝：material_review 高亮 67.7% → 16.9%。
+    exposure: 0.0,
   },
   {
     id: 'master_bath_overview',
@@ -261,6 +266,8 @@ const cameras = [
     lens: 18,
     scenarios: ['material_review', 'bare_shell'],
     fill_light: 60,
+    // Cloud A/B 二次验证：客卫高亮由 89–94% 降至 1–4%。
+    exposure: -1.5,
   },
   {
     // 2026-08-23 改俯视（D2）：1.6×1.2m 极小阳台+玻璃门，内外平视机位均不可行（v30 门外取景被玻璃挡）。
@@ -272,6 +279,10 @@ const cameras = [
     lens: 30,
     scenarios: ['material_review'],
     fill_light: 80,
+    // Render-only A/B：material_review 高亮 47.4%（fill_light 80）；仅本机位降曝光以保留阳台材质细节。
+    scenario_overrides: {
+      material_review: { exposure: -0.5 },
+    },
   },
   {
     id: 'entry_overview',
@@ -317,12 +328,26 @@ const cameras = [
   },
 ];
 
-const config = {
+return {
   sun: scenarios[0].sun_direction,
   lights,
+  facts: projection,
   scenarios,
   cameras,
 };
+}
 
-fs.writeFileSync('scripts/blender/render-config.json', JSON.stringify(config, null, 2));
-console.log(`render-config.json: ${lights.length} lights, ${scenarios.length} scenarios, ${cameras.length} cameras`);
+export function serializeRenderConfig(projection: ProjectRenderFactsProjection): string {
+  return `${JSON.stringify(buildRenderConfig(projection), null, 2)}\n`;
+}
+
+function main(): void {
+  const projection = parseProjectRenderFactsProjection(
+    JSON.parse(fs.readFileSync('scripts/blender/project-render-facts.json', 'utf8')),
+  );
+  const config = buildRenderConfig(projection);
+  fs.writeFileSync('scripts/blender/render-config.json', `${JSON.stringify(config, null, 2)}\n`);
+  console.log(`render-config.json: ${config.lights.length} lights, ${projection.plumbing.length} plumbing, ${projection.ceiling.length} ceiling zones, ${config.scenarios.length} scenarios, ${config.cameras.length} cameras`);
+}
+
+if (process.argv[1] && /gen-render-config\.(ts|js)$/u.test(process.argv[1])) main();

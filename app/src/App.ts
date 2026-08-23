@@ -30,7 +30,7 @@ import { HumidityButton } from './ui/HumidityButton.js';
 import { isInHuinanWindow } from '@shared/humidity-model';
 import { exportSceneToGlb } from './render/export-gltf.js';
 import './ui/keybindings.js';
-import type { CurrentScheme, DecisionLogEntry, Topic, SelectionPatch } from '@shared/types';
+import type { CurrentScheme, DecisionLogEntry, ProjectRenderFactsProjection, Topic, SelectionPatch } from '@shared/types';
 
 const ORBIT_DISTANCE = 15;
 
@@ -918,12 +918,19 @@ export class App {
         this.annotationRenderer.getPlumbingData(),
       );
       this.interiorLighting?.dispose();
-      this.interiorLighting = new InteriorLightingSystem(
-        this.houseScene.scene,
-        this.annotationRenderer.getElectricalData(),
-      );
-      const st = this.houseScene.getEnvironmentManager().getLightingState();
-      this.interiorLighting.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
+      const response = await fetch('/api/render-facts/projection');
+      if (response.ok) {
+        const projection = await response.json() as ProjectRenderFactsProjection;
+        this.interiorLighting = new InteriorLightingSystem(
+          this.houseScene.scene,
+          projection.lightingFixtures,
+        );
+        const st = this.houseScene.getEnvironmentManager().getLightingState();
+        this.interiorLighting.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
+      } else {
+        this.interiorLighting = null;
+        console.warn('render facts projection is not ready; interior lights were not created');
+      }
     }
     this.requestRender();
   }
