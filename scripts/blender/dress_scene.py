@@ -775,7 +775,7 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
         ('fabric_white', '#f5f0e6', 0.85), # 床品（白奶油）
         ('wood', '#c9a87e', 0.5),          # 浅橡木家具
         ('wood_dark', '#503e2e', 0.45),    # 深胡桃（电视柜/桌腿/框架，中古方向）
-        ('paint_cream', '#f2ede2', 0.4),   # 奶油白漆柜门/柜体
+        ('paint_cream', '#f2ede2', 0.5),   # PET 肤感柜门/柜体（哑光+细微 bump，见下；原奶油白漆）
     ]:
         mat = new_principled_fn(f'家具_{name}', hex_rgb_fn(color), rough=rough)
         if name.startswith('fabric'):
@@ -799,7 +799,94 @@ def build_furniture_materials(hex_rgb_fn, new_principled_fn) -> dict:
     mats['quartz'] = new_principled_fn('家具_quartz', hex_rgb_fn('#e8e6e0'), rough=0.25)
     mats['ceramic'] = new_principled_fn('家具_ceramic', hex_rgb_fn('#f8f8f6'), rough=0.1)
     mats['plant'] = new_principled_fn('家具_plant', hex_rgb_fn('#5a6b4a'), rough=0.7)  # 琴叶榕叶绿
+    # 柜门分缝条：深灰哑光细条读出凹槽阴影（假凹槽，比布尔开槽稳定）
+    mats['door_gap'] = new_principled_fn('柜门_分缝', hex_rgb_fn('#35302a'), rough=0.9)
+    _add_pet_bump(mats['paint_cream'])
     return mats
+
+
+def _add_pet_bump(mat) -> None:
+    """PET 肤感饰面：哑光纯色 + 极细微 bump（肤感膜橘皮触感）。"""
+    if mat is None or not getattr(mat, 'use_nodes', False):
+        return
+    try:
+        nt = mat.node_tree
+        bsdf = _find_node(nt, 'ShaderNodeBsdfPrincipled')
+        if bsdf is None:
+            return
+        if any(n.bl_idname == 'ShaderNodeBump' for n in nt.nodes):
+            return  # 已有 bump（如 paint_cream 兜底复用），不重复叠加
+        noise = nt.nodes.new('ShaderNodeTexNoise')
+        noise.inputs['Scale'].default_value = 320.0
+        noise.inputs['Detail'].default_value = 2.0
+        bump = nt.nodes.new('ShaderNodeBump')
+        bump.inputs['Strength'].default_value = 0.08
+        bump.inputs['Distance'].default_value = 0.0005
+        nt.links.new(noise.outputs['Fac'], bump.inputs['Height'])
+        nt.links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+    except Exception:
+        pass
+
+
+# 定制柜柜门分缝布局（three 局部坐标 (x0, x1, y0, y1, front_z)，front 朝 +z 面）。
+# 按 400-500mm 标准门宽在正面生成 4mm 宽分缝条（几何假凹槽，比布尔/贴图稳定）。
+# 衣柜（wardrobe_180/240_split）为推拉门（DEC-013），door_l/door_r 已是分体门板，
+# 0.88/1.18m 属推拉门标准门宽，不再加假分缝（加了会误读为平开门），饰面走 paint_cream PET。
+CABINET_SEAM_PANELS = {
+    # 西墙通顶柜：下柜 1.35m→3门 / 上柜 1.35m→3门（中间开放格不动）
+    'wall_cabinet_tall': [
+        (-0.675, 0.675, 0.0, 1.10, 0.175),
+        (-0.675, 0.675, 1.60, 2.90, 0.175),
+    ],
+    # 西墙 TV 悬空低柜：2.1m→5门（front z=0.20）
+    'tv_wall_low': [
+        (-1.05, 1.05, 0.15, 0.50, 0.20),
+    ],
+    # 入户半高柜：下柜双面（玄关侧 +z / 餐厅侧 -z）2.0m→4门
+    'entry_half_height_cabinet': [
+        (-1.0, 1.0, 0.0, 0.88, 0.175),
+        (-1.0, 1.0, 0.0, 0.88, -0.175),
+    ],
+}
+
+# bare_shell（硬装裸房验收）保留的 furniture 类型：定制柜/橱柜/水槽等硬装件；
+# 其余 furniture:*（沙发/床/桌椅/冰箱/灶台烟机/绿植/落地灯/换鞋站等可移动件）隐藏
+BARE_SHELL_KEEP = {'wall_cabinet_tall', 'tv_wall_low', 'entry_half_height_cabinet',
+                   'shoe_cabinet', 'wardrobe_180', 'wardrobe_240_split',
+                   'kitchen_cabinet_run', 'sink'}
+
+
+def _add_cabinet_seams(ftype: str, base, rz: float, gap_mat) -> int:
+    """在定制柜正面生成柜门分缝条。base=(bx,by,bz) Blender 世界坐标（柜体块原点），
+    rz 为绕 Z 旋转。缝条 4mm 宽、3mm 深（半嵌入门板正面），深色哑光读出凹槽阴影。"""
+    import math
+    panels = CABINET_SEAM_PANELS.get(ftype)
+    if not panels or gap_mat is None:
+        return 0
+    cos_rz, sin_rz = math.cos(rz), math.sin(rz)
+    bx, by, bz = base
+    n = 0
+    for (x0, x1, y0, y1, fz) in panels:
+        w = x1 - x0
+        doors = max(1, round(w / 0.45))  # 400-500mm 标准门宽
+        for k in range(1, doors):
+            sx = x0 + w * k / doors
+            sy = (y0 + y1) / 2
+            # three 局部 (sx, sy, fz) → Blender 局部 (sx, -fz, sy)，绕 Z 旋 rz
+            lx, ly = sx, -fz
+            wx = bx + lx * cos_rz - ly * sin_rz
+            wy = by + lx * sin_rz + ly * cos_rz
+            bpy.ops.mesh.primitive_cube_add(size=1.0)
+            s = bpy.context.object
+            s.name = f'asset:{ftype}:door_gap:{k}'
+            s.dimensions = (0.004, 0.003, y1 - y0)
+            s.location = (wx, wy, bz + sy)
+            s.rotation_euler = (0, 0, rz)
+            s.data.materials.append(gap_mat)
+            n += 1
+    if n:
+        print(f'[dress_scene] cabinet door gaps: {ftype} ×{n}')
+    return n
 
 
 def add_pbr_maps(mat, tex_dir, size=2.0, with_diffuse=False, normal_strength=0.5, tint=None):
@@ -1060,10 +1147,11 @@ def import_furniture_glb(glb_path: str, targets: dict, block=None, loc_rz=None, 
     return 1
 
 
-def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
+def replace_furniture(furniture_mats: dict, config_dir: str = '', only_types: set | None = None) -> int:
     """用精细几何替换色块家具：找到 furniture:* 组 → 隐藏 → 原位生成多部件几何。
     parts 格式: (name, three_size[x,y,z], three_pos[x,y,z], material_key)。
-    坐标转换：three(x,y,z) → Blender(x,-z,y)，尺寸(x,z,y)。"""
+    坐标转换：three(x,y,z) → Blender(x,-z,y)，尺寸(x,z,y)。
+    only_types：bare_shell 等工况的类型白名单（只重建定制柜等硬装件，其余保持隐藏）。"""
     import math
     count = 0
     for obj in list(bpy.data.objects):
@@ -1074,6 +1162,8 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
         if len(parts) < 3:
             continue
         ftype = parts[2]
+        if only_types is not None and ftype not in only_types:
+            continue  # 调用方已隐藏（bare_shell），不再重建可移动件
         if ftype not in FURNITURE_PARTS:
             # 专用构建器覆盖的类型（add_kitchen_cabinets）：隐藏 glb 色块避免双重几何压色
             if ftype in ('kitchen_cabinet_run',):
@@ -1141,15 +1231,18 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '') -> int:
                 for poly in part.data.polygons:
                     poly.use_smooth = True
             count += 1
+        # 定制柜柜门分缝（400-500mm 标准门宽，正面假凹槽细缝）
+        count += _add_cabinet_seams(ftype, (loc.x, loc.y, loc.z), rz, furniture_mats.get('door_gap'))
     if count:
         print(f'[dress_scene] furniture replaced: {count} parts')
     return count
 
 
-def place_extra_furniture(furniture_mats: dict, config_dir: str) -> int:
+def place_extra_furniture(furniture_mats: dict, config_dir: str, only_types: set | None = None) -> int:
     """house.yaml 已摆位但 glb 尚未重新导出的家具类型：直接按坐标生成部件。
     glb 里已有 furniture:* 块的类型跳过（重新导出后自动失效，不会重复）。
-    坐标：house.yaml 为 three 局部米制 (x, z, rotation°)；three(x,y,z) → Blender(x,-z,y)，rotation 同号映到 Blender Z。"""
+    坐标：house.yaml 为 three 局部米制 (x, z, rotation°)；three(x,y,z) → Blender(x,-z,y)，rotation 同号映到 Blender Z。
+    only_types：bare_shell 等工况的类型白名单（只生成定制柜等硬装件）。"""
     import math
     import yaml
     if not config_dir:
@@ -1169,6 +1262,8 @@ def place_extra_furniture(furniture_mats: dict, config_dir: str) -> int:
         for it in items or []:
             ftype = it.get('type')
             if ftype not in FURNITURE_PARTS or ftype in existing:
+                continue
+            if only_types is not None and ftype not in only_types:
                 continue
             if it.get('x') is None or it.get('z') is None:
                 continue
@@ -1209,6 +1304,8 @@ def place_extra_furniture(furniture_mats: dict, config_dir: str) -> int:
                 bevel.limit_method = 'ANGLE'
                 bevel.angle_limit = 0.523599
                 count += 1
+            # 定制柜柜门分缝（与 replace_furniture 同一布局表）
+            count += _add_cabinet_seams(ftype, (bx, by, 0.0), rz, furniture_mats.get('door_gap'))
     if count:
         print(f'[dress_scene] extra furniture placed: {count} parts')
     return count
@@ -1290,10 +1387,11 @@ def add_ceiling(config_dir: str, ceiling_mats: dict) -> int:
     return count
 
 
-def add_kitchen_cabinets(cream, quartz) -> int:
+def add_kitchen_cabinets(cream, quartz, gap=None) -> int:
     """厨房 L 型橱柜：北墙3.6水槽切配 + 东墙灶台（DEC-014），冰箱位(z>1.7)留空。
     厨房界 x[7.2,10.8] z[0,2.4]；Blender dims=(sx, sz, sy_height)。
-    cream/quartz 由调用方传入（优先 scheme 的 cabinet/countertop 材质）。"""
+    cream/quartz 由调用方传入（优先 scheme 的 cabinet/countertop 材质）。
+    gap：柜门分缝条材质（4mm 宽假凹槽），缺省不分缝。"""
 
     def kbox(name, cx, cz, sx, sz, sy, yc, mat):
         bpy.ops.mesh.primitive_cube_add(size=1.0)
@@ -1308,12 +1406,32 @@ def add_kitchen_cabinets(cream, quartz) -> int:
         bev.segments = 3
         return 1
 
+    def kgap(name, cx, cz, y_lo, y_hi, facing):
+        # 柜门分缝条（不加 bevel：4mm 截面比 bevel 宽还小）。facing 'z'=贴在朝 ±z 的正面，
+        # 截面 x=4mm/z=3mm；facing 'x'=贴在朝 ±x 的正面，截面 x=3mm/z=4mm
+        bpy.ops.mesh.primitive_cube_add(size=1.0)
+        b = bpy.context.object
+        b.name = name
+        sx, sz = (0.004, 0.003) if facing == 'z' else (0.003, 0.004)
+        b.dimensions = (sx, sz, y_hi - y_lo)
+        b.location = to_blender(cx, (y_lo + y_hi) / 2, cz)
+        if gap:
+            b.data.materials.append(gap)
+        return 1
+
     n = 0
     n += kbox('kitchen:base_n', 9.0, 0.3, 3.6, 0.6, 0.85, 0.425, cream)
     n += kbox('kitchen:base_e', 10.5, 1.15, 0.6, 1.1, 0.85, 0.425, cream)
     n += kbox('kitchen:top_n', 9.0, 0.3, 3.6, 0.62, 0.03, 0.865, quartz)
     n += kbox('kitchen:top_e', 10.5, 1.15, 0.62, 1.1, 0.03, 0.865, quartz)
     n += kbox('kitchen:wall_n', 8.4, 0.18, 2.0, 0.35, 0.7, 1.85, cream)
+    # 柜门分缝（400-500mm 标准门宽）：北墙地柜 3.6m→8门 / 东墙地柜 1.1m→2门 / 北墙吊柜 2.0m→4门
+    if gap is not None:
+        for k in range(1, 8):
+            n += kgap(f'kitchen:gap_n{k}', 9.0 - 1.8 + k * 0.45, 0.6, 0.0, 0.85, 'z')
+        n += kgap('kitchen:gap_e1', 10.2, 1.15, 0.0, 0.85, 'x')
+        for k in range(1, 4):
+            n += kgap(f'kitchen:gap_wn{k}', 8.4 - 1.0 + k * 0.5, 0.355, 1.5, 2.2, 'z')
     print(f'[dress_scene] kitchen cabinets: {n}')
     return n
 
@@ -1551,6 +1669,20 @@ def set_engine(scene, engine: str, samples: int = 256) -> str:
 def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path: str) -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=args['glb'])
+    # 硬装裸房验收工况：隐藏一切可移动家具/软装（沙发/床/桌椅/绿植/落地灯/冰箱等），
+    # 只留硬装（墙地顶/定制柜/门窗/灯具/卫浴洁具/厨房橱柜）。保留清单见 BARE_SHELL_KEEP。
+    bare_shell = scenario.get('id') == 'bare_shell'
+    if bare_shell:
+        for o in bpy.data.objects:
+            if not o.name.startswith('furniture:'):
+                continue
+            ps = o.name.split(':')
+            ftype = ps[2] if len(ps) >= 3 else ''
+            if ftype in BARE_SHELL_KEEP:
+                continue
+            o.hide_render = True
+            for child in o.children_recursive:
+                child.hide_render = True
     # 遮光帘状态配置驱动：blackout_state=open → 隐藏（视同拉开到两侧）；
     # 全宽不透明布若渲染会挡死玻璃，窗外天色完全看不见（决策渲染必须可见窗外）
     if scenario.get('blackout_state', 'open') == 'open':
@@ -1558,10 +1690,10 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
             if o.name.endswith(':blackout'):
                 o.hide_render = True
     # 纱帘状态配置驱动：sheer_state=open → 隐藏 GLB 内的 :sheer 对象（视同收起），
-    # 并跳过下方 add_sheer_panels 的补充纱帘。
+    # 并跳过下方 add_sheer_panels 的补充纱帘。bare_shell 同样隐藏（纱帘属软装）。
     # daylight 西晒时太阳直射会把整面纱帘打成白色柔光箱，窗外 HDRI 完全看不见。
     sheer_open = scenario.get('sheer_state', 'closed') == 'open'
-    if sheer_open:
+    if sheer_open or bare_shell:
         for o in bpy.data.objects:
             if o.name.endswith(':sheer'):
                 o.hide_render = True
@@ -1605,6 +1737,14 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
                 bsdf.inputs['IOR'].default_value = float(scenario['glass_ior'])
                 if 'Coat Weight' in bsdf.inputs:
                     bsdf.inputs['Coat Weight'].default_value = float(scenario.get('glass_coat', 0.0))
+    # 玻璃 tint 场景级覆盖（超白玻对比 daylight_clear）：替换玻璃 base color 为中性近无色，
+    # 其余参数（IOR/透射/阴影直通）不动，与默认 Low-E 青绿 #c8e0dc 同机位对比
+    if scenario.get('glass_tint'):
+        g = mats.get('glass')
+        if g and g.use_nodes:
+            bsdf = _find_node(g.node_tree, 'ShaderNodeBsdfPrincipled')
+            if bsdf:
+                bsdf.inputs['Base Color'].default_value = (*hex_rgb(scenario['glass_tint']), 1.0)
     # 硬装补充贴图：木门木纹（乘色保色号）、遮光帘布纹、窗台石石材肌理
     add_pbr_maps(mats.get('door'), os.path.join(tex_base, 'oak_veneer_01'),
                  size=1.0, with_diffuse=True, normal_strength=0.3, tint='#8a6f52')
@@ -1614,18 +1754,23 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
                  size=1.5, with_diffuse=False, normal_strength=0.3)
     add_pbr_maps(furniture_mats.get('fabric'), os.path.join(tex_base, 'fabric_pattern_07'),
                  size=0.35, with_diffuse=False, normal_strength=1.0)
-    replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '')
-    place_extra_furniture(furniture_mats, args.get('config-dir') or '')
+    replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '',
+                      only_types=BARE_SHELL_KEEP if bare_shell else None)
+    place_extra_furniture(furniture_mats, args.get('config-dir') or '',
+                          only_types=BARE_SHELL_KEEP if bare_shell else None)
     add_moldings(args.get('config-dir') or '')
     rebuild_railings(mats)
     add_ceiling(args.get('config-dir') or '', mats)
-    add_kitchen_cabinets(cabinet_mat, countertop_mat)
+    # 厨房橱柜挂 scheme 柜门材质：PET 肤感（哑光+细微 bump，与定制柜同一饰面口径）
+    _add_pet_bump(cabinet_mat)
+    add_kitchen_cabinets(cabinet_mat, countertop_mat, gap=furniture_mats.get('door_gap'))
     add_bath_fixtures(furniture_mats)
-    add_soft_decor(furniture_mats)
-    # 纱帘状态配置驱动：sheer_state=open → 不生成（视同收起）。
+    if not bare_shell:
+        add_soft_decor(furniture_mats)  # 地毯/挂画属软装，裸房验收不出现
+    # 纱帘状态配置驱动：sheer_state=open → 不生成（视同收起）。bare_shell 同为软装不生成。
     # daylight 西晒时太阳直射会把整面纱帘打成白色柔光箱，窗外 HDRI 完全看不见，
     # 想看外景的工况应设 sheer_state: open。
-    if scenario.get('sheer_state', 'closed') != 'open':
+    if not bare_shell and scenario.get('sheer_state', 'closed') != 'open':
         add_sheer_panels(args.get('config-dir') or '', mats)
     # 补光可来自 scenario 或 camera（卧室灯少需补，客厅不需要）
     fill = scenario.get('fill_light') or cam_cfg.get('fill_light')

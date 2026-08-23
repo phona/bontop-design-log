@@ -77,6 +77,21 @@ const scenarios = [
     blackout_state: 'open',
     sheer_opacity: 0.35,
   },
+  // 硬装裸房验收：material_review 同款光照（Standard/6500K 中性白），但 dress_scene 按
+  // scenario id 隐藏一切可移动家具/软装（含纱帘遮光帘），只留墙地顶/定制柜/门窗/灯具/洁具/橱柜。
+  {
+    id: 'bare_shell',
+    label: '硬装裸房验收（material_review 光照参数，隐藏可移动家具/软装/窗帘）',
+    sun_direction: null,
+    world_color: '#808080',
+    world_strength: 0.3,
+    lights_on: true,
+    light_temp: 6500,
+    view_transform: 'Standard',
+    exposure: 1.5,
+    blackout_state: 'open',
+    sheer_opacity: 0.35,
+  },
   // 白天自然光工况：对照真实照片（手机白天拍摄=高漫反射环境光、不开灯、柔光地板反光）
   // 外景=真 HDR（kloofendal 白天多云，仅相机/透射光线可见，照明仍用中性 world_color 防染色）；
   // 太阳=西南向午后直射（Blender 坐标：-X 西 / -Y 南 / +Z 上），阳光入射南玻璃幕墙在地板投光斑
@@ -100,6 +115,29 @@ const scenarios = [
     sheer_opacity: 0.25,
     glass_ior: 1.02, // daylight 室内很亮，Low-E 玻璃 IOR 1.5 会变镜子盖住外景；≈1.02 近零反射只留透射
   },
+  // 超白玻对比工况：daylight 全部参数不动，仅 glass_tint 中性近无色（#e8f0ee），
+  // 与 daylight（浮法/Low-E 青绿 #c8e0dc）同机位对比玻璃色相。glass_tint 由 dress_scene 应用。
+  {
+    id: 'daylight_clear',
+    label: '白天自然光·超白玻（daylight 参数 + 玻璃中性 #e8f0ee，对比浮法绿）',
+    sun_direction: [-0.3, -0.6, 0.7],
+    sun_energy: 7,
+    sun_temp: 4500,
+    world_hdri: 'hdri/kloofendal_48d_partly_cloudy_1k.hdr',
+    world_hdri_lighting: true,
+    world_hdri_camera_strength: 1.0,
+    window_portal: { energy: 350, temp: 6000, x: 10.3, z: 11, width: 6, height: 2.6 },
+    world_color: '#c8c8c8',
+    world_strength: 0.8,
+    lights_on: false,
+    light_temp: 6500,
+    exposure: 0.4,
+    blackout_state: 'open',
+    sheer_state: 'open',
+    sheer_opacity: 0.25,
+    glass_ior: 1.02,
+    glass_tint: '#e8f0ee',
+  },
 ];
 
 const cameras = [
@@ -108,14 +146,14 @@ const cameras = [
     label: '客厅餐桌侧南望沙发+玻璃幕（全景）',
     position: [10.3, 1.55, 2.9],
     target: [9.6, 1.2, 8.6],
-    scenarios: ['material_review', 'blue_hour', 'daylight'],
+    scenarios: ['material_review', 'blue_hour', 'daylight', 'daylight_clear', 'bare_shell'],
   },
   {
     id: 'master_bed_looking_glass',
     label: '主卧西侧看床+南窗（2026-08-22 随条带归主卧；避条带柜/衣柜背板）',
     position: [1, 1.7, 6.2],
     target: [3.3, 0.8, 8.6],
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'bare_shell'],
     fill_light: 100,
     exposure: -0.5,
   },
@@ -163,7 +201,7 @@ const cameras = [
     position: [7.6, 1.5, 2.2],
     target: [10.2, 0.9, 0.5],
     lens: 24,
-    scenarios: ['material_review', 'blue_hour'],
+    scenarios: ['material_review', 'blue_hour', 'bare_shell'],
   },
   {
     id: 'kitchen_counter_closeup',
@@ -180,7 +218,7 @@ const cameras = [
     position: [10.6, 1.5, 4.6],
     target: [8.3, 0.9, 3.2],
     lens: 24,
-    scenarios: ['material_review', 'blue_hour'],
+    scenarios: ['material_review', 'blue_hour', 'daylight_clear', 'bare_shell'],
   },
   {
     id: 'study_overview',
@@ -188,7 +226,7 @@ const cameras = [
     position: [6.9, 1.5, 9.5],
     target: [4.6, 0.9, 6.0],
     lens: 24,
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'bare_shell'],
   },
   {
     id: 'bedroom_se_overview',
@@ -196,7 +234,7 @@ const cameras = [
     position: [15.9, 1.5, 6.2],
     target: [14.0, 1.2, 9.2],
     lens: 24,
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'bare_shell'],
   },
   {
     id: 'bedroom_nw_overview',
@@ -204,7 +242,7 @@ const cameras = [
     position: [5.3, 1.5, 4.0],
     target: [2.9, 0.9, 1.4],
     lens: 24,
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'bare_shell'],
   },
   {
     id: 'master_bath_overview',
@@ -212,7 +250,7 @@ const cameras = [
     position: [1.35, 1.45, 3.15],
     target: [1.25, 0.85, 1.15],
     lens: 18,
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'bare_shell'],
     fill_light: 120,
   },
   {
@@ -221,7 +259,7 @@ const cameras = [
     position: [6.95, 1.6, 2.3],
     target: [5.9, 0.8, 3.9],
     lens: 18,
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'bare_shell'],
     fill_light: 60,
   },
   {
@@ -241,7 +279,7 @@ const cameras = [
     position: [11.1, 1.6, 2.4],
     target: [14.8, 0.8, 0.9],
     lens: 24,
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'bare_shell'],
   },
   // 客厅多视角/距离 + 过道（地板现方案 veneer_matched 验证）
   {
@@ -250,7 +288,7 @@ const cameras = [
     position: [12.2, 1.65, 4.3],
     target: [8.6, 0.9, 8.0],
     lens: 20,
-    scenarios: ['material_review', 'daylight'],
+    scenarios: ['material_review', 'daylight', 'bare_shell'],
   },
   {
     id: 'living_from_sw',
@@ -274,7 +312,7 @@ const cameras = [
     position: [7.45, 1.55, 5.25],
     target: [4.4, 0.9, 4.6],
     lens: 20,
-    scenarios: ['material_review'],
+    scenarios: ['material_review', 'bare_shell'],
     fill_light: 80,
   },
 ];

@@ -167,6 +167,19 @@
       "sheer_opacity": 0.35
     },
     {
+      "id": "bare_shell",
+      "label": "硬装裸房验收（material_review 光照参数，隐藏可移动家具/软装/窗帘）",
+      "sun_direction": null,
+      "world_color": "#808080",
+      "world_strength": 0.3,
+      "lights_on": true,
+      "light_temp": 6500,
+      "view_transform": "Standard",
+      "exposure": 1.5,
+      "blackout_state": "open",
+      "sheer_opacity": 0.35
+    },
+    {
       "id": "daylight",
       "label": "白天自然光（HDRi 白天外景+西南向太阳直射、不开灯、对照实景照片）",
       "sun_direction": [
@@ -196,6 +209,38 @@
       "sheer_state": "open",
       "sheer_opacity": 0.25,
       "glass_ior": 1.02
+    },
+    {
+      "id": "daylight_clear",
+      "label": "白天自然光·超白玻（daylight 参数 + 玻璃中性 #e8f0ee，对比浮法绿）",
+      "sun_direction": [
+        -0.3,
+        -0.6,
+        0.7
+      ],
+      "sun_energy": 7,
+      "sun_temp": 4500,
+      "world_hdri": "hdri/kloofendal_48d_partly_cloudy_1k.hdr",
+      "world_hdri_lighting": true,
+      "world_hdri_camera_strength": 1,
+      "window_portal": {
+        "energy": 350,
+        "temp": 6000,
+        "x": 10.3,
+        "z": 11,
+        "width": 6,
+        "height": 2.6
+      },
+      "world_color": "#c8c8c8",
+      "world_strength": 0.8,
+      "lights_on": false,
+      "light_temp": 6500,
+      "exposure": 0.4,
+      "blackout_state": "open",
+      "sheer_state": "open",
+      "sheer_opacity": 0.25,
+      "glass_ior": 1.02,
+      "glass_tint": "#e8f0ee"
     }
   ],
   "cameras": [
@@ -215,7 +260,9 @@
       "scenarios": [
         "material_review",
         "blue_hour",
-        "daylight"
+        "daylight",
+        "daylight_clear",
+        "bare_shell"
       ]
     },
     {
@@ -232,7 +279,8 @@
         8.6
       ],
       "scenarios": [
-        "material_review"
+        "material_review",
+        "bare_shell"
       ],
       "fill_light": 100,
       "exposure": -0.5
@@ -328,7 +376,8 @@
       "lens": 24,
       "scenarios": [
         "material_review",
-        "blue_hour"
+        "blue_hour",
+        "bare_shell"
       ]
     },
     {
@@ -365,7 +414,9 @@
       "lens": 24,
       "scenarios": [
         "material_review",
-        "blue_hour"
+        "blue_hour",
+        "daylight_clear",
+        "bare_shell"
       ]
     },
     {
@@ -383,7 +434,8 @@
       ],
       "lens": 24,
       "scenarios": [
-        "material_review"
+        "material_review",
+        "bare_shell"
       ]
     },
     {
@@ -401,7 +453,8 @@
       ],
       "lens": 24,
       "scenarios": [
-        "material_review"
+        "material_review",
+        "bare_shell"
       ]
     },
     {
@@ -419,7 +472,8 @@
       ],
       "lens": 24,
       "scenarios": [
-        "material_review"
+        "material_review",
+        "bare_shell"
       ]
     },
     {
@@ -437,7 +491,8 @@
       ],
       "lens": 18,
       "scenarios": [
-        "material_review"
+        "material_review",
+        "bare_shell"
       ],
       "fill_light": 120
     },
@@ -456,7 +511,8 @@
       ],
       "lens": 18,
       "scenarios": [
-        "material_review"
+        "material_review",
+        "bare_shell"
       ],
       "fill_light": 60
     },
@@ -494,7 +550,8 @@
       ],
       "lens": 24,
       "scenarios": [
-        "material_review"
+        "material_review",
+        "bare_shell"
       ]
     },
     {
@@ -513,7 +570,8 @@
       "lens": 20,
       "scenarios": [
         "material_review",
-        "daylight"
+        "daylight",
+        "bare_shell"
       ]
     },
     {
@@ -569,7 +627,8 @@
       ],
       "lens": 20,
       "scenarios": [
-        "material_review"
+        "material_review",
+        "bare_shell"
       ],
       "fill_light": 80
     }
