@@ -157,14 +157,14 @@ walls:
   - { id: w_vrv_north,  from: v_vrv_n,   to: v_kit_w,  height: 2.8 }
   - { id: w_kit_north,  from: v_kit_w,   to: v_ent_nw, height: 2.8 }
   # 内墙 — 左侧卧室区（2026-08-21 隔墙北移 z=3.26 贴洗梳台南缘；条带 x[0,4.2] z[3.26/4.30,5.55] 归主卧存储区；
-  # w_mbath_south 为主卫南隔墙，d_mbath 推拉门进干区，门洞[1.3,2.1]，西[0,1.2]淋浴湿区左右分离）
+  # w_mbath_south 为主卫南隔墙，d_mbath 平开门内开进干区，门洞[1.15,1.95]，西[0,1.2]淋浴湿区左右分离）
   - { id: w_mbath_east, from: v_bath_ne,   to: v_bath_s, height: 2.8 }
   - id: w_mbath_south
     from: v_mb_sw
     to: v_mbath_se
     height: 2.8
     openings:
-      - { id: d_mbath, type: sliding_door, anchor: v_mb_sw, offset: 1.7, width: 0.8, height: 2.1, room: master_bath }  # 2026-08-21 样板间版：洞[1.3,2.1]进干区；西[0,1.2]淋浴湿区左右分离
+      - { id: d_mbath, type: door, anchor: v_mb_sw, offset: 1.55, width: 0.8, height: 2.1, room: master_bath, swing: inward, hinge: end }  # 内开进主卫干区，东端合页；洞[1.15,1.95]
   - id: w_nw_south
     from: v_bath_s
     to: v_nw_s

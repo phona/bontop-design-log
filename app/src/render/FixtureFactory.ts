@@ -21,6 +21,12 @@ export interface KitchenCabinetRunSpec {
   countertopThickness?: number;
 }
 
+export interface BathSideCabinetRunSpec {
+  length: number;
+  depth: number;
+  cabinetHeight?: number;
+}
+
 const FIXTURE_RECIPES: FixtureRecipe[] = [
   // ── Furniture ──
   {
@@ -68,6 +74,19 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [0.72, 0.03, 0.36], position: [0, 0.8, 0], color: '#8B7355' },
       { shape: 'box', size: [0.72, 0.03, 0.36], position: [0, 1.3, 0], color: '#8B7355' },
       { shape: 'box', size: [0.72, 0.03, 0.36], position: [0, 1.8, 0], color: '#8B7355' },
+    ],
+  },
+  {
+    // 主卫门口北墙南伸平台+下柜：浅色平板台面，下方无拉手柜体，不再表现为书架。
+    type: 'bath_entry_shelf',
+    parts: [
+      { shape: 'box', size: [0.76, 0.78, 0.46], position: [0, 0.39, 0], color: '#d7d9db', roughness: 0.45 },
+      // 南向柜门（rotation=90 时局部 -x 面朝世界 +z）
+      { shape: 'box', size: [0.02, 0.68, 0.44], position: [-0.391, 0.42, 0], color: '#eef0f1', roughness: 0.35 },
+      { shape: 'box', size: [0.012, 0.54, 0.012], position: [-0.405, 0.42, -0.13], color: '#6b7075', metalness: 0.65, roughness: 0.3 },
+      { shape: 'box', size: [0.012, 0.54, 0.012], position: [-0.405, 0.42, 0.13], color: '#6b7075', metalness: 0.65, roughness: 0.3 },
+      // 连续平台向南伸出，平台面作为唯一上部构件
+      { shape: 'box', size: [0.86, 0.08, 0.56], position: [0, 0.83, 0], color: '#c9cdd1', roughness: 0.35 },
     ],
   },
   {
@@ -404,6 +423,27 @@ export function buildFixture(type: string): THREE.Group | null {
     group.add(mesh);
   }
 
+  return group;
+}
+
+/** Builds a configurable continuous bathroom-side tall-cabinet run. */
+export function buildBathSideCabinetRun(spec: BathSideCabinetRunSpec): THREE.Group {
+  const cabinetHeight = spec.cabinetHeight ?? 2.0;
+  const group = new THREE.Group();
+  const addBox = (size: [number, number, number], position: [number, number, number], color: string) => {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(...size),
+      new THREE.MeshStandardMaterial({ color, roughness: 0.5 }),
+    );
+    mesh.position.set(...position);
+    group.add(mesh);
+  };
+
+  addBox([spec.length, cabinetHeight, spec.depth], [0, cabinetHeight / 2, 0], '#e8e4dc');
+  addBox([Math.max(0.1, spec.length - 0.04), cabinetHeight - 0.08, 0.02], [0, cabinetHeight / 2, spec.depth / 2 + 0.01], '#ded8cc');
+  for (let x = -spec.length / 2 + 0.6; x < spec.length / 2 - 0.05; x += 0.6) {
+    addBox([0.012, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, spec.depth / 2 + 0.022], '#b8afa2');
+  }
   return group;
 }
 

@@ -222,14 +222,14 @@ rooms:
     area: 5.62
     status: "design"
     orientation: "内"
-    notes: "主卧套间直通；2026-08-21 终版：隔墙北移 z=3.26（约5.6㎡，镜像 model-geometry）、内部左右分离（西淋浴湿区x[0,1.2]玻璃隔断/东干区台盆贴东墙+马桶），卫门推拉[1.3,2.1]进干区，不要浴缸；条带 z[3.26,5.55] 归主卧存储区（1.7m柜带+0.75过道）"
+    notes: "主卧套间直通；2026-08-21 终版：隔墙北移 z=3.26（约5.6㎡，镜像 model-geometry）、内部左右分离（西淋浴湿区x[0,1.2]玻璃隔断/东干区台盆贴东墙+马桶），卫门改为内开平开门[1.15,1.95]进干区，不要浴缸；条带 z[3.26,5.55] 归主卧存储区（东墙纵向柜，西侧留开敞转身区）"
     windows:
       - width: 0.60
         height: 1.00
         position: "北墙"
     doors:
       - width: 0.80
-        position: "主卧连接（推拉洞[1.3,2.1]）"
+        position: "主卧连接（内开平开洞[1.15,1.95]）"
     furniture_concept:
       - "浴室柜 0.8m"
       - "马桶"
@@ -414,11 +414,11 @@ furnishings:
   # 坐标为 model-geometry 局部坐标系（米）；有 x/z 的为 placed 实例（渲染），无 x/z 的为 count-only（只喂预算/库存）
   master_bedroom:
     # 房间 x∈[0,4.20] z∈[5.55,9.80]；条带东延至 x=4.2，d_mb @(4.2,5.10)（靠北偏置 0.45 朝西进）
-    # 动线：走廊→d_mb（朝西进）→左手衣柜背右手浴墙→西端0.85m口→右转主卫/左转寝区
+    # 动线：走廊→d_mb（朝西进）→西侧玻璃幕墙侧留空→右转主卫；东侧为北墙向南伸的平台+下柜
     - { type: bed_180, x: 3.20, z: 7.875, rotation: 270 }     # 床靠东墙，朝西看幕墙
     - { type: wardrobe_240_split, x: 3.00, z: 5.95, rotation: 0 } # DEC-023 条带隔断柜拆段：西段 1.2m 加深 0.8m（被褥/行李箱，向南扩至 z=6.35），东段 1.2m 标准 0.6m 靠门侧；背对玄关动线零侵占
-    - { type: bath_side_cabinet, x: 1.075, z: 4.55, rotation: 0 }  # 条带存储区柜（2026-08-21 隔墙北移后条带归主卧）
-    - { type: bath_side_cabinet, x: 2.35, z: 4.55, rotation: 0 }   # 条带存储区柜；1.7m存储柜带
+    - { type: bath_entry_shelf, x: 2.34, z: 3.66, rotation: 90 } # 北墙向南伸平台+下柜；东侧贴墙，平台无黑色背板
+    - { type: plant_fiddle, x: 0.55, z: 3.66, rotation: 0 } # 平台左侧靠北墙绿植，避开门洞和通行区
     - { type: mattress_180 }
     - { type: curtain_set }
     - { type: ceiling_light }
@@ -494,7 +494,7 @@ furnishings:
     - { type: vanity, x: 2.35, z: 2.80, rotation: 270 }      # 2026-08-21 样板间版：台盆回主卫内贴东墙（面朝西，镜柜挂东墙），干区；不要浴缸；南缘贴北移后隔墙
     - { type: faucet }
     - { type: ceiling_light }
-    - { type: exhaust_fan, x: 1.30, z: 2.70 }                # DEC-019 湿区中心吊顶
+    - { type: exhaust_fan, x: 1.00, z: 2.70 }                # DEC-019 湿区中心吊顶，避开内开门扇扫掠区
   guest_bath:
     - { type: toilet, x: 5.90, z: 2.50, rotation: 90 }  # 2026-08-21 落位：贴西墙面朝东，对齐马桶给水 z=2.5
     - { type: shower_set }

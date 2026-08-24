@@ -13,8 +13,8 @@ interface Aabb {
 type PlacedItem = { type: string; length?: number; depth?: number; width?: number };
 
 function rotatedDims(item: PlacedItem, rotation: number): { width: number; depth: number } | null {
-  const dims = item.type === 'kitchen_cabinet_run' && item.length !== undefined && item.depth !== undefined
-    ? { width: item.length + 0.04, depth: item.depth + 0.04 }
+  const dims = (item.type === 'kitchen_cabinet_run' || item.type === 'bath_side_cabinet') && item.length !== undefined && item.depth !== undefined
+    ? { width: item.length + (item.type === 'kitchen_cabinet_run' ? 0.04 : 0), depth: item.depth + (item.type === 'kitchen_cabinet_run' ? 0.04 : 0) }
     : item.width !== undefined && item.depth !== undefined
       ? { width: item.width, depth: item.depth }
       : FURNITURE_DIMS[item.type];

@@ -30,7 +30,7 @@ import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
 import type { MaterialAppearance } from './TextureFactory.js';
-import { buildFixture, buildKitchenCabinetRun } from './FixtureFactory.js';
+import { buildBathSideCabinetRun, buildFixture, buildKitchenCabinetRun } from './FixtureFactory.js';
 import { EnvironmentManager } from './EnvironmentManager.js';
 import { buildCeilingZone, type CeilingZoneSpec } from './CeilingZoneBuilder.js';
 import { HvacDiagramRenderer } from './HvacDiagramRenderer.js';
@@ -918,12 +918,30 @@ export class HouseScene implements SceneApi {
       new THREE.BoxGeometry(o.width, doorHeight, panelThick),
       doorMat,
     );
-    const perpX = -uz;
-    const perpZ = ux;
-    const panelCx = hx + perpX * (o.width / 2);
-    const panelCz = hz + perpZ * (o.width / 2);
+    const wallNormalX = -uz;
+    const wallNormalZ = ux;
+    const isInward = o.swing === 'inward';
+    const hingeAtEnd = o.hinge === 'end';
+    const hingeOffset = isInward || o.swing === 'outward'
+      ? (hingeAtEnd ? half : -half)
+      : -half;
+    const actualHingeX = wallX1 + ux * (t + hingeOffset);
+    const actualHingeZ = wallZ1 + uz * (t + hingeOffset);
+    const panelDirX = isInward
+      ? -wallNormalX
+      : o.swing === 'outward'
+        ? wallNormalX
+        : -uz;
+    const panelDirZ = isInward
+      ? -wallNormalZ
+      : o.swing === 'outward'
+        ? wallNormalZ
+        : ux;
+    const panelCx = actualHingeX + panelDirX * (o.width / 2);
+    const panelCz = actualHingeZ + panelDirZ * (o.width / 2);
     panel.position.set(panelCx, sill + doorHeight / 2, panelCz);
-    panel.rotation.y = Math.atan2(perpZ, perpX);
+    // Three.js 的 Y 轴旋转会将局部 +x 映射为 (cos θ, 0, -sin θ)。
+    panel.rotation.y = Math.atan2(-panelDirZ, panelDirX);
     panel.userData = { type: 'door', objectId: o.id, wallType: 'interior' };
     panel.castShadow = true;
     panel.receiveShadow = true;
@@ -1491,7 +1509,9 @@ export class HouseScene implements SceneApi {
             cabinetHeight: item.cabinetHeight,
             countertopThickness: item.countertopThickness,
           })
-          : buildFixture(item.type);
+          : item.type === 'bath_side_cabinet' && item.length !== undefined && item.depth !== undefined
+            ? buildBathSideCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight })
+            : buildFixture(item.type);
         if (!model) continue;
         model.position.set(item.x, 0, item.z);
         model.rotation.y = THREE.MathUtils.degToRad(item.rotation ?? 0);

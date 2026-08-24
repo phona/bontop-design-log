@@ -255,7 +255,7 @@ function resolveWall(
 }
 
 function resolveOpening(
-  op: { id: string; type: string; wall: string; anchor: string; offset: number; width: number; height: number; sill?: number; room?: string },
+  op: { id: string; type: string; wall: string; anchor: string; offset: number; width: number; height: number; sill?: number; room?: string; swing?: 'inward' | 'outward'; hinge?: 'start' | 'end' },
   wall: ResolvedWall,
   vmap: Map<string, VMap>
 ): NonNullable<ResolvedWall['openings']>[number] {
@@ -292,6 +292,8 @@ function resolveOpening(
     height: op.height,
     sill: op.sill,
     room: op.room,
+    swing: op.swing,
+    hinge: op.hinge,
   };
 }
 

@@ -390,7 +390,16 @@ export class ProjectCatalog {
     const items = this.furnishings[roomId] ?? [];
     const placed = items
       .filter((i) => i.x !== undefined && i.z !== undefined)
-      .map((i) => ({ type: i.type, x: i.x!, z: i.z!, rotation: i.rotation ?? 0 }));
+      .map((i) => ({
+        type: i.type,
+        x: i.x!,
+        z: i.z!,
+        rotation: i.rotation ?? 0,
+        ...(i.length !== undefined ? { length: i.length } : {}),
+        ...(i.depth !== undefined ? { depth: i.depth } : {}),
+        ...(i.cabinetHeight !== undefined ? { cabinetHeight: i.cabinetHeight } : {}),
+        ...(i.countertopThickness !== undefined ? { countertopThickness: i.countertopThickness } : {}),
+      }));
 
     return {
       room,

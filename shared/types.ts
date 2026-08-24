@@ -25,6 +25,8 @@ export interface ResolvedOpening {
   height: number;
   sill?: number;
   room?: string;
+  swing?: 'inward' | 'outward';
+  hinge?: 'start' | 'end';
 }
 
 export interface RoomLayout {
@@ -155,6 +157,8 @@ export interface OpeningDef {
   height: number;
   sill?: number;
   room?: string;
+  swing?: 'inward' | 'outward';
+  hinge?: 'start' | 'end';
 }
 
 export interface HouseRoom {
@@ -746,7 +750,7 @@ export interface FurnishingItem {
   x?: number;
   z?: number;
   rotation?: number;
-  /** Declarative dimensions for a continuous kitchen base-cabinet run (metres). */
+  /** Declarative dimensions for a continuous cabinet run (metres). */
   length?: number;
   depth?: number;
   cabinetHeight?: number;
@@ -762,6 +766,10 @@ export interface PlacedFurnishing {
   x: number;
   z: number;
   rotation: number;
+  length?: number;
+  depth?: number;
+  cabinetHeight?: number;
+  countertopThickness?: number;
 }
 
 export interface RoomFurnishings {
@@ -777,6 +785,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   wardrobe_180: { width: 1.8, depth: 0.6 },
   shelf: { width: 0.8, depth: 0.4 }, // DEC-023 置物架（开架，h2.0）
   bath_side_cabinet: { width: 0.45, depth: 0.5 }, // 2026-08-21 主卫干区封闭侧柜 h2.0
+  bath_entry_shelf: { width: 0.8, depth: 0.5 }, // 主卫门口北墙多层开放架 h2.0
   sofa_3seat: { width: 2.8, depth: 0.9 },
   dining_table: { width: 1.4, depth: 0.8 },
   dining_chair: { width: 0.45, depth: 0.45 },
