@@ -158,6 +158,7 @@ function createMockElement(id?: string) {
     innerHTML: '',
     textContent: '',
     value: '',
+    disabled: false,
     appendChild: vi.fn(),
     querySelectorAll: vi.fn(() => []),
     addEventListener: vi.fn(),
@@ -165,8 +166,14 @@ function createMockElement(id?: string) {
   };
 }
 
+const exportGlbButton = createMockElement('export-glb-btn');
+const hvacCoordinationButton = createMockElement('hvac-coordination-btn');
 const mockDocument = {
-  getElementById: vi.fn((id: string) => createMockElement(id)),
+  getElementById: vi.fn((id: string) => {
+    if (id === 'export-glb-btn') return exportGlbButton;
+    if (id === 'hvac-coordination-btn') return hvacCoordinationButton;
+    return createMockElement(id);
+  }),
   createElement: vi.fn((tag: string) => ({
     tagName: tag,
     className: '',
@@ -206,6 +213,10 @@ describe('App', () => {
   };
 
   beforeEach(() => {
+    exportGlbButton.addEventListener.mockClear();
+    hvacCoordinationButton.addEventListener.mockClear();
+    hvacCoordinationButton.textContent = '';
+    hvacCoordinationButton.disabled = false;
     canvas = {
       id: 'canvas',
       addEventListener: vi.fn(),
@@ -219,7 +230,7 @@ describe('App', () => {
         return { ok: true, json: async () => mockProjectData } as Response;
       }
       if (urlStr.includes('/api/render-facts/projection')) {
-        return { ok: true, json: async () => ({ lightingFixtures: [] }) } as Response;
+        return { ok: true, json: async () => ({ lightingFixtures: [], ceiling: [], hvac: { status: 'unimplemented', planId: null } }) } as Response;
       }
       if (urlStr.includes('/api/scheme/current')) {
         return { ok: true, json: async () => ({ updatedAt: '', selections: {} }) } as Response;
@@ -349,5 +360,99 @@ describe('App', () => {
     offlineCallback(true);
 
     expect(setOfflineSpy).toHaveBeenCalledWith(true);
+  });
+
+  it('keeps HVAC coordination unavailable for an unimplemented projection', async () => {
+    const app = new App(canvas);
+    await app.start();
+
+    expect(app['hvacCoordinationState']).toBe('unimplemented');
+    expect(hvacCoordinationButton.disabled).toBe(true);
+    expect(hvacCoordinationButton.textContent).toBe('未实现');
+  });
+
+  it('enables HVAC coordination only when implemented projection export status is ready', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/project')) return { ok: true, json: async () => mockProjectData } as Response;
+      if (urlStr.includes('/api/render-facts/projection')) {
+        return { ok: true, json: async () => ({
+          lightingFixtures: [], ceiling: [],
+          hvac: { status: 'implemented', planId: 'A2', diagram: {
+            anchors: [
+              { id: 'outdoor', status: 'confirmed', system: 'refrigerant', ref: { source: 'outdoor', id: 'outdoor_a2' } },
+              { id: 'indoor', status: 'confirmed', system: 'refrigerant', ref: { source: 'ceiling', id: 'ac_living' } },
+            ], terminals: [], routes: [{ id: 'trunk', status: 'confirmed', system: 'refrigerant', from: 'outdoor', to: 'indoor' }], reference_constraints: [],
+          } },
+        }) } as Response;
+      }
+      if (urlStr.includes('/api/render-facts')) return { ok: true, json: async () => ({ hvac: { plans: [{ outdoor: { id: 'outdoor_a2', x: 0, z: 0, height: 1 } }] } }) } as Response;
+      if (urlStr.includes('/api/scheme/current')) return { ok: true, json: async () => ({ updatedAt: '', selections: {} }) } as Response;
+      if (urlStr.includes('/api/visual-commands') || urlStr.includes('/api/decisions') || urlStr.includes('/api/schemes')) return { ok: true, json: async () => [] } as Response;
+      if (urlStr.includes('/api/layouts')) return { ok: true, json: async () => ({ layouts: [] }) } as Response;
+      if (urlStr.includes('/api/budget')) return { ok: true, json: async () => ({ totalBudget: 0, totalActual: 0, categories: [], lineItems: [] }) } as Response;
+      if (urlStr.includes('/api/risks')) return { ok: true, json: async () => ({ risks: [], constraintViolations: [] }) } as Response;
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+    const app = new App(canvas);
+    vi.spyOn(app['houseScene'], 'getHvacExportStatus').mockReturnValue({ required: true, ready: true, expected: ['hvac:A2:anchor:outdoor'], included: ['hvac:A2:anchor:outdoor'], missing: [], terminalCount: 0 });
+    const setVisible = vi.spyOn(app['houseScene'], 'setHvacCoordinationVisible');
+    const toast = vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+
+    await app.start();
+
+    expect(app['hvacCoordinationState']).toBe('ready');
+    expect(hvacCoordinationButton.disabled).toBe(false);
+    expect(toast).toHaveBeenCalledWith('A2 一拖五已就绪：外机 1 / 内机 1 / 预深化路线 1');
+    (window as any).setHvacCoordinationVisible(true);
+    expect(setVisible).toHaveBeenLastCalledWith(true);
+    expect(app['hvacCoordinationVisible']).toBe(true);
+  });
+
+  it('does not mark detached or missing HVAC entities ready', async () => {
+    const app = new App(canvas);
+    vi.spyOn(app['houseScene'], 'getHvacExportStatus').mockReturnValue({ required: true, ready: false, expected: ['hvac:A2:anchor:outdoor'], included: [], missing: ['hvac:A2:anchor:outdoor'], terminalCount: 0 });
+    await app.start();
+
+    expect(app['hvacCoordinationState']).toBe('unimplemented');
+    expect(hvacCoordinationButton.disabled).toBe(true);
+  });
+
+  it('blocks GLB download when required HVAC export IDs are missing', async () => {
+    const app = new App(canvas);
+    const getStatus = vi.spyOn(app['houseScene'], 'getHvacExportStatus').mockReturnValue({
+      required: true,
+      ready: false,
+      expected: ['hvac:A2:anchor:outdoor'],
+      included: [],
+      missing: ['hvac:A2:anchor:outdoor'],
+      terminalCount: 0,
+    });
+    const toast = vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const handler = exportGlbButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
+
+    await handler();
+
+    expect(getStatus).toHaveBeenCalledOnce();
+    expect(consoleError).toHaveBeenCalledWith(
+      'GLB 导出已阻止：HVAC 缺失 hvac:A2:anchor:outdoor',
+      expect.objectContaining({ message: 'GLB 导出已阻止：HVAC 缺失 hvac:A2:anchor:outdoor' }),
+    );
+    expect(toast).toHaveBeenCalledWith('GLB 导出已阻止：HVAC 缺失 hvac:A2:anchor:outdoor');
+  });
+
+  it('blocks programmatic GLB export when required HVAC export IDs are missing', async () => {
+    const app = new App(canvas);
+    vi.spyOn(app['houseScene'], 'getHvacExportStatus').mockReturnValue({
+      required: true,
+      ready: false,
+      expected: ['hvac:A2:terminal:supply_living'],
+      included: [],
+      missing: ['hvac:A2:terminal:supply_living'],
+      terminalCount: 0,
+    });
+
+    await expect(app.exportGlbDataUrl()).rejects.toThrow('GLB 导出已阻止：HVAC 缺失 hvac:A2:terminal:supply_living');
   });
 });

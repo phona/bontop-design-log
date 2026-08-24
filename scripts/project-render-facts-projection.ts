@@ -3,19 +3,24 @@ import {
   parseCeilingZones,
   parseElectricalPoints,
   parsePlumbingPoints,
+  parseProjectHvacFacts,
   parseRenderLightingOverrides,
+  validateProjectHvacFacts,
 } from '../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
 import type { CurrentScheme, ProjectRenderFactsProjection } from '../shared/types.js';
 
 export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFactsProjection {
   const path = (relative: string) => `${rootDir}/${relative}`;
+  const facts = {
+    electrical: parseElectricalPoints(readFileSync(path('config/electrical.yaml'), 'utf8')),
+    plumbing: parsePlumbingPoints(readFileSync(path('config/plumbing.yaml'), 'utf8')),
+    ceiling: parseCeilingZones(readFileSync(path('config/ceiling.yaml'), 'utf8')),
+    hvac: parseProjectHvacFacts(readFileSync(path('config/hvac.yaml'), 'utf8')),
+  };
+  validateProjectHvacFacts(facts.hvac, facts);
   return buildProjectRenderFactsProjection(
-    {
-      electrical: parseElectricalPoints(readFileSync(path('config/electrical.yaml'), 'utf8')),
-      plumbing: parsePlumbingPoints(readFileSync(path('config/plumbing.yaml'), 'utf8')),
-      ceiling: parseCeilingZones(readFileSync(path('config/ceiling.yaml'), 'utf8')),
-    },
+    facts,
     parseRenderLightingOverrides(readFileSync(path('config/render/overrides.yaml'), 'utf8')),
     JSON.parse(readFileSync(path('data/current-scheme.json'), 'utf8')) as CurrentScheme,
   );

@@ -1,7 +1,5 @@
-import * as THREE from 'three';
 import type { Topic, SceneApi, TopicOption } from '@shared/types';
 import { hvacSchemes } from '@shared/houseData';
-import { createOutdoorUnit, createIndoorUnit, createLabel } from '../render/ObjectFactory.js';
 
 function schemeToOption(scheme: (typeof hvacSchemes)[number]): TopicOption {
   return {
@@ -21,60 +19,10 @@ export class HvacTopic implements Topic {
   options = hvacSchemes.map(schemeToOption);
 
   apply(scene: SceneApi, optionId: string): string[] {
-    const scheme = hvacSchemes.find((s) => s.id === optionId);
-    if (!scheme) return [];
-
+    if (!hvacSchemes.some((scheme) => scheme.id === optionId)) return [];
+    // HVAC 实体由 render-facts projection 的专用渲染器管理；topic 仅保留选择和预算信息。
     scene.clearTopicObjects(this.id);
-    const objectIds: string[] = [];
-
-    const resolveLocation = (location: string) =>
-      location === 'platform'
-        ? (() => { const pid = scene.getPlatformRoomId(); return pid ? scene.getRoom(pid) : undefined; })()
-        : scene.getRoom(location);
-
-    // outdoor units
-    scheme.outdoorUnits.forEach((unit, idx) => {
-      const loc = resolveLocation(unit.location);
-      if (!loc) return;
-      const mesh = createOutdoorUnit(unit.w, unit.h, unit.d);
-      const xOffset = scheme.outdoorUnits.length > 1 ? (idx - (scheme.outdoorUnits.length - 1) / 2) * (unit.w + 0.05) : 0;
-      mesh.position.set(loc.x + xOffset, unit.h / 2 + 0.15, loc.z);
-      const objectId = `hvac:outdoor:${scheme.id}:${idx}`;
-      scene.addObject(this.id, objectId, mesh);
-      objectIds.push(objectId);
-
-      const label = createLabel(`${scheme.id} 外机#${idx + 1}`);
-      label.position.set(mesh.position.x, mesh.position.y + unit.h / 2 + 0.4, mesh.position.z);
-      scene.addObject(this.id, `${objectId}:label`, label);
-    });
-
-    // indoor units
-    scheme.indoorUnits.forEach((unit, idx) => {
-      const room = scene.getRoom(unit.roomId);
-      if (!room) return;
-      const objectId = `hvac:indoor:${scheme.id}:${unit.roomId}`;
-      if (unit.type === 'ceiling') {
-        const mesh = createIndoorUnit('ceiling', 0.8, 0.5, 0.2);
-        mesh.position.set(room.x, room.height - 0.15, room.z);
-        scene.addObject(this.id, objectId, mesh);
-      } else if (unit.type === 'wall') {
-        const mesh = createIndoorUnit('wall', 0.8, 0.25, 0.25);
-        mesh.position.set(room.x, room.height * 0.65, room.z - room.depth / 2 + 0.15);
-        scene.addObject(this.id, objectId, mesh);
-      } else {
-        const mesh = createIndoorUnit('cabinet', 0.55, 0.35, 1.7);
-        mesh.position.set(room.x - 1, 0.85, room.z - 1);
-        scene.addObject(this.id, objectId, mesh);
-      }
-      objectIds.push(objectId);
-
-      const label = createLabel(`${unit.type === 'ceiling' ? '吊顶' : unit.type === 'wall' ? '壁挂' : '柜机'}`);
-      const labelPos = new THREE.Vector3(room.x, room.height - 0.5, room.z);
-      label.position.copy(labelPos);
-      scene.addObject(this.id, `${objectId}:label`, label);
-    });
-
-    return objectIds;
+    return [];
   }
 
   validate(scene: SceneApi, optionId: string): string[] {

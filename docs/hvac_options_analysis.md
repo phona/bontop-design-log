@@ -91,7 +91,19 @@
 
 **平台放不下时的退路**：如果 B/C/D/E 系列在西平台无法合理布置，可在 3D 漫游中展示 **F1/F2 入户花园方案**作为备选，但需提示噪音、热风、物业/消防风险。
 
-## 八、关联文件
+## 八、HVAC 预深化审阅表现
+
+A2 已接入 render-facts projection 的 HVAC 审阅层：Web 默认仅显示已确认的内外机、送/回风口和检修口实体；`window.setHvacCoordinationVisible(true)` 才显示冷媒、电源、冷凝水等系统路线。推断和待定路线为带原因的协调示意，不是施工深化图或可直接下单的管综依据。
+
+导出的 GLB 仅包含已确认 HVAC 实体（稳定名 `hvac:A2:*`）；Blender 只在显式 `hvac_coordination` 工况绘制 facts diagram 的路线到 `HVAC_DIAGRAM_A2` collection。材质评审、白天和蓝调等常规工况不显示彩色协调路线。
+
+### A2 邻户梁参考驱动第一版
+
+A2 的 `reference_constraints` 仅引用同户型 `survey/neighbor_ys01_original_structure_2025-06.png`：南窗带 LD100、北厨房 LD180、厨房/主卫局部梁头和走廊服务带。它们统一标注为 `inferred`/`pending`、±150mm、`not_for_construction`，只在 Web HVAC 协调模式和 Blender `hvac_coordination` 工况显示淡化范围。
+
+这些范围用于提示主管、分支、入房和冷凝水**绕梁优先**，不是自家实测结构，也不是开孔、穿梁、套管或施工许可。厂家深化前必须以自家量房复核梁底、范围和吊顶净高；冷凝水仍须确认坡度、存水弯和立管接点，**不得假定接入现有地漏**。本版不包含风量、管径或 BIM 管综深化。
+
+## 九、关联文件
 
 - `config/house.yaml` → `west_platform` 尺寸限制
 - `docs/designer_brief.md` → 重点设计问题 7

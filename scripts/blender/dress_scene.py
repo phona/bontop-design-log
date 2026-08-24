@@ -289,6 +289,142 @@ def to_blender(x: float, y: float, z: float) -> tuple[float, float, float]:
     return (x, -z, y)
 
 
+def hvac_diagram(facts: dict) -> dict | None:
+    """Return the implemented HVAC diagram only; never infer an alternate layout."""
+    hvac = facts.get('hvac') if isinstance(facts, dict) else None
+    if not isinstance(hvac, dict) or hvac.get('status') != 'implemented':
+        return None
+    diagram = hvac.get('diagram')
+    return diagram if isinstance(diagram, dict) else None
+
+
+def hvac_reference_constraints(facts: dict, show_constraints: bool = False) -> list[dict]:
+    """Return only declared non-construction neighbor references for explicit coordination review."""
+    diagram = hvac_diagram(facts)
+    if not diagram or not show_constraints:
+        return []
+    out = []
+    for item in diagram.get('reference_constraints', []):
+        if not isinstance(item, dict) or item.get('status') not in {'inferred', 'pending'}:
+            continue
+        if item.get('source') != 'survey/neighbor_ys01_original_structure_2025-06.png' or item.get('uncertainty_m') != 0.15:
+            continue
+        if item.get('not_for_construction') is not True or not isinstance(item.get('reason'), str) or not isinstance(item.get('survey_confirmation'), str):
+            continue
+        bounds = item.get('range')
+        if not isinstance(bounds, dict) or not all(isinstance(bounds.get(key), (int, float)) for key in ('x1', 'x2', 'z1', 'z2')):
+            continue
+        if bounds['x1'] >= bounds['x2'] or bounds['z1'] >= bounds['z2']:
+            continue
+        out.append(item)
+    return out
+
+
+def hvac_route_segments(diagram: dict) -> list[dict]:
+    """Resolve declared route ids to ordered point segments for Blender coordination drawing."""
+    points = {item.get('id'): item.get('position') for item in [*diagram.get('anchors', []), *diagram.get('terminals', [])]
+              if isinstance(item, dict) and isinstance(item.get('id'), str) and isinstance(item.get('position'), dict)}
+    out = []
+    for route in diagram.get('routes', []):
+        if not isinstance(route, dict):
+            continue
+        ids = [route.get('from'), *(route.get('via') or []), route.get('to')]
+        coords = [points.get(point_id) for point_id in ids]
+        if any(not isinstance(point, dict) for point in coords):
+            continue
+        for index, (start, end) in enumerate(zip(coords, coords[1:])):
+            out.append({'route': route, 'index': index, 'start': start, 'end': end})
+    return out
+
+
+def add_hvac_reference_constraints(facts: dict, show_constraints: bool = False) -> int:
+    """Draw declared neighbor-reference strips only for the explicit coordination scenario."""
+    constraints = hvac_reference_constraints(facts, show_constraints)
+    if not constraints:
+        return 0
+    collection = bpy.data.collections.get('HVAC_REFERENCE_CONSTRAINTS_A2') or bpy.data.collections.new('HVAC_REFERENCE_CONSTRAINTS_A2')
+    if collection.name not in {child.name for child in bpy.context.scene.collection.children}:
+        bpy.context.scene.collection.children.link(collection)
+    material = new_principled('HVAC_邻户参考_非施工', (0.96, 0.62, 0.08), rough=0.6, alpha=0.18)
+    count = 0
+    for constraint in constraints:
+        bounds = constraint['range']
+        x = (bounds['x1'] + bounds['x2']) / 2
+        z = (bounds['z1'] + bounds['z2']) / 2
+        y = constraint.get('reference_beam_bottom_y', 2.65)
+        bpy.ops.mesh.primitive_cube_add(size=1.0, location=to_blender(x, y, z))
+        obj = bpy.context.object
+        obj.name = f"hvac:A2:reference:{constraint['id']}"
+        obj.dimensions = (bounds['x2'] - bounds['x1'], bounds['z2'] - bounds['z1'], 0.08)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        obj.data.materials.append(material)
+        obj['source'] = constraint['source']
+        obj['uncertainty'] = '±150mm'
+        obj['not_for_construction'] = True
+        obj['reason'] = constraint['reason']
+        for linked in list(obj.users_collection):
+            linked.objects.unlink(obj)
+        collection.objects.link(obj)
+        bpy.ops.object.text_add(location=to_blender(x, y + 0.12, z))
+        label = bpy.context.object
+        label.name = f"hvac:A2:reference-label:{constraint['id']}"
+        label.data.body = f"参考 ±150mm 非施工: {constraint['id']}"
+        label.data.align_x = 'CENTER'
+        label.data.size = 0.16
+        for linked in list(label.users_collection):
+            linked.objects.unlink(label)
+        collection.objects.link(label)
+        count += 1
+    print(f'[dress_scene] HVAC reference constraints: {count}')
+    return count
+
+
+def add_hvac_diagram(facts: dict, show_routes: bool = False) -> int:
+    """Draw only declared coordination lines in an isolated collection.
+
+    Confirmed equipment is imported from the Web GLB. This helper intentionally does not
+    manufacture a second equipment layout; it adds routes only when the declared review
+    scenario explicitly enables them.
+    """
+    diagram = hvac_diagram(facts)
+    if not diagram or not show_routes:
+        return 0
+    # Ref anchors deliberately have no duplicate coordinates in facts. Resolve their
+    # imported Web GLB objects back to Three coordinates for route endpoints.
+    diagram = {key: list(value) if isinstance(value, list) else value for key, value in diagram.items()}
+    anchors = []
+    for anchor in diagram.get('anchors', []):
+        item = dict(anchor)
+        if not isinstance(item.get('position'), dict):
+            obj = bpy.data.objects.get(f"hvac:A2:anchor:{item.get('id')}")
+            if obj:
+                item['position'] = {'x': obj.location.x, 'y': obj.location.z, 'z': -obj.location.y}
+        anchors.append(item)
+    diagram['anchors'] = anchors
+    collection = bpy.data.collections.get('HVAC_DIAGRAM_A2') or bpy.data.collections.new('HVAC_DIAGRAM_A2')
+    if collection.name not in {child.name for child in bpy.context.scene.collection.children}:
+        bpy.context.scene.collection.children.link(collection)
+    colors = {'confirmed': (0.22, 0.74, 0.97, 0.75), 'inferred': (0.96, 0.62, 0.08, 0.52), 'pending': (0.58, 0.64, 0.72, 0.28)}
+    count = 0
+    for segment in hvac_route_segments(diagram):
+        route = segment['route']
+        status = route.get('status', 'pending')
+        curve = bpy.data.curves.new(f"hvac:A2:route:{route.get('id')}:segment:{segment['index']}", type='CURVE')
+        curve.dimensions = '3D'
+        curve.bevel_depth = 0.012
+        spline = curve.splines.new('POLY')
+        spline.points.add(1)
+        for point, source in zip(spline.points, (segment['start'], segment['end'])):
+            point.co = (*to_blender(source['x'], source['y'], source['z']), 1.0)
+        material = bpy.data.materials.get(f'HVAC_{status}') or new_principled(f'HVAC_{status}', colors[status][:3], rough=0.45, alpha=colors[status][3])
+        curve.materials.append(material)
+        obj = bpy.data.objects.new(curve.name, curve)
+        collection.objects.link(obj)
+        count += 1
+    print(f'[dress_scene] HVAC coordination routes: {count}')
+    return count
+
+
 def add_lights(cfg: dict, temp_override: float | None = None) -> int:
     count = 0
     for lp in cfg['lights']:
@@ -402,8 +538,8 @@ def add_light_fixtures(cfg: dict, temp_override: float | None = None, emit: bool
 
 
 def add_ceiling_finishing(furniture_mats: dict, emit: bool = True) -> int:
-    """顶面完成度 staging（DEC-027 评估件）：客餐厅浅跌级边吊 + 灯槽 + 长条风口。
-    仅渲染评估，不改 ceiling.yaml；设计审查通过后再落成配置。
+    """顶面完成度 staging（DEC-027 评估件）：客餐厅浅跌级边吊与灯槽。
+    HVAC 风口由 render-facts 驱动的 GLB 实体提供；此处不再硬编码。
     living_dining 边界 x∈[7.2,13.4] z∈[2.4,9.8]，净高 2.8m → 跌级 8cm/宽 25cm。"""
     count = 0
     ceil_m = new_principled('顶面_跌级白', hex_rgb('#efece4'), rough=0.9)  # 比天花白(#f7f7f5)深半档，跌级才有阴影缝可读
@@ -417,8 +553,6 @@ def add_ceiling_finishing(furniture_mats: dict, emit: bool = True) -> int:
     cem.inputs['Color'].default_value = (*kelvin_to_rgb(3000), 1.0)
     cem.inputs['Strength'].default_value = 6.0 if emit else 0.2  # 2.0 洗顶太弱看不到灯槽（v19 反馈吊顶效果不明显）
     cnt.links.new(cem.outputs[0], cout.inputs['Surface'])
-    vent_m = new_principled('顶面_风口', hex_rgb('#2a2a2a'), rough=0.5, metallic=0.3)
-
     # 跌级边框（四条）：z=2.76 中心，厚 8cm，宽 25cm
     borders = [
         ((10.3, -2.525, 2.76), (6.2, 0.25, 0.08)),   # 北（餐区侧）
@@ -443,14 +577,6 @@ def add_ceiling_finishing(furniture_mats: dict, emit: bool = True) -> int:
         bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
         o.data.materials.append(cove_m)
         count += 1
-    # 长条风口（客厅，整合进跌级南侧）
-    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(10.3, -8.6, 2.79))
-    o = bpy.context.object
-    o.name = 'asset:ceiling:vent'
-    o.dimensions = (2.4, 0.15, 0.02)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    o.data.materials.append(vent_m)
-    count += 1
     print(f'[dress_scene] ceiling finishing: {count}')
     return count
 
@@ -2019,8 +2145,11 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     # 灯具实体始终建模（白天不开灯也要看见吊灯/吸顶灯形体），自发光仅在开灯工况
     add_light_fixtures(cfg, temp_override=scenario.get('light_temp'),
                        emit=scenario.get('lights_on', True))
-    # 顶面完成度 staging（DEC-027 评估件：浅跌级+灯槽+风口）
+    # 顶面完成度 staging（DEC-027 评估件：浅跌级+灯槽）
     add_ceiling_finishing(mats, emit=scenario.get('lights_on', True))
+    show_hvac_coordination = not bare_shell and bool(scenario.get('hvac_coordination', False))
+    add_hvac_diagram(facts, show_routes=show_hvac_coordination)
+    add_hvac_reference_constraints(facts, show_constraints=show_hvac_coordination)
     sun_dir = scenario.get('sun_direction')
     if sun_dir:
         add_sun(sun_dir, energy=scenario.get('sun_energy', 1.2), temp=scenario.get('sun_temp', 3200))

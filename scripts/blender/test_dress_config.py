@@ -16,6 +16,7 @@ CONFIG = {
         {'id': 'blue_hour', 'sun_direction': None, 'world_color': '#3a5a8f', 'world_strength': 0.5},
         {'id': 'night', 'sun_direction': None, 'world_color': '#060a14', 'world_strength': 0.06},
         {'id': 'material_review', 'sun_direction': None, 'world_color': '#808080', 'world_strength': 0.3},
+        {'id': 'hvac_coordination', 'sun_direction': None, 'world_color': '#808080', 'world_strength': 0.3, 'hvac_coordination': True},
     ],
     'cameras': [
         {'id': 'living_sofa_glass', 'position': [10.3, 1.55, 2.9], 'target': [9.6, 1.2, 8.6]},
@@ -28,7 +29,7 @@ CONFIG = {
 
 def test_make_jobs_count():
     jobs = make_jobs(CONFIG, version='v1')
-    assert len(jobs) == 7, f'expected 7 jobs, got {len(jobs)}'
+    assert len(jobs) == 9, f'expected 9 jobs, got {len(jobs)}'
 
 
 def test_make_jobs_filename_and_scenario():
@@ -48,7 +49,14 @@ def test_make_jobs_camera_scenario_filter():
         f'closeup camera should only render material_review, got {[j["scenario_id"] for j in closeup]}'
     # 无过滤字段的相机出全部工况
     pan = [j for j in jobs if j['camera_id'] == 'living_sofa_glass']
-    assert len(pan) == 3
+    assert len(pan) == 4
+
+
+def test_hvac_coordination_is_explicit_scenario_flag():
+    scenario = next(item for item in CONFIG['scenarios'] if item['id'] == 'hvac_coordination')
+    normal = next(item for item in CONFIG['scenarios'] if item['id'] == 'material_review')
+    assert scenario['hvac_coordination'] is True
+    assert normal.get('hvac_coordination', False) is False
 
 
 def test_effective_camera_config_matches_scenario_and_has_priority():

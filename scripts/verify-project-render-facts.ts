@@ -1,23 +1,8 @@
 import { readFileSync } from 'node:fs';
-import {
-  parseCeilingZones,
-  parseElectricalPoints,
-  parsePlumbingPoints,
-  parseProjectRenderFactsProjection,
-  parseRenderLightingOverrides,
-} from '../shared/project-render-facts-schema.js';
-import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
-import type { CurrentScheme } from '../shared/types.js';
+import { parseProjectRenderFactsProjection } from '../shared/project-render-facts-schema.js';
+import { buildProjectRenderFactsFromFiles } from './project-render-facts-projection.js';
 
-const projection = buildProjectRenderFactsProjection(
-  {
-    electrical: parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf8')),
-    plumbing: parsePlumbingPoints(readFileSync('config/plumbing.yaml', 'utf8')),
-    ceiling: parseCeilingZones(readFileSync('config/ceiling.yaml', 'utf8')),
-  },
-  parseRenderLightingOverrides(readFileSync('config/render/overrides.yaml', 'utf8')),
-  JSON.parse(readFileSync('data/current-scheme.json', 'utf8')) as CurrentScheme,
-);
+const projection = buildProjectRenderFactsFromFiles();
 const generated = parseProjectRenderFactsProjection(
   JSON.parse(readFileSync('scripts/blender/project-render-facts.json', 'utf8')),
 );

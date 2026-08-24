@@ -31,7 +31,11 @@ function parseManifest(raw: unknown): RenderBundleManifest {
   if (manifest.schemaVersion !== RENDER_BUNDLE_SCHEMA_VERSION) throw new Error(`Unsupported render bundle manifest schema: ${String(manifest.schemaVersion)}`);
   if (typeof manifest.revision !== 'string' || !/^[0-9a-f]{40}$/u.test(manifest.revision)) throw new Error('manifest revision must be a full git SHA');
   if (typeof manifest.dirty !== 'boolean' || typeof manifest.dirtyPorcelain !== 'string') throw new Error('manifest dirty state is invalid');
-  if (!manifest.sourceInputs || !manifest.artifacts || !manifest.summaries) throw new Error('manifest is missing sourceInputs, artifacts, or summaries');
+  if (!manifest.sourceInputs || !manifest.glbExport || !manifest.artifacts || !manifest.summaries) throw new Error('manifest is missing sourceInputs, glbExport, artifacts, or summaries');
+  if (manifest.glbExport.method !== 'manual_web_export') throw new Error('manifest GLB export method must be manual_web_export');
+  if (typeof manifest.glbExport.inputBasename !== 'string' || !manifest.glbExport.inputBasename || basename(manifest.glbExport.inputBasename) !== manifest.glbExport.inputBasename || manifest.glbExport.inputBasename.includes('\\') || manifest.glbExport.inputBasename.includes('\0')) {
+    throw new Error('manifest GLB input basename is invalid');
+  }
   return manifest as RenderBundleManifest;
 }
 

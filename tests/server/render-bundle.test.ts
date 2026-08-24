@@ -5,8 +5,9 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { inspectGlb } from '../../scripts/inspect-glb.js';
 import { fileArtifact, RENDER_BUNDLE_SCHEMA_VERSION, sha256Bytes, type RenderBundleManifest } from '../../scripts/render-bundle-utils.js';
-import { parseBuildRenderBundleArgs } from '../../scripts/build-render-bundle.js';
+import { buildRenderBundle, parseBuildRenderBundleArgs } from '../../scripts/build-render-bundle.js';
 import { parseVerifyRenderBundleArgs, verifyRenderBundle } from '../../scripts/verify-render-bundle.js';
+import type { ProjectRenderFactsProjection } from '../../shared/types.js';
 
 function makeGlb(document: unknown = {
   asset: { version: '2.0' }, scenes: [{ nodes: [0] }], scene: 0,
@@ -23,10 +24,14 @@ function makeGlb(document: unknown = {
   return buffer;
 }
 
+function manualGlbExport(inputBasename = 'manual-house.glb'): RenderBundleManifest['glbExport'] {
+  return { method: 'manual_web_export', inputBasename };
+}
+
 function makeBundle(): { directory: string; manifest: RenderBundleManifest } {
   const directory = mkdtempSync(join(tmpdir(), 'render-bundle-'));
   const glb = makeGlb();
-  const facts = { version: '1.0', lightingFixtures: [], plumbing: [], ceiling: [], materials: { floor: { default: null, roomOverrides: {} } } };
+  const facts: ProjectRenderFactsProjection = { version: '1.0', lightingFixtures: [], plumbing: [], ceiling: [], hvac: { status: 'unimplemented', planId: null }, materials: { floor: { default: null, roomOverrides: {} } } };
   const config = { facts, lights: [], scenarios: [], cameras: [], sun: null };
   writeFileSync(join(directory, 'house.glb'), glb);
   writeFileSync(join(directory, 'project-render-facts.json'), `${JSON.stringify(facts, null, 2)}\n`);
@@ -36,7 +41,11 @@ function makeBundle(): { directory: string; manifest: RenderBundleManifest } {
     revision: 'd14d3b93e55143f7b0d0126a0da28d7ca49112d8',
     dirty: true,
     dirtyPorcelain: ' M sample',
-    sourceInputs: { 'data/current-scheme.json': sha256Bytes(Buffer.from('input')) },
+    sourceInputs: {
+      'config/hvac.yaml': sha256Bytes(Buffer.from('hvac input')),
+      'data/current-scheme.json': sha256Bytes(Buffer.from('input')),
+    },
+    glbExport: manualGlbExport(),
     artifacts: {
       glb: fileArtifact(directory, 'house.glb'),
       renderConfig: fileArtifact(directory, 'render-config.json'),
@@ -48,13 +57,46 @@ function makeBundle(): { directory: string; manifest: RenderBundleManifest } {
   return { directory, manifest };
 }
 
-test('render bundle argument parsers require explicit paths', () => {
-  assert.deepEqual(parseBuildRenderBundleArgs(['--output-dir', 'out', '--allow-dirty']), {
-    outputDir: 'out', cdpHost: 'localhost', cdpPort: 9222, appUrl: 'http://localhost:5173', timeoutSeconds: 120, allowDirty: true,
+test('render bundle argument parsers require manual GLB and explicit paths', () => {
+  assert.deepEqual(parseBuildRenderBundleArgs(['--glb', 'manual.glb', '--output-dir', 'out', '--allow-dirty']), {
+    glb: 'manual.glb', outputDir: 'out', allowDirty: true,
   });
   assert.deepEqual(parseVerifyRenderBundleArgs(['--bundle', 'out']), { bundle: 'out' });
   assert.throws(() => parseBuildRenderBundleArgs([]), /usage/);
+  assert.throws(() => parseBuildRenderBundleArgs(['--output-dir', 'out']), /usage/);
+  assert.throws(() => parseBuildRenderBundleArgs(['--glb', 'manual.glb']), /usage/);
+  assert.throws(() => parseBuildRenderBundleArgs(['--glb', 'manual.glb', '--output-dir', 'out', '--cdp-port', '9222']), /usage/);
   assert.throws(() => parseVerifyRenderBundleArgs([]), /usage/);
+});
+
+test('buildRenderBundle rejects missing or invalid input GLBs before creating a bundle', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'render-bundle-input-'));
+  try {
+    const output = join(directory, 'output');
+    assert.throws(() => buildRenderBundle({ glb: join(directory, 'missing.glb'), outputDir: output, allowDirty: true }), /existing file/);
+    writeFileSync(join(directory, 'invalid.glb'), 'not a GLB');
+    assert.throws(() => buildRenderBundle({ glb: join(directory, 'invalid.glb'), outputDir: output, allowDirty: true }), /shorter|GLB/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('buildRenderBundle copies a manual GLB without modifying its source', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'render-bundle-build-'));
+  try {
+    const input = join(directory, 'desktop-export.glb');
+    const output = join(directory, 'bundle');
+    writeFileSync(input, makeGlb());
+    const original = readFileSync(input);
+    const manifest = buildRenderBundle({ glb: input, outputDir: output, allowDirty: true });
+    assert.deepEqual(readFileSync(input), original);
+    assert.deepEqual(readFileSync(join(output, 'house.glb')), original);
+    assert.notEqual(join(output, 'house.glb'), input);
+    assert.deepEqual(manifest.glbExport, manualGlbExport('desktop-export.glb'));
+    assert.deepEqual(verifyRenderBundle(output), manifest);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('verifyRenderBundle validates a self-contained dirty bundle without browser', () => {
@@ -87,7 +129,7 @@ test('verifyRenderBundle rejects empty or bbox-less GLBs even when their manifes
   }
 });
 
-test('verifyRenderBundle rejects unsafe paths, hashes, facts, and GLB summary drift', () => {
+test('verifyRenderBundle rejects invalid manual metadata, unsafe paths, hashes, facts, and GLB summary drift', () => {
   const { directory } = makeBundle();
   const manifestPath = join(directory, 'manifest.json');
   try {
@@ -95,6 +137,16 @@ test('verifyRenderBundle rejects unsafe paths, hashes, facts, and GLB summary dr
     const writeManifest = (manifest: RenderBundleManifest) => writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
     let manifest = readManifest();
+    manifest.glbExport.inputBasename = '/tmp/house.glb';
+    writeManifest(manifest);
+    assert.throws(() => verifyRenderBundle(directory), /input basename/);
+
+    manifest = makeBundleManifestReset(directory);
+    manifest.glbExport.method = 'cdp_export' as 'manual_web_export';
+    writeManifest(manifest);
+    assert.throws(() => verifyRenderBundle(directory), /export method/);
+
+    manifest = makeBundleManifestReset(directory);
     manifest.artifacts.glb.path = '../house.glb';
     writeManifest(manifest);
     assert.throws(() => verifyRenderBundle(directory), /unsafe|escapes/);
@@ -128,7 +180,7 @@ function makeBundleManifestReset(directory: string): RenderBundleManifest {
   const facts = JSON.parse(readFileSync(factsPath, 'utf8'));
   return {
     schemaVersion: RENDER_BUNDLE_SCHEMA_VERSION,
-    revision: 'd14d3b93e55143f7b0d0126a0da28d7ca49112d8', dirty: true, dirtyPorcelain: ' M sample', sourceInputs: {},
+    revision: 'd14d3b93e55143f7b0d0126a0da28d7ca49112d8', dirty: true, dirtyPorcelain: ' M sample', sourceInputs: {}, glbExport: manualGlbExport(),
     artifacts: { glb: fileArtifact(directory, 'house.glb'), renderConfig: fileArtifact(directory, 'render-config.json'), projectRenderFacts: fileArtifact(directory, 'project-render-facts.json') },
     summaries: { glb: inspectGlb(glbPath), projectRenderFacts: facts },
   };

@@ -28,6 +28,12 @@ const ceiling = `- id: ceiling_1
   thickness: 0.2
   area: [0, 0, 1, 1]
 `;
+const hvac = `plans:
+  - id: A2
+    kind: vrf_ducted
+    outdoor: { id: outdoor_1, platform: platform, x: 1, z: 2, direction: south, width: 1, depth: 1, height: 1, model: VRF }
+    diagram: { anchors: [], terminals: [], routes: [], reference_constraints: [] }
+`;
 const overrides = `- id: light_1
   anchorY: 2.8
   reason: render anchor
@@ -36,7 +42,7 @@ const overrides = `- id: light_1
 
 describe('ProjectRenderFactsLoader', () => {
   let dir: string;
-  let paths: { electrical: string; plumbing: string; ceiling: string; overrides: string };
+  let paths: { electrical: string; plumbing: string; ceiling: string; hvac: string; overrides: string };
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'render-facts-'));
@@ -44,11 +50,13 @@ describe('ProjectRenderFactsLoader', () => {
       electrical: join(dir, 'electrical.yaml'),
       plumbing: join(dir, 'plumbing.yaml'),
       ceiling: join(dir, 'ceiling.yaml'),
+      hvac: join(dir, 'hvac.yaml'),
       overrides: join(dir, 'overrides.yaml'),
     };
     writeFileSync(paths.electrical, electrical);
     writeFileSync(paths.plumbing, plumbing);
     writeFileSync(paths.ceiling, ceiling);
+    writeFileSync(paths.hvac, hvac);
     writeFileSync(paths.overrides, overrides);
   });
 
@@ -67,6 +75,7 @@ describe('ProjectRenderFactsLoader', () => {
       ],
       plumbing: [{ id: 'faucet_1', room: 'kitchen', type: 'faucet', x: 3, z: 4 }],
       ceiling: [{ id: 'ceiling_1', room: 'living', type: 'drop', thickness: 0.2, area: [0, 0, 1, 1] }],
+      hvac: { plans: [{ id: 'A2', kind: 'vrf_ducted', outdoor: { id: 'outdoor_1', platform: 'platform', x: 1, z: 2, direction: 'south', width: 1, depth: 1, height: 1, model: 'VRF' }, diagram: { anchors: [], terminals: [], routes: [], reference_constraints: [] } }] },
     });
     assert.deepEqual(loader.getOverrides(), [{ id: 'light_1', anchorY: 2.8, reason: 'render anchor', applies_to: ['web', 'blender'] }]);
     assert.equal(loader.getStatuses().every((status) => status.status === 'ok'), true);

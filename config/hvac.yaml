@@ -1,0 +1,431 @@
+plans:
+  - id: A2
+    kind: vrf_ducted
+    outdoor:
+      id: vrf_outdoor_a2
+      platform: west_platform
+      x: 6.40
+      z: 0.50
+      direction: south
+      width: 0.90
+      depth: 0.335
+      height: 0.70
+      model: "美的理想家 III 6HP"
+      note: "量房检修待确认"
+    diagram:
+      reference_constraints:
+        - id: ref_south_window_band_ld100
+          status: inferred
+          source: survey/neighbor_ys01_original_structure_2025-06.png
+          uncertainty_m: 0.15
+          not_for_construction: true
+          range: { x1: 1.8, x2: 15.2, z1: 9.65, z2: 9.95 }
+          reference_bottom_drop_m: 0.10
+          reference_beam_bottom_y: 2.73
+          risk: "南侧窗带及浅梁可能压缩室内机、风口和冷媒转入的吊顶净空。"
+          reason: "同户型邻户原始结构图标注南侧 LD:100；仅作比例映射参考。"
+          survey_confirmation: "量房复核自家南侧窗带范围、梁底标高和可用吊顶净空；不得据此开孔或穿梁。"
+        - id: ref_kitchen_north_ld180
+          status: inferred
+          source: survey/neighbor_ys01_original_structure_2025-06.png
+          uncertainty_m: 0.15
+          not_for_construction: true
+          range: { x1: 7.7, x2: 10.8, z1: -0.15, z2: 0.25 }
+          reference_bottom_drop_m: 0.18
+          reference_beam_bottom_y: 2.65
+          risk: "北厨房窗带浅梁可能影响主管转入、冷凝水坡度和吊顶净空。"
+          reason: "同户型邻户原始结构图北厨房窗带标注 LD:180；仅作比例映射参考。"
+          survey_confirmation: "量房复核自家厨房北侧梁底、窗台及立管位置；不得据此开孔或穿梁。"
+        - id: ref_kitchen_local_beam_head
+          status: pending
+          source: survey/neighbor_ys01_original_structure_2025-06.png
+          uncertainty_m: 0.15
+          not_for_construction: true
+          range: { x1: 9.0, x2: 9.4, z1: 1.5, z2: 2.1 }
+          reference_beam_bottom_y: 2.56
+          risk: "厨房局部梁头可能阻断北侧服务带的横向绕行。"
+          reason: "邻户图 LH:270/LW:210 局部投影解读为小梁头，不是窗洞。"
+          survey_confirmation: "量房拍照并测量自家梁头投影、梁底和相邻管井；不得据此开孔或穿梁。"
+        - id: ref_master_bath_local_beam_head
+          status: pending
+          source: survey/neighbor_ys01_original_structure_2025-06.png
+          uncertainty_m: 0.15
+          not_for_construction: true
+          range: { x1: 1.2, x2: 1.9, z1: 3.5, z2: 4.1 }
+          reference_beam_bottom_y: 2.41
+          risk: "主卫局部梁头可能限制冷凝水支管抬高与检修空间。"
+          reason: "邻户图 LH:420/LW:400 局部投影解读为小梁头，不是窗洞。"
+          survey_confirmation: "量房拍照并测量自家梁头投影、梁底、沉箱和排水立管；不得据此开孔或穿梁。"
+        - id: ref_corridor_service_band
+          status: inferred
+          source: survey/neighbor_ys01_original_structure_2025-06.png
+          uncertainty_m: 0.15
+          not_for_construction: true
+          range: { x1: 6.9, x2: 7.5, z1: 3.6, z2: 8.0 }
+          reference_bottom_drop_m: 0.18
+          reference_beam_bottom_y: 2.65
+          risk: "走廊服务带是主干与分支的汇集区，参考梁位偏差会影响所有入房转弯。"
+          reason: "按邻户浅梁组及现有走廊吊顶示意划定的协调带，不是自家结构定位。"
+          survey_confirmation: "量房沿走廊逐段测梁底、宽度、套管条件和吊顶净高；绕梁优先，不得默认穿梁。"
+      anchors:
+        - id: outdoor_a2
+          status: confirmed
+          system: refrigerant
+          ref: { source: outdoor, id: vrf_outdoor_a2 }
+        - id: indoor_living
+          status: confirmed
+          system: refrigerant
+          ref: { source: ceiling, id: ac_living }
+        - id: indoor_master
+          status: confirmed
+          system: refrigerant
+          ref: { source: ceiling, id: ac_master }
+        - id: indoor_study
+          status: confirmed
+          system: refrigerant
+          ref: { source: ceiling, id: ac_study }
+        - id: indoor_parent
+          status: confirmed
+          system: refrigerant
+          ref: { source: ceiling, id: ac_parent }
+        - id: indoor_child
+          status: confirmed
+          system: refrigerant
+          ref: { source: ceiling, id: ac_child }
+        - id: power_living
+          status: confirmed
+          system: power
+          ref: { source: electrical, id: sock_living_ac }
+        - id: power_master
+          status: confirmed
+          system: power
+          ref: { source: electrical, id: sock_master_ac }
+        - id: power_study
+          status: confirmed
+          system: power
+          ref: { source: electrical, id: sock_study_ac }
+        - id: power_parent
+          status: confirmed
+          system: power
+          ref: { source: electrical, id: sock_parent_ac }
+        - id: power_child
+          status: confirmed
+          system: power
+          ref: { source: electrical, id: sock_child_ac }
+        - id: bend_corridor
+          status: inferred
+          system: refrigerant
+          position: { x: 7.2, y: 2.5, z: 4.3 }
+          reason: "按走廊吊顶走向示意，现场复核梁位和套管。"
+        - id: branch_master
+          status: inferred
+          system: refrigerant
+          position: { x: 4.2, y: 2.5, z: 6.8 }
+          reason: "主卧冷媒支路按走廊吊顶转入示意，分歧、梁位和套管待厂家深化。"
+        - id: branch_study
+          status: inferred
+          system: refrigerant
+          position: { x: 13.4, y: 2.5, z: 7.5 }
+          reason: "书房冷媒支路按东侧吊顶转入示意，分歧、梁位和套管待厂家深化。"
+        - id: branch_parent
+          status: inferred
+          system: refrigerant
+          position: { x: 5.5, y: 2.5, z: 7.5 }
+          reason: "父母房冷媒支路按西侧走廊吊顶转入示意，分歧、梁位和套管待厂家深化。"
+        - id: branch_child
+          status: inferred
+          system: refrigerant
+          position: { x: 4.0, y: 2.5, z: 3.6 }
+          reason: "儿童房冷媒支路按走廊吊顶转入示意，分歧、梁位和套管待厂家深化。"
+      terminals:
+        - id: supply_living
+          status: inferred
+          system: supply_air
+          position: { x: 10.8, y: 2.5, z: 7.0 }
+          reason: "送风口位置待风量和吊顶深化确认。"
+        - id: return_living
+          status: inferred
+          system: return_air
+          position: { x: 9.6, y: 2.5, z: 7.0 }
+          reason: "回风口位置待检修空间与风量计算确认。"
+        - id: access_living
+          status: pending
+          system: access
+          position: { x: 10.3, y: 2.5, z: 6.2 }
+          reason: "检修口尺寸和位置待设备样本及现场梁位确认。"
+        - id: condensate_living_sink
+          status: pending
+          system: condensate
+          position: { x: 10.0, y: 0.1, z: 6.2 }
+          reason: "冷凝水接入立管路径待量房确认；不得假定接入现有地漏。"
+        - id: condensate_master_sink
+          status: pending
+          system: condensate
+          position: { x: 4.2, y: 0.1, z: 7.0 }
+          reason: "冷凝水接入立管路径待量房确认；不得假定接入现有地漏。"
+        - id: condensate_study_sink
+          status: pending
+          system: condensate
+          position: { x: 13.4, y: 0.1, z: 7.5 }
+          reason: "冷凝水接入立管路径待量房确认；不得假定接入现有地漏。"
+        - id: condensate_parent_sink
+          status: pending
+          system: condensate
+          position: { x: 4.2, y: 0.1, z: 7.5 }
+          reason: "冷凝水接入立管路径待量房确认；不得假定接入现有地漏。"
+        - id: condensate_child_sink
+          status: pending
+          system: condensate
+          position: { x: 5.6, y: 0.1, z: 3.6 }
+          reason: "冷凝水接入立管路径待量房确认；不得假定接入现有地漏。"
+        - id: supply_master
+          status: inferred
+          system: supply_air
+          position: { x: 1.1, y: 2.5, z: 7.0 }
+          reason: "主卧送风口位置待风量、静压和吊顶深化确认。"
+        - id: return_master
+          status: inferred
+          system: return_air
+          position: { x: 2.0, y: 2.5, z: 7.0 }
+          reason: "主卧回风口位置待回风箱尺寸和检修净空确认。"
+        - id: access_master
+          status: pending
+          system: access
+          position: { x: 1.5, y: 2.5, z: 6.3 }
+          reason: "主卧检修口尺寸和位置待设备样本、梁位确认。"
+        - id: supply_study
+          status: inferred
+          system: supply_air
+          position: { x: 15.2, y: 2.5, z: 7.5 }
+          reason: "书房送风口位置待风量、静压和吊顶深化确认。"
+        - id: return_study
+          status: inferred
+          system: return_air
+          position: { x: 14.3, y: 2.5, z: 7.5 }
+          reason: "书房回风口位置待回风箱尺寸和检修净空确认。"
+        - id: access_study
+          status: pending
+          system: access
+          position: { x: 14.8, y: 2.5, z: 6.8 }
+          reason: "书房检修口尺寸和位置待设备样本、梁位确认。"
+        - id: supply_parent
+          status: inferred
+          system: supply_air
+          position: { x: 5.0, y: 2.5, z: 7.5 }
+          reason: "父母房送风口位置待风量、静压和吊顶深化确认。"
+        - id: return_parent
+          status: inferred
+          system: return_air
+          position: { x: 6.0, y: 2.5, z: 7.5 }
+          reason: "父母房回风口位置待回风箱尺寸和检修净空确认。"
+        - id: access_parent
+          status: pending
+          system: access
+          position: { x: 5.5, y: 2.5, z: 6.8 }
+          reason: "父母房检修口尺寸和位置待设备样本、梁位确认。"
+        - id: supply_child
+          status: inferred
+          system: supply_air
+          position: { x: 3.5, y: 2.5, z: 2.5 }
+          reason: "儿童房送风口位置待风量、静压和吊顶深化确认。"
+        - id: return_child
+          status: inferred
+          system: return_air
+          position: { x: 4.6, y: 2.5, z: 2.5 }
+          reason: "儿童房回风口位置待回风箱尺寸和检修净空确认。"
+        - id: access_child
+          status: pending
+          system: access
+          position: { x: 4.0, y: 2.5, z: 3.2 }
+          reason: "儿童房检修口尺寸和位置待设备样本、梁位确认。"
+      routes:
+        - id: refrigerant_trunk
+          status: inferred
+          system: refrigerant
+          from: outdoor_a2
+          to: indoor_living
+          via: [bend_corridor]
+          constraint_refs: [ref_kitchen_north_ld180, ref_kitchen_local_beam_head, ref_corridor_service_band]
+          reason: "冷媒主管仅为协调示意；北厨房与走廊参考梁位按绕梁优先，管径、分歧、套管和实际走向待自家量房及厂家深化，不得默认穿梁或开孔。"
+        - id: power_living_route
+          status: confirmed
+          system: power
+          from: power_living
+          to: indoor_living
+        - id: refrigerant_master_branch
+          status: inferred
+          system: refrigerant
+          from: bend_corridor
+          to: indoor_master
+          via: [branch_master]
+          constraint_refs: [ref_corridor_service_band, ref_south_window_band_ld100]
+          reason: "主卧冷媒支路仅为协调示意，走廊服务带和南侧窗带参考梁位绕行优先；分歧、管径、套管待量房及厂家深化，不得默认穿梁或开孔。"
+        - id: refrigerant_study_branch
+          status: inferred
+          system: refrigerant
+          from: bend_corridor
+          to: indoor_study
+          via: [branch_study]
+          constraint_refs: [ref_corridor_service_band, ref_south_window_band_ld100]
+          reason: "书房冷媒支路仅为协调示意，走廊服务带和南侧窗带参考梁位绕行优先；分歧、管径、套管待量房及厂家深化，不得默认穿梁或开孔。"
+        - id: refrigerant_parent_branch
+          status: inferred
+          system: refrigerant
+          from: bend_corridor
+          to: indoor_parent
+          via: [branch_parent]
+          constraint_refs: [ref_corridor_service_band, ref_south_window_band_ld100]
+          reason: "父母房冷媒支路仅为协调示意，走廊服务带和南侧窗带参考梁位绕行优先；分歧、管径、套管待量房及厂家深化，不得默认穿梁或开孔。"
+        - id: refrigerant_child_branch
+          status: inferred
+          system: refrigerant
+          from: bend_corridor
+          to: indoor_child
+          via: [branch_child]
+          constraint_refs: [ref_corridor_service_band]
+          reason: "儿童房冷媒支路仅为协调示意，走廊服务带参考梁位绕行优先；分歧、管径、套管待量房及厂家深化，不得默认穿梁或开孔。"
+        - id: power_master_route
+          status: confirmed
+          system: power
+          from: power_master
+          to: indoor_master
+        - id: power_study_route
+          status: confirmed
+          system: power
+          from: power_study
+          to: indoor_study
+        - id: power_parent_route
+          status: confirmed
+          system: power
+          from: power_parent
+          to: indoor_parent
+        - id: power_child_route
+          status: confirmed
+          system: power
+          from: power_child
+          to: indoor_child
+        - id: condensate_living_route
+          status: pending
+          system: condensate
+          from: indoor_living
+          to: condensate_living_sink
+          constraint_refs: [ref_south_window_band_ld100]
+          reason: "冷凝水坡度、存水弯和立管接点待现场确认；南侧参考窗带梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
+        - id: condensate_master_route
+          status: pending
+          system: condensate
+          from: indoor_master
+          to: condensate_master_sink
+          constraint_refs: [ref_south_window_band_ld100, ref_master_bath_local_beam_head]
+          reason: "冷凝水坡度、存水弯和立管接点待现场确认；南侧及主卫局部参考梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
+        - id: condensate_study_route
+          status: pending
+          system: condensate
+          from: indoor_study
+          to: condensate_study_sink
+          constraint_refs: [ref_south_window_band_ld100]
+          reason: "冷凝水坡度、存水弯和立管接点待现场确认；南侧参考窗带梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
+        - id: condensate_parent_route
+          status: pending
+          system: condensate
+          from: indoor_parent
+          to: condensate_parent_sink
+          constraint_refs: [ref_south_window_band_ld100]
+          reason: "冷凝水坡度、存水弯和立管接点待现场确认；南侧参考窗带梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
+        - id: condensate_child_route
+          status: pending
+          system: condensate
+          from: indoor_child
+          to: condensate_child_sink
+          constraint_refs: [ref_corridor_service_band]
+          reason: "冷凝水坡度、存水弯和立管接点待现场确认；走廊服务带参考梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
+        - id: supply_living_route
+          status: inferred
+          system: supply_air
+          from: indoor_living
+          to: supply_living
+          reason: "送风支管长度和静压待风量计算确认。"
+        - id: return_living_route
+          status: inferred
+          system: return_air
+          from: indoor_living
+          to: return_living
+          reason: "回风箱尺寸待风量计算确认。"
+        - id: access_living_route
+          status: pending
+          system: access
+          from: indoor_living
+          to: access_living
+          reason: "检修口与滤网维护空间待设备样本确认。"
+        - id: supply_master_route
+          status: inferred
+          system: supply_air
+          from: indoor_master
+          to: supply_master
+          reason: "主卧送风支管长度和静压待风量计算确认。"
+        - id: return_master_route
+          status: inferred
+          system: return_air
+          from: indoor_master
+          to: return_master
+          reason: "主卧回风箱尺寸待风量计算确认。"
+        - id: access_master_route
+          status: pending
+          system: access
+          from: indoor_master
+          to: access_master
+          reason: "主卧检修口与滤网维护空间待设备样本确认。"
+        - id: supply_study_route
+          status: inferred
+          system: supply_air
+          from: indoor_study
+          to: supply_study
+          reason: "书房送风支管长度和静压待风量计算确认。"
+        - id: return_study_route
+          status: inferred
+          system: return_air
+          from: indoor_study
+          to: return_study
+          reason: "书房回风箱尺寸待风量计算确认。"
+        - id: access_study_route
+          status: pending
+          system: access
+          from: indoor_study
+          to: access_study
+          reason: "书房检修口与滤网维护空间待设备样本确认。"
+        - id: supply_parent_route
+          status: inferred
+          system: supply_air
+          from: indoor_parent
+          to: supply_parent
+          reason: "父母房送风支管长度和静压待风量计算确认。"
+        - id: return_parent_route
+          status: inferred
+          system: return_air
+          from: indoor_parent
+          to: return_parent
+          reason: "父母房回风箱尺寸待风量计算确认。"
+        - id: access_parent_route
+          status: pending
+          system: access
+          from: indoor_parent
+          to: access_parent
+          reason: "父母房检修口与滤网维护空间待设备样本确认。"
+        - id: supply_child_route
+          status: inferred
+          system: supply_air
+          from: indoor_child
+          to: supply_child
+          reason: "儿童房送风支管长度和静压待风量计算确认。"
+        - id: return_child_route
+          status: inferred
+          system: return_air
+          from: indoor_child
+          to: return_child
+          reason: "儿童房回风箱尺寸待风量计算确认。"
+        - id: access_child_route
+          status: pending
+          system: access
+          from: indoor_child
+          to: access_child
+          reason: "儿童房检修口与滤网维护空间待设备样本确认。"

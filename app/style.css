@@ -470,10 +470,42 @@ html, body {
   color: #fff;
 }
 
-#sunlight-btn {
+#hvac-coordination-btn {
   position: fixed;
   top: 50px;
   right: 96px;
+  background: rgba(20, 20, 30, 0.85);
+  color: #ddd;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  z-index: 90;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+#hvac-coordination-btn:hover:not(:disabled) {
+  background: rgba(40, 40, 60, 0.95);
+  border-color: #88aaff;
+}
+
+#hvac-coordination-btn:disabled {
+  cursor: not-allowed;
+  color: #888;
+  border-color: #444;
+}
+
+#hvac-coordination-btn.active {
+  background: rgba(60, 100, 180, 0.9);
+  border-color: #88ccff;
+  color: #fff;
+}
+
+#sunlight-btn {
+  position: fixed;
+  top: 50px;
+  right: 204px;
   background: rgba(20, 20, 30, 0.85);
   color: #ddd;
   border: 1px solid #555;
@@ -499,7 +531,7 @@ html, body {
 #humidity-btn {
   position: fixed;
   top: 50px;
-  right: 176px;
+  right: 284px;
   background: rgba(20, 20, 30, 0.85);
   color: #ddd;
   border: 1px solid #555;

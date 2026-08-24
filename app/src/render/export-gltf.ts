@@ -18,6 +18,8 @@ export const EXPORT_INCLUDE_TYPES: ReadonlySet<string> = new Set([
   'door',
   'floor_region',
   'furniture',
+  'hvac_equipment',
+  'hvac_terminal',
 ]);
 
 export const EXPORT_EXCLUDE_TYPES: ReadonlySet<string> = new Set([
@@ -26,12 +28,26 @@ export const EXPORT_EXCLUDE_TYPES: ReadonlySet<string> = new Set([
   'plumbing',
   'platform',
   'highlight_object',
+  'hvac_diagram',
+  'hvac_reference_constraint',
 ]);
+
+export interface HvacExportContents {
+  equipment: string[];
+  terminals: string[];
+}
+
+export interface HvacExportCheck extends HvacExportContents {
+  included: string[];
+  missing: string[];
+  terminalCount: number;
+}
 
 export function collectExportSet(root: THREE.Object3D): THREE.Object3D[] {
   const out: THREE.Object3D[] = [];
   const visit = (obj: THREE.Object3D) => {
     const type = obj.userData?.type as string | undefined;
+    if (type === 'hvac_diagram') return;
     if (type && EXPORT_INCLUDE_TYPES.has(type)) {
       out.push(obj);
       return;
@@ -40,6 +56,43 @@ export function collectExportSet(root: THREE.Object3D): THREE.Object3D[] {
   };
   visit(root);
   return out;
+}
+
+/**
+ * Reads HVAC entities from the exact object roots passed to GLTFExporter.
+ * This descends into included parent groups, so export-set early returns cannot
+ * hide a HVAC child; coordination diagram routes are excluded unconditionally.
+ */
+export function collectHvacExportContents(exportSet: Iterable<THREE.Object3D>): HvacExportContents {
+  const equipment = new Set<string>();
+  const terminals = new Set<string>();
+
+  const visit = (object: THREE.Object3D): void => {
+    const type = object.userData?.type as string | undefined;
+    if (type === 'hvac_diagram') return;
+    const objectId = object.userData?.objectId;
+    if (typeof objectId === 'string') {
+      if (type === 'hvac_equipment') equipment.add(objectId);
+      if (type === 'hvac_terminal') terminals.add(objectId);
+    }
+    for (const child of object.children) visit(child);
+  };
+
+  for (const object of exportSet) visit(object);
+  return { equipment: [...equipment], terminals: [...terminals] };
+}
+
+export function checkHvacExportSet(exportSet: Iterable<THREE.Object3D>, expected: Iterable<string>): HvacExportCheck {
+  const { equipment, terminals } = collectHvacExportContents(exportSet);
+  const included = [...equipment, ...terminals];
+  const includedSet = new Set(included);
+  return {
+    equipment,
+    terminals,
+    included,
+    missing: [...new Set(expected)].filter((objectId) => !includedSet.has(objectId)),
+    terminalCount: terminals.length,
+  };
 }
 
 export async function exportSceneToGlb(scene: THREE.Scene): Promise<Blob> {

@@ -16,6 +16,9 @@ import type {
   CurtainPoint,
   ResolvedOpening,
   FurnishingsYaml,
+  ProjectRenderFactsProjection,
+  VrfOutdoorUnit,
+  ElectricalPoint,
 } from '@shared/types';
 import { FURNITURE_DIMS } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
@@ -30,6 +33,8 @@ import type { MaterialAppearance } from './TextureFactory.js';
 import { buildFixture, buildKitchenCabinetRun } from './FixtureFactory.js';
 import { EnvironmentManager } from './EnvironmentManager.js';
 import { buildCeilingZone, type CeilingZoneSpec } from './CeilingZoneBuilder.js';
+import { HvacDiagramRenderer } from './HvacDiagramRenderer.js';
+import { checkHvacExportSet, collectExportSet } from './export-gltf.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
 const GLASS_COLOR = 0x88ccff;
@@ -103,6 +108,8 @@ export class HouseScene implements SceneApi {
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
   private readonly ORBIT_POSITION = new THREE.Vector3(7.4, 14, 19.2);
   private readonly ORBIT_TARGET = new THREE.Vector3(7.4, 0, 3.65);
+  private hvacRenderer: HvacDiagramRenderer;
+  private hvacExpectedExportIds: string[] = [];
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -143,6 +150,7 @@ export class HouseScene implements SceneApi {
     this.topicRegistry = new TopicRegistry(this);
 
     this.envManager = new EnvironmentManager(this.scene, this.renderer);
+    this.hvacRenderer = new HvacDiagramRenderer(this.scene);
     this.setupLights();
     this.buildBase();
     this.scene.add(this.topicGroup);
@@ -523,6 +531,7 @@ export class HouseScene implements SceneApi {
       this.furnitureMeshes = this.placeFurnitureFixtures(projectData.house.furnishings);
     }
 
+    this.hvacRenderer.attach();
     this.textureManager.setMeshes(this.floorMeshes, this.wallMeshes, this.ceilingMeshes);
     const materials = HouseScene.extractMaterials(projectData.topics);
     this.textureManager.loadMaterials(materials);
@@ -550,6 +559,48 @@ export class HouseScene implements SceneApi {
     if (topicImpl) {
       topicImpl.apply(this, optionId, selection);
     }
+  }
+
+  loadHvacProjection(projection: ProjectRenderFactsProjection, outdoor: VrfOutdoorUnit[] = [], electrical: ElectricalPoint[] = []): void {
+    this.hvacRenderer.clear();
+    this.hvacExpectedExportIds = [];
+    if (projection.hvac?.status !== 'implemented') return;
+    const { planId, diagram } = projection.hvac;
+    this.hvacExpectedExportIds = [
+      ...diagram.anchors
+        .filter((anchor) => anchor.status === 'confirmed' && anchor.ref?.source !== 'electrical')
+        .map((anchor) => `hvac:${planId}:anchor:${anchor.id}`),
+      ...diagram.terminals.map((terminal) => `hvac:${planId}:terminal:${terminal.id}`),
+    ];
+    this.hvacRenderer.render(planId, diagram, {
+      ceiling: projection.ceiling,
+      electrical,
+      outdoor,
+    });
+    this.hvacRenderer.setCoordinationVisible(false);
+  }
+
+  getHvacExportStatus(): { required: boolean; ready: boolean; expected: string[]; included: string[]; missing: string[]; terminalCount: number } {
+    const expected = [...this.hvacExpectedExportIds];
+    const checked = checkHvacExportSet(collectExportSet(this.scene), expected);
+    return {
+      required: expected.length > 0,
+      ready: checked.missing.length === 0,
+      expected,
+      included: checked.included,
+      missing: checked.missing,
+      terminalCount: checked.terminalCount,
+    };
+  }
+
+  clearHvacProjection(): void {
+    this.hvacRenderer.clear();
+    this.hvacExpectedExportIds = [];
+  }
+
+  setHvacCoordinationVisible(visible: boolean): void {
+    this.hvacRenderer.setCoordinationVisible(visible);
+    this.requestRender();
   }
 
   private setupLights() {
@@ -2028,6 +2079,7 @@ export class HouseScene implements SceneApi {
 
   dispose(): void {
     window.removeEventListener('resize', this.boundOnWindowResize);
+    this.hvacRenderer.dispose();
     this.renderer.dispose();
   }
 }

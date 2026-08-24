@@ -609,13 +609,94 @@ export interface CeilingZone {
   z?: number;
   height?: number;
   model?: string;
+  power_point?: string;
   note?: string;
+}
+
+export type HvacStatus = 'confirmed' | 'inferred' | 'pending';
+export type HvacSystem = 'refrigerant' | 'power' | 'condensate' | 'supply_air' | 'return_air' | 'access';
+
+export interface VrfOutdoorUnit {
+  id: string;
+  platform: string;
+  x: number;
+  z: number;
+  direction: string;
+  width: number;
+  depth: number;
+  height: number;
+  model: string;
+  note?: string;
+}
+
+export interface HvacReference {
+  source: 'outdoor' | 'ceiling' | 'electrical';
+  id: string;
+}
+
+export interface HvacAnchor {
+  id: string;
+  status: HvacStatus;
+  system: HvacSystem;
+  ref?: HvacReference;
+  position?: Vec3;
+  reason?: string;
+}
+
+export interface HvacTerminal {
+  id: string;
+  status: HvacStatus;
+  system: HvacSystem;
+  position: Vec3;
+  reason?: string;
+}
+
+export interface HvacReferenceConstraint {
+  id: string;
+  status: Exclude<HvacStatus, 'confirmed'>;
+  source: 'survey/neighbor_ys01_original_structure_2025-06.png';
+  uncertainty_m: 0.15;
+  not_for_construction: true;
+  range: { x1: number; x2: number; z1: number; z2: number };
+  reference_bottom_drop_m?: number;
+  reference_beam_bottom_y?: number;
+  risk: string;
+  reason: string;
+  survey_confirmation: string;
+}
+
+export interface HvacRoute {
+  id: string;
+  status: HvacStatus;
+  system: HvacSystem;
+  from: string;
+  to: string;
+  via?: string[];
+  constraint_refs?: string[];
+  reason?: string;
+}
+
+export interface HvacDiagram {
+  anchors: HvacAnchor[];
+  terminals: HvacTerminal[];
+  routes: HvacRoute[];
+  reference_constraints: HvacReferenceConstraint[];
+}
+
+export interface ProjectHvacFacts {
+  plans: Array<{
+    id: string;
+    kind: 'vrf_ducted';
+    outdoor: VrfOutdoorUnit;
+    diagram: HvacDiagram;
+  }>;
 }
 
 export interface ProjectRenderFacts {
   electrical: ElectricalPoint[];
   plumbing: PlumbingPoint[];
   ceiling: CeilingZone[];
+  hvac: ProjectHvacFacts;
 }
 
 /** Render-only anchor adjustments; never write these values back to MEP facts. */
@@ -637,11 +718,23 @@ export interface RenderLightingFixture {
   enabled: boolean;
 }
 
+export interface ImplementedHvacProjection {
+  status: 'implemented';
+  planId: 'A2';
+  diagram: HvacDiagram;
+}
+
+export interface UnimplementedHvacProjection {
+  status: 'unimplemented';
+  planId: string | null;
+}
+
 export interface ProjectRenderFactsProjection {
   version: string;
   lightingFixtures: RenderLightingFixture[];
   plumbing: PlumbingPoint[];
   ceiling: CeilingZone[];
+  hvac: ImplementedHvacProjection | UnimplementedHvacProjection;
   materials: {
     floor: TopicSelection;
   };

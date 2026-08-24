@@ -12,6 +12,7 @@
   z: 7.0
   height: 2.85
   model: "4HP 风管机"
+  power_point: sock_living_ac
   note: "客厅空调内机"
 
 - id: ac_master
@@ -21,6 +22,7 @@
   z: 7.0
   height: 2.85
   model: "2.8HP 风管机"
+  power_point: sock_master_ac
   note: "主卧空调内机"
 
 - id: ac_study
@@ -30,6 +32,7 @@
   z: 7.5
   height: 2.85
   model: "2.2HP 风管机"
+  power_point: sock_study_ac
   note: "书房空调内机"
 
 - id: ac_parent
@@ -39,6 +42,7 @@
   z: 7.5
   height: 2.85
   model: "2.2HP 风管机"
+  power_point: sock_parent_ac
   note: "西南次卧空调内机"
 
 - id: ac_child
@@ -48,6 +52,7 @@
   z: 2.5
   height: 2.85
   model: "2.2HP 风管机"
+  power_point: sock_child_ac
   note: "儿童房空调内机"
 
 - id: drying_rack_living

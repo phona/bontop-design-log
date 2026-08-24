@@ -12,6 +12,7 @@
 | 1 | 梁体位置/宽度/高度 | model-geometry.yaml `beams:` | `{id, x1,z1, x2,z2, width, depth}` | 推断见下，邻户实测参考见表下注 | inferred | 吊顶/HVAC/灯具 |
 | 2 | 承重墙标记 | model-geometry.yaml walls `load_bearing: true` | boolean | 外墙+电梯井墙 | inferred | 拆改红线 |
 | 3 | 室内净高 | model-geometry.yaml height | 2.8 | 2.8m（邻户结构板 +2830 佐证） | inferred | 吊顶/柜体 |
+| 3a | A2 HVAC 邻户梁参考约束 | config/hvac.yaml `reference_constraints` | 各范围/梁底/底沉 | 南窗带 LD100、北厨房 LD180、厨房/主卫局部梁头、走廊服务带 | inferred/pending，±150mm | 仅作 HVAC 协调提示，非施工 |
 
 ### 梁体推断（待确认）
 
@@ -44,6 +45,12 @@
 | 下沉板 | 两卫 300/330，厨房/阳台/入户 50 | 同层排水沉箱确认；防水/排水设计按此 |
 | 总尺寸 | 16650（北）/16725（南）× 10030（西）/11180（东，含南飘） | 本模型 16400×9800 内净 + 幕墙/飘窗差，量级吻合 |
 | 主卧/父母房隔墙（x=4.2） | 图中为实墙，无内窗 | 佐证 w_mb_win 疑为 CAD 残留（#25 仍须自家核实） |
+
+### A2 HVAC 参考约束量房回填
+
+`config/hvac.yaml` 的 A2 `reference_constraints` 是邻户图的比例映射，统一为 ±150mm、`inferred`/`pending` 与 `not_for_construction`。量房时逐项拍照并测量自家南窗带、北厨房、厨房/主卫局部梁头和走廊服务带的范围、梁底、净高及可用绕行空间，同时确认冷凝水立管接点；不得假定现有地漏可接。
+
+回填必须基于自家实测事实并由后续深化流程单独审阅。邻户资料本身不得改标 `measured` 或 `confirmed`，不得作为开孔、穿梁、套管或施工许可依据；在确认前 HVAC 路由继续绕梁优先。
 
 ## MEP 基础设施
 

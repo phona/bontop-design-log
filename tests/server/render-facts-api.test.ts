@@ -15,6 +15,7 @@ const facts: ProjectRenderFacts = {
   electrical: [{ id: 'socket_1', room: 'living', type: 'socket', x: 1, z: 2 }],
   plumbing: [{ id: 'faucet_1', room: 'kitchen', type: 'faucet', x: 3, z: 4 }],
   ceiling: [{ id: 'ceiling_1', room: 'living', type: 'drop' }],
+  hvac: { plans: [] },
 };
 
 const projection: ProjectRenderFactsProjection = {
@@ -22,6 +23,7 @@ const projection: ProjectRenderFactsProjection = {
   lightingFixtures: [{ id: 'light_1', room: 'living', type: 'dome', position: { x: 1, y: 2.55, z: 2 }, temperatureK: 3000, enabled: true }],
   plumbing: facts.plumbing,
   ceiling: facts.ceiling,
+  hvac: { status: 'unimplemented', planId: null },
   materials: { floor: { default: 'floor_1', roomOverrides: {} } },
 };
 

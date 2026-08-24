@@ -63,11 +63,19 @@ export function buildProjectRenderFactsProjection(
   }
 
   const floor = scheme.selections.floor ?? { default: null, roomOverrides: {} };
+  const selectedHvacPlanId = scheme.selections.hvac?.default ?? null;
+  const selectedHvacPlan = selectedHvacPlanId === 'A2'
+    ? facts.hvac.plans.find((plan) => plan.id === 'A2')
+    : undefined;
+  const hvac = selectedHvacPlan
+    ? { status: 'implemented' as const, planId: 'A2' as const, diagram: selectedHvacPlan.diagram }
+    : { status: 'unimplemented' as const, planId: selectedHvacPlanId };
   return {
     version: '1.0',
     lightingFixtures,
     plumbing: facts.plumbing,
     ceiling: facts.ceiling,
+    hvac,
     materials: {
       floor: {
         default: floor.default,

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { collectExportSet, EXPORT_INCLUDE_TYPES, EXPORT_EXCLUDE_TYPES } from './export-gltf.js';
+import { checkHvacExportSet, collectExportSet, collectHvacExportContents, EXPORT_INCLUDE_TYPES, EXPORT_EXCLUDE_TYPES } from './export-gltf.js';
 
 function mesh(type: string | undefined, objectId?: string): THREE.Mesh {
   const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
@@ -29,7 +29,9 @@ describe('collectExportSet', () => {
     const furniture = new THREE.Group();
     furniture.userData = { type: 'furniture', objectId: 'furniture:living:sofa_3seat:0' };
     furniture.add(mesh(undefined));
-    scene.add(floor, ceiling, ceilingZone, wall, door, slidingDoor, curtainRun, curtainSheer, glass, sill, railing, slidingRun, region, furniture);
+    const hvacEquipment = mesh('hvac_equipment', 'hvac:A2:anchor:indoor_living');
+    const hvacTerminal = mesh('hvac_terminal', 'hvac:A2:terminal:supply_living');
+    scene.add(floor, ceiling, ceilingZone, wall, door, slidingDoor, curtainRun, curtainSheer, glass, sill, railing, slidingRun, region, furniture, hvacEquipment, hvacTerminal);
 
     const set = collectExportSet(scene);
     expect(set).toContain(floor);
@@ -46,6 +48,8 @@ describe('collectExportSet', () => {
     expect(set).toContain(slidingRun);
     expect(set).toContain(region);
     expect(set).toContain(furniture);
+    expect(set).toContain(hvacEquipment);
+    expect(set).toContain(hvacTerminal);
   });
 
   it('excludes annotations, electrical/plumbing markers, platform boundary and untyped helpers', () => {
@@ -55,9 +59,10 @@ describe('collectExportSet', () => {
     const plumbing = mesh('plumbing', 'plumbing:p2');
     const platform = mesh('platform', 'platform_boundary');
     const highlight = mesh('highlight_object');
+    const hvacDiagram = mesh('hvac_diagram', 'hvac:A2:route:trunk');
     const grid = new THREE.GridHelper();
     const untyped = mesh(undefined);
-    scene.add(annotation, electrical, plumbing, platform, highlight, grid, untyped);
+    scene.add(annotation, electrical, plumbing, platform, highlight, hvacDiagram, grid, untyped);
 
     const set = collectExportSet(scene);
     expect(set).toHaveLength(0);
@@ -73,6 +78,41 @@ describe('collectExportSet', () => {
 
     const set = collectExportSet(scene);
     expect(set).toEqual([furniture]);
+  });
+
+  it('collects HVAC children below an included parent and excludes coordination routes', () => {
+    const scene = new THREE.Scene();
+    const container = new THREE.Group();
+    container.userData = { type: 'furniture', objectId: 'furniture:utility:0' };
+    container.add(
+      mesh('hvac_equipment', 'hvac:A2:anchor:outdoor'),
+      mesh('hvac_terminal', 'hvac:A2:terminal:supply_living'),
+    );
+    const coordination = new THREE.Group();
+    coordination.userData = { type: 'hvac_diagram', objectId: 'hvac:A2:route:trunk' };
+    coordination.add(mesh('hvac_terminal', 'hvac:A2:terminal:must_not_export'));
+    scene.add(container, coordination);
+
+    const contents = collectHvacExportContents(collectExportSet(scene));
+    expect(contents.equipment).toEqual(['hvac:A2:anchor:outdoor']);
+    expect(contents.terminals).toEqual(['hvac:A2:terminal:supply_living']);
+  });
+
+  it('reports missing expected HVAC IDs from the exporter object set', () => {
+    const scene = new THREE.Scene();
+    scene.add(mesh('hvac_equipment', 'hvac:A2:anchor:outdoor'));
+
+    const checked = checkHvacExportSet(collectExportSet(scene), [
+      'hvac:A2:anchor:outdoor',
+      'hvac:A2:anchor:indoor_living',
+      'hvac:A2:terminal:supply_living',
+    ]);
+    expect(checked.included).toEqual(['hvac:A2:anchor:outdoor']);
+    expect(checked.missing).toEqual([
+      'hvac:A2:anchor:indoor_living',
+      'hvac:A2:terminal:supply_living',
+    ]);
+    expect(checked.terminalCount).toBe(0);
   });
 
   it('keeps include and exclude sets disjoint', () => {

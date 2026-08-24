@@ -21,7 +21,6 @@
     "verify:all": "tsx scripts/verify-topology.ts && tsx scripts/verify-layout.ts && tsx scripts/verify-furniture-placement.ts && tsx scripts/verify-rules.ts && tsx scripts/verify-collision-coverage.ts && tsx scripts/verify-data-consistency.ts && tsx scripts/verify-project-render-facts.ts",
     "build:render-bundle": "tsx scripts/build-render-bundle.ts",
     "verify:render-bundle": "tsx scripts/verify-render-bundle.ts",
-    "test:python-export-web-glb": "python3 -m pytest scripts/export_web_glb_test.py",
     "export:dressing-map": "tsx scripts/generate-dressing-map.ts"
   },
   "dependencies": {

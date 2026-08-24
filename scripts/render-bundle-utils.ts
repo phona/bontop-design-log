@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import type { GlbSummary } from './inspect-glb.js';
 import type { ProjectRenderFactsProjection } from '../shared/types.js';
 
-export const RENDER_BUNDLE_SCHEMA_VERSION = '1.0';
+export const RENDER_BUNDLE_SCHEMA_VERSION = '1.1';
 
 export interface BundleArtifact {
   path: string;
@@ -19,6 +19,10 @@ export interface RenderBundleManifest {
   dirty: boolean;
   dirtyPorcelain: string;
   sourceInputs: Record<string, string>;
+  glbExport: {
+    method: 'manual_web_export';
+    inputBasename: string;
+  };
   artifacts: {
     glb: BundleArtifact;
     renderConfig: BundleArtifact;

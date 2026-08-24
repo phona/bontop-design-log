@@ -18,6 +18,7 @@ import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
 import { CommandPalette } from './ui/CommandPalette.js';
 import { TopDownButton } from './ui/TopDownButton.js';
+import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/HvacCoordinationButton.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
 import { PlacementPanel } from './ui/PlacementPanel.js';
 import { SunlightSystem } from './render/SunlightSystem.js';
@@ -30,7 +31,7 @@ import { HumidityButton } from './ui/HumidityButton.js';
 import { isInHuinanWindow } from '@shared/humidity-model';
 import { exportSceneToGlb } from './render/export-gltf.js';
 import './ui/keybindings.js';
-import type { CurrentScheme, DecisionLogEntry, ProjectRenderFactsProjection, Topic, SelectionPatch } from '@shared/types';
+import type { CurrentScheme, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch } from '@shared/types';
 
 const ORBIT_DISTANCE = 15;
 
@@ -45,9 +46,13 @@ export class App {
   private hoverTooltip: HoverTooltip;
   private overviewMenu: OverviewMenu;
   private topDownButton: TopDownButton | null = null;
+  private hvacCoordinationButton: HvacCoordinationButton | null = null;
+  private hvacCoordinationState: HvacCoordinationButtonState = 'loading';
+  private hvacCoordinationVisible = false;
   private collision: CollisionDetector;
   private fpController: FirstPersonController;
   private projectData: any = null;
+  private renderFacts?: ProjectRenderFacts;
   private topics: Topic[] = [];
   private rafId?: number;
   private renderQueued = false;
@@ -73,6 +78,7 @@ export class App {
   private daylightHeatmap: DaylightHeatmap | null = null;
   private humidityOverlay: HumidityOverlay | null = null;
   private humidityButton: HumidityButton | null = null;
+  private readonly hvacCoordinationApi = (visible: boolean) => this.setHvacCoordinationVisible(Boolean(visible));
 
 
   constructor(canvas: HTMLCanvasElement) {
@@ -82,6 +88,7 @@ export class App {
     this.fpController = new FirstPersonController(this.houseScene.camera, canvas, this.collision);
     this.houseScene.setOnRenderRequested(() => this.requestRender());
     this.fpController.setOnRenderRequested(() => this.requestRender());
+    (window as Window & { setHvacCoordinationVisible?: (visible: boolean) => void }).setHvacCoordinationVisible = this.hvacCoordinationApi;
     this.schemePanel = new SchemePanel({
       topicTabs: document.getElementById('topic-tabs')!,
       topicOptions: document.getElementById('topic-options')!,
@@ -122,6 +129,7 @@ export class App {
     this.setupPlacementPanel();
     this.setupExportButton();
     this.setupTopDownButton();
+    this.setupHvacCoordinationButton();
     this.setupDragHandlers();
     this.setupEventHandlers();
     this.setupKeyboard();
@@ -200,13 +208,21 @@ export class App {
   }
 
   async exportGlbDataUrl(): Promise<string> {
-    const blob = await exportSceneToGlb(this.houseScene.scene);
+    const { blob } = await this.exportGlb();
     const bytes = new Uint8Array(await blob.arrayBuffer());
     let bin = '';
     for (let i = 0; i < bytes.length; i += 0x8000) {
       bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
     }
     return 'data:model/gltf-binary;base64,' + btoa(bin);
+  }
+
+  private async exportGlb(): Promise<{ blob: Blob; hvac: ReturnType<HouseScene['getHvacExportStatus']> }> {
+    const hvac = this.houseScene.getHvacExportStatus();
+    if (hvac.required && !hvac.ready) {
+      throw new Error(`GLB 导出已阻止：HVAC 缺失 ${hvac.missing.join(', ')}`);
+    }
+    return { blob: await exportSceneToGlb(this.houseScene.scene), hvac };
   }
 
   private setupSunlight(): void {
@@ -318,17 +334,52 @@ export class App {
     });
   }
 
+  private setupHvacCoordinationButton(): void {
+    this.hvacCoordinationButton = new HvacCoordinationButton({
+      onToggle: () => this.setHvacCoordinationVisible(!this.hvacCoordinationVisible),
+      getState: () => this.hvacCoordinationState,
+      getActive: () => this.hvacCoordinationVisible,
+    });
+  }
+
+  private setHvacCoordinationVisible(visible: boolean): void {
+    this.hvacCoordinationVisible = this.hvacCoordinationState === 'ready' && visible;
+    this.houseScene.setHvacCoordinationVisible(this.hvacCoordinationVisible);
+    this.hvacCoordinationButton?.sync();
+    this.requestRender();
+  }
+
+  private setHvacCoordinationState(state: HvacCoordinationButtonState): void {
+    this.hvacCoordinationState = state;
+    if (state !== 'ready') {
+      this.hvacCoordinationVisible = false;
+      this.houseScene.setHvacCoordinationVisible(false);
+    }
+    this.hvacCoordinationButton?.sync();
+  }
+
   private setupExportButton(): void {
     const btn = document.getElementById('export-glb-btn');
     btn?.addEventListener('click', async () => {
-      const blob = await exportSceneToGlb(this.houseScene.scene);
-      const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `house-${stamp}.glb`;
-      a.click();
-      URL.revokeObjectURL(url);
+      try {
+        const { blob, hvac } = await this.exportGlb();
+        const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `house-${stamp}.glb`;
+        a.click();
+        URL.revokeObjectURL(url);
+        if (hvac.required) {
+          const outdoor = hvac.included.filter((id) => id.includes(':anchor:') && id.includes('outdoor')).length;
+          const indoor = hvac.included.filter((id) => id.includes(':anchor:') && !id.includes('outdoor')).length;
+          this.showToast(`GLB 已导出：HVAC outdoor ${outdoor}/indoor ${indoor}/terminal ${hvac.terminalCount}；协调 routes 已排除`);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'GLB 导出失败';
+        console.error(message, error);
+        this.showToast(message);
+      }
     });
   }
 
@@ -910,6 +961,8 @@ export class App {
   }
 
   private async refreshInfrastructure(): Promise<void> {
+    this.setHvacCoordinationState('loading');
+    this.houseScene.clearHvacProjection();
     this.annotationRenderer?.clear();
     await this.annotationRenderer?.load();
     if (this.annotationRenderer) {
@@ -918,8 +971,10 @@ export class App {
         this.annotationRenderer.getPlumbingData(),
       );
       this.interiorLighting?.dispose();
-      const response = await fetch('/api/render-facts/projection');
-      if (response.ok) {
+      try {
+        const response = await fetch('/api/render-facts/projection');
+        if (!response.ok) throw new Error('render facts projection is not ready');
+
         const projection = await response.json() as ProjectRenderFactsProjection;
         this.interiorLighting = new InteriorLightingSystem(
           this.houseScene.scene,
@@ -927,10 +982,30 @@ export class App {
         );
         const st = this.houseScene.getEnvironmentManager().getLightingState();
         this.interiorLighting.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
-      } else {
+        const factsResponse = await fetch('/api/render-facts');
+        this.renderFacts = factsResponse.ok ? await factsResponse.json() as ProjectRenderFacts : undefined;
+        const outdoor = this.renderFacts?.hvac?.plans.map((plan) => plan.outdoor) ?? [];
+        this.houseScene.loadHvacProjection(projection, outdoor, this.annotationRenderer.getElectricalData());
+
+        const hvac = this.houseScene.getHvacExportStatus();
+        if (projection.hvac.status === 'implemented' && hvac.ready) {
+          this.setHvacCoordinationState('ready');
+          const anchors = projection.hvac.diagram.anchors;
+          const outdoorCount = anchors.filter((anchor) => anchor.ref?.source === 'outdoor').length;
+          const indoorCount = anchors.filter((anchor) => anchor.ref?.source === 'ceiling').length;
+          this.showToast(`${projection.hvac.planId} 一拖五已就绪：外机 ${outdoorCount} / 内机 ${indoorCount} / 预深化路线 ${projection.hvac.diagram.routes.length}`);
+        } else {
+          this.houseScene.clearHvacProjection();
+          this.setHvacCoordinationState('unimplemented');
+        }
+      } catch (error) {
+        this.houseScene.clearHvacProjection();
         this.interiorLighting = null;
-        console.warn('render facts projection is not ready; interior lights were not created');
+        this.setHvacCoordinationState('unimplemented');
+        console.warn('render facts projection is not ready; interior lights were not created', error);
       }
+    } else {
+      this.setHvacCoordinationState('unimplemented');
     }
     this.requestRender();
   }
@@ -1093,6 +1168,10 @@ export class App {
       cancelAnimationFrame(this.rafId);
     }
     this.fpController.dispose();
+    this.houseScene.dispose();
+    if ((window as Window & { setHvacCoordinationVisible?: unknown }).setHvacCoordinationVisible === this.hvacCoordinationApi) {
+      delete (window as Window & { setHvacCoordinationVisible?: unknown }).setHvacCoordinationVisible;
+    }
     this.stateSync.dispose();
   }
 }

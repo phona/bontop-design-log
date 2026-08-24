@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { inspectGlb } from './inspect-glb.js';
@@ -12,11 +12,8 @@ import {
 import { parseProjectRenderFactsProjection } from '../shared/project-render-facts-schema.js';
 
 interface Args {
+  glb: string;
   outputDir: string;
-  cdpHost: string;
-  cdpPort: number;
-  appUrl: string;
-  timeoutSeconds: number;
   allowDirty: boolean;
 }
 
@@ -24,16 +21,17 @@ const SOURCE_INPUTS = [
   'config/electrical.yaml',
   'config/plumbing.yaml',
   'config/ceiling.yaml',
+  'config/hvac.yaml',
   'config/render/overrides.yaml',
   'data/current-scheme.json',
 ] as const;
 
 function usage(): never {
-  throw new Error('usage: tsx scripts/build-render-bundle.ts --output-dir <dir> [--cdp-host host] [--cdp-port port] [--app-url url] [--timeout-seconds seconds] [--allow-dirty]');
+  throw new Error('usage: tsx scripts/build-render-bundle.ts --glb <path> --output-dir <dir> [--allow-dirty]');
 }
 
 export function parseBuildRenderBundleArgs(argv: string[]): Args {
-  const args: Partial<Args> = { cdpHost: 'localhost', cdpPort: 9222, appUrl: 'http://localhost:5173', timeoutSeconds: 120, allowDirty: false };
+  const args: Partial<Args> = { allowDirty: false };
   for (let index = 0; index < argv.length; index++) {
     const argument = argv[index];
     const value = () => {
@@ -42,28 +40,30 @@ export function parseBuildRenderBundleArgs(argv: string[]): Args {
       return next;
     };
     switch (argument) {
+      case '--glb': args.glb = value(); break;
       case '--output-dir': args.outputDir = value(); break;
-      case '--cdp-host': args.cdpHost = value(); break;
-      case '--cdp-port': args.cdpPort = Number(value()); break;
-      case '--app-url': args.appUrl = value(); break;
-      case '--timeout-seconds': args.timeoutSeconds = Number(value()); break;
       case '--allow-dirty': args.allowDirty = true; break;
       default: usage();
     }
   }
-  const { outputDir, cdpHost, cdpPort, appUrl, timeoutSeconds, allowDirty } = args;
-  if (!outputDir || !cdpHost || !appUrl || !Number.isInteger(cdpPort) || cdpPort === undefined || cdpPort <= 0 || !Number.isFinite(timeoutSeconds) || timeoutSeconds === undefined || timeoutSeconds <= 0 || allowDirty === undefined) usage();
-  return { outputDir, cdpHost, cdpPort, appUrl, timeoutSeconds, allowDirty };
+  const { glb, outputDir, allowDirty } = args;
+  if (!glb || !outputDir || allowDirty === undefined) usage();
+  return { glb, outputDir, allowDirty };
 }
 
 function run(command: string, args: string[]): void {
   execFileSync(command, args, { stdio: 'inherit' });
 }
 
+function assertInputGlb(path: string): void {
+  if (!existsSync(path) || !statSync(path).isFile()) throw new Error(`Input GLB must be an existing file: ${path}`);
+}
+
 export function buildRenderBundle(args: Args): RenderBundleManifest {
+  const inputGlb = resolve(args.glb);
+  assertInputGlb(inputGlb);
   const outputDir = resolve(args.outputDir);
   if (existsSync(outputDir) && readdirSync(outputDir).length > 0) throw new Error(`Refusing to overwrite non-empty bundle directory: ${outputDir}`);
-  mkdirSync(outputDir, { recursive: true });
 
   const revision = git(['rev-parse', 'HEAD']);
   const dirtyPorcelain = git(['status', '--porcelain=v1']);
@@ -72,15 +72,13 @@ export function buildRenderBundle(args: Args): RenderBundleManifest {
 
   run('npm', ['run', 'generate:render-config']);
   run('npm', ['run', 'verify:project-render-facts']);
-  const glbName = 'house.glb';
-  run('python3', [
-    'scripts/export-web-glb.py', '--output', resolve(outputDir, glbName),
-    '--cdp-host', args.cdpHost, '--cdp-port', String(args.cdpPort), '--app-url', args.appUrl,
-    '--timeout-seconds', String(args.timeoutSeconds),
-  ]);
 
-  const glbSummary = inspectGlb(resolve(outputDir, glbName));
+  const glbSummary = inspectGlb(inputGlb);
   assertDeliverableGlb(glbSummary);
+
+  mkdirSync(outputDir, { recursive: true });
+  const glbName = 'house.glb';
+  cpSync(inputGlb, resolve(outputDir, glbName));
 
   const renderConfigName = 'render-config.json';
   const factsName = 'project-render-facts.json';
@@ -94,6 +92,7 @@ export function buildRenderBundle(args: Args): RenderBundleManifest {
     dirty,
     dirtyPorcelain,
     sourceInputs: Object.fromEntries(SOURCE_INPUTS.map((path) => [path, fileArtifact('.', path).sha256])),
+    glbExport: { method: 'manual_web_export', inputBasename: basename(inputGlb) },
     artifacts: {
       glb: fileArtifact(outputDir, glbName),
       renderConfig: fileArtifact(outputDir, renderConfigName),

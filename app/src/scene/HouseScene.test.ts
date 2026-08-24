@@ -13,7 +13,7 @@ vi.mock('three', async (importOriginal: any) => {
     castShadow = false;
     receiveShadow = false;
     add(child: MockObject3D) { child.parent = this; this.children.push(child); }
-    remove(child: MockObject3D) { const i = this.children.indexOf(child); if (i >= 0) this.children.splice(i, 1); }
+    remove(child: MockObject3D) { const i = this.children.indexOf(child); if (i >= 0) { this.children.splice(i, 1); child.parent = null; } return child; }
     traverse(cb: (obj: MockObject3D) => void) { cb(this); this.children.forEach(c => c.traverse(cb)); }
     rotateX(x: number) { this.rotation.x += x; }
     rotateY(y: number) { this.rotation.y += y; }
@@ -35,6 +35,7 @@ vi.mock('three', async (importOriginal: any) => {
     clone() { return new (this.constructor as any)(); }
     set() { return this; }
     copy() { return this; }
+    dispose() {}
   }
 
   return { ...__three,
@@ -62,7 +63,7 @@ vi.mock('three', async (importOriginal: any) => {
         return { count: 0, getX: () => 0, getY: () => 0, setXY() {}, needsUpdate: false };
       }
     },
-    BoxGeometry: class {},
+    BoxGeometry: class { dispose() {} },
     // Shape / Path / ExtrudeGeometry / ShapeGeometry: real three (step A) — fake command-log removed
     CanvasTexture: class {},
     MeshStandardMaterial: MockMaterial,
@@ -843,5 +844,56 @@ describe('HouseScene', () => {
       (mockedThree as any).Raycaster = originalRaycaster;
       (scene as any).raycaster = originalSceneRaycaster;
     }
+  });
+
+  it('reattaches the HVAC root after it is removed by a scene rebuild and exports equipment but not routes', async () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const projection: any = {
+      ceiling: [
+        { id: 'indoor_living', room: 'living', type: 'ac_indoor', x: 1, z: 2, height: 2.85 },
+        { id: 'indoor_bedroom_1', room: 'bedroom_1', type: 'ac_indoor', x: 2, z: 2, height: 2.85 },
+        { id: 'indoor_bedroom_2', room: 'bedroom_2', type: 'ac_indoor', x: 3, z: 2, height: 2.85 },
+        { id: 'indoor_bedroom_3', room: 'bedroom_3', type: 'ac_indoor', x: 4, z: 2, height: 2.85 },
+        { id: 'indoor_study', room: 'study', type: 'ac_indoor', x: 5, z: 2, height: 2.85 },
+      ],
+      hvac: {
+        status: 'implemented', planId: 'A2',
+        diagram: {
+          anchors: [
+            { id: 'outdoor', status: 'confirmed', system: 'refrigerant', ref: { source: 'outdoor', id: 'outdoor_a2' } },
+            ...['living', 'bedroom_1', 'bedroom_2', 'bedroom_3', 'study'].map((id) => ({ id: `indoor_${id}`, status: 'confirmed', system: 'refrigerant', ref: { source: 'ceiling', id: `indoor_${id}` } })),
+          ],
+          terminals: ['supply_living', 'supply_bedroom_1', 'supply_bedroom_2', 'supply_bedroom_3', 'supply_study'].map((id, index) => ({ id, status: 'confirmed', system: 'supply_air', position: { x: index + 1, y: 2.8, z: 2 } })),
+          routes: [{ id: 'trunk', status: 'confirmed', system: 'refrigerant', from: 'outdoor', to: 'indoor_living' }],
+          reference_constraints: [{ id: 'reference', status: 'inferred', source: 'survey/neighbor_ys01_original_structure_2025-06.png', uncertainty_m: 0.15, not_for_construction: true, range: { x1: 1, x2: 2, z1: 3, z2: 3.2 }, reference_beam_bottom_y: 2.65, risk: 'test', reason: 'test', survey_confirmation: 'test' }],
+        },
+      },
+    };
+    const outdoor = [{ id: 'outdoor_a2', platform: 'west', x: 0, z: 0, direction: 'south', width: 0.9, depth: 0.335, height: 0.7, model: '6HP' }];
+    scene.loadHvacProjection(projection, outdoor, []);
+
+    const hvacRoot = scene.getScene().children.find((object: any) => object.name === 'HVAC_DIAGRAM')!;
+    scene.getScene().remove(hvacRoot);
+    expect(scene.getScene().children).not.toContain(hvacRoot);
+
+    scene.loadHvacProjection(projection, outdoor, []);
+    expect(scene.getScene().children.filter((object: any) => object.name === 'HVAC_DIAGRAM')).toEqual([hvacRoot]);
+
+    const exportSet = (await import('../render/export-gltf.js')).collectExportSet(scene.getScene());
+    const exportIds: string[] = [];
+    for (const object of exportSet) object.traverse((child: any) => {
+      if (typeof child.userData?.objectId === 'string') exportIds.push(child.userData.objectId);
+    });
+    expect(exportIds.filter((id) => id.includes(':anchor:'))).toHaveLength(6);
+    expect(exportIds.filter((id) => id.includes(':terminal:'))).toHaveLength(5);
+    expect(exportIds.some((id) => id.includes(':route:'))).toBe(false);
+    expect(exportIds.some((id) => id.includes(':reference:'))).toBe(false);
+    expect(scene.getHvacExportStatus()).toMatchObject({ required: true, ready: true, missing: [], terminalCount: 5 });
+
+    scene.clearHvacProjection();
+    expect(scene.getHvacExportStatus()).toEqual({
+      required: false, ready: true, expected: [], included: [], missing: [], terminalCount: 0,
+    });
   });
 });

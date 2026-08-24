@@ -4,7 +4,9 @@ import {
   parseCeilingZones,
   parseElectricalPoints,
   parsePlumbingPoints,
+  parseProjectHvacFacts,
   parseRenderLightingOverrides,
+  validateProjectHvacFacts,
 } from '../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
 import type { CurrentScheme, ProjectRenderFacts, RenderLightingOverride } from '../shared/types.js';
@@ -14,6 +16,7 @@ export interface ProjectRenderFactsPaths {
   electrical: string;
   plumbing: string;
   ceiling: string;
+  hvac: string;
   overrides: string;
 }
 
@@ -21,6 +24,7 @@ const DEFAULT_PATHS: ProjectRenderFactsPaths = {
   electrical: 'config/electrical.yaml',
   plumbing: 'config/plumbing.yaml',
   ceiling: 'config/ceiling.yaml',
+  hvac: 'config/hvac.yaml',
   overrides: 'config/render/overrides.yaml',
 };
 
@@ -35,6 +39,7 @@ export class ProjectRenderFactsLoader implements StatusLoader {
       electrical: { path: paths.electrical, status: 'failed' },
       plumbing: { path: paths.plumbing, status: 'failed' },
       ceiling: { path: paths.ceiling, status: 'failed' },
+      hvac: { path: paths.hvac, status: 'failed' },
       overrides: { path: paths.overrides, status: 'failed' },
     };
   }
@@ -47,6 +52,7 @@ export class ProjectRenderFactsLoader implements StatusLoader {
       electrical: parseElectricalPoints,
       plumbing: parsePlumbingPoints,
       ceiling: parseCeilingZones,
+      hvac: parseProjectHvacFacts,
       overrides: parseRenderLightingOverrides,
     };
 
@@ -67,6 +73,7 @@ export class ProjectRenderFactsLoader implements StatusLoader {
     if (valid && loadedOverrides) {
       const loadedFacts = results as ProjectRenderFacts;
       try {
+        validateProjectHvacFacts(loadedFacts.hvac, loadedFacts);
         buildProjectRenderFactsProjection(
           loadedFacts,
           loadedOverrides,

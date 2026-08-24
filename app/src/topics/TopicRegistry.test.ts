@@ -205,72 +205,13 @@ describe('HvacTopic', () => {
     expect(topic.options[0].name).toBe('A1 Test');
   });
 
-  it('should apply scheme A1 with outdoor and indoor units', () => {
+  it('clears obsolete topic objects but delegates all HVAC geometry to render facts', () => {
     const mock = createMockSceneApi();
     const ids = topic.apply(mock.api as any, 'A1');
 
-    expect(ids.length).toBeGreaterThan(0);
+    expect(ids).toEqual([]);
     expect(mock.api.clearTopicObjects).toHaveBeenCalledWith('hvac');
-
-    const outdoorIds = ids.filter((id) => id.includes('outdoor'));
-    const indoorIds = ids.filter((id) => id.includes('indoor'));
-    expect(outdoorIds.length).toBe(1);
-    expect(indoorIds.length).toBe(2);
-
-    expect(mock.api.addObject).toHaveBeenCalled();
-  });
-
-  it('should place outdoor unit on platform for scheme A1', () => {
-    const mock = createMockSceneApi();
-    topic.apply(mock.api as any, 'A1');
-
-    const outdoorCall = (mock.api.addObject as any).mock.calls.find(
-      (c: any[]) => c[1].includes('outdoor') && !c[1].includes('label')
-    );
-    expect(outdoorCall).toBeDefined();
-    const mesh = outdoorCall[2] as THREE.Mesh;
-    expect(mesh.position.x).toBeCloseTo(-8.5, 0);
-    expect(mesh.position.z).toBeCloseTo(2.0, 0);
-  });
-
-  it('should place ceiling indoor unit at room center near ceiling', () => {
-    const mock = createMockSceneApi();
-    topic.apply(mock.api as any, 'A1');
-
-    const ceilingCall = (mock.api.addObject as any).mock.calls.find(
-      (c: any[]) => c[1] === 'hvac:indoor:A1:living_dining'
-    );
-    expect(ceilingCall).toBeDefined();
-    const mesh = ceilingCall[2] as THREE.Mesh;
-    expect(mesh.position.x).toBeCloseTo(0, 0);
-    expect(mesh.position.z).toBeCloseTo(0, 0);
-    expect(mesh.position.y).toBeCloseTo(2.85, 1);
-  });
-
-  it('should place wall indoor unit on north wall', () => {
-    const mock = createMockSceneApi();
-    topic.apply(mock.api as any, 'A1');
-
-    const wallCall = (mock.api.addObject as any).mock.calls.find(
-      (c: any[]) => c[1] === 'hvac:indoor:A1:master_bedroom'
-    );
-    expect(wallCall).toBeDefined();
-    const mesh = wallCall[2] as THREE.Mesh;
-    expect(mesh.position.y).toBeCloseTo(1.95, 0);
-  });
-
-  it('should handle multiple outdoor units with x-offset', () => {
-    const mock = createMockSceneApi();
-    topic.apply(mock.api as any, 'E1');
-
-    const outdoorCalls = (mock.api.addObject as any).mock.calls.filter(
-      (c: any[]) => c[1].includes('outdoor') && !c[1].includes('label')
-    );
-    expect(outdoorCalls.length).toBe(2);
-
-    const x0 = outdoorCalls[0][2].position.x;
-    const x1 = outdoorCalls[1][2].position.x;
-    expect(x0).not.toBeCloseTo(x1, 2);
+    expect(mock.api.addObject).not.toHaveBeenCalled();
   });
 
   it('should return empty array for unknown scheme', () => {
@@ -288,22 +229,11 @@ describe('HvacTopic', () => {
     expect(mock.api.clearTopicObjects).toHaveBeenCalledTimes(2);
   });
 
-  it('should add labels for outdoor units', () => {
-    const mock = createMockSceneApi();
-    topic.apply(mock.api as any, 'A1');
-
-    const labelCalls = (mock.api.addObject as any).mock.calls.filter(
-      (c: any[]) => c[1].includes('label')
-    );
-    expect(labelCalls.length).toBeGreaterThan(0);
-  });
-
-  it('should skip indoor unit if room not found', () => {
+  it('does not use room availability to fabricate geometry', () => {
     const mock = createMockSceneApi();
     (mock.api.getRoom as any).mockReturnValue(undefined);
-    const ids = topic.apply(mock.api as any, 'A1');
-    const indoorIds = ids.filter((id) => id.includes('indoor'));
-    expect(indoorIds.length).toBe(0);
+    expect(topic.apply(mock.api as any, 'A1')).toEqual([]);
+    expect(mock.api.addObject).not.toHaveBeenCalled();
   });
 });
 

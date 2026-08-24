@@ -70,6 +70,20 @@ const scenarios = [
   // 硬装裸房验收：material_review 同款光照（Standard/6500K 中性白），但 dress_scene 按
   // scenario id 隐藏一切可移动家具/软装（含纱帘遮光帘），只留墙地顶/定制柜/门窗/灯具/洁具/橱柜。
   {
+    id: 'hvac_coordination',
+    label: 'HVAC 协调审阅（仅此场景显示事实图路线）',
+    sun_direction: null,
+    world_color: '#808080',
+    world_strength: 0.3,
+    lights_on: true,
+    light_temp: 6500,
+    view_transform: 'Standard',
+    exposure: 1.0,
+    blackout_state: 'open',
+    sheer_state: 'open',
+    hvac_coordination: true,
+  },
+  {
     id: 'bare_shell',
     label: '硬装裸房验收（material_review 光照参数，隐藏可移动家具/软装/窗帘）',
     sun_direction: null,
@@ -136,7 +150,7 @@ const cameras = [
     label: '客厅餐桌侧南望沙发+玻璃幕（全景）',
     position: [10.3, 1.55, 2.9],
     target: [9.6, 1.2, 8.6],
-    scenarios: ['material_review', 'blue_hour', 'daylight', 'daylight_clear', 'bare_shell'],
+    scenarios: ['material_review', 'blue_hour', 'daylight', 'daylight_clear', 'bare_shell', 'hvac_coordination'],
   },
   {
     id: 'master_bed_looking_glass',
