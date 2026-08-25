@@ -705,7 +705,7 @@
           "reason": "检修口尺寸和位置待设备样本及现场梁位确认。"
         },
         {
-          "id": "condensate_living_sink",
+          "id": "condensate_living_candidate",
           "status": "pending",
           "system": "condensate",
           "position": {
@@ -713,10 +713,14 @@
             "y": 0.1,
             "z": 6.2
           },
-          "reason": "冷凝水接入立管路径待量房确认；不得假定接入现有地漏。"
+          "reason": "仅为冷凝水候选接入点，待量房确认；不是地漏、立管或施工点，不得假定接入现有地漏。",
+          "kind": "condensate_drain_candidate",
+          "confirmed": false,
+          "render_interior": false,
+          "render_coordination": true
         },
         {
-          "id": "condensate_master_sink",
+          "id": "condensate_master_candidate",
           "status": "pending",
           "system": "condensate",
           "position": {
@@ -724,10 +728,14 @@
             "y": 0.1,
             "z": 7
           },
-          "reason": "冷凝水接入立管路径待量房确认；不得假定接入现有地漏。"
+          "reason": "仅为冷凝水候选接入点，待量房确认；不是地漏、立管或施工点，不得假定接入现有地漏。",
+          "kind": "condensate_drain_candidate",
+          "confirmed": false,
+          "render_interior": false,
+          "render_coordination": true
         },
         {
-          "id": "condensate_study_sink",
+          "id": "condensate_study_candidate",
           "status": "pending",
           "system": "condensate",
           "position": {
@@ -735,10 +743,14 @@
             "y": 0.1,
             "z": 7.5
           },
-          "reason": "冷凝水接入立管路径待量房确认；不得假定接入现有地漏。"
+          "reason": "仅为冷凝水候选接入点，待量房确认；不是地漏、立管或施工点，不得假定接入现有地漏。",
+          "kind": "condensate_drain_candidate",
+          "confirmed": false,
+          "render_interior": false,
+          "render_coordination": true
         },
         {
-          "id": "condensate_parent_sink",
+          "id": "condensate_parent_candidate",
           "status": "pending",
           "system": "condensate",
           "position": {
@@ -746,10 +758,14 @@
             "y": 0.1,
             "z": 7.5
           },
-          "reason": "冷凝水接入立管路径待量房确认；不得假定接入现有地漏。"
+          "reason": "仅为冷凝水候选接入点，待量房确认；不是地漏、立管或施工点，不得假定接入现有地漏。",
+          "kind": "condensate_drain_candidate",
+          "confirmed": false,
+          "render_interior": false,
+          "render_coordination": true
         },
         {
-          "id": "condensate_child_sink",
+          "id": "condensate_child_candidate",
           "status": "pending",
           "system": "condensate",
           "position": {
@@ -757,7 +773,11 @@
             "y": 0.1,
             "z": 3.6
           },
-          "reason": "冷凝水接入立管路径待量房确认；不得假定接入现有地漏。"
+          "reason": "仅为冷凝水候选接入点，待量房确认；不是地漏、立管或施工点，不得假定接入现有地漏。",
+          "kind": "condensate_drain_candidate",
+          "confirmed": false,
+          "render_interior": false,
+          "render_coordination": true
         },
         {
           "id": "supply_master",
@@ -1004,22 +1024,22 @@
           "to": "indoor_child"
         },
         {
-          "id": "condensate_living_route",
+          "id": "condensate_living_candidate_route",
           "status": "pending",
           "system": "condensate",
           "from": "indoor_living",
-          "to": "condensate_living_sink",
+          "to": "condensate_living_candidate",
           "constraint_refs": [
             "ref_south_window_band_ld100"
           ],
           "reason": "冷凝水坡度、存水弯和立管接点待现场确认；南侧参考窗带梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
         },
         {
-          "id": "condensate_master_route",
+          "id": "condensate_master_candidate_route",
           "status": "pending",
           "system": "condensate",
           "from": "indoor_master",
-          "to": "condensate_master_sink",
+          "to": "condensate_master_candidate",
           "constraint_refs": [
             "ref_south_window_band_ld100",
             "ref_master_bath_local_beam_head"
@@ -1027,33 +1047,33 @@
           "reason": "冷凝水坡度、存水弯和立管接点待现场确认；南侧及主卫局部参考梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
         },
         {
-          "id": "condensate_study_route",
+          "id": "condensate_study_candidate_route",
           "status": "pending",
           "system": "condensate",
           "from": "indoor_study",
-          "to": "condensate_study_sink",
+          "to": "condensate_study_candidate",
           "constraint_refs": [
             "ref_south_window_band_ld100"
           ],
           "reason": "冷凝水坡度、存水弯和立管接点待现场确认；南侧参考窗带梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
         },
         {
-          "id": "condensate_parent_route",
+          "id": "condensate_parent_candidate_route",
           "status": "pending",
           "system": "condensate",
           "from": "indoor_parent",
-          "to": "condensate_parent_sink",
+          "to": "condensate_parent_candidate",
           "constraint_refs": [
             "ref_south_window_band_ld100"
           ],
           "reason": "冷凝水坡度、存水弯和立管接点待现场确认；南侧参考窗带梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
         },
         {
-          "id": "condensate_child_route",
+          "id": "condensate_child_candidate_route",
           "status": "pending",
           "system": "condensate",
           "from": "indoor_child",
-          "to": "condensate_child_sink",
+          "to": "condensate_child_candidate",
           "constraint_refs": [
             "ref_corridor_service_band"
           ],

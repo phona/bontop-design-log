@@ -27,7 +27,6 @@ import { TopDownView } from '../scene/TopDownView.js';
 import { pickRoomIdFromHits } from '../scene/spawn-utils.js';
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { offsetCurtainPointsInterior } from './curtain-offset.js';
-import { baySillVerticalRange, buildExteriorRibbon, offsetRunExterior } from './exterior-ribbon.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
@@ -1041,10 +1040,7 @@ export class HouseScene implements SceneApi {
   }
 
   private renderCurtainRun(el: Extract<SceneElement, { type: 'curtain_run' }>) {
-    const points = el.exteriorOffset
-      ? offsetRunExterior(el.points, Object.values(this.rooms), el.exteriorOffset)
-      : el.points;
-    const shape = this.buildCurtainShape(points, el.closed ?? false);
+    const shape = this.buildCurtainShape(el.points, el.closed ?? false);
     const geometry = new THREE.ExtrudeGeometry(shape, {
       depth: el.height,
       bevelEnabled: false,
@@ -1476,21 +1472,41 @@ export class HouseScene implements SceneApi {
     this.floorMeshes.push(mesh);
   }
 
+  private detectInteriorFlip(pts: CurtainPoint[]): boolean {
+    const p0 = pts[0];
+    const pn = pts[pts.length - 1];
+    const dx = pn.x - p0.x;
+    const dz = pn.z - p0.z;
+    if (Math.hypot(dx, dz) < 1e-9) return false;
+    let mx = 0, mz = 0;
+    for (const p of pts) { mx += p.x; mz += p.z; }
+    mx /= pts.length;
+    mz /= pts.length;
+    const rooms = Object.values(this.rooms);
+    if (rooms.length === 0) return false;
+    let best: RoomObject | undefined;
+    let bestDist = Infinity;
+    for (const r of rooms) {
+      const d = Math.hypot(r.x - mx, r.z - mz);
+      if (d < bestDist) { bestDist = d; best = r; }
+    }
+    if (!best) return false;
+    const cross = dx * (best.z - mz) - dz * (best.x - mx);
+    return cross < 0;
+  }
+
   private renderBaySill(el: Extract<SceneElement, { type: 'bay_sill' }>) {
     if (el.points.length < 2) return;
-    const footprint = buildExteriorRibbon(el.points, Object.values(this.rooms), el.depth);
-    const shape = new THREE.Shape();
-    shape.moveTo(footprint[0].x, footprint[0].z);
-    for (let i = 1; i < footprint.length; i++) shape.lineTo(footprint[i].x, footprint[i].z);
-    shape.closePath();
-    const vertical = baySillVerticalRange(el.sill, el.plateThickness);
-    const geometry = new THREE.ExtrudeGeometry(shape, { depth: el.plateThickness, bevelEnabled: false, steps: 1 });
+    const pts = el.points as CurtainPoint[];
+    const flip = this.detectInteriorFlip(pts);
+    const shape = this.buildCurtainShape(pts, false, el.depth, true, flip);
+    const geometry = new THREE.ExtrudeGeometry(shape, { depth: el.height, bevelEnabled: false, steps: 1 });
     const concrete = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.9 });
     const mesh = new THREE.Mesh(geometry, concrete);
     mesh.rotation.x = -Math.PI / 2;
     mesh.scale.set(1, -1, 1);
-    mesh.position.y = vertical.bottom;
-    mesh.userData = { type: 'bay_sill', objectId: el.id, sill: vertical.top, plateThickness: el.plateThickness };
+    mesh.position.y = el.sill;
+    mesh.userData = { type: 'bay_sill', objectId: el.id };
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     this.scene.add(mesh);

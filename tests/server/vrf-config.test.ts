@@ -36,9 +36,13 @@ test('hvac.yaml declares the complete A2 diagram against existing MEP facts', ()
     assert.ok(route.reason?.trim(), `${route.id} requires a review reason`);
   }
   for (const route of plan.diagram.routes.filter((route) => route.system === 'condensate')) {
-    const sink = plan.diagram.terminals.find((terminal) => terminal.id === route.to);
-    assert.equal(sink?.status, 'pending');
-    assert.match(sink?.id ?? '', /^condensate_/u);
+    const candidate = plan.diagram.terminals.find((terminal) => terminal.id === route.to);
+    assert.equal(candidate?.status, 'pending');
+    assert.equal(candidate?.kind, 'condensate_drain_candidate');
+    assert.equal(candidate?.confirmed, false);
+    assert.equal(candidate?.render_interior, false);
+    assert.equal(candidate?.render_coordination, true);
+    assert.match(candidate?.id ?? '', /^condensate_.*_candidate$/u);
   }
 });
 
@@ -61,12 +65,34 @@ test('HVAC schema rejects invalid status, missing reasons, non-finite positions,
   assert.throws(() => validateProjectHvacFacts(dangling, { electrical, ceiling }), /unknown diagram id/);
 });
 
-test('HVAC semantic validation rejects duplicate ids and condensate sinks other than pending terminals', () => {
+test('HVAC schema accepts legacy terminals and rejects invalid condensate candidates', () => {
+  const legacy = structuredClone(hvac);
+  const terminal = legacy.plans[0].diagram.terminals.find((item) => item.id === 'supply_living')!;
+  delete terminal.kind;
+  delete terminal.confirmed;
+  delete terminal.render_interior;
+  delete terminal.render_coordination;
+  assert.equal(ProjectHvacFactsSchema.parse(legacy).plans[0].diagram.terminals.find((item) => item.id === 'supply_living')?.kind, undefined);
+
+  for (const field of ['confirmed', 'render_interior', 'render_coordination'] as const) {
+    const invalid = structuredClone(hvac);
+    const candidate = invalid.plans[0].diagram.terminals.find((item) => item.kind === 'condensate_drain_candidate')!;
+    candidate[field] = field === 'render_coordination' ? false : true;
+    assert.throws(() => ProjectHvacFactsSchema.parse(invalid), new RegExp(field));
+  }
+
+  const wrongSystem = structuredClone(hvac);
+  const wrongCandidate = wrongSystem.plans[0].diagram.terminals.find((item) => item.kind === 'condensate_drain_candidate')!;
+  wrongCandidate.system = 'access';
+  assert.throws(() => ProjectHvacFactsSchema.parse(wrongSystem), /must use condensate system/);
+});
+
+test('HVAC semantic validation rejects duplicate ids and condensate candidates other than pending terminals', () => {
   const duplicate = structuredClone(hvac);
   duplicate.plans[0].diagram.terminals[0].id = duplicate.plans[0].diagram.anchors[0].id;
   assert.throws(() => validateProjectHvacFacts(duplicate, { electrical, ceiling }), /Duplicate HVAC diagram id/);
 
   const invalidSink = structuredClone(hvac);
   invalidSink.plans[0].diagram.routes.find((route) => route.system === 'condensate')!.to = 'indoor_living';
-  assert.throws(() => validateProjectHvacFacts(invalidSink, { electrical, ceiling }), /must end at a pending terminal/);
+  assert.throws(() => validateProjectHvacFacts(invalidSink, { electrical, ceiling }), /must end at a pending condensate drain candidate/);
 });

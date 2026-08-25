@@ -6,6 +6,14 @@
 // 量房修正时只改 model-geometry.yaml，再跑 verify:all，本脚本会列出需同步的镜像字段与点位。
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
+import { resolveLayout } from '../server/layout-resolver.js';
+import {
+  checkWallPointPlacements,
+  formatPlacementIssue,
+  placementIssueCounts,
+  type PlacementItem,
+  type PlacementWall,
+} from './verify-point-placement.js';
 
 type Pt = { x: number; z: number };
 
@@ -81,27 +89,29 @@ for (const g of (house.gift_areas ?? []) as any[]) {
   }
 }
 
-// C. 点位坐标须落在声明墙段上
-const walls = new Map<string, [Pt, Pt]>(
-  (mg.walls as any[]).map((w) => [w.id, [verts.get(w.from)!, verts.get(w.to)!]]),
-);
-const TOL = 0.15;
-for (const item of [...elec, ...plumb]) {
-  if (!item || typeof item.wall !== 'string' || typeof item.x !== 'number' || typeof item.z !== 'number') continue;
-  const seg = walls.get(item.wall);
-  if (!seg) { fail(`${item.id} 引用未知墙 ${item.wall}`); continue; }
-  const [a, b] = seg;
-  const withinX = item.x >= Math.min(a.x, b.x) - TOL && item.x <= Math.max(a.x, b.x) + TOL;
-  const withinZ = item.z >= Math.min(a.z, b.z) - TOL && item.z <= Math.max(a.z, b.z) + TOL;
-  const len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
-  const dist = Math.abs((b.z - a.z) * (item.x - a.x) - (b.x - a.x) * (item.z - a.z)) / len;
-  if (!withinX || !withinZ || dist > TOL) {
-    const reason = dist > TOL
-      ? `离线垂直距离 ${dist.toFixed(2)}m`
-      : `超出墙段端点范围（墙 ${item.wall} 覆盖 x[${Math.min(a.x, b.x).toFixed(1)},${Math.max(a.x, b.x).toFixed(1)}] z[${Math.min(a.z, b.z).toFixed(1)},${Math.max(a.z, b.z).toFixed(1)}]）`;
-    warn(`${item.id} (${item.x},${item.z}) 不在声明墙 ${item.wall} 上：${reason}`);
-  }
+// C. 点位坐标、墙体 suppress、墙段端点及 resolved opening 专项检查
+const resolved = resolveLayout(mg);
+const placementWalls: PlacementWall[] = resolved.walls.map((w) => ({
+  id: w.id,
+  x1: w.x1,
+  z1: w.z1,
+  x2: w.x2,
+  z2: w.z2,
+  openings: w.openings,
+}));
+const suppressedWalls = new Set<string>();
+for (const entry of (load('config/layout/overlay.yaml')?.suppress ?? []) as any[]) {
+  if (typeof entry.wall === 'string') suppressedWalls.add(entry.wall);
+  for (const wall of entry.walls ?? []) if (typeof wall === 'string') suppressedWalls.add(wall);
 }
+const placementItems = [...elec, ...plumb] as PlacementItem[];
+const placementIssues = checkWallPointPlacements(placementWalls, placementItems, suppressedWalls);
+for (const issue of placementIssues) {
+  if (issue.level === 'error') fail(`点位专项 ${formatPlacementIssue(issue)}`);
+  else warn(`点位专项 ${formatPlacementIssue(issue)}`);
+}
+const placementCounts = placementIssueCounts(placementIssues);
+console.log(`点位专项检查: ${placementCounts.errors} error(s), ${placementCounts.warnings} warning(s)`);
 
 console.log(fails
   ? `verify-data-consistency: ${fails} fail(s), ${warns} warning(s)`

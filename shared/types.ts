@@ -435,7 +435,7 @@ export interface CurtainPoint extends OverlayPoint {
 
 export type SceneElement =
   | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; openings?: ResolvedOpening[]; rooms?: string[] }
-  | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean; exteriorOffset?: number }
+  | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   | {
       type: 'glass_infill';
@@ -446,7 +446,7 @@ export type SceneElement =
       sill: number;
     }
   | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string }
-  | { type: 'bay_sill'; id: string; points: CurtainPoint[]; depth: number; sill: number; height: number; plateThickness: number; reason?: string }
+  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }
   | { type: 'shower_screen'; id: string; points: OverlayPoint[]; height: number; sill?: number }

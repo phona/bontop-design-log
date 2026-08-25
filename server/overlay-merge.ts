@@ -199,7 +199,7 @@ export function mergeSceneElements(
       return false;
     });
     if (!suppressed) {
-      kept.push({ type: 'wall', id: `wall:seg:${i}`, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, ...(w.segments ? { segments: w.segments } : {}), ...(w.openings ? { openings: w.openings } : {}), ...(w.rooms?.length ? { rooms: w.rooms } : {}) });
+      kept.push({ type: 'wall', id: w.id ?? `wall:seg:${i}`, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, ...(w.segments ? { segments: w.segments } : {}), ...(w.openings ? { openings: w.openings } : {}), ...(w.rooms?.length ? { rooms: w.rooms } : {}) });
     }
   });
 
@@ -213,10 +213,7 @@ export function mergeSceneElements(
       const elAny = el as Record<string, unknown>;
       const wallRef = elAny.wall ?? elAny.walls;
       if (wallRef) {
-        (elAny as Record<string, unknown>).points = resolveWallRef(
-          wallRef as string | string[],
-          resolvedWalls
-        );
+        elAny.points = resolveWallRef(wallRef as string | string[], resolvedWalls);
       }
     }
   }

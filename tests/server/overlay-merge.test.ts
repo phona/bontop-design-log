@@ -215,7 +215,7 @@ describe('mergeSceneElements', () => {
     const out = mergeSceneElements(WALLS, undefined);
     assert.equal(out.length, 2);
     assert.deepEqual(out.map((e) => e.type), ['wall', 'wall']);
-    assert.equal(out[0].id, 'wall:seg:0');
+    assert.equal(out[0].id, 'w_west');
   });
 
   it('guard: un-declared boundary wall is always wall', () => {
@@ -229,8 +229,8 @@ describe('mergeSceneElements', () => {
       { id: 'w_east', x1: 5, z1: 0, x2: 8, z2: 0 },
     ];
     const out = mergeSceneElements(walls, undefined);
-    assert.deepEqual(out[0], { type: 'wall', id: 'wall:seg:0', x1: 0, z1: 0, x2: 3, z2: 0, rooms: ['kitchen', 'living_dining'] });
-    assert.deepEqual(out[1], { type: 'wall', id: 'wall:seg:1', x1: 5, z1: 0, x2: 8, z2: 0 });
+    assert.deepEqual(out[0], { type: 'wall', id: 'w_k_north', x1: 0, z1: 0, x2: 3, z2: 0, rooms: ['kitchen', 'living_dining'] });
+    assert.deepEqual(out[1], { type: 'wall', id: 'w_east', x1: 5, z1: 0, x2: 8, z2: 0 });
   });
 
   it('suppress removes segments whose midpoint is inside region', () => {
@@ -243,7 +243,7 @@ suppress:
 `);
     const out = mergeSceneElements(WALLS, cfg);
     assert.equal(out.length, 1);
-    assert.deepEqual(out[0], { type: 'wall', id: 'wall:seg:1', x1: 0, z1: 0, x2: 3, z2: 0 });
+    assert.deepEqual(out[0], { type: 'wall', id: 'w_east', x1: 0, z1: 0, x2: 3, z2: 0 });
   });
 
   it('suppress region coordinate order independent (x1 > x2 works)', () => {
