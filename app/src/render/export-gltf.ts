@@ -49,7 +49,7 @@ export function collectExportSet(root: THREE.Object3D): THREE.Object3D[] {
     const type = obj.userData?.type as string | undefined;
     if (type === 'hvac_diagram') return;
     if (type && EXPORT_INCLUDE_TYPES.has(type)) {
-      out.push(obj);
+      if (type !== 'curtain' || obj.visible) out.push(obj);
       return;
     }
     for (const child of obj.children) visit(child);
@@ -110,7 +110,7 @@ export async function exportSceneToGlb(scene: THREE.Scene): Promise<Blob> {
     savedParents.set(obj, obj.parent);
     const exportName = (obj.userData?.exportName ?? obj.userData?.objectId) as string | undefined;
     if (exportName) obj.name = String(exportName);
-    obj.visible = true;
+    if (obj.userData?.type !== 'curtain') obj.visible = true;
     exportRoot.attach(obj);
   }
   exportRoot.updateMatrixWorld(true);

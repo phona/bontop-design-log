@@ -1,6 +1,7 @@
-import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry, BudgetSnapshot, DesignCheckResult, ArchivedScheme } from '@shared/types';
+import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry, BudgetSnapshot, DesignCheckResult, ArchivedScheme, CurtainPresentationState, CurtainState } from '@shared/types';
 
 type SchemeCallback = (scheme: CurrentScheme) => void;
+type PresentationStateCallback = (state: CurtainPresentationState) => void;
 type VisualCommandCallback = (command: VisualCommand) => void;
 type OfflineCallback = (offline: boolean) => void;
 type ConfigErrorCallback = (errors: Array<{ path: string; error: string }>) => void;
@@ -8,6 +9,7 @@ export type BudgetCallback = (snapshot: BudgetSnapshot) => void;
 
 export class StateSync {
   private schemeInterval: ReturnType<typeof setTimeout> | null = null;
+  private presentationStateInterval: ReturnType<typeof setTimeout> | null = null;
   private visualCommandInterval: ReturnType<typeof setTimeout> | null = null;
   private configStatusInterval: ReturnType<typeof setTimeout> | null = null;
   private budgetInterval: ReturnType<typeof setTimeout> | null = null;
@@ -16,11 +18,13 @@ export class StateSync {
   private visualCommandBackoff = 500;
   private isOffline = false;
   private schemeCallbacks: SchemeCallback[] = [];
+  private presentationStateCallbacks: PresentationStateCallback[] = [];
   private visualCommandCallbacks: VisualCommandCallback[] = [];
   private offlineCallbacks: OfflineCallback[] = [];
   private configErrorCallbacks: ConfigErrorCallback[] = [];
   private budgetCallbacks: BudgetCallback[] = [];
   private currentScheme: CurrentScheme | null = null;
+  private currentPresentationState: CurtainPresentationState | null = null;
   private lastBudgetJson = '';
   private processedCommandIds = new Map<string, number>();
 
@@ -37,6 +41,23 @@ export class StateSync {
       body: JSON.stringify({ selections, source: 'user' }),
     });
     if (!response.ok) throw new Error('Failed to update scheme');
+  }
+
+  async getPresentationState(): Promise<CurtainPresentationState> {
+    const response = await fetch('/api/presentation-state');
+    if (!response.ok) throw new Error('Failed to fetch presentation state');
+    return response.json();
+  }
+
+  async updateCurtainState(state: CurtainState, roomId?: string, expectedUpdatedAt?: string): Promise<CurtainPresentationState> {
+    const response = await fetch('/api/presentation-state/curtains', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...(roomId ? { roomId } : {}), state, ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}) }),
+    });
+    if (!response.ok) throw new Error('Failed to update curtain state');
+    const result = await response.json() as { state: CurtainPresentationState };
+    return result.state;
   }
 
   async fetchScheme(): Promise<CurrentScheme> {
@@ -121,6 +142,10 @@ export class StateSync {
     this.schemeCallbacks.push(callback);
   }
 
+  onPresentationStateChange(callback: PresentationStateCallback): void {
+    this.presentationStateCallbacks.push(callback);
+  }
+
   onVisualCommand(callback: VisualCommandCallback): void {
     this.visualCommandCallbacks.push(callback);
   }
@@ -139,6 +164,7 @@ export class StateSync {
 
   start(): void {
     this.pollScheme();
+    this.pollPresentationState();
     this.pollVisualCommands();
     this.pollConfigStatus();
     this.pollBudget();
@@ -168,6 +194,19 @@ export class StateSync {
 
       this.schemeInterval = setTimeout(() => this.pollScheme(), this.schemeBackoff);
       this.schemeBackoff = Math.min(this.schemeBackoff * 2, 8000);
+    }
+  }
+
+  private async pollPresentationState(): Promise<void> {
+    try {
+      const state = await this.getPresentationState();
+      if (!this.currentPresentationState || JSON.stringify(this.currentPresentationState) !== JSON.stringify(state)) {
+        this.currentPresentationState = state;
+        this.presentationStateCallbacks.forEach((callback) => callback(state));
+      }
+      this.presentationStateInterval = setTimeout(() => this.pollPresentationState(), this.schemeBackoff);
+    } catch {
+      this.presentationStateInterval = setTimeout(() => this.pollPresentationState(), this.schemeBackoff);
     }
   }
 
@@ -233,6 +272,7 @@ export class StateSync {
 
   dispose(): void {
     if (this.schemeInterval) clearTimeout(this.schemeInterval);
+    if (this.presentationStateInterval) clearTimeout(this.presentationStateInterval);
     if (this.visualCommandInterval) clearTimeout(this.visualCommandInterval);
     if (this.configStatusInterval) clearTimeout(this.configStatusInterval);
     if (this.budgetInterval) clearTimeout(this.budgetInterval);

@@ -1,10 +1,12 @@
 import type {
   CurrentScheme,
+  CurtainPresentationState,
   ElectricalPoint,
   ProjectRenderFacts,
   ProjectRenderFactsProjection,
   RenderLightingOverride,
 } from './types.js';
+import { buildCurtainRenderProjection, type CurtainOverlayLike } from './curtain-projection.js';
 
 const LIGHT_TYPES = new Set<ElectricalPoint['type']>([
   'ceiling_light',
@@ -23,6 +25,8 @@ export function buildProjectRenderFactsProjection(
   facts: ProjectRenderFacts,
   overrides: RenderLightingOverride[],
   scheme: CurrentScheme,
+  overlay: CurtainOverlayLike,
+  presentation: CurtainPresentationState,
 ): ProjectRenderFactsProjection {
   const fixtures = facts.electrical.filter((point) => LIGHT_TYPES.has(point.type));
   const fixtureIds = new Set(fixtures.map((fixture) => fixture.id));
@@ -71,7 +75,7 @@ export function buildProjectRenderFactsProjection(
     ? { status: 'implemented' as const, planId: 'A2' as const, diagram: selectedHvacPlan.diagram }
     : { status: 'unimplemented' as const, planId: selectedHvacPlanId };
   return {
-    version: '1.0',
+    version: '2.0',
     lightingFixtures,
     plumbing: facts.plumbing,
     ceiling: facts.ceiling,
@@ -81,6 +85,9 @@ export function buildProjectRenderFactsProjection(
         default: floor.default,
         roomOverrides: { ...floor.roomOverrides },
       },
+    },
+    presentation: {
+      curtains: buildCurtainRenderProjection(overlay, presentation),
     },
   };
 }

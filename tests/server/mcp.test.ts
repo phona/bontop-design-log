@@ -22,6 +22,8 @@ import { createMcpServer } from '../../server/mcp-server.js';
 import { ConfigRegistry } from '../../server/config-loader.js';
 import { parseEnvironment } from '../../shared/environment-schema.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { PresentationStateStore } from '../../server/presentation-state.js';
+import { parseOverlay } from '../../server/overlay-merge.js';
 
 const TEST_DATA_DIR = './tmp/test-data-mcp';
 
@@ -46,6 +48,13 @@ describe('MCP remote', () => {
     const acceptanceEngine = new AcceptanceEngine();
     const budgetAdvisor = new BudgetAdvisor(catalog, calc, engine);
     const budgetValueAnalyzer = new BudgetValueAnalyzer(catalog, calc, engine.getConfig());
+    const overlay = parseOverlay(`
+version: 1
+elements:
+  - { id: living, type: curtain, points: [{x: 0, z: 0}, {x: 2, z: 0}], room: living_dining, kind: sheer_blackout }
+  - { id: bath, type: curtain, points: [{x: 0, z: 1}, {x: 2, z: 1}], room: master_bath, kind: blinds }
+`);
+    const presentationState = new PresentationStateStore(TEST_DATA_DIR, () => overlay);
     const deps = {
       catalog,
       state,
@@ -58,8 +67,9 @@ describe('MCP remote', () => {
       getBudgetAdvisor: () => budgetAdvisor,
       getBudgetValueAnalyzer: () => budgetValueAnalyzer,
       archiveStore,
+      presentationState,
       getConfigRegistry: () => new ConfigRegistry(),
-      getOverlay: () => undefined,
+      getOverlay: () => overlay,
       getEnvironment: () => parseEnvironment(readFileSync('config/environment.yaml', 'utf8')),
     };
 
@@ -103,6 +113,20 @@ describe('MCP remote', () => {
     const text = (result.content as { text: string }[])[0].text;
     const parsed = JSON.parse(text);
     assert.equal(parsed.updated, true);
+  });
+
+  it('sets and gets persisted curtain states', async () => {
+    const set = await client.callTool({
+      name: 'set_curtain_state',
+      arguments: { roomId: 'master_bath', state: 'blackout' },
+    });
+    const setParsed = JSON.parse((set.content as { text: string }[])[0].text);
+    assert.equal(setParsed.state.roomOverrides.master_bath, 'privacy');
+    assert.ok(setParsed.commandId);
+
+    const get = await client.callTool({ name: 'get_curtain_states', arguments: {} });
+    const getParsed = JSON.parse((get.content as { text: string }[])[0].text);
+    assert.equal(getParsed.effectiveStates.master_bath, 'privacy');
   });
 
   it('get_data_confidence returns data maturity', async () => {

@@ -3,6 +3,9 @@ export interface HoverTarget {
   name: string;
   type: string;
   room?: string;
+  curtainId?: string;
+  curtainKind?: 'sheer_blackout' | 'blinds';
+  layer?: 'sheer' | 'blackout' | 'blinds';
 }
 
 export class HoverTooltip {

@@ -9,8 +9,9 @@ import { loadElectricalConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoo
 import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
 import { mergeSceneElements } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
-import type { CurrentScheme, ProjectRenderFacts, ProjectRenderFactsProjection } from '../shared/types.js';
+import type { CurrentScheme, CurtainState, ProjectRenderFacts, ProjectRenderFactsProjection } from '../shared/types.js';
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
+import type { PresentationStateStore } from './presentation-state.js';
 
 export interface ApiDeps {
   catalog: ProjectCatalog;
@@ -20,6 +21,7 @@ export interface ApiDeps {
   archiveStore: ArchivedSchemesStore;
   getConfigRegistry: () => ConfigRegistry;
   getOverlay: () => OverlayConfig | undefined;
+  presentationState?: PresentationStateStore;
   getEnvironment?: () => EnvironmentConfig | undefined;
   getProjectRenderFacts?: () => ProjectRenderFacts | undefined;
   getProjectRenderFactsProjection?: () => ProjectRenderFactsProjection | undefined;
@@ -127,6 +129,44 @@ export function createApiRouter(deps: ApiDeps): Router {
     });
   });
 
+  router.get('/presentation-state', (_req, res) => {
+    if (!deps.presentationState) {
+      res.status(503).json({ error: 'presentation state is not configured' });
+      return;
+    }
+    res.json(deps.presentationState.get());
+  });
+
+  router.patch('/presentation-state/curtains', (req, res) => {
+    if (!deps.presentationState) {
+      res.status(503).json({ error: 'presentation state is not configured' });
+      return;
+    }
+    const { roomId, state: curtainState, expectedUpdatedAt } = req.body ?? {};
+    if (roomId !== undefined && typeof roomId !== 'string') {
+      res.status(400).json({ error: 'roomId must be a string' });
+      return;
+    }
+    if (typeof curtainState !== 'string') {
+      res.status(400).json({ error: 'state is required' });
+      return;
+    }
+    try {
+      const result = deps.presentationState.setCurtainState({
+        roomId,
+        state: curtainState as CurtainState,
+        expectedUpdatedAt,
+      });
+      if (result.conflict) {
+        res.status(409).json({ error: 'conflict', serverUpdatedAt: result.state.updatedAt, state: result.state });
+        return;
+      }
+      res.json(result);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   router.get('/scheme/current', (_req, res) => {
     res.json(state.getCurrentScheme());
   });
@@ -219,8 +259,23 @@ export function createApiRouter(deps: ApiDeps): Router {
 
   router.post('/visual-commands', (req, res) => {
     const { type, payload } = req.body ?? {};
-    if (type !== 'set_camera_target' && type !== 'highlight_object') {
+    if (type !== 'set_camera_target' && type !== 'highlight_object' && type !== 'set_curtain_state') {
       res.status(400).json({ error: 'invalid visual command type' });
+      return;
+    }
+    if (type === 'set_curtain_state') {
+      if (!deps.presentationState) {
+        res.status(503).json({ error: 'presentation state is not configured' });
+        return;
+      }
+      const curtainPayload = payload as { roomId?: string; state?: CurtainState } | undefined;
+      try {
+        const result = deps.presentationState.setCurtainState({ roomId: curtainPayload?.roomId, state: curtainPayload?.state as CurtainState });
+        const cmd = state.appendVisualCommand(type, { roomId: curtainPayload?.roomId, state: curtainPayload?.state });
+        res.status(201).json({ ...cmd, presentationState: result.state });
+      } catch (err) {
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      }
       return;
     }
     const cmd = state.appendVisualCommand(type, payload);

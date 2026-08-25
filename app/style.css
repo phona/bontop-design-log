@@ -372,6 +372,17 @@ html, body {
   background: rgba(255, 255, 255, 0.12);
 }
 
+.overview-archive-btn.active {
+  background: rgba(59, 130, 246, 0.35);
+  border-color: rgba(59, 130, 246, 0.6);
+  color: #bfdbfe;
+}
+
+.curtain-state-controls {
+  display: flex;
+  gap: 8px;
+}
+
 .overview-archive-btn-danger {
   border-color: rgba(239, 68, 68, 0.4);
   color: #fca5a5;

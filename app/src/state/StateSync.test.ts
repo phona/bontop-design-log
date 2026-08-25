@@ -148,6 +148,43 @@ describe('StateSync', () => {
     expect(offlineCallback).toHaveBeenCalledTimes(2);
   });
 
+  it('polls presentation state and emits only changes', async () => {
+    const open = { default: 'open', roomOverrides: {}, updatedAt: '1' };
+    const privacy = { default: 'privacy', roomOverrides: {}, updatedAt: '2' };
+    let calls = 0;
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const value = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
+      if (value.includes('/api/presentation-state')) {
+        calls++;
+        return { ok: true, json: async () => calls < 3 ? open : privacy } as Response;
+      }
+      if (value.includes('/api/config-status')) return { ok: true, json: async () => ({ configs: [] }) } as Response;
+      if (value.includes('/api/scheme/current')) return { ok: true, json: async () => ({ updatedAt: '', selections: {} }) } as Response;
+      if (value.includes('/api/budget')) return { ok: true, json: async () => ({ totalBudget: 0, totalActual: 0, categories: [], lineItems: [] }) } as Response;
+      return { ok: true, json: async () => [] } as Response;
+    });
+    const callback = vi.fn();
+    stateSync.onPresentationStateChange(callback);
+    stateSync.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(callback).toHaveBeenCalledWith(open);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(callback).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(callback).toHaveBeenLastCalledWith(privacy);
+  });
+
+  it('updates curtain state through the persistent API', async () => {
+    const persisted = { default: 'open', roomOverrides: { master_bedroom: 'blackout' }, updatedAt: '2' };
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ state: persisted }) } as Response);
+    await expect(stateSync.updateCurtainState('blackout', 'master_bedroom', '1')).resolves.toEqual(persisted);
+    expect(fetchMock).toHaveBeenCalledWith('/api/presentation-state/curtains', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId: 'master_bedroom', state: 'blackout', expectedUpdatedAt: '1' }),
+    });
+  });
+
   it('should call updateScheme with correct payload', async () => {
     const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true } as Response);
 

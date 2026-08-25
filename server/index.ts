@@ -26,6 +26,7 @@ import type { OverlayConfig } from './overlay-merge.js';
 import { parseEnvironment } from '../shared/environment-schema.js';
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import { createAnalysisRouter } from './analysis-routes.js';
+import { PresentationStateStore } from './presentation-state.js';
 import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml } from '../shared/types.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
@@ -162,6 +163,7 @@ try {
 }
 
 const archiveStore = new ArchivedSchemesStore(DATA_DIR);
+const presentationState = new PresentationStateStore(DATA_DIR, () => overlayLoader.getConfig());
 
 const apiDeps = {
   get catalog() { return catalog; },
@@ -175,6 +177,7 @@ const apiDeps = {
   getBudgetAdvisor: () => budgetAdvisor,
   getBudgetValueAnalyzer: () => budgetValueAnalyzer,
   archiveStore,
+  presentationState,
   getConfigRegistry: () => registry,
   getOverlay: () => overlayLoader.getConfig(),
   getEnvironment: () => environmentLoader.getConfig(),
@@ -182,8 +185,9 @@ const apiDeps = {
   getProjectRenderFactsProjection: () => {
     const facts = projectRenderFactsLoader.getFacts();
     const overrides = projectRenderFactsLoader.getOverrides();
-    if (!facts || !overrides) return undefined;
-    return buildProjectRenderFactsProjection(facts, overrides, state.getCurrentScheme());
+    const overlay = overlayLoader.getConfig();
+    if (!facts || !overrides || !overlay) return undefined;
+    return buildProjectRenderFactsProjection(facts, overrides, state.getCurrentScheme(), overlay, presentationState.get());
   },
 };
 

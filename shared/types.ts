@@ -203,9 +203,41 @@ export interface DecisionLogEntry {
   createdAt: string;
 }
 
+export type CurtainState = 'open' | 'privacy' | 'blackout';
+
+export interface CurtainPresentationState {
+  default: CurtainState;
+  roomOverrides: Record<string, CurtainState>;
+  updatedAt: string;
+}
+
+/** 窗帘渲染投影条目（shared/curtain-projection.ts 构建） */
+export interface CurtainRenderItem {
+  id: string;
+  /** 来自 overlay 元素的 room 字段 */
+  roomId: string;
+  kind: 'sheer_blackout' | 'blinds';
+  /** 归一化后的有效状态 */
+  state: CurtainState;
+  expectedVisibleNodes: string[];
+}
+
+export interface CurtainRenderProjection {
+  source: {
+    default: CurtainState;
+    /** 归一化并删除冗余 override 后的结果（不修改输入文件） */
+    roomOverrides: Record<string, CurtainState>;
+    /** 审计字段，不进入 snapshotSha256 */
+    updatedAt: string;
+  };
+  effectiveByRoom: Record<string, CurtainState>;
+  curtains: CurtainRenderItem[];
+  snapshotSha256: string;
+}
+
 export interface VisualCommand {
   commandId: string;
-  type: 'set_camera_target' | 'highlight_object';
+  type: 'set_camera_target' | 'highlight_object' | 'set_curtain_state';
   payload: unknown;
   createdAt: string;
   expiresAt: string;
@@ -586,6 +618,8 @@ export interface ElectricalPoint {
   width?: number;
   depth?: number;
   height?: number;
+  mount_height?: number;
+  body_height?: number;
   status?: ElectricalPointStatus;
   position_status?: ElectricalPointStatus;
   note?: string;
@@ -756,6 +790,9 @@ export interface ProjectRenderFactsProjection {
   hvac: ImplementedHvacProjection | UnimplementedHvacProjection;
   materials: {
     floor: TopicSelection;
+  };
+  presentation: {
+    curtains: CurtainRenderProjection;
   };
 }
 

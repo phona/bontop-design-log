@@ -42,5 +42,11 @@ export function offsetCurtainPointsInterior(
   const nx = ((-dz / len) * (cross > 0 ? 1 : -1)) * offset;
   const nz = ((dx / len) * (cross > 0 ? 1 : -1)) * offset;
 
-  return pts.map((p) => ({ ...p, x: p.x + nx, z: p.z + nz }));
+  return pts.map((p) => ({
+    ...p,
+    x: p.x + nx,
+    z: p.z + nz,
+    ...(p.cx !== undefined ? { cx: p.cx + nx } : {}),
+    ...(p.cz !== undefined ? { cz: p.cz + nz } : {}),
+  }));
 }

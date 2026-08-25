@@ -461,8 +461,8 @@ furnishings:
     - { type: sofa_3seat, x: 11.00, z: 7.70, rotation: 270 } # 面朝西看电视（与电视同轴南移 0.7）
     - { type: coffee_table, x: 9.70, z: 7.70, rotation: 0 }  # 沙发与电视柜之间，随沙发南移
     # 门内右手定制半高柜：从门内向客厅延伸，柜高 1.5m；玄关侧封闭，餐厅侧开放，柜顶以上可见餐厅。
-    # footprint x=11.325-11.675、z=3.10-5.10，距入户门洞西缘 x=11.80 留 0.125m，东侧主通道 1.725m。
-    - { type: entry_half_height_cabinet, x: 11.50, z: 4.10, rotation: 90 }
+    # footprint x=11.325-11.675、z=2.90-4.90（北端紧贴 w_ent_south_w z=2.90，参照 tv_wall_low/wall_cabinet_tall 贴墙线口径），距入户门洞西缘 x=11.80 留 0.125m，东侧主通道 1.725m。
+    - { type: entry_half_height_cabinet, x: 11.50, z: 3.90, rotation: 90 }
     # 横置西北角，西缘齐西墙 x=7.2；桌体南移让出北侧两椅（椅背让开推拉门叠扇 z≥2.5）。
     # 南北各两椅；东侧主通道（x>8.6）释放客厅→厨房入口。
     - { type: dining_table, x: 7.90, z: 3.45, rotation: 0 }
@@ -513,7 +513,7 @@ furnishings:
   entry_garden:
     # 成品矮鞋柜+自立洞洞板，靠花园东侧落地摆放，避开西墙开关/水龙头/插座。
     # 非固定柜体，可整体移开，不改变消防通道。
-    - { type: garden_entry_station, x: 15.02, z: 1.35, rotation: 90 }
+    - { type: garden_entry_station, x: 15.02, z: 1.35, rotation: 270 }
     - { type: shoe_cabinet } # count-only：花园换鞋站+门内定制半高柜的组合预算
     - { type: ceiling_light }
   south_balcony: []

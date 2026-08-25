@@ -31,7 +31,7 @@ import { HumidityButton } from './ui/HumidityButton.js';
 import { isInHuinanWindow } from '@shared/humidity-model';
 import { exportSceneToGlb } from './render/export-gltf.js';
 import './ui/keybindings.js';
-import type { CurrentScheme, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch } from '@shared/types';
+import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch } from '@shared/types';
 import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
 
 const ORBIT_DISTANCE = 15;
@@ -81,6 +81,7 @@ export class App {
   private daylightHeatmap: DaylightHeatmap | null = null;
   private humidityOverlay: HumidityOverlay | null = null;
   private humidityButton: HumidityButton | null = null;
+  private curtainPresentationState: CurtainPresentationState = { default: 'open', roomOverrides: {}, updatedAt: '' };
   private readonly hvacCoordinationApi = (visible: boolean) => this.setHvacCoordinationVisible(Boolean(visible));
 
 
@@ -105,6 +106,7 @@ export class App {
       onSelectOption: (topicId, optionId, roomId) => {
         void this.handleOptionSelect(topicId, optionId, roomId);
       },
+      onCurtainStateChange: (state, roomId) => void this.handleCurtainStateChange(state, roomId),
     });
     this.offlineIndicator = new OfflineIndicator('offline-indicator');
     this.crosshair = new Crosshair();
@@ -124,6 +126,7 @@ export class App {
       onLayoutChange: (layoutName) => void this.handleLayoutChange(layoutName),
       onCompare: (archiveId) => void this.handleCompare(archiveId),
       onClearCompare: () => this.handleClearCompare(),
+      onCurtainStateChange: (state) => void this.handleCurtainStateChange(state),
     });
     this.modeIndicator = document.getElementById('mode-indicator') as HTMLDivElement;
     this.toastEl = document.getElementById('pointer-lock-toast') as HTMLDivElement;
@@ -195,6 +198,9 @@ export class App {
       this.infoPanel.setScheme(scheme);
       this.overviewMenu.setScheme(scheme);
     }
+
+    const presentationState = await this.stateSync.getPresentationState();
+    this.applyCurtainPresentationState(presentationState);
 
     const decisions = await this.stateSync.fetchDecisions();
     this.overviewMenu.setDecisionLog(decisions);
@@ -531,6 +537,8 @@ export class App {
       this.requestRender();
     });
 
+    this.stateSync.onPresentationStateChange((state) => this.applyCurtainPresentationState(state));
+
     this.stateSync.onVisualCommand((command) => {
       if (command.type === 'set_camera_target') {
         const payload = command.payload as { targetId: string };
@@ -539,6 +547,10 @@ export class App {
         const payload = command.payload as { objectId: string };
         this.houseScene.highlightObject(payload.objectId);
         this.requestRender();
+      } else if (command.type === 'set_curtain_state') {
+        const payload = command.payload as { roomId?: string; state: CurtainState };
+        if (payload.roomId) this.houseScene.setRoomCurtainState(payload.roomId, payload.state);
+        else this.houseScene.setAllCurtainStates(payload.state);
       }
     });
 
@@ -620,10 +632,14 @@ export class App {
         return;
       }
 
-      // C 键切换遮光帘开合（纱帘常显，遮光帘开合）
       if (e.code === 'KeyC' && !e.repeat) {
         e.preventDefault();
-        this.houseScene.toggleBlackout();
+        const next: CurtainState = this.curtainPresentationState.default === 'open'
+          ? 'privacy'
+          : this.curtainPresentationState.default === 'privacy'
+            ? 'blackout'
+            : 'open';
+        void this.handleCurtainStateChange(next);
         return;
       }
 
@@ -945,9 +961,23 @@ export class App {
     this.overviewMenu.setDecisionLog(decisions);
   }
 
+  private async handleCurtainStateChange(state: CurtainState, roomId?: string): Promise<void> {
+    const presentationState = await this.stateSync.updateCurtainState(state, roomId, this.curtainPresentationState.updatedAt || undefined);
+    this.applyCurtainPresentationState(presentationState);
+  }
+
+  private applyCurtainPresentationState(state: CurtainPresentationState): void {
+    this.curtainPresentationState = state;
+    this.houseScene.applyCurtainPresentationState(state);
+    this.infoPanel.setPresentationState(state);
+    this.overviewMenu.setPresentationState(state);
+    this.requestRender();
+  }
+
   private async refreshOverviewData(): Promise<void> {
-    const [scheme, decisions, budget, risks, archives] = await Promise.all([
+    const [scheme, presentationState, decisions, budget, risks, archives] = await Promise.all([
       this.stateSync.fetchScheme(),
+      this.stateSync.getPresentationState(),
       this.stateSync.fetchDecisions(),
       this.stateSync.fetchBudget(),
       this.stateSync.fetchRisks(),
@@ -955,6 +985,7 @@ export class App {
     ]);
     this.infoPanel.setScheme(scheme);
     this.overviewMenu.setScheme(scheme);
+    this.applyCurtainPresentationState(presentationState);
     this.overviewMenu.setDecisionLog(decisions);
     this.overviewMenu.setBudget(budget);
     this.overviewMenu.setRisks(risks);
@@ -998,8 +1029,12 @@ export class App {
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
     this.analysisTools.checkFurnitureCollisions();
-    const scheme = await this.stateSync.fetchScheme();
+    const [scheme, presentationState] = await Promise.all([
+      this.stateSync.fetchScheme(),
+      this.stateSync.getPresentationState(),
+    ]);
     if (scheme) this.applyScheme(scheme);
+    this.applyCurtainPresentationState(presentationState);
     this.requestRender();
   }
 
@@ -1049,6 +1084,11 @@ export class App {
               hvacTerminals: plan?.diagram.terminals ?? [],
               outdoor: plan ? [plan.outdoor] : [],
             });
+            const mepReport = this.houseScene.getMepRenderReport();
+            if (mepReport.skipped > 0) {
+              console.warn(`[mep] ${mepReport.skipped}/${mepReport.total} routes skipped: ${mepReport.skippedRoutes.join(', ')}`);
+              this.showToast(`MEP 路线不完整：${mepReport.resolved}/${mepReport.total} 条已渲染`);
+            }
             this.setupMepLayerControls(mep);
             this.setMepCoordinationState(true);
           } else {

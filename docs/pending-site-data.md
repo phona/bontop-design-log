@@ -56,8 +56,8 @@
 
 | # | 数据项 | 填入文件 | 格式 | 当前值 | 精度 | 影响 |
 |---|--------|----------|------|--------|------|------|
-| 4 | 强电箱位置/容量 | electrical.yaml `type: strong_panel` | `{x, z, height, width, depth, circuits, capacity}` | 进门后左手边玄关墙；LD=1.650m，390×210mm | measured（照片/规格）；坐标 inferred | 回路规划；回路数/容量仍待开箱 |
-| 5 | 弱电箱位置 | electrical.yaml `type: weak_panel` | `{x, z, height, width, depth}` | 推定与强电箱同组/相邻；LD=0.500m，400×300mm | likely；坐标 inferred | 网关/路由；箱体和入户线路待开箱确认 |
+| 4 | 强电箱位置/容量 | electrical.yaml `type: strong_panel` | `{x, z, mount_height, body_height, width, depth, circuits, capacity}` | living_dining / `w_foyer_east` 西侧，`x=13.40, z=3.60`；开发商预留嵌墙；底部离地 1.65m；本体高度暂占位 0.39m；390×210mm | 位置 inferred；嵌墙属性/箱体规格/本体高度 pending | 回路规划；开发商预留嵌墙和本体高度待复测，回路数/容量仍待开箱量尺 |
+| 5 | 弱电箱位置 | electrical.yaml `type: weak_panel` | `{x, z, mount_height, body_height, width, depth}` | living_dining / `w_foyer_east` 西侧，`x=13.40, z=3.60`；开发商预留嵌墙；底部离地 0.50m；本体高度暂占位 0.40m；400×300mm | 位置 inferred；嵌墙属性/箱体规格/本体高度 pending | 网关/路由；开发商预留嵌墙和本体高度待复测，箱体高度和入户线路待开箱确认 |
 | 6 | 卫生间排水立管 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断主卫(0.3,1.3) 客卫(5.8,2.4) | inferred | 马桶/地漏定位 |
 | 7 | 厨房排水立管 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断(10.5,0.3) | inferred | 水槽定位 |
 | 8 | 给水入户点 | plumbing.yaml `type: water_supply` | `{x, z, diameter}` | 待确认 | — | 水管走向 |

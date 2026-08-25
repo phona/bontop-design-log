@@ -11,6 +11,7 @@ import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
 import { ConfigRegistry } from '../../server/config-loader.js';
 import { parseOverlay } from '../../server/overlay-merge.js';
+import { PresentationStateStore } from '../../server/presentation-state.js';
 
 const TEST_DATA_DIR = './tmp/test-data-api';
 
@@ -25,6 +26,13 @@ describe('REST API', () => {
     const engine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
     const calc = new BudgetCalculator(catalog, engine.getConfig());
     const archiveStore = new ArchivedSchemesStore(TEST_DATA_DIR);
+    const overlay = parseOverlay(`
+version: 1
+elements:
+  - { id: living, type: curtain, points: [{x: 0, z: 0}, {x: 2, z: 0}], room: living_dining, kind: sheer_blackout }
+  - { id: bath, type: curtain, points: [{x: 0, z: 1}, {x: 2, z: 1}], room: master_bath, kind: blinds }
+`);
+    const presentationState = new PresentationStateStore(TEST_DATA_DIR, () => overlay);
 
     app = express();
     app.use(express.json());
@@ -36,8 +44,9 @@ describe('REST API', () => {
         getRuleEngine: () => engine,
         getBudgetCalculator: () => calc,
         archiveStore,
+        presentationState,
         getConfigRegistry: () => new ConfigRegistry(),
-        getOverlay: () => undefined,
+        getOverlay: () => overlay,
       })
     );
   });
@@ -65,6 +74,39 @@ describe('REST API', () => {
       .send({ selections: [{ topic: 'hvac', optionId: 'A1' }], source: 'user' })
       .expect(200);
     assert.equal(res.body.scheme.selections.hvac.default, 'A1');
+  });
+
+  it('GET/PATCH presentation state persists room and whole-house curtain states', async () => {
+    const initial = await request(app).get('/api/presentation-state').expect(200);
+    assert.equal(initial.body.default, 'open');
+
+    const room = await request(app)
+      .patch('/api/presentation-state/curtains')
+      .send({ roomId: 'master_bath', state: 'blackout', expectedUpdatedAt: initial.body.updatedAt })
+      .expect(200);
+    assert.equal(room.body.state.roomOverrides.master_bath, 'privacy');
+
+    const all = await request(app)
+      .patch('/api/presentation-state/curtains')
+      .send({ state: 'blackout', expectedUpdatedAt: room.body.state.updatedAt })
+      .expect(200);
+    assert.equal(all.body.state.default, 'blackout');
+    assert.deepEqual(all.body.state.roomOverrides, {});
+  });
+
+  it('rejects invalid curtain room/state and reports conflicts', async () => {
+    await request(app).patch('/api/presentation-state/curtains').send({ roomId: 'kitchen', state: 'open' }).expect(400);
+    await request(app).patch('/api/presentation-state/curtains').send({ state: 'invalid' }).expect(400);
+    await request(app).patch('/api/presentation-state/curtains').send({ state: 'open', expectedUpdatedAt: 'stale' }).expect(409);
+  });
+
+  it('POST set_curtain_state persists before appending the command', async () => {
+    const res = await request(app)
+      .post('/api/visual-commands')
+      .send({ type: 'set_curtain_state', payload: { roomId: 'living_dining', state: 'privacy' } })
+      .expect(201);
+    assert.equal(res.body.type, 'set_curtain_state');
+    assert.equal(res.body.presentationState.roomOverrides.living_dining, 'privacy');
   });
 
   it('POST /api/decisions records a decision', async () => {

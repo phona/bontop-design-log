@@ -3,7 +3,7 @@ import { KEY_BINDINGS, findBinding } from './keybindings.js';
 
 describe('keybindings', () => {
   it('has expected number of bindings', () => {
-    expect(KEY_BINDINGS.length).toBe(14);
+    expect(KEY_BINDINGS.length).toBe(15);
   });
 
   it('finds binding by code', () => {

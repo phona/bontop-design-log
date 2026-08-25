@@ -68,6 +68,28 @@ describe('collectExportSet', () => {
     expect(set).toHaveLength(0);
   });
 
+  it('does not export curtains in the open state', () => {
+    const scene = new THREE.Scene();
+    const deployed = mesh('curtain', 'curtain:living:sheer:deployed');
+    deployed.visible = false;
+    deployed.userData = { ...deployed.userData, curtainId: 'curtain:living', layer: 'sheer', state: 'open', variant: 'deployed' };
+    const gathered = mesh('curtain', 'curtain:living:sheer:gathered');
+    gathered.visible = false;
+    gathered.userData = { ...gathered.userData, curtainId: 'curtain:living', layer: 'sheer', state: 'open', variant: 'gathered' };
+    scene.add(deployed, gathered);
+    expect(collectExportSet(scene)).toEqual([]);
+  });
+
+  it('exports visible privacy and blackout curtain variants', () => {
+    const scene = new THREE.Scene();
+    const privacy = mesh('curtain', 'curtain:living:sheer:deployed');
+    privacy.userData = { ...privacy.userData, curtainId: 'curtain:living', layer: 'sheer', state: 'privacy', variant: 'deployed' };
+    const blackout = mesh('curtain', 'curtain:living:blackout:deployed');
+    blackout.userData = { ...blackout.userData, curtainId: 'curtain:living', layer: 'blackout', state: 'blackout', variant: 'deployed' };
+    scene.add(privacy, blackout);
+    expect(collectExportSet(scene)).toEqual([privacy, blackout]);
+  });
+
   it('does not double-collect children of an included group', () => {
     const scene = new THREE.Scene();
     const furniture = new THREE.Group();

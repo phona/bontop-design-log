@@ -71,7 +71,8 @@ model-geometry-from-cad.yaml
 
 # Test-generated runtime data
 tmp/
-data/
+data/*
+!data/presentation-state.json
 opencode.json
 scripts/logs/
 app/bun.lock

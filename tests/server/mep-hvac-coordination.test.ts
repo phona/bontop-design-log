@@ -5,6 +5,7 @@ import { load as parseYaml } from 'js-yaml';
 import {
   MepCoordinationSchema,
   parseMepCoordination,
+  resolveMepRoutes,
   validateMepCoordination,
   type MepEndpointSources,
 } from '../../shared/mep-hvac-coordination-schema.js';
@@ -18,7 +19,7 @@ const sources: MepEndpointSources = { electrical, plumbing, hvacAnchors: [], hva
 function sourceIds(): MepEndpointSources {
   return {
     ...sources,
-    hvacAnchors: ['outdoor_a2', 'indoor_living', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child', 'bend_corridor'].map((id) => ({ id, status: 'inferred', system: 'refrigerant' as const })),
+    hvacAnchors: ['outdoor_a2', 'indoor_living', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child', 'bend_corridor'].map((id) => ({ id, status: 'inferred', system: 'refrigerant' as const, position: { x: 0, y: 0, z: 0 } })),
     hvacTerminals: ['supply_living', 'return_living', 'supply_master', 'return_master', 'condensate_living_candidate', 'net_unused'].map((id) => ({ id, status: 'pending', system: id.startsWith('supply') ? 'supply_air' as const : id.startsWith('return') ? 'return_air' as const : 'condensate' as const, position: { x: 0, y: 0, z: 0 } })),
     outdoor: [{ id: 'outdoor_a2', platform: 'west_platform', x: 6.4, z: 0.5, direction: 'south', width: 0.9, depth: 0.335, height: 0.7, model: 'test' }],
   };
@@ -68,6 +69,27 @@ test('MEP semantic validation rejects dangling, duplicate, invalid dimensions, a
   const plumbingRoute = confirmedPlumbing.routes.find((route) => route.layer === 'drainage')!;
   plumbingRoute.construction_status = 'confirmed';
   assert.throws(() => validateMepCoordination(confirmedPlumbing, sourceIds()), /must remain construction_status: pending/);
+});
+
+test('MEP route resolution reports direct coordinates, HVAC refs, and unresolved endpoints', () => {
+  const testConfig = MepCoordinationSchema.parse({
+    version: '1', status: 'preliminary', layers: Object.fromEntries(['strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant', 'condensate', 'supply_air', 'return_air'].map((layer) => [layer, { label: layer, color: '#fff', height: 2 }])), routes: [
+      { id: 'direct', layer: 'refrigerant', status: 'inferred', from: { x: 1, z: 2 }, to: 'anchor_ref' },
+      { id: 'bad', layer: 'refrigerant', status: 'inferred', from: 'anchor_missing_position', to: 'missing' },
+    ],
+  });
+  const testSources = { ...sourceIds(), hvacAnchors: [
+    { id: 'anchor_ref', status: 'inferred' as const, system: 'refrigerant' as const, ref: { source: 'outdoor' as const, id: 'outdoor_a2' } },
+    { id: 'anchor_missing_position', status: 'inferred' as const, system: 'refrigerant' as const },
+  ] };
+  const report = resolveMepRoutes(testConfig, testSources);
+  assert.equal(report.total, 2);
+  assert.equal(report.resolved, 1);
+  assert.equal(report.unresolved, 1);
+  assert.deepEqual(report.routes[0].from, { x: 1, z: 2 });
+  assert.deepEqual(report.routes[0].to, { x: 6.4, z: 0.5 });
+  assert.deepEqual(report.routes[1].unresolved, ['from', 'to']);
+  assert.throws(() => validateMepCoordination(testConfig, testSources), /endpoint is unresolved/);
 });
 
 test('design requirement plumbing routes cannot reference authoritative plumbing points', () => {

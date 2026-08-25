@@ -35,8 +35,21 @@ export type PlacementIssue = {
 };
 
 const EPS = 1e-9;
+const SIDE_AXIS_EPS = 1e-6;
 const WALL_SIDES = new Set(['north', 'south', 'east', 'west']);
 const OPENING_TYPES = new Set(['door', 'cased_opening', 'sliding_door']);
+const SIDE_VECTORS = {
+  north: { x: 0, z: -1 },
+  south: { x: 0, z: 1 },
+  east: { x: 1, z: 0 },
+  west: { x: -1, z: 0 },
+} as const;
+
+function wallSideAxis(dx: number, dz: number): 'horizontal' | 'vertical' | undefined {
+  if (Math.abs(dx) <= SIDE_AXIS_EPS && Math.abs(dz) > SIDE_AXIS_EPS) return 'vertical';
+  if (Math.abs(dz) <= SIDE_AXIS_EPS && Math.abs(dx) > SIDE_AXIS_EPS) return 'horizontal';
+  return undefined;
+}
 
 function distance(a: Point, b: Point): number {
   return Math.hypot(a.x - b.x, a.z - b.z);
@@ -92,7 +105,17 @@ export function checkWallPointPlacements(
     }
 
     const sideOffset = (item.x - projection.x) * (-dz / len) + (item.z - projection.z) * (dx / len);
-    if (!item.wall_side && Math.abs(sideOffset) <= EPS) {
+    const axis = wallSideAxis(dx, dz);
+    if (item.wall_side && axis) {
+      const expected = SIDE_VECTORS[item.wall_side];
+      const sideSign = Math.sign(sideOffset);
+      const expectedSign = Math.sign(expected.x * (-dz / len) + expected.z * (dx / len));
+      if (sideSign !== 0 && expectedSign !== 0 && sideSign !== expectedSign) {
+        issues.push({ level: 'error', id: item.id, wall: item.wall, distance: Math.abs(sideOffset), message: `点位位于墙线错误侧别：声明 ${item.wall_side}` });
+      }
+    } else if (item.wall_side && !axis) {
+      issues.push({ level: 'warning', id: item.id, wall: item.wall, distance: Math.abs(sideOffset), message: '斜墙无法唯一映射 wall_side，跳过侧别误报' });
+    } else if (Math.abs(sideOffset) <= EPS) {
       issues.push({ level: 'warning', id: item.id, wall: item.wall, distance: Math.abs(sideOffset), message: '缺少墙面侧别' });
     }
 

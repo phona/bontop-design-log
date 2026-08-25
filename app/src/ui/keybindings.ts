@@ -26,6 +26,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'W', code: 'KeyW', description: '透视图（X-ray）', category: '工具', mode: 'orbit' },
   { key: 'P', code: 'KeyP', description: '开关标注标签', category: '工具', mode: 'all' },
   { key: 'L', code: 'KeyL', description: '开关测量工具', category: '工具', mode: 'all' },
+  { key: 'C', code: 'KeyC', description: '循环全屋窗帘状态', category: '工具', mode: 'all' },
   { key: '[', code: 'BracketLeft', description: '降低鼠标灵敏度', category: '工具', mode: 'first-person' },
   { key: ']', code: 'BracketRight', description: '提高鼠标灵敏度', category: '工具', mode: 'first-person' },
   { key: '?', code: 'Slash', description: '打开命令面板', category: '工具', mode: 'all', shiftKey: true },

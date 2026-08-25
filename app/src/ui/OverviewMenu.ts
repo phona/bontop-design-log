@@ -7,6 +7,8 @@ import type {
   ArchivedScheme,
   Risk,
   ConstraintViolation,
+  CurtainPresentationState,
+  CurtainState,
 } from '@shared/types';
 
 export interface OverviewMenuOptions {
@@ -16,11 +18,13 @@ export interface OverviewMenuOptions {
   onLayoutChange?: (layoutName: string) => void;
   onCompare?: (archiveId: string) => void;
   onClearCompare?: () => void;
+  onCurtainStateChange?: (state: CurtainState) => void;
 }
 
 export class OverviewMenu {
   private el: HTMLDivElement;
   private schemeEl: HTMLDivElement;
+  private curtainsEl: HTMLDivElement | null;
   private decisionsEl: HTMLDivElement;
   private budgetEl: HTMLDivElement;
   private risksEl: HTMLDivElement;
@@ -28,6 +32,7 @@ export class OverviewMenu {
   private archiveInput: HTMLInputElement;
   private topics: Topic[] = [];
   private scheme: CurrentScheme | null = null;
+  private presentationState: CurtainPresentationState | null = null;
   private decisions: DecisionLogEntry[] = [];
   private budget: BudgetSnapshot | null = null;
   private risks: DesignCheckResult | null = null;
@@ -40,6 +45,7 @@ export class OverviewMenu {
     this.callbacks = callbacks;
     this.el = document.getElementById('overview-menu') as HTMLDivElement;
     this.schemeEl = document.getElementById('overview-scheme') as HTMLDivElement;
+    this.curtainsEl = document.getElementById('overview-curtains') as HTMLDivElement | null;
     this.decisionsEl = document.getElementById('overview-decisions') as HTMLDivElement;
     this.budgetEl = document.getElementById('overview-budget') as HTMLDivElement;
     this.risksEl = document.getElementById('overview-risks') as HTMLDivElement;
@@ -64,6 +70,11 @@ export class OverviewMenu {
 
   setScheme(scheme: CurrentScheme) {
     this.scheme = scheme;
+    if (this.visible) this.render();
+  }
+
+  setPresentationState(state: CurtainPresentationState) {
+    this.presentationState = state;
     if (this.visible) this.render();
   }
 
@@ -120,6 +131,7 @@ export class OverviewMenu {
 
   private render() {
     this.renderScheme();
+    this.renderCurtains();
     this.renderDecisions();
     this.renderBudget();
     this.renderRisks();
@@ -166,6 +178,27 @@ export class OverviewMenu {
         this.schemeEl.appendChild(overrideRow);
       }
     }
+  }
+
+  private renderCurtains() {
+    if (!this.curtainsEl) return;
+    this.curtainsEl.innerHTML = '';
+    const current = this.presentationState?.default ?? 'open';
+    const options: Array<{ state: CurtainState; label: string }> = [
+      { state: 'open', label: '全开' },
+      { state: 'privacy', label: '全屋纱帘' },
+      { state: 'blackout', label: '全屋遮光' },
+    ];
+    const row = document.createElement('div');
+    row.className = 'curtain-state-controls';
+    for (const option of options) {
+      const button = document.createElement('button');
+      button.className = `overview-archive-btn${option.state === current ? ' active' : ''}`;
+      button.textContent = option.label;
+      button.onclick = () => this.callbacks.onCurtainStateChange?.(option.state);
+      row.appendChild(button);
+    }
+    this.curtainsEl.appendChild(row);
   }
 
   private renderDecisions() {

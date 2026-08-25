@@ -458,32 +458,36 @@
   note: "燃气热水器插座（⚠️热水器位置未定案：house.yaml 为'厨房或入户花园，待设计师确定'，本点位为阳台暂定，定案前不作为施工依据；生活阳台已被玻璃幕封闭，若挂阳台，排烟出幕墙与燃气路由需物业/燃气公司确认（CO 安全）；量房定案后若改位需同步移点，见 pending-site-data.md #26）"
 
 # 入户后左手边玄关墙：现场照片确认箱体位置与规格。
-# x/z 仍为局部坐标系下的暂定位，待现场量尺标定；不得据此生成施工级走线。
+# x/z 为局部坐标系下的协调定位；墙体/侧别已按现场复核入口方案更新，仍不得据此生成施工级走线。
 - id: panel_strong_entry_left
-  room: entry_garden
-  wall: w_ent_west
+  room: living_dining
+  wall: w_foyer_east
+  wall_side: west
   type: strong_panel
-  x: 10.80
-  z: 0.50
-  height: 1.65
+  x: 13.40
+  z: 3.60
+  mount_height: 1.65
+  body_height: 0.39
   width: 0.39
   depth: 0.21
   status: measured
   position_status: inferred
-  note: "强电箱：进门后左手边玄关墙；现场标注 LD=1650mm，箱体长390mm×宽210mm；回路数/容量待开箱读取"
+  note: "强电箱：开发商预留嵌墙箱，协调定位至 living_dining 的 w_foyer_east 西侧，x=13.40/z=3.60；底部离地 1.65m；本体高度暂按 0.39m 占位，待现场复测；箱体宽390mm×深210mm，回路数/容量待读取"
 
 - id: panel_weak_entry_left
-  room: entry_garden
-  wall: w_ent_west
+  room: living_dining
+  wall: w_foyer_east
+  wall_side: west
   type: weak_panel
-  x: 10.80
-  z: 1.00
-  height: 0.50
+  x: 13.40
+  z: 3.60
+  mount_height: 0.50
+  body_height: 0.40
   width: 0.40
   depth: 0.30
   status: likely
   position_status: inferred
-  note: "弱电箱：推定与强电箱同组或相邻，现场标注 LD=500mm，箱体长400mm×宽300mm；需开箱确认箱体及入户线路"
+  note: "弱电箱：开发商预留嵌墙箱，协调定位至 living_dining 的 w_foyer_east 西侧，x=13.40/z=3.60；底部离地 0.50m；本体高度暂按 0.40m 占位，待现场复测；箱体宽400mm×深300mm，入户线路待确认"
 
 # 入户花园
 - id: sock_garden

@@ -23,9 +23,28 @@ describe('wall point placement consistency', () => {
     assert.equal(issues.length, 0);
   });
 
+  it('checks west/east sides on a vertical wall', () => {
+    const vertical = { ...wall, x1: 0, z1: 0, x2: 0, z2: 10, openings: [] };
+    assert.equal(checkWallPointPlacements([vertical], [{ id: 'west', wall: 'w_test', x: -0.1, z: 5, wall_side: 'west' }], new Set()).some(i => i.level === 'error'), false);
+    assert.equal(checkWallPointPlacements([vertical], [{ id: 'wrong', wall: 'w_test', x: -0.1, z: 5, wall_side: 'east' }], new Set()).some(i => i.level === 'error'), true);
+  });
+
+  it('does not infer side for diagonal walls', () => {
+    const diagonal = { ...wall, x1: 0, z1: 0, x2: 10, z2: 10, openings: [] };
+    const issues = checkWallPointPlacements([diagonal], [{ id: 'diagonal', wall: 'w_test', x: 5, z: 4.9, wall_side: 'north' }], new Set());
+    assert.equal(issues.some(i => i.level === 'error'), false);
+    assert.equal(issues.some(i => i.level === 'warning' && i.message.includes('斜墙')), true);
+  });
+
   it('maps wall_side YAML to wallSide for render facts', () => {
     const [point] = parseElectricalPoints('- id: p\n  room: r\n  type: socket\n  x: 1\n  z: 2\n  wall: w_test\n  wall_side: west\n  height: 0.3\n');
     assert.equal(point.wallSide, 'west');
+  });
+
+  it('preserves panel mount and body heights as separate render facts', () => {
+    const [point] = parseElectricalPoints('- id: panel\n  room: living_dining\n  type: strong_panel\n  x: 13.4\n  z: 3.6\n  mount_height: 0.6\n  body_height: 0.6\n  width: 0.39\n  depth: 0.21\n');
+    assert.equal(point.mount_height, 0.6);
+    assert.equal(point.body_height, 0.6);
   });
 
   it('warns when a centerline point has no wall side', () => {

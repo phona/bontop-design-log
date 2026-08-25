@@ -15,6 +15,23 @@ interface FixtureRecipe {
   parts: FixturePart[];
 }
 
+// 洞洞板孔阵：9 列 × 8 行、间距 0.12m 的深色小凸点，在浅色板面上读出孔洞感。
+function pegboardHoles(z: number): FixturePart[] {
+  const parts: FixturePart[] = [];
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 9; col++) {
+      parts.push({
+        shape: 'box',
+        size: [0.028, 0.028, 0.008],
+        position: [-0.48 + col * 0.12, 0.94 + row * 0.12, z],
+        color: '#4a463f',
+        roughness: 0.9,
+      });
+    }
+  }
+  return parts;
+}
+
 export interface KitchenCabinetRunSpec {
   length: number;
   depth: number;
@@ -268,14 +285,32 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // 入户花园可移动换鞋站：成品矮鞋柜 + 自立洞洞板，不依赖墙体固定。
+    // 入户花园可移动换鞋站：三门矮鞋柜（柜脚抬高 + 门板缝 + 暗拉手）+ 自立浅色洞洞板（孔阵），不依赖墙体固定。
     type: 'garden_entry_station',
     parts: [
-      { shape: 'box', size: [1.1, 0.78, 0.34], position: [0, 0.42, 0], color: '#d9c5a5' },
-      { shape: 'box', size: [1.14, 0.04, 0.38], position: [0, 0.83, 0], color: '#503e2e' },
-      { shape: 'box', size: [1.1, 1.05, 0.04], position: [0, 1.38, -0.15], color: '#292725', metalness: 0.35, roughness: 0.65 },
-      { shape: 'box', size: [0.05, 1.85, 0.05], position: [-0.5, 0.925, -0.15], color: '#292725', metalness: 0.55, roughness: 0.45 },
-      { shape: 'box', size: [0.05, 1.85, 0.05], position: [0.5, 0.925, -0.15], color: '#292725', metalness: 0.55, roughness: 0.45 },
+      // 柜脚（柜体抬高 8cm，读出"成品柜"而非落地墩）
+      { shape: 'box', size: [0.05, 0.08, 0.05], position: [-0.48, 0.04, 0.12], color: '#503e2e' },
+      { shape: 'box', size: [0.05, 0.08, 0.05], position: [0.48, 0.04, 0.12], color: '#503e2e' },
+      { shape: 'box', size: [0.05, 0.08, 0.05], position: [-0.48, 0.04, -0.12], color: '#503e2e' },
+      { shape: 'box', size: [0.05, 0.08, 0.05], position: [0.48, 0.04, -0.12], color: '#503e2e' },
+      // 柜体
+      { shape: 'box', size: [1.1, 0.72, 0.34], position: [0, 0.44, 0], color: '#d9c5a5' },
+      // 三扇门板（12mm 缝，微凸出柜体前脸）
+      { shape: 'box', size: [0.348, 0.64, 0.018], position: [-0.36, 0.45, 0.172], color: '#e2d2b6' },
+      { shape: 'box', size: [0.348, 0.64, 0.018], position: [0, 0.45, 0.172], color: '#e2d2b6' },
+      { shape: 'box', size: [0.348, 0.64, 0.018], position: [0.36, 0.45, 0.172], color: '#e2d2b6' },
+      // 门板顶部暗拉手
+      { shape: 'box', size: [0.09, 0.02, 0.015], position: [-0.36, 0.72, 0.185], color: '#503e2e' },
+      { shape: 'box', size: [0.09, 0.02, 0.015], position: [0, 0.72, 0.185], color: '#503e2e' },
+      { shape: 'box', size: [0.09, 0.02, 0.015], position: [0.36, 0.72, 0.185], color: '#503e2e' },
+      // 台面
+      { shape: 'box', size: [1.16, 0.04, 0.38], position: [0, 0.82, 0], color: '#503e2e' },
+      // 浅色洞洞板 + 孔阵
+      { shape: 'box', size: [1.1, 1.0, 0.025], position: [0, 1.34, -0.155], color: '#e8e2d6', roughness: 0.75 },
+      ...pegboardHoles(-0.138),
+      // 自立立柱
+      { shape: 'box', size: [0.05, 1.85, 0.05], position: [-0.5, 0.925, -0.155], color: '#292725', metalness: 0.55, roughness: 0.45 },
+      { shape: 'box', size: [0.05, 1.85, 0.05], position: [0.5, 0.925, -0.155], color: '#292725', metalness: 0.55, roughness: 0.45 },
     ],
   },
   {
@@ -330,29 +365,29 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // Wall-mounted strong-power distribution box: body, recessed door, frame, and indicator details.
+    // Developer-reserved recessed strong-power box: body sits in the wall; door and frame are flush/slightly proud.
     type: 'strong_panel',
     parts: [
-      { shape: 'box', size: [0.60, 1.00, 0.16], position: [0, 0.50, 0], color: '#d9dde0', metalness: 0.15, roughness: 0.45 },
-      { shape: 'box', size: [0.54, 0.90, 0.025], position: [0, 0.50, 0.092], color: '#eef0f1', metalness: 0.1, roughness: 0.35 },
-      { shape: 'box', size: [0.025, 0.96, 0.025], position: [-0.31, 0.50, 0.09], color: '#727a80', metalness: 0.55, roughness: 0.35 },
-      { shape: 'box', size: [0.025, 0.96, 0.025], position: [0.31, 0.50, 0.09], color: '#727a80', metalness: 0.55, roughness: 0.35 },
-      { shape: 'box', size: [0.46, 0.018, 0.012], position: [0, 0.22, 0.11], color: '#8e969c', metalness: 0.45, roughness: 0.4 },
-      { shape: 'box', size: [0.46, 0.018, 0.012], position: [0, 0.78, 0.11], color: '#8e969c', metalness: 0.45, roughness: 0.4 },
-      { shape: 'cylinder', size: [0.018, 0.018, 0.018], position: [0.18, 0.86, 0.115], color: '#d94b45', metalness: 0.2, roughness: 0.35 },
+      { shape: 'box', size: [0.60, 1.00, 0.12], position: [0, 0.50, -0.02], color: '#d9dde0', metalness: 0.15, roughness: 0.45 },
+      { shape: 'box', size: [0.54, 0.90, 0.025], position: [0, 0.50, 0.052], color: '#eef0f1', metalness: 0.1, roughness: 0.35 },
+      { shape: 'box', size: [0.025, 0.96, 0.025], position: [-0.31, 0.50, 0.05], color: '#727a80', metalness: 0.55, roughness: 0.35 },
+      { shape: 'box', size: [0.025, 0.96, 0.025], position: [0.31, 0.50, 0.05], color: '#727a80', metalness: 0.55, roughness: 0.35 },
+      { shape: 'box', size: [0.46, 0.018, 0.012], position: [0, 0.22, 0.07], color: '#8e969c', metalness: 0.45, roughness: 0.4 },
+      { shape: 'box', size: [0.46, 0.018, 0.012], position: [0, 0.78, 0.07], color: '#8e969c', metalness: 0.45, roughness: 0.4 },
+      { shape: 'cylinder', size: [0.018, 0.018, 0.018], position: [0.18, 0.86, 0.075], color: '#d94b45', metalness: 0.2, roughness: 0.35 },
     ],
   },
   {
-    // Wall-mounted weak-power/network box: darker door and simple status/vent details.
+    // Developer-reserved recessed weak-power/network box: body sits in the wall; door and frame are flush/slightly proud.
     type: 'weak_panel',
     parts: [
-      { shape: 'box', size: [0.45, 0.75, 0.14], position: [0, 0.375, 0], color: '#c9d2da', metalness: 0.15, roughness: 0.5 },
-      { shape: 'box', size: [0.39, 0.65, 0.025], position: [0, 0.375, 0.082], color: '#e3e8ec', metalness: 0.1, roughness: 0.38 },
-      { shape: 'box', size: [0.025, 0.71, 0.025], position: [-0.235, 0.375, 0.08], color: '#66727c', metalness: 0.5, roughness: 0.38 },
-      { shape: 'box', size: [0.025, 0.71, 0.025], position: [0.235, 0.375, 0.08], color: '#66727c', metalness: 0.5, roughness: 0.38 },
-      { shape: 'box', size: [0.30, 0.015, 0.012], position: [0, 0.18, 0.10], color: '#74818b', metalness: 0.4, roughness: 0.45 },
-      { shape: 'box', size: [0.30, 0.015, 0.012], position: [0, 0.24, 0.10], color: '#74818b', metalness: 0.4, roughness: 0.45 },
-      { shape: 'cylinder', size: [0.016, 0.016, 0.016], position: [0.13, 0.66, 0.105], color: '#4c9bd8', metalness: 0.2, roughness: 0.35 },
+      { shape: 'box', size: [0.45, 0.75, 0.10], position: [0, 0.375, -0.02], color: '#c9d2da', metalness: 0.15, roughness: 0.5 },
+      { shape: 'box', size: [0.39, 0.65, 0.025], position: [0, 0.375, 0.052], color: '#e3e8ec', metalness: 0.1, roughness: 0.38 },
+      { shape: 'box', size: [0.025, 0.71, 0.025], position: [-0.235, 0.375, 0.05], color: '#66727c', metalness: 0.5, roughness: 0.38 },
+      { shape: 'box', size: [0.025, 0.71, 0.025], position: [0.235, 0.375, 0.05], color: '#66727c', metalness: 0.5, roughness: 0.38 },
+      { shape: 'box', size: [0.30, 0.015, 0.012], position: [0, 0.18, 0.07], color: '#74818b', metalness: 0.4, roughness: 0.45 },
+      { shape: 'box', size: [0.30, 0.015, 0.012], position: [0, 0.24, 0.07], color: '#74818b', metalness: 0.4, roughness: 0.45 },
+      { shape: 'cylinder', size: [0.016, 0.016, 0.016], position: [0.13, 0.66, 0.075], color: '#4c9bd8', metalness: 0.2, roughness: 0.35 },
     ],
   },
   // ── Plumbing ──

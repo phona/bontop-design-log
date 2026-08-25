@@ -317,6 +317,97 @@ describe('HouseScene', () => {
     expect(curtainCount).toBe(1);
   });
 
+  it('uses data-driven open/privacy/blackout variants and synchronizes a room', async () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const curtain = (id: string, room: string, z: number) => ({
+      type: 'curtain' as const,
+      id,
+      room,
+      kind: 'sheer_blackout' as const,
+      points: [{ x: 0, z }, { x: 2, z }],
+      height: 2.8,
+    });
+
+    await scene.buildFromCatalog({
+      house: {
+        rooms: [],
+        sceneElements: [
+          curtain('curtain_master_west', 'master_bedroom', 0),
+          curtain('curtain_master_south', 'master_bedroom', 1),
+          curtain('curtain_living_south', 'living_dining', 2),
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    });
+
+    const visibility = () => {
+      const variants = new Map<string, boolean>();
+      scene.getScene().traverse((obj: any) => {
+        if (obj.userData?.curtainId === 'curtain_master_west') variants.set(`${obj.userData.layer}:${obj.userData.variant}`, obj.visible);
+      });
+      return Object.fromEntries(variants);
+    };
+
+    expect(scene.getCurtainState('curtain_master_west')).toBe('open');
+    expect(visibility()).toEqual({
+      'sheer:deployed': false,
+      'sheer:gathered': false,
+      'blackout:deployed': false,
+      'blackout:gathered': false,
+    });
+
+    scene.setRoomCurtainState('master_bedroom', 'privacy');
+    expect(scene.getCurtainState('curtain_master_west')).toBe('privacy');
+    expect(scene.getCurtainState('curtain_master_south')).toBe('privacy');
+    expect(scene.getCurtainState('curtain_living_south')).toBe('open');
+    expect(visibility()).toEqual({
+      'sheer:deployed': true,
+      'sheer:gathered': false,
+      'blackout:deployed': false,
+      'blackout:gathered': true,
+    });
+
+    scene.setCurtainState('curtain_master_west', 'blackout');
+    expect(visibility()).toEqual({
+      'sheer:deployed': true,
+      'sheer:gathered': false,
+      'blackout:deployed': true,
+      'blackout:gathered': false,
+    });
+  });
+
+  it('normalizes blind blackout to privacy and rebuilds without stale curtain entries', async () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const blind = (id: string) => ({
+      type: 'curtain' as const,
+      id,
+      room: 'master_bath',
+      kind: 'blinds' as const,
+      points: [{ x: 0, z: 0 }, { x: 2, z: 0 }],
+      height: 2.8,
+    });
+    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [blind('blind-old')] }, topics: [], budgetCategories: [] });
+    const visibility = () => {
+      const variants = new Map<string, boolean>();
+      scene.getScene().traverse((obj: any) => {
+        if (obj.userData?.curtainId === 'blind-old') variants.set(obj.userData.variant, obj.visible);
+      });
+      return Object.fromEntries(variants);
+    };
+    expect(visibility()).toEqual({ deployed: false, gathered: false });
+
+    scene.setCurtainState('blind-old', 'blackout');
+    expect(scene.getCurtainState('blind-old')).toBe('privacy');
+    expect(visibility()).toEqual({ deployed: true, gathered: false });
+
+    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [blind('blind-new')] }, topics: [], budgetCategories: [] });
+    expect(scene.getCurtainState('blind-old')).toBeUndefined();
+    expect(scene.getCurtainState('blind-new')).toBe('open');
+  });
+
   it('uses single objectId for curtain_run mesh', async () => {
     const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
     const scene = new HouseScene(canvas);
@@ -969,8 +1060,8 @@ describe('HouseScene', () => {
     const scene = new HouseScene(canvas);
 
     scene.placeInfrastructureFixtures([
-      { id: 'panel-strong', room: 'entry_garden', type: 'strong_panel', x: 10.8, z: 0.5, height: 1.65, width: 0.39, depth: 0.21, status: 'measured', position_status: 'inferred' },
-      { id: 'panel-weak', room: 'entry_garden', type: 'weak_panel', x: 10.8, z: 1.0, height: 0.5, width: 0.4, depth: 0.3, status: 'likely', position_status: 'inferred' },
+      { id: 'panel-strong', room: 'living_dining', type: 'strong_panel', x: 13.4, z: 3.6, mount_height: 1.65, body_height: 0.39, width: 0.39, depth: 0.21, status: 'measured', position_status: 'inferred', wall: 'w_foyer_east', wallSide: 'west' },
+      { id: 'panel-weak', room: 'living_dining', type: 'weak_panel', x: 13.4, z: 3.6, mount_height: 0.5, body_height: 0.4, width: 0.4, depth: 0.3, status: 'likely', position_status: 'inferred', wall: 'w_foyer_east', wallSide: 'west' },
     ], []);
 
     const roots = scene.getScene().children.filter((child: any) => child.userData?.type === 'electrical') as any[];
@@ -978,13 +1069,17 @@ describe('HouseScene', () => {
     expect(roots.map((root) => root.userData.label)).toEqual(expect.arrayContaining(['强电箱', '弱电箱']));
     expect(roots.map((root) => root.userData.status)).toEqual(expect.arrayContaining(['measured', 'likely']));
     expect(roots.map((root) => root.userData.dimensions)).toEqual(expect.arrayContaining([
-      { width: 0.39, depth: 0.21, height: 1.65 },
-      { width: 0.4, depth: 0.3, height: 0.5 },
+      { width: 0.39, depth: 0.21, height: 0.39 },
+      { width: 0.4, depth: 0.3, height: 0.4 },
     ]));
+    expect(roots.map((root) => root.userData.mount_height)).toEqual([1.65, 0.5]);
+    expect(roots.map((root) => root.userData.body_height)).toEqual([0.39, 0.4]);
+    expect(roots.every((root) => root.userData.recessed === true && root.userData.developer_reserved === true)).toBe(true);
     expect(roots.map((root) => root.scale.x)).toEqual(expect.arrayContaining([0.65, 0.4 / 0.45]));
-    expect(roots.map((root) => root.scale.y)).toEqual(expect.arrayContaining([1.65, 0.5 / 0.75]));
-    expect(roots.map((root) => root.position.x)).toEqual([10.8, 10.8]);
-    expect(roots.map((root) => root.position.z)).toEqual([0.5, 1.0]);
+    expect(roots.map((root) => root.scale.y)).toEqual(expect.arrayContaining([0.39, 0.4 / 0.75]));
+    expect(roots.map((root) => root.position.x)).toEqual([13.4, 13.4]);
+    expect(roots.map((root) => root.position.y)).toEqual([1.65 + 0.39 / 2, 0.5 + 0.4 / 2]);
+    expect(roots.map((root) => root.position.z)).toEqual([3.6, 3.6]);
   });
 
   it('reattaches the HVAC root after it is removed by a scene rebuild and exports equipment but not routes', async () => {

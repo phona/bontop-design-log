@@ -235,6 +235,9 @@ describe('App', () => {
       if (urlStr.includes('/api/scheme/current')) {
         return { ok: true, json: async () => ({ updatedAt: '', selections: {} }) } as Response;
       }
+      if (urlStr.includes('/api/presentation-state')) {
+        return { ok: true, json: async () => ({ default: 'open', roomOverrides: {}, updatedAt: '1' }) } as Response;
+      }
       if (urlStr.includes('/api/visual-commands')) {
         return { ok: true, json: async () => [] } as Response;
       }
@@ -312,6 +315,26 @@ describe('App', () => {
 
     expect(setSelectionSpy).toHaveBeenCalledWith('hvac', 'A1', { default: 'A1', roomOverrides: {} });
     expect(setActiveOptionSpy).toHaveBeenCalledWith('hvac', 'A1', []);
+  });
+
+  it('applies polled presentation state to the scene and panels', async () => {
+    const app = new App(canvas);
+    await app.start();
+    const apply = vi.spyOn(app['houseScene'], 'applyCurtainPresentationState');
+    const state = { default: 'privacy' as const, roomOverrides: { living_room: 'blackout' as const }, updatedAt: '2' };
+    app['stateSync']['presentationStateCallbacks'][0](state);
+    expect(app['curtainPresentationState']).toEqual(state);
+    expect(apply).toHaveBeenCalledWith(state);
+  });
+
+  it('cycles C through persistent whole-house curtain states', async () => {
+    const app = new App(canvas);
+    await app.start();
+    const update = vi.spyOn(app['stateSync'], 'updateCurtainState').mockResolvedValue({ default: 'privacy', roomOverrides: {}, updatedAt: '2' });
+    const keydown = documentEventListeners.keydown.at(-1)!;
+    keydown({ code: 'KeyC', repeat: false, preventDefault: vi.fn() });
+    await Promise.resolve();
+    expect(update).toHaveBeenCalledWith('privacy', undefined, '1');
   });
 
   it('should handle visual command set_camera_target', async () => {

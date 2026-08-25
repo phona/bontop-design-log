@@ -78,6 +78,8 @@ export class ProjectRenderFactsLoader implements StatusLoader {
           loadedFacts,
           loadedOverrides,
           { updatedAt: '', selections: {} } as CurrentScheme,
+          { elements: [] },
+          { default: 'open', roomOverrides: {}, updatedAt: '' },
         );
         this.facts = loadedFacts;
         this.overrides = loadedOverrides;

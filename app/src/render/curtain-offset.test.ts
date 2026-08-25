@@ -30,10 +30,12 @@ describe('offsetCurtainPointsInterior', () => {
   });
 
   it('保留 radius 字段，缺省 offset=0.12，边界输入原样返回', () => {
-    const pts = [{ x: 0, z: 0, radius: 1.0 }, { x: 1, z: 0 }];
+    const pts = [{ x: 0, z: 0, radius: 1.0, cx: 0.5, cz: -0.5 }, { x: 1, z: 0 }];
     const out = offsetCurtainPointsInterior(pts, [{ x: 0.5, z: 1 }]);
     expect(out[0].radius).toBe(1.0);
     expect(out[0].z).toBeCloseTo(0.12, 5);
+    expect(out[0].cx).toBeCloseTo(0.5, 5);
+    expect(out[0].cz).toBeCloseTo(-0.38, 5);
     expect(offsetCurtainPointsInterior([{ x: 0, z: 0 }], [{ x: 0, z: 1 }])).toHaveLength(1);
     expect(offsetCurtainPointsInterior(pts, [], 0.12)).toBe(pts);
   });

@@ -19,8 +19,8 @@ describe('entry storage fixtures', () => {
 
   it('builds the movable garden station with a freestanding pegboard', () => {
     const size = fixtureSize('garden_entry_station');
-    expect(size.x).toBeCloseTo(1.14, 2);
-    expect(size.y).toBeCloseTo(1.905, 2);
+    expect(size.x).toBeCloseTo(1.16, 2);
+    expect(size.y).toBeCloseTo(1.85, 2);
     expect(size.z).toBeCloseTo(0.38, 2);
   });
 });

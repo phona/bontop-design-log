@@ -2,6 +2,13 @@ import * as THREE from 'three';
 import type { MepCoordination, MepRoute } from '@shared/mep-hvac-coordination-schema';
 import { resolveMepEndpoint, type MepEndpointSources } from '@shared/mep-hvac-coordination-schema';
 
+export interface MepRenderReport {
+  total: number;
+  resolved: number;
+  skipped: number;
+  skippedRoutes: string[];
+}
+
 function hexColor(value: string): number { return Number.parseInt(value.replace(/^#/, ''), 16); }
 
 function heightOf(point: { y?: number }, fallback: number, override?: number): number {
@@ -20,6 +27,7 @@ export class MepCoordinationRenderer {
   readonly group = new THREE.Group();
   private readonly routeGroups = new Map<string, THREE.Group>();
   private readonly bendGroups = new Map<string, THREE.Group>();
+  private renderReport: MepRenderReport = { total: 0, resolved: 0, skipped: 0, skippedRoutes: [] };
 
   constructor(private readonly scene: THREE.Scene) {
     this.group.name = 'MEP_COORDINATION';
@@ -28,14 +36,18 @@ export class MepCoordinationRenderer {
 
   render(config: MepCoordination, sources: MepEndpointSources): void {
     this.clear();
+    this.renderReport = { total: config.routes.length, resolved: 0, skipped: 0, skippedRoutes: [] };
     for (const route of config.routes) {
       const layer = config.layers[route.layer];
       const from = resolveMepEndpoint(route.from, sources);
       const to = resolveMepEndpoint(route.to, sources);
       if (!from || !to) {
+        this.renderReport.skipped += 1;
+        this.renderReport.skippedRoutes.push(route.id);
         console.warn(`[mep] skipped unresolved route ${route.id}`);
         continue;
       }
+      this.renderReport.resolved += 1;
       const fromPoint: Extract<MepRoute['from'], object> | undefined = typeof route.from === 'object' ? route.from : undefined;
       const toPoint: Extract<MepRoute['to'], object> | undefined = typeof route.to === 'object' ? route.to : undefined;
       const rawPoints = [
@@ -96,6 +108,8 @@ export class MepCoordinationRenderer {
       this.bendGroups.set(route.id, bends);
     }
   }
+
+  getRenderReport(): MepRenderReport { return { ...this.renderReport, skippedRoutes: [...this.renderReport.skippedRoutes] }; }
 
   setVisible(visible: boolean): void { this.group.visible = visible; }
 

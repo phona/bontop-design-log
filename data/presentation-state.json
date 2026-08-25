@@ -1,0 +1,7 @@
+{
+  "default": "open",
+  "roomOverrides": {
+    "master_bedroom": "open"
+  },
+  "updatedAt": "2026-08-25T08:03:43.765Z"
+}

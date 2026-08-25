@@ -46,8 +46,31 @@ export interface MepEndpointSources {
   outdoor: VrfOutdoorUnit[];
 }
 
+export interface ResolvedMepRoute {
+  route: MepRoute;
+  from?: { x: number; z: number };
+  to?: { x: number; z: number };
+  unresolved: Array<'from' | 'to'>;
+}
+
+export interface MepRouteResolutionReport {
+  total: number;
+  resolved: number;
+  unresolved: number;
+  routes: ResolvedMepRoute[];
+}
+
 export function parseMepCoordination(raw: string): MepCoordination {
   return MepCoordinationSchema.parse(parseYaml(raw));
+}
+
+export function resolveMepRoutes(config: MepCoordination, sources: MepEndpointSources): MepRouteResolutionReport {
+  const routes = config.routes.map((route) => {
+    const from = resolveMepEndpoint(route.from, sources);
+    const to = resolveMepEndpoint(route.to, sources);
+    return { route, from, to, unresolved: [from ? undefined : 'from', to ? undefined : 'to'].filter((value): value is 'from' | 'to' => value !== undefined) };
+  });
+  return { total: routes.length, resolved: routes.filter((item) => item.unresolved.length === 0).length, unresolved: routes.filter((item) => item.unresolved.length > 0).length, routes };
 }
 
 export function validateMepCoordination(config: MepCoordination, sources: MepEndpointSources): void {
@@ -60,6 +83,7 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
     routeIds.add(route.id);
     for (const endpoint of [route.from, route.to]) {
       if (typeof endpoint === 'string' && !ids.has(endpoint)) throw new Error(`MEP route ${route.id} references unknown endpoint: ${endpoint}`);
+      if (typeof endpoint === 'string' && !resolveMepEndpoint(endpoint, sources)) throw new Error(`MEP route ${route.id} endpoint is unresolved: ${endpoint} (missing position or resolvable ref)`);
     }
     for (const [name, value] of [['diameter', route.diameter], ['width', route.width], ['depth', route.depth]] as const) {
       if (value !== undefined && (!Number.isFinite(value) || value <= 0)) throw new Error(`MEP route ${route.id} ${name} must be positive`);
@@ -90,7 +114,10 @@ export function resolveMepEndpoint(endpoint: string | { x: number; z: number }, 
   const plumbing = sources.plumbing.find((item) => item.id === endpoint);
   if (plumbing) return { x: plumbing.x, z: plumbing.z };
   const anchor = sources.hvacAnchors.find((item) => item.id === endpoint);
-  if (anchor?.position) return { x: anchor.position.x, z: anchor.position.z };
+  if (anchor) {
+    if (anchor.position) return { x: anchor.position.x, z: anchor.position.z };
+    if (anchor.ref) return resolveMepEndpoint(anchor.ref.id, sources);
+  }
   const terminal = sources.hvacTerminals.find((item) => item.id === endpoint);
   if (terminal) return { x: terminal.position.x, z: terminal.position.z };
   const outdoor = sources.outdoor.find((item) => item.id === endpoint);

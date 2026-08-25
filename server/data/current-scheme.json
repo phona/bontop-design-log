@@ -1,0 +1,9 @@
+{
+  "updatedAt": "2026-07-15T03:24:12.249Z",
+  "selections": {
+    "hvac": {
+      "default": "A1",
+      "roomOverrides": {}
+    }
+  }
+}

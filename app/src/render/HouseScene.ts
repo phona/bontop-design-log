@@ -20,6 +20,8 @@ import type {
   VrfOutdoorUnit,
   ElectricalPoint,
   WallSide,
+  CurtainPresentationState,
+  CurtainState,
 } from '@shared/types';
 import { FURNITURE_DIMS } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
@@ -27,6 +29,7 @@ import { TopDownView } from '../scene/TopDownView.js';
 import { pickRoomIdFromHits } from '../scene/spawn-utils.js';
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { offsetCurtainPointsInterior } from './curtain-offset.js';
+import { gatheredCurtainSegments } from './curtain-track.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
@@ -62,6 +65,16 @@ type ArcDescriptor = {
   clockwise: boolean;
 };
 
+interface CurtainRegistryEntry {
+  id: string;
+  roomId?: string;
+  kind: 'sheer_blackout' | 'blinds';
+  state: CurtainState;
+  sheer?: { deployed: THREE.Mesh; gathered: THREE.Mesh[] };
+  blackout?: { deployed: THREE.Mesh; gathered: THREE.Mesh[] };
+  blinds?: { deployed: THREE.Mesh; gathered: THREE.Mesh };
+}
+
 interface ProjectData {
   house: {
     rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string; wallOpenings?: ResolvedOpening[] }>;
@@ -86,7 +99,8 @@ export class HouseScene implements SceneApi {
   private floorMeshes: THREE.Mesh[] = [];
   private wallMeshes: THREE.Mesh[] = [];
   private ceilingMeshes: THREE.Mesh[] = [];
-  private curtainMeshes: { sheer: THREE.Mesh[]; blackout: THREE.Mesh[]; blinds: THREE.Mesh[] } = { sheer: [], blackout: [], blinds: [] };
+  private curtainRegistry = new Map<string, CurtainRegistryEntry>();
+  private curtainPresentationState: CurtainPresentationState = { default: 'open', roomOverrides: {}, updatedAt: '' };
   private glassMeshes: THREE.Mesh[] = [];
   private furnitureMeshes: THREE.Group[] = [];
   private countertopMeshes: THREE.Mesh[] = [];
@@ -486,6 +500,7 @@ export class HouseScene implements SceneApi {
     this.floorMeshes = [];
     this.wallMeshes = [];
     this.ceilingMeshes = [];
+    this.curtainRegistry.clear();
     this.glassMeshes = [];
     this.furnitureMeshes = [];
     this.countertopMeshes = [];
@@ -615,6 +630,10 @@ export class HouseScene implements SceneApi {
   loadMepCoordination(config: MepCoordination, sources: import('@shared/mep-hvac-coordination-schema').MepEndpointSources): void {
     this.mepRenderer.render(config, sources);
     this.mepRenderer.setVisible(false);
+  }
+
+  getMepRenderReport(): import('./MepCoordinationRenderer.js').MepRenderReport {
+    return this.mepRenderer.getRenderReport();
   }
 
   setMepCoordinationVisible(visible: boolean): void {
@@ -867,6 +886,20 @@ export class HouseScene implements SceneApi {
           new THREE.MeshStandardMaterial({ color: 0x8a6f4d, roughness: 0.6 }));
         mesh.userData = { type: 'door', objectId: o.id };
       }
+      // 洞口上方过梁墙段：洞口只开到门高，门楣以上补回墙体（2026-08-25 修复门上方镂空）
+      const doorTop = (o.sill ?? 0) + o.height;
+      if (doorTop < height - 0.001) {
+        const lx1 = el.x1 + ux * (t - half);
+        const lz1 = el.z1 + uz * (t - half);
+        const lx2 = el.x1 + ux * (t + half);
+        const lz2 = el.z1 + uz * (t + half);
+        const lintel = this.renderBox(lx1, lz1, lx2, lz2, height - doorTop, WALL_THICKNESS, mat);
+        lintel.position.y = doorTop + (height - doorTop) / 2;
+        lintel.userData = { ...wallUserData };
+        lintel.castShadow = true;
+        lintel.receiveShadow = true;
+        this.wallMeshes.push(lintel);
+      }
       cursor = gapEnd;    }
     if (cursor < len - 0.001) {
       const sx1 = el.x1 + ux * cursor;
@@ -893,51 +926,65 @@ export class HouseScene implements SceneApi {
     const sill = o.sill ?? 0;
     const isElevator = o.id === 'd_elev';
     if (isElevator) {
-      const elevMat = new THREE.MeshStandardMaterial({ color: ELEVATOR_DOOR_COLOR, roughness: 0.3, metalness: 0.7 });
+      // 电梯厅门：中分双开门扇 + 中缝 + 深色大门套，区别于普通平开木门
+      const elevMat = new THREE.MeshStandardMaterial({ color: ELEVATOR_DOOR_COLOR, roughness: 0.25, metalness: 0.85 });
       const panelThick = 0.03;
-      const panel = new THREE.Mesh(
-        new THREE.BoxGeometry(o.width, doorHeight, panelThick),
-        elevMat,
-      );
+      const seamGap = 0.015;
+      const panelW = (o.width - seamGap) / 2;
       const cx = wallX1 + ux * t;
       const cz = wallZ1 + uz * t;
-      panel.position.set(cx, sill + doorHeight / 2, cz);
-      panel.rotation.y = Math.atan2(uz, ux);
-      panel.userData = { type: 'door', objectId: o.id, wallType: 'interior' };
-      panel.castShadow = true;
-      this.scene.add(panel);
-      this.wallMeshes.push(panel);
-      this.doorMeshes.push(panel);
-      const frameMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.5 });
-      const frameThick = 0.04;
-      const frameDepth = 0.12;
+      const rotY = Math.atan2(uz, ux);
+      for (const side of [-1, 1] as const) {
+        const pt = t + side * (panelW / 2 + seamGap / 2);
+        const panel = new THREE.Mesh(
+          new THREE.BoxGeometry(panelW, doorHeight, panelThick),
+          elevMat,
+        );
+        panel.position.set(wallX1 + ux * pt, sill + doorHeight / 2, wallZ1 + uz * pt);
+        panel.rotation.y = rotY;
+        panel.userData = { type: 'door', objectId: `${o.id}:panel:${side < 0 ? 'left' : 'right'}`, wallType: 'interior' };
+        panel.castShadow = true;
+        this.scene.add(panel);
+        this.wallMeshes.push(panel);
+        this.doorMeshes.push(panel);
+      }
+      // 中缝（深色细条，读出中分门）
+      const seam = new THREE.Mesh(
+        new THREE.BoxGeometry(seamGap, doorHeight, panelThick + 0.004),
+        new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 0.5, metalness: 0.4 }),
+      );
+      seam.position.set(cx, sill + doorHeight / 2, cz);
+      seam.rotation.y = rotY;
+      seam.userData = { type: 'door', objectId: `${o.id}:seam`, wallType: 'interior' };
+      this.scene.add(seam);
+      this.wallMeshes.push(seam);
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x333336, roughness: 0.35, metalness: 0.6 });
+      const jambW = 0.1;
+      const frameDepth = 0.16;
       const leftFrame = new THREE.Mesh(
-        new THREE.BoxGeometry(frameThick, doorHeight + frameThick * 2, frameDepth),
+        new THREE.BoxGeometry(jambW, doorHeight + jambW, frameDepth),
         frameMat,
       );
-      leftFrame.position.set(hx, sill + (doorHeight + frameThick * 2) / 2, hz);
-      leftFrame.rotation.y = Math.atan2(uz, ux);
+      leftFrame.position.set(wallX1 + ux * (t - half - jambW / 2), sill + (doorHeight + jambW) / 2, wallZ1 + uz * (t - half - jambW / 2));
+      leftFrame.rotation.y = rotY;
       leftFrame.userData = { type: 'door', objectId: `${o.id}:frame:left`, wallType: 'interior' };
       this.scene.add(leftFrame);
       this.wallMeshes.push(leftFrame);
       const rightFrame = new THREE.Mesh(
-        new THREE.BoxGeometry(frameThick, doorHeight + frameThick * 2, frameDepth),
+        new THREE.BoxGeometry(jambW, doorHeight + jambW, frameDepth),
         frameMat,
       );
-      const rightHingeT = t + half;
-      const rhx = wallX1 + ux * rightHingeT;
-      const rhz = wallZ1 + uz * rightHingeT;
-      rightFrame.position.set(rhx, sill + (doorHeight + frameThick * 2) / 2, rhz);
-      rightFrame.rotation.y = Math.atan2(uz, ux);
+      rightFrame.position.set(wallX1 + ux * (t + half + jambW / 2), sill + (doorHeight + jambW) / 2, wallZ1 + uz * (t + half + jambW / 2));
+      rightFrame.rotation.y = rotY;
       rightFrame.userData = { type: 'door', objectId: `${o.id}:frame:right`, wallType: 'interior' };
       this.scene.add(rightFrame);
       this.wallMeshes.push(rightFrame);
       const topFrame = new THREE.Mesh(
-        new THREE.BoxGeometry(o.width + frameThick * 2, frameThick, frameDepth),
+        new THREE.BoxGeometry(o.width + jambW * 2, jambW, frameDepth),
         frameMat,
       );
-      topFrame.position.set(cx, sill + doorHeight + frameThick, cz);
-      topFrame.rotation.y = Math.atan2(uz, ux);
+      topFrame.position.set(cx, sill + doorHeight + jambW / 2, cz);
+      topFrame.rotation.y = rotY;
       topFrame.userData = { type: 'door', objectId: `${o.id}:frame:top`, wallType: 'interior' };
       this.scene.add(topFrame);
       this.wallMeshes.push(topFrame);
@@ -1057,43 +1104,61 @@ export class HouseScene implements SceneApi {
     this.glassMeshes.push(mesh);
   }
 
-  // 窗帘：挂在玻璃幕内侧。sheer_blackout = 纱帘（半透）+ 遮光帘（可开合）；blinds = 防水百叶
+  // 窗帘：保留展开与收拢几何变体；open 完全收起并隐藏，其他状态切换 variant 可见性。
   private renderCurtain(el: Extract<SceneElement, { type: 'curtain' }>) {
     const kind = el.kind ?? 'sheer_blackout';
     const height = el.height - 0.1;
-    // 中心线向室内侧偏移 12cm：脱离玻璃幕 15cm 厚块，消除共面 z-fighting（Twinmotion 抽动）
     const pts = offsetCurtainPointsInterior(el.points, Object.values(this.rooms), 0.12);
-    const shape = this.buildCurtainShape(pts, false, 0.04, true);
-    const geo = () => {
-      const g = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false, steps: 1 });
-      return g;
-    };
-    const place = (m: THREE.Mesh) => {
-      m.rotation.x = -Math.PI / 2;
-      m.scale.set(1, -1, 1);
-      m.position.y = 0.05;
-      m.castShadow = false;
-      m.receiveShadow = false;
-      this.scene.add(m);
+    const gathered = gatheredCurtainSegments(pts);
+    const createMesh = (
+      points: CurtainPoint[],
+      material: THREE.Material,
+      layer: 'sheer' | 'blackout' | 'blinds',
+      variant: 'deployed' | 'gathered',
+      meshHeight = height,
+      y = 0.05,
+      thickness = variant === 'gathered' ? 0.12 : 0.04,
+    ) => {
+      const shape = this.buildCurtainShape(points, false, thickness, true);
+      const geometry = new THREE.ExtrudeGeometry(shape, { depth: meshHeight, bevelEnabled: false, steps: 1 });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.scale.set(1, -1, 1);
+      mesh.position.y = y;
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      mesh.userData = {
+        type: 'curtain',
+        objectId: `${el.id}:${layer}:${variant}`,
+        curtainId: el.id,
+        roomId: el.room,
+        layer,
+        variant,
+        state: 'open',
+      };
+      this.scene.add(mesh);
+      return mesh;
     };
 
+    const entry: CurtainRegistryEntry = { id: el.id, roomId: el.room, kind, state: 'open' };
     if (kind === 'sheer_blackout') {
-      const sheer = new THREE.Mesh(geo(), this.makeSheerMaterial());
-      sheer.userData = { type: 'curtain', objectId: `${el.id}:sheer`, roomId: el.room, layer: 'sheer' };
-      place(sheer);
-      this.curtainMeshes.sheer.push(sheer);
-
-      const blackout = new THREE.Mesh(geo(), this.makeBlackoutMaterial());
-      blackout.userData = { type: 'curtain', objectId: `${el.id}:blackout`, roomId: el.room, layer: 'blackout' };
-      blackout.visible = false; // 默认收拢（开启），toggleBlackout 展开
-      place(blackout);
-      this.curtainMeshes.blackout.push(blackout);
+      entry.sheer = {
+        deployed: createMesh(pts, this.makeSheerMaterial(), 'sheer', 'deployed'),
+        gathered: gathered.map((segment) => createMesh(segment, this.makeSheerMaterial(), 'sheer', 'gathered')),
+      };
+      entry.blackout = {
+        deployed: createMesh(pts, this.makeBlackoutMaterial(), 'blackout', 'deployed'),
+        gathered: gathered.map((segment) => createMesh(segment, this.makeBlackoutMaterial(), 'blackout', 'gathered')),
+      };
     } else {
-      const blind = new THREE.Mesh(geo(), this.makeBlindMaterial());
-      blind.userData = { type: 'curtain', objectId: `${el.id}:blinds`, roomId: el.room, layer: 'blinds' };
-      place(blind);
-      this.curtainMeshes.blinds.push(blind);
+      const gatheredHeight = Math.min(0.28, Math.max(0.16, height * 0.08));
+      entry.blinds = {
+        deployed: createMesh(pts, this.makeBlindMaterial(), 'blinds', 'deployed'),
+        gathered: createMesh(pts, this.makeBlindMaterial(), 'blinds', 'gathered', gatheredHeight, el.height - gatheredHeight),
+      };
     }
+    this.curtainRegistry.set(el.id, entry);
+    this.setCurtainState(el.id, this.effectiveCurtainState(el.room));
   }
 
   private makeSheerMaterial(): THREE.MeshStandardMaterial {
@@ -1116,19 +1181,61 @@ export class HouseScene implements SceneApi {
     });
   }
 
-  setBlackoutVisible(visible: boolean): void {
-    for (const m of this.curtainMeshes.blackout) m.visible = visible;
+  private effectiveCurtainState(roomId?: string): CurtainState {
+    return roomId ? (this.curtainPresentationState.roomOverrides[roomId] ?? this.curtainPresentationState.default) : this.curtainPresentationState.default;
   }
 
-  toggleBlackout(): void {
-    const next = this.curtainMeshes.blackout.length > 0 ? !this.curtainMeshes.blackout[0].visible : true;
-    this.setBlackoutVisible(next);
+  setCurtainState(curtainId: string, state: CurtainState): void {
+    const entry = this.curtainRegistry.get(curtainId);
+    if (!entry) return;
+    const normalized = entry.kind === 'blinds' && state === 'blackout' ? 'privacy' : state;
+    entry.state = normalized;
+    const setVariant = (mesh: THREE.Mesh, visible: boolean) => {
+      mesh.visible = visible;
+      mesh.userData.state = normalized;
+    };
+    if (entry.kind === 'sheer_blackout' && entry.sheer && entry.blackout) {
+      setVariant(entry.sheer.deployed, normalized !== 'open');
+      entry.sheer.gathered.forEach((mesh) => setVariant(mesh, false));
+      setVariant(entry.blackout.deployed, normalized === 'blackout');
+      entry.blackout.gathered.forEach((mesh) => setVariant(mesh, normalized === 'privacy'));
+    } else if (entry.blinds) {
+      setVariant(entry.blinds.deployed, normalized === 'privacy');
+      setVariant(entry.blinds.gathered, false);
+    }
+    this.requestRender();
+  }
+
+  setRoomCurtainState(roomId: string, state: CurtainState): void {
+    for (const entry of this.curtainRegistry.values()) {
+      if (entry.roomId === roomId) this.setCurtainState(entry.id, state);
+    }
+  }
+
+  setAllCurtainStates(state: CurtainState): void {
+    for (const entry of this.curtainRegistry.values()) this.setCurtainState(entry.id, state);
+  }
+
+  applyCurtainPresentationState(state: CurtainPresentationState): void {
+    this.curtainPresentationState = structuredClone(state);
+    for (const entry of this.curtainRegistry.values()) {
+      this.setCurtainState(entry.id, this.effectiveCurtainState(entry.roomId));
+    }
+  }
+
+  getCurtainState(curtainId: string): CurtainState | undefined {
+    return this.curtainRegistry.get(curtainId)?.state;
   }
 
   setCurtainMaterial(appearance: { color?: string; opacity?: number }): void {
     const color = appearance.color ? new THREE.Color(appearance.color) : undefined;
-    for (const m of [...this.curtainMeshes.sheer, ...this.curtainMeshes.blackout]) {
-      const mat = m.material as THREE.MeshStandardMaterial;
+    const meshes: THREE.Mesh[] = [];
+    for (const entry of this.curtainRegistry.values()) {
+      if (entry.sheer) meshes.push(entry.sheer.deployed, ...entry.sheer.gathered);
+      if (entry.blackout) meshes.push(entry.blackout.deployed, ...entry.blackout.gathered);
+    }
+    for (const mesh of meshes) {
+      const mat = mesh.material as THREE.MeshStandardMaterial;
       if (color) mat.color = color;
       if (appearance.opacity !== undefined) {
         mat.transparent = true;
@@ -1546,7 +1653,7 @@ export class HouseScene implements SceneApi {
         if (!model) continue;
         model.position.set(item.x, 0, item.z);
         model.rotation.y = THREE.MathUtils.degToRad(item.rotation ?? 0);
-        model.userData = { objectId: `furniture:${roomId}:${item.type}:${index}`, hoverable: false, type: 'furniture' };
+        model.userData = { objectId: `furniture:${roomId}:${item.type}:${index}`, hoverable: true, type: 'furniture', roomId };
         this.scene.add(model);
         model.traverse((object) => {
           if (object instanceof THREE.Mesh && object.userData.surface === 'countertop') this.countertopMeshes.push(object);
@@ -1602,7 +1709,7 @@ export class HouseScene implements SceneApi {
     model: THREE.Group,
     point: { x: number; z: number; wall?: string; wallSide?: WallSide },
     y: number,
-    dimensions?: { depth?: number },
+    dimensions?: { depth?: number; frontProjection?: number },
   ): void {
     const projected = this.projectInfrastructurePoint(point);
     if (!projected) {
@@ -1614,13 +1721,13 @@ export class HouseScene implements SceneApi {
     const fixtureHalfThickness = 0.01;
     const nx = Math.sin(projected.rotation);
     const nz = Math.cos(projected.rotation);
-    const offset = wallThickness / 2 + wallGap + fixtureHalfThickness;
+    const offset = wallThickness / 2 + wallGap + fixtureHalfThickness - (dimensions?.frontProjection ?? 0);
     model.position.set(projected.x + nx * offset, y, projected.z + nz * offset);
     model.rotation.y = projected.rotation;
   }
 
   placeInfrastructureFixtures(
-    electrical: Array<{ id: string; room: string; type: string; x: number; z: number; height: number; width?: number; depth?: number; wall?: string; wallSide?: WallSide; status?: string; position_status?: string }>,
+    electrical: Array<{ id: string; room: string; type: string; x: number; z: number; height?: number; mount_height?: number; body_height?: number; width?: number; depth?: number; wall?: string; wallSide?: WallSide; status?: string; position_status?: string }>,
     plumbing: Array<{ id: string; room: string; type: string; x: number; z: number; height?: number; wall?: string; wallSide?: WallSide }>,
   ): void {
     const infraMeshes: THREE.Group[] = [];
@@ -1640,9 +1747,11 @@ export class HouseScene implements SceneApi {
       drain: 'drain',
       washer: 'washer',
     };
-    const panelDimensions: Record<string, { width: number; depth: number; height: number }> = {
-      strong_panel: { width: 0.60, depth: 0.16, height: 1.00 },
-      weak_panel: { width: 0.45, depth: 0.14, height: 0.75 },
+    const panelDimensions: Record<string, { width: number; depth: number; height: number; frontProjection: number }> = {
+      // Recipe local z positions place the door slightly behind the nominal body front.
+      // Use the authored visible front projection so the developer-reserved door sits flush with the wall face.
+      strong_panel: { width: 0.60, depth: 0.16, height: 1.00, frontProjection: 0.08 },
+      weak_panel: { width: 0.45, depth: 0.14, height: 0.75, frontProjection: 0.13 },
     };
 
     for (const p of electrical) {
@@ -1651,14 +1760,21 @@ export class HouseScene implements SceneApi {
       const model = buildFixture(fixtureType);
       if (!model) continue;
       const dimensions = panelDimensions[p.type];
+      const panelHeight = dimensions ? (p.body_height ?? p.height ?? dimensions.height) : undefined;
+      const mountHeight = dimensions ? (p.mount_height ?? 0) : undefined;
       if (dimensions) {
         model.scale.set(
           (p.width ?? dimensions.width) / dimensions.width,
-          p.height / dimensions.height,
+          panelHeight! / dimensions.height,
           (p.depth ?? dimensions.depth) / dimensions.depth,
         );
       }
-      this.placeInfrastructureModel(model, p, p.type === 'floor_socket' ? 0.05 : p.height);
+      this.placeInfrastructureModel(
+        model,
+        p,
+        dimensions ? mountHeight! + panelHeight! / 2 : p.type === 'floor_socket' ? 0.05 : p.height!,
+        dimensions ? { frontProjection: dimensions.frontProjection } : undefined,
+      );
       model.userData = {
         objectId: 'electrical:' + p.id,
         hoverable: true,
@@ -1669,7 +1785,11 @@ export class HouseScene implements SceneApi {
         label: p.type === 'strong_panel' ? '强电箱' : p.type === 'weak_panel' ? '弱电箱' : undefined,
         status: p.status,
         position_status: p.position_status,
-        dimensions: dimensions ? { width: p.width ?? dimensions.width, depth: p.depth ?? dimensions.depth, height: p.height } : undefined,
+        mount_height: dimensions ? mountHeight : undefined,
+        body_height: dimensions ? panelHeight : undefined,
+        recessed: dimensions ? true : undefined,
+        developer_reserved: dimensions ? true : undefined,
+        dimensions: dimensions ? { width: p.width ?? dimensions.width, depth: p.depth ?? dimensions.depth, height: panelHeight } : undefined,
       };
       this.scene.add(model);
       infraMeshes.push(model);
@@ -2045,6 +2165,11 @@ export class HouseScene implements SceneApi {
       }
     }
 
+    if (type === 'furniture' && objectId.startsWith('furniture:')) {
+      const parts = objectId.split(':');
+      const furnitureType = parts[2] ?? '';
+      return roomName ? `${roomName} · 家具 · ${furnitureType}` : `家具 · ${furnitureType}`;
+    }
     const label = typeLabel[type] ?? type;
     if (roomName) return `${roomName}${label}`;
     return objectId;
@@ -2066,7 +2191,7 @@ export class HouseScene implements SceneApi {
         const type = (data.type as string) ?? (data.part as string) ?? 'room';
         const room = data.roomId as string | undefined;
         const name = this.objectDisplayName(id, type, room, data.fixtureType as string | undefined, data.wallSide as WallSide | undefined);
-        return { objectId: id, name, type, room };
+        return { objectId: id, name, type, room, curtainId: data.curtainId as string | undefined, curtainKind: data.curtainId ? this.curtainRegistry.get(data.curtainId as string)?.kind : undefined, layer: data.layer as HoverTarget['layer'] };
       }
     }
     return null;
@@ -2126,7 +2251,7 @@ export class HouseScene implements SceneApi {
         const type = (data.type as string) ?? (data.part as string) ?? 'room';
         const room = data.roomId as string | undefined;
         const name = this.objectDisplayName(id, type, room, data.fixtureType as string | undefined, data.wallSide as WallSide | undefined);
-        this.onClickCallback?.({ objectId: id, name, type, room });
+        this.onClickCallback?.({ objectId: id, name, type, room, curtainId: data.curtainId as string | undefined, curtainKind: data.curtainId ? this.curtainRegistry.get(data.curtainId as string)?.kind : undefined, layer: data.layer as HoverTarget['layer'] });
         return;
       }
     }

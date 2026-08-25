@@ -14,6 +14,7 @@ import type { BudgetValueAnalyzer } from './budget-value-analyzer.js';
 import type { CurrentScheme, BudgetCategory } from '../shared/types.js';
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import type { OverlayConfig } from './overlay-merge.js';
+import type { PresentationStateStore } from './presentation-state.js';
 import { computeSunlightAnalysis, computeHumidityAnalysis, humidityAdvisories } from './analysis-service.js';
 import { parseSpecDimensions } from './spec-parser.js';
 
@@ -46,6 +47,7 @@ export interface McpDeps {
   getBudgetAdvisor: () => BudgetAdvisor;
   getBudgetValueAnalyzer: () => BudgetValueAnalyzer;
   archiveStore: ArchivedSchemesStore;
+  presentationState?: PresentationStateStore;
   getEnvironment?: () => EnvironmentConfig | undefined;
   getOverlay?: () => OverlayConfig | undefined;
 }
@@ -281,6 +283,36 @@ export function createMcpServer(deps: McpDeps): McpServer {
     async (args) => {
       const cmd = state.appendVisualCommand('highlight_object', { objectId: args.objectId });
       return text({ commandId: cmd.commandId });
+    }
+  );
+
+  server.registerTool(
+    'set_curtain_state',
+    {
+      title: 'Set curtain state',
+      description: 'Persist an absolute curtain state for one room or the whole house, then notify the App.',
+      inputSchema: z.object({
+        roomId: z.string().optional(),
+        state: z.enum(['open', 'privacy', 'blackout']),
+      }),
+    },
+    async (args) => {
+      if (!deps.presentationState) return text({ error: 'presentation state is not configured' });
+      const result = deps.presentationState.setCurtainState(args);
+      const cmd = state.appendVisualCommand('set_curtain_state', args);
+      return text({ updated: result.updated, state: result.state, commandId: cmd.commandId });
+    }
+  );
+
+  server.registerTool(
+    'get_curtain_states',
+    {
+      title: 'Get curtain states',
+      description: 'Return the persisted default and effective state for every curtain room.',
+    },
+    async () => {
+      if (!deps.presentationState) return text({ error: 'presentation state is not configured' });
+      return text({ presentationState: deps.presentationState.get(), effectiveStates: deps.presentationState.getEffectiveStates() });
     }
   );
 
