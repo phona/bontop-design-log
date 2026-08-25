@@ -214,21 +214,23 @@
 - id: sock_study_desk
   room: bedroom_se
   wall: w_be_west
+  wall_side: east
   type: socket
   x: 13.40
-  z: 6.7
+  z: 9.00
   height: 0.3
   count: 3
-  note: "书房桌面: 电脑+显示器+手机（避开西侧门洞d_bese，移至z=6.70实体墙）"
+  note: "书房桌面: 电脑+显示器+手机（2026-08-25 书桌长边贴西墙、南端近幕墙，点位在桌北段西侧，距桌缘 <0.5m）"
 
 - id: net_study
   room: bedroom_se
   wall: w_be_west
+  wall_side: east
   type: network
   x: 13.40
-  z: 6.7
+  z: 9.00
   height: 0.3
-  note: "书房网口（避开西侧门洞d_bese，移至z=6.70实体墙）"
+  note: "书房网口（随书桌定西墙 z=9.00，同插座）"
 
 - id: sock_study_extra
   room: bedroom_se
