@@ -56,4 +56,20 @@ describe('wall point placement consistency', () => {
     const issues = checkWallPointPlacements([wall], [{ id: 'edge', wall: 'w_test', x: 3.9, z: 0 }], new Set());
     assert.equal(issues.some(issue => issue.level === 'warning' && issue.opening === 'd_test' && issue.distance !== undefined && issue.distance < 0.15), true);
   });
+
+  it('errors when the default render side faces away from the owning room', () => {
+    // 竖墙 from (0,0) 到 (0,10)：left 朝西；房间质心在西侧时默认朝西 = 正确，质心在东侧 = 渲染面与房间异侧
+    const vertical = { ...wall, x1: 0, z1: 0, x2: 0, z2: 10, openings: [] };
+    const centroids = new Map([
+      ['room_west', { x: -2, z: 5 }],
+      ['room_east', { x: 2, z: 5 }],
+    ]);
+    const ok = checkWallPointPlacements([vertical], [{ id: 'p1', room: 'room_west', wall: 'w_test', x: 0, z: 5 }], new Set(), 0.15, centroids);
+    assert.equal(ok.some(i => i.level === 'error' && i.message.includes('异侧')), false);
+    const bad = checkWallPointPlacements([vertical], [{ id: 'p2', room: 'room_east', wall: 'w_test', x: 0, z: 5 }], new Set(), 0.15, centroids);
+    assert.equal(bad.some(i => i.level === 'error' && i.message.includes('异侧')), true);
+    // 显式 wall_side 朝东后不再报错
+    const fixed = checkWallPointPlacements([vertical], [{ id: 'p3', room: 'room_east', wall: 'w_test', wall_side: 'east', x: 0, z: 5 }], new Set(), 0.15, centroids);
+    assert.equal(fixed.some(i => i.level === 'error' && i.message.includes('异侧')), false);
+  });
 });

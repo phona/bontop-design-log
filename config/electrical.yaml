@@ -1,6 +1,7 @@
 - id: sock_living_tv
   room: living_dining
   wall: w_st_east
+  wall_side: east
   type: socket
   x: 7.20
   z: 7.7
@@ -11,6 +12,7 @@
 - id: net_living
   room: living_dining
   wall: w_st_east
+  wall_side: east
   type: network
   x: 7.20
   z: 7.7
@@ -156,6 +158,7 @@
 - id: sock_parent_bed_l
   room: study
   wall: w_mb_east
+  wall_side: east
   type: socket
   x: 4.20
   z: 6.60
@@ -166,6 +169,7 @@
 - id: sock_parent_bed_r
   room: study
   wall: w_mb_east
+  wall_side: east
   type: socket
   x: 4.20
   z: 8.90
@@ -176,6 +180,7 @@
 - id: switch_parent_bed
   room: study
   wall: w_mb_east
+  wall_side: east
   type: switch_2way
   x: 4.20
   z: 6.40
@@ -194,6 +199,7 @@
 - id: sock_parent_desk
   room: study
   wall: w_mb_east
+  wall_side: east
   type: socket
   x: 4.20
   z: 9.0
@@ -204,6 +210,7 @@
 - id: net_parent
   room: study
   wall: w_mb_east
+  wall_side: east
   type: network
   x: 4.20
   z: 9.0
@@ -245,6 +252,7 @@
 - id: switch_study
   room: bedroom_se
   wall: w_be_west
+  wall_side: east
   type: switch
   x: 13.40
   z: 7.0
@@ -282,6 +290,7 @@
 - id: switch_child
   room: bedroom_nw
   wall: w_nw_south
+  wall_side: north
   type: switch
   x: 4.35
   z: 4.30
@@ -403,6 +412,7 @@
 - id: sock_gbath_vanity
   room: guest_bath
   wall: w_gbath_west
+  wall_side: east
   type: socket
   x: 5.60
   z: 3.80
@@ -413,6 +423,7 @@
 - id: switch_gbath
   room: guest_bath
   wall: w_gbath_south
+  wall_side: north
   type: switch
   x: 5.80
   z: 4.30
@@ -432,6 +443,7 @@
 - id: sock_balcony_washer
   room: balcony
   wall: w_balc_west
+  wall_side: east
   type: socket
   x: 5.60
   z: 1.5
@@ -442,6 +454,7 @@
 - id: sock_balcony_dryer
   room: balcony
   wall: w_balc_west
+  wall_side: east
   type: socket
   x: 5.60
   z: 1.8
@@ -561,6 +574,7 @@
 - id: sock_study_curtain
   room: bedroom_se
   wall: w_be_west
+  wall_side: east
   type: socket
   x: 13.40
   z: 9.50
@@ -592,6 +606,7 @@
 - id: sock_gbath_toilet
   room: guest_bath
   wall: w_gbath_west
+  wall_side: east
   type: socket
   x: 5.60
   z: 2.30
@@ -613,6 +628,7 @@
 - id: sock_gateway
   room: living_dining
   wall: w_st_east
+  wall_side: east
   type: socket
   x: 7.20
   z: 5.70
@@ -626,6 +642,7 @@
 - id: sock_living_tv_led
   room: living_dining
   wall: w_st_east
+  wall_side: east
   type: socket
   x: 7.20
   z: 7.7
@@ -764,6 +781,7 @@
 - id: sock_gbath_towel
   room: guest_bath
   wall: w_gbath_west
+  wall_side: east
   type: socket
   x: 5.60
   z: 2.8

@@ -19,6 +19,7 @@ export type PlacementOpening = {
 
 export type PlacementItem = {
   id: string;
+  room?: string;
   wall?: string;
   wall_side?: 'north' | 'south' | 'east' | 'west';
   x?: number;
@@ -60,6 +61,7 @@ export function checkWallPointPlacements(
   items: PlacementItem[],
   suppressedWalls: Set<string>,
   tolerance = 0.15,
+  roomCentroids?: Map<string, Point>,
 ): PlacementIssue[] {
   const wallMap = new Map(walls.map(w => [w.id, w]));
   const issues: PlacementIssue[] = [];
@@ -117,6 +119,29 @@ export function checkWallPointPlacements(
       issues.push({ level: 'warning', id: item.id, wall: item.wall, distance: Math.abs(sideOffset), message: '斜墙无法唯一映射 wall_side，跳过侧别误报' });
     } else if (Math.abs(sideOffset) <= EPS) {
       issues.push({ level: 'warning', id: item.id, wall: item.wall, distance: Math.abs(sideOffset), message: '缺少墙面侧别' });
+    }
+
+    // 渲染面 vs 房间实际面：复刻 HouseScene.projectInfrastructurePoint 的侧别逻辑，
+    // 渲染法线朝向与所属房间质心异侧即报错（坐标压墙线 + 缺 wall_side 时会渲到背面）。
+    const roomCentroid = item.room ? roomCentroids?.get(item.room) : undefined;
+    if (roomCentroid && axis) {
+      const left = { x: -dz / len, z: dx / len };
+      let normalSign: number;
+      if (item.wall_side) {
+        const expected = SIDE_VECTORS[item.wall_side as keyof typeof SIDE_VECTORS];
+        normalSign = Math.sign(expected.x * left.x + expected.z * left.z) || 1;
+      } else {
+        normalSign = sideOffset < -EPS ? -1 : 1;
+      }
+      const roomSign = Math.sign((roomCentroid.x - projection.x) * left.x + (roomCentroid.z - projection.z) * left.z);
+      if (roomSign !== 0 && normalSign !== roomSign) {
+        issues.push({
+          level: 'error',
+          id: item.id,
+          wall: item.wall,
+          message: `渲染面与所属房间 ${item.room} 异侧（应朝房间一侧，请检查/补声明 wall_side）`,
+        });
+      }
     }
 
     const along = t * len;

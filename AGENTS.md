@@ -56,6 +56,7 @@
   ```bash
   npm run verify:all
   ```
+- 挂墙点位（electrical/plumbing）坐标压在墙线上时必须显式声明 `wall_side`，否则渲染默认取墙段左侧，可能渲到房间背面。`verify-data-consistency` 的点位专项会以 error 拦截"渲染面与所属房间异侧"（检查逻辑在 `scripts/verify-point-placement.ts`，与 `HouseScene.projectInfrastructurePoint` 同口径）。
 
 ## 碰撞/相机修改铁律
 

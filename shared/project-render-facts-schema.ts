@@ -93,6 +93,11 @@ export const ProjectHvacFactsSchema = z.object({ plans: z.array(z.object({ id: n
 
 export const ElectricalPointsSchema = z.array(ElectricalPointSchema);
 export const PlumbingPointsSchema = z.array(PlumbingPointSchema);
+// 投影内的 plumbing 来自 parsePlumbingPoints（wall_side 已映射为 wallSide），与 shared/types.ts 的 PlumbingPoint 对齐
+export const PlumbingPointProjectionSchema = z.object({
+  id: z.string(), room: z.string(), type: PlumbingPointSchema.shape.type,
+  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), note: z.string().optional(), height: finiteNumber.optional(), wallSide: WallSideSchema.optional(),
+}).strict();
 export const CeilingZonesSchema = z.array(CeilingZoneSchema);
 export const ProjectRenderFactsSchema = z.object({ electrical: ElectricalPointsSchema, plumbing: PlumbingPointsSchema, ceiling: CeilingZonesSchema, hvac: ProjectHvacFactsSchema }).strict();
 export const RenderLightingOverrideSchema = z.object({ id: z.string(), anchorY: finiteNumber, offsetX: finiteNumber.optional(), offsetZ: finiteNumber.optional(), reason: nonEmpty, applies_to: z.tuple([z.literal('web'), z.literal('blender')]) }).strict();
@@ -120,7 +125,7 @@ const HvacProjectionSchema = z.discriminatedUnion('status', [
 ]);
 export const ProjectRenderFactsProjectionSchema = z.object({
   version: z.string(), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean() }).strict()),
-  plumbing: PlumbingPointsSchema, ceiling: CeilingZonesSchema, hvac: HvacProjectionSchema,
+  plumbing: z.array(PlumbingPointProjectionSchema), ceiling: CeilingZonesSchema, hvac: HvacProjectionSchema,
   materials: z.object({ floor: z.object({ default: z.string().nullable(), roomOverrides: z.record(z.string(), z.string()) }).strict() }).strict(),
   presentation: z.object({ curtains: CurtainRenderProjectionSchema }).strict(),
 }).strict();

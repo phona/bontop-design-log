@@ -105,7 +105,10 @@ for (const entry of (load('config/layout/overlay.yaml')?.suppress ?? []) as any[
   for (const wall of entry.walls ?? []) if (typeof wall === 'string') suppressedWalls.add(wall);
 }
 const placementItems = [...elec, ...plumb] as PlacementItem[];
-const placementIssues = checkWallPointPlacements(placementWalls, placementItems, suppressedWalls);
+const roomCentroids = new Map<string, Pt>(
+  [...modelRooms.entries()].map(([id, m]) => [id, { x: m.cx, z: m.cz }]),
+);
+const placementIssues = checkWallPointPlacements(placementWalls, placementItems, suppressedWalls, 0.15, roomCentroids);
 for (const issue of placementIssues) {
   if (issue.level === 'error') fail(`点位专项 ${formatPlacementIssue(issue)}`);
   else warn(`点位专项 ${formatPlacementIssue(issue)}`);

@@ -43,6 +43,7 @@
 - id: faucet_gbath_vanity
   room: guest_bath
   wall: w_gbath_west
+  wall_side: east
   type: faucet
   x: 5.60
   z: 3.5
@@ -52,6 +53,7 @@
 - id: shower_gbath
   room: guest_bath
   wall: w_gbath_west
+  wall_side: east
   type: shower
   x: 5.60
   z: 3.0
@@ -61,6 +63,7 @@
 - id: toilet_gbath
   room: guest_bath
   wall: w_gbath_west
+  wall_side: east
   type: toilet
   x: 5.60
   z: 2.5
@@ -109,6 +112,7 @@
 - id: faucet_balcony_washer
   room: balcony
   wall: w_balc_west
+  wall_side: east
   type: faucet
   x: 5.60
   z: 1.5
