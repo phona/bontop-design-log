@@ -1,0 +1,78 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { load as parseYaml } from 'js-yaml';
+import {
+  MepCoordinationSchema,
+  parseMepCoordination,
+  validateMepCoordination,
+  type MepEndpointSources,
+} from '../../shared/mep-hvac-coordination-schema.js';
+import type { ElectricalPoint, PlumbingPoint } from '../../shared/types.js';
+
+const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
+const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as PlumbingPoint[];
+const config = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
+const sources: MepEndpointSources = { electrical, plumbing, hvacAnchors: [], hvacTerminals: [], outdoor: [] };
+
+function sourceIds(): MepEndpointSources {
+  return {
+    ...sources,
+    hvacAnchors: ['outdoor_a2', 'indoor_living', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child', 'bend_corridor'].map((id) => ({ id, status: 'inferred', system: 'refrigerant' as const })),
+    hvacTerminals: ['supply_living', 'return_living', 'supply_master', 'return_master', 'condensate_living_candidate', 'net_unused'].map((id) => ({ id, status: 'pending', system: id.startsWith('supply') ? 'supply_air' as const : id.startsWith('return') ? 'return_air' as const : 'condensate' as const, position: { x: 0, y: 0, z: 0 } })),
+    outdoor: [{ id: 'outdoor_a2', platform: 'west_platform', x: 6.4, z: 0.5, direction: 'south', width: 0.9, depth: 0.335, height: 0.7, model: 'test' }],
+  };
+}
+
+test('MEP proposal parses with evidence and pending construction metadata', () => {
+  assert.ok(config.routes.length >= 20);
+  assert.ok(config.routes.every((route) => route.source_status));
+  assert.ok(config.routes.every((route) => route.construction_status === 'pending'));
+  assert.ok(config.routes.some((route) => route.source_status === 'plan_supported' && route.layer === 'drainage'));
+  assert.ok(config.routes.some((route) => route.source_status === 'design_requirement' && route.layer === 'water_supply'));
+  validateMepCoordination(config, sourceIds());
+});
+
+test('legacy routes receive preliminary and pending defaults', () => {
+  const legacy = MepCoordinationSchema.parse({
+    version: '1', status: 'preliminary', layers: {
+      strong_power: { label: '强电', color: '#f00', height: 2 },
+      weak_power: { label: '弱电', color: '#f0f', height: 2 },
+      water_supply: { label: '给水', color: '#0af', height: 0.2 },
+      drainage: { label: '排水', color: '#0a0', height: 0.1 },
+      refrigerant: { label: '冷媒', color: '#f70', height: 2.5 },
+      condensate: { label: '冷凝水', color: '#0cc', height: 2.3 },
+      supply_air: { label: '送风', color: '#fc0', height: 2.6 },
+      return_air: { label: '回风', color: '#a60', height: 2.7 },
+    },
+    routes: [{ id: 'legacy', layer: 'strong_power', status: 'inferred', from: { x: 0, z: 0 }, to: { x: 1, z: 1 } }],
+  });
+  assert.equal(legacy.routes[0].source_status, 'preliminary');
+  assert.equal(legacy.routes[0].construction_status, 'pending');
+});
+
+test('MEP semantic validation rejects dangling, duplicate, invalid dimensions, and confirmed plumbing', () => {
+  const dangling = structuredClone(config);
+  dangling.routes[0].to = 'missing_endpoint';
+  assert.throws(() => validateMepCoordination(dangling, sourceIds()), /unknown endpoint/);
+
+  const duplicate = structuredClone(config);
+  duplicate.routes[1].id = duplicate.routes[0].id;
+  assert.throws(() => validateMepCoordination(duplicate, sourceIds()), /Duplicate MEP route id/);
+
+  const invalidDimension = structuredClone(config);
+  invalidDimension.routes[0].diameter = 0;
+  assert.throws(() => validateMepCoordination(invalidDimension, sourceIds()), /must be positive/);
+
+  const confirmedPlumbing = structuredClone(config);
+  const plumbingRoute = confirmedPlumbing.routes.find((route) => route.layer === 'drainage')!;
+  plumbingRoute.construction_status = 'confirmed';
+  assert.throws(() => validateMepCoordination(confirmedPlumbing, sourceIds()), /must remain construction_status: pending/);
+});
+
+test('design requirement plumbing routes cannot reference authoritative plumbing points', () => {
+  const invalid = structuredClone(config);
+  const route = invalid.routes.find((item) => item.source_status === 'design_requirement' && item.layer === 'water_supply')!;
+  route.from = 'faucet_kitchen_sink';
+  assert.throws(() => validateMepCoordination(invalid, sourceIds()), /must not imply an authoritative plumbing endpoint/);
+});

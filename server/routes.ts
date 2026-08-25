@@ -5,7 +5,8 @@ import type { RuleEngine } from './rule-engine.js';
 import type { BudgetCalculator } from './budget-calculator.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { ConfigRegistry } from './config-loader.js';
-import { loadElectricalConfig, loadPlumbingConfig, loadCeilingConfig } from './config-loader.js';
+import { loadElectricalConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
+import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
 import { mergeSceneElements } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import type { CurrentScheme, ProjectRenderFacts, ProjectRenderFactsProjection } from '../shared/types.js';
@@ -48,6 +49,17 @@ export function createApiRouter(deps: ApiDeps): Router {
       return;
     }
     res.json(projection);
+  });
+
+  router.get('/mep-coordination', (_req, res) => {
+    try {
+      const config = loadMepCoordinationConfig();
+      const facts = deps.getProjectRenderFacts?.();
+      if (facts) validateMepCoordination(config, endpointSourcesFromFacts(facts));
+      res.json(config);
+    } catch (err) {
+      res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
   });
 
   router.get('/annotations/electrical', (_req, res) => {

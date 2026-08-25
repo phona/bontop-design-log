@@ -32,6 +32,7 @@ import { isInHuinanWindow } from '@shared/humidity-model';
 import { exportSceneToGlb } from './render/export-gltf.js';
 import './ui/keybindings.js';
 import type { CurrentScheme, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch } from '@shared/types';
+import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
 
 const ORBIT_DISTANCE = 15;
 
@@ -49,6 +50,8 @@ export class App {
   private hvacCoordinationButton: HvacCoordinationButton | null = null;
   private hvacCoordinationState: HvacCoordinationButtonState = 'loading';
   private hvacCoordinationVisible = false;
+  private mepCoordinationVisible = false;
+  private mepCoordinationReady = false;
   private collision: CollisionDetector;
   private fpController: FirstPersonController;
   private projectData: any = null;
@@ -130,6 +133,7 @@ export class App {
     this.setupExportButton();
     this.setupTopDownButton();
     this.setupHvacCoordinationButton();
+    this.setupMepCoordinationButton();
     this.setupDragHandlers();
     this.setupEventHandlers();
     this.setupKeyboard();
@@ -356,6 +360,53 @@ export class App {
       this.houseScene.setHvacCoordinationVisible(false);
     }
     this.hvacCoordinationButton?.sync();
+  }
+
+  private setupMepCoordinationButton(): void {
+    const button = document.getElementById('mep-coordination-btn') as HTMLButtonElement | null;
+    if (!button) return;
+    button.addEventListener('click', () => {
+      this.mepCoordinationVisible = this.mepCoordinationReady && !this.mepCoordinationVisible;
+      this.houseScene.setMepCoordinationVisible(this.mepCoordinationVisible);
+      const controls = document.getElementById('mep-coordination-controls');
+      if (controls) controls.hidden = !this.mepCoordinationVisible;
+      button.classList.toggle('active', this.mepCoordinationVisible);
+      button.textContent = this.mepCoordinationVisible ? 'MEP · 路线' : 'MEP 协调';
+      this.requestRender();
+    });
+    document.getElementById('mep-bends-toggle')?.addEventListener('change', (event) => {
+      this.houseScene.setMepBendsVisible((event.target as HTMLInputElement).checked);
+    });
+  }
+
+  private setupMepLayerControls(config: MepCoordination): void {
+    const container = document.getElementById('mep-layer-toggles');
+    if (!container) return;
+    container.replaceChildren();
+    for (const [layer, definition] of Object.entries(config.layers)) {
+      const label = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = true;
+      input.addEventListener('change', () => this.houseScene.setMepLayerVisible(layer as MepCoordination['routes'][number]['layer'], input.checked));
+      label.append(input, ` ${definition.label}`);
+      container.append(label);
+    }
+  }
+
+  private setMepCoordinationState(ready: boolean): void {
+    this.mepCoordinationReady = ready;
+    const button = document.getElementById('mep-coordination-btn') as HTMLButtonElement | null;
+    const controls = document.getElementById('mep-coordination-controls');
+    if (!button) return;
+    if (!ready) {
+      this.mepCoordinationVisible = false;
+      this.houseScene.setMepCoordinationVisible(false);
+      if (controls) controls.hidden = true;
+    }
+    button.disabled = !ready;
+    button.textContent = ready ? 'MEP 协调' : 'MEP 未就绪';
+    button.classList.toggle('active', this.mepCoordinationVisible);
   }
 
   private setupExportButton(): void {
@@ -986,6 +1037,26 @@ export class App {
         this.renderFacts = factsResponse.ok ? await factsResponse.json() as ProjectRenderFacts : undefined;
         const outdoor = this.renderFacts?.hvac?.plans.map((plan) => plan.outdoor) ?? [];
         this.houseScene.loadHvacProjection(projection, outdoor, this.annotationRenderer.getElectricalData());
+        try {
+          const mepResponse = await fetch('/api/mep-coordination');
+          if (mepResponse.ok && this.renderFacts?.hvac?.plans) {
+            const mep = await mepResponse.json() as MepCoordination;
+            const plan = this.renderFacts.hvac.plans[0];
+            this.houseScene.loadMepCoordination(mep, {
+              electrical: this.renderFacts.electrical,
+              plumbing: this.renderFacts.plumbing,
+              hvacAnchors: plan?.diagram.anchors ?? [],
+              hvacTerminals: plan?.diagram.terminals ?? [],
+              outdoor: plan ? [plan.outdoor] : [],
+            });
+            this.setupMepLayerControls(mep);
+            this.setMepCoordinationState(true);
+          } else {
+            this.setMepCoordinationState(false);
+          }
+        } catch {
+          this.setMepCoordinationState(false);
+        }
 
         const hvac = this.houseScene.getHvacExportStatus();
         if (projection.hvac.status === 'implemented' && hvac.ready) {
@@ -1000,6 +1071,8 @@ export class App {
         }
       } catch (error) {
         this.houseScene.clearHvacProjection();
+        this.houseScene.setMepCoordinationVisible(false);
+        this.setMepCoordinationState(false);
         this.interiorLighting = null;
         this.setHvacCoordinationState('unimplemented');
         console.warn('render facts projection is not ready; interior lights were not created', error);

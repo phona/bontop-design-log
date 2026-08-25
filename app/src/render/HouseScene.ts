@@ -19,6 +19,7 @@ import type {
   ProjectRenderFactsProjection,
   VrfOutdoorUnit,
   ElectricalPoint,
+  WallSide,
 } from '@shared/types';
 import { FURNITURE_DIMS } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
@@ -26,6 +27,7 @@ import { TopDownView } from '../scene/TopDownView.js';
 import { pickRoomIdFromHits } from '../scene/spawn-utils.js';
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { offsetCurtainPointsInterior } from './curtain-offset.js';
+import { baySillVerticalRange, buildExteriorRibbon, offsetRunExterior } from './exterior-ribbon.js';
 import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
@@ -34,6 +36,8 @@ import { buildBathSideCabinetRun, buildFixture, buildKitchenCabinetRun } from '.
 import { EnvironmentManager } from './EnvironmentManager.js';
 import { buildCeilingZone, type CeilingZoneSpec } from './CeilingZoneBuilder.js';
 import { HvacDiagramRenderer } from './HvacDiagramRenderer.js';
+import { MepCoordinationRenderer } from './MepCoordinationRenderer.js';
+import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
 import { checkHvacExportSet, collectExportSet } from './export-gltf.js';
 
 const DEFAULT_PAINT = '#f7f5ef';
@@ -109,7 +113,9 @@ export class HouseScene implements SceneApi {
   private readonly ORBIT_POSITION = new THREE.Vector3(7.4, 14, 19.2);
   private readonly ORBIT_TARGET = new THREE.Vector3(7.4, 0, 3.65);
   private hvacRenderer: HvacDiagramRenderer;
+  private mepRenderer: MepCoordinationRenderer;
   private hvacExpectedExportIds: string[] = [];
+  private wallSegmentIndex = new Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>();
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -151,6 +157,7 @@ export class HouseScene implements SceneApi {
 
     this.envManager = new EnvironmentManager(this.scene, this.renderer);
     this.hvacRenderer = new HvacDiagramRenderer(this.scene);
+    this.mepRenderer = new MepCoordinationRenderer(this.scene);
     this.setupLights();
     this.buildBase();
     this.scene.add(this.topicGroup);
@@ -485,6 +492,7 @@ export class HouseScene implements SceneApi {
     this.countertopMeshes = [];
     this.electricalMeshes = [];
     this.doorMeshes = [];
+    this.wallSegmentIndex.clear();
     this.roomMeta.clear();
 
     this.setupLights();
@@ -570,7 +578,9 @@ export class HouseScene implements SceneApi {
       ...diagram.anchors
         .filter((anchor) => anchor.status === 'confirmed' && anchor.ref?.source !== 'electrical')
         .map((anchor) => `hvac:${planId}:anchor:${anchor.id}`),
-      ...diagram.terminals.map((terminal) => `hvac:${planId}:terminal:${terminal.id}`),
+      ...diagram.terminals
+        .filter((terminal) => terminal.kind !== 'condensate_drain_candidate')
+        .map((terminal) => `hvac:${planId}:terminal:${terminal.id}`),
     ];
     this.hvacRenderer.render(planId, diagram, {
       ceiling: projection.ceiling,
@@ -600,6 +610,26 @@ export class HouseScene implements SceneApi {
 
   setHvacCoordinationVisible(visible: boolean): void {
     this.hvacRenderer.setCoordinationVisible(visible);
+    this.requestRender();
+  }
+
+  loadMepCoordination(config: MepCoordination, sources: import('@shared/mep-hvac-coordination-schema').MepEndpointSources): void {
+    this.mepRenderer.render(config, sources);
+    this.mepRenderer.setVisible(false);
+  }
+
+  setMepCoordinationVisible(visible: boolean): void {
+    this.mepRenderer.setVisible(visible);
+    this.requestRender();
+  }
+
+  setMepLayerVisible(layer: import('@shared/mep-hvac-coordination-schema').MepRoute['layer'], visible: boolean): void {
+    this.mepRenderer.setLayerVisible(layer, visible);
+    this.requestRender();
+  }
+
+  setMepBendsVisible(visible: boolean): void {
+    this.mepRenderer.setBendsVisible(visible);
     this.requestRender();
   }
 
@@ -772,6 +802,8 @@ export class HouseScene implements SceneApi {
   }
 
   private renderWallSegment(el: Extract<SceneElement, { type: 'wall' }>, height: number) {
+    const segments = el.segments?.length ? el.segments : [{ x1: el.x1, z1: el.z1, x2: el.x2, z2: el.z2 }];
+    this.wallSegmentIndex.set(el.id, segments);
     const isShaftWall = el.id.includes('elev') || el.id.includes('foyer_outer_east') || el.id.includes('foyer_north_east');
     const wallType = isShaftWall ? 'structure' : 'interior';
     const mat = new THREE.MeshStandardMaterial({ color: isShaftWall ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 });
@@ -1009,7 +1041,10 @@ export class HouseScene implements SceneApi {
   }
 
   private renderCurtainRun(el: Extract<SceneElement, { type: 'curtain_run' }>) {
-    const shape = this.buildCurtainShape(el.points, el.closed ?? false);
+    const points = el.exteriorOffset
+      ? offsetRunExterior(el.points, Object.values(this.rooms), el.exteriorOffset)
+      : el.points;
+    const shape = this.buildCurtainShape(points, el.closed ?? false);
     const geometry = new THREE.ExtrudeGeometry(shape, {
       depth: el.height,
       bevelEnabled: false,
@@ -1441,41 +1476,21 @@ export class HouseScene implements SceneApi {
     this.floorMeshes.push(mesh);
   }
 
-  private detectInteriorFlip(pts: CurtainPoint[]): boolean {
-    const p0 = pts[0];
-    const pn = pts[pts.length - 1];
-    const dx = pn.x - p0.x;
-    const dz = pn.z - p0.z;
-    if (Math.hypot(dx, dz) < 1e-9) return false;
-    let mx = 0, mz = 0;
-    for (const p of pts) { mx += p.x; mz += p.z; }
-    mx /= pts.length;
-    mz /= pts.length;
-    const rooms = Object.values(this.rooms);
-    if (rooms.length === 0) return false;
-    let best: RoomObject | undefined;
-    let bestDist = Infinity;
-    for (const r of rooms) {
-      const d = Math.hypot(r.x - mx, r.z - mz);
-      if (d < bestDist) { bestDist = d; best = r; }
-    }
-    if (!best) return false;
-    const cross = dx * (best.z - mz) - dz * (best.x - mx);
-    return cross < 0;
-  }
-
   private renderBaySill(el: Extract<SceneElement, { type: 'bay_sill' }>) {
     if (el.points.length < 2) return;
-    const pts = el.points as CurtainPoint[];
-    const flip = this.detectInteriorFlip(pts);
-    const shape = this.buildCurtainShape(pts, false, el.depth, true, flip);
-    const geometry = new THREE.ExtrudeGeometry(shape, { depth: el.height, bevelEnabled: false, steps: 1 });
+    const footprint = buildExteriorRibbon(el.points, Object.values(this.rooms), el.depth);
+    const shape = new THREE.Shape();
+    shape.moveTo(footprint[0].x, footprint[0].z);
+    for (let i = 1; i < footprint.length; i++) shape.lineTo(footprint[i].x, footprint[i].z);
+    shape.closePath();
+    const vertical = baySillVerticalRange(el.sill, el.plateThickness);
+    const geometry = new THREE.ExtrudeGeometry(shape, { depth: el.plateThickness, bevelEnabled: false, steps: 1 });
     const concrete = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.9 });
     const mesh = new THREE.Mesh(geometry, concrete);
     mesh.rotation.x = -Math.PI / 2;
     mesh.scale.set(1, -1, 1);
-    mesh.position.y = el.sill;
-    mesh.userData = { type: 'bay_sill', objectId: el.id };
+    mesh.position.y = vertical.bottom;
+    mesh.userData = { type: 'bay_sill', objectId: el.id, sill: vertical.top, plateThickness: el.plateThickness };
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     this.scene.add(mesh);
@@ -1527,9 +1542,70 @@ export class HouseScene implements SceneApi {
     return placed;
   }
 
+  private projectInfrastructurePoint(point: { x: number; z: number; wall?: string; wallSide?: WallSide }): { x: number; z: number; rotation: number; wallSide?: WallSide } | null {
+    if (!point.wall) return null;
+    const segments = this.wallSegmentIndex.get(point.wall);
+    if (!segments || segments.length === 0) return null;
+
+    const worldDirections: Record<WallSide, { x: number; z: number }> = {
+      north: { x: 0, z: -1 },
+      south: { x: 0, z: 1 },
+      east: { x: 1, z: 0 },
+      west: { x: -1, z: 0 },
+    };
+    let best: { x: number; z: number; rotation: number; distance: number; wallSide?: WallSide } | undefined;
+    for (const segment of segments) {
+      const dx = segment.x2 - segment.x1;
+      const dz = segment.z2 - segment.z1;
+      const lengthSquared = dx * dx + dz * dz;
+      if (lengthSquared < 1e-12) continue;
+      const t = Math.max(0, Math.min(1, ((point.x - segment.x1) * dx + (point.z - segment.z1) * dz) / lengthSquared));
+      const x = segment.x1 + t * dx;
+      const z = segment.z1 + t * dz;
+      const distance = Math.hypot(point.x - x, point.z - z);
+      const length = Math.sqrt(lengthSquared);
+      const ux = dx / length;
+      const uz = dz / length;
+      const left = { x: -uz, z: ux };
+      const right = { x: uz, z: -ux };
+      const authoredSide = (point.x - x) * left.x + (point.z - z) * left.z;
+      let normal = authoredSide < -1e-9 ? right : left;
+      if (point.wallSide) {
+        const direction = worldDirections[point.wallSide];
+        normal = left.x * direction.x + left.z * direction.z >= right.x * direction.x + right.z * direction.z ? left : right;
+      }
+      const rotation = Math.atan2(normal.x, normal.z);
+      best = !best || distance < best.distance
+        ? { x, z, rotation, distance, wallSide: point.wallSide }
+        : best;
+    }
+    return best ? { x: best.x, z: best.z, rotation: best.rotation, wallSide: best.wallSide } : null;
+  }
+
+  private placeInfrastructureModel(
+    model: THREE.Group,
+    point: { x: number; z: number; wall?: string; wallSide?: WallSide },
+    y: number,
+    dimensions?: { depth?: number },
+  ): void {
+    const projected = this.projectInfrastructurePoint(point);
+    if (!projected) {
+      model.position.set(point.x, y, point.z);
+      return;
+    }
+    const wallThickness = WALL_THICKNESS;
+    const wallGap = 0.005;
+    const fixtureHalfThickness = 0.01;
+    const nx = Math.sin(projected.rotation);
+    const nz = Math.cos(projected.rotation);
+    const offset = wallThickness / 2 + wallGap + fixtureHalfThickness;
+    model.position.set(projected.x + nx * offset, y, projected.z + nz * offset);
+    model.rotation.y = projected.rotation;
+  }
+
   placeInfrastructureFixtures(
-    electrical: Array<{ id: string; room: string; type: string; x: number; z: number; height: number }>,
-    plumbing: Array<{ id: string; room: string; type: string; x: number; z: number; height?: number }>,
+    electrical: Array<{ id: string; room: string; type: string; x: number; z: number; height: number; width?: number; depth?: number; wall?: string; wallSide?: WallSide; status?: string; position_status?: string }>,
+    plumbing: Array<{ id: string; room: string; type: string; x: number; z: number; height?: number; wall?: string; wallSide?: WallSide }>,
   ): void {
     const infraMeshes: THREE.Group[] = [];
     const typeMap: Record<string, string> = {
@@ -1539,6 +1615,8 @@ export class HouseScene implements SceneApi {
       network: 'network',
       usb: 'usb',
       floor_socket: 'floor_socket',
+      strong_panel: 'strong_panel',
+      weak_panel: 'weak_panel',
       faucet: 'faucet',
       faucet_outdoor: 'faucet_outdoor',
       toilet: 'toilet',
@@ -1546,14 +1624,37 @@ export class HouseScene implements SceneApi {
       drain: 'drain',
       washer: 'washer',
     };
+    const panelDimensions: Record<string, { width: number; depth: number; height: number }> = {
+      strong_panel: { width: 0.60, depth: 0.16, height: 1.00 },
+      weak_panel: { width: 0.45, depth: 0.14, height: 0.75 },
+    };
 
     for (const p of electrical) {
       const fixtureType = typeMap[p.type];
       if (!fixtureType) continue;
       const model = buildFixture(fixtureType);
       if (!model) continue;
-      model.position.set(p.x, p.type === 'floor_socket' ? 0.05 : p.height, p.z);
-      model.userData = { objectId: 'electrical:' + p.id, hoverable: false, type: 'electrical' };
+      const dimensions = panelDimensions[p.type];
+      if (dimensions) {
+        model.scale.set(
+          (p.width ?? dimensions.width) / dimensions.width,
+          p.height / dimensions.height,
+          (p.depth ?? dimensions.depth) / dimensions.depth,
+        );
+      }
+      this.placeInfrastructureModel(model, p, p.type === 'floor_socket' ? 0.05 : p.height);
+      model.userData = {
+        objectId: 'electrical:' + p.id,
+        hoverable: true,
+        type: 'electrical',
+        roomId: p.room,
+        fixtureType: p.type,
+        wallSide: p.wallSide,
+        label: p.type === 'strong_panel' ? '强电箱' : p.type === 'weak_panel' ? '弱电箱' : undefined,
+        status: p.status,
+        position_status: p.position_status,
+        dimensions: dimensions ? { width: p.width ?? dimensions.width, depth: p.depth ?? dimensions.depth, height: p.height } : undefined,
+      };
       this.scene.add(model);
       infraMeshes.push(model);
     }
@@ -1563,8 +1664,8 @@ export class HouseScene implements SceneApi {
       if (!fixtureType) continue;
       const model = buildFixture(fixtureType);
       if (!model) continue;
-      model.position.set(p.x, p.height ?? 0.5, p.z);
-      model.userData = { objectId: 'plumbing:' + p.id, hoverable: false, type: 'plumbing' };
+      this.placeInfrastructureModel(model, p, p.height ?? 0.5);
+      model.userData = { objectId: 'plumbing:' + p.id, hoverable: true, type: 'plumbing', roomId: p.room, fixtureType: p.type, wallSide: p.wallSide };
       this.scene.add(model);
       infraMeshes.push(model);
     }
@@ -1863,7 +1964,7 @@ export class HouseScene implements SceneApi {
     this.setCeilingVisible(this._mode === 'first-person');
   }
 
-  private objectDisplayName(objectId: string, type: string, roomId?: string): string {
+  private objectDisplayName(objectId: string, type: string, roomId?: string, fixtureType?: string, wallSide?: WallSide): string {
     const room = roomId ? this.rooms[roomId] : undefined;
     const roomName = room?.name ?? '';
     const typeLabel: Record<string, string> = {
@@ -1877,7 +1978,9 @@ export class HouseScene implements SceneApi {
       hvac_outdoor: '空调外机',
       platform: '平台',
       shower_screen: '淋浴玻璃隔断',
+      hvac_condensate_candidate: 'HVAC · 冷凝水候选接入点 · 待确认',
     };
+    if (type === 'hvac_condensate_candidate') return `${typeLabel[type]} + ${objectId.slice(objectId.lastIndexOf(':') + 1)}`;
     const dirLabel: Record<string, string> = {
       north: '北',
       south: '南',
@@ -1889,13 +1992,33 @@ export class HouseScene implements SceneApi {
       return this.platform.name;
     }
 
+    const fixtureLabel: Record<string, string> = {
+      socket: '插座',
+      switch: '开关',
+      switch_2way: '开关',
+      network: '网口',
+      usb: 'USB',
+      floor_socket: '地插',
+      strong_panel: '强电箱',
+      weak_panel: '弱电箱',
+      faucet: '水龙头',
+      faucet_outdoor: '户外水龙头',
+      toilet: '马桶',
+      shower: '淋浴',
+      drain: '地漏',
+      washer: '洗衣机给排水',
+    };
     if (objectId.startsWith('electrical:')) {
       const pointName = objectId.slice('electrical:'.length);
-      return roomName ? `${roomName} · 电气 ${pointName}` : `电气 ${pointName}`;
+      const label = fixtureLabel[fixtureType ?? ''] ?? '电气';
+      const sideLabel = wallSide ? ` · ${roomId === 'kitchen' && wallSide === 'west' ? '厨房侧' : roomId === 'entry_garden' && wallSide === 'east' ? '入户花园侧' : wallSide === 'east' ? '东侧' : wallSide === 'west' ? '西侧' : wallSide === 'north' ? '北侧' : '南侧'}` : '';
+      return roomName ? `${roomName} · ${label} · ${pointName}${sideLabel}` : `${label} · ${pointName}${sideLabel}`;
     }
     if (objectId.startsWith('plumbing:')) {
       const pointName = objectId.slice('plumbing:'.length);
-      return roomName ? `${roomName} · 给排水 ${pointName}` : `给排水 ${pointName}`;
+      const label = fixtureLabel[fixtureType ?? ''] ?? '给排水';
+      const sideLabel = wallSide ? ` · ${roomId === 'kitchen' && wallSide === 'west' ? '厨房侧' : roomId === 'entry_garden' && wallSide === 'east' ? '入户花园侧' : wallSide === 'east' ? '东侧' : wallSide === 'west' ? '西侧' : wallSide === 'north' ? '北侧' : '南侧'}` : '';
+      return roomName ? `${roomName} · ${label} · ${pointName}${sideLabel}` : `${label} · ${pointName}${sideLabel}`;
     }
     if (type === 'wall' && objectId.startsWith('wall:')) {
       const parts = objectId.split(':');
@@ -1916,14 +2039,17 @@ export class HouseScene implements SceneApi {
     this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
     const intersects = this.raycaster.intersectObjects(this.scene.children, true);
     for (const hit of intersects) {
-      const data = hit.object.userData;
+      let target: THREE.Object3D | null = hit.object;
+      while (target && !target.userData?.objectId && !target.userData?.roomId) {
+        target = target.parent;
+      }
+      const data = target?.userData;
       if (hoverableOnly && data?.hoverable === false) continue;
       if (data?.objectId || data?.roomId) {
         const id = (data.objectId as string) ?? (data.roomId as string);
         const type = (data.type as string) ?? (data.part as string) ?? 'room';
         const room = data.roomId as string | undefined;
-        const roomObj = room ? this.rooms[room] : undefined;
-        const name = this.objectDisplayName(id, type, room);
+        const name = this.objectDisplayName(id, type, room, data.fixtureType as string | undefined, data.wallSide as WallSide | undefined);
         return { objectId: id, name, type, room };
       }
     }
@@ -1974,12 +2100,16 @@ export class HouseScene implements SceneApi {
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const intersects = this.raycaster.intersectObjects(this.scene.children, true);
     for (const hit of intersects) {
-      const data = hit.object.userData;
+      let target: THREE.Object3D | null = hit.object;
+      while (target && !target.userData?.objectId && !target.userData?.roomId) {
+        target = target.parent;
+      }
+      const data = target?.userData;
       if (data?.objectId || data?.roomId) {
         const id = (data.objectId as string) ?? (data.roomId as string);
         const type = (data.type as string) ?? (data.part as string) ?? 'room';
         const room = data.roomId as string | undefined;
-        const name = this.objectDisplayName(id, type, room);
+        const name = this.objectDisplayName(id, type, room, data.fixtureType as string | undefined, data.wallSide as WallSide | undefined);
         this.onClickCallback?.({ objectId: id, name, type, room });
         return;
       }
@@ -2100,6 +2230,7 @@ export class HouseScene implements SceneApi {
   dispose(): void {
     window.removeEventListener('resize', this.boundOnWindowResize);
     this.hvacRenderer.dispose();
+    this.mepRenderer.dispose();
     this.renderer.dispose();
   }
 }

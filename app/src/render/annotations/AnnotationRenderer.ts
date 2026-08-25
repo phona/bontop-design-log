@@ -7,6 +7,7 @@ interface ElectricalPoint {
   id: string;
   room: string;
   wall: string;
+  wallSide?: 'north' | 'south' | 'east' | 'west';
   type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb' | 'floor_socket'
     | 'ceiling_light' | 'pendant' | 'dome' | 'wall_lamp' | 'downlight' | 'led_strip';
   x: number;
@@ -20,6 +21,8 @@ interface ElectricalPoint {
 interface PlumbingPoint {
   id: string;
   room: string;
+  wall?: string;
+  wallSide?: 'north' | 'south' | 'east' | 'west';
   type: 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor';
   x: number;
   z: number;
@@ -143,7 +146,7 @@ export class AnnotationRenderer {
         ? createNetworkIcon()
         : createSocketIcon(p.count ?? 1);
       icon.position.set(p.x, p.type === 'floor_socket' ? 0.05 : p.height, p.z);
-      icon.userData = { type: 'annotation', category: 'electrical', pointId: p.id, note: p.note, objectId: 'electrical:' + p.id };
+      icon.userData = { type: 'annotation', category: 'electrical', pointId: p.id, note: p.note, objectId: 'electrical:' + p.id, wallSide: p.wallSide };
       const label = this.createLabel(p.note ?? '');
       label.position.set(0, 0.3, 0);
       label.visible = false;
@@ -166,7 +169,7 @@ export class AnnotationRenderer {
       };
       const icon = (iconMap[p.type] ?? createFaucetIcon)();
       icon.position.set(p.x, p.height ?? 0.5, p.z);
-      icon.userData = { type: 'annotation', category: 'plumbing', pointId: p.id, note: p.note, objectId: 'plumbing:' + p.id };
+      icon.userData = { type: 'annotation', category: 'plumbing', pointId: p.id, note: p.note, objectId: 'plumbing:' + p.id, wallSide: p.wallSide };
       const label = this.createLabel(p.note ?? '');
       label.position.set(0, 0.3, 0);
       label.visible = false;

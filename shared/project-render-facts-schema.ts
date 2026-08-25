@@ -13,15 +13,16 @@ import {
 
 const finiteNumber = z.number().refine(Number.isFinite, 'must be finite');
 const nonEmpty = z.string().trim().min(1);
+const WallSideSchema = z.enum(['north', 'south', 'east', 'west']);
 const Vec3Schema = z.object({ x: finiteNumber, y: finiteNumber, z: finiteNumber }).strict();
 
 export const ElectricalPointSchema = z.object({
-  id: z.string(), room: z.string(), type: z.enum(['socket', 'switch', 'switch_2way', 'network', 'usb', 'floor_socket', 'ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip']),
-  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), temp: finiteNumber.optional(), count: finiteNumber.optional(), note: z.string().optional(), height: finiteNumber.optional(),
+  id: z.string(), room: z.string(), type: z.enum(['socket', 'switch', 'switch_2way', 'network', 'usb', 'floor_socket', 'strong_panel', 'weak_panel', 'ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip']),
+  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), temp: finiteNumber.optional(), count: finiteNumber.optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
 }).strict();
 export const PlumbingPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor']),
-  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), note: z.string().optional(), height: finiteNumber.optional(),
+  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(),
 }).strict();
 export const CeilingZoneSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(VALID_CEILING_TYPES), thickness: finiteNumber.optional(),
@@ -43,7 +44,29 @@ export const HvacAnchorSchema = reasonForUnconfirmed(z.object({
 }).strict().superRefine((value, ctx) => {
   if (Boolean(value.ref) === Boolean(value.position)) ctx.addIssue({ code: 'custom', message: 'HVAC anchor requires exactly one of ref or position' });
 }));
-export const HvacTerminalSchema = reasonForUnconfirmed(z.object({ id: nonEmpty, status: HvacStatusSchema, system: HvacSystemSchema, position: Vec3Schema, reason: z.string().optional() }).strict());
+export const HvacTerminalSchema = z.object({
+  id: nonEmpty,
+  status: HvacStatusSchema,
+  system: HvacSystemSchema,
+  position: Vec3Schema,
+  reason: z.string().optional(),
+  kind: z.enum(['terminal', 'condensate_drain_candidate']).optional(),
+  confirmed: z.boolean().optional(),
+  render_interior: z.boolean().optional(),
+  render_coordination: z.boolean().optional(),
+}).strict().superRefine((value, ctx) => {
+  if (value.status !== 'confirmed' && !value.reason?.trim()) {
+    ctx.addIssue({ code: 'custom', message: `${value.status} HVAC facts require reason`, path: ['reason'] });
+  }
+  if (value.kind === 'condensate_drain_candidate') {
+    if (value.system !== 'condensate') ctx.addIssue({ code: 'custom', message: 'condensate drain candidate must use condensate system', path: ['system'] });
+    if (value.status !== 'pending') ctx.addIssue({ code: 'custom', message: 'condensate drain candidate must be pending', path: ['status'] });
+    if (value.confirmed !== false) ctx.addIssue({ code: 'custom', message: 'condensate drain candidate must have confirmed=false', path: ['confirmed'] });
+    if (value.render_interior !== false) ctx.addIssue({ code: 'custom', message: 'condensate drain candidate must have render_interior=false', path: ['render_interior'] });
+    if (value.render_coordination !== true) ctx.addIssue({ code: 'custom', message: 'condensate drain candidate must have render_coordination=true', path: ['render_coordination'] });
+    if (!value.reason?.trim()) ctx.addIssue({ code: 'custom', message: 'condensate drain candidate requires reason', path: ['reason'] });
+  }
+});
 export const HvacReferenceConstraintSchema = z.object({
   id: nonEmpty,
   status: z.enum(['inferred', 'pending']),
@@ -110,8 +133,10 @@ export function validateProjectHvacFacts(hvac: ProjectHvacFacts, facts: Pick<Pro
         for (const ref of route.constraint_refs) if (!constraintIds.has(ref)) throw new Error(`HVAC route ${route.id} references unknown constraint: ${ref}`);
       }
       if (route.system === 'condensate') {
-        const sink = plan.diagram.terminals.find((terminal) => terminal.id === route.to);
-        if (!sink || sink.status !== 'pending') throw new Error(`HVAC condensate route ${route.id} must end at a pending terminal`);
+        const candidate = plan.diagram.terminals.find((terminal) => terminal.id === route.to);
+        if (!candidate || candidate.status !== 'pending' || candidate.kind !== 'condensate_drain_candidate') {
+          throw new Error(`HVAC condensate route ${route.id} must end at a pending condensate drain candidate`);
+        }
       }
     }
     for (const anchor of plan.diagram.anchors) if (anchor.ref) {
@@ -121,8 +146,12 @@ export function validateProjectHvacFacts(hvac: ProjectHvacFacts, facts: Pick<Pro
   }
   return hvac;
 }
-export function parseElectricalPoints(raw: string): ElectricalPoint[] { return ElectricalPointsSchema.parse(parseYaml(raw)); }
-export function parsePlumbingPoints(raw: string): PlumbingPoint[] { return PlumbingPointsSchema.parse(parseYaml(raw)); }
+export function parseElectricalPoints(raw: string): ElectricalPoint[] {
+  return ElectricalPointsSchema.parse(parseYaml(raw)).map(({ wall_side, ...point }) => ({ ...point, ...(wall_side ? { wallSide: wall_side } : {}) }));
+}
+export function parsePlumbingPoints(raw: string): PlumbingPoint[] {
+  return PlumbingPointsSchema.parse(parseYaml(raw)).map(({ wall_side, ...point }) => ({ ...point, ...(wall_side ? { wallSide: wall_side } : {}) }));
+}
 export function parseCeilingZones(raw: string): CeilingZone[] { return CeilingZonesSchema.parse(parseYaml(raw)); }
 export function parseProjectHvacFacts(raw: string): ProjectHvacFacts { return ProjectHvacFactsSchema.parse(parseYaml(raw)); }
 export function parseProjectRenderFacts(raw: unknown): ProjectRenderFacts { return ProjectRenderFactsSchema.parse(raw); }

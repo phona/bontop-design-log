@@ -435,7 +435,7 @@ export interface CurtainPoint extends OverlayPoint {
 
 export type SceneElement =
   | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; openings?: ResolvedOpening[]; rooms?: string[] }
-  | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean }
+  | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean; exteriorOffset?: number }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   | {
       type: 'glass_infill';
@@ -446,7 +446,7 @@ export type SceneElement =
       sill: number;
     }
   | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string }
-  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string }
+  | { type: 'bay_sill'; id: string; points: CurtainPoint[]; depth: number; sill: number; height: number; plateThickness: number; reason?: string }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }
   | { type: 'shower_screen'; id: string; points: OverlayPoint[]; height: number; sill?: number }
@@ -561,12 +561,17 @@ export type ElectricalPointType =
   | 'network'
   | 'usb'
   | 'floor_socket'
+  | 'strong_panel'
+  | 'weak_panel'
   | 'ceiling_light'
   | 'pendant'
   | 'dome'
   | 'wall_lamp'
   | 'downlight'
   | 'led_strip';
+
+export type ElectricalPointStatus = 'measured' | 'likely' | 'inferred' | 'pending';
+export type WallSide = 'north' | 'south' | 'east' | 'west';
 
 export interface ElectricalPoint {
   id: string;
@@ -575,10 +580,15 @@ export interface ElectricalPoint {
   x: number;
   z: number;
   wall?: string;
+  wallSide?: WallSide;
   temp?: number;
   count?: number;
-  note?: string;
+  width?: number;
+  depth?: number;
   height?: number;
+  status?: ElectricalPointStatus;
+  position_status?: ElectricalPointStatus;
+  note?: string;
 }
 
 export type PlumbingPointType = 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor';
@@ -590,6 +600,7 @@ export interface PlumbingPoint {
   x: number;
   z: number;
   wall?: string;
+  wallSide?: WallSide;
   note?: string;
   height?: number;
 }
@@ -653,6 +664,10 @@ export interface HvacTerminal {
   system: HvacSystem;
   position: Vec3;
   reason?: string;
+  kind?: 'terminal' | 'condensate_drain_candidate';
+  confirmed?: boolean;
+  render_interior?: boolean;
+  render_coordination?: boolean;
 }
 
 export interface HvacReferenceConstraint {

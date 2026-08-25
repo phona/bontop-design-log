@@ -2,6 +2,7 @@ import { watch, type FSWatcher } from 'chokidar';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { VALID_CEILING_TYPES, type CeilingZone, type ElectricalPoint, type PlumbingPoint } from '../shared/types.js';
+import { parseMepCoordination, type MepCoordination } from '../shared/mep-hvac-coordination-schema.js';
 
 export { VALID_CEILING_TYPES } from '../shared/types.js';
 export type { CeilingZone, ElectricalPoint, PlumbingPoint } from '../shared/types.js';
@@ -107,6 +108,10 @@ export function loadPlumbingConfig(): PlumbingPoint[] {
 
 export function loadCeilingConfig(): CeilingZone[] {
   return loadConfig<CeilingZone[]>('config/ceiling.yaml');
+}
+
+export function loadMepCoordinationConfig(): MepCoordination {
+  return parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
 }
 
 export interface ProcurementMaterial {

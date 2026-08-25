@@ -13,10 +13,12 @@ const diagram: HvacDiagram = {
   terminals: [
     { id: 'supply', status: 'inferred', system: 'supply_air', position: { x: 4, y: 2.5, z: 2 }, reason: '风量待定' },
     { id: 'access', status: 'pending', system: 'access', position: { x: 2, y: 2.5, z: 3 }, reason: '检修待定' },
+    { id: 'condensate_candidate', kind: 'condensate_drain_candidate', status: 'pending', confirmed: false, render_interior: false, render_coordination: true, system: 'condensate', position: { x: 4, y: 0.1, z: 2 }, reason: '候选接入点待确认' },
   ],
   routes: [
     { id: 'trunk', status: 'inferred', system: 'refrigerant', from: 'outdoor', via: ['bend'], to: 'indoor', constraint_refs: ['south_band'], reason: '走向待定' },
     { id: 'access_route', status: 'pending', system: 'access', from: 'indoor', to: 'access', reason: '检修待定' },
+    { id: 'condensate_candidate_route', status: 'pending', system: 'condensate', from: 'indoor', to: 'condensate_candidate', reason: '候选路线待确认' },
     { id: 'power', status: 'confirmed', system: 'power', from: 'power', to: 'indoor' },
   ],
   reference_constraints: [{
@@ -53,33 +55,39 @@ describe('HvacDiagramRenderer', () => {
     expect(outdoor.position.toArray()).toEqual([1, 0.35, 2]);
     expect(indoor.userData.type).toBe('hvac_equipment');
     expect(byId(scene, 'hvac:A2:anchor:power')).toBeUndefined();
-    expect(byId(scene, 'hvac:A2:route:power:segment:0')).toBeDefined();
+    expect(byId(scene, 'hvac:A2:route:power:segment:0')).toBeUndefined();
+    expect(byId(scene, 'hvac:A2:route:trunk:segment:0')).toBeUndefined();
   });
 
-  it('creates stable object IDs, reasons, route segments and pending termination markers', () => {
+  it('creates stable equipment, condensate candidate and reference constraint objects without routes', () => {
     const { scene } = renderer();
     expect(byId(scene, 'hvac:A2:terminal:supply')?.userData.reason).toBe('风量待定');
-    expect(byId(scene, 'hvac:A2:route:trunk:segment:0')).toBeDefined();
-    expect(byId(scene, 'hvac:A2:route:trunk:segment:1')).toBeDefined();
-    expect(byId(scene, 'hvac:A2:route:access_route:termination:0')).toBeDefined();
-    expect(byId(scene, 'hvac:A2:route:access_route:termination:1')).toBeDefined();
+    expect(byId(scene, 'hvac:A2:terminal:supply')?.parent?.name).toBe('HVAC_CONFIRMED_ENTITIES');
+    expect(byId(scene, 'hvac:A2:terminal:condensate_candidate')?.userData.type).toBe('hvac_condensate_candidate');
+    expect(byId(scene, 'hvac:A2:terminal:condensate_candidate')?.userData.notForConstruction).toBe(true);
+    expect(byId(scene, 'hvac:A2:terminal:condensate_candidate')?.parent?.name).toBe('HVAC_COORDINATION');
+    expect(byId(scene, 'hvac:A2:route:condensate_candidate_route:segment:0')).toBeUndefined();
+    expect(byId(scene, 'hvac:A2:route:trunk:segment:0')).toBeUndefined();
+    expect(byId(scene, 'hvac:A2:route:trunk:segment:1')).toBeUndefined();
+    expect(byId(scene, 'hvac:A2:route:access_route:termination:0')).toBeUndefined();
+    expect(byId(scene, 'hvac:A2:route:access_route:termination:1')).toBeUndefined();
     const reference = byId(scene, 'hvac:A2:reference:south_band') as THREE.Mesh;
     expect(reference.geometry).toBeInstanceOf(THREE.BoxGeometry);
     expect(reference.userData).toMatchObject({ type: 'hvac_reference_constraint', source: 'survey/neighbor_ys01_original_structure_2025-06.png', uncertainty: '±150mm', not_for_construction: true, reason: '邻户参考' });
   });
 
-  it('uses dashed transparent inferred/pending routes and hides only coordination lines by default toggle', () => {
+  it('hides HVAC coordination constraints and candidates without affecting equipment', () => {
     const { scene, value } = renderer();
-    const inferred = byId(scene, 'hvac:A2:route:trunk:segment:0') as THREE.Line;
-    const pending = byId(scene, 'hvac:A2:route:access_route:segment:0') as THREE.Line;
-    expect(inferred.material).toBeInstanceOf(THREE.LineDashedMaterial);
-    expect((pending.material as THREE.LineDashedMaterial).opacity).toBeLessThan((inferred.material as THREE.LineDashedMaterial).opacity);
+    expect(byId(scene, 'hvac:A2:route:trunk:segment:0')).toBeUndefined();
+    expect(byId(scene, 'hvac:A2:route:access_route:segment:0')).toBeUndefined();
     value.setCoordinationVisible(false);
     expect(value.group.getObjectByName('HVAC_COORDINATION')?.visible).toBe(false);
     expect(byId(scene, 'hvac:A2:reference:south_band')?.parent?.visible).toBe(false);
     expect(byId(scene, 'hvac:A2:anchor:indoor')?.visible).toBe(true);
+    expect(byId(scene, 'hvac:A2:terminal:condensate_candidate')?.parent?.visible).toBe(false);
     value.setCoordinationVisible(true);
     expect(byId(scene, 'hvac:A2:reference:south_band')?.parent?.visible).toBe(true);
+    expect(byId(scene, 'hvac:A2:terminal:condensate_candidate')?.parent?.visible).toBe(true);
   });
 
   it('clears old objects on render and disposes its root group', () => {

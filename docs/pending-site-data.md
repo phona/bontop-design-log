@@ -56,8 +56,8 @@
 
 | # | 数据项 | 填入文件 | 格式 | 当前值 | 精度 | 影响 |
 |---|--------|----------|------|--------|------|------|
-| 4 | 强电箱位置/容量 | electrical.yaml `type: strong_panel` | `{x, z, height, circuits, capacity}` | 推断 x≈10.8 z≈0.5 h=1.8 | inferred | 回路规划 |
-| 5 | 弱电箱位置 | electrical.yaml `type: weak_panel` | `{x, z, height}` | 推断 x≈10.8 z≈1.0 h=0.3 | inferred | 网关/路由 |
+| 4 | 强电箱位置/容量 | electrical.yaml `type: strong_panel` | `{x, z, height, width, depth, circuits, capacity}` | 进门后左手边玄关墙；LD=1.650m，390×210mm | measured（照片/规格）；坐标 inferred | 回路规划；回路数/容量仍待开箱 |
+| 5 | 弱电箱位置 | electrical.yaml `type: weak_panel` | `{x, z, height, width, depth}` | 推定与强电箱同组/相邻；LD=0.500m，400×300mm | likely；坐标 inferred | 网关/路由；箱体和入户线路待开箱确认 |
 | 6 | 卫生间排水立管 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断主卫(0.3,1.3) 客卫(5.8,2.4) | inferred | 马桶/地漏定位 |
 | 7 | 厨房排水立管 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断(10.5,0.3) | inferred | 水槽定位 |
 | 8 | 给水入户点 | plumbing.yaml `type: water_supply` | `{x, z, diameter}` | 待确认 | — | 水管走向 |
@@ -79,7 +79,7 @@
 | 19 | 主卫排水立管实际位置 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断(0.3,1.3) | inferred | 洗手台外移坐标 |
 | 20 | 全屋飘窗实际sill高度 | overlay.yaml bay_sill | 更新 sill 值 | 卧室系≈2.07 / 厨房≈2.12 / 客厅系≈2.57（邻户图 LH 读法+样板间视频目视；旧值全屋2.55系客厅值误推广且穿楼板无效，已废） | inferred→待量房终核 | 飘窗利用方案/儿童房衣柜降高/窗帘盒 |
 | 21 | 厨房实际南界/餐厅带划分 | model-geometry.yaml 顶点 v_kit_s2/v_ent_kit2 | 更新 z | 推断 z=2.90（创想图） | inferred | DEC-014 厨房面积/餐桌方案前提 |
-| 22 | 冰箱实际位置 | electrical.yaml sock_kitchen_fridge | `{x, z}` | 推断东墙南端 (10.80,2.55) | inferred | 插座/高柜设计 |
+| 22 | 冰箱实际位置 | electrical.yaml sock_kitchen_fridge | `{x, z}` | 推断东墙南端 (10.80,2.55) | inferred | 插座/高柜设计；与玄关强弱电箱位置无关 |
 | 23 | 厨房净面积复核 | house.yaml rooms.kitchen | 更新 width/length/area | 3.6×2.9=10.44（开发商标注 6.09 为净口径） | inferred | 预算/柜体延米 |
 | 24 | 全屋门洞实际位置+开启方向 | model-geometry.yaml openings / electrical.yaml | 各门洞坐标 | resolver 口径（offset=锚点到洞口中心距），重点 d_ent/d_gbath/d_mbath | inferred | 开关/插座避门摆（已按此口径避让）、主卫洗手台距门边 5cm、柜体间隙 |
 | 25 | 主卧东墙窗洞是否存在（w_mb_win） | model-geometry.yaml openings | z∈[7.1,9.5] w=2.4 sill=0.9 | inferred（house.yaml/决策日志均无记录，疑 CAD 残留） | 主卧床头位、床头壁灯（h=1.6 落入窗洞）、东墙电气点位 |

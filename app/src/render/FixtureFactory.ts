@@ -4,6 +4,7 @@ interface FixturePart {
   shape: 'box' | 'cylinder';
   size: [number, number, number];
   position?: [number, number, number];
+  rotation?: [number, number, number];
   color: string;
   metalness?: number;
   roughness?: number;
@@ -301,13 +302,13 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'switch',
     parts: [
-      { shape: 'box', size: [0.08, 0.08, 0.02], position: [0, 0, 0], color: '#ffffff', roughness: 0.6 },
+      { shape: 'box', size: [0.08, 0.08, 0.02], position: [0, 0, 0], color: '#3f4650', roughness: 0.6 },
     ],
   },
   {
     type: 'switch_2way',
     parts: [
-      { shape: 'box', size: [0.08, 0.08, 0.02], position: [0, 0, 0], color: '#ffffff', roughness: 0.6 },
+      { shape: 'box', size: [0.08, 0.08, 0.02], position: [0, 0, 0], color: '#3f4650', roughness: 0.6 },
     ],
   },
   {
@@ -328,6 +329,32 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'cylinder', size: [0.06, 0.02, 0.06], position: [0, 0, 0], color: '#888888', roughness: 0.8 },
     ],
   },
+  {
+    // Wall-mounted strong-power distribution box: body, recessed door, frame, and indicator details.
+    type: 'strong_panel',
+    parts: [
+      { shape: 'box', size: [0.60, 1.00, 0.16], position: [0, 0.50, 0], color: '#d9dde0', metalness: 0.15, roughness: 0.45 },
+      { shape: 'box', size: [0.54, 0.90, 0.025], position: [0, 0.50, 0.092], color: '#eef0f1', metalness: 0.1, roughness: 0.35 },
+      { shape: 'box', size: [0.025, 0.96, 0.025], position: [-0.31, 0.50, 0.09], color: '#727a80', metalness: 0.55, roughness: 0.35 },
+      { shape: 'box', size: [0.025, 0.96, 0.025], position: [0.31, 0.50, 0.09], color: '#727a80', metalness: 0.55, roughness: 0.35 },
+      { shape: 'box', size: [0.46, 0.018, 0.012], position: [0, 0.22, 0.11], color: '#8e969c', metalness: 0.45, roughness: 0.4 },
+      { shape: 'box', size: [0.46, 0.018, 0.012], position: [0, 0.78, 0.11], color: '#8e969c', metalness: 0.45, roughness: 0.4 },
+      { shape: 'cylinder', size: [0.018, 0.018, 0.018], position: [0.18, 0.86, 0.115], color: '#d94b45', metalness: 0.2, roughness: 0.35 },
+    ],
+  },
+  {
+    // Wall-mounted weak-power/network box: darker door and simple status/vent details.
+    type: 'weak_panel',
+    parts: [
+      { shape: 'box', size: [0.45, 0.75, 0.14], position: [0, 0.375, 0], color: '#c9d2da', metalness: 0.15, roughness: 0.5 },
+      { shape: 'box', size: [0.39, 0.65, 0.025], position: [0, 0.375, 0.082], color: '#e3e8ec', metalness: 0.1, roughness: 0.38 },
+      { shape: 'box', size: [0.025, 0.71, 0.025], position: [-0.235, 0.375, 0.08], color: '#66727c', metalness: 0.5, roughness: 0.38 },
+      { shape: 'box', size: [0.025, 0.71, 0.025], position: [0.235, 0.375, 0.08], color: '#66727c', metalness: 0.5, roughness: 0.38 },
+      { shape: 'box', size: [0.30, 0.015, 0.012], position: [0, 0.18, 0.10], color: '#74818b', metalness: 0.4, roughness: 0.45 },
+      { shape: 'box', size: [0.30, 0.015, 0.012], position: [0, 0.24, 0.10], color: '#74818b', metalness: 0.4, roughness: 0.45 },
+      { shape: 'cylinder', size: [0.016, 0.016, 0.016], position: [0.13, 0.66, 0.105], color: '#4c9bd8', metalness: 0.2, roughness: 0.35 },
+    ],
+  },
   // ── Plumbing ──
   {
     type: 'toilet',
@@ -340,8 +367,10 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'faucet',
     parts: [
-      { shape: 'cylinder', size: [0.02, 0.12, 0.02], position: [0, 0.06, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.2 },
-      { shape: 'cylinder', size: [0.02, 0.10, 0.02], position: [0, 0.17, -0.06], color: '#c0c0c0', metalness: 0.6, roughness: 0.2 },
+      // Wall escutcheon and short horizontal spout; local +z points away from the wall.
+      { shape: 'cylinder', size: [0.035, 0.04, 0.035], position: [0, 0.02, 0], rotation: [Math.PI / 2, 0, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.2 },
+      { shape: 'cylinder', size: [0.018, 0.12, 0.018], position: [0, 0.08, 0.06], rotation: [Math.PI / 2, 0, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.2 },
+      { shape: 'cylinder', size: [0.022, 0.04, 0.022], position: [0, 0.08, 0.13], rotation: [Math.PI / 2, 0, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.2 },
     ],
   },
   {
@@ -361,7 +390,13 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'drain',
     parts: [
-      { shape: 'cylinder', size: [0.04, 0.01, 0.04], position: [0, 0, 0], color: '#666666', roughness: 0.8 },
+      // Low-profile round floor drain: rim, recessed grate, and four radial bars.
+      { shape: 'cylinder', size: [0.075, 0.012, 0.075], position: [0, 0.006, 0], color: '#555b60', metalness: 0.65, roughness: 0.45 },
+      { shape: 'cylinder', size: [0.058, 0.014, 0.058], position: [0, 0.014, 0], color: '#262a2d', metalness: 0.45, roughness: 0.55 },
+      { shape: 'box', size: [0.10, 0.006, 0.012], position: [0, 0.024, 0], color: '#8a9094', metalness: 0.7, roughness: 0.4 },
+      { shape: 'box', size: [0.012, 0.006, 0.10], position: [0, 0.024, 0], color: '#8a9094', metalness: 0.7, roughness: 0.4 },
+      { shape: 'box', size: [0.07, 0.006, 0.012], position: [0, 0.024, 0.035], color: '#8a9094', metalness: 0.7, roughness: 0.4 },
+      { shape: 'box', size: [0.07, 0.006, 0.012], position: [0, 0.024, -0.035], color: '#8a9094', metalness: 0.7, roughness: 0.4 },
     ],
   },
   {
@@ -419,6 +454,11 @@ export function buildFixture(type: string): THREE.Group | null {
     const mesh = new THREE.Mesh(geo, mat);
     if (part.position) {
       mesh.position.set(part.position[0], part.position[1], part.position[2]);
+    }
+    if (part.rotation) {
+      mesh.rotation.x = part.rotation[0];
+      mesh.rotation.y = part.rotation[1];
+      mesh.rotation.z = part.rotation[2];
     }
     group.add(mesh);
   }

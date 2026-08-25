@@ -7,7 +7,7 @@ vi.mock('three', async (importOriginal: any) => {
     children: MockObject3D[] = [];
     parent: MockObject3D | null = null;
     material = new MockMaterial();
-    position = { x: 0, y: 0, z: 0, set: function() { return this; }, copy: function(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }, clone: function() { return { x: this.x, y: this.y, z: this.z, set: function() { return this; }, copy: function(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }, clone: function() { return this; } }; } };
+    position = { x: 0, y: 0, z: 0, set: function(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; return this; }, copy: function(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }, clone: function() { return { x: this.x, y: this.y, z: this.z, set: function(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; return this; }, copy: function(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }, clone: function() { return this; } }; } };
     rotation = { x: 0, y: 0, z: 0 };
     scale = { x: 1, y: 1, z: 1, set: function(x: number, y: number, z: number) { this.x = x; this.y = y; this.z = z; return this; } };
     castShadow = false;
@@ -844,6 +844,147 @@ describe('HouseScene', () => {
       (mockedThree as any).Raycaster = originalRaycaster;
       (scene as any).raycaster = originalSceneRaycaster;
     }
+  });
+
+  it('projects wall-referenced infrastructure points onto the authored side of the nearest wall segment', async () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    await scene.buildFromCatalog({
+      house: {
+        rooms: [],
+        sceneElements: [
+          { type: 'wall' as const, id: 'wall:vertical', x1: 2, z1: -1, x2: 2, z2: 3 },
+          { type: 'wall' as const, id: 'w_mbath_south', x1: 0, z1: 3.26, x2: 2.6, z2: 3.26 },
+        ],
+      },
+      topics: [],
+      budgetCategories: [],
+    });
+
+    scene.placeInfrastructureFixtures(
+      [
+        { id: 'switch-1', room: 'room', type: 'switch', x: 0, z: 1.5, height: 1.2, wall: 'wall:vertical' },
+        { id: 'switch-west', room: 'room', type: 'switch', x: 2, z: 0.5, height: 1.2, wall: 'wall:vertical', wallSide: 'west' },
+        { id: 'switch-east', room: 'room', type: 'switch', x: 2, z: 2.5, height: 1.2, wall: 'wall:vertical', wallSide: 'east' },
+        { id: 'switch-mbath-north', room: 'room', type: 'switch', x: 1, z: 3.21, height: 1.2, wall: 'w_mbath_south' },
+        { id: 'switch-mbath-south', room: 'room', type: 'switch', x: 2, z: 3.31, height: 1.2, wall: 'w_mbath_south' },
+      ],
+      [{ id: 'faucet-1', room: 'room', type: 'faucet', x: 0, z: 9, height: 1.0, wall: 'wall:vertical' }],
+    );
+
+    const getModel = (objectId: string) => scene.getScene().children.find((object: any) => object.userData?.objectId === objectId) as any;
+    const switchModel = getModel('electrical:switch-1');
+    const faucetModel = getModel('plumbing:faucet-1');
+    const switchWest = getModel('electrical:switch-west');
+    const switchEast = getModel('electrical:switch-east');
+    const mbathNorth = getModel('electrical:switch-mbath-north');
+    const mbathSouth = getModel('electrical:switch-mbath-south');
+    const wallOffset = 0.06 + 0.005 + 0.01;
+    expect(switchModel.position.x).toBeCloseTo(2 - wallOffset);
+    expect(switchModel.position.z).toBeCloseTo(1.5);
+    expect(switchModel.rotation.y).toBeCloseTo(-Math.PI / 2);
+    expect(switchWest.position.x).toBeLessThan(2);
+    expect(switchEast.position.x).toBeGreaterThan(2);
+    expect(switchWest.userData).toMatchObject({ fixtureType: 'switch', wallSide: 'west' });
+    expect(switchEast.userData).toMatchObject({ fixtureType: 'switch', wallSide: 'east' });
+    expect(faucetModel.position.x).toBeCloseTo(2 - 0.06 - 0.005 - 0.01);
+    expect(faucetModel.position.z).toBeCloseTo(3);
+    expect(mbathNorth.position.z).toBeLessThan(3.26);
+    expect(mbathNorth.position.z).toBeCloseTo(3.26 - wallOffset);
+    expect(mbathSouth.position.z).toBeGreaterThan(3.26);
+    expect(mbathSouth.position.z).toBeCloseTo(3.26 + wallOffset);
+  });
+
+  it('hovers infrastructure roots and resolves child mesh hits with readable names', async () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    await scene.buildFromCatalog({
+      house: { rooms: [{ id: 'kitchen', name: '厨房', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'service' }] },
+      topics: [],
+      budgetCategories: [],
+    });
+    scene.placeInfrastructureFixtures(
+      [{ id: 'socket-main', room: 'kitchen', type: 'socket', x: 0, z: 0, height: 0.4, wallSide: 'west' }],
+      [{ id: 'drain-main', room: 'kitchen', type: 'drain', x: 1, z: 1, height: 0.1 }],
+    );
+
+    const roots = scene.getScene().children.filter((child: any) => child.userData?.objectId?.startsWith('electrical:') || child.userData?.objectId?.startsWith('plumbing:')) as any[];
+    expect(roots).toHaveLength(2);
+    expect(roots.every((root) => root.userData.hoverable === true)).toBe(true);
+    expect(roots.map((root) => root.userData.objectId)).toEqual(expect.arrayContaining(['electrical:socket-main', 'plumbing:drain-main']));
+    expect(roots.map((root) => root.userData.fixtureType)).toEqual(expect.arrayContaining(['socket', 'drain']));
+
+    const mockedThree = await import('three');
+    const originalRaycaster = mockedThree.Raycaster;
+    const originalSceneRaycaster = (scene as any).raycaster;
+    const childHits = roots.map((root) => ({ object: root.children[0] }));
+    (mockedThree as any).Raycaster = class {
+      setFromCamera() {}
+      intersectObjects() { return childHits; }
+    };
+    (scene as any).raycaster = new (mockedThree as any).Raycaster();
+    try {
+      const electrical = scene.raycastFromScreenCenter({ hoverableOnly: true });
+      expect(electrical?.objectId).toBe('electrical:socket-main');
+      expect(electrical?.name).toContain('厨房');
+      expect(electrical?.name).toContain('插座');
+      expect(electrical?.name).toContain('socket-main');
+      expect(electrical?.name).toContain('厨房侧');
+
+      childHits.reverse();
+      const plumbing = scene.raycastFromScreenCenter({ hoverableOnly: true });
+      expect(plumbing?.objectId).toBe('plumbing:drain-main');
+      expect(plumbing?.name).toContain('厨房');
+      expect(plumbing?.name).toContain('地漏');
+      expect(plumbing?.name).toContain('drain-main');
+    } finally {
+      (mockedThree as any).Raycaster = originalRaycaster;
+      (scene as any).raycaster = originalSceneRaycaster;
+    }
+  });
+
+  it('keeps infrastructure coordinates when wall is absent or unknown', () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    scene.placeInfrastructureFixtures(
+      [
+        { id: 'socket-1', room: 'room', type: 'socket', x: 1, z: 2, height: 0.4 },
+        { id: 'socket-2', room: 'room', type: 'socket', x: 3, z: 4, height: 0.5, wall: 'missing-wall' },
+      ],
+      [],
+    );
+
+    const positions = ['electrical:socket-1', 'electrical:socket-2'].map((objectId) => {
+      const object = scene.getScene().children.find((child: any) => child.userData?.objectId === objectId) as any;
+      return { x: object.position.x, y: object.position.y, z: object.position.z, rotation: object.rotation.y };
+    });
+    expect(positions).toEqual([
+      { x: 1, y: 0.4, z: 2, rotation: 0 },
+      { x: 3, y: 0.5, z: 4, rotation: 0 },
+    ]);
+  });
+
+  it('renders strong and weak electrical panels with authored dimensions and metadata', () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+
+    scene.placeInfrastructureFixtures([
+      { id: 'panel-strong', room: 'entry_garden', type: 'strong_panel', x: 10.8, z: 0.5, height: 1.65, width: 0.39, depth: 0.21, status: 'measured', position_status: 'inferred' },
+      { id: 'panel-weak', room: 'entry_garden', type: 'weak_panel', x: 10.8, z: 1.0, height: 0.5, width: 0.4, depth: 0.3, status: 'likely', position_status: 'inferred' },
+    ], []);
+
+    const roots = scene.getScene().children.filter((child: any) => child.userData?.type === 'electrical') as any[];
+    expect(roots).toHaveLength(2);
+    expect(roots.map((root) => root.userData.label)).toEqual(expect.arrayContaining(['强电箱', '弱电箱']));
+    expect(roots.map((root) => root.userData.status)).toEqual(expect.arrayContaining(['measured', 'likely']));
+    expect(roots.map((root) => root.userData.dimensions)).toEqual(expect.arrayContaining([
+      { width: 0.39, depth: 0.21, height: 1.65 },
+      { width: 0.4, depth: 0.3, height: 0.5 },
+    ]));
+    expect(roots.map((root) => root.scale.x)).toEqual(expect.arrayContaining([0.65, 0.4 / 0.45]));
+    expect(roots.map((root) => root.scale.y)).toEqual(expect.arrayContaining([1.65, 0.5 / 0.75]));
+    expect(roots.map((root) => root.position.x)).toEqual([10.8, 10.8]);
+    expect(roots.map((root) => root.position.z)).toEqual([0.5, 1.0]);
   });
 
   it('reattaches the HVAC root after it is removed by a scene rebuild and exports equipment but not routes', async () => {

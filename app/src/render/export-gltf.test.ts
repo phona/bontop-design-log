@@ -90,6 +90,7 @@ describe('collectExportSet', () => {
     );
     const coordination = new THREE.Group();
     coordination.userData = { type: 'hvac_diagram', objectId: 'hvac:A2:route:trunk' };
+    coordination.add(mesh('hvac_condensate_candidate', 'hvac:A2:terminal:must_not_export'));
     coordination.add(mesh('hvac_terminal', 'hvac:A2:terminal:must_not_export'));
     scene.add(container, coordination);
 

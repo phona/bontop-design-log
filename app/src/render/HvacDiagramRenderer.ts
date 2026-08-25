@@ -6,7 +6,7 @@ import type {
   HvacDiagram,
   HvacReferenceConstraint,
   HvacStatus,
-  HvacSystem,
+  HvacTerminal,
   Vec3,
   VrfOutdoorUnit,
 } from '@shared/types';
@@ -65,29 +65,15 @@ export class HvacDiagramRenderer {
   render(planId: string, diagram: HvacDiagram, sources: HvacDiagramSources): void {
     this.attach();
     this.clear();
-    const positions = new Map<string, Vec3>();
     for (const anchor of diagram.anchors) {
       const position = this.resolveAnchor(anchor, sources);
       if (!position) {
         console.warn(`[hvac] skipped unresolved anchor ${anchor.id}`);
         continue;
       }
-      positions.set(anchor.id, position);
       if (anchor.ref?.source !== 'electrical') this.addAnchor(planId, anchor, position);
     }
-    for (const terminal of diagram.terminals) {
-      positions.set(terminal.id, terminal.position);
-      this.addTerminal(planId, terminal, terminal.position);
-    }
-    for (const route of diagram.routes) {
-      const routePositions = [route.from, ...(route.via ?? []), route.to]
-        .map((id) => positions.get(id));
-      if (routePositions.some((point) => !point)) {
-        console.warn(`[hvac] skipped unresolved route ${route.id}`);
-        continue;
-      }
-      this.addRoute(planId, route, routePositions as Vec3[]);
-    }
+    for (const terminal of diagram.terminals) this.addTerminal(planId, terminal, terminal.position);
     for (const constraint of diagram.reference_constraints) this.addReferenceConstraint(planId, constraint);
   }
 
@@ -143,12 +129,38 @@ export class HvacDiagramRenderer {
     this.equipmentGroup.add(mesh);
   }
 
-  private addTerminal(planId: string, terminal: { id: string; status: HvacStatus; system: HvacSystem; reason?: string }, position: Vec3): void {
+  private addTerminal(planId: string, terminal: HvacTerminal, position: Vec3): void {
+    const isCandidate = terminal.kind === 'condensate_drain_candidate';
+    const objectId = `hvac:${planId}:terminal:${terminal.id}`;
+    if (isCandidate) {
+      const candidateGroup = new THREE.Group();
+      candidateGroup.name = objectId;
+      candidateGroup.userData = {
+        type: 'hvac_condensate_candidate', objectId, reason: terminal.reason,
+        status: terminal.status, system: terminal.system, notForConstruction: true,
+      };
+      const marker = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8), new THREE.MeshStandardMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.55, roughness: 0.65 }));
+      marker.position.set(position.x, position.y, position.z);
+      marker.userData = { ...candidateGroup.userData, objectId: `${objectId}:marker` };
+      candidateGroup.add(marker);
+      const guide = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(position.x, position.y, position.z),
+          new THREE.Vector3(position.x, position.y + 0.45, position.z),
+        ]),
+        new THREE.LineDashedMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.6, dashSize: 0.08, gapSize: 0.06 }),
+      );
+      guide.computeLineDistances();
+      guide.userData = { ...candidateGroup.userData, objectId: `${objectId}:guide` };
+      candidateGroup.add(guide);
+      this.coordinationGroup.add(candidateGroup);
+      return;
+    }
     const access = terminal.system === 'access';
     const geometry = access ? new THREE.BoxGeometry(0.45, 0.025, 0.45) : new THREE.BoxGeometry(0.65, 0.025, 0.16);
     const mesh = new THREE.Mesh(geometry, material(terminal.status));
     mesh.position.set(position.x, position.y, position.z);
-    mesh.name = `hvac:${planId}:terminal:${terminal.id}`;
+    mesh.name = objectId;
     mesh.userData = { type: 'hvac_terminal', objectId: mesh.name, reason: terminal.reason, status: terminal.status, system: terminal.system };
     this.equipmentGroup.add(mesh);
   }
@@ -173,28 +185,5 @@ export class HvacDiagramRenderer {
     this.coordinationGroup.add(mesh);
   }
 
-  private addRoute(planId: string, route: { id: string; status: HvacStatus; system: HvacSystem; reason?: string }, positions: Vec3[]): void {
-    const group = new THREE.Group();
-    group.name = `hvac:${planId}:route:${route.id}`;
-    group.userData = { type: 'hvac_diagram', objectId: group.name, reason: route.reason, status: route.status, system: route.system };
-    for (let index = 0; index < positions.length - 1; index++) {
-      const from = positions[index];
-      const to = positions[index + 1];
-      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(from.x, from.y, from.z), new THREE.Vector3(to.x, to.y, to.z),
-      ]), route.status === 'confirmed' ? new THREE.LineBasicMaterial({ color: STATUS_COLOR.confirmed, transparent: true, opacity: 0.7 }) : material(route.status, true));
-      if (route.status !== 'confirmed') line.computeLineDistances();
-      line.userData = { ...group.userData, objectId: `${group.name}:segment:${index}` };
-      group.add(line);
-    }
-    if (route.status === 'pending') {
-      for (const [index, point] of [positions[0], positions[positions.length - 1]].entries()) {
-        const marker = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), material(route.status));
-        marker.position.set(point.x, point.y, point.z);
-        marker.userData = { ...group.userData, objectId: `${group.name}:termination:${index}` };
-        group.add(marker);
-      }
-    }
-    this.coordinationGroup.add(group);
-  }
+
 }

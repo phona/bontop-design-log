@@ -186,10 +186,10 @@
   room: study
   wall: w_st_north
   type: switch_2way
-  x: 6.6
+  x: 6.00
   z: 5.55
   height: 1.3
-  note: "西南次卧灯光双控（门口）"
+  note: "西南次卧灯光双控（父母房门西侧实体门垛）"
 
 - id: sock_parent_desk
   room: study
@@ -216,19 +216,19 @@
   wall: w_be_west
   type: socket
   x: 13.40
-  z: 6.5
+  z: 6.7
   height: 0.3
   count: 3
-  note: "书房桌面: 电脑+显示器+手机"
+  note: "书房桌面: 电脑+显示器+手机（避开西侧门洞d_bese，移至z=6.70实体墙）"
 
 - id: net_study
   room: bedroom_se
   wall: w_be_west
   type: network
   x: 13.40
-  z: 6.5
+  z: 6.7
   height: 0.3
-  note: "书房网口"
+  note: "书房网口（避开西侧门洞d_bese，移至z=6.70实体墙）"
 
 - id: sock_study_extra
   room: bedroom_se
@@ -281,10 +281,10 @@
   room: bedroom_nw
   wall: w_nw_south
   type: switch
-  x: 4.47
+  x: 4.35
   z: 4.30
   height: 1.3
-  note: "儿童房灯光开关（B案 2026-08-21 原x=3.5被南墙衣柜埋掉，移至衣柜与门洞间0.1门垛旁）"
+  note: "儿童房灯光开关（B案 2026-08-21 原x=3.5被南墙衣柜埋掉，移至衣柜与门洞间0.1门垛旁；调整至门洞西侧实体门垛）"
 
 - id: sock_child_ac
   room: bedroom_nw
@@ -309,6 +309,7 @@
 - id: sock_kitchen_fridge
   room: kitchen
   wall: w_ent_west
+  wall_side: west
   type: socket
   x: 10.80
   z: 2.05
@@ -319,6 +320,7 @@
 - id: sock_kitchen_hood
   room: kitchen
   wall: w_ent_west
+  wall_side: west
   type: socket
   x: 10.80
   z: 1.2
@@ -338,6 +340,7 @@
 - id: sock_kitchen_gas
   room: kitchen
   wall: w_ent_west
+  wall_side: west
   type: socket
   x: 10.80
   z: 1.6
@@ -348,6 +351,7 @@
 - id: switch_kitchen
   room: kitchen
   wall: w_ent_west
+  wall_side: west
   type: switch
   x: 10.80
   z: 1.0
@@ -376,13 +380,13 @@
   note: "主卫马桶旁插座（智能盖预留）"
 
 - id: switch_mbath
-  room: master_bath
+  room: master_bedroom
   wall: w_mbath_south
   type: switch
-  x: 1.25
-  z: 3.21
+  x: 1.05
+  z: 3.31
   height: 1.3
-  note: "主卫灯光开关（干区内、推拉门西侧门边，淋浴玻璃隔断x=1.2与门洞[1.3,2.1]之间；2026-08-21 隔墙北移3.26随墙移）"
+  note: "主卫灯光开关（主卫外侧、主卧侧墙面；位于门洞西侧实体墙对应位置，避开淋浴区；墙中心线z=3.26，外侧点位z=3.31）"
 
 - id: sock_mbath_exhaust
   room: master_bath
@@ -453,10 +457,39 @@
   count: 1
   note: "燃气热水器插座（⚠️热水器位置未定案：house.yaml 为'厨房或入户花园，待设计师确定'，本点位为阳台暂定，定案前不作为施工依据；生活阳台已被玻璃幕封闭，若挂阳台，排烟出幕墙与燃气路由需物业/燃气公司确认（CO 安全）；量房定案后若改位需同步移点，见 pending-site-data.md #26）"
 
+# 入户后左手边玄关墙：现场照片确认箱体位置与规格。
+# x/z 仍为局部坐标系下的暂定位，待现场量尺标定；不得据此生成施工级走线。
+- id: panel_strong_entry_left
+  room: entry_garden
+  wall: w_ent_west
+  type: strong_panel
+  x: 10.80
+  z: 0.50
+  height: 1.65
+  width: 0.39
+  depth: 0.21
+  status: measured
+  position_status: inferred
+  note: "强电箱：进门后左手边玄关墙；现场标注 LD=1650mm，箱体长390mm×宽210mm；回路数/容量待开箱读取"
+
+- id: panel_weak_entry_left
+  room: entry_garden
+  wall: w_ent_west
+  type: weak_panel
+  x: 10.80
+  z: 1.00
+  height: 0.50
+  width: 0.40
+  depth: 0.30
+  status: likely
+  position_status: inferred
+  note: "弱电箱：推定与强电箱同组或相邻，现场标注 LD=500mm，箱体长400mm×宽300mm；需开箱确认箱体及入户线路"
+
 # 入户花园
 - id: sock_garden
   room: entry_garden
   wall: w_ent_west
+  wall_side: east
   type: socket
   x: 10.80
   z: 2.20
@@ -467,6 +500,7 @@
 - id: switch_garden
   room: entry_garden
   wall: w_ent_west
+  wall_side: east
   type: switch
   x: 10.80
   z: 0.5

@@ -39,6 +39,34 @@ describe('kitchen cabinet runs', () => {
   });
 });
 
+describe('plumbing fixtures', () => {
+  it('builds a low round drain with a rim and multiple grate details', () => {
+    const drain = buildFixture('drain');
+    expect(drain).not.toBeNull();
+    drain!.updateMatrixWorld(true);
+    const size = new THREE.Box3().setFromObject(drain!).getSize(new THREE.Vector3());
+    const cylinders = drain!.children.filter((part) => part instanceof THREE.Mesh && part.geometry.type === 'CylinderGeometry');
+
+    expect(size.y).toBeLessThanOrEqual(0.03);
+    expect(size.x).toBeGreaterThan(0.1);
+    expect(size.z).toBeGreaterThan(0.1);
+    expect(drain!.children.length).toBeGreaterThanOrEqual(5);
+    expect(cylinders.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('builds the faucet as a compact wall escutcheon with a horizontal spout', () => {
+    const faucet = buildFixture('faucet');
+    expect(faucet).not.toBeNull();
+    faucet!.updateMatrixWorld(true);
+    const size = new THREE.Box3().setFromObject(faucet!).getSize(new THREE.Vector3());
+
+    expect(size.y).toBeLessThanOrEqual(0.22);
+    expect(size.z).toBeGreaterThan(size.y);
+    expect(faucet!.children.length).toBeGreaterThanOrEqual(3);
+    expect(faucet!.children.filter((part) => part instanceof THREE.Mesh && part.geometry.type === 'CylinderGeometry')).toHaveLength(3);
+  });
+});
+
 describe('living room TV proposal fixtures', () => {
   it('keeps the TV independent from the low cabinet instead of rendering a TV backboard', () => {
     const tv = fixtureSize('tv_65');
@@ -70,5 +98,19 @@ describe('living room TV proposal fixtures', () => {
     expect(plant.x).toBeLessThan(0.9);
     expect(plant.y).toBeCloseTo(1.77, 2);
     expect(plant.z).toBeCloseTo(0.4, 2);
+  });
+});
+
+describe('electrical panel fixtures', () => {
+  it('builds readable strong and weak panel boxes with door details', () => {
+    const strong = buildFixture('strong_panel');
+    const weak = buildFixture('weak_panel');
+
+    expect(strong).not.toBeNull();
+    expect(weak).not.toBeNull();
+    expect(strong!.children.length).toBeGreaterThan(5);
+    expect(weak!.children.length).toBeGreaterThan(5);
+    expect(fixtureSize('strong_panel').y).toBeCloseTo(1, 2);
+    expect(fixtureSize('weak_panel').y).toBeCloseTo(0.75, 2);
   });
 });
