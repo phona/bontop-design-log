@@ -159,6 +159,17 @@ describe('resolveLayout openings', () => {
     assert.equal(door.z, 0.9);
   });
 
+  it('preserves explicit swing and hinge direction through resolution', () => {
+    const yaml = makeRectRoom();
+    yaml.walls[0].openings = [{
+      id: 'd1', type: 'door', wall: 'w_north', anchor: 'v1', offset: 1.5,
+      width: 1, height: 2.1, room: 'test_room', swing: 'inward', hinge: 'end',
+    }];
+    const door = resolveLayout(yaml).walls[0].openings![0];
+    assert.equal(door.swing, 'inward');
+    assert.equal(door.hinge, 'end');
+  });
+
   it('throws when opening offset exceeds wall length', () => {
     const yaml: VertexLayoutYaml = {
       version: '2.0', unit: 'm', scale: 0.001, origin: { x: 0, z: 0 },

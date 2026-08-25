@@ -140,7 +140,8 @@ walls:
     to: v_foyer_se
     height: 2.8
     openings:
-      - { id: d_ent, type: door, anchor: v_ent_sw, offset: 1.5, width: 1.0, height: 2.1, room: entry_garden }
+      # 2026-08-25 方向反转；2026-08-25 二次调整：向内开，合页移至 start 端
+      - { id: d_ent, type: door, anchor: v_ent_sw, offset: 1.5, width: 1.0, height: 2.1, room: entry_garden, swing: inward, hinge: start }
   - id: w_ent_south_e
     from: v_foyer_se
     to: v_ent_se
@@ -170,7 +171,8 @@ walls:
     to: v_nw_s
     height: 2.8
     openings:
-      - { id: d_bnw, type: door, anchor: v_nw_s, offset: 0.6, width: 0.9, height: 2.1, room: bedroom_nw }
+      # 2026-08-25 方向反转：默认 outward/start → inward/end
+      - { id: d_bnw, type: door, anchor: v_nw_s, offset: 0.6, width: 0.9, height: 2.1, room: bedroom_nw, swing: inward, hinge: end }
   # 套间条带东延墙（x=4.2，旧条带东墙 x=2.6 已拆除）
   - id: w_strip_east
     from: v_strip_ne
@@ -206,7 +208,8 @@ walls:
     to: v_gbath_se
     height: 2.8
     openings:
-      - { id: d_gbath, type: door, anchor: v_nw_s, offset: 0.75, width: 0.7, height: 2.1, room: guest_bath }
+      # 2026-08-25 方向反转：默认 outward/start → inward/end
+      - { id: d_gbath, type: door, anchor: v_nw_s, offset: 0.75, width: 0.7, height: 2.1, room: guest_bath, swing: inward, hinge: end }
   - { id: w_gbath_east, from: v_balc_se, to: v_gbath_se,height: 2.8 }
   # 内墙 — x=7.20 纵向墙（厨房西墙，在 v_vrv_se, v_balc_ne 处切开；DEC-014 南界缩至 z=2.90，z[2.9,4.3] 段由 w_gbath_east@x=7.1 覆盖）
   - { id: w_vrv_east,   from: v_kit_w,   to: v_vrv_se, height: 2.8 }
@@ -228,5 +231,6 @@ walls:
     to: v_be_se_s
     height: 2.8
     openings:
-      - { id: d_bese, type: door, anchor: v_be_se_s, offset: 3.7, width: 0.9, height: 2.1, room: bedroom_se }
+      # 2026-08-25 方向反转；2026-08-25 二次调整：向内开，合页移至 start 端
+      - { id: d_bese, type: door, anchor: v_be_se_s, offset: 3.7, width: 0.9, height: 2.1, room: bedroom_se, swing: inward, hinge: start }
   - { id: w_be_north,   from: v_be_sw,   to: v_be_ne,  height: 2.8 }
