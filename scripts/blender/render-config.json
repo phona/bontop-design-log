@@ -505,31 +505,31 @@
           7.2,
           4.3,
           13.4,
-          9.8
+          5.2
         ],
-        "note": "客厅局部吊顶（走管区）"
+        "note": "客厅北缘边吊（藏风管机+衔接走廊/门厅吊顶管线，侧送下回）；客厅中部保持原顶/石膏板平吊 2.80m"
       },
       {
         "id": "ac_living",
         "room": "living_dining",
         "type": "ac_indoor",
         "x": 10.3,
-        "z": 7,
+        "z": 4.75,
         "height": 2.85,
         "model": "4HP 风管机",
         "power_point": "sock_living_ac",
-        "note": "客厅空调内机"
+        "note": "客厅空调内机（北缘边吊内，侧送朝南）"
       },
       {
         "id": "ac_master",
         "room": "master_bedroom",
         "type": "ac_indoor",
-        "x": 1.5,
-        "z": 7,
+        "x": 2.5,
+        "z": 4.6,
         "height": 2.85,
         "model": "2.8HP 风管机",
         "power_point": "sock_master_ac",
-        "note": "主卧空调内机"
+        "note": "主卧空调内机（贴儿童房南墙空调盒内，侧送朝南、下回）"
       },
       {
         "id": "ac_study",
@@ -547,7 +547,7 @@
         "room": "study",
         "type": "ac_indoor",
         "x": 5.5,
-        "z": 7.5,
+        "z": 6,
         "height": 2.85,
         "model": "2.2HP 风管机",
         "power_point": "sock_parent_ac",
@@ -557,8 +557,8 @@
         "id": "ac_child",
         "room": "bedroom_nw",
         "type": "ac_indoor",
-        "x": 4,
-        "z": 2.5,
+        "x": 4.4,
+        "z": 4,
         "height": 2.85,
         "model": "2.2HP 风管机",
         "power_point": "sock_child_ac",
@@ -575,7 +575,20 @@
           9,
           9.8
         ],
-        "note": "客厅南侧隐藏式晾衣架吊顶（预埋加固板+电源）"
+        "note": "客厅南侧隐藏式晾衣架吊顶（预埋加固板+电源 sock_living_drying）"
+      },
+      {
+        "id": "curtain_box_living",
+        "room": "living_dining",
+        "type": "drop",
+        "thickness": 0.15,
+        "area": [
+          9,
+          9.55,
+          13.4,
+          9.8
+        ],
+        "note": "客厅南墙窗帘盒（深 0.25m 容双轨，电动电源已预留；与晾衣架吊顶同底标高 2.65m，兼遮南窗带浅梁）"
       },
       {
         "id": "ceiling_kitchen",
@@ -599,9 +612,9 @@
           0,
           1.1,
           2.6,
-          3.26
+          2.86
         ],
-        "note": "主卫铝扣板吊顶（内藏排风管+浴霸），净高约2.55m；2026-08-21 隔墙北移3.26，吊顶随主卫缩小"
+        "note": "主卫铝扣板吊顶（内藏排风管+浴霸），净高约2.55m；2026-08-26 修正：隔墙 2026-08-25 已北移至 z=2.86，旧值 3.26 越界 0.4m 侵入主卧条带，随墙收回"
       },
       {
         "id": "ceiling_guest_bath",
@@ -638,9 +651,9 @@
           4.2,
           5.55,
           7.2,
-          7.8
+          6.45
         ],
-        "note": "主卧与父母房之间走廊吊顶（藏风管），净高约2.50m"
+        "note": "父母房北缘边吊（靠走廊侧整条贯通，藏风管机+风管，下接北墙衣柜；侧送下回）；走廊地面 z[6.45,7.8] 段恢复 2.80m 原顶，净高约2.50m"
       },
       {
         "id": "ceiling_entry_foyer",
@@ -661,12 +674,12 @@
         "type": "drop",
         "thickness": 0.3,
         "area": [
-          1.1,
-          5.6,
-          1.7,
-          8.65
+          0.05,
+          4.3,
+          4.2,
+          4.95
         ],
-        "note": "主卧西墙边吊（藏风管机，侧送下回），避飘窗：x 起 1.10 避西飘窗，z 止 8.65 避南环幕飘窗"
+        "note": "主卧空调檐口（2026-08-26 七迁定案：盒子+直管带合并为通长顶带，东起主卧东墙、西抵西幕墙框架收口（幕墙不承重，挂楼板），横跨条带全宽），4.15×0.65m，底 2.5m；内机藏中段 (2.5,4.6)；南立面嵌 1.0m 线形送风朝南越 1.1m 矮柜顶进睡眠区（风口东缘 x=3.0 擦高柜西缘不挡风，射程至南窗 5.4m 余量充足）；底面 1.0m 线形回风（回检一体铰接格栅兼检修）；冷媒/电源由走廊穿孔（z≈4.6）直线向西进东段，零拐弯；x>2.6 段须 z≥4.30（否则侵入儿童房）"
       },
       {
         "id": "ceiling_study_ac",
@@ -674,12 +687,25 @@
         "type": "drop",
         "thickness": 0.3,
         "area": [
-          13.8,
+          13.4,
           5.55,
-          16.4,
+          15.8,
           6.15
         ],
-        "note": "书房北墙边吊（藏风管机，侧送下回），避飘窗：z 止 6.15 远离南侧凸窗"
+        "note": "书房北墙边吊（靠走廊/电梯厅一侧贯通至通顶柜，藏风管机，侧送下回），避飘窗：z 止 6.15 远离南侧凸窗；x 止 15.80 让开通顶柜（柜体2.6+封板到原顶2.8，吊顶抵柜侧封板）"
+      },
+      {
+        "id": "ceiling_study_ac_corner",
+        "room": "bedroom_se",
+        "type": "drop",
+        "thickness": 0.3,
+        "area": [
+          15.8,
+          5.55,
+          16.4,
+          5.85
+        ],
+        "note": "书房边吊绕柜 L 形拐角（通顶柜北侧缺口收口，与 ceiling_study_ac 同底标高 2.50m；z 止 5.85 即柜北缘，不穿柜体）"
       },
       {
         "id": "ceiling_child_ac",
@@ -687,12 +713,64 @@
         "type": "drop",
         "thickness": 0.3,
         "area": [
-          3.2,
-          2.2,
-          4.8,
-          2.8
+          2.6,
+          3.7,
+          5.6,
+          4.3
         ],
-        "note": "儿童房北墙边吊（藏风管机，侧送下回），避飘窗：z 起 2.20 紧贴北飘窗侵入线外"
+        "note": "儿童房南墙边吊（靠走廊一侧整条贯通，藏风管机，下接南墙通顶衣柜；侧送朝北下回），远离北墙飘窗（侵入区 z[1.1,2.2]）"
+      },
+      {
+        "id": "curtain_box_master_west",
+        "room": "master_bedroom",
+        "type": "drop",
+        "thickness": 0.15,
+        "area": [
+          1.1,
+          5.55,
+          1.35,
+          8.8
+        ],
+        "note": "主卧西飘窗窗帘盒（贴飘窗内缘 x=1.10，覆盖西飘窗 z[5.55,8.80] 段）；2026-08-26 边吊迁东墙后不再由 ceiling_master_ac 兼任，独立补建"
+      },
+      {
+        "id": "curtain_box_master_south",
+        "room": "master_bedroom",
+        "type": "drop",
+        "thickness": 0.15,
+        "area": [
+          0,
+          8.7,
+          4.2,
+          8.95
+        ],
+        "note": "主卧南环幕窗帘盒（贴南飘窗内缘 z=8.70，电动电源已预留）"
+      },
+      {
+        "id": "curtain_box_parent_south",
+        "room": "study",
+        "type": "drop",
+        "thickness": 0.15,
+        "area": [
+          4.2,
+          8.7,
+          7.2,
+          8.95
+        ],
+        "note": "父母房南墙窗帘盒（贴南飘窗内缘 z=8.70，电动电源已预留）"
+      },
+      {
+        "id": "curtain_box_study_south",
+        "room": "bedroom_se",
+        "type": "drop",
+        "thickness": 0.15,
+        "area": [
+          13.4,
+          8.7,
+          16.4,
+          8.95
+        ],
+        "note": "书房南墙窗帘盒（贴南向凸窗内缘 z=8.70，电动电源已预留）"
       }
     ],
     "hvac": {
@@ -817,20 +895,20 @@
             "position": {
               "x": 4.2,
               "y": 2.5,
-              "z": 6.8
+              "z": 4.6
             },
-            "reason": "主卧冷媒支路按走廊吊顶转入示意，分歧、梁位和套管待厂家深化。"
+            "reason": "主卧冷媒支路按走廊吊顶穿孔后直管带向西进盒示意，分歧、梁位和套管待厂家深化。"
           },
           {
             "id": "branch_study",
             "status": "inferred",
             "system": "refrigerant",
             "position": {
-              "x": 13.4,
+              "x": 13.6,
               "y": 2.5,
-              "z": 7.5
+              "z": 5.85
             },
-            "reason": "书房冷媒支路按东侧吊顶转入示意，分歧、梁位和套管待厂家深化。"
+            "reason": "书房冷媒支路按北墙边吊转入示意，分歧、梁位和套管待厂家深化。"
           },
           {
             "id": "branch_parent",
@@ -839,9 +917,9 @@
             "position": {
               "x": 5.5,
               "y": 2.5,
-              "z": 7.5
+              "z": 6.2
             },
-            "reason": "父母房冷媒支路按西侧走廊吊顶转入示意，分歧、梁位和套管待厂家深化。"
+            "reason": "父母房冷媒支路按北缘边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化。"
           },
           {
             "id": "branch_child",
@@ -850,9 +928,9 @@
             "position": {
               "x": 4,
               "y": 2.5,
-              "z": 3.6
+              "z": 3.9
             },
-            "reason": "儿童房冷媒支路按走廊吊顶转入示意，分歧、梁位和套管待厂家深化。"
+            "reason": "儿童房冷媒支路按南墙边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化。"
           }
         ],
         "terminals": [
@@ -862,11 +940,11 @@
             "system": "supply_air",
             "position": {
               "x": 10.8,
-              "y": 2.49,
-              "z": 7
+              "y": 2.65,
+              "z": 5.21
             },
-            "reason": "客厅送风口为 1.5m 线形风口，下送底装于整区域吊顶，实际长度按风量深化。",
-            "mount_face": "bottom",
+            "reason": "客厅 1.5m 线形送风口，嵌北缘边吊南立面侧送，实际长度按风量深化。",
+            "mount_face": "south",
             "length": 1.5
           },
           {
@@ -876,9 +954,9 @@
             "position": {
               "x": 9.6,
               "y": 2.49,
-              "z": 7
+              "z": 4.75
             },
-            "reason": "客厅回风口为 1.1m 线形回风（回检一体预留），下回底装于整区域吊顶，尺寸待厂家深化。",
+            "reason": "客厅 1.1m 线形回风（回检一体预留），下回底装于北缘边吊，尺寸待厂家深化。",
             "mount_face": "bottom",
             "length": 1.1
           },
@@ -889,9 +967,9 @@
             "position": {
               "x": 10.3,
               "y": 2.49,
-              "z": 6.2
+              "z": 4.75
             },
-            "reason": "检修口底装于客厅吊顶，尺寸和位置待设备样本及现场梁位确认。",
+            "reason": "检修口底装于客厅北缘边吊、内机旁，尺寸和位置待设备样本及现场梁位确认。",
             "mount_face": "bottom"
           },
           {
@@ -914,11 +992,11 @@
             "status": "pending",
             "system": "condensate",
             "position": {
-              "x": 4.2,
+              "x": 2,
               "y": 0.1,
-              "z": 7
+              "z": 2.5
             },
-            "reason": "仅为冷凝水候选接入点，待量房确认；不是地漏、立管或施工点，不得假定接入现有地漏。",
+            "reason": "仅为冷凝水候选接入点，待量房确认；内机贴条带北墙后出盒即向主卫，不是地漏、立管或施工点，不得假定接入现有地漏。",
             "kind": "condensate_drain_candidate",
             "confirmed": false,
             "render_interior": false,
@@ -974,36 +1052,26 @@
             "status": "inferred",
             "system": "supply_air",
             "position": {
-              "x": 1.71,
+              "x": 2.5,
               "y": 2.65,
-              "z": 7
+              "z": 4.96
             },
-            "reason": "主卧送风口侧装于西墙边吊东立面（侧送），避飘窗，尺寸待厂家深化。",
-            "mount_face": "east"
+            "reason": "主卧 1.0m 线形送风口，嵌空调盒南立面侧送朝南，越 1.1m 矮柜顶进睡眠区（风口东缘 x=3.0 擦高柜西缘不挡风；至南窗射程 5.4m 余量充足），实际长度按风量深化。",
+            "mount_face": "south",
+            "length": 1
           },
           {
             "id": "return_master",
             "status": "inferred",
             "system": "return_air",
             "position": {
-              "x": 1.4,
+              "x": 2.5,
               "y": 2.49,
-              "z": 7.7
+              "z": 4.6
             },
-            "reason": "主卧回风口下回底装于边吊底面，尺寸待厂家深化。",
-            "mount_face": "bottom"
-          },
-          {
-            "id": "access_master",
-            "status": "pending",
-            "system": "access",
-            "position": {
-              "x": 1.4,
-              "y": 2.49,
-              "z": 6.3
-            },
-            "reason": "主卧检修口底装于边吊底面，尺寸和位置待设备样本、梁位确认。",
-            "mount_face": "bottom"
+            "reason": "主卧 1.0m 线形回风（回检一体：铰接回风格栅兼检修口，不另设面板），底装于空调盒底面（走道上方，远离床区），尺寸待厂家深化。",
+            "mount_face": "bottom",
+            "length": 1
           },
           {
             "id": "supply_study",
@@ -1026,19 +1094,7 @@
               "y": 2.49,
               "z": 5.85
             },
-            "reason": "书房回风口下回底装于边吊底面，尺寸待厂家深化。",
-            "mount_face": "bottom"
-          },
-          {
-            "id": "access_study",
-            "status": "pending",
-            "system": "access",
-            "position": {
-              "x": 14.8,
-              "y": 2.49,
-              "z": 5.85
-            },
-            "reason": "书房检修口底装于边吊底面，尺寸和位置待设备样本、梁位确认。",
+            "reason": "书房回风口下回底装于边吊底面，回检一体（铰接回风格栅兼检修口，不另设面板），尺寸待厂家深化。",
             "mount_face": "bottom"
           },
           {
@@ -1048,9 +1104,9 @@
             "position": {
               "x": 5,
               "y": 2.65,
-              "z": 7.81
+              "z": 6.46
             },
-            "reason": "父母房送风口侧装于走廊吊顶南立面（侧送），尺寸待厂家深化。",
+            "reason": "父母房送风口侧装于北缘边吊南立面（靠走廊侧，侧送），尺寸待厂家深化。",
             "mount_face": "south"
           },
           {
@@ -1058,23 +1114,11 @@
             "status": "inferred",
             "system": "return_air",
             "position": {
-              "x": 6,
+              "x": 6.5,
               "y": 2.49,
-              "z": 7.5
+              "z": 6.15
             },
-            "reason": "父母房回风口下回底装于走廊吊顶底面，尺寸待厂家深化。",
-            "mount_face": "bottom"
-          },
-          {
-            "id": "access_parent",
-            "status": "pending",
-            "system": "access",
-            "position": {
-              "x": 5.5,
-              "y": 2.49,
-              "z": 6.8
-            },
-            "reason": "父母房检修口底装于走廊吊顶底面，尺寸和位置待设备样本、梁位确认。",
+            "reason": "父母房回风口下回底装于北缘边吊顶底面、衣柜（x≤6.0）以东避让柜顶；回检一体（铰接回风格栅兼检修口，不另设面板），尺寸待厂家深化。",
             "mount_face": "bottom"
           },
           {
@@ -1084,33 +1128,21 @@
             "position": {
               "x": 3.7,
               "y": 2.65,
-              "z": 2.81
+              "z": 3.69
             },
-            "reason": "儿童房送风口侧装于北墙边吊南立面（侧送），避北飘窗，尺寸待厂家深化。",
-            "mount_face": "south"
+            "reason": "儿童房送风口侧装于南墙边吊北立面（靠走廊侧，朝北侧送），尺寸待厂家深化。",
+            "mount_face": "north"
           },
           {
             "id": "return_child",
             "status": "inferred",
             "system": "return_air",
             "position": {
-              "x": 4.3,
+              "x": 4.9,
               "y": 2.49,
-              "z": 2.5
+              "z": 4
             },
-            "reason": "儿童房回风口下回底装于边吊底面，尺寸待厂家深化。",
-            "mount_face": "bottom"
-          },
-          {
-            "id": "access_child",
-            "status": "pending",
-            "system": "access",
-            "position": {
-              "x": 4,
-              "y": 2.49,
-              "z": 2.55
-            },
-            "reason": "儿童房检修口底装于边吊底面，尺寸和位置待设备样本、梁位确认。",
+            "reason": "儿童房回风口下回底装于南墙边吊顶底面、衣柜（x≤4.4）以东避让柜顶；回检一体（铰接回风格栅兼检修口，不另设面板），尺寸待厂家深化。",
             "mount_face": "bottom"
           }
         ],
@@ -1243,10 +1275,9 @@
             "from": "indoor_master",
             "to": "condensate_master_candidate",
             "constraint_refs": [
-              "ref_south_window_band_ld100",
               "ref_master_bath_local_beam_head"
             ],
-            "reason": "冷凝水坡度、存水弯和立管接点待现场确认；南侧及主卫局部参考梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
+            "reason": "冷凝水管暗埋主卫东墙墙槽北上至候选点（不另设吊顶管槽），坡度、存水弯和立管接点待现场确认；主卫局部参考梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
           },
           {
             "id": "condensate_study_candidate_route",
@@ -1319,15 +1350,7 @@
             "system": "return_air",
             "from": "indoor_master",
             "to": "return_master",
-            "reason": "主卧回风箱尺寸待风量计算确认。"
-          },
-          {
-            "id": "access_master_route",
-            "status": "pending",
-            "system": "access",
-            "from": "indoor_master",
-            "to": "access_master",
-            "reason": "主卧检修口与滤网维护空间待设备样本确认。"
+            "reason": "主卧回风箱尺寸待风量计算确认；回检一体，铰接回风格栅兼检修，不另设检修口。"
           },
           {
             "id": "supply_study_route",
@@ -1343,15 +1366,7 @@
             "system": "return_air",
             "from": "indoor_study",
             "to": "return_study",
-            "reason": "书房回风箱尺寸待风量计算确认。"
-          },
-          {
-            "id": "access_study_route",
-            "status": "pending",
-            "system": "access",
-            "from": "indoor_study",
-            "to": "access_study",
-            "reason": "书房检修口与滤网维护空间待设备样本确认。"
+            "reason": "书房回风箱尺寸待风量计算确认；回检一体，滤网经铰接回风格栅维护。"
           },
           {
             "id": "supply_parent_route",
@@ -1367,15 +1382,7 @@
             "system": "return_air",
             "from": "indoor_parent",
             "to": "return_parent",
-            "reason": "父母房回风箱尺寸待风量计算确认。"
-          },
-          {
-            "id": "access_parent_route",
-            "status": "pending",
-            "system": "access",
-            "from": "indoor_parent",
-            "to": "access_parent",
-            "reason": "父母房检修口与滤网维护空间待设备样本确认。"
+            "reason": "父母房回风箱尺寸待风量计算确认；回检一体，滤网经铰接回风格栅维护。"
           },
           {
             "id": "supply_child_route",
@@ -1391,15 +1398,7 @@
             "system": "return_air",
             "from": "indoor_child",
             "to": "return_child",
-            "reason": "儿童房回风箱尺寸待风量计算确认。"
-          },
-          {
-            "id": "access_child_route",
-            "status": "pending",
-            "system": "access",
-            "from": "indoor_child",
-            "to": "access_child",
-            "reason": "儿童房检修口与滤网维护空间待设备样本确认。"
+            "reason": "儿童房回风箱尺寸待风量计算确认；回检一体，滤网经铰接回风格栅维护。"
           }
         ],
         "reference_constraints": [

@@ -39,6 +39,22 @@ describe('kitchen cabinet runs', () => {
   });
 });
 
+describe('wardrobe_180', () => {
+  it('buildWardrobe180: 柜体 + 顶封板封到目标总高（默认 2.50 抵边吊底，可覆盖到原顶 2.80）', async () => {
+    const { buildWardrobe180 } = await import('./FixtureFactory.js');
+    const sizeOf = (g: THREE.Object3D) => {
+      g.updateMatrixWorld(true);
+      return new THREE.Box3().setFromObject(g).getSize(new THREE.Vector3());
+    };
+    const low = sizeOf(buildWardrobe180());
+    expect(low.x).toBeCloseTo(1.8, 5);
+    expect(low.y).toBeCloseTo(2.5, 5);
+    expect(low.z).toBeCloseTo(0.6, 5);
+    const tall = sizeOf(buildWardrobe180(2.8));
+    expect(tall.y).toBeCloseTo(2.8, 5);
+  });
+});
+
 describe('plumbing fixtures', () => {
   it('builds a low round drain with a rim and multiple grate details', () => {
     const drain = buildFixture('drain');

@@ -58,22 +58,21 @@
 
 - id: sock_living_curtain
   room: living_dining
-  wall: w_liv_east
   type: socket
-  x: 13.40
-  z: 9.50
+  x: 13.30
+  z: 9.65
   height: 2.5
   count: 1
-  note: "电动窗帘电源（东墙南端，靠近南墙玻璃幕）"
+  note: "电动窗帘电源（南墙窗帘盒内东端，藏电机；原挂 w_liv_east 但超出该墙跨度，2026-08-26 移入窗帘盒）"
 
 - id: sock_living_ac
   room: living_dining
   type: socket
   x: 10.0
-  z: 7.0
+  z: 4.75
   height: 2.5
   count: 1
-  note: "客厅空调内机电源（吊顶内）"
+  note: "客厅空调内机电源（北缘边吊内，随内机北移）"
 
 - id: switch_living_entrance
   room: living_dining
@@ -146,13 +145,12 @@
 
 - id: sock_master_ac
   room: master_bedroom
-  wall: w_mb_east
   type: socket
-  x: 4.20
-  z: 7.0
-  height: 2.5
+  x: 3.50
+  z: 4.60
+  height: 2.6
   count: 1
-  note: "主卧空调内机电源（吊顶内；风管机布线，距内机>1m 属正常）"
+  note: "主卧空调内机电源（空调檐口东段吊顶内；内机吊顶内供电常规做法，随冷媒管直线进盒）"
 
 # 西南次卧（父母房）
 - id: sock_parent_bed_l
@@ -302,10 +300,10 @@
   wall: w_gbath_west
   type: socket
   x: 5.60
-  z: 3.60
+  z: 4.00
   height: 2.5
   count: 1
-  note: "儿童房空调内机电源（吊顶内；B案 2026-08-21 南墙改通顶衣柜，原h2.5点位被埋，改东墙吊顶内走管）"
+  note: "儿童房空调内机电源（南墙边吊内东端，随内机 2026-08-26 南移；南墙通顶衣柜上方）"
 
 # 厨房（DEC-013 布局重排：灶台→东墙，水槽→北墙；DEC-014 冰箱→东墙南端，南界 z=2.9）
 - id: sock_kitchen_counter
@@ -589,20 +587,20 @@
   room: bedroom_se
   type: socket
   x: 14.80
-  z: 7.50
+  z: 6.00
   height: 2.5
   count: 1
-  note: "书房空调内机电源（吊顶内）"
+  note: "书房空调内机电源（北墙边吊内，随内机北移）"
 
 # 父母房空调内机电源
 - id: sock_parent_ac
   room: study
   type: socket
   x: 5.50
-  z: 7.50
+  z: 6.20
   height: 2.5
   count: 1
-  note: "父母房空调内机电源（吊顶内）"
+  note: "父母房空调内机电源（北缘边吊内，随内机北移）"
 
 # 客卫智能马桶预留
 - id: sock_gbath_toilet
@@ -625,6 +623,16 @@
   height: 2.5
   count: 1
   note: "电动晾衣架电源（吊顶内）"
+
+# 客厅隐藏式晾衣架
+- id: sock_living_drying
+  room: living_dining
+  type: socket
+  x: 8.10
+  z: 9.50
+  height: 2.5
+  count: 1
+  note: "客厅南侧隐藏式电动晾衣架电源（drying_rack_living 吊顶内，预埋加固板处）"
 
 # 智能网关/路由位
 - id: sock_gateway

@@ -120,44 +120,44 @@ plans:
         - id: branch_master
           status: inferred
           system: refrigerant
-          position: { x: 4.2, y: 2.5, z: 6.8 }
-          reason: "主卧冷媒支路按走廊吊顶转入示意，分歧、梁位和套管待厂家深化。"
+          position: { x: 4.2, y: 2.5, z: 4.6 }
+          reason: "主卧冷媒支路按走廊吊顶穿孔后直管带向西进盒示意，分歧、梁位和套管待厂家深化。"
         - id: branch_study
           status: inferred
           system: refrigerant
-          position: { x: 13.4, y: 2.5, z: 7.5 }
-          reason: "书房冷媒支路按东侧吊顶转入示意，分歧、梁位和套管待厂家深化。"
+          position: { x: 13.6, y: 2.5, z: 5.85 }
+          reason: "书房冷媒支路按北墙边吊转入示意，分歧、梁位和套管待厂家深化。"
         - id: branch_parent
           status: inferred
           system: refrigerant
-          position: { x: 5.5, y: 2.5, z: 7.5 }
-          reason: "父母房冷媒支路按西侧走廊吊顶转入示意，分歧、梁位和套管待厂家深化。"
+          position: { x: 5.5, y: 2.5, z: 6.2 }
+          reason: "父母房冷媒支路按北缘边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化。"
         - id: branch_child
           status: inferred
           system: refrigerant
-          position: { x: 4.0, y: 2.5, z: 3.6 }
-          reason: "儿童房冷媒支路按走廊吊顶转入示意，分歧、梁位和套管待厂家深化。"
+          position: { x: 4.0, y: 2.5, z: 3.9 }
+          reason: "儿童房冷媒支路按南墙边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化。"
       terminals:
         - id: supply_living
           status: inferred
           system: supply_air
-          position: { x: 10.8, y: 2.49, z: 7.0 }
-          mount_face: bottom
+          position: { x: 10.8, y: 2.65, z: 5.21 }
+          mount_face: south
           length: 1.5
-          reason: "客厅送风口为 1.5m 线形风口，下送底装于整区域吊顶，实际长度按风量深化。"
+          reason: "客厅 1.5m 线形送风口，嵌北缘边吊南立面侧送，实际长度按风量深化。"
         - id: return_living
           status: inferred
           system: return_air
-          position: { x: 9.6, y: 2.49, z: 7.0 }
+          position: { x: 9.6, y: 2.49, z: 4.75 }
           mount_face: bottom
           length: 1.1
-          reason: "客厅回风口为 1.1m 线形回风（回检一体预留），下回底装于整区域吊顶，尺寸待厂家深化。"
+          reason: "客厅 1.1m 线形回风（回检一体预留），下回底装于北缘边吊，尺寸待厂家深化。"
         - id: access_living
           status: pending
           system: access
-          position: { x: 10.3, y: 2.49, z: 6.2 }
+          position: { x: 10.3, y: 2.49, z: 4.75 }
           mount_face: bottom
-          reason: "检修口底装于客厅吊顶，尺寸和位置待设备样本及现场梁位确认。"
+          reason: "检修口底装于客厅北缘边吊、内机旁，尺寸和位置待设备样本及现场梁位确认。"
         - id: condensate_living_candidate
           kind: condensate_drain_candidate
           status: pending
@@ -174,8 +174,8 @@ plans:
           render_interior: false
           render_coordination: true
           system: condensate
-          position: { x: 4.2, y: 0.1, z: 7.0 }
-          reason: "仅为冷凝水候选接入点，待量房确认；不是地漏、立管或施工点，不得假定接入现有地漏。"
+          position: { x: 2.0, y: 0.1, z: 2.5 }
+          reason: "仅为冷凝水候选接入点，待量房确认；内机贴条带北墙后出盒即向主卫，不是地漏、立管或施工点，不得假定接入现有地漏。"
         - id: condensate_study_candidate
           kind: condensate_drain_candidate
           status: pending
@@ -206,21 +206,17 @@ plans:
         - id: supply_master
           status: inferred
           system: supply_air
-          position: { x: 1.71, y: 2.65, z: 7.0 }
-          mount_face: east
-          reason: "主卧送风口侧装于西墙边吊东立面（侧送），避飘窗，尺寸待厂家深化。"
+          position: { x: 2.5, y: 2.65, z: 4.96 }
+          mount_face: south
+          length: 1.0
+          reason: "主卧 1.0m 线形送风口，嵌空调盒南立面侧送朝南，越 1.1m 矮柜顶进睡眠区（风口东缘 x=3.0 擦高柜西缘不挡风；至南窗射程 5.4m 余量充足），实际长度按风量深化。"
         - id: return_master
           status: inferred
           system: return_air
-          position: { x: 1.40, y: 2.49, z: 7.7 }
+          position: { x: 2.5, y: 2.49, z: 4.6 }
           mount_face: bottom
-          reason: "主卧回风口下回底装于边吊底面，尺寸待厂家深化。"
-        - id: access_master
-          status: pending
-          system: access
-          position: { x: 1.40, y: 2.49, z: 6.3 }
-          mount_face: bottom
-          reason: "主卧检修口底装于边吊底面，尺寸和位置待设备样本、梁位确认。"
+          length: 1.0
+          reason: "主卧 1.0m 线形回风（回检一体：铰接回风格栅兼检修口，不另设面板），底装于空调盒底面（走道上方，远离床区），尺寸待厂家深化。"
         - id: supply_study
           status: inferred
           system: supply_air
@@ -232,49 +228,31 @@ plans:
           system: return_air
           position: { x: 15.7, y: 2.49, z: 5.85 }
           mount_face: bottom
-          reason: "书房回风口下回底装于边吊底面，尺寸待厂家深化。"
-        - id: access_study
-          status: pending
-          system: access
-          position: { x: 14.8, y: 2.49, z: 5.85 }
-          mount_face: bottom
-          reason: "书房检修口底装于边吊底面，尺寸和位置待设备样本、梁位确认。"
+          reason: "书房回风口下回底装于边吊底面，回检一体（铰接回风格栅兼检修口，不另设面板），尺寸待厂家深化。"
         - id: supply_parent
           status: inferred
           system: supply_air
-          position: { x: 5.0, y: 2.65, z: 7.81 }
+          position: { x: 5.0, y: 2.65, z: 6.46 }
           mount_face: south
-          reason: "父母房送风口侧装于走廊吊顶南立面（侧送），尺寸待厂家深化。"
+          reason: "父母房送风口侧装于北缘边吊南立面（靠走廊侧，侧送），尺寸待厂家深化。"
         - id: return_parent
           status: inferred
           system: return_air
-          position: { x: 6.0, y: 2.49, z: 7.5 }
+          position: { x: 6.5, y: 2.49, z: 6.15 }
           mount_face: bottom
-          reason: "父母房回风口下回底装于走廊吊顶底面，尺寸待厂家深化。"
-        - id: access_parent
-          status: pending
-          system: access
-          position: { x: 5.5, y: 2.49, z: 6.8 }
-          mount_face: bottom
-          reason: "父母房检修口底装于走廊吊顶底面，尺寸和位置待设备样本、梁位确认。"
+          reason: "父母房回风口下回底装于北缘边吊顶底面、衣柜（x≤6.0）以东避让柜顶；回检一体（铰接回风格栅兼检修口，不另设面板），尺寸待厂家深化。"
         - id: supply_child
           status: inferred
           system: supply_air
-          position: { x: 3.7, y: 2.65, z: 2.81 }
-          mount_face: south
-          reason: "儿童房送风口侧装于北墙边吊南立面（侧送），避北飘窗，尺寸待厂家深化。"
+          position: { x: 3.7, y: 2.65, z: 3.69 }
+          mount_face: north
+          reason: "儿童房送风口侧装于南墙边吊北立面（靠走廊侧，朝北侧送），尺寸待厂家深化。"
         - id: return_child
           status: inferred
           system: return_air
-          position: { x: 4.3, y: 2.49, z: 2.5 }
+          position: { x: 4.9, y: 2.49, z: 4.0 }
           mount_face: bottom
-          reason: "儿童房回风口下回底装于边吊底面，尺寸待厂家深化。"
-        - id: access_child
-          status: pending
-          system: access
-          position: { x: 4.0, y: 2.49, z: 2.55 }
-          mount_face: bottom
-          reason: "儿童房检修口底装于边吊底面，尺寸和位置待设备样本、梁位确认。"
+          reason: "儿童房回风口下回底装于南墙边吊顶底面、衣柜（x≤4.4）以东避让柜顶；回检一体（铰接回风格栅兼检修口，不另设面板），尺寸待厂家深化。"
       routes:
         - id: refrigerant_trunk
           status: inferred
@@ -353,8 +331,8 @@ plans:
           system: condensate
           from: indoor_master
           to: condensate_master_candidate
-          constraint_refs: [ref_south_window_band_ld100, ref_master_bath_local_beam_head]
-          reason: "冷凝水坡度、存水弯和立管接点待现场确认；南侧及主卫局部参考梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
+          constraint_refs: [ref_master_bath_local_beam_head]
+          reason: "冷凝水管暗埋主卫东墙墙槽北上至候选点（不另设吊顶管槽），坡度、存水弯和立管接点待现场确认；主卫局部参考梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
         - id: condensate_study_candidate_route
           status: pending
           system: condensate
@@ -405,13 +383,7 @@ plans:
           system: return_air
           from: indoor_master
           to: return_master
-          reason: "主卧回风箱尺寸待风量计算确认。"
-        - id: access_master_route
-          status: pending
-          system: access
-          from: indoor_master
-          to: access_master
-          reason: "主卧检修口与滤网维护空间待设备样本确认。"
+          reason: "主卧回风箱尺寸待风量计算确认；回检一体，铰接回风格栅兼检修，不另设检修口。"
         - id: supply_study_route
           status: inferred
           system: supply_air
@@ -423,13 +395,7 @@ plans:
           system: return_air
           from: indoor_study
           to: return_study
-          reason: "书房回风箱尺寸待风量计算确认。"
-        - id: access_study_route
-          status: pending
-          system: access
-          from: indoor_study
-          to: access_study
-          reason: "书房检修口与滤网维护空间待设备样本确认。"
+          reason: "书房回风箱尺寸待风量计算确认；回检一体，滤网经铰接回风格栅维护。"
         - id: supply_parent_route
           status: inferred
           system: supply_air
@@ -441,13 +407,7 @@ plans:
           system: return_air
           from: indoor_parent
           to: return_parent
-          reason: "父母房回风箱尺寸待风量计算确认。"
-        - id: access_parent_route
-          status: pending
-          system: access
-          from: indoor_parent
-          to: access_parent
-          reason: "父母房检修口与滤网维护空间待设备样本确认。"
+          reason: "父母房回风箱尺寸待风量计算确认；回检一体，滤网经铰接回风格栅维护。"
         - id: supply_child_route
           status: inferred
           system: supply_air
@@ -459,10 +419,4 @@ plans:
           system: return_air
           from: indoor_child
           to: return_child
-          reason: "儿童房回风箱尺寸待风量计算确认。"
-        - id: access_child_route
-          status: pending
-          system: access
-          from: indoor_child
-          to: access_child
-          reason: "儿童房检修口与滤网维护空间待设备样本确认。"
+          reason: "儿童房回风箱尺寸待风量计算确认；回检一体，滤网经铰接回风格栅维护。"

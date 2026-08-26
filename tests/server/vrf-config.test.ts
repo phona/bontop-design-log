@@ -21,15 +21,28 @@ test('hvac.yaml declares the complete A2 diagram against existing MEP facts', ()
   assert.equal(plan.diagram.anchors.filter((anchor) => anchor.ref?.source === 'ceiling').length, 5);
   assert.equal(plan.diagram.anchors.filter((anchor) => anchor.ref?.source === 'electrical').length, 5);
   const roomKeys = ['living', 'master', 'study', 'parent', 'child'];
+  // 2026-08-26 回检一体：主卧/次卧/书房的回风格栅兼作检修口，不另设 access 面板；
+  // 仅客厅保留独立 access terminal 与 access route。
+  const mergedAccessRooms = new Set(['master', 'study', 'parent', 'child']);
   for (const room of roomKeys) {
     const indoor = `indoor_${room}`;
+    const mergedAccess = mergedAccessRooms.has(room);
     assert.ok(plan.diagram.anchors.some((anchor) => anchor.id === `power_${room}` && anchor.ref?.source === 'electrical'));
-    for (const system of ['power', 'refrigerant', 'condensate', 'supply_air', 'return_air', 'access']) {
+    const systems = ['power', 'refrigerant', 'condensate', 'supply_air', 'return_air', ...(mergedAccess ? [] : ['access'])];
+    for (const system of systems) {
       assert.equal(plan.diagram.routes.filter((route) => route.system === system && (route.from === indoor || route.to === indoor)).length, 1,
         `${room} should have exactly one ${system} route`);
     }
-    for (const terminal of ['supply', 'return', 'access']) {
+    if (mergedAccess) {
+      assert.equal(plan.diagram.routes.filter((route) => route.system === 'access' && (route.from === indoor || route.to === indoor)).length, 0,
+        `${room} should not have an access route (回检一体)`);
+    }
+    const terminals = ['supply', 'return', ...(mergedAccess ? [] : ['access'])];
+    for (const terminal of terminals) {
       assert.ok(plan.diagram.terminals.some((item) => item.id === `${terminal}_${room}`), `${room} missing ${terminal} terminal`);
+    }
+    if (mergedAccess) {
+      assert.ok(!plan.diagram.terminals.some((item) => item.id === `access_${room}`), `${room} should not have an access terminal (回检一体)`);
     }
   }
   for (const route of plan.diagram.routes.filter((route) => route.status !== 'confirmed')) {

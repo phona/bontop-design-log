@@ -68,16 +68,20 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
+    // 2026-08-26：定制衣柜 = 柜体 + 顶封板（同材质薄板封到目标高度，见 buildWardrobe180）。
+    // 默认 2.50m：柜体 2.40 + 封板 0.10，抵边吊底（父母房/儿童房）；原顶房间用 cabinetHeight: 2.8 覆盖。
     type: 'wardrobe_180',
     parts: [
-      { shape: 'box', size: [1.8, 2.7, 0.6], position: [0, 1.35, 0], color: '#8B7355' },
+      { shape: 'box', size: [1.8, 2.40, 0.6], position: [0, 1.20, 0], color: '#8B7355' },
+      { shape: 'box', size: [1.8, 0.10, 0.6], position: [0, 2.45, 0], color: '#8B7355' },
     ],
   },
   {
     // DEC-023：2.4m 衣柜拆两段——西段（-x 侧）加深 0.8m 放被褥/行李箱，东段标准 0.6m 靠门侧；背面对齐（北缘 -0.4）
+    // 2026-08-26 主卧空调方案：西段降 1.1m 作被褥矮柜（上方空调盒朝南越顶送风），东段保持 2.7m 通顶挂衣
     type: 'wardrobe_240_split',
     parts: [
-      { shape: 'box', size: [1.2, 2.7, 0.8], position: [-0.6, 1.35, 0], color: '#7d6647' },
+      { shape: 'box', size: [1.2, 1.1, 0.8], position: [-0.6, 0.55, 0], color: '#7d6647' },
       { shape: 'box', size: [1.2, 2.7, 0.6], position: [0.6, 1.35, -0.1], color: '#8B7355' },
     ],
   },
@@ -506,6 +510,20 @@ export function buildFixture(type: string): THREE.Group | null {
     group.add(mesh);
   }
 
+  return group;
+}
+
+/** 定制 1.8m 衣柜：柜体 + 顶封板封到 totalHeight（默认 2.50 抵边吊底；原顶房间传 2.80）。 */
+export function buildWardrobe180(totalHeight = 2.5): THREE.Group {
+  const filler = 0.1;
+  const bodyHeight = totalHeight - filler;
+  const group = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: '#8B7355', metalness: 0.1, roughness: 0.6 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, bodyHeight, 0.6), mat);
+  body.position.set(0, bodyHeight / 2, 0);
+  const topFiller = new THREE.Mesh(new THREE.BoxGeometry(1.8, filler, 0.6), mat);
+  topFiller.position.set(0, bodyHeight + filler / 2, 0);
+  group.add(body, topFiller);
   return group;
 }
 
