@@ -781,6 +781,37 @@ export class HouseScene implements SceneApi {
     });
   }
 
+  // 竖纹长虹玻璃（DEC-044 推拉门芯板）：程序化竖向棱纹贴图 → roughnessMap + bumpMap，
+  // 模拟 12mm 棱距的条纹磨砂透光效果；贴图按芯板宽度设置 repeat，使棱距≈真实尺寸
+  private flutedGlassTexture: THREE.CanvasTexture | null = null;
+
+  private makeFlutedGlassMaterial(paneW: number): THREE.MeshPhysicalMaterial {
+    if (!this.flutedGlassTexture) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 4;
+      const ctx = canvas.getContext('2d')!;
+      const period = 32; // 贴图空间内每道棱的像素宽
+      for (let x = 0; x < canvas.width; x++) {
+        const t = (x % period) / period;
+        const v = Math.round(128 + 110 * Math.sin(t * Math.PI * 2));
+        ctx.fillStyle = `rgb(${v},${v},${v})`;
+        ctx.fillRect(x, 0, 1, canvas.height);
+      }
+      this.flutedGlassTexture = new THREE.CanvasTexture(canvas);
+      this.flutedGlassTexture.wrapS = THREE.RepeatWrapping;
+    }
+    const stripes = this.flutedGlassTexture.clone();
+    stripes.needsUpdate = true;
+    stripes.repeat.x = Math.max(1, Math.round(paneW / 0.012));
+    const mat = this.makeGlassMaterial();
+    mat.roughness = 0.5; // three.js 中 roughness 与 roughnessMap 相乘，此处给棱纹留出起伏区间
+    mat.roughnessMap = stripes;
+    mat.bumpMap = stripes;
+    mat.bumpScale = 0.3;
+    return mat;
+  }
+
   private buildSceneElements(elements: SceneElement[], defaultHeight: number) {
     for (const el of elements) {
       switch (el.type) {
@@ -1499,7 +1530,7 @@ export class HouseScene implements SceneApi {
     const ang = Math.atan2(b.z - a.z, b.x - a.x);
     const nx = -(b.z - a.z) / len;
     const nz = (b.x - a.x) / len;
-    const railMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.6, roughness: 0.4 });
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 });
     const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 0.16), railMat);
     rail.position.set((a.x + b.x) / 2, el.height + 0.03, (a.z + b.z) / 2);
     rail.rotation.y = ang;
@@ -1507,30 +1538,48 @@ export class HouseScene implements SceneApi {
     const panels = el.panels ?? 3;
     const open = el.open ?? true;
     const panelW = len / panels;
-    const glass = this.makeGlassMaterial();
+    // DEC-044 形态：极窄边哑光黑框（25mm 可视面）+ 竖纹长虹玻璃（程序化棱纹贴图）
+    const FRAME_W = 0.025;
+    const FRAME_D = 0.04;
+    const outerW = panelW - 0.06;
+    const paneW = outerW - 2 * FRAME_W;
+    const paneH = el.height - 2 * FRAME_W;
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x141414, metalness: 0.5, roughness: 0.45 });
+    const glass = this.makeFlutedGlassMaterial(paneW);
     for (let i = 0; i < panels; i++) {
-      // open 布局（2026-08-26）：首尾两扇为固定扇不动，中间活动扇就近叠收至西/东固定扇；
-      // 东端固定扇正对冰箱南侧板（死段），叠收后与冰箱并排
-      let along: number;
-      if (!open) {
-        along = (i + 0.5) * panelW;
-      } else if (i === 0) {
-        along = panelW / 2;
-      } else if (i === panels - 1) {
-        along = len - panelW / 2;
-      } else {
-        const westSide = i - 1 < (panels - 2) / 2;
-        along = westSide ? panelW / 2 + 0.08 : len - panelW / 2 - 0.08;
-      }
+      // open 布局（2026-08-26 DEC-044）：一固三活单向叠收——东端（points 末段）固定扇不动，
+      // 其余活动扇全部叠收至东端、贴固定扇停成一摞（落在冰箱侧板前的死段，与冰箱并排）；
+      // 西侧让出 len-panelW 的完整通道
+      const along = open
+        ? len - panelW / 2 - (panels - 1 - i) * 0.08
+        : (i + 0.5) * panelW;
       const track = i * 0.05 - 0.05;
-      const panel = new THREE.Mesh(new THREE.BoxGeometry(panelW - 0.06, el.height, 0.03), glass);
+      const ud = { objectId: `sliding_door:${el.id}`, hoverable: true, type: 'sliding_door' };
+      const panel = new THREE.Group();
+      // 玻璃芯板（内嵌框内）
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(paneW, paneH, 0.008), glass);
+      pane.userData = ud;
+      panel.add(pane);
+      // 上下横梃
+      for (const ySign of [1, -1]) {
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(outerW, FRAME_W, FRAME_D), frameMat);
+        bar.position.y = ySign * (el.height / 2 - FRAME_W / 2);
+        bar.userData = ud;
+        panel.add(bar);
+      }
+      // 左右竖梃
+      for (const xSign of [1, -1]) {
+        const stile = new THREE.Mesh(new THREE.BoxGeometry(FRAME_W, paneH, FRAME_D), frameMat);
+        stile.position.x = xSign * (outerW / 2 - FRAME_W / 2);
+        stile.userData = ud;
+        panel.add(stile);
+      }
       panel.position.set(
         a.x + (b.x - a.x) * (along / len) + nx * track,
         el.height / 2,
         a.z + (b.z - a.z) * (along / len) + nz * track
       );
       panel.rotation.y = ang;
-      panel.userData = { objectId: `sliding_door:${el.id}`, hoverable: true, type: 'sliding_door' };
       group.add(panel);
     }
     this.scene.add(group);
