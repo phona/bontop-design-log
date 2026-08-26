@@ -1509,7 +1509,19 @@ export class HouseScene implements SceneApi {
     const panelW = len / panels;
     const glass = this.makeGlassMaterial();
     for (let i = 0; i < panels; i++) {
-      const along = open ? panelW / 2 + i * 0.08 : (i + 0.5) * panelW;
+      // open 布局（2026-08-26）：首尾两扇为固定扇不动，中间活动扇就近叠收至西/东固定扇；
+      // 东端固定扇正对冰箱南侧板（死段），叠收后与冰箱并排
+      let along: number;
+      if (!open) {
+        along = (i + 0.5) * panelW;
+      } else if (i === 0) {
+        along = panelW / 2;
+      } else if (i === panels - 1) {
+        along = len - panelW / 2;
+      } else {
+        const westSide = i - 1 < (panels - 2) / 2;
+        along = westSide ? panelW / 2 + 0.08 : len - panelW / 2 - 0.08;
+      }
       const track = i * 0.05 - 0.05;
       const panel = new THREE.Mesh(new THREE.BoxGeometry(panelW - 0.06, el.height, 0.03), glass);
       panel.position.set(
