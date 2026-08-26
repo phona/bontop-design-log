@@ -870,6 +870,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   bench_adjustable: { width: 1.24, depth: 0.55 },
   rubber_training_mat: { width: 1.8, depth: 1.6 },
   low_weight_storage: { width: 0.95, depth: 0.42 },
+  low_room_cabinet: { width: 0.40, depth: 1.20 }, // 2026-08-26 书房东墙低柜，世界 footprint 0.40×1.20m；配置 rotation=0 沿东墙南北向展开，柜门朝西，不是健身器材收纳
   chair: { width: 0.5, depth: 0.5 },
   fridge: { width: 0.7, depth: 0.7 },
   gas_stove: { width: 0.75, depth: 0.6 },

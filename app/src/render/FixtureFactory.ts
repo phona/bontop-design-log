@@ -524,6 +524,99 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [0.05, 0.30, 0.05], position: [0, 1.22, 0], color: '#c8ccd0', metalness: 0.6, roughness: 0.35 },
     ],
   },
+  // ── Training area: freestanding, modular low-poly fixtures ──
+  {
+    type: 'squat_rack',
+    parts: [
+      { shape: 'box', size: [0.10, 2.25, 0.10], position: [-0.54, 1.125, -0.38], color: '#25282b', metalness: 0.75, roughness: 0.3, part: 'upright-left', materialRole: 'frame' },
+      { shape: 'box', size: [0.10, 2.25, 0.10], position: [0.54, 1.125, -0.38], color: '#25282b', metalness: 0.75, roughness: 0.3, part: 'upright-right', materialRole: 'frame' },
+      { shape: 'box', size: [1.18, 0.10, 0.95], position: [0, 0.05, 0], color: '#25282b', metalness: 0.75, roughness: 0.3, part: 'base', materialRole: 'frame' },
+      { shape: 'box', size: [1.08, 0.08, 0.08], position: [0, 2.18, -0.38], color: '#25282b', metalness: 0.75, roughness: 0.3, part: 'top-crossbar', materialRole: 'frame' },
+      // Safety arms sit on the left/right uprights and project forward from the rack.
+      // The reversed local +Z front maps to world +X with house.yaml rotation=90;
+      // they are not a crossbar between the uprights.
+      { shape: 'box', size: [0.07, 0.07, 0.98], position: [-0.54, 0.82, 0.11], color: '#d05a35', metalness: 0.5, roughness: 0.35, part: 'safety-bar-lower', materialRole: 'safety_bar' },
+      { shape: 'box', size: [0.07, 0.07, 0.98], position: [0.54, 0.98, 0.11], color: '#d05a35', metalness: 0.5, roughness: 0.35, part: 'safety-bar-upper', materialRole: 'safety_bar' },
+      // Visible plates are stored on side pegs, not as a separate floor pile.
+      { shape: 'cylinder', size: [0.21, 0.035, 0.21], position: [-0.64, 0.52, -0.38], rotation: [0, 0, Math.PI / 2], color: '#1f2326', metalness: 0.35, roughness: 0.65, part: 'rack-plate-left-large', materialRole: 'weight_plate' },
+      { shape: 'cylinder', size: [0.16, 0.04, 0.16], position: [-0.69, 0.52, -0.38], rotation: [0, 0, Math.PI / 2], color: '#343a40', metalness: 0.35, roughness: 0.65, part: 'rack-plate-left-medium', materialRole: 'weight_plate' },
+      { shape: 'cylinder', size: [0.10, 0.045, 0.10], position: [-0.735, 0.52, -0.38], rotation: [0, 0, Math.PI / 2], color: '#d05a35', metalness: 0.2, roughness: 0.7, part: 'rack-plate-left-small', materialRole: 'weight_plate' },
+      { shape: 'cylinder', size: [0.21, 0.035, 0.21], position: [0.64, 0.52, -0.38], rotation: [0, 0, Math.PI / 2], color: '#1f2326', metalness: 0.35, roughness: 0.65, part: 'rack-plate-right-large', materialRole: 'weight_plate' },
+      { shape: 'cylinder', size: [0.16, 0.04, 0.16], position: [0.69, 0.52, -0.38], rotation: [0, 0, Math.PI / 2], color: '#343a40', metalness: 0.35, roughness: 0.65, part: 'rack-plate-right-medium', materialRole: 'weight_plate' },
+      { shape: 'cylinder', size: [0.10, 0.045, 0.10], position: [0.735, 0.52, -0.38], rotation: [0, 0, Math.PI / 2], color: '#d05a35', metalness: 0.2, roughness: 0.7, part: 'rack-plate-right-small', materialRole: 'weight_plate' },
+    ],
+  },
+  {
+    type: 'barbell_olympic',
+    parts: [
+      { shape: 'cylinder', size: [0.025, 2.20, 0.025], position: [0, 0.12, 0], rotation: [0, 0, Math.PI / 2], color: '#9ba1a6', metalness: 0.85, roughness: 0.25, part: 'bar-shaft', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.055, 0.16, 0.055], position: [-0.78, 0.12, 0], rotation: [0, 0, Math.PI / 2], color: '#3b3f43', metalness: 0.7, roughness: 0.3, part: 'sleeve-left', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.055, 0.16, 0.055], position: [0.78, 0.12, 0], rotation: [0, 0, Math.PI / 2], color: '#3b3f43', metalness: 0.7, roughness: 0.3, part: 'sleeve-right', materialRole: 'hardware' },
+      { shape: 'box', size: [0.04, 0.05, 0.04], position: [-0.48, 0.12, 0], color: '#d05a35', roughness: 0.45, part: 'knurl-mark-left', materialRole: 'hardware' },
+      { shape: 'box', size: [0.04, 0.05, 0.04], position: [0.48, 0.12, 0], color: '#d05a35', roughness: 0.45, part: 'knurl-mark-right', materialRole: 'hardware' },
+    ],
+  },
+  {
+    type: 'weight_plate_set',
+    parts: [
+      { shape: 'cylinder', size: [0.21, 0.035, 0.21], position: [-0.13, 0.035, 0], color: '#1f2326', metalness: 0.35, roughness: 0.65, part: 'plate-large', materialRole: 'weight_plate' },
+      { shape: 'cylinder', size: [0.16, 0.04, 0.16], position: [0.13, 0.04, 0], color: '#343a40', metalness: 0.35, roughness: 0.65, part: 'plate-medium', materialRole: 'weight_plate' },
+      { shape: 'cylinder', size: [0.10, 0.045, 0.10], position: [0, 0.082, 0], color: '#d05a35', metalness: 0.2, roughness: 0.7, part: 'plate-small', materialRole: 'weight_plate' },
+    ],
+  },
+  {
+    type: 'bench_adjustable',
+    parts: [
+      { shape: 'box', size: [0.72, 0.12, 0.46], position: [0.26, 0.58, 0], color: '#33383d', roughness: 0.75, part: 'back-pad', materialRole: 'upholstery' },
+      { shape: 'box', size: [0.52, 0.12, 0.46], position: [-0.36, 0.48, 0], color: '#33383d', roughness: 0.75, part: 'seat-pad', materialRole: 'upholstery' },
+      { shape: 'box', size: [0.44, 0.08, 0.08], position: [0.28, 0.22, 0], color: '#25282b', metalness: 0.7, roughness: 0.35, part: 'back-support', materialRole: 'frame' },
+      { shape: 'box', size: [0.42, 0.08, 0.08], position: [-0.36, 0.21, 0], color: '#25282b', metalness: 0.7, roughness: 0.35, part: 'seat-support', materialRole: 'frame' },
+      { shape: 'box', size: [0.48, 0.06, 0.55], position: [0.28, 0.04, 0], color: '#25282b', metalness: 0.7, roughness: 0.35, part: 'rear-foot', materialRole: 'frame' },
+      { shape: 'box', size: [0.42, 0.06, 0.55], position: [-0.36, 0.04, 0], color: '#25282b', metalness: 0.7, roughness: 0.35, part: 'front-foot', materialRole: 'frame' },
+      { shape: 'box', size: [0.10, 0.28, 0.10], position: [0.28, 0.18, 0], color: '#25282b', metalness: 0.7, roughness: 0.35, part: 'rear-leg', materialRole: 'frame' },
+      { shape: 'box', size: [0.10, 0.28, 0.10], position: [-0.36, 0.18, 0], color: '#25282b', metalness: 0.7, roughness: 0.35, part: 'front-leg', materialRole: 'frame' },
+      { shape: 'box', size: [0.56, 0.06, 0.10], position: [0.28, 0.08, 0], color: '#25282b', metalness: 0.7, roughness: 0.35, part: 'rear-base', materialRole: 'frame' },
+      { shape: 'box', size: [0.50, 0.06, 0.10], position: [-0.36, 0.08, 0], color: '#25282b', metalness: 0.7, roughness: 0.35, part: 'front-base', materialRole: 'frame' },
+    ],
+  },
+  {
+    type: 'rubber_training_mat',
+    parts: [
+      { shape: 'box', size: [1.80, 0.035, 1.60], position: [0, 0.0175, 0], color: '#292b2e', roughness: 0.92, part: 'rubber-surface', materialRole: 'floor_protection' },
+      { shape: 'box', size: [1.72, 0.012, 1.52], position: [0, 0.041, 0], color: '#3a3d40', roughness: 0.95, part: 'inner-texture', materialRole: 'floor_protection' },
+    ],
+  },
+  {
+    type: 'low_weight_storage',
+    parts: [
+      { shape: 'box', size: [0.95, 0.08, 0.42], position: [0, 0.04, 0], color: '#25282b', metalness: 0.65, roughness: 0.4, part: 'base', materialRole: 'frame' },
+      { shape: 'box', size: [0.08, 0.62, 0.08], position: [-0.40, 0.35, 0], color: '#25282b', metalness: 0.65, roughness: 0.4, part: 'upright-left', materialRole: 'frame' },
+      { shape: 'box', size: [0.08, 0.62, 0.08], position: [0.40, 0.35, 0], color: '#25282b', metalness: 0.65, roughness: 0.4, part: 'upright-right', materialRole: 'frame' },
+      { shape: 'box', size: [0.86, 0.06, 0.34], position: [0, 0.28, 0], color: '#383d42', metalness: 0.45, roughness: 0.55, part: 'lower-tray', materialRole: 'shelf' },
+      { shape: 'box', size: [0.86, 0.06, 0.34], position: [0, 0.64, 0], color: '#383d42', metalness: 0.45, roughness: 0.55, part: 'upper-tray', materialRole: 'shelf' },
+      { shape: 'cylinder', size: [0.025, 0.38, 0.025], position: [0, 0.78, 0], rotation: [0, 0, Math.PI / 2], color: '#9ba1a6', metalness: 0.8, roughness: 0.3, part: 'storage-rod', materialRole: 'hardware' },
+    ],
+  },
+  {
+    // 普通书房低矮收纳柜：1.20×0.40×0.80m，局部 -X 为正面/柜门；沿东墙南北向摆放时 rotation=0°，柜门朝西、背面朝东。
+    // 浅木色封闭柜体，含双抽屉、双柜门、台面和踢脚，独立落地，不承载训练器材。
+    type: 'low_room_cabinet',
+    parts: [
+      { shape: 'box', size: [0.36, 0.08, 1.16], position: [0, 0.04, 0], color: '#72583f', part: 'plinth', materialRole: 'plinth' },
+      { shape: 'box', size: [0.36, 0.68, 1.16], position: [0, 0.42, 0], color: '#c9aa7d', roughness: 0.55, part: 'carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.40, 0.04, 1.20], position: [0, 0.78, 0], color: '#a98258', roughness: 0.4, part: 'countertop', materialRole: 'countertop' },
+      { shape: 'box', size: [0.018, 0.14, 0.56], position: [-0.186, 0.68, -0.29], color: '#d8bd91', roughness: 0.5, part: 'drawer-front-left', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.018, 0.14, 0.56], position: [-0.186, 0.68, 0.29], color: '#d8bd91', roughness: 0.5, part: 'drawer-front-right', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.018, 0.44, 0.56], position: [-0.186, 0.38, -0.29], color: '#d8bd91', roughness: 0.5, part: 'door-panel-left', materialRole: 'door_front' },
+      { shape: 'box', size: [0.018, 0.44, 0.56], position: [-0.186, 0.38, 0.29], color: '#d8bd91', roughness: 0.5, part: 'door-panel-right', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 0.012, 0.02], position: [-0.198, 0.68, 0], color: '#8f704e', part: 'drawer-seam', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.012, 0.012, 0.02], position: [-0.198, 0.38, 0], color: '#8f704e', part: 'door-seam', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.008, 0.07, 0.012], position: [-0.201, 0.68, -0.29], color: '#6a5540', metalness: 0.35, roughness: 0.4, part: 'drawer-handle-left', materialRole: 'hardware' },
+      { shape: 'box', size: [0.008, 0.07, 0.012], position: [-0.201, 0.68, 0.29], color: '#6a5540', metalness: 0.35, roughness: 0.4, part: 'drawer-handle-right', materialRole: 'hardware' },
+      { shape: 'box', size: [0.008, 0.07, 0.012], position: [-0.201, 0.38, -0.29], color: '#6a5540', metalness: 0.35, roughness: 0.4, part: 'door-handle-left', materialRole: 'hardware' },
+      { shape: 'box', size: [0.008, 0.07, 0.012], position: [-0.201, 0.38, 0.29], color: '#6a5540', metalness: 0.35, roughness: 0.35, part: 'door-handle-right', materialRole: 'hardware' },
+    ],
+  },
 ];
 
 function addPart(

@@ -45,6 +45,14 @@ const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['kitchen_cabinet_run', 'range_hood'],
   ['kitchen_cabinet_run', 'fridge'],
   ['kitchen_cabinet_run', 'dishwasher'], // 2026-08-23 洗碗机嵌柜段留位（run +0.04 容差与机位边缘相接）
+  ['rubber_training_mat', 'squat_rack'],
+  ['rubber_training_mat', 'bench_adjustable'],
+  ['rubber_training_mat', 'barbell_olympic'],
+  ['rubber_training_mat', 'weight_plate_set'],
+  // 明确的卧推操作配对：凳子靠架北侧收纳，允许二者 footprint 真实重叠；其他碰撞仍照常报错。
+  ['squat_rack', 'bench_adjustable'],
+  ['squat_rack', 'barbell_olympic'],
+  ['bench_adjustable', 'barbell_olympic'],
 ];
 
 function isStackedPair(a: string, b: string): boolean {

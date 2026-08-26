@@ -6,6 +6,7 @@ import {
   buildKitchenCabinetRun,
   buildWardrobe180,
   buildWardrobeSplit,
+  getRecipeTypes,
 } from './FixtureFactory.js';
 
 function fixtureSize(type: string): THREE.Vector3 {
@@ -14,6 +15,98 @@ function fixtureSize(type: string): THREE.Vector3 {
   fixture!.updateMatrixWorld(true);
   return new THREE.Box3().setFromObject(fixture!).getSize(new THREE.Vector3());
 }
+
+describe('training fixtures', () => {
+  it('registers and builds every training fixture with readable dimensions', () => {
+    const expected: Record<string, [number, number, number]> = {
+      squat_rack: [1.515, 2.25, 1.19],
+      barbell_olympic: [2.20, 0.11, 0.11],
+      weight_plate_set: [0.63, 0.087, 0.42],
+      bench_adjustable: [1.24, 0.63, 0.55],
+      rubber_training_mat: [1.80, 0.047, 1.60],
+      low_weight_storage: [0.95, 0.805, 0.42],
+      low_room_cabinet: [0.405, 0.80, 1.20],
+    };
+    for (const [type, [x, y, z]] of Object.entries(expected)) {
+      expect(getRecipeTypes()).toContain(type);
+      const fixture = buildFixture(type);
+      expect(fixture).not.toBeNull();
+      const size = fixtureSize(type);
+      expect(size.x).toBeCloseTo(x, 2);
+      expect(size.y).toBeCloseTo(y, 2);
+      expect(size.z).toBeCloseTo(z, 2);
+    }
+  });
+
+  it('exposes two contrasting safety arms projecting in reversed local +Z direction', () => {
+    const rack = buildFixture('squat_rack')!;
+    const safetyBars = rack.children.filter((child) => child.userData.materialRole === 'safety_bar');
+
+    expect(safetyBars).toHaveLength(2);
+    expect(safetyBars.map((child) => child.userData.part)).toEqual(['safety-bar-lower', 'safety-bar-upper']);
+    expect(safetyBars.every((child) => child instanceof THREE.Mesh && child.geometry.type === 'BoxGeometry')).toBe(true);
+    for (const bar of safetyBars) {
+      const geometry = (bar as THREE.Mesh).geometry as THREE.BoxGeometry;
+      expect(geometry.parameters.width).toBeCloseTo(0.07, 5);
+      expect(geometry.parameters.height).toBeCloseTo(0.07, 5);
+      expect(geometry.parameters.depth).toBeCloseTo(0.98, 5);
+      expect(geometry.parameters.depth).toBeGreaterThan(geometry.parameters.width);
+    }
+    expect(safetyBars.map((child) => child.position.y)).toEqual([0.82, 0.98]);
+    expect(safetyBars.map((child) => child.position.x)).toEqual([-0.54, 0.54]);
+    expect(safetyBars.every((child) => child.position.z === 0.11)).toBe(true);
+    expect(safetyBars.every((child) => {
+      const halfLength = ((child as THREE.Mesh).geometry as THREE.BoxGeometry).parameters.depth / 2;
+      expect(child.position.z - halfLength).toBeCloseTo(-0.38, 5);
+      expect(child.position.z + halfLength).toBeCloseTo(0.60, 5);
+      return true;
+    })).toBe(true);
+    expect(safetyBars.every((child) => {
+      const material = (child as THREE.Mesh).material;
+      return material instanceof THREE.MeshStandardMaterial && material.color.getHexString() === 'd05a35';
+    })).toBe(true);
+    expect(rack.children.some((child) => child.userData.part === 'safety-pin-left')).toBe(false);
+    expect(rack.children.some((child) => child.userData.part === 'safety-pin-right')).toBe(false);
+  });
+
+  it('exposes rack-mounted plates plus explicit bench frame details', () => {
+    expect(buildFixture('barbell_olympic')!.children.some((child) => child.userData.part === 'bar-shaft')).toBe(true);
+    const rack = buildFixture('squat_rack')!;
+    const rackPlates = rack.children.filter((child) => child.userData.materialRole === 'weight_plate');
+    expect(rackPlates).toHaveLength(6);
+    expect(rackPlates.map((child) => child.userData.part)).toEqual([
+      'rack-plate-left-large', 'rack-plate-left-medium', 'rack-plate-left-small',
+      'rack-plate-right-large', 'rack-plate-right-medium', 'rack-plate-right-small',
+    ]);
+    expect(rackPlates.every((child) => child instanceof THREE.Mesh && child.geometry.type === 'CylinderGeometry' && child.position.y > 0.1)).toBe(true);
+    expect(rackPlates.map((child) => child.position.x)).toEqual([-0.64, -0.69, -0.735, 0.64, 0.69, 0.735]);
+
+    const bench = buildFixture('bench_adjustable')!;
+    expect(bench.children.some((child) => child.userData.part === 'back-pad')).toBe(true);
+    for (const part of ['front-leg', 'rear-leg', 'front-base', 'rear-base']) {
+      const mesh = bench.children.find((child) => child.userData.part === part);
+      expect(mesh).toBeDefined();
+      expect(mesh).toBeInstanceOf(THREE.Mesh);
+      expect((mesh as THREE.Mesh).geometry.type).toBe('BoxGeometry');
+      expect(mesh!.position.y).toBeLessThan(0.3);
+    }
+    expect(bench.children.filter((child) => child.userData.materialRole === 'weight_plate')).toHaveLength(0);
+    expect(buildFixture('low_weight_storage')!.children.filter((child) => child.userData.materialRole === 'shelf')).toHaveLength(2);
+    const roomCabinet = buildFixture('low_room_cabinet')!;
+    expect(roomCabinet.children.filter((child) => child.userData.materialRole === 'door_front')).toHaveLength(2);
+    expect(roomCabinet.children.filter((child) => child.userData.materialRole === 'drawer_front')).toHaveLength(2);
+    expect(roomCabinet.children.some((child) => child.userData.materialRole === 'countertop')).toBe(true);
+    expect(roomCabinet.children.some((child) => child.userData.materialRole === 'plinth')).toBe(true);
+    expect(roomCabinet.children.some((child) => child.userData.materialRole === 'hardware')).toBe(true);
+    expect(roomCabinet.children.some((child) => child.userData.materialRole === 'weight_plate')).toBe(false);
+
+    // Local -X is the cabinet front; rotation=0° maps it to world -X (west/interior).
+    const front = new THREE.Vector3(-1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(0));
+    expect(front.x).toBeCloseTo(-1, 5);
+    expect(front.z).toBeCloseTo(0, 5);
+    expect(buildFixture('weight_plate_set')!.children.filter((child) => child.userData.materialRole === 'weight_plate')).toHaveLength(3);
+  });
+});
 
 describe('entry storage fixtures', () => {
   it('builds the entry half-height cabinet as a 2m-long visual screen', () => {
