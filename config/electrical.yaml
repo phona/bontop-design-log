@@ -777,15 +777,15 @@
   temp: 4000
   note: "客卫平板灯（4000K）"
 
-# 主卧投影仪插座（A方案，床尾西侧）
+# 主卧投影仪地插（A方案，床尾西侧）
 - id: sock_master_projector
   room: master_bedroom
-  type: socket
+  type: floor_socket
   x: 1.5
   z: 7.5
-  height: 0.3
+  height: 0.02
   count: 1
-  note: "主卧便携投影仪插座（DEC-013 A方案，床尾西侧地面）"
+  note: "主卧便携投影仪地插（DEC-013 A方案，床尾西侧地面）"
 
 # 客卫电热毛巾架
 - id: sock_gbath_towel

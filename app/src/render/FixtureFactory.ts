@@ -8,6 +8,9 @@ interface FixturePart {
   color: string;
   metalness?: number;
   roughness?: number;
+  name?: string;
+  part?: string;
+  materialRole?: string;
 }
 
 interface FixtureRecipe {
@@ -83,6 +86,18 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     parts: [
       { shape: 'box', size: [0.8, 1.1, 0.8], position: [-0.8, 0.55, 0], color: '#7d6647' },
       { shape: 'box', size: [1.6, 2.7, 0.6], position: [0.4, 1.35, -0.1], color: '#8B7355' },
+    ],
+  },
+  {
+    // DEC-045：主卧条带东北角通顶储物柜（家政/linen/换季），嵌主卫东墙×儿童房南墙转角，朝西开门；
+    // 背板与侧板夹 0.1×0.1 管井角藏冷凝水管（包保温棉防结露，全程明管开柜即修）
+    type: 'utility_cabinet_tall',
+    parts: [
+      { shape: 'box', size: [0.55, 2.7, 1.3], position: [0, 1.35, 0], color: '#8B7355' },
+      { shape: 'box', size: [0.02, 1.28, 0.58], position: [-0.28, 0.68, -0.31], color: '#7d6647' },
+      { shape: 'box', size: [0.02, 1.28, 0.58], position: [-0.28, 2.02, -0.31], color: '#7d6647' },
+      { shape: 'box', size: [0.02, 1.28, 0.58], position: [-0.28, 0.68, 0.31], color: '#7d6647' },
+      { shape: 'box', size: [0.02, 1.28, 0.58], position: [-0.28, 2.02, 0.31], color: '#7d6647' },
     ],
   },
   {
@@ -478,52 +493,88 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   },
 ];
 
+function addPart(
+  group: THREE.Group,
+  fixtureType: string,
+  index: number,
+  part: FixturePart,
+  surface?: string,
+): THREE.Mesh {
+  const geo = part.shape === 'cylinder'
+    ? new THREE.CylinderGeometry(part.size[0], part.size[0], part.size[1], 12)
+    : new THREE.BoxGeometry(...part.size);
+  const mat = new THREE.MeshStandardMaterial({
+    color: part.color,
+    metalness: part.metalness ?? 0.1,
+    roughness: part.roughness ?? 0.6,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  if (part.position) mesh.position.set(...part.position);
+  if (part.rotation) {
+    mesh.rotation.x = part.rotation[0];
+    mesh.rotation.y = part.rotation[1];
+    mesh.rotation.z = part.rotation[2];
+  }
+  const materialRole = part.materialRole ?? (surface ?? 'body');
+  const partId = part.part ?? part.name ?? `part-${index}`;
+  const baseName = part.name ?? `${fixtureType}:part:${index}`;
+  // Keep legacy recipe names unchanged unless the part carries stable metadata;
+  // tagged fixture parts remain discoverable after userData is stripped.
+  mesh.name = part.part || part.name || part.materialRole || surface
+    ? `${baseName}:part=${partId}:role=${materialRole}`
+    : baseName;
+  mesh.userData.part = partId;
+  mesh.userData.materialRole = materialRole;
+  if (surface) mesh.userData.surface = surface;
+  group.add(mesh);
+  return mesh;
+}
+
+function addBox(group: THREE.Group, fixtureType: string, index: number, size: [number, number, number], position: [number, number, number], color: string, options: Partial<FixturePart> = {}, surface?: string): THREE.Mesh {
+  return addPart(group, fixtureType, index, { shape: 'box', size, position, color, ...options }, surface);
+}
+
 export function buildFixture(type: string): THREE.Group | null {
   const recipe = FIXTURE_RECIPES.find((r) => r.type === type);
   if (!recipe) return null;
-
   const group = new THREE.Group();
-
-  for (const part of recipe.parts) {
-    let geo: THREE.BufferGeometry;
-    if (part.shape === 'cylinder') {
-      geo = new THREE.CylinderGeometry(part.size[0], part.size[0], part.size[1], 12);
-    } else {
-      geo = new THREE.BoxGeometry(part.size[0], part.size[1], part.size[2]);
-    }
-
-    const mat = new THREE.MeshStandardMaterial({
-      color: part.color,
-      metalness: part.metalness ?? 0.1,
-      roughness: part.roughness ?? 0.6,
-    });
-
-    const mesh = new THREE.Mesh(geo, mat);
-    if (part.position) {
-      mesh.position.set(part.position[0], part.position[1], part.position[2]);
-    }
-    if (part.rotation) {
-      mesh.rotation.x = part.rotation[0];
-      mesh.rotation.y = part.rotation[1];
-      mesh.rotation.z = part.rotation[2];
-    }
-    group.add(mesh);
-  }
-
+  recipe.parts.forEach((part, index) => addPart(group, type, index, part));
   return group;
 }
 
-/** 定制 1.8m 衣柜：柜体 + 顶封板封到 totalHeight（默认 2.50 抵边吊底；原顶房间传 2.80）。 */
+/** 定制 1.8m 衣柜：保持 1.8×0.6 外轮廓，补足门板、踢脚、顶封板与内部层板。 */
 export function buildWardrobe180(totalHeight = 2.5): THREE.Group {
   const filler = 0.1;
   const bodyHeight = totalHeight - filler;
   const group = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: '#8B7355', metalness: 0.1, roughness: 0.6 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, bodyHeight, 0.6), mat);
-  body.position.set(0, bodyHeight / 2, 0);
-  const topFiller = new THREE.Mesh(new THREE.BoxGeometry(1.8, filler, 0.6), mat);
-  topFiller.position.set(0, bodyHeight + filler / 2, 0);
-  group.add(body, topFiller);
+  let i = 0;
+  addBox(group, 'wardrobe_180', i++, [1.8, bodyHeight, 0.6], [0, bodyHeight / 2, 0], '#8B7355', { part: 'carcass', materialRole: 'cabinet_body' });
+  addBox(group, 'wardrobe_180', i++, [1.8, filler, 0.6], [0, bodyHeight + filler / 2, 0], '#8B7355', { part: 'top-filler', materialRole: 'top_filler' });
+  addBox(group, 'wardrobe_180', i++, [1.72, 0.08, 0.02], [0, 0.04, -0.29], '#604b38', { part: 'plinth', materialRole: 'plinth' });
+  for (const [index, x] of [-0.6, 0, 0.6].entries()) {
+    addBox(group, 'wardrobe_180', i++, [0.586, bodyHeight - 0.14, 0.018], [x, (bodyHeight + 0.08) / 2, -0.291], '#967b5a', { part: `door-panel-${index + 1}`, materialRole: 'door_front' });
+  }
+  addBox(group, 'wardrobe_180', i++, [0.012, bodyHeight - 0.16, 0.012], [0, (bodyHeight + 0.08) / 2, -0.294], '#604b38', { part: 'door-seam-center', materialRole: 'door_seam' });
+  addBox(group, 'wardrobe_180', i++, [1.68, 0.025, 0.52], [0, 1.05, 0], '#a48763', { part: 'interior-shelf', materialRole: 'shelf' });
+  addPart(group, 'wardrobe_180', i++, { shape: 'cylinder', size: [0.018, 0.5, 0.018], position: [0, Math.min(bodyHeight - 0.18, 1.75), 0], rotation: [0, 0, Math.PI / 2], color: '#504b46', metalness: 0.7, roughness: 0.35, part: 'hanging-rod', materialRole: 'hardware' });
+  return group;
+}
+
+/** 主卧 2.4m 分体衣柜：0.8m 矮柜 + 1.6m 高柜，保持 2.4×0.8 外轮廓。 */
+export function buildWardrobeSplit(): THREE.Group {
+  const group = new THREE.Group();
+  let i = 0;
+  addBox(group, 'wardrobe_240_split', i++, [0.8, 1.1, 0.8], [-0.8, 0.55, 0], '#7d6647', { part: 'low-carcass', materialRole: 'cabinet_body' });
+  addBox(group, 'wardrobe_240_split', i++, [1.6, 2.7, 0.6], [0.4, 1.35, -0.1], '#8B7355', { part: 'tall-carcass', materialRole: 'cabinet_body' });
+  addBox(group, 'wardrobe_240_split', i++, [0.76, 0.06, 0.018], [-0.8, 1.07, 0.391], '#a48763', { part: 'low-top-panel', materialRole: 'top_filler' });
+  addBox(group, 'wardrobe_240_split', i++, [0.78, 0.82, 0.018], [-0.8, 0.54, 0.391], '#967b5a', { part: 'low-door-panel', materialRole: 'door_front' });
+  for (const [index, x] of [0, 0.8].entries()) {
+    addBox(group, 'wardrobe_240_split', i++, [0.786, 2.5, 0.018], [x, 1.35, 0.201], '#967b5a', { part: `tall-door-panel-${index + 1}`, materialRole: 'door_front' });
+  }
+  addBox(group, 'wardrobe_240_split', i++, [0.012, 2.5, 0.012], [0, 1.35, 0.192], '#604b38', { part: 'tall-door-seam', materialRole: 'door_seam' });
+  addBox(group, 'wardrobe_240_split', i++, [0.72, 0.025, 0.72], [-0.8, 0.7, 0], '#a48763', { part: 'low-interior-shelf', materialRole: 'shelf' });
+  addBox(group, 'wardrobe_240_split', i++, [1.48, 0.025, 0.52], [0.4, 1.02, -0.1], '#a48763', { part: 'tall-interior-shelf', materialRole: 'shelf' });
+  addPart(group, 'wardrobe_240_split', i++, { shape: 'cylinder', size: [0.018, 1.45, 0.018], position: [0.4, 1.85, -0.1], color: '#504b46', metalness: 0.7, roughness: 0.35, part: 'tall-hanging-rod', materialRole: 'hardware' });
   return group;
 }
 
@@ -531,19 +582,12 @@ export function buildWardrobe180(totalHeight = 2.5): THREE.Group {
 export function buildBathSideCabinetRun(spec: BathSideCabinetRunSpec): THREE.Group {
   const cabinetHeight = spec.cabinetHeight ?? 2.0;
   const group = new THREE.Group();
-  const addBox = (size: [number, number, number], position: [number, number, number], color: string) => {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(...size),
-      new THREE.MeshStandardMaterial({ color, roughness: 0.5 }),
-    );
-    mesh.position.set(...position);
-    group.add(mesh);
-  };
-
-  addBox([spec.length, cabinetHeight, spec.depth], [0, cabinetHeight / 2, 0], '#e8e4dc');
-  addBox([Math.max(0.1, spec.length - 0.04), cabinetHeight - 0.08, 0.02], [0, cabinetHeight / 2, spec.depth / 2 + 0.01], '#ded8cc');
+  let i = 0;
+  addBox(group, 'bath_side_cabinet', i++, [spec.length, cabinetHeight, spec.depth], [0, cabinetHeight / 2, 0], '#e8e4dc', { part: 'carcass', materialRole: 'cabinet_body' });
+  const panelWidth = Math.max(0.1, spec.length - 0.04);
+  addBox(group, 'bath_side_cabinet', i++, [panelWidth, cabinetHeight - 0.08, 0.02], [0, cabinetHeight / 2, spec.depth / 2 + 0.01], '#ded8cc', { part: 'door-panel-1', materialRole: 'door_front' });
   for (let x = -spec.length / 2 + 0.6; x < spec.length / 2 - 0.05; x += 0.6) {
-    addBox([0.012, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, spec.depth / 2 + 0.022], '#b8afa2');
+    addBox(group, 'bath_side_cabinet', i++, [0.012, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, spec.depth / 2 + 0.022], '#b8afa2', { part: `door-seam-${i}`, materialRole: 'door_seam' });
   }
   return group;
 }
@@ -553,29 +597,22 @@ export function buildKitchenCabinetRun(spec: KitchenCabinetRunSpec): THREE.Group
   const cabinetHeight = spec.cabinetHeight ?? 0.86;
   const countertopThickness = spec.countertopThickness ?? 0.03;
   const group = new THREE.Group();
-  const addBox = (
-    size: [number, number, number],
-    position: [number, number, number],
-    color: string,
-    surface?: 'countertop',
-  ) => {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(...size),
-      new THREE.MeshStandardMaterial({ color, roughness: surface ? 0.28 : 0.55 }),
-    );
-    mesh.position.set(...position);
-    if (surface) mesh.userData.surface = surface;
-    group.add(mesh);
-  };
-
-  addBox([Math.max(0.1, spec.length - 0.08), 0.08, Math.max(0.1, spec.depth - 0.06)], [0, 0.04, 0], '#4c4237');
-  addBox([spec.length, cabinetHeight - 0.08, spec.depth], [0, (cabinetHeight + 0.08) / 2, 0], '#b79e7c');
-  addBox([spec.length + 0.04, countertopThickness, spec.depth + 0.04], [0, cabinetHeight + countertopThickness / 2, 0], '#e8e6e0', 'countertop');
-
-  // Subtle door seams make the run read as cabinets rather than a solid block.
-  for (let x = -spec.length / 2 + 0.6; x < spec.length / 2 - 0.05; x += 0.6) {
-    addBox([0.012, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, -spec.depth / 2 - 0.006], '#8d775b');
+  let i = 0;
+  addBox(group, 'kitchen_cabinet_run', i++, [Math.max(0.1, spec.length - 0.08), 0.08, Math.max(0.1, spec.depth - 0.06)], [0, 0.04, 0], '#4c4237', { part: 'plinth', materialRole: 'plinth' });
+  addBox(group, 'kitchen_cabinet_run', i++, [spec.length, cabinetHeight - 0.08, spec.depth], [0, (cabinetHeight + 0.08) / 2, 0], '#b79e7c', { part: 'carcass', materialRole: 'cabinet_body' });
+  addBox(group, 'kitchen_cabinet_run', i++, [spec.length + 0.04, countertopThickness, spec.depth + 0.04], [0, cabinetHeight + countertopThickness / 2, 0], '#e8e6e0', { part: 'countertop', materialRole: 'countertop' }, 'countertop');
+  const bayWidth = Math.min(0.6, spec.length);
+  const bayCount = Math.max(1, Math.ceil(spec.length / bayWidth));
+  for (let bay = 0; bay < bayCount; bay++) {
+    const width = spec.length / bayCount;
+    const x = -spec.length / 2 + width * (bay + 0.5);
+    addBox(group, 'kitchen_cabinet_run', i++, [width - 0.018, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, -spec.depth / 2 - 0.006], '#c3a986', { part: `door-panel-${bay + 1}`, materialRole: 'door_front' });
   }
+  for (let x = -spec.length / 2 + bayWidth; x < spec.length / 2 - 0.05; x += bayWidth) {
+    addBox(group, 'kitchen_cabinet_run', i++, [0.012, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, -spec.depth / 2 - 0.012], '#8d775b', { part: `door-seam-${i}`, materialRole: 'door_seam' });
+  }
+  addBox(group, 'kitchen_cabinet_run', i++, [0.012, cabinetHeight - 0.08, spec.depth], [-spec.length / 2 + 0.006, (cabinetHeight + 0.08) / 2, 0], '#b79e7c', { part: 'end-panel-left', materialRole: 'end_panel' });
+  addBox(group, 'kitchen_cabinet_run', i++, [0.012, cabinetHeight - 0.08, spec.depth], [spec.length / 2 - 0.006, (cabinetHeight + 0.08) / 2, 0], '#b79e7c', { part: 'end-panel-right', materialRole: 'end_panel' });
   return group;
 }
 

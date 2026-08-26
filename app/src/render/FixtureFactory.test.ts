@@ -1,6 +1,12 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { buildFixture, buildKitchenCabinetRun } from './FixtureFactory.js';
+import {
+  buildBathSideCabinetRun,
+  buildFixture,
+  buildKitchenCabinetRun,
+  buildWardrobe180,
+  buildWardrobeSplit,
+} from './FixtureFactory.js';
 
 function fixtureSize(type: string): THREE.Vector3 {
   const fixture = buildFixture(type);
@@ -36,10 +42,13 @@ describe('kitchen cabinet runs', () => {
     expect(size.y).toBeCloseTo(0.89, 2);
     expect(size.z).toBeCloseTo(0.64, 2);
     expect(cabinet.children.some((child) => child.userData.surface === 'countertop')).toBe(true);
+    expect(cabinet.children.filter((child) => child.userData.materialRole === 'door_front')).toHaveLength(6);
+    expect(cabinet.children.some((child) => child.userData.part === 'plinth')).toBe(true);
+    expect(cabinet.children.some((child) => child.userData.part === 'end-panel-left')).toBe(true);
   });
 });
 
-describe('wardrobe_180', () => {
+describe('wardrobe fixtures', () => {
   it('buildWardrobe180: 柜体 + 顶封板封到目标总高（默认 2.50 抵边吊底，可覆盖到原顶 2.80）', async () => {
     const { buildWardrobe180 } = await import('./FixtureFactory.js');
     const sizeOf = (g: THREE.Object3D) => {
@@ -52,6 +61,35 @@ describe('wardrobe_180', () => {
     expect(low.z).toBeCloseTo(0.6, 5);
     const tall = sizeOf(buildWardrobe180(2.8));
     expect(tall.y).toBeCloseTo(2.8, 5);
+  });
+
+  it('keeps wardrobe_180 bounds while exposing cabinet parts', () => {
+    const wardrobe = buildWardrobe180();
+    wardrobe.updateMatrixWorld(true);
+    const size = new THREE.Box3().setFromObject(wardrobe).getSize(new THREE.Vector3());
+    expect(size.x).toBeCloseTo(1.8, 5);
+    expect(size.y).toBeCloseTo(2.5, 5);
+    expect(size.z).toBeCloseTo(0.6, 5);
+    expect(wardrobe.children.filter((child) => child.userData.materialRole === 'door_front')).toHaveLength(3);
+    expect(wardrobe.children.some((child) => child.userData.part === 'interior-shelf')).toBe(true);
+    expect(wardrobe.children.every((child) => child.name.length > 0 && child.userData.part && child.userData.materialRole)).toBe(true);
+  });
+
+  it('builds the split wardrobe as 0.8m low storage plus 1.6m tall storage', () => {
+    const wardrobe = buildWardrobeSplit();
+    wardrobe.updateMatrixWorld(true);
+    const size = new THREE.Box3().setFromObject(wardrobe).getSize(new THREE.Vector3());
+    expect(size.x).toBeCloseTo(2.4, 5);
+    expect(size.y).toBeCloseTo(2.7, 5);
+    expect(size.z).toBeCloseTo(0.8, 5);
+    expect(wardrobe.children.some((child) => child.userData.part === 'low-door-panel')).toBe(true);
+    expect(wardrobe.children.some((child) => child.userData.part === 'tall-hanging-rod')).toBe(true);
+  });
+
+  it('splits bathroom cabinet doors into readable panels', () => {
+    const cabinet = buildBathSideCabinetRun({ length: 1.2, depth: 0.5 });
+    expect(cabinet.children.filter((child) => child.userData.materialRole === 'door_front')).toHaveLength(1);
+    expect(cabinet.children.some((child) => child.userData.materialRole === 'door_seam')).toBe(true);
   });
 });
 

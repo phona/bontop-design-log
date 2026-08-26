@@ -4,6 +4,14 @@
 
 用法：glb 导入 Twinmotion 后按本表替换材质/家具/灯光；reimport 同名 glb 时材质覆盖按节点名保留。
 
+### Fixture 子节点命名契约
+
+定制柜/橱柜等 `furniture:*` 外层 objectId 保持不变；其子 mesh 节点名追加
+`:part=<partId>:role=<materialRole>`，例如 `wardrobe_180:part:0:part=carcass:role=cabinet_body`。
+`role` 可为 `cabinet_body`、`door_front`、`door_seam`、`top_filler`、`plinth`、
+`shelf`、`hardware`、`countertop` 或 `end_panel`。Blender `dress_scene.py` 按该标签
+分类；未带角色标签的普通家具仍使用 `furniture` 材质，资产节点 `asset:` 仍保留自带材质。
+
 ## 1. 房间/地面材料 → Twinmotion 材质替换建议
 
 | 主题 | 当前选择 | 名称 | 品牌/型号 | 规格 | Twinmotion 替换建议 |

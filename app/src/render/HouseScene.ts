@@ -34,7 +34,7 @@ import { TopicRegistry } from '../topics/TopicRegistry.js';
 import type { HoverTarget } from '../ui/HoverTooltip.js';
 import { TextureManager } from './TextureManager.js';
 import type { MaterialAppearance } from './TextureFactory.js';
-import { buildBathSideCabinetRun, buildFixture, buildKitchenCabinetRun, buildWardrobe180 } from './FixtureFactory.js';
+import { buildBathSideCabinetRun, buildFixture, buildKitchenCabinetRun, buildWardrobe180, buildWardrobeSplit } from './FixtureFactory.js';
 import { EnvironmentManager } from './EnvironmentManager.js';
 import { buildCeilingZone, type CeilingZoneSpec } from './CeilingZoneBuilder.js';
 import { HvacDiagramRenderer } from './HvacDiagramRenderer.js';
@@ -1719,6 +1719,8 @@ export class HouseScene implements SceneApi {
             ? buildBathSideCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight })
             : item.type === 'wardrobe_180' && item.cabinetHeight !== undefined
               ? buildWardrobe180(item.cabinetHeight)
+              : item.type === 'wardrobe_240_split'
+                ? buildWardrobeSplit()
             : buildFixture(item.type);
         if (!model) continue;
         model.position.set(item.x, 0, item.z);

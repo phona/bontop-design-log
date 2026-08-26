@@ -167,18 +167,45 @@ def new_principled(name: str, color, rough: float, metallic: float = 0.0,
     return mat
 
 
+FIXTURE_MATERIAL_ROLES = {
+    'cabinet_body': 'cabinet_body',
+    'door_front': 'door_front',
+    'door_seam': 'door_seam',
+    'top_filler': 'top_filler',
+    'plinth': 'plinth',
+    'shelf': 'shelf',
+    'hardware': 'hardware',
+    'countertop': 'countertop',
+    'end_panel': 'end_panel',
+}
+
+
+def fixture_material_role(name: str) -> str | None:
+    """Read the exporter-stable ``:role=<materialRole>`` child-node tag."""
+    match = re.search(r'(?:^|:)role=([^:]+)', name)
+    if not match:
+        return None
+    role = match.group(1)
+    return role if role in FIXTURE_MATERIAL_ROLES else None
+
+
 def classify(obj: bpy.types.Object) -> str:
     n = obj.name
     if n.startswith('molding:'):
         return 'wall'  # 石膏线用墙面材质（同色）
     if n.startswith('asset:'):
         return 'skip'  # 导入家具资产保留自带材质（fixture-assets.yaml 接线，见 french-cream spec）
+    role = fixture_material_role(n)
+    if role:
+        return role
     if n.startswith('furniture:'):
         return 'furniture'
     # 家具组的子 mesh 未命名 → 沿父节点链找前缀
     parent = obj.parent
     while parent is not None:
         pn = parent.name
+        if fixture_material_role(n) or fixture_material_role(pn):
+            return fixture_material_role(n) or fixture_material_role(pn)
         if pn.startswith('furniture:'):
             return 'furniture'
         parent = parent.parent
@@ -255,6 +282,17 @@ def build_materials(engine: str, sheer_opacity: float = 0.15) -> dict:
         'sheer': sheer,
         'curtain_fabric': new_principled('软装_遮光帘', hex_rgb('#d8d0c2'), rough=0.95),
         'furniture': new_principled('家具_暖灰', hex_rgb('#cbbfa9'), rough=0.8),
+        # FixtureFactory child-node roles: preserve the same cabinet finish family
+        # while separating doors, seams, open shelving, hardware, and stone tops.
+        'cabinet_body': new_principled('柜体_柜身', hex_rgb('#f2ede2'), rough=0.62),
+        'door_front': new_principled('柜体_门板', hex_rgb('#f2ede2'), rough=0.48),
+        'door_seam': new_principled('柜体_门缝', hex_rgb('#604b38'), rough=0.82),
+        'top_filler': new_principled('柜体_顶封板', hex_rgb('#f2ede2'), rough=0.62),
+        'plinth': new_principled('柜体_踢脚', hex_rgb('#604b38'), rough=0.72),
+        'shelf': new_principled('柜体_开放层板', hex_rgb('#a48763'), rough=0.58),
+        'hardware': new_principled('柜体_五金', hex_rgb('#504b46'), rough=0.32, metallic=0.7),
+        'countertop': new_principled('柜体_台面', hex_rgb('#e8e6e0'), rough=0.25, coat=0.12),
+        'end_panel': new_principled('柜体_侧封板', hex_rgb('#f2ede2'), rough=0.62),
         'sill': new_principled('硬装_窗台石', hex_rgb('#d8d3c8'), rough=0.5),
         'railing': new_principled('硬装_栏杆', hex_rgb('#3a3d40'), rough=0.4, metallic=0.8),
         'door': new_principled('硬装_木门', hex_rgb('#8a6f52'), rough=0.6),
