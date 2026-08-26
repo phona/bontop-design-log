@@ -13,8 +13,15 @@ interface LightEntry {
   id: string;
   room: string;
   light: THREE.Light;
+  lights: THREE.Light[];
+  visual: THREE.Object3D;
   fixtureMats: THREE.MeshStandardMaterial[];
 }
+
+// Keep every ceiling-mounted visual and its light source below the ceiling bottom.
+const CEILING_VISUAL_CLEARANCE = 0.05;
+const FIXTURE_EMISSIVE_ON = 1.4;
+const FIXTURE_EMISSIVE_OFF = 0.05;
 
 function kelvinToColor(temperatureK: number): THREE.Color {
   const temperature = Math.max(1000, Math.min(40000, temperatureK)) / 100;
@@ -61,6 +68,8 @@ export class InteriorLightingSystem {
     const color = kelvinToColor(fixture.temperatureK);
     const { x, y, z } = fixture.position;
     let light: THREE.Light;
+    let lights: THREE.Light[];
+    const targets: THREE.Object3D[] = [];
     let visual: THREE.Object3D;
 
     switch (fixture.type) {
@@ -69,6 +78,7 @@ export class InteriorLightingSystem {
         spot.position.set(x, y, z);
         spot.target.position.set(x, 0, z);
         this.group.add(spot.target);
+        targets.push(spot.target);
         if (this.shadowCount < MAX_SHADOW_LIGHTS) {
           spot.castShadow = true;
           spot.shadow.mapSize.set(512, 512);
@@ -76,15 +86,41 @@ export class InteriorLightingSystem {
           this.shadowCount++;
         }
         light = spot;
+        lights = [spot];
         visual = this.makePendantFixture(fixture, color);
+        break;
+      }
+      case 'track_light': {
+        const trackGroup = new THREE.Group();
+        const headOffsets = [-1.8, -0.9, 0, 0.9, 1.8];
+        const headTargets = [
+          new THREE.Vector3(-1.6, 0, 1.2),
+          new THREE.Vector3(-0.7, 0, 0.1),
+          new THREE.Vector3(0, 0, 0.8),
+          new THREE.Vector3(0.8, 0, 1.4),
+          new THREE.Vector3(1.5, 0, 0.4),
+        ];
+        lights = headOffsets.map((offset, index) => {
+          const spot = new THREE.SpotLight(color, 9, 5.5, 0.7, 0.45, 1.5);
+          spot.position.set(x + offset, y - 0.08, z);
+          spot.target.position.set(x + headTargets[index].x, headTargets[index].y, z + headTargets[index].z);
+          trackGroup.add(spot);
+          targets.push(spot.target);
+          return spot;
+        });
+        light = lights[0];
+        visual = this.makeTrackFixture(fixture, color);
+        visual.add(trackGroup);
         break;
       }
       case 'downlight': {
         const spot = new THREE.SpotLight(color, 10, 4.5, 0.85, 0.5, 1.5);
-        spot.position.set(x, y, z);
+        spot.position.set(x, y - (fixture.recessed ? 0.03 : CEILING_VISUAL_CLEARANCE), z);
         spot.target.position.set(x, 0, z);
         this.group.add(spot.target);
+        targets.push(spot.target);
         light = spot;
+        lights = [spot];
         visual = this.makeDownlightFixture(fixture, color);
         break;
       }
@@ -92,6 +128,7 @@ export class InteriorLightingSystem {
         const point = new THREE.PointLight(color, 3, 3.5, 1.5);
         point.position.set(x, y, z);
         light = point;
+        lights = [point];
         visual = this.makeWallLampFixture(fixture, color);
         break;
       }
@@ -99,6 +136,7 @@ export class InteriorLightingSystem {
         const point = new THREE.PointLight(color, 5, 4.5, 1.2);
         point.position.set(x, y, z);
         light = point;
+        lights = [point];
         visual = this.makeStripFixture(fixture, color);
         break;
       }
@@ -108,10 +146,18 @@ export class InteriorLightingSystem {
         const point = new THREE.PointLight(color, 8, 7, 1.5);
         point.position.set(x, y, z);
         light = point;
+        lights = [point];
         visual = this.makeDomeFixture(fixture, color);
         break;
       }
     }
+
+    visual.userData = {
+      type: 'lighting_fixture',
+      objectId: `electrical:${fixture.id}`,
+      fixtureType: fixture.type,
+      roomId: fixture.room,
+    };
 
     const fixtureMats: THREE.MeshStandardMaterial[] = [];
     visual.traverse((object) => {
@@ -119,8 +165,8 @@ export class InteriorLightingSystem {
         fixtureMats.push(object.material);
       }
     });
-    this.group.add(light, visual);
-    this.entries.push({ id: fixture.id, room: fixture.room, light, fixtureMats });
+    this.group.add(...lights, ...targets, visual);
+    this.entries.push({ id: fixture.id, room: fixture.room, light, lights, visual, fixtureMats });
   }
 
   // ── 灯具示意网格（通用体，不预览 SKU 外观）──
@@ -151,6 +197,27 @@ export class InteriorLightingSystem {
     return group;
   }
 
+  private makeTrackFixture(fixture: RenderLightingFixture, color: THREE.Color): THREE.Group {
+    const { x, y, z } = fixture.position;
+    const group = new THREE.Group();
+    const black = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.35, metalness: 0.75 });
+    const track = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.045, 0.08), black);
+    track.position.set(x, y - CEILING_VISUAL_CLEARANCE, z);
+    group.add(track);
+    for (const offset of [-1.8, -0.9, 0, 0.9, 1.8]) {
+      const mount = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.08, 12), black);
+      mount.position.set(x + offset, y - 0.06 - CEILING_VISUAL_CLEARANCE, z);
+      const head = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.065, 0.14, 12), black);
+      head.position.set(x + offset, y - 0.15 - CEILING_VISUAL_CLEARANCE, z);
+      head.rotation.z = Math.PI / 8;
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(0.038, 16), this.emissiveMat(color));
+      lens.rotation.x = Math.PI / 2;
+      lens.position.set(x + offset, y - 0.222 - CEILING_VISUAL_CLEARANCE, z);
+      group.add(mount, head, lens);
+    }
+    return group;
+  }
+
   private makeDomeFixture(fixture: RenderLightingFixture, color: THREE.Color): THREE.Group {
     const group = new THREE.Group();
     const dome = new THREE.Mesh(
@@ -165,13 +232,26 @@ export class InteriorLightingSystem {
   }
 
   private makeDownlightFixture(fixture: RenderLightingFixture, color: THREE.Color): THREE.Group {
+    const { x, y, z } = fixture.position;
     const group = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.075, 0.065, 0.08, 20),
+      new THREE.MeshStandardMaterial({ color: 0xd8d5ce, roughness: 0.45, metalness: 0.15 }),
+    );
+    body.position.set(x, y + (fixture.recessed ? 0.04 : -CEILING_VISUAL_CLEARANCE - 0.04), z);
     const ring = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.05, 0.05, 0.015, 16),
+      new THREE.TorusGeometry(0.068, 0.012, 8, 20),
+      new THREE.MeshStandardMaterial({ color: 0xb4afa6, roughness: 0.4, metalness: 0.3 }),
+    );
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(x, y + (fixture.recessed ? -0.002 : -CEILING_VISUAL_CLEARANCE - 0.082), z);
+    const lens = new THREE.Mesh(
+      new THREE.CircleGeometry(0.052, 20),
       this.emissiveMat(color),
     );
-    ring.position.copy(fixture.position);
-    group.add(ring);
+    lens.rotation.x = Math.PI / 2;
+    lens.position.set(x, y + (fixture.recessed ? -0.006 : -CEILING_VISUAL_CLEARANCE - 0.083), z);
+    group.add(body, ring, lens);
     return group;
   }
 
@@ -204,8 +284,10 @@ export class InteriorLightingSystem {
     for (const entry of this.entries) {
       const roomOn = this.roomOverrides.get(entry.room) ?? true;
       const visible = this.on && roomOn;
+      for (const fixtureLight of entry.lights) fixtureLight.visible = visible;
       entry.light.visible = visible;
-      for (const material of entry.fixtureMats) material.emissiveIntensity = visible ? 1.4 : 0.05;
+      entry.visual.visible = true;
+      for (const material of entry.fixtureMats) material.emissiveIntensity = visible ? FIXTURE_EMISSIVE_ON : FIXTURE_EMISSIVE_OFF;
     }
   }
 

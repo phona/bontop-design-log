@@ -19,6 +19,9 @@ const lights = projection.lightingFixtures.map((fixture) => ({
   z: fixture.position.z,
   height: fixture.position.y,
   temp: fixture.temperatureK,
+  ...(fixture.circuit !== undefined ? { circuit: fixture.circuit } : {}),
+  ...(fixture.heads !== undefined ? { heads: fixture.heads } : {}),
+  ...(fixture.recessed !== undefined ? { recessed: fixture.recessed } : {}),
 }));
 
 // 场景固定常量：蓝调时刻/夜晚。太阳已落 → sun_direction=null（不打太阳光）；

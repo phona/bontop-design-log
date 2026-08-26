@@ -19,6 +19,7 @@ export interface InfoPanelCallbacks {
 export class InfoPanel {
   private el: HTMLDivElement;
   private titleEl: HTMLSpanElement;
+  private objectIdEl: HTMLSpanElement;
   private typeEl: HTMLSpanElement;
   private roomEl: HTMLSpanElement;
   private topicsEl: HTMLDivElement;
@@ -32,6 +33,7 @@ export class InfoPanel {
     this.callbacks = callbacks;
     this.el = document.getElementById('info-panel') as HTMLDivElement;
     this.titleEl = document.getElementById('info-panel-title') as HTMLSpanElement;
+    this.objectIdEl = document.getElementById('info-panel-object-id') as HTMLSpanElement;
     this.typeEl = document.getElementById('info-panel-type') as HTMLSpanElement;
     this.roomEl = document.getElementById('info-panel-room') as HTMLSpanElement;
     this.topicsEl = document.getElementById('info-panel-topics') as HTMLDivElement;
@@ -67,6 +69,7 @@ export class InfoPanel {
     if (!this.currentTarget) return;
 
     this.titleEl.textContent = this.currentTarget.name;
+    this.objectIdEl.textContent = `objectId: ${this.currentTarget.objectId}`;
     this.typeEl.textContent = this.currentTarget.type;
     this.roomEl.textContent = this.currentTarget.room ?? '';
 

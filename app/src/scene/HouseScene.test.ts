@@ -876,6 +876,32 @@ describe('HouseScene', () => {
     }
   });
 
+  it('prioritizes lighting fixtures over ceiling hits on the same ray', async () => {
+    const canvas = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const originalSceneRaycaster = (scene as any).raycaster;
+    (scene as any).raycaster = {
+      setFromCamera() {},
+      intersectObjects() {
+        return [
+          { object: { userData: { objectId: 'ceiling:ceiling_living', type: 'ceiling_zone_solid', roomId: 'living' } } },
+          { object: { userData: { objectId: 'electrical:light_corridor_1', type: 'lighting_fixture', fixtureType: 'downlight', roomId: 'corridor' } } },
+        ];
+      },
+    } as any;
+
+    try {
+      const target = scene.raycastFromScreenCenter({ hoverableOnly: true });
+      expect(target?.objectId).toBe('electrical:light_corridor_1');
+      expect(target?.name).toContain('筒灯');
+    } finally {
+      (scene as any).raycaster = originalSceneRaycaster;
+    }
+  });
+
   it('shows object-first hover name for floor', async () => {
     const canvas = {
       addEventListener: vi.fn(),
@@ -1111,7 +1137,7 @@ describe('HouseScene', () => {
       expect(electrical?.objectId).toBe('electrical:socket-main');
       expect(electrical?.name).toContain('厨房');
       expect(electrical?.name).toContain('插座');
-      expect(electrical?.name).toContain('socket-main');
+      expect(electrical?.name).not.toContain('socket-main');
       expect(electrical?.name).toContain('厨房侧');
 
       childHits.reverse();

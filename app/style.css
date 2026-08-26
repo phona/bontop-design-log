@@ -152,10 +152,18 @@ html, body {
   font-weight: 600;
 }
 
+#info-panel-object-id,
 #info-panel-type,
 #info-panel-room {
   font-size: 12px;
   color: #888;
+}
+
+#info-panel-object-id {
+  flex-basis: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #bbb;
+  overflow-wrap: anywhere;
 }
 
 .info-topic-section {
@@ -439,7 +447,8 @@ html, body {
   pointer-events: none;
   z-index: 100;
   display: none;
-  white-space: nowrap;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 #mode-indicator {

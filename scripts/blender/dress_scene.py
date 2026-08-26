@@ -75,6 +75,7 @@ LIGHT_ENERGY = {  # 瓦（Cycles/EEVEE 通用，先求氛围对再校绝对亮�
     'downlight': 22.0,
     'wall_lamp': 18.0,
     'led_strip': 25.0,
+    'track_light': 45.0,
 }
 
 
@@ -477,6 +478,25 @@ def add_lights(cfg: dict, temp_override: float | None = None) -> int:
         energy = LIGHT_ENERGY.get(lp['type'], 15.0)
         # temp_override：材质评审工况用 6500K 中性白，避免 3000K 暖光污染色号判断
         color = kelvin_to_rgb(temp_override if temp_override is not None else lp.get('temp', 3000))
+        if lp['type'] == 'track_light':
+            head_offsets = [-1.8, -0.9, 0.0, 0.9, 1.8]
+            head_targets = [(-1.6, 1.2), (-0.7, 0.1), (0.0, 0.8), (0.8, 1.4), (1.5, 0.4)]
+            for index, (offset, (target_x, target_z)) in enumerate(zip(head_offsets, head_targets), start=1):
+                data = bpy.data.lights.new(f'{lp["id"]}/head:{index}', type='SPOT')
+                data.energy = energy
+                data.color = color
+                data.spot_size = math.radians(55)
+                data.spot_blend = 0.45
+                obj = bpy.data.objects.new(f'{lp["id"]}/head:{index}', data)
+                obj.location = to_blender(lp['x'] + offset, lp['height'] - 0.08, lp['z'])
+                target = bpy.data.objects.new(f'{lp["id"]}/target:{index}', None)
+                target.location = to_blender(lp['x'] + target_x, 0.0, lp['z'] + target_z)
+                bpy.context.collection.objects.link(obj)
+                bpy.context.collection.objects.link(target)
+                direction = target.location - obj.location
+                obj.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+                count += 1
+            continue
         if lp['type'] == 'led_strip':
             data = bpy.data.lights.new(lp['id'], type='AREA')
             data.shape = 'RECTANGLE'
@@ -493,6 +513,8 @@ def add_lights(cfg: dict, temp_override: float | None = None) -> int:
         # dome 高度=净高（2.8）时点光源正好嵌进天花网格被整体遮挡（书房北墙全黑确诊案例，
         # v24 降到 2.55 后房间恢复照明）→ dome 一律下沉 0.25m 到天花以下
         h = lp['height'] - 0.25 if lp['type'] == 'dome' else lp['height']
+        if lp['type'] == 'downlight' and lp.get('recessed'):
+            h -= 0.03
         obj.location = to_blender(lp['x'] + off, h, lp['z'])
         if lp['type'] == 'led_strip':
             import math as _m
@@ -522,6 +544,7 @@ def add_light_fixtures(cfg: dict, temp_override: float | None = None, emit: bool
 
     diff_m = emis('灯具_diffuser', temp_override or 3000, 5.0)
     cove_m = emis('灯具_cove', temp_override or 3000, 2.0)  # 灯槽低亮度，防眩光斑
+    track_m = new_principled('灯具_黑色明装轨道', hex_rgb('#111111'), rough=0.35, metallic=0.75)
     if not emit:
         # 关灯工况（daylight）：灯具只留形体——吸顶/筒灯白色哑光，吊灯罩深色金属（中古黑）
         diff_m = new_principled('灯具_diffuser_off', hex_rgb('#f2f0eb'), rough=0.6)
@@ -534,18 +557,52 @@ def add_light_fixtures(cfg: dict, temp_override: float | None = None, emit: bool
         h = lp.get('height', 2.8)
         if x is None or z is None:
             continue
-        if t == 'dome':
+        if t == 'track_light':
+            head_offsets = [-1.8, -0.9, 0.0, 0.9, 1.8]
+            bpy.ops.mesh.primitive_cube_add(size=1.0, location=to_blender(x, h, z))
+            rail = bpy.context.object
+            rail.name = f'fixture:track_rail:{lp["id"]}'
+            rail.dimensions = (3.6, 0.08, 0.045)
+            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+            rail.data.materials.append(track_m)
+            count += 1
+            for index, offset in enumerate(head_offsets, start=1):
+                bpy.ops.mesh.primitive_cylinder_add(radius=0.035, depth=0.08, location=to_blender(x + offset, h - 0.06, z))
+                mount = bpy.context.object
+                mount.name = f'fixture:track_mount:{lp["id"]}/head:{index}'
+                mount.data.materials.append(track_m)
+                bpy.ops.mesh.primitive_cylinder_add(radius=0.055, depth=0.14, location=to_blender(x + offset, h - 0.15, z), rotation=(0, 0, math.radians(12)))
+                head = bpy.context.object
+                head.name = f'fixture:track_head:{lp["id"]}/head:{index}'
+                head.data.materials.append(track_m)
+                count += 2
+        elif t == 'dome':
             bpy.ops.mesh.primitive_cylinder_add(radius=0.18, depth=0.06, location=to_blender(x, h - 0.03, z))
             o = bpy.context.object
             o.name = f'fixture:dome:{lp["id"]}'
             o.data.materials.append(diff_m)
             count += 1
         elif t == 'downlight':
-            bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.02, location=to_blender(x, h - 0.01, z))
-            o = bpy.context.object
-            o.name = f'fixture:down:{lp["id"]}'
-            o.data.materials.append(diff_m)
-            count += 1
+            if lp.get('recessed'):
+                bpy.ops.mesh.primitive_cylinder_add(radius=0.075, depth=0.08, location=to_blender(x, h + 0.04, z))
+                body = bpy.context.object
+                body.name = f'fixture:down_body:{lp["id"]}'
+                body.data.materials.append(diff_m)
+                bpy.ops.mesh.primitive_torus_add(major_radius=0.068, minor_radius=0.012, major_segments=20, minor_segments=8, location=to_blender(x, h - 0.002, z))
+                ring = bpy.context.object
+                ring.name = f'fixture:down_ring:{lp["id"]}'
+                ring.data.materials.append(track_m)
+                bpy.ops.mesh.primitive_cylinder_add(radius=0.052, depth=0.008, location=to_blender(x, h - 0.006, z))
+                lens = bpy.context.object
+                lens.name = f'fixture:down_lens:{lp["id"]}'
+                lens.data.materials.append(diff_m)
+                count += 3
+            else:
+                bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.02, location=to_blender(x, h - 0.01, z))
+                o = bpy.context.object
+                o.name = f'fixture:down:{lp["id"]}'
+                o.data.materials.append(diff_m)
+                count += 1
         elif t == 'pendant':
             # DEC-027：客厅主吊灯取消（无主灯方案评估）；餐桌吊灯=黑色线性长条（与餐桌方向一致）
             if lp['id'] == 'light_living_main':

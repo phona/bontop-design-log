@@ -600,7 +600,8 @@ export type ElectricalPointType =
   | 'dome'
   | 'wall_lamp'
   | 'downlight'
-  | 'led_strip';
+  | 'led_strip'
+  | 'track_light';
 
 export type ElectricalPointStatus = 'measured' | 'likely' | 'inferred' | 'pending';
 export type WallSide = 'north' | 'south' | 'east' | 'west';
@@ -614,7 +615,10 @@ export interface ElectricalPoint {
   wall?: string;
   wallSide?: WallSide;
   temp?: number;
+  circuit?: string;
   count?: number;
+  heads?: number;
+  recessed?: boolean;
   width?: number;
   depth?: number;
   height?: number;
@@ -772,6 +776,9 @@ export interface RenderLightingFixture {
   position: Vec3;
   temperatureK: number;
   enabled: boolean;
+  circuit?: string;
+  heads?: number;
+  recessed?: boolean;
 }
 
 export interface ImplementedHvacProjection {
@@ -857,6 +864,12 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   tv_wall_low: { width: 2.1, depth: 0.4 }, // DEC-029 西墙柜墙 TV 区悬空低柜（沿墙长度×进深，z 6.9-9.0）
   desk: { width: 1.2, depth: 0.6 },
   bookshelf: { width: 0.8, depth: 0.3 },
+  squat_rack: { width: 1.515, depth: 0.95 },
+  barbell_olympic: { width: 2.2, depth: 0.08 },
+  weight_plate_set: { width: 0.63, depth: 0.42 },
+  bench_adjustable: { width: 1.24, depth: 0.55 },
+  rubber_training_mat: { width: 1.8, depth: 1.6 },
+  low_weight_storage: { width: 0.95, depth: 0.42 },
   chair: { width: 0.5, depth: 0.5 },
   fridge: { width: 0.7, depth: 0.7 },
   gas_stove: { width: 0.75, depth: 0.6 },

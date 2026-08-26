@@ -3,9 +3,9 @@
   anchorY: 2.8
   reason: "已审计 Blender 基线：餐桌吊灯的最终渲染锚点。"
   applies_to: [web, blender]
-- id: light_living_main
+- id: living_track_main
   anchorY: 2.8
-  reason: "已审计 Blender 基线：客厅主吊灯的最终渲染锚点。"
+  reason: "已审计 Blender 基线：客厅黑色明装轨道灯的最终渲染锚点。"
   applies_to: [web, blender]
 - id: light_tv_strip
   anchorY: 2.0
@@ -37,12 +37,16 @@
   reason: "已审计 Blender 基线：书房吸顶灯为避免嵌入顶面，最终渲染锚点为 2.30m。"
   applies_to: [web, blender]
 - id: light_corridor_1
-  anchorY: 2.8
-  reason: "已审计 Blender 基线：走廊筒灯最终渲染锚点。"
+  anchorY: 2.5
+  reason: "走廊口筒灯嵌入既有 ceiling_living 边吊，不新增吊顶；坐标由原 (7.9,5.75) 调整至既有边吊合法范围。"
   applies_to: [web, blender]
 - id: light_entry_down
   anchorY: 2.8
   reason: "已审计 Blender 基线：玄关筒灯最终渲染锚点。"
+  applies_to: [web, blender]
+- id: light_entry_foyer
+  anchorY: 2.5
+  reason: "2026-08-26 灯光整改：light_entry_foyer 按既有玄关吊顶内嵌安装表现，饰圈贴完成面；沿用 anchorY=2.5，不改吊顶。"
   applies_to: [web, blender]
 - id: light_kitchen_panel
   anchorY: 2.55

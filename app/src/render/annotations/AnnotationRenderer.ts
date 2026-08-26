@@ -185,7 +185,7 @@ export class AnnotationRenderer {
       if (z.type === 'ac_indoor') {
         const icon = createACIndoorIcon();
         icon.position.set(z.x!, z.height ?? 2.85, z.z!);
-        icon.userData = { type: 'annotation', category: 'ceiling', zoneId: z.id, note: `❄ ${z.note}` };
+        icon.userData = { type: 'annotation', category: 'ceiling', zoneId: z.id, objectId: `ceiling:${z.id}`, note: `❄ ${z.note}` };
         const label = this.createLabel(z.note ?? '');
         label.position.set(0, 0.4, 0);
         label.visible = false;
@@ -198,7 +198,7 @@ export class AnnotationRenderer {
       const mesh = createCeilingZoneIndicator(x2 - x1, z2 - z1);
       mesh.position.set((x1 + x2) / 2, 2.9, (z1 + z2) / 2);
       mesh.rotation.x = -Math.PI / 2;
-      mesh.userData = { type: 'annotation', category: 'ceiling', zoneId: z.id, note: z.note };
+      mesh.userData = { type: 'annotation', category: 'ceiling', zoneId: z.id, objectId: `ceiling:${z.id}`, note: z.note };
       const label = this.createLabel(z.note ?? '');
       label.position.set(0, 0.5, 0);
       label.visible = false;

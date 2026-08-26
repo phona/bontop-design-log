@@ -17,8 +17,8 @@ const WallSideSchema = z.enum(['north', 'south', 'east', 'west']);
 const Vec3Schema = z.object({ x: finiteNumber, y: finiteNumber, z: finiteNumber }).strict();
 
 export const ElectricalPointSchema = z.object({
-  id: z.string(), room: z.string(), type: z.enum(['socket', 'switch', 'switch_2way', 'network', 'usb', 'floor_socket', 'strong_panel', 'weak_panel', 'ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip']),
-  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), temp: finiteNumber.optional(), count: finiteNumber.optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
+  id: z.string(), room: z.string(), type: z.enum(['socket', 'switch', 'switch_2way', 'network', 'usb', 'floor_socket', 'strong_panel', 'weak_panel', 'ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light']),
+  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
 }).strict();
 export const PlumbingPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor']),
@@ -131,7 +131,7 @@ const HvacProjectionSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('unimplemented'), planId: z.string().nullable() }).strict(),
 ]);
 export const ProjectRenderFactsProjectionSchema = z.object({
-  version: z.literal('2.0'), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean() }).strict()),
+  version: z.literal('2.0'), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean(), circuit: z.string().optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional() }).strict()),
   plumbing: z.array(PlumbingPointProjectionSchema), ceiling: CeilingZonesSchema, hvac: HvacProjectionSchema,
   materials: z.object({ floor: z.object({ default: z.string().nullable(), roomOverrides: z.record(z.string(), z.string()) }).strict() }).strict(),
   presentation: z.object({ curtains: CurtainRenderProjectionSchema }).strict(),

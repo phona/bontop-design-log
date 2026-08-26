@@ -7,7 +7,8 @@ import type { CurtainOverlayLike } from '../../shared/curtain-projection.js';
 
 const facts: ProjectRenderFacts = {
   electrical: [
-    { id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8, temp: 4000 },
+    { id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8, temp: 4000, circuit: 'living_base', recessed: true },
+    { id: 'track_1', room: 'living', type: 'track_light', x: 2, z: 3, height: 2.8, temp: 3000, circuit: 'living_base', heads: 5 },
     { id: 'socket_1', room: 'living', type: 'socket', x: 3, z: 4 },
   ],
   plumbing: [{ id: 'faucet_1', room: 'kitchen', type: 'faucet', x: 3, z: 4 }],
@@ -24,6 +25,10 @@ const scheme: CurrentScheme = {
 
 function override(id = 'light_1'): RenderLightingOverride {
   return { id, anchorY: 2.55, offsetX: 0.15, reason: 'Audited render anchor.', applies_to: ['web', 'blender'] };
+}
+
+function overrides(...ids: string[]): RenderLightingOverride[] {
+  return ids.map((id) => override(id));
 }
 
 const overlay: CurtainOverlayLike = {
@@ -48,20 +53,25 @@ function project(
 
 describe('buildProjectRenderFactsProjection', () => {
   it('projects only lighting fixtures without mutating construction facts', () => {
-    const projection = project(facts, [override()], scheme);
+    const projection = project(facts, overrides('light_1', 'track_1'), scheme);
 
     assert.deepEqual(projection.lightingFixtures, [{
       id: 'light_1', room: 'living', type: 'dome',
-      position: { x: 1.15, y: 2.55, z: 2 }, temperatureK: 4000, enabled: true,
+      position: { x: 1.15, y: 2.55, z: 2 }, temperatureK: 4000, enabled: true, circuit: 'living_base', recessed: true,
+    }, {
+      id: 'track_1', room: 'living', type: 'track_light',
+      position: { x: 2.15, y: 2.55, z: 3 }, temperatureK: 3000, enabled: true, circuit: 'living_base', heads: 5,
     }]);
     assert.deepEqual(projection.plumbing, facts.plumbing);
     assert.deepEqual(projection.ceiling, facts.ceiling);
     assert.deepEqual(projection.hvac, { status: 'unimplemented', planId: null });
     assert.deepEqual(projection.materials.floor, scheme.selections.floor);
     assert.equal(projection.version, '2.0');
+    assert.equal(projection.lightingFixtures.find((fixture) => fixture.id === 'track_1')?.heads, 5);
+    assert.equal(projection.lightingFixtures.find((fixture) => fixture.id === 'track_1')?.circuit, 'living_base');
     assert.deepEqual(projection.presentation.curtains.curtains.map((c) => c.id), ['curtain_living_south']);
     assert.equal(projection.presentation.curtains.effectiveByRoom.living, 'open');
-    assert.deepEqual(facts.electrical[0], { id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8, temp: 4000 });
+    assert.deepEqual(facts.electrical[0], { id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8, temp: 4000, circuit: 'living_base', recessed: true });
   });
 
   it('preserves concrete plumbing, ceiling, and three floor overrides in the render projection', () => {
@@ -89,10 +99,10 @@ describe('buildProjectRenderFactsProjection', () => {
   });
 
   it('projects A2 only and never leaks its diagram into historical options', () => {
-    const a2 = project(facts, [override()], { ...scheme, selections: { ...scheme.selections, hvac: { default: 'A2', roomOverrides: {} } } });
+    const a2 = project(facts, overrides('light_1', 'track_1'), { ...scheme, selections: { ...scheme.selections, hvac: { default: 'A2', roomOverrides: {} } } });
     assert.equal(a2.hvac.status, 'implemented');
     assert.equal(a2.hvac.status === 'implemented' && a2.hvac.planId, 'A2');
-    const archived = project(facts, [override()], { ...scheme, selections: { ...scheme.selections, hvac: { default: 'A1', roomOverrides: {} } } });
+    const archived = project(facts, overrides('light_1', 'track_1'), { ...scheme, selections: { ...scheme.selections, hvac: { default: 'A1', roomOverrides: {} } } });
     assert.deepEqual(archived.hvac, { status: 'unimplemented', planId: 'A1' });
     assert.equal('diagram' in archived.hvac, false);
   });

@@ -21,10 +21,10 @@ describe('HoverTooltip', () => {
     tooltip = new HoverTooltip();
   });
 
-  it('shows tooltip with object name', () => {
+  it('shows tooltip with object name and objectId', () => {
     tooltip.update({ objectId: 'floor:room_a', name: '客餐厅', type: 'floor', room: 'living_dining' });
     expect(el.style.display).toBe('block');
-    expect(el.textContent).toBe('客餐厅');
+    expect(el.textContent).toBe('客餐厅\nobjectId: floor:room_a');
   });
 
   it('hides tooltip when target is null', () => {
@@ -36,7 +36,7 @@ describe('HoverTooltip', () => {
   it('does not update if same objectId', () => {
     tooltip.update({ objectId: 'floor:room_a', name: '客餐厅', type: 'floor' });
     tooltip.update({ objectId: 'floor:room_a', name: 'Different', type: 'floor' });
-    expect(el.textContent).toBe('客餐厅');
+    expect(el.textContent).toBe('客餐厅\nobjectId: floor:room_a');
   });
 
   it('clear resets state', () => {

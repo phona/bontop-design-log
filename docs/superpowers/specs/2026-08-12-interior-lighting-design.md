@@ -116,3 +116,17 @@
 - per-room 开关 API（setRoomLights）已实现，UI/MCP 暴露留后续
 - 人工验收项（20:00 夜景走查、色温对比、帧率）待业主在 3D 中执行
 - **性能修复（业主实测"开灯即卡"后）**：pendant 由 PointLight 投影改为 **SpotLight 向下光池投影**——PointLight 阴影为立方体 6 次渲染/帧/盏（2 盏=12 次/帧，卡顿根因），SpotLight 锥形阴影仅 1 次/帧/盏；副作用为正向：光池更聚焦，符合"餐桌亮池"设计意图。走廊筒灯 2→1（光源总数 15→14，回 spec 上限内）
+
+## 实施校订（2026-08-26）
+
+- 依据 DEC-027，客厅原 `light_living_main` pendant 遗留点位收敛为 `living_track_main` `track_light`：一条黑色明装 x 向轨道、5 个固定相对方向的 SpotLight，作为客厅基础照明。
+- `heads: 5` 在 electrical、render projection 与 Blender render-config 中保留；Web/Blender 均按固定灯具配方生成 5 个实际光源并作为同一控制组。
+- 客厅电视墙灯带、餐桌吊灯及走廊/玄关和其他房间灯保持；本次不新增电视背景墙，也不增加吊顶复杂度。
+
+## 实施校订（2026-08-26 灯光整改）
+
+- 新增 `light_entry_foyer`：归属 `living_dining` 的室内玄关门厅筒灯，坐标 `(12.4, 3.35)`，施工高度 `2.5m`、`3000K`，位于门厅吊顶与 `living_dining` 过渡带中心附近，使用既有 `ceiling_entry_foyer` `[10.80,2.90,13.40,4.30]`，不改吊顶；既有 `light_entry_down` 仍归属 `entry_garden` 且不移动。
+- `circuit` 为可选的最小回路语义字段，沿 ElectricalPoint → render projection → Web/Blender render-config 透传，仅用于表达控制分组，不引入复杂场景逻辑。已确认分组：`living_track_main=living_base`、`light_dining_pendant=dining`、`light_tv_strip=tv_ambient`、`light_corridor_1/light_entry_down/light_entry_foyer=entry_base`。
+- `light_entry_foyer` 采用 `recessed: true` 的既有玄关吊顶内嵌安装表现：主体进入吊顶厚度，饰圈贴完成面、发光面略低；不改吊顶、不新增电视背景墙，其他筒灯保持原表现。
+- 保留 `light_corridor_1`，由原 `(7.9,5.75)` 调整至 `(7.9,5.0)`，纳入既有 `ceiling_living` 边吊 `[7.20,4.30,13.40,5.20]`；增加 `recessed: true`、`anchorY=2.5`，饰圈齐平完成面、发光面略低，主体进入吊顶，不新增客厅灯、不改电视背景墙或吊顶结构。
+- 厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯保持为后续深化预留/现场确认项，不是当前已实施点位。

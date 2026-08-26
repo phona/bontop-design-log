@@ -22,6 +22,7 @@ interface ElectricalPoint {
   z?: number;
   height?: number;
   temp?: number;
+  circuit?: string;
   note?: string;
 }
 
@@ -42,13 +43,14 @@ interface OverlayElement {
   reason?: string;
 }
 
-const LIGHT_TYPES = new Set(['pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip']);
+const LIGHT_TYPES = new Set(['pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light']);
 const LIGHT_TYPE_LABEL: Record<string, string> = {
   pendant: '吊灯',
   dome: '吸顶灯',
   wall_lamp: '壁灯',
   downlight: '筒灯',
   led_strip: '灯带',
+  track_light: '明装轨道灯',
 };
 
 function loadYaml<T>(path: string): T {
@@ -140,11 +142,14 @@ function main(): void {
   const lights = electrical.filter((p) => LIGHT_TYPES.has(p.type));
   lines.push(`## 3. 灯光点位（${lights.length} 个）→ 灯具与光源摆放单`);
   lines.push('');
-  lines.push('| id | 房间 | 类型 | 位置 (x, z) | 高度 (m) | 色温 (K) | 备注 |');
-  lines.push('|---|---|---|---|---|---|---|');
+  lines.push('| id | 房间 | 类型 | 位置 (x, z) | 高度 (m) | 色温 (K) | 回路 | 备注 |');
+  lines.push('|---|---|---|---|---|---|---|---|');
   for (const p of lights) {
-    lines.push(`| ${p.id} | ${p.room} | ${LIGHT_TYPE_LABEL[p.type] ?? p.type} | (${p.x ?? '—'}, ${p.z ?? '—'}) | ${p.height ?? '—'} | ${p.temp ?? '—'} | ${p.note ?? ''} |`);
+    lines.push(`| ${p.id} | ${p.room} | ${LIGHT_TYPE_LABEL[p.type] ?? p.type} | (${p.x ?? '—'}, ${p.z ?? '—'}) | ${p.height ?? '—'} | ${p.temp ?? '—'} | ${p.circuit ?? '—'} | ${p.note ?? ''} |`);
   }
+  lines.push('');
+  lines.push('### 后续深化预留（当前未实施点位）');
+  lines.push('厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。');
   lines.push('');
 
   const glass = overlay.elements.filter((e) => e.type === 'curtain_run' || e.type === 'glass_infill');

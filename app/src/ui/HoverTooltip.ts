@@ -25,7 +25,7 @@ export class HoverTooltip {
       return;
     }
     this.el.style.display = 'block';
-    this.el.textContent = target.name;
+    this.el.textContent = `${target.name}\nobjectId: ${target.objectId}`;
   }
 
   clear() {

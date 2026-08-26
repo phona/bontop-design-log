@@ -18,6 +18,7 @@ function createDiv() {
 function setupDOM() {
   const infoPanel = createDiv() as HTMLDivElement;
   const title = createSpan() as HTMLSpanElement;
+  const objectId = createSpan() as HTMLSpanElement;
   const type = createSpan() as HTMLSpanElement;
   const room = createSpan() as HTMLSpanElement;
   const topics = createDiv() as HTMLDivElement;
@@ -26,6 +27,7 @@ function setupDOM() {
     getElementById: vi.fn((id: string) => {
       if (id === 'info-panel') return infoPanel;
       if (id === 'info-panel-title') return title;
+      if (id === 'info-panel-object-id') return objectId;
       if (id === 'info-panel-type') return type;
       if (id === 'info-panel-room') return room;
       if (id === 'info-panel-topics') return topics;
@@ -42,7 +44,7 @@ function setupDOM() {
     })),
   });
 
-  return { infoPanel, title, type, room, topics };
+  return { infoPanel, title, objectId, type, room, topics };
 }
 
 const mockTopics: Topic[] = [
@@ -104,6 +106,7 @@ describe('InfoPanel', () => {
     panel.showObject({ objectId: 'floor:living_dining', name: '客餐厅', type: 'floor', room: 'living_dining' });
 
     expect(elements.title.textContent).toBe('客餐厅');
+    expect(elements.objectId.textContent).toBe('objectId: floor:living_dining');
     expect(elements.type.textContent).toBe('floor');
   });
 

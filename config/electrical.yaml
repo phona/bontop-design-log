@@ -668,18 +668,21 @@
   z: 3.45
   height: 2.8
   temp: 3000
+  circuit: dining
   note: "餐桌吊灯天花出线（DEC-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm"
 
 # === 室内灯光方案（2026-08-12 灯光渲染系统；全屋 3000K 暖光，厨卫 4000K）===
-# 点位即水电交底单；type: pendant吊灯/dome吸顶/wall_lamp壁灯/downlight筒灯/led_strip灯带
-- id: light_living_main
+# 点位即水电交底单；type: pendant吊灯/dome吸顶/wall_lamp壁灯/downlight筒灯/led_strip灯带/track_light明装轨道灯
+- id: living_track_main
   room: living_dining
-  type: pendant
-  x: 10.3
-  z: 7.0
+  type: track_light
+  x: 10.8
+  z: 7.15
   height: 2.8
   temp: 3000
-  note: "客厅主灯（沙发区上方，复古吊灯/贝壳灯方向；灯光升级待决策项）"
+  circuit: living_base
+  heads: 5
+  note: "一条黑色明装轨道、5灯头，客厅基础光回路；无新增吊顶/电视背景墙"
 - id: light_tv_strip
   room: living_dining
   type: led_strip
@@ -687,6 +690,7 @@
   z: 7.7
   height: 2.0
   temp: 3000
+  circuit: tv_ambient
   note: "电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-013）"
 - id: light_master_dome
   room: master_bedroom
@@ -740,10 +744,12 @@
   room: living_dining
   type: downlight
   x: 7.90
-  z: 5.75
+  z: 5.00
   height: 2.8
   temp: 3000
-  note: "走廊口筒灯（客厅西缘，两走廊口合并为一只控光源总数）；原 x=7.35 落在电视墙北段通顶高柜投影内（柜深 0.35 x≤7.55，DEC-029/031），东移 0.55m 避让；注：x[4.2,7.2]×z[4.3,5.55] 走廊带无归属房间（几何留白）"
+  circuit: entry_base
+  recessed: true
+  note: "走廊口筒灯嵌入既有 ceiling_living 边吊，不新增吊顶；坐标由原 (7.9,5.75) 调整至既有边吊合法范围 (7.9,5.0)，避开电视高柜 x≤7.55，并仍靠近原走廊口"
 - id: light_entry_down
   room: entry_garden
   type: downlight
@@ -751,7 +757,18 @@
   z: 1.45
   height: 2.8
   temp: 3000
+  circuit: entry_base
   note: "玄关筒灯"
+- id: light_entry_foyer
+  room: living_dining
+  type: downlight
+  x: 12.4
+  z: 3.35
+  height: 2.5
+  temp: 3000
+  circuit: entry_base
+  recessed: true
+  note: "室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区"
 - id: light_kitchen_panel
   room: kitchen
   type: dome

@@ -2163,7 +2163,7 @@ export class HouseScene implements SceneApi {
         const mesh = obj as THREE.Mesh;
         if (mesh.isMesh) {
           mesh.userData.type = 'ceiling_zone_solid';
-          mesh.userData.objectId = zone.id;
+          mesh.userData.objectId = `ceiling:${zone.id}`;
           mesh.userData.roomId = zone.room;
           this.ceilingMeshes.push(mesh);
         }
@@ -2215,12 +2215,18 @@ export class HouseScene implements SceneApi {
       shower: '淋浴',
       drain: '地漏',
       washer: '洗衣机给排水',
+      ceiling_light: '吸顶灯',
+      pendant: '吊灯',
+      dome: '吸顶灯',
+      downlight: '筒灯',
+      track_light: '轨道灯',
+      wall_lamp: '壁灯',
+      led_strip: '灯带',
     };
     if (objectId.startsWith('electrical:')) {
-      const pointName = objectId.slice('electrical:'.length);
       const label = fixtureLabel[fixtureType ?? ''] ?? '电气';
       const sideLabel = wallSide ? ` · ${roomId === 'kitchen' && wallSide === 'west' ? '厨房侧' : roomId === 'entry_garden' && wallSide === 'east' ? '入户花园侧' : wallSide === 'east' ? '东侧' : wallSide === 'west' ? '西侧' : wallSide === 'north' ? '北侧' : '南侧'}` : '';
-      return roomName ? `${roomName} · ${label} · ${pointName}${sideLabel}` : `${label} · ${pointName}${sideLabel}`;
+      return roomName ? `${roomName} · ${label}${sideLabel}` : `${label}${sideLabel}`;
     }
     if (objectId.startsWith('plumbing:')) {
       const pointName = objectId.slice('plumbing:'.length);
@@ -2247,26 +2253,48 @@ export class HouseScene implements SceneApi {
     return objectId;
   }
 
+  private targetFromIntersects(
+    intersects: Array<{ object: THREE.Object3D }>,
+    hoverableOnly: boolean,
+  ): HoverTarget | null {
+    let best: { target: HoverTarget; priority: number } | null = null;
+    for (const hit of intersects) {
+      let object: THREE.Object3D | null = hit.object;
+      while (object && !object.userData?.objectId && !object.userData?.roomId) {
+        object = object.parent;
+      }
+      const data = object?.userData;
+      if (hoverableOnly && data?.hoverable === false) continue;
+      if (!data?.objectId && !data?.roomId) continue;
+
+      const id = (data.objectId as string) ?? (data.roomId as string);
+      const type = (data.type as string) ?? (data.part as string) ?? 'room';
+      const room = data.roomId as string | undefined;
+      const name = this.objectDisplayName(id, type, room, data.fixtureType as string | undefined, data.wallSide as WallSide | undefined);
+      const target: HoverTarget = {
+        objectId: id,
+        name,
+        type,
+        room,
+        curtainId: data.curtainId as string | undefined,
+        curtainKind: data.curtainId ? this.curtainRegistry.get(data.curtainId as string)?.kind : undefined,
+        layer: data.layer as HoverTarget['layer'],
+      };
+      const priority = type === 'lighting_fixture'
+        ? 0
+        : type === 'ceiling_zone_solid' || (type === 'annotation' && data.category === 'ceiling')
+          ? 2
+          : 1;
+      if (!best || priority < best.priority) best = { target, priority };
+      if (best.priority === 0) break;
+    }
+    return best?.target ?? null;
+  }
+
   raycastFromScreenCenter(options?: { hoverableOnly?: boolean }): HoverTarget | null {
     const { hoverableOnly = false } = options ?? {};
     this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
-    const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-    for (const hit of intersects) {
-      let target: THREE.Object3D | null = hit.object;
-      while (target && !target.userData?.objectId && !target.userData?.roomId) {
-        target = target.parent;
-      }
-      const data = target?.userData;
-      if (hoverableOnly && data?.hoverable === false) continue;
-      if (data?.objectId || data?.roomId) {
-        const id = (data.objectId as string) ?? (data.roomId as string);
-        const type = (data.type as string) ?? (data.part as string) ?? 'room';
-        const room = data.roomId as string | undefined;
-        const name = this.objectDisplayName(id, type, room, data.fixtureType as string | undefined, data.wallSide as WallSide | undefined);
-        return { objectId: id, name, type, room, curtainId: data.curtainId as string | undefined, curtainKind: data.curtainId ? this.curtainRegistry.get(data.curtainId as string)?.kind : undefined, layer: data.layer as HoverTarget['layer'] };
-      }
-    }
-    return null;
+    return this.targetFromIntersects(this.raycaster.intersectObjects(this.scene.children, true), hoverableOnly);
   }
 
   getVisibleObjects(): string[] {
@@ -2311,21 +2339,12 @@ export class HouseScene implements SceneApi {
     this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.scene.children, true);
-    for (const hit of intersects) {
-      let target: THREE.Object3D | null = hit.object;
-      while (target && !target.userData?.objectId && !target.userData?.roomId) {
-        target = target.parent;
-      }
-      const data = target?.userData;
-      if (data?.objectId || data?.roomId) {
-        const id = (data.objectId as string) ?? (data.roomId as string);
-        const type = (data.type as string) ?? (data.part as string) ?? 'room';
-        const room = data.roomId as string | undefined;
-        const name = this.objectDisplayName(id, type, room, data.fixtureType as string | undefined, data.wallSide as WallSide | undefined);
-        this.onClickCallback?.({ objectId: id, name, type, room, curtainId: data.curtainId as string | undefined, curtainKind: data.curtainId ? this.curtainRegistry.get(data.curtainId as string)?.kind : undefined, layer: data.layer as HoverTarget['layer'] });
-        return;
-      }
+    const target = this.targetFromIntersects(
+      this.raycaster.intersectObjects(this.scene.children, true),
+      false,
+    );
+    if (target) {
+      this.onClickCallback?.(target);
     }
   }
 

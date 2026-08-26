@@ -15,6 +15,7 @@ const LIGHT_TYPES = new Set<ElectricalPoint['type']>([
   'wall_lamp',
   'downlight',
   'led_strip',
+  'track_light',
 ]);
 
 function renderCoordinate(value: number): number {
@@ -59,6 +60,9 @@ export function buildProjectRenderFactsProjection(
       },
       temperatureK: fixture.temp ?? 3000,
       enabled: true,
+      ...(fixture.circuit !== undefined ? { circuit: fixture.circuit } : {}),
+      ...(fixture.heads !== undefined ? { heads: fixture.heads } : {}),
+      ...(fixture.recessed !== undefined ? { recessed: fixture.recessed } : {}),
     };
   });
 

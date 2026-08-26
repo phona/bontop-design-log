@@ -31,6 +31,7 @@ import { HumidityButton } from './ui/HumidityButton.js';
 import { isInHuinanWindow } from '@shared/humidity-model';
 import { exportSceneToGlb } from './render/export-gltf.js';
 import './ui/keybindings.js';
+import { parseProjectRenderFactsProjection } from '@shared/project-render-facts-schema';
 import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch } from '@shared/types';
 import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
 
@@ -602,8 +603,9 @@ export class App {
         return;
       }
 
-      if (shouldToggleInteriorLights(e.code, e.repeat)) {
-        this.interiorLighting?.toggle();
+      if (shouldToggleInteriorLights(e.code, e.repeat) && this.interiorLighting) {
+        e.preventDefault();
+        this.interiorLighting.toggle();
         return;
       }
 
@@ -1056,18 +1058,19 @@ export class App {
         this.annotationRenderer.getElectricalData(),
         this.annotationRenderer.getPlumbingData(),
       );
-      this.interiorLighting?.dispose();
       try {
         const response = await fetch('/api/render-facts/projection');
         if (!response.ok) throw new Error('render facts projection is not ready');
 
-        const projection = await response.json() as ProjectRenderFactsProjection;
-        this.interiorLighting = new InteriorLightingSystem(
+        const projection = parseProjectRenderFactsProjection(await response.json());
+        const nextInteriorLighting = new InteriorLightingSystem(
           this.houseScene.scene,
           projection.lightingFixtures,
         );
         const st = this.houseScene.getEnvironmentManager().getLightingState();
-        this.interiorLighting.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
+        nextInteriorLighting.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
+        this.interiorLighting?.dispose();
+        this.interiorLighting = nextInteriorLighting;
         const factsResponse = await fetch('/api/render-facts');
         this.renderFacts = factsResponse.ok ? await factsResponse.json() as ProjectRenderFacts : undefined;
         const outdoor = this.renderFacts?.hvac?.plans.map((plan) => plan.outdoor) ?? [];
@@ -1113,8 +1116,9 @@ export class App {
         this.houseScene.clearHvacProjection();
         this.houseScene.setMepCoordinationVisible(false);
         this.setMepCoordinationState(false);
-        this.interiorLighting = null;
         this.setHvacCoordinationState('unimplemented');
+        const message = error instanceof Error ? error.message : String(error);
+        this.showToast(`室内灯光配置不可用：${message}`);
         console.warn('render facts projection is not ready; interior lights were not created', error);
       }
     } else {

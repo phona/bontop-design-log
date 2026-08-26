@@ -146,6 +146,7 @@ const mockWindow = {
   devicePixelRatio: 1,
   addEventListener: vi.fn(),
   removeEventListener: vi.fn(),
+  setTimeout,
 };
 vi.stubGlobal('window', mockWindow);
 
@@ -230,7 +231,14 @@ describe('App', () => {
         return { ok: true, json: async () => mockProjectData } as Response;
       }
       if (urlStr.includes('/api/render-facts/projection')) {
-        return { ok: true, json: async () => ({ lightingFixtures: [], ceiling: [], hvac: { status: 'unimplemented', planId: null } }) } as Response;
+        return { ok: true, json: async () => ({
+          version: '2.0', lightingFixtures: [], plumbing: [], ceiling: [], hvac: { status: 'unimplemented', planId: null },
+          materials: { floor: { default: null, roomOverrides: {} } },
+          presentation: { curtains: {
+            source: { default: 'open', roomOverrides: {}, updatedAt: '' }, effectiveByRoom: {}, curtains: [],
+            snapshotSha256: '0000000000000000000000000000000000000000000000000000000000000000',
+          } },
+        }) } as Response;
       }
       if (urlStr.includes('/api/scheme/current')) {
         return { ok: true, json: async () => ({ updatedAt: '', selections: {} }) } as Response;
@@ -337,6 +345,31 @@ describe('App', () => {
     expect(update).toHaveBeenCalledWith('privacy', undefined, '1');
   });
 
+  it('keeps the measurement L shortcut working when render projection is unavailable', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/project')) return { ok: true, json: async () => mockProjectData } as Response;
+      if (urlStr.includes('/api/render-facts/projection')) return { ok: false, json: async () => ({ error: 'not ready' }) } as Response;
+      if (urlStr.includes('/api/scheme/current')) return { ok: true, json: async () => ({ updatedAt: '', selections: {} }) } as Response;
+      if (urlStr.includes('/api/presentation-state')) return { ok: true, json: async () => ({ default: 'open', roomOverrides: {}, updatedAt: '1' }) } as Response;
+      if (urlStr.includes('/api/visual-commands') || urlStr.includes('/api/decisions') || urlStr.includes('/api/schemes')) return { ok: true, json: async () => [] } as Response;
+      if (urlStr.includes('/api/topics')) return { ok: true, json: async () => [{ id: 'hvac', name: 'HVAC', options: [{ id: 'A1', name: 'A1' }] }] } as Response;
+      if (urlStr.includes('/api/budget')) return { ok: true, json: async () => ({ totalBudget: 0, totalActual: 0, categories: [], lineItems: [] }) } as Response;
+      if (urlStr.includes('/api/risks')) return { ok: true, json: async () => ({ risks: [], constraintViolations: [] }) } as Response;
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+    const app = new App(canvas);
+    const toast = vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    await app.start();
+    const toggleMeasurement = vi.spyOn(app['analysisTools'], 'toggleMeasurement');
+    const keydown = documentEventListeners.keydown.at(-1)!;
+
+    keydown({ code: 'KeyL', repeat: false, preventDefault: vi.fn() });
+
+    expect(toggleMeasurement).toHaveBeenCalledOnce();
+    expect(toast).toHaveBeenCalledWith(expect.stringContaining('室内灯光配置不可用'));
+  });
+
   it('should handle visual command set_camera_target', async () => {
     const app = new App(canvas);
     await app.start();
@@ -400,12 +433,17 @@ describe('App', () => {
       if (urlStr.includes('/api/project')) return { ok: true, json: async () => mockProjectData } as Response;
       if (urlStr.includes('/api/render-facts/projection')) {
         return { ok: true, json: async () => ({
-          lightingFixtures: [], ceiling: [],
+          version: '2.0', lightingFixtures: [], plumbing: [], ceiling: [],
           hvac: { status: 'implemented', planId: 'A2', diagram: {
             anchors: [
               { id: 'outdoor', status: 'confirmed', system: 'refrigerant', ref: { source: 'outdoor', id: 'outdoor_a2' } },
               { id: 'indoor', status: 'confirmed', system: 'refrigerant', ref: { source: 'ceiling', id: 'ac_living' } },
             ], terminals: [], routes: [{ id: 'trunk', status: 'confirmed', system: 'refrigerant', from: 'outdoor', to: 'indoor' }], reference_constraints: [],
+          } },
+          materials: { floor: { default: null, roomOverrides: {} } },
+          presentation: { curtains: {
+            source: { default: 'open', roomOverrides: {}, updatedAt: '' }, effectiveByRoom: {}, curtains: [],
+            snapshotSha256: '0000000000000000000000000000000000000000000000000000000000000000',
           } },
         }) } as Response;
       }

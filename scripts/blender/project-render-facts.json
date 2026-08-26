@@ -11,19 +11,22 @@
         "z": 3.45
       },
       "temperatureK": 3000,
-      "enabled": true
+      "enabled": true,
+      "circuit": "dining"
     },
     {
-      "id": "light_living_main",
+      "id": "living_track_main",
       "room": "living_dining",
-      "type": "pendant",
+      "type": "track_light",
       "position": {
-        "x": 10.3,
+        "x": 10.8,
         "y": 2.8,
-        "z": 7
+        "z": 7.15
       },
       "temperatureK": 3000,
-      "enabled": true
+      "enabled": true,
+      "circuit": "living_base",
+      "heads": 5
     },
     {
       "id": "light_tv_strip",
@@ -35,7 +38,8 @@
         "z": 7.7
       },
       "temperatureK": 3000,
-      "enabled": true
+      "enabled": true,
+      "circuit": "tv_ambient"
     },
     {
       "id": "light_master_dome",
@@ -115,11 +119,13 @@
       "type": "downlight",
       "position": {
         "x": 7.9,
-        "y": 2.8,
-        "z": 5.75
+        "y": 2.5,
+        "z": 5
       },
       "temperatureK": 3000,
-      "enabled": true
+      "enabled": true,
+      "circuit": "entry_base",
+      "recessed": true
     },
     {
       "id": "light_entry_down",
@@ -131,7 +137,22 @@
         "z": 1.45
       },
       "temperatureK": 3000,
-      "enabled": true
+      "enabled": true,
+      "circuit": "entry_base"
+    },
+    {
+      "id": "light_entry_foyer",
+      "room": "living_dining",
+      "type": "downlight",
+      "position": {
+        "x": 12.4,
+        "y": 2.5,
+        "z": 3.35
+      },
+      "temperatureK": 3000,
+      "enabled": true,
+      "circuit": "entry_base",
+      "recessed": true
     },
     {
       "id": "light_kitchen_panel",
@@ -826,21 +847,9 @@
             "y": 2.49,
             "z": 4.75
           },
-          "reason": "客厅 1.1m 线形回风（回检一体预留），下回底装于北缘边吊，尺寸待厂家深化。",
+          "reason": "客厅 1.1m 线形回风，采用铰接回风格栅兼检修口；滤网及内机经回风格栅维护，不另设独立检修面板；下回底装于北缘边吊，尺寸待厂家深化。",
           "mount_face": "bottom",
           "length": 1.1
-        },
-        {
-          "id": "access_living",
-          "status": "pending",
-          "system": "access",
-          "position": {
-            "x": 10.3,
-            "y": 2.49,
-            "z": 4.75
-          },
-          "reason": "检修口底装于客厅北缘边吊、内机旁，尺寸和位置待设备样本及现场梁位确认。",
-          "mount_face": "bottom"
         },
         {
           "id": "condensate_living_candidate",
@@ -1196,15 +1205,7 @@
           "system": "return_air",
           "from": "indoor_living",
           "to": "return_living",
-          "reason": "回风箱尺寸待风量计算确认。"
-        },
-        {
-          "id": "access_living_route",
-          "status": "pending",
-          "system": "access",
-          "from": "indoor_living",
-          "to": "access_living",
-          "reason": "检修口与滤网维护空间待设备样本确认。"
+          "reason": "回风箱尺寸待风量计算确认；回风格栅采用铰接式并兼作检修口，滤网及内机经回风格栅维护，不另设独立检修面板。"
         },
         {
           "id": "supply_master_route",
