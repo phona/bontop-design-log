@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import {
   parseCeilingZones,
+  parseCurtainPresentationState,
   parseElectricalPoints,
   parsePlumbingPoints,
   parseProjectHvacFacts,
@@ -9,7 +10,7 @@ import {
 } from '../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
 import { parseOverlay } from '../server/overlay-merge.js';
-import type { CurrentScheme, CurtainPresentationState, ProjectRenderFactsProjection } from '../shared/types.js';
+import type { CurrentScheme, ProjectRenderFactsProjection } from '../shared/types.js';
 
 export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFactsProjection {
   const path = (relative: string) => `${rootDir}/${relative}`;
@@ -25,7 +26,7 @@ export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFa
     parseRenderLightingOverrides(readFileSync(path('config/render/overrides.yaml'), 'utf8')),
     JSON.parse(readFileSync(path('data/current-scheme.json'), 'utf8')) as CurrentScheme,
     parseOverlay(readFileSync(path('config/layout/overlay.yaml'), 'utf8')),
-    JSON.parse(readFileSync(path('data/presentation-state.json'), 'utf8')) as CurtainPresentationState,
+    parseCurtainPresentationState(JSON.parse(readFileSync(path('data/presentation-state.json'), 'utf8'))),
   );
 }
 

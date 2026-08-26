@@ -2,7 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildProjectRenderFactsProjection } from '../../shared/project-render-facts-projection.js';
 import { parseProjectHvacFacts, validateProjectHvacFacts } from '../../shared/project-render-facts-schema.js';
-import type { CurrentScheme, ProjectRenderFacts, RenderLightingOverride } from '../../shared/types.js';
+import type { CurtainPresentationState, CurrentScheme, ProjectRenderFacts, RenderLightingOverride } from '../../shared/types.js';
+import type { CurtainOverlayLike } from '../../shared/curtain-projection.js';
 
 const facts: ProjectRenderFacts = {
   electrical: [
@@ -25,9 +26,29 @@ function override(id = 'light_1'): RenderLightingOverride {
   return { id, anchorY: 2.55, offsetX: 0.15, reason: 'Audited render anchor.', applies_to: ['web', 'blender'] };
 }
 
+const overlay: CurtainOverlayLike = {
+  elements: [
+    { id: 'curtain_living_south', type: 'curtain', room: 'living', kind: 'sheer_blackout' },
+  ],
+};
+
+const presentation: CurtainPresentationState = {
+  default: 'open',
+  roomOverrides: {},
+  updatedAt: '2026-08-25T00:00:00.000Z',
+};
+
+function project(
+  projectionFacts: ProjectRenderFacts,
+  projectionOverrides: RenderLightingOverride[],
+  projectionScheme: CurrentScheme,
+) {
+  return buildProjectRenderFactsProjection(projectionFacts, projectionOverrides, projectionScheme, overlay, presentation);
+}
+
 describe('buildProjectRenderFactsProjection', () => {
   it('projects only lighting fixtures without mutating construction facts', () => {
-    const projection = buildProjectRenderFactsProjection(facts, [override()], scheme);
+    const projection = project(facts, [override()], scheme);
 
     assert.deepEqual(projection.lightingFixtures, [{
       id: 'light_1', room: 'living', type: 'dome',
@@ -37,6 +58,9 @@ describe('buildProjectRenderFactsProjection', () => {
     assert.deepEqual(projection.ceiling, facts.ceiling);
     assert.deepEqual(projection.hvac, { status: 'unimplemented', planId: null });
     assert.deepEqual(projection.materials.floor, scheme.selections.floor);
+    assert.equal(projection.version, '2.0');
+    assert.deepEqual(projection.presentation.curtains.curtains.map((c) => c.id), ['curtain_living_south']);
+    assert.equal(projection.presentation.curtains.effectiveByRoom.living, 'open');
     assert.deepEqual(facts.electrical[0], { id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8, temp: 4000 });
   });
 
@@ -58,17 +82,17 @@ describe('buildProjectRenderFactsProjection', () => {
         master_bath: 'floor_mb', guest_bath: 'floor_gb', balcony: 'floor_balcony',
       } } },
     };
-    const projection = buildProjectRenderFactsProjection(concreteFacts, [override()], concreteScheme);
+    const projection = project(concreteFacts, [override()], concreteScheme);
     assert.deepEqual(projection.plumbing, concreteFacts.plumbing);
     assert.deepEqual(projection.ceiling, concreteFacts.ceiling);
     assert.deepEqual(projection.materials.floor, concreteScheme.selections.floor);
   });
 
   it('projects A2 only and never leaks its diagram into historical options', () => {
-    const a2 = buildProjectRenderFactsProjection(facts, [override()], { ...scheme, selections: { ...scheme.selections, hvac: { default: 'A2', roomOverrides: {} } } });
+    const a2 = project(facts, [override()], { ...scheme, selections: { ...scheme.selections, hvac: { default: 'A2', roomOverrides: {} } } });
     assert.equal(a2.hvac.status, 'implemented');
     assert.equal(a2.hvac.status === 'implemented' && a2.hvac.planId, 'A2');
-    const archived = buildProjectRenderFactsProjection(facts, [override()], { ...scheme, selections: { ...scheme.selections, hvac: { default: 'A1', roomOverrides: {} } } });
+    const archived = project(facts, [override()], { ...scheme, selections: { ...scheme.selections, hvac: { default: 'A1', roomOverrides: {} } } });
     assert.deepEqual(archived.hvac, { status: 'unimplemented', planId: 'A1' });
     assert.equal('diagram' in archived.hvac, false);
   });
@@ -109,9 +133,9 @@ describe('buildProjectRenderFactsProjection', () => {
   });
 
   it('rejects missing, unknown, non-lighting, and duplicate overrides', () => {
-    assert.throws(() => buildProjectRenderFactsProjection(facts, [], scheme), /Missing render override/);
-    assert.throws(() => buildProjectRenderFactsProjection(facts, [override('unknown')], scheme), /unknown electrical id/);
-    assert.throws(() => buildProjectRenderFactsProjection(facts, [override('socket_1')], scheme), /does not reference a lighting fixture/);
-    assert.throws(() => buildProjectRenderFactsProjection(facts, [override(), override()], scheme), /Duplicate render override/);
+    assert.throws(() => project(facts, [], scheme), /Missing render override/);
+    assert.throws(() => project(facts, [override('unknown')], scheme), /unknown electrical id/);
+    assert.throws(() => project(facts, [override('socket_1')], scheme), /does not reference a lighting fixture/);
+    assert.throws(() => project(facts, [override(), override()], scheme), /Duplicate render override/);
   });
 });

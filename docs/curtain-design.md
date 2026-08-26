@@ -48,7 +48,9 @@
 
 ## 3D 可视化
 
-- `overlay.yaml` curtains 段定义窗帘（引用墙 id，vertices 联动）
-- HouseScene 保留展开/收拢几何变体，按 `open / privacy / blackout` 绝对状态切换；`open` 完全收起并隐藏，主卫百叶使用 `open / privacy`
-- `CurtainTopic`（id=curtain）选材切换：curtain_01 手动版 / curtain_02 电动版；开合状态独立持久化，不进入材料预算
-- 快捷键 **C**：循环全屋 `open → privacy → blackout → open`
+- `config/layout/overlay.yaml` 定义安装事实（id、room、轨道与 kind），`data/presentation-state.json` 定义展示状态事实。
+- 共享 `CurtainRenderProjection` 规范化逐房状态、主卫百叶 `blackout → privacy`、可见节点集合与语义 SHA-256；`updatedAt` 只审计，不进入语义 hash。
+- HouseScene 保留展开/收拢几何变体，按 `open / privacy / blackout` 切换；`open` 完全隐藏。GLB 只导出当前可见 active-only 节点，gathered 使用唯一 `:left/:right` 名称。
+- render bundle 冻结 projection 与源输入 hash，并严格校验 GLB 节点；Blender 不补窗帘、不猜状态、不接受普通 scenario 改开合，只按 layer/variant 赋材。`bare_shell` 可显式隐藏全部窗帘但不改变 canonical state。
+- `CurtainTopic`（id=curtain）选材切换：curtain_01 手动版 / curtain_02 电动版；开合状态独立持久化，不进入材料预算。
+- 快捷键 **C**：循环全屋 `open → privacy → blackout → open`。

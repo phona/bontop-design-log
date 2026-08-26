@@ -1118,6 +1118,7 @@ export class HouseScene implements SceneApi {
       meshHeight = height,
       y = 0.05,
       thickness = variant === 'gathered' ? 0.12 : 0.04,
+      segment: 'left' | 'right' | null = null,
     ) => {
       const shape = this.buildCurtainShape(points, false, thickness, true);
       const geometry = new THREE.ExtrudeGeometry(shape, { depth: meshHeight, bevelEnabled: false, steps: 1 });
@@ -1127,13 +1128,18 @@ export class HouseScene implements SceneApi {
       mesh.position.y = y;
       mesh.castShadow = false;
       mesh.receiveShadow = false;
+      // objectId 命名契约与 shared/curtain-projection.ts 的 expectedVisibleCurtainNodes 一致：
+      // deployed 无分段后缀；gathered 左右分段追加 :left/:right（blinds gathered 除外）。
+      // 左右约定：gatheredCurtainSegments 返回 [轨道起点 stack, 轨道终点 stack]，
+      // 沿轨道 points[0] 起点端为 left、末点端为 right，与 curtain-track.ts 分段顺序对齐。
       mesh.userData = {
         type: 'curtain',
-        objectId: `${el.id}:${layer}:${variant}`,
+        objectId: `${el.id}:${layer}:${variant}${segment ? `:${segment}` : ''}`,
         curtainId: el.id,
         roomId: el.room,
         layer,
         variant,
+        segment,
         state: 'open',
       };
       this.scene.add(mesh);
@@ -1144,11 +1150,12 @@ export class HouseScene implements SceneApi {
     if (kind === 'sheer_blackout') {
       entry.sheer = {
         deployed: createMesh(pts, this.makeSheerMaterial(), 'sheer', 'deployed'),
-        gathered: gathered.map((segment) => createMesh(segment, this.makeSheerMaterial(), 'sheer', 'gathered')),
+        // gathered[0]=轨道起点段→left，gathered[1]=轨道终点段→right（见 createMesh 注释）
+        gathered: gathered.map((segment, i) => createMesh(segment, this.makeSheerMaterial(), 'sheer', 'gathered', undefined, undefined, undefined, i === 0 ? 'left' : 'right')),
       };
       entry.blackout = {
         deployed: createMesh(pts, this.makeBlackoutMaterial(), 'blackout', 'deployed'),
-        gathered: gathered.map((segment) => createMesh(segment, this.makeBlackoutMaterial(), 'blackout', 'gathered')),
+        gathered: gathered.map((segment, i) => createMesh(segment, this.makeBlackoutMaterial(), 'blackout', 'gathered', undefined, undefined, undefined, i === 0 ? 'left' : 'right')),
       };
     } else {
       const gatheredHeight = Math.min(0.28, Math.max(0.16, height * 0.08));

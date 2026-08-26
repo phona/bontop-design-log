@@ -38,6 +38,21 @@ def test_other_wall_names_unchanged():
     assert classify(_obj('molding:living:d01')) == 'wall'
 
 
+def test_curtain_nodes_classify_by_layer():
+    # 契约 <id>:<layer>:<variant>[:segment]：sheer→纱材质，blackout/blinds→布料
+    assert classify(_obj('curtain_living_south:sheer:deployed')) == 'sheer'
+    assert classify(_obj('curtain_living_south:sheer:gathered:left')) == 'sheer'
+    assert classify(_obj('curtain_living_south:blackout:deployed')) == 'curtain_fabric'
+    assert classify(_obj('curtain_living_south:blackout:gathered:right')) == 'curtain_fabric'
+    assert classify(_obj('curtain_mbath_corner:blinds:deployed')) == 'curtain_fabric'
+    assert classify(_obj('curtain_mbath_corner:blinds:gathered')) == 'curtain_fabric'
+    # Blender 重名 .NNN 后缀不影响分类
+    assert classify(_obj('curtain_living_south:sheer:deployed.001')) == 'sheer'
+    # 玻璃幕节点（无冒号、含 curtain 字样）不受影响
+    assert classify(_obj('west_curtain')) == 'glass'
+    assert classify(_obj('living_south_curtain')) == 'glass'
+
+
 def test_floor_room_id_requires_stable_export_tag():
     assert floor_room_id('floor:master_bath') == 'master_bath'
     assert floor_room_id('floor:guest_bath.001') == 'guest_bath'
@@ -61,4 +76,5 @@ if __name__ == '__main__':
     test_other_wall_names_unchanged()
     test_floor_room_id_requires_stable_export_tag()
     test_projection_facts_and_plumbing_reject_missing_or_invalid_points()
+    test_curtain_nodes_classify_by_layer()
     print('OK')

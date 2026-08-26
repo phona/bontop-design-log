@@ -54,6 +54,8 @@ export const HvacTerminalSchema = z.object({
   confirmed: z.boolean().optional(),
   render_interior: z.boolean().optional(),
   render_coordination: z.boolean().optional(),
+  mount_face: z.enum(['north', 'south', 'east', 'west', 'bottom']).optional(),
+  length: z.number().positive().optional(),
 }).strict().superRefine((value, ctx) => {
   if (value.status !== 'confirmed' && !value.reason?.trim()) {
     ctx.addIssue({ code: 'custom', message: `${value.status} HVAC facts require reason`, path: ['reason'] });
@@ -102,7 +104,12 @@ export const CeilingZonesSchema = z.array(CeilingZoneSchema);
 export const ProjectRenderFactsSchema = z.object({ electrical: ElectricalPointsSchema, plumbing: PlumbingPointsSchema, ceiling: CeilingZonesSchema, hvac: ProjectHvacFactsSchema }).strict();
 export const RenderLightingOverrideSchema = z.object({ id: z.string(), anchorY: finiteNumber, offsetX: finiteNumber.optional(), offsetZ: finiteNumber.optional(), reason: nonEmpty, applies_to: z.tuple([z.literal('web'), z.literal('blender')]) }).strict();
 export const RenderLightingOverridesSchema = z.array(RenderLightingOverrideSchema);
-const CurtainStateSchema = z.enum(['open', 'privacy', 'blackout']);
+export const CurtainStateSchema = z.enum(['open', 'privacy', 'blackout']);
+export const CurtainPresentationStateSchema = z.object({
+  default: CurtainStateSchema,
+  roomOverrides: z.record(z.string(), CurtainStateSchema),
+  updatedAt: z.string().datetime({ offset: true }),
+}).strict();
 export const CurtainRenderProjectionSchema = z.object({
   source: z.object({
     default: CurtainStateSchema,
@@ -124,7 +131,7 @@ const HvacProjectionSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('unimplemented'), planId: z.string().nullable() }).strict(),
 ]);
 export const ProjectRenderFactsProjectionSchema = z.object({
-  version: z.string(), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean() }).strict()),
+  version: z.literal('2.0'), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean() }).strict()),
   plumbing: z.array(PlumbingPointProjectionSchema), ceiling: CeilingZonesSchema, hvac: HvacProjectionSchema,
   materials: z.object({ floor: z.object({ default: z.string().nullable(), roomOverrides: z.record(z.string(), z.string()) }).strict() }).strict(),
   presentation: z.object({ curtains: CurtainRenderProjectionSchema }).strict(),
@@ -178,5 +185,6 @@ export function parsePlumbingPoints(raw: string): PlumbingPoint[] {
 export function parseCeilingZones(raw: string): CeilingZone[] { return CeilingZonesSchema.parse(parseYaml(raw)); }
 export function parseProjectHvacFacts(raw: string): ProjectHvacFacts { return ProjectHvacFactsSchema.parse(parseYaml(raw)); }
 export function parseProjectRenderFacts(raw: unknown): ProjectRenderFacts { return ProjectRenderFactsSchema.parse(raw); }
+export function parseCurtainPresentationState(raw: unknown) { return CurtainPresentationStateSchema.parse(raw); }
 export function parseRenderLightingOverrides(raw: string): RenderLightingOverride[] { return RenderLightingOverridesSchema.parse(parseYaml(raw)); }
 export function parseProjectRenderFactsProjection(raw: unknown): ProjectRenderFactsProjection { return ProjectRenderFactsProjectionSchema.parse(raw); }

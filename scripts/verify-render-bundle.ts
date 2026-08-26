@@ -4,6 +4,7 @@ import { basename, resolve } from 'node:path';
 import { inspectGlb } from './inspect-glb.js';
 import {
   RENDER_BUNDLE_SCHEMA_VERSION,
+  assertCurtainNodesConsistent,
   assertDeliverableGlb,
   deepEqualJson,
   fileArtifact,
@@ -14,6 +15,7 @@ import {
 } from './render-bundle-utils.js';
 import { parseProjectRenderFactsProjection } from '../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsFromFiles, serializeProjectRenderFacts } from './project-render-facts-projection.js';
+import { SOURCE_INPUTS } from './build-render-bundle.js';
 import { serializeRenderConfig } from './blender/gen-render-config.js';
 
 function usage(): never {
@@ -28,10 +30,16 @@ export function parseVerifyRenderBundleArgs(argv: string[]): { bundle: string } 
 function parseManifest(raw: unknown): RenderBundleManifest {
   if (!raw || typeof raw !== 'object') throw new Error('manifest must be an object');
   const manifest = raw as Partial<RenderBundleManifest>;
-  if (manifest.schemaVersion !== RENDER_BUNDLE_SCHEMA_VERSION) throw new Error(`Unsupported render bundle manifest schema: ${String(manifest.schemaVersion)}`);
+  if (manifest.schemaVersion !== RENDER_BUNDLE_SCHEMA_VERSION) {
+    const legacy = typeof manifest.schemaVersion === 'string' && /^1\.[0-9]+$/u.test(manifest.schemaVersion);
+    if (legacy) {
+      throw new Error(`Legacy render bundle manifest schema ${manifest.schemaVersion} is rejected for render verification; rebuild the bundle with schema ${RENDER_BUNDLE_SCHEMA_VERSION}`);
+    }
+    throw new Error(`Unsupported render bundle manifest schema: ${String(manifest.schemaVersion)}`);
+  }
   if (typeof manifest.revision !== 'string' || !/^[0-9a-f]{40}$/u.test(manifest.revision)) throw new Error('manifest revision must be a full git SHA');
   if (typeof manifest.dirty !== 'boolean' || typeof manifest.dirtyPorcelain !== 'string') throw new Error('manifest dirty state is invalid');
-  if (!manifest.sourceInputs || !manifest.glbExport || !manifest.artifacts || !manifest.summaries) throw new Error('manifest is missing sourceInputs, glbExport, artifacts, or summaries');
+  if (!manifest.sourceInputs || !manifest.glbExport || !manifest.artifacts || !manifest.summaries || !manifest.curtainPresentation) throw new Error('manifest is missing sourceInputs, glbExport, artifacts, curtainPresentation, or summaries');
   if (manifest.glbExport.method !== 'manual_web_export') throw new Error('manifest GLB export method must be manual_web_export');
   if (typeof manifest.glbExport.inputBasename !== 'string' || !manifest.glbExport.inputBasename || basename(manifest.glbExport.inputBasename) !== manifest.glbExport.inputBasename || manifest.glbExport.inputBasename.includes('\\') || manifest.glbExport.inputBasename.includes('\0')) {
     throw new Error('manifest GLB input basename is invalid');
@@ -71,10 +79,18 @@ export function verifyRenderBundle(bundlePath: string, rootDir = '.'): RenderBun
   const glbSummary = inspectGlb(glbPath);
   assert.deepEqual(glbSummary, manifest.summaries.glb, 'manifest GLB summary must match GLB artifact');
   assertDeliverableGlb(glbSummary);
+  const curtainPresentation = assertCurtainNodesConsistent(glbSummary, facts.presentation.curtains);
+  assert.deepEqual(manifest.curtainPresentation, curtainPresentation, 'manifest curtainPresentation must match facts projection and GLB curtain nodes');
 
   if (!manifest.dirty) {
     const currentRevision = git(['rev-parse', 'HEAD']);
     if (currentRevision !== manifest.revision) throw new Error(`Clean bundle revision mismatch: HEAD ${currentRevision}, manifest ${manifest.revision}`);
+    for (const input of SOURCE_INPUTS) {
+      const recorded = manifest.sourceInputs[input];
+      if (!recorded) throw new Error(`Clean bundle sourceInputs missing ${input}`);
+      const current = fileArtifact(rootDir, input).sha256;
+      if (current !== recorded) throw new Error(`Clean bundle source input drift: ${input}`);
+    }
     const projection = buildProjectRenderFactsFromFiles(rootDir);
     const expectedFacts = serializeProjectRenderFacts(projection);
     const expectedConfig = serializeRenderConfig(projection);

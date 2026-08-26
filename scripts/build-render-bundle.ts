@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { inspectGlb } from './inspect-glb.js';
 import {
   RENDER_BUNDLE_SCHEMA_VERSION,
+  assertCurtainNodesConsistent,
   assertDeliverableGlb,
   fileArtifact,
   git,
@@ -17,13 +18,16 @@ interface Args {
   allowDirty: boolean;
 }
 
-const SOURCE_INPUTS = [
+export const SOURCE_INPUTS = [
   'config/electrical.yaml',
   'config/plumbing.yaml',
   'config/ceiling.yaml',
   'config/hvac.yaml',
   'config/render/overrides.yaml',
+  'config/layout/overlay.yaml',
+  'config/layout/model-geometry.yaml',
   'data/current-scheme.json',
+  'data/presentation-state.json',
 ] as const;
 
 function usage(): never {
@@ -86,6 +90,7 @@ export function buildRenderBundle(args: Args): RenderBundleManifest {
   cpSync('scripts/blender/project-render-facts.json', resolve(outputDir, factsName));
 
   const facts = parseProjectRenderFactsProjection(JSON.parse(readFileSync(resolve(outputDir, factsName), 'utf8')));
+  const curtainPresentation = assertCurtainNodesConsistent(glbSummary, facts.presentation.curtains);
   const manifest: RenderBundleManifest = {
     schemaVersion: RENDER_BUNDLE_SCHEMA_VERSION,
     revision,
@@ -98,6 +103,7 @@ export function buildRenderBundle(args: Args): RenderBundleManifest {
       renderConfig: fileArtifact(outputDir, renderConfigName),
       projectRenderFacts: fileArtifact(outputDir, factsName),
     },
+    curtainPresentation,
     summaries: { glb: glbSummary, projectRenderFacts: facts },
   };
   writeFileSync(resolve(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);

@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "lightingFixtures": [
     {
       "id": "light_dining_pendant",
@@ -152,7 +152,7 @@
       "position": {
         "x": 1.3,
         "y": 2.55,
-        "z": 3.3
+        "z": 1.98
       },
       "temperatureK": 4000,
       "enabled": true
@@ -173,22 +173,34 @@
   "plumbing": [
     {
       "id": "faucet_mbath_vanity",
-      "room": "master_bath",
+      "room": "master_bedroom",
       "type": "faucet",
-      "x": 2.6,
-      "z": 2.8,
-      "wall": "w_mbath_east",
-      "note": "主卫洗手台冷热水（2026-08-21 样板间版：台盆回卫内贴东墙干区；⚠️坐标待量房确认立管）",
-      "height": 0.8
+      "x": 0.26,
+      "z": 2.96,
+      "wall": "w_mbath_south",
+      "note": "2026-08-25 台盆外移条带，墙排穿墙回主卫沉箱接原立管；待量房确认下沉:300 分界线（冷热水，洗漱+梳妆一体台 vanity_dresser @0.55,3.16，盆心 x=0.26）",
+      "height": 0.8,
+      "wallSide": "south"
+    },
+    {
+      "id": "drain_mbath_vanity",
+      "room": "master_bedroom",
+      "type": "drain",
+      "x": 0.26,
+      "z": 2.96,
+      "wall": "w_mbath_south",
+      "note": "2026-08-25 台盆墙排下水（h0.35），穿墙回主卫沉箱接原立管；待量房确认下沉:300 分界线与立管位置",
+      "height": 0.35,
+      "wallSide": "south"
     },
     {
       "id": "shower_mbath",
       "room": "master_bath",
       "type": "shower",
       "x": 0.5,
-      "z": 3.16,
+      "z": 2.76,
       "wall": "w_mbath_south",
-      "note": "主卫淋浴花洒（2026-08-21 隔墙北移3.26随墙移：湿区西端 x[0,1.2]，花洒挂南墙朝北，玻璃隔断 x=1.2 左右分离）",
+      "note": "主卫淋浴花洒（2026-08-25 隔墙北移2.86随墙移：湿区西端 x[0,1.2]，花洒挂南墙朝北，玻璃隔断 x=1.2 左右分离）",
       "height": 1
     },
     {
@@ -205,8 +217,8 @@
       "room": "master_bath",
       "type": "drain",
       "x": 0.6,
-      "z": 2.6,
-      "note": "主卫淋浴地漏（地面；2026-08-21 隔墙北移后湿区中心）",
+      "z": 2.2,
+      "note": "主卫淋浴地漏（地面；2026-08-25 隔墙北移 z=2.86 后随湿区内收，待量房确认）",
       "height": 0.02
     },
     {
@@ -226,7 +238,8 @@
       "z": 3.5,
       "wall": "w_gbath_west",
       "note": "客卫洗手台冷热水",
-      "height": 0.8
+      "height": 0.8,
+      "wallSide": "east"
     },
     {
       "id": "shower_gbath",
@@ -236,7 +249,8 @@
       "z": 3,
       "wall": "w_gbath_west",
       "note": "客卫淋浴花洒",
-      "height": 1
+      "height": 1,
+      "wallSide": "east"
     },
     {
       "id": "toilet_gbath",
@@ -245,7 +259,8 @@
       "x": 5.6,
       "z": 2.5,
       "wall": "w_gbath_west",
-      "note": "客卫马桶给水"
+      "note": "客卫马桶给水",
+      "wallSide": "east"
     },
     {
       "id": "drain_gbath_shower",
@@ -300,7 +315,8 @@
       "z": 1.5,
       "wall": "w_balc_west",
       "note": "生活阳台洗衣机给水",
-      "height": 0.8
+      "height": 0.8,
+      "wallSide": "east"
     },
     {
       "id": "drain_balcony_floor",
@@ -389,8 +405,8 @@
       "id": "ac_study",
       "room": "bedroom_se",
       "type": "ac_indoor",
-      "x": 14.8,
-      "z": 7.5,
+      "x": 15.1,
+      "z": 5.85,
       "height": 2.85,
       "model": "2.2HP 风管机",
       "power_point": "sock_study_ac",
@@ -508,6 +524,45 @@
         4.3
       ],
       "note": "入户门厅吊顶（藏风管），净高约2.50m"
+    },
+    {
+      "id": "ceiling_master_ac",
+      "room": "master_bedroom",
+      "type": "drop",
+      "thickness": 0.3,
+      "area": [
+        1.1,
+        5.6,
+        1.7,
+        8.65
+      ],
+      "note": "主卧西墙边吊（藏风管机，侧送下回），避飘窗：x 起 1.10 避西飘窗，z 止 8.65 避南环幕飘窗"
+    },
+    {
+      "id": "ceiling_study_ac",
+      "room": "bedroom_se",
+      "type": "drop",
+      "thickness": 0.3,
+      "area": [
+        13.8,
+        5.55,
+        16.4,
+        6.15
+      ],
+      "note": "书房北墙边吊（藏风管机，侧送下回），避飘窗：z 止 6.15 远离南侧凸窗"
+    },
+    {
+      "id": "ceiling_child_ac",
+      "room": "bedroom_nw",
+      "type": "drop",
+      "thickness": 0.3,
+      "area": [
+        3.2,
+        2.2,
+        4.8,
+        2.8
+      ],
+      "note": "儿童房北墙边吊（藏风管机，侧送下回），避飘窗：z 起 2.20 紧贴北飘窗侵入线外"
     }
   ],
   "hvac": {
@@ -677,10 +732,12 @@
           "system": "supply_air",
           "position": {
             "x": 10.8,
-            "y": 2.5,
+            "y": 2.49,
             "z": 7
           },
-          "reason": "送风口位置待风量和吊顶深化确认。"
+          "reason": "客厅送风口为 1.5m 线形风口，下送底装于整区域吊顶，实际长度按风量深化。",
+          "mount_face": "bottom",
+          "length": 1.5
         },
         {
           "id": "return_living",
@@ -688,10 +745,12 @@
           "system": "return_air",
           "position": {
             "x": 9.6,
-            "y": 2.5,
+            "y": 2.49,
             "z": 7
           },
-          "reason": "回风口位置待检修空间与风量计算确认。"
+          "reason": "客厅回风口为 1.1m 线形回风（回检一体预留），下回底装于整区域吊顶，尺寸待厂家深化。",
+          "mount_face": "bottom",
+          "length": 1.1
         },
         {
           "id": "access_living",
@@ -699,10 +758,11 @@
           "system": "access",
           "position": {
             "x": 10.3,
-            "y": 2.5,
+            "y": 2.49,
             "z": 6.2
           },
-          "reason": "检修口尺寸和位置待设备样本及现场梁位确认。"
+          "reason": "检修口底装于客厅吊顶，尺寸和位置待设备样本及现场梁位确认。",
+          "mount_face": "bottom"
         },
         {
           "id": "condensate_living_candidate",
@@ -784,55 +844,60 @@
           "status": "inferred",
           "system": "supply_air",
           "position": {
-            "x": 1.1,
-            "y": 2.5,
+            "x": 1.71,
+            "y": 2.65,
             "z": 7
           },
-          "reason": "主卧送风口位置待风量、静压和吊顶深化确认。"
+          "reason": "主卧送风口侧装于西墙边吊东立面（侧送），避飘窗，尺寸待厂家深化。",
+          "mount_face": "east"
         },
         {
           "id": "return_master",
           "status": "inferred",
           "system": "return_air",
           "position": {
-            "x": 2,
-            "y": 2.5,
-            "z": 7
+            "x": 1.4,
+            "y": 2.49,
+            "z": 7.7
           },
-          "reason": "主卧回风口位置待回风箱尺寸和检修净空确认。"
+          "reason": "主卧回风口下回底装于边吊底面，尺寸待厂家深化。",
+          "mount_face": "bottom"
         },
         {
           "id": "access_master",
           "status": "pending",
           "system": "access",
           "position": {
-            "x": 1.5,
-            "y": 2.5,
+            "x": 1.4,
+            "y": 2.49,
             "z": 6.3
           },
-          "reason": "主卧检修口尺寸和位置待设备样本、梁位确认。"
+          "reason": "主卧检修口底装于边吊底面，尺寸和位置待设备样本、梁位确认。",
+          "mount_face": "bottom"
         },
         {
           "id": "supply_study",
           "status": "inferred",
           "system": "supply_air",
           "position": {
-            "x": 15.2,
-            "y": 2.5,
-            "z": 7.5
+            "x": 15.1,
+            "y": 2.65,
+            "z": 6.16
           },
-          "reason": "书房送风口位置待风量、静压和吊顶深化确认。"
+          "reason": "书房送风口侧装于北墙边吊南立面（侧送），避南侧凸窗，尺寸待厂家深化。",
+          "mount_face": "south"
         },
         {
           "id": "return_study",
           "status": "inferred",
           "system": "return_air",
           "position": {
-            "x": 14.3,
-            "y": 2.5,
-            "z": 7.5
+            "x": 15.7,
+            "y": 2.49,
+            "z": 5.85
           },
-          "reason": "书房回风口位置待回风箱尺寸和检修净空确认。"
+          "reason": "书房回风口下回底装于边吊底面，尺寸待厂家深化。",
+          "mount_face": "bottom"
         },
         {
           "id": "access_study",
@@ -840,10 +905,11 @@
           "system": "access",
           "position": {
             "x": 14.8,
-            "y": 2.5,
-            "z": 6.8
+            "y": 2.49,
+            "z": 5.85
           },
-          "reason": "书房检修口尺寸和位置待设备样本、梁位确认。"
+          "reason": "书房检修口底装于边吊底面，尺寸和位置待设备样本、梁位确认。",
+          "mount_face": "bottom"
         },
         {
           "id": "supply_parent",
@@ -851,10 +917,11 @@
           "system": "supply_air",
           "position": {
             "x": 5,
-            "y": 2.5,
-            "z": 7.5
+            "y": 2.65,
+            "z": 7.81
           },
-          "reason": "父母房送风口位置待风量、静压和吊顶深化确认。"
+          "reason": "父母房送风口侧装于走廊吊顶南立面（侧送），尺寸待厂家深化。",
+          "mount_face": "south"
         },
         {
           "id": "return_parent",
@@ -862,10 +929,11 @@
           "system": "return_air",
           "position": {
             "x": 6,
-            "y": 2.5,
+            "y": 2.49,
             "z": 7.5
           },
-          "reason": "父母房回风口位置待回风箱尺寸和检修净空确认。"
+          "reason": "父母房回风口下回底装于走廊吊顶底面，尺寸待厂家深化。",
+          "mount_face": "bottom"
         },
         {
           "id": "access_parent",
@@ -873,32 +941,35 @@
           "system": "access",
           "position": {
             "x": 5.5,
-            "y": 2.5,
+            "y": 2.49,
             "z": 6.8
           },
-          "reason": "父母房检修口尺寸和位置待设备样本、梁位确认。"
+          "reason": "父母房检修口底装于走廊吊顶底面，尺寸和位置待设备样本、梁位确认。",
+          "mount_face": "bottom"
         },
         {
           "id": "supply_child",
           "status": "inferred",
           "system": "supply_air",
           "position": {
-            "x": 3.5,
-            "y": 2.5,
-            "z": 2.5
+            "x": 3.7,
+            "y": 2.65,
+            "z": 2.81
           },
-          "reason": "儿童房送风口位置待风量、静压和吊顶深化确认。"
+          "reason": "儿童房送风口侧装于北墙边吊南立面（侧送），避北飘窗，尺寸待厂家深化。",
+          "mount_face": "south"
         },
         {
           "id": "return_child",
           "status": "inferred",
           "system": "return_air",
           "position": {
-            "x": 4.6,
-            "y": 2.5,
+            "x": 4.3,
+            "y": 2.49,
             "z": 2.5
           },
-          "reason": "儿童房回风口位置待回风箱尺寸和检修净空确认。"
+          "reason": "儿童房回风口下回底装于边吊底面，尺寸待厂家深化。",
+          "mount_face": "bottom"
         },
         {
           "id": "access_child",
@@ -906,10 +977,11 @@
           "system": "access",
           "position": {
             "x": 4,
-            "y": 2.5,
-            "z": 3.2
+            "y": 2.49,
+            "z": 2.55
           },
-          "reason": "儿童房检修口尺寸和位置待设备样本、梁位确认。"
+          "reason": "儿童房检修口底装于边吊底面，尺寸和位置待设备样本、梁位确认。",
+          "mount_face": "bottom"
         }
       ],
       "routes": [
@@ -1300,6 +1372,75 @@
         "guest_bath": "floor_tile_deco_small",
         "balcony": "floor_tile_antislip_400"
       }
+    }
+  },
+  "presentation": {
+    "curtains": {
+      "source": {
+        "default": "open",
+        "roomOverrides": {},
+        "updatedAt": "2026-08-25T08:03:43.765Z"
+      },
+      "effectiveByRoom": {
+        "bedroom_nw": "open",
+        "bedroom_se": "open",
+        "living_dining": "open",
+        "master_bath": "open",
+        "master_bedroom": "open",
+        "study": "open"
+      },
+      "curtains": [
+        {
+          "id": "curtain_living_south",
+          "roomId": "living_dining",
+          "kind": "sheer_blackout",
+          "state": "open",
+          "expectedVisibleNodes": []
+        },
+        {
+          "id": "curtain_master_south",
+          "roomId": "master_bedroom",
+          "kind": "sheer_blackout",
+          "state": "open",
+          "expectedVisibleNodes": []
+        },
+        {
+          "id": "curtain_master_west",
+          "roomId": "master_bedroom",
+          "kind": "sheer_blackout",
+          "state": "open",
+          "expectedVisibleNodes": []
+        },
+        {
+          "id": "curtain_mbath_corner",
+          "roomId": "master_bath",
+          "kind": "blinds",
+          "state": "open",
+          "expectedVisibleNodes": []
+        },
+        {
+          "id": "curtain_nw_north",
+          "roomId": "bedroom_nw",
+          "kind": "sheer_blackout",
+          "state": "open",
+          "expectedVisibleNodes": []
+        },
+        {
+          "id": "curtain_parent_south",
+          "roomId": "study",
+          "kind": "sheer_blackout",
+          "state": "open",
+          "expectedVisibleNodes": []
+        },
+        {
+          "id": "curtain_study_south",
+          "roomId": "bedroom_se",
+          "kind": "sheer_blackout",
+          "state": "open",
+          "expectedVisibleNodes": []
+        }
+      ],
+      "snapshotSha256": "1732fae38ce3b70ec3691a7827e1ec138221f16b6adbe9fbe4ac3a66fa911d56"
     }
   }
 }

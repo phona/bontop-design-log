@@ -156,13 +156,83 @@ export class HvacDiagramRenderer {
       this.coordinationGroup.add(candidateGroup);
       return;
     }
-    const access = terminal.system === 'access';
-    const geometry = access ? new THREE.BoxGeometry(0.45, 0.025, 0.45) : new THREE.BoxGeometry(0.65, 0.025, 0.16);
-    const mesh = new THREE.Mesh(geometry, material(terminal.status));
-    mesh.position.set(position.x, position.y, position.z);
-    mesh.name = objectId;
-    mesh.userData = { type: 'hvac_terminal', objectId: mesh.name, reason: terminal.reason, status: terminal.status, system: terminal.system };
-    this.equipmentGroup.add(mesh);
+    const mountFace = terminal.mount_face ?? 'bottom';
+    const group = this.buildTerminalGrille(terminal, mountFace);
+    group.position.set(position.x, position.y, position.z);
+    group.name = objectId;
+    group.userData = { type: 'hvac_terminal', objectId, reason: terminal.reason, status: terminal.status, system: terminal.system, mount_face: mountFace };
+    this.equipmentGroup.add(group);
+  }
+
+  /** 风口真实造型：浅色格栅 + 状态描边。侧装贴边吊立面，底装平贴吊顶底面。 */
+  private buildTerminalGrille(terminal: HvacTerminal, mountFace: string): THREE.Group {
+    const group = new THREE.Group();
+    const body = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.9 });
+    const frame = new THREE.MeshStandardMaterial({ color: 0xd4d4d4, roughness: 0.7 });
+    const statusLine = new THREE.LineBasicMaterial({ color: STATUS_COLOR[terminal.status] });
+
+    if (terminal.system === 'access') {
+      // 检修口：0.45×0.45 带边框方形面板（底装）
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.42, 0.015), body);
+      group.add(panel);
+      group.add(this.frameOutline(0.45, 0.42, 0.02, frame));
+      group.add(this.statusFrame(0.45, 0.42, statusLine));
+    } else {
+      // 送风 0.8×0.15，回风 0.6×0.25（侧装/底装同尺寸，仅朝向不同）；length 可覆盖宽度（如客厅线形风口）
+      const width = terminal.length ?? (terminal.system === 'return_air' ? 0.6 : 0.8);
+      const height = terminal.system === 'return_air' ? 0.25 : 0.15;
+      const back = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.01), body);
+      back.position.z = -0.008;
+      group.add(back);
+      const slatCount = 4;
+      const step = height / (slatCount + 1);
+      for (let i = 1; i <= slatCount; i++) {
+        const slat = new THREE.Mesh(new THREE.BoxGeometry(width - 0.04, 0.012, 0.03), frame);
+        slat.position.set(0, height / 2 - step * i, 0.004);
+        slat.rotation.x = 0.45; // 百叶微向下倾
+        group.add(slat);
+      }
+      group.add(this.frameOutline(width, height, 0.02, frame));
+      group.add(this.statusFrame(width, height, statusLine));
+    }
+
+    // 朝向：格栅局部法线为 +z；侧装按 mount_face 旋转，底装法线朝下
+    if (mountFace === 'east') group.rotation.y = Math.PI / 2;
+    else if (mountFace === 'west') group.rotation.y = -Math.PI / 2;
+    else if (mountFace === 'north') group.rotation.y = Math.PI;
+    else if (mountFace === 'bottom') group.rotation.x = Math.PI / 2;
+    // south：法线 +z 即朝南，无需旋转
+    return group;
+  }
+
+  private frameOutline(width: number, height: number, depth: number, material: THREE.Material): THREE.Group {
+    const frame = new THREE.Group();
+    const t = 0.02;
+    const horizontal = new THREE.BoxGeometry(width, t, depth);
+    const vertical = new THREE.BoxGeometry(t, height - 2 * t, depth);
+    for (const [geo, x, y] of [
+      [horizontal, 0, height / 2 - t / 2],
+      [horizontal, 0, -height / 2 + t / 2],
+      [vertical, width / 2 - t / 2, 0],
+      [vertical, -width / 2 + t / 2, 0],
+    ] as const) {
+      const bar = new THREE.Mesh(geo, material);
+      bar.position.set(x, y, 0);
+      frame.add(bar);
+    }
+    return frame;
+  }
+
+  private statusFrame(width: number, height: number, material: THREE.Material): THREE.LineSegments {
+    const w = width / 2 + 0.005;
+    const h = height / 2 + 0.005;
+    const corners = [
+      new THREE.Vector3(-w, -h, 0.012), new THREE.Vector3(w, -h, 0.012),
+      new THREE.Vector3(w, -h, 0.012), new THREE.Vector3(w, h, 0.012),
+      new THREE.Vector3(w, h, 0.012), new THREE.Vector3(-w, h, 0.012),
+      new THREE.Vector3(-w, h, 0.012), new THREE.Vector3(-w, -h, 0.012),
+    ];
+    return new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(corners), material);
   }
 
   private addReferenceConstraint(planId: string, constraint: HvacReferenceConstraint): void {

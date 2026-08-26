@@ -120,6 +120,7 @@ const mockWindow = {
 vi.stubGlobal('window', mockWindow);
 
 import { HouseScene, GLASS_THICKNESS } from '../render/HouseScene';
+import { expectedVisibleCurtainNodes } from '@shared/curtain-projection';
 
 describe('HouseScene', () => {
   it('should initialize', () => {
@@ -406,6 +407,97 @@ describe('HouseScene', () => {
     await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [blind('blind-new')] }, topics: [], budgetCategories: [] });
     expect(scene.getCurtainState('blind-old')).toBeUndefined();
     expect(scene.getCurtainState('blind-new')).toBe('open');
+  });
+
+  // 命名契约：与 shared/curtain-projection.ts 的 expectedVisibleCurtainNodes 严格一致
+  describe('curtain node naming contract (shared/curtain-projection)', () => {
+    const makeScene = () => new HouseScene({ addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement);
+    const curtainEl = (id: string, room: string, kind: 'sheer_blackout' | 'blinds', z: number) => ({
+      type: 'curtain' as const,
+      id,
+      room,
+      kind,
+      points: [{ x: 0, z }, { x: 2, z }],
+      height: 2.8,
+    });
+    const buildWith = async (elements: ReturnType<typeof curtainEl>[]) => {
+      const scene = makeScene();
+      await scene.buildFromCatalog({ house: { rooms: [], sceneElements: elements }, topics: [], budgetCategories: [] });
+      return scene;
+    };
+    const curtainMeshes = (scene: HouseScene) => {
+      const meshes: any[] = [];
+      scene.getScene().traverse((obj: any) => {
+        if (obj.userData?.type === 'curtain') meshes.push(obj);
+      });
+      return meshes;
+    };
+    const visibleNodeIds = (scene: HouseScene, curtainId: string) =>
+      curtainMeshes(scene)
+        .filter((m) => m.userData.curtainId === curtainId && m.visible)
+        .map((m) => m.userData.objectId)
+        .sort();
+
+    it('sheer_blackout: gathered segments are :left/:right unique and metadata is complete', async () => {
+      const scene = await buildWith([curtainEl('curtain_a', 'master_bedroom', 'sheer_blackout', 0)]);
+      const meshes = curtainMeshes(scene).filter((m) => m.userData.curtainId === 'curtain_a');
+      const ids = meshes.map((m) => m.userData.objectId);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(ids.sort()).toEqual([
+        'curtain_a:blackout:deployed',
+        'curtain_a:blackout:gathered:left',
+        'curtain_a:blackout:gathered:right',
+        'curtain_a:sheer:deployed',
+        'curtain_a:sheer:gathered:left',
+        'curtain_a:sheer:gathered:right',
+      ]);
+      for (const mesh of meshes) {
+        expect(mesh.userData.roomId).toBe('master_bedroom');
+        expect(mesh.userData.curtainId).toBe('curtain_a');
+        expect(['sheer', 'blackout']).toContain(mesh.userData.layer);
+        expect(['deployed', 'gathered']).toContain(mesh.userData.variant);
+        if (mesh.userData.variant === 'gathered') expect(['left', 'right']).toContain(mesh.userData.segment);
+        else expect(mesh.userData.segment).toBeNull();
+      }
+    });
+
+    it.each(['open', 'privacy', 'blackout'] as const)('sheer_blackout %s: visible set equals expectedVisibleCurtainNodes', async (state) => {
+      const scene = await buildWith([curtainEl('curtain_a', 'master_bedroom', 'sheer_blackout', 0)]);
+      scene.setCurtainState('curtain_a', state);
+      expect(visibleNodeIds(scene, 'curtain_a'))
+        .toEqual([...expectedVisibleCurtainNodes('curtain_a', 'sheer_blackout', state)].sort());
+    });
+
+    it.each(['open', 'privacy', 'blackout'] as const)('blinds %s: visible set equals expectedVisibleCurtainNodes (blackout normalizes to privacy)', async (state) => {
+      const scene = await buildWith([curtainEl('blind_a', 'master_bath', 'blinds', 0)]);
+      scene.setCurtainState('blind_a', state);
+      const normalized = state === 'blackout' ? 'privacy' : state;
+      expect(visibleNodeIds(scene, 'blind_a'))
+        .toEqual([...expectedVisibleCurtainNodes('blind_a', 'blinds', normalized)].sort());
+      // blinds gathered 无左右分段且恒隐藏，但 objectId 仍唯一
+      const meshes = curtainMeshes(scene).filter((m) => m.userData.curtainId === 'blind_a');
+      const ids = meshes.map((m) => m.userData.objectId);
+      expect(new Set(ids).size).toBe(ids.length);
+      const gathered = meshes.find((m) => m.userData.variant === 'gathered');
+      expect(gathered.userData.objectId).toBe('blind_a:blinds:gathered');
+      expect(gathered.userData.segment).toBeNull();
+      expect(gathered.visible).toBe(false);
+    });
+
+    it('same-room curtains (e.g. master bedroom pair) export under the same room state', async () => {
+      const scene = await buildWith([
+        curtainEl('curtain_master_west', 'master_bedroom', 'sheer_blackout', 0),
+        curtainEl('curtain_master_south', 'master_bedroom', 'sheer_blackout', 1),
+      ]);
+      scene.setRoomCurtainState('master_bedroom', 'privacy');
+      for (const id of ['curtain_master_west', 'curtain_master_south']) {
+        expect(visibleNodeIds(scene, id))
+          .toEqual([...expectedVisibleCurtainNodes(id, 'sheer_blackout', 'privacy')].sort());
+      }
+      // 整场景导出集合无重名
+      const ids = curtainMeshes(scene).filter((m) => m.visible).map((m) => m.userData.objectId);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
   });
 
   it('uses single objectId for curtain_run mesh', async () => {

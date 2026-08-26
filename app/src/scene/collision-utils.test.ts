@@ -32,6 +32,17 @@ describe('extractCollisionWalls', () => {
     expect(walls[2].x2).toBeCloseTo(16.4);
   });
 
+  it('includes wall_run points as collision segments (e.g. 半墙)', () => {
+    const elements = [
+      { type: 'wall_run', id: 'wr1', points: [{ x: 1.11, z: 2.91 }, { x: 1.11, z: 3.41 }] },
+    ];
+    const walls = extractCollisionWalls(elements);
+    expect(walls.length).toBe(1);
+    expect(walls[0].id).toBe('wr1:col:0');
+    expect(walls[0].z1).toBeCloseTo(2.91);
+    expect(walls[0].z2).toBeCloseTo(3.41);
+  });
+
   it('ignores non-collidable element types', () => {
     const elements = [
       { type: 'floor_region', id: 'f1', points: [{ x: 0, z: 0 }] },

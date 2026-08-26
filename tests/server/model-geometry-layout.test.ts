@@ -11,7 +11,7 @@ describe('model-geometry layout matches floor plan', () => {
     assert(byId.has('master_bedroom'));
     const master = byId.get('master_bedroom')!;
     assert(master.width >= 4.0 && master.width <= 4.4, 'master width ~4.2m');
-    assert(master.depth >= 6.3 && master.depth <= 6.8, 'master depth ~6.5m (2026-08-21 含存储条带 z:[3.26,9.80])');
+    assert(master.depth >= 6.7 && master.depth <= 7.2, 'master depth ~6.9m (2026-08-25 台盆外移，含套间条带 z:[2.86,9.80])');
 
     assert(byId.has('living_dining'));
     const living = byId.get('living_dining')!;

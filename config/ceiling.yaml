@@ -28,8 +28,8 @@
 - id: ac_study
   room: bedroom_se
   type: ac_indoor
-  x: 14.8
-  z: 7.5
+  x: 15.1
+  z: 5.85
   height: 2.85
   model: "2.2HP 风管机"
   power_point: sock_study_ac
@@ -107,3 +107,26 @@
   thickness: 0.30
   area: [10.80, 2.90, 13.40, 4.30]
   note: "入户门厅吊顶（藏风管），净高约2.50m"
+
+# === 卧室边吊（藏风管机，侧送下回，2026-08-25 方案 B） ===
+
+- id: ceiling_master_ac
+  room: master_bedroom
+  type: drop
+  thickness: 0.30
+  area: [1.10, 5.60, 1.70, 8.65]
+  note: "主卧西墙边吊（藏风管机，侧送下回），避飘窗：x 起 1.10 避西飘窗，z 止 8.65 避南环幕飘窗"
+
+- id: ceiling_study_ac
+  room: bedroom_se
+  type: drop
+  thickness: 0.30
+  area: [13.80, 5.55, 16.40, 6.15]
+  note: "书房北墙边吊（藏风管机，侧送下回），避飘窗：z 止 6.15 远离南侧凸窗"
+
+- id: ceiling_child_ac
+  room: bedroom_nw
+  type: drop
+  thickness: 0.30
+  area: [3.20, 2.20, 4.80, 2.80]
+  note: "儿童房北墙边吊（藏风管机，侧送下回），避飘窗：z 起 2.20 紧贴北飘窗侵入线外"

@@ -702,6 +702,9 @@ export interface HvacTerminal {
   confirmed?: boolean;
   render_interior?: boolean;
   render_coordination?: boolean;
+  mount_face?: 'north' | 'south' | 'east' | 'west' | 'bottom';
+  /** 风口长度（米），缺省按 system 给默认值（送风 0.8 / 回风 0.6）。 */
+  length?: number;
 }
 
 export interface HvacReferenceConstraint {
@@ -837,7 +840,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   wardrobe_180: { width: 1.8, depth: 0.6 },
   shelf: { width: 0.8, depth: 0.4 }, // DEC-023 置物架（开架，h2.0）
   bath_side_cabinet: { width: 0.45, depth: 0.5 }, // 2026-08-21 主卫干区封闭侧柜 h2.0
-  bath_entry_shelf: { width: 0.8, depth: 0.5 }, // 主卫门口北墙多层开放架 h2.0
+  vanity_dresser: { width: 1.10, depth: 0.5 }, // 2026-08-25 洗漱+梳妆一体台（DEC-043 台盆外移条带；满墙 1.10m 台面，收纳并入台下柜/镜柜；vanity_tall_cabinet 已取消）
   sofa_3seat: { width: 2.8, depth: 0.9 },
   dining_table: { width: 1.4, depth: 0.8 },
   dining_chair: { width: 0.45, depth: 0.45 },

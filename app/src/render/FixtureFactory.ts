@@ -95,16 +95,24 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // 主卫门口北墙南伸平台+下柜：浅色平板台面，下方无拉手柜体，不再表现为书架。
-    type: 'bath_entry_shelf',
+    // 2026-08-25 洗漱+梳妆一体台（DEC-043，主卫台盆外移条带）：1.10m 满墙台面（墙段 x[0,1.15] 留 0.05 收边缝），
+    // 台盆 0.5 居西、梳妆位尽量宽；收纳并入台下柜+镜柜（bath_entry_shelf/vanity_tall_cabinet 均已删除）。
+    // 局部 -z 为靠墙侧，front 朝 +z。
+    type: 'vanity_dresser',
     parts: [
-      { shape: 'box', size: [0.76, 0.78, 0.46], position: [0, 0.39, 0], color: '#d7d9db', roughness: 0.45 },
-      // 南向柜门（rotation=90 时局部 -x 面朝世界 +z）
-      { shape: 'box', size: [0.02, 0.68, 0.44], position: [-0.391, 0.42, 0], color: '#eef0f1', roughness: 0.35 },
-      { shape: 'box', size: [0.012, 0.54, 0.012], position: [-0.405, 0.42, -0.13], color: '#6b7075', metalness: 0.65, roughness: 0.3 },
-      { shape: 'box', size: [0.012, 0.54, 0.012], position: [-0.405, 0.42, 0.13], color: '#6b7075', metalness: 0.65, roughness: 0.3 },
-      // 连续平台向南伸出，平台面作为唯一上部构件
-      { shape: 'box', size: [0.86, 0.08, 0.56], position: [0, 0.83, 0], color: '#c9cdd1', roughness: 0.35 },
+      // 台下柜（台盆半，西侧）
+      { shape: 'box', size: [0.46, 0.72, 0.42], position: [-0.29, 0.36, 0], color: '#d7d9db', roughness: 0.45 },
+      { shape: 'box', size: [0.44, 0.66, 0.02], position: [-0.29, 0.40, 0.22], color: '#eef0f1', roughness: 0.35 },
+      // 梳妆位（东侧）留膝部空间，仅一组吊抽屉
+      { shape: 'box', size: [0.40, 0.16, 0.38], position: [0.27, 0.62, 0], color: '#d7d9db', roughness: 0.45 },
+      // 通长台面
+      { shape: 'box', size: [1.14, 0.04, 0.50], position: [0, 0.79, 0], color: '#e8e6e0', roughness: 0.3 },
+      // 台上盆 + 龙头（西半）
+      { shape: 'box', size: [0.46, 0.12, 0.32], position: [-0.29, 0.87, 0], color: '#ffffff', roughness: 0.3 },
+      { shape: 'box', size: [0.05, 0.22, 0.05], position: [-0.29, 0.92, -0.16], color: '#c8ccd0', metalness: 0.6, roughness: 0.35 },
+      // 镜柜（台盆上方）+ 平板镜（梳妆位上方，加宽）
+      { shape: 'box', size: [0.50, 0.75, 0.14], position: [-0.29, 1.45, -0.20], color: '#bcd2d8', roughness: 0.1, metalness: 0.6 },
+      { shape: 'box', size: [0.48, 0.75, 0.03], position: [0.27, 1.45, -0.235], color: '#bcd2d8', roughness: 0.1, metalness: 0.6 },
     ],
   },
   {

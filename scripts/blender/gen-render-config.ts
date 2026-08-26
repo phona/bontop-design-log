@@ -25,7 +25,8 @@ const lights = projection.lightingFixtures.map((fixture) => ({
 // 天光用自定义背景色（蓝调=深蓝、夜晚=近黑蓝），保证玻璃透出可见天色而非 HOSEK_WILKIE 的黑暗天际。
 // 视频等"任意时刻"需求后续再引入时间轴，当前决策渲染不需要。
 // 渲染行为全部配置化（施工说明：Blender 端零手工状态）：
-//   exposure: AgX 曝光；blackout_state: open=遮光帘视同拉开隐藏；sheer_opacity: 纱帘布料权重
+//   exposure: AgX 曝光；sheer_opacity: 纱帘布料权重（窗帘显隐由 facts.presentation.curtains
+//   快照 + GLB active-only 节点决定，scenario 不再携带 sheer_state/blackout_state）
 const scenarios = [
   {
     id: 'blue_hour',
@@ -36,7 +37,6 @@ const scenarios = [
     world_strength: 0.5,
     lights_on: true,
     exposure: 0.5,
-    blackout_state: 'open',
     sheer_opacity: 0.35,
   },
   {
@@ -48,7 +48,6 @@ const scenarios = [
     world_strength: 0.15,
     lights_on: true,
     exposure: 0.5,
-    blackout_state: 'open',
     sheer_opacity: 0.35,
   },
   // 材质评审工况（material-review-mode spec）：无调色、中性白光——决策色号/拼法用。
@@ -64,11 +63,11 @@ const scenarios = [
     light_temp: 6500,
     view_transform: 'Standard',
     exposure: 1.5,
-    blackout_state: 'open',
     sheer_opacity: 0.35,
   },
   // 硬装裸房验收：material_review 同款光照（Standard/6500K 中性白），但 dress_scene 按
-  // scenario id 隐藏一切可移动家具/软装（含纱帘遮光帘），只留墙地顶/定制柜/门窗/灯具/洁具/橱柜。
+  // scenario id 隐藏一切可移动家具/软装；窗帘经 curtainPolicy=hidden_for_bare_shell 隐藏，
+  // 只留墙地顶/定制柜/门窗/灯具/洁具/橱柜。
   {
     id: 'hvac_coordination',
     label: 'HVAC 协调审阅（仅此场景显示事实图路线）',
@@ -79,8 +78,6 @@ const scenarios = [
     light_temp: 6500,
     view_transform: 'Standard',
     exposure: 1.0,
-    blackout_state: 'open',
-    sheer_state: 'open',
     hvac_coordination: true,
   },
   {
@@ -93,8 +90,8 @@ const scenarios = [
     light_temp: 6500,
     view_transform: 'Standard',
     exposure: 1.5,
-    blackout_state: 'open',
     sheer_opacity: 0.35,
+    curtainPolicy: 'hidden_for_bare_shell',
   },
   // 白天自然光工况：对照真实照片（手机白天拍摄=高漫反射环境光、不开灯、柔光地板反光）
   // 外景=真 HDR（kloofendal 白天多云，仅相机/透射光线可见，照明仍用中性 world_color 防染色）；
@@ -114,8 +111,6 @@ const scenarios = [
     lights_on: false,
     light_temp: 6500,
     exposure: 0.4,
-    blackout_state: 'open',
-    sheer_state: 'open',
     sheer_opacity: 0.25,
     glass_ior: 1.02, // daylight 室内很亮，Low-E 玻璃 IOR 1.5 会变镜子盖住外景；≈1.02 近零反射只留透射
   },
@@ -136,8 +131,6 @@ const scenarios = [
     lights_on: false,
     light_temp: 6500,
     exposure: 0.4,
-    blackout_state: 'open',
-    sheer_state: 'open',
     sheer_opacity: 0.25,
     glass_ior: 1.02,
     glass_tint: '#e8f0ee',

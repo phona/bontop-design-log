@@ -3,7 +3,7 @@
  * 统一驱动 web/blender 两条渲染链的窗帘节点导出。
  * shared 层禁止反向依赖 server，overlay 以最小结构 CurtainOverlayLike 传入。
  */
-import { createHash } from 'node:crypto';
+import { sha256Hex } from './sha256.js';
 import type {
   CurtainPresentationState,
   CurtainRenderItem,
@@ -36,13 +36,21 @@ export function expectedVisibleCurtainNodes(id: string, kind: CurtainKind, state
 }
 
 /** canonical JSON：所有 object key 递归排序，保证哈希对 key 顺序稳定 */
-function canonicalJson(value: unknown): string {
+export function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (value !== null && typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
     return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`).join(',')}}`;
   }
   return JSON.stringify(value);
+}
+
+export function curtainProjectionSnapshotSha256(projection: Omit<CurtainRenderProjection, 'snapshotSha256'>): string {
+  return sha256Hex(canonicalJson({
+    source: { default: projection.source.default, roomOverrides: projection.source.roomOverrides },
+    effectiveByRoom: projection.effectiveByRoom,
+    curtains: projection.curtains,
+  }));
 }
 
 function sortedRecord<T>(source: Record<string, T>): Record<string, T> {
@@ -99,16 +107,7 @@ export function buildCurtainRenderProjection(
     })
     .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
-  // updatedAt 保留在 source 供审计，但不进入语义哈希
-  const snapshotSha256 = createHash('sha256')
-    .update(canonicalJson({
-      source: { default: presentation.default, roomOverrides },
-      effectiveByRoom,
-      curtains,
-    }))
-    .digest('hex');
-
-  return {
+  const normalized = {
     source: {
       default: presentation.default,
       roomOverrides: sortedRecord(roomOverrides),
@@ -116,6 +115,7 @@ export function buildCurtainRenderProjection(
     },
     effectiveByRoom,
     curtains,
-    snapshotSha256,
   };
+  // updatedAt 保留在 source 供审计，但不进入语义哈希；纯 TS 实现可同时进入 browser bundle。
+  return { ...normalized, snapshotSha256: curtainProjectionSnapshotSha256(normalized) };
 }

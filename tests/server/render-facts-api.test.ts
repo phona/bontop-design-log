@@ -19,12 +19,13 @@ const facts: ProjectRenderFacts = {
 };
 
 const projection: ProjectRenderFactsProjection = {
-  version: '1.0',
+  version: '2.0',
   lightingFixtures: [{ id: 'light_1', room: 'living', type: 'dome', position: { x: 1, y: 2.55, z: 2 }, temperatureK: 3000, enabled: true }],
   plumbing: facts.plumbing,
   ceiling: facts.ceiling,
   hvac: { status: 'unimplemented', planId: null },
   materials: { floor: { default: 'floor_1', roomOverrides: {} } },
+  presentation: { curtains: { source: { default: 'open', roomOverrides: {}, updatedAt: '2026-08-25T00:00:00.000Z' }, effectiveByRoom: {}, curtains: [], snapshotSha256: '0'.repeat(64) } },
 };
 
 function createApp(

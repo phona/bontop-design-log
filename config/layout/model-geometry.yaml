@@ -6,7 +6,7 @@ export_date: '2026-07-17'
 
 vertices:
   - { id: v_nw,      x: 0.00,  z: 0.00 }
-  - { id: v_mb_sw,   x: 0.00,  z: 3.26 }   # 2026-08-21 隔墙北移贴洗梳台（中心线3.26，北脸3.20与台盆南缘齐平）；条带 x[0,4.2] 归主卧存储区
+  - { id: v_mb_sw,   x: 0.00,  z: 2.86 }   # 2026-08-25 台盆外移条带：隔墙再北移 0.4m（3.26→2.86，主卫进深 2.16→1.76m）；条带 x[0,4.2] 归主卧；全部尺寸待量房确认
   - { id: v_mb_nw,   x: 0.00,  z: 5.55 }
   - { id: v_sw,      x: 0.00,  z: 9.80, radius: 1.00 }
   - { id: v_step_b,  x: 7.20,  z: 9.80 }
@@ -22,7 +22,7 @@ vertices:
   - { id: v_ent_nw,  x: 10.80, z: 0.00 }
   - { id: v_bath_n,  x: 2.60,  z: 0.00 }
   - { id: v_bath_s,  x: 2.60,  z: 4.30 }
-  - { id: v_mbath_se, x: 2.60, z: 3.26 }   # 2026-08-21 北移后主卫隔墙东端（w_mbath_south 与 w_mbath_east T 接点）
+  - { id: v_mbath_se, x: 2.60, z: 2.86 }   # 2026-08-25 台盆外移条带：隔墙再北移 0.4m（3.26→2.86）后 w_mbath_south 与 w_mbath_east T 接点；待量房确认
   - { id: v_vrv_n,   x: 5.60,  z: 0.00, radius: 1.00 }
   - { id: v_vrv_sw,  x: 5.60,  z: 1.00 }
   - { id: v_balc_sw, x: 5.60,  z: 2.20 }
@@ -53,7 +53,7 @@ vertices:
 rooms:
   - id: master_bedroom
     name: 主卧
-    boundary: [v_mb_sw, v_mbath_se, v_bath_s, v_strip_ne, v_mb_se, v_sw]  # 2026-08-21 含存储条带（隔墙北移后条带归主卧）
+    boundary: [v_mb_sw, v_mbath_se, v_bath_s, v_strip_ne, v_mb_se, v_sw]  # 2026-08-25 台盆外移：隔墙再北移 z=2.86，套间条带（z[2.86/4.30,5.55]）归主卧，洗漱+梳妆一体区设于此
     height: 2.8
     type: private
   - id: study
@@ -68,7 +68,7 @@ rooms:
     type: public
   - id: master_bath
     name: 主卫
-    boundary: [v_bath_nw, v_bath_ne, v_mbath_se, v_mb_sw]  # 2026-08-21 隔墙北移贴洗梳台后为矩形（西淋浴/东台盆马桶）
+    boundary: [v_bath_nw, v_bath_ne, v_mbath_se, v_mb_sw]  # 2026-08-25 台盆外移条带，隔墙再北移 z=2.86，主卫进深 1.76m（西淋浴湿区/东马桶）；马桶 z=1.5 与门扇扫掠 z≥2.06 不冲突，净空待量房复核
     height: 2.8
     type: service
   - id: bedroom_nw
@@ -157,15 +157,15 @@ walls:
   - { id: w_nw_north,   from: v_bath_ne,  to: v_nw_ne,  height: 2.8 }
   - { id: w_vrv_north,  from: v_vrv_n,   to: v_kit_w,  height: 2.8 }
   - { id: w_kit_north,  from: v_kit_w,   to: v_ent_nw, height: 2.8 }
-  # 内墙 — 左侧卧室区（2026-08-21 隔墙北移 z=3.26 贴洗梳台南缘；条带 x[0,4.2] z[3.26/4.30,5.55] 归主卧存储区；
-  # w_mbath_south 为主卫南隔墙，d_mbath 平开门内开进干区，门洞[1.15,1.95]，西[0,1.2]淋浴湿区左右分离）
+  # 内墙 — 左侧卧室区（2026-08-25 台盆外移条带：隔墙再北移 z=2.86；条带 x[0,4.2] z[2.86/4.30,5.55] 归主卧；
+  # w_mbath_south 为主卫南隔墙，d_mbath 平开门内开进干区，门洞[1.15,1.95]（墙平行北移，沿墙 offset 不变；门扇扫掠 z∈[2.06,2.86] 与马桶 z=1.5 不冲突，待量房复核），西[0,1.2]淋浴湿区左右分离）
   - { id: w_mbath_east, from: v_bath_ne,   to: v_bath_s, height: 2.8 }
   - id: w_mbath_south
     from: v_mb_sw
     to: v_mbath_se
     height: 2.8
     openings:
-      - { id: d_mbath, type: door, anchor: v_mb_sw, offset: 1.55, width: 0.8, height: 2.1, room: master_bath, swing: inward, hinge: end }  # 内开进主卫干区，东端合页；洞[1.15,1.95]
+      - { id: d_mbath, type: door, anchor: v_mb_sw, offset: 1.55, width: 0.8, height: 2.1, room: master_bath, swing: inward, hinge: end }  # 内开进主卫干区，东端合页；洞[1.15,1.95]（2026-08-25 墙平行北移至 z=2.86，沿墙 offset 不变）
   - id: w_nw_south
     from: v_bath_s
     to: v_nw_s

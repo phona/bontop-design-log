@@ -11,7 +11,8 @@ const diagram: HvacDiagram = {
     { id: 'bend', status: 'inferred', system: 'refrigerant', position: { x: 3, y: 2.5, z: 2 }, reason: '现场复核' },
   ],
   terminals: [
-    { id: 'supply', status: 'inferred', system: 'supply_air', position: { x: 4, y: 2.5, z: 2 }, reason: '风量待定' },
+    { id: 'supply', status: 'inferred', system: 'supply_air', position: { x: 4, y: 2.65, z: 2 }, mount_face: 'south', reason: '风量待定' },
+    { id: 'return', status: 'confirmed', system: 'return_air', position: { x: 3, y: 2.5, z: 2 }, reason: '回风底装' },
     { id: 'access', status: 'pending', system: 'access', position: { x: 2, y: 2.5, z: 3 }, reason: '检修待定' },
     { id: 'condensate_candidate', kind: 'condensate_drain_candidate', status: 'pending', confirmed: false, render_interior: false, render_coordination: true, system: 'condensate', position: { x: 4, y: 0.1, z: 2 }, reason: '候选接入点待确认' },
   ],
@@ -88,6 +89,57 @@ describe('HvacDiagramRenderer', () => {
     value.setCoordinationVisible(true);
     expect(byId(scene, 'hvac:A2:reference:south_band')?.parent?.visible).toBe(true);
     expect(byId(scene, 'hvac:A2:terminal:condensate_candidate')?.parent?.visible).toBe(true);
+  });
+
+  it('renders terminals as light grilles oriented by mount_face with status outline', () => {
+    const { scene } = renderer();
+    const supply = byId(scene, 'hvac:A2:terminal:supply')!;
+    expect(supply.userData).toMatchObject({ type: 'hvac_terminal', mount_face: 'south', status: 'inferred' });
+    expect(supply.rotation.y).toBe(0); // 侧装朝南，法线 +z
+    expect(supply.rotation.x).toBe(0);
+    // 主体浅色，不再整块半透明橙色
+    const bodies: THREE.Mesh[] = [];
+    supply.traverse((o) => { if ((o as THREE.Mesh).isMesh) bodies.push(o as THREE.Mesh); });
+    expect(bodies.length).toBeGreaterThan(3); // 背板 + 百叶 + 边框
+    for (const mesh of bodies) {
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      expect(mat.transparent).toBe(false);
+    }
+    // 状态描边存在
+    let outline: THREE.LineSegments | undefined;
+    supply.traverse((o) => { if ((o as THREE.LineSegments).isLineSegments) outline = o as THREE.LineSegments; });
+    expect((outline!.material as THREE.LineBasicMaterial).color.getHex()).toBe(0xf59e0b);
+
+    const bottomReturn = byId(scene, 'hvac:A2:terminal:return')!;
+    expect(bottomReturn.userData.mount_face).toBe('bottom'); // 缺省 supply/return 默认底装
+    expect(bottomReturn.rotation.x).toBeCloseTo(Math.PI / 2);
+
+    const access = byId(scene, 'hvac:A2:terminal:access')!;
+    expect(access.rotation.x).toBeCloseTo(Math.PI / 2); // 检修口底装
+  });
+
+  it('honors terminal.length override (e.g. 客厅线形风口)', () => {
+    const scene = new THREE.Scene();
+    const value = new HvacDiagramRenderer(scene);
+    value.render('A2', {
+      anchors: [],
+      terminals: [
+        { id: 'linear_supply', status: 'inferred', system: 'supply_air', position: { x: 10.8, y: 2.49, z: 7 }, mount_face: 'bottom', length: 1.5, reason: '线形风口' },
+      ],
+      routes: [],
+      reference_constraints: [],
+    }, { outdoor: [], ceiling: [], electrical: [] });
+    const terminal = byId(scene, 'hvac:A2:terminal:linear_supply')!;
+    let maxWidth = 0;
+    terminal.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh) {
+        const box = (mesh.geometry as THREE.BoxGeometry).parameters;
+        if (box?.width) maxWidth = Math.max(maxWidth, box.width);
+      }
+    });
+    expect(maxWidth).toBeCloseTo(1.5, 5);
+    value.dispose();
   });
 
   it('clears old objects on render and disposes its root group', () => {

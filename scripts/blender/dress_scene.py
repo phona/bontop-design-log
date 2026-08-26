@@ -17,8 +17,14 @@ import os
 import re
 import sys
 
-# 确保同目录的 dress_config / materials_from_yaml 可导入（Blender --python 不自动加脚本目录）
+# 确保同目录的 dress_config / materials_from_yaml / curtain_projection 可导入（Blender --python 不自动加脚本目录）
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from curtain_projection import (  # noqa: E402
+    curtain_projection_from_facts,
+    parse_curtain_node_name,
+    validate_curtain_nodes,
+)
 
 GLASS_IDS = {
     'west_curtain', 'kitchen_north_curtain', 'north_recess_curtain',
@@ -176,10 +182,12 @@ def classify(obj: bpy.types.Object) -> str:
         if pn.startswith('furniture:'):
             return 'furniture'
         parent = parent.parent
-    if n.endswith(':sheer'):
-        return 'sheer'
-    if n.endswith(':blackout') or n.endswith(':blinds'):
-        return 'curtain_fabric'
+    curtain = parse_curtain_node_name(n)
+    if curtain:
+        # 窗帘节点契约 <id>:<layer>:<variant>[:segment]：layer 决定材质
+        # （sheer→纱帘 / blackout+blinds→布料）；variant 只影响材质语义，
+        # 不改显隐——可见性已由 GLB 快照（expectedVisibleNodes）决定
+        return 'sheer' if curtain['layer'] == 'sheer' else 'curtain_fabric'
     if n in GLASS_IDS or n.startswith('sliding_door') or 'glass_infill' in n:
         return 'glass'
     if n.startswith('floor:') or n.endswith('_floor'):
@@ -1574,48 +1582,6 @@ def place_extra_furniture(furniture_mats: dict, config_dir: str, plumbing: dict,
     return count
 
 
-def add_sheer_panels(config_dir: str, mats: dict) -> int:
-    """纱帘"拉上"staging：overlay 的 curtain_run closed=false 表示拉开（glb 里玻璃幕是裸的），
-    居家感渲染需要拉上的纱帘 → 沿指定幕墙生成纱帘薄板（室内侧偏 0.08m）。
-    只处理客厅南墙（主视角覆盖面），墙线段读 model-geometry（唯一权威源）。"""
-    import math
-    import yaml
-    if not config_dir:
-        return 0
-    geo_path = os.path.join(config_dir, 'config', 'layout', 'model-geometry.yaml')
-    if not os.path.exists(geo_path):
-        return 0
-    geo = yaml.safe_load(open(geo_path, encoding='utf-8'))
-    mat = mats.get('sheer')
-    if mat is None:
-        return 0
-    V = {v['id']: (v['x'], v['z']) for v in geo.get('vertices', [])}
-    # (wall_id, 室内侧偏移方向 three(dx,dz))；南墙 w_liv_south 室内在北侧 → (0,-0.08)
-    panels = [('w_liv_south', (0.0, -0.08))]
-    count = 0
-    for wid, (ox, oz) in panels:
-        wall = next((w for w in geo.get('walls', []) if w.get('id') == wid), None)
-        if not wall:
-            continue
-        x1, z1 = V[wall['from']]
-        x2, z2 = V[wall['to']]
-        length = math.hypot(x2 - x1, z2 - z1)
-        cx, cz = (x1 + x2) / 2 + ox, (z1 + z2) / 2 + oz
-        angle_b = math.atan2(-(z2 - z1), x2 - x1)  # three→blender 水平面方向角
-        bpy.ops.mesh.primitive_cube_add(size=1.0)
-        o = bpy.context.object
-        o.name = f'asset:sheer:{wid}'
-        o.dimensions = (length, 0.02, 2.8)  # blender: x长 y厚 z高
-        o.location = to_blender(cx, 1.4, cz)
-        o.rotation_euler = (0, 0, angle_b)
-        o.data.materials.append(mat)
-        count += 1
-    if count:
-        print(f'[dress_scene] sheer panels: {count}')
-    return count
-
-
-
 def add_ceiling(ceiling: list, ceiling_mats: dict) -> int:
     """从 render facts 生成 drop/aluminum_buckle 吊顶；ac_indoor 不在 Blender 建实体。"""
     if not isinstance(ceiling, list):
@@ -2019,6 +1985,17 @@ def effective_camera_config(camera: dict, scenario: dict) -> dict:
 def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path: str) -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=args['glb'])
+    facts = projection_facts(cfg)
+    # 定妆前置校验：窗帘可见节点必须与 render-config facts.presentation.curtains 投影一致。
+    # 可见性由 GLB 快照决定（active-only 导出），Blender 端只认快照，不做按状态的显隐推断；
+    # 不一致即中止渲染（不是警告后继续）。legacy facts（无 presentation.curtains）明确报错。
+    curtain_proj = curtain_projection_from_facts(facts)
+    curtain_errors = validate_curtain_nodes((o.name for o in bpy.data.objects), curtain_proj)
+    if curtain_errors:
+        raise RuntimeError(
+            'BLOCKED: GLB curtain nodes do not match facts.presentation.curtains '
+            f'(snapshot {curtain_proj.get("snapshotSha256")}):\n  ' + '\n  '.join(curtain_errors)
+        )
     # 硬装裸房验收工况：隐藏一切可移动家具/软装（沙发/床/桌椅/绿植/落地灯/冰箱等），
     # 只留硬装（墙地顶/定制柜/门窗/灯具/卫浴洁具/厨房橱柜）。保留清单见 BARE_SHELL_KEEP。
     bare_shell = scenario.get('id') == 'bare_shell'
@@ -2033,21 +2010,15 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
             o.hide_render = True
             for child in o.children_recursive:
                 child.hide_render = True
-    # 遮光帘状态配置驱动：blackout_state=open → 隐藏（视同拉开到两侧）；
-    # 全宽不透明布若渲染会挡死玻璃，窗外天色完全看不见（决策渲染必须可见窗外）
-    if scenario.get('blackout_state', 'open') == 'open':
+    # 窗帘显隐唯一例外：scenario 显式声明 curtainPolicy=hidden_for_bare_shell（软装验收裸房）时，
+    # 用解析器识别所有窗帘节点并隐藏；其余工况一律保持 GLB 导入原样。
+    curtain_policy = scenario.get('curtainPolicy')
+    if curtain_policy == 'hidden_for_bare_shell':
         for o in bpy.data.objects:
-            if o.name.endswith(':blackout'):
+            if parse_curtain_node_name(o.name):
                 o.hide_render = True
-    # 纱帘状态配置驱动：sheer_state=open → 隐藏 GLB 内的 :sheer 对象（视同收起），
-    # 并跳过下方 add_sheer_panels 的补充纱帘。bare_shell 同样隐藏（纱帘属软装）。
-    # daylight 西晒时太阳直射会把整面纱帘打成白色柔光箱，窗外 HDRI 完全看不见。
-    sheer_open = scenario.get('sheer_state', 'closed') == 'open'
-    if sheer_open or bare_shell:
-        for o in bpy.data.objects:
-            if o.name.endswith(':sheer'):
-                o.hide_render = True
-    facts = projection_facts(cfg)
+    elif curtain_policy is not None:
+        raise RuntimeError(f'BLOCKED: unknown curtainPolicy {curtain_policy!r} in scenario {scenario.get("id")}')
     plumbing = plumbing_by_id(facts)
     ceiling = facts.get('ceiling', []) if isinstance(facts, dict) else []
     scene = bpy.context.scene
@@ -2123,11 +2094,6 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     add_bath_fixtures(furniture_mats, plumbing)
     if not bare_shell:
         add_soft_decor(furniture_mats)  # 地毯/挂画属软装，裸房验收不出现
-    # 纱帘状态配置驱动：sheer_state=open → 不生成（视同收起）。bare_shell 同为软装不生成。
-    # daylight 西晒时太阳直射会把整面纱帘打成白色柔光箱，窗外 HDRI 完全看不见，
-    # 想看外景的工况应设 sheer_state: open。
-    if not bare_shell and scenario.get('sheer_state', 'closed') != 'open':
-        add_sheer_panels(args.get('config-dir') or '', mats)
     # 有效相机覆盖优先于工况默认补光；None 时才回退，允许显式 0 关闭默认补光。
     fill = cam_cfg.get('fill_light', scenario.get('fill_light'))
     if fill:
@@ -2194,6 +2160,17 @@ def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path:
     print(f'[dress_scene] {out_path} engine={used_engine} view_transform={scene.view_settings.view_transform} '
           f'materials={json.dumps(stats, ensure_ascii=False)}')
     bpy.ops.render.render(write_still=True)
+    # 渲染溯源 metadata（sidecar，与 PNG 同名 .meta.json）：bundle manifest 不在 Blender
+    # 输入路径内，至少记录 render-config 里的窗帘快照 sha + scenario + camera + policy
+    meta = {
+        'scenario': scenario.get('id'),
+        'camera': cam_cfg.get('id'),
+        'curtainPolicy': curtain_policy or 'as_snapshot',
+        'curtainSnapshotSha256': curtain_proj.get('snapshotSha256'),
+    }
+    with open(out_path + '.meta.json', 'w', encoding='utf-8') as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2)
+        f.write('\n')
 
 
 def _parse_mat_overrides(raw: str | None) -> dict:

@@ -2,9 +2,8 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname } from 'node:path';
 import type { CurtainPresentationState, CurtainState } from '../shared/types.js';
 import { normalizeCurtainState } from '../shared/curtain-projection.js';
+import { CurtainStateSchema, parseCurtainPresentationState } from '../shared/project-render-facts-schema.js';
 import type { OverlayConfig } from './overlay-merge.js';
-
-const CURTAIN_STATES = new Set<CurtainState>(['open', 'privacy', 'blackout']);
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -27,14 +26,7 @@ export class PresentationStateStore {
   private loadOrInit(): CurtainPresentationState {
     const path = this.statePath();
     if (existsSync(path)) {
-      const parsed = JSON.parse(readFileSync(path, 'utf8')) as CurtainPresentationState;
-      if (!CURTAIN_STATES.has(parsed.default) || typeof parsed.updatedAt !== 'string' || !parsed.roomOverrides || typeof parsed.roomOverrides !== 'object') {
-        throw new Error('invalid presentation-state.json');
-      }
-      for (const [roomId, state] of Object.entries(parsed.roomOverrides)) {
-        if (!CURTAIN_STATES.has(state)) throw new Error(`invalid curtain state for room "${roomId}"`);
-      }
-      return parsed;
+      return parseCurtainPresentationState(JSON.parse(readFileSync(path, 'utf8')));
     }
     const state: CurtainPresentationState = { default: 'open', roomOverrides: {}, updatedAt: nowIso() };
     this.persistState(state);
@@ -74,7 +66,7 @@ export class PresentationStateStore {
   }
 
   setCurtainState(args: { roomId?: string; state: CurtainState; expectedUpdatedAt?: string }): { conflict?: boolean; updated: boolean; state: CurtainPresentationState } {
-    if (!CURTAIN_STATES.has(args.state)) throw new Error(`invalid curtain state "${String(args.state)}"`);
+    const requestedState = CurtainStateSchema.parse(args.state);
     if (args.expectedUpdatedAt && args.expectedUpdatedAt !== this.state.updatedAt) {
       return { conflict: true, updated: false, state: this.get() };
     }
@@ -84,15 +76,15 @@ export class PresentationStateStore {
     if (args.roomId !== undefined) {
       const kind = rooms.get(args.roomId);
       if (!kind) throw new Error(`room "${args.roomId}" has no curtain`);
-      const normalized = normalizeCurtainState(args.state, kind);
+      const normalized = normalizeCurtainState(requestedState, kind);
       const previous = next.roomOverrides[args.roomId] ?? next.default;
       if (previous === normalized) return { updated: false, state: this.get() };
       next.roomOverrides[args.roomId] = normalized;
     } else {
-      if (next.default === args.state && Object.keys(next.roomOverrides).length === 0) {
+      if (next.default === requestedState && Object.keys(next.roomOverrides).length === 0) {
         return { updated: false, state: this.get() };
       }
-      next.default = args.state;
+      next.default = requestedState;
       next.roomOverrides = {};
     }
 

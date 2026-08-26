@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { checkHvacExportSet, collectExportSet, collectHvacExportContents, EXPORT_INCLUDE_TYPES, EXPORT_EXCLUDE_TYPES } from './export-gltf.js';
+import { checkHvacExportSet, collectExportSet, collectHvacExportContents, exportSceneToGlb, EXPORT_INCLUDE_TYPES, EXPORT_EXCLUDE_TYPES } from './export-gltf.js';
+// 契约对照源：shared/curtain-projection.ts 的 expectedVisibleCurtainNodes（blender/web 共同契约）
+import { expectedVisibleCurtainNodes } from '@shared/curtain-projection';
+import type { CurtainState } from '@shared/types';
 
 function mesh(type: string | undefined, objectId?: string): THREE.Mesh {
   const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
@@ -142,5 +145,70 @@ describe('collectExportSet', () => {
     for (const t of EXPORT_INCLUDE_TYPES) {
       expect(EXPORT_EXCLUDE_TYPES.has(t)).toBe(false);
     }
+  });
+});
+
+// 按 HouseScene.renderCurtain 的命名契约构造一组窗帘 mesh（contract: shared/curtain-projection.ts）
+function curtainMeshesFor(id: string, kind: 'sheer_blackout' | 'blinds', state: CurtainState): THREE.Mesh[] {
+  const make = (objectId: string, visible: boolean) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial());
+    m.userData = { type: 'curtain', objectId, curtainId: id };
+    m.visible = visible;
+    return m;
+  };
+  const expected = new Set(expectedVisibleCurtainNodes(id, kind, state));
+  const all =
+    kind === 'blinds'
+      ? [`${id}:blinds:deployed`, `${id}:blinds:gathered`]
+      : [
+          `${id}:sheer:deployed`,
+          `${id}:sheer:gathered:left`,
+          `${id}:sheer:gathered:right`,
+          `${id}:blackout:deployed`,
+          `${id}:blackout:gathered:left`,
+          `${id}:blackout:gathered:right`,
+        ];
+  return all.map((objectId) => make(objectId, expected.has(objectId)));
+}
+
+async function glbNodeNames(blob: Blob): Promise<string[]> {
+  const buf = await blob.arrayBuffer();
+  const view = new DataView(buf);
+  expect(view.getUint32(0, true)).toBe(0x46546c67); // 'glTF'
+  const jsonLength = view.getUint32(12, true);
+  const json = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 20, jsonLength)));
+  return (json.nodes ?? []).map((n: { name?: string }) => n.name);
+}
+
+describe('exportSceneToGlb curtain contract', () => {
+  it('privacy state exports exactly expectedVisibleCurtainNodes with unique names and restores web visibility', async () => {
+    const scene = new THREE.Scene();
+    const curtains = curtainMeshesFor('curtain_a', 'sheer_blackout', 'privacy');
+    scene.add(...curtains);
+    const before = curtains.map((m) => ({ visible: m.visible, name: m.name }));
+
+    const names = await glbNodeNames(await exportSceneToGlb(scene));
+    const exportedCurtains = names.filter((n) => n.startsWith('curtain_a:'));
+    expect(exportedCurtains.sort())
+      .toEqual([...expectedVisibleCurtainNodes('curtain_a', 'sheer_blackout', 'privacy')].sort());
+    expect(new Set(exportedCurtains).size).toBe(exportedCurtains.length);
+
+    // 导出后 Web 场景 visibility/name 不变
+    expect(curtains.map((m) => ({ visible: m.visible, name: m.name }))).toEqual(before);
+  });
+
+  it('open state exports no curtain nodes into the GLB', async () => {
+    const scene = new THREE.Scene();
+    scene.add(...curtainMeshesFor('curtain_a', 'sheer_blackout', 'open'));
+    const names = await glbNodeNames(await exportSceneToGlb(scene));
+    expect(names.filter((n) => n.startsWith('curtain_a:'))).toEqual([]);
+  });
+
+  it('blinds privacy exports only the deployed node; gathered stays hidden and unexported', async () => {
+    const scene = new THREE.Scene();
+    scene.add(...curtainMeshesFor('blind_a', 'blinds', 'privacy'));
+    const names = await glbNodeNames(await exportSceneToGlb(scene));
+    expect(names.filter((n) => n.startsWith('blind_a:')))
+      .toEqual(expectedVisibleCurtainNodes('blind_a', 'blinds', 'privacy'));
   });
 });

@@ -40,6 +40,19 @@ export function extractCollisionWalls(sceneElements: SceneElementLike[] | undefi
           z2: b.z,
         });
       }
+    } else if (el.type === 'wall_run' && el.points && el.points.length >= 2) {
+      // 2026-08-25：wall_run 纳入碰撞（如条带洗漱区半墙，虽只有 1.05m 高但不可穿行）
+      for (let i = 0; i < el.points.length - 1; i++) {
+        const a = el.points[i];
+        const b = el.points[i + 1];
+        walls.push({
+          id: `${el.id}:col:${i}`,
+          x1: a.x,
+          z1: a.z,
+          x2: b.x,
+          z2: b.z,
+        });
+      }
     } else if (el.type === 'sliding_door_run' && el.open === false && el.points && el.points.length >= 2) {
       for (let i = 0; i < el.points.length - 1; i++) {
         const a = el.points[i];

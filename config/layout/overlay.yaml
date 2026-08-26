@@ -218,11 +218,25 @@ elements:
   # 湿区（主卫西北角）→ 防水百叶；厨房北墙不设窗帘（2026-08-13 业主决定）
   - { id: curtain_mbath_corner, type: curtain, walls: [w_west_lower, w_west_ap, w_bath_north], room: master_bath, kind: blinds, height: 2.8 }
 
-  # 主卫淋浴干湿分离玻璃隔断（x=1.2，南端留 0.6m 入口；2026-08-21）
+  # 主卫淋浴干湿分离玻璃隔断（x=1.2，南端留 0.6m 入口；2026-08-25 隔墙北移 z=2.86 后南端收至 2.26，待量房确认）
   - id: shower_screen_mbath
     type: shower_screen
-    points: [{ x: 1.20, z: 1.10 }, { x: 1.20, z: 2.60 }]
+    points: [{ x: 1.20, z: 1.10 }, { x: 1.20, z: 2.26 }]
     height: 2.0
+
+  # 2026-08-25 条带洗漱区东侧收口（小红书式半墙+长虹玻璃屏风，DEC-043）：
+  # 位于一体台东缘(x=1.07)与 d_mbath 门洞[1.15,1.95]西侧之间，自新隔墙南脸(z=2.91)向南伸 0.5m 与台深齐平；
+  # 半墙 h1.05（wall_run，需碰撞）+ 上部长虹玻璃 sill 1.05→2.10（shower_screen 复用，无碰撞玻璃）；
+  # d_mbath 内开扫掠在卫内 z<2.86，不冲突；待量房确认
+  - id: vanity_screen_halfwall
+    type: wall_run
+    points: [{ x: 1.11, z: 2.91 }, { x: 1.11, z: 3.41 }]
+    height: 1.05
+  - id: vanity_screen_glass
+    type: shower_screen
+    points: [{ x: 1.11, z: 2.91 }, { x: 1.11, z: 3.41 }]
+    height: 1.05
+    sill: 1.05
 
   # === DEC-022：餐厨三联动推拉门（常开；点击门扇开闭，碰撞随状态） ===
   - id: kitchen_dining_sliding_door

@@ -66,7 +66,7 @@ v1（首版 Cycles）效果差的根因与修复：
 
 **玻璃透出真实外景。** Light Path 分离：Camera+Transmission+Singular 光线用 HDRi（透玻璃所见=真外景），其余照明用纯色（不污染室内）。蓝调=the_sky_is_on_fire（海边日落晚霞+海浪礁石），夜晚=kloppenheim_02（星空+月光+地平线城市灯光）。渲染图存 `renders/blender/output/cycles-v5/`。
 
-**硬编码收敛完成**：scenario 增加 exposure/blackout_state/sheer_opacity，dress_scene 全部读配置，管线代码为纯执行器（施工说明"Blender 端零手工状态"达标）。
+**历史口径（已废弃）**：v5 曾让 scenario 携带 `blackout_state`。当前正式链路已改为 `overlay.yaml` 安装事实 + `presentation-state.json` 状态事实，经共享 `CurtainRenderProjection` 冻结；scenario 只保留 `sheer_opacity` 等材质表现参数，不再决定窗帘开合。
 
 **坑记录**：Poly Haven 下载必须校验文件大小——截断的 .hdr 在 Blender 加载为 0×0 并以品红色渲染（极易误判为"HDRi 颜色不对"）。wget 比 curl 稳。
 
@@ -193,9 +193,11 @@ npm run verify:render-bundle -- --bundle renders/web/models/acceptance-<timestam
 
 构建器先运行 `generate:render-config` 和 `verify:project-render-facts`，再严格检查输入 GLB 的 header/chunk/index 引用、mesh 与有限 world bbox；检查通过后**复制**（不移动）它为 bundle 内的 `house.glb`，然后写入 facts、render config 与 manifest。它不会触发浏览器、Blender 或云端渲染。
 
+窗帘采用 active-only GLB 快照：`overlay.yaml` 定义安装，`data/presentation-state.json` 定义状态，共享投影给出 `snapshotSha256` 与 `expectedVisibleNodes`。bundle build/verify 都要求实际 GLB 窗帘节点与投影完全一致，拒绝 missing、unexpected、unknown、duplicate 和陈旧状态；Blender 只校验节点、按 layer/variant 赋材，不补客厅纱帘，也不根据 scenario 改开合。`bare_shell` 仅以 `curtainPolicy=hidden_for_bare_shell` 隐藏软装，不改变规范状态。
+
 bundle 目录严格包含以下四个交付文件：
 
-1. `manifest.json`：schema、HEAD revision、dirty 状态/porcelain、输入 hash（含 HVAC）、artifact bytes/SHA-256、render facts/GLB 摘要，以及 `manual_web_export` 和原始输入 GLB basename（不记录绝对路径）。
+1. `manifest.json`：schema、HEAD revision、dirty 状态/porcelain、输入 hash（含 overlay、presentation、model geometry 与 HVAC）、artifact bytes/SHA-256、render facts/GLB 摘要、窗帘 snapshot/effective states/expected+actual nodes，以及 `manual_web_export` 和原始输入 GLB basename（不记录绝对路径）。
 2. `house.glb`：从桌面 Web 场景手动导出的二进制 glTF 副本。
 3. `render-config.json`：Blender 的配置化固定场景常量、相机和导出的 facts。
 4. `project-render-facts.json`：从 electrical/plumbing/ceiling/HVAC/render overrides/current scheme 投影的施工 facts。
