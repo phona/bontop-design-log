@@ -146,7 +146,7 @@
 - id: sock_master_ac
   room: master_bedroom
   type: socket
-  x: 3.50
+  x: 2.80
   z: 4.60
   height: 2.6
   count: 1

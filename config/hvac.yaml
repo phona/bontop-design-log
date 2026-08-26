@@ -206,10 +206,10 @@ plans:
         - id: supply_master
           status: inferred
           system: supply_air
-          position: { x: 2.5, y: 2.65, z: 4.96 }
+          position: { x: 2.15, y: 2.65, z: 4.96 }
           mount_face: south
-          length: 1.0
-          reason: "主卧 1.0m 线形送风口，嵌空调盒南立面侧送朝南，越 1.1m 矮柜顶进睡眠区（风口东缘 x=3.0 擦高柜西缘不挡风；至南窗射程 5.4m 余量充足），实际长度按风量深化。"
+          length: 0.9
+          reason: "主卧 0.9m 线形送风口（矮柜收窄至 0.8m 后风口西移对位），嵌檐口南立面侧送朝南，越 1.1m 矮柜顶进睡眠区（span x[1.7,2.6] 全程压矮柜、与高柜西脸齐平零干涉；至南窗 5.4m 余量充足），实际长度按风量深化。"
         - id: return_master
           status: inferred
           system: return_air
