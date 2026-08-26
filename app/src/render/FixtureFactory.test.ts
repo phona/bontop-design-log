@@ -17,17 +17,55 @@ function fixtureSize(type: string): THREE.Vector3 {
 
 describe('entry storage fixtures', () => {
   it('builds the entry half-height cabinet as a 2m-long visual screen', () => {
+    const cabinet = buildFixture('entry_half_height_cabinet')!;
     const size = fixtureSize('entry_half_height_cabinet');
     expect(size.x).toBeCloseTo(2.04, 2);
     expect(size.y).toBeCloseTo(1.50, 2);
     expect(size.z).toBeCloseTo(0.39, 2);
+    expect(cabinet.children.filter((child) => child.userData.materialRole === 'door_front')).toHaveLength(3);
+    expect(cabinet.children.some((child) => child.userData.part === 'lower-door-seam')).toBe(true);
+    expect(cabinet.children.some((child) => child.userData.materialRole === 'back_panel')).toBe(true);
+    expect(cabinet.children.some((child) => child.userData.materialRole === 'shelf')).toBe(true);
+    expect(cabinet.children.some((child) => child.userData.materialRole === 'plinth')).toBe(true);
+    expect(cabinet.children.some((child) => child.userData.materialRole === 'countertop')).toBe(true);
   });
 
   it('builds the movable garden station with a freestanding pegboard', () => {
+    const station = buildFixture('garden_entry_station')!;
     const size = fixtureSize('garden_entry_station');
     expect(size.x).toBeCloseTo(1.16, 2);
     expect(size.y).toBeCloseTo(1.85, 2);
     expect(size.z).toBeCloseTo(0.38, 2);
+    expect(station.children.filter((child) => child.userData.materialRole === 'door_front')).toHaveLength(3);
+    expect(station.children.filter((child) => child.userData.materialRole === 'cabinet_foot')).toHaveLength(4);
+    expect(station.children.some((child) => child.userData.part === 'pegboard-back')).toBe(true);
+    expect(station.children.some((child) => child.userData.materialRole === 'countertop')).toBe(true);
+    expect(station.children.filter((child) => child.userData.materialRole === 'hardware')).toHaveLength(3);
+  });
+
+  it('keeps the count-only shoe cabinet recipe cabinet-like without changing its footprint', () => {
+    const cabinet = buildFixture('shoe_cabinet')!;
+    const size = fixtureSize('shoe_cabinet');
+    expect(size.x).toBeCloseTo(1.5, 2);
+    expect(size.y).toBeCloseTo(2.30, 2);
+    expect(size.z).toBeCloseTo(0.35, 2);
+    expect(cabinet.children.filter((child) => child.userData.materialRole === 'door_front')).toHaveLength(4);
+    expect(cabinet.children.filter((child) => child.userData.materialRole === 'door_seam')).toHaveLength(2);
+    expect(cabinet.children.some((child) => child.userData.materialRole === 'back_panel')).toBe(true);
+    expect(cabinet.children.some((child) => child.userData.materialRole === 'plinth')).toBe(true);
+    expect(cabinet.children.some((child) => child.userData.materialRole === 'hardware')).toBe(true);
+  });
+
+  it('builds the bookshelf as an open shelving unit rather than a solid box', () => {
+    const bookshelf = buildFixture('bookshelf')!;
+    const size = fixtureSize('bookshelf');
+    expect(size.x).toBeCloseTo(0.8, 2);
+    expect(size.y).toBeCloseTo(1.8, 2);
+    expect(size.z).toBeCloseTo(0.3, 2);
+    expect(bookshelf.children).toHaveLength(9);
+    expect(bookshelf.children.filter((child) => child.userData.materialRole === 'shelf')).toHaveLength(4);
+    expect(bookshelf.children.some((child) => child.userData.part === 'back-panel')).toBe(true);
+    expect(bookshelf.children.every((child) => child.userData.part && child.userData.materialRole)).toBe(true);
   });
 });
 
@@ -43,8 +81,12 @@ describe('kitchen cabinet runs', () => {
     expect(size.z).toBeCloseTo(0.64, 2);
     expect(cabinet.children.some((child) => child.userData.surface === 'countertop')).toBe(true);
     expect(cabinet.children.filter((child) => child.userData.materialRole === 'door_front')).toHaveLength(6);
+    expect(cabinet.children.filter((child) => child.userData.materialRole === 'drawer_front')).toHaveLength(1);
+    expect(cabinet.children.filter((child) => child.userData.materialRole === 'door_seam')).toHaveLength(5);
+    expect(cabinet.children.filter((child) => child.userData.materialRole === 'hardware')).toHaveLength(1);
     expect(cabinet.children.some((child) => child.userData.part === 'plinth')).toBe(true);
     expect(cabinet.children.some((child) => child.userData.part === 'end-panel-left')).toBe(true);
+    expect(cabinet.children.some((child) => child.userData.part === 'end-panel-right')).toBe(true);
   });
 });
 
@@ -88,8 +130,18 @@ describe('wardrobe fixtures', () => {
 
   it('splits bathroom cabinet doors into readable panels', () => {
     const cabinet = buildBathSideCabinetRun({ length: 1.2, depth: 0.5 });
-    expect(cabinet.children.filter((child) => child.userData.materialRole === 'door_front')).toHaveLength(1);
-    expect(cabinet.children.some((child) => child.userData.materialRole === 'door_seam')).toBe(true);
+    cabinet.updateMatrixWorld(true);
+    const size = new THREE.Box3().setFromObject(cabinet).getSize(new THREE.Vector3());
+
+    expect(size.x).toBeCloseTo(1.2, 2);
+    expect(size.y).toBeCloseTo(2.0, 2);
+    expect(size.z).toBeCloseTo(0.528, 2);
+    expect(cabinet.children.filter((child) => child.userData.materialRole === 'door_front')).toHaveLength(2);
+    expect(cabinet.children.filter((child) => child.userData.materialRole === 'door_seam')).toHaveLength(1);
+    expect(cabinet.children.filter((child) => child.userData.materialRole === 'hardware')).toHaveLength(2);
+    expect(cabinet.children.some((child) => child.userData.materialRole === 'plinth')).toBe(true);
+    expect(cabinet.children.some((child) => child.userData.materialRole === 'end_panel')).toBe(true);
+    expect(cabinet.children.some((child) => child.userData.materialRole === 'shelf')).toBe(true);
   });
 });
 

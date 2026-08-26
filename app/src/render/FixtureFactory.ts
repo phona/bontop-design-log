@@ -181,9 +181,18 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
+    // 开放式书架：北墙书墙使用，正面朝 +z；保留 0.8×1.8×0.3m 外轮廓。
     type: 'bookshelf',
     parts: [
-      { shape: 'box', size: [0.8, 1.8, 0.3], position: [0, 0.9, 0], color: '#8B7355' },
+      { shape: 'box', size: [0.04, 1.8, 0.3], position: [-0.38, 0.9, 0], color: '#8B7355', part: 'side-left', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.04, 1.8, 0.3], position: [0.38, 0.9, 0], color: '#8B7355', part: 'side-right', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.72, 1.72, 0.02], position: [0, 0.90, -0.14], color: '#7d6647', part: 'back-panel', materialRole: 'back_panel' },
+      { shape: 'box', size: [0.72, 0.04, 0.26], position: [0, 0.02, 0], color: '#8B7355', part: 'bottom-panel', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.72, 0.04, 0.26], position: [0, 1.78, 0], color: '#8B7355', part: 'top-panel', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.72, 0.03, 0.26], position: [0, 0.42, 0], color: '#a48763', part: 'shelf-01', materialRole: 'shelf' },
+      { shape: 'box', size: [0.72, 0.03, 0.26], position: [0, 0.82, 0], color: '#a48763', part: 'shelf-02', materialRole: 'shelf' },
+      { shape: 'box', size: [0.72, 0.03, 0.26], position: [0, 1.22, 0], color: '#a48763', part: 'shelf-03', materialRole: 'shelf' },
+      { shape: 'box', size: [0.72, 0.03, 0.26], position: [0, 1.62, 0], color: '#a48763', part: 'shelf-04', materialRole: 'shelf' },
     ],
   },
   {
@@ -255,32 +264,42 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     // 电视不嵌入柜体，保持暖白乳胶漆墙面的留白。
     type: 'wall_cabinet_tall',
     parts: [
-      // 落地柜体由内缩 80mm 踢脚承重；电视低柜采用带细腿落地形式。
-      { shape: 'box', size: [1.22, 0.08, 0.27], position: [0, 0.04, 0.04], color: '#d5cec2' },
-      { shape: 'box', size: [1.35, 0.97, 0.35], position: [0, 0.565, 0], color: '#f2ede2' },
-      { shape: 'box', size: [1.35, 1.14, 0.35], position: [0, 2.145, 0], color: '#f2ede2' },
-      // 无拉手柜门的分缝，避免渲染成一整块白色盒子。
-      { shape: 'box', size: [0.012, 0.88, 0.012], position: [0, 0.565, -0.181], color: '#d5cec2' },
-      { shape: 'box', size: [0.012, 1.05, 0.012], position: [0, 2.145, -0.181], color: '#d5cec2' },
-      // 中部一格开放格：深胡桃背板和暖光只服务收纳柜，不构成电视背景墙。
-      { shape: 'box', size: [1.19, 0.48, 0.025], position: [0, 1.32, -0.164], color: '#503e2e' },
-      { shape: 'box', size: [1.19, 0.018, 0.03], position: [0, 1.55, -0.185], color: '#d7a461', metalness: 0.05, roughness: 0.35 },
+      { shape: 'box', size: [1.22, 0.08, 0.27], position: [0, 0.04, 0.04], color: '#d5cec2', part: 'plinth', materialRole: 'plinth' },
+      { shape: 'box', size: [1.35, 0.97, 0.35], position: [0, 0.565, 0], color: '#f2ede2', part: 'lower-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [1.35, 1.14, 0.35], position: [0, 2.145, 0], color: '#f2ede2', part: 'upper-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.64, 0.84, 0.018], position: [-0.34, 0.565, -0.181], color: '#e5dfd4', part: 'lower-door-left', materialRole: 'door_front' },
+      { shape: 'box', size: [0.64, 0.84, 0.018], position: [0.34, 0.565, -0.181], color: '#e5dfd4', part: 'lower-door-right', materialRole: 'door_front' },
+      { shape: 'box', size: [0.64, 1.01, 0.018], position: [-0.34, 2.145, -0.181], color: '#e5dfd4', part: 'upper-door-left', materialRole: 'door_front' },
+      { shape: 'box', size: [0.64, 1.01, 0.018], position: [0.34, 2.145, -0.181], color: '#e5dfd4', part: 'upper-door-right', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 0.88, 0.012], position: [0, 0.565, -0.192], color: '#b9afa2', part: 'lower-door-seam', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.012, 1.05, 0.012], position: [0, 2.145, -0.192], color: '#b9afa2', part: 'upper-door-seam', materialRole: 'door_seam' },
+      { shape: 'box', size: [1.19, 0.48, 0.025], position: [0, 1.32, -0.164], color: '#503e2e', part: 'open-niche-back', materialRole: 'back_panel' },
+      { shape: 'box', size: [1.19, 0.025, 0.30], position: [0, 1.08, 0], color: '#6a503b', part: 'open-niche-shelf', materialRole: 'shelf' },
+      { shape: 'box', size: [1.19, 0.018, 0.03], position: [0, 1.55, -0.185], color: '#d7a461', metalness: 0.05, roughness: 0.35, part: 'niche-light', materialRole: 'hardware' },
+      { shape: 'box', size: [0.025, 2.58, 0.35], position: [-0.6625, 1.35, 0], color: '#e5dfd4', part: 'end-panel-left', materialRole: 'end_panel' },
+      { shape: 'box', size: [0.025, 2.58, 0.35], position: [0.6625, 1.35, 0], color: '#e5dfd4', part: 'end-panel-right', materialRole: 'end_panel' },
     ],
   },
   {
     // 西墙电视区：挂墙电视 + 带细腿低柜；不做木饰面/背板电视墙。
     type: 'tv_wall_low',
     parts: [
-      { shape: 'box', size: [2.1, 0.32, 0.40], position: [0, 0.31, 0], color: '#503e2e' },
-      { shape: 'box', size: [2.10, 0.035, 0.43], position: [0, 0.4875, 0], color: '#654b37' },
-      // 三扇无拉手柜门的阴影缝；低柜以细腿落地，保留轻盈感但不依赖墙挂。
-      { shape: 'box', size: [0.012, 0.25, 0.012], position: [-0.35, 0.31, -0.206], color: '#382b22' },
-      { shape: 'box', size: [0.012, 0.25, 0.012], position: [0.35, 0.31, -0.206], color: '#382b22' },
-      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [-0.92, 0.075, -0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5 },
-      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [0.92, 0.075, -0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5 },
-      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [-0.92, 0.075, 0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5 },
-      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [0.92, 0.075, 0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5 },
-      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [0, 0.075, 0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5 },
+      { shape: 'box', size: [2.1, 0.32, 0.40], position: [0, 0.31, 0], color: '#503e2e', part: 'carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [2.04, 0.25, 0.018], position: [0, 0.31, -0.206], color: '#634a36', part: 'door-front-base', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 0.25, 0.012], position: [-0.35, 0.31, -0.218], color: '#382b22', part: 'door-seam-left', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.012, 0.25, 0.012], position: [0.35, 0.31, -0.218], color: '#382b22', part: 'door-seam-right', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.012, 0.27, 0.38], position: [-1.044, 0.31, 0], color: '#634a36', part: 'end-panel-left', materialRole: 'end_panel' },
+      { shape: 'box', size: [0.012, 0.27, 0.38], position: [1.044, 0.31, 0], color: '#634a36', part: 'end-panel-right', materialRole: 'end_panel' },
+      { shape: 'box', size: [2.10, 0.035, 0.43], position: [0, 0.4875, 0], color: '#654b37', part: 'countertop', materialRole: 'countertop' },
+      { shape: 'box', size: [1.96, 0.02, 0.28], position: [0, 0.08, 0.02], color: '#382b22', part: 'lower-rail', materialRole: 'cabinet_support' },
+      { shape: 'box', size: [0.08, 0.018, 0.012], position: [-0.72, 0.34, -0.222], color: '#9a7958', metalness: 0.6, roughness: 0.35, part: 'handle-left', materialRole: 'hardware' },
+      { shape: 'box', size: [0.08, 0.018, 0.012], position: [0, 0.34, -0.222], color: '#9a7958', metalness: 0.6, roughness: 0.35, part: 'handle-center', materialRole: 'hardware' },
+      { shape: 'box', size: [0.08, 0.018, 0.012], position: [0.72, 0.34, -0.222], color: '#9a7958', metalness: 0.6, roughness: 0.35, part: 'handle-right', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [-0.92, 0.075, -0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5, part: 'leg-front-left', materialRole: 'cabinet_foot' },
+      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [0.92, 0.075, -0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5, part: 'leg-front-right', materialRole: 'cabinet_foot' },
+      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [-0.92, 0.075, 0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5, part: 'leg-back-left', materialRole: 'cabinet_foot' },
+      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [0.92, 0.075, 0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5, part: 'leg-back-right', materialRole: 'cabinet_foot' },
+      { shape: 'cylinder', size: [0.018, 0.15, 0.018], position: [0, 0.075, 0.16], color: '#2f2822', metalness: 0.35, roughness: 0.5, part: 'leg-back-center', materialRole: 'cabinet_foot' },
     ],
   },
   {
@@ -306,52 +325,66 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     // 玄关餐边一体柜：通顶三段式（底架空 0.15 + 浅门下柜 + 深胡桃开放格 + 浅门上柜）
     type: 'shoe_cabinet',
     parts: [
-      { shape: 'box', size: [1.5, 0.75, 0.35], position: [0, 0.525, 0], color: '#f2ede2' },
-      { shape: 'box', size: [1.5, 0.5, 0.03], position: [0, 1.15, -0.16], color: '#503e2e' },
-      { shape: 'box', size: [1.5, 1.0, 0.35], position: [0, 1.9, 0], color: '#f2ede2' },
+      { shape: 'box', size: [1.38, 0.08, 0.28], position: [0, 0.14, 0], color: '#503e2e', part: 'plinth', materialRole: 'plinth' },
+      { shape: 'box', size: [1.5, 0.75, 0.35], position: [0, 0.525, 0], color: '#f2ede2', part: 'lower-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.72, 0.62, 0.018], position: [-0.375, 0.53, 0.15], color: '#e5dfd4', part: 'lower-door-left', materialRole: 'door_front' },
+      { shape: 'box', size: [0.72, 0.62, 0.018], position: [0.375, 0.53, 0.15], color: '#e5dfd4', part: 'lower-door-right', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 0.64, 0.012], position: [0, 0.53, 0.161], color: '#b9afa2', part: 'lower-door-seam', materialRole: 'door_seam' },
+      { shape: 'box', size: [1.5, 0.5, 0.03], position: [0, 1.15, -0.16], color: '#503e2e', part: 'open-niche-back', materialRole: 'back_panel' },
+      { shape: 'box', size: [1.42, 0.025, 0.28], position: [0, 0.90, 0], color: '#6a503b', part: 'open-niche-shelf', materialRole: 'shelf' },
+      { shape: 'box', size: [1.5, 1.0, 0.35], position: [0, 1.9, 0], color: '#f2ede2', part: 'upper-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.72, 0.86, 0.018], position: [-0.375, 1.9, 0.15], color: '#e5dfd4', part: 'upper-door-left', materialRole: 'door_front' },
+      { shape: 'box', size: [0.72, 0.86, 0.018], position: [0.375, 1.9, 0.15], color: '#e5dfd4', part: 'upper-door-right', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 0.88, 0.012], position: [0, 1.9, 0.161], color: '#b9afa2', part: 'upper-door-seam', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.025, 1.82, 0.35], position: [-0.7375, 1.08, 0], color: '#e5dfd4', part: 'end-panel-left', materialRole: 'end_panel' },
+      { shape: 'box', size: [0.025, 1.82, 0.35], position: [0.7375, 1.08, 0], color: '#e5dfd4', part: 'end-panel-right', materialRole: 'end_panel' },
+      { shape: 'box', size: [0.08, 0.018, 0.012], position: [-0.62, 0.72, 0.15], color: '#9a7958', metalness: 0.6, roughness: 0.35, part: 'lower-handle-left', materialRole: 'hardware' },
+      { shape: 'box', size: [0.08, 0.018, 0.012], position: [0.62, 0.72, 0.15], color: '#9a7958', metalness: 0.6, roughness: 0.35, part: 'lower-handle-right', materialRole: 'hardware' },
     ],
   },
   {
     // 入户花园可移动换鞋站：三门矮鞋柜（柜脚抬高 + 门板缝 + 暗拉手）+ 自立浅色洞洞板（孔阵），不依赖墙体固定。
     type: 'garden_entry_station',
     parts: [
-      // 柜脚（柜体抬高 8cm，读出"成品柜"而非落地墩）
-      { shape: 'box', size: [0.05, 0.08, 0.05], position: [-0.48, 0.04, 0.12], color: '#503e2e' },
-      { shape: 'box', size: [0.05, 0.08, 0.05], position: [0.48, 0.04, 0.12], color: '#503e2e' },
-      { shape: 'box', size: [0.05, 0.08, 0.05], position: [-0.48, 0.04, -0.12], color: '#503e2e' },
-      { shape: 'box', size: [0.05, 0.08, 0.05], position: [0.48, 0.04, -0.12], color: '#503e2e' },
-      // 柜体
-      { shape: 'box', size: [1.1, 0.72, 0.34], position: [0, 0.44, 0], color: '#d9c5a5' },
-      // 三扇门板（12mm 缝，微凸出柜体前脸）
-      { shape: 'box', size: [0.348, 0.64, 0.018], position: [-0.36, 0.45, 0.172], color: '#e2d2b6' },
-      { shape: 'box', size: [0.348, 0.64, 0.018], position: [0, 0.45, 0.172], color: '#e2d2b6' },
-      { shape: 'box', size: [0.348, 0.64, 0.018], position: [0.36, 0.45, 0.172], color: '#e2d2b6' },
-      // 门板顶部暗拉手
-      { shape: 'box', size: [0.09, 0.02, 0.015], position: [-0.36, 0.72, 0.185], color: '#503e2e' },
-      { shape: 'box', size: [0.09, 0.02, 0.015], position: [0, 0.72, 0.185], color: '#503e2e' },
-      { shape: 'box', size: [0.09, 0.02, 0.015], position: [0.36, 0.72, 0.185], color: '#503e2e' },
-      // 台面
-      { shape: 'box', size: [1.16, 0.04, 0.38], position: [0, 0.82, 0], color: '#503e2e' },
-      // 浅色洞洞板 + 孔阵
-      { shape: 'box', size: [1.1, 1.0, 0.025], position: [0, 1.34, -0.155], color: '#e8e2d6', roughness: 0.75 },
+      { shape: 'box', size: [0.05, 0.08, 0.05], position: [-0.48, 0.04, 0.12], color: '#503e2e', part: 'foot-front-left', materialRole: 'cabinet_foot' },
+      { shape: 'box', size: [0.05, 0.08, 0.05], position: [0.48, 0.04, 0.12], color: '#503e2e', part: 'foot-front-right', materialRole: 'cabinet_foot' },
+      { shape: 'box', size: [0.05, 0.08, 0.05], position: [-0.48, 0.04, -0.12], color: '#503e2e', part: 'foot-back-left', materialRole: 'cabinet_foot' },
+      { shape: 'box', size: [0.05, 0.08, 0.05], position: [0.48, 0.04, -0.12], color: '#503e2e', part: 'foot-back-right', materialRole: 'cabinet_foot' },
+      { shape: 'box', size: [1.1, 0.72, 0.34], position: [0, 0.44, 0], color: '#d9c5a5', part: 'carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.348, 0.64, 0.018], position: [-0.36, 0.45, 0.172], color: '#e2d2b6', part: 'door-panel-left', materialRole: 'door_front' },
+      { shape: 'box', size: [0.348, 0.64, 0.018], position: [0, 0.45, 0.172], color: '#e2d2b6', part: 'door-panel-center', materialRole: 'door_front' },
+      { shape: 'box', size: [0.348, 0.64, 0.018], position: [0.36, 0.45, 0.172], color: '#e2d2b6', part: 'door-panel-right', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 0.64, 0.012], position: [-0.18, 0.45, 0.185], color: '#b29b7b', part: 'door-seam-left', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.012, 0.64, 0.012], position: [0.18, 0.45, 0.185], color: '#b29b7b', part: 'door-seam-right', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.09, 0.02, 0.015], position: [-0.36, 0.72, 0.185], color: '#503e2e', part: 'handle-left', materialRole: 'hardware' },
+      { shape: 'box', size: [0.09, 0.02, 0.015], position: [0, 0.72, 0.185], color: '#503e2e', part: 'handle-center', materialRole: 'hardware' },
+      { shape: 'box', size: [0.09, 0.02, 0.015], position: [0.36, 0.72, 0.185], color: '#503e2e', part: 'handle-right', materialRole: 'hardware' },
+      { shape: 'box', size: [1.16, 0.04, 0.38], position: [0, 0.82, 0], color: '#503e2e', part: 'countertop', materialRole: 'countertop' },
+      { shape: 'box', size: [1.04, 0.025, 0.28], position: [0, 0.16, -0.02], color: '#8d6e4e', part: 'lower-shelf', materialRole: 'shelf' },
+      { shape: 'box', size: [1.1, 1.0, 0.025], position: [0, 1.34, -0.155], color: '#e8e2d6', roughness: 0.75, part: 'pegboard-back', materialRole: 'back_panel' },
       ...pegboardHoles(-0.138),
-      // 自立立柱
-      { shape: 'box', size: [0.05, 1.85, 0.05], position: [-0.5, 0.925, -0.155], color: '#292725', metalness: 0.55, roughness: 0.45 },
-      { shape: 'box', size: [0.05, 1.85, 0.05], position: [0.5, 0.925, -0.155], color: '#292725', metalness: 0.55, roughness: 0.45 },
+      { shape: 'box', size: [0.05, 1.85, 0.05], position: [-0.5, 0.925, -0.155], color: '#292725', metalness: 0.55, roughness: 0.45, part: 'frame-left', materialRole: 'end_panel' },
+      { shape: 'box', size: [0.05, 1.85, 0.05], position: [0.5, 0.925, -0.155], color: '#292725', metalness: 0.55, roughness: 0.45, part: 'frame-right', materialRole: 'end_panel' },
     ],
   },
   {
     // 门内右手的定制半高柜：向客厅延伸，玄关侧封闭、餐厅侧开放，柜顶以上保持视线通透。
     type: 'entry_half_height_cabinet',
     parts: [
-      { shape: 'box', size: [2.0, 0.88, 0.35], position: [0, 0.44, 0], color: '#f2ede2' },
-      { shape: 'box', size: [2.04, 0.04, 0.39], position: [0, 0.90, 0], color: '#503e2e' },
-      { shape: 'box', size: [0.08, 0.56, 0.35], position: [-0.96, 1.18, 0], color: '#f2ede2' },
-      { shape: 'box', size: [0.08, 0.56, 0.35], position: [0.96, 1.18, 0], color: '#f2ede2' },
-      { shape: 'box', size: [1.76, 0.08, 0.35], position: [0, 1.46, 0], color: '#f2ede2' },
-      { shape: 'box', size: [1.76, 0.50, 0.025], position: [0, 1.18, 0.162], color: '#503e2e' },
-      { shape: 'box', size: [1.76, 0.04, 0.31], position: [0, 1.00, 0.0], color: '#503e2e' },
-      { shape: 'box', size: [1.76, 0.50, 0.02], position: [0, 1.18, 0.186], color: '#f2ede2' },
+      { shape: 'box', size: [1.84, 0.08, 0.28], position: [0, 0.04, 0], color: '#503e2e', part: 'plinth', materialRole: 'plinth' },
+      { shape: 'box', size: [2.0, 0.88, 0.35], position: [0, 0.44, 0], color: '#f2ede2', part: 'lower-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.86, 0.72, 0.018], position: [-0.46, 0.46, 0.181], color: '#e5dfd4', part: 'lower-door-left', materialRole: 'door_front' },
+      { shape: 'box', size: [0.86, 0.72, 0.018], position: [0.46, 0.46, 0.181], color: '#e5dfd4', part: 'lower-door-right', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 0.74, 0.012], position: [0, 0.46, 0.192], color: '#b9afa2', part: 'lower-door-seam', materialRole: 'door_seam' },
+      { shape: 'box', size: [2.04, 0.04, 0.39], position: [0, 0.90, 0], color: '#503e2e', part: 'countertop', materialRole: 'countertop' },
+      { shape: 'box', size: [0.08, 0.56, 0.35], position: [-0.96, 1.18, 0], color: '#f2ede2', part: 'open-end-left', materialRole: 'end_panel' },
+      { shape: 'box', size: [0.08, 0.56, 0.35], position: [0.96, 1.18, 0], color: '#f2ede2', part: 'open-end-right', materialRole: 'end_panel' },
+      { shape: 'box', size: [1.76, 0.08, 0.35], position: [0, 1.46, 0], color: '#f2ede2', part: 'open-top-rail', materialRole: 'end_panel' },
+      { shape: 'box', size: [1.76, 0.50, 0.025], position: [0, 1.18, 0.162], color: '#503e2e', part: 'open-back', materialRole: 'back_panel' },
+      { shape: 'box', size: [1.76, 0.04, 0.31], position: [0, 1.00, 0.0], color: '#503e2e', part: 'open-shelf', materialRole: 'shelf' },
+      { shape: 'box', size: [1.76, 0.50, 0.02], position: [0, 1.18, 0.186], color: '#f2ede2', part: 'open-front-lip', materialRole: 'door_front' },
+      { shape: 'box', size: [0.08, 0.018, 0.012], position: [-0.46, 0.70, 0.18], color: '#9a7958', metalness: 0.6, roughness: 0.35, part: 'handle-left', materialRole: 'hardware' },
+      { shape: 'box', size: [0.08, 0.018, 0.012], position: [0.46, 0.70, 0.18], color: '#9a7958', metalness: 0.6, roughness: 0.35, part: 'handle-right', materialRole: 'hardware' },
     ],
   },
   // ── Electrical ─
@@ -503,10 +536,20 @@ function addPart(
   const geo = part.shape === 'cylinder'
     ? new THREE.CylinderGeometry(part.size[0], part.size[0], part.size[1], 12)
     : new THREE.BoxGeometry(...part.size);
+  const materialRole = part.materialRole ?? (surface ?? 'body');
+  const isOverlaySurface = materialRole === 'door_front'
+    || materialRole === 'drawer_front'
+    || materialRole === 'door_seam'
+    || materialRole === 'hardware';
   const mat = new THREE.MeshStandardMaterial({
     color: part.color,
     metalness: part.metalness ?? 0.1,
     roughness: part.roughness ?? 0.6,
+    // Cabinet fronts sit against the carcass front plane. Bias only the
+    // decorative overlay surfaces toward the camera to prevent z-fighting.
+    polygonOffset: isOverlaySurface,
+    polygonOffsetFactor: isOverlaySurface ? -1 : 0,
+    polygonOffsetUnits: isOverlaySurface ? -1 : 0,
   });
   const mesh = new THREE.Mesh(geo, mat);
   if (part.position) mesh.position.set(...part.position);
@@ -515,7 +558,6 @@ function addPart(
     mesh.rotation.y = part.rotation[1];
     mesh.rotation.z = part.rotation[2];
   }
-  const materialRole = part.materialRole ?? (surface ?? 'body');
   const partId = part.part ?? part.name ?? `part-${index}`;
   const baseName = part.name ?? `${fixtureType}:part:${index}`;
   // Keep legacy recipe names unchanged unless the part carries stable metadata;
@@ -550,6 +592,7 @@ export function buildWardrobe180(totalHeight = 2.5): THREE.Group {
   let i = 0;
   addBox(group, 'wardrobe_180', i++, [1.8, bodyHeight, 0.6], [0, bodyHeight / 2, 0], '#8B7355', { part: 'carcass', materialRole: 'cabinet_body' });
   addBox(group, 'wardrobe_180', i++, [1.8, filler, 0.6], [0, bodyHeight + filler / 2, 0], '#8B7355', { part: 'top-filler', materialRole: 'top_filler' });
+  // Default front is -z; the northwest bedroom wardrobe faces north into the room.
   addBox(group, 'wardrobe_180', i++, [1.72, 0.08, 0.02], [0, 0.04, -0.29], '#604b38', { part: 'plinth', materialRole: 'plinth' });
   for (const [index, x] of [-0.6, 0, 0.6].entries()) {
     addBox(group, 'wardrobe_180', i++, [0.586, bodyHeight - 0.14, 0.018], [x, (bodyHeight + 0.08) / 2, -0.291], '#967b5a', { part: `door-panel-${index + 1}`, materialRole: 'door_front' });
@@ -584,11 +627,21 @@ export function buildBathSideCabinetRun(spec: BathSideCabinetRunSpec): THREE.Gro
   const group = new THREE.Group();
   let i = 0;
   addBox(group, 'bath_side_cabinet', i++, [spec.length, cabinetHeight, spec.depth], [0, cabinetHeight / 2, 0], '#e8e4dc', { part: 'carcass', materialRole: 'cabinet_body' });
-  const panelWidth = Math.max(0.1, spec.length - 0.04);
-  addBox(group, 'bath_side_cabinet', i++, [panelWidth, cabinetHeight - 0.08, 0.02], [0, cabinetHeight / 2, spec.depth / 2 + 0.01], '#ded8cc', { part: 'door-panel-1', materialRole: 'door_front' });
-  for (let x = -spec.length / 2 + 0.6; x < spec.length / 2 - 0.05; x += 0.6) {
-    addBox(group, 'bath_side_cabinet', i++, [0.012, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, spec.depth / 2 + 0.022], '#b8afa2', { part: `door-seam-${i}`, materialRole: 'door_seam' });
+  addBox(group, 'bath_side_cabinet', i++, [Math.max(0.1, spec.length - 0.04), 0.08, Math.max(0.1, spec.depth - 0.04)], [0, 0.04, 0], '#c9c0b2', { part: 'plinth', materialRole: 'plinth' });
+  addBox(group, 'bath_side_cabinet', i++, [0.012, cabinetHeight - 0.08, spec.depth], [-spec.length / 2 + 0.006, cabinetHeight / 2, 0], '#ded8cc', { part: 'end-panel-left', materialRole: 'end_panel' });
+  addBox(group, 'bath_side_cabinet', i++, [0.012, cabinetHeight - 0.08, spec.depth], [spec.length / 2 - 0.006, cabinetHeight / 2, 0], '#ded8cc', { part: 'end-panel-right', materialRole: 'end_panel' });
+
+  const panelCount = Math.max(2, Math.ceil(spec.length / 0.6));
+  const panelWidth = spec.length / panelCount;
+  for (let panel = 0; panel < panelCount; panel++) {
+    const x = -spec.length / 2 + panelWidth * (panel + 0.5);
+    addBox(group, 'bath_side_cabinet', i++, [Math.max(0.05, panelWidth - 0.018), cabinetHeight - 0.18, 0.02], [x, cabinetHeight / 2, spec.depth / 2 + 0.01], '#ded8cc', { part: `door-panel-${panel + 1}`, materialRole: 'door_front' });
+    if (panel < panelCount - 1) {
+      addBox(group, 'bath_side_cabinet', i++, [0.012, cabinetHeight - 0.18, 0.012], [x + panelWidth / 2, cabinetHeight / 2, spec.depth / 2 + 0.022], '#b8afa2', { part: `door-seam-${panel + 1}`, materialRole: 'door_seam' });
+    }
+    addBox(group, 'bath_side_cabinet', i++, [0.07, 0.012, 0.006], [x, cabinetHeight * 0.56, spec.depth / 2 + 0.017], '#756957', { part: `handle-${panel + 1}`, materialRole: 'hardware' });
   }
+  addBox(group, 'bath_side_cabinet', i++, [Math.max(0.1, spec.length - 0.10), 0.025, Math.max(0.1, spec.depth - 0.04)], [0, cabinetHeight * 0.52, -0.01], '#c7b49a', { part: 'interior-shelf', materialRole: 'shelf' });
   return group;
 }
 
@@ -603,13 +656,22 @@ export function buildKitchenCabinetRun(spec: KitchenCabinetRunSpec): THREE.Group
   addBox(group, 'kitchen_cabinet_run', i++, [spec.length + 0.04, countertopThickness, spec.depth + 0.04], [0, cabinetHeight + countertopThickness / 2, 0], '#e8e6e0', { part: 'countertop', materialRole: 'countertop' }, 'countertop');
   const bayWidth = Math.min(0.6, spec.length);
   const bayCount = Math.max(1, Math.ceil(spec.length / bayWidth));
+  const drawerHeight = Math.min(0.16, Math.max(0.08, cabinetHeight - 0.28));
   for (let bay = 0; bay < bayCount; bay++) {
     const width = spec.length / bayCount;
     const x = -spec.length / 2 + width * (bay + 0.5);
-    addBox(group, 'kitchen_cabinet_run', i++, [width - 0.018, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, -spec.depth / 2 - 0.006], '#c3a986', { part: `door-panel-${bay + 1}`, materialRole: 'door_front' });
+    const frontZ = -spec.depth / 2 - 0.006;
+    if (bay === 0) {
+      addBox(group, 'kitchen_cabinet_run', i++, [width - 0.018, drawerHeight, 0.012], [x, cabinetHeight - 0.08 - drawerHeight / 2, frontZ], '#b18f68', { part: 'drawer-front-1', materialRole: 'drawer_front' });
+      addBox(group, 'kitchen_cabinet_run', i++, [Math.max(0.08, width - 0.018), cabinetHeight - 0.28 - drawerHeight, 0.012], [x, 0.08 + (cabinetHeight - 0.28 - drawerHeight) / 2, frontZ], '#c3a986', { part: 'door-panel-1', materialRole: 'door_front' });
+      addBox(group, 'kitchen_cabinet_run', i++, [Math.min(width - 0.08, 0.28), 0.012, 0.006], [x, cabinetHeight - 0.08 - drawerHeight / 2, -spec.depth / 2 - 0.017], '#5a4a3d', { part: 'drawer-handle-1', materialRole: 'hardware' });
+    } else {
+      addBox(group, 'kitchen_cabinet_run', i++, [width - 0.018, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, frontZ], '#c3a986', { part: `door-panel-${bay + 1}`, materialRole: 'door_front' });
+    }
   }
-  for (let x = -spec.length / 2 + bayWidth; x < spec.length / 2 - 0.05; x += bayWidth) {
-    addBox(group, 'kitchen_cabinet_run', i++, [0.012, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, -spec.depth / 2 - 0.012], '#8d775b', { part: `door-seam-${i}`, materialRole: 'door_seam' });
+  for (let bay = 1; bay < bayCount; bay++) {
+    const x = -spec.length / 2 + (spec.length / bayCount) * bay;
+    addBox(group, 'kitchen_cabinet_run', i++, [0.012, cabinetHeight - 0.18, 0.012], [x, cabinetHeight / 2, -spec.depth / 2 - 0.012], '#8d775b', { part: `door-seam-${bay}`, materialRole: 'door_seam' });
   }
   addBox(group, 'kitchen_cabinet_run', i++, [0.012, cabinetHeight - 0.08, spec.depth], [-spec.length / 2 + 0.006, (cabinetHeight + 0.08) / 2, 0], '#b79e7c', { part: 'end-panel-left', materialRole: 'end_panel' });
   addBox(group, 'kitchen_cabinet_run', i++, [0.012, cabinetHeight - 0.08, spec.depth], [spec.length / 2 - 0.006, (cabinetHeight + 0.08) / 2, 0], '#b79e7c', { part: 'end-panel-right', materialRole: 'end_panel' });

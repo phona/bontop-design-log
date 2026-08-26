@@ -1717,7 +1717,7 @@ export class HouseScene implements SceneApi {
           })
           : item.type === 'bath_side_cabinet' && item.length !== undefined && item.depth !== undefined
             ? buildBathSideCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight })
-            : item.type === 'wardrobe_180' && item.cabinetHeight !== undefined
+            : item.type === 'wardrobe_180'
               ? buildWardrobe180(item.cabinetHeight)
               : item.type === 'wardrobe_240_split'
                 ? buildWardrobeSplit()
