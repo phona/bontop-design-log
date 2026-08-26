@@ -21,9 +21,8 @@ test('hvac.yaml declares the complete A2 diagram against existing MEP facts', ()
   assert.equal(plan.diagram.anchors.filter((anchor) => anchor.ref?.source === 'ceiling').length, 5);
   assert.equal(plan.diagram.anchors.filter((anchor) => anchor.ref?.source === 'electrical').length, 5);
   const roomKeys = ['living', 'master', 'study', 'parent', 'child'];
-  // 2026-08-26 回检一体：主卧/次卧/书房的回风格栅兼作检修口，不另设 access 面板；
-  // 仅客厅保留独立 access terminal 与 access route。
-  const mergedAccessRooms = new Set(['master', 'study', 'parent', 'child']);
+  // 2026-08-26 回检一体：客厅及各卧室的回风格栅兼作检修口，不另设 access 面板。
+  const mergedAccessRooms = new Set(['living', 'master', 'study', 'parent', 'child']);
   for (const room of roomKeys) {
     const indoor = `indoor_${room}`;
     const mergedAccess = mergedAccessRooms.has(room);
