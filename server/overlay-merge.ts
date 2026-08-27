@@ -243,7 +243,9 @@ function resolveBaySillWallRefs(wallIds: string | string[], walls: WallRefInput[
     const wall = walls.find(candidate => candidate.id === id);
     if (!wall) throw new Error(`Unknown wall id: ${id}`);
     const source = ownedSegments(wall);
-    const segments = (ids.length > 1 ? source : source.filter((segment) => segment.kind !== 'arc')).map((segment): BaySillSegment => ({ wallId: id, rooms: wall.bayRooms ?? wall.rooms, ...segment }));
+    // 弧段始终保留：圆角墙（如 w_mb_south 的 v_sw 弧）是飘窗随墙转弯的依据；
+    // 早前对单墙飘窗丢弧导致环幕飘窗在圆角处断开（西南角缺口）。
+    const segments = source.map((segment): BaySillSegment => ({ wallId: id, rooms: wall.bayRooms ?? wall.rooms, ...segment }));
     return { wallId: id, rooms: wall.bayRooms ?? wall.rooms, segments };
   });
 }

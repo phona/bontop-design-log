@@ -171,9 +171,9 @@ describe('ProjectCatalog — vertex v2.0 data path', () => {
     const catalog = ProjectCatalog.load('.');
     const masterBedroom = catalog.getRoom('master_bedroom');
     assert.ok(masterBedroom);
-    assert.ok(masterBedroom.wallOpenings, 'master_bedroom should have wallOpenings');
-    assert.ok(masterBedroom.wallOpenings!.length >= 1,
-      `expected >=1 opening (window; suite entry is open-plan, no door), got ${masterBedroom.wallOpenings!.length}`);
+    // w_mb_win was an unconfirmed CAD residue and is intentionally removed;
+    // the shared master-bedroom/east-parent-room wall is continuous.
+    assert.equal((masterBedroom.wallOpenings ?? []).some(o => o.id === 'w_mb_win'), false);
     const masterBath = catalog.getRoom('master_bath');
     assert.ok(masterBath);
     const doors = (masterBath.wallOpenings ?? []).filter(o => o.type === 'door' || o.type === 'sliding_door');

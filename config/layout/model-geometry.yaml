@@ -192,14 +192,9 @@ walls:
   - { id: w_st_east,    from: v_st_ne,   to: v_step_b, height: 2.8 }
   # 主卧北墙开放（w_mb_north_w 已删除；w_mb_north_e 已删，由柜体作隔断）
   # 内墙 — 主卧东墙（共享墙，按主卧命名）
-  - id: w_mb_east
-    from: v_mb_ne
-    to: v_mb_se
-    height: 2.8
-    openings:
-      # ⚠️ 待量房核实：house.yaml 与决策日志均未记录此内墙窗（疑 CAD 残留）。若真实存在（z∈[7.10,9.50]，sill 0.9），
-      # 主卧床头位（bed_180 z∈[6.98,8.78]）与床头壁灯（4.2,7.2/8.55 h=1.6 落入窗洞范围）冲突；见 pending-site-data.md #25
-      - { id: w_mb_win, type: window, anchor: v_mb_se, offset: 1.5, width: 2.4, height: 1.5, sill: 0.9, room: master_bedroom }
+  # 主卧东墙 / 父母房西墙：连续实体隔墙。
+  # 原 w_mb_win 为无室内方案依据的 CAD 残留疑似窗洞；室内设计、电气和家具均按完整隔墙布置，暂不切洞，量房若确认真实存在再单独建模。
+  - { id: w_mb_east, from: v_mb_ne, to: v_mb_se, height: 2.8 }
   # 内墙 — VRV 平台 / 生活阳台 / 客卫
   - { id: w_vrv_nw_gap, from: v_nw_ne,   to: v_vrv_n,  height: 2.8 }
   - { id: w_balc_west,  from: v_vrv_sw,  to: v_balc_sw,height: 2.8 }

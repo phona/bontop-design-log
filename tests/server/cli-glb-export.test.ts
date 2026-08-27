@@ -75,6 +75,8 @@ test('CLI builder creates core geometry with export metadata', () => {
   const objects = collectObjects(scene);
   assert.equal(objects.some((object) => object.userData.type === 'wall' && object.userData.objectId === 'w_liv_south'), false);
   assert.ok(objects.some((object) => object.userData.type === 'wall' && String(object.userData.objectId).startsWith('w_ent_south_w:')));
+  assert.ok(objects.some((object) => object.userData.type === 'wall' && String(object.userData.objectId).startsWith('w_mb_east')));
+  assert.equal(objects.some((object) => object.userData.type === 'wall' && String(object.userData.objectId).startsWith('w_mb_win')), false);
   const splitWall = objects.find((object) => String(object.userData.objectId).startsWith('w_ent_south_w:0'));
   assert.ok(splitWall);
   assert.equal(splitWall.userData.exportName, 'w_ent_south_w:0');
@@ -172,7 +174,8 @@ test('CLI overlay and furniture world bboxes preserve the house z contract', () 
     return box;
   };
   const masterBay = bayBbox('master_bedroom_south_bay');
-  assert.ok(Math.abs(masterBay.min.x - 1) < 1e-5);
+  // 环幕飘窗随 v_sw 圆角转弯：西端起自西墙弧切点 x=0，不断角
+  assert.ok(Math.abs(masterBay.min.x - 0) < 1e-5);
   assert.ok(Math.abs(masterBay.max.x - 4.2) < 1e-5);
   // 上飘窗收敛到户型内部：南墙飘窗占室内条带 z 8.7..9.8，不凸出南立面
   assert.ok(Math.abs(masterBay.min.z - 8.7) < 1e-5);
