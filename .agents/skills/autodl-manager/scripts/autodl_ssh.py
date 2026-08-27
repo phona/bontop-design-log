@@ -36,21 +36,41 @@ def require_paramiko():
         fail("未找到 Paramiko。请使用 .agents/skills/autodl-manager/.venv/bin/python，或在该私有 venv 中安装 requirements.txt。")
 
 
-def find_value(value, names):
+CREDENTIAL_RETRIES = 5
+CREDENTIAL_RETRY_DELAY = 3
+
+
+def find_exact_field(value, name):
+    """Find one exact credential field without treating unrelated ports as SSH data."""
     if isinstance(value, dict):
-        for key, item in value.items():
-            if str(key).lower() in names and item not in (None, ""):
-                return item
-        for item in value.values():
-            found = find_value(item, names)
+        item = value.get(name)
+        if item not in (None, ""):
+            return item
+        for nested in value.values():
+            found = find_exact_field(nested, name)
             if found is not None:
                 return found
     elif isinstance(value, list):
-        for item in value:
-            found = find_value(item, names)
+        for nested in value:
+            found = find_exact_field(nested, name)
             if found is not None:
                 return found
     return None
+
+
+def snapshot_credentials(snapshot):
+    """Read Pro SSH credentials, preferring the documented data object."""
+    if not isinstance(snapshot, dict):
+        return None, None, None
+    data = snapshot.get("data")
+    sources = [data, snapshot] if isinstance(data, (dict, list)) else [snapshot]
+    values = {}
+    for name in ("proxy_host", "ssh_port", "root_password"):
+        for source in sources:
+            values[name] = find_exact_field(source, name)
+            if values[name] not in (None, ""):
+                break
+    return values.get("proxy_host"), values.get("ssh_port"), values.get("root_password")
 
 
 def fresh_connection(config, uuid, start, wait_timeout):
@@ -74,13 +94,18 @@ def fresh_connection(config, uuid, start, wait_timeout):
                     break
             if state != "running":
                 raise autodl_pro.ApiError(f"实例启动超时，当前状态为 {state}")
+
+        last_missing = "snapshot 未返回完整 SSH 地址或密码"
+        for attempt in range(CREDENTIAL_RETRIES):
+            if attempt:
+                time.sleep(CREDENTIAL_RETRY_DELAY)
             snapshot = autodl_pro.api_request(config, "GET", "/api/v1/dev/instance/pro/snapshot", query={"instance_uuid": uuid})
-        host = find_value(snapshot, {"ssh_host", "ssh_ip", "host", "ip", "public_ip", "connect_host"})
-        port = find_value(snapshot, {"ssh_port", "port", "connect_port"}) or 22
-        password = find_value(snapshot, {"root_password", "ssh_password", "password"})
-        if not host or not password:
-            raise autodl_pro.ApiError("snapshot 未返回完整 SSH 地址或密码")
-        return str(host), int(port), str(password)
+            host, port, password = snapshot_credentials(snapshot)
+            if host and port and password:
+                return str(host), int(port), str(password)
+            missing = [name for name, value in (("proxy_host", host), ("ssh_port", port), ("root_password", password)) if not value]
+            last_missing = "snapshot SSH 凭据未就绪，缺少：" + ", ".join(missing)
+        raise autodl_pro.ApiError(last_missing)
     except (autodl_pro.ApiError, ValueError, TypeError) as exc:
         fail(f"实例 {uuid} 凭据获取失败：{scrub_text(exc)}", 1)
 
