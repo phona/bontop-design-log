@@ -1,12 +1,6 @@
----
-name: agent-browser-practice
-description: 需要用真实浏览器驱动/验证 Web 应用时使用 — 页面截图取证、运行时场景内省（eval 遍历对象树/包围盒）、改动前后同机位 A/B 对比、复现和定位视觉回归、验证应用就绪状态。覆盖 agent-browser 实战套路（就绪等待、排除法定位、对比流程）与踩坑记录（daemon 卡死、双层 HTTP 缓存、瞬时状态误读）。命令大全见 CLI 自带 `agent-browser skills get core --full`，本文件是其实战补充。
-version: 1.0.0
----
+# agent-browser 实战套路与踩坑记录
 
-# agent-browser 实战手册
-
-命令大全以 CLI 自带文档为准：`agent-browser skills get core --full`。本文件只沉淀两件事：**反复用到的实战套路**和**踩过的坑**。
+命令细节以 `$HOME/.local/bin/agent-browser skills get core --full` 为准。本文件只沉淀两件事：**反复用到的实战套路**和**踩过的坑**。
 
 ## 最小工作流
 

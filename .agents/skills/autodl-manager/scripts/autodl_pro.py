@@ -25,7 +25,7 @@ SKILL_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = SKILL_ROOT / "config.toml"
 if not DEFAULT_CONFIG.exists():
     DEFAULT_CONFIG = PROJECT_ROOT / "config" / "autodl-manager.toml"
-DEFAULT_ENV_FILE = PROJECT_ROOT / ".env"
+DEFAULT_ENV_FILE = SKILL_ROOT / ".env"
 DEFAULT_HOST = "https://api.autodl.com"
 DEFAULT_TIMEOUT = 15
 DEFAULT_PAGE_SIZE = 100
@@ -116,7 +116,11 @@ def token(config):
 
 
 def setting(config, key, default):
-    value = os.environ.get("AUTODL_" + key.upper(), config.get("api", {}).get(key, default))
+    api = config.get("api", {})
+    legacy = config.get("autodl", {})
+    value = os.environ.get("AUTODL_" + key.upper())
+    if value is None:
+        value = api.get(key, legacy.get(key, default))
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -124,7 +128,10 @@ def setting(config, key, default):
 
 
 def host(config):
-    return str(os.environ.get("AUTODL_HOST", config.get("api", {}).get("host", DEFAULT_HOST))).rstrip("/")
+    api = config.get("api", {})
+    legacy = config.get("autodl", {})
+    value = os.environ.get("AUTODL_HOST", api.get("host", legacy.get("host", DEFAULT_HOST)))
+    return str(value).rstrip("/")
 
 
 def api_request(config, method, path, body=None, query=None, mutate=False):
@@ -243,7 +250,7 @@ def page_body(config, args):
 def main():
     parser = argparse.ArgumentParser(description="AutoDL official Container Instance Pro API client")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="项目 TOML 配置文件路径")
-    parser.add_argument("--env-file", default=str(DEFAULT_ENV_FILE), help="env 文件路径，默认项目根 .env")
+    parser.add_argument("--env-file", help="env 文件路径，默认 skill 目录 .env")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("config")
     sub.add_parser("list-profiles")
@@ -260,7 +267,7 @@ def main():
     p = sub.add_parser("images"); add_page_options(p)
     p = sub.add_parser("save-image"); p.add_argument("uuid"); p.add_argument("--image-name", required=True); p.add_argument("--confirm", action="store_true")
     args = parser.parse_args()
-    load_env_file(args.env_file)
+    load_env_file(args.env_file or DEFAULT_ENV_FILE)
     config = load_config(os.environ.get("AUTODL_CONFIG", args.config))
     if args.command == "config":
         print(json.dumps(scrub(copy.deepcopy(config)), ensure_ascii=False, indent=2)); return

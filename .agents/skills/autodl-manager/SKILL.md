@@ -17,7 +17,7 @@ Python 3.10 运行 SSH/SFTP 时使用 skill 私有环境 `.agents/skills/autodl-
 
 ## 认证与配置
 
-项目根 `.env` 默认自动加载；进程环境变量优先，脚本不会覆盖已有变量。可用 `--env-file PATH` 指定其他文件，`AUTODL_CONFIG` 可选地覆盖 TOML 配置路径。真实 `.env` 不应提交，模板为 `.env.example`。
+skill 目录 `.agents/skills/autodl-manager/.env` 默认自动加载；进程环境变量优先，脚本不会覆盖已有变量。该文件已被 gitignore 忽略，模板为 `.agents/skills/autodl-manager/.env.example`。可用 `--env-file PATH` 指定其他文件，`AUTODL_CONFIG` 可选地覆盖 TOML 配置路径。不要把 token 放入 `config.toml`。
 
 ```bash
 export AUTODL_TOKEN='你的 AutoDL 开发者 Token'
