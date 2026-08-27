@@ -4,9 +4,9 @@
 
 ## 配置与认证
 
-项目根 `.env` 默认加载；进程环境变量优先，也可通过 `--env-file PATH` 指定文件。`AUTODL_CONFIG` 可选覆盖 TOML 配置路径。真实 token 不放入 `config.example.toml` 或 `.env.example`。
+`.agents/skills/autodl-manager/.env` 默认加载；进程环境变量优先，也可通过 `--env-file PATH` 指定文件。该文件已被 gitignore 忽略，模板为 `.agents/skills/autodl-manager/.env.example`。`AUTODL_CONFIG` 可选覆盖 TOML 配置路径；不要把 token 放入 `config.toml`。
 
-API Host 默认为 `https://api.autodl.com`。鉴权请求头为 `{"Authorization": token}`，值直接填写 token，不加 `Bearer`。
+API 的 host/timeout/page_size 优先读取 `AUTODL_HOST`/`AUTODL_TIMEOUT`/`AUTODL_PAGE_SIZE`，其次 `[api]`，并兼容旧 `[autodl]`；默认 host 为 `https://api.autodl.com`。鉴权请求头为 `{"Authorization": token}`，值直接填写 token，不加 `Bearer`。
 
 所有响应必须 HTTP 2xx 且 JSON `code == "Success"`。输出递归隐藏 `root_password`、`jupyter_token`、`token`、`password`、`cookie` 等字段。
 

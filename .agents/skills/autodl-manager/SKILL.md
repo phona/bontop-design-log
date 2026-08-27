@@ -20,11 +20,11 @@ Python 3.10 运行 SSH/SFTP 时使用 skill 私有环境 `.agents/skills/autodl-
 skill 目录 `.agents/skills/autodl-manager/.env` 默认自动加载；进程环境变量优先，脚本不会覆盖已有变量。该文件已被 gitignore 忽略，模板为 `.agents/skills/autodl-manager/.env.example`。可用 `--env-file PATH` 指定其他文件，`AUTODL_CONFIG` 可选地覆盖 TOML 配置路径。不要把 token 放入 `config.toml`。
 
 ```bash
-export AUTODL_TOKEN='你的 AutoDL 开发者 Token'
-.agents/skills/autodl-manager/.venv/bin/python .agents/skills/autodl-manager/scripts/autodl_pro.py ls
+.agents/skills/autodl-manager/.venv/bin/python .agents/skills/autodl-manager/scripts/autodl_pro.py config
+.agents/skills/autodl-manager/.venv/bin/python .agents/skills/autodl-manager/scripts/autodl_pro.py --env-file .agents/skills/autodl-manager/.env ls
 ```
 
-`.env.example` 只包含 `AUTODL_TOKEN=replace-me` 和非敏感 API 参数说明。`config.example.toml` 是不含真实 token 的配置模板；可复制为项目 skill 的 `config.toml`，或用 `--config` 指定其他项目配置。Token 优先级为进程环境 `AUTODL_TOKEN` > `.env` 中的 `AUTODL_TOKEN` > `[auth].token`。
+`.env.example` 只包含占位符和非敏感 API 参数。可复制为 `.agents/skills/autodl-manager/.env`；真实 `.env` 已被 gitignore 忽略。`config.toml` 保留旧 profile/default 配置，但不要写入 token；可用 `--config PATH` 覆盖。Token 优先级为进程环境 `AUTODL_TOKEN` > skill `.env` 中的 `AUTODL_TOKEN` > `[auth].token`。API 的 host/timeout/page_size 优先读取 `AUTODL_*`，其次 `[api]`，并兼容旧 `[autodl]`。
 
 请求头必须直接使用 token：
 

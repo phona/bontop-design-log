@@ -1,5 +1,5 @@
 # 复制到项目 .agents/skills/autodl-manager/config.toml
-# 真实 token 建议放项目根 .env 的 AUTODL_TOKEN，不要提交配置文件
+# 真实 token 放 .agents/skills/autodl-manager/.env 的 AUTODL_TOKEN，不要提交配置文件
 
 [auth]
 # 填入 AutoDL 控制台 -> 账号 -> 设置 -> 开发者Token
