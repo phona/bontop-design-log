@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as THREE from 'three';
 
 vi.mock('@shared/houseData', () => ({
   hvacSchemes: [
@@ -43,28 +42,6 @@ vi.mock('@shared/houseData', () => ({
       cons: ['con'],
     },
   ],
-}));
-
-vi.mock('../render/ObjectFactory.js', () => ({
-  createOutdoorUnit: (w: number, h: number, d: number) => {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(w, h, d),
-      new THREE.MeshStandardMaterial({ color: 0xa855f7 })
-    );
-    return mesh;
-  },
-  createIndoorUnit: (type: string, width: number, depth: number, height: number) => {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(width, height, depth),
-      new THREE.MeshStandardMaterial({ color: 0x22d3ee })
-    );
-    return mesh;
-  },
-  createLabel: (text: string) => {
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial());
-    sprite.userData = { text };
-    return sprite;
-  },
 }));
 
 vi.mock('../data/designData.js', () => ({

@@ -62,11 +62,12 @@ export class AnnotationRenderer {
   constructor(
     private scene: THREE.Scene,
     private camera: THREE.Camera,
+    private readonly viewOnlyRoot: THREE.Object3D = scene,
   ) {
     Object.values(this.layerGroups).forEach(g => this.group.add(g));
     this.group.add(this.problemGroup);
     this.group.visible = false;
-    this.scene.add(this.group);
+    this.viewOnlyRoot.add(this.group);
   }
 
   async load(): Promise<void> {

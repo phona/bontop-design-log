@@ -5,12 +5,18 @@
  */
 import { z } from 'zod';
 import { load } from 'js-yaml';
-import type { SceneElement, WallSegment, CurtainPoint } from '../shared/types.js';
+import type { BaySillSegment, BaySillWallReference, SceneElement, WallSegment, CurtainPoint } from '../shared/types.js';
 
 const PointSchema = z.object({ x: z.number(), z: z.number() }).strict();
 
 const CurtainPointSchema = z
-  .object({ x: z.number(), z: z.number(), radius: z.number().nonnegative().optional() })
+  .object({
+    x: z.number(),
+    z: z.number(),
+    radius: z.number().nonnegative().optional(),
+    cx: z.number().optional(),
+    cz: z.number().optional(),
+  })
   .strict();
 
 const SuppressSchema = z
@@ -205,15 +211,17 @@ export function mergeSceneElements(
 
   // Resolve wall refs in elements (only for types that use wall as id reference)
   const resolvedWalls = walls
-    .filter((w): w is WallSegment & { id: string } => w.id !== undefined)
-    .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ }));
+    .filter((w): w is WallSegment & { id: string; bayRooms?: string[] } => w.id !== undefined)
+    .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ, rooms: w.rooms, bayRooms: w.bayRooms }));
 
   for (const el of elements) {
     if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill' || el.type === 'railing_run' || el.type === 'curtain') {
       const elAny = el as Record<string, unknown>;
       const wallRef = elAny.wall ?? elAny.walls;
       if (wallRef) {
-        elAny.points = resolveWallRef(wallRef as string | string[], resolvedWalls);
+        const ids = wallRef as string | string[];
+        elAny.points = resolveWallRef(ids, resolvedWalls);
+        if (el.type === 'bay_sill') elAny.wallRefs = resolveBaySillWallRefs(ids, resolvedWalls);
       }
     }
   }
@@ -221,20 +229,44 @@ export function mergeSceneElements(
   return [...kept, ...elements] as SceneElement[];
 }
 
+type WallRefSegment = { x1: number; z1: number; x2: number; z2: number; kind?: 'line' | 'arc'; arcOwner?: string; radius?: number; cx?: number; cz?: number; arcStart?: { x: number; z: number }; arcEnd?: { x: number; z: number } };
+type WallRefInput = { id: string; x1: number; z1: number; x2: number; z2: number; segments?: WallRefSegment[]; fromX?: number; fromZ?: number; fromRadius?: number; arcCenterX?: number; arcCenterZ?: number; rooms?: string[]; bayRooms?: string[] };
+
+function ownedSegments(wall: WallRefInput): WallRefSegment[] {
+  const source = wall.segments !== undefined ? wall.segments : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2, kind: 'line' as const }];
+  return source.filter((segment) => Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1) > 1e-9).map((segment) => ({ ...segment }));
+}
+
+function resolveBaySillWallRefs(wallIds: string | string[], walls: WallRefInput[]): BaySillWallReference[] {
+  const ids = Array.isArray(wallIds) ? wallIds : [wallIds];
+  return ids.map((id): BaySillWallReference => {
+    const wall = walls.find(candidate => candidate.id === id);
+    if (!wall) throw new Error(`Unknown wall id: ${id}`);
+    const source = ownedSegments(wall);
+    const segments = (ids.length > 1 ? source : source.filter((segment) => segment.kind !== 'arc')).map((segment): BaySillSegment => ({ wallId: id, rooms: wall.bayRooms ?? wall.rooms, ...segment }));
+    return { wallId: id, rooms: wall.bayRooms ?? wall.rooms, segments };
+  });
+}
+
 export function resolveWallRef(
   wallIds: string | string[],
-  walls: Array<{ id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; fromX?: number; fromZ?: number; fromRadius?: number; arcCenterX?: number; arcCenterZ?: number }>
+  walls: WallRefInput[],
+  includeArcs = true,
 ): CurtainPoint[] {
   const ids = Array.isArray(wallIds) ? wallIds : [wallIds];
   const pts: CurtainPoint[] = [];
   for (const id of ids) {
     const wall = walls.find(w => w.id === id);
     if (!wall) throw new Error(`Unknown wall id: ${id}`);
-    if (wall.fromRadius && wall.fromX !== undefined && wall.fromZ !== undefined && wall.segments && wall.segments.length >= 16) {
+    if (!includeArcs && wall.fromRadius && wall.fromX !== undefined && wall.fromZ !== undefined) {
+      pts.push({ x: wall.fromX, z: wall.fromZ });
+      pts.push({ x: wall.x2, z: wall.z2 });
+    } else if (wall.fromRadius && wall.fromX !== undefined && wall.fromZ !== undefined && wall.segments?.some(seg => seg.kind === 'arc')) {
       pts.push({ x: wall.x1, z: wall.z1 });
-      pts.push({ x: wall.fromX!, z: wall.fromZ!, radius: wall.fromRadius, cx: wall.arcCenterX, cz: wall.arcCenterZ });
-      const arcEnd = wall.segments[15];
-      pts.push({ x: arcEnd.x2, z: arcEnd.z2 });
+      pts.push({ x: wall.fromX, z: wall.fromZ, radius: wall.fromRadius, cx: wall.arcCenterX, cz: wall.arcCenterZ });
+      const arcSegments = wall.segments.filter(seg => seg.kind === 'arc');
+      const arcEnd = arcSegments.at(-1)?.arcEnd;
+      if (arcEnd) pts.push({ x: arcEnd.x, z: arcEnd.z });
       pts.push({ x: wall.x2, z: wall.z2 });
     } else if (wall.segments && wall.segments.length > 1) {
       for (const seg of wall.segments) {

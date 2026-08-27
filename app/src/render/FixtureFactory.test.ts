@@ -1,5 +1,11 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
+import * as appCeiling from './CeilingZoneBuilder.js';
+import * as appFixtures from './FixtureFactory.js';
+import * as appUv from './uv-utils.js';
+import * as sharedCeiling from '@shared/render/CeilingZoneBuilder';
+import * as sharedFixtures from '@shared/render/FixtureFactory';
+import * as sharedUv from '@shared/render/uv-utils';
 import {
   buildBathSideCabinetRun,
   buildFixture,
@@ -8,6 +14,20 @@ import {
   buildWardrobeSplit,
   getRecipeTypes,
 } from './FixtureFactory.js';
+
+describe('shared render compatibility entries', () => {
+  it('resolve App compatibility exports to the shared implementations', () => {
+    expect(appFixtures.buildFixture).toBe(sharedFixtures.buildFixture);
+    expect(appFixtures.buildWardrobe180).toBe(sharedFixtures.buildWardrobe180);
+    expect(appFixtures.buildWardrobeSplit).toBe(sharedFixtures.buildWardrobeSplit);
+    expect(appFixtures.buildBathSideCabinetRun).toBe(sharedFixtures.buildBathSideCabinetRun);
+    expect(appFixtures.buildKitchenCabinetRun).toBe(sharedFixtures.buildKitchenCabinetRun);
+    expect(appFixtures.getRecipeTypes).toBe(sharedFixtures.getRecipeTypes);
+    expect(appCeiling.buildCeilingZone).toBe(sharedCeiling.buildCeilingZone);
+    expect(appUv.scalePlaneUvToMeters).toBe(sharedUv.scalePlaneUvToMeters);
+    expect(appUv.scaleBoxUvToMeters).toBe(sharedUv.scaleBoxUvToMeters);
+  });
+});
 
 function fixtureSize(type: string): THREE.Vector3 {
   const fixture = buildFixture(type);

@@ -62,6 +62,7 @@ vi.mock('three', async (importOriginal: any) => {
       getAttribute() {
         return { count: 0, getX: () => 0, getY: () => 0, setXY() {}, needsUpdate: false };
       }
+      dispose() {}
     },
     BoxGeometry: class { dispose() {} },
     // Shape / Path / ExtrudeGeometry / ShapeGeometry: real three (step A) — fake command-log removed
@@ -133,6 +134,30 @@ describe('HouseScene', () => {
     expect(scene).toBeDefined();
     expect(scene.getScene()).toBeDefined();
     expect(scene.getCamera()).toBeDefined();
+    expect(scene.getExportRoot().name).toBe('HOUSE_EXPORT');
+    expect(scene.getViewOnlyRoot().name).toBe('HOUSE_VIEW_ONLY');
+    expect(scene.getExportRoot().parent).toBe(scene.getScene());
+    expect(scene.getViewOnlyRoot().parent).toBe(scene.getScene());
+  });
+
+  it('keeps business roots stable and avoids duplicate objects across rebuilds', async () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const exportRoot = scene.getExportRoot();
+    const viewOnlyRoot = scene.getViewOnlyRoot();
+    const projectData = {
+      house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }] },
+      topics: [], budgetCategories: [],
+    };
+    await scene.buildFromCatalog(projectData);
+    const firstCount = exportRoot.children.length;
+    await scene.buildFromCatalog(projectData);
+    expect(scene.getExportRoot()).toBe(exportRoot);
+    expect(scene.getViewOnlyRoot()).toBe(viewOnlyRoot);
+    expect(exportRoot.children.length).toBe(firstCount);
+    expect(viewOnlyRoot.parent).toBe(scene.getScene());
+    expect(scene.getScene().children.filter((child) => child === exportRoot)).toHaveLength(1);
+    expect(scene.getScene().children.filter((child) => child === viewOnlyRoot)).toHaveLength(1);
   });
 
   it('should render rooms from catalog', async () => {
@@ -681,7 +706,7 @@ describe('HouseScene', () => {
     expect(mesh.scale.y).toBeCloseTo(-1, 5);
   });
 
-  it('floor_region applies scale-y-flip to preserve overlay z', async () => {
+  it('floor_region preserves overlay z without an extra scale-y flip', async () => {
     const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
     const scene = new HouseScene(canvas);
     const projectData = {
@@ -710,7 +735,7 @@ describe('HouseScene', () => {
     });
     expect(mesh).toBeDefined();
     expect(mesh.rotation.x).toBeCloseTo(-Math.PI / 2, 5);
-    expect(mesh.scale.y).toBeCloseTo(-1, 5);
+    expect(mesh.scale.y).toBeCloseTo(1, 5);
   });
 
   it('renders a shared wall once between adjacent rooms', async () => {
@@ -742,6 +767,23 @@ describe('HouseScene', () => {
     expect(wallCount).toBe(1);
   });
 
+  it('refreshes shared sliding door geometry without duplicate groups', async () => {
+    const scene = new HouseScene({ addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement);
+    const element = { type: 'sliding_door_run' as const, id: 'door:test', points: [{ x: 0, z: 0 }, { x: 3, z: 0 }], height: 2.1, open: true };
+    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [element] }, topics: [], budgetCategories: [] });
+    const count = () => {
+      let result = 0;
+      scene.getScene().traverse((object: any) => { if (object.userData?.type === 'sliding_door_run') result++; });
+      return result;
+    };
+    expect(count()).toBe(1);
+    scene.refreshSlidingDoor({ ...element, open: false });
+    expect(count()).toBe(1);
+    let refreshed = false;
+    scene.getExportRoot().traverse((object: any) => { if (object.name === 'sliding_door:door:test') refreshed = true; });
+    expect(refreshed).toBe(true);
+  });
+
   it('should render platform from catalog', async () => {
     const canvas = {
       addEventListener: vi.fn(),
@@ -763,6 +805,8 @@ describe('HouseScene', () => {
     await scene.buildFromCatalog(projectData);
     expect(scene.rooms['west_platform']).toBeDefined();
     expect(scene.rooms['west_platform'].name).toBe('West Platform');
+    expect(scene.getExportRoot().children.some((obj: any) => obj.userData?.objectId === 'platform_boundary')).toBe(false);
+    expect(scene.getViewOnlyRoot().children.some((obj: any) => obj.userData?.objectId === 'platform_boundary')).toBe(true);
 
     let platformCount = 0;
     scene.getScene().traverse((obj: any) => {
@@ -1081,7 +1125,7 @@ describe('HouseScene', () => {
       [{ id: 'faucet-1', room: 'room', type: 'faucet', x: 0, z: 9, height: 1.0, wall: 'wall:vertical' }],
     );
 
-    const getModel = (objectId: string) => scene.getScene().children.find((object: any) => object.userData?.objectId === objectId) as any;
+    const getModel = (objectId: string) => scene.getViewOnlyRoot().children.find((object: any) => object.userData?.objectId === objectId) as any;
     const switchModel = getModel('electrical:switch-1');
     const faucetModel = getModel('plumbing:faucet-1');
     const switchWest = getModel('electrical:switch-west');
@@ -1117,7 +1161,7 @@ describe('HouseScene', () => {
       [{ id: 'drain-main', room: 'kitchen', type: 'drain', x: 1, z: 1, height: 0.1 }],
     );
 
-    const roots = scene.getScene().children.filter((child: any) => child.userData?.objectId?.startsWith('electrical:') || child.userData?.objectId?.startsWith('plumbing:')) as any[];
+    const roots = scene.getViewOnlyRoot().children.filter((child: any) => child.userData?.objectId?.startsWith('electrical:') || child.userData?.objectId?.startsWith('plumbing:')) as any[];
     expect(roots).toHaveLength(2);
     expect(roots.every((root) => root.userData.hoverable === true)).toBe(true);
     expect(roots.map((root) => root.userData.objectId)).toEqual(expect.arrayContaining(['electrical:socket-main', 'plumbing:drain-main']));
@@ -1164,7 +1208,7 @@ describe('HouseScene', () => {
     );
 
     const positions = ['electrical:socket-1', 'electrical:socket-2'].map((objectId) => {
-      const object = scene.getScene().children.find((child: any) => child.userData?.objectId === objectId) as any;
+      const object = scene.getViewOnlyRoot().children.find((child: any) => child.userData?.objectId === objectId) as any;
       return { x: object.position.x, y: object.position.y, z: object.position.z, rotation: object.rotation.y };
     });
     expect(positions).toEqual([
@@ -1182,7 +1226,7 @@ describe('HouseScene', () => {
       { id: 'panel-weak', room: 'living_dining', type: 'weak_panel', x: 13.4, z: 3.6, mount_height: 0.5, body_height: 0.4, width: 0.4, depth: 0.3, status: 'likely', position_status: 'inferred', wall: 'w_foyer_east', wallSide: 'west' },
     ], []);
 
-    const roots = scene.getScene().children.filter((child: any) => child.userData?.type === 'electrical') as any[];
+    const roots = scene.getViewOnlyRoot().children.filter((child: any) => child.userData?.type === 'electrical') as any[];
     expect(roots).toHaveLength(2);
     expect(roots.map((root) => root.userData.label)).toEqual(expect.arrayContaining(['强电箱', '弱电箱']));
     expect(roots.map((root) => root.userData.status)).toEqual(expect.arrayContaining(['measured', 'likely']));
@@ -1225,24 +1269,24 @@ describe('HouseScene', () => {
       },
     };
     const outdoor = [{ id: 'outdoor_a2', platform: 'west', x: 0, z: 0, direction: 'south', width: 0.9, depth: 0.335, height: 0.7, model: '6HP' }];
-    scene.loadHvacProjection(projection, outdoor, []);
+    scene.loadHvacProjection(projection, { outdoor, electrical: [], ceiling: projection.ceiling });
 
-    const hvacRoot = scene.getScene().children.find((object: any) => object.name === 'HVAC_DIAGRAM')!;
-    scene.getScene().remove(hvacRoot);
+    const hvacRoot = scene.getScene().children.find((object: any) => object.name === 'HVAC_DIAGRAM');
+    if (hvacRoot) scene.getScene().remove(hvacRoot);
     expect(scene.getScene().children).not.toContain(hvacRoot);
 
-    scene.loadHvacProjection(projection, outdoor, []);
-    expect(scene.getScene().children.filter((object: any) => object.name === 'HVAC_DIAGRAM')).toEqual([hvacRoot]);
+    scene.loadHvacProjection(projection, { outdoor, electrical: [], ceiling: projection.ceiling });
+    expect(scene.getScene().children.filter((object: any) => object.name === 'HVAC_DIAGRAM')).toHaveLength(0);
+    expect(scene.getExportRoot().children.some((object: any) => object.name === 'HVAC_CONFIRMED_ENTITIES')).toBe(true);
+    expect(scene.getViewOnlyRoot().children.some((object: any) => object.name === 'HVAC_COORDINATION')).toBe(true);
 
-    const exportSet = (await import('../render/export-gltf.js')).collectExportSet(scene.getScene());
-    const exportIds: string[] = [];
-    for (const object of exportSet) object.traverse((child: any) => {
-      if (typeof child.userData?.objectId === 'string') exportIds.push(child.userData.objectId);
-    });
-    expect(exportIds.filter((id) => id.includes(':anchor:'))).toHaveLength(6);
-    expect(exportIds.filter((id) => id.includes(':terminal:'))).toHaveLength(5);
-    expect(exportIds.some((id) => id.includes(':route:'))).toBe(false);
-    expect(exportIds.some((id) => id.includes(':reference:'))).toBe(false);
+    const { collectHvacExportContents } = await import('../render/hvac-export-check.js');
+    const exportIds = collectHvacExportContents(scene.getExportRoot());
+    const included = [...exportIds.equipment, ...exportIds.terminals];
+    expect(exportIds.equipment.filter((id) => id.includes(':anchor:'))).toHaveLength(6);
+    expect(exportIds.terminals.filter((id) => id.includes(':terminal:'))).toHaveLength(5);
+    expect(included.some((id) => id.includes(':route:'))).toBe(false);
+    expect(included.some((id) => id.includes(':reference:'))).toBe(false);
     expect(scene.getHvacExportStatus()).toMatchObject({ required: true, ready: true, missing: [], terminalCount: 5 });
 
     scene.clearHvacProjection();

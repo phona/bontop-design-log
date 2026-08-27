@@ -65,7 +65,7 @@ def test_effective_camera_config_matches_scenario_and_has_priority():
         'scenario_overrides': {'blue_hour': {'exposure': -0.5, 'fill_light': 40, 'fill_from_camera': True}},
     }
     effective = effective_camera_config(camera, {'id': 'blue_hour', 'exposure': 0.5, 'fill_light': 80})
-    assert effective['exposure'] == -0.5
+    assert effective['exposure'] == 0.2
     assert effective['fill_light'] == 40
     assert effective['fill_from_camera'] is True
 
@@ -78,7 +78,7 @@ def test_effective_camera_config_rejects_illegal_fields_and_does_not_mutate_inpu
     original = copy.deepcopy(camera)
     scenario = {'id': 'blue_hour', 'world_color': '#3a5a8f', 'lights_on': True}
     effective = effective_camera_config(camera, scenario)
-    assert effective['exposure'] == -0.5
+    assert effective['exposure'] == 0.2
     assert 'world_color' not in effective
     assert 'lights_on' not in effective
     assert camera == original

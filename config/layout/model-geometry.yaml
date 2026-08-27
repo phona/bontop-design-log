@@ -12,7 +12,10 @@ vertices:
   - { id: v_step_b,  x: 7.20,  z: 9.80 }
   - { id: v_step_t,   x: 7.20,  z: 9.80 }
   - { id: v_be_se_s,  x: 13.40, z: 9.80 }
-  - { id: v_se_r,     x: 16.40, z: 9.80 }
+  # 2026-08-27 书房南玻璃栏板凹进：南幕墙由 z=9.80 北移至 z=8.70（创想图右侧尺寸链凹进 1100；
+  # 点石设计图东南房净面积标注 8.35㎡ 同构；邻户结构图凹进 1020 同构），z[8.70,9.80]×x[13.40,16.40] 为室外凹口
+  - { id: v_be_s_w,   x: 13.40, z: 8.70 }
+  - { id: v_be_s_e,   x: 16.40, z: 8.70 }
   - { id: v_be_ne,   x: 16.40, z: 5.55 }
   - { id: v_ent_ne,  x: 15.25, z: 0.00 }
   - { id: v_foyer_se, x: 13.40, z: 2.90 }
@@ -98,7 +101,7 @@ rooms:
     type: public
   - id: bedroom_se
     name: 书房
-    boundary: [v_be_sw, v_be_ne, v_se_r, v_be_se_s]
+    boundary: [v_be_sw, v_be_ne, v_be_s_e, v_be_s_w]  # 2026-08-27 南玻璃栏板凹进至 z=8.70（创想图凹进 1100），南侧 z[8.70,9.80] 为室外凹口
     height: 2.8
     type: private
   - id: elevator_shaft
@@ -122,13 +125,13 @@ walls:
   - { id: w_west_lower, from: v_bath_ap,  to: v_mb_sw,  height: 2.8 }
   - { id: w_west_mid,   from: v_mb_sw,   to: v_mb_nw,  height: 2.8 }
   - { id: w_west_upper, from: v_mb_nw,   to: v_sw,     height: 2.8 }
-  # 外框 — 南墙（在 v_mb_se, v_step_b, v_step_t, v_be_se_s 处切开）
+  # 外框 — 南墙（在 v_mb_se, v_step_b, v_step_t, v_be_se_s 处切开；书房段 2026-08-27 凹进至 z=8.70）
   - { id: w_mb_south,   from: v_sw,      to: v_mb_se,  height: 2.8 }
   - { id: w_st_south,   from: v_mb_se,   to: v_step_b, height: 2.8 }
   - { id: w_liv_south,  from: v_step_t,  to: v_be_se_s,height: 2.8 }
-  - { id: w_be_south,   from: v_be_se_s, to: v_se_r,   height: 2.8 }
-  # 外框 — 东墙（在 v_be_ne 处切开）
-  - { id: w_east_upper, from: v_se_r,    to: v_be_ne,  height: 2.8 }
+  - { id: w_be_south,   from: v_be_s_w,  to: v_be_s_e, height: 2.8 }
+  # 外框 — 东墙（在 v_be_ne 处切开；东南角随书房凹口截止于 v_be_s_e）
+  - { id: w_east_upper, from: v_be_s_e,  to: v_be_ne,  height: 2.8 }
   - { id: w_foyer_outer_east, from: v_ent_se, to: v_foyer_ne, height: 2.8 }
   # w_foyer_north_east / w_elev_south 已删除（2026-08-23）：与 w_be_north 是同一堵物理墙
   # （z=5.55, x 13.40→16.40，南侧书房/北侧电梯井与电梯厅），重复定义导致 GLB 三层共面墙片

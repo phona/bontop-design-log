@@ -139,7 +139,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | light_master_wall_r | master_bedroom | 壁灯 | (4.2, 8.55) | 1.6 | 3000 | — | 主卧床头壁灯右（东墙随床头） |
 | light_parent_dome | study | 吸顶灯 | (5.7, 7.675) | 2.8 | 3000 | — | 父母房吸顶灯 |
 | light_child_dome | bedroom_nw | 吸顶灯 | (4.1, 2.7) | 2.8 | 3000 | — | 西北次卧吸顶灯 |
-| light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.675) | 2.8 | 3000 | — | 书房吸顶灯 |
+| light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.8 | 3000 | — | 书房吸顶灯（2026-08-27 南墙凹进后居中） |
 | light_corridor_1 | living_dining | 筒灯 | (7.9, 5) | 2.8 | 3000 | entry_base | 走廊口筒灯嵌入既有 ceiling_living 边吊，不新增吊顶；坐标由原 (7.9,5.75) 调整至既有边吊合法范围 (7.9,5.0)，避开电视高柜 x≤7.55，并仍靠近原走廊口 |
 | light_entry_down | entry_garden | 筒灯 | (13, 1.45) | 2.8 | 3000 | entry_base | 玄关筒灯 |
 | light_entry_foyer | living_dining | 筒灯 | (12.4, 3.35) | 2.5 | 3000 | entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区 |

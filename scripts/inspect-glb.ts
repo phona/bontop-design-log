@@ -49,7 +49,15 @@ export interface GlbSummary {
   nodeIds: string[];
   duplicateNodeIds: string[];
   prefixCounts: Record<string, number>;
+  nodeBboxes?: Record<string, WorldBbox>;
   worldBbox: WorldBbox | null;
+}
+
+export interface GlbNodeRecord {
+  index: number;
+  name?: string;
+  parentIndex?: number;
+  mesh: boolean;
 }
 
 type Mat4 = number[];
@@ -222,6 +230,7 @@ export function inspectGlb(path: string): GlbSummary {
   const nodeIds: string[] = [];
   const unnamedNodeIndexes: number[] = [];
   const prefixCounts = new Map<string, number>();
+  const nodeBboxes: Record<string, WorldBbox> = {};
   const min = [Infinity, Infinity, Infinity];
   const max = [-Infinity, -Infinity, -Infinity];
   let hasBbox = false;
@@ -243,6 +252,9 @@ export function inspectGlb(path: string): GlbSummary {
     }
     if (node.mesh !== undefined) {
       meshNodesTotal++;
+      const nodeMin = [Infinity, Infinity, Infinity];
+      const nodeMax = [-Infinity, -Infinity, -Infinity];
+      let nodeHasBbox = false;
       for (const primitive of gltf.meshes![node.mesh].primitives) {
         const positionAccessor = primitive.attributes?.POSITION;
         if (positionAccessor === undefined) continue;
@@ -260,9 +272,22 @@ export function inspectGlb(path: string): GlbSummary {
           for (let axis = 0; axis < 3; axis++) {
             min[axis] = Math.min(min[axis], worldPoint[axis]);
             max[axis] = Math.max(max[axis], worldPoint[axis]);
+            nodeMin[axis] = Math.min(nodeMin[axis], worldPoint[axis]);
+            nodeMax[axis] = Math.max(nodeMax[axis], worldPoint[axis]);
           }
           hasBbox = true;
+          nodeHasBbox = true;
         }
+      }
+      if (node.name && nodeHasBbox) {
+        const prior = nodeBboxes[node.name];
+        const mergedMin = prior ? [0, 1, 2].map((axis) => Math.min(prior.min[axis], nodeMin[axis])) : nodeMin;
+        const mergedMax = prior ? [0, 1, 2].map((axis) => Math.max(prior.max[axis], nodeMax[axis])) : nodeMax;
+        nodeBboxes[node.name] = {
+          min: mergedMin as [number, number, number],
+          max: mergedMax as [number, number, number],
+          size: [0, 1, 2].map((axis) => mergedMax[axis] - mergedMin[axis]) as [number, number, number],
+        };
       }
     }
     for (const child of node.children ?? []) visit(child, world);
@@ -289,6 +314,7 @@ export function inspectGlb(path: string): GlbSummary {
     nodeIds: sortedNodeIds,
     duplicateNodeIds,
     prefixCounts: Object.fromEntries([...prefixCounts.entries()].sort(([a], [b]) => a.localeCompare(b))),
+    nodeBboxes: Object.fromEntries(Object.entries(nodeBboxes).sort(([a], [b]) => a.localeCompare(b))),
     worldBbox,
   };
 }

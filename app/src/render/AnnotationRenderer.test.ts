@@ -18,7 +18,10 @@ describe('AnnotationRenderer ceiling object ids', () => {
     const getContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(makeCanvasContext());
     try {
       const scene = new THREE.Scene();
-      const renderer = new AnnotationRenderer(scene, new THREE.PerspectiveCamera());
+      const viewOnlyRoot = new THREE.Group();
+      viewOnlyRoot.name = 'HOUSE_VIEW_ONLY';
+      scene.add(viewOnlyRoot);
+      const renderer = new AnnotationRenderer(scene, new THREE.PerspectiveCamera(), viewOnlyRoot);
       (renderer as any).renderCeiling([
         { id: 'ceiling_entry_foyer', room: 'entry_garden', type: 'drop', area: [10, 2, 12, 4], thickness: 0.3 },
         { id: 'ac_entry', room: 'entry_garden', type: 'ac_indoor', x: 11, z: 3, height: 2.85 },
@@ -38,6 +41,8 @@ describe('AnnotationRenderer ceiling object ids', () => {
         }),
       ]);
       expect(ceilingLayer.children.every((child) => child.userData.type !== 'lighting_fixture')).toBe(true);
+      expect((renderer as any).group.parent).toBe(viewOnlyRoot);
+      expect(scene.children).not.toContain((renderer as any).group);
     } finally {
       getContext.mockRestore();
     }

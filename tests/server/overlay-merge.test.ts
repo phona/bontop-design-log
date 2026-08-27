@@ -1,7 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { load } from 'js-yaml';
 import { parseOverlay, mergeSceneElements, resolveWallRef } from '../../server/overlay-merge.js';
-import type { WallSegment } from '../../shared/types.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { WallSegment, VertexLayoutYaml } from '../../shared/types.js';
 
 const WALLS: WallSegment[] = [
   { id: 'w_west', x1: -5.88, z1: -3.0, x2: -5.88, z2: 5.0 },
@@ -361,6 +364,35 @@ describe('resolveWallRef', () => {
 
   it('throws on unknown wall id', () => {
     assert.throws(() => resolveWallRef('w999', walls), /Unknown wall id: w999/);
+  });
+
+  it('preserves the v_vrv_n arc and ownership across the real railing refs', () => {
+    const layout = resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
+    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const elements = mergeSceneElements(layout.walls, overlay);
+    const railing = elements.find((element) => element.id === 'vrv_nw_railing');
+    assert.equal(railing?.type, 'railing_run');
+    assert.ok(railing && railing.points.some((point) => point.radius === 1 && point.cx === 6.6 && point.cz === 1));
+    assert.deepEqual(railing?.points.at(-1), { x: 7.2, z: 0 });
+
+    const bay = elements.find((element) => element.id === 'master_bath_west_bay');
+    assert.equal(bay?.type, 'bay_sill');
+    assert.ok(bay && bay.wallRefs?.every((ref) => ref.segments.every((segment) => segment.wallId === ref.wallId)));
+    assert.deepEqual(bay && bay.type === 'bay_sill' ? bay.wallRefs?.map((ref) => ref.wallId) : undefined, ['w_west_ap', 'w_bath_north']);
+    const refs = bay && bay.type === 'bay_sill' ? bay.wallRefs! : [];
+    assert.equal(refs[0]?.segments.length, 0);
+    assert.equal(refs[1]?.segments.filter((segment) => segment.kind === 'arc').length, 16);
+    assert.equal(refs[1]?.segments.at(-1)?.kind, 'line');
+    assert.equal(refs[1]?.segments[0].x1, 0);
+    assert.equal(refs[1]?.segments[0].z1, 2.1);
+  });
+
+  it('keeps the entry garden railing as a plain two-point line', () => {
+    const layout = resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
+    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const elements = mergeSceneElements(layout.walls, overlay);
+    const railing = elements.find((element) => element.id === 'entry_garden_north_railing');
+    assert.deepEqual(railing && railing.type === 'railing_run' ? railing.points : undefined, [{ x: 15.25, z: 0 }, { x: 10.8, z: 0 }]);
   });
 });
 

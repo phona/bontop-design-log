@@ -56,6 +56,7 @@ vi.mock('three', async (importOriginal: any) => {
       getAttribute() {
         return { count: 0, getX: () => 0, getY: () => 0, setXY() {}, needsUpdate: false };
       }
+      dispose() {}
     },
     BoxGeometry: class {},
     CanvasTexture: class {},
@@ -275,6 +276,16 @@ describe('App', () => {
   it('should create an instance with canvas', () => {
     const app = new App(canvas);
     expect(app).toBeDefined();
+    expect(app.isReady()).toBe(false);
+  });
+
+  it('marks app ready only after start completes', async () => {
+    const app = new App(canvas);
+    expect(app.isReady()).toBe(false);
+    const pending = app.whenReady();
+    await app.start();
+    await expect(pending).resolves.toBeUndefined();
+    expect(app.isReady()).toBe(true);
   });
 
   it('should fetch project data on start', async () => {

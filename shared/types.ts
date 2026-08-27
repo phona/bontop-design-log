@@ -437,13 +437,27 @@ export interface PlatformLayout {
   area?: number;
 }
 
+export interface ResolvedWallSegment {
+  x1: number;
+  z1: number;
+  x2: number;
+  z2: number;
+  kind?: 'line' | 'arc';
+  arcOwner?: string;
+  radius?: number;
+  cx?: number;
+  cz?: number;
+  arcStart?: { x: number; z: number };
+  arcEnd?: { x: number; z: number };
+}
+
 export interface WallSegment {
   id?: string;
   x1: number;
   z1: number;
   x2: number;
   z2: number;
-  segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>;
+  segments?: Array<ResolvedWallSegment>;
   fromX?: number;
   fromZ?: number;
   fromRadius?: number;
@@ -465,6 +479,28 @@ export interface CurtainPoint extends OverlayPoint {
   cz?: number;
 }
 
+export interface BaySillSegment {
+  wallId: string;
+  rooms?: string[];
+  x1: number;
+  z1: number;
+  x2: number;
+  z2: number;
+  kind?: 'line' | 'arc';
+  arcOwner?: string;
+  radius?: number;
+  cx?: number;
+  cz?: number;
+  arcStart?: { x: number; z: number };
+  arcEnd?: { x: number; z: number };
+}
+
+export interface BaySillWallReference {
+  wallId: string;
+  rooms?: string[];
+  segments: BaySillSegment[];
+}
+
 export type SceneElement =
   | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; openings?: ResolvedOpening[]; rooms?: string[] }
   | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean }
@@ -478,7 +514,7 @@ export type SceneElement =
       sill: number;
     }
   | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string }
-  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string }
+  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[] }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }
   | { type: 'shower_screen'; id: string; points: OverlayPoint[]; height: number; sill?: number }
@@ -559,6 +595,8 @@ export interface ResolvedWall {
   fromRadius?: number;
   arcCenterX?: number;
   arcCenterZ?: number;
+  rooms?: string[];
+  bayRooms?: string[];
 }
 
 export interface ResolvedLayout {

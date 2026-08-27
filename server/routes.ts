@@ -118,6 +118,7 @@ export function createApiRouter(deps: ApiDeps): Router {
         platform: projectCatalog.getPlatform(),
         furnishings: projectCatalog.getFurnishings(),
         electrical: projectCatalog.getElectricalMarkers(),
+        ceilingZones: deps.getProjectRenderFacts?.()?.ceiling ?? loadCeilingConfig(),
         sceneElements: mergeSceneElements(projectCatalog.getWalls(), deps.getOverlay()),
         layoutSource: projectCatalog.getLayoutSource(),
       },

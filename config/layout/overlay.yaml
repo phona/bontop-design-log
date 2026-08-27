@@ -164,7 +164,8 @@ elements:
       - { x: 15.25, z: 0.00 }
       - { x: 15.25, z: 2.90 }
       - { x: 10.8, z: 2.90 }
-    reason: "入户花园地板"
+    follow: entry_garden
+    reason: "入户花园地板（跟随入户花园房间地材，避免与房间地面重叠时材质分裂）"
 
   - id: entry_foyer_floor
     type: floor_region
@@ -197,11 +198,13 @@ elements:
   - id: north_platform_floor
     type: floor_region
     points:
-      - { x: 5.6, z: 0.0 }
+      # 西北角随平台边界圆角（v_vrv_n r=1.0，弧心 (6.6,1.0)），与 vrv_nw_railing 弧线一致，不再凸出直角
+      - { x: 5.6, z: 0.0, radius: 1.0, cx: 6.6, cz: 1.0 }
       - { x: 7.2, z: 0.0 }
       - { x: 7.2, z: 1.0 }
       - { x: 5.6, z: 1.0 }
-    reason: "VRV 设备平台地板"
+    follow: balcony
+    reason: "VRV 设备平台地板（跟随生活阳台地材，设备平台与阳台同为室外灰砖面）"
 
   # === 窗帘（2026-08-02）：引用墙 id 保持 vertices 联动；kind 显式指定（湿区百叶，其余纱帘+遮光） ===
   # 客餐厅（南向落地玻璃幕）

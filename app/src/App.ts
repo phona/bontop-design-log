@@ -29,9 +29,10 @@ import { DaylightHeatmap } from './render/analysis/DaylightHeatmap.js';
 import { HumidityOverlay } from './render/analysis/HumidityOverlay.js';
 import { HumidityButton } from './ui/HumidityButton.js';
 import { isInHuinanWindow } from '@shared/humidity-model';
-import { exportSceneToGlb } from './render/export-gltf.js';
+import { exportObjectTreeToGlb } from './render/export-gltf.js';
 import './ui/keybindings.js';
 import { parseProjectRenderFactsProjection } from '@shared/project-render-facts-schema';
+import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
 import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch } from '@shared/types';
 import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
 
@@ -84,9 +85,16 @@ export class App {
   private humidityButton: HumidityButton | null = null;
   private curtainPresentationState: CurtainPresentationState = { default: 'open', roomOverrides: {}, updatedAt: '' };
   private readonly hvacCoordinationApi = (visible: boolean) => this.setHvacCoordinationVisible(Boolean(visible));
-
+  private readyState: 'loading' | 'ready' | 'failed' = 'loading';
+  private readyPromise: Promise<void>;
+  private resolveReady!: () => void;
+  private rejectReady!: (error: unknown) => void;
 
   constructor(canvas: HTMLCanvasElement) {
+    this.readyPromise = new Promise<void>((resolve, reject) => {
+      this.resolveReady = resolve;
+      this.rejectReady = reject;
+    });
     this.stateSync = new StateSync();
     this.houseScene = new HouseScene(canvas);
     this.collision = new CollisionDetector();
@@ -159,16 +167,26 @@ export class App {
     });
   }
 
+  isReady(): boolean {
+    return this.readyState === 'ready';
+  }
+
+  whenReady(): Promise<void> {
+    return this.readyPromise;
+  }
+
   async start(): Promise<void> {
-    const response = await fetch('/api/project');
+    this.readyState = 'loading';
+    try {
+      const response = await fetch('/api/project');
     this.projectData = await response.json();
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
 
     await this.houseScene.buildFromCatalog(this.projectData);
-    await this.houseScene.loadCeilingZones();
     this.annotationRenderer = new AnnotationRenderer(
       this.houseScene.scene,
       this.houseScene.camera,
+      this.houseScene.getViewOnlyRoot(),
     );
     await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
@@ -212,9 +230,17 @@ export class App {
     this.setupHumidity();
     this.updateModeIndicator();
     this.requestRender();
+    this.readyState = 'ready';
+    this.resolveReady();
+    } catch (error) {
+      this.readyState = 'failed';
+      this.rejectReady(error);
+      throw error;
+    }
   }
 
   async captureFloorPlan(): Promise<string> {
+    await this.whenReady();
     return this.houseScene.captureFloorPlan();
   }
 
@@ -233,7 +259,7 @@ export class App {
     if (hvac.required && !hvac.ready) {
       throw new Error(`GLB 导出已阻止：HVAC 缺失 ${hvac.missing.join(', ')}`);
     }
-    return { blob: await exportSceneToGlb(this.houseScene.scene), hvac };
+    return { blob: await exportObjectTreeToGlb(this.houseScene.getExportRoot()), hvac };
   }
 
   private setupSunlight(): void {
@@ -1026,6 +1052,7 @@ export class App {
     this.annotationRenderer = new AnnotationRenderer(
       this.houseScene.scene,
       this.houseScene.camera,
+      this.houseScene.getViewOnlyRoot(),
     );
     await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
@@ -1073,8 +1100,13 @@ export class App {
         this.interiorLighting = nextInteriorLighting;
         const factsResponse = await fetch('/api/render-facts');
         this.renderFacts = factsResponse.ok ? await factsResponse.json() as ProjectRenderFacts : undefined;
-        const outdoor = this.renderFacts?.hvac?.plans.map((plan) => plan.outdoor) ?? [];
-        this.houseScene.loadHvacProjection(projection, outdoor, this.annotationRenderer.getElectricalData());
+        const sources = buildHvacBuilderSources({
+          projection,
+          electrical: this.renderFacts?.electrical ?? this.annotationRenderer.getElectricalData(),
+          hvac: this.renderFacts?.hvac,
+        });
+        this.houseScene.rebuildHvacProjection(projection, sources);
+        this.houseScene.loadHvacProjection(projection, sources);
         try {
           const mepResponse = await fetch('/api/mep-coordination');
           if (mepResponse.ok && this.renderFacts?.hvac?.plans) {

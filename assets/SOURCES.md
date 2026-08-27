@@ -11,6 +11,26 @@ wget --no-proxy "<url>/xxx_nor_gl_2k.jpg" -O assets/textures/<id>/normal.jpg
 ```
 否则 `materials_from_yaml.py` 的 `_build_pbr_textured` 找不到 normal.jpg → 回退纯色灰。
 
+## 外部 PBR / BlenderKit 材质声明
+
+`appearance.type` 可使用 `external_pbr`（`blenderkit_pbr` 为兼容别名）。资源不会由脚本下载，必须由配置传入并预先落盘：
+
+```yaml
+appearance:
+  type: external_pbr
+  texture_id: painted_plaster_wall
+  base_color_mode: preserve_color
+  color: "#f7f5ef"
+  normal_strength: 0.5
+  resources:
+    normal: assets/textures/painted_plaster_wall/normal.jpg
+    roughness: assets/textures/painted_plaster_wall/rough.jpg
+    ao: assets/textures/painted_plaster_wall/ao.jpg       # 可选
+    bump: assets/textures/painted_plaster_wall/bump.jpg   # 可选
+```
+
+默认资源根目录为 `assets/textures/<texture_id>/`，通道文件名为 `diff.jpg`、`normal.jpg`、`rough.jpg`、`ao.jpg`、`bump.jpg`。`resources` 可按通道覆盖路径（相对项目根 `config_dir`），`base_color` 也可写作 `diffuse`。`base_color_mode: preserve_color` 保留 `appearance.color` 作为 Base Color，只要求 normal/roughness；否则还要求 base_color/diffuse（默认映射到 `diff.jpg`）。缺失必需通道会明确告警并回退纯色，缺失可选通道只告警并跳过。BlenderKit 仅表示资源来源/格式，不会在生产配置中硬编码候选材质。
+
 ## 贴图清单
 
 | texture_id | 来源 | diffuse URL | 用途 |
@@ -27,6 +47,17 @@ wget --no-proxy "<url>/xxx_nor_gl_2k.jpg" -O assets/textures/<id>/normal.jpg
 | marble_01 | [Poly Haven](https://polyhaven.com/a/marble_01) | `.../jpg/2k/marble_01/marble_01_diff_2k.jpg` | 台面石纹（仅 normal+rough，保浅色石英） |
 | painted_plaster_wall | [Poly Haven](https://polyhaven.com/a/painted_plaster_wall) | `.../jpg/2k/painted_plaster_wall/painted_plaster_wall_diff_2k.jpg` | 墙面乳胶漆肌理（仅 normal+rough，保色号） |
 | fabric_pattern_07 | [Poly Haven](https://polyhaven.com/a/fabric_pattern_07) | `.../fabric_pattern_07_col_2_2k.jpg` | 床品 bump（保白色）+ 沙发布纹底图（2026-08-22 补下载 col_2 色号存为 diff.jpg；该资产无 Diffuse 键，色图为 col_1/2/03） |
+
+## BlenderKit 材质贴图（已通过云端预览，仅接入 normal/roughness）
+
+| 材质 | BlenderKit asset UUID | 页面 | 授权 | 下载文件 | 项目接入 |
+|---|---|---|---|---|---|
+| Plain Natural Blackout | `cb84d15f-cdf1-48a7-beaa-40bf30508de7` | [BlenderKit asset page](https://www.blenderkit.com/asset-gallery-detail/cb84d15f-cdf1-48a7-beaa-40bf30508de7/) | Free（页面标注；使用时以 BlenderKit 条款为准） | `assets/textures/blenderkit_plain_natural_blackout/{normal.jpg,rough.jpg}` | 仅 normal/rough；保留项目遮光帘色号 `#d8d0c2`，不接入 diffuse/base color |
+| Light Oak Wood | `24b29434-5420-45b4-8970-1103e99d2736` | [BlenderKit asset page](https://www.blenderkit.com/asset-gallery-detail/24b29434-5420-45b4-8970-1103e99d2736/) | Royalty free（免费） | `assets/textures/blenderkit_light_oak_wood/{normal.jpg,rough.jpg}` | 仅 normal/rough；保留项目深胡桃色号 `#503e2e`，不接入 diffuse/base color |
+
+上述贴图已从临时预览目录 `tmp/blenderkit-approved-maps/{blackout,wood_dark}/` 复制到生产资源目录；该 `tmp/` 目录仅作 staging，不是生产资源来源，也不能单独证明授权。White plaster、wet_tile、quartz 等上一轮未通过候选未接入。
+
+生产配置只能引用 `assets/textures/blenderkit_*` 中已落盘的贴图，并须在导出工具中显式传入 `approved_source=True`；临时 `.blend` 或未通过预览不得导出为生产贴图。
 
 ## 下载方式
 

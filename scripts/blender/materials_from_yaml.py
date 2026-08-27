@@ -8,6 +8,93 @@ classify() 见 dress_scene.py。
 import os
 
 
+_EXTERNAL_PBR_CHANNELS = ('base_color', 'normal', 'roughness', 'ao', 'bump')
+_EXTERNAL_PBR_DEFAULT_FILES = {
+    'base_color': 'diff.jpg',
+    'normal': 'normal.jpg',
+    'roughness': 'rough.jpg',
+    'ao': 'ao.jpg',
+    'bump': 'bump.jpg',
+}
+
+
+def resolve_external_pbr(app: dict, config_dir: str) -> dict:
+    """解析 external_pbr appearance，纯逻辑且不加载 Blender。
+
+    资源默认位于 ``assets/textures/<texture_id>/``；也可用
+    ``resources`` 显式指定通道路径（相对 ``config_dir``）。
+    ``base_color_mode: preserve_color`` 保留 appearance.color，只要求
+    normal + roughness；ao/bump 为可选通道。返回 paths/warnings/errors，
+    调用方必须显式处理 errors，不应静默吞掉声明错误。
+    """
+    if not isinstance(app, dict):
+        return {'paths': {}, 'warnings': [], 'errors': ['appearance must be an object'],
+                'preserve_color': False}
+    warnings: list[str] = []
+    errors: list[str] = []
+    texture_id = app.get('texture_id')
+    resources = app.get('resources', {})
+    if resources is None:
+        resources = {}
+    if not isinstance(resources, dict):
+        errors.append('resources must be an object')
+        resources = {}
+    resource_root = app.get('resource_root')
+    if resource_root is None:
+        if not isinstance(texture_id, str) or not texture_id.strip():
+            errors.append('texture_id or resource_root is required')
+            resource_root = ''
+        else:
+            resource_root = os.path.join(config_dir, 'assets', 'textures', texture_id)
+    elif not isinstance(resource_root, str) or not resource_root.strip():
+        errors.append('resource_root must be a non-empty string')
+        resource_root = ''
+    elif not os.path.isabs(resource_root):
+        resource_root = os.path.join(config_dir, resource_root)
+    resource_root = os.path.normpath(resource_root) if resource_root else ''
+    config_root = os.path.abspath(config_dir)
+    if resource_root and not os.path.isabs(app.get('resource_root', '') or ''):
+        if os.path.commonpath((config_root, os.path.abspath(resource_root))) != config_root:
+            errors.append('resource_root must remain under config_dir')
+            resource_root = ''
+
+    paths: dict[str, str] = {}
+    resource_aliases = {'base_color': ('base_color', 'diffuse')}
+    for channel in _EXTERNAL_PBR_CHANNELS:
+        declared = next((resources[name] for name in resource_aliases.get(channel, (channel,))
+                         if name in resources), None)
+        if declared is None:
+            path = os.path.join(resource_root, _EXTERNAL_PBR_DEFAULT_FILES[channel]) if resource_root else ''
+        elif not isinstance(declared, str) or not declared.strip():
+            errors.append(f'{channel} resource path must be a non-empty string')
+            continue
+        else:
+            path = declared if os.path.isabs(declared) else os.path.join(config_dir, declared)
+        path = os.path.normpath(path) if path else ''
+        if path:
+            paths[channel] = path
+
+    preserve_color = app.get('base_color_mode', 'texture') == 'preserve_color'
+    required = ('normal', 'roughness') if preserve_color else ('base_color', 'normal', 'roughness')
+    for channel in required:
+        path = paths.get(channel)
+        if not path:
+            errors.append(f'missing required {channel} resource')
+        elif not os.path.isfile(path):
+            errors.append(f'missing required {channel} resource: {path}')
+    for channel in ('base_color', 'normal', 'roughness', 'ao', 'bump'):
+        if channel in required or channel not in paths:
+            continue
+        if not os.path.isfile(paths[channel]):
+            warnings.append(f'missing optional {channel} resource: {paths[channel]}')
+            paths.pop(channel)
+    if preserve_color and 'base_color' in paths:
+        warnings.append('base_color resource ignored because base_color_mode=preserve_color')
+        paths.pop('base_color')
+    return {'paths': paths, 'warnings': warnings, 'errors': errors,
+            'preserve_color': preserve_color, 'texture_id': texture_id}
+
+
 def resolve_scheme(scheme: dict, mats: dict, floor: dict | None = None) -> dict[str, str]:
     """把 non-floor current scheme 与可选 projection floor 映射为 classify key -> material_id。
     floor 不传时保留旧的纯逻辑调用兼容；Blender loader 必须显式传 projection floor。"""
@@ -238,6 +325,90 @@ def _build_pbr_textured(mid: str, app: dict, config_dir: str):
     return mat
 
 
+def _build_external_pbr(mid: str, app: dict, config_dir: str, color):
+    """构建声明式 external_pbr/BlenderKit PBR 材质。
+
+    资源解析和存在性校验由 resolve_external_pbr 完成；必需通道缺失直接
+    抛出，由 build_yaml_materials 负责记录告警并回退。可选 AO/bump 缺失
+    已由解析器剔除并仅产生 warning。
+    """
+    import bpy
+
+    spec = resolve_external_pbr(app, config_dir)
+    for warning in spec['warnings']:
+        print(f'[materials] WARN external PBR {mid}: {warning}')
+    if spec['errors']:
+        raise ValueError('; '.join(spec['errors']))
+
+    mat = bpy.data.materials.new(f'方案_{mid}')
+    mat.use_nodes = True
+    nt = mat.node_tree
+    bsdf = next((n for n in nt.nodes if n.bl_idname == 'ShaderNodeBsdfPrincipled'), None)
+    if bsdf is None:
+        bsdf = nt.nodes.new('ShaderNodeBsdfPrincipled')
+        out = (next((n for n in nt.nodes if n.bl_idname == 'ShaderNodeOutputMaterial'), None)
+               or nt.nodes.new('ShaderNodeOutputMaterial'))
+        nt.links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
+    bsdf.inputs['Metallic'].default_value = 0.0
+
+    mapping = nt.nodes.new('ShaderNodeMapping')
+    tile_size = float(app.get('tile_size', 2.0))
+    if tile_size <= 0:
+        raise ValueError('tile_size must be greater than zero')
+    mapping.inputs['Scale'].default_value = (1.0 / tile_size, 1.0 / tile_size, 1.0)
+    uv = nt.nodes.new('ShaderNodeTexCoord')
+    nt.links.new(uv.outputs['UV'], mapping.inputs['Vector'])
+
+    def image(channel: str):
+        tex = nt.nodes.new('ShaderNodeTexImage')
+        tex.image = bpy.data.images.load(spec['paths'][channel])
+        tex.interpolation = 'Cubic'
+        if channel != 'base_color':
+            tex.image.colorspace_settings.name = 'Non-Color'
+        nt.links.new(mapping.outputs['Vector'], tex.inputs['Vector'])
+        return tex
+
+    if spec['preserve_color']:
+        bsdf.inputs['Base Color'].default_value = (*color, 1.0)
+    else:
+        nt.links.new(image('base_color').outputs['Color'], bsdf.inputs['Base Color'])
+
+    rough = image('roughness')
+    nt.links.new(rough.outputs['Color'], bsdf.inputs['Roughness'])
+    normal_map = nt.nodes.new('ShaderNodeNormalMap')
+    normal_map.inputs['Strength'].default_value = float(app.get('normal_strength', 1.0))
+    nt.links.new(image('normal').outputs['Color'], normal_map.inputs['Color'])
+    normal_socket = normal_map.outputs['Normal']
+
+    if 'bump' in spec['paths']:
+        bump = nt.nodes.new('ShaderNodeBump')
+        bump.inputs['Strength'].default_value = float(app.get('bump_strength', 0.15))
+        bump.inputs['Distance'].default_value = float(app.get('bump_distance', 0.001))
+        nt.links.new(image('bump').outputs['Color'], bump.inputs['Height'])
+        nt.links.new(normal_socket, bump.inputs['Normal'])
+        normal_socket = bump.outputs['Normal']
+    nt.links.new(normal_socket, bsdf.inputs['Normal'])
+
+    if 'ao' in spec['paths']:
+        ao = image('ao')
+        # AO 仅压暗基色，不改变保色模式的声明；Multiply 保留项目颜色/贴图色。
+        multiply = nt.nodes.new('ShaderNodeMixRGB')
+        multiply.blend_type = 'MULTIPLY'
+        multiply.inputs['Fac'].default_value = 1.0
+        if spec['preserve_color']:
+            multiply.inputs['Color1'].default_value = (*color, 1.0)
+        else:
+            # base_color 节点可通过其已连接的输入作为 Color1。
+            base_link = next((link for link in bsdf.inputs['Base Color'].links), None)
+            if base_link is None:
+                multiply.inputs['Color1'].default_value = (*color, 1.0)
+            else:
+                nt.links.new(base_link.from_socket, multiply.inputs['Color1'])
+        nt.links.new(ao.outputs['Color'], multiply.inputs['Color2'])
+        nt.links.new(multiply.outputs['Color'], bsdf.inputs['Base Color'])
+    return mat
+
+
 def _build_ceramic_tile(mid: str, app: dict, np_, color):
     """ceramic_tile_v2：釉面砖纯色基底 + Brick 纹理程序化砖缝。
     300x600mm 普通错缝（pattern: basket 简化为默认 0.5 步步高错缝，不过度设计）；
@@ -316,6 +487,12 @@ def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
                 mat = _build_pbr_textured(mid, app, config_dir)
             except Exception as e:
                 print(f'[materials] WARN PBR 贴图加载失败({mid}): {e} → 回退纯色')
+                mat = np_(f'方案_{mid}', color, rough=rough, coat=0.15)
+        elif typ in ('external_pbr', 'blenderkit_pbr') and config_dir:
+            try:
+                mat = _build_external_pbr(mid, app, config_dir, color)
+            except Exception as e:
+                print(f'[materials] WARN external PBR 资源加载失败({mid}): {e} → 回退纯色')
                 mat = np_(f'方案_{mid}', color, rough=rough, coat=0.15)
         elif typ == 'wood_plank' and cache_dir:
             try:

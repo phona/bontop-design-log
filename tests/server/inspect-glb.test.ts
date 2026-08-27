@@ -55,6 +55,7 @@ test('inspectGlb returns sorted strict summary and transformed bbox', () => {
       nodeIds: ['wall:west', 'wall:west'],
       duplicateNodeIds: ['wall:west'],
       prefixCounts: { wall: 2 },
+      nodeBboxes: { 'wall:west': { min: [9, -2, -3], max: [11, 2, 3], size: [2, 4, 6] } },
       worldBbox: { min: [9, -2, -3], max: [11, 2, 3], size: [2, 4, 6] },
     });
   });

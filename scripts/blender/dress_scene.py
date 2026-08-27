@@ -28,7 +28,7 @@ from curtain_projection import (  # noqa: E402
 
 GLASS_IDS = {
     'west_curtain', 'kitchen_north_curtain', 'north_recess_curtain',
-    'living_south_curtain', 'south_east_curtain',
+    'living_south_curtain', 'south_east_curtain', 'd_kit_balc',
 }
 
 # 厨卫/阳台墙面贴砖：GLB 墙段命名 wall:seg:N:room=r1|r2（export-gltf exportName，
@@ -725,11 +725,11 @@ def setup_world(engine: str, scenario: dict, config_dir: str | None = None) -> N
     world = bpy.data.worlds.new('World') if not bpy.data.worlds else bpy.data.worlds[0]
     bpy.context.scene.world = world
     world.use_nodes = True
-    bg = _find_node(world.node_tree, 'ShaderNodeBackground')
-    if bg is None:
-        bg = world.node_tree.nodes.new('ShaderNodeBackground')
-        out = _find_node(world.node_tree, 'ShaderNodeOutputWorld') or world.node_tree.nodes.new('ShaderNodeOutputWorld')
-        world.node_tree.links.new(bg.outputs['Background'], out.inputs['Surface'])
+    # World 是每 job 的状态，不复用上一工况的 HDRI/Light Path 节点连接。
+    world.node_tree.nodes.clear()
+    bg = world.node_tree.nodes.new('ShaderNodeBackground')
+    out = world.node_tree.nodes.new('ShaderNodeOutputWorld')
+    world.node_tree.links.new(bg.outputs['Background'], out.inputs['Surface'])
     if engine.upper() == 'CYCLES':
         hdri = scenario.get('world_hdri')
         if hdri and config_dir:
@@ -812,10 +812,10 @@ def setup_world(engine: str, scenario: dict, config_dir: str | None = None) -> N
 
 
 def add_sky_planes() -> None:
-    """在每块外墙玻璃的室内侧前方放一块发光'天空'平面，模拟透过玻璃见蓝天。
-    EEVEE 下世界光会染色天花板，故蓝天不作为环境光；
-    plane 放在玻璃前（不透明、先渲染），避免多层透明排序遮挡。
-    Cycles 下由真天光负责，该函数跳过。"""
+    """在每块外墙玻璃的室内侧前方放一块发光'天空'平面，模拟透过玻璃见天色。
+    EEVEE 下世界光会染色天花板，故天色不作为环境光；Cycles 的低照度/无 HDRI
+    工况也不能让玻璃透射直接落到黑世界，因此两种引擎都需要这层可见背景。
+    plane 放在玻璃前（不透明、先渲染），避免多层透明排序遮挡。"""
     from mathutils import Vector
     mat = bpy.data.materials.new('天_傍晚天空')
     mat.use_nodes = True
@@ -831,7 +831,8 @@ def add_sky_planes() -> None:
     except Exception:
         pass
 
-    center = Vector((8.0, 3.5, 1.4))  # 户内大致中心，用于判断室内侧
+    # Blender 导入坐标为 (x, -z, y)：户内中心约为 Three.js (8, 1.4, 3.5)。
+    center = Vector((8.0, -3.5, 1.4))  # 户内大致中心，用于判断室内侧
     for obj in bpy.data.objects:
         if obj.type != 'MESH' or obj.name not in GLASS_IDS:
             continue
@@ -842,13 +843,13 @@ def add_sky_planes() -> None:
         axis = list(size).index(min(size))  # 玻璃最薄轴 = 法线轴
         off = 0.12
         loc = (mins + maxs) / 2.0
-        # 室内侧 = 靠近 center 的一侧
+        # 室内侧 = 沿最短轴朝 center 的一侧；偏移必须离开玻璃，避免共面闪烁。
         if axis == 0:
-            loc.x = mins.x + off if mins.x < center.x else maxs.x - off
+            loc.x = maxs.x + off if center.x > maxs.x else mins.x - off
         elif axis == 1:
-            loc.y = mins.y + off if mins.y < center.y else maxs.y - off
+            loc.y = maxs.y + off if center.y > maxs.y else mins.y - off
         else:
-            loc.z = maxs.z + off
+            loc.z = maxs.z + off if center.z > maxs.z else mins.z - off
 
         bpy.ops.mesh.primitive_plane_add(size=1.0, location=loc)
         p = bpy.context.object
@@ -863,7 +864,7 @@ def add_sky_planes() -> None:
         elif axis == 1:
             p.rotation_euler = (-1.5708 if loc.y < center.y else 1.5708, 0, 0)
         else:
-            p.rotation_euler = (0, 0, 0)         # 水平
+            p.rotation_euler = (0, 0, 0 if loc.z < center.z else math.pi)  # 水平
         p.scale = (max(size.y if axis != 1 else size.x, 0.2),
                    max(size.z, 0.2),
                    1.0)
@@ -871,17 +872,19 @@ def add_sky_planes() -> None:
         print(f'[dress_scene] sky plane for {obj.name} at {tuple(round(v,2) for v in loc)}')
 
 
-def add_camera(cam_cfg: dict) -> None:
+def add_camera(cam_cfg: dict, reuse: bool = False) -> None:
     from mathutils import Vector
-    data = bpy.data.cameras.new(cam_cfg['id'])
-    data.lens = cam_cfg.get('lens', 28)  # 缺省人眼等效；特写机位可配 35
-    obj = bpy.data.objects.new(cam_cfg['id'], data)
+    obj = bpy.data.objects.get(cam_cfg['id']) if reuse else None
+    if obj is None or obj.type != 'CAMERA':
+        data = bpy.data.cameras.new(cam_cfg['id'])
+        obj = bpy.data.objects.new(cam_cfg['id'], data)
+        bpy.context.collection.objects.link(obj)
+    obj.data.lens = cam_cfg.get('lens', 28)  # 缺省人眼等效；特写机位可配 35
     loc = Vector(to_blender(*cam_cfg['position']))
     target = Vector(to_blender(*cam_cfg['target']))
     obj.location = loc
     obj.rotation_mode = 'QUATERNION'
     obj.rotation_quaternion = (target - loc).to_track_quat('-Z', 'Y')
-    bpy.context.collection.objects.link(obj)
     bpy.context.scene.camera = obj
 
 
@@ -995,12 +998,11 @@ FURNITURE_PARTS = {
         ('niche', [1.35, 0.5, 0.03], [0, 1.35, -0.16], 'wood_dark'),
         ('upper', [1.35, 1.3, 0.35], [0, 2.25, 0], 'paint_cream'),
     ],
-    # 西墙 TV 区（z=6.90-9.00，悬空低柜 + 深胡桃背板）
-    # 背板 z=+0.17：rotation 270° 下局部 +z 翻向世界 -x（贴墙侧）；
-    # 原 -0.17 把背板翻到房间侧，把 tv_65 面板（z=0）整个挡住（v33 正视机位电视不可见）
+    # 西墙 TV 区（z=6.90-9.00）：仅保留独立深胡桃悬空低柜。
+    # 西墙本体由 classify() → wall 使用暖白乳胶漆；电视由独立 tv_65 生成。
+    # 不生成高于低柜的深色背板，避免把整面墙误读为电视背景墙。
     'tv_wall_low': [
         ('low', [2.1, 0.35, 0.4], [0, 0.325, 0], 'wood_dark'),
-        ('back', [2.1, 1.6, 0.05], [0, 1.3, 0.08], 'wood_dark'),
     ],
     # 主茶几（DEC-026 改款：圆形深木面+黑细柱，稳重克制；v14 精炼：更薄更轻）
     'coffee_table': [
@@ -1190,6 +1192,57 @@ BARE_SHELL_KEEP = {'wall_cabinet_tall', 'tv_wall_low', 'entry_half_height_cabine
                    'shoe_cabinet', 'wardrobe_180', 'wardrobe_240_split',
                    'kitchen_cabinet_run', 'sink'}
 
+BARE_SHELL_ASSET_HIDE_PREFIXES = (
+    'asset:rug:', 'asset:art:', 'asset:sofa', 'asset:bed', 'asset:dining',
+    'asset:plant', 'asset:floor_lamp', 'asset:tv_',
+    # 独立导入的可移动家电；固定橱柜/硬装不使用这些前缀。
+    'asset:fridge', 'asset:washer', 'asset:dryer', 'asset:dishwasher',
+    'asset:gas_stove', 'asset:range_hood', 'asset:water_heater',
+    'asset:microwave', 'asset:oven', 'asset:cooktop', 'asset:stove',
+    'asset:hood',
+)
+
+
+_CURTAIN_HIDE_RENDER_SNAPSHOT: dict[str, bool] = {}
+
+
+def _curtain_hide_render_snapshot(objects) -> dict[str, bool]:
+    """记录 GLB 窗帘节点及其子节点的初始 hide_render 状态。"""
+    snapshot = {}
+    for obj in objects:
+        if not parse_curtain_node_name(obj.name):
+            continue
+        snapshot[obj.name] = obj.hide_render
+        for child in getattr(obj, 'children_recursive', ()):
+            snapshot[child.name] = child.hide_render
+    return snapshot
+
+
+def _restore_curtain_hide_render(objects, snapshot: dict[str, bool]) -> None:
+    """按 GLB 初始快照恢复窗帘节点及其子节点，保留 active-only 隐藏状态。"""
+    for obj in objects:
+        if obj.name in snapshot:
+            obj.hide_render = snapshot[obj.name]
+
+
+def _furniture_type_from_object(obj) -> str | None:
+    """从对象自身或父链读取稳定 furniture:<type> 命名。"""
+    current = obj
+    while current is not None:
+        parts = current.name.split(':')
+        if len(parts) >= 3 and parts[0] == 'furniture':
+            return parts[2]
+        current = getattr(current, 'parent', None)
+    return None
+
+
+def bare_shell_should_hide(obj) -> bool:
+    """判断裸壳工况是否隐藏对象；只按命名/父链，不按位置或材质推断。"""
+    furniture_type = _furniture_type_from_object(obj)
+    if furniture_type is not None:
+        return furniture_type not in BARE_SHELL_KEEP
+    return obj.name.startswith(BARE_SHELL_ASSET_HIDE_PREFIXES)
+
 
 def _add_cabinet_seams(ftype: str, base, rz: float, gap_mat) -> int:
     """在定制柜正面生成柜门分缝条。base=(bx,by,bz) Blender 世界坐标（柜体块原点），
@@ -1287,7 +1340,7 @@ FURNITURE_GLB = {
     # DEC-026：沙发/餐椅/茶几换 BlenderKit 现代中古款（Burrard 直排+细腿、
     # 藤编细腿餐椅、Noguchi 黑座玻璃圆几），弃 Chesterfield/高背拉扣/工业方几
     # 布纹底图 col_2（灰蓝）× #a36954 乘色 ≈ 目标深棕 #3a2e26（乘色反推）
-    'sofa_3seat': {'path': 'assets/furniture/burrard_sofa/burrard_sofa.blend', 'width': 2.3, 'height': 0.8, 'tint': '#a36954', 'tint_mode': 'solid', 'fabric_tex': 'assets/textures/fabric_pattern_07', 'fabric_soften': 0.55},
+    'sofa_3seat': {'path': 'assets/furniture/burrard_sofa/burrard_sofa.blend', 'width': 2.8, 'height': 0.8, 'tint': '#a36954', 'tint_mode': 'solid', 'fabric_tex': 'assets/textures/fabric_pattern_07', 'fabric_soften': 0.55},
     'dining_chair': {'path': 'assets/furniture/rattan_dining_chair/rattan_dining_chair.blend', 'width': 0.5, 'height': 0.9, 'tint': '#6b4c38'},
     'dining_table': {'path': 'assets/furniture/wooden_table_02/wooden_table_02.gltf', 'width': 1.4, 'height': 0.78, 'tint': '#54382a'},
     'plant_fiddle': {'path': 'assets/furniture/potted_plant_01/potted_plant_01.gltf', 'width': 0.6, 'tint': '#a89a8c'},  # 陶土盆亮橙太跳，乘灰陶色压暗
@@ -1308,6 +1361,16 @@ FURNITURE_GLB = {
     # 床 GLB（bed_soft_modern）暂不进管线：headless 下导入姿态不稳（baked 倾角+辅助 Cube，
     # 见 docs/renders/pipeline-acceptance.md v16 节），回退程序化床体；待 GUI Blender 定姿后再启用
 }
+
+
+def uniform_asset_scale(model_w: float, model_h: float, targets: dict) -> float:
+    """按导入资产实际 bbox 计算统一缩放；宽高约束取较小值以保持原比例。"""
+    scales = []
+    if targets.get('width') and model_w > 0.01:
+        scales.append(float(targets['width']) / model_w)
+    if targets.get('height') and model_h > 0.01:
+        scales.append(float(targets['height']) / model_h)
+    return min(scales) if scales else 1.0
 
 
 def import_furniture_glb(glb_path: str, targets: dict, block=None, loc_rz=None, rot_fix: float = 0) -> int:
@@ -1379,12 +1442,7 @@ def import_furniture_glb(glb_path: str, targets: dict, block=None, loc_rz=None, 
     bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
     model_w = max(c.x for c in bb) - min(c.x for c in bb)
     model_h = max(c.z for c in bb) - min(c.z for c in bb)
-    scales = []
-    if targets.get('width') and model_w > 0.01:
-        scales.append(targets['width'] / model_w)
-    if targets.get('height') and model_h > 0.01:
-        scales.append(targets['height'] / model_h)
-    scale = min(scales) if scales else 1.0
+    scale = uniform_asset_scale(model_w, model_h, targets)
     obj.scale = (scale, scale, scale)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
@@ -1804,6 +1862,83 @@ def add_kitchen_cabinets(cream, quartz, plumbing: dict, gap=None) -> int:
     return n
 
 
+def _bath_object_exists(fragment: str) -> bool:
+    """检测 GLB 或本脚本已生成的同类卫浴对象，兼容 Blender 的 .NNN 重名后缀。"""
+    return any(fragment in obj.name for obj in bpy.data.objects)
+
+
+def _add_cylinder(name: str, radius: float, depth: float, location: tuple,
+                  mat, vertices: int = 12) -> int:
+    bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=radius, depth=depth,
+                                       location=location)
+    obj = bpy.context.object
+    obj.name = name
+    if mat:
+        obj.data.materials.append(mat)
+    return 1
+
+
+def _add_shower_fixture(prefix: str, anchor: dict, mat) -> int:
+    """由 plumbing anchor 生成低面数淋浴柱；不依赖房屋绝对坐标。"""
+    x, z = float(anchor['x']), float(anchor['z'])
+    top = float(anchor.get('height', 1.0))
+    if not (0.3 <= top <= 2.5):
+        print(f'[dress_scene] WARN: invalid shower anchor height {prefix}: {top}; skip')
+        return 0
+    count = 0
+    count += _add_cylinder(f'{prefix}:column', 0.018, top - 0.08,
+                           to_blender(x, (top - 0.08) / 2, z), mat)
+    count += _add_cylinder(f'{prefix}:head', 0.09, 0.025,
+                           to_blender(x, top + 0.04, z), mat)
+    return count
+
+
+def _add_guest_shower_screen(plumbing: dict, mat) -> int:
+    """仅用客卫 shower/drain anchors 定位一块最小玻璃隔断；已有屏风时不重复。"""
+    if _bath_object_exists('shower_screen_') or _bath_object_exists('shower_screen:'):
+        print('[dress_scene] bath shower screen already exists; skip duplicate')
+        return 0
+    shower = plumbing.get('shower_gbath')
+    drain = plumbing.get('drain_gbath_shower')
+    if not shower or not drain:
+        print('[dress_scene] WARN: missing guest shower/drain anchors; skip glass screen')
+        return 0
+    # 客卫 west-wall 淋浴朝东；淋浴地漏给出隔断 x，anchor 给出 z 中心。
+    x = float(drain['x'])
+    z = float(shower['z'])
+    bpy.ops.mesh.primitive_cube_add(size=1.0)
+    screen = bpy.context.object
+    screen.name = 'bath:gb_shower_screen'
+    screen.dimensions = (0.012, 0.80, 1.95)
+    screen.location = to_blender(x, 0.975, z)
+    if mat:
+        screen.data.materials.append(mat)
+    return 1
+
+
+MASTER_BATH_FINAL_LAYOUT = {
+    # DEC-2026-08-25-043：条带洗漱梳妆一体台，东侧半墙+长虹屏风。
+    'vanity_size': (1.10, 0.50),
+    'vanity_center_from_anchor': (0.29, 0.20),
+    'partition_x': 1.11,
+    'partition_z_range': (2.26, 2.86),
+    'partition_height': 1.05,
+    'screen_height_range': (1.05, 2.10),
+}
+
+
+def master_bath_final_layout() -> dict:
+    """返回 DEC-043 已收口的主卫装扮尺寸；不读取或修改权威几何配置。"""
+    return {
+        'vanity_size': MASTER_BATH_FINAL_LAYOUT['vanity_size'],
+        'vanity_center_from_anchor': MASTER_BATH_FINAL_LAYOUT['vanity_center_from_anchor'],
+        'partition_x': MASTER_BATH_FINAL_LAYOUT['partition_x'],
+        'partition_z_range': MASTER_BATH_FINAL_LAYOUT['partition_z_range'],
+        'partition_height': MASTER_BATH_FINAL_LAYOUT['partition_height'],
+        'screen_height_range': MASTER_BATH_FINAL_LAYOUT['screen_height_range'],
+    }
+
+
 def add_bath_fixtures(furniture_mats: dict, plumbing: dict) -> int:
     """卫浴洁具+细节：四组指定 plumbing anchors 是唯一世界坐标来源。
     anchor 缺失时跳过关联 fixture 组，绝不回退历史绝对坐标。"""
@@ -1811,6 +1946,7 @@ def add_bath_fixtures(furniture_mats: dict, plumbing: dict) -> int:
     cream = furniture_mats.get('paint_cream')
     metal = furniture_mats.get('metal')
     towel_mat = furniture_mats.get('fabric_light')
+    layout = master_bath_final_layout()
 
     def box(name, cx, cz, sx, sz, sy, yc, mat):
         bpy.ops.mesh.primitive_cube_add(size=1.0)
@@ -1831,14 +1967,41 @@ def add_bath_fixtures(furniture_mats: dict, plumbing: dict) -> int:
         return p
 
     # 每一件都相对其唯一施工 anchor 布置；偏移仅描述洁具尺寸/贴墙关系。
+    mb_shower = point('shower_mbath')
+    gb_shower = point('shower_gbath')
+    if mb_shower:
+        n += _add_shower_fixture('bath:mb_shower', mb_shower, metal)
+    if gb_shower:
+        n += _add_shower_fixture('bath:gb_shower', gb_shower, metal)
+    if gb_shower:
+        glass = bpy.data.materials.get('硬装_LowE玻璃') or metal
+        n += _add_guest_shower_screen(plumbing, glass)
     mb_vanity, mb_toilet = point('faucet_mbath_vanity'), point('toilet_mbath')
     if mb_vanity:
-        x, z = mb_vanity['x'] - 0.25, mb_vanity['z']
-        n += box('bath:mb_vanity', x, z, 0.5, 0.8, 0.8, 0.4, cream)
-        n += box('bath:mb_basin', x, z, 0.4, 0.6, 0.12, 0.85, ceramic)
-        n += box('bath:mb_mirror_cab', x + 0.18, z, 0.14, 0.6, 0.7, 1.55, cream)
-        n += box('bath:mb_mirror', x + 0.105, z, 0.02, 0.55, 0.65, 1.55, metal)
-        n += box('bath:mb_soap', x + 0.10, z + 0.25, 0.06, 0.06, 0.15, 0.925, ceramic)
+        # DEC-043：anchor 是盆心 (0.26, 2.96)，一体台中心由声明式偏移得到 (0.55, 3.16)。
+        x = float(mb_vanity['x']) + layout['vanity_center_from_anchor'][0]
+        z = float(mb_vanity['z']) + layout['vanity_center_from_anchor'][1]
+        vanity_w, vanity_d = layout['vanity_size']
+        n += box('bath:mb_vanity', x, z, vanity_w, vanity_d, 0.80, 0.40, cream)
+        n += box('bath:mb_basin', float(mb_vanity['x']), float(mb_vanity['z']), 0.45, 0.36, 0.12, 0.85, ceramic)
+        n += box('bath:mb_mirror_cab', float(mb_vanity['x']), float(mb_vanity['z']), 0.45, 0.08, 0.70, 1.55, cream)
+        n += box('bath:mb_mirror', float(mb_vanity['x']), float(mb_vanity['z']) - 0.05, 0.40, 0.02, 0.65, 1.55, metal)
+        # 东半段为梳妆位；仅保留小型桌面件，不挤占整段台面。
+        n += box('bath:mb_soap', x - 0.12, z - 0.08, 0.06, 0.06, 0.15, 0.925, ceramic)
+        if not _bath_object_exists('bath:mb_partition'):
+            partition_z0, partition_z1 = layout['partition_z_range']
+            partition_z = (partition_z0 + partition_z1) / 2
+            n += box('bath:mb_partition', layout['partition_x'], partition_z,
+                     0.10, partition_z1 - partition_z0, layout['partition_height'],
+                     layout['partition_height'] / 2, cream)
+        if not _bath_object_exists('bath:mb_shower_screen'):
+            screen_z0, screen_z1 = layout['partition_z_range']
+            screen_bottom, screen_top = layout['screen_height_range']
+            screen = box('bath:mb_shower_screen', layout['partition_x'],
+                         (screen_z0 + screen_z1) / 2, 0.012, screen_z1 - screen_z0,
+                         screen_top - screen_bottom, (screen_bottom + screen_top) / 2,
+                         bpy.data.materials.get('硬装_LowE玻璃') or metal)
+            n += screen
     if mb_toilet:
         x, z = mb_toilet['x'] - 0.30, mb_toilet['z']
         n += box('bath:mb_toilet', x, z, 0.55, 0.4, 0.4, 0.2, ceramic)
@@ -1896,38 +2059,104 @@ def add_soft_decor(furniture_mats: dict) -> int:
     return count
 
 
+def parse_molding_declarations(overlay: dict) -> list[dict]:
+    """读取 overlay 中的显式 molding 声明；未声明时返回空列表。
+
+    仅接受 ``moldings`` 列表中的 wall/walls 或 room 目标和
+    baseboard/crown/picture_rail 类型。suppress 是删除意图，不会被解释为
+    molding 声明，也不会反向生成任何装饰线。
+    """
+    if not isinstance(overlay, dict) or not isinstance(overlay.get('moldings'), list):
+        return []
+    allowed_types = {'baseboard', 'crown', 'picture_rail'}
+    declarations = []
+    for item in overlay['moldings']:
+        if not isinstance(item, dict) or item.get('type') not in allowed_types:
+            continue
+        targets = []
+        if isinstance(item.get('wall'), str):
+            targets.append({'wall': item['wall']})
+        for wall in item.get('walls', []):
+            if isinstance(wall, str):
+                targets.append({'wall': wall})
+        if isinstance(item.get('room'), str):
+            targets.append({'room': item['room']})
+        for target in targets:
+            declarations.append({'type': item['type'], **target})
+    return declarations
+
+
+def room_boundary_wall_ids(geometry: dict, room_id: str) -> list[str]:
+    """Return walls whose endpoints exactly match a room boundary edge."""
+    if not isinstance(geometry, dict) or not isinstance(room_id, str):
+        return []
+    room = next((item for item in geometry.get('rooms', [])
+                 if isinstance(item, dict) and item.get('id') == room_id), None)
+    boundary = room.get('boundary') if room else None
+    if not isinstance(boundary, list) or len(boundary) < 2:
+        return []
+    boundary_edges = {
+        frozenset((boundary[index], boundary[(index + 1) % len(boundary)]))
+        for index in range(len(boundary))
+        if isinstance(boundary[index], str) and isinstance(boundary[(index + 1) % len(boundary)], str)
+    }
+    if not boundary_edges:
+        return []
+    wall_ids = []
+    for wall in geometry.get('walls', []):
+        if not isinstance(wall, dict) or not isinstance(wall.get('id'), str):
+            continue
+        endpoints = (wall.get('from'), wall.get('to'))
+        if all(isinstance(endpoint, str) for endpoint in endpoints) and frozenset(endpoints) in boundary_edges:
+            wall_ids.append(wall['id'])
+    return wall_ids
+
+
 def add_moldings(config_dir: str) -> int:
-    """法式石膏线：从 model-geometry.yaml 读墙段坐标 + overlay.yaml suppress 列表，
-    生成踢脚线(8cm) + 顶角线(10cm) + 挂镜线(2cm@1m)。仅实体墙（suppressed 跳过）。"""
+    """仅按 overlay 的显式 molding 声明生成装饰线；没有声明则关闭。"""
     import yaml as pyyaml
     import math
 
     geo_path = os.path.join(config_dir, 'config', 'layout', 'model-geometry.yaml')
     overlay_path = os.path.join(config_dir, 'config', 'layout', 'overlay.yaml')
-    if not os.path.exists(geo_path):
+    if not os.path.exists(geo_path) or not os.path.exists(overlay_path):
         return 0
     with open(geo_path, 'r', encoding='utf-8') as f:
-        geo = pyyaml.safe_load(f)
+        geo = pyyaml.safe_load(f) or {}
+    with open(overlay_path, 'r', encoding='utf-8') as f:
+        ov = pyyaml.safe_load(f) or {}
+    declarations = parse_molding_declarations(ov)
+    if not declarations:
+        print('[dress_scene] moldings: 0 (no explicit declarations)')
+        return 0
     suppressed = set()
-    if os.path.exists(overlay_path):
-        with open(overlay_path, 'r', encoding='utf-8') as f:
-            ov = pyyaml.safe_load(f)
-        for s in ov.get('suppress', []):
-            for w in (s.get('walls') or ([s['wall']] if s.get('wall') else [])):
-                suppressed.add(w)
+    for s in ov.get('suppress', []):
+        if not isinstance(s, dict):
+            continue
+        suppressed.update(s.get('walls') or ([s['wall']] if s.get('wall') else []))
+    by_wall = {}
+    for declaration in declarations:
+        if 'wall' in declaration:
+            wall_ids = [declaration['wall']]
+        else:
+            wall_ids = room_boundary_wall_ids(geo, declaration.get('room'))
+        for wall_id in wall_ids:
+            by_wall.setdefault(wall_id, set()).add(declaration['type'])
     verts = {v['id']: (v['x'], v['z']) for v in geo.get('vertices', [])}
     walls = geo.get('walls', [])
+    wall_by_id = {wall['id']: wall for wall in walls if isinstance(wall, dict) and 'id' in wall}
     cx, cz = 8.0, 6.0  # 房屋大致中心，判断室内侧
-    MOLDINGS = [
-        ('baseboard', 0.08, 0.0),
-        ('crown', 0.10, 2.70),
-        ('picture_rail', 0.02, 1.00),
-    ]
+    dimensions = {
+        'baseboard': (0.08, 0.0),
+        'crown': (0.10, 2.70),
+        'picture_rail': (0.02, 1.00),
+    }
     THICK = 0.025
     OFFSET = 0.07  # 墙厚/2 + 间隙
     count = 0
-    for wall in walls:
-        if wall['id'] in suppressed:
+    for wall_id, molding_types in by_wall.items():
+        wall = wall_by_id.get(wall_id)
+        if not wall or wall_id in suppressed:
             continue
         f = verts.get(wall['from'])
         t = verts.get(wall['to'])
@@ -1946,23 +2175,56 @@ def add_moldings(config_dir: str) -> int:
         if (cx - mx) * nx + (cz - mz) * nz < 0:
             nx, nz = -nx, -nz
         ox, oz = mx + nx * OFFSET, mz + nz * OFFSET
-        for name, mh, base_y in MOLDINGS:
+        for name in sorted(molding_types):
+            mh, base_y = dimensions[name]
             bpy.ops.mesh.primitive_cube_add(size=1.0)
             box = bpy.context.object
-            box.name = f'molding:{name}:{wall["id"]}'
+            box.name = f'molding:{name}:{wall_id}'
             box.dimensions = (length, THICK, mh)
             box.location = to_blender(ox, base_y + mh / 2, oz)
             box.rotation_euler = (0, 0, angle)
             count += 1
-    print(f'[dress_scene] moldings: {count} (baseboard+crown+picture_rail × {len(walls)} walls)')
+    print(f'[dress_scene] moldings: {count} (explicit declarations only)')
     return count
 
 
+def railing_bbox_is_rebuildable(dx: float, dy: float) -> bool:
+    """包围盒可近似为直线栏杆时才允许生成一排竖杆。"""
+    return not (dx > 0.5 and dy > 0.5)
+
+
+def curved_railing_path(points: list[tuple[float, float]], min_points: int = 8) -> list[tuple[float, float]]:
+    """从栏杆底面 world 顶点提取单调曲线路径；证据不足时返回空列表。
+
+    当前 GLB 的 VRV 弧段沿 x 单调展开，底面顶点包含两条薄板边缘；按细 x-bin
+    取中线可去掉板厚，同时仍完全由 mesh 顶点决定，不按配置硬编码弧形。
+    """
+    if len(points) < min_points:
+        return []
+    xs = [p[0] for p in points]
+    span = max(xs) - min(xs)
+    if span < 0.5:
+        return []
+    bins: dict[int, list[tuple[float, float]]] = {}
+    for x, y in points:
+        key = round(x / 0.01)
+        bins.setdefault(key, []).append((x, y))
+    path = [(sum(x for x, _ in ps) / len(ps), sum(y for _, y in ps) / len(ps))
+            for ps in (bins[k] for k in sorted(bins))]
+    if len(path) < min_points:
+        return []
+    if any(path[i][0] >= path[i + 1][0] for i in range(len(path) - 1)):
+        return []
+    length = sum(math.hypot(path[i + 1][0] - path[i][0], path[i + 1][1] - path[i][1])
+                 for i in range(len(path) - 1))
+    if not (0.5 <= length <= 10.0):
+        return []
+    return path
+
+
 def rebuild_railings(mats: dict) -> int:
-    """GLB 里的 railing_run 是 app 侧 ExtrudeGeometry 实心挤出的整片薄板（HouseScene.renderRailingRun），
-    渲染成一整面深色护墙板（entry_overview 左墙"黑色墙裙"= entry_garden_north_railing 确诊）。
-    设计意图是通透栏杆 → 隐藏实心板，按世界包围盒重建：顶扶手 + 竖杆（净距 0.11m，住宅栏杆规范上限）。
-    弧线栏杆（vrv_nw_railing）包围盒两轴都长，无法用直线段重建 → 跳过并告警。"""
+    """隐藏 GLB 实心 railing_run，并从可信 mesh 顶点重建通透扶手/竖杆。
+    直线栏杆使用 bbox；弧线仅在底面顶点能形成连续单调路径时重建，否则安全隐藏并告警。"""
     import mathutils
     rail_mat = mats.get('railing')
     rebuilt = 0
@@ -1975,14 +2237,55 @@ def rebuild_railings(mats: dict) -> int:
         zs = [c.z for c in corners]
         dx, dy = max(xs) - min(xs), max(ys) - min(ys)
         z0, z1 = min(zs), max(zs)
-        if dx > 0.5 and dy > 0.5:
-            print(f'[dress_scene] WARN: 弧线栏杆 {obj.name} 跳过重建（保留实心板）')
-            continue
         obj.hide_render = True
+        h = z1 - z0
+        if not railing_bbox_is_rebuildable(dx, dy):
+            bottom = []
+            for vertex in obj.data.vertices:
+                p = obj.matrix_world @ vertex.co
+                if abs(p.z - z0) <= 0.025:
+                    bottom.append((p.x, p.y))
+            path = curved_railing_path(bottom)
+            if not path:
+                print(f'[dress_scene] WARN: curved railing {obj.name} lacks safe mesh path; solid panel hidden')
+                continue
+            curve = bpy.data.curves.new(f'railing:{obj.name}:handrail', 'CURVE')
+            curve.dimensions = '3D'
+            curve.resolution_u = 1
+            curve.bevel_depth = 0.03
+            curve.resolution_v = 1
+            spline = curve.splines.new('POLY')
+            spline.points.add(len(path) - 1)
+            for point, (px, py) in zip(spline.points, path):
+                point.co = (px, py, z1 - 0.025, 1.0)
+            handrail = bpy.data.objects.new(f'railing:{obj.name}:handrail', curve)
+            bpy.context.collection.objects.link(handrail)
+            if rail_mat:
+                curve.materials.append(rail_mat)
+            total = sum(math.hypot(path[i + 1][0] - path[i][0], path[i + 1][1] - path[i][1])
+                        for i in range(len(path) - 1))
+            n_bars = max(2, int(total / 0.13) + 1)
+            for i in range(n_bars):
+                target = total * i / (n_bars - 1)
+                travelled = 0.0
+                for j in range(len(path) - 1):
+                    seg = math.hypot(path[j + 1][0] - path[j][0], path[j + 1][1] - path[j][1])
+                    if travelled + seg >= target:
+                        ratio = (target - travelled) / seg if seg else 0.0
+                        px = path[j][0] + (path[j + 1][0] - path[j][0]) * ratio
+                        py = path[j][1] + (path[j + 1][1] - path[j][1]) * ratio
+                        break
+                    travelled += seg
+                else:
+                    px, py = path[-1]
+                _add_cylinder(f'railing:{obj.name}:bar:{i}', 0.01, h - 0.05,
+                              (px, py, z0 + (h - 0.05) / 2), rail_mat, vertices=8)
+            rebuilt += 1
+            print(f'[dress_scene] curved railing {obj.name} rebuilt from {len(path)} mesh path points')
+            continue
         along_x = dx >= dy
         length = max(dx, dy)
         cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
-        h = z1 - z0
 
         def bar(name: str, ln: float, wd: float, ht: float, px: float, py: float, pz: float) -> None:
             bpy.ops.mesh.primitive_cube_add(size=1.0)
@@ -1993,9 +2296,7 @@ def rebuild_railings(mats: dict) -> int:
             if rail_mat:
                 b.data.materials.append(rail_mat)
 
-        # 顶扶手（0.06 宽 × 0.05 厚，顶面与栏板齐平）
         bar(f'railing:{obj.name}:handrail', length, 0.06, 0.05, cx, cy, z1 - 0.025)
-        # 竖杆 0.02 见方，净距 ≤0.11m
         step = 0.13
         n_bars = max(2, int(length / step) + 1)
         start = -length / 2
@@ -2055,217 +2356,411 @@ def set_engine(scene, engine: str, samples: int = 256) -> str:
 CAMERA_SCENARIO_OVERRIDE_FIELDS = frozenset({'exposure', 'fill_light', 'fill_from_camera'})
 
 
+CAMERA_DEFAULT_EXPOSURE_OVERRIDES = {
+    # 仅针对已复核的机位×工况做温和修正，避免抬高全局曝光。
+    ('corridor_view', 'material_review'): -0.5,
+    ('bedroom_nw_overview', 'material_review'): -0.5,
+    ('bedroom_nw_overview', 'bare_shell'): -0.5,
+    # Cycles + Standard + material_review 的近地面取景被 80W 同轴补光推到裁剪；
+    # 仅压低该特写，不改变全局工况曝光。
+    ('bedroom_floor_closeup', 'material_review'): 1.0,
+    ('master_bath_overview', 'material_review'): -0.25,
+    ('master_bath_overview', 'bare_shell'): -0.25,
+    ('balcony_overview', 'material_review'): 0.0,
+    ('living_from_entry', 'bare_shell'): 0.35,
+    ('living_from_entry', 'material_review'): 0.35,
+    ('living_from_entry', 'daylight'): 0.35,
+    ('living_floor_mid', 'material_review'): 0.35,
+    ('living_floor_mid', 'daylight'): 0.35,
+    ('living_sofa_glass', 'material_review'): -0.35,
+    ('living_sofa_glass', 'bare_shell'): -0.35,
+    ('living_sofa_glass', 'hvac_coordination'): -0.35,
+}
+
+
+def camera_default_exposure(camera_id: str, scenario_id: str | None = None,
+                            fallback: float | None = None) -> float | None:
+    """返回少量已复核机位×工况的默认曝光；显式 camera/scenario 值优先。"""
+    if scenario_id is not None:
+        return CAMERA_DEFAULT_EXPOSURE_OVERRIDES.get((camera_id, scenario_id), fallback)
+    # 保持旧调用的安全回退：不跨工况猜测曝光。
+    return fallback
+
+
 def effective_camera_config(camera: dict, scenario: dict) -> dict:
-    """返回当前 job 的有效相机配置，不修改源配置也不允许覆盖全局场景状态。"""
+    """返回当前 job 的有效相机配置，不修改源配置也不允许覆盖全局场景状态。
+
+    曝光优先级：非零显式 camera 值 > camera 的 scenario override > 已复核的
+    camera×scenario 默认校正 > scenario 值。camera exposure 为旧默认值 0
+    时视为未显式设置，允许机位×场景默认校正生效。
+    """
     effective = dict(camera)
+    scenario_id = scenario.get('id')
     overrides = camera.get('scenario_overrides')
-    if overrides is None:
-        return effective
-    if not isinstance(overrides, dict):
-        print(f'[dress_scene] WARN: camera {camera.get("id")} scenario_overrides must be an object; ignored')
-        return effective
-    override = overrides.get(scenario.get('id'))
-    if override is None:
-        return effective
-    if not isinstance(override, dict):
-        print(f'[dress_scene] WARN: camera {camera.get("id")} scenario override for {scenario.get("id")} must be an object; ignored')
-        return effective
-    unknown = set(override) - CAMERA_SCENARIO_OVERRIDE_FIELDS
-    if unknown:
-        print(f'[dress_scene] WARN: camera {camera.get("id")} scenario override for {scenario.get("id")} ignored fields: {", ".join(sorted(unknown))}')
-    effective.update({key: value for key, value in override.items() if key in CAMERA_SCENARIO_OVERRIDE_FIELDS})
+    override = None
+    if overrides is not None:
+        if not isinstance(overrides, dict):
+            print(f'[dress_scene] WARN: camera {camera.get("id")} scenario_overrides must be an object; ignored')
+        else:
+            override = overrides.get(scenario_id)
+            if override is not None and not isinstance(override, dict):
+                print(f'[dress_scene] WARN: camera {camera.get("id")} scenario override for {scenario_id} must be an object; ignored')
+                override = None
+
+    camera_exposure = camera.get('exposure')
+    camera_has_explicit_exposure = (
+        isinstance(camera_exposure, (int, float))
+        and not isinstance(camera_exposure, bool)
+        and camera_exposure != 0
+    )
+    if isinstance(override, dict):
+        unknown = set(override) - CAMERA_SCENARIO_OVERRIDE_FIELDS
+        if unknown:
+            print(f'[dress_scene] WARN: camera {camera.get("id")} scenario override for {scenario_id} ignored fields: {", ".join(sorted(unknown))}')
+        effective.update({key: value for key, value in override.items()
+                          if key in CAMERA_SCENARIO_OVERRIDE_FIELDS
+                          and (key != 'exposure' or not camera_has_explicit_exposure)})
+
+    camera_has_default_exposure = 'exposure' not in camera or camera_exposure == 0
+    has_scenario_override_exposure = isinstance(override, dict) and 'exposure' in override
+    if not camera_has_explicit_exposure and not has_scenario_override_exposure:
+        default_exposure = camera_default_exposure(camera.get('id'), scenario_id)
+        if default_exposure is not None:
+            effective['exposure'] = default_exposure
+        elif 'exposure' in scenario and camera_has_default_exposure:
+            effective['exposure'] = scenario['exposure']
     return effective
 
 
-def render_scene(args: dict, cfg: dict, cam_cfg: dict, scenario: dict, out_path: str) -> None:
+def job_state(cam_cfg: dict, scenario: dict) -> dict:
+    """纯逻辑地解析一个 render job 的可见性与可调参数。"""
+    curtain_policy = scenario.get('curtainPolicy')
+    if curtain_policy not in (None, 'hidden_for_bare_shell'):
+        raise RuntimeError(f'BLOCKED: unknown curtainPolicy {curtain_policy!r} in scenario {scenario.get("id")}')
+    bare_shell = scenario.get('id') == 'bare_shell'
+    return {
+        'bare_shell': bare_shell,
+        'curtain_policy': curtain_policy,
+        'lights_on': scenario.get('lights_on', True),
+        'show_hvac': not bare_shell and bool(scenario.get('hvac_coordination', False)),
+        'fill': cam_cfg.get('fill_light', scenario.get('fill_light')),
+        'fill_from_camera': cam_cfg.get('fill_from_camera', False),
+        'sheer_opacity': scenario.get('sheer_opacity', 0.15),
+        'glass_ior': scenario.get('glass_ior'),
+        'glass_tint': scenario.get('glass_tint'),
+        'glass_coat': scenario.get('glass_coat', 0.0),
+        'light_temp': scenario.get('light_temp', 6500),
+        'sun': scenario.get('sun_direction'),
+        'portal': scenario.get('window_portal'),
+    }
+
+
+def _object_counts() -> dict:
+    return {
+        'objects': len(bpy.data.objects),
+        'meshes': len(bpy.data.meshes),
+        'lights': len(bpy.data.lights),
+        'cameras': len(bpy.data.cameras),
+        'collections': len(bpy.data.collections),
+    }
+
+
+def _tag_dynamic_objects() -> None:
+    """把一次性生成的替代几何标记为动态组，后续只切换 hide_render。"""
+    dynamic_prefixes = ('asset:', 'ceiling:', 'bath:', 'kitchen:', 'fixture:', 'molding:',
+                        'railing:', 'hvac:', 'sky_plane:')
+    for obj in bpy.data.objects:
+        if obj.name.startswith(dynamic_prefixes):
+            obj['dress_dynamic'] = True
+
+
+def _set_recursive_hidden(obj, hidden: bool) -> None:
+    obj.hide_render = hidden
+    for child in obj.children_recursive:
+        child.hide_render = hidden
+
+
+def _reset_job_visibility() -> None:
+    for obj in bpy.data.objects:
+        if obj.get('dress_dynamic'):
+            _set_recursive_hidden(obj, False)
+        elif obj.name.startswith('furniture:') and not obj.get('dress_replacement_source'):
+            _set_recursive_hidden(obj, False)
+    _restore_curtain_hide_render(bpy.data.objects, _CURTAIN_HIDE_RENDER_SNAPSHOT)
+
+
+def _set_material_value(mat, socket_name: str, value) -> None:
+    if not mat or not getattr(mat, 'use_nodes', False):
+        return
+    bsdf = _find_node(mat.node_tree, 'ShaderNodeBsdfPrincipled')
+    if bsdf and socket_name in bsdf.inputs:
+        bsdf.inputs[socket_name].default_value = value
+
+
+def _set_fixture_emission(enabled: bool) -> None:
+    for name in ('灯具_diffuser', '灯具_cove', '顶面_灯槽'):
+        mat = bpy.data.materials.get(name)
+        if not mat or not mat.use_nodes:
+            continue
+        for node in mat.node_tree.nodes:
+            if node.bl_idname == 'ShaderNodeEmission':
+                if name == '灯具_diffuser':
+                    node.inputs['Strength'].default_value = 5.0 if enabled else 0.2
+                else:
+                    node.inputs['Strength'].default_value = 2.0 if enabled else 0.2
+
+
+def _set_sheer_opacity(mat, opacity: float, engine: str) -> None:
+    if not mat or not mat.use_nodes:
+        return
+    if engine.upper() == 'CYCLES':
+        for node in mat.node_tree.nodes:
+            if node.bl_idname == 'ShaderNodeMixShader':
+                node.inputs[0].default_value = float(opacity)
+    else:
+        _set_material_value(mat, 'Alpha', max(0.1, float(opacity) * 2.0))
+
+
+def fill_light_is_enabled(fill) -> bool:
+    """补光只有正数数值才启用；0 明确表示关闭，避免默认能量泄漏。"""
+    return isinstance(fill, (int, float)) and fill > 0
+
+
+def _set_job_lights(runtime: dict, state: dict, cam_cfg: dict, scenario: dict) -> None:
+    temp = state['light_temp']
+    color = kelvin_to_rgb(temp)
+    for obj in bpy.data.objects:
+        if obj.type == 'LIGHT' and obj.name != 'fill_light':
+            obj.hide_render = not state['lights_on']
+            obj.data.energy = runtime['light_defaults'].get(obj.name, obj.data.energy) if state['lights_on'] else 0.0
+            if state['lights_on']:
+                obj.data.color = color
+    fill_obj = bpy.data.objects.get('fill_light')
+    if fill_obj:
+        fill = state['fill']
+        fill_enabled = fill_light_is_enabled(fill)
+        fill_obj.hide_render = not fill_enabled
+        if fill_enabled:
+            fill_obj.data.energy = float(fill)
+            fill_obj.data.color = color
+            tgt = cam_cfg.get('target', [0, 0, 0])
+            if state['fill_from_camera']:
+                import mathutils as _mu
+                pos = cam_cfg.get('position', [0, 1.6, 0])
+                fill_obj.location = to_blender(pos[0], pos[1], pos[2])
+                direction = _mu.Vector(to_blender(tgt[0], tgt[1], tgt[2])) - fill_obj.location
+                fill_obj.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+            else:
+                fill_obj.location = to_blender(tgt[0], 2.5, tgt[2])
+    sun = bpy.data.objects.get('Sun')
+    if sun:
+        sun.hide_render = not bool(state['sun'])
+        if state['sun']:
+            from mathutils import Vector
+            sun.rotation_mode = 'QUATERNION'
+            sun.rotation_quaternion = (-Vector(state['sun']).normalized()).to_track_quat('-Z', 'Y')
+            sun.data.energy = scenario.get('sun_energy', 1.2)
+            sun.data.color = kelvin_to_rgb(scenario.get('sun_temp', 3200))
+    portal = bpy.data.objects.get('window_portal')
+    if portal:
+        spec = state['portal']
+        portal.hide_render = not bool(spec)
+        if spec:
+            portal.data.energy = spec.get('energy', 1500.0)
+            portal.data.color = kelvin_to_rgb(spec.get('temp', 6000))
+
+
+def _apply_job_state(runtime: dict, cam_cfg: dict, scenario: dict) -> dict:
+    state = job_state(cam_cfg, scenario)
+    _reset_job_visibility()
+    if state['bare_shell']:
+        for o in bpy.data.objects:
+            if bare_shell_should_hide(o):
+                _set_recursive_hidden(o, True)
+    if state['curtain_policy'] == 'hidden_for_bare_shell':
+        for o in bpy.data.objects:
+            if parse_curtain_node_name(o.name):
+                _set_recursive_hidden(o, True)
+    if not state['show_hvac']:
+        for o in bpy.data.objects:
+            if o.name.startswith('hvac:'):
+                _set_recursive_hidden(o, True)
+    mats = runtime['mats']
+    _set_sheer_opacity(mats.get('sheer'), state['sheer_opacity'], runtime['engine'])
+    g = mats.get('glass')
+    defaults = runtime['material_defaults'].get('glass', {})
+    _set_material_value(g, 'IOR', float(state['glass_ior']) if state['glass_ior'] is not None else defaults.get('IOR', 1.5 if runtime['engine'] == 'CYCLES' else 1.0))
+    _set_material_value(g, 'Coat Weight', float(state['glass_coat']) if state['glass_ior'] is not None else defaults.get('Coat Weight', 0.0))
+    _set_material_value(g, 'Base Color', (*hex_rgb(state['glass_tint']), 1.0) if state['glass_tint'] else defaults.get('Base Color', (0.0, 0.0, 0.0, 1.0)))
+    _set_fixture_emission(state['lights_on'])
+    _set_job_lights(runtime, state, cam_cfg, scenario)
+    setup_world(runtime['engine'], scenario, config_dir=runtime['config_dir'])
+    add_camera(cam_cfg, reuse=True)
+    scene = bpy.context.scene
+    scene.render.filepath = runtime['out_path']
+    scene.view_settings.view_transform = scenario.get('view_transform', 'AgX')
+    try:
+        default_exposure = 0.5 if runtime['engine'] == 'CYCLES' else 0.6
+        scene.view_settings.exposure = cam_cfg.get('exposure', scenario.get('exposure', default_exposure))
+    except Exception:
+        pass
+    current = _object_counts()
+    if current != runtime['counts']:
+        print(f'[dress_scene] WARN object counts changed: {runtime["counts"]} -> {current}')
+    print(f'[dress_scene] job state: objects={current["objects"]} dynamic={sum(1 for o in bpy.data.objects if o.get("dress_dynamic"))}')
+    return state
+
+
+BLENDERKIT_PBR_CONTRACT = (
+    {
+        'material_key': 'wood_dark',
+        'texture_id': 'blenderkit_light_oak_wood',
+        'size': 1.2,
+        'with_diffuse': False,
+        'normal_strength': 0.3,
+        'tint': None,
+        'base_color': '#503e2e',
+    },
+    {
+        'material_key': 'curtain_fabric',
+        'texture_id': 'blenderkit_plain_natural_blackout',
+        'size': 0.5,
+        'with_diffuse': False,
+        'normal_strength': 0.6,
+        'tint': None,
+        'base_color': '#d8d0c2',
+    },
+)
+
+
+def _blenderkit_pbr_assignments(mats: dict, furniture_mats: dict) -> list[tuple]:
+    """Resolve the reviewed BlenderKit contracts to material/map assignments."""
+    materials = {**mats, **furniture_mats}
+    return [
+        (
+            materials.get(item['material_key']),
+            item['texture_id'],
+            item['size'],
+            item['with_diffuse'],
+            item['normal_strength'],
+            item['tint'],
+        )
+        for item in BLENDERKIT_PBR_CONTRACT
+    ]
+
+
+def initialize_scene(args: dict, cfg: dict, jobs: list[dict]) -> dict:
+    """一次性创建 Blender 场景；返回供各 job 复用的运行时上下文。"""
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=args['glb'])
     facts = projection_facts(cfg)
-    # 定妆前置校验：窗帘可见节点必须与 render-config facts.presentation.curtains 投影一致。
-    # 可见性由 GLB 快照决定（active-only 导出），Blender 端只认快照，不做按状态的显隐推断；
-    # 不一致即中止渲染（不是警告后继续）。legacy facts（无 presentation.curtains）明确报错。
     curtain_proj = curtain_projection_from_facts(facts)
     curtain_errors = validate_curtain_nodes((o.name for o in bpy.data.objects), curtain_proj)
     if curtain_errors:
-        raise RuntimeError(
-            'BLOCKED: GLB curtain nodes do not match facts.presentation.curtains '
-            f'(snapshot {curtain_proj.get("snapshotSha256")}):\n  ' + '\n  '.join(curtain_errors)
-        )
-    # 硬装裸房验收工况：隐藏一切可移动家具/软装（沙发/床/桌椅/绿植/落地灯/冰箱等），
-    # 只留硬装（墙地顶/定制柜/门窗/灯具/卫浴洁具/厨房橱柜）。保留清单见 BARE_SHELL_KEEP。
-    bare_shell = scenario.get('id') == 'bare_shell'
-    if bare_shell:
-        for o in bpy.data.objects:
-            if not o.name.startswith('furniture:'):
-                continue
-            ps = o.name.split(':')
-            ftype = ps[2] if len(ps) >= 3 else ''
-            if ftype in BARE_SHELL_KEEP:
-                continue
-            o.hide_render = True
-            for child in o.children_recursive:
-                child.hide_render = True
-    # 窗帘显隐唯一例外：scenario 显式声明 curtainPolicy=hidden_for_bare_shell（软装验收裸房）时，
-    # 用解析器识别所有窗帘节点并隐藏；其余工况一律保持 GLB 导入原样。
-    curtain_policy = scenario.get('curtainPolicy')
-    if curtain_policy == 'hidden_for_bare_shell':
-        for o in bpy.data.objects:
-            if parse_curtain_node_name(o.name):
-                o.hide_render = True
-    elif curtain_policy is not None:
-        raise RuntimeError(f'BLOCKED: unknown curtainPolicy {curtain_policy!r} in scenario {scenario.get("id")}')
-    plumbing = plumbing_by_id(facts)
-    ceiling = facts.get('ceiling', []) if isinstance(facts, dict) else []
+        raise RuntimeError('BLOCKED: GLB curtain nodes do not match facts.presentation.curtains '
+                           f'(snapshot {curtain_proj.get("snapshotSha256")}):\n  ' + '\n  '.join(curtain_errors))
     scene = bpy.context.scene
-    used_engine = set_engine(scene, args['engine'], samples=int(args.get('samples', 256)))
-    sheer_opacity = scenario.get('sheer_opacity', 0.15)
-    mats = build_materials(used_engine, sheer_opacity=sheer_opacity)
+    engine = set_engine(scene, args['engine'], samples=int(args.get('samples', 256)))
     from materials_from_yaml import load_scheme_materials
+    mats = build_materials(engine, sheer_opacity=0.15)
     floor_mats = {}
     if args.get('config-dir'):
-        mats, floor_mats = load_scheme_materials(
-            used_engine, mats, new_principled, hex_rgb, facts,
-            config_dir=args['config-dir'],
-            color_overrides=_parse_mat_overrides(args.get('mat-override')),
-        )
+        mats, floor_mats = load_scheme_materials(engine, mats, new_principled, hex_rgb, facts,
+                                                 config_dir=args['config-dir'],
+                                                 color_overrides=_parse_mat_overrides(args.get('mat-override')))
     else:
         print('[dress_scene] WARN: --config-dir 未传，跳过 materials.yaml 材质（使用基础材质）')
     stats = assign_materials(mats, floor_mats)
     furniture_mats = build_furniture_materials(hex_rgb, new_principled)
-    tex_base = os.path.join(args.get('config-dir') or '', 'assets', 'textures')
-    add_pbr_maps(mats.get('wall'), os.path.join(tex_base, 'painted_plaster_wall'),
-                 size=2.5, with_diffuse=False, normal_strength=0.3)
+    config_dir = args.get('config-dir') or ''
+    tex_base = os.path.join(config_dir, 'assets', 'textures')
+    for mat, path, size, diffuse, strength, tint in [
+        (mats.get('wall'), 'painted_plaster_wall', 2.5, False, 0.3, None),
+        (mats.get('countertop') or furniture_mats.get('quartz'), 'marble_01', 3.0, False, 0.4, None),
+        (furniture_mats.get('wood'), 'oak_veneer_01', 1.0, True, 0.3, None),
+        *_blenderkit_pbr_assignments(mats, furniture_mats),
+        (furniture_mats.get('fabric_white'), 'fabric_pattern_07', 0.35, False, 1.0, None),
+        (mats.get('door'), 'oak_veneer_01', 1.0, True, 0.3, '#8a6f52'),
+        (mats.get('sill'), 'marble_01', 1.5, False, 0.3, None),
+        (furniture_mats.get('fabric'), 'fabric_pattern_07', 0.35, False, 1.0, None),
+    ]:
+        add_pbr_maps(mat, os.path.join(tex_base, path), size=size, with_diffuse=diffuse, normal_strength=strength, tint=tint)
+    plumbing = plumbing_by_id(facts)
     countertop_mat = mats.get('countertop') or furniture_mats.get('quartz')
     cabinet_mat = mats.get('cabinet') or furniture_mats.get('paint_cream')
-    # 石英石台面保持素面（真实石英石即素色；marble_01 深脉纹挂 diffuse 显脏，v20 试过回退）：
-    # 只挂 normal+rough 微肌理，不动色号
-    add_pbr_maps(countertop_mat, os.path.join(tex_base, 'marble_01'),
-                 size=3.0, with_diffuse=False, normal_strength=0.4)
-    add_pbr_maps(furniture_mats.get('wood'), os.path.join(tex_base, 'oak_veneer_01'),
-                 size=1.0, with_diffuse=True, normal_strength=0.3)
-    # 深胡桃程序件（TV背板/开放格/低柜/茶几面/柜门拉手）：橡木 diff 乘色压深胡桃，出木纹
-    add_pbr_maps(furniture_mats.get('wood_dark'), os.path.join(tex_base, 'oak_veneer_02'),
-                 size=1.2, with_diffuse=True, normal_strength=0.3, tint='#503e2e')
-    # 床品只挂 bump 不开 diffuse：保白色床品口径（SOURCES.md）；布纹底图 col_2 供沙发乘色用
-    add_pbr_maps(furniture_mats.get('fabric_white'), os.path.join(tex_base, 'fabric_pattern_07'),
-                 size=0.35, with_diffuse=False, normal_strength=1.0)
-    # 玻璃参数场景级覆盖：daylight 室内被太阳+portal 打得很亮，Low-E 玻璃（IOR 1.5 + coat 0.3）
-    # 会把窗变成镜子（反射亮室内盖过窗外 HDRI）。glass_ior≈1.02 近零反射，只留透射外景。
-    if scenario.get('glass_ior'):
-        g = mats.get('glass')
-        if g and g.use_nodes:
-            bsdf = _find_node(g.node_tree, 'ShaderNodeBsdfPrincipled')
-            if bsdf:
-                bsdf.inputs['IOR'].default_value = float(scenario['glass_ior'])
-                if 'Coat Weight' in bsdf.inputs:
-                    bsdf.inputs['Coat Weight'].default_value = float(scenario.get('glass_coat', 0.0))
-    # 玻璃 tint 场景级覆盖（超白玻对比 daylight_clear）：替换玻璃 base color 为中性近无色，
-    # 其余参数（IOR/透射/阴影直通）不动，与默认 Low-E 青绿 #c8e0dc 同机位对比
-    if scenario.get('glass_tint'):
-        g = mats.get('glass')
-        if g and g.use_nodes:
-            bsdf = _find_node(g.node_tree, 'ShaderNodeBsdfPrincipled')
-            if bsdf:
-                bsdf.inputs['Base Color'].default_value = (*hex_rgb(scenario['glass_tint']), 1.0)
-    # 硬装补充贴图：木门木纹（乘色保色号）、遮光帘布纹、窗台石石材肌理
-    add_pbr_maps(mats.get('door'), os.path.join(tex_base, 'oak_veneer_01'),
-                 size=1.0, with_diffuse=True, normal_strength=0.3, tint='#8a6f52')
-    add_pbr_maps(mats.get('curtain_fabric'), os.path.join(tex_base, 'fabric_pattern_07'),
-                 size=0.5, with_diffuse=False, normal_strength=0.6)
-    add_pbr_maps(mats.get('sill'), os.path.join(tex_base, 'marble_01'),
-                 size=1.5, with_diffuse=False, normal_strength=0.3)
-    add_pbr_maps(furniture_mats.get('fabric'), os.path.join(tex_base, 'fabric_pattern_07'),
-                 size=0.35, with_diffuse=False, normal_strength=1.0)
-    replace_furniture(furniture_mats, config_dir=args.get('config-dir') or '',
-                      only_types=BARE_SHELL_KEEP if bare_shell else None)
-    place_extra_furniture(furniture_mats, args.get('config-dir') or '', plumbing,
-                          only_types=BARE_SHELL_KEEP if bare_shell else None)
-    add_moldings(args.get('config-dir') or '')
+    replace_furniture(furniture_mats, config_dir)
+    place_extra_furniture(furniture_mats, config_dir, plumbing)
+    add_moldings(config_dir)
     rebuild_railings(mats)
-    add_ceiling(ceiling, mats)
-    # 厨房橱柜挂 scheme 柜门材质：PET 肤感（哑光+细微 bump，与定制柜同一饰面口径）
+    add_ceiling(facts.get('ceiling', []) if isinstance(facts, dict) else [], mats)
     _add_pet_bump(cabinet_mat)
     add_kitchen_cabinets(cabinet_mat, countertop_mat, plumbing, gap=furniture_mats.get('door_gap'))
     add_bath_fixtures(furniture_mats, plumbing)
-    if not bare_shell:
-        add_soft_decor(furniture_mats)  # 地毯/挂画属软装，裸房验收不出现
-    # 有效相机覆盖优先于工况默认补光；None 时才回退，允许显式 0 关闭默认补光。
-    fill = cam_cfg.get('fill_light', scenario.get('fill_light'))
-    if fill:
-        fl = bpy.data.lights.new('fill_light', type='AREA')
-        fl.shape = 'RECTANGLE'
-        fl.size = 5.0
-        fl.size_y = 5.0
-        # fill_light 可为数字（瓦数）或 true（默认200）；特写用低瓦防过曝，全景用高瓦
-        fl.energy = float(fill) if isinstance(fill, (int, float)) else 200.0
-        fl.color = kelvin_to_rgb(scenario.get('light_temp', 6500))
-        tgt = cam_cfg.get('target', [0, 0, 0])
-        fl_obj = bpy.data.objects.new('fill_light', fl)
-        if cam_cfg.get('fill_from_camera'):
-            # 相机同轴补光：放机位、对准 target。用于高柜挡死顶灯的房间（如书房 bookshelf
-            # 把 55W dome 的光影投满北墙），默认的"target 正上方垂直向下"只照亮地面，
-            # 墙面全黑且灯平面贴天花会在墙顶炸出高光带
-            import mathutils as _mu
-            pos = cam_cfg.get('position', [0, 1.6, 0])
-            fl_obj.location = to_blender(pos[0], pos[1], pos[2])
-            direction = _mu.Vector(to_blender(tgt[0], tgt[1], tgt[2])) - fl_obj.location
-            fl_obj.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
-        else:
-            fl_obj.location = to_blender(tgt[0], 2.5, tgt[2])
-        bpy.context.collection.objects.link(fl_obj)
-    if scenario.get('lights_on', True):
-        add_lights(cfg, temp_override=scenario.get('light_temp'))
-    # 灯具实体始终建模（白天不开灯也要看见吊灯/吸顶灯形体），自发光仅在开灯工况
-    add_light_fixtures(cfg, temp_override=scenario.get('light_temp'),
-                       emit=scenario.get('lights_on', True))
-    # 顶面完成度 staging（DEC-027 评估件：浅跌级+灯槽）
-    add_ceiling_finishing(mats, emit=scenario.get('lights_on', True))
-    show_hvac_coordination = not bare_shell and bool(scenario.get('hvac_coordination', False))
-    add_hvac_diagram(facts, show_routes=show_hvac_coordination)
-    add_hvac_reference_constraints(facts, show_constraints=show_hvac_coordination)
-    sun_dir = scenario.get('sun_direction')
-    if sun_dir:
-        add_sun(sun_dir, energy=scenario.get('sun_energy', 1.2), temp=scenario.get('sun_temp', 3200))
-    if scenario.get('window_portal'):
-        add_window_portal(scenario['window_portal'])
-    setup_world(used_engine, scenario, config_dir=args.get('config-dir'))
-    add_camera(cam_cfg)
-    if used_engine in ('BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE'):
-        add_sky_planes()
+    add_soft_decor(furniture_mats)
+    add_lights(cfg, temp_override=6500)
+    add_light_fixtures(cfg, temp_override=6500, emit=True)
+    add_ceiling_finishing(mats, emit=True)
+    if any(job['scenario'].get('hvac_coordination') for job in jobs):
+        add_hvac_diagram(facts, show_routes=True)
+        add_hvac_reference_constraints(facts, show_constraints=True)
+    scenarios = [j['scenario'] for j in jobs]
+    template = next((s for s in scenarios if s.get('sun_direction') or s.get('window_portal') or s.get('fill_light')), scenarios[0] if scenarios else {})
+    if template.get('sun_direction'):
+        add_sun(template['sun_direction'], energy=template.get('sun_energy', 1.2), temp=template.get('sun_temp', 3200))
+    if template.get('window_portal'):
+        add_window_portal(template['window_portal'])
+    if any(effective_camera_config(c, j['scenario']).get('fill_light') for j in jobs for c in cfg['cameras'] if c['id'] == j['camera_id']):
+        add_fill = bpy.data.lights.new('fill_light', type='AREA')
+        add_fill.shape, add_fill.size, add_fill.size_y = 'RECTANGLE', 5.0, 5.0
+        fill_obj = bpy.data.objects.new('fill_light', add_fill)
+        bpy.context.collection.objects.link(fill_obj)
+    setup_world(engine, template, config_dir=config_dir)
+    # 玻璃透射后的可见背景不能依赖 Cycles 是否成功加载 HDRI：无 HDRI 的
+    # material_review/night 仍会把窗外落到世界背景，必须和 EEVEE 一样补天空平面。
+    add_sky_planes()
+    for camera in cfg.get('cameras', []):
+        add_camera(camera, reuse=True)
+    _tag_dynamic_objects()
+    global _CURTAIN_HIDE_RENDER_SNAPSHOT
+    _CURTAIN_HIDE_RENDER_SNAPSHOT = _curtain_hide_render_snapshot(bpy.data.objects)
+    counts = _object_counts()
+    light_defaults = {o.name: o.data.energy for o in bpy.data.objects if o.type == 'LIGHT'}
+    glass = mats.get('glass')
+    glass_bsdf = _find_node(glass.node_tree, 'ShaderNodeBsdfPrincipled') if glass and glass.use_nodes else None
+    material_defaults = {'glass': {}}
+    if glass_bsdf:
+        for socket in ('IOR', 'Coat Weight', 'Base Color'):
+            if socket in glass_bsdf.inputs:
+                value = glass_bsdf.inputs[socket].default_value
+                material_defaults['glass'][socket] = tuple(value) if hasattr(value, '__len__') else value
+    print(f'[dress_scene] initialized once: {counts}')
+    return {'cfg': cfg, 'facts': facts, 'mats': mats, 'stats': stats, 'engine': engine,
+            'config_dir': config_dir, 'curtain_proj': curtain_proj, 'counts': counts,
+            'light_defaults': light_defaults, 'material_defaults': material_defaults, 'out_path': ''}
 
+
+def render_scene(runtime: dict, args: dict, cam_cfg: dict, scenario: dict, out_path: str) -> None:
+    runtime['out_path'] = out_path
+    state = _apply_job_state(runtime, cam_cfg, scenario)
+    scene = bpy.context.scene
     scene.render.resolution_x = 1920
     scene.render.resolution_y = 1080
     scene.render.resolution_percentage = int(args.get('res', 100))
-    scene.render.filepath = out_path
-    # tone transform 配置驱动：氛围图 AgX（电影感）；材质评审 Standard（无调色，色号不失真）
-    scene.view_settings.view_transform = scenario.get('view_transform', 'AgX')
-    try:
-        # 曝光配置驱动：机位级 cam_cfg.exposure 优先，其次 scenario.exposure，
-        # 缺省：Cycles 0.5 / EEVEE 0.6。机位级用于正对玻璃幕的相机
-        # （master_bed_looking_glass：灰世界光透玻璃直灌镜头，全局曝光下整面过曝）
-        default_exposure = 0.5 if used_engine == 'CYCLES' else 0.6
-        scene.view_settings.exposure = cam_cfg.get('exposure', scenario.get('exposure', default_exposure))
-    except Exception:
-        pass
     try:
         scene.render.image_settings.file_format = 'PNG'
     except Exception:
         pass
-
-    print(f'[dress_scene] {out_path} engine={used_engine} view_transform={scene.view_settings.view_transform} '
-          f'materials={json.dumps(stats, ensure_ascii=False)}')
+    print(f'[dress_scene] {out_path} engine={runtime["engine"]} view_transform={scene.view_settings.view_transform} '
+          f'materials={json.dumps(runtime["stats"], ensure_ascii=False)}')
     bpy.ops.render.render(write_still=True)
-    # 渲染溯源 metadata（sidecar，与 PNG 同名 .meta.json）：bundle manifest 不在 Blender
-    # 输入路径内，至少记录 render-config 里的窗帘快照 sha + scenario + camera + policy
-    meta = {
-        'scenario': scenario.get('id'),
-        'camera': cam_cfg.get('id'),
-        'curtainPolicy': curtain_policy or 'as_snapshot',
-        'curtainSnapshotSha256': curtain_proj.get('snapshotSha256'),
-    }
     with open(out_path + '.meta.json', 'w', encoding='utf-8') as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
+        json.dump({'scenario': scenario.get('id'), 'camera': cam_cfg.get('id'),
+                   'curtainPolicy': state['curtain_policy'] or 'as_snapshot',
+                   'curtainSnapshotSha256': runtime['curtain_proj'].get('snapshotSha256')}, f,
+                  ensure_ascii=False, indent=2)
         f.write('\n')
+    return
+
 
 
 def _parse_mat_overrides(raw: str | None) -> dict:
@@ -2303,12 +2798,15 @@ def main() -> None:
         jobs = [j for j in jobs if j['camera_id'] in allow]
     print(f'[dress_scene] {len(jobs)} jobs (cameras×scenarios)')
     os.makedirs(out_dir, exist_ok=True)
+    if not jobs:
+        return
+    runtime = initialize_scene(args, cfg, jobs)
     for job in jobs:
         camera = next(c for c in cfg['cameras'] if c['id'] == job['camera_id'])
         # 每个 job 取得独立有效配置，白名单覆盖绝不写回 camera/scenario 源对象。
         cam_cfg = effective_camera_config(camera, job['scenario'])
         out_path = os.path.join(out_dir, job['out_name'] + '.png')
-        render_scene(args, cfg, cam_cfg, job['scenario'], out_path)
+        render_scene(runtime, args, cam_cfg, job['scenario'], out_path)
 
 
 if __name__ == '__main__':

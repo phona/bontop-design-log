@@ -860,3 +860,14 @@
 - **预算影响**：无新增灯具或吊顶工程，仅调整既有点位的归属表现。
 - **关联文件**：`config/electrical.yaml`、`config/render/overrides.yaml`、`docs/dressing-map.md`、`docs/superpowers/specs/2026-08-12-interior-lighting-design.md`
 - **决策人**：业主
+
+---
+
+### DEC-2026-08-27-047 书房南玻璃栏板凹进修正（东南角凹口）
+
+- **日期**：2026-08-27
+- **决策事项**：纠正书房（bedroom_se）南边界——南玻璃栏板不与客厅南立面（z=9.80）齐平，凹进 1.10m 至 z=8.70；z[8.70,9.80]×x[13.40,16.40] 为室外凹口（同北翼幕墙凹进口袋处理）。
+- **依据**：和萃创想图（survey/photos 标准层装修创想图）右侧尺寸链 2900+2000+4400+1100，东南房南玻璃栏板后退 1100；邻户原始结构图（neighbor_ys01）同构凹进 1020；点石设计图该房净面积标注 8.35㎡（非此前 house.yaml 误引的 8.39㎡，8.39 为西翼房间标注）。量房终核。
+- **级联**：模型面积 12.75→9.45㎡（毛）；南墙上飘窗条带 z 7.60..8.70；窗帘盒 `curtain_box_study_south` 移至 z[7.60,7.85]；书桌/椅/东墙低柜南排北移 1.10m 保持"距南幕墙 50mm"关系（DEC-046 布局意图不变）；sock_study_desk/net_study/sock_study_curtain 随桌/墙北移；light_study_dome 居中至 z=7.125；减震垫北缘避让低柜。
+- **关联文件**：`config/layout/model-geometry.yaml`、`config/house.yaml`、`config/electrical.yaml`、`config/ceiling.yaml`
+- **决策人**：业主

@@ -12,14 +12,15 @@ describe('HouseScene', () => {
 describe('HouseScene scene elements', () => {
   it('renders by declared type only — no curtain boolean, no position-based classification', async () => {
     const fs = await import('node:fs');
-    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
-    expect(source).not.toContain('userData.curtain');
-    expect(source).not.toContain('curtain?:');
-    expect(source).toContain("case 'curtain_run'");
-    expect(source).toContain("case 'glass_infill'");
-    expect(source).toContain("case 'shower_screen'");
-    expect(source).toContain("case 'wall_run'");
-    expect(source).toContain("case 'wall'");
+    const houseScene = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    const sceneBuilder = fs.readFileSync('../shared/render/SceneBuilder.ts', 'utf8');
+    expect(houseScene).not.toContain('userData.curtain');
+    expect(houseScene).not.toContain('curtain?:');
+    expect(sceneBuilder).toContain("case 'curtain_run'");
+    expect(sceneBuilder).toContain("case 'glass_infill'");
+    expect(sceneBuilder).toContain("case 'shower_screen'");
+    expect(sceneBuilder).toContain("case 'wall_run'");
+    expect(sceneBuilder).toContain("element.type === 'wall'");
   });
 
   it('house.walls is no longer consumed — sceneElements is the only wall source', async () => {
@@ -35,14 +36,12 @@ describe('HouseScene scene elements', () => {
     expect(source).toContain('applyToFloorRegions');
   });
 
-  it('glass material exports as real glass: transmission (KHR_materials_transmission), zero metalness', async () => {
+  it('uses the shared scene builder for glass and curtain geometry', async () => {
     const fs = await import('node:fs');
     const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
-    const block = source.match(/makeGlassMaterial\(\)[^{]*\{([\s\S]*?)\n  \}/);
-    expect(block).not.toBeNull();
-    expect(block![1]).toContain('transmission');
-    expect(block![1]).toContain('metalness: 0');
-    expect(block![1]).not.toContain('metalness: 0.1');
+    expect(source).toContain("@shared/render/SceneBuilder");
+    expect(source).not.toContain('private buildCurtainShape');
+    expect(source).not.toContain('private renderCurtain');
   });
 
   it('rect rooms (PlaneGeometry branch) rescale UV to meters — wood_plank worldSize assumption holds for all rooms', async () => {
@@ -51,9 +50,9 @@ describe('HouseScene scene elements', () => {
     expect(source).toContain('scalePlaneUvToMeters');
   });
 
-  it('curtains offset 12cm interior — sheer must not be coplanar with glass (z-fighting)', async () => {
+  it('curtain interior offset belongs to shared geometry', async () => {
     const fs = await import('node:fs');
-    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    const source = fs.readFileSync('../shared/render/CurtainGeometry.ts', 'utf8');
     expect(source).toContain('offsetCurtainPointsInterior');
     expect(source).toContain('0.12');
   });
@@ -65,23 +64,27 @@ describe('HouseScene captureFloorPlan', () => {
     const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
     expect(source).toContain('captureFloorPlan');
     expect(source).toMatch(/async\s+captureFloorPlan\s*\(\s*\)\s*:\s*Promise\s*<\s*string\s*>/);
+    // 截图渲染 scene（灯光在 scene 上），viewOnlyRoot/topicGroup 在 capture 前隐藏，
+    // 保证画面只含 HOUSE_EXPORT 内容且不是全黑。
+    expect(source).toContain("this.renderer.render(this.scene, orthoCam)");
+    expect(source).toContain('this.viewOnlyRoot.visible = false');
+    expect(source).toContain('await this.whenReady()');
   });
 });
 
 describe('HouseScene ceiling zones', () => {
-  it('renders solid ceiling zones via buildCeilingZone and registers meshes in ceilingMeshes', async () => {
+  it('delegates ceiling zone construction to the shared scene builder without a browser fetch path', async () => {
     const fs = await import('node:fs');
     const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
-    expect(source).toContain('buildCeilingZone');
-    expect(source).toContain('loadCeilingZones');
-    expect(source).toContain("'/api/annotations/ceiling'");
-    expect(source).toContain("ceiling_zone_solid: '吊顶'");
+    expect(source).toContain('parseSceneInput');
+    expect(source).not.toContain('loadCeilingZones');
+    expect(source).not.toContain("'/api/annotations/ceiling'");
+    expect(source).not.toContain('buildCeilingZone');
   });
 
   it('ceiling zone meshes follow first-person-only visibility', async () => {
     const fs = await import('node:fs');
     const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
-    expect(source).toMatch(/renderCeilingZones[\s\S]*ceilingMeshes\.push/);
-    expect(source).toContain('setCeilingVisible(this._mode');
+    expect(source).toContain('setCeilingVisible(mode === \'first-person\')');
   });
 });

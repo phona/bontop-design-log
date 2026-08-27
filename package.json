@@ -21,7 +21,9 @@
     "verify:all": "tsx scripts/verify-topology.ts && tsx scripts/verify-layout.ts && tsx scripts/verify-furniture-placement.ts && tsx scripts/verify-rules.ts && tsx scripts/verify-collision-coverage.ts && tsx scripts/verify-data-consistency.ts && tsx scripts/verify-project-render-facts.ts",
     "build:render-bundle": "tsx scripts/build-render-bundle.ts",
     "verify:render-bundle": "tsx scripts/verify-render-bundle.ts",
-    "export:dressing-map": "tsx scripts/generate-dressing-map.ts"
+    "export:dressing-map": "tsx scripts/generate-dressing-map.ts",
+    "export:glb": "tsx scripts/export-glb.ts",
+    "compare:glb": "tsx scripts/compare-glb.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -30,6 +32,7 @@
     "express": "^4.21.0",
     "js-yaml": "^5.2.1",
     "pinyin-pro": "^3.28.1",
+    "three": "^0.166.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

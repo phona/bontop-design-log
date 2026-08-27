@@ -28,13 +28,21 @@ export class MepCoordinationRenderer {
   private readonly routeGroups = new Map<string, THREE.Group>();
   private readonly bendGroups = new Map<string, THREE.Group>();
   private renderReport: MepRenderReport = { total: 0, resolved: 0, skipped: 0, skippedRoutes: [] };
+  private viewOnlyRoot?: THREE.Object3D;
 
   constructor(private readonly scene: THREE.Scene) {
     this.group.name = 'MEP_COORDINATION';
-    this.scene.add(this.group);
+    this.attach();
+  }
+
+  attach(viewOnlyRoot?: THREE.Object3D): void {
+    const parent = viewOnlyRoot ?? this.viewOnlyRoot ?? this.scene;
+    this.viewOnlyRoot = parent;
+    if (this.group.parent !== parent) parent.add(this.group);
   }
 
   render(config: MepCoordination, sources: MepEndpointSources): void {
+    this.attach();
     this.clear();
     this.renderReport = { total: config.routes.length, resolved: 0, skipped: 0, skippedRoutes: [] };
     for (const route of config.routes) {

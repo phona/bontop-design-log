@@ -14,7 +14,7 @@
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["../shared/*.ts"]
+      "@shared/*": ["../shared/*"]
     }
   },
   "include": ["src/**/*.ts", "*.ts"]

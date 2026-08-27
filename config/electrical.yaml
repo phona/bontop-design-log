@@ -222,10 +222,10 @@
   wall_side: east
   type: socket
   x: 13.40
-  z: 9.00
+  z: 7.90
   height: 0.3
   count: 3
-  note: "书房桌面: 电脑+显示器+手机（2026-08-25 书桌长边贴西墙、南端近幕墙，点位在桌北段西侧，距桌缘 <0.5m）"
+  note: "书房桌面: 电脑+显示器+手机（2026-08-25 书桌长边贴西墙、南端近幕墙，点位在桌北段西侧，距桌缘 <0.5m；2026-08-27 随书桌北移）"
 
 - id: net_study
   room: bedroom_se
@@ -233,9 +233,9 @@
   wall_side: east
   type: network
   x: 13.40
-  z: 9.00
+  z: 7.90
   height: 0.3
-  note: "书房网口（随书桌定西墙 z=9.00，同插座）"
+  note: "书房网口（随书桌定西墙，同插座；2026-08-27 随书桌北移）"
 
 - id: sock_study_extra
   room: bedroom_se
@@ -577,10 +577,10 @@
   wall_side: east
   type: socket
   x: 13.40
-  z: 9.50
+  z: 8.40
   height: 2.5
   count: 1
-  note: "书房电动窗帘电源（西墙南端，天花内走线到南墙窗帘电机）"
+  note: "书房电动窗帘电源（西墙南端，天花内走线到南墙窗帘电机；2026-08-27 随南墙凹进北移）"
 
 # 书房空调内机电源
 - id: sock_study_ac
@@ -736,10 +736,10 @@
   room: bedroom_se
   type: dome
   x: 14.9
-  z: 7.675
+  z: 7.125
   height: 2.8
   temp: 3000
-  note: "书房吸顶灯"
+  note: "书房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中）"
 - id: light_corridor_1
   room: living_dining
   type: downlight

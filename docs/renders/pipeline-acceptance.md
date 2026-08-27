@@ -113,7 +113,7 @@ v1（首版 Cycles）效果差的根因与修复：
 3. **直铺砖缝尺寸用错 150×900**：项目 floor_tile_01 实际是 **800×800mm 方砖**（spec: "800x800mm"），150×900 只是人字拼那条 → 直铺用 800×800，grout_frac 0.005（~4mm 缝）。
 4. **PBR 贴图自带板缝与叠加砖缝冲突**：wooden_floor_01 等地板扫描件有自己的板缝间距（≠800mm），叠加 Brick 砖缝后两套缝不重合 → 看起来"小块长砖一块块接"而非方格 → 改用 veneer 系列（无自身板缝，砖缝是唯一分割线）。
 5. **tint multiply 只能压暗**：#c49a6c 线性值 <1.0，乘色后画面变暗（mean 161→99）。不影响相对比较（A/B 同 tint），但绝对亮度偏低。
-6. **法式石膏线**：add_moldings 从 model-geometry.yaml 读墙体坐标 + overlay.yaml suppress 列表 → 生成 81 条（踢脚 8cm + 顶角 10cm + 挂镜 2cm@1m），仅实体墙（suppressed 跳过）。classify `molding:` → `wall` 用墙面材质。
+6. **法式石膏线**：add_moldings 仅读取 `overlay.yaml` 的显式 `moldings` 声明；当前未声明时不生成任何踢脚线、顶角线或挂镜线。`suppress` 只负责抑制已声明的墙段，不会反向推导装饰线；显式生成的 `molding:` 使用墙面材质。
 7. **墙面漆纹**：wall solid_color 材质加 Noise bump（Scale 80, Strength 0.02）模拟橙皮纹。
 
 贴图不入 git（.gitignore `assets/textures/*/`），来源 URL 记 `assets/SOURCES.md` 可重下。
