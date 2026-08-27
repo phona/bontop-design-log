@@ -77,6 +77,16 @@ $PY "$SSH" exec INSTANCE_UUID --command 'python render.py' --start
 5. `stop`
 6. 根据明确确认可选 `release`；release 不可逆
 
+## 费用与生命周期最佳实践
+
+- `running` 会产生 GPU 按量费用；完成工作后应尽快 `stop`。
+- `shutdown/stopped` 通常停止 GPU 按量费用，但实例和系统盘仍保留，可能继续产生系统盘托管费。
+- 不再需要实例时，先确认上传/下载已完成，再 `stop`，最后在用户明确确认后 `release`；`release` 会永久清除实例数据且不可恢复。
+- 临时任务流程固定为：创建 → 等待 running → 上传 → exec → 下载并校验结果 → stop → 可选 release。
+- 不把 Pro API 的弹性部署库存当作 Pro 实例库存；官方 Pro API 没有可靠的 Pro 实时库存查询。
+- 每次开机或 SSH/SFTP 操作都重新获取 snapshot，不能缓存端口、地址或密码。
+- 创建和开机后要轮询状态；`running` 不一定代表 SSH 服务已经就绪，应对 snapshot 和 SSH 连接做有限重试。
+
 ## 官方接口映射
 
 | 命令 | 方法 | 路径 |

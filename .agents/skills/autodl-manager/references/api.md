@@ -40,3 +40,12 @@ $PY .agents/skills/autodl-manager/scripts/autodl_ssh.py download UUID /root/rend
 ## 安全与工作流
 
 `release` 不可逆，必须 `--confirm-release`，先 snapshot/status，必要时 power_off 并确认停止后才 release。已有实例默认不自动 release。Blender 流程为 start → upload → exec → download → stop → 明确确认后可选 release。
+
+### 费用最佳实践
+
+- `running` 状态产生 GPU 按量费用；任务结束立即 `stop`。
+- `shutdown/stopped` 通常停止 GPU 费用，但系统盘和实例仍保留，可能继续产生系统盘托管费。
+- 要完全停止后续托管费用，需在结果下载并校验后执行 `release`；释放会永久删除实例数据。
+- 自动化必须使用清理逻辑：无论远程命令成功、失败还是被中断，都至少尝试关机；只有明确标记为临时实例且用户授权时才释放。
+- `running` 仅表示 API 状态，不保证 SSH 服务已就绪；开机后应轮询并重试 snapshot/SSH。
+- 每次连接前刷新 snapshot，禁止缓存可能变化的 SSH 地址、端口和密码。
