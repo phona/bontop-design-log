@@ -1,0 +1,35 @@
+# 复制到项目 .agents/skills/autodl-manager/config.toml
+# 真实 token 建议放项目根 .env 的 AUTODL_TOKEN，不要提交配置文件
+
+[auth]
+# 填入 AutoDL 控制台 -> 账号 -> 设置 -> 开发者Token
+# 环境变量 AUTODL_TOKEN 会优先于此处配置
+# token = "仅供本地备用；不要提交真实 token"
+
+[api]
+host = "https://api.autodl.com"
+timeout = 15
+page_size = 100
+
+# AutoDL 容器实例 Pro profile。命令行参数会覆盖 profile 值。
+# create 必须提供 gpu_spec_uuid；gpu 仅作别名展示，不会自动猜测规格 ID。
+[profiles.pro]
+gpu_spec_uuid = "pro6000-p"
+gpu_num = 1
+image_uuid = "base-image-l2t43iu6uk"
+cuda_from = 118
+system_disk_gb = 50
+data_center_list = ["westDC2"]
+instance_name = "我的Pro实例"
+start_command = "python launch.py"
+
+[profiles.llm]
+gpu_spec_uuid = "h800"
+gpu_num = 1
+image_uuid = "image-your-private-uuid"
+cuda_from = 118
+system_disk_gb = 100
+data_center_list = ["westDC3", "beijingDC2"]
+instance_name = "LLM Pro实例"
+start_command = "bash start.sh"
+
