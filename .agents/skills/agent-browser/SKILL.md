@@ -6,9 +6,18 @@ allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*)
 
 # agent-browser
 
-> ⚠️ **本项目特例（覆盖下文裸命令写法）**：非交互 shell 里裸 `agent-browser` 会解析到错误 shim——本仓库所有命令一律用 wrapper 全路径 `$HOME/.local/bin/agent-browser`（含 `skills get`）。原因与坑见 `docs/setup.md`「agent-browser wrapper 坑」节。
+> ⚠️ **本项目特例（覆盖下文裸命令写法）**：非交互 shell 里裸 `agent-browser` 会解析到错误 shim——本仓库所有命令一律用 wrapper 全路径 `$HOME/.local/bin/agent-browser`（含 `skills get`）。
 
 Fast browser automation CLI for AI agents. Chrome/Chromium via CDP with accessibility-tree snapshots and compact `@eN` element refs.
+
+## 硬规则
+
+- 本项目所有命令使用 `$HOME/.local/bin/agent-browser`，不要使用裸命令。
+- 同一个 session / daemon 内不要并行执行多个 browser 命令；不同 `--session` 的隔离会话可按需并行。
+- 页面发生变化后必须重新执行 `snapshot`；旧 refs 可能失效。
+- 不要重复启动常驻 dev server；先用 HTTP 请求确认服务状态。
+- 后台任务显示 timeout 不等于应用失败，必须单独验证端口和页面。
+- Blender 渲染前确认 GLB、render facts 和 config 来自同一版本。
 
 ## Start here
 
@@ -17,9 +26,9 @@ $HOME/.local/bin/agent-browser skills get core             # start here — work
 $HOME/.local/bin/agent-browser skills get core --full      # include full command reference and templates
 ```
 
-CLI 自带的 skill 内容与安装版本同步，不会过期；本仓库文件只补充两层本项目沉淀的东西：
+CLI 自带的 skill 内容与安装版本同步，不会过期；本仓库只补充项目专属经验，详见：
 
-- `references/practical-patterns.md` — 实战中反复用到的套路（就绪等待、场景内省、排除法定位、同条件 A/B 对比）与踩过的坑（daemon 卡死、双层 HTTP 缓存、瞬时状态误读）。
+- [references/practical-patterns.md](references/practical-patterns.md) — 本地 Web 验证、daemon / 会话故障、并发与超时、Blender/WSL 联动。
 
 ## Specialized skills
 
