@@ -12,24 +12,40 @@ timeout = 15
 page_size = 100
 
 # AutoDL 容器实例 Pro profile。命令行参数会覆盖 profile 值。
-# create 必须提供 gpu_spec_uuid；gpu 仅作别名展示，不会自动猜测规格 ID。
+# 默认使用已验证的 Blender 私有镜像与 3090 规格。
 [profiles.pro]
-gpu_spec_uuid = "pro6000-p"
+gpu_spec_uuid = "v-48g-350w"
 gpu_num = 1
-image_uuid = "base-image-l2t43iu6uk"
-cuda_from = 118
-system_disk_gb = 50
-data_center_list = ["westDC2"]
-instance_name = "我的Pro实例"
-start_command = "python launch.py"
+image_uuid = "image-ff88133a27"
+cuda_from = 121
+system_disk_gb = 0
+data_center_list = []
+instance_name = "Blender临时实例"
+start_command = "sleep 1"
+blender_bin = "/root/blender/blender"
+remote_root = "/root/bontop-acceptance"
+upload_paths = ["config", "scripts/blender", "hdri", "assets/textures", "tmp/final-render-bundle"]
+engine = "CYCLES"
+out_dir = "tmp/cycles"
+render_version = "cycles-final"
+resolution = 35
+bundle = "tmp/final-render-bundle"
 
-[profiles.llm]
-gpu_spec_uuid = "h800"
+[profiles.blender]
+gpu_spec_uuid = "v-48g-350w"
 gpu_num = 1
-image_uuid = "image-your-private-uuid"
-cuda_from = 118
-system_disk_gb = 100
-data_center_list = ["westDC3", "beijingDC2"]
-instance_name = "LLM Pro实例"
-start_command = "bash start.sh"
+image_uuid = "image-ff88133a27"
+cuda_from = 121
+system_disk_gb = 0
+data_center_list = []
+instance_name = "Blender临时实例"
+start_command = "sleep 1"
+blender_bin = "/root/blender/blender"
+remote_root = "/root/bontop-acceptance"
+upload_paths = ["config", "scripts/blender", "hdri", "assets/textures", "tmp/final-render-bundle"]
+engine = "CYCLES"
+out_dir = "tmp/cycles"
+render_version = "cycles-final"
+resolution = 35
+bundle = "tmp/final-render-bundle"
 

@@ -23,19 +23,39 @@ cmd = "python launch.py"
 reuse_container = true
 
 # profile 会覆盖 [defaults] 中同名字段。
-[profiles.sd]
-type = "Container"
-cmd = "python launch.py"
-
-[profiles.llm]
-type = "Container"
-regions = ["westDC2", "westDC3"]
-gpu_names = ["A100", "A800"]
+# 默认 Pro profile：已实测可创建、开机、SSH、上传、下载和释放。
+[profiles.pro]
+gpu_spec_uuid = "v-48g-350w"
 gpu_num = 1
-cpu_from = 8
-cpu_to = 32
-memory_from = 32
-memory_to = 128
-price_to = 8000
-image_uuid = "image-your-private-uuid"
-cmd = "bash start.sh"
+image_uuid = "image-ff88133a27"
+cuda_from = 121
+system_disk_gb = 0
+data_center_list = []
+instance_name = "Blender临时实例"
+start_command = "sleep 1"
+blender_bin = "/root/blender/blender"
+remote_root = "/root/bontop-acceptance"
+upload_paths = ["config", "scripts/blender", "hdri", "assets/textures", "tmp/final-render-bundle"]
+engine = "CYCLES"
+out_dir = "tmp/cycles"
+render_version = "cycles-final"
+resolution = 35
+bundle = "tmp/final-render-bundle"
+
+[profiles.blender]
+gpu_spec_uuid = "v-48g-350w"
+gpu_num = 1
+image_uuid = "image-ff88133a27"
+cuda_from = 121
+system_disk_gb = 0
+data_center_list = []
+instance_name = "Blender临时实例"
+start_command = "sleep 1"
+blender_bin = "/root/blender/blender"
+remote_root = "/root/bontop-acceptance"
+upload_paths = ["config", "scripts/blender", "hdri", "assets/textures", "tmp/final-render-bundle"]
+engine = "CYCLES"
+out_dir = "tmp/cycles"
+render_version = "cycles-final"
+resolution = 35
+bundle = "tmp/final-render-bundle"

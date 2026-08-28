@@ -50,7 +50,7 @@ $PY "$API" images
 $PY "$API" save-image INSTANCE_UUID --image-name '镜像备份' --confirm
 ```
 
-创建、开关机、保存镜像需要确认参数。`release` 不可逆，必须显式 `--confirm-release`，且客户端会先确认 snapshot/status，必要时关机并轮询到停止状态；不会自动释放实例。
+创建、开关机、保存镜像需要确认参数。`release` 不可逆，必须显式 `--confirm-release`，且客户端会先确认 snapshot/status，必要时关机并轮询到停止状态；不会自动释放实例。默认 `pro` profile 已归档为实测可用的 Blender 镜像 `image-ff88133a27` + `v-48g-350w`，实际测试价格为 1.87 元/小时；若 AutoDL 后台调整镜像或规格，应先重新 `images`/`info` 确认。
 
 ## SSH/SFTP 命令
 
@@ -66,16 +66,33 @@ $PY "$SSH" exec INSTANCE_UUID --command 'python render.py' --start
 
 `upload` 支持单文件和递归目录；目录上传默认忽略 `.git`、`node_modules`、`__pycache__`、`.venv`、`venv` 和 `*.pyc`。本地源目录存在 `.autodlignore` 时优先使用它，否则使用 `.gitignore`。`download` 支持递归目录并自动创建本地父目录。
 
-## Blender 工作流
+## Blender 专用 workflow
 
-已有实例默认不自动 release：
+镜像已预装 Blender：`/root/blender/blender`。workflow 固定使用远端工作目录 `/root/bontop-acceptance`，不会上传 Blender 二进制或整个项目。默认 profile 的上传白名单只有：
 
-1. `start`（或 SSH 命令带 `--start`）
-2. `upload` Blender 脚本、配置和必要资产
-3. `exec` 执行渲染/处理命令
-4. `download` 渲染结果和日志
-5. `stop`
-6. 根据明确确认可选 `release`；release 不可逆
+- `config`
+- `scripts/blender`
+- `hdri`
+- `assets/textures`
+- `tmp/final-render-bundle`
+
+render bundle 预检必须找到 `house.glb`、`render-config.json`、`project-render-facts.json`，并统计至少一个非空文件；预检失败不会创建实例或开机。
+
+```bash
+PY=.agents/skills/autodl-manager/.venv/bin/python
+BLENDER=.agents/skills/autodl-manager/scripts/autodl_blender.py
+$PY "$BLENDER" preflight
+$PY "$BLENDER" probe INSTANCE_UUID
+$PY "$BLENDER" upload INSTANCE_UUID
+$PY "$BLENDER" render INSTANCE_UUID
+$PY "$BLENDER" fetch INSTANCE_UUID
+$PY "$BLENDER" cleanup INSTANCE_UUID
+```
+
+一次性任务使用严格顺序：`preflight → create → 轮询 creating/starting 到 running → probe → upload → render → fetch 并校验非空输出 → stop → 可选 release`。`run` 遇到异常或中断会在 finally 至少尝试 stop；fetch 失败绝不 release；变更操作不自动重试。`release` 只有同时传入 `--release-after --confirm-release` 才执行。
+
+render 实际在 `remote_root` 下安全拼装并执行：
+`/root/blender/blender -b --python scripts/blender/dress_scene.py -- --glb tmp/final-render-bundle/house.glb --config tmp/final-render-bundle/render-config.json --engine CYCLES --out-dir tmp/cycles --version cycles-final --config-dir . --res 35`。
 
 ## 费用与生命周期最佳实践
 
@@ -86,6 +103,7 @@ $PY "$SSH" exec INSTANCE_UUID --command 'python render.py' --start
 - 不把 Pro API 的弹性部署库存当作 Pro 实例库存；官方 Pro API 没有可靠的 Pro 实时库存查询。
 - 每次开机或 SSH/SFTP 操作都重新获取 snapshot，不能缓存端口、地址或密码。
 - 创建和开机后要轮询状态；`running` 不一定代表 SSH 服务已经就绪，应对 snapshot 和 SSH 连接做有限重试。
+- `autodl_blender.py run` 自带 finally cleanup：失败或中断至少 stop；只有输出已成功 fetch 且显式双重确认时才 release。
 
 ## 官方接口映射
 
@@ -105,4 +123,4 @@ GET 查询使用 query 参数 `instance_uuid`。官方响应必须 HTTP 2xx 且 
 
 ## 安全限制
 
-不要在命令、日志或输出中打印 root password、Jupyter token、API token、cookie。SSH `exec` 只执行用户明确传入的命令字符串；不会提供交互式 shell。官方 Pro API 没有 TTL 或自动释放接口，临时任务应由外部调度器处理。
+不要在命令、日志或输出中打印 root password、Jupyter token、API token、cookie。SSH `exec` 只执行用户明确传入的命令字符串；不会提供交互式 shell。Blender wrapper 不使用 `shell=True`，并限制远端命令、上传根目录和上传白名单。官方 Pro API 没有 TTL 或自动释放接口，因此 workflow 必须依靠 finally cleanup；完成下载校验后按需显式 release。
