@@ -1,5 +1,6 @@
 import type { Topic, CurrentScheme, TopicSelection, CurtainPresentationState, CurtainState } from '@shared/types';
 import { getTopicsForObject } from '../data/objectMapping.js';
+import { setupCollapsiblePanel } from './CollapsiblePanel.js';
 
 export interface HoverTarget {
   objectId: string;
@@ -37,6 +38,10 @@ export class InfoPanel {
     this.typeEl = document.getElementById('info-panel-type') as HTMLSpanElement;
     this.roomEl = document.getElementById('info-panel-room') as HTMLSpanElement;
     this.topicsEl = document.getElementById('info-panel-topics') as HTMLDivElement;
+    const getElementById = document.getElementById?.bind(document);
+    const toggle = getElementById?.('info-panel-toggle') as HTMLButtonElement | null;
+    const content = getElementById?.('info-panel-content');
+    if (toggle && content) setupCollapsiblePanel(toggle, content, true);
     this.el.style.display = 'none';
   }
 

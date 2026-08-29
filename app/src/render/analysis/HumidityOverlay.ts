@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { setupCollapsiblePanel } from '../../ui/CollapsiblePanel.js';
 import type { HouseScene } from '../HouseScene.js';
 
 const TIER_COLORS: Record<string, string> = {
@@ -179,12 +180,20 @@ export class HumidityOverlay {
     this.panel.innerHTML = `
       <div class="humidity-info-header">
         <span>${room.name} · ${tierLabel[room.tier] ?? room.tier} · ${room.score} 分</span>
-        <button id="humidity-info-close">×</button>
+        <span class="humidity-info-actions">
+          <button id="humidity-info-toggle" class="panel-collapse-toggle" type="button" aria-controls="humidity-info-content" aria-expanded="true" aria-label="湿度信息面板折叠" title="折叠">−</button>
+          <button id="humidity-info-close" type="button" aria-label="关闭">×</button>
+        </span>
       </div>
-      <div class="humidity-factors">${factors}</div>
-      ${room.declared ? '' : '<div class="humidity-undeclared">未声明湿度因子，使用默认值</div>'}
+      <div id="humidity-info-content">
+        <div class="humidity-factors">${factors}</div>
+        ${room.declared ? '' : '<div class="humidity-undeclared">未声明湿度因子，使用默认值</div>'}
+      </div>
     `;
     this.panel.style.display = 'block';
+    const toggle = this.panel.querySelector('#humidity-info-toggle') as HTMLButtonElement | null;
+    const content = this.panel.querySelector('#humidity-info-content') as HTMLElement | null;
+    if (toggle && content) setupCollapsiblePanel(toggle, content);
     this.panel.querySelector('#humidity-info-close')?.addEventListener('click', () => this.hidePanel());
   }
 

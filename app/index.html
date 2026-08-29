@@ -11,24 +11,41 @@
     <canvas id="gl"></canvas>
 
     <div id="scheme-panel" class="panel">
-      <div id="topic-tabs"></div>
-      <div id="topic-options"></div>
-      <h3 id="scheme-name">请选择一个方案</h3>
-      <p id="scheme-desc"></p>
-      <ul id="scheme-pros"></ul>
-      <ul id="scheme-cons"></ul>
-      <div id="warnings"></div>
-      <button id="export-glb-btn" title="导出 glb（云渲染用）">导出 glb</button>
+      <div class="panel-heading">
+        <h3>方案</h3>
+        <button id="scheme-panel-toggle" class="panel-collapse-toggle" type="button" aria-controls="scheme-panel-content" aria-expanded="false" aria-label="方案面板折叠" title="展开">+</button>
+      </div>
+      <div id="scheme-panel-content">
+        <div id="topic-tabs"></div>
+        <div id="topic-options"></div>
+        <h3 id="scheme-name">请选择一个方案</h3>
+        <p id="scheme-desc"></p>
+        <ul id="scheme-pros"></ul>
+        <ul id="scheme-cons"></ul>
+        <div id="warnings"></div>
+        <button id="export-glb-btn" title="导出 glb（云渲染用）">导出 glb</button>
+      </div>
     </div>
 
-    <div id="info-panel" class="panel">
-      <div id="info-panel-header">
-        <span id="info-panel-title"></span>
-        <span id="info-panel-object-id"></span>
-        <span id="info-panel-type"></span>
-        <span id="info-panel-room"></span>
+    <div id="right-panel-stack">
+      <div id="info-panel" class="panel">
+        <div class="panel-heading" id="info-panel-heading">
+          <span id="info-panel-title"></span>
+          <button id="info-panel-toggle" class="panel-collapse-toggle" type="button" aria-controls="info-panel-content" aria-expanded="false" aria-label="对象信息面板折叠" title="展开">+</button>
+        </div>
+        <div id="info-panel-content">
+          <div id="info-panel-header">
+            <span id="info-panel-object-id"></span>
+            <span id="info-panel-type"></span>
+            <span id="info-panel-room"></span>
+          </div>
+          <div id="info-panel-topics"></div>
+        </div>
       </div>
-      <div id="info-panel-topics"></div>
+      <div id="mep-coordination-controls" class="mep-controls" hidden>
+        <label><input id="mep-bends-toggle" type="checkbox" checked> 转折点/标高</label>
+        <div id="mep-layer-toggles" class="mep-layer-toggles"></div>
+      </div>
     </div>
 
     <div id="overview-menu" class="panel">
@@ -79,10 +96,6 @@
     <button id="topdown-btn" title="切换俯视/3D (T)">俯视</button>
     <button id="hvac-coordination-btn" title="HVAC 设备与约束（不显示实体路线）" disabled>HVAC 设备/约束：加载中</button>
     <button id="mep-coordination-btn" title="MEP 实体水电 + HVAC 路线" disabled>MEP 实体路线：加载中</button>
-    <div id="mep-coordination-controls" class="mep-controls" hidden>
-      <label><input id="mep-bends-toggle" type="checkbox" checked> 转折点/标高</label>
-      <div id="mep-layer-toggles" class="mep-layer-toggles"></div>
-    </div>
     <button id="sunlight-btn" title="日照模拟">日照</button>
     <button id="humidity-btn" title="湿度风险">湿度</button>
     <div id="pointer-lock-toast" style="display:none">请允许鼠标锁定以使用第一人称</div>

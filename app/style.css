@@ -35,11 +35,37 @@ html, body {
   color: #eee;
 }
 
+.panel-heading,
+.dynamic-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel-collapse-toggle {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ddd;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.panel-collapse-toggle:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
 #scheme-panel {
   left: 16px;
   top: 16px;
   width: 360px;
-  max-height: calc(100vh - 32px);
+  max-height: calc(50vh - 24px);
   overflow-y: auto;
 }
 
@@ -130,13 +156,53 @@ html, body {
   margin-bottom: 6px;
 }
 
-#info-panel {
+:root {
+  --right-panel-top: 105px;
+}
+
+#right-panel-stack {
+  position: fixed;
+  top: var(--right-panel-top);
   right: 16px;
-  top: 16px;
-  width: 340px;
-  max-height: 60vh;
+  width: clamp(300px, 30vw, 420px);
+  max-height: calc(100vh - var(--right-panel-top) - 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+  padding: 4px;
+  z-index: 90;
+  pointer-events: none;
+}
+
+#right-panel-stack > * {
+  position: static;
+  width: 100%;
+  min-width: 0;
+  max-height: none;
+  min-height: 0;
+  flex: 0 1 auto;
+  pointer-events: auto;
+}
+
+#right-panel-stack .dynamic-panel,
+#right-panel-stack #info-panel,
+#right-panel-stack .mep-controls {
   overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#right-panel-stack .dynamic-panel {
+  max-height: min(360px, calc(100vh - var(--right-panel-top) - 16px));
+}
+
+#right-panel-stack .mep-controls {
+  max-height: min(260px, calc(100vh - var(--right-panel-top) - 16px));
+}
+
+#info-panel {
   display: none;
+  max-height: min(360px, calc(100vh - var(--right-panel-top) - 16px));
 }
 
 #info-panel-header {
@@ -148,8 +214,11 @@ html, body {
 }
 
 #info-panel-title {
+  min-width: 0;
+  max-width: calc(100% - 32px);
   font-size: 16px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 #info-panel-object-id,
@@ -523,9 +592,8 @@ html, body {
 }
 
 .mep-controls {
-  position: fixed;
-  top: 88px;
-  right: 16px;
+  max-height: min(240px, calc(100vh - 32px));
+  overflow-y: auto;
   z-index: 90;
   display: flex;
   flex-direction: column;
@@ -596,6 +664,8 @@ html, body {
   position: fixed;
   left: 16px;
   bottom: 60px;
+  max-height: calc(50vh - 80px);
+  overflow-y: auto;
   z-index: 900;
   background: #1a1a2e;
   color: #e0e0e0;
@@ -612,8 +682,15 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   font-weight: 600;
   margin-bottom: 8px;
+}
+
+#humidity-info-panel .humidity-info-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 #humidity-info-panel #humidity-info-close {
@@ -709,6 +786,29 @@ html, body {
   border-radius: 4px;
   display: none;
   z-index: 90;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --right-panel-top: 96px;
+  }
+
+  #right-panel-stack {
+    right: 8px;
+    width: min(420px, calc(100vw - 16px));
+    max-height: calc(100vh - var(--right-panel-top) - 8px);
+    gap: 12px;
+    padding: 2px;
+  }
+
+  #right-panel-stack .dynamic-panel,
+  #right-panel-stack #info-panel {
+    max-height: min(320px, calc(100vh - var(--right-panel-top) - 8px));
+  }
+
+  #right-panel-stack .mep-controls {
+    max-height: min(220px, calc(100vh - var(--right-panel-top) - 8px));
+  }
 }
 
 #config-error-banner {

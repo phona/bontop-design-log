@@ -1,4 +1,5 @@
 import type { Topic, TopicOption, SchemeDiff, BudgetSnapshot } from '@shared/types';
+import { setupCollapsiblePanel } from './CollapsiblePanel.js';
 
 export interface SchemePanelElements {
   topicTabs: HTMLElement;
@@ -22,6 +23,10 @@ export class SchemePanel {
 
   constructor(els: SchemePanelElements) {
     this.els = els;
+    const getElementById = document.getElementById?.bind(document);
+    const toggle = getElementById?.('scheme-panel-toggle') as HTMLButtonElement | null;
+    const content = getElementById?.('scheme-panel-content');
+    if (toggle && content) setupCollapsiblePanel(toggle, content, true);
   }
 
   init(topics: Topic[], onSelect: (topicId: string, optionId: string) => void) {

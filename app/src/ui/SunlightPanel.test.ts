@@ -22,6 +22,7 @@ describe('SunlightPanel', () => {
     expect(document.getElementById('sunlight-panel')).toBeTruthy();
     expect(document.getElementById('sunlight-date')).toBeTruthy();
     expect(document.getElementById('sunlight-hour')).toBeTruthy();
+    expect(document.querySelector('#sunlight-panel')?.parentElement).toBe(document.getElementById('right-panel-stack') ?? document.body);
   });
 
   it('hide 移除显示', () => {
