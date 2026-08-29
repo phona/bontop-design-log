@@ -79,6 +79,20 @@ describe('extractCollisionWalls', () => {
   });
 });
 
+describe('extractCollisionWalls hinged_glass_door', () => {
+  it('collides only when the explicit glass door is closed', () => {
+    const closed = extractCollisionWalls([
+      { type: 'hinged_glass_door', id: 'west-door', open: false, points: [{ x: 5.6, z: 2.8 }, { x: 6.3, z: 2.8 }] },
+    ] as any);
+    expect(closed).toHaveLength(1);
+    expect(closed[0].id).toBe('west-door:col:0');
+    const open = extractCollisionWalls([
+      { type: 'hinged_glass_door', id: 'west-door', open: true, points: [{ x: 5.6, z: 2.8 }, { x: 6.3, z: 2.8 }] },
+    ] as any);
+    expect(open).toHaveLength(0);
+  });
+});
+
 describe('extractCollisionWalls sliding_door_run (DEC-022)', () => {
   it('collides only when closed', () => {
     const closed = extractCollisionWalls([

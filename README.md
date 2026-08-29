@@ -66,7 +66,7 @@ interior-design-project/
 - [ ] 获取物业竣工原DWG（承重墙、梁位、水电）
 - [ ] 现场量房并录入精确尺寸
 - [x] 从概念方案中选定最终布局
-- [x] 建立 CAD 驱动户型提取流程（`scripts/parse_cad.py`），解析中文房间标签（`SH-文字标注`），3D 交互采用对象优先模型。
+- [x] 建立 CAD 驱动户型提取流程（`scripts/cad/parse_cad.py`），解析中文房间标签（`SH-文字标注`），3D 交互采用对象优先模型。
 - [ ] 设计师深化与施工图
 - [ ] 招投标与合同签订
 - [ ] 施工与变更审计
@@ -80,7 +80,7 @@ cat config/house.yaml
 
 # 从 CAD 设计图提取户型布局
 python -m pip install -r scripts/requirements.txt
-python scripts/parse_cad.py
+python scripts/cad/parse_cad.py
 
 # 查看提取后的结构化布局
 cat config/layout/model-geometry.yaml

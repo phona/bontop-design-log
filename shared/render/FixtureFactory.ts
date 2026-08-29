@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { FurnishingCutout } from '../types.js';
 
 interface FixturePart {
   shape: 'box' | 'cylinder';
@@ -40,6 +41,7 @@ export interface KitchenCabinetRunSpec {
   depth: number;
   cabinetHeight?: number;
   countertopThickness?: number;
+  cutouts?: FurnishingCutout[];
 }
 
 export interface BathSideCabinetRunSpec {
@@ -120,18 +122,25 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     type: 'vanity_dresser',
     parts: [
       // 台下柜（台盆半，西侧）
-      { shape: 'box', size: [0.46, 0.72, 0.42], position: [-0.29, 0.36, 0], color: '#d7d9db', roughness: 0.45 },
-      { shape: 'box', size: [0.44, 0.66, 0.02], position: [-0.29, 0.40, 0.22], color: '#eef0f1', roughness: 0.35 },
+      { shape: 'box', size: [0.46, 0.72, 0.42], position: [-0.29, 0.36, 0], color: '#d7d9db', roughness: 0.45, part: 'vanity-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.44, 0.66, 0.02], position: [-0.29, 0.40, 0.22], color: '#eef0f1', roughness: 0.35, part: 'vanity-door', materialRole: 'door_front' },
       // 梳妆位（东侧）留膝部空间，仅一组吊抽屉
-      { shape: 'box', size: [0.40, 0.16, 0.38], position: [0.27, 0.62, 0], color: '#d7d9db', roughness: 0.45 },
+      { shape: 'box', size: [0.40, 0.16, 0.38], position: [0.27, 0.62, 0], color: '#d7d9db', roughness: 0.45, part: 'dresser-drawer', materialRole: 'drawer_front' },
       // 通长台面
-      { shape: 'box', size: [1.14, 0.04, 0.50], position: [0, 0.79, 0], color: '#e8e6e0', roughness: 0.3 },
+      { shape: 'box', size: [1.14, 0.04, 0.50], position: [0, 0.79, 0], color: '#e8e6e0', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
       // 台上盆 + 龙头（西半）
-      { shape: 'box', size: [0.46, 0.12, 0.32], position: [-0.29, 0.87, 0], color: '#ffffff', roughness: 0.3 },
-      { shape: 'box', size: [0.05, 0.22, 0.05], position: [-0.29, 0.92, -0.16], color: '#c8ccd0', metalness: 0.6, roughness: 0.35 },
+      { shape: 'box', size: [0.46, 0.12, 0.32], position: [-0.29, 0.87, 0], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.05, 0.22, 0.05], position: [-0.29, 0.92, -0.16], color: '#c8ccd0', metalness: 0.6, roughness: 0.35, part: 'faucet', materialRole: 'hardware' },
       // 镜柜（台盆上方）+ 平板镜（梳妆位上方，加宽）
-      { shape: 'box', size: [0.50, 0.75, 0.14], position: [-0.29, 1.45, -0.20], color: '#bcd2d8', roughness: 0.1, metalness: 0.6 },
-      { shape: 'box', size: [0.48, 0.75, 0.03], position: [0.27, 1.45, -0.235], color: '#bcd2d8', roughness: 0.1, metalness: 0.6 },
+      { shape: 'box', size: [0.50, 0.75, 0.14], position: [-0.29, 1.45, -0.20], color: '#bcd2d8', roughness: 0.1, metalness: 0.6, part: 'mirror-cabinet', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.48, 0.75, 0.03], position: [0.27, 1.45, -0.235], color: '#bcd2d8', roughness: 0.1, metalness: 0.6, part: 'mirror', materialRole: 'mirror' },
+    ],
+  },
+  {
+    type: 'towel_set',
+    parts: [
+      { shape: 'box', size: [0.03, 0.03, 0.45], position: [0, 1.25, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.2, part: 'towel-bar', materialRole: 'hardware' },
+      { shape: 'box', size: [0.06, 0.45, 0.28], position: [-0.03, 1.05, 0], color: '#e8e1d6', roughness: 0.9, part: 'towel', materialRole: 'fabric' },
     ],
   },
   {
@@ -230,11 +239,11 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'vanity',
     parts: [
-      { shape: 'box', size: [0.8, 0.75, 0.4], position: [0, 0.375, 0], color: '#f0f0f0', roughness: 0.4 },
-      { shape: 'box', size: [0.5, 0.12, 0.3], position: [0, 0.81, 0], color: '#ffffff', roughness: 0.3 },
+      { shape: 'box', size: [0.8, 0.75, 0.4], position: [0, 0.375, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.5, 0.12, 0.3], position: [0, 0.81, 0], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
       // 台面 + 镜柜（靠墙侧=-z），2026-08-21 贴近成品洗漱台效果
-      { shape: 'box', size: [0.84, 0.04, 0.5], position: [0, 0.77, 0], color: '#d8d2c6', roughness: 0.3 },
-      { shape: 'box', size: [0.7, 0.9, 0.03], position: [0, 1.55, -0.24], color: '#bcd2d8', roughness: 0.1, metalness: 0.6 },
+      { shape: 'box', size: [0.84, 0.04, 0.5], position: [0, 0.77, 0], color: '#d8d2c6', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
+      { shape: 'box', size: [0.7, 0.9, 0.03], position: [0, 1.55, -0.24], color: '#bcd2d8', roughness: 0.1, metalness: 0.6, part: 'mirror', materialRole: 'mirror' },
     ],
   },
   {
@@ -306,8 +315,8 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     // 65 寸挂墙电视。独立于低柜和收纳柜，明确表达“无电视背景墙”方案。
     type: 'tv_65',
     parts: [
-      { shape: 'box', size: [1.45, 0.84, 0.07], position: [0, 1.52, 0], color: '#141414', metalness: 0.15, roughness: 0.25 },
-      { shape: 'box', size: [1.37, 0.77, 0.012], position: [0, 1.52, -0.041], color: '#202b32', metalness: 0.05, roughness: 0.18 },
+      { shape: 'box', size: [1.45, 0.84, 0.07], position: [0, 1.52, 0], color: '#141414', metalness: 0.15, roughness: 0.25, part: 'frame', materialRole: 'tv_frame' },
+      { shape: 'box', size: [1.37, 0.77, 0.012], position: [0, 1.52, -0.041], color: '#202b32', metalness: 0.05, roughness: 0.18, part: 'screen', materialRole: 'tv_screen' },
     ],
   },
   {
@@ -454,9 +463,9 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'toilet',
     parts: [
-      { shape: 'box', size: [0.40, 0.10, 0.40], position: [0, 0.05, 0], color: '#ffffff', roughness: 0.3 },
-      { shape: 'box', size: [0.35, 0.40, 0.35], position: [0, 0.30, 0.05], color: '#ffffff', roughness: 0.3 },
-      { shape: 'box', size: [0.40, 0.50, 0.15], position: [0, 0.35, -0.25], color: '#f0f0f0', roughness: 0.3 },
+      { shape: 'box', size: [0.40, 0.10, 0.40], position: [0, 0.05, 0], color: '#ffffff', roughness: 0.3, part: 'toilet-base', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.35, 0.40, 0.35], position: [0, 0.30, 0.05], color: '#ffffff', roughness: 0.3, part: 'toilet-bowl', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.40, 0.50, 0.15], position: [0, 0.35, -0.25], color: '#f0f0f0', roughness: 0.3, part: 'toilet-tank', materialRole: 'ceramic' },
     ],
   },
   {
@@ -738,6 +747,16 @@ export function buildBathSideCabinetRun(spec: BathSideCabinetRunSpec): THREE.Gro
   return group;
 }
 
+/** Builds an explicit countertop-only bridge; it never creates cabinet geometry. */
+export function buildKitchenCountertopBridge(spec: { length: number; depth: number; countertopThickness: number }): THREE.Group {
+  const group = new THREE.Group();
+  addBox(group, 'kitchen_countertop_bridge', 0, [spec.length, spec.countertopThickness, spec.depth], [0, 0.86 + spec.countertopThickness / 2, 0], '#e8e6e0', {
+    part: 'countertop-bridge',
+    materialRole: 'countertop',
+  }, 'countertop');
+  return group;
+}
+
 /** Builds a configurable straight run; L-shaped kitchens declare one run per wall. */
 export function buildKitchenCabinetRun(spec: KitchenCabinetRunSpec): THREE.Group {
   const cabinetHeight = spec.cabinetHeight ?? 0.86;
@@ -746,7 +765,29 @@ export function buildKitchenCabinetRun(spec: KitchenCabinetRunSpec): THREE.Group
   let i = 0;
   addBox(group, 'kitchen_cabinet_run', i++, [Math.max(0.1, spec.length - 0.08), 0.08, Math.max(0.1, spec.depth - 0.06)], [0, 0.04, 0], '#4c4237', { part: 'plinth', materialRole: 'plinth' });
   addBox(group, 'kitchen_cabinet_run', i++, [spec.length, cabinetHeight - 0.08, spec.depth], [0, (cabinetHeight + 0.08) / 2, 0], '#b79e7c', { part: 'carcass', materialRole: 'cabinet_body' });
-  addBox(group, 'kitchen_cabinet_run', i++, [spec.length + 0.04, countertopThickness, spec.depth + 0.04], [0, cabinetHeight + countertopThickness / 2, 0], '#e8e6e0', { part: 'countertop', materialRole: 'countertop' }, 'countertop');
+  const countertopWidth = spec.length + 0.04;
+  const countertopDepth = spec.depth + 0.04;
+  const cutouts = (spec.cutouts ?? []).map((cutout) => {
+    const [cx, cz] = cutout.center ?? cutout.offset ?? [0, 0];
+    const [width, depth] = cutout.size;
+    return { id: cutout.id, kind: cutout.kind, minX: cx - width / 2, maxX: cx + width / 2, minZ: cz - depth / 2, maxZ: cz + depth / 2 };
+  }).filter((cutout) => cutout.maxX > -countertopWidth / 2 && cutout.minX < countertopWidth / 2 && cutout.maxZ > -countertopDepth / 2 && cutout.minZ < countertopDepth / 2);
+  if (cutouts.length === 0) {
+    addBox(group, 'kitchen_cabinet_run', i++, [countertopWidth, countertopThickness, countertopDepth], [0, cabinetHeight + countertopThickness / 2, 0], '#e8e6e0', { part: 'countertop', materialRole: 'countertop' }, 'countertop');
+  } else {
+    const xEdges = [...new Set([-countertopWidth / 2, countertopWidth / 2, ...cutouts.flatMap((cutout) => [Math.max(-countertopWidth / 2, cutout.minX), Math.min(countertopWidth / 2, cutout.maxX)])])].sort((a, b) => a - b);
+    const zEdges = [...new Set([-countertopDepth / 2, countertopDepth / 2, ...cutouts.flatMap((cutout) => [Math.max(-countertopDepth / 2, cutout.minZ), Math.min(countertopDepth / 2, cutout.maxZ)])])].sort((a, b) => a - b);
+    let piece = 0;
+    for (let x = 0; x < xEdges.length - 1; x++) {
+      for (let z = 0; z < zEdges.length - 1; z++) {
+        const minX = xEdges[x]; const maxX = xEdges[x + 1];
+        const minZ = zEdges[z]; const maxZ = zEdges[z + 1];
+        const centerX = (minX + maxX) / 2; const centerZ = (minZ + maxZ) / 2;
+        if (cutouts.some((cutout) => centerX > cutout.minX && centerX < cutout.maxX && centerZ > cutout.minZ && centerZ < cutout.maxZ)) continue;
+        addBox(group, 'kitchen_cabinet_run', i++, [maxX - minX, countertopThickness, maxZ - minZ], [centerX, cabinetHeight + countertopThickness / 2, centerZ], '#e8e6e0', { part: `countertop-${++piece}`, materialRole: 'countertop' }, 'countertop');
+      }
+    }
+  }
   const bayWidth = Math.min(0.6, spec.length);
   const bayCount = Math.max(1, Math.ceil(spec.length / bayWidth));
   const drawerHeight = Math.min(0.16, Math.max(0.08, cabinetHeight - 0.28));

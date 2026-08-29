@@ -15,7 +15,7 @@
 | 3 | `config/ceiling.yaml` | 加新造型条目（声明意图） |
 | 4 | `app/src/render/HouseScene.ts` | `renderCeilingZones` 加渲染分支 |
 | 5 | 碰撞评估 | 新几何是否进 `extractCollisionWalls`（吊顶一律：否） |
-| 6 | `scripts/verify-rules.ts` | 新 type 的字段校验（必填字段、取值范围） |
+| 6 | `scripts/verify/rules/verify-rules.ts` | 新 type 的字段校验（必填字段、取值范围） |
 | 7 | 测试与验证 | 见第 7 节命令清单 |
 
 顺序建议：1→2→3→4→5→6→7。类型先行，配置其次，渲染最后——任何时候配置里有未知 type，渲染层应跳过并告警，不得崩溃。
@@ -87,7 +87,7 @@ switch (zone.type) {
 
 例外：若新造型向下凸出超过 0.5m（如低位装饰构件），重新评估并在此文档记录结论。
 
-## 6. 校验规则（scripts/verify-rules.ts）
+## 6. 校验规则（scripts/verify/rules/verify-rules.ts）
 
 - 新 type 加入合法值列表。
 - 新字段加必填/范围校验（如 `cove` 必须带 `cove_width` 且 0.05–0.40m）。

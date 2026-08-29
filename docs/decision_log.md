@@ -152,7 +152,7 @@
 - **选定方案**：方案2
 - **决策依据**：新增设备只改 YAML 不改代码；规则集中可审计；5 种检查类型覆盖所有场景
 - **预算影响**：无
-- **关联文件**：`scripts/verify-rules.ts`、`config/verify-rules.yaml`、`package.json`、`AGENTS.md`
+- **关联文件**：`scripts/verify/rules/verify-rules.ts`、`config/verify-rules.yaml`、`package.json`、`AGENTS.md`
 - **决策人**：业主
 
 ---
@@ -504,7 +504,7 @@
   - **联动**：落地灯及地插 sock_living_sofa_r 移至 (11.0, 9.35)；电视墙电气点位（sock_living_tv/net_living/sock_living_tv_led/light_tv_strip）z 7.0→7.7；原 1.8m 成品电视柜条目 tv_stand_01 改为"西墙柜墙定制 fixed 8000"（约 10 投影㎡×800）
 - **决策依据**：沙发南侧 2.8m 为低效空间（主卧动线走沙发东侧，业主指正）；西墙是全屋唯一整面实体墙却只放了 1.8m 小柜；柜墙让电视南移由"柜子构图"定义而非"墙中心"，南移不突兀；符合 style-guide §四（浅门+深胡桃点缀）
 - **预算影响**：tv_stand_01 1200→8000（+6.8k，柜体定制口径）；累计定制柜（鞋柜 2.9k+柜墙 8k）≈ 11k，190k ceiling 内，家具池超池待衣柜核价对冲
-- **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`config/materials.yaml`（tv_stand_01）、`shared/types.ts`、`app/src/render/FixtureFactory.ts`、`scripts/blender/dress_scene.py`、`scripts/verify-furniture-placement.ts`（STACKED_PAIRS 增 tv_65+tv_wall_low）
+- **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`config/materials.yaml`（tv_stand_01）、`shared/types.ts`、`app/src/render/FixtureFactory.ts`、`scripts/blender/dress_scene.py`、`scripts/verify/placement/verify-furniture-placement.ts`（STACKED_PAIRS 增 tv_65+tv_wall_low）
 - **决策人**：业主
 
 ---
@@ -627,7 +627,7 @@
   3. 主卫隔墙 z=4.3→4.0（北移 0.3，布局验算上限：0.5 则三件互撞）：台盆 (1.80,3.75) 入湿区贴南墙，淋浴南移 z=2.6，走廊加深 1.55（方案 C 薄柜可入走廊）；干湿分离放弃，浴帘补
 - **决策依据**：邻户实测图+样板间视频+物理自洽（2070+760=2830）；儿童房西柜 2.7 高在 sill 2.07 下挡窗 0.63m 不可接受；业主逐条拍板
 - **预算影响**：主卫隔墙拆建+防水重做入拆改/防水池（待决算）；其余无
-- **关联文件**：config/layout/overlay.yaml、model-geometry.yaml、house.yaml、electrical.yaml、plumbing.yaml、scripts/verify-furniture-placement.ts（width/depth 声明式覆盖）、docs/pending-site-data.md
+- **关联文件**：config/layout/overlay.yaml、model-geometry.yaml、house.yaml、electrical.yaml、plumbing.yaml、scripts/verify/placement/verify-furniture-placement.ts（width/depth 声明式覆盖）、docs/pending-site-data.md
 - **决策人**：业主
 - **待办**：动墙前确认 w_mbath_south 非承重（pending 结构项）
 
@@ -711,7 +711,7 @@
 - **状态**：方向已定、全部尺寸待交房量房确认（需量：下沉 300 分界线、立管/坑距、条带净深、墙体承重属性）
 - **最终形态（2026-08-25 业主确认收口）**：条带西段整段为洗漱梳妆区——vanity_dresser 一体台满墙 1.10×0.5（x∈[0,1.10]，东留 0.05 收边缝；台盆 0.5 居西、梳妆位尽量宽）+ 东侧半墙（wall_run h1.05，需碰撞）上部长虹玻璃屏风（shower_screen sill1.05→2.10）@x=1.11，与 d_mbath 门洞[1.15,1.95]及卫内扫掠不冲突；vanity_tall_cabinet 已取消（业主要台面宽裕，储物扩展将来用次卧那面墙）、bath_entry_shelf 已移除；plant_fiddle 挪至次卧西墙（x=2.6 主卫东墙南延段）旁条带一侧 (2.30,3.55)（⚠️业主口径 x≈2.85~2.95 在墙东侧次卧内，与书桌/衣柜冲突，取墙西侧），避开 d_mb 扫掠
 - **预算影响**：隔墙拆建+防水重做入拆改/防水池（待决算）；洁具数量不变
-- **关联文件**：config/layout/model-geometry.yaml、config/layout/overlay.yaml、config/house.yaml、config/plumbing.yaml、config/electrical.yaml、config/mep-hvac-coordination.yaml、app/src/render/FixtureFactory.ts（vanity_dresser 配方；bath_entry_shelf/vanity_tall_cabinet 配方均已删除）、shared/types.ts（FURNITURE_DIMS）、config/design-rules.yaml（furnishingTypeToTopic）、server/budget-calculator.ts、app/src/scene/collision-utils.ts（wall_run 纳入碰撞）、scripts/verify-collision-coverage.ts
+- **关联文件**：config/layout/model-geometry.yaml、config/layout/overlay.yaml、config/house.yaml、config/plumbing.yaml、config/electrical.yaml、config/mep-hvac-coordination.yaml、app/src/render/FixtureFactory.ts（vanity_dresser 配方；bath_entry_shelf/vanity_tall_cabinet 配方均已删除）、shared/types.ts（FURNITURE_DIMS）、config/design-rules.yaml（furnishingTypeToTopic）、server/budget-calculator.ts、app/src/scene/collision-utils.ts（wall_run 纳入碰撞）、scripts/verify/collision/verify-collision-coverage.ts
 - **决策人**：业主（方向）；尺寸全部待量房终核
 - **补充（2026-08-26）**：
   - 新增梳妆椅 `chair @(0.80,3.66) rot180`（收进时背贴台面、对镜朝北；椅后通道至衣柜北脸余 1.6m+，不挡动线）；verify:furniture 通过
@@ -789,7 +789,7 @@
 - **决策依据**：业主确认不做比赛级训练，仅基础力量/耐力训练；书桌需要南侧采光，门洞与门扇扫掠须保持畅通；现有全屋储物可覆盖衣物、被褥、少量书籍和最多约四个行李箱；空间优先服务工作、学习与身体训练
 - **工程与使用边界**：深蹲架和柜体均独立落地，不固定在南侧玻璃幕墙；木纹砖上使用可拆卸减震垫；硬拉仅受控下放，不做故意落杠；最终器械尺寸、窗帘/窗扇、门扇扫掠、楼板承载、墙体管线和物业噪声限制须现场确认
 - **预算影响**：取消书房新增大柜体；增加一套家用级深蹲架、奥杆、杠铃片、卧推凳、减震垫和普通低柜，具体采购型号与价格待核；全屋储物不以书房新增衣柜为前提
-- **关联文件**：`config/house.yaml`、`shared/types.ts`、`app/src/render/FixtureFactory.ts`、`app/src/render/FixtureFactory.test.ts`、`scripts/verify-furniture-placement.ts`、`docs/superpowers/specs/2026-08-12-storage-system-design.md`
+- **关联文件**：`config/house.yaml`、`shared/types.ts`、`app/src/render/FixtureFactory.ts`、`app/src/render/FixtureFactory.test.ts`、`scripts/verify/placement/verify-furniture-placement.ts`、`docs/superpowers/specs/2026-08-12-storage-system-design.md`
 - **决策人**：业主
 
 ---
@@ -870,4 +870,17 @@
 - **依据**：和萃创想图（survey/photos 标准层装修创想图）右侧尺寸链 2900+2000+4400+1100，东南房南玻璃栏板后退 1100；邻户原始结构图（neighbor_ys01）同构凹进 1020；点石设计图该房净面积标注 8.35㎡（非此前 house.yaml 误引的 8.39㎡，8.39 为西翼房间标注）。量房终核。
 - **级联**：模型面积 12.75→9.45㎡（毛）；南墙上飘窗条带 z 7.60..8.70；窗帘盒 `curtain_box_study_south` 移至 z[7.60,7.85]；书桌/椅/东墙低柜南排北移 1.10m 保持"距南幕墙 50mm"关系（DEC-046 布局意图不变）；sock_study_desk/net_study/sock_study_curtain 随桌/墙北移；light_study_dome 居中至 z=7.125；减震垫北缘避让低柜。
 - **关联文件**：`config/layout/model-geometry.yaml`、`config/house.yaml`、`config/electrical.yaml`、`config/ceiling.yaml`
+- **决策人**：业主
+
+---
+
+### DEC-2026-08-29-048 客卫南墙北移、外置洗漱及南北串联布局
+
+- **日期**：2026-08-29
+- **决策事项**：替代此前“东墙内置洗漱台”的开放式方案；客卫南墙北移，洗漱区移至南墙外/走廊侧，内卫按南马桶、北淋浴串联布置。
+- **选定方案**：`w_gbath_south` 及其内卫两端 `v_nw_s`/`v_gbath_se` 位于 `z=3.55`，保留南侧外门 `d_gbath` 宽 0.7m、内开、端部合页并随墙移动；客卫内边界为 `x=5.60..7.10,z=2.20..3.55`，内卫深度约 1.35m。东西墙分别由 `w_gbath_west`/`w_gbath_east` 延伸段 `w_gbath_west_open_vanity`/`w_gbath_east_open_vanity` 沿原南北走向延伸至 `z=4.30`，东侧开放墙段长度 `4.30-3.55=0.75m`，延伸段不计入 guest_bath boundary。南侧 `z=3.55..4.30` 保持朝走廊开放，不新增第四面横墙。洗漱台中心暂定 `(6.90,3.90)`、尺寸 `0.8×0.4`、`rotation=270`，背靠东墙、正面朝西；旋转后 AABB 为 `x[6.70,7.10]、z[3.50,4.30]`，南端不越过 `z=4.30`。马桶靠东墙中心 `(6.80,2.65)`、`rotation=270` 坐东朝西；按 `FURNITURE_DIMS` 旋转后 AABB 为 `x[6.50,7.10]、z[2.45,2.85]`，贴近隔断南侧并避开外门扫掠；淋浴花洒挂东墙 `(7.10,2.45)`、`wall_side=west` 坐东朝西，地漏 `(6.30,2.45)`；横向 `shower_screen_gbath` 位于 `z=2.80`、`x=7.10..6.30`，西侧 `x=5.60..6.30` 留约 0.70m 西侧开放入口，禁止东侧入口。当前 schema 只有 `shower_screen` 缺口表达，没有真正平开玻璃门扇；如需门扇需新增专用支持，不能将现有缺口称作玻璃门。
+- **决策依据**：不新增实体内墙或内部门；仅恢复客卫东西侧南北向墙体至开放洗漱区南端，南侧不封横墙。当前模型删除历史窗洞占位，按完整实体东墙处理；南墙实体性、外置洗漱台落位和墙体条件仍需现场核实。外置洗漱采用落地/靠墙方案，南侧靠东墙，背面朝东、正面朝西；中心向东避让外门扫掠。校验规则要求 placed furnishing 不越过房间边界，故 `house.yaml` 保留与开放洗漱区一致的声明式设计意图。
+- **预算影响**：取消此前东墙内置洗漱的挂墙镜柜表达；保留洗漱台、给排水和插座需求，新增/调整穿南墙及南墙外收口费用待深化确认。
+- **现场待确认**：南墙实体材质与可挂载性、外置台盆落位及给排水穿墙方式；东墙实体墙材质与挂载条件；南侧外门开启净空；原立管与马桶坑距；淋浴防水高度、玻璃屏入口、地漏坡度及排风路径。
+- **关联文件**：`config/layout/model-geometry.yaml`、`config/layout/overlay.yaml`、`config/house.yaml`、`config/plumbing.yaml`、`config/electrical.yaml`
 - **决策人**：业主

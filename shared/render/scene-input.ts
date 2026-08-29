@@ -1,6 +1,7 @@
 import type {
   CeilingZone,
   FurnishingsYaml,
+  PlumbingPoint,
   ResolvedRoom,
   ResolvedWall,
   SceneElement,
@@ -26,6 +27,7 @@ export interface SceneInputSource {
   elements?: ReadonlyArray<SceneElement>;
   ceilingZones?: ReadonlyArray<CeilingZone>;
   furnishings?: FurnishingsYaml;
+  plumbing?: ReadonlyArray<PlumbingPoint>;
 }
 
 export interface SceneInput {
@@ -35,6 +37,7 @@ export interface SceneInput {
   elements: SceneElement[];
   ceilingZones: CeilingZone[];
   furnishings?: FurnishingsYaml;
+  plumbing?: PlumbingPoint[];
 }
 
 function cloneElement(element: SceneElement): SceneElement {
@@ -133,6 +136,7 @@ export function parseSceneInput(source: SceneInputSource): SceneInput {
     elements: [...suppliedElements, ...wallElements],
     ceilingZones: (source.ceilingZones ?? []).map((zone) => ({ ...zone, ...(zone.area ? { area: [...zone.area] as [number, number, number, number] } : {}) })),
     furnishings: source.furnishings,
+    plumbing: source.plumbing?.map((point) => ({ ...point })),
   };
 }
 

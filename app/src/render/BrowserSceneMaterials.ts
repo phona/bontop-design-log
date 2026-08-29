@@ -7,6 +7,38 @@ const GLASS_OPACITY = 0.6;
 export class BrowserSceneMaterials {
   private flutedGlassTexture: THREE.CanvasTexture | null = null;
 
+  makeLowEGlassMaterial(): THREE.MeshPhysicalMaterial {
+    return new THREE.MeshPhysicalMaterial({
+      color: GLASS_COLOR,
+      transparent: true,
+      opacity: GLASS_OPACITY,
+      transmission: 0.92,
+      ior: 1.5,
+      thickness: 0.02,
+      attenuationDistance: 0.5,
+      roughness: 0.12,
+      metalness: 0,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+  }
+
+  makeShowerScreenMaterial(): THREE.MeshPhysicalMaterial {
+    return new THREE.MeshPhysicalMaterial({
+      color: 0xdff4ff,
+      transparent: true,
+      opacity: 0.24,
+      transmission: 0.96,
+      ior: 1.5,
+      thickness: 0.012,
+      attenuationDistance: 1,
+      roughness: 0.08,
+      metalness: 0,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+  }
+
   makeFlutedGlassMaterial(paneWidth: number): THREE.MeshPhysicalMaterial {
     if (!this.flutedGlassTexture) {
       const canvas = document.createElement('canvas');

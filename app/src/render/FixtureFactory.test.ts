@@ -258,6 +258,23 @@ describe('wardrobe fixtures', () => {
   });
 });
 
+describe('bathroom fixtures', () => {
+  it('builds towel_set with stable local parts, roles, and Blender-aligned bounds', () => {
+    const towelSet = buildFixture('towel_set');
+    expect(towelSet).not.toBeNull();
+    towelSet!.updateMatrixWorld(true);
+    const size = new THREE.Box3().setFromObject(towelSet!).getSize(new THREE.Vector3());
+    expect(size.x).toBeCloseTo(0.075, 5);
+    expect(size.y).toBeCloseTo(0.45, 5);
+    expect(size.z).toBeCloseTo(0.45, 5);
+    expect(towelSet!.children.map((child) => ({ part: child.userData.part, materialRole: child.userData.materialRole }))).toEqual([
+      { part: 'towel-bar', materialRole: 'hardware' },
+      { part: 'towel', materialRole: 'fabric' },
+    ]);
+    expect(towelSet!.children.every((child) => child.position.x <= 0.01 && child.position.x >= -0.04)).toBe(true);
+  });
+});
+
 describe('plumbing fixtures', () => {
   it('builds a low round drain with a rim and multiple grate details', () => {
     const drain = buildFixture('drain');

@@ -2,9 +2,11 @@
 """Safe, JSON-oriented workflow wrapper for rendering Blender jobs on AutoDL Pro."""
 
 import argparse
+import hashlib
 import json
 import os
 import posixpath
+import re
 import shlex
 import sys
 import time
@@ -60,14 +62,65 @@ def project_path(value):
     return resolved
 
 
+def _sha256(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _manifest_digest(value):
+    payload = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def bundle_path(value):
     path = project_path(value or DEFAULT_BUNDLE)
     if not path.is_dir():
         raise WorkflowError(f"bundle 目录不存在：{path}")
-    required = ("house.glb", "render-config.json", "project-render-facts.json")
+    required = ("house.glb", "render-config.json", "project-render-facts.json", "manifest.json")
     missing = [name for name in required if not (path / name).is_file()]
     if missing:
         raise WorkflowError(f"bundle 缺少必需文件：{', '.join(missing)}")
+    try:
+        manifest = json.loads((path / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise WorkflowError(f"bundle manifest 无法读取：{path / 'manifest.json'}") from exc
+    fingerprints = manifest.get("inputFingerprints")
+    keys = ("sourceInputsSha256", "resourcesSha256", "artifactsSha256", "bundleSha256")
+    if not isinstance(fingerprints, dict) or set(fingerprints) != set(keys) or not all(isinstance(fingerprints.get(key), str) and re.fullmatch(r"[0-9a-f]{64}", fingerprints[key]) for key in keys):
+        raise WorkflowError("bundle manifest 缺少有效 inputFingerprints")
+    artifacts = manifest.get("artifacts")
+    resources = manifest.get("resources")
+    if not isinstance(artifacts, dict) or not isinstance(resources, list):
+        raise WorkflowError("bundle manifest 缺少 artifacts 或 resources")
+    for key, filename in (("glb", "house.glb"), ("renderConfig", "render-config.json"), ("projectRenderFacts", "project-render-facts.json")):
+        if not isinstance(artifacts.get(key), dict) or artifacts[key].get("path") != filename:
+            raise WorkflowError(f"bundle manifest artifacts.{key} 不匹配 {filename}")
+    rows = []
+    for entry in list(artifacts.values()) + resources:
+        if not isinstance(entry, dict) or not isinstance(entry.get("path"), str) or not isinstance(entry.get("sha256"), str):
+            raise WorkflowError("bundle manifest 含无效 artifact")
+        relative = Path(entry["path"])
+        if relative.is_absolute() or ".." in relative.parts or "\\" in entry["path"]:
+            raise WorkflowError(f"bundle manifest 路径不安全：{entry['path']}")
+        artifact = path / relative
+        if not artifact.is_file() or _sha256(artifact) != entry["sha256"] or entry.get("bytes") != artifact.stat().st_size:
+            raise WorkflowError(f"bundle manifest hash/size 不匹配：{entry['path']}")
+        rows.append(entry)
+    source = manifest.get("sourceInputs")
+    if not isinstance(source, dict) or not all(isinstance(key, str) and isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) for key, value in source.items()):
+        raise WorkflowError("bundle manifest sourceInputs 无效")
+    source_sha = _manifest_digest([[key, source[key]] for key in sorted(source)])
+    resource_rows = sorted([[entry["path"], entry["bytes"], entry["sha256"]] for entry in resources], key=lambda row: row[0])
+    artifact_rows = [[key, artifacts[key]["path"], artifacts[key]["bytes"], artifacts[key]["sha256"]] for key in sorted(artifacts)]
+    resources_sha = _manifest_digest(resource_rows)
+    artifacts_sha = _manifest_digest(artifact_rows)
+    bundle_sha = _manifest_digest({"sourceInputsSha256": source_sha, "resourcesSha256": resources_sha, "artifactsSha256": artifacts_sha})
+    expected = {"sourceInputsSha256": source_sha, "resourcesSha256": resources_sha, "artifactsSha256": artifacts_sha, "bundleSha256": bundle_sha}
+    if fingerprints != expected:
+        raise WorkflowError("bundle manifest inputFingerprints 不自洽")
     files = [item for item in path.rglob("*") if item.is_file() and item.stat().st_size > 0]
     if not files:
         raise WorkflowError(f"bundle 没有非空文件：{path}")
@@ -77,6 +130,17 @@ def bundle_path(value):
 def do_preflight(bundle):
     path, files = bundle_path(bundle)
     return {"ok": True, "bundle": str(path.relative_to(PROJECT_ROOT)), "non_empty_files": len(files), "files": [str(item.relative_to(PROJECT_ROOT)) for item in files]}
+
+
+def selected_bundle(values, bundle=None):
+    return Path(str(bundle or values.get("bundle", DEFAULT_BUNDLE)))
+
+
+def remote_relative(path):
+    path = Path(path)
+    if path.is_absolute() or ".." in path.parts:
+        raise WorkflowError(f"路径必须是项目相对路径：{path}")
+    return path.as_posix()
 
 
 def status(config, uuid):
@@ -162,15 +226,13 @@ def profile_paths(values):
 
 def do_upload(config, uuid, values, bundle=None):
     root = str(values.get("remote_root", DEFAULT_REMOTE_ROOT)).rstrip("/")
-    configured_bundle = Path(str(values.get("bundle", DEFAULT_BUNDLE)))
-    selected_bundle = Path(str(bundle)) if bundle else configured_bundle
-    bundle_local = project_path(selected_bundle)
-    if not bundle_local.is_dir():
-        raise WorkflowError(f"bundle 目录不存在：{bundle_local}")
+    bundle_relative = selected_bundle(values, bundle)
+    bundle_local, _ = bundle_path(bundle_relative)
     allowed = profile_paths(values)
-    if configured_bundle not in allowed:
-        raise WorkflowError(f"bundle 不在 profile.upload_paths 白名单中：{configured_bundle}")
-    bundle_relative = configured_bundle
+    configured_bundle = Path(str(values.get("bundle", DEFAULT_BUNDLE)))
+    allowed = [bundle_relative if relative == configured_bundle else relative for relative in allowed]
+    if bundle_relative not in allowed:
+        allowed.append(bundle_relative)
     client = None
     uploaded = []
     try:
@@ -192,9 +254,11 @@ def do_upload(config, uuid, values, bundle=None):
     return {"ok": True, "uploaded": uploaded, "remote_root": root}
 
 
-def render_command(values, engine=None, out_dir=None, version=None, res=None):
+def render_command(values, engine=None, out_dir=None, version=None, res=None, bundle=None):
     blender = str(values.get("blender_bin", DEFAULT_BLENDER_BIN))
     engine = str(engine or values.get("engine", "CYCLES"))
+    bundle = selected_bundle(values, bundle)
+    bundle_remote = remote_relative(bundle)
     out_dir = str(out_dir or values.get("out_dir", "tmp/cycles"))
     version = str(version or values.get("render_version", "cycles-final"))
     res = int(res if res is not None else values.get("resolution", 35))
@@ -202,12 +266,20 @@ def render_command(values, engine=None, out_dir=None, version=None, res=None):
         raise WorkflowError("blender_bin 必须是绝对路径且 basename 为 blender")
     if not 1 <= res <= 100:
         raise WorkflowError("res 必须在 1 到 100 之间")
-    args = [blender, "-b", "--python", "scripts/blender/dress_scene.py", "--", "--glb", "tmp/final-render-bundle/house.glb", "--config", "tmp/final-render-bundle/render-config.json", "--engine", engine, "--out-dir", out_dir, "--version", version, "--config-dir", ".", "--res", str(res)]
+    if not version or "/" in version or "\\" in version or version in {".", ".."}:
+        raise WorkflowError("version 必须是单一非空目录名")
+    out_dir = remote_relative(out_dir)
+    # Blender runtime modules resolve config/material/asset paths from the
+    # uploaded bundle/project root, not from its config subdirectory.
+    config_dir = bundle_remote
+    script = remote_relative(bundle / "scripts/blender/dress_scene.py")
+    args = [blender, "-b", "--python", script, "--", "--glb", f"{bundle_remote}/house.glb", "--config", f"{bundle_remote}/render-config.json", "--manifest", f"{bundle_remote}/manifest.json", "--engine", engine, "--out-dir", out_dir, "--version", version, "--config-dir", config_dir, "--res", str(res)]
     return "cd " + shlex.quote(str(values.get("remote_root", DEFAULT_REMOTE_ROOT))) + " && exec " + " ".join(shlex.quote(item) for item in args)
 
 
-def do_render(config, uuid, values, engine=None, out_dir=None, version=None, res=None):
-    command = render_command(values, engine, out_dir, version, res)
+def do_render(config, uuid, values, engine=None, out_dir=None, version=None, res=None, bundle=None):
+    bundle_path(selected_bundle(values, bundle))
+    command = render_command(values, engine, out_dir, version, res, bundle)
     result = ssh_exec(config, uuid, command)
     if result["exit_code"] != 0:
         raise WorkflowError("Blender render 失败")
@@ -218,9 +290,18 @@ def non_empty_local(path):
     return path.is_file() and path.stat().st_size > 0 or path.is_dir() and any(item.is_file() and item.stat().st_size > 0 for item in path.rglob("*"))
 
 
-def do_fetch(config, uuid, values, remote=None, local=None):
-    remote_path = remote or posixpath.join(str(values.get("remote_root", DEFAULT_REMOTE_ROOT)).rstrip("/"), str(values.get("out_dir", "tmp/cycles")))
-    local_path = project_path(local or values.get("out_dir", "tmp/cycles"))
+def do_fetch(config, uuid, values, remote=None, local=None, version=None, bundle=None):
+    bundle_relative = selected_bundle(values, bundle)
+    bundle_path(bundle_relative)
+    out_dir = remote_relative(values.get("out_dir", "tmp/cycles"))
+    selected_version = version or values.get("render_version", "cycles-final")
+    if not selected_version or "/" in str(selected_version) or "\\" in str(selected_version) or str(selected_version) in {".", ".."}:
+        raise WorkflowError("version 必须是单一非空目录名")
+    relative_output = posixpath.join(out_dir, str(selected_version))
+    remote_path = remote or posixpath.join(str(values.get("remote_root", DEFAULT_REMOTE_ROOT)).rstrip("/"), relative_output)
+    local_path = project_path(local or relative_output)
+    if local_path.exists() and any(local_path.iterdir()):
+        raise WorkflowError(f"fetch 本地输出目录非空，拒绝混入旧文件：{local_path}")
     client = None
     try:
         client = autodl_ssh.open_client(config, uuid, False, POLL_TIMEOUT)
@@ -298,9 +379,10 @@ def run_workflow(config, values, args):
         uuid = create_instance(config, values, args.name)
         wait_for(config, uuid)
         probe = do_probe(config, uuid)
-        upload = do_upload(config, uuid, values, args.bundle)
-        render = do_render(config, uuid, values)
-        fetched = do_fetch(config, uuid, values)
+        selected = args.bundle or values.get("bundle", DEFAULT_BUNDLE)
+        upload = do_upload(config, uuid, values, selected)
+        render = do_render(config, uuid, values, bundle=selected)
+        fetched = do_fetch(config, uuid, values, version=values.get("render_version"), bundle=selected)
         fetch_ok = True
         return {"ok": True, "uuid": uuid, "preflight": preflight, "probe": probe, "upload": upload, "render": render, "fetch": fetched}
     finally:
@@ -316,8 +398,8 @@ def parser():
     p = sub.add_parser("preflight"); p.add_argument("--bundle")
     p = sub.add_parser("probe"); p.add_argument("uuid"); p.add_argument("--start", action="store_true")
     p = sub.add_parser("upload"); p.add_argument("uuid"); p.add_argument("--bundle")
-    p = sub.add_parser("render"); p.add_argument("uuid"); p.add_argument("--engine"); p.add_argument("--out-dir"); p.add_argument("--version"); p.add_argument("--res", type=int)
-    p = sub.add_parser("fetch"); p.add_argument("uuid"); p.add_argument("--remote"); p.add_argument("--local")
+    p = sub.add_parser("render"); p.add_argument("uuid"); p.add_argument("--bundle"); p.add_argument("--engine"); p.add_argument("--out-dir"); p.add_argument("--version"); p.add_argument("--res", type=int)
+    p = sub.add_parser("fetch"); p.add_argument("uuid"); p.add_argument("--bundle"); p.add_argument("--remote"); p.add_argument("--local"); p.add_argument("--version")
     p = sub.add_parser("cleanup"); p.add_argument("uuid"); p.add_argument("--release-after", action="store_true"); p.add_argument("--confirm-release", action="store_true")
     p = sub.add_parser("run"); p.add_argument("--profile", default="pro"); p.add_argument("--bundle"); p.add_argument("--release-after", action="store_true"); p.add_argument("--confirm-release", action="store_true"); p.add_argument("--name")
     return root
@@ -333,8 +415,8 @@ def main(argv=None):
         values = profile(config, getattr(args, "profile", "pro"))
         if args.command == "probe": result = do_probe(config, args.uuid, args.start)
         elif args.command == "upload": result = do_upload(config, args.uuid, values, args.bundle)
-        elif args.command == "render": result = do_render(config, args.uuid, values, args.engine, args.out_dir, args.version, args.res)
-        elif args.command == "fetch": result = do_fetch(config, args.uuid, values, args.remote, args.local)
+        elif args.command == "render": result = do_render(config, args.uuid, values, args.engine, args.out_dir, args.version, args.res, args.bundle)
+        elif args.command == "fetch": result = do_fetch(config, args.uuid, values, args.remote, args.local, args.version, args.bundle)
         elif args.command == "cleanup": result = do_cleanup(config, args.uuid, args.release_after, args.confirm_release)
         else: result = run_workflow(config, values, args)
         output(result)

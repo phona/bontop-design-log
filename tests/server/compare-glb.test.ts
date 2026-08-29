@@ -3,8 +3,8 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { compareGlb, inventoryFromSummary, normalizeSemanticId } from '../../scripts/compare-glb.js';
-import { inspectGlb } from '../../scripts/inspect-glb.js';
+import { compareGlb, inventoryFromSummary, normalizeSemanticId } from '../../scripts/render/glb/compare-glb.js';
+import { inspectGlb } from '../../scripts/render/glb/inspect-glb.js';
 
 function makeSummary(names: string[]) {
   return {

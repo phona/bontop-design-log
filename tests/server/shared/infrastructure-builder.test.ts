@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as THREE from 'three';
 import { buildInfrastructure } from '../../../shared/render/InfrastructureBuilder.js';
 
 test('shared infrastructure builder preserves metadata and projects wall-side fixtures', () => {
@@ -29,4 +30,17 @@ test('shared infrastructure builder keeps authored coordinates when wall project
   }).electrical;
   assert.deepEqual(fixture.position.toArray(), [1, 0.4, 2]);
   assert.equal(fixture.rotation.y, 0);
+});
+
+test('shared plumbing shower uses the declared height as the finished-floor-to-head anchor', () => {
+  const [fixture] = buildInfrastructure({
+    electrical: [],
+    plumbing: [{ id: 'shower', room: 'bath', type: 'shower', x: 1, z: 2, height: 1.0 }],
+  }).plumbing;
+  fixture.updateMatrixWorld(true);
+  const bbox = new THREE.Box3().setFromObject(fixture);
+  assert.ok(Math.abs(bbox.min.y) < 1e-9);
+  assert.ok(Math.abs(bbox.max.y - 1.0) < 0.02);
+  assert.equal(fixture.userData.placementHeight, 1.0);
+  assert.equal(fixture.userData.heightMeaning, 'finished_floor_to_shower_head');
 });

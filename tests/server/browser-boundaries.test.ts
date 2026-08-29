@@ -12,9 +12,9 @@ test('shared render and CLI sources stay browser-free', async () => {
     'shared/render/CeilingZoneBuilder.ts',
     'shared/render/uv-utils.ts',
     'shared/render/export-gltf.ts',
-    'scripts/cli-glb-builder.ts',
-    'scripts/export-glb.ts',
-    'scripts/node-gltf-runtime.ts',
+    'scripts/render/glb/cli-glb-builder.ts',
+    'scripts/render/glb/export-glb.ts',
+    'scripts/render/glb/node-gltf-runtime.ts',
   ];
   for (const file of files) {
     const source = await readFile(file, 'utf8');
@@ -29,6 +29,6 @@ test('shared GLB exporter has no business filtering or app dependency', async ()
 });
 
 test('CLI exporter does not import app render code', async () => {
-  const source = await readFile('scripts/export-glb.ts', 'utf8');
+  const source = await readFile('scripts/render/glb/export-glb.ts', 'utf8');
   assert.doesNotMatch(source, /app\/src/);
 });

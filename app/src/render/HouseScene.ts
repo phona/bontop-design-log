@@ -265,7 +265,7 @@ export class HouseScene implements SceneApi {
     return this.readyPromise;
   }
 
-  async captureFloorPlan(): Promise<string> {
+  async captureFloorPlan(options: { includeFurniture?: boolean } = {}): Promise<string> {
     await this.whenReady();
     let renderTarget: THREE.WebGLRenderTarget | null = null;
     const prevTopicVisible = this.topicGroup.visible;
@@ -281,8 +281,10 @@ export class HouseScene implements SceneApi {
     this.exportRoot.visible = true;
     this.viewOnlyRoot.visible = false;
     this.decorations.setGridOpacity(0);
-    for (const mesh of this.furnitureMeshes) {
-      mesh.visible = false;
+    if (!options.includeFurniture) {
+      for (const mesh of this.furnitureMeshes) {
+        mesh.visible = false;
+      }
     }
     for (const mesh of this.electricalMeshes) {
       mesh.visible = false;
@@ -411,7 +413,11 @@ export class HouseScene implements SceneApi {
     });
     const materialProvider: SceneMaterialProvider = {
       curtain: ({ layer }) => layer === 'sheer' ? this.materials.makeSheerMaterial() : layer === 'blackout' ? this.materials.makeBlackoutMaterial() : this.materials.makeBlindMaterial(),
+      curtainRun: () => this.materials.makeLowEGlassMaterial(),
+      showerScreen: () => this.materials.makeShowerScreenMaterial(),
       slidingDoorGlass: ({ paneWidth }) => this.materials.makeFlutedGlassMaterial(paneWidth),
+      hingedGlassDoorFrame: () => new THREE.MeshStandardMaterial({ color: 0x202328, metalness: 0.7, roughness: 0.3 }),
+      hingedGlassDoorGlass: () => this.materials.makeShowerScreenMaterial(),
     };
     const result = buildScene({
       ...input,

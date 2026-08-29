@@ -19,7 +19,7 @@ description: Use when config/layout/model-geometry.yaml or config/layout/overlay
 
 1. Ensure the watcher is running:
    ```bash
-   python scripts/watch_floor_plan_and_compare.py --cdp-host ${FLOOR_PLAN_CDP_HOST:-localhost}
+   python scripts/render/capture/watch_floor_plan_and_compare.py --cdp-host ${FLOOR_PLAN_CDP_HOST:-localhost}
    ```
    Run it in the background if needed. The watcher writes its PID to `scripts/logs/floor-plan-watcher.pid` and refuses to start if another watcher appears to be running. To check whether a watcher is already running, look for the process:
    ```bash

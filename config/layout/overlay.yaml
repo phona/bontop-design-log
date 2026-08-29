@@ -227,6 +227,23 @@ elements:
     points: [{ x: 1.20, z: 1.10 }, { x: 1.20, z: 2.26 }]
     height: 2.0
 
+  # 客卫马桶/淋浴横向玻璃隔断（2026-08-29）：位于 z=2.80，分隔南侧马桶区与北侧淋浴区；东端接东墙，西端门洞宽 0.70m。
+  # 南侧 z=3.55..4.30 是开放洗漱区；两侧实体延伸墙由 model-geometry 声明，南侧不封横墙。
+  - id: shower_screen_gbath
+    type: shower_screen
+    points: [{ x: 7.10, z: 2.80 }, { x: 6.30, z: 2.80 }]
+    height: 1.95
+    sill: 0
+
+  # 客卫西侧玻璃门（2026-08-29）：西端铰链位于 x=5.60，门扇向北开启进入淋浴侧，避让南侧马桶；关闭时封住横向隔断西端，开启时保持西侧通行。
+  - id: gbath_west_glass_door
+    type: hinged_glass_door
+    points: [{ x: 5.60, z: 2.80 }, { x: 6.30, z: 2.80 }]
+    height: 1.95
+    open: true
+    swing: north
+    hinge: start
+
   # 2026-08-25 条带洗漱区东侧收口（小红书式半墙+长虹玻璃屏风，DEC-043）：
   # 位于一体台东缘(x=1.07)与 d_mbath 门洞[1.15,1.95]西侧之间，自新隔墙南脸(z=2.91)向南伸 0.5m 与台深齐平；
   # 半墙 h1.05（wall_run，需碰撞）+ 上部长虹玻璃 sill 1.05→2.10（shower_screen 复用，无碰撞玻璃）；

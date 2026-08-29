@@ -285,6 +285,38 @@ elements:
     }
   });
 
+  it('accepts hinged glass door with explicit west-end opening semantics', () => {
+    const cfg = parseOverlay(`
+version: 1
+elements:
+  - id: west_door
+    type: hinged_glass_door
+    points: [{x: 5.6, z: 2.8}, {x: 6.3, z: 2.8}]
+    height: 1.95
+    open: true
+    swing: north
+    hinge: start
+`);
+    const door = cfg.elements[0];
+    assert.equal(door.type, 'hinged_glass_door');
+    if (door.type === 'hinged_glass_door') {
+      assert.deepEqual(door.points, [{ x: 5.6, z: 2.8 }, { x: 6.3, z: 2.8 }]);
+      assert.equal(door.swing, 'north');
+      assert.equal(door.hinge, 'start');
+    }
+  });
+
+  it('rejects hinged glass door with extra undeclared fields', () => {
+    assert.throws(() => parseOverlay(`
+version: 1
+elements:
+  - id: west_door
+    type: hinged_glass_door
+    points: [{x: 5.6, z: 2.8}, {x: 6.3, z: 2.8}]
+    material: bathroom_door_01
+`));
+  });
+
   it('accepts shower_screen and passes points through untouched (2026-08-21)', () => {
     const cfg = parseOverlay(`
 version: 1
@@ -302,6 +334,29 @@ elements:
       assert.equal(screen.points[0].x, 1.20);
       assert.equal(screen.points[1].z, 2.60);
       assert.equal(screen.height, 2.0);
+      assert.equal(screen.sill, 0);
+    }
+  });
+
+  it('loads the guest bath glass door declaration from the real overlay', () => {
+    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const door = overlay.elements.find((element) => element.id === 'gbath_west_glass_door');
+    assert.equal(door?.type, 'hinged_glass_door');
+    if (door?.type === 'hinged_glass_door') {
+      assert.deepEqual(door.points, [{ x: 5.60, z: 2.80 }, { x: 6.30, z: 2.80 }]);
+      assert.equal(door.open, true);
+      assert.equal(door.swing, 'north');
+      assert.equal(door.hinge, 'start');
+    }
+  });
+
+  it('loads the guest bath shower screen declaration from the real overlay', () => {
+    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const screen = overlay.elements.find((element) => element.id === 'shower_screen_gbath');
+    assert.equal(screen?.type, 'shower_screen');
+    if (screen?.type === 'shower_screen') {
+      assert.deepEqual(screen.points, [{ x: 7.10, z: 2.80 }, { x: 6.30, z: 2.80 }]);
+      assert.equal(screen.height, 1.95);
       assert.equal(screen.sill, 0);
     }
   });

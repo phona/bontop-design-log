@@ -106,7 +106,7 @@ rooms:
     area: 9.60
     status: "design"
     orientation: "西北"
-    notes: "镜像 model-geometry（设计图标注 8.39㎡）"
+    notes: "镜像 model-geometry（南界保持原 z=4.30；客卫内卫南界独立北移至 z=3.55，西侧开放洗漱区边界墙与西北次卧南墙共享同一南端标高；设计图标注 8.39㎡，实际边界与面积待量房确认）"
     windows:
       - width: 1.50
         height: 1.40
@@ -246,18 +246,14 @@ rooms:
     area: 3.15
     status: "design"
     orientation: "内"
-    notes: "镜像 model-geometry（设计图标注 2.66㎡）；设计图标注东墙 0.6×1.0 窗，但几何未声明该窗洞且东墙（x=7.1）朝室内走廊，疑为采光窗或图面残留，量房核实"
-    windows:
-      - width: 0.60
-        height: 1.00
-        position: "东墙"
+    notes: "镜像 model-geometry（x=5.60..7.10，z=2.20..4.30，有效深度 2.10m）；南墙 w_gbath_south 位于 z=3.55，南侧 z=3.55..4.30 纳入客卫语义房间但保持走廊开放边，不新增第四面墙。东西两侧实体延伸墙至 z=4.30；南侧开放洗漱台靠东侧延伸墙西脸，背面朝东、正面朝西，中心向东避让西侧玻璃门扫掠并贴靠东墙完成面。内卫由南至北为马桶区→淋浴区，z≈2.80 横向玻璃屏分隔，西端为玻璃门入口，门扇向北开启避让马桶。各墙体材质待量房确认。"
     doors:
       - width: 0.70
-        position: "过道连接"
+        position: "南侧外门：过道连接，内开（d_gbath，随南墙移至 z=3.55）"
     furniture_concept:
-      - "浴室柜 0.6m"
-      - "马桶"
-      - "淋浴区"
+      - "南墙外/走廊侧开放洗漱台（暂不落客卫内，优先东侧实体墙；落地/靠墙方案，给排水与挂载待确认）"
+      - "南段马桶靠东墙，中心约 x=6.80,z=2.65，rotation=270（坐东朝西）"
+      - "北端淋浴区，花洒挂东墙坐东朝西，约 z=2.30~2.75；横向玻璃屏 z≈2.80，西端为 0.70m 玻璃门入口，门扇向北开启"
 
   - name: "生活阳台"
     id: "balcony"
@@ -486,9 +482,13 @@ furnishings:
     # 北墙 run 拆两段留洗碗机位 x∈[8.50,9.10]（2026-08-23；紧贴水槽柜 x≥9.10 西侧，上下水就近；
     # sock_kitchen_dishwasher@9.0,0.3 台下，距机位 0.2m）
     - { type: kitchen_cabinet_run, x: 7.86, z: 0.32, rotation: 0, length: 1.28, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 }
-    - { type: kitchen_cabinet_run, x: 9.94, z: 0.32, rotation: 0, length: 1.68, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 }
+    # 明确声明的连续台面桥：跨越洗碗机预留 x∈[8.50,9.10]；只是连续台面，不生成柜体。
+    - { type: kitchen_countertop_bridge, x: 8.80, z: 0.32, rotation: 0, length: 0.60, depth: 0.60, countertopThickness: 0.03 }
+    # 台面开孔位置由现有 sink@9.50,0.30 与本 run 中心@9.94,0.32 换算为 run-local offset。
+    - { type: kitchen_cabinet_run, x: 9.94, z: 0.32, rotation: 0, length: 1.68, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [{ kind: sink, id: kitchen-sink, offset: [-0.44, -0.02], size: [0.70, 0.40] }] }
     - { type: dishwasher, x: 8.80, z: 0.30, rotation: 0 }  # 北墙地柜台下（DEC-013，水槽柜西侧紧邻；⚠️坐标待量房）
-    - { type: kitchen_cabinet_run, x: 10.48, z: 1.00, rotation: 90, length: 1.40, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 }
+    # 灶台开孔位置由现有 gas_stove@10.50,1.18 与本 run 中心@10.48,1.00 换算为世界偏移，再按 rotation=90 逆变换为 run-local offset。
+    - { type: kitchen_cabinet_run, x: 10.48, z: 1.00, rotation: 90, length: 1.40, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [{ kind: cooktop, id: kitchen-cooktop, offset: [-0.18, 0.02], size: [0.45, 0.75] }] }
     - { type: cabinet_base, count: 5.0 }      # 预算/库存：北墙3.6+东墙2.2 L型
     - { type: cabinet_wall, count: 2.0 }
     - { type: countertop_quartz, count: 5.0 } # DEC-014 同地柜
@@ -500,16 +500,19 @@ furnishings:
   master_bath:
     - { type: toilet, x: 2.30, z: 1.50, rotation: 270 }  # 2026-08-21 落位：贴东墙面朝西，对齐马桶给水/插座 z=1.5
     - { type: shower_set }
+    - { type: towel_set, x: 0.24, z: 2.23, rotation: 0 } # 暂定：来自 vanity/plumbing anchor 的设计位置，待量房确认
     # vanity/faucet 已外移至套间条带（2026-08-25，见 master_bedroom furnishings）
     - { type: ceiling_light }
     - { type: exhaust_fan, x: 1.00, z: 2.70 }                # DEC-019 湿区中心吊顶，避开内开门扇扫掠区
   guest_bath:
-    - { type: toilet, x: 5.90, z: 2.50, rotation: 90 }  # 2026-08-21 落位：贴西墙面朝东，对齐马桶给水 z=2.5
-    - { type: shower_set }
-    - { type: vanity, x: 5.80, z: 3.50, rotation: 90 }       # DEC-019 西墙洗手台（门洞按 resolver 口径 x∈[6.0,6.7]，台东缘 6.0 与门边齐平零间隙；旧注释门洞 x∈[6.35,7.05] 系误读，量房复核门摆）
+    # 南侧开放洗漱区纳入 guest_bath 语义边界；vanity 0.8×0.4，靠东侧延伸墙西侧布置，背面朝东、正面朝西，rotation=270 后 AABB x[6.70,7.10] z[3.50,4.30]；东侧开放墙段 z=3.55..4.30 长0.75m，台体南端不越过 z=4.30；中心 x=6.90 以避让 d_gbath 扫掠，台体靠东墙完成面。
+    - { type: vanity, x: 6.90, z: 3.90, rotation: 270 }
     - { type: faucet }
+    - { type: toilet, x: 6.80, z: 2.65, rotation: 270 }      # 2026-08-29：靠东墙坐东朝西；水箱局部 -z 经 270° 后位于东侧，盆体朝西，AABB x[6.50,7.10]、z[2.45,2.85]，贴近隔断南侧并避开外门扫掠
+    - { type: shower_set }
+    - { type: towel_set }                                      # count-only：毛巾位待量房后落在马桶区实体墙可用段，避免与门扇/洁具冲突
     - { type: ceiling_light }
-    - { type: exhaust_fan, x: 6.35, z: 3.25 }                # DEC-019 吊顶
+    - { type: exhaust_fan, x: 6.35, z: 2.45 }                # 北侧淋浴区吊顶
   balcony:
     # 洗烘叠放贴西墙（给水 faucet_balcony_washer / 墙排 drain_balcony_washer / 插座 sock_balcony_washer 均在 w_balc_west z=1.5）
     - { type: washer, x: 5.95, z: 1.50, rotation: 90 }   # 10kg 滚筒贴西墙面朝东；与插座/给水偏差 0.35m

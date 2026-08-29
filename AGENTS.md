@@ -43,7 +43,7 @@
   npm run verify:furniture
   ```
   furnishings 条目带 `x/z/rotation` 的为 placed 实例（3D 渲染 + MCP 暴露位置）；无 `x/z` 的为 count-only（只喂预算/库存）。坐标使用 model-geometry 同一局部坐标系（米），预算 counts 由列表 derive（`ProjectCatalog.getFurnishingCounts`），禁止双写。
-- `model-geometry.yaml` 采用 v2.0 vertex 格式：rooms 使用中心坐标 (x, z, width, depth)，walls 使用角点坐标 (x1, z1, x2, z2)。几何修改须同时更新拓扑一致性。使用 `scripts/verify-topology.ts` 替代旧的 `validate-room-wall-alignment.ts`。`scripts/archive/` 保留旧脚本供参考。
+- `model-geometry.yaml` 采用 v2.0 vertex 格式：rooms 使用中心坐标 (x, z, width, depth)，walls 使用角点坐标 (x1, z1, x2, z2)。几何修改须同时更新拓扑一致性。使用 `scripts/verify/layout/verify-topology.ts` 替代旧的 `validate-room-wall-alignment.ts`。`scripts/archive/` 保留旧脚本供参考。
 - `house.yaml` rooms 的 width/length/area 是 `model-geometry.yaml` 的**镜像字段**（预算算量走 layout-resolver，不读这些字段）；gift_areas 的 expected_centroid 同理。几何修改后 `verify-data-consistency`（已含在 verify:all）会列出漂移项，须同步镜像字段。量房修正只改 model-geometry.yaml，再按脚本输出同步。
 
 ## 电气/家具修改铁律
@@ -56,7 +56,7 @@
   ```bash
   npm run verify:all
   ```
-- 挂墙点位（electrical/plumbing）坐标压在墙线上时必须显式声明 `wall_side`，否则渲染默认取墙段左侧，可能渲到房间背面。`verify-data-consistency` 的点位专项会以 error 拦截"渲染面与所属房间异侧"（检查逻辑在 `scripts/verify-point-placement.ts`，与 `HouseScene.projectInfrastructurePoint` 同口径）。
+- 挂墙点位（electrical/plumbing）坐标压在墙线上时必须显式声明 `wall_side`，否则渲染默认取墙段左侧，可能渲到房间背面。`verify-data-consistency` 的点位专项会以 error 拦截"渲染面与所属房间异侧"（检查逻辑在 `scripts/verify/placement/verify-point-placement.ts`，与 `HouseScene.projectInfrastructurePoint` 同口径）。
 
 ## 碰撞/相机修改铁律
 

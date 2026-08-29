@@ -54,6 +54,8 @@ export interface SceneMaterialProvider {
   slidingDoorRail?: (element: Extract<SceneElement, { type: 'sliding_door_run' }>) => THREE.Material;
   slidingDoorFrame?: (element: Extract<SceneElement, { type: 'sliding_door_run' }>) => THREE.Material;
   slidingDoorGlass?: (context: { element: Extract<SceneElement, { type: 'sliding_door_run' }>; paneWidth: number }) => THREE.Material;
+  hingedGlassDoorFrame?: (element: Extract<SceneElement, { type: 'hinged_glass_door' }>) => THREE.Material;
+  hingedGlassDoorGlass?: (element: Extract<SceneElement, { type: 'hinged_glass_door' }>) => THREE.Material;
 }
 
 export interface SceneBuilderOptions {
@@ -136,8 +138,9 @@ type Point = { x: number; z: number };
 type WallElement = Extract<SceneElement, { type: 'wall' }>;
 type CurtainElement = Extract<SceneElement, { type: 'curtain' }>;
 type SlidingDoorElement = Extract<SceneElement, { type: 'sliding_door_run' }>;
+type HingedGlassDoorElement = Extract<SceneElement, { type: 'hinged_glass_door' }>;
 
-function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'curtainRun' | 'showerScreen' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass'>> {
+function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'curtainRun' | 'showerScreen' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass' | 'hingedGlassDoorFrame' | 'hingedGlassDoorGlass'>> {
   return {
     wall: ({ shaft }) => new THREE.MeshStandardMaterial({ color: shaft ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 }),
     door: ({ elevator }) => new THREE.MeshStandardMaterial({ color: elevator ? 0x888899 : 0x8b4513, roughness: elevator ? 0.25 : 0.6, metalness: elevator ? 0.85 : 0 }),
@@ -149,6 +152,8 @@ function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door
     slidingDoorRail: () => new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 }),
     slidingDoorFrame: () => new THREE.MeshStandardMaterial({ color: 0x141414, metalness: 0.5, roughness: 0.45 }),
     slidingDoorGlass: () => glassMaterial(),
+    hingedGlassDoorFrame: () => new THREE.MeshStandardMaterial({ color: 0x202328, metalness: 0.7, roughness: 0.3 }),
+    hingedGlassDoorGlass: () => glassMaterial(),
   };
 }
 
@@ -367,6 +372,56 @@ function addSlidingDoorRun(root: THREE.Group, element: SlidingDoorElement, provi
   return group;
 }
 
+function addHingedGlassDoor(root: THREE.Group, element: HingedGlassDoorElement, provider: SceneMaterialProvider): THREE.Group | null {
+  const [a, b] = element.points;
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const width = Math.hypot(dx, dz);
+  if (width < 1e-9) return null;
+  const angle = Math.atan2(dz, dx);
+  const group = new THREE.Group();
+  setSceneObjectMetadata(group, 'hinged_glass_door', element.id);
+  group.name = `hinged_glass_door:${element.id}`;
+  const frameMaterial = (provider.hingedGlassDoorFrame ?? (() => new THREE.MeshStandardMaterial({ color: 0x202328, metalness: 0.7, roughness: 0.3 })))(element);
+  const glass = (provider.hingedGlassDoorGlass ?? (() => glassMaterial()))(element);
+  const frame = 0.025;
+  const depth = 0.035;
+  const panel = new THREE.Group();
+  const pane = new THREE.Mesh(new THREE.BoxGeometry(width - 2 * frame, element.height - 2 * frame, 0.008), glass);
+  pane.name = `hinged_glass_door:${element.id}:pane`;
+  pane.userData = { objectId: element.id, type: 'hinged_glass_door', materialRole: 'glass' };
+  panel.add(pane);
+  for (const ySign of [1, -1] as const) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(width, frame, depth), frameMaterial);
+    bar.position.y = ySign * (element.height / 2 - frame / 2);
+    bar.userData = { objectId: element.id, type: 'hinged_glass_door', materialRole: 'frame' };
+    panel.add(bar);
+  }
+  for (const xSign of [1, -1] as const) {
+    const stile = new THREE.Mesh(new THREE.BoxGeometry(frame, element.height - 2 * frame, depth), frameMaterial);
+    stile.position.x = xSign * (width / 2 - frame / 2);
+    stile.userData = { objectId: element.id, type: 'hinged_glass_door', materialRole: 'frame' };
+    panel.add(stile);
+  }
+  const hingeAtEnd = element.hinge === 'end';
+  const hinge = hingeAtEnd ? b : a;
+  const closedAngle = angle;
+  const openAngle = angle + (element.swing === 'south' ? -Math.PI / 2 : Math.PI / 2);
+  panel.position.set(hinge.x, element.height / 2, hinge.z);
+  panel.rotation.y = element.open === false ? closedAngle : openAngle;
+  panel.position.x += Math.cos(panel.rotation.y) * (hingeAtEnd ? -width / 2 : width / 2);
+  panel.position.z -= Math.sin(panel.rotation.y) * (hingeAtEnd ? -width / 2 : width / 2);
+  panel.userData = { objectId: element.id, type: 'hinged_glass_door', hoverable: true, open: element.open !== false };
+  group.add(panel);
+  const hingePost = new THREE.Mesh(new THREE.BoxGeometry(frame, element.height, depth), frameMaterial);
+  hingePost.position.set(hinge.x, element.height / 2, hinge.z);
+  hingePost.rotation.y = angle;
+  hingePost.userData = { objectId: element.id, type: 'hinged_glass_door', materialRole: 'hinge' };
+  group.add(hingePost);
+  root.add(group);
+  return group;
+}
+
 function addCurtain(root: THREE.Group, element: CurtainElement, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex): void {
   if (element.points.length < 2) return;
   const materials = { ...defaultMaterials(), ...provider };
@@ -455,6 +510,9 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
     }
     case 'sliding_door_run':
       addSlidingDoorRun(root, element, provider, undefined);
+      return;
+    case 'hinged_glass_door':
+      addHingedGlassDoor(root, element, provider);
       return;
     case 'glass_infill': {
       const points = (element as Extract<SceneElement, { type: 'glass_infill' }> & { points?: Point[] }).points;
@@ -628,7 +686,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
       index.furnitureMeshes.push(object as THREE.Group);
       object.traverse((child) => { if (child.userData.surface === 'countertop') index.countertopMeshes.push(child as THREE.Mesh); });
     }
-    if (type === 'curtain_run' || type === 'glass_infill' || type === 'shower_screen') {
+    if (type === 'curtain_run' || type === 'glass_infill' || type === 'shower_screen' || type === 'hinged_glass_door') {
       index.glassMeshes.push(object as THREE.Mesh);
       if (type === 'curtain_run') {
         const id = String(object.userData.objectId);

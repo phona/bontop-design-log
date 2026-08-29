@@ -7,15 +7,15 @@ import test from 'node:test';
 import * as THREE from 'three';
 import * as sharedSceneBuilder from '../../shared/render/SceneBuilder.js';
 import { exportSceneToGlbData } from '../../shared/render/export-gltf.js';
-import { buildCliHouseScene } from '../../scripts/cli-glb-builder.js';
-import { installNodeFileReader } from '../../scripts/node-gltf-runtime.js';
-import { assertOutputPathAvailable, parseArgs as parseExportArgs } from '../../scripts/export-glb.js';
-import { inspectGlb } from '../../scripts/inspect-glb.js';
+import { buildCliHouseScene } from '../../scripts/render/glb/cli-glb-builder.js';
+import { installNodeFileReader } from '../../scripts/render/glb/node-gltf-runtime.js';
+import { assertOutputPathAvailable, parseArgs as parseExportArgs } from '../../scripts/render/glb/export-glb.js';
+import { inspectGlb } from '../../scripts/render/glb/inspect-glb.js';
 
 test('CLI render sources depend on shared modules, not app render modules', () => {
-  const builderSource = readFileSync('scripts/cli-glb-builder.ts', 'utf8');
-  const exporterSource = readFileSync('scripts/export-glb.ts', 'utf8');
-  assert.match(builderSource, /from ['\"]\.\.\/shared\/render\/SceneBuilder\.js['\"]/);
+  const builderSource = readFileSync('scripts/render/glb/cli-glb-builder.ts', 'utf8');
+  const exporterSource = readFileSync('scripts/render/glb/export-glb.ts', 'utf8');
+  assert.match(builderSource, /from ['\"]\.\.\/\.\.\/\.\.\/shared\/render\/SceneBuilder\.js['\"]/);
   assert.match(builderSource, /buildScene\(/);
   assert.doesNotMatch(builderSource, /from ['\"]\.\.\/app\/src\/render\//);
   assert.doesNotMatch(exporterSource, /app\/src/);
@@ -100,11 +100,9 @@ test('CLI builder creates core geometry with export metadata', () => {
   assert.equal(furniture.userData.objectId, 'furniture:master_bedroom:bed_180:0');
   assert.deepEqual(furniture.position.toArray(), [3.2, 0, 7.875]);
 
-  for (const [room, index, x, z] of [['master_bath', 1, 0.24, 2.23], ['guest_bath', 2, 7.08, 3.00] ] as const) {
-    const towelSet = scene.getObjectByName(`furniture:${room}:towel_set:${index}`);
-    assert.ok(towelSet, `missing ${room} towel_set`);
-    assert.deepEqual(towelSet.position.toArray(), [x, 0, z]);
-  }
+  const masterTowelSet = scene.getObjectByName('furniture:master_bath:towel_set:1');
+  assert.ok(masterTowelSet, 'missing master_bath towel_set');
+  assert.deepEqual(masterTowelSet.position.toArray(), [0.24, 0, 2.23]);
 });
 
 test('CLI builds shower plumbing fixtures from plumbing.yaml without replacing shower_set furnishings', () => {
@@ -123,10 +121,15 @@ test('CLI builds shower plumbing fixtures from plumbing.yaml without replacing s
   assert.ok(Math.abs(showers[0].position.x - 0.5) < 1e-6);
   assert.ok(Math.abs(showers[0].position.y) < 1e-6);
   assert.ok(Math.abs(showers[0].position.z - 2.785) < 1e-6, `master shower z=${showers[0].position.z}`);
-  assert.ok(Math.abs(showers[1].position.x - 5.675) < 1e-6, `guest shower x=${showers[1].position.x}`);
+  assert.ok(Math.abs(showers[1].position.x - 7.025) < 1e-6, `guest shower x=${showers[1].position.x}`);
   assert.ok(Math.abs(showers[1].position.y) < 1e-6);
-  assert.ok(Math.abs(showers[1].position.z - 3) < 1e-6);
-  assert.ok(exportRoot.getObjectByName('furniture:master_bath:toilet:0'));
+  assert.ok(Math.abs(showers[1].position.z - 2.45) < 1e-6);
+  assert.equal(showers[1].userData.wallSide, 'west');
+  const guestToilet = exportRoot.getObjectByName('furniture:guest_bath:toilet:1');
+  assert.ok(guestToilet, 'missing guest_bath toilet');
+  assert.deepEqual(guestToilet.position.toArray(), [6.8, 0, 2.65]);
+  assert.ok(Math.abs(guestToilet.rotation.y - (270 * Math.PI / 180)) < 1e-6);
+  assert.equal(exportRoot.getObjectByName('furniture:master_bath:toilet:0')?.userData.type, 'furniture');
   assert.equal(exportRoot.getObjectByName('furniture:master_bath:shower_set:1'), undefined, 'shower_set has no FixtureFactory recipe; shower geometry comes from plumbing points');
 });
 
@@ -267,10 +270,10 @@ test('CLI overlay and furniture world bboxes preserve the house z contract', () 
   assert.ok(Math.abs(kitchenBay.max.z - 1.1) < 1e-5);
 
   const guestScreen = bbox('shower_screen_gbath:0');
-  assert.ok(Math.abs(guestScreen.min.x - 6.2875) < 1e-5, `guest screen min.x=${guestScreen.min.x}`);
-  assert.ok(Math.abs(guestScreen.max.x - 6.3125) < 1e-5, `guest screen max.x=${guestScreen.max.x}`);
-  assert.ok(Math.abs(guestScreen.min.z - 2.6) < 1e-5, `guest screen min.z=${guestScreen.min.z}`);
-  assert.ok(Math.abs(guestScreen.max.z - 3.4) < 1e-5, `guest screen max.z=${guestScreen.max.z}`);
+  assert.ok(Math.abs(guestScreen.min.x - 6.3) < 1e-5, `guest screen min.x=${guestScreen.min.x}`);
+  assert.ok(Math.abs(guestScreen.max.x - 7.1) < 1e-5, `guest screen max.x=${guestScreen.max.x}`);
+  assert.ok(Math.abs(guestScreen.min.z - 2.7875) < 1e-5, `guest screen min.z=${guestScreen.min.z}`);
+  assert.ok(Math.abs(guestScreen.max.z - 2.8125) < 1e-5, `guest screen max.z=${guestScreen.max.z}`);
   assert.ok(Math.abs(guestScreen.max.y - guestScreen.min.y - 1.95) < 1e-5);
   const guestScreenObject = exportRoot.getObjectByName('shower_screen_gbath:0');
   assert.equal(guestScreenObject?.userData.type, 'shower_screen');
@@ -315,11 +318,9 @@ test('shared export data produces an inspectable GLB', async () => {
     'plumbing:drain_gbath_shower',
     'plumbing:drain_gbath_floor',
     'furniture:master_bath:toilet:0',
-    'furniture:guest_bath:toilet:0',
+    'furniture:guest_bath:toilet:1',
     'furniture:master_bedroom:vanity_dresser:2',
     'furniture:master_bath:towel_set:1',
-    'furniture:guest_bath:vanity:1',
-    'furniture:guest_bath:towel_set:2',
     'shower_screen_mbath:0',
     'shower_screen_gbath:0',
     'furniture:kitchen:kitchen_cabinet_run:0',

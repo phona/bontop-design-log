@@ -76,7 +76,7 @@ $PY "$SSH" exec INSTANCE_UUID --command 'python render.py' --start
 - `assets/textures`
 - `tmp/final-render-bundle`
 
-render bundle 预检必须找到 `house.glb`、`render-config.json`、`project-render-facts.json`，并统计至少一个非空文件；预检失败不会创建实例或开机。
+render bundle 预检必须找到 `house.glb`、`render-config.json`、`project-render-facts.json`、`manifest.json`，并校验 manifest 的 `inputFingerprints`、artifact bytes 和 SHA-256 自洽；预检失败不会创建实例或开机。bundle 路径是一次 workflow 的追溯边界：自定义 `--bundle` 必须贯穿 upload → render → fetch，不能让 render 回退到默认 bundle。Blender runtime 的 `config_dir` 统一指向 bundle/project root，配置、材质、贴图、家具和 HDRI 等相对路径都从该 root 解析；manifest 中的输入指纹随渲染传入 `dress_scene.py --manifest`，用于输出 sidecar 追溯。
 
 ```bash
 PY=.agents/skills/autodl-manager/.venv/bin/python
@@ -91,8 +91,8 @@ $PY "$BLENDER" cleanup INSTANCE_UUID
 
 一次性任务使用严格顺序：`preflight → create → 轮询 creating/starting 到 running → probe → upload → render → fetch 并校验非空输出 → stop → 可选 release`。`run` 遇到异常或中断会在 finally 至少尝试 stop；fetch 失败绝不 release；变更操作不自动重试。`release` 只有同时传入 `--release-after --confirm-release` 才执行。
 
-render 实际在 `remote_root` 下安全拼装并执行：
-`/root/blender/blender -b --python scripts/blender/dress_scene.py -- --glb tmp/final-render-bundle/house.glb --config tmp/final-render-bundle/render-config.json --engine CYCLES --out-dir tmp/cycles --version cycles-final --config-dir . --res 35`。
+render 实际在 `remote_root` 下安全拼装并执行 bundle 内脚本，例如：
+`/root/blender/blender -b --python tmp/final-render-bundle/scripts/blender/dress_scene.py -- --glb tmp/final-render-bundle/house.glb --config tmp/final-render-bundle/render-config.json --manifest tmp/final-render-bundle/manifest.json --engine CYCLES --out-dir tmp/cycles --version cycles-final --config-dir tmp/final-render-bundle --res 35`。命令先在 `remote_root` 下 `cd`，因此 bundle、脚本和输出均使用同一组远端相对路径；`--config-dir` 是 bundle root，而非 `bundle/config`。输出使用显式 `out-dir/version` 目录；fetch 默认只下载该 version 目录，并拒绝非空本地目标，避免混入旧 PNG。workflow 不清理整个 `remote_root`，也不默认删除用户目录。
 
 ## 费用与生命周期最佳实践
 

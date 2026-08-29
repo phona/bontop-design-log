@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { inspectGlb } from '../../scripts/inspect-glb.js';
+import { inspectGlb } from '../../scripts/render/glb/inspect-glb.js';
 
 function glb(json: unknown, options: { magic?: number; version?: number; declaredLength?: number; chunkLength?: number; chunkType?: number } = {}): Buffer {
   const rawJson = Buffer.from(JSON.stringify(json), 'utf8');
@@ -55,9 +55,31 @@ test('inspectGlb returns sorted strict summary and transformed bbox', () => {
       nodeIds: ['wall:west', 'wall:west'],
       duplicateNodeIds: ['wall:west'],
       prefixCounts: { wall: 2 },
+      fixtureRoles: [],
+      unknownFixtureRoleTags: [],
+      duplicateFixtureRoleTags: [],
       nodeBboxes: { 'wall:west': { min: [9, -2, -3], max: [11, 2, 3], size: [2, 4, 6] } },
       worldBbox: { min: [9, -2, -3], max: [11, 2, 3], size: [2, 4, 6] },
     });
+  });
+});
+
+test('inspectGlb parses sorted fixture roles and records malformed or duplicate tags', () => {
+  const document = { ...valid, nodes: [
+    { name: 'fixture:z:part=seat:role=fabric', mesh: 0 },
+    { name: 'fixture:a:part=frame:role=wood', mesh: 0 },
+    { name: 'fixture:z:part=seat:role=fabric', mesh: 0 },
+    { name: 'fixture:bad:part=missing-role', mesh: 0 },
+  ], scenes: [{ nodes: [0, 1, 2, 3] }] };
+  withGlb(glb(document), (path) => {
+    const summary = inspectGlb(path);
+    assert.deepEqual(summary.fixtureRoles, [
+      { nodeName: 'fixture:a:part=frame:role=wood', part: 'frame', role: 'wood', prefix: 'fixture' },
+      { nodeName: 'fixture:z:part=seat:role=fabric', part: 'seat', role: 'fabric', prefix: 'fixture' },
+      { nodeName: 'fixture:z:part=seat:role=fabric', part: 'seat', role: 'fabric', prefix: 'fixture' },
+    ]);
+    assert.deepEqual(summary.unknownFixtureRoleTags, ['fixture:bad:part=missing-role']);
+    assert.deepEqual(summary.duplicateFixtureRoleTags, ['fixture:z:part=seat:role=fabric']);
   });
 });
 

@@ -2,7 +2,7 @@
 
 日期：2026-08-12
 对应 spec 验收标准 3：导入 glb → 替换材质 → reimport 同名新 glb → 材质覆盖保留
-前置：本地已通过 `scripts/inspect-glb.ts` 静态验收（命名/数量/包围盒）；`docs/dressing-map.md` 已重新生成最新版
+前置：本地已通过 `scripts/render/glb/inspect-glb.ts` 静态验收（命名/数量/包围盒）；`docs/dressing-map.md` 已重新生成最新版
 
 ## 0. 需要带上云的文件
 

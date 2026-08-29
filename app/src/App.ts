@@ -239,9 +239,9 @@ export class App {
     }
   }
 
-  async captureFloorPlan(): Promise<string> {
+  async captureFloorPlan(options: { includeFurniture?: boolean } = {}): Promise<string> {
     await this.whenReady();
-    return this.houseScene.captureFloorPlan();
+    return this.houseScene.captureFloorPlan(options);
   }
 
   async exportGlbDataUrl(): Promise<string> {

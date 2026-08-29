@@ -63,12 +63,13 @@ describe('HouseScene captureFloorPlan', () => {
     const fs = await import('node:fs');
     const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
     expect(source).toContain('captureFloorPlan');
-    expect(source).toMatch(/async\s+captureFloorPlan\s*\(\s*\)\s*:\s*Promise\s*<\s*string\s*>/);
+    expect(source).toMatch(/async\s+captureFloorPlan\s*\(\s*options\s*:\s*\{\s*includeFurniture\?\s*:\s*boolean\s*\}\s*=\s*\{\s*\}\s*\)\s*:\s*Promise\s*<\s*string\s*>/);
     // 截图渲染 scene（灯光在 scene 上），viewOnlyRoot/topicGroup 在 capture 前隐藏，
     // 保证画面只含 HOUSE_EXPORT 内容且不是全黑。
     expect(source).toContain("this.renderer.render(this.scene, orthoCam)");
     expect(source).toContain('this.viewOnlyRoot.visible = false');
     expect(source).toContain('await this.whenReady()');
+    expect(source).toContain('includeFurniture');
   });
 });
 

@@ -316,6 +316,23 @@ test('shared SceneBuilder preserves legacy opening geometry and wall export meta
   assert.equal((slab as THREE.Mesh).position.y, 3.2 - 0.2 + 0.002);
 });
 
+test('shared SceneBuilder renders hinged glass door at the declared west hinge', () => {
+  const result = buildScene({
+    rooms: [], walls: [],
+    elements: [{ type: 'hinged_glass_door', id: 'west-door', points: [{ x: 5.6, z: 2.8 }, { x: 6.3, z: 2.8 }], height: 1.95, open: true, swing: 'north', hinge: 'start' }],
+  });
+  const door = result.exportRoot.getObjectByName('hinged_glass_door:west-door');
+  assert.ok(door);
+  assert.equal(door?.userData.type, 'hinged_glass_door');
+  const pane = result.exportRoot.getObjectByName('hinged_glass_door:west-door:pane') as THREE.Mesh;
+  assert.ok(pane);
+  result.exportRoot.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(pane);
+  assert.ok(box.min.x > 5.55 && box.max.x < 5.95, `open leaf must stay on the west hinge side: ${box.min.x}..${box.max.x}`);
+  assert.ok(box.max.z < 2.85, `north swing must open toward -z: ${box.max.z}`);
+  assert.ok(result.index.glassMeshes.some((mesh) => mesh.userData.objectId === 'west-door'));
+});
+
 test('shared SceneBuilder registers interactive curtains separately from curtain runs', () => {
   const elements: SceneElement[] = [
     { type: 'curtain', id: 'curtain:test', room: 'room', kind: 'sheer_blackout', points: [{ x: 0, z: 0 }, { x: 4, z: 0, radius: 1 }, { x: 4, z: 4 }], height: 2.8 },

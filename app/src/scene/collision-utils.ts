@@ -11,6 +11,8 @@ interface SceneElementLike {
   openings?: Array<{ id: string; type: string; x: number; z: number; width: number; height: number }>;
   points?: Array<{ x: number; z: number }>;
   open?: boolean;
+  swing?: 'north' | 'south';
+  hinge?: 'start' | 'end';
 }
 
 export function extractCollisionWalls(sceneElements: SceneElementLike[] | undefined): WallSegment[] {
@@ -53,7 +55,7 @@ export function extractCollisionWalls(sceneElements: SceneElementLike[] | undefi
           z2: b.z,
         });
       }
-    } else if (el.type === 'sliding_door_run' && el.open === false && el.points && el.points.length >= 2) {
+    } else if ((el.type === 'sliding_door_run' || el.type === 'hinged_glass_door') && el.open === false && el.points && el.points.length >= 2) {
       for (let i = 0; i < el.points.length - 1; i++) {
         const a = el.points[i];
         const b = el.points[i + 1];

@@ -151,8 +151,31 @@ function buildPlumbing(point: PlumbingPoint, wallSegments: ReadonlyMap<string, I
   if (!fixtureType) return null;
   const model = buildFixture(fixtureType);
   if (!model) return null;
-  placeModel(model, point, point.height ?? 0.5, wallSegments);
-  model.userData = metadata(point, 'plumbing');
+
+  // Blender's shower anchor height is the finished-floor-to-head height. The
+  // shared recipe is authored from y=0 to y=1.2, so scale that local recipe to
+  // the declared top rather than placing its local origin at the top anchor.
+  const placementHeight = point.height ?? (point.type === 'drain' ? 0 : 0.5);
+  if (point.type === 'shower') {
+    const localBounds = new THREE.Box3().setFromObject(model);
+    const localHeight = Math.max(localBounds.max.y - localBounds.min.y, 1e-9);
+    const scaleY = Math.max(0, placementHeight) / localHeight;
+    model.scale.y = scaleY;
+    // Align the recipe's actual lowest point to finished floor, preserving the
+    // declared point height as the actual top of the generated fixture.
+    placeModel(model, point, -localBounds.min.y * scaleY, wallSegments);
+  } else {
+    placeModel(model, point, placementHeight, wallSegments);
+  }
+  model.userData = metadata(point, 'plumbing', {
+    placementHeight,
+    heightMeaning: point.type === 'shower' ? 'finished_floor_to_shower_head' : 'fixture_origin_elevation',
+  });
+  model.name = String(model.userData.objectId);
+  model.traverse((child) => {
+    if (child === model) return;
+    child.name = `${model.name}:${child.name || 'part'}`;
+  });
   return model;
 }
 

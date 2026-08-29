@@ -172,15 +172,14 @@ Windows 侧 Blender 直接读取 Linux/WSL 路径失败，或找不到 GLB、配
 
 #### 推荐处理
 
-仅适用于从 Windows Blender 进程访问 WSL 工作区时，将路径转换为 Windows 格式：
+从 Windows Blender 进程访问 WSL 工作区时，推荐统一使用项目 wrapper：
 
 ```bash
-GLB=$(wslpath -w "$PWD/tmp/house.glb")
-CFG=$(wslpath -w "$PWD/scripts/blender/render-config.json")
-ROOT=$(wslpath -w "$PWD")
+bash scripts/run-blender.sh --glb tmp/house.glb \
+  --config scripts/blender/render-config.json --config-dir .
 ```
 
-再把转换后的路径传给 Blender。若 Blender 本身运行在 Linux/WSL，则继续使用 Linux 路径，不需要转换。
+wrapper 会依据 `BLENDER_HOST` 或可执行文件名判断目标环境，仅转换路径参数；Blender 本身运行在 Linux/WSL 时继续使用 Linux 路径。
 
 ### 2. GLB 与 render facts 必须匹配
 

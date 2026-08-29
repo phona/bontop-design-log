@@ -10,15 +10,13 @@
 ## 命令
 
 ```bash
-"/mnt/e/Blender Foundation/Blender 5.2/blender.exe" --background --python scripts/blender/dress_scene.py -- \
-  --glb <house.glb> --config scripts/blender/render-config.json \
-  --engine EEVEE --out-dir <renders_dir> --version v1 \
-  --config-dir "//wsl.localhost/Ubuntu/home/tao/projects/bontop-design-log"
+bash scripts/run-blender.sh --glb <house.glb> --config scripts/blender/render-config.json \
+  --engine EEVEE --out-dir <renders_dir> --version v1 --config-dir .
 ```
 
 - 前置：`npx tsx scripts/blender/gen-render-config.ts` 生成配置（场景常量 + 机位清单）
 - 依赖：Blender 自带 Python 需 `pip install pyyaml`（`materials_from_yaml.py` 用）
-- 注意：Blender(Windows) 读 WSL 路径用正斜杠 UNC：`//wsl.localhost/...`
+- 注意：wrapper 根据 Blender 可执行文件和 `BLENDER_HOST` 选择 Linux/Windows，并在 WSL 调 Windows Blender 时自动转换项目路径。
 
 ## 输出
 
@@ -136,7 +134,7 @@ v1（首版 Cycles）效果差的根因与修复：
 **变更**：
 1. **家具 GLB 化**（Poly Haven CC0，`assets/furniture/`）：`FURNITURE_GLB` 扩展 sofa_3seat=sofa_02（黑皮拉扣+深木框）、dining_table=WoodenTable_01、dining_chair=dining_chair_02（深棕皮）、tv_stand=modern_wooden_cabinet（深胡桃格栅）。替换旧 BlenderKit 白布艺沙发。
 2. **地板渲染参数校准**：tint #c49a6c→#d4b48a（浅暖橡木去红）、coat 0.3→0.1、roughness 0.55 覆盖贴图（柔光釉，对齐 DEC-024 门店四问）。
-3. **daylight 工况重写**：真 HDR 外景（kloofendal_48d_partly_cloudy 1k，**真 Radiance HDR**——旧两张"hdr"实为 8-bit JPG）+ `world_hdri_lighting` 真天空直接照明（不再 Light Path 分离）+ 西南向午后太阳（sun_energy 5.0 / 5500K）+ 不开灯 + exposure 2.0（对齐手机白天曝光习惯）+ 窗外/照明光比分控（`world_hdri_camera_strength` 0.2，窗外可见光线=相机+透射+单次反射）+ daylight 纱帘 0.35→0.25（减白色散射雾霾感）。
+3. **daylight 工况重写**：真 HDR 外景（kloofendal_48d_partly_cloudy 1k，**真 Radiance HDR**——旧两张"hdr"实为 8-bit JPG）+ `world_hdri_lighting` 真天空直接照明（不再 Light Path 分离）+ 西南向午后太阳（当前配置 `sun_energy: 4` / 4500K）+ 不开灯 + `view_transform: AgX` / `exposure: -0.5` + `world_strength: 0.55`；移除与 HDRI/Sun 重复叠加的 `window_portal`。`daylight_clear` 仅保留 `glass_tint: #e8f0ee` 差异，其他 daylight 光照与曝光参数一致。daylight 纱帘 0.35→0.25（减白色散射雾霾感）。
 
 **坑记录（全是首次启用太阳/真光照暴露的存量问题）**：
 1. **旧 daylight 的"亮"全靠室内灯**：lights_on=true 与"不开灯"注释自相矛盾。关灯+纯天光后画面死黑 → 真天空照明 + 曝光补偿才是正路。
@@ -169,9 +167,9 @@ v1（首版 Cycles）效果差的根因与修复：
 2. 根节点 baked 30.5° X 展示倾角 → `level_x` 回正；因 block 四元数含额外 X 分量使共轭变号，代码两符号都试、取高度小者。
 床头朝向与正反面在 headless 循环里难以目视迭代，若主卧机位床姿仍不对，用 Blender GUI 打开场景调 `rot_fix`/`flip_axis` 十分钟可定。
 
-**WSL 调 Windows Blender 的路径坑**：
-1. `bpy.data.libraries.load`（.blend 资产）**打不开 UNC 路径**（`//wsl.localhost/...`）→ 先 `net use W: \\wsl.localhost\Ubuntu`，`--config-dir` 传 `W:/home/tao/...`（gltf 导入不受影响，但 config-dir 同时拼资产路径）。
-2. `--out-dir` 不能以 `//` 开头：Blender 把 `//` 当 blend 相对路径前缀，会在 cwd 下建字面量 `wsl.localhost/` 目录 → out-dir 也走盘符路径。
+**WSL 调 Windows Blender 的路径经验**：
+1. Windows Blender 对部分 Linux/WSL 路径格式支持有限；统一通过 `scripts/run-blender.sh` 调用，由 wrapper 自动转换 GLB、配置、输出和配置目录路径。
+2. 仅路径参数会转换，普通业务参数（如 `--only`、`--mat-override`）保持原值；Linux Blender 使用绝对 Linux 路径。
 3. app 导出 GLB：在正常桌面浏览器的页面中使用导出 UI 下载 `house.glb`；不要通过自动化浏览器截获下载。
 
 ## 可复现云端渲染 bundle（正式工作流）
@@ -194,6 +192,10 @@ npm run verify:render-bundle -- --bundle renders/web/models/acceptance-<timestam
 构建器先运行 `generate:render-config` 和 `verify:project-render-facts`，再严格检查输入 GLB 的 header/chunk/index 引用、mesh 与有限 world bbox；检查通过后**复制**（不移动）它为 bundle 内的 `house.glb`，然后写入 facts、render config 与 manifest。它不会触发浏览器、Blender 或云端渲染。
 
 窗帘采用 active-only GLB 快照：`overlay.yaml` 定义安装，`data/presentation-state.json` 定义状态，共享投影给出 `snapshotSha256` 与 `expectedVisibleNodes`。bundle build/verify 都要求实际 GLB 窗帘节点与投影完全一致，拒绝 missing、unexpected、unknown、duplicate 和陈旧状态；Blender 只校验节点、按 layer/variant 赋材，不补客厅纱帘，也不根据 scenario 改开合。`bare_shell` 仅以 `curtainPolicy=hidden_for_bare_shell` 隐藏软装，不改变规范状态。
+
+### 交付边界
+
+CLI/shared GLB 是正式几何唯一来源；Blender 负责 PBR maps、材质赋值与渲染灯光。Blender 后处理仅保留显式 overlay molding、HVAC coordination/reference view-only，以及已标记 `render-only` 的软装和吊顶完成度 staging；不得用 legacy 几何旁路补建正式家具、厨卫、灯具或基础吊顶。
 
 bundle 目录严格包含以下四个交付文件：
 

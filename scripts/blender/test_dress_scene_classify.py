@@ -12,9 +12,16 @@ bpy_stub = types.ModuleType('bpy')
 bpy_stub.types = types.SimpleNamespace(Object=object)
 sys.modules.setdefault('bpy', bpy_stub)
 
+import blender_assets
+import blender_environment
+import blender_lighting
+import blender_render_only
+import dress_scene
 from dress_scene import (  # noqa: E402
     _curtain_hide_render_snapshot,
+    _mark_render_only,
     _restore_curtain_hide_render,
+    _is_render_only,
     bare_shell_should_hide,
     classify,
     effective_camera_config,
@@ -22,22 +29,126 @@ from dress_scene import (  # noqa: E402
     room_boundary_wall_ids,
     fill_light_is_enabled,
     floor_room_id,
+    floor_material_label,
+    select_floor_material,
+    assign_materials,
     job_state,
     plumbing_by_id,
     projection_facts,
     curved_railing_path,
     railing_bbox_is_rebuildable,
+    _railing_has_shared_parts,
     master_bath_final_layout,
     uniform_asset_scale,
     BLENDERKIT_PBR_CONTRACT,
     _blenderkit_pbr_assignments,
     FURNITURE_GLB,
     FURNITURE_PARTS,
+    FIXTURE_MATERIAL_ROLES,
 )
+
+
+def test_asset_and_render_only_modules_are_independent_compatibility_boundaries():
+    assert 'dress_scene' not in blender_assets.__dict__
+    assert 'dress_scene' not in blender_render_only.__dict__
+    assert math.isclose(blender_assets.uniform_asset_scale(3.5, 1.0, {'width': 2.8, 'height': 0.8}), 0.8)
+    assert callable(blender_assets.import_furniture_glb)
+    assert callable(blender_assets.replace_furniture)
+    assert callable(blender_render_only.add_soft_decor)
+    assert callable(blender_render_only.stage_missing_room_candidates)
+
+
+def test_extracted_modules_receive_all_runtime_dependencies():
+    is_render_only = lambda obj: False
+    add_pbr_maps = lambda *args, **kwargs: True
+    fixture_role = lambda name: 'cabinet_body'
+    blender_assets.configure(
+        bpy_module=bpy_stub, hex_rgb_fn=lambda value: (0.0, 0.0, 0.0),
+        find_node_fn=lambda *args: None, new_principled_fn=lambda *args, **kwargs: None,
+        set_recursive_hidden_fn=lambda *args: None,
+        hide_furniture_instance_family_fn=lambda *args: 0,
+        mark_render_only_fn=lambda *args: None,
+        is_render_only_fn=is_render_only, add_pbr_maps_fn=add_pbr_maps,
+        fixture_material_role_fn=fixture_role, furniture_instance_anchors_fn=lambda objects: {},
+        furniture_instance_key_fn=lambda obj: None,
+    )
+    blender_render_only.configure(
+        bpy_module=bpy_stub, hex_rgb_fn=lambda value: (0.0, 0.0, 0.0),
+        new_principled_fn=lambda *args, **kwargs: None, import_furniture_glb_fn=lambda *args, **kwargs: 0,
+        set_recursive_hidden_fn=lambda *args: None,
+        hide_furniture_instance_family_fn=lambda *args: 0,
+        mark_render_only_fn=lambda *args: None,
+        is_render_only_fn=is_render_only, furniture_instance_anchors_fn=lambda objects: {},
+        furniture_instance_key_fn=lambda obj: None,
+        furniture_type_from_object_fn=lambda obj: None, to_blender_fn=lambda *args: (0.0, 0.0, 0.0),
+    )
+    assert blender_assets._is_render_only is is_render_only
+    assert blender_assets.add_pbr_maps is add_pbr_maps
+    assert blender_assets.fixture_material_role is fixture_role
+    assert blender_render_only._is_render_only is is_render_only
+
+
+def test_lighting_environment_split_keeps_compatibility_surface():
+    assert dress_scene.add_lights.__module__ == 'dress_scene'
+    assert callable(dress_scene.add_lights)
+    assert not hasattr(blender_lighting, 'add_light_fixtures')
+    assert 'add_light_fixtures' not in blender_lighting.__dict__
+    assert dress_scene.kelvin_to_rgb is blender_lighting.kelvin_to_rgb
+    assert dress_scene.job_state is blender_lighting.job_state
+    assert hasattr(blender_environment, 'setup_world')
+    assert hasattr(blender_environment, 'add_sky_planes')
 
 
 def _obj(name):
     return types.SimpleNamespace(name=name, parent=None)
+
+
+def test_shared_railing_presence_skips_legacy_rebuild_policy():
+    handrail = types.SimpleNamespace(name='r:part=handrail:role=railing', children_recursive=(), get=lambda key, default=None: {'part': 'handrail'}.get(key, default))
+    bar = types.SimpleNamespace(name='r:part=bar:0:role=railing', children_recursive=(), get=lambda key, default=None: {'part': 'bar:0'}.get(key, default))
+    root = types.SimpleNamespace(name='entry_garden_north_railing', children_recursive=(handrail, bar), get=lambda key, default=None: {'type': 'railing_run'}.get(key, default))
+    assert _railing_has_shared_parts(root) is True
+
+    legacy = types.SimpleNamespace(name='entry_garden_north_railing', children_recursive=(), get=lambda key, default=None: default)
+    assert _railing_has_shared_parts(legacy) is False
+
+
+def test_fixture_roles_cover_factory_outputs_and_classify_from_stable_names():
+    expected = {
+        'drawer_front', 'back_panel', 'frame', 'weight_plate', 'upholstery',
+        'floor_protection', 'cabinet_foot', 'cabinet_support', 'safety_bar', 'mirror',
+    }
+    assert expected <= set(FIXTURE_MATERIAL_ROLES)
+    for role in expected:
+        assert classify(_obj(f'fixture:part=x:role={role}')) == role
+
+
+def test_unknown_fixture_role_is_blocked_with_audit_context():
+    try:
+        classify(_obj('fixture:part=x:role=not_declared'))
+    except RuntimeError as exc:
+        assert 'unknown fixture material role' in str(exc)
+        assert 'not_declared' in str(exc)
+        assert 'fixture:part=x:role=not_declared' in str(exc)
+    else:
+        raise AssertionError('unknown fixture role must be blocked')
+
+
+def test_tv_fixture_roles_classify_from_stable_export_names():
+    assert classify(_obj('tv_65:part=frame:role=tv_frame')) == 'tv_frame'
+    assert classify(_obj('tv_65:part=screen:role=tv_screen')) == 'tv_screen'
+
+
+def test_shared_lighting_fixture_roles_classify_from_stable_export_names():
+    assert classify(_obj('electrical:lamp:part=shade:role=fixture_diffuser')) == 'fixture_diffuser'
+    assert classify(_obj('electrical:lamp:part=track:role=fixture_track')) == 'fixture_track'
+    assert classify(_obj('electrical:lamp:part=cord:role=fixture_metal')) == 'fixture_metal'
+    assert classify(_obj('electrical:lamp:part=strip:role=cove_light')) == 'cove_light'
+
+
+def test_formal_furniture_roles_classify_from_stable_export_names():
+    assert classify(_obj('furniture:bath:part=toilet:role=ceramic')) == 'ceramic'
+    assert classify(_obj('furniture:bath:part=towel:role=fabric')) == 'fabric'
 
 
 def test_wet_room_wall_gets_tile():
@@ -49,6 +160,66 @@ def test_wet_room_wall_gets_tile():
 def test_dry_room_wall_stays_paint():
     assert classify(_obj('wall:seg:1:room=living_dining|study')) == 'wall'
     assert classify(_obj('wall:seg:2')) == 'wall'  # 无归属（旧 GLB）
+
+
+def test_floor_material_room_override_wins_over_default():
+    default = object()
+    override = object()
+    assert select_floor_material({'floor': default}, {'master_bedroom': override}, 'master_bedroom') is override
+
+
+def test_floor_material_missing_room_override_falls_back_to_default():
+    default = object()
+    assert select_floor_material({'floor': default}, {'living_dining': object()}, 'master_bedroom') is default
+
+
+def test_floor_material_missing_default_preserves_fallback_signal():
+    assert select_floor_material({}, {}, 'master_bedroom') is None
+
+
+def test_floor_material_label_is_safe_for_diagnostics():
+    assert floor_material_label(types.SimpleNamespace(name='方案_floor_pbr_tile_612')) == '方案_floor_pbr_tile_612'
+    assert floor_material_label(object()) == '<unnamed>'
+    assert floor_material_label(None) == '<none>'
+
+
+def test_assign_materials_applies_default_and_room_override_to_final_meshes():
+    default = object()
+    override = object()
+    fallback = object()
+    slots = []
+    def mesh(name):
+        return types.SimpleNamespace(name=name, parent=None, type='MESH', data=types.SimpleNamespace(materials=slots.copy()))
+    objects = [mesh('floor:living_dining'), mesh('floor:master_bath'), mesh('floor:guest_bath')]
+    original_data = getattr(bpy_stub, 'data', None)
+    bpy_stub.data = types.SimpleNamespace(objects=objects)
+    try:
+        stats = assign_materials({'floor': default, 'default': fallback}, {'master_bath': override})
+        assert stats == {'floor': 3}
+        assert objects[0].data.materials == [default]
+        assert objects[1].data.materials == [override]
+        assert objects[2].data.materials == [default]
+    finally:
+        if original_data is None:
+            del bpy_stub.data
+        else:
+            bpy_stub.data = original_data
+
+
+def test_assign_materials_falls_back_only_when_global_floor_is_missing(capsys):
+    fallback = object()
+    obj = types.SimpleNamespace(name='floor:living_dining', parent=None, type='MESH', data=types.SimpleNamespace(materials=[]))
+    original_data = getattr(bpy_stub, 'data', None)
+    bpy_stub.data = types.SimpleNamespace(objects=[obj])
+    try:
+        assign_materials({'default': fallback}, {})
+    finally:
+        if original_data is None:
+            del bpy_stub.data
+        else:
+            bpy_stub.data = original_data
+    assert obj.data.materials == [fallback]
+    assert "role 'floor' missing; fallback to 'default'" in capsys.readouterr().out
 
 
 def test_blender_duplicate_suffix_tolerated():
@@ -111,8 +282,23 @@ def test_curtain_nodes_classify_by_layer():
     # Blender 重名 .NNN 后缀不影响分类
     assert classify(_obj('curtain_living_south:sheer:deployed.001')) == 'sheer'
     # 玻璃幕节点（无冒号、含 curtain 字样）不受影响
-    assert classify(_obj('west_curtain')) == 'glass'
-    assert classify(_obj('living_south_curtain')) == 'glass'
+    assert classify(_obj('west_curtain')) == 'exterior_glazing'
+    assert classify(_obj('living_south_curtain')) == 'exterior_glazing'
+    assert classify(_obj('sliding_door:sd01:pane:0')) == 'fluted_glass'
+    assert classify(_obj('shower_screen:gbath')) == 'shower_glass'
+    assert classify(_obj('bath:mb_mirror')) == 'mirror'
+
+
+def test_bare_shell_visibility_hides_render_only_staging():
+    class RenderOnlyObject:
+        name = 'asset:ceiling:drop'
+        parent = None
+
+        @staticmethod
+        def get(key, default=None):
+            return {'render_only': True}.get(key, default)
+
+    assert bare_shell_should_hide(RenderOnlyObject()) is True
 
 
 def test_bare_shell_visibility_uses_furniture_type_and_parent_chain():
@@ -171,6 +357,147 @@ def test_dec043_master_bath_layout_is_final_and_readable():
     assert layout['screen_height_range'][0] == layout['partition_height']
 
 
+def test_ceiling_finishing_staging_is_explicitly_render_only():
+    source = (Path(__file__).resolve().with_name('dress_scene.py')).read_text()
+    finishing = source.split('def add_ceiling_finishing', 1)[1].split('\ndef ', 1)[0]
+    assert finishing.count("_mark_ceiling_finishing(o)") == 2
+    assert finishing.count("o.name = 'asset:ceiling:drop'") == 1
+    assert finishing.count("o.name = 'asset:ceiling:cove'") == 1
+    assert "obj['render_only'] = True" in source
+    assert "obj['geometrySource'] = 'blender_staging'" in source
+    assert "_mark_render_only(obj, 'ceiling_finishing')" in source
+    assert 'render-only staging' in finishing
+    assert '正式设计清单或 GLB' in finishing
+
+
+def test_ceiling_finishing_marker_sets_all_required_properties_without_bpy():
+    from dress_scene import _mark_ceiling_finishing
+
+    class FakeObject:
+        def __init__(self):
+            self.properties = {}
+
+        def __setitem__(self, key, value):
+            self.properties[key] = value
+
+    obj = FakeObject()
+    _mark_ceiling_finishing(obj)
+    assert obj.properties == {
+        'render_only': True,
+        'geometrySource': 'blender_staging',
+        'renderRole': 'ceiling_finishing',
+    }
+
+
+def test_soft_decor_staging_marks_rug_and_art_without_changing_geometry():
+    source = (Path(__file__).resolve().with_name('blender_render_only.py')).read_text()
+    soft_decor = source.split('def add_soft_decor', 1)[1].split('\ndef ', 1)[0]
+    assert "'soft_decor:rug'" in soft_decor
+    assert "'soft_decor:art_frame'" in soft_decor
+    assert "'soft_decor:artwork_plane'" in soft_decor
+    assert '_mark_render_only' in soft_decor
+    assert '正式装饰若要进入设计交付，必须迁移到 house/shared/GLB' in soft_decor
+
+
+def test_render_only_marker_and_visibility_logic_do_not_mark_formal_objects():
+    class FakeObject:
+        def __init__(self):
+            self.properties = {}
+            self.name = 'furniture:unit:wardrobe_180'
+            self.parent = None
+
+        def __getitem__(self, key):
+            return self.properties[key]
+
+        def get(self, key, default=None):
+            return self.properties.get(key, default)
+
+        def __setitem__(self, key, value):
+            self.properties[key] = value
+
+    staging = FakeObject()
+    _mark_render_only(staging, 'soft_decor:rug')
+    assert staging.properties == {
+        'render_only': True,
+        'geometrySource': 'blender_staging',
+        'renderRole': 'soft_decor:rug',
+    }
+    assert _is_render_only(staging) is True
+    assert bare_shell_should_hide(staging) is True
+
+    formal = FakeObject()
+    assert _is_render_only(formal) is False
+    assert bare_shell_should_hide(formal) is False
+    assert formal.properties == {}
+
+    source = (Path(__file__).resolve().with_name('dress_scene.py')).read_text()
+    dynamic = source.split('def _tag_dynamic_objects', 1)[1].split('\ndef ', 1)[0]
+    assert 'or _is_render_only(obj)' in dynamic
+    assert "obj['dress_dynamic'] = True" in dynamic
+
+
+def test_blender_initialization_uses_shared_glb_and_explicit_render_only_postprocessing():
+    source = (Path(__file__).resolve().with_name('dress_scene.py')).read_text()
+    initialize_scene = source.split('def initialize_scene', 1)[1].split('\ndef ', 1)[0]
+    legacy_functions = (
+        'place_extra_furniture', 'add_bath_fixtures', 'add_ceiling',
+        'add_light_fixtures', 'add_kitchen_cabinets',
+    )
+    assert '_configure_asset_modules()' in initialize_scene
+    assert initialize_scene.index('read_factory_settings') < initialize_scene.index('_configure_asset_modules()')
+    for function_name in legacy_functions:
+        assert f'{function_name}(' not in initialize_scene
+        if f'def {function_name}(' in source:
+            function_source = source.split(f'def {function_name}(', 1)[1].split('\ndef ', 1)[0]
+            normalized_function_source = ' '.join(function_source.split())
+            assert 'LEGACY' in function_source
+            assert 'not called by initialize_scene' in function_source
+            assert 'GLB geometry source' in normalized_function_source
+        else:
+            # Migrated asset/lighting implementations live in dedicated modules;
+            # dress_scene keeps only compatibility wrappers for those APIs.
+            assert function_name in {'add_light_fixtures'}
+    assert 'replace_furniture(' in initialize_scene
+    assert 'add_lights(' in initialize_scene
+    assert 'add_soft_decor(' in initialize_scene
+    assert 'add_ceiling_finishing(' in initialize_scene
+    assert 'add_moldings(' in initialize_scene
+    assert 'rebuild_railings(' in initialize_scene
+    assert '厨房正式几何（柜体、连续台面 bridge、sink/cooktop cutouts、家电位置）' in initialize_scene
+    assert '由 shared/CLI GLB 提供；Blender 不再重建' in initialize_scene
+    assert '正式卫浴几何由 shared plumbing/overlay/furnishing GLB 提供' in initialize_scene
+    assert '正式灯具外形由 shared/CLI GLB 提供' in initialize_scene
+    assert '基础吊顶几何由 shared SceneBuilder/CLI GLB 提供' in initialize_scene
+    assert 'add_ceiling_finishing 暂为 render-only staging' in initialize_scene
+    railing = source.split('def rebuild_railings', 1)[1].split('\ndef ', 1)[0]
+    assert 'Prefer shared railing parts' in railing
+    assert 'LEGACY solid fallback only when absent' in railing
+    assert "ftype in ('kitchen_cabinet_run',)" not in source
+    assert 'kitchen_cabinet_run' in source
+    assert 'def _add_shower_fixture' in source
+    bath_fixtures = source.split('def add_bath_fixtures', 1)[1].split('\ndef ', 1)[0]
+    assert "_add_shower_fixture('bath:mb_shower'" not in bath_fixtures
+    assert "_add_shower_fixture('bath:gb_shower'" not in bath_fixtures
+    assert '_add_guest_shower_screen' not in source
+    assert 'bath:gb_shower_screen' not in source
+
+
+def test_guest_shower_screen_is_declared_in_shared_overlay():
+    overlay = (Path(__file__).resolve().parents[2] / 'config' / 'layout' / 'overlay.yaml').read_text()
+    declaration = overlay.split('id: shower_screen_gbath', 1)[1].split('\n\n', 1)[0]
+    assert 'type: shower_screen' in declaration
+    assert 'points: [{ x: 7.10, z: 2.80 }, { x: 6.30, z: 2.80 }]' in declaration
+    assert 'height: 1.95' in declaration
+    assert 'sill: 0' in declaration
+
+
+def test_master_bath_screen_geometry_is_not_rebuilt_in_blender_dress():
+    source = (Path(__file__).resolve().with_name('dress_scene.py')).read_text()
+    assert "bath:mb_partition" not in source
+    assert "bath:mb_shower_screen" not in source
+    assert 'shared overlay/GLB' in source
+
+
 def test_sofa_target_is_28m_and_bbox_scale_preserves_low_profile():
     target = FURNITURE_GLB['sofa_3seat']
     assert target['width'] == 2.8
@@ -191,9 +518,7 @@ def test_effective_camera_config_applies_reviewed_camera_scenario_defaults():
         ('balcony_overview', 'material_review'): 0.0,
         ('living_from_entry', 'bare_shell'): 0.35,
         ('living_from_entry', 'material_review'): 0.35,
-        ('living_from_entry', 'daylight'): 0.35,
         ('living_floor_mid', 'material_review'): 0.35,
-        ('living_floor_mid', 'daylight'): 0.35,
         ('living_sofa_glass', 'material_review'): -0.35,
         ('living_sofa_glass', 'bare_shell'): -0.35,
         ('living_sofa_glass', 'hvac_coordination'): -0.35,
@@ -222,7 +547,7 @@ def test_effective_camera_config_applies_default_when_camera_exposure_is_zero():
 def test_effective_camera_config_keeps_nonzero_explicit_camera_exposure():
     effective = effective_camera_config(
         {'id': 'bedroom_nw_overview', 'exposure': 0.2},
-        {'id': 'material_review', 'exposure': 1.5},
+        {'id': 'material_review', 'exposure': 0.5},
     )
     assert effective['exposure'] == 0.2
 
@@ -262,9 +587,15 @@ def test_effective_camera_config_applies_bare_shell_default_before_scenario_expo
 
 def test_living_from_entry_bare_shell_default_before_scenario_exposure():
     effective = effective_camera_config(
-        {'id': 'living_from_entry'}, {'id': 'bare_shell', 'exposure': 1.5},
+        {'id': 'living_from_entry'}, {'id': 'bare_shell', 'exposure': 0.5},
     )
     assert effective['exposure'] == 0.35
+
+
+def test_daylight_living_cameras_use_scene_exposure_without_plus_035_override():
+    daylight = {'id': 'daylight', 'exposure': -0.5}
+    assert effective_camera_config({'id': 'living_from_entry'}, daylight)['exposure'] == -0.5
+    assert effective_camera_config({'id': 'living_floor_mid'}, daylight)['exposure'] == -0.5
 
 
 def test_living_from_entry_bare_shell_preserves_explicit_override_priority():
@@ -281,7 +612,7 @@ def test_living_from_entry_bare_shell_preserves_explicit_override_priority():
 def test_effective_camera_config_prefers_explicit_camera_over_default_and_scenario_exposure():
     effective = effective_camera_config(
         {'id': 'living_from_entry', 'exposure': -0.2},
-        {'id': 'material_review', 'exposure': 1.5},
+        {'id': 'material_review', 'exposure': 0.5},
     )
     assert effective['exposure'] == -0.2
 
@@ -292,24 +623,24 @@ def test_effective_camera_config_preserves_explicit_and_scenario_override_priori
     )['exposure'] == -0.2
     assert effective_camera_config(
         {'id': 'bedroom_nw_overview', 'exposure': 0.2},
-        {'id': 'material_review', 'exposure': 1.5},
+        {'id': 'material_review', 'exposure': 0.5},
     )['exposure'] == 0.2
     assert effective_camera_config(
         {'id': 'bedroom_nw_overview',
          'scenario_overrides': {'material_review': {'exposure': 0.1}}},
-        {'id': 'material_review', 'exposure': 1.5},
+        {'id': 'material_review', 'exposure': 0.5},
     )['exposure'] == 0.1
     assert effective_camera_config(
         {'id': 'bedroom_nw_overview', 'exposure': 0,
          'scenario_overrides': {'material_review': {'exposure': 0.1}}},
-        {'id': 'material_review', 'exposure': 1.5},
+        {'id': 'material_review', 'exposure': 0.5},
     )['exposure'] == 0.1
     assert effective_camera_config(
         {'id': 'bedroom_nw_overview'}, {'id': 'daylight', 'exposure': 1.5},
     )['exposure'] == 1.5
     assert effective_camera_config(
         {'id': 'master_bath_overview', 'scenario_overrides': {'material_review': {'exposure': 0.1}}},
-        {'id': 'material_review', 'exposure': 1.5},
+        {'id': 'material_review', 'exposure': 0.5},
     )['exposure'] == 0.1
     assert effective_camera_config(
         {'id': 'living_floor_mid', 'scenario_overrides': {'daylight': {'exposure': 0.1}}},
@@ -317,7 +648,7 @@ def test_effective_camera_config_preserves_explicit_and_scenario_override_priori
     )['exposure'] == 0.1
     assert effective_camera_config(
         {'id': 'living_sofa_glass', 'scenario_overrides': {'material_review': {'exposure': 0.1}}},
-        {'id': 'material_review', 'exposure': 1.5},
+        {'id': 'material_review', 'exposure': 0.5},
     )['exposure'] == 0.1
 
 

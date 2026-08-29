@@ -1,7 +1,5 @@
 {
-  "default": "open",
-  "roomOverrides": {
-    "master_bedroom": "open"
-  },
-  "updatedAt": "2026-08-25T08:03:43.765Z"
+  "default": "privacy",
+  "roomOverrides": {},
+  "updatedAt": "2026-08-29T08:06:20.134Z"
 }

@@ -10,6 +10,7 @@ dress_scene.py — Blender 自动定妆管线 v2（批量 A/B 决策）
 候选色号对比：--mat-override "wall=#f5f1e8" 整场景覆盖该材质色号（2026-08-23 起替代实体色板）。
 """
 import bpy
+import hashlib
 import json
 import math
 import os
@@ -24,6 +25,10 @@ from curtain_projection import (  # noqa: E402
     parse_curtain_node_name,
     validate_curtain_nodes,
 )
+import blender_lighting as _blender_lighting  # noqa: E402
+import blender_environment as _blender_environment  # noqa: E402
+import blender_assets as _blender_assets  # noqa: E402
+import blender_render_only as _blender_render_only  # noqa: E402
 
 GLASS_IDS = {
     'west_curtain', 'kitchen_north_curtain', 'north_recess_curtain',
@@ -68,15 +73,8 @@ def plumbing_by_id(facts: dict) -> dict:
             and isinstance(p.get('x'), (int, float)) and isinstance(p.get('z'), (int, float))}
 
 
-LIGHT_ENERGY = {  # 瓦（Cycles/EEVEE 通用，先求氛围对再校绝对亮度）
-    'pendant': 110.0,
-    'dome': 55.0,
-    'downlight': 22.0,
-    'wall_lamp': 18.0,
-    'led_strip': 25.0,
-    'track_light': 45.0,
-}
-
+# Compatibility alias; formal lighting constants live in blender_lighting.
+LIGHT_ENERGY = _blender_lighting.LIGHT_ENERGY
 
 def kelvin_to_rgb(k: float) -> tuple[float, float, float]:
     t = k / 100.0
@@ -576,189 +574,6 @@ def add_hvac_diagram(facts: dict, show_routes: bool = False) -> int:
     return count
 
 
-def add_lights(cfg: dict, temp_override: float | None = None) -> int:
-    count = 0
-    for lp in cfg['lights']:
-        energy = LIGHT_ENERGY.get(lp['type'], 15.0)
-        # temp_override：材质评审工况用 6500K 中性白，避免 3000K 暖光污染色号判断
-        color = kelvin_to_rgb(temp_override if temp_override is not None else lp.get('temp', 3000))
-        if lp['type'] == 'track_light':
-            track = lp.get('track')
-            if not track:
-                raise ValueError(f"track_light {lp['id']} requires detailed track config")
-            from mathutils import Vector
-            resolved_heads = track.get('resolvedHeads')
-            if not isinstance(resolved_heads, list) or not resolved_heads:
-                raise ValueError(f'track_light {lp["id"]} requires resolvedHeads in generated render config')
-            for index, head in enumerate(resolved_heads, start=1):
-                data = bpy.data.lights.new(f'{lp["id"]}/head:{index}', type='SPOT')
-                data.energy = track['energy']
-                data.color = color
-                data.spot_size = track['beam']
-                data.spot_blend = 0.45
-                obj = bpy.data.objects.new(f'{lp["id"]}/head:{index}', data)
-                obj.location = to_blender(head['position']['x'], head['position']['y'], head['position']['z'])
-                target = bpy.data.objects.new(f'{lp["id"]}/target:{index}', None)
-                target.location = to_blender(head['target']['x'], head['target']['y'], head['target']['z'])
-                bpy.context.collection.objects.link(obj)
-                bpy.context.collection.objects.link(target)
-                direction = Vector(to_blender(head['direction']['x'], head['direction']['y'], head['direction']['z'])).normalized()
-                obj.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
-                count += 1
-            continue
-        if lp['type'] == 'led_strip':
-            data = bpy.data.lights.new(lp['id'], type='AREA')
-            data.shape = 'RECTANGLE'
-            data.size = 2.4
-            data.size_y = 0.1
-        else:
-            data = bpy.data.lights.new(lp['id'], type='POINT')
-            data.shadow_soft_size = 0.25 if lp['type'] == 'downlight' else 0.15
-        data.energy = energy
-        data.color = color
-        obj = bpy.data.objects.new(lp['id'], data)
-        # led_strip 贴墙放会打出眩光斑 → 离墙 0.15m 且朝向房间（本项目仅西墙灯带，法线 +x 朝东）
-        off = 0.15 if lp['type'] == 'led_strip' else 0.0
-        # dome 高度=净高（2.8）时点光源正好嵌进天花网格被整体遮挡（书房北墙全黑确诊案例，
-        # v24 降到 2.55 后房间恢复照明）→ dome 一律下沉 0.25m 到天花以下
-        h = lp['height'] - 0.25 if lp['type'] == 'dome' else lp['height']
-        if lp['type'] == 'downlight' and lp.get('recessed'):
-            h -= 0.03
-        obj.location = to_blender(lp['x'] + off, h, lp['z'])
-        if lp['type'] == 'led_strip':
-            import math as _m
-            obj.rotation_euler = (0, -_m.radians(90), 0)
-        bpy.context.collection.objects.link(obj)
-        count += 1
-    return count
-
-
-def add_light_fixtures(cfg: dict, temp_override: float | None = None, emit: bool = True) -> int:
-    """LEGACY Blender 几何旁路；not called by initialize_scene。
-
-    正式灯具外形由 shared/CLI GLB（GLB geometry source）提供；保留此实现供历史
-    渲染对照。正式渲染光源仍由 add_lights 提供；emit=False（daylight 等关灯工况）
-    时灯罩不自发光，仅保留形体。"""
-    import math
-
-    def emis(name, temp, strength):
-        m = bpy.data.materials.new(name)
-        m.use_nodes = True
-        nt = m.node_tree
-        for n in list(nt.nodes):
-            nt.nodes.remove(n)
-        out = nt.nodes.new('ShaderNodeOutputMaterial')
-        em = nt.nodes.new('ShaderNodeEmission')
-        em.inputs['Color'].default_value = (*kelvin_to_rgb(temp), 1.0)
-        em.inputs['Strength'].default_value = strength
-        nt.links.new(em.outputs[0], out.inputs['Surface'])
-        return m
-
-    diff_m = emis('灯具_diffuser', temp_override or 3000, 5.0)
-    cove_m = emis('灯具_cove', temp_override or 3000, 2.0)  # 灯槽低亮度，防眩光斑
-    track_m = new_principled('灯具_黑色明装轨道', hex_rgb('#111111'), rough=0.35, metallic=0.75)
-    if not emit:
-        # 关灯工况（daylight）：灯具只留形体——吸顶/筒灯白色哑光，吊灯罩深色金属（中古黑）
-        diff_m = new_principled('灯具_diffuser_off', hex_rgb('#f2f0eb'), rough=0.6)
-        cove_m = new_principled('灯具_cove_off', hex_rgb('#e8e6e0'), rough=0.7)
-        shade_off_m = new_principled('灯具_shade_off', hex_rgb('#26221e'), rough=0.4, metallic=0.6)
-    count = 0
-    for lp in cfg['lights']:
-        t = lp['type']
-        x, z = lp.get('x'), lp.get('z')
-        h = lp.get('height', 2.8)
-        if x is None or z is None:
-            continue
-        if t == 'track_light':
-            track = lp.get('track') or {}
-            resolved_heads = track.get('resolvedHeads')
-            if not isinstance(resolved_heads, list) or not resolved_heads:
-                resolved_heads = []
-            rotation_y = track.get('rotation', {}).get('y', 0.0)
-            bpy.ops.mesh.primitive_cube_add(size=1.0, location=to_blender(x, h, z))
-            rail = bpy.context.object
-            rail.name = f'fixture:track_rail:{lp["id"]}'
-            rail.dimensions = (track.get('length', 3.6), 0.08, 0.045)
-            rail.rotation_euler[2] = rotation_y
-            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-            rail.data.materials.append(track_m)
-            count += 1
-            for index, resolved in enumerate(resolved_heads, start=1):
-                direction = Vector(to_blender(resolved['direction']['x'], resolved['direction']['y'], resolved['direction']['z'])).normalized()
-                bpy.ops.mesh.primitive_cylinder_add(radius=0.035, depth=0.08, location=to_blender(resolved['mountPosition']['x'], resolved['mountPosition']['y'], resolved['mountPosition']['z']))
-                mount = bpy.context.object
-                mount.name = f'fixture:track_mount:{lp["id"]}/head:{index}'
-                mount.data.materials.append(track_m)
-                bpy.ops.mesh.primitive_cylinder_add(radius=0.055, depth=0.14, location=to_blender(resolved['headPosition']['x'], resolved['headPosition']['y'], resolved['headPosition']['z']))
-                head = bpy.context.object
-                head.name = f'fixture:track_head:{lp["id"]}/head:{index}'
-                head.rotation_euler = direction.to_track_quat('Y', 'Z').to_euler()
-                head.data.materials.append(track_m)
-                count += 2
-        elif t == 'dome':
-            bpy.ops.mesh.primitive_cylinder_add(radius=0.18, depth=0.06, location=to_blender(x, h - 0.03, z))
-            o = bpy.context.object
-            o.name = f'fixture:dome:{lp["id"]}'
-            o.data.materials.append(diff_m)
-            count += 1
-        elif t == 'downlight':
-            if lp.get('recessed'):
-                bpy.ops.mesh.primitive_cylinder_add(radius=0.075, depth=0.08, location=to_blender(x, h + 0.04, z))
-                body = bpy.context.object
-                body.name = f'fixture:down_body:{lp["id"]}'
-                body.data.materials.append(diff_m)
-                bpy.ops.mesh.primitive_torus_add(major_radius=0.068, minor_radius=0.012, major_segments=20, minor_segments=8, location=to_blender(x, h - 0.002, z))
-                ring = bpy.context.object
-                ring.name = f'fixture:down_ring:{lp["id"]}'
-                ring.data.materials.append(track_m)
-                bpy.ops.mesh.primitive_cylinder_add(radius=0.052, depth=0.008, location=to_blender(x, h - 0.006, z))
-                lens = bpy.context.object
-                lens.name = f'fixture:down_lens:{lp["id"]}'
-                lens.data.materials.append(diff_m)
-                count += 3
-            else:
-                bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.02, location=to_blender(x, h - 0.01, z))
-                o = bpy.context.object
-                o.name = f'fixture:down:{lp["id"]}'
-                o.data.materials.append(diff_m)
-                count += 1
-        elif t == 'pendant':
-            # DEC-027：客厅主吊灯取消（无主灯方案评估）；餐桌吊灯=黑色线性长条（与餐桌方向一致）
-            if lp['id'] == 'light_living_main':
-                continue
-            hang = 1.9
-            bar_len = 1.2
-            bpy.ops.mesh.primitive_cylinder_add(radius=0.006, depth=(h - hang), location=to_blender(x, (h + hang) / 2, z))
-            bpy.context.object.name = f'fixture:pendant_cord:{lp["id"]}'
-            # 线性灯体（黑色细条，1.2m 沿 x 与餐桌同向）
-            bpy.ops.mesh.primitive_cube_add(size=1.0, location=to_blender(x, hang, z))
-            s = bpy.context.object
-            s.name = f'fixture:pendant_bar:{lp["id"]}'
-            s.dimensions = (bar_len, 0.06, 0.04)
-            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-            s.data.materials.append(diff_m if emit else shade_off_m)
-            count += 1
-        elif t == 'wall_lamp':
-            bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.2, location=to_blender(x, h or 1.5, z),
-                                                rotation=(0, math.radians(90), 0))
-            o = bpy.context.object
-            o.name = f'fixture:wall:{lp["id"]}'
-            o.data.materials.append(diff_m)
-            count += 1
-        elif t == 'led_strip':
-            # 电视墙隐藏灯槽：西墙 x=7.2 沿 z 长 2.4，高 2.0，离墙 0.03
-            bpy.ops.mesh.primitive_cube_add(size=1.0)
-            o = bpy.context.object
-            o.name = f'fixture:led_cove:{lp["id"]}'
-            o.dimensions = (0.05, 2.4, 0.05)
-            o.location = to_blender(x + 0.03, h, z)
-            o.data.materials.append(cove_m)
-            count += 1
-    if count:
-        print(f'[dress_scene] light fixtures: {count}')
-    return count
-
-
 def _mark_render_only(obj, role: str) -> None:
     """标记 Blender 成片的 render-only staging，不把它伪装成正式几何。"""
     obj['render_only'] = True
@@ -821,216 +636,39 @@ def add_ceiling_finishing(furniture_mats: dict, emit: bool = True) -> int:
     return count
 
 
+def add_lights(cfg: dict, temp_override: float | None = None) -> int:
+    return _blender_lighting.add_lights(
+        cfg, temp_override, bpy_module=bpy, to_blender_fn=to_blender,
+        kelvin_to_rgb_fn=kelvin_to_rgb,
+    )
+
+
 def add_window_portal(portal: dict) -> None:
-    """窗外柔光 portal：南玻璃幕外侧挂大面积 area light 模拟天空漫射，
-    让窗光真正漫进房间深处（背光机位不再死黑）。玻璃 shadow 直通已保证光线穿窗。"""
-    import math as _m
-    data = bpy.data.lights.new('window_portal', type='AREA')
-    data.shape = 'RECTANGLE'
-    data.size = portal.get('width', 6.0)
-    data.size_y = portal.get('height', 2.6)
-    data.energy = portal.get('energy', 1500.0)
-    data.color = kelvin_to_rgb(portal.get('temp', 6000))
-    obj = bpy.data.objects.new('window_portal', data)
-    obj.location = to_blender(portal.get('x', 10.3), portal.get('y', 2.2), portal.get('z', 11.0))
-    obj.rotation_euler = (_m.radians(90), 0, 0)  # 灯体 -Z 朝北（指向室内）
-    # Cycles 下 area light 对相机可见：portal 贴在玻璃幕外会把窗外渲染成白板，
-    # 关掉相机/透射可见性——只漫射照明，外景交给 HDRI
-    obj.visible_camera = False
-    obj.visible_transmission = False
-    bpy.context.collection.objects.link(obj)
+    return _blender_lighting.add_window_portal(
+        portal, bpy_module=bpy, to_blender_fn=to_blender,
+        kelvin_to_rgb_fn=kelvin_to_rgb,
+    )
 
 
 def add_sun(sun_dir: list[float], energy: float = 1.2, temp: int = 3200) -> None:
-    """sun_dir: 指向太阳方向的单位向量（Blender 坐标 +X 东/+Y 北/+Z 上）。
-    场景常量由 gen-render-config.ts 预计算。
-    Blender 日光灯光线沿灯体局部 -Z 发射 → -Z 必须指向"光线行进方向"= sun_dir 的反向
-    （此前对齐 sun_dir 本身，光线射向天空=太阳不存在；旧工况 sun_direction=null 从未暴露）。
-    energy/temp 由工况覆盖：白天正午约 5.0/5500K，傍晚低太阳默认 1.2/3200K。"""
-    from mathutils import Vector
-    direction = -Vector(sun_dir).normalized()
-    data = bpy.data.lights.new('Sun', type='SUN')
-    data.energy = energy
-    data.color = kelvin_to_rgb(temp)
-    obj = bpy.data.objects.new('Sun', data)
-    obj.rotation_mode = 'QUATERNION'
-    obj.rotation_quaternion = direction.to_track_quat('-Z', 'Y')
-    bpy.context.collection.objects.link(obj)
+    return _blender_lighting.add_sun(
+        sun_dir, energy=energy, temp=temp, bpy_module=bpy,
+        kelvin_to_rgb_fn=kelvin_to_rgb,
+    )
 
 
 def setup_world(engine: str, scenario: dict, config_dir: str | None = None) -> dict:
-    """Configure the world and report whether HDRI can provide window background."""
-    hdri_status = {'loaded': False, 'path': None, 'reason': 'not_configured'}
-    world = bpy.data.worlds.new('World') if not bpy.data.worlds else bpy.data.worlds[0]
-    bpy.context.scene.world = world
-    world.use_nodes = True
-    # World 是每 job 的状态，不复用上一工况的 HDRI/Light Path 节点连接。
-    world.node_tree.nodes.clear()
-    bg = world.node_tree.nodes.new('ShaderNodeBackground')
-    out = world.node_tree.nodes.new('ShaderNodeOutputWorld')
-    world.node_tree.links.new(bg.outputs['Background'], out.inputs['Surface'])
-    if engine.upper() == 'CYCLES':
-        hdri = scenario.get('world_hdri')
-        if hdri and config_dir:
-            import os
-            path = os.path.normpath(os.path.join(config_dir, hdri))
-            hdri_status['path'] = hdri
-            try:
-                if not os.path.isfile(path):
-                    raise FileNotFoundError(path)
-                env = world.node_tree.nodes.new('ShaderNodeTexEnvironment')
-                env.image = bpy.data.images.load(path)
-                hdri_status.update(loaded=True, reason='loaded')
-                print(f'[dress_scene] world HDRI: scenario={scenario.get("id", "unknown")} path={hdri} status=loaded')
-            except Exception as exc:
-                hdri_status['reason'] = type(exc).__name__
-                print(f'[dress_scene] WARN world HDRI fallback: scenario={scenario.get("id", "unknown")} path={hdri} reason={hdri_status["reason"]}')
-            if hdri_status['loaded']:
-                # HDRI 外景 + Light Path 分离：相机光线（透玻璃所见）用 HDRI 真外景；
-                # 其余光线（环境照明）用可控纯色 world_color，避免房间被 HDRI 颜色污染。
-                if scenario.get('world_hdri_lighting'):
-                    # HDRI 仅负责窗外/透射可见背景；室内漫射环境仍使用声明的 world_color。
-                    bg.inputs['Color'].default_value = (*hex_rgb(scenario.get('world_color', '#808080')), 1.0)
-                    bg.inputs['Strength'].default_value = scenario.get('world_strength', 1.0)
-                    cam_str = scenario.get('world_hdri_camera_strength')
-                    if cam_str is not None:
-                        bg_cam = world.node_tree.nodes.new('ShaderNodeBackground')
-                        # 可选冷色混合仅作用于相机/透射/奇异光线的 HDRI 背景。
-                        camera_tint = scenario.get('world_hdri_camera_tint')
-                        if isinstance(camera_tint, dict) and camera_tint.get('color'):
-                            tint_mix = world.node_tree.nodes.new('ShaderNodeMixRGB')
-                            tint_mix.blend_type = 'MIX'
-                            tint_mix.inputs['Fac'].default_value = camera_tint.get('strength', 0.0)
-                            world.node_tree.links.new(env.outputs['Color'], tint_mix.inputs['Color1'])
-                            tint_mix.inputs['Color2'].default_value = (*hex_rgb(camera_tint['color']), 1.0)
-                            world.node_tree.links.new(tint_mix.outputs['Color'], bg_cam.inputs['Color'])
-                        else:
-                            world.node_tree.links.new(env.outputs['Color'], bg_cam.inputs['Color'])
-                        bg_cam.inputs['Strength'].default_value = cam_str
-                        lp2 = world.node_tree.nodes.new('ShaderNodeLightPath')
-                        add1 = world.node_tree.nodes.new('ShaderNodeMath')
-                        add1.operation = 'ADD'
-                        world.node_tree.links.new(lp2.outputs['Is Camera Ray'], add1.inputs[0])
-                        world.node_tree.links.new(lp2.outputs['Is Transmission Ray'], add1.inputs[1])
-                        add2 = world.node_tree.nodes.new('ShaderNodeMath')
-                        add2.operation = 'ADD'
-                        world.node_tree.links.new(add1.outputs[0], add2.inputs[0])
-                        world.node_tree.links.new(lp2.outputs['Is Singular Ray'], add2.inputs[1])
-                        mix2 = world.node_tree.nodes.new('ShaderNodeMixShader')
-                        world.node_tree.links.new(add2.outputs[0], mix2.inputs[0])
-                        world.node_tree.links.new(bg.outputs['Background'], mix2.inputs[1])
-                        world.node_tree.links.new(bg_cam.outputs['Background'], mix2.inputs[2])
-                        world.node_tree.links.new(mix2.outputs[0], out.inputs['Surface'])
-                    else:
-                        world.node_tree.links.new(env.outputs['Color'], bg.inputs['Color'])
-                    bg.inputs['Strength'].default_value = scenario.get('world_strength', 1.0)
-                    return hdri_status
-                lp = world.node_tree.nodes.new('ShaderNodeLightPath')
-                add1 = world.node_tree.nodes.new('ShaderNodeMath')
-                add1.operation = 'ADD'
-                world.node_tree.links.new(lp.outputs['Is Camera Ray'], add1.inputs[0])
-                world.node_tree.links.new(lp.outputs['Is Transmission Ray'], add1.inputs[1])
-                add2 = world.node_tree.nodes.new('ShaderNodeMath')
-                add2.operation = 'ADD'
-                world.node_tree.links.new(add1.outputs[0], add2.inputs[0])
-                world.node_tree.links.new(lp.outputs['Is Singular Ray'], add2.inputs[1])
-                mix = world.node_tree.nodes.new('ShaderNodeMixRGB')
-                mix.blend_type = 'MIX'
-                mix.inputs['Color1'].default_value = (*hex_rgb(scenario.get('world_color', '#3a5a8f')), 1.0)
-                world.node_tree.links.new(add2.outputs[0], mix.inputs['Fac'])
-                world.node_tree.links.new(env.outputs['Color'], mix.inputs['Color2'])
-                world.node_tree.links.new(mix.outputs['Color'], bg.inputs['Color'])
-                bg.inputs['Strength'].default_value = scenario.get('world_strength', 0.8)
-                return hdri_status
-        elif scenario.get('world_color'):
-            # 自定义天光色（蓝调深蓝 / 夜晚近黑）：玻璃透出可见天色，方向性天光不染天花板
-            bg.inputs['Color'].default_value = (*hex_rgb(scenario['world_color']), 1.0)
-            bg.inputs['Strength'].default_value = scenario.get('world_strength', 0.3)
-        else:
-            # 白天工况：方向性天光 HOSEK_WILKIE
-            sky = world.node_tree.nodes.new('ShaderNodeTexSky')
-            sky.sky_type = 'HOSEK_WILKIE'
-            sun_dir = scenario.get('sun_direction') or [0, 0, 1]
-            sky.sun_direction = tuple(sun_dir)
-            sky.sun_intensity = 1.2
-            try:
-                sky.sun_size = 0.02
-            except Exception:
-                pass
-            world.node_tree.links.new(sky.outputs['Color'], bg.inputs['Color'])
-            bg.inputs['Strength'].default_value = 1.0
-    else:
-        # EEVEE 下世界光无方向地照射室内，会染蓝天花板 → 环境光降到微弱，
-        # 蓝天改为玻璃室内侧的发光平面（见 add_sky_planes），只透过玻璃可见。
-        bg.inputs['Color'].default_value = (*_srgb_to_linear_tuple((0.85, 0.87, 0.90)), 1.0)
-        bg.inputs['Strength'].default_value = 0.25
-    return hdri_status
+    return _blender_environment.setup_world(
+        engine, scenario, config_dir=config_dir, bpy_module=bpy,
+        hex_rgb_fn=hex_rgb, srgb_to_linear_tuple_fn=_srgb_to_linear_tuple,
+    )
 
 
 def add_sky_planes(hdri_status: dict | None = None) -> None:
-    """为无可用 HDRI 的工况显示统一的玻璃窗外天空 fallback。
-    成功加载 HDRI 时隐藏已有 fallback，避免不透明平面覆盖真实外景。"""
-    use_fallback = not (hdri_status and hdri_status.get('loaded'))
-    existing = [o for o in bpy.data.objects if o.name.startswith('sky_plane:')]
-    for plane in existing:
-        plane.hide_render = not use_fallback
-    if not use_fallback:
-        print('[dress_scene] sky fallback: disabled (HDRI loaded)')
-        return
-    from mathutils import Vector
-    mat = bpy.data.materials.new('天_傍晚天空')
-    mat.use_nodes = True
-    e = _find_node(mat.node_tree, 'ShaderNodeBsdfPrincipled')
-    if e is None:
-        e = mat.node_tree.nodes.new('ShaderNodeBsdfPrincipled')
-        out = _find_node(mat.node_tree, 'ShaderNodeOutputMaterial') or mat.node_tree.nodes.new('ShaderNodeOutputMaterial')
-        mat.node_tree.links.new(e.outputs['BSDF'], out.inputs['Surface'])
-    e.inputs['Emission Color'].default_value = (*_srgb_to_linear_tuple((0.55, 0.65, 0.92)), 1.0)
-    e.inputs['Emission Strength'].default_value = 1.2
-    try:
-        mat.use_backface_culling = False
-    except Exception:
-        pass
-
-    # Blender 导入坐标为 (x, -z, y)：户内中心约为 Three.js (8, 1.4, 3.5)。
-    center = Vector((8.0, -3.5, 1.4))  # 户内大致中心，用于判断室内侧
-    for obj in bpy.data.objects:
-        if obj.type != 'MESH' or obj.name not in GLASS_IDS:
-            continue
-        c = [obj.matrix_world @ Vector(v) for v in obj.bound_box]
-        mins = Vector((min(v.x for v in c), min(v.y for v in c), min(v.z for v in c)))
-        maxs = Vector((max(v.x for v in c), max(v.y for v in c), max(v.z for v in c)))
-        size = maxs - mins
-        axis = list(size).index(min(size))  # 玻璃最薄轴 = 法线轴
-        off = 0.12
-        loc = (mins + maxs) / 2.0
-        # 室内侧 = 沿最短轴朝 center 的一侧；偏移必须离开玻璃，避免共面闪烁。
-        if axis == 0:
-            loc.x = maxs.x + off if center.x > maxs.x else mins.x - off
-        elif axis == 1:
-            loc.y = maxs.y + off if center.y > maxs.y else mins.y - off
-        else:
-            loc.z = maxs.z + off if center.z > maxs.z else mins.z - off
-
-        bpy.ops.mesh.primitive_plane_add(size=1.0, location=loc)
-        p = bpy.context.object
-        p.name = f'sky_plane:{obj.name}'
-        if p.name not in bpy.context.scene.collection.objects:
-            bpy.context.scene.collection.objects.link(p)
-        # plane 默认法线 +z（x-y 平面）。旋转后法线指向户内中心。
-        # (1.5708,0,0)->法线(0,-1,0)  (-1.5708,0,0)->法线(0,1,0)
-        # (0,1.5708,0)->法线(1,0,0)   (0,-1.5708,0)->法线(-1,0,0)
-        if axis == 0:
-            p.rotation_euler = (0, 1.5708 if loc.x < center.x else -1.5708, 0)
-        elif axis == 1:
-            p.rotation_euler = (-1.5708 if loc.y < center.y else 1.5708, 0, 0)
-        else:
-            p.rotation_euler = (0, 0, 0 if loc.z < center.z else math.pi)  # 水平
-        p.scale = (max(size.y if axis != 1 else size.x, 0.2),
-                   max(size.z, 0.2),
-                   1.0)
-        p.data.materials.append(mat)
-        print(f'[dress_scene] sky plane for {obj.name} at {tuple(round(v,2) for v in loc)}')
+    return _blender_environment.add_sky_planes(
+        hdri_status, bpy_module=bpy, glass_ids=GLASS_IDS,
+        find_node_fn=_find_node, srgb_to_linear_tuple_fn=_srgb_to_linear_tuple,
+    )
 
 
 def add_camera(cam_cfg: dict, reuse: bool = False) -> None:
@@ -1330,6 +968,9 @@ def _add_pet_bump(mat) -> None:
 # 按 400-500mm 标准门宽在正面生成 4mm 宽分缝条（几何假凹槽，比布尔/贴图稳定）。
 # 衣柜（wardrobe_180/240_split）为推拉门（DEC-013），door_l/door_r 已是分体门板，
 # 0.88/1.18m 属推拉门标准门宽，不再加假分缝（加了会误读为平开门），饰面走 paint_cream PET。
+# Asset replacement data is owned by blender_assets; keep a compatibility alias for callers.
+FURNITURE_GLB = _blender_assets.FURNITURE_GLB
+
 CABINET_SEAM_PANELS = {
     # 西墙通顶柜：下柜 1.35m→3门 / 上柜 1.35m→3门（中间开放格不动）
     'wall_cabinet_tall': [
@@ -1430,6 +1071,16 @@ def _furniture_instance_anchors(objects):
         items.sort(key=lambda item: item[0])
         anchors[key] = items[0][1]
     return anchors
+
+
+def _hide_furniture_instance_family(instance_key: str, hidden: bool = True) -> int:
+    """按完整 formal instance key 隐藏 GLB 导出的整组 mesh，不依赖 parent links。"""
+    count = 0
+    for obj in bpy.data.objects:
+        if _furniture_instance_key(obj) == instance_key:
+            obj.hide_render = hidden
+            count += 1
+    return count
 
 
 def _is_render_only(obj) -> bool:
@@ -1534,1267 +1185,6 @@ def add_pbr_maps(mat, tex_dir, size=2.0, with_diffuse=False, normal_strength=0.5
             else:
                 nt.links.new(dm.outputs['Color'], bsdf.inputs['Base Color'])
     return True
-
-
-def dress_tv_wall_low(config_dir: str) -> dict[str, int]:
-    """用 BlenderKit sideboard 替换正式客厅电视低柜；导入失败时保留原柜体。"""
-    import mathutils
-
-    prefix = 'furniture:living_dining:tv_wall_low:'
-
-    # 本轮唯一的电视柜替换：不改正式锚点坐标/旋转，也不触碰电视及其他软装。
-    source_objects = [obj for obj in bpy.data.objects
-                      if obj.name.startswith(prefix) and not _is_render_only(obj)]
-    source_anchors = [obj for obj in _furniture_instance_anchors(source_objects).values()
-                      if obj.name.startswith(prefix)]
-    if not source_anchors:
-        print('[dress_scene] tv_wall_low sideboard failed: no formal instance '
-              f'matching {prefix}')
-        return {'objects': 0, 'modifiers': 0, 'images': 0, 'front_panels': 0,
-                'separators': 0, 'toe_kick': 0}
-    source = source_anchors[0]
-    anchor_location = source.matrix_world.translation.copy()
-    anchor_rotation = source.matrix_world.to_quaternion()
-    source_family = [obj for obj in bpy.data.objects
-                     if obj is source or obj.name.startswith(prefix)]
-    print(f'[dress_scene] tv_wall_low sideboard source_objects={len(source_family)} '
-          f'names={[obj.name for obj in source_family]}')
-
-    # 旧程序化前面板、separator、踢脚增强件全部禁用；不删除正式 GLB 几何。
-    old_enhancements = [obj for obj in bpy.data.objects
-                        if obj.name.startswith('render_only:tv_wall_low:')]
-    for obj in old_enhancements:
-        obj.hide_render = True
-        obj.hide_viewport = True
-    if old_enhancements:
-        print(f'[dress_scene] tv_wall_low sideboard disabled_old_enhancements='
-              f'{[obj.name for obj in old_enhancements]}')
-
-    asset_path = os.path.join(config_dir or '.', 'assets', 'furniture',
-                              'blenderkit_sideboard', 'sideboard.blend')
-    existing_asset = bpy.data.objects.get('asset:tv_wall_low:blenderkit_sideboard')
-    if existing_asset is not None:
-        _set_recursive_hidden(source, True)
-        existing_asset.hide_render = False
-        existing_asset.hide_viewport = False
-        print('[dress_scene] tv_wall_low sideboard reused: asset:tv_wall_low:blenderkit_sideboard')
-        return {'objects': 1, 'modifiers': 0, 'images': 0, 'front_panels': 0,
-                'separators': 0, 'toe_kick': 0}
-    if not os.path.isfile(asset_path):
-        print(f'[dress_scene] tv_wall_low sideboard failed: asset missing: {asset_path}')
-        return {'objects': 0, 'modifiers': 0, 'images': 0, 'front_panels': 0,
-                'separators': 0, 'toe_kick': 0}
-
-    before = set(bpy.data.objects)
-    try:
-        imported = import_furniture_glb(asset_path, {}, block=source, rot_fix=0)
-    except Exception as exc:
-        print(f'[dress_scene] tv_wall_low sideboard failed: import exception: '
-              f'{type(exc).__name__}: {exc}')
-        return {'objects': 0, 'modifiers': 0, 'images': 0, 'front_panels': 0,
-                'separators': 0, 'toe_kick': 0}
-    imported_objects = [obj for obj in bpy.data.objects if obj not in before and obj.type == 'MESH']
-    if not imported or not imported_objects:
-        print(f'[dress_scene] tv_wall_low sideboard failed: no imported mesh '
-              f'(import_result={imported}, objects={[obj.name for obj in imported_objects]})')
-        return {'objects': 0, 'modifiers': 0, 'images': 0, 'front_panels': 0,
-                'separators': 0, 'toe_kick': 0}
-
-    asset = imported_objects[-1]
-    asset.name = 'asset:tv_wall_low:blenderkit_sideboard'
-    # 资产源实测约 1.816×0.65×0.874m；保留原材质/UV，温和调整到电视柜目标比例。
-    asset.dimensions = (2.05, 0.44, 0.47)
-    bpy.context.view_layer.update()
-    asset.rotation_mode = 'QUATERNION'
-    asset.rotation_quaternion = anchor_rotation
-    asset.location = anchor_location
-    _mark_render_only(asset, 'tv_wall_low:blenderkit_sideboard')
-    asset['geometrySource'] = 'blender_staging'
-    asset['assetKind'] = 'REAL asset'
-    asset['assetProvider'] = 'BlenderKit'
-    asset['assetSource'] = asset_path
-    asset['formalWebGeometry'] = False
-
-    # 只有导入成功后才隐藏正式实例，确保失败时原柜体仍可见。
-    _set_recursive_hidden(source, True)
-    asset.hide_render = False
-    asset.hide_viewport = False
-    bpy.context.view_layer.update()
-    bb = [asset.matrix_world @ mathutils.Vector(c) for c in asset.bound_box]
-    bbox = tuple(max(c[i] for c in bb) - min(c[i] for c in bb) for i in range(3))
-    materials = [mat for mat in asset.data.materials if mat is not None]
-    images = {node.image for mat in materials if mat.use_nodes
-              for node in mat.node_tree.nodes
-              if node.type == 'TEX_IMAGE' and node.image is not None}
-    image_texture_count = sum(1 for mat in materials if mat.use_nodes
-                              for node in mat.node_tree.nodes if node.type == 'TEX_IMAGE')
-    packed_images = sum(1 for image in images if image.packed_file is not None)
-    print(f'[dress_scene] tv_wall_low sideboard imported_objects='
-          f'{[obj.name for obj in imported_objects]} final_object={asset.name} '
-          f'final_bbox=({bbox[0]:.4f},{bbox[1]:.4f},{bbox[2]:.4f}) '
-          f'dimensions=({asset.dimensions.x:.4f},{asset.dimensions.y:.4f},{asset.dimensions.z:.4f}) '
-          f'material_slots={len(asset.data.materials)} materials={[mat.name for mat in materials]} '
-          f'uv_layers={len(asset.data.uv_layers)} image_textures={image_texture_count} '
-          f'images={len(images)} packed_images={packed_images} '
-          f'rotation={tuple(round(v, 5) for v in asset.rotation_euler)}')
-    return {'objects': 1, 'modifiers': 0, 'images': len(images), 'front_panels': 0,
-            'separators': 0, 'toe_kick': 0}
-
-    # Legacy cabinet-detail path retained below for reference only; unreachable after
-    # the canonical sideboard replacement above and intentionally does not run.
-    bevel_roles = {'cabinet_body', 'door_front', 'end_panel', 'countertop', 'plinth', 'cabinet_support'}
-    wood_roles = {'cabinet_body', 'door_front', 'end_panel'}
-    front_roles = {'door_front', 'drawer_front'}
-    skipped_parts = {'door_seam', 'handle', 'feet', 'niche-light'}
-    tex_dir = os.path.join(config_dir or '.', 'assets', 'textures', 'oak_veneer_01')
-    texture_files = ('diff.jpg', 'normal.jpg', 'rough.jpg')
-    textures_ready = all(
-        os.path.isfile(os.path.join(tex_dir, filename))
-        and os.path.getsize(os.path.join(tex_dir, filename)) > 0
-        for filename in texture_files
-    )
-    bevel_count = 0
-    processed_objects = 0
-    image_count = 0
-    panel_count = 0
-    separator_count = 0
-    local_materials = {}
-    role_tints = {
-        'cabinet_body': '#503e2e',
-        'door_front': '#604a35',
-        'end_panel': '#493626',
-        'countertop': '#6a5139',
-        'plinth': '#2d2520',
-        'cabinet_support': '#382d26',
-    }
-
-    def assign_material(obj, material):
-        if obj.data.materials:
-            for index in range(len(obj.data.materials)):
-                obj.data.materials[index] = material
-        else:
-            obj.data.materials.append(material)
-
-    def world_bounds(obj):
-        half = obj.dimensions
-        return (obj.location.x - half.x / 2, obj.location.x + half.x / 2,
-                obj.location.y - half.y / 2, obj.location.y + half.y / 2,
-                obj.location.z - half.z / 2, obj.location.z + half.z / 2)
-
-    def make_role_material(role, source):
-        material = local_materials.get(role)
-        if material is not None:
-            return material
-        if source is None:
-            return None
-        material = source.copy()
-        material.name = f'{source.name}_tv_wall_low_{role}'
-        local_materials[role] = material
-        if role in wood_roles and textures_ready:
-            before_images = {node.image.name for node in material.node_tree.nodes
-                             if node.bl_idname == 'ShaderNodeTexImage' and node.image is not None}
-            if not add_pbr_maps(material, tex_dir, size=1.0, with_diffuse=True,
-                                normal_strength=0.3, tint=role_tints[role]):
-                local_materials.pop(role, None)
-                return None
-            nonlocal image_count
-            image_count += sum(
-                1 for node in material.node_tree.nodes
-                if node.bl_idname == 'ShaderNodeTexImage' and node.image is not None
-                and node.image.name not in before_images
-            )
-        else:
-            bsdf = _find_node(material.node_tree, 'ShaderNodeBsdfPrincipled')
-            if bsdf is not None:
-                bsdf.inputs['Base Color'].default_value = (*hex_rgb(role_tints[role]), 1.0)
-                bsdf.inputs['Roughness'].default_value = {
-                    'countertop': 0.48, 'plinth': 0.72, 'cabinet_support': 0.58,
-                }.get(role, 0.62)
-        return material
-
-    for obj in bpy.data.objects:
-        if obj.type != 'MESH' or not obj.name.startswith(prefix):
-            continue
-        role = fixture_material_role(obj.name)
-        part_name = obj.name[len(prefix):].lower()
-        if role in skipped_parts or any(token in part_name for token in skipped_parts):
-            continue
-        if role in bevel_roles:
-            processed_objects += 1
-            if min(float(value) for value in obj.dimensions) >= 0.012 and not obj.modifiers.get('tv_wall_low_soft_bevel'):
-                modifier = obj.modifiers.new('tv_wall_low_soft_bevel', 'BEVEL')
-                modifier.width = 0.0025
-                modifier.segments = 2
-                modifier.limit_method = 'ANGLE'
-                try:
-                    modifier.harden_normals = True
-                except Exception:
-                    pass
-                bevel_count += 1
-            for polygon in obj.data.polygons:
-                polygon.use_smooth = True
-            material = make_role_material(role, obj.active_material)
-            if material is not None:
-                assign_material(obj, material)
-
-    front_parts = [obj for obj in bpy.data.objects
-                   if obj.type == 'MESH' and obj.name.startswith(prefix)
-                   and fixture_material_role(obj.name) in front_roles
-                   and obj.dimensions.x > 0.04 and obj.dimensions.y > 0.004 and obj.dimensions.z > 0.04]
-    if not front_parts:
-        print('[dress_scene] tv_wall_low: no usable door-front bounds; render-only geometry skipped')
-        return {'objects': processed_objects, 'modifiers': bevel_count, 'images': image_count,
-                'front_panels': 0, 'separators': 0, 'toe_kick': 0}
-
-    # 远程实测：正式 door-front-base 的正面是 Blender +Y；仅隐藏连续门板本身。
-    original_fronts = [obj for obj in front_parts if 'door-front-base' in obj.name.lower()]
-    if original_fronts:
-        for obj in original_fronts:
-            obj.hide_render = True
-    print(f'[dress_scene] tv_wall_low: original_door_front_hidden={bool(original_fronts)} '
-          f'objects={[obj.name for obj in original_fronts]}')
-
-    front_bounds = [world_bounds(obj) for obj in front_parts]
-    x0, x1 = min(b[0] for b in front_bounds), max(b[1] for b in front_bounds)
-    z0, z1 = min(b[4] for b in front_bounds), max(b[5] for b in front_bounds)
-    front_surface = max(b[3] for b in front_bounds)
-    seam_centers = sorted(obj.location.x for obj in bpy.data.objects
-                          if obj.type == 'MESH' and obj.name.startswith(prefix)
-                          and fixture_material_role(obj.name) == 'door_seam'
-                          and x0 < obj.location.x < x1)
-    cuts = sorted(seam_centers[:2] if len(seam_centers) >= 2 else
-                  [x0 + (x1 - x0) / 3, x0 + 2 * (x1 - x0) / 3])
-    edges = [x0, *cuts, x1]
-
-    source = front_parts[0].active_material
-    panel_tints = ('#6b4d35', '#795a3d', '#5a402c')
-    panel_materials = []
-    for index, tint in enumerate(panel_tints):
-        name = f'tv_wall_low_render_panel:{index:02d}'
-        material = bpy.data.materials.get(name)
-        if material is None:
-            material = source.copy() if source is not None else new_principled(name, hex_rgb(tint), rough=0.56)
-            material.name = name
-            if textures_ready:
-                before_images = {node.image.name for node in material.node_tree.nodes
-                                 if node.bl_idname == 'ShaderNodeTexImage' and node.image is not None}
-                if add_pbr_maps(material, tex_dir, size=1.0, with_diffuse=True,
-                                normal_strength=0.3, tint=tint):
-                    image_count += sum(
-                        1 for node in material.node_tree.nodes
-                        if node.bl_idname == 'ShaderNodeTexImage' and node.image is not None
-                        and node.image.name not in before_images
-                    )
-            else:
-                bsdf = _find_node(material.node_tree, 'ShaderNodeBsdfPrincipled') if material.use_nodes else None
-                if bsdf is not None:
-                    bsdf.inputs['Base Color'].default_value = (*hex_rgb(tint), 1.0)
-                    bsdf.inputs['Roughness'].default_value = 0.56
-        panel_materials.append(material)
-
-    seam_material = bpy.data.materials.get('tv_wall_low_render_shadow_line')
-    if seam_material is None:
-        seam_material = new_principled('tv_wall_low_render_shadow_line', hex_rgb('#1b120d'), rough=0.88)
-
-    def enhancement(name, role, dimensions, location, material, bevel_width):
-        nonlocal panel_count, separator_count
-        obj = bpy.data.objects.get(name)
-        if obj is None:
-            bpy.ops.mesh.primitive_cube_add(size=1.0)
-            obj = bpy.context.object
-            obj.name = name
-            _mark_render_only(obj, role)
-            if role == 'tv_wall_low:front_panel':
-                panel_count += 1
-            else:
-                separator_count += 1
-        obj.dimensions = dimensions
-        obj.location = location
-        assign_material(obj, material)
-        modifier = obj.modifiers.get('tv_wall_low_render_bevel') or obj.modifiers.new('tv_wall_low_render_bevel', 'BEVEL')
-        modifier.width = bevel_width
-        modifier.segments = 3
-        modifier.limit_method = 'ANGLE'
-        return obj
-
-    panel_depth = 0.020
-    panel_offset = 0.012
-    panel_height = max(0.04, z1 - z0 - 0.018)
-    panel_z = (z0 + z1) / 2
-    seam_width = 0.022
-    seam_depth = 0.006
-    seam_height = z1 - z0 - 0.006
-    panels = []
-    for index in range(3):
-        left, right = edges[index], edges[index + 1]
-        width = right - left - seam_width - 0.004
-        panel = enhancement(
-            f'render_only:tv_wall_low:front_panel:{index:02d}', 'tv_wall_low:front_panel',
-            (width, panel_depth, panel_height),
-            ((left + right) / 2, front_surface + panel_offset + panel_depth / 2, panel_z),
-            panel_materials[index], 0.0035)
-        panels.append(panel)
-
-    separators = []
-    panel_front = front_surface + panel_offset + panel_depth
-    for index, cut in enumerate(cuts):
-        separator = enhancement(
-            f'render_only:tv_wall_low:separator:v:{index:02d}', 'tv_wall_low:separator',
-            (seam_width, seam_depth, seam_height),
-            (cut, panel_front - seam_depth / 2, panel_z), seam_material, 0.001)
-        separators.append(separator)
-
-    # 旧版本曾创建方盒踢脚；本版本不再创建，已有对象直接移除，避免被后续重置重新显示。
-    old_toe_kick = bpy.data.objects.get('render_only:tv_wall_low:toe_kick_shadow')
-    if old_toe_kick is not None:
-        bpy.data.objects.remove(old_toe_kick, do_unlink=True)
-
-    enhancements = [*panels, *separators]
-    print(f'[dress_scene] tv_wall_low: front_surface_y={front_surface:.6f} '
-          f'panels=3 seam_width={seam_width:.3f} seam_depth={seam_depth:.3f} '
-          f'panel_depth={panel_depth:.3f} panel_offset={panel_offset:.3f} '
-          f'bevel_objects={bevel_count} processed_objects={processed_objects} '
-          f'wood_pbr={"ready" if textures_ready else "skipped_missing_assets"}')
-    for obj in enhancements:
-        print(f'[dress_scene] tv_wall_low enhancement: {obj.name} '
-              f'dimensions=({obj.dimensions.x:.4f},{obj.dimensions.y:.4f},{obj.dimensions.z:.4f}) '
-              f'location=({obj.location.x:.4f},{obj.location.y:.4f},{obj.location.z:.4f}) '
-              f'render_only={_is_render_only(obj)}')
-    return {'objects': processed_objects, 'modifiers': bevel_count, 'images': image_count,
-            'front_panels': panel_count, 'separators': separator_count, 'toe_kick': 0}
-
-
-FURNITURE_GLB = {
-    # 中古胡桃方向（DEC-2026-08-20-025/026）：Poly Haven CC0，清单见 assets/SOURCES.md
-    # width/height 为目标尺寸（米）：缩放系数取 width/模型宽 与 height/模型高 的较小者，
-    # 防止模型长宽比与目标槽位不一致时拉飞高度（wooden_table_02 按宽缩会顶到 0.99m）
-    # tint: 可选，对导入材质做乘色（如中色木桌压成深胡桃）
-    # DEC-026：沙发/餐椅/茶几换 BlenderKit 现代中古款（Burrard 直排+细腿、
-    # 藤编细腿餐椅、Noguchi 黑座玻璃圆几），弃 Chesterfield/高背拉扣/工业方几
-    # 布纹底图 col_2（灰蓝）× #a36954 乘色 ≈ 目标深棕 #3a2e26（乘色反推）
-    'sofa_3seat': {'path': 'assets/furniture/burrard_sofa/burrard_sofa.blend', 'width': 2.8, 'height': 0.8, 'tint': '#a36954', 'tint_mode': 'solid', 'fabric_tex': 'assets/textures/fabric_pattern_07', 'fabric_soften': 0.55},
-    'dining_chair': {'path': 'assets/furniture/rattan_dining_chair/rattan_dining_chair.blend', 'width': 0.5, 'height': 0.9, 'tint': '#6b4c38'},
-    'dining_table': {'path': 'assets/furniture/wooden_table_02/wooden_table_02.gltf', 'width': 1.4, 'height': 0.78, 'tint': '#54382a'},
-    'plant_fiddle': {'path': 'assets/furniture/potted_plant_01/potted_plant_01.gltf', 'width': 0.6, 'tint': '#a89a8c'},  # 陶土盆亮橙太跳，乘灰陶色压暗
-    # 2026-08-23 电器缺员（BlenderKit，清单见 assets/SOURCES.md）：width/height 约束到 standard 尺寸，
-    # lift=离地抬升（dryer 叠放支架层 / water_heater 壁挂）；朝向未实测，下轮渲染核对后按需补 rot_fix
-    'washer': {'path': 'assets/furniture/washer/washer.blend', 'width': 0.60, 'height': 0.85},
-    # Samsung 套组含洗衣机+烘干机+展柜三 mesh，只留烘干机（drop_nodes 前缀/精确匹配）
-    'dryer': {'path': 'assets/furniture/dryer/dryer.blend', 'width': 0.60, 'height': 0.85, 'lift': 0.88,
-              'drop_nodes': ['Washer AI Home 7" LCD Display AI OptiWash', 'cabinets']},
-    'dishwasher': {'path': 'assets/furniture/dishwasher/dishwasher.blend', 'width': 0.60, 'height': 0.82},
-    # 厨房电器：BlenderKit 冰箱 source 原始 Z=2.76m，但 append 四元数复合前计算到的高度轴为 1.90m；
-    # height=1.24 → scale≈0.65，最终直立高度≈1.80m、宽≈0.75m，契合东墙高柜位。
-    # Build In Gas Stove 75x51 资产经摆位四元数复合后变为 51cm 高立块（EEVEE v35b），不可用；
-    # Whirlpool Range Hood 亦为 13cm 顶吸薄板、无竖向烟管，均继续回退到已验证的程序化壁挂烟机/嵌入式灶具。
-    'fridge': {'path': 'assets/furniture/fridge/fridge.blend', 'width': 0.68, 'height': 1.24},
-    # BlenderKit 的 Shower Water Heater 在 append→摆位四元数复合后横躺（EEVEE v34 仅高 11cm），
-    # 暂保留程序化壁挂机回退；待找到已归一化为 +Z 竖直的资产再启用，禁止以错误姿态入图。
-    # 主卧真实床候选：导入失败时保留程序化床体回退；仅按宽度等比缩放，不强行拉伸。
-    'bed_180': {'path': 'assets/furniture/blenderkit_upholstered_bed_51602564/bed.blend', 'width': 1.8},
-    # bed_150 候选因导入后尺度异常，禁用 BlenderKit 替换并回退程序化床。
-    # 客卫浴室柜：资产含木纹贴图；导入失败时保留程序化 vanity 回退。
-    'vanity': {'path': 'assets/furniture/blenderkit_vanity/vanity.blend', 'width': 0.60},
-    # 床 GLB（bed_soft_modern）暂不进管线：headless 下导入姿态不稳（baked 倾角+辅助 Cube，
-    # 见 docs/renders/pipeline-acceptance.md v16 节），回退程序化床体；待 GUI Blender 定姿后再启用
-}
-
-
-def uniform_asset_scale(model_w: float, model_h: float, targets: dict) -> float:
-    """按导入资产实际 bbox 计算统一缩放；宽高约束取较小值以保持原比例。"""
-    scales = []
-    if targets.get('width') and model_w > 0.01:
-        scales.append(float(targets['width']) / model_w)
-    if targets.get('height') and model_h > 0.01:
-        scales.append(float(targets['height']) / model_h)
-    return min(scales) if scales else 1.0
-
-
-def import_furniture_glb(glb_path: str, targets: dict, block=None, loc_rz=None, rot_fix: float = 0) -> int:
-    """导入 .glb/.gltf 家具模型，归一化缩放后放置并写入资产审计元数据。
-    targets: {'width': 米, 'height': 米, 'tint': '#hex'}（均可省），缩放取各约束的较小值；
-    tint 时对每个导入材质的 Base Color 前插 MULTIPLY 节点（保纹理、压色调）。
-    放置：block（继承其世界变换）或 loc_rz=((x,y,z), rz)（Blender 坐标，用于 place_extra_furniture）。
-    步骤：导入→剥骨架→合并→命名/审计元数据→设原点→缩放→tint→贴地→定位→旋转。
-    审计元数据是 blend_asset 基线；调用方后续可显式标记 render-only staging。"""
-    import math
-    import mathutils
-
-    existing = set(obj.name for obj in bpy.data.objects)
-    if glb_path.lower().endswith('.blend'):
-        # BlenderKit 资产多为 .blend（含打包贴图）：append 全部对象再按既有流程处理
-        with bpy.data.libraries.load(glb_path) as (data_from, data_to):
-            data_to.objects = data_from.objects
-        for o in data_to.objects:
-            if o is not None:
-                try:
-                    bpy.context.collection.objects.link(o)
-                except Exception:
-                    pass
-        # 清理 append 带入的非网格对象（相机/灯光），避免污染场景
-        for o in [o for o in bpy.data.objects
-                  if o.name not in existing and o.type in ('CAMERA', 'LIGHT')]:
-            bpy.data.objects.remove(o)
-    else:
-        bpy.ops.import_scene.gltf(filepath=glb_path)
-    new_objs = [obj for obj in bpy.data.objects if obj.name not in existing and obj.type == 'MESH']
-    # drop_nodes：资产导出残留的辅助节点（如 bed_soft_modern 的 2m 包围盒 Cube），不参与合并；
-    # 导入可能因重名加 .NNN 后缀，按前缀匹配。
-    # 注：drop_nodes/level_x/flip_axis 当前无条目引用（床 GLB 回退程序化），属预留机制，床启用时生效
-    for drop in targets.get('drop_nodes', []):
-        new_objs = [o for o in new_objs if o.name != drop and not o.name.startswith(drop + '.')]
-    if not new_objs:
-        print(f'[dress_scene] WARN glb 导入无 mesh: {glb_path}')
-        return 0
-
-    # 剥掉骨架/动画绑定：家具资产不需要 rig。Poly Haven 部分模型（滑门柜/铁架茶几）
-    # 带 Armature 修改器，transform_apply 后网格被骨骼扯回错误姿态（木板立起/跑偏）
-    new_armatures = [o for o in bpy.data.objects if o.name not in existing and o.type == 'ARMATURE']
-    for obj in new_objs:
-        for mod in list(obj.modifiers):
-            if mod.type == 'ARMATURE':
-                obj.modifiers.remove(mod)
-        if obj.parent is not None and obj.parent.type == 'ARMATURE':
-            mw_keep = obj.matrix_world.copy()
-            obj.parent = None
-            obj.matrix_world = mw_keep
-    for arm in new_armatures:
-        bpy.data.objects.remove(arm)
-
-    bpy.ops.object.select_all(action='DESELECT')
-    for obj in new_objs:
-        obj.select_set(True)
-    bpy.context.view_layer.objects.active = new_objs[0]
-
-    if len(new_objs) > 1:
-        bpy.ops.object.join()
-
-    obj = bpy.context.active_object
-    tag = block.name.split(":")[2] if block is not None and ":" in block.name else "extra"
-    obj.name = f'asset:{tag}:glb'
-    # 导入资产的审计基线；render-only staging 标记由调用方显式追加，不在此覆盖。
-    normalized_glb_path = os.path.normpath(glb_path)
-    obj['geometrySource'] = 'blend_asset'
-    obj['assetProvider'] = 'BlenderKit' if 'blenderkit' in glb_path.lower() else 'external_asset'
-    obj['assetSource'] = normalized_glb_path
-    obj['assetKind'] = 'REAL asset'
-    obj['formalWebGeometry'] = False
-
-    # 原点设到几何中心
-    bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-
-    # 计算包围盒 → 缩放（宽/高约束取小，防长宽比失真）
-    bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
-    model_w = max(c.x for c in bb) - min(c.x for c in bb)
-    model_h = max(c.z for c in bb) - min(c.z for c in bb)
-    scale = uniform_asset_scale(model_w, model_h, targets)
-    obj.scale = (scale, scale, scale)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-
-    # tint 乘色（可选）：Base Color 前插 MULTIPLY，保纹理压色调
-    # tint_mode='solid'：直接替换 Base Color 为纯色（乘色改不了色相，绿布×棕=还是绿）
-    tint = targets.get('tint')
-    if tint:
-        solid = targets.get('tint_mode') == 'solid'
-        for mat in obj.data.materials:
-            if mat is None or not mat.use_nodes:
-                continue
-            nt = mat.node_tree
-            bsdf = _find_node(nt, 'ShaderNodeBsdfPrincipled')
-            if bsdf is None:
-                continue
-            base_in = bsdf.inputs['Base Color']
-            if solid:
-                for link in list(base_in.links):
-                    nt.links.remove(link)
-                # fabric_tex：纯色修正但保布纹（沙发原布料色相不对，替换为布纹×色号乘色）
-                ftex = targets.get('fabric_tex')
-                diff = os.path.join(ftex, 'diff.jpg') if ftex else None
-                # 0 字节坏文件回退纯色（防占位文件渲染品红）
-                if diff and os.path.exists(diff) and os.path.getsize(diff) > 0:
-                    geo = nt.nodes.new('ShaderNodeNewGeometry')
-                    mp = nt.nodes.new('ShaderNodeMapping')
-                    mp.inputs['Scale'].default_value = (1.0 / 0.35,) * 3
-                    img = bpy.data.images.load(diff)
-                    tn = nt.nodes.new('ShaderNodeTexImage')
-                    tn.image = img
-                    tn.projection = 'BOX'
-                    tn.projection_blend = 0.3
-                    mul2 = nt.nodes.new('ShaderNodeMixRGB')
-                    mul2.blend_type = 'MULTIPLY'
-                    mul2.inputs['Fac'].default_value = 1.0
-                    mul2.inputs['Color2'].default_value = (*hex_rgb(tint), 1.0)
-                    nt.links.new(geo.outputs['Position'], mp.inputs['Vector'])
-                    nt.links.new(mp.outputs['Vector'], tn.inputs['Vector'])
-                    # fabric_soften（0~1）：先把布纹往中灰抹平再乘色，压低格纹对比度
-                    # （fabric_pattern_07 棋盘格 35cm 重复太跳，沙发显"贴皮"）
-                    soften = float(targets.get('fabric_soften', 0.0))
-                    if soften > 0:
-                        flat = nt.nodes.new('ShaderNodeMixRGB')
-                        flat.blend_type = 'MIX'
-                        flat.inputs['Fac'].default_value = soften
-                        flat.inputs['Color2'].default_value = (0.62, 0.60, 0.57, 1.0)
-                        nt.links.new(tn.outputs['Color'], flat.inputs['Color1'])
-                        nt.links.new(flat.outputs['Color'], mul2.inputs['Color1'])
-                    else:
-                        nt.links.new(tn.outputs['Color'], mul2.inputs['Color1'])
-                    nt.links.new(mul2.outputs['Color'], base_in)
-                else:
-                    base_in.default_value = (*hex_rgb(tint), 1.0)
-                continue
-            mul = nt.nodes.new('ShaderNodeMixRGB')
-            mul.blend_type = 'MULTIPLY'
-            mul.inputs['Fac'].default_value = 1.0
-            mul.inputs['Color2'].default_value = (*hex_rgb(tint), 1.0)
-            if base_in.is_linked:
-                nt.links.new(base_in.links[0].from_socket, mul.inputs['Color1'])
-            else:
-                mul.inputs['Color1'].default_value = base_in.default_value
-            nt.links.new(mul.outputs['Color'], base_in)
-
-    # 定位 + 旋转（继承 block 的世界变换，或用显式 loc_rz）
-    # 关键：glTF 导入对象多为 rotation_mode='QUATERNION'，且模型自带 +90°X 基础旋转
-    # （Y-up→Z-up 转换）。切 XYZ 模式/覆盖 rotation_euler 会静默丢掉基础旋转
-    # （茶几木板立起来、电视柜嵌墙、床朝向悬案全是这一类）→ 一律用四元数复合：
-    # 最终旋转 = 摆位 yaw ⊗ 模型原始旋转
-    from mathutils import Quaternion
-    orig_quat = obj.matrix_world.to_quaternion()
-    if loc_rz is not None:
-        (lx, ly, lz), rz = loc_rz
-        obj.location = (lx, ly, lz)
-        base = Quaternion((0, 0, 1), rz + math.radians(rot_fix))
-    else:
-        mw = block.matrix_world
-        obj.location.x = mw.translation.x
-        obj.location.y = mw.translation.y
-        base = mw.to_quaternion() @ Quaternion((0, 0, 1), math.radians(rot_fix))
-    # level_x：资产自带展示倾角（如 bed_soft_modern 根节点 baked 30.5° X 倾斜）。
-    # block 四元数可能含额外 X 分量使共轭变号，故两符号都试、取高度小者。
-    # flip_axis：180° 翻转绕长轴纠正正反面（自共轭，不受 block 旋转影响），不改变床头端
-    level_deg = targets.get('level_x', 0)
-    flip = {'X': (1, 0, 0), 'Y': (0, 1, 0), 'Z': (0, 0, 1)}.get(targets.get('flip_axis', ''))
-    flip_q = Quaternion(flip, math.pi) if flip else Quaternion()
-    obj.rotation_mode = 'QUATERNION'
-    obj.rotation_quaternion = base @ flip_q @ Quaternion((1, 0, 0), math.radians(level_deg)) @ orig_quat
-    if level_deg:
-        bpy.context.view_layer.update()
-        bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
-        h1 = max(c.z for c in bb) - min(c.z for c in bb)
-        obj.rotation_quaternion = base @ flip_q @ Quaternion((1, 0, 0), math.radians(-level_deg)) @ orig_quat
-        bpy.context.view_layer.update()
-        bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
-        if max(c.z for c in bb) - min(c.z for c in bb) < h1:
-            pass  # 负号更平，保持
-        else:
-            obj.rotation_quaternion = base @ flip_q @ Quaternion((1, 0, 0), math.radians(level_deg)) @ orig_quat
-    bpy.context.view_layer.update()
-    # 旋转后重新算世界包围盒 → 贴地（保证旋转不抬升）
-    bb2 = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
-    min_z = min(c.z for c in bb2)
-    obj.location.z -= min_z
-    # lift：叠放/壁挂件的离地抬升（dryer 叠洗衣机 +0.88、water_heater 挂墙 +1.40）
-    lift = targets.get('lift')
-    if lift:
-        obj.location.z += lift
-    dims = [round(max(c[i] for c in bb2) - min(c[i] for c in bb2), 2) for i in range(3)]
-    print(f'[dress_scene] glb import: {obj.name} scale={scale:.2f} dims={dims} loc={tuple(round(v,2) for v in obj.location)}')
-
-    # 材质豁免：asset: 前缀 → classify 返回 skip
-    return 1
-
-
-def _world_bbox_for_objects(objects):
-    """Return the world-space bbox of mesh objects, or None when unavailable."""
-    import mathutils
-    corners = []
-    for obj in objects:
-        if getattr(obj, 'type', None) != 'MESH':
-            continue
-        corners.extend(obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box)
-    if not corners:
-        return None
-    return tuple(
-        (min(c[i] for c in corners), max(c[i] for c in corners))
-        for i in range(3)
-    )
-
-
-def _report_render_only_asset(obj, label: str, source_path: str, source_bbox=None) -> None:
-    """Print the staging evidence required for post-render asset auditing."""
-    bbox = _world_bbox_for_objects([obj])
-    if bbox is None:
-        print(f'[dress_scene] real asset audit: {label} has no mesh bbox source={source_path}')
-        return
-    dims = tuple(hi - lo for lo, hi in bbox)
-    materials = [mat for mat in obj.data.materials if mat is not None]
-    images = set()
-    image_texture_count = 0
-    for mat in materials:
-        material_images = []
-        if mat.use_nodes:
-            for node in mat.node_tree.nodes:
-                if node.type == 'TEX_IMAGE':
-                    image_texture_count += 1
-                    if node.image is not None:
-                        images.add(node.image)
-                        material_images.append(node.image.name)
-        print(f'[dress_scene] asset material: {label} material={mat.name} '
-              f'image_textures={len(material_images)} images={material_images}')
-    packed_images = sum(1 for image in images if image.packed_file is not None)
-    source_text = ''
-    if source_bbox is not None:
-        source_dims = tuple(hi - lo for lo, hi in source_bbox)
-        source_text = f' source_bbox=({source_dims[0]:.4f},{source_dims[1]:.4f},{source_dims[2]:.4f})'
-    print(f'[dress_scene] real asset audit: {label} source={source_path}{source_text} '
-          f'final_bbox=({dims[0]:.4f},{dims[1]:.4f},{dims[2]:.4f}) '
-          f'dimensions=({obj.dimensions.x:.4f},{obj.dimensions.y:.4f},{obj.dimensions.z:.4f}) '
-          f'material_slots={len(obj.data.materials)} materials={[mat.name for mat in materials]} '
-          f'uv_layers={len(obj.data.uv_layers)} image_textures={image_texture_count} '
-          f'images={len(images)} packed_images={packed_images}')
-
-
-def _mark_candidate_asset(obj, role: str, source_path: str, metadata_path: str | None = None) -> None:
-    _mark_render_only(obj, role)
-    obj['geometrySource'] = 'blender_staging'
-    obj['assetProvider'] = 'BlenderKit'
-    obj['assetSource'] = os.path.normpath(source_path)
-    obj['assetKind'] = 'REAL asset'
-    obj['formalWebGeometry'] = False
-    if metadata_path and os.path.isfile(metadata_path):
-        try:
-            with open(metadata_path, encoding='utf-8') as metadata_file:
-                metadata = json.load(metadata_file)
-            obj['candidateMetadata'] = json.dumps(metadata, ensure_ascii=False, sort_keys=True)
-            for key in ('uuid', 'file_id', 'file_type', 'asset_type', 'license', 'validation_status', 'download_status'):
-                value = metadata.get(key)
-                if value is not None:
-                    obj[f'candidate_{key}'] = str(value)
-        except (OSError, TypeError, ValueError) as exc:
-            print(f'[dress_scene] WARN candidate metadata unreadable; continue staging: '
-                  f'{metadata_path}: {type(exc).__name__}: {exc}')
-
-
-def stage_missing_room_candidates(config_dir: str) -> int:
-    """Stage reviewed BlenderKit candidates without changing formal layout data.
-
-    Positions come only from current furniture anchors or named plumbing bboxes.
-    Every candidate is render-only; a missing or failed import leaves the existing
-    formal/procedural fallback visible.
-    """
-    import mathutils
-    if not config_dir:
-        print('[dress_scene] room candidates skipped: config dir missing')
-        return 0
-
-    root = os.path.join(config_dir, 'assets', 'furniture', 'blenderkit_candidates')
-    candidates = (
-        {
-            'name': 'asset:guest_bath:mirror_cabinet_simple',
-            'role': 'guest_bath:mirror_cabinet_simple',
-            'path': os.path.join(root, 'bathrooms', 'mirror_cabinet_simple', 'mirror_cabinet_simple.blend'),
-            'anchor_type': 'vanity', 'room_token': 'guest_bath', 'mode': 'above',
-            'hide_tokens': ('mirror_cab',),
-        },
-        {
-            'name': 'asset:entry_garden:shoe_cabinet_black',
-            'role': 'entry_garden:shoe_cabinet_black',
-            'path': os.path.join(root, 'public', 'shoe_cabinet_black', 'shoe_cabinet_black.blend'),
-            'anchor_type': 'garden_entry_station', 'room_token': 'entry_garden', 'mode': 'east',
-            'hide_tokens': ('shoe_body', 'door_', 'pull_', 'shoe_top'),
-        },
-        {
-            'name': 'asset:kitchen:gas_stove_cooktop',
-            'role': 'kitchen:gas_stove_cooktop',
-            # 目录当前仅有 metadata.json；模型缺失时只记录 fallback，不伪造 REAL asset。
-            'path': os.path.join(root, 'kitchen_missing', 'gas_stove_cooktop', 'gas_stove_cooktop.blend'),
-            'metadata_path': os.path.join(root, 'kitchen_missing', 'gas_stove_cooktop', 'metadata.json'),
-            'anchor_type': 'gas_stove', 'room_token': 'kitchen', 'mode': 'surface',
-            'hide_tokens': ('gas_stove', 'cooktop', 'burner'),
-        },
-        {
-            'name': 'asset:study:bedroom_desk',
-            'role': 'study:bedroom_desk',
-            'path': os.path.join(root, 'bedroom_missing', 'bedroom_desk', 'bedroom_desk.blend'),
-            'metadata_path': os.path.join(root, 'bedroom_missing', 'bedroom_desk', 'metadata.json'),
-            'anchor_type': 'desk', 'room_token': 'study', 'mode': 'ground',
-            'hide_tokens': ('desk',),
-        },
-        {
-            'name': 'asset:study:office_chair',
-            'role': 'study:office_chair',
-            'path': os.path.join(root, 'bedroom_missing', 'office_chair', 'office_chair.blend'),
-            'metadata_path': os.path.join(root, 'bedroom_missing', 'office_chair', 'metadata.json'),
-            'anchor_type': 'chair', 'room_token': 'study', 'mode': 'ground',
-            'hide_tokens': ('chair',),
-        },
-        {
-            'name': 'asset:bedroom_nw:desk',
-            'role': 'bedroom_nw:desk',
-            'path': os.path.join(root, 'bedroom_missing', 'bedroom_desk', 'bedroom_desk.blend'),
-            'metadata_path': os.path.join(root, 'bedroom_missing', 'bedroom_desk', 'metadata.json'),
-            'anchor_type': 'desk', 'room_token': 'bedroom_nw', 'mode': 'ground',
-            'fit_anchor_bbox': True, 'hide_tokens': ('desk', 'desktop', 'tabletop'),
-        },
-        {
-            'name': 'asset:bedroom_nw:chair',
-            'role': 'bedroom_nw:chair',
-            'path': os.path.join(root, 'bedroom_missing', 'office_chair', 'office_chair.blend'),
-            'metadata_path': os.path.join(root, 'bedroom_missing', 'office_chair', 'metadata.json'),
-            'anchor_type': 'chair', 'room_token': 'bedroom_nw', 'mode': 'ground',
-            'fit_anchor_bbox': True, 'hide_tokens': ('chair', 'seat', 'caster', 'wheel'),
-        },
-        {
-            'name': 'asset:living_dining:mid_century_lounge_chair',
-            'role': 'living_dining:mid_century_lounge_chair',
-            'path': os.path.join(root, 'public', 'mid_century_lounge_chair',
-                                 'mid_century_lounge_chair.blend'),
-            'metadata_path': os.path.join(root, 'public', 'mid_century_lounge_chair',
-                                          'metadata.json'),
-            'anchor_type': 'sofa_3seat', 'room_token': 'living_dining',
-            'mode': 'living_lounge_chair', 'hide_tokens': ('lounge_chair', 'armchair', 'accent_chair'),
-        },
-    )
-
-    public_candidates = (
-        {
-            'name': 'asset:living_dining:side_table_wood',
-            'role': 'living_dining:side_table_wood',
-            'path': os.path.join(root, 'public', 'side_table_wood', 'side_table_wood.blend'),
-            'metadata_path': os.path.join(root, 'public', 'side_table_wood', 'metadata.json'),
-        },
-        {
-            'name': 'asset:living_dining:wall_art_botanical',
-            'role': 'living_dining:wall_art_botanical',
-            'path': os.path.join(root, 'public', 'wall_art_botanical', 'wall_art_botanical.blend'),
-            'metadata_path': os.path.join(root, 'public', 'wall_art_botanical', 'metadata.json'),
-        },
-    )
-
-    # Bookshelf staging is floor-standing and can only follow an existing shelf/open-rack
-    # anchor.  It never derives a position from house.yaml or attaches to a wall/glazing node.
-    bookshelf_path = os.path.join(root, 'bedroom_missing', 'bookshelf', 'bookshelf.blend')
-    bookshelf_metadata_path = os.path.join(root, 'bedroom_missing', 'bookshelf', 'metadata.json')
-    bookshelf_specs = (
-        ('bedroom_nw', 'asset:bedroom_nw:bookshelf', 'bedroom_nw:bookshelf', ('shelf', 'open_shelf', 'open_rack')),
-        ('study', 'asset:study:bookshelf', 'study:bookshelf', ('shelf', 'open_shelf', 'open_rack')),
-    )
-
-    # Bathroom staging deliberately uses only the already exported room anchors/bboxes.
-    # No house.yaml, furnishing coordinates, Web geometry, cameras, or lights are touched.
-    bathroom_assets = (
-        ('master_bath', 'toilet', 'toilet_wall_hung', 'toilet_wall_hung.blend', 'ground', ('toilet',)),
-        ('guest_bath', 'toilet', 'toilet_wall_hung', 'toilet_wall_hung.blend', 'ground', ('toilet',)),
-        ('master_bath', 'shower', 'shower_set', 'shower_set.blend', 'ground', (), 'shower_mbath'),
-        ('guest_bath', 'shower', 'shower_set', 'shower_set.blend', 'ground', (), 'shower_gbath'),
-        ('guest_bath', 'faucet', 'bathroom_faucet_black', 'bathroom_faucet_black.blend', 'surface', (), 'faucet_gbath_vanity'),
-        ('master_bath', 'towel_set', 'towel_rail', 'towel_rail.blend', 'center', ('towel',)),
-        ('guest_bath', 'towel_set', 'towel_rail', 'towel_rail.blend', 'center', ('towel',)),
-    )
-    staged = 0
-    candidate_metadata_paths = {
-        spec['name']: spec.get('metadata_path') for spec in candidates
-        if spec.get('metadata_path')
-    }
-    candidate_metadata_paths.update({
-        name: bookshelf_metadata_path for _, name, _, _ in bookshelf_specs
-    })
-    candidate_metadata_paths.update({
-        spec['name']: spec['metadata_path'] for spec in public_candidates
-    })
-
-    def remove_new(before):
-        for obj in [o for o in bpy.data.objects if o not in before]:
-            bpy.data.objects.remove(obj, do_unlink=True)
-
-    def stage_one(spec, anchor, anchor_bbox, path, mode, hide_tokens, fit_anchor_bbox=False):
-        nonlocal staged
-        name = spec
-        metadata_path = candidate_metadata_paths.get(name)
-        existing = bpy.data.objects.get(name)
-        if existing is not None:
-            _set_recursive_hidden(existing, False)
-            _mark_candidate_asset(existing, spec.split(':', 2)[-1], path, metadata_path)
-            _report_render_only_asset(existing, spec.split(':', 2)[-1], path, anchor_bbox)
-            staged += 1
-            return
-        center = tuple((lo + hi) / 2 for lo, hi in anchor_bbox)
-        rotation = anchor.matrix_world.to_quaternion() if anchor is not None else mathutils.Quaternion()
-        before = set(bpy.data.objects)
-        try:
-            imported = import_furniture_glb(
-                path, {'width': max(0.25, min(0.75, anchor_bbox[0][1] - anchor_bbox[0][0]))},
-                loc_rz=((center[0], center[1], center[2]), rotation.to_euler().z))
-        except Exception as exc:
-            remove_new(before)
-            print(f'[dress_scene] WARN room candidate import failed; keep fallback: '
-                  f'{path}: {type(exc).__name__}: {exc}')
-            return
-        meshes = [o for o in bpy.data.objects if o not in before and o.type == 'MESH']
-        if not imported or not meshes:
-            remove_new(before)
-            print(f'[dress_scene] WARN bathroom candidate produced no mesh; keep fallback: {path}')
-            return
-        obj = meshes[-1]
-        obj.name = name
-        obj.rotation_mode = 'QUATERNION'
-        obj.rotation_quaternion = rotation
-        bpy.context.view_layer.update()
-        bbox = _world_bbox_for_objects([obj])
-        if bbox is None:
-            print(f'[dress_scene] WARN bathroom candidate has no bbox; keep fallback: {path}')
-            return
-        obj.location.x, obj.location.y = center[0], center[1]
-        lo_z, hi_z = bbox[2]
-        if mode == 'ground':
-            obj.location.z -= lo_z
-        elif mode == 'surface':
-            obj.location.z += anchor_bbox[2][1] - lo_z + 0.01
-        elif mode in {'living_lounge', 'living_lounge_chair'}:
-            # Derive all horizontal placement candidates from the formal sofa bbox.
-            # The chair additionally protects other living furniture and the solid TV wall;
-            # the existing side-table path retains its original sofa/table/rug checks.
-            candidate_width = bbox[0][1] - bbox[0][0]
-            candidate_depth = bbox[1][1] - bbox[1][0]
-            sofa_cx = (anchor_bbox[0][0] + anchor_bbox[0][1]) / 2
-            sofa_cy = (anchor_bbox[1][0] + anchor_bbox[1][1]) / 2
-            sofa_positions = (
-                (anchor_bbox[0][1] + candidate_width / 2 + 0.12, sofa_cy),
-                (anchor_bbox[0][0] - candidate_width / 2 - 0.12, sofa_cy),
-                (sofa_cx, anchor_bbox[1][1] + candidate_depth / 2 + 0.12),
-                (sofa_cx, anchor_bbox[1][0] - candidate_depth / 2 - 0.12),
-            )
-            protected = []
-            for protected_obj in bpy.data.objects:
-                if protected_obj is obj or protected_obj.type != 'MESH':
-                    continue
-                protected_type = _furniture_type_from_object(protected_obj)
-                protected_name = protected_obj.name
-                name_lower = protected_name.lower()
-                living_furniture = (
-                    mode == 'living_lounge_chair'
-                    and 'living_dining' in name_lower
-                    and protected_type is not None
-                )
-                lounge_piece = protected_type in {'sofa_3seat', 'coffee_table'}
-                living_rug = protected_name.startswith('asset:rug:living')
-                solid_tv_wall = (
-                    mode == 'living_lounge_chair'
-                    and not _is_render_only(protected_obj)
-                    and protected_name not in GLASS_IDS
-                    and not protected_name.startswith('curtain_run:')
-                    and (name_lower.startswith('furniture:living_dining:tv_wall_low:')
-                         or name_lower.startswith('furniture:living_dining:wall_cabinet_tall:')
-                         or 'tv_wall' in name_lower)
-                )
-                if not (living_furniture or lounge_piece or living_rug or solid_tv_wall):
-                    continue
-                protected_bbox = _world_bbox_for_objects([protected_obj])
-                if protected_bbox is not None:
-                    protected.append((protected_name, protected_bbox))
-            placed = None
-            for px, py in sofa_positions:
-                obj.location.x, obj.location.y = px, py
-                bpy.context.view_layer.update()
-                trial_bbox = _world_bbox_for_objects([obj])
-                if trial_bbox is None:
-                    continue
-                overlaps = [name for name, other_bbox in protected if all(
-                    min(trial_bbox[i][1], other_bbox[i][1])
-                    - max(trial_bbox[i][0], other_bbox[i][0]) > 0.02
-                    for i in (0, 1))]
-                if not overlaps:
-                    placed = trial_bbox
-                    break
-            if placed is None:
-                remove_new(before)
-                print(f'[dress_scene] WARN living lounge candidate has no clear sofa-side bbox; '
-                      f'keep fallback: {path}')
-                return
-            lo_z = placed[2][0]
-            obj.location.z -= lo_z
-        else:  # towel rail follows the existing towel_set bbox center.
-            obj.location.z += center[2] - (lo_z + hi_z) / 2
-        bpy.context.view_layer.update()
-        placed_bbox = _world_bbox_for_objects([obj])
-        if fit_anchor_bbox and placed_bbox is not None:
-            anchor_width = anchor_bbox[0][1] - anchor_bbox[0][0]
-            anchor_depth = anchor_bbox[1][1] - anchor_bbox[1][0]
-            placed_width = placed_bbox[0][1] - placed_bbox[0][0]
-            placed_depth = placed_bbox[1][1] - placed_bbox[1][0]
-            if placed_width > anchor_width + 0.05 or placed_depth > anchor_depth + 0.05:
-                remove_new(before)
-                print(f'[dress_scene] WARN room candidate does not fit anchor; keep fallback: '
-                      f'{path} placed=({placed_width:.3f},{placed_depth:.3f}) '
-                      f'anchor=({anchor_width:.3f},{anchor_depth:.3f})')
-                return
-        role = name.split(':', 2)[-1]
-        _mark_candidate_asset(obj, role, path, metadata_path)
-        _report_render_only_asset(obj, role, path, anchor_bbox)
-        hidden = []
-        for child in bpy.data.objects:
-            if child is anchor or not child.name.startswith(anchor.name + ':'):
-                continue
-            if any(token in child.name.lower() for token in hide_tokens):
-                child['dress_replacement_source'] = True
-                _set_recursive_hidden(child, True)
-                hidden.append(child.name)
-        print(f'[dress_scene] bathroom candidate staged: {obj.name} anchor={anchor.name} '
-              f'anchor_bbox={anchor_bbox} hidden_duplicates={hidden}')
-        staged += 1
-
-    for spec in candidates:
-        path = spec['path']
-        if not os.path.isfile(path):
-            if spec.get('metadata_path'):
-                print(f'[dress_scene] WARN room candidate missing; keep fallback: {path} '
-                      f'(metadata={spec["metadata_path"]})')
-            else:
-                print(f'[dress_scene] WARN room candidate missing; keep fallback: {path}')
-            continue
-        anchors = [a for a in _furniture_instance_anchors(list(bpy.data.objects)).values()
-                   if _furniture_type_from_object(a) == spec['anchor_type']
-                   and spec['room_token'] in a.name.lower()]
-        if not anchors:
-            print(f'[dress_scene] WARN room candidate skipped: no {spec["room_token"]} '
-                  f'{spec["anchor_type"]} anchor')
-            continue
-        anchor = anchors[0]
-        family = [o for o in bpy.data.objects if o is anchor or o.name.startswith(anchor.name + ':')]
-        bbox = _world_bbox_for_objects(family)
-        if bbox is None:
-            print(f'[dress_scene] WARN room candidate skipped: anchor has no mesh bbox: {anchor.name}')
-            continue
-        if spec['mode'] == 'above':
-            # Existing mirror cabinet behavior: align over vanity, without hiding vanity.
-            stage_one(spec['name'], anchor, bbox, path, 'surface', spec['hide_tokens'])
-        elif spec['mode'] == 'east':
-            stage_one(spec['name'], anchor, bbox, path, 'ground', spec['hide_tokens'])
-            obj = bpy.data.objects.get(spec['name'])
-            if obj:
-                obj.location.x = bbox[0][1] + obj.dimensions.x / 2 + 0.08
-        else:
-            stage_one(spec['name'], anchor, bbox, path, spec['mode'], spec['hide_tokens'],
-                      spec.get('fit_anchor_bbox', False))
-
-    # Public-area side table: derive every placement input from the formal living sofa bbox.
-    side_table_spec = public_candidates[0]
-    side_table_path = side_table_spec['path']
-    if not os.path.isfile(side_table_path):
-        print(f'[dress_scene] WARN public candidate missing; keep fallback: {side_table_path}')
-    else:
-        sofa_anchors = [a for a in _furniture_instance_anchors(list(bpy.data.objects)).values()
-                        if _furniture_type_from_object(a) == 'sofa_3seat'
-                        and 'living_dining' in a.name.lower()]
-        if not sofa_anchors:
-            print('[dress_scene] WARN side table candidate skipped: no reliable living_dining sofa anchor; '
-                  'keep fallback')
-        else:
-            sofa_anchor = sofa_anchors[0]
-            sofa_family = [o for o in bpy.data.objects
-                           if o is sofa_anchor or o.name.startswith(sofa_anchor.name + ':')]
-            sofa_bbox = _world_bbox_for_objects(sofa_family)
-            if sofa_bbox is None:
-                print(f'[dress_scene] WARN side table candidate skipped: sofa has no mesh bbox: '
-                      f'{sofa_anchor.name}')
-            else:
-                stage_one(side_table_spec['name'], sofa_anchor, sofa_bbox, side_table_path,
-                          'living_lounge', ('side_table', 'end_table'), False)
-                if bpy.data.objects.get(side_table_spec['name']) is not None:
-                    for duplicate in bpy.data.objects:
-                        if duplicate is bpy.data.objects.get(side_table_spec['name']):
-                            continue
-                        if duplicate.name.startswith(('asset:side_table', 'asset:end_table')):
-                            duplicate['dress_replacement_source'] = True
-                            _set_recursive_hidden(duplicate, True)
-
-    # Wall art may only attach to a reliable solid TV-wall/west-wall bbox. Never use
-    # curtain/glazing objects or infer a wall from room coordinates; no wall means skip.
-    art_spec = public_candidates[1]
-    art_path = art_spec['path']
-    if not os.path.isfile(art_path):
-        print(f'[dress_scene] WARN public candidate missing; keep fallback: {art_path}')
-    else:
-        # Plant-themed art requires independently confirmed public-area furniture bboxes;
-        # without sofa and coffee-table evidence, do not infer a wall placement.
-        sofa_anchors = [a for a in _furniture_instance_anchors(list(bpy.data.objects)).values()
-                        if _furniture_type_from_object(a) == 'sofa_3seat'
-                        and 'living_dining' in a.name.lower()]
-        sofa_anchor = sofa_anchors[0] if sofa_anchors else None
-        sofa_family = ([o for o in bpy.data.objects
-                        if o is sofa_anchor or o.name.startswith(sofa_anchor.name + ':')]
-                       if sofa_anchor else [])
-        sofa_bbox = _world_bbox_for_objects(sofa_family)
-        coffee_objects = [o for o in bpy.data.objects
-                          if o.type == 'MESH' and not _is_render_only(o)
-                          and (_furniture_type_from_object(o) == 'coffee_table'
-                               or o.name.startswith('asset:coffee_table'))]
-        coffee_bbox = _world_bbox_for_objects(coffee_objects)
-        if sofa_bbox is None or coffee_bbox is None:
-            print('[dress_scene] WARN wall art candidate skipped: reliable living_dining sofa and '
-                  'coffee_table bboxes required; keep fallback')
-            wall_candidates = []
-        else:
-            wall_candidates = []
-        for obj in bpy.data.objects:
-            if obj.type != 'MESH' or _is_render_only(obj):
-                continue
-            name_lower = obj.name.lower()
-            if obj.name in GLASS_IDS or obj.name.startswith('curtain_run:'):
-                continue
-            is_tv_wall = (name_lower.startswith('furniture:living_dining:tv_wall_low:')
-                          or name_lower.startswith('furniture:living_dining:wall_cabinet_tall:')
-                          or 'tv_wall' in name_lower)
-            is_west_wall = ('west_wall' in name_lower or name_lower.startswith('wall:west')
-                            or name_lower.startswith('wall_west'))
-            if is_tv_wall or is_west_wall:
-                wall_candidates.append(obj)
-        if sofa_bbox is None or coffee_bbox is None:
-            wall_candidates = []
-        wall_anchor = wall_candidates[0] if wall_candidates else None
-        wall_bbox = _world_bbox_for_objects([wall_anchor]) if wall_anchor is not None else None
-        if wall_anchor is None or wall_bbox is None:
-            print('[dress_scene] WARN wall art candidate skipped: no reliable solid TV/west wall bbox; '
-                  'keep fallback')
-        else:
-            name = art_spec['name']
-            existing = bpy.data.objects.get(name)
-            if existing is not None:
-                _set_recursive_hidden(existing, False)
-                _mark_candidate_asset(existing, art_spec['role'], art_path,
-                                      art_spec['metadata_path'])
-                _report_render_only_asset(existing, art_spec['role'], art_path, wall_bbox)
-                staged += 1
-            else:
-                before = set(bpy.data.objects)
-                try:
-                    imported = import_furniture_glb(
-                        art_path, {'width': 0.72, 'height': 1.05},
-                        loc_rz=((0.0, 0.0, 0.0), wall_anchor.matrix_world.to_euler().z))
-                except Exception as exc:
-                    remove_new(before)
-                    print(f'[dress_scene] WARN wall art candidate import failed; keep fallback: '
-                          f'{art_path}: {type(exc).__name__}: {exc}')
-                    imported = 0
-                meshes = [o for o in bpy.data.objects if o not in before and o.type == 'MESH']
-                if imported and meshes:
-                    art = meshes[-1]
-                    art.name = name
-                    art.rotation_mode = 'QUATERNION'
-                    art.rotation_quaternion = wall_anchor.matrix_world.to_quaternion()
-                    bpy.context.view_layer.update()
-                    art_bbox = _world_bbox_for_objects([art])
-                    wall_span = (wall_bbox[0][1] - wall_bbox[0][0],
-                                 wall_bbox[1][1] - wall_bbox[1][0])
-                    wall_normal_axis = 0 if wall_span[0] <= wall_span[1] else 1
-                    wall_tangent_axis = 1 - wall_normal_axis
-                    if art_bbox is None or wall_span[wall_normal_axis] > 0.35:
-                        remove_new(before)
-                        print('[dress_scene] WARN wall art candidate skipped: wall bbox is not a '
-                              'reliable thin solid face; keep fallback')
-                    else:
-                        # Derive the face and tangent from the solid wall bbox, while the
-                        # sofa/coffee-table midpoint supplies the public-area target.
-                        art_normal = art_bbox[wall_normal_axis][1] - art_bbox[wall_normal_axis][0]
-                        art_tangent = art_bbox[wall_tangent_axis][1] - art_bbox[wall_tangent_axis][0]
-                        sofa_center = tuple((lo + hi) / 2 for lo, hi in sofa_bbox)
-                        coffee_center = tuple((lo + hi) / 2 for lo, hi in coffee_bbox)
-                        target_tangent = (sofa_center[wall_tangent_axis] + coffee_center[wall_tangent_axis]) / 2
-                        tangent_lo, tangent_hi = wall_bbox[wall_tangent_axis]
-                        art.location[wall_tangent_axis] = max(
-                            tangent_lo + art_tangent / 2,
-                            min(tangent_hi - art_tangent / 2, target_tangent))
-                        wall_mid = sum(wall_bbox[wall_normal_axis]) / 2
-                        toward_room = 1 if sofa_center[wall_normal_axis] > wall_mid else -1
-                        face = wall_bbox[wall_normal_axis][1] if toward_room > 0 else wall_bbox[wall_normal_axis][0]
-                        art.location[wall_normal_axis] = face + toward_room * (art_normal / 2 + 0.025)
-                        art.location.z = wall_bbox[2][1] + (art_bbox[2][1] - art_bbox[2][0]) / 2 + 0.35
-                        bpy.context.view_layer.update()
-                        placed_bbox = _world_bbox_for_objects([art])
-                        protected = [sofa_bbox, coffee_bbox]
-                        protected += [_world_bbox_for_objects([o]) for o in bpy.data.objects
-                                      if o.name.startswith('asset:rug:living') and o is not art]
-                        overlaps = [other for other in protected if other is not None and placed_bbox is not None
-                                     and all(min(placed_bbox[i][1], other[i][1])
-                                             - max(placed_bbox[i][0], other[i][0]) > 0.02
-                                             for i in (0, 1))]
-                        if placed_bbox is None or overlaps:
-                            remove_new(before)
-                            print('[dress_scene] WARN wall art candidate skipped: placement overlaps '
-                                  'living furniture/rug; keep fallback')
-                        else:
-                            _mark_candidate_asset(art, art_spec['role'], art_path,
-                                                  art_spec['metadata_path'])
-                            _report_render_only_asset(art, art_spec['role'], art_path, wall_bbox)
-                            staged += 1
-                            print(f'[dress_scene] wall art candidate staged: {art.name} '
-                                  f'wall_anchor={wall_anchor.name} wall_bbox={wall_bbox} '
-                                  f'sofa_bbox={sofa_bbox} coffee_bbox={coffee_bbox}')
-                elif imported:
-                    remove_new(before)
-                    print(f'[dress_scene] WARN wall art candidate produced no mesh; keep fallback: '
-                          f'{art_path}')
-
-    # Stage the bookshelf only from a reliable shelf/open-rack anchor. The anchor
-    # world bbox supplies both placement and width; no wall or room-coordinate guess.
-    for room_token, name, role, anchor_types in bookshelf_specs:
-        if not os.path.isfile(bookshelf_path):
-            print(f'[dress_scene] WARN bookshelf candidate missing; keep fallback: {bookshelf_path} '
-                  f'(metadata={bookshelf_metadata_path})')
-            break
-        anchors = [a for a in _furniture_instance_anchors(list(bpy.data.objects)).values()
-                   if room_token in a.name.lower()
-                   and (_furniture_type_from_object(a) or '').lower() in anchor_types]
-        if not anchors:
-            print(f'[dress_scene] WARN bookshelf candidate skipped: no reliable {room_token} '
-                  f'shelf/open-rack anchor; keep fallback')
-            continue
-        anchor = anchors[0]
-        family = [o for o in bpy.data.objects if o is anchor or o.name.startswith(anchor.name + ':')]
-        bbox = _world_bbox_for_objects(family)
-        if bbox is None:
-            print(f'[dress_scene] WARN bookshelf candidate skipped: anchor has no mesh bbox: {anchor.name}')
-            continue
-        stage_one(name, anchor, bbox, bookshelf_path, 'ground', anchor_types, True)
-        obj = bpy.data.objects.get(name)
-        if obj is None:
-            continue
-        # A bookshelf must not occupy protected glazing or a door opening. Since
-        # staging is render-only, reject and remove the candidate rather than move it.
-        protected = []
-        for protected_obj in bpy.data.objects:
-            if protected_obj.type != 'MESH':
-                continue
-            protected_name = protected_obj.name
-            if protected_name in GLASS_IDS or protected_name.startswith('curtain_run:') \
-                    or protected_name.startswith('d_') or protected_name.startswith('door'):
-                protected_bbox = _world_bbox_for_objects([protected_obj])
-                candidate_bbox = _world_bbox_for_objects([obj])
-                if protected_bbox is not None and candidate_bbox is not None and all(
-                        min(candidate_bbox[i][1], protected_bbox[i][1])
-                        - max(candidate_bbox[i][0], protected_bbox[i][0]) > 0.02
-                        for i in range(3)):
-                    protected.append(protected_name)
-        if protected:
-            bpy.data.objects.remove(obj, do_unlink=True)
-            for child in bpy.data.objects:
-                if child.name.startswith(anchor.name + ':') and child.get('dress_replacement_source'):
-                    child['dress_replacement_source'] = False
-                    _set_recursive_hidden(child, False)
-            staged = max(0, staged - 1)
-            print(f'[dress_scene] WARN bookshelf candidate protected-geometry conflict; '
-                  f'keep fallback: room={room_token} anchor={anchor.name} conflicts={protected}')
-            continue
-        print(f'[dress_scene] bookshelf candidate staged: {obj.name} anchor={anchor.name} '
-              f'anchor_bbox={bbox}')
-
-    for room, kind, folder, filename, mode, hide_tokens, *anchor_hint in bathroom_assets:
-        path = os.path.join(root, 'bathrooms', folder, filename)
-        if not os.path.isfile(path):
-            print(f'[dress_scene] WARN bathroom candidate missing; keep fallback: {path}')
-            continue
-        room_key = room.lower()
-        anchors = [a for a in _furniture_instance_anchors(list(bpy.data.objects)).values()
-                   if room_key in a.name.lower() and _furniture_type_from_object(a) == kind]
-        anchor = anchors[0] if anchors else None
-        if anchor is None and anchor_hint and anchor_hint[0] == 'faucet_gbath_vanity':
-            anchor = bpy.data.objects.get('plumbing:faucet_gbath_vanity')
-        if anchor is None and anchor_hint and anchor_hint[0].startswith('shower_'):
-            anchor = bpy.data.objects.get(f'plumbing:{anchor_hint[0]}')
-        if anchor is None and kind == 'towel_set':
-            towels = [a for a in _furniture_instance_anchors(list(bpy.data.objects)).values()
-                      if room_key in a.name.lower() and _furniture_type_from_object(a) == 'towel_set']
-            anchor = towels[0] if towels else None
-        if anchor is None:
-            print(f'[dress_scene] WARN bathroom candidate skipped: no reliable {room} {kind} anchor; keep fallback')
-            continue
-        family = [anchor] + list(anchor.children_recursive) if _furniture_type_from_object(anchor) else [anchor]
-        bbox = _world_bbox_for_objects(family)
-        if bbox is None:
-            print(f'[dress_scene] WARN bathroom candidate skipped: no bbox for {anchor.name}; keep fallback')
-            continue
-        name = f'asset:{room}:{kind}'
-        stage_one(name, anchor, bbox, path, mode, hide_tokens)
-
-    if staged:
-        print(f'[dress_scene] room candidates staged: {staged}')
-    return staged
-
-
-def replace_furniture(furniture_mats: dict, config_dir: str = '', only_types: set | None = None) -> int:
-    """用真实资产替换指定的可移动家具，保留其余正式 GLB 几何。
-
-    parts 格式: (name, three_size[x,y,z], three_pos[x,y,z], material_key)。
-    坐标转换：three(x,y,z) → Blender(x,-z,y)，尺寸(x,z,y)。
-    only_types：由调用方控制的工况白名单；未列入 FURNITURE_GLB 的正式家具不进入替换链。
-    厨房/阳台家电资产替换已启用；资产缺失或导入失败时保留源节点。"""
-    count = 0
-    # 客餐厅家具、bed_180、客卫浴室柜及已审计可用的厨房/阳台家电；
-    # bed_150 因 BlenderKit 候选导入后尺度异常，回退程序化床；
-    # water_heater、range_hood、toilet 不启用；gas_stove 仅由 room-candidate staging 处理。
-    supported_types = {
-        'sofa_3seat', 'dining_table', 'dining_chair', 'plant_fiddle', 'bed_180', 'vanity',
-        'washer', 'dryer', 'dishwasher', 'fridge',
-    }
-    # GLB 会为同一 furniture:<room>:<type>:<index> 导出 root 及多个 geometry
-    # 子节点；只遍历稳定实例 anchor，避免每个 geometry 子节点重复导入资产。
-    for obj in _furniture_instance_anchors(list(bpy.data.objects)).values():
-        parts = obj.name.split(':')
-        if len(parts) < 3:
-            continue
-        ftype = parts[2]
-        if only_types is not None and ftype not in only_types:
-            continue  # 调用方已隐藏（bare_shell），不再重建可移动件
-        # 仅替换已审核且有真实资产的客餐厅家具；其余正式几何继续由主 GLB 提供。
-        if ftype not in supported_types or ftype not in FURNITURE_GLB:
-            continue
-        glb_cfg = FURNITURE_GLB[ftype]
-        if not config_dir:
-            print(f'[dress_scene] WARN furniture asset config dir missing; keep source: {ftype}')
-            continue
-        glb_path = os.path.join(config_dir, glb_cfg['path'])
-        if not os.path.exists(glb_path):
-            print(f'[dress_scene] WARN furniture asset missing; keep source: {glb_path}')
-            continue
-        if glb_cfg.get('fabric_tex'):
-            glb_cfg = {**glb_cfg, 'fabric_tex': os.path.join(config_dir, glb_cfg['fabric_tex'])}
-        # 单实例家具若已存在 canonical 替代件，直接复用，避免重复 append。
-        # 多实例家具（如餐椅）仍按正式实例逐个导入，不能误复用同一对象。
-        instance_key = _furniture_instance_key(obj) or obj.name
-        # 绿植可能同时出现在客厅和主卧；它们必须是两个独立对象，不能共享
-        # 一个 canonical mesh。只有明确单实例的家具才允许按类型复用。
-        canonical_name = f'asset:{ftype}:glb'
-        reusable_types = {'sofa_3seat', 'dining_table', 'bed_180', 'vanity',
-                          'washer', 'dryer', 'dishwasher', 'fridge'}
-        if ftype in reusable_types:
-            existing_asset = bpy.data.objects.get(canonical_name)
-            if existing_asset is not None:
-                obj['dress_replacement_source'] = True
-                _set_recursive_hidden(obj, True)
-                existing_asset.hide_render = False
-                existing_asset.hide_viewport = False
-                print(f'[dress_scene] furniture replacement reused: {canonical_name}')
-                count += 1
-                continue
-        # 先确认真实资产导入成功，再隐藏正式源节点，避免资产缺失时丢家具。
-        before_assets = set(bpy.data.objects)
-        if not import_furniture_glb(glb_path, glb_cfg, block=obj, rot_fix=0):
-            print(f'[dress_scene] WARN furniture asset import failed; keep source: {glb_path}')
-            continue
-        if ftype == 'plant_fiddle':
-            imported_assets = [o for o in bpy.data.objects
-                               if o not in before_assets and o.type == 'MESH']
-            if imported_assets:
-                # import_furniture_glb 已按 block 类型命名；改为稳定的实例名，
-                # 使两个房间的真实绿植都可见且可审计。
-                imported_assets[-1].name = f'asset:plant_fiddle:{instance_key}:glb'
-        obj['dress_replacement_source'] = True
-        obj.hide_render = True
-        for child in obj.children_recursive:
-            child.hide_render = True
-        count += 1
-    if count:
-        print(f'[dress_scene] furniture replaced: {count} parts')
-    return count
 
 
 def place_extra_furniture(furniture_mats: dict, config_dir: str, plumbing: dict,
@@ -3139,385 +1529,6 @@ def add_bath_fixtures(furniture_mats: dict, plumbing: dict) -> int:
         n += box('bath:gb_towel', x - 0.03, z, 0.06, 0.28, 0.45, 1.05, towel_mat)
     print(f'[dress_scene] bath fixtures: {n}')
     return n
-
-
-def add_soft_decor(furniture_mats: dict, config_dir: str = '') -> int:
-    """生成客餐厅 render-only staging：BlenderKit 茶几、地毯与既有挂画。
-
-    正式装饰若要进入设计交付，必须迁移到 house/shared/GLB；本函数不产生正式设计几何。
-    所有替代件沿用 house.yaml 的既有占位坐标，不改变 Web 几何、家具坐标或相机。
-    """
-    import mathutils
-    count = 0
-
-    def bevel(obj, width=0.01, segments=3):
-        modifier = obj.modifiers.new('Bevel', 'BEVEL')
-        modifier.width = width
-        modifier.segments = segments
-        modifier.limit_method = 'ANGLE'
-        return modifier
-
-    def staging_material(name, color, rough=0.75):
-        mat = bpy.data.materials.get(name)
-        return mat or new_principled(name, hex_rgb(color), rough=rough)
-
-    def hide_existing(name_prefix):
-        hidden = 0
-        for obj in bpy.data.objects:
-            if obj.name == name_prefix or obj.name.startswith(name_prefix + ':'):
-                _set_recursive_hidden(obj, True)
-                hidden += 1
-        return hidden
-
-    # 茶几：隐藏 shared/FURNITURE_PARTS 的原始实例，避免原两块 cylinder 与替代件重叠。
-    for source in _furniture_instance_anchors(list(bpy.data.objects)).values():
-        if _furniture_type_from_object(source) == 'coffee_table':
-            source['dress_replacement_source'] = True
-            _set_recursive_hidden(source, True)
-
-    # 先隐藏历史 render-only 替代件；canonical BlenderKit 对象不参与清理，保证可重复调用。
-    canonical_names = {'asset:coffee_table:blenderkit', 'asset:rug:living:blenderkit'}
-    for prefix in ('asset:coffee_table', 'asset:rug:living'):
-        for obj in bpy.data.objects:
-            if obj.name not in canonical_names and (obj.name == prefix or obj.name.startswith(prefix + ':')):
-                _set_recursive_hidden(obj, True)
-    canonical_assets_present = all(bpy.data.objects.get(name) is not None for name in canonical_names)
-    if canonical_assets_present:
-        print('[dress_scene] soft decor canonical assets present; revalidate rug transform')
-
-    def mark_real_asset(obj, role, source_path):
-        _mark_render_only(obj, role)
-        obj['geometrySource'] = 'blender_staging'
-        obj['assetKind'] = 'REAL asset'
-        obj['assetProvider'] = 'BlenderKit'
-        obj['assetSource'] = source_path
-        obj['formalWebGeometry'] = False
-
-    def asset_report(obj, source_dims=None, source_rotation=None):
-        bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
-        dims = tuple(max(c[i] for c in bb) - min(c[i] for c in bb) for i in range(3))
-        materials = [mat for mat in obj.data.materials if mat is not None]
-        images = set()
-        for mat in materials:
-            image_texture_count = 0
-            base_color_connected = False
-            roughness = None
-            if mat.use_nodes:
-                for node in mat.node_tree.nodes:
-                    if node.type == 'TEX_IMAGE':
-                        image_texture_count += 1
-                        if node.image is not None:
-                            images.add(node.image)
-                    if node.type == 'BSDF_PRINCIPLED':
-                        base_color = node.inputs.get('Base Color')
-                        base_color_connected = bool(base_color and base_color.is_linked)
-                        roughness_input = node.inputs.get('Roughness')
-                        roughness = roughness_input.default_value if roughness_input else None
-            roughness_text = f'{roughness:.3f}' if roughness is not None else 'n/a'
-            print(f'[dress_scene] asset material: {mat.name} '
-                  f'image_textures={image_texture_count} '
-                  f'base_color_connected={base_color_connected} '
-                  f'roughness={roughness_text}')
-        packed = sum(1 for image in images if image.packed_file is not None)
-        rotation = tuple(round(v, 5) for v in obj.rotation_euler)
-        source_text = ''
-        if source_dims is not None:
-            source_text = f' source_bbox=({source_dims[0]:.4f},{source_dims[1]:.4f},{source_dims[2]:.4f})'
-        if source_rotation is not None:
-            source_text += f' source_rotation=({source_rotation[0]:.5f},{source_rotation[1]:.5f},{source_rotation[2]:.5f})'
-        print(f'[dress_scene] real asset: {obj.name}{source_text} '
-              f'final_bbox=({dims[0]:.4f},{dims[1]:.4f},{dims[2]:.4f}) '
-              f'dimensions=({obj.dimensions.x:.4f},{obj.dimensions.y:.4f},{obj.dimensions.z:.4f}) '
-              f'rotation=({rotation[0]:.5f},{rotation[1]:.5f},{rotation[2]:.5f}) '
-              f'material_slots={len(obj.data.materials)} materials={len(materials)} '
-              f'uv_layers={len(obj.data.uv_layers)} image_textures={len(images)} '
-              f'packed_images={packed} z_thickness={dims[2]:.4f}')
-
-    def add_bedroom_candidates():
-        """按已导入的主卧 bed_180 世界包围盒摆放卧室 render-only 候选。
-
-        mathutils 在此函数内显式导入，避免被其他局部作用域遮蔽。
-
-        这里不读取或写回 house.yaml：床锚点和已成功导入床的 bbox 都来自当前
-        Blender 场景。候选导入失败时不隐藏任何程序化床/床品回退。
-        """
-        import mathutils
-        bed_objects = [o for o in bpy.data.objects
-                       if o.type == 'MESH' and o.name.startswith('asset:bed_180:glb')]
-        bed_anchors = [o for o in _furniture_instance_anchors(list(bpy.data.objects)).values()
-                       if _furniture_type_from_object(o) == 'bed_180'
-                       and 'master' in o.name.lower()]
-        if not bed_objects or not bed_anchors:
-            print('[dress_scene] bedroom candidates skipped: no successfully imported master bed_180')
-            return 0
-        bed = min(bed_objects, key=lambda o: min((o.location - a.location).length for a in bed_anchors))
-        bed_anchor = min(bed_anchors, key=lambda a: (bed.location - a.location).length)
-        source_path = os.path.join(config_dir, 'assets', 'furniture',
-                                   'blenderkit_candidates', 'bedroom_missing')
-        candidate_specs = (
-            ('nightstand_midcentury.blend', 'nightstand_midcentury',
-             {'width': 0.48}, 0.48, 'bedroom:nightstand_midcentury'),
-            ('bedding_duvet_pillows.blend', 'bedding_duvet_pillows',
-             {'width': 1.70}, 1.70, 'bedroom:bedding_duvet_pillows'),
-        )
-        bed_bb = [bed.matrix_world @ mathutils.Vector(c) for c in bed.bound_box]
-        bed_dims = tuple(max(c[i] for c in bed_bb) - min(c[i] for c in bed_bb) for i in range(3))
-        # helper 已将资产原点置于 bbox 中心；bed 的局部 x/y 是床宽/床深方向。
-        local_bb = [mathutils.Vector(c) for c in bed.bound_box]
-        local_min_x, local_max_x = min(c.x for c in local_bb), max(c.x for c in local_bb)
-        local_min_y, local_max_y = min(c.y for c in local_bb), max(c.y for c in local_bb)
-        head_y = local_min_y + (local_max_y - local_min_y) * 0.18
-        side_gap = 0.08
-        positions = (
-            (local_min_x - side_gap - 0.24, head_y, 0.0),
-            (local_max_x + side_gap + 0.24, head_y, 0.0),
-        )
-        added = 0
-        for filename, slug, targets, width, role in candidate_specs:
-            candidate_path = os.path.join(source_path, slug, filename)
-            if not os.path.isfile(candidate_path):
-                print(f'[dress_scene] WARN bedroom candidate missing; keep fallback: {candidate_path}')
-                continue
-            if slug == 'bedding_duvet_pillows':
-                target_positions = ((0.0, (local_min_y + local_max_y) * 0.5, 0.0),)
-            else:
-                target_positions = positions
-            existing = [o for o in bpy.data.objects
-                        if o.name.startswith(f'asset:bedroom:{slug}')]
-            if existing:
-                for obj in existing:
-                    _set_recursive_hidden(obj, False)
-                    mark_real_asset(obj, role, candidate_path)
-                    asset_report(obj, bed_dims)
-                added += len(existing)
-                continue
-            imported_objects = []
-            for index, local_pos in enumerate(target_positions):
-                before = set(bpy.data.objects)
-                world_pos = bed.matrix_world @ mathutils.Vector(local_pos)
-                try:
-                    imported = import_furniture_glb(
-                        candidate_path, targets,
-                        loc_rz=((world_pos.x, world_pos.y, world_pos.z),
-                                bed.rotation_euler.z))
-                except Exception as exc:
-                    print(f'[dress_scene] WARN bedroom candidate import failed; keep fallback: '
-                          f'{candidate_path}: {exc}')
-                    continue
-                new_meshes = [o for o in bpy.data.objects if o not in before and o.type == 'MESH']
-                if not imported or not new_meshes:
-                    print(f'[dress_scene] WARN bedroom candidate import produced no mesh; keep fallback: '
-                          f'{candidate_path}')
-                    continue
-                obj = new_meshes[-1]
-                obj.name = f'asset:bedroom:{slug}:{index}'
-                if slug == 'bedding_duvet_pillows':
-                    obj.dimensions = (width, max(bed_dims[1] * 0.86, 0.1), max(bed_dims[2] * 0.18, 0.04))
-                    bpy.context.view_layer.update()
-                    obj.location = bed.matrix_world @ mathutils.Vector(local_pos)
-                    obj.rotation_mode = 'QUATERNION'
-                    obj.rotation_quaternion = bed.rotation_quaternion
-                    obj.location.z = max(c.z for c in bed_bb) + 0.04
-                else:
-                    obj.rotation_mode = 'QUATERNION'
-                    obj.rotation_quaternion = bed.rotation_quaternion
-                    obj.location = world_pos
-                    bpy.context.view_layer.update()
-                    # 床头柜的 x/y 来自床 bbox；z 由导入对象自身 bbox 贴地，
-                    # 不把床中心高度误当成柜脚高度。
-                    obj_bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
-                    obj.location.z -= min(c.z for c in obj_bb)
-                bpy.context.view_layer.update()
-                mark_real_asset(obj, role, candidate_path)
-                asset_report(obj, bed_dims)
-                imported_objects.append(obj)
-                added += 1
-            # 仅床品成功后隐藏程序化床品；床/床品失败均保留 fallback。
-            if slug == 'bedding_duvet_pillows' and imported_objects:
-                for child in bed_anchor.children_recursive:
-                    if any(token in child.name.lower() for token in ('mattress', 'duvet', 'pillow')):
-                        child.hide_render = True
-                print('[dress_scene] bedroom bedding staging active; procedural bedding hidden')
-        # 床头柜成功后仅隐藏对应程序化床头柜（若有），不影响床或动线。
-        if any(o.name.startswith('asset:bedroom:nightstand_midcentury') for o in bpy.data.objects):
-            for child in bed_anchor.children_recursive:
-                if any(token in child.name.lower() for token in ('nightstand', 'bedside')):
-                    child.hide_render = True
-        return added
-
-    add_bedroom_candidates()
-
-    def prepare_rug(obj):
-        """把 BlenderKit 地毯的最薄轴明确放到 Blender 竖直 Z，避免压成硬方盒。"""
-        from mathutils import Quaternion
-        bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
-        source_dims = tuple(max(c[i] for c in bb) - min(c[i] for c in bb) for i in range(3))
-        source_rotation = tuple(obj.rotation_euler)
-        thin_axis = min(range(3), key=lambda i: source_dims[i])
-        if thin_axis == 0:
-            obj.rotation_mode = 'QUATERNION'
-            obj.rotation_quaternion = Quaternion((0, 1, 0), math.pi / 2) @ obj.rotation_quaternion
-            print('[dress_scene] rug axis diagnosis: source thin axis X; rotated to Blender vertical Z')
-        elif thin_axis == 1:
-            obj.rotation_mode = 'QUATERNION'
-            obj.rotation_quaternion = Quaternion((1, 0, 0), math.pi / 2) @ obj.rotation_quaternion
-            print('[dress_scene] rug axis diagnosis: source thin axis Y; rotated to Blender vertical Z')
-        else:
-            print('[dress_scene] rug axis diagnosis: source thin axis Z; no axis correction needed')
-        bpy.context.view_layer.update()
-        obj.dimensions = (2.20, 1.60, 0.015)
-        bpy.context.view_layer.update()
-        for slot in obj.material_slots:
-            mat = slot.material
-            if mat is None or not mat.use_nodes:
-                continue
-            for node in mat.node_tree.nodes:
-                if node.type != 'BSDF_PRINCIPLED':
-                    continue
-                if 'Metallic' in node.inputs:
-                    node.inputs['Metallic'].default_value = 0.0
-                if 'Roughness' in node.inputs:
-                    node.inputs['Roughness'].default_value = 0.86
-                if 'Specular IOR Level' in node.inputs:
-                    node.inputs['Specular IOR Level'].default_value = 0.25
-                elif 'Specular' in node.inputs:
-                    node.inputs['Specular'].default_value = 0.25
-                if 'Coat Weight' in node.inputs:
-                    node.inputs['Coat Weight'].default_value = 0.0
-                elif 'Coat' in node.inputs:
-                    node.inputs['Coat'].default_value = 0.0
-        _set_recursive_hidden(obj, False)
-        obj['rug_axis_corrected'] = True
-        return source_dims, source_rotation
-
-    import mathutils
-    table_x, table_z = 10.2, 7.0
-    asset_specs = (
-        ('coffee_table.blend', 'asset:coffee_table:blenderkit',
-         {'width': 0.85, 'height': 0.40}, (0.85, 0.48, 0.40), 0.40, 'soft_decor:coffee_table'),
-        ('area_rug.blend', 'asset:rug:living:blenderkit',
-         {'width': 2.20, 'height': 0.02}, (2.20, 1.60, 0.015), 0.014, 'soft_decor:rug'),
-    )
-    for filename, object_name, targets, final_dims, center_y, role in asset_specs:
-        if canonical_assets_present and object_name not in canonical_names:
-            continue
-        source_path = os.path.join(config_dir, 'assets', 'furniture',
-                                   'blenderkit_coffee_table' if 'coffee' in filename else 'blenderkit_area_rug',
-                                   filename)
-        existing_obj = bpy.data.objects.get(object_name)
-        if existing_obj is not None:
-            if object_name == 'asset:rug:living:blenderkit':
-                source_dims, source_rotation = prepare_rug(existing_obj)
-                existing_obj.location = to_blender(table_x, center_y, table_z)
-                mark_real_asset(existing_obj, role, source_path)
-                asset_report(existing_obj, source_dims, source_rotation)
-            continue
-        before = set(bpy.data.objects)
-        imported = import_furniture_glb(source_path, targets,
-                                        loc_rz=((table_x, -table_z, center_y), 0))
-        new_meshes = [obj for obj in bpy.data.objects if obj not in before and obj.type == 'MESH']
-        if not imported or not new_meshes:
-            print(f'[dress_scene] WARN real asset import failed: {source_path}')
-            continue
-        obj = new_meshes[-1]
-        obj.name = object_name
-        source_dims = None
-        source_rotation = None
-        # 地毯必须先纠正 BlenderKit 源模型的薄轴，再设最终世界尺寸；否则
-        # object.dimensions 会把错误轴压成 20mm 的深色硬板。
-        if object_name == 'asset:rug:living:blenderkit':
-            source_dims, source_rotation = prepare_rug(obj)
-        else:
-            # helper 贴地/等比缩放后，只对茶几做温和最终尺寸校正；中心保持原占位。
-            obj.dimensions = final_dims
-        obj.location = to_blender(table_x, center_y, table_z)
-        bpy.context.view_layer.update()
-        mark_real_asset(obj, role, source_path)
-        asset_report(obj, source_dims, source_rotation)
-        count += 1
-
-    # 西墙挂画 x2：轻量木框 + 内嵌画面平面；画面用暖米/陶土程序材质，避免深色 cube 观感。
-    def abstract_art_material(index):
-        name = f'软装_挂画_暖米陶土_程序_{index}'
-        mat = bpy.data.materials.get(name) or bpy.data.materials.new(name)
-        mat.use_nodes = True
-        nodes = mat.node_tree.nodes
-        links = mat.node_tree.links
-        nodes.clear()
-        output = nodes.new('ShaderNodeOutputMaterial')
-        output.location = (520, 0)
-        bsdf = nodes.new('ShaderNodeBsdfPrincipled')
-        bsdf.location = (260, 0)
-        bsdf.inputs['Roughness'].default_value = 0.68
-        bsdf.inputs['Specular IOR Level'].default_value = 0.25
-        texcoord = nodes.new('ShaderNodeTexCoord')
-        texcoord.location = (-720, 0)
-        mapping = nodes.new('ShaderNodeMapping')
-        mapping.location = (-540, 0)
-        mapping.inputs['Scale'].default_value = (2.2, 3.8, 1.0)
-        noise = nodes.new('ShaderNodeTexNoise')
-        noise.location = (-320, 40)
-        noise.inputs['Scale'].default_value = 2.8
-        noise.inputs['Detail'].default_value = 5.0
-        noise.inputs['Roughness'].default_value = 0.72
-        ramp = nodes.new('ShaderNodeValToRGB')
-        ramp.location = (-60, 80)
-        ramp.color_ramp.interpolation = 'EASE'
-        colors = (
-            ('#e5d1b2', '#b96f52') if index == 0 else ('#d8c19d', '#985841')
-        )
-        ramp.color_ramp.elements[0].position = 0.28
-        ramp.color_ramp.elements[0].color = (*hex_rgb(colors[0]), 1.0)
-        ramp.color_ramp.elements[1].position = 0.70
-        ramp.color_ramp.elements[1].color = (*hex_rgb(colors[1]), 1.0)
-        bump = nodes.new('ShaderNodeBump')
-        bump.location = (40, -150)
-        bump.inputs['Strength'].default_value = 0.12
-        bump.inputs['Distance'].default_value = 0.012
-        links.new(texcoord.outputs['Generated'], mapping.inputs['Vector'])
-        links.new(mapping.outputs['Vector'], noise.inputs['Vector'])
-        links.new(noise.outputs['Fac'], ramp.inputs['Fac'])
-        links.new(ramp.outputs['Color'], bsdf.inputs['Base Color'])
-        links.new(noise.outputs['Fac'], bump.inputs['Height'])
-        links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
-        links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
-        return mat
-
-    wood = furniture_mats.get('wood_dark') or staging_material(
-        '家具_wood_dark', '#3a2e26', rough=0.58
-    )
-    for i, z in enumerate((6.4, 7.6)):
-        # 西墙沿 x 方向厚度，画面宽度沿 Blender Y（对应 three z）。
-        cx, cy, cz = 7.245, -z, 1.5
-        frame_specs = (
-            ('top', (0.035, 0.045, 0.66), (0.0, 0.0, 0.277)),
-            ('bottom', (0.035, 0.045, 0.66), (0.0, 0.0, -0.277)),
-            ('left', (0.035, 0.51, 0.045), (0.0, -0.307, 0.0)),
-            ('right', (0.035, 0.51, 0.045), (0.0, 0.307, 0.0)),
-        )
-        for side, dims, offset in frame_specs:
-            bpy.ops.mesh.primitive_cube_add(size=1.0)
-            edge = bpy.context.object
-            edge.name = f'asset:art:{i}:frame:{side}'
-            edge.dimensions = dims
-            edge.location = (cx + offset[0], cy + offset[1], cz + offset[2])
-            edge.data.materials.append(wood)
-            bevel(edge, 0.012, 3)
-            _mark_render_only(edge, 'soft_decor:art_frame')
-            count += 1
-        # 画面是嵌在木框后的真实平面，不使用深色实体 cube 作为主体。
-        bpy.ops.mesh.primitive_plane_add(size=1.0, location=(cx + 0.006, cy, cz), rotation=(0, math.pi / 2, 0))
-        picture = bpy.context.object
-        picture.name = f'asset:art:{i}:picture_plane'
-        # Plane 的局部 XY 经 Y 轴旋转后对应世界 Z/Y，匹配 0.56×0.46m 画面开口。
-        picture.scale = (0.56, 0.46, 1.0)
-        picture.data.materials.append(abstract_art_material(i))
-        _mark_render_only(picture, 'soft_decor:artwork_plane')
-        count += 1
-
-    if count:
-        print(f'[dress_scene] soft decor: {count} (coffee_table+rug+art; render-only)')
-    return count
 
 
 def parse_molding_declarations(overlay: dict) -> list[dict]:
@@ -3929,29 +1940,6 @@ def effective_camera_config(camera: dict, scenario: dict) -> dict:
     return effective
 
 
-def job_state(cam_cfg: dict, scenario: dict) -> dict:
-    """纯逻辑地解析一个 render job 的可见性与可调参数。"""
-    curtain_policy = scenario.get('curtainPolicy')
-    if curtain_policy not in (None, 'hidden_for_bare_shell'):
-        raise RuntimeError(f'BLOCKED: unknown curtainPolicy {curtain_policy!r} in scenario {scenario.get("id")}')
-    bare_shell = scenario.get('id') == 'bare_shell'
-    return {
-        'bare_shell': bare_shell,
-        'curtain_policy': curtain_policy,
-        'lights_on': scenario.get('lights_on', True),
-        'show_hvac': not bare_shell and bool(scenario.get('hvac_coordination', False)),
-        'fill': cam_cfg.get('fill_light', scenario.get('fill_light')),
-        'fill_from_camera': cam_cfg.get('fill_from_camera', False),
-        'sheer_opacity': scenario.get('sheer_opacity', 0.15),
-        'glass_ior': scenario.get('glass_ior'),
-        'glass_tint': scenario.get('glass_tint'),
-        'glass_coat': scenario.get('glass_coat', 0.0),
-        'light_temp': scenario.get('light_temp', 6500),
-        'sun': scenario.get('sun_direction'),
-        'portal': scenario.get('window_portal'),
-    }
-
-
 def _object_counts() -> dict:
     return {
         'objects': len(bpy.data.objects),
@@ -3984,6 +1972,14 @@ def _reset_job_visibility() -> None:
         elif obj.name.startswith('furniture:') and not obj.get('dress_replacement_source'):
             _set_recursive_hidden(obj, False)
     _restore_curtain_hide_render(bpy.data.objects, _CURTAIN_HIDE_RENDER_SNAPSHOT)
+    # GLB 导出的家具子 mesh 可能没有完整 parent 链；恢复后再次按实例标记
+    # 隐藏已被 replacement 接管的 formal family，避免 per-job reset 露出双份家具。
+    replacement_keys = {
+        obj.get('instance_key') for obj in bpy.data.objects
+        if obj.get('dress_replacement_source') and obj.get('instance_key')
+    }
+    for instance_key in replacement_keys:
+        _hide_furniture_instance_family(instance_key, True)
 
 
 def _set_material_value(mat, socket_name: str, value) -> None:
@@ -4018,53 +2014,21 @@ def _set_sheer_opacity(mat, opacity: float, engine: str) -> None:
         _set_material_value(mat, 'Alpha', max(0.1, float(opacity) * 2.0))
 
 
-def fill_light_is_enabled(fill) -> bool:
-    """补光只有正数数值才启用；0 明确表示关闭，避免默认能量泄漏。"""
-    return isinstance(fill, (int, float)) and fill > 0
+# Compatibility exports for existing callers and render entry points.
+kelvin_to_rgb = _blender_lighting.kelvin_to_rgb
+fill_light_is_enabled = _blender_lighting.fill_light_is_enabled
+job_state = _blender_lighting.job_state
 
 
 def _set_job_lights(runtime: dict, state: dict, cam_cfg: dict, scenario: dict) -> None:
-    temp = state['light_temp']
-    color = kelvin_to_rgb(temp)
-    for obj in bpy.data.objects:
-        if obj.type == 'LIGHT' and obj.name != 'fill_light':
-            obj.hide_render = not state['lights_on']
-            obj.data.energy = runtime['light_defaults'].get(obj.name, obj.data.energy) if state['lights_on'] else 0.0
-            if state['lights_on']:
-                obj.data.color = color
-    fill_obj = bpy.data.objects.get('fill_light')
-    if fill_obj:
-        fill = state['fill']
-        fill_enabled = fill_light_is_enabled(fill)
-        fill_obj.hide_render = not fill_enabled
-        if fill_enabled:
-            fill_obj.data.energy = float(fill)
-            fill_obj.data.color = color
-            tgt = cam_cfg.get('target', [0, 0, 0])
-            if state['fill_from_camera']:
-                import mathutils as _mu
-                pos = cam_cfg.get('position', [0, 1.6, 0])
-                fill_obj.location = to_blender(pos[0], pos[1], pos[2])
-                direction = _mu.Vector(to_blender(tgt[0], tgt[1], tgt[2])) - fill_obj.location
-                fill_obj.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
-            else:
-                fill_obj.location = to_blender(tgt[0], 2.5, tgt[2])
-    sun = bpy.data.objects.get('Sun')
-    if sun:
-        sun.hide_render = not bool(state['sun'])
-        if state['sun']:
-            from mathutils import Vector
-            sun.rotation_mode = 'QUATERNION'
-            sun.rotation_quaternion = (-Vector(state['sun']).normalized()).to_track_quat('-Z', 'Y')
-            sun.data.energy = scenario.get('sun_energy', 1.2)
-            sun.data.color = kelvin_to_rgb(scenario.get('sun_temp', 3200))
-    portal = bpy.data.objects.get('window_portal')
-    if portal:
-        spec = state['portal']
-        portal.hide_render = not bool(spec)
-        if spec:
-            portal.data.energy = spec.get('energy', 1500.0)
-            portal.data.color = kelvin_to_rgb(spec.get('temp', 6000))
+    return _blender_lighting._set_job_lights(
+        runtime, state, cam_cfg, scenario, bpy_module=bpy,
+        to_blender_fn=to_blender, kelvin_to_rgb_fn=kelvin_to_rgb,
+    )
+
+
+def _job_light_audit() -> dict:
+    return _blender_lighting.job_light_audit(bpy_module=bpy)
 
 
 def _set_color_management(scene, scenario: dict) -> None:
@@ -4091,20 +2055,6 @@ def _set_color_management(scene, scenario: dict) -> None:
     print(f'[dress_scene] color_management: requested_view_transform={view_transform!r} '
           f'effective_view_transform={getattr(view_settings, "view_transform", "<unavailable>")} '
           f'requested_look={requested_look!r} effective_look={getattr(view_settings, "look", effective_look)!r}')
-
-
-def _job_light_audit() -> dict:
-    """Return stable key light state for per-job render diagnostics."""
-    result = {}
-    for obj in bpy.data.objects:
-        if obj.type != 'LIGHT':
-            continue
-        result[obj.name] = {
-            'type': obj.data.type,
-            'energy': round(float(obj.data.energy), 3),
-            'hidden': bool(obj.hide_render),
-        }
-    return result
 
 
 def _apply_job_state(runtime: dict, cam_cfg: dict, scenario: dict) -> dict:
@@ -4195,9 +2145,82 @@ def _blenderkit_pbr_assignments(mats: dict, furniture_mats: dict) -> list[tuple]
     ]
 
 
+_ASSET_MODULE_CONFIGURED = False
+_RENDER_ONLY_MODULE_CONFIGURED = False
+
+
+def _configure_asset_modules() -> None:
+    global _ASSET_MODULE_CONFIGURED, _RENDER_ONLY_MODULE_CONFIGURED
+    _blender_assets.configure(
+        bpy_module=bpy, hex_rgb_fn=hex_rgb, find_node_fn=_find_node,
+        new_principled_fn=new_principled,
+        set_recursive_hidden_fn=_set_recursive_hidden,
+        hide_furniture_instance_family_fn=_hide_furniture_instance_family,
+        mark_render_only_fn=_mark_render_only, is_render_only_fn=_is_render_only,
+        add_pbr_maps_fn=add_pbr_maps, fixture_material_role_fn=fixture_material_role,
+        furniture_instance_anchors_fn=_furniture_instance_anchors,
+        furniture_instance_key_fn=_furniture_instance_key,
+        furniture_parts=FURNITURE_PARTS,
+        cabinet_seam_panels=CABINET_SEAM_PANELS,
+    )
+    _blender_render_only.configure(
+        bpy_module=bpy, hex_rgb_fn=hex_rgb, new_principled_fn=new_principled,
+        import_furniture_glb_fn=_blender_assets.import_furniture_glb,
+        set_recursive_hidden_fn=_set_recursive_hidden,
+        hide_furniture_instance_family_fn=_hide_furniture_instance_family,
+        mark_render_only_fn=_mark_render_only, is_render_only_fn=_is_render_only,
+        furniture_instance_anchors_fn=_furniture_instance_anchors,
+        furniture_instance_key_fn=_furniture_instance_key,
+        furniture_type_from_object_fn=_furniture_type_from_object,
+        to_blender_fn=to_blender, glass_ids=GLASS_IDS,
+        furniture_glb=_blender_assets.FURNITURE_GLB,
+    )
+    _ASSET_MODULE_CONFIGURED = True
+    _RENDER_ONLY_MODULE_CONFIGURED = True
+
+
+def uniform_asset_scale(model_w: float, model_h: float, targets: dict) -> float:
+    _configure_asset_modules()
+    return _blender_assets.uniform_asset_scale(model_w, model_h, targets)
+
+
+def import_furniture_glb(glb_path: str, targets: dict, block=None, loc_rz=None, rot_fix: float = 0) -> int:
+    _configure_asset_modules()
+    return _blender_assets.import_furniture_glb(glb_path, targets, block=block, loc_rz=loc_rz, rot_fix=rot_fix)
+
+
+def dress_tv_wall_low(config_dir: str) -> dict[str, int]:
+    _configure_asset_modules()
+    return _blender_assets.dress_tv_wall_low(config_dir)
+
+
+def replace_furniture(furniture_mats: dict, config_dir: str = '', only_types: set | None = None) -> int:
+    _configure_asset_modules()
+    return _blender_assets.replace_furniture(furniture_mats, config_dir, only_types=only_types)
+
+
+def stage_missing_room_candidates(config_dir: str) -> int:
+    _configure_asset_modules()
+    return _blender_render_only.stage_missing_room_candidates(config_dir)
+
+
+def add_soft_decor(furniture_mats: dict, config_dir: str = '') -> int:
+    _configure_asset_modules()
+    return _blender_render_only.add_soft_decor(furniture_mats, config_dir=config_dir)
+
+
+# Compatibility aliases for diagnostics that imported the former private helpers.
+_world_bbox_for_objects = _blender_render_only._world_bbox_for_objects
+_report_render_only_asset = _blender_render_only._report_render_only_asset
+_mark_candidate_asset = _blender_render_only._mark_candidate_asset
+
+
 def initialize_scene(args: dict, cfg: dict, jobs: list[dict]) -> dict:
     """一次性创建 Blender 场景；返回供各 job 复用的运行时上下文。"""
     bpy.ops.wm.read_factory_settings(use_empty=True)
+    # Configure extracted modules after factory reset so their injected bpy/helpers
+    # always point at the current scene and can be refreshed for repeated runs.
+    _configure_asset_modules()
     bpy.ops.import_scene.gltf(filepath=args['glb'])
     facts = projection_facts(cfg)
     curtain_proj = curtain_projection_from_facts(facts)
@@ -4277,6 +2300,7 @@ def initialize_scene(args: dict, cfg: dict, jobs: list[dict]) -> dict:
         fill_obj = bpy.data.objects.new('fill_light', add_fill)
         bpy.context.collection.objects.link(fill_obj)
     hdri_status = setup_world(engine, template, config_dir=config_dir)
+    # sky fallback 已在 initialize 阶段按稳定玻璃对象名创建；job 阶段仅复用/更新并切换显隐。
     # 仅无可用 HDRI 时启用不透明窗外 fallback；material_review 等无 HDRI 工况保留。
     add_sky_planes(hdri_status)
     for camera in cfg.get('cameras', []):
@@ -4297,7 +2321,61 @@ def initialize_scene(args: dict, cfg: dict, jobs: list[dict]) -> dict:
     print(f'[dress_scene] initialized once: {counts}')
     return {'cfg': cfg, 'facts': facts, 'mats': mats, 'stats': stats, 'engine': engine,
             'config_dir': config_dir, 'curtain_proj': curtain_proj, 'counts': counts,
-            'light_defaults': light_defaults, 'material_defaults': material_defaults, 'out_path': ''}
+            'light_defaults': light_defaults, 'material_defaults': material_defaults, 'out_path': '',
+            'input_fingerprints': _load_render_fingerprints(args.get('manifest'))}
+
+
+def _load_render_fingerprints(manifest_path: str | None) -> dict:
+    if not manifest_path:
+        return {'status': 'unbound'}
+    try:
+        manifest_path = os.path.abspath(manifest_path)
+        if not os.path.isfile(manifest_path):
+            raise ValueError('manifest path does not exist')
+        with open(manifest_path, 'r', encoding='utf-8') as f:
+            manifest = json.load(f)
+        fingerprints = manifest.get('inputFingerprints')
+        keys = ('sourceInputsSha256', 'resourcesSha256', 'artifactsSha256', 'bundleSha256')
+        if not isinstance(fingerprints, dict) or set(fingerprints) != set(keys) or not all(isinstance(fingerprints.get(key), str) and re.fullmatch(r'[0-9a-f]{64}', fingerprints[key]) for key in keys):
+            raise ValueError('manifest inputFingerprints are missing or invalid')
+        bundle_dir = os.path.dirname(manifest_path)
+        groups = (('resources', manifest.get('resources')), ('artifacts', list((manifest.get('artifacts') or {}).values())))
+        for label, entries in groups:
+            if not isinstance(entries, list):
+                raise ValueError(f'manifest {label} are missing or invalid')
+            for entry in entries:
+                if not isinstance(entry, dict) or not isinstance(entry.get('path'), str):
+                    raise ValueError(f'manifest {label} contain invalid artifact')
+                path = entry['path']
+                if path.startswith('/') or '..' in path.split('/') or '\\' in path or not os.path.isfile(os.path.join(bundle_dir, path)):
+                    raise ValueError(f'manifest {label} path is missing or unsafe: {path}')
+                with open(os.path.join(bundle_dir, path), 'rb') as artifact_file:
+                    digest = hashlib.sha256(artifact_file.read()).hexdigest()
+                if digest != entry.get('sha256'):
+                    raise ValueError(f'manifest {label} sha256 mismatch: {path}')
+        source = manifest.get('sourceInputs')
+        if not isinstance(source, dict) or not all(isinstance(path, str) and isinstance(value, str) and re.fullmatch(r'[0-9a-f]{64}', value) for path, value in source.items()):
+            raise ValueError('manifest sourceInputs are invalid')
+        def digest(value):
+            payload = json.dumps(value, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+            return hashlib.sha256(payload).hexdigest()
+        source_sha = digest([[path, source[path]] for path in sorted(source)])
+        resources = manifest.get('resources')
+        artifacts_record = manifest.get('artifacts')
+        if not isinstance(resources, list) or not isinstance(artifacts_record, dict):
+            raise ValueError('manifest resources or artifacts are missing')
+        resource_rows = sorted([[entry['path'], entry['bytes'], entry['sha256']] for entry in resources if isinstance(entry, dict)], key=lambda row: row[0])
+        artifact_rows = [[key, artifacts_record[key]['path'], artifacts_record[key]['bytes'], artifacts_record[key]['sha256']] for key in sorted(artifacts_record) if isinstance(artifacts_record[key], dict)]
+        resources_sha = digest(resource_rows)
+        artifacts_sha = digest(artifact_rows)
+        bundle_sha = digest({'sourceInputsSha256': source_sha, 'resourcesSha256': resources_sha, 'artifactsSha256': artifacts_sha})
+        if fingerprints != {'sourceInputsSha256': source_sha, 'resourcesSha256': resources_sha, 'artifactsSha256': artifacts_sha, 'bundleSha256': bundle_sha}:
+            raise ValueError('manifest inputFingerprints do not match sourceInputs, resources, or artifacts')
+        with open(manifest_path, 'rb') as manifest_file:
+            manifest_sha256 = hashlib.sha256(manifest_file.read()).hexdigest()
+        return {'status': 'bound', 'manifest': manifest_path, 'manifestSha256': manifest_sha256, **{key: fingerprints[key] for key in keys}}
+    except Exception as error:
+        raise RuntimeError(f'Unable to load render bundle manifest {manifest_path}: {error}')
 
 
 def render_scene(runtime: dict, args: dict, cam_cfg: dict, scenario: dict, out_path: str) -> None:
@@ -4317,12 +2395,14 @@ def render_scene(runtime: dict, args: dict, cam_cfg: dict, scenario: dict, out_p
           f'look={getattr(scene.view_settings, "look", "<unavailable>")} '
           f'hdri={json.dumps(runtime.get("last_hdri_status", {}), ensure_ascii=False, sort_keys=True)} '
           f'lights={json.dumps(_job_light_audit(), ensure_ascii=False, sort_keys=True)} '
-          f'materials={json.dumps(runtime["stats"], ensure_ascii=False)}')
+          f'materials={json.dumps(runtime["stats"], ensure_ascii=False)} '
+          f'inputFingerprints={json.dumps(runtime["input_fingerprints"], ensure_ascii=False, sort_keys=True)}')
     bpy.ops.render.render(write_still=True)
     with open(out_path + '.meta.json', 'w', encoding='utf-8') as f:
         json.dump({'scenario': scenario.get('id'), 'camera': cam_cfg.get('id'),
                    'curtainPolicy': state['curtain_policy'] or 'as_snapshot',
-                   'curtainSnapshotSha256': runtime['curtain_proj'].get('snapshotSha256')}, f,
+                   'curtainSnapshotSha256': runtime['curtain_proj'].get('snapshotSha256'),
+                   'inputFingerprints': runtime['input_fingerprints']}, f,
                   ensure_ascii=False, indent=2)
         f.write('\n')
     return

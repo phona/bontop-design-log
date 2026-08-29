@@ -399,6 +399,7 @@ export class ProjectCatalog {
         ...(i.depth !== undefined ? { depth: i.depth } : {}),
         ...(i.cabinetHeight !== undefined ? { cabinetHeight: i.cabinetHeight } : {}),
         ...(i.countertopThickness !== undefined ? { countertopThickness: i.countertopThickness } : {}),
+        ...(i.cutouts !== undefined ? { cutouts: i.cutouts } : {}),
       }));
 
     return {

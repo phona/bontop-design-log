@@ -517,6 +517,7 @@ export type SceneElement =
   | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[] }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }
+  | { type: 'hinged_glass_door'; id: string; points: [OverlayPoint, OverlayPoint]; height: number; open?: boolean; swing?: 'north' | 'south'; hinge?: 'start' | 'end' }
   | { type: 'shower_screen'; id: string; points: OverlayPoint[]; height: number; sill?: number }
   | { type: 'curtain'; id: string; points: CurtainPoint[]; height: number; room?: string; kind?: 'sheer_blackout' | 'blinds' };
 

@@ -17,6 +17,106 @@ _EXTERNAL_PBR_DEFAULT_FILES = {
     'bump': 'bump.jpg',
 }
 
+RENDER_ROLE_NAMES = frozenset({
+    'exterior_glazing', 'fluted_glass', 'shower_glass', 'mirror',
+    'tv_frame', 'tv_screen', 'cabinet_body', 'door_front', 'door_seam',
+    'drawer_front', 'back_panel', 'frame', 'top_filler', 'plinth', 'shelf',
+    'hardware', 'countertop', 'end_panel', 'fixture_diffuser', 'fixture_track',
+    'fixture_metal', 'cove_light', 'ceramic', 'fabric', 'weight_plate',
+    'upholstery', 'floor_protection', 'cabinet_foot', 'cabinet_support',
+    'safety_bar', 'railing',
+})
+
+# Must stay aligned with shared/render/FixtureFactory.ts materialRole output.
+FIXTURE_FACTORY_ROLES = frozenset({
+    'cabinet_body', 'door_front', 'door_seam', 'drawer_front', 'back_panel',
+    'frame', 'top_filler', 'plinth', 'shelf', 'hardware', 'countertop',
+    'end_panel', 'tv_frame', 'tv_screen', 'fixture_diffuser', 'fixture_track',
+    'fixture_metal', 'cove_light', 'ceramic', 'fabric', 'weight_plate',
+    'upholstery', 'floor_protection', 'cabinet_foot', 'cabinet_support',
+    'safety_bar', 'railing', 'mirror',
+})
+
+
+def _role_pbr_application(appearance: dict) -> dict:
+    """Return the Blender-free application contract for one appearance record.
+
+    This describes inputs to the existing Blender builders; it intentionally
+    contains no node topology.  Keeping this contract data-only also makes
+    missing-resource and unknown-type behavior testable without ``bpy``.
+    """
+    app = dict(appearance or {})
+    typ = app.get('type', 'solid_color')
+    descriptor = {
+        'type': typ,
+        'texture_id': app.get('texture_id'),
+        'resource_root': app.get('resource_root'),
+        'resources': dict(app.get('resources') or {}) if isinstance(app.get('resources'), dict) else {},
+        'tile_size': app.get('tile_size'),
+        'tint': app.get('tint'),
+        'normal_strength': app.get('normal_strength', 1.0),
+        'preserve_base_color': app.get('base_color_mode', 'texture') == 'preserve_color',
+        'profile': app.get('profile'),
+    }
+    if typ not in {'solid_color', 'wood_plank', 'pbr_texture', 'external_pbr',
+                   'blenderkit_pbr', 'ceramic_tile_v2'}:
+        descriptor['unsupported'] = True
+    return descriptor
+
+
+def resolve_render_role_profiles(materials: dict, render_roles: dict | None,
+                                 required_roles: set[str] | frozenset[str] | None = None) -> dict:
+    """Resolve YAML ``render_roles`` to validated material records.
+
+    This is deliberately Blender-free: it validates only the role/material
+    contract and returns the original appearance plus a data-only PBR
+    application descriptor for the node builder. Shader topology stays in
+    Python so YAML remains an asset/profile manifest.
+    """
+    result = {'roles': {}, 'warnings': [], 'errors': []}
+    if render_roles is None:
+        result['warnings'].append('render_roles is not configured')
+        return result
+    if not isinstance(render_roles, dict):
+        result['errors'].append('render_roles must be an object')
+        return result
+    if not isinstance(materials, dict):
+        result['errors'].append('materials must be an object keyed by material id')
+        return result
+    for role, material_id in render_roles.items():
+        if not isinstance(role, str) or not role.strip():
+            result['errors'].append(f'invalid render role: {role!r}')
+            continue
+        if role not in RENDER_ROLE_NAMES:
+            result['errors'].append(f'unknown render role: {role}')
+            continue
+        if not isinstance(material_id, str) or not material_id.strip():
+            result['errors'].append(f'render role {role} must reference a material id')
+            continue
+        record = materials.get(material_id)
+        if not isinstance(record, dict):
+            result['errors'].append(f'render role {role} references unknown material: {material_id}')
+            continue
+        appearance = record.get('appearance')
+        if appearance is not None and not isinstance(appearance, dict):
+            result['errors'].append(f'material {material_id} appearance must be an object')
+            continue
+        resolved_appearance = appearance or {'type': 'solid_color'}
+        result['roles'][role] = {
+            'role': role,
+            'material_id': material_id,
+            'record': record,
+            'appearance': resolved_appearance,
+            'pbr': _role_pbr_application(resolved_appearance),
+        }
+    if required_roles:
+        missing = sorted(set(required_roles) - set(result['roles']))
+        if missing:
+            result['errors'].append(
+                'missing required render roles: ' + ', '.join(missing)
+            )
+    return result
+
 
 def resolve_external_pbr(app: dict, config_dir: str) -> dict:
     """解析 external_pbr appearance，纯逻辑且不加载 Blender。
@@ -454,10 +554,70 @@ def _build_ceramic_tile(mid: str, app: dict, np_, color):
     return mat
 
 
+_GLASS_PROFILE_DEFAULTS = {
+    'low_e': {'roughness': 0.02, 'transmission': 1.0, 'ior': 1.5, 'coat': 0.3},
+    'fluted': {'roughness': 0.2, 'transmission': 0.75, 'ior': 1.5, 'coat': 0.0},
+    'shower_glass': {'roughness': 0.12, 'transmission': 0.9, 'ior': 1.45, 'coat': 0.0},
+    'mirror': {'roughness': 0.08, 'metallic': 0.75, 'ior': 1.5, 'coat': 0.0},
+}
+
+
+def _apply_principled_appearance(mat, appearance: dict, color, rough: float):
+    """Apply YAML appearance/profile values to the material's Principled node."""
+    nt = mat.node_tree
+    bsdf = next((node for node in nt.nodes
+                 if node.bl_idname == 'ShaderNodeBsdfPrincipled'), None)
+    if bsdf is None:
+        return
+    profile = appearance.get('profile')
+    params = dict(_GLASS_PROFILE_DEFAULTS.get(profile, {}))
+    params['roughness'] = appearance.get('roughness', params.get('roughness', rough))
+    for name in ('metallic', 'transmission', 'ior', 'coat', 'alpha'):
+        if name in appearance:
+            params[name] = appearance[name]
+    bsdf.inputs['Base Color'].default_value = (*color, 1.0)
+    bsdf.inputs['Roughness'].default_value = float(params['roughness'])
+    if 'Metallic' in bsdf.inputs and 'metallic' in params:
+        bsdf.inputs['Metallic'].default_value = float(params['metallic'])
+    transmission = params.get('transmission')
+    if transmission is not None:
+        socket = bsdf.inputs.get('Transmission Weight') or bsdf.inputs.get('Transmission')
+        if socket is not None:
+            socket.default_value = float(transmission)
+    if 'IOR' in bsdf.inputs and 'ior' in params:
+        bsdf.inputs['IOR'].default_value = float(params['ior'])
+    if 'Coat Weight' in bsdf.inputs and 'coat' in params:
+        bsdf.inputs['Coat Weight'].default_value = float(params['coat'])
+    if 'Alpha' in bsdf.inputs and 'alpha' in params:
+        bsdf.inputs['Alpha'].default_value = float(params['alpha'])
+
+
+def _add_fluted_bump(mat, appearance: dict) -> None:
+    """Add vertical procedural flutes only to the explicit fluted profile."""
+    nt = mat.node_tree
+    bsdf = next((node for node in nt.nodes
+                 if node.bl_idname == 'ShaderNodeBsdfPrincipled'), None)
+    if bsdf is None:
+        return
+    coord = nt.nodes.new('ShaderNodeTexCoord')
+    wave = nt.nodes.new('ShaderNodeTexWave')
+    wave.wave_type = 'BANDS'
+    wave.bands_direction = 'X'
+    wave.inputs['Scale'].default_value = float(appearance.get('flute_scale', 55.0))
+    wave.inputs['Distortion'].default_value = 0.0
+    bump = nt.nodes.new('ShaderNodeBump')
+    bump.inputs['Strength'].default_value = float(appearance.get('flute_bump_strength', 0.22))
+    bump.inputs['Distance'].default_value = float(appearance.get('flute_bump_distance', 0.004))
+    nt.links.new(coord.outputs['UV'], wave.inputs['Vector'])
+    nt.links.new(wave.outputs['Color'], bump.inputs['Height'])
+    nt.links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+
+
 def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
                          cache_dir: str | None = None,
                          config_dir: str | None = None,
-                         color_overrides: dict | None = None) -> dict:
+                         color_overrides: dict | None = None,
+                         role_profiles: dict | None = None) -> dict:
     """resolved: classify_key -> material_id。返回 classify_key -> bpy material。
     helpers 注入 new_principled/hex_rgb，避免与 dress_scene 循环依赖。
     cache_dir: 木纹贴图缓存目录（wood_plank 时必需）。
@@ -471,6 +631,11 @@ def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
     for key, mid in resolved.items():
         rec = mats[mid]
         app = rec.get('appearance', {})
+        if role_profiles and key in role_profiles:
+            profile = role_profiles[key]
+            mid = profile['material_id']
+            rec = profile['record']
+            app = profile['appearance']
         if color_overrides and key in color_overrides:
             app = dict(app)
             app['color'] = color_overrides[key]
@@ -508,6 +673,10 @@ def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
             mat = _build_ceramic_tile(mid, app, np_, color)
         else:
             mat = np_(f'方案_{mid}', color, rough=rough)
+        if app.get('profile') in _GLASS_PROFILE_DEFAULTS:
+            _apply_principled_appearance(mat, app, color, rough)
+            if app.get('profile') == 'fluted':
+                _add_fluted_bump(mat, app)
         # 墙面漆面微纹理（橙皮纹）：细微程序化 bump，不下载贴图
         if key == 'wall' and typ == 'solid_color':
             try:
@@ -529,10 +698,10 @@ def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
 
 def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb, facts: dict,
                           config_dir: str | None = None,
-                          color_overrides: dict | None = None) -> tuple[dict, dict]:
-    """构建 scheme 的非 floor 材质和 projection 指定的分房地材。
+                          color_overrides: dict | None = None) -> tuple[dict, dict, dict]:
+    """构建 scheme 材质、分房地材及正式 GLB role profiles。
     `facts.materials.floor` 是 Blender 唯一的 floor 选择输入；current-scheme 仅供 non-floor topics。
-    返回 (所有 classify 材质, roomId -> floor Blender material)。"""
+    返回 (所有 classify 材质, roomId -> floor Blender material, role -> profile)。"""
     import json
     import yaml as pyyaml
 
@@ -544,7 +713,16 @@ def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb, fact
     if not isinstance(floor, dict):
         raise ValueError('render facts missing materials.floor')
     with open(mats_path, 'r', encoding='utf-8') as f:
-        mats_yaml = {m['id']: m for m in pyyaml.safe_load(f)['materials']}
+        materials_doc = pyyaml.safe_load(f)
+    mats_yaml = {m['id']: m for m in materials_doc['materials']}
+    role_spec = resolve_render_role_profiles(
+        mats_yaml, materials_doc.get('render_roles'), FIXTURE_FACTORY_ROLES
+    )
+    for warning in role_spec['warnings']:
+        print(f'[materials] WARN {warning}')
+    if role_spec['errors']:
+        raise ValueError('invalid render_roles: ' + '; '.join(role_spec['errors']))
+    role_profiles = role_spec['roles']
     if os.path.exists(scheme_path):
         with open(scheme_path, 'r', encoding='utf-8') as f:
             scheme = json.load(f)
@@ -554,9 +732,22 @@ def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb, fact
     overrides = resolve_floor_overrides(floor, mats_yaml)
     helpers = {'new_principled': new_principled, 'hex_rgb': hex_rgb}
     tex_cache = os.path.join(config_dir, 'renders', 'blender', 'textures')
+    default_floor_id = resolved.get('floor')
+    default_floor_record = mats_yaml.get(default_floor_id, {}) if default_floor_id else {}
+    default_floor_name = default_floor_record.get('name') if isinstance(default_floor_record, dict) else None
+    default_floor_label = f'{default_floor_id or "<none>"}/{default_floor_name or "<unnamed>"}'
+    override_summary = ', '.join(f'{room_id}={mid}' for room_id, mid in sorted(overrides.items())) or '<none>'
+    print(f'[materials] floor default={default_floor_label}; room overrides={override_summary}')
+    print(f'[materials] wood texture cache={os.path.abspath(tex_cache)}')
     yaml_mats = build_yaml_materials(mats_yaml, resolved, helpers, cache_dir=tex_cache,
-                                     config_dir=config_dir, color_overrides=color_overrides)
+                                     config_dir=config_dir, color_overrides=color_overrides,
+                                     role_profiles=role_profiles)
+    role_resolved = {role: profile['material_id'] for role, profile in role_profiles.items()}
+    role_mats = build_yaml_materials(mats_yaml, role_resolved, helpers, cache_dir=tex_cache,
+                                     config_dir=config_dir, color_overrides=color_overrides,
+                                     role_profiles=role_profiles)
     mats.update(yaml_mats)
+    mats.update(role_mats)
     floor_mats = {}
     for room_id, mid in overrides.items():
         key = f'floor:{room_id}'
@@ -565,4 +756,4 @@ def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb, fact
             color_overrides=color_overrides,
         )
         floor_mats[room_id] = room_override[key]
-    return mats, floor_mats
+    return mats, floor_mats, role_profiles

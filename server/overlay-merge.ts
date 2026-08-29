@@ -81,6 +81,18 @@ const SlidingDoorRunSchema = z
   })
   .strict();
 
+const HingedGlassDoorSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('hinged_glass_door'),
+    points: z.array(PointSchema).length(2),
+    height: z.number().positive().default(2.1),
+    open: z.boolean().default(true),
+    swing: z.enum(['north', 'south']).default('north'),
+    hinge: z.enum(['start', 'end']).default('start'),
+  })
+  .strict();
+
 const GlassInfillSchema = z
   .object({
     id: z.string().min(1),
@@ -162,6 +174,7 @@ const OverlaySchema = z
           WallRunSchema,
           ShowerScreenSchema,
           SlidingDoorRunSchema,
+          HingedGlassDoorSchema,
           GlassInfillSchema,
           FloorRegionSchema,
           BaySillSchema,

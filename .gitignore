@@ -20,19 +20,14 @@
 *.sv$
 
 # 输出与缓存
-renders/blender/output/*
-renders/blender/textures/*
-renders/web/models/*
-renders/web/textures/*
+renders/*
+!renders/README.md
 assets/textures/*/
 assets/**/*.glb
 assets/furniture/*/
 hdri/*.hdr
 screenshots/
 output-*.png
-!renders/blender/output/.gitkeep
-!renders/web/models/.gitkeep
-!renders/web/textures/.gitkeep
 
 # Python
 __pycache__/
@@ -52,6 +47,8 @@ build/
 # 环境变量和本地配置
 .env
 .env.local
+blender.env
+
 .env.*.local
 
 # 系统文件

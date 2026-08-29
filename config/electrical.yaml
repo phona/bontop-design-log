@@ -411,14 +411,14 @@
 # 客卫
 - id: sock_gbath_vanity
   room: guest_bath
-  wall: w_gbath_east
+  wall: w_gbath_east_open_vanity
   wall_side: west
   type: socket
-  x: 7.10
-  z: 3.90
+  x: 7.05
+  z: 3.55
   height: 1.2
   count: 1
-  note: "2026-08-29 客卫南段东墙洗手台/镜柜插座（带防溅盒）；窗洞待量房确认，需核实实体墙/可挂载性"
+  note: "2026-08-29 客卫南侧开放区实际 vanity 插座：东侧延伸实体墙西侧（wall_side=west），服务 vanity 中心 (6.90,3.90)，背面朝东、正面朝西，带防溅盒；墙体挂载与给电按现场复核"
 
 - id: switch_gbath
   room: guest_bath
@@ -426,15 +426,15 @@
   wall_side: north
   type: switch
   x: 5.80
-  z: 4.30
+  z: 3.55
   height: 1.3
-  note: "客卫灯光开关；保留南侧外门旁位置，避开东墙南段洗漱台；东墙窗洞待量房确认"
+  note: "2026-08-29 客卫灯光开关；南侧外门旁，随 w_gbath_south 北移至 z=3.55，避开外置洗漱台"
 
 - id: sock_gbath_exhaust
   room: guest_bath
   type: socket
   x: 6.35
-  z: 2.55
+  z: 2.45
   height: 2.5
   count: 1
   note: "2026-08-29 客卫北侧淋浴区排风扇电源（吊顶内）"
@@ -605,14 +605,14 @@
 # 客卫智能马桶预留
 - id: sock_gbath_toilet
   room: guest_bath
-  wall: w_gbath_west
-  wall_side: east
+  wall: w_gbath_east
+  wall_side: west
   type: socket
-  x: 5.60
-  z: 2.75
+  x: 7.10
+  z: 2.65
   height: 0.3
   count: 1
-  note: "2026-08-29 客卫北段马桶旁插座（智能盖预留；西墙实体墙东侧）"
+  note: "2026-08-29 客卫南段马桶旁插座（智能盖预留；东墙实体墙西侧，坐东朝西，服务马桶中心 (6.80,2.65)，避开西侧入口及外门扫掠）"
 
 # 阳台电动晾衣架
 - id: sock_balcony_drying
@@ -789,10 +789,10 @@
   room: guest_bath
   type: dome
   x: 6.35
-  z: 3.25
+  z: 2.78
   height: 2.8
   temp: 4000
-  note: "客卫平板灯（4000K）"
+  note: "客卫平板灯（4000K；2026-08-29 按南马桶/北淋浴分区调整至内卫中部，待量房确认）"
 
 # 主卧投影仪地插（A方案，床尾西侧）
 - id: sock_master_projector
@@ -811,7 +811,7 @@
   wall_side: east
   type: socket
   x: 5.60
-  z: 2.8
+  z: 3.20
   height: 1.2
   count: 1
-  note: "客卫电热毛巾架插座（DEC-013，带防溅盒，回南天刚需）"
+  note: "客卫电热毛巾架插座（2026-08-29 南段马桶区西墙，带防溅盒；回南天刚需，位置待量房确认）"

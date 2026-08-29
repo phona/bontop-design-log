@@ -295,9 +295,9 @@ const cameras = [
   },
   {
     id: 'guest_bath_overview',
-    label: '客卫全景（西墙洗手台）',
+    label: '客卫全景（南墙外置洗漱台）',
     position: [6.95, 1.6, 2.3],
-    target: [5.9, 0.8, 3.9],
+    target: [6.35, 0.8, 2.8],
     lens: 18,
     scenarios: ['material_review', 'bare_shell'],
     fill_light: 60,

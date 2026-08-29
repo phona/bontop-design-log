@@ -113,11 +113,11 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | master_bath | exhaust_fan | 1 | 0.3×0.3 | (1, 2.7) |
 | master_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bath | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | toilet | 1 | 0.4×0.6 | (5.9, 2.5) / 90° |
-| guest_bath | vanity | 1 | 0.8×0.4 | (5.8, 3.5) / 90° |
-| guest_bath | exhaust_fan | 1 | 0.3×0.3 | (6.35, 3.25) |
-| guest_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
+| guest_bath | toilet | 1 | 0.4×0.6 | (6.80, 2.65) / 270°，靠东墙坐东朝西 |
+| guest_bath | vanity | 1 | 0.8×0.4 | (6.90, 3.90) / 270°，南侧开放区背靠东墙、正面朝西；AABB x[6.70,7.10] z[3.50,4.30] |
+| guest_bath | exhaust_fan | 1 | 0.3×0.3 | (6.35, 2.45) |
+| guest_bath | shower_set | 1 | — | count-only（不在 glb，花洒挂东墙 west、z≈2.45，坐东朝西；马桶与淋浴间以横向玻璃屏分隔，西端为玻璃门入口） |
+| guest_bath | faucet | 1 | — | count-only（不在 glb，南侧开放洗漱区） |
 | guest_bath | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | balcony | washer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
 | balcony | dryer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
@@ -145,7 +145,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | light_entry_foyer | living_dining | 筒灯 | (12.4, 3.35) | 2.5 | 3000 | entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区 |
 | light_kitchen_panel | kitchen | 吸顶灯 | (9, 1.2) | 2.8 | 4000 | — | 厨房平板灯（4000K 工作区例外） |
 | light_mbath_panel | master_bath | 吸顶灯 | (1.3, 1.98) | 2.8 | 4000 | — | 主卫平板灯（4000K；2026-08-25 隔墙北移 z=2.86 后移至卫内中心 z=1.98） |
-| light_gbath_panel | guest_bath | 吸顶灯 | (6.35, 3.25) | 2.8 | 4000 | — | 客卫平板灯（4000K） |
+| light_gbath_panel | guest_bath | 吸顶灯 | (6.35, 2.78) | 2.8 | 4000 | — | 客卫平板灯（南侧马桶/北侧淋浴分区中部） |
 
 ### 后续深化预留（当前未实施点位）
 厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。

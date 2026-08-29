@@ -2,6 +2,40 @@ notes:
   - "外立面玻璃幕墙已由开发商安装完成，装修阶段无需采购封窗，只需核对门窗口位置及幕墙保护"
   - "本清单以套内 94.76㎡、层高 3.0m 为基数估算"
 
+# Formal GLB material-role contract. Values reference entries below; shader topology stays in Blender Python.
+render_roles:
+  exterior_glazing: "curtain_wall_01"
+  fluted_glass: "sliding_door_glass_01"
+  shower_glass: "shower_glass_01"
+  mirror: "mirror_01"
+  tv_frame: "hardware_01"
+  tv_screen: "quartz_stone_01"
+  cabinet_body: "cabinet_board_01"
+  door_front: "cabinet_board_01"
+  door_seam: "hardware_01"
+  drawer_front: "cabinet_board_01"
+  back_panel: "cabinet_board_01"
+  frame: "hardware_01"
+  top_filler: "cabinet_board_01"
+  plinth: "cabinet_board_01"
+  shelf: "cabinet_board_01"
+  hardware: "hardware_01"
+  countertop: "quartz_stone_01"
+  end_panel: "cabinet_board_01"
+  fixture_diffuser: "wall_tile_01"
+  fixture_track: "hardware_01"
+  fixture_metal: "hardware_01"
+  cove_light: "wall_tile_01"
+  ceramic: "wall_tile_01"
+  fabric: "chair_01"
+  weight_plate: "hardware_01"
+  upholstery: "chair_01"
+  floor_protection: "rubber_floor_01"
+  cabinet_foot: "hardware_01"
+  cabinet_support: "hardware_01"
+  safety_bar: "hardware_01"
+  railing: "hardware_01"
+
 materials:
   - id: "floor_tile_01"
     topic_id: "floor"
@@ -872,6 +906,7 @@ materials:
     pros: ["开发商已安装成本为零"]
     cons: []
     price_source: "开发商报价"
+    appearance: { type: "solid_color", color: "#c8e0dc", finish: "glossy", profile: "low_e" }
 
   - id: "floor_tile_02"
     topic_id: "floor"
@@ -1486,6 +1521,42 @@ materials:
     cons: ["需按卫生间尺寸定制"]
     price_source: "快环建材市场卫浴区报价"
     notes: "两卫淋浴区；归 appliances 池避免与 sanitary 三件套计数混淆"
+
+  - id: "sliding_door_glass_01"
+    category: "推拉门玻璃"
+    name: "长虹玻璃"
+    unit: "㎡"
+    price_per_unit: 0
+    calc_mode: "fixed"
+    status: "provided_by_developer"
+    appearance: { type: "solid_color", color: "#c7d7d5", finish: "soft", profile: "fluted" }
+
+  - id: "shower_glass_01"
+    category: "淋浴玻璃"
+    name: "透明钢化淋浴玻璃"
+    unit: "㎡"
+    price_per_unit: 0
+    calc_mode: "fixed"
+    status: "candidate"
+    appearance: { type: "solid_color", color: "#dce8e8", finish: "glossy", profile: "shower_glass" }
+
+  - id: "mirror_01"
+    category: "镜面"
+    name: "浴室镜面"
+    unit: "㎡"
+    price_per_unit: 0
+    calc_mode: "fixed"
+    status: "candidate"
+    appearance: { type: "solid_color", color: "#bcd2d8", finish: "glossy", profile: "mirror" }
+
+  - id: "rubber_floor_01"
+    category: "地面保护"
+    name: "训练区橡胶保护垫"
+    unit: "㎡"
+    price_per_unit: 0
+    calc_mode: "fixed"
+    status: "candidate"
+    appearance: { type: "solid_color", color: "#292b2e", finish: "matte", profile: "floor_protection" }
 
   # === 木地板（2026-08-21 DEC-041：地砖系统统一为单一 floor topic + 分房覆盖，原 bedroom_floor 撤销并入） ===
   - id: "bedroom_wood_01"

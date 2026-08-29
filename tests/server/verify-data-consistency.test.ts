@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseElectricalPoints } from '../../shared/project-render-facts-schema.js';
-import { checkWallPointPlacements } from '../../scripts/verify-point-placement.js';
+import { checkWallPointPlacements } from '../../scripts/verify/placement/verify-point-placement.js';
 
 const wall = {
   id: 'w_test',
