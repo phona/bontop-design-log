@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import type { CurtainPoint, FurnishingsYaml, ProjectRenderFactsProjection, ResolvedOpening, ResolvedRoom, SceneElement, WallSegment, RoomObject } from '../types.js';
+import type { CurtainPoint, FurnishingsYaml, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, WallSegment, RoomObject } from '../types.js';
+import { buildInfrastructure } from './InfrastructureBuilder.js';
+import { buildLightingFixtures } from './LightingFixtureBuilder.js';
 import { type HvacBuilderSources } from './HvacBuilder.js';
 import { buildHvacGeometry, type HvacEntityIndex } from './HvacGeometryBuilder.js';
 import { buildCeilingZone, type CeilingZoneSpec } from './CeilingZoneBuilder.js';
@@ -7,6 +9,7 @@ import {
   buildBathSideCabinetRun,
   buildFixture,
   buildKitchenCabinetRun,
+  buildKitchenCountertopBridge,
   buildWardrobe180,
   buildWardrobeSplit,
 } from './FixtureFactory.js';
@@ -14,6 +17,7 @@ import { createLineMesh, createPolygonGeometry, setSceneObjectMetadata, splitSeg
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { curtainRibbonShape, curtainShape, gatheredCurtainSegments, offsetCurtainPointsInterior, roundedShape } from './CurtainGeometry.js';
 import { buildBaySillGeometry } from './BaySillGeometry.js';
+import { buildRailingGeometry } from './RailingGeometryBuilder.js';
 
 const WALL_THICKNESS = 0.12;
 /** Room floors and declared floor regions intentionally share one elevation. */
@@ -29,10 +33,13 @@ export interface SceneBuildReport {
   ceilings: number;
   ceilingZones: number;
   furniture: number;
+  plumbing: number;
+  lightingFixtures: number;
   hvacEquipment: number;
   hvacTerminals: number;
   hvacStatus: 'implemented' | 'unimplemented';
   skippedFurniture: string[];
+  skippedPlumbing: string[];
   unsupported: string[];
 }
 
@@ -42,6 +49,8 @@ export interface SceneMaterialProvider {
   doorFrame?: (context: { opening: ResolvedOpening; elevator: boolean }) => THREE.Material;
   lintel?: (context: { wall: Extract<SceneElement, { type: 'wall' }>; opening: ResolvedOpening }) => THREE.Material;
   curtain?: (context: { element: Extract<SceneElement, { type: 'curtain' }>; layer: 'sheer' | 'blackout' | 'blinds'; variant: 'deployed' | 'gathered' }) => THREE.Material;
+  curtainRun?: (element: Extract<SceneElement, { type: 'curtain_run' }>) => THREE.Material;
+  showerScreen?: (element: Extract<SceneElement, { type: 'shower_screen' }>) => THREE.Material;
   slidingDoorRail?: (element: Extract<SceneElement, { type: 'sliding_door_run' }>) => THREE.Material;
   slidingDoorFrame?: (element: Extract<SceneElement, { type: 'sliding_door_run' }>) => THREE.Material;
   slidingDoorGlass?: (context: { element: Extract<SceneElement, { type: 'sliding_door_run' }>; paneWidth: number }) => THREE.Material;
@@ -52,6 +61,7 @@ export interface SceneBuilderOptions {
   curtainRooms?: ResolvedRoom[];
   curtainOffset?: number;
   hvac?: { projection: ProjectRenderFactsProjection; sources?: HvacBuilderSources };
+  lighting?: LightingRenderConfig;
 }
 
 export interface ScenePlatform {
@@ -72,6 +82,8 @@ export interface SceneBuilderInput {
   elements: SceneElement[];
   ceilingZones?: CeilingZoneSpec[];
   furnishings?: FurnishingsYaml;
+  plumbing?: PlumbingPoint[];
+  lightingFixtures?: RenderLightingFixture[];
   sceneName?: string;
   options?: SceneBuilderOptions;
 }
@@ -101,6 +113,8 @@ export interface SceneBuildIndex {
   curtainRuns: Map<string, THREE.Object3D[]>;
   curtains: Map<string, CurtainBuildEntry>;
   slidingDoorGroups: Map<string, THREE.Group>;
+  plumbing: Map<string, THREE.Group>;
+  lightingFixtures: Map<string, THREE.Group>;
   wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>;
   openingWallSegments: Map<string, THREE.Mesh[]>;
   lintels: Map<string, THREE.Mesh[]>;
@@ -123,13 +137,15 @@ type WallElement = Extract<SceneElement, { type: 'wall' }>;
 type CurtainElement = Extract<SceneElement, { type: 'curtain' }>;
 type SlidingDoorElement = Extract<SceneElement, { type: 'sliding_door_run' }>;
 
-function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass'>> {
+function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'curtainRun' | 'showerScreen' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass'>> {
   return {
     wall: ({ shaft }) => new THREE.MeshStandardMaterial({ color: shaft ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 }),
     door: ({ elevator }) => new THREE.MeshStandardMaterial({ color: elevator ? 0x888899 : 0x8b4513, roughness: elevator ? 0.25 : 0.6, metalness: elevator ? 0.85 : 0 }),
     doorFrame: ({ elevator }) => new THREE.MeshStandardMaterial({ color: elevator ? 0x333336 : 0x555555, roughness: elevator ? 0.35 : 0.7, metalness: elevator ? 0.6 : 0 }),
     lintel: ({ wall }) => new THREE.MeshStandardMaterial({ color: wall.id.includes('elev') ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 }),
     curtain: ({ layer, variant }) => new THREE.MeshStandardMaterial({ color: layer === 'sheer' ? 0xf5f2ea : layer === 'blackout' ? 0xcfc8ba : 0xdfe3e6, transparent: layer !== 'blackout', opacity: layer === 'sheer' ? 0.35 : layer === 'blinds' ? 0.75 : 1, roughness: layer === 'sheer' ? 0.9 : layer === 'blinds' ? 0.6 : 0.95, side: THREE.DoubleSide, depthWrite: false }),
+    curtainRun: () => glassMaterial(),
+    showerScreen: () => glassMaterial(),
     slidingDoorRail: () => new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 }),
     slidingDoorFrame: () => new THREE.MeshStandardMaterial({ color: 0x141414, metalness: 0.5, roughness: 0.45 }),
     slidingDoorGlass: () => glassMaterial(),
@@ -417,7 +433,8 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       return;
     case 'curtain_run': {
       if (element.points.length < 2) return;
-      const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(curtainRibbonShape(element.points, element.closed ?? false), { depth: element.height, bevelEnabled: false, steps: 1 }), glassMaterial());
+      const materials = { ...defaultMaterials(), ...provider };
+      const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(curtainRibbonShape(element.points, element.closed ?? false), { depth: element.height, bevelEnabled: false, steps: 1 }), materials.curtainRun(element));
       mesh.rotation.x = -Math.PI / 2;
       mesh.scale.set(1, -1, 1);
       setSceneObjectMetadata(mesh, element.type, id);
@@ -425,19 +442,15 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       root.add(mesh);
       return;
     }
-    case 'shower_screen':
-      addLineMeshes(root, element.points, element.height, 0.025, glassMaterial(), element.type, id);
+    case 'shower_screen': {
+      const materials = { ...defaultMaterials(), ...provider };
+      addLineMeshes(root, element.points, element.height, 0.025, materials.showerScreen(element), element.type, id);
       return;
+    }
     case 'railing_run': {
-      if (element.points.length < 2) return;
-      const mesh = new THREE.Mesh(
-        new THREE.ExtrudeGeometry(curtainRibbonShape(element.points, false, 0.06), { depth: element.height, bevelEnabled: false, steps: 1 }),
-        new THREE.MeshStandardMaterial({ color: 0x8899aa, metalness: 0.6, roughness: 0.3 }),
-      );
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.scale.set(1, -1, 1);
-      setSceneObjectMetadata(mesh, element.type, id);
-      root.add(mesh);
+      const result = buildRailingGeometry(id, element.points, element.height);
+      if (!result) return;
+      root.add(result.group);
       return;
     }
     case 'sliding_door_run':
@@ -464,7 +477,10 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
 
 function buildFurniture(item: FurnishingsYaml[string][number]): THREE.Group | null {
   if (item.type === 'kitchen_cabinet_run' && item.length !== undefined && item.depth !== undefined) {
-    return buildKitchenCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight, countertopThickness: item.countertopThickness });
+    return buildKitchenCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight, countertopThickness: item.countertopThickness, cutouts: item.cutouts });
+  }
+  if (item.type === 'kitchen_countertop_bridge' && item.length !== undefined && item.depth !== undefined && item.countertopThickness !== undefined) {
+    return buildKitchenCountertopBridge({ length: item.length, depth: item.depth, countertopThickness: item.countertopThickness });
   }
   if (item.type === 'bath_side_cabinet' && item.length !== undefined && item.depth !== undefined) {
     return buildBathSideCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight });
@@ -546,12 +562,12 @@ function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: S
 }
 
 export function buildScene(input: SceneBuilderInput): SceneBuildResult {
-  const report: SceneBuildReport = { rooms: 0, walls: 0, ceilings: 0, ceilingZones: 0, furniture: 0, hvacEquipment: 0, hvacTerminals: 0, hvacStatus: input.options?.hvac?.projection?.hvac.status ?? 'unimplemented', skippedFurniture: [], unsupported: [] };
+  const report: SceneBuildReport = { rooms: 0, walls: 0, ceilings: 0, ceilingZones: 0, furniture: 0, plumbing: 0, lightingFixtures: 0, hvacEquipment: 0, hvacTerminals: 0, hvacStatus: input.options?.hvac?.projection?.hvac.status ?? 'unimplemented', skippedFurniture: [], skippedPlumbing: [], unsupported: [] };
   const provider = input.options?.materialProvider ?? {};
   const index = {
     rooms: Object.fromEntries(input.rooms.map((room) => [room.id, { ...room }])),
     floorMeshes: [], wallMeshes: [], ceilingMeshes: [], furnitureMeshes: [],
-    countertopMeshes: [], glassMeshes: [], doorMeshes: [], curtainRuns: new Map(), curtains: new Map(), slidingDoorGroups: new Map(), wallSegments: new Map(), openingWallSegments: new Map(), lintels: new Map(), hvac: { equipment: new Map(), terminals: new Map(), all: new Map() },
+    countertopMeshes: [], glassMeshes: [], doorMeshes: [], curtainRuns: new Map(), curtains: new Map(), slidingDoorGroups: new Map(), plumbing: new Map(), lightingFixtures: new Map(), wallSegments: new Map(), openingWallSegments: new Map(), lintels: new Map(), hvac: { equipment: new Map(), terminals: new Map(), all: new Map() },
   } as SceneBuildIndex;
   const exportRoot = new THREE.Group();
   exportRoot.name = 'HOUSE_EXPORT';
@@ -567,8 +583,38 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     if (element.type === 'wall') addWallElement(exportRoot, element, wallHeights.get(element.id) ?? 3.0, report, index, provider);
     else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index);
   }
+  for (const wall of input.walls) {
+    if (!wall.id) continue;
+    index.wallSegments.set(wall.id, wall.segments?.length ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 })) : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]);
+  }
+  const furnishings = input.furnishings ?? {};
+  const placedFurnitureKeys = new Set(
+    Object.entries(furnishings).flatMap(([roomId, items]) => items
+      .filter((item) => item.x !== undefined && item.z !== undefined)
+      .map((item) => `${roomId}:${item.type}`)),
+  );
+  // Plumbing points remain in the index/report contract, but a placed furnishing
+  // owns the visible appliance/fixture geometry when the types overlap in a room.
+  const plumbing = (input.plumbing ?? []).filter((point) => {
+    const duplicate = (point.type === 'toilet' || point.type === 'washer')
+      && placedFurnitureKeys.has(`${point.room}:${point.type}`);
+    if (duplicate) report.skippedPlumbing.push(`${point.id}:furnishing:${point.room}:${point.type}`);
+    return !duplicate;
+  });
+  const infrastructure = buildInfrastructure({ electrical: [], plumbing, wallSegments: index.wallSegments });
+  for (const model of infrastructure.plumbing) {
+    exportRoot.add(model);
+    index.plumbing.set(String(model.userData.objectId), model);
+  }
+  report.plumbing = infrastructure.plumbing.length;
   addCeilingZones(exportRoot, input.ceilingZones ?? [], input.rooms, report);
-  addFurniture(exportRoot, input.furnishings ?? {}, report);
+  addFurniture(exportRoot, furnishings, report);
+  if (input.lightingFixtures?.length) {
+    const lighting = buildLightingFixtures(input.lightingFixtures, input.options?.lighting);
+    exportRoot.add(lighting.group);
+    report.lightingFixtures = lighting.fixtures.size;
+    index.lightingFixtures = lighting.fixtures;
+  }
   index.hvac = addHvacEntities(exportRoot, input.options?.hvac?.projection, input.options?.hvac?.sources);
   report.hvacEquipment = index.hvac.equipment.size;
   report.hvacTerminals = index.hvac.terminals.size;
@@ -594,10 +640,6 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     if (type === 'sliding_door_run') index.slidingDoorGroups.set(String(object.userData.objectId), object as THREE.Group);
     if (type === 'door') index.doorMeshes.push(object as THREE.Mesh);
   });
-  for (const wall of input.walls) {
-    if (!wall.id) continue;
-    index.wallSegments.set(wall.id, wall.segments?.length ? wall.segments.map((segment) => ({ ...segment })) : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]);
-  }
 
   const scene = new THREE.Scene();
   scene.name = input.sceneName ?? 'house-cli-phase-2';

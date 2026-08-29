@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import type { RenderLightingFixture } from '@shared/types';
+import type { LightingRenderConfig, RenderLightingFixture } from '@shared/types';
+import { getResolvedTrackLightHeads, getTrackLightConfig } from '@shared/render/TrackLightLayout';
 
 /**
  * 室内灯光系统（spec: 2026-08-12-interior-lighting-design.md）
@@ -56,6 +57,7 @@ export class InteriorLightingSystem {
   constructor(
     private scene: THREE.Scene,
     fixtures: RenderLightingFixture[],
+    private lighting?: LightingRenderConfig,
   ) {
     for (const fixture of fixtures) {
       if (fixture.enabled) this.addLight(fixture);
@@ -92,20 +94,12 @@ export class InteriorLightingSystem {
       }
       case 'track_light': {
         const trackGroup = new THREE.Group();
-        const headOffsets = [-1.8, -0.9, 0, 0.9, 1.8];
-        const headTargets = [
-          new THREE.Vector3(-1.6, 0, 1.2),
-          new THREE.Vector3(-0.7, 0, 0.1),
-          new THREE.Vector3(0, 0, 0.8),
-          new THREE.Vector3(0.8, 0, 1.4),
-          new THREE.Vector3(1.5, 0, 0.4),
-        ];
-        lights = headOffsets.map((offset, index) => {
-          const spot = new THREE.SpotLight(color, 9, 5.5, 0.7, 0.45, 1.5);
-          spot.position.set(x + offset, y - 0.08, z);
-          spot.target.position.set(x + headTargets[index].x, headTargets[index].y, z + headTargets[index].z);
-          trackGroup.add(spot);
-          targets.push(spot.target);
+        const config = getTrackLightConfig(this.lighting, fixture.id, fixture.heads);
+        lights = getResolvedTrackLightHeads(fixture.position, config).map((resolved) => {
+          const spot = new THREE.SpotLight(color, config.energy, 5.5, config.beam, 0.45, 1.5);
+          spot.position.set(resolved.position.x, resolved.position.y, resolved.position.z);
+          spot.target.position.set(resolved.target.x, resolved.target.y, resolved.target.z);
+          trackGroup.add(spot, spot.target);
           return spot;
         });
         light = lights[0];
@@ -165,7 +159,11 @@ export class InteriorLightingSystem {
         fixtureMats.push(object.material);
       }
     });
-    this.group.add(...lights, ...targets, visual);
+    if (fixture.type === 'track_light') {
+      this.group.add(visual);
+    } else {
+      this.group.add(...lights, ...targets, visual);
+    }
     this.entries.push({ id: fixture.id, room: fixture.room, light, lights, visual, fixtureMats });
   }
 
@@ -201,18 +199,21 @@ export class InteriorLightingSystem {
     const { x, y, z } = fixture.position;
     const group = new THREE.Group();
     const black = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.35, metalness: 0.75 });
-    const track = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.045, 0.08), black);
+    const config = getTrackLightConfig(this.lighting, fixture.id, fixture.heads);
+    const track = new THREE.Mesh(new THREE.BoxGeometry(config.length, 0.045, 0.08), black);
+    track.rotation.set(config.rotation.x, config.rotation.y, config.rotation.z);
     track.position.set(x, y - CEILING_VISUAL_CLEARANCE, z);
     group.add(track);
-    for (const offset of [-1.8, -0.9, 0, 0.9, 1.8]) {
+    for (const resolved of getResolvedTrackLightHeads(fixture.position, config)) {
+      const direction = new THREE.Vector3(resolved.direction.x, resolved.direction.y, resolved.direction.z);
       const mount = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.08, 12), black);
-      mount.position.set(x + offset, y - 0.06 - CEILING_VISUAL_CLEARANCE, z);
+      mount.position.set(resolved.mountPosition.x, resolved.mountPosition.y - CEILING_VISUAL_CLEARANCE, resolved.mountPosition.z);
       const head = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.065, 0.14, 12), black);
-      head.position.set(x + offset, y - 0.15 - CEILING_VISUAL_CLEARANCE, z);
-      head.rotation.z = Math.PI / 8;
+      head.position.set(resolved.headPosition.x, resolved.headPosition.y - CEILING_VISUAL_CLEARANCE, resolved.headPosition.z);
+      head.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
       const lens = new THREE.Mesh(new THREE.CircleGeometry(0.038, 16), this.emissiveMat(color));
-      lens.rotation.x = Math.PI / 2;
-      lens.position.set(x + offset, y - 0.222 - CEILING_VISUAL_CLEARANCE, z);
+      lens.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+      lens.position.set(resolved.lensPosition.x, resolved.lensPosition.y - CEILING_VISUAL_CLEARANCE, resolved.lensPosition.z);
       group.add(mount, head, lens);
     }
     return group;

@@ -48,7 +48,7 @@ function project(
   projectionOverrides: RenderLightingOverride[],
   projectionScheme: CurrentScheme,
 ) {
-  return buildProjectRenderFactsProjection(projectionFacts, projectionOverrides, projectionScheme, overlay, presentation);
+  return buildProjectRenderFactsProjection(projectionFacts, projectionOverrides, projectionScheme, overlay, presentation, { fixtures: [] });
 }
 
 describe('buildProjectRenderFactsProjection', () => {
@@ -72,6 +72,26 @@ describe('buildProjectRenderFactsProjection', () => {
     assert.deepEqual(projection.presentation.curtains.curtains.map((c) => c.id), ['curtain_living_south']);
     assert.equal(projection.presentation.curtains.effectiveByRoom.living, 'open');
     assert.deepEqual(facts.electrical[0], { id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8, temp: 4000, circuit: 'living_base', recessed: true });
+  });
+
+  it('preserves ordered track head purposes in projection resolvedHeads', () => {
+    const headPurposes = [
+      { purpose: 'coffee_table' as const, role: '茶几重点照明' },
+      { purpose: 'sofa' as const, role: '沙发重点照明' },
+      { purpose: 'living_seating' as const, role: '客厅座区整体照明' },
+      { purpose: 'living_south_or_corner' as const, role: '客厅南侧或角落补光' },
+    ];
+    const config = {
+      id: 'track_1', type: 'track_light' as const, length: 2.8,
+      heads: headPurposes.map((metadata, index) => ({
+        offset: { x: index - 1, z: 0 }, target: { x: index, y: -2.2, z: index / 2 }, ...metadata,
+      })),
+      target_y_mode: 'relative' as const, direction: { x: 0, y: -1, z: 0 }, beam: 0.7, energy: 9,
+      rotation: { x: 0, y: 0, z: 0 },
+    };
+    const projection = buildProjectRenderFactsProjection(facts, overrides('light_1', 'track_1'), scheme, overlay, presentation, { fixtures: [config] });
+    assert.deepEqual(projection.lighting?.fixtures[0].heads.map(({ purpose, role }) => ({ purpose, role })), headPurposes);
+    assert.deepEqual(projection.lighting?.fixtures[0].resolvedHeads?.map(({ purpose, role }) => ({ purpose, role })), headPurposes);
   });
 
   it('preserves concrete plumbing, ceiling, and three floor overrides in the render projection', () => {

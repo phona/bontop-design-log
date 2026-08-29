@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import {
   parseCeilingZones,
   parseCurtainPresentationState,
@@ -6,6 +6,7 @@ import {
   parsePlumbingPoints,
   parseProjectHvacFacts,
   parseRenderLightingOverrides,
+  parseLightingRenderConfig,
   validateProjectHvacFacts,
 } from '../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
@@ -27,6 +28,9 @@ export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFa
     JSON.parse(readFileSync(path('data/current-scheme.json'), 'utf8')) as CurrentScheme,
     parseOverlay(readFileSync(path('config/layout/overlay.yaml'), 'utf8')),
     parseCurtainPresentationState(JSON.parse(readFileSync(path('data/presentation-state.json'), 'utf8'))),
+    existsSync(path('config/render/lighting.yaml'))
+      ? parseLightingRenderConfig(readFileSync(path('config/render/lighting.yaml'), 'utf8'))
+      : { fixtures: [] },
   );
 }
 

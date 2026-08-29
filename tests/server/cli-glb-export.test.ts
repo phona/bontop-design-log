@@ -99,6 +99,73 @@ test('CLI builder creates core geometry with export metadata', () => {
   assert.equal(furniture.userData.type, 'furniture');
   assert.equal(furniture.userData.objectId, 'furniture:master_bedroom:bed_180:0');
   assert.deepEqual(furniture.position.toArray(), [3.2, 0, 7.875]);
+
+  for (const [room, index, x, z] of [['master_bath', 1, 0.24, 2.23], ['guest_bath', 2, 7.08, 3.00] ] as const) {
+    const towelSet = scene.getObjectByName(`furniture:${room}:towel_set:${index}`);
+    assert.ok(towelSet, `missing ${room} towel_set`);
+    assert.deepEqual(towelSet.position.toArray(), [x, 0, z]);
+  }
+});
+
+test('CLI builds shower plumbing fixtures from plumbing.yaml without replacing shower_set furnishings', () => {
+  const { exportRoot, report, index } = buildCliHouseScene();
+  const showers = ['shower_mbath', 'shower_gbath'].map((id) => {
+    const object = index.plumbing.get(`plumbing:${id}`);
+    assert.ok(object, `missing plumbing fixture ${id}`);
+    assert.equal(object.userData.type, 'plumbing');
+    assert.equal(object.userData.objectId, `plumbing:${id}`);
+    assert.equal(object.userData.fixtureType, 'shower');
+    assert.equal(object.parent, exportRoot);
+    return object;
+  });
+  assert.equal(report.plumbing, 18);
+  assert.equal(index.plumbing.size, 18);
+  assert.ok(Math.abs(showers[0].position.x - 0.5) < 1e-6);
+  assert.ok(Math.abs(showers[0].position.y) < 1e-6);
+  assert.ok(Math.abs(showers[0].position.z - 2.785) < 1e-6, `master shower z=${showers[0].position.z}`);
+  assert.ok(Math.abs(showers[1].position.x - 5.675) < 1e-6, `guest shower x=${showers[1].position.x}`);
+  assert.ok(Math.abs(showers[1].position.y) < 1e-6);
+  assert.ok(Math.abs(showers[1].position.z - 3) < 1e-6);
+  assert.ok(exportRoot.getObjectByName('furniture:master_bath:toilet:0'));
+  assert.equal(exportRoot.getObjectByName('furniture:master_bath:shower_set:1'), undefined, 'shower_set has no FixtureFactory recipe; shower geometry comes from plumbing points');
+});
+
+test('CLI facts projection exports lighting fixture geometry and no-facts CLI does not', async () => {
+  const withoutFacts = buildCliHouseScene();
+  assert.equal(withoutFacts.report.lightingFixtures, 0);
+  assert.equal(withoutFacts.exportRoot.getObjectByName('LIGHTING_FIXTURES'), undefined);
+  const withFacts = buildCliHouseScene(undefined, undefined, undefined, undefined, 'scripts/blender/project-render-facts.json');
+  const fixtures = [...withFacts.index.lightingFixtures.values()];
+  assert.equal(fixtures.length, 15);
+  assert.equal(withFacts.report.lightingFixtures, fixtures.length);
+  assert.deepEqual(new Set(fixtures.map((fixture) => fixture.userData.fixtureType)), new Set(['pendant', 'track_light', 'led_strip', 'dome', 'wall_lamp', 'downlight']));
+  for (const fixture of fixtures) {
+    assert.equal(fixture.userData.type, 'lighting_fixture');
+    assert.match(String(fixture.userData.objectId), /^electrical:/);
+    assert.ok(fixture.userData.roomId);
+  }
+  const track = fixtures.find((fixture) => fixture.userData.fixtureType === 'track_light')!;
+  assert.equal(track.children.filter((object) => String(object.userData.part).endsWith(':lens')).length, 4);
+  installNodeFileReader();
+  const data = await exportSceneToGlbData(withFacts.exportRoot);
+  const directory = mkdtempSync(join(tmpdir(), 'lighting-glb-'));
+  const glbPath = join(directory, 'lighting.glb');
+  writeFileSync(glbPath, data instanceof ArrayBuffer ? new Uint8Array(data) : data);
+  const summary = inspectGlb(glbPath);
+  assert.ok(summary.nodeIds.includes('electrical:light_dining_pendant'));
+  assert.ok(summary.nodeIds.some((id) => id.includes('electrical:living_track_main:part=track')));
+});
+
+test('CLI track fixture heads are configuration-driven', () => {
+  const facts = JSON.parse(readFileSync('scripts/blender/project-render-facts.json', 'utf8'));
+  facts.lightingFixtures = facts.lightingFixtures.map((fixture: { type: string; heads?: number }) => fixture.type === 'track_light' ? { ...fixture, heads: 3 } : fixture);
+  const directory = mkdtempSync(join(tmpdir(), 'lighting-facts-'));
+  const factsPath = join(directory, 'facts.json');
+  writeFileSync(factsPath, JSON.stringify(facts));
+  const result = buildCliHouseScene(undefined, undefined, undefined, undefined, factsPath);
+  const track = [...result.index.lightingFixtures.values()].find((fixture) => fixture.userData.fixtureType === 'track_light');
+  assert.ok(track);
+  assert.equal(track.children.filter((object) => String(object.userData.part).endsWith(':lens')).length, 3);
 });
 
 test('CLI with real render facts exports every renderable A2 HVAC anchor and terminal exactly once', () => {
@@ -168,6 +235,20 @@ test('CLI overlay and furniture world bboxes preserve the house z contract', () 
   assertZRange('entry_foyer_floor', 2.9, 4.3);
   assertZRange('entry_garden_floor', 0, 2.9);
 
+  for (const id of ['entry_garden_north_railing', 'vrv_nw_railing']) {
+    const railing = exportRoot.getObjectByName(id);
+    assert.ok(railing, `missing railing ${id}`);
+    assert.equal(railing.userData.type, 'railing_run');
+    assert.equal(railing.userData.geometrySource, 'shared_railing');
+    const parts: THREE.Object3D[] = [];
+    railing.traverse((object) => { if (object.userData.part) parts.push(object); });
+    assert.ok(parts.some((part) => part.userData.part === 'handrail'));
+    assert.ok(parts.filter((part) => String(part.userData.part).startsWith('bar:')).length >= 2);
+    const railingBox = new THREE.Box3().setFromObject(railing);
+    assert.ok(Math.abs(railingBox.max.y - 1) < 0.02, `${id} max.y=${railingBox.max.y}`);
+    assert.ok(railingBox.max.x > railingBox.min.x || railingBox.max.z > railingBox.min.z);
+  }
+
   const bayBbox = (objectId: string): THREE.Box3 => {
     const box = bbox(objectId);
     assert.ok(Math.abs((box.max.y - box.min.y) - (objectId === 'kitchen_north_bay' ? 0.71 : 0.76)) < 1e-5);
@@ -184,6 +265,17 @@ test('CLI overlay and furniture world bboxes preserve the house z contract', () 
   // 厨房北飘窗外缘平齐北立面 z=0，占室内 z 0..1.1
   assert.ok(Math.abs(kitchenBay.min.z) < 1e-5);
   assert.ok(Math.abs(kitchenBay.max.z - 1.1) < 1e-5);
+
+  const guestScreen = bbox('shower_screen_gbath:0');
+  assert.ok(Math.abs(guestScreen.min.x - 6.2875) < 1e-5, `guest screen min.x=${guestScreen.min.x}`);
+  assert.ok(Math.abs(guestScreen.max.x - 6.3125) < 1e-5, `guest screen max.x=${guestScreen.max.x}`);
+  assert.ok(Math.abs(guestScreen.min.z - 2.6) < 1e-5, `guest screen min.z=${guestScreen.min.z}`);
+  assert.ok(Math.abs(guestScreen.max.z - 3.4) < 1e-5, `guest screen max.z=${guestScreen.max.z}`);
+  assert.ok(Math.abs(guestScreen.max.y - guestScreen.min.y - 1.95) < 1e-5);
+  const guestScreenObject = exportRoot.getObjectByName('shower_screen_gbath:0');
+  assert.equal(guestScreenObject?.userData.type, 'shower_screen');
+  assert.equal(guestScreenObject?.userData.objectId, 'shower_screen_gbath:0');
+  assert.equal(guestScreenObject?.parent, exportRoot);
 
   const furniture = exportRoot.getObjectByName('furniture:master_bedroom:wardrobe_240_split:1');
   assert.ok(furniture);
@@ -212,6 +304,30 @@ test('shared export data produces an inspectable GLB', async () => {
   assert.ok(summary.prefixCounts.floor > 0);
   assert.ok(summary.prefixCounts.ceiling > 0);
   assert.ok(summary.prefixCounts.furniture > 0);
+  assert.ok(summary.prefixCounts.plumbing > 0);
+  for (const nodeId of [
+    'plumbing:shower_mbath',
+    'plumbing:shower_gbath',
+    'plumbing:faucet_mbath_vanity',
+    'plumbing:faucet_gbath_vanity',
+    'plumbing:drain_mbath_shower',
+    'plumbing:drain_mbath_floor',
+    'plumbing:drain_gbath_shower',
+    'plumbing:drain_gbath_floor',
+    'furniture:master_bath:toilet:0',
+    'furniture:guest_bath:toilet:0',
+    'furniture:master_bedroom:vanity_dresser:2',
+    'furniture:master_bath:towel_set:1',
+    'furniture:guest_bath:vanity:1',
+    'furniture:guest_bath:towel_set:2',
+    'shower_screen_mbath:0',
+    'shower_screen_gbath:0',
+    'furniture:kitchen:kitchen_cabinet_run:0',
+    'furniture:kitchen:kitchen_countertop_bridge:1',
+    'furniture:kitchen:kitchen_cabinet_run:2',
+    'furniture:kitchen:kitchen_cabinet_run:4',
+  ]) assert.ok(summary.nodeIds.includes(nodeId), `missing GLB node ${nodeId}`);
+  assert.equal(summary.duplicateNodeIds.length, 0, 'bath GLB must not duplicate exported object ids');
   assert.ok(summary.worldBbox);
 });
 

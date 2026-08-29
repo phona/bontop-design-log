@@ -5,8 +5,10 @@ import type {
   ProjectRenderFacts,
   ProjectRenderFactsProjection,
   RenderLightingOverride,
+  LightingRenderConfig,
 } from './types.js';
 import { buildCurtainRenderProjection, type CurtainOverlayLike } from './curtain-projection.js';
+import { getTrackLightConfig, resolveTrackLightHeads } from './render/TrackLightLayout.js';
 
 const LIGHT_TYPES = new Set<ElectricalPoint['type']>([
   'ceiling_light',
@@ -28,6 +30,7 @@ export function buildProjectRenderFactsProjection(
   scheme: CurrentScheme,
   overlay: CurtainOverlayLike,
   presentation: CurtainPresentationState,
+  lighting: LightingRenderConfig = { fixtures: [] },
 ): ProjectRenderFactsProjection {
   const fixtures = facts.electrical.filter((point) => LIGHT_TYPES.has(point.type));
   const fixtureIds = new Set(fixtures.map((fixture) => fixture.id));
@@ -78,8 +81,26 @@ export function buildProjectRenderFactsProjection(
   const hvac = selectedHvacPlan
     ? { status: 'implemented' as const, planId: 'A2' as const, diagram: selectedHvacPlan.diagram }
     : { status: 'unimplemented' as const, planId: selectedHvacPlanId };
+  const configuredIds = new Set(lighting.fixtures.map((fixture) => fixture.id));
+  for (const fixture of lighting.fixtures) {
+    if (!fixtureIds.has(fixture.id)) throw new Error(`Lighting config ${fixture.id} references unknown electrical id`);
+    if (fixture.type !== facts.electrical.find((point) => point.id === fixture.id)?.type) throw new Error(`Lighting config ${fixture.id} type does not match electrical point`);
+  }
+  if (lighting.fixtures.length > 0) {
+    for (const fixture of fixtures.filter((point) => point.type === 'track_light')) {
+      if (!configuredIds.has(fixture.id)) throw new Error(`Missing detailed lighting config for track fixture ${fixture.id}`);
+    }
+  }
+  const resolvedLighting = lighting.fixtures.map((config) => {
+    if (config.type !== 'track_light') return config;
+    const fixture = lightingFixtures.find((item) => item.id === config.id);
+    if (!fixture) return config;
+    return { ...config, resolvedHeads: resolveTrackLightHeads(fixture.position, getTrackLightConfig({ fixtures: [config] }, config.id)) };
+  });
+  const projectionLighting = resolvedLighting.length > 0 ? { fixtures: resolvedLighting } : undefined;
   return {
     version: '2.0',
+    ...(projectionLighting ? { lighting: projectionLighting } : {}),
     lightingFixtures,
     plumbing: facts.plumbing,
     ceiling: facts.ceiling,

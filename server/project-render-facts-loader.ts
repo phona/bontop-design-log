@@ -6,6 +6,7 @@ import {
   parsePlumbingPoints,
   parseProjectHvacFacts,
   parseRenderLightingOverrides,
+  parseLightingRenderConfig,
   validateProjectHvacFacts,
 } from '../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
@@ -18,6 +19,7 @@ export interface ProjectRenderFactsPaths {
   ceiling: string;
   hvac: string;
   overrides: string;
+  lighting?: string;
 }
 
 const DEFAULT_PATHS: ProjectRenderFactsPaths = {
@@ -26,27 +28,33 @@ const DEFAULT_PATHS: ProjectRenderFactsPaths = {
   ceiling: 'config/ceiling.yaml',
   hvac: 'config/hvac.yaml',
   overrides: 'config/render/overrides.yaml',
+  lighting: 'config/render/lighting.yaml',
 };
 
 export class ProjectRenderFactsLoader implements StatusLoader {
   private facts: ProjectRenderFacts | undefined;
   private overrides: RenderLightingOverride[] | undefined;
-  private statuses: Record<keyof ProjectRenderFactsPaths, ConfigStatus>;
+  private lighting: import('../shared/types.js').LightingRenderConfig | undefined;
+  private readonly paths: ProjectRenderFactsPaths;
+  private statuses: Partial<Record<keyof ProjectRenderFactsPaths, ConfigStatus>>;
   private watchers: FSWatcher[] = [];
 
-  constructor(private readonly paths: ProjectRenderFactsPaths = DEFAULT_PATHS) {
+  constructor(paths: ProjectRenderFactsPaths = DEFAULT_PATHS) {
+    this.paths = paths === DEFAULT_PATHS ? DEFAULT_PATHS : paths;
     this.statuses = {
-      electrical: { path: paths.electrical, status: 'failed' },
-      plumbing: { path: paths.plumbing, status: 'failed' },
-      ceiling: { path: paths.ceiling, status: 'failed' },
-      hvac: { path: paths.hvac, status: 'failed' },
-      overrides: { path: paths.overrides, status: 'failed' },
+      electrical: { path: this.paths.electrical, status: 'failed' },
+      plumbing: { path: this.paths.plumbing, status: 'failed' },
+      ceiling: { path: this.paths.ceiling, status: 'failed' },
+      hvac: { path: this.paths.hvac, status: 'failed' },
+      overrides: { path: this.paths.overrides, status: 'failed' },
+      ...(this.paths.lighting ? { lighting: { path: this.paths.lighting, status: 'failed' } } : {}),
     };
   }
 
   load(): void {
     const results: Partial<ProjectRenderFacts> = {};
     let loadedOverrides: RenderLightingOverride[] | undefined;
+    let loadedLighting: import('../shared/types.js').LightingRenderConfig | undefined;
     let valid = true;
     const readers = {
       electrical: parseElectricalPoints,
@@ -54,23 +62,27 @@ export class ProjectRenderFactsLoader implements StatusLoader {
       ceiling: parseCeilingZones,
       hvac: parseProjectHvacFacts,
       overrides: parseRenderLightingOverrides,
+      lighting: parseLightingRenderConfig,
     };
 
     for (const key of Object.keys(this.paths) as Array<keyof ProjectRenderFactsPaths>) {
+      const inputPath = this.paths[key];
+      if (!inputPath) continue;
       try {
-        const result = readers[key](readFileSync(this.paths[key], 'utf8'));
+        const result = readers[key](readFileSync(inputPath, 'utf8'));
         if (key === 'overrides') loadedOverrides = result as RenderLightingOverride[];
+        else if (key === 'lighting') loadedLighting = result as import('../shared/types.js').LightingRenderConfig;
         else results[key] = result as never;
-        this.statuses[key] = { path: this.paths[key], status: 'ok' };
+        this.statuses[key] = { path: inputPath, status: 'ok' };
       } catch (err) {
         valid = false;
         const error = err instanceof Error ? err.message : String(err);
-        console.error(`[project-render-facts-loader] Failed to load ${this.paths[key]}:`, err);
-        this.statuses[key] = { path: this.paths[key], status: 'failed', error };
+        console.error(`[project-render-facts-loader] Failed to load ${inputPath}:`, err);
+        this.statuses[key] = { path: inputPath, status: 'failed', error };
       }
     }
 
-    if (valid && loadedOverrides) {
+    if (valid && loadedOverrides && (loadedLighting || !this.paths.lighting)) {
       const loadedFacts = results as ProjectRenderFacts;
       try {
         validateProjectHvacFacts(loadedFacts.hvac, loadedFacts);
@@ -80,9 +92,11 @@ export class ProjectRenderFactsLoader implements StatusLoader {
           { updatedAt: '', selections: {} } as CurrentScheme,
           { elements: [] },
           { default: 'open', roomOverrides: {}, updatedAt: '' },
+          loadedLighting,
         );
         this.facts = loadedFacts;
         this.overrides = loadedOverrides;
+        this.lighting = loadedLighting;
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         console.error('[project-render-facts-loader] Failed to validate render overrides:', err);
@@ -115,6 +129,10 @@ export class ProjectRenderFactsLoader implements StatusLoader {
 
   getOverrides(): RenderLightingOverride[] | undefined {
     return this.overrides;
+  }
+
+  getLighting(): import('../shared/types.js').LightingRenderConfig | undefined {
+    return this.lighting;
   }
 
   getStatuses(): ConfigStatus[] {

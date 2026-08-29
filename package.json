@@ -16,14 +16,16 @@
     "verify:collision": "tsx scripts/verify-collision-coverage.ts",
     "verify:consistency": "tsx scripts/verify-data-consistency.ts",
     "verify:project-render-facts": "tsx scripts/verify-project-render-facts.ts",
+    "verify:lighting-config": "tsx scripts/verify-lighting-config.ts",
     "generate:project-render-facts": "tsx scripts/project-render-facts-projection.ts",
     "generate:render-config": "npm run generate:project-render-facts && tsx scripts/blender/gen-render-config.ts",
-    "verify:all": "tsx scripts/verify-topology.ts && tsx scripts/verify-layout.ts && tsx scripts/verify-furniture-placement.ts && tsx scripts/verify-rules.ts && tsx scripts/verify-collision-coverage.ts && tsx scripts/verify-data-consistency.ts && tsx scripts/verify-project-render-facts.ts",
+    "verify:all": "tsx scripts/verify-topology.ts && tsx scripts/verify-layout.ts && tsx scripts/verify-furniture-placement.ts && tsx scripts/verify-rules.ts && tsx scripts/verify-collision-coverage.ts && tsx scripts/verify-data-consistency.ts && tsx scripts/verify-project-render-facts.ts && tsx scripts/verify-lighting-config.ts",
     "build:render-bundle": "tsx scripts/build-render-bundle.ts",
     "verify:render-bundle": "tsx scripts/verify-render-bundle.ts",
     "export:dressing-map": "tsx scripts/generate-dressing-map.ts",
     "export:glb": "tsx scripts/export-glb.ts",
-    "compare:glb": "tsx scripts/compare-glb.ts"
+    "compare:glb": "tsx scripts/compare-glb.ts",
+    "test:blender-wrapper": "bash scripts/test-run-blender.sh"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

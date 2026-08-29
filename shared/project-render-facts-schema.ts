@@ -9,6 +9,7 @@ import {
   type ProjectRenderFacts,
   type ProjectRenderFactsProjection,
   type RenderLightingOverride,
+  type LightingRenderConfig,
 } from './types.js';
 
 const finiteNumber = z.number().refine(Number.isFinite, 'must be finite');
@@ -104,6 +105,35 @@ export const CeilingZonesSchema = z.array(CeilingZoneSchema);
 export const ProjectRenderFactsSchema = z.object({ electrical: ElectricalPointsSchema, plumbing: PlumbingPointsSchema, ceiling: CeilingZonesSchema, hvac: ProjectHvacFactsSchema }).strict();
 export const RenderLightingOverrideSchema = z.object({ id: z.string(), anchorY: finiteNumber, offsetX: finiteNumber.optional(), offsetZ: finiteNumber.optional(), reason: nonEmpty, applies_to: z.tuple([z.literal('web'), z.literal('blender')]) }).strict();
 export const RenderLightingOverridesSchema = z.array(RenderLightingOverrideSchema);
+const TrackLightHeadPurposeSchema = z.enum(['coffee_table', 'sofa', 'living_seating', 'living_south_or_corner']);
+const TrackLightHeadSchema = z.object({
+  offset: z.object({ x: finiteNumber, z: finiteNumber }).strict(), target: Vec3Schema,
+  purpose: TrackLightHeadPurposeSchema.optional(), role: nonEmpty.optional(),
+}).strict();
+const TrackLightResolvedHeadSchema = z.object({
+  position: Vec3Schema, target: Vec3Schema, direction: Vec3Schema,
+  mountPosition: Vec3Schema, headPosition: Vec3Schema, lensPosition: Vec3Schema,
+  purpose: TrackLightHeadPurposeSchema.optional(), role: nonEmpty.optional(),
+}).strict();
+export const TrackLightConfigSchema = z.object({
+  id: nonEmpty, type: z.literal('track_light'), length: finiteNumber.positive(),
+  heads: z.array(TrackLightHeadSchema).min(1), target_y_mode: z.enum(['relative', 'absolute']).optional(), direction: Vec3Schema,
+  beam: finiteNumber.positive(), energy: finiteNumber.nonnegative(), rotation: Vec3Schema,
+  resolvedHeads: z.array(TrackLightResolvedHeadSchema).min(1).optional(),
+}).strict();
+export const LightingRenderConfigSchema = z.object({ fixtures: z.array(TrackLightConfigSchema) }).strict();
+export function parseLightingRenderConfig(raw: string): LightingRenderConfig {
+  const config = LightingRenderConfigSchema.parse(parseYaml(raw));
+  const ids = new Set<string>();
+  for (const fixture of config.fixtures) {
+    if (ids.has(fixture.id)) throw new Error(`Duplicate lighting config id: ${fixture.id}`);
+    ids.add(fixture.id);
+    if (fixture.heads.length !== new Set(fixture.heads.map((head) => JSON.stringify(head.offset))).size) {
+      throw new Error(`Duplicate track head offset for lighting config ${fixture.id}`);
+    }
+  }
+  return config;
+}
 export const CurtainStateSchema = z.enum(['open', 'privacy', 'blackout']);
 export const CurtainPresentationStateSchema = z.object({
   default: CurtainStateSchema,
@@ -131,7 +161,7 @@ const HvacProjectionSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('unimplemented'), planId: z.string().nullable() }).strict(),
 ]);
 export const ProjectRenderFactsProjectionSchema = z.object({
-  version: z.literal('2.0'), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean(), circuit: z.string().optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional() }).strict()),
+  version: z.literal('2.0'), lighting: LightingRenderConfigSchema.optional(), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean(), circuit: z.string().optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional() }).strict()),
   plumbing: z.array(PlumbingPointProjectionSchema), ceiling: CeilingZonesSchema, hvac: HvacProjectionSchema,
   materials: z.object({ floor: z.object({ default: z.string().nullable(), roomOverrides: z.record(z.string(), z.string()) }).strict() }).strict(),
   presentation: z.object({ curtains: CurtainRenderProjectionSchema }).strict(),

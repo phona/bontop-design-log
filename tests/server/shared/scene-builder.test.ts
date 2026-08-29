@@ -2,12 +2,80 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
+import { buildFixture } from '../../../shared/render/FixtureFactory.js';
 import { buildScene } from '../../../shared/render/SceneBuilder.js';
-import type { SceneElement } from '../../../shared/types.js';
+import type { LightingRenderConfig, RenderLightingFixture, SceneElement } from '../../../shared/types.js';
 import { readFileSync as readTextFile } from 'node:fs';
 import { load } from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 import { parseOverlay, mergeSceneElements } from '../../../server/overlay-merge.js';
+
+test('FixtureFactory gives tv_65 frame and screen stable part metadata', () => {
+  const fixture = buildFixture('tv_65');
+  assert.ok(fixture);
+  const parts: THREE.Object3D[] = [];
+  fixture.traverse((object) => { if (object.userData.part) parts.push(object); });
+  assert.deepEqual(parts.map((object) => ({
+    part: object.userData.part,
+    materialRole: object.userData.materialRole,
+  })), [
+    { part: 'frame', materialRole: 'tv_frame' },
+    { part: 'screen', materialRole: 'tv_screen' },
+  ]);
+});
+
+test('shared SceneBuilder exports configured lighting fixture geometry without lights', () => {
+  const types = ['pendant', 'track_light', 'dome', 'ceiling_light', 'downlight', 'wall_lamp', 'led_strip'] as const;
+  const fixtures: RenderLightingFixture[] = types.map((type, index) => ({
+    id: `light-${type}-${index}`, room: 'room', type, position: { x: index, y: type === 'wall_lamp' ? 1.6 : 2.8, z: 0 }, temperatureK: 3000, enabled: true,
+    ...(type === 'track_light' ? { heads: 3 } : {}), ...(type === 'downlight' ? { recessed: true } : {}),
+  }));
+  const result = buildScene({ rooms: [], walls: [], elements: [], lightingFixtures: fixtures });
+  assert.equal(result.report.lightingFixtures, fixtures.length);
+  assert.equal(result.index.lightingFixtures.size, fixtures.length);
+  assert.equal(result.exportRoot.getObjectByName('LIGHTING_FIXTURES')?.parent, result.exportRoot);
+  for (const fixture of fixtures) {
+    const object = result.index.lightingFixtures.get(`electrical:${fixture.id}`);
+    assert.ok(object);
+    assert.equal(object.userData.type, 'lighting_fixture');
+    assert.equal(object.userData.fixtureType, fixture.type);
+    assert.equal(object.userData.roomId, fixture.room);
+    assert.equal(object.parent, result.exportRoot.getObjectByName('LIGHTING_FIXTURES'));
+  }
+  const track = result.index.lightingFixtures.get('electrical:light-track_light-1')!;
+  const heads = track.children.filter((object) => String(object.userData.part).startsWith('head:') && String(object.userData.part).endsWith(':lens'));
+  assert.equal(heads.length, 3);
+  let lights = 0;
+  result.exportRoot.traverse((object) => { if (object instanceof THREE.Light) lights++; });
+  assert.equal(lights, 0);
+});
+
+test('shared track fixture applies local z offsets and rail rotation to geometry', () => {
+  const lighting: LightingRenderConfig = { fixtures: [{
+    id: 'track-geometry-test', type: 'track_light', length: 2, heads: [{ offset: { x: 1, z: 0.25 }, target: { x: 0, y: -2.2, z: 1 }, purpose: 'sofa', role: '沙发重点照明' }],
+    direction: { x: 0, y: -1, z: 0 }, beam: 0.7, energy: 9, rotation: { x: 0, y: Math.PI / 2, z: 0 },
+  }] };
+  const result = buildScene({
+    rooms: [], walls: [], elements: [], options: { lighting },
+    lightingFixtures: [{ id: 'track-geometry-test', room: 'room', type: 'track_light', position: { x: 10, y: 2.8, z: 20 }, temperatureK: 3000, enabled: true, heads: 1 }],
+  });
+  const track = result.index.lightingFixtures.get('electrical:track-geometry-test')!;
+  assert.deepEqual(track.userData.headPurposes, [{ purpose: 'sofa', role: '沙发重点照明' }]);
+  const lens = track.children.find((object) => object.userData.part === 'head:1:lens')!;
+  assert.equal(lens.userData.purpose, 'sofa');
+  assert.equal(lens.userData.role, '沙发重点照明');
+  assert.ok(Math.abs(lens.position.x - 10.3085) < 0.01);
+  assert.ok(Math.abs(lens.position.z - 19.0780) < 0.01);
+  const head = track.children.find((object) => object.userData.part === 'head:1')!;
+  track.updateMatrixWorld(true);
+  const expected = new THREE.Vector3(0.75, -2.12, 1).normalize();
+  const headAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(head.getWorldQuaternion(new THREE.Quaternion()));
+  const lensAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(lens.getWorldQuaternion(new THREE.Quaternion()));
+  assert.ok(headAxis.dot(expected) > 1 - 1e-6);
+  assert.ok(lensAxis.dot(expected) > 1 - 1e-6);
+  const rail = track.children.find((object) => object.userData.part === 'track')!;
+  assert.equal(rail.rotation.y, Math.PI / 2);
+});
 
 test('shared SceneBuilder uses meter UVs and stable floor metadata for rooms and floor regions', () => {
   const rooms = [
@@ -145,6 +213,58 @@ test('shared SceneBuilder builds rooms, split walls, overlays, ceiling zones, an
   result.exportRoot.traverse((object) => { if (object.userData.type === 'ceiling_zone_solid') ceilingSolids.push(object); });
   assert.equal(ceilingSolids.length, 5);
   assert.equal(ceilingSolids[0].userData.roomId, 'room');
+});
+
+test('shared SceneBuilder places towel_set with stable metadata and local bounds', () => {
+  const result = buildScene({
+    rooms: [],
+    walls: [],
+    elements: [],
+    furnishings: { master_bath: [{ type: 'towel_set', x: 0.24, z: 2.23, rotation: 0 }] },
+  });
+  const towelSet = result.exportRoot.getObjectByName('furniture:master_bath:towel_set:0');
+  assert.ok(towelSet);
+  assert.deepEqual(towelSet.position.toArray(), [0.24, 0, 2.23]);
+  const parts: THREE.Object3D[] = [];
+  towelSet.traverse((object) => { if (object.userData.part) parts.push(object); });
+  assert.deepEqual(parts.map((object) => ({ part: object.userData.part, materialRole: object.userData.materialRole })), [
+    { part: 'towel-bar', materialRole: 'hardware' },
+    { part: 'towel', materialRole: 'fabric' },
+  ]);
+  towelSet.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(towelSet);
+  assert.ok(Math.abs(box.min.x - 0.18) < 1e-6);
+  assert.ok(Math.abs(box.max.x - 0.255) < 1e-6);
+  assert.ok(Math.abs(box.min.z - 2.005) < 1e-6);
+  assert.ok(Math.abs(box.max.z - 2.455) < 1e-6);
+});
+
+test('shared SceneBuilder deduplicates placed toilet and washer geometry against plumbing points', () => {
+  const result = buildScene({
+    rooms: [],
+    walls: [],
+    elements: [],
+    furnishings: {
+      master_bath: [{ type: 'toilet', x: 2.3, z: 1.5 }],
+      balcony: [{ type: 'washer', x: 5.95, z: 1.5 }],
+    },
+    plumbing: [
+      { id: 'toilet-point', room: 'master_bath', type: 'toilet', x: 2.6, z: 1.5 },
+      { id: 'washer-point', room: 'balcony', type: 'washer', x: 5.6, z: 1.5, height: 0.8 },
+      { id: 'faucet-point', room: 'master_bath', type: 'faucet', x: 2.6, z: 1.5, height: 0.8 },
+    ],
+  });
+  assert.equal(result.report.furniture, 2);
+  assert.equal(result.report.plumbing, 1);
+  assert.deepEqual(result.report.skippedPlumbing, [
+    'toilet-point:furnishing:master_bath:toilet',
+    'washer-point:furnishing:balcony:washer',
+  ]);
+  assert.equal(result.index.plumbing.has('plumbing:toilet-point'), false);
+  assert.equal(result.index.plumbing.has('plumbing:washer-point'), false);
+  assert.equal(result.index.plumbing.has('plumbing:faucet-point'), true);
+  assert.ok(result.exportRoot.getObjectByName('furniture:master_bath:toilet:0'));
+  assert.ok(result.exportRoot.getObjectByName('furniture:balcony:washer:0'));
 });
 
 test('shared SceneBuilder preserves legacy opening geometry and wall export metadata', () => {
@@ -304,7 +424,7 @@ test('shared SceneBuilder restores HEAD default material colors and shaft semant
   assert.equal(((result.exportRoot.getObjectByName('wall:elev') as THREE.Mesh).material as THREE.MeshStandardMaterial).color.getHexString(), '555555');
 });
 
-test('floor regions are coplanar with room floors and rounded railings use a continuous ribbon', () => {
+test('floor regions are coplanar with room floors and railings use shared transparent parts', () => {
   const result = buildScene({
     rooms: [{ id: 'room', name: 'Room', x: 0, z: 0, width: 4, depth: 4, height: 2.8, type: 'public', boundary_count: 4 }],
     walls: [],
@@ -338,14 +458,23 @@ test('floor regions are coplanar with room floors and rounded railings use a con
   assert.equal(regionMaterial.polygonOffsetFactor, -1);
   assert.equal(regionMaterial.polygonOffsetUnits, -1);
 
-  const railing = result.exportRoot.getObjectByName('vrv_nw_railing') as THREE.Mesh;
-  assert.ok(railing.geometry instanceof THREE.ExtrudeGeometry);
+  const railing = result.exportRoot.getObjectByName('vrv_nw_railing') as THREE.Group;
+  assert.equal(railing.userData.type, 'railing_run');
+  assert.equal(railing.userData.objectId, 'vrv_nw_railing');
+  assert.equal(railing.userData.geometrySource, 'shared_railing');
+  const parts: THREE.Object3D[] = [];
+  railing.traverse((object) => { if (object.userData.part) parts.push(object); });
+  assert.ok(parts.some((part) => part.userData.part === 'handrail'));
+  assert.ok(parts.filter((part) => String(part.userData.part).startsWith('bar:')).length >= 2);
+  for (const part of parts) {
+    assert.equal(part.userData.materialRole, 'railing');
+    assert.equal(part.userData.type, 'railing_run');
+  }
   railing.updateMatrixWorld(true);
   const railingBox = new THREE.Box3().setFromObject(railing);
-  assert.ok(Math.abs(railingBox.max.y - 1) < 1e-9);
-  const positions = railing.geometry.getAttribute('position');
-  assert.ok(positions.count > 100, 'rounded railing should be sampled as a continuous ribbon');
+  assert.ok(Math.abs(railingBox.max.y - 1) < 0.02);
   assert.ok(railingBox.min.x > -0.04 && railingBox.max.x < 2.04, `unexpected railing x bounds: ${railingBox.min.x}..${railingBox.max.x}`);
+  assert.ok(parts.filter((part) => (part as THREE.Mesh).geometry).every((part) => (part as THREE.Mesh).geometry!.getAttribute('position')!.count > 0));
 });
 
 test('real overlay/model geometry keeps VRV arc and west platform rounded and view-only', () => {
@@ -357,14 +486,16 @@ test('real overlay/model geometry keeps VRV arc and west platform rounded and vi
   assert.equal(railing?.type, 'railing_run');
   assert.deepEqual(railing?.points.find((point) => point.radius === 1), { x: 5.6, z: 0, radius: 1, cx: 6.6, cz: 1 });
   const result = buildScene({ rooms: layout.rooms, platform: layout.platform, walls: layout.walls, elements });
-  const railingMesh = result.exportRoot.getObjectByName('vrv_nw_railing') as THREE.Mesh;
-  assert.ok(railingMesh.geometry instanceof THREE.ExtrudeGeometry);
+  const railingMesh = result.exportRoot.getObjectByName('vrv_nw_railing') as THREE.Group;
+  assert.equal(railingMesh.userData.geometryMode, 'arc');
+  const railingParts: THREE.Object3D[] = [];
+  railingMesh.traverse((object) => { if (object.userData.part) railingParts.push(object); });
+  assert.ok(railingParts.some((part) => part.userData.part === 'handrail'));
+  assert.ok(railingParts.filter((part) => String(part.userData.part).startsWith('bar:')).length >= 2);
   railingMesh.updateMatrixWorld(true);
   const railingBox = new THREE.Box3().setFromObject(railingMesh);
   assert.ok(railingBox.min.x >= 5.56 && railingBox.max.x <= 7.21);
   assert.ok(railingBox.min.z >= -0.04 && railingBox.max.z <= 1.11);
-  const railingPositions = railingMesh.geometry.getAttribute('position');
-  assert.ok(railingPositions.count > 100);
   const platformMesh = result.viewOnlyRoot.getObjectByName('platform_boundary') as THREE.Mesh;
   assert.ok(platformMesh);
   assert.equal(result.exportRoot.getObjectByName('platform_boundary'), undefined);
@@ -373,6 +504,76 @@ test('real overlay/model geometry keeps VRV arc and west platform rounded and vi
   assert.ok(platformBox.min.x >= 5.59 && platformBox.max.x <= 7.21);
   assert.ok(platformBox.min.z >= -0.01 && platformBox.max.z <= 1.01);
   assert.ok(platformMesh.geometry instanceof THREE.ExtrudeGeometry);
+});
+
+test('kitchen countertop cutouts preserve the outer slab and rotate with the furnishing run', () => {
+  const cutout = { kind: 'sink', id: 'sink-test', offset: [-0.4, 0] as [number, number], size: [0.7, 0.4] as [number, number] };
+  const result = buildScene({
+    rooms: [],
+    walls: [],
+    elements: [],
+    furnishings: {
+      kitchen: [
+        { type: 'kitchen_cabinet_run', x: 0, z: 0, rotation: 0, length: 1.68, depth: 0.6, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [cutout] },
+        { type: 'kitchen_cabinet_run', x: 10.48, z: 1, rotation: 90, length: 1.4, depth: 0.6, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [{ kind: 'cooktop', id: 'cooktop-test', offset: [-0.18, 0.02] as [number, number], size: [0.45, 0.75] as [number, number] }] },
+      ],
+    },
+  });
+  result.exportRoot.updateMatrixWorld(true);
+  const countertopPieces = result.index.countertopMeshes;
+  assert.ok(countertopPieces.length > 2, 'cutouts should split both countertop slabs');
+  const firstRunPieces = countertopPieces.filter((mesh) => mesh.parent?.userData.objectId === 'furniture:kitchen:kitchen_cabinet_run:0');
+  const firstLocalBoxes = firstRunPieces.map((mesh) => new THREE.Box3().setFromObject(mesh));
+  assert.ok(firstLocalBoxes.every((box) => box.min.x >= -0.86 - 1e-6 && box.max.x <= 0.86 + 1e-6 && box.min.z >= -0.32 - 1e-6 && box.max.z <= 0.32 + 1e-6));
+  assert.ok(firstLocalBoxes.every((box) => Math.abs(box.max.y - box.min.y - 0.03) < 1e-9));
+  assert.ok(Math.abs(firstLocalBoxes.reduce((area, box) => area + (box.max.x - box.min.x) * (box.max.z - box.min.z), 0) - (1.72 * 0.64 - 0.7 * 0.4)) < 1e-6);
+  for (const box of firstLocalBoxes) {
+    const overlapWidth = Math.min(box.max.x, -0.05) - Math.max(box.min.x, -0.75);
+    const overlapDepth = Math.min(box.max.z, 0.2) - Math.max(box.min.z, -0.2);
+    assert.ok(overlapWidth <= 1e-6 || overlapDepth <= 1e-6, 'countertop piece overlaps the declared cutout');
+  }
+
+  const rotatedPieces = countertopPieces.filter((mesh) => mesh.parent?.position.x === 10.48);
+  rotatedPieces.forEach((mesh) => mesh.updateMatrixWorld(true));
+  const rotatedBox = rotatedPieces.reduce((box, mesh) => box.union(new THREE.Box3().setFromObject(mesh)), new THREE.Box3());
+  assert.ok(Math.abs(rotatedBox.min.x - (10.48 - 0.32)) < 1e-6 && Math.abs(rotatedBox.max.x - (10.48 + 0.32)) < 1e-6);
+  assert.ok(Math.abs(rotatedBox.min.z - (1 - 0.72)) < 1e-6 && Math.abs(rotatedBox.max.z - (1 + 0.72)) < 1e-6);
+  assert.ok(rotatedPieces.every((mesh) => mesh.userData.surface === 'countertop' && mesh.userData.materialRole === 'countertop' && typeof mesh.userData.part === 'string'));
+});
+
+test('kitchen countertop bridge is countertop-only and closes the dishwasher gap', () => {
+  const result = buildScene({
+    rooms: [],
+    walls: [],
+    elements: [],
+    furnishings: {
+      kitchen: [
+        { type: 'kitchen_cabinet_run', x: 7.86, z: 0.32, rotation: 0, length: 1.28, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 },
+        { type: 'kitchen_countertop_bridge', x: 8.80, z: 0.32, rotation: 0, length: 0.60, depth: 0.60, countertopThickness: 0.03 },
+        { type: 'kitchen_cabinet_run', x: 9.94, z: 0.32, rotation: 0, length: 1.68, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 },
+      ],
+    },
+  });
+  result.exportRoot.updateMatrixWorld(true);
+  const bridge = result.exportRoot.getObjectByName('furniture:kitchen:kitchen_countertop_bridge:1');
+  assert.ok(bridge);
+  assert.equal(bridge.parent, result.exportRoot);
+  const bridgeMeshes: THREE.Mesh[] = [];
+  bridge.traverse((object) => { if (object instanceof THREE.Mesh) bridgeMeshes.push(object); });
+  assert.equal(bridgeMeshes.length, 1, 'bridge must contain only one countertop mesh');
+  const mesh = bridgeMeshes[0];
+  assert.equal(mesh.userData.part, 'countertop-bridge');
+  assert.equal(mesh.userData.materialRole, 'countertop');
+  assert.equal(mesh.userData.surface, 'countertop');
+  const box = new THREE.Box3().setFromObject(bridge);
+  assert.ok(Math.abs(box.min.x - 8.50) < 1e-6 && Math.abs(box.max.x - 9.10) < 1e-6);
+  assert.ok(Math.abs(box.min.z - 0.02) < 1e-6 && Math.abs(box.max.z - 0.62) < 1e-6);
+  assert.ok(Math.abs(box.min.y - 0.86) < 1e-6 && Math.abs(box.max.y - 0.89) < 1e-6);
+
+  const countertopMeshes = result.index.countertopMeshes;
+  assert.ok(countertopMeshes.some((candidate) => candidate.parent?.userData.objectId === 'furniture:kitchen:kitchen_cabinet_run:0' && new THREE.Box3().setFromObject(candidate).max.x >= 8.50 - 1e-6));
+  assert.ok(countertopMeshes.some((candidate) => candidate.parent?.userData.objectId === 'furniture:kitchen:kitchen_cabinet_run:2' && new THREE.Box3().setFromObject(candidate).min.x <= 9.10 + 1e-6));
+  assert.match(mesh.name, /:part=countertop-bridge:role=countertop$/);
 });
 
 test('shared render builders do not depend on browser globals', () => {

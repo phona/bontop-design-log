@@ -797,6 +797,44 @@ export interface ProjectRenderFacts {
   hvac: ProjectHvacFacts;
 }
 
+export type TrackLightHeadPurpose = 'coffee_table' | 'sofa' | 'living_seating' | 'living_south_or_corner';
+
+export interface TrackLightHeadConfig {
+  offset: { x: number; z: number };
+  target: Vec3;
+  purpose?: TrackLightHeadPurpose;
+  role?: string;
+}
+
+export interface TrackLightResolvedHead {
+  position: Vec3;
+  target: Vec3;
+  direction: Vec3;
+  mountPosition: Vec3;
+  headPosition: Vec3;
+  lensPosition: Vec3;
+  purpose?: TrackLightHeadPurpose;
+  role?: string;
+}
+
+export interface TrackLightConfig {
+  id: string;
+  type: 'track_light';
+  length: number;
+  heads: TrackLightHeadConfig[];
+  /** Whether each head target.y is relative to, or absolute in, world Y. */
+  target_y_mode?: 'relative' | 'absolute';
+  direction: Vec3;
+  beam: number;
+  energy: number;
+  rotation: Vec3;
+  resolvedHeads?: TrackLightResolvedHead[];
+}
+
+export interface LightingRenderConfig {
+  fixtures: TrackLightConfig[];
+}
+
 /** Render-only anchor adjustments; never write these values back to MEP facts. */
 export interface RenderLightingOverride {
   id: string;
@@ -832,6 +870,7 @@ export interface UnimplementedHvacProjection {
 
 export interface ProjectRenderFactsProjection {
   version: string;
+  lighting?: LightingRenderConfig;
   lightingFixtures: RenderLightingFixture[];
   plumbing: PlumbingPoint[];
   ceiling: CeilingZone[];
@@ -842,6 +881,14 @@ export interface ProjectRenderFactsProjection {
   presentation: {
     curtains: CurtainRenderProjection;
   };
+}
+
+export interface FurnishingCutout {
+  kind: string;
+  id: string;
+  center?: [number, number];
+  offset?: [number, number];
+  size: [number, number];
 }
 
 export interface FurnishingItem {
@@ -855,6 +902,15 @@ export interface FurnishingItem {
   depth?: number;
   cabinetHeight?: number;
   countertopThickness?: number;
+  cutouts?: FurnishingCutout[];
+}
+
+/** Explicit countertop-only bridge; it creates no cabinet body. */
+export interface KitchenCountertopBridgeFurnishing extends FurnishingItem {
+  type: 'kitchen_countertop_bridge';
+  length: number;
+  depth: number;
+  countertopThickness: number;
 }
 
 export interface FurnishingsYaml {
@@ -870,6 +926,7 @@ export interface PlacedFurnishing {
   depth?: number;
   cabinetHeight?: number;
   countertopThickness?: number;
+  cutouts?: FurnishingCutout[];
 }
 
 export interface RoomFurnishings {
@@ -883,10 +940,12 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   wardrobe_240: { width: 2.4, depth: 0.6 },
   wardrobe_240_split: { width: 2.4, depth: 0.8 }, // DEC-023 西段 1.2m 加深 0.8 + 东段 1.2m 标准 0.6（footprint 取最深）
   wardrobe_180: { width: 1.8, depth: 0.6 },
+  kitchen_countertop_bridge: { width: 0.6, depth: 0.6 },
   shelf: { width: 0.8, depth: 0.4 }, // DEC-023 置物架（开架，h2.0）
   bath_side_cabinet: { width: 0.45, depth: 0.5 }, // 2026-08-21 主卫干区封闭侧柜 h2.0
   utility_cabinet_tall: { width: 0.55, depth: 1.3 }, // DEC-045 主卧条带东北角通顶储物柜 h2.7（沿主卫东墙南北向，朝西开门）
   vanity_dresser: { width: 1.10, depth: 0.5 }, // 2026-08-25 洗漱+梳妆一体台（DEC-043 台盆外移条带；满墙 1.10m 台面，收纳并入台下柜/镜柜；vanity_tall_cabinet 已取消）
+  towel_set: { width: 0.04, depth: 0.28 }, // Blender add_bath_fixtures 比例的声明式毛巾杆+毛巾，按东墙贴靠投影登记
   sofa_3seat: { width: 2.8, depth: 0.9 },
   dining_table: { width: 1.4, depth: 0.8 },
   dining_chair: { width: 0.45, depth: 0.45 },

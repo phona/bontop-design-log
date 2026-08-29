@@ -1093,6 +1093,7 @@ export class App {
         const nextInteriorLighting = new InteriorLightingSystem(
           this.houseScene.scene,
           projection.lightingFixtures,
+          projection.lighting,
         );
         const st = this.houseScene.getEnvironmentManager().getLightingState();
         nextInteriorLighting.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });

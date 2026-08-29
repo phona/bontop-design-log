@@ -1,5 +1,219 @@
 {
   "version": "2.0",
+  "lighting": {
+    "fixtures": [
+      {
+        "id": "living_track_main",
+        "type": "track_light",
+        "length": 2.8,
+        "heads": [
+          {
+            "offset": {
+              "x": -1.05,
+              "z": 0
+            },
+            "target": {
+              "x": -1.05,
+              "y": -2.2,
+              "z": 1.15
+            },
+            "purpose": "coffee_table",
+            "role": "茶几重点照明"
+          },
+          {
+            "offset": {
+              "x": -0.35,
+              "z": 0
+            },
+            "target": {
+              "x": -0.55,
+              "y": -2.2,
+              "z": 0.25
+            },
+            "purpose": "sofa",
+            "role": "沙发重点照明"
+          },
+          {
+            "offset": {
+              "x": 0.35,
+              "z": 0
+            },
+            "target": {
+              "x": 0.1,
+              "y": -2.2,
+              "z": 0.85
+            },
+            "purpose": "living_seating",
+            "role": "客厅座区整体照明"
+          },
+          {
+            "offset": {
+              "x": 0.7,
+              "z": 0
+            },
+            "target": {
+              "x": 0.85,
+              "y": -2.2,
+              "z": 1.25
+            },
+            "purpose": "living_south_or_corner",
+            "role": "客厅南侧或角落补光"
+          }
+        ],
+        "target_y_mode": "relative",
+        "direction": {
+          "x": 0,
+          "y": -1,
+          "z": 0
+        },
+        "beam": 0.7,
+        "energy": 9,
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "resolvedHeads": [
+          {
+            "position": {
+              "x": 9.75,
+              "y": 2.7199999999999998,
+              "z": 7.15
+            },
+            "target": {
+              "x": 9.75,
+              "y": 0.5999999999999996,
+              "z": 8.3
+            },
+            "direction": {
+              "x": 0,
+              "y": -0.8790024023862394,
+              "z": 0.47681734091706396
+            },
+            "mountPosition": {
+              "x": 9.75,
+              "y": 2.6936299279284124,
+              "z": 7.164304520227512
+            },
+            "headPosition": {
+              "x": 9.75,
+              "y": 2.614519711713651,
+              "z": 7.207218080910048
+            },
+            "lensPosition": {
+              "x": 9.75,
+              "y": 2.551231538741842,
+              "z": 7.241548929456076
+            },
+            "purpose": "coffee_table",
+            "role": "茶几重点照明"
+          },
+          {
+            "position": {
+              "x": 10.450000000000001,
+              "y": 2.7199999999999998,
+              "z": 7.15
+            },
+            "target": {
+              "x": 10.25,
+              "y": 0.5999999999999996,
+              "z": 7.4
+            },
+            "direction": {
+              "x": -0.0932819180720721,
+              "y": -0.9887883315639591,
+              "z": 0.1166023975900895
+            },
+            "mountPosition": {
+              "x": 10.447201542457838,
+              "y": 2.690336350053081,
+              "z": 7.153498071927703
+            },
+            "headPosition": {
+              "x": 10.438806169831352,
+              "y": 2.601345400212325,
+              "z": 7.163992287710811
+            },
+            "lensPosition": {
+              "x": 10.432089871730163,
+              "y": 2.5301526403397196,
+              "z": 7.172387660337297
+            },
+            "purpose": "sofa",
+            "role": "沙发重点照明"
+          },
+          {
+            "position": {
+              "x": 11.15,
+              "y": 2.7199999999999998,
+              "z": 7.15
+            },
+            "target": {
+              "x": 10.9,
+              "y": 0.5999999999999996,
+              "z": 8
+            },
+            "direction": {
+              "x": -0.10880471723415507,
+              "y": -0.922664002145635,
+              "z": 0.36993603859612706
+            },
+            "mountPosition": {
+              "x": 11.146735858482975,
+              "y": 2.6923200799356306,
+              "z": 7.161098081157884
+            },
+            "headPosition": {
+              "x": 11.136943433931902,
+              "y": 2.6092803197425236,
+              "z": 7.1943923246315356
+            },
+            "lensPosition": {
+              "x": 11.129109494291043,
+              "y": 2.542848511588038,
+              "z": 7.221027719410457
+            },
+            "purpose": "living_seating",
+            "role": "客厅座区整体照明"
+          },
+          {
+            "position": {
+              "x": 11.5,
+              "y": 2.7199999999999998,
+              "z": 7.15
+            },
+            "target": {
+              "x": 11.65,
+              "y": 0.5999999999999996,
+              "z": 8.4
+            },
+            "direction": {
+              "x": 0.06083603477612849,
+              "y": -0.8598159581692807,
+              "z": 0.5069669564677363
+            },
+            "mountPosition": {
+              "x": 11.501825081043284,
+              "y": 2.694205521254921,
+              "z": 7.165209008694032
+            },
+            "headPosition": {
+              "x": 11.507300324173135,
+              "y": 2.616822085019686,
+              "z": 7.210836034776129
+            },
+            "lensPosition": {
+              "x": 11.511680518677016,
+              "y": 2.554915336031498,
+              "z": 7.247337655641806
+            },
+            "purpose": "living_south_or_corner",
+            "role": "客厅南侧或角落补光"
+          }
+        ]
+      }
+    ]
+  },
   "lightingFixtures": [
     {
       "id": "light_dining_pendant",
@@ -26,7 +240,7 @@
       "temperatureK": 3000,
       "enabled": true,
       "circuit": "living_base",
-      "heads": 5
+      "heads": 4
     },
     {
       "id": "light_tv_strip",
@@ -255,21 +469,21 @@
       "id": "faucet_gbath_vanity",
       "room": "guest_bath",
       "type": "faucet",
-      "x": 5.6,
-      "z": 3.5,
-      "wall": "w_gbath_west",
-      "note": "客卫洗手台冷热水",
+      "x": 7.1,
+      "z": 3.9,
+      "wall": "w_gbath_east",
+      "note": "2026-08-29 客卫南段东墙洗手台冷热水；窗洞待量房确认，需核实实体墙/可挂载性",
       "height": 0.8,
-      "wallSide": "east"
+      "wallSide": "west"
     },
     {
       "id": "shower_gbath",
       "room": "guest_bath",
       "type": "shower",
       "x": 5.6,
-      "z": 3,
+      "z": 2.45,
       "wall": "w_gbath_west",
-      "note": "客卫淋浴花洒",
+      "note": "2026-08-29 客卫北端淋浴花洒；西墙北段实体墙东侧挂载",
       "height": 1,
       "wallSide": "east"
     },
@@ -278,9 +492,9 @@
       "room": "guest_bath",
       "type": "toilet",
       "x": 5.6,
-      "z": 2.5,
+      "z": 2.75,
       "wall": "w_gbath_west",
-      "note": "客卫马桶给水",
+      "note": "2026-08-29 客卫北段马桶给水；靠西并接近原立管，实体墙东侧挂载",
       "wallSide": "east"
     },
     {
@@ -288,17 +502,17 @@
       "room": "guest_bath",
       "type": "drain",
       "x": 6.3,
-      "z": 3.2,
-      "note": "客卫淋浴地漏（地面）",
+      "z": 2.45,
+      "note": "2026-08-29 客卫北端淋浴地漏（地面）",
       "height": 0.02
     },
     {
       "id": "drain_gbath_floor",
       "room": "guest_bath",
       "type": "drain",
-      "x": 6.5,
-      "z": 2.4,
-      "note": "客卫干区地漏（地面）",
+      "x": 6.45,
+      "z": 3.75,
+      "note": "2026-08-29 客卫南段洗漱区地漏（地面，避开内门洞与台盆）",
       "height": 0.02
     },
     {
@@ -1377,70 +1591,96 @@
   "presentation": {
     "curtains": {
       "source": {
-        "default": "open",
+        "default": "privacy",
         "roomOverrides": {},
-        "updatedAt": "2026-08-25T08:03:43.765Z"
+        "updatedAt": "2026-08-29T08:06:20.134Z"
       },
       "effectiveByRoom": {
-        "bedroom_nw": "open",
-        "bedroom_se": "open",
-        "living_dining": "open",
-        "master_bath": "open",
-        "master_bedroom": "open",
-        "study": "open"
+        "bedroom_nw": "privacy",
+        "bedroom_se": "privacy",
+        "living_dining": "privacy",
+        "master_bath": "privacy",
+        "master_bedroom": "privacy",
+        "study": "privacy"
       },
       "curtains": [
         {
           "id": "curtain_living_south",
           "roomId": "living_dining",
           "kind": "sheer_blackout",
-          "state": "open",
-          "expectedVisibleNodes": []
+          "state": "privacy",
+          "expectedVisibleNodes": [
+            "curtain_living_south:sheer:deployed",
+            "curtain_living_south:blackout:gathered:left",
+            "curtain_living_south:blackout:gathered:right"
+          ]
         },
         {
           "id": "curtain_master_south",
           "roomId": "master_bedroom",
           "kind": "sheer_blackout",
-          "state": "open",
-          "expectedVisibleNodes": []
+          "state": "privacy",
+          "expectedVisibleNodes": [
+            "curtain_master_south:sheer:deployed",
+            "curtain_master_south:blackout:gathered:left",
+            "curtain_master_south:blackout:gathered:right"
+          ]
         },
         {
           "id": "curtain_master_west",
           "roomId": "master_bedroom",
           "kind": "sheer_blackout",
-          "state": "open",
-          "expectedVisibleNodes": []
+          "state": "privacy",
+          "expectedVisibleNodes": [
+            "curtain_master_west:sheer:deployed",
+            "curtain_master_west:blackout:gathered:left",
+            "curtain_master_west:blackout:gathered:right"
+          ]
         },
         {
           "id": "curtain_mbath_corner",
           "roomId": "master_bath",
           "kind": "blinds",
-          "state": "open",
-          "expectedVisibleNodes": []
+          "state": "privacy",
+          "expectedVisibleNodes": [
+            "curtain_mbath_corner:blinds:deployed"
+          ]
         },
         {
           "id": "curtain_nw_north",
           "roomId": "bedroom_nw",
           "kind": "sheer_blackout",
-          "state": "open",
-          "expectedVisibleNodes": []
+          "state": "privacy",
+          "expectedVisibleNodes": [
+            "curtain_nw_north:sheer:deployed",
+            "curtain_nw_north:blackout:gathered:left",
+            "curtain_nw_north:blackout:gathered:right"
+          ]
         },
         {
           "id": "curtain_parent_south",
           "roomId": "study",
           "kind": "sheer_blackout",
-          "state": "open",
-          "expectedVisibleNodes": []
+          "state": "privacy",
+          "expectedVisibleNodes": [
+            "curtain_parent_south:sheer:deployed",
+            "curtain_parent_south:blackout:gathered:left",
+            "curtain_parent_south:blackout:gathered:right"
+          ]
         },
         {
           "id": "curtain_study_south",
           "roomId": "bedroom_se",
           "kind": "sheer_blackout",
-          "state": "open",
-          "expectedVisibleNodes": []
+          "state": "privacy",
+          "expectedVisibleNodes": [
+            "curtain_study_south:sheer:deployed",
+            "curtain_study_south:blackout:gathered:left",
+            "curtain_study_south:blackout:gathered:right"
+          ]
         }
       ],
-      "snapshotSha256": "1732fae38ce3b70ec3691a7827e1ec138221f16b6adbe9fbe4ac3a66fa911d56"
+      "snapshotSha256": "f1a738c5148b988a25947c2f4378d5325c4dc1c6b39c0d528c2e43c2c4f653f9"
     }
   }
 }

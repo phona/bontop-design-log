@@ -22,6 +22,7 @@ const lights = projection.lightingFixtures.map((fixture) => ({
   ...(fixture.circuit !== undefined ? { circuit: fixture.circuit } : {}),
   ...(fixture.heads !== undefined ? { heads: fixture.heads } : {}),
   ...(fixture.recessed !== undefined ? { recessed: fixture.recessed } : {}),
+  ...(fixture.type === 'track_light' && projection.lighting ? { track: projection.lighting.fixtures.find((config) => config.id === fixture.id) } : {}),
 }));
 
 // 场景固定常量：蓝调时刻/夜晚。太阳已落 → sun_direction=null（不打太阳光）；
@@ -36,10 +37,18 @@ const scenarios = [
     label: '蓝调时刻（窗外 HDRi 海边日落外景、室内暖灯）',
     sun_direction: null,
     world_hdri: 'hdri/the_sky_is_on_fire_1k.hdr',
-    world_color: '#3a5a8f',
-    world_strength: 0.5,
+    // 只冷却窗外可见背景；室内 world/background 与 3200K 暖灯保持独立。
+    world_hdri_lighting: true,
+    world_hdri_camera_strength: 1.0,
+    world_hdri_camera_tint: { color: '#5a8fd0', strength: 0.6 },
+    // 室内环境填充改为暖中性；窗外冷色仍由 camera HDRI tint 独立控制。
+    world_color: '#8a7868',
+    world_strength: 0.65,
     lights_on: true,
-    exposure: 0.5,
+    light_temp: 2800,
+    view_transform: 'AgX',
+    look: 'None',
+    exposure: 0.75,
     sheer_opacity: 0.35,
   },
   {
@@ -50,6 +59,8 @@ const scenarios = [
     world_color: '#060a14',
     world_strength: 0.15,
     lights_on: true,
+    view_transform: 'AgX',
+    look: 'None',
     exposure: 0.5,
     sheer_opacity: 0.35,
   },
@@ -65,7 +76,9 @@ const scenarios = [
     lights_on: true,
     light_temp: 6500,
     view_transform: 'Standard',
-    exposure: 1.5,
+    look: 'None',
+    // Standard/6500K 评审统一降 1 EV，避免白色硬装裁剪。
+    exposure: 0.5,
     sheer_opacity: 0.35,
   },
   // 硬装裸房验收：material_review 同款光照（Standard/6500K 中性白），但 dress_scene 按
@@ -80,6 +93,7 @@ const scenarios = [
     lights_on: true,
     light_temp: 6500,
     view_transform: 'Standard',
+    look: 'None',
     exposure: 1.0,
     hvac_coordination: true,
   },
@@ -92,7 +106,9 @@ const scenarios = [
     lights_on: true,
     light_temp: 6500,
     view_transform: 'Standard',
-    exposure: 1.5,
+    look: 'None',
+    // 裸房与材质评审共用校准后的中性曝光，避免厨房白色硬装过曝。
+    exposure: 0.5,
     sheer_opacity: 0.35,
     curtainPolicy: 'hidden_for_bare_shell',
   },
@@ -103,17 +119,20 @@ const scenarios = [
     id: 'daylight',
     label: '白天自然光（HDRi 白天外景+西南向太阳直射、不开灯、对照实景照片）',
     sun_direction: [-0.3, -0.6, 0.7],
-    sun_energy: 7,
+    // HDRI 负责环境天光，Sun 只保留方向性日照；不再叠加 window_portal。
+    sun_energy: 4,
     sun_temp: 4500,
     world_hdri: 'hdri/kloofendal_48d_partly_cloudy_1k.hdr',
-    world_hdri_lighting: true, // 真天空直接照明（白天主光源=南向幕墙天光+太阳）
+    world_hdri_lighting: true,
     world_hdri_camera_strength: 1.0,
-    window_portal: { energy: 350, temp: 6000, x: 10.3, z: 11, width: 6, height: 2.6 }, // 南玻璃幕外柔光 portal
     world_color: '#c8c8c8',
-    world_strength: 0.8,
+    world_strength: 0.55,
     lights_on: false,
     light_temp: 6500,
-    exposure: 0.4,
+    view_transform: 'AgX',
+    look: 'None',
+    // 客餐厅正式审美图：保留窗外层次，同时抬升深色家具与地面暗部可读性。
+    exposure: -0.5,
     sheer_opacity: 0.25,
     glass_ior: 1.02, // daylight 室内很亮，Low-E 玻璃 IOR 1.5 会变镜子盖住外景；≈1.02 近零反射只留透射
   },
@@ -123,17 +142,18 @@ const scenarios = [
     id: 'daylight_clear',
     label: '白天自然光·超白玻（daylight 参数 + 玻璃中性 #e8f0ee，对比浮法绿）',
     sun_direction: [-0.3, -0.6, 0.7],
-    sun_energy: 7,
+    sun_energy: 4,
     sun_temp: 4500,
     world_hdri: 'hdri/kloofendal_48d_partly_cloudy_1k.hdr',
     world_hdri_lighting: true,
     world_hdri_camera_strength: 1.0,
-    window_portal: { energy: 350, temp: 6000, x: 10.3, z: 11, width: 6, height: 2.6 },
     world_color: '#c8c8c8',
-    world_strength: 0.8,
+    world_strength: 0.55,
     lights_on: false,
     light_temp: 6500,
-    exposure: 0.4,
+    view_transform: 'AgX',
+    look: 'None',
+    exposure: -0.5,
     sheer_opacity: 0.25,
     glass_ior: 1.02,
     glass_tint: '#e8f0ee',
@@ -147,6 +167,11 @@ const cameras = [
     position: [10.3, 1.55, 2.9],
     target: [9.6, 1.2, 8.6],
     scenarios: ['material_review', 'blue_hour', 'daylight', 'daylight_clear', 'bare_shell', 'hvac_coordination'],
+    // 仅抬升客厅两种正式体验图的室内中间调，避免窗外高光与 Low-E 透景被曝光牵连。
+    scenario_overrides: {
+      daylight: { fill_light: 180, fill_from_camera: true },
+      blue_hour: { fill_light: 95, fill_from_camera: true },
+    },
   },
   {
     id: 'master_bed_looking_glass',

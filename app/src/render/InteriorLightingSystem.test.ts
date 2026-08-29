@@ -49,6 +49,65 @@ describe('InteriorLightingSystem', () => {
     expect(sys.lightCount).toBe(10);
   });
 
+  it('rotates configured head offsets and targets with the rail', () => {
+    const fixture: RenderLightingFixture = { id: 'track-rotated', room: 'room', type: 'track_light', position: { x: 10, y: 2.8, z: 20 }, temperatureK: 3000, enabled: true, heads: 1 };
+    const lighting = {
+      fixtures: [{
+        id: 'track-rotated', type: 'track_light' as const, length: 2,
+        heads: [{ offset: { x: 1, z: 0.25 }, target: { x: 0.5, y: -2.2, z: 1 } }],
+        direction: { x: 0, y: -1, z: 0 }, beam: 0.7, energy: 9,
+        rotation: { x: 0, y: Math.PI / 2, z: 0 },
+      }],
+    };
+    const scene = new THREE.Scene();
+    new InteriorLightingSystem(scene, [fixture], lighting);
+    const spot = lights(scene).find((light) => light instanceof THREE.SpotLight)! as THREE.SpotLight;
+    expect(spot.position.x).toBeCloseTo(10.25);
+    expect(spot.position.y).toBeCloseTo(2.72);
+    expect(spot.position.z).toBeCloseTo(19);
+    expect(spot.target.position.x).toBeCloseTo(11);
+    expect(spot.target.position.y).toBeCloseTo(0.6);
+    expect(spot.target.position.z).toBeCloseTo(19.5);
+    expect(spot.target.parent).toBe(spot.parent);
+    const visual = lightingGroup(scene).children.find((child) => child instanceof THREE.Group && child.children.some((part) => part instanceof THREE.Mesh && part.geometry instanceof THREE.BoxGeometry)) as THREE.Group;
+    expect(visual).toBeDefined();
+    const meshes = visual.children.filter((part) => part instanceof THREE.Mesh) as THREE.Mesh[];
+    const head = meshes.find((part) => part.geometry instanceof THREE.CylinderGeometry && (part.geometry as THREE.CylinderGeometry).parameters.height === 0.14)!;
+    const lens = meshes.find((part) => part.geometry instanceof THREE.CircleGeometry)!;
+    scene.updateMatrixWorld(true);
+    const expected = spot.target.position.clone().sub(spot.position).normalize();
+    const headAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(head.getWorldQuaternion(new THREE.Quaternion()));
+    const lensAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(lens.getWorldQuaternion(new THREE.Quaternion()));
+    expect(headAxis.dot(expected)).toBeCloseTo(1, 5);
+    expect(lensAxis.dot(expected)).toBeCloseTo(1, 5);
+  });
+
+  it('supports absolute target y without adding the fixture anchor height', () => {
+    const fixture: RenderLightingFixture = { id: 'track-absolute', room: 'room', type: 'track_light', position: { x: 0, y: 2.8, z: 0 }, temperatureK: 3000, enabled: true, heads: 1 };
+    const lighting = { fixtures: [{ id: 'track-absolute', type: 'track_light' as const, length: 2, target_y_mode: 'absolute' as const, heads: [
+      { offset: { x: 0, z: 0 }, target: { x: 0, y: 0.65, z: 0.5 } },
+    ], direction: { x: 0, y: -1, z: 0 }, beam: 0.7, energy: 9, rotation: { x: 0, y: 0, z: 0 } }] };
+    const scene = new THREE.Scene();
+    new InteriorLightingSystem(scene, [fixture], lighting);
+    const spot = lights(scene).find((light) => light instanceof THREE.SpotLight) as THREE.SpotLight;
+    expect(spot.target.position.y).toBeCloseTo(0.65);
+  });
+
+  it('aims different visible track heads at their distinct targets', () => {
+    const fixture: RenderLightingFixture = { id: 'track-aims', room: 'room', type: 'track_light', position: { x: 0, y: 2.8, z: 0 }, temperatureK: 3000, enabled: true, heads: 2 };
+    const lighting = { fixtures: [{ id: 'track-aims', type: 'track_light' as const, length: 2, heads: [
+      { offset: { x: -0.5, z: 0 }, target: { x: -1, y: 0, z: 1 } },
+      { offset: { x: 0.5, z: 0 }, target: { x: 1, y: -0.3, z: 0.2 } },
+    ], direction: { x: 0, y: -1, z: 0 }, beam: 0.7, energy: 9, rotation: { x: 0, y: 0, z: 0 } }] };
+    const scene = new THREE.Scene();
+    new InteriorLightingSystem(scene, [fixture], lighting);
+    const visual = lightingGroup(scene).children.find((child) => child instanceof THREE.Group && child.children.some((part) => part instanceof THREE.Mesh && part.geometry instanceof THREE.BoxGeometry)) as THREE.Group;
+    scene.updateMatrixWorld(true);
+    const heads = (visual.children.filter((part) => part instanceof THREE.Mesh && part.geometry instanceof THREE.CylinderGeometry) as THREE.Mesh[]).filter((part) => (part.geometry as THREE.CylinderGeometry).parameters.height === 0.14);
+    const axes = heads.map((head) => new THREE.Vector3(0, 1, 0).applyQuaternion(head.getWorldQuaternion(new THREE.Quaternion())));
+    expect(axes[0].distanceTo(axes[1])).toBeGreaterThan(0.2);
+  });
+
   it('renders the foyer downlight below the existing ceiling bottom', () => {
     const { scene } = makeSystem();
     const foyerLight = lights(scene).find((light) => Math.abs(light.position.x - 11.2) < 0.01)!;

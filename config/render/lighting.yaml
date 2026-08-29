@@ -1,0 +1,28 @@
+# Render-only detailed lighting configuration.
+# Track offsets and target x/z are local to the fixture anchor; target.y is relative unless target_y_mode: absolute is set.
+fixtures:
+  - id: living_track_main
+    type: track_light
+    length: 2.8
+    target_y_mode: relative
+    heads:
+      - offset: { x: -1.05, z: 0 }
+        target: { x: -1.05, y: -2.2, z: 1.15 }
+        purpose: coffee_table
+        role: 茶几重点照明
+      - offset: { x: -0.35, z: 0 }
+        target: { x: -0.55, y: -2.2, z: 0.25 }
+        purpose: sofa
+        role: 沙发重点照明
+      - offset: { x: 0.35, z: 0 }
+        target: { x: 0.1, y: -2.2, z: 0.85 }
+        purpose: living_seating
+        role: 客厅座区整体照明
+      - offset: { x: 0.7, z: 0 }
+        target: { x: 0.85, y: -2.2, z: 1.25 }
+        purpose: living_south_or_corner
+        role: 客厅南侧或角落补光
+    direction: { x: 0, y: -1, z: 0 }
+    beam: 0.7
+    energy: 9
+    rotation: { x: 0, y: 0, z: 0 }

@@ -187,7 +187,14 @@ const apiDeps = {
     const overrides = projectRenderFactsLoader.getOverrides();
     const overlay = overlayLoader.getConfig();
     if (!facts || !overrides || !overlay) return undefined;
-    return buildProjectRenderFactsProjection(facts, overrides, state.getCurrentScheme(), overlay, presentationState.get());
+    return buildProjectRenderFactsProjection(
+      facts,
+      overrides,
+      state.getCurrentScheme(),
+      overlay,
+      presentationState.get(),
+      projectRenderFactsLoader.getLighting(),
+    );
   },
 };
 
