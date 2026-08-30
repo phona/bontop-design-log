@@ -96,6 +96,26 @@ export interface RoomObject {
   mesh?: Object3DRef;
 }
 
+export interface CaptureBounds {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
+export interface CaptureOptions {
+  bounds?: CaptureBounds;
+  includeFurniture?: boolean;
+  includeViewOnly?: boolean;
+  view?: 'top-down' | 'high-perspective';
+  size?: number;
+}
+
+export interface RoomAuditCaptureOptions {
+  bounds: CaptureBounds;
+  size?: number;
+}
+
 export interface SceneApi {
   clearTopicObjects(topicId: string): void;
   addObject(topicId: string, objectId: string, obj: Object3DRef): void;

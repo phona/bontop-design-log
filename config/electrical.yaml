@@ -425,10 +425,10 @@
   wall: w_gbath_south
   wall_side: north
   type: switch
-  x: 5.80
+  x: 6.35
   z: 3.55
   height: 1.3
-  note: "2026-08-29 客卫灯光开关；南侧外门旁，随 w_gbath_south 北移至 z=3.55，避开外置洗漱台"
+  note: "2026-08-29 客卫灯光开关；南侧外门东侧实体门垛，d_gbath 门洞西移至 x[5.60,6.30] 后避开门洞与马桶 AABB"
 
 - id: sock_gbath_exhaust
   room: guest_bath
@@ -609,10 +609,10 @@
   wall_side: west
   type: socket
   x: 7.10
-  z: 2.65
+  z: 3.05
   height: 0.3
   count: 1
-  note: "2026-08-29 客卫南段马桶旁插座（智能盖预留；东墙实体墙西侧，坐东朝西，服务马桶中心 (6.80,2.65)，避开西侧入口及外门扫掠）"
+  note: "2026-08-29 客卫南段马桶旁插座（智能盖预留；东墙实体墙西侧，坐东朝西，服务马桶中心 (6.75,3.05)，随真实模型 AABB 调整并避开西侧入口及外门扫掠）"
 
 # 阳台电动晾衣架
 - id: sock_balcony_drying

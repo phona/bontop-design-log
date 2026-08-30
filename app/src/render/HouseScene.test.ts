@@ -63,13 +63,55 @@ describe('HouseScene captureFloorPlan', () => {
     const fs = await import('node:fs');
     const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
     expect(source).toContain('captureFloorPlan');
-    expect(source).toMatch(/async\s+captureFloorPlan\s*\(\s*options\s*:\s*\{\s*includeFurniture\?\s*:\s*boolean\s*\}\s*=\s*\{\s*\}\s*\)\s*:\s*Promise\s*<\s*string\s*>/);
-    // 截图渲染 scene（灯光在 scene 上），viewOnlyRoot/topicGroup 在 capture 前隐藏，
-    // 保证画面只含 HOUSE_EXPORT 内容且不是全黑。
+    expect(source).toMatch(/async\s+captureFloorPlan\s*\(\s*options\s*:\s*CaptureOptions\s*=\s*\{\s*\}\s*\)\s*:\s*Promise\s*<\s*string\s*>/);
+    // 截图渲染 scene（灯光在 scene 上），默认隐藏 viewOnlyRoot/topicGroup，
+    // 保证默认画面只含 HOUSE_EXPORT 内容且不是全黑。
     expect(source).toContain("this.renderer.render(this.scene, orthoCam)");
-    expect(source).toContain('this.viewOnlyRoot.visible = false');
+    expect(source).toContain('options.bounds ?? this.topDownLayoutBounds');
+    expect(source).toContain("options.view === 'high-perspective'");
     expect(source).toContain('await this.whenReady()');
     expect(source).toContain('includeFurniture');
+    expect(source).toContain('includeViewOnly');
+  });
+});
+
+describe('HouseScene room audit capture', () => {
+  it('keeps explicit guest-bath audit bounds and view options in the public API', async () => {
+    const fs = await import('node:fs');
+    const app = fs.readFileSync('./src/App.ts', 'utf8');
+    expect(app).toContain('captureRoomAudit');
+    expect(app).toContain('RoomAuditCaptureOptions');
+  });
+
+  it('draws the audit image from declared layout/config geometry with scene fallback', async () => {
+    const fs = await import('node:fs');
+    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    expect(source).toContain('this.auditSceneElements.find');
+    expect(source).toContain('this.auditFurnishings.guest_bath');
+    expect(source).toContain("points('shower_screen_gbath')");
+    expect(source).toContain("points('gbath_west_glass_door')");
+    expect(source).toContain("findAuditObject('furniture:guest_bath:vanity:0')");
+    expect(source).toContain("findAuditObject('furniture:guest_bath:toilet:1')");
+    expect(source).toContain('this.auditPlumbing');
+    expect(source).toContain('toiletBox?.minX.toFixed(3)');
+    expect(source).toContain('台盆正面←西');
+    expect(source).toContain('马桶朝西');
+    expect(source).toContain('花洒朝西');
+    expect(source).toContain('西侧玻璃门←向北开启');
+    expect(source).toContain('const clamp =');
+    expect(source).toContain("ctx.fillStyle = '#000000'");
+    expect(source).toContain('ctx.measureText(text)');
+    expect(source).toContain('width - margin - metrics.width / 2');
+    expect(source).toContain('ctx.lineWidth = 18');
+    expect(source).toContain('玻璃隔断 z=');
+    expect(source).toContain('西侧玻璃门');
+    expect(source).toContain('向北开启');
+    expect(source).toContain('南墙 z=');
+    expect(source).toContain('南侧开放边');
+    expect(source).toContain('北 ↑');
+    expect(source).toContain('东 →');
+    expect(source).toContain("'#075bd5'");
+    expect(source).toContain("'rgba(34, 197, 94, 0.42)'");
   });
 });
 

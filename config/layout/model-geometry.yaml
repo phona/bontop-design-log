@@ -213,8 +213,8 @@ walls:
     to: v_gbath_se
     height: 2.8
     openings:
-      # 2026-08-25 方向反转：默认 outward/start → inward/end
-      - { id: d_gbath, type: door, anchor: v_nw_s, offset: 0.75, width: 0.7, height: 2.1, room: guest_bath, swing: inward, hinge: end }
+      # 2026-08-29：门洞西移至 x[5.60,6.30]，保持南墙外门内开并为马桶真实 AABB 让出扫掠净空
+      - { id: d_gbath, type: door, anchor: v_nw_s, offset: 0.35, width: 0.7, height: 2.1, room: guest_bath, swing: inward, hinge: end }
   - { id: w_gbath_east, from: v_balc_se, to: v_gbath_se, height: 2.8 }
   - { id: w_gbath_east_open_vanity, from: v_gbath_se, to: v_gbath_east_s, height: 2.8 }
   # 内墙 — x=7.20 纵向墙（厨房西墙，在 v_vrv_se, v_balc_ne 处切开；DEC-014 南界缩至 z=2.90，z[2.9,4.3] 段由 w_gbath_east@x=7.1 覆盖）

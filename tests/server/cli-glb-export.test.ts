@@ -127,7 +127,11 @@ test('CLI builds shower plumbing fixtures from plumbing.yaml without replacing s
   assert.equal(showers[1].userData.wallSide, 'west');
   const guestToilet = exportRoot.getObjectByName('furniture:guest_bath:toilet:1');
   assert.ok(guestToilet, 'missing guest_bath toilet');
-  assert.deepEqual(guestToilet.position.toArray(), [6.8, 0, 2.65]);
+  assert.deepEqual(guestToilet.position.toArray(), [6.75, 0, 3.05]);
+  guestToilet.updateMatrixWorld(true);
+  const guestToiletAabb = new THREE.Box3().setFromObject(guestToilet);
+  assert.deepEqual(guestToiletAabb.min.toArray().map((value) => Math.abs(value) < 1e-9 ? 0 : Number(value.toFixed(3))), [6.525, 0, 2.85]);
+  assert.deepEqual(guestToiletAabb.max.toArray().map((value) => Math.abs(value) < 1e-9 ? 0 : Number(value.toFixed(3))), [7.075, 0.6, 3.25]);
   assert.ok(Math.abs(guestToilet.rotation.y - (270 * Math.PI / 180)) < 1e-6);
   assert.equal(exportRoot.getObjectByName('furniture:master_bath:toilet:0')?.userData.type, 'furniture');
   assert.equal(exportRoot.getObjectByName('furniture:master_bath:shower_set:1'), undefined, 'shower_set has no FixtureFactory recipe; shower geometry comes from plumbing points');

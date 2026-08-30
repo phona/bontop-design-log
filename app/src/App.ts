@@ -33,6 +33,7 @@ import { exportObjectTreeToGlb } from './render/export-gltf.js';
 import './ui/keybindings.js';
 import { parseProjectRenderFactsProjection } from '@shared/project-render-facts-schema';
 import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
+import type { CaptureOptions, RoomAuditCaptureOptions } from '@shared/types';
 import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch } from '@shared/types';
 import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
 
@@ -239,9 +240,14 @@ export class App {
     }
   }
 
-  async captureFloorPlan(options: { includeFurniture?: boolean } = {}): Promise<string> {
+  async captureFloorPlan(options: CaptureOptions = {}): Promise<string> {
     await this.whenReady();
     return this.houseScene.captureFloorPlan(options);
+  }
+
+  async captureRoomAudit(options: RoomAuditCaptureOptions): Promise<string> {
+    await this.whenReady();
+    return this.houseScene.captureRoomAudit(options);
   }
 
   async exportGlbDataUrl(): Promise<string> {

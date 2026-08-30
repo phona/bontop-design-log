@@ -22,6 +22,9 @@ import type {
   CurtainPresentationState,
   CurtainState,
   PlumbingPoint,
+  CaptureOptions,
+  CaptureBounds,
+  RoomAuditCaptureOptions,
 } from '@shared/types';
 import { CameraAnimator } from '../scene/CameraAnimator.js';
 import { TopDownView } from '../scene/TopDownView.js';
@@ -112,6 +115,9 @@ export class HouseScene implements SceneApi {
   private _mode: 'orbit' | 'first-person' | 'top-down' = 'orbit';
   private compareSchemeData?: CurrentScheme;
   private roomMeta = new Map<string, { wall_finish?: string; wallOpenings?: ResolvedOpening[] }>();
+  private auditFurnishings: FurnishingsYaml = {};
+  private auditSceneElements: SceneElement[] = [];
+  private auditPlumbing: PlumbingPoint[] = [];
   private textureManager = new TextureManager();
   private envManager: EnvironmentManager;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
@@ -265,7 +271,7 @@ export class HouseScene implements SceneApi {
     return this.readyPromise;
   }
 
-  async captureFloorPlan(options: { includeFurniture?: boolean } = {}): Promise<string> {
+  async captureFloorPlan(options: CaptureOptions = {}): Promise<string> {
     await this.whenReady();
     let renderTarget: THREE.WebGLRenderTarget | null = null;
     const prevTopicVisible = this.topicGroup.visible;
@@ -279,7 +285,7 @@ export class HouseScene implements SceneApi {
 
     this.topicGroup.visible = false;
     this.exportRoot.visible = true;
-    this.viewOnlyRoot.visible = false;
+    this.viewOnlyRoot.visible = options.includeViewOnly === true;
     this.decorations.setGridOpacity(0);
     if (!options.includeFurniture) {
       for (const mesh of this.furnitureMeshes) {
@@ -295,24 +301,32 @@ export class HouseScene implements SceneApi {
     this.renderer.shadowMap.enabled = false;
 
     try {
-      const { minX, maxX, minZ, maxZ } = this.topDownLayoutBounds;
+      const bounds = options.bounds ?? this.topDownLayoutBounds;
+      const padding = options.bounds ? 0.12 : 0;
+      const minX = bounds.minX - padding;
+      const maxX = bounds.maxX + padding;
+      const minZ = bounds.minZ - padding;
+      const maxZ = bounds.maxZ + padding;
       const width = maxX - minX;
       const depth = maxZ - minZ;
-      const size = 2048;
+      const size = options.size ?? 2048;
       const aspect = width / depth;
       const renderWidth = Math.round(size * Math.max(aspect, 1));
       const renderHeight = Math.round(size / Math.min(aspect, 1));
 
-      const orthoCam = new THREE.OrthographicCamera(
-        width / -2, width / 2,
-        depth / 2, depth / -2,
-        0.1, 200
-      );
       const centerX = (minX + maxX) / 2;
       const centerZ = (minZ + maxZ) / 2;
-      orthoCam.position.set(centerX, 50, centerZ);
-      orthoCam.up.set(0, 0, -1);
-      orthoCam.lookAt(centerX, 0, centerZ);
+      const orthoCam = options.view === 'high-perspective'
+        ? new THREE.PerspectiveCamera(48, renderWidth / renderHeight, 0.1, 200)
+        : new THREE.OrthographicCamera(width / -2, width / 2, depth / 2, depth / -2, 0.1, 200);
+      if (options.view === 'high-perspective') {
+        orthoCam.position.set(centerX + width * 0.72, 8.5, centerZ + depth * 0.78);
+        orthoCam.lookAt(centerX, 0.7, centerZ);
+      } else {
+        orthoCam.position.set(centerX, 50, centerZ);
+        orthoCam.up.set(0, 0, -1);
+        orthoCam.lookAt(centerX, 0, centerZ);
+      }
       orthoCam.updateProjectionMatrix();
 
       renderTarget = new THREE.WebGLRenderTarget(renderWidth, renderHeight);
@@ -324,7 +338,7 @@ export class HouseScene implements SceneApi {
 
       const buffer = new Uint8Array(renderWidth * renderHeight * 4);
       this.renderer.readRenderTargetPixels(renderTarget, 0, 0, renderWidth, renderHeight, buffer);
-      return this.rgbaToPng(buffer, renderWidth, renderHeight);
+      return this.rgbaToPng(buffer, renderWidth, renderHeight, options.bounds, options.view);
     } finally {
       this.topicGroup.visible = prevTopicVisible;
       this.exportRoot.visible = prevExportVisible;
@@ -347,7 +361,129 @@ export class HouseScene implements SceneApi {
     }
   }
 
-  private rgbaToPng(rgba: Uint8Array, width: number, height: number): string {
+  async captureRoomAudit(options: RoomAuditCaptureOptions): Promise<string> {
+    await this.whenReady();
+    const bounds = options.bounds;
+    const size = options.size ?? 1800;
+    const width = Math.round(size * Math.max((bounds.maxX - bounds.minX) / (bounds.maxZ - bounds.minZ), 1));
+    const height = Math.round(size / Math.min((bounds.maxX - bounds.minX) / (bounds.maxZ - bounds.minZ), 1));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+    const pad = 110;
+    const sx = (width - pad * 2) / (bounds.maxX - bounds.minX);
+    const sz = (height - pad * 2) / (bounds.maxZ - bounds.minZ);
+    const point = (x: number, z: number) => ({ x: pad + (x - bounds.minX) * sx, y: height - pad - (z - bounds.minZ) * sz });
+    const rect = (minX: number, maxX: number, minZ: number, maxZ: number, fill: string, stroke = fill, lineWidth = 3) => {
+      const a = point(minX, minZ); const b = point(maxX, maxZ);
+      ctx.fillStyle = fill; ctx.fillRect(a.x, b.y, b.x - a.x, a.y - b.y);
+      ctx.strokeStyle = stroke; ctx.lineWidth = lineWidth; ctx.strokeRect(a.x, b.y, b.x - a.x, a.y - b.y);
+    };
+    const line = (x1: number, z1: number, x2: number, z2: number, color: string, lineWidth = 8, dash: number[] = []) => {
+      const a = point(x1, z1); const b = point(x2, z2); ctx.beginPath(); ctx.setLineDash(dash); ctx.strokeStyle = color; ctx.lineWidth = lineWidth; ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
+    };
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+    const label = (text: string, x: number, z: number, _color = '#000000', font = 'bold 42px sans-serif') => {
+      ctx.font = font;
+      const metrics = ctx.measureText(text);
+      const margin = 18;
+      const p = point(x, z);
+      const px = clamp(p.x, margin + metrics.width / 2, width - margin - metrics.width / 2);
+      const fontSize = Number.parseFloat(font) || 42;
+      const py = clamp(p.y, margin + fontSize, height - margin);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(px - metrics.width / 2 - 12, py - fontSize - 10, metrics.width + 24, fontSize + 20);
+      ctx.fillStyle = '#000000';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 8;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.strokeText(text, px, py);
+      ctx.fillText(text, px, py);
+      ctx.textAlign = 'start';
+    };
+    ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, width, height);
+    rect(bounds.minX, bounds.maxX, bounds.minZ, bounds.maxZ, '#eef2f6', '#17212b', 12);
+    const aabb = (object: THREE.Object3D | undefined) => { if (!object) return undefined; const box = new THREE.Box3().setFromObject(object); return { minX: box.min.x, maxX: box.max.x, minZ: box.min.z, maxZ: box.max.z }; };
+    const element = (id: string) => this.auditSceneElements.find((candidate) => candidate.id === id);
+    const points = (id: string) => {
+      const candidate = element(id) as (SceneElement & { points?: Array<{ x: number; z: number }> }) | undefined;
+      return candidate?.points;
+    };
+    const segmentBox = (segment: Array<{ x: number; z: number }> | undefined) => {
+      if (!segment || segment.length < 2) return undefined;
+      return { minX: Math.min(...segment.map((p) => p.x)), maxX: Math.max(...segment.map((p) => p.x)), minZ: Math.min(...segment.map((p) => p.z)), maxZ: Math.max(...segment.map((p) => p.z)) };
+    };
+    const configuredFurnishing = this.auditFurnishings.guest_bath?.find((item) => item.type === 'vanity' && item.x !== undefined && item.z !== undefined);
+    const vanityBox = configuredFurnishing ? { minX: configuredFurnishing.x! - 0.20, maxX: configuredFurnishing.x! + 0.20, minZ: configuredFurnishing.z! - 0.40, maxZ: configuredFurnishing.z! + 0.40 } : aabb(this.findAuditObject('furniture:guest_bath:vanity:0'));
+    const configuredToilet = this.auditFurnishings.guest_bath?.find((item) => item.type === 'toilet' && item.x !== undefined && item.z !== undefined);
+    const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('furniture:guest_bath:toilet:1'));
+    const screenBox = segmentBox(points('shower_screen_gbath'));
+    const doorBox = segmentBox(points('gbath_west_glass_door'));
+    const shower = this.auditPlumbing.find((candidate) => candidate.room === 'guest_bath' && candidate.type === 'shower');
+    const showerPoint = shower ? { x: shower.x, z: shower.z } : { x: 7.10, z: 2.45 };
+    const dividerZ = screenBox ? (screenBox.minZ + screenBox.maxZ) / 2 : 2.80;
+    const vanitySouth = vanityBox?.minZ ?? dividerZ;
+    rect(bounds.minX, bounds.maxX, dividerZ, bounds.maxZ, 'rgba(245, 158, 11, 0.18)', '#d97706', 4);
+    rect(bounds.minX, bounds.maxX, bounds.minZ, dividerZ, 'rgba(14, 165, 233, 0.18)', '#0284c7', 4);
+    rect(bounds.minX, bounds.maxX, vanitySouth, bounds.maxZ, 'rgba(168, 85, 247, 0.16)', '#7e22ce', 3);
+    for (const candidate of this.auditSceneElements) {
+      if (candidate.type === 'wall') {
+        const x1 = candidate.x1; const z1 = candidate.z1; const x2 = candidate.x2; const z2 = candidate.z2;
+        if (Math.max(x1, x2) >= bounds.minX && Math.min(x1, x2) <= bounds.maxX && Math.max(z1, z2) >= bounds.minZ && Math.min(z1, z2) <= bounds.maxZ) line(x1, z1, x2, z2, '#17212b', 12);
+      }
+    }
+    const arrowWest = (x: number, z: number, _color = '#000000', length = 0.7) => {
+      const head = Math.max(24, Math.min(42, Math.abs(sx) * 0.14));
+      const margin = 24;
+      const center = point(x, z);
+      const startX = clamp(center.x + Math.abs(sx) * length / 2, margin + head, width - margin);
+      const endX = clamp(center.x - Math.abs(sx) * length / 2, margin, width - margin - head);
+      const y = clamp(center.y, margin + head, height - margin - head);
+      ctx.strokeStyle = '#000000'; ctx.fillStyle = '#000000'; ctx.lineWidth = 18; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(endX, y); ctx.lineTo(endX + head, y - head * 0.62); ctx.lineTo(endX + head, y + head * 0.62); ctx.closePath(); ctx.fill(); ctx.lineCap = 'butt';
+    };
+    const drawVanity = (box: ReturnType<typeof aabb>) => {
+      if (!box) return; const w = box.maxX - box.minX; const d = box.maxZ - box.minZ; const inset = Math.min(w, d) * 0.16;
+      rect(box.minX, box.maxX, box.minZ, box.maxZ, 'rgba(124, 58, 237, 0.28)', '#4c1d95', 8);
+      line(box.minX, box.minZ, box.minX, box.maxZ, '#2e1065', 14);
+      rect(box.minX + inset, box.maxX - inset, box.minZ + inset, box.maxZ - inset, 'rgba(255,255,255,0.82)', '#6d28d9', 5);
+      const basin = point((box.minX + box.maxX) / 2, (box.minZ + box.maxZ) / 2); ctx.fillStyle = '#bfdbfe'; ctx.strokeStyle = '#1e3a8a'; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(basin.x, basin.y, Math.max(18, Math.abs(sx) * w * 0.19), Math.max(12, Math.abs(sz) * d * 0.22), 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      const markerZ = clamp(box.minZ + d * 0.5, bounds.minZ + 0.45, bounds.maxZ - 0.45);
+      arrowWest((box.minX + box.maxX) / 2, markerZ); label('台盆正面←西', (box.minX + box.maxX) / 2, markerZ - 0.32);
+    };
+    const drawToilet = (box: ReturnType<typeof aabb>) => {
+      if (!box) return; const w = box.maxX - box.minX; const d = box.maxZ - box.minZ; const tankW = Math.max(w * 0.28, 0.12); const tankX = box.maxX - tankW;
+      rect(box.minX, box.maxX, box.minZ, box.maxZ, 'rgba(220, 38, 38, 0.16)', '#991b1b', 7); rect(tankX, box.maxX, box.minZ, box.maxZ, 'rgba(127, 29, 29, 0.72)', '#450a0a', 6);
+      const bowl = point((box.minX + tankX) / 2, (box.minZ + box.maxZ) / 2); ctx.fillStyle = '#fee2e2'; ctx.strokeStyle = '#991b1b'; ctx.lineWidth = 6; ctx.beginPath(); ctx.ellipse(bowl.x, bowl.y, Math.max(20, Math.abs(sx) * w * 0.25), Math.max(14, Math.abs(sz) * d * 0.32), 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      const markerZ = clamp(box.minZ + d * 0.5, bounds.minZ + 0.45, bounds.maxZ - 0.45);
+      arrowWest((box.minX + box.maxX) / 2, markerZ); label('马桶朝西', (box.minX + box.maxX) / 2, markerZ + 0.32);
+    };
+    const drawShower = (box: ReturnType<typeof aabb>) => {
+      if (!box) return; const x = box.maxX - Math.max(0.14, (box.maxX - box.minX) * 0.12); const z = clamp(bounds.minZ + Math.max(0.28, (dividerZ - bounds.minZ) * 0.28), bounds.minZ + 0.45, bounds.maxZ - 0.45); const p = point(x, z);
+      ctx.fillStyle = '#0f766e'; ctx.strokeStyle = '#064e3b'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(p.x, p.y, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      line(x - 0.08, z, x - 0.42, z, '#000000', 12); line(x - 0.18, z - 0.12, x - 0.42, z, '#000000', 10); line(x - 0.18, z + 0.12, x - 0.42, z, '#000000', 10);
+      label('花洒朝西', clamp(x - 0.55, bounds.minX + 0.7, bounds.maxX - 0.7), z + 0.32);
+    };
+    if (screenBox) { line(screenBox.minX, dividerZ, screenBox.maxX, dividerZ, '#075bd5', 24); label(`玻璃隔断 z=${dividerZ.toFixed(2)}`, (screenBox.minX + screenBox.maxX) / 2, dividerZ - 0.32); }
+    if (doorBox) { const doorWidth = doorBox.maxX - doorBox.minX; const d0 = point(doorBox.minX, dividerZ); const d1 = point(doorBox.maxX, dividerZ); ctx.fillStyle = 'rgba(34, 197, 94, 0.42)'; ctx.strokeStyle = '#15803d'; ctx.lineWidth = 10; ctx.fillRect(d0.x, d0.y - 18, d1.x - d0.x, 36); ctx.strokeRect(d0.x, d0.y - 18, d1.x - d0.x, 36); ctx.fillStyle = '#166534'; ctx.beginPath(); ctx.arc(d0.x, d0.y, 10, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#166534'; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(d0.x, d0.y, Math.abs(sx) * doorWidth, Math.PI, Math.PI * 1.5); ctx.stroke(); label('西侧玻璃门←向北开启', (doorBox.minX + doorBox.maxX) / 2, dividerZ + 0.58); }
+    drawVanity(vanityBox); drawToilet(toiletBox); drawShower({ minX: showerPoint.x, maxX: showerPoint.x, minZ: showerPoint.z, maxZ: showerPoint.z });
+    label(`马桶 AABB x[${toiletBox?.minX.toFixed(3) ?? 'n/a'},${toiletBox?.maxX.toFixed(3) ?? 'n/a'}] z[${toiletBox?.minZ.toFixed(3) ?? 'n/a'},${toiletBox?.maxZ.toFixed(3) ?? 'n/a'}]`, bounds.minX + 0.05, bounds.minZ + 0.28, '#991b1b', 'bold 20px sans-serif');
+    line(bounds.minX, bounds.maxZ, bounds.maxX, bounds.maxZ, '#17212b', 12); label(`南墙 z=${bounds.maxZ.toFixed(2)}`, bounds.minX + 0.08, bounds.maxZ - 0.16, '#17212b', 'bold 20px sans-serif');
+    line(bounds.minX, bounds.minZ, bounds.minX, bounds.maxZ, '#17212b', 12); line(bounds.maxX, bounds.minZ, bounds.maxX, bounds.maxZ, '#17212b', 12); label('南侧开放边', bounds.minX + 0.08, bounds.maxZ + 0.28, '#475569', 'bold 20px sans-serif');
+    label('北 ↑', bounds.minX + 0.12, bounds.minZ + 0.34, '#111827'); label('东 →', bounds.maxX - 0.58, (bounds.minZ + bounds.maxZ) / 2, '#111827');
+    ctx.font = 'bold 26px sans-serif'; ctx.fillStyle = '#111827'; ctx.fillText(`客卫专用平面审查 · bounds x[${bounds.minX.toFixed(2)}, ${bounds.maxX.toFixed(2)}] z[${bounds.minZ.toFixed(2)}, ${bounds.maxZ.toFixed(2)}]`, 30, 42);
+    return canvas.toDataURL('image/png');
+  }
+
+  private findAuditObject(objectId: string): THREE.Object3D | undefined {
+    let found: THREE.Object3D | undefined;
+    this.scene.traverse((object) => { if (!found && object.userData?.objectId === objectId) found = object; });
+    return found;
+  }
+
+  private rgbaToPng(rgba: Uint8Array, width: number, height: number, bounds?: CaptureBounds, view?: CaptureOptions['view']): string {
     const flipped = new Uint8Array(width * height * 4);
     for (let y = 0; y < height; y++) {
       const srcRow = (height - 1 - y) * width * 4;
@@ -361,6 +497,17 @@ export class HouseScene implements SceneApi {
     const ctx = canvas.getContext('2d')!;
     const imageData = new ImageData(new Uint8ClampedArray(flipped), width, height);
     ctx.putImageData(imageData, 0, 0);
+    if (bounds) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillRect(18, 18, Math.min(width - 36, 560), 72);
+      ctx.fillStyle = '#18212b';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText(view === 'high-perspective' ? '客卫高位透视审查' : '客卫正俯瞰审查 · 北↑ 东→', 32, 48);
+      ctx.font = '16px sans-serif';
+      ctx.fillText(`bounds x[${bounds.minX.toFixed(2)}, ${bounds.maxX.toFixed(2)}] z[${bounds.minZ.toFixed(2)}, ${bounds.maxZ.toFixed(2)}] · toilet/vanity 朝西`, 32, 74);
+      ctx.restore();
+    }
     return canvas.toDataURL('image/png');
   }
 
@@ -400,6 +547,9 @@ export class HouseScene implements SceneApi {
     this.slidingDoorGroups.clear();
     this.wallSegmentIndex.clear();
     this.roomMeta.clear();
+    this.auditFurnishings = projectData.house.furnishings ?? {};
+    this.auditSceneElements = projectData.house.sceneElements ?? [];
+    this.auditPlumbing = [];
 
     this.clearRoot(this.topicGroup);
     if (this.topicGroup.parent !== this.scene) this.scene.add(this.topicGroup);
@@ -666,6 +816,7 @@ export class HouseScene implements SceneApi {
   }
 
   placeInfrastructureFixtures(electrical: ElectricalPoint[], plumbing: PlumbingPoint[]): void {
+    this.auditPlumbing = plumbing;
     this.decorations.clearMarkers();
     const result = buildInfrastructure({
       electrical,
