@@ -3,13 +3,15 @@ import os
 import sys
 import types
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dress_config import make_jobs
 
 bpy_stub = types.ModuleType('bpy')
 bpy_stub.types = types.SimpleNamespace(Object=object)
 sys.modules.setdefault('bpy', bpy_stub)
-from dress_scene import effective_camera_config  # noqa: E402
+from dress_scene import _set_eevee_samples, effective_camera_config  # noqa: E402
 
 CONFIG = {
     'scenarios': [
@@ -40,6 +42,13 @@ def test_make_jobs_filename_and_scenario():
     bh = next(j for j in jobs if j['scenario_id'] == 'blue_hour')
     assert bh['scenario']['world_color'] == '#3a5a8f'
     assert bh['scenario']['world_strength'] == 0.5
+
+
+def test_make_jobs_scenario_filter():
+    jobs = make_jobs(CONFIG, version='v1', scenario_id='night')
+    assert len(jobs) == 2
+    assert {job['scenario_id'] for job in jobs} == {'night'}
+    assert {job['camera_id'] for job in jobs} == {'living_sofa_glass', 'master_bed_looking_glass'}
 
 
 def test_make_jobs_camera_scenario_filter():
@@ -91,6 +100,18 @@ def test_effective_camera_config_without_matching_override_is_unchanged():
     effective = effective_camera_config(camera, {'id': 'blue_hour', 'exposure': 0.5})
     assert effective == camera
     assert effective is not camera
+
+
+def test_set_eevee_samples():
+    scene = types.SimpleNamespace(eevee=types.SimpleNamespace(taa_render_samples=64))
+    _set_eevee_samples(scene, 8)
+    assert scene.eevee.taa_render_samples == 8
+
+
+def test_set_eevee_samples_rejects_zero():
+    scene = types.SimpleNamespace(eevee=types.SimpleNamespace(taa_render_samples=64))
+    with pytest.raises(ValueError):
+        _set_eevee_samples(scene, 0)
 
 
 if __name__ == '__main__':

@@ -22,6 +22,13 @@ import sys
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from scene_asset_registry import (  # noqa: E402
+    load_registry,
+    read_asset_metadata,
+    registry_entry,
+)
+
 
 _DRESS_SCENE_PATH = Path(__file__).with_name("dress_scene.py")
 
@@ -306,10 +313,30 @@ def classify_object(obj: Any, materials: Iterable[Any] | None = None) -> tuple[s
     return "PROCEDURAL_MESH", "no real-asset metadata; mesh treated as procedural"
 
 
-def audit_mesh_object(obj: Any) -> dict[str, Any]:
+_ROLE_ALIASES = {
+    "sofa": "sofa_3seat",
+    "table": "dining_table",
+    "chair": "dining_chair",
+    "plant": "plant_fiddle",
+}
+
+
+def _registry_role(role: Any) -> str | None:
+    if role is None:
+        return None
+    value = str(role)
+    return _ROLE_ALIASES.get(value, value)
+
+
+def audit_mesh_object(obj: Any, registry: Mapping[str, Any] | None = None) -> dict[str, Any]:
     materials = _mesh_materials(obj)
     classification, reason = classify_object(obj, materials)
     room, role = _name_parts(obj)
+    metadata = read_asset_metadata(obj)
+    registry_role = _registry_role(role)
+    entry = registry_entry(registry or {}, registry_role) if registry_role else None
+    source_class = metadata["sourceClass"]
+    source_policy = entry.get("source_policy") if entry else None
     data = getattr(obj, "data", None)
     uv_layers = list(getattr(data, "uv_layers", ()) or ())
     mat_infos = [material_info(m) for m in materials]
@@ -321,14 +348,20 @@ def audit_mesh_object(obj: Any) -> dict[str, Any]:
         "name": getattr(obj, "name", None),
         "type": getattr(obj, "type", None),
         "parent": getattr(getattr(obj, "parent", None), "name", None),
-        "instance_key": _instance_key(obj),
+        "instance_key": metadata["formalInstanceKey"] or _instance_key(obj),
+        "formalInstanceKey": metadata["formalInstanceKey"] or _instance_key(obj),
         "room": room,
         "role": role,
+        "registry_entry": entry,
+        "source_policy": source_policy,
+        "source_class": source_class,
+        "source_id": metadata["sourceId"],
+        "fallback_of": metadata["fallbackOf"],
         "geometry_source": _prop(obj, "geometrySource", "geometry_source"),
         "asset_provider": _prop(obj, "assetProvider", "asset_provider"),
-        "asset_source": _prop(obj, "assetSource", "asset_source"),
+        "asset_source": metadata["sourceId"] or _prop(obj, "assetSource", "asset_source"),
         "asset_kind": _prop(obj, "assetKind", "asset_kind"),
-        "formal_web_geometry": _prop(obj, "formalWebGeometry", "formal_web_geometry"),
+        "formal_web_geometry": metadata["formalWebGeometry"],
         "replacement_source": bool(_prop(obj, "dress_replacement_source", "replacement_source")),
         "dress_replacement_source": bool(_prop(obj, "dress_replacement_source")),
         "render_only": bool(_prop(obj, "render_only", "renderOnly")),
@@ -396,14 +429,14 @@ def _instance_summary(assets: Iterable[Mapping[str, Any]]) -> dict[str, dict[str
 
 def _source_kind(asset: Mapping[str, Any]) -> str:
     """Classify one audited mesh without treating render-only staging as a replacement."""
-    if asset.get("render_only") or asset.get("geometry_source") == "blender_staging":
+    if asset.get("source_class") == "render_only" or asset.get("render_only") or asset.get("geometry_source") == "blender_staging":
         return "render-only"
-    if asset.get("dress_replacement_source") or asset.get("replacement_source"):
+    if asset.get("source_class") == "replacement" or asset.get("dress_replacement_source") or asset.get("replacement_source"):
         return "replacement"
     return "formal"
 
 
-def aggregate_visible_sources(assets: Iterable[Mapping[str, Any]]) -> tuple[dict[str, Any], dict[str, Any]]:
+def aggregate_visible_sources(assets: Iterable[Mapping[str, Any]], registry: Mapping[str, Any] | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     """Aggregate source provenance by formal furniture instance key.
 
     Mesh children are deduplicated by source identity, while visibility is kept at
@@ -455,11 +488,12 @@ def aggregate_visible_sources(assets: Iterable[Mapping[str, Any]]) -> tuple[dict
     return conflicts, replacement_summary
 
 
-def audit_scene(bpy_module: Any, input_path: str | None = None) -> dict[str, Any]:
+def audit_scene(bpy_module: Any, input_path: str | None = None, registry_root: str | None = None) -> dict[str, Any]:
+    registry = load_registry(registry_root)
     objects = sorted(list(getattr(bpy_module.data, "objects", ()) or ()),
                      key=lambda obj: (getattr(obj, "name", ""), getattr(obj, "type", "")))
     mesh_objects = [obj for obj in objects if getattr(obj, "type", None) == "MESH"]
-    assets = [audit_mesh_object(obj) for obj in mesh_objects]
+    assets = [audit_mesh_object(obj, registry) for obj in mesh_objects]
     counts: dict[str, int] = {}
     for obj in objects:
         typ = str(getattr(obj, "type", "UNKNOWN"))
@@ -469,8 +503,20 @@ def audit_scene(bpy_module: Any, input_path: str | None = None) -> dict[str, Any
         key = asset["classification"]
         class_counts[key] = class_counts.get(key, 0) + 1
     images = [image for asset in assets for image in asset["images"]]
-    visible_source_conflicts, replacement_summary = aggregate_visible_sources(assets)
-    warnings = []
+    visible_source_conflicts, replacement_summary = aggregate_visible_sources(assets, registry)
+    warnings = list(registry.get("_diagnostics", {}).get("warnings", []))
+    errors = list(registry.get("_diagnostics", {}).get("errors", []))
+    for asset in assets:
+        if asset["role"] and asset["registry_entry"] is None:
+            warnings.append(f"registry unknown role: {asset['role']}")
+        if asset["source_class"] not in (asset["source_policy"] or ("formal", "replacement", "render_only", "fallback")):
+            warnings.append(f"registry source policy mismatch: {asset['role']} -> {asset['source_class']}")
+    for key in visible_source_conflicts:
+        role = next((asset["role"] for asset in assets if asset["instance_key"] == key), None)
+        entry = registry_entry(registry, _registry_role(role)) if role else None
+        if entry and entry.get("replacement_exclusive"):
+            errors.append(f"registry replacement_exclusive conflict: {key}")
+
     for asset in assets:
         for image in asset["images"]:
             if not image["packed"] and not image["exists"]:
@@ -492,7 +538,7 @@ def audit_scene(bpy_module: Any, input_path: str | None = None) -> dict[str, Any
         "visible_source_conflicts": visible_source_conflicts,
         "replacement_summary": replacement_summary,
         "warnings": sorted(set(warnings)),
-        "errors": [],
+        "errors": sorted(set(errors)),
     }
 
 
@@ -554,7 +600,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             bpy.ops.wm.read_factory_settings(use_empty=True)
             bpy.ops.import_scene.gltf(filepath=os.path.abspath(args.glb))
-        report = audit_scene(bpy, source)
+        report = audit_scene(bpy, source, args.config_dir or os.getcwd())
         text = format_report(report, args.format)
         if args.out:
             output = Path(args.out)

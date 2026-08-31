@@ -29,6 +29,12 @@ import blender_lighting as _blender_lighting  # noqa: E402
 import blender_environment as _blender_environment  # noqa: E402
 import blender_assets as _blender_assets  # noqa: E402
 import blender_render_only as _blender_render_only  # noqa: E402
+import blender_preview as _blender_preview  # noqa: E402
+import legacy_geometry as _legacy_geometry  # noqa: E402
+import scene_asset_registry as _scene_asset_registry  # noqa: E402
+
+# Formal dressed/audit runs require the tracked registry; only isolated unit helpers use builtin fallback.
+ASSET_REGISTRY = _scene_asset_registry.load_registry(strict=True)
 
 GLASS_IDS = {
     'west_curtain', 'kitchen_north_curtain', 'north_recess_curtain',
@@ -122,6 +128,13 @@ def new_sheer_transparent(name: str, color, opacity: float = 0.15):
     nt.links.new(bsdf.outputs[0], mix.inputs[2])
     out = _find_node(nt, 'ShaderNodeOutputMaterial') or nt.nodes.new('ShaderNodeOutputMaterial')
     nt.links.new(mix.outputs[0], out.inputs['Surface'])
+    try:
+        mat.surface_render_method = 'DITHERED'
+    except Exception:
+        try:
+            mat.blend_method = 'BLEND'
+        except Exception:
+            pass
     return mat
 
 
@@ -186,6 +199,8 @@ FIXTURE_MATERIAL_ROLES = {
     'fixture_track': 'fixture_track',
     'fixture_metal': 'fixture_metal',
     'fixture_met': 'fixture_metal',
+    'cooktop_burner': 'cooktop_burner',
+    'cooktop_surface': 'cooktop_surface',
     'cove_light': 'cove_light',
     'ceramic': 'ceramic',
     'cer': 'ceramic',
@@ -200,6 +215,7 @@ FIXTURE_MATERIAL_ROLES = {
     'cabinet_support': 'cabinet_support',
     'safety_bar': 'safety_bar',
     'railing': 'railing',
+    'hvac_cover': 'hvac_coordination_cover',
     'mirror': 'mirror',
 }
 
@@ -254,7 +270,7 @@ def classify(obj: bpy.types.Object) -> str:
         # （sheer→纱帘 / blackout+blinds→布料）；variant 只影响材质语义，
         # 不改显隐——可见性已由 GLB 快照（expectedVisibleNodes）决定
         return 'sheer' if curtain['layer'] == 'sheer' else 'curtain_fabric'
-    if n in GLASS_IDS or n.startswith('curtain_run:'):
+    if n in GLASS_IDS or n.startswith('curtain_run:') or any(n.startswith(f'{glass_id}:part=') for glass_id in GLASS_IDS):
         return 'exterior_glazing'
     if n.startswith('sliding_door'):
         return 'fluted_glass'
@@ -317,12 +333,9 @@ def build_materials(engine: str, sheer_opacity: float = 0.15) -> dict:
     )
     if is_cycles:
         _glass_shadow_passthrough(glass)
-    # 纱帘：Cycles 用真半透明（可看穿见天色，布料权重配置驱动）；EEVEE 用 alpha 混合
-    sheer = (
-        new_sheer_transparent('软装_纱帘', hex_rgb('#f7f4ec'), opacity=sheer_opacity)
-        if is_cycles
-        else new_principled('软装_纱帘', hex_rgb('#f7f4ec'), rough=0.9, alpha=max(0.1, sheer_opacity * 2))
-    )
+    # 纱帘在 Cycles/EEVEE 都使用显式 Transparent BSDF 混合，避免
+    # EEVEE 仅改 Principled Alpha 后仍把整面窗变成不透明灰面。
+    sheer = new_sheer_transparent('软装_纱帘', hex_rgb('#f7f4ec'), opacity=sheer_opacity)
     return {
         # 木纹砖（柔光）：materials.yaml floor_tile_01 #c49a6c finish=soft
         'floor': new_principled('硬装_木纹砖', hex_rgb('#c49a6c'), rough=0.35, coat=0.15),
@@ -363,6 +376,8 @@ def build_materials(engine: str, sheer_opacity: float = 0.15) -> dict:
         'fixture_diffuser': new_principled('灯具_扩散罩', hex_rgb('#f2eee2'), rough=0.6),
         'fixture_track': new_principled('灯具_轨道', hex_rgb('#111111'), rough=0.35, metallic=0.75),
         'fixture_metal': new_principled('灯具_金属', hex_rgb('#504b46'), rough=0.4, metallic=0.7),
+        'cooktop_burner': new_principled('灶台_炉圈', hex_rgb('#4a4a4a'), rough=0.32, metallic=0.75),
+        'cooktop_surface': new_principled('灶台_玻璃面', hex_rgb('#1b2024'), rough=0.18, metallic=0.35, coat=0.25),
         'cove_light': new_principled('灯具_灯槽', hex_rgb('#e8e6e0'), rough=0.7),
         'sill': new_principled('硬装_窗台石', hex_rgb('#d8d3c8'), rough=0.5),
         'railing': new_principled('硬装_栏杆', hex_rgb('#3a3d40'), rough=0.4, metallic=0.8),
@@ -1006,6 +1021,78 @@ BARE_SHELL_ASSET_HIDE_PREFIXES = (
 
 
 _CURTAIN_HIDE_RENDER_SNAPSHOT: dict[str, bool] = {}
+_PREVIEW_ROOM: str | None = None
+_PREVIEW_SCOPE_STATS: dict | None = None
+
+
+def _purge_preview_orphan_meshes() -> dict:
+    """清理 preview 删除遗留的 orphan mesh，并返回 purge 统计。"""
+    purge = getattr(_blender_preview, 'safe_cleanup_orphan_meshes', None)
+    if not callable(purge):
+        return {'status': 'unavailable', 'candidates': 0, 'removed': 0, 'skipped': 0}
+    result = purge(bpy)
+    return {'status': 'ok', **result}
+
+
+def _object_room_id(obj) -> str | None:
+    """Read an explicit room id from asset metadata or stable exporter names."""
+    for key in ('formalInstanceKey', 'instance_key', 'roomId', 'room_id', 'room'):
+        value = _metadata_value(obj, key)
+        if isinstance(value, str):
+            parts = value.split(':')
+            if len(parts) >= 4 and parts[0] == 'furniture':
+                return parts[1]
+            if key in {'roomId', 'room_id', 'room'} and value:
+                return value
+    name = getattr(obj, 'name', '')
+    match = re.match(r'^furniture:([^:]+):', name)
+    if match:
+        return match.group(1)
+    match = re.match(r'^asset:([^:]+):', name)
+    if match and match.group(1) in {
+        'guest_bath', 'entry_garden', 'kitchen', 'study', 'bedroom_nw', 'living_dining',
+    }:
+        return match.group(1)
+    match = re.match(r'^floor:([^:.]+)', name)
+    return match.group(1) if match else None
+
+
+def _apply_preview_scope(preview_room: str | None) -> None:
+    """Delete imported preview objects outside the selected room before dressing.
+
+    Untagged architectural GLB objects remain available; generated assets are
+    constrained again after staging so formal mode keeps its existing behavior.
+    """
+    global _PREVIEW_ROOM, _PREVIEW_SCOPE_STATS
+    _PREVIEW_ROOM = preview_room
+    _PREVIEW_SCOPE_STATS = None
+    if not preview_room:
+        return
+    scope = _blender_preview.parse_scope({'rooms': preview_room})
+    stats = _blender_preview.safe_delete_preview_objects(
+        bpy.data.objects, scope, action='delete'
+    )
+    stats['purge'] = _purge_preview_orphan_meshes()
+    _PREVIEW_SCOPE_STATS = stats
+    print(f'[dress_scene] preview scope room={preview_room} '
+          f'deleted_imported={stats["deleted_count"]} '
+          f'cropped={stats["cropped_count"]} failed={stats["failed_count"]}')
+
+
+def _enforce_preview_scope() -> None:
+    """Hide staged/replacement assets outside the selected preview room."""
+    if not _PREVIEW_ROOM:
+        return
+    hidden = 0
+    for obj in bpy.data.objects:
+        room_id = _object_room_id(obj)
+        if room_id and room_id != _PREVIEW_ROOM:
+            _set_recursive_hidden(obj, True)
+            hidden += 1
+        elif obj.name.startswith('hvac:'):
+            _set_recursive_hidden(obj, True)
+            hidden += 1
+    print(f'[dress_scene] preview scope enforced room={_PREVIEW_ROOM} hidden_assets={hidden}')
 
 
 def _curtain_hide_render_snapshot(objects) -> dict[str, bool]:
@@ -1057,6 +1144,8 @@ def _furniture_instance_anchors(objects):
         key = _furniture_instance_key(obj)
         if key is None:
             continue
+        if _PREVIEW_ROOM and _object_room_id(obj) != _PREVIEW_ROOM:
+            continue
         current = obj
         while True:
             parent = getattr(current, 'parent', None)
@@ -1100,36 +1189,9 @@ def bare_shell_should_hide(obj) -> bool:
 
 
 def _add_cabinet_seams(ftype: str, base, rz: float, gap_mat) -> int:
-    """在定制柜正面生成柜门分缝条。base=(bx,by,bz) Blender 世界坐标（柜体块原点），
-    rz 为绕 Z 旋转。缝条 4mm 宽、3mm 深（半嵌入门板正面），深色哑光读出凹槽阴影。"""
-    import math
-    panels = CABINET_SEAM_PANELS.get(ftype)
-    if not panels or gap_mat is None:
-        return 0
-    cos_rz, sin_rz = math.cos(rz), math.sin(rz)
-    bx, by, bz = base
-    n = 0
-    for (x0, x1, y0, y1, fz) in panels:
-        w = x1 - x0
-        doors = max(1, round(w / 0.45))  # 400-500mm 标准门宽
-        for k in range(1, doors):
-            sx = x0 + w * k / doors
-            sy = (y0 + y1) / 2
-            # three 局部 (sx, sy, fz) → Blender 局部 (sx, -fz, sy)，绕 Z 旋 rz
-            lx, ly = sx, -fz
-            wx = bx + lx * cos_rz - ly * sin_rz
-            wy = by + lx * sin_rz + ly * cos_rz
-            bpy.ops.mesh.primitive_cube_add(size=1.0)
-            s = bpy.context.object
-            s.name = f'asset:{ftype}:door_gap:{k}'
-            s.dimensions = (0.004, 0.003, y1 - y0)
-            s.location = (wx, wy, bz + sy)
-            s.rotation_euler = (0, 0, rz)
-            s.data.materials.append(gap_mat)
-            n += 1
-    if n:
-        print(f'[dress_scene] cabinet door gaps: {ftype} ×{n}')
-    return n
+    """Compatibility wrapper for the legacy cabinet seam helper."""
+    _configure_legacy_geometry()
+    return _legacy_geometry._add_cabinet_seams(ftype, base, rz, gap_mat)
 
 
 def add_pbr_maps(mat, tex_dir, size=2.0, with_diffuse=False, normal_strength=0.5, tint=None):
@@ -1189,249 +1251,34 @@ def add_pbr_maps(mat, tex_dir, size=2.0, with_diffuse=False, normal_strength=0.5
 
 def place_extra_furniture(furniture_mats: dict, config_dir: str, plumbing: dict,
                           only_types: set | None = None) -> int:
-    """LEGACY Blender 家具补摆几何旁路；not called by initialize_scene。
-
-    正式家具几何由 shared/CLI GLB（GLB geometry source）提供；本函数仅保留作历史
-    迁移参考。house.yaml 已摆位但 glb 尚未重新导出的家具类型：直接按坐标生成部件。
-    glb 里已有 furniture:* 块的类型跳过（重新导出后自动失效，不会重复）。
-    坐标：house.yaml 为 three 局部米制 (x, z, rotation°)；three(x,y,z) → Blender(x,-z,y)，rotation 同号映到 Blender Z。
-    only_types：bare_shell 等工况的类型白名单（只生成定制柜等硬装件）。"""
-    import math
-    import yaml
-    if not config_dir:
-        return 0
-    existing = set()
-    for obj in bpy.data.objects:
-        if obj.name.startswith('furniture:'):
-            ps = obj.name.split(':')
-            if len(ps) >= 3:
-                existing.add(ps[2])
-    house_path = os.path.join(config_dir, 'config', 'house.yaml')
-    if not os.path.exists(house_path):
-        return 0
-    house = yaml.safe_load(open(house_path, encoding='utf-8'))
-    count = 0
-    for _room_id, items in (house.get('furnishings') or {}).items():
-        for it in items or []:
-            ftype = it.get('type')
-            if ftype not in FURNITURE_PARTS or ftype in existing:
-                continue
-            if only_types is not None and ftype not in only_types:
-                continue
-            point_anchor = {
-                'sink': 'faucet_kitchen_sink',
-                'dishwasher': 'drain_kitchen_dishwasher',
-            }.get(ftype)
-            if point_anchor:
-                anchor = plumbing.get(point_anchor)
-                if not anchor:
-                    print(f'[dress_scene] WARN: missing plumbing anchor {point_anchor}; skip {ftype}')
-                    continue
-                x, z = anchor['x'], anchor['z']
-            else:
-                if it.get('x') is None or it.get('z') is None:
-                    continue
-                x, z = it['x'], it['z']
-            rz = math.radians(it.get('rotation', 0))
-            cos_rz, sin_rz = math.cos(rz), math.sin(rz)
-            bx, by = x, -z  # three → blender 水平面
-            # 优先用真 3D 模型（.glb/.gltf）：与 replace_furniture 同一映射表
-            glb_cfg = FURNITURE_GLB.get(ftype)
-            if glb_cfg:
-                glb_path = os.path.join(config_dir, glb_cfg['path'])
-                if os.path.exists(glb_path):
-                    if import_furniture_glb(glb_path, glb_cfg, loc_rz=((bx, by, 0.0), rz)):
-                        count += 1
-                        continue
-            for part in FURNITURE_PARTS[ftype]:
-                pname, tsize, tpos, mat_key = part[:4]
-                shape = part[4] if len(part) > 4 else 'box'
-                lx, ly, lz = tpos[0], -tpos[2], tpos[1]
-                wx = bx + lx * cos_rz - ly * sin_rz
-                wy = by + lx * sin_rz + ly * cos_rz
-                wz = lz
-                dx, dy, dz = tsize[0], tsize[2], tsize[1]
-                if shape == 'cylinder':
-                    bpy.ops.mesh.primitive_cylinder_add(radius=tsize[0] / 2, depth=tsize[1])
-                else:
-                    bpy.ops.mesh.primitive_cube_add(size=1.0)
-                part = bpy.context.object
-                part.name = f'asset:{ftype}:{pname}'
-                part.dimensions = (dx, dy, dz)
-                part.location = (wx, wy, wz)
-                part.rotation_euler = (0, 0, rz)
-                mat = furniture_mats.get(mat_key)
-                if mat:
-                    part.data.materials.append(mat)
-                bevel = part.modifiers.new('Bevel', 'BEVEL')
-                bevel.width = 0.015
-                bevel.segments = 4
-                bevel.limit_method = 'ANGLE'
-                bevel.angle_limit = 0.523599
-                count += 1
-            # 定制柜柜门分缝（与 replace_furniture 同一布局表）
-            count += _add_cabinet_seams(ftype, (bx, by, 0.0), rz, furniture_mats.get('door_gap'))
-    if count:
-        print(f'[dress_scene] extra furniture placed: {count} parts')
-    return count
+    """Compatibility wrapper for the LEGACY furniture geometry escape hatch."""
+    _configure_legacy_geometry()
+    return _legacy_geometry.place_extra_furniture(furniture_mats, config_dir, plumbing, only_types)
 
 
 def add_ceiling(ceiling: list, ceiling_mats: dict) -> int:
-    """LEGACY Blender 吊顶几何旁路；not called by initialize_scene。
-
-    正式基础吊顶几何由 shared/CLI GLB（GLB geometry source）提供；本函数仅保留作
-    历史迁移参考，从 render facts 生成 drop/aluminum_buckle 吊顶；ac_indoor 不在
-    Blender 建实体。"""
-    if not isinstance(ceiling, list):
-        print('[dress_scene] WARN: facts.ceiling must be a list; skip ceiling construction')
-        return 0
-    count = 0
-    for it in ceiling:
-        if not isinstance(it, dict):
-            print('[dress_scene] WARN: invalid ceiling fact; skip')
-            continue
-        typ, zone_id = it.get('type'), it.get('id', '<unknown>')
-        if typ == 'ac_indoor':
-            continue
-        if typ not in ('drop', 'aluminum_buckle'):
-            print(f'[dress_scene] WARN: ceiling {zone_id} has unsupported type {typ!r}; skip')
-            continue
-        area, thick = it.get('area'), it.get('thickness')
-        if (not isinstance(area, list) or len(area) != 4
-                or not all(isinstance(v, (int, float)) for v in area)
-                or not isinstance(thick, (int, float)) or thick <= 0):
-            print(f'[dress_scene] WARN: ceiling {zone_id} missing valid area/thickness; skip')
-            continue
-        x1, z1, x2, z2 = area
-        w, d = x2 - x1, z2 - z1
-        if w <= 0 or d <= 0:
-            print(f'[dress_scene] WARN: ceiling {zone_id} has non-positive area; skip')
-            continue
-        bpy.ops.mesh.primitive_cube_add(size=1.0)
-        box = bpy.context.object
-        box.name = f'ceiling:{zone_id}'
-        box.dimensions = (w, d, thick)
-        box.location = to_blender((x1 + x2) / 2, 2.8 - thick / 2, (z1 + z2) / 2)
-        mat = ceiling_mats.get('aluminum_buckle' if typ == 'aluminum_buckle' else 'ceiling')
-        if mat:
-            box.data.materials.append(mat)
-        count += 1
-    if count:
-        print(f'[dress_scene] ceiling facts: {count}')
-    return count
+    """Compatibility wrapper for the LEGACY ceiling geometry escape hatch."""
+    _configure_legacy_geometry()
+    return _legacy_geometry.add_ceiling(ceiling, ceiling_mats)
 
 
 def add_kitchen_cabinets(cream, quartz, plumbing: dict, gap=None) -> int:
-    """LEGACY Blender 厨房几何旁路；not called by initialize_scene。
-
-    厨房正式柜体、连续台面 bridge、开孔与家电位置由 shared/CLI GLB（GLB geometry
-    source）提供；本函数仅保留作旧 Blender L 型橱柜的迁移参考。
-    """
-
-    def kbox(name, cx, cz, sx, sz, sy, yc, mat):
-        bpy.ops.mesh.primitive_cube_add(size=1.0)
-        b = bpy.context.object
-        b.name = name
-        b.dimensions = (sx, sz, sy)
-        b.location = to_blender(cx, yc, cz)
-        if mat:
-            b.data.materials.append(mat)
-        bev = b.modifiers.new('Bevel', 'BEVEL')
-        bev.width = 0.01
-        bev.segments = 3
-        return 1
-
-    def kgap(name, cx, cz, y_lo, y_hi, facing):
-        # 柜门分缝条（不加 bevel：4mm 截面比 bevel 宽还小）。facing 'z'=贴在朝 ±z 的正面，
-        # 截面 x=4mm/z=3mm；facing 'x'=贴在朝 ±x 的正面，截面 x=3mm/z=4mm
-        bpy.ops.mesh.primitive_cube_add(size=1.0)
-        b = bpy.context.object
-        b.name = name
-        sx, sz = (0.004, 0.003) if facing == 'z' else (0.003, 0.004)
-        b.dimensions = (sx, sz, y_hi - y_lo)
-        b.location = to_blender(cx, (y_lo + y_hi) / 2, cz)
-        if gap:
-            b.data.materials.append(gap)
-        return 1
-
-    n = 0
-    sink = plumbing.get('faucet_kitchen_sink')
-    dishwasher = plumbing.get('drain_kitchen_dishwasher')
-    sink_cutout = []
-    if sink:
-        sink_cutout = [(sink['x'], sink['z'], 0.70, 0.40)]
-    else:
-        print('[dress_scene] WARN: missing plumbing anchor faucet_kitchen_sink; skip kitchen sink cutout')
-    if not dishwasher:
-        print('[dress_scene] WARN: missing plumbing anchor drain_kitchen_dishwasher; dishwasher reserve remains cabinet-defined only')
-    # 北墙地柜拆两段留洗碗机位 x∈[8.50,9.10]（柜体为既有非 point 几何；设备位置锚点仅用于明确预留标记）
-    n += kbox('kitchen:base_n1', 7.86, 0.3, 1.28, 0.6, 0.85, 0.425, cream)
-    n += kbox('kitchen:base_n2', 9.94, 0.3, 1.68, 0.6, 0.85, 0.425, cream)
-    n += kbox('kitchen:base_e', 10.5, 1.15, 0.6, 1.1, 0.85, 0.425, cream)
-    # 台面：北墙 3.6m 整片（洗碗机位 x∈[8.5,9.1] 上方台面连续，与真实安装一致；
-    # 水槽开孔 0.70×0.40 @9.5,0.30 台下盆）+ 东墙 1.1m（灶具开孔 0.75×0.45 @10.5,1.18 嵌平）
-    # 北墙是玻璃幕墙（curtain_run），挂不了吊柜——house.yaml「北墙玻璃幕只做落地柜+台面」，
-    # 原 kitchen:wall_n 吊柜违反此约束（电气/家具铁律：玻璃幕不挂柜），已删
-    def ktop(name, cx, cz, sx, sz, cutouts):
-        bpy.ops.mesh.primitive_cube_add(size=1.0)
-        t = bpy.context.object
-        t.name = name
-        t.dimensions = (sx, sz, 0.03)
-        t.location = to_blender(cx, 0.865, cz)
-        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-        t.data.materials.append(quartz)
-        for i, (ox, oz, ow, od) in enumerate(cutouts):
-            bpy.ops.mesh.primitive_cube_add(size=1.0)
-            c = bpy.context.object
-            c.name = f'{name}:cut{i}'
-            c.dimensions = (ow, od, 0.1)
-            c.location = to_blender(ox, 0.865, oz)
-            bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-            mod = t.modifiers.new(f'cut{i}', 'BOOLEAN')
-            mod.operation = 'DIFFERENCE'
-            mod.object = c
-            bpy.context.view_layer.objects.active = t
-            bpy.ops.object.modifier_apply(modifier=mod.name)
-            bpy.data.objects.remove(c)
-        return 1
-
-    n += ktop('kitchen:top_n', 9.0, 0.3, 3.6, 0.62, sink_cutout)
-    n += ktop('kitchen:top_e', 10.5, 1.15, 0.62, 1.1, [(10.5, 1.18, 0.75, 0.45)])
-    if dishwasher:
-        n += kbox('kitchen:dishwasher_reserve', dishwasher['x'], dishwasher['z'], 0.02, 0.02, 0.02, 0.01, None)
-    # 柜门分缝：北墙 run A 1.28m→3门（gap 7.65/8.08）/ run B 1.68m→3门（gap 9.66/10.22）/ 东墙 1.1m→2门
-    if gap is not None:
-        for gx in (7.65, 8.08, 9.66, 10.22):
-            n += kgap(f'kitchen:gap_n{gx}', gx, 0.6, 0.0, 0.85, 'z')
-        n += kgap('kitchen:gap_e1', 10.2, 1.15, 0.0, 0.85, 'x')
-    print(f'[dress_scene] kitchen cabinets: {n}')
-    return n
+    """Compatibility wrapper for the LEGACY kitchen geometry escape hatch."""
+    _configure_legacy_geometry()
+    return _legacy_geometry.add_kitchen_cabinets(cream, quartz, plumbing, gap)
 
 
 def _add_cylinder(name: str, radius: float, depth: float, location: tuple,
                   mat, vertices: int = 12) -> int:
-    bpy.ops.mesh.primitive_cylinder_add(vertices=vertices, radius=radius, depth=depth,
-                                       location=location)
-    obj = bpy.context.object
-    obj.name = name
-    if mat:
-        obj.data.materials.append(mat)
-    return 1
+    """Compatibility wrapper for the legacy cylinder helper."""
+    _configure_legacy_geometry()
+    return _legacy_geometry._add_cylinder(name, radius, depth, location, mat, vertices)
 
 
 def _add_shower_fixture(prefix: str, anchor: dict, mat) -> int:
-    """由 plumbing anchor 生成低面数淋浴柱；不依赖房屋绝对坐标。"""
-    x, z = float(anchor['x']), float(anchor['z'])
-    top = float(anchor.get('height', 1.0))
-    if not (0.3 <= top <= 2.5):
-        print(f'[dress_scene] WARN: invalid shower anchor height {prefix}: {top}; skip')
-        return 0
-    count = 0
-    count += _add_cylinder(f'{prefix}:column', 0.018, top - 0.08,
-                           to_blender(x, (top - 0.08) / 2, z), mat)
-    count += _add_cylinder(f'{prefix}:head', 0.09, 0.025,
-                           to_blender(x, top + 0.04, z), mat)
-    return count
+    """Compatibility wrapper for the legacy shower fixture helper."""
+    _configure_legacy_geometry()
+    return _legacy_geometry._add_shower_fixture(prefix, anchor, mat)
 
 
 MASTER_BATH_FINAL_LAYOUT = {
@@ -1458,77 +1305,9 @@ def master_bath_final_layout() -> dict:
 
 
 def add_bath_fixtures(furniture_mats: dict, plumbing: dict) -> int:
-    """LEGACY Blender 卫浴几何旁路；not called by initialize_scene。
-
-    正式卫浴几何由 shared plumbing/overlay/furnishing GLB（GLB geometry source）提供；
-    本函数仅保留作旧洁具与细节实现的迁移参考，初始化流程不得调用本函数。
-    """
-    ceramic = furniture_mats.get('ceramic')
-    cream = furniture_mats.get('paint_cream')
-    metal = furniture_mats.get('metal')
-    towel_mat = furniture_mats.get('fabric_light')
-    layout = master_bath_final_layout()
-
-    def box(name, cx, cz, sx, sz, sy, yc, mat):
-        bpy.ops.mesh.primitive_cube_add(size=1.0)
-        b = bpy.context.object
-        b.name = name
-        b.dimensions = (sx, sz, sy)
-        b.location = to_blender(cx, yc, cz)
-        if mat:
-            b.data.materials.append(mat)
-        return 1
-
-    n = 0
-
-    def point(point_id):
-        p = plumbing.get(point_id)
-        if not p:
-            print(f'[dress_scene] WARN: missing plumbing anchor {point_id}; skip associated bath fixture')
-        return p
-
-    # 淋浴柱与客卫屏风正式几何由 shared plumbing/overlay GLB 提供；
-    # Blender dress 阶段不再从 shower anchors 重建淋浴柱或客卫屏风。
-    mb_vanity, mb_toilet = point('faucet_mbath_vanity'), point('toilet_mbath')
-    if mb_vanity:
-        # DEC-043：anchor 是盆心 (0.26, 2.96)，一体台中心由声明式偏移得到 (0.55, 3.16)。
-        x = float(mb_vanity['x']) + layout['vanity_center_from_anchor'][0]
-        z = float(mb_vanity['z']) + layout['vanity_center_from_anchor'][1]
-        vanity_w, vanity_d = layout['vanity_size']
-        n += box('bath:mb_vanity', x, z, vanity_w, vanity_d, 0.80, 0.40, cream)
-        n += box('bath:mb_basin', float(mb_vanity['x']), float(mb_vanity['z']), 0.45, 0.36, 0.12, 0.85, ceramic)
-        n += box('bath:mb_mirror_cab', float(mb_vanity['x']), float(mb_vanity['z']), 0.45, 0.08, 0.70, 1.55, cream)
-        n += box('bath:mb_mirror', float(mb_vanity['x']), float(mb_vanity['z']) - 0.05, 0.40, 0.02, 0.65, 1.55, metal)
-        # 东半段为梳妆位；仅保留小型桌面件，不挤占整段台面。
-        n += box('bath:mb_soap', x - 0.12, z - 0.08, 0.06, 0.06, 0.15, 0.925, ceramic)
-        # 主卫半墙与长虹玻璃屏风由 shared overlay/GLB 提供，不在 Blender dress 阶段重建。
-    if mb_toilet:
-        x, z = mb_toilet['x'] - 0.30, mb_toilet['z']
-        n += box('bath:mb_toilet', x, z, 0.55, 0.4, 0.4, 0.2, ceramic)
-        n += box('bath:mb_tank', x + 0.20, z, 0.18, 0.42, 0.5, 0.55, ceramic)
-    if mb_vanity and mb_toilet:
-        x, z = mb_vanity['x'] - 0.02, (mb_vanity['z'] + mb_toilet['z']) / 2
-        n += box('bath:mb_towel_bar', x, z, 0.03, 0.45, 0.03, 1.25, metal)
-        n += box('bath:mb_towel', x - 0.03, z, 0.06, 0.28, 0.45, 1.05, towel_mat)
-
-    gb_vanity, gb_toilet = point('faucet_gbath_vanity'), point('toilet_gbath')
-    if gb_vanity:
-        x, z = gb_vanity['x'] + 0.25, gb_vanity['z']
-        n += box('bath:gb_vanity', x, z, 0.5, 0.8, 0.8, 0.4, cream)
-        n += box('bath:gb_basin', x, z, 0.4, 0.5, 0.12, 0.85, ceramic)
-        n += box('bath:gb_mirror_cab', x - 0.18, z, 0.14, 0.6, 0.7, 1.55, cream)
-        n += box('bath:gb_mirror', x - 0.105, z, 0.02, 0.55, 0.65, 1.55, metal)
-        n += box('bath:gb_soap', x - 0.10, z + 0.25, 0.06, 0.06, 0.15, 0.925, ceramic)
-    if gb_toilet:
-        x, z = gb_toilet['x'] + 0.35, gb_toilet['z']
-        n += box('bath:gb_toilet', x, z, 0.55, 0.4, 0.4, 0.2, ceramic)
-        n += box('bath:gb_tank', x - 0.25, z, 0.18, 0.42, 0.5, 0.55, ceramic)
-    if gb_vanity:
-        x, z = gb_vanity['x'] + 1.48, gb_vanity['z'] - 0.50
-        n += box('bath:gb_towel_bar', x, z, 0.03, 0.45, 0.03, 1.25, metal)
-        n += box('bath:gb_towel', x - 0.03, z, 0.06, 0.28, 0.45, 1.05, towel_mat)
-    print(f'[dress_scene] bath fixtures: {n}')
-    return n
+    """Compatibility wrapper for the LEGACY bath geometry escape hatch."""
+    _configure_legacy_geometry()
+    return _legacy_geometry.add_bath_fixtures(furniture_mats, plumbing)
 
 
 def parse_molding_declarations(overlay: dict) -> list[dict]:
@@ -1821,6 +1600,29 @@ def rebuild_railings(mats: dict) -> int:
     return rebuilt
 
 
+def _set_eevee_samples(scene, samples: int) -> None:
+    """Set and verify the Eevee render-sample property across Blender versions."""
+    samples = int(samples)
+    if samples < 1:
+        raise ValueError(f'Eevee render samples must be >= 1 (got {samples})')
+    eevee = getattr(scene, 'eevee', None)
+    if eevee is None:
+        raise RuntimeError('Eevee scene settings are unavailable')
+    for property_name in ('taa_render_samples', 'render_samples'):
+        if not hasattr(eevee, property_name):
+            continue
+        try:
+            setattr(eevee, property_name, samples)
+            actual = int(getattr(eevee, property_name))
+            if actual != samples:
+                raise RuntimeError(f'{property_name} readback mismatch: requested {samples}, got {actual}')
+            print(f'[dress_scene] Eevee render samples={actual} property={property_name}')
+            return
+        except Exception as error:
+            raise RuntimeError(f'failed to set Eevee render samples via {property_name}: {error}') from error
+    raise RuntimeError('Eevee render sample property unavailable')
+
+
 def set_engine(scene, engine: str, samples: int = 256) -> str:
     if engine.upper() == 'CYCLES':
         scene.render.engine = 'CYCLES'
@@ -1857,13 +1659,26 @@ def set_engine(scene, engine: str, samples: int = 256) -> str:
     for eng in ('BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE'):
         try:
             scene.render.engine = eng
+            _set_eevee_samples(scene, samples)
             return eng
         except TypeError:
             continue
     raise RuntimeError('no EEVEE engine id available')
 
 
-CAMERA_SCENARIO_OVERRIDE_FIELDS = frozenset({'exposure', 'fill_light', 'fill_from_camera'})
+def _actual_render_samples(scene, engine: str) -> int | None:
+    """Read back the effective render sample count for audit metadata."""
+    settings = scene.cycles if engine == 'CYCLES' else getattr(scene, 'eevee', None)
+    if settings is None:
+        return None
+    for property_name in ('samples', 'taa_render_samples', 'render_samples'):
+        value = getattr(settings, property_name, None)
+        if isinstance(value, int):
+            return value
+    return None
+
+
+CAMERA_SCENARIO_OVERRIDE_FIELDS = frozenset({'exposure', 'fill_light', 'fill_from_camera', 'sheer_opacity'})
 
 
 CAMERA_DEFAULT_EXPOSURE_OVERRIDES = {
@@ -2006,7 +1821,7 @@ def _set_fixture_emission(enabled: bool) -> None:
 def _set_sheer_opacity(mat, opacity: float, engine: str) -> None:
     if not mat or not mat.use_nodes:
         return
-    if engine.upper() == 'CYCLES':
+    if engine.upper() in {'CYCLES', 'EEVEE'}:
         for node in mat.node_tree.nodes:
             if node.bl_idname == 'ShaderNodeMixShader':
                 node.inputs[0].default_value = float(opacity)
@@ -2149,8 +1964,20 @@ _ASSET_MODULE_CONFIGURED = False
 _RENDER_ONLY_MODULE_CONFIGURED = False
 
 
+def _configure_legacy_geometry() -> None:
+    _legacy_geometry.configure(
+        bpy_module=bpy, to_blender_fn=to_blender,
+        furniture_parts=FURNITURE_PARTS,
+        furniture_glb=_blender_assets.FURNITURE_GLB,
+        cabinet_seam_panels=CABINET_SEAM_PANELS,
+        import_furniture_glb_fn=_blender_assets.import_furniture_glb,
+        master_bath_final_layout_fn=master_bath_final_layout,
+    )
+
+
 def _configure_asset_modules() -> None:
     global _ASSET_MODULE_CONFIGURED, _RENDER_ONLY_MODULE_CONFIGURED
+    _configure_legacy_geometry()
     _blender_assets.configure(
         bpy_module=bpy, hex_rgb_fn=hex_rgb, find_node_fn=_find_node,
         new_principled_fn=new_principled,
@@ -2162,6 +1989,7 @@ def _configure_asset_modules() -> None:
         furniture_instance_key_fn=_furniture_instance_key,
         furniture_parts=FURNITURE_PARTS,
         cabinet_seam_panels=CABINET_SEAM_PANELS,
+        asset_registry=ASSET_REGISTRY,
     )
     _blender_render_only.configure(
         bpy_module=bpy, hex_rgb_fn=hex_rgb, new_principled_fn=new_principled,
@@ -2174,6 +2002,7 @@ def _configure_asset_modules() -> None:
         furniture_type_from_object_fn=_furniture_type_from_object,
         to_blender_fn=to_blender, glass_ids=GLASS_IDS,
         furniture_glb=_blender_assets.FURNITURE_GLB,
+        asset_registry=ASSET_REGISTRY,
     )
     _ASSET_MODULE_CONFIGURED = True
     _RENDER_ONLY_MODULE_CONFIGURED = True
@@ -2194,9 +2023,12 @@ def dress_tv_wall_low(config_dir: str) -> dict[str, int]:
     return _blender_assets.dress_tv_wall_low(config_dir)
 
 
-def replace_furniture(furniture_mats: dict, config_dir: str = '', only_types: set | None = None) -> int:
+def replace_furniture(furniture_mats: dict, config_dir: str = '', only_types: set | None = None,
+                      room_ids: set[str] | None = None) -> int:
     _configure_asset_modules()
-    return _blender_assets.replace_furniture(furniture_mats, config_dir, only_types=only_types)
+    return _blender_assets.replace_furniture(
+        furniture_mats, config_dir, only_types=only_types, room_ids=room_ids
+    )
 
 
 def stage_missing_room_candidates(config_dir: str) -> int:
@@ -2228,6 +2060,7 @@ def initialize_scene(args: dict, cfg: dict, jobs: list[dict]) -> dict:
     if curtain_errors:
         raise RuntimeError('BLOCKED: GLB curtain nodes do not match facts.presentation.curtains '
                            f'(snapshot {curtain_proj.get("snapshotSha256")}):\n  ' + '\n  '.join(curtain_errors))
+    _apply_preview_scope(args.get('preview-room') if args.get('mode', 'formal') == 'preview' else None)
     scene = bpy.context.scene
     engine = set_engine(scene, args['engine'], samples=int(args.get('samples', 256)))
     from materials_from_yaml import load_scheme_materials
@@ -2249,7 +2082,10 @@ def initialize_scene(args: dict, cfg: dict, jobs: list[dict]) -> dict:
     # be overwritten by these compatibility materials or fixed PBR assignments.
     furniture_mats = build_furniture_materials(hex_rgb, new_principled)
     config_dir = args.get('config-dir') or ''
-    dress_tv_wall_low(config_dir)
+    if not _PREVIEW_ROOM or _PREVIEW_ROOM == 'living_dining':
+        dress_tv_wall_low(config_dir)
+    else:
+        print(f'[dress_scene] preview scope room={_PREVIEW_ROOM}; skip living_dining asset staging')
     tex_base = os.path.join(config_dir, 'assets', 'textures')
     for mat, path, size, diffuse, strength, tint in [
         (mats.get('wall'), 'painted_plaster_wall', 2.5, False, 0.3, None),
@@ -2264,15 +2100,18 @@ def initialize_scene(args: dict, cfg: dict, jobs: list[dict]) -> dict:
     plumbing = plumbing_by_id(facts)
     countertop_mat = mats.get('countertop') or furniture_mats.get('quartz')
     cabinet_mat = mats.get('cabinet') or furniture_mats.get('paint_cream')
-    # 客餐厅家具、bed_180、客卫浴室柜及四类已验证家电用真实资产替换；其他正式家具/柜体继续由主 GLB 提供。
+    # 客餐厅家具、bed_180、客卫浴室柜及厨房家电用真实资产替换；其他正式家具/柜体继续由主 GLB 提供。
     # bed_150 候选因 BlenderKit 导入后尺度异常，明确回退程序化床；replace_furniture 只触碰上述白名单。
-    # 失败时保留程序化 vanity/床，water_heater、range_hood、toilet 保持禁用。
-    # gas_stove 候选由下一行 render-only staging 按当前 kitchen 东墙 anchor/bbox 接入，失败仍保留程序化 fallback。
+    # 失败时保留程序化 vanity/床；water_heater、range_hood、toilet 仍保持禁用。
     replace_furniture(furniture_mats, config_dir, only_types={
         'sofa_3seat', 'dining_table', 'dining_chair', 'plant_fiddle', 'bed_180', 'vanity',
-        'washer', 'dryer', 'dishwasher', 'fridge'})
+        'washer', 'dryer', 'dishwasher', 'fridge', 'gas_stove'},
+        room_ids={_PREVIEW_ROOM} if _PREVIEW_ROOM else None)
     # Render-only candidates use current Blender anchors/bboxes; formal layout and Web geometry remain untouched.
-    stage_missing_room_candidates(config_dir)
+    if not _PREVIEW_ROOM:
+        stage_missing_room_candidates(config_dir)
+    else:
+        print(f'[dress_scene] preview scope room={_PREVIEW_ROOM}; skip room candidate staging')
     add_moldings(config_dir)
     rebuild_railings(mats)
     # 基础吊顶几何由 shared SceneBuilder/CLI GLB 提供；Blender 只保留材质后处理。
@@ -2281,13 +2120,23 @@ def initialize_scene(args: dict, cfg: dict, jobs: list[dict]) -> dict:
     # 厨房正式几何（柜体、连续台面 bridge、sink/cooktop cutouts、家电位置）
     # 由 shared/CLI GLB 提供；Blender 不再重建。add_kitchen_cabinets 保留为 LEGACY 迁移参考。
     # 正式卫浴几何由 shared plumbing/overlay/furnishing GLB 提供；Blender 仅保留 legacy 函数作迁移参考。
-    add_soft_decor(furniture_mats, config_dir=config_dir)
+    if not _PREVIEW_ROOM or _PREVIEW_ROOM == 'living_dining':
+        add_soft_decor(furniture_mats, config_dir=config_dir)
+    else:
+        print(f'[dress_scene] preview scope room={_PREVIEW_ROOM}; skip living_dining soft decor staging')
+    _enforce_preview_scope()
     # 正式灯具外形由 shared/CLI GLB 提供；Blender 仅保留光源。
     add_lights(cfg, temp_override=6500)
-    add_ceiling_finishing(mats, emit=True)
+    if not _PREVIEW_ROOM or _PREVIEW_ROOM == 'living_dining':
+        add_ceiling_finishing(mats, emit=True)
+    else:
+        print(f'[dress_scene] preview scope room={_PREVIEW_ROOM}; skip living_dining ceiling staging')
     if any(job['scenario'].get('hvac_coordination') for job in jobs):
-        add_hvac_diagram(facts, show_routes=True)
-        add_hvac_reference_constraints(facts, show_constraints=True)
+        if _PREVIEW_ROOM:
+            print(f'[dress_scene] preview scope room={_PREVIEW_ROOM}; skip HVAC staging')
+        else:
+            add_hvac_diagram(facts, show_routes=True)
+            add_hvac_reference_constraints(facts, show_constraints=True)
     scenarios = [j['scenario'] for j in jobs]
     template = next((s for s in scenarios if s.get('sun_direction') or s.get('window_portal') or s.get('fill_light')), scenarios[0] if scenarios else {})
     if template.get('sun_direction'):
@@ -2320,6 +2169,9 @@ def initialize_scene(args: dict, cfg: dict, jobs: list[dict]) -> dict:
                 material_defaults['glass'][socket] = tuple(value) if hasattr(value, '__len__') else value
     print(f'[dress_scene] initialized once: {counts}')
     return {'cfg': cfg, 'facts': facts, 'mats': mats, 'stats': stats, 'engine': engine,
+            'samples': _actual_render_samples(scene, engine),
+            'mode': args.get('mode', 'formal'), 'previewRoom': _PREVIEW_ROOM,
+            'previewScopeStats': _PREVIEW_SCOPE_STATS if _PREVIEW_ROOM else None,
             'config_dir': config_dir, 'curtain_proj': curtain_proj, 'counts': counts,
             'light_defaults': light_defaults, 'material_defaults': material_defaults, 'out_path': '',
             'input_fingerprints': _load_render_fingerprints(args.get('manifest'))}
@@ -2389,21 +2241,36 @@ def render_scene(runtime: dict, args: dict, cam_cfg: dict, scenario: dict, out_p
         scene.render.image_settings.file_format = 'PNG'
     except Exception:
         pass
-    print(f'[dress_scene] job_audit path={out_path} scenario={scenario.get("id")} camera={cam_cfg.get("id")} '
-          f'engine={runtime["engine"]} effective_exposure={scene.view_settings.exposure:.3f} '
-          f'view_transform={getattr(scene.view_settings, "view_transform", "<unavailable>")} '
-          f'look={getattr(scene.view_settings, "look", "<unavailable>")} '
-          f'hdri={json.dumps(runtime.get("last_hdri_status", {}), ensure_ascii=False, sort_keys=True)} '
-          f'lights={json.dumps(_job_light_audit(), ensure_ascii=False, sort_keys=True)} '
-          f'materials={json.dumps(runtime["stats"], ensure_ascii=False)} '
-          f'inputFingerprints={json.dumps(runtime["input_fingerprints"], ensure_ascii=False, sort_keys=True)}')
+    if runtime['mode'] == 'preview':
+        audit = {'path': out_path, 'mode': runtime['mode'], 'previewRoom': runtime['previewRoom'],
+                 'previewScopeStats': runtime['previewScopeStats'], 'scenario': scenario.get('id'),
+                 'camera': cam_cfg.get('id'), 'engine': runtime['engine'], 'samples': runtime['samples'],
+                 'effectiveExposure': scene.view_settings.exposure,
+                 'viewTransform': getattr(scene.view_settings, 'view_transform', '<unavailable>'),
+                 'look': getattr(scene.view_settings, 'look', '<unavailable>'),
+                 'hdri': runtime.get('last_hdri_status', {}), 'lights': _job_light_audit(),
+                 'materials': runtime['stats'], 'inputFingerprints': runtime['input_fingerprints']}
+        print(f'[dress_scene] job_audit {json.dumps(audit, ensure_ascii=False, sort_keys=True)}')
+    else:
+        print(f'[dress_scene] job_audit path={out_path} scenario={scenario.get("id")} camera={cam_cfg.get("id")} '
+              f'engine={runtime["engine"]} effective_exposure={scene.view_settings.exposure:.3f} '
+              f'view_transform={getattr(scene.view_settings, "view_transform", "<unavailable>")} '
+              f'look={getattr(scene.view_settings, "look", "<unavailable>")} '
+              f'hdri={json.dumps(runtime.get("last_hdri_status", {}), ensure_ascii=False, sort_keys=True)} '
+              f'lights={json.dumps(_job_light_audit(), ensure_ascii=False, sort_keys=True)} '
+              f'materials={json.dumps(runtime["stats"], ensure_ascii=False)} '
+              f'inputFingerprints={json.dumps(runtime["input_fingerprints"], ensure_ascii=False, sort_keys=True)}')
     bpy.ops.render.render(write_still=True)
     with open(out_path + '.meta.json', 'w', encoding='utf-8') as f:
-        json.dump({'scenario': scenario.get('id'), 'camera': cam_cfg.get('id'),
-                   'curtainPolicy': state['curtain_policy'] or 'as_snapshot',
-                   'curtainSnapshotSha256': runtime['curtain_proj'].get('snapshotSha256'),
-                   'inputFingerprints': runtime['input_fingerprints']}, f,
-                  ensure_ascii=False, indent=2)
+        metadata = {'scenario': scenario.get('id'), 'camera': cam_cfg.get('id'),
+                    'curtainPolicy': state['curtain_policy'] or 'as_snapshot',
+                    'curtainSnapshotSha256': runtime['curtain_proj'].get('snapshotSha256'),
+                    'inputFingerprints': runtime['input_fingerprints']}
+        if runtime['mode'] == 'preview':
+            metadata.update({'mode': runtime['mode'], 'previewRoom': runtime['previewRoom'],
+                             'previewScopeStats': runtime['previewScopeStats'],
+                             'engine': runtime['engine'], 'samples': runtime['samples']})
+        json.dump(metadata, f, ensure_ascii=False, indent=2)
         f.write('\n')
     return
 
@@ -2429,6 +2296,11 @@ def main() -> None:
 
     glb_path = args['glb']
     cfg_path = args['config']
+    mode = args.get('mode', 'formal')
+    if mode not in {'formal', 'preview'}:
+        raise ValueError(f'unsupported --mode: {mode}')
+    if mode == 'preview' and not args.get('preview-room'):
+        raise ValueError('--preview-room is required when --mode preview')
     engine = args.get('engine', 'EEVEE')
     version = args.get('version', 'v1')
     out_dir = args.get('out-dir', '.')
@@ -2437,7 +2309,7 @@ def main() -> None:
         cfg = json.load(f)
 
     from dress_config import make_jobs
-    jobs = make_jobs(cfg, version=version)
+    jobs = make_jobs(cfg, version=version, scenario_id=args.get('scenario'))
     only = args.get('only')  # 逗号分隔 camera_id 白名单：冒烟只渲指定机位
     if only:
         allow = {c.strip() for c in only.split(',')}

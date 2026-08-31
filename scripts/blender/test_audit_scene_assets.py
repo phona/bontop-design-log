@@ -18,6 +18,78 @@ from audit_scene_assets import (  # noqa: E402
     classify_object,
     format_report,
 )
+from scene_asset_registry import (  # noqa: E402
+    assert_source_allowed, load_registry, read_asset_metadata, registry_relation,
+    validate_registry, write_asset_metadata,
+)
+
+
+def test_registry_load_and_validation():
+    registry = load_registry(Path(__file__).resolve().parents[2])
+    assert not registry['_diagnostics']['errors']
+    assert registry['scope'] == 'living_dining_core_assets'
+    assert {'sofa_3seat', 'dining_table', 'dining_chair', 'plant_fiddle', 'coffee_table', 'tv_wall_low', 'rug'} <= set(registry['entries'])
+    result = validate_registry({'schema': 'bontop.scene-asset-registry', 'version': 1, 'entries': {'x': {'source_policy': ['bogus']}}}, required_roles=('sofa_3seat',))
+    assert 'registry missing role: sofa_3seat' in result['warnings']
+    assert any('invalid source_policy' in item for item in result['errors'])
+
+
+def test_metadata_helper_uses_new_fields_and_legacy_compatibility():
+    props = {}
+    class Obj:
+        def __setitem__(self, key, value): props[key] = value
+        def get(self, key, default=None): return props.get(key, default)
+    obj = Obj()
+    write_asset_metadata(obj, source_class='replacement', formal_instance_key='living:sofa:0', source_id='candidate.blend', role='sofa_3seat')
+    metadata = read_asset_metadata(obj)
+    assert metadata['sourceClass'] == 'replacement'
+    assert metadata['formalInstanceKey'] == 'furniture:living:sofa:0'
+    assert metadata['sourceId'] == 'candidate.blend'
+    assert props['dress_replacement_source'] is True
+    assert props['formalInstanceKey'] == 'furniture:living:sofa:0'
+    assert props['sourceId'] == 'candidate.blend'
+    assert props['fallbackOf'] is None
+    assert props['formalWebGeometry'] is False
+
+
+def test_registry_source_policy_allows_and_denies_explicitly():
+    registry = load_registry(Path(__file__).resolve().parents[2])
+    assert_source_allowed(registry, 'coffee_table', 'render_only',
+                          formal_instance_key='furniture:living_dining:coffee_table:0')
+    try:
+        assert_source_allowed(registry, 'rug', 'replacement')
+    except ValueError as exc:
+        assert 'source policy mismatch' in str(exc)
+    else:
+        raise AssertionError('rug replacement must be denied by registry policy')
+    try:
+        assert_source_allowed(registry, 'missing_role', 'formal')
+    except ValueError as exc:
+        assert 'missing role/source policy' in str(exc)
+    else:
+        raise AssertionError('missing registry role must fail explicitly')
+
+
+def test_registry_relations_are_declarative():
+    registry = load_registry(Path(__file__).resolve().parents[2])
+    assert registry_relation(registry, 'coffee_table', 'anchor') == 'furniture:living_dining:coffee_table:0'
+    assert registry_relation(registry, 'rug', 'sourceRelation') == 'living_dining:rug:preview:0'
+
+
+def test_render_only_metadata_is_not_formal_replacement():
+    props = {'render_only': True, 'geometrySource': 'blender_staging', 'assetSource': 'staging.blend'}
+    obj = SimpleNamespace(get=props.get)
+    assert read_asset_metadata(obj)['sourceClass'] == 'render_only'
+
+
+def test_registry_missing_keeps_builtin_for_units_but_strict_fails(tmp_path):
+    assert load_registry(tmp_path)['_diagnostics']['warnings']
+    try:
+        load_registry(tmp_path, strict=True)
+    except FileNotFoundError:
+        pass
+    else:
+        raise AssertionError('strict registry loading must fail when the file is missing')
 
 
 class VecMatrix:
@@ -87,6 +159,15 @@ def test_bbox_and_asset_fields_are_world_space_and_deterministic():
     assert result["image_texture_count"] == 1
     assert result["packed_image_count"] == 1
     assert result["materials"][0]["principled"][0]["channels"]["Base Color"]["connected"] is True
+
+
+def test_registry_entry_exposes_scope_and_relations():
+    registry = load_registry(Path(__file__).resolve().parents[2])
+    entry = registry["entries"]["coffee_table"]
+    assert registry["scope"] == "living_dining_core_assets"
+    assert entry["formalInstanceKey"] == "furniture:living_dining:coffee_table:0"
+    assert entry["relation"]["anchor"] == "furniture:living_dining:coffee_table:0"
+    assert registry["entries"]["rug"]["relation"]["sourceRelation"] == "living_dining:rug:preview:0"
 
 
 def test_explicit_render_only_wins_over_real_asset_metadata():

@@ -1,5 +1,6 @@
 """dress_scene.classify 墙段房间归属单测：wall:seg:N:room= 命中湿区 → wall_tile。
 bpy 仅在函数体内使用，stub 顶层导入即可脱离 Blender 运行。"""
+import inspect
 import math
 import os
 from pathlib import Path
@@ -56,6 +57,64 @@ def test_asset_and_render_only_modules_are_independent_compatibility_boundaries(
     assert callable(blender_assets.replace_furniture)
     assert callable(blender_render_only.add_soft_decor)
     assert callable(blender_render_only.stage_missing_room_candidates)
+
+
+def test_replace_furniture_room_ids_is_optional_and_preserves_legacy_calls():
+    blender_assets.configure(
+        bpy_module=types.SimpleNamespace(data=types.SimpleNamespace(objects=[])),
+        hex_rgb_fn=lambda value: (0.0, 0.0, 0.0),
+        find_node_fn=lambda *args: None, new_principled_fn=lambda *args, **kwargs: None,
+        set_recursive_hidden_fn=lambda *args: None,
+        hide_furniture_instance_family_fn=lambda *args: 0,
+        mark_render_only_fn=lambda *args: None,
+        is_render_only_fn=lambda obj: False, add_pbr_maps_fn=lambda *args, **kwargs: True,
+        fixture_material_role_fn=lambda name: 'cabinet_body',
+        furniture_instance_anchors_fn=lambda objects: {},
+        furniture_instance_key_fn=lambda obj: None,
+    )
+    signature = inspect.signature(blender_assets.replace_furniture)
+    assert signature.parameters['room_ids'].default is None
+    assert blender_assets.replace_furniture({}) == 0
+    assert blender_assets.replace_furniture({}, '', {'sofa_3seat'}) == 0
+    assert blender_assets.replace_furniture({}, '', only_types={'sofa_3seat'}, room_ids={'living_dining'}) == 0
+
+
+def test_replace_furniture_room_ids_filters_anchors_before_asset_work():
+    class ObjectCollection(list):
+        def get(self, name):
+            return next((obj for obj in self if obj.name == name), None)
+
+    class FakeObject:
+        def __init__(self, name):
+            self.name = name
+
+    living = FakeObject('furniture:living_dining:sofa_3seat:0')
+    bedroom = FakeObject('furniture:master_bedroom:sofa_3seat:0')
+    calls = []
+    blender_assets.configure(
+        bpy_module=types.SimpleNamespace(data=types.SimpleNamespace(objects=ObjectCollection([living, bedroom]))),
+        hex_rgb_fn=lambda value: (0.0, 0.0, 0.0),
+        find_node_fn=lambda *args: None, new_principled_fn=lambda *args, **kwargs: None,
+        set_recursive_hidden_fn=lambda *args: None,
+        hide_furniture_instance_family_fn=lambda *args: 0,
+        mark_render_only_fn=lambda *args: None,
+        is_render_only_fn=lambda obj: False, add_pbr_maps_fn=lambda *args, **kwargs: True,
+        fixture_material_role_fn=lambda name: 'cabinet_body',
+        furniture_instance_anchors_fn=lambda objects: {
+            'living': living, 'bedroom': bedroom,
+        },
+        furniture_instance_key_fn=lambda obj: obj.name,
+    )
+    original_import = blender_assets.import_furniture_glb
+    original_exists = blender_assets.os.path.exists
+    blender_assets.import_furniture_glb = lambda path, cfg, block=None, rot_fix=0: calls.append(block) or False
+    blender_assets.os.path.exists = lambda path: True
+    try:
+        assert blender_assets.replace_furniture({}, '/assets', room_ids={'living_dining'}) == 0
+    finally:
+        blender_assets.import_furniture_glb = original_import
+        blender_assets.os.path.exists = original_exists
+    assert calls == [living]
 
 
 def test_extracted_modules_receive_all_runtime_dependencies():
@@ -117,6 +176,7 @@ def test_fixture_roles_cover_factory_outputs_and_classify_from_stable_names():
     expected = {
         'drawer_front', 'back_panel', 'frame', 'weight_plate', 'upholstery',
         'floor_protection', 'cabinet_foot', 'cabinet_support', 'safety_bar', 'mirror',
+        'cooktop_burner',
     }
     assert expected <= set(FIXTURE_MATERIAL_ROLES)
     for role in expected:
@@ -132,6 +192,26 @@ def test_unknown_fixture_role_is_blocked_with_audit_context():
         assert 'fixture:part=x:role=not_declared' in str(exc)
     else:
         raise AssertionError('unknown fixture role must be blocked')
+
+
+def test_cooktop_burner_material_is_built_with_distinct_metal_contract(monkeypatch):
+    calls = []
+
+    def fake_principled(name, color, rough, metallic=0.0, **kwargs):
+        material = {'name': name, 'color': color, 'roughness': rough, 'metallic': metallic}
+        calls.append(material)
+        return material
+
+    monkeypatch.setattr(dress_scene, 'new_principled', fake_principled)
+    monkeypatch.setattr(dress_scene, 'new_sheer_transparent', lambda name, color, opacity: {'name': name})
+    mats = dress_scene.build_materials('EEVEE')
+    burner = mats['cooktop_burner']
+    assert burner['name'] == '灶台_炉圈'
+    assert burner['roughness'] == 0.32
+    assert burner['metallic'] == 0.75
+    assert calls.count(burner) == 1
+    assert mats['fixture_metal']['name'] == '灯具_金属'
+    assert mats['hardware']['name'] == '柜体_五金'
 
 
 def test_tv_fixture_roles_classify_from_stable_export_names():
@@ -191,8 +271,9 @@ def test_assign_materials_applies_default_and_room_override_to_final_meshes():
     def mesh(name):
         return types.SimpleNamespace(name=name, parent=None, type='MESH', data=types.SimpleNamespace(materials=slots.copy()))
     objects = [mesh('floor:living_dining'), mesh('floor:master_bath'), mesh('floor:guest_bath')]
-    original_data = getattr(bpy_stub, 'data', None)
-    bpy_stub.data = types.SimpleNamespace(objects=objects)
+    blender_module = dress_scene.bpy
+    original_data = getattr(blender_module, 'data', None)
+    blender_module.data = types.SimpleNamespace(objects=objects)
     try:
         stats = assign_materials({'floor': default, 'default': fallback}, {'master_bath': override})
         assert stats == {'floor': 3}
@@ -201,23 +282,24 @@ def test_assign_materials_applies_default_and_room_override_to_final_meshes():
         assert objects[2].data.materials == [default]
     finally:
         if original_data is None:
-            del bpy_stub.data
+            del blender_module.data
         else:
-            bpy_stub.data = original_data
+            blender_module.data = original_data
 
 
 def test_assign_materials_falls_back_only_when_global_floor_is_missing(capsys):
     fallback = object()
     obj = types.SimpleNamespace(name='floor:living_dining', parent=None, type='MESH', data=types.SimpleNamespace(materials=[]))
-    original_data = getattr(bpy_stub, 'data', None)
-    bpy_stub.data = types.SimpleNamespace(objects=[obj])
+    blender_module = dress_scene.bpy
+    original_data = getattr(blender_module, 'data', None)
+    blender_module.data = types.SimpleNamespace(objects=[obj])
     try:
         assign_materials({'default': fallback}, {})
     finally:
         if original_data is None:
-            del bpy_stub.data
+            del blender_module.data
         else:
-            bpy_stub.data = original_data
+            blender_module.data = original_data
     assert obj.data.materials == [fallback]
     assert "role 'floor' missing; fallback to 'default'" in capsys.readouterr().out
 
@@ -283,6 +365,7 @@ def test_curtain_nodes_classify_by_layer():
     assert classify(_obj('curtain_living_south:sheer:deployed.001')) == 'sheer'
     # 玻璃幕节点（无冒号、含 curtain 字样）不受影响
     assert classify(_obj('west_curtain')) == 'exterior_glazing'
+    assert classify(_obj('west_curtain:part=w_mb_south')) == 'exterior_glazing'
     assert classify(_obj('living_south_curtain')) == 'exterior_glazing'
     assert classify(_obj('sliding_door:sd01:pane:0')) == 'fluted_glass'
     assert classify(_obj('shower_screen:gbath')) == 'shower_glass'
@@ -438,25 +521,26 @@ def test_render_only_marker_and_visibility_logic_do_not_mark_formal_objects():
 
 def test_blender_initialization_uses_shared_glb_and_explicit_render_only_postprocessing():
     source = (Path(__file__).resolve().with_name('dress_scene.py')).read_text()
+    legacy_source = (Path(__file__).resolve().with_name('legacy_geometry.py')).read_text()
     initialize_scene = source.split('def initialize_scene', 1)[1].split('\ndef ', 1)[0]
     legacy_functions = (
         'place_extra_furniture', 'add_bath_fixtures', 'add_ceiling',
-        'add_light_fixtures', 'add_kitchen_cabinets',
+        'add_kitchen_cabinets',
     )
     assert '_configure_asset_modules()' in initialize_scene
     assert initialize_scene.index('read_factory_settings') < initialize_scene.index('_configure_asset_modules()')
     for function_name in legacy_functions:
         assert f'{function_name}(' not in initialize_scene
-        if f'def {function_name}(' in source:
-            function_source = source.split(f'def {function_name}(', 1)[1].split('\ndef ', 1)[0]
-            normalized_function_source = ' '.join(function_source.split())
-            assert 'LEGACY' in function_source
-            assert 'not called by initialize_scene' in function_source
-            assert 'GLB geometry source' in normalized_function_source
-        else:
-            # Migrated asset/lighting implementations live in dedicated modules;
-            # dress_scene keeps only compatibility wrappers for those APIs.
-            assert function_name in {'add_light_fixtures'}
+        assert f'def {function_name}(' in source
+        assert f'def {function_name}(' in legacy_source
+        function_source = source.split(f'def {function_name}(', 1)[1].split('\ndef ', 1)[0]
+        assert 'Compatibility wrapper' in function_source
+        assert 'LEGACY' in legacy_source.split(f'def {function_name}(', 1)[1].split('\ndef ', 1)[0]
+    assert 'def _add_cabinet_seams(' in legacy_source
+    assert 'def _add_cabinet_seams(' in source
+    assert source.split('def _add_cabinet_seams(', 1)[1].split('\ndef ', 1)[0].count('bpy.ops') == 0
+    assert legacy_source.count('def place_extra_furniture(') == 1
+    assert legacy_source.count('def add_bath_fixtures(') == 1
     assert 'replace_furniture(' in initialize_scene
     assert 'add_lights(' in initialize_scene
     assert 'add_soft_decor(' in initialize_scene
@@ -475,6 +559,7 @@ def test_blender_initialization_uses_shared_glb_and_explicit_render_only_postpro
     assert "ftype in ('kitchen_cabinet_run',)" not in source
     assert 'kitchen_cabinet_run' in source
     assert 'def _add_shower_fixture' in source
+    assert 'def _add_shower_fixture' in legacy_source
     bath_fixtures = source.split('def add_bath_fixtures', 1)[1].split('\ndef ', 1)[0]
     assert "_add_shower_fixture('bath:mb_shower'" not in bath_fixtures
     assert "_add_shower_fixture('bath:gb_shower'" not in bath_fixtures
@@ -542,6 +627,16 @@ def test_effective_camera_config_applies_default_when_camera_exposure_is_zero():
             {'id': scenario_id, 'exposure': 1.5},
         )
         assert effective['exposure'] == -0.5
+
+
+def test_effective_camera_config_applies_daylight_clear_sheer_opacity_override():
+    effective = effective_camera_config(
+        {'id': 'living_from_entry', 'scenario_overrides': {
+            'daylight_clear': {'sheer_opacity': 0.45},
+        }},
+        {'id': 'daylight_clear'},
+    )
+    assert effective['sheer_opacity'] == 0.45
 
 
 def test_effective_camera_config_keeps_nonzero_explicit_camera_exposure():

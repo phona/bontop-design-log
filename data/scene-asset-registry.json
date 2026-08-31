@@ -1,0 +1,16 @@
+{
+  "schema": "bontop.scene-asset-registry",
+  "version": 1,
+  "scope": "living_dining_core_assets",
+  "description": "客餐厅核心资产 registry；仅声明客餐厅及其核心软装资产，不覆盖全屋。",
+  "entries": {
+    "sofa_3seat": {"source_policy": ["formal", "replacement", "fallback"], "replacement_exclusive": true},
+    "dining_table": {"source_policy": ["formal", "replacement", "fallback"], "replacement_exclusive": true},
+    "dining_chair": {"source_policy": ["formal", "replacement", "fallback"], "replacement_exclusive": true},
+    "plant_fiddle": {"source_policy": ["formal", "replacement", "fallback"], "replacement_exclusive": true},
+    "coffee_table": {"source_policy": ["formal", "replacement", "render_only", "fallback"], "replacement_exclusive": false, "formalInstanceKey": "furniture:living_dining:coffee_table:0", "relation": {"type": "living_dining_anchor", "anchor": "furniture:living_dining:coffee_table:0"}},
+    "tv_wall_low": {"source_policy": ["formal", "replacement", "render_only", "fallback"], "replacement_exclusive": false, "formalInstanceKey": "furniture:living_dining:tv_wall_low:0"},
+    "rug": {"source_policy": ["formal", "render_only", "fallback"], "replacement_exclusive": false, "relation": {"type": "preview_only", "sourceRelation": "living_dining:rug:preview:0", "note": "无正式家具 anchor；不得伪造 furniture key。"}},
+    "gas_stove": {"source_policy": ["formal", "replacement", "fallback"], "replacement_exclusive": true}
+  }
+}

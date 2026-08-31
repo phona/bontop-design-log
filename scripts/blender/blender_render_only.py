@@ -7,6 +7,12 @@ from __future__ import annotations
 import json
 import math
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from scene_asset_registry import registry_relation, write_asset_metadata  # noqa: E402
+
+ASSET_REGISTRY = None
 
 bpy = None
 hex_rgb = None
@@ -29,12 +35,12 @@ def configure(*, bpy_module, hex_rgb_fn, new_principled_fn,
               mark_render_only_fn, is_render_only_fn,
               furniture_instance_anchors_fn, furniture_instance_key_fn,
               furniture_type_from_object_fn, to_blender_fn,
-              glass_ids=None, furniture_glb=None):
+              glass_ids=None, furniture_glb=None, asset_registry=None):
     global bpy, hex_rgb, new_principled, import_furniture_glb
     global _set_recursive_hidden, _hide_furniture_instance_family
     global _mark_render_only, _is_render_only
     global _furniture_instance_anchors, _furniture_instance_key
-    global _furniture_type_from_object, to_blender, GLASS_IDS, FURNITURE_GLB
+    global _furniture_type_from_object, to_blender, GLASS_IDS, FURNITURE_GLB, ASSET_REGISTRY
     bpy = bpy_module
     hex_rgb = hex_rgb_fn
     new_principled = new_principled_fn
@@ -49,6 +55,7 @@ def configure(*, bpy_module, hex_rgb_fn, new_principled_fn,
     to_blender = to_blender_fn
     GLASS_IDS = set(glass_ids or ())
     FURNITURE_GLB = furniture_glb or {}
+    ASSET_REGISTRY = asset_registry
 
 def _world_bbox_for_objects(objects):
     """Return the world-space bbox of mesh objects, or None when unavailable."""
@@ -101,12 +108,13 @@ def _report_render_only_asset(obj, label: str, source_path: str, source_bbox=Non
 
 
 def _mark_candidate_asset(obj, role: str, source_path: str, metadata_path: str | None = None) -> None:
-    _mark_render_only(obj, role)
-    obj['geometrySource'] = 'blender_staging'
+    write_asset_metadata(
+        obj, source_class='render_only', source_id=os.path.normpath(source_path),
+        formal_instance_key=_furniture_instance_key(obj), formal_web_geometry=False,
+        role=role, registry=ASSET_REGISTRY,
+    )
     obj['assetProvider'] = 'BlenderKit'
-    obj['assetSource'] = os.path.normpath(source_path)
     obj['assetKind'] = 'REAL asset'
-    obj['formalWebGeometry'] = False
     if metadata_path and os.path.isfile(metadata_path):
         try:
             with open(metadata_path, encoding='utf-8') as metadata_file:
@@ -713,13 +721,23 @@ def add_soft_decor(furniture_mats: dict, config_dir: str = '') -> int:
     if canonical_assets_present:
         print('[dress_scene] soft decor canonical assets present; revalidate rug transform')
 
-    def mark_real_asset(obj, role, source_path):
-        _mark_render_only(obj, role)
-        obj['geometrySource'] = 'blender_staging'
+    def mark_real_asset(obj, role, source_path, formal_key=None):
+        registry_role = 'coffee_table' if role == 'soft_decor:coffee_table' else 'rug'
+        relation = registry_relation(ASSET_REGISTRY or {}, registry_role) or {}
+        declared_key = (ASSET_REGISTRY or {}).get('entries', {}).get(registry_role, {}).get('formalInstanceKey')
+        formal_key = formal_key or declared_key
+        source_relation = relation.get('sourceRelation') if isinstance(relation, dict) else None
+        if not source_relation:
+            source_relation = 'living_dining:coffee_table_anchor' if registry_role == 'coffee_table' else 'living_dining:rug:preview:0'
+        write_asset_metadata(
+            obj, source_class='render_only', source_id=source_path,
+            formal_instance_key=formal_key,
+            formal_web_geometry=False, role=role, registry=ASSET_REGISTRY,
+        )
+        obj['attachmentKey'] = source_relation
+        obj['sourceRelation'] = source_relation
         obj['assetKind'] = 'REAL asset'
         obj['assetProvider'] = 'BlenderKit'
-        obj['assetSource'] = source_path
-        obj['formalWebGeometry'] = False
 
     def asset_report(obj, source_dims=None, source_rotation=None):
         bb = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
@@ -947,8 +965,13 @@ def add_soft_decor(furniture_mats: dict, config_dir: str = '') -> int:
             if object_name == 'asset:rug:living:blenderkit':
                 source_dims, source_rotation = prepare_rug(existing_obj)
                 existing_obj.location = to_blender(table_x, center_y, table_z)
-                mark_real_asset(existing_obj, role, source_path)
+                mark_real_asset(existing_obj, role, source_path,
+                                formal_key=('furniture:living_dining:coffee_table:0'
+                                            if object_name == 'asset:coffee_table:blenderkit' else None))
                 asset_report(existing_obj, source_dims, source_rotation)
+            continue
+        if not os.path.isfile(source_path):
+            print(f'[dress_scene] WARN soft decor asset missing; keep fallback: {source_path}')
             continue
         before = set(bpy.data.objects)
         imported = import_furniture_glb(source_path, targets,
@@ -970,7 +993,9 @@ def add_soft_decor(furniture_mats: dict, config_dir: str = '') -> int:
             obj.dimensions = final_dims
         obj.location = to_blender(table_x, center_y, table_z)
         bpy.context.view_layer.update()
-        mark_real_asset(obj, role, source_path)
+        mark_real_asset(obj, role, source_path,
+                        formal_key=('furniture:living_dining:coffee_table:0'
+                                    if object_name == 'asset:coffee_table:blenderkit' else None))
         asset_report(obj, source_dims, source_rotation)
         count += 1
 

@@ -7,6 +7,12 @@ from __future__ import annotations
 import json
 import math
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from scene_asset_registry import write_asset_metadata  # noqa: E402
+
+ASSET_REGISTRY = None
 
 bpy = None
 hex_rgb = None
@@ -28,12 +34,12 @@ def configure(*, bpy_module, hex_rgb_fn, find_node_fn, new_principled_fn,
               mark_render_only_fn, is_render_only_fn,
               add_pbr_maps_fn, fixture_material_role_fn,
               furniture_instance_anchors_fn, furniture_instance_key_fn,
-              furniture_parts=None, cabinet_seam_panels=None):
+              furniture_parts=None, cabinet_seam_panels=None, asset_registry=None):
     global bpy, hex_rgb, _find_node, new_principled, _set_recursive_hidden
     global _hide_furniture_instance_family
     global _mark_render_only, _is_render_only, add_pbr_maps, fixture_material_role
     global _furniture_instance_anchors, _furniture_instance_key
-    global FURNITURE_PARTS, CABINET_SEAM_PANELS
+    global FURNITURE_PARTS, CABINET_SEAM_PANELS, ASSET_REGISTRY
     bpy = bpy_module
     hex_rgb = hex_rgb_fn
     _find_node = find_node_fn
@@ -48,6 +54,7 @@ def configure(*, bpy_module, hex_rgb_fn, find_node_fn, new_principled_fn,
     _furniture_instance_key = furniture_instance_key_fn
     FURNITURE_PARTS = furniture_parts or {}
     CABINET_SEAM_PANELS = cabinet_seam_panels or {}
+    ASSET_REGISTRY = asset_registry
 
 FURNITURE_GLB = {
     # 中古胡桃方向（DEC-2026-08-20-025/026）：Poly Haven CC0，清单见 assets/SOURCES.md
@@ -70,9 +77,11 @@ FURNITURE_GLB = {
     'dishwasher': {'path': 'assets/furniture/dishwasher/dishwasher.blend', 'width': 0.60, 'height': 0.82},
     # 厨房电器：BlenderKit 冰箱 source 原始 Z=2.76m，但 append 四元数复合前计算到的高度轴为 1.90m；
     # height=1.24 → scale≈0.65，最终直立高度≈1.80m、宽≈0.75m，契合东墙高柜位。
-    # Build In Gas Stove 75x51 资产经摆位四元数复合后变为 51cm 高立块（EEVEE v35b），不可用；
-    # Whirlpool Range Hood 亦为 13cm 顶吸薄板、无竖向烟管，均继续回退到已验证的程序化壁挂烟机/嵌入式灶具。
+    # Build In Gas Stove 75x51 已验证为水平薄型资产（0.75×0.51×0.02m，4 材质槽、UV），
+    # 直接按宽度接入；导入失败时保留 GLB 的程序化 fallback。
     'fridge': {'path': 'assets/furniture/fridge/fridge.blend', 'width': 0.68, 'height': 1.24},
+    # 台面顶面约 0.88m；资产本身贴地，导入后抬到东墙台面高度。
+    'gas_stove': {'path': 'assets/furniture/gas_stove/gas_stove.blend', 'width': 0.75, 'lift': 0.88},
     # BlenderKit 的 Shower Water Heater 在 append→摆位四元数复合后横躺（EEVEE v34 仅高 11cm），
     # 暂保留程序化壁挂机回退；待找到已归一化为 +Z 竖直的资产再启用，禁止以错误姿态入图。
     # 主卧真实床候选：导入失败时保留程序化床体回退；仅按宽度等比缩放，不强行拉伸。
@@ -159,11 +168,14 @@ def import_furniture_glb(glb_path: str, targets: dict, block=None, loc_rz=None, 
     obj.name = f'asset:{tag}:glb'
     # 导入资产的审计基线；render-only staging 标记由调用方显式追加，不在此覆盖。
     normalized_glb_path = os.path.normpath(glb_path)
+    write_asset_metadata(
+        obj, source_class='formal', source_id=normalized_glb_path,
+        formal_instance_key=_furniture_instance_key(block) if block is not None else None,
+        formal_web_geometry=False, role=tag, registry=ASSET_REGISTRY,
+    )
     obj['geometrySource'] = 'blend_asset'
     obj['assetProvider'] = 'BlenderKit' if 'blenderkit' in glb_path.lower() else 'external_asset'
-    obj['assetSource'] = normalized_glb_path
     obj['assetKind'] = 'REAL asset'
-    obj['formalWebGeometry'] = False
 
     # 原点设到几何中心
     bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
@@ -364,17 +376,20 @@ def dress_tv_wall_low(config_dir: str) -> dict[str, int]:
     asset.rotation_quaternion = anchor_rotation
     asset.location = anchor_location
     _mark_render_only(asset, 'tv_wall_low:blenderkit_sideboard')
-    asset['geometrySource'] = 'blender_staging'
+    write_asset_metadata(
+        asset, source_class='render_only', source_id=asset_path,
+        formal_instance_key=instance_key, formal_web_geometry=False,
+        role='tv_wall_low', registry=ASSET_REGISTRY,
+    )
     asset['assetKind'] = 'REAL asset'
     asset['assetProvider'] = 'BlenderKit'
-    asset['assetSource'] = asset_path
-    asset['formalWebGeometry'] = False
 
     # 只有导入成功后才隐藏正式实例，确保失败时原柜体仍可见。
     for formal_obj in bpy.data.objects:
         if _furniture_instance_key(formal_obj) == instance_key:
             formal_obj['dress_replacement_source'] = True
-    _hide_furniture_instance_family(instance_key, True)
+    exclusive = bool((ASSET_REGISTRY or {}).get('entries', {}).get('tv_wall_low', {}).get('replacement_exclusive'))
+    _hide_furniture_instance_family(instance_key, exclusive)
     asset.hide_render = False
     asset.hide_viewport = False
     bpy.context.view_layer.update()
@@ -621,26 +636,34 @@ def dress_tv_wall_low(config_dir: str) -> dict[str, int]:
     return {'objects': processed_objects, 'modifiers': bevel_count, 'images': image_count,
             'front_panels': panel_count, 'separators': separator_count, 'toe_kick': 0}
 
-def replace_furniture(furniture_mats: dict, config_dir: str = '', only_types: set | None = None) -> int:
+def replace_furniture(furniture_mats: dict, config_dir: str = '', only_types: set | None = None,
+                      room_ids: set[str] | None = None) -> int:
     """用真实资产替换指定的可移动家具，保留其余正式 GLB 几何。
 
     parts 格式: (name, three_size[x,y,z], three_pos[x,y,z], material_key)。
     坐标转换：three(x,y,z) → Blender(x,-z,y)，尺寸(x,z,y)。
     only_types：由调用方控制的工况白名单；未列入 FURNITURE_GLB 的正式家具不进入替换链。
+    room_ids：非空时仅替换指定房间中的家具。
     厨房/阳台家电资产替换已启用；资产缺失或导入失败时保留源节点。"""
     count = 0
     # 客餐厅家具、bed_180、客卫浴室柜及已审计可用的厨房/阳台家电；
     # bed_150 因 BlenderKit 候选导入后尺度异常，回退程序化床；
-    # water_heater、range_hood、toilet 不启用；gas_stove 仅由 room-candidate staging 处理。
+    # water_heater、range_hood、toilet 仍回退程序化；gas_stove 使用已验证的水平薄型资产。
     supported_types = {
         'sofa_3seat', 'dining_table', 'dining_chair', 'plant_fiddle', 'bed_180', 'vanity',
-        'washer', 'dryer', 'dishwasher', 'fridge',
+        'washer', 'dryer', 'dishwasher', 'fridge', 'gas_stove',
     }
     # GLB 会为同一 furniture:<room>:<type>:<index> 导出 root 及多个 geometry
     # 子节点；只遍历稳定实例 anchor，避免每个 geometry 子节点重复导入资产。
     for obj in _furniture_instance_anchors(list(bpy.data.objects)).values():
         parts = obj.name.split(':')
         if len(parts) < 3:
+            continue
+        instance_key = _furniture_instance_key(obj)
+        key_parts = instance_key.split(':') if instance_key else []
+        room_id = (key_parts[1] if len(key_parts) >= 2 else
+                   (parts[1] if parts[0] == 'furniture' and len(parts) >= 2 else None))
+        if room_ids and room_id not in room_ids:
             continue
         ftype = parts[2]
         if only_types is not None and ftype not in only_types:
@@ -670,10 +693,13 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '', only_types: se
             existing_asset = bpy.data.objects.get(canonical_name)
             existing_key = existing_asset.get('instance_key') if existing_asset is not None else None
             if existing_asset is not None and existing_key == instance_key:
-                obj['dress_replacement_source'] = True
-                existing_asset['instance_key'] = instance_key
-                existing_asset['dress_replacement_source'] = True
-                _hide_furniture_instance_family(instance_key, True)
+                write_asset_metadata(obj, source_class='replacement', formal_instance_key=instance_key,
+                                     source_id=glb_path, role=ftype, registry=ASSET_REGISTRY)
+                write_asset_metadata(existing_asset, source_class='replacement', formal_instance_key=instance_key,
+                                     source_id=glb_path, role=ftype, registry=ASSET_REGISTRY)
+                existing_asset['assetKind'] = 'REAL asset'
+                exclusive = bool((ASSET_REGISTRY or {}).get('entries', {}).get(ftype, {}).get('replacement_exclusive'))
+                _hide_furniture_instance_family(instance_key, exclusive)
                 existing_asset.hide_render = False
                 existing_asset.hide_viewport = False
                 print(f'[dress_scene] furniture replacement reused: {canonical_name}')
@@ -687,14 +713,18 @@ def replace_furniture(furniture_mats: dict, config_dir: str = '', only_types: se
         imported_assets = [o for o in bpy.data.objects
                            if o not in before_assets and o.type == 'MESH']
         for imported_asset in imported_assets:
-            imported_asset['instance_key'] = instance_key
-            imported_asset['dress_replacement_source'] = True
+            write_asset_metadata(
+                imported_asset, source_class='replacement', formal_instance_key=instance_key,
+                source_id=glb_path, formal_web_geometry=False, role=ftype,
+                registry=ASSET_REGISTRY,
+            )
         if ftype == 'plant_fiddle' and imported_assets:
             # import_furniture_glb 已按 block 类型命名；改为稳定的实例名，
             # 使两个房间的真实绿植都可见且可审计。
             imported_assets[-1].name = f'asset:plant_fiddle:{instance_key}:glb'
         obj['dress_replacement_source'] = True
-        _hide_furniture_instance_family(instance_key, True)
+        exclusive = bool((ASSET_REGISTRY or {}).get('entries', {}).get(ftype, {}).get('replacement_exclusive'))
+        _hide_furniture_instance_family(instance_key, exclusive)
         count += 1
     if count:
         print(f'[dress_scene] furniture replaced: {count} parts')

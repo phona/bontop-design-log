@@ -95,6 +95,29 @@ def setup_world(engine: str, scenario: dict, config_dir: str | None = None, *,
     else:
         bg.inputs['Color'].default_value = (*srgb_to_linear_tuple_fn((0.85, 0.87, 0.90)), 1.0)
         bg.inputs['Strength'].default_value = 0.25
+        hdri = scenario.get('world_hdri')
+        if hdri and config_dir:
+            path = os.path.normpath(os.path.join(config_dir, hdri))
+            hdri_status['path'] = hdri
+            try:
+                if not os.path.isfile(path):
+                    raise FileNotFoundError(path)
+                env = world.node_tree.nodes.new('ShaderNodeTexEnvironment')
+                env.image = bpy_module.data.images.load(path)
+                bg_cam = world.node_tree.nodes.new('ShaderNodeBackground')
+                bg_cam.inputs['Strength'].default_value = scenario.get('world_hdri_camera_strength', 1.0)
+                world.node_tree.links.new(env.outputs['Color'], bg_cam.inputs['Color'])
+                lp = world.node_tree.nodes.new('ShaderNodeLightPath')
+                mix = world.node_tree.nodes.new('ShaderNodeMixShader')
+                world.node_tree.links.new(lp.outputs['Is Camera Ray'], mix.inputs[0])
+                world.node_tree.links.new(bg.outputs['Background'], mix.inputs[1])
+                world.node_tree.links.new(bg_cam.outputs['Background'], mix.inputs[2])
+                world.node_tree.links.new(mix.outputs[0], out.inputs['Surface'])
+                hdri_status.update(loaded=True, reason='loaded_camera_background')
+                print(f'[dress_scene] world HDRI camera background: scenario={scenario.get("id", "unknown")} path={hdri} status=loaded')
+            except Exception as exc:
+                hdri_status['reason'] = type(exc).__name__
+                print(f'[dress_scene] WARN EEVEE world HDRI camera background fallback: scenario={scenario.get("id", "unknown")} path={hdri} reason={hdri_status["reason"]}; using neutral world background')
     return hdri_status
 
 
@@ -131,8 +154,11 @@ def add_sky_planes(hdri_status: dict | None = None, *, bpy_module: Any,
     try: mat.use_backface_culling = False
     except Exception: pass
     center = Vector((8.0, -3.5, 1.4))
+    def is_glass_object(obj):
+        return obj.name in glass_ids or any(obj.name.startswith(f'{glass_id}:part=') for glass_id in glass_ids)
+
     for obj in bpy_module.data.objects:
-        if obj.type != 'MESH' or obj.name not in glass_ids:
+        if obj.type != 'MESH' or not is_glass_object(obj):
             continue
         c = [obj.matrix_world @ Vector(v) for v in obj.bound_box]
         mins = Vector((min(v.x for v in c), min(v.y for v in c), min(v.z for v in c)))

@@ -133,7 +133,7 @@ def job_state(cam_cfg: dict, scenario: dict) -> dict:
         'show_hvac': not bare_shell and bool(scenario.get('hvac_coordination', False)),
         'fill': cam_cfg.get('fill_light', scenario.get('fill_light')),
         'fill_from_camera': cam_cfg.get('fill_from_camera', False),
-        'sheer_opacity': scenario.get('sheer_opacity', 0.15),
+        'sheer_opacity': cam_cfg.get('sheer_opacity', scenario.get('sheer_opacity', 0.15)),
         'glass_ior': scenario.get('glass_ior'),
         'glass_tint': scenario.get('glass_tint'),
         'glass_coat': scenario.get('glass_coat', 0.0),
