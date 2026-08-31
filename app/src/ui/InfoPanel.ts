@@ -1,4 +1,4 @@
-import type { Topic, CurrentScheme, TopicSelection, CurtainPresentationState, CurtainState } from '@shared/types';
+import type { Topic, CurrentScheme, TopicSelection, CurtainPresentationState, CurtainState, ElectricalTopology } from '@shared/types';
 import { getTopicsForObject } from '../data/objectMapping.js';
 import { setupCollapsiblePanel } from './CollapsiblePanel.js';
 
@@ -10,6 +10,22 @@ export interface HoverTarget {
   curtainId?: string;
   curtainKind?: 'sheer_blackout' | 'blinds';
   layer?: 'sheer' | 'blackout' | 'blinds';
+  mep?: {
+    routeId?: string; status?: string; sourceStatus?: string; constructionStatus?: string;
+    from?: unknown; to?: unknown; points?: Array<{ x: number; y?: number; z: number }>;
+    reason?: string; label?: string; dimensions?: { diameter?: number; width?: number; depth?: number };
+    lintLevel?: string; lintCodes?: string[]; lintWarnings?: string[];
+    notForConstruction?: boolean; source?: string; range?: { x1: number; x2: number; z1: number; z2: number };
+    height?: number; uncertainty?: string; risk?: string; surveyConfirmation?: string;
+  };
+  infrastructure?: { fixtureType?: string; height?: number; mountHeight?: number; bodyHeight?: number; wallSide?: string };
+  electricalTopology?: {
+    circuitIds: string[]; controlIds: string[]; notes: string[];
+    panelId?: string; memberPointIds?: string[]; memberPointId?: string;
+    purpose?: string; status?: string; pendingParameters?: string[];
+    controlsIncomplete?: boolean; controlsPending?: boolean; notForConstruction?: boolean;
+  };
+  ceiling?: { area?: [number, number, number, number]; thickness?: number; type?: string; room?: string; height?: number };
 }
 
 export interface InfoPanelCallbacks {
@@ -27,6 +43,7 @@ export class InfoPanel {
   private topics: Topic[] = [];
   private scheme: CurrentScheme | null = null;
   private presentationState: CurtainPresentationState | null = null;
+  private electricalTopology: ElectricalTopology | null = null;
   private callbacks: InfoPanelCallbacks;
   private currentTarget: HoverTarget | null = null;
 
@@ -59,6 +76,11 @@ export class InfoPanel {
     if (this.currentTarget) this.render();
   }
 
+  setElectricalTopology(topology: ElectricalTopology | null) {
+    this.electricalTopology = topology;
+    if (this.currentTarget) this.render();
+  }
+
   showObject(target: HoverTarget) {
     this.currentTarget = target;
     this.el.style.display = 'block';
@@ -80,6 +102,21 @@ export class InfoPanel {
 
     const relatedTopicIds = getTopicsForObject(this.currentTarget.objectId);
     this.topicsEl.innerHTML = '';
+    const pointId = this.currentTarget.objectId.startsWith('electrical:') ? this.currentTarget.objectId.slice('electrical:'.length) : undefined;
+    if (pointId && this.electricalTopology) {
+      const circuits = this.electricalTopology.circuits.filter((c) => c.member_point_ids.includes(pointId));
+      const circuitIds = circuits.map((c) => c.id);
+      const controls = this.electricalTopology.controls.filter((c) => c.switch_point_ids.includes(pointId) || c.target_point_ids.includes(pointId));
+      const controlIds = controls.map((c) => c.id);
+      const notes = circuits.map((c) => c.note).filter((note): note is string => Boolean(note));
+      const controlsIncomplete = controls.some((control) => control.target_point_ids.length === 0);
+      if (controlsIncomplete) notes.push('受控灯具待电气交底');
+      this.currentTarget.electricalTopology = {
+        circuitIds, controlIds, notes, pendingParameters: this.electricalTopology.pending_parameters,
+        controlsIncomplete, controlsPending: controls.some((control) => control.status !== 'confirmed'),
+      };
+    }
+    this.renderMepContext(this.currentTarget);
 
     if (this.currentTarget.curtainId && this.currentTarget.room) {
       this.topicsEl.appendChild(this.renderCurtainSection(this.currentTarget.room, this.currentTarget.curtainKind ?? 'sheer_blackout'));
@@ -95,6 +132,94 @@ export class InfoPanel {
       const section = this.renderTopicSection(topic, selection, this.currentTarget.room);
       this.topicsEl.appendChild(section);
     }
+  }
+
+  private renderMepContext(target: HoverTarget): void {
+    const context = target.mep ?? target.infrastructure ?? target.electricalTopology ?? target.ceiling;
+    if (!context) return;
+    const section = document.createElement('div');
+    section.className = 'info-topic-section info-mep-context';
+    const title = document.createElement('h4');
+    title.textContent = '机电信息';
+    section.appendChild(title);
+    const fields: Array<[string, string | undefined]> = [];
+    if (target.mep) {
+      const m = target.mep;
+      if (m.routeId) fields.push(['路线', m.routeId]);
+      if (m.label) fields.push(['名称', m.label]);
+      if (m.from !== undefined) fields.push(['起点', this.formatEndpoint(m.from)]);
+      if (m.to !== undefined) fields.push(['终点', this.formatEndpoint(m.to)]);
+      if (m.status) fields.push(['状态', m.status]);
+      if (m.sourceStatus) fields.push(['来源', m.sourceStatus]);
+      if (m.constructionStatus) fields.push(['施工状态', m.constructionStatus]);
+      if (m.lintLevel) fields.push(['Lint', m.lintLevel]);
+      if (m.lintCodes?.length) fields.push(['Lint codes', m.lintCodes.join('，')]);
+      if (m.lintWarnings?.length) fields.push(['Lint warnings', m.lintWarnings.join('；')]);
+      if (m.height !== undefined) fields.push(['标高', `${m.height.toFixed(2)}m`]);
+      if (m.points?.length) fields.push(['路线标高', m.points.map((p) => `${(p.y ?? 0).toFixed(2)}m`).join(' → ')]);
+      if (m.dimensions && Object.values(m.dimensions).some((v) => v !== undefined)) fields.push(['尺寸', Object.entries(m.dimensions).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${v}m`).join('，')]);
+      if (m.reason) fields.push(['原因', m.reason]);
+      if (m.source) fields.push(['依据', m.source]);
+      if (m.range) fields.push(['范围', `x[${m.range.x1},${m.range.x2}] z[${m.range.z1},${m.range.z2}]`]);
+      if (m.risk) fields.push(['风险', m.risk]);
+      if (m.surveyConfirmation) fields.push(['待确认', m.surveyConfirmation]);
+      if (m.notForConstruction) fields.push(['提示', '非施工依据 / 待现场确认']);
+    } else if (target.electricalTopology) {
+      const e = target.electricalTopology;
+      title.textContent = '电气逻辑关系（非施工实体走线）';
+      if (e.panelId) fields.push(['面板', e.panelId]);
+      if (e.circuitIds.length) fields.push(['回路', e.circuitIds.join('，')]);
+      if (e.purpose) {
+        const purposeLabels: Record<string, string> = { lighting: '照明', hvac_power: '空调电源', dedicated_load: '专用负载', ordinary_power: '普通功能电源' };
+        fields.push(['用途', purposeLabels[e.purpose] ?? e.purpose]);
+      }
+      if (e.status) fields.push(['状态', e.status]);
+      if (e.memberPointId) fields.push(['成员点位', e.memberPointId]);
+      if (e.memberPointIds?.length) fields.push(['成员点位', e.memberPointIds.join('，')]);
+      if (e.controlIds.length) fields.push(['关联控制组', e.controlIds.join('，')]);
+      if (e.controlsIncomplete) fields.push(['控制组', '未闭合']);
+      if (e.controlsPending) fields.push(['控制状态', '待确认']);
+      if (e.notes.length) fields.push(['说明', e.notes.join('；')]);
+      if (e.pendingParameters?.length) fields.push(['待定参数', e.pendingParameters.join('；')]);
+      fields.push(['提示', '非施工实体逻辑关系，仅用于表达回路与控制关系']);
+    } else if (target.ceiling) {
+      const c = target.ceiling;
+      if (c.room) fields.push(['房间', c.room]);
+      if (c.type) fields.push(['类型', c.type]);
+      if (c.area) fields.push(['范围', `x[${c.area[0]},${c.area[2]}] z[${c.area[1]},${c.area[3]}]`]);
+      if (c.thickness !== undefined) fields.push(['厚度', `${c.thickness}m`]);
+      if (c.height !== undefined) fields.push(['标高', `${c.height}m`]);
+    } else if (target.infrastructure) {
+      const i = target.infrastructure;
+      if (i.fixtureType) fields.push(['点位类型', i.fixtureType]);
+      if (i.height !== undefined) fields.push(['高度', `${i.height}m`]);
+      if (i.mountHeight !== undefined) fields.push(['安装高度', `${i.mountHeight}m`]);
+      if (i.bodyHeight !== undefined) fields.push(['尺寸高度', `${i.bodyHeight}m`]);
+      if (i.wallSide) fields.push(['墙面', i.wallSide]);
+    }
+    for (const [label, value] of fields) {
+      if (value === undefined) continue;
+      const row = document.createElement('div');
+      row.className = 'info-mep-row';
+      const key = document.createElement('span'); key.textContent = `${label}：`;
+      const val = document.createElement('span'); val.textContent = value;
+      row.appendChild(key); row.appendChild(val); section.appendChild(row);
+    }
+    this.topicsEl.appendChild(section);
+  }
+
+  private formatEndpoint(value: unknown): string {
+    if (typeof value === 'string') return `${value}（稳定端点 ID）`;
+    return this.formatValue(value);
+  }
+
+  private formatValue(value: unknown): string {
+    if (typeof value === 'string' || typeof value === 'number') return String(value);
+    if (value && typeof value === 'object' && 'x' in value && 'z' in value) {
+      const point = value as { x: number; y?: number; z: number };
+      return `(${point.x}, ${point.y !== undefined ? `${point.y}, ` : ''}${point.z})`;
+    }
+    return '未解析';
   }
 
   private renderCurtainSection(roomId: string, kind: 'sheer_blackout' | 'blinds'): HTMLDivElement {

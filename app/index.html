@@ -28,6 +28,8 @@
     </div>
 
     <div id="right-panel-stack">
+      <div id="mep-lint-summary" class="mep-lint-summary" hidden></div>
+      <div id="electrical-topology-summary" class="mep-lint-summary" hidden></div>
       <div id="info-panel" class="panel">
         <div class="panel-heading" id="info-panel-heading">
           <span id="info-panel-title"></span>
@@ -44,7 +46,15 @@
       </div>
       <div id="mep-coordination-controls" class="mep-controls" hidden>
         <label><input id="mep-bends-toggle" type="checkbox" checked> 转折点/标高</label>
+        <div id="mep-route-summary" class="mep-route-summary"></div>
+        <div id="mep-status-legend" class="mep-status-legend" aria-label="路线状态图例"></div>
         <div id="mep-layer-toggles" class="mep-layer-toggles"></div>
+      </div>
+      <div id="electrical-topology-controls" class="mep-controls electrical-topology-controls" hidden>
+        <strong>电气逻辑关系 / 非施工实体走线</strong>
+        <div id="electrical-topology-render-summary" class="mep-route-summary"></div>
+        <div id="electrical-topology-purpose-toggles" class="mep-layer-toggles"></div>
+        <div id="electrical-topology-legend" class="mep-status-legend" aria-label="电气逻辑关系图例"></div>
       </div>
     </div>
 
@@ -96,6 +106,8 @@
     <button id="topdown-btn" title="切换俯视/3D (T)">俯视</button>
     <button id="hvac-coordination-btn" title="HVAC 设备与约束（不显示实体路线）" disabled>HVAC 设备/约束：加载中</button>
     <button id="mep-coordination-btn" title="MEP 实体水电 + HVAC 路线" disabled>MEP 实体路线：加载中</button>
+    <button id="mep-overview-btn" title="一键显示吊顶、点位、HVAC 与全部 MEP 路线">机电总览</button>
+    <button id="electrical-topology-btn" title="显示电气逻辑关系，不代表施工实体走线">电气逻辑关系</button>
     <button id="sunlight-btn" title="日照模拟">日照</button>
     <button id="humidity-btn" title="湿度风险">湿度</button>
     <div id="pointer-lock-toast" style="display:none">请允许鼠标锁定以使用第一人称</div>

@@ -599,12 +599,20 @@ function addCeilingZones(root: THREE.Group, zones: CeilingZoneSpec[], rooms: Res
     if (!group) continue;
     const objectId = `ceiling:${zone.id}`;
     setSceneObjectMetadata(group, 'ceiling_zone', objectId);
+    group.userData.roomId = zone.room;
+    group.userData.ceiling = {
+      area: zone.area,
+      thickness: zone.thickness,
+      type: zone.type,
+      room: zone.room,
+    };
     let meshIndex = 0;
     group.traverse((object) => {
       if (!(object as THREE.Mesh).isMesh) return;
       const part = typeof object.userData.part === 'string' ? object.userData.part : 'part';
       setSceneObjectMetadata(object, 'ceiling_zone_solid', objectId, `${objectId}:${part}:${meshIndex}`);
       object.userData.roomId = zone.room;
+      object.userData.ceiling = group.userData.ceiling;
       meshIndex++;
     });
     root.add(group);

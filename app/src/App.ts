@@ -28,14 +28,16 @@ import { SunlightButton } from './ui/SunlightButton.js';
 import { DaylightHeatmap } from './render/analysis/DaylightHeatmap.js';
 import { HumidityOverlay } from './render/analysis/HumidityOverlay.js';
 import { HumidityButton } from './ui/HumidityButton.js';
+import { renderMepLintSummary } from './ui/MepLintSummary.js';
 import { isInHuinanWindow } from '@shared/humidity-model';
 import { exportObjectTreeToGlb } from './render/export-gltf.js';
 import './ui/keybindings.js';
 import { parseProjectRenderFactsProjection } from '@shared/project-render-facts-schema';
 import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
 import type { CaptureOptions, RoomAuditCaptureOptions } from '@shared/types';
-import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch } from '@shared/types';
+import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose } from '@shared/types';
 import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
+import type { MepLintResult } from '@shared/mep-hvac-lint';
 
 const ORBIT_DISTANCE = 15;
 
@@ -55,6 +57,10 @@ export class App {
   private hvacCoordinationVisible = false;
   private mepCoordinationVisible = false;
   private mepCoordinationReady = false;
+  private mepLintResult: MepLintResult | null = null;
+  private electricalTopology: (ElectricalTopology & { lint?: { counts: { circuits: number; uncoveredPoints: number; warnings: number } } }) | null = null;
+  private electricalTopologyVisible = false;
+  private mepOverviewVisible = false;
   private collision: CollisionDetector;
   private fpController: FirstPersonController;
   private projectData: any = null;
@@ -147,6 +153,10 @@ export class App {
     this.setupTopDownButton();
     this.setupHvacCoordinationButton();
     this.setupMepCoordinationButton();
+    this.setupElectricalTopologyButton();
+    const mepLintSummary = document.getElementById('mep-lint-summary');
+    if (mepLintSummary) renderMepLintSummary(mepLintSummary, this.mepLintResult);
+    this.updateMepLintSummaryVisibility();
     this.setupDragHandlers();
     this.setupEventHandlers();
     this.setupKeyboard();
@@ -402,6 +412,18 @@ export class App {
   }
 
   private setupMepCoordinationButton(): void {
+    const overviewButton = document.getElementById('mep-overview-btn') as HTMLButtonElement | null;
+    overviewButton?.addEventListener('click', () => {
+      this.mepOverviewVisible = !this.mepOverviewVisible;
+      this.houseScene.setMepOverviewVisible(this.mepOverviewVisible, this.hvacCoordinationState === 'ready' || this.mepCoordinationReady);
+      if (this.electricalTopology) {
+        this.houseScene.setElectricalTopologyVisible(this.mepOverviewVisible || this.electricalTopologyVisible);
+        this.syncElectricalTopologyButton();
+      }
+      overviewButton.classList.toggle('active', this.mepOverviewVisible);
+      overviewButton.textContent = this.mepOverviewVisible ? '退出机电总览' : '机电总览';
+      this.requestRender();
+    });
     const button = document.getElementById('mep-coordination-btn') as HTMLButtonElement | null;
     if (!button) return;
     button.addEventListener('click', () => {
@@ -411,11 +433,59 @@ export class App {
       if (controls) controls.hidden = !this.mepCoordinationVisible;
       button.classList.toggle('active', this.mepCoordinationVisible);
       button.textContent = this.mepCoordinationVisible ? 'MEP · 路线' : 'MEP 协调';
+      this.updateMepLintSummaryVisibility();
       this.requestRender();
     });
     document.getElementById('mep-bends-toggle')?.addEventListener('change', (event) => {
       this.houseScene.setMepBendsVisible((event.target as HTMLInputElement).checked);
     });
+  }
+
+  private setupElectricalTopologyButton(): void {
+    const button = document.getElementById('electrical-topology-btn') as HTMLButtonElement | null;
+    if (!button) return;
+    button.addEventListener('click', () => {
+      if (!this.electricalTopology) return;
+      this.electricalTopologyVisible = !this.electricalTopologyVisible;
+      this.houseScene.setElectricalTopologyVisible(this.mepOverviewVisible || this.electricalTopologyVisible);
+      this.syncElectricalTopologyButton();
+      this.requestRender();
+    });
+    this.syncElectricalTopologyButton();
+  }
+
+  private syncElectricalTopologyButton(): void {
+    const button = document.getElementById('electrical-topology-btn') as HTMLButtonElement | null;
+    const controls = document.getElementById('electrical-topology-controls');
+    if (!button) return;
+    const ready = this.electricalTopology !== null;
+    button.disabled = !ready;
+    const effectivelyVisible = ready && (this.electricalTopologyVisible || this.mepOverviewVisible);
+    button.classList.toggle('active', effectivelyVisible);
+    button.textContent = !ready
+      ? '电气逻辑关系：未就绪'
+      : effectivelyVisible ? '电气逻辑关系 · 开' : '电气逻辑关系';
+    if (controls) controls.hidden = !effectivelyVisible;
+  }
+
+  private setupElectricalTopologyControls(topology: ElectricalTopology): void {
+    const controls = document.getElementById('electrical-topology-controls');
+    const toggles = document.getElementById('electrical-topology-purpose-toggles');
+    if (!controls || !toggles) return;
+    toggles.replaceChildren();
+    const labels: Record<ElectricalCircuitPurpose, string> = { lighting: '照明', hvac_power: '空调电源', dedicated_load: '专用负载', ordinary_power: '普通功能电源' };
+    for (const purpose of Object.keys(labels) as ElectricalCircuitPurpose[]) {
+      const label = document.createElement('label');
+      const input = document.createElement('input'); input.type = 'checkbox'; input.checked = true;
+      input.addEventListener('change', () => this.houseScene.setElectricalTopologyPurposeVisible(purpose, input.checked));
+      label.append(input, ` ${labels[purpose]}`); toggles.append(label);
+    }
+    const summary = document.getElementById('electrical-topology-render-summary');
+    const counts = this.houseScene.getElectricalTopologySummary();
+    if (summary) summary.textContent = `面板 ${counts.panels} · 回路 ${counts.circuits} · 逻辑边 ${counts.edges}${counts.skippedEdges ? ` · 跳过 ${counts.skippedEdges}` : ''}`;
+    const legend = document.getElementById('electrical-topology-legend');
+    if (legend) legend.textContent = '颜色：照明/空调电源/专用负载/普通功能电源；实线：已确认，虚线：提议/待确认';
+    controls.hidden = true;
   }
 
   private setupMepLayerControls(config: MepCoordination): void {
@@ -427,10 +497,39 @@ export class App {
       const input = document.createElement('input');
       input.type = 'checkbox';
       input.checked = true;
+      const swatch = document.createElement('span');
+      swatch.className = 'mep-layer-swatch';
+      swatch.style.backgroundColor = definition.color;
       input.addEventListener('change', () => this.houseScene.setMepLayerVisible(layer as MepCoordination['routes'][number]['layer'], input.checked));
-      label.append(input, ` ${definition.label}`);
+      label.append(input, swatch, ` ${definition.label}`);
       container.append(label);
     }
+    const summary = document.getElementById('mep-route-summary');
+    if (summary) {
+      const counts = this.houseScene.getMepStatusSummary();
+      summary.textContent = `路线 ${counts.confirmed + counts.inferred + counts.pending + counts.requirement} 条：已确认 ${counts.confirmed} · 推断 ${counts.inferred} · 待确认 ${counts.pending} · 要求/候选 ${counts.requirement}`;
+    }
+    const legend = document.getElementById('mep-status-legend');
+    if (legend) {
+      legend.replaceChildren();
+      const entries = [
+        ['confirmed', '━ 已确认 · 实线实体'],
+        ['inferred', '┄ 推断 · 虚线/标记'],
+        ['pending', '┄ 待确认 · 低透明虚线'],
+        ['requirement', '┄ 要求/候选 · 线框虚线'],
+      ] as const;
+      for (const [status, label] of entries) {
+        const item = document.createElement('span');
+        item.className = `mep-status ${status}`;
+        item.textContent = label;
+        legend.append(item);
+      }
+    }
+  }
+
+  private updateMepLintSummaryVisibility(): void {
+    const summary = document.getElementById('mep-lint-summary');
+    if (summary) summary.hidden = !(this.mepOverviewVisible || this.mepCoordinationVisible);
   }
 
   private setMepCoordinationState(ready: boolean): void {
@@ -442,8 +541,12 @@ export class App {
       this.mepCoordinationVisible = false;
       this.houseScene.setMepCoordinationVisible(false);
       if (controls) controls.hidden = true;
+      this.mepLintResult = null;
+      const mepLintSummary = document.getElementById('mep-lint-summary');
+      if (mepLintSummary) renderMepLintSummary(mepLintSummary, this.mepLintResult);
     }
     button.disabled = !ready;
+    this.updateMepLintSummaryVisibility();
     button.textContent = ready ? 'MEP 协调' : 'MEP 未就绪';
     button.classList.toggle('active', this.mepCoordinationVisible);
   }
@@ -610,6 +713,13 @@ export class App {
         return;
       }
       this.infoPanel.showObject(target);
+      if (target.type === 'mep_coordination_route' && target.mep?.routeId) {
+        this.houseScene.highlightMepRoute(String(target.mep.routeId));
+      }
+      if (target.type.startsWith('electrical_topology_')) {
+        const circuitId = target.electricalTopology?.circuitIds[0];
+        if (circuitId) this.houseScene.highlightElectricalCircuit(circuitId);
+      }
       this.stateSync.postViewContext(target.objectId);
     });
   }
@@ -977,6 +1087,9 @@ export class App {
     if (!target) return;
 
     this.infoPanel.showObject(target);
+    if (target.type === 'mep_coordination_route' && target.mep?.routeId) {
+      this.houseScene.highlightMepRoute(String(target.mep.routeId));
+    }
     this.stateSync.postViewContext(target.objectId);
   }
 
@@ -1084,6 +1197,10 @@ export class App {
   private async refreshInfrastructure(): Promise<void> {
     this.setHvacCoordinationState('loading');
     this.houseScene.clearHvacProjection();
+    this.houseScene.clearElectricalTopology();
+    this.electricalTopology = null;
+    this.electricalTopologyVisible = false;
+    this.syncElectricalTopologyButton();
     this.annotationRenderer?.clear();
     await this.annotationRenderer?.load();
     if (this.annotationRenderer) {
@@ -1091,6 +1208,29 @@ export class App {
         this.annotationRenderer.getElectricalData(),
         this.annotationRenderer.getPlumbingData(),
       );
+      try {
+        const topologyResponse = await fetch('/api/electrical-topology');
+        if (topologyResponse.ok) {
+          this.electricalTopology = await topologyResponse.json() as ElectricalTopology & { lint?: { counts: { circuits: number; uncoveredPoints: number; warnings: number } } };
+          const electricalPoints = this.renderFacts?.electrical ?? this.annotationRenderer.getElectricalData();
+          this.houseScene.loadElectricalTopology(this.electricalTopology, electricalPoints);
+          this.infoPanel.setElectricalTopology(this.electricalTopology);
+          this.setupElectricalTopologyControls(this.electricalTopology);
+          const summary = document.getElementById('electrical-topology-summary');
+          const lint = this.electricalTopology.lint;
+          if (summary && lint) {
+            summary.hidden = false;
+            summary.textContent = `电气回路 ${lint.counts.circuits} 条 / 未覆盖 ${lint.counts.uncoveredPoints} / warning ${lint.counts.warnings}`;
+          }
+          this.syncElectricalTopologyButton();
+        } else {
+          this.syncElectricalTopologyButton();
+        }
+      } catch {
+        this.electricalTopology = null;
+        this.houseScene.setElectricalTopologyVisible(false);
+        this.syncElectricalTopologyButton();
+      }
       try {
         const response = await fetch('/api/render-facts/projection');
         if (!response.ok) throw new Error('render facts projection is not ready');
@@ -1117,15 +1257,21 @@ export class App {
         try {
           const mepResponse = await fetch('/api/mep-coordination');
           if (mepResponse.ok && this.renderFacts?.hvac?.plans) {
-            const mep = await mepResponse.json() as MepCoordination;
+            const mepPayload = await mepResponse.json() as MepCoordination & { lint?: MepLintResult };
+            const mep = mepPayload;
             const plan = this.renderFacts.hvac.plans[0];
-            this.houseScene.loadMepCoordination(mep, {
+            const mepSources = {
               electrical: this.renderFacts.electrical,
               plumbing: this.renderFacts.plumbing,
+              ceiling: this.renderFacts.ceiling,
               hvacAnchors: plan?.diagram.anchors ?? [],
               hvacTerminals: plan?.diagram.terminals ?? [],
               outdoor: plan ? [plan.outdoor] : [],
-            });
+            };
+            this.mepLintResult = mepPayload.lint ?? null;
+            const mepLintSummary = document.getElementById('mep-lint-summary');
+            if (mepLintSummary) renderMepLintSummary(mepLintSummary, this.mepLintResult);
+            this.houseScene.loadMepCoordination(mep, mepSources, mepPayload.lint);
             const mepReport = this.houseScene.getMepRenderReport();
             if (mepReport.skipped > 0) {
               console.warn(`[mep] ${mepReport.skipped}/${mepReport.total} routes skipped: ${mepReport.skippedRoutes.join(', ')}`);
@@ -1133,6 +1279,7 @@ export class App {
             }
             this.setupMepLayerControls(mep);
             this.setMepCoordinationState(true);
+            this.updateMepLintSummaryVisibility();
           } else {
             this.setMepCoordinationState(false);
           }

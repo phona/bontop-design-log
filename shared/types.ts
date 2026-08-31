@@ -694,6 +694,62 @@ export interface ElectricalPoint {
   note?: string;
 }
 
+export type ElectricalTopologyStatus = 'confirmed' | 'proposed' | 'pending';
+export type ElectricalPanelKind = 'strong' | 'weak';
+export type ElectricalCircuitPurpose = 'lighting' | 'hvac_power' | 'dedicated_load' | 'ordinary_power';
+export type ElectricalControlKind = 'switch' | 'switch_2way';
+
+export interface ElectricalTopologyPanel {
+  id: string;
+  kind: ElectricalPanelKind;
+  status: ElectricalTopologyStatus;
+  source_point_id: string;
+}
+
+export interface ElectricalTopologyCircuit {
+  id: string;
+  panel_id: string;
+  purpose: ElectricalCircuitPurpose;
+  status: ElectricalTopologyStatus;
+  member_point_ids: string[];
+  dedicated_load?: boolean;
+  source_circuit_id?: string;
+  capacity?: string;
+  wire_size?: string;
+  breaker?: string;
+  note?: string;
+}
+
+export interface ElectricalTopologyControl {
+  id: string;
+  kind: ElectricalControlKind;
+  status: ElectricalTopologyStatus;
+  switch_point_ids: string[];
+  target_point_ids: string[];
+  note?: string;
+}
+
+export interface ElectricalTopology {
+  version: string;
+  panels: ElectricalTopologyPanel[];
+  circuits: ElectricalTopologyCircuit[];
+  controls: ElectricalTopologyControl[];
+  pending_parameters: string[];
+}
+
+export interface ElectricalLintIssue {
+  level: 'error' | 'warning';
+  code: string;
+  message: string;
+  id?: string;
+}
+
+export interface ElectricalLintResult {
+  errors: ElectricalLintIssue[];
+  warnings: ElectricalLintIssue[];
+  counts: { errors: number; warnings: number; circuits: number; controls: number; coveredPoints: number; uncoveredPoints: number };
+}
+
 export type PlumbingPointType = 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor';
 
 export interface PlumbingPoint {

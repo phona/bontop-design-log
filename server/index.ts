@@ -27,7 +27,9 @@ import { parseEnvironment } from '../shared/environment-schema.js';
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import { createAnalysisRouter } from './analysis-routes.js';
 import { PresentationStateStore } from './presentation-state.js';
-import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml } from '../shared/types.js';
+import { resolveLayout } from './layout-resolver.js';
+import type { MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
+import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml, VertexLayoutYaml } from '../shared/types.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
 const DATA_DIR = process.env.DATA_DIR ?? './data';
@@ -182,6 +184,16 @@ const apiDeps = {
   getOverlay: () => overlayLoader.getConfig(),
   getEnvironment: () => environmentLoader.getConfig(),
   getProjectRenderFacts: () => projectRenderFactsLoader.getFacts(),
+  getMepLintContext: (): MepLintLayoutContext => {
+    const facts = projectRenderFactsLoader.getFacts();
+    const overlay = overlayLoader.getConfig();
+    const layout = layoutLoader.getConfig();
+    return {
+      ...(layout ? { layout: resolveLayout(layout as unknown as VertexLayoutYaml) } : {}),
+      ...(facts ? { ceiling: facts.ceiling, referenceConstraints: facts.hvac.plans[0]?.diagram.reference_constraints } : {}),
+      suppressedWallIds: (overlay?.suppress ?? []).flatMap((item) => item.walls ?? (item.wall ? [item.wall] : [])),
+    };
+  },
   getProjectRenderFactsProjection: () => {
     const facts = projectRenderFactsLoader.getFacts();
     const overrides = projectRenderFactsLoader.getOverrides();

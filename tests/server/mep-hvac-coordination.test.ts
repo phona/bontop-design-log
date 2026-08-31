@@ -4,23 +4,24 @@ import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import {
   MepCoordinationSchema,
+  endpointSourcesFromFacts,
   parseMepCoordination,
   resolveMepRoutes,
   validateMepCoordination,
   type MepEndpointSources,
 } from '../../shared/mep-hvac-coordination-schema.js';
-import type { ElectricalPoint, PlumbingPoint } from '../../shared/types.js';
+import type { ElectricalPoint, PlumbingPoint, ProjectRenderFacts } from '../../shared/types.js';
 
 const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
 const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as PlumbingPoint[];
 const config = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
-const sources: MepEndpointSources = { electrical, plumbing, hvacAnchors: [], hvacTerminals: [], outdoor: [] };
+const sources: MepEndpointSources = { electrical, plumbing, ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] };
 
 function sourceIds(): MepEndpointSources {
   return {
     ...sources,
     hvacAnchors: ['outdoor_a2', 'indoor_living', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child', 'bend_corridor'].map((id) => ({ id, status: 'inferred', system: 'refrigerant' as const, position: { x: 0, y: 0, z: 0 } })),
-    hvacTerminals: ['supply_living', 'return_living', 'supply_master', 'return_master', 'condensate_living_candidate', 'net_unused'].map((id) => ({ id, status: 'pending', system: id.startsWith('supply') ? 'supply_air' as const : id.startsWith('return') ? 'return_air' as const : 'condensate' as const, position: { x: 0, y: 0, z: 0 } })),
+    hvacTerminals: ['supply_living', 'return_living', 'supply_master', 'return_master', 'supply_study', 'return_study', 'supply_parent', 'return_parent', 'supply_child', 'return_child', 'condensate_living_candidate', 'condensate_master_candidate', 'condensate_study_candidate', 'condensate_parent_candidate', 'condensate_child_candidate', 'net_unused'].map((id) => ({ id, status: 'pending', system: id.startsWith('supply') ? 'supply_air' as const : id.startsWith('return') ? 'return_air' as const : 'condensate' as const, position: { x: 0, y: 0, z: 0 } })),
     outdoor: [{ id: 'outdoor_a2', platform: 'west_platform', x: 6.4, z: 0.5, direction: 'south', width: 0.9, depth: 0.335, height: 0.7, model: 'test' }],
   };
 }
@@ -97,4 +98,43 @@ test('design requirement plumbing routes cannot reference authoritative plumbing
   const route = invalid.routes.find((item) => item.source_status === 'design_requirement' && item.layer === 'water_supply')!;
   route.from = 'faucet_kitchen_sink';
   assert.throws(() => validateMepCoordination(invalid, sourceIds()), /must not imply an authoritative plumbing endpoint/);
+});
+
+test('real render facts resolve all configured MEP routes through HVAC ceiling and electrical refs', () => {
+  const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'];
+  const ceiling = parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'];
+  const facts = { electrical, plumbing, ceiling, hvac };
+  const factSources = endpointSourcesFromFacts(facts);
+  const report = resolveMepRoutes(config, factSources);
+  assert.equal(report.total, 39);
+  assert.equal(report.resolved, 39);
+  assert.equal(report.unresolved, 0);
+  const expectedAirRoutes = ['supply-air-study', 'return-air-study', 'supply-air-parent', 'return-air-parent', 'supply-air-child', 'return-air-child'];
+  const expectedCondensateRoutes = ['condensate-living', 'condensate-master', 'condensate-study', 'condensate-parent', 'condensate-child'];
+  for (const id of [...expectedAirRoutes, ...expectedCondensateRoutes]) {
+    const resolved = report.routes.find((item) => item.route.id === id)!;
+    assert.equal(resolved.unresolved.length, 0);
+    if (id.startsWith('condensate-')) assert.equal(resolved.metadata.pendingReview, true);
+  }
+  assert.equal(new Set(config.routes.filter((route) => route.layer === 'supply_air').map((route) => route.to)).size, 5);
+  assert.equal(new Set(config.routes.filter((route) => route.layer === 'return_air').map((route) => route.to)).size, 5);
+  assert.equal(config.routes.filter((route) => route.layer === 'condensate').length, 5);
+  validateMepCoordination(config, factSources);
+});
+
+test('degenerate candidate routes are never physical or confirmed', () => {
+  const candidate = MepCoordinationSchema.parse({ ...config, routes: [{ ...config.routes[0], id: 'degenerate', from: { x: 1, z: 1 }, to: { x: 1, z: 1 }, status: 'inferred' }] });
+  const report = resolveMepRoutes(candidate, sourceIds());
+  assert.equal(report.routes[0].metadata.physicalRoute, false);
+  const confirmed = structuredClone(candidate);
+  confirmed.routes[0].status = 'confirmed';
+  assert.throws(() => validateMepCoordination(confirmed, sourceIds()), /degenerate self-connection/);
+});
+
+test('gravity condensate resolution carries pending warning metadata', () => {
+  const route = config.routes.find((item) => item.id === 'condensate-study')!;
+  const report = resolveMepRoutes({ ...config, routes: [route] }, endpointSourcesFromFacts({ electrical, plumbing, ceiling: parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'], hvac: parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'] }));
+  assert.equal(report.routes[0].metadata.pendingReview, true);
+  assert.match(report.routes[0].metadata.warning ?? '', /重力冷凝水候选路线/);
+  assert.equal(route.status, 'pending');
 });

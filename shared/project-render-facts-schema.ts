@@ -4,6 +4,7 @@ import {
   VALID_CEILING_TYPES,
   type CeilingZone,
   type ElectricalPoint,
+  type ElectricalTopology,
   type PlumbingPoint,
   type ProjectHvacFacts,
   type ProjectRenderFacts,
@@ -95,6 +96,55 @@ export const HvacDiagramSchema = z.object({ anchors: z.array(HvacAnchorSchema), 
 export const ProjectHvacFactsSchema = z.object({ plans: z.array(z.object({ id: nonEmpty, kind: z.literal('vrf_ducted'), outdoor: VrfOutdoorUnitSchema, diagram: HvacDiagramSchema }).strict()) }).strict();
 
 export const ElectricalPointsSchema = z.array(ElectricalPointSchema);
+const ElectricalTopologyStatusSchema = z.enum(['confirmed', 'proposed', 'pending']);
+export const ElectricalTopologyPanelSchema = z.object({
+  id: nonEmpty, kind: z.enum(['strong', 'weak']), status: ElectricalTopologyStatusSchema, source_point_id: nonEmpty,
+}).strict();
+export const ElectricalTopologyCircuitSchema = z.object({
+  id: nonEmpty, panel_id: nonEmpty, purpose: z.enum(['lighting', 'hvac_power', 'dedicated_load', 'ordinary_power']), status: ElectricalTopologyStatusSchema,
+  member_point_ids: z.array(nonEmpty), dedicated_load: z.boolean().optional(), source_circuit_id: nonEmpty.optional(),
+  capacity: nonEmpty.optional(), wire_size: nonEmpty.optional(), breaker: nonEmpty.optional(), note: z.string().optional(),
+}).strict();
+export const ElectricalTopologyControlSchema = z.object({
+  id: nonEmpty, kind: z.enum(['switch', 'switch_2way']), status: ElectricalTopologyStatusSchema,
+  switch_point_ids: z.array(nonEmpty), target_point_ids: z.array(nonEmpty), note: z.string().optional(),
+}).strict();
+export const ElectricalTopologySchema = z.object({
+  version: nonEmpty, panels: z.array(ElectricalTopologyPanelSchema), circuits: z.array(ElectricalTopologyCircuitSchema),
+  controls: z.array(ElectricalTopologyControlSchema), pending_parameters: z.array(nonEmpty),
+}).strict();
+export function parseElectricalTopology(raw: string, points?: ElectricalPoint[]): ElectricalTopology {
+  const topology = ElectricalTopologySchema.parse(parseYaml(raw));
+  const pointMap = new Map((points ?? []).map((point) => [point.id, point]));
+  const panelIds = new Set<string>();
+  for (const panel of topology.panels) {
+    if (panelIds.has(panel.id)) throw new Error(`Duplicate electrical topology panel id: ${panel.id}`);
+    panelIds.add(panel.id);
+    const source = pointMap.get(panel.source_point_id);
+    if (points && (!source || source.type !== `${panel.kind}_panel`)) throw new Error(`Electrical topology panel ${panel.id} references invalid ${panel.kind} panel point: ${panel.source_point_id}`);
+  }
+  const circuitIds = new Set<string>();
+  const memberIds = new Set<string>();
+  for (const circuit of topology.circuits) {
+    if (circuitIds.has(circuit.id)) throw new Error(`Duplicate electrical topology circuit id: ${circuit.id}`);
+    circuitIds.add(circuit.id);
+    if (!panelIds.has(circuit.panel_id)) throw new Error(`Electrical topology circuit ${circuit.id} references unknown panel: ${circuit.panel_id}`);
+    for (const id of circuit.member_point_ids) {
+      if (points && !pointMap.has(id)) throw new Error(`Electrical topology circuit ${circuit.id} references unknown point: ${id}`);
+      if (memberIds.has(id)) throw new Error(`Electrical topology point belongs to multiple circuits: ${id}`);
+      memberIds.add(id);
+    }
+  }
+  const controlIds = new Set<string>();
+  for (const control of topology.controls) {
+    if (controlIds.has(control.id)) throw new Error(`Duplicate electrical topology control id: ${control.id}`);
+    controlIds.add(control.id);
+    for (const id of [...control.switch_point_ids, ...control.target_point_ids]) {
+      if (points && !pointMap.has(id)) throw new Error(`Electrical topology control ${control.id} references unknown point: ${id}`);
+    }
+  }
+  return topology;
+}
 export const PlumbingPointsSchema = z.array(PlumbingPointSchema);
 // 投影内的 plumbing 来自 parsePlumbingPoints（wall_side 已映射为 wallSide），与 shared/types.ts 的 PlumbingPoint 对齐
 export const PlumbingPointProjectionSchema = z.object({

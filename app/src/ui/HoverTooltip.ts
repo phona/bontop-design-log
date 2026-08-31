@@ -6,6 +6,15 @@ export interface HoverTarget {
   curtainId?: string;
   curtainKind?: 'sheer_blackout' | 'blinds';
   layer?: 'sheer' | 'blackout' | 'blinds';
+  mep?: Record<string, unknown>;
+  infrastructure?: Record<string, unknown>;
+  electricalTopology?: {
+    circuitIds: string[]; controlIds: string[]; notes: string[];
+    panelId?: string; memberPointIds?: string[]; memberPointId?: string;
+    purpose?: string; status?: string; pendingParameters?: string[];
+    controlsIncomplete?: boolean; controlsPending?: boolean; notForConstruction?: boolean;
+  };
+  ceiling?: Record<string, unknown>;
 }
 
 export class HoverTooltip {

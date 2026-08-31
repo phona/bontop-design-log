@@ -49,6 +49,7 @@ export class HvacDiagramRenderer {
   private readonly coordinationGroup = new THREE.Group();
   private coordinationParent?: THREE.Object3D;
   private rootsConfigured = false;
+  private coordinationOpacity = 1;
 
   constructor(private readonly scene: THREE.Scene) {
     this.group.name = 'HVAC_DIAGRAM';
@@ -88,6 +89,26 @@ export class HvacDiagramRenderer {
     this.coordinationGroup.visible = visible;
   }
 
+  isCoordinationVisible(): boolean {
+    return this.coordinationGroup.visible;
+  }
+
+  setCoordinationOpacity(multiplier: number): void {
+    this.coordinationOpacity = Math.max(0, Math.min(1, multiplier));
+    this.coordinationGroup.traverse((object) => {
+      const material = (object as THREE.Mesh).material;
+      for (const item of Array.isArray(material) ? material : [material]) {
+        if (!item) continue;
+        const base = typeof item.userData?.hvacBaseOpacity === 'number' ? item.userData.hvacBaseOpacity : item.opacity;
+        item.userData.hvacBaseOpacity = base;
+        item.transparent = true;
+        item.opacity = base * this.coordinationOpacity;
+      }
+    });
+  }
+
+  getCoordinationOpacity(): number { return this.coordinationOpacity; }
+
   clear(): void {
     while (this.coordinationGroup.children.length) {
       const child = this.coordinationGroup.remove(this.coordinationGroup.children[0]);
@@ -105,8 +126,9 @@ export class HvacDiagramRenderer {
     const candidateGroup = new THREE.Group();
     candidateGroup.name = objectId;
     candidateGroup.userData = {
-      type: 'hvac_condensate_candidate', objectId, reason: terminal.reason,
+      type: 'hvac_condensate_candidate', objectId, name: terminal.id, reason: terminal.reason,
       status: terminal.status, system: terminal.system, notForConstruction: true,
+      position: terminal.position, height: terminal.position.y,
     };
     const marker = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8), new THREE.MeshStandardMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.55, roughness: 0.65 }));
     marker.position.set(terminal.position.x, terminal.position.y, terminal.position.z);
@@ -138,9 +160,10 @@ export class HvacDiagramRenderer {
     mesh.name = `hvac:${planId}:reference:${constraint.id}`;
     mesh.userData = {
       type: 'hvac_reference_constraint', objectId: mesh.name,
-      reason: constraint.reason, source: constraint.source, uncertainty: '±150mm',
+      name: constraint.id, reason: constraint.reason, source: constraint.source, uncertainty: '±150mm',
       not_for_construction: constraint.not_for_construction, status: constraint.status,
       risk: constraint.risk, surveyConfirmation: constraint.survey_confirmation,
+      range: constraint.range, reference_beam_bottom_y: constraint.reference_beam_bottom_y,
     };
     this.coordinationGroup.add(mesh);
   }

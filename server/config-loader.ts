@@ -1,7 +1,8 @@
 import { watch, type FSWatcher } from 'chokidar';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
-import { VALID_CEILING_TYPES, type CeilingZone, type ElectricalPoint, type PlumbingPoint } from '../shared/types.js';
+import { VALID_CEILING_TYPES, type CeilingZone, type ElectricalPoint, type ElectricalTopology, type PlumbingPoint } from '../shared/types.js';
+import { parseElectricalTopology } from '../shared/project-render-facts-schema.js';
 import { parseMepCoordination, type MepCoordination } from '../shared/mep-hvac-coordination-schema.js';
 
 export { VALID_CEILING_TYPES } from '../shared/types.js';
@@ -100,6 +101,10 @@ function loadConfig<T>(path: string): T {
 
 export function loadElectricalConfig(): ElectricalPoint[] {
   return loadConfig<ElectricalPoint[]>('config/electrical.yaml');
+}
+
+export function loadElectricalTopologyConfig(): ElectricalTopology {
+  return parseElectricalTopology(readFileSync('config/electrical-topology.yaml', 'utf8'), loadElectricalConfig());
 }
 
 export function loadPlumbingConfig(): PlumbingPoint[] {

@@ -1,0 +1,192 @@
+version: '1.0'
+
+panels:
+  # id 是 topology 内部 panel 标识；source_point_id 指向 electrical.yaml 的真实箱体点位。
+  - id: panel_strong
+    kind: strong
+    status: confirmed
+    source_point_id: panel_strong_entry_left
+  - id: panel_weak
+    kind: weak
+    status: proposed
+    source_point_id: panel_weak_entry_left
+
+circuits:
+  - id: lighting_dining
+    panel_id: panel_strong
+    purpose: lighting
+    status: confirmed
+    member_point_ids: [light_dining_pendant]
+    source_circuit_id: dining
+    note: "沿用 electrical.yaml 已声明 circuit: dining"
+  - id: lighting_living_base
+    panel_id: panel_strong
+    purpose: lighting
+    status: confirmed
+    member_point_ids: [living_track_main]
+    source_circuit_id: living_base
+    note: "沿用 electrical.yaml 已声明 circuit: living_base"
+  - id: lighting_tv_ambient
+    panel_id: panel_strong
+    purpose: lighting
+    status: confirmed
+    member_point_ids: [light_tv_strip]
+    source_circuit_id: tv_ambient
+    note: "沿用 electrical.yaml 已声明 circuit: tv_ambient"
+  - id: lighting_entry_base
+    panel_id: panel_strong
+    purpose: lighting
+    status: confirmed
+    member_point_ids: [light_corridor_1, light_entry_down, light_entry_foyer]
+    source_circuit_id: entry_base
+    note: "沿用 electrical.yaml 已声明 circuit: entry_base"
+  - id: lighting_master_dome
+    panel_id: panel_strong
+    purpose: lighting
+    status: proposed
+    member_point_ids: [light_master_dome]
+    note: "主卧吸顶灯，具体开关控制关系待确认（预期关联 switch_master_bed_l / switch_master_door 双控）；容量、线径、断路器等施工参数待确认"
+  - id: lighting_parent_dome
+    panel_id: panel_strong
+    purpose: lighting
+    status: proposed
+    member_point_ids: [light_parent_dome]
+    note: "父母房吸顶灯，具体开关控制关系待确认（预期关联 switch_parent_bed / switch_parent_door 双控）；容量、线径、断路器等施工参数待确认"
+  - id: lighting_child_dome
+    panel_id: panel_strong
+    purpose: lighting
+    status: proposed
+    member_point_ids: [light_child_dome]
+    note: "西北次卧吸顶灯，具体开关控制关系待确认（预期关联 switch_child）；容量、线径、断路器等施工参数待确认"
+  - id: lighting_study_dome
+    panel_id: panel_strong
+    purpose: lighting
+    status: proposed
+    member_point_ids: [light_study_dome]
+    note: "书房吸顶灯，具体开关控制关系待确认（预期关联 switch_study）；容量、线径、断路器等施工参数待确认"
+  - id: lighting_kitchen_panel
+    panel_id: panel_strong
+    purpose: lighting
+    status: proposed
+    member_point_ids: [light_kitchen_panel]
+    note: "厨房平板灯，具体开关控制关系待确认（预期关联 switch_kitchen）；容量、线径、断路器等施工参数待确认"
+  - id: lighting_mbath_panel
+    panel_id: panel_strong
+    purpose: lighting
+    status: proposed
+    member_point_ids: [light_mbath_panel]
+    note: "主卫平板灯，具体开关控制关系待确认（预期关联 switch_mbath）；容量、线径、断路器等施工参数待确认"
+  - id: lighting_gbath_panel
+    panel_id: panel_strong
+    purpose: lighting
+    status: proposed
+    member_point_ids: [light_gbath_panel]
+    note: "客卫平板灯，具体开关控制关系待确认（预期关联 switch_gbath）；容量、线径、断路器等施工参数待确认"
+  - id: hvac_power_living
+    panel_id: panel_strong
+    purpose: hvac_power
+    status: pending
+    member_point_ids: [sock_living_ac]
+    dedicated_load: true
+    note: "客厅空调电源专用回路候选；容量/线径/断路器待设备与现场确认"
+  - id: hvac_power_master
+    panel_id: panel_strong
+    purpose: hvac_power
+    status: pending
+    member_point_ids: [sock_master_ac]
+    dedicated_load: true
+    note: "主卧空调电源专用回路候选；容量/线径/断路器待设备与现场确认"
+  - id: hvac_power_child
+    panel_id: panel_strong
+    purpose: hvac_power
+    status: pending
+    member_point_ids: [sock_child_ac]
+    dedicated_load: true
+    note: "儿童房空调电源专用回路候选；容量/线径/断路器待设备与现场确认"
+  - id: hvac_power_study
+    panel_id: panel_strong
+    purpose: hvac_power
+    status: pending
+    member_point_ids: [sock_study_ac]
+    dedicated_load: true
+    note: "书房空调电源专用回路候选；容量/线径/断路器待设备与现场确认"
+  - id: hvac_power_parent
+    panel_id: panel_strong
+    purpose: hvac_power
+    status: pending
+    member_point_ids: [sock_parent_ac]
+    dedicated_load: true
+    note: "父母房空调电源专用回路候选；容量/线径/断路器待设备与现场确认"
+  - id: dedicated_kitchen_fridge
+    panel_id: panel_strong
+    purpose: dedicated_load
+    status: proposed
+    member_point_ids: [sock_kitchen_fridge]
+    dedicated_load: true
+    note: "冰箱独立回路意图来自点位注释；具体回路与参数待橱柜/设备确认"
+  - id: dedicated_kitchen_dishwasher
+    panel_id: panel_strong
+    purpose: dedicated_load
+    status: pending
+    member_point_ids: [sock_kitchen_dishwasher]
+    dedicated_load: true
+    note: "洗碗机单独回路意图来自点位注释；容量/线径/断路器待确认"
+  - id: dedicated_balcony_washer_dryer
+    panel_id: panel_strong
+    purpose: dedicated_load
+    status: proposed
+    member_point_ids: [sock_balcony_washer, sock_balcony_dryer]
+    dedicated_load: true
+    note: "洗衣机/烘干机大功率候选；不推断具体回路编号"
+  - id: dedicated_bath_heaters
+    panel_id: panel_strong
+    purpose: dedicated_load
+    status: pending
+    member_point_ids: [sock_gbath_towel, sock_mbath_exhaust, sock_gbath_exhaust]
+    dedicated_load: true
+    note: "卫浴设备电源候选；负载组合与参数待设备清单及现场确认"
+  - id: ordinary_power_living
+    panel_id: panel_strong
+    purpose: ordinary_power
+    status: proposed
+    member_point_ids: [sock_living_tv, sock_living_sofa_l, sock_living_sofa_r, sock_living_table, sock_living_water, sock_living_curtain, sock_living_drying]
+    note: "普通功能电源规划；回路容量/线径/断路器/现场分组待确认"
+  - id: ordinary_power_bedrooms
+    panel_id: panel_strong
+    purpose: ordinary_power
+    status: proposed
+    member_point_ids: [sock_master_bed_l, sock_master_bed_r, sock_master_tv, sock_master_projector, sock_master_curtain, sock_parent_bed_l, sock_parent_bed_r, sock_parent_desk, sock_parent_curtain, sock_study_desk, sock_study_curtain, sock_child_bed, sock_child_desk]
+    note: "普通功能电源规划；回路容量/线径/断路器/现场分组待确认"
+  - id: ordinary_power_service
+    panel_id: panel_strong
+    purpose: ordinary_power
+    status: proposed
+    member_point_ids: [sock_kitchen_gas, sock_balcony_drying, sock_mbath_vanity, sock_mbath_toilet, sock_gbath_vanity, sock_gbath_toilet]
+    note: "普通功能电源规划；回路容量/线径/断路器/现场分组待确认"
+
+controls:
+  - id: control_living_entrance_corridor
+    kind: switch_2way
+    status: confirmed
+    switch_point_ids: [switch_living_entrance, switch_living_corridor]
+    target_point_ids: []
+    note: "现有客厅入户侧/走廊侧双控意图；具体受控灯具未在事实中明确"
+  - id: control_master_bed_door
+    kind: switch_2way
+    status: confirmed
+    switch_point_ids: [switch_master_bed_l, switch_master_door]
+    target_point_ids: []
+    note: "现有主卧床头/门口双控意图；具体受控灯具未在事实中明确"
+  - id: control_parent_bed_door
+    kind: switch_2way
+    status: confirmed
+    switch_point_ids: [switch_parent_bed, switch_parent_door]
+    target_point_ids: []
+    note: "现有父母房床头/门口双控意图；具体受控灯具未在事实中明确"
+
+pending_parameters:
+  - "强弱电箱之间的实际分隔与进线关系待现场确认"
+  - "所有非照明回路的容量、线径、断路器规格待设备铭牌与设计复核"
+  - "空调五路的设备功率、专用回路策略与保护参数待 HVAC 设备确认"
+  - "厨房/卫浴/阳台 dedicated load 的最终负载清单与回路分组待深化"
+  - "双控关系的具体受控灯具待电气交底确认"

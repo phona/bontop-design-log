@@ -5,8 +5,10 @@ import type { RuleEngine } from './rule-engine.js';
 import type { BudgetCalculator } from './budget-calculator.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { ConfigRegistry } from './config-loader.js';
-import { loadElectricalConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
+import { loadElectricalConfig, loadElectricalTopologyConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
 import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
+import { lintElectricalTopology } from '../shared/electrical-lint.js';
+import { lintMepCoordination, type MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
 import { mergeSceneElements } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import type { CurrentScheme, CurtainState, ProjectRenderFacts, ProjectRenderFactsProjection } from '../shared/types.js';
@@ -25,6 +27,7 @@ export interface ApiDeps {
   getEnvironment?: () => EnvironmentConfig | undefined;
   getProjectRenderFacts?: () => ProjectRenderFacts | undefined;
   getProjectRenderFactsProjection?: () => ProjectRenderFactsProjection | undefined;
+  getMepLintContext?: () => MepLintLayoutContext;
 }
 
 export function createApiRouter(deps: ApiDeps): Router {
@@ -55,10 +58,33 @@ export function createApiRouter(deps: ApiDeps): Router {
 
   router.get('/mep-coordination', (_req, res) => {
     try {
-      const config = loadMepCoordinationConfig();
       const facts = deps.getProjectRenderFacts?.();
-      if (facts) validateMepCoordination(config, endpointSourcesFromFacts(facts));
-      res.json(config);
+      if (!facts) {
+        res.status(503).json({ error: 'render facts are not ready' });
+        return;
+      }
+      const config = loadMepCoordinationConfig();
+      const sources = endpointSourcesFromFacts(facts);
+      validateMepCoordination(config, sources);
+      res.json({ ...config, lint: lintMepCoordination(config, sources, deps.getMepLintContext?.()) });
+    } catch (err) {
+      res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.get('/electrical-topology', (_req, res) => {
+    try {
+      const facts = deps.getProjectRenderFacts?.();
+      const points = facts?.electrical ?? loadElectricalConfig();
+      const topology = loadElectricalTopologyConfig();
+      const lint = lintElectricalTopology(topology, points, {
+        ...(deps.getMepLintContext?.()?.layout ? { layout: deps.getMepLintContext?.()?.layout } : {}),
+        suppressedWallIds: (() => {
+          const ids = deps.getMepLintContext?.()?.suppressedWallIds;
+          return ids ? [...ids] : undefined;
+        })(),
+      });
+      res.json({ ...topology, lint });
     } catch (err) {
       res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
     }

@@ -39,6 +39,7 @@ import { EnvironmentManager } from './EnvironmentManager.js';
 import { parseSceneInput } from '@shared/render/scene-input';
 import { HvacDiagramRenderer } from './HvacDiagramRenderer.js';
 import { MepCoordinationRenderer } from './MepCoordinationRenderer.js';
+import { ElectricalTopologyRenderer } from './ElectricalTopologyRenderer.js';
 import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
 import { checkHvacExport } from './hvac-export-check.js';
 import { BrowserSceneDecorations } from './BrowserSceneDecorations.js';
@@ -96,12 +97,14 @@ export class HouseScene implements SceneApi {
   private floorMeshes: THREE.Mesh[] = [];
   private wallMeshes: THREE.Mesh[] = [];
   private ceilingMeshes: THREE.Mesh[] = [];
+  private ceilingRaycast: Array<THREE.Mesh['raycast']> = [];
   private curtainRegistry = new Map<string, CurtainRegistryEntry>();
   private curtainPresentationState: CurtainPresentationState = { default: 'open', roomOverrides: {}, updatedAt: '' };
   private glassMeshes: THREE.Mesh[] = [];
   private furnitureMeshes: THREE.Group[] = [];
   private countertopMeshes: THREE.Mesh[] = [];
   private electricalMeshes: THREE.Group[] = [];
+  private infrastructureMeshes: THREE.Group[] = [];
   private doorMeshes: THREE.Mesh[] = [];
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
@@ -125,6 +128,16 @@ export class HouseScene implements SceneApi {
   private readonly ORBIT_TARGET = new THREE.Vector3(7.4, 0, 3.65);
   private hvacRenderer: HvacDiagramRenderer;
   private mepRenderer: MepCoordinationRenderer;
+  private electricalTopologyRenderer: ElectricalTopologyRenderer;
+  private mepOverviewState?: {
+    ceiling: boolean;
+    infrastructure: boolean;
+    hvac: boolean;
+    mep: boolean;
+    mepOpacityMultiplier: number;
+    ceilingOpacity: number;
+    electricalTopology: boolean;
+  };
   private hvacExpectedExportIds: string[] = [];
   private hvacProjection?: ProjectRenderFactsProjection;
   private hvacEntityIndex: HvacEntityIndex = { equipment: new Map(), terminals: new Map(), all: new Map() };
@@ -185,6 +198,7 @@ export class HouseScene implements SceneApi {
     this.envManager = new EnvironmentManager(this.scene, this.renderer);
     this.hvacRenderer = new HvacDiagramRenderer(this.scene);
     this.mepRenderer = new MepCoordinationRenderer(this.scene);
+    this.electricalTopologyRenderer = new ElectricalTopologyRenderer(this.viewOnlyRoot);
     this.hvacRenderer.attach(this.exportRoot, this.viewOnlyRoot);
     this.mepRenderer.attach(this.viewOnlyRoot);
     this.setupLights();
@@ -538,11 +552,13 @@ export class HouseScene implements SceneApi {
     this.floorMeshes = [];
     this.wallMeshes = [];
     this.ceilingMeshes = [];
+    this.ceilingRaycast = [];
     this.curtainRegistry.clear();
     this.glassMeshes = [];
     this.furnitureMeshes = [];
     this.countertopMeshes = [];
     this.electricalMeshes = [];
+    this.infrastructureMeshes = [];
     this.doorMeshes = [];
     this.slidingDoorGroups.clear();
     this.wallSegmentIndex.clear();
@@ -701,14 +717,51 @@ export class HouseScene implements SceneApi {
     this.requestRender();
   }
 
-  loadMepCoordination(config: MepCoordination, sources: import('@shared/mep-hvac-coordination-schema').MepEndpointSources): void {
+  loadMepCoordination(config: MepCoordination, sources: import('@shared/mep-hvac-coordination-schema').MepEndpointSources, lint?: import('@shared/mep-hvac-lint').MepLintResult): void {
     this.mepRenderer.attach(this.viewOnlyRoot);
-    this.mepRenderer.render(config, sources);
+    this.mepRenderer.render(config, sources, lint);
     this.mepRenderer.setVisible(false);
   }
 
   getMepRenderReport(): import('./MepCoordinationRenderer.js').MepRenderReport {
     return this.mepRenderer.getRenderReport();
+  }
+
+  getMepStatusSummary(): Record<'confirmed' | 'inferred' | 'pending' | 'requirement', number> {
+    return this.mepRenderer.getRouteStatusSummary();
+  }
+
+  loadElectricalTopology(topology: import('@shared/types').ElectricalTopology, points: ElectricalPoint[]): void {
+    this.electricalTopologyRenderer.render(topology, points);
+    this.electricalTopologyRenderer.setVisible(false);
+  }
+
+  getElectricalTopologySummary(): import('./ElectricalTopologyRenderer.js').ElectricalTopologyRenderSummary {
+    return this.electricalTopologyRenderer.getSummary();
+  }
+
+  clearElectricalTopology(): void {
+    this.electricalTopologyRenderer.clear();
+  }
+
+  setElectricalTopologyVisible(visible: boolean): void {
+    this.electricalTopologyRenderer.setVisible(visible);
+    this.requestRender();
+  }
+
+  setElectricalTopologyPurposeVisible(purpose: import('@shared/types').ElectricalCircuitPurpose, visible: boolean): void {
+    this.electricalTopologyRenderer.setPurposeVisible(purpose, visible);
+    this.requestRender();
+  }
+
+  highlightElectricalCircuit(circuitId: string): void {
+    this.electricalTopologyRenderer.highlightCircuit(circuitId);
+    this.requestRender();
+  }
+
+  highlightMepRoute(routeId: string): void {
+    this.mepRenderer.highlightRoute(routeId);
+    this.requestRender();
   }
 
   setMepCoordinationVisible(visible: boolean): void {
@@ -723,6 +776,50 @@ export class HouseScene implements SceneApi {
 
   setMepBendsVisible(visible: boolean): void {
     this.mepRenderer.setBendsVisible(visible);
+    this.requestRender();
+  }
+
+  setMepOverviewVisible(visible: boolean, hvacVisible: boolean): void {
+    if (visible) {
+      if (!this.mepOverviewState) {
+        this.mepOverviewState = {
+          ceiling: this.ceilingMeshes[0]?.visible ?? false,
+          infrastructure: this.infrastructureMeshes[0]?.visible ?? true,
+          hvac: this.hvacRenderer.isCoordinationVisible(),
+          mep: this.mepRenderer.group.visible,
+          mepOpacityMultiplier: this.mepRenderer.getOpacityMultiplier(),
+          ceilingOpacity: this.ceilingMeshes[0]?.material instanceof THREE.Material ? (this.ceilingMeshes[0].material as THREE.MeshStandardMaterial).opacity : 1,
+          electricalTopology: this.electricalTopologyRenderer.group.visible,
+        };
+      }
+      this.setCeilingVisible(true, 0.22);
+      this.ceilingRaycast = this.ceilingMeshes.map((mesh) => mesh.raycast);
+      this.ceilingMeshes.forEach((mesh) => { mesh.raycast = () => undefined; });
+      this.infrastructureMeshes.forEach((mesh) => { mesh.visible = true; });
+      this.setHvacCoordinationVisible(hvacVisible);
+      // Overview must not flatten confirmed/inferred/pending base opacity differences.
+      this.mepRenderer.setOpacityMultiplier(1);
+      this.setMepCoordinationVisible(true);
+      if (this.electricalTopologyRenderer.group.children.length > 0) {
+        this.setElectricalTopologyVisible(true);
+      }
+    } else {
+      const state = this.mepOverviewState;
+      this.mepOverviewState = undefined;
+      if (state) {
+        this.setCeilingVisible(state.ceiling, state.ceilingOpacity);
+        this.ceilingMeshes.forEach((mesh, index) => {
+          const raycast = this.ceilingRaycast[index];
+          if (raycast) mesh.raycast = raycast;
+        });
+        this.ceilingRaycast = [];
+        this.infrastructureMeshes.forEach((mesh) => { mesh.visible = state.infrastructure; });
+        this.setHvacCoordinationVisible(state.hvac);
+        this.mepRenderer.setOpacityMultiplier(state.mepOpacityMultiplier);
+        this.setMepCoordinationVisible(state.mep);
+        this.setElectricalTopologyVisible(state.electricalTopology);
+      }
+    }
     this.requestRender();
   }
 
@@ -824,6 +921,7 @@ export class HouseScene implements SceneApi {
       wallSegments: this.wallSegmentIndex as ReadonlyMap<string, InfrastructureWallSegment[]>,
     });
     this.electricalMeshes = result.electrical;
+    this.infrastructureMeshes = result.objects;
     for (const model of result.objects) this.decorations.addMarker(model);
   }
 
@@ -981,11 +1079,21 @@ export class HouseScene implements SceneApi {
   }
 
   highlightObject(objectId: string) {
+    const targetIds = new Set([objectId]);
+    let route: THREE.Object3D | undefined;
+    this.scene.traverse((object) => {
+      if (!route && object.name === objectId) route = object;
+    });
+    if (route?.userData?.type === 'mep_coordination_route') {
+      const endpointMeta = route.userData.endpointMeta as { from?: { ref?: unknown }; to?: { ref?: unknown } } | undefined;
+      if (typeof endpointMeta?.from?.ref === 'string') targetIds.add(endpointMeta.from.ref);
+      if (typeof endpointMeta?.to?.ref === 'string') targetIds.add(endpointMeta.to.ref);
+    }
     this.scene.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
       const mat = mesh.material as THREE.MeshStandardMaterial | undefined;
       if (!mat || !mesh.userData) return;
-      if (mesh.userData.objectId === objectId || mesh.userData.roomId === objectId) {
+      if (targetIds.has(mesh.userData.objectId as string) || mesh.userData.roomId === objectId) {
         const original = mat.emissive?.clone() ?? new THREE.Color(0x000000);
         mat.emissive.set(0xffaa00);
         setTimeout(() => {
@@ -1045,9 +1153,14 @@ export class HouseScene implements SceneApi {
     this.setCeilingVisible(mode === 'first-person');
   }
 
-  setCeilingVisible(visible: boolean): void {
+  setCeilingVisible(visible: boolean, opacity = 1): void {
     for (const mesh of this.ceilingMeshes) {
       mesh.visible = visible;
+      const material = mesh.material as THREE.MeshStandardMaterial;
+      material.transparent = opacity < 1;
+      material.opacity = opacity;
+      material.depthWrite = opacity >= 1;
+      material.needsUpdate = true;
     }
   }
 
@@ -1158,12 +1271,70 @@ export class HouseScene implements SceneApi {
         curtainId: data.curtainId as string | undefined,
         curtainKind: data.curtainId ? this.curtainRegistry.get(data.curtainId as string)?.kind : undefined,
         layer: data.layer as HoverTarget['layer'],
+        mep: type === 'mep_coordination_route' || type.startsWith('hvac_') || type === 'hvac_reference_constraint' ? {
+          routeId: data.routeId as string | undefined, status: data.status as string | undefined,
+          sourceStatus: data.source_status as string | undefined, constructionStatus: data.construction_status as string | undefined,
+          from: data.endpointMeta ? (data.endpointMeta as { from?: { ref?: unknown } }).from?.ref : undefined,
+          to: data.endpointMeta ? (data.endpointMeta as { to?: { ref?: unknown } }).to?.ref : undefined,
+          points: data.points as Array<{ x: number; y?: number; z: number }> | undefined,
+          reason: data.reason as string | undefined, label: data.label as string | undefined,
+          dimensions: { diameter: data.diameter as number | undefined, width: data.width as number | undefined, depth: data.depth as number | undefined },
+          lintLevel: data.lintLevel as string | undefined, lintCodes: data.lintCodes as string[] | undefined, lintWarnings: data.lintWarnings as string[] | undefined,
+          notForConstruction: Boolean(data.notForConstruction ?? data.not_for_construction), source: data.source as string | undefined,
+          range: data.range as { x1: number; x2: number; z1: number; z2: number } | undefined,
+          height: data.height as number | undefined, uncertainty: data.uncertainty as string | undefined,
+          risk: data.risk as string | undefined, surveyConfirmation: data.surveyConfirmation as string | undefined,
+        } : undefined,
+        infrastructure: type === 'electrical' || type === 'plumbing' ? {
+          fixtureType: data.fixtureType as string | undefined, height: data.height as number | undefined,
+          mountHeight: data.mount_height as number | undefined, bodyHeight: data.body_height as number | undefined,
+          wallSide: data.wallSide as string | undefined,
+        } : undefined,
+        electricalTopology: type.startsWith('electrical_topology_') ? {
+          circuitIds: data.circuitId ? [String(data.circuitId)] : (data.circuitIds as string[] | undefined) ?? [],
+          controlIds: Array.isArray(data.controlIds) ? data.controlIds.filter((id): id is string => typeof id === 'string') : [],
+          notes: [data.note, ...(Array.isArray(data.notes) ? data.notes : []), data.notForConstruction ? '电气逻辑关系 / 非施工实体走线' : ''].filter((note): note is string => typeof note === 'string' && note.length > 0),
+          panelId: data.panelId as string | undefined,
+          memberPointIds: data.memberPointIds as string[] | undefined,
+          memberPointId: data.memberPointId as string | undefined,
+          purpose: data.purpose as string | undefined,
+          status: data.status as string | undefined,
+          pendingParameters: data.pendingParameters as string[] | undefined,
+          controlsIncomplete: data.controlsIncomplete === true,
+          controlsPending: data.controlsPending === true,
+          notForConstruction: Boolean(data.notForConstruction ?? data.not_for_construction),
+        } : undefined,
+        ceiling: type === 'ceiling_zone' || type === 'ceiling_zone_solid' ? data.ceiling as { area?: [number, number, number, number]; thickness?: number; type?: string; room?: string; height?: number } | undefined : undefined,
       };
-      const priority = type === 'lighting_fixture'
-        ? 0
-        : type === 'ceiling_zone_solid' || (type === 'annotation' && data.category === 'ceiling')
-          ? 2
-          : 1;
+      const isMepRouteTarget = type === 'mep_coordination_route';
+      const isElectricalTopologyTarget = type.startsWith('electrical_topology_');
+      const isHvacTarget = type === 'hvac_equipment'
+        || type === 'hvac_terminal'
+        || type === 'hvac_condensate_candidate'
+        || type === 'hvac_reference_constraint'
+        || type.startsWith('hvac_');
+      const isInfrastructureTarget = type === 'electrical'
+        || type === 'plumbing'
+        || type === 'lighting_fixture';
+      const isCeilingTarget = type === 'ceiling_zone_solid'
+        || (type === 'annotation' && data.category === 'ceiling');
+      const priority = this.mepOverviewState
+        ? isMepRouteTarget
+          ? 0
+          : isElectricalTopologyTarget
+            ? 1
+            : isHvacTarget
+              ? 2
+              : isInfrastructureTarget
+                ? 3
+                : isCeilingTarget
+                  ? 4
+                  : 5
+        : type === 'lighting_fixture'
+          ? 0
+          : isCeilingTarget
+            ? 2
+            : 1;
       if (!best || priority < best.priority) best = { target, priority };
       if (best.priority === 0) break;
     }
@@ -1320,6 +1491,7 @@ export class HouseScene implements SceneApi {
     window.removeEventListener('resize', this.boundOnWindowResize);
     this.hvacRenderer.dispose();
     this.mepRenderer.dispose();
+    this.electricalTopologyRenderer.dispose();
     this.decorations.dispose();
     this.materials.dispose();
     this.renderer.dispose();

@@ -124,6 +124,36 @@ import { HouseScene, GLASS_THICKNESS } from '../render/HouseScene';
 import { expectedVisibleCurtainNodes } from '@shared/curtain-projection';
 
 describe('HouseScene', () => {
+  it('links electrical topology into overview and restores its prior visibility', () => {
+    const scene = Object.create(HouseScene.prototype) as any;
+    const ceiling = { visible: false, material: { opacity: 0.7 }, raycast: vi.fn() };
+    const infrastructure = { visible: false };
+    const electricalGroup = { visible: false, children: [{}] };
+    scene.ceilingMeshes = [ceiling];
+    scene.infrastructureMeshes = [infrastructure];
+    scene.ceilingRaycast = [];
+    scene.hvacRenderer = { isCoordinationVisible: () => false };
+    scene.mepRenderer = {
+      group: { visible: false },
+      getOpacityMultiplier: () => 0.4,
+      setOpacityMultiplier: vi.fn(),
+    };
+    scene.electricalTopologyRenderer = { group: electricalGroup };
+    scene.setCeilingVisible = vi.fn((visible: boolean) => { ceiling.visible = visible; });
+    scene.setHvacCoordinationVisible = vi.fn();
+    scene.setMepCoordinationVisible = vi.fn();
+    scene.setElectricalTopologyVisible = vi.fn((visible: boolean) => { electricalGroup.visible = visible; });
+    scene.requestRender = vi.fn();
+
+    scene.setMepOverviewVisible(true, true);
+    expect(electricalGroup.visible).toBe(true);
+    expect(scene.mepOverviewState.electricalTopology).toBe(false);
+
+    scene.setMepOverviewVisible(false, false);
+    expect(electricalGroup.visible).toBe(false);
+    expect(scene.setElectricalTopologyVisible).toHaveBeenLastCalledWith(false);
+  });
+
   it('should initialize', () => {
     const canvas = {
       addEventListener: vi.fn(),
@@ -943,6 +973,54 @@ describe('HouseScene', () => {
       expect(target?.name).toContain('筒灯');
     } finally {
       (scene as any).raycaster = originalSceneRaycaster;
+    }
+  });
+
+  it('prioritizes MEP routes over ceiling hits only in coordination overview', () => {
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const originalRaycaster = (scene as any).raycaster;
+    (scene as any).raycaster = {
+      setFromCamera() {},
+      intersectObjects() {
+        return [
+          { object: { userData: { objectId: 'ceiling:living_dining', type: 'ceiling_zone_solid', roomId: 'living_dining' } } },
+          { object: { userData: {
+            objectId: 'mep:route:strong-ac-master', type: 'mep_coordination_route', routeId: 'strong-ac-master',
+            status: 'confirmed', layer: 'strong_power', points: [{ x: 1, y: 2.4, z: 2 }],
+            endpointMeta: { from: { ref: 'electrical:ac-master' }, to: { ref: 'electrical:socket-ac' } },
+          } } },
+        ];
+      },
+    } as any;
+    try {
+      // Normal mode keeps the legacy priority: ordinary building geometry beats ceiling.
+      (scene as any).raycaster.intersectObjects = () => [
+        { object: { userData: { objectId: 'ceiling:living_dining', type: 'ceiling_zone_solid', roomId: 'living_dining' } } },
+        { object: { userData: { objectId: 'floor:living_dining', type: 'floor', roomId: 'living_dining' } } },
+      ];
+      expect(scene.raycastFromScreenCenter()?.objectId).toBe('floor:living_dining');
+      (scene as any).raycaster.intersectObjects = () => [
+        { object: { userData: { objectId: 'ceiling:living_dining', type: 'ceiling_zone_solid', roomId: 'living_dining' } } },
+        { object: { userData: { objectId: 'hvac:A2:terminal:return_living', type: 'hvac_terminal', roomId: 'living_dining', status: 'confirmed' } } },
+        { object: { userData: {
+          objectId: 'mep:route:strong-ac-master', type: 'mep_coordination_route', routeId: 'strong-ac-master',
+          status: 'confirmed', layer: 'strong_power', points: [{ x: 1, y: 2.4, z: 2 }],
+          endpointMeta: { from: { ref: 'electrical:ac-master' }, to: { ref: 'electrical:socket-ac' } },
+        } } },
+      ];
+      (scene as any).mepOverviewState = { };
+      const target = scene.raycastFromScreenCenter({ hoverableOnly: true });
+      expect(target?.objectId).toBe('mep:route:strong-ac-master');
+      expect(target?.mep).toMatchObject({
+        routeId: 'strong-ac-master',
+        status: 'confirmed',
+        from: 'electrical:ac-master',
+        to: 'electrical:socket-ac',
+        points: [{ x: 1, y: 2.4, z: 2 }],
+      });
+    } finally {
+      (scene as any).raycaster = originalRaycaster;
     }
   });
 

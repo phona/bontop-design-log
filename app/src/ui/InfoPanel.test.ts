@@ -40,6 +40,8 @@ function setupDOM() {
       innerHTML: '',
       style: {},
       appendChild: vi.fn(),
+      append: vi.fn(),
+      children: [],
       onclick: null,
     })),
   });
@@ -108,6 +110,38 @@ describe('InfoPanel', () => {
     expect(elements.title.textContent).toBe('客餐厅');
     expect(elements.objectId.textContent).toBe('objectId: floor:living_dining');
     expect(elements.type.textContent).toBe('floor');
+  });
+
+  it('renders whitelisted MEP context without exposing unrelated fields', () => {
+    const panel = new InfoPanel({ onSelectOption: vi.fn() });
+    panel.showObject({
+      objectId: 'mep:route:main', name: '主干', type: 'mep_coordination_route',
+      mep: { routeId: 'main', from: 'panel', to: 'socket', status: 'inferred', sourceStatus: 'proposed', constructionStatus: 'pending', reason: '待确认', notForConstruction: true },
+    });
+    expect(elements.topics.appendChild).toHaveBeenCalled();
+    const section = (elements.topics.appendChild as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(section.className).toBe('info-topic-section info-mep-context');
+    expect(elements.topics.appendChild).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders electrical topology circuit context and pending parameters', () => {
+    const panel = new InfoPanel({ onSelectOption: vi.fn() });
+    panel.setElectricalTopology({
+      version: '1', panels: [], controls: [], pending_parameters: ['capacity pending'],
+      circuits: [{ id: 'ordinary', panel_id: 'strong', purpose: 'ordinary_power', status: 'proposed', member_point_ids: ['light'], note: 'declared' }],
+    });
+    panel.showObject({
+      objectId: 'electrical-topology:circuit:ordinary', name: 'ordinary', type: 'electrical_topology_circuit',
+      electricalTopology: { circuitIds: ['ordinary'], controlIds: ['light_control'], notes: [], panelId: 'strong', memberPointIds: ['light'], purpose: 'ordinary_power', status: 'proposed', pendingParameters: ['capacity pending'], controlsIncomplete: true, controlsPending: true },
+    });
+    expect(elements.topics.appendChild).toHaveBeenCalled();
+    const created = (document.createElement as ReturnType<typeof vi.fn>).mock.results.map((result) => result.value);
+    expect(created.some((element) => element.textContent === '用途：')).toBe(true);
+    expect(created.some((element) => element.textContent === '普通功能电源')).toBe(true);
+    expect(created.some((element) => element.textContent === '关联控制组：')).toBe(true);
+    expect(created.some((element) => element.textContent === '未闭合')).toBe(true);
+    expect(created.some((element) => element.textContent === '待确认')).toBe(true);
+    expect(created.some((element) => element.textContent === '非施工实体逻辑关系，仅用于表达回路与控制关系')).toBe(true);
   });
 
   it('calls onSelectOption with room scope', () => {
