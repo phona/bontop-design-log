@@ -200,10 +200,10 @@ plans:
         - id: supply_master
           status: inferred
           system: supply_air
-          position: { x: 2.15, y: 2.65, z: 4.96 }
+          position: { x: 2.10, y: 2.65, z: 4.96 }
           mount_face: south
           length: 0.9
-          reason: "主卧 0.9m 线形送风口（矮柜收窄至 0.8m 后风口西移对位），嵌檐口南立面侧送朝南，越 1.1m 矮柜顶进睡眠区（span x[1.7,2.6] 全程压矮柜、与高柜西脸齐平零干涉；至南窗 5.4m 余量充足），实际长度按风量深化。"
+          reason: "主卧 0.9m 线形送风口（矮柜收窄至 0.8m 后再次西移 0.05m 对位），嵌檐口南立面侧送朝南，越 1.1m 矮柜顶进睡眠区（span x[1.65,2.55] 全程压矮柜、与高柜西脸齐平零干涉；至南窗 5.4m 余量充足），实际长度按风量深化。"
         - id: return_master
           status: inferred
           system: return_air
@@ -326,7 +326,7 @@ plans:
           from: indoor_master
           to: condensate_master_candidate
           constraint_refs: [ref_master_bath_local_beam_head]
-          reason: "冷凝水自檐口底 z≈4.25 落出，穿 DEC-045 储物柜顶北端进柜，柜内管井角贴背板下行（全程包保温棉防结露，明管开柜即修），穿 x=2.6 墙（孔位留柜内）进主卫吊顶上方至候选点；坡度、存水弯和立管接点待现场确认；主卫局部参考梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
+          reason: "仅作协调示意：从 indoor_master 的冷凝水出口/排水盘接至东墙顶部 DEC-045 PVC 包管，盒体外由同一 object 的 route-cover parts 先向北、再向 west 接近 ac_master 冷凝水出口；return_master 回风格栅兼任内机检修口，不另设检修门；supply_master 是送风口，不是冷凝水接口。PVC 盒只遮挡冷凝水管/保温和灯槽，实际管径、坡度、存水弯、穿墙条件和最终接点待现场及厂家深化确认，不代表已施工；主卫局部参考梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
         - id: condensate_study_candidate_route
           status: pending
           system: condensate

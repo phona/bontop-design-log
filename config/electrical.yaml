@@ -373,11 +373,11 @@
   wall: w_mbath_south
   wall_side: south
   type: socket
-  x: 0.55
+  x: 0.78
   z: 2.96
-  height: 1.2
+  height: 0.95
   count: 2
-  note: "洗漱+梳妆一体台插座（带防溅盒；2026-08-25 台盆外移条带贴新隔墙南脸，插座台面上方；待量房确认）"
+  note: "洗漱+梳妆一体台镜下双联插座（2026-08-30 回归梳妆位，服务吹风机/护理电器，避开台盆中心与门洞；带防溅盒，待量房确认）"
 
 - id: sock_mbath_toilet
   room: master_bath
@@ -394,10 +394,10 @@
   wall: w_mbath_south
   wall_side: south
   type: switch
-  x: 1.10
+  x: 2.10
   z: 2.91
   height: 1.3
-  note: "主卫灯光开关（主卫外侧、条带侧墙面；2026-08-25 隔墙北移 z=2.86 随墙移，位于门洞[1.15,1.95]西侧、洗漱台东缘(x=1.05)之间墙垛，避开淋浴区；墙中心线z=2.86，外侧点位z=2.91）"
+  note: "主卫灯光开关（2026-08-30 移至门洞东侧实体墙垛近门处；避开通长镜面、台盆及 d_mbath 门洞，插座向东错开；待量房确认）"
 
 - id: sock_mbath_exhaust
   room: master_bath

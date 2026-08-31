@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import type { CurtainPoint, FurnishingsYaml, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, WallSegment, RoomObject } from '../types.js';
+import type { CurtainPoint, FurnishingsYaml, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, WallSegment, RoomObject, WallSide } from '../types.js';
+import { FURNITURE_DIMS } from '../types.js';
 import { buildInfrastructure } from './InfrastructureBuilder.js';
 import { buildLightingFixtures } from './LightingFixtureBuilder.js';
 import { type HvacBuilderSources } from './HvacBuilder.js';
@@ -225,7 +226,26 @@ function addLineMeshes(root: THREE.Group, points: Point[], height: number, thick
   }
 }
 
-function addWallElement(root: THREE.Group, wall: WallElement, height: number, report: SceneBuildReport, index: SceneBuildIndex, provider: SceneMaterialProvider): void {
+function doorInwardNormal(
+  source: { x1: number; z1: number; x2: number; z2: number },
+  opening: ResolvedOpening,
+  rooms: ResolvedRoom[],
+): Point {
+  const dx = source.x2 - source.x1;
+  const dz = source.z2 - source.z1;
+  const length = Math.hypot(dx, dz) || 1;
+  const left = { x: -dz / length, z: dx / length };
+  const room = opening.room ? rooms.find((candidate) => candidate.id === opening.room) : undefined;
+  if (room) {
+    const wallCenter = { x: (source.x1 + source.x2) / 2, z: (source.z1 + source.z2) / 2 };
+    const side = (room.x - wallCenter.x) * left.x + (room.z - wallCenter.z) * left.z;
+    if (Math.abs(side) > 1e-6) return side > 0 ? left : { x: -left.x, z: -left.z };
+  }
+  // Preserve the historical inward side when no room side can be established.
+  return { x: -left.x, z: -left.z };
+}
+
+function addWallElement(root: THREE.Group, wall: WallElement, height: number, report: SceneBuildReport, index: SceneBuildIndex, provider: SceneMaterialProvider, rooms: ResolvedRoom[]): void {
   const sourceSegments = wall.segments?.length ? wall.segments : [wall];
   const materials = { ...defaultMaterials(), ...provider };
   const shaft = wall.id.includes('elev') || wall.id.includes('foyer_outer_east') || wall.id.includes('foyer_north_east');
@@ -281,10 +301,11 @@ function addWallElement(root: THREE.Group, wall: WallElement, height: number, re
       topFrame.position.set(center.x, sill + opening.height + frameWidth / 2, center.z); topFrame.rotation.y = wallRotation; make(topFrame, `${opening.id}:frame:top`);
     } else if (opening.type === 'door') {
       const panel = new THREE.Mesh(new THREE.BoxGeometry(opening.width, opening.height, 0.04), doorMat);
+      const inwardNormal = doorInwardNormal(source, opening, rooms);
       const wallNormal = { x: -uz, z: ux }; const inward = opening.swing === 'inward'; const hingeAtEnd = opening.hinge === 'end';
       const hingeOffset = inward || opening.swing === 'outward' ? (hingeAtEnd ? half : -half) : -half;
       const hinge = { x: source.x1 + ux * (t + hingeOffset), z: source.z1 + uz * (t + hingeOffset) };
-      const panelDir = inward ? { x: -wallNormal.x, z: -wallNormal.z } : opening.swing === 'outward' ? wallNormal : { x: -uz, z: ux };
+      const panelDir = inward ? inwardNormal : opening.swing === 'outward' ? wallNormal : { x: -uz, z: ux };
       panel.position.set(hinge.x + panelDir.x * half, sill + opening.height / 2, hinge.z + panelDir.z * half);
       panel.rotation.y = Math.atan2(-panelDir.z, panelDir.x); make(panel, opening.id);
       const frameThick = 0.05; const frameDepth = 0.15; const frameHeight = opening.height + frameThick * 2;
@@ -489,12 +510,32 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
     case 'curtain_run': {
       if (element.points.length < 2) return;
       const materials = { ...defaultMaterials(), ...provider };
-      const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(curtainRibbonShape(element.points, element.closed ?? false), { depth: element.height, bevelEnabled: false, steps: 1 }), materials.curtainRun(element));
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.scale.set(1, -1, 1);
-      setSceneObjectMetadata(mesh, element.type, id);
-      mesh.receiveShadow = true;
-      root.add(mesh);
+      const buildMesh = (points: CurtainPoint[], objectId: string, metadata?: Record<string, unknown>, exportName = objectId): THREE.Mesh => {
+        const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(curtainRibbonShape(points, element.closed ?? false), { depth: element.height, bevelEnabled: false, steps: 1 }), materials.curtainRun(element));
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.scale.set(1, -1, 1);
+        setSceneObjectMetadata(mesh, element.type, objectId, exportName);
+        mesh.userData = { ...mesh.userData, ...metadata };
+        mesh.receiveShadow = true;
+        return mesh;
+      };
+      if (!element.parts?.length) {
+        root.add(buildMesh(element.points, id));
+        return;
+      }
+      const group = new THREE.Group();
+      setSceneObjectMetadata(group, element.type, id);
+      root.add(group);
+      for (const part of element.parts) {
+        if (part.points.length < 2) continue;
+        const partName = `${id}:part=${part.id}`;
+        const mesh = buildMesh(part.points, id, {
+          wallId: part.wallRefs.length === 1 ? part.wallRefs[0] : part.wallRefs.join('|'),
+          wallRefs: part.wallRefs,
+          partId: part.id,
+        }, partName);
+        group.add(mesh);
+      }
       return;
     }
     case 'shower_screen': {
@@ -594,24 +635,108 @@ function addHvacEntities(root: THREE.Group, projection: ProjectRenderFactsProjec
   return buildHvacGeometry(root, projection, sources).index;
 }
 
-function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: SceneBuildReport): void {
+const MAX_EXPORT_NAME_LENGTH = 63;
+const FIXTURE_MATERIAL_ROLES = new Set([
+  'cabinet_body', 'door_front', 'door_seam', 'drawer_front', 'back_panel',
+  'frame', 'top_filler', 'plinth', 'shelf', 'hardware', 'countertop', 'end_panel',
+  'tv_frame', 'tv_screen', 'fixture_diffuser', 'fixture_track', 'fixture_metal', 'cooktop_burner', 'cooktop_surface',
+  'cove_light', 'ceramic', 'mirror', 'fabric', 'weight_plate', 'upholstery',
+  'floor_protection', 'cabinet_foot', 'cabinet_support', 'safety_bar', 'railing', 'hvac_coordination_cover', 'hvac_cover',
+]);
+
+function stableFurnitureNameHash(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+function furnitureChildExportName(objectId: string, child: THREE.Object3D, childIndex: number): string {
+  const originalName = child.name || 'part';
+  const fullName = `${objectId}:${originalName}`;
+  if (fullName.length <= MAX_EXPORT_NAME_LENGTH) return fullName;
+
+  const declaredRole = typeof child.userData.materialRole === 'string'
+    ? child.userData.materialRole
+    : originalName.match(/:role=([^:]+)/u)?.[1];
+  // Keep the semantic role in userData, but use a bounded export token for
+  // Blender's 63-character object-name limit. Blender-side role parsing maps
+  // this token back to the canonical material role.
+  const exportRole = declaredRole === 'hvac_coordination_cover' ? 'hvac_cover' : declaredRole;
+  const roleSuffix = exportRole && FIXTURE_MATERIAL_ROLES.has(exportRole)
+    ? `:role=${exportRole}`
+    : '';
+  const part = typeof child.userData.part === 'string'
+    ? child.userData.part
+    : originalName.match(/:part=([^:]+)/u)?.[1] ?? 'part';
+  // Blender limits object names to 63 characters. Preserve the room and
+  // furniture type prefix used by preview scope, keep legal roles complete,
+  // and compress only the instance/part suffix when the full instance key
+  // cannot fit. The stable hash prevents collisions between compressed child
+  // names. Default/unknown roles are omitted so Blender classifies the part
+  // from its furniture parent/metadata instead of rejecting the export.
+  const objectParts = objectId.split(':');
+  const scopePrefix = objectParts.length >= 2
+    ? `${objectParts[0]}:${objectParts[1]}:`
+    : `${objectId}:`;
+  // Six hex characters are enough to keep the real room scope and the full
+  // part/role tags for the long appliance and countertop names. Include the
+  // child index in the hash input so parts in one instance remain distinct.
+  const hash = stableFurnitureNameHash(`${fullName}:${childIndex}`).slice(0, 6);
+  const fullPrefix = `${objectId}:part=`;
+  const fullBudget = MAX_EXPORT_NAME_LENGTH - fullPrefix.length - roleSuffix.length;
+  if (fullBudget > hash.length + 1) {
+    const readableBudget = fullBudget - hash.length - 1;
+    return `${fullPrefix}${part.slice(0, Math.max(1, readableBudget))}-${hash}${roleSuffix}`;
+  }
+  const compressedPrefix = `${scopePrefix}${hash}:part=`;
+  const compressedBudget = MAX_EXPORT_NAME_LENGTH - compressedPrefix.length - roleSuffix.length;
+  return `${compressedPrefix}${part.slice(0, Math.max(1, compressedBudget))}${roleSuffix}`;
+}
+
+type FurniturePlacement = { x: number; z: number; wallId?: string; wallSide?: WallSide; anchorAlong?: number };
+
+function resolveFurniturePlacement(item: FurnishingsYaml[string][number], wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>): FurniturePlacement | null {
+  if (item.wall !== undefined && item.wall_side !== undefined && item.along !== undefined) {
+    const wall = wallSegments.get(item.wall)?.[0];
+    const dims = FURNITURE_DIMS[item.type];
+    if (wall && dims && item.wall === 'w_mbath_east' && item.wall_side === 'west') {
+      return { x: wall.x1 - dims.depth / 2, z: item.along, wallId: item.wall, wallSide: item.wall_side, anchorAlong: item.along };
+    }
+  }
+  if (item.x === undefined || item.z === undefined) return null;
+  return { x: item.x, z: item.z };
+}
+
+function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: SceneBuildReport, wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>): void {
   for (const [roomId, items] of Object.entries(furnishings)) {
     let index = 0;
     for (const item of items) {
-      if (item.x === undefined || item.z === undefined) continue;
+      const placement = resolveFurniturePlacement(item, wallSegments);
+      if (!placement) continue;
       const model = buildFurniture(item);
       if (!model) {
         report.skippedFurniture.push(`${roomId}:${item.type}`);
         continue;
       }
       const objectId = `furniture:${roomId}:${item.type}:${index}`;
-      model.position.set(item.x, 0, item.z);
+      model.position.set(placement.x, 0, placement.z);
       model.rotation.y = THREE.MathUtils.degToRad(item.rotation ?? 0);
       setSceneObjectMetadata(model, 'furniture', objectId);
       model.traverse((child) => {
         if (child === model) return;
-        child.name = `${objectId}:${child.name || 'part'}`;
+        const exportName = furnitureChildExportName(objectId, child, childIndex++);
+        child.name = exportName;
+        child.userData = { ...child.userData, exportName, roomId, objectId, type: 'furniture' };
       });
+      if (placement.wallId !== undefined) {
+        model.userData.wallId = placement.wallId;
+        model.userData.wallSide = placement.wallSide;
+        model.userData.anchorAlong = placement.anchorAlong;
+      }
+      let childIndex = 0;
       root.add(model);
       report.furniture++;
       index++;
@@ -687,8 +812,8 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
       object.traverse((child) => { if (child.userData.surface === 'countertop') index.countertopMeshes.push(child as THREE.Mesh); });
     }
     if (type === 'curtain_run' || type === 'glass_infill' || type === 'shower_screen' || type === 'hinged_glass_door') {
-      index.glassMeshes.push(object as THREE.Mesh);
-      if (type === 'curtain_run') {
+      if ((object as THREE.Mesh).isMesh) index.glassMeshes.push(object as THREE.Mesh);
+      if (type === 'curtain_run' && (object as THREE.Mesh).isMesh) {
         const id = String(object.userData.objectId);
         const meshes = index.curtainRuns.get(id) ?? [];
         meshes.push(object);

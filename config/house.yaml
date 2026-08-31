@@ -416,7 +416,12 @@ furnishings:
     - { type: vanity_dresser, x: 0.55, z: 3.16, rotation: 0 }          # 2026-08-25 台盆外移：洗漱+梳妆一体台满墙 1.10×0.5（x∈[0,1.10]，东缘留 0.05 收边缝接半墙屏风），台盆 0.5 居西、梳妆位尽量宽，贴新隔墙 w_mbath_south 南脸（z=2.86）面朝南；vanity_tall_cabinet 已取消（业主要台面宽裕，储物扩展将来用次卧那面墙）；待量房确认
     - { type: faucet }                                           # 随台盆外移（预算 count-only），给水见 plumbing.yaml faucet_mbath_vanity
     - { type: chair, x: 0.80, z: 3.66, rotation: 180 }           # 2026-08-26 梳妆椅：收进时背贴台面（台面南脸 z=3.41），对镜朝北；椅后通道至衣柜北脸余 1.6m+，不挡动线；待量房确认
-    - { type: utility_cabinet_tall, x: 2.26, z: 3.60, rotation: 0 } # DEC-045 条带东北角通顶储物柜（0.55 深×1.3 长×2.7 高，嵌主卫东墙×儿童房南墙转角，朝西开门；东缘 x=2.535 贴墙不嵌墙；背板管井角藏冷凝水管，包保温棉；不碰 d_mbath 门洞/d_mb 扫掠/檐口 z≥4.30）
+    # DEC-045：四件独立对象共用同一 along 中心；东墙沿墙方向是世界 z，y 才是高度层次。
+    # 统一 wall=w_mbath_east、wall_side=west、rotation=270，四件后缘贴 x=2.60，沿 z 同轴成套。
+    - { type: mb_vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.35 } # 落地底柜：1.50m×0.42m×0.62m，y=0..0.62，z=2.60..4.10
+    - { type: mb_vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.35 } # 下板：1.50m×0.32m×0.07m，y=0.965..1.035，与落地柜留约0.345m使用间距
+    - { type: mb_vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.35 } # 主板：1.50m×0.32m×0.07m，y=1.515..1.585，与下板拉开约0.48m
+    - { type: mb_vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.35 } # 顶部 PVC 包管+灯槽：y=2.58..2.80；同一 object 的 route-cover parts 向北再向 west 接近 ac_master 冷凝水出口。return_master 回风格栅兼任内机检修口，不重复设置检修门；仅遮挡冷凝水管/保温和灯槽，管径/坡度/存水弯/最终接点待深化
     - { type: plant_fiddle, x: 1.10, z: 9.40, rotation: 270 } # 2026-08-26 从条带 (2.30,3.55) 挪至主卧西南角地面并西移；朝向床区（西飘窗与南窗带交界，地面可站区；DEC-045 柜体占原绿植位）
     - { type: mattress_180 }
     - { type: curtain_set }

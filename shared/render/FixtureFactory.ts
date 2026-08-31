@@ -91,15 +91,33 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // DEC-045：主卧条带东北角通顶储物柜（家政/linen/换季），嵌主卫东墙×儿童房南墙转角，朝西开门；
-    // 背板与侧板夹 0.1×0.1 管井角藏冷凝水管（包保温棉防结露，全程明管开柜即修）
-    type: 'utility_cabinet_tall',
+    type: 'mb_vanity_base_cabinet',
     parts: [
-      { shape: 'box', size: [0.55, 2.7, 1.3], position: [0, 1.35, 0], color: '#8B7355' },
-      { shape: 'box', size: [0.02, 1.28, 0.58], position: [-0.28, 0.68, -0.31], color: '#7d6647' },
-      { shape: 'box', size: [0.02, 1.28, 0.58], position: [-0.28, 2.02, -0.31], color: '#7d6647' },
-      { shape: 'box', size: [0.02, 1.28, 0.58], position: [-0.28, 0.68, 0.31], color: '#7d6647' },
-      { shape: 'box', size: [0.02, 1.28, 0.58], position: [-0.28, 2.02, 0.31], color: '#7d6647' },
+      { shape: 'box', size: [1.50, 0.62, 0.42], position: [0, 0.31, 0], color: '#c9c1b5', roughness: 0.5, part: 'base-cabinet', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [1.42, 0.025, 0.025], position: [0, 0.03, 0.19], color: '#8f877d', roughness: 0.7, part: 'base-plinth', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [1.42, 0.025, 0.018], position: [0, 0.32, 0.211], color: '#e7e0d6', roughness: 0.45, part: 'base-front-reveal', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 0.42, 0.018], position: [0, 0.34, 0.211], color: '#8f877d', roughness: 0.7, part: 'base-door-seam', materialRole: 'door_seam' },
+    ],
+  },
+  {
+    type: 'mb_vanity_lower_board',
+    parts: [{ shape: 'box', size: [1.50, 0.07, 0.32], position: [0, 1.00, 0], color: '#c9b29a', roughness: 0.45, part: 'lower-board', materialRole: 'shelf' }],
+  },
+  {
+    type: 'mb_vanity_main_board',
+    parts: [{ shape: 'box', size: [1.50, 0.07, 0.32], position: [0, 1.55, 0], color: '#c9b29a', roughness: 0.45, part: 'main-board', materialRole: 'shelf' }],
+  },
+  {
+    type: 'mb_vanity_pvc_box',
+    parts: [
+      // 顶部 PVC 包管+灯槽：盒体与默认墙面涂料同色同哑光表达，不重复生成检修门；return_master 回风格栅兼任内机检修口。
+      { shape: 'box', size: [1.40, 0.22, 0.22], position: [0, 2.69, 0], color: '#f7f5ef', roughness: 0.85, metalness: 0, part: 'pvc-service-box', materialRole: 'hvac_coordination_cover' },
+      { shape: 'box', size: [1.12, 0.012, 0.012], position: [0, 2.565, 0.116], color: '#f3eee5', roughness: 0.85, metalness: 0, part: 'cove-light', materialRole: 'cove_light' },
+      // 同一 PVC object 的折线管线罩：与默认墙面涂料统一为低对比哑光材质；由盒体顶部先向北、再向 west 接近 ac_master 冷凝水出口；避让 supply_master/return_master，最高点不超过 2.8m。
+      { shape: 'box', size: [0.30, 0.12, 0.12], position: [0.85, 2.72, 0], color: '#f7f5ef', roughness: 0.85, metalness: 0, part: 'condensate-route-cover-north', materialRole: 'hvac_coordination_cover' },
+      { shape: 'box', size: [0.12, 0.12, 0.24], position: [1.10, 2.72, 0.16], color: '#f7f5ef', roughness: 0.85, metalness: 0, part: 'condensate-route-cover-west', materialRole: 'hvac_coordination_cover' },
+      { shape: 'box', size: [0.14, 0.14, 0.14], position: [1.10, 2.72, 0.30], color: '#f7f5ef', roughness: 0.85, metalness: 0, part: 'condensate-route-elbow', materialRole: 'hvac_coordination_cover' },
+      { shape: 'box', size: [0.20, 0.14, 0.12], position: [1.22, 2.72, 0.36], color: '#f7f5ef', roughness: 0.85, metalness: 0, part: 'condensate-route-cover-approach', materialRole: 'hvac_coordination_cover' },
     ],
   },
   {
@@ -131,9 +149,8 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       // 台上盆 + 龙头（西半）
       { shape: 'box', size: [0.46, 0.12, 0.32], position: [-0.29, 0.87, 0], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
       { shape: 'box', size: [0.05, 0.22, 0.05], position: [-0.29, 0.92, -0.16], color: '#c8ccd0', metalness: 0.6, roughness: 0.35, part: 'faucet', materialRole: 'hardware' },
-      // 镜柜（台盆上方）+ 平板镜（梳妆位上方，加宽）
-      { shape: 'box', size: [0.50, 0.75, 0.14], position: [-0.29, 1.45, -0.20], color: '#bcd2d8', roughness: 0.1, metalness: 0.6, part: 'mirror-cabinet', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.48, 0.75, 0.03], position: [0.27, 1.45, -0.235], color: '#bcd2d8', roughness: 0.1, metalness: 0.6, part: 'mirror', materialRole: 'mirror' },
+      // 梳妆区连续镜面：适度收窄，给镜下插座和门洞留出清晰边界
+      { shape: 'box', size: [0.88, 0.75, 0.03], position: [0.08, 1.45, -0.235], color: '#bcd2d8', roughness: 0.1, metalness: 0.6, part: 'mirror', materialRole: 'mirror' },
     ],
   },
   {

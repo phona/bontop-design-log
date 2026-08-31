@@ -521,9 +521,15 @@ export interface BaySillWallReference {
   segments: BaySillSegment[];
 }
 
+export interface CurtainRunPart {
+  id: string;
+  points: CurtainPoint[];
+  wallRefs: string[];
+}
+
 export type SceneElement =
   | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; openings?: ResolvedOpening[]; rooms?: string[] }
-  | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean }
+  | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean; parts?: CurtainRunPart[] }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   | {
       type: 'glass_infill';
@@ -918,6 +924,9 @@ export interface FurnishingItem {
   x?: number;
   z?: number;
   rotation?: number;
+  wall?: string;
+  wall_side?: WallSide;
+  along?: number;
   /** Declarative dimensions for a continuous cabinet run (metres). */
   length?: number;
   depth?: number;
@@ -943,6 +952,9 @@ export interface PlacedFurnishing {
   x: number;
   z: number;
   rotation: number;
+  wall?: string;
+  wall_side?: WallSide;
+  along?: number;
   length?: number;
   depth?: number;
   cabinetHeight?: number;
@@ -964,8 +976,13 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   kitchen_countertop_bridge: { width: 0.6, depth: 0.6 },
   shelf: { width: 0.8, depth: 0.4 }, // DEC-023 置物架（开架，h2.0）
   bath_side_cabinet: { width: 0.45, depth: 0.5 }, // 2026-08-21 主卫干区封闭侧柜 h2.0
-  utility_cabinet_tall: { width: 0.55, depth: 1.3 }, // DEC-045 主卧条带东北角通顶储物柜 h2.7（沿主卫东墙南北向，朝西开门）
-  vanity_dresser: { width: 1.10, depth: 0.5 }, // 2026-08-25 洗漱+梳妆一体台（DEC-043 台盆外移条带；满墙 1.10m 台面，收纳并入台下柜/镜柜；vanity_tall_cabinet 已取消）
+  // DEC-045 主卫东墙四件独立对象：rotation=270 后 width 沿墙 z、depth 朝 west；
+  // wall anchor 是自身中心，local y 才是高度层次；四件沿墙同轴组成一套墙面家具。
+  mb_vanity_base_cabinet: { width: 1.50, depth: 0.42 }, // 落地贴墙低柜：1.50m 长×0.42m 深×0.62m 高，后缘贴 x=2.60
+  mb_vanity_lower_board: { width: 1.50, depth: 0.32 }, // 下部悬浮板：与底柜同宽同轴
+  mb_vanity_main_board: { width: 1.50, depth: 0.32 }, // 主板：与下板同宽同深
+  mb_vanity_pvc_box: { width: 1.40, depth: 0.22 }, // PVC 顶部 HVAC 冷凝水管线盒：贴近房顶，前侧带可见检修盖与低亮灯缝
+  vanity_dresser: { width: 1.10, depth: 0.5 }, // 2026-08-25 洗漱+梳妆一体台（DEC-043 台盆外移条带；满墙 1.10m 台面，镜下插座；收纳并入台下柜/开放架）
   towel_set: { width: 0.04, depth: 0.28 }, // Blender add_bath_fixtures 比例的声明式毛巾杆+毛巾，按东墙贴靠投影登记
   sofa_3seat: { width: 2.8, depth: 0.9 },
   dining_table: { width: 1.4, depth: 0.8 },

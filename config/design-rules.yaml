@@ -64,6 +64,10 @@ budget:
     wardrobe_240_split: wardrobe
     wardrobe_180: wardrobe
     vanity_dresser: vanity
+    mb_vanity_base_cabinet: wardrobe
+    mb_vanity_lower_board: wardrobe
+    mb_vanity_main_board: wardrobe
+    mb_vanity_pvc_box: wardrobe
     sofa_3seat: sofa
     shoe_cabinet: shoe_cabinet
   # applyRooms：限定算量范围，避免材料满铺到不施工的房间（电梯井等）。

@@ -99,6 +99,22 @@ suppress:
     );
   });
 
+  it('parses curtain_run parts as wall references', () => {
+    const cfg = parseOverlay(`
+version: 1
+elements:
+  - id: segmented
+    type: curtain_run
+    walls: [w_west, w_east]
+    parts:
+      - { id: west, wall: w_west }
+      - { id: east, walls: [w_east] }
+`);
+    const element = cfg.elements[0];
+    assert.equal(element.type, 'curtain_run');
+    if (element.type === 'curtain_run') assert.deepEqual(element.parts?.map((part) => part.id), ['west', 'east']);
+  });
+
   it('accepts closed: true on curtain_run', () => {
     const cfg = parseOverlay(`
 version: 1
@@ -419,6 +435,20 @@ describe('resolveWallRef', () => {
 
   it('throws on unknown wall id', () => {
     assert.throws(() => resolveWallRef('w999', walls), /Unknown wall id: w999/);
+  });
+
+  it('preserves complete west curtain points and arc in declared parts', () => {
+    const layout = resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
+    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const elements = mergeSceneElements(layout.walls, overlay);
+    const curtain = elements.find((element) => element.id === 'west_curtain');
+    assert.equal(curtain?.type, 'curtain_run');
+    if (curtain?.type === 'curtain_run') {
+      assert.equal(curtain.parts?.length, 5);
+      assert.equal(curtain.parts?.find((part) => part.id === 'w_mb_south')?.wallRefs[0], 'w_mb_south');
+      assert.ok(curtain.parts?.find((part) => part.id === 'w_mb_south')?.points.some((point) => point.radius !== undefined));
+      assert.ok(curtain.points.some((point) => point.radius !== undefined));
+    }
   });
 
   it('preserves the v_vrv_n arc and ownership across the real railing refs', () => {

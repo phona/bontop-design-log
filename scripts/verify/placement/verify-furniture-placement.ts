@@ -10,7 +10,15 @@ interface Aabb {
   maxZ: number;
 }
 
-type PlacedItem = { type: string; length?: number; depth?: number; width?: number };
+type WallSide = 'north' | 'south' | 'east' | 'west';
+type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number };
+
+const MB_VANITY_TYPES = new Set([
+  'mb_vanity_base_cabinet',
+  'mb_vanity_lower_board',
+  'mb_vanity_main_board',
+  'mb_vanity_pvc_box',
+]);
 
 function rotatedDims(item: PlacedItem, rotation: number): { width: number; depth: number } | null {
   const dims = (item.type === 'kitchen_cabinet_run' || item.type === 'bath_side_cabinet') && item.length !== undefined && item.depth !== undefined
@@ -21,6 +29,48 @@ function rotatedDims(item: PlacedItem, rotation: number): { width: number; depth
   if (!dims) return null;
   const quarterTurns = Math.round(rotation / 90) % 2 !== 0;
   return quarterTurns ? { width: dims.depth, depth: dims.width } : dims;
+}
+
+function resolvePlacement(item: PlacedItem, walls: Array<{ id?: string; x1: number; z1: number; x2: number; z2: number }>, label: string, errors: string[]): { x?: number; z?: number } {
+  if (item.wall !== undefined || item.wall_side !== undefined || item.along !== undefined) {
+    if (item.wall === undefined || item.wall_side === undefined || item.along === undefined) {
+      errors.push(`${label}: wall anchor requires wall, wall_side, and along`);
+      return {};
+    }
+    const wall = walls.find((candidate) => candidate.id === item.wall);
+    if (!wall) {
+      errors.push(`${label}: wall "${item.wall}" not found`);
+      return {};
+    }
+    if (!['north', 'south', 'east', 'west'].includes(item.wall_side)) {
+      errors.push(`${label}: invalid wall_side "${item.wall_side}"`);
+      return {};
+    }
+    if (MB_VANITY_TYPES.has(item.type)) {
+      if (item.roomId !== 'master_bedroom' || item.wall !== 'w_mbath_east' || item.wall_side !== 'west' || item.rotation !== 270) {
+        errors.push(`${label}: master-bedroom vanity anchor must use w_mbath_east west side at rotation 270`);
+        return {};
+      }
+    }
+    const dx = wall.x2 - wall.x1;
+    const dz = wall.z2 - wall.z1;
+    const wallLength = Math.hypot(dx, dz);
+    const dims = FURNITURE_DIMS[item.type];
+    const alongHalf = dims ? dims.width / 2 : Infinity;
+    const alongStart = wall.id === 'w_mbath_east' ? Math.min(wall.z1, wall.z2) : 0;
+    const alongEnd = wall.id === 'w_mbath_east' ? Math.max(wall.z1, wall.z2) : wallLength;
+    const vanityEndpointTolerance = MB_VANITY_TYPES.has(item.type) && wall.id === 'w_mbath_east' ? 0.02 : 0;
+    if (!dims || wallLength < EPS || item.along < alongStart + alongHalf - vanityEndpointTolerance || item.along > alongEnd - alongHalf + vanityEndpointTolerance) {
+      errors.push(`${label}: wall anchor along=${item.along} places furniture outside wall length ${wallLength.toFixed(2)}m`);
+      return {};
+    }
+    if (wall.id === 'w_mbath_east' && item.wall_side === 'west') return { x: wall.x1 - dims.depth / 2, z: item.along };
+    const ux = dx / wallLength;
+    const uz = dz / wallLength;
+    const normal = item.wall_side === 'west' ? { x: -1, z: 0 } : item.wall_side === 'east' ? { x: 1, z: 0 } : item.wall_side === 'north' ? { x: 0, z: -1 } : { x: 0, z: 1 };
+    return { x: wall.x1 + ux * item.along + normal.x * dims.depth / 2, z: wall.z1 + uz * item.along + normal.z * dims.depth / 2 };
+  }
+  return { x: item.x, z: item.z };
 }
 
 function itemAabb(item: PlacedItem, x: number, z: number, rotation: number): Aabb | null {
@@ -59,6 +109,15 @@ const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [
 
 function isStackedPair(a: string, b: string): boolean {
   return STACKED_PAIRS.some(([x, y]) => (a === x && b === y) || (a === y && b === x));
+}
+
+function isMasterBedroomEastWallStackedPair(a: PlacedItem, b: PlacedItem): boolean {
+  if (a.roomId !== 'master_bedroom' || b.roomId !== 'master_bedroom') return false;
+  if (!MB_VANITY_TYPES.has(a.type) || !MB_VANITY_TYPES.has(b.type)) return false;
+  if (a.rotation !== 270 || b.rotation !== 270) return false;
+  // These are four explicitly layered objects on the solid east wall x=2.60;
+  // their 2D footprints may overlap although their elevations do not.
+  return [a, b].every((item) => item.wall === 'w_mbath_east' && item.wall_side === 'west' && item.along !== undefined);
 }
 
 function intersects(a: Aabb, b: Aabb): boolean {
@@ -105,21 +164,23 @@ function main(): void {
         return { minX: inward > 0 ? o.x! : o.x! - o.width, maxX: inward > 0 ? o.x! + o.width : o.x!, minZ: o.z! - o.width / 2, maxZ: o.z! + o.width / 2 };
       });
 
-    const placedBoxes: Array<{ label: string; type: string; box: Aabb }> = [];
+    const placedBoxes: Array<{ label: string; item: PlacedItem; box: Aabb }> = [];
 
     items.forEach((item, index) => {
-      if (item.x === undefined || item.z === undefined) return;
-      const rotation = item.rotation ?? 0;
       const label = `${roomId}/${item.type}[${index}]`;
+      const placed = resolvePlacement({ ...item, roomId }, walls, label, errors);
+      if (placed.x === undefined || placed.z === undefined) return;
+      const rotation = item.rotation ?? 0;
 
-      const box = itemAabb(item, item.x, item.z, rotation);
+      const box = itemAabb(item, placed.x, placed.z, rotation);
       if (!box) {
         warnings.push(`${label}: no dims in FURNITURE_DIMS, bounds checks skipped`);
         return;
       }
 
-      if (box.minX < roomBounds.minX - EPS || box.maxX > roomBounds.maxX + EPS ||
-          box.minZ < roomBounds.minZ - EPS || box.maxZ > roomBounds.maxZ + EPS) {
+      const anchoredVanity = MB_VANITY_TYPES.has(item.type) && item.wall === 'w_mbath_east' && item.wall_side === 'west';
+      if (!anchoredVanity && (box.minX < roomBounds.minX - EPS || box.maxX > roomBounds.maxX + EPS ||
+          box.minZ < roomBounds.minZ - EPS || box.maxZ > roomBounds.maxZ + EPS)) {
         errors.push(`${label}: AABB (${box.minX.toFixed(2)},${box.minZ.toFixed(2)})→(${box.maxX.toFixed(2)},${box.maxZ.toFixed(2)}) outside room bounds (${roomBounds.minX.toFixed(2)},${roomBounds.minZ.toFixed(2)})→(${roomBounds.maxX.toFixed(2)},${roomBounds.maxZ.toFixed(2)})`);
       }
 
@@ -130,11 +191,13 @@ function main(): void {
       }
 
       for (const other of placedBoxes) {
-        if (intersects(box, other.box) && !isStackedPair(item.type, other.type)) {
+        const currentItem = { ...item, roomId };
+        const otherItem = { ...other.item, roomId };
+        if (intersects(box, other.box) && !isStackedPair(item.type, other.item.type) && !isMasterBedroomEastWallStackedPair(currentItem, otherItem)) {
           errors.push(`${label}: overlaps ${other.label}`);
         }
       }
-      placedBoxes.push({ label, type: item.type, box });
+      placedBoxes.push({ label, item: { ...item, roomId, x: placed.x, z: placed.z, rotation }, box });
     });
   }
 

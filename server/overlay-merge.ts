@@ -35,6 +35,17 @@ const SuppressSchema = z
     message: 'Must specify region, wall, or walls',
   });
 
+const CurtainRunPartSchema = z
+  .object({
+    id: z.string().min(1),
+    wall: z.string().min(1).optional(),
+    walls: z.array(z.string().min(1)).min(1).optional(),
+  })
+  .strict()
+  .refine(d => d.wall || (d.walls && d.walls.length > 0), {
+    message: 'Must specify wall or walls',
+  });
+
 const CurtainRunSchema = z
   .object({
     id: z.string().min(1),
@@ -42,6 +53,7 @@ const CurtainRunSchema = z
     points: z.array(CurtainPointSchema).min(2).optional(),
     wall: z.string().min(1).optional(),
     walls: z.array(z.string().min(1)).min(1).optional(),
+    parts: z.array(CurtainRunPartSchema).min(1).optional(),
     height: z.number().positive().default(3.0),
     closed: z.boolean().optional(),
   })
@@ -197,7 +209,14 @@ export function mergeSceneElements(
   overlay: OverlayConfig | undefined
 ): SceneElement[] {
   const suppress = overlay?.suppress ?? [];
-  const elements = overlay?.elements ?? [];
+  // Work on copied elements/parts: resolving wall refs adds derived fields and
+  // must not mutate the cached parsed overlay between API requests.
+  const elements = (overlay?.elements ?? []).map((element) => ({
+    ...element,
+    ...(element.type === 'curtain_run' && element.parts
+      ? { parts: element.parts.map((part) => ({ ...part })) }
+      : {}),
+  }));
 
   const kept: SceneElement[] = [];
   walls.forEach((w, i) => {
@@ -235,6 +254,17 @@ export function mergeSceneElements(
         const ids = wallRef as string | string[];
         elAny.points = resolveWallRef(ids, resolvedWalls);
         if (el.type === 'bay_sill') elAny.wallRefs = resolveBaySillWallRefs(ids, resolvedWalls);
+      }
+      if (el.type === 'curtain_run' && elAny.parts) {
+        elAny.parts = (elAny.parts as Array<{ id: string; wall?: string; walls?: string[] }>).map((part) => {
+          const partRef = part.wall ?? part.walls;
+          const partIds = partRef as string | string[];
+          return {
+            id: part.id,
+            points: resolveWallRef(partIds, resolvedWalls),
+            wallRefs: Array.isArray(partIds) ? partIds : [partIds],
+          };
+        });
       }
     }
   }

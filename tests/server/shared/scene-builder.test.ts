@@ -10,6 +10,76 @@ import { load } from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 import { parseOverlay, mergeSceneElements } from '../../../server/overlay-merge.js';
 
+test('FixtureFactory builds four master-bedroom vanity types as independent scene objects', () => {
+  const types = ['mb_vanity_base_cabinet', 'mb_vanity_lower_board', 'mb_vanity_main_board', 'mb_vanity_pvc_box'];
+  assert.deepEqual(types.every((type) => getRecipeTypes().includes(type)), true);
+  for (const type of types) {
+    const fixture = buildFixture(type);
+    assert.ok(fixture, type);
+    assert.equal(fixture.children.length > 0, true, type);
+    assert.ok(fixture.children.every((child) => child.userData.part), type);
+  }
+
+  const along = 3.35;
+  const result = buildScene({
+    rooms: [{ id: 'master_bedroom', name: '主卧', x: 2.1, z: 5.55, width: 4.2, depth: 4.25, height: 2.8, type: 'private', boundary_count: 4 }],
+    walls: [{ id: 'w_mbath_east', x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3, height: 2.8 }],
+    elements: [],
+    furnishings: { master_bedroom: types.map((type) => ({ type, wall: 'w_mbath_east', wall_side: 'west' as const, along, rotation: 270 })) },
+  });
+  const groups = result.index.furnitureMeshes.filter((group) => types.includes(String(group.userData.objectId).split(':')[2]));
+  assert.equal(groups.length, types.length);
+  assert.deepEqual(groups.map((group) => group.userData.objectId), types.map((type, index) => `furniture:master_bedroom:${type}:${index}`));
+  assert.equal(new Set(groups.map((group) => group.userData.objectId)).size, types.length);
+  assert.deepEqual(groups.map((group) => group.position.z), types.map(() => along));
+  assert.deepEqual(groups.map((group) => group.position.x), [2.39, 2.44, 2.44, 2.49]);
+  assert.deepEqual(groups.map((group) => ({ wallId: group.userData.wallId, wallSide: group.userData.wallSide, anchorAlong: group.userData.anchorAlong })), types.map(() => ({ wallId: 'w_mbath_east', wallSide: 'west', anchorAlong: along })));
+
+  result.exportRoot.updateMatrixWorld(true);
+  const expectedWidths = [1.50, 1.50, 1.50, 1.40];
+  const expectedDepths = [0.43, 0.32, 0.32, 0.416];
+  const expectedYBounds = [[0.00, 0.62], [0.965, 1.035], [1.515, 1.585], [2.559, 2.80]];
+  const boxes = groups.map((group) => new THREE.Box3().setFromObject(group));
+  for (let index = 0; index < groups.length; index++) {
+    assert.ok(Math.abs(boxes[index].min.y - expectedYBounds[index][0]) < 1e-6);
+    assert.ok(Math.abs(boxes[index].max.y - expectedYBounds[index][1]) < 1e-6);
+    if (index < 3) {
+      assert.ok(boxes[index].min.z >= 1.10 - 1e-6 && boxes[index].max.z <= 4.30 + 1e-6);
+      assert.ok(Math.abs(boxes[index].max.x - 2.60) < 1e-6, `${types[index]} rear edge must meet wall`);
+      assert.ok(Math.abs(boxes[index].max.z - (along + expectedWidths[index] / 2)) < 1e-6);
+      assert.ok(Math.abs(boxes[index].min.z - (along - expectedWidths[index] / 2)) < 1e-6);
+      assert.ok(Math.abs((boxes[index].max.x - boxes[index].min.x) - expectedDepths[index]) < 1e-6);
+    }
+  }
+  assert.ok(boxes[0].max.y < boxes[1].min.y);
+  assert.ok(boxes[1].max.y < boxes[2].min.y);
+  assert.ok(boxes[2].max.y < boxes[3].min.y);
+
+  const baseParts: THREE.Object3D[] = [];
+  groups[0].traverse((object) => { if (object.userData.part) baseParts.push(object); });
+  assert.deepEqual(baseParts.map((object) => object.userData.part), ['base-cabinet', 'base-plinth', 'base-front-reveal', 'base-door-seam']);
+  const pvcParts: THREE.Object3D[] = [];
+  groups[3].traverse((object) => { if (object.userData.part) pvcParts.push(object); });
+  assert.deepEqual(pvcParts.map((object) => object.userData.part), ['pvc-service-box', 'cove-light', 'condensate-route-cover-north', 'condensate-route-cover-west', 'condensate-route-elbow', 'condensate-route-cover-approach']);
+  assert.ok(pvcParts.every((object) => !String(object.userData.part).includes('access-panel')));
+  assert.ok(pvcParts.some((object) => object.userData.part === 'cove-light'));
+  const routeParts = pvcParts.filter((object) => String(object.userData.part).startsWith('condensate-route-'));
+  assert.equal(routeParts.length, 4);
+  const routeBounds = new THREE.Box3();
+  routeParts.forEach((part) => routeBounds.expandByObject(part));
+  assert.ok(routeBounds.min.x < 2.15 && routeBounds.max.x > 2.15, 'condensate route cover must approach ac_master x=2.15');
+  assert.ok(routeBounds.max.z >= 4.50 && routeBounds.max.z <= 4.70, 'condensate route cover must approach ac_master z=4.60');
+  assert.ok(routeBounds.max.y <= 2.80 + 1e-6, 'condensate route cover must remain below the 2.8m ceiling');
+  assert.ok(routeBounds.min.y >= 2.64 - 1e-6, 'condensate route cover must stay near the PVC box top');
+  const approach = routeParts.find((object) => object.userData.part === 'condensate-route-cover-approach');
+  assert.ok(approach);
+  const approachBounds = new THREE.Box3().setFromObject(approach);
+  assert.ok(approachBounds.min.x <= 2.15 && approachBounds.max.x >= 2.05, 'route approach must end near ac_master x=2.15');
+  assert.ok(approachBounds.min.z >= 4.40 && approachBounds.max.z <= 4.70, 'route approach endpoint must be near ac_master z=4.60');
+  assert.ok(!routeParts.some((part) => new THREE.Box3().setFromObject(part).containsPoint(new THREE.Vector3(2.10, 2.65, 4.96))), 'route must not cross supply_master');
+  assert.ok(!routeParts.some((part) => new THREE.Box3().setFromObject(part).containsPoint(new THREE.Vector3(2.50, 2.49, 4.60))), 'route must not cross return_master');
+});
+
 test('FixtureFactory gives tv_65 frame and screen stable part metadata', () => {
   const fixture = buildFixture('tv_65');
   assert.ok(fixture);
@@ -454,6 +524,58 @@ test('floor regions are coplanar with room floors and railings use shared transp
         { x: 2, z: 0 },
       ],
       height: 1,
+test('shared SceneBuilder opens model d_mbath inward into master_bath toward +z', () => {
+  const layout = resolveLayout(load(readTextFile('config/layout/model-geometry.yaml', 'utf8')) as never);
+  const wall = layout.walls.find((candidate) => candidate.id === 'w_mbath_south');
+  assert.ok(wall);
+  const element = {
+    type: 'wall' as const,
+    id: wall.id,
+    x1: wall.x1,
+    z1: wall.z1,
+    x2: wall.x2,
+    z2: wall.z2,
+    height: wall.height,
+    openings: wall.openings,
+  };
+  const result = buildScene({ rooms: layout.rooms, walls: [wall], elements: [element] });
+  const panel = result.exportRoot.getObjectByName('d_mbath') as THREE.Mesh;
+  assert.ok(panel);
+  result.exportRoot.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(panel);
+  assert.ok(Math.abs(box.min.x - 1.93) < 1e-6, `d_mbath hinge-side x: ${box.min.x}`);
+  assert.ok(Math.abs(box.max.x - 1.97) < 1e-6, `d_mbath hinge-side x: ${box.max.x}`);
+  assert.ok(Math.abs(box.min.z - 2.06) < 1e-6, `d_mbath sweep start: ${box.min.z}`);
+  assert.ok(Math.abs(box.max.z - 2.86) < 1e-6, `d_mbath sweep end: ${box.max.z}`);
+  assert.ok(panel.position.z > 2.4, 'd_mbath panel must open toward the master_bath (+z) side');
+});
+
+test('shared SceneBuilder opens d_mb on the master_bath side of w_strip_east', () => {
+  const layout = resolveLayout(load(readTextFile('config/layout/model-geometry.yaml', 'utf8')) as never);
+  const wall = layout.walls.find((candidate) => candidate.id === 'w_strip_east');
+  assert.ok(wall);
+  const element = {
+    type: 'wall' as const,
+    id: wall.id,
+    x1: wall.x1,
+    z1: wall.z1,
+    x2: wall.x2,
+    z2: wall.z2,
+    height: wall.height,
+    openings: wall.openings,
+  };
+  const result = buildScene({ rooms: layout.rooms, walls: [wall], elements: [element] });
+  const panel = result.exportRoot.getObjectByName('d_mb') as THREE.Mesh;
+  assert.ok(panel);
+  result.exportRoot.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(panel);
+  assert.ok(Math.abs(box.min.x - 3.3) < 1e-6, `d_mb sweep start: ${box.min.x}`);
+  assert.ok(Math.abs(box.max.x - 4.2) < 1e-6, `d_mb wall-side edge: ${box.max.x}`);
+  assert.ok(Math.abs(box.min.z - 5.53) < 1e-6, `d_mb hinge-side z: ${box.min.z}`);
+  assert.ok(Math.abs(box.max.z - 5.57) < 1e-6, `d_mb hinge-side z: ${box.max.z}`);
+  assert.ok(box.max.x <= wall.x1 + 1e-6, 'd_mb panel must open toward the master_bath (west) side');
+});
+
     }, {
       type: 'floor_region',
       id: 'region',
@@ -471,6 +593,30 @@ test('floor regions are coplanar with room floors and railings use shared transp
   assert.ok(Math.abs(roomBox.max.y - regionBox.max.y) < 1e-9);
   assert.equal((roomFloor.material as THREE.MeshStandardMaterial).polygonOffset, false);
   const regionMaterial = region.material as THREE.MeshStandardMaterial;
+test('shared SceneBuilder splits curtain_run parts under a metadata-only parent', () => {
+  const result = buildScene({
+    rooms: [], walls: [], elements: [{
+      type: 'curtain_run', id: 'west_curtain', points: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 4 }], height: 2.8,
+      parts: [
+        { id: 'west', points: [{ x: 0, z: 0 }, { x: 4, z: 0 }], wallRefs: ['w1'] },
+        { id: 'south', points: [{ x: 4, z: 0 }, { x: 4, z: 4 }], wallRefs: ['w2'] },
+      ],
+    }],
+  });
+  const parent = result.exportRoot.getObjectByName('west_curtain');
+  assert.ok(parent);
+  assert.equal(parent?.userData.objectId, 'west_curtain');
+  assert.equal((parent as THREE.Mesh).isMesh, undefined);
+  assert.deepEqual(parent?.children.map((child) => child.name), ['west_curtain:part=west', 'west_curtain:part=south']);
+  assert.deepEqual(parent?.children.map((child) => child.userData.exportName), ['west_curtain:part=west', 'west_curtain:part=south']);
+  assert.deepEqual(parent?.children.map((child) => [child.userData.type, child.userData.objectId, child.userData.wallId, child.userData.partId]), [
+    ['curtain_run', 'west_curtain', 'w1', 'west'],
+    ['curtain_run', 'west_curtain', 'w2', 'south'],
+  ]);
+  assert.equal(result.index.curtainRuns.get('west_curtain')?.length, 2);
+  assert.equal(result.index.glassMeshes.filter((mesh) => mesh.userData.objectId.startsWith('west_curtain')).length, 2);
+});
+
   assert.equal(regionMaterial.polygonOffset, true);
   assert.equal(regionMaterial.polygonOffsetFactor, -1);
   assert.equal(regionMaterial.polygonOffsetUnits, -1);
