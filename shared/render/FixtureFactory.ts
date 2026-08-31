@@ -90,6 +90,9 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [1.6, 2.7, 0.6], position: [0.4, 1.35, -0.1], color: '#8B7355' },
     ],
   },
+  // DEC-045：主卫东墙收纳拆成四个独立 furnishing object；每个 recipe 的局部原点都是自身包围盒中心。
+  // local x 是沿墙宽度、local y 是世界竖向高度、local z 是进深；rotation=270 后 local x 沿世界 z，local z 正向朝 west。
+  // 四件共享墙面 z≈3.35，以 y 形成紧凑的柜体—板件—顶部收口层次，不形成贯穿侧板或等距书架。
   {
     type: 'mb_vanity_base_cabinet',
     parts: [
@@ -237,7 +240,33 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'gas_stove',
     parts: [
-      { shape: 'box', size: [0.70, 0.04, 0.40], position: [0, 0.92, 0], color: '#222222', roughness: 0.3 },
+      // Flush embedded support: countertop top is y=0.88, so only the glass face remains visible above the opening.
+      { shape: 'box', size: [0.66, 0.004, 0.36], position: [0, 0.878, 0], color: '#222222', roughness: 0.3, part: 'cooktop-base', materialRole: 'fixture_metal' },
+      // Recessed glass insert sits 1mm proud of the countertop; the front edge is no longer a thick black wall.
+      { shape: 'box', size: [0.64, 0.004, 0.34], position: [0, 0.881, 0], color: '#1b2024', roughness: 0.18, part: 'cooktop-surface', materialRole: 'cooktop_surface' },
+      // Narrow recessed shadow line: visible at the cutout, but not a raised perimeter frame.
+      { shape: 'box', size: [0.66, 0.001, 0.006], position: [0, 0.879, -0.177], color: '#171a1d', roughness: 0.28, part: 'cooktop-edge-north', materialRole: 'cooktop_surface' },
+      { shape: 'box', size: [0.66, 0.001, 0.006], position: [0, 0.879, 0.177], color: '#171a1d', roughness: 0.28, part: 'cooktop-edge-south', materialRole: 'cooktop_surface' },
+      { shape: 'box', size: [0.006, 0.001, 0.348], position: [-0.327, 0.879, 0], color: '#171a1d', roughness: 0.28, part: 'cooktop-edge-west', materialRole: 'cooktop_surface' },
+      { shape: 'box', size: [0.006, 0.001, 0.348], position: [0.327, 0.879, 0], color: '#171a1d', roughness: 0.28, part: 'cooktop-edge-east', materialRole: 'cooktop_surface' },
+      // Three stepped low-poly cylinders per burner read as a concentric outer ring, inner ring, and center cap.
+      { shape: 'cylinder', size: [0.045, 0.008, 0.045], position: [-0.14, 0.925, -0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-fl-outer-ring', materialRole: 'cooktop_burner' },
+      { shape: 'cylinder', size: [0.032, 0.014, 0.032], position: [-0.14, 0.930, -0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-fl-inner-ring', materialRole: 'cooktop_burner' },
+      { shape: 'cylinder', size: [0.018, 0.020, 0.018], position: [-0.14, 0.935, -0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-fl-center-cap', materialRole: 'cooktop_burner' },
+      { shape: 'cylinder', size: [0.045, 0.008, 0.045], position: [0.14, 0.925, -0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-fr-outer-ring', materialRole: 'cooktop_burner' },
+      { shape: 'cylinder', size: [0.032, 0.014, 0.032], position: [0.14, 0.930, -0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-fr-inner-ring', materialRole: 'cooktop_burner' },
+      { shape: 'cylinder', size: [0.018, 0.020, 0.018], position: [0.14, 0.935, -0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-fr-center-cap', materialRole: 'cooktop_burner' },
+      { shape: 'cylinder', size: [0.045, 0.008, 0.045], position: [-0.14, 0.925, 0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-rl-outer-ring', materialRole: 'cooktop_burner' },
+      { shape: 'cylinder', size: [0.032, 0.014, 0.032], position: [-0.14, 0.930, 0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-rl-inner-ring', materialRole: 'cooktop_burner' },
+      { shape: 'cylinder', size: [0.018, 0.020, 0.018], position: [-0.14, 0.935, 0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-rl-center-cap', materialRole: 'cooktop_burner' },
+      { shape: 'cylinder', size: [0.045, 0.008, 0.045], position: [0.14, 0.925, 0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-rr-outer-ring', materialRole: 'cooktop_burner' },
+      { shape: 'cylinder', size: [0.032, 0.014, 0.032], position: [0.14, 0.930, 0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-rr-inner-ring', materialRole: 'cooktop_burner' },
+      { shape: 'cylinder', size: [0.018, 0.020, 0.018], position: [0.14, 0.935, 0.06], color: '#171717', metalness: 0.35, roughness: 0.45, part: 'burner-rr-center-cap', materialRole: 'cooktop_burner' },
+      // Four small hardware knobs sit visibly above the front control strip.
+      { shape: 'cylinder', size: [0.025, 0.018, 0.025], position: [-0.15, 0.935, 0.16], color: '#9b9b9b', metalness: 0.7, roughness: 0.3, part: 'knob-left-outer', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.025, 0.018, 0.025], position: [-0.05, 0.935, 0.16], color: '#9b9b9b', metalness: 0.7, roughness: 0.3, part: 'knob-left-inner', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.025, 0.018, 0.025], position: [0.05, 0.935, 0.16], color: '#9b9b9b', metalness: 0.7, roughness: 0.3, part: 'knob-right-inner', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.025, 0.018, 0.025], position: [0.15, 0.935, 0.16], color: '#9b9b9b', metalness: 0.7, roughness: 0.3, part: 'knob-right-outer', materialRole: 'hardware' },
     ],
   },
   {
@@ -250,17 +279,27 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'sink',
     parts: [
-      { shape: 'box', size: [0.56, 0.16, 0.42], position: [0, 0.84, 0], color: '#f0f0f0', roughness: 0.3 },
+      // Thin perimeter rim keeps the original 0.56 × 0.42 footprint while reading as a countertop edge.
+      { shape: 'box', size: [0.56, 0.02, 0.05], position: [0, 0.91, -0.185], color: '#f0f0f0', roughness: 0.3, part: 'basin-rim-north', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.56, 0.02, 0.05], position: [0, 0.91, 0.185], color: '#f0f0f0', roughness: 0.3, part: 'basin-rim-south', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.05, 0.02, 0.32], position: [-0.255, 0.91, 0], color: '#f0f0f0', roughness: 0.3, part: 'basin-rim-west', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.05, 0.02, 0.32], position: [0.255, 0.91, 0], color: '#f0f0f0', roughness: 0.3, part: 'basin-rim-east', materialRole: 'ceramic' },
+      // Recessed basin walls leave a clearly visible opening beneath the raised rim.
+      { shape: 'box', size: [0.50, 0.14, 0.035], position: [0, 0.83, -0.1625], color: '#e4e6e7', roughness: 0.35, part: 'basin-body-north', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.50, 0.14, 0.035], position: [0, 0.83, 0.1625], color: '#e4e6e7', roughness: 0.35, part: 'basin-body-south', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.035, 0.14, 0.29], position: [-0.2325, 0.83, 0], color: '#e4e6e7', roughness: 0.35, part: 'basin-body-west', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.035, 0.14, 0.29], position: [0.2325, 0.83, 0], color: '#e4e6e7', roughness: 0.35, part: 'basin-body-east', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.43, 0.02, 0.29], position: [0, 0.77, 0], color: '#c7ced0', roughness: 0.45, part: 'basin-interior', materialRole: 'ceramic' },
     ],
   },
   {
     type: 'vanity',
     parts: [
-      { shape: 'box', size: [0.8, 0.75, 0.4], position: [0, 0.375, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-carcass', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.5, 0.12, 0.3], position: [0, 0.81, 0], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
-      // 台面 + 镜柜（靠墙侧=-z），2026-08-21 贴近成品洗漱台效果
-      { shape: 'box', size: [0.84, 0.04, 0.5], position: [0, 0.77, 0], color: '#d8d2c6', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
-      { shape: 'box', size: [0.7, 0.9, 0.03], position: [0, 1.55, -0.24], color: '#bcd2d8', roughness: 0.1, metalness: 0.6, part: 'mirror', materialRole: 'mirror' },
+      { shape: 'box', size: [0.70, 0.75, 0.38], position: [0, 0.375, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.42, 0.12, 0.28], position: [0, 0.81, 0], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
+      // 台面 + 标准墙面龙头 + 镜面；龙头由 guest_bath plumbing 点位统一生成
+      { shape: 'box', size: [0.72, 0.04, 0.40], position: [0, 0.77, 0], color: '#d8d2c6', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
+      { shape: 'box', size: [0.62, 0.9, 0.03], position: [0, 1.55, -0.14], color: '#8fb8c5', roughness: 0.08, metalness: 0.45, part: 'mirror', materialRole: 'mirror' },
     ],
   },
   {
@@ -539,7 +578,7 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     type: 'dishwasher',
     parts: [
       { shape: 'box', size: [0.60, 0.82, 0.58], position: [0, 0.41, 0], color: '#c8ccd0', metalness: 0.6, roughness: 0.35 },
-      { shape: 'box', size: [0.58, 0.68, 0.02], position: [0, 0.44, 0.29], color: '#222226', roughness: 0.15 },
+      { shape: 'box', size: [0.58, 0.68, 0.02], position: [0, 0.44, 0.29], color: '#222226', roughness: 0.15, materialRole: 'fixture_metal' },
     ],
   },
   {

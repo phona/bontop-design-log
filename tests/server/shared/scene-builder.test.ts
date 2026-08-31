@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
-import { buildFixture } from '../../../shared/render/FixtureFactory.js';
+import { buildFixture, getRecipeTypes } from '../../../shared/render/FixtureFactory.js';
 import { buildScene } from '../../../shared/render/SceneBuilder.js';
 import type { LightingRenderConfig, RenderLightingFixture, SceneElement } from '../../../shared/types.js';
 import { readFileSync as readTextFile } from 'node:fs';
@@ -92,6 +92,114 @@ test('FixtureFactory gives tv_65 frame and screen stable part metadata', () => {
     { part: 'frame', materialRole: 'tv_frame' },
     { part: 'screen', materialRole: 'tv_screen' },
   ]);
+});
+
+test('FixtureFactory assigns stable material roles to kitchen appliance surfaces', () => {
+  const expectedRoles = {
+    sink: ['ceramic', 'ceramic', 'ceramic', 'ceramic', 'ceramic', 'ceramic', 'ceramic', 'ceramic', 'ceramic'],
+    dishwasher: ['body', 'fixture_metal'],
+  } as const;
+
+  for (const [type, roles] of Object.entries(expectedRoles)) {
+    const fixture = buildFixture(type);
+    assert.ok(fixture);
+    const parts: THREE.Object3D[] = [];
+    fixture.traverse((object) => { if (object.userData.part) parts.push(object); });
+    assert.deepEqual(parts.map((object) => object.userData.materialRole), roles, type);
+  }
+});
+
+test('FixtureFactory models gas_stove with readable burners, knobs, and stable bounds', () => {
+  const fixture = buildFixture('gas_stove');
+  assert.ok(fixture);
+  const parts: THREE.Object3D[] = [];
+  fixture.traverse((object) => { if (object.userData.part) parts.push(object); });
+  assert.equal(parts.length, 22);
+  const burners = parts.filter((part) => String(part.userData.part).startsWith('burner-'));
+  const knobs = parts.filter((part) => String(part.userData.part).startsWith('knob-'));
+  const edges = parts.filter((part) => String(part.userData.part).startsWith('cooktop-edge-'));
+  const base = parts.find((part) => part.userData.part === 'cooktop-base');
+  const surface = parts.find((part) => part.userData.part === 'cooktop-surface');
+  assert.equal(burners.length, 12);
+  assert.equal(edges.length, 4);
+  assert.equal(knobs.length, 4);
+  assert.equal(base?.userData.materialRole, 'fixture_metal', 'stove base must retain fixture_metal role');
+  assert.equal(surface?.userData.materialRole, 'cooktop_surface', 'stove top must use cooktop_surface role');
+  const baseMesh = base as THREE.Mesh;
+  const surfaceMesh = surface as THREE.Mesh;
+  assert.deepEqual((surfaceMesh.geometry as THREE.BoxGeometry).parameters, {
+    width: 0.64, height: 0.004, depth: 0.34,
+    widthSegments: 1, heightSegments: 1, depthSegments: 1,
+  });
+  assert.deepEqual(surfaceMesh.position.toArray(), [0, 0.881, 0], 'recessed surface must keep the stove center anchor');
+  const baseBox = new THREE.Box3().setFromObject(baseMesh);
+  const surfaceBox = new THREE.Box3().setFromObject(surfaceMesh);
+  assert.ok(Math.abs(baseBox.max.y - 0.88) < 1e-6, 'cooktop support must seat at countertop height');
+  assert.ok(Math.abs(surfaceBox.min.y - 0.879) < 1e-6 && Math.abs(surfaceBox.max.y - 0.883) < 1e-6, 'glass surface must sit just above the countertop');
+  assert.ok(surfaceBox.max.x - surfaceBox.min.x <= 0.70 + 1e-6 && surfaceBox.max.z - surfaceBox.min.z <= 0.40 + 1e-6);
+  assert.ok(edges.every((edge) => edge.userData.materialRole === 'cooktop_surface'), 'embedded edge must use cooktop_surface role');
+  const edgeBoxes = edges.map((edge) => new THREE.Box3().setFromObject(edge));
+  assert.ok(edgeBoxes.every((box) => Math.abs(box.max.y - 0.8795) < 1e-6 && Math.abs(box.min.y - 0.8785) < 1e-6), 'embedded edge must remain a narrow recessed interface');
+  const edgeBounds = edgeBoxes.reduce((box, edgeBox) => box.union(edgeBox), new THREE.Box3());
+  assert.ok(edgeBounds.min.x >= baseBox.min.x - 1e-6 && edgeBounds.max.x <= baseBox.max.x + 1e-6);
+  assert.ok(edgeBounds.min.z >= baseBox.min.z - 1e-6 && edgeBounds.max.z <= baseBox.max.z + 1e-6);
+  const burnerBoxes = burners.map((burner) => new THREE.Box3().setFromObject(burner));
+  const burnerBounds = burnerBoxes.reduce((box, burnerBox) => box.union(burnerBox), new THREE.Box3());
+  assert.ok(surfaceBox.min.x <= burnerBounds.min.x && surfaceBox.max.x >= burnerBounds.max.x, 'surface must fully cover burner x bounds');
+  assert.ok(surfaceBox.min.z <= burnerBounds.min.z && surfaceBox.max.z >= burnerBounds.max.z, 'surface must fully cover burner z bounds');
+  assert.ok(burnerBoxes.every((box) => box.min.y >= surfaceBox.max.y - 1e-6), 'burner rings must remain above the flush surface');
+  assert.ok(burners.every((part) => part.userData.materialRole === 'cooktop_burner'), 'burners must use cooktop_burner role');
+  assert.ok(knobs.every((part) => part.userData.materialRole === 'hardware'), 'knobs must use hardware role');
+  assert.ok(parts.every((part) => part.name.length <= 63), 'fixture part names must fit Blender limits');
+
+  const burnerGroups = new Map<string, THREE.Object3D[]>();
+  for (const burner of burners) {
+    const burnerId = String(burner.userData.part).replace(/-(?:outer-ring|inner-ring|center-cap)$/, '');
+    const group = burnerGroups.get(burnerId) ?? [];
+    group.push(burner);
+    burnerGroups.set(burnerId, group);
+  }
+  assert.equal(burnerGroups.size, 4);
+  for (const burnerParts of burnerGroups.values()) {
+    assert.equal(burnerParts.length, 3);
+    assert.deepEqual(burnerParts.map((part) => String(part.userData.part).split('-').at(-2)), ['outer', 'inner', 'center']);
+    const cylinders = burnerParts.map((part) => {
+      assert.equal((part as THREE.Mesh).geometry.type, 'CylinderGeometry');
+      return (part as THREE.Mesh).geometry as THREE.CylinderGeometry;
+    });
+    assert.deepEqual(cylinders.map((geometry) => geometry.parameters.radiusTop), [0.045, 0.032, 0.018]);
+    assert.deepEqual(cylinders.map((geometry) => geometry.parameters.height), [0.008, 0.014, 0.020]);
+    assert.ok(burnerParts[0].position.y < burnerParts[1].position.y && burnerParts[1].position.y < burnerParts[2].position.y);
+  }
+
+  fixture.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(fixture);
+  assert.ok(Math.abs(bounds.min.x + 0.33) < 1e-6 && Math.abs(bounds.max.x - 0.33) < 1e-6);
+  assert.ok(Math.abs(bounds.min.z + 0.18) < 1e-6 && Math.abs(bounds.max.z - 0.185) < 1e-6);
+  assert.ok(Math.abs(bounds.max.y - 0.945) < 1e-6);
+  assert.ok(bounds.max.y <= 0.95, 'burner stack must stay below the reasonable cooktop height');
+});
+
+test('FixtureFactory models the sink as a raised rim, basin body, and recessed interior', () => {
+  const fixture = buildFixture('sink');
+  assert.ok(fixture);
+  const parts: THREE.Object3D[] = [];
+  fixture.traverse((object) => { if (object.userData.part) parts.push(object); });
+  assert.deepEqual(parts.map((object) => object.userData.part), [
+    'basin-rim-north', 'basin-rim-south', 'basin-rim-west', 'basin-rim-east',
+    'basin-body-north', 'basin-body-south', 'basin-body-west', 'basin-body-east',
+    'basin-interior',
+  ]);
+  assert.ok(parts.every((part) => part.userData.materialRole === 'ceramic'));
+
+  fixture.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(fixture);
+  assert.ok(Math.abs(bounds.min.x + 0.28) < 1e-6 && Math.abs(bounds.max.x - 0.28) < 1e-6);
+  assert.ok(Math.abs(bounds.min.z + 0.21) < 1e-6 && Math.abs(bounds.max.z - 0.21) < 1e-6);
+  assert.ok(Math.abs(bounds.min.y - 0.76) < 1e-6 && Math.abs(bounds.max.y - 0.92) < 1e-6);
+  const rimTop = Math.max(...parts.filter((part) => String(part.userData.part).startsWith('basin-rim-')).map((part) => new THREE.Box3().setFromObject(part).max.y));
+  const interiorTop = new THREE.Box3().setFromObject(parts.find((part) => part.userData.part === 'basin-interior')!).max.y;
+  assert.ok(rimTop - interiorTop >= 0.12, 'basin must have a visible recessed interior');
 });
 
 test('shared SceneBuilder exports configured lighting fixture geometry without lights', () => {
@@ -285,6 +393,36 @@ test('shared SceneBuilder builds rooms, split walls, overlays, ceiling zones, an
   assert.equal(ceilingSolids[0].userData.roomId, 'room');
 });
 
+test('shared SceneBuilder keeps long furniture child names bounded and role-readable', () => {
+  const result = buildScene({
+    rooms: [],
+    walls: [],
+    elements: [],
+    furnishings: {
+      kitchen: [
+        { type: 'sink', x: 9.5, z: 0.3 },
+        { type: 'gas_stove', x: 10.5, z: 1.18 },
+        { type: 'dishwasher', x: 8.8, z: 0.3 },
+      ],
+    },
+  });
+  const children: THREE.Object3D[] = [];
+  result.exportRoot.traverse((object) => {
+    if (object.userData.part && object.parent?.userData.type === 'furniture') children.push(object);
+  });
+  assert.ok(children.length > 0);
+  assert.equal(new Set(children.map((child) => child.name)).size, children.length);
+  assert.ok(children.every((child) => child.name.length <= 63));
+  assert.ok(children.some((child) => child.name.includes(':part=') && child.name.endsWith(':role=ceramic')));
+  assert.ok(children.some((child) => child.name.includes(':part=') && child.name.endsWith(':role=fixture_metal')));
+  assert.ok(children.filter((child) => child.userData.materialRole && child.userData.materialRole !== 'body' && child.name.length > 63 - 1).every((child) => child.name.includes(':role=')));
+  assert.ok(children.some((child) => child.userData.materialRole === 'body' && !child.name.includes(':role=body')));
+  assert.ok(children.every((child) => child.name.startsWith('furniture:kitchen:')));
+  assert.ok(result.exportRoot.getObjectByName('furniture:kitchen:sink:0'));
+  assert.ok(result.exportRoot.getObjectByName('furniture:kitchen:gas_stove:1'));
+  assert.ok(result.exportRoot.getObjectByName('furniture:kitchen:dishwasher:2'));
+});
+
 test('shared SceneBuilder places towel_set with stable metadata and local bounds', () => {
   const result = buildScene({
     rooms: [],
@@ -386,6 +524,58 @@ test('shared SceneBuilder preserves legacy opening geometry and wall export meta
   assert.equal((slab as THREE.Mesh).position.y, 3.2 - 0.2 + 0.002);
 });
 
+test('shared SceneBuilder opens model d_mbath inward into master_bath toward +z', () => {
+  const layout = resolveLayout(load(readTextFile('config/layout/model-geometry.yaml', 'utf8')) as never);
+  const wall = layout.walls.find((candidate) => candidate.id === 'w_mbath_south');
+  assert.ok(wall);
+  const element = {
+    type: 'wall' as const,
+    id: wall.id,
+    x1: wall.x1,
+    z1: wall.z1,
+    x2: wall.x2,
+    z2: wall.z2,
+    height: wall.height,
+    openings: wall.openings,
+  };
+  const result = buildScene({ rooms: layout.rooms, walls: [wall], elements: [element] });
+  const panel = result.exportRoot.getObjectByName('d_mbath') as THREE.Mesh;
+  assert.ok(panel);
+  result.exportRoot.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(panel);
+  assert.ok(Math.abs(box.min.x - 1.93) < 1e-6, `d_mbath hinge-side x: ${box.min.x}`);
+  assert.ok(Math.abs(box.max.x - 1.97) < 1e-6, `d_mbath hinge-side x: ${box.max.x}`);
+  assert.ok(Math.abs(box.min.z - 2.06) < 1e-6, `d_mbath sweep start: ${box.min.z}`);
+  assert.ok(Math.abs(box.max.z - 2.86) < 1e-6, `d_mbath sweep end: ${box.max.z}`);
+  assert.ok(panel.position.z > 2.4, 'd_mbath panel must open toward the master_bath (+z) side');
+});
+
+test('shared SceneBuilder opens d_mb on the master_bath side of w_strip_east', () => {
+  const layout = resolveLayout(load(readTextFile('config/layout/model-geometry.yaml', 'utf8')) as never);
+  const wall = layout.walls.find((candidate) => candidate.id === 'w_strip_east');
+  assert.ok(wall);
+  const element = {
+    type: 'wall' as const,
+    id: wall.id,
+    x1: wall.x1,
+    z1: wall.z1,
+    x2: wall.x2,
+    z2: wall.z2,
+    height: wall.height,
+    openings: wall.openings,
+  };
+  const result = buildScene({ rooms: layout.rooms, walls: [wall], elements: [element] });
+  const panel = result.exportRoot.getObjectByName('d_mb') as THREE.Mesh;
+  assert.ok(panel);
+  result.exportRoot.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(panel);
+  assert.ok(Math.abs(box.min.x - 3.3) < 1e-6, `d_mb sweep start: ${box.min.x}`);
+  assert.ok(Math.abs(box.max.x - 4.2) < 1e-6, `d_mb wall-side edge: ${box.max.x}`);
+  assert.ok(Math.abs(box.min.z - 5.53) < 1e-6, `d_mb hinge-side z: ${box.min.z}`);
+  assert.ok(Math.abs(box.max.z - 5.57) < 1e-6, `d_mb hinge-side z: ${box.max.z}`);
+  assert.ok(box.max.x <= wall.x1 + 1e-6, 'd_mb panel must open toward the master_bath (west) side');
+});
+
 test('shared SceneBuilder renders hinged glass door at the declared west hinge', () => {
   const result = buildScene({
     rooms: [], walls: [],
@@ -401,6 +591,30 @@ test('shared SceneBuilder renders hinged glass door at the declared west hinge',
   assert.ok(box.min.x > 5.55 && box.max.x < 5.95, `open leaf must stay on the west hinge side: ${box.min.x}..${box.max.x}`);
   assert.ok(box.max.z < 2.85, `north swing must open toward -z: ${box.max.z}`);
   assert.ok(result.index.glassMeshes.some((mesh) => mesh.userData.objectId === 'west-door'));
+});
+
+test('shared SceneBuilder splits curtain_run parts under a metadata-only parent', () => {
+  const result = buildScene({
+    rooms: [], walls: [], elements: [{
+      type: 'curtain_run', id: 'west_curtain', points: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 4 }], height: 2.8,
+      parts: [
+        { id: 'west', points: [{ x: 0, z: 0 }, { x: 4, z: 0 }], wallRefs: ['w1'] },
+        { id: 'south', points: [{ x: 4, z: 0 }, { x: 4, z: 4 }], wallRefs: ['w2'] },
+      ],
+    }],
+  });
+  const parent = result.exportRoot.getObjectByName('west_curtain');
+  assert.ok(parent);
+  assert.equal(parent?.userData.objectId, 'west_curtain');
+  assert.equal((parent as THREE.Mesh).isMesh, undefined);
+  assert.deepEqual(parent?.children.map((child) => child.name), ['west_curtain:part=west', 'west_curtain:part=south']);
+  assert.deepEqual(parent?.children.map((child) => child.userData.exportName), ['west_curtain:part=west', 'west_curtain:part=south']);
+  assert.deepEqual(parent?.children.map((child) => [child.userData.type, child.userData.objectId, child.userData.wallId, child.userData.partId]), [
+    ['curtain_run', 'west_curtain', 'w1', 'west'],
+    ['curtain_run', 'west_curtain', 'w2', 'south'],
+  ]);
+  assert.equal(result.index.curtainRuns.get('west_curtain')?.length, 2);
+  assert.equal(result.index.glassMeshes.filter((mesh) => mesh.userData.objectId.startsWith('west_curtain')).length, 2);
 });
 
 test('shared SceneBuilder registers interactive curtains separately from curtain runs', () => {
@@ -524,58 +738,6 @@ test('floor regions are coplanar with room floors and railings use shared transp
         { x: 2, z: 0 },
       ],
       height: 1,
-test('shared SceneBuilder opens model d_mbath inward into master_bath toward +z', () => {
-  const layout = resolveLayout(load(readTextFile('config/layout/model-geometry.yaml', 'utf8')) as never);
-  const wall = layout.walls.find((candidate) => candidate.id === 'w_mbath_south');
-  assert.ok(wall);
-  const element = {
-    type: 'wall' as const,
-    id: wall.id,
-    x1: wall.x1,
-    z1: wall.z1,
-    x2: wall.x2,
-    z2: wall.z2,
-    height: wall.height,
-    openings: wall.openings,
-  };
-  const result = buildScene({ rooms: layout.rooms, walls: [wall], elements: [element] });
-  const panel = result.exportRoot.getObjectByName('d_mbath') as THREE.Mesh;
-  assert.ok(panel);
-  result.exportRoot.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(panel);
-  assert.ok(Math.abs(box.min.x - 1.93) < 1e-6, `d_mbath hinge-side x: ${box.min.x}`);
-  assert.ok(Math.abs(box.max.x - 1.97) < 1e-6, `d_mbath hinge-side x: ${box.max.x}`);
-  assert.ok(Math.abs(box.min.z - 2.06) < 1e-6, `d_mbath sweep start: ${box.min.z}`);
-  assert.ok(Math.abs(box.max.z - 2.86) < 1e-6, `d_mbath sweep end: ${box.max.z}`);
-  assert.ok(panel.position.z > 2.4, 'd_mbath panel must open toward the master_bath (+z) side');
-});
-
-test('shared SceneBuilder opens d_mb on the master_bath side of w_strip_east', () => {
-  const layout = resolveLayout(load(readTextFile('config/layout/model-geometry.yaml', 'utf8')) as never);
-  const wall = layout.walls.find((candidate) => candidate.id === 'w_strip_east');
-  assert.ok(wall);
-  const element = {
-    type: 'wall' as const,
-    id: wall.id,
-    x1: wall.x1,
-    z1: wall.z1,
-    x2: wall.x2,
-    z2: wall.z2,
-    height: wall.height,
-    openings: wall.openings,
-  };
-  const result = buildScene({ rooms: layout.rooms, walls: [wall], elements: [element] });
-  const panel = result.exportRoot.getObjectByName('d_mb') as THREE.Mesh;
-  assert.ok(panel);
-  result.exportRoot.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(panel);
-  assert.ok(Math.abs(box.min.x - 3.3) < 1e-6, `d_mb sweep start: ${box.min.x}`);
-  assert.ok(Math.abs(box.max.x - 4.2) < 1e-6, `d_mb wall-side edge: ${box.max.x}`);
-  assert.ok(Math.abs(box.min.z - 5.53) < 1e-6, `d_mb hinge-side z: ${box.min.z}`);
-  assert.ok(Math.abs(box.max.z - 5.57) < 1e-6, `d_mb hinge-side z: ${box.max.z}`);
-  assert.ok(box.max.x <= wall.x1 + 1e-6, 'd_mb panel must open toward the master_bath (west) side');
-});
-
     }, {
       type: 'floor_region',
       id: 'region',
@@ -593,30 +755,6 @@ test('shared SceneBuilder opens d_mb on the master_bath side of w_strip_east', (
   assert.ok(Math.abs(roomBox.max.y - regionBox.max.y) < 1e-9);
   assert.equal((roomFloor.material as THREE.MeshStandardMaterial).polygonOffset, false);
   const regionMaterial = region.material as THREE.MeshStandardMaterial;
-test('shared SceneBuilder splits curtain_run parts under a metadata-only parent', () => {
-  const result = buildScene({
-    rooms: [], walls: [], elements: [{
-      type: 'curtain_run', id: 'west_curtain', points: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 4 }], height: 2.8,
-      parts: [
-        { id: 'west', points: [{ x: 0, z: 0 }, { x: 4, z: 0 }], wallRefs: ['w1'] },
-        { id: 'south', points: [{ x: 4, z: 0 }, { x: 4, z: 4 }], wallRefs: ['w2'] },
-      ],
-    }],
-  });
-  const parent = result.exportRoot.getObjectByName('west_curtain');
-  assert.ok(parent);
-  assert.equal(parent?.userData.objectId, 'west_curtain');
-  assert.equal((parent as THREE.Mesh).isMesh, undefined);
-  assert.deepEqual(parent?.children.map((child) => child.name), ['west_curtain:part=west', 'west_curtain:part=south']);
-  assert.deepEqual(parent?.children.map((child) => child.userData.exportName), ['west_curtain:part=west', 'west_curtain:part=south']);
-  assert.deepEqual(parent?.children.map((child) => [child.userData.type, child.userData.objectId, child.userData.wallId, child.userData.partId]), [
-    ['curtain_run', 'west_curtain', 'w1', 'west'],
-    ['curtain_run', 'west_curtain', 'w2', 'south'],
-  ]);
-  assert.equal(result.index.curtainRuns.get('west_curtain')?.length, 2);
-  assert.equal(result.index.glassMeshes.filter((mesh) => mesh.userData.objectId.startsWith('west_curtain')).length, 2);
-});
-
   assert.equal(regionMaterial.polygonOffset, true);
   assert.equal(regionMaterial.polygonOffsetFactor, -1);
   assert.equal(regionMaterial.polygonOffsetUnits, -1);
@@ -736,7 +874,7 @@ test('kitchen countertop bridge is countertop-only and closes the dishwasher gap
   const countertopMeshes = result.index.countertopMeshes;
   assert.ok(countertopMeshes.some((candidate) => candidate.parent?.userData.objectId === 'furniture:kitchen:kitchen_cabinet_run:0' && new THREE.Box3().setFromObject(candidate).max.x >= 8.50 - 1e-6));
   assert.ok(countertopMeshes.some((candidate) => candidate.parent?.userData.objectId === 'furniture:kitchen:kitchen_cabinet_run:2' && new THREE.Box3().setFromObject(candidate).min.x <= 9.10 + 1e-6));
-  assert.match(mesh.name, /:part=countertop-bridge:role=countertop$/);
+  assert.match(mesh.name, /^furniture:kitchen:[0-9a-f]{6}:part=countertop-bridge:role=countertop$/);
 });
 
 test('shared render builders do not depend on browser globals', () => {

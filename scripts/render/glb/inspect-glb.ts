@@ -268,9 +268,12 @@ export function inspectGlb(path: string): GlbSummary {
       const partCount = roleTagCount(node.name, 'part');
       const roleCount = roleTagCount(node.name, 'role');
       const roleMatch = FIXTURE_ROLE_RE.exec(node.name);
+      // `:part=` is also used by non-fixture render groups (for example
+      // curtain_run wall parts); only the combined part+role form is a
+      // fixture role contract.
       if (partCount === 1 && roleCount === 1 && roleMatch) {
         fixtureRoles.push({ nodeName: node.name, part: roleMatch[2], role: roleMatch[3], prefix: roleMatch[1].split(':')[0] });
-      } else if (partCount > 0 || roleCount > 0) {
+      } else if (roleCount > 0 || (partCount > 0 && node.name.includes(':role='))) {
         unknownFixtureRoleTags.add(node.name);
       }
     } else {

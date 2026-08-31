@@ -259,6 +259,16 @@ describe('wardrobe fixtures', () => {
 });
 
 describe('bathroom fixtures', () => {
+  it('keeps the vanity mirror against the wall side for the guest-bath rotation', () => {
+    const vanity = buildFixture('vanity')!;
+    const mirror = vanity.children.find((child) => child.userData.part === 'mirror');
+
+    expect(mirror).toBeDefined();
+    expect(mirror!.position.z).toBeCloseTo(-0.14, 5);
+    expect(mirror!.userData.materialRole).toBe('mirror');
+    expect(vanity.children.some((child) => String(child.userData.part).startsWith('vanity-faucet'))).toBe(false);
+  });
+
   it('builds towel_set with stable local parts, roles, and Blender-aligned bounds', () => {
     const towelSet = buildFixture('towel_set');
     expect(towelSet).not.toBeNull();

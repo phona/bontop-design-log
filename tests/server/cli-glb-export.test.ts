@@ -332,6 +332,13 @@ test('shared export data produces an inspectable GLB', async () => {
     'furniture:kitchen:kitchen_cabinet_run:2',
     'furniture:kitchen:kitchen_cabinet_run:4',
   ]) assert.ok(summary.nodeIds.includes(nodeId), `missing GLB node ${nodeId}`);
+  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:') && entry.part.startsWith('basin-') && entry.role === 'ceramic'), 'kitchen sink ceramic role missing');
+  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:') && entry.role === 'fixture_metal'), 'kitchen gas stove fixture_metal base role missing');
+  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.includes(':role=cooktop_surface') && entry.role === 'cooktop_surface'), 'kitchen gas stove cooktop_surface role missing');
+  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:gas_stove:') && entry.part.startsWith('b-') && entry.role === 'cooktop_burner'), 'kitchen gas stove burner role missing');
+  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:gas_stove:') && entry.part.startsWith('knob-') && entry.role === 'hardware'), 'kitchen gas stove knob hardware role missing');
+  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:dishwasher:') && entry.part.includes('p-') && entry.role === 'fixture_metal'), 'kitchen dishwasher front fixture_metal role missing');
+  assert.equal(summary.duplicateFixtureRoleTags?.length ?? 0, 0, 'GLB must not duplicate fixture role tags');
   assert.equal(summary.duplicateNodeIds.length, 0, 'bath GLB must not duplicate exported object ids');
   assert.ok(summary.worldBbox);
 });

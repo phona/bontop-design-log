@@ -408,20 +408,23 @@ function addHingedGlassDoor(root: THREE.Group, element: HingedGlassDoorElement, 
   const frame = 0.025;
   const depth = 0.035;
   const panel = new THREE.Group();
+  setSceneObjectMetadata(panel, 'hinged_glass_door', element.id, `hinged_glass_door:${element.id}:panel`);
   const pane = new THREE.Mesh(new THREE.BoxGeometry(width - 2 * frame, element.height - 2 * frame, 0.008), glass);
-  pane.name = `hinged_glass_door:${element.id}:pane`;
-  pane.userData = { objectId: element.id, type: 'hinged_glass_door', materialRole: 'glass' };
+  setSceneObjectMetadata(pane, 'hinged_glass_door', element.id, `hinged_glass_door:${element.id}:pane`);
+  pane.userData.materialRole = 'glass';
   panel.add(pane);
-  for (const ySign of [1, -1] as const) {
+  for (const [ySign, position] of [[1, 'top'], [-1, 'bottom']] as const) {
     const bar = new THREE.Mesh(new THREE.BoxGeometry(width, frame, depth), frameMaterial);
     bar.position.y = ySign * (element.height / 2 - frame / 2);
-    bar.userData = { objectId: element.id, type: 'hinged_glass_door', materialRole: 'frame' };
+    setSceneObjectMetadata(bar, 'hinged_glass_door', element.id, `hinged_glass_door:${element.id}:frame:${position}`);
+    bar.userData.materialRole = 'frame';
     panel.add(bar);
   }
-  for (const xSign of [1, -1] as const) {
+  for (const [xSign, position] of [[1, 'end'], [-1, 'start']] as const) {
     const stile = new THREE.Mesh(new THREE.BoxGeometry(frame, element.height - 2 * frame, depth), frameMaterial);
     stile.position.x = xSign * (width / 2 - frame / 2);
-    stile.userData = { objectId: element.id, type: 'hinged_glass_door', materialRole: 'frame' };
+    setSceneObjectMetadata(stile, 'hinged_glass_door', element.id, `hinged_glass_door:${element.id}:frame:${position}`);
+    stile.userData.materialRole = 'frame';
     panel.add(stile);
   }
   const hingeAtEnd = element.hinge === 'end';
@@ -432,12 +435,13 @@ function addHingedGlassDoor(root: THREE.Group, element: HingedGlassDoorElement, 
   panel.rotation.y = element.open === false ? closedAngle : openAngle;
   panel.position.x += Math.cos(panel.rotation.y) * (hingeAtEnd ? -width / 2 : width / 2);
   panel.position.z -= Math.sin(panel.rotation.y) * (hingeAtEnd ? -width / 2 : width / 2);
-  panel.userData = { objectId: element.id, type: 'hinged_glass_door', hoverable: true, open: element.open !== false };
+  panel.userData = { ...panel.userData, hoverable: true, open: element.open !== false };
   group.add(panel);
   const hingePost = new THREE.Mesh(new THREE.BoxGeometry(frame, element.height, depth), frameMaterial);
   hingePost.position.set(hinge.x, element.height / 2, hinge.z);
   hingePost.rotation.y = angle;
-  hingePost.userData = { objectId: element.id, type: 'hinged_glass_door', materialRole: 'hinge' };
+  setSceneObjectMetadata(hingePost, 'hinged_glass_door', element.id, `hinged_glass_door:${element.id}:hinge`);
+  hingePost.userData.materialRole = 'hinge';
   group.add(hingePost);
   root.add(group);
   return group;
@@ -725,18 +729,18 @@ function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: S
       model.position.set(placement.x, 0, placement.z);
       model.rotation.y = THREE.MathUtils.degToRad(item.rotation ?? 0);
       setSceneObjectMetadata(model, 'furniture', objectId);
-      model.traverse((child) => {
-        if (child === model) return;
-        const exportName = furnitureChildExportName(objectId, child, childIndex++);
-        child.name = exportName;
-        child.userData = { ...child.userData, exportName, roomId, objectId, type: 'furniture' };
-      });
       if (placement.wallId !== undefined) {
         model.userData.wallId = placement.wallId;
         model.userData.wallSide = placement.wallSide;
         model.userData.anchorAlong = placement.anchorAlong;
       }
       let childIndex = 0;
+      model.traverse((child) => {
+        if (child === model) return;
+        const exportName = furnitureChildExportName(objectId, child, childIndex++);
+        child.name = exportName;
+        child.userData = { ...child.userData, exportName, roomId, objectId, type: 'furniture' };
+      });
       root.add(model);
       report.furniture++;
       index++;
@@ -763,7 +767,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   }
   const wallHeights = new Map(input.walls.map((wall) => [wall.id, wall.height ?? 3.0]));
   for (const element of input.elements) {
-    if (element.type === 'wall') addWallElement(exportRoot, element, wallHeights.get(element.id) ?? 3.0, report, index, provider);
+    if (element.type === 'wall') addWallElement(exportRoot, element, wallHeights.get(element.id) ?? 3.0, report, index, provider, input.rooms);
     else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index);
   }
   for (const wall of input.walls) {
@@ -791,7 +795,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   }
   report.plumbing = infrastructure.plumbing.length;
   addCeilingZones(exportRoot, input.ceilingZones ?? [], input.rooms, report);
-  addFurniture(exportRoot, furnishings, report);
+  addFurniture(exportRoot, furnishings, report, index.wallSegments);
   if (input.lightingFixtures?.length) {
     const lighting = buildLightingFixtures(input.lightingFixtures, input.options?.lighting);
     exportRoot.add(lighting.group);
@@ -807,9 +811,11 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     if (type === 'floor' || type === 'floor_region') index.floorMeshes.push(object as THREE.Mesh);
     if (type === 'wall' || type === 'wall_run') index.wallMeshes.push(object as THREE.Mesh);
     if (type === 'ceiling' || type === 'ceiling_zone_solid') index.ceilingMeshes.push(object as THREE.Mesh);
-    if (type === 'furniture') {
+    if (type === 'furniture' && object.parent?.userData.type !== 'furniture') {
       index.furnitureMeshes.push(object as THREE.Group);
-      object.traverse((child) => { if (child.userData.surface === 'countertop') index.countertopMeshes.push(child as THREE.Mesh); });
+      object.traverse((descendant) => {
+        if (descendant !== object && descendant.userData.surface === 'countertop') index.countertopMeshes.push(descendant as THREE.Mesh);
+      });
     }
     if (type === 'curtain_run' || type === 'glass_infill' || type === 'shower_screen' || type === 'hinged_glass_door') {
       if ((object as THREE.Mesh).isMesh) index.glassMeshes.push(object as THREE.Mesh);
