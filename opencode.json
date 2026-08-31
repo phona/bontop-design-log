@@ -1,12 +1,5 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "bontop-design": {
-      "type": "remote",
-      "url": "http://localhost:3000/mcp",
-      "enabled": true
-    }
-  },
   "plugin": [
     "superpowers@git+https://github.com/obra/superpowers.git"
   ]
