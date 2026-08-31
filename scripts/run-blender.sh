@@ -34,24 +34,26 @@ usage() {
   cat >&2 <<'EOF'
 Usage: scripts/run-blender.sh --glb PATH --config PATH [options]
 Options: --engine VALUE --out-dir PATH --version VALUE --config-dir PATH
-         --manifest PATH --only VALUE --mat-override VALUE --res VALUE --help
+         --manifest PATH --only VALUE --scenario VALUE --mat-override VALUE --res VALUE --samples VALUE
+         --mode VALUE --preview-room VALUE --help
 EOF
 }
 
 if [[ $# -eq 0 ]]; then usage; exit 2; fi
 
-glb= config= engine= out_dir= version= config_dir= manifest= only= mat_override= res=
+glb= config= engine= out_dir= version= config_dir= manifest= only= scenario= mat_override= res= samples= mode= preview_room=
 while [[ $# -gt 0 ]]; do
   opt=$1; shift
   case "$opt" in
     --help) usage >&1; exit 0 ;;
-    --glb|--config|--engine|--out-dir|--version|--config-dir|--manifest|--only|--mat-override|--res)
+    --glb|--config|--engine|--out-dir|--version|--config-dir|--manifest|--only|--scenario|--mat-override|--res|--samples|--mode|--preview-room)
       [[ $# -gt 0 ]] || { printf 'run-blender.sh: %s requires a value\n' "$opt" >&2; exit 2; }
       value=$1; shift
       case "$opt" in
         --glb) glb=$value ;; --config) config=$value ;; --engine) engine=$value ;;
         --out-dir) out_dir=$value ;; --version) version=$value ;; --config-dir) config_dir=$value ;;
-        --manifest) manifest=$value ;; --only) only=$value ;; --mat-override) mat_override=$value ;; --res) res=$value ;;
+        --manifest) manifest=$value ;; --only) only=$value ;; --scenario) scenario=$value ;; --mat-override) mat_override=$value ;; --res) res=$value ;; --samples) samples=$value ;;
+        --mode) mode=$value ;; --preview-room) preview_room=$value ;;
       esac
       ;;
     *) printf 'run-blender.sh: unknown argument: %s\n' "$opt" >&2; usage; exit 2 ;;
@@ -113,7 +115,11 @@ fi
 args=(--background --python "$scene_script" -- --glb "$glb" --config "$config" --engine "${engine:-EEVEE}" --out-dir "$out_dir" --version "${version:-v1}" --config-dir "$config_dir")
 [[ -n "$manifest" ]] && args+=(--manifest "$manifest")
 [[ -n "$only" ]] && args+=(--only "$only")
+[[ -n "$scenario" ]] && args+=(--scenario "$scenario")
 [[ -n "$mat_override" ]] && args+=(--mat-override "$mat_override")
 [[ -n "$res" ]] && args+=(--res "$res")
+[[ -n "$samples" ]] && args+=(--samples "$samples")
+[[ -n "$mode" ]] && args+=(--mode "$mode")
+[[ -n "$preview_room" ]] && args+=(--preview-room "$preview_room")
 cd "$PROJECT_ROOT"
 exec "$blender" "${args[@]}"

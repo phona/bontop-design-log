@@ -25,8 +25,14 @@ run_wsl() { : > "$tmp/wslpath.log"; FAKE_LOG="$tmp/fake.log" WSLPATH_LOG="$tmp/w
 assert_log_has() { grep -Fqx "$1" "$tmp/fake.log"; }
 assert_failed() { if "$@" >"$tmp/error.log" 2>&1; then return 1; fi; }
 
-(cd "$tmp/work/child dir" && run --glb 'tmp/run-blender-test spaced/input file.glb' --config 'tmp/run-blender-test spaced/cfg file.json' --config-dir . --out-dir 'tmp/run-blender-test spaced/out dir' --engine CYCLES --version v2 --only cam --mat-override 'wall=#fff' --res 50)
+(cd "$tmp/work/child dir" && run --glb 'tmp/run-blender-test spaced/input file.glb' --config 'tmp/run-blender-test spaced/cfg file.json' --config-dir . --out-dir 'tmp/run-blender-test spaced/out dir' --engine CYCLES --version v2 --only cam --scenario night --mat-override 'wall=#fff' --res 50 --samples 128 --mode preview --preview-room guest_bath)
 assert_log_has "<$ROOT/tmp/run-blender-test spaced/input file.glb>"
+assert_log_has '<--samples>'
+assert_log_has '<128>'
+assert_log_has '<--mode>'
+assert_log_has '<preview>'
+assert_log_has '<--preview-room>'
+assert_log_has '<guest_bath>'
 assert_log_has "<$ROOT/tmp/run-blender-test spaced/cfg file.json>"
 assert_log_has "<$ROOT>"
 assert_log_has "<$ROOT/tmp/run-blender-test spaced/out dir>"
@@ -36,6 +42,8 @@ assert_log_has "<$ROOT/scripts/blender/dress_scene.py>"
 assert_log_has '<-->'
 assert_log_has '<--only>'
 assert_log_has '<cam>'
+assert_log_has '<--scenario>'
+assert_log_has '<night>'
 
 run_wsl --glb 'tmp/run-blender-test spaced/input file.glb' --config 'tmp/run-blender-test spaced/cfg file.json' --out-dir 'tmp/run-blender-test spaced/out dir' --config-dir config-dir --only 'ordinary value'
 [[ $(wc -l < "$tmp/wslpath.log") -eq 5 ]]

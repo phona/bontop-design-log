@@ -19,6 +19,61 @@ interface Args {
   glb?: string;
   outputDir: string;
   allowDirty: boolean;
+  previewRoom?: string;
+}
+
+const ASSET_DECLARATION_PATH = 'data/render-bundle-assets.json' as const;
+
+interface RenderBundleAssetDeclaration {
+  schema: 'bontop.render-bundle-assets';
+  version: number;
+  rooms: Record<string, string[]>;
+}
+
+function readAssetDeclaration(root = '.'): RenderBundleAssetDeclaration {
+  const path = resolve(root, ASSET_DECLARATION_PATH);
+  if (!existsSync(path) || !statSync(path).isFile()) throw new Error(`Missing render bundle asset declaration: ${ASSET_DECLARATION_PATH}`);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(path, 'utf8'));
+  } catch (error) {
+    throw new Error(`Invalid render bundle asset declaration: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (!parsed || typeof parsed !== 'object') throw new Error('Render bundle asset declaration must be an object');
+  const declaration = parsed as Partial<RenderBundleAssetDeclaration>;
+  const version = declaration.version;
+  if (declaration.schema !== 'bontop.render-bundle-assets' || !Number.isInteger(version) || typeof version !== 'number' || version < 1 || !declaration.rooms || typeof declaration.rooms !== 'object' || Array.isArray(declaration.rooms)) {
+    throw new Error('Render bundle asset declaration has an invalid schema, version, or rooms map');
+  }
+  for (const [room, assets] of Object.entries(declaration.rooms)) {
+    if (!room || !Array.isArray(assets) || assets.some((asset) => typeof asset !== 'string' || !asset.startsWith('assets/furniture/') || asset.endsWith('/') || asset.split('/').some((part) => part === '' || part === '.' || part === '..'))) {
+      throw new Error(`Render bundle asset declaration has invalid assets for room: ${room}`);
+    }
+  }
+  return {
+    schema: 'bontop.render-bundle-assets',
+    version,
+    rooms: declaration.rooms as Record<string, string[]>,
+  };
+}
+
+function assetDirectoryName(path: string): string {
+  return path.slice('assets/furniture/'.length);
+}
+
+// Kept as a compatibility export; values are derived from the authoritative declaration.
+export const PREVIEW_ROOM_ASSET_DIRECTORIES = Object.fromEntries(
+  Object.entries(readAssetDeclaration().rooms).map(([room, assets]) => [room, assets.map(assetDirectoryName)]),
+) as Record<string, string[]>;
+
+export type PreviewRoom = string;
+
+type ResourceScope =
+  | { profile: 'formal' }
+  | { profile: 'preview'; room: PreviewRoom; assetDeclaration: { path: typeof ASSET_DECLARATION_PATH; version: number; sha256: string } };
+
+function isPreviewRoom(value: string, declaration = readAssetDeclaration()): value is PreviewRoom {
+  return Object.prototype.hasOwnProperty.call(declaration.rooms, value);
 }
 
 export const SOURCE_INPUTS = [
@@ -38,24 +93,39 @@ export const SOURCE_INPUTS = [
   'shared/render/export-gltf.ts',
   'scripts/render/glb/export-glb.ts',
   'scripts/blender/dress_scene.py',
+  'scripts/blender/legacy_geometry.py',
   'scripts/blender/blender_assets.py',
   'scripts/blender/blender_render_only.py',
+  'scripts/blender/blender_preview.py',
+  'scripts/blender/scene_asset_registry.py',
+  'data/scene-asset-registry.json',
+  'data/blender-asset-registry.json',
   'scripts/blender/blender_lighting.py',
   'scripts/blender/blender_environment.py',
   'scripts/blender/gen-render-config.ts',
   'data/current-scheme.json',
   'data/presentation-state.json',
+  'data/render-decision-boards.json',
+  ASSET_DECLARATION_PATH,
 ] as const;
 
 export const RESOURCE_FILES = [
   'config/materials.yaml',
   'data/current-scheme.json',
   'data/presentation-state.json',
+  'data/render-decision-boards.json',
+  ASSET_DECLARATION_PATH,
   'scripts/blender/dress_scene.py',
+  'scripts/blender/legacy_geometry.py',
   'scripts/blender/blender_assets.py',
   'scripts/blender/blender_render_only.py',
+  'scripts/blender/blender_preview.py',
+  'scripts/blender/scene_asset_registry.py',
+  'data/scene-asset-registry.json',
+  'data/blender-asset-registry.json',
   'scripts/blender/blender_lighting.py',
   'scripts/blender/blender_environment.py',
+  'scripts/blender/gen-render-config.ts',
   'scripts/blender/materials_from_yaml.py',
   'scripts/blender/wood_texture.py',
   'scripts/blender/blenderkit_packed_pbr.py',
@@ -70,11 +140,18 @@ export const REQUIRED_RESOURCE_DIRECTORIES = ['hdri'] as const;
 export const REQUIRED_RESOURCE_FILES = [
   'config/materials.yaml',
   'data/current-scheme.json',
+  ASSET_DECLARATION_PATH,
   'scripts/blender/dress_scene.py',
+  'scripts/blender/legacy_geometry.py',
   'scripts/blender/blender_assets.py',
   'scripts/blender/blender_render_only.py',
+  'scripts/blender/blender_preview.py',
+  'scripts/blender/scene_asset_registry.py',
+  'data/scene-asset-registry.json',
+  'data/blender-asset-registry.json',
   'scripts/blender/blender_lighting.py',
   'scripts/blender/blender_environment.py',
+  'scripts/blender/gen-render-config.ts',
   'scripts/blender/dress_config.py',
   'scripts/blender/materials_from_yaml.py',
   'scripts/blender/wood_texture.py',
@@ -82,9 +159,13 @@ export const REQUIRED_RESOURCE_FILES = [
   'scripts/blender/blenderkit_packed_pbr.py',
 ] as const;
 
-function resourcePaths(root = '.'): string[] {
+function resourcePaths(root = '.', resourceScope: ResourceScope = { profile: 'formal' }): string[] {
   const paths: string[] = [...RESOURCE_FILES];
-  for (const directory of RESOURCE_DIRECTORIES) {
+  const declaration = readAssetDeclaration(root);
+  const directories = resourceScope.profile === 'formal'
+    ? RESOURCE_DIRECTORIES
+    : ['assets/textures', ...declaration.rooms[resourceScope.room], 'renders/blender/textures', 'hdri'];
+  for (const directory of directories) {
     const absolute = resolve(root, directory);
     if (!existsSync(absolute)) {
       if (directory === 'hdri') throw new Error(`Missing required render bundle resource directory: ${directory}`);
@@ -92,7 +173,7 @@ function resourcePaths(root = '.'): string[] {
     }
     const visit = (current: string) => {
       for (const entry of readdirSync(current, { withFileTypes: true })) {
-        if (entry.name === '__pycache__' || entry.name === 'node_modules') continue;
+        if (entry.name === '__pycache__' || entry.name === 'node_modules' || (resourceScope.profile === 'preview' && entry.name === 'blenderkit_candidates')) continue;
         const absoluteEntry = resolve(current, entry.name);
         if (entry.isDirectory()) visit(absoluteEntry);
         else if (entry.isFile()) paths.push(relative(resolve(root), absoluteEntry).replaceAll('\\', '/'));
@@ -105,9 +186,9 @@ function resourcePaths(root = '.'): string[] {
   return [...new Set(paths)];
 }
 
-export function copyBundleResources(outputDir: string, root = '.'): BundleArtifact[] {
+export function copyBundleResources(outputDir: string, root = '.', resourceScope: ResourceScope = { profile: 'formal' }): BundleArtifact[] {
   const resources: BundleArtifact[] = [];
-  for (const path of resourcePaths(root)) {
+  for (const path of resourcePaths(root, resourceScope)) {
     const source = resolve(root, path);
     if (!existsSync(source) || !statSync(source).isFile()) throw new Error(`Missing required render bundle resource: ${path}`);
     const target = resolve(outputDir, path);
@@ -119,7 +200,7 @@ export function copyBundleResources(outputDir: string, root = '.'): BundleArtifa
 }
 
 function usage(): never {
-  throw new Error('usage: tsx scripts/render/bundle/build-render-bundle.ts [--glb <path>] --output-dir <dir> [--allow-dirty]');
+  throw new Error('usage: tsx scripts/render/bundle/build-render-bundle.ts [--glb <path>] --output-dir <dir> [--allow-dirty] [--preview-room <room>]');
 }
 
 export function parseBuildRenderBundleArgs(argv: string[]): Args {
@@ -135,12 +216,13 @@ export function parseBuildRenderBundleArgs(argv: string[]): Args {
       case '--glb': args.glb = value(); break;
       case '--output-dir': args.outputDir = value(); break;
       case '--allow-dirty': args.allowDirty = true; break;
+      case '--preview-room': args.previewRoom = value(); break;
       default: usage();
     }
   }
-  const { glb, outputDir, allowDirty } = args;
-  if (!outputDir || allowDirty === undefined) usage();
-  return glb === undefined ? { outputDir, allowDirty } : { glb, outputDir, allowDirty };
+  const { glb, outputDir, allowDirty, previewRoom } = args;
+  if (!outputDir || allowDirty === undefined || (previewRoom !== undefined && !isPreviewRoom(previewRoom))) usage();
+  return glb === undefined ? { outputDir, allowDirty, ...(previewRoom ? { previewRoom } : {}) } : { glb, outputDir, allowDirty, ...(previewRoom ? { previewRoom } : {}) };
 }
 
 function run(command: string, args: string[]): void {
@@ -154,6 +236,21 @@ function assertInputGlb(path: string): void {
 export async function buildRenderBundle(args: Args): Promise<RenderBundleManifest> {
   const inputGlb = args.glb ? resolve(args.glb) : undefined;
   if (inputGlb) assertInputGlb(inputGlb);
+  const assetDeclaration = readAssetDeclaration();
+  if (args.previewRoom !== undefined && !isPreviewRoom(args.previewRoom, assetDeclaration)) {
+    throw new Error(`Unknown preview room: ${args.previewRoom}`);
+  }
+  const resourceScope: ResourceScope = args.previewRoom
+    ? {
+      profile: 'preview',
+      room: args.previewRoom,
+      assetDeclaration: {
+        path: ASSET_DECLARATION_PATH,
+        version: assetDeclaration.version,
+        sha256: fileArtifact('.', ASSET_DECLARATION_PATH).sha256,
+      },
+    }
+    : { profile: 'formal' };
   const outputDir = resolve(args.outputDir);
   if (existsSync(outputDir) && readdirSync(outputDir).length > 0) throw new Error(`Refusing to overwrite non-empty bundle directory: ${outputDir}`);
 
@@ -184,7 +281,7 @@ export async function buildRenderBundle(args: Args): Promise<RenderBundleManifes
   const glbSummary = inspectGlb(glbPath);
   assertDeliverableGlb(glbSummary);
   const curtainPresentation = assertCurtainNodesConsistent(glbSummary, facts.presentation.curtains);
-  const resources = copyBundleResources(outputDir);
+  const resources = copyBundleResources(outputDir, '.', resourceScope);
   const sourceInputs = Object.fromEntries(SOURCE_INPUTS.map((path) => [path, fileArtifact('.', path).sha256]));
   const artifacts = {
     glb: fileArtifact(outputDir, glbName),
@@ -194,19 +291,20 @@ export async function buildRenderBundle(args: Args): Promise<RenderBundleManifes
   const finalDirtyPorcelain = git(['status', '--porcelain=v1']);
   const finalDirty = finalDirtyPorcelain.length > 0;
   const inputFingerprints = renderInputFingerprints(sourceInputs, resources, artifacts);
-  const manifest: RenderBundleManifest = {
+  const manifest = {
     schemaVersion: RENDER_BUNDLE_SCHEMA_VERSION,
     revision,
     dirty: finalDirty,
     dirtyPorcelain: finalDirtyPorcelain,
     sourceInputs,
     resources,
+    resourceScope,
     inputFingerprints,
     glbExport: { method: exportMethod, inputBasename: inputGlb ? basename(inputGlb) : glbName },
     artifacts,
     curtainPresentation,
     summaries: { glb: glbSummary, projectRenderFacts: facts },
-  };
+  } as RenderBundleManifest & { resourceScope: ResourceScope };
   writeFileSync(resolve(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(`Render bundle created: ${outputDir}`);
   return manifest;

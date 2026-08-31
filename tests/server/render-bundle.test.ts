@@ -61,6 +61,7 @@ function copyDirectoryFiles(sourceDirectory: string, targetDirectory: string): s
 
 test('render bundle includes every extracted Blender module as source and required resource', () => {
   for (const file of [
+    'scripts/blender/legacy_geometry.py',
     'scripts/blender/blender_assets.py',
     'scripts/blender/blender_render_only.py',
     'scripts/blender/blender_lighting.py',
@@ -161,6 +162,8 @@ test('buildRenderBundle copies a manual GLB without modifying its source', async
     assert.notEqual(join(output, 'house.glb'), input);
     assert.deepEqual(manifest.glbExport, manualGlbExport('desktop-export.glb'));
     assert.ok(manifest.resources.some((resource) => resource.path === 'config/materials.yaml'));
+    assert.ok(manifest.resources.some((resource) => resource.path === 'data/scene-asset-registry.json'));
+    assert.deepEqual(readFileSync(join(output, 'data/scene-asset-registry.json'), 'utf8'), readFileSync('data/scene-asset-registry.json', 'utf8'));
     assert.deepEqual(manifest.resources.filter((resource) => resource.path.startsWith('hdri/')).map((resource) => resource.path).sort(), [
       'hdri/kloofendal_48d_partly_cloudy_1k.hdr',
       'hdri/kloppenheim_02_1k.hdr',
