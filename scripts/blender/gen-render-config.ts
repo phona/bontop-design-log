@@ -175,12 +175,16 @@ const cameras = [
   },
   {
     id: 'master_bed_looking_glass',
-    label: '主卧西侧看床+南窗（2026-08-22 随条带归主卧；避条带柜/衣柜背板）',
-    position: [1, 1.7, 6.2],
-    target: [3.3, 0.8, 8.6],
-    scenarios: ['material_review', 'bare_shell'],
-    fill_light: 100,
-    exposure: -0.5,
+    // daylight/daylight_clear 用于 Low-E/超白玻璃 A/B，对比主卧自然光下的玻璃透景与色相；中心线对准主卧南窗纱帘中部。
+    label: '主卧西侧看床+南窗（2026-08-22 随条带归主卧；避条带柜/衣柜背板；Low-E/超白玻璃 A/B）',
+    position: [0.2, 1.8, 5.0],
+    target: [2.5, 1.0, 8.95],
+    scenarios: ['material_review', 'daylight', 'daylight_clear', 'bare_shell'],
+    fill_light: 160,
+    exposure: -1.0,
+    scenario_overrides: {
+      daylight_clear: { sheer_opacity: 0.40 },
+    },
   },
   // 材质评审特写机位（35mm，只出 material_review 工况）
   {
@@ -228,21 +232,43 @@ const cameras = [
     // Cloud A/B（32 samples）压过曝：高亮 49.1% → 9.9%。
     exposure: 0.0,
   },
-  // 厨房决策机位（L 型：北墙水槽+东墙灶台+冰箱）
+  // 厨房南侧开放区唯一首选斜向东北机位：将冰箱压到右侧边缘，并保持 L 型工作区同框。
   {
     id: 'kitchen_l_overview',
     label: '厨房 L 型全景（北墙水槽+东墙灶台+冰箱）',
-    position: [7.6, 1.5, 2.2],
-    target: [10.2, 0.9, 0.5],
+    position: [7.85, 1.55, 5.35],
+    target: [9.15, 1.05, 1.20],
     lens: 24,
     scenarios: ['material_review', 'blue_hour', 'bare_shell'],
   },
   {
     id: 'kitchen_counter_closeup',
     label: '厨房台面+地柜门特写（台面/柜门选材）',
-    position: [8.6, 1.3, 1.6],
-    target: [9.6, 0.8, 0.4],
-    lens: 35,
+    position: [8.15, 1.65, 2.05],
+    target: [9.55, 0.9, 0.72],
+    lens: 40,
+    fill_light: 500,
+    exposure: 0.8,
+    scenarios: ['material_review'],
+  },
+  {
+    id: 'kitchen_function_overview',
+    label: '厨房功能关系审查（无遮挡 L 型工作区）',
+    position: [7.10, 1.65, 4.20],
+    target: [9.85, 0.95, 1.10],
+    lens: 24,
+    fill_light: 420,
+    exposure: 0.0,
+    scenarios: ['material_review'],
+  },
+  {
+    id: 'kitchen_cooktop_closeup',
+    label: '厨房灶台+东墙台面特写（炉圈/旋钮/台面收口）',
+    position: [9.15, 1.55, 1.05],
+    target: [10.50, 0.92, 1.18],
+    lens: 50,
+    fill_light: 300,
+    exposure: 0.5,
     scenarios: ['material_review'],
   },
   // 全屋巡览机位（每房一张）
@@ -253,6 +279,9 @@ const cameras = [
     target: [8.3, 0.9, 3.2],
     lens: 24,
     scenarios: ['material_review', 'blue_hour', 'daylight_clear', 'bare_shell'],
+    scenario_overrides: {
+      daylight_clear: { exposure: 0.0, fill_light: 180 },
+    },
   },
   {
     id: 'study_overview',
@@ -267,12 +296,23 @@ const cameras = [
   {
     id: 'bedroom_se_overview',
     label: '书房全景（南望飘窗+书桌；v27 改向：北墙视角有未解阴影异常，南向采光面更适合作全景）',
-    position: [15.9, 1.5, 6.2],
-    target: [14.0, 1.2, 9.2],
-    lens: 24,
+    position: [14.20, 1.8, 5.85],
+    target: [15.0, 1.0, 7.55],
+    lens: 18,
     scenarios: ['material_review', 'bare_shell'],
-    // Cloud A/B（32 samples）压过曝：material_review 高亮 60.6% → 19.1%。
-    exposure: 0.0,
+    fill_light: 160,
+    // Cloud A/B：书房南侧采光仍过强，降低 material_review 高光以恢复墙地边界。
+    exposure: -1.0,
+  },
+  {
+    id: 'study_work_detail',
+    label: '书房工作区辅助视角（桌面/椅子/低柜）',
+    position: [13.65, 1.35, 8.35],
+    target: [15.30, 0.85, 8.05],
+    lens: 28,
+    scenarios: ['material_review'],
+    fill_light: 180,
+    exposure: -0.5,
   },
   {
     id: 'bedroom_nw_overview',
@@ -286,32 +326,61 @@ const cameras = [
   },
   {
     id: 'master_bath_overview',
-    label: '主卫干湿分离（2026-08-22 随隔墙 3.26 改版：正南平视朝北，右台盆左淋浴）',
-    position: [1.35, 1.45, 3.15],
-    target: [1.25, 0.85, 1.15],
-    lens: 18,
+    label: '主卫干湿分离（正南平视朝北，右台盆左淋浴）',
+    position: [1.75, 1.45, 2.00],
+    target: [2.15, 0.85, 1.55],
+    lens: 16,
     scenarios: ['material_review', 'bare_shell'],
     fill_light: 120,
   },
   {
+    id: 'master_bath_floor_detail',
+    label: '主卫干湿区辅助视角（地面/隔断/洁具关系）',
+    position: [1.05, 1.35, 2.20],
+    target: [1.85, 0.75, 1.45],
+    lens: 24,
+    scenarios: ['material_review'],
+    fill_light: 150,
+    exposure: 0.0,
+  },
+  {
+    id: 'master_bath_high_view',
+    label: '主卫高位辅助视角（地面/淋浴隔断/马桶）',
+    position: [1.55, 2.55, 3.25],
+    target: [1.65, 0.0, 1.70],
+    lens: 20,
+    scenarios: ['material_review'],
+    fill_light: 180,
+    exposure: 0.0,
+  },
+  {
     id: 'guest_bath_overview',
-    label: '客卫全景（南墙外置洗漱台）',
-    position: [6.95, 1.6, 2.3],
-    target: [6.35, 0.8, 2.8],
-    lens: 18,
+    label: '客卫全景（门外斜视，南墙外置洗漱台）',
+    position: [5.98, 1.55, 4.08],
+    target: [6.68, 0.75, 3.18],
+    lens: 16,
     scenarios: ['material_review', 'bare_shell'],
     fill_light: 60,
-    // Cloud A/B 二次验证：客卫高亮由 89–94% 降至 1–4%。
+    // 门外斜视方案：从客卫门外取景，兼顾淋浴区与南墙外置洗漱台。
     exposure: -1.5,
   },
   {
-    // 2026-08-23 改俯视（D2）：1.6×1.2m 极小阳台+玻璃门，内外平视机位均不可行（v30 门外取景被玻璃挡）。
-    // 机位居中阳台（x 5.6–7.2 / z 1.0–2.2）垂直向下微倾，北朝上。
+    id: 'guest_bath_vanity_detail',
+    label: '客卫洗漱台辅助视角（柜体/台面/龙头）',
+    position: [6.25, 1.45, 4.10],
+    target: [6.85, 0.90, 3.90],
+    lens: 35,
+    scenarios: ['material_review'],
+    fill_light: 140,
+    exposure: -0.5,
+  },
+  {
+    // 从厨房东侧后移取景，露出阳台设备墙
     id: 'balcony_overview',
-    label: '生活阳台俯视（1.6×1.2m 极小阳台+玻璃门隔断，内外平视机位均不可行，2026-08-23 改俯视；v30 门外取景被玻璃挡回退）',
-    position: [6.4, 2.5, 1.45],
-    target: [6.4, 0, 1.7],
-    lens: 30,
+    label: '生活阳台俯视（1.6×1.2m 极小阳台+玻璃门隔断，高位俯视）',
+    position: [9.20, 1.70, 2.05],
+    target: [6.45, 0.90, 1.35],
+    lens: 18,
     scenarios: ['material_review'],
     fill_light: 80,
     // Render-only A/B：material_review 高亮 47.4%（fill_light 80）；仅本机位降曝光以保留阳台材质细节。

@@ -22,7 +22,7 @@ RENDER_ROLE_NAMES = frozenset({
     'tv_frame', 'tv_screen', 'cabinet_body', 'door_front', 'door_seam',
     'drawer_front', 'back_panel', 'frame', 'top_filler', 'plinth', 'shelf',
     'hardware', 'countertop', 'end_panel', 'fixture_diffuser', 'fixture_track',
-    'fixture_metal', 'cove_light', 'ceramic', 'fabric', 'weight_plate',
+    'fixture_metal', 'cooktop_burner', 'cooktop_surface', 'cove_light', 'ceramic', 'fabric', 'weight_plate',
     'upholstery', 'floor_protection', 'cabinet_foot', 'cabinet_support',
     'safety_bar', 'railing',
 })
@@ -32,7 +32,7 @@ FIXTURE_FACTORY_ROLES = frozenset({
     'cabinet_body', 'door_front', 'door_seam', 'drawer_front', 'back_panel',
     'frame', 'top_filler', 'plinth', 'shelf', 'hardware', 'countertop',
     'end_panel', 'tv_frame', 'tv_screen', 'fixture_diffuser', 'fixture_track',
-    'fixture_metal', 'cove_light', 'ceramic', 'fabric', 'weight_plate',
+    'fixture_metal', 'cooktop_burner', 'cooktop_surface', 'cove_light', 'ceramic', 'fabric', 'weight_plate',
     'upholstery', 'floor_protection', 'cabinet_foot', 'cabinet_support',
     'safety_bar', 'railing', 'mirror',
 })
@@ -562,7 +562,8 @@ _GLASS_PROFILE_DEFAULTS = {
 }
 
 
-def _apply_principled_appearance(mat, appearance: dict, color, rough: float):
+def _apply_principled_appearance(mat, appearance: dict, color, rough: float,
+                                 engine: str = 'EEVEE'):
     """Apply YAML appearance/profile values to the material's Principled node."""
     nt = mat.node_tree
     bsdf = next((node for node in nt.nodes
@@ -575,6 +576,13 @@ def _apply_principled_appearance(mat, appearance: dict, color, rough: float):
     for name in ('metallic', 'transmission', 'ior', 'coat', 'alpha'):
         if name in appearance:
             params[name] = appearance[name]
+    if profile == 'low_e' and str(engine).upper() != 'CYCLES':
+        params['transmission'] = 0.0
+        params['alpha'] = 0.25
+        if hasattr(mat, 'surface_render_method'):
+            mat.surface_render_method = 'DITHERED'
+        elif hasattr(mat, 'blend_method'):
+            mat.blend_method = 'BLEND'
     bsdf.inputs['Base Color'].default_value = (*color, 1.0)
     bsdf.inputs['Roughness'].default_value = float(params['roughness'])
     if 'Metallic' in bsdf.inputs and 'metallic' in params:
@@ -617,7 +625,8 @@ def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
                          cache_dir: str | None = None,
                          config_dir: str | None = None,
                          color_overrides: dict | None = None,
-                         role_profiles: dict | None = None) -> dict:
+                         role_profiles: dict | None = None,
+                         engine: str = 'EEVEE') -> dict:
     """resolved: classify_key -> material_id。返回 classify_key -> bpy material。
     helpers 注入 new_principled/hex_rgb，避免与 dress_scene 循环依赖。
     cache_dir: 木纹贴图缓存目录（wood_plank 时必需）。
@@ -673,8 +682,9 @@ def build_yaml_materials(mats: dict, resolved: dict, helpers: dict,
             mat = _build_ceramic_tile(mid, app, np_, color)
         else:
             mat = np_(f'方案_{mid}', color, rough=rough)
-        if app.get('profile') in _GLASS_PROFILE_DEFAULTS:
-            _apply_principled_appearance(mat, app, color, rough)
+        if (app.get('profile') in _GLASS_PROFILE_DEFAULTS or
+                any(name in app for name in ('roughness', 'metallic', 'transmission', 'ior', 'coat', 'alpha'))):
+            _apply_principled_appearance(mat, app, color, rough, engine)
             if app.get('profile') == 'fluted':
                 _add_fluted_bump(mat, app)
         # 墙面漆面微纹理（橙皮纹）：细微程序化 bump，不下载贴图
@@ -741,11 +751,11 @@ def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb, fact
     print(f'[materials] wood texture cache={os.path.abspath(tex_cache)}')
     yaml_mats = build_yaml_materials(mats_yaml, resolved, helpers, cache_dir=tex_cache,
                                      config_dir=config_dir, color_overrides=color_overrides,
-                                     role_profiles=role_profiles)
+                                     role_profiles=role_profiles, engine=engine)
     role_resolved = {role: profile['material_id'] for role, profile in role_profiles.items()}
     role_mats = build_yaml_materials(mats_yaml, role_resolved, helpers, cache_dir=tex_cache,
                                      config_dir=config_dir, color_overrides=color_overrides,
-                                     role_profiles=role_profiles)
+                                     role_profiles=role_profiles, engine=engine)
     mats.update(yaml_mats)
     mats.update(role_mats)
     floor_mats = {}
@@ -753,7 +763,7 @@ def load_scheme_materials(engine: str, mats: dict, new_principled, hex_rgb, fact
         key = f'floor:{room_id}'
         room_override = build_yaml_materials(
             mats_yaml, {key: mid}, helpers, cache_dir=tex_cache, config_dir=config_dir,
-            color_overrides=color_overrides,
+            color_overrides=color_overrides, engine=engine,
         )
         floor_mats[room_id] = room_override[key]
     return mats, floor_mats, role_profiles

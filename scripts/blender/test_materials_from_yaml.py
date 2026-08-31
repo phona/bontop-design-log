@@ -4,6 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, '.')
 from materials_from_yaml import (
+    _apply_principled_appearance,
     build_yaml_materials,
     resolve_external_pbr,
     resolve_floor_overrides,
@@ -73,12 +74,75 @@ def _install_bpy_stub(monkeypatch):
     monkeypatch.setitem(sys.modules, 'bpy', types.SimpleNamespace(data=types.SimpleNamespace(materials=_Materials())))
 
 
+def _principled(mat):
+    return next(node for node in mat.node_tree.nodes
+                if node.bl_idname == 'ShaderNodeBsdfPrincipled')
+
+
+def test_apply_principled_low_e_eevee_uses_transparent_rendering():
+    mat = _Material('low_e')
+    mat.surface_render_method = 'OPAQUE'
+
+    _apply_principled_appearance(mat, {'profile': 'low_e'}, (0.8, 0.9, 1.0), 0.4, engine='EEVEE')
+
+    bsdf = _principled(mat)
+    assert bsdf.inputs['Transmission Weight'].default_value == 0.0
+    assert bsdf.inputs['Alpha'].default_value == 0.25
+    assert mat.surface_render_method == 'DITHERED'
+
+
+def test_apply_principled_low_e_cycles_keeps_transmission():
+    mat = _Material('low_e')
+
+    _apply_principled_appearance(mat, {'profile': 'low_e'}, (0.8, 0.9, 1.0), 0.4, engine='CYCLES')
+
+    assert _principled(mat).inputs['Transmission Weight'].default_value == 1.0
+
+
+def test_apply_principled_fluted_does_not_use_low_e_alpha():
+    mat = _Material('fluted')
+
+    _apply_principled_appearance(mat, {'profile': 'fluted'}, (0.8, 0.9, 1.0), 0.4, engine='EEVEE')
+
+    bsdf = _principled(mat)
+    assert bsdf.inputs['Transmission Weight'].default_value == 0.75
+    assert bsdf.inputs['Alpha'].default_value is None
+
+
 MATS = {
     'floor_tile_01': {'id': 'floor_tile_01', 'appearance': {'type': 'wood_plank', 'color': '#c49a6c'}},
     'latex_paint_01': {'id': 'latex_paint_01', 'appearance': {'type': 'solid_color', 'color': '#f7f5ef'}},
     'sofa_3seat_01': {'id': 'sofa_3seat_01', 'appearance': {'type': 'solid_color', 'color': '#8a6f52'}},
     'missing_01': {'id': 'missing_01', 'appearance': {'type': 'solid_color', 'color': '#000000'}},
 }
+
+
+def test_cooktop_burner_role_uses_distinct_yaml_metal_contract():
+    import yaml
+
+    root = Path(__file__).resolve().parents[2]
+    doc = yaml.safe_load((root / 'config' / 'materials.yaml').read_text())
+    mats = {item['id']: item for item in doc['materials']}
+    spec = resolve_render_role_profiles(mats, doc['render_roles'])
+    burner = spec['roles']['cooktop_burner']
+    assert burner['material_id'] == 'cooktop_burner_01'
+    assert burner['appearance']['color'] == '#4a4a4a'
+    assert burner['appearance']['metallic'] == 0.75
+    assert burner['appearance']['roughness'] == 0.32
+    assert spec['roles']['hardware']['material_id'] == 'hardware_01'
+    assert spec['roles']['cooktop_surface']['material_id'] == 'cooktop_surface_01'
+
+
+def test_explicit_principled_appearance_overrides_base_material_parameters():
+    mat = _Material('cooktop_burner')
+    _apply_principled_appearance(
+        mat, {'type': 'solid_color', 'metallic': 0.75, 'roughness': 0.32},
+        (0.290196, 0.290196, 0.290196), 0.35,
+    )
+    bsdf = _principled(mat)
+    assert bsdf.inputs['Base Color'].default_value == (0.290196, 0.290196, 0.290196, 1.0)
+    assert bsdf.inputs['Metallic'].default_value == 0.75
+    assert bsdf.inputs['Roughness'].default_value == 0.32
 
 
 def test_render_role_profiles_resolve_records_and_appearance():

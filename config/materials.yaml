@@ -24,7 +24,9 @@ render_roles:
   end_panel: "cabinet_board_01"
   fixture_diffuser: "wall_tile_01"
   fixture_track: "hardware_01"
-  fixture_metal: "hardware_01"
+  fixture_metal: "rubber_floor_01"
+  cooktop_burner: "cooktop_burner_01"
+  cooktop_surface: "cooktop_surface_01"
   cove_light: "wall_tile_01"
   ceramic: "wall_tile_01"
   fabric: "chair_01"
@@ -747,6 +749,30 @@ materials:
     cons: []
     price_source: "正泰门店 / 京东报价"
     notes: "智能预留只需开关留零线；厨房用带开关五孔，卫生间配防溅盒"
+
+  - id: "cooktop_surface_01"
+    category: "灶台玻璃面"
+    name: "嵌入式深色钢化玻璃灶面"
+    unit: "块"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "fixed"
+    status: "candidate"
+    notes: "Blender 专用渲染材质；不复用 Low-E 或全局 fixture_metal。"
+    appearance: { type: "solid_color", color: "#1b2024", finish: "glossy", metallic: 0.35, roughness: 0.18, coat: 0.25 }
+
+  - id: "cooktop_burner_01"
+    category: "灶台炉圈"
+    name: "嵌入式灶台中深灰金属炉圈"
+    unit: "套"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "fixed"
+    status: "candidate"
+    notes: "Blender 专用渲染材质；与浅色旋钮 hardware_01 分离。"
+    appearance: { type: "solid_color", color: "#4a4a4a", finish: "soft", metallic: 0.75, roughness: 0.32 }
 
   - id: "hardware_01"
     topic_id: "hardware"
