@@ -13,7 +13,41 @@
 
 ## 一、daemon / 会话管理
 
-### 1. daemon EOF / busy
+### 1. 每会话一个稳定 UUID
+
+每个 agent 会话首次使用浏览器时生成一个 UUID，并在该会话上下文中持续复用：
+
+```text
+bontop-<uuid>
+```
+
+例如：
+
+```text
+bontop-7f3a9c2e
+```
+
+不要按每条命令、每个任务或每次重试生成新 UUID；超时恢复也必须继续使用原 session。不同并发 agent 必须使用不同 UUID，同一 session 内仍必须严格串行。
+
+### 2. 3D 页面必须等待真实 ready
+
+`open` 返回、`document.readyState=complete`、`wait --load networkidle` 或存在 `canvas`，都不代表 Three.js 模型已加载。对 3D 页面，必须轮询项目实际 ready 信号，并同时确认 loading 消失、关键控件可用、canvas 有效、模型/场景内容出现、关键 API/资源没有失败；不能硬编码项目不存在的 `window.__APP__.scene`。
+
+推荐顺序：
+
+```text
+open → wait → 轮询真实 ready → snapshot → screenshot → evaluate/console → close
+```
+
+ready 超时必须报告失败，期间截图只能作为诊断证据，不能称为最终预览。主体 3D 与 MEP/HVAC 等可选功能分开判定，不能用无关可选接口失败误判主体模型未加载。
+
+### 3. 超时与清理
+
+命令超时后不要立即重试，也不要换 UUID 或创建新 session。先用原 session 做一次有限探测；无法响应时复位或 close 原 session，之后仍使用原 session 名。连续失败就停止重试并报告 daemon/Chrome 清理异常。
+
+任务成功、失败或中断后都要尝试关闭当前 session；不要默认使用 `close --all`。`close` 可能只清理逻辑 session，不能无条件声称底层 daemon/Chrome 已退出；发现进程持续增长时应停止继续创建 session，升级或反馈 agent-browser。
+
+### 4. daemon EOF / busy
 
 #### 现象
 
@@ -30,15 +64,17 @@ Invalid response: EOF
 
 #### 推荐处理
 
-按顺序执行，保持单个 session 串行：
+按顺序执行，保持单个 session 串行；优先只复位当前 agent 的稳定 session：
 
 ```bash
-$HOME/.local/bin/agent-browser close --all
-$HOME/.local/bin/agent-browser open "http://localhost:5173/"
-$HOME/.local/bin/agent-browser wait --load networkidle
-$HOME/.local/bin/agent-browser snapshot -i -c
+SESSION="bontop-<uuid>"
+$HOME/.local/bin/agent-browser --session "$SESSION" close || true
+$HOME/.local/bin/agent-browser --session "$SESSION" open "http://localhost:5173/"
+$HOME/.local/bin/agent-browser --session "$SESSION" wait --load networkidle
+$HOME/.local/bin/agent-browser --session "$SESSION" snapshot -i -c
 ```
 
+只有确认所有 session 都需要清理时，才使用 `$HOME/.local/bin/agent-browser close --all`。
 必要时先确认应用本身仍可访问：
 
 ```bash
@@ -48,7 +84,7 @@ $HOME/.local/bin/agent-browser --help
 
 冷启动 `open` 长时间无响应时，不要不断重复发送同一命令；终止当前命令、复位会话后再试。
 
-### 2. refs 生命周期
+### 5. refs 生命周期
 
 `snapshot` 会为当前页面生成新的 `@eN` refs。点击、导航、表单提交、动态重渲染等页面变化都可能让旧 refs 失效；下一次交互前重新执行 `snapshot -i`。
 
@@ -111,8 +147,11 @@ $HOME/.local/bin/agent-browser wait --load networkidle
 $HOME/.local/bin/agent-browser get url
 $HOME/.local/bin/agent-browser get title
 $HOME/.local/bin/agent-browser snapshot -i -c
-$HOME/.local/bin/agent-browser screenshot tmp/web-baseline.png
+mkdir -p tmp/screenshots/wholehouse
+$HOME/.local/bin/agent-browser screenshot tmp/screenshots/wholehouse/floor_plan_default_after_v003.png
 ```
+
+截图统一使用 `tmp/screenshots/<project>/<item>_<view>_<state>_<version>.png`。目录使用 kebab-case，文件字段使用 snake_case；A/B 截图使用 `before`、`after`，差异图使用 `diff`。CLI 默认临时路径只适合快速诊断，正式 review evidence 必须显式指定项目内路径，并在证据 manifest 中记录 URL、title、ready、相机、objectIds、snapshot/runtime 查询和 source version。
 
 页面有应用级 ready 信号时，`networkidle` 之后还要等待 ready。只拿到截图不足以证明页面加载完成或交互状态正确。
 
@@ -130,7 +169,43 @@ done
 
 未 ready 时遍历到的场景或数据可能只是过渡态，不要据此下结论。
 
-### 3. eval 大返回值和场景内省
+### 3. 常用 3D debug 视角
+
+确认真实 ready 后，再采集 debug 视角；每次相机或页面状态变化后都要重新 `snapshot`，不要继续使用旧 refs。
+
+推荐至少保留三类视角：
+
+```text
+默认 orbit 总览 → 目标家具近景（如沙发） → 俯瞰/总览
+```
+
+操作原则：
+
+- 优先使用页面已有按钮、键盘快捷键或项目公开的相机控制；不要猜测不存在的对象名或内部 API。
+- 近景必须同时确认目标家具确实在画面中；只能证明相机靠近而不能确认目标时，报告“近景已改变，目标未确认”。
+- 俯瞰必须确认相机模式已切换，并检查整个户型是否在画面范围内；不能只凭相机坐标下结论。
+- 相机动画或缩放结束后，读取相机模式/位置/目标等只读状态，再重新 `snapshot` 和截图。
+- 截图既要保留模型实际看到的结果，也要记录对应视角、相机状态和 ready 状态，便于复现。
+
+建议的视角字段值：
+
+```text
+default
+closeup
+top_down
+```
+
+视角字段应放入标准文件名，而不是单独作为完整文件名：
+
+```text
+tmp/screenshots/living-room/sofa_default_after_v003.png
+tmp/screenshots/living-room/sofa_closeup_after_v003.png
+tmp/screenshots/living-room/sofa_top_down_after_v003.png
+```
+
+每个 target view 都要保留对应的 snapshot、runtime query 和 manifest 引用；不要只靠文件名或截图像素推断验证状态。
+
+### 4. eval 大返回值和场景内省
 
 截图 data URL、大量遍历结果可能有几百 KB，应重定向落盘，不要塞进对话上下文：
 
