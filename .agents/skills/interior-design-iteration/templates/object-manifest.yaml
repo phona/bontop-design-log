@@ -1,0 +1,55 @@
+schema: interior-design-object-manifest/v3
+project: ""
+iteration_id: ""
+subject: ""
+object_policy:
+  fixed_count_required: false
+  split_by: [function, owner, material, collision, maintenance, interface, review]
+  visual_relationship_required: true
+objects:
+  - id: ""
+    type: ""
+    archetypes: []
+    owner: ""
+    function: ""
+    material: null
+    geometry_source: ""
+    datum_refs: []
+    fact_refs: []
+    decision_refs: []
+    dependencies: []
+    interfaces:
+      - id: ""
+        target_object_id: ""
+        kind: electrical # electrical | plumbing | hvac | structural | visual | maintenance | circulation | material
+        requirement: ""
+        status: open # open | confirmed | blocked
+    collision:
+      policy: none # none | required | reviewed
+      geometry_ref: null
+      review_ref: null
+    maintenance:
+      boundary: ""
+      access_clearance: null
+      replaceable_parts: []
+      inspection_requirements: []
+    parts:
+      - id: ""
+        role: ""
+        independent: true
+        owner: ""
+        material: null
+        geometry_source: ""
+        datum_refs: []
+        dependencies: []
+        collision: none # none | required | reviewed
+        maintenance_boundary: ""
+        validation_refs: []
+    visual_relationships:
+      - target_object_id: ""
+        relation: aligned # aligned | spaced | stacked | supported | adjacent | concealed | centered | custom
+        requirement: ""
+        evidence_refs: []
+    validation_refs: []
+    status: planned # planned | implemented | verified | blocked | superseded
+notes: []

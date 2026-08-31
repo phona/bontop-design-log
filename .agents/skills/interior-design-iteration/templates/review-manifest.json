@@ -1,0 +1,84 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "",
+  "iteration_id": "",
+  "subject": "",
+  "state": "intake",
+  "source_version": {
+    "config_refs": [],
+    "asset_refs": [],
+    "render_facts_ref": null,
+    "source_digest": null,
+    "generated_at": null
+  },
+  "validation": {
+    "commands": [],
+    "results": [],
+    "config_status": "BLOCKED",
+    "geometry_status": "BLOCKED",
+    "consistency_status": "BLOCKED",
+    "functional_checks_status": "BLOCKED",
+    "application_status": "BLOCKED",
+    "typecheck_status": "BLOCKED",
+    "generated_files_touched_directly": false
+  },
+  "evidence": [
+    {
+      "id": "",
+      "url": "",
+      "title": "",
+      "ready": false,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": null,
+      "config_error_banner": "",
+      "target_objects": [],
+      "target_object_ids": [],
+      "runtime_query_refs": [],
+      "camera": {
+        "mode": "",
+        "is_overview": true,
+        "position": null,
+        "target": null,
+        "view_type": "perspective"
+      },
+      "snapshot_path": "",
+      "screenshot_path": "",
+      "png_exists": false,
+      "png_readable": false,
+      "non_empty_screenshot": false,
+      "version_refs": [],
+      "status": "invalid",
+      "invalid_reason": null
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": [],
+    "non_blocking_notes": [],
+    "evidence_refs": [],
+    "requested_changes": [],
+    "assumptions": []
+  },
+  "functional_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": [],
+    "non_blocking_notes": [],
+    "evidence_refs": [],
+    "requested_changes": [],
+    "assumptions": []
+  },
+  "risks": [],
+  "retrospective": {
+    "triggered": false,
+    "triggers": [],
+    "records": [],
+    "rebaselined": false
+  },
+  "delivery": {
+    "status": "in_progress",
+    "blocking_issues": [],
+    "completion_conditions": [],
+    "follow_up_site_pending": [],
+    "delivery_ready": false
+  }
+}

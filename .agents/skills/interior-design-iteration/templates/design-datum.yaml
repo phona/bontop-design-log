@@ -1,0 +1,57 @@
+schema: interior-design-datum/v3
+project: ""
+iteration_id: ""
+subject: ""
+units: m
+coordinate_system: ""
+status: draft # draft | aligned | frozen | superseded | blocked
+datums:
+  - id: ""
+    name: ""
+    anchor:
+      kind: free_position # free_position | room_anchor | wall_anchor | ceiling_anchor | service_route
+      ref: null
+      wall_side: null
+      service_ref: null
+    source_refs:
+      fact_refs: []
+      decision_refs: []
+    views:
+      plan:
+        required: false
+        origin: ""
+        axes: ""
+        direction: ""
+        position: {x: null, z: null}
+        rotation: null
+        dimensions: {length: null, width: null, depth: null, offset: null}
+        dimension_semantics: not_applicable # total | net | clear | center_to_center | along_wall | offset | not_applicable
+      elevation:
+        required: false
+        viewing_side: ""
+        vertical_axis: y
+        height: null
+        dimensions: {width: null, height: null, sill: null, datum_offset: null}
+        dimension_semantics: not_applicable # overall | clear | install_height | above_floor | not_applicable
+      section:
+        required: false
+        cut_direction: ""
+        depth_axis: ""
+        clearances: {front: null, rear: null, top: null, bottom: null}
+        thickness: null
+        dimension_semantics: not_applicable # overall | clear | assembly | service_clearance | not_applicable
+    geometry:
+      x: null
+      y: null
+      z: null
+      width: null
+      depth: null
+      height: null
+      length: null
+      rotation: null
+      along: null
+    constraints: []
+    interfaces: []
+    validation_refs: []
+    status: open # open | confirmed | blocked | superseded
+notes: []

@@ -1,0 +1,128 @@
+schema: interior-design-iteration-adapter/v3
+project:
+  id: bontop-design-log
+  root: /home/tao/projects/bontop-design-log
+  language: zh-CN
+  generated_files_policy: generated files cannot be edited directly; update the declared source authority and run its generator
+  documentation_only_rule: this Skill rollout must not modify design configuration, render code, or generated artifacts
+  scope_note: adapter facts supplement the generic Skill; they cannot weaken AskUserQuestion, no-guessing, evidence, review, or delivery gates
+authorities:
+  geometry:
+    path: config/layout/model-geometry.yaml
+    role: only authoritative source for house geometry; v2.0 vertex format
+    update_rule: change geometry only here and preserve room/wall topology
+  intent:
+    path: config/layout/overlay.yaml
+    role: authoritative source for all design/render intent
+    coordinate_rule: same coordinate system as geometry; no independent offset
+  furnishing:
+    path: config/house.yaml
+    role: furniture and mirrored room/gift_areas fields
+    update_rule: placed entries have x/z/rotation; count-only entries have no x/z; derive counts from furnishing list; do not double-write counts
+  electrical:
+    path: config/electrical.yaml
+    role: authoritative electrical points and circuits
+  plumbing:
+    path: config/plumbing.yaml
+    role: authoritative plumbing points and interfaces
+  hvac:
+    path: config/hvac.yaml
+    role: authoritative HVAC equipment, routes, and interfaces
+  mep_coordination:
+    path: config/mep-hvac-coordination.yaml
+    role: authoritative MEP/HVAC coordination
+  ceiling:
+    path: config/ceiling.yaml
+    role: authoritative ceiling geometry, levels, access, and components
+  materials:
+    paths: [config/materials.yaml, config/materials]
+    role: authoritative materials paths; inspect actual existing files, never infer contents from a path name
+  lighting:
+    path: config/render/lighting.yaml
+    role: authoritative lighting/render intent
+  rules:
+    path: config/design-rules.yaml
+    role: authoritative design rules
+  acceptance:
+    path: config/acceptance.yaml
+    role: authoritative acceptance criteria
+paths:
+  layout: config/layout
+  render: config/render
+  scripts: scripts
+  tests: tests
+  app: app
+  server: server
+  assets: assets
+  renders: renders
+commands:
+  verify_all: npm run verify:all
+  verify_furniture: npm run verify:furniture
+  verify_consistency: npm run verify:consistency
+  test_app: npm run test:app
+  test_server: npm run test:server
+  typecheck: npm run typecheck
+  build_app: npm run build:app
+  verify_topology: tsx scripts/verify/layout/verify-topology.ts
+  verify_layout: tsx scripts/verify/layout/verify-layout.ts
+  verify_point_placement: tsx scripts/verify/placement/verify-point-placement.ts
+  verify_data_consistency: tsx scripts/verify/data/verify-data-consistency.ts
+  generate_render_facts: npm run generate:project-render-facts
+  generate_render_config: npm run generate:render-config
+  selection_rule: run only commands relevant to approved scope plus mandatory project checks; record command, version/time, result, and output ref
+browser:
+  wrapper: $HOME/.local/bin/agent-browser
+  session_format: bontop-<uuid>
+  session_policy: one stable exclusive session per Agent; serial open/wait/ready/runtime-query/snapshot/screenshot/close
+  lifecycle: open -> wait --load networkidle -> poll window.__APP__.isReady() -> inspect banner/objectIds/camera -> snapshot -i -c -> screenshot PNG -> validate -> close
+  ready_signal: window.__APP__.isReady()
+  ready_is_required: true
+  runtime_queries:
+    app_ready: window.__APP__.isReady()
+    object_lookup: query runtime scene/object registry by stable objectId; record existence, type, transform, and relevant bounding box
+    camera_lookup: query active camera mode, position, and target; prove is_overview=false for target evidence
+    banner_lookup: query config error banner text; it must be empty
+  evidence_requirements:
+    - record URL and page title
+    - business ready signal returns true; document.readyState/networkidle/canvas are insufficient
+    - config error banner is empty
+    - target objectIds exist and runtime query is recorded
+    - camera is a target view, not overview
+    - snapshot is retained
+    - PNG exists, is readable, and non-empty
+coordinates:
+  system: Three.js right-handed; Y axis up; horizontal plane uses x/z
+  axis:
+    x: east-west; +x=east, -x=west
+    y: vertical height
+    z: north-south; +z=south, -z=north
+  top_view: north is up (-z), south is down (+z)
+  model_geometry:
+    rooms: center coordinates x/z; width/depth are total dimensions
+    room_edges: west=x-width/2; east=x+width/2; north=z-depth/2; south=z+depth/2
+    walls: corner endpoints x1,z1 and x2,z2
+    room_center_from_edges: x=(west+east)/2; z=(north+south)/2
+    local_dxf_conversion: DXF_mm=(local_m+origin)/scale; local_m=DXF_mm*scale-origin
+wall_and_placement_rules:
+  - before moving furniture or electrical, confirm target wall is solid, drillable, and not in overlay suppress; ask user when unclear
+  - curtain_run or suppressed wall cannot mount TV, outlets, hanging items, or cabinets
+  - wall-mounted electrical/plumbing points on a wall line require explicit wall_side
+  - cross-check furniture and electrical placement; deviation over 1.5m is an alarm
+  - never infer a target wall from guessed x/z/rotation or screenshot pixels
+  - placed furnishings expose x/z/rotation; count-only furnishings feed budget/inventory only
+collision_and_camera_rules:
+  collision_required: [wall, curtain_run]
+  collision_not_required: [floor_region, bay_sill, railing_run, glass_infill, shower_screen]
+  collision_source: app/src/scene/collision-utils.ts
+  first_person: pitch clamp remains ±80 degrees and rotation retains smooth damping
+  camera_animator: CameraAnimator.interrupt() stops at current position and never jumps to animation endpoint
+  required_checks:
+    - changes to FirstPersonController rotation require npm run test:app
+    - changes to CollisionDetector, extractCollisionWalls, or CameraAnimator require npm run test:app and npm run verify:all
+source_update_rules:
+  - geometry changes preserve topology and synchronize required house.yaml mirror fields
+  - furnishing placement changes require npm run verify:furniture
+  - geometry, electrical, or furniture changes require npm run verify:all
+  - use npm run verify:consistency when data/mirror consistency is in scope
+  - generated files and render outputs are never edited directly; use source authority and declared generator
+  - documentation-only work does not modify config, render code, or generated artifacts

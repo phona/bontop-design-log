@@ -1,0 +1,51 @@
+schema: interior-design-decision-brief/v3
+project: ""
+iteration_id: ""
+subject: ""
+priority:
+  user_goal: ""
+  ranked: []
+  non_negotiables: []
+  tradeoffs_accepted: []
+frozen: false
+freeze_record:
+  alignment_id: null
+  original_user_response: null
+  normalized_decisions: []
+  confirmed_by_user: false
+  confirmed_at: null
+  evidence_refs: []
+allowed_scope:
+  files: []
+  objects: []
+  archetypes: []
+  views: [] # plan | elevation | section | perspective
+  changes: []
+forbidden:
+  files: []
+  objects: []
+  assumptions: []
+  out_of_scope_changes: []
+open_questions:
+  - id: ""
+    category: geometry # geometry | material | function | preference | wall | mep | maintenance | construction | evidence
+    question: ""
+    fact_refs: []
+    options: []
+    selected: null
+    user_response: null
+    status: open # open | answered | paused | site_pending
+alignment:
+  records: []
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands: []
+  browser_evidence_required: true
+  required_views: []
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: required # required | not_applicable | pending
+  blocking_issues: []
+  done_when: []
+  delivery_notes_required: true

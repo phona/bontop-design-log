@@ -1,0 +1,40 @@
+schema: interior-design-fact-table/v3
+project: ""
+iteration_id: ""
+subject: ""
+created_at: ""
+status: draft # draft | aligned | frozen | blocked | superseded
+source_policy:
+  authority_refs: []
+  observation_refs: []
+  measurement_refs: []
+  runtime_refs: []
+  evidence_refs: []
+entry_shape:
+  id: ""
+  category: confirmed # confirmed | inferred | user_decision | site_pending
+  statement: ""
+  value: null
+  source_refs: []
+  basis: ""
+  confidence: high # high | medium | low | not_applicable
+  impact: material # none | low | material | blocking
+  affected_objects: []
+  affected_views: [] # plan | elevation | section | perspective
+  owner: ""
+  status: open # open | resolved | superseded
+  verification_method: ""
+  user_confirmation_ref: null
+facts:
+  confirmed: []
+  inferred: []
+  user_decision: []
+  site_pending: []
+unknowns_requiring_alignment:
+  - id: ""
+    question: ""
+    reason_result_changes: ""
+    fact_refs: []
+    option_refs: []
+    status: open # open | asked | answered | paused | site_pending
+notes: []
