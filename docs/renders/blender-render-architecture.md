@@ -24,6 +24,21 @@ PNG + .meta.json
 - Blender 读取 GLB 和生成的 render config/facts，进行材质、贴图、灯光、天空/HDRI、相机和渲染预览后处理。
 - Blender 不回写 Web/CLI 源文件，也不把渲染预览中的候选模型自动升级为正式设计。
 - Blender 中出现的 `render-only` 对象必须有显式标记；不能因为它是“真实资产”就把它误认为正式几何。
+- 多角度决策板是互补证据集合，不是把不同相机拼成一张虚假的物理全景；索引见 `data/render-decision-boards.json`。
+
+## 1.1 多角度决策板与并行渲染
+
+单一相机受真实墙体、门洞、家具和隔断遮挡时，使用多角度决策板覆盖不同问题：
+
+- `entrance_context`：入口印象、空间氛围和主要体量；
+- `fixture_relationship`：家具、洁具、设备和固定构件之间的关系；
+- `material_detail`：材质、纹理、五金、窗帘或节点特写；
+- `auxiliary_view`：高位、俯视或其他辅助关系图；
+- `failed_auxiliary`：明确记录未达到决策门槛的视角，不得当作正式证据。
+
+每个视图必须记录 `room`、`camera`、`scenario`、`bundle`、PNG 路径、尺寸、SHA-256、用途和 `truth`（`physical_camera` 或 `auxiliary_view`）。决策板必须显式标记 `notASinglePhysicalView`，禁止无标签地拼接不同视点、灯光或透视结果。
+
+房间之间可以并行渲染：每个房间使用独立 bundle、远程输出目录和日志；共享源代码、共享配置和 bundle 构建仍由主控串行修改与冻结。只有在各自 PNG 已下载并通过 `ReadMediaFile` 审查后，才能把视图加入决策板或升格为正式证据。
 
 ## 2. Web/CLI 定稿几何与 Blender 预览替换边界
 
@@ -233,7 +248,92 @@ bundle 的核心交付文件是 `manifest.json`、`house.glb`、`render-config.j
 
 当前构建器不会启动浏览器、Blender 或云端渲染；不要把 bundle 构建成功误写成远程 workflow 已修复，也不要把 verifier 通过误写成视觉验收已完成。
 
-## 8. 新功能 checklist
+## 8. preview / formal 模式与 CLI 约定
+
+`preview` 和 `formal` 是本项目的运行约定，不是 `run-blender.sh` 或 `dress_scene.py` 的额外 `--mode` 参数。两种模式使用同一套 Blender 场景编排和输入契约；差别在于输入是否已冻结、追溯要求和验收门槛。
+
+### 8.1 preview 模式
+
+preview 用于快速比较材质、灯光、环境、相机和允许的 render-only staging。它可以使用工作树中的当前输入，也可以使用已生成 bundle；允许低分辨率、较少 samples、单机位或单场景，以及 `--mat-override`。preview 的结果只用于评审，不得被表述为正式交付或视觉验收通过。
+
+示例：
+
+```bash
+# 使用已有 GLB 和生成的 render config，只渲一个机位/工况
+scripts/run-blender.sh \\
+  --glb tmp/preview/house.glb \\
+  --config scripts/blender/render-config.json \\
+  --config-dir . \\
+  --out-dir tmp/preview/out \\
+  --engine EEVEE --version preview-001 \\
+  --only living --scenario daylight --res 50 --samples 64
+
+# 在同一机位比较候选材质；每个候选应单独输出一组 PNG
+scripts/run-blender.sh \\
+  --glb tmp/preview/house.glb \\
+  --config scripts/blender/render-config.json \\
+  --out-dir tmp/preview/material-wall-warm \\
+  --version preview-wall-warm \\
+  --only living --scenario daylight \\
+  --mat-override 'wall=#f5f1e8' --res 50 --samples 64
+```
+
+preview 的边界：
+
+- 可以改变 Blender 运行时材质、灯光、World/HDRI、曝光、相机和明确的 render-only 对象；不能改变 GLB 建筑、正式布局、预算、碰撞或上游配置。
+- 可以暂时使用 dirty source 或未绑定 manifest 的输入，但 sidecar 必须明确记录 `status: unbound`（若未绑定）；这类 PNG 不能作为可复现交付物。
+- `--mat-override` 只影响本次渲染，不回写 `config/materials.yaml`；preview 结束后不得把候选材质或 render-only 对象当作正式设计。
+- preview 最低检查是命令成功、输出 PNG 与 `.png.meta.json` 成对生成，并确认机位/工况正确；它不等同于 bundle verifier 或视觉验收。
+
+### 8.2 formal 模式
+
+formal 用于可追溯的正式渲染输出。必须先从当前正式源构建一个新 bundle，再绑定 manifest 渲染；正式模式不接受手工修改 bundle 内的 `manifest.json`、GLB、facts 或 render config，也不把 Blender staging 写回上游源文件。
+
+推荐流程：
+
+```bash
+# 无手工 Web GLB 时，由 shared builder 导出正式 GLB
+npm run build:render-bundle -- \\
+  --output-dir tmp/formal-bundle-001
+
+# 若已有 Web 手动导出的 GLB，显式记录其来源
+npm run build:render-bundle -- \\
+  --glb /path/to/house.glb \\
+  --output-dir tmp/formal-bundle-001
+
+# 绑定 manifest 执行正式渲染；可用 --only/--scenario 做正式批次拆分
+scripts/run-blender.sh \\
+  --glb tmp/formal-bundle-001/house.glb \\
+  --config tmp/formal-bundle-001/render-config.json \\
+  --config-dir tmp/formal-bundle-001 \\
+  --manifest tmp/formal-bundle-001/manifest.json \\
+  --out-dir tmp/formal-bundle-001/renders \\
+  --engine CYCLES --version formal-001
+
+npm run verify:render-bundle -- \\
+  --bundle tmp/formal-bundle-001
+```
+
+正式模式的边界与要求：
+
+- 正式 GLB 必须来自 `manual_web_export` 或 `cli_shared_builder`，且 bundle 内固定为 `house.glb`；bundle 目录必须为空或不存在，构建器拒绝覆盖非空目录。
+- 默认要求 clean source。若确实要记录未提交改动，只有构建 bundle 时显式使用 `--allow-dirty`；manifest 必须保留 dirty porcelain，这种产物应标为 dirty formal batch，不得冒充 clean、可复现交付。
+- 正式渲染必须传入同一 bundle 的 `--manifest`，以校验资源、产物和 source input fingerprints；未绑定 manifest 的输出只能归入 preview。
+- 正式批次不得使用 `--mat-override` 或临时替换正式源数据；允许的 replacement 和 render-only staging 仍须遵守本文件的实例 key、实体墙、玻璃幕墙和 fallback 规则。
+- 正式输出的 `.png.meta.json` 必须与 manifest fingerprints、scenario、camera 和 curtain snapshot 一致；sidecar 追溯通过不代表画面视觉验收通过。
+
+### 8.3 验收分层
+
+按以下顺序记录结果，避免把脚本校验误写成视觉结论：
+
+1. **输入验收**：`manifest.json` schema、GLB、facts、render config、资源路径和 SHA-256 通过 `npm run verify:render-bundle -- --bundle <dir>`；若是 clean bundle，还必须没有 source input drift。
+2. **运行验收**：Blender 命令成功；预期的相机×scenario 输出齐全；每张 PNG 都有 sidecar；对象、mesh、light、camera、collection 数量没有因 job 累积异常增长。
+3. **契约验收**：sidecar 的 `scenario`、`camera`、curtain policy/snapshot 和 fingerprints 正确；正式 replacement 不重复；render-only 有明确 metadata，且没有写回正式源。
+4. **视觉验收**：按项目 acceptance checklist 逐张检查构图、建筑边界、材质、灯光、玻璃、窗帘、家具遮挡和明显重复/穿插。只有这一步通过，才能写“视觉验收通过”；前三级通过只能写“脚本/追溯通过”。
+
+边界条件：输入 GLB、render config、manifest、HDRI 或贴图缺失时应失败并修复输入，不应在 Blender 猜测或重建正式几何；单个资产导入失败时按既有规则保留正式/程序化 fallback。任何发现墙体、门窗、玻璃幕墙、房间边界或正式家具位置错误的结果，都应回到 Web/CLI/配置层修复，而不是在 Blender 中遮盖。
+
+## 9. 新功能 checklist
 
 新增 Blender 渲染功能前，至少确认：
 

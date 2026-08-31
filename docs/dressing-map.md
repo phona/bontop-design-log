@@ -1,6 +1,6 @@
 # 装扮映射表（Twinmotion 云渲染用）
 
-生成：2026-08-26，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-08-29，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
 用法：glb 导入 Twinmotion 后按本表替换材质/家具/灯光；reimport 同名 glb 时材质覆盖按节点名保留。
 
@@ -70,14 +70,14 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | bedroom_nw | mattress_150 | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_nw | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_nw | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| bedroom_se | desk | 1 | 1.2×0.6 | (13.7, 7.25) / 90° |
-| bedroom_se | chair | 1 | 0.5×0.5 | (14.25, 7.25) / 270° |
-| bedroom_se | wardrobe_180 | 1 | 1.8×0.6 | (16.1, 6.75) / 90° |
-| bedroom_se | rubber_training_mat | 1 | 1.8×1.6 | (14.9, 8.5) / 90° |
-| bedroom_se | squat_rack | 1 | 1.18×0.95 | (14.9, 8.45) / 90° |
-| bedroom_se | bench_adjustable | 1 | 1.24×0.55 | (14.75, 8.45) / 0° |
-| bedroom_se | barbell_olympic | 1 | 2.2×0.08 | (15.4, 8.45) / 90° |
-| bedroom_se | weight_plate_set | 1 | 0.63×0.42 | (13.75, 8.4) / 0° |
+| bedroom_se | desk | 1 | 1.2×0.6 | (13.7, 8.05) / 90° |
+| bedroom_se | chair | 1 | 0.5×0.5 | (14.4, 8.05) / 270° |
+| bedroom_se | low_room_cabinet | 1 | 0.4×1.2 | (16.15, 8.05) / 0° |
+| bedroom_se | rubber_training_mat | 1 | 1.8×1.6 | (15.2, 6.6) / 0° |
+| bedroom_se | squat_rack | 1 | 1.515×0.95 | (15.2, 6.65) / 0° |
+| bedroom_se | bench_adjustable | 1 | 1.24×0.55 | (15.2, 6.65) / 90° |
+| bedroom_se | barbell_olympic | 1 | 2.2×0.08 | (15.2, 6.65) / 0° |
+| bedroom_se | weight_plate_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_se | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_se | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | study | bed_150 | 1 | 1.5×2 | (5.2, 7.75) / 90° |
@@ -100,6 +100,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | living_dining | curtain_set | 2 | — | count-only（不在 glb，按实物补摆） |
 | living_dining | ceiling_light | 2 | — | count-only（不在 glb，按实物补摆） |
 | kitchen | kitchen_cabinet_run | 3 | （体块无尺寸记录） | (7.86, 0.32) / 0°；(9.94, 0.32) / 0°；(10.48, 1) / 90° |
+| kitchen | kitchen_countertop_bridge | 1 | 0.6×0.6 | (8.8, 0.32) / 0° |
 | kitchen | dishwasher | 1 | 0.6×0.6 | (8.8, 0.3) / 0° |
 | kitchen | fridge | 1 | 0.7×0.7 | (10.45, 2.05) / 90° |
 | kitchen | gas_stove | 1 | 0.75×0.6 | (10.5, 1.18) / 90° |
@@ -110,18 +111,20 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | kitchen | countertop_quartz | 5 | — | count-only（不在 glb，按实物补摆） |
 | kitchen | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bath | toilet | 1 | 0.4×0.6 | (2.3, 1.5) / 270° |
+| master_bath | towel_set | 1 | 0.04×0.28 | (0.24, 2.23) / 0° |
 | master_bath | exhaust_fan | 1 | 0.3×0.3 | (1, 2.7) |
 | master_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bath | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | toilet | 1 | 0.4×0.6 | (6.80, 2.65) / 270°，靠东墙坐东朝西 |
-| guest_bath | vanity | 1 | 0.8×0.4 | (6.90, 3.90) / 270°，南侧开放区背靠东墙、正面朝西；AABB x[6.70,7.10] z[3.50,4.30] |
+| guest_bath | vanity | 1 | 0.8×0.4 | (6.9, 3.9) / 270° |
+| guest_bath | toilet | 1 | 0.4×0.6 | (6.75, 3.05) / 270° |
 | guest_bath | exhaust_fan | 1 | 0.3×0.3 | (6.35, 2.45) |
-| guest_bath | shower_set | 1 | — | count-only（不在 glb，花洒挂东墙 west、z≈2.45，坐东朝西；马桶与淋浴间以横向玻璃屏分隔，西端为玻璃门入口） |
-| guest_bath | faucet | 1 | — | count-only（不在 glb，南侧开放洗漱区） |
+| guest_bath | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
+| guest_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
+| guest_bath | towel_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | guest_bath | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | balcony | washer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
 | balcony | dryer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
-| balcony | water_heater | 1 | 0.36×0.16 | (7.1, 1.25) / 270° |
+| kitchen | water_heater | 1 | 0.36×0.16 | (7.3, 1.0) / 270°，厨房西侧靠玻璃幕墙实体墙 |
 | balcony | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | entry_garden | garden_entry_station | 1 | 1.1×0.38 | (15.02, 1.35) / 270° |
 | entry_garden | shoe_cabinet | 1 | — | count-only（不在 glb，按实物补摆） |
@@ -132,20 +135,20 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | id | 房间 | 类型 | 位置 (x, z) | 高度 (m) | 色温 (K) | 回路 | 备注 |
 |---|---|---|---|---|---|---|---|
 | light_dining_pendant | living_dining | 吊灯 | (7.9, 3.45) | 2.8 | 3000 | dining | 餐桌吊灯天花出线（DEC-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm |
-| living_track_main | living_dining | 明装轨道灯 | (10.8, 7.15) | 2.8 | 3000 | living_base | 一条黑色明装轨道、5灯头，客厅基础光回路；无新增吊顶/电视背景墙 |
+| living_track_main | living_dining | 明装轨道灯 | (10.8, 7.15) | 2.8 | 3000 | living_base | 一条黑色明装约2.8m短轨、4灯头，客厅基础光回路；无新增吊顶/电视背景墙 |
 | light_tv_strip | living_dining | 灯带 | (7.2, 7.7) | 2 | 3000 | tv_ambient | 电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-013） |
 | light_master_dome | master_bedroom | 吸顶灯 | (2.6, 7.6) | 2.8 | 3000 | — | 主卧吸顶灯 |
 | light_master_wall_l | master_bedroom | 壁灯 | (4.2, 7.2) | 1.6 | 3000 | — | 主卧床头壁灯左（东墙随床头，黄铜壁灯方向；灯光升级待决策项） |
 | light_master_wall_r | master_bedroom | 壁灯 | (4.2, 8.55) | 1.6 | 3000 | — | 主卧床头壁灯右（东墙随床头） |
 | light_parent_dome | study | 吸顶灯 | (5.7, 7.675) | 2.8 | 3000 | — | 父母房吸顶灯 |
 | light_child_dome | bedroom_nw | 吸顶灯 | (4.1, 2.7) | 2.8 | 3000 | — | 西北次卧吸顶灯 |
-| light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.8 | 3000 | — | 书房吸顶灯（2026-08-27 南墙凹进后居中） |
+| light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.8 | 3000 | — | 书房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中） |
 | light_corridor_1 | living_dining | 筒灯 | (7.9, 5) | 2.8 | 3000 | entry_base | 走廊口筒灯嵌入既有 ceiling_living 边吊，不新增吊顶；坐标由原 (7.9,5.75) 调整至既有边吊合法范围 (7.9,5.0)，避开电视高柜 x≤7.55，并仍靠近原走廊口 |
 | light_entry_down | entry_garden | 筒灯 | (13, 1.45) | 2.8 | 3000 | entry_base | 玄关筒灯 |
 | light_entry_foyer | living_dining | 筒灯 | (12.4, 3.35) | 2.5 | 3000 | entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区 |
 | light_kitchen_panel | kitchen | 吸顶灯 | (9, 1.2) | 2.8 | 4000 | — | 厨房平板灯（4000K 工作区例外） |
 | light_mbath_panel | master_bath | 吸顶灯 | (1.3, 1.98) | 2.8 | 4000 | — | 主卫平板灯（4000K；2026-08-25 隔墙北移 z=2.86 后移至卫内中心 z=1.98） |
-| light_gbath_panel | guest_bath | 吸顶灯 | (6.35, 2.78) | 2.8 | 4000 | — | 客卫平板灯（南侧马桶/北侧淋浴分区中部） |
+| light_gbath_panel | guest_bath | 吸顶灯 | (6.35, 2.78) | 2.8 | 4000 | — | 客卫平板灯（4000K；2026-08-29 按南马桶/北淋浴分区调整至内卫中部，待量房确认） |
 
 ### 后续深化预留（当前未实施点位）
 厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。

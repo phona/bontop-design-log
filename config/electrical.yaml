@@ -422,13 +422,13 @@
 
 - id: switch_gbath
   room: guest_bath
-  wall: w_gbath_south
-  wall_side: north
+  wall: w_gbath_west_open_vanity
+  wall_side: east
   type: switch
-  x: 6.35
-  z: 3.55
+  x: 5.60
+  z: 3.925
   height: 1.3
-  note: "2026-08-29 客卫灯光开关；南侧外门东侧实体门垛，d_gbath 门洞西移至 x[5.60,6.30] 后避开门洞与马桶 AABB"
+  note: "客卫灯光开关；移至 w_gbath_west_open_vanity 东侧墙面，位于开放洗漱区墙段 z[3.55,4.30] 中部，避开 d_gbath 门洞与 vanity"
 
 - id: sock_gbath_exhaust
   room: guest_bath
@@ -463,14 +463,15 @@
   note: "烘干机插座（叠放）"
 
 - id: sock_balcony_waterheater
-  room: balcony
+  room: kitchen
   wall: w_vrv_east
+  wall_side: east
   type: socket
-  x: 7.20
-  z: 1.0
+  x: 7.30
+  z: 1.00
   height: 1.8
   count: 1
-  note: "燃气热水器插座（⚠️热水器位置未定案：house.yaml 为'厨房或入户花园，待设计师确定'，本点位为阳台暂定，定案前不作为施工依据；生活阳台已被玻璃幕封闭，若挂阳台，排烟出幕墙与燃气路由需物业/燃气公司确认（CO 安全）；量房定案后若改位需同步移点，见 pending-site-data.md #26）"
+  note: "燃气热水器插座；热水器挂厨房西侧、靠生活阳台玻璃幕墙的 w_vrv_east 实体墙厨房侧，避开 w_balc_east 阳台门洞；排烟与燃气路由需物业/燃气公司确认（CO 安全），见 pending-site-data.md #26"
 
 # 入户后左手边玄关墙：现场照片确认箱体位置与规格。
 # x/z 为局部坐标系下的协调定位；墙体/侧别已按现场复核入口方案更新，仍不得据此生成施工级走线。

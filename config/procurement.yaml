@@ -82,7 +82,7 @@ materials:
 
   - id: gas_water_heater_01
     name: "16L恒温燃气热水器"
-    room: balcony
+    room: kitchen
     category: water_heater
     current_stage: selection
     waste_rate: 1

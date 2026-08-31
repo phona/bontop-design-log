@@ -38,6 +38,12 @@ elements:
     type: curtain_run
     closed: false
     walls: [w_west_lower, w_west_mid, w_west_upper, w_mb_south, w_st_south]
+    parts:
+      - { id: w_west_lower, wall: w_west_lower }
+      - { id: w_west_mid, wall: w_west_mid }
+      - { id: w_west_upper, wall: w_west_upper }
+      - { id: w_mb_south, wall: w_mb_south }
+      - { id: w_st_south, wall: w_st_south }
     height: 2.8
 
   # VRV 西北角 + 西墙栏杆 (弧 r=1.0)

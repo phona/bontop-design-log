@@ -57,9 +57,9 @@
   wall_side: west
   type: faucet
   x: 7.05
-  z: 3.55
-  height: 0.8
-  note: "2026-08-29 客卫南侧开放区实际 vanity 给水：东侧延伸实体墙西侧（wall_side=west），服务 vanity 中心 (6.90,3.90)，背面朝东、正面朝西；开放区 z=3.55..4.30，给排水与墙体条件最终按现场复核"
+  z: 3.90
+  height: 0.84
+  note: "客卫洗手池龙头：复用标准 faucet 模型，东侧延伸实体墙西侧（wall_side=west），中心线 z=3.90，底座标高约0.84m，贴近0.77m台面并避开台盆；墙体挂载与给排水按现场复核"
 
 - id: shower_gbath
   room: guest_bath

@@ -1011,7 +1011,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   gas_stove: { width: 0.75, depth: 0.6 },
   range_hood: { width: 0.9, depth: 0.5 },
   sink: { width: 0.8, depth: 0.6 },
-  vanity: { width: 0.8, depth: 0.4 },
+  vanity: { width: 0.7, depth: 0.4 }, // 客卫开放洗漱墙段收窄至 0.75m 内，确保居中后不越界
   toilet: { width: 0.4, depth: 0.6 }, // 2026-08-21 马桶落位（对齐 FixtureFactory 模型 footprint）
   exhaust_fan: { width: 0.3, depth: 0.3 },
   washer: { width: 0.6, depth: 0.6 }, // 2026-08-23 阳台洗烘叠放（贴 w_balc_west，与 dryer 同 footprint）

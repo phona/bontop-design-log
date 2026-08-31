@@ -359,12 +359,12 @@ mechanical_electrical_plumbing:
 
   hot_water:
     system: "燃气热水器"
-    location: "厨房或入户花园（待设计师确定）"
+    location: "厨房西侧靠生活阳台玻璃幕墙的实体墙（暂定位）"
     notes:
       - "是否做零冷水循环待业主和设计师确认"
       - "燃气管道位置需现场确认"
-      - "electrical.yaml sock_balcony_waterheater 为阳台暂定电位，位置定案前不作为施工依据（见 pending-site-data.md #26）"
-      - "生活阳台已被开发商玻璃幕封闭：若最终挂阳台，排烟出幕墙与燃气路由需物业/燃气公司确认（CO 安全红线）"
+      - "热水器挂 w_vrv_east 实体墙厨房侧，避开 w_balc_east 阳台门洞；sock_balcony_waterheater 为协调点位"
+      - "生活阳台玻璃幕墙及排烟/燃气路由需物业/燃气公司确认（CO 安全红线），见 pending-site-data.md #26"
 
   electrical:
     power:
@@ -501,6 +501,8 @@ furnishings:
     - { type: gas_stove, x: 10.50, z: 1.18, rotation: 90 }  # DEC-021 东墙灶台北移
     - { type: range_hood, x: 10.50, z: 1.18, rotation: 90 } # DEC-021 灶台上方烟机
     - { type: sink, x: 9.50, z: 0.30, rotation: 0 }         # DEC-013 北墙水槽
+    # 热水器挂厨房西侧、靠生活阳台玻璃幕墙的 w_vrv_east 实体墙厨房侧，避开阳台门洞和北墙地柜；燃气路由/CO 安全红线待物业/燃气公司确认
+    - { type: water_heater, x: 7.30, z: 1.00, rotation: 270 }
     - { type: ceiling_light }
   master_bath:
     - { type: toilet, x: 2.30, z: 1.50, rotation: 270 }  # 2026-08-21 落位：贴东墙面朝西，对齐马桶给水/插座 z=1.5
@@ -510,8 +512,8 @@ furnishings:
     - { type: ceiling_light }
     - { type: exhaust_fan, x: 1.00, z: 2.70 }                # DEC-019 湿区中心吊顶，避开内开门扇扫掠区
   guest_bath:
-    # 南侧开放洗漱区纳入 guest_bath 语义边界；vanity 0.8×0.4，靠东侧延伸墙西侧布置，背面朝东、正面朝西，rotation=270 后 AABB x[6.70,7.10] z[3.50,4.30]；东侧开放墙段 z=3.55..4.30 长0.75m，台体南端不越过 z=4.30；中心 x=6.90 以避让 d_gbath 扫掠，台体靠东墙完成面。马桶中心 x=6.75,z=3.05，真实模型 AABB x[6.525,7.075] z[2.85,3.25]，与玻璃隔断 z=2.80 保持0.05m净距。
-    - { type: vanity, x: 6.90, z: 3.90, rotation: 270 }
+    # 南侧开放洗漱区纳入 guest_bath 语义边界；vanity 0.70×0.40 以 w_gbath_east_open_vanity 西侧完成面为基准，沿墙段 z=3.55..4.30 的中点 z=3.925 布置；中心 x=6.90,z=3.925，背面朝东、正面朝西，rotation=270，台盆、台上龙头与内置镜面共用中心线。
+    - { type: vanity, x: 6.90, z: 3.925, rotation: 270 }
     - { type: faucet }
     - { type: toilet, x: 6.75, z: 3.05, rotation: 270 }      # 2026-08-29 修正：靠东墙坐东朝西；真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于玻璃隔断南侧且不越东墙；南门洞西移后避让 d_gbath 内开扫掠
     - { type: shower_set }
@@ -522,9 +524,6 @@ furnishings:
     # 洗烘叠放贴西墙（给水 faucet_balcony_washer / 墙排 drain_balcony_washer / 插座 sock_balcony_washer 均在 w_balc_west z=1.5）
     - { type: washer, x: 5.95, z: 1.50, rotation: 90 }   # 10kg 滚筒贴西墙面朝东；与插座/给水偏差 0.35m
     - { type: dryer, x: 5.95, z: 1.50, rotation: 90 }    # 热泵烘干机专用支架叠放洗衣机上（承重 ≥120kg，budget-pitfalls laundry_stack）
-    # ⚠️ 暂定位（pending-site-data #26 未定案，不作为施工依据）：挂 w_balc_east 门洞北侧空段西脸，
-    # 邻近暂定电位 sock_balcony_waterheater(7.2,1.0)；燃气路由/CO 安全红线待物业+燃气公司确认
-    - { type: water_heater, x: 7.10, z: 1.25, rotation: 270 }
     - { type: ceiling_light }
   entry_garden:
     # 成品矮鞋柜+自立洞洞板，靠花园东侧落地摆放，避开西墙开关/水龙头/插座。
