@@ -29,14 +29,6 @@ const STATUS_OPACITY: Record<ElectricalTopologyStatus, number> = {
   pending: 0.3,
 };
 
-function orientSegment(mesh: THREE.Mesh, start: THREE.Vector3, end: THREE.Vector3): void {
-  const direction = new THREE.Vector3().subVectors(end, start);
-  const length = direction.length();
-  if (length <= 0) return;
-  mesh.position.copy(start).add(end).multiplyScalar(0.5);
-  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
-}
-
 function pointHeight(point: ElectricalPoint, fallback: number): number {
   return point.type === 'floor_socket' ? 0.08 : point.height ?? point.mount_height ?? fallback;
 }
@@ -91,6 +83,7 @@ export class ElectricalTopologyRenderer {
         circuitIds: topology.circuits.filter((circuit) => circuit.panel_id === panel.id).map((circuit) => circuit.id),
         ...controlMetadata(controlsForPanel(panel.id)),
         pendingParameters: topology.pending_parameters,
+        representation: 'logical',
         notForConstruction: true,
         logicalOnly: true,
       };
@@ -100,8 +93,7 @@ export class ElectricalTopologyRenderer {
 
     for (const circuit of topology.circuits) {
       const panel = panels.get(circuit.panel_id);
-      const from = panelPoints.get(circuit.panel_id);
-      if (!panel || !from) continue;
+      if (!panel || !panelPoints.has(circuit.panel_id)) continue;
       const circuitGroup = new THREE.Group();
       circuitGroup.name = `electrical-topology:circuit:${circuit.id}`;
       circuitGroup.userData = this.circuitUserData(circuit, panel.id, topology.pending_parameters, controlsForCircuit(circuit));
@@ -112,19 +104,16 @@ export class ElectricalTopologyRenderer {
           this.summary.skippedEdges += 1;
           continue;
         }
-        const start = new THREE.Vector3(from.x, pointHeight(from, 1.5), from.z);
-        const end = new THREE.Vector3(member.x, pointHeight(member, 1.25), member.z);
-        const length = start.distanceTo(end);
-        if (length <= 0) {
-          this.summary.skippedEdges += 1;
-          continue;
-        }
         const material = new THREE.MeshBasicMaterial({
           color: PURPOSE_COLORS[circuit.purpose],
           transparent: true,
           opacity: STATUS_OPACITY[circuit.status] * this.opacityMultiplier,
+          depthTest: false,
         });
-        const edge = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, length, 6), material);
+        const edge = new THREE.Mesh(new THREE.RingGeometry(0.10, 0.14, 16), material);
+        edge.name = `electrical-topology:member-marker:${circuit.id}:${memberId}`;
+        edge.rotation.x = -Math.PI / 2;
+        edge.position.set(member.x, pointHeight(member, 1.25), member.z);
         edge.userData = {
           objectId: `electrical-topology:edge:${circuit.id}:${memberId}`,
           type: 'electrical_topology_edge' satisfies ElectricalTopologyTargetKind,
@@ -134,28 +123,12 @@ export class ElectricalTopologyRenderer {
           purpose: circuit.purpose,
           status: circuit.status,
           ...controlMetadata(controlsForCircuit(circuit)),
+          representation: 'logical_membership_marker',
+          relation: 'circuit_membership',
           notForConstruction: true,
           logicalOnly: true,
         };
-        orientSegment(edge, start, end);
         circuitGroup.add(edge);
-        if (circuit.status !== 'confirmed') {
-          const dashed = new THREE.Line(
-            new THREE.BufferGeometry().setFromPoints([start, end]),
-            new THREE.LineDashedMaterial({
-              color: PURPOSE_COLORS[circuit.purpose],
-              transparent: true,
-              opacity: STATUS_OPACITY[circuit.status] * this.opacityMultiplier,
-              dashSize: circuit.status === 'pending' ? 0.12 : 0.2,
-              gapSize: circuit.status === 'pending' ? 0.12 : 0.14,
-              depthTest: false,
-            }),
-          );
-          dashed.computeLineDistances();
-          dashed.userData = { ...edge.userData, interactive: false };
-          dashed.raycast = () => undefined;
-          circuitGroup.add(dashed);
-        }
         edgeCount += 1;
         this.summary.edges += 1;
       }
@@ -237,6 +210,7 @@ export class ElectricalTopologyRenderer {
       dedicatedLoad: circuit.dedicated_load,
       note: circuit.note,
       pendingParameters,
+      representation: 'logical',
       notForConstruction: true,
       logicalOnly: true,
     };

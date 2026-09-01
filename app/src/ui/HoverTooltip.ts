@@ -13,6 +13,7 @@ export interface HoverTarget {
     panelId?: string; memberPointIds?: string[]; memberPointId?: string;
     purpose?: string; status?: string; pendingParameters?: string[];
     controlsIncomplete?: boolean; controlsPending?: boolean; notForConstruction?: boolean;
+    representation?: string; relation?: string;
   };
   ceiling?: Record<string, unknown>;
 }

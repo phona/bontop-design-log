@@ -24,6 +24,7 @@ export interface HoverTarget {
     panelId?: string; memberPointIds?: string[]; memberPointId?: string;
     purpose?: string; status?: string; pendingParameters?: string[];
     controlsIncomplete?: boolean; controlsPending?: boolean; notForConstruction?: boolean;
+    representation?: string; relation?: string;
   };
   ceiling?: { area?: [number, number, number, number]; thickness?: number; type?: string; room?: string; height?: number };
 }
@@ -166,7 +167,7 @@ export class InfoPanel {
       if (m.notForConstruction) fields.push(['提示', '非施工依据 / 待现场确认']);
     } else if (target.electricalTopology) {
       const e = target.electricalTopology;
-      title.textContent = '电气逻辑关系（非施工实体走线）';
+      title.textContent = '电气回路归属（非施工路径）';
       if (e.panelId) fields.push(['面板', e.panelId]);
       if (e.circuitIds.length) fields.push(['回路', e.circuitIds.join('，')]);
       if (e.purpose) {
@@ -181,7 +182,9 @@ export class InfoPanel {
       if (e.controlsPending) fields.push(['控制状态', '待确认']);
       if (e.notes.length) fields.push(['说明', e.notes.join('；')]);
       if (e.pendingParameters?.length) fields.push(['待定参数', e.pendingParameters.join('；')]);
-      fields.push(['提示', '非施工实体逻辑关系，仅用于表达回路与控制关系']);
+      if (e.relation) fields.push(['关系', e.relation]);
+      if (e.representation) fields.push(['表示', e.representation]);
+      fields.push(['提示', '仅表示面板—回路—点位归属，不表示电缆、线管或墙内/吊顶内/地面施工路径']);
     } else if (target.ceiling) {
       const c = target.ceiling;
       if (c.room) fields.push(['房间', c.room]);

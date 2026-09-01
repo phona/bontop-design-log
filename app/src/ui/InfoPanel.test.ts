@@ -141,7 +141,7 @@ describe('InfoPanel', () => {
     expect(created.some((element) => element.textContent === '关联控制组：')).toBe(true);
     expect(created.some((element) => element.textContent === '未闭合')).toBe(true);
     expect(created.some((element) => element.textContent === '待确认')).toBe(true);
-    expect(created.some((element) => element.textContent === '非施工实体逻辑关系，仅用于表达回路与控制关系')).toBe(true);
+    expect(created.some((element) => element.textContent === '仅表示面板—回路—点位归属，不表示电缆、线管或墙内/吊顶内/地面施工路径')).toBe(true);
   });
 
   it('calls onSelectOption with room scope', () => {

@@ -22,7 +22,7 @@ const topology: ElectricalTopology = {
 };
 
 describe('ElectricalTopologyRenderer', () => {
-  it('renders panel-to-member logical edges in view-only root with purpose/status metadata', () => {
+  it('renders member markers at real point coordinates with logical metadata', () => {
     const viewOnly = new THREE.Group();
     const renderer = new ElectricalTopologyRenderer(viewOnly);
     renderer.render(topology, points);
@@ -30,15 +30,20 @@ describe('ElectricalTopologyRenderer', () => {
     expect(viewOnly.children).toContain(renderer.group);
     expect(renderer.getSummary()).toEqual({ panels: 1, circuits: 3, edges: 3, skippedEdges: 0 });
     expect(renderer.group.name).toBe('ELECTRICAL_TOPOLOGY_LOGIC_VIEW_ONLY');
+    expect(renderer.group.children[0].userData).toMatchObject({ representation: 'logical', logicalOnly: true, notForConstruction: true });
     expect(renderer.getCircuitObject('lighting')?.userData).toMatchObject({
-      type: 'electrical_topology_circuit', purpose: 'lighting', notForConstruction: true,
+      type: 'electrical_topology_circuit', purpose: 'lighting', representation: 'logical', notForConstruction: true,
       controlIds: ['light_control'], controlsIncomplete: true, controlsPending: true,
     });
-    const edge = renderer.getCircuitObject('hvac')?.children.find((child) => child.userData.type === 'electrical_topology_edge');
-    expect(edge?.userData).toMatchObject({ circuitId: 'hvac', memberPointId: 'ac', status: 'pending', logicalOnly: true });
+    const marker = renderer.getCircuitObject('hvac')?.children.find((child) => child.userData.type === 'electrical_topology_edge') as THREE.Mesh;
+    expect(marker.userData).toMatchObject({ circuitId: 'hvac', memberPointId: 'ac', status: 'pending', logicalOnly: true, notForConstruction: true, representation: 'logical_membership_marker', relation: 'circuit_membership' });
+    expect(marker.position.toArray()).toEqual([3, 0.4, 1]);
+    expect(marker.geometry).toBeInstanceOf(THREE.RingGeometry);
+    expect(renderer.group.children.flatMap((child) => child.children).some((child) => (child as THREE.Mesh).geometry instanceof THREE.CylinderGeometry)).toBe(false);
+    expect(renderer.group.children.flatMap((child) => child.children).every((child) => !('route' in child.userData) && !('path' in child.userData))).toBe(true);
     renderer.setPurposeVisible('hvac_power', false);
     expect(renderer.getCircuitObject('hvac')?.visible).toBe(false);
-    expect(renderer.getCircuitObject('ordinary')?.userData).toMatchObject({ purpose: 'ordinary_power', status: 'proposed', logicalOnly: true, notForConstruction: true });
+    expect(renderer.getCircuitObject('ordinary')?.userData).toMatchObject({ purpose: 'ordinary_power', status: 'proposed', representation: 'logical', logicalOnly: true, notForConstruction: true });
     renderer.setPurposeVisible('ordinary_power', false);
     expect(renderer.getCircuitObject('ordinary')?.visible).toBe(false);
     renderer.dispose();

@@ -1293,7 +1293,7 @@ export class HouseScene implements SceneApi {
         electricalTopology: type.startsWith('electrical_topology_') ? {
           circuitIds: data.circuitId ? [String(data.circuitId)] : (data.circuitIds as string[] | undefined) ?? [],
           controlIds: Array.isArray(data.controlIds) ? data.controlIds.filter((id): id is string => typeof id === 'string') : [],
-          notes: [data.note, ...(Array.isArray(data.notes) ? data.notes : []), data.notForConstruction ? '电气逻辑关系 / 非施工实体走线' : ''].filter((note): note is string => typeof note === 'string' && note.length > 0),
+          notes: [data.note, ...(Array.isArray(data.notes) ? data.notes : []), data.notForConstruction ? '仅表示面板—回路—点位归属，不表示施工路径' : ''].filter((note): note is string => typeof note === 'string' && note.length > 0),
           panelId: data.panelId as string | undefined,
           memberPointIds: data.memberPointIds as string[] | undefined,
           memberPointId: data.memberPointId as string | undefined,
@@ -1302,6 +1302,8 @@ export class HouseScene implements SceneApi {
           pendingParameters: data.pendingParameters as string[] | undefined,
           controlsIncomplete: data.controlsIncomplete === true,
           controlsPending: data.controlsPending === true,
+          representation: data.representation as string | undefined,
+          relation: data.relation as string | undefined,
           notForConstruction: Boolean(data.notForConstruction ?? data.not_for_construction),
         } : undefined,
         ceiling: type === 'ceiling_zone' || type === 'ceiling_zone_solid' ? data.ceiling as { area?: [number, number, number, number]; thickness?: number; type?: string; room?: string; height?: number } | undefined : undefined,
