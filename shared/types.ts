@@ -574,6 +574,10 @@ export interface WallDef {
   to: string;
   height: number;
   openings?: OpeningDef[];
+  /** 结构类型：shear=剪力墙(禁开横槽/慎穿孔), fill=填充墙, curtain=幕墙(禁挂载), new_partition=新建隔墙 */
+  structure?: 'shear' | 'fill' | 'curtain' | 'new_partition';
+  /** 结构类型来源：confirmed=交房实测/图纸确认, inferred=邻户同户型图推断 */
+  structure_status?: 'confirmed' | 'inferred';
 }
 
 export interface RoomDef {
@@ -624,6 +628,8 @@ export interface ResolvedWall {
   arcCenterZ?: number;
   rooms?: string[];
   bayRooms?: string[];
+  structure?: 'shear' | 'fill' | 'curtain' | 'new_partition';
+  structure_status?: 'confirmed' | 'inferred';
 }
 
 export interface ResolvedLayout {

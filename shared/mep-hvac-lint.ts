@@ -24,7 +24,7 @@ export interface MepLintLayoutContext {
   layout?: ResolvedLayout;
   ceiling?: CeilingZone[];
   suppressedWallIds?: Set<string> | string[];
-  referenceConstraints?: Array<{ id: string; range: { x1: number; x2: number; z1: number; z2: number }; reason?: string }>;
+  referenceConstraints?: Array<{ id: string; range: { x1: number; x2: number; z1: number; z2: number }; reason?: string; status?: string; reference_beam_bottom_y?: number }>;
 }
 
 type Point = { x: number; y?: number; z: number };
@@ -109,6 +109,37 @@ function wallCrosses(points: Point[], wall: { x1: number; z1: number; x2: number
   for (let i = 1; i < points.length; i += 1) if (segmentsCross(points[i - 1], points[i], wallStart, wallEnd)) return true;
   return false;
 }
+function segmentIntersection(a: Point, b: Point, c: Point, d: Point): { x: number; z: number } | undefined {
+  const d1x = b.x - a.x, d1z = b.z - a.z, d2x = d.x - c.x, d2z = d.z - c.z;
+  const denom = d1x * d2z - d1z * d2x;
+  if (Math.abs(denom) < 1e-12) return undefined;
+  const t = ((c.x - a.x) * d2z - (c.z - a.z) * d2x) / denom;
+  return { x: a.x + t * d1x, z: a.z + t * d1z };
+}
+function routeWallIntersection(points: Point[], wall: { x1: number; z1: number; x2: number; z2: number }): { x: number; z: number } | undefined {
+  const wallStart = { x: wall.x1, z: wall.z1 };
+  const wallEnd = { x: wall.x2, z: wall.z2 };
+  for (let i = 1; i < points.length; i += 1) {
+    if (segmentsCross(points[i - 1], points[i], wallStart, wallEnd)) return segmentIntersection(points[i - 1], points[i], wallStart, wallEnd);
+  }
+  return undefined;
+}
+interface PenetrationDecl { wall?: string; at?: { x: number; z: number } }
+function penetrationsOf(route: MepRoute): PenetrationDecl[] {
+  const raw = (route as MepRoute & { penetration?: unknown }).penetration;
+  if (!Array.isArray(raw)) return [];
+  const out: PenetrationDecl[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const e = entry as { wall?: unknown; at?: unknown };
+    const at = typeof e.at === 'object' && e.at !== null ? e.at as { x?: unknown; z?: unknown } : undefined;
+    out.push({
+      wall: typeof e.wall === 'string' ? e.wall : undefined,
+      at: at && typeof at.x === 'number' && typeof at.z === 'number' ? { x: at.x, z: at.z } : undefined,
+    });
+  }
+  return out;
+}
 
 export function lintMepCoordination(config: MepCoordination, sources: MepEndpointSources, context: MepLintLayoutContext = {}): MepLintResult {
   const result: MepLintResult = { errors: [], warnings: [], counts: { errors: 0, warnings: 0, routes: config.routes.length, resolvedRoutes: 0 } };
@@ -159,11 +190,27 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     const box = layer && isPhysicalBoxRoute(route, points) ? (air ? airEnvelope?.box : routeBox(route, points)) : undefined;
     boxes.push({ route, box, points, airHeightConfirmed: airEnvelope?.heightConfirmed });
     if (context.layout && from && to) {
+      const penetrations = penetrationsOf(route);
       for (const wall of context.layout.walls) {
         const crosses = wallCrosses(points, wall);
         if (!crosses) continue;
-        if (suppressed.has(wall.id)) add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', 'suppressed_wall_crossing', `Route ${route.id} enters suppressed/curtain wall ${wall.id}`, route.id));
-        else if (!(route as MepRoute & { penetration?: unknown }).penetration) add(result, issue('warning', 'penetration_missing', `Route ${route.id} crosses entity wall ${wall.id} without penetration information`, route.id));
+        if (suppressed.has(wall.id)) {
+          add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', 'suppressed_wall_crossing', `Route ${route.id} enters suppressed/curtain wall ${wall.id}`, route.id));
+          continue;
+        }
+        const declared = penetrations.find((p) => p.wall === wall.id);
+        if (!declared) {
+          add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', 'penetration_missing', `Route ${route.id} crosses entity wall ${wall.id} without penetration information`, route.id));
+        } else if (declared.at) {
+          const hit = routeWallIntersection(points, wall);
+          const deviation = hit ? Math.hypot(hit.x - declared.at.x, hit.z - declared.at.z) : 0;
+          if (deviation > 0.25) add(result, issue('warning', 'penetration_point_mismatch', `Route ${route.id} declared penetration on ${wall.id} deviates ${deviation.toFixed(2)}m from the actual crossing point`, route.id));
+        }
+        if (wall.structure === 'shear') {
+          const hard = wall.structure_status === 'confirmed' && route.status === 'confirmed';
+          const suffix = wall.structure_status === 'confirmed' ? '' : ' (wall structure inferred from neighbor plan, pending survey confirmation)';
+          add(result, issue(hard ? 'error' : 'warning', 'shear_wall_penetration', `Route ${route.id} penetrates shear wall ${wall.id}${suffix}; core drilling on shear walls requires confirmed structure data, sleeves and avoidance of rebar zones`, route.id));
+        }
       }
     }
     if (ceiling.length) {
@@ -173,6 +220,27 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         const inside = points.some((p) => p.x >= Math.min(x1, x2) && p.x <= Math.max(x1, x2) && p.z >= Math.min(z1, z2) && p.z <= Math.max(z1, z2));
         const zoneHeight = zone.height;
         if (inside && points.some((p) => (p.y ?? layer?.height ?? 0) > zoneHeight)) add(result, issue('warning', 'ceiling_clearance_unverified', `Route ${route.id} enters ceiling zone ${zone.id} above its declared height`, route.id));
+      }
+    }
+    // 梁碰撞：只有 status: confirmed 且带 reference_beam_bottom_y 的约束才构成硬碰撞（inferred/pending 仅走 reference_constraint_uncertain 提醒）
+    if (isPhysicalBoxRoute(route, points)) {
+      for (const ref of context.referenceConstraints ?? []) {
+        if (ref.status !== 'confirmed' || ref.reference_beam_bottom_y === undefined) continue;
+        const beamBottom = ref.reference_beam_bottom_y;
+        const minX = Math.min(ref.range.x1, ref.range.x2), maxX = Math.max(ref.range.x1, ref.range.x2);
+        const minZ = Math.min(ref.range.z1, ref.range.z2), maxZ = Math.max(ref.range.z1, ref.range.z2);
+        const inRange = (p: Point) => p.x >= minX && p.x <= maxX && p.z >= minZ && p.z <= maxZ;
+        const corners: Point[] = [{ x: minX, z: minZ }, { x: maxX, z: minZ }, { x: maxX, z: maxZ }, { x: minX, z: maxZ }];
+        const hitsBeam = points.some((p, i) => {
+          const height = p.y ?? layer?.height ?? 0;
+          if (height <= beamBottom) return false;
+          if (inRange(p)) return true;
+          const next = points[i + 1];
+          if (!next) return false;
+          // 顶点都在约束带外时，线段仍可能横穿约束带（如直线穿梁）：检测与带边界的相交
+          return corners.some((c, ci) => segmentsCross(p, next, c, corners[(ci + 1) % corners.length]));
+        });
+        if (hitsBeam) add(result, issue('error', 'beam_collision', `Route ${route.id} passes above confirmed beam bottom ${beamBottom}m within reference constraint ${ref.id}`, route.id));
       }
     }
   }
@@ -195,7 +263,10 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     add(result, issue(a.route.source_status !== 'design_requirement' && b.route.source_status !== 'design_requirement' ? 'error' : 'warning', 'route_overlap', `MEP route envelopes overlap: ${a.route.id} / ${b.route.id}`, a.route.id, b.route.id));
   }
 
-  for (const ref of context.referenceConstraints ?? []) add(result, issue('warning', 'reference_constraint_uncertain', `Reference constraint ${ref.id} is uncertain and not treated as confirmed collision: ${ref.reason ?? 'survey reference only'}`));
+  for (const ref of context.referenceConstraints ?? []) {
+    if (ref.status === 'confirmed') continue;
+    add(result, issue('warning', 'reference_constraint_uncertain', `Reference constraint ${ref.id} is uncertain and not treated as confirmed collision: ${ref.reason ?? 'survey reference only'}`));
+  }
 
   const required = ['refrigerant', 'supply_air', 'return_air', 'condensate', 'power'] as const;
   const powerEndpointEquivalents = hvacPowerEndpointEquivalents(sources);

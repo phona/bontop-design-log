@@ -59,6 +59,7 @@
   npm run verify:all
   ```
 - 挂墙点位（electrical/plumbing）坐标压在墙线上时必须显式声明 `wall_side`，否则渲染默认取墙段左侧，可能渲到房间背面。`verify-data-consistency` 的点位专项会以 error 拦截"渲染面与所属房间异侧"（检查逻辑在 `scripts/verify/placement/verify-point-placement.ts`，与 `HouseScene.projectInfrastructurePoint` 同口径）。
+- `model-geometry.yaml` 的 wall 条目可带 `structure`（`shear`/`fill`/`curtain`/`new_partition`）+ `structure_status`（`confirmed`/`inferred`），由 `resolveWall` 透传给 lint。`verify:mep` 据此检查非法凿墙/穿梁：穿剪力墙报 `shear_wall_penetration`（双 confirmed 升 error）；`hvac.yaml` 的 `reference_constraints` 转 `confirmed` 且带 `reference_beam_bottom_y` 后，高于梁底的走线报 `beam_collision` error；穿越实体墙必须逐墙声明 `penetration` 且穿点与实际交点偏差 ≤0.25m。墙体结构分类依据与施工口径见 `docs/mep-construction-guidance.md`。
 
 ## 碰撞/相机修改铁律
 

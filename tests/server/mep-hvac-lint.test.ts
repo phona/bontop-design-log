@@ -4,8 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { endpointSourcesFromFacts, MepCoordinationSchema, parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
-import { lintMepCoordination } from '../../shared/mep-hvac-lint.js';
-import type { ProjectRenderFacts } from '../../shared/types.js';
+import { lintMepCoordination, type MepLintLayoutContext } from '../../shared/mep-hvac-lint.js';
+import type { ProjectRenderFacts, ResolvedLayout } from '../../shared/types.js';
 
 const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ProjectRenderFacts['electrical'];
 const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as ProjectRenderFacts['plumbing'];
@@ -21,13 +21,13 @@ function sample(route: Record<string, unknown>) {
 
 test('real MEP configuration lints without false errors and reports warnings structurally', () => {
   const result = lintMepCoordination(config, sources);
-  assert.equal(result.counts.routes, 39);
-  assert.equal(result.counts.resolvedRoutes, 39);
+  assert.equal(result.counts.routes, 40);
+  assert.equal(result.counts.resolvedRoutes, 40);
   assert.equal(result.errors.length, 0);
   assert.equal(result.warnings.filter((issue) => issue.code === 'hvac_coverage_missing').length, 0);
-  assert.equal(result.warnings.length, 33);
+  assert.equal(result.warnings.length, 9);
   assert.ok(result.warnings.some((issue) => issue.code === 'supply_return_overlap'));
-  assert.ok(result.warnings.some((issue) => issue.code === 'duct_dimension_incomplete'));
+  assert.ok(result.warnings.some((issue) => issue.code === 'nonphysical_route'));
   const balcony = config.routes.find((r) => r.id === 'drain-balcony')!;
   assert.equal(balcony.from_height, 0.60);
   assert.equal(balcony.to_height, 0.02);
@@ -106,4 +106,50 @@ test('verify:mep JSON has stable result and exit contract', () => {
   assert.ok(Array.isArray(result.errors));
   assert.ok(Array.isArray(result.warnings));
   assert.equal(result.counts.errors, 0);
+});
+
+// ── 结构墙 / 梁碰撞规则（2026-09-01）──
+
+function wallContext(wall: Record<string, unknown>, constraints?: MepLintLayoutContext['referenceConstraints']): MepLintLayoutContext {
+  return {
+    layout: { rooms: [], vertices: [], openEdges: [], walls: [{ id: 'w_test', x1: 1, z1: -1, x2: 1, z2: 1, height: 2.8, ...wall }] } as unknown as ResolvedLayout,
+    ...(constraints ? { referenceConstraints: constraints } : {}),
+  };
+}
+function crossingRoute(extra: Record<string, unknown> = {}) {
+  return sample({ id: 'cross', layer: 'refrigerant', status: 'inferred', source_status: 'preliminary', diameter: 0.02, from_height: 2.5, to_height: 2.5, from: { x: 0, z: 0, y: 2.5 }, to: { x: 2, z: 0, y: 2.5 }, ...extra });
+}
+
+test('shear wall penetration warns when inferred and errors only when wall and route are both confirmed', () => {
+  const inferred = lintMepCoordination(crossingRoute(), sources, wallContext({ structure: 'shear', structure_status: 'inferred' }));
+  assert.ok(inferred.warnings.some((i) => i.code === 'shear_wall_penetration'));
+  assert.equal(inferred.errors.some((i) => i.code === 'shear_wall_penetration'), false);
+  const routeConfirmedOnly = lintMepCoordination(crossingRoute({ status: 'confirmed', reason: 'x' }), sources, wallContext({ structure: 'shear', structure_status: 'inferred' }));
+  assert.equal(routeConfirmedOnly.errors.some((i) => i.code === 'shear_wall_penetration'), false);
+  const bothConfirmed = lintMepCoordination(crossingRoute({ status: 'confirmed', reason: 'x' }), sources, wallContext({ structure: 'shear', structure_status: 'confirmed' }));
+  assert.ok(bothConfirmed.errors.some((i) => i.code === 'shear_wall_penetration'));
+});
+
+test('per-wall penetration declaration is required and its point must match the actual crossing', () => {
+  const missing = lintMepCoordination(crossingRoute(), sources, wallContext({}));
+  assert.ok(missing.warnings.some((i) => i.code === 'penetration_missing'));
+  const missingConfirmed = lintMepCoordination(crossingRoute({ status: 'confirmed', reason: 'x' }), sources, wallContext({}));
+  assert.ok(missingConfirmed.errors.some((i) => i.code === 'penetration_missing'));
+  const aligned = lintMepCoordination(crossingRoute({ penetration: [{ wall: 'w_test', at: { x: 1, z: 0 }, height: 2.5 }] }), sources, wallContext({}));
+  assert.equal(aligned.warnings.some((i) => i.code === 'penetration_missing' || i.code === 'penetration_point_mismatch'), false);
+  const off = lintMepCoordination(crossingRoute({ penetration: [{ wall: 'w_test', at: { x: 1, z: 0.5 }, height: 2.5 }] }), sources, wallContext({}));
+  assert.ok(off.warnings.some((i) => i.code === 'penetration_point_mismatch'));
+});
+
+test('beam collision errors only for confirmed constraints with a beam bottom datum', () => {
+  const constraint = { id: 'ref_beam', range: { x1: 0.5, x2: 1.5, z1: -0.5, z2: 0.5 }, status: 'confirmed', reference_beam_bottom_y: 2.4 };
+  const hit = lintMepCoordination(crossingRoute(), sources, wallContext({}, [constraint]));
+  assert.ok(hit.errors.some((i) => i.code === 'beam_collision'));
+  const below = lintMepCoordination(crossingRoute({ from: { x: 0, z: 0, y: 2.2 }, to: { x: 2, z: 0, y: 2.2 }, from_height: 2.2, to_height: 2.2 }), sources, wallContext({}, [constraint]));
+  assert.equal(below.errors.some((i) => i.code === 'beam_collision'), false);
+  const inferredConstraint = lintMepCoordination(crossingRoute(), sources, wallContext({}, [{ ...constraint, status: 'inferred' }]));
+  assert.equal(inferredConstraint.errors.some((i) => i.code === 'beam_collision'), false);
+  assert.ok(inferredConstraint.warnings.some((i) => i.code === 'reference_constraint_uncertain'));
+  const confirmedNotice = lintMepCoordination(crossingRoute({ from: { x: 0, z: 0, y: 2.2 }, to: { x: 2, z: 0, y: 2.2 }, from_height: 2.2, to_height: 2.2 }), sources, wallContext({}, [constraint]));
+  assert.equal(confirmedNotice.warnings.some((i) => i.code === 'reference_constraint_uncertain'), false);
 });

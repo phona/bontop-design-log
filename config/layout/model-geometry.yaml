@@ -135,7 +135,9 @@ walls:
   - { id: w_liv_south,  from: v_step_t,  to: v_be_se_s,height: 2.8 }
   - { id: w_be_south,   from: v_be_s_w,  to: v_be_s_e, height: 2.8 }
   # 外框 — 东墙（在 v_be_ne 处切开；东南角随书房凹口截止于 v_be_s_e）
-  - { id: w_east_upper, from: v_be_s_e,  to: v_be_ne,  height: 2.8 }
+  # structure 标注约定（2026-09-01，v1 初版）：来源为邻户同户型原始结构图（survey/neighbor_ys01_original_structure_2025-06.png），
+  # 全部 structure_status: inferred，交房量房拿到确切结构图后转 confirmed；仅标注剪力墙/新建隔墙，幕墙由 overlay suppress 覆盖不重复标注。
+  - { id: w_east_upper, from: v_be_s_e,  to: v_be_ne,  height: 2.8, structure: shear, structure_status: inferred }
   - { id: w_foyer_outer_east, from: v_ent_se, to: v_foyer_ne, height: 2.8 }
   # w_foyer_north_east / w_elev_south 已删除（2026-08-23）：与 w_be_north 是同一堵物理墙
   # （z=5.55, x 13.40→16.40，南侧书房/北侧电梯井与电梯厅），重复定义导致 GLB 三层共面墙片
@@ -158,7 +160,7 @@ walls:
   - { id: w_ent_west,  from: v_ent_sw,   to: v_ent_nw, height: 2.8 }
   - { id: w_ent_north_railing, from: v_ent_ne, to: v_ent_nw, height: 1.0 }
   # 入户过渡区东墙（承重墙）
-  - { id: w_foyer_east, from: v_foyer_se, to: v_liv_se, height: 2.8 }
+  - { id: w_foyer_east, from: v_foyer_se, to: v_liv_se, height: 2.8, structure: shear, structure_status: inferred }
   # 外框 — 北墙（左翼凹进 z=1.10，v_nw→v_bath_nw→v_bath_ne 为幕墙；VRV/厨房北墙 z=0）
   - { id: w_bath_north, from: v_bath_nw,  to: v_bath_ne, height: 2.8 }
   - { id: w_nw_north,   from: v_bath_ne,  to: v_nw_ne,  height: 2.8 }
@@ -166,11 +168,13 @@ walls:
   - { id: w_kit_north,  from: v_kit_w,   to: v_ent_nw, height: 2.8 }
   # 内墙 — 左侧卧室区（2026-08-25 台盆外移条带：隔墙再北移 z=2.86；条带 x[0,4.2] z[2.86/4.30,5.55] 归主卧；
   # w_mbath_south 为主卫南隔墙，d_mbath 平开门内开进干区，门洞[1.15,1.95]（墙平行北移，沿墙 offset 不变；门扇扫掠 z∈[2.06,2.86] 与马桶 z=1.5 不冲突，待量房复核），西[0,1.2]淋浴湿区左右分离）
-  - { id: w_mbath_east, from: v_bath_ne,   to: v_bath_s, height: 2.8 }
+  - { id: w_mbath_east, from: v_bath_ne,   to: v_bath_s, height: 2.8, structure: shear, structure_status: inferred }
   - id: w_mbath_south
     from: v_mb_sw
     to: v_mbath_se
     height: 2.8
+    structure: new_partition
+    structure_status: inferred
     openings:
       - { id: d_mbath, type: door, anchor: v_mb_sw, offset: 1.55, width: 0.8, height: 2.1, room: master_bath, swing: inward, hinge: end }  # 内开进主卫干区，东端合页；洞[1.15,1.95]（2026-08-25 墙平行北移至 z=2.86，沿墙 offset 不变）
   - id: w_nw_south
@@ -185,6 +189,8 @@ walls:
     from: v_strip_ne
     to: v_mb_ne
     height: 2.8
+    structure: shear
+    structure_status: inferred
     openings:
       # 2026-08-31：主卫质心位于墙段左法向（西）侧，门扇内开进主卫，北端合页
       - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.45, width: 0.9, height: 2.1, room: master_bath, swing: inward, hinge: end }
@@ -199,7 +205,7 @@ walls:
   # 内墙 — 主卧东墙（共享墙，按主卧命名）
   # 主卧东墙 / 父母房西墙：连续实体隔墙。
   # 原 w_mb_win 为无室内方案依据的 CAD 残留疑似窗洞；室内设计、电气和家具均按完整隔墙布置，暂不切洞，量房若确认真实存在再单独建模。
-  - { id: w_mb_east, from: v_mb_ne, to: v_mb_se, height: 2.8 }
+  - { id: w_mb_east, from: v_mb_ne, to: v_mb_se, height: 2.8, structure: shear, structure_status: inferred }
   # 内墙 — VRV 平台 / 生活阳台 / 客卫
   - { id: w_vrv_nw_gap, from: v_nw_ne,   to: v_vrv_n,  height: 2.8 }
   - { id: w_balc_west,  from: v_vrv_sw,  to: v_balc_sw,height: 2.8 }
@@ -240,4 +246,4 @@ walls:
     openings:
       # 2026-08-25 方向反转；2026-08-25 二次调整：向内开，合页移至 start 端
       - { id: d_bese, type: door, anchor: v_be_se_s, offset: 3.7, width: 0.9, height: 2.1, room: bedroom_se, swing: inward, hinge: start }
-  - { id: w_be_north,   from: v_be_sw,   to: v_be_ne,  height: 2.8 }
+  - { id: w_be_north,   from: v_be_sw,   to: v_be_ne,  height: 2.8, structure: shear, structure_status: inferred }

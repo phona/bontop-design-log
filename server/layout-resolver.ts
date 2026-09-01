@@ -276,7 +276,8 @@ function resolveWall(
   }
 
   return { id: def.id, x1, z1, x2, z2, height: def.height, segments,
-    ...(from.radius ? { fromX: from.x, fromZ: from.z, fromRadius: from.radius, arcCenterX, arcCenterZ } : {}) };
+    ...(from.radius ? { fromX: from.x, fromZ: from.z, fromRadius: from.radius, arcCenterX, arcCenterZ } : {}),
+    ...(def.structure ? { structure: def.structure, structure_status: def.structure_status } : {}) };
 }
 
 function resolveOpening(
