@@ -1,0 +1,44 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: master-bedroom-20260901
+subject: 主卧南床头干式梳妆台与外置纯洗手柜
+priority:
+  user_goal: 在不移动床和衣柜、不改墙内电气的前提下落地南床头梳妆与纯洗手柜
+  ranked: [床与衣柜基线不动, 梳妆功能和插座可用, 南床头无重复床头柜, 洗手柜纯收纳语义, 窗帘影响如实记录]
+  non_negotiables: [model-geometry.yaml 不修改, bed_180 坐标朝向不变, 北侧衣柜不动, 镜和镜前灯不挂墙, 保留南床头壁灯]
+  tradeoffs_accepted: [南帘作为软装可压缩但真实堆叠待深化, 不为收帘方向大改 schema]
+frozen: true
+freeze_record:
+  alignment_id: user-request-20260901
+  original_user_response: 用户提供十项已确认落地要求
+  normalized_decisions: [新增850x400x750干式梳妆台, 新增420x400x450专用凳, 原1.10x0.50外置柜改纯洗手柜, 南侧自动床头柜取消]
+  confirmed_by_user: true
+  confirmed_at: "2026-09-01T16:29:54+08:00"
+  evidence_refs: [user-request-20260901]
+allowed_scope:
+  files: [config/house.yaml, config/electrical.yaml, config/plumbing.yaml, shared/types.ts, shared/render/FixtureFactory.ts, scripts/blender/dress_scene.py, scripts/blender/blender_render_only.py, scripts/blender/gen-render-config.ts, tests, docs/decision_log.md, docs/dressing-map.md]
+  objects: [bed_180, wardrobe_240_split, master_dressing_table, dressing_stool, mb_washbasin_cabinet, curtain_master_south, sock_master_bed_r]
+  archetypes: [furniture, vanity, bathroom_cabinet, curtain, electrical_interface]
+  views: [plan, elevation, section, perspective]
+  changes: [家具配置, 渲染配方, Blender dressing, 自动床头柜避让, 测试, 项目既有文档镜像]
+forbidden:
+  files: [config/layout/model-geometry.yaml]
+  objects: [bed_180 transform, wardrobe_240_split transform, wall geometry, in-wall electrical routes]
+  assumptions: [东墙可挂重镜, 闭帘完全无影响, curtain box 是硬墙]
+  out_of_scope_changes: [无关房间重构, 新依赖, git 操作]
+open_questions:
+  - { id: site-curtain-stack, category: construction, question: 南帘真实堆叠尺寸和电机端位置, fact_refs: [pending-curtain-stack], options: [], selected: 独立深化, user_response: 不伪造且不为此大改 schema, status: site_pending }
+alignment:
+  records: [{ id: user-request-20260901, answer: 已冻结十项方向, normalized: 按本 brief 实施 }]
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run verify:furniture, npm run verify:all, npm run test:server, npm run typecheck, npm run test:app]
+  browser_evidence_required: true
+  required_views: [床尾西侧看东南角, 北侧向南, 东墙关系近似立面, 主卫外纯洗手柜]
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: pending
+  blocking_issues: []
+  done_when: [配置与 recipe 一致, 必要测试全绿, 无南侧自动床头柜, 视觉证据覆盖目标对象]
+  delivery_notes_required: true

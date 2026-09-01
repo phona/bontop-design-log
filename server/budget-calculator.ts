@@ -73,7 +73,7 @@ export class BudgetCalculator {
             count += counts['toilet'] ?? 0;
             count += counts['shower_set'] ?? 0;
             count += counts['vanity'] ?? 0;
-            count += counts['vanity_dresser'] ?? 0;
+            count += counts['mb_washbasin_cabinet'] ?? 0;
             count += counts['faucet'] ?? 0;
           }
           quantity = count;

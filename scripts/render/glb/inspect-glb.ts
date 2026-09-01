@@ -273,7 +273,7 @@ export function inspectGlb(path: string): GlbSummary {
       // fixture role contract.
       if (partCount === 1 && roleCount === 1 && roleMatch) {
         fixtureRoles.push({ nodeName: node.name, part: roleMatch[2], role: roleMatch[3], prefix: roleMatch[1].split(':')[0] });
-      } else if (roleCount > 0 || (partCount > 0 && node.name.includes(':role='))) {
+      } else if (roleCount > 0 || partCount > 0) {
         unknownFixtureRoleTags.add(node.name);
       }
     } else {

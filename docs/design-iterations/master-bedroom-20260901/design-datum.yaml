@@ -1,0 +1,49 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: master-bedroom-20260901
+subject: 主卧南床头干式梳妆台与外置纯洗手柜
+units: m
+coordinate_system: Three.js右手系，Y向上，+x东，+z南
+status: frozen
+datums:
+  - id: datum-master-dressing-table
+    name: 南床头干式梳妆台
+    anchor: { kind: free_position, ref: master_bedroom, wall_side: null, service_ref: sock_master_bed_r }
+    source_refs: { fact_refs: [fact-bed-fixed, fact-south-socket, fact-east-wall], decision_refs: [decision-dry-dresser] }
+    views:
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: 长边沿z，正面朝西, position: {x: 4.00, z: 9.245}, rotation: 90, dimensions: {length: 0.85, width: 0.40, depth: 0.40, offset: 0.0}, dimension_semantics: total }
+      elevation: { required: true, viewing_side: west, vertical_axis: y, height: 0.75, dimensions: {width: 0.85, height: 0.75, sill: 0, datum_offset: 0}, dimension_semantics: overall }
+      section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {front: 0.25, rear: 0.0, top: null, bottom: 0}, thickness: 0.40, dimension_semantics: overall }
+    geometry: {x: 4.00, y: 0, z: 9.245, width: 0.85, depth: 0.40, height: 0.75, length: 0.85, rotation: 90, along: null}
+    constraints: [世界AABB x[3.80,4.20] z[8.82,9.67], 与床AABB z上净缝0.045m, 东缘贴东墙, 南缘距南窗帘轨线0.13m, 不挂墙]
+    interfaces: [sock_master_bed_r中心距0.20m, 桌面支撑镜, 插接式镜前灯]
+    validation_refs: [verify:furniture, config-regression-test, visual-east-wall]
+    status: confirmed
+  - id: datum-dressing-stool
+    name: 梳妆专用凳收纳位
+    anchor: { kind: free_position, ref: master_dressing_table, wall_side: null, service_ref: null }
+    source_refs: { fact_refs: [fact-bed-fixed], decision_refs: [decision-dry-dresser] }
+    views:
+      plan: { required: true, origin: 梳妆台中心, axes: x东西/z南北, direction: 收进台下，坐面朝东使用, position: {x: 3.75, z: 9.245}, rotation: 90, dimensions: {length: 0.42, width: 0.40, depth: 0.40, offset: 0.25}, dimension_semantics: total }
+      elevation: { required: true, viewing_side: west, vertical_axis: y, height: 0.45, dimensions: {width: 0.42, height: 0.45, sill: 0, datum_offset: 0}, dimension_semantics: overall }
+      section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {front: 0, rear: 0, top: 0.30, bottom: 0}, thickness: 0.40, dimension_semantics: clear }
+    geometry: {x: 3.75, y: 0, z: 9.245, width: 0.42, depth: 0.40, height: 0.45, length: 0.42, rotation: 90, along: null}
+    constraints: [作为明确桌下层叠对象允许2D footprint重叠, 不复用0.5x0.5 chair]
+    interfaces: [master_dressing_table]
+    validation_refs: [verify:furniture, config-regression-test]
+    status: confirmed
+  - id: datum-washbasin-cabinet
+    name: 主卫外纯洗手柜
+    anchor: { kind: free_position, ref: w_mbath_south, wall_side: south, service_ref: faucet_mbath_vanity }
+    source_refs: { fact_refs: [fact-washbasin-envelope], decision_refs: [decision-wash-only] }
+    views:
+      plan: { required: true, origin: 原vanity_dresser中心, axes: x东西/z南北, direction: 正面朝南, position: {x: 0.55, z: 3.16}, rotation: 0, dimensions: {length: 1.10, width: 1.10, depth: 0.50, offset: 0}, dimension_semantics: total }
+      elevation: { required: true, viewing_side: south, vertical_axis: y, height: 0.81, dimensions: {width: 1.10, height: 0.81, sill: 0, datum_offset: 0}, dimension_semantics: overall }
+      section: { required: true, cut_direction: north-south, depth_axis: z, clearances: {front: null, rear: 0, top: null, bottom: 0}, thickness: 0.50, dimension_semantics: overall }
+    geometry: {x: 0.55, y: 0, z: 3.16, width: 1.10, depth: 0.50, height: 0.81, length: 1.10, rotation: 0, along: null}
+    constraints: [外轮廓盆心龙头墙排不动, 无膝位, 东侧封闭抽屉收纳, 保留屏风]
+    interfaces: [faucet_mbath_vanity, drain_mbath_vanity, sock_mbath_vanity, vanity_screen_halfwall]
+    validation_refs: [verify:furniture, verify:all, config-regression-test, visual-washbasin]
+    status: confirmed
+notes:
+  - 当前窗帘 schema 未声明真实收帘堆叠方向，南帘按软装占用审查但不把 curtain box 当硬碰撞墙。

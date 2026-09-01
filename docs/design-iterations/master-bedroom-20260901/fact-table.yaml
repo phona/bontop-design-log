@@ -1,0 +1,28 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: master-bedroom-20260901
+subject: 主卧南床头干式梳妆台与外置纯洗手柜
+created_at: "2026-09-01T16:29:54+08:00"
+status: frozen
+source_policy:
+  authority_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml, config/house.yaml, config/electrical.yaml, config/plumbing.yaml]
+  observation_refs: [docs/decision_log.md, docs/dressing-map.md]
+  measurement_refs: []
+  runtime_refs: []
+  evidence_refs: []
+facts:
+  confirmed:
+    - { id: fact-bed-fixed, category: confirmed, statement: 主卧 bed_180 保持中心与朝向不变, value: {x: 3.20, z: 7.875, rotation: 270}, source_refs: [config/house.yaml], basis: 家具权威配置, confidence: high, impact: material, affected_objects: [bed_180], affected_views: [plan, perspective], owner: project, status: resolved, verification_method: 配置回归测试 }
+    - { id: fact-south-socket, category: confirmed, statement: 南床头现有双联插座位于东墙, value: {id: sock_master_bed_r, x: 4.20, z: 9.25, height: 0.70}, source_refs: [config/electrical.yaml], basis: 电气权威配置, confidence: high, impact: material, affected_objects: [master_dressing_table], affected_views: [plan, elevation], owner: electrical, status: resolved, verification_method: 家具电气距离测试 }
+    - { id: fact-washbasin-envelope, category: confirmed, statement: 外置柜原外轮廓和盆心接口保持, value: {center: {x: 0.55, z: 3.16}, rotation: 0, width: 1.10, depth: 0.50, basin_center: {x: 0.26, z: 2.96}}, source_refs: [config/house.yaml, config/plumbing.yaml], basis: 家具与给排水权威配置, confidence: high, impact: material, affected_objects: [mb_washbasin_cabinet], affected_views: [plan, elevation, perspective], owner: project, status: resolved, verification_method: 配置与 recipe 测试 }
+    - { id: fact-east-wall, category: confirmed, statement: 主卧东墙 w_mb_east 为连续实体隔墙且不在 suppress 列表, value: w_mb_east, source_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml], basis: 几何与意图权威源, confidence: high, impact: material, affected_objects: [master_dressing_table], affected_views: [plan], owner: project, status: resolved, verification_method: verify:all }
+  inferred: []
+  user_decision:
+    - { id: decision-dry-dresser, category: user_decision, statement: 南床头新增独立干式梳妆台和专用可收纳凳，镜与灯不挂墙, value: true, source_refs: [user-request-20260901], basis: 用户冻结方案, confidence: high, impact: material, affected_objects: [master_dressing_table, dressing_stool], affected_views: [plan, elevation, section, perspective], owner: user, status: resolved, verification_method: 配置、recipe、视觉审查, user_confirmation_ref: user-request-20260901 }
+    - { id: decision-wash-only, category: user_decision, statement: 原洗漱梳妆一体台改为纯洗手柜并删除椅子, value: true, source_refs: [user-request-20260901], basis: 用户冻结方案, confidence: high, impact: material, affected_objects: [mb_washbasin_cabinet], affected_views: [plan, elevation, perspective], owner: user, status: resolved, verification_method: 配置、recipe、视觉审查, user_confirmation_ref: user-request-20260901 }
+  site_pending:
+    - { id: pending-east-finish, category: site_pending, statement: 东墙完成面、可打孔性和暗管需现场复核；本方案不依赖挂墙, value: null, source_refs: [docs/pending-site-data.md], basis: 未量房, confidence: not_applicable, impact: low, affected_objects: [master_dressing_table], affected_views: [section], owner: site, status: open, verification_method: 现场探测 }
+    - { id: pending-curtain-stack, category: site_pending, statement: 南帘实际褶皱厚度、电机及收帘堆叠尺寸需按窗帘深化确认, value: null, source_refs: [config/layout/overlay.yaml, config/electrical.yaml], basis: 当前 schema 只表达帘轨与状态，不能证明真实堆叠, confidence: not_applicable, impact: material, affected_objects: [master_dressing_table, curtain_master_south], affected_views: [plan, perspective], owner: curtain_vendor, status: open, verification_method: 窗帘深化图与现场样品 }
+unknowns_requiring_alignment: []
+notes:
+  - 用户已明确冻结方向并授权落地；未把现场待确认项作为挂墙或改墙内电气的前提。

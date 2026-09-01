@@ -63,7 +63,9 @@ budget:
     wardrobe_240: wardrobe
     wardrobe_240_split: wardrobe
     wardrobe_180: wardrobe
-    vanity_dresser: vanity
+    mb_washbasin_cabinet: vanity
+    master_dressing_table: vanity
+    dressing_stool: chair
     mb_vanity_base_cabinet: wardrobe
     mb_vanity_lower_board: wardrobe
     mb_vanity_main_board: wardrobe

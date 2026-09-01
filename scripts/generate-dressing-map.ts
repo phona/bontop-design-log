@@ -149,7 +149,7 @@ function main(): void {
   }
   lines.push('');
   lines.push('### 后续深化预留（当前未实施点位）');
-  lines.push('厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。');
+  lines.push('厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。主卧南床头梳妆台的镜前灯为家具插接式部件，复用 `sock_master_bed_r`，不新增墙内灯位。');
   lines.push('');
 
   const glass = overlay.elements.filter((e) => e.type === 'curtain_run' || e.type === 'glass_infill');

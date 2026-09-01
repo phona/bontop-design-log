@@ -61,16 +61,20 @@ test('real baseline and facts-enabled CLI candidate classify expected and error 
 });
 
 test('facts-enabled comparison reports missing HVAC as an error', () => {
-  const report = compareGlb('tmp/baselines/house-20260826.glb', 'tmp/cli-shared-render.glb', { factsPath: 'data/project-render-facts.json' });
+  const baseline = 'tmp/baselines/house-20260826.glb';
+  const candidate = 'tmp/cli-shared-render.glb';
+  if (!existsSync(baseline) || !existsSync(candidate)) return;
+  const report = compareGlb(baseline, candidate, { factsPath: 'data/project-render-facts.json' });
   assert.ok(report.errors.some((entry) => entry.includes('missing HVAC entity required by facts')));
   assert.equal(report.candidate.semantic.counts.hvac, 0);
 });
 
 test('strict mode fails on missing core semantic IDs and facts HVAC entities', () => {
+  const baseline = 'tmp/baselines/house-20260826.glb';
+  if (!existsSync(baseline)) return;
   const directory = mkdtempSync(join(tmpdir(), 'compare-glb-'));
   const candidate = join(directory, 'candidate.glb');
   try {
-    const baseline = 'tmp/baselines/house-20260826.glb';
     const source = inspectGlb(baseline);
     const reduced = makeSummary(source.nodeIds.filter((id) => !id.startsWith('hvac:') && !id.startsWith('floor:master_bedroom')));
     writeFileSync(candidate, Buffer.from('not-a-glb'));

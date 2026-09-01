@@ -1,6 +1,6 @@
 # 装扮映射表（Twinmotion 云渲染用）
 
-生成：2026-08-29，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-09-01，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
 用法：glb 导入 Twinmotion 后按本表替换材质/家具/灯光；reimport 同名 glb 时材质覆盖按节点名保留。
 
@@ -54,11 +54,15 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 |---|---|---|---|---|
 | master_bedroom | bed_180 | 1 | 1.8×2 | (3.2, 7.875) / 270° |
 | master_bedroom | wardrobe_240_split | 1 | 2.4×0.8 | (3, 5.95) / 0° |
-| master_bedroom | vanity_dresser | 1 | 1.1×0.5 | (0.55, 3.16) / 0° |
-| master_bedroom | chair | 1 | 0.5×0.5 | (0.8, 3.66) / 180° |
-| master_bedroom | utility_cabinet_tall | 1 | 0.55×1.3 | (2.26, 3.6) / 0° |
+| master_bedroom | mb_washbasin_cabinet | 1 | 1.1×0.5 | (0.55, 3.16) / 0° |
+| master_bedroom | master_dressing_table | 1 | 0.85×0.4 | (4, 9.245) / 90° |
+| master_bedroom | dressing_stool | 1 | 0.42×0.4 | (3.75, 9.245) / 90° |
 | master_bedroom | plant_fiddle | 1 | 0.5×0.5 | (1.1, 9.4) / 270° |
 | master_bedroom | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
+| master_bedroom | mb_vanity_base_cabinet | 1 | — | count-only（不在 glb，按实物补摆） |
+| master_bedroom | mb_vanity_lower_board | 1 | — | count-only（不在 glb，按实物补摆） |
+| master_bedroom | mb_vanity_main_board | 1 | — | count-only（不在 glb，按实物补摆） |
+| master_bedroom | mb_vanity_pvc_box | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bedroom | mattress_180 | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bedroom | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bedroom | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
@@ -106,6 +110,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | kitchen | gas_stove | 1 | 0.75×0.6 | (10.5, 1.18) / 90° |
 | kitchen | range_hood | 1 | 0.9×0.5 | (10.5, 1.18) / 90° |
 | kitchen | sink | 1 | 0.8×0.6 | (9.5, 0.3) / 0° |
+| kitchen | water_heater | 1 | 0.36×0.16 | (7.3, 1) / 270° |
 | kitchen | cabinet_base | 5 | — | count-only（不在 glb，按实物补摆） |
 | kitchen | cabinet_wall | 2 | — | count-only（不在 glb，按实物补摆） |
 | kitchen | countertop_quartz | 5 | — | count-only（不在 glb，按实物补摆） |
@@ -115,7 +120,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | master_bath | exhaust_fan | 1 | 0.3×0.3 | (1, 2.7) |
 | master_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bath | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | vanity | 1 | 0.8×0.4 | (6.9, 3.9) / 270° |
+| guest_bath | vanity | 1 | 0.7×0.4 | (6.9, 3.925) / 270° |
 | guest_bath | toilet | 1 | 0.4×0.6 | (6.75, 3.05) / 270° |
 | guest_bath | exhaust_fan | 1 | 0.3×0.3 | (6.35, 2.45) |
 | guest_bath | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
@@ -124,7 +129,6 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | guest_bath | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | balcony | washer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
 | balcony | dryer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
-| kitchen | water_heater | 1 | 0.36×0.16 | (7.3, 1.0) / 270°，厨房西侧靠玻璃幕墙实体墙 |
 | balcony | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | entry_garden | garden_entry_station | 1 | 1.1×0.38 | (15.02, 1.35) / 270° |
 | entry_garden | shoe_cabinet | 1 | — | count-only（不在 glb，按实物补摆） |
@@ -151,7 +155,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | light_gbath_panel | guest_bath | 吸顶灯 | (6.35, 2.78) | 2.8 | 4000 | — | 客卫平板灯（4000K；2026-08-29 按南马桶/北淋浴分区调整至内卫中部，待量房确认） |
 
 ### 后续深化预留（当前未实施点位）
-厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。
+厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。主卧南床头梳妆台的镜前灯为家具插接式部件，复用 `sock_master_bed_r`，不新增墙内灯位。
 
 ## 4. 玻璃幕/飘窗清单 → 玻璃材质（Low-E 微反）
 

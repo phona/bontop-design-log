@@ -106,12 +106,13 @@
 - id: sock_master_bed_r
   room: master_bedroom
   wall: w_mb_east
+  wall_side: west
   type: socket
   x: 4.20
   z: 9.25
   height: 0.7
   count: 2
-  note: "床头右侧: 手机充电+台灯，含USB（DEC-017 由床体内 z=8.5 移至南翼）"
+  note: "南床头现有双联插座：手机充电，并服务独立干式梳妆台的插接镜前灯；距 master_dressing_table 中心约0.20m。桌体东缘贴墙但插座高于0.75m台面下缘附近，定制时须留可见可拔插检修口，不改墙内电气（DEC-017；2026-09-01）"
 
 - id: switch_master_bed_l
   room: master_bedroom

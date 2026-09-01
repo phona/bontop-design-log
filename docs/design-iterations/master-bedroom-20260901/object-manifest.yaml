@@ -1,0 +1,75 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: master-bedroom-20260901
+subject: 主卧南床头干式梳妆台与外置纯洗手柜
+object_policy:
+  fixed_count_required: true
+  split_by: [function, owner, material, collision, maintenance, interface, review]
+  visual_relationship_required: true
+objects:
+  - id: master_dressing_table
+    type: furniture
+    archetypes: [dry_dressing_table]
+    owner: furniture
+    function: 梳妆与南床头置物
+    material: 暖木色柜体与浅色台面
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: [datum-master-dressing-table]
+    fact_refs: [fact-bed-fixed, fact-south-socket, fact-east-wall]
+    decision_refs: [decision-dry-dresser]
+    dependencies: [bed_180, sock_master_bed_r, curtain_master_south]
+    interfaces:
+      - { id: table-power, target_object_id: sock_master_bed_r, kind: electrical, requirement: 中心距不超过1.5m且桌体不封死插座, status: confirmed }
+      - { id: table-curtain, target_object_id: curtain_master_south, kind: circulation, requirement: 如实审查软帘压缩与东端净空，不声称闭帘零影响, status: open }
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.master_dressing_table, review_ref: verify:furniture }
+    maintenance: { boundary: 可整体移开，镜与灯均可替换, access_clearance: 0.25, replaceable_parts: [桌面镜, 镜前灯, 薄抽屉], inspection_requirements: [插座可见可拔插] }
+    parts:
+      - { id: rounded-top, role: 圆角台面, independent: false, owner: furniture, material: countertop, geometry_source: FixtureFactory, datum_refs: [datum-master-dressing-table], dependencies: [], collision: reviewed, maintenance_boundary: 桌体, validation_refs: [recipe-test] }
+      - { id: thin-drawer, role: 一层薄抽屉, independent: false, owner: furniture, material: cabinet, geometry_source: FixtureFactory, datum_refs: [datum-master-dressing-table], dependencies: [], collision: reviewed, maintenance_boundary: 可抽出, validation_refs: [recipe-test] }
+      - { id: tabletop-mirror, role: 桌面支撑镜, independent: true, owner: furniture, material: mirror, geometry_source: FixtureFactory, datum_refs: [datum-master-dressing-table], dependencies: [rounded-top], collision: reviewed, maintenance_boundary: 可搬移, validation_refs: [recipe-test] }
+      - { id: plug-in-mirror-light, role: 插接镜前灯, independent: true, owner: lighting, material: metal, geometry_source: FixtureFactory, datum_refs: [datum-master-dressing-table], dependencies: [tabletop-mirror, sock_master_bed_r], collision: none, maintenance_boundary: 可拔插更换, validation_refs: [recipe-test] }
+    visual_relationships: [{ target_object_id: bed_180, relation: adjacent, requirement: 靠床端兼床头置物且不移动床, evidence_refs: [] }]
+    validation_refs: [verify:furniture, verify:all, recipe-test, config-regression-test]
+    status: planned
+  - id: dressing_stool
+    type: furniture
+    archetypes: [compact_stool]
+    owner: furniture
+    function: 梳妆坐凳与台下收纳
+    material: 软包坐面与细腿
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: [datum-dressing-stool]
+    fact_refs: [fact-bed-fixed]
+    decision_refs: [decision-dry-dresser]
+    dependencies: [master_dressing_table]
+    interfaces: [{ id: stool-storage, target_object_id: master_dressing_table, kind: circulation, requirement: 420x400凳可完整收进台下, status: confirmed }]
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.dressing_stool, review_ref: verify:furniture明确层叠豁免 }
+    maintenance: { boundary: 独立可搬移, access_clearance: 0, replaceable_parts: [坐垫], inspection_requirements: [] }
+    parts: []
+    visual_relationships: [{ target_object_id: master_dressing_table, relation: stacked, requirement: 收纳态位于台下, evidence_refs: [] }]
+    validation_refs: [verify:furniture, recipe-test, config-regression-test]
+    status: planned
+  - id: mb_washbasin_cabinet
+    type: furniture
+    archetypes: [washbasin_cabinet]
+    owner: bathroom_cabinet
+    function: 洗手与封闭收纳，不承担梳妆
+    material: 浅色防潮柜体与石英石台面
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: [datum-washbasin-cabinet]
+    fact_refs: [fact-washbasin-envelope]
+    decision_refs: [decision-wash-only]
+    dependencies: [faucet_mbath_vanity, drain_mbath_vanity, vanity_screen_halfwall]
+    interfaces:
+      - { id: basin-plumbing, target_object_id: faucet_mbath_vanity, kind: plumbing, requirement: 盆心与龙头墙排尽量不动, status: confirmed }
+      - { id: cabinet-screen, target_object_id: vanity_screen_halfwall, kind: structural, requirement: 保留东侧屏风与收边缝, status: confirmed }
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.mb_washbasin_cabinet, review_ref: verify:furniture }
+    maintenance: { boundary: 柜门抽屉从南侧开启, access_clearance: 0.65, replaceable_parts: [盆, 龙头, 抽屉], inspection_requirements: [墙排检修] }
+    parts:
+      - { id: west-basin-cabinet, role: 台盆封闭柜, independent: false, owner: bathroom_cabinet, material: moisture_resistant_board, geometry_source: FixtureFactory, datum_refs: [datum-washbasin-cabinet], dependencies: [faucet_mbath_vanity], collision: reviewed, maintenance_boundary: 柜内检修, validation_refs: [recipe-test] }
+      - { id: east-closed-drawers, role: 东侧封闭抽屉收纳, independent: false, owner: bathroom_cabinet, material: moisture_resistant_board, geometry_source: FixtureFactory, datum_refs: [datum-washbasin-cabinet], dependencies: [], collision: reviewed, maintenance_boundary: 抽屉可拆, validation_refs: [recipe-test] }
+    visual_relationships: [{ target_object_id: vanity_screen_halfwall, relation: adjacent, requirement: 外轮廓与屏风保持原关系, evidence_refs: [] }]
+    validation_refs: [verify:furniture, verify:all, recipe-test, config-regression-test]
+    status: planned
+notes:
+  - bed_180 与 wardrobe_240_split 为冻结依赖对象，不属于本次几何修改对象。

@@ -137,23 +137,45 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // 2026-08-25 洗漱+梳妆一体台（DEC-043，主卫台盆外移条带）：1.10m 满墙台面（墙段 x[0,1.15] 留 0.05 收边缝），
-    // 台盆 0.5 居西、梳妆位尽量宽；收纳并入台下柜+镜柜（bath_entry_shelf/vanity_tall_cabinet 均已删除）。
-    // 局部 -z 为靠墙侧，front 朝 +z。
-    type: 'vanity_dresser',
+    // 2026-09-01 主卫外纯洗手柜：保持原 1.10×0.50m 外轮廓和西侧盆心，取消梳妆膝位与椅子。
+    // 局部 -z 为靠墙侧，front 朝 +z；东侧改为完整封闭抽屉收纳。
+    type: 'mb_washbasin_cabinet',
     parts: [
-      // 台下柜（台盆半，西侧）
-      { shape: 'box', size: [0.46, 0.72, 0.42], position: [-0.29, 0.36, 0], color: '#d7d9db', roughness: 0.45, part: 'vanity-carcass', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.44, 0.66, 0.02], position: [-0.29, 0.40, 0.22], color: '#eef0f1', roughness: 0.35, part: 'vanity-door', materialRole: 'door_front' },
-      // 梳妆位（东侧）留膝部空间，仅一组吊抽屉
-      { shape: 'box', size: [0.40, 0.16, 0.38], position: [0.27, 0.62, 0], color: '#d7d9db', roughness: 0.45, part: 'dresser-drawer', materialRole: 'drawer_front' },
-      // 通长台面
-      { shape: 'box', size: [1.14, 0.04, 0.50], position: [0, 0.79, 0], color: '#e8e6e0', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
-      // 台上盆 + 龙头（西半）
+      // 两段柜体各 0.55m 宽、在 x=0 处拼缝贴合；柜体顶面 y=0.77 与台面底面齐平，不留空缝。
+      { shape: 'box', size: [0.55, 0.77, 0.42], position: [-0.275, 0.385, 0], color: '#d7d9db', roughness: 0.45, part: 'basin-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.52, 0.68, 0.02], position: [-0.275, 0.41, 0.22], color: '#eef0f1', roughness: 0.35, part: 'basin-door', materialRole: 'door_front' },
+      { shape: 'box', size: [0.55, 0.77, 0.42], position: [0.275, 0.385, 0], color: '#d7d9db', roughness: 0.45, part: 'east-storage-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.52, 0.22, 0.02], position: [0.275, 0.62, 0.22], color: '#eef0f1', roughness: 0.35, part: 'east-drawer-upper', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.52, 0.44, 0.02], position: [0.275, 0.29, 0.22], color: '#eef0f1', roughness: 0.35, part: 'east-drawer-lower', materialRole: 'drawer_front' },
+      { shape: 'box', size: [1.10, 0.04, 0.50], position: [0, 0.79, 0], color: '#e8e6e0', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
       { shape: 'box', size: [0.46, 0.12, 0.32], position: [-0.29, 0.87, 0], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
       { shape: 'box', size: [0.05, 0.22, 0.05], position: [-0.29, 0.92, -0.16], color: '#c8ccd0', metalness: 0.6, roughness: 0.35, part: 'faucet', materialRole: 'hardware' },
-      // 梳妆区连续镜面：适度收窄，给镜下插座和门洞留出清晰边界
-      { shape: 'box', size: [0.88, 0.75, 0.03], position: [0.08, 1.45, -0.235], color: '#bcd2d8', roughness: 0.1, metalness: 0.6, part: 'mirror', materialRole: 'mirror' },
+      { shape: 'box', size: [0.72, 0.72, 0.03], position: [-0.10, 1.43, -0.235], color: '#bcd2d8', roughness: 0.1, metalness: 0.6, part: 'wash-mirror', materialRole: 'mirror' },
+    ],
+  },
+  {
+    // 独立落地干式梳妆台：局部 x 为 0.85m 长边，局部 z 为 0.40m 深度；配置 rotation=270 后长边沿世界 z、局部 +z 正面朝西（-x），镜/灯所在局部 -z 靠背侧贴东墙。
+    type: 'master_dressing_table',
+    parts: [
+      { shape: 'box', size: [0.85, 0.045, 0.40], position: [0, 0.7275, 0], color: '#b08d5e', roughness: 0.42, part: 'rounded-top', materialRole: 'countertop' },
+      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [-0.36, 0.3525, -0.135], color: '#7b5d3f', roughness: 0.5, part: 'leg-north-rear', materialRole: 'cabinet_body' },
+      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [0.36, 0.3525, -0.135], color: '#7b5d3f', roughness: 0.5, part: 'leg-south-rear', materialRole: 'cabinet_body' },
+      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [-0.36, 0.3525, 0.135], color: '#7b5d3f', roughness: 0.5, part: 'leg-north-front', materialRole: 'cabinet_body' },
+      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [0.36, 0.3525, 0.135], color: '#7b5d3f', roughness: 0.5, part: 'leg-south-front', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.74, 0.10, 0.32], position: [0, 0.65, 0.015], color: '#a47c52', roughness: 0.42, part: 'thin-drawer', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.54, 0.54, 0.025], position: [0, 1.04, -0.13], color: '#bcd2d8', roughness: 0.1, metalness: 0.55, part: 'tabletop-mirror', materialRole: 'mirror' },
+      { shape: 'box', size: [0.38, 0.025, 0.10], position: [0, 0.765, -0.12], color: '#7b5d3f', roughness: 0.5, part: 'mirror-stand', materialRole: 'cabinet_body' },
+      { shape: 'cylinder', size: [0.025, 0.48, 0.025], position: [0.31, 0.99, -0.13], color: '#c9a86a', metalness: 0.55, roughness: 0.3, part: 'plug-in-light', materialRole: 'lighting_fixture' },
+    ],
+  },
+  {
+    type: 'dressing_stool',
+    parts: [
+      { shape: 'box', size: [0.42, 0.07, 0.40], position: [0, 0.415, 0], color: '#d8c7b8', roughness: 0.8, part: 'seat', materialRole: 'upholstery' },
+      { shape: 'box', size: [0.035, 0.38, 0.035], position: [-0.17, 0.19, -0.16], color: '#7b5d3f', roughness: 0.5, part: 'leg-1', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.035, 0.38, 0.035], position: [0.17, 0.19, -0.16], color: '#7b5d3f', roughness: 0.5, part: 'leg-2', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.035, 0.38, 0.035], position: [-0.17, 0.19, 0.16], color: '#7b5d3f', roughness: 0.5, part: 'leg-3', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.035, 0.38, 0.035], position: [0.17, 0.19, 0.16], color: '#7b5d3f', roughness: 0.5, part: 'leg-4', materialRole: 'cabinet_body' },
     ],
   },
   {

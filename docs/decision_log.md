@@ -1,5 +1,7 @@
 # 决策日志
 
+> 2026-09-01 起 Blender 主线暂停；本日志中 `scripts/blender/...` 等旧路径均为历史关联文件，当前源码位置与恢复边界见 `scripts/archive/blender-pipeline/README.md`。
+
 记录所有重大决策、否决方案、变更原因，确保可追溯。
 
 ## 决策模板
@@ -894,4 +896,23 @@
 - **预算影响**：取消此前东墙内置洗漱的挂墙镜柜表达；保留洗漱台、给排水和插座需求，新增/调整穿南墙及南墙外收口费用待深化确认。
 - **现场待确认**：南墙实体材质与可挂载性、外置台盆落位及给排水穿墙方式；东墙实体墙材质与挂载条件；南侧外门开启净空；原立管与马桶坑距；淋浴防水高度、玻璃屏入口、地漏坡度及排风路径。
 - **关联文件**：`config/layout/model-geometry.yaml`、`config/layout/overlay.yaml`、`config/house.yaml`、`config/plumbing.yaml`、`config/electrical.yaml`
+- **决策人**：业主
+
+---
+
+### DEC-2026-09-01-050 主卧南床头独立干式梳妆台 + 外置纯洗手柜
+
+- **日期**：2026-09-01
+- **决策事项**：在不移动主卧床与北侧衣柜、不改墙内电气的前提下，补齐南床头梳妆功能，并将主卫外原洗漱梳妆一体台收敛为纯洗手柜。
+- **选定方案**：
+  - `bed_180 @(3.20,7.875) rotation=270` 与 `wardrobe_240_split @(3.00,5.95)` 坐标和朝向冻结不动。
+  - 南床头新增 `master_dressing_table @(4.00,9.245) rotation=90`，成品外轮廓 `0.85×0.40×0.75m`；长边沿世界 z、东缘贴 w_mb_east、面朝西，世界 AABB `x[3.80,4.20] z[8.82,9.67]`。靠床端兼床头置物，配一层薄抽屉、桌面支撑镜和插接式镜前灯，不假定东墙可挂重镜。
+  - 新增 `dressing_stool @(3.75,9.245) rotation=90`，`0.42×0.40×0.45m`，收纳态进入台下；不复用通用 `0.5×0.5 chair`。
+  - 复用 `sock_master_bed_r @(4.20,9.25,h0.70)`，桌—插座中心距约 `0.20m`，不改墙内电气；定制桌须为插座保留可见、可拔插检修口。南床头壁灯保留。
+  - 原 `vanity_dresser @(0.55,3.16)` 替换为 `mb_washbasin_cabinet`：保持 `1.10×0.50m` 外轮廓、盆心 `(0.26,2.96)`、龙头、墙排及东侧屏风关系；删除梳妆膝位和椅子，东侧改封闭上下抽屉收纳。
+- **渲染主线**：共享 `FixtureFactory`/GLB/Web 已增加三类新 recipe 与稳定 parts/materialRole；旧 Blender 主线已由同期外部工作区改动整体冷归档到 `scripts/archive/blender-pipeline/`，本决策遵守新根规则，不复活或编辑归档管线。归档前南侧自动床头柜问题由活动共享场景不生成该候选自然消除；正式验证以 GLB/Web 对象树为准。
+- **窗帘边界**：南帘是可压缩软装，不把 curtain box 当硬碰撞墙；当前 schema 无低风险字段可准确声明电机端和单侧堆叠，故不伪造“闭帘完全无影响”。桌南缘距南窗帘轨线约 0.13m，真实褶皱厚度与向西收拢方式须由窗帘深化图确认。
+- **预算语义**：纯洗手柜与干式梳妆台分别映射 vanity topic，专用凳映射 chair；洁具数量仍由纯洗手柜+faucet 计数，不沿用 `vanity_dresser` 语义。
+- **现场待确认**：东墙完成面/暗管探测；南帘电机端、堆叠厚度和闭帘扫掠；插座面板与桌后检修净空；墙排/存水弯与东侧抽屉避让；台盆实际开孔与屏风收边。
+- **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`config/plumbing.yaml`、`config/design-rules.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`scripts/verify/placement/verify-furniture-placement.ts`、`server/budget-calculator.ts`、`docs/dressing-map.md`、`docs/design-iterations/master-bedroom-20260901/`
 - **决策人**：业主

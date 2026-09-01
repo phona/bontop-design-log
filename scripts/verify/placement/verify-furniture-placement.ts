@@ -97,6 +97,7 @@ const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['kitchen_cabinet_run', 'dishwasher'], // 2026-08-23 洗碗机嵌柜段留位（run +0.04 容差与机位边缘相接）
   ['kitchen_countertop_bridge', 'kitchen_cabinet_run'], // bridge intentionally overlaps both run ends to make one continuous countertop
   ['kitchen_countertop_bridge', 'dishwasher'], // bridge is the declared countertop over the dishwasher reservation
+  ['master_dressing_table', 'dressing_stool'], // 专用凳明确收进梳妆台台下，平面 footprint 可重叠但高度不冲突
   ['rubber_training_mat', 'squat_rack'],
   ['rubber_training_mat', 'bench_adjustable'],
   ['rubber_training_mat', 'barbell_olympic'],

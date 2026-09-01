@@ -10,6 +10,44 @@ import { load } from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 import { parseOverlay, mergeSceneElements } from '../../../server/overlay-merge.js';
 
+test('FixtureFactory builds the master dressing table, stool, and washbasin-only cabinet to frozen dimensions', () => {
+  const table = buildFixture('master_dressing_table');
+  const stool = buildFixture('dressing_stool');
+  const washbasin = buildFixture('mb_washbasin_cabinet');
+  assert.ok(table);
+  assert.ok(stool);
+  assert.ok(washbasin);
+
+  table.updateMatrixWorld(true);
+  stool.updateMatrixWorld(true);
+  washbasin.updateMatrixWorld(true);
+  const tableBox = new THREE.Box3().setFromObject(table);
+  const stoolBox = new THREE.Box3().setFromObject(stool);
+  const washbasinBox = new THREE.Box3().setFromObject(washbasin);
+  assert.ok(Math.abs((tableBox.max.x - tableBox.min.x) - 0.85) < 1e-6);
+  assert.ok(Math.abs((tableBox.max.z - tableBox.min.z) - 0.40) < 1e-6);
+  assert.ok(Math.abs(tableBox.max.y - 1.31) < 1e-6, 'tabletop mirror is self-supported above the 0.75m table');
+  assert.ok(Math.abs((stoolBox.max.x - stoolBox.min.x) - 0.42) < 1e-6);
+  assert.ok(Math.abs((stoolBox.max.z - stoolBox.min.z) - 0.40) < 1e-6);
+  assert.ok(Math.abs(stoolBox.max.y - 0.45) < 1e-6);
+  assert.ok(Math.abs((washbasinBox.max.x - washbasinBox.min.x) - 1.10) < 1e-6);
+  assert.ok(Math.abs((washbasinBox.max.z - washbasinBox.min.z) - 0.50) < 1e-6);
+
+  const tableParts: string[] = [];
+  table.traverse((object) => { if (object.userData.part) tableParts.push(object.userData.part); });
+  assert.ok(tableParts.includes('rounded-top'));
+  assert.ok(tableParts.includes('thin-drawer'));
+  assert.ok(tableParts.includes('tabletop-mirror'));
+  assert.ok(tableParts.includes('plug-in-light'));
+
+  const washbasinParts: string[] = [];
+  washbasin.traverse((object) => { if (object.userData.part) washbasinParts.push(object.userData.part); });
+  assert.ok(washbasinParts.includes('east-storage-carcass'));
+  assert.ok(washbasinParts.includes('east-drawer-upper'));
+  assert.ok(washbasinParts.includes('east-drawer-lower'));
+  assert.ok(!washbasinParts.some((part) => part.includes('dresser') || part.includes('knee')));
+});
+
 test('FixtureFactory builds four master-bedroom vanity types as independent scene objects', () => {
   const types = ['mb_vanity_base_cabinet', 'mb_vanity_lower_board', 'mb_vanity_main_board', 'mb_vanity_pvc_box'];
   assert.deepEqual(types.every((type) => getRecipeTypes().includes(type)), true);
