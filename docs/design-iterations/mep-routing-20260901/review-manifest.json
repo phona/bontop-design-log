@@ -1,0 +1,111 @@
+{
+  "iteration_id": "mep-routing-20260901",
+  "subject": "水路/电路/中央空调第一版工程向物理走线（替代放射式示意）",
+  "frozen_scope": ["config/mep-hvac-coordination.yaml", "docs/design-iterations/mep-routing-20260901/**"],
+  "out_of_scope": ["app/** 渲染代码", "燃气线（业主明确不管）", "默认隐藏/按钮入口行为"],
+  "rounds": [
+    {
+      "round": 1,
+      "baseline": "v1（初版物理走线重写）",
+      "functional_review": {
+        "verdict": "FAIL",
+        "blocking_issues": [
+          "refrigerant-child / strong-ac-child 斜线穿 w_strip_east 未声明 penetration"
+        ]
+      },
+      "aesthetic_review": {
+        "verdict": "FAIL",
+        "blocking_issues": [
+          "斜线/放射式横穿开敞区，不像工程图；要求全部曼哈顿正交折线、贴吊顶网络/墙面"
+        ]
+      },
+      "fixes": [
+        "child 两条路线穿点东移至 w_nw_south x=4.35，全程 x>=4.2 不穿 w_strip_east",
+        "全部 40 条 route 改为正交折线（主干 z=4.6、门厅 x=13.3/z=4.2、厨房 x=7.45 轴线）",
+        "condensate-study 穿点对齐折线交点 (13.4,6.29)；drain-kitchen-requirement 穿点 z=0.5",
+        "water-guest-bath 补 w_gbath_south 门洞低位通过声明；drain-master-bath reason 补注弦线误报"
+      ],
+      "verification": "verify:mep 0 error / 15 warning（全部既有已接受项）；verify:all / typecheck / test:server 494 全绿"
+    },
+    {
+      "round": 2,
+      "baseline": "v2（正交化 + 穿点修正）",
+      "evidence": [
+        "evidence/mep_overview_topdown_all_layers_after_v2.png",
+        "evidence/mep_overview_topdown_ac_only_after_v2.png",
+        "evidence/mep_overview_topdown_power_refrig_condensate_after_v2.png",
+        "evidence/mep_3d_power_refrig_condensate_topdown_near_after_v2.png",
+        "evidence/mep_3d_perspective_from_se_after_v2.png",
+        "evidence/runtime-routes-query-v2.json"
+      ],
+      "functional_review": {
+        "verdict": "FAIL",
+        "blocking_issues": [
+          "B1 drain-master-bath via 段 (1.2,2.2)->(2.0,1.15) 为 45 度斜线",
+          "B2 water-master-bath 穿 w_mbath_south 段非正交，实测交点与声明穿点偏差 6.4cm",
+          "B3 supply-air-living/parent/child 端点接驳段非正交且 minor 0.20-0.25m 超容差"
+        ],
+        "confirmed_resolved": [
+          "第一轮阻塞点 1（w_strip_east 未声明穿墙）实测彻底消除，穿点偏差 0.000",
+          "drain-master-bath 的 w_bath_north 报警核实为圆弧墙弦线近似误报（与 fact-table 一致）",
+          "penetration 完整性独立实测：40 条 route 全部实体墙穿越均有声明"
+        ]
+      },
+      "aesthetic_review": {
+        "verdict": "PASS",
+        "non_blocking_notes": [
+          "drain-master-bath 沉箱内斜段（已在 B1 修复）",
+          "共线多层分色、图例折叠、内机标记块醒目等需改 app 代码，列入后续迭代"
+        ],
+        "requested_changes_deferred_app": [
+          "共线层横向微偏移或线型区分",
+          "图例面板默认展开/常驻",
+          "冷媒/送风/回风色相拉开；内机标记降饱和",
+          "默认隐藏/入口行为调整（冻结范围外）"
+        ]
+      },
+      "fixes": [
+        "B1 drain-master-bath via 正交化为 [{1.2,2.2},{1.2,1.15}]",
+        "B2 water-master-bath 穿墙段沿盆心 x=0.26 正交化，penetration.at 改 (0.26,2.86)",
+        "B3 三条送风支管改为正交折线（living via [{10.3,5.0},{10.8,5.0}]；parent via [{5.0,6.0}]；child via [{3.7,4.0}]）",
+        "顺带：drain-guest-bath 删冗余点并正交化；strong-ac-child/refrigerant-child 中段 jog 正交化；design-datum 三处同步（含'以东'笔误改'以西'）"
+      ],
+      "verification": "verify:mep 0 error / 15 warning 不变；verify:all / typecheck / test:server 494 全绿"
+    },
+    {
+      "round": 3,
+      "baseline": "v3（阻塞项修复）",
+      "evidence": [
+        "evidence/mep_overview_topdown_all_layers_after_v3.png",
+        "evidence/mep_overview_topdown_ac_only_after_v3.png",
+        "evidence/mep_overview_topdown_water_only_after_v3.png",
+        "evidence/mep_overview_topdown_power_refrig_condensate_after_v3.png",
+        "evidence/mep_3d_power_refrig_condensate_topdown_near_after_v3.png",
+        "evidence/mep_3d_perspective_from_se_after_v3.png",
+        "evidence/runtime-routes-query-v3.json（全量 40 条点列）"
+      ],
+      "functional_review": {
+        "verdict": "PASS",
+        "key_findings": [
+          "B1/B2/B3 全部修复并实测确认：全正交、穿点偏差 0.0000",
+          "13 处实体墙严格相交全部有匹配 penetration 且坐标偏差 0.0000",
+          "全量 40 条 route runtime 点列与 yaml 解析逐点一致（40/40）",
+          "warning 仍恰为 15 条既有已接受项，无新增无减少"
+        ],
+        "non_blocking_notes": [
+          "water-garden-requirement 候选穿点偏差 0.069m（候选级从宽）",
+          "design-datum 微漂移：w_balc_east z 1.1 vs 1.08、w_ent_west 高度 0.75 vs 0.72",
+          "个别端点接驳 jog 0.14-0.22m（既有从宽项）",
+          "drain-guest-bath via 末点过终点后共线折返 0.2m（正交但略冗余）"
+        ]
+      },
+      "final_verdict": "PASS（功能 PASS + 美学 PASS）"
+    }
+  ],
+  "final_state": {
+    "status": "delivered-preliminary",
+    "lint": "0 error / 15 warning（全部为记录在案的已接受项）",
+    "tests": "test:server 494/494；verify:all 通过；typecheck 通过",
+    "disclaimer": "全部 40 条 route 为 preliminary/proposed/pending，非施工放线依据"
+  }
+}

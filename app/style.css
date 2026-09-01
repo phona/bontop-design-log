@@ -185,6 +185,11 @@ html, body {
   pointer-events: auto;
 }
 
+/* class 里的 display:flex 会覆盖 hidden 属性的 display:none，需显式兜底 */
+#right-panel-stack > [hidden] {
+  display: none;
+}
+
 #right-panel-stack .dynamic-panel,
 #right-panel-stack #info-panel,
 #right-panel-stack .mep-controls {
@@ -538,62 +543,83 @@ html, body {
   pointer-events: none;
 }
 
-#topdown-btn {
+#toolbar {
   position: fixed;
   top: 50px;
   right: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  z-index: 90;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(20, 20, 25, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+}
+
+#toolbar button {
   background: rgba(20, 20, 30, 0.85);
   color: #ddd;
   border: 1px solid #555;
   border-radius: 6px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   font-size: 13px;
   cursor: pointer;
-  z-index: 90;
   transition: background 0.2s, border-color 0.2s;
 }
 
-#topdown-btn:hover {
+#toolbar button:hover:not(:disabled) {
   background: rgba(40, 40, 60, 0.95);
   border-color: #88aaff;
 }
 
-#topdown-btn.active {
-  background: rgba(60, 100, 180, 0.9);
-  border-color: #88ccff;
-  color: #fff;
-}
-
-#hvac-coordination-btn {
-  position: fixed;
-  top: 50px;
-  right: 96px;
-  background: rgba(20, 20, 30, 0.85);
-  color: #ddd;
-  border: 1px solid #555;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  z-index: 90;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-#hvac-coordination-btn:hover:not(:disabled) {
-  background: rgba(40, 40, 60, 0.95);
-  border-color: #88aaff;
-}
-
-#hvac-coordination-btn:disabled {
+#toolbar button:disabled {
   cursor: not-allowed;
   color: #888;
   border-color: #444;
 }
 
-#hvac-coordination-btn.active {
+#toolbar button.active {
   background: rgba(60, 100, 180, 0.9);
   border-color: #88ccff;
   color: #fff;
+}
+
+#mep-overview-btn {
+  border-color: #eab308;
+}
+
+#mep-overview-btn.active {
+  background: rgba(161, 98, 7, 0.85);
+  border-color: #eab308;
+  color: #fff;
+}
+
+.btn-badge {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 16px;
+  background: rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+
+.btn-badge-warning {
+  background: rgba(234, 179, 8, 0.25);
+  color: #fde68a;
+}
+
+.btn-badge-error {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
 }
 
 .mep-controls {
@@ -610,11 +636,10 @@ html, body {
   color: #ddd;
   font-size: 12px;
 }
-.mep-lint-summary { color: #cbd5e1; line-height: 1.45; }
-.mep-lint-summary-warning { color: #fde68a; }
-.mep-lint-summary-error { color: #fca5a5; }
-.mep-lint-summary-unready { color: #94a3b8; }
 .mep-route-summary { color: #e2e8f0; line-height: 1.4; }
+.mep-controls-note { color: #94a3b8; line-height: 1.4; }
+.mep-legend-details summary { cursor: pointer; color: #94a3b8; user-select: none; }
+.mep-legend-details[open] summary { margin-bottom: 2px; }
 .mep-status-legend { display: flex; flex-direction: column; gap: 2px; line-height: 1.4; }
 .mep-status { white-space: nowrap; }
 .mep-status.confirmed { color: #4ade80; }
@@ -628,110 +653,6 @@ html, body {
 .mep-layer-toggles label { white-space: nowrap; display: flex; align-items: center; gap: 4px; }
 .mep-layer-swatch { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
 .electrical-topology-controls strong { color: #fef08a; }
-
-#electrical-topology-btn {
-  position: fixed;
-  top: 50px;
-  right: 500px;
-  background: rgba(20, 20, 30, 0.85);
-  color: #ddd;
-  border: 1px solid #555;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  z-index: 120;
-  pointer-events: auto;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-#electrical-topology-btn:hover:not(:disabled) {
-  background: rgba(40, 40, 60, 0.95);
-  border-color: #88aaff;
-}
-
-#electrical-topology-btn:disabled {
-  cursor: not-allowed;
-  color: #888;
-  border-color: #444;
-}
-
-#electrical-topology-btn.active {
-  background: rgba(60, 100, 180, 0.9);
-  border-color: #88ccff;
-  color: #fff;
-}
-
-#mep-overview-btn {
-  position: fixed;
-  top: 50px;
-  right: 360px;
-  background: rgba(20, 20, 30, 0.85);
-  color: #ddd;
-  border: 1px solid #eab308;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  z-index: 90;
-}
-
-#mep-overview-btn.active {
-  background: rgba(161, 98, 7, 0.85);
-  color: #fff;
-}
-
-#sunlight-btn {
-  position: fixed;
-  top: 50px;
-  right: 204px;
-  background: rgba(20, 20, 30, 0.85);
-  color: #ddd;
-  border: 1px solid #555;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  z-index: 90;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-#sunlight-btn:hover {
-  background: rgba(40, 40, 60, 0.95);
-  border-color: #88aaff;
-}
-
-#sunlight-btn.active {
-  background: rgba(60, 100, 180, 0.9);
-  border-color: #88ccff;
-  color: #fff;
-}
-
-#humidity-btn {
-  position: fixed;
-  top: 50px;
-  right: 284px;
-  background: rgba(20, 20, 30, 0.85);
-  color: #ddd;
-  border: 1px solid #555;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  z-index: 90;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-#humidity-btn:hover {
-  background: rgba(40, 40, 60, 0.95);
-  border-color: #88aaff;
-}
-
-#humidity-btn.active {
-  background: rgba(60, 100, 180, 0.9);
-  border-color: #88ccff;
-  color: #fff;
-}
 
 #humidity-info-panel {
   position: fixed;

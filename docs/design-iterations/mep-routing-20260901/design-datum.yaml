@@ -1,0 +1,42 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: mep-routing-20260901
+subject: 水路/电路/中央空调第一版工程向物理走线
+coordinate_system:
+  plan: { axes: 'x 东西（+x 东），z 南北（+z 南）', origin: model-geometry 局部坐标（米）, direction: 俯视北朝上, units: m }
+  elevation: { axes: 'y 向上（高度，米）', origin: 完成面 ±0, units: m }
+  section: { axes: '穿墙点以墙 id + 沿墙坐标 + 高度表达', viewing_side: 房间侧, units: m }
+datum_type: service_route
+service_spine:
+  statement: 强电/弱电/冷媒共享主干服务脊：配电箱 (13.4,3.6) 起升 → 门厅吊顶西行 → 客厅北缘边吊 → 走廊枢纽 bend_corridor (7.2,4.3)；冷媒另有外机侧主干：VRV 平台 (6.4,0.5) 起升 → 穿 w_vrv_east → 厨房吊顶空腔沿 x≈7.45 南下 → 折入客厅边吊
+  ceiling_voids:
+    corridor: { area: [4.20, 4.30, 7.20, 5.55], clear_height: 2.50 }
+    foyer: { area: [10.80, 2.90, 13.40, 4.30], clear_height: 2.50 }
+    living_north_ledge: { area: [7.20, 4.30, 13.40, 5.20], clear_height: 2.50 }
+    kitchen: { area: [7.20, 0.00, 10.80, 2.40], clear_height: 2.55 }
+    master_ac_ledge: { area: [0.05, 4.30, 4.20, 4.95], clear_height: 2.50 }
+    parent_north_ledge: { area: [4.20, 5.55, 7.20, 6.45], clear_height: 2.50 }
+    child_south_ledge: { area: [2.60, 3.70, 5.60, 4.30], clear_height: 2.50 }
+    study_north_ledge: { area: [13.40, 5.55, 15.80, 6.15], clear_height: 2.50 }
+  layer_elevations: { strong_power: 2.45, weak_power: 2.50, refrigerant: 2.55, condensate: 2.35, supply_air: 2.68, return_air: 2.72, water_supply: 0.18, drainage: 0.02~0.10 }
+penetrations:
+  - { wall: w_vrv_east, at: {x: 7.2, z: 0.55}, height: 2.55, routes: [refrigerant-trunk], note: 平台进厨房吊顶 }
+  - { wall: w_vrv_east, at: {x: 7.2, z: 0.45}, height: 0.18, routes: [water-kitchen-requirement], note: 候选垫层 }
+  - { wall: w_vrv_east, at: {x: 7.2, z: 0.5}, height: 0.02, routes: [drain-kitchen-requirement], note: 候选垫层 }
+  - { wall: w_balc_east, at: {x: 7.2, z: 1.1}, height: 0.80, routes: [water-balcony], note: 门洞北实体段 }
+  - { wall: w_ent_west, at: {x: 10.8, z: 1.42}, height: 0.75, routes: [water-garden-requirement], note: 候选 }
+  - { wall: w_ent_west, at: {x: 10.8, z: 1.5}, height: 0.02, routes: [drain-garden-requirement], note: 候选 }
+  - { wall: w_strip_east, at: {x: 4.2, z: 4.6}, height: 2.50, routes: [refrigerant-master, strong-ac-master, weak-master], note: 门洞 d_mb 以北实体段，三管同孔区 }
+  - { wall: w_st_north, at: {x: 5.5, z: 5.55}, height: 2.50, routes: [refrigerant-parent, strong-ac-parent, weak-parent], note: 门洞 d_study 以西实体段 }
+  - { wall: w_nw_south, at: {x: 4.35, z: 4.3}, height: 2.50, routes: [refrigerant-child, strong-ac-child], note: 复审修正后东移至 x=4.35（原 4.0 斜线穿 w_strip_east 未声明）；位于门洞 d_bnw 以西实体段，距 d_bnw 西沿仅 0.20m，量房重点复核 }
+  - { wall: w_be_west, at: {x: 13.4, z: 5.9}, height: 2.45~2.55, routes: [refrigerant-study, strong-ac-study], note: 门洞 d_bese 上方过门头，过梁关系待现场复核 }
+  - { wall: w_be_west, at: {x: 13.4, z: 6.29}, height: 2.35, routes: [condensate-study], note: 冷凝水单独穿点，对齐折线交点，过梁关系待现场复核 }
+  - { wall: w_mbath_south, at: {x: 0.26, z: 2.86}, height: 0.18, routes: [water-master-bath], note: 第三轮复审修正：穿点对齐盆心 x=0.26 正交穿墙（原 0.44 为斜穿实测交点偏差 6.4cm）；门洞 d_mbath 以西实体段，垫层/沉箱 }
+  - { wall: w_mbath_south, at: {x: 2.0, z: 2.86}, height: 2.27, routes: [condensate-master], note: 门洞以东实体段，避让参考梁头 x[1.2,1.9] }
+  - { wall: w_gbath_west_open_vanity, at: {x: 5.6, z: 3.87}, height: 2.27, routes: [condensate-child], note: 客卫开放洗漱区西隔墙 }
+  - { wall: w_gbath_south, at: {x: 5.9, z: 3.55}, height: 0.18, routes: [water-guest-bath], note: 沿墙线经门洞 d_gbath（x[5.6,6.3]）区间低位通过，垫层/门槛石下，非穿孔 }
+datum_refs: [fact-ceiling-network, fact-door-openings, fact-master-intent, fact-outdoor-pos, fact-panel-pos]
+notes:
+  - 所有标高为协调标高（吊顶空腔内），非放线标高；重力管 1% 坡（阳台排水 2%）为协调目标值。
+  - 弱电/冷凝水沿墙下引段与客厅边吊以南暴露段不在吊顶网络内，标记为 proposal 待现场定做法。
+  - 评审修正记录：第一轮功能评审发现 refrigerant-child/strong-ac-child 斜线穿 w_strip_east 未声明（阻塞）→ 穿点东移至 w_nw_south x=4.35，全程 x≥4.2 不再碰 w_strip_east；第一轮美学评审要求全正交化 → 全部路线改为曼哈顿折线（主干 z=4.6 轴线、门厅 x=13.3/z=4.2 轴线、厨房 x=7.45 轴线），穿墙段与墙正交。

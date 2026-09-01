@@ -12,9 +12,8 @@ function installDom(): { button: HTMLButtonElement; controls: HTMLDivElement; ov
   globalThis.requestAnimationFrame = (() => 0) as typeof requestAnimationFrame;
   document.body.innerHTML = `
     <button id="mep-overview-btn">机电总览</button>
-    <button id="electrical-topology-btn">电气回路归属</button>
+    <button id="electrical-topology-btn"><span class="btn-label">电气回路归属</span><span id="electrical-topology-badge" class="btn-badge" hidden></span></button>
     <div id="electrical-topology-controls" hidden></div>
-    <div id="mep-lint-summary" hidden></div>
   `;
   return {
     button: document.getElementById('electrical-topology-btn') as HTMLButtonElement,

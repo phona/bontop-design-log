@@ -1,0 +1,79 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: mep-routing-20260901
+subject: 水路/电路/中央空调第一版工程向物理走线
+objects:
+  - id: strong-power-routes
+    kind: mep_route_group
+    layer: strong_power
+    routes: [strong-main, strong-ac-living, strong-ac-master, strong-ac-parent, strong-ac-study, strong-ac-child]
+    responsibility: 空调专用回路强电走线（配电箱→门厅/客厅边吊/走廊吊顶→各内机电源插座）
+    interfaces: [panel_strong_entry_left, bend_corridor, sock_*_ac]
+    maintenance: 全部吊顶空腔内，检修随吊顶/回风格栅
+    collision_policy: 不参与场景碰撞；穿墙点见 design-datum penetrations
+    validation_refs: [verify:mep, verify:all]
+  - id: weak-power-routes
+    kind: mep_route_group
+    layer: weak_power
+    routes: [weak-main-living, weak-master, weak-parent, weak-study]
+    responsibility: 弱电走线（弱电箱→走顶→沿墙下引至网口/预留位）
+    interfaces: [panel_weak_entry_left, net_living, net_parent, net_study]
+    maintenance: 吊顶段随吊顶；沿墙下引段做法待现场
+    collision_policy: 不参与场景碰撞
+    validation_refs: [verify:mep]
+  - id: water-routes
+    kind: mep_route_group
+    layer: water_supply
+    routes: [water-master-bath, water-guest-bath, water-balcony, water-kitchen-requirement, water-garden-requirement]
+    responsibility: 给水支路（卫生间 plan_supported；厨房/阳台/花园需求级候选）
+    interfaces: [faucet_mbath_vanity, toilet_mbath, faucet_gbath_vanity, toilet_gbath, faucet_balcony_washer]
+    maintenance: 垫层/沉箱/墙面敷设，全部 construction_status: pending
+    collision_policy: 不参与场景碰撞
+    validation_refs: [verify:mep]
+  - id: drain-routes
+    kind: mep_route_group
+    layer: drainage
+    routes: [drain-master-bath, drain-guest-bath, drain-balcony, drain-kitchen-requirement, drain-garden-requirement]
+    responsibility: 排水支路（重力，1~2% 坡，立管接点待量房）
+    interfaces: [drain_mbath_shower, drain_mbath_floor, drain_gbath_shower, drain_gbath_floor, drain_balcony_washer, drain_balcony_floor]
+    maintenance: 沉箱/垫层内，坡度待现场复核
+    collision_policy: 不参与场景碰撞
+    validation_refs: [verify:mep]
+    known_issues: [drain-master-bath 触发 w_bath_north 弦线近似误报（fact-arc-chord-false-positive）]
+  - id: refrigerant-routes
+    kind: mep_route_group
+    layer: refrigerant
+    routes: [refrigerant-trunk, refrigerant-master, refrigerant-parent, refrigerant-study, refrigerant-child]
+    responsibility: 冷媒星型拓扑（外机→厨房/走廊吊顶主干→各房间边吊支路）
+    interfaces: [outdoor_a2, bend_corridor, indoor_living, indoor_master, indoor_parent, indoor_study, indoor_child]
+    maintenance: 吊顶空腔内；分歧器/套管待厂家深化
+    collision_policy: 不参与场景碰撞；绕梁优先，不得默认穿梁
+    validation_refs: [verify:mep]
+  - id: condensate-routes
+    kind: mep_route_group
+    layer: condensate
+    routes: [condensate-living, condensate-master, condensate-study, condensate-parent, condensate-child]
+    responsibility: 冷凝水重力候选（内机→边吊/墙面 1% 坡→竖直下引→候选接入点）
+    interfaces: [indoor_*, condensate_*_candidate]
+    maintenance: 候选接入点全部 pending，不得默认接地漏/立管
+    collision_policy: 不参与场景碰撞
+    validation_refs: [verify:mep]
+  - id: air-duct-routes
+    kind: mep_route_group
+    layer: supply_air + return_air
+    routes: [supply-air-*, return-air-* 共 10 条]
+    responsibility: 送/回风边吊内短支管（内机→风口）
+    interfaces: [indoor_*, supply_*, return_*]
+    maintenance: 回检一体铰接格栅兼检修口
+    collision_policy: 不参与场景碰撞
+    validation_refs: [verify:mep]
+    known_issues: [supply_return_overlap ×5：送/回风包络在内机出口相邻，inferred 级 soft warning，工程上属正常邻接]
+visual_datum:
+  shared_spine: 门厅吊顶 + 客厅北缘边吊 + 走廊吊顶构成连续主干视觉带；分支在边吊接口处转弯
+  status_colors: { confirmed: 绿实线, inferred: 琥珀虚线标记, pending: 灰蓝低透明虚线, requirement/candidate: 紫/浅蓝线框虚线 }
+  hierarchy: 主干（strong-main/refrigerant-trunk）视觉权重高于分支；需求级路线以线框区分于物理路线
+dependencies:
+  - config/ceiling.yaml（吊顶网络基准，只读引用）
+  - config/hvac.yaml（锚点/风口/候选点，只读引用）
+  - config/electrical.yaml / config/plumbing.yaml（点位，只读引用）
+  - shared/mep-hvac-lint.ts（穿墙/坡度/覆盖检测，未修改）

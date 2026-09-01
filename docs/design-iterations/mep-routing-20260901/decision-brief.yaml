@@ -1,0 +1,41 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: mep-routing-20260901
+subject: 水路/电路/中央空调第一版工程向物理走线（燃气除外）
+priority:
+  user_goal: 让 web 里能看出水/电/空调沿吊顶网络与墙面走的工程形态，取代放射式示意线
+  ranked: [路径贴吊顶网络与墙面, 穿墙处显式声明且避让门洞, 重力管带坡度方向, 不提升任何路线的确认等级, 校验全绿]
+  non_negotiables: [model-geometry.yaml 不修改, ceiling/hvac/electrical/plumbing 权威配置不修改, 燃气不做, 不把 preliminary 路线提升为 confirmed, 水路保持 construction_status: pending]
+  tradeoffs_accepted: [书房方向存在约 0.7m 无吊顶暴露段（局部包管待深化）, 弱电/冷凝水沿墙下引段为 proposal, design_requirement 路线仍以线框虚线表达]
+frozen: true
+freeze_record:
+  alignment_id: user-request-20260901-mep
+  original_user_response: "燃气线不用管。但是水电空调的线路图得先做一版"
+  normalized_decisions: [重写 39 条 route 的 via 折线贴吊顶网络, 穿墙 11 处显式 penetration 声明, 重力管补 flow_direction+slope, design_requirement 路线保留需求级语义但给候选路径, 修复 water-balcony 退化占位]
+  confirmed_by_user: true
+  confirmed_at: "2026-09-01T18:00:00+08:00"
+  evidence_refs: [user-request-20260901-mep]
+allowed_scope:
+  files: [config/mep-hvac-coordination.yaml, docs/design-iterations/mep-routing-20260901/**]
+  objects: [39 条 MEP route]
+  archetypes: [mep_coordination, hvac, electrical, plumbing]
+  views: [plan, perspective, section]
+  changes: [MEP 协调路线 v1 物理路径, 迭代记录文档]
+forbidden:
+  files: [config/layout/model-geometry.yaml, config/layout/overlay.yaml, config/ceiling.yaml, config/hvac.yaml, config/electrical.yaml, config/plumbing.yaml, config/house.yaml, app/**, server/**, shared/**]
+  objects: [墙体几何, 吊顶几何, 电气/给排水点位坐标, 燃气路由]
+  assumptions: [无吊顶暴露段可包管, 过门头穿墙不撞梁（待量房）, lint 弦线近似误报可接受]
+  out_of_scope_changes: [HvacDiagramRenderer routes 渲染补齐, MEP 默认可见性改动, 电气回路拓扑整改, git 操作]
+open_questions:
+  - { id: site-beams, category: construction, question: 实际梁底标高与走廊/厨房套管条件, fact_refs: [pending-beam-positions], options: [], selected: 量房后深化, user_response: 未量房前全部保持 preliminary, status: site_pending }
+  - { id: site-risers, category: construction, question: 给排水立管位置, fact_refs: [pending-risers], options: [], selected: 量房后坐实, user_response: 保持 pending, status: site_pending }
+alignment:
+  records: [{ id: user-request-20260901-mep, answer: 燃气不做，水电空调线路图先做一版, normalized: 按本 brief 实施；自动权限模式下未另行提问，推断项不提升确认等级 }]
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run verify:mep, npm run verify:all, npm run test:server, npm run typecheck]
+  browser_evidence_required: true
+  required_views: [机电总览俯视全层, 仅空调层俯视, 强电+冷媒+冷凝水俯视, 东南向透视]
+  aesthetic_review: PASS required
+  functional_review: PASS required
