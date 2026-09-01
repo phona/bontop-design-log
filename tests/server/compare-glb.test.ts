@@ -45,7 +45,7 @@ test('semantic normalization collapses implementation children and legacy furnit
 test('real baseline and facts-enabled CLI candidate classify expected and error differences', () => {
   const baseline = 'tmp/baselines/house-20260826.glb';
   const candidate = 'tmp/compare-current-facts.glb';
-  const facts = 'scripts/blender/project-render-facts.json';
+  const facts = 'data/project-render-facts.json';
   if (!existsSync(candidate)) return;
   const report = compareGlb(baseline, candidate, { factsPath: facts });
   assert.equal(report.baseline.semantic.counts.floor, 15);
@@ -61,7 +61,7 @@ test('real baseline and facts-enabled CLI candidate classify expected and error 
 });
 
 test('facts-enabled comparison reports missing HVAC as an error', () => {
-  const report = compareGlb('tmp/baselines/house-20260826.glb', 'tmp/cli-shared-render.glb', { factsPath: 'scripts/blender/project-render-facts.json' });
+  const report = compareGlb('tmp/baselines/house-20260826.glb', 'tmp/cli-shared-render.glb', { factsPath: 'data/project-render-facts.json' });
   assert.ok(report.errors.some((entry) => entry.includes('missing HVAC entity required by facts')));
   assert.equal(report.candidate.semantic.counts.hvac, 0);
 });
@@ -74,7 +74,7 @@ test('strict mode fails on missing core semantic IDs and facts HVAC entities', (
     const source = inspectGlb(baseline);
     const reduced = makeSummary(source.nodeIds.filter((id) => !id.startsWith('hvac:') && !id.startsWith('floor:master_bedroom')));
     writeFileSync(candidate, Buffer.from('not-a-glb'));
-    assert.throws(() => compareGlb(baseline, candidate, { strict: true, factsPath: 'scripts/blender/project-render-facts.json' }), /Invalid GLB/);
+    assert.throws(() => compareGlb(baseline, candidate, { strict: true, factsPath: 'data/project-render-facts.json' }), /Invalid GLB/);
     assert.ok(reduced.nodeIds.length < source.nodeIds.length);
   } finally {
     rmSync(directory, { recursive: true, force: true });

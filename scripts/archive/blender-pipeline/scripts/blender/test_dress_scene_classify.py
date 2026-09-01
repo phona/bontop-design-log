@@ -49,6 +49,138 @@ from dress_scene import (  # noqa: E402
 )
 
 
+def test_master_bedroom_staging_keeps_only_north_nightstand():
+    source = inspect.getsource(blender_render_only.stage_missing_room_candidates)
+    assert 'north_nightstand_position' in source
+    assert 'target_positions = (north_nightstand_position,)' in source
+    assert 'local_max_x + side_gap + 0.24' not in source
+    assert '南床头由独立干式梳妆台' in source
+
+
+def test_master_bedroom_procedural_recipes_cover_dressing_and_washbasin_semantics():
+    assert {'master_dressing_table', 'dressing_stool', 'mb_washbasin_cabinet'} <= set(FURNITURE_PARTS)
+    assert any(part[0] == 'tabletop_mirror' for part in FURNITURE_PARTS['master_dressing_table'])
+    assert any(part[0] == 'plug_in_light' for part in FURNITURE_PARTS['master_dressing_table'])
+    assert any(part[0] == 'east_storage' for part in FURNITURE_PARTS['mb_washbasin_cabinet'])
+    assert not any('knee' in part[0] or 'dresser' in part[0] for part in FURNITURE_PARTS['mb_washbasin_cabinet'])
+
+
+def test_study_render_scope_is_room_or_related_camera_only():
+    assert blender_render_only.study_render_scope_visible('study', 'study_overview') is True
+    assert blender_render_only.study_render_scope_visible('living_dining', 'study_overview') is False
+    assert blender_render_only.study_render_scope_visible(None, 'study_work_detail') is True
+    assert blender_render_only.study_render_scope_visible(None, 'parent_bedroom') is True
+    assert blender_render_only.study_render_scope_visible(None, 'living_overview') is False
+
+
+def test_study_staging_contract_is_render_only_and_anchor_based():
+    source = inspect.getsource(blender_render_only.stage_study_bedroom)
+    candidate = inspect.getsource(blender_render_only._stage_study_bed_candidate)
+    marker = inspect.getsource(blender_render_only._mark_study_render_only)
+    assert "furniture:study:bed_150:0" in source
+    assert "bedroom_missing', 'bed_150', 'bed_150.blend" in candidate
+    assert "source_class='render_only'" in marker
+    assert "formal_web_geometry=False" in marker
+    assert "assetProvider" in marker
+    assert "electrical" not in source
+    assert "house.yaml" not in source
+
+
+def test_study_candidate_uniform_scale_uses_measured_bbox_width():
+    assert blender_render_only._study_candidate_scale(3.0) == 0.5
+    assert blender_render_only._study_candidate_scale(0.0) == 0.0
+
+
+def test_study_staging_names_are_canonical_for_idempotent_reuse():
+    source = inspect.getsource(blender_render_only.stage_study_bedroom)
+    reset = inspect.getsource(dress_scene._reset_job_visibility)
+    assert "asset:study:bedding:" in source
+    assert "asset:study:reading_lamp:" in source
+    assert "study staging already present" in source
+    assert "dress_dynamic" in reset
+    assert "study staging visibility" in inspect.getsource(dress_scene._apply_job_state)
+
+
+def test_study_bedding_uses_soft_canonical_geometry_without_new_lighting():
+    source = inspect.getsource(blender_render_only.stage_study_bedroom)
+    assert "bedding_created = []" in source
+    assert "_study_bedding_ready" in source
+    assert "if bedding_complete:" in source
+    assert "remove_incomplete_bedding(existing_bedding + bedding_created)" in source
+    assert "hide_formal_bedding()" in source
+    for name in (
+        "asset:study:bedding:mattress",
+        "asset:study:bedding:sheet",
+        "asset:study:bedding:quilt",
+        "asset:study:bedding:pillow:left",
+        "asset:study:bedding:pillow:right",
+    ):
+        assert name in source
+    assert "canonical_roles =" in source
+    assert "_study_bedding_complete" in source
+    assert "add_rounded_box" in source
+    assert "Soft rounded edge" in source
+    assert "add_quilt" in source
+    assert "subdivision_ripple_drape" in source
+    assert "add_pillow" in source
+    assert "ellipsoid_subdivision" in source
+    assert "contact_shadow" in source
+    assert "Reading-light staging remains intentionally skipped" in source
+    assert "primitive_cube_add" in source
+    assert "bedding_count = len(existing_bedding) + len(bedding_created)" in source
+    assert "reading_lamp" in source
+    assert "bedding=5" not in source
+
+
+def test_study_bedding_ready_requires_all_canonical_objects_and_valid_geometry_version():
+    class Bedding:
+        def __init__(self, version):
+            self.version = version
+
+        def get(self, key, default=None):
+            return self.version if key == 'bedding_geometry_version' else default
+
+    ready = blender_render_only._study_bedding_ready
+    assert ready([Bedding(3)] * 5, 5, 3) is True
+    assert ready([Bedding(3)] * 4, 5, 3) is False
+    assert ready([Bedding(3), Bedding(2), Bedding(3), Bedding(3), Bedding(3)], 5, 3) is False
+
+
+def test_study_pillow_scale_is_local_and_preserves_horizontal_dimensions():
+    scale = blender_render_only._study_pillow_local_scale((0.54, 0.36, 0.14), 0.35)
+    assert scale[:2] == (0.54, 0.36)
+    assert 0.14 <= scale[2] <= 0.15
+    source = inspect.getsource(blender_render_only.stage_study_bedroom)
+    assert 'obj.rotation_quaternion = anchor.matrix_world.to_quaternion() @' in source
+    assert 'obj.scale = _study_pillow_local_scale(dimensions, collapse)' in source
+    assert 'obj.dimensions = dimensions' not in source.split('def add_pillow', 1)[1].split('def add_quilt', 1)[0]
+    assert 'bedding_geometry_version = 3' in source
+
+
+def test_study_bedding_complete_keeps_fallback_for_partial_or_exception_sets():
+    class Bedding:
+        def __init__(self, version):
+            self.version = version
+
+        def get(self, key, default=None):
+            return self.version if key == 'bedding_geometry_version' else default
+
+    complete = [Bedding(3)] * 5
+    assert blender_render_only._study_bedding_complete([], complete, 5, 3) is True
+    assert blender_render_only._study_bedding_complete([], complete[:2], 5, 3) is False
+    assert blender_render_only._study_bedding_complete(complete[:4], [], 5, 3) is False
+    assert blender_render_only._study_bedding_complete([], [], 5, 3) is False
+
+
+def test_study_staging_reuses_canonical_bedding_family():
+    source = inspect.getsource(blender_render_only.stage_study_bedroom)
+    assert "existing_bedding =" in source
+    assert "remove_incomplete_bedding" in source
+    assert "existing_lamp =" in source
+    assert "if not existing_bedding:" in source
+    assert "return bedding_count + len(existing_lamp)" in source
+
+
 def test_asset_and_render_only_modules_are_independent_compatibility_boundaries():
     assert 'dress_scene' not in blender_assets.__dict__
     assert 'dress_scene' not in blender_render_only.__dict__

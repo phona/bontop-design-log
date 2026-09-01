@@ -237,51 +237,20 @@ TS 的 `private` 只是编译期约束。运行时可通过 `window.__APP__` 遍
 - **配置 watcher**：服务端数据不对时，先确认状态接口；必要时触发配置 watcher 重载，再重新核对。
 - 页面报错横幅可能是编辑过程中的瞬时状态，先查服务端实际状态，不要立即修“假错误”。
 
-## 四、Blender / WSL 联动
+## 四、Blender / WSL 联动（PAUSED / HISTORICAL）
 
-### 1. Windows Blender 与 WSL 路径
+本项目 Blender wrapper、runtime、bundle 与相机工具已冷归档到 `scripts/archive/blender-pipeline/`。旧 `scripts/run-blender.sh` 与 `scripts/blender/...` 示例不再是 live 入口，也不应由浏览器验证流程自动调用。恢复时先阅读归档 `README.md`，并在独立副本中重建历史路径。
 
-#### 现象
-
-Windows 侧 Blender 直接读取 Linux/WSL 路径失败，或找不到 GLB、配置和 HDRI。
-
-#### 推荐处理
-
-从 Windows Blender 进程访问 WSL 工作区时，推荐统一使用项目 wrapper：
+当前 active 路线只保留 Web/CLI GLB 与共享 render facts：
 
 ```bash
-bash scripts/run-blender.sh --glb tmp/house.glb \
-  --config scripts/blender/render-config.json --config-dir .
-```
-
-wrapper 会依据 `BLENDER_HOST` 或可执行文件名判断目标环境，仅转换路径参数；Blender 本身运行在 Linux/WSL 时继续使用 Linux 路径。
-
-### 2. GLB 与 render facts 必须匹配
-
-#### 现象
-
-Blender 报错：
-
-```text
-GLB contains unexpected curtain nodes
-```
-
-#### 原因
-
-导出的 GLB 没有使用当前 render facts，或 GLB、facts、config 来自不同版本，导致场景节点与预期不一致。
-
-#### 推荐处理
-
-正式验证前使用同一份 facts 生成配置并导出 GLB：
-
-```bash
-npm run generate:render-config
+npm run generate:project-render-facts
 npm run export:glb -- \
   --output tmp/house-facts.glb \
-  --render-facts scripts/blender/project-render-facts.json
+  --render-facts data/project-render-facts.json
 ```
 
-随后再运行 Blender。该流程适用于本项目 render pipeline；其他项目应以自己的导出脚本和 facts 生成方式为准。
+这条 active 路线不会启动 Blender，也不承诺生成 PNG。
 
 ## 记录新坑的模板
 

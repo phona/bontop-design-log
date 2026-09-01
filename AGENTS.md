@@ -2,6 +2,8 @@
 
 ## CAD / 3D 渲染架构
 
+> Blender 主线已暂停并冷归档到 `scripts/archive/blender-pipeline/`；本文件中的 Blender-specific 约束仅在明确恢复冷归档时适用。几何、坐标、电气、家具、碰撞与数据一致性铁律始终有效。
+>
 > `config/layout/model-geometry.yaml` 是户型几何的唯一权威源；`config/layout/overlay.yaml` 出一切意图。代码只读、只执行，禁止推断。
 >
 > `parse_cad.py` 仅用于从 CAD 初始化或参考导出，默认不覆盖 `model-geometry.yaml`。需要新行为 → 新增 element type + 声明式配置。

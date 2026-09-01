@@ -1,5 +1,7 @@
 # Blender 渲染管线 · 阶段1 最小化验收记录
 
+> **PAUSED / HISTORICAL — 2026-09-01**：以下命令与路径仅记录历史验收，不是当前入口。Blender 源码冷归档见 `scripts/archive/blender-pipeline/README.md`；当前默认效果预览为 Web + GPT，Web/CLI GLB 保持 active。
+
 日期：2026-08-14
 范围：最小化跑通"配置 → 批量渲染"链路（决策用 A/B 质感图）。
 

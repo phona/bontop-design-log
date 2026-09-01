@@ -1,0 +1,32 @@
+{
+  "schema": "bontop.blender-asset-registry",
+  "version": 1,
+  "updated": "2026-08-29",
+  "policy": {
+    "selection": "BlenderKit/local real assets first; procedural fallback only when no suitable asset is verified",
+    "visual_acceptance": "new 1920px PNG plus scene/log evidence",
+    "credentials": "never store API keys, passwords, or temporary download URLs"
+  },
+  "assets": [
+    {"id":"burrard_sofa","room":"living_dining","role":"sofa_3seat","source":"assets/furniture/burrard_sofa/burrard_sofa.blend","status":"REAL_ASSET_TEXTURED","evidence":"living-assets-r13 / current dress log"},
+    {"id":"wooden_table_02","room":"living_dining","role":"dining_table","source":"assets/furniture/wooden_table_02/wooden_table_02.gltf","status":"REAL_ASSET_TEXTURED","evidence":"current dress log"},
+    {"id":"rattan_dining_chair","room":"living_dining","role":"dining_chair","source":"assets/furniture/rattan_dining_chair/rattan_dining_chair.blend","status":"REAL_ASSET_TEXTURED","evidence":"current dress log"},
+    {"id":"potted_plant_01","room":"living_dining,master_bedroom","role":"plant_fiddle","source":"assets/furniture/potted_plant_01/potted_plant_01.gltf","status":"REAL_ASSET_TEXTURED","evidence":"current dress log"},
+    {"id":"blenderkit_coffee_table","room":"living_dining","role":"coffee_table","source":"assets/furniture/blenderkit_coffee_table/coffee_table.blend","status":"REAL_ASSET_TEXTURED","formal_geometry":false,"evidence":"r13 log: UV=1, image_textures=3, packed_images=3"},
+    {"id":"blenderkit_area_rug","room":"living_dining","role":"rug","source":"assets/furniture/blenderkit_area_rug/area_rug.blend","status":"REAL_ASSET_TEXTURED","formal_geometry":false,"evidence":"r13 log: UV=1, image_textures=1, packed_images=1"},
+    {"id":"blenderkit_sideboard","room":"living_dining","role":"tv_wall_low","source":"assets/furniture/blenderkit_sideboard/sideboard.blend","status":"REAL_ASSET_TEXTURED","formal_geometry":false,"evidence":"r13 log: material_slots=2, UV=1, image_textures=3, packed_images=3"},
+    {"id":"blenderkit_upholstered_bed_51602564","room":"master_bedroom","role":"bed_180","source":"assets/furniture/blenderkit_upholstered_bed_51602564/bed.blend","status":"REAL_ASSET_TEXTURED","evidence":"remote append: 1 mesh, 2.0x2.265x0.95m, 4 image textures; wholehouse-005 PNG"},
+    {"id":"dishwasher","room":"kitchen","role":"dishwasher","source":"assets/furniture/dishwasher/dishwasher.blend","status":"REAL_ASSET_TEXTURED","evidence":"wholehouse-005 log: asset:dishwasher:glb"},
+    {"id":"fridge","room":"kitchen","role":"fridge","source":"assets/furniture/fridge/fridge.blend","status":"REAL_ASSET_TEXTURED","evidence":"wholehouse-005 log: asset:fridge:glb"},
+    {"id":"washer","room":"balcony","role":"washer","source":"assets/furniture/washer/washer.blend","status":"REAL_ASSET_TEXTURED","evidence":"wholehouse-005 log: asset:washer:glb"},
+    {"id":"dryer","room":"balcony","role":"dryer","source":"assets/furniture/dryer/dryer.blend","status":"REAL_ASSET_TEXTURED","evidence":"wholehouse-005 log: asset:dryer:glb"},
+    {"id":"blenderkit_vanity","room":"guest_bath","role":"vanity","source":"assets/furniture/blenderkit_vanity/vanity.blend","status":"REAL_ASSET_TEXTURED","evidence":"wholehouse-006 log: asset:vanity:glb; source has 3 wood image textures"},
+    {"id":"kitchen_cabinet_run","room":"kitchen","role":"kitchen_cabinet_run","source":"shared/render/FixtureFactory.ts","status":"PROCEDURAL_MESH","evidence":"dimension-constrained custom L layout; retained intentionally"},
+    {"id":"wardrobe_02_candidate","room":"bedrooms","role":"wardrobe","source":"assets/furniture/blenderkit_wardrobe_02/wardrobe.blend","status":"REJECTED_CANDIDATE","reason":"2.217m wide and 2.046m high; unsuitable for current custom slots despite 3 textured materials"},
+    {"id":"toilet_candidate","room":"bathrooms","role":"toilet","source":"assets/furniture/blenderkit_toilet/toilet.blend","status":"REJECTED_CANDIDATE","reason":"15 meshes but no image textures; lower ROI than current procedural ceramic fallback"},
+    {"id":"gas_stove","room":"kitchen","role":"gas_stove","source":"assets/furniture/gas_stove/gas_stove.blend","status":"REAL_ASSET_TEXTURED","evidence":"formal-kitchen-028 log: asset:gas_stove:glb; 4 source meshes, 4 material slots, UV present; dimensions 0.51×0.75×0.03m after 90° placement and lift=0.88"},
+    {"id":"range_hood_candidate","room":"kitchen","role":"range_hood","source":"assets/furniture/range_hood/range_hood.blend","status":"REJECTED_CANDIDATE","reason":"top-suction slab form does not match required wall-mounted side-suction hood"},
+    {"id":"water_heater_candidate","room":"balcony","role":"water_heater","source":"assets/furniture/water_heater/water_heater.blend","status":"REJECTED_CANDIDATE","reason":"verified append orientation lies sideways; location also awaits site confirmation"},
+    {"id":"bed_gltf_candidate_51602564","room":"master_bedroom","role":"bed_180","source":"assets/furniture/blenderkit_upholstered_bed_51602564/bed.gltf","status":"REJECTED_CANDIDATE","reason":"Draco-compressed GLB cannot load on remote Blender image because libdraco.so.9 is unavailable; matching .blend used instead"}
+  ]
+}

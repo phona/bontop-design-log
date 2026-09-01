@@ -17,5 +17,5 @@
     "rootDir": "."
   },
   "include": ["shared/**/*.ts", "server/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
-  "exclude": ["node_modules", "app", "dist", "mcp-server"]
+  "exclude": ["node_modules", "app", "dist", "mcp-server", "scripts/archive/blender-pipeline"]
 }

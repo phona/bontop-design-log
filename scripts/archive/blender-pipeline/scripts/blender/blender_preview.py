@@ -62,6 +62,31 @@ _ARCHITECTURE_GEOMETRY_SOURCES = frozenset({
     "procedural_architecture",
     "shared_architecture",
 })
+_ARCHITECTURE_TYPES = frozenset({
+    "architecture",
+    "architectural",
+    "building",
+    "ceiling",
+    "door",
+    "floor",
+    "floor_region",
+    "roof",
+    "wall",
+    "wall_run",
+    "window",
+})
+_NON_ARCHITECTURE_TYPES = frozenset({"curtain", "furniture", "hvac", "plumbing"})
+_ARCHITECTURE_ROLES = frozenset({
+    "architecture",
+    "architectural",
+    "building",
+    "ceiling",
+    "door",
+    "floor",
+    "roof",
+    "wall",
+    "window",
+})
 
 
 def _values(value: Any) -> tuple[str, ...]:
@@ -245,18 +270,41 @@ def _excluded_by(scope: Mapping[str, Any], fields: Mapping[str, str | None]) -> 
 
 
 def _is_architecture(obj: Any, fields: Mapping[str, str | None]) -> bool:
-    """Identify architectural geometry before applying preview filters."""
+    """Identify formal building geometry before applying preview filters.
+
+    Blender's built-in ``Object.type`` is ``MESH`` for walls, floors, and
+    furniture alike, so it cannot be used as the architectural type.  Formal
+    building objects also commonly have no room tag (shared walls, corridors,
+    and house-wide roof/ceiling pieces); those objects must not be treated as
+    out-of-scope merely because their room is unknown.
+    """
     name = fields["name"]
     if name in _ARCHITECTURE_NAMES or name.startswith(_ARCHITECTURE_PREFIXES) \
             or any(name.startswith(f"{architecture_name}:part=") for architecture_name in _ARCHITECTURE_NAMES):
         return True
+
+    semantic_type = str(fields["type"] or "").strip().lower()
+    if semantic_type in _NON_ARCHITECTURE_TYPES:
+        return False
+    semantic_role = _prop(obj, "renderRole", "materialRole", "assetRole", "role")
+    if semantic_type in _ARCHITECTURE_TYPES \
+            or str(semantic_role).strip().lower() in _ARCHITECTURE_ROLES:
+        return True
+
     if bool(_prop(obj, "formalWebGeometry", "formal_web_geometry")):
         return True
     geometry_source = _prop(obj, "geometrySource", "geometry_source")
-    if geometry_source is None:
-        return False
-    source = str(geometry_source).strip().lower().replace("-", "_").replace(" ", "_")
-    return source in _ARCHITECTURE_GEOMETRY_SOURCES or "architect" in source
+    if geometry_source is not None:
+        source = str(geometry_source).strip().lower().replace("-", "_").replace(" ", "_")
+        if source in _ARCHITECTURE_GEOMETRY_SOURCES or "architect" in source:
+            return True
+
+    # Formal GLB building nodes may carry only sourceClass and a generic name.
+    # Do not extend this fallback to furniture/assets or render-only staging.
+    # A formal architectural object may still carry a room tag (for example a
+    # wall segment shared by two rooms), so room presence must not disqualify it.
+    source_class = str(_prop(obj, "sourceClass", "source_class") or "").strip().lower()
+    return source_class == "formal" and not name.startswith(("furniture:", "asset:"))
 
 
 def preview_object_decision(obj: Any, scope: Any = None) -> dict[str, Any]:

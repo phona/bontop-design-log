@@ -230,11 +230,14 @@ export function compareGlb(baselinePath: string, candidatePath: string, options:
   return { schemaVersion: '1.0', baseline: { path: baselinePath, summary: baselineSummary, semantic: baseline }, candidate: { path: candidatePath, summary: candidateSummary, semantic: candidate }, missing, added, expected, expectedGeometryChanges, errors, bbox, ok: !strictFailure, strictFailure };
 }
 
+const USAGE = 'usage: npm run compare:glb -- --baseline <file.glb> --candidate <file.glb> [--facts <file.json>] [--json] [--strict]';
+
 function parseArgs(argv: string[]): { baseline: string; candidate: string; json: boolean; strict: boolean; factsPath?: string } {
   let baseline = DEFAULT_BASELINE; let candidate = ''; let json = false; let strict = false; let factsPath: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--baseline') baseline = argv[++i] ?? '';
+    if (arg === '--help') throw new Error(USAGE);
+    else if (arg === '--baseline') baseline = argv[++i] ?? '';
     else if (arg === '--candidate') candidate = argv[++i] ?? '';
     else if (arg === '--facts') factsPath = argv[++i];
     else if (arg === '--json') json = true;
@@ -261,7 +264,7 @@ function printHuman(report: CompareReport): void {
 }
 
 if (process.argv[1] && /compare-glb\.(ts|js)$/u.test(process.argv[1])) {
-  try { const args = parseArgs(process.argv.slice(2)); const report = compareGlb(args.baseline, args.candidate, { strict: args.strict, factsPath: args.factsPath }); if (args.json) console.log(JSON.stringify(report, null, 2)); else printHuman(report); if (!report.ok) process.exitCode = 1; }
+  try { if (process.argv.slice(2).includes('--help')) console.log(USAGE); else { const args = parseArgs(process.argv.slice(2)); const report = compareGlb(args.baseline, args.candidate, { strict: args.strict, factsPath: args.factsPath }); if (args.json) console.log(JSON.stringify(report, null, 2)); else printHuman(report); if (!report.ok) process.exitCode = 1; } }
   catch (error) { console.error(error instanceof Error ? error.message : String(error)); process.exitCode = 1; }
 }
 

@@ -25,11 +25,14 @@ export function assertOutputPathAvailable(output: string): void {
   if (existsSync(output)) throw new Error(`Refusing to overwrite existing output file: ${output}`);
 }
 
+const USAGE = 'usage: npm run export:glb -- --output <file.glb> [--layout <file>] [--house <file>] [--overlay <file>] [--ceiling <file>] [--render-facts <file.json>]';
+
 export function parseArgs(argv: string[]): Options {
   const options: Partial<Options> = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--output') options.output = argv[++i];
+    if (arg === '--help') throw new Error(USAGE);
+    else if (arg === '--output') options.output = argv[++i];
     else if (arg === '--layout') options.layout = argv[++i];
     else if (arg === '--house') options.house = argv[++i];
     else if (arg === '--overlay') options.overlay = argv[++i];
@@ -49,6 +52,10 @@ export async function exportCliGlb(options: CliGlbOptions = {}): Promise<CliGlbE
 }
 
 async function main(): Promise<void> {
+  if (process.argv.slice(2).includes('--help')) {
+    console.log(USAGE);
+    return;
+  }
   const options = parseArgs(process.argv.slice(2));
   const exported = await exportCliGlb(options);
   const output = resolve(options.output);

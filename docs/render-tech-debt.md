@@ -1,5 +1,7 @@
 # 渲染管线技术债清单（2026-08-23 盘点）
 
+> **PAUSED / HISTORICAL — 2026-09-01**：此清单随 Blender 主线暂停而冻结，不再作为 active backlog。恢复冷归档时从 `scripts/archive/blender-pipeline/README.md` 开始；当前默认效果预览为 Web + GPT。
+>
 > 来源：v17→v32 渲染修复轮 + 双 subagent 巡检（设计风格/贴图模型玻璃）。
 > 用途：每轮迭代对着销账；丢给 AI 时直接指到条目。
 > 状态标记：⬜ 未动 / 🔧 部分缓解 / ✅ 已解决（保留备查）

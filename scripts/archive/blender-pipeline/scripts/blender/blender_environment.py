@@ -123,19 +123,23 @@ def setup_world(engine: str, scenario: dict, config_dir: str | None = None, *,
 
 def add_sky_planes(hdri_status: dict | None = None, *, bpy_module: Any,
                    glass_ids: set[str], find_node_fn: Callable,
-                   srgb_to_linear_tuple_fn: Callable) -> None:
+                   srgb_to_linear_tuple_fn: Callable,
+                   scenario: dict | None = None) -> None:
     """Create canonical glass sky planes once, then update and toggle them per job.
 
     The stable ``sky_plane:<glass object name>`` key makes repeated job calls
-    idempotent. HDRI remains authoritative when loaded, so all fallback planes
-    are hidden in that case.
+    idempotent. HDRI remains authoritative when loaded, and material_review
+    never uses the blue fallback planes.
     """
     use_fallback = not (hdri_status and hdri_status.get('loaded'))
+    if scenario and scenario.get('id') == 'material_review':
+        use_fallback = False
     existing = [o for o in bpy_module.data.objects if o.name.startswith('sky_plane:')]
     for plane in existing:
         plane.hide_render = not use_fallback
     if not use_fallback:
-        print('[dress_scene] sky fallback: disabled (HDRI loaded)')
+        reason = 'material_review' if scenario and scenario.get('id') == 'material_review' else 'HDRI loaded'
+        print(f'[dress_scene] sky fallback: disabled ({reason})')
         return
 
     from mathutils import Vector

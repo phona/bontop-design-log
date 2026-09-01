@@ -176,6 +176,7 @@ def test_sky_planes_are_idempotent_and_follow_hdri_visibility(monkeypatch):
     blender_environment.add_sky_planes(
         {'loaded': False}, bpy_module=bpy, glass_ids={glass.name},
         find_node_fn=_find_node, srgb_to_linear_tuple_fn=_linear,
+        scenario={'id': 'daylight'},
     )
     planes = [obj for obj in bpy.data.objects if obj.name.startswith('sky_plane:')]
     assert len(planes) == 2
@@ -205,6 +206,36 @@ def test_sky_planes_are_idempotent_and_follow_hdri_visibility(monkeypatch):
     assert first_plane.hide_render is False
     assert part_plane.hide_render is False
     assert len([obj for obj in bpy.data.objects if obj.name.startswith('sky_plane:')]) == 2
+
+
+def test_material_review_disables_fallback_and_reset_restores_other_scenarios(monkeypatch):
+    bpy = FakeBpy()
+    glass = Object('living_south_curtain', glass=True)
+    bpy.data.objects.append(glass)
+    monkeypatch.setitem(sys.modules, 'mathutils', types.SimpleNamespace(Vector=Vector))
+
+    blender_environment.add_sky_planes(
+        {'loaded': False}, bpy_module=bpy, glass_ids={glass.name},
+        find_node_fn=_find_node, srgb_to_linear_tuple_fn=_linear,
+        scenario={'id': 'daylight'},
+    )
+    plane = next(obj for obj in bpy.data.objects if obj.name == 'sky_plane:living_south_curtain')
+    assert plane.hide_render is False
+
+    blender_environment.add_sky_planes(
+        {'loaded': False}, bpy_module=bpy, glass_ids={glass.name},
+        find_node_fn=_find_node, srgb_to_linear_tuple_fn=_linear,
+        scenario={'id': 'material_review'},
+    )
+    assert plane.hide_render is True
+    assert len([obj for obj in bpy.data.objects if obj.name.startswith('sky_plane:')]) == 1
+
+    blender_environment.add_sky_planes(
+        {'loaded': False}, bpy_module=bpy, glass_ids={glass.name},
+        find_node_fn=_find_node, srgb_to_linear_tuple_fn=_linear,
+        scenario={'id': 'blue_hour'},
+    )
+    assert plane.hide_render is False
 
 
 if __name__ == '__main__':

@@ -71,6 +71,7 @@ tmp/
 data/*
 !data/presentation-state.json
 !data/scene-asset-registry.json
+!data/project-render-facts.json
 opencode.json
 scripts/logs/
 app/bun.lock

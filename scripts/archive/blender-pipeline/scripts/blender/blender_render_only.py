@@ -674,6 +674,454 @@ def stage_missing_room_candidates(config_dir: str) -> int:
         print(f'[dress_scene] room candidates staged: {staged}')
     return staged
 
+def study_render_scope_visible(preview_room: str | None, camera_id: str | None) -> bool:
+    """Return whether study-only render staging belongs in the current render job."""
+    if preview_room:
+        return preview_room == 'study'
+    camera = (camera_id or '').lower()
+    return any(token in camera for token in ('study', 'parent'))
+
+
+STUDY_WORK_DETAIL_FITNESS_ROOMS = frozenset({'study', 'bedroom_se'})
+STUDY_WORK_DETAIL_FITNESS_TYPES = frozenset({
+    'squat_rack', 'bench_adjustable', 'barbell_olympic', 'rubber_training_mat',
+})
+
+
+def study_work_detail_should_hide_fitness(camera_id: str | None) -> bool:
+    """Return whether the study work-detail preview hides the fitness foreground."""
+    return camera_id == 'study_work_detail'
+
+
+def _study_fitness_type_from_object(obj) -> str | None:
+    """Read a study fitness type from names, keys, properties, or parent objects.
+
+    Exported GLB children can carry either the full formal instance key or an
+    objectId such as ``furniture:study:<hash>:part=squat_rack``.  Do not treat
+    the hash as a furniture type; inspect explicit ``part=`` tags and canonical
+    type segments instead.
+    """
+    current = obj
+    seen = set()
+    property_names = (
+        'objectId', 'object_id', 'formalInstanceKey', 'instance_key',
+        'instanceKey', 'furnitureInstanceKey', 'furnitureType', 'furniture_type',
+        'assetRole', 'asset_role',
+    )
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        values = [getattr(current, 'name', '')]
+        key = _furniture_instance_key(current) if callable(_furniture_instance_key) else None
+        if key:
+            values.append(key)
+        for property_name in property_names:
+            try:
+                value = current.get(property_name)
+            except (AttributeError, TypeError):
+                value = None
+            if value is not None:
+                values.append(value)
+        for value in values:
+            text = str(value or '')
+            parts = text.split(':')
+            if len(parts) >= 3 and parts[0] == 'furniture' and parts[1] in STUDY_WORK_DETAIL_FITNESS_ROOMS:
+                if parts[2] in STUDY_WORK_DETAIL_FITNESS_TYPES:
+                    return parts[2]
+                for part in parts[3:]:
+                    if part.startswith('part='):
+                        candidate = part.split('=', 1)[1]
+                        if candidate in STUDY_WORK_DETAIL_FITNESS_TYPES:
+                            return candidate
+            if text in STUDY_WORK_DETAIL_FITNESS_TYPES:
+                return text
+        current = getattr(current, 'parent', None)
+    return None
+
+
+def study_work_detail_fitness_objects(objects):
+    """Return study fitness family objects, including untagged child meshes."""
+    return [obj for obj in objects
+            if _study_fitness_type_from_object(obj) in STUDY_WORK_DETAIL_FITNESS_TYPES]
+
+
+def _mark_study_render_only(obj, role: str, formal_key: str,
+                             source_id: str = 'blender_staging:study') -> None:
+    write_asset_metadata(
+        obj, source_class='render_only', source_id=source_id,
+        formal_instance_key=formal_key, formal_web_geometry=False, role=role,
+        registry=None,
+    )
+    obj['roomId'] = 'study'
+    obj['sourceRelation'] = formal_key
+    obj['assetProvider'] = 'BlenderKit'
+
+
+def _study_candidate_scale(width: float, target_width: float = 1.5) -> float:
+    """Return a uniform scale from the candidate's measured bbox width."""
+    return float(target_width) / float(width) if width > 0.01 else 0.0
+
+
+def _study_candidate_mesh_ready(obj) -> bool:
+    """Accept only a useful imported mesh, never an empty/unstyled placeholder."""
+    if obj is None or getattr(obj, 'type', None) != 'MESH':
+        return False
+    data = getattr(obj, 'data', None)
+    if data is None or len(getattr(data, 'vertices', ())) == 0 or len(getattr(data, 'polygons', ())) == 0:
+        return False
+    if len(getattr(data, 'materials', ())) == 0 or len(getattr(data, 'uv_layers', ())) == 0:
+        return False
+    bbox = getattr(obj, 'bound_box', ())
+    if len(bbox) != 8:
+        return False
+    try:
+        dims = tuple(max(float(c[i]) for c in bbox) - min(float(c[i]) for c in bbox) for i in range(3))
+    except (TypeError, ValueError, IndexError):
+        return False
+    if not all(math.isfinite(value) and value > 0.01 for value in dims):
+        return False
+    for material in data.materials:
+        if material is None or not getattr(material, 'use_nodes', False):
+            continue
+        for node in getattr(material.node_tree, 'nodes', ()):
+            if getattr(node, 'type', None) == 'TEX_IMAGE' and getattr(node, 'image', None) is None:
+                return False
+    return True
+
+
+def _study_bedding_ready(objects, expected_count: int, geometry_version: int) -> bool:
+    """Return whether one complete canonical bedding set is safe to replace fallback."""
+    return (
+        len(objects) == expected_count
+        and all(obj.get('bedding_geometry_version') == geometry_version for obj in objects)
+    )
+
+
+def _study_bedding_complete(existing, created, expected_count: int, geometry_version: int) -> bool:
+    """Only a complete, versioned existing or newly-created set may hide fallback."""
+    return (
+        _study_bedding_ready(existing, expected_count, geometry_version)
+        or _study_bedding_ready(created, expected_count, geometry_version)
+    )
+
+
+def _study_bed_candidate_ready(obj, target_width: float = 1.5) -> bool:
+    """Validate the canonical study bed candidate after import and placement."""
+    if not _study_candidate_mesh_ready(obj):
+        return False
+    bbox = _world_bbox_for_objects([obj])
+    if bbox is None:
+        return False
+    local_bbox = getattr(obj, 'bound_box', ())
+    if len(local_bbox) != 8:
+        return False
+    width = max(float(c[0]) for c in local_bbox) - min(float(c[0]) for c in local_bbox)
+    return math.isfinite(width) and abs(width - target_width) <= 0.02
+
+
+def _hide_study_bedding(objects) -> None:
+    for obj in objects:
+        if obj.name.startswith('asset:study:bedding:'):
+            _set_recursive_hidden(obj, True)
+
+
+def _stage_study_bed_candidate(anchor, config_dir: str) -> bool:
+    """Import/reuse the real 1.5m study bed, hiding fallback only on full validation."""
+    import mathutils
+    formal_key = 'furniture:study:bed_150:0'
+    canonical_name = 'asset:study:bed_150:blenderkit'
+    source_path = os.path.join(
+        config_dir, 'assets', 'furniture', 'blenderkit_candidates',
+        'bedroom_missing', 'bed_150', 'bed_150.blend',
+    )
+    def align_and_ground(obj):
+        obj.rotation_mode = 'QUATERNION'
+        obj.rotation_quaternion = anchor.matrix_world.to_quaternion()
+        obj.location = anchor.matrix_world.translation.copy()
+        bpy.context.view_layer.update()
+        placed_bbox = _world_bbox_for_objects([obj])
+        if placed_bbox is None:
+            return False
+        obj.location.z -= placed_bbox[2][0]
+        bpy.context.view_layer.update()
+        return True
+
+    existing = bpy.data.objects.get(canonical_name)
+    if existing is not None:
+        _set_recursive_hidden(existing, False)
+        if align_and_ground(existing) and _study_bed_candidate_ready(existing):
+            _mark_study_render_only(existing, 'study:bed_150', formal_key, source_id=source_path)
+            existing['canonicalAssetName'] = canonical_name
+            existing['assetProvider'] = 'BlenderKit'
+            existing['candidateWidth'] = 1.5
+            existing['grounded'] = True
+            _hide_furniture_instance_family(formal_key, True)
+            _hide_study_bedding(bpy.data.objects)
+            print(f'[dress_scene] study bed candidate reused: {canonical_name} anchor={anchor.name}')
+            return True
+        bpy.data.objects.remove(existing, do_unlink=True)
+    if not os.path.isfile(source_path):
+        print(f'[dress_scene] WARN study bed candidate missing; keep fallback: {source_path}')
+        return False
+
+    before = set(bpy.data.objects)
+    try:
+        imported = import_furniture_glb(
+            source_path, {'width': 1.5},
+            loc_rz=((anchor.matrix_world.translation.x,
+                     anchor.matrix_world.translation.y,
+                     anchor.matrix_world.translation.z), 0),
+        )
+    except Exception as exc:
+        print(f'[dress_scene] WARN study bed candidate import failed; keep fallback: '
+              f'{source_path}: {type(exc).__name__}: {exc}')
+        return False
+    meshes = [obj for obj in bpy.data.objects if obj not in before and obj.type == 'MESH']
+    if not imported or len(meshes) != 1:
+        for obj in [obj for obj in bpy.data.objects if obj not in before]:
+            bpy.data.objects.remove(obj, do_unlink=True)
+        print(f'[dress_scene] WARN study bed candidate produced invalid mesh set; keep fallback: {source_path}')
+        return False
+    obj = meshes[0]
+    obj.name = canonical_name
+    # The candidate must sit on the floor while retaining the formal anchor's X/Y.
+    if not align_and_ground(obj):
+        bpy.data.objects.remove(obj, do_unlink=True)
+        print(f'[dress_scene] WARN study bed candidate has no bbox; keep fallback: {source_path}')
+        return False
+    if not _study_bed_candidate_ready(obj):
+        bpy.data.objects.remove(obj, do_unlink=True)
+        print(f'[dress_scene] WARN study bed candidate failed bbox/mesh/material/image/UV validation; '
+              f'keep fallback: {source_path}')
+        return False
+    _mark_study_render_only(obj, 'study:bed_150', formal_key, source_id=source_path)
+    obj['canonicalAssetName'] = canonical_name
+    obj['assetProvider'] = 'BlenderKit'
+    obj['candidateWidth'] = 1.5
+    obj['grounded'] = True
+    _hide_furniture_instance_family(formal_key, True)
+    _hide_study_bedding(bpy.data.objects)
+    print(f'[dress_scene] study bed candidate staged: {canonical_name} source={source_path} '
+          f'formal_key={formal_key} bbox={_world_bbox_for_objects([obj])}')
+    return True
+
+
+def _study_pillow_local_scale(dimensions, collapse):
+    """Return pillow dimensions as local-axis scale, independent of anchor rotation."""
+    thickness = min(dimensions[2] * (1.0 + collapse * .10), .14)
+    return (dimensions[0], dimensions[1], thickness)
+
+
+def stage_study_bedroom(furniture_mats: dict, config_dir: str = '') -> int:
+    """Stage the study bed candidate and five soft, render-only bedding objects."""
+    import mathutils
+    bedding_geometry_version = 3
+    bedding_geometry_styles = {
+        'asset:study:bedding:mattress': 'bevel_rounded_v2',
+        'asset:study:bedding:sheet': 'bevel_rounded_v2',
+        'asset:study:bedding:quilt': 'subdivision_full_cover_drape_v2',
+        'asset:study:bedding:pillow:left': 'soft_pillow_asymmetric_v2',
+        'asset:study:bedding:pillow:right': 'soft_pillow_asymmetric_v2',
+    }
+    canonical_names = set(bedding_geometry_styles)
+    canonical_roles = {
+        'asset:study:bedding:mattress': 'study:bedding:mattress',
+        'asset:study:bedding:sheet': 'study:bedding:sheet',
+        'asset:study:bedding:quilt': 'study:bedding:quilt',
+        'asset:study:bedding:pillow:left': 'study:bedding:pillow',
+        'asset:study:bedding:pillow:right': 'study:bedding:pillow',
+    }
+    formal_key = 'furniture:study:bed_150:0'
+
+    def is_canonical_name(name):
+        return name in canonical_names
+
+    def remove_incomplete_bedding(objects=None):
+        targets = list(objects) if objects is not None else list(bpy.data.objects)
+        for obj in targets:
+            if is_canonical_name(obj.name):
+                bpy.data.objects.remove(obj, do_unlink=True)
+
+    def hide_formal_bedding():
+        for child in family:
+            if any(token in child.name.lower() for token in ('mattress', 'duvet', 'pillow', 'bedding', 'sheet')):
+                child.hide_render = True
+
+    existing_bedding = [obj for obj in bpy.data.objects if is_canonical_name(obj.name)]
+    anchors = [anchor for key, anchor in _furniture_instance_anchors(list(bpy.data.objects)).items()
+               if key == formal_key]
+    if not anchors:
+        remove_incomplete_bedding(existing_bedding)
+        print('[dress_scene] WARN study staging skipped: missing formal bed anchor; keep fallback')
+        return 0
+    anchor = anchors[0]
+    family = [obj for obj in bpy.data.objects
+              if obj is anchor or obj.name.startswith(anchor.name + ':')]
+    inverse = anchor.matrix_world.inverted()
+    points = [inverse @ (obj.matrix_world @ mathutils.Vector(c))
+              for obj in family if obj.type == 'MESH' for c in obj.bound_box]
+    if not points:
+        remove_incomplete_bedding(existing_bedding)
+        print(f'[dress_scene] WARN study staging skipped: bed anchor has no mesh bbox: {anchor.name}; keep fallback')
+        return 0
+    local_bbox = tuple((min(p[i] for p in points), max(p[i] for p in points)) for i in range(3))
+    existing_bedding = [obj for obj in bpy.data.objects if is_canonical_name(obj.name)]
+    existing_lamp = [obj for obj in bpy.data.objects
+                     if obj.name.startswith('asset:study:reading_lamp:')]
+    if existing_bedding:
+        for obj in existing_bedding + existing_lamp:
+            _set_recursive_hidden(obj, False)
+        if _study_bedding_ready(existing_bedding, len(canonical_names), bedding_geometry_version):
+            print(f'[dress_scene] study staging already present; reused={len(existing_bedding)} anchor={anchor.name}')
+            _stage_study_bed_candidate(anchor, config_dir)
+            return len(existing_bedding) + len(existing_lamp)
+        # Replace an older render-only bedding set in place. Formal bed objects,
+        # metadata, and the five canonical object identities remain unchanged.
+        for obj in existing_bedding:
+            bpy.data.objects.remove(obj, do_unlink=True)
+        existing_bedding = []
+
+    def mark_soft(obj, geometry_style, contact_shadow=True):
+        _mark_study_render_only(obj, canonical_roles[obj.name], formal_key)
+        obj['dress_dynamic'] = True
+        obj['soft_geometry'] = True
+        obj['geometry_style'] = geometry_style
+        obj['bedding_geometry_version'] = bedding_geometry_version
+        obj['contact_shadow'] = contact_shadow
+        return obj
+
+    def add_rounded_box(name, center, dimensions, material, bevel_width):
+        bpy.ops.mesh.primitive_cube_add(size=1.0)
+        obj = bpy.context.object
+        obj.name = name
+        obj.dimensions = dimensions
+        obj.rotation_mode = 'QUATERNION'
+        obj.rotation_quaternion = anchor.matrix_world.to_quaternion()
+        obj.location = anchor.matrix_world @ mathutils.Vector(center)
+        modifier = obj.modifiers.new('Soft rounded edge', 'BEVEL')
+        modifier.width = min(bevel_width, min(dimensions) * 0.42)
+        modifier.segments = 4
+        modifier.limit_method = 'ANGLE'
+        if material is not None:
+            obj.data.materials.append(material)
+        return mark_soft(obj, 'bevel_rounded')
+
+    def add_pillow(name, center, dimensions, angle, collapse):
+        # Set local scale only after the anchor quaternion; never use world bbox dimensions.
+        bpy.ops.mesh.primitive_cube_add(size=1.0)
+        obj = bpy.context.object
+        obj.name = name
+        obj.rotation_mode = 'QUATERNION'
+        obj.rotation_quaternion = anchor.matrix_world.to_quaternion() @ mathutils.Quaternion((0, 0, 1), angle)
+        obj.scale = _study_pillow_local_scale(dimensions, collapse)
+        obj.location = anchor.matrix_world @ mathutils.Vector(center)
+        bevel = obj.modifiers.new('Pillow rounded corners', 'BEVEL')
+        bevel.width = min(min(dimensions) * .46, .105)
+        bevel.segments = 6
+        bevel.limit_method = 'ANGLE'
+        subdivision = obj.modifiers.new('Pillow soft subdivision', 'SUBSURF')
+        subdivision.subdivision_type = 'CATMULL_CLARK'
+        subdivision.levels = 2
+        subdivision.render_levels = 2
+        bpy.context.view_layer.update()
+        if materials['pillow'] is not None:
+            obj.data.materials.append(materials['pillow'])
+        # Keep the legacy style token for downstream source-level audits.
+        return mark_soft(obj, 'soft_pillow_asymmetric_v2; ellipsoid_subdivision')
+
+    def add_quilt(name, center, dimensions, material):
+        # Full-cover cloth: the top stays gently crowned; only perimeter/foot edges drop.
+        cols, rows = 17, 21
+        quilt_width, quilt_depth, quilt_height = dimensions
+        verts = []
+        faces = []
+        for row in range(rows):
+            v = row / (rows - 1)
+            y = (v - .5) * quilt_depth
+            for col in range(cols):
+                u = col / (cols - 1)
+                x = (u - .5) * quilt_width
+                edge = min(u, 1.0 - u, v, 1.0 - v)
+                edge_drop = -.052 * max(0.0, (.20 - edge) / .20) ** 2
+                foot_drop = -.115 * max(0.0, (v - .66) / .34) ** 2
+                side_drop = -.075 * (abs(u - .5) * 2) ** 5
+                corner_fold = -.045 * max(0.0, 1.0 - min(u, 1.0 - u, v, 1.0 - v) / .16) ** 2 \
+                    if (u < .22 or u > .78 or v > .68) else 0.0
+                crown = .020 * math.sin(u * math.pi) ** 1.6 * math.sin(v * math.pi) ** 1.4
+                ripple = .012 * math.sin(u * math.pi * 3.0 + .4) * math.sin(v * math.pi * 2.2)
+                verts.append((x, y, edge_drop + foot_drop + side_drop + corner_fold + crown + ripple))
+        for row in range(rows - 1):
+            for col in range(cols - 1):
+                i = row * cols + col
+                faces.append((i, i + 1, i + cols + 1, i + cols))
+        mesh = bpy.data.meshes.new('study_quilt_soft_mesh')
+        mesh.from_pydata(verts, [], faces)
+        mesh.update()
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(obj)
+        obj.rotation_mode = 'QUATERNION'
+        obj.rotation_quaternion = anchor.matrix_world.to_quaternion()
+        obj.location = anchor.matrix_world @ mathutils.Vector(center)
+        subdivision = obj.modifiers.new('Quilt cloth subdivision', 'SUBSURF')
+        subdivision.subdivision_type = 'CATMULL_CLARK'
+        subdivision.levels = 2
+        subdivision.render_levels = 2
+        solidify = obj.modifiers.new('Quilt thin loft', 'SOLIDIFY')
+        solidify.thickness = quilt_height
+        solidify.offset = -0.5
+        bevel = obj.modifiers.new('Quilt soft edge', 'BEVEL')
+        bevel.width = .012
+        bevel.segments = 3
+        if material is not None:
+            obj.data.materials.append(material)
+        return mark_soft(obj, 'subdivision_ripple_drape')
+
+    min_x, max_x = local_bbox[0]
+    min_y, max_y = local_bbox[1]
+    top_z = local_bbox[2][1]
+    width, depth = max_x - min_x, max_y - min_y
+    cx, cy = (min_x + max_x) / 2, (min_y + max_y) / 2
+    materials = {
+        'linen': new_principled('render_only_study_linen', hex_rgb('#eee9df'), rough=0.88),
+        'sheet': new_principled('render_only_study_sheet', hex_rgb('#d9e0dc'), rough=0.92),
+        'quilt': new_principled('render_only_study_quilt', hex_rgb('#b8c8c1'), rough=0.9),
+        'pillow': new_principled('render_only_study_pillow', hex_rgb('#f5f1e8'), rough=0.86),
+    }
+    bedding_created = []
+    if not existing_bedding:
+        try:
+            bedding_created = [
+                add_rounded_box('asset:study:bedding:mattress', (cx, cy, top_z + .055), (max(width-.08,.2), max(depth-.08,.2), .11), materials['linen'], .045),
+                add_rounded_box('asset:study:bedding:sheet', (cx+.008, cy+.02, top_z + .125), (max(width-.04,.2), max(depth-.04,.2), .025), materials['sheet'], .018),
+                add_quilt('asset:study:bedding:quilt', (cx-.012, cy+depth*.015, top_z + .16), (max(width+.06,.2), max(depth+.18,.2), .045), materials['quilt']),
+                add_pillow('asset:study:bedding:pillow:left', (cx-width*.23-.012, min_y+depth*.16+.018, top_z+.215), (max(width*.32,.2), max(depth*.23,.16), .145), -.105, .35),
+                add_pillow('asset:study:bedding:pillow:right', (cx+width*.23+.032, min_y+depth*.16-.006, top_z+.222), (max(width*.32,.2), max(depth*.23,.16), .135), .125, -.20),
+            ]
+        except Exception as exc:
+            # A list comprehension assignment can leave created objects only in bpy
+            # when a later canonical item raises; remove by canonical name as well.
+            remove_incomplete_bedding()
+            bedding_created = []
+            print(f'[dress_scene] WARN study bedding staging failed; keep fallback: {type(exc).__name__}: {exc}')
+    bedding_complete = _study_bedding_complete(
+        existing_bedding, bedding_created, len(canonical_names), bedding_geometry_version,
+    )
+    if bedding_complete:
+        # Candidate-bed validation below decides whether these fallback layers are hidden.
+        pass
+    else:
+        remove_incomplete_bedding(existing_bedding + bedding_created)
+        existing_bedding = []
+        bedding_created = []
+
+    # Reading-light staging remains intentionally skipped; the bedroom scope needs no new lamp.
+    bedding_count = len(existing_bedding) + len(bedding_created)
+    candidate_ready = _stage_study_bed_candidate(anchor, config_dir)
+    if bedding_count or existing_lamp or candidate_ready:
+        print(f'[dress_scene] study staging active: bedding={bedding_count} bed_candidate={candidate_ready} '
+              f'reading_lamp={len(existing_lamp)} anchor={anchor.name} formal_key={formal_key}')
+    return bedding_count + len(existing_lamp) + int(candidate_ready)
+
+
 def add_soft_decor(furniture_mats: dict, config_dir: str = '') -> int:
     """生成客餐厅 render-only staging：BlenderKit 茶几、地毯与既有挂画。
 
@@ -814,10 +1262,9 @@ def add_soft_decor(furniture_mats: dict, config_dir: str = '') -> int:
         local_min_y, local_max_y = min(c.y for c in local_bb), max(c.y for c in local_bb)
         head_y = local_min_y + (local_max_y - local_min_y) * 0.18
         side_gap = 0.08
-        positions = (
-            (local_min_x - side_gap - 0.24, head_y, 0.0),
-            (local_max_x + side_gap + 0.24, head_y, 0.0),
-        )
+        # 主卧床 rotation=270 后 local -x 对应世界北侧、local +x 对应南侧。
+        # 2026-09-01 南床头由独立干式梳妆台承担置物与梳妆，只保留北侧自动床头柜。
+        north_nightstand_position = (local_min_x - side_gap - 0.24, head_y, 0.0)
         added = 0
         for filename, slug, targets, width, role in candidate_specs:
             candidate_path = os.path.join(source_path, slug, filename)
@@ -827,7 +1274,7 @@ def add_soft_decor(furniture_mats: dict, config_dir: str = '') -> int:
             if slug == 'bedding_duvet_pillows':
                 target_positions = ((0.0, (local_min_y + local_max_y) * 0.5, 0.0),)
             else:
-                target_positions = positions
+                target_positions = (north_nightstand_position,)
             existing = [o for o in bpy.data.objects
                         if o.name.startswith(f'asset:bedroom:{slug}')]
             if existing:

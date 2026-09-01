@@ -8,10 +8,10 @@ import {
   parseRenderLightingOverrides,
   parseLightingRenderConfig,
   validateProjectHvacFacts,
-} from '../shared/project-render-facts-schema.js';
-import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
-import { parseOverlay } from '../server/overlay-merge.js';
-import type { CurrentScheme, ProjectRenderFactsProjection } from '../shared/types.js';
+} from '../../shared/project-render-facts-schema.js';
+import { buildProjectRenderFactsProjection } from '../../shared/project-render-facts-projection.js';
+import { parseOverlay } from '../../server/overlay-merge.js';
+import type { CurrentScheme, ProjectRenderFactsProjection } from '../../shared/types.js';
 
 export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFactsProjection {
   const path = (relative: string) => `${rootDir}/${relative}`;
@@ -45,7 +45,7 @@ export function writeProjectRenderFacts(outputPath: string, rootDir = '.'): Proj
 }
 
 function main(): void {
-  const outputPath = process.argv[2] ?? 'scripts/blender/project-render-facts.json';
+  const outputPath = process.argv[2] ?? 'data/project-render-facts.json';
   const projection = writeProjectRenderFacts(outputPath);
   console.log(`project-render-facts.json: ${projection.lightingFixtures.length} lighting fixtures -> ${outputPath}`);
 }

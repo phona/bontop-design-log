@@ -1,0 +1,1341 @@
+[
+  {
+    "asset_uuid": "2692890b-3f42-46c3-874e-844d2f211d25",
+    "name": "Bed IKEA SLATTUM",
+    "asset_page": "https://www.blenderkit.com/asset-gallery/2692890b-3f42-46c3-874e-844d2f211d25/",
+    "category": "upholstered_bed_with_bedding",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "file_id": 1250720,
+    "download_file": null,
+    "download_status": "pending",
+    "room_fit": {
+      "target_rooms": [
+        "master_bedroom",
+        "bedroom_nw",
+        "study"
+      ],
+      "reference_sizes_m": {
+        "master_bed": [
+          1.8,
+          2.0
+        ],
+        "small_bed": [
+          1.5,
+          2.0
+        ]
+      },
+      "status": "pending",
+      "reason": "Blender file not downloaded; bed footprint and bedding structure must be measured before placement."
+    },
+    "dimensions": {
+      "status": "pending",
+      "observed_m": null,
+      "expected_use": "single bed with integrated blanket/pillow elements; not a bedroom set"
+    },
+    "structure_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "texture_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "append_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "recommendation_priority": 2,
+    "notes": "Free validated single bed candidate with blanket and pillow tags, useful when bed and bedding are desired together; inspect object separation before use. Download requires BlenderKit authentication not present in this session.",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/bedrooms/bed_ikea_slattum",
+    "model_file_exists": false,
+    "validation_status": "pending_download",
+    "headless_audit": {
+      "mesh_count": null,
+      "dimensions": null,
+      "material_count": null,
+      "image_texture_count": null,
+      "packed_image_count": null,
+      "uv_layer_count": null,
+      "audit_file": null
+    },
+    "recommended_use": "master_bedroom；bedroom_nw；study 中的单体候选，完成尺寸、结构和摆位检查后使用",
+    "next_action": "先取得授权并下载 Blender 文件，再执行 Blender headless append 验证"
+  },
+  {
+    "asset_uuid": "b0f7d7c0-9c4f-40f7-b12f-8e720d84bad0",
+    "name": "Minimalist wooden nightstand",
+    "asset_page": "https://www.blenderkit.com/asset-gallery/b0f7d7c0-9c4f-40f7-b12f-8e720d84bad0/",
+    "category": "nightstand",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "file_id": 1133414,
+    "download_file": null,
+    "download_status": "pending",
+    "room_fit": {
+      "target_rooms": [
+        "master_bedroom",
+        "bedroom_nw",
+        "study"
+      ],
+      "reference_limits_m": {
+        "width_max": 0.65,
+        "depth_max": 0.45
+      },
+      "status": "pending",
+      "reason": "Blender file not downloaded; dimensions must be measured from object bounds."
+    },
+    "dimensions": {
+      "status": "pending",
+      "observed_m": null,
+      "expected_use": "single compact bedside table"
+    },
+    "structure_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "texture_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "append_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "recommendation_priority": 1,
+    "notes": "Free validated minimalist single nightstand; small file size suggests a practical lightweight candidate. Download requires BlenderKit authentication not present in this session.",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/bedrooms/minimalist_nightstand",
+    "model_file_exists": false,
+    "validation_status": "pending_download",
+    "headless_audit": {
+      "mesh_count": null,
+      "dimensions": null,
+      "material_count": null,
+      "image_texture_count": null,
+      "packed_image_count": null,
+      "uv_layer_count": null,
+      "audit_file": null
+    },
+    "recommended_use": "master_bedroom；bedroom_nw；study 中的单体候选，完成尺寸、结构和摆位检查后使用",
+    "next_action": "先取得授权并下载 Blender 文件，再执行 Blender headless append 验证"
+  },
+  {
+    "asset_uuid": "6b811dfd-20ba-479b-8af3-a850bdeea709",
+    "name": "Office Chair",
+    "asset_page": "https://www.blenderkit.com/asset-gallery/6b811dfd-20ba-479b-8af3-a850bdeea709/",
+    "category": "office_chair",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "file_id": 1154246,
+    "download_file": null,
+    "download_status": "pending",
+    "room_fit": {
+      "target_rooms": [
+        "bedroom_se",
+        "study"
+      ],
+      "reference_room_sizes_m": {
+        "bedroom_se": [
+          3.0,
+          3.15
+        ],
+        "study": [
+          3.0,
+          4.25
+        ]
+      },
+      "status": "pending",
+      "reason": "Blender file not downloaded; footprint and pose must be measured before accepting."
+    },
+    "dimensions": {
+      "status": "pending",
+      "observed_m": null,
+      "expected_use": "single compact task chair"
+    },
+    "structure_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "texture_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "append_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "recommendation_priority": 2,
+    "notes": "Free validated low-poly/PBR-tagged office chair candidate; chosen over explicitly rigged candidates to reduce unstable pose risk. Download requires BlenderKit authentication not present in this session.",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/bedrooms/office_chair",
+    "model_file_exists": false,
+    "validation_status": "pending_download",
+    "headless_audit": {
+      "mesh_count": null,
+      "dimensions": null,
+      "material_count": null,
+      "image_texture_count": null,
+      "packed_image_count": null,
+      "uv_layer_count": null,
+      "audit_file": null
+    },
+    "recommended_use": "bedroom_se；study 中的单体候选，完成尺寸、结构和摆位检查后使用",
+    "next_action": "先取得授权并下载 Blender 文件，再执行 Blender headless append 验证"
+  },
+  {
+    "asset_uuid": "88dd168d-87df-4a45-8fe3-79aca4bbc5d5",
+    "name": "Parallel Bed",
+    "asset_page": "https://www.blenderkit.com/asset-gallery/88dd168d-87df-4a45-8fe3-79aca4bbc5d5/",
+    "category": "upholstered_bed",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "file_id": 934809,
+    "download_file": null,
+    "download_status": "pending",
+    "room_fit": {
+      "target_rooms": [
+        "master_bedroom",
+        "bedroom_nw",
+        "study"
+      ],
+      "reference_sizes_m": {
+        "master_bed": [
+          1.8,
+          2.0
+        ],
+        "small_bed": [
+          1.5,
+          2.0
+        ]
+      },
+      "status": "pending",
+      "reason": "Blender file not downloaded; dimensions must be measured from object bounds before placement."
+    },
+    "dimensions": {
+      "status": "pending",
+      "observed_m": null,
+      "expected_use": "single bed frame and mattress, not a room set"
+    },
+    "structure_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "texture_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "append_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "recommendation_priority": 1,
+    "notes": "Free validated single bed candidate; tags include mattress and fabric. Preferred over existing local bed UUID 51602564 because it is a distinct candidate. Download requires BlenderKit authentication not present in this session.",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/bedrooms/parallel_bed",
+    "model_file_exists": false,
+    "validation_status": "pending_download",
+    "headless_audit": {
+      "mesh_count": null,
+      "dimensions": null,
+      "material_count": null,
+      "image_texture_count": null,
+      "packed_image_count": null,
+      "uv_layer_count": null,
+      "audit_file": null
+    },
+    "recommended_use": "master_bedroom；bedroom_nw；study 中的单体候选，完成尺寸、结构和摆位检查后使用",
+    "next_action": "先取得授权并下载 Blender 文件，再执行 Blender headless append 验证"
+  },
+  {
+    "asset_uuid": "2e8f1479-2ddf-4566-8739-10b22e3da735",
+    "name": "Writing Desk",
+    "asset_page": "https://www.blenderkit.com/asset-gallery/2e8f1479-2ddf-4566-8739-10b22e3da735/",
+    "category": "narrow_desk",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "file_id": 686772,
+    "download_file": null,
+    "download_status": "pending",
+    "room_fit": {
+      "target_rooms": [
+        "bedroom_se",
+        "study"
+      ],
+      "reference_size_m": [
+        1.4,
+        0.6
+      ],
+      "status": "pending",
+      "reason": "Blender file not downloaded; dimensions and clearance must be measured from object bounds."
+    },
+    "dimensions": {
+      "status": "pending",
+      "observed_m": null,
+      "expected_use": "single writing desk; reject if deeper or longer than room clearance"
+    },
+    "structure_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "texture_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "append_validation": {
+      "status": "pending",
+      "result": null
+    },
+    "recommendation_priority": 2,
+    "notes": "Free validated single writing desk candidate. Dimensions are not exposed reliably by search metadata, so no fit is asserted before Blender inspection. Download requires BlenderKit authentication not present in this session.",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/bedrooms/writing_desk",
+    "model_file_exists": false,
+    "validation_status": "pending_download",
+    "headless_audit": {
+      "mesh_count": null,
+      "dimensions": null,
+      "material_count": null,
+      "image_texture_count": null,
+      "packed_image_count": null,
+      "uv_layer_count": null,
+      "audit_file": null
+    },
+    "recommended_use": "bedroom_se；study 中的单体候选，完成尺寸、结构和摆位检查后使用",
+    "next_action": "先取得授权并下载 Blender 文件，再执行 Blender headless append 验证"
+  },
+  {
+    "category": "built_in_cooktop",
+    "uuid": "4a960e36-3d38-44f1-a1b6-8cde22b1d549",
+    "name": "BOSCH induction 600mm",
+    "file_id": 289479,
+    "download_file": null,
+    "source": "BlenderKit public API",
+    "asset_url": "https://www.blenderkit.com/asset-gallery-detail/4a960e36-3d38-44f1-a1b6-8cde22b1d549/",
+    "api_detail_url": "https://www.blenderkit.com/api/v1/assets/4a960e36-3d38-44f1-a1b6-8cde22b1d549/",
+    "license_status": "free",
+    "verification_status": "validated",
+    "fit_assessment": {
+      "kitchen_context": "东墙灶台约 2.20m；嵌入式灶具目标为 0.60m 级台面开孔，不引入烤箱或整套厨房",
+      "dimensions": {
+        "status": "pending",
+        "target": "标称宽约 0.60m；深度约 0.51-0.52m；厚度应为台面嵌入式而非立式灶台"
+      },
+      "structure": {
+        "status": "pending",
+        "required": "独立平嵌灶面，底部结构可嵌入 0.60m 台面；排除带烤箱、落地炉和姿态旋转错误模型"
+      },
+      "textures": {
+        "status": "pending",
+        "required": "材质槽与贴图路径可解析；下载后检查图片存在性"
+      },
+      "exclusions_checked": [
+        "整套厨房场景",
+        "带烤箱落地灶",
+        "姿态错误资产"
+      ]
+    },
+    "download_status": "pending_authentication",
+    "append_validation": "pending_download",
+    "recommendation_priority": 1,
+    "notes": "公开搜索结果为 free + validated + blend；600mm 标称尺寸与当前 L 型厨房东墙灶位最匹配。下载端点要求认证，未写入或记录任何 API key。",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/kitchen/built_in_cooktop",
+    "model_file_exists": false,
+    "validation_status": "pending_download",
+    "headless_audit": {
+      "mesh_count": null,
+      "dimensions": null,
+      "material_count": null,
+      "image_texture_count": null,
+      "packed_image_count": null,
+      "uv_layer_count": null,
+      "audit_file": null
+    },
+    "recommended_use": "东墙灶台约 2.20m；嵌入式灶具目标为 0.60m 级台面开孔，不引入烤箱或整套厨房",
+    "next_action": "先取得授权并下载 Blender 文件，再执行 Blender headless append 验证"
+  },
+  {
+    "category": "kitchen_sink",
+    "uuid": "9aadd09f-1d18-4962-9f60-bf73fc3ca953",
+    "name": "Simple Kitchen Sink",
+    "file_id": 612343,
+    "download_file": null,
+    "source": "BlenderKit public API",
+    "asset_url": "https://www.blenderkit.com/asset-gallery-detail/9aadd09f-1d18-4962-9f60-bf73fc3ca953/",
+    "api_detail_url": "https://www.blenderkit.com/api/v1/assets/9aadd09f-1d18-4962-9f60-bf73fc3ca953/",
+    "license_status": "free",
+    "verification_status": "validated",
+    "fit_assessment": {
+      "kitchen_context": "北墙水槽+切配约 3.60m；优先独立台下/台上水槽，不下载整套橱柜或厨房场景",
+      "dimensions": {
+        "status": "pending",
+        "target": "宽约 0.60-0.80m；深度适配 0.60m 台面；单槽或紧凑双槽均可"
+      },
+      "structure": {
+        "status": "pending",
+        "required": "独立水槽盆体，必要时含水龙头但不得绑定橱柜；检查法线、开口与朝向"
+      },
+      "textures": {
+        "status": "pending",
+        "required": "金属/陶瓷材质槽与贴图路径可解析；下载后检查图片存在性"
+      },
+      "exclusions_checked": [
+        "整套厨房场景",
+        "带橱柜整体资产",
+        "姿态错误资产"
+      ]
+    },
+    "download_status": "pending_authentication",
+    "append_validation": "pending_download",
+    "recommendation_priority": 1,
+    "notes": "公开搜索结果为 free + validated + blend；名称与厨房水槽需求直接匹配。下载端点返回认证要求，尺寸和结构未在无下载条件下臆测。",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/kitchen/kitchen_sink",
+    "model_file_exists": false,
+    "validation_status": "pending_download",
+    "headless_audit": {
+      "mesh_count": null,
+      "dimensions": null,
+      "material_count": null,
+      "image_texture_count": null,
+      "packed_image_count": null,
+      "uv_layer_count": null,
+      "audit_file": null
+    },
+    "recommended_use": "北墙水槽+切配约 3.60m；优先独立台下/台上水槽，不下载整套橱柜或厨房场景",
+    "next_action": "先取得授权并下载 Blender 文件，再执行 Blender headless append 验证"
+  },
+  {
+    "category": "kitchen_small_storage",
+    "uuid": "70dcd3ec-a0c5-407f-ae9b-775f3be88206",
+    "name": "Kitchen spice organizer",
+    "file_id": 1226688,
+    "download_file": null,
+    "source": "BlenderKit public API",
+    "asset_url": "https://www.blenderkit.com/asset-gallery-detail/70dcd3ec-a0c5-407f-ae9b-775f3be88206/",
+    "api_detail_url": "https://www.blenderkit.com/api/v1/assets/70dcd3ec-a0c5-407f-ae9b-775f3be88206/",
+    "license_status": "free",
+    "verification_status": "validated",
+    "fit_assessment": {
+      "kitchen_context": "用于北墙切配区或地柜内小收纳；厨房空间约 3.60m x 2.40m，需避免占用台面主操作带",
+      "dimensions": {
+        "status": "pending",
+        "target": "宽度优先不超过 0.45m；深度不超过 0.35m；高度适合台面或柜内"
+      },
+      "structure": {
+        "status": "pending",
+        "required": "独立小型收纳件，不含橱柜/墙体/整套厨房；检查原点、朝向及可摆放支撑面"
+      },
+      "textures": {
+        "status": "pending",
+        "required": "材质槽与贴图路径可解析；下载后检查图片存在性"
+      },
+      "exclusions_checked": [
+        "整套厨房场景",
+        "大型厨房家具套组",
+        "姿态错误资产"
+      ]
+    },
+    "download_status": "pending_authentication",
+    "append_validation": "pending_download",
+    "recommendation_priority": 2,
+    "notes": "公开搜索结果为 free + validated + blend；作为小收纳候选比厨房场景类结果更符合隔离要求。下载端点要求认证，未下载。",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/kitchen/kitchen_spice_organizer",
+    "model_file_exists": false,
+    "validation_status": "pending_download",
+    "headless_audit": {
+      "mesh_count": null,
+      "dimensions": null,
+      "material_count": null,
+      "image_texture_count": null,
+      "packed_image_count": null,
+      "uv_layer_count": null,
+      "audit_file": null
+    },
+    "recommended_use": "用于北墙切配区或地柜内小收纳；厨房空间约 3.60m x 2.40m，需避免占用台面主操作带",
+    "next_action": "先取得授权并下载 Blender 文件，再执行 Blender headless append 验证"
+  },
+  {
+    "category": "side_suction_hood",
+    "uuid": "edfb7c9b-cfb4-45e9-823e-b59c82c4ba02",
+    "name": "Cooker Hood",
+    "file_id": 142060,
+    "download_file": null,
+    "source": "BlenderKit public API",
+    "asset_url": "https://www.blenderkit.com/asset-gallery-detail/edfb7c9b-cfb4-45e9-823e-b59c82c4ba02/",
+    "api_detail_url": "https://www.blenderkit.com/api/v1/assets/edfb7c9b-cfb4-45e9-823e-b59c82c4ba02/",
+    "license_status": "free",
+    "verification_status": "validated",
+    "fit_assessment": {
+      "kitchen_context": "东墙灶台+烟机，厨房约 3.60m x 2.40m；目标为壁挂侧吸，不接受整套厨房场景",
+      "dimensions": {
+        "status": "pending",
+        "target": "宽约 0.60-0.90m；深度适配 0.60m 台面；高度需满足侧吸烟机形态"
+      },
+      "structure": {
+        "status": "pending",
+        "required": "独立烟机本体，非岛台顶吸、非薄板装饰件、具备可贴墙的背部结构"
+      },
+      "textures": {
+        "status": "pending",
+        "required": "材质槽与贴图路径可解析；下载后检查图片存在性"
+      },
+      "exclusions_checked": [
+        "整套厨房场景",
+        "顶吸薄板",
+        "姿态错误资产"
+      ]
+    },
+    "download_status": "pending_authentication",
+    "append_validation": "pending_download",
+    "recommendation_priority": 1,
+    "notes": "公开搜索结果为 free + validated + blend；BlenderKit 下载端点返回认证要求，当前未配置 API key，因此未下载。尺寸、结构、贴图和 headless append 必须在取得授权下载后复核。",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/kitchen/side_suction_hood",
+    "model_file_exists": false,
+    "validation_status": "pending_download",
+    "headless_audit": {
+      "mesh_count": null,
+      "dimensions": null,
+      "material_count": null,
+      "image_texture_count": null,
+      "packed_image_count": null,
+      "uv_layer_count": null,
+      "audit_file": null
+    },
+    "recommended_use": "东墙灶台+烟机，厨房约 3.60m x 2.40m；目标为壁挂侧吸，不接受整套厨房场景",
+    "next_action": "先取得授权并下载 Blender 文件，再执行 Blender headless append 验证"
+  },
+  {
+    "uuid": "63c2fcc9-3e1b-4d9e-ab0b-3816867de468",
+    "name": "Modern Black Bathroom Faucet",
+    "file_id": 965743,
+    "downloaded_file": "assets/furniture/blenderkit_candidates/bathrooms/bathroom_faucet_black/bathroom_faucet_black.blend",
+    "source": "BlenderKit public API",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "selection": {
+      "role": "basin_faucet",
+      "bathroom_fit": "compact basin faucet; suitable for guest/master vanity screening",
+      "excluded_scene": false
+    },
+    "validation": {
+      "file_nonempty": true,
+      "dimensions_m": "pending",
+      "structure": "pending",
+      "textures": "pending",
+      "headless_append": "pending: AutoDL instance could not start because balance was insufficient"
+    },
+    "recommendation_priority": 5,
+    "category": "basin_faucet",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/bathrooms/bathroom_faucet_black",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "compact basin faucet; suitable for guest/master vanity screening",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 3,
+      "dimensions": [
+        [
+          0.2436,
+          0.1706,
+          0.218
+        ],
+        [
+          0.0736,
+          0.0145,
+          0.0322
+        ],
+        [
+          0.0736,
+          0.0145,
+          0.0322
+        ]
+      ],
+      "material_count": 1,
+      "image_texture_count": 4,
+      "packed_image_count": 4,
+      "uv_layer_count": 3,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "uuid": "ad46fe9e-ef75-44ab-bd06-f2d4ed1a4382",
+    "name": "Simple Bathroom Cabinet",
+    "file_id": 568313,
+    "downloaded_file": "assets/furniture/blenderkit_candidates/bathrooms/mirror_cabinet_simple/mirror_cabinet_simple.blend",
+    "source": "BlenderKit public API",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "selection": {
+      "role": "mirror_cabinet",
+      "bathroom_fit": "cabinet/mirror asset; exact depth and width must be checked against compact bathrooms",
+      "excluded_scene": false
+    },
+    "validation": {
+      "file_nonempty": true,
+      "dimensions_m": "pending",
+      "structure": "pending",
+      "textures": "pending",
+      "headless_append": "pending: AutoDL instance could not start because balance was insufficient"
+    },
+    "recommendation_priority": 6,
+    "category": "mirror_cabinet",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/bathrooms/mirror_cabinet_simple",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "cabinet/mirror asset; exact depth and width must be checked against compact bathrooms",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 1,
+      "dimensions": [
+        [
+          0.8,
+          0.5,
+          1.843
+        ]
+      ],
+      "material_count": 5,
+      "image_texture_count": 14,
+      "packed_image_count": 14,
+      "uv_layer_count": 2,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "uuid": "727c21bd-ab83-4993-bf6c-273891d17b59",
+    "name": "Shower faucet",
+    "file_id": 115405,
+    "downloaded_file": "assets/furniture/blenderkit_candidates/bathrooms/shower_faucet/shower_faucet.blend",
+    "source": "BlenderKit public API",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "selection": {
+      "role": "shower_hardware",
+      "bathroom_fit": "small wall-mounted fitting; suitable for master/guest bath screening",
+      "excluded_scene": false
+    },
+    "validation": {
+      "file_nonempty": true,
+      "dimensions_m": "pending",
+      "structure": "pending",
+      "textures": "pending",
+      "headless_append": "pending: AutoDL instance could not start because balance was insufficient"
+    },
+    "recommendation_priority": 3,
+    "category": "shower_hardware",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/bathrooms/shower_faucet",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "small wall-mounted fitting; suitable for master/guest bath screening",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 1,
+      "dimensions": [
+        [
+          0.2731,
+          0.1321,
+          0.527
+        ]
+      ],
+      "material_count": 1,
+      "image_texture_count": 0,
+      "packed_image_count": 0,
+      "uv_layer_count": 1,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "uuid": "8fa75631-0a40-4fb6-97ba-1ab4111a77cf",
+    "name": "Moen Spray Head Showerhead",
+    "file_id": 1009443,
+    "downloaded_file": "assets/furniture/blenderkit_candidates/bathrooms/showerhead_moen/showerhead_moen.blend",
+    "source": "BlenderKit public API",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "selection": {
+      "role": "showerhead",
+      "bathroom_fit": "compact spray-head component; suitable for small wet zones",
+      "excluded_scene": false
+    },
+    "validation": {
+      "file_nonempty": true,
+      "dimensions_m": "pending",
+      "structure": "pending",
+      "textures": "pending",
+      "headless_append": "pending: AutoDL instance could not start because balance was insufficient"
+    },
+    "recommendation_priority": 4,
+    "category": "showerhead",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/bathrooms/showerhead_moen",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "compact spray-head component; suitable for small wet zones",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 1,
+      "dimensions": [
+        [
+          0.065,
+          0.1145,
+          0.1485
+        ]
+      ],
+      "material_count": 4,
+      "image_texture_count": 5,
+      "packed_image_count": 5,
+      "uv_layer_count": 2,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "uuid": "b4367fa0-7a4c-4940-8338-17a4179115f4",
+    "name": "Toilet (Wall Hung Toilet)",
+    "file_id": 1110539,
+    "downloaded_file": "assets/furniture/blenderkit_candidates/bathrooms/toilet_wall_hung/toilet_wall_hung.blend",
+    "source": "BlenderKit public API",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "selection": {
+      "role": "toilet",
+      "bathroom_fit": "compact wall-hung form is suitable for master/guest bath screening",
+      "excluded_scene": false
+    },
+    "validation": {
+      "file_nonempty": true,
+      "dimensions_m": "pending",
+      "structure": "pending",
+      "textures": "pending",
+      "headless_append": "pending: AutoDL instance could not start because balance was insufficient"
+    },
+    "recommendation_priority": 2,
+    "category": "toilet",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/bathrooms/toilet_wall_hung",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "compact wall-hung form is suitable for master/guest bath screening",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 4,
+      "dimensions": [
+        [
+          0.3965,
+          0.0368,
+          0.5782
+        ],
+        [
+          0.3883,
+          0.0366,
+          0.5655
+        ],
+        [
+          0.24,
+          0.1601,
+          0.0196
+        ],
+        [
+          0.3974,
+          0.2977,
+          0.7064
+        ]
+      ],
+      "material_count": 4,
+      "image_texture_count": 5,
+      "packed_image_count": 5,
+      "uv_layer_count": 6,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "uuid": "8759a90d-da8d-469c-a76f-843b965df064",
+    "name": "Small bathroom cabinet",
+    "file_id": 1238183,
+    "downloaded_file": "assets/furniture/blenderkit_vanity/vanity.blend",
+    "source": "existing local asset, matched to BlenderKit public API record",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "selection": {
+      "role": "600mm_bathroom_vanity",
+      "bathroom_fit": "existing local candidate retained; avoids duplicate download for compact guest-bath slot",
+      "excluded_scene": false
+    },
+    "validation": {
+      "file_nonempty": true,
+      "dimensions_m": "pending",
+      "structure": "pending",
+      "textures": "pending",
+      "headless_append": "pending: not rerun in this isolated task"
+    },
+    "recommendation_priority": 1,
+    "category": "bathroom_vanity",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/bathrooms/vanity_600mm",
+    "model_file_exists": true,
+    "validation_status": "pending_headless_validation",
+    "recommended_use": "existing local candidate retained; avoids duplicate download for compact guest-bath slot",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": null,
+      "dimensions": null,
+      "material_count": null,
+      "image_texture_count": null,
+      "packed_image_count": null,
+      "uv_layer_count": null,
+      "audit_file": null
+    }
+  },
+  {
+    "source": "BlenderKit public API",
+    "uuid": "7bce687a-0fa0-4dd4-b5b0-aaa5fe618b47",
+    "asset_base_id": "cadca0fe-ac60-4b1e-92de-3b7434cafae4",
+    "name": "Wall-Mounted Coat Rack",
+    "file_id": 907450,
+    "download_file": "assets/furniture/blenderkit_candidates/public/coat_rack_wall/coat_rack_wall.blend",
+    "file_type": "blend",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "dimensions_m": {
+      "x": 0.7986,
+      "y": 0.1616,
+      "z": 0.3044
+    },
+    "structure_validation": {
+      "face_count": 5516,
+      "animated": false,
+      "rig": null,
+      "procedural": null,
+      "result": "api_verified; blender_append_pending"
+    },
+    "texture_validation": {
+      "uv": true,
+      "pure_pbr": true,
+      "texture_resolution_min": 2048,
+      "texture_resolution_max": 2048,
+      "materials": null,
+      "result": "api_verified; headless_blender_pending"
+    },
+    "selection_notes": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "temporary_url_stored": false,
+    "category": "coat_rack",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/public/coat_rack_wall",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 3,
+      "dimensions": [
+        [
+          0.6304,
+          0.0628,
+          0.0364
+        ],
+        [
+          0.7986,
+          0.1616,
+          0.0126
+        ],
+        [
+          0.7986,
+          0.0381,
+          0.2919
+        ]
+      ],
+      "material_count": 4,
+      "image_texture_count": 2,
+      "packed_image_count": 2,
+      "uv_layer_count": 4,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "source": "BlenderKit public API",
+    "uuid": "279c54b4-131b-4c57-acc3-b8b7b2b26a98",
+    "asset_base_id": "65b214fe-17e2-4c94-ac2c-8e2ed3ac9d3e",
+    "name": "3 panel curtains",
+    "file_id": 502514,
+    "download_file": "assets/furniture/blenderkit_candidates/public/curtain_linen_3panel/curtain_linen_3panel.blend",
+    "file_type": "blend",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "dimensions_m": {
+      "x": 3.0239,
+      "y": 0.3939,
+      "z": 2.4722
+    },
+    "structure_validation": {
+      "face_count": 52800,
+      "animated": false,
+      "rig": null,
+      "procedural": null,
+      "result": "api_verified; blender_append_pending"
+    },
+    "texture_validation": {
+      "uv": true,
+      "pure_pbr": null,
+      "texture_resolution_min": null,
+      "texture_resolution_max": 4096,
+      "materials": null,
+      "result": "api_verified; headless_blender_pending"
+    },
+    "selection_notes": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "temporary_url_stored": false,
+    "category": "curtain",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/public/curtain_linen_3panel",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 3,
+      "dimensions": [
+        [
+          1.1088,
+          0.3839,
+          2.4686
+        ],
+        [
+          1.1741,
+          0.352,
+          2.4719
+        ],
+        [
+          0.9942,
+          0.2891,
+          2.4739
+        ]
+      ],
+      "material_count": 3,
+      "image_texture_count": 15,
+      "packed_image_count": 7,
+      "uv_layer_count": 3,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "source": "BlenderKit public API",
+    "uuid": "45f85f7c-33c7-4592-8ba8-9dbed2e84306",
+    "asset_base_id": "b53cf258-103e-44e3-b26a-3ef6ac5207e6",
+    "name": "Umi Lounge Chair",
+    "file_id": 640355,
+    "download_file": "assets/furniture/blenderkit_candidates/public/mid_century_lounge_chair/mid_century_lounge_chair.blend",
+    "file_type": "blend",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "dimensions_m": {
+      "x": 0.8021,
+      "y": 0.6371,
+      "z": 0.6629
+    },
+    "structure_validation": {
+      "face_count": 1828,
+      "animated": null,
+      "rig": null,
+      "procedural": null,
+      "result": "api_verified; blender_append_pending"
+    },
+    "texture_validation": {
+      "uv": true,
+      "pure_pbr": true,
+      "texture_resolution_min": 2048,
+      "texture_resolution_max": 2048,
+      "materials": null,
+      "result": "api_verified; headless_blender_pending"
+    },
+    "selection_notes": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "temporary_url_stored": false,
+    "category": "lounge_chair",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/public/mid_century_lounge_chair",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 1,
+      "dimensions": [
+        [
+          0.8093,
+          0.64,
+          0.6643
+        ]
+      ],
+      "material_count": 1,
+      "image_texture_count": 0,
+      "packed_image_count": 0,
+      "uv_layer_count": 1,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "source": "BlenderKit public API",
+    "uuid": "e090b53c-4e23-4914-a02b-f0d6770afbe4",
+    "asset_base_id": "162676c7-44b9-43da-9d01-39712f1593de",
+    "name": "Framed Pegboard with Hooks and Holders",
+    "file_id": 183707,
+    "download_file": "assets/furniture/blenderkit_candidates/public/pegboard_framed/pegboard_framed.blend",
+    "file_type": "blend",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "dimensions_m": {
+      "x": 1.2951,
+      "y": 1.2951,
+      "z": 0.1649
+    },
+    "structure_validation": {
+      "face_count": 140354,
+      "animated": null,
+      "rig": null,
+      "procedural": null,
+      "result": "api_verified; blender_append_pending"
+    },
+    "texture_validation": {
+      "uv": true,
+      "pure_pbr": null,
+      "texture_resolution_min": null,
+      "texture_resolution_max": null,
+      "materials": null,
+      "result": "api_verified; headless_blender_pending"
+    },
+    "selection_notes": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "temporary_url_stored": false,
+    "category": "pegboard",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/public/pegboard_framed",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 12,
+      "dimensions": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.2583,
+          0.0506,
+          0.0558
+        ],
+        [
+          0.1274,
+          0.142,
+          0.3067
+        ],
+        [
+          0.0552,
+          0.093,
+          0.0319
+        ],
+        [
+          0.034,
+          0.0318,
+          0.0044
+        ],
+        [
+          0.032,
+          0.0287,
+          0.0524
+        ],
+        [
+          0.1543,
+          0.0296,
+          0.0392
+        ],
+        [
+          0.2583,
+          0.0508,
+          0.0291
+        ],
+        [
+          0.0982,
+          0.0296,
+          0.0392
+        ],
+        [
+          0.0552,
+          0.0871,
+          0.0319
+        ],
+        [
+          1.2951,
+          0.0381,
+          1.2951
+        ],
+        [
+          1.2189,
+          1.2189,
+          0.0048
+        ]
+      ],
+      "material_count": 6,
+      "image_texture_count": 0,
+      "packed_image_count": 0,
+      "uv_layer_count": 11,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "source": "BlenderKit public API",
+    "uuid": "5e3a62d1-88f1-487c-85dd-d86e2b74ea44",
+    "asset_base_id": "0718fe10-35d0-4190-af37-a0467182ed2f",
+    "name": "Modern shoe rack",
+    "file_id": 460432,
+    "download_file": "assets/furniture/blenderkit_candidates/public/shoe_bench_modern/shoe_bench_modern.blend",
+    "file_type": "blend",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "dimensions_m": {
+      "x": 0.83,
+      "y": 0.4,
+      "z": 0.4
+    },
+    "structure_validation": {
+      "face_count": 1972,
+      "animated": null,
+      "rig": null,
+      "procedural": null,
+      "result": "api_verified; blender_append_pending"
+    },
+    "texture_validation": {
+      "uv": true,
+      "pure_pbr": null,
+      "texture_resolution_min": null,
+      "texture_resolution_max": null,
+      "materials": null,
+      "result": "api_verified; headless_blender_pending"
+    },
+    "selection_notes": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "temporary_url_stored": false,
+    "category": "shoe_bench",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/public/shoe_bench_modern",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 2,
+      "dimensions": [
+        [
+          0.385,
+          0.75,
+          0.015
+        ],
+        [
+          0.4,
+          0.83,
+          0.4
+        ]
+      ],
+      "material_count": 2,
+      "image_texture_count": 0,
+      "packed_image_count": 0,
+      "uv_layer_count": 2,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "source": "BlenderKit public API",
+    "uuid": "9745036e-27ac-4e89-95c5-0a147d8f221a",
+    "asset_base_id": "16e4c48a-89f9-4a8e-8d27-1b23edc00474",
+    "name": "IKEA Shoe Cabinet with drawer black",
+    "file_id": 897293,
+    "download_file": "assets/furniture/blenderkit_candidates/public/shoe_cabinet_black/shoe_cabinet_black.blend",
+    "file_type": "blend",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "dimensions_m": {
+      "x": 0.8859,
+      "y": 0.3068,
+      "z": 1.2694
+    },
+    "structure_validation": {
+      "face_count": 5190,
+      "animated": false,
+      "rig": null,
+      "procedural": null,
+      "result": "api_verified; blender_append_pending"
+    },
+    "texture_validation": {
+      "uv": true,
+      "pure_pbr": null,
+      "texture_resolution_min": 2048,
+      "texture_resolution_max": 2048,
+      "materials": null,
+      "result": "api_verified; headless_blender_pending"
+    },
+    "selection_notes": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "temporary_url_stored": false,
+    "category": "shoe_cabinet",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/public/shoe_cabinet_black",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 1,
+      "dimensions": [
+        [
+          0.8859,
+          0.3068,
+          1.2694
+        ]
+      ],
+      "material_count": 2,
+      "image_texture_count": 3,
+      "packed_image_count": 3,
+      "uv_layer_count": 1,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "source": "BlenderKit public API",
+    "uuid": "132cb022-3fd9-40c9-8ec6-fb9ebcbc5e43",
+    "asset_base_id": "4b251da1-f082-46e0-a0b0-dace57cf6014",
+    "name": "Wood side table",
+    "file_id": 474262,
+    "download_file": "assets/furniture/blenderkit_candidates/public/side_table_wood/side_table_wood.blend",
+    "file_type": "blend",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "dimensions_m": {
+      "x": 0.3768,
+      "y": 0.3768,
+      "z": 0.5501
+    },
+    "structure_validation": {
+      "face_count": 2448,
+      "animated": null,
+      "rig": null,
+      "procedural": null,
+      "result": "api_verified; blender_append_pending"
+    },
+    "texture_validation": {
+      "uv": true,
+      "pure_pbr": false,
+      "texture_resolution_min": null,
+      "texture_resolution_max": 4096,
+      "materials": null,
+      "result": "api_verified; headless_blender_pending"
+    },
+    "selection_notes": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "temporary_url_stored": false,
+    "category": "side_table",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/public/side_table_wood",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 1,
+      "dimensions": [
+        [
+          0.3768,
+          0.3768,
+          0.5501
+        ]
+      ],
+      "material_count": 1,
+      "image_texture_count": 3,
+      "packed_image_count": 3,
+      "uv_layer_count": 1,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  },
+  {
+    "source": "BlenderKit public API",
+    "uuid": "adfa343e-9f8b-445f-89e7-2a6b3b46cef3",
+    "asset_base_id": "41236cc9-007d-4750-90f3-e4563842ae27",
+    "name": "Wall Art",
+    "file_id": 1031187,
+    "download_file": "assets/furniture/blenderkit_candidates/public/wall_art_botanical/wall_art_botanical.blend",
+    "file_type": "blend",
+    "license": "royalty_free",
+    "is_free": true,
+    "verification_status": "validated",
+    "dimensions_m": {
+      "x": 0.7113,
+      "y": 1.05,
+      "z": 0.0254
+    },
+    "structure_validation": {
+      "face_count": 27,
+      "animated": null,
+      "rig": null,
+      "procedural": null,
+      "result": "api_verified; blender_append_pending"
+    },
+    "texture_validation": {
+      "uv": true,
+      "pure_pbr": null,
+      "texture_resolution_min": null,
+      "texture_resolution_max": 7375,
+      "materials": null,
+      "result": "api_verified; headless_blender_pending"
+    },
+    "selection_notes": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "temporary_url_stored": false,
+    "category": "wall_art",
+    "candidate_dir": "assets/furniture/blenderkit_candidates/public/wall_art_botanical",
+    "model_file_exists": true,
+    "validation_status": "blender_append_ok",
+    "recommended_use": "单体候选；避开整屋场景/大套装；适合现代中古公共区或玄关，须结合消防通道留出净宽。",
+    "next_action": "执行 Blender headless append 验证，并记录尺寸、结构、材质和贴图结果",
+    "headless_audit": {
+      "mesh_count": 7,
+      "dimensions": [
+        [
+          0.6613,
+          1.0,
+          0.0
+        ],
+        [
+          0.7113,
+          0.025,
+          0.0254
+        ],
+        [
+          0.025,
+          1.05,
+          0.0254
+        ],
+        [
+          0.7113,
+          0.025,
+          0.0254
+        ],
+        [
+          0.025,
+          1.05,
+          0.0254
+        ],
+        [
+          0.6613,
+          1.0,
+          0.0
+        ],
+        [
+          0.6613,
+          1.0,
+          0.0
+        ]
+      ],
+      "material_count": 4,
+      "image_texture_count": 4,
+      "packed_image_count": 4,
+      "uv_layer_count": 9,
+      "audit_file": "tmp/candidate-audit-r2.json"
+    }
+  }
+]

@@ -160,6 +160,200 @@ const scenarios = [
   },
 ];
 
+type CameraPurpose = 'overview' | 'relationship' | 'detail' | 'auxiliary';
+
+const cameraMetadata: Record<string, {
+  room: string;
+  purpose: CameraPurpose;
+  decisionQuestions: string[];
+}> = {
+  living_sofa_glass: {
+    room: 'living_dining',
+    purpose: 'relationship',
+    decisionQuestions: ['沙发与玻璃幕墙的尺度关系是否协调？', '窗帘与室内采光、隐私是否满足？'],
+  },
+  master_bed_looking_glass: {
+    room: 'master_bedroom',
+    purpose: 'relationship',
+    decisionQuestions: ['床、窗帘与南窗的关系是否协调？', 'Low-E 与超白玻璃色相哪一版更合适？'],
+  },
+  master_bedroom_entry_context: {
+    room: 'master_bedroom',
+    purpose: 'relationship',
+    decisionQuestions: ['从入口看床、窗帘与玻璃的整体关系是否协调？', '床侧活动区与入口通道是否保持顺畅？'],
+  },
+  master_bedroom_relationship_overview: {
+    room: 'master_bedroom',
+    purpose: 'relationship',
+    decisionQuestions: ['床与衣柜的尺度、位置及使用关系是否协调？', '西侧玻璃/窗帘与床侧通道的采光、隐私和通行关系是否合理？'],
+  },
+  master_bedroom_window_context: {
+    room: 'master_bedroom',
+    purpose: 'relationship',
+    decisionQuestions: ['南侧窗帘与玻璃的完整关系是否清晰？', '床体、床侧通道与衣柜之间的尺度和通行关系是否合理？'],
+  },
+  living_floor_closeup: {
+    room: 'living_dining',
+    purpose: 'detail',
+    decisionQuestions: ['地板拼法是否连续自然？', '色号与墙面、家具是否协调？'],
+  },
+  living_west_wall: {
+    room: 'living_dining',
+    purpose: 'detail',
+    decisionQuestions: ['电视、柜体与灯带比例是否合适？', '墙面材质在暖光下是否稳定？'],
+  },
+  bedroom_floor_closeup: {
+    room: 'master_bedroom',
+    purpose: 'detail',
+    decisionQuestions: ['地板暗部细节是否可读？', '铺装方向与床区关系是否合适？'],
+  },
+  bedroom_west_wall: {
+    room: 'master_bedroom',
+    purpose: 'detail',
+    decisionQuestions: ['墙地交界是否清晰利落？', '墙面色号与地板是否协调？'],
+  },
+  kitchen_l_overview: {
+    room: 'kitchen',
+    purpose: 'overview',
+    decisionQuestions: ['水槽、灶台与冰箱动线是否清晰？', 'L 型柜体与开放空间是否协调？'],
+  },
+  kitchen_counter_closeup: {
+    room: 'kitchen',
+    purpose: 'detail',
+    decisionQuestions: ['台面与柜门色材是否协调？', '门板收口与操作尺度是否合适？'],
+  },
+  kitchen_function_overview: {
+    room: 'kitchen',
+    purpose: 'relationship',
+    decisionQuestions: ['主要备餐动线是否顺畅？', '操作区是否存在遮挡或拥挤？'],
+  },
+  kitchen_function_reverse_se: {
+    room: 'kitchen',
+    purpose: 'relationship',
+    decisionQuestions: ['水槽—灶台—冰箱三角动线是否清晰？', 'L 型柜体的转角、连续性与操作区关系是否协调？'],
+  },
+  kitchen_cooktop_closeup: {
+    room: 'kitchen',
+    purpose: 'detail',
+    decisionQuestions: ['灶台与墙面收口是否完整？', '炉圈、旋钮与台面细节是否清晰？'],
+  },
+  dining_overview: {
+    room: 'living_dining',
+    purpose: 'overview',
+    decisionQuestions: ['餐桌椅尺度与通行空间是否合适？', '餐区与客厅的视觉层次是否清晰？'],
+  },
+  study_overview: {
+    room: 'study',
+    purpose: 'overview',
+    decisionQuestions: ['床、衣柜与通行空间是否合适？', '未来客房/书房转换是否保留？'],
+  },
+  bedroom_se_overview: {
+    room: 'bedroom_se',
+    purpose: 'overview',
+    decisionQuestions: ['书桌、椅子与飘窗采光是否匹配？', '通顶柜与工作区是否压迫？'],
+  },
+  bedroom_se_entry_context: {
+    room: 'bedroom_se',
+    purpose: 'relationship',
+    decisionQuestions: ['从入口看桌椅、训练区、低柜与南侧飘窗/玻璃的关系是否清晰？', '入口通道与桌椅、训练区、低柜之间的通行关系是否顺畅？'],
+  },
+  bedroom_se_relationship_overview: {
+    room: 'bedroom_se',
+    purpose: 'relationship',
+    decisionQuestions: ['书桌、椅子与东墙低柜的尺度、位置及使用关系是否协调？', '南侧飘窗/玻璃、训练区边界与入口通道的关系是否清晰、顺畅？'],
+  },
+  study_work_detail: {
+    room: 'bedroom_se',
+    purpose: 'detail',
+    decisionQuestions: ['桌椅与低柜的尺度、位置及使用关系是否协调？', '桌前使用尺度与活动空间是否满足日常工作？'],
+  },
+  bedroom_nw_overview: {
+    room: 'bedroom_nw',
+    purpose: 'overview',
+    decisionQuestions: ['床、衣柜与活动空间是否合适？', '北窗采光与家具布置是否协调？'],
+  },
+  bedroom_nw_relationship: {
+    room: 'bedroom_nw',
+    purpose: 'relationship',
+    decisionQuestions: ['床、衣柜与书桌椅的尺度、位置及使用关系是否协调？', '北窗采光与入口通道是否清晰、顺畅？'],
+  },
+  master_bath_overview: {
+    room: 'master_bath',
+    purpose: 'overview',
+    decisionQuestions: ['淋浴、马桶与通行距离是否合理？', '玻璃隔断是否有效区分干湿区？'],
+  },
+  master_bath_door_relationship: {
+    room: 'master_bath',
+    purpose: 'relationship',
+    decisionQuestions: ['门洞与门扇开启范围是否清晰？', '门洞、门扇与马桶、淋浴及玻璃隔断的关系是否合理？'],
+  },
+  master_bath_floor_detail: {
+    room: 'master_bath',
+    purpose: 'detail',
+    decisionQuestions: ['地面排水与干湿边界是否清楚？', '洁具与隔断收口是否完整？'],
+  },
+  master_bath_high_view: {
+    room: 'master_bath',
+    purpose: 'auxiliary',
+    decisionQuestions: ['高位视角下干湿分区是否清晰？', '马桶与淋浴区是否存在视觉或使用冲突？'],
+  },
+  guest_bath_overview: {
+    room: 'guest_bath',
+    purpose: 'overview',
+    decisionQuestions: ['门洞、马桶与淋浴动线是否顺畅？', '外置洗漱台与过道是否冲突？'],
+  },
+  guest_bath_fixture_reverse: {
+    room: 'guest_bath',
+    purpose: 'relationship',
+    decisionQuestions: ['马桶、淋浴与玻璃隔断的尺度、位置及干湿分区关系是否合理？', '门洞、外置洗手台与通道的开启、使用和通行关系是否顺畅？'],
+  },
+  guest_bath_door_relationship: {
+    room: 'guest_bath',
+    purpose: 'relationship',
+    decisionQuestions: ['门洞与门扇开启范围是否清晰？', '门洞、门扇与洁具、外置洗手台及过道的关系是否合理？'],
+  },
+  guest_bath_vanity_detail: {
+    room: 'guest_bath',
+    purpose: 'detail',
+    decisionQuestions: ['台面、柜体与龙头比例是否协调？', '靠墙安装与检修空间是否明确？'],
+  },
+  balcony_overview: {
+    room: 'balcony',
+    purpose: 'overview',
+    decisionQuestions: ['小阳台设备与通行空间是否冲突？', '玻璃门隔断与厨房关系是否清晰？'],
+  },
+  balcony_utility_wall: {
+    room: 'balcony',
+    purpose: 'relationship',
+    decisionQuestions: ['洗衣机与烘干机叠放后，设备前通道是否满足使用与检修？', '玻璃门开启范围与洗烘设备墙之间的关系是否合理？'],
+  },
+  entry_overview: {
+    room: 'entry_garden',
+    purpose: 'overview',
+    decisionQuestions: ['换鞋站是否便于入户动线？', '栏杆、柜体与消防通道是否冲突？'],
+  },
+  living_from_entry: {
+    room: 'living_dining',
+    purpose: 'relationship',
+    decisionQuestions: ['入户后的视线层次是否自然？', '客厅通行与家具布置是否顺畅？'],
+  },
+  living_from_sw: {
+    room: 'living_dining',
+    purpose: 'relationship',
+    decisionQuestions: ['客餐厨之间的空间联系是否清晰？', '家具与主要通道是否互不干扰？'],
+  },
+  living_floor_mid: {
+    room: 'living_dining',
+    purpose: 'detail',
+    decisionQuestions: ['地板铺装方向是否拉伸空间？', '客厅至餐厨的地面连续性是否自然？'],
+  },
+  corridor_view: {
+    room: 'living_dining',
+    purpose: 'relationship',
+    decisionQuestions: ['走廊净宽与开门关系是否合理？', '卧室入口的视线与私密性是否合适？'],
+  },
+};
+
 const cameras = [
   {
     id: 'living_sofa_glass',
@@ -177,14 +371,38 @@ const cameras = [
     id: 'master_bed_looking_glass',
     // daylight/daylight_clear 用于 Low-E/超白玻璃 A/B，对比主卧自然光下的玻璃透景与色相；中心线对准主卧南窗纱帘中部。
     label: '主卧西侧看床+南窗（2026-08-22 随条带归主卧；避条带柜/衣柜背板；Low-E/超白玻璃 A/B）',
-    position: [0.2, 1.8, 5.0],
-    target: [2.5, 1.0, 8.95],
+    position: [1.2, 2.2, 3.7],
+    target: [3.0, 1.05, 8.55],
     scenarios: ['material_review', 'daylight', 'daylight_clear', 'bare_shell'],
     fill_light: 160,
     exposure: -1.0,
     scenario_overrides: {
       daylight_clear: { sheer_opacity: 0.40 },
     },
+  },
+  {
+    id: 'master_bedroom_entry_context',
+    label: '主卧入口斜看床+南窗玻璃+床侧通道',
+    position: [1.45, 1.65, 6.55],
+    target: [2.85, 1.05, 8.75],
+    lens: 24,
+    scenarios: ['daylight_clear', 'material_review'],
+  },
+  {
+    id: 'master_bedroom_relationship_overview',
+    label: '主卧西侧通道看床+衣柜+西侧玻璃/窗帘关系总览',
+    position: [0.70, 1.60, 6.85],
+    target: [2.65, 1.05, 8.15],
+    lens: 20,
+    scenarios: ['material_review', 'daylight_clear'],
+  },
+  {
+    id: 'master_bedroom_window_context',
+    label: '主卧北侧入口向南窗看床体+床侧通道+衣柜',
+    position: [0.75, 1.65, 5.40],
+    target: [2.60, 1.05, 8.65],
+    lens: 18,
+    scenarios: ['material_review', 'daylight_clear'],
   },
   // 材质评审特写机位（35mm，只出 material_review 工况）
   {
@@ -240,6 +458,9 @@ const cameras = [
     target: [9.15, 1.05, 1.20],
     lens: 24,
     scenarios: ['material_review', 'blue_hour', 'bare_shell'],
+    scenario_overrides: {
+      material_review: { exposure: -0.75 },
+    },
   },
   {
     id: 'kitchen_counter_closeup',
@@ -254,12 +475,20 @@ const cameras = [
   {
     id: 'kitchen_function_overview',
     label: '厨房功能关系审查（无遮挡 L 型工作区）',
-    position: [7.10, 1.65, 4.20],
-    target: [9.85, 0.95, 1.10],
+    position: [7.20, 2.30, 5.85],
+    target: [9.35, 1.00, 1.35],
     lens: 24,
     fill_light: 420,
-    exposure: 0.0,
+    exposure: -1.0,
     scenarios: ['material_review'],
+  },
+  {
+    id: 'kitchen_function_reverse_se',
+    label: '厨房南侧开放口功能视角（避开餐桌，水槽—灶台—冰箱及 L 型柜体）',
+    position: [9.25, 1.55, 3.55],
+    target: [9.75, 1.05, 0.95],
+    lens: 28,
+    scenarios: ['material_review', 'daylight_clear'],
   },
   {
     id: 'kitchen_cooktop_closeup',
@@ -305,11 +534,27 @@ const cameras = [
     exposure: -1.0,
   },
   {
+    id: 'bedroom_se_entry_context',
+    label: '书房入口关系机位（桌椅、训练区、低柜、南侧飘窗/玻璃与通道）',
+    position: [13.80, 1.60, 6.20],
+    target: [15.20, 1.05, 7.35],
+    lens: 18,
+    scenarios: ['material_review'],
+  },
+  {
+    id: 'bedroom_se_relationship_overview',
+    label: '书房东侧斜向关系总览（避开训练架，书桌、椅子、东墙低柜、南侧飘窗/玻璃与入口通道）',
+    position: [16.05, 1.60, 5.85],
+    target: [14.70, 1.05, 7.50],
+    lens: 19,
+    scenarios: ['material_review'],
+  },
+  {
     id: 'study_work_detail',
-    label: '书房工作区辅助视角（桌面/椅子/低柜）',
-    position: [13.65, 1.35, 8.35],
-    target: [15.30, 0.85, 8.05],
-    lens: 28,
+    label: '书房东侧桌椅工作区辅助视角（避开训练架横杆；桌椅/桌前使用尺度）',
+    position: [15.80, 1.50, 6.40],
+    target: [14.20, 0.90, 8.00],
+    lens: 20,
     scenarios: ['material_review'],
     fill_light: 180,
     exposure: -0.5,
@@ -325,6 +570,14 @@ const cameras = [
     exposure: 0.0,
   },
   {
+    id: 'bedroom_nw_relationship',
+    label: '儿童房门外右侧开阔关系视角（床+衣柜+书桌椅+窗+入口通道）',
+    position: [5.72, 2.05, 4.78],
+    target: [3.95, 1.05, 2.45],
+    lens: 18,
+    scenarios: ['material_review'],
+  },
+  {
     id: 'master_bath_overview',
     label: '主卫干湿分离（正南平视朝北，右台盆左淋浴）',
     position: [1.75, 1.45, 2.00],
@@ -332,6 +585,14 @@ const cameras = [
     lens: 16,
     scenarios: ['material_review', 'bare_shell'],
     fill_light: 120,
+  },
+  {
+    id: 'master_bath_door_relationship',
+    label: '主卫门洞门扇关系视角（入口外侧看门洞/门扇/淋浴/马桶/外置洗手台）',
+    position: [1.55, 1.65, 4.65],
+    target: [1.45, 1.00, 1.55],
+    lens: 18,
+    scenarios: ['material_review'],
   },
   {
     id: 'master_bath_floor_detail',
@@ -355,14 +616,30 @@ const cameras = [
   },
   {
     id: 'guest_bath_overview',
-    label: '客卫全景（门外斜视，南墙外置洗漱台）',
-    position: [5.98, 1.55, 4.08],
-    target: [6.68, 0.75, 3.18],
-    lens: 16,
+    label: '客卫门外三分之四总览（马桶、淋浴与外置洗漱台）',
+    position: [5.15, 1.55, 4.65],
+    target: [6.45, 0.95, 3.15],
+    lens: 20,
     scenarios: ['material_review', 'bare_shell'],
     fill_light: 60,
-    // 门外斜视方案：从客卫门外取景，兼顾淋浴区与南墙外置洗漱台。
+    // 门外三分之四方案：从客卫门外取景，兼顾马桶、淋浴区与外置洗漱台。
     exposure: -1.5,
+  },
+  {
+    id: 'guest_bath_fixture_reverse',
+    label: '客卫洁具反向关系视角（马桶/淋浴/玻璃隔断/门洞/外置洗手台/通道）',
+    position: [5.80, 1.45, 3.25],
+    target: [6.70, 0.95, 2.65],
+    lens: 20,
+    scenarios: ['material_review'],
+  },
+  {
+    id: 'guest_bath_door_relationship',
+    label: '客卫门洞门扇关系候选视角（门洞/门扇/洁具/外置洗手台/过道）',
+    position: [5.95, 1.55, 4.65],
+    target: [6.40, 0.95, 2.65],
+    lens: 20,
+    scenarios: ['material_review'],
   },
   {
     id: 'guest_bath_vanity_detail',
@@ -389,6 +666,14 @@ const cameras = [
     },
   },
   {
+    id: 'balcony_utility_wall',
+    label: '生活阳台洗烘设备墙正视（设备前通道与玻璃门关系）',
+    position: [6.72, 1.45, 1.55],
+    target: [5.92, 1.20, 1.55],
+    lens: 18,
+    scenarios: ['material_review'],
+  },
+  {
     id: 'entry_overview',
     label: '入户花园/玄关（2026-08-22 改向东北看望换鞋站+栏杆）',
     position: [11.1, 1.6, 2.4],
@@ -412,6 +697,10 @@ const cameras = [
     target: [11.5, 0.9, 3.0],
     lens: 20,
     scenarios: ['material_review', 'daylight'],
+    // Render-only daylight 修正：从西南角回望餐厨时室内深处欠曝，仅增加相机同轴补光与轻微曝光。
+    scenario_overrides: {
+      daylight: { fill_light: 120, fill_from_camera: true, exposure: 0.25 },
+    },
   },
   {
     id: 'living_floor_mid',
@@ -437,7 +726,10 @@ return {
   lights,
   facts: projection,
   scenarios,
-  cameras,
+  cameras: cameras.map((camera) => ({
+    ...camera,
+    ...cameraMetadata[camera.id],
+  })),
 };
 }
 

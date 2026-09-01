@@ -11,7 +11,15 @@ from dress_config import make_jobs
 bpy_stub = types.ModuleType('bpy')
 bpy_stub.types = types.SimpleNamespace(Object=object)
 sys.modules.setdefault('bpy', bpy_stub)
-from dress_scene import _set_eevee_samples, effective_camera_config  # noqa: E402
+from dress_scene import (  # noqa: E402
+    _set_eevee_samples,
+    effective_camera_config,
+)
+from blender_render_only import (  # noqa: E402
+    STUDY_WORK_DETAIL_FITNESS_TYPES,
+    study_work_detail_fitness_objects,
+    study_work_detail_should_hide_fitness,
+)
 
 CONFIG = {
     'scenarios': [
@@ -66,6 +74,44 @@ def test_hvac_coordination_is_explicit_scenario_flag():
     normal = next(item for item in CONFIG['scenarios'] if item['id'] == 'material_review')
     assert scenario['hvac_coordination'] is True
     assert normal.get('hvac_coordination', False) is False
+
+
+def test_study_work_detail_fitness_policy_is_camera_specific():
+    assert study_work_detail_should_hide_fitness('study_work_detail') is True
+    assert study_work_detail_should_hide_fitness('study_overview') is False
+    assert study_work_detail_should_hide_fitness('bedroom_se_relation') is False
+    assert study_work_detail_should_hide_fitness('entry') is False
+
+
+def test_study_work_detail_fitness_objects_include_real_glb_keys_and_children():
+    class Obj:
+        def __init__(self, name, parent=None, **properties):
+            self.name = name
+            self.parent = parent
+            self.properties = properties
+
+        def get(self, key, default=None):
+            return self.properties.get(key, default)
+
+    objects = []
+    for index, furniture_type in enumerate(sorted(STUDY_WORK_DETAIL_FITNESS_TYPES)):
+        root = Obj(f'furniture:bedroom_se:{"hash" + str(index)}:part={furniture_type}')
+        child = Obj(f'furniture:bedroom_se:{"hash" + str(index)}:part=frame', parent=root)
+        objects.extend((root, child))
+    property_root = Obj(
+        'mesh:fitness:part',
+        objectId='furniture:study:fitness_hash:part=barbell_olympic',
+    )
+    property_child = Obj('mesh:plate', parent=property_root)
+    other_room = Obj('furniture:bedroom_nw:squat_rack:0')
+    unrelated = Obj('furniture:study:desk:0')
+    selected = study_work_detail_fitness_objects(
+        objects + [property_root, property_child, other_room, unrelated],
+    )
+    assert selected == objects + [property_root, property_child]
+    assert STUDY_WORK_DETAIL_FITNESS_TYPES == {
+        'squat_rack', 'bench_adjustable', 'barbell_olympic', 'rubber_training_mat',
+    }
 
 
 def test_effective_camera_config_matches_scenario_and_has_priority():

@@ -15,8 +15,8 @@ from blender_preview import (  # noqa: E402
 
 
 def _obj(name: str, *, room: str | None = None, object_type: str = "MESH",
-         role: str | None = None, hidden: bool = False) -> SimpleNamespace:
-    props = {}
+         role: str | None = None, hidden: bool = False, **metadata) -> SimpleNamespace:
+    props = dict(metadata)
     if room is not None:
         props["room"] = room
     if role is not None:
@@ -131,6 +131,48 @@ def test_glass_architecture_names_are_kept_but_curtain_state_is_not_architecture
     assert curtain_state_decision["keep"] is False
 
 
+def test_formal_architecture_without_room_metadata_is_kept():
+    objects = [
+        _obj("wall:seg:42", sourceClass="formal", object_type="wall"),
+        _obj("building_shell", sourceClass="formal", object_type="MESH"),
+        _obj("window:master_south", sourceClass="formal", object_type="window"),
+        _obj("floor:master_bedroom", sourceClass="formal", object_type="floor"),
+        _obj("asset:master_bedroom:bed", sourceClass="formal"),
+    ]
+
+    decisions = [preview_object_decision(obj, {"rooms": "master_bedroom"}) for obj in objects]
+
+    assert [decision["keep"] for decision in decisions] == [True, True, True, True, False]
+    assert [decision["reason"] for decision in decisions] == [
+        "always_keep_architecture",
+        "always_keep_architecture",
+        "always_keep_architecture",
+        "always_keep_architecture",
+        "outside_scope",
+    ]
+
+
+def test_glb_architecture_types_are_kept_but_curtain_and_furniture_are_cropped():
+    objects = [
+        _obj("glb_node_wall", room="other_room", type="wall"),
+        _obj("glb_node_floor", room="other_room", type="floor_region"),
+        _obj("glb_node_wall_run", room="other_room", type="wall_run"),
+        _obj("glb_node_curtain", room="other_room", type="curtain"),
+        _obj("furniture:other_room:sofa:0", room="other_room", type="furniture"),
+    ]
+
+    decisions = [preview_object_decision(obj, {"rooms": "master_bedroom"}) for obj in objects]
+
+    assert [decision["keep"] for decision in decisions] == [True, True, True, False, False]
+    assert [decision["reason"] for decision in decisions] == [
+        "always_keep_architecture",
+        "always_keep_architecture",
+        "always_keep_architecture",
+        "outside_scope",
+        "outside_scope",
+    ]
+
+
 def test_external_objects_are_counted_as_cropped_with_breakdown():
     objects = [
         _obj("furniture:living_dining:sofa:0", room="living_dining"),
@@ -205,6 +247,8 @@ if __name__ == "__main__":
     test_room_scope_keeps_matching_room_and_crops_other_rooms()
     test_room_scope_always_keeps_architectural_objects()
     test_glass_architecture_names_are_kept_but_curtain_state_is_not_architecture()
+    test_formal_architecture_without_room_metadata_is_kept()
+    test_glb_architecture_types_are_kept_but_curtain_and_furniture_are_cropped()
     test_external_objects_are_counted_as_cropped_with_breakdown()
     test_statistics_distinguish_hidden_excluded_and_outside_objects()
     test_statistics_include_hidden_can_retain_hidden_object()

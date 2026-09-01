@@ -141,7 +141,7 @@ test('CLI facts projection exports lighting fixture geometry and no-facts CLI do
   const withoutFacts = buildCliHouseScene();
   assert.equal(withoutFacts.report.lightingFixtures, 0);
   assert.equal(withoutFacts.exportRoot.getObjectByName('LIGHTING_FIXTURES'), undefined);
-  const withFacts = buildCliHouseScene(undefined, undefined, undefined, undefined, 'scripts/blender/project-render-facts.json');
+  const withFacts = buildCliHouseScene(undefined, undefined, undefined, undefined, 'data/project-render-facts.json');
   const fixtures = [...withFacts.index.lightingFixtures.values()];
   assert.equal(fixtures.length, 15);
   assert.equal(withFacts.report.lightingFixtures, fixtures.length);
@@ -164,7 +164,7 @@ test('CLI facts projection exports lighting fixture geometry and no-facts CLI do
 });
 
 test('CLI track fixture heads are configuration-driven', () => {
-  const facts = JSON.parse(readFileSync('scripts/blender/project-render-facts.json', 'utf8'));
+  const facts = JSON.parse(readFileSync('data/project-render-facts.json', 'utf8'));
   facts.lightingFixtures = facts.lightingFixtures.map((fixture: { type: string; heads?: number }) => fixture.type === 'track_light' ? { ...fixture, heads: 3 } : fixture);
   const directory = mkdtempSync(join(tmpdir(), 'lighting-facts-'));
   const factsPath = join(directory, 'facts.json');
@@ -176,7 +176,7 @@ test('CLI track fixture heads are configuration-driven', () => {
 });
 
 test('CLI with real render facts exports every renderable A2 HVAC anchor and terminal exactly once', () => {
-  const { exportRoot, report, index } = buildCliHouseScene(undefined, undefined, undefined, undefined, 'scripts/blender/project-render-facts.json');
+  const { exportRoot, report, index } = buildCliHouseScene(undefined, undefined, undefined, undefined, 'data/project-render-facts.json');
   const ids = [...index.hvac.all.keys()];
   assert.equal(report.hvacStatus, 'implemented');
   assert.equal(new Set(ids).size, ids.length);

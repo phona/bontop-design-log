@@ -1,0 +1,288 @@
+{
+  "schema": "bontop.render-decision-boards",
+  "version": 1,
+  "notASinglePhysicalView": true,
+  "updatedAt": "2026-09-01",
+  "rooms": {
+    "living_dining": {
+      "status": "directionally_reviewable",
+      "limitations": [
+        "rug_and_blue_decor_need_soft_furnishing_decision",
+        "tv_wall_detail_needs_follow_up"
+      ],
+      "nextAction": "use the formal views for spatial relationships and material direction; resolve rug, blue decor, and TV-wall details before final aesthetic sign-off",
+      "views": [
+        {
+          "path": "renders/final-living-daylight-20260831-f/final-living-daylight-20260831-f__living_sofa_glass__daylight_clear.png",
+          "camera": "living_sofa_glass",
+          "scenario": "daylight_clear",
+          "purpose": "entrance_context",
+          "truth": "physical_camera",
+          "resolution": [1920, 1080],
+          "sha256": "ff6f3e06a904bd72c50b69af750549879e4e3ac1f7f3da44ea12e7569ef96c6c"
+        },
+        {
+          "path": "renders/final-living-20260831-f/final-living-20260831-f__living_sofa_glass__blue_hour.png",
+          "camera": "living_sofa_glass",
+          "scenario": "blue_hour",
+          "purpose": "atmosphere_and_cold_warm_balance",
+          "truth": "physical_camera",
+          "resolution": [1920, 1080],
+          "sha256": "6efd24eab495db2e9da9466a58d8555dbe706a6494b0f3bc715c7dfba7fb730f"
+        },
+        {
+          "path": "renders/formal-living-multiview-20260831/formal07-living-multiview__living_from_sw__daylight.png",
+          "camera": "living_from_sw",
+          "scenario": "daylight",
+          "purpose": "fixture_relationship",
+          "truth": "physical_camera",
+          "bundle": "tmp/formal-multiview-20260831",
+          "resolution": [1920, 1080],
+          "sha256": "086c7219d1755e84388dc286678f92ca5ba4a9581d9f1a68f1da49b3ca5806b0",
+          "formalReady": true,
+          "limitations": ["kitchen_function_only_partially_visible", "central_half_height_partition_needs_design_decision"]
+        },
+        {
+          "path": "renders/formal-living-multiview-20260831/formal07-living-multiview__living_sofa_glass__daylight.png",
+          "camera": "living_sofa_glass",
+          "scenario": "daylight",
+          "purpose": "material_and_living_zone",
+          "truth": "physical_camera",
+          "bundle": "tmp/formal-multiview-20260831",
+          "resolution": [1920, 1080],
+          "sha256": "a05eef42dd3fdcc1cb96e97a8d078c60e4086ffb0acb62748f4bd9b8ecf9116c",
+          "formalReady": true,
+          "limitations": ["dining_zone_not_visible", "rug_and_blue_decor_need_soft_furnishing_decision"]
+        }
+      ]
+    },
+    "kitchen": {
+      "status": "partially_reviewable",
+      "limitations": [
+        "kitchen_l_overview_does_not_fully_cover_the_functional_triangle",
+        "kitchen_function_overview_and_kitchen_function_reverse_se_did_not_provide_complete_functional_triangle_coverage",
+        "formal_overview_and_cooktop_detail_support_only_partial_layout_and_material_direction",
+        "new_previews_are_new_evidence_only_failed_or_auxiliary_sketches_and_are_not_added_to_formal_views"
+      ],
+      "nextAction": "retain only the existing formal overview and cooktop detail for partial layout/material direction; do not promote failed camera attempts or add them to formal views; re-plan valid cameras that cover the sink, cooktop, fridge, circulation, and working triangle before a complete kitchen decision",
+      "views": [
+        {
+          "path": "renders/final-kitchen-cooktop-20260831-b/final-kitchen-cooktop-20260831-b__kitchen_cooktop_closeup__material_review.png",
+          "camera": "kitchen_cooktop_closeup",
+          "scenario": "material_review",
+          "purpose": "material_detail",
+          "truth": "physical_camera",
+          "resolution": [1920, 1080],
+          "sha256": "ad3b9cf596312418ce657103b6a3fee8b5ab831e26b92379dfa3047063ab72df"
+        },
+        {
+          "path": "renders/kitchen-overview-20260831/kitchen-overview-20260831__kitchen_l_overview__material_review.png",
+          "camera": "kitchen_l_overview",
+          "scenario": "material_review",
+          "purpose": "layout_context",
+          "truth": "physical_camera",
+          "resolution": [1920, 1080],
+          "sha256": "27ecc3f0e22dcf7d5a4ee972412f72b0e699101555c8dbbfa348a34f2311694d",
+          "limitations": ["dining_table_and_curtain_obscure_work_triangle", "not_a_complete_kitchen_overview"]
+        },
+        {
+          "path": "renders/formal-kitchen-pair-20260831/formal23-kitchen-pair__kitchen_l_overview__material_review.png",
+          "camera": "kitchen_l_overview",
+          "scenario": "material_review",
+          "purpose": "layout_context",
+          "truth": "physical_camera",
+          "bundle": "tmp/formal-multiview-current",
+          "resolution": [1920, 1080],
+          "sha256": "b3a1004c6987271e2db59985752baba378544a9da9b7895d118f03c4c977f1d0",
+          "formalReady": true,
+          "limitations": ["water_sink_not_reliably_visible", "fridge_not_visible", "dining_table_and_curtain_obscure_work_triangle"]
+        },
+        {
+          "path": "renders/formal-kitchen-pair-20260831/formal23-kitchen-pair__kitchen_cooktop_closeup__material_review.png",
+          "camera": "kitchen_cooktop_closeup",
+          "scenario": "material_review",
+          "purpose": "material_detail",
+          "truth": "physical_camera",
+          "bundle": "tmp/formal-multiview-current",
+          "resolution": [1920, 1080],
+          "sha256": "2cfd5ef91096dae4d80705ef1f6e85597f9b374b9bc96983d7a601fb65d0297c",
+          "formalReady": true,
+          "limitations": ["detail_view_not_for_layout", "sink_and_fridge_not_visible"]
+        }
+      ]
+    },
+    "master_bedroom": {
+      "status": "partially_reviewable",
+      "views": [
+        {
+          "path": "renders/final-master-bedroom-20260831-d/final-master-bedroom-20260831-d__master_bed_looking_glass__daylight_clear.png",
+          "camera": "master_bed_looking_glass",
+          "scenario": "daylight_clear",
+          "purpose": "bed_glass_relationship",
+          "truth": "physical_camera",
+          "resolution": [1920, 1080],
+          "sha256": "8ae39298033d5fadd56fdfec2b348deb30418ff17117eac5212dac892ec7305a"
+        }
+      ],
+      "limitations": [
+        "scope_and_sky_plane_are_fixed",
+        "bed_is_readable_but_curtains_glass_wardrobe_and_circulation_are_not_in_one_frame",
+        "new_previews_are_valid_renders_but_camera_coverage_or_occlusion_is_insufficient",
+        "new_previews_are_evidence_only_and_are_not_added_to_formal_views"
+      ],
+      "nextAction": "retain the existing formal view only; keep the valid previews as evidence, do not add them to formal views; re-plan a camera that frames the bed, curtains, glass, wardrobe, entry, and circulation together"
+    },
+    "study": {
+      "status": "incomplete_blocked",
+      "limitations": [
+        "new_previews_are_valid_renders_but_camera_coverage_or_occlusion_is_insufficient",
+        "new_previews_are_evidence_only_and_are_not_added_to_formal_views",
+        "no_valid_complete_room_overview_or_entry_context_this_round",
+        "desk_chair_and_room_circulation_are_not_reliably_reviewable_together",
+        "training_rack_and_horizontal_bar_occlude_the_room_view",
+        "bedding_has_improved_but_still_reads_as_procedural_soft_furnishing",
+        "bed_150_blend_remote_headless_audit_completed_4_meshes_3_materials_9_image_textures_9_packed_images_6_uv_layers_but_rejected_as_render_only_candidate_due_to_inconsistent_internal_multi_mesh_scale_bbox_contract",
+        "procedural_bed_150_and_render_only_bedding_fallback_are_operational_but_current_bedding_is_insufficient_for_final_soft_furnishing_sign_off",
+        "bedside_tables_and_bedside_lamps_are_missing",
+        "curtains_and_complete_entry_relationship_are_not_covered"
+      ],
+      "views": [
+        {
+          "path": "renders/hy-study-final-5/hy-study-final-5__study_work_detail__material_review.png",
+          "camera": "study_work_detail",
+          "scenario": "material_review",
+          "purpose": "material_detail",
+          "truth": "auxiliary_view",
+          "resolution": [1920, 1080],
+          "sha256": "7f7687e01a0ad3ccdb760a53aec835203c67d029ac25dfbb67a1408442026803",
+          "formalReady": true,
+          "limitations": ["desk_and_chair_partially_occluded", "not_a_complete_room_overview", "new_previews_are_evidence_only_failed_or_auxiliary_sketches_and_are_not_added_to_formal_views"]
+        },
+        {
+          "path": "renders/formal-study-dressed-20260901/formal67-study-dressed__study_overview__material_review.png",
+          "camera": "study_overview",
+          "scenario": "material_review",
+          "purpose": "layout_and_bedding_direction",
+          "truth": "physical_camera",
+          "bundle": "tmp/formal-multiview-20260901-r10",
+          "resolution": [1920, 1080],
+          "sha256": "a1ae9813518dc4ee274e7717587a7ca5edf683c97a7241d0cefde7e90f81cd6d",
+          "formalReady": true,
+          "limitations": ["bedding_soft_geometry_still_procedural", "bedside_tables_and_bedside_lamps_missing", "curtains_and_complete_entry_relationship_not_covered"]
+        },
+        {
+          "path": "renders/formal-study-work-20260901/formal77-study-work__study_work_detail__material_review.png",
+          "camera": "study_work_detail",
+          "scenario": "material_review",
+          "purpose": "cabinet_and_local_placement",
+          "truth": "physical_camera",
+          "bundle": "tmp/study-preview-bundle-20260901",
+          "resolution": [1920, 1080],
+          "sha256": "9d8493b6b6c280566bd3a40aeb9129b11c04b523d16ab21e763e6092907cbb43",
+          "formalReady": true,
+          "limitations": ["desk_and_chair_partially_occluded", "not_a_complete_room_overview", "not_sufficient_for_overall_style_signoff"]
+        }
+      ],
+      "nextAction": "retain the formal bedding direction and cabinet/local-placement views as intermediate decision references; record that bed_150.blend completed remote headless audit (4 meshes, 3 materials, 9 image textures, 9 packed images, 6 UV layers) but was rejected as a render-only candidate because its multi-mesh internal scale/bbox contracts are inconsistent; keep the procedural bed_150 and render-only bedding fallback, which are operational; do not add failed preview PNGs or promote them to formal views; current bedding remains insufficient for final soft-furnishing sign-off; address training-rack and horizontal-bar obstruction before seeking a complete room image"
+    },
+    "bedroom_se": {
+      "status": "partially_reviewable",
+      "limitations": [
+        "new_previews_are_valid_renders_but_camera_coverage_or_occlusion_is_insufficient",
+        "new_previews_are_evidence_only_and_are_not_added_to_formal_views",
+        "no_valid_complete_room_decision_view_this_round",
+        "room_layout_and_fitness_relationships_are_not_reviewable_as_a_complete_room"
+      ],
+      "nextAction": "keep the valid previews as evidence only; do not add them to formal views; re-plan a bedroom_se camera covering room layout, fitness equipment, openings, storage, and circulation"
+    },
+    "guest_bath": {
+      "status": "partially_reviewable",
+      "limitations": [
+        "new_previews_are_valid_renders_but_camera_coverage_or_occlusion_is_insufficient",
+        "new_previews_are_evidence_only_and_are_not_added_to_formal_views",
+        "vanity_toilet_and_shower_fixture_relationship_is_incomplete",
+        "maintenance_clearance_and_door_relationship_are_not_reviewable"
+      ],
+      "views": [
+        {
+          "path": "renders/hy-guestbath-final-5/hy-guestbath-final-5__guest_bath_vanity_detail__material_review.png",
+          "camera": "guest_bath_vanity_detail",
+          "scenario": "material_review",
+          "purpose": "material_detail",
+          "truth": "auxiliary_view",
+          "resolution": [1920, 1080],
+          "sha256": "f4bf9e552d83c57efb834dc8100f3e13bc2295ac38d247b3cbd27a803a376b99",
+          "formalReady": true,
+          "limitations": ["does_not_cover_toilet_or_shower", "new_previews_are_evidence_only_failed_or_auxiliary_sketches_and_are_not_added_to_formal_views"]
+        }
+      ],
+      "nextAction": "retain the existing auxiliary PNG only; keep valid previews as evidence, do not add them to formal views; re-plan a fixture-relationship view covering vanity, toilet, shower, door swing, and clearances"
+    },
+    "master_bath": {
+      "status": "partially_reviewable",
+      "limitations": [
+        "new_previews_are_valid_renders_but_camera_coverage_or_occlusion_is_insufficient",
+        "new_previews_are_evidence_only_and_are_not_added_to_formal_views",
+        "vanity_toilet_shower_and_door_fixture_relationship_is_incomplete",
+        "target_surface_and_fixture_relationships_are_not_identifiable"
+      ],
+      "views": [
+        {
+          "path": "renders/hy-masterbath-final-5/hy-masterbath-final-5__master_bath_floor_detail__material_review.png",
+          "camera": "master_bath_floor_detail",
+          "scenario": "material_review",
+          "purpose": "material_detail",
+          "truth": "auxiliary_view",
+          "resolution": [1920, 1080],
+          "sha256": "088b525817cf7a501a39f805b903c38af64ec10d656bd6ffeee3c10dac016179",
+          "formalReady": true,
+          "limitations": ["target_surface_not_identifiable", "not_a_complete_room_overview", "new_previews_are_evidence_only_failed_or_auxiliary_sketches_and_are_not_added_to_formal_views"]
+        }
+      ],
+      "nextAction": "retain the existing auxiliary PNG only; keep valid previews as evidence, do not add them to formal views; re-plan an overview covering the complete vanity, toilet, shower, door, and clearance relationships"
+    },
+    "dining": {
+      "status": "directionally_reviewable",
+      "views": [
+        {
+          "path": "renders/final-dining-20260831-f/final-dining-20260831-f__dining_overview__daylight_clear.png",
+          "camera": "dining_overview",
+          "scenario": "daylight_clear",
+          "purpose": "entrance_context",
+          "truth": "physical_camera",
+          "resolution": [1920, 1080],
+          "sha256": "cddb416f521957c5ea5d74c44b0bd79d96501596da014bc41f7640d14c52b534"
+        }
+      ]
+    },
+    "bedroom_nw": {
+      "status": "partially_reviewable",
+      "limitations": [
+        "new_previews_are_valid_renders_but_camera_coverage_or_occlusion_is_insufficient",
+        "new_previews_are_evidence_only_and_are_not_added_to_formal_views",
+        "doorway_camera_is_occluded_by_door_frame_and_bed",
+        "bed_storage_and_circulation_relationships_are_not_reviewable"
+      ],
+      "nextAction": "keep the valid previews as evidence only; do not add them to formal views; re-plan a camera beyond the doorway that avoids the door frame and bed while covering bed, storage, openings, and circulation"
+    },
+    "balcony": {
+      "status": "partially_reviewable",
+      "limitations": [
+        "new_previews_are_valid_renders_but_camera_coverage_or_occlusion_is_insufficient",
+        "new_previews_are_evidence_only_and_are_not_added_to_formal_views",
+        "laundry_stack_and_circulation_are_incomplete",
+        "balcony_edge_access_and_external_relationships_are_not_reviewable"
+      ],
+      "nextAction": "keep the valid previews as evidence only; do not add them to formal views; re-plan a balcony camera covering the washer-dryer, circulation, edge condition, access, railing, and adjacent-room relationship"
+    },
+    "entry_garden": {
+      "status": "partially_reviewable",
+      "limitations": [
+        "new_previews_are_valid_renders_but_camera_coverage_or_occlusion_is_insufficient",
+        "new_previews_are_evidence_only_and_are_not_added_to_formal_views",
+        "entry_sequence_and_garden_boundary_relationships_are_not_reviewable"
+      ],
+      "nextAction": "keep the valid previews as evidence only; do not add them to formal views; re-plan a camera covering approach, threshold, garden boundary, and house relationship without obstructed coverage"
+    }
+  }
+}

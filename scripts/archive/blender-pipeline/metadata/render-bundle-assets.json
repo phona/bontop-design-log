@@ -1,0 +1,37 @@
+{
+  "schema": "bontop.render-bundle-assets",
+  "version": 1,
+  "rooms": {
+    "balcony": [
+      "assets/furniture/washer",
+      "assets/furniture/dryer"
+    ],
+    "kitchen": [
+      "assets/furniture/dishwasher",
+      "assets/furniture/fridge",
+      "assets/furniture/gas_stove"
+    ],
+    "living_dining": [
+      "assets/furniture/burrard_sofa",
+      "assets/furniture/cara_chair",
+      "assets/furniture/rattan_dining_chair",
+      "assets/furniture/wooden_table_02",
+      "assets/furniture/potted_plant_01",
+      "assets/furniture/blenderkit_coffee_table",
+      "assets/furniture/blenderkit_area_rug",
+      "assets/furniture/blenderkit_walnut_tv_console"
+    ],
+    "guest_bath": [
+      "assets/furniture/blenderkit_vanity"
+    ],
+    "master_bath": [],
+    "master_bedroom": [
+      "assets/furniture/blenderkit_upholstered_bed_51602564",
+      "assets/furniture/potted_plant_01"
+    ],
+    "bedroom_nw": [],
+    "bedroom_se": [],
+    "study": [],
+    "entry_garden": []
+  }
+}

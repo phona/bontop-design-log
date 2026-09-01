@@ -1,6 +1,8 @@
 # Blender 渲染架构与边界
 
-本文描述当前项目中 Web/CLI 建模、Blender 定妆渲染和渲染产物追溯之间的实际边界。本文只记录已经存在于代码和脚本中的能力；不把远程 workflow 修复、云端自动化或视觉验收结果当作已完成能力。
+> **PAUSED / HISTORICAL — 2026-09-01**：本文记录已暂停的 Blender 管线，不是当前操作手册。历史 `scripts/blender/`、`scripts/run-blender.sh`、bundle 与相机工具已冷归档到 `scripts/archive/blender-pipeline/`；恢复要求见该目录 `README.md`。当前默认效果预览为 Web + GPT，Web/CLI GLB 保持 active。
+
+本文描述归档时项目中 Web/CLI 建模、Blender 定妆渲染和渲染产物追溯之间的边界。文中的旧 live 路径与命令均为历史证据，不保证直接运行。
 
 ## 1. 总体原则
 

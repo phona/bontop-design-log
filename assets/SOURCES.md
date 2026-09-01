@@ -1,5 +1,7 @@
-# PBR 贴图来源（CC0，不入 git，可重下）
+# PBR 贴图与 3D 资产来源
 
+> **当前边界**：这些大型资产与 HDRI 保持原位，不随 Blender 冷归档移动或删除。Web/CLI GLB 可继续使用适用的 GLB/共享资产；文中 Blender/BlenderKit 下载与接入步骤仅在明确恢复 `scripts/archive/blender-pipeline/` 时适用，不是默认主线。
+>
 > 贴图文件在 `assets/textures/<id>/`（diff.jpg / normal.jpg / rough.jpg），被 .gitignore 排除。
 > 重下脚本：`wget --no-proxy "<url>" -O assets/textures/<id>/<variant>.jpg`
 

@@ -679,10 +679,11 @@ def setup_world(engine: str, scenario: dict, config_dir: str | None = None) -> d
     )
 
 
-def add_sky_planes(hdri_status: dict | None = None) -> None:
+def add_sky_planes(hdri_status: dict | None = None, scenario: dict | None = None) -> None:
     return _blender_environment.add_sky_planes(
         hdri_status, bpy_module=bpy, glass_ids=GLASS_IDS,
         find_node_fn=_find_node, srgb_to_linear_tuple_fn=_srgb_to_linear_tuple,
+        scenario=scenario,
     )
 
 
@@ -730,6 +731,37 @@ FURNITURE_PARTS = {
         ('duvet', [1.3, 0.08, 1.4], [0, 0.49, 0.25], 'fabric_white'),
         ('pillow_l', [0.45, 0.1, 0.35], [-0.32, 0.5, -0.65], 'fabric_white'),
         ('pillow_r', [0.45, 0.1, 0.35], [0.32, 0.5, -0.65], 'fabric_white'),
+    ],
+    # 2026-09-01 主卧南床头干式梳妆：独立落地、桌面镜与插接灯，不依赖东墙挂载。
+    'master_dressing_table': [
+        ('rounded_top', [0.85, 0.045, 0.40], [0, 0.7275, 0], 'wood'),
+        ('thin_drawer', [0.74, 0.10, 0.32], [0, 0.65, 0.015], 'wood_dark'),
+        ('leg1', [0.055, 0.705, 0.055], [-0.36, 0.3525, -0.16], 'wood_dark'),
+        ('leg2', [0.055, 0.705, 0.055], [0.36, 0.3525, -0.16], 'wood_dark'),
+        ('leg3', [0.055, 0.705, 0.055], [-0.36, 0.3525, 0.16], 'wood_dark'),
+        ('leg4', [0.055, 0.705, 0.055], [0.36, 0.3525, 0.16], 'wood_dark'),
+        ('tabletop_mirror', [0.54, 0.54, 0.025], [0, 1.04, -0.13], 'mirror'),
+        ('mirror_stand', [0.38, 0.025, 0.10], [0, 0.765, -0.12], 'wood_dark'),
+        ('plug_in_light', [0.025, 0.48, 0.025], [0.31, 0.99, -0.13], 'metal'),
+    ],
+    'dressing_stool': [
+        ('seat', [0.42, 0.07, 0.40], [0, 0.415, 0], 'fabric_light'),
+        ('leg1', [0.035, 0.38, 0.035], [-0.17, 0.19, -0.16], 'wood_dark'),
+        ('leg2', [0.035, 0.38, 0.035], [0.17, 0.19, -0.16], 'wood_dark'),
+        ('leg3', [0.035, 0.38, 0.035], [-0.17, 0.19, 0.16], 'wood_dark'),
+        ('leg4', [0.035, 0.38, 0.035], [0.17, 0.19, 0.16], 'wood_dark'),
+    ],
+    # 原洗漱梳妆一体台改纯洗手柜：盆心不动，东侧封闭抽屉，不留膝位。
+    'mb_washbasin_cabinet': [
+        ('basin_carcass', [0.52, 0.72, 0.42], [-0.29, 0.36, 0], 'cabinet'),
+        ('basin_door', [0.50, 0.66, 0.02], [-0.29, 0.40, 0.22], 'cabinet_light'),
+        ('east_storage', [0.52, 0.72, 0.42], [0.29, 0.36, 0], 'cabinet'),
+        ('east_drawer_upper', [0.50, 0.20, 0.02], [0.29, 0.57, 0.22], 'cabinet_light'),
+        ('east_drawer_lower', [0.50, 0.40, 0.02], [0.29, 0.26, 0.22], 'cabinet_light'),
+        ('countertop', [1.10, 0.04, 0.50], [0, 0.79, 0], 'stone'),
+        ('basin', [0.46, 0.12, 0.32], [-0.29, 0.87, 0], 'ceramic'),
+        ('faucet', [0.05, 0.22, 0.05], [-0.29, 0.92, -0.16], 'metal'),
+        ('wash_mirror', [0.72, 0.72, 0.03], [-0.10, 1.43, -0.235], 'mirror'),
     ],
     'dining_table': [
         ('top', [1.4, 0.04, 0.8], [0, 0.75, 0], 'wood'),
@@ -1163,10 +1195,11 @@ def _furniture_instance_anchors(objects):
 
 
 def _hide_furniture_instance_family(instance_key: str, hidden: bool = True) -> int:
-    """按完整 formal instance key 隐藏 GLB 导出的整组 mesh，不依赖 parent links。"""
+    """按名称或 objectId 隐藏 GLB 导出的整组 mesh，不依赖 parent links。"""
     count = 0
     for obj in bpy.data.objects:
-        if _furniture_instance_key(obj) == instance_key:
+        object_id = obj.get('objectId') if hasattr(obj, 'get') else None
+        if _furniture_instance_key(obj) == instance_key or object_id == instance_key:
             obj.hide_render = hidden
             count += 1
     return count
@@ -1797,6 +1830,25 @@ def _reset_job_visibility() -> None:
         _hide_furniture_instance_family(instance_key, True)
 
 
+def _apply_study_work_detail_fitness_policy(camera_id: str | None) -> int:
+    """Temporarily hide the study fitness foreground for one render-only camera."""
+    if not _blender_render_only.study_work_detail_should_hide_fitness(camera_id):
+        return 0
+    fitness_objects = _blender_render_only.study_work_detail_fitness_objects(bpy.data.objects)
+    hidden = 0
+    hidden_keys = set()
+    for obj in fitness_objects:
+        obj.hide_render = True
+        hidden += 1
+        instance_key = _furniture_instance_key(obj)
+        if instance_key is not None and instance_key not in hidden_keys:
+            hidden += _hide_furniture_instance_family(instance_key, True)
+            hidden_keys.add(instance_key)
+    print(f'[dress_scene] study fitness render-only policy: hidden_count={hidden} '
+          f'camera={camera_id}')
+    return hidden
+
+
 def _set_material_value(mat, socket_name: str, value) -> None:
     if not mat or not getattr(mat, 'use_nodes', False):
         return
@@ -1875,6 +1927,17 @@ def _set_color_management(scene, scenario: dict) -> None:
 def _apply_job_state(runtime: dict, cam_cfg: dict, scenario: dict) -> dict:
     state = job_state(cam_cfg, scenario)
     _reset_job_visibility()
+    _apply_study_work_detail_fitness_policy(cam_cfg.get('id'))
+    study_visible = _blender_render_only.study_render_scope_visible(
+        _PREVIEW_ROOM, cam_cfg.get('id'))
+    study_assets = [o for o in bpy.data.objects
+                    if o.name.startswith('asset:study:bedding:')
+                    or o.name.startswith('asset:study:reading_lamp:')]
+    for obj in study_assets:
+        _set_recursive_hidden(obj, not study_visible)
+    if study_assets:
+        print(f'[dress_scene] study staging visibility: visible={study_visible} '
+              f'objects={len(study_assets)} camera={cam_cfg.get("id")}')
     if state['bare_shell']:
         for o in bpy.data.objects:
             if bare_shell_should_hide(o):
@@ -1904,7 +1967,7 @@ def _apply_job_state(runtime: dict, cam_cfg: dict, scenario: dict) -> dict:
     _set_fixture_emission(state['lights_on'])
     _set_job_lights(runtime, state, cam_cfg, scenario)
     hdri_status = setup_world(runtime['engine'], scenario, config_dir=runtime['config_dir'])
-    add_sky_planes(hdri_status)
+    add_sky_planes(hdri_status, scenario)
     runtime['last_hdri_status'] = hdri_status
     add_camera(cam_cfg, reuse=True)
     scene = bpy.context.scene
@@ -2041,6 +2104,11 @@ def add_soft_decor(furniture_mats: dict, config_dir: str = '') -> int:
     return _blender_render_only.add_soft_decor(furniture_mats, config_dir=config_dir)
 
 
+def stage_study_bedroom(furniture_mats: dict, config_dir: str = '') -> int:
+    _configure_asset_modules()
+    return _blender_render_only.stage_study_bedroom(furniture_mats, config_dir=config_dir)
+
+
 # Compatibility aliases for diagnostics that imported the former private helpers.
 _world_bbox_for_objects = _blender_render_only._world_bbox_for_objects
 _report_render_only_asset = _blender_render_only._report_render_only_asset
@@ -2124,6 +2192,14 @@ def initialize_scene(args: dict, cfg: dict, jobs: list[dict]) -> dict:
         add_soft_decor(furniture_mats, config_dir=config_dir)
     else:
         print(f'[dress_scene] preview scope room={_PREVIEW_ROOM}; skip living_dining soft decor staging')
+    # Parents' room completion is isolated from formal Web/electrical facts and only
+    # stages in the room preview or cameras explicitly named for study/parents.
+    if _PREVIEW_ROOM == 'study' or any(
+            _blender_render_only.study_render_scope_visible(None, job.get('camera_id'))
+            for job in jobs):
+        stage_study_bedroom(furniture_mats, config_dir=config_dir)
+    else:
+        print('[dress_scene] study staging deferred: current render scope is not study')
     _enforce_preview_scope()
     # 正式灯具外形由 shared/CLI GLB 提供；Blender 仅保留光源。
     add_lights(cfg, temp_override=6500)
@@ -2149,9 +2225,8 @@ def initialize_scene(args: dict, cfg: dict, jobs: list[dict]) -> dict:
         fill_obj = bpy.data.objects.new('fill_light', add_fill)
         bpy.context.collection.objects.link(fill_obj)
     hdri_status = setup_world(engine, template, config_dir=config_dir)
-    # sky fallback 已在 initialize 阶段按稳定玻璃对象名创建；job 阶段仅复用/更新并切换显隐。
-    # 仅无可用 HDRI 时启用不透明窗外 fallback；material_review 等无 HDRI 工况保留。
-    add_sky_planes(hdri_status)
+    # sky fallback 在每个 job 按当前 scenario 复用/更新并切换显隐。
+    add_sky_planes(hdri_status, template)
     for camera in cfg.get('cameras', []):
         add_camera(camera, reuse=True)
     _tag_dynamic_objects()
