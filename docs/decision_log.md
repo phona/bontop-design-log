@@ -939,7 +939,7 @@
 - **权威复核**：主卧南上飘窗室内带为 x[0,4.2]、z[8.70,9.80]；`w_mb_east` 为连续实体墙；`d_mb` 位于 `w_strip_east`，门洞/门扇扫掠必须按 resolver/runtime 查询；目标对象必须记录稳定 objectId 与实际 AABB。
 - **修正版候选**：`master_wardrobe_tall_240 @(3.00,8.40), rotation=0`，2.4×0.6×2.7m，AABB x[1.80,4.20]、z[8.10,8.70]，东端贴 `w_mb_east`，南缘贴飘窗北缘且不进入飘窗带；柜门朝北。`bed_180 @(3.20,6.85), rotation=270`，AABB x[2.20,4.20]、z[5.95,7.75]；保持床靠东墙，不旋转。
 - **净距结论**：床北缘至当前 `d_mb` 门洞/扫掠目标约 `0.70m`；床南缘至高柜北侧柜门约 `8.10-7.75=0.35m`，属于功能风险/待验证，不能声称0.60m完全通过；若验证器判重叠，优先评估床 x 向西移0.05m，当前保持东缘贴东墙。
-- **电气**：rotation=270 的床头为北侧；东墙 `sock_master_bed_l @(4.20,6.20,h0.70)` 与新增独立 `sock_master_bed_r_head @(4.20,7.85,h0.70)` 分居床头左右两侧，均避开 `switch_master_door @(4.20,5.70)`；南侧 `sock_master_bed_r @(4.20,9.15)` 仅服务梳妆台，不复用。东墙 `w_mb_east` 为实体墙，`wall_side: west`。
+- **电气**：rotation=270 的床头为北侧；东墙 `sock_master_bed_l @(4.20,6.20,h0.70)` 与新增独立 `sock_master_bed_r_head @(4.20,7.50,h0.70)` 按床头北缘两端对称内缩分居床头左右两侧，均避开 `switch_master_door @(4.20,5.70)`；南侧 `sock_master_bed_r @(4.20,9.15)` 仅服务梳妆台，不复用。东墙 `w_mb_east` 为实体墙，`wall_side: west`。
 - **门向**：`d_mb` 保持 inward，仅 `hinge: end → start`，门洞位置不变，表示相反开向；现场门扇尺寸与实际扫掠仍需复核。
 - **状态**：新对齐/候选实施状态；方案未落地施工。`data/project-render-facts.json` 若因电气投影变化，仅作为派生文件重新生成。
 - **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`config/verify-rules.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`shared/render/SceneBuilder.ts`、相关 tests、`docs/dressing-map.md`、`docs/design-iterations/master-bedroom-20260901/`。
@@ -996,4 +996,31 @@
 - **隐私逻辑**：磨砂层提供固定“透光不透人”底层，百叶负责可调节遮阳与加强隐私，织物帘不进入台盆/站位区。
 - **幕墙原则**：磨砂层仅为室内可逆膜的模型视觉表达，不等于已批准施工；不在玻璃上打孔或粘结构件，最终按玻璃类型与现场条件确认。
 - **关联文件**：`config/layout/overlay.yaml`、`config/house.yaml`、`shared/types.ts`、`shared/render/SceneBuilder.ts`、`app/src/render/BrowserSceneMaterials.ts`、`server/overlay-merge.ts`、`scripts/verify/collision/verify-collision-coverage.ts`、`docs/curtain-design.md`、`docs/design-iterations/mb-washbasin-curtain-20260901/`
+- **决策人**：业主
+
+---
+
+### DEC-2026-09-02-052 主卧床北移 0.25m + 条带薄高柜替换两块悬浮板（迭代 mb-bedshift-stripcabinet-20260902）
+
+- **日期**：2026-09-02
+- **决策事项**：解除床南缘至隔断高柜 0.35m 的功能风险；为洗漱区补封闭囤货收纳。
+- **选定方案**：
+  - `bed_180` 北移 0.25m 至 `(3.20,6.60), rotation=270`，AABB x[2.20,4.20]、z[5.70,7.50]；床北缘至 `d_mb` 门扇扫掠约 0.50m，床南缘至高柜柜门操作侧恢复 0.60m（原 0.35m 功能风险解除）。
+  - 床头随床五个电气点位 z 向 -0.25 平移（x/wall/height 不变）：`sock_master_bed_l` z=5.95、`sock_master_bed_r_head` z=7.25（以床头北缘 z=5.70 为基准两端 0.25m 内缩对称）、`switch_master_bed_l` z=5.75、`light_master_wall_l` z=5.95、`light_master_wall_r` z=7.05。梳妆台南插座 `sock_master_bed_r`（z=9.15）不动。
+  - `switch_master_door` 让出 `w_mb_east` 床头墙，改挂 `w_strip_east` 实体墙垛、面向寝区（west，x=4.20、h=1.3 不变）。resolver 解算 `d_mb` 门洞实为 z[4.65,5.55] 占满墙段南端，唯一实体墙垛为北段 z[4.30,4.65]，取 z=4.45（距洞口北缘 0.20m）——纠正原拟"南侧 z=5.35"的错误前提。
+  - 隔断高柜 `master_wardrobe_tall_240` 维持 2.4×0.6×2.7 通顶不动（柜体隔断分区需通顶，不降高）。
+  - 条带删除两块悬浮板（`mb_vanity_lower_board`/`mb_vanity_main_board` 类型彻底删除），新增 `mb_vanity_tall_cabinet`：1.24m×0.42m，y 0.65..2.40 坐在底柜台面上方，z[2.86,4.10] 从主卫隔墙完成面起算（底柜 z 起点 2.60 北收至 2.86 以避 `d_mbath` 门扇扫掠）；两扇 0.62m 平开门朝西、北端合页、浅色按压无把手；内部活动层板兼冷凝水管检修，管井角做法待深化；顶部 0.18m 封板接 `mb_vanity_pvc_box`（y 2.58 起）。
+- **存量瑕疵登记**：底柜 `mb_vanity_base_cabinet` 北端 0.26m 探入主卫体积为既有瑕疵，本轮不动，量房复核。
+- **决策依据**：床边拿衣优先（柜门朝床、推拉门）；洗漱区无囤货收纳；0.60m 操作净距为柜门可开启下限。
+- **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`config/design-rules.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`scripts/verify/placement/verify-furniture-placement.ts`、`tests/server/master-bedroom-dressing.test.ts`、`tests/server/cli-glb-export.test.ts`、`tests/server/shared/scene-builder.test.ts`、`docs/dressing-map.md`、`data/project-render-facts.json`、`docs/design-iterations/mb-bedshift-stripcabinet-20260902/`
+- **决策人**：业主
+
+---
+
+### DEC-2026-09-02-052-补 条带柜组回滚：恢复两块悬浮板，撤销薄高柜
+
+- **日期**：2026-09-02（同日业主回滚决定）
+- **决策事项**：主卫门口条带柜组恢复成两块悬浮板（`mb_vanity_lower_board`/`mb_vanity_main_board`，along=3.35 四件同轴口径），撤销 `mb_vanity_tall_cabinet` 薄高柜方案；吊柜式中间态曾讨论但未采纳。只回滚柜组——床北移（052 主体：`bed_180` z=6.60、五个随床点位、`switch_master_door` @w_strip_east z=4.45）全部保留。
+- **开放问题**：脏衣/洗护囤货的封闭收纳需求重新登记，后续单独迭代解决（见迭代文档 decision-brief `open-laundry-storage`）。
+- **关联文件**：`config/house.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`config/design-rules.yaml`、`scripts/verify/placement/verify-furniture-placement.ts`、`tests/server/shared/scene-builder.test.ts`、`docs/dressing-map.md`、`docs/design-iterations/mb-bedshift-stripcabinet-20260902/`
 - **决策人**：业主

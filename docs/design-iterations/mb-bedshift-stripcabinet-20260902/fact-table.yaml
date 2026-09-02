@@ -1,0 +1,30 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: mb-bedshift-stripcabinet-20260902
+subject: 主卧床北移 0.25m + 主卫门口条带薄高柜替换悬浮板
+created_at: "2026-09-02T20:00:00+08:00"
+status: verification
+updated_at: "2026-09-02T21:00:00+08:00"
+source_policy:
+  authority_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml, config/house.yaml, config/electrical.yaml]
+  observation_refs: [docs/decision_log.md, docs/dressing-map.md]
+  measurement_refs: []
+  runtime_refs: []
+  evidence_refs: []
+facts:
+  confirmed:
+    - { id: fact-bed-shifted, category: user_decision, statement: 主卧床再北移 0.25m 至 z=6.60，保持 x=3.20 与 rotation=270 靠东墙, value: {x: 3.20, z: 6.60, rotation: 270, aabb: {x: [2.20,4.20], z: [5.70,7.50]}}, source_refs: [user-request-20260902-bedshift, config/house.yaml], basis: 业主冻结坐标；FURNITURE_DIMS bed_180 1.8×2.0 与 rotation=270 包围盒, confidence: high, impact: material, affected_objects: [bed_180], affected_views: [plan, perspective], owner: user, status: resolved, verification_method: verify:furniture 与 GLB 包围盒 }
+    - { id: fact-bed-clearances, category: confirmed, statement: 床北缘至 d_mb 门扇扫掠约 0.50m；床南缘至隔断高柜柜门操作侧 0.60m，原 0.35m 功能风险解除, value: {north_to_door_sweep: 0.50, south_to_wardrobe: 0.60}, source_refs: [config/house.yaml, config/layout/model-geometry.yaml], basis: AABB 净距计算：床南缘 7.50 至高柜北缘 8.10, confidence: high, impact: material, affected_objects: [bed_180, master_wardrobe_tall_240], affected_views: [plan], owner: project, status: resolved, verification_method: master-bedroom-dressing 测试 }
+    - { id: fact-tall-wardrobe-fixed, category: confirmed, statement: 隔断高柜维持 2.4×0.6×2.7 通顶不动，南缘 z=8.70 不进入飘窗带, value: {x: 3.00, z: 8.40, width: 2.40, depth: 0.60, height: 2.70, rotation: 0}, source_refs: [config/house.yaml], basis: 本轮 non_negotiable, confidence: high, impact: material, affected_objects: [master_wardrobe_tall_240], affected_views: [plan, elevation], owner: project, status: resolved, verification_method: config-regression-test }
+    - { id: fact-tall-cabinet, category: user_decision, statement: 【已撤销】条带新增上段薄高柜替换两块悬浮板，坐在底柜台面上方，z 从主卫隔墙完成面 2.86 起算避开 d_mbath 门扇扫掠, value: {type: mb_vanity_tall_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.48, width: 1.24, depth: 0.42, y: [0.65,2.40], z: [2.86,4.10]}, source_refs: [user-request-20260902-bedshift, config/house.yaml, shared/types.ts], basis: 业主冻结方案；d_mbath 扫掠避让推导；2026-09-02 业主回滚撤销（DEC-2026-09-02-052-补）, confidence: high, impact: material, affected_objects: [mb_vanity_tall_cabinet, mb_vanity_base_cabinet, mb_vanity_pvc_box], affected_views: [plan, elevation], owner: user, status: superseded, verification_method: scene-builder recipe 测试与 verify:furniture }
+    - { id: fact-boards-restored, category: user_decision, statement: 悬浮板回滚：mb_vanity_lower_board/mb_vanity_main_board 恢复原位，条带恢复 DEC-045 四件同轴口径（底柜+下板+主板+PVC 盒）；脏衣/洗护囤货收纳需求重新登记为开放问题，后续单独迭代, value: {lower_board: {along: 3.35, y: [0.965,1.035]}, main_board: {along: 3.35, y: [1.515,1.585]}}, source_refs: [user-request-20260902-rollback, config/house.yaml], basis: 业主回滚决定，只回滚柜组、床北移保留, confidence: high, impact: material, affected_objects: [mb_vanity_lower_board, mb_vanity_main_board, mb_vanity_base_cabinet, mb_vanity_pvc_box], affected_views: [plan, elevation], owner: user, status: resolved, verification_method: scene-builder recipe 测试与 verify:furniture（回滚后全绿） }
+    - { id: fact-bed-electrical-shifted, category: confirmed, statement: 床头随床五个电气点位 z 向 -0.25 平移，x/wall/height 不变, value: {sock_master_bed_l: 5.95, sock_master_bed_r_head: 7.25, switch_master_bed_l: 5.75, light_master_wall_l: 5.95, light_master_wall_r: 7.05}, source_refs: [config/electrical.yaml], basis: 床头北缘 z=5.70 为基准两端 0.25m 内缩对称, confidence: high, impact: material, affected_objects: [sock_master_bed_l, sock_master_bed_r_head, switch_master_bed_l, light_master_wall_l, light_master_wall_r], affected_views: [plan, elevation], owner: electrical, status: resolved, verification_method: verify:all + cli-glb-export 测试 }
+    - { id: fact-door-switch-pier, category: confirmed, statement: 门口双控 switch_master_door 改挂 w_strip_east 实体墙垛；resolver 解算 d_mb 门洞实为 z[4.65,5.55] 占满墙段南端，唯一墙垛为北段 z[4.30,4.65]，取 z=4.45 距洞口北缘 0.20m，面向寝区 west, value: {id: switch_master_door, wall: w_strip_east, wall_side: west, x: 4.20, z: 4.45, height: 1.30}, source_refs: [config/electrical.yaml, config/layout/model-geometry.yaml], basis: resolver resolveOpening 权威解算（纠正原拟 z=5.35 落入门洞内的错误前提）, confidence: high, impact: material, affected_objects: [switch_master_door, d_mb], affected_views: [plan], owner: electrical, status: resolved, verification_method: verify-data-consistency 点位专项 }
+    - { id: fact-glass-elevations, category: confirmed, statement: 主卧西/南立面为玻璃幕墙+上飘窗，不可挂载；sill≈2.07 仍 site_pending, value: {sill: 2.07, status: site_pending}, source_refs: [config/layout/overlay.yaml, docs/pending-site-data.md], basis: 几何与意图权威源, confidence: medium, impact: material, affected_objects: [master_dressing_table, curtain_master_south], affected_views: [elevation], owner: site, status: open, verification_method: 量房复核 }
+  site_pending:
+    - { id: pending-base-cabinet-overhang, category: site_pending, statement: 存量底柜 mb_vanity_base_cabinet 北端 0.26m 探入主卫体积为既有瑕疵，本轮不动，登记量房复核, value: null, source_refs: [config/house.yaml, config/layout/model-geometry.yaml], basis: AABB 与主卫空间交叠复核, confidence: not_applicable, impact: low, affected_objects: [mb_vanity_base_cabinet], affected_views: [plan], owner: site, status: open, verification_method: 量房复核主卫隔墙完成面 }
+unknowns_requiring_alignment: []
+notes:
+  - 本轮两项改动均为业主冻结方案；model-geometry.yaml、隔断高柜、梳妆台/洗手柜均不动。
+  - switch_master_door 原拟贴门洞南缘 z=5.35 系基于错误的门洞区间前提（z[4.30,5.20]）；resolver 权威解算为 z[4.65,5.55]，实施按墙垛实际位置取 z=4.45，设计意图（贴 d_mb 实体墙垛、面向寝区）不变。
+  - 2026-09-02 业主回滚（DEC-2026-09-02-052-补）：薄高柜方案撤销，悬浮板恢复；床北移及随床电气全部保留。

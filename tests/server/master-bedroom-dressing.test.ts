@@ -20,7 +20,7 @@ function placed(type: string): Furnishing {
 }
 
 test('master bedroom candidate bed and tall wardrobe use the calculated transforms', () => {
-  assert.deepEqual(placed('bed_180'), { type: 'bed_180', x: 3.20, z: 6.85, rotation: 270 });
+  assert.deepEqual(placed('bed_180'), { type: 'bed_180', x: 3.20, z: 6.60, rotation: 270 });
   assert.deepEqual(placed('master_wardrobe_tall_240'), { type: 'master_wardrobe_tall_240', x: 3.00, z: 8.40, rotation: 0 });
   assert.equal(master.some((item) => item.type === 'master_wardrobe_tall_160'), false);
   assert.equal(master.some((item) => item.type === 'wardrobe_240_split'), false);
@@ -68,22 +68,23 @@ test('master bed has two independent north-head sockets on opposite sides', () =
   assert.equal(left.x, 4.20);
   assert.equal(right.x, 4.20);
   assert.ok(left.z < right.z);
-  assert.ok(left.z >= 5.95 && left.z <= 7.75);
-  assert.ok(right.z > 7.75 && right.z <= 8.10, 'right bedside socket must sit just beyond the north head edge');
+  assert.ok(left.z >= 5.70 && left.z <= 7.50);
+  assert.equal(right.z, 7.25);
+  assert.ok(right.z < 7.50, 'right bedside socket must remain within the north head zone');
   const doorSwitch = electrical.find((point) => point.id === 'switch_master_door');
   assert.ok(doorSwitch?.z !== undefined);
   assert.ok(Math.abs(left.z - doorSwitch.z) >= 0.4, 'left bedside socket must clear the door switch');
 });
 
 
-test('master bedroom candidate bed and wardrobe retain the recorded functional risk gap', () => {
+test('master bedroom candidate bed and wardrobe regain the 0.60m operation clearance', () => {
   const bed = placed('bed_180');
   const wardrobe = placed('master_wardrobe_tall_240');
   const bedSouth = bed.z! + FURNITURE_DIMS.bed_180.width / 2; // rotation=270 swaps 1.8m width onto world z
   const wardrobeNorth = wardrobe.z! - FURNITURE_DIMS.master_wardrobe_tall_240.depth / 2;
   const gap = wardrobeNorth - bedSouth;
-  assert.ok(Math.abs(gap - 0.35) < 1e-9, `bed-to-wardrobe gap ${gap.toFixed(3)}m`);
-  assert.ok(gap < 0.60, '0.60m operation clearance must remain an explicit unresolved risk');
+  assert.ok(Math.abs(gap - 0.60) < 1e-9, `bed-to-wardrobe gap ${gap.toFixed(3)}m`);
+  assert.ok(gap >= 0.60 - 1e-9, '2026-09-02 业主决策：床北移 0.25m 后 0.60m 操作净距达标，原 0.35m 功能风险解除');
   assert.ok(Math.abs(wardrobe.x! + FURNITURE_DIMS.master_wardrobe_tall_240.width / 2 - 4.20) < 1e-9);
   assert.ok(Math.abs(wardrobe.z! + FURNITURE_DIMS.master_wardrobe_tall_240.depth / 2 - 8.70) < 1e-9);
 });

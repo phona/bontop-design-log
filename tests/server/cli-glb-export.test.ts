@@ -98,11 +98,30 @@ test('CLI builder creates core geometry with export metadata', () => {
   assert.ok(furniture);
   assert.equal(furniture.userData.type, 'furniture');
   assert.equal(furniture.userData.objectId, 'furniture:master_bedroom:bed_180:0');
-  assert.deepEqual(furniture.position.toArray(), [3.2, 0, 6.85]);
+  assert.deepEqual(furniture.position.toArray(), [3.2, 0, 6.60]);
 
   const masterTowelSet = scene.getObjectByName('furniture:master_bath:towel_set:1');
   assert.ok(masterTowelSet, 'missing master_bath towel_set');
   assert.deepEqual(masterTowelSet.position.toArray(), [0.24, 0, 2.23]);
+});
+
+test('CLI exports authoritative electrical socket geometry from electrical.yaml', () => {
+  const { exportRoot, report, index } = buildCliHouseScene();
+  const expected = new Map([
+    ['sock_master_bed_l', 5.95],
+    ['sock_master_bed_r_head', 7.25],
+    ['sock_master_bed_r', 9.15],
+  ]);
+  for (const [id, z] of expected) {
+    const object = index.electrical.get(`electrical:${id}`);
+    assert.ok(object, `missing electrical fixture ${id}`);
+    assert.equal(object.userData.objectId, `electrical:${id}`);
+    assert.equal(object.parent, exportRoot);
+    assert.equal(object.position.x, 4.125);
+    assert.equal(object.position.y, 0.7);
+    assert.equal(object.position.z, z);
+  }
+  assert.ok(report.electrical >= expected.size);
 });
 
 test('CLI builds shower plumbing fixtures from plumbing.yaml without replacing shower_set furnishings', () => {

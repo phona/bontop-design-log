@@ -1,0 +1,196 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: mb-bedshift-stripcabinet-20260902
+subject: 主卧床北移 0.25m + 条带薄高柜替换悬浮板
+object_policy:
+  fixed_count_required: true
+  split_by: [function, owner, material, collision, maintenance, interface, review]
+  visual_relationship_required: true
+objects:
+  - id: bed_180
+    type: furniture
+    archetypes: [bed]
+    owner: furniture
+    function: 睡眠
+    material: 实木床架+床垫
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: []
+    fact_refs: [fact-bed-shifted, fact-bed-clearances]
+    decision_refs: [user-request-20260902-bedshift]
+    dependencies: [master_wardrobe_tall_240, d_mb]
+    interfaces: []
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.bed_180, review_ref: verify:furniture }
+    maintenance: { boundary: 可整体移开, access_clearance: 0.60, replaceable_parts: [床垫], inspection_requirements: [床南缘至高柜柜门 0.60m 操作净距] }
+    parts: []
+    visual_relationships: [{ target_object_id: master_wardrobe_tall_240, relation: separated, requirement: 床南缘至柜门操作侧 0.60m }, { target_object_id: d_mb, relation: separated, requirement: 床北缘至门扇扫掠约 0.50m }]
+    validation_refs: [verify:furniture, config-regression-test, cli-glb-export-test]
+    status: planned
+  - id: sock_master_bed_l
+    type: electrical
+    archetypes: [bedside_socket]
+    owner: electrical
+    function: 床头左侧充电+台灯
+    material: embedded_socket
+    geometry_source: config/electrical.yaml
+    datum_refs: []
+    fact_refs: [fact-bed-electrical-shifted]
+    decision_refs: [user-request-20260902-bedshift]
+    dependencies: [bed_180]
+    interfaces: [{ id: bedside-power-l, target_object_id: bed_180, kind: electrical, requirement: 随床平移保持床头左侧 0.25m 内缩, status: confirmed }]
+    collision: { policy: none, geometry_ref: config/electrical.yaml, review_ref: verify:all }
+    maintenance: { boundary: 面板可更换, access_clearance: 0.15, replaceable_parts: [面板], inspection_requirements: [] }
+    parts: []
+    visual_relationships: [{ target_object_id: switch_master_door, relation: separated, requirement: 与门口双控净距 ≥0.4m（实测 1.50m） }]
+    validation_refs: [verify:all, master-bedroom-dressing-test]
+    status: planned
+  - id: sock_master_bed_r_head
+    type: electrical
+    archetypes: [bedside_socket]
+    owner: electrical
+    function: 床头右侧充电+台灯
+    material: embedded_socket
+    geometry_source: config/electrical.yaml
+    datum_refs: []
+    fact_refs: [fact-bed-electrical-shifted]
+    decision_refs: [user-request-20260902-bedshift]
+    dependencies: [bed_180]
+    interfaces: [{ id: bedside-power-r, target_object_id: bed_180, kind: electrical, requirement: 以床头北缘 z=5.70 为基准与左侧对称内缩, status: confirmed }]
+    collision: { policy: none, geometry_ref: config/electrical.yaml, review_ref: verify:all }
+    maintenance: { boundary: 面板可更换, access_clearance: 0.15, replaceable_parts: [面板], inspection_requirements: [] }
+    parts: []
+    visual_relationships: [{ target_object_id: sock_master_bed_l, relation: paired, requirement: 分居床头左右两侧 }]
+    validation_refs: [verify:all, master-bedroom-dressing-test]
+    status: planned
+  - id: switch_master_bed_l
+    type: electrical
+    archetypes: [bedside_switch]
+    owner: electrical
+    function: 床头侧灯光双控
+    material: embedded_switch
+    geometry_source: config/electrical.yaml
+    datum_refs: []
+    fact_refs: [fact-bed-electrical-shifted]
+    decision_refs: [user-request-20260902-bedshift]
+    dependencies: [bed_180]
+    interfaces: []
+    collision: { policy: none, geometry_ref: config/electrical.yaml, review_ref: verify:all }
+    maintenance: { boundary: 面板可更换, access_clearance: 0.15, replaceable_parts: [面板], inspection_requirements: [] }
+    parts: []
+    visual_relationships: []
+    validation_refs: [verify:all]
+    status: planned
+  - id: light_master_wall_l
+    type: electrical
+    archetypes: [wall_lamp]
+    owner: electrical
+    function: 床头左壁灯
+    material: 黄铜壁灯
+    geometry_source: config/electrical.yaml
+    datum_refs: []
+    fact_refs: [fact-bed-electrical-shifted]
+    decision_refs: [user-request-20260902-bedshift]
+    dependencies: [bed_180]
+    interfaces: []
+    collision: { policy: none, geometry_ref: config/electrical.yaml, review_ref: verify:all }
+    maintenance: { boundary: 灯具可更换, access_clearance: 0.15, replaceable_parts: [灯泡], inspection_requirements: [] }
+    parts: []
+    visual_relationships: [{ target_object_id: light_master_wall_r, relation: paired, requirement: 床头两侧对称 }]
+    validation_refs: [verify:all]
+    status: planned
+  - id: light_master_wall_r
+    type: electrical
+    archetypes: [wall_lamp]
+    owner: electrical
+    function: 床头右壁灯
+    material: 黄铜壁灯
+    geometry_source: config/electrical.yaml
+    datum_refs: []
+    fact_refs: [fact-bed-electrical-shifted]
+    decision_refs: [user-request-20260902-bedshift]
+    dependencies: [bed_180]
+    interfaces: []
+    collision: { policy: none, geometry_ref: config/electrical.yaml, review_ref: verify:all }
+    maintenance: { boundary: 灯具可更换, access_clearance: 0.15, replaceable_parts: [灯泡], inspection_requirements: [] }
+    parts: []
+    visual_relationships: [{ target_object_id: light_master_wall_l, relation: paired, requirement: 床头两侧对称 }]
+    validation_refs: [verify:all]
+    status: planned
+  - id: switch_master_door
+    type: electrical
+    archetypes: [door_switch]
+    owner: electrical
+    function: 门口灯光双控
+    material: embedded_switch
+    geometry_source: config/electrical.yaml
+    datum_refs: []
+    fact_refs: [fact-door-switch-pier]
+    decision_refs: [user-request-20260902-bedshift]
+    dependencies: [d_mb, sock_master_bed_l]
+    interfaces: [{ id: door-switch-2way, target_object_id: switch_master_bed_l, kind: electrical, requirement: 双控回路配对（electrical-topology 既有声明不变）, status: confirmed }]
+    collision: { policy: none, geometry_ref: config/electrical.yaml, review_ref: verify:all }
+    maintenance: { boundary: 面板可更换, access_clearance: 0.15, replaceable_parts: [面板], inspection_requirements: [w_strip_east 墙垛开槽条件现场复核] }
+    parts: []
+    visual_relationships: [{ target_object_id: d_mb, relation: adjacent, requirement: 贴门洞北缘墙垛 z=4.45，距洞口边缘 0.20m }]
+    validation_refs: [verify:all]
+    status: planned
+  - id: mb_vanity_tall_cabinet
+    type: furniture
+    archetypes: [tall_cabinet]
+    owner: furniture
+    function: 洗漱区封闭囤货收纳 + 冷凝水管检修遮蔽
+    material: 浅色柜体 #c9c1b5、门板 #e7e0d6、按压无把手
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: []
+    fact_refs: [fact-tall-cabinet]
+    decision_refs: [user-request-20260902-bedshift]
+    dependencies: [mb_vanity_base_cabinet, mb_vanity_pvc_box]
+    interfaces: [{ id: condensate-access, target_object_id: mb_vanity_pvc_box, kind: maintenance, requirement: 内部活动层板兼冷凝水管检修，管井角做法待深化, status: open }]
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.mb_vanity_tall_cabinet, review_ref: verify:furniture 东墙层叠豁免 }
+    maintenance: { boundary: 两扇 0.62m 平开门朝西、北端合页, access_clearance: 0.62, replaceable_parts: [门板, 活动层板], inspection_requirements: [冷凝水管检修口] }
+    parts:
+      - { id: carcass, role: 柜体, independent: false, owner: furniture, material: cabinet_body, geometry_source: FixtureFactory, datum_refs: [], dependencies: [], collision: reviewed, maintenance_boundary: 柜体, validation_refs: [recipe-test] }
+      - { id: door-front, role: 双扇平开门正面, independent: false, owner: furniture, material: door_front, geometry_source: FixtureFactory, datum_refs: [], dependencies: [carcass], collision: reviewed, maintenance_boundary: 可更换, validation_refs: [recipe-test] }
+      - { id: door-seam-center, role: 中门缝, independent: false, owner: furniture, material: door_seam, geometry_source: FixtureFactory, datum_refs: [], dependencies: [door-front], collision: reviewed, maintenance_boundary: 无, validation_refs: [recipe-test] }
+      - { id: interior-shelf, role: 三块活动层板, independent: true, owner: furniture, material: shelf, geometry_source: FixtureFactory, datum_refs: [], dependencies: [carcass], collision: reviewed, maintenance_boundary: 可取下检修, validation_refs: [recipe-test] }
+    visual_relationships: [{ target_object_id: mb_vanity_base_cabinet, relation: stacked, requirement: 坐在底柜台面上方（y 0.65 起），z 范围缩至 [2.86,4.10] 避开 d_mbath 扫掠 }, { target_object_id: mb_vanity_pvc_box, relation: stacked, requirement: 顶部 0.18m 封板接 PVC 包管盒底 y=2.58 }]
+    validation_refs: [verify:furniture, recipe-test, config-regression-test]
+    status: revoked # 2026-09-02 业主回滚（DEC-2026-09-02-052-补）：薄高柜方案撤销，悬浮板恢复
+  - id: mb_vanity_base_cabinet
+    type: furniture
+    archetypes: [base_cabinet]
+    owner: furniture
+    function: 落地底柜（保留不动，薄高柜的承载与邻接基准）
+    material: 浅色柜体
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: []
+    fact_refs: [fact-tall-cabinet, pending-base-cabinet-overhang]
+    decision_refs: [DEC-045]
+    dependencies: []
+    interfaces: []
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.mb_vanity_base_cabinet, review_ref: verify:furniture }
+    maintenance: { boundary: 柜门朝西开启, access_clearance: 0.60, replaceable_parts: [门板], inspection_requirements: [北端 0.26m 探入主卫体积的存量瑕疵量房复核] }
+    parts: []
+    visual_relationships: [{ target_object_id: mb_vanity_tall_cabinet, relation: stacked, requirement: 台面承接上段薄高柜 }]
+    validation_refs: [verify:furniture]
+    status: existing
+  - id: mb_vanity_pvc_box
+    type: furniture
+    archetypes: [service_box]
+    owner: hvac
+    function: 顶部 PVC 包管+灯槽（保留不动）
+    material: 墙面同色哑光
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: []
+    fact_refs: [fact-tall-cabinet]
+    decision_refs: [DEC-045]
+    dependencies: []
+    interfaces: []
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.mb_vanity_pvc_box, review_ref: verify:furniture }
+    maintenance: { boundary: 回风格栅兼任检修口, access_clearance: 0, replaceable_parts: [], inspection_requirements: [管径/坡度/存水弯/最终接点待深化] }
+    parts: []
+    visual_relationships: [{ target_object_id: mb_vanity_tall_cabinet, relation: stacked, requirement: 薄高柜顶部 0.18m 封板接入盒底 }]
+    validation_refs: [verify:furniture]
+    status: existing
+notes:
+  - 2026-09-02 业主回滚（DEC-2026-09-02-052-补）：mb_vanity_tall_cabinet 已撤销并从权威源移除，mb_vanity_lower_board / mb_vanity_main_board 恢复为现行配置；本清单中 tall_cabinet 条目仅作历史记录（status: revoked）。
+  - switch_master_door 落位按 resolver 门洞权威区间 z[4.65,5.55] 修正为北段墙垛 z=4.45；原拟 z=5.35 位于门洞内，物理不可行。

@@ -99,10 +99,10 @@
   wall_side: west
   type: socket
   x: 4.20
-  z: 6.20
+  z: 5.95
   height: 0.7
   count: 2
-  note: "床头左侧: 手机充电+台灯，含USB（2026-09-02 随床北移至 z=6.85，rotation=270）"
+  note: "床头左侧: 手机充电+台灯，含USB（2026-09-02 随床北移至 z=6.60，rotation=270）"
 
 - id: sock_master_bed_r
   room: master_bedroom
@@ -120,18 +120,19 @@
   wall: w_mb_east
   type: switch_2way
   x: 4.20
-  z: 6.00
+  z: 5.75
   height: 0.7
-  note: "主卧灯光双控（2026-09-02 随床北移至 z=6.85，rotation=270 床头）"
+  note: "主卧灯光双控（2026-09-02 随床北移至 z=6.60，rotation=270 床头）"
 
 - id: switch_master_door
   room: master_bedroom
-  wall: w_mb_east
+  wall: w_strip_east
+  wall_side: west
   type: switch_2way
   x: 4.20
-  z: 5.7
+  z: 4.45
   height: 1.3
-  note: "主卧灯光双控（门口）"
+  note: "主卧灯光双控（门口）；2026-09-02 随床北移联动：床北移后原 w_mb_east 位与 sock_master_bed_l 避让距离不足 0.4m，改挂 w_strip_east 实体墙垛、面向寝区（west）。resolver 解算 d_mb 门洞实为 z[4.65,5.55]（占满墙段南端），唯一实体墙垛为北段 z[4.30,4.65]，故取 z=4.45（距洞口北缘 0.20m），非原拟的南侧 5.35"
 
 - id: sock_master_bed_r_head
   room: master_bedroom
@@ -139,10 +140,10 @@
   wall_side: west
   type: socket
   x: 4.20
-  z: 7.85
+  z: 7.25
   height: 0.7
   count: 2
-  note: "北床头右侧独立双联插座：床头方向由 rotation=270 的床头 AABB 北缘确定；与床左侧 sock_master_bed_l 对称服务，不复用南侧梳妆台插座"
+  note: "北床头右侧独立双联插座：以 rotation=270 床头北缘 z=5.70 为基准，与左侧 sock_master_bed_l 按 0.25m 内缩对称落位（z=5.95/7.25）；2026-09-02 随床北移至 z=6.60；不复用南侧梳妆台插座"
 
 # net_master_tv 已删除（DEC-013 主卧取消电视位，不布网口）
 
@@ -708,18 +709,18 @@
   room: master_bedroom
   type: wall_lamp
   x: 4.2
-  z: 6.20
+  z: 5.95
   height: 1.6
   temp: 3000
-  note: "主卧床头壁灯左（随 rotation=270 床头北移至 z=6.85；东墙实体墙，黄铜壁灯方向）"
+  note: "主卧床头壁灯左（随 rotation=270 床头北移至 z=6.60；东墙实体墙，黄铜壁灯方向）"
 - id: light_master_wall_r
   room: master_bedroom
   type: wall_lamp
   x: 4.2
-  z: 7.30
+  z: 7.05
   height: 1.6
   temp: 3000
-  note: "主卧床头壁灯右（随 rotation=270 床头北移至 z=6.85；东墙实体墙）"
+  note: "主卧床头壁灯右（随 rotation=270 床头北移至 z=6.60；东墙实体墙）"
 - id: light_parent_dome
   room: study
   type: dome

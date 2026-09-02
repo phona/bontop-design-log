@@ -1,6 +1,6 @@
 # 装扮映射表（Twinmotion 云渲染用）
 
-生成：2026-09-01，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-09-02，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
 用法：glb 导入 Twinmotion 后按本表替换材质/家具/灯光；reimport 同名 glb 时材质覆盖按节点名保留。
 
@@ -29,7 +29,7 @@
 | smart_home | smart_home_01 | 智能预留 B 级套装 | 米家 / Aqara / 易来 / 智能开关零线 + 网关 + 电动窗帘电源 + 人体传感器位 | 全屋 | 按实物选材替换 |
 | bed | bed_180_01 | 1.8m 实木床 | 本地家具厂 / 源氏木语 / 1.8×2.0m 橡木/白蜡木 | 1800×2000mm | 按实物选材替换 |
 | mattress | mattress_180_01 | 1.8m 独立袋装弹簧床垫 | 喜临门 / 雅兰 / 20-25cm 独立袋装弹簧 + 乳胶 | 1800×2000mm | 按实物选材替换 |
-| wardrobe | master_wardrobe_tall_240 | 主卧 2.4m 定制高柜 | 本地全屋定制工厂 / 2.4×0.6×2.7m，柜门朝北，东端贴实体墙 | 2400×600×2700mm | 按实物选材替换 |
+| wardrobe | wardrobe_240_01 | 2.4m 定制衣柜 | 本地全屋定制工厂 / 2.4×0.6×2.7m，平开门 | 2400×600×2700mm | 按实物选材替换 |
 | sofa | sofa_3seat_01 | 直排现代中古沙发（深棕/黑棕仿皮，低矮简洁轮廓） | 林氏家居 / 源氏木语 / 本地家具厂（按中古款筛选） / 2.8m 直排三人位，细金属腿或矮木腿，无拉扣无弧形背 | 2800×900×750mm（坐高≤420mm） | 按实物选材替换 |
 | dining_table | dining_table_01 | 1.4m 深胡桃色餐桌（木质视觉，造型简洁） | 本地家具厂 / 林氏家居 / 1.4×0.8m 深胡桃贴皮/板式台面 + 黑色金属或深木腿 | 1400×800×750mm | 按实物选材替换 |
 | dining_chair | dining_chair_01 | 细腿软包餐椅（深棕仿皮） | 林氏家居 / 本地家具厂 / 细金属腿 + 低背软包，无拉扣 | 标准 | 按实物选材替换 |
@@ -52,11 +52,11 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 
 | 房间 | 类型 | 数量 | 宽×深 (m) | 摆位 (x, z) / 朝向 |
 |---|---|---|---|---|
-| master_bedroom | bed_180 | 1 | 1.8×2 | (3.2, 6.85) / 270° |
-| master_bedroom | master_wardrobe_tall_240 | 1 | 2.4×0.6 | (3.0, 8.4) / 0° |
-| master_bedroom | mb_washbasin_cabinet | 1 | 1.1×0.5 | (0.55, 3.16) / 0° |
-| master_bedroom | master_dressing_table | 1 | 0.85×0.4 | (4, 9.245) / 90° |
-| master_bedroom | dressing_stool | 1 | 0.42×0.4 | (3.75, 9.245) / 90° |
+| master_bedroom | bed_180 | 1 | 1.8×2 | (3.2, 6.6) / 270° |
+| master_bedroom | master_wardrobe_tall_240 | 1 | 2.4×0.6 | (3, 8.4) / 0° |
+| master_bedroom | mb_washbasin_cabinet | 1 | 1.05×0.5 | (0.575, 3.16) / 0° |
+| master_bedroom | master_dressing_table | 1 | 0.85×0.4 | (3.65, 9.15) / 270° |
+| master_bedroom | dressing_stool | 1 | 0.42×0.4 | (3.4, 9.15) / 270° |
 | master_bedroom | plant_fiddle | 1 | 0.5×0.5 | (1.1, 9.4) / 270° |
 | master_bedroom | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bedroom | mb_vanity_base_cabinet | 1 | — | count-only（不在 glb，按实物补摆） |
@@ -142,8 +142,8 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | living_track_main | living_dining | 明装轨道灯 | (10.8, 7.15) | 2.8 | 3000 | living_base | 一条黑色明装约2.8m短轨、4灯头，客厅基础光回路；无新增吊顶/电视背景墙 |
 | light_tv_strip | living_dining | 灯带 | (7.2, 7.7) | 2 | 3000 | tv_ambient | 电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-013） |
 | light_master_dome | master_bedroom | 吸顶灯 | (2.6, 7.6) | 2.8 | 3000 | — | 主卧吸顶灯 |
-| light_master_wall_l | master_bedroom | 壁灯 | (4.2, 7.2) | 1.6 | 3000 | — | 主卧床头壁灯左（东墙随床头，黄铜壁灯方向；灯光升级待决策项） |
-| light_master_wall_r | master_bedroom | 壁灯 | (4.2, 8.55) | 1.6 | 3000 | — | 主卧床头壁灯右（东墙随床头） |
+| light_master_wall_l | master_bedroom | 壁灯 | (4.2, 5.95) | 1.6 | 3000 | — | 主卧床头壁灯左（随 rotation=270 床头北移至 z=6.60；东墙实体墙，黄铜壁灯方向） |
+| light_master_wall_r | master_bedroom | 壁灯 | (4.2, 7.05) | 1.6 | 3000 | — | 主卧床头壁灯右（随 rotation=270 床头北移至 z=6.60；东墙实体墙） |
 | light_parent_dome | study | 吸顶灯 | (5.7, 7.675) | 2.8 | 3000 | — | 父母房吸顶灯 |
 | light_child_dome | bedroom_nw | 吸顶灯 | (4.1, 2.7) | 2.8 | 3000 | — | 西北次卧吸顶灯 |
 | light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.8 | 3000 | — | 书房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中） |

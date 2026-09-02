@@ -1,0 +1,57 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: mb-bedshift-stripcabinet-20260902
+subject: 主卧床北移 0.25m + 条带薄高柜替换两块悬浮板
+priority:
+  user_goal: 解除床南缘至高柜 0.35m 的功能风险（恢复 0.60m 操作净距），并为洗漱区补充封闭囤货收纳
+  ranked: [床边拿衣优先（柜门朝床、推拉门）, 高柜不降高（柜体隔断分区需通顶）, 悬浮板改薄高柜（洗漱区无囤货收纳）, 平开门北端合页, 门口双控随床位移贴门垛]
+  non_negotiables: [model-geometry.yaml 不修改, 隔断高柜 master_wardrobe_tall_240 维持 2.4×0.6×2.7 通顶不动, 梳妆台 master_dressing_table 不动, 洗手柜 mb_washbasin_cabinet 不动, bed_180 保持 x=3.20 与 rotation=270]
+  tradeoffs_accepted: [底柜北端 0.26m 探入主卫体积的存量瑕疵本轮不动，登记量房复核, 门口双控让出 w_mb_east 床头墙给随床点位]
+frozen: true
+freeze_record:
+  alignment_id: user-request-20260902-bedshift
+  original_user_response: 业主拍板床北移 0.25m 解除 0.35m 风险；两块悬浮板改 1.24m 薄高柜补封闭收纳；门口双控随床位移贴 d_mb 门垛
+  normalized_decisions: [bed_180 z 6.85→6.60（AABB z[5.70,7.50]，保留）, 五个床头随床点位 z -0.25 平移（保留）, switch_master_door 改挂 w_strip_east 墙垛 z=4.45（保留）, 悬浮板 mb_vanity_lower_board/mb_vanity_main_board 恢复原位（along=3.35，四件同轴）, 薄高柜 mb_vanity_tall_cabinet 方案撤销（DEC-2026-09-02-052-补）]
+  confirmed_by_user: true
+  confirmed_at: "2026-09-02T20:00:00+08:00"
+  evidence_refs: [user-request-20260902-bedshift]
+unfreeze_record:
+  alignment_id: user-request-20260902-rollback
+  original_user_response: 业主决定回滚：主卫门口条带柜组恢复成两块悬浮板，只回滚柜组，床北移及全部随床电气改动保留
+  unfrozen_objects: [mb_vanity_tall_cabinet, mb_vanity_lower_board, mb_vanity_main_board]
+  reason: 薄高柜方案撤销（吊柜式中间态曾讨论但未采纳）；脏衣/洗护囤货收纳需求重新登记为开放问题，后续单独迭代解决
+  confirmed_by_user: true
+  confirmed_at: "2026-09-02T21:00:00+08:00"
+refreeze_record:
+  alignment_id: user-request-20260902-rollback
+  normalized_decisions: [床北移 z=6.60 与随床电气（含 switch_master_door @w_strip_east z=4.45）维持冻结不变, 条带柜组恢复 DEC-045 四件同轴口径：底柜+下板+主板+PVC 盒, 薄高柜类型从全部权威源与派生物中移除]
+  confirmed_by_user: true
+  confirmed_at: "2026-09-02T21:00:00+08:00"
+allowed_scope:
+  files: [config/house.yaml, config/electrical.yaml, config/design-rules.yaml, shared/types.ts, shared/render/FixtureFactory.ts, scripts/verify/placement/verify-furniture-placement.ts, tests, docs/decision_log.md, docs/dressing-map.md, data/project-render-facts.json]
+  objects: [bed_180, sock_master_bed_l, sock_master_bed_r_head, switch_master_bed_l, light_master_wall_l, light_master_wall_r, switch_master_door, mb_vanity_lower_board, mb_vanity_main_board, mb_vanity_base_cabinet, mb_vanity_pvc_box]
+  archetypes: [furniture, vanity, electrical_interface]
+  views: [plan, elevation]
+  changes: [家具配置, 渲染配方, 电气点位平移, 测试, 生成物再生成]
+forbidden:
+  files: [config/layout/model-geometry.yaml, config/layout/overlay.yaml]
+  objects: [master_wardrobe_tall_240, master_dressing_table, dressing_stool, mb_washbasin_cabinet, sock_master_bed_r]
+  assumptions: [w_strip_east 北段墙垛可开孔接线]
+  out_of_scope_changes: [无关房间重构, 新依赖, git 操作]
+open_questions:
+  - { id: site-base-overhang, category: construction, question: 底柜北端 0.26m 探入主卫体积的量房复核结果与处理方式, fact_refs: [pending-base-cabinet-overhang], options: [], selected: 登记待量房, user_response: 本轮不动, status: site_pending }
+  - { id: open-laundry-storage, category: function, question: 脏衣/洗护囤货的封闭收纳需求如何满足（薄高柜方案已撤销，吊柜式中间态未采纳）, fact_refs: [], options: [], selected: 重新登记为开放问题，后续单独迭代解决, user_response: 2026-09-02 业主回滚决定, status: open }
+alignment:
+  records: [{ id: user-request-20260902-bedshift, answer: 业主冻结本轮两项改动及配套电气联动, normalized: 按本 brief 实施 }]
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run verify:all, npm run test:server, npm run typecheck, npm run test:app]
+  browser_evidence_required: true
+  required_views: [床尾西侧看东墙条带, 北侧向南看床与门关系]
+  aesthetic_review: PENDING
+  functional_review: PENDING
+  construction_review: pending
+  blocking_issues: []
+  done_when: [配置与 recipe 一致, 必要测试全绿, 生成物同步, 视觉证据覆盖床与薄高柜]
+  delivery_notes_required: true
