@@ -2,22 +2,22 @@
   "schema": "interior-design-review-manifest/v3",
   "project": "bontop-design-log",
   "iteration_id": "master-bedroom-20260901",
-  "subject": "主卧南床头干式梳妆台与外置纯洗手柜",
-  "state": "implementation",
+  "subject": "主卧高柜、床、梳妆台与门洞关系修正",
+  "state": "verification",
   "source_version": {
-    "config_refs": ["config/house.yaml", "config/electrical.yaml", "config/plumbing.yaml", "config/layout/overlay.yaml"],
+    "config_refs": ["config/house.yaml", "config/electrical.yaml", "config/plumbing.yaml", "config/layout/model-geometry.yaml", "config/layout/overlay.yaml"],
     "asset_refs": ["shared/render/FixtureFactory.ts", "scripts/archive/blender-pipeline/scripts/blender/dress_scene.py"],
-    "render_facts_ref": null,
-    "source_digest": null,
-    "generated_at": "2026-09-01T16:29:54+08:00"
+    "render_facts_ref": "data/project-render-facts.json (derived; regenerate if electrical projection changes)",
+    "source_digest": "2026-09-02 master-bedroom-revision",
+    "generated_at": "2026-09-02T00:00:00+08:00"
   },
   "validation": {
-    "commands": [], "results": [], "config_status": "BLOCKED", "geometry_status": "PASS", "consistency_status": "BLOCKED", "functional_checks_status": "BLOCKED", "application_status": "BLOCKED", "typecheck_status": "BLOCKED", "generated_files_touched_directly": false
+    "commands": ["npm run generate:project-render-facts", "npm run verify:furniture", "npm run verify:all", "npm run test:server", "npm run typecheck", "npm run test:app"], "results": [{"command":"npm run generate:project-render-facts","result":"PASS"},{"command":"npm run verify:furniture","result":"PASS (1 pre-existing warning)"},{"command":"npm run verify:all","result":"PASS (warnings only)"},{"command":"npm run test:server","result":"PASS (499 tests)"},{"command":"npm run typecheck","result":"PASS"},{"command":"npm run test:app","result":"PASS (51 files, 434 tests)"}], "config_status": "PASS", "geometry_status": "PASS", "consistency_status": "PASS", "functional_checks_status": "PASS with recorded 0.35m wardrobe gap risk", "application_status": "PASS", "typecheck_status": "PASS", "generated_files_touched_directly": false
   },
   "evidence": [],
-  "aesthetic_review": {"verdict":"BLOCKED","blocking_issues":[],"non_blocking_notes":[],"evidence_refs":[],"requested_changes":[],"assumptions":[]},
-  "functional_review": {"verdict":"BLOCKED","blocking_issues":[],"non_blocking_notes":[],"evidence_refs":[],"requested_changes":[],"assumptions":[]},
-  "risks": ["南帘真实堆叠尺寸待窗帘深化", "东墙材质和暗管待现场复核但方案不依赖挂墙"],
+  "aesthetic_review": {"verdict":"PENDING","blocking_issues":[],"non_blocking_notes":[],"evidence_refs":[],"requested_changes":[],"assumptions":[]},
+  "functional_review": {"verdict":"PASS_WITH_RISKS","blocking_issues":["床南缘至高柜北侧柜门约0.35m，功能风险/待验证；不得声称0.60m完全通过"],"non_blocking_notes":[],"evidence_refs":[],"requested_changes":[],"assumptions":[]},
+  "risks": ["床南缘至高柜北侧柜门约0.35m，功能风险/待验证", "南帘真实堆叠尺寸待窗帘深化", "东墙材质和暗管待现场复核但方案不依赖挂墙"],
   "retrospective": {"triggered":false,"triggers":[],"records":[],"rebaselined":false},
   "delivery": {"status":"in_progress","blocking_issues":[],"completion_conditions":["mandatory tests pass","required evidence valid","aesthetic and functional reviews pass"],"follow_up_site_pending":["东墙完成面与暗管探测","南帘电机端与堆叠尺寸","原插座净空","洗手柜墙排与抽屉避让"],"delivery_ready":false}
 }

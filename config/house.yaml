@@ -410,14 +410,14 @@ mep_strategy:
 furnishings:
   # 坐标为 model-geometry 局部坐标系（米）；有 x/z 的为 placed 实例（渲染），无 x/z 的为 count-only（只喂预算/库存）
   master_bedroom:
-    # 房间 x∈[0,4.20] z∈[5.55,9.80]；条带东延至 x=4.2，d_mb @(4.2,5.10)（靠北偏置 0.45 朝西进）
-    # 动线：走廊→d_mb（朝西进）→西侧玻璃幕墙侧留空→右转主卫；东侧为北墙向南伸的平台+下柜
-    - { type: bed_180, x: 3.20, z: 7.875, rotation: 270 }     # 床靠东墙，朝西看幕墙；2026-09-01 主卧梳妆改造冻结坐标与朝向，不移动
-    - { type: master_wardrobe_tall_160, x: 1.70, z: 8.00, rotation: 90 } # 方案初版：独立 1.6×0.6×2.7m 通顶高柜，南侧偏西、长边沿南北向作侧向隔断；避开床/梳妆台凳及南侧窗帘盒窗扇区域，需现场/视觉复核
+    # 房间寝区 x∈[0,4.20] z∈[5.55,9.80]；南侧上飘窗室内占用带 z=8.70..9.80，高柜南缘不得进入
+    # 2026-09-02 视觉反馈修正：高柜贴飘窗北缘并扩至 2.4m；床北移避让主卧门/门扇扫掠，保持 rotation=270 靠东墙
+    - { type: bed_180, x: 3.20, z: 6.85, rotation: 270 }     # AABB x[2.20,4.20] z[5.95,7.75]；东缘贴实体墙，床北缘到 d_mb 门洞/扫掠约0.70m；床南缘至柜门操作侧约0.35m，功能风险待验证
+    - { type: master_wardrobe_tall_240, x: 3.00, z: 8.40, rotation: 0 } # AABB x[1.80,4.20] z[8.10,8.70]；东西向、东端贴 w_mb_east、北向柜门，南缘贴飘窗北缘不进入 z>8.70 带
     - { type: mb_washbasin_cabinet, x: 0.575, z: 3.16, rotation: 0 } # 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：东移 5cm 且收宽 1.10→1.05（世界 x[0.05,1.10]），西让百叶升降缝、东留门套缝，盆/龙头/墙排居中至 x=0.575；2026-09-01 纯洗手柜：取消梳妆膝位，东侧封闭抽屉收纳，贴 w_mbath_south 南脸；待量房确认墙排与抽屉避让
     - { type: faucet }                                           # 随台盆外移（预算 count-only），给水见 plumbing.yaml faucet_mbath_vanity
-    - { type: master_dressing_table, x: 4.00, z: 9.245, rotation: 270 } # 南床头独立干式梳妆台：0.85×0.40×0.75m，长边沿 z、面朝西（rotation=270 时局部 +z 正面→世界 -x，镜/灯靠背侧贴东墙），世界 AABB x[3.80,4.20] z[8.82,9.67]；桌面支撑镜+插接镜前灯，不挂墙；距 sock_master_bed_r 中心 0.20m
-    - { type: dressing_stool, x: 3.75, z: 9.245, rotation: 270 } # 专用小凳：0.42×0.40×0.45m，收纳态压入台下，不复用 0.5×0.5 chair；使用时向西拉出
+    - { type: master_dressing_table, x: 3.65, z: 9.15, rotation: 270 } # 南侧低家具：AABB x[3.45,3.85] z[8.725,9.575]，位于飘窗下方；与高柜南缘留0.075m，窗帘/窗扇待现场确认
+    - { type: dressing_stool, x: 3.40, z: 9.15, rotation: 270 } # 专用小凳，收纳态压入台下，使用时向西拉出
     # DEC-045：四件独立对象共用同一 along 中心；东墙沿墙方向是世界 z，y 才是高度层次。
     # 统一 wall=w_mbath_east、wall_side=west、rotation=270，四件后缘贴 x=2.60，沿 z 同轴成套。
     - { type: mb_vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.35 } # 落地底柜：1.50m×0.42m×0.62m，y=0..0.62，z=2.60..4.10

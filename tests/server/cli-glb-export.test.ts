@@ -98,7 +98,7 @@ test('CLI builder creates core geometry with export metadata', () => {
   assert.ok(furniture);
   assert.equal(furniture.userData.type, 'furniture');
   assert.equal(furniture.userData.objectId, 'furniture:master_bedroom:bed_180:0');
-  assert.deepEqual(furniture.position.toArray(), [3.2, 0, 7.875]);
+  assert.deepEqual(furniture.position.toArray(), [3.2, 0, 6.85]);
 
   const masterTowelSet = scene.getObjectByName('furniture:master_bath:towel_set:1');
   assert.ok(masterTowelSet, 'missing master_bath towel_set');
@@ -284,14 +284,16 @@ test('CLI overlay and furniture world bboxes preserve the house z contract', () 
   assert.equal(guestScreenObject?.userData.objectId, 'shower_screen_gbath:0');
   assert.equal(guestScreenObject?.parent, exportRoot);
 
-  const furniture = exportRoot.getObjectByName('furniture:master_bedroom:wardrobe_240_split:1');
+  const furniture = exportRoot.getObjectByName('furniture:master_bedroom:master_wardrobe_tall_240:1');
   assert.ok(furniture);
+  assert.equal(exportRoot.getObjectByName('furniture:master_bedroom:master_wardrobe_tall_160:1'), undefined);
+  assert.equal(exportRoot.getObjectByName('furniture:master_bedroom:wardrobe_240_split:1'), undefined);
   assert.equal(exportRoot.getObjectByName('platform_boundary'), undefined, 'CLI export scene must exclude platform geometry');
   const furnitureBox = new THREE.Box3().setFromObject(furniture);
   assert.ok(Math.abs(furnitureBox.min.x - 1.8) < 1e-5);
   assert.ok(Math.abs(furnitureBox.max.x - 4.2) < 1e-5);
-  assert.ok(Math.abs(furnitureBox.min.z - 5.55) < 1e-5);
-  assert.ok(Math.abs(furnitureBox.max.z - 6.35) < 1e-5);
+  assert.ok(Math.abs(furnitureBox.min.z - 8.072) < 1e-5);
+  assert.ok(Math.abs(furnitureBox.max.z - 8.70) < 1e-5);
 
   const sceneBox = new THREE.Box3().setFromObject(exportRoot);
   assert.ok(sceneBox.min.z > -3, `unexpected overlay/furniture z min=${sceneBox.min.z}`);

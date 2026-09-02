@@ -12,7 +12,6 @@ import {
   buildKitchenCabinetRun,
   buildKitchenCountertopBridge,
   buildWardrobe180,
-  buildWardrobeSplit,
 } from './FixtureFactory.js';
 import { createLineMesh, createPolygonGeometry, setSceneObjectMetadata, splitSegmentByOpenings } from '../three-scene-geometry.js';
 import { scalePlaneUvToMeters } from './uv-utils.js';
@@ -603,7 +602,6 @@ function buildFurniture(item: FurnishingsYaml[string][number]): THREE.Group | nu
     return buildBathSideCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight });
   }
   if (item.type === 'wardrobe_180') return buildWardrobe180(item.cabinetHeight);
-  if (item.type === 'wardrobe_240_split') return buildWardrobeSplit();
   return buildFixture(item.type);
 }
 
@@ -751,6 +749,9 @@ function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: S
       model.position.set(placement.x, 0, placement.z);
       model.rotation.y = THREE.MathUtils.degToRad(item.rotation ?? 0);
       setSceneObjectMetadata(model, 'furniture', objectId);
+      model.userData.furnishingType = item.type;
+      const declaredDimensions = FURNITURE_DIMS[item.type];
+      if (declaredDimensions) model.userData.declaredDimensions = { ...declaredDimensions };
       if (placement.wallId !== undefined) {
         model.userData.wallId = placement.wallId;
         model.userData.wallSide = placement.wallSide;

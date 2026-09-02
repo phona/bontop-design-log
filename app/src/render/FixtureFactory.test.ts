@@ -11,7 +11,6 @@ import {
   buildFixture,
   buildKitchenCabinetRun,
   buildWardrobe180,
-  buildWardrobeSplit,
   getRecipeTypes,
 } from './FixtureFactory.js';
 
@@ -19,7 +18,6 @@ describe('shared render compatibility entries', () => {
   it('resolve App compatibility exports to the shared implementations', () => {
     expect(appFixtures.buildFixture).toBe(sharedFixtures.buildFixture);
     expect(appFixtures.buildWardrobe180).toBe(sharedFixtures.buildWardrobe180);
-    expect(appFixtures.buildWardrobeSplit).toBe(sharedFixtures.buildWardrobeSplit);
     expect(appFixtures.buildBathSideCabinetRun).toBe(sharedFixtures.buildBathSideCabinetRun);
     expect(appFixtures.buildKitchenCabinetRun).toBe(sharedFixtures.buildKitchenCabinetRun);
     expect(appFixtures.getRecipeTypes).toBe(sharedFixtures.getRecipeTypes);
@@ -230,15 +228,16 @@ describe('wardrobe fixtures', () => {
     expect(wardrobe.children.every((child) => child.name.length > 0 && child.userData.part && child.userData.materialRole)).toBe(true);
   });
 
-  it('builds the split wardrobe as 0.8m low storage plus 1.6m tall storage', () => {
-    const wardrobe = buildWardrobeSplit();
-    wardrobe.updateMatrixWorld(true);
-    const size = new THREE.Box3().setFromObject(wardrobe).getSize(new THREE.Vector3());
+  it('builds the master bedroom tall wardrobe with north-facing door details', () => {
+    const wardrobe = buildFixture('master_wardrobe_tall_240');
+    expect(wardrobe).not.toBeNull();
+    wardrobe!.updateMatrixWorld(true);
+    const size = new THREE.Box3().setFromObject(wardrobe!).getSize(new THREE.Vector3());
     expect(size.x).toBeCloseTo(2.4, 5);
     expect(size.y).toBeCloseTo(2.7, 5);
-    expect(size.z).toBeCloseTo(0.8, 5);
-    expect(wardrobe.children.some((child) => child.userData.part === 'low-door-panel')).toBe(true);
-    expect(wardrobe.children.some((child) => child.userData.part === 'tall-hanging-rod')).toBe(true);
+    expect(size.z).toBeCloseTo(0.628, 5);
+    expect(wardrobe!.children.some((child) => child.userData.part === 'door-panel')).toBe(true);
+    expect(wardrobe!.children.some((child) => child.userData.part === 'hanging-rod')).toBe(true);
   });
 
   it('splits bathroom cabinet doors into readable panels', () => {

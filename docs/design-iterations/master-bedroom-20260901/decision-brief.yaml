@@ -1,35 +1,35 @@
 schema: interior-design-decision-brief/v3
 project: bontop-design-log
 iteration_id: master-bedroom-20260901
-subject: 主卧南床头干式梳妆台与外置纯洗手柜
+subject: 主卧候选方案落地（床、衣柜、梳妆台与电气）
 priority:
-  user_goal: 在不移动床和衣柜、不改墙内电气的前提下落地南床头梳妆与纯洗手柜
-  ranked: [床与衣柜基线不动, 梳妆功能和插座可用, 南床头无重复床头柜, 洗手柜纯收纳语义, 窗帘影响如实记录]
-  non_negotiables: [model-geometry.yaml 不修改, bed_180 坐标朝向不变, 北侧衣柜不动, 镜和镜前灯不挂墙, 保留南床头壁灯]
-  tradeoffs_accepted: [南帘作为软装可压缩但真实堆叠待深化, 不为收帘方向大改 schema]
+  user_goal: 修正用户截图指出的主卧关系：高柜贴南上飘窗北缘并扩大到合理定制宽度；床远离门洞/门扇扫掠，仍靠东墙且不旋转；保留梳妆台与纯洗手柜候选
+  ranked: [避免床压门及门扇扫掠, 高柜优先2.4m且东端贴墙, 高柜南缘不进入飘窗带, 床柜桌操作区可用]
+  non_negotiables: [model-geometry.yaml 不修改, bed_180 rotation=270, 高柜2.4x0.6x2.7且东西向柜门朝北, 删除矮柜语义, 电气允许同步移动]
+  tradeoffs_accepted: [南飘窗与窗帘窗扇实际堆叠待现场确认, 床体东缘保留实体墙侧净空而非贴墙]
 frozen: true
 freeze_record:
-  alignment_id: user-request-20260901
-  original_user_response: 用户提供十项已确认落地要求
-  normalized_decisions: [新增850x400x750干式梳妆台, 新增420x400x450专用凳, 原1.10x0.50外置柜改纯洗手柜, 南侧自动床头柜取消]
+  alignment_id: user-request-20260902
+  original_user_response: 用户明确指出高柜未贴上飘窗、宽度不足、床贴到门上，并重申床靠东墙、rotation=270、取消矮柜、电气可随床调整
+  normalized_decisions: [床调整至3.20,6.85且rotation=270并远离门区, 新增2.40x0.60x2.70东西向高柜中心3.00,8.40且东端贴w_mb_east/南缘贴飘窗北缘, 梳妆台保持3.65,9.15, 南侧自动矮柜语义删除, 新增独立床头右侧插座 sock_master_bed_r_head @(4.20,7.85), d_mb 保持 inward 仅 hinge end→start 反向开门]
   confirmed_by_user: true
-  confirmed_at: "2026-09-01T16:29:54+08:00"
-  evidence_refs: [user-request-20260901]
+  confirmed_at: "2026-09-02T00:00:00+08:00"
+  evidence_refs: [user-request-20260902]
 allowed_scope:
   files: [config/house.yaml, config/electrical.yaml, config/plumbing.yaml, shared/types.ts, shared/render/FixtureFactory.ts, scripts/blender/dress_scene.py, scripts/blender/blender_render_only.py, scripts/blender/gen-render-config.ts, tests, docs/decision_log.md, docs/dressing-map.md]
-  objects: [bed_180, wardrobe_240_split, master_dressing_table, dressing_stool, mb_washbasin_cabinet, curtain_master_south, sock_master_bed_r]
+  objects: [bed_180, master_wardrobe_tall_240, master_dressing_table, dressing_stool, mb_washbasin_cabinet, curtain_master_south, sock_master_bed_l, sock_master_bed_r_head, sock_master_bed_r, switch_master_bed_l, light_master_wall_l, light_master_wall_r, switch_master_door, d_mb]
   archetypes: [furniture, vanity, bathroom_cabinet, curtain, electrical_interface]
   views: [plan, elevation, section, perspective]
   changes: [家具配置, 渲染配方, Blender dressing, 自动床头柜避让, 测试, 项目既有文档镜像]
 forbidden:
-  files: [config/layout/model-geometry.yaml]
-  objects: [bed_180 transform, wardrobe_240_split transform, wall geometry, in-wall electrical routes]
+  files: []
+  objects: [wall geometry except d_mb opening semantics, model-geometry geometry/topology except d_mb swing/hinge, unrelated-room electrical routes]
   assumptions: [东墙可挂重镜, 闭帘完全无影响, curtain box 是硬墙]
   out_of_scope_changes: [无关房间重构, 新依赖, git 操作]
 open_questions:
   - { id: site-curtain-stack, category: construction, question: 南帘真实堆叠尺寸和电机端位置, fact_refs: [pending-curtain-stack], options: [], selected: 独立深化, user_response: 不伪造且不为此大改 schema, status: site_pending }
 alignment:
-  records: [{ id: user-request-20260901, answer: 已冻结十项方向, normalized: 按本 brief 实施 }]
+  records: [{ id: user-request-20260902, answer: 用户明确主卧候选方案目标并授权相关电气移动, normalized: 按本 brief 实施；方案仍为候选未落地 }]
   unresolved: []
   re_alignment_required: false
 acceptance:
@@ -39,6 +39,6 @@ acceptance:
   aesthetic_review: PASS required
   functional_review: PASS required
   construction_review: pending
-  blocking_issues: []
-  done_when: [配置与 recipe 一致, 必要测试全绿, 无南侧自动床头柜, 视觉证据覆盖目标对象]
+  blocking_issues: [床南缘至高柜北侧柜门约0.35m，为功能风险/待验证，不得声称0.60m完全通过；现场门洞与门扇尺寸仍需复核]
+  done_when: [配置与 recipe 一致, 必要测试全绿, 无南侧自动床头柜, 高柜南缘不侵入飘窗带, 运行时记录门洞扫掠与全部目标AABB, 视觉证据覆盖目标对象]
   delivery_notes_required: true

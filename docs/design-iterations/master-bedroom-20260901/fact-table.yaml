@@ -1,9 +1,10 @@
 schema: interior-design-fact-table/v3
 project: bontop-design-log
 iteration_id: master-bedroom-20260901
-subject: 主卧南床头干式梳妆台与外置纯洗手柜
+subject: 主卧高柜、床、梳妆台与门洞关系修正（用户截图反馈）
 created_at: "2026-09-01T16:29:54+08:00"
-status: frozen
+status: verification
+updated_at: "2026-09-02T00:00:00+08:00"
 source_policy:
   authority_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml, config/house.yaml, config/electrical.yaml, config/plumbing.yaml]
   observation_refs: [docs/decision_log.md, docs/dressing-map.md]
@@ -12,8 +13,11 @@ source_policy:
   evidence_refs: []
 facts:
   confirmed:
-    - { id: fact-bed-fixed, category: confirmed, statement: 主卧 bed_180 保持中心与朝向不变, value: {x: 3.20, z: 7.875, rotation: 270}, source_refs: [config/house.yaml], basis: 家具权威配置, confidence: high, impact: material, affected_objects: [bed_180], affected_views: [plan, perspective], owner: project, status: resolved, verification_method: 配置回归测试 }
-    - { id: fact-south-socket, category: confirmed, statement: 南床头现有双联插座位于东墙, value: {id: sock_master_bed_r, x: 4.20, z: 9.25, height: 0.70}, source_refs: [config/electrical.yaml], basis: 电气权威配置, confidence: high, impact: material, affected_objects: [master_dressing_table], affected_views: [plan, elevation], owner: electrical, status: resolved, verification_method: 家具电气距离测试 }
+    - { id: fact-bed-candidate, category: user_decision, statement: 主卧 bed_180 北移并保持靠东墙与 rotation=270, value: {x: 3.20, z: 6.85, rotation: 270, aabb: {x: [2.20,4.20], z: [5.95,7.75]}}, source_refs: [user-request-20260902, config/house.yaml], basis: 用户明确坐标；Three.js rotation与recipe包围盒计算, confidence: high, impact: material, affected_objects: [bed_180], affected_views: [plan, perspective], owner: user, status: resolved, verification_method: resolver门洞扫掠、verify:furniture与GLB包围盒 } 
+    - { id: fact-wardrobe-candidate, category: inferred, statement: 主卧修正版高柜扩展至2.4m并贴东墙及南飘窗北缘, value: {x: 3.00, z: 8.40, width: 2.40, depth: 0.60, height: 2.70, rotation: 0, aabb: {x: [1.80,4.20], z: [8.10,8.70]}}, source_refs: [user-request-20260902, config/house.yaml, config/layout/overlay.yaml], basis: 东墙完成面与飘窗带约束, confidence: medium, impact: material, affected_objects: [master_wardrobe_tall_240], affected_views: [plan, elevation, perspective], owner: project, status: resolved, verification_method: GLB运行时AABB与飘窗bbox } 
+    - { id: fact-master-door, category: confirmed, statement: 主卧入口 d_mb 位于 w_strip_east，resolver洞口沿z约[4.30,5.20]并向主卫内开，合页改至南端以反转开向, value: {id: d_mb, wall: w_strip_east, opening_z: [4.30,5.20], swing: inward, hinge: start}, source_refs: [config/layout/model-geometry.yaml], basis: resolveOpening，保持门洞位置和内开语义，仅端点反转, confidence: high, impact: material, affected_objects: [bed_180], affected_views: [plan, perspective], owner: project, status: resolved, verification_method: runtime opening/sweep query }
+    - { id: fact-bed-head-sockets, category: confirmed, statement: rotation=270 的床头为北侧，东墙两个独立床头插座分别落在床头左右两侧，均避开门口开关, value: {bed_aabb: {x: [2.20,4.20], z: [5.95,7.75]}, left: {id: sock_master_bed_l, x: 4.20, z: 6.20, height: 0.70}, right: {id: sock_master_bed_r_head, x: 4.20, z: 7.85, height: 0.70}}, source_refs: [config/house.yaml, config/electrical.yaml, shared/types.ts], basis: bed_180 AABB and rotation=270 local headboard direction, confidence: high, impact: material, affected_objects: [bed_180, sock_master_bed_l, sock_master_bed_r_head, switch_master_door], affected_views: [plan, elevation], owner: electrical, status: resolved, verification_method: furniture/electrical placement test }
+    - { id: fact-south-socket, category: confirmed, statement: 南侧梳妆台专用双联插座位于东墙且不作为床头插座, value: {id: sock_master_bed_r, x: 4.20, z: 9.15, height: 0.70}, source_refs: [config/electrical.yaml], basis: 电气权威配置, confidence: high, impact: material, affected_objects: [master_dressing_table], affected_views: [plan, elevation], owner: electrical, status: resolved, verification_method: 家具电气距离测试 }
     - { id: fact-washbasin-envelope, category: confirmed, statement: 外置柜原外轮廓和盆心接口保持, value: {center: {x: 0.55, z: 3.16}, rotation: 0, width: 1.10, depth: 0.50, basin_center: {x: 0.26, z: 2.96}}, source_refs: [config/house.yaml, config/plumbing.yaml], basis: 家具与给排水权威配置, confidence: high, impact: material, affected_objects: [mb_washbasin_cabinet], affected_views: [plan, elevation, perspective], owner: project, status: resolved, verification_method: 配置与 recipe 测试 }
     - { id: fact-east-wall, category: confirmed, statement: 主卧东墙 w_mb_east 为连续实体隔墙且不在 suppress 列表, value: w_mb_east, source_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml], basis: 几何与意图权威源, confidence: high, impact: material, affected_objects: [master_dressing_table], affected_views: [plan], owner: project, status: resolved, verification_method: verify:all }
   inferred: []
@@ -25,4 +29,6 @@ facts:
     - { id: pending-curtain-stack, category: site_pending, statement: 南帘实际褶皱厚度、电机及收帘堆叠尺寸需按窗帘深化确认, value: null, source_refs: [config/layout/overlay.yaml, config/electrical.yaml], basis: 当前 schema 只表达帘轨与状态，不能证明真实堆叠, confidence: not_applicable, impact: material, affected_objects: [master_dressing_table, curtain_master_south], affected_views: [plan, perspective], owner: curtain_vendor, status: open, verification_method: 窗帘深化图与现场样品 }
 unknowns_requiring_alignment: []
 notes:
-  - 用户已明确冻结方向并授权落地；未把现场待确认项作为挂墙或改墙内电气的前提。
+  - 用户截图是本轮三项反馈证据：高柜未贴飘窗、宽度不足、床侵入门关系；截图只作为问题证据，坐标以 authority/resolver/runtime 为准。
+  - 修正版优先 2.4m 高柜；床北移至 z=6.85 后，床北缘至入口门洞/扫掠目标约0.70m；床南缘至高柜北侧柜门约0.35m，属于功能风险/待验证，不能声称0.60m完全通过。现场门扇尺寸仍 site_pending。
+  - 床、高柜、梳妆台均为候选未落地；南飘窗窗扇/窗帘堆叠、门洞施工尺寸和现场墙完成面仍 site_pending。

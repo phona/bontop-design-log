@@ -192,8 +192,8 @@ walls:
     structure: shear
     structure_status: inferred
     openings:
-      # 2026-08-31：主卫质心位于墙段左法向（西）侧，门扇内开进主卫，北端合页
-      - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.45, width: 0.9, height: 2.1, room: master_bath, swing: inward, hinge: end }
+      # 2026-09-02：保持向内开，仅将合页由北端改至南端，反转 d_mb 开门方向；门洞位置不变
+      - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.45, width: 0.9, height: 2.1, room: master_bath, swing: inward, hinge: start }
   - id: w_st_north
     from: v_mb_ne
     to: v_st_ne

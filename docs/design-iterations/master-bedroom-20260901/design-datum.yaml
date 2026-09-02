@@ -1,33 +1,59 @@
 schema: interior-design-datum/v3
 project: bontop-design-log
 iteration_id: master-bedroom-20260901
-subject: 主卧南床头干式梳妆台与外置纯洗手柜
+subject: 主卧高柜、床、梳妆台与门洞关系修正
 units: m
 coordinate_system: Three.js右手系，Y向上，+x东，+z南
-status: frozen
+status: verification
 datums:
+  - id: datum-master-wardrobe
+    name: 主卧东西向高柜
+    anchor: { kind: room_anchor, ref: master_bedroom, wall_side: north, service_ref: null }
+    source_refs: { fact_refs: [fact-bed-candidate, fact-east-wall], decision_refs: [decision-bedroom-dressing] }
+    views:
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: 柜门朝北, position: {x: 3.00, z: 8.40}, rotation: 0, dimensions: {length: 2.40, width: 2.40, depth: 0.60}, dimension_semantics: total }
+      elevation: { required: true, viewing_side: north, vertical_axis: y, height: 2.70, dimensions: {width: 2.40, height: 2.70, sill: 0, datum_offset: 0}, dimension_semantics: overall }
+      section: { required: true, cut_direction: north-south, depth_axis: z, clearances: {front: 0.60, rear: 0.0, top: 0.10, bottom: 0}, thickness: 0.60, dimension_semantics: overall }
+    geometry: {x: 3.00, y: 0, z: 8.40, width: 2.40, depth: 0.60, height: 2.70, length: 2.40, rotation: 0, along: null}
+    constraints: [实体柜体AABB x[1.80,4.20] z[8.10,8.70]，南缘贴南上飘窗北缘且不进入z>8.70带, 与床AABB z[5.95,7.75]不重叠, 床南缘至柜体北门操作净距约0.35m并列为功能风险待验证, 东端贴w_mb_east, 柜门操作区向北]
+    interfaces: [master_dressing_table, bed_180]
+    validation_refs: [verify:furniture, config-regression-test, visual-wardrobe]
+    status: inferred
+  - id: datum-master-bed-head-sockets
+    name: 主卧北床头东墙双侧插座
+    anchor: { kind: wall_anchor, ref: w_mb_east, wall_side: west, service_ref: null }
+    source_refs: { fact_refs: [fact-bed-candidate, fact-bed-head-sockets, fact-east-wall], decision_refs: [user-request-20260902] }
+    views:
+      plan: { required: true, origin: 东墙 w_mb_east 墙线, axes: x东西/z南北, direction: 床头朝北（rotation=270）, position: {left: {x: 4.20, z: 6.20}, right: {x: 4.20, z: 7.85}}, rotation: 0, dimensions: {bed_aabb: {x: [2.20,4.20], z: [5.95,7.75]}}, dimension_semantics: wall_points }
+      elevation: { required: true, viewing_side: west, vertical_axis: y, height: 0.70, dimensions: {left: 2, right: 2}, sill: 0, datum_offset: 0, dimension_semantics: overall }
+      section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {wall_side: 0, front: 0.15}, thickness: null, dimension_semantics: clear }
+    geometry: { wall: w_mb_east, wall_side: west, left: {id: sock_master_bed_l, x: 4.20, z: 6.20}, right: {id: sock_master_bed_r_head, x: 4.20, z: 7.85}, height: 0.70 }
+    constraints: [床头为 bed_180 AABB 北缘 z=5.95，两个插座沿东墙分居床头左右侧，避开门口开关 switch_master_door z=5.70，不使用南侧梳妆台插座 sock_master_bed_r]
+    interfaces: [bed_180, switch_master_door]
+    validation_refs: [verify:all, config-regression-test, visual-east-wall]
+    status: confirmed
   - id: datum-master-dressing-table
     name: 南床头干式梳妆台
     anchor: { kind: free_position, ref: master_bedroom, wall_side: null, service_ref: sock_master_bed_r }
-    source_refs: { fact_refs: [fact-bed-fixed, fact-south-socket, fact-east-wall], decision_refs: [decision-dry-dresser] }
+    source_refs: { fact_refs: [fact-bed-candidate, fact-south-socket, fact-east-wall], decision_refs: [decision-bedroom-dressing] }
     views:
-      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: 长边沿z，正面朝西, position: {x: 4.00, z: 9.245}, rotation: 90, dimensions: {length: 0.85, width: 0.40, depth: 0.40, offset: 0.0}, dimension_semantics: total }
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: 长边沿z，正面朝西, position: {x: 3.65, z: 9.15}, rotation: 270, dimensions: {length: 0.85, width: 0.40, depth: 0.40, offset: 0.0}, dimension_semantics: total }
       elevation: { required: true, viewing_side: west, vertical_axis: y, height: 0.75, dimensions: {width: 0.85, height: 0.75, sill: 0, datum_offset: 0}, dimension_semantics: overall }
       section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {front: 0.25, rear: 0.0, top: null, bottom: 0}, thickness: 0.40, dimension_semantics: overall }
-    geometry: {x: 4.00, y: 0, z: 9.245, width: 0.85, depth: 0.40, height: 0.75, length: 0.85, rotation: 90, along: null}
-    constraints: [世界AABB x[3.80,4.20] z[8.82,9.67], 与床AABB z上净缝0.045m, 东缘贴东墙, 南缘距南窗帘轨线0.13m, 不挂墙]
-    interfaces: [sock_master_bed_r中心距0.20m, 桌面支撑镜, 插接式镜前灯]
+    geometry: {x: 3.65, y: 0, z: 9.15, width: 0.85, depth: 0.40, height: 0.75, length: 0.85, rotation: 270, along: null}
+    constraints: [世界AABB x[3.45,3.85] z[8.725,9.575], 与床AABB不重叠, 靠南侧形成衣帽间端部, 南帘窗扇堆叠待现场确认, 不挂墙]
+    interfaces: [sock_master_bed_r中心距0.55m, 桌面支撑镜, 插接式镜前灯]
     validation_refs: [verify:furniture, config-regression-test, visual-east-wall]
     status: confirmed
   - id: datum-dressing-stool
     name: 梳妆专用凳收纳位
     anchor: { kind: free_position, ref: master_dressing_table, wall_side: null, service_ref: null }
-    source_refs: { fact_refs: [fact-bed-fixed], decision_refs: [decision-dry-dresser] }
+    source_refs: { fact_refs: [fact-bed-candidate], decision_refs: [decision-bedroom-dressing] }
     views:
-      plan: { required: true, origin: 梳妆台中心, axes: x东西/z南北, direction: 收进台下，坐面朝东使用, position: {x: 3.75, z: 9.245}, rotation: 90, dimensions: {length: 0.42, width: 0.40, depth: 0.40, offset: 0.25}, dimension_semantics: total }
+      plan: { required: true, origin: 梳妆台中心, axes: x东西/z南北, direction: 收进台下，坐面朝东使用, position: {x: 3.40, z: 9.15}, rotation: 270, dimensions: {length: 0.42, width: 0.40, depth: 0.40, offset: 0.25}, dimension_semantics: total }
       elevation: { required: true, viewing_side: west, vertical_axis: y, height: 0.45, dimensions: {width: 0.42, height: 0.45, sill: 0, datum_offset: 0}, dimension_semantics: overall }
       section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {front: 0, rear: 0, top: 0.30, bottom: 0}, thickness: 0.40, dimension_semantics: clear }
-    geometry: {x: 3.75, y: 0, z: 9.245, width: 0.42, depth: 0.40, height: 0.45, length: 0.42, rotation: 90, along: null}
+    geometry: {x: 3.40, y: 0, z: 9.15, width: 0.42, depth: 0.40, height: 0.45, length: 0.42, rotation: 270, along: null}
     constraints: [作为明确桌下层叠对象允许2D footprint重叠, 不复用0.5x0.5 chair]
     interfaces: [master_dressing_table]
     validation_refs: [verify:furniture, config-regression-test]
@@ -47,3 +73,5 @@ datums:
     status: confirmed
 notes:
   - 当前窗帘 schema 未声明真实收帘堆叠方向，南帘按软装占用审查但不把 curtain box 当硬碰撞墙。
+  - 本轮用户截图反馈作为问题证据：高柜离开飘窗、宽度不足、床压门。d_mb resolver opening/sweep 与运行时 objectId/AABB 必须作为交付证据。
+  - 床北移至 z=6.85 后，床北缘至 d_mb 门扇扫掠目标约0.70m；床南缘至高柜北侧柜门约0.35m，属于功能风险/待验证，禁止伪造为0.60m达标。

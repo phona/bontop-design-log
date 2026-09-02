@@ -274,7 +274,7 @@
       "position": {
         "x": 4.2,
         "y": 1.6,
-        "z": 7.2
+        "z": 6.2
       },
       "temperatureK": 3000,
       "enabled": true
@@ -286,7 +286,7 @@
       "position": {
         "x": 4.2,
         "y": 1.6,
-        "z": 8.55
+        "z": 7.3
       },
       "temperatureK": 3000,
       "enabled": true
@@ -1593,7 +1593,7 @@
       "source": {
         "default": "open",
         "roomOverrides": {},
-        "updatedAt": "2026-09-01T15:15:12.526Z"
+        "updatedAt": "2026-09-02T07:23:41.947Z"
       },
       "effectiveByRoom": {
         "bedroom_nw": "open",

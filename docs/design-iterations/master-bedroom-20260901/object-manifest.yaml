@@ -1,12 +1,48 @@
 schema: interior-design-object-manifest/v3
 project: bontop-design-log
 iteration_id: master-bedroom-20260901
-subject: 主卧南床头干式梳妆台与外置纯洗手柜
+subject: 主卧高柜、床、梳妆台与门洞关系修正
 object_policy:
   fixed_count_required: true
   split_by: [function, owner, material, collision, maintenance, interface, review]
   visual_relationship_required: true
 objects:
+  - id: master_wardrobe_tall_240
+    type: furniture
+    archetypes: [tall_wardrobe]
+    owner: furniture
+    function: 衣帽间高柜收纳
+    material: 暖木色柜体与北向柜门
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: [datum-master-wardrobe]
+    fact_refs: [fact-bed-candidate, fact-wardrobe-candidate, fact-master-door, fact-east-wall]
+    decision_refs: [user-request-20260902]
+    dependencies: [bed_180, master_dressing_table, d_mb]
+    interfaces: []
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.master_wardrobe_tall_240, review_ref: verify:furniture }
+    maintenance: { boundary: 可整体移开，柜门朝北开启, access_clearance: 0.60, replaceable_parts: [门板, 挂衣杆, 层板], inspection_requirements: [南飘窗带不得放置高柜, 东端贴w_mb_east] }
+    parts: []
+    visual_relationships: [{ target_object_id: master_dressing_table, relation: adjacent, requirement: 与梳妆台共同形成衣帽间，不遮挡南飘窗 }, { target_object_id: bed_180, relation: separated, requirement: 床南缘至柜门约0.35m，列为功能风险/待验证，不声称0.60m完全通过 }, { target_object_id: d_mb, relation: separated, requirement: 不占用入口门洞；床北缘目标约0.70m }]
+    validation_refs: [verify:furniture, recipe-test, config-regression-test]
+    status: planned
+  - id: sock_master_bed_r_head
+    type: electrical
+    archetypes: [bedside_socket]
+    owner: electrical
+    function: 北床头右侧手机充电与台灯供电
+    material: embedded_socket
+    geometry_source: config/electrical.yaml
+    datum_refs: [datum-master-bed-head-sockets]
+    fact_refs: [fact-bed-head-sockets, fact-east-wall]
+    decision_refs: [user-request-20260902]
+    dependencies: [bed_180, switch_master_door]
+    interfaces: [{ id: bedside-power, target_object_id: bed_180, kind: electrical, requirement: 位于床 AABB 北侧床头右侧并保持可插拔, status: confirmed }]
+    collision: { policy: none, geometry_ref: config/electrical.yaml, review_ref: verify:all }
+    maintenance: { boundary: 墙面面板可更换, access_clearance: 0.15, replaceable_parts: [面板], inspection_requirements: [现场确认暗管与开槽条件] }
+    parts: []
+    visual_relationships: [{ target_object_id: sock_master_bed_l, relation: paired, requirement: 与左侧床头插座分居床头两侧，不与门口开关重叠, evidence_refs: [] }]
+    validation_refs: [verify:all, config-regression-test]
+    status: planned
   - id: master_dressing_table
     type: furniture
     archetypes: [dry_dressing_table]
@@ -72,4 +108,6 @@ objects:
     validation_refs: [verify:furniture, verify:all, recipe-test, config-regression-test]
     status: planned
 notes:
-  - bed_180 与 wardrobe_240_split 为冻结依赖对象，不属于本次几何修改对象。
+  - 用户截图反馈作为本轮问题证据：高柜未贴飘窗北缘、宽度不足、床贴门；修正版以 resolver/runtime 的 objectId 与 AABB 复核，不以截图像素反推。
+  - 床调整为 (3.20,6.85,270)，床柜净距约0.35m，属于功能风险/待验证；床北缘到门洞/扫掠目标约0.70m。高柜南缘保持 z=8.70，不进入飘窗带。
+  - 本轮床、高柜、梳妆台及相关电气均为候选源配置；未落地施工，南飘窗窗扇/窗帘堆叠、门洞施工尺寸与现场完成面为 site_pending。

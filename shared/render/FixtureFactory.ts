@@ -82,12 +82,14 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // DEC-023：2.4m 衣柜拆两段——西段（-x 侧）加深 0.8m 放被褥/行李箱，东段标准 0.6m 靠门侧；背面对齐（北缘 -0.4）
-    // 2026-08-26 主卧空调方案：西段降 1.1m 作被褥矮柜（上方檐口朝南越顶送风）；v2 利用率调整：矮柜收窄 0.8m（x[1.8,2.6]），挂衣高柜西延至 1.6m（x[2.6,4.2]）
-    type: 'wardrobe_240_split',
+    // 主卧修正版高柜：2.4×0.6×2.7m，局部 -z 为朝北柜门，rotation=0 时东西向摆放。
+    type: 'master_wardrobe_tall_240',
     parts: [
-      { shape: 'box', size: [0.8, 1.1, 0.8], position: [-0.8, 0.55, 0], color: '#7d6647' },
-      { shape: 'box', size: [1.6, 2.7, 0.6], position: [0.4, 1.35, -0.1], color: '#8B7355' },
+      { shape: 'box', size: [2.4, 2.7, 0.6], position: [0, 1.35, 0], color: '#8B7355', part: 'carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [2.34, 2.52, 0.018], position: [0, 1.35, -0.311], color: '#967b5a', part: 'door-panel', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 2.52, 0.012], position: [0, 1.35, -0.322], color: '#604b38', part: 'door-seam-center', materialRole: 'door_seam' },
+      { shape: 'box', size: [2.28, 0.025, 0.52], position: [0, 1.05, 0], color: '#a48763', part: 'interior-shelf', materialRole: 'shelf' },
+      { shape: 'cylinder', size: [0.018, 1.35, 0.018], position: [0, 1.85, 0], rotation: [0, 0, Math.PI / 2], color: '#504b46', metalness: 0.7, roughness: 0.35, part: 'hanging-rod', materialRole: 'hardware' },
     ],
   },
   // DEC-045：主卫东墙收纳拆成四个独立 furnishing object；每个 recipe 的局部原点都是自身包围盒中心。
@@ -784,24 +786,6 @@ export function buildWardrobe180(totalHeight = 2.5): THREE.Group {
   addBox(group, 'wardrobe_180', i++, [0.012, bodyHeight - 0.16, 0.012], [0, (bodyHeight + 0.08) / 2, -0.294], '#604b38', { part: 'door-seam-center', materialRole: 'door_seam' });
   addBox(group, 'wardrobe_180', i++, [1.68, 0.025, 0.52], [0, 1.05, 0], '#a48763', { part: 'interior-shelf', materialRole: 'shelf' });
   addPart(group, 'wardrobe_180', i++, { shape: 'cylinder', size: [0.018, 0.5, 0.018], position: [0, Math.min(bodyHeight - 0.18, 1.75), 0], rotation: [0, 0, Math.PI / 2], color: '#504b46', metalness: 0.7, roughness: 0.35, part: 'hanging-rod', materialRole: 'hardware' });
-  return group;
-}
-
-/** 主卧 2.4m 分体衣柜：0.8m 矮柜 + 1.6m 高柜，保持 2.4×0.8 外轮廓。 */
-export function buildWardrobeSplit(): THREE.Group {
-  const group = new THREE.Group();
-  let i = 0;
-  addBox(group, 'wardrobe_240_split', i++, [0.8, 1.1, 0.8], [-0.8, 0.55, 0], '#7d6647', { part: 'low-carcass', materialRole: 'cabinet_body' });
-  addBox(group, 'wardrobe_240_split', i++, [1.6, 2.7, 0.6], [0.4, 1.35, -0.1], '#8B7355', { part: 'tall-carcass', materialRole: 'cabinet_body' });
-  addBox(group, 'wardrobe_240_split', i++, [0.76, 0.06, 0.018], [-0.8, 1.07, 0.391], '#a48763', { part: 'low-top-panel', materialRole: 'top_filler' });
-  addBox(group, 'wardrobe_240_split', i++, [0.78, 0.82, 0.018], [-0.8, 0.54, 0.391], '#967b5a', { part: 'low-door-panel', materialRole: 'door_front' });
-  for (const [index, x] of [0, 0.8].entries()) {
-    addBox(group, 'wardrobe_240_split', i++, [0.786, 2.5, 0.018], [x, 1.35, 0.201], '#967b5a', { part: `tall-door-panel-${index + 1}`, materialRole: 'door_front' });
-  }
-  addBox(group, 'wardrobe_240_split', i++, [0.012, 2.5, 0.012], [0, 1.35, 0.192], '#604b38', { part: 'tall-door-seam', materialRole: 'door_seam' });
-  addBox(group, 'wardrobe_240_split', i++, [0.72, 0.025, 0.72], [-0.8, 0.7, 0], '#a48763', { part: 'low-interior-shelf', materialRole: 'shelf' });
-  addBox(group, 'wardrobe_240_split', i++, [1.48, 0.025, 0.52], [0.4, 1.02, -0.1], '#a48763', { part: 'tall-interior-shelf', materialRole: 'shelf' });
-  addPart(group, 'wardrobe_240_split', i++, { shape: 'cylinder', size: [0.018, 1.45, 0.018], position: [0.4, 1.85, -0.1], color: '#504b46', metalness: 0.7, roughness: 0.35, part: 'tall-hanging-rod', materialRole: 'hardware' });
   return group;
 }
 

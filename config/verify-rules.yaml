@@ -35,7 +35,7 @@ proximity:
     severity: warn
 
 clearance:
-  furniture_types: [bed_180, bed_150, wardrobe_240, wardrobe_240_split, wardrobe_180, shelf, sofa_3seat]
+  furniture_types: [bed_180, bed_150, wardrobe_240, master_wardrobe_tall_240, wardrobe_180, shelf, sofa_3seat]
   min_passage: 0.50
   severity: warn
 

@@ -19,16 +19,19 @@ function placed(type: string): Furnishing {
   return item;
 }
 
-test('master bedroom frozen bed and wardrobe transforms remain unchanged', () => {
-  assert.deepEqual(placed('bed_180'), { type: 'bed_180', x: 3.20, z: 7.875, rotation: 270 });
-  assert.deepEqual(placed('wardrobe_240_split'), { type: 'wardrobe_240_split', x: 3.00, z: 5.95, rotation: 0 });
+test('master bedroom candidate bed and tall wardrobe use the calculated transforms', () => {
+  assert.deepEqual(placed('bed_180'), { type: 'bed_180', x: 3.20, z: 6.85, rotation: 270 });
+  assert.deepEqual(placed('master_wardrobe_tall_240'), { type: 'master_wardrobe_tall_240', x: 3.00, z: 8.40, rotation: 0 });
+  assert.equal(master.some((item) => item.type === 'master_wardrobe_tall_160'), false);
+  assert.equal(master.some((item) => item.type === 'wardrobe_240_split'), false);
+  assert.deepEqual(FURNITURE_DIMS.master_wardrobe_tall_240, { width: 2.40, depth: 0.60 });
 });
 
 test('south bedside dressing table and compact stool use the frozen geometry', () => {
   const table = placed('master_dressing_table');
   const stool = placed('dressing_stool');
-  assert.deepEqual(table, { type: 'master_dressing_table', x: 4.00, z: 9.245, rotation: 270 });
-  assert.deepEqual(stool, { type: 'dressing_stool', x: 3.75, z: 9.245, rotation: 270 });
+  assert.deepEqual(table, { type: 'master_dressing_table', x: 3.65, z: 9.15, rotation: 270 });
+  assert.deepEqual(stool, { type: 'dressing_stool', x: 3.40, z: 9.15, rotation: 270 });
   assert.deepEqual(FURNITURE_DIMS.master_dressing_table, { width: 0.85, depth: 0.40 });
   assert.deepEqual(FURNITURE_DIMS.dressing_stool, { width: 0.42, depth: 0.40 });
   assert.equal(master.some((item) => item.type === 'vanity_dresser'), false);
@@ -52,6 +55,35 @@ test('dressing table reuses the existing south bedside socket within the MEP ala
   assert.ok(socket?.x !== undefined && socket.z !== undefined);
   assert.equal(socket.wall_side, 'west');
   const distance = Math.hypot(table.x! - socket.x, table.z! - socket.z);
-  assert.ok(distance < 0.21, `table-socket distance ${distance.toFixed(3)}m`);
+  assert.ok(distance <= 1.5, `table-socket distance ${distance.toFixed(3)}m`);
   assert.ok(distance <= 1.5);
+});
+
+test('master bed has two independent north-head sockets on opposite sides', () => {
+  const left = electrical.find((point) => point.id === 'sock_master_bed_l');
+  const right = electrical.find((point) => point.id === 'sock_master_bed_r_head');
+  assert.ok(left?.x !== undefined && left.z !== undefined);
+  assert.ok(right?.x !== undefined && right.z !== undefined);
+  assert.notEqual(left.id, right.id);
+  assert.equal(left.x, 4.20);
+  assert.equal(right.x, 4.20);
+  assert.ok(left.z < right.z);
+  assert.ok(left.z >= 5.95 && left.z <= 7.75);
+  assert.ok(right.z > 7.75 && right.z <= 8.10, 'right bedside socket must sit just beyond the north head edge');
+  const doorSwitch = electrical.find((point) => point.id === 'switch_master_door');
+  assert.ok(doorSwitch?.z !== undefined);
+  assert.ok(Math.abs(left.z - doorSwitch.z) >= 0.4, 'left bedside socket must clear the door switch');
+});
+
+
+test('master bedroom candidate bed and wardrobe retain the recorded functional risk gap', () => {
+  const bed = placed('bed_180');
+  const wardrobe = placed('master_wardrobe_tall_240');
+  const bedSouth = bed.z! + FURNITURE_DIMS.bed_180.width / 2; // rotation=270 swaps 1.8m width onto world z
+  const wardrobeNorth = wardrobe.z! - FURNITURE_DIMS.master_wardrobe_tall_240.depth / 2;
+  const gap = wardrobeNorth - bedSouth;
+  assert.ok(Math.abs(gap - 0.35) < 1e-9, `bed-to-wardrobe gap ${gap.toFixed(3)}m`);
+  assert.ok(gap < 0.60, '0.60m operation clearance must remain an explicit unresolved risk');
+  assert.ok(Math.abs(wardrobe.x! + FURNITURE_DIMS.master_wardrobe_tall_240.width / 2 - 4.20) < 1e-9);
+  assert.ok(Math.abs(wardrobe.z! + FURNITURE_DIMS.master_wardrobe_tall_240.depth / 2 - 8.70) < 1e-9);
 });

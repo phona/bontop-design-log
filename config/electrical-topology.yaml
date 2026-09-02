@@ -155,7 +155,7 @@ circuits:
     panel_id: panel_strong
     purpose: ordinary_power
     status: proposed
-    member_point_ids: [sock_master_bed_l, sock_master_bed_r, sock_master_tv, sock_master_projector, sock_master_curtain, sock_parent_bed_l, sock_parent_bed_r, sock_parent_desk, sock_parent_curtain, sock_study_desk, sock_study_curtain, sock_child_bed, sock_child_desk]
+    member_point_ids: [sock_master_bed_l, sock_master_bed_r, sock_master_bed_r_head, sock_master_projector, sock_master_curtain, sock_parent_bed_l, sock_parent_bed_r, sock_parent_desk, sock_parent_curtain, sock_study_desk, sock_study_curtain, sock_child_bed, sock_child_desk]
     note: "普通功能电源规划；回路容量/线径/断路器/现场分组待确认"
   - id: ordinary_power_service
     panel_id: panel_strong

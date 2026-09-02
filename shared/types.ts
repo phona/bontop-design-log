@@ -1034,7 +1034,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   bed_180: { width: 1.8, depth: 2.0 },
   bed_150: { width: 1.5, depth: 2.0 },
   wardrobe_240: { width: 2.4, depth: 0.6 },
-  wardrobe_240_split: { width: 2.4, depth: 0.8 }, // DEC-023 西段 1.2m 加深 0.8 + 东段 1.2m 标准 0.6（footprint 取最深）
+  master_wardrobe_tall_240: { width: 2.4, depth: 0.6 }, // 主卧修正版高柜：2.4×0.6×2.7m，东西向、柜门朝北，东端贴 w_mb_east
   wardrobe_180: { width: 1.8, depth: 0.6 },
   kitchen_countertop_bridge: { width: 0.6, depth: 0.6 },
   shelf: { width: 0.8, depth: 0.4 }, // DEC-023 置物架（开架，h2.0）

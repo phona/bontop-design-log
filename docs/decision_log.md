@@ -22,6 +22,19 @@
 
 ## 决策记录
 
+### DEC-2026-09-02-001 主卧候选方案落地（未落地施工）
+
+- **日期**：2026-09-02
+- **决策事项**：取消矮柜，衣柜南移，床北移，衣柜与梳妆台形成衣帽间，并允许同步移动相关电气点位
+- **选定方案**：床 `bed_180` 中心 `(3.20,6.50)`、rotation `270°`（项目当前朝向定义为不旋转）；高柜 `master_wardrobe_tall_160` 中心 `(3.40,8.35)`、rotation `0°`；梳妆台 `(3.65,9.15)`、rotation `270°`；凳 `(3.40,9.15)`、rotation `270°`
+- **决策依据**：床体 AABB `[2.20,4.20]×[5.60,7.40]`，视觉靠东墙；高柜实体柜体 AABB `[2.60,4.20]×[8.05,8.65]`，南缘严格小于南飘窗起始 `z=8.70`；床尾至柜体北侧/柜门操作侧净距 `8.05−7.40=0.65m`，达到0.6m目标；梳妆台低家具位于南飘窗下方，南帘/窗扇仍待确认
+- **电气**：床头插座/开关/壁灯同步至 rotation=270 床头区；梳妆台复用东墙南侧插座 `(4.20,9.15)`，保留 `wall_side: west`
+- **未解决 site_pending**：南飘窗窗帘堆叠、窗扇开启及现场完成面仍需确认；方案状态为候选/未落地，不代表施工完成
+- **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`shared/render/SceneBuilder.ts`、主卧迭代四份文档、测试
+- **决策人**：业主确认目标，坐标为基于权威几何与包围盒的实现候选
+
+---
+
 ### DEC-2026-07-03-001 项目控制框架确定
 
 - **日期**：2026-07-03
@@ -915,6 +928,21 @@
 - **预算语义**：纯洗手柜与干式梳妆台分别映射 vanity topic，专用凳映射 chair；洁具数量仍由纯洗手柜+faucet 计数，不沿用 `vanity_dresser` 语义。
 - **现场待确认**：东墙完成面/暗管探测；南帘电机端、堆叠厚度和闭帘扫掠；插座面板与桌后检修净空；墙排/存水弯与东侧抽屉避让；台盆实际开孔与屏风收边。
 - **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`config/plumbing.yaml`、`config/design-rules.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`scripts/verify/placement/verify-furniture-placement.ts`、`server/budget-calculator.ts`、`docs/dressing-map.md`、`docs/design-iterations/master-bedroom-20260901/`
+- **决策人**：业主
+
+---
+
+### DEC-2026-09-02-052 主卧候选方案视觉反馈修正（未落地施工）
+
+- **日期**：2026-09-02
+- **用户截图反馈证据**：高柜未贴上飘窗、柜体宽度不足且浪费空间、床贴到主卧门；本轮截图作为问题证据，不以像素反推坐标。
+- **权威复核**：主卧南上飘窗室内带为 x[0,4.2]、z[8.70,9.80]；`w_mb_east` 为连续实体墙；`d_mb` 位于 `w_strip_east`，门洞/门扇扫掠必须按 resolver/runtime 查询；目标对象必须记录稳定 objectId 与实际 AABB。
+- **修正版候选**：`master_wardrobe_tall_240 @(3.00,8.40), rotation=0`，2.4×0.6×2.7m，AABB x[1.80,4.20]、z[8.10,8.70]，东端贴 `w_mb_east`，南缘贴飘窗北缘且不进入飘窗带；柜门朝北。`bed_180 @(3.20,6.85), rotation=270`，AABB x[2.20,4.20]、z[5.95,7.75]；保持床靠东墙，不旋转。
+- **净距结论**：床北缘至当前 `d_mb` 门洞/扫掠目标约 `0.70m`；床南缘至高柜北侧柜门约 `8.10-7.75=0.35m`，属于功能风险/待验证，不能声称0.60m完全通过；若验证器判重叠，优先评估床 x 向西移0.05m，当前保持东缘贴东墙。
+- **电气**：rotation=270 的床头为北侧；东墙 `sock_master_bed_l @(4.20,6.20,h0.70)` 与新增独立 `sock_master_bed_r_head @(4.20,7.85,h0.70)` 分居床头左右两侧，均避开 `switch_master_door @(4.20,5.70)`；南侧 `sock_master_bed_r @(4.20,9.15)` 仅服务梳妆台，不复用。东墙 `w_mb_east` 为实体墙，`wall_side: west`。
+- **门向**：`d_mb` 保持 inward，仅 `hinge: end → start`，门洞位置不变，表示相反开向；现场门扇尺寸与实际扫掠仍需复核。
+- **状态**：新对齐/候选实施状态；方案未落地施工。`data/project-render-facts.json` 若因电气投影变化，仅作为派生文件重新生成。
+- **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`config/verify-rules.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`shared/render/SceneBuilder.ts`、相关 tests、`docs/dressing-map.md`、`docs/design-iterations/master-bedroom-20260901/`。
 - **决策人**：业主
 
 ---

@@ -609,8 +609,8 @@ test('shared SceneBuilder opens d_mb on the master_bath side of w_strip_east', (
   const box = new THREE.Box3().setFromObject(panel);
   assert.ok(Math.abs(box.min.x - 3.3) < 1e-6, `d_mb sweep start: ${box.min.x}`);
   assert.ok(Math.abs(box.max.x - 4.2) < 1e-6, `d_mb wall-side edge: ${box.max.x}`);
-  assert.ok(Math.abs(box.min.z - 5.53) < 1e-6, `d_mb hinge-side z: ${box.min.z}`);
-  assert.ok(Math.abs(box.max.z - 5.57) < 1e-6, `d_mb hinge-side z: ${box.max.z}`);
+  assert.ok(Math.abs(box.min.z - 4.63) < 1e-6, `d_mb hinge-side z: ${box.min.z}`);
+  assert.ok(Math.abs(box.max.z - 4.67) < 1e-6, `d_mb hinge-side z: ${box.max.z}`);
   assert.ok(box.max.x <= wall.x1 + 1e-6, 'd_mb panel must open toward the master_bath (west) side');
 });
 
