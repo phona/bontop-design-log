@@ -482,9 +482,20 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   },
   // ── Electrical ─
   {
+    // Formal wall socket placeholder: a readable faceplate, recessed box, and
+    // two dark receptacle openings. The local +z face is projected toward the
+    // authored wall side by InfrastructureBuilder; dimensions stay conservative
+    // while remaining legible in the 3D export without annotation icons.
     type: 'socket',
     parts: [
-      { shape: 'box', size: [0.12, 0.08, 0.02], position: [0, 0, 0], color: '#f0f0f0', roughness: 0.6 },
+      { shape: 'box', size: [0.18, 0.13, 0.045], position: [0, 0, 0], color: '#dfe3e5', roughness: 0.52, part: 'socket-box', materialRole: 'fixture_body' },
+      { shape: 'box', size: [0.172, 0.122, 0.012], position: [0, 0, 0.029], color: '#f7f8f8', roughness: 0.38, part: 'socket-faceplate', materialRole: 'faceplate' },
+      { shape: 'box', size: [0.045, 0.018, 0.008], position: [-0.045, 0, 0.039], color: '#4b5358', roughness: 0.72, part: 'socket-opening-left', materialRole: 'receptacle' },
+      { shape: 'box', size: [0.045, 0.018, 0.008], position: [0.045, 0, 0.039], color: '#4b5358', roughness: 0.72, part: 'socket-opening-right', materialRole: 'receptacle' },
+      { shape: 'box', size: [0.008, 0.112, 0.006], position: [-0.082, 0, 0.038], color: '#aab1b5', roughness: 0.48, part: 'socket-border-left', materialRole: 'faceplate_edge' },
+      { shape: 'box', size: [0.008, 0.112, 0.006], position: [0.082, 0, 0.038], color: '#aab1b5', roughness: 0.48, part: 'socket-border-right', materialRole: 'faceplate_edge' },
+      { shape: 'box', size: [0.164, 0.008, 0.006], position: [0, -0.057, 0.038], color: '#aab1b5', roughness: 0.48, part: 'socket-border-bottom', materialRole: 'faceplate_edge' },
+      { shape: 'box', size: [0.164, 0.008, 0.006], position: [0, 0.057, 0.038], color: '#aab1b5', roughness: 0.48, part: 'socket-border-top', materialRole: 'faceplate_edge' },
     ],
   },
   {

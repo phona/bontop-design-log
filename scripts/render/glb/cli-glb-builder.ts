@@ -39,6 +39,7 @@ export function buildCliHouseScene(
   const resolved = resolveLayout(readYaml<VertexLayoutYaml>(layoutPath));
   const house = readYaml<HouseYamlSubset>(housePath);
   const ceilingZones = readYaml<CeilingZone[]>(ceilingPath);
+  const electrical = parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf8'));
   const plumbing = parsePlumbingPoints(readFileSync('config/plumbing.yaml', 'utf8'));
   const projection = renderFactsPath
     ? parseProjectRenderFactsProjection(JSON.parse(readFileSync(renderFactsPath, 'utf8')))
@@ -58,6 +59,7 @@ export function buildCliHouseScene(
     elements,
     ceilingZones,
     furnishings: house.furnishings ?? {},
+    electrical,
     plumbing,
   });
   const result = buildScene({

@@ -143,6 +143,11 @@ function buildElectrical(point: ElectricalPoint, wallSegments: ReadonlyMap<strin
     developer_reserved: dimensions ? true : undefined,
     dimensions: dimensions ? { width: point.width ?? dimensions.width, depth: point.depth ?? dimensions.depth, height: panelHeight } : undefined,
   });
+  model.name = String(model.userData.objectId);
+  model.traverse((child) => {
+    if (child === model) return;
+    child.name = `${model.name}:${child.name || 'part'}`;
+  });
   return model;
 }
 

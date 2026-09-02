@@ -1214,14 +1214,14 @@ export class App {
     await this.annotationRenderer?.load();
     if (this.annotationRenderer) {
       this.houseScene.placeInfrastructureFixtures(
-        this.annotationRenderer.getElectricalData(),
+        [],
         this.annotationRenderer.getPlumbingData(),
       );
       try {
         const topologyResponse = await fetch('/api/electrical-topology');
         if (topologyResponse.ok) {
           this.electricalTopology = await topologyResponse.json() as ElectricalTopology & { lint?: { counts: { circuits: number; uncoveredPoints: number; warnings: number } } };
-          const electricalPoints = this.renderFacts?.electrical ?? this.annotationRenderer.getElectricalData();
+          const electricalPoints = this.renderFacts?.electrical ?? this.projectData?.house?.electrical ?? this.annotationRenderer.getElectricalData();
           this.houseScene.loadElectricalTopology(this.electricalTopology, electricalPoints);
           this.infoPanel.setElectricalTopology(this.electricalTopology);
           this.setupElectricalTopologyControls(this.electricalTopology);

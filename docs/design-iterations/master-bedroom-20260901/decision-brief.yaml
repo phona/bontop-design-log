@@ -11,7 +11,7 @@ frozen: true
 freeze_record:
   alignment_id: user-request-20260902
   original_user_response: 用户明确指出高柜未贴上飘窗、宽度不足、床贴到门上，并重申床靠东墙、rotation=270、取消矮柜、电气可随床调整
-  normalized_decisions: [床调整至3.20,6.85且rotation=270并远离门区, 新增2.40x0.60x2.70东西向高柜中心3.00,8.40且东端贴w_mb_east/南缘贴飘窗北缘, 梳妆台保持3.65,9.15, 南侧自动矮柜语义删除, 新增独立床头右侧插座 sock_master_bed_r_head @(4.20,7.85), d_mb 保持 inward 仅 hinge end→start 反向开门]
+  normalized_decisions: [床调整至3.20,6.85且rotation=270并远离门区, 新增2.40x0.60x2.70东西向高柜中心3.00,8.40且东端贴w_mb_east/南缘贴飘窗北缘, 梳妆台保持3.65,9.15, 南侧自动矮柜语义删除, 新增独立床头右侧插座 sock_master_bed_r_head @(4.20,7.50)，按床头北缘两端对称内缩落位, d_mb 保持 inward 仅 hinge end→start 反向开门]
   confirmed_by_user: true
   confirmed_at: "2026-09-02T00:00:00+08:00"
   evidence_refs: [user-request-20260902]

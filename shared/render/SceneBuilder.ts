@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { CurtainPoint, FurnishingsYaml, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, WallSegment, RoomObject, WallSide } from '../types.js';
+import type { CurtainPoint, ElectricalPoint, FurnishingsYaml, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, WallSegment, RoomObject, WallSide } from '../types.js';
 import { FURNITURE_DIMS } from '../types.js';
 import { buildInfrastructure } from './InfrastructureBuilder.js';
 import { buildLightingFixtures } from './LightingFixtureBuilder.js';
@@ -33,6 +33,7 @@ export interface SceneBuildReport {
   ceilings: number;
   ceilingZones: number;
   furniture: number;
+  electrical: number;
   plumbing: number;
   lightingFixtures: number;
   hvacEquipment: number;
@@ -85,6 +86,7 @@ export interface SceneBuilderInput {
   elements: SceneElement[];
   ceilingZones?: CeilingZoneSpec[];
   furnishings?: FurnishingsYaml;
+  electrical?: ElectricalPoint[];
   plumbing?: PlumbingPoint[];
   lightingFixtures?: RenderLightingFixture[];
   sceneName?: string;
@@ -116,6 +118,7 @@ export interface SceneBuildIndex {
   curtainRuns: Map<string, THREE.Object3D[]>;
   curtains: Map<string, CurtainBuildEntry>;
   slidingDoorGroups: Map<string, THREE.Group>;
+  electrical: Map<string, THREE.Group>;
   plumbing: Map<string, THREE.Group>;
   lightingFixtures: Map<string, THREE.Group>;
   wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>;
@@ -772,12 +775,12 @@ function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: S
 }
 
 export function buildScene(input: SceneBuilderInput): SceneBuildResult {
-  const report: SceneBuildReport = { rooms: 0, walls: 0, ceilings: 0, ceilingZones: 0, furniture: 0, plumbing: 0, lightingFixtures: 0, hvacEquipment: 0, hvacTerminals: 0, hvacStatus: input.options?.hvac?.projection?.hvac.status ?? 'unimplemented', skippedFurniture: [], skippedPlumbing: [], unsupported: [] };
+  const report: SceneBuildReport = { rooms: 0, walls: 0, ceilings: 0, ceilingZones: 0, furniture: 0, electrical: 0, plumbing: 0, lightingFixtures: 0, hvacEquipment: 0, hvacTerminals: 0, hvacStatus: input.options?.hvac?.projection?.hvac.status ?? 'unimplemented', skippedFurniture: [], skippedPlumbing: [], unsupported: [] };
   const provider = input.options?.materialProvider ?? {};
   const index = {
     rooms: Object.fromEntries(input.rooms.map((room) => [room.id, { ...room }])),
     floorMeshes: [], wallMeshes: [], ceilingMeshes: [], furnitureMeshes: [],
-    countertopMeshes: [], glassMeshes: [], doorMeshes: [], curtainRuns: new Map(), curtains: new Map(), slidingDoorGroups: new Map(), plumbing: new Map(), lightingFixtures: new Map(), wallSegments: new Map(), openingWallSegments: new Map(), lintels: new Map(), hvac: { equipment: new Map(), terminals: new Map(), all: new Map() },
+    countertopMeshes: [], glassMeshes: [], doorMeshes: [], curtainRuns: new Map(), curtains: new Map(), slidingDoorGroups: new Map(), electrical: new Map(), plumbing: new Map(), lightingFixtures: new Map(), wallSegments: new Map(), openingWallSegments: new Map(), lintels: new Map(), hvac: { equipment: new Map(), terminals: new Map(), all: new Map() },
   } as SceneBuildIndex;
   const exportRoot = new THREE.Group();
   exportRoot.name = 'HOUSE_EXPORT';
@@ -811,7 +814,12 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     if (duplicate) report.skippedPlumbing.push(`${point.id}:furnishing:${point.room}:${point.type}`);
     return !duplicate;
   });
-  const infrastructure = buildInfrastructure({ electrical: [], plumbing, wallSegments: index.wallSegments });
+  const infrastructure = buildInfrastructure({ electrical: input.electrical ?? [], plumbing, wallSegments: index.wallSegments });
+  for (const model of infrastructure.electrical) {
+    exportRoot.add(model);
+    index.electrical.set(String(model.userData.objectId), model);
+  }
+  report.electrical = infrastructure.electrical.length;
   for (const model of infrastructure.plumbing) {
     exportRoot.add(model);
     index.plumbing.set(String(model.userData.objectId), model);

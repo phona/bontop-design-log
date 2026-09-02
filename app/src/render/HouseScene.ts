@@ -9,7 +9,6 @@ import type {
   SceneApi,
   RoomObject,
   CameraState,
-  ElectricalMarker,
   CurrentScheme,
   TopicSelection,
   SceneElement,
@@ -71,7 +70,7 @@ interface ProjectData {
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
     ceilingZones?: import('@shared/types').CeilingZone[];
     furnishings?: FurnishingsYaml;
-    electrical?: ElectricalMarker[];
+    electrical?: ElectricalPoint[];
     sceneElements?: SceneElement[];
   };
   renderFactsProjection?: ProjectRenderFactsProjection;
@@ -576,6 +575,7 @@ export class HouseScene implements SceneApi {
       elements: projectData.house.sceneElements,
       ceilingZones: projectData.house.ceilingZones,
       furnishings: projectData.house.furnishings,
+      electrical: projectData.house.electrical,
     });
     const materialProvider: SceneMaterialProvider = {
       curtain: ({ element, layer }) => layer === 'sheer' ? this.materials.makeSheerMaterial() : layer === 'blackout' ? this.materials.makeBlackoutMaterial() : this.materials.makeBlindMaterial(element.height),

@@ -1,5 +1,6 @@
 import type {
   CeilingZone,
+  ElectricalPoint,
   FurnishingsYaml,
   PlumbingPoint,
   ResolvedRoom,
@@ -27,6 +28,7 @@ export interface SceneInputSource {
   elements?: ReadonlyArray<SceneElement>;
   ceilingZones?: ReadonlyArray<CeilingZone>;
   furnishings?: FurnishingsYaml;
+  electrical?: ReadonlyArray<ElectricalPoint>;
   plumbing?: ReadonlyArray<PlumbingPoint>;
 }
 
@@ -37,6 +39,7 @@ export interface SceneInput {
   elements: SceneElement[];
   ceilingZones: CeilingZone[];
   furnishings?: FurnishingsYaml;
+  electrical?: ElectricalPoint[];
   plumbing?: PlumbingPoint[];
 }
 
@@ -136,6 +139,7 @@ export function parseSceneInput(source: SceneInputSource): SceneInput {
     elements: [...suppliedElements, ...wallElements],
     ceilingZones: (source.ceilingZones ?? []).map((zone) => ({ ...zone, ...(zone.area ? { area: [...zone.area] as [number, number, number, number] } : {}) })),
     furnishings: source.furnishings,
+    electrical: source.electrical?.map((point) => ({ ...point })),
     plumbing: source.plumbing?.map((point) => ({ ...point })),
   };
 }

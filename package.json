@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "tsx --watch server/index.ts & cd app && npm run dev",
+    "dev": "bash scripts/dev.sh",
     "dev:server": "tsx --watch server/index.ts",
     "dev:app": "cd app && npm run dev",
     "build:app": "cd app && npm run build",
@@ -40,6 +40,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.0",
     "@types/supertest": "^6.0.2",
+    "@types/three": "^0.166.0",
     "jsdom": "^29.1.1",
     "supertest": "^7.0.0",
     "tsx": "^4.16.0",

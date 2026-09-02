@@ -240,6 +240,39 @@ test('FixtureFactory models the sink as a raised rim, basin body, and recessed i
   assert.ok(rimTop - interiorTop >= 0.12, 'basin must have a visible recessed interior');
 });
 
+test('shared SceneBuilder exports readable master-bedroom sockets as formal wall-projected objects', () => {
+  const electrical = [
+    { id: 'sock_master_bed_l', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, type: 'socket' as const, x: 4.2, z: 6.2, height: 0.7 },
+    { id: 'sock_master_bed_r_head', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, type: 'socket' as const, x: 4.2, z: 7.5, height: 0.7 },
+    { id: 'sock_master_bed_r', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, type: 'socket' as const, x: 4.2, z: 9.15, height: 0.7 },
+  ];
+  const result = buildScene({
+    rooms: [],
+    walls: [{ id: 'w_mb_east', x1: 4.2, z1: 5.0, x2: 4.2, z2: 10.0, height: 2.8 }],
+    elements: [],
+    electrical,
+  });
+  assert.equal(result.report.electrical, electrical.length);
+  assert.equal(result.index.electrical.size, electrical.length);
+  result.exportRoot.updateMatrixWorld(true);
+  const expectedZ = [6.2, 7.5, 9.15];
+  for (const [index, point] of electrical.entries()) {
+    const object = result.index.electrical.get(`electrical:${point.id}`);
+    assert.ok(object);
+    assert.equal(object.userData.objectId, `electrical:${point.id}`);
+    assert.equal(object.parent, result.exportRoot);
+    assert.equal(object.visible, true);
+    assert.equal(object.userData.wallSide, 'west');
+    assert.ok(Math.abs(object.position.x - 4.125) < 1e-9, 'socket must project 7.5cm onto the west face');
+    assert.equal(object.position.y, 0.7);
+    assert.ok(Math.abs(object.position.z - expectedZ[index]) < 1e-9);
+    assert.ok(Math.abs(object.rotation.y + Math.PI / 2) < 1e-9, 'socket must face west');
+    const bounds = new THREE.Box3().setFromObject(object);
+    assert.ok(bounds.max.x - bounds.min.x > 0 && bounds.max.y - bounds.min.y > 0 && bounds.max.z - bounds.min.z > 0, 'socket placeholder must have non-zero exposed geometry');
+    assert.ok(object.children.length >= 8, 'socket must expose box, faceplate, openings, and border parts without annotations');
+  }
+});
+
 test('shared SceneBuilder exports configured lighting fixture geometry without lights', () => {
   const types = ['pendant', 'track_light', 'dome', 'ceiling_light', 'downlight', 'wall_lamp', 'led_strip'] as const;
   const fixtures: RenderLightingFixture[] = types.map((type, index) => ({

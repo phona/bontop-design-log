@@ -32,6 +32,7 @@ import type { MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
 import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml, VertexLayoutYaml } from '../shared/types.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
+const HOST = process.env.HOST ?? 'localhost';
 const DATA_DIR = process.env.DATA_DIR ?? './data';
 const CONFIG_PATH = process.env.CONFIG_PATH ?? 'config/design-rules.yaml';
 
@@ -228,8 +229,8 @@ app.use('/api/electrical', createElectricalRouter('config/electrical.yaml'));
 app.use('/api/plumbing', createPlumbingRouter('config/plumbing.yaml'));
 
 attachMcpTransports(app, () => createMcpServer(apiDeps)).then(() => {
-  const server = app.listen(PORT, () => {
-    console.log(`Bontop design server listening on http://localhost:${PORT}`);
+  const server = app.listen(PORT, HOST, () => {
+    console.log(`Bontop design server listening on http://${HOST}:${PORT}`);
   });
 
   designRulesLoader.startWatching();

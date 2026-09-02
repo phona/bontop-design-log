@@ -24,10 +24,10 @@ datums:
     anchor: { kind: wall_anchor, ref: w_mb_east, wall_side: west, service_ref: null }
     source_refs: { fact_refs: [fact-bed-candidate, fact-bed-head-sockets, fact-east-wall], decision_refs: [user-request-20260902] }
     views:
-      plan: { required: true, origin: 东墙 w_mb_east 墙线, axes: x东西/z南北, direction: 床头朝北（rotation=270）, position: {left: {x: 4.20, z: 6.20}, right: {x: 4.20, z: 7.85}}, rotation: 0, dimensions: {bed_aabb: {x: [2.20,4.20], z: [5.95,7.75]}}, dimension_semantics: wall_points }
+      plan: { required: true, origin: 东墙 w_mb_east 墙线, axes: x东西/z南北, direction: 床头朝北（rotation=270）, position: {left: {x: 4.20, z: 6.20}, right: {x: 4.20, z: 7.50}}, rotation: 0, dimensions: {bed_aabb: {x: [2.20,4.20], z: [5.95,7.75]}}, dimension_semantics: wall_points }
       elevation: { required: true, viewing_side: west, vertical_axis: y, height: 0.70, dimensions: {left: 2, right: 2}, sill: 0, datum_offset: 0, dimension_semantics: overall }
       section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {wall_side: 0, front: 0.15}, thickness: null, dimension_semantics: clear }
-    geometry: { wall: w_mb_east, wall_side: west, left: {id: sock_master_bed_l, x: 4.20, z: 6.20}, right: {id: sock_master_bed_r_head, x: 4.20, z: 7.85}, height: 0.70 }
+    geometry: { wall: w_mb_east, wall_side: west, left: {id: sock_master_bed_l, x: 4.20, z: 6.20}, right: {id: sock_master_bed_r_head, x: 4.20, z: 7.50}, height: 0.70 }
     constraints: [床头为 bed_180 AABB 北缘 z=5.95，两个插座沿东墙分居床头左右侧，避开门口开关 switch_master_door z=5.70，不使用南侧梳妆台插座 sock_master_bed_r]
     interfaces: [bed_180, switch_master_door]
     validation_refs: [verify:all, config-regression-test, visual-east-wall]
