@@ -116,6 +116,24 @@ const GlassInfillSchema = z
   })
   .strict();
 
+const FrostedPrivacySchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('frosted_privacy'),
+    wall: z.string().min(1).optional(),
+    walls: z.array(z.string().min(1)).min(1).optional(),
+    points: z.array(CurtainPointSchema).min(2).optional(),
+    height: z.number().positive().default(2.8),
+    sill: z.number().min(0).default(0),
+    // 相对幕墙法向的室内/玻璃侧偏移（米）；正值按墙体内侧解算
+    offset: z.number().min(0).max(0.5).default(0.06),
+    finish: z.literal('frosted_privacy').default('frosted_privacy'),
+  })
+  .strict()
+  .refine(d => d.points || d.wall || (d.walls && d.walls.length > 0), {
+    message: 'Must specify points, wall, or walls',
+  });
+
 const FloorRegionSchema = z
   .object({
     id: z.string().min(1),
@@ -169,6 +187,8 @@ const CurtainSchema = z
     room: z.string().min(1).optional(),
     kind: z.enum(['sheer_blackout', 'blinds']).default('sheer_blackout'),
     height: z.number().positive().default(2.8),
+    // 室内侧偏移（米）：默认 0.12 布帘位；百叶贴框安装时显式给小值（SceneBuilder.addCurtain 消费）
+    offset: z.number().min(0).max(0.5).optional(),
   })
   .strict()
   .refine(d => d.points || d.wall || (d.walls && d.walls.length > 0), {
@@ -188,6 +208,7 @@ const OverlaySchema = z
           SlidingDoorRunSchema,
           HingedGlassDoorSchema,
           GlassInfillSchema,
+          FrostedPrivacySchema,
           FloorRegionSchema,
           BaySillSchema,
           RailingRunSchema,
@@ -247,7 +268,7 @@ export function mergeSceneElements(
     .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ, rooms: w.rooms, bayRooms: w.bayRooms }));
 
   for (const el of elements) {
-    if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill' || el.type === 'railing_run' || el.type === 'curtain') {
+    if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill' || el.type === 'frosted_privacy' || el.type === 'railing_run' || el.type === 'curtain') {
       const elAny = el as Record<string, unknown>;
       const wallRef = elAny.wall ?? elAny.walls;
       if (wallRef) {

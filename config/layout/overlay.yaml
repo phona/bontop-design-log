@@ -215,9 +215,18 @@ elements:
   # === 窗帘（2026-08-02）：引用墙 id 保持 vertices 联动；kind 显式指定（湿区百叶，其余纱帘+遮光） ===
   # 客餐厅（南向落地玻璃幕）
   - { id: curtain_living_south, type: curtain, wall: w_liv_south, room: living_dining, kind: sheer_blackout, height: 2.8 }
-  # 主卧（西墙存储条带 + 飘窗段 + 南墙）
-  - { id: curtain_master_west, type: curtain, walls: [w_west_mid, w_west_upper], room: master_bedroom, kind: sheer_blackout, height: 2.8 }
+  # 主卧（西墙飘窗段 + 南墙；w_west_mid 条带段 2026-09-02 拆分为盆区百叶格 + 布帘段，见下两行）
+  - { id: curtain_master_west, type: curtain, walls: [w_west_upper], room: master_bedroom, kind: sheer_blackout, height: 2.8 }
   - { id: curtain_master_south, type: curtain, wall: w_mb_south, room: master_bedroom, kind: sheer_blackout, height: 2.8 }
+  # 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：
+  # 盆区+站位段（z[2.86,4.00]）改百叶独立成段、无织物（同日业主追加：百叶南延过台面南缘 0.6m，罩住站位溅水区）；
+  # 增加同范围浅色磨砂隐私层；布帘从 z=4.06 起挂，z[4.00,4.06] 保留为无构件收口空隙。
+  # 两处用显式 points，暂失 vertices 联动；量房定竖梃后在 model-geometry 切分 w_west_mid 并改回墙引用。
+  # 百叶 room 归 master_bath（湿区百叶同组控制；master_bedroom 已有 sheer_blackout，projection 禁止同房间混 kind）。
+  # 百叶 offset 0.03 贴框安装位，避免与洗手柜西脸（x=0.05）干涉。
+  - { id: curtain_master_strip_fabric, type: curtain, points: [{ x: 0, z: 4.06 }, { x: 0, z: 5.55 }], room: master_bedroom, kind: sheer_blackout, height: 2.8 }
+  - { id: curtain_mb_washbasin_blinds, type: curtain, points: [{ x: 0, z: 2.86 }, { x: 0, z: 4.00 }], room: master_bath, kind: blinds, height: 2.8, offset: 0.03 }
+  - { id: frosted_mb_washbasin_privacy, type: frosted_privacy, points: [{ x: 0, z: 2.86 }, { x: 0, z: 4.00 }], height: 2.8, sill: 0.0, finish: frosted_privacy }
   # 父母房（南墙）
   - { id: curtain_parent_south, type: curtain, wall: w_st_south, room: study, kind: sheer_blackout, height: 2.8 }
   # 书房（东南次卧南墙）

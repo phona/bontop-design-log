@@ -51,6 +51,7 @@ export interface SceneMaterialProvider {
   lintel?: (context: { wall: Extract<SceneElement, { type: 'wall' }>; opening: ResolvedOpening }) => THREE.Material;
   curtain?: (context: { element: Extract<SceneElement, { type: 'curtain' }>; layer: 'sheer' | 'blackout' | 'blinds'; variant: 'deployed' | 'gathered' }) => THREE.Material;
   curtainRun?: (element: Extract<SceneElement, { type: 'curtain_run' }>) => THREE.Material;
+  frostedPrivacy?: (element: Extract<SceneElement, { type: 'frosted_privacy' }>) => THREE.Material;
   showerScreen?: (element: Extract<SceneElement, { type: 'shower_screen' }>) => THREE.Material;
   slidingDoorRail?: (element: Extract<SceneElement, { type: 'sliding_door_run' }>) => THREE.Material;
   slidingDoorFrame?: (element: Extract<SceneElement, { type: 'sliding_door_run' }>) => THREE.Material;
@@ -141,7 +142,7 @@ type CurtainElement = Extract<SceneElement, { type: 'curtain' }>;
 type SlidingDoorElement = Extract<SceneElement, { type: 'sliding_door_run' }>;
 type HingedGlassDoorElement = Extract<SceneElement, { type: 'hinged_glass_door' }>;
 
-function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'curtainRun' | 'showerScreen' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass' | 'hingedGlassDoorFrame' | 'hingedGlassDoorGlass'>> {
+function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'curtainRun' | 'frostedPrivacy' | 'showerScreen' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass' | 'hingedGlassDoorFrame' | 'hingedGlassDoorGlass'>> {
   return {
     wall: ({ shaft }) => new THREE.MeshStandardMaterial({ color: shaft ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 }),
     door: ({ elevator }) => new THREE.MeshStandardMaterial({ color: elevator ? 0x888899 : 0x8b4513, roughness: elevator ? 0.25 : 0.6, metalness: elevator ? 0.85 : 0 }),
@@ -149,6 +150,7 @@ function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door
     lintel: ({ wall }) => new THREE.MeshStandardMaterial({ color: wall.id.includes('elev') ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 }),
     curtain: ({ layer, variant }) => new THREE.MeshStandardMaterial({ color: layer === 'sheer' ? 0xf5f2ea : layer === 'blackout' ? 0xcfc8ba : 0xdfe3e6, transparent: layer !== 'blackout', opacity: layer === 'sheer' ? 0.35 : layer === 'blinds' ? 0.75 : 1, roughness: layer === 'sheer' ? 0.9 : layer === 'blinds' ? 0.6 : 0.95, side: THREE.DoubleSide, depthWrite: false }),
     curtainRun: () => glassMaterial(),
+    frostedPrivacy: () => new THREE.MeshStandardMaterial({ color: 0xe8edf0, transparent: true, opacity: 0.58, roughness: 0.92, metalness: 0, side: THREE.DoubleSide, depthWrite: false }),
     showerScreen: () => glassMaterial(),
     slidingDoorRail: () => new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 }),
     slidingDoorFrame: () => new THREE.MeshStandardMaterial({ color: 0x141414, metalness: 0.5, roughness: 0.45 }),
@@ -217,11 +219,12 @@ function addRoomGeometry(root: THREE.Group, room: ResolvedRoom, report: SceneBui
   }
 }
 
-function addLineMeshes(root: THREE.Group, points: Point[], height: number, thickness: number, material: THREE.Material, type: string, id: string): void {
+function addLineMeshes(root: THREE.Group, points: Point[], height: number, thickness: number, material: THREE.Material, type: string, id: string, y = 0): void {
   for (let i = 0; i < points.length - 1; i++) {
     const mesh = createLineMesh(points[i], points[i + 1], height, thickness, material);
     if (!mesh) continue;
     setSceneObjectMetadata(mesh, type, `${id}:${i}`);
+    mesh.position.y += y;
     root.add(mesh);
   }
 }
@@ -450,7 +453,8 @@ function addHingedGlassDoor(root: THREE.Group, element: HingedGlassDoorElement, 
 function addCurtain(root: THREE.Group, element: CurtainElement, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex): void {
   if (element.points.length < 2) return;
   const materials = { ...defaultMaterials(), ...provider };
-  const points = offsetCurtainPointsInterior(element.points, rooms, 0.12);
+  // offset 声明式可配（默认 0.12 布帘位）：百叶贴框安装时用更小值，避免与台下柜体干涉
+  const points = offsetCurtainPointsInterior(element.points, rooms, element.offset ?? 0.12);
   const gathered = gatheredCurtainSegments(points);
   const height = element.height - 0.1;
   const create = (path: CurtainPoint[], layer: 'sheer' | 'blackout' | 'blinds', variant: 'deployed' | 'gathered', meshHeight = height, y = 0.05, segment: 'left' | 'right' | null = null) => {
@@ -566,6 +570,16 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         return;
       }
       addLineMeshes(root, points, element.height, 0.025, glassMaterial(), element.type, id);
+      return;
+    }
+    case 'frosted_privacy': {
+      if (element.points.length < 2) return;
+      const materials = { ...defaultMaterials(), ...provider };
+      // Frosted film sits on the glass-side of the curtain-wall path; the blind remains on the room-side.
+      const side = element.points.at(-1)!.x === element.points[0].x ? -1 : 1;
+      const offset = element.offset ?? 0.06;
+      const filmPoints = element.points.map((point) => ({ ...point, x: point.x + side * offset }));
+      addLineMeshes(root, filmPoints, element.height, 0.012, materials.frostedPrivacy(element), element.type, id, element.sill ?? 0.01);
       return;
     }
     case 'curtain':

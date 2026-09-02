@@ -539,13 +539,14 @@ export type SceneElement =
       height: number;
       sill: number;
     }
+  | { type: 'frosted_privacy'; id: string; points: CurtainPoint[]; height: number; sill?: number; offset?: number; finish: 'frosted_privacy' }
   | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string }
   | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[] }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }
   | { type: 'hinged_glass_door'; id: string; points: [OverlayPoint, OverlayPoint]; height: number; open?: boolean; swing?: 'north' | 'south'; hinge?: 'start' | 'end' }
   | { type: 'shower_screen'; id: string; points: OverlayPoint[]; height: number; sill?: number }
-  | { type: 'curtain'; id: string; points: CurtainPoint[]; height: number; room?: string; kind?: 'sheer_blackout' | 'blinds' };
+  | { type: 'curtain'; id: string; points: CurtainPoint[]; height: number; room?: string; kind?: 'sheer_blackout' | 'blinds'; offset?: number };
 
 export interface CadLayoutYaml {
   version: string;
@@ -1044,7 +1045,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   mb_vanity_lower_board: { width: 1.50, depth: 0.32 }, // 下部悬浮板：与底柜同宽同轴
   mb_vanity_main_board: { width: 1.50, depth: 0.32 }, // 主板：与下板同宽同深
   mb_vanity_pvc_box: { width: 1.40, depth: 0.22 }, // PVC 顶部 HVAC 冷凝水管线盒：贴近房顶，前侧带可见检修盖与低亮灯缝
-  mb_washbasin_cabinet: { width: 1.10, depth: 0.50 }, // 2026-09-01 主卫外纯洗手柜：保持原外轮廓，取消梳妆膝位，东侧封闭抽屉收纳
+  mb_washbasin_cabinet: { width: 1.05, depth: 0.50 }, // 2026-09-02 初版：西让 5cm 百叶升降缝、东留 5cm 门套缝，收宽 1.10→1.05 且盆居中（假定玻璃通高，待量房终核）；2026-09-01 取消梳妆膝位，东侧封闭抽屉收纳
   master_dressing_table: { width: 0.85, depth: 0.40 }, // 南床头独立干式梳妆台：rotation=90 后长边沿世界 z，桌面支撑镜与插接镜前灯
   dressing_stool: { width: 0.42, depth: 0.40 }, // 可完整收进 master_dressing_table 台下的专用小凳
   towel_set: { width: 0.04, depth: 0.28 }, // Blender add_bath_fixtures 比例的声明式毛巾杆+毛巾，按东墙贴靠投影登记

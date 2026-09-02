@@ -36,11 +36,13 @@ test('south bedside dressing table and compact stool use the frozen geometry', (
 });
 
 test('washbasin-only cabinet preserves envelope and plumbing center without a dressing chair', () => {
-  assert.deepEqual(placed('mb_washbasin_cabinet'), { type: 'mb_washbasin_cabinet', x: 0.55, z: 3.16, rotation: 0 });
-  assert.deepEqual(FURNITURE_DIMS.mb_washbasin_cabinet, { width: 1.10, depth: 0.50 });
+  // 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：
+  // 柜体东移 5cm 收宽 1.05，盆/龙头居中至 x=0.575
+  assert.deepEqual(placed('mb_washbasin_cabinet'), { type: 'mb_washbasin_cabinet', x: 0.575, z: 3.16, rotation: 0 });
+  assert.deepEqual(FURNITURE_DIMS.mb_washbasin_cabinet, { width: 1.05, depth: 0.50 });
   const faucet = plumbing.find((point) => point.id === 'faucet_mbath_vanity');
   assert.ok(faucet);
-  assert.equal(faucet.x, 0.26);
+  assert.equal(faucet.x, 0.575);
   assert.equal(faucet.z, 2.96);
 });
 

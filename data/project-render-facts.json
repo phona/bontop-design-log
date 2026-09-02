@@ -410,10 +410,10 @@
       "id": "faucet_mbath_vanity",
       "room": "master_bedroom",
       "type": "faucet",
-      "x": 0.26,
+      "x": 0.575,
       "z": 2.96,
       "wall": "w_mbath_south",
-      "note": "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-01 柜体改为纯洗手柜 mb_washbasin_cabinet @0.55,3.16，保持盆心 x=0.26 与冷热水接口，取消梳妆膝位；待量房确认下沉:300 分界线及东侧抽屉对管线避让",
+      "note": "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高）：盆随柜体收宽东移并居中至 x=0.575，柜体 x[0.05,1.10]；待量房核原立管位置（决定东移终值）、下沉:300 分界线及东侧抽屉对管线避让",
       "height": 0.8,
       "wallSide": "south"
     },
@@ -421,10 +421,10 @@
       "id": "drain_mbath_vanity",
       "room": "master_bedroom",
       "type": "drain",
-      "x": 0.26,
+      "x": 0.575,
       "z": 2.96,
       "wall": "w_mbath_south",
-      "note": "2026-08-25 台盆墙排下水（h0.35），穿墙回主卫沉箱接原立管；待量房确认下沉:300 分界线与立管位置",
+      "note": "2026-08-25 台盆墙排下水（h0.35），穿墙回主卫沉箱接原立管；2026-09-02 初版随盆居中移至 x=0.575（假定情形，待量房核立管位置与下沉:300 分界线后终核）",
       "height": 0.35,
       "wallSide": "south"
     },
@@ -1591,96 +1591,84 @@
   "presentation": {
     "curtains": {
       "source": {
-        "default": "privacy",
+        "default": "open",
         "roomOverrides": {},
-        "updatedAt": "2026-08-29T08:06:20.134Z"
+        "updatedAt": "2026-09-01T15:15:12.526Z"
       },
       "effectiveByRoom": {
-        "bedroom_nw": "privacy",
-        "bedroom_se": "privacy",
-        "living_dining": "privacy",
-        "master_bath": "privacy",
-        "master_bedroom": "privacy",
-        "study": "privacy"
+        "bedroom_nw": "open",
+        "bedroom_se": "open",
+        "living_dining": "open",
+        "master_bath": "open",
+        "master_bedroom": "open",
+        "study": "open"
       },
       "curtains": [
         {
           "id": "curtain_living_south",
           "roomId": "living_dining",
           "kind": "sheer_blackout",
-          "state": "privacy",
-          "expectedVisibleNodes": [
-            "curtain_living_south:sheer:deployed",
-            "curtain_living_south:blackout:gathered:left",
-            "curtain_living_south:blackout:gathered:right"
-          ]
+          "state": "open",
+          "expectedVisibleNodes": []
         },
         {
           "id": "curtain_master_south",
           "roomId": "master_bedroom",
           "kind": "sheer_blackout",
-          "state": "privacy",
-          "expectedVisibleNodes": [
-            "curtain_master_south:sheer:deployed",
-            "curtain_master_south:blackout:gathered:left",
-            "curtain_master_south:blackout:gathered:right"
-          ]
+          "state": "open",
+          "expectedVisibleNodes": []
+        },
+        {
+          "id": "curtain_master_strip_fabric",
+          "roomId": "master_bedroom",
+          "kind": "sheer_blackout",
+          "state": "open",
+          "expectedVisibleNodes": []
         },
         {
           "id": "curtain_master_west",
           "roomId": "master_bedroom",
           "kind": "sheer_blackout",
-          "state": "privacy",
-          "expectedVisibleNodes": [
-            "curtain_master_west:sheer:deployed",
-            "curtain_master_west:blackout:gathered:left",
-            "curtain_master_west:blackout:gathered:right"
-          ]
+          "state": "open",
+          "expectedVisibleNodes": []
+        },
+        {
+          "id": "curtain_mb_washbasin_blinds",
+          "roomId": "master_bath",
+          "kind": "blinds",
+          "state": "open",
+          "expectedVisibleNodes": []
         },
         {
           "id": "curtain_mbath_corner",
           "roomId": "master_bath",
           "kind": "blinds",
-          "state": "privacy",
-          "expectedVisibleNodes": [
-            "curtain_mbath_corner:blinds:deployed"
-          ]
+          "state": "open",
+          "expectedVisibleNodes": []
         },
         {
           "id": "curtain_nw_north",
           "roomId": "bedroom_nw",
           "kind": "sheer_blackout",
-          "state": "privacy",
-          "expectedVisibleNodes": [
-            "curtain_nw_north:sheer:deployed",
-            "curtain_nw_north:blackout:gathered:left",
-            "curtain_nw_north:blackout:gathered:right"
-          ]
+          "state": "open",
+          "expectedVisibleNodes": []
         },
         {
           "id": "curtain_parent_south",
           "roomId": "study",
           "kind": "sheer_blackout",
-          "state": "privacy",
-          "expectedVisibleNodes": [
-            "curtain_parent_south:sheer:deployed",
-            "curtain_parent_south:blackout:gathered:left",
-            "curtain_parent_south:blackout:gathered:right"
-          ]
+          "state": "open",
+          "expectedVisibleNodes": []
         },
         {
           "id": "curtain_study_south",
           "roomId": "bedroom_se",
           "kind": "sheer_blackout",
-          "state": "privacy",
-          "expectedVisibleNodes": [
-            "curtain_study_south:sheer:deployed",
-            "curtain_study_south:blackout:gathered:left",
-            "curtain_study_south:blackout:gathered:right"
-          ]
+          "state": "open",
+          "expectedVisibleNodes": []
         }
       ],
-      "snapshotSha256": "f1a738c5148b988a25947c2f4378d5325c4dc1c6b39c0d528c2e43c2c4f653f9"
+      "snapshotSha256": "f52993186c91eb034fe90bbd4fde4860d5b2f9ce243cd4dc2ba30f4fe59e6f3f"
     }
   }
 }

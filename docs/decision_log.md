@@ -916,3 +916,56 @@
 - **现场待确认**：东墙完成面/暗管探测；南帘电机端、堆叠厚度和闭帘扫掠；插座面板与桌后检修净空；墙排/存水弯与东侧抽屉避让；台盆实际开孔与屏风收边。
 - **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`config/plumbing.yaml`、`config/design-rules.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`scripts/verify/placement/verify-furniture-placement.ts`、`server/budget-calculator.ts`、`docs/dressing-map.md`、`docs/design-iterations/master-bedroom-20260901/`
 - **决策人**：业主
+
+---
+
+### DEC-2026-09-02-051 主卧洗手柜角部窗帘分段 + 柜体东移收宽 + 盆居中（初版，待量房终核）
+
+- **日期**：2026-09-02
+- **决策事项**：解决 `mb_washbasin_cabinet` 西缘贴西玻璃幕墙与 `curtain_master_west` 织物帘（纱+遮光、通高）同角的溅水/发霉/西晒冲突；并响应美观诉求将盆居中。
+- **可选方案**：
+  1. 方案 A：盆区幕墙格改百叶独立成框、布帘分段（选定）
+  2. 方案 B：保留通长布帘，仅贴膜+挡水沿补强（缓解非解决，否决）
+  3. 方案 C：洗手柜迁出幕墙角（需重走给排水且门洞以东仅 0.65m 放不下 1.10m 柜，否决）
+  4. 柜体留 15cm 帘缝变体（布帘堆叠仍扫柜边且盆缩小，否决）
+  5. 内置百叶中空玻璃（开发商幕墙不可更换，否决）
+- **选定方案（初版，假定"玻璃通高"情形）**：
+  - `curtain_master_west` 拆为三段：`curtain_master_west`（walls=[w_west_upper]，布帘）；`curtain_master_strip_fabric`（points z[3.45,5.55]，布帘）；`curtain_mb_washbasin_blinds`（points z[2.86,3.45]，铝百叶，`offset: 0.03` 贴框位，room 归 master_bath 与湿区百叶同组——projection/presentation 禁止同房间混 kind）。分段点 z=3.45 为假定竖梃位，待量房后在 model-geometry 切分 w_west_mid 并改回墙引用。
+  - `mb_washbasin_cabinet` 东移 5cm 且收宽 1.10→1.05（`@(0.575,3.16)`，世界 x[0.05,1.10]）：西让百叶升降缝、东留门套缝；盆/龙头/墙排居中至 x=0.575（`faucet_mbath_vanity`、`drain_mbath_vanity` 随移）。
+  - 新增声明式字段：curtain 元素 `offset`（overlay schema + SceneBuilder 消费，默认 0.12 布帘位）。
+  - 分界线施工节点：竖梃优先借用，错位时 3~4cm 黑色金属通顶立柱兜底（顶固定于窗帘盒底、底角码落地、中部连柜侧），**幕墙零附着**（不打孔/不粘胶/不贴膜）。
+- **决策依据**：溅水/发霉/冷凝为长期硬伤；对称居中同时让人与水点远离幕墙 ~0.3m；W_west_mid 全长 2.69m 中门洞占 x[1.15,1.95]，1.10m 柜唯一整段为 x[0,1.15]，居中诉求以"盆对柜体居中"实现而非柜体对墙居中。
+- **预算影响**：主卧布帘用量略减（盆区格 ~0.6m 宽改百叶）；新增百叶 1 格与可能的分界立柱，费用小幅增减互抵；docs/curtain-design.md 预算超支结论不变。
+- **现场待确认（解锁终核的四项复尺）**：幕墙竖梃分格位置；窗带标高（sill≈2.07/带高 0.76 是否属实，决定百叶做顶部带还是通高、柜体是否需东移）；原立管位置与下沉:300 分界线（决定盆心能否居中于 0.575）；墙排与东侧抽屉避让。
+- **关联文件**：`config/layout/overlay.yaml`、`config/house.yaml`、`config/plumbing.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`shared/render/SceneBuilder.ts`、`server/overlay-merge.ts`、`tests/server/curtain-config.test.ts`、`tests/server/master-bedroom-dressing.test.ts`、`tests/server/shared/scene-builder.test.ts`、`docs/curtain-design.md`、`docs/design-iterations/mb-washbasin-curtain-20260901/`
+- **决策人**：业主
+
+---
+
+### DEC-2026-09-02-051-补 百叶段南延至 z=4.00
+
+- **日期**：2026-09-02（同日业主追加）
+- **决策事项**：盆区百叶段南缘从 z=3.45 南延至 z=4.00，覆盖台面南缘（3.41）以外约 0.6m 的站位溅水区；布帘起点同步南移。分段点仍为假定值，量房按竖梃归位。
+- **关联文件**：`config/layout/overlay.yaml`、`docs/curtain-design.md`、`docs/design-iterations/mb-washbasin-curtain-20260901/`
+- **决策人**：业主
+
+---
+
+### DEC-2026-09-02-051-补2 分界立柱建模 + 布帘起点 4.00→4.06 消重合
+
+- **日期**：2026-09-02（同日业主发现分界处重合）
+- **决策事项**：运行时 AABB 复核发现布帘收拢堆叠（blackout gathered，x[0,0.12]）与百叶（x[-0.01,0.03]）在 z=4.00 分界处相交。布帘起点南移至 z=4.06，z[4.00,4.06] 由新建模的分界立柱 `curtain_divider_post`（黑钛 0.04×0.06×2.70m @(0.055,4.03)，furnishingTypeToTopic 归 hardware）占据，堆叠带 z[4.06,4.24] 与百叶不再相交。立柱置于 house.yaml 主卧列表末尾，不打乱既有 GLB 节点序号。量房若竖梃在位则删除立柱条目。
+- **关联文件**：`config/layout/overlay.yaml`、`config/house.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`config/design-rules.yaml`、`docs/design-iterations/mb-washbasin-curtain-20260901/`
+- **决策人**：业主
+
+---
+
+### DEC-2026-09-02-051-补3 磨砂隐私层 + 无构件收口，取消独立黑柱
+
+- **日期**：2026-09-02
+- **决策事项**：为洗手区增加固定隐私保障，同时降低分界施工复杂度与视觉突兀风险。
+- **选定方案**：盆区+站位段保留百叶 z[2.86,4.00]，增加浅色半透 `frosted_privacy` 视觉层；布帘自 z=4.06 起挂，z[4.00,4.06] 保留约 6cm 无构件收口空隙。优先借用实际幕墙竖梃；无合适竖梃时由百叶边框、轨道端头和空隙完成分界，不新增独立黑柱。
+- **隐私逻辑**：磨砂层提供固定“透光不透人”底层，百叶负责可调节遮阳与加强隐私，织物帘不进入台盆/站位区。
+- **幕墙原则**：磨砂层仅为室内可逆膜的模型视觉表达，不等于已批准施工；不在玻璃上打孔或粘结构件，最终按玻璃类型与现场条件确认。
+- **关联文件**：`config/layout/overlay.yaml`、`config/house.yaml`、`shared/types.ts`、`shared/render/SceneBuilder.ts`、`app/src/render/BrowserSceneMaterials.ts`、`server/overlay-merge.ts`、`scripts/verify/collision/verify-collision-coverage.ts`、`docs/curtain-design.md`、`docs/design-iterations/mb-washbasin-curtain-20260901/`
+- **决策人**：业主

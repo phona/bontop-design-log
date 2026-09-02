@@ -578,8 +578,9 @@ export class HouseScene implements SceneApi {
       furnishings: projectData.house.furnishings,
     });
     const materialProvider: SceneMaterialProvider = {
-      curtain: ({ layer }) => layer === 'sheer' ? this.materials.makeSheerMaterial() : layer === 'blackout' ? this.materials.makeBlackoutMaterial() : this.materials.makeBlindMaterial(),
+      curtain: ({ element, layer }) => layer === 'sheer' ? this.materials.makeSheerMaterial() : layer === 'blackout' ? this.materials.makeBlackoutMaterial() : this.materials.makeBlindMaterial(element.height),
       curtainRun: () => this.materials.makeLowEGlassMaterial(),
+      frostedPrivacy: () => this.materials.makeFrostedPrivacyMaterial(),
       showerScreen: () => this.materials.makeShowerScreenMaterial(),
       slidingDoorGlass: ({ paneWidth }) => this.materials.makeFlutedGlassMaterial(paneWidth),
       hingedGlassDoorFrame: () => new THREE.MeshStandardMaterial({ color: 0x202328, metalness: 0.7, roughness: 0.3 }),

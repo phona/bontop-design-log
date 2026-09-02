@@ -137,22 +137,26 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // 2026-09-01 主卫外纯洗手柜：保持原 1.10×0.50m 外轮廓和西侧盆心，取消梳妆膝位与椅子。
-    // 局部 -z 为靠墙侧，front 朝 +z；东侧改为完整封闭抽屉收纳。
+    // 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：
+    // 收宽 1.10→1.05（西让 5cm 百叶升降缝、东留 5cm 门套缝），盆/龙头/镜对柜体居中。
+    // 2026-09-01 主卫外纯洗手柜：取消梳妆膝位与椅子，东侧完整封闭抽屉收纳。
+    // 局部 -z 为靠墙侧，front 朝 +z。
     type: 'mb_washbasin_cabinet',
     parts: [
-      // 两段柜体各 0.55m 宽、在 x=0 处拼缝贴合；柜体顶面 y=0.77 与台面底面齐平，不留空缝。
-      { shape: 'box', size: [0.55, 0.77, 0.42], position: [-0.275, 0.385, 0], color: '#d7d9db', roughness: 0.45, part: 'basin-carcass', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.52, 0.68, 0.02], position: [-0.275, 0.41, 0.22], color: '#eef0f1', roughness: 0.35, part: 'basin-door', materialRole: 'door_front' },
-      { shape: 'box', size: [0.55, 0.77, 0.42], position: [0.275, 0.385, 0], color: '#d7d9db', roughness: 0.45, part: 'east-storage-carcass', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.52, 0.22, 0.02], position: [0.275, 0.62, 0.22], color: '#eef0f1', roughness: 0.35, part: 'east-drawer-upper', materialRole: 'drawer_front' },
-      { shape: 'box', size: [0.52, 0.44, 0.02], position: [0.275, 0.29, 0.22], color: '#eef0f1', roughness: 0.35, part: 'east-drawer-lower', materialRole: 'drawer_front' },
-      { shape: 'box', size: [1.10, 0.04, 0.50], position: [0, 0.79, 0], color: '#e8e6e0', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
-      { shape: 'box', size: [0.46, 0.12, 0.32], position: [-0.29, 0.87, 0], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
-      { shape: 'box', size: [0.05, 0.22, 0.05], position: [-0.29, 0.92, -0.16], color: '#c8ccd0', metalness: 0.6, roughness: 0.35, part: 'faucet', materialRole: 'hardware' },
-      { shape: 'box', size: [0.72, 0.72, 0.03], position: [-0.10, 1.43, -0.235], color: '#bcd2d8', roughness: 0.1, metalness: 0.6, part: 'wash-mirror', materialRole: 'mirror' },
+      // 两段柜体各 0.525m 宽、在 x=0 处拼缝；盆跨缝居中（实际柜体深化时台下走 U 形抽屉避让排水）。
+      // 柜体顶面 y=0.77 与台面底面齐平，不留空缝。
+      { shape: 'box', size: [0.525, 0.77, 0.42], position: [-0.2625, 0.385, 0], color: '#d7d9db', roughness: 0.45, part: 'basin-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.50, 0.68, 0.02], position: [-0.2625, 0.41, 0.22], color: '#eef0f1', roughness: 0.35, part: 'basin-door', materialRole: 'door_front' },
+      { shape: 'box', size: [0.525, 0.77, 0.42], position: [0.2625, 0.385, 0], color: '#d7d9db', roughness: 0.45, part: 'east-storage-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.50, 0.22, 0.02], position: [0.2625, 0.62, 0.22], color: '#eef0f1', roughness: 0.35, part: 'east-drawer-upper', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.50, 0.44, 0.02], position: [0.2625, 0.29, 0.22], color: '#eef0f1', roughness: 0.35, part: 'east-drawer-lower', materialRole: 'drawer_front' },
+      { shape: 'box', size: [1.05, 0.04, 0.50], position: [0, 0.79, 0], color: '#e8e6e0', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
+      { shape: 'box', size: [0.46, 0.12, 0.32], position: [0, 0.87, 0], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.05, 0.22, 0.05], position: [0, 0.92, -0.16], color: '#c8ccd0', metalness: 0.6, roughness: 0.35, part: 'faucet', materialRole: 'hardware' },
+      { shape: 'box', size: [0.72, 0.72, 0.03], position: [0, 1.43, -0.235], color: '#bcd2d8', roughness: 0.1, metalness: 0.6, part: 'wash-mirror', materialRole: 'mirror' },
     ],
   },
+
   {
     // 独立落地干式梳妆台：局部 x 为 0.85m 长边，局部 z 为 0.40m 深度；配置 rotation=270 后长边沿世界 z、局部 +z 正面朝西（-x），镜/灯所在局部 -z 靠背侧贴东墙。
     type: 'master_dressing_table',

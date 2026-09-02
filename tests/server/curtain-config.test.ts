@@ -18,7 +18,15 @@ describe('curtain overlay coverage', () => {
     assert.ok(!rooms.has('kitchen'), 'kitchen must remain without curtains');
 
     const byId = new Map(curtains.map((element) => [element.id, element]));
-    assert.deepEqual(refs(byId.get('curtain_master_west')!), ['w_west_mid', 'w_west_upper']);
+    // 2026-09-02 初版：w_west_mid 条带段拆分为盆区百叶格（points）+ 布帘段（points），
+    // curtain_master_west 只保留 w_west_upper 墙引用；量房后切墙并恢复墙引用
+    assert.deepEqual(refs(byId.get('curtain_master_west')!), ['w_west_upper']);
+    assert.equal(byId.get('curtain_master_strip_fabric')!.room, 'master_bedroom');
+    assert.equal(byId.get('curtain_mb_washbasin_blinds')!.kind, 'blinds');
+    assert.equal(byId.get('curtain_mb_washbasin_blinds')!.room, 'master_bath');
+    const frosted = overlay.elements.find((element) => element.type === 'frosted_privacy');
+    assert.deepEqual(frosted && 'points' in frosted ? frosted.points : [], [{ x: 0, z: 2.86 }, { x: 0, z: 4.00 }]);
+    assert.equal(frosted && 'finish' in frosted ? frosted.finish : undefined, 'frosted_privacy');
     assert.equal(byId.has('curtain_nw_west'), false);
     assert.deepEqual(refs(byId.get('curtain_nw_north')!), ['w_nw_north']);
     assert.deepEqual(refs(byId.get('curtain_mbath_corner')!), ['w_west_lower', 'w_west_ap', 'w_bath_north']);

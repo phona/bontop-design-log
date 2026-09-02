@@ -6,6 +6,19 @@ const GLASS_OPACITY = 0.6;
 /** Browser-only material factory for presentation-specific procedural materials. */
 export class BrowserSceneMaterials {
   private flutedGlassTexture: THREE.CanvasTexture | null = null;
+  private blindSlatTexture: THREE.CanvasTexture | null = null;
+
+  makeFrostedPrivacyMaterial(): THREE.MeshStandardMaterial {
+    return new THREE.MeshStandardMaterial({
+      color: 0xe8edf0,
+      transparent: true,
+      opacity: 0.62,
+      roughness: 0.95,
+      metalness: 0,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+  }
 
   makeLowEGlassMaterial(): THREE.MeshPhysicalMaterial {
     return new THREE.MeshPhysicalMaterial({
@@ -111,8 +124,8 @@ export class BrowserSceneMaterials {
     });
   }
 
-  makeBlindMaterial(): THREE.MeshStandardMaterial {
-    return new THREE.MeshStandardMaterial({
+  makeBlindMaterial(elementHeight = 2.8): THREE.MeshStandardMaterial {
+    const material = new THREE.MeshStandardMaterial({
       color: 0xdfe3e6,
       transparent: true,
       opacity: 0.75,
@@ -120,11 +133,43 @@ export class BrowserSceneMaterials {
       metalness: 0.2,
       side: THREE.DoubleSide,
     });
+    if (!this.blindSlatTexture) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 8;
+      canvas.height = 64;
+      const context = canvas.getContext('2d');
+      if (context) {
+        // 单片叶片周期：上部叶面带轻微纵向渐变（拟叶片微弧），底部深色缝隙线
+        const gradient = context.createLinearGradient(0, 0, 0, 54);
+        gradient.addColorStop(0, '#f2f4f6');
+        gradient.addColorStop(0.7, '#d4d8dc');
+        gradient.addColorStop(1, '#b8bdc3');
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, 8, 54);
+        context.fillStyle = '#7d838a';
+        context.fillRect(0, 54, 8, 10);
+        this.blindSlatTexture = new THREE.CanvasTexture(canvas);
+        this.blindSlatTexture.wrapT = THREE.RepeatWrapping;
+        this.blindSlatTexture.colorSpace = THREE.SRGBColorSpace;
+      }
+    }
+    if (this.blindSlatTexture) {
+      // 挤出几何侧面 v 以米为单位：按 ~5cm 视觉叶距重复（deployed 与 gathered 共用，收拢带叶片压缩属合理表现）
+      const stripes = this.blindSlatTexture.clone();
+      stripes.needsUpdate = true;
+      stripes.repeat.y = Math.max(1, Math.round(elementHeight / 0.05));
+      material.map = stripes;
+      material.bumpMap = stripes;
+      material.bumpScale = 0.15;
+    }
+    return material;
   }
 
   dispose(): void {
     this.flutedGlassTexture?.dispose();
     this.flutedGlassTexture = null;
+    this.blindSlatTexture?.dispose();
+    this.blindSlatTexture = null;
   }
 }
 

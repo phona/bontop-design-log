@@ -3,20 +3,20 @@
   wall: w_mbath_south
   wall_side: south
   type: faucet
-  x: 0.26
+  x: 0.575
   z: 2.96
   height: 0.8
-  note: "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-01 柜体改为纯洗手柜 mb_washbasin_cabinet @0.55,3.16，保持盆心 x=0.26 与冷热水接口，取消梳妆膝位；待量房确认下沉:300 分界线及东侧抽屉对管线避让"
+  note: "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高）：盆随柜体收宽东移并居中至 x=0.575，柜体 x[0.05,1.10]；待量房核原立管位置（决定东移终值）、下沉:300 分界线及东侧抽屉对管线避让"
 
 - id: drain_mbath_vanity
   room: master_bedroom  # 位于套间条带（2026-08-25 台盆外移）
   wall: w_mbath_south
   wall_side: south
   type: drain
-  x: 0.26
+  x: 0.575
   z: 2.96
   height: 0.35
-  note: "2026-08-25 台盆墙排下水（h0.35），穿墙回主卫沉箱接原立管；待量房确认下沉:300 分界线与立管位置"
+  note: "2026-08-25 台盆墙排下水（h0.35），穿墙回主卫沉箱接原立管；2026-09-02 初版随盆居中移至 x=0.575（假定情形，待量房核立管位置与下沉:300 分界线后终核）"
 
 - id: shower_mbath
   room: master_bath

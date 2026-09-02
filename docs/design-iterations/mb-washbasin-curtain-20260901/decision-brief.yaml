@@ -1,0 +1,46 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: mb-washbasin-curtain-20260901
+subject: 主卧洗手柜与西幕墙窗帘角部分段设计
+priority:
+  user_goal: 解决洗手柜西缘贴幕墙与织物窗帘的溅水/发霉/西晒冲突，角部美观且幕墙零附着
+  ranked: [幕墙零结构附着不碰开发商构件, 盆区无织物, 固定隐私（磨砂膜视觉层+百叶）, 分界线安静利落（竖梃优先/无构件收口）, 盆居中美观且人离幕墙, 不动床/衣柜/墙内电气]
+  non_negotiables: [model-geometry.yaml 不修改, bed_180 与 wardrobe_240_split 不动, 幕墙不打孔不粘结构件, 磨砂膜仅作室内可逆膜视觉表达并待现场确认, 排水可行性以立管实测为准]
+  tradeoffs_accepted: [立面帘材在分界线处有一次材质切换, 盆居中需解冻 2026-09-01 盆心坐标（量房后重新冻结）]
+frozen: false   # 阻塞：pending-mullion-layout / pending-window-band / pending-riser-position 未解锁
+freeze_record:
+  alignment_id: conversation-20260901
+  original_user_response: 用户确认方案 A、接受黑立柱兜底、提出盆居中意向
+  normalized_decisions: [盆区幕墙格浅色磨砂隐私层+百叶独立成段无织物, 布帘盒内分段南侧起挂, 竖梃优先/无构件收口兜底, 柜体预留 ≤5cm 东移余量, 盆心意向居中待定]
+  confirmed_by_user: partial   # 方向已确认；具体坐标待量房后终确认
+  confirmed_at: "2026-09-01T00:00:00+08:00"
+  evidence_refs: [conversation-20260901, GPT 意向效果图 3 组]
+allowed_scope:
+  files: [config/house.yaml, config/plumbing.yaml, config/layout/overlay.yaml, config/electrical.yaml, docs/curtain-design.md, docs/decision_log.md, tests]
+  objects: [mb_washbasin_cabinet, faucet_mbath_vanity, drain_mbath_vanity, curtain_master_west, sock_master_curtain]
+  archetypes: [vanity, curtain, plumbing_interface]
+  views: [plan, elevation, section, perspective]
+  changes: [窗帘分段配置, 磨砂隐私视觉层, 柜体/给排水坐标微调（量房后）, 文档镜像]
+forbidden:
+  files: [config/layout/model-geometry.yaml]
+  objects: [bed_180 transform, wardrobe_240_split transform, wall geometry, 幕墙构件]
+  assumptions: [竖梃位置未实测前不选分界线做法, 窗带标高未实测前不定百叶高度与柜体是否东移, 立管未实测前不动盆心]
+  out_of_scope_changes: [无关房间重构, 新依赖, git 操作]
+open_questions:
+  - { id: site-mullion, category: construction, question: 竖梃分格位置, fact_refs: [pending-mullion-layout], options: [借竖梃, 百叶边框+无构件收口], selected: 量房后定, user_response: 优先无构件收口，若竖梃位置合适则借用, status: site_pending }
+  - { id: site-window-band, category: construction, question: 窗带高位还是玻璃通高, fact_refs: [pending-window-band], options: [百叶顶部带/柜体不动, 百叶通高/柜体东移 5cm], selected: 量房后定, user_response: 待定, status: site_pending }
+  - { id: site-riser, category: plumbing, question: 立管位置是否允许盆心东移居中, fact_refs: [pending-riser-position], options: [盆居中 x≈0.55/0.60, 盆心保持 x=0.26], selected: 量房后定, user_response: 倾向居中, status: site_pending }
+alignment:
+  records: [{ id: conversation-20260901, answer: 方案 A + 黑立柱兜底 + 盆居中意向, normalized: 按本 brief 待量房解锁后实施 }]
+  unresolved: [site-mullion, site-window-band, site-riser]
+  re_alignment_required: true   # 量房数据回来后需按组合情形最终拍板
+acceptance:
+  validation_commands: [npm run verify:furniture, npm run verify:all, npm run test:server, npm run typecheck, npm run test:app]
+  browser_evidence_required: true
+  required_views: [条带西侧看幕墙角部, 分界线特写, 盆区正立面, 夜景闭帘]
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: pending
+  blocking_issues: [量房四项未复尺]
+  done_when: [窗帘分段配置落地且与量房一致, 盆/柜坐标按冻结值实施, 幕墙零附着节点深化完成, 视觉证据覆盖分界线与盆区]
+  delivery_notes_required: true

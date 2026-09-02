@@ -30,7 +30,7 @@ test('FixtureFactory builds the master dressing table, stool, and washbasin-only
   assert.ok(Math.abs((stoolBox.max.x - stoolBox.min.x) - 0.42) < 1e-6);
   assert.ok(Math.abs((stoolBox.max.z - stoolBox.min.z) - 0.40) < 1e-6);
   assert.ok(Math.abs(stoolBox.max.y - 0.45) < 1e-6);
-  assert.ok(Math.abs((washbasinBox.max.x - washbasinBox.min.x) - 1.10) < 1e-6);
+  assert.ok(Math.abs((washbasinBox.max.x - washbasinBox.min.x) - 1.05) < 1e-6);
   assert.ok(Math.abs((washbasinBox.max.z - washbasinBox.min.z) - 0.50) < 1e-6);
 
   const tableParts: string[] = [];

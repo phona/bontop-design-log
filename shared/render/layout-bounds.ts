@@ -77,6 +77,9 @@ export function computeLayoutBounds(input: LayoutBoundsInput): LayoutBounds {
         break;
       case 'glass_infill':
         break;
+      case 'frosted_privacy':
+        includePoints(element.points);
+        break;
       default: {
         const exhaustive: never = element;
         throw new Error(`Unknown scene element type in bounds: ${(exhaustive as { type: string }).type}`);

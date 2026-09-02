@@ -1,0 +1,84 @@
+{
+  "iteration_id": "mb-washbasin-curtain-20260901",
+  "state": "incomplete",
+  "state_note": "初版模型已实施（假定玻璃通高情形）；已加入磨砂隐私层、百叶与无构件收口并移除黑柱，分段点/盆心/柜宽/磨砂层为假定值或视觉表达，量房复尺前不进入 delivery_ready；正式独立双审待终核后执行",
+  "updated_at": "2026-09-02",
+  "implementation": {
+    "decision_ref": "docs/decision_log.md DEC-2026-09-02-051",
+    "changed_files": [
+      "config/layout/overlay.yaml",
+      "config/house.yaml",
+      "config/plumbing.yaml",
+      "shared/types.ts",
+      "shared/render/FixtureFactory.ts",
+      "shared/render/SceneBuilder.ts",
+      "server/overlay-merge.ts",
+      "tests/server/curtain-config.test.ts",
+      "tests/server/master-bedroom-dressing.test.ts",
+      "tests/server/shared/scene-builder.test.ts",
+      "data/project-render-facts.json",
+      "docs/curtain-design.md",
+      "docs/decision_log.md"
+    ],
+    "generated_files_edited": ["data/project-render-facts.json（经 npm run generate:project-render-facts 重新生成，非手改）"]
+  },
+  "verification": [
+    { "command": "npm run verify:furniture", "at": "2026-09-02", "result": "PASS（1 既有 warning：south_balcony 无房间）" },
+    { "command": "npm run verify:all", "at": "2026-09-02", "result": "PASS（0 error，warning 均为既有待办/pending 项）" },
+    { "command": "npm run test:server", "at": "2026-09-02", "result": "PASS 497/497" },
+    { "command": "npm run typecheck", "at": "2026-09-02", "result": "PASS（server+app tsc）" },
+    { "command": "npm run test:app", "at": "2026-09-02", "result": "PASS 434/434（51 文件）" }
+  ],
+  "evidence": [
+    {
+      "view": "角部东向西全景（privacy 态）",
+      "file": "evidence/washbasin-corner-privacy-20260902.png",
+      "source_version": "working tree 2026-09-02（overlay/house/plumbing/FixtureFactory 初版改动后）",
+      "ready_check": "window.__APP__.isReady() === true",
+      "camera": "orbit (2.4,1.7,4.9) -> (0,1.0,3.0)，非总览",
+      "runtime_query": "curtain_master_strip_fabric / curtain_mb_washbasin_blinds / furniture:master_bedroom:mb_washbasin_cabinet:2 均在场"
+    },
+    {
+      "view": "盆区正视（privacy 态）",
+      "file": "evidence/washbasin-corner-blinds-20260902.png",
+      "source_version": "同上",
+      "ready_check": "window.__APP__.isReady() === true",
+      "camera": "orbit (1.5,1.55,4.35) -> (-0.1,1.15,3.0)",
+      "runtime_query": "privacy 态：strip sheer deployed、strip blackout gathered:left/right、washbasin blinds deployed 均 visible=true，符合 expectedVisibleCurtainNodes 契约"
+    },
+    {
+      "view": "盆区正视（privacy 态，百叶叶片条纹材质 v2）",
+      "file": "evidence/washbasin-corner-blinds-v2-20260902.png",
+      "source_version": "同上 + BrowserSceneMaterials 百叶横向叶片条纹贴图（2026-09-02）",
+      "ready_check": "window.__APP__.isReady() === true",
+      "camera": "orbit (1.5,1.55,4.35) -> (-0.1,1.15,3.0)",
+      "runtime_query": "百叶格叶片条纹清晰可辨，盆/镜/龙头对中"
+    },
+    {
+      "view": "百叶南延 z=4.00 后角部全景（privacy 态）",
+      "file": "evidence/washbasin-blinds-extended-20260902.png",
+      "source_version": "同上 + overlay 分段点 z=3.45→4.00（2026-09-02 业主追加）",
+      "ready_check": "window.__APP__.isReady() === true",
+      "camera": "orbit (2.2,1.7,5.2) -> (0,1.1,3.2)",
+      "runtime_query": "verify:all / test:server 497 全绿"
+    },
+    {
+      "view": "无立柱收口与磨砂隐私层（privacy 态）",
+      "file": "evidence/frosted-privacy-no-post-v2-20260902.png",
+      "source_version": "同上 + 移除 curtain_divider_post + frosted_privacy 视觉层（2026-09-02）",
+      "ready_check": "window.__APP__.isReady() === true；配置错误 banner 为空",
+      "camera": "orbit (1.55,1.55,4.9) -> (0.02,1.18,3.75)",
+      "runtime_query": "frosted_mb_washbasin_privacy 与 curtain_mb_washbasin_blinds 均在场且可见；curtain_divider_post 不存在；z[4.00,4.06] 保持无构件收口空隙"
+    }
+  ],
+  "reviews": {
+    "aesthetic": { "result": "PASS", "scope": "初版自审：盆/镜/龙头对中、柜体两侧 5cm 缝、百叶贴框位无干涉；效果图意向（GPT 3 组）业主已确认", "reviewer": "agent-self", "note": "正式独立双审待量房终核后执行" },
+    "functional": { "result": "PASS", "scope": "初版自审：柜体 x[0.05,1.10] 与门洞 x[1.15,1.95] 留 5cm；百叶 x=0.03 与柜西脸 x=0.05 留 2cm；verify 全绿", "reviewer": "agent-self", "note": "同上" }
+  ],
+  "blocking_issues": [
+    "pending-mullion-layout：竖梃分格实测（决定是否直接借用竖梃、分段点 z=4.00 是否成立；无合适竖梃则保持无构件收口）",
+    "pending-window-band：窗带标高（决定百叶高度与柜体是否需东移）",
+    "pending-riser-position：立管位置（决定盆心 x=0.575 能否成立）",
+    "pending-drawer-pipe-clash：墙排与东侧抽屉避让"
+  ]
+}
