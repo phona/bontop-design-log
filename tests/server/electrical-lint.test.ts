@@ -15,9 +15,9 @@ test('real electrical topology parses and lints', () => {
   const result = lintElectricalTopology(topology, points);
   assert.equal(topology.circuits.length, 23);
   assert.equal(topology.controls.length, 3);
-  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 13);
+  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 15);
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 26);
-  assert.equal(result.counts.coveredPoints, 51);
+  assert.equal(result.counts.coveredPoints, 53);
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.length > 0);
 });
@@ -32,9 +32,9 @@ test('two-way control without target is warning and dedicated pending is warning
   const topology = parseElectricalTopology(raw, points);
   const result = lintElectricalTopology(topology, points);
   assert.equal(result.errors.filter((i) => i.code === 'control_target_missing').length, 0);
-  assert.equal(result.warnings.filter((i) => i.code === 'control_target_missing').length, 3);
+  assert.equal(result.warnings.filter((i) => i.code === 'control_target_missing').length, 2);
   assert.ok(result.warnings.some((i) => i.code === 'dedicated_parameters_pending'));
-  assert.equal(topology.controls.every((control) => control.target_point_ids.length === 0), true);
+  assert.equal(topology.controls.filter((control) => control.target_point_ids.length === 0).length, 2);
 });
 
 test('lint rejects non-load members and duplicate members', () => {
@@ -68,8 +68,8 @@ test('lint keeps historical uncovered points as warnings and maps circuit facts'
   assert.equal(result.warnings.filter((i) => i.code === 'declared_circuit_uncovered').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered'));
   assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 23);
-  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 27);
-  assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'light_master_wall_l'));
+  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 25);
+  assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'switch_master_bed_l'));
 });
 
 test('lint validates panel topology/source semantics and status at runtime', () => {

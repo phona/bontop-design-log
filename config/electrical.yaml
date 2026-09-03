@@ -118,6 +118,7 @@
 - id: switch_master_bed_l
   room: master_bedroom
   wall: w_mb_east
+  wall_side: west
   type: switch_2way
   x: 4.20
   z: 5.75
@@ -557,6 +558,7 @@
 - id: sock_master_curtain
   room: master_bedroom
   wall: w_mb_east
+  wall_side: west
   type: socket
   x: 4.20
   z: 9.50
@@ -717,10 +719,10 @@
   room: master_bedroom
   type: wall_lamp
   x: 4.2
-  z: 7.05
+  z: 7.25
   height: 1.6
   temp: 3000
-  note: "主卧床头壁灯右（随 rotation=270 床头北移至 z=6.60；东墙实体墙）"
+  note: "主卧床头壁灯右（随 rotation=270 床头北移至 z=6.60；东墙实体墙。2026-09-02 修正：z 7.05→7.25，与左灯 ±0.65m 对称且位于右插座正上方）"
 - id: light_parent_dome
   room: study
   type: dome

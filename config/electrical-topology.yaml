@@ -44,8 +44,8 @@ circuits:
     panel_id: panel_strong
     purpose: lighting
     status: proposed
-    member_point_ids: [light_master_dome]
-    note: "主卧吸顶灯，具体开关控制关系待确认（预期关联 switch_master_bed_l / switch_master_door 双控）；容量、线径、断路器等施工参数待确认"
+    member_point_ids: [light_master_dome, light_master_wall_l, light_master_wall_r]
+    note: "主卧照明回路：吸顶灯（switch_master_bed_l / switch_master_door 双控，见 control_master_bed_door）+ 床头壁灯两盏同回路供电；容量、线径、断路器等施工参数待确认"
   - id: lighting_parent_dome
     panel_id: panel_strong
     purpose: lighting
@@ -175,8 +175,8 @@ controls:
     kind: switch_2way
     status: confirmed
     switch_point_ids: [switch_master_bed_l, switch_master_door]
-    target_point_ids: []
-    note: "现有主卧床头/门口双控意图；具体受控灯具未在事实中明确"
+    target_point_ids: [light_master_dome]
+    note: "主卧床头/门口双控，受控灯具为主卧吸顶灯 light_master_dome（2026-09-02 确认绑定）；床头壁灯不走双控"
   - id: control_parent_bed_door
     kind: switch_2way
     status: confirmed

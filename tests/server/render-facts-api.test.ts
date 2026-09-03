@@ -124,9 +124,9 @@ describe('render facts API', () => {
     assert.equal(response.body.controls.length, 3);
     assert.equal(response.body.panels[0].id, 'panel_strong');
     assert.equal(response.body.panels[0].source_point_id, 'panel_strong_entry_left');
-    assert.equal(response.body.lint.counts.errors, 59);
-    assert.equal(response.body.lint.counts.warnings, 41);
-    assert.equal(response.body.lint.counts.coveredPoints, 51);
+    assert.equal(response.body.lint.counts.errors, 62);
+    assert.equal(response.body.lint.counts.warnings, 40);
+    assert.equal(response.body.lint.counts.coveredPoints, 53);
     assert.equal(response.body.circuits.filter((circuit: { purpose: string }) => circuit.purpose === 'ordinary_power').length, 3);
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'control_target_missing'), true);
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'electrical_parameters_pending'), true);
