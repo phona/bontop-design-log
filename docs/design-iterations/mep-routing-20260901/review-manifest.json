@@ -1,8 +1,15 @@
 {
   "iteration_id": "mep-routing-20260901",
   "subject": "水路/电路/中央空调第一版工程向物理走线（替代放射式示意）",
-  "frozen_scope": ["config/mep-hvac-coordination.yaml", "docs/design-iterations/mep-routing-20260901/**"],
-  "out_of_scope": ["app/** 渲染代码", "燃气线（业主明确不管）", "默认隐藏/按钮入口行为"],
+  "frozen_scope": [
+    "config/mep-hvac-coordination.yaml",
+    "docs/design-iterations/mep-routing-20260901/**"
+  ],
+  "out_of_scope": [
+    "app/** 渲染代码",
+    "燃气线（业主明确不管）",
+    "默认隐藏/按钮入口行为"
+  ],
   "rounds": [
     {
       "round": 1,
@@ -100,12 +107,35 @@
         ]
       },
       "final_verdict": "PASS（功能 PASS + 美学 PASS）"
+    },
+    {
+      "round": 2,
+      "baseline": "v2（2026-09-07 强电回路走线补全，DEC-2026-09-07-057）",
+      "trigger": "业主指出普通插座/照明回路无实体走线（仅主干+5 路空调电源），要求补全回环线路",
+      "changes": [
+        "新增 25 条 strong_power 路线（照明 11 + 专用负载 5 + 普通电源 9），40→65 条",
+        "全部正交折线，主干自 bend_corridor 枢纽分发；卧室系干线贴 w_mb_east 西脸 / w_be_west 东脸 2.40 墙行，厨卫系走铝扣板上方 2.60",
+        "穿墙声明 8 处：w_strip_east(4.2,4.6)×5、w_st_north(5.5,5.55)×2、w_nw_south(4.35,4.3)×2、w_be_west(13.4,5.9)×2（门头）、w_gbath_south(6.7,3.55)×3（门头）、w_mbath_south(2.0,2.86)、w_ent_south_w(11.3,2.9)、w_balc_east(7.2,1.6)",
+        "修正生活阳台范围误读：阳台实为 z[1.0,2.2]，z[0,1.0] 为 w_vrv_north 圆弧室外飘窗区（禁穿），洗烘回路改穿 w_balc_east"
+      ],
+      "functional_review": {
+        "verdict": "PASS",
+        "notes": "verify:mep 0 error / 22 warning（15 条既有已接受项 + 7 条 shear_wall_penetration：原 3 + 新增 4，均为 w_strip_east 穿越工艺提醒，同类别）"
+      },
+      "aesthetic_review": {
+        "verdict": "PASS",
+        "notes": "全部曼哈顿正交折线，走带沿用既有主干/边吊/墙行体系"
+      },
+      "fixes": [
+        "strong-ded-washer-dryer 穿点由 w_vrv_east z=0.8（室外圆角区）改至 w_balc_east z=1.6",
+        "strong-ded-bathheaters-mbath / strong-power-mbath-service 补 w_strip_east 穿孔声明"
+      ]
     }
   ],
   "final_state": {
     "status": "delivered-preliminary",
-    "lint": "0 error / 15 warning（全部为记录在案的已接受项）",
-    "tests": "test:server 494/494；verify:all 通过；typecheck 通过",
-    "disclaimer": "全部 40 条 route 为 preliminary/proposed/pending，非施工放线依据"
+    "lint": "0 error / 22 warning（15 条既有已接受项 + 7 条 shear_wall_penetration 工艺提醒：原 3 + v2 新增 4，同为 w_strip_east inferred 墙体穿越，量房确认后按规则升降级）",
+    "tests": "以 2026-09-07 全量回归为准（verify:all / test:server / typecheck）",
+    "disclaimer": "全部 65 条 route 为 preliminary/proposed/pending，非施工放线依据"
   }
 }

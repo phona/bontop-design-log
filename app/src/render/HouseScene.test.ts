@@ -89,7 +89,7 @@ describe('HouseScene room audit capture', () => {
     expect(source).toContain('this.auditSceneElements.find');
     expect(source).toContain('this.auditFurnishings.guest_bath');
     expect(source).toContain("points('shower_screen_gbath')");
-    expect(source).toContain("points('gbath_west_glass_door')");
+    expect(source).not.toContain("points('gbath_west_glass_door')");
     expect(source).toContain("findAuditObject('furniture:guest_bath:vanity:0')");
     expect(source).toContain("findAuditObject('furniture:guest_bath:toilet:1')");
     expect(source).toContain('this.auditPlumbing');
@@ -97,21 +97,22 @@ describe('HouseScene room audit capture', () => {
     expect(source).toContain('台盆正面←西');
     expect(source).toContain('马桶朝西');
     expect(source).toContain('花洒朝西');
-    expect(source).toContain('西侧玻璃门←向北开启');
+    expect(source).toContain('西侧开敞入口←无门');
     expect(source).toContain('const clamp =');
     expect(source).toContain("ctx.fillStyle = '#000000'");
     expect(source).toContain('ctx.measureText(text)');
     expect(source).toContain('width - margin - metrics.width / 2');
     expect(source).toContain('ctx.lineWidth = 18');
     expect(source).toContain('玻璃隔断 z=');
-    expect(source).toContain('西侧玻璃门');
-    expect(source).toContain('向北开启');
+    expect(source).toContain('西侧开敞入口');
+    expect(source).toContain('无门');
     expect(source).toContain('南墙 z=');
     expect(source).toContain('南侧开放边');
     expect(source).toContain('北 ↑');
     expect(source).toContain('东 →');
     expect(source).toContain("'#075bd5'");
-    expect(source).toContain("'rgba(34, 197, 94, 0.42)'");
+    expect(source).toContain("'#64748b'");
+    expect(source).toContain('setLineDash');
   });
 });
 

@@ -93,7 +93,16 @@ export const HvacReferenceConstraintSchema = z.object({
 });
 export const HvacRouteSchema = reasonForUnconfirmed(z.object({ id: nonEmpty, status: HvacStatusSchema, system: HvacSystemSchema, from: nonEmpty, to: nonEmpty, via: z.array(nonEmpty).optional(), constraint_refs: z.array(nonEmpty).optional(), reason: z.string().optional() }).strict());
 export const HvacDiagramSchema = z.object({ anchors: z.array(HvacAnchorSchema), terminals: z.array(HvacTerminalSchema), routes: z.array(HvacRouteSchema), reference_constraints: z.array(HvacReferenceConstraintSchema) }).strict();
-export const ProjectHvacFactsSchema = z.object({ plans: z.array(z.object({ id: nonEmpty, kind: z.literal('vrf_ducted'), outdoor: VrfOutdoorUnitSchema, diagram: HvacDiagramSchema }).strict()) }).strict();
+export const HvacLoadDesignRoomSchema = z.object({
+  room: nonEmpty, basis: nonEmpty, load_kw: finiteNumber, indoor: nonEmpty, note: z.string().optional(),
+}).strict();
+export const HvacLoadDesignSchema = z.object({
+  status: z.enum(['proposed', 'confirmed']), basis: nonEmpty,
+  indoor_nominal_kw_total: finiteNumber, outdoor_nominal_kw: finiteNumber,
+  connection_ratio: nonEmpty, diversity_note: z.string().optional(), budget_impact: z.string().optional(),
+  rooms: z.array(HvacLoadDesignRoomSchema),
+}).strict();
+export const ProjectHvacFactsSchema = z.object({ plans: z.array(z.object({ id: nonEmpty, kind: z.literal('vrf_ducted'), outdoor: VrfOutdoorUnitSchema, load_design: HvacLoadDesignSchema.optional(), diagram: HvacDiagramSchema }).strict()) }).strict();
 
 export const ElectricalPointsSchema = z.array(ElectricalPointSchema);
 const ElectricalTopologyStatusSchema = z.enum(['confirmed', 'proposed', 'pending']);

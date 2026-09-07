@@ -22,6 +22,57 @@
 
 ## 决策记录
 
+### DEC-2026-09-07-054 客卫改整面固定玻璃 + 西端开敞入口（取消铰接玻璃门）
+
+- **日期**：2026-09-07
+- **决策事项**：客卫淋浴/马桶横向分隔（z=2.80）由"0.80m 固定玻璃 + 0.70m 铰接玻璃门"改为**整面固定玻璃、无门**，西端 x[5.60,6.30] 保持 0.70m 开敞入口；不追求淋浴区与马桶区完全隔离。
+- **可选方案**：①保留铰门；②改移门；③整面固定玻璃+开敞入口；④屏体南移加大淋浴净深后加门。
+- **选定方案**：③。
+- **决策依据**：业主提出降成本与降低水垢维护（门铰链/密封条为水垢重灾区）；淋浴净深 0.60m 内 0.70m 铰门最多开启约 59°，本就难以全开，无门后进出反而顺畅；浴帘级封闭对使用体验提升有限。
+- **预算影响**：淋浴房五金（铰链/拉杆/密封条）减少，约省 300-800 元，计入 appliances 池淋浴房科目口径，不单独调科目。
+- **关联文件**：`config/layout/overlay.yaml`（删 gbath_west_glass_door）、`config/house.yaml`（客卫 notes/furniture_concept）、`app/src/render/HouseScene.ts`（审计图改画开敞入口虚线）、`tests/server/overlay-merge.test.ts`、`app/src/render/HouseScene.test.ts`
+- **决策人**：业主
+
+### DEC-2026-09-07-055 空调方案深化：内机按负荷重选 + 外机定 7HP 级（品牌未定标）
+
+- **日期**：2026-09-07
+- **起因**：业主澄清原选品（美的理想家 III 6HP 等）为 AI 占位、未经真实研究，要求方案级深化。
+- **决策事项**：
+  - **内机重选**（合计 21.4kW）：客餐厅+开放厨房 54.5㎡ → 10.0kW（5HP 级，行业口径 45-50㎡+开放厨房需 9-11kW）；主卧 7.1→4.5kW；父母房 5.6→2.5kW；儿童房 5.6→2.2kW；书房 5.6→2.2kW。
+  - **外机容量**：6HP（15.5kW）对 21.4kW 内机连接率 138%，超行业上限（120-130%）**出局**；定为 **7HP 级（≈18kW，连接率≈1.19）**，两人低同开工况可接受；8HP 家用机型少见，作备选（预算 +3k-5k）。
+  - **品牌未定标**：短名单 A 美的 7匹（2.8-3.4万，主推）/ B 格力（3.2-3.8万）/ C 小米 6匹（连接率不合规，须内机 ≤20kW 配置单才可救活）/ D 大金日立（超预算不推荐）/ E 海尔（居中）。见 `docs/hvac-deepening-20260907.md`。
+- **预算影响**：现预算 29000，A 档实际成交差额约 0~+7k；科目调整待业主拍板后再改 base.json。
+- **关联文件**：`config/hvac.yaml`（A2 outdoor + load_design）、`config/ceiling.yaml`（五台内机容量标注）、`config/house.yaml`（hvac 段与 pending_verification）、`config/tradeoffs.yaml`（hvac_brand 短名单）、`docs/hvac-deepening-20260907.md`（新增）、`docs/hvac_options_analysis.md`（头部口径更新）
+- **决策人**：业主（深化由 AI 助理完成，品牌待业主定标）
+
+### DEC-2026-09-07-057 强电实体走线补全：普通插座/照明/专用回路全部上走线图（40→65 条）
+
+- **日期**：2026-09-07
+- **起因**：业主指出回路拓扑虽已补全（DEC-2026-09-07-056），但卧室等房间插座在走线层仍无实体路径——mep-hvac-coordination 此前仅覆盖主干 + 5 路空调电源（6 条 strong_power），普通/照明/专用回路只有拓扑归属没有回环线路。
+- **决策事项**：新增 25 条 strong_power 路线（照明 11、专用负载 5、普通电源 9），总走线 40→65 条：
+  - 走带体系沿用既有约定：主干自 bend_corridor 枢纽分发；卧室系干线穿墙后贴 w_mb_east 西脸 / w_be_west 东脸 2.40m 墙行，厨卫系走铝扣板上方 2.60m，客厅/餐厅出边吊后走平吊板上方 2.70m；
+  - 每间卧室一条"干线+沿线分发"走线（如主卧：穿孔→条带→w_mb_east 墙行依次覆盖床头双插/床尾插/壁灯/窗帘盒/投影地插），回路与拓扑 1:1 对应，跨区回路按物理段拆分（主卫/客卫卫浴电源各一条）；
+  - 穿墙声明 8 处 17 孔（全部与既有穿孔带同区、平行孔分散）：w_strip_east(4.2,4.6)、w_st_north(5.5,5.55)、w_nw_south(4.35,4.3)、w_be_west(13.4,5.9 门头)、w_gbath_south(6.7,3.55 门头)、w_mbath_south(2.0,2.86 新建墙预埋)、w_ent_south_w(11.3,2.9 门头)、w_balc_east(7.2,1.6)；
+  - 修正一处范围误读：生活阳台实为 z[1.0,2.2]，z[0,1.0] 为 w_vrv_north 圆弧室外飘窗区（禁穿），洗烘回路改穿 w_balc_east 进阳台；
+  - review-manifest 登记 round 2；mep-construction-guidance 计数与基线同步。
+- **验证**：verify:mep 0 error / 22 warning（15 条既有已接受 + 7 条 shear_wall_penetration，新增 4 条同属 w_strip_east 穿越工艺提醒）；verify:all / test:server / typecheck 全量回归通过。
+- **预算影响**：无直接科目变化；回路穿墙孔位与平行孔数量在水电交底时与施工方核价（water_electric 科）。
+- **关联文件**：`config/mep-hvac-coordination.yaml`、`docs/design-iterations/mep-routing-20260901/review-manifest.json`、`docs/mep-construction-guidance.md`
+- **决策人**：业主（委托巡检整改）
+
+### DEC-2026-09-07-056 电气回路拓扑补全：全部插座/灯具归回路 + 开关绑定受控灯具 + 回路参数
+
+- **日期**：2026-09-07
+- **起因**：巡检发现 `verify:electrical` 存在 64 条 warning：厨房插座群/烟机/净水器/燃气热水器/入户花园插座/网关/电视灯带等未归入任何回路；两处双控无受控灯具；全部回路缺容量/线径/断路器参数；另修复 sock_living_water 挂墙基准错误（原挂 w_liv_east @z=9.0 投影超墙段 3.45m，且该处为东南室外凹口无墙，改挂 w_be_west 客厅侧 z=8.40）。
+- **决策事项**：
+  - 新增 `ordinary_power_kitchen`（台面/净水/烟机/热水器控制器，4mm² C20A 漏保）、`ordinary_power_garden`（2.5mm² C16A 漏保）；网关/灯带并入客厅回路、书房备用插座并入卧室回路。
+  - 全部 24 个回路补 capacity/wire_size/breaker（proposed 值，依据 mep-construction-guidance §3.1：照明 1.5mm²、插座 2.5mm²、厨房 4mm²）。
+  - 新增 8 条 controls：走廊/书房/儿童房/厨房/主卫/客卫/花园单控绑定 + 客厅与父母房双控绑定受控灯具（proposed，待交底确认）。
+  - 口径声明：开关经 controls 绑定、网络点位归弱电箱，均不计入强电回路成员（Phase 1 口径），写入 pending_parameters。
+- **预算影响**：无直接变化；厨房 4mm² 与漏保配置在 water_electric 12000 口径内（回路数增加约 2 路，交底时与施工方核价）。
+- **关联文件**：`config/electrical-topology.yaml`（整体补全）、`config/electrical.yaml`（sock_living_water 修正）
+- **决策人**：业主（委托巡检整改）
+
 ### DEC-2026-09-06-R7.1 衣柜-悬浮板 L 形转角与门头盒一体收口修正
 
 - **日期**：2026-09-06

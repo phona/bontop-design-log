@@ -7,11 +7,45 @@ plans:
       x: 6.40
       z: 0.50
       direction: south
-      width: 0.90
-      depth: 0.335
-      height: 0.70
-      model: "美的理想家 III 6HP"
-      note: "量房检修待确认"
+      width: 0.99
+      depth: 0.40
+      height: 0.81
+      model: "7HP 级家用多联机（品牌待业主定标，短名单见 docs/hvac-deepening-20260907.md）"
+      note: "DEC-2026-09-07-055 深化：家用机主流上限 7HP，6HP 对 21.4kW 内机连接率 138% 超行业上限（120-130%）出局；外廓为 7HP 常见规格 estimated，型号/尺寸/散热检修空间以厂家样册与量房终核（platform 1.6×1.55m 单台可容）"
+    load_design:
+      status: proposed
+      basis: "南宁夏热冬暖；西户三层 Low-E 中空玻璃幕墙（西晒+南向）；室内净高 2.8m；行业口径 45-50㎡+开放式厨房需 9-11kW（≈200-220W/㎡），本方案 54.5㎡ 取 ≈10kW 客厅内机；方案级估算，施工图阶段以厂家冷负荷软件终核"
+      indoor_nominal_kw_total: 21.4
+      outdoor_nominal_kw: 18.0
+      connection_ratio: "≈1.19（行业上限 1.30；两人常住低同开、分时分区，可接受；若业主要全屋同开冗余且经销商有 8HP 家用机型，可上调至 ≈1.07，预算 +3k-5k）"
+      diversity_note: "夜间典型开 2-3 卧室约 4.4-8.9kW；全夜四卧同开 11.4kW < 18kW 不超载；白天客厅单区 9.5-10kW 独立运行无压力"
+      budget_impact: "7HP 一拖五全包市场参考（2026-09，含安装辅材）：美的 2.8-3.4 万、格力 3.2-3.8 万、海尔居中、大金/日立 6 万+（超预算不推荐）、小米 6匹 1.6-2.3 万（连接率不合规仅对照）；现预算 29000，主推档差额约 0~+7k 待业主拍板"
+      rooms:
+        - room: living_dining
+          basis: "客餐厅 45.88㎡ + 开放厨房 8.64㎡ ≈ 54.5㎡ × 185W/㎡（幕墙+厨房散热）"
+          load_kw: 10.0
+          indoor: "风管机 10.0kW（5HP 级）"
+          note: "侧送朝南，ceiling_living 布置不变；回风口保持距厨房油烟区 ≥2m 并加可拆洗滤网"
+        - room: master_bedroom
+          basis: "寝区约 17.9㎡ × 190W/㎡（西南幕墙）"
+          load_kw: 3.4
+          indoor: "风管机 4.5kW（2HP 级）"
+          note: "由原 2.8HP(≈7.1kW) 下调，门头盒 ceiling_master_ac 内机外廓随之变小"
+        - room: study
+          basis: "父母房 12.75㎡ × 160W/㎡（南向高窗）"
+          load_kw: 2.0
+          indoor: "风管机 2.5kW（1HP 级）"
+          note: "由原 2.2HP(≈5.6kW) 下调"
+        - room: bedroom_nw
+          basis: "儿童房净约 8.39㎡ × 180W/㎡（西北幕墙有西晒）"
+          load_kw: 1.5
+          indoor: "风管机 2.2kW（小 1HP 级）"
+          note: "由原 2.2HP 下调"
+        - room: bedroom_se
+          basis: "书房净约 8.35㎡ × 160W/㎡（东南角）"
+          load_kw: 1.3
+          indoor: "风管机 2.2kW（小 1HP 级）"
+          note: "由原 2.2HP 下调"
     diagram:
       reference_constraints:
         - id: ref_south_window_band_ld100

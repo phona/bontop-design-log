@@ -120,15 +120,15 @@ describe('render facts API', () => {
   it('returns electrical topology with lint independently of MEP route data', async () => {
     const app = createApp(() => facts);
     const response = await request(app).get('/api/electrical-topology').expect(200);
-    assert.equal(response.body.circuits.length, 23);
-    assert.equal(response.body.controls.length, 3);
+    assert.equal(response.body.circuits.length, 25);
+    assert.equal(response.body.controls.length, 10);
     assert.equal(response.body.panels[0].id, 'panel_strong');
     assert.equal(response.body.panels[0].source_point_id, 'panel_strong_entry_left');
-    assert.equal(response.body.lint.counts.errors, 62);
-    assert.equal(response.body.lint.counts.warnings, 40);
-    assert.equal(response.body.lint.counts.coveredPoints, 53);
-    assert.equal(response.body.circuits.filter((circuit: { purpose: string }) => circuit.purpose === 'ordinary_power').length, 3);
-    assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'control_target_missing'), true);
-    assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'electrical_parameters_pending'), true);
+    assert.equal(response.body.lint.counts.errors, 87);
+    assert.equal(response.body.lint.counts.warnings, 16);
+    assert.equal(response.body.lint.counts.coveredPoints, 61);
+    assert.equal(response.body.circuits.filter((circuit: { purpose: string }) => circuit.purpose === 'ordinary_power').length, 5);
+    assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'control_target_missing'), false);
+    assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'electrical_parameters_pending'), false);
   });
 });

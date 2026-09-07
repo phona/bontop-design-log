@@ -1,5 +1,12 @@
 version: '1.0'
 
+# 2026-09-07（DEC-2026-09-07-056）回路补全：
+# 1) 全部用电插座/灯具归入回路（此前厨房插座群、烟机、热水器、花园、网关、灯带等未覆盖）；
+# 2) capacity/wire_size/breaker 按方案 proposed 值补齐（依据 docs/mep-construction-guidance.md §3.1：
+#    照明 1.5mm²、插座 ≥2.5mm²、大功率 4mm²；漏保按回路用途配置），施工前按设备铭牌与交底终核；
+# 3) controls 绑定全部开关与受控灯具。
+# 口径：开关点位经 controls 绑定灯具、网络点位归弱电箱，均不进入强电供电回路成员（Phase 1 口径）。
+
 panels:
   # id 是 topology 内部 panel 标识；source_point_id 指向 electrical.yaml 的真实箱体点位。
   - id: panel_strong
@@ -18,6 +25,9 @@ circuits:
     status: confirmed
     member_point_ids: [light_dining_pendant]
     source_circuit_id: dining
+    capacity: "≤0.5kW"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
     note: "沿用 electrical.yaml 已声明 circuit: dining"
   - id: lighting_living_base
     panel_id: panel_strong
@@ -25,6 +35,9 @@ circuits:
     status: confirmed
     member_point_ids: [living_track_main]
     source_circuit_id: living_base
+    capacity: "≤0.5kW"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
     note: "沿用 electrical.yaml 已声明 circuit: living_base"
   - id: lighting_tv_ambient
     panel_id: panel_strong
@@ -32,6 +45,9 @@ circuits:
     status: confirmed
     member_point_ids: [light_tv_strip]
     source_circuit_id: tv_ambient
+    capacity: "≤0.2kW"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
     note: "沿用 electrical.yaml 已声明 circuit: tv_ambient"
   - id: lighting_entry_base
     panel_id: panel_strong
@@ -39,138 +55,216 @@ circuits:
     status: confirmed
     member_point_ids: [light_corridor_1, light_entry_down, light_entry_foyer]
     source_circuit_id: entry_base
-    note: "沿用 electrical.yaml 已声明 circuit: entry_base"
+    capacity: "≤0.3kW"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "沿用 electrical.yaml 已声明 circuit: entry_base（走廊/入户筒灯）"
   - id: lighting_master_dome
     panel_id: panel_strong
     purpose: lighting
     status: proposed
     member_point_ids: [light_master_dome, light_master_wall_l, light_master_wall_r]
-    note: "主卧照明回路：吸顶灯（switch_master_bed_l / switch_master_door 双控，见 control_master_bed_door）+ 床头壁灯两盏同回路供电；容量、线径、断路器等施工参数待确认"
+    capacity: "≤0.3kW"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "主卧照明回路：吸顶灯（switch_master_bed_l / switch_master_door 双控，见 control_master_bed_door）+ 床头壁灯两盏同回路供电"
   - id: lighting_parent_dome
     panel_id: panel_strong
     purpose: lighting
     status: proposed
     member_point_ids: [light_parent_dome]
-    note: "父母房吸顶灯，具体开关控制关系待确认（预期关联 switch_parent_bed / switch_parent_door 双控）；容量、线径、断路器等施工参数待确认"
+    capacity: "≤0.2kW"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "父母房吸顶灯，开关控制见 control_parent_bed_door"
   - id: lighting_child_dome
     panel_id: panel_strong
     purpose: lighting
     status: proposed
     member_point_ids: [light_child_dome]
-    note: "西北次卧吸顶灯，具体开关控制关系待确认（预期关联 switch_child）；容量、线径、断路器等施工参数待确认"
+    capacity: "≤0.2kW"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "西北次卧吸顶灯，开关控制见 control_child_light"
   - id: lighting_study_dome
     panel_id: panel_strong
     purpose: lighting
     status: proposed
     member_point_ids: [light_study_dome]
-    note: "书房吸顶灯，具体开关控制关系待确认（预期关联 switch_study）；容量、线径、断路器等施工参数待确认"
+    capacity: "≤0.2kW"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "书房吸顶灯，开关控制见 control_study_light"
   - id: lighting_kitchen_panel
     panel_id: panel_strong
     purpose: lighting
     status: proposed
     member_point_ids: [light_kitchen_panel]
-    note: "厨房平板灯，具体开关控制关系待确认（预期关联 switch_kitchen）；容量、线径、断路器等施工参数待确认"
+    capacity: "≤0.2kW"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "厨房平板灯，开关控制见 control_kitchen_light"
   - id: lighting_mbath_panel
     panel_id: panel_strong
     purpose: lighting
     status: proposed
     member_point_ids: [light_mbath_panel]
-    note: "主卫平板灯，具体开关控制关系待确认（预期关联 switch_mbath）；容量、线径、断路器等施工参数待确认"
+    capacity: "≤0.2kW"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "主卫平板灯，开关在门外（switch_mbath 位于套间条带），见 control_mbath_light"
   - id: lighting_gbath_panel
     panel_id: panel_strong
     purpose: lighting
     status: proposed
     member_point_ids: [light_gbath_panel]
-    note: "客卫平板灯，具体开关控制关系待确认（预期关联 switch_gbath）；容量、线径、断路器等施工参数待确认"
+    capacity: "≤0.2kW"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "客卫平板灯，开关控制见 control_gbath_light"
   - id: hvac_power_living
     panel_id: panel_strong
     purpose: hvac_power
     status: pending
     member_point_ids: [sock_living_ac]
     dedicated_load: true
-    note: "客厅空调电源专用回路候选；容量/线径/断路器待设备与现场确认"
+    capacity: "≤0.3kW（内机；DEC-2026-09-07-055 客厅内机 10kW 冷量级电辅约 0.2-0.3kW）"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "客厅空调电源专用回路；定标后按厂商供电方案（室内机是否统一供电/集中箱位）终核"
   - id: hvac_power_master
     panel_id: panel_strong
     purpose: hvac_power
     status: pending
     member_point_ids: [sock_master_ac]
     dedicated_load: true
-    note: "主卧空调电源专用回路候选；容量/线径/断路器待设备与现场确认"
+    capacity: "≤0.2kW（内机）"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "主卧空调电源专用回路；定标后按厂商供电方案终核"
   - id: hvac_power_child
     panel_id: panel_strong
     purpose: hvac_power
     status: pending
     member_point_ids: [sock_child_ac]
     dedicated_load: true
-    note: "儿童房空调电源专用回路候选；容量/线径/断路器待设备与现场确认"
+    capacity: "≤0.1kW（内机）"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "儿童房空调电源专用回路；定标后按厂商供电方案终核"
   - id: hvac_power_study
     panel_id: panel_strong
     purpose: hvac_power
     status: pending
     member_point_ids: [sock_study_ac]
     dedicated_load: true
-    note: "书房空调电源专用回路候选；容量/线径/断路器待设备与现场确认"
+    capacity: "≤0.1kW（内机）"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "书房空调电源专用回路；定标后按厂商供电方案终核"
   - id: hvac_power_parent
     panel_id: panel_strong
     purpose: hvac_power
     status: pending
     member_point_ids: [sock_parent_ac]
     dedicated_load: true
-    note: "父母房空调电源专用回路候选；容量/线径/断路器待设备与现场确认"
+    capacity: "≤0.1kW（内机）"
+    wire_size: "1.5mm²(φ16)"
+    breaker: "C16A"
+    note: "父母房空调电源专用回路；定标后按厂商供电方案终核"
   - id: dedicated_kitchen_fridge
     panel_id: panel_strong
     purpose: dedicated_load
     status: proposed
     member_point_ids: [sock_kitchen_fridge]
     dedicated_load: true
-    note: "冰箱独立回路意图来自点位注释；具体回路与参数待橱柜/设备确认"
+    capacity: "≤0.3kW"
+    wire_size: "2.5mm²(φ16)"
+    breaker: "C16A"
+    note: "冰箱独立回路（外出不断电）；具体回路与参数待橱柜/设备确认"
   - id: dedicated_kitchen_dishwasher
     panel_id: panel_strong
     purpose: dedicated_load
     status: pending
     member_point_ids: [sock_kitchen_dishwasher]
     dedicated_load: true
-    note: "洗碗机单独回路意图来自点位注释；容量/线径/断路器待确认"
+    capacity: "≈2.2kW"
+    wire_size: "2.5mm²(φ16)"
+    breaker: "C20A+漏保"
+    note: "洗碗机单独回路；容量/线径/断路器待确认"
   - id: dedicated_balcony_washer_dryer
     panel_id: panel_strong
     purpose: dedicated_load
     status: proposed
     member_point_ids: [sock_balcony_washer, sock_balcony_dryer]
     dedicated_load: true
-    note: "洗衣机/烘干机大功率候选；不推断具体回路编号"
+    capacity: "≈3.0kW（洗衣机 2.0 + 热泵烘干 0.9）"
+    wire_size: "2.5mm²(φ16)"
+    breaker: "C20A+漏保"
+    note: "洗衣机/烘干机大功率；不推断具体回路编号"
   - id: dedicated_bath_heaters
     panel_id: panel_strong
     purpose: dedicated_load
     status: pending
     member_point_ids: [sock_gbath_towel, sock_mbath_exhaust, sock_gbath_exhaust]
     dedicated_load: true
-    note: "卫浴设备电源候选；负载组合与参数待设备清单及现场确认"
+    capacity: "≈2.5kW（浴霸风暖为主）"
+    wire_size: "2.5mm²(φ16)"
+    breaker: "C20A+漏保"
+    note: "卫浴设备电源（浴霸/排气/电热毛巾架）；两卫同回路的分组与漏保级联待设备清单及交底确认"
   - id: ordinary_power_living
     panel_id: panel_strong
     purpose: ordinary_power
     status: proposed
-    member_point_ids: [sock_living_tv, sock_living_sofa_l, sock_living_sofa_r, sock_living_table, sock_living_water, sock_living_curtain, sock_living_drying]
-    note: "普通功能电源规划；回路容量/线径/断路器/现场分组待确认"
+    member_point_ids: [sock_living_tv, sock_living_sofa_l, sock_living_sofa_r, sock_living_table, sock_living_water, sock_living_curtain, sock_living_drying, sock_gateway, sock_living_tv_led]
+    capacity: "≈2.0kW"
+    wire_size: "2.5mm²(φ16)"
+    breaker: "C20A+漏保"
+    note: "客餐厅普通电源（含网关与电视氛围灯带，2026-09-07-056 补入）；现场分组待交底"
   - id: ordinary_power_bedrooms
     panel_id: panel_strong
     purpose: ordinary_power
     status: proposed
-    member_point_ids: [sock_master_bed_l, sock_master_bed_r, sock_master_bed_r_head, sock_master_projector, sock_master_curtain, sock_parent_bed_l, sock_parent_bed_r, sock_parent_desk, sock_parent_curtain, sock_study_desk, sock_study_curtain, sock_child_bed, sock_child_desk]
-    note: "普通功能电源规划；回路容量/线径/断路器/现场分组待确认"
+    member_point_ids: [sock_master_bed_l, sock_master_bed_r, sock_master_bed_r_head, sock_master_projector, sock_master_curtain, sock_parent_bed_l, sock_parent_bed_r, sock_parent_desk, sock_parent_curtain, sock_study_desk, sock_study_curtain, sock_study_extra, sock_child_bed, sock_child_desk]
+    capacity: "≈2.0kW"
+    wire_size: "2.5mm²(φ16)"
+    breaker: "C20A+漏保"
+    note: "卧室普通电源（2026-09-07-056 补入 sock_study_extra）；现场分组待交底"
   - id: ordinary_power_service
     panel_id: panel_strong
     purpose: ordinary_power
     status: proposed
     member_point_ids: [sock_kitchen_gas, sock_balcony_drying, sock_mbath_vanity, sock_mbath_toilet, sock_gbath_vanity, sock_gbath_toilet]
-    note: "普通功能电源规划；回路容量/线径/断路器/现场分组待确认"
+    capacity: "≈1.5kW"
+    wire_size: "2.5mm²(φ16)"
+    breaker: "C20A+漏保"
+    note: "功能电源（燃气报警/阳台晾衣/智能马桶/台盆位）；现场分组待交底"
+  - id: ordinary_power_kitchen
+    panel_id: panel_strong
+    purpose: ordinary_power
+    status: proposed
+    member_point_ids: [sock_kitchen_counter, sock_kitchen_purifier, sock_kitchen_hood, sock_balcony_waterheater]
+    capacity: "≈3.5kW（台面小电器峰值；烟机≈0.3、净水≈0.05、热水器控制器≈0.05）"
+    wire_size: "4.0mm²(φ20)"
+    breaker: "C20A+漏保"
+    note: "厨房插座回路（2026-09-07-056 新增）：台面/净水/烟机/燃气热水器控制器；4mm² 为嵌入式烤箱等后续升级预留；燃气热水器为燃气设备，仅取电"
+  - id: ordinary_power_garden
+    panel_id: panel_strong
+    purpose: ordinary_power
+    status: proposed
+    member_point_ids: [sock_garden]
+    capacity: "≈1.0kW"
+    wire_size: "2.5mm²(φ16)"
+    breaker: "C16A+漏保"
+    note: "入户花园插座回路（2026-09-07-056 新增）；户外侧注意防水面板"
 
 controls:
   - id: control_living_entrance_corridor
     kind: switch_2way
-    status: confirmed
+    status: proposed
     switch_point_ids: [switch_living_entrance, switch_living_corridor]
-    target_point_ids: []
-    note: "现有客厅入户侧/走廊侧双控意图；具体受控灯具未在事实中明确"
+    target_point_ids: [living_track_main, light_entry_foyer]
+    note: "客厅入户侧/走廊侧双控：受控为客厅基础照明（track 主灯）+ 入户门厅筒灯（2026-09-07-056 方案绑定，待交底确认）"
   - id: control_master_bed_door
     kind: switch_2way
     status: confirmed
@@ -179,14 +273,57 @@ controls:
     note: "主卧床头/门口双控，受控灯具为主卧吸顶灯 light_master_dome（2026-09-02 确认绑定）；床头壁灯不走双控"
   - id: control_parent_bed_door
     kind: switch_2way
-    status: confirmed
+    status: proposed
     switch_point_ids: [switch_parent_bed, switch_parent_door]
-    target_point_ids: []
-    note: "现有父母房床头/门口双控意图；具体受控灯具未在事实中明确"
+    target_point_ids: [light_parent_dome]
+    note: "父母房床头/门口双控：受控为父母房吸顶灯（2026-09-07-056 方案绑定，待交底确认）"
+  - id: control_corridor_downlight
+    kind: switch
+    status: proposed
+    switch_point_ids: [switch_corridor]
+    target_point_ids: [light_corridor_1]
+    note: "走廊东端筒灯单控（2026-09-07-056 补）"
+  - id: control_study_light
+    kind: switch
+    status: proposed
+    switch_point_ids: [switch_study]
+    target_point_ids: [light_study_dome]
+    note: "书房吸顶灯单控（2026-09-07-056 补）"
+  - id: control_child_light
+    kind: switch
+    status: proposed
+    switch_point_ids: [switch_child]
+    target_point_ids: [light_child_dome]
+    note: "西北次卧吸顶灯单控（2026-09-07-056 补）"
+  - id: control_kitchen_light
+    kind: switch
+    status: proposed
+    switch_point_ids: [switch_kitchen]
+    target_point_ids: [light_kitchen_panel]
+    note: "厨房平板灯单控（2026-09-07-056 补）"
+  - id: control_mbath_light
+    kind: switch
+    status: proposed
+    switch_point_ids: [switch_mbath]
+    target_point_ids: [light_mbath_panel]
+    note: "主卫平板灯单控；开关位于门外（套间条带），符合湿区开关外置（2026-09-07-056 补）"
+  - id: control_gbath_light
+    kind: switch
+    status: proposed
+    switch_point_ids: [switch_gbath]
+    target_point_ids: [light_gbath_panel]
+    note: "客卫平板灯单控（2026-09-07-056 补）"
+  - id: control_garden_light
+    kind: switch
+    status: proposed
+    switch_point_ids: [switch_garden]
+    target_point_ids: [light_entry_down]
+    note: "入户花园筒灯单控（2026-09-07-056 补）"
 
 pending_parameters:
   - "强弱电箱之间的实际分隔与进线关系待现场确认"
-  - "所有非照明回路的容量、线径、断路器规格待设备铭牌与设计复核"
-  - "空调五路的设备功率、专用回路策略与保护参数待 HVAC 设备确认"
-  - "厨房/卫浴/阳台 dedicated load 的最终负载清单与回路分组待深化"
-  - "双控关系的具体受控灯具待电气交底确认"
+  - "回路 capacity/wire_size/breaker 为方案 proposed 值（2026-09-07-056），施工前按设备铭牌与电气交底终核"
+  - "空调五路按 DEC-2026-09-07-055 内机下调后每路 ≤0.3kW；品牌定标后按厂商供电方案（室内机是否集中供电）终核回路"
+  - "厨房/卫浴/阳台 dedicated load 的最终分组与漏保级联待电气交底确认"
+  - "网络/弱电点位（net_*、可视对讲等）归弱电箱系统，不在强电回路拓扑覆盖范围（Phase 1 口径）"
+  - "开关点位经 controls 绑定受控灯具，不作为强电回路成员计入（Phase 1 口径）"

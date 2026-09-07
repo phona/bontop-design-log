@@ -13,11 +13,11 @@ const raw = readFileSync('config/electrical-topology.yaml', 'utf8');
 test('real electrical topology parses and lints', () => {
   const topology = parseElectricalTopology(raw, points);
   const result = lintElectricalTopology(topology, points);
-  assert.equal(topology.circuits.length, 23);
-  assert.equal(topology.controls.length, 3);
+  assert.equal(topology.circuits.length, 25);
+  assert.equal(topology.controls.length, 10);
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 15);
-  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 26);
-  assert.equal(result.counts.coveredPoints, 53);
+  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 34);
+  assert.equal(result.counts.coveredPoints, 61);
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.length > 0);
 });
@@ -31,10 +31,14 @@ test('unknown point and duplicate member are rejected by parser', () => {
 test('two-way control without target is warning and dedicated pending is warning', () => {
   const topology = parseElectricalTopology(raw, points);
   const result = lintElectricalTopology(topology, points);
+  // DEC-2026-09-07-056：全部控件已绑定受控灯具，真实拓扑不再出现 control_target_missing
   assert.equal(result.errors.filter((i) => i.code === 'control_target_missing').length, 0);
-  assert.equal(result.warnings.filter((i) => i.code === 'control_target_missing').length, 2);
+  assert.equal(result.warnings.filter((i) => i.code === 'control_target_missing').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'dedicated_parameters_pending'));
-  assert.equal(topology.controls.filter((control) => control.target_point_ids.length === 0).length, 2);
+  assert.equal(topology.controls.filter((control) => control.target_point_ids.length === 0).length, 0);
+  // 行为回归：合成一个无目标双控仍应产生 warning
+  const mutated = lintElectricalTopology({ ...topology, controls: [...topology.controls, { ...topology.controls[0], id: 'control_no_target', target_point_ids: [] }] }, points);
+  assert.equal(mutated.warnings.filter((i) => i.code === 'control_target_missing').length, 1);
 });
 
 test('lint rejects non-load members and duplicate members', () => {
@@ -67,8 +71,8 @@ test('lint keeps historical uncovered points as warnings and maps circuit facts'
   assert.equal(result.errors.filter((i) => i.code === 'circuit_fact_mismatch').length, 0);
   assert.equal(result.warnings.filter((i) => i.code === 'declared_circuit_uncovered').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered'));
-  assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 23);
-  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 25);
+  assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 0);
+  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 17);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'switch_master_bed_l'));
 });
 
@@ -85,7 +89,7 @@ test('lint validates panel topology/source semantics and status at runtime', () 
 test('electrical JSON CLI emits pure JSON', () => {
   const output = execFileSync('npx', ['tsx', 'scripts/verify/electrical/verify-electrical-lint.ts', '--json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const result = JSON.parse(output) as { errors: unknown[]; warnings: unknown[]; counts: { circuits: number } };
-  assert.equal(result.counts.circuits, 23);
+  assert.equal(result.counts.circuits, 25);
   assert.ok(Array.isArray(result.errors));
   assert.ok(Array.isArray(result.warnings));
 });

@@ -354,16 +354,11 @@ elements:
     }
   });
 
-  it('loads the guest bath glass door declaration from the real overlay', () => {
+  it('guest bath glass door is removed (DEC-2026-09-07-054: fixed screen, open entry)', () => {
     const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    // DEC-2026-09-07-054：客卫取消铰接玻璃门，改整面固定玻璃 + 西端 0.70m 开敞入口
     const door = overlay.elements.find((element) => element.id === 'gbath_west_glass_door');
-    assert.equal(door?.type, 'hinged_glass_door');
-    if (door?.type === 'hinged_glass_door') {
-      assert.deepEqual(door.points, [{ x: 5.60, z: 2.80 }, { x: 6.30, z: 2.80 }]);
-      assert.equal(door.open, true);
-      assert.equal(door.swing, 'north');
-      assert.equal(door.hinge, 'start');
-    }
+    assert.equal(door, undefined);
   });
 
   it('loads the guest bath shower screen declaration from the real overlay', () => {

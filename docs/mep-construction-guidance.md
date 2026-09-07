@@ -1,6 +1,6 @@
 # 机电走线施工指导（水路 / 电路 / 中央空调，燃气除外）
 
-> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（40 条走线）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
+> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（65 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
 > **不是施工放线依据**：所有坐标为协调值，穿墙点、梁位、立管、墙体类型均需交房量房后终核修正。配置驱动，修正只改 yaml，渲染与校验自动跟随。
 
 ## 1. 走线总则
@@ -125,4 +125,4 @@ npm run typecheck
 - `beam_collision`：`reference_constraints` 中 `status: confirmed` 且带 `reference_beam_bottom_y` 的梁位，物理路线在约束带内高于梁底 → error。当前 5 条约束全部 inferred，规则休眠；量房实测转 confirmed 后自动激活。
 - `penetration_missing` / `penetration_point_mismatch`：逐墙核对——穿越的每面实体墙都要在 `penetration` 数组里有对应墙 id 的声明（confirmed 路线缺失即 error）；声明穿点与实际几何交点偏差 > 0.25m 报 mismatch。
 
-当前基线：verify:mep 0 error / 18 warning（15 条为 `review-manifest.json` 记录在案的已接受项 + 3 条新增 `shear_wall_penetration`：refrigerant-master / strong-ac-master / weak-master 穿 w_strip_east，属 inferred 工艺提醒，量房确认墙体类型后按规则自动升降级）。
+当前基线（2026-09-07 v2 补全后）：verify:mep 0 error / 22 warning（15 条为 `review-manifest.json` 记录在案的已接受项 + 7 条 `shear_wall_penetration`：原 3 条（refrigerant-master / strong-ac-master / weak-master）+ v2 补全主卧系普通/照明/主卫回路新增 4 条，均为 w_strip_east 穿越的 inferred 工艺提醒，量房确认墙体类型后按规则自动升降级）。

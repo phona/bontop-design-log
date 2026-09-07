@@ -39,13 +39,14 @@
 
 - id: sock_living_water
   room: living_dining
-  wall: w_liv_east
+  wall: w_be_west
+  wall_side: west
   type: socket
   x: 13.40
-  z: 9.0
+  z: 8.40
   height: 0.3
   count: 1
-  note: "饮水机位"
+  note: "饮水机位（2026-09-07 修正：原挂 w_liv_east @z=9.0，投影超出该墙段 3.45m——w_liv_east 仅到 z=5.55，且 z>8.70 段为东南室外凹口无墙可挂；改挂书房西墙 w_be_west 客厅侧南段，距墙段南端 0.30m、避书房门洞区（z≤6.55），紧邻沙发区角落）"
 
 - id: sock_living_table
   room: living_dining

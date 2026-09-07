@@ -456,7 +456,6 @@ export class HouseScene implements SceneApi {
     const configuredToilet = this.auditFurnishings.guest_bath?.find((item) => item.type === 'toilet' && item.x !== undefined && item.z !== undefined);
     const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('furniture:guest_bath:toilet:1'));
     const screenBox = segmentBox(points('shower_screen_gbath'));
-    const doorBox = segmentBox(points('gbath_west_glass_door'));
     const shower = this.auditPlumbing.find((candidate) => candidate.room === 'guest_bath' && candidate.type === 'shower');
     const showerPoint = shower ? { x: shower.x, z: shower.z } : { x: 7.10, z: 2.45 };
     const dividerZ = screenBox ? (screenBox.minZ + screenBox.maxZ) / 2 : 2.80;
@@ -503,7 +502,7 @@ export class HouseScene implements SceneApi {
       label('花洒朝西', clamp(x - 0.55, bounds.minX + 0.7, bounds.maxX - 0.7), z + 0.32);
     };
     if (screenBox) { line(screenBox.minX, dividerZ, screenBox.maxX, dividerZ, '#075bd5', 24); label(`玻璃隔断 z=${dividerZ.toFixed(2)}`, (screenBox.minX + screenBox.maxX) / 2, dividerZ - 0.32); }
-    if (doorBox) { const doorWidth = doorBox.maxX - doorBox.minX; const d0 = point(doorBox.minX, dividerZ); const d1 = point(doorBox.maxX, dividerZ); ctx.fillStyle = 'rgba(34, 197, 94, 0.42)'; ctx.strokeStyle = '#15803d'; ctx.lineWidth = 10; ctx.fillRect(d0.x, d0.y - 18, d1.x - d0.x, 36); ctx.strokeRect(d0.x, d0.y - 18, d1.x - d0.x, 36); ctx.fillStyle = '#166534'; ctx.beginPath(); ctx.arc(d0.x, d0.y, 10, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#166534'; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(d0.x, d0.y, Math.abs(sx) * doorWidth, Math.PI, Math.PI * 1.5); ctx.stroke(); label('西侧玻璃门←向北开启', (doorBox.minX + doorBox.maxX) / 2, dividerZ + 0.58); }
+    if (screenBox) { const gapWestX = 5.60; const g0 = point(gapWestX, dividerZ); const g1 = point(screenBox.minX, dividerZ); ctx.strokeStyle = '#64748b'; ctx.lineWidth = 8; ctx.setLineDash([14, 10]); ctx.beginPath(); ctx.moveTo(g0.x, g0.y); ctx.lineTo(g1.x, g1.y); ctx.stroke(); ctx.setLineDash([]); label('西侧开敞入口←无门', (gapWestX + screenBox.minX) / 2, dividerZ + 0.58); }
     drawVanity(vanityBox); drawToilet(toiletBox); drawShower({ minX: showerPoint.x, maxX: showerPoint.x, minZ: showerPoint.z, maxZ: showerPoint.z });
     label(`马桶 AABB x[${toiletBox?.minX.toFixed(3) ?? 'n/a'},${toiletBox?.maxX.toFixed(3) ?? 'n/a'}] z[${toiletBox?.minZ.toFixed(3) ?? 'n/a'},${toiletBox?.maxZ.toFixed(3) ?? 'n/a'}]`, bounds.minX + 0.05, bounds.minZ + 0.28, '#991b1b', 'bold 20px sans-serif');
     line(bounds.minX, bounds.maxZ, bounds.maxX, bounds.maxZ, '#17212b', 12); label(`南墙 z=${bounds.maxZ.toFixed(2)}`, bounds.minX + 0.08, bounds.maxZ - 0.16, '#17212b', 'bold 20px sans-serif');
