@@ -1,0 +1,272 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: master-flexible-frontstage-20260903
+subject: candidate A 主卧数字优先家具化前台 + 书房季节后台
+units: m
+coordinate_system: Three.js右手系，Y向上，+x东，+z南
+status: blocked # R5 correction source version；统一350mm床头柜、横柜完整mesh与电气已更新；硬冲突/真实维护与产品事实未收口，禁止施工冻结
+datums:
+  - id: datum-r5-partition-wardrobe
+    name: R5 主卧横向隔断柜（候选）
+    anchor: { kind: free_position, ref: master_bedroom, wall_side: null, service_ref: null }
+    source_refs: { fact_refs: [fact-r5-placed-objects, fact-r5-static-sweep, fact-east-wall-structure], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: 柜门关闭为南脸、开启绕左右铰链向+z扫掠，真实五金待确认, position: {x: 2.20, z: 5.25}, rotation: 0, dimensions: {length: 1.60, depth: 0.60}, dimension_semantics: candidate }
+      elevation: { required: true, viewing_side: east, vertical_axis: y, height: null, dimensions: {}, dimension_semantics: candidate }
+      section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {door_sweep: validation_envelope_only, hvac_inspection: site_pending}, thickness: 0.60, dimension_semantics: candidate }
+    geometry: { position: {x: 2.20, z: 5.25}, candidate_length: 1.60, opening_state: validation_envelope_only }
+    constraints: ["关闭态南脸（+z），背板在北侧（-z）；门/缝/拉手/铰链均位于南面", "不承担 HVAC/冷凝水/结构责任", "四门静态扫掠仅 validation envelope，真实门扇/五金待确认", "东墙结构与防倾倒方案 site_pending"]
+    interfaces: [bed_180, master_dressing_connection_storage]
+    status: candidate_not_frozen
+  - id: datum-master-bed
+    name: candidate A 主卧床（数字优先候选）
+    anchor: { kind: room_anchor, ref: master_bedroom, wall_side: null, service_ref: null }
+    source_refs: { fact_refs: [fact-r5-placed-objects, pending-south-curtain, pending-product-outlines], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: 床头朝北（rotation=270），+z向南, position: {x: 3.20, z: 7.10}, rotation: 270, dimensions: {length: 2.00, width: 1.80}, dimension_semantics: total_candidate }
+      elevation: { required: true, viewing_side: west, vertical_axis: y, height: null, dimensions: {}, dimension_semantics: per_existing_recipe_candidate }
+      section: { required: true, cut_direction: north-south, depth_axis: z, clearances: {south_curtain: site_pending}, thickness: null, dimension_semantics: candidate }
+    geometry: { x: 3.20, z: 7.10, rotation: 270, aabb: {x: [2.20,4.20], z: [6.20,8.00]} }
+    constraints: ["candidate A 数字坐标优先；北床头柜 runtime AABB 与床 runtime mesh 重叠，必须保留真实 error", "南帘/床头柜功能冲突与开启操作侧不宽裕，不能以静态 AABB 通过替代使用态验证", "真实床架外廓未锁定"]
+    interfaces: [master_partition_wardrobe_1600, master_bedside_cabinet_350_north, master_bedside_cabinet_350_south, curtain_master_south]
+    status: candidate_not_frozen
+  - id: datum-master-entry-wardrobe-history-r3
+    name: R3 入口窄柜历史 datum（作废）
+    anchor: { kind: wall_anchor, ref: w_mb_east, wall_side: west, service_ref: null }
+    source_refs: { fact_refs: [fact-r5-placed-objects], decision_refs: [fact-scheme-direction] }
+    views: { plan: { required: false }, elevation: { required: false }, section: { required: false } }
+    geometry: { historical: true, superseded_by: datum-r5-partition-wardrobe }
+    constraints: ["仅保留历史追溯，不代表 R5 对象或施工冻结"]
+    status: historical_superseded
+  - id: datum-master-entry-wardrobe-history-r2
+    name: R2 入口成品窄衣柜历史 datum（superseded）
+    anchor: { kind: wall_anchor, ref: w_mb_east, wall_side: west, service_ref: null }
+    source_refs: { fact_refs: [fact-door-sweep, fact-mb-skeleton, fact-east-wall-structure], decision_refs: [fact-scheme-direction, DEC-2026-09-04-R2] }
+    views:
+      plan: { required: true, origin: w_mb_east 墙线西脸, axes: x东西/z南北, direction: 柜门朝西, position: {north_edge_z: 5.75, east_edge_x: 4.20}, rotation: 0, dimensions: {width_along_z: 0.62, depth_along_x: 0.60, height: 2.25}, dimension_semantics: candidate_placeholder }
+      elevation: { required: true, viewing_side: west, vertical_axis: y, height: 2.25, dimensions: {width: 0.62, height: 2.25, sill: 0, datum_offset: 0}, dimension_semantics: candidate_placeholder }
+      section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {rear: 0, front: 0.60, top: null, bottom: 0}, thickness: 0.60, dimension_semantics: candidate_placeholder }
+    geometry: { aabb: {x: [3.60,4.20], z: [5.75,6.37], y: [0,2.25]}, candidate_range: {width_mm: [590,650], depth_mm: [580,600], height_mm: [2150,2300]}, first_round_placeholder_mm: [620,600,2250] }
+    constraints:
+      - "R2：750mm 在 3.15m 东墙段内无法同时满足门侧缝≥0.15/柜床缝≥0.15/床帘缝≥0.30，降为 620mm 级（类型改名 master_freestanding_wardrobe_062）"
+      - "北缘 z=5.75（门侧缝 0.20m，现场再核门套/执手）"
+      - "门扫掠 AABB 与柜体不得相交"
+      - "柜床缝 0.18m（硬下限 ≥0.15m）；柜床缝不作通道、不塞家具或面板"
+      - "不通顶、不连吊顶、不做镜面/展示格/法式线框；两扇平开门或成熟折叠门（不优先推拉门）"
+      - "柜灯用充电感应灯，不把建筑电气/弱电藏入柜体；防倾倒固定方式待东墙结构确认"
+      - "容量风险：620mm 双层短挂对两人热季偏紧，挂在 align-hot-season-hanging；若判定容量不足，回退 740–750mm + 三缝压硬下限（门侧 0.15/柜床 0.15/床帘 0.30）"
+    interfaces: [d_mb, bed_180]
+    validation_refs: [scene-builder 柜AABB不交门扫掠断言（新增）, master-bedroom-dressing-test, verify:furniture]
+    status: candidate_not_frozen
+  - id: datum-master-bed-history-r3
+    name: R3 床历史 datum（superseded）
+    anchor: { kind: room_anchor, ref: master_bedroom, wall_side: east, service_ref: null }
+    source_refs: { fact_refs: [fact-mb-skeleton, fact-mb-furniture-current], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: 床头朝北（rotation=270）、东缘贴 w_mb_east, position: {x: 3.20, z: 7.60}, rotation: 270, dimensions: {length: 2.00, width: 1.80}, dimension_semantics: total }
+      elevation: { required: true, viewing_side: west, vertical_axis: y, height: null, dimensions: {}, dimension_semantics: per_existing_recipe }
+      section: { required: true, cut_direction: north-south, depth_axis: z, clearances: {north_to_wardrobe: 0.33, south_to_curtain_box: 0.20}, thickness: null, dimension_semantics: clear_candidate }
+    geometry: { x: 3.20, z: 7.60, rotation: 270, aabb: {x: [2.20,4.20], z: [6.70,8.50]} }
+    constraints:
+      - "床北缘 z≈6.55 与衣柜南缘 z≈6.38–6.40 留柜床缝（硬下限 ≥0.15m）"
+      - "床南缘 z≈8.35 至南帘盒北缘 z=8.70 目标 ≥0.35m、硬下限 ≥0.30m（南帘堆叠/下垂 site_pending）"
+      - "床实体不得压西飘窗窗帘盒内缘 x=1.35 以西域"
+      - "候选坐标、未冻结；最终外廓随真实床架型号复核"
+    interfaces: [master_freestanding_wardrobe_062, curtain_master_south]
+    validation_refs: [master-bedroom-dressing-test, verify:furniture]
+    status: candidate_not_frozen
+  - id: datum-master-dressing-table-west
+    name: 西侧北段梳妆桌（候选占位）
+    anchor: { kind: free_position, ref: master_bedroom, wall_side: null, service_ref: sock_master_projector }
+    source_refs: { fact_refs: [fact-mb-skeleton, fact-floor-socket-domain-risk], decision_refs: [fact-scheme-direction, DEC-2026-09-04-R1] }
+    views:
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: "R1 修订：贴西窗（桌 x[0.20,0.65]），长边沿 z，正面/座位侧朝东面向玻璃", position: {x: 0.425, z: 6.05}, rotation: 90, dimensions: {width_along_z: 0.90, depth_along_x: 0.45, height: 0.75}, dimension_semantics: candidate_placeholder }
+      elevation: { required: true, viewing_side: east, vertical_axis: y, height: 0.75, dimensions: {width: 0.90, height: 0.75, sill: 0, datum_offset: 0}, dimension_semantics: candidate_placeholder }
+      section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {front: null, rear: 0.20, top: null, bottom: 0}, thickness: 0.45, dimension_semantics: candidate_placeholder }
+    geometry: { candidate_range: {width_mm: [850,900], depth_mm: [430,460], height_mm: [740,760]}, first_round_placeholder_mm: [900,450,750], placed_aabb: {x: [0.20,0.65], z: [5.60,6.50]} }
+    constraints:
+      - "四腿开放式结构+一个薄抽屉；使用独立桌面镜和桌灯"
+      - "桌背（西缘 x=0.20）与玻璃幕墙留约 0.20m 通风/冷凝缝；不压西窗帘线 x[1.10,1.35]"
+      - "桌体/桌腿/凳使用态均避开床实体；家具可整体拔电移开以便玻璃清洁"
+      - "R1 起因：业主第一人称证据指出桌置帘线东侧读作'扔在中间'，贴窗后床西通道 x[0.65,2.20] 整体释放"
+      - "候选尺寸、未冻结"
+    interfaces: [dressing_stool, sock_master_projector]
+    validation_refs: [master-bedroom-dressing-test, 桌凳专项使用态校验]
+    status: candidate_not_frozen
+  - id: datum-dressing-stool-west
+    name: 梳妆凳同步迁移
+    anchor: { kind: free_position, ref: master_dressing_table, wall_side: null, service_ref: null }
+    source_refs: { fact_refs: [fact-mb-furniture-current], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 梳妆桌中心, axes: x东西/z南北, direction: 收纳态完整进入桌下, position: {x: 0.42, z: 6.05}, rotation: 90, dimensions: {placed_aabb_x: [0.22,0.62], placed_aabb_z: [5.84,6.26]}, dimension_semantics: candidate }
+      elevation: { required: false, viewing_side: east, vertical_axis: y, height: null, dimensions: {}, dimension_semantics: per_existing_recipe }
+      section: { required: false, cut_direction: east-west, depth_axis: x, clearances: {}, thickness: null, dimension_semantics: per_existing_recipe }
+    geometry: {}
+    constraints:
+      - "收纳态完整进入桌下（明确桌下层叠对象）"
+      - "脚位/后退轨迹列入地插禁入区；R1 已随桌回填 (0.42,6.05)、候选未冻结"
+    interfaces: [master_dressing_table]
+    validation_refs: [master-bedroom-dressing-test, 桌凳专项使用态校验]
+    status: candidate_not_frozen
+  - id: datum-master-hot-season-low-dresser
+    name: 南侧窗带轻中古矮柜（R1 新增，候选占位）
+    anchor: { kind: free_position, ref: master_bedroom, wall_side: null, service_ref: null }
+    source_refs: { fact_refs: [fact-mb-skeleton], decision_refs: [DEC-2026-09-04-R1] }
+    views:
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: "正面（抽屉面）朝北对房间，rotation=180", position: {x: 1.00, z: 9.31}, rotation: 180, dimensions: {width_along_x: 1.40, depth_along_z: 0.48, height: 0.85}, dimension_semantics: candidate }
+      elevation: { required: true, viewing_side: north, vertical_axis: y, height: 0.85, dimensions: {width: 1.40, height: 0.85}, dimension_semantics: candidate }
+      section: { required: false, cut_direction: north-south, depth_axis: z, clearances: {}, thickness: 0.48, dimension_semantics: candidate }
+    geometry: { placed_aabb: {x: [0.30,1.70], z: [9.07,9.55]}, height: 0.85 }
+    constraints:
+      - "职责：热季折叠衣物+衣柜 overflow；不放内衣/睡衣/脏衣/洗护（归 DEC-045）"
+      - "位于南窗帘线以南的窗带地面（z≥8.95），h=0.85 远低于窗带底 2.07m；不压帘、不与床 AABB 重叠"
+      - "东侧远离 sock_master_bed_r @(4.20,9.15) / sock_master_curtain @(4.20,9.50) ≥0.5m；南帘堆叠端 site_pending"
+      - "预算走独立 dresser topic（不并入 wardrobe，避免与 750 成品柜 roomOverride 同价混计）"
+      - "候选、未冻结"
+    interfaces: [curtain_master_south, bed_180]
+    validation_refs: [master-bedroom-dressing-test, cli-glb-export-test, verify:furniture]
+    status: candidate_not_frozen
+  - id: datum-floor-socket
+    name: 唯一通用地插（sock_master_projector 迁移候选）
+    anchor: { kind: service_route, ref: master_dressing_table, wall_side: null, service_ref: sock_master_projector }
+    source_refs: { fact_refs: [fact-floor-socket-domain-risk, pending-floor-socket-built, pending-west-curtain], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: "R1 随桌贴窗：桌下北侧腿间服务域", position: {x: 0.42, z: 5.78}, rotation: null, dimensions: {}, dimension_semantics: candidate }
+      elevation: { required: true, viewing_side: east, vertical_axis: y, height: 0.02, dimensions: {}, dimension_semantics: overall }
+      section: { required: false, cut_direction: east-west, depth_axis: x, clearances: {nearest_table_leg: 0.196, stool_envelope: 0.06, curtain_line: 0.68, door_sweep: 0.23}, thickness: null, dimension_semantics: clear }
+    geometry: { existing: {x: 1.50, z: 7.50, height: 0.02}, candidate: {x: 0.42, z: 5.78, height: 0.02} }
+    constraints:
+      - "原坐标 @(1.50,7.50) 不直接沿用"
+      - "禁止区：桌腿落点及安装脚/凳子正常脚位与后退轨迹/床西侧主通道 x[1.35,2.20]/窗帘堆叠与开启扇/湿式清洁边界/任何封闭柜体底板"
+      - "允许区：四腿开放式梳妆桌下方后侧服务区，坐姿可伸手开盖、可见可拔插、无需搬桌"
+      - "不压在实体斗柜/柜体下，不放凳子滚动/踩踏中心；不新增第二只地插"
+      - "可行域为空则 fallback：取消西侧地插、镜/灯改充电式、吹风机用东南备用墙插可收纳临时线（需用户确认）"
+      - "候选、未冻结"
+    interfaces: [master_dressing_table, dressing_stool, sock_master_bed_r]
+    validation_refs: [地插可行域预演（第一轮门槛）, master-bedroom-dressing-test, verify:all]
+    status: candidate_not_frozen
+  - id: datum-r5-bedside-cabinet-north
+    name: R5 北侧 350mm 普通床头柜（候选）
+    anchor: { kind: free_position, ref: bed_180, wall_side: null, service_ref: sock_master_bed_l }
+    source_refs: { fact_refs: [fact-r5-runtime-aabb-correction, fact-r5-static-sweep, fact-east-wall-structure], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 床局部坐标, axes: x东西/z南北, direction: 柜门开启方向待真实型号确认, position: {x: 4.01, z: 5.975}, rotation: 0, dimensions: {declared_width: 0.38, declared_depth: 0.35, target_aabb: {x: [3.82,4.20], z: [5.80,6.15]}, height: 0.55}, dimension_semantics: runtime_aligned_candidate }
+      elevation: { required: true, viewing_side: west, vertical_axis: y, height: 0.55, dimensions: {width: 0.38, height: 0.55}, dimension_semantics: candidate }
+      section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {bed: {runtime_min_clearance: 0.02}, wall: site_pending}, thickness: 0.35, dimension_semantics: runtime_aligned_candidate }
+    geometry: { nominal_width: 0.38, nominal_depth: 0.35, runtime_aabb: {x: [3.82,4.20], z: [5.80,6.15]}, opening_state: validation_envelope_only }
+    constraints: ["双普通床头柜优先，但以 bed_180 runtime 不重叠硬约束优先；北柜 maxZ≤bed.minZ-0.035", "北插座 z=6.03 服务本柜；普通独立家具，不承担 HVAC/冷凝水/结构责任", "门扇开启态仅 validation envelope", "东墙结构与防倾倒方式 site_pending"]
+    interfaces: [bed_180, sock_master_bed_l]
+    status: candidate_not_frozen
+  - id: datum-r5-bedside-cabinet-south
+    name: R5 南侧 350mm 普通床头柜（候选）
+    anchor: { kind: free_position, ref: bed_180, wall_side: null, service_ref: sock_master_bed_r_head }
+    source_refs: { fact_refs: [fact-r5-runtime-aabb-correction, fact-r5-static-sweep, fact-east-wall-structure], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 床局部坐标, axes: x东西/z南北, direction: 柜门开启方向待真实型号确认, position: {x: 4.01, z: 8.225}, rotation: 0, dimensions: {declared_width: 0.38, declared_depth: 0.35, target_aabb: {x: [3.82,4.20], z: [8.05,8.40]}}, dimension_semantics: runtime_aligned_candidate }
+      elevation: { required: true, viewing_side: west, vertical_axis: y, height: 0.55, dimensions: {width: 0.38, height: 0.55}, dimension_semantics: candidate }
+      section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {bed: {runtime_min_clearance: 0.02}, wall: site_pending, south_curtain: {curtain_box_north_z: 8.70, runtime_max_clearance: 0.30, hard_lower_bound: 0.30, fabric: site_pending}}, thickness: 0.35, dimension_semantics: runtime_aligned_candidate }
+    geometry: { nominal_width: 0.38, nominal_depth: 0.35, runtime_aabb: {x: [3.82,4.20], z: [8.05,8.40]}, opening_state: validation_envelope_only }
+    constraints: ["普通独立家具，不承担 HVAC/冷凝水/结构责任", "南插座/双控 z=8.18 服务本柜；床 runtime minZ≥8.03 后 35mm 硬净距，不放宽阈值", "门扇开启态仅 validation envelope", "南帘与东墙结构 site_pending"]
+    interfaces: [bed_180, sock_master_bed_r_head, curtain_master_south]
+    status: candidate_not_frozen
+  - id: datum-r5-dressing-connection-storage
+    name: R5 独立连接收纳段（候选）
+    anchor: { kind: free_position, ref: master_bedroom, wall_side: null, service_ref: null }
+    source_refs: { fact_refs: [fact-r5-placed-objects, fact-hvac-condensate-inspection, pending-product-outlines], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: 连接方向与门扇开启待确认, position: {x: 1.05, z: 4.55}, rotation: 0, dimensions: {declared_width: 0.70, declared_depth: 0.40, target_aabb: {x: [0.70,1.40], z: [4.35,4.75]}}, dimension_semantics: runtime_aligned_candidate }
+      elevation: { required: true, viewing_side: east, vertical_axis: y, height: 0.82, dimensions: {height: 0.82}, dimension_semantics: candidate }
+      section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {hvac_inspection: site_pending, condensate: site_pending, dec045_boundary: {max_z: 4.10}}, thickness: 0.40, dimension_semantics: runtime_aligned_candidate }
+    geometry: { position: {x: 1.05, z: 4.55}, runtime_aabb: {x: [0.70,1.40], z: [4.35,4.75]}, opening_state: validation_envelope_only }
+    constraints: ["家具不承担 HVAC/冷凝水/结构责任", "HVAC/冷凝水检修边界未知且 blocking", "真实外廓与连接方式 site_pending"]
+    interfaces: [master_partition_wardrobe_1600, mb_vanity_pvc_box]
+    status: candidate_not_frozen
+  - id: datum-master-bedside-cabinet-north
+    name: R3 北侧窄床头柜历史 datum（superseded）
+    anchor: { kind: free_position, ref: bed_180, wall_side: null, service_ref: sock_master_bed_l }
+    source_refs: { fact_refs: [fact-mb-skeleton, pending-product-outlines], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 床/东墙局部坐标, axes: x东西/z南北, direction: 柜门朝西, position: {x: 4.03, z: 6.535}, rotation: 270, dimensions: {width: 0.24, depth: 0.30, height: 0.50}, dimension_semantics: candidate }
+      elevation: { required: true, viewing_side: west, vertical_axis: y, height: 0.50, dimensions: {width: 0.24, height: 0.50}, dimension_semantics: candidate }
+      section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {wardrobe: 0.035, bed: 0.035}, thickness: 0.30, dimension_semantics: candidate }
+    geometry: { aabb: {x: [3.88,4.18], z: [6.415,6.655], y: [0,0.50]} }
+    constraints: ["悬浮薄抽屉柜；不承担衣柜门开启责任；与衣柜/床均留 35–45mm 安装/阴影缝"]
+    interfaces: [master_freestanding_wardrobe_062, bed_180, sock_master_bed_l]
+    validation_refs: [master-bedroom-dressing-test, cli-glb-export-test, verify:furniture]
+    status: candidate_not_frozen
+  - id: datum-master-bedside-tray-south
+    name: 南侧床架集成轻托盘（R3 候选）
+    anchor: { kind: free_position, ref: bed_180, wall_side: null, service_ref: sock_master_bed_r_head }
+    source_refs: { fact_refs: [fact-mb-skeleton, pending-south-curtain, pending-product-outlines], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 床架/床头板, axes: x东西/z南北, direction: 收起/使用均朝床内, position: {x: 3.95, z: 8.36}, rotation: 270, dimensions: {width: 0.20, depth: 0.26, height: 0.08}, dimension_semantics: candidate }
+      elevation: { required: true, viewing_side: north, vertical_axis: y, height: 0.55, dimensions: {width: 0.20, height: 0.08}, dimension_semantics: candidate }
+      section: { required: true, cut_direction: north-south, depth_axis: z, clearances: {curtain_box: 0.20, bed_projection: contained}, thickness: 0.26, dimension_semantics: candidate }
+    geometry: { stored_state: {x: [3.82,4.08], z: [8.23,8.49]}, used_state: {x: [3.82,4.08], z: [8.24,8.50]} }
+    constraints: ["不落地、不挂玻璃、不向南帘墙索取支撑；收起态/使用态均不进入 z≥8.70 帘盒控制区"]
+    interfaces: [bed_180, sock_master_bed_r_head, curtain_master_south]
+    validation_refs: [master-bedroom-dressing-test, cli-glb-export-test, scene-builder-test, verify:furniture]
+    status: candidate_not_frozen
+  - id: datum-bedside-electrical
+    name: 床头随床电气（重新定位口径）
+    anchor: { kind: wall_anchor, ref: w_mb_east, wall_side: west, service_ref: null }
+    source_refs: { fact_refs: [fact-mb-east-electrical, pending-product-outlines], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: w_mb_east 墙线, axes: x东西/z南北, direction: "R2 改枕头区成组：±0.45m 对床心 7.45（两枕中心约 z=7.00/7.90），以最终床架/床头板真实外廓终核", position: null, rotation: 0, dimensions: {bed_aabb_candidate: {x: [2.20,4.20], z: [6.55,8.35]}, points_z: {sock_master_bed_l: 7.00, sock_master_bed_r_head: 7.90, switch_master_bed_l: 7.00, light_master_wall_l: 7.00, light_master_wall_r: 7.90}}, dimension_semantics: candidate }
+      elevation: { required: true, viewing_side: west, vertical_axis: y, height: null, dimensions: {wall_lamp_h: 1.35, bedhead_point_h: 0.95}, dimension_semantics: "R2：壁灯 h1.60→1.35 落床头阅读高度；R2.3：床头组插座/开关 h0.70→0.95（高出床头板顶 0.15m，避免嵌入床头板）" }
+      section: { required: false, cut_direction: east-west, depth_axis: x, clearances: {front: 0.15}, thickness: null, dimension_semantics: clear }
+    geometry: { affected_points: [sock_master_bed_l, sock_master_bed_r_head, switch_master_bed_l, light_master_wall_l, light_master_wall_r] }
+    constraints:
+      - "现有两插座/床头双控/两盏固定壁灯均不能原坐标沿用"
+      - "R2：点位改枕头区成组（±0.45m 对床心）；左右墙插按最终床架/床头板真实外廓重新定位、不机械平移"
+      - "门口—床头采用常规有线双控，开关盒预留零线；阅读灯优先台灯/插接灯"
+      - "第一轮不冻结固定壁灯；若取消必须同步更新 electrical/topology/render facts 与测试"
+      - "点位须位于新床头范围、保持左右关系、避开入口柜并保留 wall_side；主灯先不迁（仅验证防眩和调光）"
+      - "未冻结"
+    interfaces: [bed_180, switch_master_door, master_freestanding_wardrobe_062]
+    validation_refs: [master-bedroom-dressing-test, verify:all]
+    status: candidate_not_frozen
+  - id: datum-study-backstage-cabinet
+    name: 书房季节后台柜（候选占位）
+    anchor: { kind: wall_anchor, ref: w_east_upper, wall_side: west, service_ref: null }
+    source_refs: { fact_refs: [fact-study-ceiling, fact-study-skeleton, pending-study-east-wall], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: 柜门朝西, position: {x_range: [15.80,16.35], z_range: [5.90,7.60]}, rotation: 0, dimensions: {length_along_z: 1.70, depth_along_x: 0.55, height: null}, dimension_semantics: candidate_boundary }
+      elevation: { required: true, viewing_side: west, vertical_axis: y, height: 2.375, dimensions: {width: 1.70, height_range: [2.35,2.40], sill: 0, datum_offset: 0}, dimension_semantics: candidate }
+      section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {rear: 0.05, front: null, top: 0.10, bottom: 0}, thickness: 0.55, dimension_semantics: candidate }
+    geometry: { aabb_candidate: {x: [15.80,16.35], z: [5.90,7.60], y: [0,2.40]}, depth_default: 0.55, height_range: [2.35,2.40] }
+    constraints:
+      - "北缘 z≥5.90、南缘 z≤7.60、最大长度约 1.70m"
+      - "深度默认 0.55m；仅在真实墙面/门板/挂衣净深证明不足时重新评估 0.60m，但东缘不得贴死 x=16.40"
+      - "东缘 ≤x=16.35（保留约 0.05m 完成面/安装余量）"
+      - "不侵入空调角吊 ceiling_study_ac_corner（x[15.80,16.40] z[5.55,5.85] 底 2.50m）、南窗帘盒 curtain_box_study_south z[7.60,7.85]、书桌椅和训练使用态"
+      - "柜顶 2.35–2.40 与角吊底 2.50 之间约 0.10–0.15m 灰缝作 non-blocking 评审细节；不直接加高成品柜（先比较可拆顶封板/独立防尘板/保持留空，且不得影响 HVAC 检修）"
+      - "模块化定制、浅色平板门、可调挂衣与层板；防倾倒固定待书房东墙结构确认"
+      - "候选边界、未冻结"
+    interfaces: [ceiling_study_ac, ceiling_study_ac_corner, ac_study, d_bese, bench_adjustable]
+    validation_refs: [study-seasonal-storage-test（新增）, verify:all, verify:furniture]
+    status: candidate_not_frozen
+  - id: datum-light-training-set
+    name: 书房轻训练三件（收纳态+使用态）
+    anchor: { kind: free_position, ref: bedroom_se, wall_side: null, service_ref: null }
+    source_refs: { fact_refs: [fact-study-furniture-current, fact-unmapped-furnishing-types], decision_refs: [fact-scheme-direction] }
+    views:
+      plan: { required: true, origin: 房间局部坐标, axes: x东西/z南北, direction: 默认展示收纳态，使用态 AABB 另行验证, position: {bench_adjustable: {x: 15.30, z: 7.95}, adjustable_dumbbell_pair: {x: 16.15, z: 7.90}, rollable_training_mat: {x: 16.075, z: 5.775}}, rotation: {bench_adjustable: 0, adjustable_dumbbell_pair: 90, rollable_training_mat: 0}, dimensions: {}, dimension_semantics: candidate }
+      elevation: { required: false, viewing_side: west, vertical_axis: y, height: null, dimensions: {}, dimension_semantics: candidate }
+      section: { required: false, cut_direction: null, depth_axis: null, clearances: {}, thickness: null, dimension_semantics: candidate }
+    geometry: { members: ["bench_adjustable（复用，仅调位置/收纳态与必要 parts）", "adjustable_dumbbell_pair（新增可见）", "rollable_training_mat（新增可见）"], storage_aabb: {bench_adjustable: {x: [14.68,15.92], z: [7.675,8.225]}, adjustable_dumbbell_pair: {x: [15.925,16.375], z: [7.625,8.175]}, rollable_training_mat: {x: [15.95,16.20], z: [5.65,5.90]}}, use_aabb: {x: [14.30,15.80], z: [5.65,7.45]} }
+    constraints:
+      - "复用 bench_adjustable，禁止新增 movable_adjustable_bench 等同义类型"
+      - "默认展示收纳态，另用使用态 AABB 验证（不得侵入后台柜/门扫掠/书桌椅/空调角吊）"
+      - "换季推车仅 count-only、不设常驻坐标"
+      - "收纳态与使用态 AABB 已于 2026-09-03 第一轮实施派生回填（见 geometry）；仍为候选、未冻结"
+    interfaces: [study_seasonal_wardrobe_wall, d_bese]
+    validation_refs: [study-seasonal-storage-test（新增）, verify:furniture]
+    status: candidate_not_frozen
+notes:
+  - "全部 datum 均为候选/未冻结；本轮已同步 candidate A 数值基线与 clean final evidence，候选尺寸仍禁止当作施工冻结值。"
+  - "R5 correction evidence：session bontop-r5-correction-20260905b，URL http://localhost:5173/?v=r5-correction-20260905b，app_ready=true、warnings empty；r5-correction-closed、door1、door2、door3、door4、adjacent、all-open、east-wall、hvac-overall、south-curtain 同版本 PNG/snapshot valid，逐门视角部分不清并标记 partial；HVAC 检修态不宣称。旧 R5 evidence 全部 invalid。"
+  - "运行时 AABB：bed x[2.2,4.2] z[6.17,8.03]；partition wardrobe x[1.394,3.006] z[4.904,5.57]；north cabinet x[3.82,4.2] z[5.785,6.135]；south cabinet 320mm candidate x[3.82,4.2] z[8.08,8.40]；connection storage x[0.7,1.4] z[4.35,4.75]。"
+  - "轻训练三件与地插的精确坐标/AABB 已于 2026-09-03 由 S3 实施派生回填；2026-09-04 R1 修订后地插改落 (0.42,5.78)（随桌贴窗），回填值仍是候选、未冻结。"
+  - "R1（2026-09-04，业主第一人称证据驱动）：梳妆桌/凳贴西窗（桌 @(0.425,6.05)，凳 @(0.42,6.05)）；新增南侧窗带轻中古矮柜 datum-master-hot-season-low-dresser。"
+  - "床头点位 2026-09-04 R2 起改 ±0.45m 枕头区成组口径（z=7.00/7.90 对床心 7.45，壁灯 h=1.35）；此前 ±0.65m 对称口径作废。最终以真实床架外廓为准重新定位。"

@@ -1,0 +1,417 @@
+{
+  "view": "r71-final-05-bedhead-east-elevation",
+  "doorConfigDeclared": "closed",
+  "url": "http://localhost:5173/?v=r71-650-20260906",
+  "title": "和萃 701 - 3D 装修设计",
+  "isReady": true,
+  "configErrorBanner": [],
+  "viewport": {
+    "width": 1600,
+    "height": 1000,
+    "dpr": 1
+  },
+  "camera": {
+    "mode": "orbit",
+    "position": {
+      "x": 1.95,
+      "y": 1.45,
+      "z": 7.4
+    },
+    "target": {
+      "x": 4.2,
+      "y": 0.95,
+      "z": 7.4
+    }
+  },
+  "doorState": {
+    "wardrobe": [
+      {
+        "doorId": "master_north_wall_wardrobe_650:door:1",
+        "doorIndex": 0,
+        "hingeSide": "left",
+        "state": "closed",
+        "openLimitDeg": 95,
+        "rotationDeg": 0,
+        "aabb": {
+          "min": {
+            "x": 2.62,
+            "y": 0.03,
+            "z": 4.86
+          },
+          "max": {
+            "x": 2.92,
+            "y": 2.39,
+            "z": 4.88
+          },
+          "size": {
+            "x": 0.3,
+            "y": 2.36,
+            "z": 0.02
+          },
+          "meshCount": 3
+        }
+      },
+      {
+        "doorId": "master_north_wall_wardrobe_650:door:2",
+        "doorIndex": 1,
+        "hingeSide": "right",
+        "state": "closed",
+        "openLimitDeg": 95,
+        "rotationDeg": 0,
+        "aabb": {
+          "min": {
+            "x": 2.93,
+            "y": 0.03,
+            "z": 4.86
+          },
+          "max": {
+            "x": 3.23,
+            "y": 2.39,
+            "z": 4.88
+          },
+          "size": {
+            "x": 0.3,
+            "y": 2.36,
+            "z": 0.02
+          },
+          "meshCount": 3
+        }
+      }
+    ],
+    "dMb": {
+      "rotationYDeg": -180,
+      "aabb": {
+        "min": {
+          "x": 3.3,
+          "y": 0,
+          "z": 4.63
+        },
+        "max": {
+          "x": 4.2,
+          "y": 2.1,
+          "z": 4.67
+        },
+        "size": {
+          "x": 0.9,
+          "y": 2.1,
+          "z": 0.04
+        },
+        "meshCount": 1
+      },
+      "declared": "as-rendered-open"
+    }
+  },
+  "wardrobeAabb": {
+    "min": {
+      "x": 2.6,
+      "y": 0,
+      "z": 4.3
+    },
+    "max": {
+      "x": 3.25,
+      "y": 2.45,
+      "z": 4.88
+    },
+    "size": {
+      "x": 0.65,
+      "y": 2.45,
+      "z": 0.58
+    },
+    "meshCount": 11
+  },
+  "objects": [
+    {
+      "id": "electrical:sock_master_bed_l",
+      "visible": true,
+      "position": {
+        "x": 4.125,
+        "y": 0.75,
+        "z": 6.95
+      },
+      "rotationYDeg": -90,
+      "aabb": {
+        "min": {
+          "x": 4.109,
+          "y": 0.707,
+          "z": 6.907
+        },
+        "max": {
+          "x": 4.139,
+          "y": 0.793,
+          "z": 6.993
+        },
+        "size": {
+          "x": 0.03,
+          "y": 0.086,
+          "z": 0.086
+        },
+        "meshCount": 10
+      }
+    },
+    {
+      "id": "electrical:sock_master_bed_r",
+      "visible": true,
+      "position": {
+        "x": 4.125,
+        "y": 0.7,
+        "z": 9.15
+      },
+      "rotationYDeg": -90,
+      "aabb": {
+        "min": {
+          "x": 4.109,
+          "y": 0.657,
+          "z": 9.107
+        },
+        "max": {
+          "x": 4.139,
+          "y": 0.743,
+          "z": 9.193
+        },
+        "size": {
+          "x": 0.03,
+          "y": 0.086,
+          "z": 0.086
+        },
+        "meshCount": 10
+      }
+    },
+    {
+      "id": "electrical:switch_master_bed_l",
+      "visible": true,
+      "position": {
+        "x": 4.125,
+        "y": 0.75,
+        "z": 7.898
+      },
+      "rotationYDeg": -90,
+      "aabb": {
+        "min": {
+          "x": 4.107,
+          "y": 0.707,
+          "z": 7.855
+        },
+        "max": {
+          "x": 4.134,
+          "y": 0.793,
+          "z": 7.941
+        },
+        "size": {
+          "x": 0.027,
+          "y": 0.086,
+          "z": 0.086
+        },
+        "meshCount": 2
+      }
+    },
+    {
+      "id": "electrical:sock_master_bed_r_head",
+      "visible": true,
+      "position": {
+        "x": 4.125,
+        "y": 0.75,
+        "z": 7.802
+      },
+      "rotationYDeg": -90,
+      "aabb": {
+        "min": {
+          "x": 4.109,
+          "y": 0.707,
+          "z": 7.759
+        },
+        "max": {
+          "x": 4.139,
+          "y": 0.793,
+          "z": 7.845
+        },
+        "size": {
+          "x": 0.03,
+          "y": 0.086,
+          "z": 0.086
+        },
+        "meshCount": 10
+      }
+    },
+    {
+      "id": "furniture:master_bedroom:bed_180:0",
+      "visible": true,
+      "position": {
+        "x": 3.2,
+        "y": 0,
+        "z": 7.4
+      },
+      "rotationYDeg": 270,
+      "aabb": {
+        "min": {
+          "x": 2.2,
+          "y": 0,
+          "z": 6.47
+        },
+        "max": {
+          "x": 4.2,
+          "y": 0.8,
+          "z": 8.33
+        },
+        "size": {
+          "x": 2,
+          "y": 0.8,
+          "z": 1.86
+        },
+        "meshCount": 4
+      }
+    },
+    {
+      "id": "furniture:master_bedroom:master_bedside_cabinet_350_north:3",
+      "visible": true,
+      "position": {
+        "x": 4.01,
+        "y": 0,
+        "z": 6.245
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 3.82,
+          "y": 0,
+          "z": 6.07
+        },
+        "max": {
+          "x": 4.2,
+          "y": 0.505,
+          "z": 6.42
+        },
+        "size": {
+          "x": 0.38,
+          "y": 0.505,
+          "z": 0.35
+        },
+        "meshCount": 8
+      }
+    },
+    {
+      "id": "furniture:master_bedroom:master_bedside_cabinet_350_south:4",
+      "visible": true,
+      "position": {
+        "x": 4.01,
+        "y": 0,
+        "z": 8.555
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 3.82,
+          "y": 0,
+          "z": 8.38
+        },
+        "max": {
+          "x": 4.2,
+          "y": 0.505,
+          "z": 8.73
+        },
+        "size": {
+          "x": 0.38,
+          "y": 0.505,
+          "z": 0.35
+        },
+        "meshCount": 8
+      }
+    },
+    {
+      "id": "electrical-topology:edge:ordinary_power_bedrooms:sock_master_bed_l",
+      "visible": true,
+      "position": {
+        "x": 4.2,
+        "y": 0.75,
+        "z": 6.95
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 4.06,
+          "y": 0.75,
+          "z": 6.81
+        },
+        "max": {
+          "x": 4.34,
+          "y": 0.75,
+          "z": 7.09
+        },
+        "size": {
+          "x": 0.28,
+          "y": 0,
+          "z": 0.28
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "electrical-topology:edge:ordinary_power_bedrooms:sock_master_bed_r",
+      "visible": true,
+      "position": {
+        "x": 4.2,
+        "y": 0.7,
+        "z": 9.15
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 4.06,
+          "y": 0.7,
+          "z": 9.01
+        },
+        "max": {
+          "x": 4.34,
+          "y": 0.7,
+          "z": 9.29
+        },
+        "size": {
+          "x": 0.28,
+          "y": 0,
+          "z": 0.28
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "electrical-topology:edge:ordinary_power_bedrooms:sock_master_bed_r_head",
+      "visible": true,
+      "position": {
+        "x": 4.2,
+        "y": 0.75,
+        "z": 7.802
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 4.06,
+          "y": 0.75,
+          "z": 7.662
+        },
+        "max": {
+          "x": 4.34,
+          "y": 0.75,
+          "z": 7.942
+        },
+        "size": {
+          "x": 0.28,
+          "y": 0,
+          "z": 0.28
+        },
+        "meshCount": 1
+      }
+    }
+  ],
+  "criticalClearances": {
+    "wardrobe_east_to_dmb_leaf_x": 0.05,
+    "south_dresser_maxZ_vs_soft_envelope": {
+      "dresser_max_z": 9.55,
+      "soft_envelope_z": [
+        9.56,
+        9.68
+      ],
+      "gap_to_envelope_min": 0.01
+    },
+    "wardrobe_open_south_max_z": 4.88,
+    "note_r71": "R7.1: bridge 沿衣柜西面贯通 z[4.10,4.865]，15mm 缝在 x 向（衣柜西面 2.60 - bridge 东缘 2.585）；旧 z 向背板缝口径已随整段层板失效"
+  }
+}

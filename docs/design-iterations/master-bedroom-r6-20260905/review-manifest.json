@@ -1,0 +1,49 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "master-bedroom-r6-20260905",
+  "source_version": "r6-master-bedroom-20260905",
+  "state": "blocked",
+  "alignment_frozen": true,
+  "construction_frozen": false,
+  "delivery_frozen": false,
+  "delivery_ready": false,
+  "fact_table": "fact-table.yaml",
+  "decision_brief": "decision-brief.yaml",
+  "design_datum": "design-datum.yaml",
+  "object_manifest": "object-manifest.yaml",
+  "blocking_issues": [
+    "南帘闭帘 0.12m 候选软包络为 inferred/site_pending；真实堆叠/下垂/开启扇未测，不形成地面硬禁区",
+    "d_mb 门套执手余量未测",
+    "HVAC 回风与滤网检修包络未证明",
+    "东墙结构与防倾倒节点未确认",
+    "床、380×350×500床头柜、600×580×2050衣柜真实产品外廓未锁定",
+    "衣柜门前人体站位空间仍 site_pending，不以真实 mesh 无碰撞伪造人体 PASS"
+  ],
+  "verification": {
+    "status": "passed_with_warnings",
+    "results": [
+      {"command": "npx tsx --test tests/server/master-bedroom-dressing.test.ts tests/server/shared/scene-builder.test.ts", "status": "PASS", "summary": "50/50", "notes": ["bridge full-mesh world gap 15mm for both bridges; PVC clear", "wardrobe closed/left_open/right_open/both_open real-mesh matrix clear"]},
+      {"command": "npm run verify:furniture", "status": "PASS", "notes": ["2 warnings: south_balcony skipped; south curtain closed 0.12m candidate and open stack remain site_pending"]},
+      {"command": "npm run verify:all", "status": "PASS", "notes": ["topology/layout/furniture/rules/collision/consistency/MEP/electrical/render-facts/lighting all completed with existing warnings"]},
+      {"command": "npm run test:server", "status": "PASS", "summary": "526/526"},
+      {"command": "npm run typecheck", "status": "PASS"},
+      {"command": "npm run test:app", "status": "PASS", "summary": "434/434"},
+      {"command": "npm run build:app", "status": "PASS"}
+    ]
+  },
+  "evidence": {
+    "status": "blocked",
+    "required_views": ["entry", "wardrobe-open", "bedside", "south-curtain", "hvac", "overall"],
+    "runtime_check": {"app_ready": true, "error_banner": [], "r6_objects_loaded": true, "aabb_query": "FAIL: page eval does not expose THREE; returned null bounds; no runtime AABB claim made"},
+    "captured": [
+      {"view": "entry", "path": "evidence/r6-entry-wardrobe-closed.png", "snapshot": "evidence/r6-entry.snapshot.txt", "valid": false, "reason": "相机截图未能证明稳定目标机位与对象包络"},
+      {"view": "wardrobe-open", "path": "evidence/r6-wardrobe-both-open.png", "snapshot": "evidence/r6-wardrobe-open.snapshot.txt", "valid": false, "reason": "门状态查询因浏览器 eval 环境缺少 THREE 失败，不能证明真实 world rotation/AABB"},
+      {"view": "bedside", "path": "evidence/r6-bedside-electrical.png", "valid": false, "reason": "缺少同版本 runtime AABB 与目标对象查询绑定"},
+      {"view": "south-curtain", "path": "evidence/r6-south-curtain-dresser.png", "valid": false, "reason": "缺少同版本 runtime AABB 与窗帘软包络查询绑定"},
+      {"view": "overall", "path": "r6-overall.png", "valid": false, "reason": "全屋 overview，不是目标主卧非总览证据"}
+    ],
+    "blocking_reason": "已保存部分定向截图与 snapshot，但当前证据无法满足稳定目标对象、runtime AABB、真实门 rotation 和每个目标关系的绑定要求；不能冒充有效交付证据。"
+  },
+  "reviews": {"aesthetic": "blocked_by_evidence", "functional": "blocked_by_evidence", "construction": "blocked"}
+}

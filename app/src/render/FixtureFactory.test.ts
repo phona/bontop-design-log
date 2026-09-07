@@ -346,6 +346,70 @@ describe('living room TV proposal fixtures', () => {
   });
 });
 
+describe('condensate coordination fixtures', () => {
+  it('connects the ac_master outlet through the wardrobe to the wall-side master-bath candidate route', () => {
+    const outlet = buildFixture('condensate_pipe_ac_outlet')!;
+    const wallRun = buildFixture('mb_vanity_pvc_box')!;
+    const entry = buildFixture('mb_vanity_pvc_wardrobe_entry')!;
+    const chase = buildFixture('mb_vanity_pvc_service_chase')!;
+    const world = new THREE.Group();
+    const outletRoot = new THREE.Group(); outletRoot.position.set(3.80, 0, 5.10); outletRoot.add(outlet);
+    const wallRoot = new THREE.Group(); wallRoot.position.set(2.50, 0, 3.70); wallRoot.rotation.y = THREE.MathUtils.degToRad(270); wallRoot.add(wallRun);
+    const entryRoot = new THREE.Group(); entryRoot.position.set(4.10, 0, 4.62); entryRoot.add(entry);
+    const chaseRoot = new THREE.Group(); chaseRoot.position.set(2.925, 0, 4.62); chaseRoot.add(chase);
+    world.add(outletRoot, wallRoot, entryRoot, chaseRoot);
+    world.updateMatrixWorld(true);
+    const parts = new Map<string, THREE.Object3D>();
+    world.traverse((object) => { if (object.userData.part) parts.set(object.userData.part, object); });
+    const endpoints = (part: string) => {
+      const mesh = parts.get(part) as THREE.Mesh;
+      mesh.geometry.computeBoundingBox();
+      const box = mesh.geometry.boundingBox!;
+      return [new THREE.Vector3(0, box.min.y, 0).applyMatrix4(mesh.matrixWorld), new THREE.Vector3(0, box.max.y, 0).applyMatrix4(mesh.matrixWorld)];
+    };
+    const endpointGap = (a: string, b: string) => Math.min(...endpoints(a).flatMap((from) => endpoints(b).map((to) => from.distanceTo(to))));
+    const wallBox = new THREE.Box3().setFromObject(parts.get('condensate-pipe-wall-run')!);
+    const wallTrim = new THREE.Box3().setFromObject(parts.get('condensate-wall-trim')!);
+    const entryWall = new THREE.Box3().setFromObject(parts.get('condensate-pipe-wall-to-wardrobe-top')!);
+    const wardrobeTopToWall = new THREE.Box3().setFromObject(parts.get('condensate-pipe-wardrobe-top-to-wall')!);
+    const northRun = new THREE.Box3().setFromObject(parts.get('condensate-pipe-penetration-to-bath-ceiling')!);
+    const penetrationBend = new THREE.Box3().setFromObject(parts.get('condensate-pipe-wall-to-penetration')!);
+    const candidateDrop = new THREE.Box3().setFromObject(parts.get('condensate-pipe-at-master-bath-candidate')!);
+    expect(parts.has('condensate-pipe-ac-outlet-rise-to-wall-run')).toBe(false);
+    const ordered = [
+      'condensate-pipe-ac-outlet-to-wall',
+      'condensate-pipe-ac-box-to-wardrobe-top',
+      'condensate-pipe-wall-to-wardrobe-top',
+      'condensate-pipe-wardrobe-top-to-wall',
+      'condensate-pipe-wardrobe-drop-to-wall',
+      'condensate-pipe-wall-run',
+      'condensate-pipe-wall-to-penetration',
+      'condensate-pipe-penetration-to-bath-ceiling',
+      'condensate-pipe-bath-ceiling-to-candidate',
+      'condensate-pipe-at-master-bath-candidate',
+    ];
+    for (let index = 0; index < ordered.length - 1; index += 1) {
+      expect(endpointGap(ordered[index], ordered[index + 1])).toBeLessThanOrEqual(0.03);
+    }
+    expect(wallBox.min.x).toBeGreaterThan(2.48);
+    expect(wallBox.max.x).toBeLessThan(2.52);
+    expect(wallTrim.max.x).toBeCloseTo(2.54, 3);
+    expect(wallTrim.min.x).toBeCloseTo(2.46, 3);
+    expect(new THREE.Box3().setFromObject(entryRoot).max.y).toBeLessThanOrEqual(2.8);
+    expect(wardrobeTopToWall.min.x).toBeCloseTo(2.50, 3);
+    expect(entryWall.min.x).toBeCloseTo(2.925, 3);
+    expect(wallBox.min.z).toBeCloseTo(3.10, 3);
+    expect(wallBox.max.z).toBeCloseTo(4.30, 3);
+    expect(penetrationBend.min.x).toBeCloseTo(2.30, 3);
+    expect(penetrationBend.max.x).toBeCloseTo(2.50, 3);
+    expect(northRun.min.z).toBeCloseTo(2.5, 3);
+    expect(northRun.max.z).toBeCloseTo(3.10, 3);
+    expect(candidateDrop.min.y).toBeCloseTo(0.1, 3);
+    expect(candidateDrop.max.y).toBeCloseTo(2.65, 3);
+    expect([...parts.values()].filter((part) => String(part.userData.part).startsWith('condensate-pipe-')).every((part) => part.visible === false)).toBe(true);
+  });
+});
+
 describe('electrical panel fixtures', () => {
   it('builds readable strong and weak panel boxes with door details', () => {
     const strong = buildFixture('strong_panel');

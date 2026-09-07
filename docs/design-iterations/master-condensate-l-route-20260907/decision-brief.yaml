@@ -1,0 +1,28 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: master-condensate-l-route-20260907
+subject: 主卧冷凝水 L 形引至主卫候选点
+priority:
+  user_goal: 将主卧内机冷凝水经延伸空调盒、衣柜顶部和 w_mbath_east 西侧墙面连续引到主卫候选排水点
+  ranked: [唯一连续 L 形拓扑, 端点落到主卫候选点, 衣柜主体保留, 正常隐藏检视可见, 白色包边连续收至主卫南墙, 无误穿墙和悬空]
+  non_negotiables: [不得产生中点分支, 不移动衣柜, 只在 w_mbath_south 声明点穿墙, 候选路线不提升为施工确认]
+frozen: true
+freeze_record:
+  alignment_id: user-request-20260907
+  original_user_response: "它是T字形，而不是L字形，把冷凝水引到主卫"
+  normalized_decisions: [十段唯一连续路径, 空调盒向西贴衣柜且 R100 与衣柜留 10–20mm 阴影缝, 圆角盒下底板落在 y=2.502 且该盒持续可见, 衣柜顶部进入 w_mbath_east 西侧管心 x=2.50, w_mbath_south 穿点 x=2.30, z=3.10 横折用两段白色 L 形包边连续收至南墙 bedroom-side finish z=2.92, 主卫吊顶内折至 (2.00,2.50), 终点 (2.00,0.10,2.50), 正常隐藏且 HVAC 检视态显示, 主卧送回风中心轴统一 x=3.70 并保留东墙净距]
+  confirmed_by_user: true
+  confirmed_at: "2026-09-07T00:00:00+08:00"
+allowed_scope:
+  files: [config/house.yaml, config/ceiling.yaml, config/hvac.yaml, config/mep-hvac-coordination.yaml, shared/render/FixtureFactory.ts, shared/render/CeilingZoneBuilder.ts, shared/render/SceneBuilder.ts, shared/types.ts, app/src/render/HouseScene.ts, app/src/render/FixtureFactory.test.ts, app/src/render/CeilingZoneBuilder.test.ts, tests/server/cli-glb-export.test.ts, tests/server/shared/scene-builder.test.ts, data/project-render-facts.json]
+  objects: [condensate-master, master-bedroom condensate fixture parts, master_north_wall_wardrobe_950 inspection materials]
+forbidden:
+  objects: [衣柜位置和主体尺寸, 其他房间冷凝水路线, 户型墙体几何]
+open_questions:
+  - { id: site-drain, category: construction, question: 主卫实际立管或排水接点、坡度和套管做法, selected: 量房及厂家深化后确认, status: site_pending }
+acceptance:
+  validation_commands: [npm run verify:all, npm run test:server, npm run test:app, npm run typecheck, npm run build:app]
+  browser_evidence_required: true
+  required_views: [正常视角, HVAC 检视视角]
+  aesthetic_review: PASS required
+  functional_review: PASS required

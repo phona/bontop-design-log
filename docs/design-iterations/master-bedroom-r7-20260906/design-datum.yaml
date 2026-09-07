@@ -1,0 +1,50 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: master-bedroom-r7-20260906
+source_version: r8-master-bedroom-20260906-950
+units: m
+coordinate_system: Three.js右手系，Y向上，+x东，+z南
+status: implementation
+datums:
+  - id: datum-r8-north-wardrobe
+    name: R8 北墙 950 定制模块化衣柜（三门一体木饰面，非通顶；与 d_mb 硬冲突）
+    anchor: {kind: wall_anchor, ref: north_wall_segment_z4.30, wall_side: south, service_ref: null}
+    plan: {origin: 主卧局部坐标, axes: x东西/z南北, position: {x: 3.075, z: 4.59}, rotation: 0, dimensions: {width: 0.95, depth: 0.58}, semantics: total_candidate, target_aabb: {x: [2.60, 3.55], z: [4.30, 4.88]}}
+    elevation: {viewing_side: south, vertical_axis: y, height: 2.45, dimensions: {width: 0.95, height: 2.45}, semantics: total_candidate, note: 不通到石膏板原顶 2.80}
+    section: {cut_direction: north-south, depth_axis: z, rear_z: 4.30, front_z: 4.88, depth: 0.58, top: 2.45, semantics: total_candidate}
+    doors: {count: 3, leaf_width: 0.29, hinge_sides: [left, right, right], open_limit_deg: 95, configurations: [closed, left_open, right_open, both_open]}
+    constraints: [背贴 z=4.30 北侧实体墙, 柜门朝南, 保持950×580与三门, 左移避让d_mb至少需maxX≤3.30即左移≥0.25m，会使minX≤2.35越出北墙实体边界x=2.60并侵入DEC-045 bridge原位x[2.28,2.585]，因此左移失败且保留原位, 防倾倒固定 site_pending]
+  - id: datum-r7-hvac-headbox
+    name: R7 空调门头盒（与衣柜一体，替代通长檐口）
+    anchor: {kind: ceiling_anchor, ref: ceiling_master_ac, wall_side: null, service_ref: ac_master}
+    plan: {origin: 主卧局部坐标, axes: x东西/z南北, area: {x: [3.25, 4.20], z: [4.55, 5.60]}, semantics: candidate, note: R7.1 西缘 x=3.25 与衣柜东缘对齐}
+    elevation: {viewing_side: south, vertical_axis: y, bottom: 2.50, thickness: 0.30, top: 2.80, semantics: candidate, note: 底标高候选区间 2.45–2.50，取 2.50}
+    section: {cut_direction: north-south, depth_axis: z, supply: {face: south, position: {x: 3.80, y: 2.62, z: 5.585}, length: 0.6}, return: {face: bottom, position: {x: 3.95, y: 2.49, z: 5.20}, length: 0.5, role: 回检一体铰接格栅兼检修}}
+    constraints: [侧送下回, 窄线形送风嵌南立面, 底部回风兼检修, 不猜设备型号, 配置数据驱动, HVAC 责任不并入家具, x>2.6 段 z≥4.30 不侵儿童房]
+  - id: datum-r7-bed
+    name: R7 主卧床（保留 R6 位）
+    anchor: {kind: room_anchor, ref: master_bedroom, wall_side: east, service_ref: null}
+    plan: {position: {x: 3.20, z: 7.40}, rotation: 270, dimensions: {width: 1.80, length: 2.00}, semantics: retained_candidate}
+  - id: datum-r9-vanity-boards
+    name: DEC-045 主卫底柜与上下双层悬浮板南端对齐
+    anchor: {kind: wall_anchor, ref: w_mbath_east, wall_side: west, service_ref: null}
+    plan: {rotation: 270, along: 3.45, length: 1.70, depth: 0.625, semantics: wall_finish_anchor, wall_thickness: 0.12, base_cabinet_target_aabb: {x: [1.975,2.60], z: [2.60,4.30]}, board_target_aabb: {x: [1.975,2.54], z: [2.60,4.30]}, note: 底柜与两板均沿墙1.70m且南端z=2.60对齐；板件按0.12m墙厚语义锚定 w_mbath_east 西侧完成面，底柜与板件西缘一致，板件东侧收进0.06m}
+    constraints: [底柜与悬浮板南端/北端对齐, 底柜/PVC 不向衣柜侧延伸, 两块悬浮板贴墙西侧完成面, 不与950衣柜建立收口约束, 不承担 HVAC 责任]
+  - id: datum-r8-wardrobe-pelmet
+    name: R8 衣柜顶封板+东竖向填板（950 footprint，与门头盒一体收口，不承担 HVAC 责任）
+    anchor: {kind: furniture_anchor, ref: master_north_wall_wardrobe_950, wall_side: null, service_ref: null}
+    plan: {origin: 主卧局部坐标, position: {x: 3.075, z: 4.59}, rotation: 0, dimensions: {width: 0.95, depth: 0.58}, semantics: candidate, note: 与950衣柜同 footprint；顶封板 y[2.45,2.50] 接门头盒底面，东填板接门头盒西立面}
+    elevation: {viewing_side: south, vertical_axis: y, band: [2.45, 2.50], semantics: candidate, note: 与柜门同色 #a98258，materialRole top_filler/end_panel}
+    constraints: [不侵 d_mb 门扇带 x≥3.30, 不压回风格栅底面包络 x≥3.70, 并入 wardrobe_north_650_custom_01 不单独计价]
+  - id: datum-r7-hot-season-dresser
+    name: 南窗热季六抽矮柜东移修正
+    anchor: {kind: free_position, ref: master_bedroom, wall_side: null, service_ref: null}
+    plan: {origin: 主卧局部坐标, axes: x东西/z南北, position: {x: 1.05, z: 9.31}, rotation: 180, dimensions: {width: 1.40, depth: 0.48}, semantics: total_candidate, target_aabb: {x: [0.35,1.75], z: [9.07,9.55]}}
+    elevation: {viewing_side: north, vertical_axis: y, height: 0.85, semantics: total_candidate}
+    section: {cut_direction: north-south, depth_axis: z, front_z: 9.07, rear_z: 9.55, depth: 0.48, top: 0.85, semantics: total_candidate}
+    constraints: [向东即+x，东移0.05m；不改变rotation、z、高度或尺寸；南帘软包络仍site_pending]
+  - id: datum-r7-curtain-soft-envelope
+    name: 南窗窗帘软包络（沿用 R6 口径）
+    anchor: {kind: ceiling_anchor, ref: curtain_box_master_south, wall_side: null, service_ref: null}
+    plan: {axes: x东西/z南北, top_box: {z: [8.70, 8.95], role: ceiling_only, status: confirmed}, fabric_drop: {wall_z: 9.80, thickness: 0.12, z: [9.56, 9.68], confidence: inferred, status: site_pending, conflict_policy: warning_BLOCKED}, stack_end: {actual_end: null, status: site_pending}, semantics: soft_candidate}
+    constraints: [不把 curtain_box 地面投影当硬禁区, 六抽矮柜保持原位/可见/可移]

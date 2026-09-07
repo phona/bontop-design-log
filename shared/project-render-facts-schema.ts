@@ -28,7 +28,7 @@ export const PlumbingPointSchema = z.object({
 }).strict();
 export const CeilingZoneSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(VALID_CEILING_TYPES), thickness: finiteNumber.optional(),
-  area: z.tuple([finiteNumber, finiteNumber, finiteNumber, finiteNumber]).optional(), x: finiteNumber.optional(), z: finiteNumber.optional(), height: finiteNumber.optional(), model: z.string().optional(), power_point: z.string().optional(), note: z.string().optional(),
+  area: z.tuple([finiteNumber, finiteNumber, finiteNumber, finiteNumber]).optional(), corner_radius: finiteNumber.nonnegative().optional(), inspection_layer: z.string().trim().min(1).optional(), inspection_opacity: finiteNumber.min(0).max(1).optional(), x: finiteNumber.optional(), z: finiteNumber.optional(), height: finiteNumber.optional(), model: z.string().optional(), power_point: z.string().optional(), note: z.string().optional(),
 }).strict();
 
 export const VrfOutdoorUnitSchema = z.object({

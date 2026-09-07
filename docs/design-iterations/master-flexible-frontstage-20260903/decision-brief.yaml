@@ -1,0 +1,49 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: master-flexible-frontstage-20260903
+subject: candidate A 主卧数字优先重规划 + 书房季节后台
+priority:
+  user_goal: R5 保持 bed_180 @(3.20,7.10) rotation=270、横柜 @(2.20,5.25)，优先保留双统一350mm普通床头柜；北柜中心 z=5.975、南柜中心 z=8.225，目标范围北[5.80,6.15]、南[8.05,8.40]，与床/南帘硬约束冲突必须保留 error/block；电气按 z≈5.975/8.177/8.273 与壁灯6.65/7.55 h=1.35；南帘真实关系继续 site_pending；西窗梳妆桌、地插(0.42,5.78)、南侧六抽矮柜、DEC-045 与连接柜候选保留；全部保持 candidate/site_pending
+  subject_refs: [bed_180, master_partition_wardrobe_1600, master_bedside_cabinet_350_north, master_bedside_cabinet_350_south, master_dressing_connection_storage]
+  review_priority: [操作侧站位不宽裕, HVAC/冷凝水检修边界, 东墙结构与防倾倒, 南帘真实堆叠, 真实产品外廓]
+
+  ranked: [最小家具纪律（成品化、可逆、不通顶）, 热季挂衣容量优先（入口柜只承担热季必须悬挂衣物）, 门—柜—床—南帘余量链不跌破硬下限, 唯一地插优先桌下后侧服务域、不新增第二点, 书房后台收纳与轻训练并存]
+  non_negotiables: [model-geometry.yaml / overlay.yaml 不修改, DEC-045 四件套（底柜+下板+主板+PVC 盒）外形/墙锚/高度关系不变, d_mb 门扫掠 z≤5.55 不得与入口柜相交, 书房天花既有 HVAC 几何（ceiling_study_ac / ceiling_study_ac_corner 底 2.50m）不动]
+  tradeoffs_accepted: [严格判据下地插可行域可能为空，fallback 为取消西侧地插改充电式（便利性下降，需用户确认）, 新 2.35–2.40m 柜顶与 2.50m 角吊底之间约 0.10–0.15m 灰缝作为 non-blocking 视觉/积灰细节进入评审, 底柜北端 0.26m 探入主卫的存量瑕疵本轮继续不动]
+frozen: false # R5 纠偏后仍 blocked：统一350mm、南帘0.30m与床侧硬净距存在不可同时满足项；site_pending与双评审阻塞禁止冻结
+freeze_record: null
+allowed_scope:
+  files: [config/house.yaml, config/electrical.yaml, config/electrical-topology.yaml, config/design-rules.yaml, config/verify-rules.yaml, config/ceiling.yaml, config/materials.yaml, config/procurement.yaml, data/current-scheme.json, shared/types.ts, shared/render/FixtureFactory.ts, scripts/verify/placement/verify-furniture-placement.ts, tests/server/master-bedroom-dressing.test.ts, tests/server/cli-glb-export.test.ts, tests/server/shared/scene-builder.test.ts, tests/server/budget-calculator.test.ts, tests/server/study-seasonal-storage.test.ts（新增）, docs/design-iterations/master-flexible-frontstage-20260903/, docs/decision_log.md]
+  objects: [master_partition_wardrobe_1600, bed_180, master_bedside_cabinet_350_north, master_bedside_cabinet_350_south, master_dressing_connection_storage, master_dressing_table, dressing_stool, sock_master_projector, sock_master_bed_l, sock_master_bed_r_head, switch_master_bed_l, switch_master_door, light_master_wall_l, light_master_wall_r, sock_master_bed_r, study_seasonal_wardrobe_wall, bench_adjustable, adjustable_dumbbell_pair, rollable_training_mat, home_fitness_light_set]
+  archetypes: [furniture, electrical_interface, seasonal_storage, light_fitness]
+  views: [plan, elevation, section, perspective]
+  changes: [家具配置增删迁, 电气点位重定位与语义变更, 渲染 recipe, 预算/采购规则与 topic 纠偏, 天花注释修正, 专项校验与测试, 生成物再生成（仅经生成命令）]
+forbidden:
+  files: [config/layout/model-geometry.yaml, config/layout/overlay.yaml]
+  objects: [mb_vanity_base_cabinet, mb_vanity_lower_board, mb_vanity_main_board, mb_vanity_pvc_box, mb_washbasin_cabinet, ceiling_study_ac, ceiling_study_ac_corner, ac_study, d_mb, d_bese]
+  assumptions: [东墙/书房东墙可开孔可固定（结构探测前不得假定）, sock_master_projector 未施工（现场确认前不得假定）, 地插可行域非空已于 2026-09-03 预演证实（见 gate-floor-socket-domain）；窗帘堆叠端实测前候选位仍可能微调]
+  out_of_scope_changes: [不做通顶定制入口柜, 不做家具软布线（GST18/WINSTA/踢脚线配电）, 不新增第二只地插, 不新增同义家具类型（如不新增 movable_adjustable_bench，复用 bench_adjustable）, 不虚构柜墙（含衣柜靠墙关系必须以真实墙锚声明）, 不把候选尺寸写成施工冻结值, 不采用吊顶垂线插座盒/沿幕墙固定线槽/电线长期横跨主通道, 无关房间重构, 新依赖, git 操作, 直接编辑生成物]
+open_questions:
+  - { id: align-hot-season-hanging, category: function, question: 热季必须挂衣净杆长是多少？740–750mm 宽成品柜做双层短挂的容量余量是否够？, fact_refs: [fact-scheme-direction], options: [锁定净杆长后按 740–750mm 选型, 容量不足则重新评估柜宽/数量, 暂不决定], selected: null, user_response: null, status: open }
+  - { id: align-home-fitness-pricing, category: budget, question: home_fitness 单套计价口径是否确认？（新增 home_fitness topic + home_fitness_light_set count-only 一次计价；可见哑铃/bench_adjustable/卷垫只渲染不各自映射预算，防止一套三次计价）, fact_refs: [fact-unmapped-furnishing-types], options: [确认单套口径, 调整口径（如分项计价）, 暂不决定], selected: null, user_response: null, status: open }
+  - { id: gate-floor-socket-domain, category: geometry, question: 严格禁入判据下地插可行域预演结果；若为空是否接受 fallback（取消西侧地插，镜/灯充电式，吹风机走东南备用墙插临时线）, fact_refs: [fact-floor-socket-domain-risk, pending-west-curtain, pending-floor-socket-built], options: [可行域非空→桌下后侧服务域落位, 可行域为空→fallback, 暂不决定], selected: "可行域非空→桌下后侧服务域落位：候选 (1.56,5.78) 已于 2026-09-03 预演并写入 config（见 fact-floor-socket-domain-risk）；西帘堆叠端与地插施工状态仍 site_pending", user_response: null, status: resolved }
+  - { id: gate-r5-operation-side, category: function, question: "R5 床/两只 350mm 床头柜/横向隔断柜的操作侧站位不宽裕，是否接受仅作候选 validation envelope，待真实外廓与使用态复核？", fact_refs: [fact-r5-placed-objects, fact-r5-static-sweep, pending-product-outlines], options: [接受候选预演并保持 blocked, 调整对象关系后重做, 暂不决定], selected: "接受候选预演并保持 blocked", user_response: null, status: open }
+  - { id: gate-hvac-inspection, category: construction, question: "master_dressing_connection_storage 与 DEC-045/HVAC/冷凝水检修边界是否已现场确认？", fact_refs: [fact-hvac-condensate-inspection], options: [现场确认后再评审, 保持 site_pending/blocking, 暂不决定], selected: "保持 site_pending/blocking", user_response: null, status: open }
+alignment:
+  records: []
+  unresolved: [align-hot-season-hanging, align-home-fitness-pricing]
+  re_alignment_required: true
+acceptance:
+  validation_commands: [npm run generate:project-render-facts, npm run export:dressing-map, npm run verify:furniture, npm run verify:consistency, npm run verify:all, npm run test:server, npm run typecheck, npm run test:app, npm run build:app]
+  browser_evidence_required: true
+  required_views: [主卧门口视角, 东墙视角, 南帘视角, 西侧梳妆/地插视角, DEC-045 条带视角, 书房收纳/训练视角]
+  aesthetic_review: BLOCKED
+  functional_review: BLOCKED
+  construction_review: pending
+  blocking_issues: [南帘真实堆叠与床侧净空未确认, 南柜真实产品外廓未锁定（当前 recipe 候选 320mm，350mm 名义方案可调整）, R5 操作侧站位不宽裕, 四门真实开启态与人体站位未验证, HVAC/冷凝水检修边界未知, 东墙结构与防倾倒未确认]
+  done_when: [五件文档齐备且版本互链, frozen 保持 false 直至 site_pending 收口, 四门真实开启态与操作侧使用态验证, HVAC/冷凝水检修边界确认, 东墙结构/防倾倒确认, 南帘与真实外廓确认, 同版本浏览器证据 valid, 美学/功能双评审 PASS]
+
+  delivery_notes_required: true
+  freeze_gates: [热季挂衣净杆长及容量余量对齐, home_fitness 单套计价口径对齐, 地插可行域预演（为空则选定 fallback）, wardrobe roomOverride 多单价测试通过]
+  r3_notes: [R3 datum 与 screenshots 仅作历史追溯，已被 R5 source change superseded，不得冒充 R5]
+  candidate_a_notes: ["R5 correction：bed_180 @(3.20,7.10), rotation=270，runtime x[2.2,4.2] y[0,0.8] z[6.17,8.03]；partition closed target x[1.4,3.0] y[0,2.15] z[4.95,5.55]，完整 mesh 收口，背板北侧、四门真实独立 roots/pivots，默认 closed、开启向 +z、openLimitDeg 95；all-open local x[-0.8,0.8] z[-0.3,0.641] -> world x[1.4,3.0] z[4.95,5.891]；统一350 bedside north/south runtime x[3.82,4.2] z[5.80,6.15]/[8.05,8.40]，北/南床侧硬净距不足保持 blocked；north/south bedside runtime 按 correction 为 x[3.82,4.2] z[5.80,6.15]/[8.05,8.40]，南帘 nominal 0.30m，exact product/curtain site_pending；电气南侧 z=8.177/8.273 h=.75，壁灯 z=6.65/7.55 h=1.35，地插(0.42,5.78)；session bontop-r5-correction-20260905b URL http://localhost:5173/?v=r5-correction-20260905b app_ready=true warnings empty；r5-correction-closed/door1/door2/door3/door4/adjacent/all-open/east-wall/hvac-overall/south-curtain 同版本 valid，逐门部分视角不清标记 partial；真实四门人体操作、相邻/全开与床/柜/门/梳妆冲突须独立审查，HVAC/冷凝水/回风滤网维护包络未证明，东墙结构/防倾倒/真实外廓 site_pending；旧 R5 evidence 全失效；test:app 434/434、build PASS、test:server 522/522；不得宣称施工冻结或 delivery_ready"]

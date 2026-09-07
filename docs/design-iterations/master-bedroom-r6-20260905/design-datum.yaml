@@ -1,0 +1,35 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: master-bedroom-r6-20260905
+units: m
+coordinate_system: Three.js右手系，Y向上，+x东，+z南
+status: implementation
+datums:
+  - id: datum-r6-north-wardrobe
+    name: R6 北墙双平开门衣柜
+    anchor: {kind: wall_anchor, ref: north_wall_segment_z4.30, wall_side: south, service_ref: null}
+    plan: {origin: 主卧局部坐标, axes: x东西/z南北, position: {x: 2.90, z: 4.575}, rotation: 0, dimensions: {width: 0.60, depth: 0.58}, semantics: total_candidate}
+    elevation: {viewing_side: south, vertical_axis: y, height: 2.05, dimensions: {width: 0.60, height: 2.05}, semantics: total_candidate}
+    section: {cut_direction: north-south, depth_axis: z, rear_z: 4.285, front_z: 4.865, depth: 0.58, top: 2.05, semantics: total_candidate}
+    constraints: [背贴 z=4.30 北侧实体墙, 柜门朝南, 双门各约0.30m, 不侵 d_mb 门扇或 HVAC 检修包络]
+  - id: datum-r6-bed
+    name: R6 主卧床
+    anchor: {kind: room_anchor, ref: master_bedroom, wall_side: east, service_ref: null}
+    plan: {origin: 主卧局部坐标, axes: x东西/z南北, position: {x: 3.20, z: 7.40}, rotation: 270, dimensions: {width: 1.80, length: 2.00}, semantics: total_candidate}
+    elevation: {viewing_side: west, vertical_axis: y, semantics: existing_recipe_candidate}
+    section: {cut_direction: north-south, depth_axis: z, south_curtain: site_pending, semantics: candidate}
+    constraints: [床头贴东墙, 朝向不变, 相对R5 z=7.10向南0.30m]
+  - id: datum-r6-bedside-north
+    name: R6 北床头柜
+    anchor: {kind: free_position, ref: bed_180, wall_side: null, service_ref: sock_master_bed_l}
+    plan: {position: {x: 4.01, z: 6.245}, rotation: 0, dimensions: {width: 0.38, depth: 0.35, height: 0.50}, runtime_height_range: [0.495,0.505], target_aabb: {x: [3.82,4.20], z: [6.07,6.42]}, semantics: candidate}
+  - id: datum-r6-bedside-south
+    name: R6 南床头柜
+    anchor: {kind: free_position, ref: bed_180, wall_side: null, service_ref: sock_master_bed_r_head}
+    plan: {position: {x: 4.01, z: 8.555}, rotation: 0, dimensions: {width: 0.38, depth: 0.35, height: 0.50}, runtime_height_range: [0.495,0.505], target_aabb: {x: [3.82,4.20], z: [8.38,8.73]}, semantics: candidate}
+    section: {south_curtain: {candidate_z: [9.56,9.68], confidence: inferred, status: site_pending, conflict_policy: warning_BLOCKED}}
+  - id: datum-r6-curtain-soft-envelope
+    name: 南窗窗帘软包络
+    anchor: {kind: ceiling_anchor, ref: curtain_box_master_south, wall_side: null, service_ref: null}
+    plan: {axes: x东西/z南北, top_box: {z: [8.70,8.95], role: ceiling_only, confidence: confirmed, status: confirmed}, fabric_drop: {wall_z: 9.80, interior_offset: 0.12, thickness: 0.12, z: [9.56,9.68], confidence: inferred, status: site_pending, conflict_policy: warning_BLOCKED}, stack_end: {actual_end: null, thickness: null, confidence: site_pending, status: site_pending}, semantics: soft_candidate}
+    constraints: [不把 curtain_box 地面投影当硬禁区, 无通宽500mm地面硬禁区, 六抽矮柜保持原位/可见/可移, verify-furniture检查南床头柜与六抽柜]

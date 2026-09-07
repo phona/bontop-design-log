@@ -99,10 +99,10 @@
   wall_side: west
   type: socket
   x: 4.20
-  z: 5.95
-  height: 0.7
+  z: 6.95
+  height: 0.75
   count: 2
-  note: "床头左侧: 手机充电+台灯，含USB（2026-09-02 随床北移至 z=6.60，rotation=270）"
+  note: "R6 北侧床头插座：候选 z=6.95、h=0.75，五孔＋USB-C；服务 master_bedside_cabinet_350_north（中心 z=6.245）。东墙实体墙，wall_side west；真实床头柜/床头板遮挡仍 site_pending"
 
 - id: sock_master_bed_r
   room: master_bedroom
@@ -113,7 +113,7 @@
   z: 9.15
   height: 0.7
   count: 2
-  note: "南侧双联插座：服务南飘窗下独立干式梳妆台插接镜前灯；距 master_dressing_table 中心0.55m，保留 wall_side west，需留可见可拔插检修口（DEC-2026-09-02-001）"
+  note: "主卧东南通用备用插座（原梳妆台专用，DEC-2026-09-02-001 解除；服务吸尘器/除湿机/临时落地灯/fallback 吹风机；坐标/高度不变，保留 wall_side west，可见可拔插不被床/帘/家具封死）"
 
 - id: switch_master_bed_l
   room: master_bedroom
@@ -121,9 +121,9 @@
   wall_side: west
   type: switch_2way
   x: 4.20
-  z: 5.75
-  height: 0.7
-  note: "主卧灯光双控（2026-09-02 随床北移至 z=6.60，rotation=270 床头）"
+  z: 7.898
+  height: 0.75
+  note: "R6 南侧床头双控：候选 z=7.85、h=0.75；与南侧床头插座保持同一服务带并通过独立面板错位避免重叠，服务 master_bedside_cabinet_350_south（中心 z=8.555）。面板 AABB/边缘净距及南帘真实关系仍 site_pending；东墙实体墙，wall_side west"
 
 - id: switch_master_door
   room: master_bedroom
@@ -141,21 +141,21 @@
   wall_side: west
   type: socket
   x: 4.20
-  z: 7.25
-  height: 0.7
+  z: 7.802
+  height: 0.75
   count: 2
-  note: "北床头右侧独立双联插座：以 rotation=270 床头北缘 z=5.70 为基准，与左侧 sock_master_bed_l 按 0.25m 内缩对称落位（z=5.95/7.25）；2026-09-02 随床北移至 z=6.60；不复用南侧梳妆台插座"
+  note: "R6 南侧床头插座：候选 z=7.85、h=0.75；与南侧双控同一服务带，采用并排独立86面板且保持面板不重叠，服务 master_bedside_cabinet_350_south（中心 z=8.555）。点位不得被床头柜/床头板遮挡；南帘真实堆叠仍 site_pending；东墙实体墙，wall_side west"
 
 # net_master_tv 已删除（DEC-013 主卧取消电视位，不布网口）
 
 - id: sock_master_ac
   room: master_bedroom
   type: socket
-  x: 2.80
+  x: 4.05
   z: 4.60
   height: 2.6
   count: 1
-  note: "主卧空调内机电源（空调檐口东段吊顶内；内机吊顶内供电常规做法，随冷媒管直线进盒）"
+  note: "主卧空调内机电源（2026-09-06 R7：门头盒东端空腔内，近走廊穿孔 z≈4.6；内机吊顶内供电常规做法，随冷媒管进盒）"
 
 # 西南次卧（父母房）
 - id: sock_parent_bed_l
@@ -711,18 +711,18 @@
   room: master_bedroom
   type: wall_lamp
   x: 4.2
-  z: 5.95
-  height: 1.6
+  z: 6.95
+  height: 1.35
   temp: 3000
-  note: "主卧床头壁灯左（随 rotation=270 床头北移至 z=6.60；东墙实体墙，黄铜壁灯方向）"
+  note: "R6 北侧床头壁灯：候选 z=6.95、h=1.35；关于床中心 z=7.40 对称，东墙实体墙，wall_side west，点位不得被床头柜/床头板遮挡，仍 site_pending"
 - id: light_master_wall_r
   room: master_bedroom
   type: wall_lamp
   x: 4.2
-  z: 7.25
-  height: 1.6
+  z: 7.85
+  height: 1.35
   temp: 3000
-  note: "主卧床头壁灯右（随 rotation=270 床头北移至 z=6.60；东墙实体墙。2026-09-02 修正：z 7.05→7.25，与左灯 ±0.65m 对称且位于右插座正上方）"
+  note: "R6 南侧床头壁灯：候选 z=7.85、h=1.35；关于床中心 z=7.40 对称，东墙实体墙，wall_side west，点位不得被床头柜/床头板遮挡，仍 site_pending"
 - id: light_parent_dome
   room: study
   type: dome
@@ -801,15 +801,15 @@
   temp: 4000
   note: "客卫平板灯（4000K；2026-08-29 按南马桶/北淋浴分区调整至内卫中部，待量房确认）"
 
-# 主卧投影仪地插（A方案，床尾西侧）
+# 主卧西侧地插（通用服务点，兼容便携投影）
 - id: sock_master_projector
   room: master_bedroom
   type: floor_socket
-  x: 1.5
-  z: 7.5
+  x: 0.42
+  z: 5.78
   height: 0.02
   count: 1
-  note: "主卧便携投影仪地插（DEC-013 A方案，床尾西侧地面）"
+  note: "西侧可变家具通用服务点（候选未冻结）：服务梳妆桌镜灯/桌灯/吹风机短时/充电，兼容便携投影；2026-09-04 R1 随桌贴窗重算可行域——桌 footprint x[0.20,0.65] z[5.60,6.50] 北侧两腿（世界 x=0.265/0.585、z=5.66）之间，距最近桌腿 0.196m（≥0.10m）、不入凳收纳包络（z≥5.84）、不入西窗帘线/盒 x[1.10,1.35]、不入床侧主通道 x[1.35,2.20]，坐姿于东侧可触及；最终位置待窗帘堆叠现场确认"
 
 # 客卫电热毛巾架
 - id: sock_gbath_towel

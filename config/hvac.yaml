@@ -121,7 +121,7 @@ plans:
           status: inferred
           system: refrigerant
           position: { x: 4.2, y: 2.5, z: 4.6 }
-          reason: "主卧冷媒支路按走廊吊顶穿孔后直管带向西进盒示意，分歧、梁位和套管待厂家深化。"
+          reason: "主卧冷媒支路按走廊吊顶穿孔后直管带向西进延伸空调盒示意；950衣柜东缘x=2.925与门头盒西缘对齐；分歧、梁位和套管待厂家深化。"
         - id: branch_study
           status: inferred
           system: refrigerant
@@ -169,7 +169,7 @@ plans:
           render_coordination: true
           system: condensate
           position: { x: 2.0, y: 0.1, z: 2.5 }
-          reason: "仅为冷凝水候选接入点，待量房确认；内机贴条带北墙后出盒即向主卫，不是地漏、立管或施工点，不得假定接入现有地漏。"
+          reason: "仅为冷凝水候选接入点，待量房确认；路线经空调盒/衣柜顶部隐藏后沿 w_mbath_east 西侧墙行进入主卫，不是地漏、立管或施工点，不得假定接入现有地漏。"
         - id: condensate_study_candidate
           kind: condensate_drain_candidate
           status: pending
@@ -200,17 +200,17 @@ plans:
         - id: supply_master
           status: inferred
           system: supply_air
-          position: { x: 2.10, y: 2.65, z: 4.96 }
+          position: { x: 3.70, y: 2.62, z: 5.585 }
           mount_face: south
-          length: 0.9
-          reason: "主卧 0.9m 线形送风口（矮柜收窄至 0.8m 后再次西移 0.05m 对位），嵌檐口南立面侧送朝南，越 1.1m 矮柜顶进睡眠区（span x[1.65,2.55] 全程压矮柜、与高柜西脸齐平零干涉；至南窗 5.4m 余量充足），实际长度按风量深化。"
+          length: 0.6
+          reason: "主卧0.6m窄线形送风口（R9），中心轴统一至x=3.70，嵌950适配延伸门头盒 ceiling_master_ac 南立面侧送朝南进睡眠区；东端x=4.00，距主卧东墙卧室侧完成面约0.14m；门头盒西缘随衣柜东缘同步至x=2.925，实际长度按风量深化。"
         - id: return_master
           status: inferred
           system: return_air
-          position: { x: 2.5, y: 2.49, z: 4.6 }
+          position: { x: 3.70, y: 2.49, z: 5.20 }
           mount_face: bottom
-          length: 1.0
-          reason: "主卧 1.0m 线形回风（回检一体：铰接回风格栅兼检修口，不另设面板），底装于空调盒底面（走道上方，远离床区），尺寸待厂家深化。"
+          length: 0.5
+          reason: "主卧0.5m线形回风（回检一体：铰接回风格栅兼检修口，不另设面板），中心轴与送风统一至x=3.70，底装于950适配门头盒底面（门口通行上方，远离床区）；东端x=3.95，距主卧东墙卧室侧完成面约0.19m；设备检修包络与家具独立，尺寸待厂家深化。"
         - id: supply_study
           status: inferred
           system: supply_air
@@ -326,7 +326,7 @@ plans:
           from: indoor_master
           to: condensate_master_candidate
           constraint_refs: [ref_master_bath_local_beam_head]
-          reason: "仅作协调示意：从 indoor_master 的冷凝水出口/排水盘接至东墙顶部 DEC-045 PVC 包管，盒体外由同一 object 的 route-cover parts 先向北、再向 west 接近 ac_master 冷凝水出口；return_master 回风格栅兼任内机检修口，不另设检修门；supply_master 是送风口，不是冷凝水接口。PVC 盒只遮挡冷凝水管/保温和灯槽，实际管径、坡度、存水弯、穿墙条件和最终接点待现场及厂家深化确认，不代表已施工；主卫局部参考梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
+          reason: "仅作协调示意：从 indoor_master 冷凝水出口 (3.80,5.10) 经延伸空调盒进入通顶衣柜顶部服务带，沿 (4.10,4.62)→(2.925,4.62) 隐藏西行，柜内转至管心 x=2.50（w_mbath_east 西完成面 x≈2.54 外留约40mm，不穿墙），沿墙侧下行至 (2.50,3.10)，临近 w_mbath_south 向西短折至 x=2.30，并在 (2.30,2.86) 穿越该墙（避开 d_mbath 洞口 x[1.15,1.95] 与东端 T 墙角 x=2.60）；进入 ceiling_master_bath 后折至候选点上方 (2.00,2.50)，最后竖直下引到 (2.00,0.10,2.50)；管径、连续坡度、存水弯、立管接点和穿墙套管待现场及厂家深化确认，不代表施工。"
         - id: condensate_study_candidate_route
           status: pending
           system: condensate

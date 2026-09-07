@@ -107,6 +107,21 @@ function wallCrosses(points: Point[], wall: { x1: number; z1: number; x2: number
   const wallStart = { x: wall.x1, z: wall.z1 };
   const wallEnd = { x: wall.x2, z: wall.z2 };
   for (let i = 1; i < points.length; i += 1) if (segmentsCross(points[i - 1], points[i], wallStart, wallEnd)) return true;
+  // A route may intentionally place the declared penetration at a polyline
+  // vertex. `segmentsCross` is strict and therefore misses that exact case;
+  // treat a vertex as a crossing only when the adjacent segments leave it on
+  // opposite sides of the wall (a route merely ending or running along a wall
+  // is not a penetration).
+  const wallVector = { x: wallEnd.x - wallStart.x, z: wallEnd.z - wallStart.z };
+  const side = (point: Point) => wallVector.x * (point.z - wallStart.z) - wallVector.z * (point.x - wallStart.x);
+  const onWall = (point: Point) => Math.abs(side(point)) <= 1e-9
+    && point.x >= Math.min(wallStart.x, wallEnd.x) - 1e-9
+    && point.x <= Math.max(wallStart.x, wallEnd.x) + 1e-9
+    && point.z >= Math.min(wallStart.z, wallEnd.z) - 1e-9
+    && point.z <= Math.max(wallStart.z, wallEnd.z) + 1e-9;
+  for (let i = 1; i < points.length - 1; i += 1) {
+    if (onWall(points[i]) && side(points[i - 1]) * side(points[i + 1]) < 0) return true;
+  }
   return false;
 }
 function segmentIntersection(a: Point, b: Point, c: Point, d: Point): { x: number; z: number } | undefined {
@@ -121,6 +136,16 @@ function routeWallIntersection(points: Point[], wall: { x1: number; z1: number; 
   const wallEnd = { x: wall.x2, z: wall.z2 };
   for (let i = 1; i < points.length; i += 1) {
     if (segmentsCross(points[i - 1], points[i], wallStart, wallEnd)) return segmentIntersection(points[i - 1], points[i], wallStart, wallEnd);
+  }
+  const wallVector = { x: wallEnd.x - wallStart.x, z: wallEnd.z - wallStart.z };
+  const side = (point: Point) => wallVector.x * (point.z - wallStart.z) - wallVector.z * (point.x - wallStart.x);
+  const onWall = (point: Point) => Math.abs(side(point)) <= 1e-9
+    && point.x >= Math.min(wallStart.x, wallEnd.x) - 1e-9
+    && point.x <= Math.max(wallStart.x, wallEnd.x) + 1e-9
+    && point.z >= Math.min(wallStart.z, wallEnd.z) - 1e-9
+    && point.z <= Math.max(wallStart.z, wallEnd.z) + 1e-9;
+  for (let i = 1; i < points.length - 1; i += 1) {
+    if (onWall(points[i]) && side(points[i - 1]) * side(points[i + 1]) < 0) return { x: points[i].x, z: points[i].z };
   }
   return undefined;
 }

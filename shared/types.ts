@@ -255,6 +255,74 @@ export interface CurtainRenderProjection {
   snapshotSha256: string;
 }
 
+/** 主卧 R6 窗帘软包络预演；不作为硬碰撞或地面禁区。 */
+export interface CurtainSoftEnvelopePreview {
+  roomId: string;
+  topBox: { z: [number, number]; ceilingOnly: true; confidence: 'confirmed'; status: 'confirmed' };
+  closedDrop: {
+    wallZ: number;
+    interiorOffset: number;
+    thickness: number;
+    z: [number, number];
+    confidence: 'inferred';
+    status: 'site_pending';
+    conflictLevel: 'warning';
+    acceptance: 'BLOCKED';
+  };
+  openStack: { end: null; thickness: null; confidence: 'site_pending'; status: 'site_pending' };
+  checkedObjects: string[];
+  retainedObjects: string[];
+  floorHardExclusion: null;
+  status: 'site_pending';
+}
+
+export interface CurtainSoftEnvelopePreviewDocument {
+  schema: 'curtain-soft-envelope-preview/v1';
+  iterationId: string;
+  previews: CurtainSoftEnvelopePreview[];
+}
+
+/** 声明式主卧 R6 窗帘预演契约，不进入 SceneElement/collision。 */
+export const MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE: CurtainSoftEnvelopePreview = {
+  roomId: 'master_bedroom',
+  topBox: { z: [8.7, 8.95], ceilingOnly: true, confidence: 'confirmed', status: 'confirmed' },
+  closedDrop: {
+    wallZ: 9.8,
+    interiorOffset: 0.12,
+    thickness: 0.12,
+    z: [9.56, 9.68],
+    confidence: 'inferred',
+    status: 'site_pending',
+    conflictLevel: 'warning',
+    acceptance: 'BLOCKED',
+  },
+  openStack: { end: null, thickness: null, confidence: 'site_pending', status: 'site_pending' },
+  checkedObjects: ['master_bedside_cabinet_350_south', 'master_hot_season_low_dresser'],
+  retainedObjects: ['master_hot_season_low_dresser'],
+  floorHardExclusion: null,
+  status: 'site_pending',
+};
+
+export function isCurtainSoftEnvelopePreview(value: unknown): value is CurtainSoftEnvelopePreview {
+  if (!value || typeof value !== 'object') return false;
+  const preview = value as Partial<CurtainSoftEnvelopePreview>;
+  return preview.roomId === 'master_bedroom'
+    && preview.topBox?.ceilingOnly === true
+    && preview.topBox.confidence === 'confirmed'
+    && preview.topBox.status === 'confirmed'
+    && Array.isArray(preview.topBox.z)
+    && preview.topBox.z[0] === 8.7
+    && preview.topBox.z[1] === 8.95
+    && preview.closedDrop?.thickness === 0.12
+    && preview.closedDrop.confidence === 'inferred'
+    && preview.closedDrop.status === 'site_pending'
+    && preview.closedDrop.conflictLevel === 'warning'
+    && preview.closedDrop.acceptance === 'BLOCKED'
+    && Array.isArray(preview.checkedObjects)
+    && preview.floorHardExclusion === null
+    && preview.status === 'site_pending';
+}
+
 export interface VisualCommand {
   commandId: string;
   type: 'set_camera_target' | 'highlight_object' | 'set_curtain_state';
@@ -786,6 +854,9 @@ export interface CeilingZone {
   type: (typeof VALID_CEILING_TYPES)[number];
   thickness?: number;
   area?: [number, number, number, number];
+  corner_radius?: number;
+  inspection_layer?: string;
+  inspection_opacity?: number;
   x?: number;
   z?: number;
   height?: number;
@@ -1030,6 +1101,48 @@ export interface RoomFurnishings {
   counts: Record<string, number>;
 }
 
+export interface FurnitureAabb {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
+export interface PartitionWardrobeDoorAabb extends FurnitureAabb {
+  doorIndex: number;
+  state: 'closed' | 'open';
+}
+
+/** Pure R5 candidate geometry helper; opening is a validation envelope, not a construction clearance claim. */
+export function getPartitionWardrobeDoorAabbs(state: 'closed' | 'open' = 'closed'): PartitionWardrobeDoorAabb[] {
+  const center = { x: 2.20, z: 5.25 };
+  const doorWidth = 0.40;
+  const closedSouthFace = 5.55;
+  const doorThickness = 0.025;
+  const openProjection = 0.40;
+  const doors = Array.from({ length: 4 }, (_, doorIndex) => {
+    const minX = center.x - 0.80 + doorIndex * doorWidth;
+    const maxX = minX + doorWidth;
+    if (state === 'closed') {
+      return { doorIndex, state, minX, maxX, minZ: closedSouthFace - doorThickness, maxZ: closedSouthFace };
+    }
+
+    // The declared front is the cabinet's south face. Each leaf rotates toward +z
+    // around its actual left/right hinge; the plan AABB therefore stays at the
+    // hinge strip in x and expands only southward, never toward the west.
+    const hingeX = doorIndex % 2 === 0 ? minX : maxX;
+    return {
+      doorIndex,
+      state,
+      minX: hingeX === minX ? hingeX : hingeX - doorThickness,
+      maxX: hingeX === minX ? hingeX + doorThickness : hingeX,
+      minZ: closedSouthFace + doorThickness,
+      maxZ: closedSouthFace + doorThickness + openProjection,
+    };
+  });
+  return doors;
+}
+
 export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = {
   bed_180: { width: 1.8, depth: 2.0 },
   bed_150: { width: 1.5, depth: 2.0 },
@@ -1039,15 +1152,31 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   kitchen_countertop_bridge: { width: 0.6, depth: 0.6 },
   shelf: { width: 0.8, depth: 0.4 }, // DEC-023 置物架（开架，h2.0）
   bath_side_cabinet: { width: 0.45, depth: 0.5 }, // 2026-08-21 主卫干区封闭侧柜 h2.0
-  // DEC-045 主卫东墙四件独立对象：rotation=270 后 width 沿墙 z、depth 朝 west；
-  // wall anchor 是自身中心，local y 才是高度层次；四件沿墙同轴组成一套墙面家具。
-  mb_vanity_base_cabinet: { width: 1.50, depth: 0.42 }, // 落地贴墙低柜：1.50m 长×0.42m 深×0.62m 高，后缘贴 x=2.60
-  mb_vanity_lower_board: { width: 1.50, depth: 0.32 }, // 下部悬浮板：与底柜同宽同轴
-  mb_vanity_main_board: { width: 1.50, depth: 0.32 }, // 主板：与下板同宽同深
-  mb_vanity_pvc_box: { width: 1.40, depth: 0.22 }, // PVC 顶部 HVAC 冷凝水管线盒：贴近房顶，前侧带可见检修盖与低亮灯缝
+  // DEC-045 主卫东墙独立对象：rotation=270 后 width 沿墙 z、depth 朝 west；
+  // wall anchor 是自身中心，local y 才是高度层次；柜体与悬浮板沿墙同轴组成一套墙面家具。
+  mb_vanity_base_cabinet: { width: 1.70, depth: 0.625 }, // 2026-09-06 与上下悬浮板同长：1.70m 长×0.625m 深×0.62m 高，西侧边缘对齐 d_mbath:frame:right 东侧外缘
+  mb_vanity_lower_board: { width: 1.70, depth: 0.565 }, // 下部悬浮板：深0.565m，按0.12m墙厚语义贴 w_mbath_east 西侧完成面，西缘 x=1.975、东缘 x=2.54，与底柜西缘一致
+  mb_vanity_main_board: { width: 1.70, depth: 0.565 }, // 主板：与下板同宽同深，深0.565m，按墙西侧完成面锚定，西缘 x=1.975、东缘 x=2.54
+  condensate_pipe_ac_outlet: { width: 0.24, depth: 0.46 }, // ac_master 内冷凝水出口→延伸空调盒/衣柜顶部服务带；厂家出口位置 pending
+  mb_vanity_pvc_box: { width: 1.20, depth: 0.08 }, // w_mbath_east 西侧冷凝水墙行 (2.50,4.30)->(2.50,3.10)；中心离墙完成面约40mm，wall anchor 使用 w_mbath_east west，管径/坡度待深化
+  mb_vanity_pvc_wardrobe_entry: { width: 1.175, depth: 0.03 }, // 延伸空调盒/衣柜顶部服务带内的西行段
+  mb_vanity_pvc_service_chase: { width: 0.925, depth: 0.06 }, // 衣柜顶部至 w_mbath_south 穿点及主卫吊顶内短折/下引
   mb_washbasin_cabinet: { width: 1.05, depth: 0.50 }, // 2026-09-02 初版：西让 5cm 百叶升降缝、东留 5cm 门套缝，收宽 1.10→1.05 且盆居中（假定玻璃通高，待量房终核）；2026-09-01 取消梳妆膝位，东侧封闭抽屉收纳
-  master_dressing_table: { width: 0.85, depth: 0.40 }, // 南床头独立干式梳妆台：rotation=90 后长边沿世界 z，桌面支撑镜与插接镜前灯
+  master_dressing_table: { width: 0.90, depth: 0.45 }, // 2026-09-03 改 900W×450D×750H 四腿开放式独立桌并迁西侧北段：rotation=90 后长边沿世界 z、正面（抽屉/座位侧）朝东，桌面镜/桌灯在局部 -z 侧
   dressing_stool: { width: 0.42, depth: 0.40 }, // 可完整收进 master_dressing_table 台下的专用小凳
+  master_hot_season_low_dresser: { width: 1.40, depth: 0.48 }, // 2026-09-04 R1 主卧南侧窗带轻中古六抽矮柜：1400W×480D×850H（h<2.07 不挡窗带）；rotation=180 局部 +z 正面转朝北对房间
+  master_north_wall_wardrobe_600: { width: 0.60, depth: 0.58 }, // R6 主卧北墙衣柜（已 superseded，保留供历史数据解析）：600W×580D×2050H
+  master_north_wall_wardrobe_950: { width: 0.95, depth: 0.58 }, // 主卧北墙定制衣柜：950W×580D×2800H，三扇窄平开门+顶部固定木饰面门头；冷凝水管槽隐藏在顶部；位置由 config/house.yaml 的当前方案决定
+  master_north_wall_wardrobe_650: { width: 0.65, depth: 0.58 }, // R7 历史收窄版主卧北墙定制衣柜：650W×580D×2450H，两扇窄平开门朝南，非通顶
+  master_wardrobe_top_pelmet: { width: 0.95, depth: 0.58 }, // 通顶950衣柜顶部的独立薄收口/东侧竖向填板；主体固定门头由衣柜对象表达，不承担 HVAC 责任
+  master_freestanding_wardrobe_062: { width: 0.62, depth: 0.60 }, // 历史 R3 类型：保留尺寸供旧数据解析，不再作为主卧 placed 对象
+  master_partition_wardrobe_1600: { width: 1.60, depth: 0.60 }, // R5 横向隔断柜：四扇窄门，rotation=0 时逻辑 AABB x[1.40,3.00]、z[4.95,5.55]
+  master_bedside_cabinet_350_north: { width: 0.38, depth: 0.35 }, // R6 候选 380W×350D×500H，runtime 高 495–505mm；北侧中心 z=6.245
+  master_bedside_cabinet_350_south: { width: 0.38, depth: 0.35 }, // R6 候选 380W×350D×500H，runtime 高 495–505mm；南侧中心 z=8.555，闭帘候选软包络冲突仅 warning/BLOCKED
+  master_dressing_connection_storage: { width: 0.70, depth: 0.40 }, // R5 独立连接收纳段：recipe/runtime AABB 对齐，维护/安装条件仍 site_pending
+  master_bedside_cabinet_north: { width: 0.24, depth: 0.30 }, // 历史 R3 类型，保留兼容尺寸但不再 placed
+  master_bedside_tray_south: { width: 0.20, depth: 0.26 }, // 历史 R3 类型，保留兼容尺寸但不再 placed
+  study_seasonal_wardrobe_wall: { width: 1.70, depth: 0.55 }, // 2026-09-03 书房东墙季节后台柜：1.70m 沿墙×0.55m 深×2.40m 高（非通顶）；rotation=270 后长边沿世界 z、柜门朝西
   towel_set: { width: 0.04, depth: 0.28 }, // Blender add_bath_fixtures 比例的声明式毛巾杆+毛巾，按东墙贴靠投影登记
   sofa_3seat: { width: 2.8, depth: 0.9 },
   dining_table: { width: 1.4, depth: 0.8 },
@@ -1068,6 +1197,8 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   barbell_olympic: { width: 2.2, depth: 0.08 },
   weight_plate_set: { width: 0.63, depth: 0.42 },
   bench_adjustable: { width: 1.24, depth: 0.55 },
+  adjustable_dumbbell_pair: { width: 0.55, depth: 0.45 }, // 2026-09-03 可调哑铃对含底座包络（渲染用，预算走 home_fitness 单套口径）
+  rollable_training_mat: { width: 0.25, depth: 0.25 }, // 2026-09-03 卷起态圆筒（立放 footprint；渲染用，不单独计价）
   rubber_training_mat: { width: 1.8, depth: 1.6 },
   low_weight_storage: { width: 0.95, depth: 0.42 },
   low_room_cabinet: { width: 0.40, depth: 1.20 }, // 2026-08-26 书房东墙低柜，世界 footprint 0.40×1.20m；配置 rotation=0 沿东墙南北向展开，柜门朝西，不是健身器材收纳

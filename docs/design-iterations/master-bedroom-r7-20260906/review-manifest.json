@@ -1,0 +1,472 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "master-bedroom-r7-20260906",
+  "source_version": "r8-master-bedroom-20260906-950",
+  "state": "blocked",
+  "alignment_frozen": true,
+  "construction_frozen": false,
+  "delivery_frozen": false,
+  "delivery_ready": false,
+  "fact_table": "fact-table.yaml",
+  "decision_brief": "decision-brief.yaml",
+  "design_datum": "design-datum.yaml",
+  "object_manifest": "object-manifest.yaml",
+  "blocking_issues": [
+    "950 衣柜防倾倒固定节点与墙体结构未确认（site/site_pending）",
+    "950 左移核验失败：为避让 d_mb 至少需左移0.25m（maxX≤3.30），将使 minX≤2.35 越出北墙实体边界 x=2.60，并侵入原位 DEC-045 bridge；因此衣柜保持原位，d_mb硬冲突仍明确阻塞",
+    "HVAC 内机型号/外廓、风量、送回风截面与滤网检修操作空间待厂家深化（hvac/site_pending）",
+    "南帘真实轨道/下垂/堆叠端未实测，闭帘软包络 z[9.56,9.68] inferred/site_pending，warning/BLOCKED",
+    "衣柜与材料价格 pending（price 0 + price_source=pending，不以 0 伪装完成）",
+    "通长檐口取消后冷凝水候选 x[2.0,3.45] 段无吊顶遮盖，局部包管/管窿待深化",
+    "d_mb 门套/执手突出量未建模：950衣柜已与开启门扇带硬冲突，门向/门洞调整待另行决策；本次禁止修改 d_mb"
+  ],
+  "verification": {
+    "status": "blocked_by_infeasible_950_left_shift_and_dmb_collision",
+    "results": [
+      {
+        "command": "npm run generate:project-render-facts",
+        "status": "PASS",
+        "notes": [
+          "15 lighting fixtures；ceiling_master_ac=area[3.55,4.55,4.20,5.60]（950衣柜保持原位，西缘对齐其东缘x=3.55；左移候选失败，不调整门头盒）、ac_master=(3.80,5.10) 已入facts；不做灯槽"
+        ]
+      },
+      {
+        "command": "npm run export:dressing-map",
+        "status": "PASS",
+        "notes": [
+          "wardrobe topic 行= wardrobe_north_950_custom_01；placed 表含 950@(3.075,4.59)"
+        ]
+      },
+      {
+        "command": "npm run verify:furniture",
+        "status": "BLOCKED",
+        "notes": [
+          "左移核验失败：避让d_mb需左移0.25m，候选AABB x[2.35,3.30]越出北墙实体边界x=2.60并侵入固定DEC-045 bridge；实际衣柜保持x=3.075，原位与d_mb硬冲突继续明确报告并阻塞；保留south_balcony skipped与南帘site_pending warnings"
+        ]
+      },
+      {
+        "command": "npm run verify:consistency",
+        "status": "PASS"
+      },
+      {
+        "command": "npm run verify:all",
+        "status": "BLOCKED",
+        "notes": [
+          "未执行完成：950 与 d_mb 硬冲突应阻塞，不能以绿色覆盖；专项前置验证已明确报告"
+        ]
+      },
+      {
+        "command": "npm run test:server",
+        "status": "PASS",
+        "notes": [
+          "含 R8 950 三门 pivot/门态矩阵、门头盒包络、bridge 15mm 衔接、窗帘软包络、预算映射专项；旧650证据过时"
+        ]
+      },
+      {
+        "command": "npm run typecheck",
+        "status": "PASS"
+      },
+      {
+        "command": "npm run test:app",
+        "status": "PASS"
+      },
+      {
+        "command": "npm run build:app",
+        "status": "PASS"
+      }
+    ],
+    "runtime_aabb": {
+      "wardrobe_closed": {
+        "x": [
+          2.6,
+          3.55
+        ],
+        "left_shift_check": {
+          "required_shift_m": 0.25,
+          "candidate_max_x": 3.30,
+          "candidate_min_x": 2.35,
+          "north_wall_entity_min_x": 2.60,
+          "result": "FAIL",
+          "reason": "左移避让d_mb会越出北墙实体边界并侵入原位DEC-045 bridge；不执行左移"
+        },
+        "y": [
+          0,
+          2.45
+        ],
+        "z": [
+          4.3,
+          4.88
+        ]
+      },
+      "wardrobe_open_max": {
+        "z_max": 5.17,
+        "note": "单开/全开最大南向包络约 z=5.17，小于门头盒南立面 5.585 与回风格栅平面；与 d_mb 门扇带 x≥3.30 无交"
+      },
+      "head_box": {
+        "area": [
+          3.25,
+          4.55,
+          4.2,
+          5.6
+        ],
+        "bottom": 2.5,
+        "supply": {
+          "x": 3.8,
+          "y": 2.62,
+          "z": 5.585,
+          "face": "south",
+          "length": 0.6
+        },
+        "return": {
+          "x": 3.95,
+          "y": 2.49,
+          "z": 5.2,
+          "face": "bottom",
+          "length": 0.5,
+          "role": "回检一体铰接格栅兼检修"
+        }
+      },
+      "r71_bridge": {
+        "x": [
+          2.28,
+          2.585
+        ],
+        "z": [
+          4.1,
+          4.865
+        ],
+        "y_bands": [
+          [
+            0.965,
+            1.035
+          ],
+          [
+            1.515,
+            1.585
+          ]
+        ],
+        "note": "R7.1 L 形转角层板：与衣柜西面 x 向净缝 15mm；与左门全开（-95°）门叶 world mesh（实测 x[2.5849,2.6309] z[4.8702,5.1706]）z 向错开约 5mm 不相交；不碰 PVC"
+      },
+      "r71_pelmet": {
+        "x": [
+          2.6,
+          3.55
+        ],
+        "y": [
+          2.45,
+          2.5
+        ],
+        "z": [
+          4.3,
+          4.88
+        ],
+        "east_filler": {
+          "x": [
+            3.535,
+            3.55
+          ],
+          "z": [
+            4.55,
+            4.88
+          ]
+        },
+        "note": "950 footprint 顶封板与门头盒底面一条线；东填板接门头盒西立面；不得掩盖与 d_mb 的硬冲突"
+      }
+    },
+    "door_state_matrix": {
+      "closed": [
+        0,
+        0
+      ],
+      "left_open": [
+        -95,
+        0
+      ],
+      "right_open": [
+        0,
+        95
+      ],
+      "both_open": [
+        -95,
+        95
+      ],
+      "hinge_sides": [
+        "left",
+        "right"
+      ],
+      "note": "R8 950 三扇约 0.29m 窄平开门；与 d_mb 开启门扇硬冲突由 verify:furniture 明确阻塞；650证据过时"
+    }
+  },
+  "browser_evidence": {
+    "status": "diagnostic_only_stale_after_left_shift_check",
+    "source_version": "r8-master-bedroom-20260906-950",
+    "collected_at": "2026-09-06",
+    "session": null,
+    "base_url": null,
+    "viewport": [
+      1600,
+      1000
+    ],
+    "notes_file": "evidence/evidence-notes-r71.md",
+    "views": [
+      {
+        "slug": "r71-final-01-entry-bridge",
+        "valid": true,
+        "description": "套间侧近景：两悬浮板+整段 bridge 层板贯通衣柜西面至前脸，15mm 阴影缝（x 向）可读",
+        "png_sha256": "06c08c35e3db14022217436d8f5b9cd88ed226a25f15d8fcbcbda6ab6597863a",
+        "files": [
+          "evidence/r71-final-01-entry-bridge.png",
+          "evidence/r71-final-01-entry-bridge.runtime.json",
+          "evidence/r71-final-01-entry-bridge.snapshot.txt"
+        ]
+      },
+      {
+        "slug": "r71-final-02-wardrobe-closed-front",
+        "valid": true,
+        "description": "衣柜关闭正面：双门+pelmet 顶封板同色帽线",
+        "png_sha256": "55b67b3f9babb2dc35a8818983420b525ae6193419bb19290ef56c691fc2ea0e",
+        "files": [
+          "evidence/r71-final-02-wardrobe-closed-front.png",
+          "evidence/r71-final-02-wardrobe-closed-front.runtime.json",
+          "evidence/r71-final-02-wardrobe-closed-front.snapshot.txt"
+        ]
+      },
+      {
+        "slug": "r71-final-03-dmb-and-both-open",
+        "valid": true,
+        "description": "双门全开+d_mb 开启组合，东缘间隙可见",
+        "png_sha256": "f26d21a3843033977eb81e5a83c56be73d9ae8b69b8536e45891aec03cad938d",
+        "files": [
+          "evidence/r71-final-03-dmb-and-both-open.png",
+          "evidence/r71-final-03-dmb-and-both-open.runtime.json",
+          "evidence/r71-final-03-dmb-and-both-open.snapshot.txt"
+        ]
+      },
+      {
+        "slug": "r71-final-04-pelmet-headbox-high",
+        "valid": true,
+        "description": "高位：pelmet 帽线—门头盒一体檐线（2.50 连续）、盒西缘 x=3.25 对齐柜东缘、回检格栅可见",
+        "png_sha256": "9a1839ef9c1b13ae09e40c7d862affea4659859c28a1e521795b085a32edeb9c",
+        "files": [
+          "evidence/r71-final-04-pelmet-headbox-high.png",
+          "evidence/r71-final-04-pelmet-headbox-high.runtime.json",
+          "evidence/r71-final-04-pelmet-headbox-high.snapshot.txt"
+        ],
+        "note": "first-person 模式拍摄（orbit 按设计隐藏天花）"
+      },
+      {
+        "slug": "r71-final-05-bedhead-east-elevation",
+        "valid": true,
+        "description": "床头正立面：两床头柜、两 86 面板、两壁灯（R7.1 未破坏）",
+        "png_sha256": "e43fdf09ada0f51441a62d4e2de1a71ed9ab0f6dedba4f0eedc03de17f6588a0",
+        "files": [
+          "evidence/r71-final-05-bedhead-east-elevation.png",
+          "evidence/r71-final-05-bedhead-east-elevation.runtime.json",
+          "evidence/r71-final-05-bedhead-east-elevation.snapshot.txt"
+        ]
+      },
+      {
+        "slug": "r71-final-06-south-window-side",
+        "valid": true,
+        "description": "南窗侧视：南床头柜、南六抽柜、幕墙（R7.1 未破坏）",
+        "png_sha256": "f3a4ab4a8ed3864904421fe75d532f6a268ba4c4560c9234a6c8a08f698c8556",
+        "files": [
+          "evidence/r71-final-06-south-window-side.png",
+          "evidence/r71-final-06-south-window-side.runtime.json",
+          "evidence/r71-final-06-south-window-side.snapshot.txt"
+        ]
+      }
+    ],
+    "runtime_consistency": "pass",
+    "runtime_findings": [
+      "bridge 整段层板 x[2.28,2.585] z[4.10,4.865]，沿衣柜西面贯通至前脸；15mm 缝在 x 向（2.60-2.585=0.015，两件同值）",
+      "pelmet 顶封板 x[2.60,3.25] y[2.45,2.50] z[4.30,4.88]（2 meshes，含东填板）",
+      "门头盒 soffit 实测 x[3.25,4.20] y[2.50,2.80] z[4.55,5.60]，西缘 x=3.25 与衣柜东缘对齐；pelmet 顶 2.50=盒底 2.50 檐线连续",
+      "未破坏项：衣柜 AABB 不变；d_mb 净距关闭态 0.050m/双门全开 0.0349m；门叶全开 max z=5.171；床头面板 7.802/7.898；南柜 max z=9.55（软包络未建模 site_pending）"
+    ],
+    "r7_stale": {
+      "status": "stale",
+      "session": "bontop-39a5bd0d",
+      "base_url": "http://localhost:5173/?v=r7-650-20260906",
+      "notes_file": "evidence/evidence-notes.md",
+      "stale_reason": "R7.1 几何修正后失效，仅历史保留",
+      "views": [
+        {
+          "slug": "r7-final-01-entry-bridge",
+          "valid": false,
+          "png_sha256": "2db641cab014c2f6e04d6d376c05dcaa9b35285d39da8b9a41182b2fe2a730c3",
+          "files": [
+            "evidence/r7-final-01-entry-bridge.png",
+            "evidence/r7-final-01-entry-bridge.runtime.json",
+            "evidence/r7-final-01-entry-bridge.snapshot.txt"
+          ],
+          "stale": true,
+          "stale_reason": "R7.1 几何修正（bridge 整段层板/pelmet/门头盒西缘对齐）后失效，仅历史保留"
+        },
+        {
+          "slug": "r7-final-02-wardrobe-closed",
+          "valid": false,
+          "png_sha256": "ae63c021b8f0faf38e0e5b0f83840416df0c1276b90bde6532230d6fbac0221f",
+          "files": [
+            "evidence/r7-final-02-wardrobe-closed.png",
+            "evidence/r7-final-02-wardrobe-closed.runtime.json",
+            "evidence/r7-final-02-wardrobe-closed.snapshot.txt"
+          ],
+          "stale": true,
+          "stale_reason": "R7.1 几何修正（bridge 整段层板/pelmet/门头盒西缘对齐）后失效，仅历史保留"
+        },
+        {
+          "slug": "r7-final-03-wardrobe-left-open",
+          "valid": false,
+          "png_sha256": "543905cc6ebbf12ddbb5b2cb72b978c901458b855de5fb62cab256eec03ffbaf",
+          "files": [
+            "evidence/r7-final-03-wardrobe-left-open.png",
+            "evidence/r7-final-03-wardrobe-left-open.runtime.json",
+            "evidence/r7-final-03-wardrobe-left-open.snapshot.txt"
+          ],
+          "stale": true,
+          "stale_reason": "R7.1 几何修正（bridge 整段层板/pelmet/门头盒西缘对齐）后失效，仅历史保留"
+        },
+        {
+          "slug": "r7-final-04-wardrobe-right-open",
+          "valid": false,
+          "png_sha256": "61db3d14b80c40d9cab6922ce37df027cbad75df1f4ca50ceb510d95e88885a1",
+          "files": [
+            "evidence/r7-final-04-wardrobe-right-open.png",
+            "evidence/r7-final-04-wardrobe-right-open.runtime.json",
+            "evidence/r7-final-04-wardrobe-right-open.snapshot.txt"
+          ],
+          "stale": true,
+          "stale_reason": "R7.1 几何修正（bridge 整段层板/pelmet/门头盒西缘对齐）后失效，仅历史保留"
+        },
+        {
+          "slug": "r7-final-05-wardrobe-both-open",
+          "valid": false,
+          "png_sha256": "f38dfa9bcd5f20363abc805a1202b2f3c738f091783bb6c32f7a355def7355f3",
+          "files": [
+            "evidence/r7-final-05-wardrobe-both-open.png",
+            "evidence/r7-final-05-wardrobe-both-open.runtime.json",
+            "evidence/r7-final-05-wardrobe-both-open.snapshot.txt"
+          ],
+          "stale": true,
+          "stale_reason": "R7.1 几何修正（bridge 整段层板/pelmet/门头盒西缘对齐）后失效，仅历史保留"
+        },
+        {
+          "slug": "r7-final-06-dmb-and-both-open",
+          "valid": false,
+          "png_sha256": "009be802909e171b2a6769d861070a5f016caa9e1a0eabb241620d759169a884",
+          "files": [
+            "evidence/r7-final-06-dmb-and-both-open.png",
+            "evidence/r7-final-06-dmb-and-both-open.runtime.json",
+            "evidence/r7-final-06-dmb-and-both-open.snapshot.txt"
+          ],
+          "stale": true,
+          "stale_reason": "R7.1 几何修正（bridge 整段层板/pelmet/门头盒西缘对齐）后失效，仅历史保留"
+        },
+        {
+          "slug": "r7-final-07-bedhead-east-elevation",
+          "valid": false,
+          "png_sha256": "0ce7cc02a85c65443a7cd4c3d3b704691e661e93f9719ca7a1c848e0740b669c",
+          "files": [
+            "evidence/r7-final-07-bedhead-east-elevation.png",
+            "evidence/r7-final-07-bedhead-east-elevation.runtime.json",
+            "evidence/r7-final-07-bedhead-east-elevation.snapshot.txt"
+          ],
+          "stale": true,
+          "stale_reason": "R7.1 几何修正（bridge 整段层板/pelmet/门头盒西缘对齐）后失效，仅历史保留"
+        },
+        {
+          "slug": "r7-final-08-south-window-side",
+          "valid": false,
+          "png_sha256": "7192db03f95a1eabceb7f4009c81ebd71e0769a6bff4ed8a6a127cebde0c5a6e",
+          "files": [
+            "evidence/r7-final-08-south-window-side.png",
+            "evidence/r7-final-08-south-window-side.runtime.json",
+            "evidence/r7-final-08-south-window-side.snapshot.txt"
+          ],
+          "stale": true,
+          "stale_reason": "R7.1 几何修正（bridge 整段层板/pelmet/门头盒西缘对齐）后失效，仅历史保留"
+        },
+        {
+          "slug": "r7-final-09-hvac-headbox",
+          "valid": false,
+          "png_sha256": "2f2e2561542dc35211c19611eaad74482fed494536379b66412b56fce1ad8fce",
+          "files": [
+            "evidence/r7-final-09-hvac-headbox.png",
+            "evidence/r7-final-09-hvac-headbox.runtime.json",
+            "evidence/r7-final-09-hvac-headbox.snapshot.txt"
+          ],
+          "note": "first-person 模式拍摄（orbit 按设计隐藏天花）",
+          "stale": true,
+          "stale_reason": "R7.1 几何修正（bridge 整段层板/pelmet/门头盒西缘对齐）后失效，仅历史保留"
+        }
+      ]
+    }
+  },
+  "reviews": {
+    "aesthetic": {
+      "verdict": "PASS",
+      "blocking_issues": [],
+      "non_blocking_notes": [
+        "L 形贯通成立（view 01）：整段 bridge 层板沿衣柜西面延伸至前脸，15mm 阴影缝在 x 向可读",
+        "一体檐线成立（view 04）：pelmet 顶 2.50 与门头盒底 2.50 连续，盒西缘 x=3.25 与柜东缘对齐；R7 的 50mm 虚缝已由 pelmet 闭合",
+        "材质仍为占位级：bridge/悬浮板（浅米）与柜体/pelmet（木色）为不同件，阴影缝强化分层读法；饰面统一后需复核",
+        "入口段双层门板（d_mb 开启叶+柜东缘）压迫感可接受；门头盒为白色顶盒、柜为木色，一体性依赖饰面"
+      ],
+      "evidence_refs": [
+        "evidence/r71-final-01-entry-bridge.png",
+        "evidence/r71-final-02-wardrobe-closed-front.png",
+        "evidence/r71-final-04-pelmet-headbox-high.png",
+        "evidence/r71-final-05-bedhead-east-elevation.png",
+        "evidence/r71-final-06-south-window-side.png"
+      ],
+      "requested_changes": [],
+      "assumptions": [
+        "材质/颜色为占位渲染（assumed），非最终饰面",
+        "南窗整体感按无帘状态判断，闭帘软包络 inferred/site_pending"
+      ]
+    },
+    "functional": {
+      "verdict": "BLOCKED",
+      "blocking_issues": [
+        "650 衣柜防倾倒固定节点与墙体结构未确认（site/site_pending）",
+        "HVAC 内机型号/外廓、风量与滤网检修操作空间待厂家深化（hvac/site_pending）",
+        "南帘真实轨道/堆叠端未实测，闭帘软包络 inferred/site_pending（warning/BLOCKED）",
+        "d_mb 门套/执手突出量未建模：50mm 名义净距仅对衣柜门关闭态成立，双门全开实测净距 0.0349m，现场核对须按开启态口径"
+      ],
+      "non_blocking_notes": [
+        "R7.1 runtime 取证通过：bridge 整段层板 x[2.28,2.585] z[4.10,4.865] 与衣柜门扫掠（西缘 x≥2.585 之外）无交，四态无交维持",
+        "pelmet 顶封板 2.45–2.50 不侵占门头盒（盒底 2.50）与送回风；回检一体底格栅 view 04 可见，检修不依赖衣柜开膛",
+        "门头盒西缘 x=3.25 对齐柜东缘后，送风格栅 x[3.495,4.105] 仍在盒南面，未受 pelmet 影响",
+        "床头两 86 面板（z=7.802/7.898，h0.75）高于床头柜面 0.505m，可达性成立（view 05 复核未破坏）",
+        "南六抽柜 max z=9.55 与闭帘软包络 9.56 仅 10mm 余量，实测后可能需南移或减深"
+      ],
+      "evidence_refs": [
+        "evidence/r71-final-01-entry-bridge.png",
+        "evidence/r71-final-03-dmb-and-both-open.png",
+        "evidence/r71-final-04-pelmet-headbox-high.png",
+        "evidence/evidence-notes-r71.md"
+      ],
+      "requested_changes": [],
+      "assumptions": [
+        "d_mb 开启态为 as-rendered（rotation -180°），门套/执手突出量未建模（site_pending）",
+        "闭帘软包络厚度 0.12m 为 inferred，非实测"
+      ]
+    },
+    "construction": "BLOCKED"
+  },
+  "site_pending_followup": [
+    "pending-door-swing",
+    "pending-wardrobe-anti-tip",
+    "pending-hvac-equipment",
+    "pending-south-curtain",
+    "pending-product-outlines"
+  ],
+  "notes": [
+    "R7 首版 950 三门（东缘 x=3.55）与 d_mb 开启门扇带 x[3.30,4.20] z[4.63,4.67] 干涉约 250mm：2026-09-06 收窄为 650 双门版（东缘 x=3.25，50mm 净距），950 recipe/材料项仅历史保留。",
+    "R5 入口横柜与 R6 600mm 成品小柜 superseded（recipe/材料项保留供历史解析）。",
+    "候选预演，不构成施工冻结。"
+  ],
+  "r71_revision": "2026-09-06 R7.1：用户验收 R7 截图后修正——bridge 改 L 形转角整段层板、门头盒西缘 x=3.25 对齐衣柜东缘、新增 master_wardrobe_top_pelmet 顶封板+东竖向填板一体收口；不改 model-geometry/overlay/门洞"
+}

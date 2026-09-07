@@ -261,6 +261,10 @@ export class App {
     return this.houseScene.captureRoomAudit(options);
   }
 
+  inspectMasterBedroomCondensate(): ReturnType<HouseScene['inspectMasterBedroomCondensate']> {
+    return this.houseScene.inspectMasterBedroomCondensate();
+  }
+
   async exportGlbDataUrl(): Promise<string> {
     const { blob } = await this.exportGlb();
     const bytes = new Uint8Array(await blob.arrayBuffer());

@@ -62,7 +62,7 @@ function main(): void {
 
   const electrical = yaml.load(fs.readFileSync('config/electrical.yaml', 'utf-8')) as Positioned[];
   const plumbing = yaml.load(fs.readFileSync('config/plumbing.yaml', 'utf-8')) as Positioned[];
-  const ceiling = yaml.load(fs.readFileSync('config/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; x?: number; z?: number }>;
+  const ceiling = yaml.load(fs.readFileSync('config/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; inspection_layer?: string; inspection_opacity?: number }>;
   const overlay = yaml.load(fs.readFileSync('config/layout/overlay.yaml', 'utf-8')) as { suppress: OverlaySuppress[] };
   const houseYaml = yaml.load(fs.readFileSync('config/house.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }>; gift_areas: Array<{ id: string; name: string }> };
   const modelGeom = yaml.load(fs.readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }> };
@@ -146,6 +146,9 @@ function main(): void {
     if (!VALID_CEILING_TYPES.includes(c.type as (typeof VALID_CEILING_TYPES)[number])) {
       report('error', `[ceiling_type] ceiling/${c.id}: 未知 type "${c.type}"`);
     }
+    if (c.corner_radius !== undefined && (!Number.isFinite(c.corner_radius) || c.corner_radius < 0)) {
+      report('error', `[ceiling_corner_radius] ceiling/${c.id}: corner_radius must be non-negative`);
+    }
   }
 
   // === ceiling area within unit bounds ===
@@ -159,6 +162,18 @@ function main(): void {
     const [ax1, az1, ax2, az2] = area;
     if (ax1 < unitMinX || ax2 > unitMaxX || az1 < unitMinZ || az2 > unitMaxZ) {
       report('error', `[ceiling_area] ceiling/${c.id}: area 超出户型整体范围`);
+    }
+    if (c.corner_radius !== undefined && c.corner_radius > Math.min(Math.abs(ax2 - ax1), Math.abs(az2 - az1)) / 2) {
+      report('error', `[ceiling_corner_radius] ceiling/${c.id}: corner_radius exceeds half of the smaller area dimension`);
+    }
+    if (c.inspection_layer !== undefined && !c.inspection_layer.trim()) {
+      report('error', `[ceiling_inspection] ceiling/${c.id}: inspection_layer must be non-empty`);
+    }
+    if (c.inspection_opacity !== undefined && (!Number.isFinite(c.inspection_opacity) || c.inspection_opacity < 0 || c.inspection_opacity > 1)) {
+      report('error', `[ceiling_inspection] ceiling/${c.id}: inspection_opacity must be between 0 and 1`);
+    }
+    if (c.inspection_opacity !== undefined && c.inspection_layer === undefined) {
+      report('error', `[ceiling_inspection] ceiling/${c.id}: inspection_opacity requires inspection_layer`);
     }
   }
 

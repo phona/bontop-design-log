@@ -2,15 +2,142 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
-import { buildFixture, getRecipeTypes } from '../../../shared/render/FixtureFactory.js';
+import { buildFixture, getNorthWallWardrobe950DoorAabb, getRecipeTypes, setNorthWallWardrobe950DoorConfiguration, setNorthWallWardrobe950DoorState, setPartitionWardrobeDoorState, type NorthWallWardrobe950DoorConfiguration } from '../../../shared/render/FixtureFactory.js';
 import { buildScene } from '../../../shared/render/SceneBuilder.js';
+import { buildCliHouseScene } from '../../../scripts/render/glb/cli-glb-builder.js';
+import { getPartitionWardrobeDoorAabbs } from '../../../shared/types.js';
 import type { LightingRenderConfig, RenderLightingFixture, SceneElement } from '../../../shared/types.js';
 import { readFileSync as readTextFile } from 'node:fs';
 import { load } from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 import { parseOverlay, mergeSceneElements } from '../../../server/overlay-merge.js';
 
-test('FixtureFactory builds the master dressing table, stool, and washbasin-only cabinet to frozen dimensions', () => {
+test('FixtureFactory exposes R5 wardrobe, bedside cabinets, and connection storage parts with material roles', () => {
+  for (const type of ['master_partition_wardrobe_1600', 'master_bedside_cabinet_350_north', 'master_bedside_cabinet_350_south', 'master_dressing_connection_storage']) {
+    const fixture = buildFixture(type);
+    assert.ok(fixture, type);
+    fixture.updateMatrixWorld(true);
+    const parts: THREE.Object3D[] = [];
+    fixture.traverse((object) => { if (object.userData.part) parts.push(object); });
+    assert.ok(parts.length > 0, type);
+    assert.ok(parts.every((part) => part.userData.materialRole), `${type} material roles`);
+    assert.ok(parts.every((part) => part.userData.part), `${type} part metadata`);
+    const bounds = new THREE.Box3().setFromObject(fixture);
+    assert.ok(bounds.max.y > bounds.min.y && bounds.max.x > bounds.min.x && bounds.max.z > bounds.min.z, `${type} must have real mesh AABB`);
+  }
+  const wardrobe = buildFixture('master_partition_wardrobe_1600');
+  assert.ok(wardrobe);
+  const wardrobeParts: string[] = [];
+  wardrobe.traverse((object) => { if (object.userData.part) wardrobeParts.push(String(object.userData.part)); });
+  assert.equal(wardrobeParts.filter((part) => /^partition-door-\d+$/.test(part)).length, 4);
+  assert.equal(wardrobeParts.filter((part) => part.startsWith('partition-hinge-')).length, 4);
+  const partZ = new Map<string, number>();
+  wardrobe.traverse((object) => { if (object.userData.part) partZ.set(String(object.userData.part), object.position.z); });
+  assert.ok((partZ.get('furniture-back-panel') ?? 0) < 0, 'back panel must stay on the north/-z side');
+  const doorParts = new Set(['partition-door-', 'partition-door-seam-', 'partition-handle-', 'partition-hinge-']);
+  wardrobe.updateMatrixWorld(true);
+  wardrobe.traverse((object) => {
+    const part = String(object.userData.part ?? '');
+    if (![...doorParts].some((prefix) => part.startsWith(prefix))) return;
+    const box = new THREE.Box3().setFromObject(object);
+    assert.ok(box.min.z >= 0.27, `${part} world geometry must stay on the south/+z face`);
+  });
+  const doorRoots: THREE.Object3D[] = [];
+  wardrobe.traverse((object) => { if (object.userData.materialRole === 'door_root') doorRoots.push(object); });
+  assert.equal(doorRoots.length, 4);
+  assert.deepEqual(doorRoots.map((root) => root.userData.state), ['closed', 'closed', 'closed', 'closed']);
+  assert.deepEqual(doorRoots.map((root) => root.userData.openLimitDeg), [95, 95, 95, 95]);
+});
+
+test('R5 partition wardrobe door AABBs keep the south-face/+z opening contract', () => {
+  const closed = getPartitionWardrobeDoorAabbs('closed');
+  const open = getPartitionWardrobeDoorAabbs('open');
+  assert.equal(closed.length, 4);
+  assert.equal(open.length, 4);
+  for (const [index, door] of open.entries()) {
+    assert.ok(door.minZ > closed[index].maxZ, `door ${index + 1} opens toward +z`);
+    assert.ok(door.minX >= closed[index].minX - 1e-9 && door.maxX <= closed[index].maxX + 1e-9, `door ${index + 1} does not expand west/east`);
+  }
+});
+
+test('R5 partition wardrobe recipe remains available for legacy data', () => {
+  const wardrobe = buildFixture('master_partition_wardrobe_1600');
+  assert.ok(wardrobe);
+  const roots: THREE.Object3D[] = [];
+  wardrobe.traverse((object) => { if (object.userData.materialRole === 'door_root') roots.push(object); });
+  assert.equal(roots.length, 4);
+  wardrobe.updateMatrixWorld(true);
+  const closedWardrobeBox = new THREE.Box3().setFromObject(wardrobe);
+  const closedBoxes = roots.map((root) => new THREE.Box3().setFromObject(root));
+
+  for (const [index, root] of roots.entries()) {
+    setPartitionWardrobeDoorState(root, 'open');
+    wardrobe.updateMatrixWorld(true);
+    const openBox = new THREE.Box3().setFromObject(root);
+    const closedBox = closedBoxes[index];
+    assert.notDeepEqual(openBox.min.toArray(), closedBox.min.toArray(), `door ${index + 1} open AABB must change`);
+    assert.ok(openBox.max.z > closedBox.max.z, `door ${index + 1} must open toward south/+z`);
+    assert.ok(Math.abs(root.rotation.y) > THREE.MathUtils.degToRad(90), `door ${index + 1} must rotate root`);
+    assert.equal(root.userData.state, 'open');
+    assert.equal(root.userData.rotationDeg, index % 2 === 0 ? -95 : 95);
+    setPartitionWardrobeDoorState(root, 'closed');
+  }
+
+  setPartitionWardrobeDoorState(wardrobe, 'open', 0);
+  setPartitionWardrobeDoorState(wardrobe, 'open', 1);
+  wardrobe.updateMatrixWorld(true);
+  assert.deepEqual(roots.map((root) => root.userData.state), ['open', 'open', 'closed', 'closed']);
+  const adjacentOpenBox = new THREE.Box3().setFromObject(wardrobe);
+  assert.ok(adjacentOpenBox.max.z > closedWardrobeBox.max.z, 'adjacent open doors must extend south of the closed cabinet');
+  assert.ok(adjacentOpenBox.min.x >= closedWardrobeBox.min.x - 1e-6 && adjacentOpenBox.max.x <= closedWardrobeBox.max.x + 1e-6, 'adjacent open doors must stay inside the closed cabinet x envelope');
+
+  setPartitionWardrobeDoorState(wardrobe, 'open');
+  wardrobe.updateMatrixWorld(true);
+  assert.deepEqual(roots.map((root) => root.userData.state), ['open', 'open', 'open', 'open']);
+  const allOpenBox = new THREE.Box3().setFromObject(wardrobe);
+  assert.ok(allOpenBox.max.z > adjacentOpenBox.max.z - 1e-6);
+  assert.ok(allOpenBox.min.x >= closedWardrobeBox.min.x - 1e-6 && allOpenBox.max.x <= closedWardrobeBox.max.x + 1e-6, 'all open doors must stay inside the closed cabinet x envelope');
+});
+
+test('R6 bedside centers remain fixed while real mesh height is 0.495–0.505m', () => {
+  const house = load(readTextFile('config/house.yaml', 'utf8')) as { furnishings: { master_bedroom: Array<{ type: string; z?: number }> } };
+  const master = house.furnishings.master_bedroom;
+  assert.equal(master.find((item) => item.type === 'bed_180')?.z, 7.40);
+  assert.equal(master.find((item) => item.type === 'master_bedside_cabinet_350_north')?.z, 6.245);
+  assert.equal(master.find((item) => item.type === 'master_bedside_cabinet_350_south')?.z, 8.555);
+  for (const type of ['master_bedside_cabinet_350_north', 'master_bedside_cabinet_350_south']) {
+    const fixture = buildFixture(type);
+    assert.ok(fixture);
+    fixture.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(fixture);
+    assert.ok(box.max.y >= 0.495 && box.max.y <= 0.506, `${type} maxY=${box.max.y}`);
+  }
+  const bedMinZ = 6.47;
+  const bedMaxZ = 8.33;
+  const northMaxZ = 6.245 + 0.35 / 2;
+  const southMinZ = 8.555 - 0.35 / 2;
+  assert.ok(northMaxZ < bedMinZ, 'north 350mm cabinet must stay north of the R6 bed');
+  assert.ok(southMinZ > bedMaxZ, 'south 350mm cabinet must stay south of the R6 bed');
+});
+
+test('FixtureFactory keeps R6 bedside and legacy connection-storage runtime AABBs inside declared dimensions', () => {
+  for (const type of ['master_bedside_cabinet_350_north', 'master_bedside_cabinet_350_south', 'master_dressing_connection_storage']) {
+    const fixture = buildFixture(type);
+    assert.ok(fixture, type);
+    fixture.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(fixture);
+    const expected = type === 'master_dressing_connection_storage'
+      ? { width: 0.70, depth: 0.40 }
+      : { width: 0.38, depth: 0.35 };
+    assert.ok(Math.abs(bounds.max.x - bounds.min.x - expected.width) < 1e-6, `${type} runtime width`);
+    if (type === 'master_dressing_connection_storage') assert.ok(Math.abs(bounds.max.z - bounds.min.z - expected.depth) < 1e-6, `${type} runtime depth`);
+    else assert.ok(bounds.max.z - bounds.min.z <= expected.depth + 0.02, `${type} runtime depth`);
+    assert.ok(bounds.min.z >= -expected.depth / 2 - 1e-6, `${type} runtime minZ stays within declared envelope`);
+    assert.ok(bounds.max.z <= expected.depth / 2 + 1e-6, `${type} runtime maxZ stays within declared envelope`);
+  }
+});
+
+test('FixtureFactory builds the R6 north wardrobe, dressing table, stool, and washbasin-only cabinet to frozen dimensions', () => {
   const table = buildFixture('master_dressing_table');
   const stool = buildFixture('dressing_stool');
   const washbasin = buildFixture('mb_washbasin_cabinet');
@@ -24,8 +151,14 @@ test('FixtureFactory builds the master dressing table, stool, and washbasin-only
   const tableBox = new THREE.Box3().setFromObject(table);
   const stoolBox = new THREE.Box3().setFromObject(stool);
   const washbasinBox = new THREE.Box3().setFromObject(washbasin);
-  assert.ok(Math.abs((tableBox.max.x - tableBox.min.x) - 0.85) < 1e-6);
-  assert.ok(Math.abs((tableBox.max.z - tableBox.min.z) - 0.40) < 1e-6);
+  // 2026-09-03 冻结口径 900W×450D×750H：以桌面板件包络为准（桌腿圆柱渲染半径外扩整体 bbox，不作冻结口径）
+  let tableTop: THREE.Object3D | undefined;
+  table.traverse((object) => { if (object.userData.part === 'rounded-top') tableTop = object; });
+  assert.ok(tableTop, 'missing rounded-top part');
+  const tableTopBox = new THREE.Box3().setFromObject(tableTop);
+  assert.ok(Math.abs((tableTopBox.max.x - tableTopBox.min.x) - 0.90) < 1e-6);
+  assert.ok(Math.abs((tableTopBox.max.z - tableTopBox.min.z) - 0.45) < 1e-6);
+  assert.ok(Math.abs(tableTopBox.max.y - 0.75) < 1e-6, 'tabletop stays at the frozen 0.75m height');
   assert.ok(Math.abs(tableBox.max.y - 1.31) < 1e-6, 'tabletop mirror is self-supported above the 0.75m table');
   assert.ok(Math.abs((stoolBox.max.x - stoolBox.min.x) - 0.42) < 1e-6);
   assert.ok(Math.abs((stoolBox.max.z - stoolBox.min.z) - 0.40) < 1e-6);
@@ -48,9 +181,31 @@ test('FixtureFactory builds the master dressing table, stool, and washbasin-only
   assert.ok(!washbasinParts.some((part) => part.includes('dresser') || part.includes('knee')));
 });
 
-test('FixtureFactory builds four master-bedroom vanity types as independent scene objects', () => {
-  const types = ['mb_vanity_base_cabinet', 'mb_vanity_lower_board', 'mb_vanity_main_board', 'mb_vanity_pvc_box'];
+test('FixtureFactory builds the south-band low dresser with six drawers below the 2.07m sill', () => {
+  // 2026-09-04 R1 新增：1400W×480D×850H 轻中古六抽矮柜，局部 +z 为正面
+  const dresser = buildFixture('master_hot_season_low_dresser');
+  assert.ok(dresser);
+  dresser.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(dresser);
+  // 冻结口径 1400W×480D 以台面顶板包络为准（抽屉把手五金突出不计入，与桌腿圆柱口径一致）
+  let topPanel: THREE.Object3D | undefined;
+  dresser.traverse((object) => { if (object.userData.part === 'top-panel') topPanel = object; });
+  assert.ok(topPanel, 'missing top-panel part');
+  const topBox = new THREE.Box3().setFromObject(topPanel);
+  assert.ok(Math.abs((topBox.max.x - topBox.min.x) - 1.40) < 1e-6);
+  assert.ok(Math.abs((topBox.max.z - topBox.min.z) - 0.48) < 1e-6);
+  assert.ok(box.max.y <= 0.85 + 1e-6, 'dresser top stays at 0.85m, below the 2.07m sill');
+  const parts: string[] = [];
+  dresser.traverse((object) => { if (object.userData.part) parts.push(object.userData.part); });
+  assert.equal(parts.filter((part) => part.startsWith('drawer-front-')).length, 6, 'six drawer fronts');
+  assert.equal(parts.filter((part) => part.startsWith('leg-')).length, 4, 'four thin legs');
+});
+
+test('FixtureFactory builds the master-bedroom vanity types as independent scene objects', () => {
+  const types = ['mb_vanity_base_cabinet', 'mb_vanity_lower_board', 'mb_vanity_main_board'];
+  const pvcTypes = ['mb_vanity_pvc_box', 'mb_vanity_pvc_wardrobe_entry', 'mb_vanity_pvc_service_chase'];
   assert.deepEqual(types.every((type) => getRecipeTypes().includes(type)), true);
+  assert.equal(getRecipeTypes().includes('mb_vanity_continuous_closure_cabinet'), false);
   for (const type of types) {
     const fixture = buildFixture(type);
     assert.ok(fixture, type);
@@ -58,7 +213,7 @@ test('FixtureFactory builds four master-bedroom vanity types as independent scen
     assert.ok(fixture.children.every((child) => child.userData.part), type);
   }
 
-  const along = 3.35;
+  const along = 3.45;
   const result = buildScene({
     rooms: [{ id: 'master_bedroom', name: '主卧', x: 2.1, z: 5.55, width: 4.2, depth: 4.25, height: 2.8, type: 'private', boundary_count: 4 }],
     walls: [{ id: 'w_mbath_east', x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3, height: 2.8 }],
@@ -70,52 +225,101 @@ test('FixtureFactory builds four master-bedroom vanity types as independent scen
   assert.deepEqual(groups.map((group) => group.userData.objectId), types.map((type, index) => `furniture:master_bedroom:${type}:${index}`));
   assert.equal(new Set(groups.map((group) => group.userData.objectId)).size, types.length);
   assert.deepEqual(groups.map((group) => group.position.z), types.map(() => along));
-  assert.deepEqual(groups.map((group) => group.position.x), [2.39, 2.44, 2.44, 2.49]);
+  assert.deepEqual(groups.map((group) => group.position.x).map((x) => Number(x.toFixed(4))), [2.2875, 2.2575, 2.2575]);
   assert.deepEqual(groups.map((group) => ({ wallId: group.userData.wallId, wallSide: group.userData.wallSide, anchorAlong: group.userData.anchorAlong })), types.map(() => ({ wallId: 'w_mbath_east', wallSide: 'west', anchorAlong: along })));
 
   result.exportRoot.updateMatrixWorld(true);
-  const expectedWidths = [1.50, 1.50, 1.50, 1.40];
-  const expectedDepths = [0.43, 0.32, 0.32, 0.416];
-  const expectedYBounds = [[0.00, 0.62], [0.965, 1.035], [1.515, 1.585], [2.559, 2.80]];
+  const expectedWidths = [1.70, 1.70, 1.70];
+  const expectedDepths = [0.625, 0.565, 0.565];
+  const expectedYBounds = [[0.00, 0.62], [0.965, 1.035], [1.515, 1.585]];
+  const close = (actual: number, expected: number) => assert.ok(Math.abs(actual - expected) < 1e-6, `${actual} !== ${expected}`);
   const boxes = groups.map((group) => new THREE.Box3().setFromObject(group));
   for (let index = 0; index < groups.length; index++) {
-    assert.ok(Math.abs(boxes[index].min.y - expectedYBounds[index][0]) < 1e-6);
-    assert.ok(Math.abs(boxes[index].max.y - expectedYBounds[index][1]) < 1e-6);
-    if (index < 3) {
-      assert.ok(boxes[index].min.z >= 1.10 - 1e-6 && boxes[index].max.z <= 4.30 + 1e-6);
-      assert.ok(Math.abs(boxes[index].max.x - 2.60) < 1e-6, `${types[index]} rear edge must meet wall`);
-      assert.ok(Math.abs(boxes[index].max.z - (along + expectedWidths[index] / 2)) < 1e-6);
-      assert.ok(Math.abs(boxes[index].min.z - (along - expectedWidths[index] / 2)) < 1e-6);
-      assert.ok(Math.abs((boxes[index].max.x - boxes[index].min.x) - expectedDepths[index]) < 1e-6);
-    }
+    close(boxes[index].min.y, expectedYBounds[index][0]);
+    close(boxes[index].max.y, expectedYBounds[index][1]);
+    assert.ok(boxes[index].min.z >= 1.10 - 1e-6 && boxes[index].max.z <= 4.30 + 1e-6);
+    const expectedMaxX = index === 1 || index === 2 ? 2.54 : 2.60;
+    assert.ok(Math.abs(boxes[index].max.x - expectedMaxX) < 1e-6, `${types[index]} must terminate at the wall west finish or wall`);
+    if (index === 1 || index === 2) assert.ok(Math.abs(boxes[index].min.x - 1.975) < 1e-6, `${types[index]} must start at x=1.975`);
+    assert.ok(Math.abs((boxes[index].max.x - boxes[index].min.x) - expectedDepths[index]) < 1e-6);
+    assert.ok(Math.abs(boxes[index].max.z - (along + expectedWidths[index] / 2)) < 1e-6);
+    assert.ok(Math.abs(boxes[index].min.z - (along - expectedWidths[index] / 2)) < 1e-6);
   }
   assert.ok(boxes[0].max.y < boxes[1].min.y);
   assert.ok(boxes[1].max.y < boxes[2].min.y);
-  assert.ok(boxes[2].max.y < boxes[3].min.y);
 
   const baseParts: THREE.Object3D[] = [];
   groups[0].traverse((object) => { if (object.userData.part) baseParts.push(object); });
   assert.deepEqual(baseParts.map((object) => object.userData.part), ['base-cabinet', 'base-plinth', 'base-front-reveal', 'base-door-seam']);
-  const pvcParts: THREE.Object3D[] = [];
-  groups[3].traverse((object) => { if (object.userData.part) pvcParts.push(object); });
-  assert.deepEqual(pvcParts.map((object) => object.userData.part), ['pvc-service-box', 'cove-light', 'condensate-route-cover-north', 'condensate-route-cover-west', 'condensate-route-elbow', 'condensate-route-cover-approach']);
-  assert.ok(pvcParts.every((object) => !String(object.userData.part).includes('access-panel')));
-  assert.ok(pvcParts.some((object) => object.userData.part === 'cove-light'));
-  const routeParts = pvcParts.filter((object) => String(object.userData.part).startsWith('condensate-route-'));
-  assert.equal(routeParts.length, 4);
-  const routeBounds = new THREE.Box3();
-  routeParts.forEach((part) => routeBounds.expandByObject(part));
-  assert.ok(routeBounds.min.x < 2.15 && routeBounds.max.x > 2.15, 'condensate route cover must approach ac_master x=2.15');
-  assert.ok(routeBounds.max.z >= 4.50 && routeBounds.max.z <= 4.70, 'condensate route cover must approach ac_master z=4.60');
-  assert.ok(routeBounds.max.y <= 2.80 + 1e-6, 'condensate route cover must remain below the 2.8m ceiling');
-  assert.ok(routeBounds.min.y >= 2.64 - 1e-6, 'condensate route cover must stay near the PVC box top');
-  const approach = routeParts.find((object) => object.userData.part === 'condensate-route-cover-approach');
-  assert.ok(approach);
-  const approachBounds = new THREE.Box3().setFromObject(approach);
-  assert.ok(approachBounds.min.x <= 2.15 && approachBounds.max.x >= 2.05, 'route approach must end near ac_master x=2.15');
-  assert.ok(approachBounds.min.z >= 4.40 && approachBounds.max.z <= 4.70, 'route approach endpoint must be near ac_master z=4.60');
-  assert.ok(!routeParts.some((part) => new THREE.Box3().setFromObject(part).containsPoint(new THREE.Vector3(2.10, 2.65, 4.96))), 'route must not cross supply_master');
-  assert.ok(!routeParts.some((part) => new THREE.Box3().setFromObject(part).containsPoint(new THREE.Vector3(2.50, 2.49, 4.60))), 'route must not cross return_master');
+
+  const routeResult = buildScene({
+    rooms: [{ id: 'master_bedroom', name: '主卧', x: 2.1, z: 5.55, width: 4.2, depth: 4.25, height: 2.8, type: 'private', boundary_count: 4 }],
+    walls: [{ id: 'w_mbath_east', x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3, height: 2.8 }],
+    elements: [],
+    furnishings: {
+      master_bedroom: [
+        { type: 'condensate_pipe_ac_outlet', x: 3.80, z: 5.10, rotation: 0 },
+        { type: 'mb_vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west', along: 3.70, rotation: 270 },
+        { type: 'mb_vanity_pvc_wardrobe_entry', x: 4.10, z: 4.62, rotation: 0 },
+        { type: 'mb_vanity_pvc_service_chase', x: 2.925, z: 4.62, rotation: 0 },
+      ],
+    },
+  });
+  routeResult.exportRoot.updateMatrixWorld(true);
+  const routeGroups = routeResult.index.furnitureMeshes;
+  assert.equal(routeGroups.length, 4);
+  const routeAabbs = routeGroups.map((group) => new THREE.Box3().setFromObject(group));
+  const wallRun = routeAabbs[1];
+  let wallPipe: THREE.Object3D | undefined;
+  routeGroups[1].traverse((object) => { if (object.userData.part === 'condensate-pipe-wall-run') wallPipe = object; });
+  assert.ok(wallPipe, 'wall route pipe must be present under the visible trim fixture');
+  wallPipe!.updateMatrixWorld(true);
+  const wallPipeAabb = new THREE.Box3().setFromObject(wallPipe!);
+  const entry = routeAabbs[2];
+  const service = routeAabbs[3];
+  assert.ok(wallPipeAabb.min.x > 2.48 && wallPipeAabb.max.x < 2.52, `wall route pipe must stay clear of w_mbath_east west finish: ${wallPipeAabb.min.x}..${wallPipeAabb.max.x}`);
+  assert.ok(wallPipeAabb.min.z >= 3.10 - 0.02 && wallPipeAabb.max.z <= 4.30 + 0.02, 'wall route pipe must occupy the resolved w_mbath_east west-side band');
+  assert.ok(wallRun.min.x >= 2.46 - 0.01 && wallRun.max.x <= 2.54 + 0.01, 'visible wall trim must stay within the west-finish band');
+  assert.ok(entry.min.x <= 2.925 + 0.03 && entry.max.x >= 4.10 - 0.03, 'entry must run from the wall endpoint to the wardrobe east edge');
+  assert.ok(entry.min.z >= 4.62 - 0.03 && entry.max.z <= 4.62 + 0.03, 'entry must be a straight westbound segment without a midpoint branch');
+  assert.ok(service.min.x <= 2.0 + 0.03 && service.max.x >= 2.50 - 0.03, 'service chase must reach the wall-side short fold and candidate x=2.0');
+  assert.ok(service.min.z <= 2.5 + 0.03 && service.max.z >= 4.62 - 0.03, 'service chase must connect the wardrobe service band to the master-bath candidate');
+  assert.ok(service.min.y <= 0.1 + 0.03, 'candidate drop must reach the declared 0.1m endpoint instead of floating');
+  const findPart = (root: THREE.Object3D, part: string): THREE.Object3D | undefined => {
+    let found: THREE.Object3D | undefined;
+    root.traverse((object) => { if (!found && object.userData.part === part) found = object; });
+    return found;
+  };
+  const wallTrim = findPart(routeGroups[1], 'condensate-wall-trim');
+  const shortFoldTrim = findPart(routeGroups[3], 'condensate-wall-trim-short-fold');
+  const southWallTrim = findPart(routeGroups[3], 'condensate-wall-trim-to-south-wall');
+  assert.ok(wallTrim && shortFoldTrim && southWallTrim, 'white wall trim must include the continuous south-wall closure');
+  const wallTrimBox = new THREE.Box3().setFromObject(wallTrim!);
+  const shortFoldTrimBox = new THREE.Box3().setFromObject(shortFoldTrim!);
+  const southWallTrimBox = new THREE.Box3().setFromObject(southWallTrim!);
+  assert.ok(shortFoldTrimBox.min.x <= 2.30 + 1e-6 && shortFoldTrimBox.max.x >= 2.50 - 1e-6, 'short-fold trim must cover the z=3.10 turn and meet the wall finish');
+  assert.ok(Math.abs(southWallTrimBox.min.z - 2.92) < 1e-6, `south-wall trim must touch the bedroom-side finished face at z=2.92: ${southWallTrimBox.min.z}`);
+  const boxGap = (a: THREE.Box3, b: THREE.Box3): number => Math.hypot(
+    Math.max(a.min.x - b.max.x, b.min.x - a.max.x, 0),
+    Math.max(a.min.y - b.max.y, b.min.y - a.max.y, 0),
+    Math.max(a.min.z - b.max.z, b.min.z - a.max.z, 0),
+  );
+  assert.ok(boxGap(wallTrimBox, shortFoldTrimBox) < 1e-6, 'main wall trim and short-fold trim must meet');
+  assert.ok(boxGap(shortFoldTrimBox, southWallTrimBox) < 1e-6, 'short-fold trim and south-wall trim must meet');
+  assert.ok([wallTrim, shortFoldTrim, southWallTrim].every((object) => object!.userData.inspectionLayer === 'pipe-chase' && object!.userData.inspectionOpacity === 0.18), 'all closure trim must follow the declared inspection layer');
+  assert.ok(routeGroups[1].userData.wallId === 'w_mbath_east' && routeGroups[1].userData.wallSide === 'west');
+  assert.ok(routeAabbs.every((box) => box.max.y <= 2.80 + 1e-6));
+  const routeParts: THREE.Object3D[] = [];
+  routeResult.exportRoot.traverse((object) => { if (String(object.userData.part ?? '').startsWith('condensate-pipe-')) routeParts.push(object); });
+  assert.equal(routeParts.length, 10, 'wall/wardrobe condensate route must have ten ordered pipe segments without an outlet rise branch');
+  assert.equal(routeParts.some((object) => object.userData.part === 'condensate-pipe-ac-outlet-rise-to-wall-run'), false);
+  assert.ok(routeParts.every((object) => object.userData.inspectionVisibleOnly === true && object.visible === false));
+  const wardrobe = buildFixture('master_north_wall_wardrobe_950');
+  assert.ok(wardrobe);
+  const inspectionParts: THREE.Object3D[] = [];
+  wardrobe!.traverse((object) => { if (object.userData.inspectionLayer === 'pipe-chase') inspectionParts.push(object); });
+  assert.deepEqual(inspectionParts.map((object) => object.userData.part), ['north-wardrobe-950-carcass', 'north-wardrobe-950-back-panel', 'north-wardrobe-950-concealed-pipe-chase', 'north-wardrobe-950-fixed-top-panel']);
+  assert.ok(inspectionParts.every((object) => object.userData.inspectionOpacity === 0.18));
 });
 
 test('FixtureFactory gives tv_65 frame and screen stable part metadata', () => {
@@ -645,6 +849,127 @@ test('shared SceneBuilder opens d_mb on the master_bath side of w_strip_east', (
   assert.ok(Math.abs(box.min.z - 4.63) < 1e-6, `d_mb hinge-side z: ${box.min.z}`);
   assert.ok(Math.abs(box.max.z - 4.67) < 1e-6, `d_mb hinge-side z: ${box.max.z}`);
   assert.ok(box.max.x <= wall.x1 + 1e-6, 'd_mb panel must open toward the master_bath (west) side');
+});
+
+test('shared SceneBuilder exports the R8 north wardrobe 950 with real hinged doors and declared dimensions', () => {
+  const fixture = buildFixture('master_north_wall_wardrobe_950');
+  assert.ok(fixture, 'missing master_north_wall_wardrobe_950 recipe');
+  fixture.updateMatrixWorld(true);
+  const closedBox = new THREE.Box3().setFromObject(fixture);
+  assert.ok(Math.abs(closedBox.max.x - closedBox.min.x - 0.95) < 1e-6);
+  assert.ok(Math.abs(closedBox.max.z - closedBox.min.z - 0.58) < 1e-6, `closed wardrobe full mesh depth=${closedBox.max.z - closedBox.min.z}`);
+  assert.ok(Math.abs(closedBox.max.y - closedBox.min.y - 2.80) < 1e-6);
+  assert.ok(Math.abs(closedBox.max.y - 2.80) < 1e-6, `wardrobe top must align with the 2.80m room clear height: ${closedBox.max.y}`);
+  const roots: THREE.Object3D[] = [];
+  fixture.traverse((object) => { if (object.userData.materialRole === 'door_root') roots.push(object); });
+  assert.equal(roots.length, 3);
+  assert.deepEqual(roots.map((root) => [root.userData.doorIndex, root.userData.hingeSide, root.userData.state, root.userData.openLimitDeg]), [[0, 'left', 'closed', 95], [1, 'right', 'closed', 95], [2, 'right', 'closed', 95]]);
+  const closedDoorBoxes = roots.map((root) => new THREE.Box3().setFromObject(root));
+  assert.ok(closedDoorBoxes.every((box) => box.max.z > 0.25), 'north wardrobe doors must face south/+z');
+  setNorthWallWardrobe950DoorState(fixture, 'open', 0);
+  fixture.updateMatrixWorld(true);
+  assert.ok(Math.abs(roots[0].rotation.y) > THREE.MathUtils.degToRad(90));
+  assert.equal(roots[0].userData.rotationDeg, -95);
+  const openBox = new THREE.Box3().setFromObject(roots[0]);
+  assert.notDeepEqual(openBox.min.toArray(), closedDoorBoxes[0].min.toArray());
+  assert.ok(openBox.max.z > closedDoorBoxes[0].max.z, 'left north wardrobe door opens toward +z');
+  assert.equal(getNorthWallWardrobe950DoorAabb(roots[0]).max.z, openBox.max.z);
+  setNorthWallWardrobe950DoorState(fixture, 'closed');
+});
+
+function strictBoxIntersects(a: THREE.Box3, b: THREE.Box3, epsilon = 1e-6): boolean {
+  return a.min.x < b.max.x - epsilon && a.max.x > b.min.x + epsilon
+    && a.min.y < b.max.y - epsilon && a.max.y > b.min.y + epsilon
+    && a.min.z < b.max.z - epsilon && a.max.z > b.min.z + epsilon;
+}
+
+function boxClearance(a: THREE.Box3, b: THREE.Box3): number {
+  const dx = Math.max(a.min.x - b.max.x, b.min.x - a.max.x, 0);
+  const dy = Math.max(a.min.y - b.max.y, b.min.y - a.max.y, 0);
+  const dz = Math.max(a.min.z - b.max.z, b.min.z - a.max.z, 0);
+  return Math.hypot(dx, dy, dz);
+}
+
+function furnitureByType(result: ReturnType<typeof buildCliHouseScene>, type: string): THREE.Group {
+  const object = result.index.furnitureMeshes.find((candidate) => candidate.userData.furnishingType === type);
+  assert.ok(object, `missing SceneBuilder furniture ${type}`);
+  return object;
+}
+
+test('R9 SceneBuilder vanity boards anchor to the wall west finish with no west-side bridge meshes', () => {
+  const result = buildCliHouseScene();
+  result.exportRoot.updateMatrixWorld(true);
+  for (const type of ['mb_vanity_lower_board', 'mb_vanity_main_board']) {
+    const board = furnitureByType(result, type);
+    const boardBox = new THREE.Box3().setFromObject(board);
+    assert.ok(Math.abs(board.position.x - 2.2575) < 1e-6, `${type} center x must be 2.2575m`);
+    assert.ok(Math.abs(boardBox.min.x - 1.975) < 1e-6 && Math.abs(boardBox.max.x - 2.54) < 1e-6, `${type} AABB must be x[1.975,2.54]`);
+    assert.ok(Math.abs(boardBox.max.z - 4.30) < 1e-6, `${type} must terminate at wall north edge`);
+    assert.equal(board.children.some((child) => child.userData.part === 'wardrobe-side-board-end'), false, `${type} must remain a plain floating board without a wardrobe-colored end panel`);
+  }
+  assert.equal(result.index.furnitureMeshes.some((group) => group.userData.furnishingType === 'mb_vanity_continuous_closure_cabinet'), false);
+  assert.equal(result.index.furnitureMeshes.some((group) => String(group.userData.furnishingType).endsWith('_board_bridge')), false);
+});
+
+test('R7 wardrobe four-state real-mesh collision matrix clears declared room obstacles and HVAC geometry', () => {
+  const result = buildCliHouseScene(undefined, undefined, undefined, undefined, 'data/project-render-facts.json');
+  const wardrobe = furnitureByType(result, 'master_north_wall_wardrobe_950');
+  const obstacles = new Map<string, THREE.Object3D>();
+  const door = result.exportRoot.getObjectByName('d_mb');
+  assert.ok(door, 'missing d_mb open door mesh');
+  obstacles.set('d_mb_open_leaf', door);
+  for (const type of [
+    'mb_vanity_lower_board',
+    'mb_vanity_main_board',
+    'bed_180',
+    'master_bedside_cabinet_350_north',
+    'master_bedside_cabinet_350_south',
+    'master_dressing_table',
+    'dressing_stool',
+  ]) obstacles.set(type, furnitureByType(result, type));
+  for (const id of [
+    'hvac:A2:anchor:indoor_master',
+    'hvac:A2:terminal:supply_master',
+    'hvac:A2:terminal:return_master',
+  ]) {
+    const object = result.index.hvac.all.get(id);
+    assert.ok(object, `missing modeled HVAC obstacle ${id}`);
+    obstacles.set(id, object);
+  }
+  const doorRoots: THREE.Object3D[] = [];
+  wardrobe.traverse((object) => { if (object.userData.materialRole === 'door_root') doorRoots.push(object); });
+  doorRoots.sort((a, b) => Number(a.userData.doorIndex) - Number(b.userData.doorIndex));
+  assert.equal(doorRoots.length, 3);
+  const expectedRotations: Record<NorthWallWardrobe950DoorConfiguration, [number, number, number]> = {
+    closed: [0, 0, 0],
+    left_open: [-95, 0, 0],
+    middle_open: [0, 95, 0],
+    right_open: [0, 0, 95],
+    left_middle_open: [-95, 95, 0],
+    left_right_open: [-95, 0, 95],
+    middle_right_open: [0, 95, 95],
+    all_open: [-95, 95, 95],
+  };
+  for (const configuration of Object.keys(expectedRotations) as NorthWallWardrobe950DoorConfiguration[]) {
+    setNorthWallWardrobe950DoorConfiguration(wardrobe, configuration);
+    result.exportRoot.updateMatrixWorld(true);
+    assert.deepEqual(doorRoots.map((root) => Math.round(THREE.MathUtils.radToDeg(root.rotation.y))), expectedRotations[configuration]);
+    const leaves = doorRoots.map((root) => new THREE.Box3().setFromObject(root));
+    for (let a = 0; a < leaves.length; a++) {
+      for (let b = a + 1; b < leaves.length; b++) {
+        assert.equal(strictBoxIntersects(leaves[a], leaves[b]), false, `${configuration}: wardrobe door leaves ${a + 1}/${b + 1} intersect`);
+      }
+    }
+    let minimumClearance = Infinity;
+    for (const [name, obstacle] of obstacles) {
+      const obstacleBox = new THREE.Box3().setFromObject(obstacle);
+      for (const [index, leafBox] of leaves.entries()) {
+        assert.equal(strictBoxIntersects(leafBox, obstacleBox), false, `${configuration}: door ${index + 1} intersects ${name}`);
+        minimumClearance = Math.min(minimumClearance, boxClearance(leafBox, obstacleBox));
+      }
+    }
+    assert.ok(Number.isFinite(minimumClearance) && minimumClearance > 0, `${configuration}: no positive modeled clearance`);
+  }
 });
 
 test('shared SceneBuilder renders hinged glass door at the declared west hinge', () => {

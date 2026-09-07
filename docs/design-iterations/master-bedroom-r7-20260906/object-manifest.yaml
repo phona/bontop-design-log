@@ -1,0 +1,22 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: master-bedroom-r7-20260906
+source_version: r8-master-bedroom-20260906-950
+object_policy:
+  candidate_state: true
+  responsibility_boundary: 家具不承担 HVAC、结构、防倾倒或窗帘轨道责任；门头盒是 ceiling/HVAC 对象，不并入衣柜；底柜与上下悬浮板沿墙同长1.70m、南端对齐z=2.60，悬浮板按0.12m墙厚语义贴 w_mbath_east 西侧完成面，衣柜西侧不设置额外板件；950衣柜、pelmet、门头盒与悬浮板按当前布局协同
+objects:
+  - {id: master_north_wall_wardrobe_950, type: furniture, owner: furniture, function: 北墙950三门衣柜（定制模块化一体木饰面，非通顶；左移后与 d_mb 保持边界净空）, geometry_source: shared/render/FixtureFactory.ts, datum_refs: [datum-r8-north-wardrobe], dependencies: [d_mb, ceiling_master_ac], collision: {policy: real_mesh_four_state_matrix, configurations: [closed, left_open, right_open, both_open], open_angles_deg: [-95, 95], review_ref: tests/server/shared/scene-builder.test.ts}, maintenance: {standing_space: site_pending, hvac_access_clearance: 底部回检一体铰接格栅位于门头盒底面，设备检修不依赖衣柜开膛}, interfaces: [d_mb, mb_vanity_lower_board, mb_vanity_main_board, ceiling_master_ac, bed_180, modeled_hvac], status: alignment_frozen_construction_pending}
+  - {id: ceiling_master_ac, type: ceiling_hvac, owner: hvac, function: R7 空调门头盒（与衣柜一体的顶盒，藏内机+送回风）, geometry_source: config/ceiling.yaml + config/hvac.yaml, datum_refs: [datum-r7-hvac-headbox], dependencies: [ac_master, supply_master, return_master, sock_master_ac], collision: {policy: envelope_review, review_ref: tests/server/master-bedroom-dressing.test.ts}, maintenance: {inspection: 底部回检一体铰接格栅, equipment: site_pending}, interfaces: [master_north_wall_wardrobe_650, d_mb, w_strip_east], status: alignment_frozen_construction_pending}
+  - {id: bed_180, type: furniture, owner: furniture, function: 睡眠, geometry_source: shared/render/FixtureFactory.ts, datum_refs: [datum-r7-bed], collision: {policy: reviewed_candidate, review_ref: verify:furniture}, maintenance: {access_clearance: 0.35}, status: retained}
+  - {id: master_bedside_cabinet_350_north, type: furniture, owner: furniture, function: 北侧380×350×500mm候选普通床头柜, geometry_source: shared/render/FixtureFactory.ts, interfaces: [sock_master_bed_l], status: retained}
+  - {id: master_bedside_cabinet_350_south, type: furniture, owner: furniture, function: 南侧380×350×500mm候选普通床头柜, geometry_source: shared/render/FixtureFactory.ts, collision: {curtain_closed_candidate: warning_BLOCKED}, interfaces: [sock_master_bed_r_head, switch_master_bed_l, curtain_master_south], status: retained}
+  - {id: mb_vanity_base_cabinet, type: furniture, owner: furniture, function: DEC-045 1.70m落地底柜，与上下悬浮板南端对齐, geometry_source: shared/render/FixtureFactory.ts, datum_refs: [datum-r9-vanity-boards], collision: {policy: reviewed_candidate, review_ref: tests/server/master-bedroom-dressing.test.ts}, status: adjusted_length_1.70m}
+  - {id: master_hot_season_low_dresser, type: furniture, owner: furniture, function: 南窗六抽热季折叠衣物与overflow, geometry_source: shared/render/FixtureFactory.ts, datum_refs: [datum-r7-hot-season-dresser], collision: {curtain_closed_candidate: warning_BLOCKED}, status: adjusted_east_0.05m}
+  - {id: bedside_electrical_group, type: electrical, owner: electrical, function: 两插座、双控和两盏壁灯（R6 位保留）, geometry_source: config/electrical.yaml, interfaces: [w_mb_east, bed_180], status: retained}
+  - {id: curtain_master_south, type: soft_furnishing, owner: site, function: 南窗遮光/纱帘软包络预演, geometry_source: shared/types.ts + config/ceiling.yaml + site_measurement, datum_refs: [datum-r7-curtain-soft-envelope], collision: {policy: no_hard_floor_collision, closed_candidate: {thickness_m: 0.12, z: [9.56, 9.68], confidence: inferred, status: site_pending, conflict_level: warning, acceptance: BLOCKED}, open_stack: {end: null, status: site_pending}}, status: site_pending}
+  - {id: master_wardrobe_top_pelmet, type: furniture, owner: furniture, function: R8 950衣柜一体收口（顶封板接门头盒底 + 东竖向填板接盒西立面；不掩盖 d_mb 硬冲突）, geometry_source: shared/render/FixtureFactory.ts, datum_refs: [datum-r8-wardrobe-pelmet], dependencies: [master_north_wall_wardrobe_950, ceiling_master_ac], collision: {policy: envelope_review, review_ref: tests/server/master-bedroom-dressing.test.ts}, interfaces: [master_north_wall_wardrobe_950, ceiling_master_ac, d_mb], status: alignment_frozen_construction_pending}
+superseded:
+  - {id: master_north_wall_wardrobe_600, reason: R6 600mm 成品小柜废弃，recipe/材料项保留供历史解析}
+  - {id: master_partition_wardrobe_1600, reason: R5 入口横柜废弃（R6 已废弃，R7 维持）}
+validation_refs: [verify:furniture, verify:all, test:server, typecheck, test:app, build:app]

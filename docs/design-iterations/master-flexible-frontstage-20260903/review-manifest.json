@@ -1,0 +1,98 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "master-flexible-frontstage-20260903",
+  "subject": "candidate A 主卧数字优先重规划 + 书房季节后台",
+  "state": "blocked",
+  "state_note": "R5 correction source version r5-correction-20260905：床 z=7.10；横柜完整runtime mesh严格目标x[1.40,3.00] z[4.95,5.55] y[0,2.15]；真实四门独立pivot默认closed、95°向+z；两床头柜统一350 recipe，中心north z=5.975/south z=8.225，南帘硬限z<=8.40；北/南床侧硬净距不足项显式保留blocked；旧截图全部invalid，四门人体站位/HVAC维护/东墙结构/真实产品外廓/南帘仍site_pending；frozen=false、delivery_ready=false。",
+  "source_version": {
+    "config_refs": ["config/house.yaml", "config/electrical.yaml", "config/ceiling.yaml", "config/materials.yaml", "config/design-rules.yaml", "config/layout/model-geometry.yaml", "config/layout/overlay.yaml"],
+    "asset_refs": ["shared/types.ts", "shared/render/FixtureFactory.ts"],
+    "render_facts_ref": "data/project-render-facts.json（derived；本文件仅登记生成命令结果，不直接编辑）",
+    "source_digest": "完整 R5 correction：bed runtime x[2.2,4.2] y[0,0.8] z[6.17,8.03]；partition closed target x[1.4,3.0] y[0,2.15] z[4.95,5.55]，完整 mesh 收口，背板北侧、四门真实独立 pivot roots，默认 closed、开启向 +z、openLimitDeg 95；四个 door roots objectId prefix furniture:master_bedroom:master_partition_wardrobe_1600:1，doorIndex 0..3，hinge left/right；统一350柜 north runtime x[3.82,4.2] z[5.80,6.15]、south runtime x[3.82,4.2] z[8.05,8.40]；north/south 与床硬净距不足保持 blocked，南帘 nominal 0.30m、exact product/curtain site_pending；bedside electrical south z=8.177/8.273 h=.75，wall lamps z=6.65/7.55 h=1.35，floor socket (0.42,5.78)；DEC-045 主体/HVAC 不动，L形维护 gap site_pending；旧 R5 evidence 全失效，本轮仅登记同版本 partial evidence，不虚构 HVAC 检修态",
+    "generated_at": "2026-09-05T16:30:00+08:00"
+  },
+  "validation": {
+    "commands": ["专项 tests", "npm run test:server", "npm run verify:furniture", "npm run verify:all", "npm run typecheck", "npm run test:app", "npm run build:app"],
+    "results": [
+      {"command": "专项 tests", "result": "PASS", "notes": "58/58"},
+      {"command": "npm run test:server", "result": "PASS", "notes": "522/522"},
+      {"command": "npm run verify:furniture", "result": "PASS"},
+      {"command": "npm run verify:all", "result": "PASS"},
+      {"command": "npm run typecheck", "result": "PASS"},
+      {"command": "npm run test:app", "result": "PASS", "notes": "434/434"},
+      {"command": "npm run build:app", "result": "PASS"}
+    ],
+    "config_status": "PASS",
+    "geometry_status": "PASS",
+    "consistency_status": "PASS",
+    "functional_checks_status": "PASS（专项与 verify:furniture/verify:all 已通过；真实四门人体站位、HVAC/结构与真实产品外廓仍 site_pending）",
+    "application_status": "PASS",
+    "typecheck_status": "PASS",
+    "generated_files_touched_directly": false
+  },
+  "evidence": {
+    "required_views": ["主卧门口视角", "东墙视角", "南帘视角", "西侧梳妆/地插视角", "DEC-045 条带视角", "书房收纳/训练视角"],
+    "status": "blocked_partial_evidence",
+    "items": [
+      {"view": "r5-correction-closed", "status": "valid", "png": "evidence/r5-correction-closed.png", "snapshot": "evidence/r5-correction-closed.snapshot.txt", "state": "all four doors closed; stable door roots queried; partial view clarity"},
+      {"view": "door1", "status": "valid", "png": "evidence/door1.png", "snapshot": "evidence/door1.snapshot.txt", "state": "doorIndex 0; hinge left/right per runtime query; closed; partial view clarity"},
+      {"view": "door2", "status": "valid", "png": "evidence/door2.png", "snapshot": "evidence/door2.snapshot.txt", "state": "doorIndex 1; hinge left/right per runtime query; closed; partial view clarity"},
+      {"view": "door3", "status": "valid", "png": "evidence/door3.png", "snapshot": "evidence/door3.snapshot.txt", "state": "doorIndex 2; hinge left/right per runtime query; closed; partial view clarity"},
+      {"view": "door4", "status": "valid", "png": "evidence/door4.png", "snapshot": "evidence/door4.snapshot.txt", "state": "doorIndex 3; hinge left/right per runtime query; closed; partial view clarity"},
+      {"view": "adjacent", "status": "valid", "png": "evidence/adjacent.png", "snapshot": "evidence/adjacent.snapshot.txt", "state": "adjacent relationship; partial view clarity"},
+      {"view": "all-open", "status": "valid", "png": "evidence/all-open.png", "snapshot": "evidence/all-open.snapshot.txt", "state": "all doors open runtime state; partial view clarity; human operation not proven"},
+      {"view": "east-wall", "status": "valid", "png": "evidence/east-wall.png", "snapshot": "evidence/east-wall.snapshot.txt", "state": "east wall; structure/fixing remains site_pending"},
+      {"view": "hvac-overall", "status": "valid", "png": "evidence/hvac-overall.png", "snapshot": "evidence/hvac-overall.snapshot.txt", "state": "HVAC overall only; maintenance state not proven"},
+      {"view": "south-curtain", "status": "valid", "png": "evidence/south-curtain.png", "snapshot": "evidence/south-curtain.snapshot.txt", "state": "south curtain nominal 0.30m; exact product/curtain site_pending"},
+      {"view": "all R1/R2/R3 screenshots", "status": "invalid", "reason": "superseded_by_source_change；旧截图不得冒充 R5"}
+    ],
+    "runtime_browser": {"wrapper": "$HOME/.local/bin/agent-browser", "command": "global agent-browser", "status": "blocked_partial_evidence", "session": "bontop-r5-correction-20260905b", "url": "http://localhost:5173/?v=r5-correction-20260905b", "app_ready": true, "warnings": [], "banner": "empty", "snapshot": "same-version snapshots captured for closed, door1-4, adjacent, all-open, east-wall, hvac-overall, south-curtain", "png": "same-version PNGs registered above", "runtime_query": "four stable door roots confirmed with objectId prefix furniture:master_bedroom:master_partition_wardrobe_1600:1; doorIndex 0..3; hinge left/right; state closed; openLimitDeg 95", "note": "runtime rotation correction passed tests; per-door browser views are partially unclear and marked partial; HVAC maintenance/condensate/return-filter envelope is not proven"}
+  },
+  "aesthetic_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": ["真实产品外廓、材质与完整构图仍为候选；clean final 证据有效但不足以关闭审美阻塞"] ,
+    "non_blocking_notes": [],
+    "evidence_refs": ["evidence/view-r5-final-a-entry_20260905.png", "evidence/view-r5-final-b-east-wall_20260905.png", "evidence/view-r5-final-c-south-curtain_20260905.png", "evidence/view-r5-final-d-west-dressing_20260905.png", "evidence/view-r5-final-e-dec045_20260905.png", "evidence/view-r5-final-f-hvac-overall_20260905.png", "evidence-notes.md#R5（2026-09-05 clean final evidence）"],
+    "requested_changes": [],
+    "assumptions": ["R5 对象仍为 candidate；clean final PNG/snapshot 仅证明证据有效，不等同美学 PASS"]
+  },
+  "functional_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": ["真实四门开启态与人体站位未完成", "HVAC 检修与冷凝水维护边界未完成", "东墙结构、防倾倒与安装条件未确认", "南帘开启/堆叠态及真实外廓未完成", "真实产品外廓与施工净空未锁定"],
+    "non_blocking_notes": [],
+    "evidence_refs": ["evidence/view-r5-final-f-hvac-overall_20260905.png", "fact-r5-placed-objects", "fact-r5-static-sweep", "fact-hvac-condensate-inspection", "fact-east-wall-structure", "evidence-notes.md#R5（2026-09-05 clean final evidence）"],
+    "requested_changes": [],
+    "assumptions": ["家具不承担 HVAC/冷凝水/结构责任", "专项与静态验证 PASS 不代表真实四门人体站位、功能或施工 PASS"]
+  },
+  "risks": ["四门真实开启态/人体站位未验证", "HVAC/冷凝水检修未知", "东墙结构/防倾倒未知", "南帘堆叠与真实产品外廓 site_pending", "候选材质与完整构图未冻结"],
+  "runtime_aabb": {
+    "source_version": "r5-correction-20260905",
+    "bed": {"x": [2.2, 4.2], "y": [0, 0.8], "z": [6.17, 8.03]},
+    "partition_wardrobe": {"target_x": [1.40, 3.00], "target_y": [0, 2.15], "target_z": [4.95, 5.55], "front_back_semantics": {"back_panel_local_z": -0.291, "door_state": "closed", "opening_direction": "+z", "open_limit_deg": 95}, "browser_runtime_query": "blocked"},
+    "north_cabinet": {"center_z": 5.975, "target_x": [3.82, 4.2], "target_z": [5.80, 6.15], "declared_depth": 0.35, "bed_clearance_status": "blocked_0.02m_vs_0.035m"},
+    "south_cabinet": {"center_z": 8.225, "target_x": [3.82, 4.2], "target_z": [8.05, 8.40], "declared_depth": 0.35, "bed_clearance_status": "blocked_0.02m_vs_0.05m", "south_curtain_clearance": 0.30},
+    "connection_storage": {"x": [0.7, 1.4], "z": [4.35, 4.75], "hvac_maintenance_status": "site_pending"},
+    "table": {"x": [0.2, 0.65], "z": [5.595, 6.505]},
+    "PVC": {"x": [2.07, 2.6], "z": [2.65, 4.67]},
+    "bedside_electrical": {"note": "已有运行时 AABB 值见 evidence-notes.md#R5（2026-09-05）"}
+  },
+  "site_pending_preserved": ["product outer profiles", "east-wall structure/fixing", "south curtain", "HVAC/condensate inspection", "four-door opening and human standing positions"],
+  "runtime_geometry_correction": {
+    "status": "PASS",
+    "objects": {
+      "master_bedside_cabinet_350_north": {"placed": [4.01, 5.975], "target_runtime_aabb": {"x": [3.82, 4.20], "z": [5.80, 6.15]}, "bed_runtime_clearance": 0.02, "required_clearance": 0.035, "status": "blocked"},
+      "master_bedside_cabinet_350_south": {"placed": [4.01, 8.225], "target_runtime_aabb": {"x": [3.82, 4.20], "z": [8.05, 8.40]}, "bed_runtime_clearance": 0.02, "required_clearance": 0.05, "south_curtain_clearance": 0.30, "status": "blocked"},
+      "master_dressing_connection_storage": {"placed": [1.05, 4.55], "runtime_aabb": {"x": [0.70, 1.40], "z": [4.35, 4.75]}, "dec045_boundary": "existing max z=4.10 remains separate; HVAC/condensate inspection site_pending"}
+    },
+    "site_pending_preserved": ["product outer profiles", "east-wall structure/fixing", "south curtain", "HVAC/condensate inspection"]
+  },
+  "retrospective": {"triggered": true, "triggers": ["user_approved_candidate_a_numeric_priority", "user_reported_wardrobe_door_sweep_mismatch", "source/runtime/evidence_semantic_mismatch", "front_back_semantic_correction", "south_cabinet_curtain_clearance_hard_failure"], "records": ["candidate A 保持 bed z=7.10、rotation=270；双普通床头柜重定位为北 z=5.96、南 z=8.24", "横柜 front/back semantic correction：背板 local z=-0.311，门/缝/拉手/铰链 local z=+0.311/+0.323/+0.337/+0.327；关闭态南脸、开启向 +z；柜体/四门数量/house 坐标/逻辑尺寸不变", "北/南柜 runtime 分别满足床前/后硬净距；北柜 z[5.785,6.135]，南柜采用 320mm 候选外廓修正为 z[8.08,8.40]，南帘盒北缘 z=8.70 净距 0.30m，硬下限未放宽", "北插座 z=6.03 服务北柜；南插座/双控 z=8.18 服务南柜；壁灯保持现有方案值", "旧 R5 screenshots/source version 因 semantic correction 全部 invalid；本轮不生成浏览器证据，后续需重采集"], "rebaselined": true},
+  "delivery": {
+    "status": "blocked",
+    "blocking_issues": ["aesthetic_review BLOCKED", "functional_review BLOCKED", "真实四门开启态/人体站位未完成", "HVAC/冷凝水检修未知", "东墙结构/防倾倒未确认", "南帘与真实产品外廓 site_pending"],
+    "delivery_ready": false,
+    "follow_up_site_pending": ["四门真实开启态与五金", "HVAC/冷凝水/回风检修", "东墙结构钢筋探测与防倾倒", "南帘堆叠/开启扇", "床与 R5 家具真实外廓及安装"],
+    "delivery_notes": "横柜 front/back semantic correction 已完成：背板北侧、门部件南侧，关闭态南脸、开启向 +z；专项 58/58、verify:furniture、verify:all、typecheck 均 PASS。因 source change，旧 R5 六视角 PNG/snapshot 全部 invalid，本轮不生成浏览器证据；保持 frozen=false、candidate/site_pending，真实四门人体站位、HVAC/结构与真实产品外廓仍阻塞。"
+  }
+}

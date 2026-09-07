@@ -83,6 +83,17 @@
     },
     "wardrobe": {
       "default": "wardrobe_240_01",
+      "roomOverrides": {
+        "master_bedroom": "wardrobe_north_950_custom_01",
+        "bedroom_se": "study_seasonal_wardrobe_170_01"
+      }
+    },
+    "home_fitness": {
+      "default": "home_fitness_light_set_01",
+      "roomOverrides": {}
+    },
+    "dresser": {
+      "default": "light_midcentury_dresser_01",
       "roomOverrides": {}
     },
     "sofa": {

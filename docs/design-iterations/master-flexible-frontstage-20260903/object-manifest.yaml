@@ -1,0 +1,460 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: master-flexible-frontstage-20260903
+subject: candidate A 主卧数字优先家具化前台 + 书房季节后台
+object_policy:
+  fixed_count_required: true
+  split_by: [function, owner, material, collision, maintenance, interface, review]
+  visual_relationship_required: true
+  candidate_state: true
+  source_version: r5-correction-20260905
+  responsibility_boundary: "家具不承担 HVAC、冷凝水、结构、防倾倒责任；相关接口必须由 HVAC/现场结构责任人确认；统一350mm冲突保持blocked；R5 correction 横柜完整 mesh 收口，真实四门独立 door roots/pivots，默认 closed、openLimitDeg 95，真实人体操作与相邻/全开冲突须独立审查"
+objects:
+  - id: master_partition_wardrobe_1600
+    type: furniture
+    archetypes: [partition_wardrobe]
+    owner: furniture
+    function: candidate A 主卧横向隔断收纳（R5 correction 完整 mesh；真实四门独立 roots/pivots；数字优先候选预演）
+    material: 待选成品/模块化柜体
+    geometry_source: R5 候选实施记录
+    datum_refs: [datum-r5-partition-wardrobe]
+    fact_refs: [fact-r5-placed-objects, fact-r5-static-sweep, fact-east-wall-structure, fact-hvac-condensate-inspection]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [bed_180, d_mb]
+    interfaces: [{ id: r5-door-sweep, target_object_id: d_mb, kind: clearance, requirement: "四门真实独立 roots/pivots；doorIndex 0..3、hinge left/right、默认 closed、openLimitDeg 95；开启态与人体站位/床/柜/门/梳妆冲突需独立审查", status: blocked }]
+    collision: { policy: reviewed_static_only, geometry_ref: datum-r5-partition-wardrobe, review_ref: "verify:furniture（R5 静态包络）" }
+    maintenance: { boundary: 家具本体可移动/拆装, access_clearance: site_pending, replaceable_parts: [门板, 铰链], inspection_requirements: ["不承担 HVAC/冷凝水/结构责任", "防倾倒与东墙结构待现场确认"] }
+    parts: []
+    visual_relationships: [{ target_object_id: bed_180, relation: separated, requirement: "R5 操作侧非宽裕站位，必须做使用态复核" }, { target_object_id: self, relation: oriented, requirement: "关闭态南脸（+z）；背板北侧（-z），门/缝/拉手/铰链南侧（+z），开启向 +z" }]
+    validation_refs: [verify:furniture, verify:all]
+    status: candidate_not_frozen
+  - id: master_bedside_cabinet_350_north
+    type: furniture
+    archetypes: [bedside_cabinet]
+    owner: furniture
+    function: candidate A 北侧 350mm 普通床头柜（中心 z=5.96；runtime 与床保持 35mm 硬净距）
+    material: 待选
+    geometry_source: R5 候选实施记录
+    datum_refs: [datum-r5-bedside-cabinet-north]
+    fact_refs: [fact-r5-runtime-aabb-correction, fact-r5-static-sweep, fact-east-wall-structure]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [bed_180]
+    interfaces: [{ id: r5-north-bedside-electrical, target_object_id: sock_master_bed_l, kind: electrical, requirement: "最终外廓确认后复核可达性", status: open }]
+    collision: { policy: reviewed_static_only, geometry_ref: datum-r5-bedside-cabinet-north, review_ref: "R5 四门静态 validation envelope" }
+    maintenance: { boundary: 独立可拆家具, access_clearance: site_pending, replaceable_parts: [门板, 五金], inspection_requirements: ["不承担 HVAC/冷凝水/结构责任", "防倾倒待结构确认"] }
+    parts: []
+    visual_relationships: [{ target_object_id: bed_180, relation: paired, requirement: "350mm 名义尺寸，使用态与床侧站位待验证" }]
+    validation_refs: [verify:furniture, verify:all]
+    status: candidate_not_frozen
+  - id: master_bedside_cabinet_350_south
+    type: furniture
+    archetypes: [bedside_cabinet]
+    owner: furniture
+    function: candidate A 南侧 350mm 普通床头柜（中心 z=8.225；runtime x[3.82,4.20] z[8.05,8.40]；与床硬净距仅0.02m、南帘 nominal 0.30m，保持 blocked；选型仍 site_pending）
+    material: 待选
+    geometry_source: R5 候选实施记录
+    datum_refs: [datum-r5-bedside-cabinet-south]
+    fact_refs: [fact-r5-runtime-aabb-correction, fact-r5-static-sweep, pending-south-curtain, fact-east-wall-structure]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [bed_180, curtain_master_south]
+    interfaces: [{ id: r5-south-bedside-electrical, target_object_id: sock_master_bed_r_head, kind: electrical, requirement: "最终外廓确认后复核可达性", status: open }]
+    collision: { policy: reviewed_static_only, geometry_ref: datum-r5-bedside-cabinet-south, review_ref: "R5 四门静态 validation envelope" }
+    maintenance: { boundary: 独立可拆家具, access_clearance: site_pending, replaceable_parts: [门板, 五金], inspection_requirements: ["不承担 HVAC/冷凝水/结构责任", "南帘与防倾倒待现场确认"] }
+    parts: []
+    visual_relationships: [{ target_object_id: bed_180, relation: adjacent, requirement: "runtime 床后硬净距仅0.02m，小于目标0.05m，保持 blocked；真实人体操作需独立审查" }, { target_object_id: curtain_master_south, relation: separated, requirement: "南帘 nominal 0.30m 触硬下限；真实堆叠/开启态与 exact product site_pending" }]
+    validation_refs: [verify:furniture, verify:all]
+    status: candidate_not_frozen
+  - id: master_dressing_connection_storage
+    type: furniture
+    archetypes: [connection_storage]
+    owner: furniture
+    function: R5 独立连接收纳段
+    material: 待选
+    geometry_source: R5 候选实施记录
+    datum_refs: [datum-r5-dressing-connection-storage]
+    fact_refs: [fact-r5-placed-objects, fact-hvac-condensate-inspection, pending-product-outlines]
+    decision_refs: [fact-scheme-direction, DEC-045]
+    dependencies: [master_partition_wardrobe_1600, mb_vanity_pvc_box]
+    interfaces: [{ id: r5-hvac-inspection, target_object_id: mb_vanity_pvc_box, kind: hvac, requirement: "家具不得遮挡或承担 HVAC/冷凝水检修；边界未知", status: blocked }]
+    collision: { policy: blocked_pending_inspection, geometry_ref: datum-r5-dressing-connection-storage, review_ref: "HVAC/冷凝水检修现场证据" }
+    maintenance: { boundary: 家具本体与 HVAC 检修严格分离, access_clearance: site_pending, replaceable_parts: [柜体, 门板], inspection_requirements: ["检修口/冷凝水/回风路径由 HVAC 负责", "真实连接节点待确认"] }
+    parts: []
+    visual_relationships: [{ target_object_id: mb_vanity_pvc_box, relation: separated, requirement: "保留 DEC-045 existing；不以家具替代服务责任" }]
+    validation_refs: [verify:furniture, verify:consistency, verify:all]
+    status: candidate_not_frozen
+  # ── 历史 R3 对象（仅追溯，不是 R5 placed 对象） ───────
+  - id: master_freestanding_wardrobe_062_history_r3
+    type: furniture
+    archetypes: [freestanding_wardrobe]
+    owner: furniture
+    function: 热季必须悬挂衣物收纳（只承担热季必须挂衣）
+    material: 浅暖灰/灰米/浅橡木成品柜，完整侧板/背板/顶部轮廓
+    geometry_source: shared/render/FixtureFactory.ts（新增 recipe）
+    datum_refs: [datum-master-entry-wardrobe]
+    fact_refs: [fact-door-sweep, fact-mb-skeleton, fact-east-wall-structure, pending-door-trim-handle, pending-east-wall-scan]
+    decision_refs: [fact-scheme-direction, DEC-2026-09-04-R2]
+    dependencies: [d_mb, bed_180]
+    interfaces: [{ id: budget-wardrobe-master, target_object_id: wardrobe.topic, kind: budget, requirement: "映射 wardrobe topic，在 master_bedroom roomOverride 选 0.62m 成品窄柜材料项（wardrobe_062_finished_01）", status: open }]
+    collision: { policy: reviewed, geometry_ref: datum-master-entry-wardrobe, review_ref: "scene-builder 柜AABB不交门扫掠断言（新增）+ verify:furniture" }
+    maintenance: { boundary: 成品整体可移动, access_clearance: 0.60, replaceable_parts: [门板铰链, 充电感应灯], inspection_requirements: ["防倾倒连接件固定（方式待东墙结构确认）"] }
+    parts: []
+    visual_relationships: [{ target_object_id: d_mb, relation: separated, requirement: "R2：北缘 z=5.75，门侧缝 0.20m，AABB 不与门扫掠相交" }, { target_object_id: bed_180, relation: separated, requirement: "柜床缝 0.18m（硬下限 ≥0.15m），缝不作通道不塞物" }]
+    validation_refs: [master-bedroom-dressing-test, scene-builder-test, verify:furniture, cli-glb-export-test]
+    status: historical_superseded
+  # ── 主卧前台：R3 新增床头储物（历史） ───────────────
+  - id: master_bedside_cabinet_north_history_r3
+    type: furniture
+    archetypes: [bedside_cabinet]
+    owner: furniture
+    function: 北侧窄床头储物（悬浮薄抽屉）
+    material: 中浅胡桃木 + 拉丝古铜小拉手
+    geometry_source: shared/render/FixtureFactory.ts（R3 recipe）
+    datum_refs: [datum-master-bedside-cabinet-north]
+    fact_refs: [fact-mb-skeleton, pending-product-outlines, pending-east-wall-scan]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [master_freestanding_wardrobe_062, bed_180]
+    interfaces: [{ id: bedside-cabinet-socket, target_object_id: sock_master_bed_l, kind: electrical, requirement: "北插座服务柜上方，候选 z≈6.54 h=.75", status: open }]
+    collision: { policy: reviewed, geometry_ref: datum-master-bedside-cabinet-north, review_ref: "verify:furniture：衣柜/床间隙、门扫掠与床头柜责任" }
+    maintenance: { boundary: 独立可拆家具件, access_clearance: 0.035, replaceable_parts: [抽屉导轨, 小拉手], inspection_requirements: ["不承担衣柜门开启责任；东墙固定方式待结构确认"] }
+    parts: [walnut-carcass, thin-drawer-front, top-panel, hidden-support-left, hidden-support-right]
+    visual_relationships: [{ target_object_id: master_freestanding_wardrobe_062, relation: separated, requirement: "与衣柜南缘留 35–45mm 安装/阴影缝" }, { target_object_id: bed_180, relation: separated, requirement: "与床北缘留 35–45mm 安装/阴影缝" }]
+    validation_refs: [master-bedroom-dressing-test, cli-glb-export-test, scene-builder-test, verify:furniture]
+    status: historical_superseded
+  - id: master_bedside_tray_south_history_r3
+    type: furniture
+    archetypes: [bedside_tray]
+    owner: furniture
+    function: 南侧床架集成可收起轻托盘（杯/手机/眼镜）
+    material: 中浅胡桃木 + 隐藏金属支撑
+    geometry_source: shared/render/FixtureFactory.ts（R3 recipe）
+    datum_refs: [datum-master-bedside-tray-south]
+    fact_refs: [fact-mb-skeleton, pending-south-curtain, pending-product-outlines]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [bed_180, curtain_master_south]
+    interfaces: [{ id: bedside-tray-socket, target_object_id: sock_master_bed_r_head, kind: electrical, requirement: "南插座服务托盘，候选 z=8.36 h=.95", status: open }]
+    collision: { policy: reviewed, geometry_ref: datum-master-bedside-tray-south, review_ref: "verify:furniture：收起态/使用态均不得进入南帘控制区" }
+    maintenance: { boundary: 随床架整体维护, access_clearance: 0, replaceable_parts: [托盘铰链, 隐藏支撑], inspection_requirements: ["使用态不跨帘盒/帘布控制区，不向玻璃幕墙索取支撑"] }
+    parts: [walnut-tray-surface, tray-retaining-edge, concealed-metal-bracket, fold-away-tray-leaf]
+    visual_relationships: [{ target_object_id: bed_180, relation: contained, requirement: "收起/使用态均落在床投影内" }, { target_object_id: curtain_master_south, relation: separated, requirement: "不进入 z≥8.70 帘盒控制区" }]
+    validation_refs: [master-bedroom-dressing-test, cli-glb-export-test, scene-builder-test, verify:furniture]
+    status: historical_superseded
+  # ── 主卧前台：迁移/变更 ──────────────────────────
+  - id: bed_180
+    type: furniture
+    archetypes: [bed]
+    owner: furniture
+    function: 睡眠
+    material: 实木床架+床垫
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: [datum-master-bed]
+    fact_refs: [fact-mb-skeleton, fact-mb-furniture-current, pending-south-curtain, pending-product-outlines]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [master_freestanding_wardrobe_062, curtain_master_south]
+    interfaces: []
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.bed_180, review_ref: verify:furniture }
+    maintenance: { boundary: 可整体移开, access_clearance: 0.35, replaceable_parts: [床垫], inspection_requirements: ["床南缘至南帘盒 z=8.70 净距目标 ≥0.35m、硬下限 ≥0.30m"] }
+    parts: []
+    visual_relationships: [{ target_object_id: master_freestanding_wardrobe_062, relation: separated, requirement: "柜床缝 ≥0.15m（硬下限）" }, { target_object_id: curtain_master_south, relation: separated, requirement: "床南缘 z≈8.35 至帘盒内缘 z=8.70，净距待南帘堆叠/下垂实测复核" }]
+    validation_refs: [master-bedroom-dressing-test, verify:furniture, cli-glb-export-test]
+    status: candidate_not_frozen
+  - id: master_dressing_table
+    type: furniture
+    archetypes: [dressing_table]
+    owner: furniture
+    function: 干式梳妆（四腿开放式+一个薄抽屉，独立桌面镜与桌灯）
+    material: 待定（候选 900×450×750 占位）
+    geometry_source: shared/render/FixtureFactory.ts（recipe 调整）
+    datum_refs: [datum-master-dressing-table-west]
+    fact_refs: [fact-mb-skeleton, fact-floor-socket-domain-risk, pending-west-curtain, fact-r1-window-nook-usable]
+    decision_refs: [fact-scheme-direction, DEC-2026-09-04-R1]
+    dependencies: [bed_180, dressing_stool]
+    interfaces: [{ id: floor-socket-service, target_object_id: sock_master_projector, kind: electrical, requirement: "桌下北侧腿间地插候选 @(0.42,5.78)；可行域为空则改充电式 fallback", status: open }]
+    collision: { policy: reviewed, geometry_ref: datum-master-dressing-table-west, review_ref: "桌凳专项使用态校验 + verify:furniture" }
+    maintenance: { boundary: 成品可移动（可整体拔电移开以便玻璃清洁）, access_clearance: 0.60, replaceable_parts: [桌面镜, 桌灯], inspection_requirements: ["桌体/桌腿避开床实体与窗帘", "桌背与西玻璃留约 0.20m 通风/冷凝缝"] }
+    parts: []
+    visual_relationships: [{ target_object_id: dressing_stool, relation: stacked, requirement: "收纳态凳完整进入桌下" }, { target_object_id: bed_180, relation: separated, requirement: "R1：桌贴西窗 x[0.20,0.65]，床西通道 x[0.65,2.20] 整体释放" }]
+    validation_refs: [master-bedroom-dressing-test, verify:furniture]
+    status: candidate_not_frozen
+  - id: dressing_stool
+    type: furniture
+    archetypes: [stool]
+    owner: furniture
+    function: 梳妆坐具
+    material: 沿用现有
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: [datum-dressing-stool-west]
+    fact_refs: [fact-mb-furniture-current, fact-floor-socket-domain-risk]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [master_dressing_table]
+    interfaces: []
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.dressing_stool, review_ref: 桌凳专项使用态校验 }
+    maintenance: { boundary: 可移动, access_clearance: 0, replaceable_parts: [], inspection_requirements: ["脚位/后退轨迹列入地插禁入区"] }
+    parts: []
+    visual_relationships: [{ target_object_id: master_dressing_table, relation: stacked, requirement: "收纳态完整进入桌下" }]
+    validation_refs: [master-bedroom-dressing-test, verify:furniture]
+    status: candidate_not_frozen
+  # ── 主卧前台：R1 新增 ─────────────────────────────
+  - id: master_hot_season_low_dresser
+    type: furniture
+    archetypes: [low_dresser]
+    owner: furniture
+    function: 热季折叠衣物 + 衣柜 overflow（不含内衣/睡衣/脏衣/洗护——归 DEC-045）
+    material: 轻中古木色六抽矮柜（1400×480×850，细腿，与梳妆桌同族木色）
+    geometry_source: shared/render/FixtureFactory.ts（新增 recipe）
+    datum_refs: [datum-master-hot-season-low-dresser]
+    fact_refs: [fact-mb-skeleton, fact-r1-window-nook-usable, pending-south-curtain]
+    decision_refs: [DEC-2026-09-04-R1]
+    dependencies: [curtain_master_south, bed_180]
+    interfaces: [{ id: budget-dresser-master, target_object_id: dresser.topic, kind: budget, requirement: "独立 dresser topic 计价（light_midcentury_dresser_01），不并入 wardrobe 避免与 062 柜 roomOverride 混价", status: resolved }]
+    collision: { policy: reviewed, geometry_ref: datum-master-hot-season-low-dresser, review_ref: "verify:furniture 矮柜专项（南窗带 z⊆[8.95,9.70]、与床不交、避东侧点位 ≥0.5m）" }
+    maintenance: { boundary: 成品可移动, access_clearance: 0.60, replaceable_parts: [抽屉导轨], inspection_requirements: ["h=0.85m 不挡窗带底 2.07m；南帘堆叠端 site_pending"] }
+    parts: []
+    visual_relationships: [{ target_object_id: curtain_master_south, relation: separated, requirement: "位于南窗帘线以南宁带地面，不压帘" }, { target_object_id: bed_180, relation: separated, requirement: "与床 AABB 不重叠（床南缘 z=8.35，柜北缘 z=9.07）" }]
+    validation_refs: [master-bedroom-dressing-test, cli-glb-export-test, verify:furniture]
+    status: candidate_not_frozen
+  # ── 主卧前台：电气 ─────────────────────────────
+  - id: sock_master_projector
+    type: electrical
+    archetypes: [floor_socket]
+    owner: electrical
+    function: 主卧唯一通用地插（梳妆/投影/临时设备）
+    material: embedded_floor_socket
+    geometry_source: config/electrical.yaml
+    datum_refs: [datum-floor-socket]
+    fact_refs: [fact-mb-east-electrical, fact-floor-socket-domain-risk, pending-floor-socket-built, pending-west-curtain]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [master_dressing_table, dressing_stool, bed_180]
+    interfaces: [{ id: floor-socket-fallback, target_object_id: sock_master_bed_r, kind: electrical, requirement: "可行域为空时 fallback：取消西侧地插，吹风机经东南备用墙插可收纳临时线（需用户确认）", status: open }]
+    collision: { policy: none, geometry_ref: config/electrical.yaml, review_ref: 地插可行域预演（第一轮门槛） }
+    maintenance: { boundary: 面板可更换, access_clearance: 0, replaceable_parts: [面板], inspection_requirements: ["坐姿可伸手开盖、可见可拔插、无需搬桌；施工状态待现场确认"] }
+    parts: []
+    visual_relationships: [{ target_object_id: master_dressing_table, relation: contained_under, requirement: "R1 落位 @(0.42,5.78)：桌 footprint 北侧腿间，避桌腿 0.196m/凳包络 0.06m/帘线 0.68m/门扫掠 0.23m" }]
+    validation_refs: [master-bedroom-dressing-test, verify:all]
+    status: candidate_not_frozen
+  - id: sock_master_bed_r
+    type: electrical
+    archetypes: [spare_socket]
+    owner: electrical
+    function: 主卧东南通用备用插座（吸尘器/除湿机/临时落地灯/fallback 吹风机）——语义由梳妆专用改为通用备用
+    material: embedded_socket
+    geometry_source: config/electrical.yaml
+    datum_refs: []
+    fact_refs: [fact-mb-east-electrical, fact-sock-bed-r-repurpose]
+    decision_refs: [fact-scheme-direction]
+    dependencies: []
+    interfaces: [{ id: fallback-hairdryer, target_object_id: sock_master_projector, kind: electrical, requirement: "地插 fallback 触发时服务吹风机临时线", status: open }]
+    collision: { policy: none, geometry_ref: config/electrical.yaml, review_ref: verify:all }
+    maintenance: { boundary: 面板可更换, access_clearance: 0.15, replaceable_parts: [面板], inspection_requirements: ["保持可见可拔插，不被床/帘/家具封死"] }
+    parts: []
+    visual_relationships: []
+    validation_refs: ["master-bedroom-dressing-test（移除梳妆距离绑定，新增备用语义与可达性断言）", verify:all]
+    status: planned
+  - id: bedside_electrical_group
+    type: electrical
+    archetypes: [bedside_socket, bedside_switch, wall_lamp]
+    owner: electrical
+    function: "床头两插座+床头双控+两盏壁灯随床重新定位（成员：sock_master_bed_l, sock_master_bed_r_head, switch_master_bed_l, light_master_wall_l, light_master_wall_r）"
+    material: embedded_socket/switch/wall_lamp
+    geometry_source: config/electrical.yaml
+    datum_refs: [datum-bedside-electrical]
+    fact_refs: [fact-mb-east-electrical, pending-product-outlines]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [bed_180, master_freestanding_wardrobe_062]
+    interfaces: [{ id: bedside-2way, target_object_id: switch_master_door, kind: electrical, requirement: "门口—床头常规有线双控，开关盒预留零线", status: confirmed }]
+    collision: { policy: none, geometry_ref: config/electrical.yaml, review_ref: verify:all }
+    maintenance: { boundary: 面板/灯具可更换, access_clearance: 0.15, replaceable_parts: [面板, 灯泡], inspection_requirements: ["点位位于新床头范围、保持左右关系、避开入口柜并保留 wall_side"] }
+    parts: []
+    visual_relationships: [{ target_object_id: bed_180, relation: paired, requirement: "按最终床架/床头板真实外廓 ±0.65m 对称口径，不机械平移" }]
+    validation_refs: [master-bedroom-dressing-test, verify:all, cli-glb-export-test]
+    status: candidate_not_frozen # 第一轮不冻结固定壁灯；若取消须同步 electrical/topology/render facts/测试
+  # ── 主卧：删除 ─────────────────────────────────
+  - id: master_wardrobe_tall_240
+    type: furniture
+    archetypes: [tall_wardrobe]
+    owner: furniture
+    function: （撤销）主卧 placed 通顶高柜；通用 recipe 保留供历史方案兼容
+    material: 定制
+    geometry_source: config/house.yaml（移除 placed 条目）
+    datum_refs: []
+    fact_refs: [fact-mb-furniture-current, fact-unmapped-furnishing-types]
+    decision_refs: [fact-scheme-direction]
+    dependencies: []
+    interfaces: []
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.master_wardrobe_tall_240, review_ref: verify:furniture（移除后回归） }
+    maintenance: { boundary: 原占地不立即填入固定家具, access_clearance: 0, replaceable_parts: [], inspection_requirements: [] }
+    parts: []
+    visual_relationships: []
+    validation_refs: [verify:furniture, cli-glb-export-test（删除旧柜硬编码）, master-bedroom-dressing-test]
+    status: to_be_removed
+  - id: plant_fiddle
+    type: furniture
+    archetypes: [plant]
+    owner: styling
+    function: （删除）主卧 placed 琴叶榕
+    material: 绿植
+    geometry_source: config/house.yaml（删除主卧 placed 条目）
+    datum_refs: []
+    fact_refs: [fact-mb-furniture-current]
+    decision_refs: [fact-scheme-direction]
+    dependencies: []
+    interfaces: []
+    collision: { policy: none, geometry_ref: config/house.yaml, review_ref: verify:furniture }
+    maintenance: { boundary: 可移动, access_clearance: 0, replaceable_parts: [], inspection_requirements: [] }
+    parts: []
+    visual_relationships: []
+    validation_refs: [verify:furniture, master-bedroom-dressing-test]
+    status: to_be_removed
+  # ── DEC-045 责任边界（不动，仅登记）─────────────
+  - id: mb_vanity_pvc_box
+    type: service_enclosure
+    archetypes: [service_box]
+    owner: hvac # HVAC 责任不并入家具：冷凝水管/保温遮蔽与回风检修归 HVAC，柜组不承担
+    function: 顶部 PVC 包管+灯槽（保留不动）
+    material: 墙面同色哑光
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: []
+    fact_refs: [fact-mb-furniture-current, pending-base-cabinet-overhang]
+    decision_refs: [DEC-045]
+    dependencies: []
+    interfaces: []
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.mb_vanity_pvc_box, review_ref: verify:furniture }
+    maintenance: { boundary: 回风格栅兼任检修口, access_clearance: 0, replaceable_parts: [], inspection_requirements: ["管径/坡度/存水弯/最终接点待深化"] }
+    parts: []
+    visual_relationships: [{ target_object_id: mb_vanity_base_cabinet, relation: stacked, requirement: "DEC-045 四件同轴口径不变（along=3.35）" }]
+    validation_refs: [verify:furniture]
+    status: existing
+  # ── 书房后台：新增 ──────────────────────────────
+  - id: study_seasonal_wardrobe_wall
+    type: furniture
+    archetypes: [seasonal_wardrobe]
+    owner: furniture
+    function: 书房季节性收纳后台（模块化定制、浅色平板门、可调挂衣与层板）
+    material: 浅色平板门模块化柜体
+    geometry_source: shared/render/FixtureFactory.ts（新增 recipe）
+    datum_refs: [datum-study-backstage-cabinet]
+    fact_refs: [fact-study-ceiling, fact-study-skeleton, pending-study-east-wall]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [ceiling_study_ac, ceiling_study_ac_corner, curtain_box_study_south]
+    interfaces: [{ id: budget-wardrobe-study, target_object_id: wardrobe.topic, kind: budget, requirement: "映射 wardrobe topic，在 bedroom_se roomOverride 选 1.7m 后台柜材料项", status: open }, { id: hvac-clearance, target_object_id: ceiling_study_ac_corner, kind: mep, requirement: "不侵入角吊；柜顶 2.35–2.40 与吊底 2.50 间 0.10–0.15m 灰缝不影响 HVAC 检修", status: open }]
+    collision: { policy: reviewed, geometry_ref: datum-study-backstage-cabinet, review_ref: "study-seasonal-storage-test（新增）+ verify:furniture" }
+    maintenance: { boundary: 模块可拆, access_clearance: 0.60, replaceable_parts: [门板, 挂衣杆, 层板], inspection_requirements: ["防倾倒固定待书房东墙（w_east_upper, shear inferred）结构确认；灰缝积灰为 non-blocking 评审项"] }
+    parts: []
+    visual_relationships: [{ target_object_id: d_bese, relation: separated, requirement: "北缘 z≥5.90 避让北门扫掠域 z[5.65,6.55]" }, { target_object_id: curtain_box_study_south, relation: separated, requirement: "南缘 z≤7.60 不侵入窗帘盒 z[7.60,7.85]" }, { target_object_id: bench_adjustable, relation: separated, requirement: "不侵入训练使用态 AABB" }]
+    validation_refs: [study-seasonal-storage-test, verify:all, verify:furniture, cli-glb-export-test]
+    status: candidate_not_frozen
+  # ── 书房：轻训练三件 ────────────────────────────
+  - id: bench_adjustable
+    type: furniture
+    archetypes: [light_fitness]
+    owner: furniture
+    function: 可调训练凳（复用现有类型，仅调整位置/收纳态和必要 parts）
+    material: 沿用现有
+    geometry_source: shared/render/FixtureFactory.ts
+    datum_refs: [datum-light-training-set]
+    fact_refs: [fact-unmapped-furnishing-types]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [study_seasonal_wardrobe_wall]
+    interfaces: [{ id: fitness-budget, target_object_id: home_fitness.topic, kind: budget, requirement: "不各自映射预算；由 home_fitness_light_set count-only 单套一次计价，防一套三次计价", status: open }]
+    collision: { policy: reviewed, geometry_ref: FURNITURE_DIMS.bench_adjustable, review_ref: "study-seasonal-storage-test（收纳态+使用态 AABB）" }
+    maintenance: { boundary: 可移动收纳, access_clearance: 0, replaceable_parts: [], inspection_requirements: ["使用态不侵入后台柜/门扫掠/书桌椅/空调角吊"] }
+    parts: []
+    visual_relationships: [{ target_object_id: adjustable_dumbbell_pair, relation: grouped, requirement: "轻训练组合同区收纳" }]
+    validation_refs: [study-seasonal-storage-test, verify:furniture, budget-calculator-test]
+    status: candidate_not_frozen # 复用现有类型，禁止新增 movable_adjustable_bench 等同义类型
+  - id: adjustable_dumbbell_pair
+    type: furniture
+    archetypes: [light_fitness]
+    owner: furniture
+    function: 可调哑铃一对（新增可见对象，渲染用）
+    material: 金属+包胶
+    geometry_source: shared/render/FixtureFactory.ts（新增 recipe）
+    datum_refs: [datum-light-training-set]
+    fact_refs: [fact-unmapped-furnishing-types]
+    decision_refs: [fact-scheme-direction]
+    dependencies: [bench_adjustable]
+    interfaces: [{ id: fitness-budget, target_object_id: home_fitness.topic, kind: budget, requirement: "不映射预算（单套口径由 home_fitness_light_set 承担）", status: open }]
+    collision: { policy: reviewed, geometry_ref: datum-light-training-set, review_ref: study-seasonal-storage-test }
+    maintenance: { boundary: 可移动收纳, access_clearance: 0, replaceable_parts: [], inspection_requirements: [] }
+    parts: []
+    visual_relationships: [{ target_object_id: bench_adjustable, relation: grouped, requirement: "收纳态成组" }]
+    validation_refs: [study-seasonal-storage-test, verify:furniture]
+    status: candidate_not_frozen
+  - id: rollable_training_mat
+    type: furniture
+    archetypes: [light_fitness]
+    owner: furniture
+    function: 可卷训练垫（新增可见对象，渲染用；替换永久橡胶垫）
+    material: TPE 卷材
+    geometry_source: shared/render/FixtureFactory.ts（新增 recipe）
+    datum_refs: [datum-light-training-set]
+    fact_refs: [fact-unmapped-furnishing-types]
+    decision_refs: [fact-scheme-direction]
+    dependencies: []
+    interfaces: [{ id: fitness-budget, target_object_id: home_fitness.topic, kind: budget, requirement: "不映射预算（单套口径由 home_fitness_light_set 承担）", status: open }]
+    collision: { policy: reviewed, geometry_ref: datum-light-training-set, review_ref: study-seasonal-storage-test }
+    maintenance: { boundary: 可卷收纳, access_clearance: 0, replaceable_parts: [], inspection_requirements: ["使用态展开 AABB 另行验证"] }
+    parts: []
+    visual_relationships: [{ target_object_id: study_seasonal_wardrobe_wall, relation: adjacent, requirement: "收纳态可靠柜侧或入柜" }]
+    validation_refs: [study-seasonal-storage-test, verify:furniture]
+    status: candidate_not_frozen
+  - id: home_fitness_light_set
+    type: budget_line
+    archetypes: [count_only]
+    owner: budget
+    function: 轻训练单套计价（count-only，不设坐标）
+    material: not_applicable
+    geometry_source: config/house.yaml（count-only 条目）
+    datum_refs: []
+    fact_refs: [fact-unmapped-furnishing-types]
+    decision_refs: []
+    dependencies: []
+    interfaces: [{ id: pricing-caliber, target_object_id: home_fitness.topic, kind: budget, requirement: "单套一次计价口径待 alignment（align-home-fitness-pricing）", status: open }]
+    collision: { policy: none, geometry_ref: null, review_ref: budget-calculator-test }
+    maintenance: { boundary: not_applicable, access_clearance: 0, replaceable_parts: [], inspection_requirements: [] }
+    parts: []
+    visual_relationships: []
+    validation_refs: [budget-calculator-test]
+    status: pending_alignment
+  - id: seasonal_cart
+    type: budget_line
+    archetypes: [count_only]
+    owner: budget
+    function: 换季推车（count-only，不设常驻坐标）
+    material: not_applicable
+    geometry_source: config/house.yaml（count-only 条目）
+    datum_refs: []
+    fact_refs: []
+    decision_refs: [fact-scheme-direction]
+    dependencies: [study_seasonal_wardrobe_wall]
+    interfaces: []
+    collision: { policy: none, geometry_ref: null, review_ref: budget-calculator-test }
+    maintenance: { boundary: not_applicable, access_clearance: 0, replaceable_parts: [], inspection_requirements: [] }
+    parts: []
+    visual_relationships: []
+    validation_refs: [budget-calculator-test]
+    status: planned
+  # ── 书房：删除 ─────────────────────────────────
+  - id: heavy_fitness_set
+    type: furniture
+    archetypes: [heavy_fitness]
+    owner: furniture
+    function: "（删除）重型器械四件：squat_rack、barbell_olympic、weight_plate_set（count-only）、rubber_training_mat（永久垫）"
+    material: 钢制/橡胶
+    geometry_source: config/house.yaml（删除 placed/count 条目）
+    datum_refs: []
+    fact_refs: [fact-study-furniture-current, fact-unmapped-furnishing-types]
+    decision_refs: [fact-scheme-direction]
+    dependencies: []
+    interfaces: []
+    collision: { policy: reviewed, geometry_ref: config/house.yaml, review_ref: verify:furniture（移除后回归） }
+    maintenance: { boundary: 删除只记录空间释放，不伪造预算节省（四件当前均无预算映射）, access_clearance: 0, replaceable_parts: [], inspection_requirements: [] }
+    parts: []
+    visual_relationships: []
+    validation_refs: [verify:furniture, study-seasonal-storage-test, cli-glb-export-test]
+    status: to_be_removed
+notes:
+  - "mb_vanity_pvc_box 的 HVAC 责任不并入家具：冷凝水管遮蔽/检修归 HVAC owner，DEC-045 柜组（底柜/下板/主板）不动且不承担 HVAC 接口。"
+  - "sock_master_bed_r 语义变更仅改语义与测试，不改坐标/高度；可见可拔插与不被封死为验收断言。"
+  - "bench_adjustable 为复用现有类型，本轮禁止新增 movable_adjustable_bench 或任何同义家具类型（forbidden 已登记）。"
+  - "换季推车（seasonal_cart）与 home_fitness_light_set 均为 count-only，不设常驻坐标；可见训练三件只用于渲染，不各自映射预算。"
+  - "low_room_cabinet @(16.15,8.05) 现状存在，方案未明确去留，见 decision-brief open-low-room-cabinet-fate。"

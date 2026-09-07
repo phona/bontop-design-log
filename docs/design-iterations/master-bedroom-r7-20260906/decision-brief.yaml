@@ -1,0 +1,45 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: master-bedroom-r7-20260906
+subject: 主卧 R8 北墙 950 三门衣柜（一体木饰面）+ 950适配空调门头盒几何/机电预演
+priority:
+  user_goal: "保持上下双层悬浮板区域与950W×580D×2450H三门衣柜方案，不修改model-geometry.yaml、overlay.yaml或d_mb几何；950衣柜左移至东缘x=3.25，悬浮板按0.12m墙厚语义贴 w_mbath_east 西侧完成面（中心x=2.39、东缘x=2.54），不再从衣柜回退，并同步验证/测试/文档。"
+  ranked: [衣柜真实门扇与HVAC检修可行性, 门扇净空硬约束, 门头盒数据驱动表达, 床与既有保留项不动, 窗帘软包络真实表达, 预算映射 pending 不伪装]
+  non_negotiables: [不修改 model-geometry.yaml, 不修改 overlay.yaml, 不修改 d_mb 门洞, 不修改玻璃事实, 不把 HVAC 责任并入家具, DEC-045 底柜/PVC 不延伸, 悬浮板贴墙西侧完成面且衣柜西侧无额外板件, 底柜北端连续柜段补齐板下支撑且不与衣柜实体重叠, 未知价格保持 pending 不以 0 伪装完成, 衣柜东缘 maxX≤3.25 为 error 门槛]
+  tradeoffs_accepted: [保持950×580与三门，左移仅作边界核验；若需避让d_mb将越出北墙实体边界或侵入DEC-045 bridge则明确失败，不改d_mb，不放宽验证阈值, 通长檐口取消后冷凝水西段无吊顶遮盖走局部包管候选]
+frozen: true
+freeze_record:
+  alignment_id: R7-plan-20260906-approved
+  source: 用户批准的 R7 几何/机电预演计划
+  normalized_decision: "按计划实施候选预演，不宣称施工冻结或 delivery_ready；浏览器证据留待后续阶段"
+  timestamp: "2026-09-06"
+allowed_scope:
+  files: [config/house.yaml, config/electrical.yaml, config/ceiling.yaml, config/hvac.yaml, config/mep-hvac-coordination.yaml, config/materials.yaml, config/procurement.yaml, config/design-rules.yaml, data/current-scheme.json, shared/types.ts, shared/render/FixtureFactory.ts, scripts/verify/placement/verify-furniture-placement.ts, tests/server/master-bedroom-dressing.test.ts, tests/server/shared/scene-builder.test.ts, tests/server/cli-glb-export.test.ts, tests/server/budget-calculator.test.ts, docs/design-iterations/master-bedroom-r7-20260906/]
+  objects: [master_north_wall_wardrobe_950, master_wardrobe_top_pelmet, ceiling_master_ac, ac_master, supply_master, return_master, sock_master_ac, mb_vanity_lower_board, mb_vanity_main_board, bed_180, master_bedside_cabinet_350_north, master_bedside_cabinet_350_south, master_hot_season_low_dresser, bedside_electrical_group, curtain_master_south]
+forbidden:
+  files: [config/layout/model-geometry.yaml, config/layout/overlay.yaml]
+  objects: [d_mb, mb_washbasin_cabinet, mb_vanity_base_cabinet, mb_vanity_lower_board, mb_vanity_main_board, mb_vanity_pvc_box]
+  assumptions: [内机型号/外廓已锁定, 衣柜价格已核, 防倾倒节点已确认, 南帘堆叠已确认]
+open_questions:
+  - {id: pending-door-swing, status: site_pending, owner: site, question: 门扇干涉已由收窄消除；门套/执手突出量未建模，现场核对 50mm 净距}
+  - {id: pending-wardrobe-anti-tip, status: site_pending, owner: site, question: 950 衣柜防倾倒固定节点与墙体结构确认}
+  - {id: pending-hvac-equipment, status: site_pending, owner: hvac, question: 内机型号、风量、送回风截面与滤网检修操作空间厂家深化}
+  - {id: pending-south-curtain, status: site_pending, owner: site, question: 南帘实际轨道、下垂厚度、堆叠端与南床头柜关系}
+  - {id: pending-product-outlines, status: site_pending, owner: site, question: 衣柜真实完成面外廓与价格}
+alignment:
+  records: [R7-plan-20260906-approved]
+  unresolved: [pending-door-swing, pending-wardrobe-anti-tip, pending-hvac-equipment, pending-south-curtain, pending-product-outlines]
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run generate:project-render-facts, npm run export:dressing-map, npm run verify:furniture, npm run verify:consistency, npm run verify:all, npm run test:server, npm run typecheck, npm run test:app, npm run build:app]
+  browser_evidence_required: false
+  browser_evidence_note: 本阶段不采集浏览器证据，留待后续阶段
+  required_views: []
+  aesthetic_review: pending
+  functional_review: pending
+  construction_review: BLOCKED
+  blocking_issues: [衣柜防倾倒未确认, HVAC 设备与检修未深化, 南帘真实包络未测, 衣柜价格 pending, 门套/执手现场核对]
+  done_when: [配置与runtime同源, 适用验证通过, 门碰撞矩阵/HVAC检修包络/悬浮板衔接/窗帘软包络/预算映射均有正式测试, site_pending 明确保留]
+delivery_ready: false
+source_version: r8-master-bedroom-20260906-950
+notes: ["R8（2026-09-06）：恢复950三门原方案；950与 d_mb 开启门扇硬冲突，验证器明确阻塞，650证据过时。", "候选预演；不得作为施工下单尺寸。", "R5 横柜、R6 600柜与R7 650柜基线 superseded。", "价格 pending 保持 0+price_source=pending，不伪装完成。"]

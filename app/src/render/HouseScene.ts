@@ -715,7 +715,234 @@ export class HouseScene implements SceneApi {
 
   setHvacCoordinationVisible(visible: boolean): void {
     this.hvacRenderer.setCoordinationVisible(visible);
+    this.setPipeChaseInspectionVisible(visible);
     this.requestRender();
+  }
+
+  private setPipeChaseInspectionVisible(visible: boolean): void {
+    this.exportRoot.traverse((object) => {
+      if (object.userData?.inspectionLayer !== 'pipe-chase') return;
+      const inspectionVisibleOnly = object.userData.inspectionVisibleOnly === true;
+      if (inspectionVisibleOnly) object.visible = visible;
+      const materials = Array.isArray((object as THREE.Mesh).material)
+        ? (object as THREE.Mesh).material as THREE.Material[]
+        : (object as THREE.Mesh).material
+          ? [(object as THREE.Mesh).material as THREE.Material]
+          : [];
+      // The condensate is an inspection overlay. Keep it in front of the
+      // declared cover layer so the route remains readable through the
+      // semi-transparent chase and wardrobe, even where their depth buffers
+      // overlap the pipe. The layer declaration is the switch; this is the
+      // single renderer policy for that layer.
+      object.renderOrder = visible ? (inspectionVisibleOnly ? 100 : 80) : 0;
+      for (const material of materials) {
+        if (!(material instanceof THREE.MeshStandardMaterial)) continue;
+        if (visible) {
+          const opacity = Number(object.userData.inspectionOpacity ?? 0.18);
+          material.transparent = !inspectionVisibleOnly;
+          material.opacity = inspectionVisibleOnly ? 1 : opacity;
+          material.depthTest = !inspectionVisibleOnly;
+          material.depthWrite = false;
+        } else {
+          material.transparent = false;
+          material.opacity = 1;
+          material.depthTest = true;
+          material.depthWrite = true;
+        }
+        material.needsUpdate = true;
+      }
+    });
+  }
+
+  inspectMasterBedroomCondensate(): { ok: boolean; segments: Array<{ part: string; aabb: { min: [number, number, number]; max: [number, number, number] } }>; joins: Record<string, number>; checks: Record<string, boolean> } {
+    const tolerance = 0.03;
+    const requiredParts = [
+      'condensate-pipe-ac-outlet-to-wall',
+      'condensate-pipe-ac-box-to-wardrobe-top',
+      'condensate-pipe-wall-to-wardrobe-top',
+      'condensate-pipe-wardrobe-top-to-wall',
+      'condensate-pipe-wardrobe-drop-to-wall',
+      'condensate-pipe-wall-run',
+      'condensate-pipe-wall-to-penetration',
+      'condensate-pipe-penetration-to-bath-ceiling',
+      'condensate-pipe-bath-ceiling-to-candidate',
+      'condensate-pipe-at-master-bath-candidate',
+    ];
+    const roots = new Map<string, THREE.Object3D>();
+    this.exportRoot.traverse((object) => {
+      const part = object.userData?.part as string | undefined;
+      if (part?.startsWith('condensate-pipe-')) roots.set(part, object);
+    });
+    this.exportRoot.updateMatrixWorld(true);
+    const object = (part: string): THREE.Object3D | undefined => roots.get(part);
+    const box = (part: string) => {
+      const found = object(part);
+      if (!found) return { min: [Number.NaN, Number.NaN, Number.NaN] as [number, number, number], max: [Number.NaN, Number.NaN, Number.NaN] as [number, number, number] };
+      const bounds = new THREE.Box3().setFromObject(found);
+      return { min: [bounds.min.x, bounds.min.y, bounds.min.z] as [number, number, number], max: [bounds.max.x, bounds.max.y, bounds.max.z] as [number, number, number] };
+    };
+    const parts = [...roots.keys()].map((part) => ({ part, aabb: box(part) }));
+    const missingParts = requiredParts.filter((part) => !roots.has(part));
+    const unexpectedParts = [...roots.keys()].filter((part) => !requiredParts.includes(part));
+    const endpoints = (part: string): [THREE.Vector3, THREE.Vector3] | undefined => {
+      const mesh = object(part) as THREE.Mesh | undefined;
+      if (!mesh?.geometry) return undefined;
+      mesh.geometry.computeBoundingBox();
+      const bounds = mesh.geometry.boundingBox;
+      if (!bounds) return undefined;
+      return [
+        new THREE.Vector3(0, bounds.min.y, 0).applyMatrix4(mesh.matrixWorld),
+        new THREE.Vector3(0, bounds.max.y, 0).applyMatrix4(mesh.matrixWorld),
+      ];
+    };
+    const endpointGap = (first: string, second: string): number => {
+      const a = endpoints(first);
+      const b = endpoints(second);
+      if (!a || !b) return Number.POSITIVE_INFINITY;
+      return Math.min(...a.flatMap((from) => b.map((to) => from.distanceTo(to))));
+    };
+    const joins = {
+      outletToWall: endpointGap('condensate-pipe-ac-outlet-to-wall', 'condensate-pipe-ac-box-to-wardrobe-top'),
+      boxToWardrobe: endpointGap('condensate-pipe-ac-box-to-wardrobe-top', 'condensate-pipe-wall-to-wardrobe-top'),
+      wardrobeToWallTop: endpointGap('condensate-pipe-wall-to-wardrobe-top', 'condensate-pipe-wardrobe-top-to-wall'),
+      wallTopToWallDrop: endpointGap('condensate-pipe-wardrobe-top-to-wall', 'condensate-pipe-wardrobe-drop-to-wall'),
+      wallDropToWallRun: endpointGap('condensate-pipe-wardrobe-drop-to-wall', 'condensate-pipe-wall-run'),
+      wallRunToPenetration: endpointGap('condensate-pipe-wall-run', 'condensate-pipe-wall-to-penetration'),
+      penetrationToBathCeiling: endpointGap('condensate-pipe-wall-to-penetration', 'condensate-pipe-penetration-to-bath-ceiling'),
+      bathCeilingToCandidate: endpointGap('condensate-pipe-penetration-to-bath-ceiling', 'condensate-pipe-bath-ceiling-to-candidate'),
+      candidateToDrop: endpointGap('condensate-pipe-bath-ceiling-to-candidate', 'condensate-pipe-at-master-bath-candidate'),
+    };
+    const endpointMatches = (part: string, expected: [THREE.Vector3, THREE.Vector3]): boolean => {
+      const actual = endpoints(part);
+      if (!actual) return false;
+      const direct = actual[0].distanceTo(expected[0]) <= tolerance && actual[1].distanceTo(expected[1]) <= tolerance;
+      const reverse = actual[0].distanceTo(expected[1]) <= tolerance && actual[1].distanceTo(expected[0]) <= tolerance;
+      return direct || reverse;
+    };
+    const pointOnSegmentInterior = (start: THREE.Vector3, end: THREE.Vector3, point: THREE.Vector3): boolean => {
+      const line = new THREE.Line3(start, end);
+      const closest = line.closestPointToPoint(point, true, new THREE.Vector3());
+      return closest.distanceTo(point) <= tolerance
+        && point.distanceTo(start) > tolerance
+        && point.distanceTo(end) > tolerance;
+    };
+    const planInteriorIntersection = (a: [THREE.Vector3, THREE.Vector3], b: [THREE.Vector3, THREE.Vector3]): boolean => {
+      const ax = a[1].x - a[0].x;
+      const az = a[1].z - a[0].z;
+      const bx = b[1].x - b[0].x;
+      const bz = b[1].z - b[0].z;
+      const denominator = ax * bz - az * bx;
+      if (Math.abs(denominator) <= 1e-9) return false;
+      const cx = b[0].x - a[0].x;
+      const cz = b[0].z - a[0].z;
+      const t = (cx * bz - cz * bx) / denominator;
+      const u = (cx * az - cz * ax) / denominator;
+      if (t <= tolerance || t >= 1 - tolerance || u <= tolerance || u >= 1 - tolerance) return false;
+      const yA = a[0].y + (a[1].y - a[0].y) * t;
+      const yB = b[0].y + (b[1].y - b[0].y) * u;
+      return Math.abs(yA - yB) <= tolerance;
+    };
+    const adjacentSegmentsOnlyMeetAtJoin = (first: string, second: string): boolean => {
+      const a = endpoints(first);
+      const b = endpoints(second);
+      if (!a || !b || endpointGap(first, second) > tolerance) return false;
+      let aJoin = a[0], bJoin = b[0];
+      let best = a[0].distanceTo(b[0]);
+      for (let ai = 0; ai < 2; ai += 1) for (let bi = 0; bi < 2; bi += 1) {
+        const distance = a[ai].distanceTo(b[bi]);
+        if (distance < best) { best = distance; aJoin = a[ai]; bJoin = b[bi]; }
+      }
+      const aOther = a[0] === aJoin ? a[1] : a[0];
+      const bOther = b[0] === bJoin ? b[1] : b[0];
+      return !pointOnSegmentInterior(a[0], a[1], bOther) && !pointOnSegmentInterior(b[0], b[1], aOther);
+    };
+    const orderedEndpoints = requiredParts.map((part) => endpoints(part));
+    const expectedEndpoints: Array<[THREE.Vector3, THREE.Vector3]> = [
+      [new THREE.Vector3(3.80, 2.65, 5.10), new THREE.Vector3(4.10, 2.65, 5.10)],
+      [new THREE.Vector3(4.10, 2.65, 5.10), new THREE.Vector3(4.10, 2.65, 4.62)],
+      [new THREE.Vector3(4.10, 2.65, 4.62), new THREE.Vector3(2.925, 2.65, 4.62)],
+      [new THREE.Vector3(2.925, 2.65, 4.62), new THREE.Vector3(2.50, 2.65, 4.62)],
+      [new THREE.Vector3(2.50, 2.65, 4.62), new THREE.Vector3(2.50, 2.65, 4.30)],
+      [new THREE.Vector3(2.50, 2.65, 4.30), new THREE.Vector3(2.50, 2.65, 3.10)],
+      [new THREE.Vector3(2.50, 2.65, 3.10), new THREE.Vector3(2.30, 2.65, 3.10)],
+      [new THREE.Vector3(2.30, 2.65, 3.10), new THREE.Vector3(2.30, 2.65, 2.50)],
+      [new THREE.Vector3(2.30, 2.65, 2.50), new THREE.Vector3(2.00, 2.65, 2.50)],
+      [new THREE.Vector3(2.00, 2.65, 2.50), new THREE.Vector3(2.00, 0.10, 2.50)],
+    ];
+    const orderedConnectionsAreEndpointOnly = requiredParts.slice(0, -1).every((part, index) => adjacentSegmentsOnlyMeetAtJoin(part, requiredParts[index + 1]));
+    let hasUnexpectedIntersection = false;
+    for (let first = 0; first < requiredParts.length; first += 1) {
+      const firstEndpoints = orderedEndpoints[first];
+      if (!firstEndpoints) { hasUnexpectedIntersection = true; continue; }
+      for (let second = first + 1; second < requiredParts.length; second += 1) {
+        const secondEndpoints = orderedEndpoints[second];
+        if (!secondEndpoints) { hasUnexpectedIntersection = true; continue; }
+        const adjacent = second === first + 1;
+        const endpointInside = pointOnSegmentInterior(firstEndpoints[0], firstEndpoints[1], secondEndpoints[0])
+          || pointOnSegmentInterior(firstEndpoints[0], firstEndpoints[1], secondEndpoints[1])
+          || pointOnSegmentInterior(secondEndpoints[0], secondEndpoints[1], firstEndpoints[0])
+          || pointOnSegmentInterior(secondEndpoints[0], secondEndpoints[1], firstEndpoints[1]);
+        const crossing = planInteriorIntersection(firstEndpoints, secondEndpoints);
+        if ((adjacent && !adjacentSegmentsOnlyMeetAtJoin(requiredParts[first], requiredParts[second])) || (!adjacent && (endpointInside || crossing))) {
+          hasUnexpectedIntersection = true;
+        }
+      }
+    }
+    const wall = parts.find((item) => item.part === 'condensate-pipe-wall-run')?.aabb ?? box('condensate-pipe-wall-run');
+    const entry = parts.find((item) => item.part === 'condensate-pipe-wall-to-wardrobe-top')?.aabb ?? box('condensate-pipe-wall-to-wardrobe-top');
+    const northRun = parts.find((item) => item.part === 'condensate-pipe-penetration-to-bath-ceiling')?.aabb ?? box('condensate-pipe-penetration-to-bath-ceiling');
+    const drop = parts.find((item) => item.part === 'condensate-pipe-at-master-bath-candidate')?.aabb ?? box('condensate-pipe-at-master-bath-candidate');
+    const candidate = new THREE.Vector3(2.0, 0.1, 2.5);
+    const dropPoints = endpoints('condensate-pipe-at-master-bath-candidate') ?? [new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN), new THREE.Vector3(Number.NaN, Number.NaN, Number.NaN)];
+    const dropEndpointDistance = Math.min(...dropPoints.map((point) => point.distanceTo(candidate)));
+    const northPoints = endpoints('condensate-pipe-penetration-to-bath-ceiling');
+    const declaredWallPoint = new THREE.Vector3(2.30, 2.65, 2.86);
+    const trimByPart = new Map<string, THREE.Object3D>();
+    this.exportRoot.traverse((candidate) => {
+      const part = candidate.userData?.part as string | undefined;
+      if (part?.startsWith('condensate-wall-trim')) trimByPart.set(part, candidate);
+    });
+    const trim = trimByPart.get('condensate-wall-trim');
+    const shortFoldTrim = trimByPart.get('condensate-wall-trim-short-fold');
+    const southWallTrim = trimByPart.get('condensate-wall-trim-to-south-wall');
+    const trimBox = trim ? new THREE.Box3().setFromObject(trim) : undefined;
+    const shortFoldTrimBox = shortFoldTrim ? new THREE.Box3().setFromObject(shortFoldTrim) : undefined;
+    const southWallTrimBox = southWallTrim ? new THREE.Box3().setFromObject(southWallTrim) : undefined;
+    const boxGap = (a: THREE.Box3 | undefined, b: THREE.Box3 | undefined): number => {
+      if (!a || !b) return Number.POSITIVE_INFINITY;
+      const dx = Math.max(a.min.x - b.max.x, b.min.x - a.max.x, 0);
+      const dy = Math.max(a.min.y - b.max.y, b.min.y - a.max.y, 0);
+      const dz = Math.max(a.min.z - b.max.z, b.min.z - a.max.z, 0);
+      return Math.hypot(dx, dy, dz);
+    };
+    const checks = {
+      routeHasExpectedSegmentSet: missingParts.length === 0 && unexpectedParts.length === 0 && roots.size === requiredParts.length,
+      allAabbFinite: parts.every(({ aabb }) => aabb.min.every(Number.isFinite) && aabb.max.every(Number.isFinite)),
+      expectedEndpoints: orderedEndpoints.every((actual, index) => Boolean(actual && endpointMatches(requiredParts[index], expectedEndpoints[index]))),
+      routeHasNoUnexpectedIntersections: !hasUnexpectedIntersection,
+      wallRunInMasterBedroomSide: wall.min[0] >= 2.48 - tolerance && wall.max[0] <= 2.52 + tolerance && wall.min[2] >= 3.10 - tolerance && wall.max[2] <= 4.30 + tolerance,
+      wallRunDoesNotCrossWall: wall.max[0] < 2.54,
+      joinsAreConnected: Object.values(joins).every((join) => join <= tolerance),
+      outletTouchesBoxContinuation: joins.outletToWall <= tolerance,
+      boxToWardrobeEntryConnected: joins.boxToWardrobe <= tolerance,
+      wardrobeEntryToWallTopConnected: joins.wardrobeToWallTop <= tolerance,
+      wallTopToWallDropConnected: joins.wallTopToWallDrop <= tolerance,
+      wallDropToWallRunConnected: joins.wallDropToWallRun <= tolerance,
+      wallRunToPenetrationConnected: joins.wallRunToPenetration <= tolerance,
+      penetrationToBathCeilingConnected: joins.penetrationToBathCeiling <= tolerance,
+      bathCeilingToCandidateConnected: joins.bathCeilingToCandidate <= tolerance,
+      candidateToDropConnected: joins.candidateToDrop <= tolerance,
+      adjacentConnectionsAreEndpointOnly: orderedConnectionsAreEndpointOnly,
+      entryInWardrobeTopServiceZone: entry.min[1] >= 2.60 && entry.max[1] <= 2.70 && entry.min[0] <= 2.925 + tolerance && entry.max[0] >= 4.10 - tolerance,
+      northRunReachesMasterBath: northRun.min[0] >= 2.28 - tolerance && northRun.max[0] <= 2.32 + tolerance && northRun.min[2] <= 2.50 + tolerance && northRun.max[2] >= 3.10 - tolerance,
+      crossesMasterBathSouthWallAtDeclaredPoint: Boolean(northPoints && pointOnSegmentInterior(northPoints[0], northPoints[1], declaredWallPoint)),
+      dropReachesCandidate: dropEndpointDistance <= tolerance && drop.min[1] <= 0.10 + tolerance && drop.min[2] <= 2.50 + tolerance && drop.max[2] >= 2.50 - tolerance,
+      wallTrimVisibleAndFlush: Boolean(trimBox && trim?.visible && trimBox.max.x <= 2.54 + tolerance && trimBox.min.x >= 2.46 - tolerance),
+      wallTrimShortFoldCoversTurn: Boolean(shortFoldTrimBox && shortFoldTrim?.visible && shortFoldTrimBox.min.x <= 2.30 + tolerance && shortFoldTrimBox.max.x >= 2.50 - tolerance && shortFoldTrimBox.min.z <= 3.10 + tolerance && shortFoldTrimBox.max.z >= 3.10 - tolerance),
+      wallTrimReachesSouthWallFinish: Boolean(southWallTrimBox && southWallTrim?.visible && southWallTrimBox.min.x <= 2.30 + tolerance && southWallTrimBox.max.x >= 2.30 - tolerance && Math.abs(southWallTrimBox.min.z - 2.92) <= tolerance),
+      wallTrimIsContinuousToSouthWall: boxGap(trimBox, shortFoldTrimBox) <= tolerance && boxGap(shortFoldTrimBox, southWallTrimBox) <= tolerance,
+    };
+    return { ok: Object.values(checks).every(Boolean), segments: parts, joins, checks };
   }
 
   loadMepCoordination(config: MepCoordination, sources: import('@shared/mep-hvac-coordination-schema').MepEndpointSources, lint?: import('@shared/mep-hvac-lint').MepLintResult): void {
@@ -1152,15 +1379,31 @@ export class HouseScene implements SceneApi {
     this.controls.enabled = mode === 'orbit';
     // 天花板：第一人称显示（沉浸），轨道/俯视隐藏（保持 dollhouse 俯视通透）
     this.setCeilingVisible(mode === 'first-person');
+    if (mode === 'first-person' && this.mepOverviewState) {
+      this.setCeilingVisible(true, 0.22);
+    }
   }
 
   setCeilingVisible(visible: boolean, opacity = 1): void {
+    const inspectionVisible = this.hvacRenderer.isCoordinationVisible();
     for (const mesh of this.ceilingMeshes) {
       mesh.visible = visible;
       const material = mesh.material as THREE.MeshStandardMaterial;
-      material.transparent = opacity < 1;
-      material.opacity = opacity;
-      material.depthWrite = opacity >= 1;
+      const inspectionLayer = typeof mesh.userData?.inspectionLayer === 'string';
+      const declaredOpacity = Number(mesh.userData?.inspectionOpacity);
+      const inspectionOpacity = Number.isFinite(declaredOpacity) ? declaredOpacity : 0.18;
+      const effectiveOpacity = inspectionVisible && inspectionLayer ? inspectionOpacity : opacity;
+      material.transparent = effectiveOpacity < 1;
+      material.opacity = effectiveOpacity;
+      material.depthTest = true;
+      material.depthWrite = effectiveOpacity >= 1;
+      if (inspectionVisible && inspectionLayer) {
+        // Covers render before inspection-only pipes; other ceiling zones have
+        // no inspectionLayer and retain their normal material state.
+        mesh.renderOrder = 80;
+      } else {
+        mesh.renderOrder = 0;
+      }
       material.needsUpdate = true;
     }
   }

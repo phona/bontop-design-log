@@ -1,0 +1,22 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: master-condensate-l-route-20260907
+subject: 主卧冷凝水 L 形引至主卫候选点
+created_at: "2026-09-07T00:00:00+08:00"
+status: frozen
+source_policy:
+  authority_refs: [config/layout/model-geometry.yaml, config/house.yaml, config/hvac.yaml, config/mep-hvac-coordination.yaml]
+  runtime_refs: [window.__APP__.inspectMasterBedroomCondensate]
+  evidence_refs: [tmp/screenshots/master-condensate-20260907/master-airterminals-normal-final-20260907.png, tmp/screenshots/master-condensate-20260907/master-airterminals-hvac-final-20260907.png]
+facts:
+  confirmed:
+    - { id: fact-wardrobe-envelope, category: confirmed, statement: 通顶衣柜保持原位置与主体，服务带位于柜顶, value: "x[1.975,2.925] z[4.30,4.88] h=2.80", source_refs: [config/house.yaml], confidence: high, impact: material, status: resolved, verification_method: runtime scene inspection }
+    - { id: fact-head-box-envelope, category: confirmed, statement: 主卧空调盒西缘与衣柜东缘对齐，圆角为 R100，二者以阴影缝和材质区分；圆角盒下底板位于落差底面并持续可见, value: "ceiling_master_ac area=[2.925,4.55,4.20,5.60], corner_radius=0.10, bottom_plate_y=2.502", source_refs: [config/ceiling.yaml, config/house.yaml], confidence: high, impact: material, status: resolved, verification_method: CLI/Web shared ceiling builder metadata }
+    - { id: fact-bath-wall, category: confirmed, statement: 冷凝管沿 w_mbath_east 西完成面内侧贴墙下行，再在 w_mbath_south 以 x=2.30 穿墙，避开门洞和东端 T 墙角；白色包边从 z=3.10 横折连续收至南墙 bedroom-side 完成面, value: {wall_run_x: 2.50, penetration_x: 2.30, z: 2.86, y: 2.65, south_wall_finish_z: 2.92}, source_refs: [config/layout/model-geometry.yaml, config/mep-hvac-coordination.yaml, config/house.yaml], confidence: high, impact: material, status: resolved, verification_method: verify:mep + runtime endpoint/trim inspection }
+    - { id: fact-master-air-terminals, category: confirmed, statement: 主卧送风与回风中心轴统一至 x=3.70；送风南立面侧送 length=0.6 东端 x=4.00，回风底装回检一体 length=0.5 东端 x=3.95，均位于门头盒/门洞上方服务范围并避开东墙与衣柜, value: {axis_x: 3.70, east_wall_bedroom_finish_x: 4.14, supply: {mount_face: south, length: 0.6, position: [3.70, 2.62, 5.585], east_x: 4.00, east_clearance: 0.14}, return: {mount_face: bottom, length: 0.5, position: [3.70, 2.49, 5.20], east_x: 3.95, east_clearance: 0.19, inspection: return grille兼检修}}, source_refs: [config/hvac.yaml, config/ceiling.yaml, tests/server/master-bedroom-dressing.test.ts], confidence: high, impact: material, status: resolved, verification_method: 配置端点与门头盒 AABB 专项断言 }
+  user_decision:
+    - { id: decision-l-route, category: user_decision, statement: 冷凝管应为引向主卫的唯一连续路线，不能形成 T 字、悬空或非相邻交叉, value: true, source_refs: [user-request-20260907], confidence: high, impact: material, status: resolved, verification_method: runtime route topology }
+    - { id: decision-visibility, category: user_decision, statement: 衣柜主体保留；正常视角隐藏管线，检视视角清晰可见, value: true, source_refs: [user-request-20260907], confidence: high, impact: material, status: resolved, verification_method: same-camera A/B screenshots }
+  site_pending:
+    - { id: pending-drain-interface, category: site_pending, statement: 主卫终点仍是候选接入点，管径、连续坡度、存水弯、立管接点和套管待量房及厂家深化, value: null, source_refs: [config/hvac.yaml, config/mep-hvac-coordination.yaml], confidence: not_applicable, impact: material, status: open, verification_method: 量房和 HVAC 深化 }
+unknowns_requiring_alignment: []

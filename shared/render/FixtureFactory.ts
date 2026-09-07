@@ -12,6 +12,9 @@ interface FixturePart {
   name?: string;
   part?: string;
   materialRole?: string;
+  inspectionLayer?: string;
+  inspectionOpacity?: number;
+  inspectionVisibleOnly?: boolean;
 }
 
 interface FixtureRecipe {
@@ -53,10 +56,13 @@ export interface BathSideCabinetRunSpec {
 const FIXTURE_RECIPES: FixtureRecipe[] = [
   // ── Furniture ──
   {
+    // R3：中浅胡桃细框架 + 暖米灰软包床头，床头板最高 0.80m。
     type: 'bed_180',
     parts: [
-      { shape: 'box', size: [1.8, 0.4, 2.0], position: [0, 0.2, 0], color: '#888888' },
-      { shape: 'box', size: [1.8, 0.6, 0.1], position: [0, 0.5, -0.95], color: '#666666' },
+      { shape: 'box', size: [1.8, 0.12, 2.0], position: [0, 0.06, 0], color: '#9b7650', roughness: 0.55, part: 'walnut-bed-frame', materialRole: 'frame' },
+      { shape: 'box', size: [1.68, 0.34, 1.86], position: [0, 0.29, 0], color: '#b9a99b', roughness: 0.9, part: 'warm-greige-mattress', materialRole: 'upholstery' },
+      { shape: 'box', size: [1.8, 0.68, 0.08], position: [0, 0.46, -0.96], color: '#b9a99b', roughness: 0.9, part: 'warm-greige-headboard', materialRole: 'upholstery' },
+      { shape: 'box', size: [1.86, 0.10, 1.92], position: [0, 0.13, 0], color: '#8a6545', roughness: 0.6, part: 'walnut-bed-rail', materialRole: 'frame' },
     ],
   },
   {
@@ -64,6 +70,28 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     parts: [
       { shape: 'box', size: [1.5, 0.4, 2.0], position: [0, 0.2, 0], color: '#888888' },
       { shape: 'box', size: [1.5, 0.6, 0.1], position: [0, 0.5, -0.95], color: '#666666' },
+    ],
+  },
+  {
+    // R3 北侧床头柜：240W×300D×500H，局部 +z 为柜前；rotation=270 后朝西。
+    type: 'master_bedside_cabinet_north',
+    parts: [
+      { shape: 'box', size: [0.24, 0.46, 0.30], position: [0, 0.27, 0], color: '#9b7650', roughness: 0.55, part: 'walnut-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.21, 0.018, 0.27], position: [0, 0.46, 0.156], color: '#a98258', roughness: 0.5, part: 'thin-drawer-front', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.035, 0.018, 0.018], position: [0, 0.46, 0.172], color: '#765334', metalness: 0.75, roughness: 0.3, part: 'brushed-bronze-pull', materialRole: 'hardware' },
+      { shape: 'box', size: [0.20, 0.025, 0.26], position: [0, 0.505, 0], color: '#a98258', roughness: 0.5, part: 'top-panel', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.04, 0.04, 0.04], position: [-0.08, 0.02, -0.10], color: '#765334', metalness: 0.5, roughness: 0.4, part: 'hidden-support-left', materialRole: 'cabinet_support' },
+      { shape: 'box', size: [0.04, 0.04, 0.04], position: [0.08, 0.02, -0.10], color: '#765334', metalness: 0.5, roughness: 0.4, part: 'hidden-support-right', materialRole: 'cabinet_support' },
+    ],
+  },
+  {
+    // R3 南侧床架集成轻托盘：200W×260D，收起态与使用态均由床内侧表达，不向窗帘墙索取支撑。
+    type: 'master_bedside_tray_south',
+    parts: [
+      { shape: 'box', size: [0.20, 0.025, 0.26], position: [0, 0.52, 0], color: '#a98258', roughness: 0.5, part: 'walnut-tray-surface', materialRole: 'shelf' },
+      { shape: 'box', size: [0.20, 0.035, 0.018], position: [0, 0.55, 0.12], color: '#9b7650', roughness: 0.55, part: 'tray-retaining-edge', materialRole: 'frame' },
+      { shape: 'box', size: [0.025, 0.42, 0.025], position: [0, 0.29, -0.09], color: '#765334', metalness: 0.75, roughness: 0.3, part: 'concealed-metal-bracket', materialRole: 'hardware' },
+      { shape: 'box', size: [0.16, 0.018, 0.20], position: [0, 0.27, 0], color: '#8a6545', roughness: 0.6, part: 'fold-away-tray-leaf', materialRole: 'frame' },
     ],
   },
   {
@@ -92,37 +120,175 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'cylinder', size: [0.018, 1.35, 0.018], position: [0, 1.85, 0], rotation: [0, 0, Math.PI / 2], color: '#504b46', metalness: 0.7, roughness: 0.35, part: 'hanging-rod', materialRole: 'hardware' },
     ],
   },
+  {
+    // R6：主卧北墙 600W×580D×2050H，双约 300mm 平开门，关闭态柜门朝南（局部 +z）。
+    // 门板/拉手/铰链由 buildNorthWallWardrobeFixture 挂到独立 hinge pivot。
+    type: 'master_north_wall_wardrobe_600',
+    parts: [
+      { shape: 'box', size: [0.60, 2.05, 0.58], position: [0, 1.025, 0], color: '#9b7650', roughness: 0.55, part: 'north-wardrobe-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.56, 2.05, 0.02], position: [0, 1.025, -0.28], color: '#a98258', roughness: 0.5, part: 'north-wardrobe-back-panel', materialRole: 'back_panel' },
+      { shape: 'box', size: [0.54, 0.025, 0.54], position: [0, 0.04, 0], color: '#8a6545', roughness: 0.6, part: 'north-wardrobe-plinth', materialRole: 'plinth' },
+      ...([-0.24, 0.24].flatMap((x) => [-0.22, 0.22].map((z, index) => ({ shape: 'box' as const, size: [0.07, 0.14, 0.07] as [number, number, number], position: [x, 0.07, z] as [number, number, number], color: '#765334', roughness: 0.6, part: `north-wardrobe-leg-${index + 1}-${x < 0 ? 'l' : 'r'}`, materialRole: 'cabinet_foot' })))),
+    ],
+  },
+  {
+    // R8：历史650 recipe保留；active恢复950 recipe（见下方），两者均为北墙一体木饰面候选。
+    type: 'master_north_wall_wardrobe_650',
+    parts: [
+      { shape: 'box', size: [0.65, 2.45, 0.58], position: [0, 1.225, 0], color: '#9b7650', roughness: 0.55, part: 'north-wardrobe-650-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.61, 2.45, 0.02], position: [0, 1.225, -0.28], color: '#a98258', roughness: 0.5, part: 'north-wardrobe-650-back-panel', materialRole: 'back_panel' },
+      { shape: 'box', size: [0.61, 0.09, 0.54], position: [0, 0.045, 0], color: '#8a6545', roughness: 0.6, part: 'north-wardrobe-650-plinth', materialRole: 'plinth' },
+      { shape: 'box', size: [0.59, 0.025, 0.52], position: [0, 1.05, 0], color: '#a48763', roughness: 0.6, part: 'north-wardrobe-650-shelf', materialRole: 'shelf' },
+      { shape: 'cylinder', size: [0.018, 0.57, 0.018], position: [0, 1.85, 0], rotation: [0, 0, Math.PI / 2], color: '#504b46', metalness: 0.7, roughness: 0.35, part: 'north-wardrobe-650-hanging-rod', materialRole: 'hardware' },
+    ],
+  },
+  {
+    // 通顶衣柜顶部的薄收口（不承担 HVAC 责任）；主体固定顶板已由衣柜 recipe 表达。
+    type: 'master_wardrobe_top_pelmet',
+    parts: [
+      { shape: 'box', size: [0.95, 0.01, 0.58], position: [0, 2.795, 0], color: '#a98258', roughness: 0.5, part: 'pelmet-top-filler', materialRole: 'top_filler' },
+      { shape: 'box', size: [0.015, 0.01, 0.33], position: [0.4675, 2.795, 0.125], color: '#a98258', roughness: 0.5, part: 'pelmet-east-filler', materialRole: 'end_panel' },
+    ],
+  },
+  {
+    // 950 三扇门 recipe；位置与方案约束由 config/house.yaml 和家具校验器负责。
+    type: 'master_north_wall_wardrobe_950',
+    parts: [
+      { shape: 'box', size: [0.95, 2.80, 0.58], position: [0, 1.40, 0], color: '#9b7650', roughness: 0.55, part: 'north-wardrobe-950-carcass', materialRole: 'cabinet_body', inspectionLayer: 'pipe-chase', inspectionOpacity: 0.18 },
+      { shape: 'box', size: [0.91, 2.80, 0.02], position: [0, 1.40, -0.28], color: '#a98258', roughness: 0.5, part: 'north-wardrobe-950-back-panel', materialRole: 'back_panel', inspectionLayer: 'pipe-chase', inspectionOpacity: 0.18 },
+      { shape: 'box', size: [0.91, 0.30, 0.02], position: [0, 2.65, -0.27], color: '#a98258', roughness: 0.5, part: 'north-wardrobe-950-concealed-pipe-chase', materialRole: 'back_panel', inspectionLayer: 'pipe-chase', inspectionOpacity: 0.18 },
+      { shape: 'box', size: [0.91, 0.02, 0.58], position: [0, 2.79, 0], color: '#a98258', roughness: 0.5, part: 'north-wardrobe-950-fixed-top-panel', materialRole: 'top_filler', inspectionLayer: 'pipe-chase', inspectionOpacity: 0.18 },
+      { shape: 'box', size: [0.91, 0.09, 0.54], position: [0, 0.045, 0], color: '#8a6545', roughness: 0.6, part: 'north-wardrobe-950-plinth', materialRole: 'plinth' },
+      { shape: 'box', size: [0.89, 0.025, 0.52], position: [0, 1.05, 0], color: '#a48763', roughness: 0.6, part: 'north-wardrobe-950-shelf', materialRole: 'shelf' },
+      { shape: 'cylinder', size: [0.018, 0.87, 0.018], position: [0, 1.85, 0], rotation: [0, 0, Math.PI / 2], color: '#504b46', metalness: 0.7, roughness: 0.35, part: 'north-wardrobe-950-hanging-rod', materialRole: 'hardware' },
+    ],
+  },
+  {
+    // 2026-09-04 R3：中浅胡桃双平板门、拉丝古铜拉手、四条 140–160mm 腿；总高 2.25m，平面不扩大。
+    type: 'master_freestanding_wardrobe_062',
+    parts: [
+      { shape: 'box', size: [0.56, 0.08, 0.54], position: [0, 0.04, 0], color: '#8a6545', roughness: 0.6, part: 'lower-shadow-rail', materialRole: 'cabinet_foot' },
+      { shape: 'box', size: [0.62, 2.10, 0.60], position: [0, 1.21, 0], color: '#9b7650', roughness: 0.55, part: 'walnut-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.295, 1.98, 0.018], position: [-0.155, 1.21, 0.311], color: '#a98258', roughness: 0.5, part: 'walnut-door-left', materialRole: 'door_front' },
+      { shape: 'box', size: [0.295, 1.98, 0.018], position: [0.155, 1.21, 0.311], color: '#a98258', roughness: 0.5, part: 'walnut-door-right', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 1.98, 0.012], position: [0, 1.21, 0.322], color: '#6f5036', roughness: 0.6, part: 'door-seam-center', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.012, 0.16, 0.02], position: [-0.03, 1.21, 0.326], color: '#765334', metalness: 0.75, roughness: 0.3, part: 'brushed-bronze-handle-left', materialRole: 'hardware' },
+      { shape: 'box', size: [0.012, 0.16, 0.02], position: [0.03, 1.21, 0.326], color: '#765334', metalness: 0.75, roughness: 0.3, part: 'brushed-bronze-handle-right', materialRole: 'hardware' },
+      { shape: 'box', size: [0.56, 0.025, 0.52], position: [0, 1.05, 0], color: '#a98258', roughness: 0.55, part: 'interior-shelf', materialRole: 'shelf' },
+      { shape: 'cylinder', size: [0.016, 0.52, 0.016], position: [0, 1.78, 0], rotation: [0, 0, Math.PI / 2], color: '#765334', metalness: 0.75, roughness: 0.3, part: 'hanging-rod', materialRole: 'hardware' },
+      ...([-0.24, 0.24].flatMap((x) => [-0.22, 0.22].map((z, index) => ({ shape: 'box' as const, size: [0.07, 0.15, 0.07] as [number, number, number], position: [x, 0.075, z] as [number, number, number], color: '#8a6545', roughness: 0.6, part: `walnut-leg-${index + 1}-${x < 0 ? 'l' : 'r'}`, materialRole: 'cabinet_foot' })))),
+    ],
+  },
+  {
+    // R5 横向隔断衣柜：完整 mesh 严格收口于 1.60W×0.60D×2.15H；关闭态南脸，门向 +z 开启。
+    type: 'master_partition_wardrobe_1600',
+    parts: [
+      { shape: 'box', size: [1.60, 2.15, 0.60], position: [0, 1.075, 0], color: '#b8aa99', roughness: 0.62, part: 'partition-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [1.52, 2.05, 0.018], position: [0, 1.075, -0.291], color: '#cbbda9', roughness: 0.55, part: 'furniture-back-panel', materialRole: 'back_panel' },
+      { shape: 'box', size: [1.52, 0.08, 0.54], position: [0, 0.04, 0], color: '#8f7b65', roughness: 0.65, part: 'partition-plinth', materialRole: 'plinth' },
+      { shape: 'box', size: [1.48, 0.025, 0.52], position: [0, 1.04, 0], color: '#c9b49a', roughness: 0.5, part: 'partition-interior-shelf', materialRole: 'shelf' },
+      { shape: 'cylinder', size: [0.018, 1.30, 0.018], position: [0, 1.72, 0], rotation: [0, 0, Math.PI / 2], color: '#5c5147', metalness: 0.7, roughness: 0.35, part: 'partition-hanging-rod', materialRole: 'hardware' },
+
+    ],
+  },
+  {
+    // R6：380W×350D×500H 候选，薄抽+下部开放层，四条细腿；runtime 最高 0.505m。
+    type: 'master_bedside_cabinet_350_north',
+    parts: [
+      { shape: 'box', size: [0.38, 0.30, 0.35], position: [0, 0.25, 0], color: '#a98258', roughness: 0.55, part: 'bedside-350-open-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.34, 0.018, 0.012], position: [0, 0.39, 0.160], color: '#b08d5e', roughness: 0.5, part: 'bedside-350-thin-drawer-front', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.34, 0.025, 0.31], position: [0, 0.4925, 0], color: '#b08d5e', roughness: 0.5, part: 'bedside-350-top', materialRole: 'countertop' },
+      { shape: 'box', size: [0.07, 0.018, 0.014], position: [0, 0.39, 0.168], color: '#765334', metalness: 0.75, roughness: 0.3, part: 'bedside-350-pull', materialRole: 'hardware' },
+      ...([-0.14, 0.14].flatMap((x) => [-0.13, 0.13].map((z, index) => ({ shape: 'box' as const, size: [0.035, 0.19, 0.035] as [number, number, number], position: [x, 0.095, z] as [number, number, number], color: '#765334', roughness: 0.6, part: `bedside-350-leg-${index + 1}-${x < 0 ? 'l' : 'r'}`, materialRole: 'cabinet_foot' })))),
+    ],
+  },
+  {
+    type: 'master_bedside_cabinet_350_south',
+    parts: [
+      { shape: 'box', size: [0.38, 0.30, 0.35], position: [0, 0.25, 0], color: '#a98258', roughness: 0.55, part: 'bedside-350-open-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.34, 0.018, 0.012], position: [0, 0.39, 0.160], color: '#b08d5e', roughness: 0.5, part: 'bedside-350-thin-drawer-front', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.34, 0.025, 0.31], position: [0, 0.4925, 0], color: '#b08d5e', roughness: 0.5, part: 'bedside-350-top', materialRole: 'countertop' },
+      { shape: 'box', size: [0.07, 0.018, 0.014], position: [0, 0.39, 0.168], color: '#765334', metalness: 0.75, roughness: 0.3, part: 'bedside-350-pull', materialRole: 'hardware' },
+      ...([-0.14, 0.14].flatMap((x) => [-0.13, 0.13].map((z, index) => ({ shape: 'box' as const, size: [0.035, 0.19, 0.035] as [number, number, number], position: [x, 0.095, z] as [number, number, number], color: '#765334', roughness: 0.6, part: `bedside-350-leg-${index + 1}-${x < 0 ? 'l' : 'r'}`, materialRole: 'cabinet_foot' })))),
+    ],
+  },
+  {
+    // R5 独立连接收纳段：declared 700W×400D 与真实 mesh 同口径；不承担 DEC-045/HVAC/地插固定责任，检修边界仍 site_pending。
+    type: 'master_dressing_connection_storage',
+    parts: [
+      { shape: 'box', size: [0.70, 0.82, 0.40], position: [0, 0.41, 0], color: '#c2b3a2', roughness: 0.58, part: 'connection-storage-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.66, 0.025, 0.36], position: [0, 0.43, -0.02], color: '#d0c1ae', roughness: 0.52, part: 'connection-storage-door', materialRole: 'door_front' },
+      { shape: 'box', size: [0.62, 0.025, 0.34], position: [0, 0.12, 0], color: '#9a8772', roughness: 0.65, part: 'connection-storage-plinth', materialRole: 'plinth' },
+      { shape: 'box', size: [0.64, 0.025, 0.34], position: [0, 0.70, 0], color: '#cdb89d', roughness: 0.5, part: 'connection-storage-shelf', materialRole: 'shelf' },
+      { shape: 'box', size: [0.07, 0.018, 0.014], position: [0, 0.43, -0.193], color: '#765334', metalness: 0.75, roughness: 0.3, part: 'connection-storage-handle', materialRole: 'hardware' },
+    ],
+  },
   // DEC-045：主卫东墙收纳拆成四个独立 furnishing object；每个 recipe 的局部原点都是自身包围盒中心。
   // local x 是沿墙宽度、local y 是世界竖向高度、local z 是进深；rotation=270 后 local x 沿世界 z，local z 正向朝 west。
   // 四件共享墙面 z≈3.35，以 y 形成紧凑的柜体—板件—顶部收口层次，不形成贯穿侧板或等距书架。
   {
     type: 'mb_vanity_base_cabinet',
     parts: [
-      { shape: 'box', size: [1.50, 0.62, 0.42], position: [0, 0.31, 0], color: '#c9c1b5', roughness: 0.5, part: 'base-cabinet', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [1.42, 0.025, 0.025], position: [0, 0.03, 0.19], color: '#8f877d', roughness: 0.7, part: 'base-plinth', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [1.42, 0.025, 0.018], position: [0, 0.32, 0.211], color: '#e7e0d6', roughness: 0.45, part: 'base-front-reveal', materialRole: 'door_front' },
-      { shape: 'box', size: [0.012, 0.42, 0.018], position: [0, 0.34, 0.211], color: '#8f877d', roughness: 0.7, part: 'base-door-seam', materialRole: 'door_seam' },
+      { shape: 'box', size: [1.70, 0.62, 0.625], position: [0, 0.31, 0], color: '#c9c1b5', roughness: 0.5, part: 'base-cabinet', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [1.62, 0.025, 0.025], position: [0, 0.03, 0.30], color: '#8f877d', roughness: 0.7, part: 'base-plinth', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [1.62, 0.025, 0.018], position: [0, 0.32, 0.3035], color: '#e7e0d6', roughness: 0.45, part: 'base-front-reveal', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 0.42, 0.018], position: [0, 0.34, 0.3035], color: '#8f877d', roughness: 0.7, part: 'base-door-seam', materialRole: 'door_seam' },
     ],
   },
   {
     type: 'mb_vanity_lower_board',
-    parts: [{ shape: 'box', size: [1.50, 0.07, 0.32], position: [0, 1.00, 0], color: '#c9b29a', roughness: 0.45, part: 'lower-board', materialRole: 'shelf' }],
+    parts: [
+      { shape: 'box', size: [1.70, 0.07, 0.565], position: [0, 1.00, 0], color: '#c9b29a', roughness: 0.45, part: 'lower-board', materialRole: 'shelf' },
+    ],
   },
   {
     type: 'mb_vanity_main_board',
-    parts: [{ shape: 'box', size: [1.50, 0.07, 0.32], position: [0, 1.55, 0], color: '#c9b29a', roughness: 0.45, part: 'main-board', materialRole: 'shelf' }],
+    parts: [
+      { shape: 'box', size: [1.70, 0.07, 0.565], position: [0, 1.55, 0], color: '#c9b29a', roughness: 0.45, part: 'main-board', materialRole: 'shelf' },
+    ],
+  },
+  {
+    // Coordination schematic only: the manufacturer condensate spigot inside ac_master is site_pending.
+    type: 'condensate_pipe_ac_outlet',
+    parts: [
+      // ac_master (3.80, 5.10) -> the west finish of w_mb_east (4.10, 5.10).
+      { shape: 'cylinder', size: [0.0125, 0.30, 0.0125], position: [0.15, 2.65, 0], rotation: [0, 0, Math.PI / 2], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-ac-outlet-to-wall', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
+      // Continue inside the extended white HVAC head-box to the wardrobe-top service band.
+      { shape: 'cylinder', size: [0.0125, 0.48, 0.0125], position: [0.30, 2.65, -0.24], rotation: [Math.PI / 2, 0, 0], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-ac-box-to-wardrobe-top', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
+    ],
   },
   {
     type: 'mb_vanity_pvc_box',
     parts: [
-      // 顶部 PVC 包管+灯槽：盒体与默认墙面涂料同色同哑光表达，不重复生成检修门；return_master 回风格栅兼任内机检修口。
-      { shape: 'box', size: [1.40, 0.22, 0.22], position: [0, 2.69, 0], color: '#f7f5ef', roughness: 0.85, metalness: 0, part: 'pvc-service-box', materialRole: 'hvac_coordination_cover' },
-      { shape: 'box', size: [1.12, 0.012, 0.012], position: [0, 2.565, 0.116], color: '#f3eee5', roughness: 0.85, metalness: 0, part: 'cove-light', materialRole: 'cove_light' },
-      // 同一 PVC object 的折线管线罩：与默认墙面涂料统一为低对比哑光材质；由盒体顶部先向北、再向 west 接近 ac_master 冷凝水出口；避让 supply_master/return_master，最高点不超过 2.8m。
-      { shape: 'box', size: [0.30, 0.12, 0.12], position: [0.85, 2.72, 0], color: '#f7f5ef', roughness: 0.85, metalness: 0, part: 'condensate-route-cover-north', materialRole: 'hvac_coordination_cover' },
-      { shape: 'box', size: [0.12, 0.12, 0.24], position: [1.10, 2.72, 0.16], color: '#f7f5ef', roughness: 0.85, metalness: 0, part: 'condensate-route-cover-west', materialRole: 'hvac_coordination_cover' },
-      { shape: 'box', size: [0.14, 0.14, 0.14], position: [1.10, 2.72, 0.30], color: '#f7f5ef', roughness: 0.85, metalness: 0, part: 'condensate-route-elbow', materialRole: 'hvac_coordination_cover' },
-      { shape: 'box', size: [0.20, 0.14, 0.12], position: [1.22, 2.72, 0.36], color: '#f7f5ef', roughness: 0.85, metalness: 0, part: 'condensate-route-cover-approach', materialRole: 'hvac_coordination_cover' },
+      // The pipe stays 40mm clear of the w_mbath_east west finish (x=2.54),
+      // while the white trim terminates at that finish and remains visible in normal mode.
+      { shape: 'box', size: [1.20, 0.08, 0.08], position: [0, 2.65, 0], color: '#f5f5f5', roughness: 0.9, part: 'condensate-wall-trim', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionOpacity: 0.18 },
+      { shape: 'cylinder', size: [0.0125, 1.20, 0.0125], position: [0, 2.65, 0], rotation: [0, 0, Math.PI / 2], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-wall-run', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
+    ],
+  },
+  {
+    type: 'mb_vanity_pvc_wardrobe_entry',
+    parts: [
+      // Extended head-box/wardrobe top endpoint (4.10, 4.62) -> wardrobe east edge (2.925, 4.62).
+      { shape: 'cylinder', size: [0.0125, 1.175, 0.0125], position: [-0.5875, 2.65, 0], rotation: [0, 0, Math.PI / 2], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-wall-to-wardrobe-top', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
+    ],
+  },
+  {
+    type: 'mb_vanity_pvc_service_chase',
+    parts: [
+      // Wardrobe-top service band (2.925, 4.62) -> wall-side pipe center (2.50, 4.62) -> (2.50, 4.30).
+      { shape: 'cylinder', size: [0.0125, 0.425, 0.0125], position: [-0.2125, 2.65, 0], rotation: [0, 0, Math.PI / 2], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-wardrobe-top-to-wall', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
+      { shape: 'cylinder', size: [0.0125, 0.32, 0.0125], position: [-0.425, 2.65, -0.16], rotation: [Math.PI / 2, 0, 0], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-wardrobe-drop-to-wall', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
+      // Minimal short fold near w_mbath_south: turn west at z=3.10, then cross the wall at x=2.30.
+      // Two simple white cover pieces close the exposed turn to the south-wall
+      // finished face (z=2.92 on the bedroom side) without changing the pipe
+      // centerline or the declared penetration.
+      { shape: 'box', size: [0.28, 0.08, 0.08], position: [-0.525, 2.65, -1.52], color: '#f5f5f5', roughness: 0.9, part: 'condensate-wall-trim-short-fold', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionOpacity: 0.18 },
+      { shape: 'box', size: [0.08, 0.08, 0.18], position: [-0.625, 2.65, -1.61], color: '#f5f5f5', roughness: 0.9, part: 'condensate-wall-trim-to-south-wall', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionOpacity: 0.18 },
+      { shape: 'cylinder', size: [0.0125, 0.20, 0.0125], position: [-0.525, 2.65, -1.52], rotation: [0, 0, Math.PI / 2], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-wall-to-penetration', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
+      { shape: 'cylinder', size: [0.0125, 0.60, 0.0125], position: [-0.625, 2.65, -1.82], rotation: [Math.PI / 2, 0, 0], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-penetration-to-bath-ceiling', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
+      { shape: 'cylinder', size: [0.0125, 0.30, 0.0125], position: [-0.775, 2.65, -2.12], rotation: [0, 0, Math.PI / 2], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-bath-ceiling-to-candidate', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
+      { shape: 'cylinder', size: [0.0125, 2.55, 0.0125], position: [-0.925, 1.375, -2.12], rotation: [0, 0, 0], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-at-master-bath-candidate', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
     ],
   },
   {
@@ -160,18 +326,21 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   },
 
   {
-    // 独立落地干式梳妆台：局部 x 为 0.85m 长边，局部 z 为 0.40m 深度；配置 rotation=270 后长边沿世界 z、局部 +z 正面朝西（-x），镜/灯所在局部 -z 靠背侧贴东墙。
+    // 2026-09-03 改：900W×450D×750H 四腿开放式独立梳妆桌（候选未冻结），迁至主卧西侧北段，不再贴东墙。
+    // 局部 x 为 0.90m 长边，局部 z 为 0.45m 深度，局部 +z 为正面（薄抽屉/座位侧）；
+    // house.yaml rotation=90 后长边沿世界 z、正面朝东（+x），使用者坐东侧面向西玻璃；
+    // 桌面镜/桌灯在局部 -z（世界西）侧，桌下局部后侧为地插服务域（桌腿落点见 legs，避开 ≥0.10m）。
     type: 'master_dressing_table',
     parts: [
-      { shape: 'box', size: [0.85, 0.045, 0.40], position: [0, 0.7275, 0], color: '#b08d5e', roughness: 0.42, part: 'rounded-top', materialRole: 'countertop' },
-      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [-0.36, 0.3525, -0.135], color: '#7b5d3f', roughness: 0.5, part: 'leg-north-rear', materialRole: 'cabinet_body' },
-      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [0.36, 0.3525, -0.135], color: '#7b5d3f', roughness: 0.5, part: 'leg-south-rear', materialRole: 'cabinet_body' },
-      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [-0.36, 0.3525, 0.135], color: '#7b5d3f', roughness: 0.5, part: 'leg-north-front', materialRole: 'cabinet_body' },
-      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [0.36, 0.3525, 0.135], color: '#7b5d3f', roughness: 0.5, part: 'leg-south-front', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.74, 0.10, 0.32], position: [0, 0.65, 0.015], color: '#a47c52', roughness: 0.42, part: 'thin-drawer', materialRole: 'drawer_front' },
-      { shape: 'box', size: [0.54, 0.54, 0.025], position: [0, 1.04, -0.13], color: '#bcd2d8', roughness: 0.1, metalness: 0.55, part: 'tabletop-mirror', materialRole: 'mirror' },
-      { shape: 'box', size: [0.38, 0.025, 0.10], position: [0, 0.765, -0.12], color: '#7b5d3f', roughness: 0.5, part: 'mirror-stand', materialRole: 'cabinet_body' },
-      { shape: 'cylinder', size: [0.025, 0.48, 0.025], position: [0.31, 0.99, -0.13], color: '#c9a86a', metalness: 0.55, roughness: 0.3, part: 'plug-in-light', materialRole: 'lighting_fixture' },
+      { shape: 'box', size: [0.90, 0.045, 0.45], position: [0, 0.7275, 0], color: '#b08d5e', roughness: 0.42, part: 'rounded-top', materialRole: 'countertop' },
+      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [-0.39, 0.3525, -0.16], color: '#7b5d3f', roughness: 0.5, part: 'leg-south-rear', materialRole: 'cabinet_body' },
+      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [0.39, 0.3525, -0.16], color: '#7b5d3f', roughness: 0.5, part: 'leg-north-rear', materialRole: 'cabinet_body' },
+      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [-0.39, 0.3525, 0.16], color: '#7b5d3f', roughness: 0.5, part: 'leg-south-front', materialRole: 'cabinet_body' },
+      { shape: 'cylinder', size: [0.065, 0.705, 0.065], position: [0.39, 0.3525, 0.16], color: '#7b5d3f', roughness: 0.5, part: 'leg-north-front', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.80, 0.10, 0.36], position: [0, 0.65, 0.02], color: '#a47c52', roughness: 0.42, part: 'thin-drawer', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.54, 0.54, 0.025], position: [0, 1.04, -0.15], color: '#bcd2d8', roughness: 0.1, metalness: 0.55, part: 'tabletop-mirror', materialRole: 'mirror' },
+      { shape: 'box', size: [0.38, 0.025, 0.10], position: [0, 0.765, -0.14], color: '#7b5d3f', roughness: 0.5, part: 'mirror-stand', materialRole: 'cabinet_body' },
+      { shape: 'cylinder', size: [0.025, 0.48, 0.025], position: [0.33, 0.99, -0.15], color: '#c9a86a', metalness: 0.55, roughness: 0.3, part: 'plug-in-light', materialRole: 'lighting_fixture' },
     ],
   },
   {
@@ -182,6 +351,35 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [0.035, 0.38, 0.035], position: [0.17, 0.19, -0.16], color: '#7b5d3f', roughness: 0.5, part: 'leg-2', materialRole: 'cabinet_body' },
       { shape: 'box', size: [0.035, 0.38, 0.035], position: [-0.17, 0.19, 0.16], color: '#7b5d3f', roughness: 0.5, part: 'leg-3', materialRole: 'cabinet_body' },
       { shape: 'box', size: [0.035, 0.38, 0.035], position: [0.17, 0.19, 0.16], color: '#7b5d3f', roughness: 0.5, part: 'leg-4', materialRole: 'cabinet_body' },
+    ],
+  },
+  {
+    // 2026-09-04 R1 主卧南侧窗带轻中古矮柜（候选未冻结）：1400W×480D×850H，六抽屉、细腿，木色与 master_dressing_table 同族。
+    // 局部 x 为 1.40m 长边，局部 z 为 0.48m 进深，局部 +z 为正面（抽屉侧）；
+    // house.yaml rotation=180 后正面转朝北（世界 -z）对着房间，背面贴南侧窗带下墙（柜高 0.85 < sill 2.07 不挡窗）。
+    type: 'master_hot_season_low_dresser',
+    parts: [
+      { shape: 'cylinder', size: [0.02, 0.20, 0.02], position: [-0.62, 0.10, -0.17], color: '#7b5d3f', roughness: 0.5, part: 'leg-nw', materialRole: 'cabinet_foot' },
+      { shape: 'cylinder', size: [0.02, 0.20, 0.02], position: [0.62, 0.10, -0.17], color: '#7b5d3f', roughness: 0.5, part: 'leg-ne', materialRole: 'cabinet_foot' },
+      { shape: 'cylinder', size: [0.02, 0.20, 0.02], position: [-0.62, 0.10, 0.17], color: '#7b5d3f', roughness: 0.5, part: 'leg-sw', materialRole: 'cabinet_foot' },
+      { shape: 'cylinder', size: [0.02, 0.20, 0.02], position: [0.62, 0.10, 0.17], color: '#7b5d3f', roughness: 0.5, part: 'leg-se', materialRole: 'cabinet_foot' },
+      { shape: 'box', size: [1.36, 0.60, 0.44], position: [0, 0.50, 0], color: '#b08d5e', roughness: 0.45, part: 'carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [1.40, 0.04, 0.48], position: [0, 0.83, 0], color: '#a47c52', roughness: 0.42, part: 'top-panel', materialRole: 'countertop' },
+      { shape: 'box', size: [0.42, 0.26, 0.018], position: [-0.44, 0.365, 0.229], color: '#a98258', roughness: 0.45, part: 'drawer-front-1', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.42, 0.26, 0.018], position: [0, 0.365, 0.229], color: '#a98258', roughness: 0.45, part: 'drawer-front-2', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.42, 0.26, 0.018], position: [0.44, 0.365, 0.229], color: '#a98258', roughness: 0.45, part: 'drawer-front-3', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.42, 0.26, 0.018], position: [-0.44, 0.635, 0.229], color: '#a98258', roughness: 0.45, part: 'drawer-front-4', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.42, 0.26, 0.018], position: [0, 0.635, 0.229], color: '#a98258', roughness: 0.45, part: 'drawer-front-5', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.42, 0.26, 0.018], position: [0.44, 0.635, 0.229], color: '#a98258', roughness: 0.45, part: 'drawer-front-6', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.012, 0.56, 0.012], position: [-0.22, 0.50, 0.241], color: '#7b5d3f', roughness: 0.5, part: 'drawer-seam-v1', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.012, 0.56, 0.012], position: [0.22, 0.50, 0.241], color: '#7b5d3f', roughness: 0.5, part: 'drawer-seam-v2', materialRole: 'door_seam' },
+      { shape: 'box', size: [1.32, 0.012, 0.012], position: [0, 0.50, 0.241], color: '#7b5d3f', roughness: 0.5, part: 'drawer-seam-h', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.09, 0.018, 0.014], position: [-0.44, 0.46, 0.247], color: '#503e2e', metalness: 0.5, roughness: 0.4, part: 'drawer-handle-1', materialRole: 'hardware' },
+      { shape: 'box', size: [0.09, 0.018, 0.014], position: [0, 0.46, 0.247], color: '#503e2e', metalness: 0.5, roughness: 0.4, part: 'drawer-handle-2', materialRole: 'hardware' },
+      { shape: 'box', size: [0.09, 0.018, 0.014], position: [0.44, 0.46, 0.247], color: '#503e2e', metalness: 0.5, roughness: 0.4, part: 'drawer-handle-3', materialRole: 'hardware' },
+      { shape: 'box', size: [0.09, 0.018, 0.014], position: [-0.44, 0.73, 0.247], color: '#503e2e', metalness: 0.5, roughness: 0.4, part: 'drawer-handle-4', materialRole: 'hardware' },
+      { shape: 'box', size: [0.09, 0.018, 0.014], position: [0, 0.73, 0.247], color: '#503e2e', metalness: 0.5, roughness: 0.4, part: 'drawer-handle-5', materialRole: 'hardware' },
+      { shape: 'box', size: [0.09, 0.018, 0.014], position: [0.44, 0.73, 0.247], color: '#503e2e', metalness: 0.5, roughness: 0.4, part: 'drawer-handle-6', materialRole: 'hardware' },
     ],
   },
   {
@@ -488,26 +686,30 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     // while remaining legible in the 3D export without annotation icons.
     type: 'socket',
     parts: [
-      { shape: 'box', size: [0.18, 0.13, 0.045], position: [0, 0, 0], color: '#dfe3e5', roughness: 0.52, part: 'socket-box', materialRole: 'fixture_body' },
-      { shape: 'box', size: [0.172, 0.122, 0.012], position: [0, 0, 0.029], color: '#f7f8f8', roughness: 0.38, part: 'socket-faceplate', materialRole: 'faceplate' },
-      { shape: 'box', size: [0.045, 0.018, 0.008], position: [-0.045, 0, 0.039], color: '#4b5358', roughness: 0.72, part: 'socket-opening-left', materialRole: 'receptacle' },
-      { shape: 'box', size: [0.045, 0.018, 0.008], position: [0.045, 0, 0.039], color: '#4b5358', roughness: 0.72, part: 'socket-opening-right', materialRole: 'receptacle' },
-      { shape: 'box', size: [0.008, 0.112, 0.006], position: [-0.082, 0, 0.038], color: '#aab1b5', roughness: 0.48, part: 'socket-border-left', materialRole: 'faceplate_edge' },
-      { shape: 'box', size: [0.008, 0.112, 0.006], position: [0.082, 0, 0.038], color: '#aab1b5', roughness: 0.48, part: 'socket-border-right', materialRole: 'faceplate_edge' },
-      { shape: 'box', size: [0.164, 0.008, 0.006], position: [0, -0.057, 0.038], color: '#aab1b5', roughness: 0.48, part: 'socket-border-bottom', materialRole: 'faceplate_edge' },
-      { shape: 'box', size: [0.164, 0.008, 0.006], position: [0, 0.057, 0.038], color: '#aab1b5', roughness: 0.48, part: 'socket-border-top', materialRole: 'faceplate_edge' },
+      { shape: 'box', size: [0.080, 0.080, 0.012], position: [0, 0, -0.008], color: '#dfe3e5', roughness: 0.52, part: 'socket-box', materialRole: 'fixture_body' },
+      { shape: 'box', size: [0.086, 0.086, 0.018], position: [0, 0, 0], color: '#f7f8f8', roughness: 0.38, part: 'socket-faceplate', materialRole: 'faceplate' },
+      { shape: 'box', size: [0.032, 0.010, 0.006], position: [-0.018, 0.005, 0.013], color: '#4b5358', roughness: 0.72, part: 'socket-five-hole-left', materialRole: 'receptacle' },
+      { shape: 'box', size: [0.032, 0.010, 0.006], position: [0.018, 0.005, 0.013], color: '#4b5358', roughness: 0.72, part: 'socket-five-hole-right', materialRole: 'receptacle' },
+      { shape: 'box', size: [0.010, 0.032, 0.006], position: [0, -0.014, 0.013], color: '#4b5358', roughness: 0.72, part: 'socket-five-hole-ground', materialRole: 'receptacle' },
+      { shape: 'box', size: [0.008, 0.070, 0.004], position: [-0.039, 0, 0.013], color: '#aab1b5', roughness: 0.48, part: 'socket-border-left', materialRole: 'faceplate_edge' },
+      { shape: 'box', size: [0.008, 0.070, 0.004], position: [0.039, 0, 0.013], color: '#aab1b5', roughness: 0.48, part: 'socket-border-right', materialRole: 'faceplate_edge' },
+      { shape: 'box', size: [0.070, 0.008, 0.004], position: [0, -0.039, 0.013], color: '#aab1b5', roughness: 0.48, part: 'socket-border-bottom', materialRole: 'faceplate_edge' },
+      { shape: 'box', size: [0.070, 0.008, 0.004], position: [0, 0.039, 0.013], color: '#aab1b5', roughness: 0.48, part: 'socket-border-top', materialRole: 'faceplate_edge' },
+      { shape: 'box', size: [0.018, 0.008, 0.006], position: [0, 0.029, 0.013], color: '#25282b', roughness: 0.72, part: 'socket-usbc', materialRole: 'usb_c' },
     ],
   },
   {
     type: 'switch',
     parts: [
-      { shape: 'box', size: [0.08, 0.08, 0.02], position: [0, 0, 0], color: '#3f4650', roughness: 0.6 },
+      { shape: 'box', size: [0.086, 0.086, 0.018], position: [0, 0, 0], color: '#f7f8f8', roughness: 0.38, part: 'switch-faceplate', materialRole: 'faceplate' },
+      { shape: 'box', size: [0.048, 0.055, 0.008], position: [0, 0, 0.014], color: '#3f4650', roughness: 0.6, part: 'switch-rocker', materialRole: 'rocker' },
     ],
   },
   {
     type: 'switch_2way',
     parts: [
-      { shape: 'box', size: [0.08, 0.08, 0.02], position: [0, 0, 0], color: '#3f4650', roughness: 0.6 },
+      { shape: 'box', size: [0.086, 0.086, 0.018], position: [0, 0, 0], color: '#f7f8f8', roughness: 0.38, part: 'switch-2way-faceplate', materialRole: 'faceplate' },
+      { shape: 'box', size: [0.048, 0.055, 0.008], position: [0, 0, 0.014], color: '#3f4650', roughness: 0.6, part: 'switch-2way-rocker', materialRole: 'rocker' },
     ],
   },
   {
@@ -601,7 +803,7 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'washer',
     parts: [
-      { shape: 'box', size: [0.60, 0.85, 0.60], position: [0, 0.425, 0], color: '#eeeeee', roughness: 0.4 },
+      { shape: 'box', size: [0.60, 0.85, 0.60], position: [0, 0.4775, 0], color: '#eeeeee', roughness: 0.4 },
     ],
   },
   // ── 电器（house.yaml furnishings，2026-08-23 补缺员）──
@@ -721,6 +923,47 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [0.008, 0.07, 0.012], position: [-0.201, 0.38, 0.29], color: '#6a5540', metalness: 0.35, roughness: 0.35, part: 'door-handle-right', materialRole: 'hardware' },
     ],
   },
+  {
+    // 2026-09-03 书房东墙季节后台柜（候选未冻结）：1.70×0.55×2.40m 非通顶模块化柜。
+    // 局部 x 为 1.70m 沿墙长边，局部 z 为 0.55m 进深，局部 +z 为正面/柜门；
+    // house.yaml rotation=270 后长边沿世界 z、柜门朝西（-x）、背板朝东墙；
+    // 浅色平板门；柜顶 2.40m 与边吊底 2.50m 间约 0.10m 灰缝（non-blocking 评审项）。
+    type: 'study_seasonal_wardrobe_wall',
+    parts: [
+      { shape: 'box', size: [1.64, 0.08, 0.49], position: [0, 0.04, 0], color: '#c9c4ba', roughness: 0.6, part: 'plinth', materialRole: 'plinth' },
+      { shape: 'box', size: [1.70, 2.40, 0.55], position: [0, 1.20, 0], color: '#e8e4dc', roughness: 0.55, part: 'carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.55, 2.28, 0.018], position: [-0.565, 1.20, 0.286], color: '#efece4', roughness: 0.5, part: 'door-left', materialRole: 'door_front' },
+      { shape: 'box', size: [0.55, 2.28, 0.018], position: [0, 1.20, 0.286], color: '#efece4', roughness: 0.5, part: 'door-center', materialRole: 'door_front' },
+      { shape: 'box', size: [0.55, 2.28, 0.018], position: [0.565, 1.20, 0.286], color: '#efece4', roughness: 0.5, part: 'door-right', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 2.28, 0.012], position: [-0.2825, 1.20, 0.297], color: '#b9b4aa', roughness: 0.6, part: 'door-seam-left', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.012, 2.28, 0.012], position: [0.2825, 1.20, 0.297], color: '#b9b4aa', roughness: 0.6, part: 'door-seam-right', materialRole: 'door_seam' },
+      { shape: 'box', size: [1.62, 0.025, 0.47], position: [0, 1.05, 0], color: '#dcd8ce', roughness: 0.55, part: 'interior-shelf', materialRole: 'shelf' },
+      { shape: 'cylinder', size: [0.016, 1.60, 0.016], position: [0, 1.85, 0], rotation: [0, 0, Math.PI / 2], color: '#504b46', metalness: 0.7, roughness: 0.35, part: 'hanging-rod', materialRole: 'hardware' },
+    ],
+  },
+  {
+    // 2026-09-03 可调哑铃对（含底座，收纳态）：0.55×0.45m 包络；双铃并排放置在底座托盘上。
+    // 局部 x 为 0.55m 宽（哑铃杆方向），局部 z 为 0.45m 深；渲染用，预算走 home_fitness 单套口径。
+    type: 'adjustable_dumbbell_pair',
+    parts: [
+      { shape: 'box', size: [0.55, 0.06, 0.45], position: [0, 0.03, 0], color: '#25282b', metalness: 0.65, roughness: 0.4, part: 'base-tray', materialRole: 'frame' },
+      { shape: 'cylinder', size: [0.02, 0.30, 0.02], position: [0, 0.14, -0.11], rotation: [0, 0, Math.PI / 2], color: '#9ba1a6', metalness: 0.85, roughness: 0.25, part: 'handle-left', materialRole: 'hardware' },
+      { shape: 'box', size: [0.07, 0.14, 0.14], position: [-0.18, 0.14, -0.11], color: '#1f2326', metalness: 0.35, roughness: 0.65, part: 'head-left-a', materialRole: 'weight_plate' },
+      { shape: 'box', size: [0.07, 0.14, 0.14], position: [0.18, 0.14, -0.11], color: '#1f2326', metalness: 0.35, roughness: 0.65, part: 'head-left-b', materialRole: 'weight_plate' },
+      { shape: 'cylinder', size: [0.02, 0.30, 0.02], position: [0, 0.14, 0.11], rotation: [0, 0, Math.PI / 2], color: '#9ba1a6', metalness: 0.85, roughness: 0.25, part: 'handle-right', materialRole: 'hardware' },
+      { shape: 'box', size: [0.07, 0.14, 0.14], position: [-0.18, 0.14, 0.11], color: '#1f2326', metalness: 0.35, roughness: 0.65, part: 'head-right-a', materialRole: 'weight_plate' },
+      { shape: 'box', size: [0.07, 0.14, 0.14], position: [0.18, 0.14, 0.11], color: '#1f2326', metalness: 0.35, roughness: 0.65, part: 'head-right-b', materialRole: 'weight_plate' },
+    ],
+  },
+  {
+    // 2026-09-03 可卷训练垫（收纳态）：卷起圆筒立放，footprint 0.25×0.25m；渲染用，不单独计价。
+    // 圆筒沿局部 y 竖立（高约 1.5m），配一道捆扎带；使用时展开为使用态 AABB（专项测试验证）。
+    type: 'rollable_training_mat',
+    parts: [
+      { shape: 'cylinder', size: [0.125, 1.50, 0.125], position: [0, 0.75, 0], color: '#3a3d40', roughness: 0.9, part: 'rolled-mat', materialRole: 'floor_protection' },
+      { shape: 'cylinder', size: [0.128, 0.06, 0.128], position: [0, 0.60, 0], color: '#6b6f73', roughness: 0.7, part: 'strap', materialRole: 'fabric' },
+    ],
+  },
 ];
 
 function addPart(
@@ -764,6 +1007,12 @@ function addPart(
     : baseName;
   mesh.userData.part = partId;
   mesh.userData.materialRole = materialRole;
+  if (part.inspectionLayer) mesh.userData.inspectionLayer = part.inspectionLayer;
+  if (part.inspectionOpacity !== undefined) mesh.userData.inspectionOpacity = part.inspectionOpacity;
+  if (part.inspectionVisibleOnly !== undefined) {
+    mesh.userData.inspectionVisibleOnly = part.inspectionVisibleOnly;
+    mesh.visible = !part.inspectionVisibleOnly;
+  }
   if (surface) mesh.userData.surface = surface;
   group.add(mesh);
   return mesh;
@@ -773,7 +1022,274 @@ function addBox(group: THREE.Group, fixtureType: string, index: number, size: [n
   return addPart(group, fixtureType, index, { shape: 'box', size, position, color, ...options }, surface);
 }
 
+export type PartitionWardrobeDoorState = 'closed' | 'open';
+export type NorthWallWardrobeDoorState = 'closed' | 'open';
+export type NorthWallWardrobeDoorConfiguration = 'closed' | 'left_open' | 'right_open' | 'both_open';
+export type NorthWallWardrobe950DoorState = 'closed' | 'open';
+/** R7 三门 950 衣柜门态矩阵：closed + 3 单开 + 3 组合 + 全开。 */
+export type NorthWallWardrobe950DoorConfiguration =
+  | 'closed'
+  | 'left_open'
+  | 'middle_open'
+  | 'right_open'
+  | 'left_middle_open'
+  | 'left_right_open'
+  | 'middle_right_open'
+  | 'all_open';
+export type NorthWallWardrobe650DoorState = 'closed' | 'open';
+/** R7 收窄版 650 双门衣柜门态矩阵：closed + 单开 ×2 + 全开。 */
+export type NorthWallWardrobe650DoorConfiguration = 'closed' | 'left_open' | 'right_open' | 'both_open';
+
+const PARTITION_WARDROBE_DOOR_OPEN_LIMIT_DEG = 95;
+const NORTH_WALL_WARDROBE_DOOR_OPEN_LIMIT_DEG = 95;
+const NORTH_WALL_WARDROBE_950_DOOR_OPEN_LIMIT_DEG = 95;
+const NORTH_WALL_WARDROBE_650_DOOR_OPEN_LIMIT_DEG = 95;
+
+const NORTH_WALL_WARDROBE_950_CONFIGURATION_OPEN: Record<NorthWallWardrobe950DoorConfiguration, [boolean, boolean, boolean]> = {
+  closed: [false, false, false],
+  left_open: [true, false, false],
+  middle_open: [false, true, false],
+  right_open: [false, false, true],
+  left_middle_open: [true, true, false],
+  left_right_open: [true, false, true],
+  middle_right_open: [false, true, true],
+  all_open: [true, true, true],
+};
+
+/** Set one or all R5 door roots, including the actual runtime hinge rotation. */
+export function setPartitionWardrobeDoorState(rootOrGroup: THREE.Object3D, state: PartitionWardrobeDoorState, doorIndex?: number): void {
+  rootOrGroup.traverse((object) => {
+    const index = object.userData.doorIndex as number | undefined;
+    if (index === undefined || (doorIndex !== undefined && index !== doorIndex)) return;
+    const hingeSide = object.userData.hingeSide as 'left' | 'right';
+    const angle = state === 'open'
+      ? (hingeSide === 'left' ? -PARTITION_WARDROBE_DOOR_OPEN_LIMIT_DEG : PARTITION_WARDROBE_DOOR_OPEN_LIMIT_DEG)
+      : 0;
+    object.rotation.set(0, THREE.MathUtils.degToRad(angle), 0);
+    object.userData.state = state;
+    object.userData.rotationAxis = 'y';
+    object.userData.rotationDeg = angle;
+    const leaf = object.children.find((child) => child.userData.doorLeaf === true);
+    if (leaf) leaf.rotation.y = THREE.MathUtils.degToRad(state === 'open' ? (hingeSide === 'left' ? 5 : -5) : 0);
+  });
+}
+
+export function setNorthWallWardrobeDoorState(rootOrGroup: THREE.Object3D, state: NorthWallWardrobeDoorState, doorIndex?: number): void {
+  rootOrGroup.traverse((object) => {
+    const index = object.userData.doorIndex as number | undefined;
+    if (index === undefined || (doorIndex !== undefined && doorIndex !== index)) return;
+    const hingeSide = object.userData.hingeSide as 'left' | 'right';
+    const angle = state === 'open'
+      ? (hingeSide === 'left' ? -NORTH_WALL_WARDROBE_DOOR_OPEN_LIMIT_DEG : NORTH_WALL_WARDROBE_DOOR_OPEN_LIMIT_DEG)
+      : 0;
+    object.rotation.set(0, THREE.MathUtils.degToRad(angle), 0);
+    object.userData.state = state;
+    object.userData.rotationAxis = 'y';
+    object.userData.rotationDeg = angle;
+  });
+}
+
+export function setNorthWallWardrobeDoorConfiguration(root: THREE.Object3D, configuration: NorthWallWardrobeDoorConfiguration): void {
+  const leftOpen = configuration === 'left_open' || configuration === 'both_open';
+  const rightOpen = configuration === 'right_open' || configuration === 'both_open';
+  setNorthWallWardrobeDoorState(root, leftOpen ? 'open' : 'closed', 0);
+  setNorthWallWardrobeDoorState(root, rightOpen ? 'open' : 'closed', 1);
+}
+
+export function getNorthWallWardrobeDoorAabb(root: THREE.Object3D): THREE.Box3 {
+  root.updateMatrixWorld(true);
+  return new THREE.Box3().setFromObject(root);
+}
+
+export function setNorthWallWardrobe950DoorState(rootOrGroup: THREE.Object3D, state: NorthWallWardrobe950DoorState, doorIndex?: number): void {
+  rootOrGroup.traverse((object) => {
+    const index = object.userData.doorIndex as number | undefined;
+    if (index === undefined || (doorIndex !== undefined && doorIndex !== index)) return;
+    const hingeSide = object.userData.hingeSide as 'left' | 'right';
+    const angle = state === 'open'
+      ? (hingeSide === 'left' ? -NORTH_WALL_WARDROBE_950_DOOR_OPEN_LIMIT_DEG : NORTH_WALL_WARDROBE_950_DOOR_OPEN_LIMIT_DEG)
+      : 0;
+    object.rotation.set(0, THREE.MathUtils.degToRad(angle), 0);
+    object.userData.state = state;
+    object.userData.rotationAxis = 'y';
+    object.userData.rotationDeg = angle;
+  });
+}
+
+export function setNorthWallWardrobe950DoorConfiguration(root: THREE.Object3D, configuration: NorthWallWardrobe950DoorConfiguration): void {
+  const open = NORTH_WALL_WARDROBE_950_CONFIGURATION_OPEN[configuration];
+  open.forEach((isOpen, index) => setNorthWallWardrobe950DoorState(root, isOpen ? 'open' : 'closed', index));
+}
+
+export function getNorthWallWardrobe950DoorAabb(root: THREE.Object3D): THREE.Box3 {
+  root.updateMatrixWorld(true);
+  return new THREE.Box3().setFromObject(root);
+}
+
+export function setNorthWallWardrobe650DoorState(rootOrGroup: THREE.Object3D, state: NorthWallWardrobe650DoorState, doorIndex?: number): void {
+  rootOrGroup.traverse((object) => {
+    const index = object.userData.doorIndex as number | undefined;
+    if (index === undefined || (doorIndex !== undefined && doorIndex !== index)) return;
+    const hingeSide = object.userData.hingeSide as 'left' | 'right';
+    const angle = state === 'open'
+      ? (hingeSide === 'left' ? -NORTH_WALL_WARDROBE_650_DOOR_OPEN_LIMIT_DEG : NORTH_WALL_WARDROBE_650_DOOR_OPEN_LIMIT_DEG)
+      : 0;
+    object.rotation.set(0, THREE.MathUtils.degToRad(angle), 0);
+    object.userData.state = state;
+    object.userData.rotationAxis = 'y';
+    object.userData.rotationDeg = angle;
+  });
+}
+
+export function setNorthWallWardrobe650DoorConfiguration(root: THREE.Object3D, configuration: NorthWallWardrobe650DoorConfiguration): void {
+  const leftOpen = configuration === 'left_open' || configuration === 'both_open';
+  const rightOpen = configuration === 'right_open' || configuration === 'both_open';
+  setNorthWallWardrobe650DoorState(root, leftOpen ? 'open' : 'closed', 0);
+  setNorthWallWardrobe650DoorState(root, rightOpen ? 'open' : 'closed', 1);
+}
+
+export function getNorthWallWardrobe650DoorAabb(root: THREE.Object3D): THREE.Box3 {
+  root.updateMatrixWorld(true);
+  return new THREE.Box3().setFromObject(root);
+}
+
+function buildNorthWallWardrobe650Fixture(): THREE.Group {
+  const group = new THREE.Group();
+  group.userData.fixtureType = 'master_north_wall_wardrobe_650';
+  group.userData.defaultDoorState = 'closed';
+  const recipe = FIXTURE_RECIPES.find((entry) => entry.type === 'master_north_wall_wardrobe_650');
+  recipe?.parts.forEach((part, index) => addPart(group, 'master_north_wall_wardrobe_650', index, part));
+  const doorWidth = 0.30;
+  // 两扇约 300mm 窄平开门，铰链 [left,right]；±95° 扫掠不互碰，东缘退至 x=3.25 避 d_mb 门扇带。
+  const hingeSides: Array<'left' | 'right'> = ['left', 'right'];
+  [-0.155, 0.155].forEach((centerX, index) => {
+    const hingeSide = hingeSides[index];
+    const hingeX = centerX + (hingeSide === 'left' ? -doorWidth / 2 : doorWidth / 2);
+    const pivot = new THREE.Group();
+    pivot.name = `master_north_wall_wardrobe_650:door:${index + 1}`;
+    pivot.position.set(hingeX, 0, 0.281);
+    pivot.userData = { doorId: `master_north_wall_wardrobe_650:door:${index + 1}`, part: `north-wardrobe-650-door-root-${index}`, materialRole: 'door_root', doorIndex: index, hingeSide, state: 'closed', openLimitDeg: 95, rotationAxis: 'y', rotationDeg: 0 };
+    const leaf = new THREE.Group();
+    leaf.name = `master_north_wall_wardrobe_650:door-leaf:${index + 1}`;
+    leaf.userData.doorLeaf = true;
+    pivot.add(leaf);
+    const panel = addBox(leaf, 'master_north_wall_wardrobe_650', index, [doorWidth, 2.36, 0.018], [hingeSide === 'left' ? doorWidth / 2 : -doorWidth / 2, 1.21, 0], '#a98258', { part: `north-wardrobe-650-door-${index}`, materialRole: 'door_front' });
+    panel.userData.objectId = `master_north_wall_wardrobe_650:door:${index}:panel`;
+    const handle = addBox(leaf, 'master_north_wall_wardrobe_650', index + 10, [0.018, 0.16, 0.018], [hingeSide === 'left' ? doorWidth - 0.055 : -doorWidth + 0.055, 1.05, 0], '#765334', { part: `north-wardrobe-650-handle-${index}`, materialRole: 'hardware', metalness: 0.75, roughness: 0.3 });
+    handle.userData.objectId = `master_north_wall_wardrobe_650:door:${index}:handle`;
+    const hinge = addBox(pivot, 'master_north_wall_wardrobe_650', index + 20, [0.018, 2.32, 0.018], [hingeSide === 'left' ? 0.01 : -0.01, 1.21, -0.002], '#765334', { part: `north-wardrobe-650-hinge-${index}`, materialRole: 'hardware', metalness: 0.65, roughness: 0.35 });
+    hinge.userData.objectId = `master_north_wall_wardrobe_650:door:${index}:hinge`;
+    group.add(pivot);
+  });
+  return group;
+}
+
+function buildNorthWallWardrobe950Fixture(): THREE.Group {
+  const group = new THREE.Group();
+  group.userData.fixtureType = 'master_north_wall_wardrobe_950';
+  group.userData.defaultDoorState = 'closed';
+  const recipe = FIXTURE_RECIPES.find((entry) => entry.type === 'master_north_wall_wardrobe_950');
+  recipe?.parts.forEach((part, index) => addPart(group, 'master_north_wall_wardrobe_950', index, part));
+  const doorWidth = 0.29;
+  // 门扇间留 40mm 缝 + 铰链 [left, right, right]：±95° 开启时铰链侧扫掠回摆约 0.036m < 门缝 0.04m，
+  // 任意组合开启（含单开中间门）AABB 包络互不干涉。
+  const hingeSides: Array<'left' | 'right'> = ['left', 'right', 'right'];
+  [-0.33, 0, 0.33].forEach((centerX, index) => {
+    const hingeSide = hingeSides[index];
+    const hingeX = centerX + (hingeSide === 'left' ? -doorWidth / 2 : doorWidth / 2);
+    const pivot = new THREE.Group();
+    pivot.name = `master_north_wall_wardrobe_950:door:${index + 1}`;
+    pivot.position.set(hingeX, 0, 0.281);
+    pivot.userData = { doorId: `master_north_wall_wardrobe_950:door:${index + 1}`, part: `north-wardrobe-950-door-root-${index}`, materialRole: 'door_root', doorIndex: index, hingeSide, state: 'closed', openLimitDeg: 95, rotationAxis: 'y', rotationDeg: 0 };
+    const leaf = new THREE.Group();
+    leaf.name = `master_north_wall_wardrobe_950:door-leaf:${index + 1}`;
+    leaf.userData.doorLeaf = true;
+    pivot.add(leaf);
+    const panel = addBox(leaf, 'master_north_wall_wardrobe_950', index, [doorWidth, 2.41, 0.018], [hingeSide === 'left' ? doorWidth / 2 : -doorWidth / 2, 1.235, 0], '#a98258', { part: `north-wardrobe-950-door-${index}`, materialRole: 'door_front' });
+    panel.userData.objectId = `master_north_wall_wardrobe_950:door:${index}:panel`;
+    const handle = addBox(leaf, 'master_north_wall_wardrobe_950', index + 10, [0.018, 0.16, 0.018], [hingeSide === 'left' ? doorWidth - 0.055 : -doorWidth + 0.055, 1.075, 0], '#765334', { part: `north-wardrobe-950-handle-${index}`, materialRole: 'hardware', metalness: 0.75, roughness: 0.3 });
+    handle.userData.objectId = `master_north_wall_wardrobe_950:door:${index}:handle`;
+    const hinge = addBox(pivot, 'master_north_wall_wardrobe_950', index + 20, [0.018, 2.32, 0.018], [hingeSide === 'left' ? 0.01 : -0.01, 1.21, -0.002], '#765334', { part: `north-wardrobe-950-hinge-${index}`, materialRole: 'hardware', metalness: 0.65, roughness: 0.35 });
+    hinge.userData.objectId = `master_north_wall_wardrobe_950:door:${index}:hinge`;
+    group.add(pivot);
+  });
+  return group;
+}
+
+function buildNorthWallWardrobeFixture(): THREE.Group {
+  const group = new THREE.Group();
+  group.userData.fixtureType = 'master_north_wall_wardrobe_600';
+  group.userData.defaultDoorState = 'closed';
+  const recipe = FIXTURE_RECIPES.find((entry) => entry.type === 'master_north_wall_wardrobe_600');
+  recipe?.parts.forEach((part, index) => addPart(group, 'master_north_wall_wardrobe_600', index, part));
+  const doorWidth = 0.295;
+  [-0.15, 0.15].forEach((centerX, index) => {
+    const hingeSide = index === 0 ? 'left' : 'right' as const;
+    const hingeX = centerX + (hingeSide === 'left' ? -doorWidth / 2 : doorWidth / 2);
+    const pivot = new THREE.Group();
+    pivot.name = `master_north_wall_wardrobe_600:door:${index + 1}`;
+    pivot.position.set(hingeX, 0, 0.276);
+    pivot.userData = { doorId: `master_north_wall_wardrobe_600:door:${index + 1}`, part: `north-wardrobe-door-root-${index}`, materialRole: 'door_root', doorIndex: index, hingeSide, state: 'closed', openLimitDeg: 95, rotationAxis: 'y', rotationDeg: 0 };
+    const leaf = new THREE.Group();
+    leaf.name = `master_north_wall_wardrobe_600:door-leaf:${index + 1}`;
+    leaf.userData.doorLeaf = true;
+    pivot.add(leaf);
+    const panel = addBox(leaf, 'master_north_wall_wardrobe_600', index, [doorWidth, 1.95, 0.018], [hingeSide === 'left' ? doorWidth / 2 : -doorWidth / 2, 1.025, 0], '#a98258', { part: `north-wardrobe-door-${index}`, materialRole: 'door_front' });
+    panel.userData.objectId = `master_north_wall_wardrobe_600:door:${index}:panel`;
+    const handle = addBox(leaf, 'master_north_wall_wardrobe_600', index + 10, [0.018, 0.16, 0.018], [hingeSide === 'left' ? doorWidth - 0.055 : -doorWidth + 0.055, 1.025, 0], '#765334', { part: `north-wardrobe-handle-${index}`, materialRole: 'hardware', metalness: 0.75, roughness: 0.3 });
+    handle.userData.objectId = `master_north_wall_wardrobe_600:door:${index}:handle`;
+    const hinge = addBox(pivot, 'master_north_wall_wardrobe_600', index + 20, [0.018, 1.92, 0.018], [hingeSide === 'left' ? 0.01 : -0.01, 1.025, 0.005], '#765334', { part: `north-wardrobe-hinge-${index}`, materialRole: 'hardware', metalness: 0.65, roughness: 0.35 });
+    hinge.userData.objectId = `master_north_wall_wardrobe_600:door:${index}:hinge`;
+    group.add(pivot);
+  });
+  return group;
+}
+
+function buildPartitionWardrobeFixture(): THREE.Group {
+  const group = new THREE.Group();
+  group.userData.fixtureType = 'master_partition_wardrobe_1600';
+  group.userData.defaultDoorState = 'closed';
+  const recipe = FIXTURE_RECIPES.find((entry) => entry.type === 'master_partition_wardrobe_1600');
+  recipe?.parts.forEach((part, index) => addPart(group, 'master_partition_wardrobe_1600', index, part));
+  const doorWidth = 0.36;
+  const doorCenters = [-0.60, -0.20, 0.20, 0.60];
+  doorCenters.forEach((centerX, index) => {
+    const hingeSide = index % 2 === 0 ? 'left' : 'right' as const;
+    const hingeX = centerX + (hingeSide === 'left' ? -doorWidth / 2 : doorWidth / 2);
+    const pivot = new THREE.Group();
+    pivot.name = `master_partition_wardrobe_1600:door:${index + 1}`;
+    pivot.userData = {
+      objectId: `master_partition_wardrobe_1600:door:${index + 1}`,
+      part: `partition-door-root-${index + 1}`,
+      materialRole: 'door_root',
+      doorIndex: index,
+      hingeSide,
+      state: 'closed',
+      openLimitDeg: 95,
+    };
+    pivot.position.set(hingeX, 0, 0.281);
+    const leaf = new THREE.Group();
+    leaf.name = `master_partition_wardrobe_1600:door-leaf:${index + 1}`;
+    leaf.userData.doorLeaf = true;
+    pivot.add(leaf);
+    const panel = addBox(leaf, 'master_partition_wardrobe_1600', index, [doorWidth, 2.02, 0.018], [hingeSide === 'left' ? doorWidth / 2 : -doorWidth / 2, 1.075, 0], '#c4b39e', { part: `partition-door-${index + 1}`, materialRole: 'door_front' });
+    panel.userData.objectId = `master_partition_wardrobe_1600:door:${index + 1}:panel`;
+    const handle = addBox(leaf, 'master_partition_wardrobe_1600', index + 10, [0.018, 0.16, 0.018], [hingeSide === 'left' ? doorWidth - 0.055 : -doorWidth + 0.055, 1.075, 0], '#765334', { part: `partition-handle-${index + 1}`, materialRole: 'hardware', metalness: 0.75, roughness: 0.3 });
+    handle.userData.objectId = `master_partition_wardrobe_1600:door:${index + 1}:handle`;
+    const seam = addBox(leaf, 'master_partition_wardrobe_1600', index + 20, [0.012, 2.02, 0.012], [hingeSide === 'left' ? doorWidth - 0.01 : -doorWidth + 0.01, 1.075, 0], '#806c57', { part: `partition-door-seam-${index + 1}`, materialRole: 'door_seam' });
+    seam.userData.objectId = `master_partition_wardrobe_1600:door:${index + 1}:seam`;
+    const hinge = addBox(pivot, 'master_partition_wardrobe_1600', index + 30, [0.018, 2.00, 0.018], [hingeSide === 'left' ? 0.01 : -0.01, 1.075, 0.005], '#765334', { part: `partition-hinge-${index + 1}`, materialRole: 'hardware', metalness: 0.65, roughness: 0.35 });
+    hinge.userData.objectId = `master_partition_wardrobe_1600:door:${index + 1}:hinge`;
+    group.add(pivot);
+  });
+  return group;
+}
+
 export function buildFixture(type: string): THREE.Group | null {
+  if (type === 'master_partition_wardrobe_1600') return buildPartitionWardrobeFixture();
+  if (type === 'master_north_wall_wardrobe_600') return buildNorthWallWardrobeFixture();
+  if (type === 'master_north_wall_wardrobe_950') return buildNorthWallWardrobe950Fixture();
+  if (type === 'master_north_wall_wardrobe_650') return buildNorthWallWardrobe650Fixture();
   const recipe = FIXTURE_RECIPES.find((r) => r.type === type);
   if (!recipe) return null;
   const group = new THREE.Group();

@@ -410,22 +410,26 @@ mep_strategy:
 furnishings:
   # 坐标为 model-geometry 局部坐标系（米）；有 x/z 的为 placed 实例（渲染），无 x/z 的为 count-only（只喂预算/库存）
   master_bedroom:
-    # 房间寝区 x∈[0,4.20] z∈[5.55,9.80]；南侧上飘窗室内占用带 z=8.70..9.80，高柜南缘不得进入
-    # 2026-09-02 视觉反馈修正：高柜贴飘窗北缘并扩至 2.4m；床北移避让主卧门/门扇扫掠，保持 rotation=270 靠东墙
-    # 2026-09-02（迭代 mb-bedshift-stripcabinet-20260902）：床再北移 0.25m 至 z=6.60，床头随床电气点位同步平移
-    - { type: bed_180, x: 3.20, z: 6.60, rotation: 270 }     # AABB x[2.20,4.20] z[5.70,7.50]；东缘贴实体墙，床北缘到 d_mb 门洞扫掠约0.50m；床南缘至高柜柜门操作侧约0.60m（原0.35m功能风险解除，依据本轮业主决策）
-    - { type: master_wardrobe_tall_240, x: 3.00, z: 8.40, rotation: 0 } # AABB x[1.80,4.20] z[8.10,8.70]；东西向、东端贴 w_mb_east、北向柜门，南缘贴飘窗北缘不进入 z>8.70 带
+    # 房间寝区 x∈[0,4.20] z∈[5.55,9.80]；南侧上飘窗室内占用带 z=8.70..9.80
+    # 2026-09-06：950W×580D×2800H 三门定制模块化衣柜，真正通顶；下部活动门保留约2.41m，上部固定木饰面门头内隐藏冷凝水管槽；HVAC与家具责任独立；南帘闭帘0.12m软包络与堆叠端仍 site_pending。
+    - { type: bed_180, x: 3.20, z: 7.40, rotation: 270 }     # 保留；runtime mesh z[6.47,8.33]
+    - { type: master_north_wall_wardrobe_950, x: 2.45, z: 4.59, rotation: 0 } # 西缘 x=1.975；AABB x[1.975,2.925] z[4.30,4.88]，完成高2.80m；三扇约0.29m平开门朝南，上部为固定门头；隐藏冷凝水管槽；防倾倒site_pending
+    - { type: master_wardrobe_top_pelmet, x: 2.45, z: 4.59, rotation: 0 } # 通顶柜顶部薄收口，主体固定门头已由衣柜对象表达；不承担HVAC责任
+    - { type: master_bedside_cabinet_350_north, x: 4.01, z: 6.245, rotation: 0 } # R6 北侧床头柜：380W×350D×500H候选，服务北插座 z=6.95
+    - { type: master_bedside_cabinet_350_south, x: 4.01, z: 8.555, rotation: 0 } # R6 南侧床头柜：380W×350D×500H候选，服务南插座/双控；闭帘软包络仅warning/BLOCKED
     - { type: mb_washbasin_cabinet, x: 0.575, z: 3.16, rotation: 0 } # 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：东移 5cm 且收宽 1.10→1.05（世界 x[0.05,1.10]），西让百叶升降缝、东留门套缝，盆/龙头/墙排居中至 x=0.575；2026-09-01 纯洗手柜：取消梳妆膝位，东侧封闭抽屉收纳，贴 w_mbath_south 南脸；待量房确认墙排与抽屉避让
     - { type: faucet }                                           # 随台盆外移（预算 count-only），给水见 plumbing.yaml faucet_mbath_vanity
-    - { type: master_dressing_table, x: 3.65, z: 9.15, rotation: 270 } # 南侧低家具：AABB x[3.45,3.85] z[8.725,9.575]，位于飘窗下方；与高柜南缘留0.075m，窗帘/窗扇待现场确认
-    - { type: dressing_stool, x: 3.40, z: 9.15, rotation: 270 } # 专用小凳，收纳态压入台下，使用时向西拉出
-    # DEC-045：四件独立对象共用同一 along 中心；东墙沿墙方向是世界 z，y 才是高度层次。
-    # 统一 wall=w_mbath_east、wall_side=west、rotation=270，四件后缘贴 x=2.60，沿 z 同轴成套。
-    - { type: mb_vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.35 } # 落地底柜：1.50m×0.42m×0.62m，y=0..0.62，z=2.60..4.10
-    - { type: mb_vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.35 } # 下板：1.50m×0.32m×0.07m，y=0.965..1.035，与落地柜留约0.345m使用间距
-    - { type: mb_vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.35 } # 主板：1.50m×0.32m×0.07m，y=1.515..1.585，与下板拉开约0.48m
-    - { type: mb_vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.35 } # 顶部 PVC 包管+灯槽：y=2.58..2.80；同一 object 的 route-cover parts 向北再向 west 接近 ac_master 冷凝水出口。return_master 回风格栅兼任内机检修口，不重复设置检修门；仅遮挡冷凝水管/保温和灯槽，管径/坡度/存水弯/最终接点待深化
-    - { type: plant_fiddle, x: 1.10, z: 9.40, rotation: 270 } # 2026-08-26 从条带 (2.30,3.55) 挪至主卧西南角地面并西移；朝向床区（西飘窗与南窗带交界，地面可站区；DEC-045 柜体占原绿植位）
+    - { type: master_dressing_table, x: 0.425, z: 6.05, rotation: 90 } # 2026-09-04 R1 候选未冻结：贴窗梳妆位——900W×450D×750H 四腿开放式独立桌贴西侧北段玻璃；AABB x[0.20,0.65] z[5.60,6.50]；rotation=90 局部长边沿世界 z、正面（抽屉/座位侧）朝东，使用者坐东侧面向西玻璃；桌背（西缘 x=0.20）与玻璃幕墙 x=0 留约 0.20m 通风/冷凝缝；西窗帘线 x[1.10,1.35] 在桌东侧，不压帘；北缘避门扇扫掠 z≤5.55
+    - { type: dressing_stool, x: 0.42, z: 6.05, rotation: 90 } # 2026-09-04 R1 候选未冻结：随桌贴窗，收纳态完整收入桌下（AABB x[0.22,0.62] z[5.84,6.26] ⊂ 桌 footprint），使用时向东拉出
+    - { type: master_hot_season_low_dresser, x: 1.05, z: 9.31, rotation: 180 } # 2026-09-06：向东微调0.05m以修复穿模；南侧窗带轻中古六抽矮柜 1400W×480D×850H（h<2.07 不挡窗带）；AABB x[0.35,1.75] z[9.07,9.55]；rotation=180 局部 +z 正面转朝北、抽屉面对房间；职责：热季折叠衣物+衣柜 overflow（不放内衣/睡衣/脏衣/洗护——那些归 DEC-045）；西端距西帘堆叠侧留余量、东侧远离 sock_master_bed_r/sock_master_curtain 点位；南帘堆叠端 site_pending
+    # DEC-045：底柜保留原位；上下双层悬浮板共用 wall=w_mbath_east、wall_side=west、rotation=270，贴墙西侧完成面，不再从衣柜回退。
+    - { type: mb_vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.45 } # 2026-09-06：为与上下悬浮板南端对齐，沿墙长度调整为1.70m并将中心along设为3.45；落地底柜：1.70m×0.625m×0.62m；西侧边缘对齐 d_mbath:frame:right 东侧外缘，y=0..0.62，z=2.60..4.30
+    - { type: mb_vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.45, width: 1.70, depth: 0.565 } # 下悬浮板：按0.12m墙厚语义贴 w_mbath_east 西侧完成面，板中心x=2.2575、西缘x=1.975、东缘x=2.54，深0.565m与底柜西缘一致且不超过门框，z=2.60..4.30，y=0.965..1.035
+    - { type: mb_vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.45, width: 1.70, depth: 0.565 } # 上悬浮板：与下板同轴同尺寸，板中心x=2.2575、西缘x=1.975、东缘x=2.54，深0.565m与底柜西缘一致且不超过门框，y=1.515..1.585
+    - { type: condensate_pipe_ac_outlet, x: 3.80, z: 5.10, rotation: 0 } # coordination schematic/pending：ac_master 内厂家冷凝水出口未现场确认；独立圆管段接至主卧东墙贴墙 run，不接 return/supply 格栅。
+    - { type: mb_vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.70 } # 2026-09-07：沿 w_mbath_east 西侧完成面内留约40mm贴墙走，管心 x=2.50、z=3.10..4.30；白色平直包边与墙面收口，南端由 service_chase 的 L 形白色 trim 连续收至 w_mbath_south bedroom-side finish z=2.92，管线仅HVAC检视态显示。
+    - { type: mb_vanity_pvc_wardrobe_entry, x: 4.10, z: 4.62, rotation: 0 } # 延伸空调盒/通顶衣柜顶部服务带西行至衣柜东缘 (2.925,4.62)；仅检视态显示，柜体主体保留。
+    - { type: mb_vanity_pvc_service_chase, x: 2.925, z: 4.62, rotation: 0 } # 柜顶内转至墙行 x=2.50，再于 z=3.10 向 x=2.30 短折穿 w_mbath_south；两段白色 L 形包边覆盖横折并收至南墙 bedroom-side finish z=2.92；主卫吊顶内到候选点(2.00,0.1,2.5)并下引；pending，非施工依据。
     # mattress/curtain/ceiling count-only entries remain after placed furniture
     - { type: mattress_180 }
     - { type: curtain_set }
@@ -441,17 +445,16 @@ furnishings:
     - { type: curtain_set }
     - { type: ceiling_light }
   bedroom_se:
-    # 书房横向训练区：房间 x∈[13.40,16.40] z∈[5.55,8.70]（2026-08-27 南玻璃栏板凹进至 z=8.70，南侧 z[8.70,9.80] 为室外凹口）；北门 d_bese swing x∈[13.40,14.30] z∈[5.65,6.55]。
-    # 书桌椅与低柜随南幕墙北移 1.10m，保持"贴南幕墙/距南墙 50mm"的相对关系；东南角为普通书房低矮收纳柜，不是健身器材收纳柜。深蹲架放原衣柜区域附近并向西/房间中部调整，奥杆东西向，架/垫/凳/杠铃统一横向方案；保护杠、侧挂片随现有架体朝向逻辑旋转。
-    # 完整模型/AABB：垫 x∈[14.30,16.10]、z∈[5.90,7.50]；架体 x∈[14.4425,15.9575]、z∈[6.175,7.125]；卧推凳 x∈[14.925,15.475]、z∈[6.03,7.27]；奥杆 x∈[14.10,16.30]、z∈[6.61,6.69]；低柜 x∈[15.9475,16.3525]、z∈[7.45,8.65]，沿东墙南北向展开，背面向东墙并留约 50mm 完成面余量，南缘 z=8.65 距南墙约 50mm 不挡窗扇/窗帘。训练垫覆盖架体和操作区，避开门洞扫掠及南侧桌椅；器械与低柜均独立落地，不锚固玻璃幕墙。
+    # 房间 x∈[13.40,16.40] z∈[5.55,8.70]（2026-08-27 南玻璃栏板凹进至 z=8.70，南侧 z[8.70,9.80] 为室外凹口）；北门 d_bese swing x∈[13.40,14.30] z∈[5.65,6.55]；凸窗内缘 z=7.60；东北角吊 x[15.80,16.40] z[5.55,5.85] 底 2.50m。
+    # 2026-09-03（迭代 master-flexible-frontstage-20260903，全部新坐标候选未冻结）：重训器械（squat_rack/barbell_olympic/weight_plate_set/rubber_training_mat）与东墙低柜 low_room_cabinet 退出（recipe/dims 保留）；
+    # 东墙改 1.70m 非通顶季节后台柜（h2.40，柜门朝西，柜顶与吊底灰缝约 0.10m 登记 non-blocking 评审）；保留书桌椅原位；轻训练三件套（bench_adjustable/adjustable_dumbbell_pair/rollable_training_mat）默认收纳态展示。
+    # 收纳态 datum：凳横放凸窗带（西让椅位、北让后台柜、南让南帘）、哑铃底座靠后台柜南缘地面、卷垫立放柜北端贴东墙；三者使用态 AABB 约 x[14.30,15.80]×z[5.65,7.45] 由专项测试验证。
     - { type: desk, x: 13.70, z: 8.05, rotation: 90 }       # 长边贴西侧南段玻璃幕墙，南端近南幕墙（随 2026-08-27 南墙凹进北移 1.10m）；独立落地
     - { type: chair, x: 14.40, z: 8.05, rotation: 270 }     # 桌东侧配套椅（随书桌北移）
-    - { type: low_room_cabinet, x: 16.15, z: 8.05, rotation: 0 } # 2026-08-26：局部 -X 为正面/柜门，rotation=0° 后朝西；局部 +X 背面朝东墙，南北向展开；东缘 x=16.3525，距东墙完成面约 50mm，南缘 z=8.65，距南墙约 50mm；不固定玻璃幕墙、不遮挡窗帘窗扇
-    - { type: rubber_training_mat, x: 15.20, z: 6.60, rotation: 0 } # 1.80×1.60m，长边东西向，西缘避开门洞扫掠；2026-08-27 北缘 z=7.40 避让南移后的低柜（z≥7.45）
-    - { type: squat_rack, x: 15.20, z: 6.65, rotation: 0 }       # 横向架体；保护杠前伸与侧挂片随架体方向
-    - { type: bench_adjustable, x: 15.20, z: 6.65, rotation: 90 }   # 长轴南北向，与东西向奥杆垂直并处于架内
-    - { type: barbell_olympic, x: 15.20, z: 6.65, rotation: 0 }   # 2.20m 长轴东西向，两侧保留房间余量
-    - { type: weight_plate_set, count: 1 }  # 预算/库存计数；可见杠铃片已集成到深蹲架左右侧挂载，不再单独落地
+    - { type: study_seasonal_wardrobe_wall, x: 16.075, z: 6.75, rotation: 270 } # 2026-09-03 候选未冻结：1.70m（沿墙）×0.55m（深）×2.40m（高）非通顶季节后台柜；AABB x[15.80,16.35] z[5.90,7.60]；rotation=270 局部长边沿世界 z、柜门朝西；东缘留 0.05m 完成面余量不贴死 x=16.40；北缘 z=5.90 避开东北角吊段（z≤5.85）；南缘齐凸窗内缘 z=7.60；防倾倒固定待结构确认
+    - { type: bench_adjustable, x: 15.30, z: 7.95, rotation: 0 } # 2026-09-03 收纳态（候选未冻结）：AABB x[14.68,15.92] z[7.675,8.225]，横放凸窗带，西让椅位约 0.03m、北让后台柜 0.075m、南缘距南墙 0.475m 不挡窗帘；使用态 AABB 约 x[14.30,15.80]×z[5.65,7.45] 由专项测试验证
+    - { type: adjustable_dumbbell_pair, x: 16.15, z: 7.90, rotation: 90 } # 2026-09-03 收纳态（候选未冻结）：含底座包络 AABB x[15.925,16.375] z[7.625,8.175]，靠后台柜南缘地面、东留约 0.025m；使用态同上专项验证
+    - { type: rollable_training_mat, x: 16.075, z: 5.775, rotation: 0 } # 2026-09-03 收纳态（候选未冻结）：卷起圆筒立放，AABB x[15.95,16.20] z[5.65,5.90]，靠后台柜北端贴东墙，位于角吊（底 2.50m）下方不遮检修；使用态同上专项验证
     - { type: curtain_set }
     - { type: ceiling_light }
   study:

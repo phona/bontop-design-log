@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { RuleEngine } from '../../server/rule-engine.js';
-import type { CurrentScheme, DesignRulesConfig } from '../../shared/types.js';
+import type { CurrentScheme, DesignRulesConfig, FurnishingsYaml } from '../../shared/types.js';
 
 const rulesConfig: DesignRulesConfig = {
   version: '1.0',
@@ -497,5 +497,159 @@ describe('BudgetCalculator', () => {
     const snapshot = calc.calculate(scheme);
     assert.equal(snapshot.projectCeiling, 190000);
     assert.equal(snapshot.overCeilingBy, snapshot.totalActual - 190000);
+  });
+
+  it('wardrobe topic bills per-room with distinct options (master frontstage / study seasonal backstage)', () => {
+    const catalog = ProjectCatalog.load('.');
+    // Stub furnishings so this test does not depend on in-flight house.yaml edits:
+    // master_bedroom 用 R7 北墙650定制柜（收窄避 d_mb 门扇），bedroom_se 用新后台柜，bedroom_nw 沿用既有 wardrobe_180
+    (catalog as unknown as { furnishings: FurnishingsYaml }).furnishings = {
+      master_bedroom: [{ type: 'master_north_wall_wardrobe_950', x: 1.0, z: 1.0, rotation: 0 }],
+      bedroom_se: [{ type: 'study_seasonal_wardrobe_wall', x: 1.0, z: 1.0, rotation: 0 }],
+      bedroom_nw: [{ type: 'wardrobe_180', x: 1.0, z: 1.0, rotation: 0 }],
+    };
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const calc = new BudgetCalculator(catalog, realRules);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        wardrobe: {
+          default: 'wardrobe_180_01',
+          roomOverrides: {
+            master_bedroom: 'wardrobe_north_950_custom_01',
+            bedroom_se: 'study_seasonal_wardrobe_170_01',
+          },
+        },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    const wardrobeItems = snapshot.lineItems.filter((li) => li.topic === 'wardrobe');
+    assert.equal(wardrobeItems.length, 3, 'three rooms each produce one wardrobe line');
+    const mb = wardrobeItems.find((li) => li.roomId === 'master_bedroom');
+    assert.equal(mb?.optionId, 'wardrobe_north_950_custom_01');
+    assert.equal(mb?.unitPrice, 0);
+    const mbOption = catalog.getOption('wardrobe', 'wardrobe_north_600_finished_01');
+    assert.ok(mbOption);
+    assert.match(mbOption.name, /600/);
+    assert.equal(mbOption.data && (mbOption.data as { spec?: string }).spec, '600×580×2050mm');
+    const legacyOption = catalog.getOption('wardrobe', 'wardrobe_062_finished_01');
+    assert.ok(legacyOption, 'legacy option remains historical');
+    const se = wardrobeItems.find((li) => li.roomId === 'bedroom_se');
+    assert.equal(se?.optionId, 'study_seasonal_wardrobe_170_01');
+    assert.equal(se?.unitPrice, 2600);
+    const nw = wardrobeItems.find((li) => li.roomId === 'bedroom_nw');
+    assert.equal(nw?.optionId, 'wardrobe_180_01', 'rooms without override fall back to topic default');
+    assert.equal(nw?.unitPrice, 3200);
+    const prices = new Set(wardrobeItems.map((li) => li.unitPrice));
+    assert.equal(prices.size, 3, 'per-room pricing, not a single whole-house default');
+  });
+
+  it('home_fitness bills only the count-only set; placed equipment stays render-only', () => {
+    const catalog = ProjectCatalog.load('.');
+    // 可见器材 adjustable_dumbbell_pair / bench_adjustable / rollable_training_mat 故意不映射
+    // （只渲染不计价）；只有 count-only 的 home_fitness_light_set 应产生一条预算行
+    (catalog as unknown as { furnishings: FurnishingsYaml }).furnishings = {
+      bedroom_se: [
+        { type: 'adjustable_dumbbell_pair', x: 15.0, z: 6.5, rotation: 0 },
+        { type: 'bench_adjustable', x: 15.2, z: 6.65, rotation: 90 },
+        { type: 'rollable_training_mat', x: 15.2, z: 6.6, rotation: 0 },
+        { type: 'home_fitness_light_set', count: 1 },
+      ],
+    };
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const calc = new BudgetCalculator(catalog, realRules);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        home_fitness: { default: 'home_fitness_light_set_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    const fitnessItems = snapshot.lineItems.filter((li) => li.topic === 'home_fitness');
+    assert.equal(fitnessItems.length, 1, 'exactly one home_fitness line (the count-only set)');
+    assert.equal(fitnessItems[0].roomId, 'bedroom_se');
+    assert.equal(fitnessItems[0].optionId, 'home_fitness_light_set_01');
+    assert.equal(fitnessItems[0].quantity, 1);
+    assert.equal(fitnessItems[0].unitPrice, 1800);
+    assert.equal(fitnessItems[0].cost, 1800);
+    assert.equal(
+      snapshot.lineItems.filter((li) => li.roomId === 'bedroom_se').length,
+      1,
+      'placed dumbbell/bench/mat produce no budget lines (render-only, anti triple-billing)'
+    );
+  });
+
+  it('wardrobe_180_01 topic fix: orphan miscellaneous topic gone, existing priced lines unchanged', () => {
+    const catalog = ProjectCatalog.load('.');
+    assert.equal(
+      catalog.getTopic('miscellaneous'),
+      undefined,
+      'miscellaneous orphan topic eliminated (wardrobe_180_01 was its only option)'
+    );
+    assert.ok(
+      catalog.getOption('wardrobe', 'wardrobe_180_01'),
+      'wardrobe_180_01 is now a wardrobe option'
+    );
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const calc = new BudgetCalculator(catalog, realRules);
+    const scheme = JSON.parse(readFileSync('./data/current-scheme.json', 'utf8')) as CurrentScheme;
+    const snapshot = calc.calculate(scheme);
+    // 纠偏前后 diff：design-rules 从未为 miscellaneous 声明 lineItem，current-scheme 也无
+    // selections.miscellaneous —— 孤儿 topic 不产生任何计价行，纠偏移除 0 行、新增 0 行
+    assert.ok(
+      !snapshot.lineItems.some((li) => li.topic === 'miscellaneous'),
+      'no miscellaneous line items (topic never had a lineItem)'
+    );
+    const wardrobeItems = snapshot.lineItems.filter((li) => li.topic === 'wardrobe');
+    // 既有衣柜计价行（bedroom_nw / study 的 wardrobe_180 家具，无 roomOverride）保持 default wardrobe_240_01
+    for (const roomId of ['bedroom_nw', 'study']) {
+      const li = wardrobeItems.find((item) => item.roomId === roomId);
+      assert.ok(li, `wardrobe line exists for ${roomId}`);
+      assert.equal(li.optionId, 'wardrobe_240_01', `${roomId} still on default wardrobe_240_01`);
+      assert.equal(li.unitPrice, 4200, `${roomId} unit price unchanged by the topic fix`);
+    }
+  });
+
+  it('dresser topic bills the low dresser on its own line without polluting wardrobe (R1)', () => {
+    const catalog = ProjectCatalog.load('.');
+    // R7：主卧同时持有北墙650定制柜（收窄版，wardrobe topic）与南侧矮柜（dresser topic），
+    // 两者必须各自成行——矮柜并入 wardrobe 会按柜价重复计价
+    (catalog as unknown as { furnishings: FurnishingsYaml }).furnishings = {
+      master_bedroom: [
+        { type: 'master_north_wall_wardrobe_950', x: 3.075, z: 4.59, rotation: 0 },
+        { type: 'master_hot_season_low_dresser', x: 1.00, z: 9.31, rotation: 180 },
+      ],
+      bedroom_nw: [{ type: 'wardrobe_180', x: 3.50, z: 4.00, rotation: 0 }],
+    };
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const calc = new BudgetCalculator(catalog, realRules);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        wardrobe: {
+          default: 'wardrobe_180_01',
+          roomOverrides: { master_bedroom: 'wardrobe_north_950_custom_01' },
+        },
+        dresser: { default: 'light_midcentury_dresser_01', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    const dresserItems = snapshot.lineItems.filter((li) => li.topic === 'dresser');
+    assert.equal(dresserItems.length, 1, 'dresser topic produces exactly one line');
+    assert.equal(dresserItems[0].roomId, 'master_bedroom');
+    assert.equal(dresserItems[0].optionId, 'light_midcentury_dresser_01');
+    assert.equal(dresserItems[0].quantity, 1);
+    assert.equal(dresserItems[0].unitPrice, 2200);
+    assert.equal(dresserItems[0].cost, 2200);
+    // wardrobe 不受污染：主卧仅计 R7 北墙650定制柜（只数衣柜，不含矮柜）
+    const mbWardrobe = snapshot.lineItems.find((li) => li.topic === 'wardrobe' && li.roomId === 'master_bedroom');
+    assert.ok(mbWardrobe);
+    assert.equal(mbWardrobe.optionId, 'wardrobe_north_950_custom_01');
+    assert.equal(mbWardrobe.quantity, 1);
+    assert.equal(mbWardrobe.unitPrice, 0);
+    assert.equal(mbWardrobe.cost, 0);
+    // 矮柜归 furniture_soft 池；R7 衣柜 price pending 为 0（不伪装完成）
+    const furnitureSoft = snapshot.categories.find((c) => c.key === 'furniture_soft');
+    assert.ok(furnitureSoft && furnitureSoft.autoActual >= 2200, 'dresser + pending wardrobe both flow into furniture_soft');
   });
 });

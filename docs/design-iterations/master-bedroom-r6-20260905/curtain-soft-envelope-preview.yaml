@@ -1,0 +1,37 @@
+schema: curtain-soft-envelope-preview/v1
+iteration_id: master-bedroom-r6-20260905
+status: site_pending
+scope: 主卧南窗窗帘软包络预演；仅表达候选体量，不创建 SceneElement，不参与硬碰撞或地面禁区判断
+preview:
+  room_id: master_bedroom
+  top_box:
+    z: [8.70, 8.95]
+    role: ceiling_only
+    confidence: confirmed
+    status: confirmed
+  closed_drop:
+    wall_z: 9.80
+    interior_offset_m: 0.12
+    candidate_thickness_m: 0.12
+    candidate_z: [9.56, 9.68]
+    confidence: inferred
+    status: site_pending
+    conflict_level: warning
+    acceptance: BLOCKED
+    checked_objects: [master_bedside_cabinet_350_south, master_hot_season_low_dresser]
+    note: 依据现有 SceneBuilder 布帘默认 interior offset 0.12m 建立闭帘候选软包络；软冲突只报 warning/BLOCKED，不能当作结构硬禁区
+  open_stack:
+    actual_end: null
+    candidate_thickness_m: null
+    confidence: site_pending
+    status: site_pending
+    note: 仅记录真实端部；未知时为空，不用 curtain_box 地面投影代替，也不创建通宽禁区
+  retained_objects:
+    - master_hot_season_low_dresser
+    - six_drawer_south_window_dresser
+  floor_hard_exclusion: null
+  notes:
+    - 南窗六抽矮柜保持原位、可见、可移
+    - 无通宽500mm地面硬禁区；软包络与通行验证分离
+    - 当前候选包络与六抽柜在 z[9.56,9.68] / z[9.07,9.55] 间保留约10mm平面缝；南床头柜不相交
+    - HVAC、结构、窗帘轨道/堆叠、产品外廓均 site_pending

@@ -1,0 +1,32 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: master-bedroom-r7-20260906
+status: implementation
+source_policy:
+  authority_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml, config/house.yaml, config/electrical.yaml, config/ceiling.yaml, config/hvac.yaml, config/mep-hvac-coordination.yaml]
+  plan_ref: 用户批准的 R7 几何/机电预演计划（2026-09-06，auto 模式会话内批准）
+facts:
+  confirmed:
+    - {id: fact-north-wall, statement: "主卧北侧实体墙段基准 z=4.30；R7 衣柜背贴该墙（back face 世界 z=4.30），门朝南", source_refs: [R7批准计划, config/layout/model-geometry.yaml], status: resolved}
+    - {id: fact-wardrobe-r8, statement: "master_north_wall_wardrobe_950（R8 active）：定制模块化一体木饰面，950W×580D×2450H，placed (3.075,4.59) r=0，AABB x[2.60,3.55] z[4.30,4.88]，三扇约 0.29m 窄平开门（铰链 left/right/right）朝南、各自真实 pivot、±95°，支持多态真实 mesh；与 d_mb 开启门扇带 x[3.30,4.20] z[4.63,4.67] 硬冲突约 250mm，必须阻塞；650 仅历史保留", source_refs: [R8恢复原方案 2026-09-06], status: resolved}
+    - {id: fact-hvac-headbox, statement: "ceiling_master_ac 适配950衣柜：area [3.55,4.55,4.20,5.60]（西缘 x=3.55 与衣柜东缘对齐），thickness 0.30，底 2.50m；侧送下回，南立面窄线形送风、底部回风兼检修；不做灯槽；HVAC 责任保留在 ceiling/hvac 配置，不并入家具", source_refs: [R8恢复原方案, config/ceiling.yaml], status: resolved}
+    - {id: fact-indoor-master, statement: "ac_master 内机候选移至门头盒内 (3.80,5.10)；supply_master (3.80,2.62,5.585) 南立面侧送 length 0.6；return_master (3.95,2.49,5.20) 底装回检一体 length 0.5", source_refs: [R7批准计划, config/hvac.yaml], status: resolved}
+    - {id: fact-sock-master-ac, statement: "sock_master_ac 随内机移至 (4.05,4.60) h=2.60，位于门头盒东端空腔内、靠近走廊穿孔 z≈4.6", source_refs: [R7批准计划, config/electrical.yaml], status: resolved}
+    - {id: fact-bed-r7, statement: "bed_180 保持 (3.20,7.40) r=270；两床头柜、南六抽柜、西窗梳妆、地插、洗手柜、床头电气全部原位保留", source_refs: [R7批准计划, config/house.yaml], status: resolved}
+    - {id: fact-r9-vanity-direct, statement: "DEC-045 底柜与上下两块悬浮板统一沿墙长度为1.70m并南端对齐 z=2.60，底柜与板件均为 along=3.45；底柜主体 AABB z[2.60,4.30]、板件按0.12m墙厚语义贴 w_mbath_east 西侧完成面，运行时板中心 x=2.2575、东缘 x=2.54、北缘 z=4.30；不再从衣柜回退或建立收口约束，衣柜西侧无 bridge/回边板件；HVAC 责任仍由 ceiling/hvac 配置承担", source_refs: [用户确认 2026-09-06, config/house.yaml, shared/types.ts, shared/render/FixtureFactory.ts, shared/render/SceneBuilder.ts], status: resolved}
+    - {id: fact-r7-curtain, statement: "南帘闭帘软包络沿用 R6 口径（z[9.56,9.68] inferred/site_pending，warning/BLOCKED），南六抽柜已向东微调0.05m，当前中心(x=1.05,z=9.31)，AABB x[0.35,1.75] z[9.07,9.55]", source_refs: [用户确认 2026-09-06, config/house.yaml, shared/types.ts], status: resolved}
+    - {id: fact-door-sweep-conflict, statement: "d_mb 开启门扇薄板带 x[3.30,4.20] z[4.63,4.67]：950 首版衣柜东缘 x=3.55 与该带干涉约 250mm；2026-09-06 收窄为 650 版，东缘退至 x=3.25（留 50mm 净距），干涉消除，verify 由 warning 改为 error 门槛（maxX≤3.25 强制）。未施工状态下未来若要恢复 950mm 宽，须另行评估改门向/门洞", source_refs: [scripts/verify/placement/verify-furniture-placement.ts], status: resolved}
+  inferred:
+    - {id: fact-r8-left-shift-infeasible, statement: "在保持950×580、三门、d_mb几何、DEC-045 bridge原位且不修改model-geometry/overlay的前提下，950衣柜不存在可行左移量：现状AABB x[2.60,3.55]；为避开d_mb需maxX≤3.30（至少左移0.25m），则minX≤2.35并越过北墙实体边界/侵入DEC-045 bridge；任意不越北墙边界的左移量仍与d_mb硬冲突", basis: "model-geometry w_mbath_east/x=2.60边界、DEC-045 bridge x[2.28,2.585]、d_mb sweep x[3.30,4.20]", status: resolved}
+  inferred:
+    - {id: fact-r7-evidence-obsolete, statement: "R7/R7.1 650衣柜浏览器证据与 runtime AABB 仅为历史记录，因R8恢复950已过时，不得作为当前方案验收证据", basis: "R8 source_version 切换", status: resolved}
+    - {id: fact-wardrobe-runtime, statement: "按 650 recipe，runtime closed AABB ≈ x[2.60,3.25] z[4.30,4.88]、高 2.45m；门扇开启后最大南向包络约 z≈5.17", basis: "FixtureFactory recipe 推导", status: resolved}
+    - {id: fact-condensate-west-exposed, statement: "通长檐口取消后，冷凝水候选 x[2.0,3.45] 段无吊顶遮盖，需局部包管/管窿，已标 pending", basis: "mep-hvac-coordination.yaml condensate-master", status: open}
+    - {id: fact-r71-pelmet, statement: "R7.1 新增 master_wardrobe_top_pelmet 衣柜一体收口件（独立家具，不承担 HVAC 责任）：顶封板 y[2.45,2.50]×x[2.60,3.25]×z[4.30,4.88] 与门头盒底面一条线，东竖向填板 x[3.235,3.25]×z[4.55,4.88]×y[2.45,2.50] 衔接门头盒西立面（厚 15mm，东缘不越过 x=3.30 门扇带、不压回风格栅底面包络 x≥3.70）；与柜门同色 #a98258，materialRole top_filler/end_panel，并入 wardrobe_north_650_custom_01 不单独计价", source_refs: [R7.1 用户验收修正 2026-09-06, config/house.yaml], status: resolved}
+  site_pending:
+    - {id: pending-wardrobe-anti-tip, statement: "650 衣柜防倾倒固定节点与东墙/北墙结构确认", owner: site, status: open}
+    - {id: pending-hvac-equipment, statement: "内机型号/外廓、风量、送回风截面、滤网检修操作空间待厂家深化", owner: hvac, status: open}
+    - {id: pending-door-swing, statement: "d_mb 门扇干涉已由收窄消除；门套/执手突出量未建模，现场核对门扇开启后手感与衣柜东缘 50mm 净距", owner: site, status: open}
+    - {id: pending-south-curtain, statement: "南帘真实轨道、下垂、堆叠端与南床头柜净距未实测", owner: site, status: open}
+    - {id: pending-product-outlines, statement: "衣柜真实完成面外廓与价格未锁定（procurement price pending）", owner: site, status: open}
+notes: ["R5 入口横柜与 R6 600mm 成品小柜均 superseded，仅保留历史 recipe/材料项供旧数据解析。", "尚未交房：吊顶/HVAC 重排不作为拆改成本否决项。"]

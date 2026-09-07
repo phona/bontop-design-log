@@ -412,3 +412,65 @@ materials:
     waste_rate: 1
     unit: 扇
     notes: ["P0补录，到店确认型号价格"]
+  - id: wardrobe_north_950_custom_01
+    name: "主卧北墙950定制模块化衣柜（R8 active）"
+    room: master_bedroom
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 组
+    price: 0
+    notes: ["active wardrobe_north_950_custom_01；950×580×2800mm，三扇窄平开门（±95°）+顶部固定木饰面门头，真正通顶；冷凝水PVC管槽隐藏在顶部固定段；空调仍在主卫门口上方，衣柜与 HVAC 保持独立；price 0 明确 pending/site_pending，现场核实完成面外廓、防倾倒固定、门套净距、管径坡度与 HVAC 检修"]
+
+  - id: wardrobe_north_650_custom_01
+    name: "主卧北墙650定制模块化衣柜（R7 收窄版 superseded）"
+    room: master_bedroom
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 组
+    price: 0
+    notes: ["R7 历史收窄版；R8 已恢复 wardrobe_north_950_custom_01 active，仅保留供历史方案解析"]
+
+  - id: wardrobe_north_600_finished_01
+    name: "主卧北墙600成品衣柜（R6 superseded，历史保留）"
+    room: master_bedroom
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 个
+    price: 0
+    notes: ["2026-09-06 起由 wardrobe_north_950_custom_01 superseded；仅保留供历史方案，不作为 R7 active override"]
+
+  - id: wardrobe_062_finished_01
+    name: "0.62m 成品窄衣柜（主卧前台）"
+    room: master_bedroom
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 个
+    notes: ["主卧家具化前台（2026-09 迭代），历史候选，仅保留供历史方案，不作为 R6 active override"]
+  - id: study_seasonal_wardrobe_170_01
+    name: "1.7m 模块化季节后台柜（书房）"
+    room: bedroom_se
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 组
+    notes: ["书房季节后台（2026-09 迭代），按组整价口径，候选待核价"]
+  - id: home_fitness_light_set_01
+    name: "轻训练套（可调哑铃对+底座+可卷训练垫）"
+    room: bedroom_se
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 套
+    notes: ["一套整价口径；可调凳复用现有不计入；可见器材只渲染不计价；候选待核价"]
+  - id: light_midcentury_dresser_01
+    name: "轻中古六抽矮柜（主卧南侧窗带）"
+    room: master_bedroom
+    category: 家具
+    current_stage: selection
+    waste_rate: 1
+    unit: 个
+    notes: ["2026-09-04 R1 新增，独立 dresser topic 成品个价口径，候选待核价"]

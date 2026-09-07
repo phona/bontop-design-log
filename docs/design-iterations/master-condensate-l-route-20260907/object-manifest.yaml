@@ -1,0 +1,32 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: master-condensate-l-route-20260907
+subject: 主卧冷凝水 L 形线路对象
+objects:
+  - id: condensate-master-fixture-route
+    kind: fixture_part_group
+    parts: [condensate-pipe-ac-outlet-to-wall, condensate-pipe-ac-box-to-wardrobe-top, condensate-pipe-wall-to-wardrobe-top, condensate-pipe-wardrobe-top-to-wall, condensate-pipe-wardrobe-drop-to-wall, condensate-pipe-wall-run, condensate-pipe-wall-to-penetration, condensate-pipe-penetration-to-bath-ceiling, condensate-pipe-bath-ceiling-to-candidate, condensate-pipe-at-master-bath-candidate, condensate-wall-trim, condensate-wall-trim-short-fold, condensate-wall-trim-to-south-wall]
+    responsibility: 把内机出口连续引至主卫候选点
+    interfaces: [indoor_master, ceiling_master_ac west extension, master_north_wall_wardrobe_950 top service zone, w_mbath_east west finish, w_mbath_south penetration at x=2.30, condensate_master_candidate]
+    collision_policy: 不参与行走碰撞；以端点拓扑、实体墙穿点和候选点接触专项验收
+    visibility: inspectionVisibleOnly; wall trim parts condensate-wall-trim/condensate-wall-trim-short-fold/condensate-wall-trim-to-south-wall are visible in normal mode and transparent in HVAC inspection; all three touch continuously, with the south-wall piece ending at bedroom-side finish z=2.92
+    validation_refs: [FixtureFactory.test.ts, scene-builder.test.ts, HouseScene.inspectMasterBedroomCondensate]
+  - id: master-wardrobe-pipe-chase-view
+    kind: inspection_material_group
+    parts: [north-wardrobe-950-carcass, north-wardrobe-950-back-panel, north-wardrobe-950-concealed-pipe-chase, north-wardrobe-950-fixed-top-panel]
+    responsibility: 正常态遮蔽管线，检视态透明显示柜内服务带
+    maintenance: 柜体本体位置和尺寸不变
+  - id: master-ac-rounded-head-box
+    kind: ceiling_zone_solid
+    parts: [slab, rounded-perimeter]
+    responsibility: 主卧空调盒白色圆角体块；slab 为 y=2.502 的下底板，rounded-perimeter 为持续可见围边
+    inspection: inspectionLayer=pipe-chase; normal opaque white; HVAC inspection opacity=0.18
+    validation_refs: [CeilingZoneBuilder.test.ts, cli-glb-export.test.ts, HouseScene.setCeilingVisible]
+  - id: master-ac-air-terminals
+    kind: hvac_terminal_pair
+    parts: [hvac:A2:terminal:supply_master, hvac:A2:terminal:return_master]
+    responsibility: 主卧门头盒送回风端点，统一轴线并避开东墙与衣柜
+    geometry: { axis_x: 3.70, supply: { mount_face: south, length: 0.6, east_x: 4.00, east_clearance_to_wall: 0.14 }, return: { mount_face: bottom, length: 0.5, east_x: 3.95, east_clearance_to_wall: 0.19 } }
+    maintenance: 回风底部铰接格栅兼检修，不另设检修口
+    validation_refs: [config/hvac.yaml, tests/server/master-bedroom-dressing.test.ts]
+dependencies: [config/house.yaml, config/hvac.yaml, config/mep-hvac-coordination.yaml, shared/render/FixtureFactory.ts, app/src/render/HouseScene.ts]

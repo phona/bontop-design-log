@@ -46,7 +46,9 @@ budget:
     chair: furniture_soft
     bookshelf: furniture_soft
     shoe_cabinet: furniture_soft
+    dresser: furniture_soft
     coffee_table: furniture_soft
+    home_fitness: furniture_soft
     gas_stove: appliances
     dishwasher: appliances
     water_purifier: appliances
@@ -72,6 +74,26 @@ budget:
     mb_vanity_pvc_box: wardrobe
     sofa_3seat: sofa
     shoe_cabinet: shoe_cabinet
+    # 主卧 R8 北墙950定制衣柜按 wardrobe topic 计价；650 收窄版、R6 600成品柜与旧 wardrobe_062 仅历史保留
+    master_north_wall_wardrobe_600: wardrobe
+    master_north_wall_wardrobe_650: wardrobe
+    master_north_wall_wardrobe_950: wardrobe
+    # 主卧家具化前台 + 书房季节后台（2026-09 迭代）：新柜体并入 wardrobe topic，支持逐房选材计价
+    master_freestanding_wardrobe_062: wardrobe
+    master_partition_wardrobe_1600: wardrobe
+    master_wardrobe_top_pelmet: wardrobe
+    master_bedside_cabinet_350_north: dresser
+    master_bedside_cabinet_350_south: dresser
+    master_dressing_connection_storage: dresser
+    study_seasonal_wardrobe_wall: wardrobe
+    # 轻训练套按 count-only 一套计价；可见器材（adjustable_dumbbell_pair / rollable_training_mat /
+    # bench_adjustable / squat_rack / barbell_olympic / weight_plate_set / rubber_training_mat）
+    # 故意不映射：只渲染不计价，避免同一套器材被多次计价
+    home_fitness_light_set: home_fitness
+    # 2026-09-04 R1：主卧南侧矮柜独立 dresser topic，不并入 wardrobe（主卧 wardrobe roomOverride 已绑定成品窄柜，并入会按柜价重复计价）
+    master_hot_season_low_dresser: dresser
+    master_bedside_cabinet_north: dresser
+    master_bedside_tray_south: dresser
   # applyRooms：限定算量范围，避免材料满铺到不施工的房间（电梯井等）。
   # DEC-041：地砖统一为单一 floor topic + 分房覆盖（roomOverrides）。
   # floor=全屋铺地房间；入户花园 entry_garden 开发商已铺 → 移出算量（渲染仍可视化但不计费，见 DEC-041）。
@@ -156,6 +178,10 @@ budget:
     - topic: shoe_cabinet
       calcMode: count
     - topic: coffee_table
+      calcMode: count
+    - topic: home_fitness
+      calcMode: count
+    - topic: dresser
       calcMode: count
     # 家电（appliances 池，各为独立 topic，fixed 单件整屋）
     - topic: gas_stove

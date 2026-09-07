@@ -141,6 +141,21 @@ test('per-wall penetration declaration is required and its point must match the 
   assert.ok(off.warnings.some((i) => i.code === 'penetration_point_mismatch'));
 });
 
+test('a penetration declared at a route vertex is treated as the actual wall crossing', () => {
+  const route = sample({
+    id: 'vertex-cross', layer: 'condensate', status: 'pending', source_status: 'preliminary', method: 'gravity_condensate_candidate',
+    diameter: 0.025, from_height: 2.65, to_height: 0.10, flow_direction: 'down', slope: 0.01,
+    from: { x: 2, z: 4, y: 2.65 },
+    via: [{ x: 2, z: 2.86, y: 2.65 }, { x: 2, z: 2.5, y: 2.65 }],
+    to: { x: 2, z: 2.5, y: 0.10 },
+    penetration: [{ wall: 'w_test', at: { x: 2, z: 2.86 }, height: 2.65 }],
+  });
+  const result = lintMepCoordination(route, sources, {
+    layout: { rooms: [], vertices: [], openEdges: [], walls: [{ id: 'w_test', x1: 0, z1: 2.86, x2: 2.6, z2: 2.86, height: 2.8 }] } as unknown as ResolvedLayout,
+  });
+  assert.equal(result.warnings.some((i) => i.code === 'penetration_missing' || i.code === 'penetration_point_mismatch'), false);
+});
+
 test('beam collision errors only for confirmed constraints with a beam bottom datum', () => {
   const constraint = { id: 'ref_beam', range: { x1: 0.5, x2: 1.5, z1: -0.5, z2: 0.5 }, status: 'confirmed', reference_beam_bottom_y: 2.4 };
   const hit = lintMepCoordination(crossingRoute(), sources, wallContext({}, [constraint]));

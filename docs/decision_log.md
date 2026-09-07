@@ -22,6 +22,77 @@
 
 ## 决策记录
 
+### DEC-2026-09-06-R7.1 衣柜-悬浮板 L 形转角与门头盒一体收口修正
+
+- **日期**：2026-09-06
+- **起因**：业主验收 R7 截图后指出：衣柜与 DEC-045 悬浮板没有形成真正的 L 形（bridge 只是 180mm 端头小板），门头盒与衣柜的吊顶衔接也没做（盒体素白占位、与衣柜之间有 x 向缺口和顶缝，白盒+木柜两段式）。
+- **决策事项**：
+  - **L 形转角层板**：`mb_vanity_lower_board_bridge` / `mb_vanity_main_board_bridge` 由 180mm 端头小板改为沿衣柜西面的整段层板——along 4.195→4.4825，world z[4.10,4.865]（延至衣柜前脸 4.88 留 15mm）、x[2.28,2.585]（东缘与衣柜西面 x=2.60 留 15mm 阴影缝，SceneBuilder/verify 同口径新增 15mm shadow gap 放置规则），与对应悬浮板同高同厚同木色。悬浮板+bridge 沿 DEC-045 墙面贯通到衣柜前脸，衣柜本体构成 L 的另一腿。底柜/主板/下板/PVC 不动。
+  - **门叶避让实测**：衣柜左门全开（-95°）门叶 world mesh 实测 x[2.5849,2.6309] z[4.8702,5.1706]，与层板 maxZ 4.865 z 向错开约 5mm，AABB 不相交——层板 maxX 维持 2.585（目标缝 15mm），无需退到 2.575（x 向净距约 0 但 z 向不重叠；取舍记录于此）。
+  - **门头盒一体衔接**：`ceiling_master_ac` area [3.45,4.55,4.20,5.60]→[3.25,4.55,4.20,5.60]，西缘与衣柜东缘 x=3.25 对齐；ac_master(3.80,5.10)/supply(3.80,2.62,5.585)/return(3.95,2.49,5.20)/sock_master_ac(4.05,4.60) 全部仍落盒内。
+  - **顶封板收口**：新增独立家具 `master_wardrobe_top_pelmet`（与衣柜同 footprint 摆放，不承担 HVAC 责任）：顶封板 y[2.45,2.50]×x[2.60,3.25]×z[4.30,4.88] 与门头盒底面一条线；东竖向填板 x[3.235,3.25]×z[4.55,4.88]×y[2.45,2.50]（厚 15mm）衔接门头盒西立面，东缘不越过 x=3.30 门扇带、不压回风格栅底面包络 x≥3.70。与柜门同色 #a98258，materialRole top_filler/end_panel；并入 wardrobe_north_650_custom_01 不单独计价。
+  - 950→650 收窄决策见前条 DEC-2026-09-06-R7（避 d_mb 门扇）；本条只解决一体衔接读感。不改 model-geometry/overlay/d_mb 门洞；bridge 越过 w_mbath_east 墙末端 z=4.30 沿衣柜西面南行，verify 锚点范围对 bridge 类型放行（上限取衣柜前脸 4.88）。
+- **验证**：新增测试——bridge/衣柜西面 mesh 净缝 10–20mm（目标 15mm）、bridge 与左门全开门叶 mesh 不相交、bridge 不碰 PVC、pelmet 包络/门扇带/回风格栅专项、门头盒西缘对齐断言；九条验证命令结果回填 `docs/design-iterations/master-bedroom-r7-20260906/review-manifest.json`（source_version 升 r7-master-bedroom-20260906-650-r71）。浏览器证据不采集（另行安排）；既有 R7 截图证据标记 stale。
+- **决策人**：业主（验收截图后指明修正构造）
+
+### DEC-2026-09-06-R7 主卧北墙通顶定制衣柜（650 收窄版）+ 空调门头盒一体预演
+
+- **日期**：2026-09-06
+- **决策事项**：废弃 R5 入口横柜与 R6 600mm 成品小柜为当前基线；北墙 z=4.30 设置定制模块化一体木饰面衣柜；空调通长檐口改为与衣柜一体的门头盒；首版 950mm 三门实施后由验证发现与 d_mb 开启门扇干涉，收窄为 650mm 双门版。
+- **背景状态**：当前尚未交房，硬装/水电/吊顶/HVAC 均未施工（见 AGENTS.md 当前施工状态），重排吊顶与 HVAC 不作为拆改成本否决项。
+- **首版问题**：950W×580D 三门版东缘 x=3.55，与 d_mb 开启门扇薄板带 x[3.30,4.20]×z[4.63,4.67] 干涉约 250mm（x[3.30,3.55]×z[4.63,4.67]），verify 显式 warning 暴露。
+- **选定方案（收窄版 active）**：`master_north_wall_wardrobe_650 @(2.925,4.59) r=0`，650W×580D×2450H，AABB x[2.60,3.25] z[4.30,4.88]，背贴 z=4.30 实体北墙；两扇约 300mm 窄平开门朝南（铰链 left/right、真实 pivot ±95°、4 态真实 mesh）；东缘退避门扇带 x≥3.30（留 50mm 净距，verify 由 warning 改 error 门槛 maxX≤3.25）；一体木饰面，不通到石膏板原顶。
+- **门头盒**：`ceiling_master_ac` 通长檐口 → 门头盒 area x[3.45,4.20]×z[4.55,5.60]、底 2.50m；内机 `ac_master`→(3.80,5.10)；送风 `supply_master`→南立面侧送 (3.80,2.62,5.585) length 0.6；回风 `return_master`→底装回检一体 (3.95,2.49,5.20) length 0.5；电源 `sock_master_ac`→(4.05,4.60) 盒内。冷凝水 x[2.0,3.45] 段失去通长檐口遮盖，局部包管/管窿候选 pending。
+- **DEC-045 衔接**：底柜/主板/下板/PVC 不延不动；两 bridge 独立可拆，along 4.195，与衣柜背板维持 15mm 净缝（10–20mm 允许），形成可读 L 形衔接，不承担结构/HVAC。
+- **保留项**：床 (3.20,7.40) r270、两只 380×350×500 床头柜、南窗六抽矮柜 (1.00,9.31) r180、西窗梳妆桌/凳、地插 (0.42,5.78)、洗手柜、床头电气（南插 z=7.802/双控 z=7.898 真实 86 面板 10mm 净缝；壁灯 z=6.95/7.85 h1.35）全部原位。南帘闭帘软包络 z[9.56,9.68] inferred/site_pending，堆叠端 unknown，不设地面硬禁区。
+- **材料/预算**：active override `wardrobe_north_650_custom_01`（650×580×2450，两扇窄平开门，一体木饰面，price 0 + price_source=pending，不以 0 伪装完成）；950 首版 `wardrobe_north_950_custom_01` 与 R6 600 成品柜仅历史保留。
+- **验证**：四态门碰撞矩阵（含 d_mb 开启门扇、两 bridge、床、两床头柜、梳妆桌凳、indoor/supply/return 已建模 HVAC）真实 mesh 无交；门头盒包络专项（ceiling/hvac/electrical 一致性）；bridge 15mm 全 mesh 净缝；闭帘软包络专项；预算映射专项。verify:all / test:server / typecheck / test:app / build:app 全绿。
+- **未施工冻结**：衣柜防倾倒节点、HVAC 设备型号/风量/滤网检修空间、冷凝水局部包管、南帘堆叠、门套/执手、衣柜价格均 site_pending；`delivery_ready=false`，候选预演不构成施工下单尺寸。
+- **未来若要恢复 950mm 宽**：只能另行评估改门向/门洞，单独立项。
+- **关联文件**：`config/house.yaml`、`config/ceiling.yaml`、`config/hvac.yaml`、`config/electrical.yaml`、`config/mep-hvac-coordination.yaml`、`config/materials.yaml`、`config/procurement.yaml`、`config/design-rules.yaml`、`data/current-scheme.json`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`scripts/verify/placement/verify-furniture-placement.ts`、`tests/server/master-bedroom-dressing.test.ts`、`tests/server/shared/scene-builder.test.ts`、`tests/server/cli-glb-export.test.ts`、`tests/server/budget-calculator.test.ts`、`docs/design-iterations/master-bedroom-r7-20260906/`。
+- **决策人**：业主（方向确认 + 收窄避让为验证驱动的实现修正）。
+
+---
+
+### DEC-2026-09-05-R6.2 主卧北墙衣柜与窗帘软包络契约修正（候选预演，blocked）
+
+- **日期**：2026-09-05
+- **决策事项**：执行主卧 R6 定向纠偏第二阶段，仅更新主卧相关协议、预算、窗帘契约与生成物。
+- **统一基线**：active `wardrobe_north_600_finished_01`，北墙衣柜 `600W×580D×2050H`，双门 pivot，材质候选为中浅胡桃/暖烟熏橡木、四腿、古铜拉手，price `0` 明确 pending；床头柜候选 `380×350×500mm`、runtime 高 `495–505mm` 两柜同款；南侧插座 `z=7.802`、双控 `z=7.898`；DEC-045 两个 `180mm bridge` 独立可拆，不单独计价。
+- **真实网格验收**：同一 `SceneBuilder` placement 场景以 `THREE.Box3` 核验两 bridge 与衣柜完整 mesh 的 world 净缝均为 `15mm`（允许区间 `10–20mm`），且不碰已知 PVC mesh；衣柜 `closed/left_open/right_open/both_open` 四状态真实门叶 world rotation 分别为 `0/0`、`-95/0`、`0/+95`、`-95/+95`，对 d_mb 开启门扇、两 bridge、床、两床头柜、梳妆桌/凳与已建模主卧 HVAC 均无 AABB 相交。人体站位不据此宣称 PASS。
+- **窗帘契约**：顶部盒体 `z[8.70,8.95]` 仅吊顶构件；依据现有布帘 runtime 默认 interior offset `0.12m`，闭帘候选软包络厚 `0.12m`、`z[9.56,9.68]`，`confidence=inferred/status=site_pending`；软冲突只报 `warning/BLOCKED`。开帘堆叠仅记录实际端部，未知时为空并标 `site_pending`；不把 `curtain_box` 地面投影或通宽 `500mm` 当硬禁区。南窗六抽保持原位、可见、可移。
+- **阻塞状态**：HVAC检修/结构/窗帘轨道与堆叠/真实产品外廓/衣柜门前人体站位继续 `site_pending`；`review-manifest` 区分 `alignment_frozen=true`、`construction_frozen=false`、`delivery_frozen=false`，并保持 `delivery_ready=false`、证据 `blocked`，审美/功能评审不得虚构 PASS。
+- **关联文件**：`config/materials.yaml`、`config/design-rules.yaml`、`config/procurement.yaml`、`data/current-scheme.json`、`shared/types.ts`、`scripts/verify/placement/verify-furniture-placement.ts`、`tests/server/master-bedroom-dressing.test.ts`、`tests/server/shared/scene-builder.test.ts`、`docs/design-iterations/master-bedroom-r6-20260905/`。
+- **决策人**：用户给定 R6 第二阶段执行要求。
+
+---
+
+### DEC-2026-09-05-003 R5纠偏：统一350mm床头柜与横柜真实门状态
+
+- **日期**：2026-09-05
+- **决策事项**：执行用户给定R5纠偏基线，固定床/横柜坐标，统一两侧床头柜recipe与电气，并把不可同时满足的净距保留为明确阻塞。
+- **选定方案**：床 `bed_180 @(3.20,7.10), rotation=270`；横柜 `@(2.20,5.25)`，完整mesh目标 x[1.40,3.00]、z[4.95,5.55]、y[0,2.15]；两床头柜统一 `master_bedside_cabinet_350`，中心 north z=5.975、south z=8.225，规格0.38×0.35；床头电气按 z≈5.975/8.177/8.273 与壁灯6.65/7.55 h1.35更新。
+- **硬约束处理**：统一350mm使北柜距床约0.02m、南柜距床约0.02m，均未达到原目标硬净距；南柜至南帘盒为0.30m硬下限。保持 error/block，不缩柜、不放宽阈值。
+- **门状态**：横柜四门改为独立Group/pivot、stable objectId/hingeSide/materialRole、默认closed、openLimitDeg=95，向+z开启；柜面到床约650mm、门开后正后方约250mm，不视为宽裕站位。
+- **DEC-045/HVAC**：仅登记既有AABB/PVC route-cover事实；无完整维护包络事实，不新增桥接，不修改DEC-045主体/HVAC设备或风口，维护结论保持site_pending/blocked。
+- **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、R5专项测试与五件协议文档。
+- **决策人**：用户给定基线；本轮按真实runtime mesh和硬约束保留阻塞。
+
+---
+
+### DEC-2026-09-05-002 候选 A 双普通床头柜 runtime 净距修正（未落地施工）
+
+- **日期**：2026-09-05
+- **决策事项**：在保留“双普通床头柜”优先级的前提下，修正 bed_180 @(3.20,7.10) 的 runtime 净距。
+- **选定方案**：北柜中心 z=5.96，runtime z[5.785,6.135]；南柜中心 z=8.24，runtime z[8.065,8.415]。床 runtime z[6.17,8.03]，两侧均满足 0.035m 硬净距；原北柜目标 z[5.85,6.20] 让位于不重叠约束。
+- **电气**：北插座 z=6.03 保留并服务北柜；南插座/双控 z=8.18 保留并服务南柜；壁灯沿用既有方案值，不作无依据调整。
+- **未解决 site_pending/阻塞**：南柜 maxZ=8.415 至南帘盒北缘 z=8.70 仅 0.285m；若 0.30m 帘盒硬下限适用则保持 BLOCKED。南帘真实堆叠、产品外廓、东墙结构/防倾倒、四门开启与 HVAC/冷凝水检修仍待确认。
+- **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`scripts/verify/placement/verify-furniture-placement.ts`、专项测试、`docs/design-iterations/master-flexible-frontstage-20260903/`。
+- **决策人**：业主给定优先级与床坐标；本轮按 runtime 事实执行最小修正。
+
+---
+
+
 ### DEC-2026-09-02-001 主卧候选方案落地（未落地施工）
 
 - **日期**：2026-09-02
@@ -1024,3 +1095,72 @@
 - **开放问题**：脏衣/洗护囤货的封闭收纳需求重新登记，后续单独迭代解决（见迭代文档 decision-brief `open-laundry-storage`）。
 - **关联文件**：`config/house.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`config/design-rules.yaml`、`scripts/verify/placement/verify-furniture-placement.ts`、`tests/server/shared/scene-builder.test.ts`、`docs/dressing-map.md`、`docs/design-iterations/mb-bedshift-stripcabinet-20260902/`
 - **决策人**：业主
+
+---
+
+### DEC-2026-09-03-053 主卧家具化前台 + 书房季节后台（迭代 master-flexible-frontstage-20260903，五件协议文档建立，未冻结）
+
+- **日期**：2026-09-03
+- **决策事项**：四轮审查后的终审版方案进入第一轮预览实施；本轮只建立五件协议文档（fact-table / decision-brief / design-datum / object-manifest / review-manifest），不改任何 config/code。
+- **架构决策**：
+  - 主卧家具化前台：移除 placed `master_wardrobe_tall_240`（通用 recipe 保留）；入口东墙放 0.75m 级成品窄衣柜（候选 740–750W×580–600D×2150–2300H，首轮占位 750×600×2250，北缘 z≈5.63–5.65 避 d_mb 门扫掠 z≤5.55，柜门朝西，不通顶不连吊顶）；床南移至中心约 (3.20,7.45)（AABB x[2.20,4.20] z[6.55,8.35]，候选未冻结）；梳妆桌迁西侧北段（候选 850–900W×430–460D，首轮 900×450×750，四腿开放式）；删除主卧 placed `plant_fiddle`；DEC-045 四件套不动，PVC 盒 HVAC 责任不并入家具。
+  - 唯一地插：优先迁至开放式桌下后侧服务域（修正"桌 AABB 整体禁入"的过严判据）；可行域为空则 fallback——取消西侧地插、镜/灯改充电式、吹风机用东南备用墙插临时线（需用户确认）；不新增第二只地插。
+  - 床头电气：现有两插座/双控/两壁灯不机械平移，按最终床架真实外廓 ±0.65m 对称口径重新定位；第一轮不冻结固定壁灯；`sock_master_bed_r` 解除梳妆专用语义，改为主卧东南通用备用插座。
+  - 书房季节后台：东墙（w_east_upper, shear inferred）模块化后台柜 x[15.80,16.35] z[5.90,7.60]、深默认 0.55m、高 2.35–2.40m；删除重型器械四件（squat_rack/barbell_olympic/weight_plate_set/rubber_training_mat，均无预算映射，只记空间释放不伪造节省）；轻训练复用 `bench_adjustable` + 新增可见 `adjustable_dumbbell_pair`/`rollable_training_mat`（不新增同义类型）；换季推车 count-only。
+  - 预算链路：wardrobe topic 逐房间 roomOverrides 计价链路已代码核实（server/budget-calculator.ts:130-152）；顺手纠偏 `wardrobe_180_01` topic_id 错挂 miscellaneous；`wardrobe_240_01` 核价红旗仍未决；新增 `home_fitness` topic + `home_fitness_light_set` count-only 单套计价（口径待 alignment）。
+  - `config/ceiling.yaml` 书房天花注释陈旧（引用不存在的 2.6m 通顶柜），实施时必须更新注释而非只在文档备注。
+- **待 alignment 项（brief 保持 frozen: false）**：①热季必须挂衣净杆长及 740–750mm 双层短挂容量余量；②home_fitness 单套计价口径。冻结门槛另含：地插可行域预演（为空则选定 fallback）、wardrobe roomOverride 多单价测试通过。
+- **现场待确认（site_pending，不阻塞第一轮模型、阻塞施工冻结）**：门套/执手突出量；南帘下垂/堆叠/开启扇；西帘堆叠端与清洁；东墙结构钢筋探测；DEC-045 底柜北端 0.26m 越界；sock_master_projector 是否已施工；书房东墙结构；成品柜/床架真实型号外廓。
+- **关联文件**：`docs/design-iterations/master-flexible-frontstage-20260903/`（五件文档）、`docs/decision_log.md`；实施期文件范围见迭代 decision-brief allowed_scope
+- **决策人**：业主（方向经四轮审查确认；两项 alignment 待收尾后冻结 brief）
+
+### DEC-2026-09-04-R1 梳妆桌贴西窗 + 南侧轻中古矮柜（迭代 master-flexible-frontstage-20260903 R1 修订，未冻结）
+
+- **日期**：2026-09-04
+- **起因**：业主第一人称证据指出梳妆桌置于西窗帘线东侧读作"扔在中间"，且西侧窗侧带（x[0,1.35]、2.07m 以下可用）空置。核实成立：w_west_upper 通高玻璃幕、上飘窗带 y[2.07,2.83] 内挑至 x=1.10，地面全宽可用。
+- **决策事项**：
+  - 梳妆桌/凳贴西窗：`master_dressing_table` @(0.425,6.05) rotation 90（桌背与玻璃留 0.20m 通风/冷凝缝，正面朝东，使用者面向玻璃自然光梳妆）；`dressing_stool` @(0.42,6.05) 收纳态含于桌下；床西通道 x[0.65,2.20] 整体释放。
+  - 地插随迁：`sock_master_projector` @(0.42,5.78)（桌 footprint 北侧腿间；距桌腿 0.196m、凳包络 0.06m、帘线 0.68m、门扫掠 0.23m），仍候选未冻结。
+  - 新增南侧窗带轻中古矮柜 `master_hot_season_low_dresser` @(1.00,9.31) rotation 180（1400×480×850mm 六抽、细腿、木色与梳妆桌同族；正面朝北；h<2.07m 不挡窗带）：职责为热季折叠衣物+衣柜 overflow，内衣/睡衣/脏衣/洗护仍归 DEC-045；南帘堆叠端 site_pending。
+  - 预算：新开 `dresser` topic 独立计价（避免与主卧 wardrobe roomOverride 的 750 成品柜同价混计），材料/采购/scheme/预算测试同步。
+- **验证**：九条验证命令全绿（test:server 517/517、test:app 434/434、typecheck、build:app）；verify:furniture 地插判据由"x≤1.35 全域禁入"收窄为帘线带 x[1.10,1.35]（桌贴窗的必然结果）；受影响视角（view-c/view-d + 新增 view-g 南窗带矮柜）证据补拍回填 review-manifest。
+- **关联文件**：`docs/design-iterations/master-flexible-frontstage-20260903/`（fact-table/design-datum 已回填 R1 终值）
+- **决策人**：业主（看图拍板）；两项 09-03 alignment（挂衣容量、home_fitness 计价口径）仍未收尾，brief 继续 frozen: false
+
+### DEC-2026-09-04-R2 东墙构成修正（衣柜降 620mm 级 + 点位枕头区成组，迭代 master-flexible-frontstage-20260903，未冻结）
+
+- **日期**：2026-09-04
+- **起因**：业主审查 R1 证据后判定东墙"柜子太贴门口、床没有居中关系、插座/床头灯/开关没服务好床头，功能与美学均不达标"（R1 证据 view-a/b 20260903）。
+- **结构约束（核算结论）**：东墙可用段 z[5.55,8.70]=3.15m；750mm 衣柜 + 床 1.80m + 三条硬下限缝（门侧 0.15/柜床 0.15/床帘 0.30）合计顶死 3.15m，750mm 下无成立解。
+- **决策事项**：
+  - 衣柜降为 620mm 级窄柜并改名 `master_freestanding_wardrobe_062`（全仓引用同步）：placed z[5.75,6.37] x[3.60,4.20]，门侧缝 0.09→0.20m、柜床缝 0.16→0.18m；床 @(3.20,7.45) 不动、床帘缝 0.35m 不变。
+  - 床头点位改枕头区成组（±0.45m 对床心 7.45，两枕中心口径）：sock_master_bed_l z=7.00、sock_master_bed_r_head z=7.90、switch_master_bed_l z=7.00；壁灯 light_master_wall_l/r z=7.00/7.90、h 1.60→1.35（落床头阅读高度）。±0.65m 对称口径作废。
+  - 预算：option 改 `wardrobe_062_finished_01`（1300 元/个，候选待核价），current-scheme override 同步。
+- **容量风险（显性登记，挂 align-hot-season-hanging）**：620mm 双层短挂对两人热季挂衣偏紧；若 alignment 判定容量不足，回退 740–750mm + 三缝压硬下限（门侧 0.15/柜床 0.15/床帘 0.30）。
+- **验证**：九条命令全绿（test:server 517/517、test:app 434/434）；余量链专项断言更新（0.20/0.18/0.35）；证据 view-a/b/c 补拍有效（runtime AABB 与配置一致，旧名运行时 0 实例）。
+- **过程记录**：服务端 chokidar watcher 两轮各漏一次 config 保存事件（materials/electrical 渲染陈旧但 /api/config-status 仍 ok）；证据采集前须以 /api/project 实际内容复核，touch 触发重载可恢复。此 watcher 可靠性问题登记为观察项，另行处理。
+- **关联文件**：`docs/design-iterations/master-flexible-frontstage-20260903/`（五件文档已回填 R2 终值）
+- **决策人**：业主（问题判定与修正方向）；容量回退路径待 align-hot-season-hanging 裁决
+
+### DEC-2026-09-04-R2.1/R2.2 点位重叠修复与壁灯渲染锚点根因修复
+
+- **R2.1**：业主截图复核发现 switch_master_bed_l 与 sock_master_bed_l 同点重叠（R2 spec 失误，同落 z=7.00 h=0.70）。修复：开关北移 0.12m 至 z=6.88（并排不叠面），测试新增"面板不重叠"断言防回归。
+- **R2.2**：壁灯"没降下去"根因——渲染锚点由 config/render/overrides.yaml anchorY=1.6 驱动（旧 Blender 基线口径），与 electrical.yaml height 无关；已将两壁灯 anchorY 改 1.35 与电气口径对齐，render facts 重新生成、verify:all 通过。教训：凡电气点位高度调整，必须同步检查 render/overrides.yaml 是否有同名 anchorY 覆盖。
+- **渲染器观察项**：开关点位仅渲染为 2cm 素盒且正面比插座面板退后 25mm（嵌入床头板内不可见），如需可见面板需渲染侧补件；登记为 non-blocking 观察项。
+
+### DEC-2026-09-04-R2.3 床头点位抬升出床头板
+
+- **起因**：业主复审发现床头插座/开关嵌入床头板（点位 h=0.70 vs 当前渲染床头板顶 0.8m），读作"插座跟床重叠"。
+- **修复**：sock_master_bed_l / sock_master_bed_r_head / switch_master_bed_l 高度 0.70→0.95（高出床头板顶 0.15m），z 不变（7.00/7.90/6.88）；南侧备用插座 sock_master_bed_r 保持 0.70。规则入注释：床头点位高度 = 真实床头板顶 + 0.15m，施工前按床架真实外廓终核。
+- **测试**：cli-glb-export 电气契约改逐点 [z,y] 断言；master-bedroom-dressing 新增"床头组 h=0.95"断言。test:server 517/517、verify:all 全绿。
+
+### DEC-2026-09-07-R10 主卧门头盒送回风轴线微调
+
+- **日期**：2026-09-07
+- **决策事项**：响应用户复核，将 `supply_master` 与 `return_master` 的中心轴统一由 `x=3.875` 微调至 `x=3.70`，保持风口朝向、长度、标高和检修语义不变。
+- **选定方案**：`supply_master` 继续采用南立面侧送，`length=0.6`，位置 `(3.70,2.62,5.585)`，东端 `x=4.00`；`return_master` 继续采用底装下回并兼回检一体，`length=0.5`，位置 `(3.70,2.49,5.20)`，东端 `x=3.95`。按主卧东墙卧室侧完成面约 `x=4.14`，两者分别保留约 `0.14m/0.19m` 净距；端点仍完整位于 `ceiling_master_ac` 门头盒和门洞上方服务范围内，避开衣柜与墙体。
+- **检修语义**：回风格栅继续兼作检修口，不新增独立检修面板；门头盒、衣柜主体、冷凝水路线与其它房间风口不变。
+- **验证**：`master-bedroom-dressing.test.ts` 新增中心轴、东端净距、门洞上方高度、门头盒服务范围、衣柜避让及回风底装检修断言；`data/project-render-facts.json` 已重新生成。
+- **现场待确认**：东墙实际完成面、风口厂家外框与风管截面、回风滤网抽拉空间和门头盒内净高，均在施工深化时确认。
+- **关联文件**：`config/hvac.yaml`、`config/ceiling.yaml`、`config/mep-hvac-coordination.yaml`、`tests/server/master-bedroom-dressing.test.ts`、`data/project-render-facts.json`、`docs/design-iterations/master-condensate-l-route-20260907/`
+- **决策人**：业主（方向确认）；施工尺寸待 HVAC 厂家深化

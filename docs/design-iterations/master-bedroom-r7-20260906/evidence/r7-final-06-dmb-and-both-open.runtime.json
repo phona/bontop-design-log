@@ -1,0 +1,513 @@
+{
+  "view": "r7-final-06-dmb-and-both-open",
+  "doorConfigDeclared": "both_open",
+  "url": "http://localhost:5173/?v=r7-650-20260906",
+  "title": "和萃 701 - 3D 装修设计",
+  "isReady": true,
+  "configErrorBanner": [],
+  "viewport": {
+    "width": 1600,
+    "height": 1000,
+    "dpr": 1
+  },
+  "camera": {
+    "mode": "orbit",
+    "position": {
+      "x": 3.55,
+      "y": 2,
+      "z": 6.9
+    },
+    "target": {
+      "x": 3.5,
+      "y": 1,
+      "z": 4.65
+    }
+  },
+  "doorState": {
+    "wardrobe": [
+      {
+        "doorId": "master_north_wall_wardrobe_650:door:1",
+        "doorIndex": 0,
+        "hingeSide": "left",
+        "state": "open",
+        "openLimitDeg": 95,
+        "rotationDeg": -95,
+        "aabb": {
+          "min": {
+            "x": 2.584888,
+            "y": 0.03,
+            "z": 4.870216
+          },
+          "max": {
+            "x": 2.630871,
+            "y": 2.39,
+            "z": 5.170643
+          },
+          "size": {
+            "x": 0.045983,
+            "y": 2.36,
+            "z": 0.300427
+          },
+          "meshCount": 3
+        }
+      },
+      {
+        "doorId": "master_north_wall_wardrobe_650:door:2",
+        "doorIndex": 1,
+        "hingeSide": "right",
+        "state": "open",
+        "openLimitDeg": 95,
+        "rotationDeg": 95,
+        "aabb": {
+          "min": {
+            "x": 3.219129,
+            "y": 0.03,
+            "z": 4.870216
+          },
+          "max": {
+            "x": 3.265112,
+            "y": 2.39,
+            "z": 5.170643
+          },
+          "size": {
+            "x": 0.045983,
+            "y": 2.36,
+            "z": 0.300427
+          },
+          "meshCount": 3
+        }
+      }
+    ],
+    "dMb": {
+      "rotationYDeg": -180,
+      "aabb": {
+        "min": {
+          "x": 3.3,
+          "y": 0,
+          "z": 4.63
+        },
+        "max": {
+          "x": 4.2,
+          "y": 2.1,
+          "z": 4.67
+        },
+        "size": {
+          "x": 0.9,
+          "y": 2.1,
+          "z": 0.04
+        },
+        "meshCount": 1
+      },
+      "declared": "as-rendered-open"
+    }
+  },
+  "wardrobeAabb": {
+    "min": {
+      "x": 2.584888,
+      "y": 0,
+      "z": 4.3
+    },
+    "max": {
+      "x": 3.265112,
+      "y": 2.45,
+      "z": 5.170643
+    },
+    "size": {
+      "x": 0.680225,
+      "y": 2.45,
+      "z": 0.870643
+    },
+    "meshCount": 11
+  },
+  "objects": [
+    {
+      "id": "d_mbath",
+      "visible": true,
+      "position": {
+        "x": 1.95,
+        "y": 1.05,
+        "z": 2.46
+      },
+      "rotationYDeg": 90,
+      "aabb": {
+        "min": {
+          "x": 1.93,
+          "y": 0,
+          "z": 2.06
+        },
+        "max": {
+          "x": 1.97,
+          "y": 2.1,
+          "z": 2.86
+        },
+        "size": {
+          "x": 0.04,
+          "y": 2.1,
+          "z": 0.8
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "d_mbath:frame:left",
+      "visible": true,
+      "position": {
+        "x": 1.15,
+        "y": 1.1,
+        "z": 2.86
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 1.125,
+          "y": 0,
+          "z": 2.785
+        },
+        "max": {
+          "x": 1.175,
+          "y": 2.2,
+          "z": 2.935
+        },
+        "size": {
+          "x": 0.05,
+          "y": 2.2,
+          "z": 0.15
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "d_mbath:frame:right",
+      "visible": true,
+      "position": {
+        "x": 1.95,
+        "y": 1.1,
+        "z": 2.86
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 1.925,
+          "y": 0,
+          "z": 2.785
+        },
+        "max": {
+          "x": 1.975,
+          "y": 2.2,
+          "z": 2.935
+        },
+        "size": {
+          "x": 0.05,
+          "y": 2.2,
+          "z": 0.15
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "d_mbath:frame:top",
+      "visible": true,
+      "position": {
+        "x": 1.55,
+        "y": 2.175,
+        "z": 2.86
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 1.1,
+          "y": 2.15,
+          "z": 2.785
+        },
+        "max": {
+          "x": 2,
+          "y": 2.2,
+          "z": 2.935
+        },
+        "size": {
+          "x": 0.9,
+          "y": 0.05,
+          "z": 0.15
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "d_mbath:lintel",
+      "visible": true,
+      "position": {
+        "x": 1.55,
+        "y": 2.45,
+        "z": 2.86
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 1.15,
+          "y": 2.1,
+          "z": 2.8
+        },
+        "max": {
+          "x": 1.95,
+          "y": 2.8,
+          "z": 2.92
+        },
+        "size": {
+          "x": 0.8,
+          "y": 0.7,
+          "z": 0.12
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "d_mb",
+      "visible": true,
+      "position": {
+        "x": 3.75,
+        "y": 1.05,
+        "z": 4.65
+      },
+      "rotationYDeg": -180,
+      "aabb": {
+        "min": {
+          "x": 3.3,
+          "y": 0,
+          "z": 4.63
+        },
+        "max": {
+          "x": 4.2,
+          "y": 2.1,
+          "z": 4.67
+        },
+        "size": {
+          "x": 0.9,
+          "y": 2.1,
+          "z": 0.04
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "d_mb:frame:left",
+      "visible": true,
+      "position": {
+        "x": 4.2,
+        "y": 1.1,
+        "z": 4.65
+      },
+      "rotationYDeg": 90,
+      "aabb": {
+        "min": {
+          "x": 4.125,
+          "y": 0,
+          "z": 4.625
+        },
+        "max": {
+          "x": 4.275,
+          "y": 2.2,
+          "z": 4.675
+        },
+        "size": {
+          "x": 0.15,
+          "y": 2.2,
+          "z": 0.05
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "d_mb:frame:right",
+      "visible": true,
+      "position": {
+        "x": 4.2,
+        "y": 1.1,
+        "z": 5.55
+      },
+      "rotationYDeg": 90,
+      "aabb": {
+        "min": {
+          "x": 4.125,
+          "y": 0,
+          "z": 5.525
+        },
+        "max": {
+          "x": 4.275,
+          "y": 2.2,
+          "z": 5.575
+        },
+        "size": {
+          "x": 0.15,
+          "y": 2.2,
+          "z": 0.05
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "d_mb:frame:top",
+      "visible": true,
+      "position": {
+        "x": 4.2,
+        "y": 2.175,
+        "z": 5.1
+      },
+      "rotationYDeg": 90,
+      "aabb": {
+        "min": {
+          "x": 4.125,
+          "y": 2.15,
+          "z": 4.6
+        },
+        "max": {
+          "x": 4.275,
+          "y": 2.2,
+          "z": 5.6
+        },
+        "size": {
+          "x": 0.15,
+          "y": 0.05,
+          "z": 1
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "d_mb:lintel",
+      "visible": true,
+      "position": {
+        "x": 4.2,
+        "y": 2.45,
+        "z": 5.1
+      },
+      "rotationYDeg": 90,
+      "aabb": {
+        "min": {
+          "x": 4.14,
+          "y": 2.1,
+          "z": 4.65
+        },
+        "max": {
+          "x": 4.26,
+          "y": 2.8,
+          "z": 5.55
+        },
+        "size": {
+          "x": 0.12,
+          "y": 0.7,
+          "z": 0.9
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "frosted_mb_washbasin_privacy:0",
+      "visible": true,
+      "position": {
+        "x": -0.06,
+        "y": 1.4,
+        "z": 3.43
+      },
+      "rotationYDeg": 90,
+      "aabb": {
+        "min": {
+          "x": -0.066,
+          "y": 0,
+          "z": 2.86
+        },
+        "max": {
+          "x": -0.054,
+          "y": 2.8,
+          "z": 4
+        },
+        "size": {
+          "x": 0.012,
+          "y": 2.8,
+          "z": 1.14
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "ceiling:ceiling_master_ac",
+      "visible": true,
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotationYDeg": 0,
+      "aabb": null
+    },
+    {
+      "id": "furniture:master_bedroom:bed_180:0",
+      "visible": true,
+      "position": {
+        "x": 3.2,
+        "y": 0,
+        "z": 7.4
+      },
+      "rotationYDeg": 270,
+      "aabb": {
+        "min": {
+          "x": 2.2,
+          "y": 0,
+          "z": 6.47
+        },
+        "max": {
+          "x": 4.2,
+          "y": 0.8,
+          "z": 8.33
+        },
+        "size": {
+          "x": 2,
+          "y": 0.8,
+          "z": 1.86
+        },
+        "meshCount": 4
+      }
+    },
+    {
+      "id": "furniture:master_bedroom:master_north_wall_wardrobe_650:1",
+      "visible": true,
+      "position": {
+        "x": 2.925,
+        "y": 0,
+        "z": 4.59
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 2.584888,
+          "y": 0,
+          "z": 4.3
+        },
+        "max": {
+          "x": 3.265112,
+          "y": 2.45,
+          "z": 5.170643
+        },
+        "size": {
+          "x": 0.680225,
+          "y": 2.45,
+          "z": 0.870643
+        },
+        "meshCount": 11
+      }
+    }
+  ],
+  "criticalClearances": {
+    "bridge_lower_to_wardrobe_back_z": 0.015,
+    "bridge_main_to_wardrobe_back_z": 0.015,
+    "wardrobe_east_to_dmb_leaf_x": 0.034888,
+    "south_dresser_maxZ_vs_soft_envelope": {
+      "dresser_max_z": 9.55,
+      "soft_envelope_z": [
+        9.56,
+        9.68
+      ],
+      "gap_to_envelope_min": 0.01
+    },
+    "wardrobe_open_south_max_z": 5.170643
+  }
+}

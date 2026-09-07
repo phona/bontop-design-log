@@ -1,0 +1,271 @@
+{
+  "view": "r7-final-01-entry-bridge",
+  "doorConfigDeclared": "closed",
+  "url": "http://localhost:5173/?v=r7-650-20260906",
+  "title": "和萃 701 - 3D 装修设计",
+  "isReady": true,
+  "configErrorBanner": [],
+  "viewport": {
+    "width": 1600,
+    "height": 1000,
+    "dpr": 1
+  },
+  "camera": {
+    "mode": "orbit",
+    "position": {
+      "x": 1.55,
+      "y": 1.75,
+      "z": 3.75
+    },
+    "target": {
+      "x": 2.75,
+      "y": 1.25,
+      "z": 4.5
+    }
+  },
+  "doorState": {
+    "wardrobe": [
+      {
+        "doorId": "master_north_wall_wardrobe_650:door:1",
+        "doorIndex": 0,
+        "hingeSide": "left",
+        "state": "closed",
+        "openLimitDeg": 95,
+        "rotationDeg": 0,
+        "aabb": {
+          "min": {
+            "x": 2.62,
+            "y": 0.03,
+            "z": 4.86
+          },
+          "max": {
+            "x": 2.92,
+            "y": 2.39,
+            "z": 4.88
+          },
+          "size": {
+            "x": 0.3,
+            "y": 2.36,
+            "z": 0.02
+          },
+          "meshCount": 3
+        }
+      },
+      {
+        "doorId": "master_north_wall_wardrobe_650:door:2",
+        "doorIndex": 1,
+        "hingeSide": "right",
+        "state": "closed",
+        "openLimitDeg": 95,
+        "rotationDeg": 0,
+        "aabb": {
+          "min": {
+            "x": 2.93,
+            "y": 0.03,
+            "z": 4.86
+          },
+          "max": {
+            "x": 3.23,
+            "y": 2.39,
+            "z": 4.88
+          },
+          "size": {
+            "x": 0.3,
+            "y": 2.36,
+            "z": 0.02
+          },
+          "meshCount": 3
+        }
+      }
+    ],
+    "dMb": {
+      "rotationYDeg": 90,
+      "aabb": null,
+      "declared": "as-rendered-open"
+    }
+  },
+  "wardrobeAabb": {
+    "min": {
+      "x": 2.6,
+      "y": 0,
+      "z": 4.3
+    },
+    "max": {
+      "x": 3.25,
+      "y": 2.45,
+      "z": 4.88
+    },
+    "size": {
+      "x": 0.65,
+      "y": 2.45,
+      "z": 0.58
+    },
+    "meshCount": 11
+  },
+  "objects": [
+    {
+      "id": "ceiling:ceiling_master_ac",
+      "visible": true,
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotationYDeg": 0,
+      "aabb": null
+    },
+    {
+      "id": "furniture:master_bedroom:master_north_wall_wardrobe_650:1",
+      "visible": true,
+      "position": {
+        "x": 2.925,
+        "y": 0,
+        "z": 4.59
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 2.6,
+          "y": 0,
+          "z": 4.3
+        },
+        "max": {
+          "x": 3.25,
+          "y": 2.45,
+          "z": 4.88
+        },
+        "size": {
+          "x": 0.65,
+          "y": 2.45,
+          "z": 0.58
+        },
+        "meshCount": 11
+      }
+    },
+    {
+      "id": "furniture:master_bedroom:mb_vanity_lower_board:9",
+      "visible": true,
+      "position": {
+        "x": 2.44,
+        "y": 0,
+        "z": 3.35
+      },
+      "rotationYDeg": 270,
+      "aabb": {
+        "min": {
+          "x": 2.28,
+          "y": 0.965,
+          "z": 2.6
+        },
+        "max": {
+          "x": 2.6,
+          "y": 1.035,
+          "z": 4.1
+        },
+        "size": {
+          "x": 0.32,
+          "y": 0.07,
+          "z": 1.5
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "furniture:master_bedroom:mb_vanity_lower_board_bridge:10",
+      "visible": true,
+      "position": {
+        "x": 2.44,
+        "y": 0,
+        "z": 4.195
+      },
+      "rotationYDeg": 270,
+      "aabb": {
+        "min": {
+          "x": 2.28,
+          "y": 0.965,
+          "z": 4.105
+        },
+        "max": {
+          "x": 2.6,
+          "y": 1.035,
+          "z": 4.285
+        },
+        "size": {
+          "x": 0.32,
+          "y": 0.07,
+          "z": 0.18
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "furniture:master_bedroom:mb_vanity_main_board:11",
+      "visible": true,
+      "position": {
+        "x": 2.44,
+        "y": 0,
+        "z": 3.35
+      },
+      "rotationYDeg": 270,
+      "aabb": {
+        "min": {
+          "x": 2.28,
+          "y": 1.515,
+          "z": 2.6
+        },
+        "max": {
+          "x": 2.6,
+          "y": 1.585,
+          "z": 4.1
+        },
+        "size": {
+          "x": 0.32,
+          "y": 0.07,
+          "z": 1.5
+        },
+        "meshCount": 1
+      }
+    },
+    {
+      "id": "furniture:master_bedroom:mb_vanity_main_board_bridge:12",
+      "visible": true,
+      "position": {
+        "x": 2.44,
+        "y": 0,
+        "z": 4.195
+      },
+      "rotationYDeg": 270,
+      "aabb": {
+        "min": {
+          "x": 2.28,
+          "y": 1.515,
+          "z": 4.105
+        },
+        "max": {
+          "x": 2.6,
+          "y": 1.585,
+          "z": 4.285
+        },
+        "size": {
+          "x": 0.32,
+          "y": 0.07,
+          "z": 0.18
+        },
+        "meshCount": 1
+      }
+    }
+  ],
+  "criticalClearances": {
+    "bridge_lower_to_wardrobe_back_z": 0.015,
+    "bridge_main_to_wardrobe_back_z": 0.015,
+    "south_dresser_maxZ_vs_soft_envelope": {
+      "dresser_max_z": 9.55,
+      "soft_envelope_z": [
+        9.56,
+        9.68
+      ],
+      "gap_to_envelope_min": 0.01
+    },
+    "wardrobe_open_south_max_z": 4.88
+  }
+}

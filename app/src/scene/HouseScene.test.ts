@@ -122,8 +122,54 @@ vi.stubGlobal('window', mockWindow);
 
 import { HouseScene, GLASS_THICKNESS } from '../render/HouseScene';
 import { expectedVisibleCurtainNodes } from '@shared/curtain-projection';
+import * as THREE from 'three';
 
 describe('HouseScene', () => {
+  it('renders the declared pipe-chase inspection layer above its transparent covers and restores normal state', () => {
+    const scene = Object.create(HouseScene.prototype) as any;
+    scene.exportRoot = new THREE.Group();
+    const cover = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    cover.userData = { inspectionLayer: 'pipe-chase', inspectionOpacity: 0.18 };
+    const pipe = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    pipe.userData = { inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true };
+    const otherCeiling = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    scene.exportRoot.add(cover);
+    scene.exportRoot.add(pipe);
+    scene.exportRoot.add(otherCeiling);
+
+    scene.setPipeChaseInspectionVisible(true);
+    expect(cover.renderOrder).toBe(80);
+    expect((cover.material as THREE.MeshStandardMaterial).opacity).toBeCloseTo(0.18);
+    expect((cover.material as THREE.MeshStandardMaterial).depthWrite).toBe(false);
+    expect(pipe.visible).toBe(true);
+    expect(pipe.renderOrder).toBe(100);
+    expect((pipe.material as THREE.MeshStandardMaterial).depthTest).toBe(false);
+
+    scene.setPipeChaseInspectionVisible(false);
+    expect(cover.renderOrder).toBe(0);
+    expect((cover.material as THREE.MeshStandardMaterial).opacity).toBe(1);
+    expect((cover.material as THREE.MeshStandardMaterial).depthWrite).toBe(true);
+    expect(pipe.visible).toBe(false);
+    expect(pipe.renderOrder).toBe(0);
+    expect((pipe.material as THREE.MeshStandardMaterial).depthTest).toBe(true);
+    expect(otherCeiling.renderOrder).toBeUndefined();
+  });
+
+  it('makes only inspection-declared ceiling covers translucent during HVAC inspection', () => {
+    const scene = Object.create(HouseScene.prototype) as any;
+    const inspected = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    inspected.userData = { inspectionLayer: 'pipe-chase', inspectionOpacity: 0.18 };
+    const ordinary = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    scene.ceilingMeshes = [inspected, ordinary];
+    scene.hvacRenderer = { isCoordinationVisible: () => true };
+
+    scene.setCeilingVisible(true);
+    expect((inspected.material as THREE.MeshStandardMaterial).opacity).toBeCloseTo(0.18);
+    expect(inspected.renderOrder).toBe(80);
+    expect((ordinary.material as THREE.MeshStandardMaterial).opacity).toBe(1);
+    expect(ordinary.renderOrder).toBe(0);
+  });
+
   it('links electrical topology into overview and restores its prior visibility', () => {
     const scene = Object.create(HouseScene.prototype) as any;
     const ceiling = { visible: false, material: { opacity: 0.7 }, raycast: vi.fn() };

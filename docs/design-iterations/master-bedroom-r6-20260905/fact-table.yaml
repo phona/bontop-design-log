@@ -1,0 +1,28 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: master-bedroom-r6-20260905
+status: implementation
+source_policy:
+  authority_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml, config/house.yaml, config/electrical.yaml, config/ceiling.yaml]
+  plan_ref: /home/tao/.kimi-code/sessions/wd_bontop-design-log_f957d2ec2c5f/session_534afdcb-9468-42bd-906a-e1c3433337bd/agents/main/plans/atom-morbius-punisher.md
+facts:
+  confirmed:
+    - {id: fact-north-wall, statement: "主卧北侧实体墙段基准为 z=4.30；衣柜候选背贴该墙，门朝南", source_refs: [R6计划, config/layout/model-geometry.yaml], status: resolved}
+    - {id: fact-bed-r6, statement: "bed_180 候选中心 (3.20,7.40)，rotation=270，逻辑 AABB x[2.20,4.20] z[6.50,8.30]", source_refs: [R6计划, shared/types.ts], status: resolved}
+    - {id: fact-wardrobe-r6, statement: "北墙衣柜候选 600W×580D×2050H mm，AABB x[2.60,3.20] z[4.285,4.865]，双平开门（pivot），中浅胡桃/暖烟熏橡木、四腿、古铜拉手", source_refs: [R6计划, config/materials.yaml], status: resolved}
+    - {id: fact-r6-bedside-height, statement: "两只普通床头柜候选规格统一为 380W×350D×500H mm，真实 recipe 最高Y 495–505mm；南侧床头服务带继续与床位关系复核", source_refs: [R6计划, shared/render/FixtureFactory.ts], confidence: confirmed, status: resolved}
+    - {id: fact-r6-electrical-band, statement: "南侧插座 z=7.802，双控 z=7.898，均在东墙实体墙服务带", source_refs: [R6计划, config/electrical.yaml], status: resolved}
+    - {id: fact-r6-bridges, statement: "DEC-045 两个 bridge 各 180mm，仅为视觉衔接件，不单独计价", source_refs: [R6计划, config/house.yaml], status: resolved}
+    - {id: fact-r6-curtain-envelope, statement: "窗帘软包络不是地面硬禁区：顶部盒体 z[8.70,8.95] 仅吊顶构件；依据 runtime 默认 interior offset=0.12m，闭帘候选厚度 0.12m、z[9.56,9.68]，confidence=inferred/status=site_pending；开帘端部未知时为空", source_refs: [curtain-soft-envelope-preview.yaml, shared/render/SceneBuilder.ts], confidence: inferred, status: resolved}
+    - {id: fact-bedside-r6, statement: "两只普通床头柜候选平面规格 380W（沿x）×350D（沿z），北 z[6.07,6.42]，南 z[8.38,8.73]", source_refs: [R6计划], confidence: confirmed, status: resolved}
+    - {id: fact-south-dresser-retained, statement: "master_hot_season_low_dresser 必须原位 (1.00,9.31), rotation=180，约1400×480×850mm", source_refs: [R6计划, config/house.yaml], status: resolved}
+    - {id: fact-electrical-wall, statement: "床头电气继续挂 w_mb_east 实体墙，wall_side=west；门口双控保持原位", source_refs: [AGENTS.md, config/electrical.yaml], status: resolved}
+  inferred:
+    - {id: fact-bed-runtime, statement: "按现有 bed_180 recipe，runtime AABB 约 x[2.20,4.20] z[6.47,8.33]", basis: "recipe 外扩与 R6 计划", status: resolved}
+  site_pending:
+    - {id: pending-south-curtain, statement: "南帘真实轨道、下垂、堆叠端与床头柜净距未实测", owner: site, status: open}
+    - {id: pending-door-trim-handle, statement: "d_mb 门套/执手突出量未实测", owner: site, status: open}
+    - {id: pending-hvac-inspection, statement: "北墙衣柜邻近 HVAC 回风/滤网检修包络未证明", owner: hvac, status: open}
+    - {id: pending-east-wall-structure, statement: "东墙结构与防倾倒固定节点未确认", owner: site, status: open}
+    - {id: pending-product-outlines, statement: "真实床架、床头柜、衣柜外廓未锁定", owner: site, status: open}
+notes: ["R5 旧床位/横柜/电气测试基线不再适用于 R6。", "南窗六抽不得因窗帘预演被隐藏、删除或移动。"]

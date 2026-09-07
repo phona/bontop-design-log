@@ -32,6 +32,24 @@ describe('buildCeilingZone', () => {
     expect(slab.position.y).toBeCloseTo(2.652, 5);
   });
 
+  it('rounded drop: uses the declared corner radius and omits square skirts', () => {
+    const g = buildCeilingZone({ ...dropZone, id: 'ceiling_master_ac', area: [2.925, 4.55, 4.20, 5.60], thickness: 0.30, corner_radius: 0.10, inspection_layer: 'pipe-chase', inspection_opacity: 0.18 })!;
+    expect(g.userData.cornerRadius).toBeCloseTo(0.10, 5);
+    expect(g.children.filter((child) => child.userData.part === 'slab')).toHaveLength(1);
+    expect(g.children.filter((child) => child.userData.part === 'rounded-perimeter')).toHaveLength(1);
+    expect(g.children.filter((child) => child.userData.part === 'skirt')).toHaveLength(0);
+    const slab = g.children.find((child) => child.userData.part === 'slab') as THREE.Mesh;
+    expect(slab.position.y).toBeCloseTo(2.502, 5);
+    expect(slab.userData.ceilingPersistent).toBe(true);
+    expect(g.children.every((child) => child.userData.inspectionLayer === 'pipe-chase' && child.userData.inspectionOpacity === 0.18)).toBe(true);
+    g.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(g);
+    expect(box.min.x).toBeCloseTo(2.925, 5);
+    expect(box.max.x).toBeCloseTo(4.20, 5);
+    expect(box.min.z).toBeCloseTo(4.55, 5);
+    expect(box.max.z).toBeCloseTo(5.60, 5);
+  });
+
   it('userData on group carries ceiling_zone identity', () => {
     const g = buildCeilingZone(dropZone)!;
     expect(g.userData).toMatchObject({

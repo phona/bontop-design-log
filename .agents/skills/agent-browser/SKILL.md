@@ -6,13 +6,13 @@ allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*)
 
 # agent-browser
 
-> ⚠️ **本项目特例（覆盖下文裸命令写法）**：非交互 shell 里裸 `agent-browser` 会解析到错误 shim——本仓库所有命令一律用 wrapper 全路径 `$HOME/.local/bin/agent-browser`（含 `skills get`）。
+> 本项目使用环境中已安装的全局 `agent-browser` 命令；不要硬编码 `agent-browser` 或其他项目内 wrapper。执行前可用 `command -v agent-browser` 检查解析路径。
 
 Fast browser automation CLI for AI agents. Chrome/Chromium via CDP with accessibility-tree snapshots and compact `@eN` element refs.
 
 ## 硬规则
 
-- 本项目所有命令使用 `$HOME/.local/bin/agent-browser`，不要使用裸命令。
+- 本项目所有命令使用环境中的全局 `agent-browser`；不要硬编码项目内 wrapper 路径。
 - 每个 agent 会话使用一个稳定且独占的 session，格式为 `bontop-<uuid>`；UUID 在该会话首次使用浏览器时生成一次，并在当前会话上下文中持续复用。不得按命令、任务或重试重新生成 UUID，也不得让不同 agent 共用同一个 session。
 - 同一个 session / daemon 内不要并行执行多个 browser 命令；同一 agent 的 `open`、`wait`、`snapshot`、`screenshot` 和 `close` 必须串行。不同 session 可按需并行，但每个 session 都必须独占且分别清理。
 - 页面发生变化后必须重新执行 `snapshot`；旧 refs 可能失效。
@@ -26,8 +26,8 @@ Fast browser automation CLI for AI agents. Chrome/Chromium via CDP with accessib
 ## Start here
 
 ```bash
-$HOME/.local/bin/agent-browser skills get core             # start here — workflows, common patterns, troubleshooting
-$HOME/.local/bin/agent-browser skills get core --full      # include full command reference and templates
+agent-browser skills get core             # start here — workflows, common patterns, troubleshooting
+agent-browser skills get core --full      # include full command reference and templates
 ```
 
 ## 标准生命周期
@@ -35,21 +35,21 @@ $HOME/.local/bin/agent-browser skills get core --full      # include full comman
 ```bash
 SESSION="bontop-<uuid>"  # 每个 agent 会话只生成一次，并在后续命令中复用
 cleanup() {
-  $HOME/.local/bin/agent-browser --session "$SESSION" close >/dev/null 2>&1 || true
+  agent-browser --session "$SESSION" close >/dev/null 2>&1 || true
 }
 trap cleanup EXIT INT TERM
 
-$HOME/.local/bin/agent-browser --session "$SESSION" open "http://localhost:5173/"
-$HOME/.local/bin/agent-browser --session "$SESSION" wait --load networkidle
+agent-browser --session "$SESSION" open "http://localhost:5173/"
+agent-browser --session "$SESSION" wait --load networkidle
 # 对 3D 页面继续轮询真实 ready 状态，再 snapshot / screenshot
-$HOME/.local/bin/agent-browser --session "$SESSION" snapshot -i -c
-$HOME/.local/bin/agent-browser --session "$SESSION" screenshot
+agent-browser --session "$SESSION" snapshot -i -c
+agent-browser --session "$SESSION" screenshot
 ```
 
 任务结束后由 `trap` 或显式命令执行：
 
 ```bash
-$HOME/.local/bin/agent-browser --session "$SESSION" close
+agent-browser --session "$SESSION" close
 ```
 
 `close` 后下次仍使用同一个 session 名；底层 Chrome 冷启动是可接受的。
@@ -62,15 +62,15 @@ CLI 自带的 skill 内容与安装版本同步，不会过期；本仓库只补
 任务超出普通网页自动化时再加载：
 
 ```bash
-$HOME/.local/bin/agent-browser skills get electron          # Electron 桌面应用（VS Code、Slack、Discord、Figma……）
-$HOME/.local/bin/agent-browser skills get slack             # Slack 工作区自动化
-$HOME/.local/bin/agent-browser skills get dogfood           # 探索式测试 / QA / bug 挖掘
-$HOME/.local/bin/agent-browser skills get derive-client     # 录制 HAR，推导站点独立 API client
-$HOME/.local/bin/agent-browser skills get vercel-sandbox    # Vercel Sandbox microVM 内运行
-$HOME/.local/bin/agent-browser skills get agentcore         # AWS Bedrock AgentCore 云浏览器
+agent-browser skills get electron          # Electron 桌面应用（VS Code、Slack、Discord、Figma……）
+agent-browser skills get slack             # Slack 工作区自动化
+agent-browser skills get dogfood           # 探索式测试 / QA / bug 挖掘
+agent-browser skills get derive-client     # 录制 HAR，推导站点独立 API client
+agent-browser skills get vercel-sandbox    # Vercel Sandbox microVM 内运行
+agent-browser skills get agentcore         # AWS Bedrock AgentCore 云浏览器
 ```
 
-`$HOME/.local/bin/agent-browser skills list` 查看当前安装版本支持的全部 skill。
+`agent-browser skills list` 查看当前安装版本支持的全部 skill。
 
 ## Observability Dashboard
 

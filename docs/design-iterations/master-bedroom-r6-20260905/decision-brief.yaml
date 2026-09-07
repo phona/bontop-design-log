@@ -1,0 +1,44 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: master-bedroom-r6-20260905
+subject: 主卧 R6 北墙衣柜与床位完整布局预演
+priority:
+  user_goal: "废弃 R5 横向隔断柜；北墙 z=4.30 设置 600×580×2050mm 双平开门衣柜（pivot）；床移至 (3.20,7.40)；保留南窗六抽矮柜与两只380×350×500mm候选普通床头柜（runtime高495–505mm）。"
+  ranked: [空间通行与门扇/HVAC检修, 床与床头柜功能关系, 南窗既有矮柜原位保留, 窗帘软包络真实表达, 视觉完整性]
+  non_negotiables: [不修改 model-geometry.yaml, 不修改 overlay.yaml, 不修改 d_mb, 不修改 DEC-045/洗手柜/HVAC几何, 不把南窗六抽矮柜删除或移动]
+  tradeoffs_accepted: [南帘堆叠与真实产品外廓未确认前保持 site_pending/blocking, 衣柜防倾倒待东墙结构确认]
+frozen: true
+freeze_record:
+  alignment_id: R6-plan-atom-morbius-punisher
+  source: 用户提供的 R6 执行计划
+  normalized_decision: "按计划实施候选预演，不宣称施工冻结或 delivery_ready"
+  timestamp: "2026-09-05"
+allowed_scope:
+  files: [config/house.yaml, config/electrical.yaml, config/electrical-topology.yaml, config/materials.yaml, config/procurement.yaml, shared/types.ts, shared/render/FixtureFactory.ts, scripts/verify/placement/verify-furniture-placement.ts, tests/server/master-bedroom-dressing.test.ts, docs/design-iterations/master-bedroom-r6-20260905/, docs/decision_log.md]
+  objects: [bed_180, master_north_wall_wardrobe_600, master_bedside_cabinet_350_north, master_bedside_cabinet_350_south, master_hot_season_low_dresser, bedside_electrical_group, curtain_master_south]
+forbidden:
+  files: [config/layout/model-geometry.yaml, config/layout/overlay.yaml]
+  objects: [d_mb, mb_washbasin_cabinet, mb_vanity_base_cabinet, mb_vanity_lower_board, mb_vanity_main_board, mb_vanity_pvc_box]
+  assumptions: [南帘堆叠/下垂已确认, 门套执手余量已确认, HVAC回风滤网检修已确认, 东墙可直接固定, 真实产品外廓已锁定]
+open_questions:
+  - {id: pending-south-curtain, status: site_pending, owner: site, question: 南帘实际轨道、下垂厚度、堆叠端与南床头柜关系}
+  - {id: pending-door-trim-handle, status: site_pending, owner: site, question: d_mb 门套/执手与衣柜东缘净距}
+  - {id: pending-hvac-inspection, status: site_pending, owner: hvac, question: 北墙衣柜下方/邻近 HVAC 回风与滤网检修包络}
+  - {id: pending-east-wall-structure, status: site_pending, owner: site, question: w_mb_east 结构及衣柜防倾倒节点}
+  - {id: pending-product-outlines, status: site_pending, owner: site, question: 床架、床头柜、衣柜真实完成面外廓}
+alignment:
+  records: [R6-plan-atom-morbius-punisher]
+  unresolved: [pending-south-curtain, pending-door-trim-handle, pending-hvac-inspection, pending-east-wall-structure, pending-product-outlines]
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run verify:furniture, npm run verify:all, npm run test:server, npm run typecheck, npm run test:app, npm run build:app]
+  browser_evidence_required: true
+  required_views: [主卧入口, 衣柜双门开启, 床头正立面, 南帘, HVAC/回风, 高位整体]
+  aesthetic_review: pending
+  functional_review: pending
+  construction_review: BLOCKED
+  blocking_issues: [南帘真实包络未测, HVAC检修未证明, 门套执手余量未测, 东墙结构未确认, 真实家具外廓未锁定]
+  done_when: [配置与runtime同源, 适用验证通过, 同版本浏览器证据有效, 功能/审美评审完成, site_pending明确保留]
+delivery_ready: false
+source_version: r6-master-bedroom-20260905
+notes: ["候选预演；不得作为施工下单尺寸。", "R5 横向隔断柜及其测试基线 superseded。"]

@@ -17,12 +17,12 @@
   reason: "已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m。"
   applies_to: [web, blender]
 - id: light_master_wall_l
-  anchorY: 1.6
-  reason: "已审计 Blender 基线：床头左壁灯以施工安装高度作为最终渲染锚点。"
+  anchorY: 1.35
+  reason: "2026-09-04 R2：床头壁灯降至 1.35m 阅读高度（枕头区成组，与 electrical.yaml height=1.35 对齐；覆盖旧 Blender 基线 1.6m 口径，候选未冻结，施工前按床架真实外廓终核）。"
   applies_to: [web, blender]
 - id: light_master_wall_r
-  anchorY: 1.6
-  reason: "已审计 Blender 基线：床头右壁灯以施工安装高度作为最终渲染锚点。"
+  anchorY: 1.35
+  reason: "2026-09-04 R2：床头壁灯降至 1.35m 阅读高度（枕头区成组，与 electrical.yaml height=1.35 对齐；覆盖旧 Blender 基线 1.6m 口径，候选未冻结，施工前按床架真实外廓终核）。"
   applies_to: [web, blender]
 - id: light_parent_dome
   anchorY: 2.55

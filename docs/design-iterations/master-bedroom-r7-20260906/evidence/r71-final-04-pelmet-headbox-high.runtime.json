@@ -1,0 +1,291 @@
+{
+  "view": "r71-final-04-pelmet-headbox-high",
+  "doorConfigDeclared": "closed",
+  "url": "http://localhost:5173/?v=r71-650-20260906",
+  "title": "和萃 701 - 3D 装修设计",
+  "isReady": true,
+  "configErrorBanner": [],
+  "viewport": {
+    "width": 1600,
+    "height": 1000,
+    "dpr": 1
+  },
+  "camera": {
+    "mode": "first-person",
+    "position": {
+      "x": 3.35,
+      "y": 1.55,
+      "z": 7.3
+    },
+    "target": {
+      "x": 3.5,
+      "y": 2.5,
+      "z": 4.9
+    }
+  },
+  "doorState": {
+    "wardrobe": [
+      {
+        "doorId": "master_north_wall_wardrobe_650:door:1",
+        "doorIndex": 0,
+        "hingeSide": "left",
+        "state": "closed",
+        "openLimitDeg": 95,
+        "rotationDeg": 0,
+        "aabb": {
+          "min": {
+            "x": 2.62,
+            "y": 0.03,
+            "z": 4.86
+          },
+          "max": {
+            "x": 2.92,
+            "y": 2.39,
+            "z": 4.88
+          },
+          "size": {
+            "x": 0.3,
+            "y": 2.36,
+            "z": 0.02
+          },
+          "meshCount": 3
+        }
+      },
+      {
+        "doorId": "master_north_wall_wardrobe_650:door:2",
+        "doorIndex": 1,
+        "hingeSide": "right",
+        "state": "closed",
+        "openLimitDeg": 95,
+        "rotationDeg": 0,
+        "aabb": {
+          "min": {
+            "x": 2.93,
+            "y": 0.03,
+            "z": 4.86
+          },
+          "max": {
+            "x": 3.23,
+            "y": 2.39,
+            "z": 4.88
+          },
+          "size": {
+            "x": 0.3,
+            "y": 2.36,
+            "z": 0.02
+          },
+          "meshCount": 3
+        }
+      }
+    ],
+    "dMb": {
+      "rotationYDeg": -180,
+      "aabb": {
+        "min": {
+          "x": 3.3,
+          "y": 0,
+          "z": 4.63
+        },
+        "max": {
+          "x": 4.2,
+          "y": 2.1,
+          "z": 4.67
+        },
+        "size": {
+          "x": 0.9,
+          "y": 2.1,
+          "z": 0.04
+        },
+        "meshCount": 1
+      },
+      "declared": "as-rendered-open"
+    }
+  },
+  "wardrobeAabb": {
+    "min": {
+      "x": 2.6,
+      "y": 0,
+      "z": 4.3
+    },
+    "max": {
+      "x": 3.25,
+      "y": 2.45,
+      "z": 4.88
+    },
+    "size": {
+      "x": 0.65,
+      "y": 2.45,
+      "z": 0.58
+    },
+    "meshCount": 11
+  },
+  "objects": [
+    {
+      "id": "ceiling:ceiling_master_ac",
+      "visible": true,
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 3.25,
+          "y": 2.5,
+          "z": 4.55
+        },
+        "max": {
+          "x": 4.2,
+          "y": 2.8,
+          "z": 5.6
+        },
+        "size": {
+          "x": 0.95,
+          "y": 0.3,
+          "z": 1.05
+        },
+        "meshCount": 5
+      }
+    },
+    {
+      "id": "furniture:master_bedroom:master_north_wall_wardrobe_650:1",
+      "visible": true,
+      "position": {
+        "x": 2.925,
+        "y": 0,
+        "z": 4.59
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 2.6,
+          "y": 0,
+          "z": 4.3
+        },
+        "max": {
+          "x": 3.25,
+          "y": 2.45,
+          "z": 4.88
+        },
+        "size": {
+          "x": 0.65,
+          "y": 2.45,
+          "z": 0.58
+        },
+        "meshCount": 11
+      }
+    },
+    {
+      "id": "furniture:master_bedroom:master_wardrobe_top_pelmet:2",
+      "visible": true,
+      "position": {
+        "x": 2.925,
+        "y": 0,
+        "z": 4.59
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 2.6,
+          "y": 2.45,
+          "z": 4.3
+        },
+        "max": {
+          "x": 3.25,
+          "y": 2.5,
+          "z": 4.88
+        },
+        "size": {
+          "x": 0.65,
+          "y": 0.05,
+          "z": 0.58
+        },
+        "meshCount": 2
+      }
+    },
+    {
+      "id": "hvac:A2:terminal:supply_master",
+      "visible": true,
+      "position": {
+        "x": 3.8,
+        "y": 2.62,
+        "z": 5.585
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 3.495,
+          "y": 2.54,
+          "z": 5.572
+        },
+        "max": {
+          "x": 4.105,
+          "y": 2.7,
+          "z": 5.605116
+        },
+        "size": {
+          "x": 0.61,
+          "y": 0.16,
+          "z": 0.033116
+        },
+        "meshCount": 10
+      }
+    },
+    {
+      "id": "hvac:A2:terminal:return_master",
+      "visible": true,
+      "position": {
+        "x": 3.95,
+        "y": 2.49,
+        "z": 5.2
+      },
+      "rotationYDeg": 0,
+      "aabb": {
+        "min": {
+          "x": 3.695,
+          "y": 2.469884,
+          "z": 5.07
+        },
+        "max": {
+          "x": 4.205,
+          "y": 2.503,
+          "z": 5.33
+        },
+        "size": {
+          "x": 0.51,
+          "y": 0.033116,
+          "z": 0.26
+        },
+        "meshCount": 10
+      }
+    }
+  ],
+  "criticalClearances": {
+    "wardrobe_east_to_dmb_leaf_x": 0.05,
+    "south_dresser_maxZ_vs_soft_envelope": {
+      "dresser_max_z": 9.55,
+      "soft_envelope_z": [
+        9.56,
+        9.68
+      ],
+      "gap_to_envelope_min": 0.01
+    },
+    "wardrobe_open_south_max_z": 4.88,
+    "note_r71": "R7.1: bridge 沿衣柜西面贯通 z[4.10,4.865]，15mm 缝在 x 向（衣柜西面 2.60 - bridge 东缘 2.585）；旧 z 向背板缝口径已随整段层板失效",
+    "pelmet_aabb": {
+      "x": [
+        2.6,
+        3.25
+      ],
+      "y": [
+        2.45,
+        2.5
+      ],
+      "z": [
+        4.3,
+        4.88
+      ]
+    }
+  }
+}

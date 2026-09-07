@@ -1085,7 +1085,7 @@ materials:
     category: "家具"
     name: "1.8m 实木床"
     brand: "本地家具厂 / 源氏木语"
-    model: "1.8×2.0m 橡木/白蜡木"
+    model: "1.8×2.0m 中浅胡桃木细框架 + 暖米灰软包床头"
     spec: "1800×2000mm"
     unit: "张"
     price_per_unit: 2500
@@ -1100,7 +1100,7 @@ materials:
     pros: ["实木环保", "耐用"]
     cons: ["价格中等"]
     price_source: "源氏木语天猫旗舰店"
-    notes: "含床头柜, 不含床垫。【床箱床选型指令（2026-08-12）】主卧+父母房选液压床箱款（+700~1500/张）：①双气撑杆标称承重≥（床垫+床板）×1.5，问清杆品牌与保修（悍高/海蒂诗级）；②排骨架箱底或底板离地≥10cm通风（回南天）；③被褥一律压缩袋入箱，书不入箱（重+中频）；④父母房限低箱款（床面离地≤55cm，老人上下床）；⑤NW次卧床不升级（置物架功能不重复）"
+    notes: "R3 视觉预演：中浅胡桃木细框架、暖米灰软包床头/床垫，床头板最高 0.80m；独立床架与床头集成轻托盘不等同普通床头柜，托盘不得进入南帘控制区。含床头柜, 不含床垫。【床箱床选型指令（2026-08-12）】主卧+父母房选液压床箱款（+700~1500/张）：①双气撑杆标称承重≥（床垫+床板）×1.5，问清杆品牌与保修（悍高/海蒂诗级）；②排骨架箱底或底板离地≥10cm通风（回南天）；③被褥一律压缩袋入箱，书不入箱（重+中频）；④父母房限低箱款（床面离地≤55cm，老人上下床）；⑤NW次卧床不升级（置物架功能不重复）"
 
   - id: "bed_150_01"
     topic_id: "bed"
@@ -1172,7 +1172,7 @@ materials:
     notes: "【核价红旗 2026-08-12】price=4200 与下方口径矛盾：按投影面积约 1700 元/㎡ × 2.4m × 2.7m = 11,016 元/组。三组衣柜潜在偏差 ±17k，为 candidate 中最大不确定项。到店必问：①计价方式（投影/延米/展开）②板材（多层/颗粒）③2.4m 与 1.8m 分组报价。落定前 furniture_soft 36.5k 视为悬空"
 
   - id: "wardrobe_180_01"
-    topic_id: "miscellaneous"
+    topic_id: "wardrobe"
     alternative_group: "wardrobe"
     category: "家具"
     name: "1.8m 定制衣柜"
@@ -1194,6 +1194,241 @@ materials:
     price_source: "本地全屋定制工厂报价"
     notes: "按投影面积约 1700 元/㎡ × 1.8m × 2.7m 估算；西北次卧（儿童房）用，DEC-012 由 2.4m 降"
     appearance: { type: "solid_color", color: "#d8cbb2" }
+
+  # === 主卧 950 三门衣柜 + 一体木饰面空调门头盒（2026-09 R8）===
+  - id: "wardrobe_north_950_custom_01"
+    topic_id: "wardrobe"
+    alternative_group: "wardrobe"
+    category: "家具"
+    name: "主卧北墙950定制模块化衣柜（R8 active）"
+    brand: "本地全屋定制工厂 / 待核样"
+    model: "950×580×2800mm，三扇窄平开门+顶部固定木饰面门头，真正通顶；冷凝水管槽隐藏于顶部"
+    spec: "950×580×2800mm"
+    unit: "组"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "待现场/厂家核定"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["定制模块化", "一体木饰面", "三门独立 pivot 真实开合", "与空调门头盒一体衔接"]
+    cons: ["价格与真实完成面外廓待核", "防倾倒固定待现场确认", "门套净距与现场开启包络待复核"]
+    price_source: "pending"
+    notes: "当前试做方案：950W×580D×2500H，三扇窄平开门朝南（±95°），AABB平面保持当前家具配置；柜体/门板完成面与 ceiling_master_ac 底标高约2.50m齐平，顶部仅保留细收口，不把HVAC设备、送回风或检修责任并入家具。price pending 不以 0 伪装完成；现场仍需核实完成面外廓、防倾倒固定、门套净距与 HVAC 检修"
+    appearance: { type: "wood", color: "medium_light_walnut_warm_smoked_oak" }
+
+  - id: "wardrobe_north_650_custom_01"
+    topic_id: "wardrobe"
+    alternative_group: "wardrobe"
+    category: "家具"
+    name: "主卧北墙650定制模块化衣柜（R7 收窄版 superseded）"
+    brand: "本地全屋定制工厂 / 待核样"
+    model: "650×580×2450mm，两扇窄平开门，一体木饰面，非通顶"
+    spec: "650×580×2450mm"
+    unit: "组"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "待现场/厂家核定"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["定制模块化", "一体木饰面", "双门独立 pivot 真实开合"]
+    cons: ["R8 已恢复 950 active", "仅历史方案保留"]
+    price_source: "pending"
+    notes: "R7 历史收窄版，仅供旧数据解析；R8 恢复 950 三门原方案"
+    appearance: { type: "wood", color: "medium_light_walnut_warm_smoked_oak" }
+
+  - id: "wardrobe_north_950_custom_01"
+    topic_id: "wardrobe"
+    alternative_group: "wardrobe"
+    category: "家具"
+    name: "主卧北墙950定制模块化衣柜（R7 首版 superseded，历史保留）"
+    brand: "本地全屋定制工厂 / 待核样"
+    model: "950×580×2450mm，三扇窄平开门，一体木饰面，非通顶"
+    spec: "950×580×2450mm"
+    unit: "组"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "待现场/厂家核定"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["定制模块化", "一体木饰面"]
+    cons: ["与 d_mb 开启门扇（x≥3.30）干涉约250mm，已由 650 收窄版替代", "价格与真实完成面外廓待核"]
+    price_source: "pending"
+    notes: "R7 首版 950W×580D×2450H：东缘 x=3.55 与 d_mb 开启门扇带 x[3.30,4.20] z[4.63,4.67] 干涉；2026-09-06 由 wardrobe_north_650_custom_01 替代，仅历史保留"
+    appearance: { type: "wood", color: "medium_light_walnut_warm_smoked_oak" }
+
+  - id: "wardrobe_north_600_finished_01"
+    topic_id: "wardrobe"
+    alternative_group: "wardrobe"
+    category: "家具"
+    name: "主卧北墙600成品衣柜（R6，已 superseded）"
+    brand: "待现场/门店核定"
+    model: "600×580×2050mm，双平开门，四腿"
+    spec: "600×580×2050mm"
+    unit: "个"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "待现场/门店核定"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["中浅胡桃/暖烟熏橡木", "双平开门", "四腿可移"]
+    cons: ["价格与真实产品外廓待核"]
+    price_source: "pending"
+    notes: "R6 主卧北墙（2026-09-06 起由 R7 950 定制柜 superseded，仅历史保留）：600W×580D×2050H，双平开门、门朝南；price pending"
+    appearance: { type: "wood", color: "medium_light_walnut_warm_smoked_oak" }
+
+  - id: "wardrobe_062_finished_01"
+    topic_id: "wardrobe"
+    alternative_group: "wardrobe"
+    category: "家具"
+    name: "0.62m 成品窄衣柜（主卧前台）"
+    brand: "林氏家居 / 源氏木语 / 宜家（按成品款筛选）"
+    model: "0.62×0.60×2.25m 成品双门衣柜"
+    spec: "620×600×2250mm"
+    unit: "个"
+    price_per_unit: 1300
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "天猫旗舰店 / 本地家具市场"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["成品即买即装", "可移动/可替换", "无定制周期"]
+    cons: ["容量小于通顶定制柜"]
+    price_source: "天猫成品衣柜 1.2-2k 区间（估）"
+    notes: "【R3 视觉预演】中浅胡桃木双平板门、拉丝古铜拉手、四条约140–160mm腿，总高2.25m，平面外廓不扩大；【计价口径】成品个价：price_per_unit 即整柜到手价（含运输安装），不按投影面积/延米折算。候选待核价，产品外廓与东墙固定待现场确认"
+
+  - id: "master_partition_wardrobe_1600_01"
+    topic_id: "wardrobe"
+    alternative_group: "wardrobe"
+    category: "家具"
+    name: "1.6m 横向隔断衣柜（主卧 R5 候选）"
+    brand: "本地全屋定制工厂 / 成品柜厂"
+    model: "1.60×0.60×2.25m 四扇窄门横向隔断柜"
+    spec: "1600×600×2250mm"
+    unit: "组"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "本地全屋定制工厂 / 待核样"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["四门独立便于分区", "横向隔断不通顶", "可按候选尺寸深化"]
+    cons: ["四门开启操作侧空间不宽裕", "门板/铰链与最终尺寸待核"]
+    price_source: "待本地定制工厂按 R5 候选报价"
+    notes: "R5 candidate；默认关闭态，仅用于可运行预演；不构成施工冻结或 HVAC 检修通过。"
+
+  - id: "master_bedside_cabinet_350_01"
+    topic_id: "dresser"
+    alternative_group: "dresser"
+    category: "家具"
+    name: "500mm高普通床头柜（主卧 R6）"
+    brand: "待选成品家具厂"
+    model: "380×350mm 平面、500mm高名义单抽床头柜"
+    spec: "380×350×500mm；两柜同款"
+    unit: "个"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "本地家具市场 / 待核样"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["两侧普通床头柜统一规格", "目标 footprint 清晰"]
+    cons: ["真实门板/台面外廓待核", "东墙完成面与安装缝 site_pending"]
+    price_source: "待成品样品与尺寸确认"
+    notes: "R6 north/south 两件候选共用材料项；平面 380×350mm、最高 500mm，两柜同款；南帘厚度/堆叠仍 site_pending，不设置通宽地面硬墙或硬下限。"
+
+  - id: "master_dressing_connection_storage_01"
+    topic_id: "dresser"
+    alternative_group: "dresser"
+    category: "家具"
+    name: "主卧独立连接收纳段（R5 候选）"
+    brand: "本地家具厂 / 全屋定制工厂"
+    model: "0.70×0.40×0.90m 独立收纳柜"
+    spec: "700×400×900mm"
+    unit: "个"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "本地家具市场 / 待深化"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["独立可移动", "与 DEC-045 责任边界分开"]
+    cons: ["连接段最终位置与维护净空未现场确认", "不得替代 HVAC 检修空间"]
+    price_source: "待现场复尺与候选深化"
+    notes: "R5 candidate；仅做静态预演，DEC-045/HVAC/地插不改，维护条件 site_pending。"
+
+  - id: "study_seasonal_wardrobe_170_01"
+    topic_id: "wardrobe"
+    alternative_group: "wardrobe"
+    category: "家具"
+    name: "1.7m 模块化季节后台柜（书房）"
+    brand: "本地全屋定制工厂 / 宜家 modular 系列"
+    model: "1.70×0.55×2.40m 模块化组合柜，换季收纳"
+    spec: "1700×550×2400mm"
+    unit: "组"
+    price_per_unit: 2600
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "快环建材市场全屋定制 / 宜家"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["模块化可扩展", "换季被褥/衣物集中收纳"]
+    cons: ["深度 0.55m 限制大件收纳"]
+    price_source: "模块化组合柜 2-3.5k 区间（估）"
+    notes: "【计价口径】按组整价：price_per_unit 为 1.7m 整组到手价，不按投影面积折算。候选待核价"
+
+  - id: "light_midcentury_dresser_01"
+    topic_id: "dresser"
+    alternative_group: "dresser"
+    category: "家具"
+    name: "轻中古六抽矮柜（主卧南侧窗带）"
+    brand: "林氏家居 / 源氏木语 / 本地家具厂（按中古款筛选）"
+    model: "1.40×0.48×0.85m 六抽屉细腿矮柜，中古木色（与梳妆桌同族）"
+    spec: "1400×480×850mm"
+    unit: "个"
+    price_per_unit: 2200
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "天猫旗舰店 / 本地家具市场"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["成品即买即装", "柜高 0.85m 不挡南窗带", "热季折叠衣物+衣柜 overflow 专用"]
+    cons: ["成品尺寸需按候选外廓筛选"]
+    price_source: "天猫中古款六抽斗柜 1.5-3k 区间（估）"
+    notes: "【计价口径】成品个价：price_per_unit 即整柜到手价，不按投影面积折算。独立 dresser topic，不并入 wardrobe（避免与入口成品窄柜 roomOverride 互相污染）。候选待核价"
 
   - id: "sofa_3seat_01"
     topic_id: "sofa"
@@ -1408,6 +1643,29 @@ materials:
     price_source: "林氏家居天猫旗舰店"
     notes: "DEC-026：取消工业风方几与岩板茶几；客厅沙发前，可后期升级"
     appearance: { type: "solid_color", color: "#2f2822" }
+
+  - id: "home_fitness_light_set_01"
+    topic_id: "home_fitness"
+    alternative_group: "home_fitness"
+    category: "家具"
+    name: "轻训练套（可调哑铃对+底座、可卷训练垫，可调凳复用书房现有）"
+    brand: "Keep / 迪卡侬 / 本地体育用品店"
+    model: "可调哑铃 2×24kg 带底座 + 可卷训练垫 1.8m"
+    spec: "哑铃对+底座+垫一套"
+    unit: "套"
+    price_per_unit: 1800
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "京东 / 天猫 / 迪卡侬门店"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["一套覆盖轻训练需求", "可卷垫换季可收纳进后台柜"]
+    cons: ["可调哑铃手感不如固定哑铃"]
+    price_source: "可调哑铃对+底座约 1.2-1.6k + 可卷垫约 0.2-0.4k（估）"
+    notes: "【计价口径】按套整价：一套=可调哑铃对+底座+可卷训练垫；可调凳复用书房现有 bench_adjustable 不计入；可见器材（哑铃/垫/凳 placed 实例）只渲染不计价，防一套三次计价。候选待核价"
 
   # === 家电补全（2026-08-01 P0 新增 appliances 池，calc_mode=fixed 单件整屋） ===
   - id: "gas_stove_01"

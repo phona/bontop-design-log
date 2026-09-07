@@ -1,0 +1,41 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: master-condensate-l-route-20260907
+subject: 主卧冷凝水 L 形线路基准
+coordinate_system:
+  plan: { axes: "x 东西（+x 东），z 南北（+z 南）", units: m }
+  elevation: { axes: "y 向上", units: m }
+datum_type: service_route
+route:
+  id: condensate-master
+  ordered_points:
+    - [3.80, 2.65, 5.10]
+    - [4.10, 2.65, 5.10]
+    - [4.10, 2.65, 4.62]
+    - [2.925, 2.65, 4.62]
+    - [2.50, 2.65, 4.62]
+    - [2.50, 2.65, 4.30]
+    - [2.50, 2.65, 3.10]
+    - [2.30, 2.65, 3.10]
+    - [2.30, 2.65, 2.50]
+    - [2.00, 2.65, 2.50]
+    - [2.00, 0.10, 2.50]
+  unique_plan_turn: [2.30, 2.65, 3.10]
+  penetration: { wall: w_mbath_south, at: [2.30, 2.65, 2.86] }
+  candidate_endpoint: [2.00, 0.10, 2.50]
+  topology_constraints: [相邻段仅端点连接, 无中点分支, 无非相邻交叉, 竖管下端接触候选点]
+  closure_trim: { parts: [condensate-wall-trim, condensate-wall-trim-short-fold, condensate-wall-trim-to-south-wall], short_fold: "x[2.26,2.54] z=3.10", south_wall_finish: "x[2.26,2.34] z[2.92,3.10]", continuity: touch }
+head_box:
+  id: ceiling_master_ac
+  footprint: [2.925, 4.55, 4.20, 5.60]
+  corner_radius: 0.10
+  underside_plate_y: 2.502
+  underside_plate: { part: slab, ceilingPersistent: true, inspection_layer: pipe-chase, normal: opaque, hvac_inspection_opacity: 0.18 }
+  air_terminals:
+    axis_x: 3.70
+    east_wall_bedroom_finish_x: 4.14
+    supply: { mount_face: south, length: 0.6, position: [3.70, 2.62, 5.585], east_x: 4.00, east_clearance: 0.14 }
+    return: { mount_face: bottom, length: 0.5, position: [3.70, 2.49, 5.20], east_x: 3.95, east_clearance: 0.19, inspection: 回检一体铰接格栅兼检修 }
+visibility:
+  normal: { pipes: hidden, wardrobe: opaque }
+  hvac_inspection: { pipes: "visible #06b6d4 opacity=1", wardrobe_service_parts: "opacity=0.18 transparent=true depthWrite=false" }
