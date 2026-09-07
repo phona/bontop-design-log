@@ -5,6 +5,16 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { mergeUnitMaterials } from './SceneMeshMerger.js';
+
+const MERGE_STATIC_UNITS = true;
+
+function isMergeableUnit(obj: THREE.Object3D): boolean {
+  if (obj.userData?.type === 'railing_run') return true;
+  return obj.name.startsWith('furniture:')
+    || obj.name.startsWith('electrical:')
+    || obj.name.startsWith('plumbing:');
+}
 import type {
   SceneApi,
   RoomObject,
@@ -208,6 +218,8 @@ export class HouseScene implements SceneApi {
       this.requestRender();
     });
     this.controls.addEventListener('change', () => this.requestRender());
+    // 兜底：交互结束补一次阴影更新，覆盖未显式登记的场景改动
+    this.controls.addEventListener('end', () => this.requestShadowUpdate());
 
     this.boundOnWindowResize = () => this.onResize();
     window.addEventListener('resize', this.boundOnWindowResize);
@@ -257,6 +269,17 @@ export class HouseScene implements SceneApi {
 
   private requestRender(): void {
     this.onRenderRequested?.();
+  }
+
+  requestShadowUpdate(): void {
+    this.envManager.requestShadowUpdate();
+  }
+
+  remergeStaticUnits(): void {
+    if (!MERGE_STATIC_UNITS) return;
+    for (const child of [...this.exportRoot.children]) {
+      if (isMergeableUnit(child)) mergeUnitMaterials(child);
+    }
   }
 
   isTopDown(): boolean {
@@ -638,6 +661,7 @@ export class HouseScene implements SceneApi {
     const materials = HouseScene.extractMaterials(projectData.topics);
     this.textureManager.loadMaterials(materials);
     this.textureManager.preload();
+    this.remergeStaticUnits();
     this.readyState = 'ready';
     this.resolveReady();
     } catch (error) {
@@ -1087,6 +1111,7 @@ export class HouseScene implements SceneApi {
       setVariant(entry.blinds.deployed, normalized === 'privacy');
       setVariant(entry.blinds.gathered, false);
     }
+    this.requestShadowUpdate();
     this.requestRender();
   }
 
@@ -1137,6 +1162,7 @@ export class HouseScene implements SceneApi {
     refreshSlidingDoorGroup(this.exportRoot, group, el, {
       slidingDoorGlass: ({ paneWidth }) => this.materials.makeFlutedGlassMaterial(paneWidth),
     });
+    this.requestShadowUpdate();
     this.requestRender();
   }
 
@@ -1150,7 +1176,10 @@ export class HouseScene implements SceneApi {
     });
     this.electricalMeshes = result.electrical;
     this.infrastructureMeshes = result.objects;
-    for (const model of result.objects) this.decorations.addMarker(model);
+    for (const model of result.objects) {
+      this.decorations.addMarker(model);
+      if (MERGE_STATIC_UNITS && isMergeableUnit(model)) mergeUnitMaterials(model);
+    }
   }
 
   clearTopicObjects(topicId: string) {
@@ -1194,6 +1223,8 @@ export class HouseScene implements SceneApi {
     const threeObj = obj as THREE.Object3D;
     threeObj.userData = { ...threeObj.userData, topic: topicId, objectId };
     this.topicGroup.add(threeObj);
+    if (MERGE_STATIC_UNITS && isMergeableUnit(threeObj)) mergeUnitMaterials(threeObj);
+    this.requestShadowUpdate();
   }
 
   getRoom(roomId: string): RoomObject | undefined {

@@ -25,6 +25,8 @@ import { SunlightSystem } from './render/SunlightSystem.js';
 import { InteriorLightingSystem } from './render/InteriorLightingSystem.js';
 import { SunlightPanel } from './ui/SunlightPanel.js';
 import { SunlightButton } from './ui/SunlightButton.js';
+
+const SUNLIGHT_STORAGE_KEY = 'sunlight-enabled';
 import { DaylightHeatmap } from './render/analysis/DaylightHeatmap.js';
 import { HumidityOverlay } from './render/analysis/HumidityOverlay.js';
 import { HumidityButton } from './ui/HumidityButton.js';
@@ -85,6 +87,7 @@ export class App {
   private infrastructurePlaceMode: { category: string; type: string } | null = null;
   private sunlightPanel = new SunlightPanel();
   private sunlightSystem: SunlightSystem | null = null;
+  private sunlightEnabled = false;
   private interiorLighting: InteriorLightingSystem | null = null;
   private sunlightButton: SunlightButton | null = null;
   private daylightHeatmap: DaylightHeatmap | null = null;
@@ -287,6 +290,10 @@ export class App {
     const env = this.projectData?.environment;
     if (!env) return;
 
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(SUNLIGHT_STORAGE_KEY) : null;
+    this.sunlightEnabled = stored === '1';
+    this.houseScene.getEnvironmentManager().setSunlightEnabled(this.sunlightEnabled);
+
     const rooms: Array<{ x: number; z: number }> = this.projectData?.house?.rooms ?? [];
     const center = rooms.length > 0
       ? {
@@ -325,17 +332,31 @@ export class App {
     });
 
     this.sunlightButton = new SunlightButton({
-      onToggle: () => {
-        this.sunlightPanel.toggle();
-        if (this.sunlightPanel.isVisible()) {
-          this.sunlightSystem?.showTrajectory();
-        } else {
-          this.sunlightSystem?.hideTrajectory();
-        }
-        this.sunlightButton?.sync();
-      },
-      getActive: () => this.sunlightPanel.isVisible(),
+      onToggle: () => this.setSunlightEnabled(!this.sunlightEnabled),
+      getActive: () => this.sunlightEnabled,
     });
+  }
+
+  private setSunlightEnabled(enabled: boolean): void {
+    this.sunlightEnabled = enabled;
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(SUNLIGHT_STORAGE_KEY, enabled ? '1' : '0');
+    } catch { /* 持久化失败不影响功能 */ }
+    this.houseScene.getEnvironmentManager().setSunlightEnabled(enabled);
+    if (enabled) {
+      this.sunlightPanel.show();
+      this.sunlightSystem?.showTrajectory();
+      const st = this.houseScene.getEnvironmentManager().getLightingState();
+      this.interiorLighting?.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
+    } else {
+      this.sunlightPanel.hide();
+      this.sunlightSystem?.hideTrajectory();
+      // 静态日光预设：室内灯回落到关闭
+      this.interiorLighting?.syncSolar({ isNight: false, altitudeDeg: 90 });
+    }
+    this.houseScene.requestShadowUpdate();
+    this.sunlightButton?.sync();
+    this.requestRender();
   }
 
   private setupHumidity(): void {
@@ -759,6 +780,7 @@ export class App {
       if (shouldToggleInteriorLights(e.code, e.repeat) && this.interiorLighting) {
         e.preventDefault();
         this.interiorLighting.toggle();
+        this.houseScene.requestShadowUpdate();
         return;
       }
 
@@ -1258,6 +1280,7 @@ export class App {
         );
         const st = this.houseScene.getEnvironmentManager().getLightingState();
         nextInteriorLighting.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
+        this.houseScene.requestShadowUpdate();
         this.interiorLighting?.dispose();
         this.interiorLighting = nextInteriorLighting;
         const factsResponse = await fetch('/api/render-facts');

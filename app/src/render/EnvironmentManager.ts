@@ -17,6 +17,7 @@ export class EnvironmentManager {
   private fillLight!: THREE.DirectionalLight;
   private ambientLight!: THREE.AmbientLight;
   private envMap: THREE.Texture | null = null;
+  private sunlightEnabled = false;
   private lastState: { altitudeDeg: number; azimuthDeg: number; isNight: boolean } = {
     altitudeDeg: 60,
     azimuthDeg: 180,
@@ -32,6 +33,8 @@ export class EnvironmentManager {
     this.setupSkybox();
     this.setupLights();
     this.setupShadows();
+    this.renderer.shadowMap.autoUpdate = false;
+    this.renderer.shadowMap.needsUpdate = true;
   }
 
   private setupSkybox(): void {
@@ -90,7 +93,34 @@ export class EnvironmentManager {
 
   setSolarState(pos: SolarStateInput): void {
     const light = computeLightState(pos.altitudeDeg);
-    const dir = sunDirection(pos.altitudeDeg, pos.azimuthDeg);
+    this.lastState = { altitudeDeg: pos.altitudeDeg, azimuthDeg: pos.azimuthDeg, isNight: light.isNight };
+    if (!this.sunlightEnabled) return;
+    this.applySolarState();
+    this.requestShadowUpdate();
+  }
+
+  setSunlightEnabled(enabled: boolean): void {
+    if (this.sunlightEnabled === enabled) return;
+    this.sunlightEnabled = enabled;
+    if (enabled) {
+      this.applySolarState();
+    } else {
+      this.applyStaticPreset();
+    }
+    this.requestShadowUpdate();
+  }
+
+  getSunlightEnabled(): boolean {
+    return this.sunlightEnabled;
+  }
+
+  requestShadowUpdate(): void {
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+
+  private applySolarState(): void {
+    const light = computeLightState(this.lastState.altitudeDeg);
+    const dir = sunDirection(this.lastState.altitudeDeg, this.lastState.azimuthDeg);
 
     this.dirLight.visible = !light.isNight;
     this.dirLight.intensity = light.sunIntensity;
@@ -98,8 +128,15 @@ export class EnvironmentManager {
     this.dirLight.position.set(dir.x * SUN_RADIUS, Math.max(dir.y * SUN_RADIUS, 0.5), dir.z * SUN_RADIUS);
     this.ambientLight.intensity = light.ambientIntensity;
     this.scene.background = light.isNight ? NIGHT_BACKGROUND : DAY_BACKGROUND;
+  }
 
-    this.lastState = { altitudeDeg: pos.altitudeDeg, azimuthDeg: pos.azimuthDeg, isNight: light.isNight };
+  private applyStaticPreset(): void {
+    this.dirLight.visible = true;
+    this.dirLight.intensity = 0.9;
+    this.dirLight.color.setHex(0xffffff);
+    this.dirLight.position.set(12, 20, 8);
+    this.ambientLight.intensity = 0.55;
+    this.scene.background = DAY_BACKGROUND;
   }
 
   toggleIBL(enabled: boolean): void {

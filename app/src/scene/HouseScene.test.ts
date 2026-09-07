@@ -106,6 +106,8 @@ vi.mock('../render/EnvironmentManager.js', () => ({
     setup() {}
     setTimeOfDay() {}
     toggleIBL() {}
+    setSunlightEnabled() {}
+    requestShadowUpdate() {}
     getLightingState() { return { hour: 12, azimuth: 180, elevation: 60, iblEnabled: false }; }
   },
 }));
