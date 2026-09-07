@@ -112,18 +112,18 @@ test('R9 master-bedroom furniture set places the 950 three-door wardrobe and rem
   }
   for (const type of ['mb_vanity_lower_board', 'mb_vanity_main_board']) {
     const board = master.find((item) => item.type === type);
-    assert.deepEqual(board, { type, wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 3.45, width: 1.70, depth: 0.565 });
+    assert.deepEqual(board, { type, wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 3.61, width: 1.38, depth: 0.565 });
   }
   assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', x: 2.45, z: 4.59, rotation: 0 });
   assert.deepEqual(FURNITURE_DIMS.master_wardrobe_top_pelmet, { width: 0.95, depth: 0.58 });
   const baseCabinet = buildFixture('mb_vanity_base_cabinet');
   assert.ok(baseCabinet);
-  baseCabinet!.position.set(2.2875, 0, 3.45);
+  baseCabinet!.position.set(2.2575, 0, 3.61);
   baseCabinet!.rotation.y = THREE.MathUtils.degToRad(270);
   baseCabinet!.updateMatrixWorld(true);
   const baseBox = new THREE.Box3().setFromObject(baseCabinet!);
-  assert.ok(Math.abs(baseBox.min.x - 1.975) < 1e-6 && Math.abs(baseBox.max.x - 2.60) < 1e-6);
-  assert.ok(Math.abs(baseBox.min.z - 2.60) < 1e-6 && Math.abs(baseBox.max.z - 4.30) < 1e-6);
+  assert.ok(Math.abs(baseBox.min.x - 1.975) < 1e-6 && Math.abs(baseBox.max.x - 2.54) < 1e-6);
+  assert.ok(Math.abs(baseBox.min.z - 2.92) < 1e-6 && Math.abs(baseBox.max.z - 4.30) < 1e-6);
   assert.equal(buildFixture('mb_vanity_continuous_closure_cabinet'), null);
 });
 
@@ -131,11 +131,11 @@ test('R9 vanity boards anchor to the wall west finish without bridge geometry', 
   for (const [type, yBand] of [['mb_vanity_lower_board', [0.965, 1.035]], ['mb_vanity_main_board', [1.515, 1.585]]] as const) {
     const board = buildFixture(type);
     assert.ok(board, `missing fixture ${type}`);
-    board!.position.set(2.2575, 0, 3.45);
+    board!.position.set(2.2575, 0, 3.61);
     board!.rotation.y = THREE.MathUtils.degToRad(270);
     board!.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(board!);
-    assert.ok(Math.abs(box.min.z - 2.60) < 1e-6 && Math.abs(box.max.z - 4.30) < 1e-6, `${type} z[${box.min.z},${box.max.z}]`);
+    assert.ok(Math.abs(box.min.z - 2.92) < 1e-6 && Math.abs(box.max.z - 4.30) < 1e-6, `${type} z[${box.min.z},${box.max.z}]`);
     assert.ok(Math.abs(box.min.x - 1.975) < 1e-6 && Math.abs(box.max.x - 2.54) < 1e-6, `${type} AABB must be x[1.975,2.54]`);
     assert.ok(box.min.y >= yBand[0] - 1e-6 && box.max.y <= yBand[1] + 1e-6, `${type} y band ${box.min.y}..${box.max.y}`);
     const endFinish = board!.children.find((child) => child.userData.part === 'wardrobe-side-board-end');

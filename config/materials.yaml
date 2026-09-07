@@ -469,7 +469,7 @@ materials:
     pros: ["多层实木环保", "PET肤感好擦洗", "含基础五金"]
     cons: ["定制周期长"]
     price_source: "快环建材市场 / 本地定制工厂报价"
-    notes: "按投影面积计价，含基础五金、设计、安装；L 型橱柜投影约 6㎡"
+    notes: "按投影面积计价，含基础五金、设计、安装；L 型橱柜投影约 6㎡；主卧主卫隔墙外 mb_vanity_base_cabinet 采用 1.38m×0.565m×0.62m，包络 x[1.975,2.54] z[2.92,4.30]，现场复尺后下单"
 
   - id: "quartz_stone_01"
     topic_id: "countertop"

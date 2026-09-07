@@ -29,4 +29,11 @@ objects:
     geometry: { axis_x: 3.70, supply: { mount_face: south, length: 0.6, east_x: 4.00, east_clearance_to_wall: 0.14 }, return: { mount_face: bottom, length: 0.5, east_x: 3.95, east_clearance_to_wall: 0.19 } }
     maintenance: 回风底部铰接格栅兼检修，不另设检修口
     validation_refs: [config/hvac.yaml, tests/server/master-bedroom-dressing.test.ts]
+  - id: mb-vanity-base-cabinet
+    kind: furniture_fixture
+    parts: [base-cabinet, base-plinth, base-front-reveal, base-door-seam]
+    responsibility: 主卫隔墙外落地底柜，沿东墙与主卫南墙两处完成面收口
+    geometry: { anchor: "w_mbath_east west / rotation=270 / along=3.61", size: "1.38×0.565×0.62m", aabb: "x[1.975,2.54] z[2.92,4.30]" }
+    collision_policy: 每个真实子part不得越过 x[1.975,2.54] 或 z[2.92,4.30]；不改变墙体与门洞
+    validation_refs: [tests/server/shared/scene-builder.test.ts, npm run verify:furniture]
 dependencies: [config/house.yaml, config/hvac.yaml, config/mep-hvac-coordination.yaml, shared/render/FixtureFactory.ts, app/src/render/HouseScene.ts]

@@ -1154,9 +1154,9 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   bath_side_cabinet: { width: 0.45, depth: 0.5 }, // 2026-08-21 主卫干区封闭侧柜 h2.0
   // DEC-045 主卫东墙独立对象：rotation=270 后 width 沿墙 z、depth 朝 west；
   // wall anchor 是自身中心，local y 才是高度层次；柜体与悬浮板沿墙同轴组成一套墙面家具。
-  mb_vanity_base_cabinet: { width: 1.70, depth: 0.625 }, // 2026-09-06 与上下悬浮板同长：1.70m 长×0.625m 深×0.62m 高，西侧边缘对齐 d_mbath:frame:right 东侧外缘
-  mb_vanity_lower_board: { width: 1.70, depth: 0.565 }, // 下部悬浮板：深0.565m，按0.12m墙厚语义贴 w_mbath_east 西侧完成面，西缘 x=1.975、东缘 x=2.54，与底柜西缘一致
-  mb_vanity_main_board: { width: 1.70, depth: 0.565 }, // 主板：与下板同宽同深，深0.565m，按墙西侧完成面锚定，西缘 x=1.975、东缘 x=2.54
+  mb_vanity_base_cabinet: { width: 1.38, depth: 0.565 }, // 2026-09-07：1.38m×0.565m×0.62m；AABB x[1.975,2.54] z[2.92,4.30]，同时避开东墙与主卫南墙
+  mb_vanity_lower_board: { width: 1.38, depth: 0.565 }, // 下部悬浮板与底柜同包络，北端贴主卫南墙卧室侧完成面 z=2.92
+  mb_vanity_main_board: { width: 1.38, depth: 0.565 }, // 主板与下板同宽同深，同轴止于 z[2.92,4.30]
   condensate_pipe_ac_outlet: { width: 0.24, depth: 0.46 }, // ac_master 内冷凝水出口→延伸空调盒/衣柜顶部服务带；厂家出口位置 pending
   mb_vanity_pvc_box: { width: 1.20, depth: 0.08 }, // w_mbath_east 西侧冷凝水墙行 (2.50,4.30)->(2.50,3.10)；中心离墙完成面约40mm，wall anchor 使用 w_mbath_east west，管径/坡度待深化
   mb_vanity_pvc_wardrobe_entry: { width: 1.175, depth: 0.03 }, // 延伸空调盒/衣柜顶部服务带内的西行段

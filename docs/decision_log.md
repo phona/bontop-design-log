@@ -1164,3 +1164,14 @@
 - **现场待确认**：东墙实际完成面、风口厂家外框与风管截面、回风滤网抽拉空间和门头盒内净高，均在施工深化时确认。
 - **关联文件**：`config/hvac.yaml`、`config/ceiling.yaml`、`config/mep-hvac-coordination.yaml`、`tests/server/master-bedroom-dressing.test.ts`、`data/project-render-facts.json`、`docs/design-iterations/master-condensate-l-route-20260907/`
 - **决策人**：业主（方向确认）；施工尺寸待 HVAC 厂家深化
+
+### DEC-2026-09-07-R11 主卫隔墙外柜组退出主卫并贴双墙完成面
+
+- **日期**：2026-09-07
+- **起因**：真实场景复核发现两个独立越界：`mb_vanity_base_cabinet` 深 0.625m 且 SceneBuilder 未套用墙体完成面偏移，东缘进入 `w_mbath_east`；柜组三件原 z[2.60,4.30] 又跨过 `w_mbath_south` 卧室侧完成面 z=2.92，北端 0.32m 进入主卫。`w_mbath_east` 为 inferred shear，两个墙面均不得被柜体占用。
+- **选定方案**：三件统一保持 `wall=w_mbath_east`、`wall_side=west`、`rotation=270`，沿墙长度由 1.70m 收为 1.38m、中心移至 `along=3.61`，南端继续对齐衣柜侧 z=4.30，北端收至主卫南墙卧室侧完成面 z=2.92；总深收至 0.565m并采用 0.06m 东墙完成面偏移。运行时 AABB 统一为 x[1.975,2.54]、z[2.92,4.30]；底柜 y[0,0.62]。FixtureFactory 的柜体、踢脚、门缝及两块悬浮板同步收口。
+- **材料/采购**：`cabinet_board_01` 记录底柜 1.38×0.565×0.62m，现场复尺后下单；柜体仍为完整落地构件，既有板材/PET 门材质与价格待定状态不变。
+- **验证**：真实 `buildScene` 递归子part AABB 同时断言 x≤2.54、z≥2.92，覆盖底柜主体、踢脚、门缝和上下悬浮板；`verify:all`、服务端 532 项、前端 447 项、typecheck 与 build 均通过。浏览器运行时三件包络均精确为 x[1.975,2.54] z[2.92,4.30]，主卧侧与主卫侧正常态复核通过。
+- **现场待确认**：东墙完成面、门套/门洞实际收口和定制柜复尺；墙体结构与防倾倒节点继续 site_pending。
+- **关联文件**：`config/house.yaml`、`config/materials.yaml`、`config/procurement.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`shared/render/SceneBuilder.ts`、`scripts/verify/placement/verify-furniture-placement.ts`、`tests/server/master-bedroom-dressing.test.ts`、`tests/server/shared/scene-builder.test.ts`、`docs/design-iterations/master-bedroom-r7-20260906/`、`docs/design-iterations/master-condensate-l-route-20260907/`、`data/project-render-facts.json`
+- **决策人**：业主（复验问题）；施工尺寸待现场复尺

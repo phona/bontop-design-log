@@ -13,7 +13,9 @@
     "tmp/screenshots/master-condensate-20260907/root-wallclosure-angle1.png",
     "tmp/screenshots/master-condensate-20260907/root-wallclosure-angle1-hvac.png",
     "tmp/screenshots/master-condensate-20260907/luna-independent-r10-normal-20260907.png",
-    "tmp/screenshots/master-condensate-20260907/luna-independent-r10-inspection-20260907.png"
+    "tmp/screenshots/master-condensate-20260907/luna-independent-r10-inspection-20260907.png",
+    "tmp/screenshots/master-vanity-r11-20260907/vanity_master-bedroom_after.png",
+    "tmp/screenshots/master-vanity-r11-20260907/vanity_master-bath_after.png"
   ],
   "functional_review": {
     "verdict": "PASS",
@@ -25,7 +27,9 @@
       "R10：supply_master 与 return_master 中心轴统一为 x=3.70；送风东端 x=4.00、回风东端 x=3.95",
       "R10：相对东墙卧室侧完成面 x=4.14，送风净距0.14m、回风净距0.19m，两风口完整位于门头盒内",
       "正常态管线 0/10 可见，HVAC 检视态 10/10 可见；其它吊顶材质保持不透明",
-      "坡度、管径、存水弯、立管接点和套管保持施工待现场确认"
+      "坡度、管径、存水弯、立管接点和套管保持施工待现场确认",
+      "R11：底柜与上下悬浮板运行时 AABB 均为 x[1.975,2.54] z[2.92,4.30]；东缘退出 w_mbath_east，北缘退出 w_mbath_south 及主卫空间",
+      "R11：底柜主体、踢脚、前脸收缝和门缝子构件均通过双轴包络断言；底柜保持 y[0,0.62] 落地"
     ]
   },
   "aesthetic_review": {
@@ -35,16 +39,17 @@
       "正常视角显示圆角白色空调盒衔接木饰面衣柜，边界清楚且冷凝管隐藏",
       "正常视角可见完整白色下底板；靠主卫墙的简洁 L 形包边无悬空断口并接触墙面",
       "R10 正常态与 HVAC 同机位确认送回风视觉轴线统一，不再贴东墙或碰衣柜",
-      "HVAC 检视视角可肉眼连续辨认 #06b6d4 管线穿过半透明盒体和衣柜、接入贴墙段并朝主卫"
+      "HVAC 检视视角可肉眼连续辨认 #06b6d4 管线穿过半透明盒体和衣柜、接入贴墙段并朝主卫",
+      "R11 主卧侧可见柜组三件北端整齐止于门墙完成面，主卫侧未见柜体穿墙或探入空间"
     ]
   },
   "verification": {
     "verify_all": "PASS (0 errors; existing warnings only)",
-    "test_server": "PASS (531/531)",
-    "test_app": "PASS (438/438)",
+    "test_server": "PASS (532/532)",
+    "test_app": "PASS (447/447)",
     "typecheck": "PASS",
     "build_app": "PASS (existing chunk-size warning only)",
-    "runtime_inspection": "PASS (ok=true; 25/25 checks; 10/10 inspection-visible; wall closure and bottom slab verified)"
+    "runtime_inspection": "PASS (condensate ok=true; vanity base/lower/main AABB x[1.975,2.54] z[2.92,4.30]; master-bedroom/master-bath views verified)"
   },
   "final_state": {
     "model_verdict": "PASS",

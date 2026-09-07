@@ -752,7 +752,7 @@ function resolveFurniturePlacement(item: FurnishingsYaml[string][number], wallSe
         const wallPoint = alongIsAbsoluteVertical
           ? { x: wall.x1, z: item.along }
           : { x: wall.x1 + tangent.x * item.along, z: wall.z1 + tangent.z * item.along };
-        const finishOffset = (item.type === 'mb_vanity_lower_board' || item.type === 'mb_vanity_main_board' || item.type === 'mb_vanity_pvc_box') ? WALL_THICKNESS / 2 : 0;
+        const finishOffset = (item.type === 'mb_vanity_base_cabinet' || item.type === 'mb_vanity_lower_board' || item.type === 'mb_vanity_main_board' || item.type === 'mb_vanity_pvc_box') ? WALL_THICKNESS / 2 : 0;
         const centerOffset = finishOffset + dims.depth / 2;
         return { x: wallPoint.x + normal.x * centerOffset, z: wallPoint.z + normal.z * centerOffset, wallId: item.wall, wallSide: item.wall_side, anchorAlong: item.along };
       }

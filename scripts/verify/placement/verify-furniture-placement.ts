@@ -23,6 +23,12 @@ const MB_VANITY_TYPES = new Set([
   'mb_vanity_pvc_box',
 ]);
 
+const MB_VANITY_CASEWORK_TYPES = [
+  'mb_vanity_base_cabinet',
+  'mb_vanity_lower_board',
+  'mb_vanity_main_board',
+] as const;
+
 const MB_CONDENSATE_TYPES = new Set([
   'mb_vanity_pvc_box',
   'mb_vanity_pvc_wardrobe_entry',
@@ -81,7 +87,7 @@ function resolvePlacement(item: PlacedItem, walls: Array<{ id?: string; x1: numb
       return {};
     }
     if ((wall.id === 'w_mbath_east' || wall.id === 'w_mb_east') && item.wall_side === 'west') {
-      const wallFinishOffset = item.type === 'mb_vanity_lower_board' || item.type === 'mb_vanity_main_board' || item.type === 'mb_vanity_pvc_box' ? WALL_THICKNESS / 2 : 0;
+      const wallFinishOffset = item.type === 'mb_vanity_base_cabinet' || item.type === 'mb_vanity_lower_board' || item.type === 'mb_vanity_main_board' || item.type === 'mb_vanity_pvc_box' ? WALL_THICKNESS / 2 : 0;
       return { x: wall.x1 - wallFinishOffset - dims.depth / 2, z: item.along };
     }
     const ux = dx / wallLength;
@@ -224,6 +230,20 @@ function main(): void {
 
   // ---- 2026-09-03 专项：主卧家具化前台 + 书房季节后台（迭代 master-flexible-frontstage-20260903，候选未冻结判据）----
   const GAP_EPS = 1e-9;
+
+  // 主卫隔墙外柜组必须同时退出两道 120mm 墙体：东墙西完成面 x=2.54，
+  // 主卫南墙卧室侧完成面 z=2.92；南端仍与衣柜侧 z=4.30 对齐。
+  for (const type of MB_VANITY_CASEWORK_TYPES) {
+    const entry = placedIndex.get(`master_bedroom/${type}`);
+    if (!entry) {
+      errors.push(`master_bedroom: missing placed ${type}`);
+      continue;
+    }
+    const { box } = entry;
+    if (box.minX < 1.975 - GAP_EPS || box.maxX > 2.54 + GAP_EPS || box.minZ < 2.92 - GAP_EPS || box.maxZ > 4.30 + GAP_EPS) {
+      errors.push(`${entry.label}: 柜组包络 x[${box.minX.toFixed(3)},${box.maxX.toFixed(3)}] z[${box.minZ.toFixed(3)},${box.maxZ.toFixed(3)}] 越出双墙完成面目标 x[1.975,2.540] z[2.920,4.300]`);
+    }
+  }
 
   // d_mb runtime 门扇扫掠域：w_strip_east 门洞 z[4.65,5.55]，门扇向西开启。
   const MB_DOOR_SWEEP: Aabb = { minX: 3.30, maxX: 4.20, minZ: 4.65, maxZ: 5.55 };

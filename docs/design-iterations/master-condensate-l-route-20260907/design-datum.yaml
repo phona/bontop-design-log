@@ -36,6 +36,12 @@ head_box:
     east_wall_bedroom_finish_x: 4.14
     supply: { mount_face: south, length: 0.6, position: [3.70, 2.62, 5.585], east_x: 4.00, east_clearance: 0.14 }
     return: { mount_face: bottom, length: 0.5, position: [3.70, 2.49, 5.20], east_x: 3.95, east_clearance: 0.19, inspection: 回检一体铰接格栅兼检修 }
+vanity_base:
+  id: mb_vanity_base_cabinet
+  anchor: { wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61 }
+  geometry: { width: 1.38, depth: 0.565, height: 0.62, target_aabb: { x: [1.975,2.54], z: [2.92,4.30], y: [0.00,0.62] } }
+  finish_semantics: 东缘贴 w_mbath_east 西完成面 x=2.54；北缘贴 w_mbath_south 卧室侧完成面 z=2.92；南缘保持 z=4.30 衣柜侧对齐
+  collision: 底柜及每个 FixtureFactory 子part 的真实 buildScene AABB 均不得越过 x[1.975,2.54] 或 z[2.92,4.30]，不得进入两面墙或主卫空间
 visibility:
   normal: { pipes: hidden, wardrobe: opaque }
   hvac_inspection: { pipes: "visible #06b6d4 opacity=1", wardrobe_service_parts: "opacity=0.18 transparent=true depthWrite=false" }

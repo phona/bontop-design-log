@@ -225,26 +225,29 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   },
   // DEC-045：主卫东墙收纳拆成四个独立 furnishing object；每个 recipe 的局部原点都是自身包围盒中心。
   // local x 是沿墙宽度、local y 是世界竖向高度、local z 是进深；rotation=270 后 local x 沿世界 z，local z 正向朝 west。
-  // 四件共享墙面 z≈3.35，以 y 形成紧凑的柜体—板件—顶部收口层次，不形成贯穿侧板或等距书架。
+  // 柜体与两块板共享墙面中心 z=3.61，以 y 形成紧凑的柜体—板件层次；PVC 包边独立沿冷凝管路线定位。
   {
     type: 'mb_vanity_base_cabinet',
     parts: [
-      { shape: 'box', size: [1.70, 0.62, 0.625], position: [0, 0.31, 0], color: '#c9c1b5', roughness: 0.5, part: 'base-cabinet', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [1.62, 0.025, 0.025], position: [0, 0.03, 0.30], color: '#8f877d', roughness: 0.7, part: 'base-plinth', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [1.62, 0.025, 0.018], position: [0, 0.32, 0.3035], color: '#e7e0d6', roughness: 0.45, part: 'base-front-reveal', materialRole: 'door_front' },
-      { shape: 'box', size: [0.012, 0.42, 0.018], position: [0, 0.34, 0.3035], color: '#8f877d', roughness: 0.7, part: 'base-door-seam', materialRole: 'door_seam' },
+      // Total depth is 565mm, matching the two floating boards.  The local
+      // +z face is the west/front face after rotation=270; keep every front
+      // detail flush with that new 282.5mm half-depth.
+      { shape: 'box', size: [1.38, 0.62, 0.565], position: [0, 0.31, 0], color: '#c9c1b5', roughness: 0.5, part: 'base-cabinet', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [1.30, 0.025, 0.025], position: [0, 0.03, 0.2700], color: '#8f877d', roughness: 0.7, part: 'base-plinth', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [1.30, 0.025, 0.018], position: [0, 0.32, 0.2735], color: '#e7e0d6', roughness: 0.45, part: 'base-front-reveal', materialRole: 'door_front' },
+      { shape: 'box', size: [0.012, 0.42, 0.018], position: [0, 0.34, 0.2735], color: '#8f877d', roughness: 0.7, part: 'base-door-seam', materialRole: 'door_seam' },
     ],
   },
   {
     type: 'mb_vanity_lower_board',
     parts: [
-      { shape: 'box', size: [1.70, 0.07, 0.565], position: [0, 1.00, 0], color: '#c9b29a', roughness: 0.45, part: 'lower-board', materialRole: 'shelf' },
+      { shape: 'box', size: [1.38, 0.07, 0.565], position: [0, 1.00, 0], color: '#c9b29a', roughness: 0.45, part: 'lower-board', materialRole: 'shelf' },
     ],
   },
   {
     type: 'mb_vanity_main_board',
     parts: [
-      { shape: 'box', size: [1.70, 0.07, 0.565], position: [0, 1.55, 0], color: '#c9b29a', roughness: 0.45, part: 'main-board', materialRole: 'shelf' },
+      { shape: 'box', size: [1.38, 0.07, 0.565], position: [0, 1.55, 0], color: '#c9b29a', roughness: 0.45, part: 'main-board', materialRole: 'shelf' },
     ],
   },
   {

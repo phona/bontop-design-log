@@ -423,9 +423,9 @@ furnishings:
     - { type: dressing_stool, x: 0.42, z: 6.05, rotation: 90 } # 2026-09-04 R1 候选未冻结：随桌贴窗，收纳态完整收入桌下（AABB x[0.22,0.62] z[5.84,6.26] ⊂ 桌 footprint），使用时向东拉出
     - { type: master_hot_season_low_dresser, x: 1.05, z: 9.31, rotation: 180 } # 2026-09-06：向东微调0.05m以修复穿模；南侧窗带轻中古六抽矮柜 1400W×480D×850H（h<2.07 不挡窗带）；AABB x[0.35,1.75] z[9.07,9.55]；rotation=180 局部 +z 正面转朝北、抽屉面对房间；职责：热季折叠衣物+衣柜 overflow（不放内衣/睡衣/脏衣/洗护——那些归 DEC-045）；西端距西帘堆叠侧留余量、东侧远离 sock_master_bed_r/sock_master_curtain 点位；南帘堆叠端 site_pending
     # DEC-045：底柜保留原位；上下双层悬浮板共用 wall=w_mbath_east、wall_side=west、rotation=270，贴墙西侧完成面，不再从衣柜回退。
-    - { type: mb_vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.45 } # 2026-09-06：为与上下悬浮板南端对齐，沿墙长度调整为1.70m并将中心along设为3.45；落地底柜：1.70m×0.625m×0.62m；西侧边缘对齐 d_mbath:frame:right 东侧外缘，y=0..0.62，z=2.60..4.30
-    - { type: mb_vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.45, width: 1.70, depth: 0.565 } # 下悬浮板：按0.12m墙厚语义贴 w_mbath_east 西侧完成面，板中心x=2.2575、西缘x=1.975、东缘x=2.54，深0.565m与底柜西缘一致且不超过门框，z=2.60..4.30，y=0.965..1.035
-    - { type: mb_vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.45, width: 1.70, depth: 0.565 } # 上悬浮板：与下板同轴同尺寸，板中心x=2.2575、西缘x=1.975、东缘x=2.54，深0.565m与底柜西缘一致且不超过门框，y=1.515..1.585
+    - { type: mb_vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61 } # 2026-09-07：1.38m×0.565m×0.62m；中心(2.2575,3.61)，AABB x[1.975,2.54]、z[2.92,4.30]、y[0,0.62]；北端贴主卫南墙卧室侧完成面，东端贴 w_mbath_east 西完成面
+    - { type: mb_vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565 } # 下悬浮板与底柜同包络 x[1.975,2.54] z[2.92,4.30]，y[0.965,1.035]，不跨入主卫
+    - { type: mb_vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565 } # 上悬浮板与底柜同轴同包络，y[1.515,1.585]，南端仍与衣柜侧 z=4.30 对齐
     - { type: condensate_pipe_ac_outlet, x: 3.80, z: 5.10, rotation: 0 } # coordination schematic/pending：ac_master 内厂家冷凝水出口未现场确认；独立圆管段接至主卧东墙贴墙 run，不接 return/supply 格栅。
     - { type: mb_vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.70 } # 2026-09-07：沿 w_mbath_east 西侧完成面内留约40mm贴墙走，管心 x=2.50、z=3.10..4.30；白色平直包边与墙面收口，南端由 service_chase 的 L 形白色 trim 连续收至 w_mbath_south bedroom-side finish z=2.92，管线仅HVAC检视态显示。
     - { type: mb_vanity_pvc_wardrobe_entry, x: 4.10, z: 4.62, rotation: 0 } # 延伸空调盒/通顶衣柜顶部服务带西行至衣柜东缘 (2.925,4.62)；仅检视态显示，柜体主体保留。

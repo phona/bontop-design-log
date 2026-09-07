@@ -213,7 +213,7 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
     assert.ok(fixture.children.every((child) => child.userData.part), type);
   }
 
-  const along = 3.45;
+  const along = 3.61;
   const result = buildScene({
     rooms: [{ id: 'master_bedroom', name: '主卧', x: 2.1, z: 5.55, width: 4.2, depth: 4.25, height: 2.8, type: 'private', boundary_count: 4 }],
     walls: [{ id: 'w_mbath_east', x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3, height: 2.8 }],
@@ -225,22 +225,21 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
   assert.deepEqual(groups.map((group) => group.userData.objectId), types.map((type, index) => `furniture:master_bedroom:${type}:${index}`));
   assert.equal(new Set(groups.map((group) => group.userData.objectId)).size, types.length);
   assert.deepEqual(groups.map((group) => group.position.z), types.map(() => along));
-  assert.deepEqual(groups.map((group) => group.position.x).map((x) => Number(x.toFixed(4))), [2.2875, 2.2575, 2.2575]);
+  assert.deepEqual(groups.map((group) => group.position.x).map((x) => Number(x.toFixed(4))), [2.2575, 2.2575, 2.2575]);
   assert.deepEqual(groups.map((group) => ({ wallId: group.userData.wallId, wallSide: group.userData.wallSide, anchorAlong: group.userData.anchorAlong })), types.map(() => ({ wallId: 'w_mbath_east', wallSide: 'west', anchorAlong: along })));
 
   result.exportRoot.updateMatrixWorld(true);
-  const expectedWidths = [1.70, 1.70, 1.70];
-  const expectedDepths = [0.625, 0.565, 0.565];
+  const expectedWidths = [1.38, 1.38, 1.38];
+  const expectedDepths = [0.565, 0.565, 0.565];
   const expectedYBounds = [[0.00, 0.62], [0.965, 1.035], [1.515, 1.585]];
   const close = (actual: number, expected: number) => assert.ok(Math.abs(actual - expected) < 1e-6, `${actual} !== ${expected}`);
   const boxes = groups.map((group) => new THREE.Box3().setFromObject(group));
   for (let index = 0; index < groups.length; index++) {
     close(boxes[index].min.y, expectedYBounds[index][0]);
     close(boxes[index].max.y, expectedYBounds[index][1]);
-    assert.ok(boxes[index].min.z >= 1.10 - 1e-6 && boxes[index].max.z <= 4.30 + 1e-6);
-    const expectedMaxX = index === 1 || index === 2 ? 2.54 : 2.60;
-    assert.ok(Math.abs(boxes[index].max.x - expectedMaxX) < 1e-6, `${types[index]} must terminate at the wall west finish or wall`);
-    if (index === 1 || index === 2) assert.ok(Math.abs(boxes[index].min.x - 1.975) < 1e-6, `${types[index]} must start at x=1.975`);
+    assert.ok(boxes[index].min.z >= 2.92 - 1e-6 && boxes[index].max.z <= 4.30 + 1e-6);
+    assert.ok(Math.abs(boxes[index].max.x - 2.54) < 1e-6, `${types[index]} must terminate at the w_mbath_east west finish`);
+    assert.ok(Math.abs(boxes[index].min.x - 1.975) < 1e-6, `${types[index]} must start at x=1.975`);
     assert.ok(Math.abs((boxes[index].max.x - boxes[index].min.x) - expectedDepths[index]) < 1e-6);
     assert.ok(Math.abs(boxes[index].max.z - (along + expectedWidths[index] / 2)) < 1e-6);
     assert.ok(Math.abs(boxes[index].min.z - (along - expectedWidths[index] / 2)) < 1e-6);
@@ -251,6 +250,13 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
   const baseParts: THREE.Object3D[] = [];
   groups[0].traverse((object) => { if (object.userData.part) baseParts.push(object); });
   assert.deepEqual(baseParts.map((object) => object.userData.part), ['base-cabinet', 'base-plinth', 'base-front-reveal', 'base-door-seam']);
+  for (const part of baseParts) {
+    const partBox = new THREE.Box3().setFromObject(part);
+    assert.ok(partBox.min.x >= 1.975 - 1e-6, `${part.userData.part} must not cross west side of vanity envelope: ${partBox.min.x}`);
+    assert.ok(partBox.max.x <= 2.54 + 1e-6, `${part.userData.part} must not enter w_mbath_east wall/master_bath side: ${partBox.max.x}`);
+    assert.ok(partBox.min.z >= 2.92 - 1e-6, `${part.userData.part} must not cross w_mbath_south bedroom finish: ${partBox.min.z}`);
+    assert.ok(partBox.max.z <= 4.30 + 1e-6, `${part.userData.part} must remain aligned with the wardrobe end: ${partBox.max.z}`);
+  }
 
   const routeResult = buildScene({
     rooms: [{ id: 'master_bedroom', name: '主卧', x: 2.1, z: 5.55, width: 4.2, depth: 4.25, height: 2.8, type: 'private', boundary_count: 4 }],
@@ -903,12 +909,35 @@ test('R9 SceneBuilder vanity boards anchor to the wall west finish with no west-
     const board = furnitureByType(result, type);
     const boardBox = new THREE.Box3().setFromObject(board);
     assert.ok(Math.abs(board.position.x - 2.2575) < 1e-6, `${type} center x must be 2.2575m`);
+    assert.ok(Math.abs(board.position.z - 3.61) < 1e-6, `${type} center z must be 3.61m`);
     assert.ok(Math.abs(boardBox.min.x - 1.975) < 1e-6 && Math.abs(boardBox.max.x - 2.54) < 1e-6, `${type} AABB must be x[1.975,2.54]`);
+    assert.ok(Math.abs(boardBox.min.z - 2.92) < 1e-6, `${type} must start at the bedroom-side finish of w_mbath_south`);
     assert.ok(Math.abs(boardBox.max.z - 4.30) < 1e-6, `${type} must terminate at wall north edge`);
     assert.equal(board.children.some((child) => child.userData.part === 'wardrobe-side-board-end'), false, `${type} must remain a plain floating board without a wardrobe-colored end panel`);
   }
   assert.equal(result.index.furnitureMeshes.some((group) => group.userData.furnishingType === 'mb_vanity_continuous_closure_cabinet'), false);
   assert.equal(result.index.furnitureMeshes.some((group) => String(group.userData.furnishingType).endsWith('_board_bridge')), false);
+});
+
+test('R11 SceneBuilder vanity base cabinet and every child part stay inside the west finish envelope', () => {
+  const result = buildCliHouseScene();
+  result.exportRoot.updateMatrixWorld(true);
+  const base = furnitureByType(result, 'mb_vanity_base_cabinet');
+  const baseBox = new THREE.Box3().setFromObject(base);
+  assert.ok(Math.abs(base.position.x - 2.2575) < 1e-6, `base cabinet center x=${base.position.x}`);
+  assert.ok(Math.abs(base.position.z - 3.61) < 1e-6, `base cabinet center z=${base.position.z}`);
+  assert.ok(Math.abs(baseBox.min.x - 1.975) < 1e-6 && Math.abs(baseBox.max.x - 2.54) < 1e-6, `base cabinet AABB x[${baseBox.min.x},${baseBox.max.x}]`);
+  assert.ok(Math.abs(baseBox.min.z - 2.92) < 1e-6 && Math.abs(baseBox.max.z - 4.30) < 1e-6, `base cabinet AABB z[${baseBox.min.z},${baseBox.max.z}]`);
+  const parts: THREE.Object3D[] = [];
+  base.traverse((object) => { if (object.userData.part) parts.push(object); });
+  assert.deepEqual(parts.map((object) => object.userData.part), ['base-cabinet', 'base-plinth', 'base-front-reveal', 'base-door-seam']);
+  for (const part of parts) {
+    const box = new THREE.Box3().setFromObject(part);
+    assert.ok(box.min.x >= 1.975 - 1e-6, `${part.userData.part} crosses west edge: ${box.min.x}`);
+    assert.ok(box.max.x <= 2.54 + 1e-6, `${part.userData.part} enters w_mbath_east wall/master_bath side: ${box.max.x}`);
+    assert.ok(box.min.z >= 2.92 - 1e-6, `${part.userData.part} enters master_bath across w_mbath_south: ${box.min.z}`);
+    assert.ok(box.max.z <= 4.30 + 1e-6, `${part.userData.part} crosses wardrobe alignment: ${box.max.z}`);
+  }
 });
 
 test('R7 wardrobe four-state real-mesh collision matrix clears declared room obstacles and HVAC geometry', () => {
