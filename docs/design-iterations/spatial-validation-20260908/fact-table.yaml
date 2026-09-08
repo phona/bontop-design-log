@@ -1,0 +1,88 @@
+iteration_id: spatial-validation-20260908
+state: verification
+scope: "统一空间校验第一版 CLI、共享几何原语、verify:all 门禁与反例"
+facts:
+  - id: authority_sources
+    status: confirmed
+    value: "model-geometry/overlay/house/ceiling/electrical + SceneBuilder/FixtureFactory"
+    source_refs:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/house.yaml
+      - config/ceiling.yaml
+      - config/electrical.yaml
+      - shared/render/SceneBuilder.ts
+      - shared/render/FixtureFactory.ts
+    verification: "verify:spatial reads these sources directly"
+  - id: wall_mesh_thickness
+    status: confirmed
+    value: "runtime wall mesh carries the rendered thickness; verifier derives it from BoxGeometry"
+    source_refs:
+      - shared/render/SceneBuilder.ts
+      - scripts/verify/spatial/verify-spatial.ts
+    verification: "host clearance uses runtime mesh segment/thickness"
+  - id: runtime_wall_slab_collision
+    status: confirmed
+    value: "validateRuntimeScene uses segmentSolidOverlapDepth for injected runtime walls with thickness; SceneBuilder adapter records centerline representation contact explicitly"
+    source_refs:
+      - shared/spatial-validation.ts
+      - scripts/verify/spatial/verify-spatial.ts
+      - tests/server/spatial-validation.test.ts
+    verification: "pure shallow slab-entry counterexample plus CLI wall penetration evidence"
+    impact: "a shallow entry is fail-closed in the generic runtime API without turning current centerline-authored contacts into false baseline errors"
+  - id: runtime_glass_path_identity
+    status: confirmed
+    value: "runtime glass/curtain paths retain element, part, refIndex and stable path id; same-element distinct paths pairwise-check while sibling meshes bound to one path are ignored"
+    source_refs:
+      - config/spatial-validation.yaml
+      - shared/spatial-validation.ts
+      - scripts/verify/spatial/verify-spatial.ts
+      - tests/server/spatial-validation.test.ts
+    verification: "same-element 90-degree unjoined corner fails; concrete continuous join passes"
+  - id: placed_semantics
+    status: confirmed
+    value: "furnishings entries with placement fields are runtime objects; count-only entries are not"
+    source_refs:
+      - AGENTS.md
+      - config/house.yaml
+      - shared/render/SceneBuilder.ts
+    verification: "runtime/source cardinality checks"
+  - id: suppressed_wall_ownership
+    status: confirmed
+    value: "each suppress wall has exactly one structural replacement; parts.wallRefs are canonical"
+    source_refs:
+      - config/layout/overlay.yaml
+      - config/spatial-validation.yaml
+      - shared/spatial-validation.ts
+    verification: "validateOverlayReplacements"
+  - id: current_site_state
+    status: confirmed
+    value: "尚未交房，硬装、水电、吊顶和空调均未施工"
+    source_refs: [AGENTS.md]
+    verification: "project instruction"
+  - id: active_furniture_states
+    status: site_pending
+    value: "活动门扇/训练器械状态不由第一版 CLI 全量枚举"
+    source_refs:
+      - docs/spatial-validation.md
+      - tests/server/master-bedroom-dressing.test.ts
+    verification: "专项状态矩阵测试与后续 runtime evidence"
+    impact: "不能把第一版 CLI 报告解释为所有活动状态已验证"
+  - id: lighting_mesh_orientation
+    status: site_pending
+    value: "实际灯具 runtime mesh 的法向/旋转本轮未可靠校验；仅保留声明式宿主与纯函数 normalDot 反例"
+    source_refs:
+      - config/electrical.yaml
+      - shared/spatial-validation.ts
+      - scripts/verify/spatial/verify-spatial.ts
+    verification: "后续 runtime mesh 法向查询与独立 functional review"
+    impact: "不能声称灯具实际朝向已由 verify:spatial 验证"
+  - id: detected_furniture_wall_blockers
+    status: confirmed
+    value: "verify:spatial 当前保留两处真实实体墙穿越：entry_half_height_cabinet↔w_ent_south_w 与 tv_wall_low↔w_st_east"
+    source_refs:
+      - config/house.yaml
+      - config/layout/model-geometry.yaml
+      - scripts/verify/spatial/verify-spatial.ts
+    verification: "npm run verify:spatial -- --json; exit 1 with two furniture_wall_collision errors"
+    impact: "verify:all 门禁保持失败；不得通过修改/移动家具或宽泛豁免伪造 PASS"

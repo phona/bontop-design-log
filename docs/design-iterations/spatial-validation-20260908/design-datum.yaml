@@ -1,0 +1,62 @@
+iteration_id: spatial-validation-20260908
+state: verification
+frozen: true
+coordinate_system:
+  plan_axes: "x=东/西, z=南/北; y=up"
+  units: m
+  source: AGENTS.md
+anchors:
+  - id: wall_centerline
+    type: wall_anchor
+    plan: "resolved model-geometry wall segments"
+    elevation: "runtime wall mesh y bounds"
+    section: "BoxGeometry thickness and runtime y bounds"
+    source_refs:
+      - config/layout/model-geometry.yaml
+      - shared/render/SceneBuilder.ts
+  - id: runtime_solid_wall_slab
+    type: wall_anchor
+    plan: "finite runtime wall segment plus BoxGeometry thickness; generic injected scenes use solid slab overlap"
+    elevation: "runtime wall mesh y bounds"
+    section: "segmentSolidOverlapDepth catches entry into one wall face before centreline crossing; SceneBuilder CLI declares source-centerline contact semantics"
+    source_refs:
+      - shared/spatial-validation.ts
+      - scripts/verify/spatial/verify-spatial.ts
+      - tests/server/spatial-validation.test.ts
+  - id: runtime_glass_path_join
+    type: wall_anchor
+    plan: "concrete element/part/refIndex/path id from overlay wallRefs"
+    elevation: "runtime structural mesh Box3; internal railing pieces excluded from sibling-pane pairwise"
+    section: "only exact configured continuous/butt/endpoint/t/overlap geometry can close a same-element path pair"
+    source_refs:
+      - config/spatial-validation.yaml
+      - shared/spatial-validation.ts
+      - scripts/verify/spatial/verify-spatial.ts
+  - id: furniture_runtime_envelope
+    type: free_position
+    plan: "THREE.Box3 setFromObject after SceneBuilder/FixtureFactory build"
+    elevation: "same Box3 minY/maxY"
+    section: "actual child mesh envelope, not declared dimensions alone"
+    source_refs:
+      - config/house.yaml
+      - shared/render/SceneBuilder.ts
+      - shared/render/FixtureFactory.ts
+  - id: ceiling_zone
+    type: ceiling_anchor
+    plan: "ceiling.yaml area and runtime ceiling_zone_solid"
+    elevation: "room.height minus declared thickness"
+    section: "runtime ceiling zone AABB"
+    source_refs: [config/ceiling.yaml, shared/render/CeilingZoneBuilder.ts]
+  - id: lighting_host_semantics
+    type: wall_anchor
+    plan: "declared electrical point and resolved host wall/wall_side"
+    elevation: "declared/runtime fixture vertical envelope only"
+    section: "host, room side, opening and vertical checks; actual fixture mesh normal/rotation not covered"
+    source_refs:
+      - config/electrical.yaml
+      - config/spatial-validation.yaml
+      - scripts/verify/spatial/verify-spatial.ts
+validation_views:
+  - plan: "wall topology and structural overlays"
+  - section: "furniture/ceiling and lighting vertical envelopes"
+  - host_elevation: "wall-lamp host wall, side, opening, and orientation semantics"

@@ -472,15 +472,15 @@ furnishings:
     # 房间 x∈[7.20,13.40] z∈[2.40,9.80]，开放连通走廊，无门 swing（DEC-021）
     # 西墙电视背景柜墙只依附已存在的实体墙 z=5.55-9.00，不侵入餐厅/门厅过道。
     - { type: wall_cabinet_tall, x: 7.375, z: 6.225, rotation: 270 } # 通顶柜 z=5.55-6.90，面朝东侧客厅；浅 PET+局部开放格
-    - { type: tv_wall_low, x: 7.40, z: 8.00, rotation: 270 }         # 2.1m 深胡桃带细腿低柜，面朝东侧客厅；与电视同轴，北侧留 5cm 阴影缝
+    - { type: tv_wall_low, x: 7.48, z: 8.00, rotation: 270 }         # 2.1m 深胡桃带细腿落地低柜，面朝东侧客厅；沿 w_st_east +x 最小脱离 slab 约5mm，z/电视轴线保持
     - { type: tv_65, x: 7.42, z: 8.00, rotation: 270 }               # 65寸电视居中挂墙，面朝东侧沙发
     - { type: floor_lamp, x: 11.0, z: 9.35, rotation: 0 }    # 沙发南臂地插位（sock_living_sofa_r@9.35），随沙发南移
-    - { type: plant_fiddle, x: 7.65, z: 9.35, rotation: 270 } # 琴叶榕：贴近西墙，叶面朝东侧沙发；位于电视柜南侧，落地摆放
+    - { type: plant_fiddle, x: 7.93, z: 9.18, rotation: 270 } # 琴叶榕：电视柜东移后最小联动东移 30mm，保持南侧玻璃净距与落地摆放
     - { type: sofa_3seat, x: 11.00, z: 7.70, rotation: 270 } # 面朝西看电视（与电视同轴南移 0.7）
     - { type: coffee_table, x: 9.70, z: 7.70, rotation: 0 }  # 沙发与电视柜之间，随沙发南移
     # 门内右手定制半高柜：从门内向客厅延伸，柜高 1.5m；玄关侧封闭，餐厅侧开放，柜顶以上可见餐厅。
-    # footprint x=11.325-11.675、z=2.90-4.90（北端紧贴 w_ent_south_w z=2.90，参照 tv_wall_low/wall_cabinet_tall 贴墙线口径），距入户门洞西缘 x=11.80 留 0.125m，东侧主通道 1.725m。
-    - { type: entry_half_height_cabinet, x: 11.50, z: 3.90, rotation: 90 }
+    # footprint x=11.325-11.675、z=3.00-5.00；北缘脱 w_ent_south_w 外侧完成面约 20mm；距入户门洞西缘 x=11.80 仍留 0.125m，东侧主通道 1.725m。
+    - { type: entry_half_height_cabinet, x: 11.50, z: 4.00, rotation: 90 }
     # 横置西北角，西缘齐西墙 x=7.2；桌体南移让出北侧两椅（椅背让开推拉门叠扇 z≥2.5）。
     # 南北各两椅；东侧主通道（x>8.6）释放客厅→厨房入口。
     - { type: dining_table, x: 7.90, z: 3.45, rotation: 0 }

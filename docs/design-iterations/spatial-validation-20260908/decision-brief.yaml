@@ -1,0 +1,42 @@
+iteration_id: spatial-validation-20260908
+state: verification
+frozen: true
+alignment:
+  id: spatial-validation-v1
+  original_request: "完成可执行第一版统一 validator/CLI、verify:all 门禁、关键 fail-closed 反例与文档；不扩展到 3D UI 面板"
+  normalized_decision: "只在权威几何/意图/placed runtime 数据上实现墙墙拓扑、suppress 替代、玻璃/栏杆重复与实体墙冲突、家具真实 runtime 包络、家具关系、吊顶和灯具宿主校验；实际灯具 mesh 法向/旋转明确不在本轮覆盖"
+  timestamp: 2026-09-08
+priority:
+  - fail_closed_on_authority_mismatch
+  - avoid_false_positive_from_openings_and_runtime_wall_segments
+  - stable_cli_report_for_verify_all_and_ci
+  - runtime_part_path_identity_and_solid_wall_slab_checks
+allowed_scope:
+  - package.json
+  - config/spatial-validation.yaml
+  - shared/spatial-validation.ts
+  - scripts/verify/spatial/verify-spatial.ts
+  - tests/server/spatial-validation.test.ts
+  - docs/spatial-validation.md
+  - docs/design-iterations/spatial-validation-20260908/*
+forbidden:
+  - app/src
+  - 3D UI panels
+  - generated render outputs
+  - unrelated HVAC/electrical/display source changes
+open_questions:
+  - id: site_wall_thickness
+    status: site_pending
+    question: "交房量房后是否需要把 runtime 默认墙厚替换为实测墙厚字段"
+    handling: "当前由实际 SceneBuilder mesh 反推；量房后重新对齐 authority"
+  - id: lighting_mesh_orientation
+    status: site_pending
+    question: "后续是否提供可查询的灯具 mesh 朝向/法向证据并纳入独立 functional review"
+    handling: "本轮保持未覆盖；normalDot 仅作纯函数反例，不把 CLI 结果解释为实际朝向通过"
+acceptance:
+  commands:
+    - npm run verify:spatial
+    - npm run verify:all
+    - npm run test:server
+    - npm run typecheck
+    required: "synthetic and CLI integration fail-closed tests pass, including same-element path joins and shallow runtime wall-slab entry; current baseline must retain and report the two detected furniture-wall blockers rather than hiding them"

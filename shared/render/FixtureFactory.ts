@@ -73,6 +73,17 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
+    // Floor lamp is a placed object in the living/dining plan. Keep a real
+    // three-part fixture so spatial verification can inspect its complete
+    // footprint instead of accepting a silently skipped type.
+    type: 'floor_lamp',
+    parts: [
+      { shape: 'box', size: [0.30, 0.025, 0.30], position: [0, 0.0125, 0], color: '#4b4035', metalness: 0.45, roughness: 0.5, part: 'base', materialRole: 'fixture_metal' },
+      { shape: 'box', size: [0.025, 1.38, 0.025], position: [0, 0.70, 0], color: '#6f6255', metalness: 0.65, roughness: 0.35, part: 'stem', materialRole: 'fixture_metal' },
+      { shape: 'box', size: [0.26, 0.24, 0.26], position: [0, 1.48, 0], color: '#e8dfcf', roughness: 0.8, part: 'shade', materialRole: 'fixture_diffuser' },
+    ],
+  },
+  {
     // R3 北侧床头柜：240W×300D×500H，局部 +z 为柜前；rotation=270 后朝西。
     type: 'master_bedside_cabinet_north',
     parts: [

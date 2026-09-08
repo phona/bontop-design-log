@@ -1,0 +1,191 @@
+{
+  "iteration_id": "furniture-wall-clearance-20260908",
+  "state": "delivery_ready",
+  "status": "complete",
+  "scope": "entry_half_height_cabinet 已修复；tv_wall_low 向 +x 最小脱墙并联动 plant_fiddle 最小避让",
+  "evidence": {
+    "commands": [
+      "npm run verify:furniture",
+      "npm run verify:spatial",
+      "npm run verify:all",
+      "npx tsx --test tests/server/spatial-validation.test.ts",
+      "npm run test:server",
+      "npm run typecheck"
+    ],
+    "verification_results": {
+      "npm run verify:furniture": "PASS exit 0: 2 unchanged warnings",
+      "npm run verify:spatial": "PASS exit 0: 0 errors / 10 unchanged warnings",
+      "npm run verify:all": "PASS exit 0; all gates pass, spatial reports 0 errors / 10 warnings",
+      "npx tsx --test tests/server/spatial-validation.test.ts": "PASS exit 0: 7 tests / 2 suites",
+      "npm run test:server": "PASS exit 0: 540 tests / 67 suites / 0 failures",
+      "npm run typecheck": "PASS exit 0: server and app TypeScript"
+    },
+    "runtime_browser": {
+      "session": "bontop-41c8e6a7-8d4a-4cf4-9f29-52f3be72a6c1",
+      "source_url": "http://127.0.0.1:5173/?evidence=17179843183429e6",
+      "page_title": "和萃 701 - 3D 装修设计",
+      "app_ready": true,
+      "scene_ready": true,
+      "config_error_banner": { "visible": false, "text": "" },
+      "entry_target": {
+        "object_id": "furniture:living_dining:entry_half_height_cabinet:7",
+        "position": { "x": 11.5, "z": 4.0, "rotation": 90 },
+        "screenshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/entry-half-height-cabinet-runtime-final.png",
+        "snapshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/snapshot-entry-half-height-cabinet-round3.txt",
+        "runtime_json": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/runtime-entry-half-height-cabinet-round3.json",
+        "png_sha256": "9b15da9afbbcca77cc590616ab7d4099d10efcc7d8b7f0b4f5e36ef7f6bd6e1b"
+      },
+      "tv_target": {
+        "object_id": "furniture:living_dining:tv_wall_low:1",
+        "position": { "x": 7.48, "z": 8.0, "rotation": 270 },
+        "screenshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/tv-wall-low-runtime-final.png",
+        "snapshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/snapshot-tv-wall-low-round3.txt",
+        "runtime_json": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/runtime-tv-wall-low-round3.json",
+        "png_sha256": "27f93453955d7e6c377920e9c82d3f861320dd3e87a5ffb7212edfe01ca4b5b0",
+        "note": "final modeled runtime; wall and plant collisions cleared"
+      },
+      "plant_reference": {
+        "object_id": "furniture:living_dining:plant_fiddle:4",
+        "position": { "x": 7.93, "z": 9.18, "rotation": 270 }
+      }
+    }
+  },
+  "functional_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": ["电视柜保留约5mm runtime slab 脱离；实际墙面完成层/安装误差仍需现场复核"],
+    "evidence_refs": ["verify:furniture=PASS", "verify:spatial=0 errors/10 warnings", "tv-wall-low-runtime-final.png", "runtime object bounds"],
+    "requested_changes": [],
+    "assumptions": ["按当前权威 0.12m runtime wall slab 作为模型基准"],
+    "status": "PASS",
+    "reviewer": "Luna Max"
+  },
+  "aesthetic_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": ["电视/低柜 z 轴未变；植物向东30mm后仍位于电视柜南侧并保持与南侧玻璃的原有关系"],
+    "evidence_refs": ["tv-wall-low-runtime-final.png", "entry-half-height-cabinet-runtime-final.png", "tv_65/sofa runtime bounds"],
+    "requested_changes": [],
+    "assumptions": [],
+    "status": "PASS",
+    "reviewer": "Luna Max"
+  },
+  "retrospective": {
+    "status": "resolved",
+    "trigger_checks": [
+      "实体墙 slab 与家具包络的事实审计发现候选位置引入新的家具-家具 error",
+      "停止数字调参，保留冲突证据，等待范围/轴线决策"
+    ],
+    "resolution": "用户授权 +x 与最小植物联动后，x=7.48/7.93 通过墙、家具、玻璃和门禁；z/轴线保持冻结"
+  },
+  "delivery_gate": "DELIVERY_READY for current modeled runtime; site_pending wall finish/installation tolerance remains a construction follow-up",
+  "round_2_tv_z_authorization": {
+    "state": "blocked",
+    "user_decision": "Only tv_wall_low:1 z may move; entry_half_height_cabinet remains z=4.00; plant_fiddle and all other furniture remain frozen; re-check TV axis.",
+    "source_change": "none; tv_wall_low:1 remains {\"x\":7.40,\"z\":8.00,\"rotation\":270}",
+    "runtime_facts": {
+      "tv_wall_low_box_at_z_8": {"x": [7.185, 7.628], "y": [0.0, 0.505], "z": [6.95, 9.05]},
+      "w_st_east_box": {"x": [7.14, 7.26], "y": [0.0, 2.8], "z": [5.55, 9.8]},
+      "tv_screen_center_z": 8.0,
+      "sofa_center_z": 7.7,
+      "living_dining_south_boundary_z": 9.8
+    },
+    "candidate_results": [
+      {"z": 8.75, "status": "rejected", "reason": "runtime z[7.70,9.80] still overlaps w_st_east solid slab; wall error remains"},
+      {"z": 4.5, "status": "rejected", "reason": "wall clears but dining_table:8 overlap=0.400m, dining_chair:11 overlap=0.303m; axis offsets TV=3.50m and sofa=3.20m"},
+      {"z": 10.85, "status": "rejected", "reason": "south-side exit exceeds living_dining boundary z=9.80"}
+    ],
+    "conclusion": "No feasible z-only move within frozen scope; retained baseline and kept blocked. Requires explicit scope decision before moving plant/dining furniture, changing wall geometry, or redesigning TV/cabinet axis.",
+    "verification": "Candidate checks were run against verify:furniture and verify:spatial; final baseline checks recorded below.",
+    "browser_evidence": {
+      "session": "bontop-9e6f1a2c-20260908",
+      "source_url": "http://localhost:5173/",
+      "app_ready": true,
+      "scene_ready": true,
+      "error_banner": {"visible": false, "text": ""},
+      "tv_target": {
+        "object_id": "furniture:living_dining:tv_wall_low:1",
+        "position": {"x": 7.4, "z": 8.0, "rotation": 270},
+        "runtime_box": {"minX": 7.1849999964, "maxX": 7.6280000001, "minY": -0.0000000030, "maxY": 0.5050000001, "minZ": 6.9500000477, "maxZ": 9.0499999523},
+        "camera": {"position": {"x": 11.4, "y": 4.0, "z": 12.0}, "target": {"x": 7.4, "y": 0.0, "z": 8.0}, "mode": "orbit"},
+        "snapshot": "方案 controls snapshot after setCameraTarget",
+        "screenshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/tv-wall-low-runtime-blocked-round2.png",
+        "status": "diagnostic_blocked; source remains at baseline because no z-only feasible move exists"
+      },
+      "entry_target": {
+        "object_id": "furniture:living_dining:entry_half_height_cabinet:7",
+        "position": {"x": 11.5, "z": 4.0, "rotation": 90},
+        "runtime_box": {"minX": 11.3050000072, "maxX": 11.6980000001, "minY": 0.0000000009, "maxY": 1.5, "minZ": 2.9800000191, "maxZ": 5.0199999809},
+        "camera": {"position": {"x": 15.5, "y": 4.0, "z": 8.0}, "target": {"x": 11.5, "y": 0.0, "z": 4.0}, "mode": "orbit"},
+        "snapshot": "方案 controls snapshot after setCameraTarget",
+        "screenshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/entry-half-height-cabinet-runtime-round2.png",
+        "status": "verified_entry_source_unchanged"
+      },
+      "fixed_references": {
+        "tv_screen_object_id": "furniture:living_dining:tv_65:2",
+        "tv_screen_runtime_box": {"minX": 7.3849999999, "maxX": 7.4670000001, "minY": 1.1000000131, "maxY": 1.9399999869, "minZ": 7.2749999762, "maxZ": 8.7250000238},
+        "plant_object_id": "furniture:living_dining:plant_fiddle:4",
+        "plant_runtime_box": {"minX": 7.6999999970, "maxX": 8.1000000030, "minY": -0.0000000072, "maxY": 1.7700000036, "minZ": 8.7600000095, "maxZ": 9.6399999917},
+        "sofa_object_id": "furniture:living_dining:sofa_3seat:5",
+        "sofa_runtime_box": {"minX": 10.5500000119, "maxX": 11.4550000131, "minY": -0.0000000030, "maxY": 0.8000000119, "minZ": 6.2249999762, "maxZ": 9.1750000238}
+      }
+    }
+  },
+  "round_3_final_evidence": {
+    "state": "delivery_ready",
+    "user_decision": "Move TV cabinet east; keep z/rotation/TV/sofa/dining fixed; permit minimum plant linkage only if actual runtime collision blocks.",
+    "source_changes": {
+      "tv_wall_low": {"old": {"x": 7.4, "z": 8.0, "rotation": 270}, "final": {"x": 7.48, "z": 8.0, "rotation": 270}, "delta": {"dx": 0.08, "dz": 0.0}},
+      "plant_fiddle": {"old": {"x": 7.9, "z": 9.18, "rotation": 270}, "final": {"x": 7.93, "z": 9.18, "rotation": 270}, "delta": {"dx": 0.03, "dz": 0.0}}
+    },
+    "runtime": {
+      "tv_wall_low": {"object_id": "furniture:living_dining:tv_wall_low:1", "box": {"minX": 7.2649999964, "maxX": 7.7080000001, "minY": -0.0000000030, "maxY": 0.5050000001, "minZ": 6.9500000477, "maxZ": 9.0499999523}},
+      "plant_fiddle": {"object_id": "furniture:living_dining:plant_fiddle:4", "box": {"minX": 7.7299999970, "maxX": 8.1300000030, "minY": -0.0000000072, "maxY": 1.7700000036, "minZ": 8.7600000095, "maxZ": 9.6399999917}},
+      "tv_65": {"object_id": "furniture:living_dining:tv_65:2", "box": {"minX": 7.3849999999, "maxX": 7.4670000001, "minY": 1.1000000131, "maxY": 1.9399999869, "minZ": 7.2749999762, "maxZ": 8.7250000238}},
+      "sofa_3seat": {"object_id": "furniture:living_dining:sofa_3seat:5", "box": {"minX": 10.5500000119, "maxX": 11.4550000131, "minY": -0.0000000030, "maxY": 0.8000000119, "minZ": 6.2249999762, "maxZ": 9.1750000238}},
+      "entry_half_height_cabinet": {"object_id": "furniture:living_dining:entry_half_height_cabinet:7", "box": {"minX": 11.3050000072, "maxX": 11.6980000001, "minY": 0.0000000009, "maxY": 1.5, "minZ": 2.9800000191, "maxZ": 5.0199999809}},
+      "w_st_east": {"object_id": "w_st_east", "box": {"minX": 7.1400000013, "maxX": 7.2599999987, "minY": 0.0000000238, "maxY": 2.7999999762, "minZ": 5.5500000000, "maxZ": 9.8}},
+      "living_south_curtain": {"object_id": "living_south_curtain", "box": {"minX": 7.1999998093, "maxX": 13.3999996185, "minY": 0.0, "maxY": 2.7999999522, "minZ": 9.7880001068, "maxZ": 9.8120002747}}
+    },
+    "clearances": {"tv_to_wall_slab_m": 0.0050000, "tv_to_plant_runtime_aabb_m": 0.021999997, "tv_to_south_curtain_z_m": 0.7380001},
+    "browser": {
+      "session": "bontop-9e6f1a2c-20260908",
+      "source_url": "http://localhost:5173/",
+      "page_title": "和萃 701 - 3D 装修设计",
+      "app_ready": true,
+      "scene_ready": true,
+      "error_banner": {"visible": false, "text": ""},
+      "tv_view": {"target_id": "furniture:living_dining:tv_wall_low:1", "mode": "orbit", "camera": {"position": {"x": 10.4, "y": 3.1, "z": 11.2}, "target": {"x": 7.48, "y": 0.55, "z": 8.0}}, "snapshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/snapshot-tv-wall-low-round3.txt", "screenshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/tv-wall-low-runtime-final.png", "runtime_json": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/runtime-tv-wall-low-round3.json", "png_sha256": "ba5de537adda3d6ed72e904f758266ab216cb56971737c653188cf625ac52857"},
+      "entry_view": {"target_id": "furniture:living_dining:entry_half_height_cabinet:7", "mode": "orbit", "camera": {"position": {"x": 14.4, "y": 3.2, "z": 0.4}, "target": {"x": 11.5, "y": 0.75, "z": 2.98}}, "snapshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/snapshot-entry-half-height-cabinet-round3.txt", "screenshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/entry-half-height-cabinet-runtime-final.png", "runtime_json": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/runtime-entry-half-height-cabinet-round3.json", "png_sha256": "85be60fddc3e58e0b84f94b3f20893b8d2fc7a2a7991030fe95dd73077d8b731"}
+    },
+    "traceability": {
+      "session": "bontop-41c8e6a7-8d4a-4cf4-9f29-52f3be72a6c1",
+      "url": "http://127.0.0.1:5173/?evidence=17179843183429e6",
+      "title": "和萃 701 - 3D 装修设计",
+      "app_ready_call": true,
+      "scene_ready_call": true,
+      "banner": {"visible": false, "text": ""},
+      "tv": {"object_id": "furniture:living_dining:tv_wall_low:1", "position": {"x": 7.48, "z": 8.0, "rotation": 270}, "aabb": {"minX": 7.264999996423722, "minY": -2.9802322831784522e-9, "minZ": 6.950000047683716, "maxX": 7.70800000011921, "maxY": 0.5050000000745059, "maxZ": 9.049999952316284}, "mode": "orbit", "camera": {"position": {"x": 10.4, "y": 3.1, "z": 11.2}, "target": {"x": 7.48, "y": 0.55, "z": 8}}, "runtime_json": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/runtime-tv-wall-low-round3.json", "snapshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/snapshot-tv-wall-low-round3.txt", "screenshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/tv-wall-low-runtime-final.png", "png_sha256": "ba5de537adda3d6ed72e904f758266ab216cb56971737c653188cf625ac52857"},
+      "entry": {"object_id": "furniture:living_dining:entry_half_height_cabinet:7", "position": {"x": 11.5, "z": 4.0, "rotation": 90}, "aabb": {"minX": 11.305000007152557, "minY": 8.940696516468449e-10, "minZ": 2.9800000190734863, "maxX": 11.698000000052154, "maxY": 1.5, "maxZ": 5.019999980926514}, "mode": "orbit", "camera": {"position": {"x": 14.4, "y": 3.2, "z": 0.4}, "target": {"x": 11.5, "y": 0.75, "z": 2.98}}, "runtime_json": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/runtime-entry-half-height-cabinet-round3.json", "snapshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/snapshot-entry-half-height-cabinet-round3.txt", "screenshot": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/entry-half-height-cabinet-runtime-final.png", "png_sha256": "85be60fddc3e58e0b84f94b3f20893b8d2fc7a2a7991030fe95dd73077d8b731"}
+    },
+    "source_fingerprint": {
+      "algorithm": "SHA-256",
+      "file": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/source-fingerprint-round3.txt",
+      "scope": "furniture/geometry/intent/runtime-factory/spatial-validator files relevant to this iteration; unrelated concurrent electrical/type changes excluded",
+      "total_sha256": "17179843183429e66cb35a710302571d29e5dbc1d9760ed0d2fe7fc27f0619eb",
+      "files": [
+        "config/house.yaml",
+        "config/layout/model-geometry.yaml",
+        "config/layout/overlay.yaml",
+        "config/spatial-validation.yaml",
+        "shared/spatial-validation.ts",
+        "shared/render/FixtureFactory.ts",
+        "scripts/verify/spatial/verify-spatial.ts"
+      ]
+    },
+    "evidence_hashes": "docs/design-iterations/furniture-wall-clearance-20260908/evidence/evidence-hashes-round3.txt",
+    "verification": {"verify_furniture": "PASS/2 warnings", "verify_spatial": "PASS/0 errors/10 warnings", "verify_all": "PASS", "test_server": "PASS/540 tests/67 suites", "typecheck": "PASS"},
+    "functional_review_contract": {"verdict": "PASS", "blocking_issues": [], "non_blocking_notes": ["site_pending wall finish and installation tolerance"], "evidence_refs": ["runtime bounds", "verify:spatial", "verify:all"], "requested_changes": [], "assumptions": ["runtime 0.12m wall slab is current authority"]},
+    "aesthetic_review_contract": {"verdict": "PASS", "blocking_issues": [], "non_blocking_notes": ["TV/cabinet z axis and sofa sightline retained; plant remains south-side accent"], "evidence_refs": ["tv-wall-low-runtime-final.png", "entry-half-height-cabinet-runtime-final.png"], "requested_changes": [], "assumptions": []}
+  }
+}

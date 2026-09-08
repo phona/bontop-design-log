@@ -1,0 +1,62 @@
+iteration_id: furniture-wall-clearance-20260908
+state: delivery_ready
+frozen: true
+objects:
+  - id: entry_half_height_cabinet_7
+    owner: config/house.yaml
+    authority: "config/house.yaml + shared/types.ts + shared/render/FixtureFactory.ts"
+    role: "1.5m 高、2.0×0.35m、独立落地半高柜"
+    collision_policy: "不得进入 w_ent_south_w runtime solid slab；不得占门洞；不挂墙"
+    applied_change: "z 3.90→4.00；x=11.50、rotation=90 保持"
+    interfaces: [w_ent_south_w, d_ent, switch_living_entrance]
+    validation_refs: [furniture_wall_collision, verify:furniture, verify:spatial]
+  - id: tv_wall_low_1
+    owner: config/house.yaml
+    authority: "config/house.yaml + shared/types.ts + shared/render/FixtureFactory.ts + DEC-033"
+    role: "2.1×0.4m、带细腿/落地语义的可替换电视低柜"
+    collision_policy: "不得进入 w_st_east runtime solid slab；保持 z=8.00/rotation=270 与电视墙轴"
+    applied_change: "x 7.40→7.48（+0.08m），z=8.00、rotation=270 保持；runtime 脱离 w_st_east slab 约5mm"
+    candidate_change: "x=7.48 经用户授权采用；原 plant x=7.90 的真实 runtime overlap 约8mm，触发最小联动"
+    interfaces: [w_st_east, tv_65, sock_living_tv, net_living, sock_living_tv_led, plant_fiddle_4]
+    validation_refs: [furniture_wall_collision, furniture_furniture_collision, verify:furniture, verify:spatial]
+  - id: plant_fiddle_4
+    owner: "config/house.yaml; user-authorized linked scope"
+    authority: config/house.yaml
+    role: "电视柜南侧落地软装"
+    collision_policy: "不得与 tv_wall_low runtime 包络重叠；不使用装饰叶片/类型级豁免；仅按用户授权作最小 +x 联动"
+    applied_change: "x 7.90→7.93（+0.03m），z=9.18、rotation=270 保持；runtime AABB 与 TV 柜约22mm间隙"
+    validation_refs: [tv_wall_low_1]
+round_2_tv_z_scope:
+  state: blocked
+  allowed_object: tv_wall_low_1
+  forbidden_objects:
+    - plant_fiddle_4
+    - tv_65_living_dining_2
+    - sofa_3seat_living_dining_5
+    - dining_table_living_dining_8
+    - dining_chair_living_dining_9_to_12
+    - entry_half_height_cabinet_7
+  frozen_interfaces:
+    - w_st_east
+    - living_south_curtain
+    - sock_living_tv
+    - net_living
+    - sock_living_tv_led
+  runtime_candidate_results:
+    z_8_75: "wall collision remains; box z[7.700,9.800] overlaps w_st_east z[5.550,9.800]"
+    z_4_50: "wall collision clears, but dining_table:8 and dining_chair:11 collide"
+  final_change: "none; tv_wall_low_1 remains x=7.40,z=8.00,rotation=270"
+round_3_applied_scope:
+  state: delivery_ready
+  changed_objects:
+    - id: tv_wall_low_1
+      old: { x: 7.40, z: 8.00, rotation: 270 }
+      final: { x: 7.48, z: 8.00, rotation: 270 }
+      reason: "最小 +x 位移使 runtime minX≈7.265 脱离 w_st_east slab maxX≈7.260"
+    - id: plant_fiddle_4
+      old: { x: 7.90, z: 9.18, rotation: 270 }
+      final: { x: 7.93, z: 9.18, rotation: 270 }
+      reason: "真实盆/茎/叶 runtime AABB 阻断；最小源 epsilon-safe +x 联动"
+  unchanged_objects: [tv_65_living_dining_2, sofa_3seat_living_dining_5, dining_table_living_dining_8, dining_chair_living_dining_9_to_12, entry_half_height_cabinet_7]
+  forbidden_actions_respected: [wall_geometry_change, electrical_change, type_level_exemption, warning_suppression]
+  final_change: "tv x=7.48,z=8.00; plant x=7.93,z=9.18; no z/rotation/axis changes"

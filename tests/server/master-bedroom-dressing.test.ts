@@ -414,7 +414,7 @@ test('removed master-bedroom items stay removed; living room plant survives', ()
   assert.equal(master.some((item) => item.type === 'master_wardrobe_tall_240'), false, 'master_wardrobe_tall_240 must not appear in master_bedroom furnishings');
   assert.equal(master.some((item) => item.type === 'plant_fiddle'), false, '主卧 plant_fiddle 已删除');
   const living = house.furnishings.living_dining;
-  assert.deepEqual(placed('plant_fiddle', living), { type: 'plant_fiddle', x: 7.65, z: 9.35, rotation: 270 });
+  assert.deepEqual(placed('plant_fiddle', living), { type: 'plant_fiddle', x: 7.93, z: 9.18, rotation: 270 });
 });
 
 test('R8 north wardrobe 950 door configurations use real mesh pivots without door interpenetration', () => {

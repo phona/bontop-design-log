@@ -1,0 +1,82 @@
+iteration_id: furniture-wall-clearance-20260908
+state: delivery_ready
+frozen: true
+coordinate_system:
+  plan_axes: "x=东/西，z=南/北；y=up"
+  units: m
+  source: AGENTS.md
+anchors:
+  - id: entry_wall_normal
+    type: wall_anchor
+    plan: "w_ent_south_w 水平中心线 z=2.90；living_dining 在 +z 侧"
+    elevation: "runtime wall slab y=0..2.80，厚度 0.12"
+    section: "柜体北缘须位于 runtime slab 外侧并留完成面余量"
+    position:
+      old_center: { x: 11.50, z: 3.90 }
+      applied_center: { x: 11.50, z: 4.00 }
+      displacement: { dx: 0.00, dz: 0.10, length: 0.10 }
+    source_refs: [config/layout/model-geometry.yaml, config/house.yaml]
+  - id: tv_wall_normal
+    type: wall_anchor
+    plan: "w_st_east 竖直中心线 x=7.20；living_dining 在 +x 侧"
+    elevation: "runtime wall slab y=0..2.80，厚度 0.12"
+    section: "tv_wall_low 保持 z=8.00/rotation=270，沿 +x 脱离 w_st_east；最终 x=7.48，植物按授权最小联动至 x=7.93"
+    position:
+      old_center: { x: 7.40, z: 8.00 }
+      applied_center: { x: 7.48, z: 8.00 }
+      candidate_center: { x: 7.48, z: 8.00 }
+      candidate_displacement: { dx: 0.08, dz: 0.00, length: 0.08 }
+    source_refs: [config/layout/model-geometry.yaml, config/house.yaml]
+  - id: electrical_axis
+    type: service_route
+    plan: "tv_65、sock_living_tv、net_living、sock_living_tv_led 均以 z≈7.7–8.0 为电视墙服务轴"
+    elevation: "tv_wall_low runtime maxY≈0.505；电视/插座在其上方/墙面"
+    section: "本轮不移动电气与电视，不用 z 切向位移解决植物冲突"
+    source_refs: [config/electrical.yaml, config/house.yaml, shared/render/FixtureFactory.ts]
+validation_views:
+  - plan: "入口柜与 w_ent_south_w、门洞/开关；电视柜与 w_st_east、植物"
+  - section: "runtime furniture/wall slab y bounds"
+  - host_elevation: "电视墙电气轴与落地柜关系"
+round_2_tv_z_review:
+  state: blocked
+  authorization: "仅 tv_wall_low:1 z 可调整；x=7.40、rotation=270、tv_65、plant_fiddle、沙发及餐厅家具冻结"
+  anchor: wall_anchor
+  wall: w_st_east
+  wall_segment: { x1: 7.20, z1: 5.55, x2: 7.20, z2: 9.80 }
+  runtime:
+    tv_wall_low_current: { center: { x: 7.40, z: 8.00 }, box_x: [7.185, 7.628], box_z: [6.950, 9.050], box_y: [0.000, 0.505] }
+    tv_65: { center: { x: 7.42, z: 8.00 }, axis_reference: "screen center z=8.00" }
+    sofa_3seat: { center: { x: 11.00, z: 7.70 }, axis_reference: "sofa center z=7.70" }
+  feasible_z:
+    north_exit: "z<=4.50"
+    south_exit: "z>=10.85"
+    room_limit: "living_dining z<=9.80"
+  rejected_north_exit:
+    candidate: { x: 7.40, z: 4.50, rotation: 270 }
+    result: "wall-safe but overlaps dining_table:8 by 0.400m and dining_chair:11 by 0.303m; axis offsets to TV/sofa are 3.50m/3.20m"
+  final: "No source move; restore/retain z=8.00 and keep iteration blocked"
+round_3_tv_east_review:
+  state: delivery_ready
+  authorization: "用户确认仅允许 tv_wall_low:1 沿 +x；plant_fiddle:4 仅在真实 runtime collision 阻断时允许最小联动；z/rotation/电视/沙发/餐厅冻结"
+  anchor: wall_anchor
+  wall: w_st_east
+  wall_segment: { x1: 7.20, z1: 5.55, x2: 7.20, z2: 9.80 }
+  runtime_wall_slab: { minX: 7.140, maxX: 7.260, minZ: 5.550, maxZ: 9.800, minY: 0.000, maxY: 2.800 }
+  positions:
+    tv_wall_low:
+      old: { x: 7.40, z: 8.00, rotation: 270 }
+      final: { x: 7.48, z: 8.00, rotation: 270 }
+      displacement: { dx: 0.08, dz: 0.00, length: 0.08 }
+      runtime_box: { minX: 7.265, maxX: 7.708, minY: 0.000, maxY: 0.505, minZ: 6.950, maxZ: 9.050 }
+    plant_fiddle:
+      old: { x: 7.90, z: 9.18, rotation: 270 }
+      final: { x: 7.93, z: 9.18, rotation: 270 }
+      displacement: { dx: 0.03, dz: 0.00, length: 0.03 }
+      runtime_box: { minX: 7.730, maxX: 8.130, minY: 0.000, maxY: 1.770, minZ: 8.760, maxZ: 9.640 }
+    tv_65: { x: 7.42, z: 8.00, rotation: 270, axis_unchanged: true }
+    sofa_3seat: { x: 11.00, z: 7.70, rotation: 270, axis_unchanged: true }
+  clearances:
+    tv_to_wall_slab: 0.005
+    tv_to_plant_runtime_aabb: 0.022
+    tv_to_south_curtain: "no collision; final TV maxZ≈9.05, curtain begins≈9.788"
+  final: "TV wall collision and plant collision cleared; keep z/electrical axis unchanged"

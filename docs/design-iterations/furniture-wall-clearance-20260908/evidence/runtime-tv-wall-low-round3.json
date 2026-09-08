@@ -1,0 +1,70 @@
+{
+  "capturedAt": "2026-09-08T12:27:16+08:00",
+  "sourceFingerprint": "17179843183429e66cb35a710302571d29e5dbc1d9760ed0d2fe7fc27f0619eb",
+  "url": "http://127.0.0.1:5173/?evidence=17179843183429e6",
+  "title": "和萃 701 - 3D 装修设计",
+  "appReady": true,
+  "sceneReady": true,
+  "banner": {
+    "visible": false,
+    "text": ""
+  },
+  "mode": "orbit",
+  "camera": {
+    "position": {
+      "x": 10.4,
+      "y": 3.1,
+      "z": 11.2
+    },
+    "target": {
+      "x": 7.48,
+      "y": 0.55,
+      "z": 8
+    }
+  },
+  "target": {
+    "objectId": "furniture:living_dining:tv_wall_low:1",
+    "position": {
+      "x": 7.48,
+      "z": 8,
+      "rotation": 270
+    },
+    "aabb": {
+      "minX": 7.264999996423722,
+      "minY": -2.9802322831784522e-9,
+      "minZ": 6.950000047683716,
+      "maxX": 7.70800000011921,
+      "maxY": 0.5050000000745059,
+      "maxZ": 9.049999952316284
+    }
+  },
+  "related": {
+    "plant": {
+      "objectId": "furniture:living_dining:plant_fiddle:4",
+      "position": {
+        "x": 7.93,
+        "z": 9.18,
+        "rotation": 270
+      },
+      "aabb": {
+        "minX": 7.7299999970197675,
+        "minY": -7.152557379708213e-9,
+        "minZ": 8.760000009536743,
+        "maxX": 8.130000002980232,
+        "maxY": 1.7700000035762786,
+        "maxZ": 9.63999999165535
+      }
+    },
+    "wall": {
+      "objectId": "w_st_east",
+      "aabb": {
+        "minX": 7.140000001341104,
+        "minY": 2.3841857821338408e-8,
+        "minZ": 5.550000000000001,
+        "maxX": 7.259999998658897,
+        "maxY": 2.799999976158142,
+        "maxZ": 9.8
+      }
+    }
+  }
+}

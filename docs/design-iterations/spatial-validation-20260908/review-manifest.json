@@ -1,0 +1,58 @@
+{
+  "iteration_id": "spatial-validation-20260908",
+  "state": "verification",
+  "status": "incomplete",
+  "scope": "统一空间校验第一版",
+  "evidence": {
+    "commands": [
+      "npm run verify:spatial",
+      "npm run verify:all",
+      "npx tsx --test tests/server/spatial-validation.test.ts",
+      "npm run test:server",
+      "npm run typecheck"
+    ],
+    "verification_results": {
+      "npm run verify:spatial": "EXPECTED FAIL / detected baseline blocker: 2 errors, 10 warnings; entry_half_height_cabinet↔w_ent_south_w and tv_wall_low↔w_st_east are reported as real furniture-wall penetrations",
+      "npm run verify:all": "EXPECTED FAIL at verify:spatial with the same 2 detected furniture-wall blockers; no upstream gate is hidden",
+      "npx tsx --test tests/server/spatial-validation.test.ts": "PASS: 7 tests / same-element path join, internal sibling mesh, shallow wall-slab and CLI integration counterexamples",
+      "npm run test:server": "PASS: 539 tests / 67 suites / 0 failures",
+      "npm run typecheck": "PASS: server and app TypeScript"
+    },
+    "browser": "not applicable to CLI/data validator; no 3D UI panel scope"
+  },
+  "functional_review": {
+    "status": "PASS",
+    "reviewer": "independent Luna Max",
+    "verdict_scope": "validator mechanism only; current project geometry remains blocked by detected model errors",
+    "evidence_refs": [
+      "/tmp/spatial-review-third.json",
+      "tests/server/spatial-validation.test.ts",
+      "shared/spatial-validation.ts",
+      "scripts/verify/spatial/verify-spatial.ts"
+    ],
+    "blocking_notes": [
+      "活动门扇、训练器械状态未由第一版 CLI 全量枚举",
+      "真实墙厚/产品外廓/厂家安装与量房数据仍 site_pending",
+      "实际灯具 runtime mesh 法向/旋转本轮未覆盖；不得把 pure normalDot 反例当作实际朝向验证",
+      "同 element runtime path 只允许 concrete part/path join；栏杆 handrail/bar 标记为内部构造件，不冒充独立 pane",
+      "通用 runtime validator 默认以实际墙厚实体 slab fail-closed；当前 CLI 的 SceneBuilder 墙/家具共用中心线 datum，故显式记录 centerline representation contact policy",
+      "两处 config/house.yaml 家具实体墙穿越为 detected baseline blocker，需用户确认墙材/移动方案后再修源数据"
+    ]
+  },
+  "aesthetic_review": {
+    "status": "not_applicable_to_validator",
+    "reason": "本迭代只改验证器、配置和文档，不改设计视觉方案"
+  },
+  "retrospective": {
+    "status": "triggered_and_recorded",
+    "trigger_checks": [
+      "opening false-positive fixed by runtime wall segments and y overlap",
+      "suppress duplicate and structural owner checks are fail-closed",
+      "JSON output is deterministic and --out is verified",
+      "independent reviewer found broad type-only relationships and runtime pairwise false positives; second round replaced them with exact instance/path checks",
+      "third-round reviewer found same-element unconditional skip and centreline-only wall collision; fixed with path identity/internal-component classification and solid-slab pure counterexample",
+      "verification intentionally preserves the two detected furniture-wall blockers"
+    ]
+  },
+  "delivery_gate": "validator mechanism independently passed; project remains incomplete until the 2 detected furniture-wall errors are resolved and verify:all passes"
+}

@@ -1,0 +1,9 @@
+Algorithm: SHA-256
+
+ba5de537adda3d6ed72e904f758266ab216cb56971737c653188cf625ac52857  docs/design-iterations/furniture-wall-clearance-20260908/evidence/tv-wall-low-runtime-final.png
+85be60fddc3e58e0b84f94b3f20893b8d2fc7a2a7991030fe95dd73077d8b731  docs/design-iterations/furniture-wall-clearance-20260908/evidence/entry-half-height-cabinet-runtime-final.png
+f2fdbd714507719cd2313d1ff8004dbc73a4a265eaf3cef5ba7091b96b03ea88  docs/design-iterations/furniture-wall-clearance-20260908/evidence/snapshot-tv-wall-low-round3.txt
+f2fdbd714507719cd2313d1ff8004dbc73a4a265eaf3cef5ba7091b96b03ea88  docs/design-iterations/furniture-wall-clearance-20260908/evidence/snapshot-entry-half-height-cabinet-round3.txt
+7075168a8be4315b2c9a5c643db153f48cee51889e2e88e3e3da6a1b0b589e51  docs/design-iterations/furniture-wall-clearance-20260908/evidence/runtime-tv-wall-low-round3.json
+814ba9bef67e17bf51251137e35ee1b3f8f0f633f040ec7a42db89be5ce90b60  docs/design-iterations/furniture-wall-clearance-20260908/evidence/runtime-entry-half-height-cabinet-round3.json
+4588b1465fd1125a18d82f5e54fb1f2a56a92324c62cb81877e94e18ba2ee487  docs/design-iterations/furniture-wall-clearance-20260908/evidence/source-fingerprint-round3.txt

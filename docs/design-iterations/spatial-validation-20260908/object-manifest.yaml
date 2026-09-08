@@ -1,0 +1,31 @@
+iteration_id: spatial-validation-20260908
+state: verification
+frozen: true
+objects:
+  - id: wall_topology
+    owner: shared/spatial-validation.ts
+    authority: config/layout/model-geometry.yaml
+    collision_policy: "cross/T/collinear overlap fail unless declared junction"
+    validation_refs: [validateWallTopology]
+  - id: structural_overlay
+    owner: shared/spatial-validation.ts
+    authority: config/layout/overlay.yaml
+    collision_policy: "one suppress owner; no unsuppressed wall overlap; concrete runtime element/part/path pairwise checks; internal railing construction pieces are not sibling panes"
+    validation_refs: [validateOverlayReplacements, validateGlassSegments, validateGlassAgainstWalls, deriveRuntimeGlassJoins, glass_runtime_collision]
+  - id: placed_furniture_runtime
+    owner: scripts/verify/spatial/verify-spatial.ts
+    authority: "config/house.yaml + SceneBuilder + FixtureFactory"
+    collision_policy: "runtime AABB against runtime glass/ceiling and furniture pairs; finite runtime wall slab depth with explicit SceneBuilder centerline representation policy"
+    interfaces: [relationships, wall_host_clearance, site_trim]
+    validation_refs: [furniture_runtime_cardinality, furniture_wall_collision, segmentSolidOverlapDepth, furniture_glass_collision, furniture_ceiling_collision, furniture_furniture_collision]
+  - id: lighting_host
+    owner: scripts/verify/spatial/verify-spatial.ts
+    authority: "config/electrical.yaml + config/render/overrides.yaml + runtime lighting fixtures"
+    collision_policy: "host wall, room side, suppressed wall, opening and vertical runtime envelope"
+    validation_refs: [validateWallLampMount, lighting_runtime_missing, lighting_mount_wall_side_mismatch]
+    known_uncovered: "actual runtime fixture mesh normal/rotation; validateWallLampMount normalDot is a pure-function counterexample only"
+  - id: ceiling_solid
+    owner: scripts/verify/spatial/verify-spatial.ts
+    authority: config/ceiling.yaml
+    collision_policy: "runtime ceiling_zone_solid AABB"
+    validation_refs: [furniture_ceiling_collision, lighting_runtime_vertical_collision]

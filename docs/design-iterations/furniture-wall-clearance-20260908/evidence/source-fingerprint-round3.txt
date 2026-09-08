@@ -1,0 +1,13 @@
+Source fingerprint for furniture-wall-clearance round 3 final evidence
+Algorithm: SHA-256
+Scope: authoritative furniture/geometry/intent plus runtime factory and spatial validator used by this iteration. Unrelated concurrent electrical/type changes are excluded.
+
+68b719d25a0880c5c70dea88c5672ed8c34a57c79e7ce9c4fb3556929b6a3551  config/house.yaml
+d7a5df355d9fad1d066a4d474da6243f05f69888bed566b39d3c6fba31e53c8d  config/layout/model-geometry.yaml
+b522b88d51a9aeb53cf68027ca915a6786b17b83dd144d3862f263c69718fab9  config/layout/overlay.yaml
+e53f1f9990154943a92268011b752722d5438691d377dc22ef40cc46d01646cb  config/spatial-validation.yaml
+78c69fa01e070302db76aa3b4a47b9ab6787ad1b373b6a9e445488c70364e7da  shared/spatial-validation.ts
+e3f122a0e70ced31f40a997ffbe8d2ab366365c13c9bf978d9db506cfba19b2d  shared/render/FixtureFactory.ts
+5e128ab5b243205bd702ad592dd8a92f10a72d0272201d05da45bb33c6c0e8e2  scripts/verify/spatial/verify-spatial.ts
+
+total_sha256 17179843183429e66cb35a710302571d29e5dbc1d9760ed0d2fe7fc27f0619eb

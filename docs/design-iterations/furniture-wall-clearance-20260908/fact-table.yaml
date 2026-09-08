@@ -1,0 +1,112 @@
+iteration_id: furniture-wall-clearance-20260908
+state: delivery_ready
+scope: "仅处理 entry_half_height_cabinet:7↔w_ent_south_w:0 与 tv_wall_low:1↔w_st_east 两处实体墙碰撞"
+facts:
+  - id: authority_and_scope
+    status: confirmed
+    value: "坐标来自 config/house.yaml；墙/房间/开口来自 config/layout/model-geometry.yaml；runtime 包络来自 SceneBuilder/FixtureFactory"
+    source_refs:
+      - config/house.yaml
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - shared/render/SceneBuilder.ts
+      - shared/render/FixtureFactory.ts
+    verification: "只读审计与 verify:spatial JSON"
+  - id: entry_wall
+    status: confirmed
+    value: "w_ent_south_w=(10.80,2.90)→(13.40,2.90)，未被 overlay suppress；runtime 厚度 0.12m，目标柜位于 living_dining 南侧"
+    source_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml]
+    verification: "墙端点、suppress 列表与 runtime wall Box3"
+  - id: tv_wall
+    status: confirmed
+    value: "w_st_east=(7.20,5.55)→(7.20,9.80)，未被 overlay suppress；runtime 厚度 0.12m，living_dining 位于墙东侧"
+    source_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml]
+    verification: "墙端点、suppress 列表与 runtime wall Box3"
+  - id: cabinet_semantics
+    status: confirmed
+    value: "两件均为 placed、独立落地柜，不使用 wall/wall_side/along 锚定；entry 半高柜 2.0×0.35×1.5m，tv 低柜 2.1×0.4m"
+    source_refs:
+      - config/house.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - docs/decision_log.md
+    verification: "placed 字段、FixtureFactory recipe 与 DEC-032/033"
+    site_note: "实际成品腿/基层及墙材仍需交房量房/采购复核；本次不挂墙、不打孔"
+  - id: entry_move
+    status: confirmed
+    value: "entry_half_height_cabinet 中心由 (11.50,3.90) 移至 (11.50,4.00)，沿 +z 0.10m；runtime 北缘由 2.88 移至 2.98，脱墙 slab 外侧约 0.02m"
+    source_refs: [config/house.yaml, scripts/verify/spatial/verify-spatial.ts]
+    verification: "runtime Box3 与实体墙 slab"
+  - id: entry_clearances
+    status: confirmed
+    value: "门洞西缘 x=11.80，runtime 柜东缘约 x=11.698，约 0.102m；switch_living_entrance=(11.60,2.90) 与柜北缘约 0.08m 平面间隔"
+    source_refs: [config/layout/model-geometry.yaml, config/electrical.yaml, config/house.yaml]
+    verification: "门洞解算与电气点位审计"
+  - id: tv_normal_constraint
+    status: confirmed
+    value: "w_st_east 的唯一脱墙法线为 +x；保持 z=8.00 以维护电视/柜体关系与电视墙电气 z 轴"
+    source_refs: [config/layout/model-geometry.yaml, config/house.yaml, config/electrical.yaml]
+    verification: "房间侧、墙方向、tv_65/sock_living_tv/net_living/sock_living_tv_led"
+  - id: tv_candidate_conflict
+    status: confirmed
+    value: "沿 +x 至真实 slab 外侧并留余量的候选 x=7.48（约 5mm）会与 plant_fiddle:4 产生约 8mm runtime overlap；x=7.50 留约25mm但 overlap约28mm；x=7.47避开植物却仍进入墙 slab约5mm"
+    source_refs:
+      - config/house.yaml
+      - shared/render/SceneBuilder.ts
+      - shared/render/FixtureFactory.ts
+      - scripts/verify/placement/verify-furniture-placement.ts
+      - scripts/verify/spatial/verify-spatial.ts
+    verification: "候选坐标试算与 CLI/placement 输出"
+    impact: "在不移动 plant_fiddle、不降级实体墙、不新增宽泛关系的前提下无可交付电视柜坐标"
+  - id: untouched_scope
+    status: user_decision
+    value: "不处理其余 10 条 warning，不修改 house.yaml 中第三件家具，不改墙材/墙体"
+    source_refs: [user_request]
+    verification: "本轮 diff scope audit"
+  - id: tv_z_authorization_round_2
+    status: user_decision
+    value: "本轮明确允许仅调整 tv_wall_low:1 的 z；entry_half_height_cabinet 保持 z=4.00，plant_fiddle 与其他家具不得移动；目标是清除 w_st_east 实体墙穿插并维持/改善电视观看轴线"
+    source_refs: [user_request]
+    verification: "冻结范围审计；config/house.yaml 未改电视、植物及其他家具"
+  - id: tv_runtime_envelope_round_2
+    status: confirmed
+    value: "tv_wall_low:1 当前中心 (7.40,8.00)，rotation=270；runtime 包络 x[7.185,7.628]、z[6.950,9.050]、y[0,0.505]。w_st_east runtime slab x[7.140,7.260]、z[5.550,9.800]、y[0,2.800]，两者 x/y 相交"
+    source_refs: [config/house.yaml, shared/render/FixtureFactory.ts, scripts/verify/spatial/verify-spatial.ts]
+    verification: "verify:spatial JSON runtime boxes"
+  - id: tv_z_feasible_bounds_round_2
+    status: confirmed
+    value: "保持 x=7.40 时，柜体 z 长度约 2.10m；要完全避开 w_st_east z[5.55,9.80]，中心只能 z≤4.50 或 z≥10.85。后者超出 living_dining 南边界 z=9.80"
+    source_refs: [config/layout/model-geometry.yaml, shared/render/FixtureFactory.ts, config/house.yaml]
+    verification: "runtime AABB 端点推导，并以 z=4.50 候选 CLI 复核"
+  - id: tv_north_candidate_rejection_round_2
+    status: confirmed
+    value: "z=4.50 候选虽清除 w_st_east wall error，但 runtime 与 dining_table:8 overlap 0.400m、与 dining_chair:11 overlap 0.303m；电视屏中心 z=8.00、沙发中心 z=7.70，观看轴线偏离分别 3.50m/3.20m"
+    source_refs: [config/house.yaml, scripts/verify/placement/verify-furniture-placement.ts, scripts/verify/spatial/verify-spatial.ts]
+    verification: "候选坐标试算；verify:furniture exit 1；verify:spatial JSON"
+    impact: "在只允许 tv_wall_low z 且不移动其他家具/电视的范围内无可交付墙安全且轴线可接受的位置；最终恢复 z=8.00"
+  - id: tv_x_authorization_round_3
+    status: user_decision
+    value: "用户确认电视柜沿 +x 移动；保持 z=8.00、rotation=270、tv_65、sofa_3seat、dining_table/chairs 不动；若 plant_fiddle 的真实 runtime 包络阻断门禁，允许仅作满足校验与视觉净距所需的最小联动位移"
+    source_refs: [user_request]
+    verification: "冻结范围审计；本轮仅修改 tv_wall_low:1 与 plant_fiddle:4"
+  - id: tv_wall_clearance_round_3
+    status: confirmed
+    value: "tv_wall_low:1 x=7.48 后 runtime x[7.265,7.708]；w_st_east slab x[7.140,7.260]，保留约 0.005m 脱离，z[6.95,9.05] 与原值一致"
+    source_refs: [config/house.yaml, config/layout/model-geometry.yaml, scripts/verify/spatial/verify-spatial.ts]
+    verification: "runtime browser bounds 与 verify:spatial 0 wall errors"
+    rejected_candidate: "x=7.47 的 runtime minX 约 7.255，进入权威 slab 约 0.005m；不采用"
+  - id: plant_runtime_collision_round_3
+    status: confirmed
+    value: "plant_fiddle:4 是包含盆、茎、叶片的真实 runtime furniture group，不适用装饰叶片豁免；TV x=7.48 时原 x=7.90 产生约 0.008m runtime AABB overlap。plant x=7.92 仍触发源 placement 10mm epsilon，x=7.93 后 runtime minX≈7.730 与 TV maxX≈7.708 留约 0.022m，源/空间校验均通过"
+    source_refs: [config/house.yaml, shared/render/FixtureFactory.ts, scripts/verify/placement/verify-furniture-placement.ts, scripts/verify/spatial/verify-spatial.ts]
+    verification: "候选 x=7.48/plant 7.90、7.92、7.93 逐次 CLI 验证；最终 0 errors"
+  - id: tv_axis_preserved_round_3
+    status: confirmed
+    value: "tv_wall_low、tv_65 均 z=8.00，sofa_3seat z=7.70；本轮仅沿 +x 脱墙，电视观看 z 轴、电气 z≈7.7 与餐厅家具均未改变"
+    source_refs: [config/house.yaml, config/electrical.yaml, docs/design-iterations/furniture-wall-clearance-20260908/evidence/tv-wall-low-runtime-final.png]
+    verification: "browser object positions/bounds、非总览目标视图与 verify:all"
+  - id: final_round_3_verification
+    status: confirmed
+    value: "最终 verify:furniture PASS（2 warnings）；verify:spatial 0 errors/10 unchanged warnings；verify:all PASS；test:server 540/540 PASS；typecheck PASS"
+    source_refs: [docs/design-iterations/furniture-wall-clearance-20260908/review-manifest.json]
+    verification: "2026-09-08 final command run"

@@ -1,0 +1,70 @@
+iteration_id: furniture-wall-clearance-20260908
+state: delivery_ready
+frozen: true
+alignment:
+  id: furniture-wall-clearance-v1
+  original_request: "只修复两个真实家具-实体墙碰撞；不得移动 house.yaml 其他家具、不得放宽校验；完成后跑指定验证并提供运行时证据"
+  normalized_decision: "entry 柜沿 living_dining 侧 +z 最小位移；tv 柜沿 living_dining 侧 +x 最小位移，保持 z/旋转；实体墙 slab 穿越不允许以 warning 或关系豁免处理"
+  timestamp: 2026-09-08
+priority:
+  - preserve_authoritative_wall_geometry
+  - resolve_solid_wall_penetration
+  - preserve_tv_axis_and_electrical_alignment
+  - do_not_move_unapproved_furniture
+allowed_scope:
+  - config/house.yaml:living_dining.entry_half_height_cabinet[7]
+  - config/house.yaml:living_dining.tv_wall_low[1]
+  - docs/design-iterations/furniture-wall-clearance-20260908/*
+forbidden:
+  - config/house.yaml 中其他 furnishing 条目
+  - config/layout/model-geometry.yaml
+  - config/layout/overlay.yaml
+  - config/electrical.yaml
+  - config/spatial-validation.yaml 中宽泛关系/豁免
+  - 降级家具-实体墙 error
+open_questions:
+  - id: tv_plant_conflict
+    status: resolved
+    question: "电视柜为满足实体墙 slab 外侧余量后会与现有 plant_fiddle 发生实体包络重叠；是否允许下一轮把植物作为联动避让对象，或接受电视柜沿 z 方向偏离电视轴线"
+    handling: "round_3 用户明确允许沿 +x 调整电视柜，并允许 plant_fiddle 在确实阻断时作最小联动位移；已采用 tv x=7.48、plant x=7.93，不移动电视/沙发/餐桌椅"
+  - id: site_wall_finish
+    status: site_pending
+    question: "w_st_east 与 w_ent_south_w 的实际基层/完成面厚度"
+    handling: "本轮按 runtime 0.12m slab；现场量房后复核"
+acceptance:
+  commands:
+    - npm run verify:furniture
+    - npm run verify:spatial
+    - npm run verify:all
+    - npm run test:server
+    - npm run typecheck
+  required: "两处实体墙 error 均消失；其余 warning 数量不因本轮人为豁免改变；若 tv_plant_conflict 未获授权则状态保持 blocked"
+round_2_alignment:
+  id: furniture-wall-clearance-v2-tv-z
+  original_request: "允许 tv_wall_low:1 仅沿 z 移动；entry 柜保持已修复值；不移动 plant_fiddle 或其他家具；重新核对电视轴线"
+  normalized_decision: "保持 x=7.40、rotation=270；只试算 z；接受事实上的 blocked 结果，不以实体墙降级、宽泛豁免或移动未授权对象换取绿灯"
+  timestamp: 2026-09-08
+  outcome: "blocked_no_feasible_tv_z"
+  applied_source_change: "none; tv_wall_low:1 remains z=8.00"
+  rejected_candidates:
+    - "z=8.75: runtime z[7.70,9.80] 仍与 w_st_east solid slab 重叠，wall error 未消失"
+    - "z=4.50: wall error 消失但与 dining_table:8 (0.400m) 和 dining_chair:11 (0.303m) 重叠，且偏离 tv_65/sofa axis 3.50m/3.20m"
+    - "z>=10.85: 超出 living_dining 南边界 z=9.80"
+  acceptance_status: "blocked; requires user-approved scope change (move plant/other dining furniture, change wall geometry, or accept TV/cabinet axis redesign)"
+round_3_alignment:
+  id: furniture-wall-clearance-v3-tv-east
+  original_request: "电视柜向东（+x）移动，以权威墙 slab 为基准满足最小墙距；保持 z=8.00、rotation=270、电视/沙发/餐厅不动；植物如确实阻断则允许最小联动位移"
+  normalized_decision: "tv_wall_low:1 x=7.40→7.48（+0.08m）；plant_fiddle:4 x=7.90→7.93（+0.03m，仅为清除真实 runtime/源 epsilon 碰撞）；z、rotation、电气、电视屏、沙发、餐厅冻结"
+  timestamp: 2026-09-08
+  outcome: "verified_delivery_ready_for_modeled_scope"
+  acceptance:
+    wall_clearance: "runtime TV minX≈7.265 > w_st_east slab maxX≈7.260，约5mm"
+    plant_clearance: "runtime plant minX≈7.730 - TV maxX≈7.708 ≈22mm"
+    axis: "TV and cabinet z=8.00; sofa z=7.70; no z-axis change"
+    warnings: "retain existing 10 spatial warnings; no warning suppression or new relationship"
+  source_changes:
+    - "config/house.yaml living_dining.tv_wall_low[1].x 7.40→7.48"
+    - "config/house.yaml living_dining.plant_fiddle[4].x 7.90→7.93"
+    - "tests/server/master-bedroom-dressing.test.ts expected plant x 7.90→7.93"
+    - "tests/server/spatial-validation.test.ts project integration expected final 0-error exit"
+  acceptance_status: "PASS for current modeled runtime; actual wall finish/installation tolerance remains site_pending"
