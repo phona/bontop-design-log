@@ -8,7 +8,7 @@ for (const fixture of lighting.fixtures) {
   const point = electricalById.get(fixture.id);
   if (!point) throw new Error(`Lighting config ${fixture.id} references unknown electrical id`);
   if (point.type !== fixture.type) throw new Error(`Lighting config ${fixture.id} type mismatch: ${point.type}`);
-  if (fixture.heads.length !== point.heads && point.heads !== undefined) {
+  if (fixture.type === 'track_light' && fixture.heads.length !== point.heads && point.heads !== undefined) {
     throw new Error(`Lighting config ${fixture.id} head count ${fixture.heads.length} does not match electrical heads ${point.heads}`);
   }
 }

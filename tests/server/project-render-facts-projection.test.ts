@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildProjectRenderFactsProjection } from '../../shared/project-render-facts-projection.js';
 import { parseProjectHvacFacts, validateProjectHvacFacts } from '../../shared/project-render-facts-schema.js';
-import type { CurtainPresentationState, CurrentScheme, ProjectRenderFacts, RenderLightingOverride } from '../../shared/types.js';
+import type { CurtainPresentationState, CurrentScheme, ProjectRenderFacts, RenderLightingOverride, TrackLightConfig } from '../../shared/types.js';
 import type { CurtainOverlayLike } from '../../shared/curtain-projection.js';
 
 const facts: ProjectRenderFacts = {
@@ -74,6 +74,23 @@ describe('buildProjectRenderFactsProjection', () => {
     assert.deepEqual(facts.electrical[0], { id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8, temp: 4000, circuit: 'living_base', recessed: true });
   });
 
+  it('preserves wall host and room-side normal inputs for wall lamps', () => {
+    const wallFacts: ProjectRenderFacts = {
+      ...facts,
+      electrical: [
+        ...facts.electrical,
+        { id: 'wall_1', room: 'living', type: 'wall_lamp', x: 4, z: 5, height: 1.35, wall: 'wall-east', wallSide: 'west' },
+      ],
+    };
+    const projection = project(wallFacts, overrides('light_1', 'track_1', 'wall_1'), scheme);
+    const wallLamp = projection.lightingFixtures.find((fixture) => fixture.id === 'wall_1');
+    assert.deepEqual(wallLamp, {
+      id: 'wall_1', room: 'living', type: 'wall_lamp',
+      position: { x: 4.15, y: 2.55, z: 5 }, temperatureK: 3000, enabled: true,
+      wallId: 'wall-east', wallSide: 'west',
+    });
+  });
+
   it('preserves ordered track head purposes in projection resolvedHeads', () => {
     const headPurposes = [
       { purpose: 'coffee_table' as const, role: '茶几重点照明' },
@@ -90,8 +107,9 @@ describe('buildProjectRenderFactsProjection', () => {
       rotation: { x: 0, y: 0, z: 0 },
     };
     const projection = buildProjectRenderFactsProjection(facts, overrides('light_1', 'track_1'), scheme, overlay, presentation, { fixtures: [config] });
-    assert.deepEqual(projection.lighting?.fixtures[0].heads.map(({ purpose, role }) => ({ purpose, role })), headPurposes);
-    assert.deepEqual(projection.lighting?.fixtures[0].resolvedHeads?.map(({ purpose, role }) => ({ purpose, role })), headPurposes);
+    const projectedTrack = projection.lighting?.fixtures.find((fixture): fixture is TrackLightConfig => fixture.id === 'track_1' && fixture.type === 'track_light');
+    assert.deepEqual(projectedTrack?.heads.map(({ purpose, role }) => ({ purpose, role })), headPurposes);
+    assert.deepEqual(projectedTrack?.resolvedHeads?.map(({ purpose, role }) => ({ purpose, role })), headPurposes);
   });
 
   it('preserves concrete plumbing, ceiling, and three floor overrides in the render projection', () => {

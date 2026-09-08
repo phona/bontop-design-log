@@ -1,0 +1,113 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: master-bedroom-bedside-electrical-20260908
+subject: 主卧床头插座、床头双控与两盏壁灯方案 A
+priority:
+  user_goal: "消除床头电气与床/床头板的重合，并让两盏壁灯与两只床头柜中心轴对应。"
+  ranked: [真实床体避让, 床头柜轴线与灯具关系, 南侧86面板可操作间距, 宿主墙与现场施工可核查]
+  non_negotiables:
+    - "不移动 bed_180、两只床头柜、sock_master_bed_r、switch_master_door 或其他家具/电气。"
+    - "五个目标点均挂 w_mb_east west；wall_lamp 显式写 wall/wall_side。"
+    - "南侧 socket/switch 采用暖白哑光一体双联框，模块中心距86mm，围绕床头柜轴线z=8.555居中。"
+    - "两盏阅读灯采用哑黑隐藏转轴可调短筒，背板下沿实体按键；不把该按键并入墙面双联框。"
+    - "不把 inferred 结构或 runtime 候选尺寸伪装成施工确认。"
+frozen: true
+freeze_record:
+  alignment_id: user-alignment-20260908-scheme-a
+  source: "业主明确选择候选方案 A"
+  normalized_decision: "按冻结坐标更新主卧床头电气权威配置与关系验证；现场施工条件保持 site_pending。"
+  timestamp: "2026-09-08T00:00:00+08:00"
+  amendment:
+    alignment_id: user-alignment-20260908-wall-lamp-normal
+    source: "业主明确选择修正法向，让灯具完整朝主卧突出"
+    normalized_decision: "保持两盏壁灯 x/z/y 不变；按 w_mb_east west 面将安装背面投影到 x=4.14，灯体沿 -x 完整突出。"
+    timestamp: "2026-09-08T08:45:00+08:00"
+  appearance_amendment:
+    alignment_ids: [user-alignment-20260908-bedside-appearance, user-alignment-20260908-bedside-function, user-alignment-20260908-bedside-dimensions]
+    source: "业主依次锁定哑黑可调短筒、独立灯具按键、五孔/可换USB-C、暖白哑光南侧双联框，并确认候选尺寸落地"
+    normalized_decision: "壁灯候选外廓为背板Ø80、灯头Ø60×120、短臂35、最大突出≤190mm；北侧86单联，南侧约172×86双联，模块中心距86mm；实际SKU与施工接口继续site_pending。"
+    timestamp: "2026-09-08T09:40:00+08:00"
+allowed_scope:
+  files:
+    - config/electrical.yaml
+    - config/mep-hvac-coordination.yaml
+    - config/spatial-validation.yaml
+    - config/render/lighting.yaml
+    - tests/server/master-bedroom-dressing.test.ts
+    - tests/server/project-render-facts-projection.test.ts
+    - tests/server/shared/scene-builder.test.ts
+    - shared/types.ts
+    - shared/project-render-facts-schema.ts
+    - shared/project-render-facts-projection.ts
+    - shared/render/LightingFixtureBuilder.ts
+    - shared/render/WallLampGeometry.ts
+    - shared/render/InfrastructureBuilder.ts
+    - app/src/render/InteriorLightingSystem.ts
+    - app/src/render/InteriorLightingSystem.test.ts
+    - scripts/verify/project/verify-lighting-config.ts
+    - data/project-render-facts.json
+    - docs/design-iterations/master-bedroom-bedside-electrical-20260908/
+  objects:
+    - sock_master_bed_l
+    - light_master_wall_l
+    - sock_master_bed_r_head
+    - switch_master_bed_l
+    - light_master_wall_r
+forbidden:
+  files:
+    - config/layout/model-geometry.yaml
+    - config/layout/overlay.yaml
+    - config/house.yaml
+    - shared/render/FixtureFactory.ts
+  objects:
+    - bed_180
+    - master_bedside_cabinet_350_north
+    - master_bedside_cabinet_350_south
+    - sock_master_bed_r
+    - switch_master_door
+    - other_rooms
+  actions: [git_operations, construction_claim, product_dimension_claim]
+open_questions:
+  - id: pending-east-wall-structure
+    status: site_pending
+    owner: site
+    question: "东墙剪力墙/墙厚/暗管及可打孔开槽范围是否与方案一致？"
+  - id: pending-east-wall-window
+    status: site_pending
+    owner: site
+    question: "w_mb_win 疑似窗洞是否真实存在？"
+  - id: pending-product-outlines
+    status: site_pending
+    owner: site
+    question: "最终采购SKU、安装底座、USB-C模块功率/协议和底盒深度是否满足已确认候选外廓？"
+  - id: pending-south-curtain
+    status: site_pending
+    owner: site
+    question: "南帘堆叠端是否侵入南侧床头柜/面板服务区？"
+alignment:
+  records: [user-alignment-20260908-scheme-a, user-alignment-20260908-wall-lamp-normal, user-alignment-20260908-bedside-appearance, user-alignment-20260908-bedside-function, user-alignment-20260908-bedside-dimensions]
+  unresolved: [pending-east-wall-structure, pending-east-wall-window, pending-product-outlines, pending-south-curtain]
+  re_alignment_required: false
+acceptance:
+  validation_commands:
+    - "npm run verify:all"
+    - "npm run test:server"
+    - "npm run typecheck"
+  relation_acceptance:
+    - "目标点与床真实 runtime AABB 不相交"
+    - "目标点按床头柜中心轴对齐"
+    - "南侧一体双联框两模块中心距86mm、并集宽约172mm、绕z=8.555居中"
+    - "壁灯部件包含圆背板、短臂、隐藏转轴、Ø60×120短筒、前端透镜及背板下沿实体按键"
+    - "北/南插座为五孔/可换USB-C模块；双控为同系列暖白大跷板"
+    - "目标点宿主为 w_mb_east west，未落玻璃幕墙/开口"
+  browser_evidence_required: true
+  required_views: [plan, east_wall_elevation, east_west_section, bedside_panels_closeup, bedside_lamp_closeup]
+  construction_review: BLOCKED
+  delivery_ready: false
+done_when:
+  - "权威配置、runtime fixture 与测试一致"
+  - "专项关系断言与适用验证通过"
+  - "现场 pending 项有负责人和复核方法"
+  - "plan/elevation/section evidence 与当前 source_version 绑定"
+notes:
+  - "方案已冻结为设计候选，不等同于施工下单尺寸。"

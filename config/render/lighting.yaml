@@ -1,6 +1,28 @@
 # Render-only detailed lighting configuration.
 # Track offsets and target x/z are local to the fixture anchor; target.y is relative unless target_y_mode: absolute is set.
 fixtures:
+  - id: light_master_wall_l
+    type: wall_lamp
+    style: adjustable_short_cylinder
+    finish: matte_black
+    backplateDiameter: 0.080
+    headDiameter: 0.060
+    headLength: 0.120
+    armLength: 0.035
+    maxProjection: 0.190
+    control: { kind: integral_push_button, location: backplate_bottom }
+    adjustability: { yawDeg: [-60, 60], tiltDeg: [-45, 45] }
+  - id: light_master_wall_r
+    type: wall_lamp
+    style: adjustable_short_cylinder
+    finish: matte_black
+    backplateDiameter: 0.080
+    headDiameter: 0.060
+    headLength: 0.120
+    armLength: 0.035
+    maxProjection: 0.190
+    control: { kind: integral_push_button, location: backplate_bottom }
+    adjustability: { yawDeg: [-60, 60], tiltDeg: [-45, 45] }
   - id: living_track_main
     type: track_light
     length: 2.8

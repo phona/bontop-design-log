@@ -146,10 +146,10 @@ test('CLI builder creates core geometry with export metadata', () => {
 
 test('CLI exports authoritative electrical socket geometry from electrical.yaml', () => {
   const { exportRoot, report, index } = buildCliHouseScene();
-  // R7 保留：两侧统一350床头柜服务床头插座；备用插座保持0.70。
+  // 方案 A：北/南主床头插座随两侧350床头柜服务轴线重排；备用插座保持0.70。
   const expected = new Map([
-    ['sock_master_bed_l', [6.95, 0.75]],
-    ['sock_master_bed_r_head', [7.802, 0.75]],
+    ['sock_master_bed_l', [6.245, 0.75]],
+    ['sock_master_bed_r_head', [8.512, 0.75]],
     ['sock_master_bed_r', [9.15, 0.7]],
   ]);
   for (const [id, [z, y]] of expected) {

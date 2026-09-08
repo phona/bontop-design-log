@@ -1,0 +1,45 @@
+{
+  "camera": {"is_overview": false, "mode": "orbit", "position": [2.6, 1.1, 7.4], "target": [4.12, 0.8, 7.4]},
+  "checkedAt": "2026-09-08T01:24:00Z",
+  "configErrorBanner": "",
+  "isReady": true,
+  "sourceVersion": "scheme-a-bedside-electrical-normal-v2-20260908",
+  "wall": {"id": "w_mb_east", "centerlineX": 4.2, "roomSide": "west", "westFinishFaceX": 4.14},
+  "objects": [
+    {
+      "id": "electrical:sock_master_bed_l",
+      "fixtureType": "socket",
+      "wallSide": "west",
+      "position": [4.125, 0.75, 6.245],
+      "rotationY": -1.5707963267948966,
+      "mountNormal": [-1, 0, 0],
+      "aabb": {"min": [4.108999999240041, 0.7069999985396862, 6.201999998539686], "max": [4.139000000052154, 0.7930000014603138, 6.288000001460314], "meshes": 5}
+    },
+    {
+      "id": "electrical:sock_master_bed_r_head",
+      "fixtureType": "socket",
+      "wallSide": "west",
+      "position": [4.125, 0.75, 8.495],
+      "rotationY": -1.5707963267948966,
+      "mountNormal": [-1, 0, 0],
+      "aabb": {"min": [4.108999999240041, 0.7069999985396862, 8.451999998539685], "max": [4.139000000052154, 0.7930000014603138, 8.538000001460313], "meshes": 5}
+    },
+    {
+      "id": "electrical:switch_master_bed_l",
+      "fixtureType": "switch_2way",
+      "wallSide": "west",
+      "position": [4.125, 0.75, 8.615],
+      "rotationY": -1.5707963267948966,
+      "mountNormal": [-1, 0, 0],
+      "aabb": {"min": [4.10699999981001, 0.7069999985396862, 8.571999998539686], "max": [4.13399999961257, 0.7930000014603138, 8.658000001460314], "meshes": 2}
+    }
+  ],
+  "assertions": {
+    "allWallSidesWest": true,
+    "allMountNormalsEqualMinusX": true,
+    "allPanelMaxXAtOrInsideWestFinishFace": true,
+    "southSocketSwitchCenterSpacingM": 0.12,
+    "southSocketSwitchEdgeClearanceM": 0.034
+  },
+  "url": "http://127.0.0.1:5173/?v=scheme-a-bedside-electrical-normal-v2-20260908"
+}

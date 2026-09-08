@@ -66,6 +66,8 @@ export function buildProjectRenderFactsProjection(
       ...(fixture.circuit !== undefined ? { circuit: fixture.circuit } : {}),
       ...(fixture.heads !== undefined ? { heads: fixture.heads } : {}),
       ...(fixture.recessed !== undefined ? { recessed: fixture.recessed } : {}),
+      ...(fixture.wall !== undefined ? { wallId: fixture.wall } : {}),
+      ...(fixture.wallSide !== undefined ? { wallSide: fixture.wallSide } : {}),
     };
   });
 

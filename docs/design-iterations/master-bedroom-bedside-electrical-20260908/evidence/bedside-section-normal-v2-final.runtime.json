@@ -1,0 +1,19 @@
+{
+  "camera": {"is_overview": false, "mode": "orbit", "position": [1.05, 2.05, 5.65], "target": [4.1, 0.95, 7.45]},
+  "checkedAt": "2026-09-08T01:18:18Z",
+  "configErrorBanner": "",
+  "isReady": true,
+  "sourceVersion": "scheme-a-bedside-electrical-normal-v2-20260908",
+  "targetObjectIds": [
+    "furniture:master_bedroom:bed_180:0",
+    "furniture:master_bedroom:master_bedside_cabinet_350_north:3",
+    "furniture:master_bedroom:master_bedside_cabinet_350_south:4",
+    "electrical:sock_master_bed_l",
+    "electrical:sock_master_bed_r_head",
+    "electrical:switch_master_bed_l",
+    "electrical:light_master_wall_l",
+    "electrical:light_master_wall_r"
+  ],
+  "wallLampNormal": [-1, 0, 0],
+  "url": "http://127.0.0.1:5173/?v=scheme-a-bedside-electrical-normal-v2-20260908"
+}

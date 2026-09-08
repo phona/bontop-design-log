@@ -9,7 +9,7 @@ const FIXTURES: RenderLightingFixture[] = [
   { id: 'track', room: 'living_dining', type: 'track_light', position: { x: 10.8, y: 2.8, z: 7.15 }, temperatureK: 3000, enabled: true, heads: 5 },
   { id: 'p3', room: 'master_bedroom', type: 'pendant', position: { x: 2.6, y: 2.8, z: 7.6 }, temperatureK: 3000, enabled: true },
   { id: 'd1', room: 'master_bedroom', type: 'dome', position: { x: 2.6, y: 2.55, z: 7.6 }, temperatureK: 3000, enabled: true },
-  { id: 'w1', room: 'master_bedroom', type: 'wall_lamp', position: { x: 4.2, y: 1.6, z: 7.2 }, temperatureK: 3000, enabled: true },
+  { id: 'w1', room: 'master_bedroom', type: 'wall_lamp', position: { x: 4.2, y: 1.6, z: 7.2 }, temperatureK: 3000, enabled: true, wallId: 'w_mb_east', wallSide: 'west' },
   { id: 's1', room: 'living_dining', type: 'downlight', position: { x: 5.7, y: 2.8, z: 4.9 }, temperatureK: 3000, enabled: true },
   { id: 'entry_foyer', room: 'entry_garden', type: 'downlight', position: { x: 11.2, y: 2.5, z: 2.9 }, temperatureK: 3000, enabled: true },
   { id: 't1', room: 'living_dining', type: 'led_strip', position: { x: 7.35, y: 2.0, z: 7.0 }, temperatureK: 3000, enabled: true },
@@ -123,6 +123,27 @@ describe('InteriorLightingSystem', () => {
     const dome = lights(scene).find((light) => Math.abs(light.position.x - 2.6) < 0.01 && light instanceof THREE.PointLight)!;
     expect(strip.position.toArray()).toEqual([7.35, 2, 7]);
     expect(dome.position.y).toBe(2.55);
+  });
+
+  it('places the complete west-facing wall lamp on the master-bedroom side of the finish face', () => {
+    const { scene } = makeSystem();
+    const visual = lightingGroup(scene).children.find((child) => child.userData.objectId === 'electrical:w1') as THREE.Group;
+    scene.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(visual);
+    expect(visual.userData.wallId).toBe('w_mb_east');
+    expect(visual.userData.wallSide).toBe('west');
+    expect(visual.userData.mountNormal).toEqual([-1, 0, 0]);
+    expect(visual.userData.style).toBe('adjustable_short_cylinder');
+    expect(visual.userData.finish).toBe('matte_black');
+    expect(visual.userData.control).toEqual({ kind: 'integral_push_button', location: 'backplate_bottom' });
+    expect(visual.children.map((child) => child.userData.part)).toEqual([
+      'backplate', 'short-arm', 'concealed-pivot', 'adjustable-head', 'recessed-lens', 'integral-button',
+    ]);
+    expect(bounds.max.x).toBeLessThanOrEqual(4.14 + 1e-6);
+    expect(bounds.min.x).toBeLessThan(4.14);
+    expect(4.14 - bounds.min.x).toBeLessThanOrEqual(0.190 + 1e-6);
+    const wallLight = lights(scene).find((light) => light instanceof THREE.PointLight && Math.abs(light.position.z - 7.2) < 0.001)!;
+    expect(wallLight.position.x).toBeCloseTo(3.9765, 4);
   });
 
   it('uses Kelvin input for distinct 3000K and 4000K colors', () => {

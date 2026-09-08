@@ -1,0 +1,128 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: master-bedroom-bedside-electrical-20260908
+subject: 主卧床头插座、双控与两盏可调阅读壁灯方案 A
+created_at: "2026-09-08T00:00:00+08:00"
+status: implementation
+source_policy:
+  authority_refs:
+    - AGENTS.md
+    - config/layout/model-geometry.yaml
+    - config/layout/overlay.yaml
+    - config/house.yaml
+    - config/electrical.yaml
+    - config/render/lighting.yaml
+    - config/mep-hvac-coordination.yaml
+    - config/spatial-validation.yaml
+    - shared/render/FixtureFactory.ts
+    - shared/render/InfrastructureBuilder.ts
+    - shared/render/LightingFixtureBuilder.ts
+  rule: "model-geometry/overlay/house/electrical 为权威输入；runtime AABB 来自 FixtureFactory/InfrastructureBuilder/LightingFixtureBuilder。"
+facts:
+  confirmed:
+    - id: fact-master-east-wall
+      statement: "w_mb_east 为 x=4.20、z=5.55..9.80 的连续实体墙，主卧位于 west 侧，overlay 未 suppress。"
+      source_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml]
+      status: resolved
+      verification_method: "verify:spatial wall host/side check"
+    - id: fact-bed-authority
+      statement: "bed_180 保持 (x=3.20,z=7.40,rotation=270)，不可在本轮移动。"
+      source_refs: [config/house.yaml]
+      status: resolved
+      verification_method: "master-bedroom-dressing.test.ts"
+    - id: fact-bed-runtime-aabb
+      statement: "当前 bed_180 runtime mesh AABB 为 x[2.20,4.20]、y[0,0.80]、z[6.47,8.33]；床头板子网格为 x[4.12,4.20]、y[0.12,0.80]、z[6.50,8.30]。"
+      source_refs: [shared/render/FixtureFactory.ts, tests/server/master-bedroom-dressing.test.ts]
+      status: resolved
+      verification_method: "THREE.Box3 setFromObject"
+    - id: fact-bedside-runtime-aabb
+      statement: "北床头柜 runtime AABB 为 x[3.82,4.20]、y[0,0.505]、z[6.07,6.42]；南床头柜为 x[3.82,4.20]、y[0,0.505]、z[8.38,8.73]。"
+      source_refs: [config/house.yaml, shared/render/FixtureFactory.ts, tests/server/master-bedroom-dressing.test.ts]
+      status: resolved
+      verification_method: "THREE.Box3 setFromObject"
+    - id: fact-scheme-a-decision
+      statement: "业主已选择方案 A：电气点位按两只床头柜中心轴重排，南侧两块 86 面板中心距 120mm，保留施工现场 pending。"
+      source_refs: [user-alignment-20260908-scheme-a]
+      status: resolved
+      verification_method: "冻结 decision-brief"
+    - id: fact-wall-lamp-normal-decision
+      statement: "业主明确要求修正壁灯法向：背板贴 w_mb_east 的 west 完成面，灯体完整朝主卧（-x）突出。"
+      source_refs: [user-alignment-20260908-wall-lamp-normal]
+      status: resolved
+      verification_method: "runtime AABB 最大 x 不越 west finish face x=4.14"
+    - id: fact-bedside-appearance-decision
+      statement: "业主已锁定两盏哑黑隐藏转轴可调短筒（圆背板80mm、灯头Ø60×120mm、短臂35mm、最大突出≤190mm、背板下沿实体按键），以及暖白哑光模块化面板。"
+      source_refs: [user-alignment-20260908-bedside-appearance]
+      status: resolved
+      verification_method: "runtime part metadata、尺寸AABB与近景浏览器证据"
+    - id: fact-bedside-panel-group-decision
+      statement: "北侧为暖白哑光86×86单联五孔/可换USB-C；南侧为约172×86一体双联框，插座与吸顶灯双控模块中心距86mm并绕z=8.555居中。"
+      source_refs: [user-alignment-20260908-bedside-function, user-alignment-20260908-bedside-dimensions]
+      status: resolved
+      verification_method: "config coordinates + InfrastructureBuilder runtime union AABB"
+    - id: fact-unchanged-scope
+      statement: "bed_180、两只床头柜、sock_master_bed_r@z=9.15、switch_master_door 及其他家具/电气均保持不动。"
+      source_refs: [config/house.yaml, config/electrical.yaml, user-alignment-20260908-scheme-a]
+      status: resolved
+      verification_method: "专项回归测试"
+  inferred:
+    - id: fact-wall-finish-face
+      statement: "按 runtime 默认墙厚 0.12m，w_mb_east west finish face 约为 x=4.14；socket infrastructure AABB 后缘约 x=4.139。"
+      basis: "SceneBuilder/InfrastructureBuilder runtime wall thickness and projection"
+      source_refs: [shared/render/InfrastructureBuilder.ts, docs/design-iterations/spatial-validation-20260908/fact-table.yaml]
+      status: resolved
+      confidence: medium
+    - id: fact-scheme-a-clearance
+      statement: "方案 A runtime 校核得到：北插座/壁灯距床北缘约 182/155mm；南插座/双控/壁灯距床南缘约 122/242/155mm；面板底至床头柜顶约 202mm。"
+      basis: "候选点位经 InfrastructureBuilder/LightingFixtureBuilder 与真实家具 Box3 计算"
+      source_refs: [config/electrical.yaml, tests/server/master-bedroom-dressing.test.ts]
+      status: resolved
+      confidence: high
+  user_decision:
+    - id: user-alignment-20260908-scheme-a
+      statement: "按候选方案 A 落地；保留东墙结构、可开槽/打孔、w_mb_win 真伪、实际床/柜/灯具尺寸等施工 pending。"
+      source_refs: [user-alignment-20260908-scheme-a]
+      status: resolved
+    - id: user-alignment-20260908-bedside-appearance
+      statement: "锁定哑黑隐藏转轴可调短筒；插座/开关不跟随做黑。"
+      source_refs: [user conversation]
+      status: resolved
+    - id: user-alignment-20260908-bedside-function
+      statement: "锁定灯具独立实体按键、五孔/可换USB-C、南侧暖白哑光一体双联框。"
+      source_refs: [user conversation]
+      status: resolved
+    - id: user-alignment-20260908-bedside-dimensions
+      statement: "确认按候选尺寸统一落地。"
+      source_refs: [user conversation]
+      status: resolved
+  site_pending:
+    - id: pending-east-wall-structure
+      statement: "w_mb_east 当前 structure=shear 但 structure_status=inferred；物业竣工图/现场探测确认结构、墙厚、暗管及可开槽/打孔范围。"
+      owner: site
+      status: open
+      impact: blocking_construction
+    - id: pending-east-wall-window
+      statement: "主卧东墙疑似窗洞 w_mb_win 是否真实存在尚未确认。"
+      owner: site
+      status: open
+      impact: blocking_geometry
+    - id: pending-product-outlines
+      statement: "候选灯具/面板外廓已由业主确认用于模型；最终采购SKU、安装底座、USB-C模块功率/协议与底盒深度仍未确认。"
+      owner: site
+      status: open
+      impact: blocking_construction
+    - id: pending-south-curtain
+      statement: "南帘轨道、堆叠端与南床头柜/南侧面板的真实关系未量测。"
+      owner: site
+      status: open
+      impact: warning
+unknowns_requiring_alignment: []
+verification_plan:
+  source_checks: ["npm run verify:electrical", "npm run verify:mep", "npm run verify:spatial"]
+  relation_checks: ["npx tsx --test tests/server/master-bedroom-dressing.test.ts"]
+  required_project_checks: ["npm run verify:all", "npm run test:server", "npm run typecheck"]
+  evidence_views: [plan, east_wall_elevation, east_west_section, bedside_panels_closeup, bedside_lamp_closeup]
+notes:
+  - "本次深化修改两盏壁灯外观、三块床头面板的模块化外观与南侧双联关系；不修改 model-geometry.yaml、overlay.yaml、house.yaml 家具。"
+  - "data/project-render-facts.json 仅通过正式生成器刷新，不直接编辑。"
+  - "验证报告中的其他房间既有失败/警告不得归因于本床头电气组。"

@@ -1,0 +1,32 @@
+{
+  "camera": {
+    "is_overview": false,
+    "mode": "orbit",
+    "position": {
+      "x": 1.0499999999999994,
+      "y": 2.05,
+      "z": 5.65
+    },
+    "target": {
+      "x": 4.1,
+      "y": 0.95,
+      "z": 7.45
+    }
+  },
+  "checkedAt": "2026-09-08T00:46:23.529Z",
+  "configErrorBanner": "",
+  "isReady": true,
+  "sourceVersion": "scheme-a-bedside-electrical-20260908",
+  "targetObjectIds": [
+    "furniture:master_bedroom:bed_180:0",
+    "furniture:master_bedroom:master_bedside_cabinet_350_north:3",
+    "furniture:master_bedroom:master_bedside_cabinet_350_south:4",
+    "electrical:sock_master_bed_l",
+    "electrical:sock_master_bed_r_head",
+    "electrical:switch_master_bed_l",
+    "electrical:light_master_wall_l",
+    "electrical:light_master_wall_r"
+  ],
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://127.0.0.1:5173/?v=scheme-a-bedside-electrical-20260908"
+}

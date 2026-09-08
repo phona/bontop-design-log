@@ -2,13 +2,33 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { load } from 'js-yaml';
-import { FURNITURE_DIMS, isCurtainSoftEnvelopePreview, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE } from '../../shared/types.js';
+import { FURNITURE_DIMS, isCurtainSoftEnvelopePreview, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type RenderLightingFixture } from '../../shared/types.js';
 import { buildFixture, setNorthWallWardrobe950DoorConfiguration, type NorthWallWardrobe950DoorConfiguration, setNorthWallWardrobe950DoorState } from '../../shared/render/FixtureFactory.js';
+import { buildInfrastructure } from '../../shared/render/InfrastructureBuilder.js';
+import { buildLightingFixtures } from '../../shared/render/LightingFixtureBuilder.js';
 import * as THREE from 'three';
 
 type Furnishing = { type: string; x?: number; z?: number; rotation?: number };
-type ElectricalPoint = { id: string; type?: string; x?: number; z?: number; height?: number; wall?: string; wall_side?: string; note?: string };
+type ElectricalPoint = {
+  id: string;
+  type?: string;
+  x?: number;
+  z?: number;
+  height?: number;
+  wall?: string;
+  wall_side?: string;
+  note?: string;
+  appearance?: {
+    style: string;
+    module: string;
+    faceplate_width: number;
+    faceplate_height: number;
+    projection: number;
+    panel_group?: { id: string; role: string; center_spacing: number; union_width: number };
+  };
+};
 type PlumbingPoint = { id: string; x?: number; z?: number };
+type RuntimeAabb = { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
 
 const house = load(readFileSync('config/house.yaml', 'utf8')) as { furnishings: Record<string, Furnishing[]> };
 const electrical = load(readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
@@ -16,6 +36,7 @@ const plumbing = load(readFileSync('config/plumbing.yaml', 'utf8')) as PlumbingP
 const master = house.furnishings.master_bedroom;
 
 const GAP_EPS = 1e-9;
+const RUNTIME_EPS = 1e-6;
 
 test('R6 curtain soft envelope stays separate from hard floor collision', () => {
   assert.equal(isCurtainSoftEnvelopePreview(MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE), true);
@@ -64,6 +85,53 @@ function worldAabb(item: Furnishing): { minX: number; maxX: number; minZ: number
   const width = quarterTurn ? dims.depth : dims.width;
   const depth = quarterTurn ? dims.width : dims.depth;
   return { minX: item.x! - width / 2, maxX: item.x! + width / 2, minZ: item.z! - depth / 2, maxZ: item.z! + depth / 2 };
+}
+
+function runtimeAabb(object: THREE.Object3D): RuntimeAabb {
+  object.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(object);
+  return { minX: box.min.x, maxX: box.max.x, minY: box.min.y, maxY: box.max.y, minZ: box.min.z, maxZ: box.max.z };
+}
+
+function runtimeFurnitureAabb(type: string): RuntimeAabb {
+  const item = placed(type);
+  const fixture = buildFixture(type);
+  assert.ok(fixture, `missing runtime furniture fixture ${type}`);
+  fixture!.position.set(item.x!, 0, item.z!);
+  fixture!.rotation.y = THREE.MathUtils.degToRad(item.rotation ?? 0);
+  return runtimeAabb(fixture!);
+}
+
+function runtimeElectricalAabb(id: string): RuntimeAabb {
+  const source = point(id);
+  if (source.type === 'wall_lamp') {
+    const built = buildLightingFixtures([{
+      id: source.id,
+      room: 'master_bedroom',
+      type: 'wall_lamp',
+      position: { x: source.x!, y: source.height!, z: source.z! },
+      temperatureK: 3000,
+      enabled: true,
+      wallId: source.wall,
+      wallSide: source.wall_side as RenderLightingFixture['wallSide'],
+    }]);
+    const fixture = built.fixtures.get(`electrical:${id}`);
+    assert.ok(fixture, `missing runtime lighting fixture ${id}`);
+    return runtimeAabb(fixture!);
+  }
+  const normalized = { ...source, wallSide: source.wall_side };
+  const built = buildInfrastructure({
+    electrical: [normalized as any],
+    plumbing: [],
+    wallSegments: new Map([['w_mb_east', [{ x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 }]]]),
+  });
+  const fixture = built.electrical[0];
+  assert.ok(fixture, `missing runtime electrical fixture ${id}`);
+  return runtimeAabb(fixture!);
+}
+
+function aabbIntersects(a: RuntimeAabb, b: RuntimeAabb): boolean {
+  return a.minX < b.maxX && a.maxX > b.minX && a.minY < b.maxY && a.maxY > b.minY && a.minZ < b.maxZ && a.maxZ > b.minZ;
 }
 
 test('950 left shift clears d_mb while preserving the north-wall room envelope', () => {
@@ -262,43 +330,84 @@ test('sock_master_bed_r is the southeast general-purpose backup socket', () => {
   assert.ok(socket.z! > bedBox.maxZ, `socket z=${socket.z} must stay south of bed south edge ${bedBox.maxZ}`);
 });
 
-test('R6 bed-following sockets, switch and wall lamps use the new numeric plan', () => {
-  const BED_CENTER_Z = 7.40;
-  const HEAD_RANGE = { min: 6.50, max: 8.30 }; // R6 床体范围（床 z 向包络）
+test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', () => {
   const left = point('sock_master_bed_l');
   const right = point('sock_master_bed_r_head');
   const switchL = point('switch_master_bed_l');
   const lampL = point('light_master_wall_l');
   const lampR = point('light_master_wall_r');
-  for (const p of [left, right, switchL]) {
+  for (const p of [left, right, switchL, lampL, lampR]) {
     assert.equal(p.wall, 'w_mb_east', `${p.id} must stay on w_mb_east`);
     assert.equal(p.wall_side, 'west', `${p.id} must keep wall_side west`);
     assert.equal(p.x, 4.20);
   }
-  assert.equal(left.z, 6.95);
-  assert.equal(right.z, 7.802);
-  assert.equal(switchL.z, 7.898);
-  assert.ok(Math.abs(right.z! - 7.802) < GAP_EPS && Math.abs(switchL.z! - 7.898) < GAP_EPS, 'south 86 panels use the separated R6 service band');
-  assert.equal(lampL.z, 6.95);
-  assert.equal(lampR.z, 7.85);
+  assert.equal(left.z, 6.245);
+  assert.equal(right.z, 8.512);
+  assert.equal(switchL.z, 8.598);
+  assert.equal(lampL.z, 6.245);
+  assert.equal(lampR.z, 8.555);
   assert.equal(lampL.x, 4.2);
   assert.equal(lampR.x, 4.2);
   assert.equal(lampL.height, 1.35);
   assert.equal(lampR.height, 1.35);
-  // R6：两侧统一 380×350×500 候选柜分别服务北/南床头点位，南侧插座与双控同一服务带。
+  assert.equal(lampL.wall, 'w_mb_east');
+  assert.equal(lampR.wall, 'w_mb_east');
+  assert.equal(lampL.wall_side, 'west');
+  assert.equal(lampR.wall_side, 'west');
+  // 两侧统一 380×350×500 候选柜分别服务北/南床头点位；南侧是 172×86 暖白哑光一体双联框。
   assert.equal(left.height, 0.75);
   assert.equal(right.height, 0.75);
   assert.equal(switchL.height, 0.75);
-  for (const p of [left, right, switchL, lampL, lampR]) {
-    assert.ok(p.z! >= HEAD_RANGE.min - 0.25 && p.z! <= HEAD_RANGE.max + 0.25, `${p.id} z=${p.z} outside headboard vicinity`);
+  assert.deepEqual(left.appearance, {
+    style: 'warm_white_matte_modular', module: 'five_hole_replaceable_usb_c',
+    faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008,
+  });
+  assert.equal(right.appearance?.module, 'five_hole_replaceable_usb_c');
+  assert.equal(switchL.appearance?.module, 'two_way_rocker');
+  assert.deepEqual(right.appearance?.panel_group, { id: 'master_bed_south_double', role: 'north', center_spacing: 0.086, union_width: 0.172 });
+  assert.deepEqual(switchL.appearance?.panel_group, { id: 'master_bed_south_double', role: 'south', center_spacing: 0.086, union_width: 0.172 });
+
+  const bed = runtimeFurnitureAabb('bed_180');
+  const northCabinet = runtimeFurnitureAabb('master_bedside_cabinet_350_north');
+  const southCabinet = runtimeFurnitureAabb('master_bedside_cabinet_350_south');
+  const leftBox = runtimeElectricalAabb(left.id);
+  const rightBox = runtimeElectricalAabb(right.id);
+  const switchBox = runtimeElectricalAabb(switchL.id);
+  const lampLBox = runtimeElectricalAabb(lampL.id);
+  const lampRBox = runtimeElectricalAabb(lampR.id);
+
+  // 点位与对应床头柜中心轴对齐；南侧双联框两模块中心距86mm，边缘无缝相接。
+  assert.ok(Math.abs(left.z! - (northCabinet.minZ + northCabinet.maxZ) / 2) < RUNTIME_EPS);
+  assert.ok(Math.abs(lampL.z! - (northCabinet.minZ + northCabinet.maxZ) / 2) < RUNTIME_EPS);
+  assert.ok(Math.abs((right.z! + switchL.z!) / 2 - (southCabinet.minZ + southCabinet.maxZ) / 2) < RUNTIME_EPS);
+  assert.ok(Math.abs(lampR.z! - (southCabinet.minZ + southCabinet.maxZ) / 2) < RUNTIME_EPS);
+  assert.ok(Math.abs(switchL.z! - right.z! - 0.086) < RUNTIME_EPS);
+  assert.ok(Math.abs(rightBox.maxZ - switchBox.minZ) < RUNTIME_EPS);
+  assert.ok(Math.abs(switchBox.maxZ - rightBox.minZ - 0.172) < RUNTIME_EPS);
+
+  // 使用真实 runtime mesh，而非 FURNITURE_DIMS 推导：床 rail 包络 z[6.47,8.33]。
+  assert.ok(bed.minZ - leftBox.maxZ >= 0.182 - RUNTIME_EPS, `north socket-to-bed gap ${bed.minZ - leftBox.maxZ}`);
+  assert.ok(bed.minZ - lampLBox.maxZ >= 0.185 - RUNTIME_EPS, `north lamp-to-bed gap ${bed.minZ - lampLBox.maxZ}`);
+  assert.ok(rightBox.minZ - bed.maxZ >= 0.139 - RUNTIME_EPS, `south socket-to-bed gap ${rightBox.minZ - bed.maxZ}`);
+  assert.ok(switchBox.minZ - bed.maxZ >= 0.225 - RUNTIME_EPS, `south switch-to-bed gap ${switchBox.minZ - bed.maxZ}`);
+  assert.ok(lampRBox.minZ - bed.maxZ >= 0.185 - RUNTIME_EPS, `south lamp-to-bed gap ${lampRBox.minZ - bed.maxZ}`);
+  // w_mb_east centerline x=4.20, default 120mm wall west finish face x=4.14.
+  // The complete lamp mesh must remain on the master-bedroom (-x) side.
+  assert.ok(lampLBox.maxX <= 4.14 + RUNTIME_EPS, `north lamp crosses west finish face: maxX=${lampLBox.maxX}`);
+  assert.ok(lampRBox.maxX <= 4.14 + RUNTIME_EPS, `south lamp crosses west finish face: maxX=${lampRBox.maxX}`);
+  assert.ok(lampLBox.minX < 4.14 - RUNTIME_EPS && lampRBox.minX < 4.14 - RUNTIME_EPS, 'wall lamps must project into the master bedroom');
+  assert.ok(4.14 - lampLBox.minX <= 0.190 + RUNTIME_EPS, `north lamp exceeds locked projection: ${4.14 - lampLBox.minX}`);
+  assert.ok(4.14 - lampRBox.minX <= 0.190 + RUNTIME_EPS, `south lamp exceeds locked projection: ${4.14 - lampRBox.minX}`);
+  for (const [id, box] of [[left.id, leftBox], [right.id, rightBox], [switchL.id, switchBox], [lampL.id, lampLBox], [lampR.id, lampRBox]] as const) {
+    assert.equal(aabbIntersects(box, bed), false, `${id} must not intersect the real bed mesh AABB`);
   }
-  const southPanelWidth = 0.086;
-  assert.ok(Math.abs(switchL.z! - right.z!) > southPanelWidth, 'south 86 panels remain separated: 96mm center distance minus 86mm real mesh footprint');
-  assert.ok(left.z! >= HEAD_RANGE.min - 0.25 && left.z! <= HEAD_RANGE.max + 0.25, 'north bedside socket sits near the R6 bed projection');
-  assert.ok(Math.abs(left.z! - 6.95) < GAP_EPS && Math.abs(right.z! - 7.802) < GAP_EPS);
-  assert.equal(switchL.z, 7.898);
-  assert.ok(lampL.z! < lampR.z! && lampL.z! >= HEAD_RANGE.min - 0.25 && lampR.z! <= HEAD_RANGE.max + 0.25);
-  assert.ok(left.z! < right.z!);
+
+  // 86面板/壁灯共轴布置在床头柜上方，采用立面净距：柜顶0.505m，86面板底约0.707m。
+  assert.ok(leftBox.minY - northCabinet.maxY >= 0.202 - RUNTIME_EPS, `north cabinet-to-socket elevation gap ${leftBox.minY - northCabinet.maxY}`);
+  assert.ok(lampLBox.minY - northCabinet.maxY >= 0.805 - RUNTIME_EPS, `north cabinet-to-lamp elevation gap ${lampLBox.minY - northCabinet.maxY}`);
+  assert.ok(rightBox.minY - southCabinet.maxY >= 0.202 - RUNTIME_EPS, `south cabinet-to-socket elevation gap ${rightBox.minY - southCabinet.maxY}`);
+  assert.ok(switchBox.minY - southCabinet.maxY >= 0.202 - RUNTIME_EPS, `south cabinet-to-switch elevation gap ${switchBox.minY - southCabinet.maxY}`);
+  assert.ok(lampRBox.minY - southCabinet.maxY >= 0.805 - RUNTIME_EPS, `south cabinet-to-lamp elevation gap ${lampRBox.minY - southCabinet.maxY}`);
 });
 
 test('removed master-bedroom items stay removed; living room plant survives', () => {

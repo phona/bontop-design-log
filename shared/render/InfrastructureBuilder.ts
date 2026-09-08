@@ -48,6 +48,73 @@ const WALL_THICKNESS = 0.12;
 const WALL_GAP = 0.005;
 const FIXTURE_HALF_THICKNESS = 0.01;
 
+function styledPart(
+  geometry: THREE.BufferGeometry,
+  color: number,
+  roughness: number,
+  partName: string,
+  materialRole: string,
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color, roughness }));
+  mesh.name = partName;
+  mesh.userData = { part: partName, materialRole };
+  return mesh;
+}
+
+function buildWarmWhiteModularElectrical(point: ElectricalPoint): THREE.Group {
+  const appearance = point.appearance!;
+  const group = new THREE.Group();
+  const warmWhite = 0xf3f0e8;
+  const warmWhiteInset = 0xe9e6df;
+  const graphite = 0x30343a;
+  const depth = appearance.projection;
+
+  const backer = styledPart(
+    new THREE.BoxGeometry(appearance.faceplate_width - 0.006, appearance.faceplate_height - 0.006, 0.012),
+    0xd8d4ca,
+    0.72,
+    'panel-recessed-backer',
+    'fixture_body',
+  );
+  backer.position.z = -0.006;
+  const faceplate = styledPart(
+    new THREE.BoxGeometry(appearance.faceplate_width, appearance.faceplate_height, depth),
+    warmWhite,
+    0.82,
+    'warm-white-matte-faceplate',
+    'faceplate',
+  );
+  group.add(backer, faceplate);
+
+  const frontZ = depth / 2 + 0.0015;
+  if (appearance.module === 'five_hole_replaceable_usb_c') {
+    const socketField = styledPart(new THREE.BoxGeometry(0.066, 0.058, 0.002), warmWhiteInset, 0.86, 'socket-field', 'socket_module');
+    socketField.position.set(0, -0.007, frontZ);
+    group.add(socketField);
+    const openings = [
+      [-0.018, -0.001, 0.010, 0.004], [0.018, -0.001, 0.010, 0.004],
+      [-0.013, -0.018, 0.005, 0.012], [0.013, -0.018, 0.005, 0.012], [0, -0.028, 0.005, 0.010],
+    ] as const;
+    for (const [x, y, width, height] of openings) {
+      const opening = styledPart(new THREE.BoxGeometry(width, height, 0.002), graphite, 0.74, `receptacle-${group.children.length}`, 'receptacle');
+      opening.position.set(x, y, frontZ + 0.002);
+      group.add(opening);
+    }
+    const usbModule = styledPart(new THREE.BoxGeometry(0.032, 0.017, 0.003), 0xdedbd3, 0.84, 'replaceable-usb-c-module', 'replaceable_usb_c');
+    usbModule.position.set(0, 0.026, frontZ + 0.001);
+    const usbPort = styledPart(new THREE.BoxGeometry(0.014, 0.004, 0.002), graphite, 0.74, 'usb-c-port', 'usb_c');
+    usbPort.position.set(0, 0.026, frontZ + 0.003);
+    group.add(usbModule, usbPort);
+  } else {
+    const rocker = styledPart(new THREE.BoxGeometry(0.070, 0.070, 0.004), 0xeeece5, 0.84, 'warm-white-two-way-rocker', 'rocker');
+    rocker.position.z = frontZ + 0.002;
+    const lowerShadow = styledPart(new THREE.BoxGeometry(0.060, 0.002, 0.0015), 0xc9c5bc, 0.9, 'rocker-lower-shadow', 'rocker_edge');
+    lowerShadow.position.set(0, -0.031, frontZ + 0.0045);
+    group.add(rocker, lowerShadow);
+  }
+  return group;
+}
+
 function projectPoint(
   point: { x: number; z: number; wall?: string; wallSide?: WallSide },
   wallSegments: ReadonlyMap<string, InfrastructureWallSegment[]> | undefined,
@@ -113,6 +180,16 @@ function metadata(point: ElectricalPoint | PlumbingPoint, category: 'electrical'
     roomId: point.room,
     fixtureType: point.type,
     wallSide: point.wallSide,
+    ...('appearance' in point && point.appearance ? {
+      appearanceStyle: point.appearance.style,
+      module: point.appearance.module,
+      faceplate: {
+        width: point.appearance.faceplate_width,
+        height: point.appearance.faceplate_height,
+        projection: point.appearance.projection,
+      },
+      ...(point.appearance.panel_group ? { panelGroup: point.appearance.panel_group } : {}),
+    } : {}),
     ...extra,
   };
 }
@@ -120,7 +197,9 @@ function metadata(point: ElectricalPoint | PlumbingPoint, category: 'electrical'
 function buildElectrical(point: ElectricalPoint, wallSegments: ReadonlyMap<string, InfrastructureWallSegment[]> | undefined): THREE.Group | null {
   const fixtureType = FIXTURE_TYPES[point.type];
   if (!fixtureType) return null;
-  const model = buildFixture(fixtureType);
+  const model = point.appearance?.style === 'warm_white_matte_modular'
+    ? buildWarmWhiteModularElectrical(point)
+    : buildFixture(fixtureType);
   if (!model) return null;
   const dimensions = PANEL_DIMENSIONS[point.type];
   const panelHeight = dimensions ? (point.body_height ?? point.height ?? dimensions.height) : undefined;

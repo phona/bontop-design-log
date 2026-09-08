@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import type { LightingRenderConfig, RenderLightingFixture } from '../types.js';
+import type { LightingRenderConfig, RenderLightingFixture, TrackLightConfig } from '../types.js';
 import { getResolvedTrackLightHeads, getTrackLightConfig } from './TrackLightLayout.js';
+import { buildWallLampVisual, getWallLampConfig, wallSideNormal } from './WallLampGeometry.js';
 
 export interface LightingFixtureBuildResult {
   group: THREE.Group;
@@ -93,15 +94,11 @@ function addDownlight(group: THREE.Group, fixture: RenderLightingFixture, glow: 
   return 3;
 }
 
-function addWallLamp(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE.Color): number {
-  const { x, y, z } = fixture.position;
-  const base = part(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.12), material(0x8a6d3b, 0.4, 0.7)), fixture, 'base', 'fixture_metal');
-  base.rotation.z = Math.PI / 2;
-  base.position.set(x, y + 0.08, z);
-  const shade = part(new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), emissive(glow)), fixture, 'shade', 'fixture_diffuser');
-  shade.position.set(x, y - 0.05, z);
-  group.add(base, shade);
-  return 2;
+function addWallLamp(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE.Color, lighting?: LightingRenderConfig): number {
+  const visual = buildWallLampVisual(fixture, getWallLampConfig(lighting, fixture.id), glow);
+  group.userData = { ...group.userData, ...visual.userData };
+  for (const child of [...visual.children]) group.add(child);
+  return group.children.length;
 }
 
 function addLedStrip(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE.Color): number {
@@ -119,8 +116,15 @@ function buildFixture(fixture: RenderLightingFixture, lighting?: LightingRenderC
     objectId: `electrical:${fixture.id}`,
     fixtureType: fixture.type,
     roomId: fixture.room,
-    ...(fixture.type === 'track_light' && lighting?.fixtures.find((config) => config.id === fixture.id)
-      ? { headPurposes: lighting.fixtures.find((config) => config.id === fixture.id)!.heads.map((head) => ({ purpose: head.purpose, role: head.role })) }
+    ...(fixture.wallId !== undefined ? { wallId: fixture.wallId } : {}),
+    ...(fixture.wallSide !== undefined ? { wallSide: fixture.wallSide } : {}),
+    ...(fixture.type === 'wall_lamp' && fixture.wallSide !== undefined
+      ? { mountNormal: wallSideNormal(fixture.wallSide)?.toArray() }
+      : {}),
+    ...(fixture.type === 'track_light' && lighting?.fixtures.find((config): config is TrackLightConfig => config.id === fixture.id && config.type === 'track_light')
+      ? { headPurposes: lighting.fixtures
+        .find((config): config is TrackLightConfig => config.id === fixture.id && config.type === 'track_light')!
+        .heads.map((head) => ({ purpose: head.purpose, role: head.role })) }
       : {}),
   };
   const glow = new THREE.Color().setHSL(0.1, 0.25, 0.95);
@@ -128,7 +132,7 @@ function buildFixture(fixture: RenderLightingFixture, lighting?: LightingRenderC
     case 'pendant': return { group, parts: addPendant(group, fixture, glow) };
     case 'track_light': return { group, parts: addTrack(group, fixture, glow, lighting) };
     case 'downlight': return { group, parts: addDownlight(group, fixture, glow) };
-    case 'wall_lamp': return { group, parts: addWallLamp(group, fixture, glow) };
+    case 'wall_lamp': return { group, parts: addWallLamp(group, fixture, glow, lighting) };
     case 'led_strip': return { group, parts: addLedStrip(group, fixture, glow) };
     case 'dome':
     case 'ceiling_light':

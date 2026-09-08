@@ -1,0 +1,158 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "master-bedroom-bedside-electrical-20260908",
+  "source_version": "scheme-a-bedside-electrical-appearance-v3-20260908",
+  "state": "implementation_verified_site_pending",
+  "status": "incomplete",
+  "alignment_frozen": true,
+  "construction_frozen": false,
+  "delivery_frozen": false,
+  "delivery_ready": false,
+  "fact_table": "fact-table.yaml",
+  "decision_brief": "decision-brief.yaml",
+  "design_datum": "design-datum.yaml",
+  "object_manifest": "object-manifest.yaml",
+  "blocking_issues": [
+    "w_mb_east structure=shear/inferred，墙厚、暗管和可开槽/打孔性未现场确认",
+    "w_mb_win 疑似窗洞真伪未确认",
+    "壁灯与面板真实SKU、底盒深度及固定节点未锁定",
+    "南帘真实轨道、堆叠端与南床头柜关系未实测"
+  ],
+  "verification": {
+    "status": "targeted_and_full_suite_pass_with_warnings",
+    "results": [
+      {
+        "command": "npx tsx --test tests/server/master-bedroom-dressing.test.ts",
+        "status": "PASS",
+        "notes": ["15 tests passed；方案A点位与真实床/床头柜 runtime AABB、南侧172×86双联框、灯具外廓与突出量均有关系断言"]
+      },
+      {
+        "command": "npm run verify:spatial",
+        "status": "PASS_WITH_WARNINGS",
+        "notes": ["0 errors、10个既有 warning；主卧床头点位与壁灯 runtime 法向未产生空间错误"]
+      },
+      {
+        "command": "npm run verify:electrical",
+        "status": "PASS_WITH_WARNINGS",
+        "notes": ["0 errors；现有 32 warnings 属于拓扑覆盖/现场参数 pending"]
+      },
+      {
+        "command": "npm run verify:mep",
+        "status": "PASS_WITH_WARNINGS",
+        "notes": ["0 errors；现有 22 warnings 包含剪力墙结构 inferred、暗管/套管和 HVAC 协调 pending"]
+      },
+      {
+        "command": "npm run verify:lighting-config",
+        "status": "PASS",
+        "notes": ["Lighting config verified: 3 detailed fixtures（两盏床头壁灯＋客厅轨道灯）"]
+      },
+      {
+        "command": "npm run verify:project-render-facts",
+        "status": "PASS",
+        "notes": ["先通过正式生成器 npm run generate:project-render-facts 刷新；ProjectRenderFacts verified: electrical=15 lighting fixtures, plumbing=20, ceiling=22"]
+      },
+      {
+        "command": "npm run verify:all",
+        "status": "PASS_WITH_WARNINGS",
+        "notes": ["全链路通过；verify:spatial 0 errors/10 warnings、点位专项0 errors/14 warnings、MEP 0 errors/22 warnings、电气0 errors/32 warnings"]
+      },
+      {
+        "command": "npm run test:server",
+        "status": "PASS",
+        "notes": ["540 tests passed, 0 failed"]
+      },
+      {
+        "command": "npm run test:app -- src/render/InteriorLightingSystem.test.ts",
+        "status": "PASS",
+        "notes": ["15 tests passed；浏览器可见壁灯具备哑黑短筒、隐藏转轴、独立按键、法向和≤190mm突出量断言"]
+      },
+      {
+        "command": "npm run test:app",
+        "status": "PASS",
+        "notes": ["52 files、448 tests passed，0 failed"]
+      },
+      {
+        "command": "npm run typecheck",
+        "status": "PASS",
+        "notes": ["root 与 app TypeScript 均通过 --noEmit"]
+      }
+    ]
+  },
+  "browser_evidence": {
+    "status": "VALID",
+    "required_views": ["plan", "east_wall_elevation", "east_west_section", "bedside_panels_closeup", "wall_lamp_closeup"],
+    "source_version": "scheme-a-bedside-electrical-appearance-v3-20260908",
+    "url": "http://127.0.0.1:5173/",
+    "title": "和萃 701 - 3D 装修设计",
+    "ready": true,
+    "config_error_banner": "",
+    "views": [
+      {
+        "id": "east_wall_elevation",
+        "camera": {"mode": "orbit", "is_overview": false, "position": [0.65, 1.65, 7.40], "target": [4.12, 0.95, 7.40]},
+        "runtime": "evidence/bedside-appearance-v3-final.runtime.json",
+        "png": "evidence/bedside-east-elevation-appearance-v3-final.png",
+        "status": "valid"
+      },
+      {
+        "id": "plan",
+        "camera": {"mode": "orbit", "is_overview": false, "position": [1.25, 6.20, 7.40], "target": [3.65, 0.25, 7.40]},
+        "runtime": "evidence/bedside-appearance-v3-final.runtime.json",
+        "png": "evidence/bedside-plan-appearance-v3-final.png",
+        "status": "valid"
+      },
+      {
+        "id": "east_west_section",
+        "camera": {"mode": "orbit", "is_overview": false, "position": [1.05, 2.05, 5.65], "target": [4.10, 0.95, 7.45]},
+        "runtime": "evidence/bedside-appearance-v3-final.runtime.json",
+        "png": "evidence/bedside-section-appearance-v3-final.png",
+        "status": "valid"
+      },
+      {
+        "id": "bedside_panels_closeup",
+        "camera": {"mode": "orbit", "is_overview": false, "position": [2.60, 1.10, 7.40], "target": [4.12, 0.80, 7.40]},
+        "runtime": "evidence/bedside-appearance-v3-final.runtime.json",
+        "png": "evidence/bedside-south-panel-closeup-appearance-v3-final.png",
+        "status": "valid"
+      },
+      {
+        "id": "wall_lamp_closeup",
+        "camera": {"mode": "orbit", "is_overview": false, "position": [3.14, 1.53, 6.245], "target": [4.12, 1.35, 6.245]},
+        "runtime": "evidence/bedside-appearance-v3-final.runtime.json",
+        "png": "evidence/bedside-lamp-closeup-appearance-v3-final.png",
+        "status": "valid"
+      }
+    ],
+    "runtime_result": "两盏壁灯均为 matte_black adjustable_short_cylinder，部件含隐藏转轴、短臂、可调灯头、乳白透镜与灯体底部独立按键；wallSide=west、mountNormal=[-1,0,0]，AABB x[3.9765,4.14]，实际突出163.5mm≤190mm。北侧为暖白哑光86单联五孔/可换USB-C；南侧插座z=8.512与双控z=8.598形成中心距86mm、并集172mm、边缘零间隙的一体双联组合。床 runtime z[6.470,8.330]，全部点位无床体碰撞。"
+  },
+  "functional_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": ["数字方案功能验收通过；但东墙结构/暗管/可开槽性、w_mb_win 真伪、真实SKU/底盒深度与固定节点仍需现场确认，施工结论保持 pending。"],
+    "non_blocking_notes": ["两侧阅读灯各自由灯具底部按键控制；南侧双控只控制主卧吸顶灯；两侧五孔插座预留可换USB-C模块；床头点位均避开床真实 AABB。"],
+    "evidence_refs": ["evidence/bedside-appearance-v3-final.runtime.json", "tests/server/master-bedroom-dressing.test.ts", "app/src/render/InteriorLightingSystem.test.ts"],
+    "requested_changes": [],
+    "assumptions": ["w_mb_east 当前按连续实体墙、west 安装面预演；structure=shear 仍为 inferred。"]
+  },
+  "aesthetic_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": ["两侧哑黑短筒与暖白面板形成克制的黑白对比，位置落在床头柜竖轴而非床体正上方；南侧双联框连续、对称居中，整体简洁耐看。"],
+    "evidence_refs": ["evidence/bedside-east-elevation-appearance-v3-final.png", "evidence/bedside-plan-appearance-v3-final.png", "evidence/bedside-section-appearance-v3-final.png", "evidence/bedside-south-panel-closeup-appearance-v3-final.png", "evidence/bedside-lamp-closeup-appearance-v3-final.png"],
+    "requested_changes": [],
+    "assumptions": ["外观按已确认候选尺寸与材质定标；品牌SKU、灯珠光学参数和表面样板仍待采购阶段确认。"]
+  },
+  "construction_review": {
+    "status": "BLOCKED",
+    "owner": "site",
+    "recovery": "完成东墙结构/窗洞/暗管/产品外廓实测后重新验证"
+  },
+  "retrospective": {
+    "status": "triggered_and_recovered",
+    "trigger": "上一轮仅凭点位/法向正确即给出审美PASS，真实画面仍是占位灯和分离面板，用户指出外观未深化。",
+    "root_cause": "验收契约没有冻结灯具造型、材质、控制件和双联框外观，导致几何正确被误当成完整外观正确。",
+    "recovery": "新增 appearance 决策、真实部件几何、近景证据及审美/功能双复核；后续同类床头点位必须同时验坐标、法向、真实外廓、材质和控制语义。",
+    "checks": ["未修改户型几何或家具", "共享导出与浏览器运行时共用同一灯具几何", "未执行 git 操作", "方案A仅修改冻结范围"]
+  },
+  "delivery_gate": "blocked_until_site_pending_and_required_evidence_resolved"
+}

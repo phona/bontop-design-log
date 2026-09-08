@@ -1,0 +1,30 @@
+{
+  "camera": {
+    "is_overview": false,
+    "mode": "orbit",
+    "position": {
+      "x": 1.2499999999999991,
+      "y": 6.2,
+      "z": 7.4
+    },
+    "target": {
+      "x": 3.65,
+      "y": 0.25,
+      "z": 7.4
+    }
+  },
+  "checkedAt": "2026-09-08T00:46:21.424Z",
+  "configErrorBanner": "",
+  "isReady": true,
+  "sourceVersion": "scheme-a-bedside-electrical-20260908",
+  "targetObjectIds": [
+    "furniture:master_bedroom:bed_180:0",
+    "electrical:sock_master_bed_l",
+    "electrical:sock_master_bed_r_head",
+    "electrical:switch_master_bed_l",
+    "electrical:light_master_wall_l",
+    "electrical:light_master_wall_r"
+  ],
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://127.0.0.1:5173/?v=scheme-a-bedside-electrical-20260908"
+}

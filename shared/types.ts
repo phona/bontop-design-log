@@ -746,6 +746,20 @@ export type ElectricalPointType =
 export type ElectricalPointStatus = 'measured' | 'likely' | 'inferred' | 'pending';
 export type WallSide = 'north' | 'south' | 'east' | 'west';
 
+export interface ElectricalFixtureAppearance {
+  style: 'warm_white_matte_modular';
+  module: 'five_hole_replaceable_usb_c' | 'two_way_rocker';
+  faceplate_width: number;
+  faceplate_height: number;
+  projection: number;
+  panel_group?: {
+    id: string;
+    role: 'north' | 'south';
+    center_spacing: number;
+    union_width: number;
+  };
+}
+
 export interface ElectricalPoint {
   id: string;
   room: string;
@@ -766,6 +780,7 @@ export interface ElectricalPoint {
   body_height?: number;
   status?: ElectricalPointStatus;
   position_status?: ElectricalPointStatus;
+  appearance?: ElectricalFixtureAppearance;
   note?: string;
 }
 
@@ -992,8 +1007,30 @@ export interface TrackLightConfig {
   resolvedHeads?: TrackLightResolvedHead[];
 }
 
+export interface WallLampConfig {
+  id: string;
+  type: 'wall_lamp';
+  style: 'adjustable_short_cylinder';
+  finish: 'matte_black';
+  backplateDiameter: number;
+  headDiameter: number;
+  headLength: number;
+  armLength: number;
+  maxProjection: number;
+  control: {
+    kind: 'integral_push_button';
+    location: 'backplate_bottom';
+  };
+  adjustability: {
+    yawDeg: [number, number];
+    tiltDeg: [number, number];
+  };
+}
+
+export type DetailedLightingFixtureConfig = TrackLightConfig | WallLampConfig;
+
 export interface LightingRenderConfig {
-  fixtures: TrackLightConfig[];
+  fixtures: DetailedLightingFixtureConfig[];
 }
 
 /** Render-only anchor adjustments; never write these values back to MEP facts. */
@@ -1016,6 +1053,10 @@ export interface RenderLightingFixture {
   circuit?: string;
   heads?: number;
   recessed?: boolean;
+  /** Wall centerline host for wall-mounted fixtures. */
+  wallId?: string;
+  /** Cardinal direction from the wall into the owning room. */
+  wallSide?: WallSide;
 }
 
 export interface ImplementedHvacProjection {

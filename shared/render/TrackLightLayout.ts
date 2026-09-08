@@ -10,7 +10,7 @@ const DEFAULT_HEADS: TrackLightHeadConfig[] = [
 ];
 
 export function getTrackLightConfig(config: LightingRenderConfig | undefined, id: string, legacyHeads?: number): TrackLightConfig {
-  const configured = config?.fixtures.find((fixture) => fixture.id === id);
+  const configured = config?.fixtures.find((fixture): fixture is TrackLightConfig => fixture.id === id && fixture.type === 'track_light');
   if (legacyHeads !== undefined && (!configured || configured.heads.length !== legacyHeads)) {
     const heads = legacyHeads === 1 ? [DEFAULT_HEADS[2]] : Array.from({ length: legacyHeads }, (_, index) => ({
       offset: { x: -1.8 + index * (3.6 / (legacyHeads - 1)), z: 0 }, target: DEFAULT_HEADS[Math.min(index, DEFAULT_HEADS.length - 1)].target,

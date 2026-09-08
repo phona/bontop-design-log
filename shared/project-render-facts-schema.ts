@@ -17,10 +17,23 @@ const finiteNumber = z.number().refine(Number.isFinite, 'must be finite');
 const nonEmpty = z.string().trim().min(1);
 const WallSideSchema = z.enum(['north', 'south', 'east', 'west']);
 const Vec3Schema = z.object({ x: finiteNumber, y: finiteNumber, z: finiteNumber }).strict();
+const ElectricalFixtureAppearanceSchema = z.object({
+  style: z.literal('warm_white_matte_modular'),
+  module: z.enum(['five_hole_replaceable_usb_c', 'two_way_rocker']),
+  faceplate_width: finiteNumber.positive(),
+  faceplate_height: finiteNumber.positive(),
+  projection: finiteNumber.positive(),
+  panel_group: z.object({
+    id: nonEmpty,
+    role: z.enum(['north', 'south']),
+    center_spacing: finiteNumber.positive(),
+    union_width: finiteNumber.positive(),
+  }).strict().optional(),
+}).strict();
 
 export const ElectricalPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['socket', 'switch', 'switch_2way', 'network', 'usb', 'floor_socket', 'strong_panel', 'weak_panel', 'ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light']),
-  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
+  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
 }).strict();
 export const PlumbingPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor']),
@@ -180,14 +193,26 @@ export const TrackLightConfigSchema = z.object({
   beam: finiteNumber.positive(), energy: finiteNumber.nonnegative(), rotation: Vec3Schema,
   resolvedHeads: z.array(TrackLightResolvedHeadSchema).min(1).optional(),
 }).strict();
-export const LightingRenderConfigSchema = z.object({ fixtures: z.array(TrackLightConfigSchema) }).strict();
+export const WallLampConfigSchema = z.object({
+  id: nonEmpty, type: z.literal('wall_lamp'), style: z.literal('adjustable_short_cylinder'), finish: z.literal('matte_black'),
+  backplateDiameter: finiteNumber.positive(), headDiameter: finiteNumber.positive(), headLength: finiteNumber.positive(),
+  armLength: finiteNumber.positive(), maxProjection: finiteNumber.positive(),
+  control: z.object({ kind: z.literal('integral_push_button'), location: z.literal('backplate_bottom') }).strict(),
+  adjustability: z.object({ yawDeg: z.tuple([finiteNumber, finiteNumber]), tiltDeg: z.tuple([finiteNumber, finiteNumber]) }).strict(),
+}).strict().superRefine((value, ctx) => {
+  const physicalProjection = 0.008 + value.armLength + value.headLength;
+  if (physicalProjection > value.maxProjection) ctx.addIssue({ code: 'custom', message: 'wall lamp parts exceed maxProjection', path: ['maxProjection'] });
+  if (value.adjustability.yawDeg[0] >= value.adjustability.yawDeg[1]) ctx.addIssue({ code: 'custom', message: 'yawDeg range must increase', path: ['adjustability', 'yawDeg'] });
+  if (value.adjustability.tiltDeg[0] >= value.adjustability.tiltDeg[1]) ctx.addIssue({ code: 'custom', message: 'tiltDeg range must increase', path: ['adjustability', 'tiltDeg'] });
+});
+export const LightingRenderConfigSchema = z.object({ fixtures: z.array(z.discriminatedUnion('type', [TrackLightConfigSchema, WallLampConfigSchema])) }).strict();
 export function parseLightingRenderConfig(raw: string): LightingRenderConfig {
   const config = LightingRenderConfigSchema.parse(parseYaml(raw));
   const ids = new Set<string>();
   for (const fixture of config.fixtures) {
     if (ids.has(fixture.id)) throw new Error(`Duplicate lighting config id: ${fixture.id}`);
     ids.add(fixture.id);
-    if (fixture.heads.length !== new Set(fixture.heads.map((head) => JSON.stringify(head.offset))).size) {
+    if (fixture.type === 'track_light' && fixture.heads.length !== new Set(fixture.heads.map((head) => JSON.stringify(head.offset))).size) {
       throw new Error(`Duplicate track head offset for lighting config ${fixture.id}`);
     }
   }
@@ -220,7 +245,7 @@ const HvacProjectionSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('unimplemented'), planId: z.string().nullable() }).strict(),
 ]);
 export const ProjectRenderFactsProjectionSchema = z.object({
-  version: z.literal('2.0'), lighting: LightingRenderConfigSchema.optional(), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean(), circuit: z.string().optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional() }).strict()),
+  version: z.literal('2.0'), lighting: LightingRenderConfigSchema.optional(), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean(), circuit: z.string().optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), wallId: z.string().optional(), wallSide: WallSideSchema.optional() }).strict()),
   plumbing: z.array(PlumbingPointProjectionSchema), ceiling: CeilingZonesSchema, hvac: HvacProjectionSchema,
   materials: z.object({ floor: z.object({ default: z.string().nullable(), roomOverrides: z.record(z.string(), z.string()) }).strict() }).strict(),
   presentation: z.object({ curtains: CurtainRenderProjectionSchema }).strict(),

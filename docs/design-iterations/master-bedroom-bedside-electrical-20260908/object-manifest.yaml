@@ -1,0 +1,63 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: master-bedroom-bedside-electrical-20260908
+object_policy:
+  candidate_state: true
+  responsibility_boundary: "电气点位只承担面板/壁灯接口；床、床头柜、墙体结构、窗帘和灯具最终产品外廓各自独立。"
+objects:
+  - id: bedside_electrical_group
+    type: electrical_group
+    owner: electrical
+    function: "主卧床头两插座、一双控、两壁灯的成组服务带"
+    geometry_source: config/electrical.yaml
+    datum_refs: [datum-east-wall-host, datum-north-bedside-axis, datum-south-bedside-axis]
+    dependencies: [bed_180, master_bedside_cabinet_350_north, master_bedside_cabinet_350_south, w_mb_east]
+    collision: {policy: runtime_aabb_against_bed_and_cabinet, review_ref: tests/server/master-bedroom-dressing.test.ts}
+    maintenance: {boundary: wall_finish_and_faceplate, access_clearance: site_pending, inspection_requirements: [暗管探测, 墙盒深度, 面板可拔插]}
+    status: alignment_frozen_construction_pending
+  - id: sock_master_bed_l
+    type: electrical_socket
+    owner: electrical
+    function: 北侧手机充电/床头设备供电
+    geometry_source: config/electrical.yaml + InfrastructureBuilder
+    datum_refs: [datum-east-wall-host, datum-north-bedside-axis]
+    dependencies: [bed_180, master_bedside_cabinet_350_north]
+    collision: {policy: runtime_mesh_aabb_no_intersection, review_ref: tests/server/master-bedroom-dressing.test.ts}
+    interfaces: [{target: master_bedside_cabinet_350_north, requirement: "中心轴z=6.245，暖白哑光86单联，五孔/可换USB-C，面板底高于柜顶"}]
+    maintenance: {module: replaceable_usb_c, actual_sku_and_box_depth: site_pending}
+    status: implementation
+  - id: light_master_wall_l
+    type: wall_lamp
+    owner: lighting
+    function: 北侧床头阅读照明
+    geometry_source: config/electrical.yaml + LightingFixtureBuilder
+    datum_refs: [datum-east-wall-host, datum-north-bedside-axis]
+    dependencies: [bed_180, master_bedside_cabinet_350_north, w_mb_east]
+    collision: {policy: runtime_plan_aabb_no_intersection, review_ref: tests/server/master-bedroom-dressing.test.ts}
+    maintenance: {boundary: lamp_body_and_wall_box, orientation: "w_mb_east west / -x；隐藏转轴可调；背板下沿实体按键；施工固定节点 site_pending"}
+    interfaces: [{target: w_mb_east, requirement: "背板贴 west 完成面 x=4.14；runtime mesh maxX≤4.14"}]
+    status: implementation
+  - id: south_bedside_86_panel_pair
+    type: integrated_double_frame
+    owner: electrical
+    function: 南侧手机充电与床头灯光双控
+    parts: [sock_master_bed_r_head, switch_master_bed_l]
+    geometry_source: config/electrical.yaml + InfrastructureBuilder
+    datum_refs: [datum-east-wall-host, datum-south-bedside-axis]
+    dependencies: [bed_180, master_bedside_cabinet_350_south]
+    collision: {policy: joined_module_union_aabb, center_spacing: 0.086, union_width: 0.172, edge_clearance: 0.0, review_ref: tests/server/master-bedroom-dressing.test.ts}
+    interfaces: [{target: sock_master_bed_r_head, requirement: "五孔/可换USB-C模块"}, {target: switch_master_bed_l, requirement: "吸顶灯双控暖白大跷板模块"}]
+    maintenance: {boundary: shared_outer_frame_replaceable_inner_modules, access_clearance: site_pending, actual_sku_and_box_depth: site_pending}
+    status: implementation
+  - id: light_master_wall_r
+    type: wall_lamp
+    owner: lighting
+    function: 南侧床头阅读照明
+    geometry_source: config/electrical.yaml + LightingFixtureBuilder
+    datum_refs: [datum-east-wall-host, datum-south-bedside-axis]
+    dependencies: [bed_180, master_bedside_cabinet_350_south, w_mb_east]
+    collision: {policy: runtime_plan_aabb_no_intersection, review_ref: tests/server/master-bedroom-dressing.test.ts}
+    maintenance: {boundary: lamp_body_and_wall_box, orientation: "w_mb_east west / -x；隐藏转轴可调；背板下沿实体按键；施工固定节点 site_pending"}
+    interfaces: [{target: w_mb_east, requirement: "背板贴 west 完成面 x=4.14；runtime mesh maxX≤4.14"}]
+    status: implementation
+validation_refs: [verify:all, verify:electrical, verify:spatial, test:server, typecheck]

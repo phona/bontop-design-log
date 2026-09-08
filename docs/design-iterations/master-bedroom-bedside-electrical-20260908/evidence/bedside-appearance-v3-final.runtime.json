@@ -1,0 +1,63 @@
+{
+  "source_version": "scheme-a-bedside-electrical-appearance-v3-20260908",
+  "url": "http://127.0.0.1:5173/",
+  "ready": true,
+  "host": {
+    "wall": "w_mb_east",
+    "wall_side": "west",
+    "west_finish_face_x": 4.14,
+    "room_normal": [-1, 0, 0]
+  },
+  "wall_lamps": [
+    {
+      "id": "light_master_wall_l",
+      "anchor": [4.2, 1.35, 6.245],
+      "aabb": {"min": [3.9765, 1.31, 6.205], "max": [4.14, 1.39, 6.285]},
+      "style": "adjustable_short_cylinder",
+      "finish": "matte_black",
+      "parts": ["backplate", "short-arm", "concealed-pivot", "adjustable-head", "recessed-lens", "integral-button"],
+      "control": {"kind": "integral_push_button", "location": "backplate_bottom"},
+      "adjustability": {"yawDeg": [-60, 60], "tiltDeg": [-45, 45]},
+      "actual_projection": 0.1635,
+      "max_projection": 0.19
+    },
+    {
+      "id": "light_master_wall_r",
+      "anchor": [4.2, 1.35, 8.555],
+      "aabb": {"min": [3.9765, 1.31, 8.515], "max": [4.14, 1.39, 8.595]},
+      "style": "adjustable_short_cylinder",
+      "finish": "matte_black",
+      "parts": ["backplate", "short-arm", "concealed-pivot", "adjustable-head", "recessed-lens", "integral-button"],
+      "control": {"kind": "integral_push_button", "location": "backplate_bottom"},
+      "adjustability": {"yawDeg": [-60, 60], "tiltDeg": [-45, 45]},
+      "actual_projection": 0.1635,
+      "max_projection": 0.19
+    }
+  ],
+  "panels": {
+    "north_single": {
+      "id": "sock_master_bed_l",
+      "center": [4.2, 0.75, 6.245],
+      "faceplate": [0.086, 0.086, 0.008],
+      "style": "warm_white_matte_modular",
+      "module": "five_hole_replaceable_usb_c"
+    },
+    "south_double": {
+      "id": "master_bed_south_double",
+      "center_z": 8.555,
+      "module_centers_z": [8.512, 8.598],
+      "module_center_spacing": 0.086,
+      "union_width": 0.172,
+      "edge_gap": 0,
+      "modules": ["five_hole_replaceable_usb_c", "two_way_rocker"]
+    }
+  },
+  "clearance": {
+    "bed_z": [6.47, 8.33],
+    "north_lamp_to_bed": 0.185,
+    "south_lamp_to_bed": 0.185,
+    "south_socket_to_bed": 0.139,
+    "south_switch_to_bed": 0.225,
+    "collisions": 0
+  }
+}

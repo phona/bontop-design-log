@@ -1,0 +1,19 @@
+- generic
+  - Canvas
+  - heading "方案" [level=3]
+  - button "方案面板折叠" [expanded=false]
+  - StaticText "北"
+  - StaticText "东"
+  - StaticText "南"
+  - StaticText "西"
+  - StaticText "轨道模式 · 按 V 切换第一人称"
+  - group "视角"
+    - button "俯视"
+  - group "分析"
+    - button "日照"
+    - button "湿度"
+  - group "机电"
+    - button "机电总览"
+    - button "MEP 协调⚠ 22"
+    - button "HVAC"
+    - button "电气回路归属25 条 ⚠32"

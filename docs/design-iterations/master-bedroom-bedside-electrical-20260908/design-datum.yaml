@@ -1,0 +1,43 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: master-bedroom-bedside-electrical-20260908
+source_version: scheme-a-bedside-electrical-appearance-v3-20260908
+units: m
+coordinate_system: "Three.js右手系，Y向上，+x东，+z南"
+status: verification
+datums:
+  - id: datum-east-wall-host
+    name: 主卧东墙床头电气宿主
+    anchor: {kind: wall_anchor, ref: w_mb_east, wall_side: west, service_ref: null}
+    source_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml]
+    plan: {origin: w_mb_east centerline, axes: x东西/z南北, wall_x: 4.20, z_range: [5.55,9.80], room_side: west, dimensions_semantics: centerline}
+    elevation: {viewing_side: west, vertical_axis: y, wall_height: 2.80, finish_face_x: 4.14, finish_face_semantics: runtime_inferred}
+    section: {cut_direction: east-west, depth_axis: x, wall_thickness: 0.12, west_finish_face: 4.14, construction_status: site_pending}
+    constraints: [structure=shear/inferred, overlay未suppress, w_mb_win真伪site_pending, 暗管/可开槽/打孔site_pending]
+  - id: datum-bed-runtime
+    name: 主卧 bed_180 真实 runtime 包络
+    anchor: {kind: room_anchor, ref: master_bedroom, wall_side: east, service_ref: null}
+    source_refs: [config/house.yaml, shared/render/FixtureFactory.ts]
+    plan: {position: {x: 3.20, z: 7.40}, rotation: 270, runtime_aabb: {x: [2.20,4.20], z: [6.47,8.33]}, dimensions_semantics: runtime_mesh}
+    elevation: {viewing_side: west, vertical_axis: y, runtime_y: [0.0,0.80], headboard_top: 0.80, dimensions_semantics: runtime_mesh}
+    section: {cut_direction: east-west, depth_axis: x, headboard_x: [4.12,4.20], wall_relation: "当前候选接触语义保留，床不改位"}
+  - id: datum-north-bedside-axis
+    name: 北床头柜与北侧 socket/lamp 共轴
+    anchor: {kind: furniture_anchor, ref: master_bedside_cabinet_350_north, wall_side: west, service_ref: sock_master_bed_l}
+    source_refs: [config/house.yaml, config/electrical.yaml]
+    plan: {cabinet_center: {x: 4.01, z: 6.245}, cabinet_aabb: {x: [3.82,4.20], z: [6.07,6.42]}, socket: {x: 4.20, z: 6.245, faceplate: [0.086,0.086]}, wall_lamp: {x: 4.20, z: 6.245}, dimensions_semantics: center_axis}
+    elevation: {viewing_side: west, vertical_axis: y, cabinet_top: 0.505, socket_center_y: 0.75, wall_lamp_center_y: 1.35, clearances: {socket_to_cabinet_top: 0.202, lamp_to_cabinet_top: 0.725}}
+    section: {cut_direction: east-west, depth_axis: x, host_wall: w_mb_east, wall_side: west, wall_centerline_x: 4.20, west_finish_face_x: 4.14, lamp_mount_back_x: 4.14, lamp_projection_direction: -x, lamp_candidate: {backplate_diameter: 0.080, head_diameter: 0.060, head_length: 0.120, arm_length: 0.035, max_projection: 0.190, control: integral_backplate_bottom_button}, construction_status: site_pending}
+    constraints: [socket/灯具不得与床runtime AABB相交, 点位不得被床头板遮挡]
+  - id: datum-south-bedside-axis
+    name: 南床头柜与南侧 socket/switch/lamp 共轴
+    anchor: {kind: furniture_anchor, ref: master_bedside_cabinet_350_south, wall_side: west, service_ref: [sock_master_bed_r_head, switch_master_bed_l]}
+    source_refs: [config/house.yaml, config/electrical.yaml]
+    plan: {cabinet_center: {x: 4.01, z: 8.555}, cabinet_aabb: {x: [3.82,4.20], z: [8.38,8.73]}, socket: {x: 4.20, z: 8.512}, switch: {x: 4.20, z: 8.598}, wall_lamp: {x: 4.20, z: 8.555}, panel_center_spacing: 0.086, panel_union_width: 0.172, panel_edge_clearance: 0.0, dimensions_semantics: centered_integrated_double_frame}
+    elevation: {viewing_side: west, vertical_axis: y, cabinet_top: 0.505, socket_center_y: 0.75, switch_center_y: 0.75, wall_lamp_center_y: 1.35, clearances: {panel_to_cabinet_top: 0.202, lamp_to_cabinet_top: 0.725}}
+    section: {cut_direction: east-west, depth_axis: x, host_wall: w_mb_east, wall_side: west, wall_centerline_x: 4.20, west_finish_face_x: 4.14, lamp_mount_back_x: 4.14, lamp_projection_direction: -x, lamp_candidate: {backplate_diameter: 0.080, head_diameter: 0.060, head_length: 0.120, arm_length: 0.035, max_projection: 0.190, control: integral_backplate_bottom_button}, panel_projection_max: 0.008, construction_status: site_pending}
+    constraints: [socket/switch/lamp不得与床runtime AABB相交, 南帘实际堆叠site_pending]
+validation:
+  runtime_source: "FixtureFactory + InfrastructureBuilder + LightingFixtureBuilder"
+  test_ref: tests/server/master-bedroom-dressing.test.ts
+  tolerance: {runtime_float: 0.000001, panel_size: 0.086}

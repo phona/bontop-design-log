@@ -100,10 +100,11 @@
   wall_side: west
   type: socket
   x: 4.20
-  z: 6.95
+  z: 6.245
   height: 0.75
   count: 2
-  note: "R6 北侧床头插座：候选 z=6.95、h=0.75，五孔＋USB-C；服务 master_bedside_cabinet_350_north（中心 z=6.245）。东墙实体墙，wall_side west；真实床头柜/床头板遮挡仍 site_pending"
+  appearance: { style: warm_white_matte_modular, module: five_hole_replaceable_usb_c, faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008 }
+  note: "方案A 北侧床头插座：z=6.245、h=0.75，暖白哑光86单联、五孔＋可换USB-C；与 master_bedside_cabinet_350_north 中心轴对齐；实际SKU/底盒深度、东墙暗管/可开槽性仍 site_pending"
 
 - id: sock_master_bed_r
   room: master_bedroom
@@ -122,9 +123,10 @@
   wall_side: west
   type: switch_2way
   x: 4.20
-  z: 7.898
+  z: 8.598
   height: 0.75
-  note: "R6 南侧床头双控：候选 z=7.85、h=0.75；与南侧床头插座保持同一服务带并通过独立面板错位避免重叠，服务 master_bedside_cabinet_350_south（中心 z=8.555）。面板 AABB/边缘净距及南帘真实关系仍 site_pending；东墙实体墙，wall_side west"
+  appearance: { style: warm_white_matte_modular, module: two_way_rocker, faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008, panel_group: { id: master_bed_south_double, role: south, center_spacing: 0.086, union_width: 0.172 } }
+  note: "方案A 南侧床头吸顶灯双控：z=8.598、h=0.75；与 sock_master_bed_r_head（z=8.512）组成暖白哑光一体双联框，模块中心距86mm、并集宽约172mm，围绕床头柜轴线z=8.555居中；阅读壁灯使用灯具自带按键；施工条件仍 site_pending"
 
 - id: switch_master_door
   room: master_bedroom
@@ -142,10 +144,11 @@
   wall_side: west
   type: socket
   x: 4.20
-  z: 7.802
+  z: 8.512
   height: 0.75
   count: 2
-  note: "R6 南侧床头插座：候选 z=7.85、h=0.75；与南侧双控同一服务带，采用并排独立86面板且保持面板不重叠，服务 master_bedside_cabinet_350_south（中心 z=8.555）。点位不得被床头柜/床头板遮挡；南帘真实堆叠仍 site_pending；东墙实体墙，wall_side west"
+  appearance: { style: warm_white_matte_modular, module: five_hole_replaceable_usb_c, faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008, panel_group: { id: master_bed_south_double, role: north, center_spacing: 0.086, union_width: 0.172 } }
+  note: "方案A 南侧床头插座：z=8.512、h=0.75；与 switch_master_bed_l（z=8.598）组成暖白哑光一体双联框，模块中心距86mm、并集宽约172mm，围绕床头柜轴线z=8.555居中；五孔＋可换USB-C；施工条件仍 site_pending"
 
 # net_master_tv 已删除（DEC-013 主卧取消电视位，不布网口）
 
@@ -710,20 +713,24 @@
   note: "主卧吸顶灯"
 - id: light_master_wall_l
   room: master_bedroom
+  wall: w_mb_east
+  wall_side: west
   type: wall_lamp
   x: 4.2
-  z: 6.95
+  z: 6.245
   height: 1.35
   temp: 3000
-  note: "R6 北侧床头壁灯：候选 z=6.95、h=1.35；关于床中心 z=7.40 对称，东墙实体墙，wall_side west，点位不得被床头柜/床头板遮挡，仍 site_pending"
+  note: "方案A 北侧床头壁灯：z=6.245、h=1.35；与 master_bedside_cabinet_350_north 中心轴对齐，位于床头板北侧；哑黑隐藏转轴可调短筒，自带底部按键，完整朝主卧突出且最大墙面突出量≤190mm；实际SKU、东墙结构与固定节点仍 site_pending"
 - id: light_master_wall_r
   room: master_bedroom
+  wall: w_mb_east
+  wall_side: west
   type: wall_lamp
   x: 4.2
-  z: 7.85
+  z: 8.555
   height: 1.35
   temp: 3000
-  note: "R6 南侧床头壁灯：候选 z=7.85、h=1.35；关于床中心 z=7.40 对称，东墙实体墙，wall_side west，点位不得被床头柜/床头板遮挡，仍 site_pending"
+  note: "方案A 南侧床头壁灯：z=8.555、h=1.35；与 master_bedside_cabinet_350_south 中心轴对齐，位于床头板南侧；哑黑隐藏转轴可调短筒，自带底部按键，完整朝主卧突出且最大墙面突出量≤190mm；实际SKU、东墙结构与固定节点及南帘真实关系仍 site_pending"
 - id: light_parent_dome
   room: study
   type: dome

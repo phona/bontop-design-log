@@ -3,6 +3,56 @@
   "lighting": {
     "fixtures": [
       {
+        "id": "light_master_wall_l",
+        "type": "wall_lamp",
+        "style": "adjustable_short_cylinder",
+        "finish": "matte_black",
+        "backplateDiameter": 0.08,
+        "headDiameter": 0.06,
+        "headLength": 0.12,
+        "armLength": 0.035,
+        "maxProjection": 0.19,
+        "control": {
+          "kind": "integral_push_button",
+          "location": "backplate_bottom"
+        },
+        "adjustability": {
+          "yawDeg": [
+            -60,
+            60
+          ],
+          "tiltDeg": [
+            -45,
+            45
+          ]
+        }
+      },
+      {
+        "id": "light_master_wall_r",
+        "type": "wall_lamp",
+        "style": "adjustable_short_cylinder",
+        "finish": "matte_black",
+        "backplateDiameter": 0.08,
+        "headDiameter": 0.06,
+        "headLength": 0.12,
+        "armLength": 0.035,
+        "maxProjection": 0.19,
+        "control": {
+          "kind": "integral_push_button",
+          "location": "backplate_bottom"
+        },
+        "adjustability": {
+          "yawDeg": [
+            -60,
+            60
+          ],
+          "tiltDeg": [
+            -45,
+            45
+          ]
+        }
+      },
+      {
         "id": "living_track_main",
         "type": "track_light",
         "length": 2.8,
@@ -274,10 +324,12 @@
       "position": {
         "x": 4.2,
         "y": 1.35,
-        "z": 6.95
+        "z": 6.245
       },
       "temperatureK": 3000,
-      "enabled": true
+      "enabled": true,
+      "wallId": "w_mb_east",
+      "wallSide": "west"
     },
     {
       "id": "light_master_wall_r",
@@ -286,10 +338,12 @@
       "position": {
         "x": 4.2,
         "y": 1.35,
-        "z": 7.85
+        "z": 8.555
       },
       "temperatureK": 3000,
-      "enabled": true
+      "enabled": true,
+      "wallId": "w_mb_east",
+      "wallSide": "west"
     },
     {
       "id": "light_parent_dome",

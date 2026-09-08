@@ -1,0 +1,74 @@
+{
+  "camera": {
+    "is_overview": false,
+    "mode": "orbit",
+    "position": {
+      "x": 0.649999999999999,
+      "y": 1.65,
+      "z": 7.400000000000002
+    },
+    "target": {
+      "x": 4.12,
+      "y": 0.9500000000000002,
+      "z": 7.400000000000002
+    }
+  },
+  "checkedAt": "2026-09-08T01:09:50.272Z",
+  "configErrorBanner": "",
+  "isReady": true,
+  "objects": [
+    {
+      "aabb": {
+        "max": [
+          4.270000000298023,
+          1.459999999329448,
+          6.315000000298023
+        ],
+        "meshes": 2,
+        "min": [
+          4.129999999701977,
+          1.2299999997019768,
+          6.174999999701977
+        ],
+        "size": [
+          0.14000000059604645,
+          0.22999999962747109,
+          0.14000000059604645
+        ]
+      },
+      "id": "electrical:light_master_wall_l",
+      "type": "lighting_fixture"
+    },
+    {
+      "aabb": {
+        "max": [
+          4.270000000298023,
+          1.459999999329448,
+          8.625000000298023
+        ],
+        "meshes": 2,
+        "min": [
+          4.129999999701977,
+          1.2299999997019768,
+          8.484999999701976
+        ],
+        "size": [
+          0.14000000059604645,
+          0.22999999962747109,
+          0.14000000059604645
+        ]
+      },
+      "id": "electrical:light_master_wall_r",
+      "type": "lighting_fixture"
+    }
+  ],
+  "sourceVersion": "scheme-a-bedside-electrical-normal-v2-20260908",
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://127.0.0.1:5173/?v=scheme-a-bedside-electrical-normal-v2-20260908",
+  "wall": {
+    "centerlineX": 4.2,
+    "id": "w_mb_east",
+    "roomSide": "west",
+    "westFinishFaceX": 4.14
+  }
+}

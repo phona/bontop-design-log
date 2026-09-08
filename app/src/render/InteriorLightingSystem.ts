@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { LightingRenderConfig, RenderLightingFixture } from '@shared/types';
 import { getResolvedTrackLightHeads, getTrackLightConfig } from '@shared/render/TrackLightLayout';
+import { buildWallLampVisual, getWallLampConfig, getWallLampLensPosition, wallSideNormal } from '@shared/render/WallLampGeometry';
 
 /**
  * 室内灯光系统（spec: 2026-08-12-interior-lighting-design.md）
@@ -120,10 +121,11 @@ export class InteriorLightingSystem {
       }
       case 'wall_lamp': {
         const point = new THREE.PointLight(color, 3, 3.5, 1.5);
-        point.position.set(x, y, z);
+        const wallLampConfig = getWallLampConfig(this.lighting, fixture.id);
+        point.position.copy(getWallLampLensPosition(fixture, wallLampConfig));
         light = point;
         lights = [point];
-        visual = this.makeWallLampFixture(fixture, color);
+        visual = buildWallLampVisual(fixture, wallLampConfig, color);
         break;
       }
       case 'led_strip': {
@@ -151,6 +153,27 @@ export class InteriorLightingSystem {
       objectId: `electrical:${fixture.id}`,
       fixtureType: fixture.type,
       roomId: fixture.room,
+      ...(fixture.wallId !== undefined ? { wallId: fixture.wallId } : {}),
+      ...(fixture.wallSide !== undefined ? { wallSide: fixture.wallSide } : {}),
+      ...(fixture.type === 'wall_lamp' && fixture.wallSide !== undefined
+        ? { mountNormal: wallSideNormal(fixture.wallSide)?.toArray() }
+        : {}),
+      ...(fixture.type === 'wall_lamp' ? (() => {
+        const config = getWallLampConfig(this.lighting, fixture.id);
+        return {
+          style: config.style,
+          finish: config.finish,
+          dimensions: {
+            backplateDiameter: config.backplateDiameter,
+            headDiameter: config.headDiameter,
+            headLength: config.headLength,
+            armLength: config.armLength,
+            maxProjection: config.maxProjection,
+          },
+          control: config.control,
+          adjustability: config.adjustability,
+        };
+      })() : {}),
     };
 
     const fixtureMats: THREE.MeshStandardMaterial[] = [];
@@ -253,21 +276,6 @@ export class InteriorLightingSystem {
     lens.rotation.x = Math.PI / 2;
     lens.position.set(x, y + (fixture.recessed ? -0.006 : -CEILING_VISUAL_CLEARANCE - 0.083), z);
     group.add(body, ring, lens);
-    return group;
-  }
-
-  private makeWallLampFixture(fixture: RenderLightingFixture, color: THREE.Color): THREE.Group {
-    const { x, y, z } = fixture.position;
-    const group = new THREE.Group();
-    const base = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.03, 0.03, 0.12),
-      new THREE.MeshStandardMaterial({ color: 0x8a6d3b, roughness: 0.4, metalness: 0.7 }),
-    );
-    base.rotation.z = Math.PI / 2;
-    base.position.set(x, y + 0.08, z);
-    const shade = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), this.emissiveMat(color));
-    shade.position.set(x, y - 0.05, z);
-    group.add(base, shade);
     return group;
   }
 
