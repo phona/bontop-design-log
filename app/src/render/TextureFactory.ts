@@ -30,25 +30,6 @@ export function createMaterialTexture(appearance: MaterialAppearance): Procedura
     return tex;
   }
 
-  // pbr_texture：web 端加载真扫描贴图（assets/textures/<texture_id>/diff+normal），
-  // 修复此前 pbr_texture 落 default 分支、color 未定义导致地板全黑的问题
-  if (appearance.type === 'pbr_texture' && typeof appearance.texture_id === 'string') {
-    const base = `/assets/textures/${appearance.texture_id}`;
-    const loader = new THREE.TextureLoader();
-    const map = loader.load(`${base}/diff.jpg`);
-    map.wrapS = THREE.RepeatWrapping;
-    map.wrapT = THREE.RepeatWrapping;
-    map.colorSpace = THREE.SRGBColorSpace;
-    const normalMap = loader.load(`${base}/normal.jpg`);
-    normalMap.wrapS = THREE.RepeatWrapping;
-    normalMap.wrapT = THREE.RepeatWrapping;
-    return {
-      map,
-      normalMap,
-      worldSize: typeof appearance.tile_size === 'number' ? appearance.tile_size : 2.0,
-    };
-  }
-
   // wood_plank 走独立管线（1024 canvas + roughnessMap + worldSize 米制标定）
   if (appearance.type === 'wood_plank') {
     return drawWoodPlankTextures(appearance);

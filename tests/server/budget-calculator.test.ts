@@ -477,12 +477,12 @@ describe('BudgetCalculator', () => {
     const calc = new BudgetCalculator(catalog, realRules);
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
-      selections: { floor: { default: 'floor_pbr_tile_612', roomOverrides: { living_dining: 'floor_pbr_herringbone' } } },
+      selections: { floor: { default: 'floor_pbr_tile_612', roomOverrides: { living_dining: 'floor_tile_herringbone_01' } } },
     };
     const snapshot = calc.calculate(scheme);
     const livingItem = snapshot.lineItems.find((li) => li.topic === 'floor' && li.roomId === 'living_dining');
     assert.ok(livingItem);
-    assert.equal(livingItem?.optionId, 'floor_pbr_herringbone');
+    assert.equal(livingItem?.optionId, 'floor_tile_herringbone_01');
     const masonry = snapshot.categories.find((c) => c.key === 'masonry');
     assert.ok(masonry && masonry.autoActual > 0);
   });

@@ -22,7 +22,6 @@
 # 输出与缓存
 renders/*
 !renders/README.md
-assets/textures/*/
 assets/**/*.glb
 assets/furniture/*/
 hdri/*.hdr

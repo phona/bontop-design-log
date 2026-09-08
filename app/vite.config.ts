@@ -8,7 +8,6 @@ export default defineConfig({
       '/api': 'http://localhost:4000',
       '/mcp': 'http://localhost:4000',
       '/sse': 'http://localhost:4000',
-      '/assets/textures': 'http://localhost:4000',
     },
     fs: {
       allow: [path.resolve(__dirname), path.resolve(__dirname, '../config')],
