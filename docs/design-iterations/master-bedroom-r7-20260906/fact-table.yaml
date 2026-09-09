@@ -30,3 +30,9 @@ facts:
     - {id: pending-south-curtain, statement: "南帘真实轨道、下垂、堆叠端与南床头柜净距未实测", owner: site, status: open}
     - {id: pending-product-outlines, statement: "衣柜真实完成面外廓与价格未锁定（procurement price pending）", owner: site, status: open}
 notes: ["R5 入口横柜与 R6 600mm 成品小柜均 superseded，仅保留历史 recipe/材料项供旧数据解析。", "尚未交房：吊顶/HVAC 重排不作为拆改成本否决项。"]
+spatial_validation:
+  rule_source: config/spatial-validation.yaml
+  verification_command: npm run verify:spatial
+  current_result: "真实配置 0 error；warning 需现场确认的玻璃/软包络净距与小型墙线接触"
+  tested_relations: [wall_wall_topology, overlay_replacement_one_to_one, furniture_wall_glass_ceiling, wall_lamp_host]
+  vanity_clearance: "主体退让东墙完成面 15mm，端部由 site_trim 声明收口，避免 exact-touch 对施工误差过敏"

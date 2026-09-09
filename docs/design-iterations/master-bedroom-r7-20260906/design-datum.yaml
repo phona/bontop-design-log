@@ -28,7 +28,7 @@ datums:
   - id: datum-r9-vanity-boards
     name: DEC-045 主卫底柜与上下双层悬浮板南端对齐
     anchor: {kind: wall_anchor, ref: w_mbath_east, wall_side: west, service_ref: null}
-    plan: {rotation: 270, along: 3.61, length: 1.38, depth: 0.565, semantics: wall_finish_anchor, wall_thickness: 0.12, base_cabinet_target_aabb: {x: [1.975,2.54], z: [2.92,4.30]}, board_target_aabb: {x: [1.975,2.54], z: [2.92,4.30]}, note: 2026-09-07 三件柜组统一退出两面墙完成面；东缘止于 w_mbath_east 西完成面 x=2.54，北缘止于 w_mbath_south 卧室侧完成面 z=2.92，南缘仍对齐衣柜侧 z=4.30}
+    plan: {rotation: 270, along: 3.61, length: 1.38, depth: 0.565, semantics: wall_finish_anchor, wall_thickness: 0.12, wall_clearance: 0.015, base_cabinet_target_aabb: {x: [1.960,2.525], z: [2.92,4.30]}, board_target_aabb: {x: [1.960,2.525], z: [2.92,4.30]}, note: 2026-09-08 三件柜组主体从 w_mbath_east 西完成面 x=2.54 再退让15mm；北端仍由 site_trim 收至 w_mbath_south 卧室侧完成面 z=2.92，南端对齐衣柜侧 z=4.30}
     constraints: [底柜与悬浮板两端对齐, 北端不得跨过主卫南墙卧室侧完成面, 南端对齐衣柜侧z=4.30, 两块悬浮板贴墙西侧完成面, 不与950衣柜穿模, 不承担 HVAC 责任]
   - id: datum-r8-wardrobe-pelmet
     name: R8 衣柜顶封板+东竖向填板（950 footprint，与门头盒一体收口，不承担 HVAC 责任）
@@ -48,3 +48,11 @@ datums:
     anchor: {kind: ceiling_anchor, ref: curtain_box_master_south, wall_side: null, service_ref: null}
     plan: {axes: x东西/z南北, top_box: {z: [8.70, 8.95], role: ceiling_only, status: confirmed}, fabric_drop: {wall_z: 9.80, thickness: 0.12, z: [9.56, 9.68], confidence: inferred, status: site_pending, conflict_policy: warning_BLOCKED}, stack_end: {actual_end: null, status: site_pending}, semantics: soft_candidate}
     constraints: [不把 curtain_box 地面投影当硬禁区, 六抽矮柜保持原位/可见/可移]
+
+spatial_validation:
+  rule_source: config/spatial-validation.yaml
+  command: npm run verify:spatial
+  placed_geometry: "所有带 x/z 或 wall/along 的家具使用 SceneBuilder/FixtureFactory 实际子 mesh 三维包络；无尺寸或无 recipe fail-closed"
+  wall_policy: "家具可在完成面一侧贴靠墙线；穿越实体墙中心线或进入玻璃幕墙中心线报错，现场接触容差仅允许明确 warning"
+  ceiling_policy: "家具包络与 ceiling_zone_solid 做三维相交检查，吊顶/灯具宿主由声明式关系校验"
+  vanity_finish_retreat: "mb_vanity_base_cabinet、mb_vanity_lower_board、mb_vanity_main_board 均 wall_clearance=0.015m，site_trim 负责端部收口"

@@ -28,6 +28,10 @@ objects:
     responsibility: 主卧门头盒送回风端点，统一轴线并避开东墙与衣柜
     geometry: { axis_x: 3.70, supply: { mount_face: south, length: 0.6, east_x: 4.00, east_clearance_to_wall: 0.14 }, return: { mount_face: bottom, length: 0.5, east_x: 3.95, east_clearance_to_wall: 0.19 } }
     maintenance: 回风底部铰接格栅兼检修，不另设检修口
+spatial_validation:
+  rule_source: config/spatial-validation.yaml
+  validation_refs: [verify:spatial, verify:all, tests/server/spatial-validation.test.ts]
+  policy: "冷凝管服务带的家具包络必须可解析且不得穿实体墙/玻璃幕墙/吊顶；检视可见性不作为跳过碰撞的理由"
     validation_refs: [config/hvac.yaml, tests/server/master-bedroom-dressing.test.ts]
   - id: mb-vanity-base-cabinet
     kind: furniture_fixture

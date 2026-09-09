@@ -21,3 +21,8 @@ facts:
   site_pending:
     - { id: pending-drain-interface, category: site_pending, statement: 主卫终点仍是候选接入点，管径、连续坡度、存水弯、立管接点和套管待量房及厂家深化, value: null, source_refs: [config/hvac.yaml, config/mep-hvac-coordination.yaml], confidence: not_applicable, impact: material, status: open, verification_method: 量房和 HVAC 深化 }
 unknowns_requiring_alignment: []
+spatial_validation:
+  rule_source: config/spatial-validation.yaml
+  verification_command: npm run verify:spatial
+  result: "真实配置 0 error；玻璃净距和小型墙线接触保留 warning，待量房/软装深化"
+  furniture_policy: "柜体主体用 wall_clearance 退让，独立 site_trim 做收口；不得用隐藏或跳过 mesh 掩盖穿墙"

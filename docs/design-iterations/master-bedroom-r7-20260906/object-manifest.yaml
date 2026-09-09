@@ -19,4 +19,9 @@ objects:
 superseded:
   - {id: master_north_wall_wardrobe_600, reason: R6 600mm 成品小柜废弃，recipe/材料项保留供历史解析}
   - {id: master_partition_wardrobe_1600, reason: R5 入口横柜废弃（R6 已废弃，R7 维持）}
-validation_refs: [verify:furniture, verify:all, test:server, typecheck, test:app, build:app]
+validation_refs: [verify:furniture, verify:spatial, verify:all, test:server, typecheck, test:app, build:app]
+spatial_validation:
+  rule_source: config/spatial-validation.yaml
+  runtime_source: "shared/render/SceneBuilder.ts + shared/render/FixtureFactory.ts"
+  policy: "placed 家具真实子 mesh 包络检查实体墙、玻璃幕墙和吊顶；wall/curtain 宿主缺失、尺寸缺失或 runtime 跳过均 fail-closed"
+  vanity_policy: "三件柜体 wall_clearance=0.015m，site_trim 只处理端部收口，不把柜体塞入墙体"

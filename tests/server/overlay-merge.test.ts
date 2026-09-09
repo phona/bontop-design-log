@@ -439,7 +439,7 @@ describe('resolveWallRef', () => {
     const curtain = elements.find((element) => element.id === 'west_curtain');
     assert.equal(curtain?.type, 'curtain_run');
     if (curtain?.type === 'curtain_run') {
-      assert.equal(curtain.parts?.length, 5);
+      assert.equal(curtain.parts?.length, 7);
       assert.equal(curtain.parts?.find((part) => part.id === 'w_mb_south')?.wallRefs[0], 'w_mb_south');
       assert.ok(curtain.parts?.find((part) => part.id === 'w_mb_south')?.points.some((point) => point.radius !== undefined));
       assert.ok(curtain.points.some((point) => point.radius !== undefined));

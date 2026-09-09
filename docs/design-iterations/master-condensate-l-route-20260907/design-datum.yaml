@@ -45,3 +45,7 @@ vanity_base:
 visibility:
   normal: { pipes: hidden, wardrobe: opaque }
   hvac_inspection: { pipes: "visible #06b6d4 opacity=1", wardrobe_service_parts: "opacity=0.18 transparent=true depthWrite=false" }
+spatial_validation:
+  rule_source: config/spatial-validation.yaml
+  command: npm run verify:spatial
+  related_check: "冷凝管相关柜体与实体墙/玻璃/吊顶统一进入真实 SceneBuilder 包络校验；管线本身仍由 verify:mep 的路线、穿墙和坡度规则负责"

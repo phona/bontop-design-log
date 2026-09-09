@@ -64,7 +64,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | master_bedroom | mb_washbasin_cabinet | 1 | 1.05×0.5 | (0.575, 3.16) / 0° |
 | master_bedroom | master_dressing_table | 1 | 0.9×0.45 | (0.425, 6.05) / 90° |
 | master_bedroom | dressing_stool | 1 | 0.42×0.4 | (0.42, 6.05) / 90° |
-| master_bedroom | master_hot_season_low_dresser | 1 | 1.4×0.48 | (1.05, 9.31) / 180° |
+| master_bedroom | master_hot_season_low_dresser | 1 | 1.4×0.48 | (1.05, 9.20) / 180° |
 | master_bedroom | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bedroom | mb_vanity_base_cabinet | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bedroom | mb_vanity_lower_board | 1 | — | count-only（不在 glb，按实物补摆） |
@@ -75,7 +75,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | master_bedroom | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_nw | bed_150 | 1 | 1.5×2 | (4.6, 2.3) / 270° |
 | bedroom_nw | wardrobe_180 | 1 | 1.8×0.6 | (3.5, 4) / 0° |
-| bedroom_nw | desk | 1 | 1.2×0.6 | (2.825, 3) / 90° |
+| bedroom_nw | desk | 1 | 1.2×0.6 | (2.90, 2.10) / 90° |
 | bedroom_nw | chair | 1 | 0.5×0.5 | (3.35, 3) / 270° |
 | bedroom_nw | shelf | 1 | 0.8×0.4 | (3, 1.3) / 0° |
 | bedroom_nw | mattress_150 | 1 | — | count-only（不在 glb，按实物补摆） |
@@ -100,7 +100,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | living_dining | tv_wall_low | 1 | 2.1×0.4 | (7.4, 8) / 270° |
 | living_dining | tv_65 | 1 | 1.45×0.25 | (7.42, 8) / 270° |
 | living_dining | floor_lamp | 1 | 0.32×0.32 | (11, 9.35) / 0° |
-| living_dining | plant_fiddle | 1 | 0.5×0.5 | (7.65, 9.35) / 270° |
+| living_dining | plant_fiddle | 1 | 0.5×0.5 | (7.90, 9.18) / 270° |
 | living_dining | sofa_3seat | 1 | 2.8×0.9 | (11, 7.7) / 270° |
 | living_dining | coffee_table | 1 | 0.7×0.7 | (9.7, 7.7) / 0° |
 | living_dining | entry_half_height_cabinet | 1 | 2×0.35 | (11.5, 3.9) / 90° |

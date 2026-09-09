@@ -33,12 +33,16 @@ suppress:
     reason: "入户花园北边实墙删除，改栏杆"
 
 elements:
-  # 西墙 + 西南圆角 + 南墙西段 (w_mb_south + w_st_south)
+  # 西墙 + 西南圆角 + 南墙西段 (w_mb_south + w_st_south)。
+  # 2026-09-08：一个 curtain_run 独占整组 west suppress 墙段，避免
+  # w_west_ap 被 north_recess_curtain 重复生成玻璃实体；w_west_top 也由此补齐替代。
   - id: west_curtain
     type: curtain_run
     closed: false
-    walls: [w_west_lower, w_west_mid, w_west_upper, w_mb_south, w_st_south]
+    walls: [w_west_top, w_west_ap, w_west_lower, w_west_mid, w_west_upper, w_mb_south, w_st_south]
     parts:
+      - { id: w_west_top, wall: w_west_top }
+      - { id: w_west_ap, wall: w_west_ap }
       - { id: w_west_lower, wall: w_west_lower }
       - { id: w_west_mid, wall: w_west_mid }
       - { id: w_west_upper, wall: w_west_upper }
@@ -65,11 +69,12 @@ elements:
     wall: w_kit_north
     height: 2.8
 
-  # 主卫西北角玻璃幕墙弧 (w_west_ap 进路从室内侧 + w_bath_north 弧段)
+  # 主卫西北角玻璃幕墙弧 (w_bath_north 弧段)。w_west_ap 已纳入 west_curtain，
+  # 以免同一幕墙段被两个 curtain_run 叠加。
   - id: north_recess_curtain
     type: curtain_run
     closed: false
-    walls: [w_west_ap, w_bath_north, w_nw_north]
+    walls: [w_bath_north, w_nw_north]
     height: 2.8
 
   # 客厅南墙落地玻璃幕 (z=9.80)
