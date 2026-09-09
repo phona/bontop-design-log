@@ -522,8 +522,8 @@ furnishings:
     - { type: ceiling_light }
     - { type: exhaust_fan, x: 1.00, z: 2.70 }                # DEC-019 湿区中心吊顶，避开内开门扇扫掠区
   guest_bath:
-    # 南侧开放洗漱区纳入 guest_bath 语义边界；vanity 0.70×0.40 以 w_gbath_east_open_vanity 西侧完成面为基准，沿墙段 z=3.55..4.30 的中点 z=3.925 布置；中心 x=6.90,z=3.925，背面朝东、正面朝西，rotation=270，台盆、台上龙头与内置镜面共用中心线。
-    - { type: vanity, x: 6.90, z: 3.925, rotation: 270 }
+    # 南侧开放洗漱区纳入 guest_bath 语义边界；vanity 0.70×0.50 以 w_gbath_east_open_vanity 西侧完成面为基准，沿墙段 z=3.55..4.30 的中点 z=3.925 布置；中心 x=6.79,z=3.925（DEC-2026-09-09-R7 柜深 0.40→0.50 全藏基站，背贴完成面 7.04 中心随移），背面朝东、正面朝西，rotation=270，台盆与台上龙头共用中心线。
+    - { type: vanity, x: 6.79, z: 3.925, rotation: 270 }
     - { type: faucet }
     - { type: toilet, x: 6.75, z: 3.05, rotation: 270 }      # 2026-08-29 修正：靠东墙坐东朝西；真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于玻璃隔断南侧且不越东墙；南门洞西移后避让 d_gbath 内开扫掠
     - { type: shower_set }
@@ -531,6 +531,7 @@ furnishings:
     - { type: ceiling_light }
     - { type: exhaust_fan, x: 6.35, z: 2.45 }                # 北侧淋浴区吊顶
     - { type: mirror_cabinet_gbath, wall: w_gbath_east_open_vanity, wall_side: west, rotation: 270, along: 0.375, wall_clearance: 0.0 } # 2026-09-09 DEC-2026-09-09-R2 候选未冻结：镜柜（0.70×0.90×0.14，y[1.10,2.00]）替换台盆内置平镜；顶柜/层板暂不做（业主定"先一"）。挂在 placed 末尾，保持 vanity:0/toilet:1/exhaust_fan:2 的 GLB 节点序号不变
+    - { type: robot_dock_gbath, x: 6.823, z: 3.925, rotation: 270 } # 2026-09-09 DEC-2026-09-09-R6 候选未冻结：云鲸 J6 上下水版（0.41×0.4335×0.198）泊入悬空台盆柜下（柜体底缘 0.30，机器人泊口朝西）；背沿贴东墙完成面；电源 sock_gbath_robot 低位墙面常插
   balcony:
     # 洗烘叠放贴西墙（给水 faucet_balcony_washer / 墙排 drain_balcony_washer / 插座 sock_balcony_washer 均在 w_balc_west z=1.5）
     - { type: washer, x: 5.95, z: 1.50, rotation: 90 }   # 10kg 滚筒贴西墙面朝东；与插座/给水偏差 0.35m

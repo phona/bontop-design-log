@@ -1221,6 +1221,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   // wall anchor 是自身中心，local y 才是高度层次；柜体与悬浮板沿墙同轴组成一套墙面家具。
   mb_vanity_base_cabinet: { width: 1.38, depth: 0.565 }, // 2026-09-07：1.38m×0.565m×0.62m；AABB x[1.975,2.54] z[2.92,4.30]，同时避开东墙与主卫南墙
   mirror_cabinet_gbath: { width: 0.70, depth: 0.14 }, // DEC-2026-09-09-R2 客卫镜柜（y[1.10,2.00] 挂墙，沿墙 0.70m）
+  robot_dock_gbath: { width: 0.41, depth: 0.4335 }, // DEC-2026-09-09-R6 客卫扫地机基站（藏悬空台盆柜下；云鲸 J6 上下水版实尺寸）
   mb_vanity_lower_board: { width: 1.38, depth: 0.565 }, // 下部悬浮板与底柜同包络，北端贴主卫南墙卧室侧完成面 z=2.92
   mb_vanity_main_board: { width: 1.38, depth: 0.565 }, // 主板与下板同宽同深，同轴止于 z[2.92,4.30]
   condensate_pipe_ac_outlet: { width: 0.24, depth: 0.46 }, // ac_master 内冷凝水出口→延伸空调盒/衣柜顶部服务带；厂家出口位置 pending
@@ -1273,7 +1274,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   gas_stove: { width: 0.75, depth: 0.6 },
   range_hood: { width: 0.9, depth: 0.5 },
   sink: { width: 0.8, depth: 0.6 },
-  vanity: { width: 0.7, depth: 0.4 }, // 客卫开放洗漱墙段收窄至 0.75m 内，确保居中后不越界
+  vanity: { width: 0.7, depth: 0.5 }, // 客卫开放洗漱墙段收窄至 0.75m 内，确保居中后不越界；DEC-2026-09-09-R7 柜深 0.40→0.50（标准成品柜深，全藏台下基站）
   toilet: { width: 0.4, depth: 0.6 }, // 2026-08-21 马桶落位（对齐 FixtureFactory 模型 footprint）
   exhaust_fan: { width: 0.3, depth: 0.3 },
   washer: { width: 0.6, depth: 0.6 }, // 2026-08-23 阳台洗烘叠放（贴 w_balc_west，与 dryer 同 footprint）

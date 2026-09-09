@@ -533,13 +533,28 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
+    // DEC-2026-09-09-R6：客卫台盆柜改悬空抽屉柜（底缘 y=0.30 以下留空），为台下扫地机基站（robot_dock_gbath）让出机位；
+    // 底缘 0.55→0.30：按业主选定云鲸 J6 上下水版实尺寸（0.198 高）收紧，柜体加深至 0.49m。
     type: 'vanity',
     parts: [
-      { shape: 'box', size: [0.70, 0.75, 0.38], position: [0, 0.375, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-carcass', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.42, 0.12, 0.28], position: [0, 0.81, 0], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
+      { shape: 'box', size: [0.70, 0.49, 0.48], position: [0, 0.545, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.42, 0.12, 0.28], position: [0, 0.81, -0.05], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
       // 台面 + 标准墙面龙头；龙头由 guest_bath plumbing 点位统一生成。
       // DEC-2026-09-09-R2：内置平镜移出，镜面由 mirror_cabinet_gbath 镜柜承担（避免双镜）。
-      { shape: 'box', size: [0.72, 0.04, 0.40], position: [0, 0.77, 0], color: '#d8d2c6', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
+      // DEC-2026-09-09-R7：柜深 0.40→0.50（标准成品柜深，基站+机器人全藏柜下；back 贴东墙完成面）。
+      { shape: 'box', size: [0.72, 0.04, 0.50], position: [0, 0.77, 0], color: '#d8d2c6', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
+    ],
+  },
+  {
+    // DEC-2026-09-09-R6 客卫扫地机基站（藏悬空台盆柜下）：按业主选定云鲸 J6 上下水版实尺寸 0.41宽×0.4335深×0.198高。
+    // 低矮底座+背沿（无水箱塔）；背沿在 local -z（rotation=270 后朝东贴墙）；机器人泊口朝西（房间侧）。
+    // 电源 sock_gbath_robot（7.05,4.10,h0.3）在基站背沿上方墙面，低位可见可检修。
+    type: 'robot_dock_gbath',
+    parts: [
+      { shape: 'box', size: [0.41, 0.05, 0.4335], position: [0, 0.025, 0], color: '#3a3f45', roughness: 0.5, part: 'dock-base', materialRole: 'fixture_body' },
+      { shape: 'box', size: [0.41, 0.15, 0.08], position: [0, 0.124, -0.177], color: '#e8e9eb', roughness: 0.4, part: 'dock-back-lip', materialRole: 'cabinet_body' },
+      { shape: 'cylinder', size: [0.17, 0.10, 0.17], position: [0, 0.05, 0.06], color: '#f4f5f6', roughness: 0.35, part: 'dock-robot', materialRole: 'fixture_body' },
+      { shape: 'cylinder', size: [0.05, 0.105, 0.05], position: [0, 0.052, 0.06], color: '#3a3f45', roughness: 0.5, part: 'dock-robot-lidar', materialRole: 'fixture_body' },
     ],
   },
   {

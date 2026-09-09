@@ -28,3 +28,17 @@ verification:
     - "tmp/screenshots/electrical-audit/balcony_robot_socket_after_r1.png（阳台预留位，已随方案否决作废，仅存档）"
     - "tmp/screenshots/electrical-audit/balcony_dock_candidate_marker.png（阳台方案讨论用标注图，方案已否决，仅存档）"
     - "sock_living_robot 仅有运行时坐标复核（柜内低位，视觉证据从略）"
+r5_amendment:
+  date: 2026-09-09
+  scope: "vanity 配方改悬空（柜体 y[0.55,0.79]）；新增 robot_dock_gbath 模型泊入台下 (6.815,3.925) rot=270；堆叠豁免两对（vanity/mirror_cabinet ↔ robot_dock）"
+  status: "候选未冻结，已可视化；机型尺寸与悬空柜挂墙节点 site_pending"
+  evidence: ["tmp/screenshots/electrical-audit/guest_bath_vanity_dock_after_r5.png", "tmp/screenshots/electrical-audit/guest_bath_dock_closeup_after_r5.png"]
+r6_amendment:
+  date: 2026-09-09
+  scope: "台盆下水定案墙排（drain_gbath_vanity 穿 w_gbath_south 回内卫沉箱，地面无管）；基站按业主选定云鲸 J6 上下水版实尺寸 0.41×0.4335×0.198 收紧，悬空柜底缘 0.55→0.30（柜体加深至 0.49m）；修复圆柱配方半径/直径误用"
+  evidence: ["tmp/screenshots/electrical-audit/guest_bath_dock_j6_after_r6.png"]
+  site_pending: "沉箱/立管位置、穿墙套管与坡度（水电交底）；J6 实机复核柜格净空"
+r7_amendment:
+  date: 2026-09-09
+  scope: "vanity 柜深 0.40→0.50（标准成品柜深），背贴东墙完成面（中心 x 6.90→6.79），基站+机器人全藏柜下；站立净深 1.10→0.94m；挂墙节点加强入量房复核"
+  evidence: ["tmp/screenshots/electrical-audit/guest_bath_vanity_deep50_after_r7.png"]

@@ -1291,3 +1291,34 @@
 - **验证**：verify:all 0 error；test:server 540 pass；test:app 448 pass；typecheck 干净；运行时 AABB 复核门叶脱出墙体；截图 tmp/screenshots/electrical-audit/guest_bath_door_visible_after_r4.png。
 - **关联文件**：config/layout/model-geometry.yaml、docs/design-iterations/guest-bath-door-hinge-20260909/
 - **决策人**：业主
+
+### DEC-2026-09-09-R5 客卫台盆柜改悬空 + 扫地机基站模型泊入
+
+- **日期**：2026-09-09
+- **起因**：业主希望在 3D 模型里直观看到客卫台盆下藏扫地机基站的形态（R1 已定点位与上下水，台盆柜悬空改造本是家具深化 follow-up）。
+- **选定方案**：vanity 配方由落地柜改悬空抽屉柜（柜体 y[0.55,0.79]，底缘以下留空）；新增 robot_dock_gbath 模型（0.45×0.45 底座 + 0.42 高背塔贴东墙 + 0.34 直径机器人圆盘泊于西侧泊口），落位 (6.815,3.925) rotation=270；基站电源 sock_gbath_robot 按设计藏背塔后常插；台盆柜台面/盆/尺寸不变。
+- **验证**：verify:all 0 error（vanity↔robot_dock、mirror_cabinet↔robot_dock 两对竖向叠放按既有口径入 STACKED_PAIRS 豁免；GLB 节点序号 vanity:0/toilet:1/exhaust_fan:2 保持，基站 :4 追加）；test:server 540 pass；test:app 448 pass；typecheck 干净；运行时复核 furniture:guest_bath:robot_dock_gbath:4 @(6.815,0,3.925)；截图 guest_bath_vanity_dock_after_r5.png / guest_bath_dock_closeup_after_r5.png。
+- **现场待确认**：悬空柜挂墙节点（该墙为延伸实体墙，挂载按现场复核口径）、基站机型最终尺寸。
+- **关联文件**：shared/render/FixtureFactory.ts、shared/types.ts、config/house.yaml、scripts/verify/placement/verify-furniture-placement.ts、docs/design-iterations/robot-dock-reservation-20260909/
+- **决策人**：业主
+
+### DEC-2026-09-09-R6 客卫台盆下水定案墙排 + 基站按云鲸 J6 实尺寸收紧
+
+- **日期**：2026-09-09
+- **起因**：① 业主问"悬浮台下水怎么办"——悬浮柜+台下基站不允许地面走管；② 业主选定云鲸 J6 上下水版（0.41宽×0.4335深×0.198高，无水箱塔），原按 0.45×0.45×0.5 的预留过宽。
+- **选定方案**：下水走墙排——下水器柜内转 90° 穿 w_gbath_south 回内卫沉箱/排水系统（地面零管道，与主卫台盆既有口径一致），新增 drain_gbath_vanity 穿墙点（(6.90,3.55) h=0.3，避 d_gbath 门洞 x[5.70,6.40]）；基站模型按 J6 实尺寸重做（低矮底座+背沿+机器人圆盘），悬空柜底缘由 0.55 降至 0.30（抽屉柜加深至 0.49m，收纳回升）；过程中修复圆柱体配方 size[0] 为半径的误用（机器人一度渲成 0.68m 宽穿墙）。
+- **验证**：verify:all 0 error；test:server 540 pass（cli-glb  plumbing 计数 18→19）；test:app 448 pass；typecheck 干净；截图 guest_bath_dock_j6_after_r6.png。
+- **现场待确认**：沉箱/立管位置与穿墙套管、坡度（水电交底）；J6 实机到货复核柜格净空。
+- **关联文件**：config/plumbing.yaml、shared/render/FixtureFactory.ts、shared/types.ts、config/house.yaml、scripts/verify/placement/verify-furniture-placement.ts、tests/server/cli-glb-export.test.ts、docs/design-iterations/robot-dock-reservation-20260909/
+- **决策人**：业主（机型选定）；施工尺寸待量房与水电交底
+
+### DEC-2026-09-09-R7 客卫台盆柜加深至 0.50m（全藏台下基站）
+
+- **日期**：2026-09-09
+- **起因**：业主问"深度足够隐藏吗"——0.40m 柜深下 J6 基站托盘前缘探出柜面约 0.09m、机器人约 0.11m（微露）；业主权衡后拍板加深全藏。
+- **代价确认（已与业主对齐）**：0.50m 即成品浴室柜标准进深，金钱成本≈0；洗漱区站立净深 1.10→0.94m（单人客卫够用）；镜柜距离 +0.1m（轻微）；悬空柜挂墙力矩增大，挂墙节点需钢架/加强螺栓（并入该墙挂载现场复核项）。
+- **选定方案**：vanity 柜深 0.40→0.50，背贴东墙完成面（x=7.04），中心 x=6.90→6.79，正面朝西不变；柜前沿 x=6.54，基站托盘/机器人全没入柜下（机器人前缘内收柜沿 0.05m）；龙头墙挂不变。
+- **验证**：verify:all 0 error（vanity 背缘不再进入墙体 slab，比原 0.40 深贴中心线口径更干净）；test:server 540 pass；test:app 448 pass；typecheck 干净；截图 guest_bath_vanity_deep50_after_r7.png。
+- **现场待确认**：悬空柜挂墙节点（钢架/螺栓）+ 该延伸墙实体性量房复核。
+- **关联文件**：config/house.yaml、shared/render/FixtureFactory.ts、shared/types.ts、docs/design-iterations/robot-dock-reservation-20260909/
+- **决策人**：业主
