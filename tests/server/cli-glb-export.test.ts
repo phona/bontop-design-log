@@ -148,7 +148,7 @@ test('CLI exports authoritative electrical socket geometry from electrical.yaml'
   const { exportRoot, report, index } = buildCliHouseScene();
   // 方案 A：北/南主床头插座随两侧350床头柜服务轴线重排；备用插座保持0.70。
   const expected = new Map([
-    ['sock_master_bed_l', [6.245, 0.75]],
+    ['sock_master_bed_l', [6.202, 0.75]],
     ['sock_master_bed_r_head', [8.512, 0.75]],
     ['sock_master_bed_r', [9.15, 0.7]],
   ]);
@@ -168,6 +168,13 @@ test('CLI exports authoritative electrical socket geometry from electrical.yaml'
   assert.equal(floorSocket.position.x, 0.42);
   assert.equal(floorSocket.position.z, 5.78);
   assert.equal(floorSocket.position.y, 0.05);
+  // DEC-2026-09-08-R1：空调线控器新类型随电气 fixtures 导出（w_mb_east 西面投影 x=4.125）
+  const acPanel = index.electrical.get('electrical:ac_panel_master');
+  assert.ok(acPanel, 'missing electrical fixture ac_panel_master');
+  assert.equal(acPanel.userData.fixtureType, 'ac_controller');
+  assert.equal(acPanel.position.x, 4.125);
+  assert.equal(acPanel.position.y, 0.75);
+  assert.equal(acPanel.position.z, 8.684);
 });
 
 test('CLI builds shower plumbing fixtures from plumbing.yaml without replacing shower_set furnishings', () => {
@@ -409,15 +416,15 @@ test('CLI overlay and furniture world bboxes preserve the house z contract', () 
   assert.ok(near(tableBox.min.z, 5.60, 0.01), `table min.z=${tableBox.min.z}`);
   assert.ok(near(tableBox.max.z, 6.50, 0.01), `table max.z=${tableBox.max.z}`);
 
-  // 2026-09-06 南侧窗带矮柜东移后 @(1.05,9.31) r180：权威 AABB x[0.35,1.75] z[9.07,9.55]；正面（抽屉/把手）朝北突出 ≤0.02m
+  // 2026-09-08 南侧窗带矮柜北移避开西南圆弧玻璃幕墙 @(1.05,9.20) r180
   const lowDresser = findByType(exportRoot, 'master_bedroom', 'master_hot_season_low_dresser');
   assert.ok(lowDresser, 'missing master_hot_season_low_dresser export');
-  assert.deepEqual(lowDresser.position.toArray(), [1.05, 0, 9.31]);
+  assert.deepEqual(lowDresser.position.toArray(), [1.05, 0, 9.20]);
   const lowDresserBox = new THREE.Box3().setFromObject(lowDresser);
   assert.ok(near(lowDresserBox.min.x, 0.35), `dresser min.x=${lowDresserBox.min.x}`);
   assert.ok(near(lowDresserBox.max.x, 1.75), `dresser max.x=${lowDresserBox.max.x}`);
-  assert.ok(near(lowDresserBox.max.z, 9.55), `dresser max.z=${lowDresserBox.max.z}`);
-  assert.ok(lowDresserBox.min.z <= 9.07 + 1e-5 && lowDresserBox.min.z >= 9.07 - 0.02, `dresser min.z=${lowDresserBox.min.z} (drawer/handle protrusion north of the 9.07 body edge)`);
+  assert.ok(near(lowDresserBox.max.z, 9.44), `dresser max.z=${lowDresserBox.max.z}`);
+  assert.ok(lowDresserBox.min.z <= 8.96 + 1e-5 && lowDresserBox.min.z >= 8.96 - 0.02, `dresser min.z=${lowDresserBox.min.z} (drawer/handle protrusion north of the body edge)`);
   assert.ok(lowDresserBox.max.y < 2.07, `dresser height ${lowDresserBox.max.y} must stay below the 2.07m sill`);
 
   // 书房季节后台柜 @(16.075,6.75) r270：权威 AABB x[15.80,16.35] z[5.90,7.60]；门板/门缝向西侧突出 ≤0.05m

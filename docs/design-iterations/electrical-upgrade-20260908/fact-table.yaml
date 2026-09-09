@@ -1,0 +1,76 @@
+iteration_id: electrical-upgrade-20260908
+facts:
+  - id: F1
+    statement: "switch_living_entrance（x=11.60,h=1.3,w_ent_south_w）被 entry_half_height_cabinet 完全遮挡"
+    status: confirmed
+    source: "运行时 AABB：柜 x[11.31,11.70] z[2.98,5.02] h≤1.50；开关渲染于 (11.600,1.300,2.975)；截图 tmp/screenshots/electrical-audit/entrance_switch_behind_cabinet_closeup_before_audit.png"
+    impact: "入户侧客厅双控不可见不可达"
+  - id: F2
+    statement: "入户门 d_ent 铰链在西侧 x=11.80、内开；全开扫掠覆盖西段墙 x[10.80,11.80]，东墙垛 x[12.80,13.40] 不受扫掠"
+    status: confirmed
+    source: "model-geometry.yaml d_ent（anchor v_ent_sw offset 1.5 width 1.0 hinge start swing inward）"
+    impact: "开关只能放东墙垛；x=13.10 距铰链 1.30m > 门扇半径 1.0m"
+  - id: F3
+    statement: "switch_child（x=4.35）落在儿童房通顶衣柜 AABB x[2.60,4.40] 内被掩埋；门垛为 x[4.40,4.55]（衣柜东缘—门洞西缘）"
+    status: confirmed
+    source: "运行时 AABB wardrobe_180 x[2.60,4.40] z[3.70,4.30] h2.50；model-geometry d_bnw 门洞 x[4.55,5.45]"
+    impact: "儿童房门口灯控不可见不可用"
+  - id: F4
+    statement: "switch_corridor 声明 wall=w_gbath_east（z[2.20,3.55]）但坐标 z=4.10 超段，渲染被钳至 (7.175,1.3,3.55) 墙角"
+    status: confirmed
+    source: "verify-data-consistency 点位专项 warning（投影超出墙段 0.56m）；运行时位置"
+    impact: "意图位置 (7.20,4.10) 属于 w_gbath_east_open_vanity（z[3.55,4.30]）"
+  - id: F5
+    statement: "客卫 vanity 镜面占满墙段：vanity 中心 z=3.925，镜面 z[3.615,4.235]×y[1.10,2.00]；台面顶 y≈0.79"
+    status: confirmed
+    source: "FixtureFactory vanity recipe（mirror size 0.62×0.9 @ y1.55；countertop y0.77+0.04）；house.yaml guest_bath vanity"
+    impact: "台盆上方 86 面板只能装于镜面下缘以下（h≤1.0）或墙角；既有 z=3.55 墙角位即被镜面逼出"
+  - id: F6
+    statement: "全屋 VRF 一拖五（hvac.yaml plan A2），electrical.yaml 仅有 5 个内机电源点，无任何空调控制器点位"
+    status: confirmed
+    source: "config 全量 grep（线控/温控/thermostat/controller 无匹配）"
+    impact: "5 房均缺空调控制界面；线控底盒+信号线管须水电阶段预留"
+  - id: F7
+    statement: "主卧南床头有 switch_master_bed_l（h0.75，与 sock_master_bed_r_head 组双联）与门口 switch_master_door 双控吸顶灯；北床头无开关"
+    status: confirmed
+    source: "electrical.yaml:120/131；electrical-topology.yaml control_master_bed_door；运行时+截图"
+    impact: "北床头双控为真实缺口；三控需 switch_multiway（门口+南床头+北床头）"
+  - id: F8
+    statement: "light_dining_pendant 注释称'开关在餐桌旁墙上h1.3'但无对应点位/controls 绑定；light_tv_strip 无控制声明"
+    status: confirmed
+    source: "electrical.yaml:683 vs topology controls 列表"
+    impact: "吊灯无控制（幽灵开关）；灯带控制方式未声明"
+  - id: F9
+    statement: "点位专项 tolerance=0.15：距墙段端点/opening 边缘 <0.15 记 warning，落入 opening 记 error"
+    status: confirmed
+    source: "scripts/verify/placement/verify-point-placement.ts:149/180"
+    impact: "门垛/贴角点位会产生 warning，须 note 登记；新点位应尽量避开"
+  - id: F10
+    statement: "主卧床头柜轴线：北 z=6.245 / 南 z=8.555；南侧已建立'插座+开关 86mm 双联围绕柜轴居中'设计语言（方案A）"
+    status: confirmed
+    source: "electrical.yaml R6 注释；master-bedroom-dressing.test.ts:379-386"
+    impact: "北侧增补应镜像南侧：sock 6.202 + switch 6.288，双联围绕 6.245 居中"
+  - id: F11
+    statement: "suppress 幕墙清单：西/南/厨房北/主卫+西北次卧北/VRV 栏杆/入户北栏杆；本伦全部新点位均不在 suppress 墙上"
+    status: confirmed
+    source: "config/layout/overlay.yaml suppress"
+  - id: F12
+    statement: "儿童房床靠东墙（bed_150 x[3.60,5.60] z[1.55,3.05] 头在东），床头插座 sock_child_bed 在 w_gbath_west z=3.30 h=1.2（安全高度）"
+    status: confirmed
+    source: "house.yaml bedroom_nw；electrical.yaml:270"
+    impact: "床头双控与插座组联于 z≈3.2-3.3 h=1.2"
+  - id: F13
+    statement: "主卧东墙/条带东墙为 inferred shear；既有 switch_master_door 已挂 w_strip_east 门垛"
+    status: confirmed
+    source: "model-geometry.yaml structure 标注"
+    impact: "主卧线控器改放南床头（减剪力墙开盒+贴合业主床头预期）"
+  - id: F14
+    statement: "主卫 spec 有电热毛巾架口径（house.yaml:377）但主卫无对应点位；客卫已有 sock_gbath_towel"
+    status: confirmed
+    source: "house.yaml vs electrical.yaml"
+    impact: "登记为后续议题（本轮 Q4 未选）"
+  - id: F15
+    statement: "switch_garden 在花园西北角 (10.80,0.5)，电梯厅出口在东侧 x≈14.3，夜归动线不顺"
+    status: confirmed
+    source: "electrical.yaml:529；model-geometry d_elev"
+    impact: "登记为后续议题（本轮不动）"

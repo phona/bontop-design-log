@@ -14,10 +14,10 @@ test('real electrical topology parses and lints', () => {
   const topology = parseElectricalTopology(raw, points);
   const result = lintElectricalTopology(topology, points);
   assert.equal(topology.circuits.length, 25);
-  assert.equal(topology.controls.length, 10);
+  assert.equal(topology.controls.length, 11);
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 15);
-  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 34);
-  assert.equal(result.counts.coveredPoints, 61);
+  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 37);
+  assert.equal(result.counts.coveredPoints, 64);
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.length > 0);
 });
@@ -72,7 +72,7 @@ test('lint keeps historical uncovered points as warnings and maps circuit facts'
   assert.equal(result.warnings.filter((i) => i.code === 'declared_circuit_uncovered').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered'));
   assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 0);
-  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 17);
+  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 25);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'switch_master_bed_l'));
 });
 

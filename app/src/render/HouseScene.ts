@@ -1470,6 +1470,7 @@ export class HouseScene implements SceneApi {
       socket: '插座',
       switch: '开关',
       switch_2way: '开关',
+      ac_controller: '线控器',
       network: '网口',
       usb: 'USB',
       floor_socket: '地插',

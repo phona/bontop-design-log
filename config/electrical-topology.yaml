@@ -6,6 +6,9 @@ version: '1.0'
 #    照明 1.5mm²、插座 ≥2.5mm²、大功率 4mm²；漏保按回路用途配置），施工前按设备铭牌与交底终核；
 # 3) controls 绑定全部开关与受控灯具。
 # 口径：开关点位经 controls 绑定灯具、网络点位归弱电箱，均不进入强电供电回路成员（Phase 1 口径）。
+# 2026-09-08（DEC-2026-09-08-R1）：新增 switch_multiway 三控（control_master_bed_door 增北床头）、
+# control_child_light 升双控、新增 control_dining；ac_panel_* 线控器为信号面板不进回路（见 pending_parameters）；
+# sock_gbath_vanity_2 并入 ordinary_power_service。
 
 panels:
   # id 是 topology 内部 panel 标识；source_point_id 指向 electrical.yaml 的真实箱体点位。
@@ -216,11 +219,11 @@ circuits:
     panel_id: panel_strong
     purpose: ordinary_power
     status: proposed
-    member_point_ids: [sock_living_tv, sock_living_sofa_l, sock_living_sofa_r, sock_living_table, sock_living_water, sock_living_curtain, sock_living_drying, sock_gateway, sock_living_tv_led]
+    member_point_ids: [sock_living_tv, sock_living_sofa_l, sock_living_sofa_r, sock_living_table, sock_living_water, sock_living_curtain, sock_living_drying, sock_gateway, sock_living_tv_led, sock_living_robot]
     capacity: "≈2.0kW"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
-    note: "客餐厅普通电源（含网关与电视氛围灯带，2026-09-07-056 补入）；现场分组待交底"
+    note: "客餐厅普通电源（含网关与电视氛围灯带，2026-09-07-056 补入；DEC-2026-09-09-R1 补扫地机基站柜内位）；现场分组待交底"
   - id: ordinary_power_bedrooms
     panel_id: panel_strong
     purpose: ordinary_power
@@ -234,11 +237,11 @@ circuits:
     panel_id: panel_strong
     purpose: ordinary_power
     status: proposed
-    member_point_ids: [sock_kitchen_gas, sock_balcony_drying, sock_mbath_vanity, sock_mbath_toilet, sock_gbath_vanity, sock_gbath_toilet]
+    member_point_ids: [sock_kitchen_gas, sock_balcony_drying, sock_mbath_vanity, sock_mbath_toilet, sock_gbath_vanity, sock_gbath_vanity_2, sock_gbath_toilet, sock_gbath_robot]
     capacity: "≈1.5kW"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
-    note: "功能电源（燃气报警/阳台晾衣/智能马桶/台盆位）；现场分组待交底"
+    note: "功能电源（燃气报警/阳台晾衣/智能马桶/台盆位/扫地机基站客卫位，DEC-2026-09-09-R1）；现场分组待交底"
   - id: ordinary_power_kitchen
     panel_id: panel_strong
     purpose: ordinary_power
@@ -266,17 +269,23 @@ controls:
     target_point_ids: [living_track_main, light_entry_foyer]
     note: "客厅入户侧/走廊侧双控：受控为客厅基础照明（track 主灯）+ 入户门厅筒灯（2026-09-07-056 方案绑定，待交底确认）"
   - id: control_master_bed_door
-    kind: switch_2way
+    kind: switch_multiway
     status: confirmed
-    switch_point_ids: [switch_master_bed_l, switch_master_door]
+    switch_point_ids: [switch_master_bed_l, switch_master_bed_north, switch_master_door]
     target_point_ids: [light_master_dome]
-    note: "主卧床头/门口双控，受控灯具为主卧吸顶灯 light_master_dome（2026-09-02 确认绑定）；床头壁灯不走双控"
+    note: "主卧门口/南床头/北床头三控，受控灯具为主卧吸顶灯 light_master_dome（2026-09-02 确认双控绑定；DEC-2026-09-08-R1 增北床头开关升三控 switch_multiway，中途开关按接线序定，交底确认）；床头壁灯不走多控"
   - id: control_parent_bed_door
     kind: switch_2way
     status: proposed
     switch_point_ids: [switch_parent_bed, switch_parent_door]
     target_point_ids: [light_parent_dome]
     note: "父母房床头/门口双控：受控为父母房吸顶灯（2026-09-07-056 方案绑定，待交底确认）"
+  - id: control_dining
+    kind: switch
+    status: proposed
+    switch_point_ids: [switch_dining]
+    target_point_ids: [light_dining_pendant]
+    note: "餐桌吊灯墙控单控（DEC-2026-09-08-R1 落实原'餐桌旁墙上开关'口径，待交底确认）"
   - id: control_corridor_downlight
     kind: switch
     status: proposed
@@ -290,11 +299,11 @@ controls:
     target_point_ids: [light_study_dome]
     note: "书房吸顶灯单控（2026-09-07-056 补）"
   - id: control_child_light
-    kind: switch
+    kind: switch_2way
     status: proposed
-    switch_point_ids: [switch_child]
+    switch_point_ids: [switch_child, switch_child_bed]
     target_point_ids: [light_child_dome]
-    note: "西北次卧吸顶灯单控（2026-09-07-056 补）"
+    note: "西北次卧吸顶灯门口/床头双控（2026-09-07-056 门口单控；DEC-2026-09-08-R1 增床头 switch_child_bed 升双控，待交底确认）"
   - id: control_kitchen_light
     kind: switch
     status: proposed
@@ -324,6 +333,8 @@ pending_parameters:
   - "强弱电箱之间的实际分隔与进线关系待现场确认"
   - "回路 capacity/wire_size/breaker 为方案 proposed 值（2026-09-07-056），施工前按设备铭牌与电气交底终核"
   - "空调五路按 DEC-2026-09-07-055 内机下调后每路 ≤0.3kW；品牌定标后按厂商供电方案（室内机是否集中供电）终核回路"
+  - "空调线控器点位（ac_panel_*，DEC-2026-09-08-R1）为信号面板，随各内机信号线穿管预留底盒，不进强电回路（Phase 1 口径）；品牌定标后按厂商线控规格终核"
+  - "电视墙灯带 light_tv_strip 控制方式为驱动遥控/APP（无墙控点位，DEC-2026-09-08-R1 业主确认方向）；如需墙控另开迭代"
   - "厨房/卫浴/阳台 dedicated load 的最终分组与漏保级联待电气交底确认"
   - "网络/弱电点位（net_*、可视对讲等）归弱电箱系统，不在强电回路拓扑覆盖范围（Phase 1 口径）"
   - "开关点位经 controls 绑定受控灯具，不作为强电回路成员计入（Phase 1 口径）"

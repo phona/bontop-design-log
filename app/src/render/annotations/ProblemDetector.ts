@@ -2,7 +2,7 @@ export interface ElectricalPoint {
   id: string;
   room: string;
   wall: string;
-  type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb' | 'floor_socket'
+  type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb' | 'floor_socket' | 'ac_controller'
     | 'ceiling_light' | 'pendant' | 'dome' | 'wall_lamp' | 'downlight' | 'led_strip';
   x: number;
   z: number;

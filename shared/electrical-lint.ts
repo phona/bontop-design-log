@@ -95,6 +95,9 @@ export function lintElectricalTopology(
     if (control.kind === 'switch_2way' && control.switch_point_ids.length !== 2) {
       issue(control.status === 'confirmed' ? 'error' : 'warning', 'two_way_switch_count', `Two-way control ${control.id} must have exactly two switches`, control.id);
     }
+    if (control.kind === 'switch_multiway' && control.switch_point_ids.length < 3) {
+      issue(control.status === 'confirmed' ? 'error' : 'warning', 'multiway_switch_count', `Multi-way control ${control.id} must have at least three switches`, control.id);
+    }
   }
   for (const parameter of topology.pending_parameters) issue('warning', 'pending_parameter', `Pending electrical parameter: ${parameter}`);
   const uncoveredPoints = points.filter((point) => !covered.has(point.id) && !PANEL_TYPES.has(point.type)).length;

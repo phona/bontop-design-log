@@ -32,7 +32,7 @@ const ElectricalFixtureAppearanceSchema = z.object({
 }).strict();
 
 export const ElectricalPointSchema = z.object({
-  id: z.string(), room: z.string(), type: z.enum(['socket', 'switch', 'switch_2way', 'network', 'usb', 'floor_socket', 'strong_panel', 'weak_panel', 'ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light']),
+  id: z.string(), room: z.string(), type: z.enum(['socket', 'switch', 'switch_2way', 'network', 'usb', 'floor_socket', 'strong_panel', 'weak_panel', 'ac_controller', 'ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light']),
   x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
 }).strict();
 export const PlumbingPointSchema = z.object({
@@ -128,7 +128,7 @@ export const ElectricalTopologyCircuitSchema = z.object({
   capacity: nonEmpty.optional(), wire_size: nonEmpty.optional(), breaker: nonEmpty.optional(), note: z.string().optional(),
 }).strict();
 export const ElectricalTopologyControlSchema = z.object({
-  id: nonEmpty, kind: z.enum(['switch', 'switch_2way']), status: ElectricalTopologyStatusSchema,
+  id: nonEmpty, kind: z.enum(['switch', 'switch_2way', 'switch_multiway']), status: ElectricalTopologyStatusSchema,
   switch_point_ids: z.array(nonEmpty), target_point_ids: z.array(nonEmpty), note: z.string().optional(),
 }).strict();
 export const ElectricalTopologySchema = z.object({

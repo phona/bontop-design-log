@@ -537,9 +537,18 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     parts: [
       { shape: 'box', size: [0.70, 0.75, 0.38], position: [0, 0.375, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-carcass', materialRole: 'cabinet_body' },
       { shape: 'box', size: [0.42, 0.12, 0.28], position: [0, 0.81, 0], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
-      // 台面 + 标准墙面龙头 + 镜面；龙头由 guest_bath plumbing 点位统一生成
+      // 台面 + 标准墙面龙头；龙头由 guest_bath plumbing 点位统一生成。
+      // DEC-2026-09-09-R2：内置平镜移出，镜面由 mirror_cabinet_gbath 镜柜承担（避免双镜）。
       { shape: 'box', size: [0.72, 0.04, 0.40], position: [0, 0.77, 0], color: '#d8d2c6', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
-      { shape: 'box', size: [0.62, 0.9, 0.03], position: [0, 1.55, -0.14], color: '#8fb8c5', roughness: 0.08, metalness: 0.45, part: 'mirror', materialRole: 'mirror' },
+    ],
+  },
+  {
+    // DEC-2026-09-09-R2 客卫镜柜（候选未冻结）：0.70宽×0.90高×0.14深，底缘 y=1.10、顶缘 y=2.00，
+    // 贴 w_gbath_east_open_vanity 西完成面，下沿避台盆双联插座（h=1.0）；rotation=270 后 width 沿墙 z、depth 朝 west（房间侧）。
+    type: 'mirror_cabinet_gbath',
+    parts: [
+      { shape: 'box', size: [0.70, 0.90, 0.14], position: [0, 1.55, 0], color: '#f0ede6', roughness: 0.4, part: 'carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.66, 0.84, 0.012], position: [0, 1.55, 0.076], color: '#bcd2d8', roughness: 0.08, metalness: 0.45, part: 'mirror-door', materialRole: 'mirror' },
     ],
   },
   {
@@ -724,6 +733,17 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     parts: [
       { shape: 'box', size: [0.086, 0.086, 0.018], position: [0, 0, 0], color: '#f7f8f8', roughness: 0.38, part: 'switch-2way-faceplate', materialRole: 'faceplate' },
       { shape: 'box', size: [0.048, 0.055, 0.008], position: [0, 0, 0.014], color: '#3f4650', roughness: 0.6, part: 'switch-2way-rocker', materialRole: 'rocker' },
+    ],
+  },
+  {
+    // VRF 线控器：86 面板 + 深色小屏 + 三枚细键；仅表达底盒/面板位，信号线规格属厂商深化。
+    type: 'ac_controller',
+    parts: [
+      { shape: 'box', size: [0.086, 0.086, 0.018], position: [0, 0, 0], color: '#f7f8f8', roughness: 0.38, part: 'ac-controller-faceplate', materialRole: 'faceplate' },
+      { shape: 'box', size: [0.052, 0.030, 0.004], position: [0, 0.014, 0.013], color: '#1d2a33', roughness: 0.25, metalness: 0.35, part: 'ac-controller-screen', materialRole: 'screen' },
+      { shape: 'box', size: [0.014, 0.010, 0.004], position: [-0.024, -0.022, 0.013], color: '#8a9298', roughness: 0.5, part: 'ac-controller-key-l', materialRole: 'button' },
+      { shape: 'box', size: [0.014, 0.010, 0.004], position: [0, -0.022, 0.013], color: '#8a9298', roughness: 0.5, part: 'ac-controller-key-c', materialRole: 'button' },
+      { shape: 'box', size: [0.014, 0.010, 0.004], position: [0.024, -0.022, 0.013], color: '#8a9298', roughness: 0.5, part: 'ac-controller-key-r', materialRole: 'button' },
     ],
   },
   {

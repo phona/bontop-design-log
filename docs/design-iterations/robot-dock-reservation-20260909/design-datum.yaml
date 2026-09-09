@@ -1,0 +1,30 @@
+iteration_id: robot-dock-reservation-20260909
+anchor: wall_anchor
+datum:
+  - id: sock_gbath_robot
+    anchor: { wall: w_gbath_east_open_vanity, wall_side: west }
+    plan: "(7.05, 4.10) 台盆下方东墙低位，基站背后常插"
+    elevation: "h=0.3"
+    derivation: "vanity 中心 z=3.925、footprint z[3.725,4.125]；插座藏于基站后方（该位不可见属预期）；距墙段端 0.20m ≥0.15 无 warning；防溅盒"
+    water: "进水 faucet_gbath_vanity 三通；排水接台盆下水（路由 site_pending）"
+    clearance_check: "2026-09-09 拥挤度复核（业主提问）：洗漱区净 1.5×0.75m，台盆占东墙 0.40m 进深；基站藏台下死空间后西侧站立区 1.1×0.75m 完整保留；机器人西出→南开敞边→走廊全程无门；基站占位按 0.45宽×0.45深×约0.5高，台盆宽 0.70 左右各留 ~0.12m 散热缝；台盆柜深 0.40 < 基站 0.45，深化时加深至 ≥0.5m 或接受前缘微凸 0.05m；盆心下水弯（z=3.925）与基站顶错位由柜体深化处理；大容量机型（宽>0.5）超上限时启用客厅备用位"
+    evidence_added:
+      - "tmp/screenshots/electrical-audit/guest_bath_dock_clearance_topdown.png"
+      - "tmp/screenshots/electrical-audit/guest_bath_dock_clearance_persp.png（红块=基站占位藏台下，绿块=站立区保留）"
+  - id: sock_living_robot
+    anchor: { wall: w_st_east, wall_side: east }
+    plan: "(7.20, 6.40) 电视柜北段通顶高柜底格内（备用位）"
+    elevation: "h=0.3"
+    derivation: "与 sock_gateway 同柜异格；若启用需柜体底格无底板+加深 ≥0.5m（家具深化）"
+rollback:
+  - "sock_balcony_robot（已删除）：厨房-阳台平开门日常关闭，机器人被困，路线否决"
+  - "faucet_balcony_washer / drain_balcony_floor 注记恢复原状"
+verification:
+  verify_all: "0 error；点位专项 6 warning 全部既有登记项，新点位无 warning"
+  runtime: "sock_gbath_robot @(7.025,0.300,4.100)；sock_living_robot @(7.275,0.300,6.400)；sock_balcony_robot 已不在场景"
+  tests: "test:server 540 pass（计数不变：普通电源 37 成员、covered 64、fixture lint 94/18）；test:app 448 pass；typecheck 干净"
+  evidence:
+    - "tmp/screenshots/electrical-audit/guest_bath_robot_socket_after_r1.png（台盆区改后）"
+    - "tmp/screenshots/electrical-audit/balcony_robot_socket_after_r1.png（阳台预留位，已随方案否决作废，仅存档）"
+    - "tmp/screenshots/electrical-audit/balcony_dock_candidate_marker.png（阳台方案讨论用标注图，方案已否决，仅存档）"
+    - "sock_living_robot 仅有运行时坐标复核（柜内低位，视觉证据从略）"

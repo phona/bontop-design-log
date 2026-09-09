@@ -1,0 +1,61 @@
+iteration_id: electrical-upgrade-20260908
+state: decision_brief_frozen
+frozen: true
+alignment:
+  id: electrical-audit-20260908-q1-q4
+  original_request: "升级所有电源插座、灯具开关、空调开关，审计功能性与合理性（主卧/入户/大厅/客卫等）；先深化检查与建议，不要直接改"
+  normalized_decision: "先完成全屋电气审计（仅检查不改），业主对 4 个决策项拍板后实施：Q1 全屋 5 房预留空调线控器底盒+信号线管（品牌中立，定标前可施工）；Q2 入户侧客厅双控开关移到入户门洞东侧墙垛；Q3 授权无争议数据修正包（儿童房开关移门垛、走廊开关改挂 w_gbath_east_open_vanity、客卫插座离墙角、补全 wall_side）；Q4 功能增补全选（主卧北床头双控、客卫洗漱台插座+1、儿童房床头双控、补餐桌吊灯墙控+电视灯带控制方式声明）"
+  timestamp: 2026-09-08
+priority:
+  - 不改动任何既有可用的点位功能（只修客观错误与增补）
+  - 新增点位不得产生新的 verify error；新增 warning 须逐条在 note 登记
+  - 线控器预留与空调品牌定标解耦（底盒+穿线管品牌中立）
+  - 衣柜/柜体/门洞/镜面等既有家具包络不得被点位穿越
+allowed_scope:
+  - config/electrical.yaml
+  - config/electrical-topology.yaml
+  - config/plumbing.yaml
+  - config/house.yaml（仅 mep 意图小节文字同步）
+  - shared/types.ts
+  - shared/project-render-facts-schema.ts
+  - shared/electrical-lint.ts
+  - shared/render/FixtureFactory.ts
+  - shared/render/InfrastructureBuilder.ts
+  - app/src/render/HouseScene.ts
+  - app/src/render/annotations/AnnotationRenderer.ts
+  - app/src/render/annotations/ProblemDetector.ts
+  - tests/server/master-bedroom-dressing.test.ts
+  - tests/server/cli-glb-export.test.ts
+  - data/project-render-facts.json（仅由 npm run generate:project-render-facts 生成）
+  - docs/design-iterations/electrical-upgrade-20260908/*
+  - docs/decision_log.md
+forbidden:
+  - config/layout/model-geometry.yaml / overlay.yaml（几何不变）
+  - 家具摆位（house.yaml furnishings 不变）
+  - HVAC 冷媒/冷凝水/风口路由（hvac.yaml / mep-hvac-coordination.yaml 不变）
+  - 手工编辑 data/project-render-facts.json
+  - git 操作
+open_questions:
+  - id: ac_controller_wiring
+    status: site_pending
+    question: "线控器信号线规格与是否集中供电按品牌定标后厂商深化；底盒+穿线管本轮只预留"
+    handling: "点位+note 登记 site_pending；topology pending_parameters 同步"
+  - id: tv_strip_control
+    status: user_decision
+    question: "电视墙灯带控制方式（智能/遥控 vs 新增墙控点位）"
+    handling: "按 B 级智能口径与务实档预算声明为驱动遥控/APP 控制、无墙控点位；业主如需墙控可后补"
+  - id: bedside_box_depth
+    status: site_pending
+    question: "床头/门垛 86 底盒深度、墙体可开槽性（w_strip_east/w_mb_east 为 inferred shear）"
+    handling: "全部 note 保留 site_pending，量房终核"
+  - id: garden_switch_followup
+    status: open
+    question: "switch_garden 位于花园西北角距电梯厅远（夜归动线不顺），是否移位/加人体感应"
+    handling: "本轮不动；登记为后续议题"
+acceptance:
+  commands:
+    - npm run verify:all
+    - npm run test:server
+    - npm run test:app
+    - npm run typecheck
+  required: "0 error；新增点位在浏览器运行时可见且位置与 datum 一致；入户/儿童房遮挡场景同机位 A/B 取证"

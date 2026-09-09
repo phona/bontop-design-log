@@ -1216,13 +1216,78 @@
 - **关联文件**：`config/hvac.yaml`、`config/ceiling.yaml`、`config/mep-hvac-coordination.yaml`、`tests/server/master-bedroom-dressing.test.ts`、`data/project-render-facts.json`、`docs/design-iterations/master-condensate-l-route-20260907/`
 - **决策人**：业主（方向确认）；施工尺寸待 HVAC 厂家深化
 
-### DEC-2026-09-07-R11 主卫隔墙外柜组退出主卫并贴双墙完成面
+### DEC-2026-09-07-R11 主卫东墙底柜收深并贴西完成面
 
 - **日期**：2026-09-07
-- **起因**：真实场景复核发现两个独立越界：`mb_vanity_base_cabinet` 深 0.625m 且 SceneBuilder 未套用墙体完成面偏移，东缘进入 `w_mbath_east`；柜组三件原 z[2.60,4.30] 又跨过 `w_mbath_south` 卧室侧完成面 z=2.92，北端 0.32m 进入主卫。`w_mbath_east` 为 inferred shear，两个墙面均不得被柜体占用。
-- **选定方案**：三件统一保持 `wall=w_mbath_east`、`wall_side=west`、`rotation=270`，沿墙长度由 1.70m 收为 1.38m、中心移至 `along=3.61`，南端继续对齐衣柜侧 z=4.30，北端收至主卫南墙卧室侧完成面 z=2.92；总深收至 0.565m并采用 0.06m 东墙完成面偏移。运行时 AABB 统一为 x[1.975,2.54]、z[2.92,4.30]；底柜 y[0,0.62]。FixtureFactory 的柜体、踢脚、门缝及两块悬浮板同步收口。
-- **材料/采购**：`cabinet_board_01` 记录底柜 1.38×0.565×0.62m，现场复尺后下单；柜体仍为完整落地构件，既有板材/PET 门材质与价格待定状态不变。
-- **验证**：真实 `buildScene` 递归子part AABB 同时断言 x≤2.54、z≥2.92，覆盖底柜主体、踢脚、门缝和上下悬浮板；`verify:all`、服务端 532 项、前端 447 项、typecheck 与 build 均通过。浏览器运行时三件包络均精确为 x[1.975,2.54] z[2.92,4.30]，主卧侧与主卫侧正常态复核通过。
+- **起因**：真实场景复核发现 `mb_vanity_base_cabinet` 深度仍为 0.625m，SceneBuilder 未套用墙体完成面偏移，导致柜体及踢脚、门缝子构件东缘进入 `w_mbath_east` 墙中心 x=2.60；该墙结构为 inferred shear，不允许嵌墙。
+- **选定方案**：保持 `wall=w_mbath_east`、`wall_side=west`、`rotation=270`、`along=3.45` 和沿墙长度 1.70m；总深收至 0.565m，与上下悬浮板统一。墙锚点统一采用 0.06m 完成面偏移，运行时中心 x=2.2575，底柜与全部子part AABB 为 x[1.975,2.54]、z[2.60,4.30]、y[0,0.62]。FixtureFactory 柜体、踢脚和门缝局部 +z 面同步按新半深度贴合。
+- **材料/采购**：`cabinet_board_01` 记录主卫底柜 1.70×0.565×0.62m，现场复尺后下单；未改变既有板材/PET 门材质或价格待定状态。
+- **验证**：新增真实 `buildScene` 递归子part AABB 断言，验证底柜与每个子构件不越过西完成面、不进入墙体/主卫侧；浏览器从主卫侧和主卧侧各取正常态证据。完整验证命令按本轮回填。
 - **现场待确认**：东墙完成面、门套/门洞实际收口和定制柜复尺；墙体结构与防倾倒节点继续 site_pending。
 - **关联文件**：`config/house.yaml`、`config/materials.yaml`、`config/procurement.yaml`、`shared/types.ts`、`shared/render/FixtureFactory.ts`、`shared/render/SceneBuilder.ts`、`scripts/verify/placement/verify-furniture-placement.ts`、`tests/server/master-bedroom-dressing.test.ts`、`tests/server/shared/scene-builder.test.ts`、`docs/design-iterations/master-bedroom-r7-20260906/`、`docs/design-iterations/master-condensate-l-route-20260907/`、`data/project-render-facts.json`
 - **决策人**：业主（复验问题）；施工尺寸待现场复尺
+
+### DEC-2026-09-08-R1 全屋电气点位审计与升级（插座/灯控/空调线控）
+
+- **日期**：2026-09-08
+- **起因**：业主全屋电气审计请求（主卧插座/床头灯控与空调控制、入户灯控、大厅空调控制、客卫洗漱台插座"看不到/少了"系列问题）；先审计对齐、后按授权实施。
+- **审计结论（业主 4 项观察核实）**：① 主卧插座数量充足（7 位），南床头有双控开关、北床头无，全屋 5 房无任何空调控制器点位（最大结构性缺口）；② 入户灯控存在但被门内半高柜（x[11.31,11.70]×h1.50）完全遮挡且在门扇扫掠背面；③ 大厅同①；④ 客卫洗漱台仅 1 位且压墙角端点。另发现：儿童房开关被通顶衣柜掩埋（x=4.35∈柜 x[2.60,4.40]）、走廊开关挂错墙段（渲染钳位偏移 0.55m）、餐桌吊灯"幽灵开关"（注释有点位无）、14 处缺 wall_side。
+- **业主决策**：Q1 全屋 5 房预留空调线控器底盒+信号线管（品牌中立，与定标解耦）；Q2 入户开关移门洞东墙垛；Q3 无争议修正包全授权；Q4 增补全选（北床头双控/儿童房床头双控/客卫插座+1/餐桌吊灯墙控+灯带控制声明）。
+- **实施**：修正 switch_living_entrance（→13.10 东墙垛）、switch_child（→门垛 4.475，type 改 switch_2way）、switch_corridor（改挂 w_gbath_east_open_vanity 归位 4.10）、sock_gbath_vanity（离角 3.882/h1.0 镜面下）+10 处 wall_side；新增 ac_panel_living/master/parent/child/study（新类型 ac_controller 及渲染/标注/schema 钩子）、switch_master_bed_north（北床头双联，sock_master_bed_l 随移 6.202 围绕柜轴 6.245 居中）、switch_child_bed、switch_dining、sock_gbath_vanity_2；topology：control_master_bed_door 升 switch_multiway 三控、control_child_light 升双控、新增 control_dining、pending_parameters 补线控器与灯带控制口径。
+- **取证修正（证据驱动，冻结范围内）**：ac_panel_child 由东墙 (5.60,4.10) 改南墙门东垛 (5.525,4.30)（原位在 d_bnw 门扇 90° 开启面后方）；ac_panel_parent 由门口 x=5.88 改床头东墙 (4.20,6.314,h=0.7)（原位落入北墙通顶衣柜 x[4.20,6.00] 背后）。
+- **验证**：verify:all 0 error（点位专项 warning 14→5，均有 note 登记）；test:server/test:app/typecheck 全绿；17 个新/移点位浏览器运行时 AABB 与 datum 一致；同机位 A/B 截图 16 张（tmp/screenshots/electrical-audit/）；独立美学/功能双评审两轮 PASS。
+- **现场待确认**：线控器信号线规格/供电随品牌定标厂商深化；剪力墙（inferred shear）开盒可行性；门垛贴装与门套收口；客卫龙头高度与防溅盒配合；全部量房终核。
+- **后续议题（本轮未动）**：switch_parent_door 西半板面被衣柜侧板部分遮挡（建议移门垛中心 6.075）；switch_garden 夜归动线；主卫电热毛巾架电源；sock_child_ac 投影偏移随厂家深化；文档漂移（house.yaml 父母房注释/mep 网线/sock_living_water 注释）。
+- **关联文件**：config/electrical.yaml、config/electrical-topology.yaml、config/plumbing.yaml、config/house.yaml、shared/types.ts、shared/project-render-facts-schema.ts、shared/electrical-lint.ts、shared/render/FixtureFactory.ts、shared/render/InfrastructureBuilder.ts、app/src/render/HouseScene.ts、app/src/render/annotations/{AnnotationRenderer,ProblemDetector}.ts、tests/server/{master-bedroom-dressing,cli-glb-export,electrical-lint,render-facts-api}.test.ts、docs/design-iterations/electrical-upgrade-20260908/
+- **决策人**：业主（Q1–Q4 拍板）；施工尺寸待量房与厂家深化
+
+### DEC-2026-09-08-R2 父母房门口开关移至门垛中心
+
+- **日期**：2026-09-08
+- **起因**：R1 取证发现 switch_parent_door（x=6.00）面板西半被北墙通顶衣柜（x[4.20,6.00]）东侧板遮挡约 0.043m；业主拍板"顺手一起改了"。
+- **实施**：x 6.00→6.075（门垛 [6.00,6.15] 中心），面板跨度 [6.032,6.118] 完全脱离衣柜；距 d_study 门洞边缘 0.075m 贴门套安装，点位专项 warning 登记于 note。
+- **验证**：verify:consistency 0 error；test:server 540 pass。
+- **关联文件**：config/electrical.yaml、docs/design-iterations/electrical-upgrade-20260908/review-manifest.json
+- **决策人**：业主
+
+### DEC-2026-09-09-R1 扫地机器人基站预留（客卫台盆下主位 + 客厅备用；阳台方案否决回滚）
+
+- **日期**：2026-09-09
+- **起因**：业主评估全屋用电时确认扫地机器人（防尘策略主力设备）无用电/上下水规划；要求点位合理、使用方便、美观。
+- **方案演进**：① 初答"双预留"（生活阳台自动上下水 + 客厅电视柜底格手动版）并已短暂落盘；② 业主补充硬约束"厨房-阳台门不能常开"——阳台路线机器人被困，否决；③ 重审全屋有水且无门阻隔的位置，定案客卫洗漱台下。
+- **选定方案**：主位客卫洗漱台下方（sock_gbath_robot，(7.05,4.10) h0.3 东墙低位常插带防溅盒；进水由 faucet_gbath_vanity 三通、排水接台盆下水；台盆柜改悬空/无底开放格（净高≥0.5m、进深≥0.5m）藏基站，家具深化落实；洗漱区南缘开放无门，机器人自由进出）；客厅电视柜底格电位保留备用（sock_living_robot，手动换水版美观位）；阳台预留（sock_balcony_robot+三通/地漏注记）全部撤销，配置无残留。
+- **回路**：sock_gbath_robot 并入 ordinary_power_service，sock_living_robot 并入 ordinary_power_living；回路数/容量断言不变（普通电源 37 成员）。
+- **验证**：verify:all 0 error；test:server 540 pass；test:app 448 pass；typecheck 干净；运行时坐标复核与台盆区改后截图取证。
+- **现场待确认**：客卫台盆下水路由（既有口径）、基站机型尺寸、台盆柜悬空改造节点；量房终核。
+- **关联文件**：config/electrical.yaml、config/plumbing.yaml、config/electrical-topology.yaml、config/house.yaml、docs/design-iterations/robot-dock-reservation-20260909/
+- **决策人**：业主（方案对齐后拍板）
+
+### DEC-2026-09-09-R2 客卫镜柜登记（台盆上方储物主层，替换台盆内置平镜）
+
+- **日期**：2026-09-09
+- **起因**：扫地机基站藏客卫台盆下需台盆柜改悬空/无底，损失落地柜少量收纳；业主问"台盆上方储物能否充分利用"，确认镜柜方案（"先一"：只做镜柜，顶柜/层板暂不做）并担心小空间压抑——体量块 A/B 取证后确认镜柜不压抑（门面即镜面）。
+- **选定方案**：新增 mirror_cabinet_gbath（0.70宽×0.90高×0.14深，y[1.10,2.00]，挂 w_gbath_east_open_vanity 西完成面，沿墙居中台盆轴 3.925）；vanity 配方移除内置平镜避免双镜；镜柜下沿与台盆双联插座（h1.0）留 0.057m 错层。
+- **发现既有口径**：materials.yaml/procurement.yaml 早有"浴室柜组合（含镜柜）"两套报价，本次是把镜柜补进 3D 模型对齐；注意报价 spec 写 80cm 而模型台盆宽 0.70m——规格漂移登记为柜体深化 follow-up。
+- **验证**：verify:all 0 error（镜柜×台盆堆叠豁免按 range_hood/kitchen_cabinet_run 同口径入 STACKED_PAIRS；镜柜条目置于 guest_bath placed 末尾保持既有 GLB 节点序号）；test:server 540 pass；test:app 448 pass；typecheck 干净；截图取证 tmp/screenshots/electrical-audit/guest_bath_mirror_cabinet_after_r2.png。
+- **关联文件**：shared/render/FixtureFactory.ts、shared/types.ts、config/house.yaml、scripts/verify/placement/verify-furniture-placement.ts、app/src/render/FixtureFactory.test.ts、docs/design-iterations/robot-dock-reservation-20260909/
+- **决策人**：业主
+
+### DEC-2026-09-09-R3 客卫门铰链改西侧 + 电热毛巾架迁马桶上方
+
+- **日期**：2026-09-09
+- **起因**：业主发现客卫门（d_gbath，内开铰链东缘 x=6.30）两个真实冲突：① 开门 90° 门叶立于 x=6.30 挡死马桶动线（叶尖距淋浴玻璃隔断仅 0.05m，不关门进不到马桶）；② 门叶扫掠半径 0.70m 覆盖西墙毛巾架（架最近点距铰链 0.62m），开约 30° 即撞。
+- **选定方案（业主拍板 A）**：铰链改西缘（hinge: end→start），内开不变——开门后门叶贴西墙 z[2.85,3.55]，马桶动线（距扫掠区最近 0.97m）、淋浴隔断、门口全部让开；电热毛巾架及插座 sock_gbath_towel 迁马桶上方东墙 (7.10,3.05) h=1.2（与 sock_gbath_toilet h0.3 同柱错层；带防溅盒）。否决项：外开（占洗漱区/盖 switch_gbath）、推拉门（成本与隔音，业主未选）。
+- **验证**：verify:all 0 error；test:server 540 pass；test:app 448 pass；typecheck 干净；运行时确认门叶 @(5.600,1.050,3.200) rotY=90° 贴西墙、sock_gbath_towel @(7.025,1.200,3.050) 马桶上方东墙。
+- **现场待确认**：毛巾架实体尺寸与安装净空（马桶上方）、门套角部收口（铰链在西缘角柱），量房终核。
+- **关联文件**：config/layout/model-geometry.yaml、config/electrical.yaml、config/house.yaml、docs/design-iterations/guest-bath-door-hinge-20260909/
+- **决策人**：业主
+
+### DEC-2026-09-09-R4 客卫门洞东移 0.10m（修 R3 引入的门叶穿模）
+
+- **日期**：2026-09-09
+- **起因**：R3 铰链改西缘后，门洞西缘顶着墙角（x=5.60 即西墙），渲染器"90° 开门贴墙"简化模型把门叶中心落在西墙中线上——门叶 x[5.58,5.62] 完全嵌入墙体（x[5.54,5.66]），视觉上消失（业主发现并报告"门不见了"）。
+- **选定方案（业主拍板）**：门洞整体东移 0.10m 至 x[5.70,6.40]（offset 0.35→0.45），铰链留西缘 x=5.70——门叶 @(5.70,3.20) 贴西墙内侧可见（AABB x[5.68,5.72] 脱出墙体），并获得 0.10m 门垛便于门套角部收口；马桶侧扫掠净距仍有 0.125m。否决项：改渲染器感知角部墙体（动 SceneBuilder 共享代码+补测试，为唯一角部铰链门不划算）。
+- **影响面**：门洞与淋浴隔断 0.7m 开敞入口错开 0.10m（两者均 ≥0.7m 宽，通行不受影响）；无其他点位/家具引用该门洞位置。
+- **验证**：verify:all 0 error；test:server 540 pass；test:app 448 pass；typecheck 干净；运行时 AABB 复核门叶脱出墙体；截图 tmp/screenshots/electrical-audit/guest_bath_door_visible_after_r4.png。
+- **关联文件**：config/layout/model-geometry.yaml、docs/design-iterations/guest-bath-door-hinge-20260909/
+- **决策人**：业主

@@ -1,0 +1,88 @@
+iteration_id: electrical-upgrade-20260908
+datum_convention:
+  coordinate_system: "model-geometry 局部坐标系（米），+x 东 +z 南，y 向上"
+  panel: "86 面板宽 0.086；双联中心距 0.086；开关/线控器 h=1.3（门口）或 h=0.75（床头，方案A）；儿童房安全高度 h=1.2"
+  anchor: wall_anchor
+  verification: "npm run verify:all（点位专项 tolerance=0.15）+ 浏览器运行时 AABB 复核"
+
+corrections:
+  - id: switch_living_entrance
+    anchor: { wall: w_ent_south_w, wall_side: south }
+    plan: "门洞东墙垛 x[12.80,13.40] 中心 x=13.10，z=2.90 压墙线"
+    elevation: "h=1.3"
+    derivation: "F1/F2：避半高柜（x≤11.70）与门扇扫掠（半径 1.0 @ 铰链 11.80）；距 opening 边缘 0.30、距段端 0.30 均 ≥0.15 无 warning"
+  - id: ac_panel_living
+    anchor: { wall: w_ent_south_w, wall_side: south }
+    plan: "x=13.22 与 switch_living_entrance 组双联（板距 0.034），z=2.90"
+    elevation: "h=1.3"
+    derivation: "距 opening 边缘 0.42、距段端 0.18 ≥0.15"
+  - id: switch_living_corridor
+    anchor: { wall: w_liv_east, wall_side: west }
+    plan: "z 5.55→5.35（离南端 0.20，消除端点 warning），x=13.40"
+    elevation: "h=1.3"
+  - id: switch_child
+    anchor: { wall: w_nw_south, wall_side: north }
+    plan: "x 4.35→4.475（衣柜东缘 4.40 与门洞西缘 4.55 之间门垛中心）"
+    elevation: "h=1.3"
+    derivation: "F3：脱出衣柜 AABB x[2.60,4.40]；距 opening 边缘 0.075 <0.15 产生 1 条 warning（门垛贴装，note 登记）"
+  - id: switch_corridor
+    anchor: { wall: w_gbath_east_open_vanity, wall_side: east }
+    plan: "wall 改挂 w_gbath_east_open_vanity，坐标保持 (7.20,4.10) 意图位"
+    elevation: "h=1.3"
+    derivation: "F4：消除 0.56m 投影钳位；距段端 0.20 ≥0.15"
+  - id: sock_gbath_vanity
+    anchor: { wall: w_gbath_east_open_vanity, wall_side: west }
+    plan: "z 3.55→3.882（双联北位），x=7.05"
+    elevation: "h 1.2→1.0（镜面下缘 y=1.10 以下、台面 0.79 以上 0.21m，F5）"
+    derivation: "与 sock_gbath_vanity_2 组双联，并集中心 z=3.925=vanity 轴线；带防溅盒"
+  - id: sock_gbath_vanity_2
+    anchor: { wall: w_gbath_east_open_vanity, wall_side: west }
+    plan: "z=3.968（双联南位），x=7.05"
+    elevation: "h=1.0"
+  - id: sock_master_bed_l
+    anchor: { wall: w_mb_east, wall_side: west }
+    plan: "z 6.245→6.202（双联北位）"
+    elevation: "h=0.75 不变"
+    derivation: "F10：与 switch_master_bed_north 组 86mm 双联，围绕北床头柜轴线 6.245 居中，镜像南侧方案A"
+  - id: switch_master_bed_north
+    anchor: { wall: w_mb_east, wall_side: west }
+    plan: "z=6.288（双联南位），x=4.20"
+    elevation: "h=0.75"
+    derivation: "panel_group master_bed_north_double role=south；暖白哑光 two_way_rocker 与南侧同款"
+
+additions:
+  - id: ac_panel_master
+    anchor: { wall: w_mb_east, wall_side: west }
+    plan: "z=8.684，南床头双联南侧第三模块位（8.598+0.086）"
+    elevation: "h=0.75（床头成组）"
+    derivation: "F13：避开 w_strip_east 剪力墙门垛且贴合业主'床头看到空调开关'预期；note 登记南帘堆叠 site_pending"
+  - id: ac_panel_parent
+    anchor: { wall: w_mb_east, wall_side: east }
+    plan: "(4.20, 6.314)，床头东墙，与 switch_parent_bed（6.40）/sock_parent_bed_l（6.60）组床头三联"
+    elevation: "h=0.7（床头成组，同既有床头点位）"
+    derivation: "取证修正：门口门垛 x[6.00,6.15] 仅容一板且 switch_parent_door（x=6.00）西半已被通顶衣柜（x[4.20,6.00]）侧板遮挡，线控器无处落位；改床头同主卧口径；距床 z≥7.00 与北墙衣柜 z[5.55,6.15] 均无冲突"
+  - id: ac_panel_child
+    anchor: { wall: w_nw_south, wall_side: north }
+    plan: "(5.525, 4.30)，门东侧 0.15m 门垛中心"
+    elevation: "h=1.3"
+    derivation: "取证修正：原拟东墙 (5.60,4.10) 位于 d_bnw 门扇（铰链东 x=5.45、内开）90° 开启面后方被门叶遮挡；改门东侧门垛（铰链侧、叶平面 x=5.45 以西不掩）；距段端 0.075m 贴角登记 warning；与 switch_child（门西垛）分置门两侧"
+  - id: ac_panel_study
+    anchor: { wall: w_be_west, wall_side: east }
+    plan: "(13.40, 7.12)，与 switch_study（7.0）组双联"
+    elevation: "h=1.3"
+    derivation: "距 d_bese 门洞边缘 0.57 ≥0.15"
+  - id: switch_child_bed
+    anchor: { wall: w_gbath_west, wall_side: west }
+    plan: "(5.60, 3.214)，与 sock_child_bed（3.30）组双联"
+    elevation: "h=1.2（儿童房安全高度，与插座一致）"
+    derivation: "F12：床头双控 light_child_dome；距段端 0.336 ≥0.15"
+  - id: switch_dining
+    anchor: { wall: w_gbath_east_open_vanity, wall_side: east }
+    plan: "(7.20, 3.98)，餐桌旁走廊墙，与 switch_corridor（4.10）相邻"
+    elevation: "h=1.3"
+    derivation: "F8：light_dining_pendant 墙控落点；距桌心 (7.90,3.45) 0.88m <1.5m 交叉验证"
+
+non_changes:
+  - "switch_master_door/switch_parent_door/switch_study/switch_gbath/switch_mbath/switch_kitchen/switch_garden 位置不变"
+  - "sock_child_ac 投影超段 0.45m 与距内机 1.20m：随空调厂家深化一并复核，本轮不动（登记）"
+  - "switch_garden 位置（后续议题 F15）"

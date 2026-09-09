@@ -78,20 +78,32 @@
 - id: switch_living_entrance
   room: living_dining
   wall: w_ent_south_w
+  wall_side: south
   type: switch_2way
-  x: 11.60
+  x: 13.10
   z: 2.90
   height: 1.3
-  note: "客厅灯光双控（入户侧；DEC-014 改挂入户门旁 w_ent_south_w；门洞按 resolver 口径（offset=中心距）为 x∈[11.80,12.80]，本点位避让至门洞西侧 0.2m——旧注释 x∈[12.3,13.3] 系起边口径误读；量房复核门洞实际位置）"
+  note: "客厅灯光双控（入户侧；DEC-2026-09-08-R1 由 x=11.60 移至门洞东墙垛中心 13.10：原位被 entry_half_height_cabinet（x[11.31,11.70]×h1.50）完全遮挡且在 d_ent 门扇（铰链西侧 x=11.80、内开）全开扫掠背面；东墙垛 x[12.80,13.40] 距铰链 1.30m 不受扫掠，距 opening 边缘 0.30m；量房复核门洞实际位置）"
+
+- id: ac_panel_living
+  room: living_dining
+  wall: w_ent_south_w
+  wall_side: south
+  type: ac_controller
+  x: 13.22
+  z: 2.90
+  height: 1.3
+  note: "客厅空调线控器（DEC-2026-09-08-R1 全屋五房预留线控底盒+信号线管；与 switch_living_entrance 组双联，板距 0.034m；品牌中立，定标后按厂商线控规格终核，site_pending）"
 
 - id: switch_living_corridor
   room: living_dining
   wall: w_liv_east
+  wall_side: west
   type: switch_2way
   x: 13.40
-  z: 5.55
+  z: 5.35
   height: 1.3
-  note: "客厅灯光双控（走廊侧）"
+  note: "客厅灯光双控（走廊侧；DEC-2026-09-08-R1 由 z=5.55 墙段端点南退 0.20m 消除贴角，并补声明 wall_side west）"
 
 # 主卧
 - id: sock_master_bed_l
@@ -100,11 +112,22 @@
   wall_side: west
   type: socket
   x: 4.20
-  z: 6.245
+  z: 6.202
   height: 0.75
   count: 2
-  appearance: { style: warm_white_matte_modular, module: five_hole_replaceable_usb_c, faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008 }
-  note: "方案A 北侧床头插座：z=6.245、h=0.75，暖白哑光86单联、五孔＋可换USB-C；与 master_bedside_cabinet_350_north 中心轴对齐；实际SKU/底盒深度、东墙暗管/可开槽性仍 site_pending"
+  appearance: { style: warm_white_matte_modular, module: five_hole_replaceable_usb_c, faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008, panel_group: { id: master_bed_north_double, role: north, center_spacing: 0.086, union_width: 0.172 } }
+  note: "方案A 北侧床头插座：DEC-2026-09-08-R1 z=6.245→6.202，与 switch_master_bed_north（z=6.288）组成暖白哑光一体双联框，围绕 master_bedside_cabinet_350_north 轴线 6.245 居中（镜像南侧方案A）；五孔＋可换USB-C；实际SKU/底盒深度、东墙暗管/可开槽性仍 site_pending"
+
+- id: switch_master_bed_north
+  room: master_bedroom
+  wall: w_mb_east
+  wall_side: west
+  type: switch_2way
+  x: 4.20
+  z: 6.288
+  height: 0.75
+  appearance: { style: warm_white_matte_modular, module: two_way_rocker, faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008, panel_group: { id: master_bed_north_double, role: south, center_spacing: 0.086, union_width: 0.172 } }
+  note: "DEC-2026-09-08-R1 北侧床头吸顶灯控制：z=6.288、h=0.75，与 sock_master_bed_l（z=6.202）组双联围绕北柜轴 6.245 居中；与 switch_master_bed_l（南床头）/switch_master_door（门口）构成三控（control_master_bed_door，switch_multiway，中途开关按接线序定，site_pending）"
 
 - id: sock_master_bed_r
   room: master_bedroom
@@ -149,6 +172,16 @@
   count: 2
   appearance: { style: warm_white_matte_modular, module: five_hole_replaceable_usb_c, faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008, panel_group: { id: master_bed_south_double, role: north, center_spacing: 0.086, union_width: 0.172 } }
   note: "方案A 南侧床头插座：z=8.512、h=0.75；与 switch_master_bed_l（z=8.598）组成暖白哑光一体双联框，模块中心距86mm、并集宽约172mm，围绕床头柜轴线z=8.555居中；五孔＋可换USB-C；施工条件仍 site_pending"
+
+- id: ac_panel_master
+  room: master_bedroom
+  wall: w_mb_east
+  wall_side: west
+  type: ac_controller
+  x: 4.20
+  z: 8.684
+  height: 0.75
+  note: "主卧空调线控器（DEC-2026-09-08-R1 全屋五房预留线控底盒+信号线管）：南床头双联南侧第三模块位（8.598+0.086），床头成组 h=0.75，贴合业主床头控制预期并避 w_strip_east 剪力墙门垛开盒；南帘堆叠关系与底盒施工仍 site_pending；品牌定标后按厂商线控规格终核"
 
 # net_master_tv 已删除（DEC-013 主卧取消电视位，不布网口）
 
@@ -197,11 +230,22 @@
 - id: switch_parent_door
   room: study
   wall: w_st_north
+  wall_side: south
   type: switch_2way
-  x: 6.00
+  x: 6.075
   z: 5.55
   height: 1.3
-  note: "西南次卧灯光双控（父母房门西侧实体门垛）"
+  note: "西南次卧灯光双控（父母房门西侧实体门垛；DEC-2026-09-08-R1 补声明 wall_side south；R2 由 x=6.00 移至门垛 [6.00,6.15] 中心 6.075——原位西半板面被北墙通顶衣柜（x[4.20,6.00]）东侧板遮挡；距 d_study 门洞边缘 0.075m 贴门套安装登记 warning）"
+
+- id: ac_panel_parent
+  room: study
+  wall: w_mb_east
+  wall_side: east
+  type: ac_controller
+  x: 4.20
+  z: 6.314
+  height: 0.7
+  note: "父母房空调线控器（DEC-2026-09-08-R1 全屋五房预留线控底盒+信号线管）：床头东墙，与 switch_parent_bed（z=6.40）/sock_parent_bed_l（z=6.60）组床头三联 h=0.7（取证发现门口门垛 x[6.00,6.15] 仅容一板且 switch_parent_door 西半已被衣柜侧板遮挡，线控器无处落位，改床头同主卧口径）；品牌中立，定标后按厂商线控规格终核，site_pending"
 
 - id: sock_parent_desk
   room: study
@@ -249,12 +293,13 @@
 - id: sock_study_extra
   room: bedroom_se
   wall: w_be_north
+  wall_side: south
   type: socket
   x: 14.5
   z: 5.55
   height: 0.3
   count: 1
-  note: "书房备用插座"
+  note: "书房备用插座（DEC-2026-09-08-R1 补声明 wall_side south）"
 
 - id: switch_study
   room: bedroom_se
@@ -266,16 +311,37 @@
   height: 1.3
   note: "书房灯光开关"
 
+- id: ac_panel_study
+  room: bedroom_se
+  wall: w_be_west
+  wall_side: east
+  type: ac_controller
+  x: 13.40
+  z: 7.12
+  height: 1.3
+  note: "书房空调线控器（DEC-2026-09-08-R1 全屋五房预留线控底盒+信号线管）：与 switch_study（z=7.0）组双联，距 d_bese 门洞边缘 0.57m；品牌中立，定标后按厂商线控规格终核，site_pending"
+
 # 儿童房（西北次卧）
 - id: sock_child_bed
   room: bedroom_nw
   wall: w_gbath_west
+  wall_side: west
   type: socket
   x: 5.60
   z: 3.30
   height: 1.2
   count: 1
-  note: "儿童床头插座（离地1.2m安全高度，DEC-017 随床头改东墙，原西墙位被衣柜挡）"
+  note: "儿童床头插座（离地1.2m安全高度，DEC-017 随床头改东墙，原西墙位被衣柜挡；DEC-2026-09-08-R1 补声明 wall_side west）"
+
+- id: switch_child_bed
+  room: bedroom_nw
+  wall: w_gbath_west
+  wall_side: west
+  type: switch_2way
+  x: 5.60
+  z: 3.214
+  height: 1.2
+  note: "儿童房床头灯光双控（DEC-2026-09-08-R1：与 sock_child_bed（z=3.30）组双联，h=1.2 与插座同安全高度；与门口 switch_child 构成双控 control_child_light）"
 
 - id: sock_child_desk
   room: bedroom_nw
@@ -298,11 +364,21 @@
   room: bedroom_nw
   wall: w_nw_south
   wall_side: north
-  type: switch
-  x: 4.35
+  type: switch_2way
+  x: 4.475
   z: 4.30
   height: 1.3
-  note: "儿童房灯光开关（B案 2026-08-21 原x=3.5被南墙衣柜埋掉，移至衣柜与门洞间0.1门垛旁；调整至门洞西侧实体门垛）"
+  note: "儿童房灯光开关（DEC-2026-09-08-R1：x=4.35 落入南墙通顶衣柜 AABB x[2.60,4.40] 被掩埋，移至衣柜东缘与门洞西缘间 0.15m 门垛中心 4.475；距 d_bnw 门洞边缘 0.075m 贴门套安装登记 warning；落实原注释'门垛旁'意图；type 随 control_child_light 双控角色由 switch 改 switch_2way）"
+
+- id: ac_panel_child
+  room: bedroom_nw
+  wall: w_nw_south
+  wall_side: north
+  type: ac_controller
+  x: 5.525
+  z: 4.30
+  height: 1.3
+  note: "儿童房空调线控器（DEC-2026-09-08-R1 全屋五房预留线控底盒+信号线管）：门东侧 0.15m 门垛中心，与 switch_child（门西侧门垛）分置门两侧；d_bnw 铰链在东、内开叶平面 x=5.45 不掩本垛（取证发现东墙 z=4.10 位在门扇 90° 开启面后方不可用，改此）；距段端 0.075m 贴角登记 warning；品牌中立，定标后按厂商线控规格终核，site_pending"
 
 - id: sock_child_ac
   room: bedroom_nw
@@ -391,12 +467,13 @@
 - id: sock_mbath_toilet
   room: master_bath
   wall: w_mbath_east
+  wall_side: west
   type: socket
   x: 2.60
   z: 1.5
   height: 0.3
   count: 1
-  note: "主卫马桶旁插座（智能盖预留）"
+  note: "主卫马桶旁插座（智能盖预留；DEC-2026-09-08-R1 补声明 wall_side west）"
 
 - id: switch_mbath
   room: master_bedroom
@@ -424,10 +501,21 @@
   wall_side: west
   type: socket
   x: 7.05
-  z: 3.55
-  height: 1.2
+  z: 3.882
+  height: 1.0
   count: 1
-  note: "2026-08-29 客卫南侧开放区实际 vanity 插座：东侧延伸实体墙西侧（wall_side=west），服务 vanity 中心 (6.90,3.90)，背面朝东、正面朝西，带防溅盒；墙体挂载与给电按现场复核"
+  note: "客卫开放洗漱区 vanity 插座·双联北位（DEC-2026-09-08-R1：由 z=3.55 墙角端点移至 z=3.882，与 sock_gbath_vanity_2 组双联、并集中心对齐 vanity 轴线 3.925；h=1.2→1.0 避镜面下缘 y=1.10（镜面 z[3.615,4.235]×y[1.10,2.00] 占满墙段），距台面 0.21m，带防溅盒；墙体挂载与给电按现场复核）"
+
+- id: sock_gbath_vanity_2
+  room: guest_bath
+  wall: w_gbath_east_open_vanity
+  wall_side: west
+  type: socket
+  x: 7.05
+  z: 3.968
+  height: 1.0
+  count: 1
+  note: "客卫开放洗漱区 vanity 插座·双联南位（DEC-2026-09-08-R1 业主拍板+1 位：吹风机/电动牙刷/剃须刀同用）；h=1.0 镜面下缘以下，带防溅盒；ordinary_power_service 回路成员；墙体挂载与给电按现场复核"
 
 - id: switch_gbath
   room: guest_bath
@@ -539,12 +627,23 @@
 # 走廊
 - id: switch_corridor
   room: living_dining
-  wall: w_gbath_east
+  wall: w_gbath_east_open_vanity
+  wall_side: east
   type: switch
   x: 7.20
   z: 4.10
   height: 1.3
-  note: "走廊灯光开关（DEC-014 w_kit_west 缩短后改挂客卫东墙走廊面 x=7.20；墙厚窄缝 0.1m：w_gbath_east 中线 x=7.10，点位取走廊面）"
+  note: "走廊灯光开关（DEC-2026-09-08-R1：改挂 w_gbath_east_open_vanity 归位意图坐标 (7.20,4.10)——原挂 w_gbath_east 但 z=4.10 超出该墙段 z[2.20,3.55]，渲染被钳至南端墙角偏移 0.55m；补声明 wall_side east 走廊面）"
+
+- id: switch_dining
+  room: living_dining
+  wall: w_gbath_east_open_vanity
+  wall_side: east
+  type: switch
+  x: 7.20
+  z: 3.98
+  height: 1.3
+  note: "餐桌吊灯墙控开关（DEC-2026-09-08-R1：落实 light_dining_pendant 原注释'开关在餐桌旁墙上h1.3'；距桌心 (7.90,3.45) 0.88m，与 switch_corridor 相邻组联）"
 
 # === 新增点位（2026-07-25 基线补齐） ===
 
@@ -574,12 +673,13 @@
 - id: sock_parent_curtain
   room: study
   wall: w_st_east
+  wall_side: west
   type: socket
   x: 7.20
   z: 9.50
   height: 2.5
   count: 1
-  note: "父母房电动窗帘电源"
+  note: "父母房电动窗帘电源（DEC-2026-09-08-R1 补声明 wall_side west）"
 
 # 书房电动窗帘
 - id: sock_study_curtain
@@ -680,7 +780,7 @@
   height: 2.8
   temp: 3000
   circuit: dining
-  note: "餐桌吊灯天花出线（DEC-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm"
+  note: "餐桌吊灯天花出线（DEC-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1 落实），距桌面75cm"
 
 # === 室内灯光方案（2026-08-12 灯光渲染系统；全屋 3000K 暖光，厨卫 4000K）===
 # 点位即水电交底单；type: pendant吊灯/dome吸顶/wall_lamp壁灯/downlight筒灯/led_strip灯带/track_light明装轨道灯
@@ -702,7 +802,7 @@
   height: 2.0
   temp: 3000
   circuit: tv_ambient
-  note: "电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-013）"
+  note: "电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-013；控制方式：灯带驱动遥控/APP，无墙控点位，DEC-2026-09-08-R1 业主确认方向，如需墙控另开迭代）"
 - id: light_master_dome
   room: master_bedroom
   type: dome
@@ -822,11 +922,37 @@
 # 客卫电热毛巾架
 - id: sock_gbath_towel
   room: guest_bath
-  wall: w_gbath_west
-  wall_side: east
+  wall: w_gbath_east
+  wall_side: west
   type: socket
-  x: 5.60
-  z: 3.20
+  x: 7.10
+  z: 3.05
   height: 1.2
   count: 1
-  note: "客卫电热毛巾架插座（2026-08-29 南段马桶区西墙，带防溅盒；回南天刚需，位置待量房确认）"
+  note: "客卫电热毛巾架插座（DEC-2026-09-09-R3：由西墙 (5.60,3.20) 迁东墙马桶上方——原位被 d_gbath 门扇铰链西移后的贴墙门叶盖住；马桶上方 h=1.2 带防溅盒，与 sock_gbath_toilet（h0.3）同柱竖向错开；回南天刚需，位置待量房确认）"
+
+# === 新增点位（2026-09-09 DEC-2026-09-09-R1 扫地机器人基站预留） ===
+
+# 客卫洗漱台下（主位，自动上下水版路线：接台盆给排水）
+- id: sock_gbath_robot
+  room: guest_bath
+  wall: w_gbath_east_open_vanity
+  wall_side: west
+  type: socket
+  x: 7.05
+  z: 4.10
+  height: 0.3
+  count: 1
+  note: "扫地机基站电源（DEC-2026-09-09-R1：主位客卫台盆下，东墙低位常插，带防溅盒；进水由 faucet_gbath_vanity 三通、排水接入台盆下水；台盆柜须改悬空/无底开放格藏基站（≥0.5m 净高），家具深化落实；客卫洗漱区南缘开放无门，机器人自由进出；基站尺寸待机型定标+量房核实）"
+
+# 客厅电视柜北段高柜底格（备用手动换水版路线：美观隐藏位，只用电）
+- id: sock_living_robot
+  room: living_dining
+  wall: w_st_east
+  wall_side: east
+  type: socket
+  x: 7.20
+  z: 6.40
+  height: 0.3
+  count: 1
+  note: "扫地机基站插座·客厅备用美观位（DEC-2026-09-09-R1）：电视柜北段通顶高柜（z5.55-6.90 深0.35）底格内；⚠️若启用此位，柜体深化时底格须做无底板开放格且加深至 ≥0.5m（基站进深约 0.45m），机器人东侧进出；与 sock_gateway 同柜异格，开放格+走线孔口径一致"

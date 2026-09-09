@@ -1,0 +1,28 @@
+iteration_id: guest-bath-door-hinge-20260909
+state: delivery_ready
+frozen: true
+alignment:
+  id: gbath-door-20260909
+  original_request: "客卫的门是不是换个方向开比较好？现在完全挡住马桶，而且毛巾架那个位置门会关不上"
+  normalized_decision: "核实两冲突成立（门叶挡马桶动线+扫掠撞毛巾架）→ 业主选方案A：d_gbath 铰链东缘改西缘（内开不变，门叶贴西墙），电热毛巾架+插座迁马桶上方东墙 h=1.2"
+  timestamp: 2026-09-09
+facts:
+  - "门洞 x[5.60,6.30]、原铰链东缘 x=6.30：叶开 90° 立 x=6.30 z[2.85,3.55]，叶尖距淋浴隔断 z≈2.80 仅 0.05m（confirmed，几何推算）"
+  - "毛巾架原位西墙 (5.60,3.20)：架面最近点距铰链 0.62m < 叶半径 0.70m（confirmed）"
+  - "西铰链后叶扫掠区 x[5.60,6.30]×z[2.85,3.55]，距马桶 AABB 最近 0.97m、距隔断 0.05m 净空（confirmed，运行时 rotY=90° 叶 @(5.60,3.20) 贴西墙复核）"
+changes:
+  - "config/layout/model-geometry.yaml: d_gbath hinge end→start（注释同步）"
+  - "config/electrical.yaml: sock_gbath_towel 西墙→东墙马桶上方 (7.10,3.05) h1.2 带防溅盒"
+  - "config/house.yaml: towel_set 注释同步落位口径"
+verification: "verify:all 0 error；test:server 540 pass；test:app 448 pass；typecheck 干净；运行时 AABB 复核"
+evidence:
+  - "tmp/screenshots/electrical-audit/guest_bath_door_hinge_west_after_r3.png"
+  - "tmp/screenshots/electrical-audit/guest_bath_door_hinge_west_inside_after_r3.png（小空间视角受限，以运行时坐标为权威证据）"
+followups:
+  - "毛巾架实体安装净空（马桶上方）量房终核；门套角部收口（铰链在西缘角柱）"
+r4_amendment:
+  date: 2026-09-09
+  issue: "R3 铰链西移后，门洞西缘顶墙角（x=5.60=西墙），渲染器把 90° 门叶中心落在西墙中线 → 门叶 x[5.58,5.62] 嵌墙不可见（穿模）"
+  fix: "门洞东移 0.10m 至 x[5.70,6.40]（offset 0.35→0.45），铰链留西缘；门叶 AABB x[5.68,5.72] 脱出墙体（西墙实体 x[5.54,5.66]），并获 0.10m 门垛"
+  decision: "业主拍板（否决改渲染器方案）"
+  verification: "verify:all 0 error；test:server 540 pass；运行时 AABB 复核 + 截图 guest_bath_door_visible_after_r4.png"

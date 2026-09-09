@@ -180,7 +180,7 @@ test('R9 master-bedroom furniture set places the 950 three-door wardrobe and rem
   }
   for (const type of ['mb_vanity_lower_board', 'mb_vanity_main_board']) {
     const board = master.find((item) => item.type === type);
-    assert.deepEqual(board, { type, wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 3.61, width: 1.38, depth: 0.565 });
+    assert.deepEqual(board, { type, wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 });
   }
   assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', x: 2.45, z: 4.59, rotation: 0 });
   assert.deepEqual(FURNITURE_DIMS.master_wardrobe_top_pelmet, { width: 0.95, depth: 0.58 });
@@ -334,14 +334,16 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
   const left = point('sock_master_bed_l');
   const right = point('sock_master_bed_r_head');
   const switchL = point('switch_master_bed_l');
+  const switchN = point('switch_master_bed_north');
   const lampL = point('light_master_wall_l');
   const lampR = point('light_master_wall_r');
-  for (const p of [left, right, switchL, lampL, lampR]) {
+  for (const p of [left, right, switchL, switchN, lampL, lampR]) {
     assert.equal(p.wall, 'w_mb_east', `${p.id} must stay on w_mb_east`);
     assert.equal(p.wall_side, 'west', `${p.id} must keep wall_side west`);
     assert.equal(p.x, 4.20);
   }
-  assert.equal(left.z, 6.245);
+  assert.equal(left.z, 6.202);
+  assert.equal(switchN.z, 6.288);
   assert.equal(right.z, 8.512);
   assert.equal(switchL.z, 8.598);
   assert.equal(lampL.z, 6.245);
@@ -354,18 +356,22 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
   assert.equal(lampR.wall, 'w_mb_east');
   assert.equal(lampL.wall_side, 'west');
   assert.equal(lampR.wall_side, 'west');
-  // 两侧统一 380×350×500 候选柜分别服务北/南床头点位；南侧是 172×86 暖白哑光一体双联框。
+  // 两侧统一 380×350×500 候选柜分别服务北/南床头点位；两侧均为 172×86 暖白哑光一体双联框（北侧 DEC-2026-09-08-R1 补齐）。
   assert.equal(left.height, 0.75);
   assert.equal(right.height, 0.75);
   assert.equal(switchL.height, 0.75);
+  assert.equal(switchN.height, 0.75);
   assert.deepEqual(left.appearance, {
     style: 'warm_white_matte_modular', module: 'five_hole_replaceable_usb_c',
     faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008,
+    panel_group: { id: 'master_bed_north_double', role: 'north', center_spacing: 0.086, union_width: 0.172 },
   });
   assert.equal(right.appearance?.module, 'five_hole_replaceable_usb_c');
   assert.equal(switchL.appearance?.module, 'two_way_rocker');
+  assert.equal(switchN.appearance?.module, 'two_way_rocker');
   assert.deepEqual(right.appearance?.panel_group, { id: 'master_bed_south_double', role: 'north', center_spacing: 0.086, union_width: 0.172 });
   assert.deepEqual(switchL.appearance?.panel_group, { id: 'master_bed_south_double', role: 'south', center_spacing: 0.086, union_width: 0.172 });
+  assert.deepEqual(switchN.appearance?.panel_group, { id: 'master_bed_north_double', role: 'south', center_spacing: 0.086, union_width: 0.172 });
 
   const bed = runtimeFurnitureAabb('bed_180');
   const northCabinet = runtimeFurnitureAabb('master_bedside_cabinet_350_north');
@@ -373,20 +379,25 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
   const leftBox = runtimeElectricalAabb(left.id);
   const rightBox = runtimeElectricalAabb(right.id);
   const switchBox = runtimeElectricalAabb(switchL.id);
+  const switchNBox = runtimeElectricalAabb(switchN.id);
   const lampLBox = runtimeElectricalAabb(lampL.id);
   const lampRBox = runtimeElectricalAabb(lampR.id);
 
-  // 点位与对应床头柜中心轴对齐；南侧双联框两模块中心距86mm，边缘无缝相接。
-  assert.ok(Math.abs(left.z! - (northCabinet.minZ + northCabinet.maxZ) / 2) < RUNTIME_EPS);
+  // 点位与对应床头柜中心轴对齐；两侧双联框两模块中心距86mm，边缘无缝相接。
+  assert.ok(Math.abs((left.z! + switchN.z!) / 2 - (northCabinet.minZ + northCabinet.maxZ) / 2) < RUNTIME_EPS);
   assert.ok(Math.abs(lampL.z! - (northCabinet.minZ + northCabinet.maxZ) / 2) < RUNTIME_EPS);
   assert.ok(Math.abs((right.z! + switchL.z!) / 2 - (southCabinet.minZ + southCabinet.maxZ) / 2) < RUNTIME_EPS);
   assert.ok(Math.abs(lampR.z! - (southCabinet.minZ + southCabinet.maxZ) / 2) < RUNTIME_EPS);
   assert.ok(Math.abs(switchL.z! - right.z! - 0.086) < RUNTIME_EPS);
+  assert.ok(Math.abs(switchN.z! - left.z! - 0.086) < RUNTIME_EPS);
   assert.ok(Math.abs(rightBox.maxZ - switchBox.minZ) < RUNTIME_EPS);
   assert.ok(Math.abs(switchBox.maxZ - rightBox.minZ - 0.172) < RUNTIME_EPS);
+  assert.ok(Math.abs(leftBox.maxZ - switchNBox.minZ) < RUNTIME_EPS);
+  assert.ok(Math.abs(switchNBox.maxZ - leftBox.minZ - 0.172) < RUNTIME_EPS);
 
   // 使用真实 runtime mesh，而非 FURNITURE_DIMS 推导：床 rail 包络 z[6.47,8.33]。
-  assert.ok(bed.minZ - leftBox.maxZ >= 0.182 - RUNTIME_EPS, `north socket-to-bed gap ${bed.minZ - leftBox.maxZ}`);
+  assert.ok(bed.minZ - leftBox.maxZ >= 0.225 - RUNTIME_EPS, `north socket-to-bed gap ${bed.minZ - leftBox.maxZ}`);
+  assert.ok(bed.minZ - switchNBox.maxZ >= 0.139 - RUNTIME_EPS, `north switch-to-bed gap ${bed.minZ - switchNBox.maxZ}`);
   assert.ok(bed.minZ - lampLBox.maxZ >= 0.185 - RUNTIME_EPS, `north lamp-to-bed gap ${bed.minZ - lampLBox.maxZ}`);
   assert.ok(rightBox.minZ - bed.maxZ >= 0.139 - RUNTIME_EPS, `south socket-to-bed gap ${rightBox.minZ - bed.maxZ}`);
   assert.ok(switchBox.minZ - bed.maxZ >= 0.225 - RUNTIME_EPS, `south switch-to-bed gap ${switchBox.minZ - bed.maxZ}`);
@@ -398,12 +409,13 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
   assert.ok(lampLBox.minX < 4.14 - RUNTIME_EPS && lampRBox.minX < 4.14 - RUNTIME_EPS, 'wall lamps must project into the master bedroom');
   assert.ok(4.14 - lampLBox.minX <= 0.190 + RUNTIME_EPS, `north lamp exceeds locked projection: ${4.14 - lampLBox.minX}`);
   assert.ok(4.14 - lampRBox.minX <= 0.190 + RUNTIME_EPS, `south lamp exceeds locked projection: ${4.14 - lampRBox.minX}`);
-  for (const [id, box] of [[left.id, leftBox], [right.id, rightBox], [switchL.id, switchBox], [lampL.id, lampLBox], [lampR.id, lampRBox]] as const) {
+  for (const [id, box] of [[left.id, leftBox], [right.id, rightBox], [switchL.id, switchBox], [switchN.id, switchNBox], [lampL.id, lampLBox], [lampR.id, lampRBox]] as const) {
     assert.equal(aabbIntersects(box, bed), false, `${id} must not intersect the real bed mesh AABB`);
   }
 
   // 86面板/壁灯共轴布置在床头柜上方，采用立面净距：柜顶0.505m，86面板底约0.707m。
   assert.ok(leftBox.minY - northCabinet.maxY >= 0.202 - RUNTIME_EPS, `north cabinet-to-socket elevation gap ${leftBox.minY - northCabinet.maxY}`);
+  assert.ok(switchNBox.minY - northCabinet.maxY >= 0.202 - RUNTIME_EPS, `north cabinet-to-switch elevation gap ${switchNBox.minY - northCabinet.maxY}`);
   assert.ok(lampLBox.minY - northCabinet.maxY >= 0.805 - RUNTIME_EPS, `north cabinet-to-lamp elevation gap ${lampLBox.minY - northCabinet.maxY}`);
   assert.ok(rightBox.minY - southCabinet.maxY >= 0.202 - RUNTIME_EPS, `south cabinet-to-socket elevation gap ${rightBox.minY - southCabinet.maxY}`);
   assert.ok(switchBox.minY - southCabinet.maxY >= 0.202 - RUNTIME_EPS, `south cabinet-to-switch elevation gap ${switchBox.minY - southCabinet.maxY}`);
@@ -440,12 +452,12 @@ test('R8 north wardrobe 950 door configurations use real mesh pivots without doo
 
 test('south-window-band low dresser uses the 2026-09-06 east-shifted transform and stays clear of constraints', () => {
   const dresser = placed('master_hot_season_low_dresser');
-  assert.deepEqual(dresser, { type: 'master_hot_season_low_dresser', x: 1.05, z: 9.31, rotation: 180 });
+  assert.deepEqual(dresser, { type: 'master_hot_season_low_dresser', x: 1.05, z: 9.20, rotation: 180 });
   assert.deepEqual(FURNITURE_DIMS.master_hot_season_low_dresser, { width: 1.40, depth: 0.48 });
-  // rotation=180 为偶数 quarter-turn：AABB x[0.35,1.75] z[9.07,9.55]，正面（局部 +z）转朝北对房间
+  // rotation=180 为偶数 quarter-turn：AABB x[0.35,1.75]，北移后 z 约[8.96,9.44]，正面（局部 +z）转朝北对房间
   const box = worldAabb(dresser);
   assert.ok(Math.abs(box.minX - 0.35) < GAP_EPS && Math.abs(box.maxX - 1.75) < GAP_EPS);
-  assert.ok(Math.abs(box.minZ - 9.07) < GAP_EPS && Math.abs(box.maxZ - 9.55) < GAP_EPS);
+  assert.ok(Math.abs(box.minZ - 8.96) < GAP_EPS && Math.abs(box.maxZ - 9.44) < GAP_EPS);
   // z ⊆ 南侧窗带 [8.95,9.70]（柜高 0.85 < sill 2.07 由 recipe 保证）
   assert.ok(box.minZ >= 8.95 - GAP_EPS && box.maxZ <= 9.70 + GAP_EPS);
   // 与床 AABB 不重叠

@@ -1,0 +1,66 @@
+iteration_id: electrical-upgrade-20260908
+objects:
+  corrections:
+    - id: switch_living_entrance
+      owner: electrical
+      change: "x 11.60→13.10 + wall_side south + note"
+      interfaces: ["control_living_entrance_corridor（id 不变，绑定不变）"]
+      validation: ["点位专项", "运行时 AABB 复核"]
+    - id: switch_living_corridor
+      owner: electrical
+      change: "z 5.55→5.35 + wall_side west + note"
+    - id: switch_child
+      owner: electrical
+      change: "x 4.35→4.475 + note（门垛贴装 warning 登记）"
+    - id: switch_corridor
+      owner: electrical
+      change: "wall→w_gbath_east_open_vanity + wall_side east + note"
+    - id: sock_gbath_vanity
+      owner: electrical
+      change: "z 3.55→3.882、h 1.2→1.0、note（镜面避让+双联）"
+    - id: sock_master_bed_l
+      owner: electrical
+      change: "z 6.245→6.202 + appearance.panel_group + note"
+      interfaces: ["与 switch_master_bed_north 组 master_bed_north_double 双联"]
+    - id: wall_side_backfill
+      owner: electrical+plumbing
+      change: "switch_parent_door/sock_study_extra/sock_child_bed/sock_mbath_toilet/sock_parent_curtain + plumbing toilet_mbath(west)/faucet_garden(east)"
+  additions:
+    - id: ac_panel_living/master/parent/child/study
+      owner: electrical（信号面板，非强电回路成员）
+      change: "新类型 ac_controller 点位×5"
+      interfaces: ["FixtureFactory recipe", "InfrastructureBuilder FIXTURE_TYPES", "schema z.enum", "types.ts union", "HouseScene fixtureLabel", "AnnotationRenderer/ProblemDetector unions"]
+      collision: "infrastructure 点位不参与碰撞（既有口径）"
+    - id: switch_master_bed_north
+      owner: electrical
+      interfaces: ["control_master_bed_door → switch_multiway(3)"]
+    - id: switch_child_bed
+      owner: electrical
+      interfaces: ["control_child_light → switch_2way(2)"]
+    - id: switch_dining
+      owner: electrical
+      interfaces: ["新增 control_dining → light_dining_pendant"]
+    - id: sock_gbath_vanity_2
+      owner: electrical
+      interfaces: ["ordinary_power_service 回路成员"]
+  topology:
+    - "control_master_bed_door: kind switch_2way→switch_multiway，+switch_master_bed_north"
+    - "control_child_light: kind switch→switch_2way，+switch_child_bed"
+    - "新增 control_dining；pending_parameters 补线控器/灯带控制口径"
+  code:
+    - "shared/types.ts: ElectricalPointType + 'ac_controller'；ElectricalControlKind + 'switch_multiway'"
+    - "shared/project-render-facts-schema.ts: 两处 z.enum 同步"
+    - "shared/electrical-lint.ts: switch_multiway 要求 ≥3 switches"
+    - "shared/render/FixtureFactory.ts: ac_controller recipe（86 面板+屏+键）"
+    - "shared/render/InfrastructureBuilder.ts: FIXTURE_TYPES + label"
+    - "app/src/render/HouseScene.ts: fixtureLabel 线控器"
+    - "app annotations 两处 type union"
+  tests:
+    - "master-bedroom-dressing.test.ts: 北床头双联新 datum（6.202/6.288/双联居中）"
+    - "cli-glb-export.test.ts: sock_master_bed_l [6.202,0.75] + 新点位存在性"
+  docs:
+    - "house.yaml mep 意图小节同步（线控器/餐桌吊灯/新增双控）"
+    - "docs/decision_log.md DEC-2026-09-08-R1"
+maintenance_boundaries:
+  - "ac_controller 只表达底盒+面板位；信号线规格/供电方式属厂商深化（site_pending）"
+  - "电视灯带控制声明为遥控/APP（无墙控）；如业主后续要墙控，另开迭代"

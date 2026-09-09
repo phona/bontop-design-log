@@ -8,7 +8,7 @@ interface ElectricalPoint {
   room: string;
   wall: string;
   wallSide?: 'north' | 'south' | 'east' | 'west';
-  type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb' | 'floor_socket'
+  type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb' | 'floor_socket' | 'ac_controller'
     | 'ceiling_light' | 'pendant' | 'dome' | 'wall_lamp' | 'downlight' | 'led_strip';
   x: number;
   z: number;
@@ -139,7 +139,7 @@ export class AnnotationRenderer {
   private renderElectrical(points: ElectricalPoint[]): void {
     const g = this.layerGroups.electrical;
     points.forEach(p => {
-      const icon = p.type === 'switch' || p.type === 'switch_2way'
+      const icon = p.type === 'switch' || p.type === 'switch_2way' || p.type === 'ac_controller'
         ? createSwitchIcon()
         : p.type === 'floor_socket'
         ? createFloorSocketIcon()

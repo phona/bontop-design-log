@@ -30,10 +30,11 @@
 - id: toilet_mbath
   room: master_bath
   wall: w_mbath_east
+  wall_side: west
   type: toilet
   x: 2.60
   z: 1.5
-  note: "主卫马桶给水"
+  note: "主卫马桶给水（DEC-2026-09-08-R1 补声明 wall_side west）"
 
 - id: drain_mbath_shower
   room: master_bath
@@ -59,7 +60,7 @@
   x: 7.05
   z: 3.90
   height: 0.84
-  note: "客卫洗手池龙头：复用标准 faucet 模型，东侧延伸实体墙西侧（wall_side=west），中心线 z=3.90，底座标高约0.84m，贴近0.77m台面并避开台盆；墙体挂载与给排水按现场复核"
+  note: "客卫洗手池龙头：复用标准 faucet 模型，东侧延伸实体墙西侧（wall_side=west），中心线 z=3.90，底座标高约0.84m，贴近0.77m台面并避开台盆；墙体挂载与给排水按现场复核（DEC-2026-09-09-R1：给水预留三通，兼扫地机基站进水；排水接台盆下水——该下水路由本身待现场确认）"
 
 - id: shower_gbath
   room: guest_bath
@@ -141,11 +142,12 @@
 - id: faucet_garden
   room: entry_garden
   wall: w_ent_west
+  wall_side: east
   type: faucet
   x: 10.80
   z: 1.5
   height: 0.8
-  note: "入户花园浇花水龙头"
+  note: "入户花园浇花水龙头（DEC-2026-09-08-R1 补声明 wall_side east）"
 
 - id: drain_garden
   room: entry_garden

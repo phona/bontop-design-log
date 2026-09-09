@@ -30,6 +30,7 @@ const FIXTURE_TYPES: Record<string, string> = {
   floor_socket: 'floor_socket',
   strong_panel: 'strong_panel',
   weak_panel: 'weak_panel',
+  ac_controller: 'ac_controller',
   faucet: 'faucet',
   faucet_outdoor: 'faucet_outdoor',
   toilet: 'toilet',
@@ -213,7 +214,7 @@ function buildElectrical(point: ElectricalPoint, wallSegments: ReadonlyMap<strin
   }
   placeModel(model, point, dimensions ? mountHeight! + panelHeight! / 2 : point.type === 'floor_socket' ? 0.05 : point.height!, wallSegments, dimensions?.frontProjection ?? 0);
   model.userData = metadata(point, 'electrical', {
-    label: point.type === 'strong_panel' ? '强电箱' : point.type === 'weak_panel' ? '弱电箱' : undefined,
+    label: point.type === 'strong_panel' ? '强电箱' : point.type === 'weak_panel' ? '弱电箱' : point.type === 'ac_controller' ? '线控器' : undefined,
     status: point.status,
     position_status: point.position_status,
     mount_height: dimensions ? mountHeight : undefined,

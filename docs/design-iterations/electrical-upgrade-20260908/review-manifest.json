@@ -1,0 +1,57 @@
+{
+  "iteration_id": "electrical-upgrade-20260908",
+  "state": "delivery_ready",
+  "dec": "DEC-2026-09-08-R1",
+  "scope": "全屋电气点位审计 + 修正包（4 项）+ 空调线控器×5 + 功能增补（北床头三控/儿童房双控/客卫+1/餐桌吊灯墙控/灯带控制声明）",
+  "verification": {
+    "verify:all": "0 error；点位专项 warning 14→5（switch_child 贴门套 0.075、ac_panel_child 贴角 0.075+贴门套 0.075、sock_child_ac 投影 0.45 随厂家深化、sock_balcony_waterheater 贴角既有；均 note 登记）",
+    "test:server": "pass（electrical-lint/render-facts-api/master-bedroom-dressing/cli-glb-export 四个文件断言按新 datum 更新）",
+    "test:app": "448/448 pass",
+    "typecheck": "tsc --noEmit 两侧干净",
+    "runtime_aabb": "17 个新/移点位浏览器运行时坐标与 design-datum 全部一致（误差 0）"
+  },
+  "evidence": {
+    "before": [
+      "tmp/screenshots/electrical-audit/entrance_switch_behind_cabinet_closeup_before_audit.png",
+      "tmp/screenshots/electrical-audit/master_south_bedside_panel_closeup_before_audit.png",
+      "tmp/screenshots/electrical-audit/guest_bath_vanity_corner_closeup_before_audit.png",
+      "tmp/screenshots/electrical-audit/child_switch_wardrobe_closeup_before_audit.png",
+      "tmp/screenshots/electrical-audit/child_south_wall_front_before_audit.png"
+    ],
+    "after": [
+      "tmp/screenshots/electrical-audit/entrance_east_pier_switch_ac_closeup_after_r1.png",
+      "tmp/screenshots/electrical-audit/entrance_cabinet_area_samecam_after_r1.png",
+      "tmp/screenshots/electrical-audit/master_south_bedside_triple_closeup_after_r1.png",
+      "tmp/screenshots/electrical-audit/master_north_bedside_double_closeup_after_r1.png",
+      "tmp/screenshots/electrical-audit/guest_bath_vanity_double_socket_after_r1.png",
+      "tmp/screenshots/electrical-audit/child_south_wall_front_after_r1.png",
+      "tmp/screenshots/electrical-audit/corridor_dining_switches_after_r1.png",
+      "tmp/screenshots/electrical-audit/child_bedside_double_after_r1.png",
+      "tmp/screenshots/electrical-audit/child_door_east_pier_ac_panel_after_r2.png",
+      "tmp/screenshots/electrical-audit/parent_bedside_triple_after_r2.png",
+      "tmp/screenshots/electrical-audit/study_door_ac_double_after_r2.png"
+    ],
+    "notes": "改前证据拍于同一源码版本；改后证据在无配置错误横幅状态下拍摄（拍摄前已确认 /api/config-status 全 ok 且页面无横幅）。ac_panel_child 东垛因门叶开启角度正拍受限，以斜拍图+运行时 AABB 双重佐证"
+  },
+  "reviews": {
+    "aesthetic": { "verdict": "PASS", "round2": "PASS", "notes": ["门两侧 h=1.3 对称 flank 构图成立", "父母房床头为'紧双联+邻近单插'而非等距一体三联（统一需移既有 sock_parent_bed_l，超范围，登记）", "儿童床头模块序（开关北+插座南）与主卧（插座北+开关南）镜像相反，房内自洽，品牌定标时可统一", "面板材质分层：主卧暖白哑光 vs 其余白框深件，品牌定标需业主确认全屋统一"] },
+    "functional": { "verdict": "PASS", "round2": "PASS", "notes": ["客卫双联板顶距镜面下缘 0.057m，龙头采购宜约束高度", "sock_gbath_vanity_2 与 switch_dining 同墙柱背对背（Δz=0.012，竖向错开 0.214m），双面开槽控制凿深防震裂镜面", "门垛贴装（switch_child/ac_panel_child）与门套收口需现场配合", "剪力墙（inferred shear）开盒可行性全部 site_pending 量房终核"] }
+  },
+  "post_review_fixes": [
+    "ac_panel_child：东墙 (5.60,4.10)→南墙门东垛 (5.525,4.30)——取证发现原位在 d_bnw 门扇 90° 开启面后方",
+    "ac_panel_parent：门口 w_st_north x=5.88→床头东墙 (4.20,6.314,h=0.7)——取证发现原位落入北墙通顶衣柜 x[4.20,6.00] 背后",
+    "switch_child：type switch→switch_2way（随双控角色语义同步）",
+    "switch_parent_door：x 6.00→6.075（DEC-2026-09-08-R2，业主拍板）——面板完全脱出衣柜东侧板遮挡，距门洞边缘 0.075m 登记 warning",
+    "两处修正后双评审复审 PASS"
+  ],
+  "followups_open": [
+    "switch_garden 位于花园西北角、夜归动线不顺（F15），是否移位/加人体感应",
+    "扫地机器人基站：已闭环（DEC-2026-09-09-R1，客卫台盆下主位+客厅备用，阳台方案否决回滚），见 docs/design-iterations/robot-dock-reservation-20260909/",
+    "主卫无电热毛巾架电源（F14，house spec 口径），是否增补",
+    "sock_child_ac 投影超墙段 0.45m + 距内机 1.20m，随空调厂家深化复核",
+    "电视灯带控制已声明遥控/APP（无墙控）；如需墙控点位另开迭代",
+    "文档漂移：house.yaml 父母房注释'东墙床头插座'、mep 小节'主卧预留网线'、sock_living_water 注释距离，待统一",
+    "空调线控器信号线规格/供电方式随品牌定标厂商深化（site_pending）"
+  ],
+  "git": "本轮未执行任何 git 操作"
+}

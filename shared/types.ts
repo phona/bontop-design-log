@@ -735,6 +735,7 @@ export type ElectricalPointType =
   | 'floor_socket'
   | 'strong_panel'
   | 'weak_panel'
+  | 'ac_controller'
   | 'ceiling_light'
   | 'pendant'
   | 'dome'
@@ -787,7 +788,7 @@ export interface ElectricalPoint {
 export type ElectricalTopologyStatus = 'confirmed' | 'proposed' | 'pending';
 export type ElectricalPanelKind = 'strong' | 'weak';
 export type ElectricalCircuitPurpose = 'lighting' | 'hvac_power' | 'dedicated_load' | 'ordinary_power';
-export type ElectricalControlKind = 'switch' | 'switch_2way';
+export type ElectricalControlKind = 'switch' | 'switch_2way' | 'switch_multiway';
 
 export interface ElectricalTopologyPanel {
   id: string;
@@ -957,11 +958,31 @@ export interface HvacDiagram {
   reference_constraints: HvacReferenceConstraint[];
 }
 
+export interface HvacLoadDesignRoom {
+  room: string;
+  basis: string;
+  load_kw: number;
+  indoor: string;
+  note?: string;
+}
+
+export interface HvacLoadDesign {
+  status: 'proposed' | 'confirmed';
+  basis: string;
+  indoor_nominal_kw_total: number;
+  outdoor_nominal_kw: number;
+  connection_ratio: string;
+  diversity_note?: string;
+  budget_impact?: string;
+  rooms: HvacLoadDesignRoom[];
+}
+
 export interface ProjectHvacFacts {
   plans: Array<{
     id: string;
     kind: 'vrf_ducted';
     outdoor: VrfOutdoorUnit;
+    load_design?: HvacLoadDesign;
     diagram: HvacDiagram;
   }>;
 }
@@ -1102,6 +1123,8 @@ export interface FurnishingItem {
   wall?: string;
   wall_side?: WallSide;
   along?: number;
+  /** Minimum finish-face retreat for a wall-anchored body (metres). */
+  wall_clearance?: number;
   /** Declarative dimensions for a continuous cabinet run (metres). */
   length?: number;
   depth?: number;
@@ -1130,6 +1153,7 @@ export interface PlacedFurnishing {
   wall?: string;
   wall_side?: WallSide;
   along?: number;
+  wall_clearance?: number;
   length?: number;
   depth?: number;
   cabinetHeight?: number;
@@ -1196,6 +1220,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   // DEC-045 主卫东墙独立对象：rotation=270 后 width 沿墙 z、depth 朝 west；
   // wall anchor 是自身中心，local y 才是高度层次；柜体与悬浮板沿墙同轴组成一套墙面家具。
   mb_vanity_base_cabinet: { width: 1.38, depth: 0.565 }, // 2026-09-07：1.38m×0.565m×0.62m；AABB x[1.975,2.54] z[2.92,4.30]，同时避开东墙与主卫南墙
+  mirror_cabinet_gbath: { width: 0.70, depth: 0.14 }, // DEC-2026-09-09-R2 客卫镜柜（y[1.10,2.00] 挂墙，沿墙 0.70m）
   mb_vanity_lower_board: { width: 1.38, depth: 0.565 }, // 下部悬浮板与底柜同包络，北端贴主卫南墙卧室侧完成面 z=2.92
   mb_vanity_main_board: { width: 1.38, depth: 0.565 }, // 主板与下板同宽同深，同轴止于 z[2.92,4.30]
   condensate_pipe_ac_outlet: { width: 0.24, depth: 0.46 }, // ac_master 内冷凝水出口→延伸空调盒/衣柜顶部服务带；厂家出口位置 pending

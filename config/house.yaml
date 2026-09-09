@@ -375,6 +375,8 @@ mechanical_electrical_plumbing:
       - "客厅电视墙预留 4–5 个插座"
       - "厨房预留 6–8 个插座（含洗碗机、净水器、垃圾处理器）"
       - "卫生间预留智能马桶、电热毛巾架电源"
+      - "DEC-2026-09-08-R1：VRF 五房内机各预留线控器底盒+信号线管（ac_panel_*，品牌中立）；餐桌吊灯墙控 switch_dining；主卧北床头/儿童房床头灯光双控已补；客卫洗漱台插座双联"
+      - "DEC-2026-09-09-R1：扫地机器人基站——主位客卫洗漱台下（sock_gbath_robot，自动上下水接台盆三通/下水；台盆柜改悬空/无底开放格待家具深化；阳台路线因厨房-阳台门日常关闭被否决并撤销）；客厅电视柜底格保留电位备用（sock_living_robot，手动换水版美观位）"
     smart_home:
       level: "B"
       description: "智能开关零线 + 网关位 + 电动窗帘电源 + 人体传感器位"
@@ -422,11 +424,11 @@ furnishings:
     - { type: faucet }                                           # 随台盆外移（预算 count-only），给水见 plumbing.yaml faucet_mbath_vanity
     - { type: master_dressing_table, x: 0.425, z: 6.05, rotation: 90 } # 2026-09-04 R1 候选未冻结：贴窗梳妆位——900W×450D×750H 四腿开放式独立桌贴西侧北段玻璃；AABB x[0.20,0.65] z[5.60,6.50]；rotation=90 局部长边沿世界 z、正面（抽屉/座位侧）朝东，使用者坐东侧面向西玻璃；桌背（西缘 x=0.20）与玻璃幕墙 x=0 留约 0.20m 通风/冷凝缝；西窗帘线 x[1.10,1.35] 在桌东侧，不压帘；北缘避门扇扫掠 z≤5.55
     - { type: dressing_stool, x: 0.42, z: 6.05, rotation: 90 } # 2026-09-04 R1 候选未冻结：随桌贴窗，收纳态完整收入桌下（AABB x[0.22,0.62] z[5.84,6.26] ⊂ 桌 footprint），使用时向东拉出
-    - { type: master_hot_season_low_dresser, x: 1.05, z: 9.31, rotation: 180 } # 2026-09-06：向东微调0.05m以修复穿模；南侧窗带轻中古六抽矮柜 1400W×480D×850H（h<2.07 不挡窗带）；AABB x[0.35,1.75] z[9.07,9.55]；rotation=180 局部 +z 正面转朝北、抽屉面对房间；职责：热季折叠衣物+衣柜 overflow（不放内衣/睡衣/脏衣/洗护——那些归 DEC-045）；西端距西帘堆叠侧留余量、东侧远离 sock_master_bed_r/sock_master_curtain 点位；南帘堆叠端 site_pending
+    - { type: master_hot_season_low_dresser, x: 1.05, z: 9.20, rotation: 180 } # 2026-09-08：北移避开西南圆弧玻璃幕；1400W×480D×850H（h<2.07 不挡窗带），抽屉朝北；西端距西帘堆叠侧留余量，南帘堆叠端 site_pending
     # DEC-045：底柜保留原位；上下双层悬浮板共用 wall=w_mbath_east、wall_side=west、rotation=270，贴墙西侧完成面，不再从衣柜回退。
-    - { type: mb_vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61 } # 2026-09-07：1.38m×0.565m×0.62m；中心(2.2575,3.61)，AABB x[1.975,2.54]、z[2.92,4.30]、y[0,0.62]；北端贴主卫南墙卧室侧完成面，东端贴 w_mbath_east 西完成面
-    - { type: mb_vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565 } # 下悬浮板与底柜同包络 x[1.975,2.54] z[2.92,4.30]，y[0.965,1.035]，不跨入主卫
-    - { type: mb_vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565 } # 上悬浮板与底柜同轴同包络，y[1.515,1.585]，南端仍与衣柜侧 z=4.30 对齐
+    - { type: mb_vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, wall_clearance: 0.015 } # 2026-09-07：1.38m×0.565m×0.62m；主体从东墙完成面退让15mm，北端与主卫南墙完成面保持 site_trim 收口
+    - { type: mb_vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 下悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
+    - { type: mb_vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 上悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
     - { type: condensate_pipe_ac_outlet, x: 3.80, z: 5.10, rotation: 0 } # coordination schematic/pending：ac_master 内厂家冷凝水出口未现场确认；独立圆管段接至主卧东墙贴墙 run，不接 return/supply 格栅。
     - { type: mb_vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.70 } # 2026-09-07：沿 w_mbath_east 西侧完成面内留约40mm贴墙走，管心 x=2.50、z=3.10..4.30；白色平直包边与墙面收口，南端由 service_chase 的 L 形白色 trim 连续收至 w_mbath_south bedroom-side finish z=2.92，管线仅HVAC检视态显示。
     - { type: mb_vanity_pvc_wardrobe_entry, x: 4.10, z: 4.62, rotation: 0 } # 延伸空调盒/通顶衣柜顶部服务带西行至衣柜东缘 (2.925,4.62)；仅检视态显示，柜体主体保留。
@@ -439,7 +441,7 @@ furnishings:
     # 房间 x∈[2.60,5.60] z∈[1.10,4.30]，南门 d_bnw @(5.0,4.30) swing x∈[4.55,5.45] z∈[3.40,4.30]
     - { type: bed_150, x: 4.60, z: 2.30, rotation: 270 }       # 床头靠东墙，1.5m床改善通道（DEC-013）
     - { type: wardrobe_180, x: 3.50, z: 4.00, rotation: 0 }    # B案（2026-08-21 业主拍板）南墙西段通顶柜；x∈[2.6,4.4]避门洞4.55；柜前通道0.65m；推拉门（DEC-013）；2026-08-26 上方为南墙边吊（底2.50m）：柜体2.40+顶封板0.10抵边吊底
-    - { type: desk, x: 2.825, z: 3.00, rotation: 90, width: 1.2, depth: 0.45 }  # B案：窄桌贴西玻璃（桌高0.75 ≪ sill 2.07 不挡窗带，采光位）；西/北墙均玻璃幕不可挂载，电位改地插
+    - { type: desk, x: 2.90, z: 2.10, rotation: 90, width: 1.2, depth: 0.45 }  # B案：窄桌靠西侧采光位；东缘避开 w_mbath_east 实体墙，北移避开书桌椅重叠，西/北墙均玻璃幕不可挂载，电位改地插
     - { type: chair, x: 3.35, z: 3.00, rotation: 270 }         # B案书桌椅（桌-床间0.5档，现实可推入桌下）
     - { type: shelf, x: 3.00, z: 1.30, rotation: 0 }           # DEC-023 西北角置物架（贴北墙+西墙转角，书/杂物开架收纳，上飘窗窗下墙；窗位 inferred，落位待量房复核）
     - { type: mattress_150 }
@@ -513,7 +515,7 @@ furnishings:
     - { type: water_heater, x: 7.30, z: 1.00, rotation: 270 }
     - { type: ceiling_light }
   master_bath:
-    - { type: toilet, x: 2.30, z: 1.50, rotation: 270 }  # 2026-08-21 落位：贴东墙面朝西，对齐马桶给水/插座 z=1.5
+    - { type: toilet, x: 2.275, z: 1.50, rotation: 270 }  # 2026-09-08：西移25mm，使马桶东缘与 w_mbath_east 中心线齐平且不跨入实体墙
     - { type: shower_set }
     - { type: towel_set, x: 0.24, z: 2.23, rotation: 0 } # 暂定：来自 vanity/plumbing anchor 的设计位置，待量房确认
     # vanity/faucet 已外移至套间条带（2026-08-25，见 master_bedroom furnishings）
@@ -525,9 +527,10 @@ furnishings:
     - { type: faucet }
     - { type: toilet, x: 6.75, z: 3.05, rotation: 270 }      # 2026-08-29 修正：靠东墙坐东朝西；真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于玻璃隔断南侧且不越东墙；南门洞西移后避让 d_gbath 内开扫掠
     - { type: shower_set }
-    - { type: towel_set }                                      # count-only：毛巾位待量房后落在马桶区实体墙可用段，避免与门扇/洁具冲突
+    - { type: towel_set }                                      # count-only：毛巾架落位已定——马桶上方东墙（sock_gbath_towel，DEC-2026-09-09-R3 随门铰链西移迁出西墙）；量房复核安装净空
     - { type: ceiling_light }
     - { type: exhaust_fan, x: 6.35, z: 2.45 }                # 北侧淋浴区吊顶
+    - { type: mirror_cabinet_gbath, wall: w_gbath_east_open_vanity, wall_side: west, rotation: 270, along: 0.375, wall_clearance: 0.0 } # 2026-09-09 DEC-2026-09-09-R2 候选未冻结：镜柜（0.70×0.90×0.14，y[1.10,2.00]）替换台盆内置平镜；顶柜/层板暂不做（业主定"先一"）。挂在 placed 末尾，保持 vanity:0/toilet:1/exhaust_fan:2 的 GLB 节点序号不变
   balcony:
     # 洗烘叠放贴西墙（给水 faucet_balcony_washer / 墙排 drain_balcony_washer / 插座 sock_balcony_washer 均在 w_balc_west z=1.5）
     - { type: washer, x: 5.95, z: 1.50, rotation: 90 }   # 10kg 滚筒贴西墙面朝东；与插座/给水偏差 0.35m

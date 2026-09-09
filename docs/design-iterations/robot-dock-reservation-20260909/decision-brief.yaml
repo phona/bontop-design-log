@@ -1,0 +1,43 @@
+iteration_id: robot-dock-reservation-20260909
+state: delivery_ready
+frozen: true
+alignment:
+  id: robot-dock-20260909-q1-q2
+  original_request: "有没有给扫地机器人规划用电还有上下水？点位差不多就行，不用细究，但得合理、使用方便、美观"
+  normalized_decision: "现状审计（无规划）→ 初答双预留（阳台+客厅）→ 业主补充约束'阳台门不能常开'→ 重审后改案：主位客卫洗漱台下（自动上下水接台盆三通/下水，台盆柜改悬空/无底开放格待家具深化），客厅电视柜底格电位保留备用；阳台预留全部撤销"
+  timestamp: 2026-09-09
+  history: "中途曾按'双预留'落盘阳台位（sock_balcony_robot+三通/地漏注记），业主补充门常闭约束后回滚，配置未留残留"
+priority:
+  - 无门阻隔（机器人自由进出）
+  - 上下水就近（穿墙走管最小化）
+  - 美观隐藏（基站不露于主视线区）
+allowed_scope:
+  - config/electrical.yaml
+  - config/plumbing.yaml
+  - config/electrical-topology.yaml
+  - config/house.yaml（mep 意图行）
+  - docs/design-iterations/robot-dock-reservation-20260909/*
+  - docs/decision_log.md
+forbidden:
+  - 家具几何改动（台盆柜悬空改造只登记为家具深化 follow-up，本轮不动模型）
+  - 几何/吊顶/HVAC 路由
+  - git 操作
+open_questions:
+  - id: vanity_redesign
+    status: pending
+    question: "客卫台盆柜改悬空/无底开放格（净高 ≥0.5m、进深 ≥0.5m）藏基站"
+    handling: "家具深化阶段落实；选型可参考成品'扫地机基站浴室柜'。2026-09-09 R2 进展：台盆上方储物主层已定镜柜（mirror_cabinet_gbath 候选入模型，替换台盆内置平镜；顶柜/层板暂不做，业主定'先一'）；报价 spec 80cm vs 模型台盆 0.70m 的规格漂移随柜体深化一并核对"
+  - id: vanity_drain_route
+    status: site_pending
+    question: "客卫台盆下水路由本身待现场确认（既有口径），基站排水随其三通"
+    handling: "量房/水电交底终核"
+  - id: dock_model
+    status: user_decision
+    question: "基站具体机型尺寸（上下水模块高度/进深）"
+    handling: "入住采购前复核点位与柜格"
+acceptance:
+  commands:
+    - npm run verify:all
+    - npm run test:server
+    - npm run typecheck
+  evidence: "运行时坐标复核 + 客卫台盆区改后截图"

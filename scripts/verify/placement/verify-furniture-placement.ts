@@ -125,6 +125,7 @@ const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['master_dressing_table', 'dressing_stool'], // 专用凳明确收进梳妆台台下，平面 footprint 可重叠但高度不冲突
   ['master_wardrobe_top_pelmet', 'master_north_wall_wardrobe_950'], // 950衣柜顶部仅保留细收口，视觉同高但不承担 HVAC 责任
   ['bed_180', 'master_bedside_tray_south'], // 床架集成托盘位于床投影内，独立校验收起/使用态
+  ['vanity', 'mirror_cabinet_gbath'], // DEC-2026-09-09-R2 镜柜挂墙位于台盆正上方（y[1.10,2.00] vs 台盆 ≤0.79），高度不冲突，平面 footprint 投影重叠属预期
   // 2026-09-03：旧重型器械（squat_rack/barbell_olympic/weight_plate_set/rubber_training_mat）退出书房，相关重叠豁免同步删除。
 ];
 
