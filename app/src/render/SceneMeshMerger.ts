@@ -13,7 +13,7 @@ function textureId(texture: THREE.Texture | null | undefined): string {
   return texture ? texture.uuid : '-';
 }
 
-function materialKey(material: THREE.Material): string {
+export function materialKey(material: THREE.Material): string {
   const m = material as THREE.MeshStandardMaterial;
   return [
     material.type,
@@ -38,7 +38,7 @@ function materialKey(material: THREE.Material): string {
   ].join('|');
 }
 
-function geometrySignature(geometry: THREE.BufferGeometry): string {
+export function geometrySignature(geometry: THREE.BufferGeometry): string {
   const attrs = Object.keys(geometry.attributes).sort().join(',');
   return `${attrs}|${geometry.index ? 'indexed' : 'plain'}`;
 }

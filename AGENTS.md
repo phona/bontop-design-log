@@ -82,3 +82,15 @@
   ```
 - 第一人称 pitch 限制 ±80°，旋转带平滑阻尼。禁止移除 clamp 或改为无平滑直接赋值。
 - `CameraAnimator.interrupt()` 必须停在当前位置，禁止跳到动画终点。
+
+## 渲染性能铁律
+
+- 玻璃材质默认禁用 `transmission`（会触发 three.js 全场景二次渲染，draw call 翻倍），走 `transparent + opacity` 快路径；高保真仅在导出/取证时经工具栏「玻璃质感」开关临时开启。新增玻璃类材质必须走 `BrowserSceneMaterials.registerGlass` 注册，禁止直接写死 `transmission > 0`。
+- 静态 unit 经 `SceneBatcher` 跨 unit 合批为 `BatchedMesh`：电气点位（`electrical:*`）、装饰层 plumbing marker、HVAC 实体（`HVAC_CONFIRMED_ENTITIES`）、铰链门。**家具不合批**（碰撞分析需逐 unit 改 emissive）；滑动门、窗帘、灯具等有动态行为的不合批。新增需要动态改材质/显隐/开合的零件不得加入合批 scope，或在 mesh 上标 `userData.noBatch`。
+- 合批后拾取走 `batchId → batchUserData` 桥接（`targetFromIntersects`）；unit 级显隐用 `batcher.setUnitVisible` 桥接；统一换色用 `batcher.updateScopeMaterials` 桥接（见 `setDoorMaterial`）；`hvac-export-check` 已识别批次元数据，统计实体时不要绕过它直接遍历场景。
+- GLB 导出前后必须 `restoreStaticBatches` / `reapplyStaticBatches`（GLTFExporter 不认 BatchedMesh），且 restore 必须先于 `getHvacExportStatus`。
+- 修改 `SceneBatcher`、`SceneMeshMerger` 或玻璃材质链路后，必须跑：
+  ```bash
+  npm run test:app
+  npm run typecheck
+  ```

@@ -22,6 +22,19 @@ export function collectHvacExportContents(root: THREE.Object3D): HvacExportConte
       if (type === 'hvac_equipment') equipment.add(objectId);
       if (type === 'hvac_terminal') terminals.add(objectId);
     }
+    // 合批 mesh 已从树上摘下，实体元数据在批次的 batchUserData 里（导出前 restoreStaticBatches 会挂回）
+    const batchUserData = object.userData?.isSceneBatch
+      ? (object.userData.batchUserData as Map<number, Record<string, unknown>> | undefined)
+      : undefined;
+    if (batchUserData) {
+      for (const data of batchUserData.values()) {
+        const batchedType = data.type as string | undefined;
+        const batchedObjectId = data.objectId;
+        if (typeof batchedObjectId !== 'string') continue;
+        if (batchedType === 'hvac_equipment') equipment.add(batchedObjectId);
+        if (batchedType === 'hvac_terminal') terminals.add(batchedObjectId);
+      }
+    }
     for (const child of object.children) visit(child);
   };
   visit(root);

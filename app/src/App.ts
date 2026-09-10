@@ -25,6 +25,7 @@ import { SunlightSystem } from './render/SunlightSystem.js';
 import { InteriorLightingSystem } from './render/InteriorLightingSystem.js';
 import { SunlightPanel } from './ui/SunlightPanel.js';
 import { SunlightButton } from './ui/SunlightButton.js';
+import { GlassFidelityButton } from './ui/GlassFidelityButton.js';
 
 const SUNLIGHT_STORAGE_KEY = 'sunlight-enabled';
 import { DaylightHeatmap } from './render/analysis/DaylightHeatmap.js';
@@ -90,6 +91,7 @@ export class App {
   private sunlightEnabled = false;
   private interiorLighting: InteriorLightingSystem | null = null;
   private sunlightButton: SunlightButton | null = null;
+  private glassFidelityButton: GlassFidelityButton | null = null;
   private daylightHeatmap: DaylightHeatmap | null = null;
   private humidityOverlay: HumidityOverlay | null = null;
   private humidityButton: HumidityButton | null = null;
@@ -243,6 +245,7 @@ export class App {
 
     this.setupSunlight();
     this.setupHumidity();
+    this.setupGlassFidelity();
     this.updateModeIndicator();
     this.requestRender();
     this.readyState = 'ready';
@@ -279,11 +282,30 @@ export class App {
   }
 
   private async exportGlb(): Promise<{ blob: Blob; hvac: ReturnType<HouseScene['getHvacExportStatus']> }> {
-    const hvac = this.houseScene.getHvacExportStatus();
-    if (hvac.required && !hvac.ready) {
-      throw new Error(`GLB 导出已阻止：HVAC 缺失 ${hvac.missing.join(', ')}`);
+    // GLTFExporter 不认 BatchedMesh 且 HVAC 导出校验要看原始 mesh：先挂回，完成后重新合批
+    this.houseScene.restoreStaticBatches();
+    try {
+      const hvac = this.houseScene.getHvacExportStatus();
+      if (hvac.required && !hvac.ready) {
+        throw new Error(`GLB 导出已阻止：HVAC 缺失 ${hvac.missing.join(', ')}`);
+      }
+      return { blob: await exportObjectTreeToGlb(this.houseScene.getExportRoot()), hvac };
+    } finally {
+      this.houseScene.reapplyStaticBatches();
     }
-    return { blob: await exportObjectTreeToGlb(this.houseScene.getExportRoot()), hvac };
+  }
+
+  private setupGlassFidelity(): void {
+    this.glassFidelityButton = new GlassFidelityButton({
+      onToggle: () => this.setGlassHighFidelity(!this.houseScene.getGlassHighFidelity()),
+      getActive: () => this.houseScene.getGlassHighFidelity(),
+    });
+  }
+
+  private setGlassHighFidelity(enabled: boolean): void {
+    this.houseScene.setGlassHighFidelity(enabled);
+    this.glassFidelityButton?.sync();
+    this.requestRender();
   }
 
   private setupSunlight(): void {

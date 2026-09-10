@@ -3,10 +3,55 @@ import * as THREE from 'three';
 const GLASS_COLOR = 0x88ccff;
 const GLASS_OPACITY = 0.6;
 
+interface GlassTransmissionSpec {
+  transmission: number;
+  ior: number;
+  thickness: number;
+  attenuationDistance: number;
+}
+
 /** Browser-only material factory for presentation-specific procedural materials. */
 export class BrowserSceneMaterials {
   private flutedGlassTexture: THREE.CanvasTexture | null = null;
   private blindSlatTexture: THREE.CanvasTexture | null = null;
+  // transmission>0 会让 three.js 每帧把整帧不透明场景先渲进 transmission render target
+  // （全场景画两遍，draw call 翻倍），默认走 opacity 快路径，高保真仅在导出/取证时开启。
+  private glassHighFidelity = false;
+  private glassRegistry = new Map<THREE.MeshPhysicalMaterial, GlassTransmissionSpec>();
+
+  get glassHighFidelityEnabled(): boolean {
+    return this.glassHighFidelity;
+  }
+
+  setGlassHighFidelity(enabled: boolean): void {
+    this.glassHighFidelity = enabled;
+    for (const [material, spec] of this.glassRegistry) {
+      this.applyGlassMode(material, spec);
+    }
+  }
+
+  // 场景重建时旧玻璃材质随 mesh 一起销毁，注册表同步清空防泄漏。
+  clearGlassRegistry(): void {
+    this.glassRegistry.clear();
+  }
+
+  private registerGlass(material: THREE.MeshPhysicalMaterial, spec: GlassTransmissionSpec): THREE.MeshPhysicalMaterial {
+    this.glassRegistry.set(material, spec);
+    this.applyGlassMode(material, spec);
+    return material;
+  }
+
+  private applyGlassMode(material: THREE.MeshPhysicalMaterial, spec: GlassTransmissionSpec): void {
+    if (this.glassHighFidelity) {
+      material.transmission = spec.transmission;
+      material.ior = spec.ior;
+      material.thickness = spec.thickness;
+      material.attenuationDistance = spec.attenuationDistance;
+    } else {
+      material.transmission = 0;
+    }
+    material.needsUpdate = true;
+  }
 
   makeFrostedPrivacyMaterial(): THREE.MeshStandardMaterial {
     return new THREE.MeshStandardMaterial({
@@ -21,35 +66,27 @@ export class BrowserSceneMaterials {
   }
 
   makeLowEGlassMaterial(): THREE.MeshPhysicalMaterial {
-    return new THREE.MeshPhysicalMaterial({
+    return this.registerGlass(new THREE.MeshPhysicalMaterial({
       color: GLASS_COLOR,
       transparent: true,
       opacity: GLASS_OPACITY,
-      transmission: 0.92,
-      ior: 1.5,
-      thickness: 0.02,
-      attenuationDistance: 0.5,
       roughness: 0.12,
       metalness: 0,
       side: THREE.DoubleSide,
       depthWrite: false,
-    });
+    }), { transmission: 0.92, ior: 1.5, thickness: 0.02, attenuationDistance: 0.5 });
   }
 
   makeShowerScreenMaterial(): THREE.MeshPhysicalMaterial {
-    return new THREE.MeshPhysicalMaterial({
+    return this.registerGlass(new THREE.MeshPhysicalMaterial({
       color: 0xdff4ff,
       transparent: true,
       opacity: 0.24,
-      transmission: 0.96,
-      ior: 1.5,
-      thickness: 0.012,
-      attenuationDistance: 1,
       roughness: 0.08,
       metalness: 0,
       side: THREE.DoubleSide,
       depthWrite: false,
-    });
+    }), { transmission: 0.96, ior: 1.5, thickness: 0.012, attenuationDistance: 1 });
   }
 
   makeFlutedGlassMaterial(paneWidth: number): THREE.MeshPhysicalMaterial {
@@ -59,18 +96,14 @@ export class BrowserSceneMaterials {
       canvas.height = 4;
       const context = canvas.getContext('2d');
       if (!context) {
-        return new THREE.MeshPhysicalMaterial({
+        return this.registerGlass(new THREE.MeshPhysicalMaterial({
           color: GLASS_COLOR,
           transparent: true,
           opacity: GLASS_OPACITY,
-          transmission: 0.92,
-          ior: 1.5,
-          thickness: 0.02,
-          attenuationDistance: 0.5,
           roughness: 0.05,
           metalness: 0,
           side: THREE.DoubleSide,
-        });
+        }), { transmission: 0.92, ior: 1.5, thickness: 0.02, attenuationDistance: 0.5 });
       }
       const period = 32;
       for (let x = 0; x < canvas.width; x++) {
@@ -86,18 +119,14 @@ export class BrowserSceneMaterials {
     const stripes = this.flutedGlassTexture.clone();
     stripes.needsUpdate = true;
     stripes.repeat.x = Math.max(1, Math.round(paneWidth / 0.012));
-    const material = new THREE.MeshPhysicalMaterial({
+    const material = this.registerGlass(new THREE.MeshPhysicalMaterial({
       color: GLASS_COLOR,
       transparent: true,
       opacity: GLASS_OPACITY,
-      transmission: 0.92,
-      ior: 1.5,
-      thickness: 0.02,
-      attenuationDistance: 0.5,
       roughness: 0.05,
       metalness: 0,
       side: THREE.DoubleSide,
-    });
+    }), { transmission: 0.92, ior: 1.5, thickness: 0.02, attenuationDistance: 0.5 });
     material.roughness = 0.5;
     material.roughnessMap = stripes;
     material.bumpMap = stripes;
@@ -170,6 +199,7 @@ export class BrowserSceneMaterials {
     this.flutedGlassTexture = null;
     this.blindSlatTexture?.dispose();
     this.blindSlatTexture = null;
+    this.glassRegistry.clear();
   }
 }
 

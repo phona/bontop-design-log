@@ -126,6 +126,15 @@ describe('HouseScene ceiling zones', () => {
     expect(source).not.toContain('buildCeilingZone');
   });
 
+  it('transparent glass layers get fixed renderOrder to stop sort-flip flicker', async () => {
+    const fs = await import('node:fs');
+    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    expect(source).toContain('TRANSPARENT_RENDER_ORDER');
+    expect(source).toContain('applyTransparentRenderOrder');
+    expect(source).toContain("curtain_run: 10");
+    expect(source).toContain("sliding_door: 14");
+  });
+
   it('ceiling zone meshes follow first-person-only visibility', async () => {
     const fs = await import('node:fs');
     const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');

@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { mergeUnitMaterials } from './SceneMeshMerger.js';
+import { SceneBatcher } from './SceneBatcher.js';
 
 const MERGE_STATIC_UNITS = true;
 
@@ -101,6 +102,7 @@ export class HouseScene implements SceneApi {
   private readonly exportRoot = new THREE.Group();
   private readonly decorations: BrowserSceneDecorations;
   private readonly materials = new BrowserSceneMaterials();
+  private readonly batcher = new SceneBatcher();
   private readonly viewOnlyRoot: THREE.Group;
   private readonly builderViewRoot = new THREE.Group();
   private floorMeshes: THREE.Mesh[] = [];
@@ -576,6 +578,10 @@ export class HouseScene implements SceneApi {
     this.ceilingRaycast = [];
     this.curtainRegistry.clear();
     this.glassMeshes = [];
+    this.materials.clearGlassRegistry();
+    this.batcher.clearScope('electrical');
+    this.batcher.clearScope('hvac');
+    this.batcher.clearScope('doors');
     this.furnitureMeshes = [];
     this.countertopMeshes = [];
     this.electricalMeshes = [];
@@ -661,6 +667,22 @@ export class HouseScene implements SceneApi {
     this.textureManager.loadMaterials(materials);
     this.textureManager.preload();
     this.remergeStaticUnits();
+    // 跨 unit 静态合批：电气点位（76 unit ~290 mesh）按材质外观合成少量 BatchedMesh。
+    // 家具不合批——碰撞分析需要逐 unit 改 emissive。
+    this.batcher.batchScope(
+      'electrical',
+      this.exportRoot.children.filter((child) => child.name.startsWith('electrical:')),
+      this.exportRoot,
+    );
+    // HVAC 实体（26 组 ~106 mesh、仅 4 种材质外观）：静态、整组重建，合批收益大。
+    this.batchHvacEntities();
+    // 铰链门（~42 mesh）：静态无开合动画；换色经 setDoorMaterial → updateScopeMaterials 桥接。
+    this.batcher.batchScope(
+      'doors',
+      this.exportRoot.children.filter((child) => child.userData?.type === 'door'),
+      this.exportRoot,
+    );
+    this.applyTransparentRenderOrder();
     this.readyState = 'ready';
     this.resolveReady();
     } catch (error) {
@@ -695,10 +717,48 @@ export class HouseScene implements SceneApi {
   }
 
   rebuildHvacProjection(projection: ProjectRenderFactsProjection | undefined, sources: HvacBuilderSources = buildHvacBuilderSources({ projection })): void {
+    this.batcher.clearScope('hvac');
     this.clearRoot(this.exportRoot, (object) => object.name === 'HVAC_CONFIRMED_ENTITIES');
     this.hvacEntityIndex = buildHvacGeometry(this.exportRoot, projection, sources).index;
     this.hvacProjection = projection;
     this.hvacExpectedExportIds = [...this.hvacEntityIndex.all.keys()];
+    this.batchHvacEntities();
+  }
+
+  private batchHvacEntities(): void {
+    const hvacGroup = this.exportRoot.children.find((child) => child.name === 'HVAC_CONFIRMED_ENTITIES');
+    if (!hvacGroup) return;
+    this.batcher.batchScope('hvac', [...hvacGroup.children], hvacGroup);
+  }
+
+  // 玻璃快路径（transparent+opacity）下 alpha 混合对绘制顺序敏感：three.js 默认按物体中心
+  // 深度排序，转相机时重叠透明层的顺序会翻转，重叠区混合结果跳变（观感=材质闪烁）。
+  // 按空间壳层固定 renderOrder：外墙玻璃幕 → 纱帘/百叶 → 磨砂 → 室内玻璃 → 推拉门。
+  // 顺序不再随视角变化；代价是反方向看时层间混合恒定偏差（固定、不闪烁）。
+  private static readonly TRANSPARENT_RENDER_ORDER: Record<string, number> = {
+    curtain_run: 10,
+    glass_infill: 10,
+    frosted_privacy: 12,
+    shower_screen: 13,
+    hinged_glass_door: 13,
+    sliding_door: 14,
+  };
+
+  private applyTransparentRenderOrder(): void {
+    for (const root of [this.exportRoot, this.builderViewRoot, this.viewOnlyRoot]) {
+      root.traverse((object) => {
+        const type = object.userData?.type as string | undefined;
+        const order = type ? HouseScene.TRANSPARENT_RENDER_ORDER[type] : undefined;
+        if (order !== undefined) {
+          object.renderOrder = order;
+          return;
+        }
+        // 纱帘/百叶贴在幕墙内侧，比外壳玻璃后画
+        if (object.userData?.curtainId && (object.userData.layer === 'sheer' || object.userData.layer === 'blinds')) {
+          object.renderOrder = 11;
+        }
+      });
+    }
   }
 
   loadHvacProjection(projection: ProjectRenderFactsProjection, sources: HvacBuilderSources = buildHvacBuilderSources({ projection })): void {
@@ -730,6 +790,7 @@ export class HouseScene implements SceneApi {
 
   clearHvacProjection(): void {
     this.hvacRenderer.clear();
+    this.batcher.clearScope('hvac');
     this.clearRoot(this.exportRoot, (object) => object.name === 'HVAC_CONFIRMED_ENTITIES');
     this.hvacEntityIndex = { equipment: new Map(), terminals: new Map(), all: new Map() };
     this.hvacProjection = undefined;
@@ -740,6 +801,15 @@ export class HouseScene implements SceneApi {
     this.hvacRenderer.setCoordinationVisible(visible);
     this.setPipeChaseInspectionVisible(visible);
     this.requestRender();
+  }
+
+  setGlassHighFidelity(enabled: boolean): void {
+    this.materials.setGlassHighFidelity(enabled);
+    this.requestRender();
+  }
+
+  getGlassHighFidelity(): boolean {
+    return this.materials.glassHighFidelityEnabled;
   }
 
   private setPipeChaseInspectionVisible(visible: boolean): void {
@@ -1046,7 +1116,7 @@ export class HouseScene implements SceneApi {
       this.setCeilingVisible(true, 0.22);
       this.ceilingRaycast = this.ceilingMeshes.map((mesh) => mesh.raycast);
       this.ceilingMeshes.forEach((mesh) => { mesh.raycast = () => undefined; });
-      this.infrastructureMeshes.forEach((mesh) => { mesh.visible = true; });
+      this.infrastructureMeshes.forEach((mesh) => { mesh.visible = true; this.batcher?.setUnitVisible(mesh, true); });
       this.setHvacCoordinationVisible(hvacVisible);
       // Overview must not flatten confirmed/inferred/pending base opacity differences.
       this.mepRenderer.setOpacityMultiplier(1);
@@ -1064,7 +1134,7 @@ export class HouseScene implements SceneApi {
           if (raycast) mesh.raycast = raycast;
         });
         this.ceilingRaycast = [];
-        this.infrastructureMeshes.forEach((mesh) => { mesh.visible = state.infrastructure; });
+        this.infrastructureMeshes.forEach((mesh) => { mesh.visible = state.infrastructure; this.batcher?.setUnitVisible(mesh, state.infrastructure); });
         this.setHvacCoordinationVisible(state.hvac);
         this.mepRenderer.setOpacityMultiplier(state.mepOpacityMultiplier);
         this.setMepCoordinationVisible(state.mep);
@@ -1161,12 +1231,14 @@ export class HouseScene implements SceneApi {
     refreshSlidingDoorGroup(this.exportRoot, group, el, {
       slidingDoorGlass: ({ paneWidth }) => this.materials.makeFlutedGlassMaterial(paneWidth),
     });
+    this.applyTransparentRenderOrder(); // 重建的扇页 renderOrder 归零，需重挂
     this.requestShadowUpdate();
     this.requestRender();
   }
 
   placeInfrastructureFixtures(electrical: ElectricalPoint[], plumbing: PlumbingPoint[]): void {
     this.auditPlumbing = plumbing;
+    this.batcher.clearScope('plumbing');
     this.decorations.clearMarkers();
     const result = buildInfrastructure({
       electrical,
@@ -1179,6 +1251,7 @@ export class HouseScene implements SceneApi {
       this.decorations.addMarker(model);
       if (MERGE_STATIC_UNITS && isMergeableUnit(model)) mergeUnitMaterials(model);
     }
+    this.batcher.batchScope('plumbing', result.objects, this.decorations.root);
   }
 
   clearTopicObjects(topicId: string) {
@@ -1326,6 +1399,10 @@ export class HouseScene implements SceneApi {
     for (const mesh of this.doorMeshes) {
       (mesh.material as THREE.MeshStandardMaterial).color.set(appearance.color);
     }
+    // 门已合批：同步改批次共享材质（暂存的原始材质上面已改，恢复导出时颜色一致）
+    this.batcher?.updateScopeMaterials('doors', (material) => {
+      (material as THREE.MeshStandardMaterial).color?.set(appearance.color);
+    });
   }
 
   getAllRoomIds(): string[] {
@@ -1527,10 +1604,19 @@ export class HouseScene implements SceneApi {
     let best: { target: HoverTarget; priority: number } | null = null;
     for (const hit of intersects) {
       let object: THREE.Object3D | null = hit.object;
-      while (object && !object.userData?.objectId && !object.userData?.roomId) {
-        object = object.parent;
+      let data: Record<string, unknown> | undefined;
+      // BatchedMesh 合批：raycast 返回 batchId，从批次映射取回源 userData（不走父链）
+      const batchUserData = object.userData?.isSceneBatch
+        ? (object.userData.batchUserData as Map<number, Record<string, unknown>> | undefined)
+        : undefined;
+      if (batchUserData) {
+        data = batchUserData.get((hit as { batchId?: number }).batchId ?? -1);
+      } else {
+        while (object && !object.userData?.objectId && !object.userData?.roomId) {
+          object = object.parent;
+        }
+        data = object?.userData;
       }
-      const data = object?.userData;
       if (hoverableOnly && data?.hoverable === false) continue;
       if (!data?.objectId && !data?.roomId) continue;
 
@@ -1764,6 +1850,16 @@ export class HouseScene implements SceneApi {
     return this.decorations.getGhostPosition();
   }
 
+  /** GLB 导出前挂回原始 mesh（GLTFExporter 不认 BatchedMesh）；导出后须 reapplyStaticBatches。 */
+  restoreStaticBatches(): void {
+    this.batcher.restoreScopes();
+  }
+
+  reapplyStaticBatches(): void {
+    this.batcher.reapplyScopes();
+    this.requestRender();
+  }
+
   dispose(): void {
     window.removeEventListener('resize', this.boundOnWindowResize);
     this.hvacRenderer.dispose();
@@ -1771,6 +1867,7 @@ export class HouseScene implements SceneApi {
     this.electricalTopologyRenderer.dispose();
     this.decorations.dispose();
     this.materials.dispose();
+    this.batcher.disposeAll();
     this.renderer.dispose();
   }
 }
