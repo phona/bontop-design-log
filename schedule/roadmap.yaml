@@ -1,6 +1,6 @@
 schema: schedule.roadmap/v1
 project_id: bontop-design-log
-updated_at: 2026-09-11
+updated_at: 2026-09-12
 currency: CNY
 policy:
   - 后一阶段不得自动侵占前一阶段预备金或未分配额度
@@ -12,16 +12,16 @@ phases:
     name: 一期基本入住
     status: planning
     depends_on: []
-    budget: {ceiling_cny: 240000, allocated_cny: 239000, unallocated_cny: 1000}
-    scope: 基础硬装、中央空调、一期手动窗帘、必要家具和必需家电
+    budget: {ceiling_cny: 200000, allocated_cny: 200000, unallocated_cny: 0}
+    scope: 基础硬装、中央空调、三卧室手动窗帘、成品柜为主的必需家具和必需家电；2026-09-12业主拍板压缩至20万，主卧定制衣柜、壁床柜、客厅大收纳柜、展示柜、复杂灯光、客厅书房窗帘、书房次卧家具后移二期
     activation_gate: 交房量房、图纸会审、同口径报价及物业手续完成
   - id: phase_2_function_upgrade
     directory: schedule/phase-2
     name: 二期功能升级
     status: proposed
     depends_on: [phase_1_basic_occupancy]
-    budget: {estimate_min_cny: 30000, estimate_max_cny: 45000, ceiling_cny: null}
-    scope: 电视系统、补充家电、窗帘电机、小件家具及健身设备
+    budget: {estimate_min_cny: 49000, estimate_max_cny: 76200, ceiling_cny: null}
+    scope: 电视系统、补充家电、窗帘电机、小件家具及健身设备，以及一期后移的主卧定制衣柜、壁床柜、客厅大收纳柜、展示柜、复杂灯光、客厅书房窗帘和书房次卧家具
     activation_gate: 一期竣工结算完成，业主重新确认范围和预算上限
   - id: phase_3_styling
     directory: schedule/phase-3

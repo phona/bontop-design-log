@@ -2,14 +2,14 @@ schema: schedule.phase-scope/v1
 project_id: bontop-design-log
 phase_id: phase_2_function_upgrade
 version: 0.1.0
-updated_at: 2026-09-11
+updated_at: 2026-09-12
 status: proposed
 decision_state: alignment_required
 depends_on: [phase_1_basic_occupancy]
 currency: CNY
 budget:
-  estimate_min_cny: 30000
-  estimate_max_cny: 45000
+  estimate_min_cny: 49000
+  estimate_max_cny: 76200
   ceiling_cny: null
   approved_cny: null
 activation_gates:
@@ -26,8 +26,15 @@ items:
   - {id: P2-070, name: 窗帘电机, estimate_min_cny: 3000, estimate_max_cny: 4000, status: proposed}
   - {id: P2-080, name: 家庭健身设备, estimate_min_cny: 1000, estimate_max_cny: 1500, status: proposed}
   - {id: P2-090, name: 晾衣架, estimate_min_cny: 600, estimate_max_cny: 700, status: proposed}
+  - {id: P2-100, name: 主卧通顶定制衣柜（一期后移，藏空调冷凝水管槽，必须定制）, estimate_min_cny: 3000, estimate_max_cny: 5000, status: proposed}
+  - {id: P2-110, name: 客厅与书房窗帘（一期后移）, estimate_min_cny: 4000, estimate_max_cny: 6000, status: proposed}
+  - {id: P2-120, name: 书房与西北次卧家具（一期后移）, estimate_min_cny: 3000, estimate_max_cny: 5000, status: proposed}
+  - {id: P2-130, name: 壁床柜（一期后移）, estimate_min_cny: 3000, estimate_max_cny: 5000, status: proposed}
+  - {id: P2-140, name: 客厅大收纳柜（一期后移）, estimate_min_cny: 2000, estimate_max_cny: 4000, status: proposed}
+  - {id: P2-150, name: 展示柜（一期后移）, estimate_min_cny: 1000, estimate_max_cny: 3000, status: proposed}
+  - {id: P2-160, name: 复杂灯光升级（筒射灯轨道灯，一期后移）, estimate_min_cny: 2000, estimate_max_cny: 4000, status: proposed}
 audit:
   status: not_started
-  note: 明细合计为¥31,100—¥44,200，落在阶段规划区间内；范围未冻结前不得采购；晾衣架为对照同户型实付账单后补充的漏项
+  note: 明细合计为¥49,100—¥76,200；区间上调原因是2026-09-12一期压缩决策后移了7个项目；范围未冻结前不得采购
   records: []
 

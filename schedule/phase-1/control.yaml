@@ -2,7 +2,7 @@ schema: schedule.phase1-control/v1
 project_id: bontop-design-log
 phase_id: phase_1_basic_occupancy
 version: 1.0.0
-updated_at: 2026-09-11
+updated_at: 2026-09-12
 currency: CNY
 authority:
   execution: schedule/phase-1/control.yaml
@@ -14,10 +14,10 @@ authority:
     - schedule/phase-1/checklist.md
 
 control:
-  phase_ceiling_cny: 240000
-  allocated_cny: 239000
-  unallocated_cny: 1000
-  fixed_works_cny: 167000
+  phase_ceiling_cny: 200000
+  allocated_cny: 200000
+  unallocated_cny: 0
+  fixed_works_cny: 159000
   status: planning
   current_gate: pre_handover
   status_values: [not_started, in_progress, blocked, ready_for_inspection, failed, passed, waived]
@@ -34,32 +34,32 @@ control:
 budget_pools:
   - id: hard_finish
     name: 基础硬装
-    planned_cny: 134000
+    planned_cny: 126000
   - id: hvac
     name: 中央空调
     planned_cny: 33000
   - id: furniture
     name: 一期家具
-    planned_cny: 43000
+    planned_cny: 19000
   - id: appliances
     name: 必需家电
-    planned_cny: 7000
+    planned_cny: 9000
   - id: design_preparation
     name: 设计与开工准备
-    planned_cny: 12000
+    planned_cny: 8000
   - id: curtains
     name: 一期窗帘
-    planned_cny: 10000
+    planned_cny: 5000
 
 budget_reconciliation:
   execution_authority: schedule/phase-1/control.yaml
-  phase_1_ceiling_cny: 240000
+  phase_1_ceiling_cny: 200000
   historical_baseline:
     source: config/budget/base.json
     total_budget_cny: 208000
     project_ceiling_cny: 190000
     status: historical_reference_only
-  explanation: 原20.8万元和19万元上限属于量房前旧基线；一期执行、签约和付款统一按本文件24万元上限控制。窗帘预算已按业主确认从未分配额度中划拨1万元；2026-09-11对照同户型半包实付账单后，拆改清运由5千元上调至7千元，差额2千元从未分配额度划拨，剩余未分配额度1千元；旧文件用于追溯历史估算，不再决定一期可承诺金额。
+  explanation: 原20.8万元/19万元基线和24万元上限均为历史口径。2026-09-12业主拍板一期压缩至20万元上限：主卧定制衣柜、壁床柜、客厅大收纳柜、展示柜、复杂灯光、客厅/书房窗帘、书房次卧家具后移二期；家电按下探型号组合；设计费下调；瓷砖只降半档、橱柜保持；预备金由1.2万降至5千元，未分配额度归零，超支缓冲依赖预备金。压缩后已分配正好20万元。旧文件仅用于追溯，不再决定一期可承诺金额。
 
 appliance_quote_register:
   collected_at: 2026-09-11
@@ -198,15 +198,15 @@ global_blockers:
     clears_when: 燃气单位或物业书面确认厨房分隔要求
   - id: BLK-MASTER-WARDROBE
     status: alignment_required
-    item: 主卧北墙衣柜的门扇、位置、高度及空调检修关系未关闭
-    clears_when: 深化图经业主、设计和厂家共同确认
+    item: 主卧北墙通顶定制衣柜（藏空调冷凝水管槽，必须定制）随2026-09-12压缩决策整体后移至二期，一期用成品衣架和斗柜过渡；门扇、位置、高度及空调检修关系仍未关闭
+    clears_when: 二期启动前深化图经业主、设计和厂家共同确认
   - id: BLK-CURTAIN-SCOPE
     status: alignment_required
-    item: 一期需要安装窗帘的房间、遮光要求、布帘或纱帘组合及轨道形式尚未逐房确认
+    item: 一期窗帘范围按2026-09-12压缩决策收窄为三个卧室（主卧/父母房/西北次卧）的遮光帘+纱帘，客厅和书房后移二期；各房遮光要求、布纱组合及轨道形式仍需逐房确认
     clears_when: 形成逐房窗帘清单并确认一期采购范围和报价
   - id: BLK-PHASE1-APPLIANCES
     status: alignment_required
-    item: 一期7000元家电额度无法覆盖实际需求；按约5.0千瓦燃气灶目标候选计算，公开参考价合计约7825元且未含安装和辅材；参考同户型半包实付（冰箱3959+洗衣机4280+燃气灶945+油烟机2209+热水器1468≈12861元），当前需求估算已上调至13000元，缺口约6000元需业主批准资金来源；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的可购买型号和含安装报价尚未冻结
+    item: 2026-09-12压缩决策：一期家电额度上调至9000元，按下探型号组合（公开参考价约8196元+安装辅材）编制，缺口关闭；代价是冰箱700mm位约束下可选型号更少、热水器为一厨二卫下限款；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结
     clears_when: 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金
   - id: BLK-WATER-HEATER-SITE
     status: site_pending
@@ -322,11 +322,11 @@ work_packages:
     description: 交房后核对房屋实际尺寸和现状，把平面布局、拆改、水电、空调、吊顶、灯具、柜体等图纸协调完整，并用同一范围向多家单位询价后签订合同。
     budget_pool: design_preparation
     budget:
-      planned_cny: 12000
+      planned_cny: 8000
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
-      source_ref: user_decision:phase-1-control-20260911
+      source_ref: user_decision:phase-1-control-20260912
       allocation_status: pending_breakdown
       components:
         - {id: COST-000-01, name: 交房查验与现场量房, description: 检查交付问题并测量房间、梁柱、门窗和设备位置, quantity_basis: 服务范围待报价, planned_cny: null, status: quote_pending}
@@ -599,9 +599,9 @@ work_packages:
     description: 修正墙地面高低差，铺贴地砖和厨卫墙砖，处理门槛、地漏坡度、砖缝及边角；重点检查空响、平整和排水积水。
     budget_pool: hard_finish
     budget:
-      planned_cny: 25000
-      estimated_need_cny: 32000
-      estimated_need_note: 参考邦泰璟和2-2001瓦工工资单（纯人工实付17,938元，地砖117㎡/墙砖61㎡）；算量口径为 model-geometry 房间投影合计约121.5㎡（=产权套内94.76㎡+赠送约27.5㎡，不含开发商已完工的入户花园），与对方铺贴量相当，人工按17,000–18,500元估；加砖主材、辅料、找平和搬运后全口径约31,000–36,000元，取32,000元为当前需求估算；南阳台若通铺再增约2,000元（BLK-SOUTH-BALCONY未冻结不计）；注意94.76㎡产权口径不得用于瓦工算量
+      planned_cny: 30000
+      estimated_need_cny: 30000
+      estimated_need_note: 参考邦泰璟和2-2001瓦工工资单（纯人工实付17,938元，地砖117㎡/墙砖61㎡）；算量口径为 model-geometry 房间投影合计约121.5㎡（=产权套内94.76㎡+赠送约27.5㎡，不含开发商已完工的入户花园），与对方铺贴量相当，人工按17,000–18,500元估；2026-09-12业主拍板瓷砖只降半档（约70–80元/㎡），全口径按30,000元控制；南阳台若通铺再增约2,000元（BLK-SOUTH-BALCONY未冻结不计）；注意94.76㎡产权口径不得用于瓦工算量
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -713,7 +713,7 @@ work_packages:
     description: 在墙面和地面厚度确定后重新测量门洞，生产并安装卧室门、卫生间门及厨房玻璃门；厨房门还要满足燃气单位确认的分隔要求。
     budget_pool: hard_finish
     budget:
-      planned_cny: 11500
+      planned_cny: 9000
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -747,7 +747,7 @@ work_packages:
     description: 安装马桶、浴室柜、台盆、龙头、花洒、地漏和相关五金，逐件试水、排水并检查接头是否渗漏、安装是否牢固。
     budget_pool: hard_finish
     budget:
-      planned_cny: 11500
+      planned_cny: 8000
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -981,11 +981,11 @@ work_packages:
   - id: PKG-145
     sequence: 145
     name: 一期窗帘、纱帘与手动轨道
-    description: 墙面和窗帘盒完成后逐窗复尺，为需要遮光或隐私的房间安装一期窗帘、纱帘和手动轨道；电动窗帘电机属于二期，水电阶段只预留电源和位置。
+    description: 墙面和窗帘盒完成后逐窗复尺，为需要遮光或隐私的房间安装一期窗帘、纱帘和手动轨道；电动窗帘电机属于二期，水电阶段只预留电源和位置。按2026-09-12压缩决策，一期只做主卧、父母房、西北次卧三个房间，客厅和书房窗帘后移二期。
     budget_pool: curtains
     budget:
-      planned_cny: 10000
-      estimated_need_cny: 10000
+      planned_cny: 5000
+      estimated_need_cny: 5000
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -1021,28 +1021,29 @@ work_packages:
   - id: PKG-150
     sequence: 150
     name: 一期家具与定制收纳
-    description: 按完成后的现场尺寸安装必要衣柜、床、床垫、桌椅、沙发和鞋柜，检查牢固程度、柜门开合、通行宽度以及与插座和空调检修位置的关系。
+    description: 按完成后的现场尺寸安装床、床垫、沙发、餐桌椅、鞋柜和成品柜（次卧/父母房成品衣柜、书房成品柜、玄关柜、斗柜），检查牢固程度、柜门开合、通行宽度以及与插座和空调检修位置的关系。按2026-09-12压缩决策：不搞一步到位，主卧通顶定制衣柜（藏冷凝水管槽）、壁床柜、客厅大收纳柜、展示柜后移二期，成品柜将来可直接换掉不动硬装。
     budget_pool: furniture
     budget:
-      planned_cny: 43000
+      planned_cny: 19000
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
       source_ref: furniture_soft
       allocation_status: pending_furniture_schedule
       components:
-        - {id: COST-150-01, name: 一期衣柜和必要收纳柜, description: 逐柜记录房间、位置、宽高深、材质、内部格局、五金、运输安装和墙体固定条件, quantity_basis: 待逐柜深化；主卧衣柜仍有阻塞项, planned_cny: null, status: design_pending}
-        - {id: COST-150-02, name: 床架, description: 分房间记录尺寸、材质、结构、送货安装和保修, quantity_basis: 3张候选，待一期房间使用计划确认, planned_cny: null, status: quantity_pending}
-        - {id: COST-150-03, name: 床垫, description: 与床架分开报价，分房间记录尺寸、软硬度、材料和试睡退换条件, quantity_basis: 3张候选，待确认, planned_cny: null, status: selection_pending}
-        - {id: COST-150-04, name: 书桌办公桌和椅子, description: 分使用者记录尺寸、数量、承重和插座灯光关系, quantity_basis: 待逐房家具清单确认, planned_cny: null, status: quantity_pending}
+        - {id: COST-150-01, name: 主卧通顶定制衣柜（后移二期）, description: 藏空调冷凝水管槽，成品柜无法替代，维持定制但推至二期；逐柜记录位置、宽高深、材质、内部格局、五金、运输安装和墙体固定条件, quantity_basis: 二期启动前深化, planned_cny: 0, status: deferred_to_phase_2}
+        - {id: COST-150-02, name: 床架, description: 分房间记录尺寸、材质、结构、送货安装和保修, quantity_basis: 2张（主卧+父母房），书房次卧后移二期, planned_cny: null, status: quantity_pending}
+        - {id: COST-150-03, name: 床垫, description: 与床架分开报价，分房间记录尺寸、软硬度、材料和试睡退换条件, quantity_basis: 2张（主卧+父母房），书房次卧后移二期, planned_cny: null, status: selection_pending}
+        - {id: COST-150-04, name: 书桌办公桌和椅子, description: 分使用者记录尺寸、数量、承重和插座灯光关系, quantity_basis: 1套候选，书房家具后移二期, planned_cny: null, status: quantity_pending}
         - {id: COST-150-05, name: 客厅沙发, description: 写明尺寸、材质、座深、送货通道和与插座窗帘的关系, quantity_basis: 1组候选，待确认, planned_cny: null, status: selection_pending}
         - {id: COST-150-06, name: 餐桌和餐椅, description: 写明桌面尺寸、椅子数量、材质和使用通道, quantity_basis: 1组候选，待确认, planned_cny: null, status: selection_pending}
         - {id: COST-150-07, name: 入户鞋柜, description: 写明尺寸、内部格局、换鞋功能、五金安装及配电弱电接口避让, quantity_basis: 1组候选，待深化, planned_cny: null, status: design_pending}
+        - {id: COST-150-08, name: 成品衣柜和成品收纳柜, description: 次卧/父母房成品衣柜（推拉门优先，次卧柜前通道仅0.65m）、书房成品柜、玄关柜、斗柜；逐件记录尺寸、防倾倒固定和与插座窗帘关系；不通顶、顶部留空为已知妥协, quantity_basis: 待逐件选型, planned_cny: null, status: selection_pending}
     duration_workdays: {min: 5, max: 10}
     dependencies: [PKG-135, PKG-140]
     readiness: blocked
     status: not_started
-    blockers: [BLK-MASTER-WARDROBE]
+    blockers: []
     owner_roles: [家具供应商, 定制供应商, 设计师, 业主]
     payment_gate: GATE-150-COMPLETE
     acceptance_refs: [check_carp_cabinet]
@@ -1052,7 +1053,7 @@ work_packages:
         checkpoint: before_order
         item: 柜体复尺及与机电、门、窗帘、空调关系确认
         method: 逐柜核对完成面尺寸、插座开关、风口检修口、门扇和通道
-        pass_condition: 深化图经业主确认；主卧衣柜阻塞项已关闭
+        pass_condition: 深化图经业主确认；主卧定制衣柜已后移二期，一期以成品柜为准
         evidence_required: [approved_shop_drawing, measurement_sheet]
       - id: SCH-150-02
         severity: major
@@ -1068,9 +1069,9 @@ work_packages:
     description: 安装一期实际需要使用的家电，逐台核对电源、给水、排水、散热和维护空间并试运行；二期设备不在本项重复计费。
     budget_pool: appliances
     budget:
-      planned_cny: 7000
-      estimated_need_cny: 13000
-      estimated_need_note: 参考同户型半包实付五件合计约12,861元（冰箱3,959+洗衣机4,280+燃气灶945+油烟机2,209+热水器1,468），取整13,000元作为当前需求估算；与计划额7,000元的缺口约6,000元，未分配额度不足，需业主批准资金来源
+      planned_cny: 9000
+      estimated_need_cny: 9000
+      estimated_need_note: 2026-09-12压缩决策：按下探型号组合编制（公开参考价约8,196元+安装辅材约800元），9,000元控制；同户型实付12,861元为中档口径，保留作对照
       public_reference_floor_cny: 7825
       public_reference_floor_note: 该下限按约5.0千瓦燃气灶目标候选计算，未采用4.8千瓦预算下探款；组合中仍含公开页面标示下架或库存待确认的型号，只作预算警戒线，不是可直接下单组合；最低价501升冰箱宽约833毫米，不能视为已满足本户型约700毫米冰箱位，因此实际可行组合可能更高。
       contracted_cny: null
@@ -1139,7 +1140,7 @@ work_packages:
         checkpoint: payment
         item: 最终结算不超过批准额度
         method: 汇总合同、变更、已付、待付和退款，核对各预算池及总上限
-        pass_condition: 最终预测不超过¥240,000，或已有业主书面追加批准
+        pass_condition: 最终预测不超过¥200,000，或已有业主书面追加批准
         evidence_required: [final_account_statement, owner_approval_if_overrun]
 
   - id: PKG-900
@@ -1147,7 +1148,7 @@ work_packages:
     name: 硬装预备金
     description: 由业主保留、用于量房误差或确实无法预见事项的备用额度，不是施工方可以默认使用的费用；每次动用都要有原因、报价和书面批准。
     budget_pool: hard_finish
-    budget: {planned_cny: 12000, contracted_cny: null, paid_cny: 0, forecast_cny: null, source_ref: contingency}
+    budget: {planned_cny: 5000, contracted_cny: null, paid_cny: 0, forecast_cny: null, source_ref: contingency}
     duration_workdays: {min: 0, max: 0}
     dependencies: []
     readiness: blocked
