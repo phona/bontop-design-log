@@ -1,0 +1,1168 @@
+schema: schedule.phase1-control/v1
+project_id: bontop-design-log
+phase_id: phase_1_basic_occupancy
+version: 1.0.0
+updated_at: 2026-09-11
+currency: CNY
+authority:
+  execution: schedule/phase-1/control.yaml
+  acceptance: config/acceptance.yaml
+  baseline_budget: config/budget/base.json
+  generated_views:
+    - schedule/phase-1/budget.md
+    - schedule/phase-1/schedule.md
+    - schedule/phase-1/checklist.md
+
+control:
+  phase_ceiling_cny: 240000
+  allocated_cny: 237000
+  unallocated_cny: 3000
+  fixed_works_cny: 165000
+  status: planning
+  current_gate: pre_handover
+  status_values: [not_started, in_progress, blocked, ready_for_inspection, failed, passed, waived]
+  readiness_values: [blocked, ready]
+  check_status_values: [pending, passed, failed, not_applicable]
+  rules:
+    - 所有critical检查通过后，工作包才可标记为passed
+    - 必需证据已登记且可访问，验收项才可标记为passed
+    - 依赖工作包全部passed后，就绪状态才可变为ready
+    - failed检查必须追加整改和复验记录，不得覆盖历史
+    - 声明的付款门槛通过后，才可释放对应付款
+    - 未分配预算未经业主批准不得承诺或支出
+
+budget_pools:
+  - id: hard_finish
+    name: 基础硬装
+    planned_cny: 132000
+  - id: hvac
+    name: 中央空调
+    planned_cny: 33000
+  - id: furniture
+    name: 一期家具
+    planned_cny: 43000
+  - id: appliances
+    name: 必需家电
+    planned_cny: 7000
+  - id: design_preparation
+    name: 设计与开工准备
+    planned_cny: 12000
+  - id: curtains
+    name: 一期窗帘
+    planned_cny: 10000
+
+budget_reconciliation:
+  execution_authority: schedule/phase-1/control.yaml
+  phase_1_ceiling_cny: 240000
+  historical_baseline:
+    source: config/budget/base.json
+    total_budget_cny: 208000
+    project_ceiling_cny: 190000
+    status: historical_reference_only
+  explanation: 原20.8万元和19万元上限属于量房前旧基线；一期执行、签约和付款统一按本文件24万元上限控制。窗帘预算已按业主确认从未分配额度中划拨1万元，剩余未分配额度3千元；旧文件用于追溯历史估算，不再决定一期可承诺金额。
+
+appliance_quote_register:
+  collected_at: 2026-09-11
+  status: market_reference_only
+  pricing_note: 公开页面价格或品牌参考价会随补贴、库存、地区、活动和安装条件变化；本表只用于候选筛选，不是已锁定合同报价。最终应向南宁门店索取逐台书面报价，明确设备、标准安装、烟管或阀件、上门、拆旧、辅材、发票和质保边界。
+  hot_water_decision:
+    category: 燃气热水器
+    owner_confirmation: 已确认一期采用燃气热水器
+    preferred_model: JSQ30-MK6
+    preferred_status: 主选候选，现场条件确认后再锁定
+    fallback_model: JSQ30-HWF Pro
+    rationale: 本户型有两个卫生间；JSQ30-MK6官方参数标注适用一厨二卫，JSQ30-HWF Pro标注适用一厨一卫，因此MK6更适合作为主选，HWF Pro只作为预算下探备选
+    must_confirm_before_order: 安装墙面、燃气表与气源、排烟路径、冷凝水排放、冷热水接口、专用电路、物业和燃气单位审批、含辅材安装报价
+  records:
+    - id: AQ-160-01-A
+      component_id: COST-160-01
+      category: 冰箱
+      brand: 美的
+      model: BCD-501WSPM(Q)
+      key_spec: 501升，一级能效，风冷变频；官方页面尺寸长600×宽833×高1910毫米
+      public_reference_cny: 2599
+      fit_status: public_reference_page_unavailable_width_833mm_vs_slot_700mm
+      source_url: "https://www.midea.cn/1/1000000000400692992139.html"
+      source_checked_at: 2026-09-11
+    - id: AQ-160-01-B
+      component_id: COST-160-01
+      category: 冰箱
+      brand: 海尔
+      model: BCD-500WGHTDC4LMU1
+      key_spec: 500升，风冷变频，官方宣传为594毫米超薄机身；完整宽深高和开门余量仍需向门店索取
+      public_reference_cny: 5299
+      fit_status: dimension_verification_required
+      source_url: "https://www.haier.com/newmarketing/story/20260114_285100.shtml"
+      source_checked_at: 2026-09-11
+    - id: AQ-160-02-A
+      component_id: COST-160-02
+      category: 洗衣机
+      brand: 海尔
+      model: EG100MATE29S
+      key_spec: 10千克，一级能效，超薄变频；595×850×602毫米
+      public_reference_cny: 1599
+      fit_status: pending_balcony_measurement
+      source_url: "https://www.haier.com/laundry/20240726_248196.shtml"
+      source_checked_at: 2026-09-11
+    - id: AQ-160-02-B
+      component_id: COST-160-02
+      category: 洗衣机
+      brand: 海尔
+      model: EG100HMATE29S
+      key_spec: 10千克洗烘一体，一级能效，595×850×602毫米；烘干功能与二期烘干边界仍需确认
+      public_reference_cny: 1999
+      fit_status: phase_boundary_check_required
+      source_url: "https://www.haier.com/laundry/20240726_248192.shtml"
+      source_checked_at: 2026-09-11
+    - id: AQ-160-03-A
+      component_id: COST-160-03
+      category: 燃气灶
+      brand: 美的
+      model: JZT-Q523L-M
+      key_spec: 官方商城标称5.0/5.2千瓦台嵌两用；最终天然气版本、开孔尺寸和烟灶联动须按订单规格复核
+      public_reference_cny: 1099
+      fit_status: public_reference_page_unavailable_gas_type_and_cutout_verification_required
+      source_url: "https://www.midea.cn/14/1000000000400693541206.html"
+      source_checked_at: 2026-09-11
+    - id: AQ-160-03-B
+      component_id: COST-160-03
+      category: 燃气灶
+      brand: 美的
+      model: JZT-Q217B-M
+      key_spec: 4.8千瓦天然气嵌入式；低于本项目约5.0千瓦目标，仅作预算下探备选
+      public_reference_cny: 699
+      fit_status: target_power_exception_requires_owner_approval
+      source_url: "https://www.midea.cn/detail/index?itemid=1000000000400693352810"
+      source_checked_at: 2026-09-11
+    - id: AQ-160-04-A
+      component_id: COST-160-04
+      category: 吸油烟机
+      brand: 美的
+      model: CXW-280-J25S PRO
+      key_spec: 侧吸，约22/23立方米每分钟，500帕最大静压，安装宽度约895毫米
+      public_reference_cny: 1599
+      fit_status: public_reference_page_unavailable_kitchen_hood_route_and_900mm_opening_check_required
+      source_url: "https://m.midea.cn/detail/index?itemid=1000000000400693641015"
+      source_checked_at: 2026-09-11
+    - id: AQ-160-04-B
+      component_id: COST-160-04
+      category: 吸油烟机
+      brand: 美的
+      model: CXW-280-CC22
+      key_spec: 侧吸，22立方米每分钟，540帕最大静压
+      public_reference_cny: 2499
+      fit_status: public_reference_page_unavailable_kitchen_hood_route_and_900mm_opening_check_required
+      source_url: "https://www.midea.cn/18/1000000000400693804631.html"
+      source_checked_at: 2026-09-11
+    - id: AQ-160-05-A
+      component_id: COST-160-05
+      category: 燃气热水器
+      brand: 美的
+      model: JSQ30-HWF Pro
+      key_spec: 天然气12T、16升，变频恒温，强制排气和安全防冻；官方参数标注适用一厨一卫，产品尺寸约530×335×163毫米，未含现场燃气、烟管和额外辅材安装核价
+      public_reference_cny: 929
+      fit_status: user_category_confirmed_site_and_route_pending
+      source_url: "https://www.midea.cn/64/10000000004006931264823.html"
+      source_checked_at: 2026-09-11
+    - id: AQ-160-05-B
+      component_id: COST-160-05
+      category: 燃气热水器
+      brand: 美的
+      model: JSQ30-MK6
+      key_spec: 天然气12T、16升，增压水伺服，变频恒温；官方参数标注适用一厨二卫，产品尺寸约530×335×176毫米
+      public_reference_cny: 1399
+      fit_status: user_category_confirmed_site_and_route_pending
+      source_url: "https://www.midea.cn/64/1000000000400693406861.html"
+      source_checked_at: 2026-09-11
+
+global_blockers:
+  - id: BLK-HANDOVER
+    status: site_pending
+    item: 尚未交房，无法完成现场量房及房屋查验
+    clears_when: 交房查验完成并归档现场记录
+  - id: BLK-STRUCTURE
+    status: site_pending
+    item: 墙体结构、梁底及允许打孔或穿墙条件未确认
+    clears_when: 结构资料与现场复核结果完成会签
+  - id: BLK-HVAC-DEEPENING
+    status: site_pending
+    item: 中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审
+    clears_when: 空调、设计和施工三方签认深化图
+  - id: BLK-SOUTH-BALCONY
+    status: alignment_required
+    item: 南阳台使用方式、地面和预算边界未冻结
+    clears_when: 业主确认范围并同步预算及施工图
+  - id: BLK-GAS-DOOR
+    status: site_pending
+    item: 燃气厨房门的现场验收要求未确认
+    clears_when: 燃气单位或物业书面确认厨房分隔要求
+  - id: BLK-MASTER-WARDROBE
+    status: alignment_required
+    item: 主卧北墙衣柜的门扇、位置、高度及空调检修关系未关闭
+    clears_when: 深化图经业主、设计和厂家共同确认
+  - id: BLK-CURTAIN-SCOPE
+    status: alignment_required
+    item: 一期需要安装窗帘的房间、遮光要求、布帘或纱帘组合及轨道形式尚未逐房确认
+    clears_when: 形成逐房窗帘清单并确认一期采购范围和报价
+  - id: BLK-PHASE1-APPLIANCES
+    status: alignment_required
+    item: 一期7000元家电额度无法在型号未定时证明足够；按约5.0千瓦燃气灶目标候选计算，当前收集的公开参考价合计约7825元，且未含安装和辅材，冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的可购买型号和含安装报价尚未冻结
+    clears_when: 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金
+  - id: BLK-WATER-HEATER-SITE
+    status: site_pending
+    item: 已确认一期采用燃气热水器；模型虽有厨房西侧实体墙的暂定协调点，但交房前仍未确认是否已有开发商设备、实际安装墙面、燃气表位置、排烟路径、冷凝水排放和物业审批条件
+    clears_when: 现场核对现有设备和燃气条件，形成最终安装位置、排烟、给排水、专用电路及物业审批记录
+  - id: BLK-FRIDGE-FIT
+    status: site_pending
+    item: 设计模型把冰箱位暂记为约700毫米宽×700毫米深，当前收集到的501升候选有宽约833毫米者，冰箱型号不能在净开口复测前下单
+    clears_when: 现场复测完成面净宽、净深、净高、开门余量和散热缝，并筛选出尺寸满足的型号
+
+glossary:
+  - term: 工作包
+    plain_description: 为了方便报价、排工期和验收，把整个装修拆成的一项独立工作。例如水电改造就是一个工作包，有自己的预算、前置条件和验收结果。
+  - term: 预算池
+    plain_description: 把性质相近的费用放在一起控制的金额范围。例如基础硬装预算池包含拆改、水电、防水、铺砖、吊顶等费用。
+  - term: 阻塞项
+    plain_description: 当前尚未解决、会导致某项工作不能开始或不能完成的事情，例如未交房、墙体性质不明或厂家图纸未确认。
+  - term: 付款门槛
+    plain_description: 付款前必须完成的检查条件。对应验收和证据未通过时，即使施工方提出申请也不应支付该节点款。
+  - term: 拆改
+    plain_description: 拆除允许拆除的墙体或构件，并按图新建墙体、调整门洞或空间边界。承重墙、梁柱和楼板不能凭经验拆除。
+  - term: 水电改造
+    plain_description: 根据最终家具和设备位置重新布置电线、网线、给水管和排水管，并安装对应的开关、插座和接口。
+  - term: 强电与弱电
+    plain_description: 强电是照明、插座和空调等供电线路；弱电是网络、电视和其他低电压信号线路。两类线路需按施工要求分开布置，减少干扰并保证安全。
+  - term: 专用电路
+    plain_description: 只给某台或某类大功率设备供电的独立线路，例如中央空调、厨房设备或热水器，通常在配电箱中有独立开关。
+  - term: 热水回水管
+    plain_description: 为缩短等待热水时间而增加的循环管路，需要在水电阶段预先铺设，并与热水器方案配套。
+  - term: 物业装修报批
+    plain_description: 开工前向小区物业提交装修资料、人员信息和施工内容，取得允许进场施工的手续。
+  - term: 进场保护
+    plain_description: 用保护膜、保护板或护角覆盖电梯、公区、入户门、窗户和已有地面，防止搬运及施工造成磕碰、划伤和污染。
+  - term: 放线
+    plain_description: 按设计图把新墙、门洞、柜体、插座、空调风口和吊顶边界等位置，用墨线、胶带或记号笔标到现场，供各工种共同复核后施工。
+  - term: 深化图
+    plain_description: 厂家或专业施工方根据现场尺寸，把设计意图细化成可以生产和安装的尺寸图、节点图及接口图。
+  - term: 图纸会审
+    plain_description: 业主、设计师、施工方和设备厂家把各自图纸放在一起核对，提前找出尺寸、管线、柜门、灯具和设备之间的冲突。
+  - term: 隐蔽工程
+    plain_description: 完工后会被墙面、地面或吊顶遮住，无法直接检查的管线、防水、龙骨和设备安装内容。
+  - term: 保压试验
+    plain_description: 给水管或空调冷媒管加到规定压力并保持一段时间，通过压力变化判断是否可能漏水或漏冷媒。
+  - term: 闭水试验
+    plain_description: 封住排水口并在防水区域蓄水，在规定时间后检查本层和楼下是否渗漏。
+  - term: 复尺
+    plain_description: 在墙地砖、墙面或吊顶等完成面确定后再次测量真实尺寸，定制门柜必须按复尺结果生产。
+  - term: 完成面
+    plain_description: 地砖、墙漆、吊顶、木饰面等全部施工完成后最终看得到、摸得到的表面位置。
+  - term: 找平
+    plain_description: 用水泥砂浆、石膏或其他材料修正墙地面的高低差，为后续铺砖、刷漆或安装提供平整基层。
+  - term: 收口
+    plain_description: 两种材料或两个构件交接处的边缘处理，例如柜体贴墙、门套接地面、台面接墙和风口接吊顶。
+  - term: 空鼓
+    plain_description: 瓷砖或抹灰层没有和基层充分粘牢，敲击时会发出空响，严重时可能松动或脱落。
+  - term: 冷凝水
+    plain_description: 空调运行时产生的水，必须通过有坡度的排水管顺利排走，不能倒流、积水或渗漏。
+  - term: 送风口与回风口
+    plain_description: 送风口把处理后的空气吹入房间；回风口把房间空气吸回空调内机。两者位置不当会影响效果，也必须留出清洁和检修条件。
+  - term: 检修口
+    plain_description: 吊顶或柜体上可打开的检查入口，用于日后维修空调、水电接头、阀门或驱动设备。
+  - term: 冷媒管
+    plain_description: 连接中央空调室内机和室外机、输送制冷介质的铜管，焊接、保温和压力测试会直接影响空调可靠性。
+  - term: 抽真空
+    plain_description: 空调连接完成后，用真空泵排出冷媒管内的空气和水分，再按设备要求进入调试；记录应由空调安装方提供。
+  - term: 泥瓦施工
+    plain_description: 主要包括墙地面找平、砌墙、铺地砖、贴墙砖、处理门槛和排水坡度等使用水泥砂浆的工作。
+  - term: 排版与起铺点
+    plain_description: 排版是提前规划每块砖如何排列；起铺点是第一块砖开始铺的位置。两者会决定门口、墙边是否出现难看的窄砖条。
+  - term: 通缝
+    plain_description: 不同区域或相邻墙地面的砖缝保持连续对齐，使整体更整齐；是否通缝应在铺砖前确认。
+  - term: 龙骨
+    plain_description: 吊顶内部用于承重和固定面板的金属或木质骨架，封板以后看不到，因此必须在隐蔽验收时检查。
+  - term: 腻子、底漆和面漆
+    plain_description: 腻子用于修平墙面；底漆用于封闭基层并提高附着力；面漆是最终看到的颜色和表面层。
+  - term: 地柜与吊柜
+    plain_description: 地柜是落地安装、支撑厨房台面的柜体；吊柜是固定在墙面较高位置的储物柜。
+  - term: 五金
+    plain_description: 柜门铰链、抽屉轨道、拉手、门锁、角阀、挂件等金属或功能配件的统称，需在报价中写明品牌、型号和数量。
+  - term: 美缝
+    plain_description: 在瓷砖缝内填入专用材料，使砖缝更易清洁并减少发黑；颜色、材料类型和计价方式应在施工前确认。
+  - term: 踢脚线
+    plain_description: 安装在墙面最下方与地面交界处的长条材料，用于保护墙脚并遮盖交接缝。
+  - term: 开关插座面板
+    plain_description: 墙面最终看得到并直接操作的开关、插座外壳和内部功能模块，不等同于水电阶段埋在墙里的底盒、电线和线管。
+  - term: 窗帘盒
+    plain_description: 吊顶或墙顶处用于隐藏窗帘轨道的凹槽，需要在吊顶施工前确认尺寸；窗帘布和轨道通常在墙面完成后复尺安装。
+  - term: 辅材
+    plain_description: 配合主要材料施工、完工后通常不显眼的材料，例如水泥砂浆、瓷砖胶、线管、接头、螺钉和密封材料；报价仍应写明种类、品牌、用量和价格，不能只写“辅材一项”。
+  - term: 包干报价
+    plain_description: 在事先写清的施工范围内按一个总价结算。范围之外是否加价、按什么单价加价必须在合同中说明，否则“包干”不能证明没有增项。
+  - term: 集成吊顶
+    plain_description: 厨房或卫生间常用的模块化吊顶，通常由金属扣板、边条和内部骨架组成，照明和取暖换气设备会安装在对应模块或开孔中。
+  - term: 阴阳角
+    plain_description: 墙面转角的两种形态：向房间内凹的是阴角，向外凸的是阳角。施工时需要保证线条顺直，并保护外凸边角不易磕坏。
+  - term: 色温和显色参数
+    plain_description: 色温描述灯光偏暖黄还是偏冷白；显色参数描述灯光还原物体真实颜色的能力。灯具不能只看瓦数，还应统一或按房间明确这两项。
+  - term: 接线极性
+    plain_description: 检查插座的火线、零线和保护接地线是否接到正确位置，避免错误接线带来触电或设备故障风险。
+  - term: 窗帘褶皱倍数
+    plain_description: 窗帘布展开宽度与轨道宽度的比例，会影响褶皱丰满程度、用布量和价格，必须与面料和窗宽一起写进报价。
+  - term: 马桶坑距
+    plain_description: 墙面完成位置到马桶排污口中心的水平距离，它决定可选马桶型号；购买前必须按完成面复核。
+  - term: 止回阀
+    plain_description: 安装在厨房排烟通道接口处、用于减少公共烟道气味和油烟倒灌的部件，需要与烟管和烟道接口匹配并密封。
+  - term: 角阀、软管和混水阀
+    plain_description: 角阀用于单独关闭某个洁具的供水；软管连接固定水口和洁具；混水阀把冷热水混合到所需温度。三者都要明确品牌、数量和安装责任。
+
+work_packages:
+  - id: PKG-000
+    sequence: 0
+    name: 设计、量房与开工准备
+    description: 交房后核对房屋实际尺寸和现状，把平面布局、拆改、水电、空调、吊顶、灯具、柜体等图纸协调完整，并用同一范围向多家单位询价后签订合同。
+    budget_pool: design_preparation
+    budget:
+      planned_cny: 12000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: user_decision:phase-1-control-20260911
+      allocation_status: pending_breakdown
+      components:
+        - {id: COST-000-01, name: 交房查验与现场量房, description: 检查交付问题并测量房间、梁柱、门窗和设备位置, quantity_basis: 服务范围待报价, planned_cny: null, status: quote_pending}
+        - {id: COST-000-02, name: 全套施工图设计, description: 平面、拆改、地面、吊顶、灯位、水电、给排水、立面和节点图, quantity_basis: 图纸目录待确认, planned_cny: null, status: quote_pending}
+        - {id: COST-000-03, name: 空调橱柜柜体等专业协调, description: 核对专业厂家图纸并关闭相互冲突, quantity_basis: 服务次数待确认, planned_cny: null, status: quote_pending}
+        - {id: COST-000-04, name: 报价比较合同审核和现场交底, description: 统一报价范围、检查合同并参加开工交底, quantity_basis: 服务次数待确认, planned_cny: null, status: quote_pending}
+    duration_workdays: {min: 15, max: 25}
+    dependencies: []
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-HANDOVER, BLK-STRUCTURE, BLK-HVAC-DEEPENING, BLK-GAS-DOOR]
+    owner_roles: [业主, 设计师, 施工方, 空调商]
+    payment_gate: GATE-000-COMPLETE
+    checks:
+      - id: SCH-000-01
+        severity: critical
+        checkpoint: completion
+        item: 现场量房及房屋查验完成
+        method: 对照原始户型逐房复核净尺寸、梁柱、门窗、烟道、燃气、给排水、强弱电及设备平台
+        pass_condition: 形成带日期、测量人和照片索引的现场记录
+        evidence_required: [measurement_record, site_photos]
+      - id: SCH-000-02
+        severity: critical
+        checkpoint: completion
+        item: 施工图与专业深化完成会审
+        method: 联合核对拆改、吊顶、灯位、水电、给排水、空调、橱柜和柜体图
+        pass_condition: 冲突清单已关闭；未确认事项明确标为阻塞而非猜测
+        evidence_required: [signed_drawing_set, coordination_record]
+      - id: SCH-000-03
+        severity: critical
+        checkpoint: payment
+        item: 报价和合同口径完整
+        method: 比较至少三份同口径报价并核对数量、单价、辅材、安装、损耗、增项和付款节点
+        pass_condition: 一期承诺额不超过总控且预备金未打包给施工方
+        evidence_required: [quote_comparison, signed_contract]
+
+  - id: PKG-005
+    sequence: 5
+    name: 物业装修手续与物业收费
+    description: 向物业提交装修申请，确认施工时间、人员进出、公区使用、垃圾清运和禁止施工事项；所有收费按物业票据记录，可退押金与实际消费分开记账。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 3000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: property_fees
+      allocation_status: pending_property_notice
+      components:
+        - {id: COST-005-01, name: 物业实际收取且不退还的费用, description: 装修管理、垃圾清运、人员证件等费用按物业正式通知逐项登记, quantity_basis: 以物业收费通知和票据为准, planned_cny: null, status: notice_pending}
+        - {id: COST-005-02, name: 可退装修押金的临时现金占用, description: 押金不是最终装修成本，但开工时可能需要先支付，必须另记退款条件和日期, quantity_basis: 以物业收费通知为准, planned_cny: null, status: notice_pending}
+    duration_workdays: {min: 3, max: 7}
+    dependencies: [PKG-000]
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-HANDOVER]
+    owner_roles: [业主, 物业]
+    payment_gate: GATE-005-PROPERTY-APPROVED
+    checks:
+      - id: SCH-005-01
+        severity: critical
+        checkpoint: before_start
+        item: 物业允许装修施工
+        method: 提交物业要求的装修申请、施工图、施工单位和人员资料，核对允许施工时间及禁止事项
+        pass_condition: 已取得物业允许进场施工的书面或系统记录
+        evidence_required: [property_approval]
+      - id: SCH-005-02
+        severity: major
+        checkpoint: payment
+        item: 物业收费和可退押金分开登记
+        method: 逐张核对装修管理费、垃圾清运费、出入证费用和装修押金票据
+        pass_condition: 每笔费用有票据；可退押金单独标记退款条件和预计退款时间
+        evidence_required: [fee_receipts, refundable_deposit_register]
+
+  - id: PKG-010
+    sequence: 10
+    name: 施工现场保护与施工位置标记
+    description: 施工方进场后先保护电梯、公区、入户门、窗户和已有成品，再把图纸上的墙体、门洞、柜体、水电、空调和吊顶位置标到现场；各方核对无误后才开始拆改。该项暂列0元，优先要求包含在施工合同中。
+    budget_pool: hard_finish
+    budget: {planned_cny: 0, contracted_cny: null, paid_cny: 0, forecast_cny: null, source_ref: pending_contractor_quote, funding_status: contract_inclusion_pending}
+    duration_workdays: {min: 2, max: 3}
+    dependencies: [PKG-005]
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-HANDOVER]
+    owner_roles: [施工方, 设计师, 业主]
+    payment_gate: GATE-010-SITE-READY
+    checks:
+      - id: SCH-010-01
+        severity: critical
+        checkpoint: before_start
+        item: 公区、入户门、窗户和已有成品完成保护
+        method: 逐处检查保护膜、保护板和护角是否连续、牢固，搬运通道和易碰位置是否覆盖
+        pass_condition: 施工及搬运可能接触的位置均已保护，无明显裸露、松脱或影响消防通行的情况
+        evidence_required: [site_protection_photos]
+      - id: SCH-010-02
+        severity: major
+        checkpoint: before_start
+        item: 图纸上的施工位置已经标到现场并共同核对
+        method: 逐房核对新墙、门洞、柜体、水电点位、空调内机、送回风口、检修口和吊顶边界的现场标记
+        pass_condition: 关键位置和尺寸与确认图纸一致，业主、设计师和施工方完成现场交底签认
+        evidence_required: [setting_out_photos, signed_site_brief]
+
+  - id: PKG-020
+    sequence: 20
+    name: 拆改、墙体新建与清运
+    description: 按确认图纸拆除允许拆除的墙体或构件，新建隔墙和门洞，并把施工垃圾运走；任何墙体性质未确认时都不能先拆再说。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 5000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: demolition
+      allocation_status: pending_breakdown
+      components:
+        - {id: COST-020-01, name: 拆除施工人工, description: 只拆除图纸允许拆除的墙体或构件, quantity_basis: 按拆改图工程量报价, planned_cny: null, status: quote_pending}
+        - {id: COST-020-02, name: 新建墙体和门洞处理, description: 包含砌墙材料人工和需要的门洞顶部加固构件, quantity_basis: 按长度面积和门洞数量报价, planned_cny: null, status: quote_pending}
+        - {id: COST-020-03, name: 室内装袋搬运和建渣外运, description: 从室内装袋搬至物业指定点并按规定清运, quantity_basis: 按车次或合同包干报价, planned_cny: null, status: quote_pending}
+        - {id: COST-020-04, name: 物业垃圾清运费核重, description: 如果物业3000元收费中已含垃圾费，本项不得重复支付, quantity_basis: 以物业票据和施工合同核对, planned_cny: null, status: duplication_check_required}
+    duration_workdays: {min: 5, max: 8}
+    dependencies: [PKG-010]
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-STRUCTURE]
+    owner_roles: [施工方, 设计师, 业主]
+    payment_gate: GATE-020-COMPLETE
+    acceptance_refs: [check_demo_wall, check_demo_structure]
+    checks:
+      - id: SCH-020-01
+        severity: major
+        checkpoint: completion
+        item: 新建墙体、门洞和现场清运完成
+        method: 对照拆改图检查墙体位置、垂直平整、门洞尺寸、过梁及建渣清运
+        pass_condition: 尺寸满足确认图纸且现场无遗留建渣
+        evidence_required: [measurement_record, completion_photos]
+
+  - id: PKG-030
+    sequence: 30
+    name: 中央空调第一次安装
+    description: 在吊顶封闭前安装空调室内机、铜管、保温层、冷凝水排水管、风管和控制线，并完成压力保持、排水和检修空间检查。
+    budget_pool: hvac
+    budget:
+      planned_cny: 33000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: hvac
+      allocation_status: pending_vendor_quote
+      components:
+        - {id: COST-030-01, name: 室外机和五台室内机, description: 逐台写明品牌型号制冷量和保修, quantity_basis: 室外机1台加室内机5台, planned_cny: null, status: quote_pending}
+        - {id: COST-030-02, name: 铜管保温冷凝水管和风管, description: 写明基础包含长度和超长部分单价, quantity_basis: 按现场深化图实测, planned_cny: null, status: site_measurement_pending}
+        - {id: COST-030-03, name: 支架打孔风口和控制器, description: 写明数量材质规格以及是否含安装, quantity_basis: 按深化图统计, planned_cny: null, status: quote_pending}
+        - {id: COST-030-04, name: 第一次安装人工, description: 吊顶封闭前安装内机和全部隐藏管线并完成测试, quantity_basis: 1次, planned_cny: null, status: quote_pending}
+        - {id: COST-030-05, name: 第二次安装和系统调试, description: 安装风口控制器并完成抽真空开机和整体调试，不是免费项目, quantity_basis: 1次, planned_cny: null, status: quote_pending}
+        - {id: COST-030-06, name: 运输高空或超长管等可能增加费用, description: 必须在合同中写明触发条件和单价, quantity_basis: 待现场确认, planned_cny: null, status: risk_pending}
+    duration_workdays: {min: 4, max: 7}
+    dependencies: [PKG-020]
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-STRUCTURE, BLK-HVAC-DEEPENING]
+    owner_roles: [空调商, 设计师, 施工方, 业主]
+    payment_gate: GATE-030-FIRST-FIX
+    acceptance_refs: [check_hvac_weld, check_hvac_drain, check_hvac_level, check_hvac_outdoor]
+    checks:
+      - id: SCH-030-01
+        severity: critical
+        checkpoint: before_covering
+        item: 冷媒管保压和记录完整
+        method: 按设备厂家书面工艺进行保压并记录压力、开始时间、结束时间和环境条件
+        pass_condition: 厂家工艺要求满足且无可见泄漏；记录经空调商和业主确认
+        evidence_required: [pressure_test_record, gauge_photos]
+      - id: SCH-030-02
+        severity: critical
+        checkpoint: before_covering
+        item: 冷凝水排放测试完成
+        method: 逐台内机注水，观察坡向、接头、排放点和末端出水
+        pass_condition: 排水连续通畅、无倒坡、无积水、无渗漏
+        evidence_required: [drainage_test_video, concealed_work_photos]
+      - id: SCH-030-03
+        severity: critical
+        checkpoint: before_covering
+        item: 风口、回风路径和检修空间确认
+        method: 现场核对吊顶完成面、风口尺寸、回风路径、检修口及与灯具柜体的关系
+        pass_condition: 所有内机可检修，风口与灯具柜门无冲突，相关方签认
+        evidence_required: [coordination_record, dimensioned_photos]
+
+  - id: PKG-040
+    sequence: 40
+    name: 水电改造
+    description: 根据家具和设备位置铺设电线、网线、给水管、排水管和热水回水管，设置插座、开关及专用电路；封墙封地前必须测试并拍照定位。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 15000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: water_electric
+      allocation_status: pending_breakdown
+      components:
+        - {id: COST-040-01, name: 给水管改造, description: 冷水和热水管材接头阀门以及安装人工, quantity_basis: 按管长和接口数量报价, planned_cny: null, status: quote_pending}
+        - {id: COST-040-02, name: 排水管改造, description: 厨房卫生间和设备排水管及防臭连接, quantity_basis: 按管长管径和排水点报价, planned_cny: null, status: quote_pending}
+        - {id: COST-040-03, name: 热水回水管预埋, description: 只包含循环管路预埋，不默认包含热水器或循环设备, quantity_basis: 按管长和接口报价, planned_cny: null, status: quote_pending}
+        - {id: COST-040-04, name: 普通照明和插座线路, description: 电线线管底盒和安装人工，不含最终灯具及开关插座面板, quantity_basis: 按回路点位和线长报价, planned_cny: null, status: quote_pending}
+        - {id: COST-040-05, name: 大功率设备专用线路, description: 中央空调厨房设备热水器等独立线路, quantity_basis: 按设备功率和回路数量报价, planned_cny: null, status: equipment_parameters_pending}
+        - {id: COST-040-06, name: 网络和电视信号线路, description: 网线信息面板弱电箱整理和必要测试, quantity_basis: 按信息点和线长报价, planned_cny: null, status: quote_pending}
+        - {id: COST-040-07, name: 智能开关零线窗帘电源和传感器预留, description: 只做线路和安装位置预留，不含二期窗帘电机和复杂智能设备, quantity_basis: 按确认点位报价, planned_cny: null, status: quote_pending}
+        - {id: COST-040-08, name: 开槽封槽打孔及测试人工, description: 明确是否已含在各线路单价内，避免重复收费, quantity_basis: 按合同说明, planned_cny: null, status: duplication_check_required}
+    duration_workdays: {min: 7, max: 12}
+    dependencies: [PKG-020]
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-HVAC-DEEPENING]
+    owner_roles: [水电施工, 设计师, 空调商, 业主]
+    payment_gate: GATE-040-HIDDEN-WORK
+    acceptance_refs: [check_plumb_pressure, check_plumb_drain, check_elec_continuity, check_elec_switch]
+    checks:
+      - id: SCH-040-01
+        severity: critical
+        checkpoint: before_covering
+        item: 点位和回路与家具、家电及空调匹配
+        method: 按空间逐点核对位置、用途、回路、线径、控制关系和设备功率资料
+        pass_condition: 不存在无用途点位、缺失点位或与固定设施冲突的点位
+        evidence_required: [point_schedule, circuit_schedule, marked_site_photos]
+      - id: SCH-040-02
+        severity: critical
+        checkpoint: before_covering
+        item: 隐蔽管线影像归档
+        method: 每面墙和地面拍摄全景、局部及带尺寸定位照片
+        pass_condition: 照片可定位每条管线且文件路径已登记
+        evidence_required: [concealed_work_photos]
+
+  - id: PKG-050
+    sequence: 50
+    name: 防水及闭水
+    description: 在卫生间、厨房和北阳台等需要防水的位置处理基层、涂刷防水材料并蓄水检查，确认本层和楼下都不渗漏后才能覆盖。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 5000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: waterproof
+      allocation_status: pending_breakdown
+      components:
+        - {id: COST-050-01, name: 两个卫生间防水, description: 地面墙面管根门槛和墙地交界处理, quantity_basis: 待量房后按面积高度和涂刷遍数报价, planned_cny: null, status: site_measurement_pending}
+        - {id: COST-050-02, name: 厨房和北阳台防水, description: 按确认范围处理地面墙脚和设备接口, quantity_basis: 待量房和范围确认, planned_cny: null, status: site_measurement_pending}
+        - {id: COST-050-03, name: 闭水试验及问题重做责任, description: 写清测试时长、楼下检查和不合格后的返工责任, quantity_basis: 包含在防水合同中, planned_cny: null, status: contract_scope_pending}
+    duration_workdays: {min: 4, max: 6}
+    dependencies: [PKG-040]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [防水施工, 施工方, 业主]
+    payment_gate: GATE-050-FLOOD-TEST
+    acceptance_refs: [check_wp_coats, check_wp_flood]
+    checks:
+      - id: SCH-050-01
+        severity: critical
+        checkpoint: before_covering
+        item: 防水范围和节点有施工前后记录
+        method: 核对两卫、厨房、北阳台及门槛、管根、墙地交界加强处理
+        pass_condition: 范围与确认图纸及产品工艺一致，照片可追溯
+        evidence_required: [waterproof_before_photos, waterproof_after_photos]
+
+  - id: PKG-060
+    sequence: 60
+    name: 泥瓦与铺贴
+    description: 修正墙地面高低差，铺贴地砖和厨卫墙砖，处理门槛、地漏坡度、砖缝及边角；重点检查空响、平整和排水积水。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 25000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: masonry
+      allocation_status: pending_breakdown
+      components:
+        - {id: COST-060-01, name: 地砖和墙砖主材, description: 按房间记录品牌型号规格数量损耗和补货规则, quantity_basis: 待排版图和量房后计算, planned_cny: null, status: quantity_pending}
+        - {id: COST-060-02, name: 水泥砂浆瓷砖胶等辅料, description: 写明使用区域品牌用量和是否另计上楼搬运, quantity_basis: 按铺贴面积报价, planned_cny: null, status: quote_pending}
+        - {id: COST-060-03, name: 墙地面找平, description: 修正基层高低差，超厚找平的触发条件和单价另列, quantity_basis: 待现场测量平整度, planned_cny: null, status: site_measurement_pending}
+        - {id: COST-060-04, name: 常规铺贴人工, description: 区分地砖墙砖和不同砖规格, quantity_basis: 按实际铺贴面积报价, planned_cny: null, status: quote_pending}
+        - {id: COST-060-05, name: 切割倒角开孔和特殊铺贴人工, description: 门槛管孔墙角和复杂排版可能产生的加工费用, quantity_basis: 按数量或长度报价, planned_cny: null, status: quote_pending}
+        - {id: COST-060-06, name: 搬运上楼和材料退补, description: 明确电梯搬运上楼费及剩余材料处理, quantity_basis: 按合同说明, planned_cny: null, status: contract_scope_pending}
+        - {id: COST-060-07, name: 南阳台铺贴范围, description: 南阳台方案未冻结，本项目前不得计入已确定工程量, quantity_basis: 待业主确认, planned_cny: null, status: alignment_required}
+    duration_workdays: {min: 12, max: 18}
+    dependencies: [PKG-050]
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-SOUTH-BALCONY]
+    owner_roles: [泥瓦施工, 设计师, 业主]
+    payment_gate: GATE-060-COMPLETE
+    acceptance_refs: [check_tile_hollow, check_tile_gap, check_tile_flatness, check_tile_slope]
+    checks:
+      - id: SCH-060-01
+        severity: major
+        checkpoint: before_start
+        item: 排版、起铺点和收口方案确认
+        method: 按房间核对铺贴方向、通缝关系、窄条位置、门槛和墙地收口
+        pass_condition: 形成确认版排版图或现场放样记录
+        evidence_required: [tile_layout, signed_mockup_photos]
+
+  - id: PKG-070
+    sequence: 70
+    name: 吊顶龙骨、隐蔽复验与封板
+    description: 先搭建吊顶内部支撑骨架，再联合检查吊顶里面的空调和水电；确认压力、排水、开口和检修条件全部合格后，才用石膏板或吊顶板封闭。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 6000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: carpentry
+      allocation_status: pending_breakdown
+      components:
+        - {id: COST-070-01, name: 轻钢龙骨和固定材料, description: 吊顶内部金属支撑骨架、吊杆和连接件, quantity_basis: 按吊顶展开面积和造型统计, planned_cny: null, status: quantity_pending}
+        - {id: COST-070-02, name: 石膏板吊顶面层, description: 写明板材类型、层数、防潮要求、接缝材料和安装人工, quantity_basis: 按展开面积报价, planned_cny: null, status: quote_pending}
+        - {id: COST-070-03, name: 厨房卫生间集成吊顶, description: 铝制扣板、边条、安装及设备开孔，不含未确认的取暖换气设备, quantity_basis: 按厨房和两个卫生间面积报价, planned_cny: null, status: quote_pending}
+        - {id: COST-070-04, name: 风口检修口灯孔和窗帘盒边缘处理, description: 按确认图纸逐个计数，明确开孔和加固是否另收费, quantity_basis: 待空调灯具和窗帘图确认, planned_cny: null, status: interface_pending}
+    duration_workdays: {min: 8, max: 12}
+    dependencies: [PKG-030, PKG-040]
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-HVAC-DEEPENING]
+    owner_roles: [吊顶施工, 空调商, 水电施工, 设计师, 业主]
+    payment_gate: GATE-070-CEILING-CLOSED
+    acceptance_refs: [check_carp_keel, check_carp_board]
+    checks:
+      - id: SCH-070-01
+        severity: critical
+        checkpoint: before_covering
+        item: 吊顶封板联合验收
+        method: 复查空调保压、冷凝水、风口、回风、检修口、上部水电和全部隐蔽影像
+        pass_condition: PKG-030与PKG-040关键验收全部通过并完成相关方签字
+        evidence_required: [signed_ceiling_close_permit, concealed_work_photos]
+      - id: SCH-070-02
+        severity: critical
+        checkpoint: completion
+        item: 吊顶完成面和设备开口复核
+        method: 测量标高、平整度、板缝处理、检修口和风口开孔尺寸
+        pass_condition: 与确认图纸及厂家尺寸一致，设备可安装和检修
+        evidence_required: [measurement_record, completion_photos]
+
+  - id: PKG-080
+    sequence: 80
+    name: 墙顶面基层与涂装
+    description: 修补墙顶面、批刮腻子、打磨并涂刷底漆和面漆；正式大面积施工前先做真实墙面颜色样板，完工后检查裂缝、色差和表面缺陷。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 11500
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: painting
+      allocation_status: pending_breakdown
+      components:
+        - {id: COST-080-01, name: 墙顶面修补和基层处理, description: 处理裂缝、孔洞、松散层和新旧墙交界，特殊问题须单列, quantity_basis: 待交房查验和现场测量, planned_cny: null, status: site_measurement_pending}
+        - {id: COST-080-02, name: 找平和批刮腻子, description: 写明材料品牌、施工遍数、厚度以及阴阳角处理, quantity_basis: 按实际施工面积报价, planned_cny: null, status: quote_pending}
+        - {id: COST-080-03, name: 打磨底漆和面漆, description: 写明漆品牌系列、色号、底漆与面漆遍数以及人工, quantity_basis: 按实际施工面积报价, planned_cny: null, status: quote_pending}
+        - {id: COST-080-04, name: 颜色样板和成品保护, description: 大面积涂刷前制作样板，施工时保护门窗、柜体和地面, quantity_basis: 按合同范围, planned_cny: null, status: contract_scope_pending}
+    duration_workdays: {min: 12, max: 18}
+    dependencies: [PKG-060, PKG-070]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [涂装施工, 设计师, 业主]
+    payment_gate: GATE-080-COMPLETE
+    acceptance_refs: [check_paint_surface, check_paint_env, check_paint_reserve]
+    checks:
+      - id: SCH-080-01
+        severity: major
+        checkpoint: before_start
+        item: 颜色和现场样板确认
+        method: 在实际墙面制作样板并在日间、夜间照明条件下观察
+        pass_condition: 色号、光泽和使用房间经业主确认
+        evidence_required: [signed_sample_photos]
+
+  - id: PKG-090
+    sequence: 90
+    name: 室内门及厨房门
+    description: 在墙面和地面厚度确定后重新测量门洞，生产并安装卧室门、卫生间门及厨房玻璃门；厨房门还要满足燃气单位确认的分隔要求。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 11500
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: doors_windows
+      allocation_status: pending_breakdown
+      components:
+        - {id: COST-090-01, name: 卧室和书房室内门, description: 门扇门套门锁合页门吸运输安装和密封收边均需写明, quantity_basis: 4樘, planned_cny: null, status: quote_pending}
+        - {id: COST-090-02, name: 卫生间门, description: 写明防潮材质玻璃门锁门套安装和密封处理, quantity_basis: 2樘, planned_cny: null, status: quote_pending}
+        - {id: COST-090-03, name: 厨房多扇联动玻璃推拉门, description: 推动一扇门时相邻门扇可随动；写明门扇数量、轨道、玻璃、型材、五金、安装收边和燃气验收适用条件, quantity_basis: 1组, planned_cny: null, status: gas_requirement_pending}
+        - {id: COST-090-04, name: 门洞修正和额外基层, description: 只有复尺发现确需处理时才发生，须先报价确认, quantity_basis: 待复尺, planned_cny: null, status: site_measurement_pending}
+    duration_workdays: {min: 3, max: 5}
+    dependencies: [PKG-060, PKG-080]
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-GAS-DOOR]
+    owner_roles: [门供应商, 施工方, 业主]
+    payment_gate: GATE-090-COMPLETE
+    acceptance_refs: [check_dw_swing, check_dw_seal]
+    checks:
+      - id: SCH-090-01
+        severity: critical
+        checkpoint: before_order
+        item: 门洞复尺及厨房燃气分隔条件确认
+        method: 逐樘记录完成面洞口尺寸，并核对燃气单位或物业的书面要求
+        pass_condition: 复尺单签认且厨房门方案满足确认要求
+        evidence_required: [door_measurement_sheet, gas_requirement_record]
+
+  - id: PKG-100
+    sequence: 100
+    name: 两个卫生间的洁具与五金
+    description: 安装马桶、浴室柜、台盆、龙头、花洒、地漏和相关五金，逐件试水、排水并检查接头是否渗漏、安装是否牢固。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 11500
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: sanitary
+      allocation_status: pending_fixture_schedule
+      components:
+        - {id: COST-100-01, name: 马桶, description: 分别记录主卫生间和客卫生间的型号坑距角阀软管安装及旧孔处理, quantity_basis: 2台, planned_cny: null, status: model_pending}
+        - {id: COST-100-02, name: 浴室柜台盆和镜柜, description: 分卫生间记录柜体材质尺寸龙头下水安装和墙体固定条件, quantity_basis: 2套, planned_cny: null, status: model_pending}
+        - {id: COST-100-03, name: 花洒, description: 分卫生间记录混水阀花洒组件安装辅材和水压适配, quantity_basis: 2套, planned_cny: null, status: model_pending}
+        - {id: COST-100-04, name: 地漏角阀软管及卫生间小五金, description: 按点位逐件列数量品牌型号和安装费用, quantity_basis: 待点位表确认, planned_cny: null, status: quantity_pending}
+        - {id: COST-100-05, name: 淋浴区玻璃隔断, description: 当前旧预算曾放在家电类，必须确认是否回到卫生间项目并避免重复计费, quantity_basis: 2处候选，待设计确认, planned_cny: null, status: ownership_pending}
+        - {id: COST-100-06, name: 卫生间取暖换气设备, description: 确认是否由开发商提供以及设备和安装属于哪个预算项目, quantity_basis: 2处待核对, planned_cny: null, status: ownership_pending}
+    duration_workdays: {min: 3, max: 5}
+    dependencies: [PKG-060, PKG-080]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [洁具供应商, 水电施工, 业主]
+    payment_gate: GATE-100-COMPLETE
+    acceptance_refs: [check_dw_drain, check_plumb_drain]
+    checks:
+      - id: SCH-100-01
+        severity: critical
+        checkpoint: completion
+        item: 洁具逐件通水、排水和渗漏检查
+        method: 对马桶、台盆、龙头、花洒和地漏逐件连续试水并检查连接处
+        pass_condition: 功能正常、排水通畅、无渗漏、无明显松动
+        evidence_required: [fixture_test_video, completion_photos]
+
+  - id: PKG-110
+    sequence: 110
+    name: 橱柜及台面
+    description: 墙地面完成后重新测量厨房，确认烟机、灶具、水槽和预留电器尺寸，再生产安装地柜、吊柜、台面和五金，并检查开合、接缝和维护空间。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 11500
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: kitchen_cabinet
+      allocation_status: pending_site_measurement
+      components:
+        - {id: COST-110-01, name: 落地橱柜, description: 写明柜体门板层板抽屉和基础五金，不能只报一个模糊的每米价格, quantity_basis: 方案约5米但墙段合计口径不一致，待复尺和深化, planned_cny: null, status: geometry_reconciliation_required}
+        - {id: COST-110-02, name: 墙上吊柜, description: 写明长度高度深度柜体门板层板和安装方式, quantity_basis: 待深化图统计, planned_cny: null, status: quantity_pending}
+        - {id: COST-110-03, name: 厨房操作台面, description: 写明材质厚度挡水边开孔接缝运输和安装, quantity_basis: 待深化图按长度或展开面积统计, planned_cny: null, status: quantity_pending}
+        - {id: COST-110-04, name: 抽屉拉篮铰链轨道和其他五金, description: 逐件写明品牌型号数量，不接受统一写成五金升级, quantity_basis: 待业主确认配置, planned_cny: null, status: selection_pending}
+        - {id: COST-110-05, name: 烟机灶具水槽及预留电器的柜体处理, description: 明确开孔加固封边和安装由谁负责，设备本身不在橱柜费中重复计取, quantity_basis: 按设备清单, planned_cny: null, status: interface_pending}
+    duration_workdays: {min: 3, max: 6}
+    dependencies: [PKG-060, PKG-080]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [橱柜供应商, 设计师, 业主]
+    payment_gate: GATE-110-COMPLETE
+    acceptance_refs: [check_carp_cabinet]
+    checks:
+      - id: SCH-110-01
+        severity: critical
+        checkpoint: before_order
+        item: 完成面复尺和电器接口冻结
+        method: 核对柜体、台面、烟机、灶具、水槽及预留电器的尺寸和水电接口
+        pass_condition: 复尺图及设备尺寸表经业主确认后下单
+        evidence_required: [cabinet_measurement_sheet, approved_shop_drawing]
+      - id: SCH-110-02
+        severity: major
+        checkpoint: completion
+        item: 台面、柜体、五金及收口验收
+        method: 检查水平、门缝、开合、固定、台面接缝、防水收口及设备安装空间
+        pass_condition: 使用功能正常、无明显缺陷且预留设备可安装维护
+        evidence_required: [completion_photos, defect_list]
+
+  - id: PKG-120
+    sequence: 120
+    name: 一期基础灯具安装与照明测试
+    description: 采购并安装一期保证正常照明所需的灯具，逐盏核对安装位置、色温、亮度、开关控制和检修条件；装饰性灯具可留到后续阶段。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 3000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: lighting
+      allocation_status: pending_fixture_schedule
+      components:
+        - {id: COST-120-01, name: 各房间基础照明灯具, description: 逐盏记录房间、位置、品牌型号、功率、色温、显色参数和单价, quantity_basis: 待灯具点位表确认, planned_cny: null, status: quantity_pending}
+        - {id: COST-120-02, name: 灯具安装和调试人工, description: 明确是否包含开孔、组装、安装和故障排查，避免与水电人工重复, quantity_basis: 按灯具数量和类型报价, planned_cny: null, status: duplication_check_required}
+    duration_workdays: {min: 3, max: 5}
+    dependencies: [PKG-080]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [电工, 灯具供应商, 业主]
+    payment_gate: GATE-120-COMPLETE
+    acceptance_refs: [check_elec_continuity, check_elec_switch]
+    checks:
+      - id: SCH-120-01
+        severity: major
+        checkpoint: completion
+        item: 基础灯具逐盏通电和控制测试
+        method: 按灯具点位表逐盏测试点亮、色温、亮度、开关和双处控制关系
+        pass_condition: 一期照明点位全部可正常使用，控制关系正确，无闪烁、异响或明显色差
+        evidence_required: [lighting_schedule, commissioning_record]
+
+  - id: PKG-125
+    sequence: 125
+    name: 开关插座面板与一期基础智能设备
+    description: 安装墙面最终使用的开关和插座面板，配置一期确需使用的智能开关或网关，逐点测试供电、控制和网络连接；窗帘电机等二期设备只保留接口，不在本项采购。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 2000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: smart_home
+      allocation_status: pending_point_schedule
+      components:
+        - {id: COST-125-01, name: 普通开关和插座面板, description: 逐点记录功能类型、品牌系列、数量和单价；电线、线管及底盒已在水电项目中计取, quantity_basis: 待最终点位表确认, planned_cny: null, status: quantity_pending}
+        - {id: COST-125-02, name: 一期智能开关或网关, description: 只采购入住即需使用的基础设备，逐件说明用途和兼容平台, quantity_basis: 待智能功能清单确认, planned_cny: null, status: selection_pending}
+        - {id: COST-125-03, name: 面板安装标识和调试人工, description: 逐点安装测试并给配电箱回路贴明用途，核对是否包含在水电合同中, quantity_basis: 按点位数量和合同边界, planned_cny: null, status: duplication_check_required}
+    duration_workdays: {min: 2, max: 4}
+    dependencies: [PKG-080]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [电工, 智能设备供应商, 业主]
+    payment_gate: GATE-125-COMPLETE
+    acceptance_refs: [check_elec_continuity, check_elec_switch]
+    checks:
+      - id: SCH-125-01
+        severity: critical
+        checkpoint: completion
+        item: 开关、插座和基础智能设备逐点测试
+        method: 按最终点位表逐个核对通电、接线极性、控制关系、网络连接和配电箱回路标签
+        pass_condition: 点位表逐项通过，标签可理解，故障项已整改并复验
+        evidence_required: [point_schedule, commissioning_record, panel_label_photos]
+
+  - id: PKG-130
+    sequence: 130
+    name: 瓷砖美缝
+    description: 清理并填充所有确认范围内的瓷砖缝，施工前确认材料、颜色、计价长度或面积，完成后逐段检查饱满、平整、颜色一致和污染情况。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 4500
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: mortar
+      allocation_status: pending_measurement
+      components:
+        - {id: COST-130-01, name: 美缝材料, description: 写明品牌、系列、颜色、使用区域和材料数量, quantity_basis: 待铺砖完成后按砖缝长度或面积复核, planned_cny: null, status: quantity_pending}
+        - {id: COST-130-02, name: 清缝填缝和清理人工, description: 包含施工前清缝、填充、压缝和完工清理, quantity_basis: 明确按面积、长度或包干计价, planned_cny: null, status: quote_pending}
+    duration_workdays: {min: 3, max: 5}
+    dependencies: [PKG-060, PKG-080]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [美缝施工, 业主]
+    payment_gate: GATE-130-COMPLETE
+    checks:
+      - id: SCH-130-01
+        severity: major
+        checkpoint: completion
+        item: 美缝范围、颜色和成品质量逐段检查
+        method: 按房间沿每条砖缝检查漏做、断缝、气泡、凹陷、色差和瓷砖污染
+        pass_condition: 确认范围内无漏项，填充连续饱满，颜色符合样板，瓷砖表面清洁
+        evidence_required: [signed_sample_photos, room_completion_photos, defect_list]
+
+  - id: PKG-135
+    sequence: 135
+    name: 踢脚线、明确收边项目与竣工深度清洁
+    description: 安装踢脚线，按已经列明的位置处理门套、柜体、台面、洁具和墙地面交界，修复清单中记录的表面缺陷，最后逐房进行深度清洁；不得用“零星收口”作为未列项目的收费口袋。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 5500
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: miscellaneous_remainder
+      allocation_status: pending_breakdown
+      components:
+        - {id: COST-135-01, name: 踢脚线材料和安装, description: 写明材质、高度、颜色、长度、转角配件、固定方式和安装人工, quantity_basis: 待完成面按实际长度复核, planned_cny: null, status: quantity_pending}
+        - {id: COST-135-02, name: 已列明交界位置的收边处理, description: 按门套、柜体、台面、洁具、风口和墙地交界逐处列数量、材料和责任方, quantity_basis: 待形成收边位置清单, planned_cny: null, status: scope_schedule_pending}
+        - {id: COST-135-03, name: 验收缺陷修复, description: 只处理缺陷清单中的具体问题；原合同施工质量问题由责任方免费整改, quantity_basis: 按缺陷责任判定, planned_cny: null, status: responsibility_pending}
+        - {id: COST-135-04, name: 竣工深度清洁, description: 逐房清洁地墙顶、门柜、玻璃、洁具和设备表面并清走施工垃圾, quantity_basis: 按建筑面积和服务范围报价, planned_cny: null, status: quote_pending}
+    duration_workdays: {min: 4, max: 7}
+    dependencies: [PKG-090, PKG-100, PKG-110, PKG-120, PKG-125, PKG-130]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [施工方, 踢脚线供应商, 保洁, 业主]
+    payment_gate: GATE-135-COMPLETE
+    checks:
+      - id: SCH-135-01
+        severity: major
+        checkpoint: completion
+        item: 踢脚线与清单所列收边逐项检查
+        method: 按位置清单逐段检查固定、拼缝、转角、交界密封、污染和高低差
+        pass_condition: 每个清单位置均有结果，无漏项、松动、明显缝隙或影响使用的问题
+        evidence_required: [finish_location_schedule, completion_photos, defect_list]
+      - id: SCH-135-02
+        severity: major
+        checkpoint: completion
+        item: 深度清洁及成品完好检查
+        method: 逐房检查地墙顶、门柜、玻璃、洁具和设备表面，并核对施工垃圾清运
+        pass_condition: 无施工垃圾和明显污染，成品损伤已登记、定责并整改
+        evidence_required: [room_completion_photos, defect_list]
+
+  - id: PKG-140
+    sequence: 140
+    name: 中央空调第二次安装与调试
+    description: 墙面和吊顶完成后安装空调出风口、回风口及控制器，对整套系统抽真空、开机运行，检查制冷、排水、噪声和控制功能。
+    budget_pool: hvac
+    budget: {planned_cny: 0, contracted_cny: null, paid_cny: 0, forecast_cny: null, source_ref: included_in_PKG-030, funding_status: included_in_other_package, included_budget_package: PKG-030}
+    duration_workdays: {min: 2, max: 4}
+    dependencies: [PKG-080, PKG-120, PKG-125]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [空调商, 业主]
+    payment_gate: GATE-140-COMMISSIONED
+    acceptance_refs: [check_hvac_vacuum, check_hvac_vent, check_hvac_cooling, check_hvac_outdoor]
+    checks:
+      - id: SCH-140-01
+        severity: critical
+        checkpoint: completion
+        item: 全系统运行、排水、噪声和控制测试
+        method: 逐台及联合运行，测试控制器、模式切换、送回风、冷凝水和异常噪声
+        pass_condition: 所有内机可控且运行、排水正常，问题完成整改复验
+        evidence_required: [commissioning_record, operation_video]
+
+  - id: PKG-145
+    sequence: 145
+    name: 一期窗帘、纱帘与手动轨道
+    description: 墙面和窗帘盒完成后逐窗复尺，为需要遮光或隐私的房间安装一期窗帘、纱帘和手动轨道；电动窗帘电机属于二期，水电阶段只预留电源和位置。
+    budget_pool: curtains
+    budget:
+      planned_cny: 10000
+      estimated_need_cny: 10000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: historical_curtains
+      funding_status: allocated_by_owner
+      allocation_status: scope_and_quote_pending
+      components:
+        - {id: COST-145-01, name: 各房间布帘和纱帘, description: 逐窗写明是否需要布帘、纱帘、遮光等级、面料型号、褶皱倍数、尺寸和单价, quantity_basis: 待逐窗复尺和需求确认, planned_cny: null, status: scope_pending}
+        - {id: COST-145-02, name: 手动轨道及安装, description: 逐窗写明直轨或转角轨、长度、承重、配件、安装和保修, quantity_basis: 待窗帘盒完成后复尺, planned_cny: null, status: site_measurement_pending}
+    duration_workdays: {min: 2, max: 4}
+    dependencies: [PKG-080, PKG-120]
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-CURTAIN-SCOPE]
+    owner_roles: [窗帘供应商, 设计师, 业主]
+    payment_gate: GATE-145-COMPLETE
+    checks:
+      - id: SCH-145-01
+        severity: critical
+        checkpoint: before_order
+        item: 逐窗复尺和一期窗帘配置确认
+        method: 核对窗口完成面尺寸、窗帘盒、轨道长度、开启方向、遮光隐私需求和空调风口关系
+        pass_condition: 每个一期窗口都有签认的尺寸、面料、轨道和报价记录
+        evidence_required: [curtain_measurement_sheet, approved_curtain_schedule]
+      - id: SCH-145-02
+        severity: major
+        checkpoint: completion
+        item: 窗帘开合、遮挡和安装牢固检查
+        method: 逐窗往返开合，检查轨道固定、布帘垂顺、遮光覆盖、拖地和与家具风口碰撞
+        pass_condition: 开合顺畅、固定牢靠、覆盖满足确认需求且无明显碰撞
+        evidence_required: [completion_photos, operation_video]
+
+  - id: PKG-150
+    sequence: 150
+    name: 一期家具与定制收纳
+    description: 按完成后的现场尺寸安装必要衣柜、床、床垫、桌椅、沙发和鞋柜，检查牢固程度、柜门开合、通行宽度以及与插座和空调检修位置的关系。
+    budget_pool: furniture
+    budget:
+      planned_cny: 43000
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: furniture_soft
+      allocation_status: pending_furniture_schedule
+      components:
+        - {id: COST-150-01, name: 一期衣柜和必要收纳柜, description: 逐柜记录房间、位置、宽高深、材质、内部格局、五金、运输安装和墙体固定条件, quantity_basis: 待逐柜深化；主卧衣柜仍有阻塞项, planned_cny: null, status: design_pending}
+        - {id: COST-150-02, name: 床架, description: 分房间记录尺寸、材质、结构、送货安装和保修, quantity_basis: 3张候选，待一期房间使用计划确认, planned_cny: null, status: quantity_pending}
+        - {id: COST-150-03, name: 床垫, description: 与床架分开报价，分房间记录尺寸、软硬度、材料和试睡退换条件, quantity_basis: 3张候选，待确认, planned_cny: null, status: selection_pending}
+        - {id: COST-150-04, name: 书桌办公桌和椅子, description: 分使用者记录尺寸、数量、承重和插座灯光关系, quantity_basis: 待逐房家具清单确认, planned_cny: null, status: quantity_pending}
+        - {id: COST-150-05, name: 客厅沙发, description: 写明尺寸、材质、座深、送货通道和与插座窗帘的关系, quantity_basis: 1组候选，待确认, planned_cny: null, status: selection_pending}
+        - {id: COST-150-06, name: 餐桌和餐椅, description: 写明桌面尺寸、椅子数量、材质和使用通道, quantity_basis: 1组候选，待确认, planned_cny: null, status: selection_pending}
+        - {id: COST-150-07, name: 入户鞋柜, description: 写明尺寸、内部格局、换鞋功能、五金安装及配电弱电接口避让, quantity_basis: 1组候选，待深化, planned_cny: null, status: design_pending}
+    duration_workdays: {min: 5, max: 10}
+    dependencies: [PKG-135, PKG-140]
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-MASTER-WARDROBE]
+    owner_roles: [家具供应商, 定制供应商, 设计师, 业主]
+    payment_gate: GATE-150-COMPLETE
+    acceptance_refs: [check_carp_cabinet]
+    checks:
+      - id: SCH-150-01
+        severity: critical
+        checkpoint: before_order
+        item: 柜体复尺及与机电、门、窗帘、空调关系确认
+        method: 逐柜核对完成面尺寸、插座开关、风口检修口、门扇和通道
+        pass_condition: 深化图经业主确认；主卧衣柜阻塞项已关闭
+        evidence_required: [approved_shop_drawing, measurement_sheet]
+      - id: SCH-150-02
+        severity: major
+        checkpoint: completion
+        item: 家具安装、稳定性和通行检查
+        method: 逐件检查牢固、水平、开合、边角、床垫匹配和主要通道
+        pass_condition: 使用安全顺畅，无碰撞和影响检修的问题
+        evidence_required: [completion_photos, defect_list]
+
+  - id: PKG-160
+    sequence: 160
+    name: 必需家电安装与接口测试
+    description: 安装一期实际需要使用的家电，逐台核对电源、给水、排水、散热和维护空间并试运行；二期设备不在本项重复计费。
+    budget_pool: appliances
+    budget:
+      planned_cny: 7000
+      public_reference_floor_cny: 7825
+      public_reference_floor_note: 该下限按约5.0千瓦燃气灶目标候选计算，未采用4.8千瓦预算下探款；组合中仍含公开页面标示下架或库存待确认的型号，只作预算警戒线，不是可直接下单组合；最低价501升冰箱宽约833毫米，不能视为已满足本户型约700毫米冰箱位，因此实际可行组合可能更高。
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: appliances
+      allocation_status: pending_appliance_schedule
+      priority_policy:
+        - {level: P0, name: 入住必需, rule: 冰箱、洗衣机以及实际没有现成设备时的热水器，优先保证基本生活功能}
+        - {level: P0接口, name: 做饭和施工接口必需, rule: 燃气灶和吸油烟机先确认型号和接口，再冻结橱柜开孔、燃气和电路}
+        - {level: P2, name: 二期延后, rule: 洗碗机、干衣机、净水设备和扫地机器人继续留在二期，不从一期额度挤占}
+      components:
+        - {id: COST-160-01, priority: P0, priority_name: 入住必需, priority_order: 1, name: 冰箱, description: 记录型号、尺寸、开门、散热、插座、送货和安装条件；设计模型冰箱位暂约700毫米宽×700毫米深，当前501升候选有宽约833毫米者，必须复测净开口后再定可购买型号；没有可用旧冰箱时列为一期必买, quantity_basis: 1台候选，待复尺和确认是否一期采购, planned_cny: null, status: fit_pending}
+        - {id: COST-160-02, priority: P0, priority_name: 入住必需, priority_order: 2, name: 洗衣机, description: 记录型号、尺寸、进水、排水、插座、防水和阳台通风位置；没有可用旧洗衣机时列为一期必买, quantity_basis: 1台候选，待阳台复尺和确认是否一期采购, planned_cny: null, status: fit_pending}
+        - {id: COST-160-03, priority: P0接口, priority_name: 做饭和橱柜接口必需, priority_order: 3, name: 燃气灶, description: 记录型号、开孔尺寸、燃气接口、电源和安装验收责任；必须在橱柜台面开孔前冻结, quantity_basis: 1台候选，待燃气条件确认, planned_cny: null, status: interface_pending}
+        - {id: COST-160-04, priority: P0接口, priority_name: 做饭和橱柜接口必需, priority_order: 4, name: 吸油烟机, description: 记录型号、尺寸、烟管、止回阀、插座与橱柜安装边界；必须在吊柜和烟管施工前冻结, quantity_basis: 1台候选，待确认, planned_cny: null, status: interface_pending}
+        - {id: COST-160-05, priority: P0条件, priority_name: 无现成设备时入住必需, priority_order: 5, name: 燃气热水器（一期类别已确认）, description: 业主已确认一期按燃气热水器推进；设计模型暂记厨房西侧靠生活阳台玻璃幕墙的实体墙（墙体编号w_vrv_east，插座协调点sock_balcony_waterheater），这只是设计协调点，不是现场安装确认；仍需核对开发商或现有设备是否可用、天然气条件、实际安装墙面、容量、尺寸、排烟、冷凝水、给排水、专用电路和物业要求，现场条件未闭合前不得下单, quantity_basis: 1台候选，类别已确认、现场待核, planned_cny: null, status: selection_confirmed_site_pending}
+        - {id: COST-160-06, priority: P2, priority_name: 明确留到二期, priority_order: 99, name: 二期家电排除项, description: 洗碗机、干衣机、净水设备、扫地机器人等不从一期7000元重复扣款，除非业主书面调整阶段, quantity_basis: 排除清单, planned_cny: 0, status: excluded_to_phase_2}
+    duration_workdays: {min: 2, max: 4}
+    dependencies: [PKG-110, PKG-120, PKG-125, PKG-135]
+    readiness: blocked
+    status: not_started
+    blockers: [BLK-PHASE1-APPLIANCES, BLK-WATER-HEATER-SITE, BLK-FRIDGE-FIT]
+    owner_roles: [家电供应商, 水电施工, 业主]
+    payment_gate: GATE-160-COMPLETE
+    checks:
+      - id: SCH-160-01
+        severity: critical
+        checkpoint: completion
+        item: 必需家电逐台安装和接口试运行
+        method: 按设备说明检查电源、给排水、散热、水平和试运行状态
+        pass_condition: 设备运行正常，无漏水、异常发热、跳闸或维护空间不足
+        evidence_required: [commissioning_record, serial_number_photos]
+
+  - id: PKG-170
+    sequence: 170
+    name: 竣工联合验收、整改与资料移交
+    description: 汇总各工种未通过项目并逐条整改复查，核对最终费用，完成清洁、空气质量检测以及图纸、照片、发票、保修和设备资料移交。
+    budget_pool: hard_finish
+    budget: {planned_cny: 0, contracted_cny: null, paid_cny: 0, forecast_cny: null, source_ref: closeout}
+    duration_workdays: {min: 5, max: 10}
+    dependencies: [PKG-135, PKG-140, PKG-145, PKG-150, PKG-160]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [业主, 设计师, 施工方, 各供应商]
+    payment_gate: GATE-170-FINAL
+    acceptance_refs: [check_occ_formaldehyde]
+    checks:
+      - id: SCH-170-01
+        severity: critical
+        checkpoint: completion
+        item: 所有失败项完成整改和复验
+        method: 汇总各施工包缺陷清单，逐项核对整改证据和复验记录
+        pass_condition: 无未关闭的critical或major问题
+        evidence_required: [closed_defect_register, reinspection_records]
+      - id: SCH-170-02
+        severity: critical
+        checkpoint: payment
+        item: 竣工资料和保修资料完整移交
+        method: 核对竣工图、隐蔽照片、设备清单、合同发票、保修卡、说明书和联系人
+        pass_condition: 移交目录逐项签收，资料路径可访问
+        evidence_required: [signed_handover_index]
+      - id: SCH-170-03
+        severity: critical
+        checkpoint: payment
+        item: 最终结算不超过批准额度
+        method: 汇总合同、变更、已付、待付和退款，核对各预算池及总上限
+        pass_condition: 最终预测不超过¥240,000，或已有业主书面追加批准
+        evidence_required: [final_account_statement, owner_approval_if_overrun]
+
+  - id: PKG-900
+    sequence: 900
+    name: 硬装预备金
+    description: 由业主保留、用于量房误差或确实无法预见事项的备用额度，不是施工方可以默认使用的费用；每次动用都要有原因、报价和书面批准。
+    budget_pool: hard_finish
+    budget: {planned_cny: 12000, contracted_cny: null, paid_cny: 0, forecast_cny: null, source_ref: contingency}
+    duration_workdays: {min: 0, max: 0}
+    dependencies: []
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [业主]
+    payment_gate: GATE-900-OWNER-APPROVAL
+    checks:
+      - id: SCH-900-01
+        severity: critical
+        checkpoint: payment
+        item: 预备金动用经过业主逐笔批准
+        method: 记录原因、关联施工包、报价、批准金额和剩余额度
+        pass_condition: 不存在无批准支出，且同一费用未在基础合同中重复计取
+        evidence_required: [variation_order, owner_approval]
+
+audit_log:
+  status: empty
+  record_schema:
+    required: [id, package_id, check_id, status, checked_at, checked_by, evidence]
+    status_values: [passed, failed, not_applicable]
+    note: 同一package_id与check_id组合复验时追加新记录，并用supersedes指向上一条记录；禁止覆盖历史
+  records: []

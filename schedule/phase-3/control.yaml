@@ -1,0 +1,28 @@
+schema: schedule.phase-scope/v1
+project_id: bontop-design-log
+phase_id: phase_3_styling
+version: 0.1.0
+updated_at: 2026-09-11
+status: proposed
+decision_state: alignment_required
+depends_on: [phase_1_basic_occupancy]
+currency: CNY
+budget:
+  estimate_min_cny: 5000
+  estimate_max_cny: 10000
+  ceiling_cny: null
+  approved_cny: null
+activation_gates:
+  - {id: P3-GATE-01, status: blocked, item: 一期完成并实际入住观察}
+  - {id: P3-GATE-02, status: blocked, item: 形成基于真实使用问题的缺口清单}
+  - {id: P3-GATE-03, status: blocked, item: 业主确认三期项目和预算上限}
+scope_candidates:
+  - {id: P3-010, name: 装饰画与墙面陈设, status: proposed}
+  - {id: P3-020, name: 地毯靠垫及补充织物, status: proposed}
+  - {id: P3-030, name: 绿植与小型摆件, status: proposed}
+  - {id: P3-040, name: 入住后灯光氛围微调, status: proposed}
+audit:
+  status: not_started
+  note: 不预分配单项金额，避免在入住反馈形成前制造虚假精度
+  records: []
+

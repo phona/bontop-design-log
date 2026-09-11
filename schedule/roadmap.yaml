@@ -1,0 +1,33 @@
+schema: schedule.roadmap/v1
+project_id: bontop-design-log
+updated_at: 2026-09-11
+currency: CNY
+policy:
+  - 后一阶段不得自动侵占前一阶段预备金或未分配额度
+  - 跨阶段提前采购必须记录批准并避免重复计费
+  - proposed阶段只用于规划，不代表采购授权
+phases:
+  - id: phase_1_basic_occupancy
+    directory: schedule/phase-1
+    name: 一期基本入住
+    status: planning
+    depends_on: []
+    budget: {ceiling_cny: 240000, allocated_cny: 237000, unallocated_cny: 3000}
+    scope: 基础硬装、中央空调、一期手动窗帘、必要家具和必需家电
+    activation_gate: 交房量房、图纸会审、同口径报价及物业手续完成
+  - id: phase_2_function_upgrade
+    directory: schedule/phase-2
+    name: 二期功能升级
+    status: proposed
+    depends_on: [phase_1_basic_occupancy]
+    budget: {estimate_min_cny: 30000, estimate_max_cny: 45000, ceiling_cny: null}
+    scope: 电视系统、补充家电、窗帘电机、小件家具及健身设备
+    activation_gate: 一期竣工结算完成，业主重新确认范围和预算上限
+  - id: phase_3_styling
+    directory: schedule/phase-3
+    name: 三期入住后软装优化
+    status: proposed
+    depends_on: [phase_1_basic_occupancy]
+    budget: {estimate_min_cny: 5000, estimate_max_cny: 10000, ceiling_cny: null}
+    scope: 入住后基于真实使用反馈补充装饰、织物和氛围物件
+    activation_gate: 入住观察期结束，业主确认实际缺口

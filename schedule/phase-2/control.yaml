@@ -1,0 +1,32 @@
+schema: schedule.phase-scope/v1
+project_id: bontop-design-log
+phase_id: phase_2_function_upgrade
+version: 0.1.0
+updated_at: 2026-09-11
+status: proposed
+decision_state: alignment_required
+depends_on: [phase_1_basic_occupancy]
+currency: CNY
+budget:
+  estimate_min_cny: 30000
+  estimate_max_cny: 45000
+  ceiling_cny: null
+  approved_cny: null
+activation_gates:
+  - {id: P2-GATE-01, status: blocked, item: 一期竣工结算完成}
+  - {id: P2-GATE-02, status: blocked, item: 根据一期实际结余重新确定二期总上限}
+  - {id: P2-GATE-03, status: blocked, item: 逐项确认采购必要性、尺寸、接口和保修条件}
+items:
+  - {id: P2-010, name: 电视及电视墙系统, estimate_min_cny: 11000, estimate_max_cny: 14000, status: proposed}
+  - {id: P2-020, name: 烘干机, estimate_min_cny: 2500, estimate_max_cny: 4500, status: proposed}
+  - {id: P2-030, name: 洗碗机, estimate_min_cny: 2500, estimate_max_cny: 4000, status: proposed}
+  - {id: P2-040, name: 净水器, estimate_min_cny: 1500, estimate_max_cny: 2500, status: proposed}
+  - {id: P2-050, name: 上下水扫地机器人, estimate_min_cny: 4000, estimate_max_cny: 5500, status: proposed}
+  - {id: P2-060, name: 床头柜斗柜茶几等小件家具, estimate_min_cny: 5000, estimate_max_cny: 7500, status: proposed}
+  - {id: P2-070, name: 窗帘电机, estimate_min_cny: 3000, estimate_max_cny: 4000, status: proposed}
+  - {id: P2-080, name: 家庭健身设备, estimate_min_cny: 1000, estimate_max_cny: 1500, status: proposed}
+audit:
+  status: not_started
+  note: 明细合计为¥30,500—¥43,500，落在阶段规划区间内；范围未冻结前不得采购
+  records: []
+
