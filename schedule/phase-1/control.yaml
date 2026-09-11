@@ -15,9 +15,9 @@ authority:
 
 control:
   phase_ceiling_cny: 240000
-  allocated_cny: 237000
-  unallocated_cny: 3000
-  fixed_works_cny: 165000
+  allocated_cny: 239000
+  unallocated_cny: 1000
+  fixed_works_cny: 167000
   status: planning
   current_gate: pre_handover
   status_values: [not_started, in_progress, blocked, ready_for_inspection, failed, passed, waived]
@@ -34,7 +34,7 @@ control:
 budget_pools:
   - id: hard_finish
     name: 基础硬装
-    planned_cny: 132000
+    planned_cny: 134000
   - id: hvac
     name: 中央空调
     planned_cny: 33000
@@ -59,7 +59,7 @@ budget_reconciliation:
     total_budget_cny: 208000
     project_ceiling_cny: 190000
     status: historical_reference_only
-  explanation: 原20.8万元和19万元上限属于量房前旧基线；一期执行、签约和付款统一按本文件24万元上限控制。窗帘预算已按业主确认从未分配额度中划拨1万元，剩余未分配额度3千元；旧文件用于追溯历史估算，不再决定一期可承诺金额。
+  explanation: 原20.8万元和19万元上限属于量房前旧基线；一期执行、签约和付款统一按本文件24万元上限控制。窗帘预算已按业主确认从未分配额度中划拨1万元；2026-09-11对照同户型半包实付账单后，拆改清运由5千元上调至7千元，差额2千元从未分配额度划拨，剩余未分配额度1千元；旧文件用于追溯历史估算，不再决定一期可承诺金额。
 
 appliance_quote_register:
   collected_at: 2026-09-11
@@ -206,7 +206,7 @@ global_blockers:
     clears_when: 形成逐房窗帘清单并确认一期采购范围和报价
   - id: BLK-PHASE1-APPLIANCES
     status: alignment_required
-    item: 一期7000元家电额度无法在型号未定时证明足够；按约5.0千瓦燃气灶目标候选计算，当前收集的公开参考价合计约7825元，且未含安装和辅材，冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的可购买型号和含安装报价尚未冻结
+    item: 一期7000元家电额度无法覆盖实际需求；按约5.0千瓦燃气灶目标候选计算，公开参考价合计约7825元且未含安装和辅材；参考同户型半包实付（冰箱3959+洗衣机4280+燃气灶945+油烟机2209+热水器1468≈12861元），当前需求估算已上调至13000元，缺口约6000元需业主批准资金来源；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的可购买型号和含安装报价尚未冻结
     clears_when: 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金
   - id: BLK-WATER-HEATER-SITE
     status: site_pending
@@ -433,10 +433,10 @@ work_packages:
   - id: PKG-020
     sequence: 20
     name: 拆改、墙体新建与清运
-    description: 按确认图纸拆除允许拆除的墙体或构件，新建隔墙和门洞，并把施工垃圾运走；任何墙体性质未确认时都不能先拆再说。
+    description: 按确认图纸拆除允许拆除的墙体或构件，新建隔墙和门洞，并把施工垃圾运走；任何墙体性质未确认时都不能先拆再说。参考同户型半包实付（拆砌人工6,000元+物业垃圾清运1,059元），本包由5,000元上调至7,000元，差额2,000元经业主批准从未分配额度划拨。
     budget_pool: hard_finish
     budget:
-      planned_cny: 5000
+      planned_cny: 7000
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -535,6 +535,7 @@ work_packages:
         - {id: COST-040-06, name: 网络和电视信号线路, description: 网线信息面板弱电箱整理和必要测试, quantity_basis: 按信息点和线长报价, planned_cny: null, status: quote_pending}
         - {id: COST-040-07, name: 智能开关零线窗帘电源和传感器预留, description: 只做线路和安装位置预留，不含二期窗帘电机和复杂智能设备, quantity_basis: 按确认点位报价, planned_cny: null, status: quote_pending}
         - {id: COST-040-08, name: 开槽封槽打孔及测试人工, description: 明确是否已含在各线路单价内，避免重复收费, quantity_basis: 按合同说明, planned_cny: null, status: duplication_check_required}
+        - {id: COST-040-09, name: 燃气管道改造或移位费, description: 燃气管道改动按规定须由燃气公司或其授权单位施工，单独报价单独结算，不得并入水电人工, quantity_basis: 以燃气公司书面报价为准（参考同类实付约570元）, planned_cny: null, status: quote_pending}
     duration_workdays: {min: 7, max: 12}
     dependencies: [PKG-020]
     readiness: blocked
@@ -599,6 +600,8 @@ work_packages:
     budget_pool: hard_finish
     budget:
       planned_cny: 25000
+      estimated_need_cny: 32000
+      estimated_need_note: 参考邦泰璟和2-2001瓦工工资单（纯人工实付17,938元，地砖117㎡/墙砖61㎡）；算量口径为 model-geometry 房间投影合计约121.5㎡（=产权套内94.76㎡+赠送约27.5㎡，不含开发商已完工的入户花园），与对方铺贴量相当，人工按17,000–18,500元估；加砖主材、辅料、找平和搬运后全口径约31,000–36,000元，取32,000元为当前需求估算；南阳台若通铺再增约2,000元（BLK-SOUTH-BALCONY未冻结不计）；注意94.76㎡产权口径不得用于瓦工算量
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -608,8 +611,8 @@ work_packages:
         - {id: COST-060-01, name: 地砖和墙砖主材, description: 按房间记录品牌型号规格数量损耗和补货规则, quantity_basis: 待排版图和量房后计算, planned_cny: null, status: quantity_pending}
         - {id: COST-060-02, name: 水泥砂浆瓷砖胶等辅料, description: 写明使用区域品牌用量和是否另计上楼搬运, quantity_basis: 按铺贴面积报价, planned_cny: null, status: quote_pending}
         - {id: COST-060-03, name: 墙地面找平, description: 修正基层高低差，超厚找平的触发条件和单价另列, quantity_basis: 待现场测量平整度, planned_cny: null, status: site_measurement_pending}
-        - {id: COST-060-04, name: 常规铺贴人工, description: 区分地砖墙砖和不同砖规格, quantity_basis: 按实际铺贴面积报价, planned_cny: null, status: quote_pending}
-        - {id: COST-060-05, name: 切割倒角开孔和特殊铺贴人工, description: 门槛管孔墙角和复杂排版可能产生的加工费用, quantity_basis: 按数量或长度报价, planned_cny: null, status: quote_pending}
+        - {id: COST-060-04, name: 常规铺贴人工, description: 区分地砖墙砖和不同砖规格；同楼盘实付单价锚点：地砖65元/㎡、卫生间墙砖65元/㎡、阳台墙砖80元/㎡、厨房大砖混贴90元/㎡, quantity_basis: 按实际铺贴面积报价, planned_cny: null, status: quote_pending}
+        - {id: COST-060-05, name: 切割倒角开孔和特殊铺贴人工, description: 门槛管孔墙角和复杂排版可能产生的加工费用；同楼盘实付单价锚点：海棠角20元/米、底盒开孔20元/个、反边60元/米、拉毛150元/间、卫生间阳台地砖包干300元/间、下沉地台200元/个, quantity_basis: 按数量或长度报价, planned_cny: null, status: quote_pending}
         - {id: COST-060-06, name: 搬运上楼和材料退补, description: 明确电梯搬运上楼费及剩余材料处理, quantity_basis: 按合同说明, planned_cny: null, status: contract_scope_pending}
         - {id: COST-060-07, name: 南阳台铺贴范围, description: 南阳台方案未冻结，本项目前不得计入已确定工程量, quantity_basis: 待业主确认, planned_cny: null, status: alignment_required}
     duration_workdays: {min: 12, max: 18}
@@ -829,7 +832,7 @@ work_packages:
       source_ref: lighting
       allocation_status: pending_fixture_schedule
       components:
-        - {id: COST-120-01, name: 各房间基础照明灯具, description: 逐盏记录房间、位置、品牌型号、功率、色温、显色参数和单价, quantity_basis: 待灯具点位表确认, planned_cny: null, status: quantity_pending}
+        - {id: COST-120-01, name: 各房间基础照明灯具, description: 逐盏记录房间、位置、品牌型号、功率、色温、显色参数和单价；参考同类实付：全屋筒射灯轨道灯约3,684元、装饰灯约900元、安装人工600元，若做全屋筒射灯本包3,000元偏紧，报价时复核, quantity_basis: 待灯具点位表确认, planned_cny: null, status: quantity_pending}
         - {id: COST-120-02, name: 灯具安装和调试人工, description: 明确是否包含开孔、组装、安装和故障排查，避免与水电人工重复, quantity_basis: 按灯具数量和类型报价, planned_cny: null, status: duplication_check_required}
     duration_workdays: {min: 3, max: 5}
     dependencies: [PKG-080]
@@ -1066,6 +1069,8 @@ work_packages:
     budget_pool: appliances
     budget:
       planned_cny: 7000
+      estimated_need_cny: 13000
+      estimated_need_note: 参考同户型半包实付五件合计约12,861元（冰箱3,959+洗衣机4,280+燃气灶945+油烟机2,209+热水器1,468），取整13,000元作为当前需求估算；与计划额7,000元的缺口约6,000元，未分配额度不足，需业主批准资金来源
       public_reference_floor_cny: 7825
       public_reference_floor_note: 该下限按约5.0千瓦燃气灶目标候选计算，未采用4.8千瓦预算下探款；组合中仍含公开页面标示下架或库存待确认的型号，只作预算警戒线，不是可直接下单组合；最低价501升冰箱宽约833毫米，不能视为已满足本户型约700毫米冰箱位，因此实际可行组合可能更高。
       contracted_cny: null

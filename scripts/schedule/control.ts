@@ -247,7 +247,7 @@ if (pendingBudgetGaps.length) {
   for (const pkg of pendingBudgetGaps) {
     budgetMd += `| ${pkg.id} | ${escapeCell(pkg.name)} | ${money(pkg.budget.planned_cny)} | ${money(pkg.budget.estimated_need_cny)} | ${money(pkg.gap_cny)} | ${escapeCell(pkg.budget.funding_status)} |\n`;
   }
-  budgetMd += `\n已知缺口合计 **${money(knownPendingGap)}**。当前未分配额度为 ${money(control.control.unallocated_cny)}；若批准用其中${money(knownPendingGap)}补足窗帘，尚余${money(control.control.unallocated_cny - knownPendingGap)}，但在批准前不能自动视为已解决。\n`;
+  budgetMd += `\n已知缺口合计 **${money(knownPendingGap)}**。当前未分配额度为 ${money(control.control.unallocated_cny)}；若批准从未分配额度中等额补足，尚余${money(control.control.unallocated_cny - knownPendingGap)}，差额部分须另行批准资金来源，且在批准前不能自动视为已解决。\n`;
 } else {
   budgetMd += '当前没有已量化但尚未分配的预算缺口。\n';
 }

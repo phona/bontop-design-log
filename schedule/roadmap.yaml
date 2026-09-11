@@ -12,7 +12,7 @@ phases:
     name: 一期基本入住
     status: planning
     depends_on: []
-    budget: {ceiling_cny: 240000, allocated_cny: 237000, unallocated_cny: 3000}
+    budget: {ceiling_cny: 240000, allocated_cny: 239000, unallocated_cny: 1000}
     scope: 基础硬装、中央空调、一期手动窗帘、必要家具和必需家电
     activation_gate: 交房量房、图纸会审、同口径报价及物业手续完成
   - id: phase_2_function_upgrade
