@@ -783,6 +783,7 @@ function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: S
       model.rotation.y = THREE.MathUtils.degToRad(item.rotation ?? 0);
       setSceneObjectMetadata(model, 'furniture', objectId);
       model.userData.furnishingType = item.type;
+      if (item.sourceIndex !== undefined) model.userData.sourceIndex = item.sourceIndex;
       const declaredDimensions = FURNITURE_DIMS[item.type];
       if (declaredDimensions) model.userData.declaredDimensions = { ...declaredDimensions };
       if (placement.wallId !== undefined) {
@@ -795,7 +796,14 @@ function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: S
         if (child === model) return;
         const exportName = furnitureChildExportName(objectId, child, childIndex++);
         child.name = exportName;
-        child.userData = { ...child.userData, exportName, roomId, objectId, type: 'furniture' };
+        child.userData = {
+          ...child.userData,
+          exportName,
+          roomId,
+          objectId,
+          type: 'furniture',
+          ...(item.sourceIndex !== undefined ? { sourceIndex: item.sourceIndex } : {}),
+        };
       });
       root.add(model);
       report.furniture++;

@@ -10,6 +10,7 @@ import type {
   CurtainPresentationState,
   CurtainState,
 } from '@shared/types';
+import type { PhaseId } from '../state/StateSync.js';
 
 export interface OverviewMenuOptions {
   onArchive?: (name: string, reason?: string) => void;
@@ -19,6 +20,7 @@ export interface OverviewMenuOptions {
   onCompare?: (archiveId: string) => void;
   onClearCompare?: () => void;
   onCurtainStateChange?: (state: CurtainState) => void;
+  onPhaseChange?: (phase: PhaseId) => void;
 }
 
 export class OverviewMenu {
@@ -40,6 +42,7 @@ export class OverviewMenu {
   private visible = false;
   private callbacks: OverviewMenuOptions;
   private layoutSelect: HTMLSelectElement | null;
+  private phaseSelect: HTMLSelectElement | null;
 
   constructor(callbacks: OverviewMenuOptions = {}) {
     this.callbacks = callbacks;
@@ -52,6 +55,7 @@ export class OverviewMenu {
     this.archivesEl = document.getElementById('overview-archives') as HTMLDivElement;
     this.archiveInput = document.getElementById('archive-name-input') as HTMLInputElement;
     this.layoutSelect = document.getElementById('layout-select') as HTMLSelectElement | null;
+    this.phaseSelect = document.getElementById('phase-select') as HTMLSelectElement | null;
     this.el.style.display = 'none';
 
     if (this.layoutSelect) {
@@ -59,6 +63,9 @@ export class OverviewMenu {
         this.callbacks.onLayoutChange?.(this.layoutSelect!.value);
       });
     }
+    this.phaseSelect?.addEventListener('change', () => {
+      this.callbacks.onPhaseChange?.(this.phaseSelect!.value as PhaseId);
+    });
 
     const archiveBtn = document.getElementById('archive-current-btn');
     archiveBtn?.addEventListener('click', () => this.handleArchiveClick());
@@ -127,6 +134,20 @@ export class OverviewMenu {
   setActiveLayout(name: string): void {
     if (!this.layoutSelect) return;
     this.layoutSelect.value = name;
+  }
+
+  setPhase(phase: PhaseId): void {
+    if (this.phaseSelect) this.phaseSelect.value = phase;
+    const label = document.getElementById('phase-status');
+    if (label) label.textContent = phase === 'full' ? '当前：完整方案' : '当前：一期基本入住';
+    const indicator = document.getElementById('phase-indicator');
+    if (indicator) indicator.textContent = phase === 'full' ? 'FULL DESIGN' : 'PHASE 1 · BASIC OCCUPANCY';
+  }
+
+  setPhaseLoading(loading: boolean): void {
+    if (this.phaseSelect) this.phaseSelect.disabled = loading;
+    const label = document.getElementById('phase-status');
+    if (label && loading) label.textContent = '阶段切换中…';
   }
 
   private render() {
@@ -246,30 +267,39 @@ export class OverviewMenu {
       return;
     }
 
-    const summary = document.createElement('div');
-    summary.className = 'overview-row';
-    summary.innerHTML = `
-      <span class="overview-label">总预算</span>
-      <span class="overview-value">¥${this.budget.totalBudget.toLocaleString()}</span>
-    `;
-    this.budgetEl.appendChild(summary);
+    const phaseBudget = this.budget as BudgetSnapshot & { phaseCeiling?: number; phaseAllocated?: number; phaseUnallocated?: number };
+    const phaseCeiling = phaseBudget.phaseCeiling;
+    const phaseAllocated = phaseBudget.phaseAllocated;
+    const phaseUnallocated = phaseBudget.phaseUnallocated;
+    if (phaseCeiling !== undefined) {
+      this.appendBudgetRow('阶段上限', phaseCeiling);
+      this.appendBudgetRow('已分配', phaseAllocated);
+      this.appendBudgetRow('未分配', phaseUnallocated);
+      this.appendBudgetRow('场景动态估算', this.budget.totalActual);
+    } else {
+      this.appendBudgetRow('总预算', this.budget.totalBudget);
+      this.appendBudgetRow('已用', this.budget.totalActual);
+      this.appendBudgetRow('剩余', this.budget.totalBudget - this.budget.totalActual);
+    }
+    if (phaseCeiling !== undefined) {
+      this.renderBudgetCategories();
+      return;
+    }
+    this.renderBudgetCategories();
+  }
 
-    const actual = document.createElement('div');
-    actual.className = 'overview-row';
-    actual.innerHTML = `
-      <span class="overview-label">已用</span>
-      <span class="overview-value">¥${this.budget.totalActual.toLocaleString()}</span>
+  private appendBudgetRow(label: string, value: number | undefined): void {
+    const row = document.createElement('div');
+    row.className = 'overview-row';
+    row.innerHTML = `
+      <span class="overview-label">${label}</span>
+      <span class="overview-value">${value === undefined ? '—' : `¥${value.toLocaleString()}`}</span>
     `;
-    this.budgetEl.appendChild(actual);
+    this.budgetEl.appendChild(row);
+  }
 
-    const remaining = document.createElement('div');
-    remaining.className = 'overview-row';
-    remaining.innerHTML = `
-      <span class="overview-label">剩余</span>
-      <span class="overview-value">¥${(this.budget.totalBudget - this.budget.totalActual).toLocaleString()}</span>
-    `;
-    this.budgetEl.appendChild(remaining);
-
+  private renderBudgetCategories(): void {
+    if (!this.budget) return;
     for (const category of this.budget.categories) {
       if (category.actual === 0 && category.budget === 0) continue;
       const row = document.createElement('div');

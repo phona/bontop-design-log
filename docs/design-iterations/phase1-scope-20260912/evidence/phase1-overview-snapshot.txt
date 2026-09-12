@@ -1,0 +1,19 @@
+SUPERSEDED：云鲸J6按¥3,000追加进入一期后，本快照中的¥200,000口径已失效，仅作历史取证。
+
+URL: http://127.0.0.1:5173/
+Title: 和萃 701 - 3D 装修设计
+Ready: window.__APP__.isReady() === true
+Visible error banner: none
+
+阶段方案
+- selected: 一期基本入住
+- status: 当前：一期基本入住
+
+预算
+- 阶段上限: ¥200,000
+- 已分配: ¥200,000
+- 未分配: ¥0
+- 场景动态估算: ¥131,949.954
+- furniture_soft: ¥29,800 / ¥36,500
+
+浏览器运行时对象核验详见 runtime-audit.json。

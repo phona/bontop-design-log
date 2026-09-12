@@ -1,0 +1,47 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: phase1-scope-20260912
+subject: 一期家具逐房范围冻结（最低浪费、保证日常）
+priority:
+  user_goal: 在20万元一期上限内优先保证两人日常睡眠、用餐、起居和入户收纳，减少不可复用或未定尺寸采购
+  ranked: [两人基本入住, 家具可复用, 先满足收纳和日常动线, 延后影音与装饰性小件]
+  non_negotiables: [一期预算上限203000元, 云鲸J6上下水版按3000元纳入一期, 主卧床/床垫/两床头柜/过渡斗柜, 父母房床/床垫/成品衣柜, 客餐厅沙发/餐桌椅/玄关收纳组合, 西北次卧一期仅窗帘, 未定尺寸衣架不建模]
+  tradeoffs_accepted: [主卧通顶定制衣柜后移, 过渡期使用成品衣架和斗柜, 客厅无电视及咖啡桌等小件, 东南书房和西北次卧家具空置至二期, 邻居CAD仅作预演基线]
+frozen: true
+freeze_record:
+  alignment_id: user-request-20260912-phase1-minimum-waste
+  original_user_response: 一期采用最低浪费、保证日常；后续明确云鲸J6价格为3000元并要求追加进入一期；邻居CAD为预演基线，实际尺寸site_pending
+  normalized_decisions: [云鲸J6上下水版按3000元追加一期且一期上限增至203000元, 主卧保留床/床垫/两床头柜/过渡斗柜, 主卧衣架待选宜家或成品且未定尺寸不建模, 父母房保留床/床垫/成品衣柜, 客餐厅保留沙发/餐桌椅/玄关收纳组合, 西北次卧仅一期窗帘, 客厅低柜/电视/咖啡桌/地灯/绿植二期, 主卧梳妆桌凳二期, 东南书房和西北次卧家具二期]
+  confirmed_by_user: true
+  confirmed_at: "2026-09-12T21:50:00+08:00"
+  evidence_refs: [user-message-20260912-phase1-scope]
+allowed_scope:
+  files: [schedule/phase-1/control.yaml, schedule/roadmap.yaml, schedule/phase-2/control.yaml, schedule/phase-scope.yaml, config/design-rules.yaml, config/materials.yaml, data/current-scheme.json, server/project-catalog.ts, server/phase-scope.ts, server/routes.ts, shared/types.ts, app/src/state/StateSync.ts, app/src/App.ts, app/src/ui/OverviewMenu.ts, app/src/ui/SchemePanel.ts, app/index.html, app/style.css, tests/server/api.test.ts, tests/server/budget-api.test.ts, app/src/state/StateSync.test.ts, app/src/ui/OverviewMenu.test.ts, app/src/ui/SchemePanel.test.ts, docs/decision_log.md, docs/design-iterations/phase1-scope-20260912/]
+  objects: [robot_dock_gbath, master_bed, master_mattress, master_bedside_north, master_bedside_south, master_transitional_dresser, master_transitional_rack, parent_bed, parent_mattress, parent_wardrobe, living_sofa, dining_table, dining_chairs, entry_storage, nw_curtain, living_low_cabinet, living_tv, living_coffee_table, living_floor_lamp, living_plant, master_dressing_table, master_dressing_stool, study_furniture, nw_furniture]
+  archetypes: [furniture, curtain, phase_scope]
+  views: [plan, perspective]
+  changes: [一期范围文档, 预算/工作包语义, 二期排除项, 阶段切换与full/phase1 A/B场景, 派生schedule文档]
+forbidden:
+  files: [config/layout/model-geometry.yaml, config/layout/overlay.yaml, config/house.yaml]
+  objects: [master_transitional_rack]
+  assumptions: [邻居CAD尺寸等同实际完成面, 未定尺寸衣架进入3D模型, 二期对象提前采购]
+  out_of_scope_changes: [任何家具坐标或渲染配方变更, 修改几何或house镜像字段, git操作]
+open_questions:
+  - {id: rack-selection, category: function, question: 主卧过渡衣架最终品牌/型号/尺寸, fact_refs: [pending-rack-selection], options: [宜家可复用成品, 其他可复用成品], selected: 待选, user_response: 优先宜家等可复用成品，未定尺寸不建模, status: site_pending}
+  - {id: room-measurement, category: construction, question: 一期家具完成面尺寸、固定和搬运条件, fact_refs: [pending-room-measurement], options: [交房后复尺], selected: 交房后复尺, user_response: 邻居CAD为预演基线，实际尺寸site_pending, status: site_pending}
+alignment:
+  records:
+    - {id: user-request-20260912-phase1-minimum-waste, answer: 业主确认最低浪费、保证日常及逐房一期/二期边界, normalized: 按本brief实施并冻结范围}
+    - {id: user-request-20260912-j6-phase1, answer: J6就3000块，追加到一期里, normalized: 云鲸J6上下水版预算3000元，追加一期上限并从二期移除}
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run schedule:render, npm run verify:all, npm run test:server, npm run test:app, npm run typecheck, npm run verify:schedule]
+  browser_evidence_required: true
+  required_views: [phase1 overview, full overview, phase1 living, phase1 master]
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: site_pending（不阻塞阶段范围与A/B软件交付，阻塞采购下单及施工定尺）
+  blocking_issues: []
+  done_when: [一期/二期范围在控制源和路线图一致, 云鲸J6在phase1场景可见且按3000元进入一期控制额, phase1与full可切换且过滤范围正确, overview/living/master四类目标视图有同版本证据, 阶段切换不改变几何和house镜像字段, 预算语义按当前阶段显示且不重复计费, 派生schedule文档成功生成, 未定尺寸衣架未进入config/house.yaml]
+  delivery_notes_required: true

@@ -69,6 +69,14 @@
         <h4>布局切换</h4>
         <select id="layout-select"></select>
       </div>
+      <div id="overview-section-phase">
+        <h4>阶段方案</h4>
+        <select id="phase-select" aria-label="阶段方案">
+          <option value="full">完整方案</option>
+          <option value="phase_1_basic_occupancy">一期基本入住</option>
+        </select>
+        <div id="phase-status" aria-live="polite">当前：完整方案</div>
+      </div>
       <div id="overview-section-scheme">
         <h4>当前方案</h4>
         <div id="overview-scheme"></div>
@@ -107,6 +115,7 @@
     <div class="compass-label" id="compass-s" data-key="s">南</div>
     <div class="compass-label" id="compass-w" data-key="w">西</div>
 
+    <div id="phase-indicator" aria-live="polite">FULL DESIGN</div>
     <div id="mode-indicator">轨道模式 · 按 V 切换第一人称 · 按 T 俯视</div>
     <div id="toolbar">
       <div class="toolbar-group" role="group" aria-label="视角">

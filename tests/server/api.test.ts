@@ -68,6 +68,40 @@ elements:
     assert.ok(Array.isArray(res.body.house.sceneElements));
   });
 
+  it('GET /api/project phase=phase_1 filters deferred furnishings and curtains', async () => {
+    const res = await request(app).get('/api/project?phase=phase_1_basic_occupancy').expect(200);
+    assert.equal(res.body.phase, 'phase_1_basic_occupancy');
+    assert.equal(res.body.phaseMeta.budget.ceilingCny, 203000);
+    assert.equal(res.body.phaseMeta.budget.authority, 'schedule/phase-1/control.yaml');
+    assert.ok(res.body.house.furnishings.master_bedroom.some((i: { type: string }) => i.type === 'bed_180'));
+    assert.ok(!res.body.house.furnishings.master_bedroom.some((i: { type: string }) => i.type === 'master_north_wall_wardrobe_950'));
+    assert.ok(!res.body.house.furnishings.living_dining.some((i: { type: string }) => i.type === 'tv_65'));
+    const phaseJ6 = res.body.house.furnishings.guest_bath.find((i: { type: string }) => i.type === 'robot_dock_gbath');
+    assert.ok(phaseJ6, 'J6 remains visible in the一期 scene payload');
+    assert.equal(phaseJ6.sourceIndex, 8, 'phase filtering exposes the authored house.yaml source index');
+    assert.deepEqual(
+      res.body.house.furnishings.bedroom_nw.filter((i: { type: string }) => i.type === 'mattress_150'),
+      [],
+    );
+    assert.ok(res.body.house.furnishings.bedroom_nw.some((i: { type: string }) => i.type === 'curtain_set'));
+    assert.ok(res.body.house.furnishings.bedroom_nw.some((i: { type: string }) => i.type === 'ceiling_light'));
+    assert.deepEqual(
+      res.body.house.furnishings.bedroom_se.filter((i: { type: string }) => i.type === 'curtain_set'),
+      [],
+    );
+    assert.deepEqual(
+      res.body.house.furnishings.living_dining.filter((i: { type: string }) => i.type === 'curtain_set'),
+      [],
+    );
+    assert.ok(res.body.house.sceneElements.some((i: { id: string }) => i.id === 'bath'));
+    assert.ok(!res.body.house.sceneElements.some((i: { id: string }) => i.id === 'living'));
+  });
+
+  it('GET /api/project rejects unknown phase', async () => {
+    const res = await request(app).get('/api/project?phase=phase_9').expect(400);
+    assert.match(res.body.error, /unsupported phase/);
+  });
+
   it('PATCH /api/scheme/current changes selection', async () => {
     const res = await request(app)
       .patch('/api/scheme/current')

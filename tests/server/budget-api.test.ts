@@ -17,12 +17,14 @@ const TEST_DATA_DIR = './tmp/test-data-budget-api';
 const rulesConfig: DesignRulesConfig = {
   version: '1.0',
   budget: {
-    topicCategories: { floor: 'masonry', wall: 'masonry', paint: 'painting', hvac: 'hvac' },
+    topicCategories: { floor: 'masonry', wall: 'masonry', paint: 'painting', hvac: 'hvac', robot_vacuum: 'appliances' },
+    furnishingTypeToTopic: { robot_dock_gbath: 'robot_vacuum' },
     lineItems: [
       { topic: 'floor', quantityField: 'floorArea' },
       { topic: 'wall', quantityField: 'wetWallArea' },
       { topic: 'paint', quantityField: 'paintWallArea' },
       { topic: 'hvac' },
+      { topic: 'robot_vacuum', calcMode: 'count' },
     ],
   },
   risks: [
@@ -70,6 +72,32 @@ describe('Budget + Risks + Schemes API', () => {
     assert.ok(res.body.totalBudget > 0);
     assert.ok(Array.isArray(res.body.categories));
     assert.ok(Array.isArray(res.body.lineItems));
+  });
+
+  it('GET /api/budget phase=phase_1 returns phase metadata and filtered calculation', async () => {
+    const res = await request(app).get('/api/budget?phase=phase_1_basic_occupancy').expect(200);
+    assert.equal(res.body.phase, 'phase_1_basic_occupancy');
+    assert.equal(res.body.phaseCeiling, 203000);
+    assert.equal(res.body.phaseAllocated, 203000);
+    assert.equal(res.body.phaseUnallocated, 0);
+    assert.equal(res.body.phaseMeta.budget.ceilingCny, 203000);
+    assert.equal(res.body.phaseMeta.budget.allocatedCny, 203000);
+    assert.equal(res.body.phaseMeta.budget.unallocatedCny, 0);
+    assert.equal(res.body.phaseMeta.budget.authority, 'schedule/phase-1/control.yaml');
+    assert.equal(res.body.totalBudget, 208000);
+    const robot = res.body.lineItems.find((item: { topic: string }) => item.topic === 'robot_vacuum');
+    assert.equal(robot?.optionId, 'robot_vacuum_narwal_j6_01');
+    assert.equal(robot?.quantity, 1);
+    assert.equal(robot?.cost, 3000);
+  });
+
+  it('GET /api/budget default keeps full-project baseline semantics', async () => {
+    const res = await request(app).get('/api/budget').expect(200);
+    assert.equal(res.body.phase, 'full');
+    assert.equal(res.body.phaseCeiling, undefined);
+    assert.equal(res.body.phaseAllocated, undefined);
+    assert.equal(res.body.phaseUnallocated, undefined);
+    assert.equal(res.body.totalBudget, 208000);
   });
 
   it('GET /api/risks returns risks', async () => {

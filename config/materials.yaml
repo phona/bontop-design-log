@@ -1583,3 +1583,28 @@ materials:
     price_source: "大自然 / 圣象门店报价"
     notes: "备选：木地板；回南天注意除湿，价格含安装。DEC-041 起归入统一 floor topic，可按房间覆盖选用"
     appearance: { type: "wood_plank", color: "#a97c50", pattern: "straight", plank_mm: [195, 1220], finish: "matte", seed: 42 }
+
+  # === 一期自动清洁设备（2026-09-12 DEC-R3） ===
+
+  - id: "robot_vacuum_narwal_j6_01"
+    topic_id: "robot_vacuum"
+    alternative_group: "robot_vacuum"
+    category: "清洁电器"
+    name: "云鲸 J6 上下水版"
+    brand: "云鲸"
+    model: "J6 上下水版"
+    spec: "基站约410×433.5×198mm"
+    unit: "台"
+    price_per_unit: 3000
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "待确认"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "user_budget_confirmed"
+    pros: ["自动上下水", "客卫台盆下隐藏", "承担日常防尘清洁"]
+    cons: ["柜下净空和墙排条件需现场复核"]
+    price_source: "业主确认预算"
+    notes: "2026-09-12业主确认按3,000元追加进入一期；沿用robot_dock_gbath既有模型和客卫台盆下机电协调位。"

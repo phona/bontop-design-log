@@ -1,0 +1,84 @@
+- generic
+  - Canvas
+  - generic
+    - heading "方案" [level=3, ref=e1]
+    - button "方案面板折叠" [expanded=true, ref=e2]
+      - StaticText "−"
+    - generic
+      - generic
+        - button "空调方案" [ref=e24]
+        - button "地砖方案" [ref=e25]
+        - button "墙砖方案" [ref=e26]
+        - button "乳胶漆方案" [ref=e27]
+        - button "柜体板材" [ref=e28]
+        - button "台面方案" [ref=e29]
+        - button "卫浴洁具" [ref=e30]
+        - button "门方案" [ref=e31]
+        - button "窗帘方案" [ref=e32]
+      - heading "A2 美的理想家 III 一拖五" [level=3, ref=e4]
+      - paragraph
+        - StaticText "6HP 全直流变频多联机，静音好，性价比首选。"
+      - list
+        - listitem [level=1]
+        - listitem [level=1]
+        - listitem [level=1]
+      - list
+        - listitem [level=1]
+        - listitem [level=1]
+      - button "导出 glb" [ref=e5]
+      - StaticText "场景估算 / 阶段上限"
+      - StaticText "¥128,449.954 / ¥203,000"
+  - generic
+  - generic
+    - heading "总览" [level=3, ref=e3]
+    - generic
+      - heading "布局切换" [level=4, ref=e6]
+      - combobox [expanded=false, ref=e7]
+        - MenuListPopup
+    - generic
+      - heading "阶段方案" [level=4, ref=e8]
+      - combobox "阶段方案" [expanded=false, ref=e9]: 一期基本入住
+        - MenuListPopup
+          - option "完整方案" [ref=e38]
+          - option "一期基本入住" [selected, ref=e39]
+      - StaticText "当前：一期基本入住"
+    - generic
+      - heading "当前方案" [level=4, ref=e10]
+      - generic
+    - generic
+      - heading "全屋窗帘" [level=4, ref=e11]
+      - button "全开" [ref=e33]
+      - button "全屋纱帘" [ref=e34]
+      - button "全屋遮光" [ref=e35]
+    - generic
+      - heading "决策记录" [level=4, ref=e12]
+      - StaticText "暂无决策记录"
+    - generic
+      - heading "预算" [level=4, ref=e13]
+      - generic
+    - generic
+      - heading "风险提示" [level=4, ref=e14]
+      - StaticText "当前方案无风险或约束违规"
+    - generic
+      - heading "归档方案" [level=4, ref=e15]
+      - generic
+        - textbox "方案名称" [ref=e36]
+        - button "归档当前方案" [ref=e37]
+  - StaticText "北"
+  - StaticText "东"
+  - StaticText "南"
+  - StaticText "西"
+  - StaticText "PHASE 1 · BASIC OCCUPANCY"
+  - StaticText "轨道模式 · 按 V 切换第一人称"
+  - generic
+    - group "视角"
+      - button "俯视" [ref=e16]
+      - button "玻璃质感" [ref=e17]
+    - group "分析"
+      - button "日照" [ref=e18]
+      - button "湿度" [ref=e19]
+    - group "机电"
+      - button "机电总览" [ref=e20]
+      - button "MEP 协调⚠ 22" [ref=e21]
+      - button "HVAC" [ref=e22]
+      - button "电气回路归属25 条 ⚠42" [ref=e23]

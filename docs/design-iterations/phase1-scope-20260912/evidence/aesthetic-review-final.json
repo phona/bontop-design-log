@@ -1,0 +1,31 @@
+{
+  "verdict": "BLOCKED",
+  "blocking_issues": [
+    {
+      "object": "furniture:guest_bath:robot_dock_gbath:4",
+      "fact": "The final same-version close-up proves that the J6 object is rendered and visible, but the only target PNG is a low floor-level debug view with persistent application chrome and limited room context.",
+      "evidence": [
+        "evidence/phase1_j6_final_closeup_r4.png",
+        "evidence/phase1-j6-final-closeup-snapshot.txt",
+        "evidence/phase1-j6-final-runtime.json"
+      ],
+      "required_change": "Capture a clean, same-version guest-bath close-up and a room-context view before making an aesthetic PASS decision; do not infer final visual quality from the diagnostic pre-HMR captures."
+    }
+  ],
+  "non_blocking_notes": [
+    "The J6 unit is visibly present near the guest-bath vanity in the final close-up.",
+    "The current view is sufficient to confirm object presence, but not sufficient to judge final composition, material cohesion, or the intended cabinet opening treatment."
+  ],
+  "evidence_refs": [
+    "evidence/phase1-j6-final-runtime.json",
+    "evidence/phase1-j6-final-closeup-snapshot.txt",
+    "evidence/phase1_j6_final_closeup_r4.png",
+    "evidence/phase1-j6-budget-middle-snapshot.txt",
+    "evidence/phase1_j6_budget_middle_r4.png"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "The final PNG is bound to source digest phase1-scope-20260912-j6-phase1-r4.",
+    "The guest-bath vanity opening, finish, and J6 product appearance remain design-preview assumptions until site measurement and product selection are confirmed."
+  ]
+}

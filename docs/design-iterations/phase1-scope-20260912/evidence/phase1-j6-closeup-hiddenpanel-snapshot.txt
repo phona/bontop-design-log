@@ -1,0 +1,38 @@
+- generic
+  - Canvas
+  - generic
+    - heading "方案" [level=3, ref=e1]
+    - button "方案面板折叠" [expanded=true, ref=e2]
+      - StaticText "−"
+    - generic
+      - generic
+        - button "空调方案" [ref=e13]
+        - button "地砖方案" [ref=e14]
+        - button "墙砖方案" [ref=e15]
+        - button "乳胶漆方案" [ref=e16]
+        - button "柜体板材" [ref=e17]
+        - button "台面方案" [ref=e18]
+        - button "卫浴洁具" [ref=e19]
+        - button "门方案" [ref=e20]
+        - button "窗帘方案" [ref=e21]
+      - heading "A2 美的理想家 III 一拖五" [level=3, ref=e3]
+      - button "导出 glb" [ref=e4]
+  - generic
+  - StaticText "北"
+  - StaticText "东"
+  - StaticText "南"
+  - StaticText "西"
+  - StaticText "PHASE 1 · BASIC OCCUPANCY"
+  - StaticText "轨道模式 · 按 V 切换第一人称"
+  - generic
+    - group "视角"
+      - button "俯视" [ref=e5]
+      - button "玻璃质感" [ref=e6]
+    - group "分析"
+      - button "日照" [ref=e7]
+      - button "湿度" [ref=e8]
+    - group "机电"
+      - button "机电总览" [ref=e9]
+      - button "MEP 协调⚠ 22" [ref=e10]
+      - button "HVAC" [ref=e11]
+      - button "电气回路归属25 条 ⚠42" [ref=e12]

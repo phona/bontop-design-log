@@ -14,6 +14,7 @@ import type { OverlayConfig } from './overlay-merge.js';
 import type { CurrentScheme, CurtainState, ProjectRenderFacts, ProjectRenderFactsProjection } from '../shared/types.js';
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import type { PresentationStateStore } from './presentation-state.js';
+import { filterCurtainElements, loadPhaseBudgetMeta, loadPhaseScopes, parsePhaseId } from './phase-scope.js';
 
 export interface ApiDeps {
   catalog: ProjectCatalog;
@@ -33,6 +34,7 @@ export interface ApiDeps {
 export function createApiRouter(deps: ApiDeps): Router {
   const { catalog, state, getRuleEngine, getBudgetCalculator, archiveStore } = deps;
   const router = Router();
+  const phaseScopes = loadPhaseScopes();
 
   router.get('/config-status', (_req, res) => {
     res.json({ configs: deps.getConfigRegistry().getStatuses() });
@@ -135,17 +137,28 @@ export function createApiRouter(deps: ApiDeps): Router {
 
   router.get('/project', (req, res) => {
     const layoutName = req.query.layout as string | undefined;
+    let phase;
+    try {
+      phase = parsePhaseId(req.query.phase);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
     const projectCatalog = layoutName
       ? ProjectCatalog.load('.', layoutName)
       : deps.catalog;
+    const overlay = deps.getOverlay();
+    const sceneElements = mergeSceneElements(projectCatalog.getWalls(), overlay);
     res.json({
+      phase,
+      phaseMeta: { ...phaseScopes[phase], budget: loadPhaseBudgetMeta(phaseScopes[phase]) },
       house: {
         rooms: projectCatalog.getRooms(),
         platform: projectCatalog.getPlatform(),
-        furnishings: projectCatalog.getFurnishings(),
+        furnishings: projectCatalog.getFurnishingsForPhase(phase),
         electrical: deps.getProjectRenderFacts?.()?.electrical ?? loadElectricalConfig(),
         ceilingZones: deps.getProjectRenderFacts?.()?.ceiling ?? loadCeilingConfig(),
-        sceneElements: mergeSceneElements(projectCatalog.getWalls(), deps.getOverlay()),
+        sceneElements: filterCurtainElements(sceneElements, phase, phaseScopes),
         layoutSource: projectCatalog.getLayoutSource(),
       },
       topics: projectCatalog.getTopics().map((t) => ({
@@ -320,10 +333,25 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.get('/budget', (_req, res) => {
+    let phase;
+    try {
+      phase = parsePhaseId(_req.query.phase);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
     const scheme = state.getCurrentScheme();
     const calc = getBudgetCalculator();
-    const snapshot = calc.calculate(scheme);
-    res.json(snapshot);
+    const snapshot = calc.calculate(scheme, phase);
+    const phaseBudget = loadPhaseBudgetMeta(phaseScopes[phase]);
+    res.json({
+      ...snapshot,
+      phase,
+      ...(phaseBudget.ceilingCny !== undefined ? { phaseCeiling: phaseBudget.ceilingCny } : {}),
+      ...(phaseBudget.allocatedCny !== undefined ? { phaseAllocated: phaseBudget.allocatedCny } : {}),
+      ...(phaseBudget.unallocatedCny !== undefined ? { phaseUnallocated: phaseBudget.unallocatedCny } : {}),
+      phaseMeta: { ...phaseScopes[phase], budget: phaseBudget },
+    });
   });
 
   router.get('/risks', (_req, res) => {

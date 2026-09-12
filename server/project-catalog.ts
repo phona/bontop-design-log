@@ -21,6 +21,8 @@ import type {
 import { hvacSchemes } from '../shared/houseData.js';
 import { resolveLayout } from './layout-resolver.js';
 import type { VertexLayoutYaml, ResolvedRoom, WallDef, RoomDef, ResolvedOpening } from '../shared/types.js';
+import type { PhaseId } from '../shared/types.js';
+import { filterFurnishings } from './phase-scope.js';
 
 export interface BudgetCategory {
   key: string;
@@ -285,8 +287,12 @@ export class ProjectCatalog {
     return this.furnishings;
   }
 
-  getFurnishingCounts(roomId: string): Record<string, number> {
-    const items = this.furnishings[roomId];
+  getFurnishingsForPhase(phase: PhaseId): FurnishingsYaml {
+    return filterFurnishings(this.furnishings, phase);
+  }
+
+  getFurnishingCounts(roomId: string, phase: PhaseId = 'full'): Record<string, number> {
+    const items = this.getFurnishingsForPhase(phase)[roomId];
     if (!items) return {};
     const counts: Record<string, number> = {};
     for (const item of items) {

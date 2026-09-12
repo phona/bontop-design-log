@@ -1,0 +1,167 @@
+方案
++
+总览
+布局切换
+阶段方案
+完整方案
+一期基本入住
+当前：一期基本入住
+当前方案
+地砖方案
+600x1200木纹砖·步步高错缝（DEC-040 全屋定案，程序化 wood_plank 渲染）
+↳ master_bath
+中性灰哑光防滑砖（主卫/阳台）
+↳ guest_bath
+复古小花砖（客卫点缀）
+↳ balcony
+中性灰哑光防滑砖（主卫/阳台）
+墙砖方案
+厨卫白色釉面砖
+乳胶漆方案
+金装净味五合一
+柜体板材
+多层实木板柜体 + PET 肤感柜门
+台面方案
+石英石台面
+interior_door
+interior_door_01
+bathroom_door
+bathroom_door_01
+entry_door
+entry_door_01
+窗帘方案
+雪尼尔遮光帘 + 幻影纱 + 铝百叶
+卫浴洁具
+虹吸式马桶
+lighting
+lighting_01
+switch_socket
+switch_socket_01
+hardware
+hardware_01
+空调方案
+A2 美的理想家 III 一拖五
+water_heater
+gas_water_heater_01
+range_hood
+range_hood_01
+smart_home
+smart_home_01
+bed
+bed_180_01
+mattress
+mattress_180_01
+wardrobe
+wardrobe_240_01
+↳ master_bedroom
+wardrobe_north_950_custom_01
+↳ bedroom_se
+study_seasonal_wardrobe_170_01
+home_fitness
+home_fitness_light_set_01
+dresser
+light_midcentury_dresser_01
+sofa
+sofa_3seat_01
+dining_table
+dining_table_01
+dining_chair
+dining_chair_01
+tv_stand
+tv_stand_01
+desk
+desk_01
+chair
+chair_01
+bookshelf
+bookshelf_01
+shoe_cabinet
+shoe_cabinet_01
+coffee_table
+coffee_table_01
+gas_stove
+gas_stove_01
+dishwasher
+dishwasher_01
+water_purifier
+water_purifier_01
+washer
+washer_01
+dryer
+dryer_01
+shower_enclosure
+shower_enclosure_01
+robot_vacuum
+robot_vacuum_narwal_j6_01
+全屋窗帘
+全开
+全屋纱帘
+全屋遮光
+决策记录
+暂无决策记录
+预算
+阶段上限
+¥203,000
+已分配
+¥203,000
+未分配
+¥0
+场景动态估算
+¥128,449.954
+demolition
+¥0 / ¥5,000
+water_electric
+¥6,218 / ¥12,000
+waterproof
+¥366 / ¥4,500
+masonry
+¥24,833.82 / ¥18,500
+carpentry
+¥5,717 / ¥5,000
+painting
+¥9,288.974 / ¥11,500
+doors_windows
+¥0 / ¥12,000
+sanitary
+¥1,600 / ¥12,000
+kitchen_cabinet
+¥2,396.16 / ¥11,000
+range_hood
+¥1,200 / ¥2,500
+hvac
+¥29,000 / ¥29,000
+lighting
+¥2,500 / ¥2,800
+curtains
+¥3,930 / ¥10,000
+smart_home
+¥2,000 / ¥2,000
+miscellaneous
+¥1,800 / ¥10,200
+furniture_soft
+¥29,800 / ¥36,500
+appliances
+¥7,800 / ¥14,000
+property_fees
+¥0 / ¥3,000
+contingency
+¥0 / ¥6,500
+风险提示
+当前方案无风险或约束违规
+归档方案
+归档当前方案
+暂无归档方案
+北
+东
+南
+西
+PHASE 1 · BASIC OCCUPANCY
+轨道模式 · 按 V 切换第一人称
+俯视
+玻璃质感
+日照
+湿度
+机电总览
+MEP 协调⚠ 22
+HVAC
+电气回路归属25 条 ⚠42

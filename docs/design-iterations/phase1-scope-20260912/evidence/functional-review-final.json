@@ -1,0 +1,43 @@
+{
+  "verdict": "BLOCKED",
+  "blocking_issues": [
+    {
+      "object": "furniture:guest_bath:robot_dock_gbath:4",
+      "fact": "Runtime confirms the proposed object ID, position, rotation, dimensions, visibility, and non-overview camera, but actual Narwal J6 variant dimensions, cabinet clear height, robot approach clearance, inlet/drain routing, splash protection, and maintenance access remain site_pending.",
+      "evidence": [
+        "evidence/phase1-j6-final-runtime.json",
+        "evidence/phase1_j6_final_closeup_r4.png",
+        "config/house.yaml",
+        "docs/design-iterations/phase1-scope-20260912/design-datum.yaml"
+      ],
+      "required_change": "After product model and site measurements are confirmed, verify the cabinet opening, approach path, automatic water/drain interfaces, electrical protection, and service clearance, then rerun the functional review."
+    },
+    {
+      "object": "master_bedroom seasonal transitional hanger",
+      "fact": "The hanger is not selected or modeled, so its clearance, circulation, and maintenance impact cannot be verified as part of the frozen一期 scope.",
+      "evidence": [
+        "docs/design-iterations/phase1-scope-20260912/decision-brief.yaml",
+        "docs/design-iterations/phase1-scope-20260912/fact-table.yaml",
+        "docs/design-iterations/phase1-scope-20260912/review-manifest.json"
+      ],
+      "required_change": "Keep the hanger outside the modeled acceptance scope until the user selects a product and provides verifiable dimensions."
+    }
+  ],
+  "non_blocking_notes": [
+    "The final runtime has no configuration-error banner and shows the一期 ceiling and allocation both at 203000 CNY.",
+    "The dynamic appliance estimate is 7800 CNY and includes the robot-vacuum catalog selection; this is a budget/runtime check, not a construction or installation acceptance."
+  ],
+  "evidence_refs": [
+    "evidence/phase1-j6-final-runtime.json",
+    "evidence/phase1-j6-final-body.txt",
+    "evidence/phase1-j6-final-closeup-snapshot.txt",
+    "evidence/phase1_j6_final_closeup_r4.png",
+    "evidence/phase1-j6-budget-bottom-snapshot.txt",
+    "evidence/phase1_j6_budget_bottom_r4.png"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "The 0.41 m × 0.4335 m datum is a design-preview dimension, not a confirmed purchased-product dimension.",
+    "Construction, inspection, wall/furniture material, and service-interface facts remain site_pending."
+  ]
+}

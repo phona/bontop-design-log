@@ -14,8 +14,8 @@ authority:
     - schedule/phase-1/checklist.md
 
 control:
-  phase_ceiling_cny: 200000
-  allocated_cny: 200000
+  phase_ceiling_cny: 203000
+  allocated_cny: 203000
   unallocated_cny: 0
   fixed_works_cny: 159000
   status: planning
@@ -43,7 +43,7 @@ budget_pools:
     planned_cny: 19000
   - id: appliances
     name: 必需家电
-    planned_cny: 9000
+    planned_cny: 12000
   - id: design_preparation
     name: 设计与开工准备
     planned_cny: 8000
@@ -53,13 +53,13 @@ budget_pools:
 
 budget_reconciliation:
   execution_authority: schedule/phase-1/control.yaml
-  phase_1_ceiling_cny: 200000
+  phase_1_ceiling_cny: 203000
   historical_baseline:
     source: config/budget/base.json
     total_budget_cny: 208000
     project_ceiling_cny: 190000
     status: historical_reference_only
-  explanation: 原20.8万元/19万元基线和24万元上限均为历史口径。2026-09-12业主拍板一期压缩至20万元上限：主卧定制衣柜、壁床柜、客厅大收纳柜、展示柜、复杂灯光、客厅/书房窗帘、书房次卧家具后移二期；家电按下探型号组合；设计费下调；瓷砖只降半档、橱柜保持；预备金由1.2万降至5千元，未分配额度归零，超支缓冲依赖预备金。压缩后已分配正好20万元。旧文件仅用于追溯，不再决定一期可承诺金额。
+  explanation: 原20.8万元/19万元基线和24万元上限均为历史口径。2026-09-12先将一期压缩至20万元上限；随后业主确认云鲸J6上下水版按3,000元追加进入一期，故一期执行上限及已分配额同步调整为20.3万元，必需家电预算由9,000元增至12,000元，未分配仍为0。主卧定制衣柜、壁床柜、客厅大收纳柜、展示柜、复杂灯光、客厅/书房窗帘、书房次卧家具以及洗碗机、干衣机、净水设备仍后移二期。旧文件仅用于追溯，不再决定一期可承诺金额。
 
 appliance_quote_register:
   collected_at: 2026-09-11
@@ -206,7 +206,7 @@ global_blockers:
     clears_when: 形成逐房窗帘清单并确认一期采购范围和报价
   - id: BLK-PHASE1-APPLIANCES
     status: alignment_required
-    item: 2026-09-12压缩决策：一期家电额度上调至9000元，按下探型号组合（公开参考价约8196元+安装辅材）编制，缺口关闭；代价是冰箱700mm位约束下可选型号更少、热水器为一厨二卫下限款；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结
+    item: 一期家电额度在原9,000元下探组合基础上追加云鲸J6上下水版3,000元，现按12,000元控制；J6型号和金额已由业主确认，客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结
     clears_when: 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金
   - id: BLK-WATER-HEATER-SITE
     status: site_pending
@@ -1021,7 +1021,7 @@ work_packages:
   - id: PKG-150
     sequence: 150
     name: 一期家具与定制收纳
-    description: 按完成后的现场尺寸安装床、床垫、沙发、餐桌椅、鞋柜和成品柜（次卧/父母房成品衣柜、书房成品柜、玄关柜、斗柜），检查牢固程度、柜门开合、通行宽度以及与插座和空调检修位置的关系。按2026-09-12压缩决策：不搞一步到位，主卧通顶定制衣柜（藏冷凝水管槽）、壁床柜、客厅大收纳柜、展示柜后移二期，成品柜将来可直接换掉不动硬装。
+    description: 按完成后的现场尺寸安装一期冻结家具：主卧床、床垫、两床头柜、过渡斗柜和待选成品衣架，父母房床、床垫和成品衣柜，客餐厅沙发、餐桌椅和玄关收纳组合；检查牢固程度、柜门开合、通行宽度以及与插座和空调检修位置的关系。主卧通顶定制衣柜、主卧梳妆桌凳、东南书房家具、西北次卧家具、客厅低柜/电视/咖啡桌/地灯/绿植和其他大收纳均后移二期。
     budget_pool: furniture
     budget:
       planned_cny: 19000
@@ -1032,13 +1032,17 @@ work_packages:
       allocation_status: pending_furniture_schedule
       components:
         - {id: COST-150-01, name: 主卧通顶定制衣柜（后移二期）, description: 藏空调冷凝水管槽，成品柜无法替代，维持定制但推至二期；逐柜记录位置、宽高深、材质、内部格局、五金、运输安装和墙体固定条件, quantity_basis: 二期启动前深化, planned_cny: 0, status: deferred_to_phase_2}
-        - {id: COST-150-02, name: 床架, description: 分房间记录尺寸、材质、结构、送货安装和保修, quantity_basis: 2张（主卧+父母房），书房次卧后移二期, planned_cny: null, status: quantity_pending}
-        - {id: COST-150-03, name: 床垫, description: 与床架分开报价，分房间记录尺寸、软硬度、材料和试睡退换条件, quantity_basis: 2张（主卧+父母房），书房次卧后移二期, planned_cny: null, status: selection_pending}
-        - {id: COST-150-04, name: 书桌办公桌和椅子, description: 分使用者记录尺寸、数量、承重和插座灯光关系, quantity_basis: 1套候选，书房家具后移二期, planned_cny: null, status: quantity_pending}
-        - {id: COST-150-05, name: 客厅沙发, description: 写明尺寸、材质、座深、送货通道和与插座窗帘的关系, quantity_basis: 1组候选，待确认, planned_cny: null, status: selection_pending}
-        - {id: COST-150-06, name: 餐桌和餐椅, description: 写明桌面尺寸、椅子数量、材质和使用通道, quantity_basis: 1组候选，待确认, planned_cny: null, status: selection_pending}
-        - {id: COST-150-07, name: 入户鞋柜, description: 写明尺寸、内部格局、换鞋功能、五金安装及配电弱电接口避让, quantity_basis: 1组候选，待深化, planned_cny: null, status: design_pending}
-        - {id: COST-150-08, name: 成品衣柜和成品收纳柜, description: 次卧/父母房成品衣柜（推拉门优先，次卧柜前通道仅0.65m）、书房成品柜、玄关柜、斗柜；逐件记录尺寸、防倾倒固定和与插座窗帘关系；不通顶、顶部留空为已知妥协, quantity_basis: 待逐件选型, planned_cny: null, status: selection_pending}
+        - {id: COST-150-02, name: 一期床架, description: 分房间记录尺寸、材质、结构、送货安装和保修；仅保留主卧与父母房，东南书房和西北次卧床具后移二期, quantity_basis: 2张（主卧+父母房）, planned_cny: null, status: quantity_pending}
+        - {id: COST-150-03, name: 一期床垫, description: 与床架分开报价，分房间记录尺寸、软硬度、材料和试睡退换条件；仅保留主卧与父母房, quantity_basis: 2张（主卧+父母房）, planned_cny: null, status: selection_pending}
+        - {id: COST-150-04, name: 东南书房与西北次卧家具（后移二期）, description: 书桌、书椅、书架/置物架、床具及柜体均不列入一期采购；西北次卧仅保留一期窗帘, quantity_basis: 二期范围, planned_cny: 0, status: deferred_to_phase_2}
+        - {id: COST-150-05, name: 客厅沙发, description: 写明尺寸、材质、座深、送货通道和与插座窗帘的关系；一期保留, quantity_basis: 1组候选, planned_cny: null, status: selection_pending}
+        - {id: COST-150-06, name: 餐桌和餐椅, description: 写明桌面尺寸、椅子数量、材质和使用通道；一期保留, quantity_basis: 1组候选, planned_cny: null, status: selection_pending}
+        - {id: COST-150-07, name: 玄关收纳组合, description: 入户鞋柜与玄关随手收纳组合一期保留；逐件记录尺寸、换鞋功能、五金安装及配电弱电接口避让, quantity_basis: 1组候选, planned_cny: null, status: design_pending}
+        - {id: COST-150-08, name: 父母房成品衣柜, description: 一期保留成品衣柜；记录尺寸、防倾倒固定和与插座、窗帘关系，不通顶、顶部留空为已知妥协, quantity_basis: 1组候选, planned_cny: null, status: selection_pending}
+        - {id: COST-150-09, name: 主卧两床头柜, description: 一期保留两只床头柜；按床头插座、双控和通道复尺选型，记录尺寸、防倾倒和安装方式, quantity_basis: 2只, planned_cny: null, status: selection_pending}
+        - {id: COST-150-10, name: 主卧过渡斗柜, description: 一期保留成品斗柜作为定制衣柜后移期间的过渡收纳；记录尺寸、开门方向、通道和防倾倒条件, quantity_basis: 1只, planned_cny: null, status: selection_pending}
+        - {id: COST-150-11, name: 主卧过渡衣架, description: 待选宜家或其他可复用成品；尺寸未定，不进入 config/house.yaml 建模，采购前现场复尺并核对冷凝水检修关系, quantity_basis: 1件候选, planned_cny: null, status: selection_pending}
+        - {id: COST-150-12, name: 客厅低柜、电视、咖啡桌、地灯和绿植（后移二期）, description: 客厅低柜与电视系统、咖啡桌、地灯、绿植均不列入一期采购；客厅大收纳柜、展示柜和复杂灯光按既有二期范围执行, quantity_basis: 二期范围, planned_cny: 0, status: deferred_to_phase_2}
     duration_workdays: {min: 5, max: 10}
     dependencies: [PKG-135, PKG-140]
     readiness: blocked
@@ -1053,7 +1057,7 @@ work_packages:
         checkpoint: before_order
         item: 柜体复尺及与机电、门、窗帘、空调关系确认
         method: 逐柜核对完成面尺寸、插座开关、风口检修口、门扇和通道
-        pass_condition: 深化图经业主确认；主卧定制衣柜已后移二期，一期以成品柜为准
+        pass_condition: 深化图经业主确认；主卧定制衣柜、东南书房和西北次卧家具、客厅低柜及影音小件均后移二期，一期只按已冻结的床具、床头柜、斗柜、待选衣架、父母房成品衣柜和客餐厅家具执行
         evidence_required: [approved_shop_drawing, measurement_sheet]
       - id: SCH-150-02
         severity: major
@@ -1069,11 +1073,11 @@ work_packages:
     description: 安装一期实际需要使用的家电，逐台核对电源、给水、排水、散热和维护空间并试运行；二期设备不在本项重复计费。
     budget_pool: appliances
     budget:
-      planned_cny: 9000
-      estimated_need_cny: 9000
-      estimated_need_note: 2026-09-12压缩决策：按下探型号组合编制（公开参考价约8,196元+安装辅材约800元），9,000元控制；同户型实付12,861元为中档口径，保留作对照
-      public_reference_floor_cny: 7825
-      public_reference_floor_note: 该下限按约5.0千瓦燃气灶目标候选计算，未采用4.8千瓦预算下探款；组合中仍含公开页面标示下架或库存待确认的型号，只作预算警戒线，不是可直接下单组合；最低价501升冰箱宽约833毫米，不能视为已满足本户型约700毫米冰箱位，因此实际可行组合可能更高。
+      planned_cny: 12000
+      estimated_need_cny: 12000
+      estimated_need_note: 原下探家电组合按9,000元控制；2026-09-12业主另确认云鲸J6上下水版按3,000元追加进入一期，必需家电预算同步增至12,000元。原组合具体型号和安装辅材仍待确认，J6客卫台盆下接口与检修净空待现场复核。
+      public_reference_floor_cny: 10825
+      public_reference_floor_note: 原公开候选下限7,825元加业主确认的云鲸J6预算3,000元；原组合仍含公开页面标示下架或库存待确认的型号，只作预算警戒线，不是可直接下单组合；冰箱位和J6台盆下安装条件均须现场复核。
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -1081,15 +1085,17 @@ work_packages:
       allocation_status: pending_appliance_schedule
       priority_policy:
         - {level: P0, name: 入住必需, rule: 冰箱、洗衣机以及实际没有现成设备时的热水器，优先保证基本生活功能}
+        - {level: P0确认, name: 防尘与自动清洁, rule: "云鲸J6上下水版按业主确认的3,000元纳入一期，使用客卫台盆下已规划的电源、进水和墙排接口"}
         - {level: P0接口, name: 做饭和施工接口必需, rule: 燃气灶和吸油烟机先确认型号和接口，再冻结橱柜开孔、燃气和电路}
-        - {level: P2, name: 二期延后, rule: 洗碗机、干衣机、净水设备和扫地机器人继续留在二期，不从一期额度挤占}
+        - {level: P2, name: 二期延后, rule: 洗碗机、干衣机和净水设备继续留在二期，不从一期额度挤占}
       components:
         - {id: COST-160-01, priority: P0, priority_name: 入住必需, priority_order: 1, name: 冰箱, description: 记录型号、尺寸、开门、散热、插座、送货和安装条件；设计模型冰箱位暂约700毫米宽×700毫米深，当前501升候选有宽约833毫米者，必须复测净开口后再定可购买型号；没有可用旧冰箱时列为一期必买, quantity_basis: 1台候选，待复尺和确认是否一期采购, planned_cny: null, status: fit_pending}
         - {id: COST-160-02, priority: P0, priority_name: 入住必需, priority_order: 2, name: 洗衣机, description: 记录型号、尺寸、进水、排水、插座、防水和阳台通风位置；没有可用旧洗衣机时列为一期必买, quantity_basis: 1台候选，待阳台复尺和确认是否一期采购, planned_cny: null, status: fit_pending}
         - {id: COST-160-03, priority: P0接口, priority_name: 做饭和橱柜接口必需, priority_order: 3, name: 燃气灶, description: 记录型号、开孔尺寸、燃气接口、电源和安装验收责任；必须在橱柜台面开孔前冻结, quantity_basis: 1台候选，待燃气条件确认, planned_cny: null, status: interface_pending}
         - {id: COST-160-04, priority: P0接口, priority_name: 做饭和橱柜接口必需, priority_order: 4, name: 吸油烟机, description: 记录型号、尺寸、烟管、止回阀、插座与橱柜安装边界；必须在吊柜和烟管施工前冻结, quantity_basis: 1台候选，待确认, planned_cny: null, status: interface_pending}
         - {id: COST-160-05, priority: P0条件, priority_name: 无现成设备时入住必需, priority_order: 5, name: 燃气热水器（一期类别已确认）, description: 业主已确认一期按燃气热水器推进；设计模型暂记厨房西侧靠生活阳台玻璃幕墙的实体墙（墙体编号w_vrv_east，插座协调点sock_balcony_waterheater），这只是设计协调点，不是现场安装确认；仍需核对开发商或现有设备是否可用、天然气条件、实际安装墙面、容量、尺寸、排烟、冷凝水、给排水、专用电路和物业要求，现场条件未闭合前不得下单, quantity_basis: 1台候选，类别已确认、现场待核, planned_cny: null, status: selection_confirmed_site_pending}
-        - {id: COST-160-06, priority: P2, priority_name: 明确留到二期, priority_order: 99, name: 二期家电排除项, description: 洗碗机、干衣机、净水设备、扫地机器人等不从一期7000元重复扣款，除非业主书面调整阶段, quantity_basis: 排除清单, planned_cny: 0, status: excluded_to_phase_2}
+        - {id: COST-160-06, priority: P0确认, priority_name: 防尘与自动清洁, priority_order: 6, name: 云鲸J6上下水版扫地机器人, description: "按既有客卫悬空台盆柜下主位安装，使用sock_gbath_robot电源、台盆进水三通和墙排方案；业主确认设备预算3,000元，采购前复核实机版本、柜下净空、穿墙排水和检修条件", quantity_basis: 1台，型号与预算已确认、现场接口待核, planned_cny: 3000, status: budget_confirmed_site_pending}
+        - {id: COST-160-07, priority: P2, priority_name: 明确留到二期, priority_order: 99, name: 二期家电排除项, description: "洗碗机、干衣机和净水设备不从一期12,000元家电额度重复扣款，除非业主书面调整阶段", quantity_basis: 排除清单, planned_cny: 0, status: excluded_to_phase_2}
     duration_workdays: {min: 2, max: 4}
     dependencies: [PKG-110, PKG-120, PKG-125, PKG-135]
     readiness: blocked
@@ -1140,7 +1146,7 @@ work_packages:
         checkpoint: payment
         item: 最终结算不超过批准额度
         method: 汇总合同、变更、已付、待付和退款，核对各预算池及总上限
-        pass_condition: 最终预测不超过¥200,000，或已有业主书面追加批准
+        pass_condition: 最终预测不超过¥203,000，或已有业主书面追加批准
         evidence_required: [final_account_statement, owner_approval_if_overrun]
 
   - id: PKG-900

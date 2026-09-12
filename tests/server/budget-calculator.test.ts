@@ -652,4 +652,27 @@ describe('BudgetCalculator', () => {
     const furnitureSoft = snapshot.categories.find((c) => c.key === 'furniture_soft');
     assert.ok(furnitureSoft && furnitureSoft.autoActual >= 2200, 'dresser + pending wardrobe both flow into furniture_soft');
   });
+
+  it('phase 1 excludes deferred fixed appliances while retaining the declarative J6 count line', () => {
+    const catalog = ProjectCatalog.load('.');
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const calc = new BudgetCalculator(catalog, realRules);
+    const scheme = JSON.parse(readFileSync('./data/current-scheme.json', 'utf8')) as CurrentScheme;
+
+    const snapshot = calc.calculate(scheme, 'phase_1_basic_occupancy');
+    const applianceTopics = new Set(
+      snapshot.lineItems
+        .filter((item) => realRules.budget?.topicCategories?.[item.topic] === 'appliances')
+        .map((item) => item.topic),
+    );
+    assert.deepEqual(
+      [...applianceTopics].sort(),
+      ['gas_stove', 'robot_vacuum', 'shower_enclosure', 'washer'],
+      '一期家电动态估算只保留已纳入一期的家电主题',
+    );
+    assert.equal(snapshot.lineItems.find((item) => item.topic === 'robot_vacuum')?.cost, 3000);
+    for (const deferred of ['dishwasher', 'water_purifier', 'dryer']) {
+      assert.equal(snapshot.lineItems.some((item) => item.topic === deferred), false, `${deferred} must stay in phase 2`);
+    }
+  });
 });

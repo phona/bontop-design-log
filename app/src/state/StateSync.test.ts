@@ -424,4 +424,29 @@ describe('StateSync', () => {
     sync.dispose();
     expect(configErrorCallback).toHaveBeenCalledWith([]);
   });
+
+  it('requests project and budget with the selected phase', async () => {
+    const fetchMock = vi.spyOn(global, 'fetch').mockImplementation(async () => ({
+      ok: true,
+      json: async () => ({ totalBudget: 200000, totalActual: 0, categories: [], lineItems: [] }),
+    }) as Response);
+    stateSync.setPhase('phase_1_basic_occupancy');
+    await stateSync.fetchProject();
+    await stateSync.fetchBudget();
+    expect(fetchMock).toHaveBeenCalledWith('/api/project?phase=phase_1_basic_occupancy');
+    expect(fetchMock).toHaveBeenCalledWith('/api/budget?phase=phase_1_basic_occupancy');
+  });
+
+  it('preserves the selected layout when fetching a phase project', async () => {
+    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    } as Response);
+
+    stateSync.setPhase('phase_1_basic_occupancy');
+    stateSync.setLayout('neighbor-baseline');
+    await stateSync.fetchProject();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/project?layout=neighbor-baseline&phase=phase_1_basic_occupancy');
+  });
 });

@@ -1,0 +1,24 @@
+- generic
+  - Canvas
+  - heading "方案" [level=3, ref=e1]
+  - button "方案面板折叠" [expanded=false, ref=e2]
+    - StaticText "+"
+  - generic
+  - StaticText "北"
+  - StaticText "东"
+  - StaticText "南"
+  - StaticText "西"
+  - StaticText "PHASE 1 · BASIC OCCUPANCY"
+  - StaticText "轨道模式 · 按 V 切换第一人称"
+  - generic
+    - group "视角"
+      - button "俯视" [ref=e3]
+      - button "玻璃质感" [ref=e4]
+    - group "分析"
+      - button "日照" [ref=e5]
+      - button "湿度" [ref=e6]
+    - group "机电"
+      - button "机电总览" [ref=e7]
+      - button "MEP 协调⚠ 22" [ref=e8]
+      - button "HVAC" [ref=e9]
+      - button "电气回路归属25 条 ⚠42" [ref=e10]

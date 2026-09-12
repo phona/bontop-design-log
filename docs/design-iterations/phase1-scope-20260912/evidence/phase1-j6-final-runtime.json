@@ -1,0 +1,63 @@
+{
+  "budget": {
+    "allocatedCny": 203000,
+    "authority": "schedule/phase-1/control.yaml",
+    "ceilingCny": 203000,
+    "unallocatedCny": 0
+  },
+  "budget_text": [],
+  "camera": {
+    "is_overview": false,
+    "mode": "orbit",
+    "position": [
+      6,
+      0.8,
+      2.9999999999999996
+    ],
+    "target": [
+      6.823,
+      0.2,
+      3.9249999999999994
+    ]
+  },
+  "config_error_banners": [],
+  "phase": "phase_1_basic_occupancy",
+  "phaseReloading": false,
+  "ready": true,
+  "target": {
+    "declaredDimensions": {
+      "depth": 0.4335,
+      "width": 0.41
+    },
+    "furnishingType": "robot_dock_gbath",
+    "objectId": "furniture:guest_bath:robot_dock_gbath:4",
+    "position": [
+      6.823,
+      0,
+      3.925
+    ],
+    "rotation": [
+      0,
+      4.71238898038469,
+      0,
+      "XYZ"
+    ],
+    "sourceIndex": 8,
+    "type": "furniture",
+    "visible": true,
+    "worldBounds": {
+      "max": [
+        7.03999999910593,
+        0.19900000298023224,
+        4.1299999982118605
+      ],
+      "min": [
+        6.5929999982118614,
+        -0.0004999983357265592,
+        3.720000001788139
+      ]
+    }
+  },
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://127.0.0.1:5173/?v=j6-phase1-final-r4"
+}

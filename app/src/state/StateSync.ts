@@ -6,6 +6,11 @@ type VisualCommandCallback = (command: VisualCommand) => void;
 type OfflineCallback = (offline: boolean) => void;
 type ConfigErrorCallback = (errors: Array<{ path: string; error: string }>) => void;
 export type BudgetCallback = (snapshot: BudgetSnapshot) => void;
+export type PhaseId = 'full' | 'phase_1_basic_occupancy';
+export interface ProjectFetchOptions {
+  phase?: PhaseId;
+  layout?: string;
+}
 
 export class StateSync {
   private schemeInterval: ReturnType<typeof setTimeout> | null = null;
@@ -27,6 +32,38 @@ export class StateSync {
   private currentPresentationState: CurtainPresentationState | null = null;
   private lastBudgetJson = '';
   private processedCommandIds = new Map<string, number>();
+  private phase: PhaseId = 'full';
+  private layout: string | undefined;
+
+  setPhase(phase: PhaseId): void {
+    this.phase = phase;
+    this.lastBudgetJson = '';
+  }
+
+  getPhase(): PhaseId {
+    return this.phase;
+  }
+
+  setLayout(layout: string | undefined): void {
+    this.layout = layout || undefined;
+  }
+
+  getLayout(): string | undefined {
+    return this.layout;
+  }
+
+  async fetchProject(options: ProjectFetchOptions = {}): Promise<any> {
+    const phase = options.phase ?? this.phase;
+    const layout = options.layout ?? this.layout;
+    const query = new URLSearchParams();
+    if (layout) query.set('layout', layout);
+    if (phase !== 'full') query.set('phase', phase);
+    const queryString = query.toString();
+    const url = queryString ? `/api/project?${queryString}` : '/api/project';
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch project');
+    return response.json();
+  }
 
   async getCurrentScheme(): Promise<CurrentScheme> {
     const response = await fetch('/api/scheme/current');
@@ -70,8 +107,9 @@ export class StateSync {
     return response.json();
   }
 
-  async fetchBudget(): Promise<BudgetSnapshot> {
-    const response = await fetch('/api/budget');
+  async fetchBudget(phase: PhaseId = this.phase): Promise<BudgetSnapshot> {
+    const url = phase === 'full' ? '/api/budget' : `/api/budget?phase=${encodeURIComponent(phase)}`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch budget');
     return response.json();
   }
@@ -246,8 +284,13 @@ export class StateSync {
   }
 
   private async pollBudget(): Promise<void> {
+    const requestPhase = this.phase;
     try {
-      const budget = await this.fetchBudget();
+      const budget = await this.fetchBudget(requestPhase);
+      if (requestPhase !== this.phase) {
+        this.budgetInterval = setTimeout(() => this.pollBudget(), this.budgetBackoff);
+        return;
+      }
       const json = JSON.stringify(budget);
       if (json !== this.lastBudgetJson) {
         this.lastBudgetJson = json;

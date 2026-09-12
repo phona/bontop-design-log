@@ -1,0 +1,73 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: phase1-scope-20260912
+subject: 一期家具逐房范围冻结（最低浪费、保证日常）
+units: m
+coordinate_system: Three.js右手系，Y向上，+x东，+z南；采用model-geometry局部坐标
+status: blocked
+datums:
+  - id: datum-j6-phase1
+    name: 云鲸J6一期既有安装锚点
+    anchor: {kind: room_anchor, ref: guest_bath, wall_side: west, service_ref: sock_gbath_robot}
+    source_refs: {fact_refs: [j6-phase1], decision_refs: [user-request-20260912-j6-phase1, DEC-2026-09-09-R6]}
+    views:
+      plan: {required: true, origin: guest_bath room center, axes: x东西/z南北, direction: north=-z, position: {x: 6.823, z: 3.925}, rotation: 270, dimensions: {width: 0.41, depth: 0.4335}, dimension_semantics: config/house.yaml既有J6实尺寸模型}
+      elevation: {required: true, viewing_side: west, vertical_axis: y, position: {floor_y: 0}, height: 0.198, dimensions: {width: 0.41, height: 0.198}, dimension_semantics: J6上下水版既有协调尺寸}
+      section: {required: true, cut_direction: east-west, depth_axis: x, position: {x: 6.823, z: 3.925}, dimensions: {depth: 0.4335, height: 0.198}, dimension_semantics: 台盆柜下安装包络}
+    geometry: {position: {x: 6.823, z: 3.925, rotation: 270}, dimensions: {width: 0.41, depth: 0.4335, height: 0.198}, status: existing_candidate_site_pending}
+    constraints: [沿用已建模的客卫台盆下主位, 不改家具坐标或配方, 采购前复核具体版本与柜下净空, 自动进水和墙排现场条件未确认]
+    interfaces: [{id: j6-power, target: sock_gbath_robot, kind: electrical, status: site_pending}, {id: j6-water-drain, target: drain_gbath_vanity, kind: plumbing, status: site_pending}]
+    validation_refs: [verify:furniture, verify:mep, phase1 API object audit, handover_measurement]
+    status: blocked
+  - id: datum-master-phase1
+    name: 主卧一期家具范围锚点
+    anchor: {kind: room_anchor, ref: master_bedroom, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [master-phase1, master-rack, pending-room-measurement], decision_refs: [user-request-20260912-phase1-minimum-waste]}
+    views:
+      plan: {required: true, origin: master_bedroom room center, axes: x东西/z南北, direction: north=-z, position: null, rotation: null, dimensions: null, dimension_semantics: site_pending}
+      elevation: {required: true, viewing_side: room interior, vertical_axis: y, position: null, height: null, dimensions: null, dimension_semantics: site_pending}
+      section: {required: true, cut_direction: north-south, depth_axis: z, position: null, dimensions: null, dimension_semantics: site_pending}
+    geometry: {position: null, dimensions: null, status: site_pending}
+    constraints: [主卧床/床垫/两床头柜/过渡斗柜列入一期, 衣架型号和尺寸确认前不建模, 通道与空调检修净空现场复核]
+    interfaces: [{id: master-bedside-electrical, target: master_bedside_north, kind: electrical, status: site_pending}, {id: hvac-inspection, target: master_transitional_rack, kind: maintenance, status: site_pending}]
+    validation_refs: [handover_measurement, furniture_shop_drawings, verify:furniture]
+    status: blocked
+  - id: datum-parent-phase1
+    name: 父母房一期家具范围锚点
+    anchor: {kind: room_anchor, ref: study, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [parent-phase1, pending-room-measurement], decision_refs: [user-request-20260912-phase1-minimum-waste]}
+    views:
+      plan: {required: true, origin: study room center, axes: x东西/z南北, direction: north=-z, position: null, rotation: null, dimensions: null, dimension_semantics: site_pending}
+      elevation: {required: true, viewing_side: room interior, vertical_axis: y, position: null, height: null, dimensions: null, dimension_semantics: site_pending}
+      section: {required: true, cut_direction: north-south, depth_axis: z, position: null, dimensions: null, dimension_semantics: site_pending}
+    geometry: {position: null, dimensions: null, status: site_pending}
+    constraints: [父母房床/床垫/成品衣柜列入一期, 成品衣柜防倾倒和通道现场复核]
+    interfaces: [{id: wardrobe-fixing, target: parent_wardrobe, kind: construction, status: site_pending}]
+    validation_refs: [handover_measurement, furniture_shop_drawings, verify:furniture]
+    status: blocked
+  - id: datum-living-phase1
+    name: 客餐厅一期家具范围锚点
+    anchor: {kind: room_anchor, ref: living_dining, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [living-phase1, deferred-furniture, pending-room-measurement], decision_refs: [user-request-20260912-phase1-minimum-waste]}
+    views:
+      plan: {required: true, origin: living_dining room center, axes: x东西/z南北, direction: north=-z, position: null, rotation: null, dimensions: null, dimension_semantics: site_pending}
+      elevation: {required: true, viewing_side: room interior, vertical_axis: y, position: null, height: null, dimensions: null, dimension_semantics: site_pending}
+      section: {required: true, cut_direction: east-west, depth_axis: x, position: null, dimensions: null, dimension_semantics: site_pending}
+    geometry: {position: null, dimensions: null, status: site_pending}
+    constraints: [一期只列沙发/餐桌椅/玄关收纳组合, 客厅低柜/电视/咖啡桌/地灯/绿植二期, 搬运和主通道现场复核]
+    interfaces: [{id: entry-electrical, target: entry_storage, kind: electrical, status: site_pending}, {id: tv-reservation, target: living_tv, kind: electrical, status: deferred_to_phase_2}]
+    validation_refs: [handover_measurement, furniture_shop_drawings, verify:furniture]
+    status: blocked
+  - id: datum-bedroom-phase-boundaries
+    name: 东南书房与西北次卧阶段边界锚点
+    anchor: {kind: room_anchor, ref: bedroom_se, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [nw-curtain, deferred-furniture, pending-room-measurement], decision_refs: [user-request-20260912-phase1-minimum-waste]}
+    views:
+      plan: {required: true, origin: bedroom_se room center, axes: x东西/z南北, direction: north=-z, position: null, rotation: null, dimensions: null, dimension_semantics: site_pending}
+      elevation: {required: false, viewing_side: room interior, vertical_axis: y, position: null, height: null, dimensions: null, dimension_semantics: site_pending}
+      section: {required: false, cut_direction: north-south, depth_axis: z, position: null, dimensions: null, dimension_semantics: site_pending}
+    geometry: {position: null, dimensions: null, status: site_pending}
+    constraints: [东南书房全部家具二期, 西北次卧床/柜/书桌/椅子/置物架二期且仅窗帘一期, 二期对象不因全案config模型而提前采购]
+    interfaces: [{id: study-power-reservation, target: study_furniture, kind: electrical, status: deferred_to_phase_2}, {id: nw-curtain-box, target: nw_curtain, kind: construction, status: site_pending}]
+    validation_refs: [phase2_scope, curtain_measurement, handover_measurement]
+    status: blocked

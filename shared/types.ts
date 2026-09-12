@@ -200,6 +200,27 @@ export interface HouseYaml {
   electrical?: ElectricalMarker[];
 }
 
+export type PhaseId = 'full' | 'phase_1_basic_occupancy';
+
+export interface PhaseFurnishingRule {
+  /** When present, only these furnishing types are admitted for the phase. */
+  include_types?: string[];
+  exclude_types?: string[];
+  exclude_placed?: boolean;
+}
+
+export interface PhaseScope {
+  label: string;
+  budget_authority?: string;
+  budget_ceiling_ref?: string;
+  curtain_rooms: 'all' | string[];
+  /** Policy for furnishing types/rooms without an explicit rule. */
+  default_furnishing_policy?: 'include' | 'exclude';
+  /** Declarative budget topics omitted from this phase's dynamic estimate. */
+  budget_exclude_topics?: string[];
+  furnishing_rules?: Record<string, PhaseFurnishingRule>;
+}
+
 export interface TopicSelection {
   default: string | null;
   roomOverrides: Record<string, string>;
@@ -415,6 +436,14 @@ export interface BudgetAttribution {
 export interface BudgetSnapshot {
   totalBudget: number;
   totalActual: number;
+  /** Optional view context; totalBudget remains the category baseline sum. */
+  phase?: PhaseId;
+  /** Execution ceiling for the selected phase, sourced from its control file. */
+  phaseCeiling?: number;
+  /** Allocated execution amount for the selected phase, sourced from its control file. */
+  phaseAllocated?: number;
+  /** Remaining unallocated amount for the selected phase, sourced from its control file. */
+  phaseUnallocated?: number;
   projectCeiling?: number;
   overCeilingBy?: number;
   categories: BudgetCategory[];
@@ -1116,6 +1145,8 @@ export interface FurnishingCutout {
 
 export interface FurnishingItem {
   type: string;
+  /** Original house.yaml array index, attached to phase API responses for edits. */
+  sourceIndex?: number;
   count?: number;
   x?: number;
   z?: number;

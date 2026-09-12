@@ -1,0 +1,18 @@
+SUPERSEDED：云鲸J6阶段归属变化后，本快照不再作为当前迭代的交付证据。
+
+URL: http://127.0.0.1:5173/
+Title: 和萃 701 - 3D 装修设计
+Ready: window.__APP__.isReady() === true
+Visible error banner: none
+
+阶段方案
+- selected: 完整方案
+- status: 当前：完整方案
+
+预算
+- 总预算: ¥208,000
+- 已用: ¥148,149.954
+- 剩余: ¥59,850.047
+- furniture_soft: ¥46,000 / ¥36,500
+
+浏览器运行时对象核验详见 runtime-audit.json。

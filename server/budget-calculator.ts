@@ -8,8 +8,10 @@ import type {
   DesignRulesConfig,
   RoomLayout,
   BudgetCategoryRaw,
+  PhaseId,
 } from '../shared/types.js';
 import type { ProjectCatalog } from './project-catalog.js';
+import { isBudgetTopicIncluded } from './phase-scope.js';
 
 const QUANTITY_FORMULAS: Record<string, (room: RoomLayout) => number> = {
   floorArea: (room) => room.area ?? room.width * room.depth,
@@ -30,7 +32,8 @@ export class BudgetCalculator {
   private computeLabor(
     categories: BudgetCategory[],
     baseRaw: Record<string, BudgetCategoryRaw>,
-    rooms: RoomLayout[]
+    rooms: RoomLayout[],
+    phase: PhaseId
   ): void {
     for (const cat of categories) {
       const raw = baseRaw[cat.key];
@@ -56,8 +59,8 @@ export class BudgetCalculator {
         }
         case 'door_count': {
           let count = 0;
-          for (const roomId of Object.keys(this.catalog.getFurnishings())) {
-            const counts = this.catalog.getFurnishingCounts(roomId);
+          for (const roomId of Object.keys(this.catalog.getFurnishingsForPhase(phase))) {
+            const counts = this.catalog.getFurnishingCounts(roomId, phase);
             count += counts['interior_door'] ?? 0;
             count += counts['bathroom_door'] ?? 0;
             count += counts['entry_door'] ?? 0;
@@ -68,8 +71,8 @@ export class BudgetCalculator {
         }
         case 'fixture_count': {
           let count = 0;
-          for (const roomId of Object.keys(this.catalog.getFurnishings())) {
-            const counts = this.catalog.getFurnishingCounts(roomId);
+          for (const roomId of Object.keys(this.catalog.getFurnishingsForPhase(phase))) {
+            const counts = this.catalog.getFurnishingCounts(roomId, phase);
             count += counts['toilet'] ?? 0;
             count += counts['shower_set'] ?? 0;
             count += counts['vanity'] ?? 0;
@@ -89,7 +92,7 @@ export class BudgetCalculator {
     }
   }
 
-  calculate(scheme: CurrentScheme): BudgetSnapshot {
+  calculate(scheme: CurrentScheme, phase: PhaseId = 'full'): BudgetSnapshot {
     const topicCategories = this.rulesConfig.budget?.topicCategories ?? {};
     const lineItems = this.rulesConfig.budget?.lineItems ?? [];
     const baseCategories = this.catalog.getBudgetCategories();
@@ -98,6 +101,7 @@ export class BudgetCalculator {
     const categoryAutoActual = new Map<string, number>();
 
     for (const li of lineItems) {
+      if (!isBudgetTopicIncluded(li.topic, phase)) continue;
       const topic = this.catalog.getTopic(li.topic);
       if (!topic) continue;
 
@@ -129,8 +133,8 @@ export class BudgetCalculator {
       if (calcMode === 'count') {
         const typeToTopic = this.rulesConfig.budget?.furnishingTypeToTopic ?? {};
         let totalCost = 0;
-        for (const roomId of Object.keys(this.catalog.getFurnishings())) {
-          const counts = this.catalog.getFurnishingCounts(roomId);
+        for (const roomId of Object.keys(this.catalog.getFurnishingsForPhase(phase))) {
+          const counts = this.catalog.getFurnishingCounts(roomId, phase);
           let qty = 0;
           for (const [type, count] of Object.entries(counts)) {
             const resolvedTopic = type === li.topic ? li.topic : typeToTopic[type];
@@ -233,7 +237,7 @@ export class BudgetCalculator {
       };
     });
 
-    this.computeLabor(categories, budgetRaw.categories, this.catalog.getRooms());
+    this.computeLabor(categories, budgetRaw.categories, this.catalog.getRooms(), phase);
 
     // Status computed AFTER computeLabor: labor can push a category over budget.
     for (const cat of categories) {

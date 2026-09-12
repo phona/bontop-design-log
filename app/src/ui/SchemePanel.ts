@@ -138,12 +138,14 @@ export class SchemePanel {
       bar.style.cssText = 'border-top:1px solid #444;margin-top:8px;padding-top:8px;';
       container.appendChild(bar);
     }
-    const pct = budget.totalBudget > 0 ? (budget.totalActual / budget.totalBudget) * 100 : 0;
+    const phaseCeiling = budget.phaseCeiling;
+    const budgetLimit = phaseCeiling ?? budget.totalBudget;
+    const pct = budgetLimit > 0 ? (budget.totalActual / budgetLimit) * 100 : 0;
     const color = pct > 100 ? '#ff4444' : pct > 90 ? '#ffaa00' : '#44cc44';
     bar.innerHTML = `
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-        <span>预算</span>
-        <span>¥${budget.totalActual.toLocaleString()} / ¥${budget.totalBudget.toLocaleString()}</span>
+        <span>${phaseCeiling !== undefined ? '场景估算 / 阶段上限' : '预算'}</span>
+        <span>¥${budget.totalActual.toLocaleString()} / ¥${budgetLimit.toLocaleString()}</span>
       </div>
       <div style="background:#333;height:6px;border-radius:3px;overflow:hidden;">
         <div style="width:${Math.min(pct, 100)}%;background:${color};height:100%;border-radius:3px;transition:width 0.3s;"></div>

@@ -55,6 +55,7 @@ budget:
     washer: appliances
     dryer: appliances
     shower_enclosure: appliances
+    robot_vacuum: appliances
   # 家具 furnishing type（house.yaml）→ 预算 topic 映射；
   # count 模式据此把 bed_180/bed_150 等归并到 bed topic 计价（修复 type≠topic 漏算）
   furnishingTypeToTopic:
@@ -94,6 +95,7 @@ budget:
     master_hot_season_low_dresser: dresser
     master_bedside_cabinet_north: dresser
     master_bedside_tray_south: dresser
+    robot_dock_gbath: robot_vacuum
   # applyRooms：限定算量范围，避免材料满铺到不施工的房间（电梯井等）。
   # DEC-041：地砖统一为单一 floor topic + 分房覆盖（roomOverrides）。
   # floor=全屋铺地房间；入户花园 entry_garden 开发商已铺 → 移出算量（渲染仍可视化但不计费，见 DEC-041）。
@@ -182,6 +184,8 @@ budget:
     - topic: home_fitness
       calcMode: count
     - topic: dresser
+      calcMode: count
+    - topic: robot_vacuum
       calcMode: count
     # 家电（appliances 池，各为独立 topic，fixed 单件整屋）
     - topic: gas_stove

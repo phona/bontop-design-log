@@ -1,0 +1,47 @@
+schema: schedule.phase-scope/v1
+project_id: bontop-design-log
+version: 1.0.0
+updated_at: 2026-09-12
+
+# 这里只保存对 house.yaml / overlay.yaml 对象的引用；坐标、尺寸和预算不在此重复。
+phases:
+  full:
+    label: 全案
+    curtain_rooms: all
+  phase_1_basic_occupancy:
+    label: 一期基本入住
+    budget_authority: schedule/phase-1/control.yaml
+    budget_ceiling_ref: control.phase_ceiling_cny
+    curtain_rooms: [master_bedroom, study, bedroom_nw, master_bath, guest_bath]
+    # 一期是冻结范围：未登记的房间或新家具默认不进入一期场景/算量。
+    default_furnishing_policy: exclude
+    # 仅保留入住必需家电；洗碗机、净水器、烘干机在二期采购。
+    budget_exclude_topics: [dishwasher, water_purifier, dryer]
+    furnishing_rules:
+      master_bedroom:
+        include_types: [bed_180, master_bedside_cabinet_350_north, master_bedside_cabinet_350_south, mb_washbasin_cabinet, faucet, master_hot_season_low_dresser, mb_vanity_base_cabinet, mb_vanity_lower_board, mb_vanity_main_board, condensate_pipe_ac_outlet, mb_vanity_pvc_box, mb_vanity_pvc_wardrobe_entry, mb_vanity_pvc_service_chase, mattress_180, curtain_set, ceiling_light]
+        exclude_types: [master_north_wall_wardrobe_950, master_wardrobe_top_pelmet, master_dressing_table, dressing_stool]
+      study:
+        include_types: [bed_150, wardrobe_180, mattress_150, curtain_set, ceiling_light]
+        exclude_types: [desk, chair]
+      living_dining:
+        include_types: [sofa_3seat, entry_half_height_cabinet, dining_table, dining_chair, ceiling_light]
+        exclude_types: [wall_cabinet_tall, tv_wall_low, tv_65, coffee_table, floor_lamp, plant_fiddle, curtain_set]
+      bedroom_nw:
+        include_types: [curtain_set, ceiling_light]
+      bedroom_se:
+        include_types: [ceiling_light]
+      kitchen:
+        include_types: [kitchen_cabinet_run, kitchen_countertop_bridge, cabinet_base, cabinet_wall, countertop_quartz, fridge, gas_stove, range_hood, sink, water_heater, ceiling_light]
+        exclude_types: [dishwasher]
+      balcony:
+        include_types: [washer, ceiling_light]
+        exclude_types: [dryer]
+      master_bath:
+        include_types: [toilet, shower_set, towel_set, ceiling_light, exhaust_fan]
+      guest_bath:
+        include_types: [vanity, faucet, toilet, shower_set, towel_set, ceiling_light, exhaust_fan, mirror_cabinet_gbath, robot_dock_gbath]
+      entry_garden:
+        include_types: [garden_entry_station, shoe_cabinet, ceiling_light]
+      south_balcony:
+        include_types: []

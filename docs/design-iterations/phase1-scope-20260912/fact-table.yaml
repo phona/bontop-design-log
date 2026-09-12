@@ -1,0 +1,32 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: phase1-scope-20260912
+subject: 一期家具逐房范围冻结（最低浪费、保证日常）
+created_at: "2026-09-12T22:00:00+08:00"
+status: decision_brief_frozen
+updated_at: "2026-09-12T22:00:00+08:00"
+source_policy:
+  authority_refs: [schedule/phase-1/control.yaml, schedule/roadmap.yaml, schedule/phase-2/control.yaml, config/house.yaml]
+  observation_refs: [docs/decision_log.md]
+  measurement_refs: []
+  runtime_refs: []
+  evidence_refs: []
+facts:
+  confirmed:
+    - {id: phase-budget, category: confirmed, statement: 一期上限203000元且已全部分配，必需家电预算为12000元，其中云鲸J6为业主确认的3000元追加预算, value: {ceiling_cny: 203000, allocated_cny: 203000, unallocated_cny: 0, appliance_budget_cny: 12000, robot_vacuum_cny: 3000}, source_refs: [schedule/phase-1/control.yaml, docs/decision_log.md], basis: 一期执行控制源与业主追加决定, confidence: high, impact: material, affected_objects: [all_phase1_furnishings, robot_dock_gbath], affected_views: [plan, perspective], owner: project, status: resolved, verification_method: schedule:render}
+    - {id: cad-baseline, category: confirmed, statement: 邻居CAD和现有config/house.yaml只作为预演与全案基线，实际完成面尺寸、通道、固定和防倾倒条件仍需交房量房, value: {measurement_status: site_pending}, source_refs: [docs/decision_log.md:1337-1345, schedule/phase-1/control.yaml:178-218], basis: 项目当前尚未交房, confidence: high, impact: material, affected_objects: [all_furnishings], affected_views: [plan, perspective], owner: site, status: open, verification_method: handover survey}
+  user_decision:
+    - {id: j6-phase1, category: user_decision, statement: 云鲸J6上下水版按3000元追加进入一期并从二期移除, value: {model: 云鲸J6上下水版, planned_cny: 3000, phase: phase_1_basic_occupancy}, source_refs: [docs/decision_log.md, schedule/phase-1/control.yaml], basis: 业主明确回复“J6就3000块，追加到一期里”, confidence: high, impact: material, affected_objects: [robot_dock_gbath], affected_views: [plan, perspective], owner: user, status: resolved, verification_method: phase scope API and schedule reconciliation}
+    - {id: master-phase1, category: user_decision, statement: 主卧一期保留床、床垫、两只床头柜和过渡斗柜, value: {bed: 1, mattress: 1, bedside_cabinets: 2, transitional_dresser: 1}, source_refs: [docs/decision_log.md:1337-1345], basis: 业主冻结最低浪费、保证日常范围, confidence: high, impact: material, affected_objects: [master_bed, master_mattress, master_bedside_north, master_bedside_south, master_transitional_dresser], affected_views: [plan, perspective], owner: user, status: resolved, verification_method: phase1 procurement checklist}
+    - {id: master-rack, category: user_decision, statement: 主卧衣架待选宜家或其他可复用成品，尺寸未定前不进入config/house.yaml建模, value: {quantity: 1, model: pending, modeled: false}, source_refs: [docs/decision_log.md:1337-1345, schedule/phase-1/control.yaml:1039-1042], basis: 避免未定尺寸对象污染几何与渲染基线, confidence: high, impact: material, affected_objects: [master_transitional_rack], affected_views: [plan, perspective], owner: user, status: resolved, verification_method: 采购前现场复尺}
+    - {id: parent-phase1, category: user_decision, statement: 父母房一期保留床、床垫和成品衣柜, value: {bed: 1, mattress: 1, wardrobe: 1}, source_refs: [docs/decision_log.md:1337-1345, schedule/phase-1/control.yaml:1035-1038, schedule/phase-1/control.yaml:1041], basis: 两人入住的必要家具, confidence: high, impact: material, affected_objects: [parent_bed, parent_mattress, parent_wardrobe], affected_views: [plan, perspective], owner: user, status: resolved, verification_method: furniture procurement checklist}
+    - {id: living-phase1, category: user_decision, statement: 客餐厅一期保留沙发、餐桌椅和玄关收纳组合, value: {sofa: 1, dining_table: 1, dining_chairs: 4, entry_storage: 1}, source_refs: [docs/decision_log.md:1337-1345, schedule/phase-1/control.yaml:1038-1041], basis: 日常起居、用餐和入户收纳最低闭环, confidence: high, impact: material, affected_objects: [living_sofa, dining_table, dining_chairs, entry_storage], affected_views: [plan, perspective], owner: user, status: resolved, verification_method: completed-room measurement and installation check}
+    - {id: nw-curtain, category: user_decision, statement: 西北次卧一期仅保留窗帘，家具全部后移二期, value: {curtain: phase_1, furniture: phase_2}, source_refs: [schedule/phase-1/control.yaml:984, schedule/phase-1/control.yaml:1037, schedule/phase-2/control.yaml:31], basis: 明确区分遮光需求与可延后家具, confidence: high, impact: material, affected_objects: [nw_curtain, nw_furniture], affected_views: [plan, elevation], owner: user, status: resolved, verification_method: curtain measurement and phase checklist}
+    - {id: deferred-furniture, category: user_decision, statement: 客厅低柜、电视、咖啡桌、地灯、绿植、主卧梳妆桌凳、东南书房家具及西北次卧家具均二期, value: {phase: phase_2}, source_refs: [docs/decision_log.md:1337-1345, schedule/roadmap.yaml:16-24, schedule/phase-2/control.yaml:20-35], basis: 预算压缩下优先保证日常使用, confidence: high, impact: material, affected_objects: [living_low_cabinet, living_tv, living_coffee_table, living_floor_lamp, living_plant, master_dressing_table, master_dressing_stool, study_furniture, nw_furniture], affected_views: [plan, perspective], owner: user, status: resolved, verification_method: phase scope audit}
+  site_pending:
+    - {id: pending-room-measurement, category: site_pending, statement: 一期所有家具的完成面尺寸、搬运路径、墙体固定和防倾倒条件尚未现场复核, value: null, source_refs: [schedule/phase-1/control.yaml:178-218], basis: 当前尚未交房, confidence: not_applicable, impact: material, affected_objects: [all_phase1_furnishings], affected_views: [plan, perspective], owner: site, status: open, verification_method: 交房量房和家具深化}
+    - {id: pending-rack-selection, category: site_pending, statement: 主卧过渡衣架品牌、型号和尺寸未定, value: null, source_refs: [schedule/phase-1/control.yaml:1039-1042], basis: 优先宜家等可复用成品但尚未选型, confidence: not_applicable, impact: low, affected_objects: [master_transitional_rack], affected_views: [plan, perspective], owner: user, status: open, verification_method: 采购前复尺}
+unknowns_requiring_alignment: []
+notes:
+  - 本轮只冻结一期采购边界和二期排除项，不把未定尺寸衣架写入config/house.yaml，也不改变全案几何基线。
+  - 一期家具包已拆成父母房成品衣柜、主卧过渡斗柜和待选衣架；东南书房、西北次卧家具及客厅影音/小件全部标记deferred_to_phase_2。

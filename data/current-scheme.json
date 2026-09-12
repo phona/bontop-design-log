@@ -155,6 +155,10 @@
     "shower_enclosure": {
       "default": "shower_enclosure_01",
       "roomOverrides": {}
+    },
+    "robot_vacuum": {
+      "default": "robot_vacuum_narwal_j6_01",
+      "roomOverrides": {}
     }
   }
 }

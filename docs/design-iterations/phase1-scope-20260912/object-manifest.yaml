@@ -1,0 +1,139 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: phase1-scope-20260912
+subject: 一期家具逐房范围冻结（最低浪费、保证日常）
+object_policy:
+  fixed_count_required: true
+  split_by: [function, owner, material, collision, maintenance, interface, review]
+  visual_relationship_required: true
+objects:
+  - id: guest_bath_j6_phase1
+    type: appliance
+    archetypes: [robot_vacuum, automatic_water_dock]
+    owner: appliance_supplier
+    function: 一期日常清洁与防尘
+    material: existing_model_candidate
+    geometry_source: config/house.yaml robot_dock_gbath; no coordinate changes
+    datum_refs: [datum-j6-phase1]
+    fact_refs: [j6-phase1]
+    decision_refs: [user-request-20260912-j6-phase1, DEC-2026-09-09-R6]
+    dependencies: []
+    interfaces: [{id: power, target: sock_gbath_robot, kind: electrical, status: site_pending}, {id: water-drain, target: drain_gbath_vanity, kind: plumbing, status: site_pending}]
+    collision: {policy: reviewed, geometry_ref: config/house.yaml, review_ref: verify:furniture}
+    maintenance: {boundary: 可抽出检修设备, access_clearance: site_pending, replaceable_parts: [尘袋, 清洁液, 耗材]}
+    parts: []
+    visual_relationships: [{target_object_id: guest_bath_vanity, relation: nested_below, requirement: 完整藏入悬空台盆柜下且可抽出检修}]
+    validation_refs: [phase1 API object audit, handover_measurement, commissioning_record]
+    status: blocked
+  - id: master_phase1_furniture
+    type: furniture
+    archetypes: [bed, mattress, bedside_cabinet, dresser]
+    owner: furniture
+    function: 主卧日常睡眠与过渡收纳
+    material: reusable_finished_products
+    geometry_source: phase1 procurement; no new coordinates
+    datum_refs: [datum-master-phase1]
+    fact_refs: [master-phase1]
+    decision_refs: [user-request-20260912-phase1-minimum-waste]
+    dependencies: []
+    interfaces: [{id: bedside-power, target: master_bedside_north, kind: electrical, status: blocked}]
+    collision: {policy: reviewed, geometry_ref: site_measurement, review_ref: verify:furniture}
+    maintenance: {boundary: 可移动家具, access_clearance: site_pending, replaceable_parts: [床垫]}
+    parts: []
+    visual_relationships: [{target_object_id: master_bed, relation: grouped, requirement: 两床头柜服务床头两侧}]
+    validation_refs: [handover_measurement, furniture_shop_drawings]
+    status: blocked
+  - id: master_transitional_rack
+    type: furniture
+    archetypes: [clothes_rack]
+    owner: furniture
+    function: 主卧衣物过渡收纳
+    material: reusable_finished_product
+    geometry_source: none until product selected
+    datum_refs: [datum-master-phase1]
+    fact_refs: [master-rack, pending-rack-selection]
+    decision_refs: [user-request-20260912-phase1-minimum-waste]
+    dependencies: []
+    interfaces: [{id: hvac-inspection, target: master_hvac, kind: maintenance, status: blocked}]
+    collision: {policy: none, geometry_ref: null, review_ref: handover_measurement}
+    maintenance: {boundary: 可移动家具, access_clearance: site_pending, replaceable_parts: []}
+    parts: []
+    visual_relationships: []
+    validation_refs: [product_selection, handover_measurement]
+    status: blocked
+  - id: parent_phase1_furniture
+    type: furniture
+    archetypes: [bed, mattress, wardrobe]
+    owner: furniture
+    function: 父母房日常睡眠与衣物收纳
+    material: reusable_finished_products
+    geometry_source: phase1 procurement; no new coordinates
+    datum_refs: [datum-parent-phase1]
+    fact_refs: [parent-phase1]
+    decision_refs: [user-request-20260912-phase1-minimum-waste]
+    dependencies: []
+    interfaces: [{id: anti-tip-fixing, target: parent_wardrobe, kind: construction, status: blocked}]
+    collision: {policy: reviewed, geometry_ref: site_measurement, review_ref: verify:furniture}
+    maintenance: {boundary: 可移动或防倾倒固定, access_clearance: site_pending, replaceable_parts: [门板, 层板]}
+    parts: []
+    visual_relationships: []
+    validation_refs: [handover_measurement, furniture_shop_drawings]
+    status: blocked
+  - id: living_phase1_furniture
+    type: furniture
+    archetypes: [sofa, dining_table, dining_chair, entry_storage]
+    owner: furniture
+    function: 客餐厅起居、用餐和入户收纳
+    material: reusable_finished_products
+    geometry_source: phase1 procurement; no new coordinates
+    datum_refs: [datum-living-phase1]
+    fact_refs: [living-phase1]
+    decision_refs: [user-request-20260912-phase1-minimum-waste]
+    dependencies: []
+    interfaces: [{id: entry-power, target: entry_storage, kind: electrical, status: blocked}]
+    collision: {policy: reviewed, geometry_ref: site_measurement, review_ref: verify:furniture}
+    maintenance: {boundary: 可移动或防倾倒固定, access_clearance: site_pending, replaceable_parts: []}
+    parts: []
+    visual_relationships: [{target_object_id: dining_table, relation: grouped, requirement: 保留主通道}]
+    validation_refs: [handover_measurement, furniture_shop_drawings]
+    status: blocked
+  - id: nw_curtain_phase1
+    type: curtain
+    archetypes: [manual_curtain]
+    owner: curtain_supplier
+    function: 西北次卧遮光和隐私
+    material: site_selection
+    geometry_source: schedule/phase-1/control.yaml
+    datum_refs: [datum-bedroom-phase-boundaries]
+    fact_refs: [nw-curtain]
+    decision_refs: [user-request-20260912-phase1-minimum-waste]
+    dependencies: []
+    interfaces: [{id: curtain-box, target: nw_window, kind: construction, status: blocked}]
+    collision: {policy: reviewed, geometry_ref: site_measurement, review_ref: curtain_check}
+    maintenance: {boundary: 可拆洗, access_clearance: site_pending, replaceable_parts: [布帘, 轨道]}
+    parts: []
+    visual_relationships: []
+    validation_refs: [curtain_measurement, handover_measurement]
+    status: blocked
+  - id: phase2_deferred_furniture
+    type: furniture
+    archetypes: [custom_wardrobe, low_cabinet, tv, coffee_table, floor_lamp, plant, dressing_table, dressing_stool, study_furniture, nw_furniture]
+    owner: furniture
+    function: 明确排除的一期家具
+    material: phase2_selection
+    geometry_source: config/house.yaml; source baseline only
+    datum_refs: [datum-living-phase1, datum-bedroom-phase-boundaries, datum-master-phase1]
+    fact_refs: [deferred-furniture]
+    decision_refs: [user-request-20260912-phase1-minimum-waste]
+    dependencies: []
+    interfaces: [{id: phase2-power-reservation, target: reserved_circuits, kind: electrical, status: planned}]
+    collision: {policy: none, geometry_ref: null, review_ref: phase2_scope_review}
+    maintenance: {boundary: 二期采购与深化, access_clearance: site_pending, replaceable_parts: []}
+    parts: []
+    visual_relationships: []
+    validation_refs: [phase2_scope]
+    status: planned
+notes:
+  - 本manifest只登记范围与责任边界；不授权修改config/house.yaml中的全案渲染对象。
+  - 未定尺寸主卧衣架不建模，选型后另开迭代。
+  - 云鲸J6沿用既有客卫台盆下模型与机电协调点，本轮只改变阶段归属和预算，不改变几何。

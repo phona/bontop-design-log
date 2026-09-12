@@ -1,0 +1,150 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "phase1-scope-20260912",
+  "subject": "一期家具逐房范围冻结（最低浪费、保证日常）",
+  "state": "blocked",
+  "state_note": "最终 r4 浏览器证据已登记并确认一期预算/J6 运行时对象；独立美学与功能评审均因证据范围及 site_pending 条件保持 BLOCKED。",
+  "source_version": {
+    "config_refs": ["config/house.yaml", "config/layout/model-geometry.yaml", "schedule/phase-1/control.yaml", "schedule/roadmap.yaml", "schedule/phase-2/control.yaml"],
+    "asset_refs": [],
+    "render_facts_ref": "待app/server取证后登记",
+    "source_digest": "phase1-scope-20260912-j6-phase1-r4",
+    "generated_at": "2026-09-12T15:52:14+08:00"
+  },
+  "validation": {
+    "commands": ["npm run schedule:render", "npm run verify:all", "npm run verify:furniture", "npm run test:server", "npm run typecheck", "npm run test:app"],
+    "results": [],
+    "config_status": "PENDING",
+    "geometry_status": "PENDING_SITE_MEASUREMENT",
+    "consistency_status": "PENDING",
+    "functional_checks_status": "PENDING_SITE_MEASUREMENT",
+    "application_status": "PASS_RUNTIME_EVIDENCE",
+    "typecheck_status": "PENDING",
+    "generated_files_touched_directly": false
+  },
+  "evidence": [
+    {
+      "id": "phase1-j6-final-closeup-r4",
+      "status": "valid",
+      "view": "guest_bath_j6_closeup",
+      "url": "http://127.0.0.1:5173/?v=j6-phase1-final-r4",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "phase": "phase_1_basic_occupancy",
+      "camera": {
+        "mode": "orbit",
+        "position": [6, 0.8, 3],
+        "target": [6.823, 0.2, 3.925],
+        "is_overview": false
+      },
+      "object_ids": ["furniture:guest_bath:robot_dock_gbath:4"],
+      "runtime_query": "evidence/phase1-j6-final-runtime.json",
+      "snapshot": "evidence/phase1-j6-final-closeup-snapshot.txt",
+      "png": "evidence/phase1_j6_final_closeup_r4.png",
+      "source_version": "phase1-scope-20260912-j6-phase1-r4",
+      "notes": "目标 J6 在客卫台盆柜下方/旁侧近景中可见；PNG 同时保留应用 UI chrome，审美评审不将其视作清洁交付图。"
+    },
+    {
+      "id": "phase1-j6-budget-r4",
+      "status": "valid",
+      "view": "phase1_budget_and_j6_catalog",
+      "url": "http://127.0.0.1:5173/?v=j6-phase1-final-r4",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "phase": "phase_1_basic_occupancy",
+      "camera": {
+        "mode": "orbit",
+        "position": [6, 0.8, 3],
+        "target": [6.823, 0.2, 3.925],
+        "is_overview": false
+      },
+      "object_ids": ["furniture:guest_bath:robot_dock_gbath:4"],
+      "runtime_query": "evidence/phase1-j6-final-runtime.json",
+      "snapshot": "evidence/phase1-j6-budget-middle-snapshot.txt",
+      "png": "evidence/phase1_j6_budget_middle_r4.png",
+      "source_version": "phase1-scope-20260912-j6-phase1-r4",
+      "notes": "同版本 UI 证据显示 robot_vacuum_narwal_j6_01、203000 元一期上限/已分配和 128449.954 元动态估算；预算截图用于数据上下文，不替代目标物审美图。"
+    },
+    {
+      "id": "pre-r4-hmr-captures",
+      "status": "diagnostic",
+      "superseded_by": "phase1-scope-20260912-j6-phase1-r4",
+      "artifacts": [
+        "evidence/phase1_j6_after_r1.png",
+        "evidence/phase1_j6_closeup_r3.png",
+        "evidence/phase1_j6_closeup_collapsed_r3.png",
+        "evidence/phase1_j6_closeup_hiddenpanel_r3.png",
+        "evidence/phase1_j6_closeup_minimized_r3.png",
+        "evidence/phase1_j6_southlow_r3.png",
+        "evidence/phase1_j6_floorlevel_r3.png",
+        "evidence/phase1-j6-runtime-snapshot.txt",
+        "evidence/phase1-j6-closeup-snapshot.txt",
+        "evidence/phase1-j6-closeup-collapsed-snapshot.txt",
+        "evidence/phase1-j6-closeup-hiddenpanel-snapshot.txt",
+        "evidence/phase1-j6-closeup-minimized-snapshot.txt",
+        "evidence/phase1-j6-southlow-snapshot.txt",
+        "evidence/phase1-j6-floorlevel-snapshot.txt"
+      ],
+      "reason": "这些文件在最终实现 HMR/源版本稳定前采集，或未能清晰证明目标关系；保留用于复盘，不得作为最终评审证据。"
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "BLOCKED",
+    "review_file": "evidence/aesthetic-review-final.json",
+    "blocking_issues": ["最终同版本近景已证明 J6 存在，但只有带应用 chrome 的低机位 debug 视图，缺少可判断比例、材质、层次和台盆柜开口关系的清洁 room-context 视图"],
+    "non_blocking_notes": ["J6 在最终近景中可见并与客卫台盆柜同框；旧 HMR 前截图已标 diagnostic/superseded，不参与结论"],
+    "evidence_refs": [
+      "evidence/aesthetic-review-final.json",
+      "evidence/phase1-j6-final-runtime.json",
+      "evidence/phase1-j6-final-closeup-snapshot.txt",
+      "evidence/phase1_j6_final_closeup_r4.png"
+    ],
+    "requested_changes": [],
+    "assumptions": ["邻居CAD仅作为预演基线，不能替代完成面视觉证据", "J6 产品外观和台盆柜开口完成面仍待选型/量房"]
+  },
+  "functional_review": {
+    "verdict": "BLOCKED",
+    "review_file": "evidence/functional-review-final.json",
+    "blocking_issues": [
+      "J6 实机型号、柜下净高、机器人进出净空、自动上下水、电气防溅和检修接口仍 site_pending，运行时尺寸不能替代现场/产品确认",
+      "主卧过渡衣架未选型或建模，无法验证一期动线、净空和维护边界"
+    ],
+    "non_blocking_notes": ["最终运行时无配置错误横幅；一期预算上限与已分配均为 203000 元，动态 appliances 为 7800 元"],
+    "evidence_refs": [
+      "evidence/functional-review-final.json",
+      "evidence/phase1-j6-final-runtime.json",
+      "evidence/phase1-j6-final-body.txt",
+      "evidence/phase1_j6_final_closeup_r4.png"
+    ],
+    "requested_changes": [],
+    "assumptions": ["未定尺寸衣架不进入模型", "一期范围控制源已冻结但不等同施工验收", "0.41m × 0.4335m 为预演 datum，不是已确认采购型号尺寸"]
+  },
+  "risks": ["邻居CAD不是施工尺寸", "一期未分配额度为0，预备金/contingency 仍按 control.yaml 管理", "云鲸J6 客卫台盆下自动上下水、柜下净空、进出路径与检修条件待现场确认", "全案config/house.yaml仍包含二期对象，取证必须使用一期过滤逻辑", "主卧衣架未选型", "审美清洁视图不足，当前不能给出最终视觉 PASS"],
+  "retrospective": {
+    "triggered": true,
+    "triggers": ["最终实现 HMR 在前期浏览器取证期间发生，旧截图与运行时版本不再一致；旧证据已按 diagnostic/superseded 处理"],
+    "records": [
+      {
+        "trigger_id": "RETRO-2026-09-12-HMR-R4",
+        "iteration": 2,
+        "failure_evidence_refs": ["evidence/phase1_j6_after_r1.png", "evidence/phase1_j6_closeup_r3.png", "evidence/phase1-j6-runtime-snapshot.txt"],
+        "last_change": "实现代理更新 app/src/App.ts 并触发 HMR",
+        "root_cause": "environment/external-workspace-version-mismatch",
+        "confidence": "confirmed",
+        "recovery": "源文件稳定后复用同一独占 session reload，重新选择一期并采集 source digest phase1-scope-20260912-j6-phase1-r4 的 runtime/snapshot/PNG"
+      }
+    ],
+    "rebaselined": true
+  },
+  "delivery": {
+    "status": "verification_blocked",
+    "blocking_issues": ["独立美学评审 BLOCKED：缺少清洁 room-context 视图", "独立功能评审 BLOCKED：J6 实机/接口/净空与现场量房未完成", "主卧过渡衣架未选型，相关动线与检修净空未验证"],
+    "completion_conditions": ["同版本agent-browser证据齐全且一期场景包含robot_dock_gbath", "美学和功能review均PASS", "交房后家具与J6接口复核完成"],
+    "follow_up_site_pending": ["云鲸J6具体版本与柜下净空、进水、墙排和检修条件", "一期家具完成面复尺", "主卧衣架型号与尺寸", "父母房成品衣柜防倾倒", "客餐厅玄关收纳组合尺寸与插座避让"],
+    "delivery_ready": false,
+    "delivered_at": null,
+    "delivery_notes": "r4 运行时证据已完成并绑定 source digest；评审和现场条件仍阻塞交付，当前不得将本 manifest 标记为 delivery_ready。"
+  },
+  "git": "本轮未执行任何 git 操作"
+}

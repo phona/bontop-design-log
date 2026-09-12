@@ -1329,13 +1329,14 @@ export class HouseScene implements SceneApi {
     return this.floorMeshes;
   }
 
-  getFurniturePosition(objectId: string): { x: number; z: number; rotation: number } | null {
+  getFurniturePosition(objectId: string): { x: number; z: number; rotation: number; sourceIndex?: number } | null {
     for (const mesh of this.furnitureMeshes) {
       if (mesh.userData.objectId === objectId) {
         return {
           x: mesh.position.x,
           z: mesh.position.z,
           rotation: mesh.rotation.y * 180 / Math.PI,
+          ...(typeof mesh.userData.sourceIndex === 'number' ? { sourceIndex: mesh.userData.sourceIndex } : {}),
         };
       }
     }

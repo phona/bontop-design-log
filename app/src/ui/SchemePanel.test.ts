@@ -240,6 +240,23 @@ describe('SchemePanel', () => {
     expect(bar.innerHTML).toContain('200,000');
   });
 
+  it('should use phase ceiling when the backend provides one', () => {
+    const containerChildren: any[] = [];
+    const container = {
+      _children: containerChildren,
+      appendChild(child: any) { this._children.push(child); },
+      querySelector(selector: string) {
+        return selector === '.budget-bar' ? this._children.find((c: any) => c.className === 'budget-bar') ?? null : null;
+      },
+    };
+    Object.defineProperty(warningsEl, 'parentElement', { get() { return container; }, configurable: true });
+    panel.updateBudget({ totalBudget: 208000, totalActual: 10000, phaseCeiling: 200000, categories: [], lineItems: [] });
+    const bar = container.querySelector('.budget-bar');
+    expect(bar.innerHTML).toContain('场景估算 / 阶段上限');
+    expect(bar.innerHTML).toContain('200,000');
+    expect(bar.innerHTML).not.toContain('208,000');
+  });
+
   it('should mark active tab and option', () => {
     const onSelect = () => {};
     panel.init(mockTopics, onSelect);

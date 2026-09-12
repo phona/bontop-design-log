@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { StateSync } from './state/StateSync.js';
+import { StateSync, type PhaseId } from './state/StateSync.js';
 import { HouseScene } from './render/HouseScene.js';
 import { SchemePanel } from './ui/SchemePanel.js';
 import { InfoPanel } from './ui/InfoPanel.js';
@@ -67,6 +67,9 @@ export class App {
   private collision: CollisionDetector;
   private fpController: FirstPersonController;
   private projectData: any = null;
+  private phase: PhaseId = 'full';
+  private activeLayout = 'model-geometry';
+  private phaseReloading = false;
   private renderFacts?: ProjectRenderFacts;
   private topics: Topic[] = [];
   private rafId?: number;
@@ -150,6 +153,7 @@ export class App {
       onCompare: (archiveId) => void this.handleCompare(archiveId),
       onClearCompare: () => this.handleClearCompare(),
       onCurtainStateChange: (state) => void this.handleCurtainStateChange(state),
+      onPhaseChange: (phase) => void this.handlePhaseChange(phase),
     });
     this.modeIndicator = document.getElementById('mode-indicator') as HTMLDivElement;
     this.toastEl = document.getElementById('pointer-lock-toast') as HTMLDivElement;
@@ -195,8 +199,10 @@ export class App {
   async start(): Promise<void> {
     this.readyState = 'loading';
     try {
-      const response = await fetch('/api/project');
-    this.projectData = await response.json();
+    this.stateSync.setPhase(this.phase);
+    this.projectData = await this.stateSync.fetchProject({ phase: this.phase });
+    this.activeLayout = this.projectData?.house?.layoutSource ?? this.activeLayout;
+    this.stateSync.setLayout(this.activeLayout);
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
 
     await this.houseScene.buildFromCatalog(this.projectData);
@@ -216,12 +222,13 @@ export class App {
     });
     this.infoPanel.setTopics(this.topics);
     this.overviewMenu.setTopics(this.topics);
+    this.overviewMenu.setPhase(this.phase);
 
     try {
       const layoutsRes = await fetch('/api/layouts');
       const layoutsData = await layoutsRes.json();
       this.overviewMenu.setLayouts(layoutsData.layouts);
-      this.overviewMenu.setActiveLayout(this.projectData.house.layoutSource ?? 'model-geometry');
+      this.overviewMenu.setActiveLayout(this.activeLayout);
     } catch (e) {
       // layouts not critical
     }
@@ -422,6 +429,15 @@ export class App {
         this.requestRender();
       }
     });
+  }
+
+  /** Resolve the authored house.yaml index, even when the phase view has
+   * removed count-only or deferred entries before rendering. */
+  private getFurnitureWriteIndex(objectId: string): number | null {
+    const position = this.houseScene.getFurniturePosition(objectId);
+    // A render index is only an object-id/display detail.  It is not safe to
+    // use it as a write index after phase filtering has removed earlier items.
+    return position?.sourceIndex ?? null;
   }
 
   private setupTopDownButton(): void {
@@ -697,8 +713,8 @@ export class App {
           const parts = objectId.split(':');
           if (parts.length >= 4) {
             const room = parts[1];
-            const index = parseInt(parts[3], 10);
-            if (!isNaN(index)) {
+            const index = this.getFurnitureWriteIndex(objectId);
+            if (index !== null) {
               try {
                 await fetch(`/api/furnishings/${room}/${index}`, {
                   method: 'PUT',
@@ -1075,8 +1091,8 @@ export class App {
           const parts = objectId.split(':');
           if (parts.length >= 4) {
             const room = parts[1];
-            const index = parseInt(parts[3], 10);
-            if (!isNaN(index)) {
+            const index = this.getFurnitureWriteIndex(objectId);
+            if (index !== null) {
               fetch(`/api/furnishings/${room}/${index}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -1126,8 +1142,7 @@ export class App {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ room: 'living_dining', type, x: pos.x, z: pos.z, rotation: 0 }),
         }).then(async () => {
-          const response = await fetch('/api/project');
-          const data = await response.json();
+          const data = await this.stateSync.fetchProject();
           this.projectData = data;
           this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
           await this.houseScene.buildFromCatalog(data);
@@ -1220,8 +1235,19 @@ export class App {
   }
 
   private async handleLayoutChange(layoutName: string): Promise<void> {
-    const response = await fetch(`/api/project?layout=${layoutName}`);
-    this.projectData = await response.json();
+    const previousLayout = this.activeLayout;
+    try {
+      const data = await this.stateSync.fetchProject({ phase: this.phase, layout: layoutName });
+      this.projectData = data;
+      this.activeLayout = layoutName;
+      this.stateSync.setLayout(layoutName);
+    } catch (error) {
+      this.activeLayout = previousLayout;
+      this.overviewMenu.setActiveLayout(previousLayout);
+      console.error('Failed to switch layout', error);
+      this.showToast('布局切换失败，已恢复当前布局');
+      return;
+    }
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
     await this.houseScene.buildFromCatalog(this.projectData);
     this.annotationRenderer?.clear();
@@ -1241,6 +1267,95 @@ export class App {
     if (scheme) this.applyScheme(scheme);
     this.applyCurtainPresentationState(presentationState);
     this.requestRender();
+  }
+
+  private async handlePhaseChange(phase: PhaseId): Promise<void> {
+    if (phase === this.phase || this.phaseReloading) return;
+    const previousPhase = this.phase;
+    const previousLayout = this.activeLayout;
+    const previousProjectData = this.projectData;
+    this.phaseReloading = true;
+    this.overviewMenu.setPhaseLoading(true);
+    try {
+      this.stateSync.setPhase(phase);
+      const data = await this.stateSync.fetchProject({ phase, layout: this.activeLayout });
+      this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
+      await this.houseScene.buildFromCatalog(data);
+      this.annotationRenderer?.clear();
+      this.annotationRenderer = new AnnotationRenderer(
+        this.houseScene.scene,
+        this.houseScene.camera,
+        this.houseScene.getViewOnlyRoot(),
+      );
+      await this.refreshInfrastructure();
+      this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
+      this.analysisTools.setRooms(data?.house?.rooms ?? []);
+      this.analysisTools.checkFurnitureCollisions();
+      this.projectData = data;
+      this.phase = phase;
+      this.overviewMenu.setActiveLayout(this.activeLayout);
+      this.topics = new TopicRegistry(this.houseScene).list();
+      this.schemePanel.init(this.topics, (topicId: string, optionId: string) => {
+        void this.stateSync.updateScheme([{ topic: topicId, optionId }]);
+      });
+      this.infoPanel.setTopics(this.topics);
+      this.overviewMenu.setTopics(this.topics);
+      this.overviewMenu.setPhase(this.phase);
+      const [scheme, presentationState] = await Promise.all([
+        this.stateSync.fetchScheme(),
+        this.stateSync.getPresentationState(),
+      ]);
+      this.applyScheme(scheme);
+      this.infoPanel.setScheme(scheme);
+      this.overviewMenu.setScheme(scheme);
+      this.applyCurtainPresentationState(presentationState);
+      await this.refreshOverviewData();
+      this.requestRender();
+    } catch (error) {
+      this.stateSync.setPhase(previousPhase);
+      this.stateSync.setLayout(previousLayout);
+      this.phase = previousPhase;
+      this.activeLayout = previousLayout;
+      this.projectData = previousProjectData;
+      try {
+        this.collision.setWalls(this.extractWalls(previousProjectData?.house?.sceneElements));
+        await this.houseScene.buildFromCatalog(previousProjectData);
+        this.annotationRenderer?.clear();
+        this.annotationRenderer = new AnnotationRenderer(
+          this.houseScene.scene,
+          this.houseScene.camera,
+          this.houseScene.getViewOnlyRoot(),
+        );
+        await this.refreshInfrastructure();
+        this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
+        this.analysisTools.setRooms(previousProjectData?.house?.rooms ?? []);
+        this.analysisTools.checkFurnitureCollisions();
+        this.topics = new TopicRegistry(this.houseScene).list();
+        this.schemePanel.init(this.topics, (topicId: string, optionId: string) => {
+          void this.stateSync.updateScheme([{ topic: topicId, optionId }]);
+        });
+        this.infoPanel.setTopics(this.topics);
+        this.overviewMenu.setTopics(this.topics);
+        const [scheme, presentationState] = await Promise.all([
+          this.stateSync.fetchScheme(),
+          this.stateSync.getPresentationState(),
+        ]);
+        this.applyScheme(scheme);
+        this.infoPanel.setScheme(scheme);
+        this.overviewMenu.setScheme(scheme);
+        this.applyCurtainPresentationState(presentationState);
+      } catch (restoreError) {
+        console.error('Failed to restore previous phase after switch failure', restoreError);
+      }
+      this.overviewMenu.setPhase(previousPhase);
+      this.overviewMenu.setActiveLayout(previousLayout);
+      console.error('Failed to switch project phase', error);
+      this.showToast('阶段切换失败，已恢复原阶段');
+    } finally {
+      this.phaseReloading = false;
+      this.overviewMenu.setPhaseLoading(false);
+      this.overviewMenu.setPhase(this.phase);
+    }
   }
 
   private async handleCompare(archiveId: string): Promise<void> {

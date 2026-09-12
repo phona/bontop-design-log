@@ -20,6 +20,8 @@ function setupDOM() {
   const archives = createDiv() as HTMLDivElement;
   const archiveInput = { value: '', addEventListener: vi.fn() } as unknown as HTMLInputElement;
   const archiveBtn = { addEventListener: vi.fn() } as unknown as HTMLButtonElement;
+  const phaseSelect = { value: 'full', disabled: false, addEventListener: vi.fn() } as unknown as HTMLSelectElement;
+  const phaseStatus = { textContent: '' } as unknown as HTMLElement;
 
   vi.stubGlobal('document', {
     getElementById: vi.fn((id: string) => {
@@ -31,6 +33,8 @@ function setupDOM() {
       if (id === 'overview-archives') return archives;
       if (id === 'archive-name-input') return archiveInput;
       if (id === 'archive-current-btn') return archiveBtn;
+      if (id === 'phase-select') return phaseSelect;
+      if (id === 'phase-status') return phaseStatus;
       return null;
     }),
     createElement: vi.fn((tag: string) => ({
@@ -44,7 +48,7 @@ function setupDOM() {
     })),
   });
 
-  return { menu, scheme, decisions, budget, risks, archives, archiveInput, archiveBtn };
+  return { menu, scheme, decisions, budget, risks, archives, archiveInput, archiveBtn, phaseSelect, phaseStatus };
 }
 
 const mockTopics: Topic[] = [
@@ -131,5 +135,43 @@ describe('OverviewMenu', () => {
 
     const rows = elements.decisions.appendChild as ReturnType<typeof vi.fn>;
     expect(rows).toHaveBeenCalled();
+  });
+
+  it('renders the selected phase and disables the selector while loading', () => {
+    const menu = new OverviewMenu();
+    menu.setPhase('phase_1_basic_occupancy');
+    expect(elements.phaseSelect.value).toBe('phase_1_basic_occupancy');
+    expect(elements.phaseStatus.textContent).toBe('当前：一期基本入住');
+
+    menu.setPhaseLoading(true);
+    expect(elements.phaseSelect.disabled).toBe(true);
+    expect(elements.phaseStatus.textContent).toBe('阶段切换中…');
+    menu.setPhaseLoading(false);
+    menu.setPhase('full');
+    expect(elements.phaseSelect.disabled).toBe(false);
+    expect(elements.phaseStatus.textContent).toBe('当前：完整方案');
+  });
+
+  it('uses the phase ceiling instead of the legacy category total', () => {
+    const menu = new OverviewMenu();
+    menu.setBudget({
+      totalBudget: 208000,
+      phaseCeiling: 200000,
+      phaseAllocated: 200000,
+      phaseUnallocated: 0,
+      totalActual: 10000,
+      categories: [],
+      lineItems: [],
+    } as any);
+    menu.show();
+    const rendered = (elements.budget.appendChild as ReturnType<typeof vi.fn>).mock.calls
+      .map(([child]) => String(child.innerHTML ?? '')).join('\n');
+    expect(rendered).toContain('阶段上限');
+    expect(rendered).toContain('已分配');
+    expect(rendered).toContain('未分配');
+    expect(rendered).toContain('场景动态估算');
+    expect(rendered).not.toContain('剩余');
+    expect(rendered).toContain('200,000');
+    expect(rendered).not.toContain('208,000');
   });
 });
