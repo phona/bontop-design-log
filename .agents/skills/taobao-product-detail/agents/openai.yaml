@@ -1,0 +1,6 @@
+interface:
+  display_name: "淘宝商品详情"
+  short_description: "只读提取淘宝天猫商品详情与 SKU 分组"
+  default_prompt: "使用 $taobao-product-detail 只读读取淘宝商品详情，不选择 SKU 或执行交易。"
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,6 @@
+interface:
+  display_name: "1688商品详情"
+  short_description: "只读提取1688阶梯价与商品详情"
+  default_prompt: "使用 $1688-product-detail 只读读取 1688 商品详情并保留阶梯价、MOQ 和单位。"
+policy:
+  allow_implicit_invocation: true

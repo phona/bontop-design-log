@@ -1,0 +1,6 @@
+interface:
+  display_name: "京东关键词搜索"
+  short_description: "只读搜索京东商品关键词结果"
+  default_prompt: "使用 $jd-keyword-search 只读搜索京东关键词并返回商品卡片。"
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "skills": {
+    "1688-keyword-search": {
+      "source": "../cn-shopping-skills",
+      "sourceType": "local",
+      "computedHash": "478d379e17b506b8a6397bc5a3d502beae22eb67b89aabab9d5e1a0b9f19a652"
+    },
+    "1688-product-detail": {
+      "source": "../cn-shopping-skills",
+      "sourceType": "local",
+      "computedHash": "bf9e18aef89700f9d958bb04d9b14f5e721babdad2a53b5f8ed6c65f416f4a76"
+    },
+    "jd-keyword-search": {
+      "source": "../cn-shopping-skills",
+      "sourceType": "local",
+      "computedHash": "415707f82629bacfe5a9a6e65c44701ac42f3874e73e5b1fd24bedfffce513e3"
+    },
+    "jd-product-detail": {
+      "source": "../cn-shopping-skills",
+      "sourceType": "local",
+      "computedHash": "00909e2963b67b6d2aed219b8a751044022de33e49f94ef514c0f3dc9ee1d7c1"
+    },
+    "shopping-research": {
+      "source": "../cn-shopping-skills",
+      "sourceType": "local",
+      "computedHash": "70acfca43e6e9407999e468b591f399e29ab92271a5196ee50db76854eb7f7bb"
+    },
+    "taobao-keyword-search": {
+      "source": "../cn-shopping-skills",
+      "sourceType": "local",
+      "computedHash": "5df95b8f8bcab0e75d6a89257905948aca7cb5cce1cf8cd1ba4335ae8f4405cc"
+    },
+    "taobao-product-detail": {
+      "source": "../cn-shopping-skills",
+      "sourceType": "local",
+      "computedHash": "a5ff1e28be27a6ef0b47e84c9b9e733c3f1d81919a0835d960cea1dbe0002560"
+    }
+  }
+}

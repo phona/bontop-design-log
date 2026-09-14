@@ -1,0 +1,6 @@
+interface:
+  display_name: "1688关键词搜索"
+  short_description: "只读搜索1688商品并保留批发字段"
+  default_prompt: "使用 $1688-keyword-search 只读搜索 1688 关键词并返回阶梯价和 MOQ。"
+policy:
+  allow_implicit_invocation: true
