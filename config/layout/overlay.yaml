@@ -8,8 +8,8 @@ version: 1
 
 suppress:
   - id: suppress_west_wall
-    walls: [w_west_top, w_west_ap, w_west_lower, w_west_mid, w_west_upper]
-    reason: "西墙实体删除，改玻璃幕墙"
+    walls: [w_west_ap, w_west_lower, w_west_mid, w_west_upper]
+    reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
   - id: suppress_south_west
     walls: [w_mb_south, w_st_south]
     reason: "主卧+父母房南墙实体删除，为飘窗让路"
@@ -34,14 +34,14 @@ suppress:
 
 elements:
   # 西墙 + 西南圆角 + 南墙西段 (w_mb_south + w_st_south)。
-  # 2026-09-08：一个 curtain_run 独占整组 west suppress 墙段，避免
-  # w_west_ap 被 north_recess_curtain 重复生成玻璃实体；w_west_top 也由此补齐替代。
+  # 2026-09-17：西北角即圆角（w_west_top 已从 model-geometry 删除，外轮廓不存在），
+  # 本 run 从弧切点 (0,2.10) 起无缝接 north_recess_curtain 的圆角弧；
+  # w_west_ap 解析后为零长度退化段，仅保留占位以维持 spatial-validation 的替代绑定。
   - id: west_curtain
     type: curtain_run
     closed: false
-    walls: [w_west_top, w_west_ap, w_west_lower, w_west_mid, w_west_upper, w_mb_south, w_st_south]
+    walls: [w_west_ap, w_west_lower, w_west_mid, w_west_upper, w_mb_south, w_st_south]
     parts:
-      - { id: w_west_top, wall: w_west_top }
       - { id: w_west_ap, wall: w_west_ap }
       - { id: w_west_lower, wall: w_west_lower }
       - { id: w_west_mid, wall: w_west_mid }
@@ -69,8 +69,9 @@ elements:
     wall: w_kit_north
     height: 2.8
 
-  # 主卫西北角玻璃幕墙弧 (w_bath_north 弧段)。w_west_ap 已纳入 west_curtain，
-  # 以免同一幕墙段被两个 curtain_run 叠加。
+  # 西北连续玻璃幕墙：主卫圆角弧（w_bath_north 弧段）+ 西北次卧北墙凹进段。
+  # 2026-09-17：西北角即圆角（w_west_top 已删），弧起点 (0,2.10) 即外轮廓最西北点，
+  # 与 west_curtain 西墙玻璃 T 接成一条连续玻璃带；CurtainGeometry 折返走链修复作为防护保留。
   - id: north_recess_curtain
     type: curtain_run
     closed: false

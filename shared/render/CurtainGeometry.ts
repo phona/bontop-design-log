@@ -171,24 +171,126 @@ function offsetPolyline(line: Point[], distance: number): Point[] {
   return result;
 }
 
+type Segment = { from: Point; to: Point; dir: Point };
+
+/**
+ * 开环厚度带走链：逐段偏移 + 关节交接，返回单条闭合轮廓。
+ * 折返关节（两段方向近似反转，如西墙直线段与相切圆弧在切点衔接：直线南下、
+ * 圆弧从同一点折回北绕）处推入前后两段各自的端点偏移（折返截面桥接），保留两侧边；
+ * 折返外侧带状重叠产生的自相交环（如外弧偏移边穿越直墙东缘）随后统一剪除：
+ * 取首个自相交点，剔除交叉环上的顶点。否则自相交多边形经 earcut 三角化
+ * 会读出大三角尖角（主卫西北角幕墙尖角即此类）。
+ */
+function offsetWalk(line: Point[], leftOffset: number, rightOffset: number, thickness: number): Point[] {
+  const segs: Segment[] = [];
+  for (let i = 0; i < line.length - 1; i++) {
+    const dx = line[i + 1].x - line[i].x; const dz = line[i + 1].z - line[i].z;
+    const length = Math.hypot(dx, dz);
+    if (length < 1e-9) continue;
+    segs.push({ from: line[i], to: line[i + 1], dir: { x: dx / length, z: dz / length } });
+  }
+  if (segs.length === 0) return line.map((point) => ({ ...point }));
+  const hasFold = segs.slice(1).some((s, i) => segs[i].dir.x * s.dir.x + segs[i].dir.z * s.dir.z < 0);
+  const at = (p: Point, dir: Point, d: number): Point => ({ x: p.x - dir.z * d, z: p.z + dir.x * d });
+  const chain = (offset: number, reversed: boolean): Point[] => {
+    const maxMiter = Math.abs(offset) * 4;
+    const idxs = segs.map((_, i) => i);
+    if (reversed) idxs.reverse();
+    const pts: Point[] = [];
+    const push = (p: Point) => {
+      const last = pts[pts.length - 1];
+      if (!last || Math.hypot(last.x - p.x, last.z - p.z) > 1e-9) pts.push(p);
+    };
+    let prev: Segment | null = null;
+    idxs.forEach((i, order) => {
+      const s = segs[i];
+      const entry = reversed ? at(s.to, s.dir, offset) : at(s.from, s.dir, offset);
+      const exit = reversed ? at(s.from, s.dir, offset) : at(s.to, s.dir, offset);
+      if (!prev) push(entry);
+      else {
+        const joint = reversed ? s.to : s.from;
+        const prevExit = reversed ? at(prev.from, prev.dir, offset) : at(prev.to, prev.dir, offset);
+        const fold = prev.dir.x * s.dir.x + prev.dir.z * s.dir.z < 0;
+        if (fold) {
+          push(prevExit);
+          push(entry);
+        } else {
+          const join = intersectLines(prevExit, prev.dir, entry, s.dir);
+          if (join && Math.hypot(join.x - joint.x, join.z - joint.z) <= maxMiter) push(join);
+          else push(entry);
+        }
+      }
+      prev = s;
+      if (order === idxs.length - 1) push(exit);
+    });
+    return pts;
+  };
+  const walk = [...chain(leftOffset, false), ...chain(-rightOffset, true)];
+  return hasFold ? removeSelfIntersections(walk) : walk;
+}
+
+const SEG_EPS = 1e-9;
+
+/** 严格内部穿越的线段交点（端点相接不算，避免相邻边/桥接点误报）。 */
+function segmentCrossing(a: Point, b: Point, c: Point, d: Point): Point | null {
+  const r = { x: b.x - a.x, z: b.z - a.z };
+  const s = { x: d.x - c.x, z: d.z - c.z };
+  const denom = r.x * s.z - r.z * s.x;
+  if (Math.abs(denom) < 1e-12) return null;
+  const t = ((c.x - a.x) * s.z - (c.z - a.z) * s.x) / denom;
+  const u = ((c.x - a.x) * r.z - (c.z - a.z) * r.x) / denom;
+  if (t <= SEG_EPS || t >= 1 - SEG_EPS || u <= SEG_EPS || u >= 1 - SEG_EPS) return null;
+  return { x: a.x + r.x * t, z: a.z + r.z * t };
+}
+
+/**
+ * 剔除走链上的自相交环：重叠偏移带在折返点外侧形成穿叉环（顶点序
+ * …P→X→…→Q→… 中 PQ 两段相交于 R），剔除 X…Q 之间的环上顶点并以 R 衔接。
+ * 仅折返走链需要；无折返时调用方跳过本函数，保持原有几何逐点一致。
+ */
+function removeSelfIntersections(input: Point[]): Point[] {
+  let walk = input;
+  for (let guard = 0; guard < 8; guard++) {
+    const n = walk.length;
+    let removed = false;
+    for (let i = 0; i < n && !removed; i++) {
+      const a = walk[i]; const b = walk[(i + 1) % n];
+      for (let j = i + 2; j < n && !removed; j++) {
+        if (i === 0 && j === n - 1) continue; // 首尾相邻（闭合边与第一条边）
+        const crossing = segmentCrossing(a, b, walk[j], walk[(j + 1) % n]);
+        if (crossing) {
+          walk = [...walk.slice(0, i + 1), crossing, ...walk.slice(j + 1)];
+          removed = true;
+        }
+      }
+    }
+    if (!removed) break;
+  }
+  return walk;
+}
+
 function ribbon(points: Point[], thickness: number, sided: boolean, flip: boolean, closed: boolean): THREE.Shape {
   if (points.length < 2) return new THREE.Shape();
   const line = closed ? points.slice(0, -1) : points;
   const leftOffset = sided ? (flip ? 0 : thickness) : thickness / 2;
   const rightOffset = sided ? (flip ? thickness : 0) : thickness / 2;
+  if (!closed) {
+    const walk = offsetWalk(line, leftOffset, rightOffset, thickness);
+    const shape = new THREE.Shape();
+    if (walk.length < 3) return shape;
+    shape.moveTo(walk[0].x, walk[0].z);
+    walk.slice(1).forEach((p) => shape.lineTo(p.x, p.z));
+    shape.closePath();
+    return shape;
+  }
   const left = offsetPolyline(line, leftOffset);
   const right = offsetPolyline(line, -rightOffset);
   const area = (ps: Point[]) => ps.reduce((sum, p, i) => { const q = ps[(i + 1) % ps.length]; return sum + p.x * q.z - q.x * p.z; }, 0);
   const shape = new THREE.Shape();
-  if (closed) {
-    const outer = Math.abs(area(left)) >= Math.abs(area(right)) ? left : right;
-    const inner = outer === left ? right : left;
-    shape.moveTo(outer[0].x, outer[0].z); outer.slice(1).forEach((p) => shape.lineTo(p.x, p.z)); shape.closePath();
-    const hole = new THREE.Path(); hole.moveTo(inner[inner.length - 1].x, inner[inner.length - 1].z); inner.slice(0, -1).reverse().forEach((p) => hole.lineTo(p.x, p.z)); hole.closePath(); shape.holes.push(hole);
-  } else {
-    shape.moveTo(left[0].x, left[0].z); left.slice(1).forEach((p) => shape.lineTo(p.x, p.z));
-    right.slice().reverse().forEach((p) => shape.lineTo(p.x, p.z)); shape.closePath();
-  }
+  const outer = Math.abs(area(left)) >= Math.abs(area(right)) ? left : right;
+  const inner = outer === left ? right : left;
+  shape.moveTo(outer[0].x, outer[0].z); outer.slice(1).forEach((p) => shape.lineTo(p.x, p.z)); shape.closePath();
+  const hole = new THREE.Path(); hole.moveTo(inner[inner.length - 1].x, inner[inner.length - 1].z); inner.slice(0, -1).reverse().forEach((p) => hole.lineTo(p.x, p.z)); hole.closePath(); shape.holes.push(hole);
   return shape;
 }
 

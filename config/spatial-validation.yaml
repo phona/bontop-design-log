@@ -150,7 +150,7 @@ relationships:
 # part 绑定到具体 overlay part（无 parts 的 element 使用 root）；join 只会
 # 生成具体 path-pair closure，runtime 几何不满足时仍报 collision。
 overlay_replacements:
-  - { wall: w_west_top, replacement: west_curtain, kind: curtain_run, part: w_west_top, join: continuous }
+  # w_west_top 2026-09-17 业主确认外轮廓不存在，已从 model-geometry 删除（无墙、无替代物）
   - { wall: w_west_ap, replacement: west_curtain, kind: curtain_run, part: w_west_ap, join: continuous }
   - { wall: w_west_lower, replacement: west_curtain, kind: curtain_run, part: w_west_lower, join: continuous }
   - { wall: w_west_mid, replacement: west_curtain, kind: curtain_run, part: w_west_mid, join: continuous }

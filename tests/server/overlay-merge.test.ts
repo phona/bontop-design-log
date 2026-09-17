@@ -432,17 +432,27 @@ describe('resolveWallRef', () => {
     assert.throws(() => resolveWallRef('w999', walls), /Unknown wall id: w999/);
   });
 
-  it('preserves complete west curtain points and arc in declared parts', () => {
+  it('keeps the northwest round corner curtain on the arc and recess walls only', () => {
     const layout = resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
     const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
     const elements = mergeSceneElements(layout.walls, overlay);
-    const curtain = elements.find((element) => element.id === 'west_curtain');
-    assert.equal(curtain?.type, 'curtain_run');
-    if (curtain?.type === 'curtain_run') {
-      assert.equal(curtain.parts?.length, 7);
-      assert.equal(curtain.parts?.find((part) => part.id === 'w_mb_south')?.wallRefs[0], 'w_mb_south');
-      assert.ok(curtain.parts?.find((part) => part.id === 'w_mb_south')?.points.some((point) => point.radius !== undefined));
-      assert.ok(curtain.points.some((point) => point.radius !== undefined));
+    const westCurtain = elements.find((element) => element.id === 'west_curtain');
+    assert.equal(westCurtain?.type, 'curtain_run');
+    if (westCurtain?.type === 'curtain_run') {
+      assert.equal(westCurtain.parts?.length, 6);
+      assert.ok(!westCurtain.parts?.some((part) => part.id === 'w_west_top'));
+      assert.equal(westCurtain.parts?.find((part) => part.id === 'w_mb_south')?.wallRefs[0], 'w_mb_south');
+      assert.ok(westCurtain.parts?.find((part) => part.id === 'w_mb_south')?.points.some((point) => point.radius !== undefined));
+    }
+
+    const northwestCurtain = elements.find((element) => element.id === 'north_recess_curtain');
+    assert.equal(northwestCurtain?.type, 'curtain_run');
+    if (northwestCurtain?.type === 'curtain_run') {
+      assert.equal(northwestCurtain.parts, undefined);
+      // 2026-09-17：西北角即圆角（w_west_top 已从 model-geometry 删除），本 run 从弧切点 (0,2.10) 起，不含折返
+      assert.deepEqual(northwestCurtain.points[0], { x: 0, z: 2.1 });
+      assert.ok(northwestCurtain.points.some((point) => point.radius === 1 && point.cx === 1 && point.cz === 2.1));
+      assert.deepEqual(northwestCurtain.points.at(-1), { x: 5.6, z: 1.1 });
     }
   });
 
