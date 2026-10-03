@@ -1380,3 +1380,33 @@
 - **代修**：`schedule/phase-1/control.yaml:62` 存在未加引号的 `funding_status: owner_review_pending_20261003`，导致整份 schedule YAML 无法解析（连带 `verify:schedule` 与 2 个 server 测试失败）。已改为全角冒号，纯语法修复、无内容变更。
 - **关联文件**：`docs/design-iterations/mep-power-water-freeze-20261003/review-manifest.json`
 - **决策人**：业主（范围）；budget/schedule 数字归 schedule/budget 迭代
+
+### DEC-2026-10-03-R2 业主全硬装询价轮次归档：登记进 control.yaml，不新建第二套预算矩阵
+
+- **日期**：2026-10-03
+- **起因**：业主提供《和萃701｜全硬装预算与待采购决策（2026-10-03）》工作簿（3 sheet：总览 / 项目明细 26+1 项 / 待采购决策 9 项），要求归档并结合本项目形成落地方案。项目里已有更细的采购体系（`control.yaml` 的 90 个 `COST-xxx` 成本组件、自动渲染的 `budget.md`/`checklist.md` 询价明细、`procurement.md` 19 组决策源、`material_selection_log.md` 报价来源归档），AGENTS.md 又明令不得拆出第二套业主采购矩阵。
+- **选定方案**：把该工作簿作为**一轮询价证据**登记为 `control.yaml` 的 `hard_finish_quote_rounds`（26 条记录，`round_id: ROUND-2026-10-03`），由 `scripts/schedule/control.ts` 自动渲染为 `budget.md`「询价轮次回填与父包对账」与 `checklist.md`「硬装询价轮次核对」；原件 xlsx 不入库，凭据另行归档到 `contracts/2026-10-03/`。
+- **价格口径分级**（本轮核心规则）：`quoted_sheet`=带报价单；`owner_budget_pool`=业主给定的预算池；`cap`=封顶价；`candidate`=候选价/询价目标。轮次目标合计 203,598（核心硬装 185,598 + 固定柜体 18,000），但**只有厨卫铝扣板套件 9,537 是报价单**；18,500 是业主预算池，20,000/36,000/5,598/6,000 是封顶或候选价，均不得相加后当作已锁价。
+- **映射与去重规则**：Excel 26 项逐条映射到 PKG 与 COST 组件（如瓷砖主材→`COST-060-01`、瓦工人工池→`COST-060-04/05`、铝扣板报价→`COST-070-03`、智能马桶→`COST-100-01`、空调→`PKG-030`、固定柜体→`PKG-150`）。必须去重的三处：①瓦工 18,500 与防水 3,000、辅材 4,000 是否含并；②2 浴霸+凉霸+灯塞在吊顶报价里，归属须与 `COST-100-06`、PKG-120 二选一；③通用五金 1,500 与龙头下水角阀 1,200 同归 `COST-100-04`，不得叠加。Excel 口径**不含**厨房三联动推拉门（`COST-090-03`，BLK-GAS-DOOR）、物业收费、设计费、一期窗帘、必需家电与竣工清洁，因此其 8,800 元"门"不是降价空间。
+- **回填与缺口显形**：按可核口径回填 6 个组件金额（`COST-060-01=20000`、`COST-060-02=4000`、`COST-060-04=18500`、`COST-070-03=9537`、`COST-100-01=5598`、`COST-100-02=6000`），待报价组件由 85 项降到 79 项；PKG-060/070/100/110 登记 `estimated_need_cny` + `funding_status: owner_review_pending_20261003`，缺口合计 **42,235**（PKG-070 +17,037、PKG-100 +10,698、PKG-060 +12,500、PKG-110 +2,000）自动进入 `budget.md`「已知待分配预算缺口」与 checklist。未取得业主批准前不动用硬装预备金。
+- **审计闭环**：`npm run verify:schedule`/`schedule:render` 一行输出待报价组件数；`npm run schedule:audit` 追加待购项数、已锁轮次项数、报价单口径金额、已量化缺口与上限余量。后续轮次只追加记录并用 `supersedes` 指向被取代项，锁定项必须同时给 `locked_cny`/`contract_ref`/`evidence_path`，历史轮次不覆盖。
+- **关联文件**：`schedule/phase-1/control.yaml`（`hard_finish_quote_rounds`、组件回填、`estimated_need_cny`）、`scripts/schedule/control.ts`（校验+渲染+`--audit`）、`schedule/phase-1/budget.md`、`schedule/phase-1/checklist.md`、`schedule/procurement.md`（各组一句证据摘要）、`docs/material_selection_log.md`（floor_tile_04 与业主提供轮次归档）、`docs/pending-site-data.md`（#34–#39）、`contracts/2026-10-03/README.md`
+- **决策人**：业主（提供轮次并要求归档）；映射与去重口径由 AI 助理整理，待业主复核
+
+### DEC-2026-10-03-R3 中央空调定标方向：美的领航者四代 一拖六 200外机 / 36,000，一期上限 203,000→206,000
+
+- **日期**：2026-10-03
+- **决策事项**：业主定标中央空调方向为**美的领航者四代 一拖六 200 外机，按 ¥36,000 询价**；`budget_pools.hvac` 由 33,000 调至 36,000，`PKG-030` 计划额同步调至 36,000，一期执行上限与已分配额由 203,000 调至 206,000，未分配仍为 0；固定工程由 159,000 调至 162,000。沿用 DEC-2026-09-12-R3"追加即抬上限"的先例，须业主书面追加确认。
+- **三项未闭合（闭环前不得下单）**：①**内机容量表冲突**——业主给出的 71+45+56+28×3 合计 25.6kW、6 台，与 DEC-2026-09-07-055 定标的 21.4kW、5 台（客餐厨 10.0kW、主卧 4.5kW、父母房 2.5kW、儿童房/书房各 2.2kW）不一致；②**连接率**——200 外机约 20kW，对 25.6kW 约 1.28，处行业上限边缘；③**预算来源**——+3,000 不得默认从硬装预备金支出。
+- **后续动作**：闭环时须同步 `config/hvac.yaml`（A2 outdoor/load_design）、`config/ceiling.yaml`（五台内机容量标注）与 MEP 走线（第六条内机的路由、冷凝水与检修口），按 `interior-design-iteration` 流程单开迭代目录，不塞进归档流程；`schedule/procurement.md` §01 暂记为 owner_direction_pending_verification。
+- **关联文件**：`schedule/phase-1/control.yaml`、`schedule/roadmap.yaml`、`schedule/procurement.md`、`docs/pending-site-data.md`（#39）、`config/hvac.yaml`（待回写）
+- **验证**：`verify:schedule` 通过（pools 合计 206,000 = allocated，fixed_works 162,000 = hard_finish 126,000 + hvac 36,000）；`tests/server/api.test.ts:74` 与 `tests/server/budget-api.test.ts` 的 phase_1 上限断言已由 203,000 改为 206,000，`test:server` 547 pass / 0 fail；`SCH-170-03` 通过条件同步改为 ¥206,000。
+- **决策人**：业主（型号与预算方向）；容量表与连接率待厂家配置单
+### DEC-2026-10-03-R4 固定柜体维持阶段边界：成品柜走一期家具池，通顶定制衣柜继续二期
+
+- **日期**：2026-10-03
+- **决策事项**：询价轮次中的"衣柜/玄关柜/其他固定柜体 ¥18,000"（`QR-2026-10-03-26`）**不计入一期硬装**。维持 DEC-2026-09-12-R1/R2 的边界：玄关收纳组合、父母房成品衣柜、主卧过渡衣架/斗柜走 PKG-150 一期家具池（¥19,000）；主卧北墙通顶定制衣柜仍受 BLK-MASTER-WARDROBE 阻塞、后移二期。
+- **决策依据**：硬装与家具/柜体口径必须分开，否则 203,598 的"含柜体目标"会被误读成硬装缺口；一期未分配额度为 0，任何提前都需另行批准资金并避免跨阶段重复计费。
+- **下一步**：先由业主决定成品柜与定制柜的比例，再按投影面积拿完整报价；报价落地时只回填 PKG-150 对应组件，不新开硬装科目。
+- **关联文件**：`schedule/phase-1/control.yaml`（PKG-150、BLK-MASTER-WARDROBE）、`schedule/procurement.md` §16
+- **决策人**：业主

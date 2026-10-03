@@ -77,11 +77,11 @@ describe('Budget + Risks + Schemes API', () => {
   it('GET /api/budget phase=phase_1 returns phase metadata and filtered calculation', async () => {
     const res = await request(app).get('/api/budget?phase=phase_1_basic_occupancy').expect(200);
     assert.equal(res.body.phase, 'phase_1_basic_occupancy');
-    assert.equal(res.body.phaseCeiling, 203000);
-    assert.equal(res.body.phaseAllocated, 203000);
+    assert.equal(res.body.phaseCeiling, 206000);
+    assert.equal(res.body.phaseAllocated, 206000);
     assert.equal(res.body.phaseUnallocated, 0);
-    assert.equal(res.body.phaseMeta.budget.ceilingCny, 203000);
-    assert.equal(res.body.phaseMeta.budget.allocatedCny, 203000);
+    assert.equal(res.body.phaseMeta.budget.ceilingCny, 206000);
+    assert.equal(res.body.phaseMeta.budget.allocatedCny, 206000);
     assert.equal(res.body.phaseMeta.budget.unallocatedCny, 0);
     assert.equal(res.body.phaseMeta.budget.authority, 'schedule/phase-1/control.yaml');
     assert.equal(res.body.totalBudget, 208000);

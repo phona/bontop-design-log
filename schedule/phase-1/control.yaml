@@ -1,8 +1,8 @@
 schema: schedule.phase1-control/v1
 project_id: bontop-design-log
 phase_id: phase_1_basic_occupancy
-version: 1.0.0
-updated_at: 2026-09-12
+version: 1.1.0
+updated_at: 2026-10-03
 currency: CNY
 authority:
   execution: schedule/phase-1/control.yaml
@@ -14,10 +14,10 @@ authority:
     - schedule/phase-1/checklist.md
 
 control:
-  phase_ceiling_cny: 203000
-  allocated_cny: 203000
+  phase_ceiling_cny: 206000
+  allocated_cny: 206000
   unallocated_cny: 0
-  fixed_works_cny: 159000
+  fixed_works_cny: 162000
   status: planning
   current_gate: pre_handover
   status_values: [not_started, in_progress, blocked, ready_for_inspection, failed, passed, waived]
@@ -37,7 +37,7 @@ budget_pools:
     planned_cny: 126000
   - id: hvac
     name: 中央空调
-    planned_cny: 33000
+    planned_cny: 36000
   - id: furniture
     name: 一期家具
     planned_cny: 19000
@@ -53,13 +53,13 @@ budget_pools:
 
 budget_reconciliation:
   execution_authority: schedule/phase-1/control.yaml
-  phase_1_ceiling_cny: 203000
+  phase_1_ceiling_cny: 206000
   historical_baseline:
     source: config/budget/base.json
     total_budget_cny: 208000
     project_ceiling_cny: 190000
     status: historical_reference_only
-  explanation: 原20.8万元/19万元基线和24万元上限均为历史口径。2026-09-12先将一期压缩至20万元上限；随后业主确认云鲸J6上下水版按3,000元追加进入一期，故一期执行上限及已分配额同步调整为20.3万元，必需家电预算由9,000元增至12,000元，未分配仍为0。主卧定制衣柜、壁床柜、客厅大收纳柜、展示柜、复杂灯光、客厅/书房窗帘、书房次卧家具以及洗碗机、干衣机、净水设备仍后移二期。旧文件仅用于追溯，不再决定一期可承诺金额。
+  explanation: 原20.8万元/19万元基线和24万元上限均为历史口径。2026-09-12先将一期压缩至20万元上限；随后业主确认云鲸J6上下水版按3,000元追加进入一期，故一期执行上限及已分配额同步调整为20.3万元，必需家电预算由9,000元增至12,000元，未分配仍为0。2026-10-03业主定标中央空调为美的领航者四代一拖六200外机并按36,000元询价（原33,000元），沿用2026-09-12-R3"追加即抬上限"的先例，一期执行上限及已分配额由20.3万元调整为20.6万元，中央空调由33,000元增至36,000元，未分配仍为0。同日登记业主提供的全硬装询价轮次（hard_finish_quote_rounds），PKG-060/070/100/110的轮次目标已超过父包计划额，缺口按funding_status：owner_review_pending_20261003显形，未取得业主批准前不得视为已解决，也不得自动挪用硬装预备金。主卧定制衣柜、壁床柜、客厅大收纳柜、展示柜、复杂灯光、客厅/书房窗帘、书房次卧家具以及洗碗机、干衣机、净水设备仍后移二期。旧文件仅用于追溯，不再决定一期可承诺金额。
 
 appliance_quote_register:
   collected_at: 2026-09-11
@@ -174,6 +174,365 @@ appliance_quote_register:
       fit_status: user_category_confirmed_site_and_route_pending
       source_url: "https://www.midea.cn/64/1000000000400693406861.html"
       source_checked_at: 2026-09-11
+
+hard_finish_quote_rounds:
+  collected_at: 2026-10-03
+  status: owner_provided_reference_only
+  source: 业主提供的《和萃701｜全硬装预算与待采购决策（2026-10-03）》工作簿；原件未入库，内容已按本 schema 转录，报价单与截图原件另存 contracts/
+  pricing_note: 本轮金额只有 quoted_sheet（当前仅厨卫铝扣板套件 9,537 元）是报价单；owner_budget_pool 是业主给定的预算池；cap 是业主选品时定的封顶价；candidate 是候选价或待询价目标。四者都不是合同承诺价，不得相加后当作已锁价，也不得覆盖 schedule/phase-1/control.yaml 的预算池与父包控制额。
+  round_summary:
+    core_hard_finish_target_cny: 185598
+    extended_cabinet_target_cny: 18000
+    all_in_target_cny: 203598
+    quoted_sheet_only_cny: 9537
+  record_schema:
+    required: [id, round_id, item, pkg_id, component_ids, owner_target_cny, price_type, status]
+    price_type_values: [quoted_sheet, owner_budget_pool, cap, candidate]
+    price_type_note:
+      quoted_sheet: 已取得书面报价单
+      owner_budget_pool: 业主给定的预算池，不是报价
+      cap: 业主选品封顶价，不是成交价
+      candidate: 候选价或下一轮询价目标
+    status_note: locked 必须同时给出 locked_cny 与 contract_ref；supersedes 指向被本轮取代的上一轮记录，只追加不覆盖，历史轮次永久可追溯
+  records:
+    - id: QR-2026-10-03-01
+      round_id: ROUND-2026-10-03
+      item: 拆改、砌墙、修补
+      pkg_id: PKG-020
+      component_ids: [COST-020-01, COST-020-02, COST-020-03]
+      owner_target_cny: 3000
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 不含物业垃圾清运费（COST-020-04），物业收费另按 PKG-005 票据记账，不得与施工建渣外运重复计费；按最终墙体方案结算，不为造型增加拆改
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-02
+      round_id: ROUND-2026-10-03
+      item: 水电改造（强弱电+给排水+墙排）
+      pkg_id: PKG-040
+      component_ids: [COST-040-01, COST-040-02, COST-040-03, COST-040-04, COST-040-05, COST-040-06, COST-040-07, COST-040-08, COST-040-09]
+      owner_target_cny: 12000
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 打包一口价口径，必须按点位/米数/回路拆项报价；开槽回填（COST-040-08）与燃气改造（COST-040-09）单独列价，防止施工方以“全包”重复计费
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-03
+      round_id: ROUND-2026-10-03
+      item: 两卫/阳台防水+闭水
+      pkg_id: PKG-050
+      component_ids: [COST-050-01, COST-050-02, COST-050-03]
+      owner_target_cny: 3000
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 若瓦工 18,500 元预算池已含防水人工，最终报价必须去重；PKG-050 计划额 5,000 元仍是父包控制额
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-04
+      round_id: ROUND-2026-10-03
+      item: 全屋瓷砖主材（诺贝尔方向）
+      pkg_id: PKG-060
+      component_ids: [COST-060-01]
+      owner_target_cny: 20000
+      owner_current_cny: 20000
+      price_type: cap
+      status: pending_store_quote
+      dedup_rule: 20,000 是封顶价不是成交价；须核型号、同批次、损耗、配送与退补砖规则。项目既有半档瓷砖假设约 70–80 元/㎡（≈8,500–9,700 元），差额即 PKG-060 缺口来源
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-05
+      round_id: ROUND-2026-10-03
+      item: 瓦工人工/复杂铺贴/增项预算池
+      pkg_id: PKG-060
+      component_ids: [COST-060-04, COST-060-05]
+      owner_target_cny: 18500
+      owner_current_cny: 18500
+      price_type: owner_budget_pool
+      status: budget_pool_locked
+      dedup_rule: 与 PKG-060 既有同楼盘锚点 17,000–18,500 元一致；不得再另加“复杂砖人工”；若该池已含防水或辅材，必须从 PKG-050 与 COST-060-02 去重
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-06
+      round_id: ROUND-2026-10-03
+      item: 水泥砂/瓷砖胶/背胶等辅材
+      pkg_id: PKG-060
+      component_ids: [COST-060-02]
+      owner_target_cny: 4000
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 先确认瓦工报价是否已含部分辅材，再决定本项是否单独计列
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-07
+      round_id: ROUND-2026-10-03
+      item: 瓷砖美缝
+      pkg_id: PKG-130
+      component_ids: [COST-130-01, COST-130-02]
+      owner_target_cny: 4500
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 与父包计划额 4,500 元一致；木纹砖近色、主卫中性灰近色、客卫低对比；不并入灯具或“零星收口”
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-08
+      round_id: ROUND-2026-10-03
+      item: 厨卫铝扣板+收边+2浴霸+凉霸+灯
+      pkg_id: PKG-070
+      component_ids: [COST-070-03]
+      owner_target_cny: 9100
+      owner_current_cny: 9537
+      price_type: quoted_sheet
+      status: quoted_pending_optimization
+      dedup_rule: 本轮唯一带报价单的项目。浴霸/凉霸/灯归属必须与 COST-100-06（取暖换气设备）和 PKG-120（基础灯具）二选一，否则双计；凉霸 999 元偏贵、5700K 灯具改 4000K、龙骨/安装/开孔是否全包均待谈
+      locked_cny: null
+      contract_ref: null
+      evidence_path: contracts/2026-10-03/
+    - id: QR-2026-10-03-09
+      round_id: ROUND-2026-10-03
+      item: 石膏板吊顶+空调边吊+窗帘盒
+      pkg_id: PKG-070
+      component_ids: [COST-070-02, COST-070-04]
+      owner_target_cny: 13500
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 只做必要边吊与窗帘盒，不做复杂叠级和全屋满吊；轻钢龙骨+正规石膏板；龙骨材料（COST-070-01）未含在本项；空调一次安装完成后再封板
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-10
+      round_id: ROUND-2026-10-03
+      item: 墙顶面基层+腻子+底漆+面漆
+      pkg_id: PKG-080
+      component_ids: [COST-080-01, COST-080-02, COST-080-03, COST-080-04]
+      owner_target_cny: 11000
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 暖白哑光；核对基层修补、腻子遍数、底漆与面漆遍数及人工；颜色样板与成品保护已计入 COST-080-04，不另收
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-11
+      round_id: ROUND-2026-10-03
+      item: 卫生间门×2（极窄框+长虹/油砂）
+      pkg_id: PKG-090
+      component_ids: [COST-090-02]
+      owner_target_cny: 2800
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 目标 1,200–1,600 元/樘全包；门套、锁具、玻璃与安装必须写清，防潮条件按卫生间核
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-12
+      round_id: ROUND-2026-10-03
+      item: 室内木门×4
+      pkg_id: PKG-090
+      component_ids: [COST-090-01]
+      owner_target_cny: 6000
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 暖白/浅木；必须问清门套、锁具、安装、运输是否全包；厨房三联动推拉门（COST-090-03）不在本项内，仍受 BLK-GAS-DOOR 阻塞
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-13
+      round_id: ROUND-2026-10-03
+      item: 踢脚线/门口/零星收口
+      pkg_id: PKG-135
+      component_ids: [COST-135-01, COST-135-02]
+      owner_target_cny: 2000
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_decision
+      dedup_rule: 当前模型未锁独立踢脚线材质，不预设传统门槛石；不含竣工深度清洁（COST-135-04）与验收缺陷整改（COST-135-03），也不得成为未列项目的收费口袋
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-14
+      round_id: ROUND-2026-10-03
+      item: 九牧智能马桶 ZQ6650 ×2
+      pkg_id: PKG-100
+      component_ids: [COST-100-01]
+      owner_target_cny: 5598
+      owner_current_cny: 5598
+      price_type: cap
+      status: owner_selected_pending_verification
+      dedup_rule: 5,598 为两台合计封顶；确认 305/400 坑距、低水压适配、送装与质保；ZQ6650 属本轮新候选，仍须按 shopping-research 补取证并与既有九牧 11383-2-1/31KB-1、箭牌 AE1182U 同口径比较
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-15
+      round_id: ROUND-2026-10-03
+      item: 恒温花洒×2
+      pkg_id: PKG-100
+      component_ids: [COST-100-03]
+      owner_target_cny: 2600
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 九牧/恒洁/箭牌千元级差异小，按恒温、阀芯、安装与套餐价选；不接数显灯光、肩喷腰喷等溢价功能
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-16
+      round_id: ROUND-2026-10-03
+      item: 浴室柜台盆/镜柜×2
+      pkg_id: PKG-100
+      component_ids: [COST-100-02]
+      owner_target_cny: 6000
+      owner_current_cny: 6000
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 约 3,000 元/套；主卫约 1.05m、客卫悬浮并与云鲸 J6 基站柜同图会审；测量、送装、墙排与挂载加固责任须写明
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-17
+      round_id: ROUND-2026-10-03
+      item: 浴室柜龙头+下水器+角阀软管
+      pkg_id: PKG-100
+      component_ids: [COST-100-04]
+      owner_target_cny: 1200
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 龙头 300–600 元/个；墙排时重点看抽屉避让；与第 19 项通用五金同归 COST-100-04，不得叠加
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-18
+      round_id: ROUND-2026-10-03
+      item: 主客卫固定淋浴玻璃屏×2
+      pkg_id: PKG-100
+      component_ids: [COST-100-05]
+      owner_target_cny: 1800
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 与 DEC-2026-09-07-054 一致（客卫整面固定玻璃、无门）；8mm 钢化+3C+简单五金；不做昂贵推拉淋浴房，复杂轨道与门铰属可砍溢价
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-19
+      round_id: ROUND-2026-10-03
+      item: 地漏/角阀/毛巾架等通用五金
+      pkg_id: PKG-100
+      component_ids: [COST-100-04]
+      owner_target_cny: 1500
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 优先可维护与规格正确，不追高端品牌溢价；与第 17 项同归 COST-100-04，父包 8,000 元控制额已含五金，不得重复叠加
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-20
+      round_id: ROUND-2026-10-03
+      item: 橱柜+PET柜门+20mm浅色石英石
+      pkg_id: PKG-110
+      component_ids: [COST-110-01, COST-110-02, COST-110-03, COST-110-04]
+      owner_target_cny: 12000
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 必须拿延米/投影面积、柜体板、门板、五金、台面与安装的完整报价；台面开孔随烟机/灶具/水槽型号冻结，不做大纹岩板与进口五金全套升级
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-21
+      round_id: ROUND-2026-10-03
+      item: 水槽+厨房龙头
+      pkg_id: PKG-110
+      component_ids: [COST-110-05]
+      owner_target_cny: 1500
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 304 不锈钢大单槽、合理深度即可，避免品牌溢价；与橱柜开孔和下水接口同图确认
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-22
+      round_id: ROUND-2026-10-03
+      item: 开关插座
+      pkg_id: PKG-125
+      component_ids: [COST-125-01]
+      owner_target_cny: 2500
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 先完成点位统计，再按中档系列整批采购；不重复计取底盒、线管与穿线（属 PKG-040）；不上高价装饰面板与智能联动
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-23
+      round_id: ROUND-2026-10-03
+      item: 基础灯具
+      pkg_id: PKG-120
+      component_ids: [COST-120-01]
+      owner_target_cny: 3000
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_quote
+      dedup_rule: 客餐厅/卧室暖色、厨房卫生间 4000K，不买复杂装饰灯；客厅保留黑色明装轨道语义；安装人工（COST-120-02）另列；厨卫浴霸凉霸不并入本项
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-24
+      round_id: ROUND-2026-10-03
+      item: 美的领航者四代 一拖六 200外机
+      pkg_id: PKG-030
+      component_ids: [COST-030-01, COST-030-02, COST-030-03, COST-030-04, COST-030-05, COST-030-06]
+      owner_target_cny: 36000
+      owner_current_cny: 36000
+      price_type: candidate
+      status: owner_direction_pending_verification
+      dedup_rule: 业主定标方向，三项未闭合：①内机表 71+45+56+28×3 合计 25.6kW、6 台，与 DEC-2026-09-07-055 的 21.4kW、5 台（客餐厨 10.0kW）冲突；②200 外机约 20kW，连接率约 1.28；③36,000 元已把中央空调池由 33,000 抬至 36,000、一期上限由 203,000 抬至 206,000，须业主书面追加确认。铜管/保温/风口/吊装/调试与两次安装边界必须写进合同
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-25
+      round_id: ROUND-2026-10-03
+      item: 成品保护/垃圾清运/零星孔洞修补
+      pkg_id: PKG-010
+      component_ids: []
+      owner_target_cny: 2500
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_breakdown
+      dedup_rule: 2,500 是杂项池，须拆分到 PKG-010 成品保护（现列 0，优先写入施工合同）、COST-135-04 竣工清洁与 PKG-170；不得新增“杂项口袋包”，也不得与物业垃圾清运费重复支付
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
+    - id: QR-2026-10-03-26
+      round_id: ROUND-2026-10-03
+      item: 衣柜/玄关柜/其他固定柜体（扩展硬装）
+      pkg_id: PKG-150
+      component_ids: [COST-150-07, COST-150-08, COST-150-11]
+      owner_target_cny: 18000
+      owner_current_cny: null
+      price_type: candidate
+      status: pending_decision
+      dedup_rule: DEC-2026-10-03-R4 维持现状：成品柜（玄关收纳、父母房成品衣柜、主卧过渡衣架）走一期家具池 19,000 元；主卧通顶定制衣柜受 BLK-MASTER-WARDROBE 阻塞后移二期，不在一期重复计费；先定成品柜与定制柜比例，再拿投影面积报价
+      locked_cny: null
+      contract_ref: null
+      evidence_path: null
 
 global_blockers:
   - id: BLK-HANDOVER
@@ -470,7 +829,7 @@ work_packages:
     description: 在吊顶封闭前安装空调室内机、铜管、保温层、冷凝水排水管、风管和控制线，并完成压力保持、排水和检修空间检查。
     budget_pool: hvac
     budget:
-      planned_cny: 33000
+      planned_cny: 36000
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -600,18 +959,19 @@ work_packages:
     budget_pool: hard_finish
     budget:
       planned_cny: 30000
-      estimated_need_cny: 30000
-      estimated_need_note: 参考邦泰璟和2-2001瓦工工资单（纯人工实付17,938元，地砖117㎡/墙砖61㎡）；算量口径为 model-geometry 房间投影合计约121.5㎡（=产权套内94.76㎡+赠送约27.5㎡，不含开发商已完工的入户花园），与对方铺贴量相当，人工按17,000–18,500元估；2026-09-12业主拍板瓷砖只降半档（约70–80元/㎡），全口径按30,000元控制；南阳台若通铺再增约2,000元（BLK-SOUTH-BALCONY未冻结不计）；注意94.76㎡产权口径不得用于瓦工算量
+      estimated_need_cny: 42500
+      estimated_need_note: 2026-10-03 业主询价轮次（QR-2026-10-03-04/05/06）：瓷砖主材封顶 20,000 + 瓦工人工预算池 18,500 + 辅材约 4,000 = 42,500，超父包 12,500。既有锚点纯人工 17,938 元、地砖 65 元/㎡、半档瓷砖约 70–80 元/㎡；原 30,000 假设瓷砖仅约 8,500–9,700 元。缺口资金来源待业主决定（抬上限/砍瓷砖档位/重新询价），批准前不得视为已解决，也不得自动动用预备金
+      funding_status: owner_review_pending_20261003
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
       source_ref: masonry
       allocation_status: pending_breakdown
       components:
-        - {id: COST-060-01, name: 地砖和墙砖主材, description: 按房间记录品牌型号规格数量损耗和补货规则, quantity_basis: 待排版图和量房后计算, planned_cny: null, status: quantity_pending}
-        - {id: COST-060-02, name: 水泥砂浆瓷砖胶等辅料, description: 写明使用区域品牌用量和是否另计上楼搬运, quantity_basis: 按铺贴面积报价, planned_cny: null, status: quote_pending}
+        - {id: COST-060-01, name: 地砖和墙砖主材, description: 按房间记录品牌型号规格数量损耗和补货规则；2026-10-03 轮次登记诺贝尔方向封顶20,000元（cap，非成交价），待门店确认型号、同批、损耗、配送与退补, quantity_basis: 业主封顶20,000元，型号与排版图待量房后计算, planned_cny: 20000, status: cap_pending_store_quote}
+        - {id: COST-060-02, name: 水泥砂浆瓷砖胶等辅料, description: 写明使用区域品牌用量和是否另计上楼搬运；2026-10-03 轮次约4,000元候选价，先确认瓦工报价是否已含辅材再去重, quantity_basis: 2026-10-03 轮次约4,000元，按铺贴面积报价, planned_cny: 4000, status: quote_pending}
         - {id: COST-060-03, name: 墙地面找平, description: 修正基层高低差，超厚找平的触发条件和单价另列, quantity_basis: 待现场测量平整度, planned_cny: null, status: site_measurement_pending}
-        - {id: COST-060-04, name: 常规铺贴人工, description: 区分地砖墙砖和不同砖规格；同楼盘实付单价锚点：地砖65元/㎡、卫生间墙砖65元/㎡、阳台墙砖80元/㎡、厨房大砖混贴90元/㎡, quantity_basis: 按实际铺贴面积报价, planned_cny: null, status: quote_pending}
+        - {id: COST-060-04, name: 常规铺贴人工, description: 区分地砖墙砖和不同砖规格；同楼盘实付单价锚点：地砖65元/㎡、卫生间墙砖65元/㎡、阳台墙砖80元/㎡、厨房大砖混贴90元/㎡；2026-10-03 轮次按业主瓦工预算池18,500元计入（含复杂铺贴与增项），不得再另加复杂砖人工, quantity_basis: 业主预算池18,500元（2026-10-03），按实际铺贴面积报价, planned_cny: 18500, status: budget_pool_confirmed_quote_pending}
         - {id: COST-060-05, name: 切割倒角开孔和特殊铺贴人工, description: 门槛管孔墙角和复杂排版可能产生的加工费用；同楼盘实付单价锚点：海棠角20元/米、底盒开孔20元/个、反边60元/米、拉毛150元/间、卫生间阳台地砖包干300元/间、下沉地台200元/个, quantity_basis: 按数量或长度报价, planned_cny: null, status: quote_pending}
         - {id: COST-060-06, name: 搬运上楼和材料退补, description: 明确电梯搬运上楼费及剩余材料处理, quantity_basis: 按合同说明, planned_cny: null, status: contract_scope_pending}
         - {id: COST-060-07, name: 南阳台铺贴范围, description: 南阳台方案未冻结，本项目前不得计入已确定工程量, quantity_basis: 待业主确认, planned_cny: null, status: alignment_required}
@@ -639,6 +999,9 @@ work_packages:
     budget_pool: hard_finish
     budget:
       planned_cny: 6000
+      estimated_need_cny: 23037
+      estimated_need_note: 2026-10-03 业主询价轮次：厨卫铝扣板套件已报价 9,537（quoted_sheet）+ 石膏板吊顶与窗帘盒目标 13,500 = 23,037，超父包 17,037，是当前最大爆池项。其中铝扣板项含 2 浴霸+凉霸+灯，归属必须与 COST-100-06、PKG-120 去重；若浴霸凉霸划出，缺口相应下降。资金来源待业主决定
+      funding_status: owner_review_pending_20261003
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -647,7 +1010,7 @@ work_packages:
       components:
         - {id: COST-070-01, name: 轻钢龙骨和固定材料, description: 吊顶内部金属支撑骨架、吊杆和连接件, quantity_basis: 按吊顶展开面积和造型统计, planned_cny: null, status: quantity_pending}
         - {id: COST-070-02, name: 石膏板吊顶面层, description: 写明板材类型、层数、防潮要求、接缝材料和安装人工, quantity_basis: 按展开面积报价, planned_cny: null, status: quote_pending}
-        - {id: COST-070-03, name: 厨房卫生间集成吊顶, description: 铝制扣板、边条、安装及设备开孔，不含未确认的取暖换气设备, quantity_basis: 按厨房和两个卫生间面积报价, planned_cny: null, status: quote_pending}
+        - {id: COST-070-03, name: 厨房卫生间集成吊顶, description: 铝制扣板、边条、安装及设备开孔，不含未确认的取暖换气设备；2026-10-03 轮次取得书面报价9,537元（含收边、2浴霸、凉霸、灯，quoted_sheet），浴霸/凉霸/灯归属待与COST-100-06、PKG-120去重后定账, quantity_basis: 2026-10-03 报价单9,537元（含浴霸凉霸灯，归属待定），按厨房和两个卫生间面积核, planned_cny: 9537, status: quoted_pending_optimization}
         - {id: COST-070-04, name: 风口检修口灯孔和窗帘盒边缘处理, description: 按确认图纸逐个计数，明确开孔和加固是否另收费, quantity_basis: 待空调灯具和窗帘图确认, planned_cny: null, status: interface_pending}
     duration_workdays: {min: 8, max: 12}
     dependencies: [PKG-030, PKG-040]
@@ -748,16 +1111,19 @@ work_packages:
     budget_pool: hard_finish
     budget:
       planned_cny: 8000
+      estimated_need_cny: 18698
+      estimated_need_note: 2026-10-03 业主询价轮次：智能马桶封顶5,598 + 浴室柜台盆镜柜约6,000 + 花洒约2,600 + 龙头下水角阀约1,200 + 固定玻璃屏约1,800 + 通用五金约1,500 = 18,698，超父包10,698。轮次口径含智能马桶与镜柜，且玻璃屏、取暖换气归属仍可能与PKG-070重叠；资金来源待业主决定
+      funding_status: owner_review_pending_20261003
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
       source_ref: sanitary
       allocation_status: pending_fixture_schedule
       components:
-        - {id: COST-100-01, name: 马桶, description: 分别记录主卫生间和客卫生间的型号坑距角阀软管安装及旧孔处理, quantity_basis: 2台, planned_cny: null, status: model_pending}
-        - {id: COST-100-02, name: 浴室柜台盆和镜柜, description: 分卫生间记录柜体材质尺寸龙头下水安装和墙体固定条件, quantity_basis: 2套, planned_cny: null, status: model_pending}
-        - {id: COST-100-03, name: 花洒, description: 分卫生间记录混水阀花洒组件安装辅材和水压适配, quantity_basis: 2套, planned_cny: null, status: model_pending}
-        - {id: COST-100-04, name: 地漏角阀软管及卫生间小五金, description: 按点位逐件列数量品牌型号和安装费用, quantity_basis: 待点位表确认, planned_cny: null, status: quantity_pending}
+        - {id: COST-100-01, name: 马桶, description: 分别记录主卫生间和客卫生间的型号坑距角阀软管安装及旧孔处理；2026-10-03 轮次登记九牧智能马桶ZQ6650两台封顶5,598元（cap），须核305/400坑距、低水压、送装与质保，并按shopping-research补取证后与九牧11383-2-1/31KB-1、箭牌AE1182U同口径比较, quantity_basis: 2台，业主封顶5,598元（2026-10-03）, planned_cny: 5598, status: owner_selected_pending_verification}
+        - {id: COST-100-02, name: 浴室柜台盆和镜柜, description: 分卫生间记录柜体材质尺寸龙头下水安装和墙体固定条件；2026-10-03 轮次约3,000元/套共6,000元（candidate），主卫约1.05m、客卫悬浮并与云鲸J6基站柜同图会审, quantity_basis: 2套，2026-10-03 轮次约6,000元, planned_cny: 6000, status: candidate_pending_quote}
+        - {id: COST-100-03, name: 花洒, description: 分卫生间记录混水阀花洒组件安装辅材和水压适配, quantity_basis: 2套，2026-10-03 轮次约2,600元, planned_cny: null, status: quote_pending}
+        - {id: COST-100-04, name: 地漏角阀软管及卫生间小五金, description: 按点位逐件列数量品牌型号和安装费用；2026-10-03 轮次的龙头下水角阀约1,200元与通用五金约1,500元同归本项，不得叠加, quantity_basis: 待点位表确认，2026-10-03 轮次合计约2,700元, planned_cny: null, status: quantity_pending}
         - {id: COST-100-05, name: 淋浴区玻璃隔断, description: 当前旧预算曾放在家电类，必须确认是否回到卫生间项目并避免重复计费, quantity_basis: 2处候选，待设计确认, planned_cny: null, status: ownership_pending}
         - {id: COST-100-06, name: 卫生间取暖换气设备, description: 确认是否由开发商提供以及设备和安装属于哪个预算项目, quantity_basis: 2处待核对, planned_cny: null, status: ownership_pending}
     duration_workdays: {min: 3, max: 5}
@@ -784,6 +1150,9 @@ work_packages:
     budget_pool: hard_finish
     budget:
       planned_cny: 11500
+      estimated_need_cny: 13500
+      estimated_need_note: 2026-10-03 业主询价轮次：橱柜+PET柜门+20mm石英石目标12,000 + 水槽与厨房龙头约1,500 = 13,500，超父包2,000；台面开孔仍需随烟机/灶具/水槽型号冻结，缺口资金来源待业主决定
+      funding_status: owner_review_pending_20261003
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -1146,7 +1515,7 @@ work_packages:
         checkpoint: payment
         item: 最终结算不超过批准额度
         method: 汇总合同、变更、已付、待付和退款，核对各预算池及总上限
-        pass_condition: 最终预测不超过¥203,000，或已有业主书面追加批准
+        pass_condition: 最终预测不超过¥206,000，或已有业主书面追加批准
         evidence_required: [final_account_statement, owner_approval_if_overrun]
 
   - id: PKG-900

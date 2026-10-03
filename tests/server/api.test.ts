@@ -71,7 +71,7 @@ elements:
   it('GET /api/project phase=phase_1 filters deferred furnishings and curtains', async () => {
     const res = await request(app).get('/api/project?phase=phase_1_basic_occupancy').expect(200);
     assert.equal(res.body.phase, 'phase_1_basic_occupancy');
-    assert.equal(res.body.phaseMeta.budget.ceilingCny, 203000);
+    assert.equal(res.body.phaseMeta.budget.ceilingCny, 206000);
     assert.equal(res.body.phaseMeta.budget.authority, 'schedule/phase-1/control.yaml');
     assert.ok(res.body.house.furnishings.master_bedroom.some((i: { type: string }) => i.type === 'bed_180'));
     assert.ok(!res.body.house.furnishings.master_bedroom.some((i: { type: string }) => i.type === 'master_north_wall_wardrobe_950'));

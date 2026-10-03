@@ -141,6 +141,44 @@ for (const pkg of control.work_packages ?? []) {
   }
 }
 
+const quoteRound = control.hard_finish_quote_rounds ?? {};
+const quoteRoundRecords: AnyRecord[] = quoteRound.records ?? [];
+const quoteRoundPriceTypes: string[] = quoteRound.record_schema?.price_type_values ?? [];
+const quoteRoundIds = new Set<string>();
+for (const record of quoteRoundRecords) {
+  if (quoteRoundIds.has(record.id)) errors.push(`duplicate hard finish quote round id: ${record.id}`);
+  quoteRoundIds.add(record.id);
+  const roundPkg = (control.work_packages ?? []).find((item: AnyRecord) => item.id === record.pkg_id);
+  if (!roundPkg) errors.push(`${record.id}: unknown pkg_id ${record.pkg_id}`);
+  const roundComponentIds = new Set((roundPkg?.budget?.components ?? []).map((item: AnyRecord) => item.id));
+  for (const componentId of record.component_ids ?? []) {
+    if (!roundComponentIds.has(componentId)) errors.push(`${record.id}: component ${componentId} not in ${record.pkg_id}`);
+  }
+  if (!quoteRoundPriceTypes.includes(record.price_type)) errors.push(`${record.id}: invalid price_type ${record.price_type}`);
+  if (typeof record.owner_target_cny !== 'number' || record.owner_target_cny < 0) errors.push(`${record.id}: owner_target_cny must be a non-negative number`);
+  if (record.owner_current_cny != null && (typeof record.owner_current_cny !== 'number' || record.owner_current_cny < 0)) {
+    errors.push(`${record.id}: owner_current_cny must be null or a non-negative number`);
+  }
+  if (!record.item || !record.round_id || !record.status) errors.push(`${record.id}: incomplete hard finish quote round record`);
+  if (record.supersedes && !quoteRoundIds.has(record.supersedes)) errors.push(`${record.id}: supersedes must reference an earlier round record`);
+  if (record.status === 'locked' && (record.locked_cny == null || !record.contract_ref)) {
+    errors.push(`${record.id}: status locked requires locked_cny and contract_ref`);
+  }
+  if (record.evidence_path && !fs.existsSync(path.join(root, record.evidence_path))) {
+    errors.push(`${record.id}: evidence_path does not exist: ${record.evidence_path}`);
+  }
+}
+const roundTargetTotal = quoteRoundRecords.reduce((sum: number, record: AnyRecord) => sum + (record.owner_target_cny ?? 0), 0);
+const roundQuotedTotal = quoteRoundRecords
+  .filter((record: AnyRecord) => record.price_type === 'quoted_sheet')
+  .reduce((sum: number, record: AnyRecord) => sum + (record.owner_current_cny ?? record.owner_target_cny ?? 0), 0);
+if (quoteRound.round_summary?.all_in_target_cny != null && roundTargetTotal !== quoteRound.round_summary.all_in_target_cny) {
+  errors.push(`hard finish quote rounds: records=${roundTargetTotal}, round_summary.all_in_target_cny=${quoteRound.round_summary.all_in_target_cny}`);
+}
+if (quoteRound.round_summary?.quoted_sheet_only_cny != null && roundQuotedTotal !== quoteRound.round_summary.quoted_sheet_only_cny) {
+  errors.push(`hard finish quote rounds: quoted_sheet=${roundQuotedTotal}, round_summary.quoted_sheet_only_cny=${quoteRound.round_summary.quoted_sheet_only_cny}`);
+}
+
 const poolTotals = new Map<string, number>();
 for (const pkg of control.work_packages ?? []) {
   poolTotals.set(pkg.budget_pool, (poolTotals.get(pkg.budget_pool) ?? 0) + pkg.budget.planned_cny);
@@ -256,6 +294,26 @@ budgetMd += `- 当前一期执行上限：${money(control.budget_reconciliation.
 budgetMd += `- 历史估算总额：${money(control.budget_reconciliation.historical_baseline.total_budget_cny)}；历史上限：${money(control.budget_reconciliation.historical_baseline.project_ceiling_cny)}。两者仅供追溯，不用于签约或付款。\n`;
 budgetMd += `- 说明：${control.budget_reconciliation.explanation}\n`;
 budgetMd += `\n## 尚未取得报价或工程量的缺口\n\n当前共有 **${unpricedComponents.length}个**费用项仍是“待报价/待算量”。因此目前只能证明计划分配合计没有超过${money(control.control.phase_ceiling_cny)}，**还不能证明最终合同不会超预算**。应在交房量房、设备选型和同口径报价完成后，把每个费用项的金额补齐，再比较父工作包控制额。\n`;
+budgetMd += '\n## 询价轮次回填与父包对账\n\n';
+budgetMd += `> ${escapeCell(quoteRound.source ?? '—')}  \n> ${escapeCell(quoteRound.pricing_note ?? '')}\n\n`;
+budgetMd += '| 轮次记录 | 项目 | 归属工作包 | 轮次目标 | 轮次当前价 | 价格类型 | 状态 | 去重与边界 |\n|---|---|---|---:|---:|---|---|---|\n';
+for (const record of quoteRoundRecords) {
+  budgetMd += `| ${record.id} | ${escapeCell(record.item)} | ${record.pkg_id} | ${money(record.owner_target_cny)} | ${moneyOrPending(record.owner_current_cny)} | ${record.price_type} | ${escapeCell(record.status)} | ${escapeCell(record.dedup_rule)} |\n`;
+}
+budgetMd += `\n轮次目标合计 **${money(roundTargetTotal)}**（核心硬装 ${money(quoteRound.round_summary?.core_hard_finish_target_cny ?? null)} + 固定柜体 ${money(quoteRound.round_summary?.extended_cabinet_target_cny ?? null)}）；其中只有 **${money(roundQuotedTotal)}** 属 quoted_sheet（带报价单），其余为业主预算池、封顶价或候选价，不是承诺价，也不覆盖父包控制额。\n\n`;
+const roundByPkg = new Map<string, number>();
+for (const record of quoteRoundRecords) roundByPkg.set(record.pkg_id, (roundByPkg.get(record.pkg_id) ?? 0) + record.owner_target_cny);
+budgetMd += '### 按父包汇总\n\n| 工作包 | 父包计划额 | 轮次目标合计 | 差额 | 处置 |\n|---|---:|---:|---:|---|\n';
+for (const [pkgId, roundTotal] of [...roundByPkg.entries()].sort(([left], [right]) => left.localeCompare(right))) {
+  const pkg = (control.work_packages ?? []).find((item: AnyRecord) => item.id === pkgId);
+  const planned = pkg?.budget.planned_cny ?? 0;
+  const diff = roundTotal - planned;
+  const handling = pkg?.budget.funding_status
+    ? `${pkg.budget.funding_status}（缺口 ${money(diff)}）`
+    : (diff > 0 ? '超过父包计划额，待登记资金来源' : '计划额内');
+  budgetMd += `| ${pkgId}｜${escapeCell(pkg?.name ?? '—')} | ${money(planned)} | ${money(roundTotal)} | ${money(diff)} | ${escapeCell(handling)} |\n`;
+}
+budgetMd += `\n注：本表差额按轮次目标计算；「已知待分配预算缺口」按 estimated_need_cny 计算（有报价单时取报价单口径，例如 PKG-070 取 9,537 而不是目标 9,100），两者口径不同，且都不构成已批准资金。\n`;
 budgetMd += '\n## 工作包内部询价明细\n\n> “待报价/待算量”不是0元。父工作包计划额是当前控制额度，只有逐项报价完成后才可判断该额度是否足够。\n\n';
 for (const pkg of control.work_packages.filter((item: AnyRecord) => item.budget?.components?.length)) {
   budgetMd += `### ${pkg.id}｜${pkg.name}\n\n计划控制额：${money(pkg.budget.planned_cny)}；拆分状态：\`${pkg.budget.allocation_status ?? '—'}\`。\n\n`;
@@ -308,6 +366,17 @@ if (appliancePackage?.budget?.public_reference_floor_cny != null) {
   checklistMd += `\n- [ ] 按目标规格筛选的家电候选公开参考价下限 ${money(appliancePackage.budget.public_reference_floor_cny)} 已与一期家电预算 ${money(appliancePackage.budget.planned_cny)} 对账，安装和辅材缺口未被隐藏。\n\n`;
 }
 
+checklistMd += '\n## 硬装询价轮次核对\n\n';
+checklistMd += '- [ ] 轮次价格已按价格类型分列，quoted_sheet 之外的 owner_budget_pool / cap / candidate 未被当作合同承诺价。\n';
+checklistMd += '- [ ] 轮次目标超过父包计划额的工作包已取得资金来源或业主书面批准；未批准前不得动用硬装预备金。\n';
+checklistMd += '- [ ] 轮次记录与 COST 组件一一对应；瓦工与防水辅材、浴霸凉霸归属、通用五金等重复计费项已去重。\n';
+checklistMd += '- [ ] 轮次记录进入锁定时已补 locked_cny、contract_ref 与 evidence_path，历史轮次只追加不覆盖。\n';
+checklistMd += '\n| 勾选 | 轮次记录 | 项目 | 归属工作包 | 轮次目标 | 轮次当前价 | 价格类型 | 状态 |\n|---|---|---|---|---:|---:|---|---|\n';
+for (const record of quoteRoundRecords) {
+  checklistMd += `| [ ] | ${record.id} | ${escapeCell(record.item)} | ${record.pkg_id} | ${money(record.owner_target_cny)} | ${moneyOrPending(record.owner_current_cny)} | ${record.price_type} | ${escapeCell(record.status)} |\n`;
+}
+checklistMd += '\n';
+
 for (const pkg of control.work_packages) {
   checklistMd += `## ${pkg.id}｜${pkg.name}\n\n`;
   checklistMd += `- 通俗说明：${pkg.description}\n`;
@@ -351,3 +420,12 @@ fs.writeFileSync(path.join(phaseDir, 'budget.md'), budgetMd);
 fs.writeFileSync(path.join(phaseDir, 'schedule.md'), scheduleMd);
 fs.writeFileSync(path.join(phaseDir, 'checklist.md'), checklistMd);
 console.log(`schedule control valid: ${roadmapPhaseIds.size} phases, ${control.work_packages.length} phase-1 packages, ${componentIds.size} cost components (${unpricedComponents.length} unpriced), ${usedCheckIds.size} auditable checks, ${money(allocated)} allocated, ${money(knownPendingGap)} known pending gap`);
+if (process.argv.includes('--audit')) {
+  const lockedRoundItems = quoteRoundRecords.filter((record: AnyRecord) => record.status === 'locked');
+  console.log([
+    `audit 待购项: ${unpricedComponents.length}/${componentIds.size} 个成本组件仍无金额`,
+    `audit 轮次项: ${quoteRoundRecords.length} 条登记，其中已锁定 ${lockedRoundItems.length} 条`,
+    `audit 价格口径: 带报价单 ${money(roundQuotedTotal)}，轮次目标合计 ${money(roundTargetTotal)}（不可当承诺价）`,
+    `audit 已量化缺口: ${money(knownPendingGap)}；未分配额度 ${money(control.control.unallocated_cny)}，扣除缺口后余 ${money(control.control.unallocated_cny - knownPendingGap)}`,
+  ].join('\n'));
+}

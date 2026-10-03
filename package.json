@@ -20,6 +20,7 @@
     "verify:project-render-facts": "tsx scripts/verify/project/verify-project-render-facts.ts",
     "verify:lighting-config": "tsx scripts/verify/project/verify-lighting-config.ts",
     "schedule:render": "tsx scripts/schedule/control.ts",
+    "schedule:audit": "tsx scripts/schedule/control.ts --audit",
     "verify:schedule": "tsx scripts/schedule/control.ts",
     "verify:spatial": "tsx scripts/verify/spatial/verify-spatial.ts",
     "generate:project-render-facts": "tsx scripts/project/project-render-facts-projection.ts data/project-render-facts.json",

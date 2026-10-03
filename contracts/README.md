@@ -9,6 +9,13 @@
 | `design_service/` | 设计服务合同 |
 | `construction/` | 施工合同 |
 | `material/` | 材料采购合同/订单 |
+| `2026-10-03/` | 业主提供的全硬装询价轮次凭据（报价单、拍照、聊天记录），与 `control.yaml` 的 `hard_finish_quote_rounds` 记录 id 一一对应 |
+
+## 轮次凭据归档规则
+
+- 一份凭据一个文件，命名 `QR-2026-10-03-NN_项目_来源_日期.*`（NN 与 `control.yaml` 中轮次记录 id 一致）。
+- 凭据须能拆分材料/主材、运输、安装、辅材、增项、税费、交期、发票与保修责任；只有打包价的，要在 `dedup_rule` 写明拆项要求。
+- 轮次记录进入锁定时，把 `locked_cny`、`contract_ref` 和凭据相对路径写回 `control.yaml`；历史轮次只追加不覆盖。
 
 ## 合同审查清单
 
