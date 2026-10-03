@@ -120,14 +120,14 @@ describe('render facts API', () => {
   it('returns electrical topology with lint independently of MEP route data', async () => {
     const app = createApp(() => facts);
     const response = await request(app).get('/api/electrical-topology').expect(200);
-    assert.equal(response.body.circuits.length, 25);
+    assert.equal(response.body.circuits.length, 19); // DEC-2026-10-03-R1
     assert.equal(response.body.controls.length, 11);
     assert.equal(response.body.panels[0].id, 'panel_strong');
     assert.equal(response.body.panels[0].source_point_id, 'panel_strong_entry_left');
-    assert.equal(response.body.lint.counts.errors, 94);
-    assert.equal(response.body.lint.counts.warnings, 18);
-    assert.equal(response.body.lint.counts.coveredPoints, 64);
-    assert.equal(response.body.circuits.filter((circuit: { purpose: string }) => circuit.purpose === 'ordinary_power').length, 5);
+    assert.equal(response.body.lint.counts.errors, 96); // DEC-2026-10-03-R1：回路成员 64→66，2 个新成员在 fixture 点位集中未知各计 1 error
+    assert.equal(response.body.lint.counts.warnings, 19); // DEC-2026-10-03-R1：pending_parameters 8→11（dedicated_parameters_pending 7 + point_uncovered 1 + pending_parameter 11 的净差）
+    assert.equal(response.body.lint.counts.coveredPoints, 66); // DEC-2026-10-03-R1
+    assert.equal(response.body.circuits.filter((circuit: { purpose: string }) => circuit.purpose === 'ordinary_power').length, 7); // DEC-2026-10-03-R1：卧室缩为 master/parent_child/study 三路
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'control_target_missing'), false);
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'electrical_parameters_pending'), false);
   });

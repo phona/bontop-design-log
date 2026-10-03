@@ -1,0 +1,264 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: mep-power-water-freeze-20261003
+subject: 水电施工冻结前最后一轮收口：马桶撞点、台面取电、电视高位、网关网口、洗烘检修、燃气报警器、漏保与配电箱、验收扩充
+created_at: "2026-10-03T00:00:00+08:00"
+status: fact_investigation
+updated_at: "2026-10-03T00:00:00+08:00"
+source_policy:
+  authority_refs:
+    - "GB 55038-2025《住宅项目规范》7.4.3 / 7.4.4 / 7.4.5 / 7.4.7"
+    - "CJJ/T 146-2011《城镇燃气报警控制系统技术规程》（探测器位置与高度）"
+    - "GB 50303《建筑电气工程施工质量验收规范》、GB 50327《住宅装饰装修工程施工规范》"
+  observation_refs:
+    - "config/electrical.yaml（91 点位：socket 44 / floor_socket 5 / network 4 / 灯类 15 / 开关+线控 21 / 箱体 2）"
+    - "config/electrical-topology.yaml（25 回路、64 members）"
+    - "config/plumbing.yaml（21 点位，type 仅 faucet/drain/shower/toilet）"
+    - "config/acceptance.yaml（10 phase，electrical_check 仅 2 项）"
+    - "config/layout/model-geometry.yaml、config/layout/overlay.yaml、config/ceiling.yaml"
+  measurement_refs: []
+  runtime_refs: []
+  evidence_refs: []
+facts:
+  confirmed:
+    - id: F1
+      category: confirmed
+      statement: "两个马桶的水口与 220V 插座在同一竖线同一高程：主卫给水 toilet_mbath 与 sock_mbath_toilet 同为 (2.60,1.50)；客卫 toilet_gbath 与 sock_gbath_toilet 同为 (7.10,3.05)"
+      value: { mbath: [2.60, 1.50], gbath: [7.10, 3.05] }
+      source_refs: ["config/plumbing.yaml:30-37", "config/electrical.yaml:467-476", "config/electrical.yaml:717-726"]
+      basis: "坐标直读比对"
+      confidence: high
+      impact: material
+      affected_objects: [toilet_mbath, sock_mbath_toilet, toilet_gbath, sock_gbath_toilet]
+      affected_views: [master_bath, guest_bath]
+      owner: project
+      status: open
+      verification_method: "水电交底前按马桶 SKU 横向错开 ≥0.15m 或竖向分层；插座加防溅盒"
+
+    - id: F2
+      category: confirmed
+      statement: "主卫马桶没有排污点；plumbing.yaml 中无主卫 toilet 对应 drain，最近为干区地漏 drain_mbath_floor (2.0,1.15)，距马桶中心 (2.60,1.50) 0.94m——地漏不能替代马桶排污口"
+      value: null
+      source_refs: ["config/plumbing.yaml:39-53"]
+      basis: "全文件枚举"
+      confidence: high
+      impact: material
+      affected_objects: [toilet_mbath]
+      affected_views: [master_bath]
+      owner: project
+      status: open
+      verification_method: "补齐 drain_mbath_toilet；坑距/坐便器形式（落地/壁挂）待 SKU"
+
+    - id: F3
+      category: confirmed
+      statement: "厨房台面 4 个插座全落在同一坐标 (8.60,0.30) 柜内预留，只服务北墙一段柜，未形成两个可用取电区；北墙为玻璃幕墙（suppress_kitchen_north）不可挂载"
+      value: null
+      source_refs: ["config/electrical.yaml:394-401", "config/layout/overlay.yaml:22-27"]
+      basis: "坐标直读 + suppress 清单"
+      confidence: high
+      impact: material
+      affected_objects: [sock_kitchen_counter]
+      affected_views: [kitchen]
+      owner: project
+      status: open
+      verification_method: "新增 sock_kitchen_counter_east 形成第二取电区；形式随橱柜深化"
+
+    - id: F4
+      category: confirmed
+      statement: "电视壁挂但只有低位电视柜电源：sock_living_tv/net_living 皆 h=0.3；墙上唯一高位点 sock_living_tv_led h=2.0 是灯带变压器，非电视取电"
+      value: null
+      source_refs: ["config/electrical.yaml:1-20", "config/electrical.yaml:763-772"]
+      basis: "坐标直读"
+      confidence: high
+      impact: material
+      affected_objects: [sock_living_tv]
+      affected_views: [living_dining]
+      owner: project
+      status: open
+      verification_method: "新增 sock_living_tv_high h=1.70 + φ25 独立穿线管下引电视柜，强弱电分管"
+
+    - id: F5
+      category: confirmed
+      statement: "sock_gateway（智能网关/路由位）有电源无网口；全屋 net_* 仅 net_living/net_parent/net_study/net_child 4 个，缺主路由 WAN 上联与回程"
+      value: null
+      source_refs: ["config/electrical.yaml:749-758"]
+      basis: "点位枚举"
+      confidence: high
+      impact: material
+      affected_objects: [sock_gateway]
+      affected_views: [living_dining]
+      owner: project
+      status: open
+      verification_method: "补 net_gateway（Cat6×2：WAN 上联 + LAN 回弱电箱）与 net_ap_corridor"
+
+    - id: F6
+      category: confirmed
+      statement: "洗烘叠放插座 h=1.2、角阀 h=0.8 位于叠放体内部；生活阳台实测 1.60×1.20m（v_vrv_sw(5.60,1.00)→v_vrv_se(7.20,1.00)→v_balc_ne(7.20,2.20)→v_balc_se(7.10,2.20)→v_balc_sw(5.60,2.20)），东墙门洞 d_kit_balc 占 z[1.20,2.00]，无侧置检修带"
+      value: { balcony: "1.60 x 1.20 m", stack_height: "≈1.70 m" }
+      source_refs: ["config/layout/model-geometry.yaml:30-37,96-100,230-240", "config/electrical.yaml:540-559", "config/plumbing.yaml:134-149"]
+      basis: "几何直算"
+      confidence: high
+      impact: material
+      affected_objects: [sock_balcony_washer, sock_balcony_dryer, faucet_balcony_washer]
+      affected_views: [balcony]
+      owner: project
+      status: open
+      verification_method: "SKU 冻结后取机器顶部以上可及位或侧柜管井检修口；排水可继续藏后"
+
+    - id: F7
+      category: confirmed
+      statement: "燃气报警位 h=2.0 距厨房铝扣板吊顶（净高 2.55m）0.55m > 0.3m，且距油烟机 (10.80,1.20) 0.40m < 0.5m，双不合规（CJJ/T 146：天然气应设顶棚或距顶棚 <0.3m；距灶具与排风口 >0.5m）"
+      value: null
+      source_refs: ["config/electrical.yaml:434-443", "config/ceiling.yaml:74-79", "CJJ/T 146-2011"]
+      basis: "规范条文 + 几何"
+      confidence: high
+      impact: material
+      affected_objects: [sock_kitchen_gas]
+      affected_views: [kitchen]
+      owner: project
+      status: open
+      verification_method: "移至 (10.80,0.55) h=2.35：距顶 0.20m、距油烟机 0.65m；终核随燃气公司方案"
+
+    - id: F8
+      category: confirmed
+      statement: "冰箱独立回路与 5 个空调内机回路 breaker 均写 C16A，无剩余电流动作保护；GB 55038 7.4.3-1 要求电源插座回路均应加 ≤30mA RCD"
+      value: null
+      source_refs: ["config/electrical-topology.yaml:128-187", "GB 55038-2025 7.4.3-1"]
+      basis: "规范条文比对"
+      confidence: high
+      impact: material
+      affected_objects: [dedicated_kitchen_fridge, hvac_power_living, hvac_power_bedrooms]
+      affected_views: [topology]
+      owner: project
+      status: open
+      verification_method: "全部改为 C16A+漏保；若厂商要求硬接线无漏保则按厂家配电图重新定义点位 type"
+
+    - id: F9
+      category: confirmed
+      statement: "强电箱 mount_height 1.65m，箱体 390mm 宽；GB 55038 7.4.3-2：单排布置箱底边 ≥1.80m、双排 ≥1.60m → 现高仅在双排时合规；19 路 + 2P 总开 + 浪涌需双排"
+      value: { mount_height: 1.65, width: 0.39, height: 0.39, depth: 0.21 }
+      source_refs: ["config/electrical.yaml:575-588", "GB 55038-2025 7.4.3-2"]
+      basis: "规范条文 + 点位直读"
+      confidence: high
+      impact: material
+      affected_objects: [panel_strong_entry_left]
+      affected_views: [living_dining]
+      owner: project
+      status: open
+      verification_method: "开箱量尺单/双排、回路数、进线截面（7.4.3-3 要求 ≥10mm² 铜芯）；单排则须上移箱体或换箱"
+
+    - id: F10
+      category: confirmed
+      statement: "sock_mbath_toilet 与 sock_gbath_toilet 未声明防溅盒；同批卫浴点位（gbath_vanity / gbath_vanity_2 / gbath_towel / gbath_robot / mbath_vanity）均已声明——GB 55038 7.4.5 要求卫生间插座加设防溅措施"
+      value: null
+      source_refs: ["config/electrical.yaml:467-476,498-518,717-726,922-946", "GB 55038-2025 7.4.5"]
+      basis: "note 枚举 + 规范条文"
+      confidence: high
+      impact: material
+      affected_objects: [sock_mbath_toilet, sock_gbath_toilet]
+      affected_views: [master_bath, guest_bath]
+      owner: project
+      status: open
+      verification_method: "note 补防溅盒 + 验收增项 check_elec_splash_socket"
+
+    - id: F11
+      category: confirmed
+      statement: "全屋没有任何局部等电位联结（LEB）点位或说明；GB 55038 7.4.7 要求装有固定浴盆或淋浴器的卫生间设等电位联结作为附加防护"
+      value: null
+      source_refs: ["config/plumbing.yaml", "GB 55038-2025 7.4.7"]
+      basis: "全文件枚举 + 规范条文"
+      confidence: high
+      impact: material
+      affected_objects: []
+      affected_views: [master_bath, guest_bath]
+      owner: project
+      status: open
+      verification_method: "本轮不扩 schema；登记为待落点位 + 验收增项 check_elec_leb"
+
+    - id: F12
+      category: confirmed
+      statement: "acceptance.yaml 的 phase: electrical_check 只有通断测试与开关功能 2 项，缺 PE 连续性/极性、绝缘电阻、30mA RCD 动作、等电位、防溅、强弱分管、箱体合规、点位可及性、燃气报警器位置"
+      value: null
+      source_refs: ["config/acceptance.yaml:231-244"]
+      basis: "文件直读"
+      confidence: high
+      impact: material
+      affected_objects: []
+      affected_views: []
+      owner: project
+      status: open
+      verification_method: "新增 9 项，其中 4 项 critical（付款门槛由 control.ts gateStatus 只认 critical）"
+
+    - id: F13
+      category: confirmed
+      statement: "当前 25 回路（照明 11 + 空调 5 + 专用 4 + 普通 5）对 390mm 强电箱容量不足；按 GB 55038 7.4.4（类型级分别设置）合并后降至 19 路仍属合规"
+      value: { current: 25, target: 19 }
+      source_refs: ["config/electrical-topology.yaml", "GB 55038-2025 7.4.4"]
+      basis: "计数 + 规范条文"
+      confidence: high
+      impact: material
+      affected_objects: []
+      affected_views: [topology]
+      owner: project
+      status: open
+      verification_method: "合并后 19 路全量覆盖 66 个 powerable 点位（脚本核对）"
+
+    - id: F14
+      category: confirmed
+      statement: "厨房东墙 w_ent_west 有效挂点区间为 z[0,2.40]；z≥2.40 段是客餐厨通长推拉门（kitchen_dining_sliding_door，4 扇高 2.55m）无墙可挂，且厨房南界已由 z=2.90 收至 z=2.40"
+      value: null
+      source_refs: ["config/layout/model-geometry.yaml:44-45,159", "config/layout/overlay.yaml:276-292"]
+      basis: "几何直读 + polygon 校验"
+      confidence: high
+      impact: material
+      affected_objects: [sock_kitchen_counter_east, sock_kitchen_gas]
+      affected_views: [kitchen]
+      owner: project
+      status: open
+      verification_method: "两个新点取 z=1.70 与 z=0.55，并避让既有 hood(1.2)/fridge(2.05) 点位 ≥0.35m"
+
+    - id: F15
+      category: confirmed
+      statement: "普通插座回路把 14 个卧室/书房点位挂在一个 C20 支路上，其中书房桌位 3 插座（电脑+显示器）与床头混路；GB 55038 7.4.4 允许按房分路"
+      value: null
+      source_refs: ["config/electrical-topology.yaml:227-235"]
+      basis: "成员枚举"
+      confidence: high
+      impact: material
+      affected_objects: []
+      affected_views: [topology]
+      owner: project
+      status: open
+      verification_method: "拆为 master / parent_child / study 三路"
+
+  user_decision: []
+  site_pending:
+    - id: S1
+      statement: "马桶 SKU（主卫/客卫）：坑距、落地/壁挂、智能盖电源与进水接口、分体/一体"
+      handling: "pending-site-data #31；冻结前马桶水电只标 pending 不定坐标；壁挂则给水+电+排污全进假墙，现有模型作废"
+    - id: S2
+      statement: "燃气气源（管道天然气/瓶装液化气）与燃气公司报警器 + 紧急切断阀方案"
+      handling: "pending-site-data #32（与 #9/#18/#26 同源互链）；南宁为管道天然气按高位装，但最终位置与切断阀联动按燃气公司方案"
+    - id: S3
+      statement: "厨房台面取电形式（侧板翻盖/端板插/电力轨道/升降插座）"
+      handling: "随橱柜深化；方案排序：柜下或端板翻盖 > 侧板电力轨道 > 升降插座（最多 1 个，水油环境）"
+    - id: S4
+      statement: "主卫台上盆 + 龙头 SKU：冷热水预埋、暗装阀体/出水嘴高度、墙排中心"
+      handling: "faucet_mbath_vanity 保持 0.8m 抽象点不动，SKU 冻结后单独深化"
+    - id: S5
+      statement: "洗烘/冰箱 SKU 尺寸与开门侧、检修带"
+      handling: "pending-site-data #33；阳台 1.60×1.20m 无侧置带，取顶部可及位或侧柜管井"
+    - id: S6
+      statement: "强电箱单排/双排、回路数、进线截面、箱体实际规格"
+      handling: "pending-site-data #30（与 #4 同源）；决定 mount_height 1.65 是否合规与是否换箱"
+    - id: S7
+      statement: "中央空调厂商配电图：室内机能否集中供电 + RCD 口径"
+      handling: "pending_parameters；若厂家要求硬接线无漏保，按厂家正式配电图重新定义点位 type，不沿用 socket 逻辑"
+    - id: S8
+      statement: "主卧西侧 sock_master_projector 地插是否保留（西墙玻璃幕墙不可挂装）"
+      handling: "随家具冻结；不因'投影可能性'单独立项——若西墙保留桌/梳妆位，地插是唯一解"
+unknowns_requiring_alignment:
+  - "4 项 critical 验收是否接受（直接影响 schedule/phase-1/control.yaml 付款门槛）"
+notes:
+  - "本迭代不在 config 中新增 plumbing type（枚举仅 6 个，扩 schema 风险高于收益）；立管/水表/燃气表继续留在 pending-site-data"
+  - "外部 review 的规范引用已逐条核对：30mA RCD=GB 55038 7.4.3-1、防溅与专用三孔=7.4.5、等电位=7.4.7、类型分路=7.4.4"

@@ -1,0 +1,117 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: mep-power-water-freeze-20261003
+subject: 水电施工冻结前最后一轮收口（马桶撞点/台面取电/电视高位/网关网口/洗烘检修/燃气报警器/漏保与配电箱/验收扩充）
+priority:
+  user_goal: 在水电交底前把空间点位以外的工程硬问题收口，使方案从"协调设计很好"进入"可施工冻结"；不重做点位，不改几何。
+  ranked:
+    - 安全与规范硬合规（30mA RCD、防溅盒、等电位、燃气报警器高度与距离、配电箱进线与安装高度）
+    - 家具/设备封死导致不可用或不可修的点位（马桶、冰箱、烟机、洗烘）
+    - 真正可用的取电/取网（厨房第二取电区、电视高位、主路由与 AP）
+    - 回路与箱体容量（25→19 路，箱体单/双排待确认）
+    - 验收能力（9 项新增，4 项 critical）
+  non_negotiables:
+    - "GB 55038-2025 7.4.3-1：所有电源插座回路 ≤30mA 剩余电流动作保护"
+    - "GB 55038-2025 7.4.5：卫生间插座防溅 + 安全型插座"
+    - "GB 55038-2025 7.4.7：装有淋浴/浴盆的卫生间等电位联结"
+    - "CJJ/T 146-2011：探测器距灶具与排风口 >0.5m、天然气近顶安装 ≤0.3m"
+    - "AGENTS.md：玻璃幕墙/suppress 墙不可挂装；配置驱动，禁止在 config 中伪造未冻结的 SKU 坐标"
+  tradeoffs_accepted:
+    - "马桶/洗烘/冰箱点位本轮只标 pending 不改坐标（坐标依赖 SKU），以「不合理但保留 + 量房清单」换取可追溯"
+    - "照明 11 路合为 5 路：牺牲单灯单路可控性换取箱体容量与合规分类"
+    - "洗烘拆为两路：多用 1 个回路位换取 7.4.4 对 2kW 以上设备分别设置的合规解读"
+    - "台面取电不在本轮定形（升降/侧板/轨道），由橱柜深化决定，本迭代只保证「两个可插取的分区」存在"
+frozen: true
+freeze_record:
+  alignment_id: user-plan-approval-20261003-mep-freeze
+  original_user_response: "业主提供外部 review 并询问看法 → 给出 8 项复核结论 + 6 项补充发现 → 审批《迭代方案：水电施工冻结前最后一轮收口》"
+  normalized_decisions:
+    - "接受 19 路目标拓扑与全部插座回路补 RCD"
+    - "燃气报警器移至 (10.80,0.55) h=2.35（CJJ/T 146 双条件达标），终核随燃气公司"
+    - "马桶/洗烘/冰箱本轮标 position_status pending，坐标在 SKU 冻结后另立轮次"
+    - "验收新增 9 项，其中 4 项 critical（默认按安全底线执行）"
+  confirmed_by_user: true
+  confirmed_at: "2026-10-03T00:00:00+08:00"
+  evidence_refs:
+    - ".stepcode/plans/session-01a0ff40-12f0-7993-a6f0-5f86ab25261f.md"
+    - "docs/design-iterations/mep-power-water-freeze-20261003/fact-table.yaml"
+  reversal_cost: "若业主否决 4 项 critical，只改 config/acceptance.yaml 的 4 个 severity 字符串，不影响本迭代其余范围"
+allowed_scope:
+  files:
+    - config/electrical.yaml
+    - config/plumbing.yaml
+    - config/electrical-topology.yaml
+    - config/mep-hvac-coordination.yaml
+    - config/acceptance.yaml
+    - docs/design-iterations/mep-power-water-freeze-20261003/*
+    - docs/decision_log.md
+    - docs/pending-site-data.md
+    - docs/mep-construction-guidance.md
+    - tests/server/electrical-lint.test.ts
+    - tests/server/render-facts-api.test.ts
+    - tests/server/cli-glb-export.test.ts
+    - data/project-render-facts.json（仅经 npm run generate:project-render-facts 生成）
+  objects: [electrical, plumbing, topology, acceptance, iteration_docs, tests]
+  archetypes: []
+  views: [master_bath, guest_bath, kitchen, living_dining, balcony]
+  changes: [新增点位, 移动点位, 补 note/position_status, 回路合并与拆分, breaker 补漏保, 验收增项, MEP label/reason 同步, 新增 2 条 weak 示意线]
+forbidden:
+  files:
+    - shared/project-render-facts-schema.ts（plumbing type 枚举仅 6 个，扩 schema 风险 > 收益）
+    - config/layout/model-geometry.yaml
+    - config/house.yaml
+    - config/ceiling.yaml
+    - server/**
+    - app/**
+    - config/hvac.yaml
+  objects: [几何, 家具摆位, 吊顶, HVAC 路由几何]
+  assumptions:
+    - "不得替马桶/冰箱/洗烘/报警器拍最终坐标"
+    - "不得把 inferred/pending 的箱体规格、燃气表位、立管位升格为 measured/confirmed"
+    - "不得手工编辑 data/project-render-facts.json"
+  out_of_scope_changes:
+    - git 操作（commit/push/reset/rebase/checkout/clean）
+    - 既有 review-manifest accepted 项的重新裁决
+open_questions:
+  - { id: critical-severity, category: acceptance, question: "4 项 critical（PE/极性、绝缘、30mA RCD、等电位）是否接受进入付款门槛？", options: ["接受（安全底线）", "降为 major（不进门槛）"], selected: 接受（安全底线）, user_response: 方案默认通过，未否决, status: resolved_with_default, fact_refs: [F12], reversal_cost: "仅改 4 个 severity 字符串"}
+  - { id: sku-kickoff, category: procurement, question: "是否现在启动主卫台盆/龙头、马桶 SKU 与燃气公司方案？", options: ["立即启动采购决策", "继续等待交房量房"], selected: 待业主定夺, user_response: 未答复, status: open, fact_refs: [S1, S2, S4, S5], consequence: "未启动则本轮点位只能停在 pending，交底前不会冻结"}
+  - { id: gas-source, category: site_fact, question: "管道天然气还是瓶装液化气？（决定探测器高装/低装）", selected: 假定管道天然气（南宁），site_pending, user_response: 未答复, status: site_pending, fact_refs: [S2, F7]}
+alignment:
+  records:
+    - "业主贴出外部 review，要求给出看法 → 已复核 8 条并补充 6 条（含 GB 55038 7.4.3-2 箱体高度、主卫排污缺口、防溅盒缺项、回路数 vs 箱容量、阳台几何卡死洗烘检修、等电位缺位）"
+    - "业主询问迭代方案 → 提交三分类（A 现在改 / B 按规范合并 / C 验收扩充）计划并获批"
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands:
+    - npm run generate:project-render-facts
+    - npm run verify:all
+    - npm run verify:electrical
+    - npm run verify:schedule
+    - npm run test:server
+    - npm run typecheck
+  browser_evidence_required: false
+  required_views: []
+  aesthetic_review: not_applicable
+  functional_review:
+    verdict: "19 路全量覆盖 66 个 powerable 点位（脚本核对）；所有 type: socket 成员所在回路 breaker 含 +漏保"
+  construction_review: site_pending（马桶/洗烘/冰箱/报警器终坐标依赖 SKU 与量房）
+  blocking_issues: []
+  done_when:
+    - "verify:all 0 error ✅（11 步全过，点位专项 0 error）"
+    - "test:server 在 scope 内全绿 ✅ 545 pass；2 fail 断言 phase_1 ceiling=203000，而 schedule/budget 迭代已改为 206000（外部基线，非本迭代）"
+    - "typecheck 干净 ✅"
+    - "verify:electrical 0 error ✅（45 warning，基线 22，增量均为弱电点位未覆盖与 pending 参数）"
+    - "verify:schedule ✅ exit 0（66 checks；另一迭代同步 roadmap 后通过）"
+    - "五件协议齐全且本 brief frozen: true ✅"
+    - "decision_log DEC-2026-10-03-R1 与 pending-site-data #30-33 追加完成 ✅"
+    - "docs/mep-construction-guidance.md §3.1/3.1a 增补规范依据行 ✅"
+  delivery_notes_required: true
+  validation_record:
+    verified_at: "2026-10-03"
+    topology_integrity: "19 路 / 66 members，全量覆盖、无跨回路重复、所有含 type: socket 的回路 breaker 含漏保"
+    point_placement: "4 新点位 polygon 校验全部落在所属房间；w_ent_west 有效区间 z[0,2.40]"
+    warnings_delta: "electrical 22→45（net_gateway/net_ap 属弱电口径 + 11 条 pending_parameters）；mep 22 持平"
+    external_blockers:
+      - "api.test.ts:74 / budget-api.test.ts:78 仍断言 phase_1 ceiling=203000，而 schedule/budget 迭代已生效 206000——属该迭代待同步的旧断言"
+      - "schedule/phase-1/control.yaml:62 已代修 YAML 语法（未加引号 funding_status: ...），纯语法无内容变更"

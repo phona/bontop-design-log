@@ -9,6 +9,20 @@
   count: 4
   note: "电视墙(西墙): 电视+音响+机顶盒+预留，含USB×2（DEC-013 由z=5.8移至z=7.0，电视柜正后方）"
 
+# DEC-2026-10-03-R1 电视高位取电：tv_65 挂墙，低位柜内插座无法服务电视与音响。
+# 与 sock_living_tv(0.3)/sock_living_tv_led(2.0) 同在 x=7.20 墙带，竖向分层避免同高程堆叠。
+- id: sock_living_tv_high
+  room: living_dining
+  wall: w_st_east
+  wall_side: east
+  type: socket
+  x: 7.20
+  z: 7.70
+  height: 1.70
+  count: 2
+  note: "DEC-2026-10-03-R1 电视/音响背后高位取电（原只有 h=0.3 柜内位，电视挂墙后不可达）+ 自电视背后下引电视柜的 φ25 独立穿线管（HDMI/网线/USB 走管不外露）；强弱电分管，不得共管。挂架承重与 w_st_east 墙体类型（inferred）量房终核"
+
+
 - id: net_living
   room: living_dining
   wall: w_st_east
@@ -400,6 +414,21 @@
   count: 4
   note: "厨房台面带开关插座（DEC-021 定位北墙切配区；但北墙为玻璃幕 suppress_kitchen_north，铁律不可挂载，且原 wall 字段 w_kit_east 与坐标不符——改柜内预留 h=0.3、电源走地面（同洗碗机/净水器），台面取电形式【升降插座/背板穿线】待橱柜深化，量房复核立管）"
 
+# DEC-2026-10-03-R1 灶台段第二取电区：原 4 个台面插座全落在 (8.60,0.30) 一个坐标，
+# 只服务北墙一段柜，烧水/料理/空气炸锅仍要绕到北墙，未形成两个可用取电区。
+# w_ent_west 有效区间 z[0,2.40]（z≥2.40 为客餐厨通长推拉门，无墙可挂）；z=1.70 距 hood(1.2) 0.50m、距 fridge(2.05) 0.35m。
+- id: sock_kitchen_counter_east
+  room: kitchen
+  wall: w_ent_west
+  wall_side: west
+  type: socket
+  x: 10.80
+  z: 1.70
+  height: 0.3
+  count: 1
+  position_status: pending
+  note: "DEC-2026-10-03-R1 灶台段第二取电区（落点在地柜侧板/端板，不在灶具背后）：与 sock_kitchen_counter(8.60,0.30) 构成两个真正可插取的取电分区，同属 ordinary_power_kitchen。取电形式随橱柜深化定，优先级：柜下/端板翻盖 > 侧板电力轨道 > 升降插座（水油环境，最多 1 个，不作为唯一方案）"
+
 - id: sock_kitchen_fridge
   room: kitchen
   wall: w_ent_west
@@ -409,7 +438,7 @@
   z: 2.05
   height: 0.3
   count: 1
-  note: "冰箱插座（DEC-014 移至东墙南端高柜位，DEC-021 随厨房缩界北移，单独回路）"
+  note: "冰箱插座（DEC-014 移至东墙南端高柜位，DEC-021 随厨房缩界北移，单独回路；DEC-2026-10-03-R1：点位位于东墙通顶高柜内 (10.80,2.05) h=0.3——检修时不得靠拉整台冰箱取电，须在柜体侧板/顶格做可及检修口，随橱柜深化）"
 
 - id: sock_kitchen_hood
   room: kitchen
@@ -437,10 +466,10 @@
   wall_side: west
   type: socket
   x: 10.80
-  z: 1.6
-  height: 2.0
+  z: 0.55
+  height: 2.35
   count: 1
-  note: "燃气报警器插座（DEC-021 随灶台北移）"
+  note: "燃气报警器插座（DEC-2026-10-03-R1 由 (10.80,1.60) h=2.0 改至 (10.80,0.55) h=2.35）：原位置距厨房铝扣板吊顶（净高 2.55m）0.55m > 0.3m、距油烟机 (10.80,1.20) 0.40m < 0.5m，高度与水平距离双不合规。新值距顶棚 0.20m、距油烟机/排风口 0.65m、距推断燃气表 (8.0,0.2) 2.82m（<4m 覆盖半径），并避开南侧通长推拉门通风口。依 CJJ/T 146-2011：天然气密度 <1 近顶安装、距灶具及排风口 >0.5m。最终位置与紧急切断阀联动随燃气公司方案冻结；若家用液化气则相反需低装"
 
 - id: switch_kitchen
   room: kitchen
@@ -473,7 +502,8 @@
   z: 1.5
   height: 0.3
   count: 1
-  note: "主卫马桶旁插座（智能盖预留；DEC-2026-09-08-R1 补声明 wall_side west）"
+  position_status: pending
+  note: "主卫马桶旁插座（智能盖预留；DEC-2026-09-08-R1 补声明 wall_side west；DEC-2026-10-03-R1：坐标保留不动但标 pending——与给水 toilet_mbath 同柱同高程 (2.60,1.50)，水口与 220V 插座撞线。水电交底前按马桶 SKU 把角阀与插座横向错开 ≥0.15m 或竖向分层，插座保持可拔插、不被水箱封死；带防溅盒（GB 55038 7.4.5 卫生间插座应加防溅措施））。skU/坑距/落地-壁挂见 pending-site-data #31；壁挂则给水+电+排污全进假墙"
 
 - id: switch_mbath
   room: master_bedroom
@@ -546,7 +576,8 @@
   z: 1.5
   height: 1.2
   count: 1
-  note: "洗衣机插座"
+  position_status: pending
+  note: "洗衣机插座（DEC-2026-10-03-R1：坐标保留但标 pending——h=1.2 落在洗烘叠放体内部（叠放后总高约 1.70m），生活阳台实测仅 1.60×1.20m 且东墙门洞 d_kit_balc 占 z[1.20,2.00]，无侧置检修带可放。SKU 冻结后改机器顶部以上可及位或侧柜管井检修口；排水可继续藏后。见 pending-site-data #33）"
 
 - id: sock_balcony_dryer
   room: balcony
@@ -557,7 +588,8 @@
   z: 1.8
   height: 1.2
   count: 1
-  note: "烘干机插座（叠放）"
+  position_status: pending
+  note: "烘干机插座（叠放；DEC-2026-10-03-R1：同 washer 口径，h=1.2 在叠放体内，标 pending，SKU 冻结后定顶部可及位或侧柜管井检修口；与 washer 拆为两条专用回路——GB 55038 7.4.4 要求 2kW 及以上用电设备回路分别设置。见 pending-site-data #33）"
 
 - id: sock_balcony_waterheater
   room: kitchen
@@ -723,7 +755,8 @@
   z: 3.05
   height: 0.3
   count: 1
-  note: "2026-08-29 客卫南段马桶旁插座（智能盖预留；东墙实体墙西侧，坐东朝西，服务马桶中心 (6.75,3.05)，随真实模型 AABB 调整并避开西侧入口及外门扫掠）"
+  position_status: pending
+  note: "2026-08-29 客卫南段马桶旁插座（智能盖预留；东墙实体墙西侧，坐东朝西，服务马桶中心 (6.75,3.05)，随真实模型 AABB 调整并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与给水 toilet_gbath 同柱同高程 (7.10,3.05) 撞线，同柱另有 sock_gbath_towel h=1.2 与干区地漏 drain_gbath_floor (6.45,3.05)，标 pending——交底前按马桶 SKU 横向错开 ≥0.15m 或竖向分层；插座带防溅盒（GB 55038 7.4.5））。SKU/坑距/落地-壁挂见 pending-site-data #31"
 
 # 阳台电动晾衣架
 - id: sock_balcony_drying
@@ -756,6 +789,27 @@
   height: 0.3
   count: 1
   note: "智能网关/路由位（走廊，房子中央，WiFi覆盖最优；DEC-014 由 z=4.8 移至 w_st_east 有效墙段；⚠️本点位位于电视墙北段通顶高柜（z5.55-6.9 深0.35，DEC-029/031）柜内，柜体深化时必须在此格位留开放格+走线孔并保证散热，不得做成封闭柜门）"
+
+# DEC-2026-10-03-R1 网关位补网口：原只有电源无网口；弱电口径，不进强电回路。
+# Cat6×2：①弱电箱→WAN 上联；②客厅高柜→LAN 回弱电箱交换机。
+- id: net_gateway
+  room: living_dining
+  wall: w_st_east
+  wall_side: east
+  type: network
+  x: 7.20
+  z: 5.70
+  height: 0.3
+  note: "DEC-2026-10-03-R1 主路由/光猫位网口（与 sock_gateway 同柜异格）：2 根 Cat6——WAN 上联自弱电箱、LAN 回弱电箱交换机供各房间网口；φ25 独立管与强电分管。弱电点位归弱电箱系统，不计入强电回路"
+
+# DEC-2026-10-03-R1 吊顶 AP 预留：客厅/走廊天花 PoE AP 网线点（网线预埋现在几乎零成本，后补极难）。
+- id: net_ap_corridor
+  room: living_dining
+  type: network
+  x: 8.60
+  z: 5.80
+  height: 2.5
+  note: "DEC-2026-10-03-R1 客厅/走廊吊顶 PoE AP 预留网线点（客厅中部保持原顶 2.80m，网线藏吊顶空腔）；polygon 校验落在 living_dining；与强电分管敷设"
 
 # === 新增点位（2026-08-02 DEC-013 设计审查） ===
 

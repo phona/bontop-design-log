@@ -1354,3 +1354,29 @@
 - **现场边界**：¥3,000 为业主确认的设备预算；采购前仍需核对具体版本、柜下净空、进水三通、墙排穿墙条件、坡度、电源防溅及检修空间。
 - **关联文件**：`schedule/phase-1/control.yaml`、`schedule/phase-scope.yaml`、`schedule/roadmap.yaml`、`schedule/phase-2/control.yaml`、`docs/design-iterations/phase1-scope-20260912/`
 - **决策人**：业主
+
+### DEC-2026-10-03-R1 水电施工冻结前收口：25 路→19 路、补漏保、燃气报警器合规位、验收扩 9 项
+
+- **日期**：2026-10-03
+- **起因**：业主就一份外部水电 review 征询意见。复核后确认 8 项成立（马桶水+电撞点、厨房台面取电未形成两区、电视壁挂却只有低位柜内电源、网关位有电无网口、洗烘检修位、燃气报警器高度与距离双不合规、冰箱+空调 5 路无漏保、回路拆得过碎），并补充 6 项（主卫无马桶排污点、强电箱安装高度与单/双排合规、两个智能马桶位缺防溅盒、25 路对 390mm 箱容量、全屋无等电位点位、验收只有 2 项）。
+- **选定方案**：
+  1. 点位新增 4 个：`sock_living_tv_high`(7.20,7.70)h=1.70（电视/音响背后高位 + φ25 独立穿线管）、`sock_kitchen_counter_east`(10.80,1.70)h=0.30（灶台段第二取电区）、`net_gateway`(7.20,5.70)（Cat6×2：WAN 上联 + LAN 回弱电箱）、`net_ap_corridor`(8.60,5.80)h=2.5（吊顶 AP 预留）。
+  2. 点位移动 1 个：`sock_kitchen_gas` (10.80,1.60)h=2.0 → (10.80,0.55)h=2.35，满足 CJJ/T 146-2011（天然气近顶安装、距灶具及排风口 >0.5m）。
+  3. 5 个点位标 `position_status: pending` 但不动坐标（马桶×2、洗烘×2、灶台段取电）——SKU 冻结前不拍坐标，并把约束写进 note。
+  4. 水路补齐 `drain_mbath_toilet`(2.60,1.50)h=0.02；主卫坐便器形式/坑距未定，壁挂则给水+电+排污全进假墙。
+  5. 拓扑 25 路 → 19 路（照明 11→5、空调 5→2、普通 5→7、专用 4→5），所有含 type: socket 的回路补 `+漏保`（GB 55038-2025 7.4.3-1）；洗烘按 7.4.4 拆两条；合并依据 7.4.4 为"类型级分别设置"，不要求每房每灯独立。
+  6. 验收 `electrical_check` 从 2 项扩到 11 项（新增 PE/极性、绝缘电阻、30mA RCD 动作、局部等电位、防溅盒、强弱分管、配电箱与进线开关/高度、点位可及性、燃气报警器）；其中 4 项 `critical` 直接进入付款门槛（`control.ts` gateStatus 只认 critical）。
+- **决策依据**：GB 55038-2025 7.4.3-1/2/3、7.4.4、7.4.5、7.4.7；CJJ/T 146-2011；GB 50303 / GB 50327（绝缘、填充率、暗敷禁接头）；几何用 model-geometry 直算（厨房东墙有效区间 z[0,2.40]，z≥2.40 为通长推拉门无墙；生活阳台 1.60×1.20m）。
+- **验证**：19 路全量覆盖 66 个 powerable 点位（脚本核对无遗漏、无跨回路重复、无网络点误入回路）；每一条含 socket 的回路 breaker 均含漏保；polygon 校验新点位全部落在所属房间内。
+- **现场待确认**：① 强电箱单/双排、回路数、进线截面与箱体规格（390mm 箱单排撑死 ~20 位，19 路须双排；单排时箱底边须 ≥1.80m，现 1.65m 仅双排合规）；② 马桶 SKU/坑距/落地-壁挂；③ 燃气气源与燃气公司报警器 + 切断阀方案；④ 空调厂商配电图（能否集中供电、是否必须无漏保硬接线）；⑤ 橱柜台面取电形式；⑥ 洗烘/冰箱 SKU 尺寸与检修带。
+- **关联文件**：`config/electrical.yaml`、`config/plumbing.yaml`、`config/electrical-topology.yaml`、`config/mep-hvac-coordination.yaml`、`config/acceptance.yaml`、`docs/pending-site-data.md`、`docs/mep-construction-guidance.md`、`docs/design-iterations/mep-power-water-freeze-20261003/`、`tests/server/electrical-lint.test.ts`、`tests/server/render-facts-api.test.ts`、`tests/server/cli-glb-export.test.ts`
+- **决策人**：业主（review 与计划审批）；点位终坐标待量房、水电交底与 SKU 定标
+
+### DEC-2026-10-03-R1 验证记录与跨迭代阻塞
+
+- **日期**：2026-10-03
+- **验证结果**：`npm run verify:all` exit 0（11 步全过：点位专项 0 error/6 warning、data-consistency 0 error/6 warning、spatial 0 error/10 warning、rules 0 error/4 warning、furniture 2 warning）；`verify:electrical` 0 error / 45 warning（基线 22，增量全部为 net_gateway/net_ap 的弱电未覆盖告警与 11 条 pending_parameters）；`verify:mep` 0 error / 22 warning（与基线持平）；`verify:schedule` exit 0（66 checks）；`typecheck` 干净；`test:server` 545 pass，2 fail。
+- **2 个 fail 归属**：`tests/server/api.test.ts:74` 与 `tests/server/budget-api.test.ts:78` 仍断言 `phase_1 ceiling = 203000`，而 schedule/budget 迭代已把一期执行上限调整为 206,000（见 `schedule/phase-1/control.yaml`）。属该迭代待同步的旧断言，本迭代不改预算数字。
+- **代修**：`schedule/phase-1/control.yaml:62` 存在未加引号的 `funding_status: owner_review_pending_20261003`，导致整份 schedule YAML 无法解析（连带 `verify:schedule` 与 2 个 server 测试失败）。已改为全角冒号，纯语法修复、无内容变更。
+- **关联文件**：`docs/design-iterations/mep-power-water-freeze-20261003/review-manifest.json`
+- **决策人**：业主（范围）；budget/schedule 数字归 schedule/budget 迭代

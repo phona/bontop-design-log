@@ -1,0 +1,96 @@
+iteration_id: mep-power-water-freeze-20261003
+anchor: wall_anchor
+datum:
+  # === 新增点位 ===
+  - id: sock_living_tv_high
+    anchor: { wall: w_st_east, wall_side: east }
+    plan: "(7.20, 7.70) h=1.70，电视 65\" 背后取电（电视 + 音响 2 位）"
+    elevation: "h=1.70"
+    derivation: "与 sock_living_tv(0.3)/net_living/light_tv_strip(2.0)/sock_living_tv_led(2.0) 同在 x=7.20 墙带，竖向分层避免同高程堆叠；挂装点与挂架承重随 w_st_east 墙体类型（inferred）量房终核"
+    routing: "φ25 独立管自电视背后下引至电视柜，HDMI/网线/USB 不外露；强弱电分管、不得共用一根大管"
+  - id: sock_kitchen_counter_east
+    anchor: { wall: w_ent_west, wall_side: west }
+    plan: "(10.80, 1.70) h=0.30，灶台段第二台面取电区"
+    elevation: "h=0.30"
+    derivation: "w_ent_west 有效区间 z[0,2.40]（z≥2.40 为通长推拉门无墙）；取 z=1.70 距 hood(1.2) 0.50m、距 fridge(2.05) 0.35m，均 ≥0.15m 无贴角；落点在地柜侧板/端板，不在灶具背后"
+    routing: "与 sock_kitchen_counter 同属 ordinary_power_kitchen；形式（侧板翻盖/端板插/轨道）随橱柜深化，升降插座最多 1 个"
+  - id: net_gateway
+    anchor: { wall: w_st_east, wall_side: east }
+    plan: "(7.20, 5.70) h=0.30，主路由位网口（Cat6×2）"
+    elevation: "h=0.30"
+    derivation: "与 sock_gateway 同柜异格（同一柜内服务点）；弱电口径不进强电回路"
+    routing: "2 根 Cat6：①弱电箱→WAN 上联；②客厅高柜→LAN 回弱电箱交换机；第三根 AP 备用由 net_ap_corridor 表达"
+  - id: net_ap_corridor
+    anchor: { plan_point: true }
+    plan: "(8.60, 5.80) h=2.50，客厅/走廊吊顶 PoE AP 预留网线点"
+    elevation: "h=2.50"
+    derivation: "polygon 校验落在 living_dining 内；客厅中部保持原顶 2.80m，网线藏吊顶空腔"
+    routing: "随 weak 干线并列敷设，与强电分管"
+
+  # === 移动点位 ===
+  - id: sock_kitchen_gas
+    anchor: { wall: w_ent_west, wall_side: west }
+    plan: "(10.80, 0.55) h=2.35（原 (10.80,1.60) h=2.0）"
+    elevation: "h=2.35"
+    derivation: "CJJ/T 146-2011：天然气密度 <1 → 顶棚或距顶棚 <0.3m；距灶具及排风口 >0.5m。新值距厨房铝扣板吊顶（净高 2.55m）0.20m、距油烟机 (10.80,1.20) 0.65m、距推断燃气表 (8.0,0.2) 2.82m（<4m 覆盖半径）；避开南侧通长推拉门通风口"
+    site_pending: "燃气气源与燃气公司报警器/紧急切断阀方案；表位（推断 (8.0,0.2)，幕墙段不能挂表）"
+  - id: sock_mbath_toilet
+    anchor: { wall: w_mbath_east, wall_side: west }
+    plan: "(2.60, 1.50) h=0.30 —— 坐标保留不动，标 position_status: pending"
+    elevation: "h=0.30"
+    derivation: "与给水 toilet_mbath 同柱同高程；最终位置按马桶 SKU 错位（横向 ≥0.15m 或竖向分层），插座可拔插、不被水箱封死并加防溅盒（GB 55038 7.4.5）"
+    site_pending: "马桶 SKU/坑距/落地壁挂；壁挂则给水+电+排污全进假墙"
+  - id: sock_gbath_toilet
+    anchor: { wall: w_gbath_east, wall_side: west }
+    plan: "(7.10, 3.05) h=0.30 —— 坐标保留不动，标 position_status: pending"
+    elevation: "h=0.30"
+    derivation: "同柱另有 sock_gbath_towel h=1.2、drain_gbath_floor (6.45,3.05)、给水 toilet_gbath；竖向分层可行，需在交底前统一口径，插座加防溅盒"
+    site_pending: "马桶 SKU/坑距/落地壁挂"
+  - id: sock_kitchen_fridge
+    anchor: { wall: w_ent_west, wall_side: west }
+    plan: "(10.80, 2.05) h=0.30 —— 坐标不动，补可及性约束"
+    derivation: "位于东墙通顶高柜内；不得被冰箱背板封死，需可及检修口或侧柜位，随橱柜深化"
+  - id: sock_balcony_washer
+    anchor: { wall: w_balc_west, wall_side: east }
+    plan: "(5.60, 1.50) h=1.2 —— 坐标不动，标 position_status: pending"
+    derivation: "阳台 1.60×1.20m，洗烘叠放高约 1.70m，h=1.2 在叠放体内；东墙门洞 d_kit_balc 占 z[1.20,2.00]，无侧置检修带"
+    site_pending: "洗衣机/烘干机 SKU 尺寸与开门侧；候选：机器顶部以上可及位、侧柜管井检修口"
+  - id: sock_balcony_dryer
+    anchor: { wall: w_balc_west, wall_side: east }
+    plan: "(5.60, 1.80) h=1.2 —— 坐标不动，标 position_status: pending"
+    derivation: "同 washer 口径；与 washer 拆为两条专用回路（7.4.4：2kW 及以上设备回路分别设置）"
+
+  # === 水路补齐 ===
+  - id: drain_mbath_toilet
+    anchor: { plan_point: true }
+    plan: "(2.60, 1.50) h=0.02，主卫马桶排污口"
+    elevation: "h=0.02"
+    derivation: "对齐马桶中心 (2.60,1.50)；同层排水沉箱，与干区地漏 drain_mbath_floor (2.0,1.15) 是两回事，不得并入地漏"
+    routing: "本轮不画 MEP route——坑距/坐便器形式/排水立管（pending #19）均未定；待 SKU 与量房后单独深化"
+    site_pending: "坑距、落地/壁挂、主卫排水立管位置"
+
+  # === 回路拓扑（25 → 19） ===
+  - id: topology_merge
+    anchor: { panel: panel_strong_entry_left }
+    plan: |
+      lighting 11→5：保留 lighting_dining/living_base/tv_ambient/entry_base（点位带 circuit 事实不可合），
+      其余 7 路合并为 lighting_bedrooms_bath。
+      hvac 5→2：hvac_power_living、hvac_power_bedrooms。
+      dedicated 4→5：冰箱 +漏保、洗碗机、洗烘拆 2 路、卫浴。
+      ordinary 5→7：living(+sock_living_tv_high=11)、master(5)、parent_child(6)、study(3)、
+      service(移出 sock_kitchen_gas=7)、kitchen(+counter_east+gas=6)、garden(1)。
+      合计 19 路、66 members（64 既有 powerable + 2 新插座），全量覆盖。
+    derivation: "GB 55038 7.4.4 为类型级分别设置（照明/空调回路/2kW 以上设备/厨房内插座/其他功能房插座），不要求每房每灯独立，合并不违规；所有 type: socket 成员所在回路补 +漏保（7.4.3-1）"
+    capacity_note: "390mm 箱单排约 20 位、扣 2P 总开+浪涌后约 16 位 → 19 路须双排；单排布置时箱底边须 ≥1.80m（现 1.65m 仅双排合规，7.4.3-2）"
+  - id: panel_incoming_switch
+    plan: "拓扑未建模进线开关：GB 55038 7.4.3-1 要求能同时断开相线与中性线、具隔离功能，并设短路与过负荷保护；7.4.3-3 要求进线 ≥10mm² 铜芯"
+    site_pending: "开箱量尺；属电气交底必核项，本迭代只登记 pending_parameters 与量房清单"
+
+rollback:
+  - "sock_kitchen_gas 若燃气公司方案定在别处：回退 (10.80,0.55) h=2.35 到任一方案位，其余不动"
+  - "sock_kitchen_counter_east 若橱柜深化否决第二取电区：删除该点位并从 ordinary_power_kitchen 成员移除，退回单取电区口径（同时须登记为未解决项）"
+  - "回路合并若现场箱体为单排：保留 19 路但换更大箱体，而非回退合并（合并本身合规）"
+verification:
+  verify_all: "待跑（本迭代完成后回填）"
+  tests: "需同步 electrical-lint.test.ts(25→19, ordinary 37→39)、render-facts-api.test.ts(25→19)、cli-glb-export.test.ts(plumbing 19→20)"
+  evidence: []

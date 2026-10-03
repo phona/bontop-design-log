@@ -1,0 +1,119 @@
+iteration_id: mep-power-water-freeze-20261003
+objects:
+  corrections:
+    - id: sock_kitchen_gas
+      owner: electrical
+      change: "(10.80,1.60) h=2.0 → (10.80,0.55) h=2.35；note 改写为 CJJ/T 146 依据"
+      interfaces: ["ordinary_power_kitchen（新增成员）", "strong-power-kitchen（MEP label/reason 同步）"]
+      validation: ["点位专项", "厨房 polygon  containment", "CJJ/T 146 距离复算"]
+    - id: sock_mbath_toilet
+      owner: electrical
+      change: "坐标不动；补 position_status: pending + 防溅盒/错位约束 note"
+      interfaces: ["ordinary_power_service（成员不变）", "plumbing toilet_mbath（给水同柱）"]
+      validation: ["点位专项", "验收增项 check_elec_splash_socket / check_elec_point_reachability"]
+    - id: sock_gbath_toilet
+      owner: electrical
+      change: "坐标不动；补 position_status: pending + 防溅盒/错位约束 note"
+      interfaces: ["ordinary_power_service", "plumbing toilet_gbath", "sock_gbath_towel（同柱 h=1.2）"]
+      validation: ["点位专项", "check_elec_splash_socket"]
+    - id: sock_kitchen_fridge
+      owner: electrical
+      change: "note 补可及性约束（不得被冰箱背板封死）"
+      interfaces: ["dedicated_kitchen_fridge", "家具：冰箱高柜（follow-up）"]
+      validation: ["check_elec_point_reachability"]
+    - id: sock_balcony_washer
+      owner: electrical
+      change: "position_status: pending + 检修位约束 note"
+      interfaces: ["dedicated_balcony_washer（新回路）", "faucet_balcony_washer（同柱）"]
+      validation: ["点位专项", "家电 SKU 冻结后定坐标"]
+    - id: sock_balcony_dryer
+      owner: electrical
+      change: "position_status: pending + 检修位约束 note"
+      interfaces: ["dedicated_balcony_dryer（新回路，自 dedicated_balcony_washer_dryer 拆出）"]
+      validation: ["点位专项", "家电 SKU 冻结后定坐标"]
+
+  additions:
+    - id: sock_living_tv_high
+      owner: electrical
+      change: "新增 (7.20,7.70) h=1.70 count 2，wall w_st_east/east"
+      interfaces: ["ordinary_power_living", "sock_living_tv / net_living / sock_living_tv_led（同墙带分层）", "strong-power-living（MEP reason 同步）"]
+      validation: ["点位专项", "强弱分管验收"]
+    - id: sock_kitchen_counter_east
+      owner: electrical
+      change: "新增 (10.80,1.70) h=0.30 count 1，wall w_ent_west/west，position_status: pending"
+      interfaces: ["ordinary_power_kitchen", "橱柜侧板/端板取电形式（follow-up）"]
+      validation: ["点位专项", "橱柜深化会签"]
+    - id: net_gateway
+      owner: weak_power
+      change: "新增 (7.20,5.70) h=0.30 network"
+      interfaces: ["sock_gateway（同柜异格）", "weak-gateway 路由", "弱电箱 panel_weak_entry_left"]
+      validation: ["弱电口径不进强电回路（lint 允许 point_uncovered warning）"]
+    - id: net_ap_corridor
+      owner: weak_power
+      change: "新增 (8.60,5.80) h=2.50 network"
+      interfaces: ["weak-ap 路由", "客厅原顶 2.80m 吊顶空腔"]
+      validation: ["点位专项"]
+    - id: drain_mbath_toilet
+      owner: plumbing
+      change: "新增 (2.60,1.50) h=0.02 type drain（主卫马桶排污口补齐）"
+      interfaces: ["toilet_mbath", "主卫排水立管（pending #19）"]
+      validation: ["点位专项", "cli-glb plumbing 计数 19→20"]
+      note: "不画 MEP route；不得并入 drain_mbath_floor 地漏"
+
+  topology:
+    - id: lighting_bedrooms_bath
+      change: "合并原 lighting_master_dome / lighting_parent_dome / lighting_child_dome / lighting_study_dome / lighting_kitchen_panel / lighting_mbath_panel / lighting_gbath_panel（9 members）"
+      interfaces: ["strong-light-master 等 MEP label 同步"]
+    - id: hvac_power_bedrooms
+      change: "合并 hvac_power_master / hvac_power_child / hvac_power_study / hvac_power_parent；breaker 改 C16A+漏保"
+      interfaces: ["strong-ac-master/child/study/parent label 同步", "厂商配电图（pending S7）"]
+    - id: hvac_power_living
+      change: "breaker 改 C16A+漏保"
+      interfaces: ["strong-ac-living"]
+    - id: dedicated_kitchen_fridge
+      change: "breaker 改 C16A+漏保（GB 55038 7.4.3-1）"
+      interfaces: ["strong-ded-fridge"]
+    - id: dedicated_balcony_washer
+      change: "自 dedicated_balcony_washer_dryer 拆出 sock_balcony_washer；C20A+漏保 2.5mm²"
+      interfaces: ["strong-ded-washer-dryer（label 改双回路）"]
+    - id: dedicated_balcony_dryer
+      change: "新增回路 sock_balcony_dryer；C16A+漏保 2.5mm²"
+      interfaces: ["strong-ded-washer-dryer"]
+    - id: ordinary_power_master
+      change: "自 ordinary_power_bedrooms 拆出 5 个主卧点位"
+      interfaces: ["strong-power-master"]
+    - id: ordinary_power_parent_child
+      change: "保留父母房 + 儿童房 6 点位"
+      interfaces: ["strong-power-parent / strong-power-child"]
+    - id: ordinary_power_study
+      change: "书房 3 点位单独成路（电脑+显示器）"
+      interfaces: ["strong-power-study"]
+    - id: ordinary_power_kitchen
+      change: "并入 sock_kitchen_counter_east 与 sock_kitchen_gas（6 members）"
+      interfaces: ["strong-power-kitchen"]
+    - id: ordinary_power_service
+      change: "移出 sock_kitchen_gas（8→7 members）"
+      interfaces: ["strong-power-gbath / strong-power-mbath-service"]
+
+  code:
+    - id: tests_baseline
+      change: "electrical-lint.test.ts circuits 25→19、ordinary_power members 37→39；render-facts-api.test.ts circuits 25→19；cli-glb-export.test.ts plumbing 19→20"
+    - id: generated_facts
+      change: "npm run generate:project-render-facts 重算 data/project-render-facts.json（不手改）"
+
+  tests:
+    - id: acceptance_items
+      change: "acceptance.yaml electrical_check 新增 9 项（4 critical + 5 major）"
+    - id: acceptance_gate_impact
+      change: "control.ts gateStatus 只认 critical → 4 项 critical 进入付款门槛，须业主确认"
+
+  docs:
+    - id: pending_rows
+      change: "pending-site-data.md 追加 #30 强电箱规格/#31 马桶 SKU/#32 燃气气源与切断阀/#33 洗烘冰箱 SKU"
+    - id: guidance_basis
+      change: "docs/mep-construction-guidance.md §3.1 增加 GB 55038 7.4.3/7.4.4/7.4.5/7.4.7 与 CJJ/T 146-2011 依据行"
+    - id: decision_log
+      change: "docs/decision_log.md 追加 DEC-2026-10-03-R1"
+notes:
+  - "本迭代不扩 shared/project-render-facts-schema.ts：plumbing type 枚举仅 6 个，立管/水表/燃气表继续留在 pending-site-data"
+  - "不做 git 操作，不改生成文件，不动几何/家具/吊顶/HVAC 路由几何"

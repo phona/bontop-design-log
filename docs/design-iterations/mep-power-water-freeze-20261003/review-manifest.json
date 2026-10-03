@@ -1,0 +1,115 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "mep-power-water-freeze-20261003",
+  "subject": "水电施工冻结前最后一轮收口（25 路→19 路、补漏保、燃气报警器合规位、验收扩 9 项）",
+  "source_version": {
+    "config_refs": [
+      "config/electrical.yaml",
+      "config/plumbing.yaml",
+      "config/electrical-topology.yaml",
+      "config/mep-hvac-coordination.yaml",
+      "config/acceptance.yaml"
+    ],
+    "source_digest": "electrical 95 点位（51 powerable）/ plumbing 22 点位 / topology 19 路 66 members / mep routes 67 / acceptance 11 项（10 phase）",
+    "tests_touched": [
+      "tests/server/electrical-lint.test.ts",
+      "tests/server/render-facts-api.test.ts",
+      "tests/server/cli-glb-export.test.ts",
+      "tests/server/mep-hvac-coordination.test.ts",
+      "tests/server/mep-hvac-lint.test.ts"
+    ],
+    "generated_files": [
+      "data/project-render-facts.json（经 npm run generate:project-render-facts 重算，未手改）"
+    ]
+  },
+  "state": "delivery_ready",
+  "state_note": "config/验证侧全绿；test:server 仅 2 项 fail，均来自另一迭代把 phase_1 上限 203000→206000 后未同步的旧断言（api.test.ts:74 / budget-api.test.ts:78），不属本迭代范围",
+  "validation": {
+    "generate_project_render_facts": {
+      "status": "passed",
+      "note": "electrical 15 lighting fixtures、plumbing 22"
+    },
+    "verify_all": {
+      "status": "passed",
+      "note": "11 步 0 error；点位专项 0 error/6 warning；data-consistency 0 error/6 warning；spatial 0 error/10 warning；rules 0 error/4 warning；furniture 2 warning"
+    },
+    "verify_electrical": {
+      "status": "passed",
+      "note": "0 error / 45 warning（baseline 22 → 45，增量全部为 point_uncovered [net_gateway/net_ap 属弱电口径] 与 pending_parameter，无新增 error）"
+    },
+    "verify_mep": {
+      "status": "passed",
+      "note": "0 error / 22 warning，与 baseline 持平（新增 2 条 weak 示意线未引入告警）"
+    },
+    "verify_schedule": {
+      "status": "passed",
+      "note": "3 phases / 23 packages / 66 checks；已顺带修复 control.yaml:62 未加引号的 funding_status: ...（纯语法、无内容变更）"
+    },
+    "test_server": {
+      "status": "passed_with_external_failures",
+      "note": "545 pass；2 fail（api.test.ts:74、budget-api.test.ts:78）断言 phase_1 ceiling=203000，而 schedule/budget 迭代已改为 206000"
+    },
+    "typecheck": {
+      "status": "passed"
+    }
+  },
+  "evidence": [
+    {
+      "id": "topology-integrity-script",
+      "url": "runtime check（脚本核对）",
+      "ready": true,
+      "snapshot": "19 路 / 66 members；66 = 64 既有 powerable + 2 新插座；0 未覆盖、0 跨回路重复、0 网络点误入回路；所有含 type:socket 的回路 breaker 均含 +漏保"
+    },
+    {
+      "id": "new-point-placement-script",
+      "url": "runtime check（polygon 校验）",
+      "ready": true,
+      "snapshot": "sock_living_tv_high (7.20,7.70) / sock_living_gateway (7.20,5.70) / net_ap_corridor (8.60,5.80) 落在 living_dining；sock_kitchen_counter_east (10.80,1.70) / sock_kitchen_gas (10.80,0.55) 落在 kitchen；w_ent_west 有效区间 z[0,2.40] 已避让（z≥2.40 为通长推拉门）"
+    },
+    {
+      "id": "gas-alarm-cjjt146-recheck",
+      "url": "几何复算",
+      "ready": true,
+      "snapshot": "距厨房扣板吊顶（净高 2.55m）0.20m < 0.3m；距油烟机/排风口 0.65m > 0.5m；距推断燃气表 2.82m < 4m 覆盖半径"
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "not_applicable",
+    "blocking_issues": []
+  },
+  "functional_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "notes": "4 个新点位全部可服务既有失效场景；2 个新增弱电网点补齐主路由 WAN/回程与 AP 预留；主卫马桶排污口补齐"
+  },
+  "construction_review": {
+    "verdict": "site_pending",
+    "blocking_issues": [
+      "强电箱单/双排、回路数、进线截面未开箱确认（19 路需双排；单排时箱底边须 ≥1.80m，现 1.65m 仅双排合规）",
+      "马桶/洗烘/冰箱 SKU 未定，5 个点位停在 position_status: pending",
+      "燃气气源与燃气公司报警器/切断阀方案未定",
+      "中央空调厂商配电图未定（能否集中供电、是否必须无漏保硬接线）"
+    ]
+  },
+  "retrospective": {
+    "what_worked": [
+      "先写五件协议再动 config，frozen 闸门让 review 的 8 项 + 6 项补充有编号可追溯",
+      "外部 review 的规范引用逐条核对后引用（7.4.3-1/2/3、7.4.4、7.4.5、7.4.7、CJJ/T 146-2011），避免把二手结论当事实",
+      "几何卡死（厨房东墙 z≥2.40 是通长推拉门、阳台 1.60×1.20m）用 polygon 脚本先验，未产生新的点位 error"
+    ],
+    "what_to_improve": [
+      "验证链里 verify:schedule 与 test:server 依赖 schedule/budget 迭代的在途数字，跨迭代时应先同步 roadmap 再宣称 done_when",
+      "食品一句一行的长 note 已接近上限，后续考虑把 SKU 依赖拆到 fact-table 而不是全塞 note"
+    ]
+  },
+  "delivery": {
+    "status": "delivered",
+    "handover_notes": [
+      "schedule/phase-1/control.yaml:62 已代修 YAML 语法错误（未加引号的 funding_status: ...）——纯语法修复、无内容变更；该行属 schedule/budget 迭代",
+      "api.test.ts:74 与 budget-api.test.ts:78 仍断言 phase_1 ceiling 203000，与已生效的 206000 不一致，请 schedule/budget 迭代同步这两个断言"
+    ],
+    "blocking_owner": "schedule/budget 迭代（2 条旧预算断言）",
+    "expected_unblock": "把 api.test.ts / budget-api.test.ts 的 203000 改为 206000 即全绿"
+  }
+}

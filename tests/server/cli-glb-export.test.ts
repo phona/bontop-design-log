@@ -188,8 +188,8 @@ test('CLI builds shower plumbing fixtures from plumbing.yaml without replacing s
     assert.equal(object.parent, exportRoot);
     return object;
   });
-  assert.equal(report.plumbing, 19);
-  assert.equal(index.plumbing.size, 19);
+  assert.equal(report.plumbing, 20);
+  assert.equal(index.plumbing.size, 20); // DEC-2026-10-03-R1：+drain_mbath_toilet 主卫马桶排污口
   assert.ok(Math.abs(showers[0].position.x - 0.5) < 1e-6);
   assert.ok(Math.abs(showers[0].position.y) < 1e-6);
   assert.ok(Math.abs(showers[0].position.z - 2.785) < 1e-6, `master shower z=${showers[0].position.z}`);
