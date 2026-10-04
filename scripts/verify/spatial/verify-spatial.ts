@@ -361,7 +361,19 @@ function hostWallClearance(box: Aabb3, wallEntries: BoxEntry[], side: string): n
 
 function parseRenderFixtureHeights(): Map<string, number> {
   const overrides = parseRenderLightingOverrides(readFileSync(path.join(ROOT, 'config/render/overrides.yaml'), 'utf8'));
-  return new Map(overrides.map((override) => [override.id, override.anchorY]));
+  const electrical = new Map<string, number>();
+  for (const point of parseElectricalPoints(readFileSync(path.join(ROOT, 'config/electrical.yaml'), 'utf8'))) {
+    if (point.height !== undefined) electrical.set(point.id, point.height);
+  }
+  // 渲染锚点 = electrical.height（施工安装完成面，唯一事实源）+ anchorY_offset。
+  // overrides.yaml 只存相对偏移，因此这里必须回查电气源，与投影派生处保持同一算法。
+  const heights = new Map<string, number>();
+  for (const override of overrides) {
+    const base = electrical.get(override.id);
+    if (base === undefined) continue;
+    heights.set(override.id, base + override.anchorY_offset);
+  }
+  return heights;
 }
 
 function renderLightingFixtures(electrical: ElectricalPoint[]): RenderLightingFixture[] {

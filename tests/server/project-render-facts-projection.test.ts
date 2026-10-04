@@ -24,7 +24,8 @@ const scheme: CurrentScheme = {
 };
 
 function override(id = 'light_1'): RenderLightingOverride {
-  return { id, anchorY: 2.55, offsetX: 0.15, reason: 'Audited render anchor.', applies_to: ['web', 'blender'] };
+  // anchorY 不再写在 overrides 里：渲染挂点 = electrical.height(2.8) + anchorY_offset。
+  return { id, anchorY_offset: -0.25, offsetX: 0.15, basis: 'dome shade thickness', reason: 'Audited render anchor.', applies_to: ['web', 'blender'] };
 }
 
 function overrides(...ids: string[]): RenderLightingOverride[] {
@@ -86,7 +87,8 @@ describe('buildProjectRenderFactsProjection', () => {
     const wallLamp = projection.lightingFixtures.find((fixture) => fixture.id === 'wall_1');
     assert.deepEqual(wallLamp, {
       id: 'wall_1', room: 'living', type: 'wall_lamp',
-      position: { x: 4.15, y: 2.55, z: 5 }, temperatureK: 3000, enabled: true,
+      // 派生锚点 = electrical.height(1.35) + anchorY_offset(-0.25)
+      position: { x: 4.15, y: 1.1, z: 5 }, temperatureK: 3000, enabled: true,
       wallId: 'wall-east', wallSide: 'west',
     });
   });
@@ -114,7 +116,7 @@ describe('buildProjectRenderFactsProjection', () => {
 
   it('preserves concrete plumbing, ceiling, and three floor overrides in the render projection', () => {
     const concreteFacts: ProjectRenderFacts = {
-      electrical: [{ id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2 }],
+      electrical: [{ id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8 }],
       plumbing: [
         { id: 'faucet_mbath_vanity', room: 'master_bath', type: 'faucet', x: 2.6, z: 2.8 },
         { id: 'drain_kitchen_dishwasher', room: 'kitchen', type: 'drain', x: 9, z: 0.3 },

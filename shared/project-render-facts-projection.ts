@@ -52,13 +52,19 @@ export function buildProjectRenderFactsProjection(
   const lightingFixtures = fixtures.map((fixture) => {
     const override = overrideById.get(fixture.id);
     if (!override) throw new Error(`Missing render override for lighting fixture ${fixture.id}`);
+    if (fixture.height === undefined) {
+      throw new Error(`Lighting fixture ${fixture.id} has no electrical.height: render anchor must derive from the single source of truth`);
+    }
     return {
       id: fixture.id,
       room: fixture.room,
       type: fixture.type,
       position: {
         x: renderCoordinate(fixture.x + (override.offsetX ?? 0)),
-        y: renderCoordinate(override.anchorY),
+        // 渲染锚点在**此处**派生：electrical.height（施工安装完成面，唯一事实源）
+        // + overrides.anchorY_offset（渲染侧相对偏移）。overrides.yaml 不再重复
+        // 书写高度绝对值，从结构上消灭双写。
+        y: renderCoordinate(fixture.height + override.anchorY_offset),
         z: renderCoordinate(fixture.z + (override.offsetZ ?? 0)),
       },
       temperatureK: fixture.temp ?? 3000,

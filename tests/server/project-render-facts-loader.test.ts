@@ -15,6 +15,7 @@ const electrical = `- id: socket_1
   type: dome
   x: 1.5
   z: 2.5
+  height: 2.8
 `;
 const plumbing = `- id: faucet_1
   room: kitchen
@@ -35,7 +36,8 @@ const hvac = `plans:
     diagram: { anchors: [], terminals: [], routes: [], reference_constraints: [] }
 `;
 const overrides = `- id: light_1
-  anchorY: 2.8
+  anchorY_offset: 0
+  basis: flush with the construction height
   reason: render anchor
   applies_to: [web, blender]
 `;
@@ -71,13 +73,13 @@ describe('ProjectRenderFactsLoader', () => {
     assert.deepEqual(loader.getFacts(), {
       electrical: [
         { id: 'socket_1', room: 'living', type: 'socket', x: 1, z: 2 },
-        { id: 'light_1', room: 'living', type: 'dome', x: 1.5, z: 2.5 },
+        { id: 'light_1', room: 'living', type: 'dome', x: 1.5, z: 2.5, height: 2.8 },
       ],
       plumbing: [{ id: 'faucet_1', room: 'kitchen', type: 'faucet', x: 3, z: 4 }],
       ceiling: [{ id: 'ceiling_1', room: 'living', type: 'drop', thickness: 0.2, area: [0, 0, 1, 1] }],
       hvac: { plans: [{ id: 'A2', kind: 'vrf_ducted', outdoor: { id: 'outdoor_1', platform: 'platform', x: 1, z: 2, direction: 'south', width: 1, depth: 1, height: 1, model: 'VRF' }, diagram: { anchors: [], terminals: [], routes: [], reference_constraints: [] } }] },
     });
-    assert.deepEqual(loader.getOverrides(), [{ id: 'light_1', anchorY: 2.8, reason: 'render anchor', applies_to: ['web', 'blender'] }]);
+    assert.deepEqual(loader.getOverrides(), [{ id: 'light_1', anchorY_offset: 0, basis: 'flush with the construction height', reason: 'render anchor', applies_to: ['web', 'blender'] }]);
     assert.equal(loader.getStatuses().every((status) => status.status === 'ok'), true);
   });
 

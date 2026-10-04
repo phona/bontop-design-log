@@ -446,6 +446,17 @@ export interface BudgetSnapshot {
   phaseUnallocated?: number;
   projectCeiling?: number;
   overCeilingBy?: number;
+  /**
+   * 作废口径留档（config/budget/base.json 的四池快照），只读展示、不参与任何计算。
+   * 经 schedule/phase-1/control.yaml `budget_reconciliation.historical_baseline` 段露出，
+   * 该段自带 `status: historical_reference_only` 与 source 标注。
+   */
+  historicalBaseline?: {
+    source: string;
+    totalBudgetCny: number;
+    projectCeilingCny: number;
+    status: string;
+  };
   categories: BudgetCategory[];
   lineItems: BudgetLineItem[];
   attribution?: Record<string, BudgetAttribution>;
@@ -1083,12 +1094,22 @@ export interface LightingRenderConfig {
   fixtures: DetailedLightingFixtureConfig[];
 }
 
-/** Render-only anchor adjustments; never write these values back to MEP facts. */
+/**
+ * Render-only anchor adjustments; never write these values back to MEP facts.
+ *
+ * `anchorY_offset` 是**相对** config/electrical.yaml `height`（施工安装完成面）的
+ * 渲染挂点偏移（米，正数更高）。派生锚点 = height + anchorY_offset，只在
+ * shared/project-render-facts-projection.ts 一处计算。本结构里**不存在**第二个
+ * 高度绝对值——那正是重构前 `anchorY` 与 `height` 双写 8 处不一致的病根。
+ */
 export interface RenderLightingOverride {
   id: string;
-  anchorY: number;
+  anchorY_offset: number;
   offsetX?: number;
   offsetZ?: number;
+  /** 偏移依据：为什么这个渲染挂点不等于安装完成面。facts 契约 c.light_height_parity 强制必填。 */
+  basis: string;
+  /** 历史审计留档（Blender 基线审计记录 / 整改决议），与 basis 互补。 */
   reason: string;
   applies_to: ['web', 'blender'];
 }

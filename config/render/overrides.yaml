@@ -1,62 +1,96 @@
-# Render-only lighting anchors. Do not write these values back to electrical.yaml.
+# Render-only lighting anchors.
+#
+# 单一事实源约定（AGENTS.md 反双写铁律）
+# ──────────────────────────────────────────────────────────────────
+# `config/electrical.yaml` 的 `height` 是**施工安装完成面高度**（电气/施工口径，
+# 决定底盒、吊顶开孔与人体可达性），本文件不再重复书写该绝对值，只登记
+# `anchorY_offset`：**渲染挂点相对 electrical.height 的偏移**（米，正数更高）。
+#
+#   渲染锚点 anchorY = electrical.height + anchorY_offset
+#
+# 派生发生在 shared/project-render-facts-projection.ts（唯一计算处），
+# 渲染端拿到的永远是派生后的绝对值，因此本文件不存在第二个高度事实。
+#
+# 每一条 offset 必须写 `basis`：说明为什么这个渲染挂点不等于安装完成面
+# （灯罩厚度、吊顶完成面、既有边吊嵌入、视觉校正等）。offset 的绝对值
+# 由 config/facts.yaml `c.light_height_parity` 限定在 0.5m 以内。
+#
+# 历史留档：2026-10-04 之前本文件直接写 `anchorY: <绝对值>`，与 electrical.height
+# 双写 8 处不一致（2.8 vs 2.55/2.3/2.5）。重构时逐条换算为相对偏移，
+# 派生锚点与重构前完全一致（data/project-render-facts.json 零变化）。
 - id: light_dining_pendant
-  anchorY: 2.8
+  anchorY_offset: 0
+  basis: "餐桌吊灯挂点即安装完成面（2.8m），无灯体下沉，渲染与施工同高"
   reason: "已审计 Blender 基线：餐桌吊灯的最终渲染锚点。"
   applies_to: [web, blender]
 - id: living_track_main
-  anchorY: 2.8
+  anchorY_offset: 0
+  basis: "明装轨道灯贴安装完成面（2.8m）表现明装导轨，不模拟吊顶下沉"
   reason: "已审计 Blender 基线：客厅黑色明装轨道灯的最终渲染锚点。"
   applies_to: [web, blender]
 - id: light_tv_strip
-  anchorY: 2.0
+  anchorY_offset: 0
   offsetX: 0.15
+  basis: "电视墙灯带挂在安装完成面（2.0m）上，出光方向朝下，无需下沉表现灯体"
   reason: "已审计 Blender 基线：电视墙灯带保持施工高度，并向室内偏移 0.15m。"
   applies_to: [web, blender]
 - id: light_master_dome
-  anchorY: 2.55
+  anchorY_offset: -0.25
+  basis: "吸顶筒灯贴吊顶完成面下 25cm，用于表现灯罩厚度与出光半球（安装完成面 2.8m 为底盒/接线高度）"
   reason: "已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m。"
   applies_to: [web, blender]
 - id: light_master_wall_l
-  anchorY: 1.35
+  anchorY_offset: 0
+  basis: "床头壁灯为墙面明装，安装高度 1.35m 即灯具中心高度，无吊顶完成面可偏移"
   reason: "2026-09-04 R2：床头壁灯降至 1.35m 阅读高度（枕头区成组，与 electrical.yaml height=1.35 对齐；覆盖旧 Blender 基线 1.6m 口径，候选未冻结，施工前按床架真实外廓终核）。"
   applies_to: [web, blender]
 - id: light_master_wall_r
-  anchorY: 1.35
+  anchorY_offset: 0
+  basis: "床头壁灯为墙面明装，安装高度 1.35m 即灯具中心高度，无吊顶完成面可偏移"
   reason: "2026-09-04 R2：床头壁灯降至 1.35m 阅读高度（枕头区成组，与 electrical.yaml height=1.35 对齐；覆盖旧 Blender 基线 1.6m 口径，候选未冻结，施工前按床架真实外廓终核）。"
   applies_to: [web, blender]
 - id: light_parent_dome
-  anchorY: 2.55
+  anchorY_offset: -0.25
+  basis: "父母房吸顶筒灯贴吊顶完成面下 25cm，用于表现灯罩厚度与出光半球"
   reason: "已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m。"
   applies_to: [web, blender]
 - id: light_child_dome
-  anchorY: 2.55
+  anchorY_offset: -0.25
+  basis: "儿童房吸顶筒灯贴吊顶完成面下 25cm，用于表现灯罩厚度与出光半球"
   reason: "已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m。"
   applies_to: [web, blender]
 - id: light_study_dome
-  anchorY: 2.3
+  anchorY_offset: -0.5
+  basis: "书房吸顶灯嵌入顶面，渲染锚点压到 2.3m（低于安装完成面 50cm）以避免灯具形体穿出吊顶完成面"
   reason: "已审计 Blender 基线：书房吸顶灯为避免嵌入顶面，最终渲染锚点为 2.30m。"
   applies_to: [web, blender]
 - id: light_corridor_1
-  anchorY: 2.5
+  anchorY_offset: -0.3
+  basis: "走廊口筒灯嵌入既有 ceiling_living 边吊，挂点低于安装完成面 30cm 以落在边吊饰面内"
   reason: "走廊口筒灯嵌入既有 ceiling_living 边吊，不新增吊顶；坐标由原 (7.9,5.75) 调整至既有边吊合法范围。"
   applies_to: [web, blender]
 - id: light_entry_down
-  anchorY: 2.8
+  anchorY_offset: 0
+  basis: "玄关筒灯明装贴安装完成面（2.8m），无吊顶下沉"
   reason: "已审计 Blender 基线：玄关筒灯最终渲染锚点。"
   applies_to: [web, blender]
 - id: light_entry_foyer
-  anchorY: 2.5
+  anchorY_offset: 0
+  basis: "室内门厅筒灯饰圈贴既有门厅吊顶完成面，与其电气安装高度 2.5m 同高，无额外下沉"
   reason: "2026-08-26 灯光整改：light_entry_foyer 按既有玄关吊顶内嵌安装表现，饰圈贴完成面；沿用 anchorY=2.5，不改吊顶。"
   applies_to: [web, blender]
 - id: light_kitchen_panel
-  anchorY: 2.55
+  anchorY_offset: -0.25
+  basis: "厨房平板灯贴铝扣板吊顶完成面下 25cm，用于表现灯体厚度与出光面"
   reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
   applies_to: [web, blender]
 - id: light_mbath_panel
-  anchorY: 2.55
+  anchorY_offset: -0.25
+  basis: "主卫平板灯贴卫浴吊顶完成面下 25cm，用于表现灯体厚度与出光面"
   reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
   applies_to: [web, blender]
 - id: light_gbath_panel
-  anchorY: 2.55
+  anchorY_offset: -0.25
+  basis: "客卫平板灯贴卫浴吊顶完成面下 25cm，用于表现灯体厚度与出光面"
   reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
   applies_to: [web, blender]

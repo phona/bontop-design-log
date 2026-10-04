@@ -175,7 +175,7 @@ export const PlumbingPointProjectionSchema = z.object({
 }).strict();
 export const CeilingZonesSchema = z.array(CeilingZoneSchema);
 export const ProjectRenderFactsSchema = z.object({ electrical: ElectricalPointsSchema, plumbing: PlumbingPointsSchema, ceiling: CeilingZonesSchema, hvac: ProjectHvacFactsSchema }).strict();
-export const RenderLightingOverrideSchema = z.object({ id: z.string(), anchorY: finiteNumber, offsetX: finiteNumber.optional(), offsetZ: finiteNumber.optional(), reason: nonEmpty, applies_to: z.tuple([z.literal('web'), z.literal('blender')]) }).strict();
+export const RenderLightingOverrideSchema = z.object({ id: z.string(), anchorY_offset: finiteNumber, offsetX: finiteNumber.optional(), offsetZ: finiteNumber.optional(), basis: nonEmpty, reason: nonEmpty, applies_to: z.tuple([z.literal('web'), z.literal('blender')]) }).strict();
 export const RenderLightingOverridesSchema = z.array(RenderLightingOverrideSchema);
 const TrackLightHeadPurposeSchema = z.enum(['coffee_table', 'sofa', 'living_seating', 'living_south_or_corner']);
 const TrackLightHeadSchema = z.object({
