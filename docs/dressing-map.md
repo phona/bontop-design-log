@@ -2,6 +2,8 @@
 
 生成：2026-09-06，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
+数据规模：house.yaml furnishings 共 92 件（与 `fact.furnishings_count` 对账）。
+
 用法：glb 导入 Twinmotion 后按本表替换材质/家具/灯光；reimport 同名 glb 时材质覆盖按节点名保留。
 
 ## 1. 房间/地面材料 → Twinmotion 材质替换建议

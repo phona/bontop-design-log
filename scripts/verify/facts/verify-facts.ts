@@ -106,7 +106,7 @@ const workspace: FactsWorkspace = {
     // 注意：登记表自身（config/facts.yaml）引用事实而不承载事实，必须从扫描域里排除，
     // 否则它写的每一个 `ref: 'DEC-045'` / 反引号 id 都会被当成真引用，既虚增计数又污染定位。
     'scan.files': walk(['config', 'docs', 'schedule'], /^(node_modules|\.git)$/).filter((f) => f !== REGISTRY),
-    'contract.files': walk(['config', 'shared', 'docs', 'schedule', 'server', 'tests', 'data'], /^(node_modules|\.git)$/).filter((f) => f !== REGISTRY),
+    'contract.files': [...walk(['config', 'shared', 'docs', 'schedule', 'server', 'tests', 'data'], /^(node_modules|\.git)$/), 'README.md'].filter((f) => f !== REGISTRY),
     'coverage.files': coverageFiles,
     'layout.rooms': layoutRooms,
     'layout.floor_regions': layoutFloorRegions,

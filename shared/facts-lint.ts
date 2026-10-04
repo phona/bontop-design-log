@@ -67,7 +67,7 @@ export interface FactsWorkspace {
 // ─── 登记表类型 ──────────────────────────────────────────────────────────────
 
 export interface ScanScalar { id: string; pattern: string }
-export interface ScanExempt { path: string; scalars?: string[]; pattern: string; reason: string }
+export interface ScanExempt { path: string; scalars?: string[]; pattern: string; reason: string; /** 待决事项；填了它引擎会在 INFO 里列出该豁免 */ pending?: string }
 export interface Scan {
   include?: string[];
   exclude?: string[];
@@ -88,7 +88,11 @@ export interface FactMirror {
   tolerance?: number;
 }
 
-export interface FactExempt { path: string; pattern: string; reason: string }
+export interface FactExempt { path: string; pattern: string; reason: string; /** 待决事项：写「等谁裁决什么」。填了它，引擎会在 INFO 里列出该豁免，而不是让它在报告里静默消失。 */ pending?: string }
+
+export type Exemption =
+  | { kind: 'fact'; id: string; entry: FactExempt }
+  | { kind: 'scan'; entry: ScanExempt };
 
 export interface Fact {
   id: string;
@@ -103,12 +107,27 @@ export interface Fact {
   enabled?: boolean;
 }
 
-export type ContractKind = 'unique' | 'fk' | 'requires' | 'non_empty' | 'mutex' | 'sum' | 'parity' | 'overlap';
+export type ContractKind =
+  | 'unique'
+  | 'fk'
+  | 'requires'
+  | 'requires_when'
+  | 'non_empty'
+  | 'mutex'
+  | 'sum'
+  | 'parity'
+  | 'overlap'
+  | 'count'
+  | 'pointer'
+  | 'type_ref'
+  | 'supersede';
 
 export interface Contract {
   id: string;
   kind: ContractKind;
   severity?: FactsLintLevel;
+  /** 待决事项：契约已登记但当前 0 命中（词汇表尚未启用）时，在报告 INFO 里单列露面。 */
+  pending?: string;
   [field: string]: unknown;
 }
 
@@ -167,6 +186,13 @@ function firstArray(v: unknown): unknown[] | undefined {
     for (const value of Object.values(v)) if (Array.isArray(value)) return value;
   }
   return undefined;
+}
+
+/** 递归条目数：数组 → 长度；映射 → 各值递归条目数之和；标量 → 0。 */
+function countAll(node: unknown): number {
+  if (Array.isArray(node)) return node.length;
+  if (isRecord(node)) return Object.values(node).reduce((sum: number, v) => sum + countAll(v), 0);
+  return 0;
 }
 
 /** 数值归一化：去逗号/货币符/空白/单位，取首个数字。 */
@@ -318,8 +344,12 @@ interface Resolved { ok: boolean; value?: number; detail: string }
 
 function applyOp(current: unknown, op: string, doc: unknown): unknown {
   if (op === 'length') return Array.isArray(current) ? current.length : undefined;
+  if (op === 'keys') return Array.isArray(current) ? current.length : isRecord(current) ? Object.keys(current).length : undefined;
   if (op === 'bbox_area') return round4(bboxArea(polygonOf(current, vertexTable(doc))));
   if (op === 'shoelace') return round4(shoelace(polygonOf(current, vertexTable(doc))));
+  // 递归条目数：数组 → 元素数；映射 → 各值递归条目数之和。
+  // 用于 `furnishings: { room: [...] }` 这类「按房间分组的条目数组」（92 件家具）。
+  if (op === 'count_all') return countAll(current);
   if (op.startsWith('field_sum:')) {
     const field = op.slice('field_sum:'.length);
     if (!Array.isArray(current)) return undefined;
@@ -526,15 +556,18 @@ function contractLevel(contract: Contract, fallback: FactsLintLevel = 'error'): 
   return contract.severity === 'warning' ? 'warning' : fallback;
 }
 
-/** 契约层的文件全集；入口注入 `contract.files`，缺省时退回 `scan.files`。 */
-function contractPaths(ws: FactsWorkspace, spec: unknown, datasetsKey: string): string[] {
+/** 契约层的文件全集；入口注入 `contract.files`，缺省时退回 `scan.files`。
+ *  `spec` 是包含前缀列表；`contract.exclude` 是排除前缀列表（时间序档案、迭代留档）。 */
+function contractPaths(ws: FactsWorkspace, spec: unknown, datasetsKey: string, excludeSpec?: unknown): string[] {
   const prefixes = stringList(spec);
   if (!prefixes.length) return [];
+  const excludes = stringList(excludeSpec);
   const fromKey = ws.datasets?.[datasetsKey];
   const universe = Array.isArray(fromKey)
     ? stringList(fromKey)
     : Array.isArray(ws.datasets?.['scan.files']) ? stringList(ws.datasets?.['scan.files']) : [];
-  return universe.filter((file) => prefixes.some((p) => pathMatches(p, file)));
+  return universe.filter((file) =>
+    prefixes.some((p) => pathMatches(p, file)) && !excludes.some((p) => pathMatches(p, file)));
 }
 
 /** T3.1 unique：pattern 首捕为 id；allow_suffix 命中的视为补充条目，不与正牌判重。 */
@@ -676,40 +709,95 @@ function runFk(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, co
   }
 }
 
-function collectMatches(node: unknown, field: string, equals: unknown, out: Array<Record<string, unknown>>): void {
+function collectMatches(
+  node: unknown,
+  field: string,
+  equals: unknown,
+  out: Array<Record<string, unknown>>,
+  accept?: (node: Record<string, unknown>, key: string) => boolean,
+): void {
   if (Array.isArray(node)) {
-    for (const entry of node) collectMatches(entry, field, equals, out);
+    for (const entry of node) collectMatches(entry, field, equals, out, accept);
     return;
   }
   if (!isRecord(node)) return;
-  if (node[field] === equals) out.push(node);
-  for (const value of Object.values(node)) collectMatches(value, field, equals, out);
+  if (accept ? accept(node, field) : node[field] === equals) out.push(node);
+  for (const value of Object.values(node)) collectMatches(value, field, equals, out, accept);
 }
 
-/** T3.3 requires：path 里所有 field==equals 的对象，同级必须带齐 then 字段。 */
+/** T3.3 requires / requires_when：path 里所有命中 when 条件的对象，同级必须带齐 then 字段。
+ *
+ * 泛化（相比最初的版本）：
+ *   - `when.equals` 之外支持 `when.exists: true`：凡**声明了** `when.field` 的对象
+ *     即纳入检查（不管取值）。用于「声明了 X 就必须同时声明 Y」这类契约，例如
+ *     overrides.yaml 里声明了 `anchorY_offset` 就必须写 `basis`。
+ *   - `when.pattern: '<regex>'`：按正则匹配字段值，覆盖同义状态词
+ *     （`locked` / `budget_pool_locked` 都算锁定态），避免状态词一改契约就静默失效。
+ *   - `max_abs: N`：额外要求 `when.field` 的数值绝对值 ≤ N，越界报
+ *     `required_field_out_of_range`。语义是「这个偏移量有据且在合理区间」，
+ *     比「两个绝对值碰巧相等」更接近真实意图。
+ *   - `min_matches: N`：命中对象数不得少于 N。**默认 0（即不检查）**，但登记时若显式写了
+ *     `min_matches: 1`，就表示「这条契约现在必须真的在管东西」——命中 0 条往往意味着
+ *     状态词/字段名被改过，契约已静默空转（比没有检查更糟）。
+ */
 function runRequires(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
   const path = str(contract.path);
   const doc = ws.load(path);
   if (doc === null) return;
   const when = isRecord(contract.when) ? contract.when : {};
   const field = str(when.field);
-  const equals = when.equals;
   const then = stringList(contract.then);
   if (!field || !then.length) return;
+  const pattern = str(when.pattern);
+  const patternRe = pattern ? tryRegex(pattern) : undefined;
+  const existsMode = when.exists === true;
+  const maxAbs = typeof contract.max_abs === 'number' && Number.isFinite(contract.max_abs) ? contract.max_abs : undefined;
   const hits: Array<Record<string, unknown>> = [];
-  collectMatches(doc, field, equals, hits);
+  if (existsMode) collectMatches(doc, field, undefined, hits, (node, key) => node[key] !== undefined && node[key] !== null);
+  else if (patternRe) collectMatches(doc, field, undefined, hits, (node, key) => patternRe.test(String(node[key] ?? '')));
+  else collectMatches(doc, field, when.equals, hits);
+  const minMatches = typeof contract.min_matches === 'number' ? contract.min_matches : undefined;
+  if (minMatches !== undefined && hits.length < minMatches) {
+    const condition = existsMode ? `声明了 ${field}` : pattern ? `${field} 匹配 /${pattern}/` : `${field}=${String(when.equals)}`;
+    add(result, issue(
+      contractLevel(contract),
+      'required_condition_unmatched',
+      `${contract.id}：${path} 中${condition}的对象只有 ${hits.length} 个，少于登记的 min_matches=${minMatches}——该契约当前没有管到任何条目（状态词/字段名是否被改过？）`,
+      path,
+    ));
+    tally(result, 'required_condition_unmatched');
+  }
   for (const hit of hits) {
     const missing = then.filter((key) => hit[key] === undefined || hit[key] === null);
-    if (!missing.length) continue;
+    if (!missing.length && maxAbs === undefined) continue;
     const id = typeof hit.id === 'string' ? hit.id : '(无 id)';
-    const item = issue(
-      contractLevel(contract),
-      'required_field_missing',
-      `${contract.id}：${path} 中 ${field}=${String(equals)} 的 ${id} 缺少 ${missing.join('、')}`,
-      path,
-    );
-    add(result, item);
-    tally(result, item.code);
+    const condition = existsMode ? `声明了 ${field} 的` : pattern ? `${field} 匹配 /${pattern}/ 的` : `${field}=${String(when.equals)} 的`;
+    if (missing.length) {
+      const item = issue(
+        contractLevel(contract),
+        'required_field_missing',
+        `${contract.id}：${path} 中${condition} ${id} 缺少 ${missing.join('、')}`,
+        path,
+      );
+      add(result, item);
+      tally(result, item.code);
+    }
+    if (maxAbs !== undefined) {
+      // max_abs 默认约束 when.field 自身；`max_abs_field` 可改约束同级的另一个数值字段
+      // （如 when 按 type 命中、却要约束 height：灯具安装高度不得超出室内净高）。
+      const raw = hit[str(contract.max_abs_field, field)];
+      const value = typeof raw === 'number' ? raw : toNumber(str(raw));
+      if (Number.isFinite(value) && Math.abs(value) > maxAbs + 1e-9) {
+        const item = issue(
+          contractLevel(contract),
+          'required_field_out_of_range',
+          `${contract.id}：${path} 中 ${id} 的 ${str(contract.max_abs_field, field)}=${value} 超出允许区间 |${str(contract.max_abs_field, field)}|<=${maxAbs}`,
+          path,
+        );
+        add(result, item);
+        tally(result, item.code);
+      }
+    }
   }
 }
 
@@ -802,7 +890,7 @@ function runNonEmpty(ws: FactsWorkspace, result: FactsLintResult, lines: LineInd
 function runMutex(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
   const patterns = stringList(contract.patterns);
   if (patterns.length < 2) return;
-  const scope = contractPaths(ws, contract.scope, 'contract.files');
+  const scope = contractPaths(ws, contract.scope, 'contract.files', contract.exclude);
   for (const file of scope) {
     const presence = patterns.map((pattern) => ({ pattern, hits: grep(ws, file, pattern) })).filter((x) => x.hits.length > 0);
     if (presence.length < 2) continue;
@@ -1043,6 +1131,308 @@ function runOverlap(ws: FactsWorkspace, result: FactsLintResult, contract: Contr
   }
 }
 
+// ─── T3.9 count：机器条目数 vs prose 声明计数 ─────────────────────────────────
+//
+// 治「条目增删不同步」：数组加了一条、删了一条，头注里的「本表 routes 共 N 条」却没人改。
+// 左侧永远是机器数（source 的 items_path 长度），右侧是 prose 里手写的声明值。
+//
+//   { id: c.x, kind: count,
+//     source: config/materials.yaml, items_path: materials,
+//     prose: [{ path: README.md, extract: '材料清单共\s*(\d+)\s*条', expect_matches: 1 }] }
+//
+// prose 命中数不符 → `count_mirror_unresolvable`（error，禁止静默跳过）；
+// 数值不等 → `count_mismatch`（默认 error，可用 severity 降级）。
+
+function countOf(node: unknown, itemsPath: string): number | undefined {
+  const target = resolvePath(node, itemsPath);
+  if (Array.isArray(target)) return target.length;
+  if (isRecord(target)) return Object.keys(target).length;
+  return undefined;
+}
+
+/** count 契约的实际条目数：可再按 `count_field` 汇总（如 phases → items 数组长度之和）。 */
+function countEntries(doc: unknown, contract: Contract): { actual: number | undefined; label: string } {
+  const itemsPath = str(contract.items_path);
+  const countField = str(contract.count_field);
+  const target = resolvePath(doc, itemsPath);
+  if (!countField) return { actual: countOf(doc, itemsPath), label: itemsPath || '(文档根)' };
+  if (Array.isArray(target)) {
+    let sum = 0;
+    for (const entry of target) {
+      if (!isRecord(entry)) continue;
+      const nested = entry[countField];
+      if (Array.isArray(nested)) sum += nested.length;
+      else if (isRecord(nested)) sum += Object.keys(nested).length;
+      else if (typeof nested === 'number') sum += 1;
+    }
+    return { actual: sum, label: `${itemsPath}[].${countField}` };
+  }
+  return { actual: countOf(doc, itemsPath), label: itemsPath || '(文档根)' };
+}
+
+function runCount(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
+  const source = str(contract.source);
+  const doc = ws.load(source);
+  if (doc === null) return;
+  const { actual, label } = countEntries(doc, contract);
+  if (actual === undefined) {
+    add(result, issue('error', 'count_unresolvable', `${contract.id}：${source} 的 items_path ${str(contract.items_path)} 不是数组或映射`, source));
+    tally(result, 'count_unresolvable');
+    return;
+  }
+  const prose = (Array.isArray(contract.prose) ? contract.prose : []).filter(isRecord);
+  let checked = 0;
+  for (const one of prose) {
+    const path = str(one.path);
+    const extract = str(one.extract);
+    if (!path || !extract) continue;
+    const expect = typeof one.expect_matches === 'number' ? one.expect_matches : 1;
+    const distinct = one.distinct === true;
+    const hits = grep(ws, path, extract);
+    // distinct 模式：expect_matches 指的是**去重后的条目数**（同一验收项会被多个工作包
+    // 引用，直接数行数会把 39 条验收项数成 46 行）。
+    if (distinct) {
+      const values = new Set(hits.map((m) => matchText(m, typeof one.group === 'number' ? one.group : 1)));
+      if (values.size !== expect) {
+        add(result, issue(
+          contractLevel(contract),
+          'count_mirror_unresolvable',
+          `${contract.id}：${path} 用 /${extract}/ 去重后命中 ${values.size} 个条目，期望 ${expect} 个——禁止静默跳过`,
+          path,
+        ));
+        tally(result, 'count_mirror_unresolvable');
+        continue;
+      }
+      checked += 1;
+      if (values.size !== actual) {
+        add(result, issue(
+          contractLevel(contract),
+          'count_mismatch',
+          `${contract.id}：${source} 的 ${label} 实际 ${actual} 条，但 ${path} 去重后只有 ${values.size} 个条目（${loc(lines, path, hits[0].index)}）`,
+          loc(lines, path, hits[0].index),
+        ));
+        tally(result, 'count_mismatch');
+      }
+      continue;
+    }
+    if (hits.length !== expect) {
+      add(result, issue(
+        contractLevel(contract),
+        'count_mirror_unresolvable',
+        `${contract.id}：${path} 用 /${extract}/ 命中 ${hits.length} 次，期望 ${expect} 次——禁止静默跳过`,
+        path,
+      ));
+      tally(result, 'count_mirror_unresolvable');
+      if (!hits.length) continue;
+    }
+    const raw = matchText(hits[0], typeof one.group === 'number' ? one.group : 1);
+    const declared = toNumber(raw);
+    if (!Number.isFinite(declared)) {
+      add(result, issue('error', 'count_mirror_unresolvable', `${contract.id}：${path} 抽出的「${raw}」不是数值`, loc(lines, path, hits[0].index)));
+      tally(result, 'count_mirror_unresolvable');
+      continue;
+    }
+    checked += 1;
+    if (declared !== actual) {
+      add(result, issue(
+        contractLevel(contract),
+        'count_mismatch',
+        `${contract.id}：${source} 的 ${label} 实际 ${actual} 条，但 ${path} 声明 ${declared} 条（${loc(lines, path, hits[0].index)}）`,
+        loc(lines, path, hits[0].index),
+      ));
+      tally(result, 'count_mismatch');
+    }
+  }
+  if (prose.length > 0 && checked === 0) {
+    add(result, issue(
+      contractLevel(contract),
+      'count_unregistered',
+      `${contract.id}：${source} 的 ${label} 共 ${actual} 条，但登记的所有 prose 计数声明都无法解析——条目增删没人同步`,
+      source,
+    ));
+    tally(result, 'count_unregistered');
+  }
+}
+
+// ─── T3.10 pointer：prose 引用的文件路径必须真实存在 ──────────────────────────
+//
+// 治「prose 引用不存在的东西」：README / 决策记录里写 config 下的 yaml、docs 下的 md、
+// schedule 下的 md，文件被改名/删除/从没存在过，链接静默腐烂。
+//
+//   { id: c.x, kind: pointer, ref_scope: [README.md],
+//     path_pattern: '((?:config|docs|schedule|shared|server)/[A-Za-z0-9_\-./]+\.(?:yaml|json|md|ts))' }
+// 注意：本文件的示例一律用 `<dir>/<file>.<ext>` 这类不含真实文件名的占位写法，
+// 否则 pointer 契约会把自己的文档注释当成腐烂引用报出来。
+//
+// 命中的路径逐条做存在性检查；`allow` 列出有意指向外部/留档的例外（须写 reason）。
+// 注意：只扫仓库内相对路径，`http(s)://` 与绝对路径天然不匹配该 pattern。
+
+function runPointer(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
+  const pattern = tryRegex(str(contract.path_pattern));
+  if (!pattern) return;
+  const allow = (Array.isArray(contract.allow) ? contract.allow : []).filter(isRecord);
+  const allowed = new Set<string>();
+  for (const one of allow) {
+    const p = str(one.path);
+    if (p) allowed.add(p);
+  }
+  const seen = new Set<string>();
+  for (const file of contractPaths(ws, contract.ref_scope, 'contract.files', contract.exclude)) {
+    for (const m of grep(ws, file, str(contract.path_pattern))) {
+      const rel = matchText(m, 1).replace(/[),.'";]+$/, '');
+      if (!rel || allowed.has(rel)) continue;
+      const key = `${file}:${rel}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (ws.read(rel) !== null) continue;
+      add(result, issue(
+        contractLevel(contract),
+        'pointer_dangling',
+        `${contract.id}：${file} 引用了不存在的路径 ${rel}（${loc(lines, file, m.index)}）——prose 引用腐烂`,
+        loc(lines, file, m.index),
+      ));
+      tally(result, 'pointer_dangling');
+    }
+  }
+  for (const one of allow) {
+    const p = str(one.path);
+    const reason = str(one.reason);
+    if (p && !reason) {
+      add(result, issue('error', 'pointer_allow_without_reason', `${contract.id}：pointer allow 列表中的 ${p} 没有写 reason——豁免不许无理由`, str(contract.ref_scope)));
+      tally(result, 'pointer_allow_without_reason');
+    }
+  }
+}
+
+// ─── T3.11 type_ref：规则里引用的家具 type 必须存在于 house.yaml furnishings ───
+//
+// 治「口径被旧值取代」：verify-rules / design-rules 改了家具命名（tv_stand /
+// wardrobe_240 / master_freestanding_wardrobe_062），house.yaml 的 furnishings 没跟上，
+// 规则就静默空转——下一次复核时没人会发现这条校验从未生效。
+//
+//   { id: c.x, kind: type_ref,
+//     sources: [config/verify-rules.yaml, config/design-rules.yaml],
+//     under: [match, furniture, furniture_types],
+//     target: config/house.yaml, target_path: furnishings, key_field: type,
+//     allow: [{ type: ac_indoor, reason: '空调内机不是家具，由 c.rule_targets_exist 的 b.file 映射对账' }] }
+//
+// `allow[]` 里的每一项都必须写 reason；没有 reason 的放行视为谎言（报
+// type_ref_allow_without_reason）。这与 pointer 的 allow 是同一套纪律。
+
+function collectTypeRefs(node: unknown, under: string[], out: Set<string>): void {
+  if (Array.isArray(node)) {
+    for (const entry of node) collectTypeRefs(entry, under, out);
+    return;
+  }
+  if (!isRecord(node)) return;
+  for (const [key, value] of Object.entries(node)) {
+    if (!under.includes(key)) {
+      collectTypeRefs(value, under, out);
+      continue;
+    }
+    // `under` 命中键有两种形状：
+    //   数组  `furniture_types: [tv_stand, wardrobe_240]` → 逐项收字符串；
+    //   对象  `match: { type: tv_stand }`               → 收 value.type。
+    // ⚠️ 必须显式加花括号：`if (a) for (..) if (b) s1; else s2;` 的 else 会绑到内层 if，
+    //    导致对象形状永远不进 else 分支（本引擎首版的真实 bug，已由单测兜住）。
+    if (Array.isArray(value)) {
+      for (const one of value) if (typeof one === 'string') out.add(one);
+    } else if (isRecord(value) && typeof value.type === 'string') {
+      out.add(value.type);
+    }
+  }
+}
+
+function runTypeRef(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
+  const sources = stringList(contract.sources).length ? stringList(contract.sources) : [str(contract.source)];
+  const under = stringList(contract.under);
+  const target = str(contract.target);
+  const targetDoc = ws.load(target);
+  if (targetDoc === null || !under.length) return;
+  const universe = new Set<string>();
+  const targetPath = contract.target_path === undefined ? '' : str(contract.target_path);
+  collectFieldValues(targetPath ? resolvePath(targetDoc, targetPath) : targetDoc, str(contract.key_field, 'type'), universe);
+  const allowEntries = (Array.isArray(contract.allow) ? contract.allow : []).filter(isRecord);
+  const allow = new Set<string>();
+  for (const one of allowEntries) {
+    const type = str(one.type);
+    if (!type) continue;
+    allow.add(type);
+    if (!str(one.reason)) {
+      add(result, issue('error', 'type_ref_allow_without_reason', `${contract.id}：type_ref allow 列表中的 ${type} 没有写 reason——豁免不许无理由`, sources[0]));
+      tally(result, 'type_ref_allow_without_reason');
+    }
+  }
+  for (const source of sources) {
+    const doc = ws.load(source);
+    if (doc === null) continue;
+    const refs = new Set<string>();
+    collectTypeRefs(doc, under, refs);
+    for (const ref of [...refs].sort((a, b) => a.localeCompare(b, 'en'))) {
+      if (universe.has(ref) || allow.has(ref)) continue;
+      add(result, issue(
+        contractLevel(contract),
+        'type_ref_absent',
+        `${contract.id}：${source} 引用了家具 type ${ref}，但 ${target} 的 ${targetPath || ''}.${str(contract.key_field, 'type')} 集合里没有它——该规则空转`,
+        source,
+      ));
+      tally(result, 'type_ref_absent');
+    }
+  }
+}
+
+// ─── T3.12 supersede：作废字段必须显式标注退场 ────────────────────────────────
+//
+// 治「口径被旧值取代但没人宣告」：`config/budget/base.json` 的 total_budget /
+// project_ceiling 早已不是现行口径，却没有任何字段这么说，于是 server 继续把它当活值读。
+// 本契约要求作废文件**自己声明**退场（status / superseded_by / note），并且被指名的
+// 新权威文件必须存在、确实带着活字段。
+//
+//   { id: c.x, kind: supersede, source: config/budget/base.json,
+//     fields: [total_budget, project_ceiling],
+//     superseded_by: schedule/phase-1/control.yaml, live_field: control.phase_ceiling_cny,
+//     must_declare: [status, superseded_by, note] }
+
+function runSupersede(ws: FactsWorkspace, result: FactsLintResult, contract: Contract): void {
+  const source = str(contract.source);
+  const doc = ws.load(source);
+  if (doc === null) return;
+  const fields = stringList(contract.fields);
+  const mustDeclare = stringList(contract.must_declare);
+  const supersededBy = str(contract.superseded_by);
+  const level = contractLevel(contract);
+  const record = isRecord(doc) ? doc : {};
+  for (const field of fields) {
+    if (record[field] === undefined) {
+      add(result, issue(level, 'superseded_field_undeclared', `${contract.id}：作废字段 ${source}:${field} 不存在——退场标注与字段必须同在，否则档案不可审计`, source));
+      tally(result, 'superseded_field_undeclared');
+    }
+  }
+  for (const field of mustDeclare) {
+    if (record[field] === undefined || record[field] === null || record[field] === '') {
+      add(result, issue(level, 'supersede_undeclared', `${contract.id}：${source} 缺少退场声明字段 ${field}——作废口径必须自证 superseded`, source));
+      tally(result, 'supersede_undeclared');
+    }
+  }
+  if (supersededBy && str(record.superseded_by) !== supersededBy) {
+    add(result, issue(level, 'supersede_authority_mismatch', `${contract.id}：${source}.superseded_by=${String(record.superseded_by)} 与本契约登记的 ${supersededBy} 不一致`, source));
+    tally(result, 'supersede_authority_mismatch');
+  }
+  if (supersededBy) {
+    const liveDoc = ws.load(supersededBy);
+    if (liveDoc === null) {
+      add(result, issue(level, 'supersede_authority_missing', `${contract.id}：被指名的现行权威 ${supersededBy} 不存在`, supersededBy));
+      tally(result, 'supersede_authority_missing');
+      return;
+    }
+    const liveField = str(contract.live_field);
+    if (liveField && countOf(liveDoc, liveField) === undefined && resolvePath(liveDoc, liveField) === undefined) {
+      add(result, issue(level, 'supersede_live_field_missing', `${contract.id}：现行权威 ${supersededBy} 没有活字段 ${liveField}`, supersededBy));
+      tally(result, 'supersede_live_field_missing');
+    }
+  }
+}
+
 // ─── T4 覆盖层 ───────────────────────────────────────────────────────────────
 
 function runCoverage(registry: FactsRegistry, ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex): void {
@@ -1092,6 +1482,16 @@ function runCoverage(registry: FactsRegistry, ws: FactsWorkspace, result: FactsL
   }
 }
 
+/** 汇总所有登记在案的豁免；带 `pending` 的会在报告里以 INFO 单列，而不是静默消失。 */
+function collectExemptions(registry: FactsRegistry): Exemption[] {
+  const out: Exemption[] = [];
+  for (const fact of registry.facts ?? []) {
+    for (const entry of fact.exempt ?? []) out.push({ kind: 'fact', id: fact.id, entry });
+  }
+  for (const entry of registry.scan?.exempt_occurrences ?? []) out.push({ kind: 'scan', entry });
+  return out;
+}
+
 // ─── 入口 ────────────────────────────────────────────────────────────────────
 
 export function lintFacts(registry: FactsRegistry, ws: FactsWorkspace): FactsLintResult {
@@ -1103,16 +1503,33 @@ export function lintFacts(registry: FactsRegistry, ws: FactsWorkspace): FactsLin
     switch (contract.kind) {
       case 'unique': runUnique(ws, result, lines, contract); break;
       case 'fk': runFk(ws, result, lines, contract); break;
-      case 'requires': runRequires(ws, result, lines, contract); break;
+      case 'requires':
+      case 'requires_when': runRequires(ws, result, lines, contract); break;
       case 'non_empty': runNonEmpty(ws, result, lines, contract); break;
       case 'mutex': runMutex(ws, result, lines, contract); break;
       case 'sum': runSum(ws, result, contract); break;
       case 'parity': runParity(ws, result, lines, contract); break;
       case 'overlap': runOverlap(ws, result, contract); break;
+      case 'count': runCount(ws, result, lines, contract); break;
+      case 'pointer': runPointer(ws, result, lines, contract); break;
+      case 'type_ref': runTypeRef(ws, result, lines, contract); break;
+      case 'supersede': runSupersede(ws, result, contract); break;
       default: break;
     }
   }
   runCoverage(registry, ws, result, lines);
+  // 带待决事项的豁免：必须在报告里显式露面（INFO 级），否则「挂着豁免等裁决」会退化成
+  // 「没人记得还有这事」。warning 只留给真的对账失败， exempt 的待决状态走 INFO。
+  for (const exemption of collectExemptions(registry)) {
+    const { entry } = exemption;
+    if (!entry.pending) continue;
+    const scope = exemption.kind === 'fact' ? `fact ${exemption.id}` : 'scan';
+    note(result, `${scope} 豁免待决 — ${entry.path} /${entry.pattern}/：${entry.reason}｜待决：${entry.pending}`);
+  }
+  // 同理：登记了但当前 0 命中的契约（词汇表尚未启用）也要露面，否则契约层会悄悄腐烂。
+  for (const contract of registry.contracts ?? []) {
+    if (contract.pending) note(result, `contract ${contract.id} 待决 — ${contract.pending}`);
+  }
   result.counts.errors = result.errors.length;
   result.counts.warnings = result.warnings.length;
   return result;

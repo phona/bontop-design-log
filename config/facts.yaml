@@ -120,6 +120,12 @@ scan:
     - { id: money, pattern: '[¥￥]\s?([\d,]{4,})' }
     - { id: kw, pattern: '(\d{1,2}\.\d)\s?kW' }
     - { id: area_sqm, pattern: '(\d{1,3}\.\d{1,2})\s*㎡' }
+    # 2026-10-04 新增三类「结构盲区」标量。它们不是数值事实，而是**分布发现器**：
+    # 第一次跑必然大量未登记，逐条处置（登记 mirror / exempt+reason）之后，
+    # 全库的型号串与尺寸串就从「散写无人对账」变成「每次新增都可见」。
+    - { id: model_string, pattern: 'MJV-[0-9A-Za-z\-]+|JSQ[0-9\-]+|领航者[ⅣIV]+|理想家[IV]+|大金|日立|风管机\s*\d+(?:\.\d)?kW' }
+    - { id: dimension, pattern: '\d\.\d+\s*[×x]\s*\d\.\d+(?:\s*[×x]\s*\d\.\d+)?' }
+    - { id: item_count, pattern: '共\s*\d+\s*条|\d+\s*个点位|\d+\s*项验收' }
 
   # 文件/目录级噪声登记。不属于任何 fact 的域，但必须显式登记并写 reason，
   # 否则 T1 会把它们全报成 unregistered_fact_occurrence。
@@ -226,6 +232,153 @@ scan:
       pattern: 'kW'
       reason: 量房清单 #39 复述成交判读容量（25.3kW）与设计口径（21.6kW）双轨，由 #39 跟踪收敛
 
+    # ─── 2026-10-04 新增标量的登记（T1 发现层的噪声归属） ─────────────────────
+    # 原则：**不是把新标量一律关掉**，而是把每一处出现归到「谁是这个数的权威」。
+    # 型号串的跨文件一致性由契约 c.hvac_model_refs_resolvable 强制（见 contracts），
+    # 尺寸串的权威就是物品记录自身的 dims 字段，跨文件复述由对应 fact 单列对账。
+
+    # --- model_string：空调型号串 ---
+    # config/hvac.yaml 是全屋型号词汇的**权威源**（outdoor.model + rooms 表 basis），
+    # 它自身不是任何 fact 的镜像；下游引用由 c.hvac_model_refs_resolvable 强制
+    # 「引用的型号必须存在于 config/hvac.yaml」，因此这里登记为词汇源头。
+    - path: config/hvac.yaml
+      scalars: [model_string]
+      pattern: 'MJV-|领航者|理想家|大金|日立'
+      reason: config/hvac.yaml 是空调型号串的权威源（plans[0].outdoor.model + plans[0].rooms 表 + load_design.basis），不是任何 fact 的镜像；下游引用由 c.hvac_model_refs_resolvable 强制必须可在本文件反查到
+    # config/ceiling.yaml 的 ac_* 与 config/electrical.yaml 的 sock_*_ac 是**同一台内机**
+    # 在吊顶几何与电气取电两个子系统里的两份记录，型号串本身由 config/hvac.yaml 授权；
+    # 两处的漂移由 c.hvac_model_refs_resolvable 抓（型号必须存在于 hvac.yaml）。
+    # 吊顶里的 ac_* 内机型号必须**全部**是 config/hvac.yaml 词汇表里的 MJV-* 串。
+    # 2026-10-04 已把 5 条旧「风管机 NkW（DEC-2026-09-07-055）」口径改为现行
+    # MJV-71T2/28T2/45T2/22T2/28T2；哪一条被改回旧串（或新条目漏写型号），
+    # 立刻 unregistered_fact_occurrence + c.hvac_model_refs_resolvable 双报。
+    - path: config/ceiling.yaml
+      scalars: [model_string]
+      pattern: 'MJV-'
+      reason: 吊顶里的 ac_* 内机型号抄自 config/hvac.yaml rooms 表；旧口径「风管机 NkW（DEC-2026-09-07-055）」已于 2026-10-04 全部替换为现行 MJV-*，因此本文件只允许出现 MJV- 串——出现别的型号写法即视为漂移，由 unregistered_fact_occurrence 与 c.hvac_model_refs_resolvable 双报
+    - path: config/electrical.yaml
+      scalars: [model_string]
+      pattern: 'MJV-'
+      reason: 电气取电点位 note 复述 config/hvac.yaml rooms 表的内机型号，用于说明供电容量与回路归属；型号一致性由 c.hvac_model_refs_resolvable 对账
+    - path: config/house.yaml
+      scalars: [model_string]
+      pattern: 'MJV-|领航者|理想家'
+      reason: house.yaml mep_strategy 复述 DEC-2026-10-04-R1 成交配置（MJV-200W-E01-LHIV 20kW 一拖六）；型号一致性由 c.hvac_model_refs_resolvable 对账，金额由 fact.hvac_contract_cny 对账
+    # house.yaml 341-357 段的「风管机 10.0kW / 4.5kW / 2.5kW / 2.2kW（5 台一拖五）」是
+    # DEC-2026-09-07-055 的历史方案留档，house.yaml:343 自述「不再作为现行依据」；
+    # 现行逐台型号在 config/hvac.yaml 与 config/ceiling.yaml 的 ac_*（已全部改为 MJV-*）。
+    - path: config/house.yaml
+      scalars: [model_string]
+      pattern: '风管机'
+      reason: DEC-2026-09-07-055 一拖五历史方案留档（house.yaml 自身的 mep_strategy 自述「不再作为现行依据」），现行逐台型号以 config/hvac.yaml 与 config/ceiling.yaml 的 MJV-* 为准；跨文件型号外键由 c.hvac_model_refs_resolvable 对账
+    - path: config/procurement.yaml
+      scalars: [model_string]
+      pattern: 'MJV-|领航者|理想家'
+      reason: 采购台账 hvac_01 2026-10-04 已由「美的理想家III一拖五」改为现行「美的领航者Ⅳ一拖六（MJV-200W-E01-LHIV）」成交口径（DEC-2026-10-04-R1）；型号一致性由 c.hvac_model_refs_resolvable 对账
+    - path: config/tradeoffs.yaml
+      scalars: [model_string]
+      pattern: '领航者|理想家'
+      reason: 取舍项只做系列级叙述（领航者Ⅳ vs 理想家），没有具体型号，型号权威在 config/hvac.yaml
+    - path: config/electrical-topology.yaml
+      scalars: [model_string]
+      pattern: '领航者|理想家'
+      reason: 拓扑头部注释复述 R6 选型结论（系列级），具体型号权威在 config/hvac.yaml
+    # schedule/phase-1/control.yaml 与其渲染产物：型号由 control.yaml 的 appliance_quote_register
+    # 与 procurement.md  narratives 承载，generated views 不是事实源。
+    - path: schedule/phase-1/control.yaml
+      scalars: [model_string]
+      pattern: 'MJV-|JSQ|领航者|理想家'
+      reason: control.yaml 复述定标配置与燃气热水器候选型号（JSQ30-MK6 主选 / JSQ30-HWF Pro 备选）；型号口径权威在 config/hvac.yaml，燃气热水器候选由 c.gas_water_heater_model_resolvable 对账
+    - path: schedule/phase-1/checklist.md
+      scalars: [model_string]
+      pattern: 'MJV-|JSQ|领航者|理想家'
+      reason: control.yaml generated_views 渲染产物，型号与热水器候选由控制源生成，非事实源
+    - path: schedule/phase-1/budget.md
+      scalars: [model_string]
+      pattern: 'MJV-|JSQ|领航者|理想家'
+      reason: control.yaml generated_views 渲染产物，型号由控制源生成，非事实源
+    - path: schedule/README.md
+      scalars: [model_string]
+      pattern: '领航者|理想家'
+      reason: 目录导读里的系列级叙述，型号权威在 config/hvac.yaml
+    - path: schedule/roadmap.yaml
+      scalars: [model_string]
+      pattern: '领航者|理想家'
+      reason: 路线图只做系列级方向叙述，不是型号源
+    - path: schedule/procurement.md
+      scalars: [model_string]
+      pattern: 'MJV-|JSQ|领航者|理想家'
+      reason: 采购决议书同时收录现行成交型号（MJV-200W-E01-LHIV）与历史轮次参照型号（三代 180W MJV-180W-E01-LX/LH，文档自述「不是本项目已选系列」）；现行型号权威在 config/hvac.yaml，历史型号属时间序留档，故不做 fk 对账
+    - path: docs/pending-site-data.md
+      scalars: [model_string]
+      pattern: 'MJV-|JSQ|领航者|理想家'
+      reason: 量房清单复述定标型号与热水器候选，权威值在 config/hvac.yaml 与 schedule/phase-1/control.yaml
+    - path: docs/mep-construction-guidance.md
+      scalars: [model_string]
+      pattern: '领航者|理想家'
+      reason: 施工指导引用系列级方向，不含具体型号；型号权威在 config/hvac.yaml
+
+    # --- dimension：A×B(/C) 尺寸串 ---
+    # 这类串的权威**就是物品记录自身**的 dims/width×depth×height 字段（每件家具/设备一条），
+    # 不是跨文件共享事实。真正有跨文件后果的三个尺寸已单列 fact：
+    #   fact.outdoor_unit_dim（外机 0.99×0.40×0.81，决定西平台能否容纳）
+    #   fact.kitchen_area / fact.kitchen_south_boundary（厨房 3.6×2.4）
+    #   fact.west_platform_area（平台 bbox 1.60㎡，prose 的 1.6×1.55 由该 fact 的注释对账）
+    - path: config/materials.yaml
+      scalars: [dimension]
+      pattern: '[×x]'
+      reason: 材料条目的家具/设备尺寸权威就是该条目自身的 spec/dims 字段（71 条各管各的），不存在跨文件第二副本；单件尺寸漂移由 verify-spatial 的 clearance 门禁承接
+    - path: config/house.yaml
+      scalars: [dimension]
+      pattern: '[×x]'
+      reason: house.yaml 的尺寸串分两类：① rooms 边界的人工标注（如厨房 3.6×2.4），权威面积由 fact.kitchen_area 多边形实测对账；② constraints/design_rationale 里的设备机身尺寸（如云鲸基站 410×433.5×198mm），权威在对应设备记录；跨文件唯一有平台适配后果的外机尺寸已单列 fact.outdoor_unit_dim
+    - path: config/acceptance.yaml
+      scalars: [dimension]
+      pattern: '[×x]'
+      reason: 验收标准里的尺寸（如 1.60×1.20m 阳台叠放位）是判定阈值的叙述口径，权威在 verify-rules.yaml 的 clearance 与 model-geometry 实测
+    - path: config/electrical.yaml
+      scalars: [dimension]
+      pattern: '[×x]'
+      reason: 点位 note 里的设备机身尺寸用于说明避让关系，权威在对应设备记录；点位坐标本身由 model-geometry 与 verify-rules 门禁承接
+    - path: docs/pending-site-data.md
+      scalars: [dimension]
+      pattern: '[×x]'
+      reason: 量房清单的尺寸是设计图标注口径，权威面积/坐标以 config/house.yaml 与 model-geometry 多边形为准
+    - path: schedule/phase-1/control.yaml
+      scalars: [dimension]
+      pattern: '[×x]'
+      reason: control.yaml 的尺寸（平台 1.6×1.55m、风口 1000×300 等）是叙述口径；平台面积权威由 fact.west_platform_area 对账，风口尺寸以合同附件为准
+    - path: schedule/procurement.md
+      scalars: [dimension]
+      pattern: '[×x]'
+      reason: 采购决议书的尺寸为询价与合同附件叙述口径（外廓/风口/机身），权威在 config/hvac.yaml 与合同附图
+    - path: docs/render-tech-debt.md
+      scalars: [dimension]
+      pattern: '[×x]'
+      reason: 渲染技术债留档里的家具尺寸是当时场景规模快照，非现行事实源
+    - path: docs/twinmotion-acceptance.md
+      scalars: [dimension]
+      pattern: '[×x]'
+      reason: Twinmotion 云渲染验收留档，尺寸为渲染场景规模口径
+    - path: docs/renders/pipeline-acceptance.md
+      scalars: [dimension]
+      pattern: '[×x]'
+      reason: 渲染管线验收留档，尺寸为渲染场景规模口径
+
+    # --- item_count：共 N 条 / N 个点位 / N 项验收 ---
+    # 计数声明的权威值全部来自机器条目数，由 fact.*_count 与 contracts 的 count 类单列对账；
+    # 这里只登记**渲染产物与目录导读**里的复述。
+    - path: docs/mep-construction-guidance.md
+      scalars: [item_count]
+      pattern: '共\s*\d+\s*(条路由|个点位|个吊顶分区|层)'
+      reason: 施工指导第 0 节规模表的全部计数，逐项与机器条目数对账——fact.mep_routes_count / fact.electrical_points_count / fact.plumbing_points_count / fact.ceiling_zones_count / fact.mep_layers_count，并由 contracts 的 count 类契约（c.mep_routes_count_matches_note 等）强制
+
+    # --- money：config/procurement.yaml 的成交金额 ---
+    - path: config/procurement.yaml
+      scalars: [money]
+      pattern: '36,000'
+      reason: 采购台账 hvac_01 复述 DEC-2026-10-04-R1 定标成交 36,000 元；权威金额由 fact.hvac_contract_cny 的三方镜像（config/hvac.yaml / schedule/procurement.md / control.yaml）对账
+
 # ─── T2 对账层 ───────────────────────────────────────────────────────────────
 
 facts:
@@ -322,35 +475,41 @@ facts:
     unit: 元
     as_of: DEC-2026-10-03-R3
     mirrors:
-      # C1（2026-10-04 挂豁免）：base.json 的 project_ceiling=190,000 与现行权威
-      # schedule/phase-1/control.yaml:phase_ceiling_cny=206,000 不一致，**不能自动修**：
-      #   ① base.json 已被 control.yaml `budget_reconciliation.historical_baseline`
-      #      显式标为 `historical_reference_only`，改它等于篡改历史基线；
-      #   ② 它同时仍被 server/budget-calculator.ts（budget API / MCP `overCeilingBy`）
-      #      热更新输出，改它等于改动线上接口语义。
-      # 待谁裁决：业主（谁是现行预算权威）＋后端（base.json 的 project_ceiling 是退出
-      #           历史输出、还是与 control.yaml 同步）。
-      # 跟踪入口：schedule/phase-1/control.yaml `budget_reconciliation`（historical_baseline 段）。
-      # 降为 warning 后仍逐次暴露漂移（expect_matches 不变），不阻断门禁。
-      - path: config/budget/base.json
-        extract: '"project_ceiling":\s*([\d,]*\d)'
-        severity: warning
-        expect_matches: 1
-      # C3（2026-10-04 挂豁免）：designer_brief.md 第 23 行的「ceiling 190k / 四池 192k」
-      # 是旧四池口径（config/budget/base.json v0.5-four-pool 快照），与现行权威
-      # control.yaml 206,000 不一致。**不能自动修**：该文件是对外交付件（设计师简报），
-      # 预算口径更新需业主确认后再改，避免对外文件与内部口径单向漂移。
+      # C1（2026-10-04 消解，不是豁免）——base.json 的 project_ceiling=190,000 与现行权威
+      # schedule/phase-1/control.yaml:phase_ceiling_cny=206,000 长期不一致。前两轮只能挂
+      # warning，因为 base.json 仍被 server/budget-calculator.ts 热更新输出 190,000。
+      # 本轮做的是**改读取方而不是改档案**：
+      #   ① config/budget/base.json 顶层加 status: superseded / superseded_by / note，
+      #      数字一个不改（历史快照保持可追溯，Σcategories == total_budget 仍由
+      #      c.base_budget_sum 校验）；
+      #   ② server/phase-control.ts 成为 control.yaml control.phase_ceiling_cny 的唯一读取入口，
+      #      budget-calculator / project-catalog / phase-scope 全部改读它；
+      #   ③ 作废值只经 control.yaml budget_reconciliation.historical_baseline 段露出
+      #      （BudgetSnapshot.historicalBaseline），并成为读取 base.json 的唯一入口；
+      #   ④ 于是本条 mirror 被**移除**：base.json 不再是权威也不是镜像，是档案。
+      #      档案身份由契约 c.base_json_superseded 强制自证。
+      # A4（2026-10-04 挂豁免，待业主裁决）——designer_brief.md 第 23 行的
+      # 「ceiling 190k / 四池 192k」是旧四池口径（config/budget/base.json v0.5-four-pool
+      # 快照），与现行权威 control.yaml 206,000 不一致。
+      # 为什么不能自动修：该文件是对**外交付件**（设计师简报），预算口径更新需业主裁决
+      # （是否已外发、改哪一版）；未裁决前改它可能让对外文件与业主手上的版本单向漂移。
       # 待谁裁决：业主（是否已把新版预算口径发给外部设计师；若要改，改哪一版）。
       # 跟踪入口：docs/designer_brief.md 第 7 条 + config/budget/base.json notes。
-      - path: docs/designer_brief.md
-        extract: 'ceiling\s*(\d+)k'
-        severity: warning
-        expect_matches: 2
-        scale: 1000
+      # 落地方式：**只挂 exempt，不保留 mirror**。保留一条注定失败的 mirror 只是让 warning
+      # 每轮刷存在感（比没有检查更糟）；exempt 带 pending 后由引擎在 INFO 里单列露面，
+      # 业主一旦裁决即删 exempt、改数据、补回 mirror。
       - path: schedule/phase-1/control.yaml
         extract: '最终预测不超过\s*¥?([\d,]+)'
         severity: error
         expect_matches: 1
+    exempt:
+      # 与上面 mirror 的 warning 是同一件事：这里把它显式登记为**待决豁免**，
+      # 让「挂着等裁决」在报告的 INFO 里露面，而不是混在 warning 里刷存在感。
+      # 业主一旦裁决（改 designer_brief 或确认外发版本），删掉本条与上面的 mirror 即可。
+      - path: docs/designer_brief.md
+        pattern: 'ceiling\s*\d+k'
+        reason: "designer_brief 是对外交付件，预算口径更新需业主裁决（是否已外发、改哪一版）；待决跟踪 docs/designer_brief.md 第 7 条 + config/budget/base.json notes"
+        pending: "业主裁决 designer_brief 第 7/12 条的预算口径是否改为现行 control.yaml 206,000（涉及对外文件版本，未裁决前不改数据）"
 
   - id: fact.usable_area
     kind: derived
@@ -371,12 +530,22 @@ facts:
     value: "@config/house.yaml:project.floor_height"
     unit: m
     mirrors:
+      # 口径免疫的抽法：只抽「室内净高 N」这个**具名口径**，不抽「层高」后面第一个数字。
+      # 2026-10-04 之前抽 `层高[^0-9]{0,20}([\d.]+)`，README 写的是「结构 3.0m / 室内净高 2.8m」，
+      # 于是抽到结构层高 3.0 而权威值是净高 2.8 —— 这曾以 warning 常驻。
+      # 现在的正确解法不是豁免，而是把镜像对「口径免疫」：正则强制 README 必须写出
+      # 「室内净高」四个字。哪一天 README 只剩一个「层高 3.0m」而漏写净高口径，
+      # 立刻 mirror_unresolvable（error）——比豁免更强。
+      # severity 保持 error：净高是吊顶/柜体/空调贯流风管的设计基准，写错会传导到不可返工的分项。
       - path: README.md
-        extract: '层高[^0-9]{0,20}([\d.]+)\s*m'
-        severity: warning
+        extract: '室内净高\s*([\d.]+)\s*m'
+        severity: error
         expect_matches: 1
-    # README 的 3.0m 是结构层高、house.yaml 的 2.8m 是室内净高：两个口径都真实存在，
-    # 因此本 fact 只做 warning，提示「引用层高时必须注明是结构层高还是净高」。
+      # 对外的设计师简报同样写双口径，用同一具名口径抽法对账。
+      - path: docs/designer_brief.md
+        extract: '室内净高\s*([\d.]+)\s*m'
+        severity: error
+        expect_matches: 1
 
   - id: fact.kitchen_area
     kind: derived
@@ -500,6 +669,182 @@ facts:
         pattern: 'indoor_nominal_kw_total'
         reason: 设计口径与成交判读双轨（21.6kW / 25.3kW），由 docs/pending-site-data.md #39 跟踪房间映射回写后收敛
 
+  # ─── 2026-10-04 扩充：型号/尺寸/计数/坐标三类结构盲区 ─────────────────────
+  # 判据：被抄过 ≥2 次，或错误会导致不可逆的金钱/合规后果。
+
+  # 外机外廓：0.99×0.40×0.81m 是西设备平台能不能装下外机的**唯一几何依据**
+  # （平台 bbox 1.60×1.00m，见 fact.west_platform_area）。该值至今仍是 estimated
+  # （与参照三代 180W 的 951×383×1333mm 高度差 523mm，0.81m 口径未注明），
+  # 一旦有人把 estimated 值换成别的数而不同步 fact-table / procurement，平台适配结论就失据。
+  # 取 width 作为对账标量（0.99），镜像抽完整的「0.99×0.40×0.81」串的首段。
+  - id: fact.outdoor_unit_dim
+    kind: derived
+    value: "@config/hvac.yaml:plans#find:id=A2.outdoor.width"
+    unit: m
+    as_of: DEC-2026-10-03-R6
+    mirrors:
+      - path: config/hvac.yaml
+        extract: '外廓\s*(\d\.\d+)×\d\.\d+×\d\.\d+m'
+        severity: error
+        expect_matches: 2
+      - path: docs/design-iterations/hvac-resix-20261003/fact-table.yaml
+        extract: '外廓字段\s*(\d\.\d+)×\d\.\d+×\d\.\d+m'
+        severity: error
+        expect_matches: 1
+      - path: docs/design-iterations/hvac-resix-20261003/design-datum.yaml
+        extract: '外廓\s*(\d\.\d+)×\d\.\d+×\d\.\d+m'
+        severity: error
+        expect_matches: 1
+
+  # 强电箱底边离地高度：GB 55038 7.4.3-2 的合规判定直接依赖它
+  # （单排箱底边 ≥1.80m、双排 ≥1.60m）。现 1.65m 仅在双排时合规，而单/双排本身
+  # 还是待测量项（pending #30）——这个数字写错会让「合规/不合规」结论整体反转，
+  # 且箱子已嵌墙，返工不可逆。
+  - id: fact.panel_mount_height
+    kind: derived
+    value: "@config/electrical.yaml:#find:id=panel_strong_entry_left.mount_height"
+    unit: m
+    as_of: DEC-2026-10-04-R2
+    mirrors:
+      - path: docs/mep-construction-guidance.md
+        extract: 'mount_height:\s*([\d.]+)'
+        severity: error
+        expect_matches: 1
+      - path: docs/pending-site-data.md
+        # #4（强电箱，1.65m）、#5（弱电箱，0.50m）、#30（强电箱规格，1.65m）三处都写
+        # 「底部离地 N m」，其中两处是强电箱；首处即强电箱，与权威值对账。
+        extract: '底部离地\s*([\d.]+)m'
+        severity: error
+        expect_matches: 3
+
+  # 燃气报警器插座 x 坐标：CJJ/T 146-2011 要求探测器距灶具及排风口 >0.5m。
+  # x=10.80 与 z=0.20 是 2026-10-04 按机体最近缘重算后的值（R1 的 z=0.55 不达标），
+  # 三处（electrical.yaml / mep-guidance / pending #32）必须同值，否则合规结论失据。
+  - id: fact.gas_alarm_x
+    kind: derived
+    value: "@config/electrical.yaml:#find:id=sock_kitchen_gas.x"
+    unit: m
+    as_of: DEC-2026-10-04-R2
+    mirrors:
+      - path: docs/mep-construction-guidance.md
+        extract: '定在\s*\(([\d.]+),([\d.]+)\)'
+        severity: error
+        expect_matches: 1
+        group: 1
+      - path: docs/pending-site-data.md
+        extract: '暂定报警位\s*\(([\d.]+),([\d.]+)\)'
+        severity: error
+        expect_matches: 1
+        group: 1
+
+  # 几何房间数：model-geometry rooms=11（含 entry_garden / elevator_shaft 两个纯几何房间），
+  # house.yaml rooms=9（设计房间口径）。README/designer_brief 的「四房两厅两卫」是**卧室数**
+  # 口径（4）。三个口径都真实，但必须显式登记，否则「改了几个房间」这类问题无人对账。
+  - id: fact.rooms_count
+    kind: derived
+    value: "@config/layout/model-geometry.yaml:rooms#length"
+    unit: 间
+    exempt:
+      - path: config/house.yaml
+        pattern: '四房两厅两卫'
+        reason: house.yaml rooms=9 是设计房间口径、model-geometry rooms=11 是几何口径（差 entry_garden + elevator_shaft 两个纯几何房间）、README/designer_brief 的「四房」是卧室数口径（4）；三口径都真实且各自有权威源，量房后若入户花园纳入设计需同步
+      - path: README.md
+        pattern: '四房两厅两卫'
+        reason: 户型表的「四房两厅两卫」是卧室/厅/卫计数口径，不是房间总数；权威房间数见 fact.rooms_count（model-geometry 11 间）
+      - path: docs/designer_brief.md
+        pattern: '四房两厅两卫'
+        reason: 对外的户型叙述用卧室口径（四房），与几何房间总数 11 间不同量纲，权威值见 fact.rooms_count
+
+  # 材料条目数：清单每加/减一条，n 处叙述与采购台账就可能不同步。
+  # 电脑侧权威 = materials 数组长度；手写声明在 config/materials.yaml 头部 notes
+  # （2026-10-04 补登，作为「必须同步」的显式契约，见 c.materials_count_matches_note）。
+  - id: fact.materials_count
+    kind: derived
+    value: "@config/materials.yaml:materials#length"
+    unit: 条
+    mirrors:
+      - path: config/materials.yaml
+        extract: '本清单共\s*(\d+)\s*条材料项'
+        severity: error
+        expect_matches: 1
+
+  # 电气点位总数：水电交底单就是这份清单。点位增删不同步会让
+  # 「回路够不够」「箱体位数够不够」的结论全部失据，且底盒预埋后不可返工。
+  - id: fact.electrical_points_count
+    kind: derived
+    value: "@config/electrical.yaml:#length"
+    unit: 个
+    mirrors:
+      - path: config/electrical-topology.yaml
+        extract: 'config/electrical\.yaml 共\s*(\d+)\s*个点位'
+        severity: error
+        expect_matches: 1
+
+  # 给排水点位 / 吊顶分区：分别决定防水范围与吊顶工程量。
+  - id: fact.plumbing_points_count
+    kind: derived
+    value: "@config/plumbing.yaml:#length"
+    unit: 个
+    mirrors:
+      - path: docs/mep-construction-guidance.md
+        extract: 'plumbing\.yaml[^0-9]{0,12}共\s*(\d+)\s*个点位'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.ceiling_zones_count
+    kind: derived
+    value: "@config/ceiling.yaml:#length"
+    unit: 个
+    mirrors:
+      - path: docs/mep-construction-guidance.md
+        extract: 'ceiling\.yaml[^0-9]{0,12}共\s*(\d+)\s*个吊顶分区'
+        severity: error
+        expect_matches: 1
+
+  # 家具条目数：92 件分布 11 个房间，是碰撞/净空门禁的输入规模。
+  - id: fact.furnishings_count
+    kind: derived
+    value: "@config/house.yaml:furnishings#count_all"
+    unit: 件
+    mirrors:
+      - path: docs/dressing-map.md
+        extract: 'furnishings 共\s*(\d+)\s*件'
+        severity: warning
+        expect_matches: 1
+
+  # 赠送面积区块数：3 处（北开敞外廊 / 南大阳台 / 西设备平台），
+  # 直接决定「哪些面积不计地面预算」。
+  - id: fact.gift_areas_count
+    kind: derived
+    value: "@config/house.yaml:gift_areas#length"
+    unit: 处
+    exempt:
+      - path: config/house.yaml
+        pattern: 'gift_areas'
+        reason: 权威源自身字段声明；3 处赠送面积的逐项叙述在北开敞外廊/南大阳台/西设备平台三行 notes，面积口径另由 fact.west_platform_area 对账
+
+  # 量房待确认项条数：39 条是「还有什么没量」的账面。新增/关闭条目必须同步。
+  - id: fact.pending_site_data_count
+    kind: derived
+    value: "@docs/pending-site-data.md:量表共 39 条"
+    unit: 条
+    mirrors:
+      - path: docs/pending-site-data.md
+        extract: '量表共\s*(\d+)\s*条'
+        severity: error
+        expect_matches: 1
+
+  # MEP 协同分层数：8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风），决定走线表的层口径。
+  - id: fact.mep_layers_count
+    kind: derived
+    value: "@config/mep-hvac-coordination.yaml:layers#keys"
+    unit: 层
+    mirrors:
+      - path: docs/mep-construction-guidance.md
+        extract: 'mep-hvac-coordination\.yaml[^0-9]{0,12}共\s*(\d+)\s*层'
+        severity: error
+        expect_matches: 1
+
 # ─── T3 契约层 ───────────────────────────────────────────────────────────────
 
 contracts:
@@ -573,11 +918,152 @@ contracts:
     target_pattern: |-
       - id:\s*["']?([A-Za-z0-9_.\-]+)["']?
 
-  - id: c.contract_requires_lock
-    kind: requires
+  # ─── 2026-10-04 新增：从「一致性检查器」升级为「腐化预防器」 ─────────────────
+  # 覆盖这次暴露的四类结构盲区：
+  #   ① 口径被旧值取代   → c.base_json_superseded / c.hvac_model_refs_resolvable
+  #   ② 型号规格串漂移   → c.hvac_model_refs_resolvable / c.gas_water_heater_model_resolvable
+  #   ③ 条目增删不同步   → count 类契约（routes/materials/electrical/acceptance）
+  #   ④ prose 引用不存在 → pointer 类契约 / type_ref 类契约
+
+  # ① 作废口径必须自证退场。config/budget/base.json 的 total_budget / project_ceiling
+  # 曾是活字段，2026-09-12 起被 schedule/phase-1/control.yaml 的
+  # budget_reconciliation.historical_baseline 标为 historical_reference_only，但**文件自己
+  # 什么都没说**，server 也就继续把它当活值读（budget API / MCP 输出 190,000）。
+  # 本契约要求作废文件自己声明 status / superseded_by / note，且被指名的现行权威
+  # 必须存在并真的带着活字段。谁把这三个声明删掉，谁就在重新激活作废口径 → error。
+  - id: c.base_json_superseded
+    kind: supersede
+    source: config/budget/base.json
+    fields: [total_budget, project_ceiling]
+    superseded_by: schedule/phase-1/control.yaml
+    live_field: control.phase_ceiling_cny
+    must_declare: [status, superseded_by, note]
+
+  # ② 型号串外键：所有 config / schedule 里引用的 MJV-* 内机与外机型号，
+  # 必须存在于 config/hvac.yaml 的型号词汇表。上一轮手修的三类漂移
+  # （ceiling.yaml ac_living 的「风管机 10.0kW」→ MJV-71T2、procurement.yaml hvac_01 的
+  # 「美的理想家III一拖五」→ 领航者Ⅳ一拖六） hereby 固化为契约，不再依赖人记得。
+  # 历史轮次参照型号（三代 180W MJV-180W-E01-LX/LH）只出现在 schedule/procurement.md
+  # 的时间序叙述里，文档自述「不是本项目已选系列」，故该文件不进 ref_scope。
+  - id: c.hvac_model_refs_resolvable
+    kind: fk
+    ref_pattern: '(MJV-[0-9A-Za-z\-]+)'
+    ref_scope: [config/ceiling.yaml, config/electrical.yaml, config/house.yaml, config/procurement.yaml, schedule/phase-1/control.yaml]
+    target: config/hvac.yaml
+    target_pattern: '(MJV-[0-9A-Za-z\-]+)'
+
+  # ② 燃气热水器候选型号：control.yaml 的 hot_water_decision 是唯一候选源
+  # （JSQ30-MK6 主选 / JSQ30-HWF Pro 备选）。checklist.md 是其渲染产物。
+  - id: c.gas_water_heater_model_resolvable
+    kind: fk
+    ref_pattern: '(JSQ[0-9A-Za-z\-]+)'
+    ref_scope: [schedule/phase-1/checklist.md, docs/]
+    exclude: [docs/decision_log.md, docs/design-iterations/]
+    target: schedule/phase-1/control.yaml
+    target_pattern: '(JSQ[0-9A-Za-z\-]+)'
+
+  # ③ 条目增删不同步：机器条目数 vs prose 声明计数。数组加一条、删一条，
+  # 手写声明没人改 → count_mismatch（error）。prose 命中数不符 → count_mirror_unresolvable。
+  - id: c.mep_routes_count_matches_note
+    kind: count
+    source: config/mep-hvac-coordination.yaml
+    items_path: routes
+    prose:
+      - path: config/mep-hvac-coordination.yaml
+        extract: '本表 routes 共\s*(\d+)\s*条'
+        expect_matches: 1
+      - path: docs/mep-construction-guidance.md
+        extract: '共\s*(\d+)\s*条路由'
+        expect_matches: 1
+
+  - id: c.materials_count_matches_note
+    kind: count
+    source: config/materials.yaml
+    items_path: materials
+    prose:
+      - path: config/materials.yaml
+        extract: '本清单共\s*(\d+)\s*条材料项'
+        expect_matches: 1
+
+  - id: c.electrical_points_count_matches_note
+    kind: count
+    source: config/electrical.yaml
+    prose:
+      - path: config/electrical-topology.yaml
+        extract: 'config/electrical\.yaml 共\s*(\d+)\s*个点位'
+        expect_matches: 1
+
+  # 验收项实计数 ↔ rendered checklist 里的项数。注意必须按**去重后的 check id** 计：
+  # 同一条验收项会被多个工作包引用（check_elec_switch 出现在 PKG-100/120/125），
+  # 直接数行数会得到 46 而真实条目是 39。
+  - id: c.acceptance_items_count_matches_checklist
+    kind: count
+    source: config/acceptance.yaml
+    items_path: phases
+    count_field: items
+    prose:
+      - path: schedule/phase-1/checklist.md
+        extract: '^\| \[ \] \| (check_[a-z_0-9]+)'
+        expect_matches: 39
+        distinct: true
+
+  # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写
+  # `config/xxx.yaml`、`docs/xxx.md`、`tests/server/xxx.test.ts`，文件被改名、搬归档、
+  # 或从没存在过，链接静默失效。时间序档案（decision_log / design-iterations）按既有约定豁免。
+  - id: c.prose_paths_exist
+    kind: pointer
+    ref_scope: [README.md, docs/, schedule/, config/, shared/, server/]
+    exclude: [docs/decision_log.md, docs/design-iterations/, docs/superpowers/, tmp/, node_modules/, config/facts.yaml]
+    path_pattern: '((?:config|docs|schedule|shared|server|scripts|app|tests|assets|cad|survey|renders)/[A-Za-z0-9_\-./]+\.(?:yaml|json|md|ts|tsx|py))'
+
+  # ④ 规则引用的家具 type 必须存在于 house.yaml furnishings。固化上一轮手修成果
+  # （tv_stand / wardrobe_240 / master_freestanding_wardrobe_062 三类已补齐），
+  # 并把 design-rules 一并纳入——verify-rules 已由 c.rule_targets_exist 覆盖，
+  # 这里用**同一套 type 集合**反查两个规则文件，防止只有一边被改。
+  - id: c.furniture_type_refs_exist
+    kind: type_ref
+    sources: [config/verify-rules.yaml, config/design-rules.yaml]
+    under: [match, furniture, furniture_types]
+    target: config/house.yaml
+    target_path: furnishings
+    key_field: type
+    # 唯一的非家具 type：ac_indoor 是空调内机，其 match.type 由
+    # c.rule_targets_exist 的 `rule_file_field: b.file` + `file_map.ceiling: config/ceiling.yaml`
+    # 对账（目标集合改从 ceiling.yaml 取），不属于 furnishings 的家具词汇。
+    allow:
+      - type: ac_indoor
+        reason: 空调内机不是家具 type；其 match.type 由 c.rule_targets_exist 的 b.file=ceiling 文件映射对账（目标集合为 config/ceiling.yaml 的 ac_* 条目）
+
+  # ④ 泛化后的 requires_when：状态机必须自洽。
+  # `pattern` 而不是 `equals`：control.yaml 的实际词汇是 budget_pool_locked 而不是 locked，
+  # 用 equals 会让这条契约**一条都不匹配却照样显示为已登记**（比没有检查更糟）。
+  # `min_matches: 1` 把「契约空转」本身变成 error。
+  - id: c.control_lock_requires_contract_evidence
+    kind: requires_when
     path: schedule/phase-1/control.yaml
-    when: { field: status, equals: locked }
+    when: { field: status, pattern: 'locked$' }
     then: [locked_cny, contract_ref, evidence_path]
+    # 0 命中本身是个**待裁决的治理缺口**：control.yaml 的 status_note 定义了 locked
+    # 必须带 locked_cny + contract_ref，但 46 条报价轮次记录没有一条落到该状态——
+    # 中央空调 2026-10-04 已定标成交 ¥36,000（DEC-2026-10-04-R1），报价轮次表里却
+    # 没有对应的 locked 记录（2026-10-04 已先把唯一误烙 locked 的 QR-2026-10-03-05
+    # 改回 budget_pool_confirmed_quote_pending，它只是业主预算池封顶、不是合同锁定）。
+    # 因此本契约当前登记为「已武装、0 命中」：词汇一旦有人启用就开始强制，
+    # 而 0 命中这件事通过下面的 pending 在报告 INFO 里露面，不会悄悄腐烂。
+    min_matches: 0
+    pending: "业主/控制台维护者裁决报价轮次是否引入 locked 状态：空调已成交 ¥36,000（DEC-2026-10-04-R1）但 46 条记录无一落到 locked；若引入，必须同时补 locked_cny + contract_ref + evidence_path"
+
+  # 合同已决状态必须带成交金额与证据路径。当前 control.yaml 的 quote-round 词汇表里
+  # 还没有条目落到 contract_decided（空调成交记在 hvac 预算池 + procurement.md），
+  # 因此 min_matches: 0 是**有意登记的前置契约**：词汇一旦启用就开始强制，
+  # 不需要有人记得回来补契约。
+  - id: c.control_contract_decided_requires_evidence
+    kind: requires_when
+    path: schedule/phase-1/control.yaml
+    when: { field: status, equals: contract_decided }
+    then: [contracted_cny, evidence_path]
+    min_matches: 0
+    pending: "control.yaml 的报价轮次词汇表目前没有 contract_decided 状态（空调成交记在 hvac 预算池 planned_cny 36,000 与 schedule/procurement.md §01）；业主裁决是否给报价轮次增加该状态，启用后本契约立即强制 contracted_cny + evidence_path"
 
   - id: c.rule_targets_exist
     kind: non_empty
@@ -615,29 +1101,41 @@ contracts:
     items_path: templates
     field: allocation
 
-  # c.light_height_parity（2026-10-04 降为 warning）
+  # c.light_height_parity（2026-10-04 重构：从「两个绝对值碰巧相等」升级为「偏移量有据且在合理区间」）
   # ──────────────────────────────────────────────────────────────────────────
-  # 为什么不能自动修：`config/electrical.yaml` 的 `height` 是**施工安装高度**（电气口径，
-  # 决定底盒/吊顶开孔与人体可达性），`config/render/overrides.yaml` 的 `anchorY` 是
-  # **渲染锚点**（三维挂点，含吊顶完成面、灯体吊高与视觉校正）。两者语义不同，是同一灯具
-  # 在两个子系统里的**双写**，不是数据错误；改任一个都等于篡改另一方口径。
-  # 待谁裁决：设计侧（渲染锚点是否应与安装高度统一）＋电气/施工侧（anchorY 是否有施工意义）。
-  # 跟踪入口：docs/pending-site-data.md 新增条目 / DEC 编号待分配；收敛动作要求每条 override
-  #           逐条写 basis（为什么这个锚点不等于安装高度）。
-  # 因此 severity 置 warning：仍逐条暴露 8 处不一致，但不阻断门禁。
+  # 重构前的病根：config/electrical.yaml 的 height（施工安装完成面高度）与
+  # config/render/overrides.yaml 的 anchorY（渲染锚点）是同一事实的两份绝对值，
+  # 8 处不一致（2.8 vs 2.55/2.3/2.5）。这是 AGENTS.md 明令禁止的双写。
+  #
+  # 目标形态：electrical.height 是唯一事实源；overrides.yaml 只存**相对偏移**
+  # anchorY_offset，渲染锚点在 shared/project-render-facts-projection.ts 一处派生为
+  # height + anchorY_offset。重构硬验收：data/project-render-facts.json 零变化。
+  #
+  # 本契约的含义随之从「两个绝对值碰巧相等」变成：
+  #   ① 声明了 anchorY_offset 的点位必须同时写 basis（偏移依据）；
+  #   ② |anchorY_offset| <= 0.5 —— 渲染挂点不许离谱地偏离安装完成面。
+  # severity 保持 error：这不是渲染审美问题，是反双写结构是否被守住的问题。
+  # 每条 override 的完整性（每个灯具必须有 override）由 verify:project-render-facts
+  # 的投影强校验承担，缺一条即抛错。
   - id: c.light_height_parity
-    kind: parity
-    severity: warning
-    left:
-      path: config/electrical.yaml
-      key: id
-      field: height
-      filter_field: type
-      filter_values: [ceiling_light, pendant, dome, wall_lamp, downlight, led_strip, track_light]
-    right:
-      path: config/render/overrides.yaml
-      key: id
-      field: anchorY
+    kind: requires
+    path: config/render/overrides.yaml
+    when: { field: anchorY_offset, exists: true }
+    then: [basis]
+    max_abs: 0.5
+
+  # ⑤ 单源化之后 height 本身就是权威，但它仍有一条硬边界：**安装高度不得超出室内净高**。
+  # 净高权威是 config/house.yaml project.floor_height（2.8m，见 fact.floor_height_net），
+  # 这里以常量上限表达该边界（bound 不是第二份数值事实：2.9、3.0 之类一律报错）。
+  # 它同时兜住「offset 契约管不到的那一半」——overrides.yaml 的偏移没变、
+  # 但 electrical.height 被改动时，投影出来的渲染锚点会整体漂移。
+  - id: c.light_install_height_within_net_height
+    kind: requires_when
+    path: config/electrical.yaml
+    when: { field: type, pattern: '^(ceiling_light|pendant|dome|wall_lamp|downlight|led_strip|track_light)$' }
+    then: [height]
+    max_abs: 2.8
+    max_abs_field: height
 
   - id: c.layout_region_room_overlap
     kind: overlap

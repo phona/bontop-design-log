@@ -1,6 +1,7 @@
 notes:
   - "外立面玻璃幕墙已由开发商安装完成，装修阶段无需采购封窗，只需核对门窗口位置及幕墙保护"
   - "本清单以套内 94.76㎡、层高 3.0m 为基数估算"
+  - "本清单共 71 条材料项（2026-10-04 登记，与 fact.materials_count / c.materials_count_matches_note 对账：增删条目必须同步此数）"
 
 # Formal GLB material-role contract. Values reference entries below; shader topology stays in Blender Python.
 render_roles:

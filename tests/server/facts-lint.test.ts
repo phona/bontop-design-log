@@ -616,3 +616,183 @@ test('overlap：ignore_follow=false 时恢复全量报告（逃生阀）', () =>
   }));
   assert.equal(result.errors.filter((i) => i.code === 'polygon_overlap').length, 1);
 });
+
+// ─── 2026-10-04 新增契约层：count / pointer / type_ref / supersede / requires_when 泛化 ───
+
+test('requires_when：when.exists 要求「声明了 X 就必须写 Y」，max_abs 限定偏移区间', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{
+      id: 'c.light_height_parity', kind: 'requires_when',
+      path: 'config/render/overrides.yaml',
+      when: { field: 'anchorY_offset', exists: true },
+      then: ['basis'], max_abs: 0.5,
+    }],
+  };
+  const ok = lintFacts(registry, workspaceOf({
+    'config/render/overrides.yaml': '- id: a\n  anchorY_offset: -0.25\n  basis: "灯罩厚度"\n',
+  }));
+  assert.equal(ok.errors.length, 0);
+
+  const noBasis = lintFacts(registry, workspaceOf({
+    'config/render/overrides.yaml': '- id: a\n  anchorY_offset: -0.25\n',
+  }));
+  assert.equal(noBasis.errors.filter((i) => i.code === 'required_field_missing').length, 1);
+
+  const tooFar = lintFacts(registry, workspaceOf({
+    'config/render/overrides.yaml': '- id: a\n  anchorY_offset: -0.9\n  basis: "离谱"\n',
+  }));
+  assert.equal(tooFar.errors.filter((i) => i.code === 'required_field_out_of_range').length, 1);
+});
+
+test('requires_when：when.pattern 匹配同义状态词，min_matches 把「契约空转」变成 error', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{
+      id: 'c.lock', kind: 'requires_when', path: 'schedule/phase-1/control.yaml',
+      when: { field: 'status', pattern: 'locked$' },
+      then: ['locked_cny', 'contract_ref', 'evidence_path'],
+      min_matches: 1,
+    }],
+  };
+  // 同义状态词也命中：budget_pool_locked 匹配 /locked$/，纳入检查且三证齐全才放行
+  const synonymMissingEvidence = lintFacts(registry, workspaceOf({
+    'schedule/phase-1/control.yaml': 'records:\n  - id: r1\n    status: budget_pool_locked\n',
+  }));
+  // 每个命中对象报一条 issue，缺的字段在消息里列全
+  assert.equal(synonymMissingEvidence.errors.filter((i) => i.code === 'required_field_missing').length, 1);
+  assert.match(synonymMissingEvidence.errors[0].message, /locked_cny、contract_ref、evidence_path/);
+
+  // 契约空转：状态词被改成不含 locked 的同义词，命中数掉到 0 → 本身即 error
+  const armed = lintFacts(registry, workspaceOf({
+    'schedule/phase-1/control.yaml': 'records:\n  - id: r1\n    status: budget_pool_confirmed_quote_pending\n',
+  }));
+  assert.equal(armed.errors.filter((i) => i.code === 'required_condition_unmatched').length, 1);
+  assert.match(armed.errors[0].message, /min_matches=1/);
+
+  const matched = lintFacts(registry, workspaceOf({
+    'schedule/phase-1/control.yaml': 'records:\n  - id: r1\n    status: locked\n    locked_cny: 1\n    contract_ref: c\n    evidence_path: e\n',
+  }));
+  assert.equal(matched.errors.length, 0);
+});
+
+test('count：机器条目数 vs prose 声明计数，distinct 按去重条目计', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{
+      id: 'c.items', kind: 'count', source: 'config/acceptance.yaml', items_path: 'phases', count_field: 'items',
+      prose: [{ path: 'schedule/phase-1/checklist.md', extract: '^\\| \\[ \\] \\| (check_[a-z_0-9]+)', expect_matches: 3, distinct: true }],
+    }],
+  };
+  const ok = lintFacts(registry, workspaceOf({
+    'config/acceptance.yaml': 'phases:\n  - id: p1\n    items: [{id: a}, {id: b}]\n  - id: p2\n    items: [{id: c}]\n',
+    // 同一验收项被两个工作包引用 → 行数 4、去重后 3
+    'schedule/phase-1/checklist.md': '| [ ] | check_a |\n| [ ] | check_a |\n| [ ] | check_b |\n| [ ] | check_c |\n',
+  }));
+  assert.equal(ok.errors.length, 0);
+
+  const drift = lintFacts(registry, workspaceOf({
+    'config/acceptance.yaml': 'phases:\n  - id: p1\n    items: [{id: a}, {id: b}, {id: c}, {id: d}]\n',
+    'schedule/phase-1/checklist.md': '| [ ] | check_a |\n| [ ] | check_b |\n| [ ] | check_c |\n',
+  }));
+  assert.equal(drift.errors.filter((i) => i.code === 'count_mismatch').length, 1);
+  assert.match(drift.errors[0].message, /实际 4 条/);
+});
+
+test('pointer：prose 引用的仓库内路径必须真实存在，allow 必须写 reason', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{
+      id: 'c.paths', kind: 'pointer', ref_scope: ['README.md'],
+      path_pattern: '((?:config|docs|schedule)/[A-Za-z0-9_\\-./]+\\.(?:yaml|md))',
+      allow: [{ path: 'docs/archive.md', reason: '外部 skill 产出，未随仓库提交' }],
+    }],
+  };
+  const datasets = { 'contract.files': ['README.md'] };
+  const ok = lintFacts(registry, workspaceOf({
+    'README.md': '见 `config/electrical.yaml` 与 `docs/archive.md`\n',
+    'config/electrical.yaml': 'id: a\n',
+  }, datasets));
+  assert.equal(ok.errors.length, 0);
+
+  const dangling = lintFacts(registry, workspaceOf({
+    'README.md': '见 `config/electrical.yaml` 与 `config/does-not-exist.yaml`\n',
+    'config/electrical.yaml': 'id: a\n',
+  }, datasets));
+  assert.equal(dangling.errors.filter((i) => i.code === 'pointer_dangling').length, 1);
+
+  const noReason = lintFacts({
+    ...emptyRegistry,
+    contracts: [{ id: 'c.paths', kind: 'pointer', ref_scope: ['README.md'], path_pattern: '(config/[a-z]+\\.yaml)', allow: [{ path: 'config/x.yaml' }] }],
+  }, workspaceOf({ 'README.md': 'x\n' }, datasets));
+  assert.equal(noReason.errors.filter((i) => i.code === 'pointer_allow_without_reason').length, 1);
+});
+
+test('type_ref：规则引用的家具 type 必须存在于 house.yaml furnishings', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{
+      id: 'c.types', kind: 'type_ref', sources: ['config/verify-rules.yaml'],
+      under: ['match', 'furniture_types'], target: 'config/house.yaml', target_path: 'furnishings', key_field: 'type',
+    }],
+  };
+  const ok = lintFacts(registry, workspaceOf({
+    'config/verify-rules.yaml': 'proximity:\n  - id: r1\n    b: { match: { type: tv_stand } }\n    furniture_types: [wardrobe_240]\n',
+    'config/house.yaml': 'furnishings:\n  master_bedroom:\n    - { type: tv_stand }\n    - { type: wardrobe_240 }\n',
+  }));
+  assert.equal(ok.errors.length, 0);
+
+  const drift = lintFacts(registry, workspaceOf({
+    'config/verify-rules.yaml': 'proximity:\n  - id: r1\n    b: { match: { type: tv_stand_renamed } }\n',
+    'config/house.yaml': 'furnishings:\n  master_bedroom:\n    - { type: tv_stand }\n',
+  }));
+  assert.equal(drift.errors.filter((i) => i.code === 'type_ref_absent').length, 1);
+});
+
+test('supersede：作废字段必须自证退场，且被指名的现行权威必须存在并带活字段', () => {
+  const contract = {
+    id: 'c.sup', kind: 'supersede' as const, source: 'config/budget/base.json',
+    fields: ['total_budget', 'project_ceiling'],
+    superseded_by: 'schedule/phase-1/control.yaml', live_field: 'control.phase_ceiling_cny',
+    must_declare: ['status', 'superseded_by', 'note'],
+  };
+  const registry: FactsRegistry = { ...emptyRegistry, contracts: [contract] };
+  const ok = lintFacts(registry, workspaceOf({
+    'config/budget/base.json': JSON.stringify({
+      status: 'superseded', superseded_by: 'schedule/phase-1/control.yaml', note: 'x',
+      total_budget: 208000, project_ceiling: 190000,
+    }),
+    'schedule/phase-1/control.yaml': 'control:\n  phase_ceiling_cny: 206000\n',
+  }));
+  assert.equal(ok.errors.length, 0);
+
+  const reactivated = lintFacts(registry, workspaceOf({
+    'config/budget/base.json': JSON.stringify({ total_budget: 208000, project_ceiling: 190000 }),
+    'schedule/phase-1/control.yaml': 'control:\n  phase_ceiling_cny: 206000\n',
+  }));
+  assert.equal(reactivated.errors.filter((i) => i.code === 'supersede_undeclared').length, 3);
+
+  const wrongAuthority = lintFacts(registry, workspaceOf({
+    'config/budget/base.json': JSON.stringify({
+      status: 'superseded', superseded_by: 'config/other.yaml', note: 'x',
+      total_budget: 1, project_ceiling: 2,
+    }),
+    'schedule/phase-1/control.yaml': 'control:\n  phase_ceiling_cny: 206000\n',
+  }));
+  assert.equal(wrongAuthority.errors.filter((i) => i.code === 'supersede_authority_mismatch').length, 1);
+});
+
+test('带 pending 的豁免与契约在 INFO 里露面，不退化成静默待办', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    facts: [{
+      id: 'fact.x', kind: 'derived', value: '@config/a.yaml:n',
+      exempt: [{ path: 'docs/b.md', pattern: 'zzz', reason: '对交际待裁决', pending: '业主改口径' }],
+    }],
+    contracts: [{ id: 'c.armed', kind: 'requires_when', path: 'config/a.yaml', when: { field: 'status', equals: 'x' }, then: ['y'], min_matches: 0, pending: '词汇表未启用' }],
+  };
+  const notes = (lintFacts(registry, workspaceOf({ 'config/a.yaml': 'n: 1\n' })).notes ?? []).join('\n');
+  assert.match(notes, /fact\.x 豁免待决/);
+  assert.match(notes, /业主改口径/);
+  assert.match(notes, /contract c\.armed 待决/);
+});

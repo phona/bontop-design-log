@@ -3,6 +3,18 @@
 > 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（73 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057；2026-10-04 DEC-2026-10-04-R2 补外机供电 strong-ac-outdoor，72→73）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
 > **不是施工放线依据**：所有坐标为协调值，穿墙点、梁位、立管、墙体类型均需交房量房后终核修正。配置驱动，修正只改 yaml，渲染与校验自动跟随。
 
+## 0. 规模口径（与 config/facts.yaml 对账）
+
+| 数据源 | 条目数 | 登记事实 |
+|---|---:|---|
+| `config/mep-hvac-coordination.yaml` | 共 73 条路由 | `fact.mep_routes_count` |
+| `config/mep-hvac-coordination.yaml` | 共 8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风） | `fact.mep_layers_count` |
+| `config/electrical.yaml` | 共 98 个点位 | `fact.electrical_points_count` |
+| `config/plumbing.yaml` | 共 22 个点位 | `fact.plumbing_points_count` |
+| `config/ceiling.yaml` | 共 23 个吊顶分区 | `fact.ceiling_zones_count` |
+
+> 上表数字必须与 yaml 实际条目数一致，否则 `verify:facts` 的 count/fact 对账直接失败。
+
 ## 1. 走线总则
 
 - **电与空调走顶**：主干藏走廊满吊（z=4.6 轴线）/门厅满吊/客厅北缘边吊，分支进各房间边吊；到点位上方后**沿墙竖直下引**（开关 1.3m、低位插座 0.3m、床头 0.6–0.7m）。空调插座贴边吊下沿，不下引。
