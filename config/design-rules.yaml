@@ -276,7 +276,9 @@ constraints:
     severity: "medium"
     when:
       topic: "electrical"
-      condition: "$item.id == 'sock_living_tv' && dist($item, furniture.tv_stand) > 1.5"
+      # 2026-10-04：house.yaml furnishings 实际放置的是 tv_wall_low（+tv_65 挂墙），
+      # 无 furniture.tv_stand；原条件永假使本规则空转，改为真实 type。
+      condition: "$item.id == 'sock_living_tv' && dist($item, furniture.tv_wall_low) > 1.5"
     description: "电视插座与电视柜距离超过 1.5m，请确认布局一致性"
 
   - id: "curtain_power_near_curtain_wall"

@@ -154,7 +154,7 @@ rooms:
     area: 12.75
     status: "design"
     orientation: "南"
-    notes: "左侧中间卧室，预留未来改书房/客房的可能（已有网线、窗帘电源）；镜像 model-geometry（设计图标注 8.35㎡）"
+    notes: "左侧中间卧室，预留未来改书房/客房的可能（已有网线、窗帘电源）；镜像 model-geometry（设计图标注面积待量房终核；模型多边形毛口径 12.75㎡；点石设计图该房净标注 8.39㎡ 属净口径、不同量纲；8.35㎡ 系东南书房 bedroom_se 标注，原记录误引于此已删，依据 docs/decision_log.md DEC-2026-08-27-047）"
     windows:
       - width: 1.50
         height: 1.40
@@ -331,12 +331,12 @@ gift_areas:
     wall_finish: "paint"
     needs_waterproof: false
     width: 1.60
-    length: 1.55
+    length: 1.00
     height: 2.8
-    area: 2.48
+    area: 1.60
     status: "design"
     orientation: "西"
-    notes: "701 唯一可用设备平台，赠送面积，面积约 2.48㎡。因面积有限且西户专属，空调方案建议采用中央空调/多联机（一台外机），避免多台分体外机放不下。详见 docs/hvac_options_analysis.md（本区域未在当前效果图模型中渲染，以合同/物业图为准）"
+    notes: "701 唯一可用设备平台，赠送面积，面积约 1.60㎡（bbox 口径；含 r=1.0 西北圆角后可用约 1.39㎡，依据 model-geometry.yaml platform.boundary + overlay.yaml north_platform_floor）。因面积有限且西户专属，空调方案建议采用中央空调/多联机（一台外机），避免多台分体外机放不下。详见 docs/hvac_options_analysis.md（本区域未在当前效果图模型中渲染，以合同/物业图为准）"
 
 mechanical_electrical_plumbing:
   hvac:
@@ -406,7 +406,7 @@ mechanical_electrical_plumbing:
 
 mep_strategy:
   - "中央空调 / 多联机一拖六，外机放西设备平台（现行为领航者Ⅳ MJV-200W-E01-LHIV 20kW，2026-10-04 成交 36,000，DEC-2026-10-04-R1）"
-  - "外机供电已按 GB 55038 7.4.4 单独成路：电气拓扑第 20 路 hvac_power_outdoor_a2（C32A+漏保 / 4.0mm²(φ20) proposed，待厂家配电图），点位 sock_vrf_outdoor_a2 挂 w_vrv_east 厨房侧 @(7.20,0.50,1.60)，走线 strong-ac-outdoor；平台侧防水与可切断、以及 1.6×1.55m 平台的散热核算 site_pending（DEC-2026-10-04-R2）"
+  - "外机供电已按 GB 55038 7.4.4 单独成路：电气拓扑第 20 路 hvac_power_outdoor_a2（C32A+漏保 / 4.0mm²(φ20) proposed，待厂家配电图），点位 sock_vrf_outdoor_a2 挂 w_vrv_east 厨房侧 @(7.20,0.50,1.60)，走线 strong-ac-outdoor；平台侧防水与可切断、以及 1.6×1.00m 平台（bbox；含圆角可用约 1.39㎡）的散热核算 site_pending（DEC-2026-10-04-R2）"
   - "燃气热水器供热水，位置待设计师确定"
   - "智能预留 B 级：智能开关零线 + 网关 + 电动窗帘电源（主卧/客厅/父母房/书房） + 传感器位"
   - "全屋窗帘：遮光帘 + 纱帘，厨卫用防水卷帘/百叶"
@@ -440,8 +440,8 @@ furnishings:
     - { type: ceiling_light }
   bedroom_nw:
     # 房间 x∈[2.60,5.60] z∈[1.10,4.30]，南门 d_bnw @(5.0,4.30) swing x∈[4.55,5.45] z∈[3.40,4.30]
-    - { type: bed_150, x: 4.60, z: 2.30, rotation: 270 }       # 床头靠东墙，1.5m床改善通道（DEC-013）
-    - { type: wardrobe_180, x: 3.50, z: 4.00, rotation: 0 }    # B案（2026-08-21 业主拍板）南墙西段通顶柜；x∈[2.6,4.4]避门洞4.55；柜前通道0.65m；推拉门（DEC-013）；2026-08-26 上方为南墙边吊（底2.50m）：柜体2.40+顶封板0.10抵边吊底
+    - { type: bed_150, x: 4.60, z: 2.30, rotation: 270 }       # 床头靠东墙，1.5m床改善通道（DEC-2026-08-02-013）
+    - { type: wardrobe_180, x: 3.50, z: 4.00, rotation: 0 }    # B案（2026-08-21 业主拍板）南墙西段通顶柜；x∈[2.6,4.4]避门洞4.55；柜前通道0.65m；推拉门（DEC-2026-08-02-013）；2026-08-26 上方为南墙边吊（底2.50m）：柜体2.40+顶封板0.10抵边吊底
     - { type: desk, x: 2.90, z: 2.10, rotation: 90, width: 1.2, depth: 0.45 }  # B案：窄桌靠西侧采光位；东缘避开 w_mbath_east 实体墙，北移避开书桌椅重叠，西/北墙均玻璃幕不可挂载，电位改地插
     - { type: chair, x: 3.35, z: 3.00, rotation: 270 }         # B案书桌椅（桌-床间0.5档，现实可推入桌下）
     - { type: shelf, x: 3.00, z: 1.30, rotation: 0 }           # DEC-023 西北角置物架（贴北墙+西墙转角，书/杂物开架收纳，上飘窗窗下墙；窗位 inferred，落位待量房复核）
@@ -502,7 +502,7 @@ furnishings:
     - { type: kitchen_countertop_bridge, x: 8.80, z: 0.32, rotation: 0, length: 0.60, depth: 0.60, countertopThickness: 0.03 }
     # 台面开孔位置由现有 sink@9.50,0.30 与本 run 中心@9.94,0.32 换算为 run-local offset。
     - { type: kitchen_cabinet_run, x: 9.94, z: 0.32, rotation: 0, length: 1.68, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [{ kind: sink, id: kitchen-sink, offset: [-0.44, -0.02], size: [0.70, 0.40] }] }
-    - { type: dishwasher, x: 8.80, z: 0.30, rotation: 0 }  # 北墙地柜台下（DEC-013，水槽柜西侧紧邻；⚠️坐标待量房）
+    - { type: dishwasher, x: 8.80, z: 0.30, rotation: 0 }  # 北墙地柜台下（DEC-2026-08-02-013，水槽柜西侧紧邻；⚠️坐标待量房）
     # 灶台开孔位置由现有 gas_stove@10.50,1.18 与本 run 中心@10.48,1.00 换算为世界偏移，再按 rotation=90 逆变换为 run-local offset。
     - { type: kitchen_cabinet_run, x: 10.48, z: 1.00, rotation: 90, length: 1.40, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [{ kind: cooktop, id: kitchen-cooktop, offset: [-0.18, 0.02], size: [0.45, 0.75] }] }
     - { type: cabinet_base, count: 5.0 }      # 预算/库存：北墙3.6+东墙2.2 L型
@@ -511,7 +511,7 @@ furnishings:
     - { type: fridge, x: 10.45, z: 2.05, rotation: 90 }     # DEC-021 东墙南端高柜位（厨房缩至 z=2.4）
     - { type: gas_stove, x: 10.50, z: 1.18, rotation: 90 }  # DEC-021 东墙灶台北移
     - { type: range_hood, x: 10.50, z: 1.18, rotation: 90 } # DEC-021 灶台上方烟机
-    - { type: sink, x: 9.50, z: 0.30, rotation: 0 }         # DEC-013 北墙水槽
+    - { type: sink, x: 9.50, z: 0.30, rotation: 0 }         # DEC-2026-08-02-013 北墙水槽
     # 热水器挂厨房西侧、靠生活阳台玻璃幕墙的 w_vrv_east 实体墙厨房侧，避开阳台门洞和北墙地柜；燃气路由/CO 安全红线待物业/燃气公司确认
     - { type: water_heater, x: 7.30, z: 1.00, rotation: 270 }
     - { type: ceiling_light }

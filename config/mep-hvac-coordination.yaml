@@ -1,6 +1,6 @@
 version: '1'
 status: preliminary
-note: "综合水电+中央空调协调 proposal；2026-09-01 v1 走线重写：路径贴吊顶网络（走廊/门厅/客厅北缘边吊+各房间边吊）与墙面，平面走向一律正交（曼哈顿式）折线，穿墙处显式声明 penetration 且穿墙线段与墙正交，重力管带 flow_direction/slope；路线仍为 preliminary/proposed，不是施工图或施工放线依据。路由计数（DEC-2026-10-04-R2 重数）：本表 routes 共 48 条 = 47 既有 + 新增 strong-ac-outdoor（外机供电第 20 路）。"
+note: "综合水电+中央空调协调 proposal；2026-09-01 v1 走线重写：路径贴吊顶网络（走廊/门厅/客厅北缘边吊+各房间边吊）与墙面，平面走向一律正交（曼哈顿式）折线，穿墙处显式声明 penetration 且穿墙线段与墙正交，重力管带 flow_direction/slope；路线仍为 preliminary/proposed，不是施工图或施工放线依据。路由计数（DEC-2026-10-04-R2 重数）：本表 routes 共 73 条 = 72 既有 + 新增 strong-ac-outdoor（外机供电第 20 路）。"
 layers:
   strong_power: { label: '强电', color: '#ef4444', height: 2.45 }
   weak_power: { label: '弱电', color: '#8b5cf6', height: 2.50 }

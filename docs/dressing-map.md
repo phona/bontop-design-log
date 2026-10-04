@@ -143,9 +143,9 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 
 | id | 房间 | 类型 | 位置 (x, z) | 高度 (m) | 色温 (K) | 回路 | 备注 |
 |---|---|---|---|---|---|---|---|
-| light_dining_pendant | living_dining | 吊灯 | (7.9, 3.45) | 2.8 | 3000 | dining | 餐桌吊灯天花出线（DEC-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm |
+| light_dining_pendant | living_dining | 吊灯 | (7.9, 3.45) | 2.8 | 3000 | dining | 餐桌吊灯天花出线（DEC-2026-08-02-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm |
 | living_track_main | living_dining | 明装轨道灯 | (10.8, 7.15) | 2.8 | 3000 | living_base | 一条黑色明装约2.8m短轨、4灯头，客厅基础光回路；无新增吊顶/电视背景墙 |
-| light_tv_strip | living_dining | 灯带 | (7.2, 7.7) | 2 | 3000 | tv_ambient | 电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-013） |
+| light_tv_strip | living_dining | 灯带 | (7.2, 7.7) | 2 | 3000 | tv_ambient | 电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-2026-08-02-013） |
 | light_master_dome | master_bedroom | 吸顶灯 | (2.6, 7.6) | 2.8 | 3000 | — | 主卧吸顶灯 |
 | light_master_wall_l | master_bedroom | 壁灯 | (4.2, 6.95) | 1.35 | 3000 | — | R6 北侧床头壁灯：候选 z=6.95、h=1.35；关于床中心 z=7.40 对称，东墙实体墙，wall_side west，点位不得被床头柜/床头板遮挡，仍 site_pending |
 | light_master_wall_r | master_bedroom | 壁灯 | (4.2, 7.85) | 1.35 | 3000 | — | R6 南侧床头壁灯：候选 z=7.85、h=1.35；关于床中心 z=7.40 对称，东墙实体墙，wall_side west，点位不得被床头柜/床头板遮挡，仍 site_pending |
@@ -191,7 +191,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 
 ### 地面（含人字拼 A/B）
 - glb 内嵌贴图仅打底（程序化生成，质感非最终）；Library > **Materials > Wood** 搜 `herringbone` 可得带多版面+倒角的真人字拼，拖到地面节点即替换
-- 直铺选浅胡桃色（#c49a6c 方向）柔光木地板款；替换后对比人字拼/直铺，作为 DEC-011 门店终审前的云端证据
+- 直铺选浅胡桃色（#c49a6c 方向）柔光木地板款；替换后对比人字拼/直铺，作为 DEC-2026-08-01-011 门店终审前的云端证据
 
 ### 玻璃幕（5 段 curtain_run + 9 处飘窗）
 - Library > **Materials > Glass** 拖至 `west_curtain` 等节点；Properties 里 reflectance 微升、tint 微绿 ≈ Low-E 微反质感

@@ -18,7 +18,10 @@ existence:
 proximity:
   - id: tv_socket_to_stand
     a: { file: electrical, match: { id: sock_living_tv } }
-    b: { file: furniture, match: { type: tv_stand } }
+    # 2026-10-04：house.yaml furnishings 实际放置的是 tv_wall_low（2.1m 深胡桃带细腿落地低柜
+    # @(7.48,8.00)）+ tv_65（65 寸电视挂墙 @(7.42,8.00)），从未有过 type: tv_stand。
+    # 原 tv_stand 使本规则空转（c.rule_targets_exist 报 rule_target_absent），改为真实 type。
+    b: { file: furniture, match: { type: tv_wall_low } }
     max_distance: 1.5
     severity: warn
 
@@ -35,7 +38,13 @@ proximity:
     severity: warn
 
 clearance:
-  furniture_types: [bed_180, bed_150, wardrobe_240, master_freestanding_wardrobe_062, study_seasonal_wardrobe_wall, wardrobe_180, shelf, sofa_3seat]
+  # 2026-10-04：删除 wardrobe_240 与 master_freestanding_wardrobe_062——两者在
+  # config/house.yaml furnishings 中已不存在（原 2.4m 衣柜与主卧 0.62m 独立衣柜已分别被
+  # master_north_wall_wardrobe_950 / wardrobe_180 取代），留着即使规则空转
+  # （c.rule_targets_exist 报 rule_target_absent）。其余 type 均实测存在。
+  # 覆盖范围不缩小：wardrobe_180 与 study_seasonal_wardrobe_wall 仍在名单内，
+  # 主卧新增的 master_north_wall_wardrobe_950 是否纳入通道校核待量房后随家具冻结一并裁定。
+  furniture_types: [bed_180, bed_150, study_seasonal_wardrobe_wall, wardrobe_180, shelf, sofa_3seat]
   min_passage: 0.50
   severity: warn
 

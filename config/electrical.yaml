@@ -7,7 +7,7 @@
   z: 7.7
   height: 0.3
   count: 4
-  note: "电视墙(西墙): 电视+音响+机顶盒+预留，含USB×2（DEC-013 由z=5.8移至z=7.0，电视柜正后方）"
+  note: "电视墙(西墙): 电视+音响+机顶盒+预留，含USB×2（DEC-2026-08-02-013 由z=5.8移至z=7.0，电视柜正后方）"
 
 # DEC-2026-10-03-R1 电视高位取电：tv_65 挂墙，低位柜内插座无法服务电视与音响。
 # 与 sock_living_tv(0.3)/sock_living_tv_led(2.0) 同在 x=7.20 墙带，竖向分层避免同高程堆叠。
@@ -31,7 +31,7 @@
   x: 7.20
   z: 7.7
   height: 0.3
-  note: "客厅网口（DEC-013 由z=5.8移至z=7.0）"
+  note: "客厅网口（DEC-2026-08-02-013 由z=5.8移至z=7.0）"
 
 - id: sock_living_sofa_l
   room: living_dining
@@ -217,7 +217,7 @@
   height: 0.75
   note: "主卧空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：南床头双联南侧第三模块位（8.598+0.086），床头成组 h=0.75，贴合业主床头控制预期并避 w_strip_east 剪力墙门垛开盒；南帘堆叠关系与底盒施工仍 site_pending；品牌定标后按厂商线控规格终核"
 
-# net_master_tv 已删除（DEC-013 主卧取消电视位，不布网口）
+# net_master_tv 已删除（DEC-2026-08-02-013 主卧取消电视位，不布网口）
 
 - id: sock_master_ac
   room: master_bedroom
@@ -424,7 +424,7 @@
   count: 1
   note: "儿童房空调内机电源（南墙边吊内东端，随内机 2026-08-26 南移；南墙通顶衣柜上方）"
 
-# 厨房（DEC-013 布局重排：灶台→东墙，水槽→北墙；DEC-014 冰箱→东墙南端，南界 z=2.9）
+# 厨房（DEC-2026-08-02-013 布局重排：灶台→东墙，水槽→北墙；DEC-014 冰箱→东墙南端，南界 z=2.9）
 - id: sock_kitchen_counter
   room: kitchen
   type: socket
@@ -469,7 +469,7 @@
   z: 1.2
   height: 2.2
   count: 1
-  note: "油烟机插座（DEC-013 移至东墙灶台上方，DEC-021 随灶台北移）"
+  note: "油烟机插座（DEC-2026-08-02-013 移至东墙灶台上方，DEC-021 随灶台北移）"
 
 - id: sock_kitchen_purifier
   room: kitchen
@@ -478,7 +478,7 @@
   z: 0.30
   height: 0.3
   count: 1
-  note: "净水器插座（DEC-013 北墙落地柜台下，上下水走地面非挂墙，⚠️坐标待量房确认立管）"
+  note: "净水器插座（DEC-2026-08-02-013 北墙落地柜台下，上下水走地面非挂墙，⚠️坐标待量房确认立管）"
 
 - id: sock_kitchen_gas
   room: kitchen
@@ -712,7 +712,7 @@
 
 # === 新增点位（2026-07-25 基线补齐） ===
 
-# 厨房洗碗机（DEC-013 移至北墙水槽旁）
+# 厨房洗碗机（DEC-2026-08-02-013 移至北墙水槽旁）
 - id: sock_kitchen_dishwasher
   room: kitchen
   type: socket
@@ -720,7 +720,7 @@
   z: 0.30
   height: 0.3
   count: 1
-  note: "洗碗机插座（DEC-013 北墙落地柜台下，单独回路，⚠️坐标待量房）"
+  note: "洗碗机插座（DEC-2026-08-02-013 北墙落地柜台下，单独回路，⚠️坐标待量房）"
 
 # 主卧电动窗帘
 - id: sock_master_curtain
@@ -844,7 +844,7 @@
   height: 2.50
   note: "DEC-2026-10-04-R2 客厅/走廊吊顶 PoE AP 预留网线点：点位由原位 (8.60,5.80) 移入 ceiling_living 北缘边吊空腔 (8.60,4.75)（边吊 x[7.20,13.40]×z[4.30,5.20]）——原位 z=5.80 落在所有已声明吊顶之外（客厅中部为原顶 2.80m），原 note「网线藏吊顶空腔」不成立；备选方案为走廊吊顶位（如 (6.50,5.00)，落在 ceiling_main_corridor x[4.20,7.20]×z[4.30,5.55]），二者待网络方案定标后冻结；polygon 校验落在 living_dining；与强电分管敷设"
 
-# === 新增点位（2026-08-02 DEC-013 设计审查） ===
+# === 新增点位（DEC-2026-08-02-013 设计审查：全屋布局深化 + 水电交底清单） ===
 
 # 电视墙灯带电源
 - id: sock_living_tv_led
@@ -867,7 +867,7 @@
   height: 2.8
   temp: 3000
   circuit: dining
-  note: "餐桌吊灯天花出线（DEC-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1 落实），距桌面75cm"
+  note: "餐桌吊灯天花出线（DEC-2026-08-02-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1 落实），距桌面75cm"
 
 # === 室内灯光方案（2026-08-12 灯光渲染系统；全屋 3000K 暖光，厨卫 4000K）===
 # 点位即水电交底单；type: pendant吊灯/dome吸顶/wall_lamp壁灯/downlight筒灯/led_strip灯带/track_light明装轨道灯
@@ -889,7 +889,7 @@
   height: 2.0
   temp: 3000
   circuit: tv_ambient
-  note: "电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-013；控制方式：灯带驱动遥控/APP，无墙控点位，DEC-2026-09-08-R1 业主确认方向，如需墙控另开迭代）"
+  note: "电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-2026-08-02-013；控制方式：灯带驱动遥控/APP，无墙控点位，DEC-2026-09-08-R1 业主确认方向，如需墙控另开迭代）"
 - id: light_master_dome
   room: master_bedroom
   type: dome

@@ -280,7 +280,7 @@ phases:
         severity: critical
         knowledge: |
           依据 GB 55038-2025 7.4.3-1：电源插座回路均应加设剩余电流动作值 ≤30mA 的保护电器。
-          本户 19 条回路里的每一条含 type: socket 的回路都必须有漏保（含冰箱、5 路空调内机合并后的 2 路）。
+          本户 20 条回路里的每一条含 type: socket 的回路都必须有漏保（含冰箱、6 台内机并为 2 路（hvac_power_living / hvac_power_bedrooms）+ 外机专用第 20 路 hvac_power_outdoor_a2）。
           中央空调若厂家要求硬接线不设漏保，须提供厂家正式配电图，不得口头免除。
           按钮自检只能验机构，验不了动作电流值。
 

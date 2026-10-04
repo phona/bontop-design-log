@@ -124,7 +124,7 @@
   x: 9.50
   z: 0.30
   height: 0.8
-  note: "厨房洗菜盆冷热水（DEC-013 北墙落地柜台面，上下水走地面非挂墙，⚠️x坐标待量房确认立管）"
+  note: "厨房洗菜盆冷热水（DEC-2026-08-02-013 北墙落地柜台面，上下水走地面非挂墙，⚠️x坐标待量房确认立管）"
 
 - id: faucet_kitchen_purifier
   room: kitchen
@@ -132,7 +132,7 @@
   x: 9.50
   z: 0.30
   height: 0.3
-  note: "厨房净水器给水（DEC-013 北墙落地柜台下，与水槽同侧）"
+  note: "厨房净水器给水（DEC-2026-08-02-013 北墙落地柜台下，与水槽同侧）"
 
 - id: drain_kitchen_sink
   room: kitchen
@@ -140,7 +140,7 @@
   x: 9.5
   z: 0.3
   height: 0.02
-  note: "厨房洗菜盆下水（DEC-013 移至北墙地面，⚠️接排水立管待量房确认）"
+  note: "厨房洗菜盆下水（DEC-2026-08-02-013 移至北墙地面，⚠️接排水立管待量房确认）"
 
 - id: faucet_balcony_washer
   room: balcony
@@ -186,7 +186,7 @@
   x: 9.00
   z: 0.30
   height: 0.02
-  note: "洗碗机排水（DEC-013 移至北墙厨下，接排水管）"
+  note: "洗碗机排水（DEC-2026-08-02-013 移至北墙厨下，接排水管）"
 
 - id: drain_balcony_washer
   room: balcony
