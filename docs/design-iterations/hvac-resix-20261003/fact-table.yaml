@@ -1,0 +1,97 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: hvac-resix-20261003
+subject: 中央空调重配、成交与数据模型收口（含三路只读审计发现）
+created_at: "2026-10-04T00:00:00+08:00"
+status: delivery_ready
+updated_at: "2026-10-04T00:00:00+08:00"
+source_policy:
+  authority_refs:
+    - "GB 55038-2025 7.4.3 / 7.4.4 / 7.4.5 / 7.4.7"
+    - "CJJ/T 146-2011《城镇燃气报警控制系统技术规程》"
+    - "GB50736-2012（南宁设计干球 34.2℃ / 湿球 27.5℃，见成交报价单设计参数页）"
+  observation_refs:
+    - "evidence/ 内 5 份原件（合同附件两页、美的参数表、落选报价、同小区参考报价）"
+    - "config/electrical.yaml（97 点位）、config/electrical-topology.yaml（20 回路）、config/mep-hvac-coordination.yaml（73 条走线）"
+    - "三路 subagent 只读审计报告（2026-10-03）"
+  measurement_refs: []
+  runtime_refs: []
+  evidence_refs:
+    - "docs/design-iterations/hvac-resix-20261003/evidence/evidence-notes.md"
+facts:
+  confirmed:
+    - id: F1-contract
+      statement: "2026-10-04 定标成交 36,000 元：外机美的领航者Ⅳ MJV-200W-E01-LHIV 20kW 14,124 + 安装 1,400×6=8,400 + 6 台双出风内机 /P-SS；签约方南宁长旺建材家居市场美的中央空调智慧空气馆长旺家中店；项目邦泰璟和 8-701"
+      source_refs: ["evidence/hvac-contract-attachment-p1-20261004.jpg"]
+      confidence: high
+      impact: material
+    - id: F2-capacity-mapping
+      statement: "内机容量表为照片判读 71T2 + 42T2 + 56T2 + 28T2×3 = 25.3kW（连接率 1.27），与 R6 设计口径 21.6kW/1.08 不一致；房间映射须以合同正式选型附图为准"
+      source_refs: ["evidence/hvac-contract-attachment-p1-20261003.jpg", "docs/decision_log.md DEC-2026-10-04-R1"]
+      confidence: medium
+      impact: material
+      note: "**这是唯一悬而未决的设计输入**；到手前 config 的 indoor_nominal_kw_total 仍为设计口径 21.6，采购值只活在 note 字符串"
+    - id: F3-area
+      statement: "客餐厅（living_dining）实际面积 44.58㎡（polygon 实测），bbox 45.88㎡ 含 1.3㎡ 凹口；早前 RFQ 把「客厅 45.88㎡ + 餐区 14㎡」并列属重复计量"
+      source_refs: ["config/layout/model-geometry.yaml", "config/house.yaml:177"]
+      confidence: high
+      impact: material
+    - id: F4-pipe-lengths
+      statement: "冷媒管按 mep 实测：主铜管 ≈9.8m（含 2.05m 立管）在同小区参考报价的「主铜管≤10m」免费额度内；支管餐厅 0.45 / 父母 2.55 / 主卧 3.40 / 儿童 3.45m 均在「支管≤7m」内；仅书房支管 7.70m 超 0.7m（金额可忽略）"
+      source_refs: ["config/mep-hvac-coordination.yaml", "evidence/reference-quote-bangtai-110-20260427.xlsx"]
+      confidence: high
+      impact: minor
+    - id: F5-duct-pricing
+      statement: "风口加长与复合风管不在 36,000 内：加长按 100 元/米另计；合同备注 5 声明不含税。故 36,000 非最终落地价"
+      source_refs: ["evidence/hvac-contract-attachment-p1-20261004.jpg 备注 2/5"]
+      confidence: high
+      impact: material
+    - id: F6-indoor-power
+      statement: "多联机内机自身电负荷 = 风机+水泵+控制，单台约 40–90W（22T2 40W / 28T2 50W / 71T2 75W），压缩机在室外机；hvac_power_living/bedrooms 的 ≤0.5–0.6kW 容量口径成立"
+      source_refs: ["evidence/midea-indoor-unit-spec-20261003.jpg"]
+      confidence: high
+      impact: major
+  corrected:
+    - id: C1-composite-duct
+      statement: "曾记录「36,000 含复合风管（前两家排除）」——错误。合同备注 2 明确不含复合风管、不含风口加长"
+      corrected_in: ["docs/decision_log.md DEC-2026-10-04-R1", "docs/pending-site-data.md #39", "schedule/procurement.md", "config/hvac.yaml"]
+    - id: C2-gas-alarm-distance
+      statement: "曾以点到点算出燃气报警位距油烟机/排风口 0.65m 判为合规——错误。按机体最近缘实为 0.18m/0.26m，违反 CJJ/T 146-2011 的 >0.5m；已北移至 (10.80,0.20)，重算 0.53m/0.61m"
+      corrected_in: ["config/electrical.yaml sock_kitchen_gas"]
+    - id: C3-outdoor-power
+      statement: "曾把外机供电遗漏在整个 19 路拓扑之外（20kW 属 2kW 以上设备，GB 55038 7.4.4 要求单独成路）——已补第 20 路 hvac_power_outdoor_a2 + 点位 + 走线，回路总数 19→20，并重算箱体结论（单排出局）"
+      corrected_in: ["config/electrical.yaml", "config/electrical-topology.yaml", "config/mep-hvac-coordination.yaml", "config/hvac.yaml"]
+    - id: C4-setpoint-dehumidify
+      statement: "曾建议餐区设 27℃ 压过冷——与除湿目标冲突（温度越高运行越短、除湿越差）；改为 26℃"
+      corrected_in: ["docs/decision_log.md DEC-2026-10-04-R1"]
+    - id: C5-swap-savings
+      statement: "曾判断「换 28 级应退差价」——不成立。报价单 56T2 2,131 vs 28T2 2,050–2,493，整包含价下换机无金钱动机，且 56T2 机身 900mm 大于 28T2 的 700mm，换机需重做风管；故保留 56T2"
+      corrected_in: ["docs/decision_log.md DEC-2026-10-04-R1"]
+    - id: C6-3d-panel-free
+      statement: "曾把「百叶沿顶」与「风口西移」并列为三招免费手段——误导。前者只拨导叶、不动风管（0 元）；后者要加长风管，风口加长 100 元/米且不含在 36,000 内，已降为条件性措施"
+      corrected_in: ["docs/decision_log.md DEC-2026-10-04-R1"]
+  site_pending:
+    - id: S1
+      statement: "合同房间映射与逐台容量表（25.3kW 判读的核实）——解锁 config 回写、内机机身尺寸、主卧机身对门头盒影响、连接率定值"
+      handling: "向销售索取合同正式选型附图；到手后写 docs/design-iterations/hvac-resix-20261003 的 r1_amendment"
+    - id: S2
+      statement: "外机实测尺寸与西平台（1.6×1.55m，玻璃幕墙体系）散热核算：百叶有效通风面积、进排风净距、检修距离、热短路"
+      handling: "厂家样本 + 物业；外廓字段 0.99×0.40×0.81m 仍 estimated，且与参照 951×383×1333mm 高度差 523mm"
+    - id: S3
+      statement: "厂家多台内机合并供电 + 外机正式配电图（决定 6 台内机 2 路分组、外机 C32A/4mm² proposed 值、专用插座 vs 硬接线）"
+      handling: "厂家配电图"
+    - id: S4
+      statement: "分房间冷负荷计算书（RFQ §六.1 曾列为「缺任一即视为无效报价」）至今无到手记录"
+      handling: "向销售索取；不到手则 222 W/㎡ 口径仍为我方估算"
+    - id: S5
+      statement: "马桶 SKU、洗烘/冰箱 SKU、主卫台上盆/龙头 SKU → 7 个 position_status: pending 点位"
+      handling: "采购定标后逐个解冻"
+    - id: S6
+      statement: "燃气气源（管道天然气/瓶装液化气）与燃气公司报警器 + 紧急切断阀方案"
+      handling: "燃气公司；决定探测器高装/低装方向"
+  unknowns_requiring_alignment:
+    - "强电箱：若现场为单排箱，换箱或上移箱体（单排须 ≥1.80m）——量房当天决定，唯一可能要加钱的一项"
+    - "风口加长与复合风管的金额上限（按「餐区出风口避人」布置方案）"
+notes:
+  - "本轮的协议记录分散在 docs/decision_log.md 的 DEC-2026-10-03-R6（配置定版）、DEC-2026-10-04-R1（成交与容量偏差闭环）、DEC-2026-10-04-R2（三路审计收口）三条；本文件夹统一承担该轮的事实与证据职能"
+  - "证据原件 5 份 + 全文转录 + sha256 在 evidence/；另有 3 份手写报价照片未入库（已被正式合同附件取代，其数字已转录）"

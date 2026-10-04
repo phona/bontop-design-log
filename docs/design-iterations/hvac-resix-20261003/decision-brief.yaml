@@ -1,0 +1,82 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: hvac-resix-20261003
+subject: 中央空调重配：20kW 外机 + 双出风内机，36,000 成交，数据模型收口
+priority:
+  user_goal: 在 ¥36,000 暖通池内把空调从"销售堆容量"改回"按空间负荷配"，并让仓库对同一问题只有一个当前答案
+  ranked: [按负荷配内机, 外机容量留合理余量, 数据一致性, 可施工冻结]
+  non_negotiables:
+    - "GB 55038-2025 7.4.3-1：电源插座回路 ≤30mA RCD"
+    - "GB 55038-2025 7.4.4：2kW 及以上用电设备回路分别设置（外机单独成路）"
+    - "CJJ/T 146-2011：燃气探测器距灶具及排风口 >0.5m、天然气近顶 ≤0.3m"
+    - "同一问题在仓库所有入口只有一个当前答案"
+  tradeoffs_accepted:
+    - "接受销售的双出风 /P-SS 系列（升级：全带泵、解决直吹、省 3D 面板）"
+    - "接受容量表 25.3kW/1.27 而非设计 21.6kW/1.08（业主决定不返工，以风口与温度管理）"
+    - "接受第七台/厨房扩展空间关闭"
+frozen: true
+freeze_record:
+  alignment_id: user-decision-20261003-20261004
+  original_user_response: "业主先后提供美的参数表、同小区参考报价、4.4 万高配报价、成交合同附件，并逐轮质询（面积重复计量、换机能省多少、为什么要加长风管、外机供电）"
+  normalized_decisions:
+    - "配置：领航者Ⅳ MJV-200W-E01-LHIV 20kW + 6 台双出风内机，成交 36,000"
+    - "容量偏差不返工，保留餐区 56T2，改以百叶角度（0 元）+ 餐区 26℃ + 条件性挪风口管理"
+    - "外机供电单独成路（第 20 路），箱体结论按 20 路重算"
+  confirmed_by_user: true
+  confirmed_at: "2026-10-04T00:00:00+08:00"
+  evidence_refs: ["evidence/evidence-notes.md", "evidence/evidence-hashes.txt"]
+allowed_scope:
+  files:
+    - config/hvac.yaml
+    - config/ceiling.yaml
+    - config/electrical.yaml
+    - config/electrical-topology.yaml
+    - config/mep-hvac-coordination.yaml
+    - config/acceptance.yaml
+    - config/house.yaml
+    - docs/decision_log.md
+    - docs/pending-site-data.md
+    - docs/material_selection_log.md
+    - docs/hvac-rfq-brief-20261003.md
+    - docs/mep-construction-guidance.md
+    - schedule/phase-1/control.yaml
+    - schedule/procurement.md
+    - docs/design-iterations/hvac-resix-20261003/*
+  objects: [electrical, plumbing, topology, acceptance, mep_routing, procurement]
+  changes: [新增点位/回路/走线, 燃气位北移, 回路口径修正, 验收项扩充与接门禁, 证据归档, 计价边界核清]
+forbidden:
+  assumptions:
+    - "不得把照片判读的容量表写成事实（房间映射未到手前）"
+    - "不得把方案级降额估算写成设备确定性能"
+    - "不得以外邻居经验类推风口加长费用"
+  out_of_scope_changes:
+    - "git 操作（commit/push 由业主指令触发）"
+    - "未取证即升格任何 pending 字段"
+open_questions:
+  - {id: contract-mapping, question: "合同房间映射与逐台容量表", status: site_pending, selected: 待合同附图, handling: "到手后以 r1_amendment 回写 config"}
+  - {id: box-spec, question: "强电箱单排/双排与是否换箱", status: site_pending, selected: 待量房, handling: "20 路下单排出局；单排则换箱或上移至 ≥1.80m"}
+alignment:
+  records:
+    - "2026-10-03：R6 定版 20kW + 21.6kW 设计口径，出询价需求书"
+    - "2026-10-04：R1 成交 36,000、容量偏差闭环；R2 三路审计收口（外机第 20 路、燃气位重算、验收接门禁）"
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run verify:all, npm run verify:schedule, npm run test:server, npm run typecheck]
+  validation_record:
+    verified_at: "2026-10-04"
+    verify_all: "exit 0"
+    verify_schedule: "exit 0（75 auditable checks）"
+    test_server: "547 pass / 0 fail"
+    typecheck: "干净"
+  browser_evidence_required: false
+  required_views: []
+  aesthetic_review: "not_applicable"
+  functional_review: "PASS（外机命中需求书；容量表待合同附图回写）"
+  construction_review: "construction_not_frozen（量房与水电交底前机位/电源/冷凝水/穿墙不冻结）"
+  blocking_issues: []
+  done_when:
+    - "五件协议齐全且 frozen: true"
+    - "证据原件 + 转录 + sha256 入库"
+    - "A 类仓库收尾（7.4.4 验收项、历史撞号、house.yaml 平台供电、COST-030-02 计价口径）完成"
+  delivery_notes_required: true

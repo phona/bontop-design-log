@@ -837,7 +837,7 @@ work_packages:
       allocation_status: pending_breakdown
       components:
         - {id: COST-030-01, name: 室外机和六台室内机, description: 逐台写明品牌型号制冷量和保修, quantity_basis: 室外机1台加室内机6台, planned_cny: null, status: contract_scope_pending, note: "‖ DEC-2026-10-04-R1 2026-10-04 定标成交整包 36,000 元（见 PKG-030 contracted_cny）；原 R5 口径 5 台，R6 起 6 台"}
-        - {id: COST-030-02, name: 铜管保温冷凝水管和风管, description: 写明基础包含长度和超长部分单价, quantity_basis: 按现场深化图实测, planned_cny: null, status: site_measurement_pending}
+        - {id: COST-030-02, name: 铜管保温冷凝水管和风管, description: "写明基础包含长度和超长部分单价。‖ DEC-2026-10-04-R1/R2 核清：合同附件确认 **风口加长 100 元/米、复合风管、税均不含于 36,000**；冷媒管免费额度按同小区口径主铜管 ≤10m / 支管 ≤7m，本户实测主铜管 ≈9.8m 在内、仅书房支管 7.70m 超 0.7m（可忽略）。风管长度取决于餐区出风口是否西移避人——该措施已降为条件性（加长费 ≤1~2 百元才做），故本项金额须按最终风口布置图核定", quantity_basis: 按现场深化图实测与最终风口布置图, planned_cny: null, status: site_measurement_pending}
         - {id: COST-030-03, name: 支架打孔风口和控制器, description: 写明数量材质规格以及是否含安装, quantity_basis: 按深化图统计, planned_cny: null, status: quote_pending}
         - {id: COST-030-04, name: 第一次安装人工, description: 吊顶封闭前安装内机和全部隐藏管线并完成测试, quantity_basis: 1次, planned_cny: null, status: quote_pending}
         - {id: COST-030-05, name: 第二次安装和系统调试, description: 安装风口控制器并完成抽真空开机和整体调试，不是免费项目, quantity_basis: 1次, planned_cny: null, status: quote_pending}
@@ -902,7 +902,7 @@ work_packages:
     blockers: [BLK-HVAC-DEEPENING]
     owner_roles: [水电施工, 设计师, 空调商, 业主]
     payment_gate: GATE-040-HIDDEN-WORK
-    acceptance_refs: [check_plumb_pressure, check_plumb_drain, check_elec_continuity, check_elec_switch, check_elec_pe_polarity, check_elec_insulation, check_elec_rcd_30ma, check_elec_leb, check_elec_strong_weak_separation, check_elec_panel_labeling, check_elec_gas_alarm]
+    acceptance_refs: [check_plumb_pressure, check_plumb_drain, check_elec_continuity, check_elec_switch, check_elec_pe_polarity, check_elec_insulation, check_elec_rcd_30ma, check_elec_leb, check_elec_strong_weak_separation, check_elec_panel_labeling, check_elec_circuit_separation, check_elec_gas_alarm]
     checks:
       - id: SCH-040-01
         severity: critical

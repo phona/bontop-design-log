@@ -1,0 +1,52 @@
+iteration_id: hvac-resix-20261003
+object_policy: { fixed_count_required: true, split_by: [function, owner, layer, review], visual_relationship_required: false }
+objects:
+  additions:
+    - id: sock_dining_ac
+      owner: electrical
+      change: "新增餐区第 6 台内机电源点位 @(8.00,4.75,2.5)，并入 hvac_power_living，position_status: pending"
+    - id: ac_panel_dining
+      owner: electrical
+      change: "新增餐区线控器点位（第 6 台配套）；两版坐标错误后回正到 (7.20,4.10) 挂 w_gbath_east_open_vanity"
+    - id: sock_vrf_outdoor_a2
+      owner: electrical
+      change: "新增外机专用取电点位 @(7.20,0.50,1.60) 挂 w_vrv_east 厨房侧（room 试 west_platform 被 existence 拦，平台不并入已建模房间）"
+    - id: hvac_power_outdoor_a2
+      owner: topology
+      change: "新增第 20 回路（GB 55038 7.4.4 独立成路），C32A+漏保 / 4.0mm²(φ20) proposed"
+    - id: mep_dining_routes
+      owner: mep
+      change: "refrigerant-dining / condensate-dining / supply-air-dining / return-air-dining / strong-ac-dining / strong-ac-outdoor 六条"
+  corrections:
+    - id: sock_kitchen_gas
+      owner: electrical
+      change: "(10.80,0.55) → (10.80,0.20)，note 改为机体最近缘口径"
+    - id: hvac_power_wire_size
+      owner: topology
+      change: "hvac_power_living / hvac_power_bedrooms wire_size 1.5mm² → 2.5mm²（与自家 §3.1「插座 ≥2.5mm²」对齐）；capacity 改为内机自身电负荷口径（压缩机在室外机）"
+    - id: net_ap_corridor
+      owner: electrical
+      change: "(8.60,5.80) → (8.60,4.75)，落进 ceiling_living 边吊空腔（原位在所有已声明吊顶之外）"
+    - id: return_air_dining
+      owner: mep
+      change: "回风西端 7.30 → 7.55，避免越 ceiling_living 西缘进入走廊吊顶接缝区"
+    - id: control_yaml_status
+      owner: schedule
+      change: "PKG-030 contracted_cny null→36000、allocation_status pending_vendor_quote→pending_breakdown、COST-030-01「五台」→「六台」、quote_pending→contract_scope_pending"
+    - id: house_yaml_hvac
+      owner: config
+      change: "hvac.system 与 pending_verification 段由「一拖五/7HP/21.4kW/品牌未定标」改为 DEC-2026-10-04-R1 现行口径，历史留档"
+  topology_corrections:
+    - id: circuit_count
+      change: "19 → 20；covered points 67 → 68"
+  acceptance:
+    - id: electrical_check_items
+      change: "R1 从 2 项扩到 11 项（4 critical）；其中 9 项本轮接入 control.yaml acceptance_refs（PKG-040 接 7 项、PKG-125 接 2 项），可审计检查 66 → 75"
+    - id: check_elec_circuit_separation
+      change: "新增 GB 55038 7.4.4 分路合规独立验收项（收尾项，接 PKG-040）"
+  code:
+    - id: tests_baseline
+      change: "circuits 19→20、coveredPoints 67→68、api errors 97→98、api warnings 21→22、mep routes 72→73×3，共 11 处"
+  evidence:
+    - id: hvac_evidence
+      change: "archive 5 份原件 + evidence-notes.md 全文转录 + evidence-hashes.txt sha256"

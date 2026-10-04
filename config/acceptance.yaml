@@ -345,6 +345,19 @@ phases:
           油烟机位（灶台上方）、洗烘位（阳台仅 1.60×1.20m，叠放后插座在机器体内）。
           封墙前把"怎么拿出来"问清楚，比入住后拆柜子便宜得多。
 
+      - id: check_elec_circuit_separation
+        item: "分路合规核对（GB 55038 7.4.4）"
+        method: |
+          按配电箱回路标签逐条核对五类回路是否分别设置：照明 / 空调电源插座 / 电热水器等 2kW 及以上
+          用电设备 / 厨房内电源插座 / 其他功能用房电源插座。本户 20 路重点核对：中央空调外机专用回路
+          （hvac_power_outdoor_a2）是否单独成路、洗碗机/冰洗/卫浴是否各自独立、厨房与客餐厅/卧室是否
+          未跨类混接、以及每条回路标签是否与 config/electrical-topology.yaml 一致。
+        standard: "五类回路分别设置、无跨类混接；回路标签与 config/electrical-topology.yaml（20 路）一致"
+        severity: major
+        knowledge: |
+          为什么单列：此前该项目只靠拓扑配置和箱体标签间接覆盖分路合规，验收单上抓不到"分错误路"。
+          GB 55038-2025 7.4.4 是类型级分别设置（不要求每房每灯独立），合并合法但类别不能混。
+
       - id: check_elec_gas_alarm
         item: "燃气报警器位置与联动切断"
         method: |

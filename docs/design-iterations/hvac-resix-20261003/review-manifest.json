@@ -1,0 +1,55 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "hvac-resix-20261003",
+  "subject": "中央空调重配成交 36,000 与数据模型收口",
+  "source_version": {
+    "config_refs": ["config/hvac.yaml", "config/ceiling.yaml", "config/electrical.yaml", "config/electrical-topology.yaml", "config/mep-hvac-coordination.yaml", "config/acceptance.yaml", "config/house.yaml"],
+    "source_digest": "electrical 97 点位 / topology 20 回路 68 members / mep 73 条走线 / acceptance electrical_check 11 项",
+    "tests_touched": ["tests/server/electrical-lint.test.ts", "tests/server/render-facts-api.test.ts", "tests/server/mep-hvac-lint.test.ts", "tests/server/mep-hvac-coordination.test.ts"],
+    "generated_files": ["data/project-render-facts.json", "schedule/phase-1/budget.md", "schedule/phase-1/checklist.md"]
+  },
+  "state": "delivery_ready",
+  "state_note": "A 类仓库收尾完成；剩余全部为外部输入（合同房间映射、外机尺寸与平台散热、厂家配电图、冷负荷计算书与 SKU）与业主决定（箱体单排时换箱）",
+  "validation": {
+    "generate_project_render_facts": { "status": "passed" },
+    "verify_all": { "status": "passed", "note": "exit 0；rules 0 error、电气 0 error/49 warning、mep 0 error/22 warning、点位专项 0 error/6 warning" },
+    "verify_schedule": { "status": "passed", "note": "exit 0，75 auditable checks" },
+    "test_server": { "status": "passed", "note": "547 pass / 0 fail" },
+    "typecheck": { "status": "passed" }
+  },
+  "evidence": [
+    { "id": "hvac-contract-attachment", "ready": true, "note": "合同附件两页（第十二条报价清单 + 27 项辅材表）" },
+    { "id": "midea-indoor-unit-spec", "ready": true, "note": "美的 MJV-T2 官方参数表" },
+    { "id": "reference-quote-bangtai", "ready": true, "note": "同小区参考报价（单价锚点 + 免费管长口径）" },
+    { "id": "dealer1-quote", "ready": true, "note": "落选的 4.4 万高配报价" }
+  ],
+  "aesthetic_review": { "verdict": "not_applicable", "blocking_issues": [] },
+  "functional_review": {
+    "verdict": "PASS_with_open_verification",
+    "blocking_issues": [],
+    "notes": "外机与需求书一致；容量表 25.3kW 为照片判读，房间映射以合同附图为准"
+  },
+  "construction_review": {
+    "verdict": "site_pending",
+    "blocking_issues": [
+      "合同房间映射与逐台容量表（config 回写前置）",
+      "外机实测尺寸与 1.6×1.55m 西平台散热核算",
+      "厂家多台内机合并供电 + 外机正式配电图",
+      "分房间冷负荷计算书（RFQ 硬性交付物，至今无记录）",
+      "风口加长与复合风管金额（合同不含）",
+      "强电箱：20 路下单排出局，单排须换箱或上移至 ≥1.80m（唯一可能加钱项）"
+    ]
+  },
+  "retrospective": {
+    "what_worked": ["先写需求书再询价，使外机型号与分项报价可逐条核对", "证据先归档再下结论——归档合同附件时当场发现并更正了'含复合风管'的错误判断", "三路只读审计把'只改 config 没改下游'这类漏网一次抓出 4 BLOCKER"],
+    "what_to_improve": ["多轮结论只在对话里修正、未同步回写仓库，导致同一错误在多个文件并存", "曾把估算值（降额链）与设备性能混写", "外机供电这类'决策的下游消费方'最初完全没进模型"]
+  },
+  "delivery": {
+    "status": "delivered",
+    "handover_notes": [
+      "config 当前容量表仍为设计口径 21.6kW，采购 25.3kW 只活在 note 字符串——合同附图到手后必须回写，这是唯一悬置的设计输入",
+      "local 领先 origin 的 commit 由业主指令 push"
+    ]
+  }
+}
