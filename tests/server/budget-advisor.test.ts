@@ -60,7 +60,9 @@ describe('BudgetAdvisor', () => {
     const { advisor } = loadAdvisor();
     const scheme = currentScheme();
     const result = advisor.suggest(scheme);
-    assert.equal(result.target, 190000);
+    // 默认目标是一期执行上限（schedule/phase-1/control.yaml phase_ceiling_cny=206000），
+    // 不再是 config/budget/base.json 的作废值 190,000。
+    assert.equal(result.target, 206000);
   });
 
   it('each suggestion describes what is lost (loses)', () => {

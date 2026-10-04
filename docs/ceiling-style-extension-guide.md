@@ -1,7 +1,7 @@
 # 吊顶造型扩展指南 — 新增 style 渲染分支的标准步骤
 
 > 适用范围：为 `config/ceiling.yaml` 新增吊顶造型种类（如 `cove` 灯槽、双眼皮、弧形顶）。
-> 前置阅读：`docs/superpowers/specs/2026-08-05-ceiling-region-design.md`。
+> 前置阅读：2026-08-05 吊顶分区设计 spec（外部 skill 产出，未随本仓库提交，故仓库内无对应路径；设计结论已并入 `config/layout/overlay.yaml` 与 `config/ceiling.yaml`）。
 > 铁律：新行为 = 新类型 + 声明式配置；代码只读配置、只执行，禁止推断。
 
 ---

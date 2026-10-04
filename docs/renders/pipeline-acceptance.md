@@ -12,11 +12,11 @@
 ## 命令
 
 ```bash
-bash scripts/run-blender.sh --glb <house.glb> --config scripts/blender/render-config.json \
+bash scripts/run-blender.sh --glb <house.glb> --config scripts/archive/blender-pipeline/scripts/blender/render-config.json \
   --engine EEVEE --out-dir <renders_dir> --version v1 --config-dir .
 ```
 
-- 前置：`npx tsx scripts/blender/gen-render-config.ts` 生成配置（场景常量 + 机位清单）
+- 前置：`npx tsx scripts/archive/blender-pipeline/scripts/blender/gen-render-config.ts` 生成配置（场景常量 + 机位清单）
 - 依赖：Blender 自带 Python 需 `pip install pyyaml`（`materials_from_yaml.py` 用）
 - 注意：wrapper 根据 Blender 可执行文件和 `BLENDER_HOST` 选择 Linux/Windows，并在 WSL 调 Windows Blender 时自动转换项目路径。
 

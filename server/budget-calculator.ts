@@ -11,7 +11,8 @@ import type {
   PhaseId,
 } from '../shared/types.js';
 import type { ProjectCatalog } from './project-catalog.js';
-import { isBudgetTopicIncluded } from './phase-scope.js';
+import { isBudgetTopicIncluded, loadPhaseScopes } from './phase-scope.js';
+import { controlPathForPhase, loadPhaseControlAuthority } from './phase-control.js';
 
 const QUANTITY_FORMULAS: Record<string, (room: RoomLayout) => number> = {
   floorArea: (room) => room.area ?? room.width * room.depth,
@@ -222,7 +223,7 @@ export class BudgetCalculator {
 
     const budgetRaw = JSON.parse(
       readFileSync('config/budget/base.json', 'utf8')
-    ) as { categories: Record<string, BudgetCategoryRaw>; project_ceiling?: number };
+    ) as { categories: Record<string, BudgetCategoryRaw>; project_ceiling?: number; status?: string };
 
     const categories: BudgetCategory[] = baseCategories.map((bc) => {
       const autoActual = categoryAutoActual.get(bc.key) ?? 0;
@@ -264,10 +265,24 @@ export class BudgetCalculator {
 
     const totalBudget = categories.reduce((sum, c) => sum + c.budget, 0);
     const totalActual = categories.reduce((sum, c) => sum + c.actual, 0);
-    const projectCeiling = budgetRaw.project_ceiling;
-    const overCeilingBy =
-      projectCeiling !== undefined ? totalActual - projectCeiling : undefined;
+    // 现行执行上限取自 schedule/phase-1/control.yaml `control.phase_ceiling_cny`。
+    // 2026-10-04 之前这里读的是 config/budget/base.json 的 `project_ceiling`（190,000），
+    // 而该字段已被 control.yaml `budget_reconciliation.historical_baseline` 标为
+    // `historical_reference_only` —— 业主通过 budget API / MCP 看到的一期上限长期是作废值。
+    // base.json 只保留分科目明细与作废口径留档，不再作为任何计算与接口的输入源。
+    const authority = loadPhaseControlAuthority(controlPathForPhase(loadPhaseScopes()[phase]));
+    const projectCeiling = authority.ceilingCny;
+    const overCeilingBy = totalActual - projectCeiling;
 
-    return { totalBudget, totalActual, projectCeiling, overCeilingBy, categories, lineItems: allLineItems, attribution };
+    return {
+      totalBudget: authority.ceilingCny,
+      totalActual,
+      projectCeiling,
+      overCeilingBy,
+      historicalBaseline: authority.historicalBaseline,
+      categories,
+      lineItems: allLineItems,
+      attribution,
+    };
   }
 }

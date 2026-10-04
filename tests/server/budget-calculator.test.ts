@@ -118,7 +118,7 @@ describe('BudgetCalculator', () => {
     assert.ok(masterFloor);
   });
 
-  it('totalBudget sums all category budgets', () => {
+  it('live totals come from control.yaml while archived categories stay readable (A2)', () => {
     const catalog = ProjectCatalog.load('.');
     const calc = new BudgetCalculator(catalog, rulesConfig);
     const scheme: CurrentScheme = {
@@ -131,8 +131,15 @@ describe('BudgetCalculator', () => {
       },
     };
     const snapshot = calc.calculate(scheme);
-    const expectedTotal = snapshot.categories.reduce((s, c) => s + c.budget, 0);
-    assert.equal(snapshot.totalBudget, expectedTotal);
+    // 2026-10-04 之前本测试断言 `totalBudget == Σcategories.budget`（208,000，base.json
+    // 四池快照）。base.json 交出活字段身份后，totalBudget / projectCeiling 一律等于
+    // schedule/phase-1/control.yaml 的 phase_ceiling_cny（206,000）。
+    assert.equal(snapshot.totalBudget, 206000);
+    assert.equal(snapshot.projectCeiling, 206000);
+    // 分科目明细仍可读（base.json 是唯一可用的分科预算拆分），历史合计走 historicalBaseline 露出
+    const archivedTotal = snapshot.categories.reduce((s, c) => s + c.budget, 0);
+    assert.equal(archivedTotal, 208000);
+    assert.equal(snapshot.historicalBaseline?.totalBudgetCny, archivedTotal);
   });
 
   it('fixed calcMode adds option price directly', () => {
@@ -410,7 +417,7 @@ describe('BudgetCalculator', () => {
     assert.equal(appliances!.autoActual, 11300, '6 appliances sum (800+2500+1500+2500+2500+1500)');
   });
 
-  it('four-pool total_budget includes hard + hvac + furniture + appliances (P0)', () => {
+  it('four-pool categories include hard + hvac + furniture + appliances (P0); live totals come from control.yaml', () => {
     const catalog = ProjectCatalog.load('.');
     const calc = new BudgetCalculator(catalog, rulesConfig);
     const scheme: CurrentScheme = {
@@ -418,7 +425,16 @@ describe('BudgetCalculator', () => {
       selections: { hvac: { default: 'A2', roomOverrides: {} } },
     };
     const snapshot = calc.calculate(scheme);
-    assert.equal(snapshot.totalBudget, 208000);
+    // 现行一期执行上限与已分配额一律来自 schedule/phase-1/control.yaml（206,000），
+    // 不再读 config/budget/base.json 的 total_budget 208,000 / project_ceiling 190,000。
+    assert.equal(snapshot.totalBudget, 206000);
+    assert.equal(snapshot.projectCeiling, 206000);
+    assert.deepEqual(snapshot.historicalBaseline, {
+      source: 'config/budget/base.json',
+      totalBudgetCny: 208000,
+      projectCeilingCny: 190000,
+      status: 'historical_reference_only',
+    });
     for (const key of ['furniture_soft', 'appliances', 'hvac']) {
       assert.ok(snapshot.categories.find((c) => c.key === key), `${key} category present`);
     }
@@ -495,8 +511,13 @@ describe('BudgetCalculator', () => {
       selections: { hvac: { default: 'A2', roomOverrides: {} } },
     };
     const snapshot = calc.calculate(scheme);
-    assert.equal(snapshot.projectCeiling, 190000);
-    assert.equal(snapshot.overCeilingBy, snapshot.totalActual - 190000);
+    // 上限来自 schedule/phase-1/control.yaml control.phase_ceiling_cny，
+    // 而不是 config/budget/base.json 的作废值 project_ceiling=190,000。
+    assert.equal(snapshot.projectCeiling, 206000);
+    assert.equal(snapshot.overCeilingBy, snapshot.totalActual - 206000);
+    // 作废口径仍可读，但只作为 historicalBaseline 留档露出，不参与计算。
+    assert.equal(snapshot.historicalBaseline?.projectCeilingCny, 190000);
+    assert.equal(snapshot.historicalBaseline?.status, 'historical_reference_only');
   });
 
   it('wardrobe topic bills per-room with distinct options (master frontstage / study seasonal backstage)', () => {

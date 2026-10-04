@@ -46,7 +46,7 @@ describe('server startup resilience', () => {
       export_date: '2026-07-09',
       rooms: [],
     };
-    const catalog = ProjectCatalog.fromMaterials({ materials: [] }, { total_budget: 0, categories: {} }, emptyLayout);
+    const catalog = ProjectCatalog.fromMaterials({ materials: [] }, { categories: {} }, emptyLayout);
     const engine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
     const calc = new BudgetCalculator(catalog, engine.getConfig());
     const archiveStore = new ArchivedSchemesStore(dir);

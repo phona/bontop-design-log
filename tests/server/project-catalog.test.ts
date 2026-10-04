@@ -42,8 +42,8 @@ const materialsFixture: MaterialsYaml = {
   ],
 };
 
+// base.json 只提供分科目明细：total_budget / project_ceiling 已退场为历史快照。
 const budgetBaseFixture = {
-  total_budget: 110000,
   categories: {
     floor: { budget: 10000, actual: 0, status: 'draft', notes: '' },
   },

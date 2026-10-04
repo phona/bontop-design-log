@@ -1,6 +1,6 @@
 # Blender 渲染架构与边界
 
-> **PAUSED / HISTORICAL — 2026-09-01**：本文记录已暂停的 Blender 管线，不是当前操作手册。历史 `scripts/blender/`、`scripts/run-blender.sh`、bundle 与相机工具已冷归档到 `scripts/archive/blender-pipeline/`；恢复要求见该目录 `README.md`。当前默认效果预览为 Web + GPT，Web/CLI GLB 保持 active。
+> **PAUSED / HISTORICAL — 2026-09-01**：本文记录已暂停的 Blender 管线，不是当前操作手册。历史 `scripts/archive/blender-pipeline/scripts/blender/`、`scripts/run-blender.sh`、bundle 与相机工具已冷归档到 `scripts/archive/blender-pipeline/`；恢复要求见该目录 `README.md`。当前默认效果预览为 Web + GPT，Web/CLI GLB 保持 active。
 
 本文描述归档时项目中 Web/CLI 建模、Blender 定妆渲染和渲染产物追溯之间的边界。文中的旧 live 路径与命令均为历史证据，不保证直接运行。
 
@@ -126,18 +126,18 @@ legacy 是历史上用于补建或增强几何的代码/材质路径，保留的
 
 当前渲染入口和拆分模块如下。当前只完成局部模块抽取；`dress_scene.py` 仍是主编排入口，并未全部拆分完成。脚本目录的职责分层如下：`scripts/render/glb/` 保存 CLI GLB 导出、检查和比较工具，`scripts/render/bundle/` 保存 bundle 构建与 manifest 工具，`scripts/verify/` 按 layout、placement、data、rules、collision、render 分组保存校验入口，`scripts/render/capture/` 和 `scripts/render/diagrams/` 保存截图与图表工具；这些分层不改变 Blender runtime 或 bundle 资源路径：
 
-- `scripts/blender/dress_scene.py`：Blender 主入口；读取 GLB/config，初始化场景，编排材质、资产、灯光、环境、job 状态和 PNG 输出。
-- `scripts/blender/blender_assets.py`：正式家具资产导入、等比缩放、姿态/四元数复合、正式实例 replacement、资产审计属性和部分电视墙 staging。
-- `scripts/blender/blender_render_only.py`：BlenderKit 候选、软装、挂画、地毯、茶几、书架、房间缺项等 render-only staging；失败保留 fallback。
-- `scripts/blender/blender_lighting.py`：灯具光源、track light、window portal、Sun、job 灯光状态和灯光审计。
-- `scripts/blender/blender_environment.py`：World、Cycles HDRI、天空 fallback 和玻璃外景 sky plane。sky fallback 以 `sky_plane:<稳定玻璃对象名>` 为 canonical key：initialize 时创建，job 阶段复用并更新位置/材质，只切换 `hide_render`；HDRI 成功加载时全部隐藏，无 HDRI 时显示，不会随 job 增长对象数。
-- `scripts/blender/materials_from_yaml.py`：从 `materials.yaml` 解析 render role/appearance，生成材质应用契约和外部 PBR 资源路径；其 tint 构建路径仍通过延迟导入依赖 `dress_scene.hex_rgb`，该反向依赖尚未消除。
-- `scripts/blender/curtain_projection.py`：解析并校验 GLB 窗帘节点命名，与 `presentation.curtains` 的 `expectedVisibleNodes` 对比；不根据 scenario 猜测窗帘开合。
-- `scripts/blender/dress_config.py`：把 scenarios×cameras 展开为 job 列表，并生成稳定的 `version__camera__scenario` 输出名。
-- `scripts/blender/wood_texture.py`：与 Three.js 纹理逻辑对齐的程序化木地板贴图生成器，输出 diffuse/normal/roughness；同 seed 可复现，支持直铺和 herringbone。
-- `scripts/blender/audit_scene_assets.py`：只读场景资产审计；按显式 metadata 分类真实资产、程序化对象、render-only，并按 formal instance key 聚合可见来源和冲突。
+- `scripts/archive/blender-pipeline/scripts/blender/dress_scene.py`：Blender 主入口；读取 GLB/config，初始化场景，编排材质、资产、灯光、环境、job 状态和 PNG 输出。
+- `scripts/archive/blender-pipeline/scripts/blender/blender_assets.py`：正式家具资产导入、等比缩放、姿态/四元数复合、正式实例 replacement、资产审计属性和部分电视墙 staging。
+- `scripts/archive/blender-pipeline/scripts/blender/blender_render_only.py`：BlenderKit 候选、软装、挂画、地毯、茶几、书架、房间缺项等 render-only staging；失败保留 fallback。
+- `scripts/archive/blender-pipeline/scripts/blender/blender_lighting.py`：灯具光源、track light、window portal、Sun、job 灯光状态和灯光审计。
+- `scripts/archive/blender-pipeline/scripts/blender/blender_environment.py`：World、Cycles HDRI、天空 fallback 和玻璃外景 sky plane。sky fallback 以 `sky_plane:<稳定玻璃对象名>` 为 canonical key：initialize 时创建，job 阶段复用并更新位置/材质，只切换 `hide_render`；HDRI 成功加载时全部隐藏，无 HDRI 时显示，不会随 job 增长对象数。
+- `scripts/archive/blender-pipeline/scripts/blender/materials_from_yaml.py`：从 `materials.yaml` 解析 render role/appearance，生成材质应用契约和外部 PBR 资源路径；其 tint 构建路径仍通过延迟导入依赖 `dress_scene.hex_rgb`，该反向依赖尚未消除。
+- `scripts/archive/blender-pipeline/scripts/blender/curtain_projection.py`：解析并校验 GLB 窗帘节点命名，与 `presentation.curtains` 的 `expectedVisibleNodes` 对比；不根据 scenario 猜测窗帘开合。
+- `scripts/archive/blender-pipeline/scripts/blender/dress_config.py`：把 scenarios×cameras 展开为 job 列表，并生成稳定的 `version__camera__scenario` 输出名。
+- `scripts/archive/blender-pipeline/scripts/blender/wood_texture.py`：与 Three.js 纹理逻辑对齐的程序化木地板贴图生成器，输出 diffuse/normal/roughness；同 seed 可复现，支持直铺和 herringbone。
+- `scripts/archive/blender-pipeline/scripts/blender/audit_scene_assets.py`：只读场景资产审计；按显式 metadata 分类真实资产、程序化对象、render-only，并按 formal instance key 聚合可见来源和冲突。
 
-此外，bundle 资源清单当前还会携带 `scripts/blender/blenderkit_packed_pbr.py` 等资源辅助文件；它不是上述主编排边界的替代入口。
+此外，bundle 资源清单当前还会携带 `scripts/archive/blender-pipeline/scripts/blender/blenderkit_packed_pbr.py` 等资源辅助文件；它不是上述主编排边界的替代入口。
 
 ## 5. `initialize_once` + per-job reset 模型
 
@@ -264,7 +264,7 @@ preview 用于快速比较材质、灯光、环境、相机和允许的 render-o
 # 使用已有 GLB 和生成的 render config，只渲一个机位/工况
 scripts/run-blender.sh \\
   --glb tmp/preview/house.glb \\
-  --config scripts/blender/render-config.json \\
+  --config scripts/archive/blender-pipeline/scripts/blender/render-config.json \\
   --config-dir . \\
   --out-dir tmp/preview/out \\
   --engine EEVEE --version preview-001 \\
@@ -273,7 +273,7 @@ scripts/run-blender.sh \\
 # 在同一机位比较候选材质；每个候选应单独输出一组 PNG
 scripts/run-blender.sh \\
   --glb tmp/preview/house.glb \\
-  --config scripts/blender/render-config.json \\
+  --config scripts/archive/blender-pipeline/scripts/blender/render-config.json \\
   --out-dir tmp/preview/material-wall-warm \\
   --version preview-wall-warm \\
   --only living --scenario daylight \\

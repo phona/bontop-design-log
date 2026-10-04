@@ -104,7 +104,6 @@ export class ProjectCatalog {
   constructor(
     materials: MaterialsYaml,
     budgetBase: {
-      total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     },
     layout: CadLayoutYaml,
@@ -230,8 +229,12 @@ export class ProjectCatalog {
 
   static load(configDir = '.', layoutName?: string): ProjectCatalog {
     const materials = load(readFileSync(`${configDir}/config/materials.yaml`, 'utf8')) as MaterialsYaml;
+    // 只取 base.json 的 `categories`（历史分科目明细，仍是唯一可用的分科预算拆分）。
+    // `total_budget` / `project_ceiling` 是 2026-08 四池口径快照，已被
+    // schedule/phase-1/control.yaml `budget_reconciliation.historical_baseline` 标为
+    // historical_reference_only，不再作为任何计算与接口的输入源；现行执行上限一律读
+    // control.yaml `control.phase_ceiling_cny`（见 server/phase-control.ts）。
     const budgetBase = JSON.parse(readFileSync(`${configDir}/config/budget/base.json`, 'utf8')) as {
-      total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     };
     const layoutPath = layoutName
@@ -245,7 +248,6 @@ export class ProjectCatalog {
   static fromMaterials(
     materials: MaterialsYaml,
     budgetBase: {
-      total_budget: number;
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     },
     layout: CadLayoutYaml,

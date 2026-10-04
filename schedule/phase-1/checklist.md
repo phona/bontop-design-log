@@ -48,7 +48,7 @@
 | [ ] | QR-2026-10-03-02 | 水电改造（强弱电+给排水+墙排） | PKG-040 | ¥12,000 | 待报价/待算量 | candidate | pending_quote |
 | [ ] | QR-2026-10-03-03 | 两卫/阳台防水+闭水 | PKG-050 | ¥3,000 | 待报价/待算量 | candidate | pending_quote |
 | [ ] | QR-2026-10-03-04 | 全屋瓷砖主材（诺贝尔方向） | PKG-060 | ¥20,000 | ¥20,000 | cap | pending_store_quote |
-| [ ] | QR-2026-10-03-05 | 瓦工人工/复杂铺贴/增项预算池 | PKG-060 | ¥18,500 | ¥18,500 | owner_budget_pool | budget_pool_locked |
+| [ ] | QR-2026-10-03-05 | 瓦工人工/复杂铺贴/增项预算池 | PKG-060 | ¥18,500 | ¥18,500 | owner_budget_pool | budget_pool_confirmed_quote_pending |
 | [ ] | QR-2026-10-03-06 | 水泥砂/瓷砖胶/背胶等辅材 | PKG-060 | ¥4,000 | 待报价/待算量 | candidate | pending_quote |
 | [ ] | QR-2026-10-03-07 | 瓷砖美缝 | PKG-130 | ¥4,500 | 待报价/待算量 | candidate | pending_quote |
 | [ ] | QR-2026-10-03-08 | 厨卫铝扣板+收边+2浴霸+凉霸+灯 | PKG-070 | ¥9,100 | ¥9,537 | quoted_sheet | quoted_pending_optimization |

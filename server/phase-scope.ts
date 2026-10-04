@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import type { FurnishingItem, FurnishingsYaml, PhaseId, PhaseScope } from '../shared/types.js';
+import { loadPhaseControlAuthority } from './phase-control.js';
 
 interface PhaseScopeFile {
   phases: Record<PhaseId, PhaseScope>;
@@ -23,13 +24,12 @@ export function loadPhaseScopes(path = 'schedule/phase-scope.yaml'): Record<Phas
 
 export function loadPhaseBudgetMeta(scope: PhaseScope): PhaseBudgetMeta {
   if (!scope.budget_authority) return {};
-  const control = load(readFileSync(scope.budget_authority, 'utf8')) as {
-    control?: { phase_ceiling_cny?: number; allocated_cny?: number; unallocated_cny?: number };
-  };
+  // 现行执行限额一律经 server/phase-control.ts 读取，避免出现第二个 control.yaml 数字读者。
+  const authority = loadPhaseControlAuthority(scope.budget_authority);
   return {
-    ...(control.control?.phase_ceiling_cny !== undefined ? { ceilingCny: control.control.phase_ceiling_cny } : {}),
-    ...(control.control?.allocated_cny !== undefined ? { allocatedCny: control.control.allocated_cny } : {}),
-    ...(control.control?.unallocated_cny !== undefined ? { unallocatedCny: control.control.unallocated_cny } : {}),
+    ceilingCny: authority.ceilingCny,
+    allocatedCny: authority.allocatedCny,
+    unallocatedCny: authority.unallocatedCny,
     authority: scope.budget_authority,
   };
 }

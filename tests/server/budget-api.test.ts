@@ -84,7 +84,12 @@ describe('Budget + Risks + Schemes API', () => {
     assert.equal(res.body.phaseMeta.budget.allocatedCny, 206000);
     assert.equal(res.body.phaseMeta.budget.unallocatedCny, 0);
     assert.equal(res.body.phaseMeta.budget.authority, 'schedule/phase-1/control.yaml');
-    assert.equal(res.body.totalBudget, 208000);
+    // 现行口径来自 control.yaml；作废的 190,000 / 208,000 只作 historicalBaseline 留档露出
+    assert.equal(res.body.totalBudget, 206000);
+    assert.equal(res.body.projectCeiling, 206000);
+    assert.equal(res.body.historicalBaseline.projectCeilingCny, 190000);
+    assert.equal(res.body.historicalBaseline.totalBudgetCny, 208000);
+    assert.equal(res.body.historicalBaseline.status, 'historical_reference_only');
     const robot = res.body.lineItems.find((item: { topic: string }) => item.topic === 'robot_vacuum');
     assert.equal(robot?.optionId, 'robot_vacuum_narwal_j6_01');
     assert.equal(robot?.quantity, 1);
@@ -97,7 +102,7 @@ describe('Budget + Risks + Schemes API', () => {
     assert.equal(res.body.phaseCeiling, undefined);
     assert.equal(res.body.phaseAllocated, undefined);
     assert.equal(res.body.phaseUnallocated, undefined);
-    assert.equal(res.body.totalBudget, 208000);
+    assert.equal(res.body.totalBudget, 206000);
   });
 
   it('GET /api/risks returns risks', async () => {

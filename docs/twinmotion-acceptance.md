@@ -61,7 +61,7 @@
 
 ## 6. 收尾
 
-- [ ] 验收结论（PASS/FAIL + Twinmotion 版本号 + 云 GPU 型号）记入 `docs/decision-log.json` 或当日会话总结
+- [ ] 验收结论（PASS/FAIL + Twinmotion 版本号 + 云 GPU 型号）记入 `docs/decision_log.md` 或当日会话总结
 - [ ] spec `2026-08-12-gltf-export-twinmotion-pipeline.md` 验收标准 3 标记完成
 - [ ] 若 PASS：上云节奏正式定为"几何冻结后定妆"；若 FAIL：按 4 的 FAIL 分支走
 

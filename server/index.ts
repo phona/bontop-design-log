@@ -42,7 +42,7 @@ registry.register(projectRenderFactsLoader);
 
 let catalog = ProjectCatalog.fromMaterials(
   { materials: [] },
-  { total_budget: 0, categories: {} },
+  { categories: {} },
   { rooms: [] } as unknown as CadLayoutYaml
 );
 let ruleEngine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
@@ -56,7 +56,7 @@ const acceptanceEngine = new AcceptanceEngine();
 
 function rebuildDerived(): void {
   const materials = materialsLoader.getConfig() ?? { materials: [] };
-  const budgetBase = budgetBaseLoader.getConfig() ?? { total_budget: 0, categories: {} };
+  const budgetBase = budgetBaseLoader.getConfig() ?? { categories: {} };
   const layout = layoutLoader.getConfig() ?? ({ rooms: [] } as unknown as CadLayoutYaml);
   const houseMeta = houseMetaLoader.getConfig();
   catalog = ProjectCatalog.fromMaterials(materials, budgetBase, layout, houseMeta, 'model-geometry');

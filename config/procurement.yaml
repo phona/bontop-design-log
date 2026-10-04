@@ -72,13 +72,13 @@ materials:
     notes: ["2扇卫生间门"]
 
   - id: hvac_01
-    name: "美的理想家III一拖五"
+    name: "美的领航者Ⅳ一拖六（MJV-200W-E01-LHIV 20kW + 6 台内机）"
     room: null
     category: hvac
     current_stage: selection
     waste_rate: 1
     unit: set
-    notes: ["最迟拆改前定，吊顶前装内机"]
+    notes: ["最迟拆改前定，吊顶前装内机", "DEC-2026-10-04-R1 定标成交 ¥36,000，取代本行旧的「美的理想家III一拖五」（DEC-2026-09-07-055 7HP/21.4kW/一拖五，连接率约 138% 已出局）；内机容量表判读 25.3kW/1.27，房间映射与逐台型号以合同附图为准，核对后回写 config/hvac.yaml"]
 
   - id: gas_water_heater_01
     name: "16L恒温燃气热水器"

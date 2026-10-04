@@ -1,9 +1,12 @@
 {
   "version": "v0.5-four-pool",
+  "status": "superseded",
+  "superseded_by": "schedule/phase-1/control.yaml",
   "locked_date": null,
   "currency": "CNY",
   "total_budget": 208000,
   "project_ceiling": 190000,
+  "note": "total_budget / project_ceiling 为 2026-08 四池口径快照，不再作为任何计算与接口的输入源；现行执行上限见 schedule/phase-1/control.yaml phase_ceiling_cny: 206000。作废口径只通过 schedule/phase-1/control.yaml budget_reconciliation.historical_baseline 段露出（该段自带 status: historical_reference_only 与 source 标注）。",
   "notes": "四池口径（P0 重构 v0.5）：硬装 118,000（16 科 107,000 + 预备费 11,000）+ 暖通 29,000（美的理想家III A2）+ 家具软装 35,000 + 家电 10,000 = 192,000。project_ceiling=190,000 为拎包入住总上限（务实档真实落地值，略低于合计以形成约束）。偏紧科目已上调：water_electric 8500→12000、waterproof 3500→4500、kitchen_cabinet 6500→8000、sanitary 10000→12000。家具家电报价为 candidate（到店未确认）。人工费为静态费率（不随选材变）：大砖≥800/人字拼工费上浮约20-50%已含在务实估算，精确数待施工图（DEC-2026-08-01-011）。DEC-041：地面统一为单一 floor topic + 分房覆盖（roomOverrides），bedroom_floor 撤销；入户花园开发商已铺、不计地面预算。量房和施工图完成后需重新核算。DEC-018：kitchen_cabinet 8000→11000（地柜5.0m）、appliances 10000→14000（冰箱）、furniture_soft 35000→36500（书桌椅×2套）；total_budget 对齐科目合计 208000（修正旧 -1500 差）。2026-08-22（设计师三轮 review R1-高）：美缝环氧彩砂暂估 4.5k 入账 miscellaneous（5700→10200），自 contingency 调入（11000→6500），total_budget 208000 不变；门店按米报价后终核。",
   "categories": {
     "demolition": {

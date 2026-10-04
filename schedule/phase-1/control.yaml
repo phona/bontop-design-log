@@ -255,7 +255,13 @@ hard_finish_quote_rounds:
       owner_target_cny: 18500
       owner_current_cny: 18500
       price_type: owner_budget_pool
-      status: budget_pool_locked
+      # 2026-10-04：由 budget_pool_locked 改为 budget_pool_confirmed_quote_pending。
+      # 依据 control.yaml 自身的 price_type_note（owner_budget_pool「业主给定的预算池，不是报价」）
+      # 与 status_note（locked 必须同时给出 locked_cny 与 contract_ref）——本条 only 有业主
+      # 预算池封顶价、没有锁定合同额与合同引用，烙「locked」会被
+      # c.control_lock_requires_contract_evidence 判为缺证。同池同口径的兄弟条目
+      # COST-060-04（planned_cny 18500 / PKG-060）用的就是 budget_pool_confirmed_quote_pending。
+      status: budget_pool_confirmed_quote_pending
       dedup_rule: 与 PKG-060 既有同楼盘锚点 17,000–18,500 元一致；不得再另加“复杂砖人工”；若该池已含防水或辅材，必须从 PKG-050 与 COST-060-02 去重
       locked_cny: null
       contract_ref: null
