@@ -15,6 +15,7 @@
     "verify:rules": "tsx scripts/verify/rules/verify-rules.ts",
     "verify:collision": "tsx scripts/verify/collision/verify-collision-coverage.ts",
     "verify:consistency": "tsx scripts/verify/data/verify-data-consistency.ts",
+    "verify:facts": "tsx scripts/verify/facts/verify-facts.ts",
     "verify:mep": "tsx scripts/verify/mep/verify-mep-lint.ts",
     "verify:electrical": "tsx scripts/verify/electrical/verify-electrical-lint.ts",
     "verify:project-render-facts": "tsx scripts/verify/project/verify-project-render-facts.ts",
@@ -24,7 +25,7 @@
     "verify:schedule": "tsx scripts/schedule/control.ts",
     "verify:spatial": "tsx scripts/verify/spatial/verify-spatial.ts",
     "generate:project-render-facts": "tsx scripts/project/project-render-facts-projection.ts data/project-render-facts.json",
-    "verify:all": "tsx scripts/verify/layout/verify-topology.ts && tsx scripts/verify/layout/verify-layout.ts && tsx scripts/verify/placement/verify-furniture-placement.ts && tsx scripts/verify/rules/verify-rules.ts && tsx scripts/verify/collision/verify-collision-coverage.ts && npm run verify:spatial && tsx scripts/verify/data/verify-data-consistency.ts && npm run verify:mep && npm run verify:electrical && npm run verify:project-render-facts && npm run verify:lighting-config",
+    "verify:all": "tsx scripts/verify/layout/verify-topology.ts && tsx scripts/verify/layout/verify-layout.ts && tsx scripts/verify/placement/verify-furniture-placement.ts && tsx scripts/verify/rules/verify-rules.ts && tsx scripts/verify/collision/verify-collision-coverage.ts && npm run verify:spatial && tsx scripts/verify/data/verify-data-consistency.ts && npm run verify:mep && npm run verify:electrical && npm run verify:project-render-facts && npm run verify:lighting-config && npm run verify:facts",
     "export:dressing-map": "tsx scripts/generate-dressing-map.ts",
     "export:glb": "tsx scripts/render/glb/export-glb.ts",
     "compare:glb": "tsx scripts/render/glb/compare-glb.ts"

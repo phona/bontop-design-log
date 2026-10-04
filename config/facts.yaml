@@ -1,0 +1,756 @@
+# ============================================================================
+# config/facts.yaml —— 非几何数据对账登记表（`npm run verify:facts`）
+#
+# 本表是 verify:facts 门禁唯一的输入。它把「同一个事实被散写在 config / docs /
+# schedule 多处」这件事变成一份**可评审的登记表**：每个事实声明权威值来自哪里、
+# 哪些位置是它的镜像（必须对账）、哪些位置是豁免（必须写理由）。
+#
+# 四层结构与各自语义
+# ──────────────────────────────────────────────────────────────────────────
+# T1 `scan`（发现层）
+#    在 include 目录范围内，对每个 scalar 正则做全文扫描，得到「值 → [位置...]」。
+#    凡是**没有任何 fact 的 mirror/exempt 或 scan.exempt_occurrences 覆盖**的出现，
+#    报 `unregistered_fact_occurrence`（warning）。
+#    目的：把「没人认领的数字」变成显式债务，数字新增时立刻可见。
+#    最小示例：
+#      scan:
+#        scalars:
+#          - { id: money, pattern: '[¥￥]\s?([\d,]{4,})' }
+#
+# T2 `facts`（对账层）
+#    - kind: derived   权威值从机器源推导，value 写 `@<file>:<点分路径>`。
+#      点分路径支持派生算子（写在单独一段里，前缀 `#`）：
+#        `#length`            数组长度
+#        `#shoelace`          多边形（顶点 id 数组或 {x,z} 数组）鞋带面积
+#        `#bbox_area`         多边形外接矩形面积（顶点 id 会查同文件的 vertices 表）
+#        `#field_sum:<f>`     数组里每个对象的 <f> 求和
+#        `#find:<k>=<v>`      在数组里找 <k> 等于 <v> 的元素，后续路径段继续深入
+#      最小示例：`value: "@config/electrical-topology.yaml:circuits.length"`
+#    - kind: narrative 权威值是一句人写的话，value 写 `@<file>:<字面定位串>`。
+#      引擎用后半段**逐字**在文件里定位，取其中第一个数字作为权威值。
+#      定位不到 → `authoritative_unresolvable`（error）。
+#      最小示例：`value: "@schedule/phase-1/control.yaml:phase_ceiling_cny: 206000"`
+#    - `mirrors[]` 每个镜像：{ path, extract, severity, expect_matches, group, scale, tolerance }
+#        extract       在 path 全文做多行匹配（引擎统一加 g+m）
+#        expect_matches 期望命中数，默认 1。**命中数不符一律报 mirror_unresolvable
+#                       （error）——禁止静默跳过**，这是本门禁反漂移的核心。
+#        group         取第几个捕获组，默认 1；无捕获组时退化为整个匹配
+#        scale         数值缩放（如 `ceiling 190k` 写 190、scale: 1000）
+#        severity      不一致时的级别，默认 error
+#      最小示例：`{ path: config/acceptance.yaml, extract: '本户\s*(\d+)\s*条回路' }`
+#    - `exempt[]`  { path, pattern, reason }：该文件里命中 pattern 的**行**不再参与
+#      T1 出现登记。reason 必填。
+#
+# T3 `contracts`（契约层，8 种内置 kind，均声明式、无表达式/eval）
+#    unique    对 source 全文 grep，pattern 首捕为 id；重复即 error。
+#              `allow_suffix` 列出的后缀视为补充条目（如 `-补`/`.1`），不与正牌判重。
+#              最小示例：{ id: c.x, kind: unique, source: docs/decision_log.md,
+#                          pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-[A-Za-z0-9.]+)' }
+#    fk        ref_scope 各文件里 grep ref_pattern 拿引用 id 集合；target 文件里 grep
+#              target_pattern 拿目标 id 集合；引用∖目标 = dangling。
+#              最小示例：{ id: c.y, kind: fk, ref_scope: [config/],
+#                          ref_pattern: '- id:\s*"?([a-z0-9_]+)"?',
+#                          target: config/materials.yaml,
+#                          target_pattern: '- id:\s*"?([a-z0-9_]+)"?' }
+#    requires  path 的 yaml 里递归找所有 `when.field == when.equals` 的对象，
+#              同级缺少 `then[]` 中任一字段 → error。
+#              最小示例：{ id: c.z, kind: requires, path: schedule/phase-1/control.yaml,
+#                          when: { field: status, equals: locked },
+#                          then: [locked_cny, contract_ref, evidence_path] }
+#    non_empty source 的 rule 里 `rule_fields` 取出的值必须存在于 target 的
+#              `key_field` 集合，否则该规则空转 → error/warning。
+#              `sections` 指定从哪些顶层段取 rule（数组逐项 / 映射整体视为一条 rule）。
+#              若 rule 自带文件指向（`rule_file_field` + `file_map`，如 `b.file: ceiling`），
+#              目标集合改从该文件取，避免跨文件的 type 误判。
+#              最小示例：{ id: c.w, kind: non_empty, source: config/verify-rules.yaml,
+#                          sections: [proximity, clearance],
+#                          rule_fields: ['b.match.type', 'furniture_types'],
+#                          target: config/house.yaml, target_path: furnishings,
+#                          key_field: type }
+#    mutex     同一文件内 `patterns[]` 中两类互相矛盾的表述同时出现 → error。
+#              最小示例：{ id: c.v, kind: mutex, scope: [config/hvac.yaml],
+#                          patterns: ['(?<![不])含.{0,4}复合风管', '不含复合风管'] }
+#              ⚠️ 若一个 pattern 是另一个的子串（「含复合风管」⊂「不含复合风管」），
+#              必须给前者加否定环视 `(?<不)`，否则永远同时命中。
+#    sum       items_path 指向的数组/映射按 `field` 求和，与 total 比较。
+#              两种模式：`total_path`（整体对比）或 `field`+`total`（逐项对比）。
+#              最小示例：{ id: c.u, kind: sum, source: config/budget/base.json,
+#                          items_path: categories, field: budget,
+#                          total_path: total_budget }
+#    parity    left/right 两个文件按 key join，比较 field；`filter_field`/`filter_values`
+#              可先过滤条目。缺失或不等 → error。
+#              最小示例：{ id: c.t, kind: parity,
+#                          left: { path: config/electrical.yaml, key: id, field: height,
+#                                  filter_field: type, filter_values: [ceiling_light] },
+#                          right: { path: config/render/overrides.yaml, key: id, field: anchorY } }
+#    overlap   datasets 里的两个多边形集合两两求交（分离轴 + Sutherland–Hodgman），
+#              有交叠 → error，message 给出两个 id 与交叠面积。
+#              最小示例：{ id: c.s, kind: overlap,
+#                          datasets: ['layout.floor_regions', 'layout.rooms'] }
+#
+# T4 `coverage`（覆盖层）
+#    1. 对 `config/*.yaml`、`config/layout/*.yaml`、`config/render/*.yaml`、`data/*.json`
+#       的**每个顶层字段**，凡未在本表登记 → `field_uncovered`（warning）。
+#       数组根文件没有命名字段，用伪字段 `*` 登记一次。
+#    2. 每条 coverage 的 `readers` 会被真的 grep：字段名一次都没出现 →
+#       `declared_reader_does_not_read`（error）。**覆盖矩阵不许说谎。**
+#       最小示例：{ file: config/ceiling.yaml, field: height,
+#                  readers: [shared/mep-hvac-lint.ts] }
+#       `fields` 是 `field` 的多字段简写；`readers: []` 表示「纯数据，无声称读者」。
+#
+# 维护铁律（下一个会话请先读这三条）
+# ──────────────────────────────────────────────────────────────────────────
+#  1. 新增镜像必须写 extract + expect_matches；命中数不符即失败，**不许静默跳过**。
+#  2. 新增豁免（fact.exempt / scan.exempt_occurrences）必须写 reason，并说明属于
+#     「历史留档 / 渲染产物 / 双口径未收敛」中的哪一种。没有 reason 的豁免视为谎言。
+#  3. 权威值只允许 derived（机器源）或 narrative（显式锚点），不许手抄数字。
+#  4. 本门禁**只报告问题，不修数据**。发现问题后改 config/docs/schedule 的对应条目，
+#     再回来重跑；不要为了让门禁变绿而删镜像或加无条件豁免。
+# ============================================================================
+
+version: 1
+
+# ─── T1 发现层 ───────────────────────────────────────────────────────────────
+
+scan:
+  include: [config/, docs/, schedule/]
+  exclude: [docs/design-iterations/, tmp/, node_modules/, config/facts.yaml]
+  scalars:
+    - { id: circuit_count, pattern: '(\d{1,2})\s*路' }
+    - { id: money, pattern: '[¥￥]\s?([\d,]{4,})' }
+    - { id: kw, pattern: '(\d{1,2}\.\d)\s?kW' }
+    - { id: area_sqm, pattern: '(\d{1,3}\.\d{1,2})\s*㎡' }
+
+  # 文件/目录级噪声登记。不属于任何 fact 的域，但必须显式登记并写 reason，
+  # 否则 T1 会把它们全报成 unregistered_fact_occurrence。
+  exempt_occurrences:
+
+    # --- 时间序档案：全仓 DEC 历史，数值都是「当时快照」---
+    - path: docs/decision_log.md
+      pattern: '.'
+      reason: 时间序决策档案：金额/回路数/功率/面积均为当轮快照，权威值以当轮 DEC 引用的 config 字段为准；本文件只做追溯，不做对账
+
+    - path: docs/design-iterations/
+      pattern: '.'
+      reason: 迭代过程留档（fact-table / decision-brief / evidence），非现行事实源
+
+    # --- control.yaml 的渲染产物：不是事实源，改了 control.yaml 会重新生成 ---
+    - path: schedule/phase-1/budget.md
+      pattern: '.'
+      reason: control.yaml generated_views 渲染产物，金额与回路数由 schedule/phase-1/control.yaml 生成，非事实源
+    - path: schedule/phase-1/schedule.md
+      pattern: '.'
+      reason: control.yaml generated_views 渲染产物，金额由 schedule/phase-1/control.yaml 生成，非事实源
+    - path: schedule/phase-1/checklist.md
+      pattern: '¥'
+      reason: control.yaml generated_views 渲染产物；其中「本户 20 路」已由 fact.circuit_count 镜像单列校验
+
+    # --- 采购/预算叙述：权威金额在 control.yaml 的 planned_cny/contracted_cny ---
+    - path: schedule/procurement.md
+      scalars: [money]
+      pattern: '¥'
+      reason: 采购决议书里的金额是阶段叙述与历史询价轮次留档，权威金额以 schedule/phase-1/control.yaml 的 planned_cny/contracted_cny 为准；§01 定标成交 36,000 已由 fact.hvac_contract_cny 镜像单列
+    - path: schedule/procurement.md
+      scalars: [kw]
+      pattern: 'kW'
+      reason: 暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由 docs/pending-site-data.md #39 跟踪收敛
+    - path: schedule/procurement.md
+      scalars: [area_sqm]
+      pattern: '㎡'
+      reason: 房间面积为气流覆盖分区口径（31㎡+14㎡=44.58㎡），权威以 config/house.yaml rooms 与 model-geometry 多边形为准
+    - path: schedule/phase-1/control.yaml
+      scalars: [kw]
+      pattern: 'kW'
+      reason: control.yaml 只在 gate 判据里复述暖通功率，权威值在 config/hvac.yaml load_design
+    - path: schedule/README.md
+      pattern: '.'
+      reason: 目录导读，金额为概览叙述
+    - path: schedule/phase-1/README.md
+      pattern: '.'
+      reason: 目录导读，金额为概览叙述
+    - path: schedule/phase-2/
+      pattern: '.'
+      reason: 二期范围，不进入一期事实对账
+    - path: schedule/phase-3/
+      pattern: '.'
+      reason: 三期范围，不进入一期事实对账
+
+    # --- 研究与选型留档：功率/面积都是询价当时的估计 ---
+    - path: docs/hvac-deepening-20260907.md
+      pattern: '.'
+      reason: 2026-09-07 空调深化研究留档（已被 DEC-2026-10-04-R1 成交结论取代），功率/面积/回路数均为当时估计
+    - path: docs/hvac-rfq-brief-20261003.md
+      pattern: '.'
+      reason: RFQ 询价简报，功率与面积为询价口径，非成交事实
+    - path: docs/hvac_options_analysis.md
+      pattern: '.'
+      reason: 方案比选研究留档，面积为负荷估算口径
+    - path: docs/material_selection_log.md
+      pattern: '.'
+      reason: 选材过程日志，金额/功率为到店询价记录
+    - path: docs/dressing-map.md
+      pattern: '.'
+      reason: 软装摆位图说明，功率为灯具标注口径
+    - path: docs/designer_brief.md
+      scalars: [area_sqm]
+      pattern: '㎡'
+      reason: 设计师简报的面积为设计基准叙述，权威面积以 config/house.yaml 与 model-geometry 多边形为准
+
+    # --- config 是机器源，但标量散写在 notes/注释里，逐条对账由专项 fact 承载 ---
+    - path: config/
+      scalars: [kw]
+      pattern: 'kW'
+      reason: 暖通/电气功率双口径（设计 21.6kW vs 成交判读 25.3kW）无法用单一 regex 抽出权威值，已在 fact.hvac_indoor_kw_total 显式豁免；其余散写于 notes 的功率不建 fact
+    - path: config/house.yaml
+      scalars: [area_sqm]
+      pattern: '㎡'
+      reason: rooms/gift_areas 的面积是模型镜像字段，由 verify-data-consistency A/B 项与 fact.usable_area / fact.parent_room_area / fact.west_platform_area 专项对账；notes 里的设计图标注为留档
+    - path: config/hvac.yaml
+      scalars: [area_sqm]
+      pattern: '㎡'
+      reason: 负荷设计的热区面积与外廓尺寸为协调值，权威面积以 config/house.yaml 与 model-geometry 为准
+    - path: config/budget-pitfalls.yaml
+      scalars: [area_sqm]
+      pattern: '㎡'
+      reason: 预算模板的估算基数（套内 94.76㎡），非面积权威源
+    - path: config/budget/base.json
+      scalars: [area_sqm]
+      pattern: '㎡'
+      reason: 旧四池口径的估算基数，面积权威在 config/house.yaml
+    - path: config/layout/model-geometry.yaml
+      scalars: [area_sqm]
+      pattern: '㎡'
+      reason: 几何模型注释里的面积为人工标注口径，机器口径以多边形求值为准
+    - path: docs/pending-site-data.md
+      scalars: [kw]
+      pattern: 'kW'
+      reason: 量房清单 #39 复述成交判读容量（25.3kW）与设计口径（21.6kW）双轨，由 #39 跟踪收敛
+
+# ─── T2 对账层 ───────────────────────────────────────────────────────────────
+
+facts:
+
+  - id: fact.circuit_count
+    kind: derived
+    value: "@config/electrical-topology.yaml:circuits.length"
+    unit: 路
+    as_of: DEC-2026-10-04-R2
+    mirrors:
+      - path: config/acceptance.yaml
+        extract: '本户\s*(\d+)\s*条回路'
+        severity: error
+        expect_matches: 1
+      - path: docs/pending-site-data.md
+        extract: '(\d+)\s*路\s*\+\s*2P'
+        severity: error
+        expect_matches: 1
+      - path: docs/mep-construction-guidance.md
+        extract: 'topology\s*(\d+)\s*路'
+        severity: error
+        expect_matches: 1
+      - path: schedule/phase-1/checklist.md
+        extract: '本户\s*(\d+)\s*路'
+        severity: error
+        expect_matches: 2
+    exempt:
+      - path: config/electrical-topology.yaml
+        pattern: '路'
+        reason: 权威源自身的轮次叙述（25 路→19 路→20 路）为时间序留档；回路数以 circuits.length 为唯一权威
+      - path: config/acceptance.yaml
+        pattern: '路'
+        reason: 验收单复述「本户 20 路」的箱体与分路判据；第 283 行「19 条回路」是本门禁唯一断点，已由上面的 mirror 单列
+      - path: config/hvac.yaml
+        pattern: '路'
+        reason: hvac.yaml 只在 notes 里复述拓扑结论（19→20 / 第 20 路），非回路权威源
+      - path: config/mep-hvac-coordination.yaml
+        pattern: '路'
+        reason: 走线表注释复述拓扑回路数，权威在 electrical-topology.yaml circuits
+      - path: config/electrical.yaml
+        pattern: '专用取电'
+        reason: 点位 note 复述「20kW 外机专用取电」，权威在 topology circuits
+      - path: config/house.yaml
+        pattern: '第\s*\d+\s*路'
+        reason: house.yaml mep_strategy 复述 R2 结论（外机供电第 20 路），权威在 topology circuits
+      - path: docs/pending-site-data.md
+        pattern: '第\s*\d+\s*路'
+        reason: 量房清单 #39 复述 R2 结论；#30 的「19 路」由上面的 mirror 单列校验
+      - path: docs/mep-construction-guidance.md
+        pattern: '合并至'
+        reason: 施工指导表格复述历史合并口径（25 路合并至 20 路），权威在 topology
+
+  - id: fact.mep_routes_count
+    kind: derived
+    value: "@config/mep-hvac-coordination.yaml:routes.length"
+    unit: 条
+    as_of: DEC-2026-10-04-R2
+    mirrors:
+      - path: config/mep-hvac-coordination.yaml
+        extract: '本表 routes 共\s*(\d+)\s*条'
+        severity: error
+        expect_matches: 1
+      - path: docs/mep-construction-guidance.md
+        extract: '(\d+)\s*条走线'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.hvac_contract_cny
+    kind: narrative
+    value: "@docs/pending-site-data.md:已成交 36,000 元"
+    unit: 元
+    as_of: DEC-2026-10-04-R1
+    mirrors:
+      - path: config/hvac.yaml
+        extract: '已成交\s*([\d,]+)'
+        severity: error
+        expect_matches: 1
+      - path: schedule/procurement.md
+        extract: '定标成交[^\n]{0,160}?合计\s*([\d,]+)\s*元'
+        severity: error
+        expect_matches: 1
+      - path: schedule/phase-1/control.yaml
+        extract: 'contracted_cny:\s*([\d,]+)'
+        severity: error
+        expect_matches: 1
+      - path: config/house.yaml
+        extract: '2026-10-04 成交\s*¥([\d,]+)'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.phase1_ceiling_cny
+    kind: narrative
+    value: "@schedule/phase-1/control.yaml:phase_ceiling_cny: 206000"
+    unit: 元
+    as_of: DEC-2026-10-03-R3
+    mirrors:
+      # C1（2026-10-04 挂豁免）：base.json 的 project_ceiling=190,000 与现行权威
+      # schedule/phase-1/control.yaml:phase_ceiling_cny=206,000 不一致，**不能自动修**：
+      #   ① base.json 已被 control.yaml `budget_reconciliation.historical_baseline`
+      #      显式标为 `historical_reference_only`，改它等于篡改历史基线；
+      #   ② 它同时仍被 server/budget-calculator.ts（budget API / MCP `overCeilingBy`）
+      #      热更新输出，改它等于改动线上接口语义。
+      # 待谁裁决：业主（谁是现行预算权威）＋后端（base.json 的 project_ceiling 是退出
+      #           历史输出、还是与 control.yaml 同步）。
+      # 跟踪入口：schedule/phase-1/control.yaml `budget_reconciliation`（historical_baseline 段）。
+      # 降为 warning 后仍逐次暴露漂移（expect_matches 不变），不阻断门禁。
+      - path: config/budget/base.json
+        extract: '"project_ceiling":\s*([\d,]*\d)'
+        severity: warning
+        expect_matches: 1
+      # C3（2026-10-04 挂豁免）：designer_brief.md 第 23 行的「ceiling 190k / 四池 192k」
+      # 是旧四池口径（config/budget/base.json v0.5-four-pool 快照），与现行权威
+      # control.yaml 206,000 不一致。**不能自动修**：该文件是对外交付件（设计师简报），
+      # 预算口径更新需业主确认后再改，避免对外文件与内部口径单向漂移。
+      # 待谁裁决：业主（是否已把新版预算口径发给外部设计师；若要改，改哪一版）。
+      # 跟踪入口：docs/designer_brief.md 第 7 条 + config/budget/base.json notes。
+      - path: docs/designer_brief.md
+        extract: 'ceiling\s*(\d+)k'
+        severity: warning
+        expect_matches: 2
+        scale: 1000
+      - path: schedule/phase-1/control.yaml
+        extract: '最终预测不超过\s*¥?([\d,]+)'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.usable_area
+    kind: derived
+    value: "@config/house.yaml:project.usable_area"
+    unit: ㎡
+    mirrors:
+      - path: README.md
+        extract: '套内面积[^0-9]{0,20}([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+      - path: config/materials.yaml
+        extract: '本清单以套内\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.floor_height_net
+    kind: derived
+    value: "@config/house.yaml:project.floor_height"
+    unit: m
+    mirrors:
+      - path: README.md
+        extract: '层高[^0-9]{0,20}([\d.]+)\s*m'
+        severity: warning
+        expect_matches: 1
+    # README 的 3.0m 是结构层高、house.yaml 的 2.8m 是室内净高：两个口径都真实存在，
+    # 因此本 fact 只做 warning，提示「引用层高时必须注明是结构层高还是净高」。
+
+  - id: fact.kitchen_area
+    kind: derived
+    value: "@config/layout/model-geometry.yaml:rooms#find:id=kitchen.boundary#shoelace"
+    unit: ㎡
+    as_of: DEC-021
+    mirrors:
+      # 补回 2026-10-04 修正 kitchen_south_boundary 时丢失的算术交叉校验：
+      # 原 extract 把乘积 3.6×2.9=10.44 写死在正则里，改数据后只能二选一（写假算术 or 放宽正则）。
+      # 正确做法是把「面积」单列一条 fact：权威值由 kitchen 多边形实测导出，
+      # 镜像校验量房清单里手写的乘积，z 与面积两条互补，各自都能独立抓漂移。
+      - path: docs/pending-site-data.md
+        # 注意：该行手写乘积后不带单位（「3.6×2.4=8.64（开发商标注 6.09 为净口径）」），
+        # 因此只捕获数字；6.09㎡ 是开发商标注的净口径、与本 fact 的多边形毛口径不同量纲，
+        # 已由该行文字自证，不纳入对账。
+        extract: '3\.6×\d\.\d+=([\d.]+)'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.kitchen_south_boundary
+    kind: derived
+    value: "@config/layout/model-geometry.yaml:vertices#find:id=v_kit_s2.z"
+    unit: m
+    mirrors:
+      - path: docs/pending-site-data.md
+        # 2026-10-04 数据修正（DEC-021 现行口径）：厨房南界 z 由 2.90 改为 2.40，
+        # 毛口径面积随之由 3.6×2.9=10.44㎡ 改为 3.6×2.4=8.64㎡（= model-geometry
+        # rooms#find:id=kitchen 多边形实测 8.64㎡）。原 extract 把乘积 10.44 写死在
+        # 正则里，数据修正后永不命中 → mirror_unresolvable，属登记表缺陷而非数据问题。
+        # 改为捕获任意乘积：句子形状、expect_matches、severity 均不变，
+        # z 与 v_kit_s2.z 的对账仍是 error 级，门禁强度不降。
+        extract: '3\.6×(\d\.\d+)=[\d.]+'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.west_platform_area
+    kind: derived
+    value: "@config/layout/model-geometry.yaml:platform.boundary#bbox_area"
+    unit: ㎡
+    mirrors:
+      - path: config/house.yaml
+        extract: '唯一可用设备平台，赠送面积，面积约\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+      # hvac.yaml 的「1.6×1.00m」是平台净尺寸叙述：首径 1.6 与模型 bbox 宽一致，
+      # 由它推出的 2.48㎡ 与模型 bbox 面积 1.60㎡ 的矛盾，由上面 house.yaml 的
+      # gift area 镜像与 c.layout_region_room_overlap（north_platform_floor ⊂
+      # west_platform，交叠 1.60㎡）共同暴露。这里只登记首径，避免量纲混淆。
+      - path: config/hvac.yaml
+        extract: '西平台\s*1\.6×\d\.\d+m'
+        severity: warning
+        expect_matches: 1
+    exempt:
+      # 2026-10-04：1.39㎡ 是 bbox 1.60㎡ 扣除 r=1.0 西北圆角楔形后的**估算可用面积**
+      # （1.60 − (1² − π·1²/4) = 1.60 − 0.2146 ≈ 1.385，文中取 1.39），不是独立事实。
+      # 权威值仍是本 fact 的 bbox 1.60㎡；圆角扣除量未做机读对账（引擎暂缺
+      # #rounded_area 算子），人工可依上式复核。若后续要给引擎补该算子，再把本条转 mirror。
+      - path: docs/pending-site-data.md
+        pattern: '1\.39'
+        reason: 'bbox 1.60㎡ 扣除 r=1.0 圆角楔形后的估算可用面积，非独立事实；权威值见 fact.west_platform_area'
+
+  - id: fact.parent_room_area
+    kind: derived
+    value: "@config/house.yaml:rooms#find:id=study.area"
+    unit: ㎡
+    as_of: DEC-2026-08-27-047
+    mirrors:
+      # 2026-10-04：原镜像指向 config/house.yaml 自身 notes —— 权威值就是
+      # house.yaml 的 rooms.study.area，镜像又回到同一文件，属**自指检查**，改什么都能过。
+      # 且原 extract 拿「点石设计图净标注 8.35㎡」与「多边形毛口径 12.75㎡」比大小，
+      # 两个量纲永远不可能相等，是注定失败的检查（8.35㎡ 实为东南书房 bedroom_se 标注，
+      # 见 docs/decision_log.md DEC-2026-08-27-047，原记录误引，已删）。
+      # 改为**跨文件三方对账**：父母房面积是冷负荷的分母（2.8kW ÷ 12.75㎡ ≈ 220W/㎡），
+      # house.yaml / hvac.yaml / RFQ 三处必须同值，任一处漂移都会让冷负荷结论失据。
+      - path: config/hvac.yaml
+        extract: '父母房\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+      - path: docs/hvac-rfq-brief-20261003.md
+        extract: '\|\s*父母房\s*\|\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.gas_alarm_z
+    kind: derived
+    value: "@config/electrical.yaml:#find:id=sock_kitchen_gas.z"
+    unit: m
+    mirrors:
+      - path: docs/mep-construction-guidance.md
+        extract: '定在\s*\(([\d.]+),([\d.]+)\)'
+        severity: error
+        expect_matches: 1
+        group: 2
+      - path: docs/pending-site-data.md
+        extract: '暂定报警位\s*\(([\d.]+),([\d.]+)\)'
+        severity: error
+        expect_matches: 1
+        group: 2
+
+  - id: fact.rooms_area_caliber
+    kind: derived
+    value: "@config/house.yaml:rooms#field_sum:area"
+    unit: ㎡
+    # rooms 求和是「多边形毛口径」，project.usable_area 是「合同净口径」。
+    # 两者相差约 26.75㎡ 是已知且有意为之的量房前偏差，不报 error，
+    # 但在这里显式豁免，把隐性偏差变成可审计项。
+    exempt:
+      - path: config/house.yaml
+        pattern: 'usable_area'
+        reason: rooms=多边形毛口径 / usable=合同净口径，量房后对账
+
+  # 暖通内机合计功率无法用单一 regex 抽出权威值：config/hvac.yaml 同时存在
+  # 「设计口径 21.6kW（R6）」与「成交照片判读 25.3kW（R1）」，两轨都真实有效，
+  # 任选其一作为权威都会误导。因此不建 fact，只登记豁免并说明跟踪入口。
+  - id: fact.hvac_indoor_kw_total
+    kind: narrative
+    value: "@config/hvac.yaml:不存在单一权威功率口径"
+    enabled: false
+    exempt:
+      - path: config/hvac.yaml
+        pattern: 'indoor_nominal_kw_total'
+        reason: 设计口径与成交判读双轨（21.6kW / 25.3kW），由 docs/pending-site-data.md #39 跟踪房间映射回写后收敛
+
+# ─── T3 契约层 ───────────────────────────────────────────────────────────────
+
+contracts:
+
+  - id: c.dec_unique
+    kind: unique
+    source: docs/decision_log.md
+    pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-[A-Za-z0-9.]+)'
+    allow_suffix: ['-补', '-补2', '-补3', '.1', '.2', '.3']
+    # 注意：`-补` 等含 CJK 的后缀不在 pattern 的字符类里，引擎会再看匹配之后的正文；
+    # 因此 `DEC-...-051-补` 与 `DEC-...-051` 不被判为重号，但两个**无后缀**的同号
+    # 标题会立刻报 duplicate_id。
+
+  - id: c.dec_ref_resolvable
+    kind: fk
+    # 两级解析：全引直接命中；短引（DEC-nnn）按序号在全引里反查，唯一命中视为已解析
+    # （本项目约定 config/prose 用短引、decision_log 只登记全引，全报 dangling 会是
+    # 220 处噪声）。因此真正要抓的是两类：
+    #   ① 反查不到 → dangling_reference
+    #   ② 反查到了、但标题主题与引用语境不符 → reference_subject_mismatch
+    ref_pattern: '(DEC-(?:\d{4}-\d{2}-\d{2}-)?\d{3})\b'
+    ref_scope: [config/, shared/, docs/, server/]
+    target: docs/decision_log.md
+    target_pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-\d{3})\b.*'
+    # 已知错配：DEC-045 序号反查到 DEC-2026-08-26-045「主卧空调檐口」，
+    # 但全仓把 DEC-045 当「主卫东墙底柜+下板+主板+PVC 盒四件同轴」引用，该决策从未入账。
+    # 2026-10-04：该条 subject_assertion 已移至 c.dec045_subject_pending_adjudication
+    # （warning 级，待业主/设计裁决后回迁或消除）。本契约的 severity 保持 error 不变，
+    # dangling_reference 仍为 error——不因为豁免一条待决项而削弱整层外键门禁。
+    subject_assertions: []
+
+  # C5（2026-10-04 挂豁免，待业主/设计裁决）
+  # ──────────────────────────────────────────────────────────────────────────
+  # 为什么不能自动修：DEC-045 序号唯一反查到 DEC-2026-08-26-045「主卧空调檐口定案 +
+  # 条带东北角通顶储物柜（冷凝水柜内走管）」，但全仓 66 处引用把 DEC-045 当
+  # 「主卫东墙底柜+下板+主板+PVC 盒四件同轴」用——该决策从未入账。两种修法都是治理决策：
+  #   ① 补录正式条目并重编号（项目已有 DEC-052/053 改号先例）；
+  #   ② 把 66 处引用改指向正确编号。
+  # 待谁裁决：业主 + 设计侧（选①还是②，以及补录条目的正文）。
+  # 跟踪入口：docs/decision_log.md（新增/改编号条目）；本契约即显式待决登记。
+  # 实现方式：从 c.dec_ref_resolvable 摘出该条 assertion，单独置为 warning 级契约，
+  # 其余外键检查（dangling_reference 仍为 error）完全不受影响。
+  - id: c.dec045_subject_pending_adjudication
+    kind: fk
+    severity: warning
+    ref_pattern: '(DEC-045)\b'
+    ref_scope: [config/, shared/, docs/, server/]
+    target: docs/decision_log.md
+    target_pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-\d{3})\b.*'
+    subject_assertions:
+      - ref: 'DEC-045'
+        expect: '主卫|悬浮板|vanity|PVC|四件|台盆'
+        note: 'DEC-045 序号反查到 DEC-2026-08-26-045（主卧空调檐口），但全仓 66 处引用意指主卫四件套；需裁决：补录正式条目并重编号，或改引用指向正确编号；跟踪：docs/decision_log.md'
+
+  - id: c.procurement_subset_of_materials
+    kind: fk
+    severity: warning
+    ref_pattern: |-
+      - id:\s*["']?([A-Za-z0-9_.\-]+)["']?
+    ref_scope: [config/procurement.yaml]
+    target: config/materials.yaml
+    target_pattern: |-
+      - id:\s*["']?([A-Za-z0-9_.\-]+)["']?
+
+  - id: c.referenced_material_exists
+    kind: fk
+    ref_pattern: |-
+      \b([a-z][a-z0-9]*(?:_[a-z0-9]+)*_\d{2})\b
+    ref_scope: [schedule/procurement.md]
+    target: config/materials.yaml
+    target_pattern: |-
+      - id:\s*["']?([A-Za-z0-9_.\-]+)["']?
+
+  - id: c.contract_requires_lock
+    kind: requires
+    path: schedule/phase-1/control.yaml
+    when: { field: status, equals: locked }
+    then: [locked_cny, contract_ref, evidence_path]
+
+  - id: c.rule_targets_exist
+    kind: non_empty
+    source: config/verify-rules.yaml
+    sections: [proximity, clearance]
+    rule_fields: ['b.match.type', 'furniture_types']
+    # 规则若自带 `b.file`（如 ac_socket_to_unit 指向 ceiling），目标集合改从该文件取，
+    # 否则一律用下面的 target（house.yaml furnishings）。这样 ac_indoor 不会被误判。
+    rule_file_field: 'b.file'
+    file_map:
+      electrical: config/electrical.yaml
+      plumbing: config/plumbing.yaml
+      ceiling: config/ceiling.yaml
+      furniture: config/house.yaml
+      house: config/house.yaml
+    target: config/house.yaml
+    target_path: furnishings
+    key_field: type
+
+  - id: c.hvac_price_boundary_mutex
+    kind: mutex
+    scope: [config/hvac.yaml, schedule/procurement.md]
+    patterns: ['(?<![不])含.{0,4}复合风管', '不含复合风管']
+
+  - id: c.base_budget_sum
+    kind: sum
+    source: config/budget/base.json
+    items_path: categories
+    field: budget
+    total_path: total_budget
+
+  - id: c.templates_allocation_sum
+    kind: sum
+    source: config/budget-pitfalls.yaml
+    items_path: templates
+    field: allocation
+
+  # c.light_height_parity（2026-10-04 降为 warning）
+  # ──────────────────────────────────────────────────────────────────────────
+  # 为什么不能自动修：`config/electrical.yaml` 的 `height` 是**施工安装高度**（电气口径，
+  # 决定底盒/吊顶开孔与人体可达性），`config/render/overrides.yaml` 的 `anchorY` 是
+  # **渲染锚点**（三维挂点，含吊顶完成面、灯体吊高与视觉校正）。两者语义不同，是同一灯具
+  # 在两个子系统里的**双写**，不是数据错误；改任一个都等于篡改另一方口径。
+  # 待谁裁决：设计侧（渲染锚点是否应与安装高度统一）＋电气/施工侧（anchorY 是否有施工意义）。
+  # 跟踪入口：docs/pending-site-data.md 新增条目 / DEC 编号待分配；收敛动作要求每条 override
+  #           逐条写 basis（为什么这个锚点不等于安装高度）。
+  # 因此 severity 置 warning：仍逐条暴露 8 处不一致，但不阻断门禁。
+  - id: c.light_height_parity
+    kind: parity
+    severity: warning
+    left:
+      path: config/electrical.yaml
+      key: id
+      field: height
+      filter_field: type
+      filter_values: [ceiling_light, pendant, dome, wall_lamp, downlight, led_strip, track_light]
+    right:
+      path: config/render/overrides.yaml
+      key: id
+      field: anchorY
+
+  - id: c.layout_region_room_overlap
+    kind: overlap
+    datasets: ['layout.floor_regions', 'layout.rooms']
+
+# ─── T4 覆盖层 ───────────────────────────────────────────────────────────────
+
+coverage:
+# 每条登记的 readers 会被真的 grep：字段名一次都没出现就报
+# declared_reader_does_not_read（error）。readers: [] 表示「纯数据，无声称读者」。
+  - { file: config/acceptance.yaml, field: "phases", readers: ["scripts/schedule/control.ts"] }
+  - { file: config/budget-pitfalls.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/budget-pitfalls.yaml, field: "pitfalls", readers: [] }
+  - { file: config/budget-pitfalls.yaml, field: "templates", readers: [] }
+  - { file: config/ceiling.yaml, field: "*", readers: [] }
+  - { file: config/design-rules.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/design-rules.yaml, field: "objectMapping", readers: ["shared/types.ts"] }
+  - { file: config/design-rules.yaml, field: "budget", readers: ["shared/types.ts", "scripts/schedule/control.ts"] }
+  - { file: config/design-rules.yaml, field: "risks", readers: ["shared/types.ts"] }
+  - { file: config/design-rules.yaml, field: "constraints", readers: ["shared/project-render-facts-schema.ts", "shared/types.ts"] }
+  - { file: config/electrical-topology.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/electrical-topology.yaml, field: "panels", readers: ["shared/electrical-lint.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: config/electrical-topology.yaml, field: "circuits", readers: ["shared/electrical-lint.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: config/electrical-topology.yaml, field: "controls", readers: ["shared/electrical-lint.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: config/electrical-topology.yaml, field: "pending_parameters", readers: ["shared/electrical-lint.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: config/electrical.yaml, field: "*", readers: [] }
+  - { file: config/environment.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/environment.yaml, field: "location", readers: ["shared/environment-schema.ts", "shared/houseData.ts"] }
+  - { file: config/environment.yaml, field: "horizon", readers: ["shared/environment-schema.ts"] }
+  - { file: config/environment.yaml, field: "climate", readers: ["shared/environment-schema.ts"] }
+  - { file: config/environment.yaml, field: "humidity", readers: ["shared/environment-schema.ts"] }
+  - { file: config/facts.yaml, field: "version", readers: [] }
+  - { file: config/facts.yaml, field: "scan", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
+  - { file: config/facts.yaml, field: "facts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
+  - { file: config/facts.yaml, field: "contracts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
+  - { file: config/facts.yaml, field: "coverage", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
+  - { file: config/house.yaml, field: "project", readers: ["shared/render/CurtainGeometry.ts", "shared/render/FixtureFactory.ts"] }
+  - { file: config/house.yaml, field: "rooms", readers: ["shared/environment-schema.ts", "shared/glazing.ts"] }
+  - { file: config/house.yaml, field: "gift_areas", readers: ["shared/types.ts", "scripts/verify/data/verify-data-consistency.ts"] }
+  - { file: config/house.yaml, field: "mechanical_electrical_plumbing", readers: ["shared/types.ts"] }
+  - { file: config/house.yaml, field: "mep_strategy", readers: [] }
+  - { file: config/house.yaml, field: "furnishings", readers: ["shared/render/FixtureFactory.ts", "shared/render/SceneBuilder.ts"] }
+  - { file: config/house.yaml, field: "constraints", readers: ["shared/project-render-facts-schema.ts", "shared/types.ts"] }
+  - { file: config/house.yaml, field: "circulation", readers: [] }
+  - { file: config/house.yaml, field: "design_rationale", readers: [] }
+  - { file: config/house.yaml, field: "pending_verification", readers: [] }
+  - { file: config/hvac.yaml, field: "plans", readers: ["shared/mep-hvac-coordination-schema.ts", "shared/project-render-facts-projection.ts"] }
+  - { file: config/layout/cad-anchor.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/layout/cad-anchor.yaml, field: "dxf_origin", readers: [] }
+  - { file: config/layout/cad-anchor.yaml, field: "dxf_frame", readers: [] }
+  - { file: config/layout/model-geometry.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/layout/model-geometry.yaml, field: "unit", readers: ["shared/render/HvacBuilder.ts", "shared/spatial-validation.ts"] }
+  - { file: config/layout/model-geometry.yaml, field: "scale", readers: ["shared/render/InfrastructureBuilder.ts", "shared/render/LightingFixtureBuilder.ts"] }
+  - { file: config/layout/model-geometry.yaml, field: "origin", readers: ["shared/render/InfrastructureBuilder.ts", "shared/render/TrackLightLayout.ts"] }
+  - { file: config/layout/model-geometry.yaml, field: "export_date", readers: ["shared/types.ts"] }
+  - { file: config/layout/model-geometry.yaml, field: "vertices", readers: ["shared/types.ts", "scripts/verify/data/verify-data-consistency.ts"] }
+  - { file: config/layout/model-geometry.yaml, field: "rooms", readers: ["shared/environment-schema.ts", "shared/glazing.ts"] }
+  - { file: config/layout/model-geometry.yaml, field: "platform", readers: ["shared/houseData.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: config/layout/model-geometry.yaml, field: "walls", readers: ["shared/electrical-lint.ts", "shared/glazing.ts"] }
+  - { file: config/layout/overlay.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/layout/overlay.yaml, field: "suppress", readers: ["shared/spatial-validation.ts", "scripts/verify/collision/verify-collision-coverage.ts"] }
+  - { file: config/layout/overlay.yaml, field: "elements", readers: ["shared/curtain-projection.ts", "shared/glazing.ts"] }
+  - { file: config/materials.yaml, field: "notes", readers: ["shared/types.ts"] }
+  - { file: config/materials.yaml, field: "render_roles", readers: [] }
+  - { file: config/materials.yaml, field: "materials", readers: ["shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: config/mep-hvac-coordination.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/mep-hvac-coordination.yaml, field: "status", readers: ["shared/electrical-lint.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/mep-hvac-coordination.yaml, field: "note", readers: ["shared/houseData.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/mep-hvac-coordination.yaml, field: "layers", readers: ["shared/mep-hvac-coordination-schema.ts", "shared/mep-hvac-lint.ts"] }
+  - { file: config/mep-hvac-coordination.yaml, field: "routes", readers: ["shared/mep-hvac-coordination-schema.ts", "shared/mep-hvac-lint.ts"] }
+  - { file: config/plumbing.yaml, field: "*", readers: [] }
+  - { file: config/procurement.yaml, field: "materials", readers: ["shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: config/render/lighting.yaml, field: "fixtures", readers: ["shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: config/render/overrides.yaml, field: "*", readers: [] }
+  - { file: config/spatial-validation.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/spatial-validation.yaml, field: "tolerance_profiles", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
+  - { file: config/spatial-validation.yaml, field: "furniture_profiles", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
+  - { file: config/spatial-validation.yaml, field: "furniture_profile_overrides", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
+  - { file: config/spatial-validation.yaml, field: "mep_coordination_types", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
+  - { file: config/spatial-validation.yaml, field: "junctions", readers: ["shared/spatial-validation.ts", "scripts/verify/spatial/verify-spatial.ts"] }
+  - { file: config/spatial-validation.yaml, field: "allowed_collinear_overlaps", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
+  - { file: config/spatial-validation.yaml, field: "allowed_overlay_wall_junctions", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
+  - { file: config/spatial-validation.yaml, field: "relationships", readers: ["shared/spatial-validation.ts", "scripts/verify/spatial/verify-spatial.ts"] }
+  - { file: config/spatial-validation.yaml, field: "overlay_replacements", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
+  - { file: config/spatial-validation.yaml, field: "lighting_host_overrides", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
+  - { file: config/tradeoffs.yaml, field: "tradeoffs", readers: [] }
+  - { file: config/verify-rules.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/verify-rules.yaml, field: "bounds", readers: ["shared/render/layout-bounds.ts", "shared/types.ts"] }
+  - { file: config/verify-rules.yaml, field: "wall_ref", readers: ["scripts/verify/rules/verify-rules.ts"] }
+  - { file: config/verify-rules.yaml, field: "existence", readers: ["scripts/verify/rules/verify-rules.ts"] }
+  - { file: config/verify-rules.yaml, field: "proximity", readers: ["scripts/verify/rules/verify-rules.ts"] }
+  - { file: config/verify-rules.yaml, field: "clearance", readers: ["shared/types.ts", "scripts/verify/rules/verify-rules.ts"] }
+  - { file: config/verify-rules.yaml, field: "name_consistency", readers: ["scripts/verify/rules/verify-rules.ts"] }
+  - { file: data/current-scheme.json, field: "updatedAt", readers: ["shared/curtain-projection.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: data/current-scheme.json, field: "selections", readers: ["shared/project-render-facts-projection.ts", "shared/types.ts"] }
+  - { file: data/presentation-state.json, field: "default", readers: ["shared/curtain-projection.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: data/presentation-state.json, field: "roomOverrides", readers: ["shared/curtain-projection.ts", "shared/project-render-facts-projection.ts"] }
+  - { file: data/presentation-state.json, field: "updatedAt", readers: ["shared/curtain-projection.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: data/project-render-facts.json, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: data/project-render-facts.json, field: "lighting", readers: ["shared/electrical-lint.ts", "shared/project-render-facts-projection.ts"] }
+  - { file: data/project-render-facts.json, field: "lightingFixtures", readers: ["shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: data/project-render-facts.json, field: "plumbing", readers: ["shared/mep-hvac-coordination-schema.ts", "shared/mep-hvac-lint.ts"] }
+  - { file: data/project-render-facts.json, field: "ceiling", readers: ["shared/houseData.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: data/project-render-facts.json, field: "hvac", readers: ["shared/mep-hvac-coordination-schema.ts", "shared/mep-hvac-lint.ts"] }
+  - { file: data/project-render-facts.json, field: "materials", readers: ["shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: data/project-render-facts.json, field: "presentation", readers: ["shared/curtain-projection.ts", "shared/project-render-facts-projection.ts"] }
+  - { file: data/scene-asset-registry.json, field: "schema", readers: ["shared/mep-hvac-lint.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: data/scene-asset-registry.json, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: data/scene-asset-registry.json, field: "scope", readers: ["shared/render/SceneBuilder.ts"] }
+  - { file: data/scene-asset-registry.json, field: "description", readers: ["shared/types.ts", "scripts/schedule/control.ts"] }
+  - { file: data/scene-asset-registry.json, field: "entries", readers: ["shared/curtain-projection.ts", "shared/render/FixtureFactory.ts"] }
+  - { file: config/facts.yaml, field: "version", readers: [] }
+  - { file: config/facts.yaml, field: "scan", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
+  - { file: config/facts.yaml, field: "facts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
+  - { file: config/facts.yaml, field: "contracts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
+  - { file: config/facts.yaml, field: "coverage", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
