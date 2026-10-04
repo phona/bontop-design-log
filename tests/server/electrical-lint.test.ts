@@ -72,7 +72,7 @@ test('lint keeps historical uncovered points as warnings and maps circuit facts'
   assert.equal(result.warnings.filter((i) => i.code === 'declared_circuit_uncovered').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered'));
   assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 0);
-  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 27); // DEC-2026-10-03-R1：+net_gateway +net_ap_corridor
+  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 28); // DEC-2026-10-04-R2：+ac_panel_dining（餐区第 6 台线控器）27→28
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'switch_master_bed_l'));
 });
 

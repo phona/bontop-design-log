@@ -87,7 +87,7 @@
   z: 4.75
   height: 2.5
   count: 1
-  note: "客厅空调内机电源（北缘边吊内，随内机北移）"
+  note: "客厅空调内机电源（北缘边吊内，随内机北移）（与 ac_living 内机中心 x=10.30 存在 0.30m 固有偏移，同边吊内贴机取电口径，与 sock_dining_ac 完全对齐内机的处理不同，特此登记）"
 
 - id: sock_dining_ac
   room: living_dining
@@ -97,7 +97,7 @@
   height: 2.5
   count: 1
   position_status: pending
-  note: "餐厅空调内机电源（DEC-2026-10-03-R6 新增第 6 台内机 MJV-28T2，藏于客餐厅北缘边吊西端，与 sock_living_ac 同带；暂并入 hvac_power_living，最终供电分组以厂家正式配电图为准）"
+  note: "餐厅空调内机电源（DEC-2026-10-03-R6 新增第 6 台内机 MJV-28T2，藏于客餐厅北缘边吊西端，与 sock_living_ac 同带；暂并入 hvac_power_living，最终供电分组以厂家正式配电图为准）；⚠️ 对应内机采购判读为 56T2（900mm 机身），电源点位不随机型变化；容量表以合同附图为准"
 
 - id: switch_living_entrance
   room: living_dining
@@ -117,7 +117,17 @@
   x: 13.22
   z: 2.90
   height: 1.3
-  note: "客厅空调线控器（DEC-2026-09-08-R1 全屋五房预留线控底盒+信号线管；与 switch_living_entrance 组双联，板距 0.034m；品牌中立，定标后按厂商线控规格终核，site_pending）"
+  note: "客厅空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管；与 switch_living_entrance 组双联，板距 0.034m；品牌中立，定标后按厂商线控规格终核，site_pending）"
+
+- id: ac_panel_dining
+  room: living_dining
+  wall: w_gbath_east_open_vanity
+  wall_side: east
+  type: ac_controller
+  x: 7.20
+  z: 4.10
+  height: 1.3
+  note: "餐区空调线控器（DEC-2026-10-04-R2 新增第 6 台内机配套；RFQ §五.2 要求 6 个线控器底盒+信号线管位，原只有 5 个 ac_panel_*，此为补齐）。挂 w_gbath_east_open_vanity（墙线 x=7.10，跨度 z[3.55,4.30]）东脸、与 switch_dining（z=3.98 餐灯开关）同墙成组；点位取 x=7.20 系压在 living_dining 西缘（与 switch_dining 同口径，越墙 0.10m 按既有 warning 口径登记），面向餐区可达；⚠️ 初版曾误挂 w_st_east 且点位 (8.00,4.75) 落在该墙段跨度之外（w_st_east 为 x=7.2 z[5.55,9.8]）并悬在房间中部，二版又取 x=7.10 越出 living_dining 西缘 0.10m 被 bounds 拦下，本轮回正为 x=7.20。信号线由餐区内机侧敷设；品牌中立，定标后按厂商线控规格终核，site_pending"
 
 - id: switch_living_corridor
   room: living_dining
@@ -205,7 +215,7 @@
   x: 4.20
   z: 8.684
   height: 0.75
-  note: "主卧空调线控器（DEC-2026-09-08-R1 全屋五房预留线控底盒+信号线管）：南床头双联南侧第三模块位（8.598+0.086），床头成组 h=0.75，贴合业主床头控制预期并避 w_strip_east 剪力墙门垛开盒；南帘堆叠关系与底盒施工仍 site_pending；品牌定标后按厂商线控规格终核"
+  note: "主卧空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：南床头双联南侧第三模块位（8.598+0.086），床头成组 h=0.75，贴合业主床头控制预期并避 w_strip_east 剪力墙门垛开盒；南帘堆叠关系与底盒施工仍 site_pending；品牌定标后按厂商线控规格终核"
 
 # net_master_tv 已删除（DEC-013 主卧取消电视位，不布网口）
 
@@ -269,7 +279,7 @@
   x: 4.20
   z: 6.314
   height: 0.7
-  note: "父母房空调线控器（DEC-2026-09-08-R1 全屋五房预留线控底盒+信号线管）：床头东墙，与 switch_parent_bed（z=6.40）/sock_parent_bed_l（z=6.60）组床头三联 h=0.7（取证发现门口门垛 x[6.00,6.15] 仅容一板且 switch_parent_door 西半已被衣柜侧板遮挡，线控器无处落位，改床头同主卧口径）；品牌中立，定标后按厂商线控规格终核，site_pending"
+  note: "父母房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：床头东墙，与 switch_parent_bed（z=6.40）/sock_parent_bed_l（z=6.60）组床头三联 h=0.7（取证发现门口门垛 x[6.00,6.15] 仅容一板且 switch_parent_door 西半已被衣柜侧板遮挡，线控器无处落位，改床头同主卧口径）；品牌中立，定标后按厂商线控规格终核，site_pending"
 
 - id: sock_parent_desk
   room: study
@@ -343,7 +353,7 @@
   x: 13.40
   z: 7.12
   height: 1.3
-  note: "书房空调线控器（DEC-2026-09-08-R1 全屋五房预留线控底盒+信号线管）：与 switch_study（z=7.0）组双联，距 d_bese 门洞边缘 0.57m；品牌中立，定标后按厂商线控规格终核，site_pending"
+  note: "书房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：与 switch_study（z=7.0）组双联，距 d_bese 门洞边缘 0.57m；品牌中立，定标后按厂商线控规格终核，site_pending"
 
 # 儿童房（西北次卧）
 - id: sock_child_bed
@@ -402,7 +412,7 @@
   x: 5.525
   z: 4.30
   height: 1.3
-  note: "儿童房空调线控器（DEC-2026-09-08-R1 全屋五房预留线控底盒+信号线管）：门东侧 0.15m 门垛中心，与 switch_child（门西侧门垛）分置门两侧；d_bnw 铰链在东、内开叶平面 x=5.45 不掩本垛（取证发现东墙 z=4.10 位在门扇 90° 开启面后方不可用，改此）；距段端 0.075m 贴角登记 warning；品牌中立，定标后按厂商线控规格终核，site_pending"
+  note: "儿童房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：门东侧 0.15m 门垛中心，与 switch_child（门西侧门垛）分置门两侧；d_bnw 铰链在东、内开叶平面 x=5.45 不掩本垛（取证发现东墙 z=4.10 位在门扇 90° 开启面后方不可用，改此）；距段端 0.075m 贴角登记 warning；品牌中立，定标后按厂商线控规格终核，site_pending"
 
 - id: sock_child_ac
   room: bedroom_nw
@@ -476,10 +486,10 @@
   wall_side: west
   type: socket
   x: 10.80
-  z: 0.55
+  z: 0.20
   height: 2.35
   count: 1
-  note: "燃气报警器插座（DEC-2026-10-03-R1 由 (10.80,1.60) h=2.0 改至 (10.80,0.55) h=2.35）：原位置距厨房铝扣板吊顶（净高 2.55m）0.55m > 0.3m、距油烟机 (10.80,1.20) 0.40m < 0.5m，高度与水平距离双不合规。新值距顶棚 0.20m、距油烟机/排风口 0.65m、距推断燃气表 (8.0,0.2) 2.82m（<4m 覆盖半径），并避开南侧通长推拉门通风口。依 CJJ/T 146-2011：天然气密度 <1 近顶安装、距灶具及排风口 >0.5m。最终位置与紧急切断阀联动随燃气公司方案冻结；若家用液化气则相反需低装"
+  note: "燃气报警器插座（DEC-2026-10-03-R1 位置；本次按机体最近缘重算后北移至 (10.80,0.20) h=2.35）：R1 的「距油烟机/排风口 0.65m」是点到点算法（点到 range_hood/gas_stove 具体心 10.50,1.18）、不达标——按机体最近缘算油烟机 rot90 宽 0.9 沿 z 展至 z∈[0.73,1.63]（北缘 0.73）、灶具 0.75 展至 z∈[0.81,1.55]（北缘 0.81），z=0.55 时仅 0.18m/0.26m 均 <0.5m。北移至 z=0.20 后重算：距油烟机北缘 0.73−0.20=0.53m>0.5 ✓、距灶具北缘 0.81−0.20=0.61m>0.5 ✓、距厨房铝扣板吊顶（净高 2.55m）0.20m、距推断燃气表 (8.0,0.2) 2.80m<4m 覆盖半径 ✓，满足 CJJ/T 146-2011 距灶具及排风口 >0.5m（天然气密度 <1 近顶安装）。⚠️烟机/灶具体心位置来自 house.yaml range_hood/gas_stove @(10.50,1.18) rot90，机体分别沿 z 展 0.9/0.75；若实物 SKU 变更致该 0.9/0.75 机身宽度变化须复算。最终仍以燃气公司报警器+切断阀方案与实物 SKU 为准（site_pending）；若家用液化气则相反需低装"
 
 - id: switch_kitchen
   room: kitchen

@@ -125,7 +125,7 @@ describe('render facts API', () => {
     assert.equal(response.body.panels[0].id, 'panel_strong');
     assert.equal(response.body.panels[0].source_point_id, 'panel_strong_entry_left');
     assert.equal(response.body.lint.counts.errors, 97); // DEC-2026-10-03-R6：回路成员 66→67，sock_dining_ac 在 fixture 点位集中未知各计 1 error
-    assert.equal(response.body.lint.counts.warnings, 20); // DEC-2026-10-03-R6：pending_parameters 11→12（新增空调合并供电分组待厂家配电图）
+    assert.equal(response.body.lint.counts.warnings, 21); // DEC-2026-10-04-R2：pending_parameters 12→13（新增中央空调外机供电 20 路义务）20→21
     assert.equal(response.body.lint.counts.coveredPoints, 67); // DEC-2026-10-03-R6
     assert.equal(response.body.circuits.filter((circuit: { purpose: string }) => circuit.purpose === 'ordinary_power').length, 7); // DEC-2026-10-03-R1：卧室缩为 master/parent_child/study 三路
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'control_target_missing'), false);
