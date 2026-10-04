@@ -902,7 +902,7 @@ work_packages:
     blockers: [BLK-HVAC-DEEPENING]
     owner_roles: [水电施工, 设计师, 空调商, 业主]
     payment_gate: GATE-040-HIDDEN-WORK
-    acceptance_refs: [check_plumb_pressure, check_plumb_drain, check_elec_continuity, check_elec_switch]
+    acceptance_refs: [check_plumb_pressure, check_plumb_drain, check_elec_continuity, check_elec_switch, check_elec_pe_polarity, check_elec_insulation, check_elec_rcd_30ma, check_elec_leb, check_elec_strong_weak_separation, check_elec_panel_labeling, check_elec_gas_alarm]
     checks:
       - id: SCH-040-01
         severity: critical
@@ -1243,7 +1243,7 @@ work_packages:
     blockers: []
     owner_roles: [电工, 智能设备供应商, 业主]
     payment_gate: GATE-125-COMPLETE
-    acceptance_refs: [check_elec_continuity, check_elec_switch]
+    acceptance_refs: [check_elec_continuity, check_elec_switch, check_elec_splash_socket, check_elec_point_reachability]
     checks:
       - id: SCH-125-01
         severity: critical
