@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import * as yaml from 'js-yaml';
+import { computeGateStatus } from './gate-status.js';
 
 type AnyRecord = Record<string, any>;
 
@@ -237,10 +238,11 @@ const packageChecks = (pkg: AnyRecord) => [
   ...(pkg.checks ?? []),
 ];
 const gateStatus = (pkg: AnyRecord) => {
-  const critical = packageChecks(pkg).filter((item: AnyRecord) => item.severity === 'critical');
-  if (critical.some((item: AnyRecord) => auditByCheckKey.get(`${pkg.id}:${item.id}`)?.status === 'failed')) return 'failed';
-  if (critical.length && critical.every((item: AnyRecord) => auditByCheckKey.get(`${pkg.id}:${item.id}`)?.status === 'passed')) return 'passed';
-  return 'pending';
+  return computeGateStatus(
+    packageChecks(pkg),
+    (packageId, checkId) => auditByCheckKey.get(`${packageId}:${checkId}`)?.status,
+    pkg.id,
+  );
 };
 const auditDisplay = (packageId: string, checkId: string) => {
   const record = auditByCheckKey.get(`${packageId}:${checkId}`);

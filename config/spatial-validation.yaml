@@ -49,17 +49,84 @@ tolerance_profiles:
     installation_tolerance: 0.005
     minimum_clearance: 0.020
     collision_margin: 0.005
-
-# 只写类型角色；未列出的 placed 类型由校验器 fail-closed。
-furniture_profiles:
-  built_in_casework:
-    role: rigid_casework
-  freestanding:
-    role: freestanding
+  # 现场收口件：与 built_in_casework 同样的四项分量（该 profile 本声明 site_trim: true），
+  # requiredClearance = 0.020m；缺失时曾被静默回落 default，掩盖了真实净距要求。
   site_trim:
-    role: site_trim
+    survey_uncertainty: 0.010
+    fabrication_tolerance: 0.003
+    installation_tolerance: 0.005
+    minimum_clearance: 0.002
+    site_trim: true
+  # 机电协调构件：按 default 的前三项分量（survey/fab/install）+ freestanding 的
+  # minimum_clearance 0.010（管线/管井是真实跨越完成面的实体，须留装配/检修余量），
+  # requiredClearance = 0.028m；不作为家具互撞对象（见 mep_coordination_types）。
   mep_coordination:
-    role: mep_coordination
+    survey_uncertainty: 0.010
+    fabrication_tolerance: 0.003
+    installation_tolerance: 0.005
+    minimum_clearance: 0.010
+
+# placed 类型的显式角色登记表（可评审清单）：config/house.yaml furnishings 中每个 placed
+# 类型都必须在此登记 profile（或经 furniture_profile_overrides / mep_coordination_types
+# 显式登记）。**未登记的 placed 类型 → verify:spatial fail-closed（error）**。
+# profile 即下方 tolerance_profiles 的键，决定该家具对墙体完成面/净距的要求；
+# 新增放置类型必须在此登记，禁止由代码按字符串名推断角色。
+furniture_profiles:
+  # ── built_in_casework：固定安装 / 嵌墙 / 通顶定制（衣柜、橱柜、台面、浴室柜、护墙板类）──
+  entry_half_height_cabinet: { profile: built_in_casework }
+  kitchen_cabinet_run: { profile: built_in_casework }
+  kitchen_countertop_bridge: { profile: built_in_casework }
+  master_north_wall_wardrobe_950: { profile: built_in_casework }
+  master_wardrobe_top_pelmet: { profile: built_in_casework }
+  mb_vanity_base_cabinet: { profile: built_in_casework }
+  mb_vanity_lower_board: { profile: built_in_casework }
+  mb_vanity_main_board: { profile: built_in_casework }
+  mb_washbasin_cabinet: { profile: built_in_casework }
+  mirror_cabinet_gbath: { profile: built_in_casework }
+  study_seasonal_wardrobe_wall: { profile: built_in_casework }
+  vanity: { profile: built_in_casework }
+  wall_cabinet_tall: { profile: built_in_casework }
+  wardrobe_180: { profile: built_in_casework }
+  # ── freestanding：可移动成品家具 / 家电 / 洁具 / 饰品 ──
+  adjustable_dumbbell_pair: { profile: freestanding }
+  bed_150: { profile: freestanding }
+  bed_180: { profile: freestanding }
+  bench_adjustable: { profile: freestanding }
+  chair: { profile: freestanding }
+  coffee_table: { profile: freestanding }
+  desk: { profile: freestanding }
+  dining_chair: { profile: freestanding }
+  dining_table: { profile: freestanding }
+  dishwasher: { profile: freestanding }
+  dressing_stool: { profile: freestanding }
+  dryer: { profile: freestanding }
+  floor_lamp: { profile: freestanding }
+  fridge: { profile: freestanding }
+  garden_entry_station: { profile: freestanding }
+  gas_stove: { profile: freestanding }
+  master_bedside_cabinet_350_north: { profile: freestanding }
+  master_bedside_cabinet_350_south: { profile: freestanding }
+  master_dressing_table: { profile: freestanding }
+  master_hot_season_low_dresser: { profile: freestanding }
+  plant_fiddle: { profile: freestanding }
+  range_hood: { profile: freestanding }
+  robot_dock_gbath: { profile: freestanding }
+  rollable_training_mat: { profile: freestanding }
+  shelf: { profile: freestanding }
+  sink: { profile: freestanding }
+  sofa_3seat: { profile: freestanding }
+  toilet: { profile: freestanding }
+  towel_set: { profile: freestanding }
+  tv_65: { profile: freestanding }
+  tv_wall_low: { profile: freestanding }
+  washer: { profile: freestanding }
+  water_heater: { profile: freestanding }
+  # ── mep_coordination：机电协调构件（管线 / 管井 / 换气通风设备，按协调示意维护）──
+  condensate_pipe_ac_outlet: { profile: mep_coordination }
+  exhaust_fan: { profile: mep_coordination }
+  mb_vanity_pvc_box: { profile: mep_coordination }
+  mb_vanity_pvc_service_chase: { profile: mep_coordination }
+  mb_vanity_pvc_wardrobe_entry: { profile: mep_coordination }
 
 furniture_profile_overrides:
   - types: [mb_vanity_base_cabinet, mb_vanity_lower_board, mb_vanity_main_board]

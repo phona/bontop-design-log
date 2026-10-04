@@ -32,11 +32,11 @@ import {
   validateWallTopology,
   validateWallLampMount,
 } from '../../../shared/spatial-validation.js';
+import { resolveFurnitureProfile } from './furniture-profile.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const EPS = 0.001;
 const GLASS_THICKNESS = 0.024;
-const MEPS = new Set(['mb_vanity_pvc_box', 'mb_vanity_pvc_wardrobe_entry', 'mb_vanity_pvc_service_chase', 'condensate_pipe_ac_outlet']);
 const LIGHT_TYPES = new Set(['wall_lamp', 'ceiling_light', 'pendant', 'dome', 'downlight', 'track_light', 'led_strip']);
 
 interface SpatialConfig {
@@ -51,7 +51,7 @@ interface SpatialConfig {
     required_endpoint_clearance?: number;
     site_trim?: boolean;
   }>;
-  furniture_profiles?: Record<string, { role?: string }>;
+  furniture_profiles?: Record<string, { profile: string; role?: string; site_trim?: boolean }>;
   mep_coordination_types?: string[];
   relationships?: Array<{ id: string; type: string; objects?: string[]; inner?: string; outer?: string }>;
   junctions?: JunctionSpec[];
@@ -281,12 +281,8 @@ function ceilingBoxes(result: ReturnType<typeof buildScene>): BoxEntry[] {
   return boxes;
 }
 
-function profileFor(type: string, config: SpatialConfig): ProfileOverride {
-  const override = config.furniture_profile_overrides?.find((entry) => entry.types.includes(type));
-  if (override) return override;
-  if (MEPS.has(type) || config.mep_coordination_types?.includes(type)) return { profile: 'mep_coordination' };
-  if (type.includes('wardrobe') || type.includes('cabinet') || type.includes('dresser') || type.includes('countertop') || type === 'vanity' || type === 'kitchen_cabinet_run') return { profile: 'built_in_casework' };
-  return { profile: 'freestanding' };
+function profileFor(type: string, config: SpatialConfig): ProfileOverride | undefined {
+  return resolveFurnitureProfile(type, config);
 }
 
 function declaredDims(item: Record<string, unknown>, type: string): { width: number; depth: number } | undefined {
@@ -568,6 +564,12 @@ function validateScene(
       // and glass solids below; an axis-aligned room-box test would reject
       // legitimate furniture at rounded/shared corners.
       const override = profileFor(type, ceilingConfig);
+      if (!override) {
+        // 配置注释声明的意图：未登记的 placed 类型 fail-closed。不猜测角色、不静默放过，
+        // 也不因无法判定而跳过后续校验整条记录（该条记录作为一个真实问题上报）。
+        issues.push({ level: 'error', code: 'furniture_profile_unregistered', entity: entry.entity, source, message: `placed furniture type ${type} is not registered in furniture_profiles / mep_coordination_types`, evidence: { room: roomId, type } });
+        continue;
+      }
       const profile = ceilingConfig.tolerance_profiles?.[override.profile] ?? ceilingConfig.tolerance_profiles?.default ?? {};
       if (override.wall && override.wall_side) {
         const wall = wallMap.get(override.wall);
