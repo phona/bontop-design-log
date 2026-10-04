@@ -79,12 +79,12 @@ circuits:
     panel_id: panel_strong
     purpose: hvac_power
     status: pending
-    member_point_ids: [sock_living_ac]
+    member_point_ids: [sock_living_ac, sock_dining_ac]
     dedicated_load: true
-    capacity: "≤0.3kW（内机；DEC-2026-09-07-055 客厅内机 10kW 冷量级电辅约 0.2-0.3kW）"
+    capacity: "≤0.6kW（客餐厅两台内机）"
     wire_size: "1.5mm²(φ16)"
     breaker: "C16A+漏保"
-    note: "客厅空调电源专用回路（DEC-2026-10-03-R1 补 ≤30mA 漏保，GB 55038 7.4.3-1）；定标后按厂商供电方案（室内机是否统一供电/集中箱位）终核——若厂家要求硬接线不设漏保，须重新定义点位 type"
+    note: "客厅空调电源专用回路（DEC-2026-10-03-R1 补 ≤30mA 漏保，GB 55038 7.4.3-1）；DEC-2026-10-03-R6：新增第 6 台内机 sock_dining_ac 并入本路，6 台内机暂并为 2 路（本路 + hvac_power_bedrooms），待厂家正式配电图确认；定标后按厂商供电方案（室内机是否统一供电/集中箱位）终核——若厂家要求硬接线不设漏保，须重新定义点位 type"
   # DEC-2026-10-03-R1：原 hvac_power_master / hvac_power_child / hvac_power_study / hvac_power_parent 四路合并。
   - id: hvac_power_bedrooms
     panel_id: panel_strong
@@ -293,3 +293,4 @@ pending_parameters:
   - "卫生间局部等电位联结（LEB）无对应点位类型可建（plumbing/schema 枚举未含），本轮只进验收与量房清单；GB 55038 7.4.7 要求装有固定浴盆或淋浴器的卫生间设等电位联结作为附加防护"
   - "位置待冻结的点位（position_status: pending，依赖 SKU/燃气公司方案）：sock_kitchen_counter_east、sock_mbath_toilet、sock_gbath_toilet、sock_balcony_washer、sock_balcony_dryer"
   - "强弱电箱之间的实际分隔与进线关系待现场确认"
+  - "空调 6 台内机合并供电分组待厂家配电图确认（DEC-2026-10-03-R6）：外机已定标美的领航者Ⅳ MJV-200W-E01-LHIV 20kW、6 台内机 21.6kW，hvac_power_living 已并入 sock_dining_ac；若厂家要求逐台独立回路或集中供电箱，按正式配电图回退拆分并重新定义 sock_*_ac 的 type 与回路口径"

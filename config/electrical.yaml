@@ -89,6 +89,16 @@
   count: 1
   note: "客厅空调内机电源（北缘边吊内，随内机北移）"
 
+- id: sock_dining_ac
+  room: living_dining
+  type: socket
+  x: 8.00
+  z: 4.75
+  height: 2.5
+  count: 1
+  position_status: pending
+  note: "餐厅空调内机电源（DEC-2026-10-03-R6 新增第 6 台内机 MJV-28T2，藏于客餐厅北缘边吊西端，与 sock_living_ac 同带；暂并入 hvac_power_living，最终供电分组以厂家正式配电图为准）"
+
 - id: switch_living_entrance
   room: living_dining
   wall: w_ent_south_w

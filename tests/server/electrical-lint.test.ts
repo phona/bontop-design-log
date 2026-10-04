@@ -17,7 +17,7 @@ test('real electrical topology parses and lints', () => {
   assert.equal(topology.controls.length, 11);
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 15);
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 39); // DEC-2026-10-03-R1：+sock_living_tv_high +sock_kitchen_counter_east
-  assert.equal(result.counts.coveredPoints, 66); // DEC-2026-10-03-R1：64 powerable + 2 新插座
+  assert.equal(result.counts.coveredPoints, 67); // DEC-2026-10-03-R6：+sock_dining_ac（餐厅第 6 台内机电源）
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.length > 0);
 });
