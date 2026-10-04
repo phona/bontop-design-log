@@ -106,8 +106,8 @@ test('real render facts resolve all configured MEP routes through HVAC ceiling a
   const facts = { electrical, plumbing, ceiling, hvac };
   const factSources = endpointSourcesFromFacts(facts);
   const report = resolveMepRoutes(config, factSources);
-  assert.equal(report.total, 72); // DEC-2026-10-04-R2：+strong-ac-dining 71→72
-  assert.equal(report.resolved, 72);
+  assert.equal(report.total, 73); // DEC-2026-10-04-R2：+strong-ac-dining 71→72、+strong-ac-outdoor 72→73
+  assert.equal(report.resolved, 73);
   assert.equal(report.unresolved, 0);
   const expectedAirRoutes = ['supply-air-study', 'return-air-study', 'supply-air-parent', 'return-air-parent', 'supply-air-child', 'return-air-child'];
   const expectedCondensateRoutes = ['condensate-living', 'condensate-master', 'condensate-study', 'condensate-parent', 'condensate-child'];

@@ -21,8 +21,8 @@ function sample(route: Record<string, unknown>) {
 
 test('real MEP configuration lints without false errors and reports warnings structurally', () => {
   const result = lintMepCoordination(config, sources);
-  assert.equal(result.counts.routes, 72); // DEC-2026-10-04-R2：+strong-ac-dining（餐区空调电源）71→72
-  assert.equal(result.counts.resolvedRoutes, 72);
+  assert.equal(result.counts.routes, 73); // DEC-2026-10-04-R2：+strong-ac-dining 71→72、+strong-ac-outdoor 72→73
+  assert.equal(result.counts.resolvedRoutes, 73);
   assert.equal(result.errors.length, 0);
   assert.equal(result.warnings.filter((issue) => issue.code === 'hvac_coverage_missing').length, 0);
   assert.equal(result.warnings.length, 9);

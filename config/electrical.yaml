@@ -622,6 +622,19 @@
   count: 1
   note: "燃气热水器插座；热水器挂厨房西侧、靠生活阳台玻璃幕墙的 w_vrv_east 实体墙厨房侧，避开 w_balc_east 阳台门洞；排烟与燃气路由需物业/燃气公司确认（CO 安全），见 pending-site-data.md #26"
 
+# DEC-2026-10-04-R2 外机（美的领航者Ⅳ MJV-200W-E01-LHIV 20kW）专用取电点位：四层数据缺口补齐的电气点位层。
+- id: sock_vrf_outdoor_a2
+  room: kitchen
+  wall: w_vrv_east
+  wall_side: east
+  type: socket
+  x: 7.20
+  z: 0.50
+  height: 1.60
+  count: 1
+  position_status: pending
+  note: "DEC-2026-10-04-R2 新增：20kW 外机专用取电，坐标对齐 config/hvac.yaml outdoor（x=6.40/z=0.50，平台侧安装）；供电制式 220V 已由业主 2026-10-04 确认（DEC-2026-10-04-R1）；并入第 20 路 hvac_power_outdoor_a2——GB 55038-2025 7.4.4 要求 2kW 及以上用电设备回路分别设置 → 外机单独成路，回路总数 19→20；建议值 C32A+漏保 / 4.0mm²(φ20)（proposed，待厂家正式配电图，厂家端子与线长确认后可能升 6mm²）；须防雨与可切断（平台侧带防水面盖、独立可断开保护）、平台侧安装、外立面/开孔需与物业核定；⚠️ 实际接线以厂家配电图为准——若厂家要求硬接线替代专用插座，须按厂家图重新定义本点位 type 与回路口径（同 config/electrical-topology.yaml 头部注释 1）。site_pending。**点位落位说明（DEC-2026-10-04-R2）**：外机位西设备平台（west_platform）在本模型单列为 platform 几何、不并入 getRooms() 且不在 verify-rules existence.exempt_rooms，初版 room: west_platform @(6.40,0.50) 被 verify:rules 拦下（报 existence「不在 model-geometry」，非 bounds 超出）；按预案改挂平台东界墙 w_vrv_east 厨房侧脸（wall_side east，同 sock_balcony_waterheher 口径）、坐标贴墙线 x=7.20、z=0.50 落该墙段 z[0,1.00] 内，自厨房侧喂入短距出墙达平台侧外机；穿 w_vrv_east 强电走线见 config/mep-hvac-coordination.yaml strong-ac-outdoor。最终点位（平台侧 vs 墙侧）以厂家配电图与量房为准。"
+
 # 入户后左手边玄关墙：现场照片确认箱体位置与规格。
 # x/z 为局部坐标系下的协调定位；墙体/侧别已按现场复核入口方案更新，仍不得据此生成施工级走线。
 - id: panel_strong_entry_left
@@ -827,9 +840,9 @@
   room: living_dining
   type: network
   x: 8.60
-  z: 5.80
-  height: 2.5
-  note: "DEC-2026-10-03-R1 客厅/走廊吊顶 PoE AP 预留网线点（客厅中部保持原顶 2.80m，网线藏吊顶空腔）；polygon 校验落在 living_dining；与强电分管敷设"
+  z: 4.75
+  height: 2.50
+  note: "DEC-2026-10-04-R2 客厅/走廊吊顶 PoE AP 预留网线点：点位由原位 (8.60,5.80) 移入 ceiling_living 北缘边吊空腔 (8.60,4.75)（边吊 x[7.20,13.40]×z[4.30,5.20]）——原位 z=5.80 落在所有已声明吊顶之外（客厅中部为原顶 2.80m），原 note「网线藏吊顶空腔」不成立；备选方案为走廊吊顶位（如 (6.50,5.00)，落在 ceiling_main_corridor x[4.20,7.20]×z[4.30,5.55]），二者待网络方案定标后冻结；polygon 校验落在 living_dining；与强电分管敷设"
 
 # === 新增点位（2026-08-02 DEC-013 设计审查） ===
 

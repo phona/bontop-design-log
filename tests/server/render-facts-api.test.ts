@@ -120,13 +120,13 @@ describe('render facts API', () => {
   it('returns electrical topology with lint independently of MEP route data', async () => {
     const app = createApp(() => facts);
     const response = await request(app).get('/api/electrical-topology').expect(200);
-    assert.equal(response.body.circuits.length, 19); // DEC-2026-10-03-R1
+    assert.equal(response.body.circuits.length, 20); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2 外机专用回路
     assert.equal(response.body.controls.length, 11);
     assert.equal(response.body.panels[0].id, 'panel_strong');
     assert.equal(response.body.panels[0].source_point_id, 'panel_strong_entry_left');
-    assert.equal(response.body.lint.counts.errors, 97); // DEC-2026-10-03-R6：回路成员 66→67，sock_dining_ac 在 fixture 点位集中未知各计 1 error
-    assert.equal(response.body.lint.counts.warnings, 21); // DEC-2026-10-04-R2：pending_parameters 12→13（新增中央空调外机供电 20 路义务）20→21
-    assert.equal(response.body.lint.counts.coveredPoints, 67); // DEC-2026-10-03-R6
+    assert.equal(response.body.lint.counts.errors, 98); // DEC-2026-10-04-R2：回路成员 67→68，sock_vrf_outdoor_a2 在 fixture 点位集中未知各计 1 error
+    assert.equal(response.body.lint.counts.warnings, 22); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2 计入 dedicated_parameters_pending（7→8）
+    assert.equal(response.body.lint.counts.coveredPoints, 68); // DEC-2026-10-04-R2：+sock_vrf_outdoor_a2
     assert.equal(response.body.circuits.filter((circuit: { purpose: string }) => circuit.purpose === 'ordinary_power').length, 7); // DEC-2026-10-03-R1：卧室缩为 master/parent_child/study 三路
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'control_target_missing'), false);
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'electrical_parameters_pending'), false);

@@ -1473,3 +1473,27 @@
 - **待核项（回写 config 的前置）**：① 合同房间映射与逐台容量表；② 外机实测尺寸与 1.6×1.55m 西平台散热核算（百叶有效通风面积、进排风净距、检修距离、热短路）；③ 厂家多台内机合并供电正式配电图（供电制式 220V 已确认）；④ 风口加长是否已含在 36,000 内（辅材表明细含 1300×300 长回风，倾向已含，需书面确认）。
 - **关联文件**：`config/hvac.yaml`（A2 load_design 已补采购事实）、`schedule/procurement.md` §01、`docs/pending-site-data.md` #39、`docs/hvac-rfq-brief-20261003.md`、`schedule/phase-1/control.yaml`（QR-2026-10-03-24）
 - **决策人**：业主（定标、容量偏差处置）；容量表与平台散热待合同与厂家资料
+
+### DEC-2026-10-04-R2 三路审计收口：外机供电入账第 20 路、燃气位重算、验收接门禁、悬空编号回补
+
+- **日期**：2026-10-04
+- **动因**：同日对结构/机电/验收三条线做一致性审计收口；本编号此前已被 3 个 config 文件 5 处引用但决策日志无条目，**本条即回补该悬空编号**，作为三路审计（工单 A/B/C）的统一收口记录。
+- **① 4 BLOCKER + 12 MAJOR 处理摘要**：
+  - **机读状态改成交**：electrical/hvac 中对应点位与回路的 inferred 占位按 DEC-2026-10-04-R1 成交事实回写；
+  - **house.yaml 现行口径**：暖通 system 段以现行成交口径为准（美的领航者Ⅳ MJV-200W-E01-LHIV 20kW 一拖六，整包含价 ¥36,000）；
+  - **采购型号标注**：内机 6 台全为双出风 MJV-…/P-SS（全带冷凝提升泵），判读 71+42+56+28×3=25.3kW，**房间映射与逐台型号以合同附图为准**；
+  - **燃气象限重算并北移至 (10.80,0.20)**：sock_kitchen_gas 按机体最近缘（非点到点）重算，距油烟机北缘/灶具北缘均 >0.5m、近顶安装 ≤0.3m，满足 CJJ/T 146-2011，最终仍以燃气公司报警器+切断阀方案终核；
+  - **第 6 台内机补强电走线与线控器点位**：新增 sock_dining_ac（hvac_power_living 第二成员）与 ac_panel_dining（线控器，补齐 R2 第六房）；
+  - **wire_size 1.5→2.5mm²**：hvac_power_living / hvac_power_bedrooms 按 docs/mep-construction-guidance.md §3.1「插座 ≥2.5mm²」口径修正（原 1.5mm² 与本项目自订自规矛盾）；
+  - **DEC 撞号改 R7**：同日出现多个 R2 撞号，本审计系列定点为 R2，另一撞号分支改判 R7。
+- **② 外机供电四层补齐 + 第 20 路 + 单排箱出局**：
+  - 四个数据层全补齐——`config/electrical.yaml` 点位 `sock_vrf_outdoor_a2`、`config/electrical-topology.yaml` 回路 `hvac_power_outdoor_a2`、`config/mep-hvac-coordination.yaml` 走线 `strong-ac-outdoor`、`config/hvac.yaml` outdoor/load_design 电力参数；
+  - 按 GB 55038-2025 7.4.4（2kW 及以上用电设备回路应分别设置），20kW 外机单独成路 → **回路总数 19→20**（此前四层全空白，是 R1「19 路」遗漏的最大单体负载）；
+  - 390mm 箱体按 **20 路 + 2P 进线开关 + 浪涌**重算：单排约 16 位可用**确定装不下 → 单排箱出局，必须双排或换箱**；且单排布置时箱底边须 ≥1.80m，现 `panel_strong_entry_left` mount_height 1.65m **仅双排合规**。
+- **③ 验收口径扩展**：`acceptance_refs` 接入 7+2 项，可审计检查 **66→75**；配电箱标识检查补「含中央空调外机专用回路」。
+- **④ 待核四项统一清单（全仓一致，见 config/hvac.yaml load_design.basis 与 docs/pending-site-data #39）**：① 合同房间映射与逐台容量表；② 外机实测尺寸与西平台散热核算；③ 厂家多台内机合并供电**与外机**正式配电图；④ 风口加长是否已含 + 分房间冷负荷计算书是否到手。
+- **⑤ 状态**：contract_decided（选型与商务）/ vendor_verification_pending（上述四项）/ construction_not_frozen（量房与水电交底前任何机位、电源、冷凝水、穿墙不冻结）。
+- **附注一（主卧轴线，只登记不改坐标）**：机身中心 x=3.80 / 风口轴 x=3.70 / 门头盒中心 x≈3.5625 三值不一致；900mm 机身按现中心 3.80 越盒东界 x=4.20 约 5cm、并越主卧东墙完成面 ≈x=4.14 约 11cm，属 site_pending；交底前须实测外廓（合同判读 42T2 SS 或设计 45T2）后把机身中心统一到 ≈3.65–3.70 并对齐风口轴，此前不冻结任何机位。
+- **附注二（AP 点位）**：net_ap_corridor 自 (8.60,5.80)（落在所有已声明吊顶之外，原「藏吊顶空腔」不成立）移入 ceiling_living 北缘边吊空腔 (8.60,4.75)，备选走廊吊顶位待网络方案定标。
+- **关联文件**：`config/electrical.yaml`、`config/electrical-topology.yaml`、`config/mep-hvac-coordination.yaml`、`config/hvac.yaml`、`config/acceptance.yaml`、`config/ceiling.yaml`、`docs/mep-construction-guidance.md`、`docs/pending-site-data.md` #39、`config/house.yaml`（现行口径）
+- **决策人**：业主（审计口径）；施工尺寸与外廓待量房与厂家资料终核

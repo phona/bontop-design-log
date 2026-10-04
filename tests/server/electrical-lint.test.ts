@@ -13,11 +13,11 @@ const raw = readFileSync('config/electrical-topology.yaml', 'utf8');
 test('real electrical topology parses and lints', () => {
   const topology = parseElectricalTopology(raw, points);
   const result = lintElectricalTopology(topology, points);
-  assert.equal(topology.circuits.length, 19); // DEC-2026-10-03-R1：25 路合并至 19 路
+  assert.equal(topology.circuits.length, 20); // DEC-2026-10-03-R1：25 路合并至 19 路；DEC-2026-10-04-R2：+外机专用回路第 20 路
   assert.equal(topology.controls.length, 11);
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 15);
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 39); // DEC-2026-10-03-R1：+sock_living_tv_high +sock_kitchen_counter_east
-  assert.equal(result.counts.coveredPoints, 67); // DEC-2026-10-03-R6：+sock_dining_ac（餐厅第 6 台内机电源）
+  assert.equal(result.counts.coveredPoints, 68); // DEC-2026-10-04-R2：+sock_vrf_outdoor_a2（外机专用取电）
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.length > 0);
 });
@@ -72,7 +72,7 @@ test('lint keeps historical uncovered points as warnings and maps circuit facts'
   assert.equal(result.warnings.filter((i) => i.code === 'declared_circuit_uncovered').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered'));
   assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 0);
-  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 28); // DEC-2026-10-04-R2：+ac_panel_dining（餐区第 6 台线控器）27→28
+  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 28); // 外机点位已入回路，不增未覆盖 // DEC-2026-10-04-R2：+ac_panel_dining（餐区第 6 台线控器）27→28
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'switch_master_bed_l'));
 });
 
@@ -89,7 +89,7 @@ test('lint validates panel topology/source semantics and status at runtime', () 
 test('electrical JSON CLI emits pure JSON', () => {
   const output = execFileSync('npx', ['tsx', 'scripts/verify/electrical/verify-electrical-lint.ts', '--json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const result = JSON.parse(output) as { errors: unknown[]; warnings: unknown[]; counts: { circuits: number } };
-  assert.equal(result.counts.circuits, 19); // DEC-2026-10-03-R1
+  assert.equal(result.counts.circuits, 20); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2
   assert.ok(Array.isArray(result.errors));
   assert.ok(Array.isArray(result.warnings));
 });
