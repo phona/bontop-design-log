@@ -78,8 +78,10 @@ function statusFrame(width: number, height: number, material: THREE.Material): T
 function buildTerminalGeometry(terminal: HvacTerminal): THREE.Group {
   const mountFace = terminal.mount_face ?? 'bottom';
   const group = new THREE.Group();
-  const body = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.9 });
-  const frame = new THREE.MeshStandardMaterial({ color: 0xd4d4d4, roughness: 0.7 });
+  // DEC-2026-10-05-R16：通长隐藏式风槽黑色内衬定制（matte_black），默认仍为浅灰塑料百叶。
+  const dark = terminal.finish === 'matte_black';
+  const body = new THREE.MeshStandardMaterial({ color: dark ? 0x141414 : 0xf5f5f5, roughness: dark ? 0.85 : 0.9 });
+  const frame = new THREE.MeshStandardMaterial({ color: dark ? 0x26262a : 0xd4d4d4, roughness: dark ? 0.75 : 0.7 });
   const statusLine = new THREE.LineBasicMaterial({ color: STATUS_COLOR[terminal.status] });
   if (terminal.system === 'access') {
     group.add(new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.42, 0.015), body));

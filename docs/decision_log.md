@@ -1598,7 +1598,7 @@
 - **保留未动**：客房床头电位高度缺陷（P0-2：`sock_study_extra` h=0.3 不可当床头电位）与床头双侧点位/双控仍属批次 B，待量房墙体数据后申报；`sock_parent_bed_l` 孤儿位语义待量房定。
 - **验证**：`verify:mep` Exit 0 / `verify:electrical` 0 error / `verify:facts` OK / `test:server` 608/609（唯一红为并发未提交项的 mep 基数断言，已由对端同步至 154）/ `typecheck` / `test:app` 470/470。
 
-### DEC-2026-10-05-R14 起夜路径照明 + 客房床头组落地（B-2，全部 candidate_not_frozen）
+### DEC-2026-10-05-R15 起夜路径照明 + 客房床头组落地（B-2，全部 candidate_not_frozen）
 
 - **日期**：2026-10-05。依据 `docs/design-iterations/parent-room-study-swap-20261005/electrical-recommendation-20261005.md`（业主勾选"都做"）。
 - **R4 新增 `night_light` 点位类型**：电气枚举（schema + types + 3 处 LIGHT_TYPES）新增 `night_light`；`LightingFixtureBuilder` 增加低位灯渲染件（0.12×0.05×0.08 灯体 + 下向光斑，贴墙时按 wall_side 内推 0.06m，落地立柱原位）；不复用 `ceiling_light`/`downlight`，避免把 0.3m 灯拿去和 2.5m 吊顶比净空。
@@ -1609,3 +1609,11 @@
 - **site_pending（未假装已定）**：`w_east_upper`/`w_be_north` 均为剪力墙 inferred，床头插座/双控/小夜灯的开孔与挂装条件待量房探测；`night_living_mid`（客厅中段约 4m 开敞区）取电方式未定（地插/家具灯带/就近插座），若不做则 NP-3 与 NP-5 暗区超出标准 §4-1 的 3m 上限；走廊条带 x[4.20,7.20] z[4.30,5.55] 在 model-geometry 无 room 归属，`night_corridor` 只能落在客厅侧走廊口。
 - **验证**：`verify:all` / `test:server` 609/609 / `typecheck` / `test:app` 470/470 全绿；`verify:spatial` 0 error（night_light 高度区间由空间校验的外观检查覆盖，runtime 盒体在房间竖向包络内）。
 - **下一步**：批次 C 剩余（起夜灯选型与采购归二期）、批次 D 浏览器证据、B-2 中床头电位最终坐标待量房后从候选转为确认。
+
+### DEC-2026-10-05-R16 客餐厅送风口升级通长隐藏式黑槽（matte_black）
+
+- **日期**：2026-10-05。依据业主提供的参考效果图（通长黑槽线性风口 + 无主灯）。
+- **决策事项**：客餐厅两台内机的送风口由标准白色双层百叶（合同附件口径 750×150/1000×150）升级为**通长隐藏式风槽、黑色内衬（matte_black 定制）**，与全屋黑色收边/磁吸轨道统一。
+- **选定方案**：客厅 71T2 槽段 x[9.70,13.20]（3.5m，槽心 x=11.45）、餐厅 42T2 槽段 x[7.30,9.60]（2.3m，槽心 x=8.45），两槽相邻 0.1m 缝，视觉为一条 5.9m 通长黑线；MEP 送风支管坐标同步；`shared/types.ts`/`project-render-facts-schema.ts` 增加 `finish: 'matte_white'|'matte_black'`，`HvacGeometryBuilder` 按 finish 切换深色材质。回风口维持标准白（铰接兼检修），如需黑色边框回风格栅另议。
+- **边界（不可省）**：①黑槽为定制面板，标准供货外需商家报价（报价单风口加长按 100 元/米另有口径）；②槽长/风速/噪音必须按厂家风量核算分段（71T2 双出风实际风口数待厂家图）；③叶片必须可调，避免直吹餐桌；④木工开槽精度与分段拼接（≥0.1m 缝）需与风口厂家交底；⑤不改 R11 已定的冷媒/冷凝水管线。
+- **验证**：`verify:all` / `verify:mep` / `test:server` / `typecheck` 见执行记录；GLB 重导。

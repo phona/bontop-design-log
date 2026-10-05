@@ -193,10 +193,11 @@ plans:
         - id: supply_living
           status: inferred
           system: supply_air
-          position: { x: 10.8, y: 2.65, z: 5.21 }
+          position: { x: 11.45, y: 2.65, z: 5.21 }
           mount_face: south
-          length: 1.5
-          reason: "客厅 1.5m 线形送风口，嵌北缘边吊南立面侧送，实际长度按风量深化。"
+          length: 3.5
+          finish: matte_black
+          reason: "DEC-2026-10-05-R16：客厅 71T2 送风升级为通长隐藏式风槽（matte_black 黑色内衬定制），嵌北缘边吊南立面侧送；槽心由 x=10.8 移至 x=11.45、长度 1.5→3.5m，段域 x[9.70,13.20]；71T2 双出风实际风口数、每段长度、静压与风速按厂家风量核算后分段，槽段 ≥0.1m 缝拼接（与餐厅槽 x[7.30,9.60] 相邻，视觉通长 7.3→13.2 一条黑线，与无主灯/磁吸轨道/黑色收边统一）；实际长度仍按风量深化，施工未冻结。"
         - id: return_living
           status: inferred
           system: return_air
@@ -207,9 +208,11 @@ plans:
         - id: supply_dining
           status: inferred
           system: supply_air
-          position: { x: 8.0, y: 2.65, z: 5.21 }
+          position: { x: 8.45, y: 2.65, z: 5.21 }
           mount_face: south
-          reason: "沿用 MEP supply-air-dining 显式风口端点 (8.00,2.65,5.21)，北缘边吊南缘侧送朝南的协调示意；风口规格、风量、静压及是否需避让餐桌待厂家风量深化，施工未冻结。"
+          length: 2.3
+          finish: matte_black
+          reason: "DEC-2026-10-05-R16：餐厅 42T2 送风升级为通长隐藏式风槽（matte_black 黑色内衬定制），段域 x[7.30,9.60]，与客厅槽相邻 0.1m 缝；沿用北缘边吊南缘侧送朝南。槽太窄风速/噪音需美的按 42T2 风量核算段长与叶片可调（避开餐桌直吹），分段拼接、槽口精度由木工与风口厂家交底；供货口径为定制（标准双层百叶白色之外加价），施工未冻结。"
         - id: return_dining
           status: inferred
           system: return_air

@@ -76,6 +76,7 @@ export const HvacTerminalSchema = z.object({
   render_coordination: z.boolean().optional(),
   mount_face: z.enum(['north', 'south', 'east', 'west', 'bottom']).optional(),
   length: z.number().positive().optional(),
+  finish: z.enum(['matte_white', 'matte_black']).optional(),
 }).strict().superRefine((value, ctx) => {
   if (value.status !== 'confirmed' && !value.reason?.trim()) {
     ctx.addIssue({ code: 'custom', message: `${value.status} HVAC facts require reason`, path: ['reason'] });

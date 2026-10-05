@@ -783,7 +783,7 @@ export type ElectricalPointType =
   | 'downlight'
   | 'led_strip'
   | 'track_light'
-  // 2026-10-05 起夜路径低位引导灯/床头小夜灯（DEC-2026-10-05-R14）：安装高度 0.25–0.40m，
+  // 2026-10-05 起夜路径低位引导灯/床头小夜灯（DEC-2026-10-05-R15）：安装高度 0.25–0.40m，
   // 由 verify 规则强制区间；不复用 ceiling_light/downlight，避免污染天花净空校验。
   | 'night_light';
 
@@ -994,6 +994,8 @@ export interface HvacTerminal {
   mount_face?: 'north' | 'south' | 'east' | 'west' | 'bottom';
   /** 风口长度（米），缺省按 system 给默认值（送风 0.8 / 回风 0.6）。 */
   length?: number;
+  /** 风口面板面漆：matte_white=标准浅灰塑料百叶（缺省）；matte_black=通长隐藏式风槽黑色内衬定制（客餐厅效果槽，DEC-2026-10-05-R16）。 */
+  finish?: 'matte_white' | 'matte_black';
 }
 
 export interface HvacReferenceConstraint {
