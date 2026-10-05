@@ -1380,12 +1380,12 @@ contracts:
     room_heights_key: mep.room_heights
     default_room_height: 2.8
     tolerance: 0.005
-    registered_conflicts: 154
+    registered_conflicts: 153
     prose:
       - path: docs/mep-construction-guidance.md
         extract: '低于降板完成面的既有冲突\s*(\d+)\s*处'
         expect_matches: 1
-    pending: "MEP 吊顶内分层标高整层低于降板完成面（强电 2.45 < 2.50、冷凝水 2.35 < 2.50、弱电 2.50 < 0.15m 降板的 2.65 等），实算 154 处（2026-10-05 给排水 v1 新增 5 条排水路线，144→149；2026-10-05 DEC-2026-10-05-R11 客餐厅冷凝水改线 condensate-living/condensate-dining 不再横穿客餐厅平顶，改经走廊吊顶进客卫开放洗漱区并移入候选端点，149→154 合计 +5，全部为分区内 hit）；需设计侧裁定：分层标高升入降板空腔（2.50–3.00m）或调整降板厚度/范围。跟踪 docs/pending-site-data.md #41；裁定后同步更新 docs/mep-construction-guidance.md §0 的登记数与本契约的 registered_conflicts"
+    pending: "MEP 吊顶内分层标高整层低于降板完成面（强电 2.45 < 2.50、冷凝水 2.35 < 2.50、弱电 2.50 < 0.15m 降板的 2.65 等），实算 153 处（2026-10-05 给排水 v1 新增 5 条排水路线，144→149；DEC-2026-10-05-R11 客餐厅冷凝水改线 149→154 合计 +5；DEC-2026-10-05-R19 厨房铝扣板收回 z=2.4、餐厅改两条服务带后，refrigerant-trunk 原在厨房铝扣板（完成面 2.65）内的线段改在西侧服务带（完成面 2.50）空腔内，其 2.55 标高由低于改为高于完成面，该 hit 合法消失，154→153）；需设计侧裁定：分层标高升入降板空腔（2.50–3.00m）或调整降板厚度/范围。跟踪 docs/pending-site-data.md #41；裁定后同步更新 docs/mep-construction-guidance.md §0 的登记数与本契约的 registered_conflicts"
 
   - id: c.layout_region_room_overlap
     kind: overlap

@@ -11,12 +11,12 @@
 | `config/mep-hvac-coordination.yaml` | 共 8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风） | `fact.mep_layers_count` |
 | `config/electrical.yaml` | 共 110 个点位 | `fact.electrical_points_count` |
 | `config/plumbing.yaml` | 共 27 个点位 | `fact.plumbing_points_count` |
-| `config/ceiling.yaml` | 共 23 个吊顶分区 | `fact.ceiling_zones_count` |
-| `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 154 处 | `fact.mep_routes_count` + 契约 `c.mep_layer_below_drop_bottom` |
+| `config/ceiling.yaml` | 共 25 个吊顶分区 | `fact.ceiling_zones_count` |
+| `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 153 处 | `fact.mep_routes_count` + 契约 `c.mep_layer_below_drop_bottom` |
 
 > 上表数字必须与 yaml 实际条目数一致，否则 `verify:facts` 的 count/fact 对账直接失败。
 
-> **2026-10-04 新增登记（契约 `c.mep_layer_below_drop_bottom`）**：走线表的**分层标高整层低于降板完成面**——强电 2.45m / 弱电 2.50m / 冷媒 2.55m / 冷凝水 2.35m，而 0.30m 降板的完成面是 2.80−0.30=**2.50m**、0.15m 降板与铝扣板是 **2.65m**。实算 **154 处**「路线点位低于所经吊顶完成面」，涉及 68 条路线 / 13 个吊顶分区（2026-10-05 给排水 v1 新增 5 条排水路线，每条在所属厨卫铝扣板吊顶范围内新增 1 处——144→149；2026-10-05 DEC-2026-10-05-R11 客餐厅冷凝水改线，`condensate-living`/`condensate-dining` 不再横穿客餐厅平顶，改经走廊吊顶进客卫开放洗漱区并移入候选端点——149→154，+5 全部为分区内 hit）。这不是逐条算错，是两套口径从未对齐；**未裁定前不许改数据消音**，裁定项见 `docs/pending-site-data.md #41`（分层标高升入降板空腔 2.50–3.00m，或调整降板厚度/范围）。契约以 error 级强制：实算数与上表登记的 154 不符即失败（变多=有人乱加路线，变少=有人改数据消音）。
+> **2026-10-04 新增登记（契约 `c.mep_layer_below_drop_bottom`）**：走线表的**分层标高整层低于降板完成面**——强电 2.45m / 弱电 2.50m / 冷媒 2.55m / 冷凝水 2.35m，而 0.30m 降板的完成面是 2.80−0.30=**2.50m**、0.15m 降板与铝扣板是 **2.65m**。实算 **153 处**「路线点位低于所经吊顶完成面」，涉及 68 条路线 / 13 个吊顶分区（2026-10-05 给排水 v1 新增 5 条排水路线，每条在所属厨卫铝扣板吊顶范围内新增 1 处——144→149；2026-10-05 DEC-2026-10-05-R11 客餐厅冷凝水改线，`condensate-living`/`condensate-dining` 不再横穿客餐厅平顶，改经走廊吊顶进客卫开放洗漱区并移入候选端点——149→154，+5 全部为分区内 hit）。这不是逐条算错，是两套口径从未对齐；**未裁定前不许改数据消音**，裁定项见 `docs/pending-site-data.md #41`（分层标高升入降板空腔 2.50–3.00m，或调整降板厚度/范围）。契约以 error 级强制：实算数与上表登记的 153 不符即失败（变多=有人乱加路线，变少=有人改数据消音）。（2026-10-05 DEC-2026-10-05-R19 厨房吊顶收回+餐厅服务带：trunk 一段由 2.65 完成面下方移到 2.50 完成面上方，登记数 154→153。）
 
 ## 1. 走线总则
 

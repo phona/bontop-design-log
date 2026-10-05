@@ -33,13 +33,13 @@ test('real MEP configuration lints without false errors and reports warnings str
   //   · DEC-2026-10-05-R11 客餐厅冷凝水改线（condensate-living/dining 移入走廊/客卫吊顶网络）；
   //   · DEC-2026-10-05-R13 书房电脑专用回路改道（strong-power-study 复用 x=5.5 穿孔带，与同孔区三条既有路线同一类别）。
   // 归口裁定仍是 docs/pending-site-data.md #41；实算数与登记数不符即失败（变多/变少都不允许静默）。
-  assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 154);
+  assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 153); // DEC-2026-10-05-R19：厨房吊顶收回+餐厅服务带，trunk 2.55 改在 2.50 完成面上方，154→153
   // 158 = 149(ceiling)+3(nonphysical)+6(overlap)；登记基数 149→154（R11 冷凝水改线 + R13 书房电脑回路改道）后为
   // 163 = 154+3+6。无 layout context（本用例不传 layout），故不含穿墙类告警。
   // DEC-2026-10-05-R18：两台双出风内机第二出口下出风新增 2 条送风路线，与既有送/回风同属
   // 「内机本体出口处送回风贴近」类别（粗 envelope 在机身端点必然相交，非路由错误），
-  // overlap 6→8、总告警 163→165。ceiling_clearance 仍 154（两条新路线点位均在边吊空腔内、无新增外露）。
-  assert.equal(result.warnings.length, 165);
+  // overlap 6→8、总告警 163→165。R19 后 ceiling_clearance 153、总告警 164。
+  assert.equal(result.warnings.length, 164); // R18 163→165（下出风 overlap +2）；R19 154→153（ceiling -1）后为 164
   assert.ok(result.warnings.some((issue) => issue.code === 'supply_return_overlap'));
   assert.ok(result.warnings.some((issue) => issue.code === 'nonphysical_route'));
   const balcony = config.routes.find((r) => r.id === 'drain-balcony')!;
