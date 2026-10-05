@@ -1,0 +1,37 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "hvac-caliber-sync-20261005",
+  "subject": "HVAC 口径收口与旧口径清除",
+  "state": "implementation",
+  "state_note": "x=3.70 四层一致、旧口径删除、全量门禁通过；inspectMasterBedroomCondensate 在浏览器侧为存量缺陷（HEAD 同样为 false），本轮已登记不修。",
+  "validation": {
+    "commands": {
+      "verify:all": {"exit": 0, "note": "verify:mep 0 error/167 warning；verify:electrical 0 error；verify:project-render-facts OK；verify:furniture OK(2 warn)；verify:facts OK(1 warn = 已知 DEC-045)；verify:schedule valid"},
+      "test:server": {"exit": 0, "pass": 609, "fail": 0, "note": "cli-glb-export 的 19/12 断言与 5 个新 id 已修好，此前为唯一红灯"},
+      "test:app": {"exit": 0, "pass": 470, "fail": 0, "files": 56, "note": "FixtureFactory 冷凝水连续性（0.70→4.10 三段端点 gap≤0.03）与 App toast 断言通过"},
+      "typecheck": {"exit": 0},
+      "generate:project-render-facts": {"exit": 0, "note": "重跑产物与运行前逐字节一致（geometry 不在该产物内）"}
+    },
+    "runtime": {
+      "port": 5174,
+      "agent_browser_session": "bontop-20f4571e-c7b9-4e73-a6de-dad14f29aa52",
+      "ready": true,
+      "config_error_banner": "",
+      "anchors": {"indoor_master": [3.7, 2.85, 5.1], "indoor_dining": [8, 2.85, 4.75], "supply_dining": [8, 2.65, 5.21], "return_dining": [7.55, 2.49, 4.75]},
+      "cli_glb_export": {"hvacEquipment": 19, "hvacTerminals": 12, "hvacStatus": "implemented", "condensatePartsInExportRoot": 13},
+      "inspectMasterBedroomCondensate": {"ok": false, "preExisting": true, "note": "浏览器 exportRoot 只有 3 个 condensate 零件（mb_vanity_pvc_box / mb_vanity_pvc_wardrobe_entry 各自的部分）；相同输入在 CLI/Node 路径下有 13 个且 scene-builder 测试的 10 段连续性全绿。git stash 到 HEAD 复测同为 false，确认与本轮坐标改动无关。缺口在于浏览器构建路径与 CLI 构建路径不一致，属独立缺陷，未在本轮范围。"}
+    }
+  },
+  "evidence": [
+    {"id": "frozen-brief", "ready": true, "path": "docs/design-iterations/hvac-contract-mapping-20261005/decision-brief.yaml", "note": "x=3.70 与六台 /P-SS 映射的原始批准"},
+    {"id": "scope-addendum", "ready": true, "note": "hvac-contract-mapping-20261005/decision-brief.yaml 的 scope_addendum 登记了渲染层与测试层文件"},
+    {"id": "master-runtime", "ready": true, "path": "docs/design-iterations/hvac-caliber-sync-20261005/evidence/master-runtime.png", "sha256": "0dc013f2dca28a9b3abe7aebb47280d670924467a183a9ec6d671f732cef006e"},
+    {"id": "dining-runtime", "ready": true, "path": "docs/design-iterations/hvac-caliber-sync-20261005/evidence/dining-runtime.png", "sha256": "91a3cc61b2a4c93ec74e58a5b63ec443acbb95eb7e8bcf9a0bc3ddc8831914a1"},
+    {"id": "master-snapshot", "ready": true, "path": "docs/design-iterations/hvac-caliber-sync-20261005/evidence/master.snapshot.txt"},
+    {"id": "dining-snapshot", "ready": true, "path": "docs/design-iterations/hvac-caliber-sync-20261005/evidence/dining.snapshot.txt"}
+  ],
+  "aesthetic_review": {"verdict": "not_applicable", "blocking_issues": []},
+  "functional_review": {"verdict": "passed_with_known_defect", "blocking_issues": []},
+  "construction_review": {"verdict": "site_pending", "blocking_issues": ["主卧56T2/P-SS与餐厅42T2/P-SS实际外廓及维修净空", "厂家配电和泵后排水接法", "合同附图次卧标签数与空间模型三间的冲突（pending-site-data #47）", "浏览器 inspectMasterBedroomCondensate 与 CLI 构建路径不一致（存量缺陷，与本轮无关）"]}
+}

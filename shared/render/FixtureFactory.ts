@@ -265,10 +265,10 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     // Coordination schematic only: the manufacturer condensate spigot inside ac_master is site_pending.
     type: 'condensate_pipe_ac_outlet',
     parts: [
-      // ac_master (3.80, 5.10) -> the west finish of w_mb_east (4.10, 5.10).
-      { shape: 'cylinder', size: [0.0125, 0.30, 0.0125], position: [0.15, 2.65, 0], rotation: [0, 0, Math.PI / 2], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-ac-outlet-to-wall', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
+      // ac_master (3.70, 5.10) -> the west finish of w_mb_east (4.10, 5.10).
+      { shape: 'cylinder', size: [0.0125, 0.40, 0.0125], position: [0.20, 2.65, 0], rotation: [0, 0, Math.PI / 2], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-ac-outlet-to-wall', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
       // Continue inside the extended white HVAC head-box to the wardrobe-top service band.
-      { shape: 'cylinder', size: [0.0125, 0.48, 0.0125], position: [0.30, 2.65, -0.24], rotation: [Math.PI / 2, 0, 0], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-ac-box-to-wardrobe-top', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
+      { shape: 'cylinder', size: [0.0125, 0.48, 0.0125], position: [0.40, 2.65, -0.24], rotation: [Math.PI / 2, 0, 0], color: '#06b6d4', roughness: 0.45, part: 'condensate-pipe-ac-box-to-wardrobe-top', materialRole: 'hvac_coordination_cover', inspectionLayer: 'pipe-chase', inspectionVisibleOnly: true },
     ],
   },
   {

@@ -264,7 +264,7 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
     elements: [],
     furnishings: {
       master_bedroom: [
-        { type: 'condensate_pipe_ac_outlet', x: 3.80, z: 5.10, rotation: 0 },
+        { type: 'condensate_pipe_ac_outlet', x: 3.70, z: 5.10, rotation: 0 },
         { type: 'mb_vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west', along: 3.70, rotation: 270 },
         { type: 'mb_vanity_pvc_wardrobe_entry', x: 4.10, z: 4.62, rotation: 0 },
         { type: 'mb_vanity_pvc_service_chase', x: 2.925, z: 4.62, rotation: 0 },

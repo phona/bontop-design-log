@@ -252,14 +252,14 @@ test('CLI with real render facts exports every renderable A2 HVAC anchor and ter
   const ids = [...index.hvac.all.keys()];
   assert.equal(report.hvacStatus, 'implemented');
   assert.equal(new Set(ids).size, ids.length);
-  assert.equal(report.hvacEquipment, 16);
-  assert.equal(report.hvacTerminals, 10);
+  assert.equal(report.hvacEquipment, 19);
+  assert.equal(report.hvacTerminals, 12);
   for (const id of [
-    'outdoor_a2', 'indoor_living', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child',
-    'power_living', 'power_master', 'power_study', 'power_parent', 'power_child',
-    'bend_corridor', 'branch_master', 'branch_study', 'branch_parent', 'branch_child',
+    'outdoor_a2', 'indoor_living', 'indoor_dining', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child',
+    'power_living', 'power_dining', 'power_master', 'power_study', 'power_parent', 'power_child',
+    'bend_corridor', 'branch_dining', 'branch_master', 'branch_study', 'branch_parent', 'branch_child',
   ]) assert.ok(exportRoot.getObjectByName(`hvac:A2:anchor:${id}`), `missing HVAC anchor ${id}`);
-  for (const id of ['supply_living', 'return_living', 'supply_master', 'return_master', 'supply_study', 'return_study', 'supply_parent', 'return_parent', 'supply_child', 'return_child']) {
+  for (const id of ['supply_living', 'return_living', 'supply_dining', 'return_dining', 'supply_master', 'return_master', 'supply_study', 'return_study', 'supply_parent', 'return_parent', 'supply_child', 'return_child']) {
     assert.ok(exportRoot.getObjectByName(`hvac:A2:terminal:${id}`), `missing HVAC terminal ${id}`);
   }
   const supply = index.hvac.terminals.get('hvac:A2:terminal:supply_master');

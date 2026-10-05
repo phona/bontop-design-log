@@ -1499,3 +1499,24 @@
 - **附注二（AP 点位）**：net_ap_corridor 自 (8.60,5.80)（落在所有已声明吊顶之外，原「藏吊顶空腔」不成立）移入 ceiling_living 北缘边吊空腔 (8.60,4.75)，备选走廊吊顶位待网络方案定标。
 - **关联文件**：`config/electrical.yaml`、`config/electrical-topology.yaml`、`config/mep-hvac-coordination.yaml`、`config/hvac.yaml`、`config/acceptance.yaml`、`config/ceiling.yaml`、`docs/mep-construction-guidance.md`、`docs/pending-site-data.md` #39、`config/house.yaml`（现行口径）
 - **决策人**：业主（审计口径）；施工尺寸与外廓待量房与厂家资料终核
+
+### DEC-2026-10-05-R1 成交内机逐房映射确认与主卧轴线修正
+
+- **日期**：2026-10-05。
+- **业主确认**：成交六台内机中，主卧为 MJV-56T2/P-SS、餐厅为 MJV-42T2/P-SS；据已归档合同六台清单与本户其余机位，客厅为 71T2/P-SS，父母房、儿童房、东南书房各为 28T2/P-SS。六台合计 25.3kW，20kW 外机连接率 1.265（显示约 1.27）。此逐房映射取代 DEC-2026-10-03-R6 的 21.6kW 房间设计配置，也更正 DEC-2026-10-04-R1 中把 56T2 推定给餐区的叙述；历史决议正文仅作当轮记录。
+- **主卧轴线**：业主选机身中心 x=3.70、z=5.10，与既有送回风轴 x=3.70 对齐。归档的 56T2 900mm 机身尺寸来自 **/PX-TS** 参考系列，不能当作成交 **/P-SS** 的实测外廓；若仅按 900mm 参考宽度预演，机身 x∈[3.25,4.15]，距门头盒东界 x=4.20 约 0.05m。厂家 /P-SS 安装图、东墙完成面、检修净空未核，机位仍未施工冻结。
+- **餐区外廓**：业主第一张参数图为 /PX-TS 系列、没有 42T2 行；第二张图列 **MN-42T2/P-SS 为 700×450×200mm**，合同转录则为 **MJV-42T2/P-SS**，前缀不同，尚未证实两者为同一机身。餐区旧 28T2/700mm 或 56T2/900mm 包络结论均不能直接用于成交机型；待精确型号的厂家安装图再核边吊、风口与维修空间。
+- **机电边界**：六台带提升泵是成交事实，但泵后排水接法、冷凝水接入点以及内外机正式配电图尚缺，既有线路继续作为协调候选，不作为施工放线依据。
+- **证据与实施记录**：`docs/design-iterations/hvac-contract-mapping-20261005/`；成交报价附件沿用 `hvac-resix-20261003/evidence/`，本轮业主参数图归档为参考图。
+
+### DEC-2026-10-05-R2 HVAC 口径收口：x=3.70 四层落地与旧口径清除
+
+- **日期**：2026-10-05。
+- **坐标收口**：DEC-2026-10-05-R1 选定的主卧机身中心 x=3.70 此前只落到 `config/ceiling.yaml` 与 `config/hvac.yaml`。本轮推到其余四层——`config/house.yaml` 的 `condensate_pipe_ac_outlet` 锚点 3.80→3.70；`shared/render/FixtureFactory.ts` 的冷凝水横管由 0.30m 延长到 0.40m、柜内竖管中心 0.30→0.40，全链仍接到 x=4.10 墙完成面；`shared/types.ts` 该 fixture 包络 width 0.24→0.40；`app/src/render/HouseScene.ts` `inspectMasterBedroomCondensate` 的期望端点首段 3.80→3.70；`config/mep-hvac-coordination.yaml` 的 `supply-air-master`/`return-air-master` via 由 3.80/3.90 收到 3.70，与两个端子轴对齐。未移动任何机位、电气点位或墙体。
+- **测试收口**：`tests/server/cli-glb-export.test.ts` 的 HVAC 实体数 16→19、端子数 10→12，并按餐厅第六台补 `indoor_dining`/`power_dining`/`branch_dining`/`supply_dining`/`return_dining`（此前该文件随第六台入图而未更新，是 `test:server` 唯一红灯）。`tests/server/shared/scene-builder.test.ts`、`app/src/render/FixtureFactory.test.ts` 的夹具同步到 3.70。
+- **UI 收口**：`app/src/App.ts` 的 HVAC toast 原硬编码"一拖五"，与它自己算出的内机数（6）矛盾；改为不带台数的「空调协调已就绪：外机 n / 内机 n / 预深化路线 n」，`app/src/App.test.ts` 同步。
+- **旧口径清除**：按业主要求执行删除而非标注历史。`docs/material_selection_log.md` 的「6 匹一拖五」推荐块与三种配置候选对比表整段删除，材料设备费合计随之由 74,075 更正为 81,075（中央空调 29,000→36,000）；`docs/hvac_options_analysis.md` 头部两条 21.4kW/21.6kW 盖章合并为一行现行口径，架构对比表与坑点清单保留；`docs/hvac-deepening-20260907.md` 状态行里"现行配置 21.6kW/1.08"删除（文件本身因 `decision_log` 引用而保留）；`config/facts.yaml` 删掉指向已不存在内容的风管机豁免，并把"现行型号串"守卫改为 71T2/42T2/56T2/28T2×3。`config/materials.yaml` 的 `hvac_01` 由预研候选改写为成交口径（36,000/contracted），`hvac_02` 改判 rejected；两条都受 `config/procurement.yaml` 外键约束，不能删 id。
+- **新增待核**：合同附图与 CAD 的"次卧"标签数（DXF 各 3 个标注、转录"次卧×5"、空间模型三间次级卧室）此前无任何条目跟踪，新增 `docs/pending-site-data.md` #47，量表 46→47。
+- **未做**：`docs/decision_log.md` 历史正文、`docs/design-iterations/*` 既有迭代、`docs/hvac-rfq-brief-20261003.md`（询价请求原文）均未改写，仅 `docs/hvac-rfq-brief-20261003.md` 的"一句话结论"补了一行"询价口径，非成交配置"标注。
+- **发现的存量缺陷（不属本轮，未修）**：`app/src/render/HouseScene.ts` 的 `inspectMasterBedroomCondensate()` 在浏览器里返回 `ok=false`——`exportRoot` 只遍历到 3 个 `condensate-pipe-*` 零件（`mb_vanity_pvc_box` 与 `mb_vanity_pvc_wardrobe_entry` 各自产出的那几段），而同一份 config 在 CLI/Node 构建路径下有 13 个，`tests/server/shared/scene-builder.test.ts` 的十段连续性断言也全绿。用 `git stash` 回到本轮改动前的 HEAD 复测，浏览器侧同样 `ok=false`，确认与本轮 x=3.70 落地无关，是浏览器构建路径与 CLI 构建路径不一致造成的独立缺口。已记入 `hvac-caliber-sync-20261005/review-manifest.json` 的 `blocking_issues`。
+- **证据与实施记录**：`docs/design-iterations/hvac-caliber-sync-20261005/`；前置 `docs/design-iterations/hvac-contract-mapping-20261005/`（本轮在其 brief 上补了 `scope_addendum`，登记渲染层与测试层文件）。

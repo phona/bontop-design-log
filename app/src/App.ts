@@ -1465,7 +1465,7 @@ export class App {
           const anchors = projection.hvac.diagram.anchors;
           const outdoorCount = anchors.filter((anchor) => anchor.ref?.source === 'outdoor').length;
           const indoorCount = anchors.filter((anchor) => anchor.ref?.source === 'ceiling').length;
-          this.showToast(`${projection.hvac.planId} 一拖五已就绪：外机 ${outdoorCount} / 内机 ${indoorCount} / 预深化路线 ${projection.hvac.diagram.routes.length}`);
+          this.showToast(`${projection.hvac.planId} 空调协调已就绪：外机 ${outdoorCount} / 内机 ${indoorCount} / 预深化路线 ${projection.hvac.diagram.routes.length}`);
         } else {
           this.houseScene.clearHvacProjection();
           this.setHvacCoordinationState('unimplemented');

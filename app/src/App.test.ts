@@ -483,7 +483,7 @@ describe('App', () => {
 
     expect(app['hvacCoordinationState']).toBe('ready');
     expect(hvacCoordinationButton.disabled).toBe(false);
-    expect(toast).toHaveBeenCalledWith('A2 一拖五已就绪：外机 1 / 内机 1 / 预深化路线 1');
+    expect(toast).toHaveBeenCalledWith('A2 空调协调已就绪：外机 1 / 内机 1 / 预深化路线 1');
     (window as any).setHvacCoordinationVisible(true);
     expect(setVisible).toHaveBeenLastCalledWith(true);
     expect(app['hvacCoordinationVisible']).toBe(true);

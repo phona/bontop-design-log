@@ -1,0 +1,11 @@
+schema: interior-design-object-manifest/v3
+iteration_id: hvac-caliber-sync-20261005
+objects:
+  - {id: hvac_01, owner: procurement, purchased_model: 'MJV-200W-E01-LHIV + 6×/P-SS', caliber: contracted, note: 'materials.yaml 由预研候选改写为成交口径 ¥36,000'}
+  - {id: hvac_02, owner: procurement, caliber: rejected, note: '一拖三挂机+一拖二挂机备选，因单平台与室内美观度出局；保留 id 供 procurement 外键引用'}
+  - {id: ac_master, owner: hvac, purchased_model: MJV-56T2/P-SS, plan_center: [3.70, 5.10], interface_status: pending_p_ss_body_and_maintenance_review, note: '本轮把 x=3.70 同步到渲染几何与自检'}
+  - {id: condensate_pipe_ac_outlet, owner: render, plan_center: [3.70, 5.10], interface_status: inspection_only, note: '横管 0.30→0.40m，仍接 x=4.10 墙完成面；厂家出口位置 pending'}
+interfaces:
+  coordinate: 'x=3.70 已四层一致：config/house.yaml、config/mep-hvac-coordination.yaml、FixtureFactory 几何、HouseScene.inspectMasterBedroomCondensate 期望端点。'
+  ui: 'App.ts HVAC toast 改为不带台数的「空调协调已就绪：外机 n / 内机 n / 预深化路线 n」。'
+  docs: '旧口径段落已删除；decision_log 与既有 design-iterations 按项目铁律未改写。'

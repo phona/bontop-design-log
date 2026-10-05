@@ -951,7 +951,7 @@ export class HouseScene implements SceneApi {
     };
     const orderedEndpoints = requiredParts.map((part) => endpoints(part));
     const expectedEndpoints: Array<[THREE.Vector3, THREE.Vector3]> = [
-      [new THREE.Vector3(3.80, 2.65, 5.10), new THREE.Vector3(4.10, 2.65, 5.10)],
+      [new THREE.Vector3(3.70, 2.65, 5.10), new THREE.Vector3(4.10, 2.65, 5.10)],
       [new THREE.Vector3(4.10, 2.65, 5.10), new THREE.Vector3(4.10, 2.65, 4.62)],
       [new THREE.Vector3(4.10, 2.65, 4.62), new THREE.Vector3(2.925, 2.65, 4.62)],
       [new THREE.Vector3(2.925, 2.65, 4.62), new THREE.Vector3(2.50, 2.65, 4.62)],

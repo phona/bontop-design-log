@@ -1,0 +1,77 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: hvac-caliber-sync-20261005
+subject: HVAC 口径收口与旧口径清除
+priority:
+  user_goal: '把 2026-10-05 已确认的六台 /P-SS 成交口径落到渲染层、测试层与全部文档，并删掉仍把 R6 旧口径当"现行"陈述的内容。'
+  ranked: [旧口径不再被读成现行, 坐标四层一致, 不引入新事实]
+frozen: true
+freeze_record:
+  alignment_id: user-20261005-caliber-cleanup
+  original_user_response: 'wave2要做，甚至要删掉只是作为历史记录出现。toast改成现在的方案。要跑，不过可以复用5174呀'
+  normalized_decisions:
+    - 'Wave 2 执行"删除"而不是"标注历史"：只承担旧口径、无引用、无契约依赖的内容整段删除。'
+    - 'app/src/App.ts 的 HVAC toast 改为不带数量的「空调协调已就绪：外机 n / 内机 n / 预深化路线 n」。'
+    - '运行时取证要跑，dev server 端口复用 5174。'
+  confirmed_by_user: true
+  confirmed_at: '2026-10-05'
+supersedes: hvac-contract-mapping-20261005
+allowed_scope:
+  files:
+    - config/house.yaml
+    - config/mep-hvac-coordination.yaml
+    - config/materials.yaml
+    - config/facts.yaml
+    - config/procurement.yaml
+    - data/project-render-facts.json
+    - tests/server/mep-hvac-coordination.test.ts
+    - tests/server/vrf-config.test.ts
+    - shared/render/FixtureFactory.ts
+    - shared/types.ts
+    - app/src/render/HouseScene.ts
+    - app/src/App.ts
+    - app/src/App.test.ts
+    - app/src/render/FixtureFactory.test.ts
+    - tests/server/cli-glb-export.test.ts
+    - tests/server/shared/scene-builder.test.ts
+    - docs/hvac_options_analysis.md
+    - docs/hvac-deepening-20260907.md
+    - docs/hvac-rfq-brief-20261003.md
+    - docs/material_selection_log.md
+    - docs/pending-site-data.md
+    - docs/decision_log.md
+    - docs/design-iterations/hvac-caliber-sync-20261005/
+  changes:
+    - x=3.70（业主已在 hvac-contract-mapping-20261005 选定）向渲染层/测试层机械落地
+    - cli-glb-export HVAC 实体与端子计数断言按第六台修正
+    - HVAC toast 去掉硬编码台数
+    - 删除只承担 R6/一拖五旧口径的文档段落
+    - materials.yaml hvac_01 改为成交口径、hvac_02 改判 rejected
+    - facts.yaml 失效守卫注释更正与空转豁免删除
+    - 新增 pending-site-data #47 并同步计数
+    - 补齐第六台入 A2 diagram 时前一轮漏同步的投影产物与两处测试夹具
+scope_addendum_note: >-
+  data/project-render-facts.json、tests/server/mep-hvac-coordination.test.ts 与
+  tests/server/vrf-config.test.ts 是第六台（餐厅 42T2 / ac_dining）进入 A2 diagram 时
+  前一轮留下的同步缺口：投影产物与两处测试夹具都还按五台口径。本轮补齐，内容经
+  `npm run generate:project-render-facts` 重跑逐字节一致，`verify:facts` 与
+  `test:server` 全绿，故补登进 allowed_scope.files。
+forbidden:
+  assumptions: [不得猜 42T2/56T2 外廓, 不得猜厂家配电与泵出口接法, 不得从型号自行推断机位]
+  out_of_scope_changes:
+    - 不得删除 docs/decision_log.md 与 docs/design-iterations/* 的既有条目（历史决议只登记不改写）
+    - 不得删除 config/procurement.yaml 外键引用的 materials 条目（hvac_01 / hvac_02 只能改内容）
+    - 除已选主卧内机中心 x=3.70 外移动机位或电气点位
+    - 未确认前冻结冷媒或冷凝水施工路线
+open_questions:
+  - {id: x370-coupling, question: 'x=3.70 是否需同步渲染层与测试层', status: resolved, selected: '同步（机械落地，不引入新事实）', handling: '冷凝水横管由 0.30m 延长到 0.40m 以保持接到 x=4.10 墙完成面'}
+  - {id: old-caliber-docs, question: '旧口径文档段落如何处理', status: resolved, selected: '删除无引用、无契约依赖者；被不可改写记录引用的只删旧口径陈述', handling: 'hvac-deepening-20260907.md 因 decision_log 引用只删状态行旧口径；architecture 对比表保留'}
+  - {id: secondary-bedroom-label-count, question: '合同附图"次卧"标签数与转录/空间模型冲突', status: site_pending, handling: '新增 docs/pending-site-data.md #47，量房时逐房核对'}
+acceptance:
+  validation_commands: [npm run verify:all, npm run test:server, npm run test:app, npm run typecheck]
+  construction_review: construction_not_frozen
+  done_when:
+    - docs/config 中不再有把 R6 21.6kW/1.08 或一拖五陈述为现行的段落
+    - x=3.70 在 config/render/自检/测试四层一致
+    - test:server 与 test:app 全绿
+    - HVAC 待核项与次卧标签数冲突已显式登记

@@ -1280,7 +1280,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   robot_dock_gbath: { width: 0.41, depth: 0.4335 }, // DEC-2026-09-09-R6 客卫扫地机基站（藏悬空台盆柜下；云鲸 J6 上下水版实尺寸）
   mb_vanity_lower_board: { width: 1.38, depth: 0.565 }, // 下部悬浮板与底柜同包络，北端贴主卫南墙卧室侧完成面 z=2.92
   mb_vanity_main_board: { width: 1.38, depth: 0.565 }, // 主板与下板同宽同深，同轴止于 z[2.92,4.30]
-  condensate_pipe_ac_outlet: { width: 0.24, depth: 0.46 }, // ac_master 内冷凝水出口→延伸空调盒/衣柜顶部服务带；厂家出口位置 pending
+  condensate_pipe_ac_outlet: { width: 0.40, depth: 0.46 }, // ac_master 内冷凝水出口→延伸空调盒/衣柜顶部服务带；厂家出口位置 pending，横向取机身中心轴 x=3.70
   mb_vanity_pvc_box: { width: 1.20, depth: 0.08 }, // w_mbath_east 西侧冷凝水墙行 (2.50,4.30)->(2.50,3.10)；中心离墙完成面约40mm，wall anchor 使用 w_mbath_east west，管径/坡度待深化
   mb_vanity_pvc_wardrobe_entry: { width: 1.175, depth: 0.03 }, // 延伸空调盒/衣柜顶部服务带内的西行段
   mb_vanity_pvc_service_chase: { width: 0.925, depth: 0.06 }, // 衣柜顶部至 w_mbath_south 穿点及主卫吊顶内短折/下引

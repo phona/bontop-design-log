@@ -1,7 +1,7 @@
 notes:
   - "外立面玻璃幕墙已由开发商安装完成，装修阶段无需采购封窗，只需核对门窗口位置及幕墙保护"
   - "本清单以套内 94.76㎡、层高 3.0m 为基数估算"
-  - "本清单共 71 条材料项（2026-10-04 登记，与 fact.materials_count / c.materials_count_matches_note 对账：增删条目必须同步此数）"
+  - "本清单共 71 条材料项（2026-10-05 复核，与 fact.materials_count / c.materials_count_matches_note 对账：增删条目必须同步此数）"
 
 # Formal GLB material-role contract. Values reference entries below; shader topology stays in Blender Python.
 render_roles:
@@ -514,24 +514,24 @@ materials:
     topic_id: "hvac"
     alternative_group: "hvac"
     category: "暖通空调"
-    name: "国产多联机一拖五"
-    brand: "格力 / 美的 / 奥克斯"
-    model: "6 匹一拖五（71/36/28/22/22）"
-    spec: "6HP"
+    name: "美的领航者Ⅳ一拖六（成交）"
+    brand: "美的"
+    model: "MJV-200W-E01-LHIV 20kW + 6 台 /P-SS 双出风带泵内机（71T2/42T2/56T2/28T2×3）"
+    spec: "20kW 外机 / 25.3kW 内机 / 连接率约1.27"
     unit: "套"
-    price_per_unit: 29000
+    price_per_unit: 36000
     coverage_per_unit: 1
     loss_rate: 1
     calc_mode: "count"
-    supplier: "格力/美的南宁总代 / 本地暖通公司"
+    supplier: "南宁长旺建材家居市场美的中央空调智慧空气馆长旺家中店"
     online_link: ""
     sample_acquired: false
     sample_date: null
-    status: "candidate"
-    pros: ["性价比高", "售后网点多"]
-    cons: ["噪音略大"]
-    price_source: "格力/美的南宁总代报价"
-    notes: "推荐首选；西向设备平台放 1 台外机；含设备、安装、辅材、风口；国产性价比最高"
+    status: "contracted"
+    pros: ["性价比高", "售后网点多", "一个西平台即可放外机"]
+    cons: ["外机实测尺寸与西平台散热待核", "P-SS 机身外廓待厂家安装图"]
+    price_source: "DEC-2026-10-04-R1 合同附件（第十二条）分项报价"
+    notes: "2026-10-04 定标成交 ¥36,000（含辅材，不含复合风管与风口加长、不含税）；DEC-2026-10-05-R1 业主确认逐房映射。本条只登记成交事实，机位净空、P-SS 外廓与厂家配电图均未冻结，不作施工放线依据。权威源 config/procurement.yaml"
 
   - id: "hvac_02"
     topic_id: "hvac"
@@ -550,11 +550,11 @@ materials:
     online_link: ""
     sample_acquired: false
     sample_date: null
-    status: "candidate"
+    status: "rejected"
     pros: ["造价最低", "两台外机灵活"]
     cons: ["壁挂机美观度下降", "外机位受限"]
     price_source: "京东 / 天猫报价"
-    notes: "预算紧替代方案；外机 2 台可放西设备平台；室内为壁挂机，美观度下降"
+    notes: "已出局：全户只有一个 1.6×1.00m 西设备平台（bbox 口径），两台外机并排约 1.8m 放不下；室内为壁挂机、美观度与舒适度不足。DEC-2026-10-04-R1 已定标多联机一拖六（见 hvac_01）。本条保留仅为记录被否决的备选架构"
 
   - id: "gas_water_heater_01"
     topic_id: "water_heater"

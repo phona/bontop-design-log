@@ -356,7 +356,7 @@ describe('condensate coordination fixtures', () => {
     const entry = buildFixture('mb_vanity_pvc_wardrobe_entry')!;
     const chase = buildFixture('mb_vanity_pvc_service_chase')!;
     const world = new THREE.Group();
-    const outletRoot = new THREE.Group(); outletRoot.position.set(3.80, 0, 5.10); outletRoot.add(outlet);
+    const outletRoot = new THREE.Group(); outletRoot.position.set(3.70, 0, 5.10); outletRoot.add(outlet);
     const wallRoot = new THREE.Group(); wallRoot.position.set(2.50, 0, 3.70); wallRoot.rotation.y = THREE.MathUtils.degToRad(270); wallRoot.add(wallRun);
     const entryRoot = new THREE.Group(); entryRoot.position.set(4.10, 0, 4.62); entryRoot.add(entry);
     const chaseRoot = new THREE.Group(); chaseRoot.position.set(2.925, 0, 4.62); chaseRoot.add(chase);

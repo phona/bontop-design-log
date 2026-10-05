@@ -1,0 +1,41 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: hvac-caliber-sync-20261005
+subject: HVAC 口径收口与旧口径清除
+status: implementation
+updated_at: '2026-10-05'
+facts:
+  confirmed:
+    - id: F-current-caliber
+      statement: '现行成交口径唯一入口是 config/procurement.yaml（hvac_01）与 config/hvac.yaml：美的领航者Ⅳ MJV-200W-E01-LHIV 20kW + 六台 /P-SS 双出风带泵内机，DEC-2026-10-04-R1 成交 ¥36,000；DEC-2026-10-05-R1 逐房映射客厅 71T2/餐厅 42T2/主卧 56T2/父母房·儿童房·东南书房各 28T2，合计 25.3kW、连接率 1.265（约 1.27）。'
+      source_refs: [config/procurement.yaml, config/hvac.yaml, DEC-2026-10-04-R1, DEC-2026-10-05-R1]
+      confidence: high
+      impact: material
+    - id: F-x370-master-center
+      statement: '主卧内机中心 x=3.70 为业主 2026-10-05 选定，与送回风轴 x=3.70 对齐。本轮把该坐标同步到 config/house.yaml、config/mep-hvac-coordination.yaml、shared/render/FixtureFactory.ts、shared/types.ts、app/src/render/HouseScene.ts 与三处测试夹具。'
+      source_refs: [业主 2026-10-05 会话轴线选择, config/ceiling.yaml, config/house.yaml]
+      confidence: high
+      impact: material
+    - id: F-deleted-old-caliber
+      statement: 'docs/material_selection_log.md 的「6 匹一拖五」推荐块与三种配置候选对比表、以及把 R6 21.6kW/1.08 陈述为"现行配置"的段落已删除；config/facts.yaml 中指向已不存在内容的风管机豁免与旧现行型号串注释已更正/删除。'
+      source_refs: [docs/material_selection_log.md, docs/hvac_options_analysis.md, docs/hvac-deepening-20260907.md, config/facts.yaml]
+      confidence: high
+      impact: material
+  superseded:
+    - id: X-r6-caliber
+      statement: 'DEC-2026-10-03-R6 的 6 台 21.6kW / 连接率 1.08（71+28+45+28+22+22）与 DEC-2026-09-07-055 的 21.4kW / 7HP 均已被 DEC-2026-10-04-R1 + DEC-2026-10-05-R1 取代；不再作为可行口径出现在任何 live 文档中。'
+      source_refs: [DEC-2026-10-04-R1, DEC-2026-10-05-R1]
+      impact: material
+  site_pending:
+    - id: S-secondary-bedroom-labels
+      statement: '合同附图与 CAD 的"次卧"标签数与转录和空间模型不一致：cad/design/01_floor_plan/floor_plan_design_2026-07-05.dxf 与 Drawing2.dxf 各出现 3 个"次卧"标注（其中两间同为 8.39㎡ 但周长不同，另一间 8.35㎡），转录写"次卧×5"，空间模型 model-geometry.yaml 只有三间次级卧室（study / bedroom_nw / bedroom_se）。逐房型号映射按模型三间落地，但标签数冲突未裁决。'
+      source_refs: ['docs/pending-site-data.md #47', config/layout/model-geometry.yaml, cad/design/01_floor_plan/]
+      impact: material
+    - id: S-pss-body
+      statement: '/PX-TS 参数表不作为成交 /P-SS 外廓依据；56T2 与 42T2 的机身外廓、检修净空待厂家正式安装图。'
+      source_refs: [docs/design-iterations/hvac-contract-mapping-20261005/evidence/, config/ceiling.yaml]
+      impact: material
+    - id: S-mep-interfaces
+      statement: '六台带提升泵是成交事实，但泵后排水接法、冷凝水接入点、内外机正式配电图仍缺；既有线路继续作为协调候选，不作施工放线依据。'
+      source_refs: [config/mep-hvac-coordination.yaml, config/electrical-topology.yaml]
+      impact: material

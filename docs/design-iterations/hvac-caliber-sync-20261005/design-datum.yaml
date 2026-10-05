@@ -1,0 +1,12 @@
+schema: interior-design-datum/v3
+iteration_id: hvac-caliber-sync-20261005
+anchor: coordinate_coupling
+datum:
+  - id: ac_master
+    plan: '业主选定中心 (3.70,5.10)。本轮把该 0.10m 位移从 config 层推到渲染层：config/house.yaml 的 condensate_pipe_ac_outlet 锚点 3.80→3.70，shared/render/FixtureFactory.ts 横管由 0.30m 延长到 0.40m（中心偏移 0.15→0.20），柜内竖管中心由 0.30→0.40，使全链仍接到 x=4.10 墙完成面。'
+    elevation: 'unchanged：横管与竖管仍在 y=2.65。'
+    section: 'app/src/render/HouseScene.ts inspectMasterBedroomCondensate 的期望端点首段由 (3.80,2.65,5.10)→(3.70,2.65,5.10)；MEP supply-air-master / return-air-master 的 via 由 3.80/3.90 收到 3.70，与 supply_master / return_master 端子轴对齐。'
+  - id: hvac_a2_diagram
+    plan: '餐厅第六台（ac_dining）进入 A2 diagram 后，实体数 16→19、端子数 10→12；tests/server/cli-glb-export.test.ts 的断言与 id 清单同步补 indoor_dining / power_dining / branch_dining / supply_dining / return_dining。'
+    elevation: 'n/a'
+    section: 'n/a'

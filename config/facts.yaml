@@ -234,7 +234,14 @@ scan:
     - path: docs/pending-site-data.md
       scalars: [kw]
       pattern: 'kW'
-      reason: 量房清单 #39 复述成交判读容量（25.3kW）与设计口径（21.6kW）双轨，由 #39 跟踪收敛
+      reason: 量房清单 #39 复述成交判读容量（25.3kW）与厂家待核项；#39 已于 2026-10-05 重写，不再含设计口径 21.6kW，本豁免随该重写一并收窄
+    # 2026-10-05 DEC-2026-10-05-R2 新增 #47：#47 引用 CAD 标注的次卧面积值作为
+    # 「标签数/面积口径未裁决」这一冲突本身的证据。这些值是待裁决对象，不是现行面积口径，
+    # 权威面积由 model-geometry 多边形实测与 fact.rooms_area_caliber / #40 承载。
+    - path: docs/pending-site-data.md
+      scalars: [area_sqm]
+      pattern: '㎡'
+      reason: 量房清单 #47 引用 CAD 标注面积（8.39㎡/8.35㎡）作为未裁决冲突的证据，不是现行面积口径；权威以 model-geometry 多边形与 fact.rooms_area_caliber 为准，收敛由 #47 与 #40 跟踪
 
     # ─── 2026-10-04 新增标量的登记（T1 发现层的噪声归属） ─────────────────────
     # 原则：**不是把新标量一律关掉**，而是把每一处出现归到「谁是这个数的权威」。
@@ -249,17 +256,25 @@ scan:
       scalars: [model_string]
       pattern: 'MJV-|领航者|理想家|大金|日立'
       reason: config/hvac.yaml 是空调型号串的权威源（plans[0].outdoor.model + plans[0].rooms 表 + load_design.basis），不是任何 fact 的镜像；下游引用由 c.hvac_model_refs_resolvable 强制必须可在本文件反查到
+    # config/materials.yaml 的 hvac_01 于 2026-10-05 由预研候选改为成交口径，带进了
+    # MJV-200W-E01-LHIV 型号串；权威仍在 config/hvac.yaml，一致性由
+    # c.hvac_model_refs_resolvable 对账，此处登记为复述。
+    - path: config/materials.yaml
+      scalars: [model_string]
+      pattern: 'MJV-|领航者|理想家'
+      reason: 材料清单 hvac_01 复述 DEC-2026-10-04-R1 成交配置（MJV-200W-E01-LHIV 20kW 一拖六，2026-10-05 由预研候选改写为成交口径）；型号一致性由 c.hvac_model_refs_resolvable 对账
     # config/ceiling.yaml 的 ac_* 与 config/electrical.yaml 的 sock_*_ac 是**同一台内机**
     # 在吊顶几何与电气取电两个子系统里的两份记录，型号串本身由 config/hvac.yaml 授权；
     # 两处的漂移由 c.hvac_model_refs_resolvable 抓（型号必须存在于 hvac.yaml）。
     # 吊顶里的 ac_* 内机型号必须**全部**是 config/hvac.yaml 词汇表里的 MJV-* 串。
-    # 2026-10-04 已把 5 条旧「风管机 NkW（DEC-2026-09-07-055）」口径改为现行
-    # MJV-71T2/28T2/45T2/22T2/28T2；哪一条被改回旧串（或新条目漏写型号），
-    # 立刻 unregistered_fact_occurrence + c.hvac_model_refs_resolvable 双报。
+    # 2026-10-04 已把 5 条旧「风管机 NkW（DEC-2026-09-07-055）」口径改为现行 MJV-*，
+    # 2026-10-05 DEC-2026-10-05-R1 再改为成交逐房映射 MJV-71T2/42T2/56T2/28T2×3；
+    # 哪一条被改回旧串（或新条目漏写型号），立刻 unregistered_fact_occurrence
+    # + c.hvac_model_refs_resolvable 双报。
     - path: config/ceiling.yaml
       scalars: [model_string]
       pattern: 'MJV-'
-      reason: 吊顶里的 ac_* 内机型号抄自 config/hvac.yaml rooms 表；旧口径「风管机 NkW（DEC-2026-09-07-055）」已于 2026-10-04 全部替换为现行 MJV-*，因此本文件只允许出现 MJV- 串——出现别的型号写法即视为漂移，由 unregistered_fact_occurrence 与 c.hvac_model_refs_resolvable 双报
+      reason: 吊顶里的 ac_* 内机型号抄自 config/hvac.yaml rooms 表（现行：71T2/42T2/56T2/28T2×3）；旧口径「风管机 NkW（DEC-2026-09-07-055）」与 R6 的 45T2/22T2 分级均已被 DEC-2026-10-05-R1 取代，因此本文件只允许出现 MJV- 串——出现别的型号写法即视为漂移，由 unregistered_fact_occurrence 与 c.hvac_model_refs_resolvable 双报
     - path: config/electrical.yaml
       scalars: [model_string]
       pattern: 'MJV-'
@@ -268,13 +283,11 @@ scan:
       scalars: [model_string]
       pattern: 'MJV-|领航者|理想家'
       reason: house.yaml mep_strategy 复述 DEC-2026-10-04-R1 成交配置（MJV-200W-E01-LHIV 20kW 一拖六）；型号一致性由 c.hvac_model_refs_resolvable 对账，金额由 fact.hvac_contract_cny 对账
-    # house.yaml 341-357 段的「风管机 10.0kW / 4.5kW / 2.5kW / 2.2kW（5 台一拖五）」是
-    # DEC-2026-09-07-055 的历史方案留档，house.yaml:343 自述「不再作为现行依据」；
-    # 现行逐台型号在 config/hvac.yaml 与 config/ceiling.yaml 的 ac_*（已全部改为 MJV-*）。
-    - path: config/house.yaml
-      scalars: [model_string]
-      pattern: '风管机'
-      reason: DEC-2026-09-07-055 一拖五历史方案留档（house.yaml 自身的 mep_strategy 自述「不再作为现行依据」），现行逐台型号以 config/hvac.yaml 与 config/ceiling.yaml 的 MJV-* 为准；跨文件型号外键由 c.hvac_model_refs_resolvable 对账
+    # 2026-10-05 删除：原先这里有一条 `pattern: '风管机'` 的 house.yaml 豁免，指向
+    # 「house.yaml 341-357 段的 DEC-2026-09-07-055 一拖五历史留档」。该段已在本日
+    # 被六台 /P-SS 成交映射替换，串已不存在、豁免正则为空转，故整条删除。
+    # 若将来 house.yaml 再出现非 MJV- 的型号写法，unregistered_fact_occurrence
+    # 与 c.hvac_model_refs_resolvable 会直接抓，不需要本豁免兜底。
     - path: config/procurement.yaml
       scalars: [model_string]
       pattern: 'MJV-|领航者|理想家'
@@ -382,6 +395,10 @@ scan:
       scalars: [money]
       pattern: '36,000'
       reason: 采购台账 hvac_01 复述 DEC-2026-10-04-R1 定标成交 36,000 元；权威金额由 fact.hvac_contract_cny 的三方镜像（config/hvac.yaml / schedule/procurement.md / control.yaml）对账
+    - path: config/materials.yaml
+      scalars: [money]
+      pattern: '36,000'
+      reason: 材料清单 hvac_01 的 price_per_unit/notes 复述 DEC-2026-10-04-R1 定标成交 36,000 元（2026-10-05 由预研估价 29,000 改写）；权威金额由 fact.hvac_contract_cny 的三方镜像对账
 
 # ─── T2 对账层 ───────────────────────────────────────────────────────────────
 
@@ -796,8 +813,12 @@ facts:
         reason: "123.21㎡ = 94.76（合同净）+ 28.45（模型 bbox 毛+赠送）的推导和，与预测建面 119.38㎡ 的差就是 #40 要裁定的口径缺口；推导和被显式登记为不可对账项，避免再出现「≈」伪等式"
 
   # 暖通内机合计功率无法用单一 regex 抽出权威值：config/hvac.yaml 同时存在
-  # 「设计口径 21.6kW（R6）」与「成交照片判读 25.3kW（R1）」，两轨都真实有效，
-  # 任选其一作为权威都会误导。因此不建 fact，只登记豁免并说明跟踪入口。
+  # 「设计口径 load_design.rooms[].load_kw（R6 估算，合计约 23.0kW）」与
+  # 「成交额定值 indoor_nominal_kw_total: 25.3（DEC-2026-10-04-R1 / R2）」，
+  # 两轨都真实有效且口径不同（估算 vs 铭牌），任选其一作为权威都会误导。
+  # 房间映射已于 2026-10-05 由业主确认并回写（DEC-2026-10-05-R1/R2），
+  # 逐房型号与 25.3kW 合计现由 tests/server/vrf-config.test.ts 与
+  # c.hvac_model_refs_resolvable 双路强制，本 fact 保持 disabled 不再需要。
   - id: fact.hvac_indoor_kw_total
     kind: narrative
     value: "@config/hvac.yaml:不存在单一权威功率口径"
@@ -805,7 +826,7 @@ facts:
     exempt:
       - path: config/hvac.yaml
         pattern: 'indoor_nominal_kw_total'
-        reason: 设计口径与成交判读双轨（21.6kW / 25.3kW），由 docs/pending-site-data.md #39 跟踪房间映射回写后收敛
+        reason: 设计估算（load_design.rooms[].load_kw）与成交额定值（indoor_nominal_kw_total 25.3）双轨并行；逐房型号与合计由 tests/server/vrf-config.test.ts 与 c.hvac_model_refs_resolvable 强制
 
   # ─── 2026-10-04 扩充：型号/尺寸/计数/坐标三类结构盲区 ─────────────────────
   # 判据：被抄过 ≥2 次，或错误会导致不可逆的金钱/合规后果。
@@ -971,7 +992,7 @@ facts:
   # 量房待确认项条数：39 条是「还有什么没量」的账面。新增/关闭条目必须同步。
   - id: fact.pending_site_data_count
     kind: derived
-    value: "@docs/pending-site-data.md:量表共 46 条"
+    value: "@docs/pending-site-data.md:量表共 47 条"
     unit: 条
     mirrors:
       - path: docs/pending-site-data.md
