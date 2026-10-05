@@ -1,0 +1,217 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "hvac-dining-ceiling-20261005",
+  "subject": "客餐厅天花/管路：冷凝水改线(R11)→通长黑槽(R16)→内机反向+下出风成组(R18)→厨房收墙+餐厅服务带(R19)",
+  "state": "reviews_passed_delivery_blocked",
+  "state_note": "实施+命令校验+双评审通过（functional 初审 FAIL 三项阻断 → R20 修复轮 → 双复评审 PASS）。evidence：5 张正式视角 + 1 张诊断图；「餐厅第一人称」仍未采到（WASD 步进不可靠），按证据契约该项证据缺口保留。site_pending（厂家安装图/量房/#41）与 git 提交方式（业主手动）未决前不交付。",
+  "source_version": {
+    "config_refs": [
+      "config/ceiling.yaml",
+      "config/hvac.yaml",
+      "config/mep-hvac-coordination.yaml",
+      "config/facts.yaml",
+      "config/layout/model-geometry.yaml",
+      "docs/decision_log.md (R11/R16/R18/R19)",
+      "docs/mep-construction-guidance.md",
+      "docs/pending-site-data.md"
+    ],
+    "asset_refs": [
+      "shared/types.ts",
+      "shared/project-render-facts-schema.ts",
+      "shared/render/HvacGeometryBuilder.ts"
+    ],
+    "render_facts_ref": "data/project-render-facts.json（R19 后已脚本重生成）",
+    "source_digest": "决策记录以 docs/decision_log.md 的 R11/R16/R18/R18附则/R19 为准；git 提交 d9fec4f(R16)/5df2d37(R18)/838381b(R18附则)/785a514(R19)——后三个为 Skill 装载前由 Agent 提交，与新 git 禁令冲突（见 delivery.blocking_issues）。",
+    "generated_at": "2026-10-05T00:00:00+08:00"
+  },
+  "validation": {
+    "commands": [
+      "npm run verify:all",
+      "npm run verify:mep",
+      "npm run test:server",
+      "npm run typecheck",
+      "cd app && npx vitest run"
+    ],
+    "results": [
+      "verify:all exit 0",
+      "verify:mep: 0 error / 179 warning（R20 修复轮后；MEP 徽标 179 与 CLI 一致）",
+      "test:server 609/609 pass",
+      "typecheck 0",
+      "test:app 470/470 pass（R16 轮）",
+      "verify:facts OK（c.mep_layer_below_drop_bottom 登记 153 与实算一致）"
+    ],
+    "config_status": "PASS",
+    "geometry_status": "PASS(config-driven geometry per design-datum.yaml; 家具/碰撞 verify:spatial 通过)",
+    "consistency_status": "PASS(routes 78→80 / zones 23→25 / clearance 154→153 登记同步)",
+    "functional_checks_status": "PARTIAL(结构/路由/坡度可查；风量/静压/旋转180°待厂家图)",
+    "application_status": "NOT_RUN(Web 运行时未验证——依赖 browser 证据)",
+    "typecheck_status": "PASS",
+    "generated_files_touched_directly": false,
+    "note": "命令绿只是证据层之一；按 Skill 不能证明几何/功能/美学/施工/交付。"
+  },
+  "evidence": {
+    "required_views": [
+      "设备带整体视角（南百叶 x[9.70,13.20] + 底面两下出风 z=4.85 + 北百叶 x[7.70,9.70]）",
+      "餐厅第一人称视角（北侧百叶、西侧服务带、餐桌吊灯、厨房台阶）",
+      "走廊→客卫开放洗漱区候选竖管 (6.70,3.70) 路由视角（MEP 叠加）",
+      "厨房南墙 z=2.40 台阶视角",
+      "厨房三条电路改道路由（MEP 叠加，R20 修复①证据）"
+    ],
+    "status": "partial",
+    "items": [
+      {
+        "file": "evidence/view1-strip-living-bottom.png",
+        "view": "设备带整体",
+        "status": "valid",
+        "note": "轨道模式近景；两台内机+设备带+分区关系可读"
+      },
+      {
+        "file": "evidence/view2-dining-north-louver-v2.png",
+        "view": "餐厅侧北立面百叶",
+        "status": "valid",
+        "note": "R20 后重采；段域 x[7.70,9.70]"
+      },
+      {
+        "file": "evidence/view2-dining-north-louver.png",
+        "view": "餐厅侧北立面百叶",
+        "status": "invalid",
+        "note": "R20 改前版本，已被 v2 取代"
+      },
+      {
+        "file": "evidence/view2b-dining-firstperson.png",
+        "view": "第一人称尝试",
+        "status": "diagnostic",
+        "note": "出生点在生活阳台且被 MEP 标线叠加，无目标关系"
+      },
+      {
+        "file": "evidence/view3-corridor-gbath-riser.png",
+        "view": "走廊→客卫候选竖管",
+        "status": "valid",
+        "note": "MEP 叠加；青色冷凝水管线可见"
+      },
+      {
+        "file": "evidence/view4-kitchen-step.png",
+        "view": "厨房南墙台阶/北服务带门头盒",
+        "status": "valid",
+        "note": "推拉门上方带体、餐桌吊灯/餐桌关系可读"
+      },
+      {
+        "file": "evidence/view5-kitchen-circuits-covered.png",
+        "view": "厨房电路 R20 新路由",
+        "status": "valid",
+        "note": "MEP 叠加；电路走向在服务带/厨房区可见"
+      }
+    ],
+    "runtime_browser": {
+      "wrapper": null,
+      "command": "$HOME/.local/bin/agent-browser（0.36.0，软链已建）",
+      "status": "partial",
+      "session": "default（agent-browser 单会话）",
+      "url": "http://localhost:5174（API :4000）",
+      "app_ready": "window.__APP__.isReady() === true（多次实测）",
+      "warnings": [
+        "agent-browser 不存在于 $HOME/.local/bin/"
+      ],
+      "banner": null,
+      "snapshot": null,
+      "png": "evidence/view1,2v2,2b,3,4,5",
+      "runtime_query": "houseScene.getCamera()/getScene().traverse 目标对象位置实测（supply_dining 8.70/2.65/4.30、return_dining 7.90/2.49/4.45 与配置一致）",
+      "note": "open→wait→ready poll→MCP set_camera_target→snapshot→screenshot→validate 全链执行；close 待本轮结束"
+    }
+  },
+  "aesthetic_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": [
+      "9.70 首尾相接判定为恰好形成连续线；构图语言不变"
+    ],
+    "evidence_refs": [
+      "view1",
+      "view2-v2",
+      "view5"
+    ],
+    "requested_changes": [
+      "登记 R20 并同步 datum/fact-table（已执行）"
+    ],
+    "assumptions": [
+      "材质/纹理受风格化渲染精度限制"
+    ]
+  },
+  "functional_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": [
+      "return_dining 格栅西缘 7.45 与冷媒主管轴相切（-0.016m），建议后续东移约 5cm 或声明风箱西界让距",
+      "西带内三条导管与 φ32 主管同轴敷设，施工 guidance 需注明独立挂装/错高",
+      "strong-light-dining 末段 0.46m 斜线+约 0.21m 带外段（R19 引入，下一轮正交化）",
+      "#41 系统性标高口径未回归（已登记 153）"
+    ],
+    "evidence_refs": [
+      "verify:mep 0 error",
+      "view2-v2",
+      "view5",
+      "config 复核"
+    ],
+    "requested_changes": [
+      "上述四项备查，不属本轮阻断"
+    ],
+    "assumptions": [
+      "命令结果采信；只读脚本复算 route×ceiling 覆盖"
+    ]
+  },
+  "risks": [
+    "agent-browser 曾缺失（已建软链解除）",
+    "Skill「禁 Agent git」与 AGENTS.md「改动必须进 Git」冲突：业主 2026-10-05 裁定由 Agent 执行提交（本提交即依此裁定）；AGENTS.md 口径建议同步修订以免下个会话误判",
+    "42T2 旋转 180° 若厂家不允许→餐厅侧百叶方案需回 alignment",
+    "西侧服务带 0.5m 宽餐桌旁观感未验收",
+    "厨房/生活阳台分界与烟管走向 site_pending"
+  ],
+  "runtime_aabb": {
+    "note": "本轮无新家具 AABB；新吊顶分区与终端几何均为 config 声明，glb 导出(bontop-701-hvac-20261005d.glb)不含 HVAC overlay（CLI 导出器 hvacStatus=unimplemented，Web 视图为唯一运行时来源）"
+  },
+  "site_pending_preserved": [
+    "厂家安装图（出口方向/旋转允许性/风量静压）",
+    "回风黑色边框与侧回形式",
+    "厨房/生活阳台分界、烟管走向",
+    "西侧服务带观感验收",
+    "#41 分层标高裁定"
+  ],
+  "retrospective": {
+    "triggered": true,
+    "triggers": [
+      "skill_installed_mid_iteration（协议在实施后装载，五件套回溯建档）",
+      "并发工作线改量（编号撞车/一次误改其引用，已修复并归因）"
+    ],
+    "records": [
+      "R11：业主 3D 目视发现冷凝水横穿平顶→改线",
+      "R16：参考图通长黑槽→加 finish 字段",
+      "R18：业主反向布置说明→北/南百叶+同轴下出风；编号与并发线撞车，让位至 R16/R18/R19",
+      "R19：业主指出铝扣板错盖餐区→案1 服务带"
+    ],
+    "rebaselined": true
+  },
+  "delivery": {
+    "status": "blocked",
+    "blocking_issues": [
+      "「餐厅第一人称视角」证据未采到（WASD 步进不可靠；MEP 不能传送第一人称）",
+      "厂家安装图未回（双出风方向/旋转180°/下出风面积/回风形式）",
+      "量房未回（厨房/阳台分界、烟管、西带观感）",
+      "#41 分层标高未裁定（不影响配置冻结，阻塞施工冻结）"
+    ],
+    "delivery_ready": false,
+    "follow_up_site_pending": [
+      "厂家安装图",
+      "量房",
+      "#41 裁定",
+      "第一人体验收（业主 Web 内 WASD 走查即可补证据）"
+    ],
+    "delivery_notes": "配置层冻结且全命令校验通过、双评审 PASS；缺口只在屏幕证据（第一人称）与现场/厂家条件。修复顺序：业主 Web 补第一人称截图→回传归档→补 R20 后证据复核→delivery_ready。"
+  },
+  "review": {
+    "verdict": "PASS_WITH_EVIDENCE_GAP",
+    "blocking_issues": [
+      "第一人称视角证据缺失（其余四/五视角有效）"
+    ]
+  }
+}

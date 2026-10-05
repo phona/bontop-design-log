@@ -1,0 +1,72 @@
+# Design Datum — HVAC 客餐厅天花/管路迭代
+schema: interior-design-design-datum/v1
+iteration_id: hvac-dining-ceiling-20261005
+coordinate_system: Three.js 右手系；+x=东 +z=南；俯视北朝上；单位 m；楼板 2.80
+
+datums:
+  - id: datum-strip-ceiling_living
+    object: ceiling_living
+    plan: { x_range: [7.2, 13.4], z_range: [4.3, 5.2], bottom_y: 2.50, thickness: 0.30, corner_radius: 0.10 }
+    elevation: 完成面 2.50；北立面=餐厅侧，南立面=客厅侧
+    basis: [f_geometry_ld_room, ud5]
+
+  - id: datum-unit-positions
+    plan: ac_living (10.30, 4.75)；ac_dining (8.00, 4.75)
+    elevation: 机身中心 z=4.75；71T2 1200×450×200 / 42T2 900×450×200（厂家尺寸待核）
+    basis: [f_units_in_strip, ud3]
+
+  - id: datum-supply-louvers
+    object: [supply_living, supply_dining]
+    plan:
+      supply_living:  { center_x: 11.45, z: 5.21, face: south, length: 3.5, x_range: [9.70, 13.20] }  # 客厅侧连续百叶有效段
+      supply_dining:  { center_x: 8.70,  z: 4.30, face: north, length: 2.0, x_range: [7.70, 9.70] }   # 餐厅侧（42T2 旋转180°后；R20 修复：西端避西服务带封闭腔）
+    elevation: y=2.65；均 finish matte_black；有效段外同规格装饰百叶延续
+    basis: [f_slot_geometry, ud2, ud3]
+
+  - id: datum-bottom-supplies
+    object: [supply_living_bottom, supply_dining_bottom]
+    plan: (10.30, z=4.85) 与 (8.00, z=4.85)；长度均 0.9；同一 z=4.85 几何轴线
+    elevation: y=2.50（吊顶底面）；与内机中心 x 对齐（中心距 2.3m 与机位一致）
+    basis: [f_slot_geometry, ud3]
+
+  - id: datum-returns
+    object: [return_living, return_dining]
+    plan: (12.60, 4.45) / (7.90, 4.45)；长度 1.0 / 0.9；mount_face bottom；标准白（铰接回检一体；R20：回风行 z=4.45 与下出风行 z=4.85 分列，return_dining 段域 x[7.45,8.35] 全落设备带内）
+    elevation: y=2.49
+    basis: [ud2, ud3, q2]
+
+  - id: datum-dining-service-bands
+    object: [ceiling_dining_west_band, ceiling_dining_north_band]
+    plan:
+      west:  { x_range: [7.20, 7.70], z_range: [2.40, 4.30], bottom_y: 2.50, trunk_axis_x: 7.45 }
+      north: { x_range: [7.70, 10.80], z_range: [2.40, 3.00], bottom_y: 2.50 }
+    elevation: 0.30 降板；corner_radius 0.10；与厨房铝扣板(2.65)、餐桌平顶(2.80)均单次正交台阶；西带↔走廊/设备带同底 2.50
+    basis: [f_r19_service_bands, ud4, ud5]
+
+  - id: datum-kitchen-ceiling
+    object: ceiling_kitchen
+    plan: { x_range: [7.2, 10.8], z_range: [0.0, 2.40] }
+    elevation: aluminum_buckle 0.15 → 完成面 2.65
+    basis: [f_r19_kitchen_shrink, ud4]
+
+  - id: datum-dining-flat
+    object: 餐桌区平顶（无 zone，与客厅中部同语言）
+    plan: { x_range: [7.70, 10.80], z_range: [3.00, 4.30] }
+    elevation: 原顶/石膏板 2.80；吊灯 light_dining_pendant (7.90, 3.45) 居中
+    basis: [ud4]
+
+  - id: datum-condensate-route
+    route: refrigerant-trunk / condensate-living / condensate-dining
+    plan: 主管 x=7.45 全程空腔；冷凝水 z=4.6 西行→走廊→北折至客卫洗漱区 (6.70,3.70) 竖直下引
+    elevation: 冷媒 2.55；冷凝水 2.35→0.10（1% 坡，候选）
+    basis: [ud1]
+
+  - id: datum-pendant-feed
+    route: strong-light-dining
+    plan: bend_corridor(7.2,4.6)→带内 x=7.45 北行至 (7.45,3.55)→≤0.6m 垂直下引至 (7.90,3.45)
+    elevation: 2.45→2.60（服务带空腔内）
+    basis: [ud4]
+
+non_datums:
+  - 风口最终尺寸/下出风位置/回风形式：以厂家安装图为约束，不得由模型预设
+  - #41 分层标高裁定：未定前不改任何 layer.height

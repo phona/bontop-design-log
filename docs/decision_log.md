@@ -1650,3 +1650,13 @@
 - **路由修正**：`strong-light-dining` 吊灯供电改走西侧服务带空腔至 (7.45,3.55) 后 ≤0.6m 垂直下引，不再横穿餐桌平顶；`refrigerant-trunk`/厨房电路坐标不变（原路径本就沿此空腔，合法化）。
 - **未动**：R11 冷凝水、R18 内机反向/下出风、R16 黑槽；MEP routes 仍 80 条。
 - **验证**：`verify:all` / `test:server` / `typecheck` 见执行记录；GLB 重导。
+
+### DEC-2026-10-05-R20 功能评审阻断项修复轮（三项）+ 双复评审通过
+
+- **日期**：2026-10-05。触发：hvac-dining-ceiling-20261005 迭代首次双评审，functional FAIL（三项阻断）、aesthetic PASS。
+- **修复①（阻断-电路横穿平顶）**：R19 关闭旧厨房铝扣板后，strong-light-kitchen/strong-ded-dishwasher/strong-ded-washer-dryer 三条电源原垂直穿越餐桌 2.80 平顶约 1.9m。改走全覆盖路径：设备带 z=4.6 西行 x=7.45→西服务带→北服务带 z=3.0 东行→正交北上进厨房铝扣板。全程吊顶空腔、不穿平顶；washer 穿 w_balc_east 既有 penetration 不变。
+- **修复②（阻断-餐厅百叶压封闭腔）**：supply_dining 有效段 x[7.30,9.60]→x[7.70,9.70]（中心 8.70、长 2.0m）：原西端 0.40m 越入 ceiling_dining_west_band 封闭腔、从餐厅侧不可见且贴冷媒主管 x=7.45 净距仅约 0.009m；MEP supply-air-dining 折线同步东延。
+- **修复③（阻断-回风越界跨缝）**：return_dining 中心 7.40→7.90、z 4.62→4.45（段域 x[7.45,8.35] 全落设备带内）；return_living 统一 z=4.45；回风行 z=4.45 与下出风行 z=4.85 分列。
+- **复评审**：functional PASS（三项逐一复核消除，未引入新阻断）；aesthetic PASS（9.70 首尾相接判定为"恰好形成连续线"，构图语言不变）。证据：view2-v2/view5 同版本重采；MEP 徽标 179 与 CLI 179 对账一致。
+- **遗留（非阻断，备查）**：return_dining 格栅西缘 7.45 与冷媒主管轴相切（建议后续东移 ≈5cm）；西带内三条导管与 φ32 主管同轴敷设（施工 guidance 需注明独立挂装/错高）；strong-light-dining 末段 0.46m 斜线+约 0.21m 带外段（R19 引入，下一轮正交化）；#41 分层标高系统性口径未回归。
+- **验证**：verify:all 0 / verify:mep 0 error（179 warning）/ test:server 609/609 / typecheck 0 / verify:facts OK（153 登记与实算一致，三项修复未改变 clearance 总数）。

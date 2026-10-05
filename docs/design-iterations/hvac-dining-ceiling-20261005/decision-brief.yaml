@@ -1,0 +1,78 @@
+# Decision Brief — HVAC 客餐厅天花/管路迭代（frozen）
+schema: interior-design-decision-brief/v1
+iteration_id: hvac-dining-ceiling-20261005
+frozen: true
+frozen_at: 2026-10-05
+owner: 业主
+
+priority:
+  - 管线全部藏于吊顶空腔，绝不横穿客餐厅/餐厅平顶
+  - 客餐厅分区独立温控（71T2→客厅，42T2→餐厅）
+  - 视觉三元素：客厅侧连续百叶 / 底面两同轴下出风 / 餐厅侧连续百叶
+  - 餐桌区保持 2.80 平顶+吊灯，层高不让
+
+allowed_scope:
+  - config/ceiling.yaml、config/hvac.yaml、config/mep-hvac-coordination.yaml 的吊顶分区/终端/路线
+  - config/facts.yaml 与 docs/* 的计数同步与决策记录
+  - tests 中与上述计数绑定的硬编码断言（同步并注明 DEC 号）
+  - docs/design-iterations/hvac-dining-ceiling-20261005/ 本迭代五件套
+
+forbidden:
+  - 修改分层标高（layers.height）——#41 未裁定
+  - 修改 generated 文件（data/project-render-facts.json 只能脚本重生成）
+  - 穿梁开孔；裸走平顶；餐厅加圈吊
+  - 触动 R11/R18 之外的冷媒/冷凝水主管路由
+  - git 操作（Skill 禁令；与 AGENTS.md 的提交要求冲突待业主裁定）
+  - 用截图像素反推坐标；用“基本完成”替代交付门
+
+decisions:
+  - id: DEC-2026-10-05-R11
+    content: 客厅/餐厅冷凝水改走北缘边吊→走廊吊顶→客卫开放洗漱区共用候选竖管 (6.70,3.70)；候选点同步移入 ceiling_guest_bath 范围
+    status: frozen
+  - id: DEC-2026-10-05-R16
+    content: 客餐厅两送风口升级通长隐藏式风槽 matte_black（客厅 3.5m/餐厅 2.3m）；HvacTerminal 增 finish 字段；回风暂标准白
+    status: frozen
+  - id: DEC-2026-10-05-R18
+    content: 71T2 水平送风朝南（客厅侧百叶 x[9.70,13.20]）；42T2 旋转 180° 朝北（餐厅侧百叶 x[7.30,9.60]）；第二出口下出风至底面 (10.30/8.00,4.85) 等宽 0.9m 同轴；回风移两端；MEP routes 78→80
+    status: frozen
+  - id: DEC-2026-10-05-R18-addendum
+    content: 设备带/餐厅侧正交细节语言：禁斜切/喇叭/渐变/多层台阶；外露转角 R100；槽口正交收口、内衬贴到圆角底
+    status: frozen
+  - id: DEC-2026-10-05-R19
+    content: 厨房铝扣板收回 z[0,2.4]；新增 ceiling_dining_west_band（x[7.2,7.7] z[2.4,4.3]）与 ceiling_dining_north_band（x[7.7,10.8] z[2.4,3.0]）；餐桌中部 2.80 平顶；吊灯供电改走服务带；分区 23→25
+    status: frozen
+
+open_questions:
+  - q1: 双出风两出口方向/42T2 旋转 180° 允许性/下出风有效面积——厂家安装图（site_pending，不改配置）
+  - q2: 回风是否改黑色边框/侧回形式——待厂家图后再议（当前标准白）
+  - q3: 西侧服务带 0.5m 宽的餐桌旁观感——Web 第一人体验收后必要时仅调带宽
+  - q4: git 禁令与 AGENTS.md“改动必须进 Git”冲突——待业主裁定提交方式
+
+acceptance:
+  validation_commands:
+    - npm run verify:all
+    - npm run verify:mep
+    - npm run test:server
+    - npm run typecheck
+  evidence_required:
+    - 设备带整体视角（含两条侧向百叶+底面两个下出风）
+    - 餐厅第一人称视角（含北侧百叶、西侧服务带、餐桌吊灯）
+    - 走廊→客卫洗漱区候选竖管路由视角
+  review_required: [aesthetic, functional]（fixed JSON contract，双 PASS 才 delivery_ready）
+
+alignment:
+  - id: align1
+    channel: AskUserQuestion
+    answer: 冷凝水改线方向确认（走廊→客卫）——ud1
+  - id: align2
+    channel: 直接指令
+    answer: 客餐厅送风口改参考图通长黑槽效果——ud2
+  - id: align3
+    channel: 直接指令（ reversed-arrangement 设计说明）
+    answer: 两内机反向+下出风成组——ud3
+  - id: align4
+    channel: AskUserQuestion
+    answer: 餐厅/厨房交接选案1——ud4
+  - id: align5
+    channel: 直接指令
+    answer: 交汇处正交+R100——ud5

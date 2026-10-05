@@ -1,0 +1,71 @@
+# Object Manifest — HVAC 客餐厅天花/管路迭代
+schema: interior-design-object-manifest/v1
+iteration_id: hvac-dining-ceiling-20261005
+
+objects:
+  - id: ceiling_living
+    kind: ceiling_zone
+    role: 客餐厅设备带（藏两内机+分歧+侧向百叶+下出风+回风）
+    owner: HVAC（吊顶由木工）
+    interfaces: [ceiling_dining_west_band(西端正交通面), ceiling_main_corridor(同底2.50), ceiling_entry_foyer(同底2.50), ceiling_dining_north_band(北立面)]
+    maintenance: 回风格栅兼检修；下出风/分歧器检修口厂家图定
+    collision_policy: 与家具/灯具零共享（设备带内仅管线）
+    basis: DEC-2026-10-05-R18
+
+  - id: ceiling_dining_west_band
+    kind: ceiling_zone
+    role: 餐厅西侧服务带（冷媒主管 x=7.45 唯一通道）
+    owner: HVAC
+    interfaces: [ceiling_kitchen(北端 2.65→2.50 台阶), ceiling_main_corridor(南端同底), 餐桌平顶(东侧正交立面)]
+    maintenance: 主管保温/吊码预留；检修口避开西墙圆角
+    collision_policy: 0.5m 宽贴餐桌西缘——不得向内侵占餐桌上方
+    basis: DEC-2026-10-05-R19
+
+  - id: ceiling_dining_north_band
+    kind: ceiling_zone
+    role: 厨房门头盒/服务带（电路衔接+餐桌吊灯出线）
+    owner: HVAC+电气
+    interfaces: [ceiling_kitchen(北侧台阶), 餐桌平顶(南侧 2.80→2.50 台阶), ceiling_entry_foyer(东端同底), ceiling_dining_west_band(西端)]
+    maintenance: 吊灯出线点 (7.45,3.55) 需接线盒可见可修
+    collision_policy: 门头盒净高避让三联动推拉门开启
+    basis: DEC-2026-10-05-R19
+
+  - id: ceiling_kitchen
+    kind: ceiling_zone
+    role: 厨房铝扣板（烟管/灯具）
+    owner: 厨房
+    interfaces: ceiling_dining_north_band / ceiling_dining_west_band（z=2.40 台阶）
+    maintenance: 烟管/止回阀可拆
+    site_pending: 厨房/生活阳台分界与烟管走向
+    basis: DEC-2026-10-05-R19（漂移关闭）
+
+  - id: supply_living / supply_dining / supply_living_bottom / supply_dining_bottom / return_living / return_dining
+    kind: hvac_terminal
+    role: 客厅侧连续百叶/餐厅侧连续百叶/两个同轴下出风/两个端部回风
+    owner: HVAC（面板定制）
+    interfaces: 71T2（两口：南立面+底面）/42T2（两口：北立面+底面）
+    maintenance: 回检一体；叶片可调避直吹
+    collision_policy: 槽口正交收口；有效段外装饰段同规格
+    site_pending: 厂家风量/静压核算；旋转 180° 允许性
+    basis: DEC-2026-10-05-R16/R18
+
+  - id: routes_mep
+    kind: mep_routes
+    role: refrigerant-trunk / supply-air-living[-bottom] / supply-air-dining[-bottom] / return-air-living/dining / condensate-living/dining / strong-light-dining
+    owner: HVAC+电气
+    interfaces: 全链位于吊顶空腔（西带+设备带+走廊+客卫洗漱区）
+    maintenance: 分歧器检修口；冷凝水候选接入点 pending
+    basis: DEC-2026-10-05-R11/R18/R19
+
+  - id: light_dining_pendant
+    kind: lighting_fixture
+    role: 餐桌吊灯（视觉主角，非设备）
+    owner: 照明
+    interfaces: 供电自 ceiling_dining_north_band→西带→(7.45,3.55) 短距下引
+    collision_policy: 不得压设备带投影；居中于餐桌 (7.90,3.45)
+    basis: DEC-2026-10-05-R19
+
+visual_relationships:
+  - 三条设备带（西带/北带/设备带）与厨房/门厅/走廊均同底 2.50 或正交台阶，语言统一
+  - 风槽三元素（南百叶/两下出风/北百叶）黑内衬哑光同色
+  - R100 外角圆角与主卧门头盒一致

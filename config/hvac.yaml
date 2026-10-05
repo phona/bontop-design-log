@@ -201,18 +201,18 @@ plans:
         - id: return_living
           status: inferred
           system: return_air
-          position: { x: 12.60, y: 2.49, z: 4.62 }
+          position: { x: 12.60, y: 2.49, z: 4.45 }
           mount_face: bottom
           length: 1.0
-          reason: "DEC-2026-10-05-R18：回风口随 R18 分区重构移至边吊底面东端 x=12.60，避让两个成组下出风轴线 (z=4.85, x=8.00/10.30)；仍为铰接回风格栅兼检修口、下回底装，滤网及内机经格栅维护；尺寸与最终位置按厂家安装图（如允许侧回，可与立面连续百叶合一），施工未冻结。"
+          reason: "DEC-2026-10-05-R18+功能评审微调：回风口在边吊底面东端 x=12.60，回风行 z=4.45 与下出风行 z=4.85 分列（原 z=4.62 与下出风轴线过近）；仍为铰接回风格栅兼检修口、下回底装，滤网及内机经格栅维护；尺寸与最终位置按厂家安装图（如允许侧回，可与立面连续百叶合一），施工未冻结。"
         - id: supply_dining
           status: inferred
           system: supply_air
-          position: { x: 8.45, y: 2.65, z: 4.30 }
+          position: { x: 8.70, y: 2.65, z: 4.30 }
           mount_face: north
-          length: 2.3
+          length: 2.0
           finish: matte_black
-          reason: "DEC-2026-10-05-R18：餐厅 42T2 整机相对客厅 71T2 旋转 180°，水平送风改到北立面朝餐厅（餐桌 x=7.90/z=3.45 在边吊北侧）；原画在南立面客厅侧既服务不到餐厅又违反分区（大内机→只客厅、小内机→只餐厅）。段域 x[7.30,9.60] 为餐厅侧连续百叶有效段，其余同规格装饰百叶延续线条；叶片可调避餐桌直吹，风口尺寸/静压按厂家风量核算；槽口正交、槽端正交收口（R18 附则：禁斜切/喇叭/渐变，圆角只在外口、内衬贴到圆角底），施工未冻结。"
+          reason: "DEC-2026-10-05-R18+功能评审修复：餐厅 42T2 整机旋转 180° 水平送风朝北立面（餐桌 x=7.90/z=3.45 在边吊北侧）；有效段西端由 7.30 收至 7.70（中心 8.70、长 2.0m，段域 x[7.70,9.70]）——原 0.40m 越入 ceiling_dining_west_band 封闭腔且贴冷媒主管 x=7.45 净距仅约 0.009m。其余同规格装饰百叶延续线条；叶片可调避餐桌直吹，风口尺寸/静压按厂家风量核算；槽口正交（R18 附则），施工未冻结。"
         - id: supply_living_bottom
           status: inferred
           system: supply_air
@@ -232,10 +232,10 @@ plans:
         - id: return_dining
           status: inferred
           system: return_air
-          position: { x: 7.40, y: 2.49, z: 4.62 }
+          position: { x: 7.90, y: 2.49, z: 4.45 }
           mount_face: bottom
           length: 0.9
-          reason: "DEC-2026-10-05-R18：回风口随 R18 分区重构移至边吊底面西端 x=7.40（靠近旋转后的 42T2 机身），避让两个成组下出风轴线；底装回检一体，尺寸与最终位置按厂家安装图，施工未冻结。"
+          reason: "DEC-2026-10-05-R18+功能评审修复：回风行统一 z=4.45（与下出风行 z=4.85 分列）、中心 7.40→7.90——原西缘 6.95 越出设备带西界 x=7.20 跨走廊吊顶拼缝且 42T2 部分回风取自走廊侧。段域 x[7.45,8.35] 全部落在 ceiling_living 内；底装回检一体，尺寸按厂家安装图，施工未冻结。"
         - id: condensate_living_candidate
           kind: condensate_drain_candidate
           status: pending

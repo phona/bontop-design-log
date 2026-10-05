@@ -24,7 +24,7 @@
   height: 2.85
   model: "MJV-42T2/P-SS 4.2kW（业主确认：餐厅双出风带泵室内机型号；实机尺寸待核；机位坐标为当前设计预演值）"
   power_point: sock_dining_ac
-  note: "餐厅空调内机，合同型号记录为 MJV-42T2/P-SS；位于既有 ceiling_living 北缘边吊西端，与 ac_living 同边吊、中心距 2.3m，侧送朝南服务餐区。所提供 MN-42T2/P-SS 规格截图中的 700mm 仅作同名系列参考，不作为合同 MJV-42T2/P-SS 的实机尺寸；该 MJV/P-SS 型号的机身尺寸、边吊内净空与风口适配待厂家安装图核实。当前坐标为设计预演值，尚未施工冻结。"
+  note: "餐厅空调内机，合同型号记录为 MJV-42T2/P-SS；位于既有 ceiling_living 北缘边吊西端，与 ac_living 同边吊、中心距 2.3m，整机旋转180°后侧送朝北服务餐区（R18）。所提供 MN-42T2/P-SS 规格截图中的 700mm 仅作同名系列参考，不作为合同 MJV-42T2/P-SS 的实机尺寸；该 MJV/P-SS 型号的机身尺寸、边吊内净空与风口适配待厂家安装图核实。当前坐标为设计预演值，尚未施工冻结。"
 
 - id: ac_master
   room: master_bedroom

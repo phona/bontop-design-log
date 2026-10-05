@@ -1,0 +1,97 @@
+# Fact Table — HVAC 客餐厅天花/管路迭代（2026-10-05）
+# 状态分类：confirmed=权威配置/量房/日志/业主确认；inferred=由 confirmed 推导；user_decision=业主明确决定；site_pending=待量房/厂家核
+schema: interior-design-fact-table/v1
+iteration_id: hvac-dining-ceiling-20261005
+as_of: 2026-10-05
+
+facts:
+  - id: f_geometry_ld_room
+    statement: 客餐厅 living_dining 含餐桌区 z[2.4,4.3]（餐桌 7.90,3.45，椅 z[2.75,4.15]）；设备带 ceiling_living = x[7.2,13.4] z[4.3,5.2]，0.30 降板底 2.50；沙发区在南（z>5.2）
+    status: confirmed
+    source: config/layout/model-geometry.yaml; config/house.yaml furnishings; config/ceiling.yaml
+    affects: [餐厅天花, 设备带, 风口朝向]
+    verify: verify:topology / verify:spatial
+
+  - id: f_units_in_strip
+    statement: 两台内机同在 ceiling_living 内：ac_living MJV-71T2@(10.3,4.75)、ac_dining MJV-42T2@(8.0,4.75)，中心距 2.3m；均为双出风 P-SS 泵型
+    status: confirmed
+    source: config/ceiling.yaml; config/hvac.yaml load_design
+    affects: [分区, 风口, 检修]
+
+  - id: f_trunk_path
+    statement: 冷媒主管 refrigerant-trunk：平台(6.4,0.5)→穿 w_vrv_east(7.2,0.55)→厨房 x=7.45 轴线南行→z=4.30 入 ceiling_dining_west_band（z=4.6 为设备带内主干轴线）→设备带；全程在吊顶空腔内，不横穿客餐厅/餐桌平顶
+    status: confirmed
+    source: config/mep-hvac-coordination.yaml; verify:mep 0 error
+
+  - id: f_r11_before
+    statement: R11 前 condensate-living/condensate-dining 从北缘边吊出南缘后沿 x=10.0 穿客餐厅平顶至 (10.0,6.1) 下引——业主 3D 目视发现并否决
+    status: confirmed
+    source: 会话截图 + 决策日志 DEC-2026-10-05-R11
+
+  - id: f_r19_kitchen_shrink
+    statement: ceiling_kitchen 铝扣板原 x[7.2,10.8] z[0,4.3] 越过厨房真实南墙 z=2.4（DEC-014 登记漂移），盖住餐桌上空且使餐厅天花被错建成铝扣板
+    status: confirmed
+    source: config/ceiling.yaml 历史; config/layout/model-geometry.yaml v_kit_s2=z=2.4; guidance §吊顶网络基准(old note)
+
+  - id: f_r19_service_bands
+    statement: R19 新增两条服务带承接原"厨房吊顶衔接段"全部功能：ceiling_dining_west_band x[7.2,7.7] z[2.4,4.3]（冷媒主管 x=7.45）、ceiling_dining_north_band x[7.7,10.8] z[2.4,3.0]（门头盒/电路/吊灯出线），均底 2.50
+    status: confirmed
+    source: config/ceiling.yaml R19
+
+  - id: f_slot_geometry
+    statement: R16/R18 后：客厅侧南立面连续百叶有效段 x[9.70,13.20]（3.5m）；餐厅侧北立面 x[7.70,9.70]（2.0m，R20 修复后）；底面两个下出风 (10.30/8.00, 2.50, 4.85) 等宽 0.9m 同轴；回风 (12.60/7.90, 2.49, 4.45)
+    status: confirmed
+    source: config/hvac.yaml terminals; DEC-2026-10-05-R16/R18
+
+  - id: f_counters
+    statement: MEP routes 78→80（R18 +2 下出风）；吊顶分区 23→25（R19 +2 服务带）；c.mep_layer_below_drop_bottom 149→154（R11）→153（R19，trunk 线段 2.55 改在服务带 2.50 完成面上方）
+    status: confirmed
+    source: config/facts.yaml; docs/mep-construction-guidance.md §0; verify:facts OK
+
+  - id: f_parallel_workline
+    statement: 并发工作线同期占用 DEC-2026-10-05-R12/R13/R14/R15/R17 并提交 f0e9102/beee23f/70ef99b；本人编号 R11/R16/R18/R19；曾发生编号撞车与一次误改其引用（已修复）
+    status: confirmed
+    source: git log 5f8de9b/d9fec4f/5df2d37/785a514; 会话记录
+
+  - id: f_agent_browser_missing
+    statement: $HOME/.local/bin/agent-browser 不存在——Skill 证据门（open→ready→snapshot→screenshot→validate→close）当前无法执行
+    status: confirmed
+    source: ls 实测
+
+  - id: f_machine_drawings
+    statement: 双出风两出口实际方向、42T2 旋转 180° 允许性（接水盘/泵/电控盒朝向）、下出风有效面积与静压、回风形式，均以厂家安装图为约束
+    status: site_pending
+    owner: 美的经销商（长旺店）
+    affects: [风口终尺寸, 下出风口, 检修口]
+
+  - id: f_dining_band_feel
+    statement: 西侧服务带 0.5m 宽贴餐桌旁的最终观感、检修口位置，需 Web/现场验收
+    status: site_pending
+    affects: [餐厅天花视觉]
+
+  - id: f_layer_drop_issue
+    statement: #41 系统性问题未裁定：强电 2.45/弱电 2.50/冷媒 2.55/冷凝水 2.35 分层标高 vs 0.30 降板完成面 2.50；本轮未改任何分层标高
+    status: site_pending
+    source: docs/pending-site-data.md #41
+
+  - id: f_kitchen_balcony_split
+    statement: 厨房与生活阳台（z[1.0,2.2]）分界、烟管走向随量房终核
+    status: site_pending
+    source: config/ceiling.yaml ceiling_kitchen note; strong-ded-washer-dryer
+
+user_decisions:
+  - id: ud1
+    statement: 冷凝水改走吊顶网络（边吊→走廊→客卫洗漱区候选竖管），餐厅/客厅不加吊顶
+    date: 2026-10-05
+  - id: ud2
+    statement: 客餐厅送风口升级通长隐藏式黑槽 matte_black；回风暂留标准白
+    date: 2026-10-05
+  - id: ud3
+    statement: 两内机反向安装（71T2 朝南客厅/42T2 旋转 180° 朝北餐厅）；底面两个下出风同轴等宽成组；分区独立温控
+    date: 2026-10-05
+  - id: ud4
+    statement: 厨房/餐厅交接选案1（铝扣板收 z=2.4 + 餐厅北/西两条服务带 + 餐桌区 2.80 平顶）
+    date: 2026-10-05
+  - id: ud5
+    statement: 设备带/餐厅侧交汇正交几何，禁斜切/喇叭/渐变/多层台阶，外露转角 R100（R18 附则）
+    date: 2026-10-05
