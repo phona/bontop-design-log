@@ -1,0 +1,51 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: hvac-contract-mapping-20261005
+subject: 成交空调逐房型号回写
+priority:
+  user_goal: '按已经成交的六台内机逐房配置更新 HVAC 方案，消除 R6 旧型号作为现行口径的语义漂移。'
+  ranked: [成交型号与容量一致, 标明未冻结施工接口, 机位与维护净空]
+frozen: true
+freeze_record:
+  alignment_id: user-20261005-room-model-mapping
+  original_user_response: '56是主卧，42是餐厅'
+  normalized_decisions:
+    - '主卧 MJV-56T2/P-SS，餐厅 MJV-42T2/P-SS。'
+    - '其余按已归档六台数量与现有空间：客厅 71T2、父母房/儿童房/东南书房各 28T2；六台均为 /P-SS 双出风、带泵。'
+    - '主卧内机中心 x=3.70，与风口轴 x=3.70 对齐；实际 /P-SS 机身外廓仍待厂家图。'
+  confirmed_by_user: true
+  confirmed_at: '2026-10-05'
+allowed_scope:
+  files: [config/hvac.yaml, config/ceiling.yaml, config/electrical.yaml, config/electrical-topology.yaml, config/mep-hvac-coordination.yaml, config/house.yaml, schedule/procurement.md, docs/pending-site-data.md, docs/decision_log.md, docs/design-iterations/hvac-contract-mapping-20261005/]
+  changes: [逐房型号与容量口径, 主卧内机中心 x=3.70, 当前与历史标识, 待核状态]
+forbidden:
+  assumptions: [不得猜 42T2 外廓, 不得猜厂家配电与泵出口接法, 不得从型号自行推断机位]
+  out_of_scope_changes: [除已选主卧内机中心外移动机位或电气点位, 未确认前冻结冷媒或冷凝水施工路线]
+open_questions:
+  - {id: master-axis, question: '主卧 56T2 机身中心目标轴线', status: resolved, selected: 'x=3.70 与风口轴对齐', handling: '施工前仍按 /P-SS 厂家安装图和现场复尺验证净空'}
+  - {id: master-body, question: '主卧 56T2/P-SS 机身外廓', status: site_pending, handling: '现有 900mm 数据属于 /PX-TS 参考系列，不升格为成交机身尺寸'}
+  - {id: dining-body, question: '餐厅 MJV-42T2/P-SS 机身外廓与风口尺寸', status: site_pending, handling: '现有图列 MN-42T2/P-SS 700×450×200mm，前缀不同；待精确型号安装图核对，不直接代入施工净空'}
+  - {id: mep-interfaces, question: '六台泵出口与内外机供电正式接法', status: site_pending, handling: '等待厂家配电图与排水图'}
+acceptance:
+  validation_commands: [npm run verify:all, npm run test:server, npm run typecheck]
+  construction_review: construction_not_frozen
+  done_when: [结构化六台型号与总容量一致, 当前说明不再把 R6 作为成交配置, 未核机位和水电接口显式待定]
+
+# 2026-10-05 追加（scope_addendum）：x=3.70 这一已批准变更为机械落地，需同步渲染层与测试层，
+# 这些文件不在上面的 allowed_scope.files 里，在此显式补登；本补登不引入任何新事实变更。
+scope_addendum:
+  added_files:
+    - shared/render/FixtureFactory.ts
+    - shared/types.ts
+    - app/src/render/HouseScene.ts
+    - app/src/App.ts
+    - app/src/App.test.ts
+    - app/src/render/FixtureFactory.test.ts
+    - tests/server/cli-glb-export.test.ts
+    - tests/server/shared/scene-builder.test.ts
+  justification: >-
+    主卧机身中心 x=3.80→3.70 的批准变更此前只落到 config/ceiling.yaml 与 config/hvac.yaml，
+    未落到渲染几何（condensate_pipe_ac_outlet 横管长度与锚点）、运行时自检
+    （HouseScene.inspectMasterBedroomCondensate 的期望端点）、以及三处测试夹具与
+    cli-glb-export 的 HVAC 实体计数断言。本补登仅允许把这 0.10m 位移同步下去，
+    不允许借机移动任何机位、电气点位或墙体，也不允许改容量/型号事实。

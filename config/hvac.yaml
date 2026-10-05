@@ -10,47 +10,47 @@ plans:
       width: 0.99
       depth: 0.40
       height: 0.81
-      model: "美的领航者Ⅳ MJV-200W-E01-LHIV（DEC-2026-10-03-R6 定标，20kW / 大7匹；领航者Ⅳ系列，区别于三代 MJV-200W-E01-LHⅢ）"
-      note: "DEC-2026-10-03-R6：外机定标 20kW，配 6 台内机 21.6kW，连接率 1.08。⚠️外廓 0.99×0.40×0.81m 为 7HP 常见规格 **estimated**，200W 级实测尺寸、平台散热（百叶有效通风面积/进排风净距/检修距离/热短路）与 1.6×1.00m 西平台（bbox 口径；含 r=1.0 西北圆角后可用约 1.39㎡，依据 model-geometry.yaml platform.boundary + overlay.yaml north_platform_floor）的适配均 site_pending。**供电制式已由业主 2026-10-04 确认为 220V（DEC-2026-10-04-R1），本条待核项已收窄一项**，参照领航者三代 180W 约 951×383×1333mm。历史：DEC-2026-09-07-055 的 7HP/21.4kW/138% 出局结论保留追溯 ‖ DEC-2026-10-04-R2：外机供电已单独成路（第 20 路 hvac_power_outdoor_a2，C32A+漏保 / 4.0mm²(φ20) proposed，待厂家配电图）；点位 sock_vrf_outdoor_a2 @(7.20,0.50,1.60)（外机本体 @(6.40,0.50)；取电点按预案挂平台东界墙 w_vrv_east 厨房侧脸，落位说明见 config/electrical.yaml）；输入功率估 ≈6kW（20kW 制冷量 / 估 EER≈3.5）；实际接线（专用插座 vs 硬接线）与平台防水/开孔待厂家图与物业核定。⚠️ 外廓 0.99×0.40×0.81m 仍为 estimated，且与参照的 951×383×1333mm 在高度上差 523mm——0.81m 口径未注明（疑为不含底座的单风机低架口径），需厂家样本确认，不得据此判定平台能否容纳。"
+      model: "美的领航者Ⅳ MJV-200W-E01-LHIV（成交配置 DEC-2026-10-04-R1，20kW / 大7匹；领航者Ⅳ系列，区别于三代 MJV-200W-E01-LHⅢ）"
+      note: "成交配置 DEC-2026-10-04-R1：20kW 外机配六台双出风内机，额定能力合计 25.3kW，名义连接率 1.265（约 1.27）。⚠️外廓 0.99×0.40×0.81m 为 7HP 常见规格 **estimated**，200W 级实测尺寸、平台散热（百叶有效通风面积/进排风净距/检修距离/热短路）与 1.6×1.00m 西平台（bbox 口径；含 r=1.0 西北圆角后可用约 1.39㎡，依据 model-geometry.yaml platform.boundary + overlay.yaml north_platform_floor）的适配均 site_pending。**供电制式已由业主 2026-10-04 确认为 220V（DEC-2026-10-04-R1），本条待核项已收窄一项**，参照领航者三代 180W 约 951×383×1333mm。历史：DEC-2026-09-07-055 的 7HP/21.4kW/138% 出局结论保留追溯 ‖ DEC-2026-10-04-R2：外机供电已单独成路（第 20 路 hvac_power_outdoor_a2，C32A+漏保 / 4.0mm²(φ20) proposed，待厂家配电图）；点位 sock_vrf_outdoor_a2 @(7.20,0.50,1.60)（外机本体 @(6.40,0.50)；取电点按预案挂平台东界墙 w_vrv_east 厨房侧脸，落位说明见 config/electrical.yaml）；输入功率估 ≈6kW（20kW 制冷量 / 估 EER≈3.5）；实际接线（专用插座 vs 硬接线）与平台防水/开孔待厂家图与物业核定。⚠️ 外廓 0.99×0.40×0.81m 仍为 estimated，且与参照的 951×383×1333mm 在高度上差 523mm——0.81m 口径未注明（疑为不含底座的单风机低架口径），需厂家样本确认，不得据此判定平台能否容纳。"
     load_design:
       status: confirmed
-      basis: "DEC-2026-10-03-R6（supersedes DEC-2026-10-03-R5）：业主定标美的领航者Ⅳ MJV-200W-E01-LHIV，外机 20kW，6 台内机合计 21.6kW，连接率 1.08。面积口径：客餐厅 living_dining 实际 44.58㎡（polygon 实测；bbox 45.88㎡ 含 1.3㎡ 凹口），不得再写「客厅 45.88㎡ + 餐厅 14㎡」（重复计量）。按气流覆盖拆两个热区：客厅区约 31㎡ → 71 级 7.1kW（229W/㎡）、餐区约 14㎡ → 28 级 2.8kW（200W/㎡），两区合计 9.9kW ÷ 44.58㎡ ≈ 222W/㎡。同小区参考方案（邦泰璟和 110，2026-04-27）口径为「负荷估 230W/㎡、设备选 145W/㎡」，本方案取负荷口径，须经销商冷负荷计算书背书，不得反推为项目设计错误。设计参数（经销商报价单，南宁，GB 50736 口径）：夏季室外干球 34.2℃、湿球 27.5℃、最热月平均相对湿度 82%；室内 24–28℃、相对湿度 40–65%、风速 ≤0.3m/s；冬季室外干球 7℃、最冷月平均相对湿度 75%。6 台内机表：客厅区 MJV-71T2 7.1kW（既有 ac_living，机位 10.30/4.75）、餐区 MJV-28T2 2.8kW（新增 ac_dining，机位 8.00/4.75，藏于既有 ceiling_living 北缘边吊 x[7.20,13.40]×z[4.30,5.20]）、主卧 MJV-45T2 4.5kW（既有门头盒内，须带冷凝提升泵）、父母房 MJV-28T2 2.8kW、儿童房 MJV-22T2 2.2kW、书房 MJV-22T2 2.2kW。状态三段：owner_selected（2026-10-03 业主定标）/ vendor_verification_pending（第二家分项报价、厂家冷负荷计算书、外机平台散热核算、正式配电图、供电制式）/ construction_not_frozen（量房与水电交底前不施工冻结）。降额为方案级估算（无厂家修正曲线作证，待厂家曲线与配管资料核实）：设计工况 34.2℃ 下降额有限；38–40℃ 极端天约 -8~12%；最远内机约 15m 正交 + 2.5m 高差的长配管再打折。不得写成设备确定性能。外机大小主要买「同时满载总量余量」；单间能力上限由该内机额定值决定，但更大外机会改善多房同时运行能力与部分工况效率。外机平台硬门槛：西平台 1.6×1.00m（bbox 口径，含 r=1.0 西北圆角后可用约 1.39㎡）处于玻璃幕墙体系，须核算百叶有效通风面积、进排风净距、检修距离与热短路；参照领航者三代 180W 外机约 951×383×1333mm，200W 级更大。厨房空调不计入（开门借餐厅冷气+循环扇），新风另案 ‖ **采购成交（DEC-2026-10-04-R1，2026-10-04 定标）**：成交方南宁长旺建材家居市场美的中央空调智慧空气馆长旺家中店，合同附件（第十二条）分项报价——外机 MJV-200W-E01-LHIV 20kW 14,124 元、安装 1,400 元/台×6=8,400 元、**合计 36,000 元（含辅材；不含复合风管与风口加长（加长 100 元/米另计）、不含税）**；风口尺寸见合同附件（回风 1000×300 / 1300×300，出风 750×150 / 1000×150）；内机全部改为**双出风内机 MJV-…/P-SS（6 台全带冷凝提升泵）**，型号判读为 71+42+56+28×3=25.3kW（连接率 1.27）——**该容量表为照片判读，房间映射与逐台型号以合同附图为准，核对后回写本 rooms 表**；供电 220V 已确认。与 R6 设计口径（21.6kW/1.08、超薄轻音Pro）的差异：①系列升级为双出风（全带泵、解决直吹，省 3D 面板）②容量表偏大 3.7kW，餐区 56 级 5.6kW 对 14㎡ 餐区约 400 W/㎡、儿童房/书房 28 级对 8.4/8.3㎡ 约 334 W/㎡；**业主 2026-10-04 决定保留现配置**：换机无金钱动机（报价单 56T2 2,131 vs 28T2 2,050–2,493，整包含价）且 56T2 机身 900mm 大于 28T2 的 700mm，换机需重做餐区风管，故不返工；改以三件免费手段管理——交底书面锁定风口位置与百叶沿顶、**餐区设定 26℃（27℃ 会削弱除湿）**、平时只开 71T2 而把 56T2 当聚会模式。选型与商务至此闭环。状态：contract_decided / vendor_verification_pending（待核四项统一清单：① 合同房间映射与逐台容量表；② 外机实测尺寸与西平台散热核算；③ 厂家多台内机合并供电**与外机**正式配电图；④ 风口加长是否已含 + 分房间冷负荷计算书是否到手）；外机供电已按 GB 55038 7.4.4 单独成路、回路总数 19→20（DEC-2026-10-04-R2）/ construction_not_frozen"
-      indoor_nominal_kw_total: 21.6
+      basis: "DEC-2026-10-03-R6 为设计负荷与室内机分级依据；原设计机型合计 21.6kW 不代表成交设备额定值。面积口径：客餐厅 living_dining 实际 44.58㎡（polygon 实测；bbox 45.88㎡ 含 1.3㎡ 凹口）。按气流覆盖拆两个热区：客厅区约 31㎡，设计负荷估算 7.1kW（229W/㎡）；餐区约 14㎡，设计负荷估算 2.8kW（200W/㎡）；两区设计负荷估算合计 9.9kW ÷ 44.58㎡ ≈ 222W/㎡。同小区参考方案（邦泰璟和 110，2026-04-27）口径为「负荷估 230W/㎡、设备选 145W/㎡」；分房间冷负荷计算书仍待经销商提供，不把估算当作已核算负荷。设计参数（经销商报价单，南宁，GB 50736 口径）：夏季室外干球 34.2℃、湿球 27.5℃、最热月平均相对湿度 82%；室内 24–28℃、相对湿度 40–65%、风速 ≤0.3m/s；冬季室外干球 7℃、最冷月平均相对湿度 75%。DEC-2026-10-04-R1 成交内机映射（业主确认）：客厅 MJV-71T2/P-SS 7.1kW（ac_living）；餐厅 MJV-42T2/P-SS 4.2kW（ac_dining）；主卧 MJV-56T2/P-SS 5.6kW（ac_master，中心 x=3.70）；父母房、儿童房、书房各 MJV-28T2/P-SS 2.8kW（ac_parent/ac_child/ac_study）。六台均为双出风并带冷凝提升泵。成交内机额定能力合计 25.3kW，外机名义额定制冷量 20.0kW，连接率 25.3÷20.0=1.265（约 1.27）。下方每房 load_kw 与 basis 保留原设计估算口径，和成交设备型号/额定能力分开记录。原有平面机位和风口均为方案协调信息；成交容量变化后的机位、风口、吊顶净空、冷媒与冷凝水路径，待量房和厂家深化后复核，不作为施工冻结图。降额、组合运行能力及长配管修正须以厂家曲线与配管资料核实，不将方案估计写成设备性能。外机平台待核：西平台 1.6×1.00m（bbox 口径，含 r=1.0 西北圆角后可用约 1.39㎡），处于玻璃幕墙体系，须核算百叶有效通风面积、进排风净距、检修距离与热短路；参照领航者三代 180W 外机约 951×383×1333mm，成交外机实际尺寸待厂家确认。厨房空调不计入（开门借餐厅冷气+循环扇），新风另案 ‖ **采购成交（DEC-2026-10-04-R1，2026-10-04 定标）**：成交方南宁长旺建材家居市场美的中央空调智慧空气馆长旺家中店，合同附件（第十二条）分项报价——外机 MJV-200W-E01-LHIV 20kW 14,124 元、安装 1,400 元/台×6=8,400 元、**合计 36,000 元（含辅材；不含复合风管与风口加长（加长 100 元/米另计）、不含税）**；风口尺寸见合同附件（回风 1000×300 / 1300×300，出风 750×150 / 1000×150）。房间映射已由业主确认并写入；剩余待核：①外机实测尺寸与西平台散热核算；②厂家多台内机合并供电与外机正式配电图；③风口加长计价与分房间冷负荷计算书。状态：contract_decided / vendor_verification_pending / construction_not_frozen；外机供电已按 GB 55038 7.4.4 单独成路、回路总数 19→20（DEC-2026-10-04-R2）。"
+      indoor_nominal_kw_total: 25.3
       outdoor_nominal_kw: 20.0
-      connection_ratio: "1.08（21.6÷20）"
-      diversity_note: "DEC-2026-10-03-R6 更新：外机 20kW / 内机 21.6kW / 连接率 1.08。夜间典型开 2-3 卧室约 4.4-8.9kW；全夜四卧同开 11.4kW < 20kW 不超载；白天客餐厅两区同开 9.9kW < 20kW 独立运行无压力。全屋同时峰值估计约 17kW，20kW 外机在常规分区同开下裕度充足；极端六机同时满负荷仍受外机总能力、室外温度与配管修正影响（降额为方案级估算，待厂家曲线）"
-      budget_impact: "历史（2026-09，7HP 一拖五全包参考）：美的 2.8-3.4 万、格力 3.2-3.8 万、海尔居中、大金/日立 6 万+（超预算不推荐）、小米 6匹 1.6-2.3 万（连接率不合规仅对照）。**现行预算口径见 schedule/procurement.md（暖通执行池 ¥36,000，2026-10-03 上调；一期上限 ¥206,000）**；本方案目标总价 33,000–37,000 为 R6 期询价目标区间，留档；⚠️ 该 36,000 不含税、不含复合风管与风口加长（加长 100 元/米另计），非最终落地价，证据见 docs/design-iterations/hvac-resix-20261003/evidence/；已成交 36,000（DEC-2026-10-04-R1）"
+      connection_ratio: "1.265（25.3÷20；约 1.27）"
+      diversity_note: "仅按成交内机铭牌额定值作加总：客厅+餐厅 7.1+4.2=11.3kW；四卧 5.6+2.8×3=14.0kW；六台合计 25.3kW，高于外机名义 20.0kW。前两组加总低于外机名义值不等于实测同时输出保证；同时制冷能力、组合修正与配管降额待厂家性能表及配管资料核实。"
+      budget_impact: "历史（2026-09，7HP 一拖五全包参考）：美的 2.8-3.4 万、格力 3.2-3.8 万、海尔居中、大金/日立 6 万+（超预算不推荐）、小米 6匹 1.6-2.3 万（连接率不合规仅对照）。**现行预算口径见 schedule/procurement.md（暖通执行池 ¥36,000，2026-10-03 上调；一期上限 ¥206,000）**；33,000–37,000 为 R6 期历史询价目标区间，仅留档；⚠️ 该 36,000 不含税、不含复合风管与风口加长（加长 100 元/米另计），非最终落地价，证据见 docs/design-iterations/hvac-resix-20261003/evidence/；已成交 36,000（DEC-2026-10-04-R1）"
       rooms:
         - room: living_dining
           basis: "客厅热区约 31㎡（气流覆盖口径）× 229W/㎡"
           load_kw: 7.1
-          indoor: "MJV-71T2 7.1kW（DEC-2026-10-03-R6 定标，机位 (10.30,4.75) 既有 ac_living）"
-          note: "侧送朝南，ceiling_living 布置不变；回风口保持距厨房油烟区 ≥2m 并加可拆洗滤网"
+          indoor: "成交：MJV-71T2/P-SS 双出风 7.1kW，带冷凝提升泵（DEC-2026-10-04-R1；业主确认房间映射，ac_living）"
+          note: "ceiling_living 中既有位置及风口方向仍为协调示意；成交机位、吊顶净空、风口和回风距离待量房与厂家深化复核。"
         - room: living_dining
           basis: "餐区热区约 14㎡（气流覆盖口径）× 200W/㎡"
           load_kw: 2.8
-          indoor: "MJV-28T2 2.8kW（DEC-2026-10-03-R6 新增第 6 台，机位 (8.00,4.75) 新增 ac_dining）"
-          note: "DEC-2026-10-03-R6：藏于既有 ceiling_living 北缘边吊西端（x[7.20,13.40]×z[4.30,5.20]），机身 700×450×200mm，与 ac_living 机身 1200mm、中心距 2.3m；同向侧送朝南服务餐桌区，风口须避开餐桌座位正上方或改沿顶送风、配可调百叶；不新增穿墙"
+          indoor: "成交：MJV-42T2/P-SS 双出风 4.2kW，带冷凝提升泵（DEC-2026-10-04-R1；业主确认房间映射，ac_dining）"
+          note: "既有 ceiling_living 北缘边吊与机位 (8.00,4.75) 仅为既有方案协调示意，不因成交型号确认而视为复核完成；尺寸、吊顶净空、风口、气流与冷媒/冷凝水路由均待厂家深化和量房核对。"
         - room: master_bedroom
           basis: "寝区约 17.9㎡，R6 由 3.4kW 上调至 4.5kW（≈251W/㎡，业主/经销商口径）"
           load_kw: 4.5
-          indoor: "MJV-45T2 4.5kW（DEC-2026-10-03-R6，既有门头盒 ceiling_master_ac 内）"
-          note: "须带冷凝提升泵（门头盒绕行无法保证连续 1% 重力坡）；门头盒几何与冷媒/冷凝水路由随容量变化复核，量房与厂家深化前不冻结；合同判读为 SS 双出风系列（主卧 42T2、儿童房/书房 28T2），与设计值 45/22/22 有差异，以合同附图为准（pending #39）"
+          indoor: "成交：MJV-56T2/P-SS 双出风 5.6kW，带冷凝提升泵（DEC-2026-10-04-R1；主卧，ac_master，中心 x=3.70）"
+          note: "门头盒几何与冷媒/冷凝水路由须随成交容量复核；泵后排水接法、检修空间和坡度待厂家与现场确认，量房及厂家深化前不冻结。"
         - room: study
           basis: "父母房 12.75㎡，R6 定 28 级 2.8kW（≈220W/㎡，业主/经销商口径）"
           load_kw: 2.8
-          indoor: "MJV-28T2 2.8kW（DEC-2026-10-03-R6）"
-          note: "由原 2.0kW 上调，机位与边吊不变"
+          indoor: "成交：MJV-28T2/P-SS 双出风 2.8kW，带冷凝提升泵（DEC-2026-10-04-R1；父母房，ac_parent）"
+          note: "父母房成交型号已由业主确认；机位、吊顶净空及冷媒/冷凝水路由待量房和厂家深化复核。"
         - room: bedroom_nw
           basis: "儿童房净约 8.39㎡，R6 定 22 级 2.2kW（西北幕墙有西晒）"
           load_kw: 2.2
-          indoor: "MJV-22T2 2.2kW（DEC-2026-10-03-R6；22/28/36 机身同为 700×450×200mm，选 22 级无安装差异）"
-          note: "由原 1.5kW 上调；22T2 低风噪音 17dB(A) 优于 28T2 的 19dB(A)，不为「留裕度」升档；合同判读为 SS 双出风系列（主卧 42T2、儿童房/书房 28T2），与设计值 45/22/22 有差异，以合同附图为准（pending #39）"
+          indoor: "成交：MJV-28T2/P-SS 双出风 2.8kW，带冷凝提升泵（DEC-2026-10-04-R1；儿童房，ac_child）"
+          note: "儿童房成交型号已由业主确认；机位、吊顶净空及冷媒/冷凝水路由待量房和厂家深化复核。"
         - room: bedroom_se
           basis: "书房净约 8.35㎡，R6 定 22 级 2.2kW（东南角，面积小）"
           load_kw: 2.2
-          indoor: "MJV-22T2 2.2kW（DEC-2026-10-03-R6，北向玻璃无直射）"
-          note: "由原 1.3kW 上调，机位与边吊不变；合同判读为 SS 双出风系列（主卧 42T2、儿童房/书房 28T2），与设计值 45/22/22 有差异，以合同附图为准（pending #39）"
+          indoor: "成交：MJV-28T2/P-SS 双出风 2.8kW，带冷凝提升泵（DEC-2026-10-04-R1；书房，ac_study）"
+          note: "书房成交型号已由业主确认；机位、吊顶净空及冷媒/冷凝水路由待量房和厂家深化复核。"
     diagram:
       reference_constraints:
         - id: ref_south_window_band_ld100
@@ -115,6 +115,10 @@ plans:
           status: confirmed
           system: refrigerant
           ref: { source: ceiling, id: ac_living }
+        - id: indoor_dining
+          status: confirmed
+          system: refrigerant
+          ref: { source: ceiling, id: ac_dining }
         - id: indoor_master
           status: confirmed
           system: refrigerant
@@ -135,6 +139,10 @@ plans:
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_living_ac }
+        - id: power_dining
+          status: confirmed
+          system: power
+          ref: { source: electrical, id: sock_dining_ac }
         - id: power_master
           status: confirmed
           system: power
@@ -176,6 +184,11 @@ plans:
           system: refrigerant
           position: { x: 4.0, y: 2.5, z: 3.9 }
           reason: "儿童房冷媒支路按南墙边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化。"
+        - id: branch_dining
+          status: inferred
+          system: refrigerant
+          position: { x: 8.0, y: 2.55, z: 4.3 }
+          reason: "沿用 MEP refrigerant-dining 显式协调节点 (8.00,2.55,4.30)；仅为边吊内冷媒支路示意，分歧器、管径、梁位、机身接口与实际施工走向待量房及厂家深化，施工未冻结。"
       terminals:
         - id: supply_living
           status: inferred
@@ -191,6 +204,18 @@ plans:
           mount_face: bottom
           length: 1.1
           reason: "客厅 1.1m 线形回风，采用铰接回风格栅兼检修口；滤网及内机经回风格栅维护，不另设独立检修面板；下回底装于北缘边吊，尺寸待厂家深化。"
+        - id: supply_dining
+          status: inferred
+          system: supply_air
+          position: { x: 8.0, y: 2.65, z: 5.21 }
+          mount_face: south
+          reason: "沿用 MEP supply-air-dining 显式风口端点 (8.00,2.65,5.21)，北缘边吊南缘侧送朝南的协调示意；风口规格、风量、静压及是否需避让餐桌待厂家风量深化，施工未冻结。"
+        - id: return_dining
+          status: inferred
+          system: return_air
+          position: { x: 7.55, y: 2.49, z: 4.75 }
+          mount_face: bottom
+          reason: "沿用 MEP return-air-dining 显式风口端点 (7.55,2.49,4.75)，北缘边吊底装回检一体的协调示意；格栅长度、回风箱、检修空间、风量及吊顶净高待厂家深化，施工未冻结。"
         - id: condensate_living_candidate
           kind: condensate_drain_candidate
           status: pending
@@ -300,6 +325,20 @@ plans:
           system: power
           from: power_living
           to: indoor_living
+        - id: refrigerant_dining_branch
+          status: inferred
+          system: refrigerant
+          from: bend_corridor
+          to: indoor_dining
+          via: [branch_dining]
+          constraint_refs: [ref_corridor_service_band]
+          reason: "对应 MEP refrigerant-dining：按已登记的 bend_corridor 至餐厅内机协调支路表达；坐标沿用既有 MEP 节点与 ceiling.ac_dining，机身接口、分歧、套管、梁位及实际配管待厂家图与量房复核，施工未冻结。"
+        - id: power_dining_route
+          status: inferred
+          system: power
+          from: power_dining
+          to: indoor_dining
+          reason: "对应 MEP strong-ac-dining 的既有电源协调路由；电源分组暂沿用 hvac_power_living，线径、保护器件与 P-SS 泵供电/控制要求待厂家正式配电图确认，施工未冻结。"
         - id: refrigerant_master_branch
           status: inferred
           system: refrigerant
@@ -352,6 +391,12 @@ plans:
           system: power
           from: power_child
           to: indoor_child
+        - id: condensate_dining_candidate_route
+          status: pending
+          system: condensate
+          from: indoor_dining
+          to: condensate_living_candidate
+          reason: "对应 MEP condensate-dining 显式路线坐标 (8.00,4.75)→(8.00,5.05)→(10.00,5.05)→(10.00,6.10)，暂并入客厅共用候选竖管。餐厅机为 P-SS 泵型，泵出口、扬程、允许接法、连续坡度、存水弯、立管接点与检修条件均待厂家/现场核实；此候选不证明重力排水成立、不代表施工，禁止默认接入现有地漏。"
         - id: condensate_living_candidate_route
           status: pending
           system: condensate
@@ -365,7 +410,7 @@ plans:
           from: indoor_master
           to: condensate_master_candidate
           constraint_refs: [ref_master_bath_local_beam_head]
-          reason: "仅作协调示意：从 indoor_master 冷凝水出口 (3.80,5.10) 经延伸空调盒进入通顶衣柜顶部服务带，沿 (4.10,4.62)→(2.925,4.62) 隐藏西行，柜内转至管心 x=2.50（w_mbath_east 西完成面 x≈2.54 外留约40mm，不穿墙），沿墙侧下行至 (2.50,3.10)，临近 w_mbath_south 向西短折至 x=2.30，并在 (2.30,2.86) 穿越该墙（避开 d_mbath 洞口 x[1.15,1.95] 与东端 T 墙角 x=2.60）；进入 ceiling_master_bath 后折至候选点上方 (2.00,2.50)，最后竖直下引到 (2.00,0.10,2.50)；管径、连续坡度、存水弯、立管接点和穿墙套管待现场及厂家深化确认，不代表施工。"
+          reason: "仅作协调示意：从 indoor_master 冷凝水出口 (3.70,5.10) 经延伸空调盒进入通顶衣柜顶部服务带，沿 (4.10,4.62)→(2.925,4.62) 隐藏西行，柜内转至管心 x=2.50（w_mbath_east 西完成面 x≈2.54 外留约40mm，不穿墙），沿墙侧下行至 (2.50,3.10)，临近 w_mbath_south 向西短折至 x=2.30，并在 (2.30,2.86) 穿越该墙（避开 d_mbath 洞口 x[1.15,1.95] 与东端 T 墙角 x=2.60）；进入 ceiling_master_bath 后折至候选点上方 (2.00,2.50)，最后竖直下引到 (2.00,0.10,2.50)；管径、连续坡度、存水弯、立管接点和穿墙套管待现场及厂家深化确认，不代表施工。"
         - id: condensate_study_candidate_route
           status: pending
           system: condensate
@@ -399,6 +444,18 @@ plans:
           from: indoor_living
           to: return_living
           reason: "回风箱尺寸待风量计算确认；回风格栅采用铰接式并兼作检修口，滤网及内机经回风格栅维护，不另设独立检修面板。"
+        - id: supply_dining_route
+          status: inferred
+          system: supply_air
+          from: indoor_dining
+          to: supply_dining
+          reason: "对应 MEP supply-air-dining 显式路径；风管尺寸、风量、静压及吊顶净高待厂家深化和现场复核，施工未冻结。"
+        - id: return_dining_route
+          status: inferred
+          system: return_air
+          from: indoor_dining
+          to: return_dining
+          reason: "对应 MEP return-air-dining 显式路径；回风箱尺寸、格栅长度、检修空间与风量待厂家深化，底装回风兼检修仅为协调方案，施工未冻结。"
         - id: supply_master_route
           status: inferred
           system: supply_air

@@ -1,0 +1,36 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: hvac-contract-mapping-20261005
+subject: 成交空调逐房型号回写
+status: implementation
+updated_at: '2026-10-05'
+facts:
+  confirmed:
+    - id: F-contract-count
+      statement: '合同报价附件列外机 MJV-200W-E01-LHIV 20kW、六台 /P-SS 双出风内机：71T2、42T2、56T2、28T2×3；合计 25.3kW，连接率 1.265。'
+      source_refs: [docs/design-iterations/hvac-resix-20261003/evidence/hvac-contract-attachment-p1-20261004.jpg]
+      confidence: high
+      impact: material
+    - id: F-user-room-map
+      statement: '业主 2026-10-05 明确确认 56T2 装主卧、42T2 装餐厅；结合现有六台与其余合同清单，客厅 71T2，父母房、儿童房、东南书房各 28T2。'
+      source_refs: [业主本次会话逐房映射, docs/design-iterations/hvac-resix-20261003/evidence/hvac-contract-attachment-p1-20261004.jpg]
+      confidence: high
+      impact: material
+    - id: F-master-axis
+      statement: '业主 2026-10-05 选择主卧内机中心 x=3.70，与既有风口轴 x=3.70 对齐；z=5.10 沿用既有机位。'
+      source_refs: [业主本次会话轴线选择, config/ceiling.yaml]
+      confidence: high
+      impact: material
+  site_pending:
+    - id: S-master-body
+      statement: '归档参数图为 /PX-TS 系列，56T2/PX-TS 宽 900mm；成交 /P-SS 主卧机身尺寸未获型号对应的安装图。按 900mm 参考宽度及已选 x=3.70 推算东端 x=4.15，仅为条件性预演。'
+      source_refs: [docs/design-iterations/hvac-contract-mapping-20261005/evidence/owner-parameter-chart-20261005.jpg, config/ceiling.yaml]
+      impact: material
+    - id: S-dining-body
+      statement: '业主第二张参数截图列 MN-42T2/P-SS 为 700×450×200mm，但合同转录为 MJV-42T2/P-SS，前缀不一致，且未找到可核对的厂家正式安装图；该尺寸只能作参考，成交机身/风口净空待核。'
+      source_refs: [docs/design-iterations/hvac-contract-mapping-20261005/evidence/owner-p-ss-table-20261005.png, docs/design-iterations/hvac-resix-20261003/evidence/hvac-contract-attachment-p1-20261004.jpg]
+      impact: material
+    - id: S-mep-interfaces
+      statement: '六台虽均带提升泵，但泵出口接法、冷凝水坡向与接入点、厂家内外机配电图均未确认，既有路线只作协调候选。'
+      source_refs: [config/mep-hvac-coordination.yaml, config/electrical-topology.yaml]
+      impact: material

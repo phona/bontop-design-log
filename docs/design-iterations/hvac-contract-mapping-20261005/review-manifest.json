@@ -1,0 +1,52 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "hvac-contract-mapping-20261005",
+  "subject": "成交空调逐房型号回写",
+  "state": "superseded_by_hvac-caliber-sync-20261005",
+  "state_note": "六台型号映射与主卧 x=3.70 轴线已由业主确认；/P-SS 外廓与厂家机电接口尚未冻结。坐标收口与旧口径清除由 hvac-caliber-sync-20261005 承接（DEC-2026-10-05-R2）。",
+  "validation": {
+    "note": "本迭代的验收记录见 hvac-caliber-sync-20261005/review-manifest.json"
+  },
+  "evidence": [
+    {
+      "id": "contract-p1",
+      "ready": true,
+      "path": "docs/design-iterations/hvac-resix-20261003/evidence/hvac-contract-attachment-p1-20261004.jpg"
+    },
+    {
+      "id": "user-room-map",
+      "ready": true,
+      "note": "2026-10-05 本次会话：56是主卧，42是餐厅；主卧中心 x=3.70"
+    },
+    {
+      "id": "owner-parameter-chart",
+      "ready": true,
+      "path": "docs/design-iterations/hvac-contract-mapping-20261005/evidence/owner-parameter-chart-20261005.jpg",
+      "sha256": "daf539e0b707ca88586bb0b4cd9c19f9357b9bbe0de2663ddf38cae7c52a4f95",
+      "note": "/PX-TS 系列、无 42T2；仅供不同系列参考，不证明成交 /P-SS 外廓"
+    },
+    {
+      "id": "owner-p-ss-table",
+      "ready": true,
+      "path": "docs/design-iterations/hvac-contract-mapping-20261005/evidence/owner-p-ss-table-20261005.png",
+      "sha256": "68ecb896e26919c576243c620bd07aba87c549858322a93e8b759b573097ee8e",
+      "note": "MN-42T2/P-SS 参考尺寸 700×450×200mm；合同转录为 MJV 前缀，尚未证实同型号"
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "not_started",
+    "blocking_issues": []
+  },
+  "functional_review": {
+    "verdict": "not_started",
+    "blocking_issues": []
+  },
+  "construction_review": {
+    "verdict": "site_pending",
+    "blocking_issues": [
+      "主卧56T2/P-SS与餐厅42T2/P-SS实际外廓及维修净空",
+      "厂家配电和泵后排水接法"
+    ]
+  }
+}

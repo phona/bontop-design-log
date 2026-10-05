@@ -1,0 +1,13 @@
+schema: interior-design-object-manifest/v3
+iteration_id: hvac-contract-mapping-20261005
+objects:
+  - {id: ac_living, owner: hvac, purchased_model: MJV-71T2/P-SS, interface_status: pending_manufacturer_drawings}
+  - {id: ac_dining, owner: hvac, purchased_model: MJV-42T2/P-SS, interface_status: pending_body_and_outlet_drawings}
+  - {id: ac_master, owner: hvac, purchased_model: MJV-56T2/P-SS, plan_center: [3.70, 5.10], interface_status: pending_p_ss_body_and_maintenance_review}
+  - {id: ac_parent, owner: hvac, purchased_model: MJV-28T2/P-SS, interface_status: pending_manufacturer_drawings}
+  - {id: ac_child, owner: hvac, purchased_model: MJV-28T2/P-SS, interface_status: pending_manufacturer_drawings}
+  - {id: ac_study, owner: hvac, purchased_model: MJV-28T2/P-SS, interface_status: pending_manufacturer_drawings}
+interfaces:
+  condensate: '六台带泵为成交事实；泵后路线/排水接点未定。'
+  power: '现有两组内机回路为暂案，厂家配电图未到。'
+  ceiling: '本轮仅更正型号身份，不自动移动吊顶/风口。'

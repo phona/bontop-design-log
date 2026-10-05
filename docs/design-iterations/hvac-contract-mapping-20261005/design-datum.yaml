@@ -1,0 +1,12 @@
+schema: interior-design-datum/v3
+iteration_id: hvac-contract-mapping-20261005
+anchor: ceiling_anchor
+datum:
+  - id: ac_master
+    plan: '业主选定中心 (3.70,5.10)；成交型号 56T2/P-SS。若仅按 /PX-TS 900mm 参考宽度，x 范围 [3.25,4.15]；实际 /P-SS 宽度待厂家安装图。'
+    elevation: '现有 height 2.85m；成交机身实际外廓/维修包络待厂家安装图。'
+    section: '风口轴 x=3.70、门头盒东界 x=4.20；参考机身下东侧盒内仅余 0.05m，实际安装净距及墙完成面均待核。'
+  - id: ac_dining
+    plan: '现有中心 (8.00,4.75)，本轮只回写 42T2/P-SS 型号；机身宽度待厂家安装图。'
+    elevation: '现有 height 2.85m；42T2 外廓待核。'
+    section: '现有 ceiling_living 边吊；业主第二图列 MN-42T2/P-SS 为 700×450×200mm，但合同型号前缀为 MJV，未核实同一机身，不将该参考包络升格为安装净空。'

@@ -18,11 +18,13 @@ test('hvac.yaml declares the complete A2 diagram against existing MEP facts', ()
   validateProjectHvacFacts(hvac, { electrical, ceiling });
   const plan = hvac.plans[0];
   assert.equal(plan.outdoor.id, 'vrf_outdoor_a2');
-  assert.equal(plan.diagram.anchors.filter((anchor) => anchor.ref?.source === 'ceiling').length, 5);
-  assert.equal(plan.diagram.anchors.filter((anchor) => anchor.ref?.source === 'electrical').length, 5);
-  const roomKeys = ['living', 'master', 'study', 'parent', 'child'];
-  // 2026-08-26 回检一体：客厅及各卧室的回风格栅兼作检修口，不另设 access 面板。
-  const mergedAccessRooms = new Set(['living', 'master', 'study', 'parent', 'child']);
+  assert.equal(plan.diagram.anchors.filter((anchor) => anchor.ref?.source === 'ceiling').length, 6);
+  assert.equal(plan.diagram.anchors.filter((anchor) => anchor.ref?.source === 'electrical').length, 6);
+  assert.equal(plan.diagram.anchors.find((anchor) => anchor.id === 'indoor_dining')?.ref?.id, 'ac_dining');
+  assert.equal(plan.diagram.anchors.find((anchor) => anchor.id === 'power_dining')?.ref?.id, 'sock_dining_ac');
+  const roomKeys = ['living', 'dining', 'master', 'study', 'parent', 'child'];
+  // 2026-08-26 回检一体：客厅、餐厅及各卧室的回风格栅兼作检修口，不另设 access 面板。
+  const mergedAccessRooms = new Set(['living', 'dining', 'master', 'study', 'parent', 'child']);
   for (const room of roomKeys) {
     const indoor = `indoor_${room}`;
     const mergedAccess = mergedAccessRooms.has(room);
@@ -56,6 +58,32 @@ test('hvac.yaml declares the complete A2 diagram against existing MEP facts', ()
     assert.equal(candidate?.render_coordination, true);
     assert.match(candidate?.id ?? '', /^condensate_.*_candidate$/u);
   }
+});
+
+test('purchased indoor mapping stays aligned with ceiling entities and the six-unit total', () => {
+  const load = hvac.plans[0].load_design;
+  assert.ok(load);
+  const expected = [
+    { ceilingId: 'ac_living', room: 'living_dining', model: '71T2/P-SS', kw: 7.1 },
+    { ceilingId: 'ac_dining', room: 'living_dining', model: '42T2/P-SS', kw: 4.2 },
+    { ceilingId: 'ac_master', room: 'master_bedroom', model: '56T2/P-SS', kw: 5.6 },
+    { ceilingId: 'ac_parent', room: 'study', model: '28T2/P-SS', kw: 2.8 },
+    { ceilingId: 'ac_child', room: 'bedroom_nw', model: '28T2/P-SS', kw: 2.8 },
+    { ceilingId: 'ac_study', room: 'bedroom_se', model: '28T2/P-SS', kw: 2.8 },
+  ];
+  assert.equal(load.rooms.length, expected.length);
+  for (const [index, item] of expected.entries()) {
+    const room: { room: string; indoor: string } = load.rooms[index]!;
+    const entity = ceiling.find((zone) => zone.id === item.ceilingId);
+    assert.equal(room.room, item.room);
+    assert.match(room.indoor, new RegExp(item.model.replace('/', '\\/')));
+    assert.match(room.indoor, new RegExp(`${item.kw.toFixed(1)}kW`));
+    assert.ok(entity && entity.type === 'ac_indoor');
+    assert.match(entity.model ?? '', new RegExp(item.model.replace('/', '\\/')));
+  }
+  assert.equal(expected.reduce((sum, item) => sum + item.kw, 0), load.indoor_nominal_kw_total);
+  assert.ok(Math.abs(load.indoor_nominal_kw_total / load.outdoor_nominal_kw - 1.265) < 1e-9);
+  assert.equal(ceiling.find((zone) => zone.id === 'ac_master')?.x, 3.70);
 });
 
 test('HVAC schema rejects invalid status, missing reasons, non-finite positions, and dangling routes', () => {
