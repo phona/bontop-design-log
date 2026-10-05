@@ -1559,3 +1559,31 @@
 - **口径债登记（未收口，禁止默认）**：`ordinary_power_study`（书房电脑专用回路，DEC-2026-10-03-R1）的物理管线现在通向客房，电脑已随功能迁到书房——要么改道，要么显式修订该决议口径；已写入 `config/electrical-topology.yaml` 注释。
 - **测试与验证**：`study-seasonal-storage.test.ts` 作废，新增 `tests/server/parent-room-study-swap.test.ts`（6 项）；`budget-calculator`/`cli-glb-export`/`spatial-validation` 三处断言随新状态改写；`scripts/generate-dressing-map.ts` 恢复 `furnishings 共 N 件` 对账行（此前丢失导致 `verify:facts` 红灯）。`npm run verify:all`、`test:server`（608/608）、`test:app`（470/470）、`typecheck` 全绿。
 - **待决（仍 open）**：书房储物内容/柜体形式与预算、书房东墙与客厅 65" 电视挂装边界、客房排布升级（方案 A 依赖凸窗带实测）、衣柜 final 选型、健身器材是否彻底取消、命名口径映射表、`facts.yaml` 其余跨文件收口。
+
+### DEC-2026-10-05-R10 v0 审查整改批次 A：衣柜预算 roomOverride 修正与防回归
+
+- **日期**：2026-10-05。审查报告 `docs/design-iterations/parent-room-study-swap-20261005/review-and-rectification.md`。
+- **问题**：功能互换后 `data/current-scheme.json` 的衣柜 roomOverride 未随家具走——客房 `wardrobe_180` 被按 `study_seasonal_wardrobe_170_01`（¥2,600）计、书房 1.7m 季节后台柜被按 topic 默认 `wardrobe_240_01`（¥4,200）计。净额 −1,000 恰好抵消，逐房价格与实物不符。
+- **修正**：roomOverrides 改为 `study → study_seasonal_wardrobe_170_01`、`bedroom_se → wardrobe_180_01`（master_bedroom 不变）。实算：客房 ¥3,200、书房 ¥2,600；wardrobe+bed+mattress 子项 22,100 → 23,500。
+- **防回归**：`tests/server/budget-calculator.test.ts` 新增“房间 → 实际放置柜类 → 应选 option”三元组锁定测试；此后任何功能互换不同步该表即红灯。原“study/bedroom_nw 保持 default”断言随本轮状态改写。
+- **未擅改的存量口径缺陷（待业主裁决）**：①`bed`/`mattress` topic 不按床宽计价，客房 1.5m 床/垫按 1.8m 计（库有 `bed_150_01` ¥2,000、无 1.5m 床垫 SKU）；②`bedroom_nw` 的 `wardrobe_180` 被按 `wardrobe_240_01` ¥4,200 计（`wardrobe_180_01` 为 ¥3,200）。
+- **并发事项（非本轮，未代改）**：工作区内另有未提交的客厅/餐厅冷凝水候选改线（`condensate-living`/`condensate-dining`），使 `c.mep_layer_below_drop_bottom` 实算 149→153，`verify:facts` 与 `mep-hvac-lint.test.ts` 因此红灯；`verify:mep` 本体 Exit 0 无 error。按 facts 契约不代改基数、不碰给排水/MEP 文件，由该工作线自行收口 `docs/pending-site-data.md #41`。
+- **下一步**：批次 B（客房床头组，前置 B5 电脑回路决策 + 量房）、批次 C（起夜预留）、批次 D（浏览器证据）。
+
+### DEC-2026-10-05-R11 客餐厅冷凝水改线：候选竖管移出客餐厅平顶区（登记数 149→153 收口）
+
+- **日期**：2026-10-05。提案线程：业主 3D 目视发现 MEP 协调视图有冷凝水管线横穿餐厅/客厅平顶（无吊顶）区，要求先设计后施工。
+- **问题**：`condensate-living` / `condensate-dining` 原路径经北缘边吊南缘 (z=5.2) 出吊顶后，沿 x=10.0 穿越客餐厅平顶（无吊顶）至 (10.0,6.1) 竖直下引——竖管段位于无吊顶区，施工只能明装/管窿，且餐厅按设计不做边吊。
+- **可选方案**：①原位保留+包管管窿（否决——与"餐厅保持平顶"的既定方案冲突，平顶面上明管破坏交付效果）；②餐厅补 L 形吊顶专门走管（否决——外机平台实际位于西北角、冷媒主管已全程借道厨房铝扣板+北缘边吊，冷凝水无需新增吊顶）；③改走吊顶网络：北缘边吊→走廊吊顶→客卫开放洗漱区（选定）。
+- **选定方案**：③。客厅内机 (10.30,4.75) 与餐厅内机 (8.00,4.75) 的接水盘均在客厅北缘边吊内 1% 坡正交西行（z=4.6 轴线，与冷媒主管同轴），经 w_liv_west 已删除的开放边界（走廊与客厅贯通、无墙）入走廊吊顶，正交北折进客卫开放洗漱区吊顶（z=4.3 开放边无墙，与 strong-light-gbath 同口径），共用候选竖管落 `ceiling_guest_bath` 范围 (6.70,3.70)，竖直下引至候选点。全程在吊顶网络空腔内，不穿梁、不横跨客餐厅平顶、不新增吊顶分区。候选点由 hvac.yaml `condensate_living_candidate` 同步移至 (6.70,0.10,3.70)。
+- **依据**：`model-geometry.yaml` w_liv_west 删除注释（开放贯通）；客卫开放洗漱区边界注释（v_gbath_west_s/v_gbath_east_s "不纳入 guest_bath room boundary"）；`strong-light-gbath` 既有走廊→洗漱区无墙通行先例；儿童房冷凝水 `condensate-child` 已用客卫候选点的先例。冷媒主管 `refrigerant-trunk` 本来就全程在厨房铝扣板+北缘边吊内，本次不改动。
+- **对契约的影响**：两条路线各新增走廊吊顶/客卫吊顶 2 个分区内 hit，`c.mep_layer_below_drop_bottom` 实算 149→153（148 处为系统性分层标高问题，+4/+5 处为本改线与给排水 v1 的路线新增；本次 +4：两条路线各 +2）。分区内 below 不等于外露——竖直下引段已收进客卫吊顶范围。登记数、guidance §0 prose、pending-site-data #41 同步更新为 153；**#41 的系统性分层标高裁定（升入降板空腔 2.50–3.00m 或调整降板）仍然开放**，本次不改任何分层标高。
+- **验证**：`verify:mep` Exit 0、0 error（177 个 warning，基线 173+本次 +4）；`verify:facts` 计数对账恢复；`test:server`/`typecheck` 见执行记录。
+- **遗留**：P-SS 泵出口/扬程/允许接法、连续坡度、存水弯、立管接点与接入方式仍 pending（不默认接入现有地漏）；`refrigerant-study` 的 z[5.2,5.55] 无吊顶段（东侧墙面包管）为已登记既有项，本轮不动。
+
+### DEC-2026-10-05-R12 卫浴洁具目标下调归档（花洒/客卫浴室柜）
+
+- **日期**：2026-10-05。
+- **下调**：花洒 2,600 → 2,000（千元级恒温档，京造/九牧/恒洁同档待选型，供水侧与水伺服热水器兼容）；浴室柜 6,000 → 5,000（主卫 3,000 保留设计——注意主卫为通长镜面非镜柜；客卫 2,000 定制/非标，含云鲸 J6 基站仓深化，约 500mm 仓宽为假设值须实机会审）。PKG-100 need 18,698 → 16,998（超父包 8,998），全局 pending gap 相应 −1,700；业主侧"1.8 万封顶含尾巴"为讨论口径，未定标为 cap。
+- **登记不改状态**：马桶业主侧出现具体型号方向 ZQ6650-SA-CJM305（2,799/台，后缀含坑距 305 承诺）——两卫坑距 305/400 待核（pending-site-data #31）未解前不得定死，与九牧 11383-2-1/31KB-1、箭牌 AE1182U 的同口径比价未跑；玻璃屏 8mm 钢化+3C、约 900/台 口径入描述，ownership_pending 不变。
+- **过时口径修正（外部拆分 vs 现行台账）**：外部卫浴拆分沿用捆绑单时代浴霸 3,998 与 J6 3,200——现行权威为 R3 浴霸 S2-Air×2 目标 1,500、J6 子预算 3,000；"两卫完整可用"口径 ≈21,500 而非 24,200（洁具 17,000 + 浴霸 1,500 + J6 3,000）。
