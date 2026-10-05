@@ -11,6 +11,7 @@ import { buildCurtainRenderProjection, type CurtainOverlayLike } from './curtain
 import { getTrackLightConfig, resolveTrackLightHeads } from './render/TrackLightLayout.js';
 
 const LIGHT_TYPES = new Set<ElectricalPoint['type']>([
+  'night_light',
   'ceiling_light',
   'pendant',
   'dome',

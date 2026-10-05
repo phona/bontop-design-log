@@ -5,7 +5,7 @@ import type {
   ResolvedLayout,
 } from './types.js';
 
-const LIGHT_TYPES = new Set(['ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light']);
+const LIGHT_TYPES = new Set(['ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light', 'night_light']);
 const PANEL_TYPES = new Set(['strong_panel', 'weak_panel']);
 const ORDINARY_POWER_TYPES = new Set(['socket', 'usb', 'floor_socket']);
 const POWERABLE_TYPES = new Set([...ORDINARY_POWER_TYPES, ...LIGHT_TYPES]);

@@ -94,3 +94,51 @@
   basis: "客卫平板灯贴卫浴吊顶完成面下 25cm，用于表现灯体厚度与出光面"
   reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
   applies_to: [web, blender]
+
+# ── 2026-10-05 起夜路径 night_light（DEC-2026-10-05-R14）──
+# electrical.height 即安装完成面（0.25–0.40m），anchorY_offset 一律 0，不重复书写高度绝对值。
+- id: night_guest_bed_side
+  anchorY_offset: 0
+  basis: "床沿下位灯贴安装完成面（0.30m）表现低位引导光，不做灯体下沉"
+  reason: "起夜路径 NP-1：床西侧（上下床侧）地面引导，verified against R14 候选排布。"
+  applies_to: [web, blender]
+- id: night_guest_head
+  anchorY_offset: 0
+  basis: "床头小夜灯贴安装完成面（0.35m）低位安装，触摸+感应双模"
+  reason: "起夜路径 NP-2：床头正上方低位，不干扰同房者（候选未冻结，剪力墙挂装条件 site_pending）。"
+  applies_to: [web, blender]
+- id: night_guest_door
+  anchorY_offset: 0
+  basis: "门外灯贴安装完成面（0.30m），出门第一步即亮"
+  reason: "起夜路径 NP-3：挂在 d_bese 门洞北侧客厅侧墙面。"
+  applies_to: [web, blender]
+- id: night_living_north
+  anchorY_offset: 0
+  basis: "客厅北段灯贴安装完成面（0.30m）"
+  reason: "起夜路径 NP-4a：w_liv_east 客厅侧，补客房门与走廊之间北线引导。"
+  applies_to: [web, blender]
+- id: night_living_mid
+  anchorY_offset: 0
+  basis: "客厅中段落地立柱灯贴安装完成面（0.30m）"
+  reason: "起夜路径 NP-4b：中段约 4m 开敞区无墙，暂按落地立柱候选；取电方式 site_pending。"
+  applies_to: [web, blender]
+- id: night_corridor
+  anchorY_offset: 0
+  basis: "走廊低位灯贴安装完成面（0.30m），与 2.8m 日常下照分工"
+  reason: "起夜路径 NP-5：w_st_north 走廊侧；light_corridor_1 日常下照起夜刺眼，仅作兜底。"
+  applies_to: [web, blender]
+- id: night_gbath_door
+  anchorY_offset: 0
+  basis: "客卫门口灯贴安装完成面（0.30m）"
+  reason: "起夜路径 NP-6：d_gbath 门洞以南开放洗漱区，门前最后一米。"
+  applies_to: [web, blender]
+- id: night_gbath_vanity
+  anchorY_offset: 0
+  basis: "洗漱区灯贴安装完成面（0.35m），洗手台前停留位"
+  reason: "起夜路径 NP-7：避让台盆下扫地机基站（不同高不同位，量房复核）。"
+  applies_to: [web, blender]
+- id: night_gbath_inner
+  anchorY_offset: 0
+  basis: "内卫灯贴安装完成面（0.30m），马桶前停留位，存在感应"
+  reason: "起夜路径 NP-8：人站着不动也亮。"
+  applies_to: [web, blender]

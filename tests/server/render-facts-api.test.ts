@@ -124,9 +124,9 @@ describe('render facts API', () => {
     assert.equal(response.body.controls.length, 11);
     assert.equal(response.body.panels[0].id, 'panel_strong');
     assert.equal(response.body.panels[0].source_point_id, 'panel_strong_entry_left');
-    assert.equal(response.body.lint.counts.errors, 98); // DEC-2026-10-04-R2：回路成员 67→68，sock_vrf_outdoor_a2 在 fixture 点位集中未知各计 1 error；DEC-2026-10-05-R3：浴霸点位为改名不改成员总数，fixture 同步后已知
-    assert.equal(response.body.lint.counts.warnings, 24); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2 计入 dedicated_parameters_pending（7→8）；DEC-2026-10-05-R3：浴霸一路拆两路（8→9）；DEC-2026-10-05-R4：+微蒸烤专用回路 pending_parameters（+1）
-    assert.equal(response.body.lint.counts.coveredPoints, 68); // DEC-2026-10-04-R2：+sock_vrf_outdoor_a2；DEC-2026-10-05-R3：点位改名不增减成员数
+    assert.equal(response.body.lint.counts.errors, 110); // 该用例用 1 点位 fixture，拓扑每个未知成员各计 1 error；2026-10-05 R14 起夜/床头点位入回路后成员总数 98→110 // DEC-2026-10-04-R2：回路成员 67→68，sock_vrf_outdoor_a2 在 fixture 点位集中未知各计 1 error；DEC-2026-10-05-R3：浴霸点位为改名不改成员总数，fixture 同步后已知
+    assert.equal(response.body.lint.counts.warnings, 24); // 2026-10-05 R14：+switch_guest_bed 未覆盖（+1），但 4 个起夜灯改按 source_circuit_id=entry_base 声明后不再有 declared_circuit_uncovered（-4），净 -3 // DEC-2026-10-04-R2：+hvac_power_outdoor_a2 计入 dedicated_parameters_pending（7→8）；DEC-2026-10-05-R3：浴霸一路拆两路（8→9）；DEC-2026-10-05-R4：+微蒸烤专用回路 pending_parameters（+1）
+    assert.equal(response.body.lint.counts.coveredPoints, 79); // 2026-10-05 R14：+9 night_light +2 床头插座 // DEC-2026-10-04-R2：+sock_vrf_outdoor_a2；DEC-2026-10-05-R3：点位改名不增减成员数
     assert.equal(response.body.circuits.filter((circuit: { purpose: string }) => circuit.purpose === 'ordinary_power').length, 7); // DEC-2026-10-03-R1：卧室缩为 master/parent_child/study 三路
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'control_target_missing'), false);
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'electrical_parameters_pending'), false);

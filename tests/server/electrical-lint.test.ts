@@ -15,9 +15,9 @@ test('real electrical topology parses and lints', () => {
   const result = lintElectricalTopology(topology, points);
   assert.equal(topology.circuits.length, 21); // DEC-2026-10-03-R1：25 路合并至 19 路；DEC-2026-10-04-R2：+外机专用回路；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）
   assert.equal(topology.controls.length, 11);
-  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 15);
-  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 39); // DEC-2026-10-03-R1：+sock_living_tv_high +sock_kitchen_counter_east
-  assert.equal(result.counts.coveredPoints, 68); // DEC-2026-10-04-R2：+sock_vrf_outdoor_a2（外机专用取电）
+  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 24); // 2026-10-05 R14 起夜路径 9 个 night_light 并入照明回路（15→24），不开新回路
+  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 41); // 2026-10-05 R14 客房床头插座 ×2 并入 ordinary_power_parent_child（39→41） // DEC-2026-10-03-R1：+sock_living_tv_high +sock_kitchen_counter_east
+  assert.equal(result.counts.coveredPoints, 79); // 2026-10-05 R14：+9 night_light +2 床头插座（68→79）；床头双控 switch_guest_bed 非负载点，仍计未覆盖 // DEC-2026-10-04-R2：+sock_vrf_outdoor_a2（外机专用取电）
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.length > 0);
 });
@@ -72,7 +72,7 @@ test('lint keeps historical uncovered points as warnings and maps circuit facts'
   assert.equal(result.warnings.filter((i) => i.code === 'declared_circuit_uncovered').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered'));
   assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 0);
-  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 28); // 外机点位已入回路，不增未覆盖 // DEC-2026-10-04-R2：+ac_panel_dining（餐区第 6 台线控器）27→28
+  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 29); // 2026-10-05 R14：+switch_guest_bed（床头双控开关非负载点，28→29） // 外机点位已入回路，不增未覆盖 // DEC-2026-10-04-R2：+ac_panel_dining（餐区第 6 台线控器）27→28
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'switch_master_bed_l'));
 });
 

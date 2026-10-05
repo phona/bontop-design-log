@@ -37,7 +37,7 @@ import { resolveFurnitureProfile } from './furniture-profile.js';
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const EPS = 0.001;
 const GLASS_THICKNESS = 0.024;
-const LIGHT_TYPES = new Set(['wall_lamp', 'ceiling_light', 'pendant', 'dome', 'downlight', 'track_light', 'led_strip']);
+const LIGHT_TYPES = new Set(['wall_lamp', 'ceiling_light', 'pendant', 'dome', 'downlight', 'track_light', 'led_strip', 'night_light']);
 
 interface SpatialConfig {
   version: number;

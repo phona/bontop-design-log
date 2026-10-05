@@ -782,7 +782,10 @@ export type ElectricalPointType =
   | 'wall_lamp'
   | 'downlight'
   | 'led_strip'
-  | 'track_light';
+  | 'track_light'
+  // 2026-10-05 起夜路径低位引导灯/床头小夜灯（DEC-2026-10-05-R14）：安装高度 0.25–0.40m，
+  // 由 verify 规则强制区间；不复用 ceiling_light/downlight，避免污染天花净空校验。
+  | 'night_light';
 
 export type ElectricalPointStatus = 'measured' | 'likely' | 'inferred' | 'pending';
 export type WallSide = 'north' | 'south' | 'east' | 'west';

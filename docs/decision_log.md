@@ -1597,3 +1597,15 @@
 - **对账影响（必须登记）**：改道使契约 `c.mep_layer_below_drop_bottom` 的实算冲突 **+1**（本路线 4 处分区内 hit，其中走廊/边吊段 2.45m 低于 2.50m 完成面，与同穿孔带三条既有路线同一类别）。该基数由并发工作线的客餐厅冷凝水改线从 149→153 先行登记，本决议后再由机器实算 154；`docs/mep-construction-guidance.md` 与 `config/facts.yaml` 的登记数 154 与实算一致（`verify:facts` 绿）。归口裁定项仍是 `docs/pending-site-data.md #41`（分层标高升入降板空腔或调整降板），本决议不替代该裁定。
 - **保留未动**：客房床头电位高度缺陷（P0-2：`sock_study_extra` h=0.3 不可当床头电位）与床头双侧点位/双控仍属批次 B，待量房墙体数据后申报；`sock_parent_bed_l` 孤儿位语义待量房定。
 - **验证**：`verify:mep` Exit 0 / `verify:electrical` 0 error / `verify:facts` OK / `test:server` 608/609（唯一红为并发未提交项的 mep 基数断言，已由对端同步至 154）/ `typecheck` / `test:app` 470/470。
+
+### DEC-2026-10-05-R14 起夜路径照明 + 客房床头组落地（B-2，全部 candidate_not_frozen）
+
+- **日期**：2026-10-05。依据 `docs/design-iterations/parent-room-study-swap-20261005/electrical-recommendation-20261005.md`（业主勾选"都做"）。
+- **R4 新增 `night_light` 点位类型**：电气枚举（schema + types + 3 处 LIGHT_TYPES）新增 `night_light`；`LightingFixtureBuilder` 增加低位灯渲染件（0.12×0.05×0.08 灯体 + 下向光斑，贴墙时按 wall_side 内推 0.06m，落地立柱原位）；不复用 `ceiling_light`/`downlight`，避免把 0.3m 灯拿去和 2.5m 吊顶比净空。
+- **R1 起夜灯并入既有照明回路（不开新回路）**：9 个 night_light——客房内 2（`night_guest_bed_side`/`night_guest_head`）与客卫 3（`night_gbath_door`/`night_gbath_vanity`/`night_gbath_inner`）并入 `lighting_bedrooms_bath`（≤0.8→≤0.9kW）；门外/客厅 3（`night_guest_door`/`night_living_north`/`night_living_mid`）与走廊口 1（`night_corridor`）并入 `lighting_entry_base`（≤0.3→≤0.4kW）。**回路总数仍按 22 收口（+微蒸烤），不起夜 23**。修订标准 v1 的"独立成路"硬规则为"优先并入既有照明回路；仅当明确要求故障隔离时才独立成路"。
+- **R2 客房床头组**：`sock_guest_bed_l/r` @(16.40, 7.30/7.90) h=0.7（挂 `w_east_upper` 卧室侧）、`switch_guest_bed` @(16.40,7.60) h=1.3，并入 `ordinary_power_parent_child`（≈1.2→≈1.3kW）；`control_study_light` 由单控扩为"门+床头"双控。**坐标系纠正**：v0 排布的床床头在**东外墙**（bed_150 r270），不是北墙——建议稿初版把床头电位写在 `w_be_north` (14.60/15.60, 5.55) 是错的，实施时按实际床头位改到东墙；`sock_study_extra`（h=0.3，北墙低位）明确降级为备用，不作床头电位。
+- **R3 书房三个床头遗物保留改语义**：`sock_parent_bed_l`（离桌 2.6m 改"西墙备用/未来第二工位"）、`switch_parent_bed`（改"西墙双控备用联"）、`ac_panel_parent`（改"书房墙面线控器"，门垛仅 0.15m 容一板，位移待量房）。未删点位、未动 `fact.electrical_points_count` 对账以外的东西。
+- **点位与账目**：电气点位 98 → 110；照明回路成员 15 → 24、普通插座成员 39 → 41、coveredPoints 68 → 79；`config/electrical-topology.yaml` 与 `docs/mep-construction-guidance.md` 第 0 节规模表同步 110。
+- **site_pending（未假装已定）**：`w_east_upper`/`w_be_north` 均为剪力墙 inferred，床头插座/双控/小夜灯的开孔与挂装条件待量房探测；`night_living_mid`（客厅中段约 4m 开敞区）取电方式未定（地插/家具灯带/就近插座），若不做则 NP-3 与 NP-5 暗区超出标准 §4-1 的 3m 上限；走廊条带 x[4.20,7.20] z[4.30,5.55] 在 model-geometry 无 room 归属，`night_corridor` 只能落在客厅侧走廊口。
+- **验证**：`verify:all` / `test:server` 609/609 / `typecheck` / `test:app` 470/470 全绿；`verify:spatial` 0 error（night_light 高度区间由空间校验的外观检查覆盖，runtime 盒体在房间竖向包络内）。
+- **下一步**：批次 C 剩余（起夜灯选型与采购归二期）、批次 D 浏览器证据、B-2 中床头电位最终坐标待量房后从候选转为确认。
