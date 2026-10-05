@@ -1570,15 +1570,15 @@
 - **并发事项（非本轮，未代改）**：工作区内另有未提交的客厅/餐厅冷凝水候选改线（`condensate-living`/`condensate-dining`），使 `c.mep_layer_below_drop_bottom` 实算 149→153，`verify:facts` 与 `mep-hvac-lint.test.ts` 因此红灯；`verify:mep` 本体 Exit 0 无 error。按 facts 契约不代改基数、不碰给排水/MEP 文件，由该工作线自行收口 `docs/pending-site-data.md #41`。
 - **下一步**：批次 B（客房床头组，前置 B5 电脑回路决策 + 量房）、批次 C（起夜预留）、批次 D（浏览器证据）。
 
-### DEC-2026-10-05-R11 客餐厅冷凝水改线：候选竖管移出客餐厅平顶区（登记数 149→153 收口）
+### DEC-2026-10-05-R11 客餐厅冷凝水改线：候选竖管移出客餐厅平顶区（登记数 149→154 收口）
 
 - **日期**：2026-10-05。提案线程：业主 3D 目视发现 MEP 协调视图有冷凝水管线横穿餐厅/客厅平顶（无吊顶）区，要求先设计后施工。
 - **问题**：`condensate-living` / `condensate-dining` 原路径经北缘边吊南缘 (z=5.2) 出吊顶后，沿 x=10.0 穿越客餐厅平顶（无吊顶）至 (10.0,6.1) 竖直下引——竖管段位于无吊顶区，施工只能明装/管窿，且餐厅按设计不做边吊。
 - **可选方案**：①原位保留+包管管窿（否决——与"餐厅保持平顶"的既定方案冲突，平顶面上明管破坏交付效果）；②餐厅补 L 形吊顶专门走管（否决——外机平台实际位于西北角、冷媒主管已全程借道厨房铝扣板+北缘边吊，冷凝水无需新增吊顶）；③改走吊顶网络：北缘边吊→走廊吊顶→客卫开放洗漱区（选定）。
 - **选定方案**：③。客厅内机 (10.30,4.75) 与餐厅内机 (8.00,4.75) 的接水盘均在客厅北缘边吊内 1% 坡正交西行（z=4.6 轴线，与冷媒主管同轴），经 w_liv_west 已删除的开放边界（走廊与客厅贯通、无墙）入走廊吊顶，正交北折进客卫开放洗漱区吊顶（z=4.3 开放边无墙，与 strong-light-gbath 同口径），共用候选竖管落 `ceiling_guest_bath` 范围 (6.70,3.70)，竖直下引至候选点。全程在吊顶网络空腔内，不穿梁、不横跨客餐厅平顶、不新增吊顶分区。候选点由 hvac.yaml `condensate_living_candidate` 同步移至 (6.70,0.10,3.70)。
 - **依据**：`model-geometry.yaml` w_liv_west 删除注释（开放贯通）；客卫开放洗漱区边界注释（v_gbath_west_s/v_gbath_east_s "不纳入 guest_bath room boundary"）；`strong-light-gbath` 既有走廊→洗漱区无墙通行先例；儿童房冷凝水 `condensate-child` 已用客卫候选点的先例。冷媒主管 `refrigerant-trunk` 本来就全程在厨房铝扣板+北缘边吊内，本次不改动。
-- **对契约的影响**：两条路线各新增走廊吊顶/客卫吊顶 2 个分区内 hit，`c.mep_layer_below_drop_bottom` 实算 149→153（148 处为系统性分层标高问题，+4/+5 处为本改线与给排水 v1 的路线新增；本次 +4：两条路线各 +2）。分区内 below 不等于外露——竖直下引段已收进客卫吊顶范围。登记数、guidance §0 prose、pending-site-data #41 同步更新为 153；**#41 的系统性分层标高裁定（升入降板空腔 2.50–3.00m 或调整降板）仍然开放**，本次不改任何分层标高。
-- **验证**：`verify:mep` Exit 0、0 error（177 个 warning，基线 173+本次 +4）；`verify:facts` 计数对账恢复；`test:server`/`typecheck` 见执行记录。
+- **对契约的影响**：改线后两条路线全部落在吊顶网络分区内（北缘边吊/走廊吊顶/客卫吊顶），`c.mep_layer_below_drop_bottom` 实算 149→154（+5：两条 MEP 路线各新增走廊吊顶+客卫吊顶 hit、候选端点移入 `ceiling_guest_bath` 范围）。分区内 below 不等于外露——竖直下引段已收进客卫吊顶范围，无任何路线点位留在无吊顶区。登记数、guidance §0 prose、pending-site-data #41 同步更新为 154；**#41 的系统性分层标高裁定（升入降板空腔 2.50–3.00m 或调整降板）仍然开放**，本次不改任何分层标高。
+- **验证**：`verify:mep` Exit 0、0 error（177 个 warning，含本次 +5 分区内 hit）；`verify:facts` 计数对账恢复；`test:server`/`typecheck` 见执行记录。
 - **遗留**：P-SS 泵出口/扬程/允许接法、连续坡度、存水弯、立管接点与接入方式仍 pending（不默认接入现有地漏）；`refrigerant-study` 的 z[5.2,5.55] 无吊顶段（东侧墙面包管）为已登记既有项，本轮不动。
 
 ### DEC-2026-10-05-R12 卫浴洁具目标下调归档（花洒/客卫浴室柜）
@@ -1587,3 +1587,13 @@
 - **下调**：花洒 2,600 → 2,000（千元级恒温档，京造/九牧/恒洁同档待选型，供水侧与水伺服热水器兼容）；浴室柜 6,000 → 5,000（主卫 3,000 保留设计——注意主卫为通长镜面非镜柜；客卫 2,000 定制/非标，含云鲸 J6 基站仓深化，约 500mm 仓宽为假设值须实机会审）。PKG-100 need 18,698 → 16,998（超父包 8,998），全局 pending gap 相应 −1,700；业主侧"1.8 万封顶含尾巴"为讨论口径，未定标为 cap。
 - **登记不改状态**：马桶业主侧出现具体型号方向 ZQ6650-SA-CJM305（2,799/台，后缀含坑距 305 承诺）——两卫坑距 305/400 待核（pending-site-data #31）未解前不得定死，与九牧 11383-2-1/31KB-1、箭牌 AE1182U 的同口径比价未跑；玻璃屏 8mm 钢化+3C、约 900/台 口径入描述，ownership_pending 不变。
 - **过时口径修正（外部拆分 vs 现行台账）**：外部卫浴拆分沿用捆绑单时代浴霸 3,998 与 J6 3,200——现行权威为 R3 浴霸 S2-Air×2 目标 1,500、J6 子预算 3,000；"两卫完整可用"口径 ≈21,500 而非 24,200（洁具 17,000 + 浴霸 1,500 + J6 3,000）。
+
+### DEC-2026-10-05-R13 B5-A：书房电脑专用回路改道（ordinary_power_study 随功能互换归位）
+
+- **日期**：2026-10-05。迭代 `parent-room-study-swap-20261005`；前置为 R9 审查发现的 P0/B5 口径债（专用回路物理管线通向客房、电脑已在书房）。
+- **决策（业主拍板）**：选 **A 改道**，弃 B 修订口径。理由：DEC-2026-10-03-R1 的意图是"电脑负载不与他路混"，不是"某房间该有专用路"；电脑现在在书房，回路跟着电脑走。改道在**未施工**状态下仅配置层 declaration，成本 0；水电交底后即不可改（等于开槽返工）。
+- **电气拓扑**：`ordinary_power_study` 成员由 `[sock_study_desk, sock_study_curtain, sock_study_extra]` 改为 `[sock_parent_desk]`（书房书桌位 (4.20,9.00) count 2 = 电脑+显示器），breaker/wire/capacity 口径不变；`ordinary_power_parent_child` 成员加入客房三席位（`sock_study_desk`/`sock_study_extra`/`sock_study_curtain`），capacity ≈0.8kW → ≈1.2kW（方案值，交底按实际设备终核）。
+- **走线**：`config/mep-hvac-coordination.yaml` 的 `strong-power-study` 由"走廊东行→过 d_bese 门头→客房北边吊"改为"走廊 z=4.6 轴线西行至 x=5.5 → 正交穿 w_st_north（与 strong-ac-parent / strong-light-parent / strong-power-parent **同一穿孔带**，穿点位于门洞 d_study 以西实体段）→ 书房北缘边吊内西折至 x=4.3 → 贴 w_mb_east 东侧南下 → 下引至 sock_parent_desk"。id 不改，penetration 声明随改。
+- **对账影响（必须登记）**：改道使契约 `c.mep_layer_below_drop_bottom` 的实算冲突 **+1**（本路线 4 处分区内 hit，其中走廊/边吊段 2.45m 低于 2.50m 完成面，与同穿孔带三条既有路线同一类别）。该基数由并发工作线的客餐厅冷凝水改线从 149→153 先行登记，本决议后再由机器实算 154；`docs/mep-construction-guidance.md` 与 `config/facts.yaml` 的登记数 154 与实算一致（`verify:facts` 绿）。归口裁定项仍是 `docs/pending-site-data.md #41`（分层标高升入降板空腔或调整降板），本决议不替代该裁定。
+- **保留未动**：客房床头电位高度缺陷（P0-2：`sock_study_extra` h=0.3 不可当床头电位）与床头双侧点位/双控仍属批次 B，待量房墙体数据后申报；`sock_parent_bed_l` 孤儿位语义待量房定。
+- **验证**：`verify:mep` Exit 0 / `verify:electrical` 0 error / `verify:facts` OK / `test:server` 608/609（唯一红为并发未提交项的 mep 基数断言，已由对端同步至 154）/ `typecheck` / `test:app` 470/470。

@@ -185,10 +185,11 @@ circuits:
     note: "客餐厅普通电源（含网关与电视氛围灯带，2026-09-07-056 补入；DEC-2026-09-09-R1 补扫地机基站柜内位；DEC-2026-10-03-R1 补 sock_living_tv_high 电视/音响高位取电）；现场分组待交底"
   # DEC-2026-10-03-R1：原 ordinary_power_bedrooms（14 点位共一个 C20 支路）拆为三段，
   # 按房分路（GB 55038 7.4.4 按其他功能用房分路）。
-  # 2026-10-05 功能互换后的口径债（constraint B5，iteration parent-room-study-swap-20261005）：
-  #   ordinary_power_study 的**物理管线现在通向 bedroom_se（客房）**，而电脑/显示器已随功能迁到 study（书房）。
-  #   两条出路：(a) 把该专用回路改道到 study（书房）；(b) 显式修订 DEC-2026-10-03-R1 的"电脑不混路"口径。
-  #   在 alignment 收口前，本文件保持物理现状不改，仅在此声明债；不得默许电脑与儿童房共回路。
+  # 2026-10-05 B5-A 已收口（DEC-2026-10-05-R13，业主选"改道"）：ordinary_power_study 由客房改道到书房，
+  #   终点为书房书桌位 sock_parent_desk（(4.20,9.00) count 2），复用走廊 x=5.5 穿孔带穿 w_st_north
+  #   进书房北边吊（与 strong-ac-parent / strong-light-parent / strong-power-parent 同孔区）；
+  #   客房三个席位（sock_study_desk / sock_study_extra / sock_study_curtain）移交 ordinary_power_parent_child。
+  #   未施工，改道仅配置层 declaration；交底后不得再改（等于开槽返工）。
   - id: ordinary_power_master
     panel_id: panel_strong
     purpose: ordinary_power
@@ -202,20 +203,20 @@ circuits:
     panel_id: panel_strong
     purpose: ordinary_power
     status: proposed
-    member_point_ids: [sock_parent_bed_l, sock_parent_bed_r, sock_parent_desk, sock_parent_curtain, sock_child_bed, sock_child_desk]
-    capacity: "≈0.8kW"
+    member_point_ids: [sock_parent_bed_l, sock_parent_bed_r, sock_parent_curtain, sock_child_bed, sock_child_desk, sock_study_desk, sock_study_extra, sock_study_curtain]
+    capacity: "≈1.2kW"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
-    note: "书房 + 儿童房普通电源（DEC-2026-10-03-R1 拆出；书房侧点位含原床头位，随床迁出后改为书房备用，量房后按实际用电点复核）"
+    note: "书房 + 儿童房 + 客房普通电源（DEC-2026-10-03-R1 拆出；2026-10-05 B5-A 改道后：书房电脑走 ordinary_power_study 专用回路，书房原床头位改为书房备用，客房三席位并入本路）。capacity 为方案值，水电交底按实际用电设备终核；书房侧孤儿位 sock_parent_bed_l 待量房后定语义/位移"
   - id: ordinary_power_study
     panel_id: panel_strong
     purpose: ordinary_power
     status: proposed
-    member_point_ids: [sock_study_desk, sock_study_curtain, sock_study_extra]
+    member_point_ids: [sock_parent_desk]
     capacity: "≈1.0kW（电脑 + 显示器 + 外设）"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
-    note: "普通电源单独成路（DEC-2026-10-03-R1 拆出，原电脑负载不与他人混路；点位物理位于 bedroom_se 客房，2026-10-05 功能互换后该专用回路的归属见上方 B5 口径债，待 alignment 收口）"
+    note: "书房电脑专用回路（DEC-2026-10-03-R1 拆出时不与他路混电脑负载；2026-10-05 B5-A 随功能互换改道：终点由客房书桌位改为书房书桌位 sock_parent_desk @(4.20,9.00) count 2，路线 strong-power-study 复用走廊 x=5.5 穿孔带）。id 与 breaker/wire 口径不变"
   - id: ordinary_power_service
     panel_id: panel_strong
     purpose: ordinary_power

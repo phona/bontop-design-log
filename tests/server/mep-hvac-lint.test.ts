@@ -29,8 +29,14 @@ test('real MEP configuration lints without false errors and reports warnings str
   // 永不触发）改为按 thickness 反算完成面，因此本用例从 9 条变成 9 + 144 条。
   // 149 与 facts 契约 c.mep_layer_below_drop_bottom 的登记基数同源（docs/pending-site-data.md #41）：
   // 2026-10-05 给排水 v1 新增 5 条排水路线，每条在所属厨卫铝扣板吊顶范围内新增 1 处（144→149）。
-  assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 149);
-  assert.equal(result.warnings.length, 158); // 无 layout context（本用例不传 layout），故不含穿墙类告警；带 layout 的 verify:mep 为 173
+  // 2026-10-05 登记基数 149 → 154（docs/mep-construction-guidance.md 与 config/facts.yaml 已同步）：
+  //   · DEC-2026-10-05-R11 客餐厅冷凝水改线（condensate-living/dining 移入走廊/客卫吊顶网络）；
+  //   · DEC-2026-10-05-R13 书房电脑专用回路改道（strong-power-study 复用 x=5.5 穿孔带，与同孔区三条既有路线同一类别）。
+  // 归口裁定仍是 docs/pending-site-data.md #41；实算数与登记数不符即失败（变多/变少都不允许静默）。
+  assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 154);
+  // 158 = 149(ceiling)+3(nonphysical)+6(overlap)；登记基数 149→154（R11 冷凝水改线 + R13 书房电脑回路改道）后为
+  // 163 = 154+3+6。无 layout context（本用例不传 layout），故不含穿墙类告警。
+  assert.equal(result.warnings.length, 163);
   assert.ok(result.warnings.some((issue) => issue.code === 'supply_return_overlap'));
   assert.ok(result.warnings.some((issue) => issue.code === 'nonphysical_route'));
   const balcony = config.routes.find((r) => r.id === 'drain-balcony')!;

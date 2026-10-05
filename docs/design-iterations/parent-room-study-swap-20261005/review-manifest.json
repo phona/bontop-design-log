@@ -3,8 +3,8 @@
   "project": "bontop-design-log",
   "iteration_id": "parent-room-study-swap-20261005",
   "subject": "父母房↔书房功能互换（几何不动）+ 客房隔开 + 书房储物扩容 + 删除轻训练器材",
-  "state": "v0_implemented_candidate_not_frozen",
-  "state_note": "v0 家具互换与健身删除已实施（DEC-2026-10-05-R9），全部条目保持 candidate_not_frozen；verify:all / test:server 608 / test:app 470 / typecheck 全绿。剩余 alignment 未收口前不得宣称施工冻结；起夜照明与书房柜体采购归二期，预留条件须进一期水电交底。",
+  "state": "batch_a_and_b1_done",
+  "state_note": "批次 A（衣柜 roomOverride）+ B-1（B5-A 电脑回路改道，DEC-2026-10-05-R13）已完成，verify:facts/mep/electrical 绿，test:server 608/609。B-2 客房床头组（前置量房）、批次 C 起夜预留、批次 D 证据仍待。",
   "source_version": {
     "config_refs": [
       "config/house.yaml",
@@ -130,10 +130,11 @@
   "delivery": {
     "status": "blocked",
     "blocking_issues": [
-      "10 项 alignment 未收口",
-      "无同版本浏览器证据",
-      "家具候选未过 verify:furniture",
-      "facts.yaml 跨文件对账未改写"
+      "P0-1",
+      "P0-2",
+      "B5 未定",
+      "量房未回",
+      "证据未采集"
     ],
     "delivery_ready": false,
     "follow_up_site_pending": [
@@ -144,5 +145,13 @@
       "起夜照明深化"
     ],
     "delivery_notes": "v0 已让模型说真话：房间功能名、家具、预算条目与测试断言一致；下一轮按 alignment 顺序推进（凸窗带/电梯噪声实测 → 客房排布定稿 → 书房储物 → 二期采购）。"
+  },
+  "review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": [
+      "P0-2 客房床头电位高度不可用（待 B-2/量房）",
+      "量房四项未回",
+      "同版本浏览器证据未采集"
+    ]
   }
 }

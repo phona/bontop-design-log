@@ -78,6 +78,31 @@
 - 结果：`verify:all`、`test:server` 608/608、`test:app` 470/470、`typecheck` 全绿；无配置几何改动，git 可回滚。
 - 新发现（已登记）：`ordinary_power_study` 书房电脑专用回路物理管线现通向客房——口径债，禁止默认共用儿童房回路；`furniture:study:desk↔west_curtain` 一条 glass clearance 警告为存量（与本次无关）。
 
+### R10（2026-10-05）v0 独立审查 + 整改方案
+
+- 产出 `review-and-rectification.md`：承诺 vs 实现 10 条对照（8✅/1⚠️/1❌）。
+- **P0-1 衣柜预算错位**：`current-scheme.json` 的 wardrobe.roomOverrides 未随功能互换更新——客房 wardrobe_180 被按 1.7m 模块柜 ¥2,600 计、书房 1.7m 季节柜被按 2.4m 定制 ¥4,200 计；净额 -1,000 但逐房失真，PKG-150/QR-26 会拿错数。
+- **P0-2 客房床头电位不可用**：`sock_study_extra h=0.3` 是低位高度（原书房备用口径），不是床头高度（原父母房床头为 h=0.7）——v0"电气零改动"本身即是缺陷。
+- **P1×4**：衣柜与东北角吊零净空（需登记 accepted trade-off）、书房孤儿插座/床头双控/线控器三处语义待改；`AGENTS.md` 的"插座≈电器 >1.5m 报警"无自动化校验，属人工债。
+- **P2×4 / P3**：实例文档 NP-1 未对准床头朝北、materials 两处注记过时、topology 注记待 B5、浏览器证据未采集。
+- 整改四批：A 预算（无前置，立即可做）/B 床头组（前置 B5+量房）/C 起夜预留（前置 B5+量房）/D 证据。
+- 顺带发现存量口径缺陷（非本轮引入）：bed/mattress 不按床宽计价、bedroom_nw 的 wardrobe_180 被按 wardrobe_240_01 计。
+
+### R11（2026-10-05）整改批次 A 完成
+
+- 修 `data/current-scheme.json` 衣柜 roomOverride：study → study_seasonal_wardrobe_170_01（¥2,600）、bedroom_se → wardrobe_180_01（¥3,200）；子项总额 22,100 → 23,500。
+- 新增防回归测试：房间→实际柜类→应选 option 三元组锁定（`wardrobe roomOverride must follow the furnishing actually placed in each room`）。
+- 存量口径缺陷未擅改，登记待裁决：bed/mattress 不按床宽计价、bedroom_nw wardrobe_180 被按 wardrobe_240_01 计。
+- **并发提示**：另一工作线的冷凝水改线（condensate-living/dining）未提交进工作区，使 `c.mep_layer_below_drop_bottom` 实算 149→153，导致 verify:facts 与 mep-hvac-lint.test.ts 红灯。按契约不代改基线、不碰其文件；`verify:mep` 本体 Exit 0 无 error。批次 A 自身范围全绿。
+
+### R12（2026-10-05）B5-A 电脑回路改道完成
+
+- 业主拍板选 A（改道），B（修订口径）弃用。
+- `ordinary_power_study` 终点 → 书房 `sock_parent_desk`；客房三席位 → `ordinary_power_parent_child`（capacity ≈1.2kW）；`strong-power-study` 走线复用走廊 x=5.5 穿孔带穿 w_st_north 进书房北边吊。breaker/wire/回路总数不变。
+- 对账：`c.mep_layer_below_drop_bottom` 实算 +1（153→154），与同穿孔带三条既有路线同一类别；基数已由并发工作线登记为 154，verify:facts 绿。
+- 编号撞号处理：本决定原用 R11，与并发工作线"客餐厅冷凝水改线"撞号 → 本决定改 **R13**。
+- 剩余：B-2 客房床头双侧电位 + 床头双控（前置量房：北墙 w_be_north shear inferred）；`sock_study_extra` h=0.3 高度缺陷随 B-2 修正；书房三处孤儿点位语义待量房定。
+
 ## 未采集/禁止伪造
 - 未经 `npm run` 任何验证命令；无浏览器证据、无截图、无 runtime AABB。
 - 起夜距离、面积口径、W/㎡ 均为几何推导，量房后必须复核。

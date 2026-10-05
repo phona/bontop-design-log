@@ -290,7 +290,7 @@
   z: 9.0
   height: 0.3
   count: 2
-  note: "西南次卧书桌位"
+  note: "书房书桌位（2026-10-05 B5-A 改道后为 ordinary_power_study 电脑专用回路终点，DEC-2026-10-05-R13；count 2=电脑+显示器）"
 
 - id: net_parent
   room: study
@@ -312,7 +312,7 @@
   z: 7.90
   height: 0.3
   count: 3
-  note: "客房备用插座（2026-08-25 原书房桌面位：电脑+显示器+手机；2026-10-05 功能互换书桌迁出，改为客房备用，含充电器/落地设备；原 3 位 count 保留，量房后按客房实际需求复核）"
+  note: "客房备用插座（2026-08-25 原书房桌面位；2026-10-05 功能互换书桌迁出改客房备用，B5-A 后并入 ordinary_power_parent_child 与书房/儿童房共路；count 3=充电器/落地设备，量房后按客房实际需求复核）"
 
 - id: net_study
   room: bedroom_se
@@ -333,7 +333,7 @@
   z: 5.55
   height: 0.3
   count: 1
-  note: "客房备用插座（DEC-2026-09-08-R1 补声明 wall_side south；2026-10-05 功能互换后位于床头北墙，兼作床头插座；另一侧床头电位待排布定稿后申报）"
+  note: "客房北墙备用插座（DEC-2026-09-08-R1 补声明 wall_side south；2026-10-05 功能互换后位于床头北墙，但 h=0.3 为低位高度、不能当床头电位，床头电位另按 h=0.7 申报，见批次 B；B5-A 后并入 ordinary_power_parent_child）"
 
 - id: switch_study
   room: bedroom_se
@@ -745,7 +745,7 @@
   z: 9.50
   height: 2.5
   count: 1
-  note: "书房电动窗帘电源（DEC-2026-09-08-R1 补声明 wall_side west；2026-10-05 功能互换，id/位置不变）"
+  note: "客房电动窗帘电源（DEC-2026-09-08-R1 补声明 wall_side west；2026-10-05 功能互换，id/位置不变；B5-A 后并入 ordinary_power_parent_child）"
 
 # 客房电动窗帘（2026-10-05 功能互换：原书房）
 - id: sock_study_curtain

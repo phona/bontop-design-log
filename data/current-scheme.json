@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-21T15:57:37.611Z",
+  "updatedAt": "2026-10-05",
   "selections": {
     "floor": {
       "default": "floor_pbr_tile_612",
@@ -84,8 +84,9 @@
     "wardrobe": {
       "default": "wardrobe_240_01",
       "roomOverrides": {
+        "bedroom_se": "wardrobe_180_01",
         "master_bedroom": "wardrobe_north_950_custom_01",
-        "bedroom_se": "study_seasonal_wardrobe_170_01"
+        "study": "study_seasonal_wardrobe_170_01"
       }
     },
     "dresser": {

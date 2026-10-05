@@ -615,12 +615,58 @@ describe('BudgetCalculator', () => {
       'no miscellaneous line items (topic never had a lineItem)'
     );
     const wardrobeItems = snapshot.lineItems.filter((li) => li.topic === 'wardrobe');
-    // 既有衣柜计价行（bedroom_nw / study 的 wardrobe_180 家具，无 roomOverride）保持 default wardrobe_240_01
-    for (const roomId of ['bedroom_nw', 'study']) {
+    // 2026-10-05 功能互换整改批次 A（DEC-2026-10-05-R10）后：
+    // bedroom_nw 仍无 roomOverride → 保持 default wardrobe_240_01（¥4,200，1.8m 柜按 2.4m 计价属存量口径缺陷，待业主裁决）；
+    // study（书房放 1.7m 季节后台柜）→ study_seasonal_wardrobe_170_01 ¥2,600；
+    // bedroom_se（客房放 1.8m 成品衣柜）→ wardrobe_180_01 ¥3,200。
+    const expected: Record<string, { optionId: string; unitPrice: number }> = {
+      bedroom_nw: { optionId: 'wardrobe_240_01', unitPrice: 4200 },
+      study: { optionId: 'study_seasonal_wardrobe_170_01', unitPrice: 2600 },
+      bedroom_se: { optionId: 'wardrobe_180_01', unitPrice: 3200 },
+    };
+    for (const [roomId, want] of Object.entries(expected)) {
       const li = wardrobeItems.find((item) => item.roomId === roomId);
       assert.ok(li, `wardrobe line exists for ${roomId}`);
-      assert.equal(li.optionId, 'wardrobe_240_01', `${roomId} still on default wardrobe_240_01`);
-      assert.equal(li.unitPrice, 4200, `${roomId} unit price unchanged by the topic fix`);
+      assert.equal(li.optionId, want.optionId, `${roomId} optionId`);
+      assert.equal(li.unitPrice, want.unitPrice, `${roomId} unit price`);
+    }
+  });
+
+  it('wardrobe roomOverride must follow the furnishing actually placed in each room (function-swap guard)', () => {
+    // 防回归：本轮 P0-1 就是 roomOverride 没跟功能互换走（客房 wardrobe_180 被按 1.7m 模块柜计、
+    // 书房 1.7m 季节柜被按 2.4m 默认计）。此后任何功能互换/家具搬迁都必须同步此表。
+    const catalog = ProjectCatalog.load('.');
+    const rules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const scheme = JSON.parse(readFileSync('data/current-scheme.json', 'utf8')) as CurrentScheme;
+    const house = load(readFileSync('config/house.yaml', 'utf8')) as { furnishings: Record<string, Array<{ type: string }>> };
+    const expectedByRoom: Record<string, string> = {
+      // 房间 → 该房间实际放置的柜类 furnishing type
+      master_bedroom: 'master_north_wall_wardrobe_950',
+      study: 'study_seasonal_wardrobe_wall',
+      bedroom_se: 'wardrobe_180',
+      bedroom_nw: 'wardrobe_180',
+    };
+    const optionByFurnishing: Record<string, string> = {
+      master_north_wall_wardrobe_950: 'wardrobe_north_950_custom_01',
+      study_seasonal_wardrobe_wall: 'study_seasonal_wardrobe_170_01',
+      wardrobe_180: 'wardrobe_180_01',
+    };
+    for (const [roomId, furnishingType] of Object.entries(expectedByRoom)) {
+      assert.ok(
+        house.furnishings[roomId]?.some((item) => item.type === furnishingType),
+        `${roomId} must place ${furnishingType}`,
+      );
+      const wantOption = optionByFurnishing[furnishingType];
+      const override = scheme.selections.wardrobe?.roomOverrides?.[roomId];
+      // bedroom_nw 是已知例外：无 override，落 topic 默认（存量口径缺陷，见 review-and-rectification.md）
+      if (roomId === 'bedroom_nw') continue;
+      assert.equal(override, wantOption, `wardrobe roomOverride for ${roomId} must select ${wantOption}`);
+    }
+    const snapshot = new BudgetCalculator(catalog, rules).calculate(scheme);
+    const priced = new Map(snapshot.lineItems.filter((li) => li.topic === 'wardrobe').map((li) => [li.roomId, li.optionId]));
+    for (const [roomId, furnishingType] of Object.entries(expectedByRoom)) {
+      const wantOption = roomId === 'bedroom_nw' ? 'wardrobe_240_01' : optionByFurnishing[furnishingType];
+      assert.equal(priced.get(roomId), wantOption, `priced wardrobe option for ${roomId} must be ${wantOption}`);
     }
   });
 
