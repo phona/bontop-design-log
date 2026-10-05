@@ -605,7 +605,7 @@ global_blockers:
     clears_when: 形成逐房窗帘清单并确认一期采购范围和报价
   - id: BLK-PHASE1-APPLIANCES
     status: alignment_required
-    item: 一期家电额度在原9,000元下探组合基础上追加云鲸J6上下水版3,000元，现按12,000元控制；J6型号和金额已由业主确认，客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结
+    item: 一期家电额度在原9,000元下探组合基础上追加云鲸J6上下水版3,000元，2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤按4,000元进入一期后现按16,000元控制；J6型号和金额已由业主确认，客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结
     clears_when: 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金
   - id: BLK-WATER-HEATER-SITE
     status: site_pending
@@ -1050,7 +1050,7 @@ work_packages:
       components:
         - {id: COST-070-01, name: 轻钢龙骨和固定材料, description: 吊顶内部金属支撑骨架、吊杆和连接件, quantity_basis: 按吊顶展开面积和造型统计, planned_cny: null, status: quantity_pending}
         - {id: COST-070-02, name: 石膏板吊顶面层, description: 写明板材类型、层数、防潮要求、接缝材料和安装人工, quantity_basis: 按展开面积报价, planned_cny: null, status: quote_pending}
-        - {id: COST-070-03, name: 厨房卫生间集成吊顶, description: 铝制扣板、边条、安装及设备开孔，不含取暖换气设备（DEC-2026-10-05-R3：浴霸划出自购定入 COST-100-06，凉霸不做）；2026-10-03 捆绑书面报价 9,537 元（含收边、2浴霸、凉霸、灯）保留为设备拆分证据，裸价重报待取得, quantity_basis: 反推裸价目标 4,500 元（9,537 − 凉霸 999 − 浴霸 ≈4,000），非成交价；按厨房和两个卫生间面积核, planned_cny: 4500, status: quoted_pending_optimization}
+        - {id: COST-070-03, name: 厨房卫生间集成吊顶, description: "铝制扣板、边条、安装及设备开孔，不含取暖换气设备（DEC-2026-10-05-R3：浴霸划出自购定入 COST-100-06，凉霸不做）；2026-10-03 捆绑书面报价 9,537 元（含收边、2浴霸、凉霸、灯）保留为设备拆分证据，裸价重报待取得", quantity_basis: "反推裸价目标 4,500 元（9,537 − 凉霸 999 − 浴霸 ≈4,000），非成交价；按厨房和两个卫生间面积核", planned_cny: 4500, status: quoted_pending_optimization}
         - {id: COST-070-04, name: 风口检修口灯孔和窗帘盒边缘处理, description: 按确认图纸逐个计数，明确开孔和加固是否另收费, quantity_basis: 待空调灯具和窗帘图确认, planned_cny: null, status: interface_pending}
     duration_workdays: {min: 8, max: 12}
     dependencies: [PKG-030, PKG-040]
@@ -1152,7 +1152,7 @@ work_packages:
     budget:
       planned_cny: 8000
       estimated_need_cny: 16998
-      estimated_need_note: 2026-10-03 业主询价轮次：智能马桶封顶5,598 + 浴室柜台盆镜柜约6,000 + 花洒约2,600 + 龙头下水角阀约1,200 + 固定玻璃屏约1,800 + 通用五金约1,500 = 18,698；2026-10-05（DEC-2026-10-05-R12）业主下调：花洒2,600→2,000（千元级恒温档）、浴室柜6,000→5,000（主卫3,000+客卫2,000含J6基站仓深化），need=5,598+5,000+2,000+1,200+1,800+1,500=16,998，超父包8,998。业主侧讨论口径"1.8万封顶含安装补件尾巴"未正式定标为 cap。马桶具体型号 ZQ6650-SA-CJM305 的坑距 305 承诺待核（pending-site-data 第 31 项），定死前须同口径比价。玻璃屏归属仍可能与PKG-070重叠；DEC-2026-10-05-R3 浴霸定入本包（COST-100-06，目标 1,500 未计入本 need 口径）；资金来源待业主决定
+      estimated_need_note: 2026-10-03 业主询价轮次：智能马桶封顶5,598 + 浴室柜台盆镜柜约6,000 + 花洒约2,600 + 龙头下水角阀约1,200 + 固定玻璃屏约1,800 + 通用五金约1,500 = 18,698；2026-10-05（DEC-2026-10-05-R12）业主下调：花洒2,600→2,000（千元级恒温档）、浴室柜6,000→5,000（主卫3,000+客卫2,000含J6基站仓深化）、龙头下水角阀1,200→1,100（业主侧拆分口径500~600/套），need=5,598+5,000+2,000+1,100+1,800+1,500=16,998，超父包8,998。业主侧讨论口径"1.8万封顶含安装补件尾巴"未正式定标为 cap。马桶具体型号 ZQ6650-SA-CJM305 的坑距 305 承诺待核（pending-site-data 第 31 项），定死前须同口径比价。玻璃屏归属仍可能与PKG-070重叠；DEC-2026-10-05-R3 浴霸定入本包（COST-100-06，目标 1,500 未计入本 need 口径）；资金来源待业主决定
       funding_status: owner_review_pending_20261003
       contracted_cny: null
       paid_cny: 0
@@ -1160,12 +1160,12 @@ work_packages:
       source_ref: sanitary
       allocation_status: pending_fixture_schedule
       components:
-        - {id: COST-100-01, name: 马桶, description: "分别记录主卫生间和客卫生间的型号坑距角阀软管安装及旧孔处理；2026-10-03 轮次登记九牧智能马桶ZQ6650两台封顶5,598元（cap），须核305/400坑距、低水压、送装与质保，并按shopping-research补取证后与九牧11383-2-1/31KB-1、箭牌AE1182U同口径比较；2026-10-05 业主侧出现具体型号方向 ZQ6650-SA-CJM305（2,799/台，后缀含坑距 305 承诺）——两卫坑距 305/400 未核（pending-site-data #31）前不得定死", quantity_basis: 2台，业主封顶5,598元（2026-10-03）, planned_cny: 5598, status: owner_selected_pending_verification}
-        - {id: COST-100-02, name: 浴室柜台盆和镜柜, description: 分卫生间记录柜体材质尺寸龙头下水安装和墙体固定条件；2026-10-05（DEC-2026-10-05-R12）业主下调至共5,000元：主卫3,000保留设计（约1.05m，哑白柜体+浅灰台面+圆上盆；主卫为通长镜面非镜柜）、客卫2,000定制/非标（悬浮+云鲸J6基站仓，约500mm仓宽为假设值，须与J6实机外廓/柜下净空同图会审）, quantity_basis: 2套，2026-10-05 目标5,000元, planned_cny: 5000, status: candidate_pending_quote}
-        - {id: COST-100-03, name: 花洒, description: 分卫生间记录混水阀花洒组件安装辅材和水压适配；2026-10-05（DEC-2026-10-05-R12）业主下调至千元级恒温档共2,000元（京造/九牧/恒洁同档待选型），供水侧与水伺服热水器兼容, quantity_basis: 2套，2026-10-05 目标2,000元, planned_cny: 2000, status: candidate}
-        - {id: COST-100-04, name: 地漏角阀软管及卫生间小五金, description: 按点位逐件列数量品牌型号和安装费用；2026-10-03 轮次的龙头下水角阀约1,200元与通用五金约1,500元同归本项，不得叠加, quantity_basis: 待点位表确认，2026-10-03 轮次合计约2,700元, planned_cny: null, status: quantity_pending}
-        - {id: COST-100-05, name: 淋浴区玻璃隔断, description: 当前旧预算曾放在家电类，必须确认是否回到卫生间项目并避免重复计费；2026-10-05 业主侧口径：8mm 钢化+3C 固定玻璃约900/台×2=1,800（与 need 一致，ownership 仍待定账）, quantity_basis: 2处候选，待设计确认, planned_cny: null, status: ownership_pending}
-        - {id: COST-100-06, name: 卫生间取暖换气设备, description: 业主定标自购（DEC-2026-10-05-R3）：奥普 S2-Air 浴霸×2（风暖 2750W+换气 49W+照明 24W 三合一，集成吊顶式、线控面板），京东自营国补价 680.97/台（2026-10-05 页面观察，非成交价），两台 ≈1,362、目标 1,500 含配件余量；换气模块承担原独立排气；收房仍核对开发商场既有设备，若已提供则反转删项, quantity_basis: 2台；下单窗口在量房与扣板开孔方案冻结后, planned_cny: 1500, status: candidate}
+        - {id: COST-100-01, name: 马桶, description: "分别记录主卫生间和客卫生间的型号坑距角阀软管安装及旧孔处理；2026-10-03 轮次登记九牧智能马桶ZQ6650两台封顶5,598元（cap），须核305/400坑距、低水压、送装与质保，并按shopping-research补取证后与九牧11383-2-1/31KB-1、箭牌AE1182U同口径比较；2026-10-05 业主侧出现具体型号方向 ZQ6650-SA-CJM305（2,799/台，后缀含坑距 305 承诺）——两卫坑距 305/400 未核（pending-site-data #31）前不得定死", quantity_basis: "2台，业主封顶5,598元（2026-10-03）", planned_cny: 5598, status: owner_selected_pending_verification}
+        - {id: COST-100-02, name: 浴室柜台盆和镜柜, description: "分卫生间记录柜体材质尺寸龙头下水安装和墙体固定条件；2026-10-05（DEC-2026-10-05-R12）业主下调至共5,000元：主卫3,000保留设计（约1.05m，哑白柜体+浅灰台面+圆上盆；主卫为通长镜面非镜柜）、客卫2,000定制/非标（悬浮+云鲸J6基站仓，约500mm仓宽为假设值，须与J6实机外廓/柜下净空同图会审）", quantity_basis: "2套，2026-10-05 目标5,000元", planned_cny: 5000, status: candidate_pending_quote}
+        - {id: COST-100-03, name: 花洒, description: "分卫生间记录混水阀花洒组件安装辅材和水压适配；2026-10-05（DEC-2026-10-05-R12）业主下调至千元级恒温档共2,000元（京造/九牧/恒洁同档待选型），供水侧与水伺服热水器兼容", quantity_basis: "2套，2026-10-05 目标2,000元", planned_cny: 2000, status: candidate}
+        - {id: COST-100-04, name: 地漏角阀软管及卫生间小五金, description: "按点位逐件列数量品牌型号和安装费用；2026-10-03 轮次的龙头下水角阀约1,200元与通用五金约1,500元同归本项，不得叠加；2026-10-05（DEC-2026-10-05-R12）龙头下水角阀按业主侧拆分口径1,100元（500~600/套×2）", quantity_basis: "待点位表确认，2026-10-03 轮次合计约2,700元、2026-10-05 下调至2,600元", planned_cny: null, status: quantity_pending}
+        - {id: COST-100-05, name: 淋浴区玻璃隔断, description: "当前旧预算曾放在家电类，必须确认是否回到卫生间项目并避免重复计费；2026-10-05 业主侧口径：8mm 钢化+3C 固定玻璃约900/台×2=1,800（与 need 一致，ownership 仍待定账）", quantity_basis: 2处候选，待设计确认, planned_cny: null, status: ownership_pending}
+        - {id: COST-100-06, name: 卫生间取暖换气设备, description: "业主定标自购（DEC-2026-10-05-R3）：奥普 S2-Air 浴霸×2（风暖 2750W+换气 49W+照明 24W 三合一，集成吊顶式、线控面板），京东自营国补价 680.97/台（2026-10-05 页面观察，非成交价），两台 ≈1,362、目标 1,500 含配件余量；换气模块承担原独立排气；收房仍核对开发商场既有设备，若已提供则反转删项", quantity_basis: 2台；下单窗口在量房与扣板开孔方案冻结后, planned_cny: 1500, status: candidate}
     duration_workdays: {min: 3, max: 5}
     dependencies: [PKG-060, PKG-080]
     readiness: blocked
@@ -1504,7 +1504,7 @@ work_packages:
         - {id: COST-160-02, priority: P0, priority_name: 入住必需, priority_order: 2, name: 洗衣机, description: 记录型号、尺寸、进水、排水、插座、防水和阳台通风位置；没有可用旧洗衣机时列为一期必买, quantity_basis: 1台候选，待阳台复尺和确认是否一期采购, planned_cny: null, status: fit_pending}
         - {id: COST-160-03, priority: P0接口, priority_name: 做饭和橱柜接口必需, priority_order: 3, name: 燃气灶, description: 记录型号、开孔尺寸、燃气接口、电源和安装验收责任；必须在橱柜台面开孔前冻结, quantity_basis: 1台候选，待燃气条件确认, planned_cny: null, status: interface_pending}
         - {id: COST-160-04, priority: P0接口, priority_name: 做饭和橱柜接口必需, priority_order: 4, name: 吸油烟机, description: 记录型号、尺寸、烟管、止回阀、插座与橱柜安装边界；必须在吊柜和烟管施工前冻结, quantity_basis: 1台候选，待确认, planned_cny: null, status: interface_pending}
-        - {id: COST-160-05, priority: P0条件, priority_name: 无现成设备时入住必需, priority_order: 5, name: 燃气热水器（一期类别已确认）, description: 业主已确认一期按燃气热水器推进；设计模型暂记厨房西侧靠生活阳台玻璃幕墙的实体墙（墙体编号w_vrv_east，插座协调点sock_balcony_waterheater），这只是设计协调点，不是现场安装确认；仍需核对开发商或现有设备是否可用、天然气条件、实际安装墙面、容量、尺寸、排烟、冷凝水、给排水、专用电路和物业要求，现场条件未闭合前不得下单；2026-10-05（DEC-2026-10-05-R5）业主换选型号方向为海尔 KL7PRO（16L 水伺服增压静音，预算 2,600，价格线 ≤2,500 直接买 / >3,000 转 JM6S/JM6C），MK6/HWF Pro 转价值/下探备选，BLK-WATER-HEATER-SITE 未解除前不下单, quantity_basis: 1台候选，类别与型号方向已定、现场待核, planned_cny: 2600, status: selection_confirmed_site_pending}
+        - {id: COST-160-05, priority: P0条件, priority_name: 无现成设备时入住必需, priority_order: 5, name: 燃气热水器（一期类别已确认）, description: "业主已确认一期按燃气热水器推进；设计模型暂记厨房西侧靠生活阳台玻璃幕墙的实体墙（墙体编号w_vrv_east，插座协调点sock_balcony_waterheater），这只是设计协调点，不是现场安装确认；仍需核对开发商或现有设备是否可用、天然气条件、实际安装墙面、容量、尺寸、排烟、冷凝水、给排水、专用电路和物业要求，现场条件未闭合前不得下单；2026-10-05（DEC-2026-10-05-R5）业主换选型号方向为海尔 KL7PRO（16L 水伺服增压静音，预算 2,600，价格线 ≤2,500 直接买 / >3,000 转 JM6S/JM6C），MK6/HWF Pro 转价值/下探备选，BLK-WATER-HEATER-SITE 未解除前不下单", quantity_basis: 1台候选，类别与型号方向已定、现场待核, planned_cny: 2600, status: selection_confirmed_site_pending}
         - {id: COST-160-06, priority: P0确认, priority_name: 防尘与自动清洁, priority_order: 6, name: 云鲸J6上下水版扫地机器人, description: "按既有客卫悬空台盆柜下主位安装，使用sock_gbath_robot电源、台盆进水三通和墙排方案；业主确认设备预算3,000元，采购前复核实机版本、柜下净空、穿墙排水和检修条件", quantity_basis: 1台，型号与预算已确认、现场接口待核, planned_cny: 3000, status: budget_confirmed_site_pending}
         - {id: COST-160-07, priority: P2, priority_name: 明确留到二期, priority_order: 99, name: 二期家电排除项, description: "洗碗机、干衣机和净水设备不从一期16,000元家电额度重复扣款，除非业主书面调整阶段", quantity_basis: 排除清单, planned_cny: 0, status: excluded_to_phase_2}
         - {id: COST-160-08, priority: P1, priority_name: 业主定标生活电器, priority_order: 7, name: 嵌入式微蒸烤一体机, description: "业主定标方向（DEC-2026-10-05-R4）：美的 GC5（TR850E-TSBC00，55L，微/蒸/烤/空气炸四合一，变频微波+双孔直喷+上下管热风，额定 3200W，机身 595×565×454mm）；官方现价 4,199（2026-10-05 页面观察，非成交价），目标 ≤3,800、封顶 4,200；同档竞品比价未做；电气需 16A/2.5mm² 专用回路（GB 55038 7.4.4），嵌位（600 宽高柜段）与点位随橱柜方案冻结后落，台面/高柜开孔前必须定型号", quantity_basis: 1台，业主定标方向、嵌位待设计, planned_cny: 4000, status: candidate}

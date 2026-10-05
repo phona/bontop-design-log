@@ -12,7 +12,7 @@ version: '1.0'
 #    现 mount_height 1.65m 仅在双排时合规——箱体单/双排与容量列入 pending-site-data #30。
 # 口径：开关点位经 controls 绑定灯具、网络点位（含 DEC-2026-10-03-R1 新增 net_gateway / net_ap_corridor）
 # 归弱电箱系统，均不进入强电供电回路成员（Phase 1 口径）。
-# 点位口径：config/electrical.yaml 共 98 个点位（2026-10-04 登记，与 fact.electrical_points_count 对账：点位增删必须同步此数）。
+# 点位口径：config/electrical.yaml 共 110 个点位（2026-10-05 R14 起夜照明 + 客房床头组后由 98 增至 110；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。
 
 panels:
   # id 是 topology 内部 panel 标识；source_point_id 指向 electrical.yaml 的真实箱体点位。
@@ -60,9 +60,9 @@ circuits:
     panel_id: panel_strong
     purpose: lighting
     status: confirmed
-    member_point_ids: [light_corridor_1, light_entry_down, light_entry_foyer]
+    member_point_ids: [light_corridor_1, light_entry_down, light_entry_foyer, night_guest_door, night_living_north, night_living_mid, night_corridor]
     source_circuit_id: entry_base
-    capacity: "≤0.3kW"
+    capacity: "≤0.4kW（3 日常灯 + 4 起夜低位灯）"
     wire_size: "1.5mm²(φ16)"
     breaker: "C16A"
     note: "沿用 electrical.yaml 已声明 circuit: entry_base（走廊/入户筒灯）"
@@ -73,8 +73,8 @@ circuits:
     panel_id: panel_strong
     purpose: lighting
     status: proposed
-    member_point_ids: [light_master_dome, light_master_wall_l, light_master_wall_r, light_parent_dome, light_child_dome, light_study_dome, light_kitchen_panel, light_mbath_panel, light_gbath_panel]
-    capacity: "≤0.8kW（9 点位合计估算）"
+    member_point_ids: [light_master_dome, light_master_wall_l, light_master_wall_r, light_parent_dome, light_child_dome, light_study_dome, light_kitchen_panel, light_mbath_panel, light_gbath_panel, night_guest_bed_side, night_guest_head, night_gbath_door, night_gbath_vanity, night_gbath_inner]
+    capacity: "≤0.9kW（14 点位合计估算：9 日常灯 + 5 起夜低位灯，各约 3–5W）"
     wire_size: "1.5mm²(φ16)"
     breaker: "C16A"
     note: "卧室/厨卫照明合并回路（DEC-2026-10-03-R1）：主卧吸顶灯与床头壁灯、书房/儿童房/客房吸顶灯、厨房/两卫平板灯；控制绑定见 control_master_bed_door / control_parent_bed_door / control_child_light / control_study_light / control_kitchen_light / control_mbath_light / control_gbath_light"
@@ -203,8 +203,8 @@ circuits:
     panel_id: panel_strong
     purpose: ordinary_power
     status: proposed
-    member_point_ids: [sock_parent_bed_l, sock_parent_bed_r, sock_parent_curtain, sock_child_bed, sock_child_desk, sock_study_desk, sock_study_extra, sock_study_curtain]
-    capacity: "≈1.2kW"
+    member_point_ids: [sock_parent_bed_l, sock_parent_bed_r, sock_parent_curtain, sock_child_bed, sock_child_desk, sock_study_desk, sock_study_extra, sock_study_curtain, sock_guest_bed_l, sock_guest_bed_r]
+    capacity: "≈1.3kW"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
     note: "书房 + 儿童房 + 客房普通电源（DEC-2026-10-03-R1 拆出；2026-10-05 B5-A 改道后：书房电脑走 ordinary_power_study 专用回路，书房原床头位改为书房备用，客房三席位并入本路）。capacity 为方案值，水电交底按实际用电设备终核；书房侧孤儿位 sock_parent_bed_l 待量房后定语义/位移"
@@ -225,7 +225,7 @@ circuits:
     capacity: "≈1.5kW"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
-    note: "功能电源（智能马桶/台盆位/阳台晾衣/扫地机基站，DEC-2026-09-09-R1；DEC-2026-10-03-R1 移出 sock_kitchen_gas 并归入厨房回路，客卫毛巾架 sock_gbath_towel 归 dedicated_bath_heaters）；两个智能马桶位 position_status pending，交底前与给水错位并加防溅盒（GB 55038 7.4.5）"
+    note: "功能电源（智能马桶/台盆位/阳台晾衣/扫地机基站，DEC-2026-09-09-R1；DEC-2026-10-03-R1 移出 sock_kitchen_gas 并归入厨房回路，客卫毛巾架 sock_gbath_towel 归 dedicated_bath_heater_gbath（DEC-2026-10-05-R3 拆分后））；两个智能马桶位 position_status pending，交底前与给水错位并加防溅盒（GB 55038 7.4.5）"
   - id: ordinary_power_kitchen
     panel_id: panel_strong
     purpose: ordinary_power
@@ -277,11 +277,11 @@ controls:
     target_point_ids: [light_corridor_1]
     note: "走廊东端筒灯单控（2026-09-07-056 补）"
   - id: control_study_light
-    kind: switch
+    kind: switch_2way
     status: proposed
-    switch_point_ids: [switch_study]
+    switch_point_ids: [switch_study, switch_guest_bed]
     target_point_ids: [light_study_dome]
-    note: "客房吸顶灯单控（2026-09-07-056 补）"
+    note: "客房吸顶灯门+床头双控（2026-10-05 R14：原书房单控随功能互换改为客房双控，床头联 switch_guest_bed 落在 w_east_upper 床头位；起夜可床边一键开灯，不必摸黑走到门口）"
   - id: control_child_light
     kind: switch_2way
     status: proposed

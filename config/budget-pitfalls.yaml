@@ -583,9 +583,10 @@ templates:
     name: "品质档(20 万)"
     # 2026-10-04：allocation 为逐项列出口径（不改），原 total 200000 为手写汇总。
     # 按逐项加总实测 206,000（c.templates_allocation_sum 曝出），故本行改为实测值。
-    # ⚠️ 本档 allocation 合计 206,000 与现行一期执行上限（schedule/phase-1/control.yaml
-    # phase_ceiling_cny: 206000）同值，但该档**不含家具/家电科目**（hvac: 0、且无家具行），
-    # 不得据此认为一期上限已含家具家电——两处同值属巧合，口径不同。
+    # ⚠️ 本档 allocation 合计 206,000 在 2026-10-04 时点与当时的一期执行上限（control.yaml
+    # phase_ceiling_cny: 206000）同值；2026-10-05（DEC-2026-10-05-R4）上限抬至 210,000 后
+    # 两值不再相同，但该档**不含家具/家电科目**（hvac: 0、且无家具行），
+    # 不得据此认为一期上限已含或未含家具家电——两口径独立，仅历史时点同值属巧合。
     total: 206000
     description: "品牌硬装 + 中高端家电 + 定制家具"
     allocation:

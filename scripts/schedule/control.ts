@@ -114,6 +114,18 @@ for (const pkg of control.work_packages ?? []) {
   }
 }
 
+// DEC-2026-10-05-R12 复审补的门禁：flow 映射里的裸标量含半角逗号会被 js-yaml 在逗号处截断，
+// 残段变成带逗号的垃圾键（值为 undefined）。出现这类键说明 description/quantity_basis 尾部条款
+// 已从解析层静默丢失——报错并要求给值加双引号（同 COST-030-02 先例）。
+for (const pkg of control.work_packages ?? []) {
+  for (const component of pkg.budget?.components ?? []) {
+    const truncatedKeys = Object.keys(component).filter((key: string) => key.includes(','));
+    if (truncatedKeys.length) {
+      errors.push(`${component.id ?? pkg.id}: flow 标量疑被逗号截断（垃圾键：${truncatedKeys.join(' / ')}）——请给含半角逗号的 description/quantity_basis 加双引号`);
+    }
+  }
+}
+
 for (const quote of control.appliance_quote_register?.records ?? []) {
   if (quoteRecordIds.has(quote.id)) errors.push(`duplicate appliance quote id: ${quote.id}`);
   quoteRecordIds.add(quote.id);
@@ -315,7 +327,7 @@ for (const [pkgId, roundTotal] of [...roundByPkg.entries()].sort(([left], [right
     : (diff > 0 ? '超过父包计划额，待登记资金来源' : '计划额内');
   budgetMd += `| ${pkgId}｜${escapeCell(pkg?.name ?? '—')} | ${money(planned)} | ${money(roundTotal)} | ${money(diff)} | ${escapeCell(handling)} |\n`;
 }
-budgetMd += `\n注：本表差额按轮次目标计算；「已知待分配预算缺口」按 estimated_need_cny 计算（有报价单时取报价单口径，例如 PKG-070 取 9,537 而不是目标 9,100），两者口径不同，且都不构成已批准资金。\n`;
+budgetMd += `\n注：本表差额按轮次目标计算；「已知待分配预算缺口」按 estimated_need_cny 计算（有报价单时取报价单口径，例如 PKG-070 设备划出后按裸价目标 4,500 控账，而不是原轮次目标 9,100），两者口径不同，且都不构成已批准资金。\n`;
 budgetMd += '\n## 工作包内部询价明细\n\n> “待报价/待算量”不是0元。父工作包计划额是当前控制额度，只有逐项报价完成后才可判断该额度是否足够。\n\n';
 for (const pkg of control.work_packages.filter((item: AnyRecord) => item.budget?.components?.length)) {
   budgetMd += `### ${pkg.id}｜${pkg.name}\n\n计划控制额：${money(pkg.budget.planned_cny)}；拆分状态：\`${pkg.budget.allocation_status ?? '—'}\`。\n\n`;
