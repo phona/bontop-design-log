@@ -68,10 +68,10 @@ appliance_quote_register:
   hot_water_decision:
     category: 燃气热水器
     owner_confirmation: 已确认一期采用燃气热水器
-    preferred_model: JSQ30-MK6
-    preferred_status: 主选候选，现场条件确认后再锁定
+    preferred_model: KL7PRO（静音王）
+    preferred_status: 型号方向已定（DEC-2026-10-05-R5）；BLK-WATER-HEATER-SITE 未解且一手核价前不下单
     fallback_model: JSQ30-HWF Pro
-    rationale: 本户型有两个卫生间；JSQ30-MK6官方参数标注适用一厨二卫，JSQ30-HWF Pro标注适用一厨一卫，因此MK6更适合作为主选，HWF Pro只作为预算下探备选
+    rationale: 业主 2026-10-05 换选海尔 KL7PRO：16L 水伺服+增压+静音，一厨两卫口径不变，多付约 1,200 买静音（安装位近厨房/生活区，真体验）与增压稳定性；价格线 ≤2,500 直接买 / 2,500–2,800 正常 / >3,000 转 JM6S/JM6C。美的 JSQ30-MK6（1,399，同档核心能力）保留为价值备选、HWF Pro（929）为下探、JM6C（四段微火+整机8年质保）为跨品牌备选；原 MK6 主选理由（官方适用一厨二卫）留档于 AQ-160-05-B
     must_confirm_before_order: 安装墙面、燃气表与气源、排烟路径、冷凝水排放、冷热水接口、专用电路、物业和燃气单位审批、含辅材安装报价
   records:
     - id: AQ-160-01-A
@@ -174,6 +174,16 @@ appliance_quote_register:
       fit_status: user_category_confirmed_site_and_route_pending
       source_url: "https://www.midea.cn/64/1000000000400693406861.html"
       source_checked_at: 2026-09-11
+    - id: AQ-160-05-C
+      component_id: COST-160-05
+      category: 燃气热水器
+      brand: 海尔
+      model: KL7PRO（静音王）
+      key_spec: 天然气12T、16升，水伺服恒温+增压+静音；京东活动页观察区间约 2,444–2,612（业主侧检索转述，下单前须一手复核南宁到手价与安装边界）；业主价格线：≤2,500 直接买 / 2,500–2,800 正常 / >3,000 换 JM6S/JM6C
+      public_reference_cny: 2600
+      fit_status: owner_selected_site_pending_price_recheck
+      source_url: "https://pro.m.jd.com/mall/active/3ZbAE5pGUJmYNgfwdtDfspEfdLqR/index.html"
+      source_checked_at: 2026-10-05
     - id: AQ-160-06
       component_id: COST-160-08
       category: 微蒸烤一体机
@@ -1473,8 +1483,9 @@ work_packages:
     budget_pool: appliances
     budget:
       planned_cny: 16000
-      estimated_need_cny: 14825
-      estimated_need_note: 原下探家电组合按9,000元控制；2026-09-12业主另确认云鲸J6上下水版按3,000元追加进入一期，必需家电预算同步增至12,000元；2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤一体机按4,000元进入一期，必需家电预算增至16,000元。need 口径=原公开候选下限7,825+J6 3,000+GC5 4,000=14,825（警戒线，非成交组合）。原组合具体型号和安装辅材仍待确认，J6客卫台盆下接口与检修净空待现场复核。
+      estimated_need_cny: 16496
+      estimated_need_note: 原下探家电组合按9,000元控制；2026-09-12业主另确认云鲸J6上下水版按3,000元追加进入一期，必需家电预算同步增至12,000元；2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤一体机按4,000元进入一期，必需家电预算增至16,000元；同日（DEC-2026-10-05-R5）热水器型号方向换选海尔 KL7PRO（2,600），need=7,825−929+2,600+3,000+4,000=16,496，超池496——冰箱/洗衣机/热水器均为"现有设备不可用"条件件，任一不成立即回落，全部成立需业主追加。原组合具体型号和安装辅材仍待确认，J6客卫台盆下接口与检修净空待现场复核。
+      funding_status: owner_review_pending_20261005
       public_reference_floor_cny: 10825
       public_reference_floor_note: 原公开候选下限7,825元加业主确认的云鲸J6预算3,000元；原组合仍含公开页面标示下架或库存待确认的型号，只作预算警戒线，不是可直接下单组合；冰箱位和J6台盆下安装条件均须现场复核。
       contracted_cny: null
@@ -1493,7 +1504,7 @@ work_packages:
         - {id: COST-160-02, priority: P0, priority_name: 入住必需, priority_order: 2, name: 洗衣机, description: 记录型号、尺寸、进水、排水、插座、防水和阳台通风位置；没有可用旧洗衣机时列为一期必买, quantity_basis: 1台候选，待阳台复尺和确认是否一期采购, planned_cny: null, status: fit_pending}
         - {id: COST-160-03, priority: P0接口, priority_name: 做饭和橱柜接口必需, priority_order: 3, name: 燃气灶, description: 记录型号、开孔尺寸、燃气接口、电源和安装验收责任；必须在橱柜台面开孔前冻结, quantity_basis: 1台候选，待燃气条件确认, planned_cny: null, status: interface_pending}
         - {id: COST-160-04, priority: P0接口, priority_name: 做饭和橱柜接口必需, priority_order: 4, name: 吸油烟机, description: 记录型号、尺寸、烟管、止回阀、插座与橱柜安装边界；必须在吊柜和烟管施工前冻结, quantity_basis: 1台候选，待确认, planned_cny: null, status: interface_pending}
-        - {id: COST-160-05, priority: P0条件, priority_name: 无现成设备时入住必需, priority_order: 5, name: 燃气热水器（一期类别已确认）, description: 业主已确认一期按燃气热水器推进；设计模型暂记厨房西侧靠生活阳台玻璃幕墙的实体墙（墙体编号w_vrv_east，插座协调点sock_balcony_waterheater），这只是设计协调点，不是现场安装确认；仍需核对开发商或现有设备是否可用、天然气条件、实际安装墙面、容量、尺寸、排烟、冷凝水、给排水、专用电路和物业要求，现场条件未闭合前不得下单, quantity_basis: 1台候选，类别已确认、现场待核, planned_cny: null, status: selection_confirmed_site_pending}
+        - {id: COST-160-05, priority: P0条件, priority_name: 无现成设备时入住必需, priority_order: 5, name: 燃气热水器（一期类别已确认）, description: 业主已确认一期按燃气热水器推进；设计模型暂记厨房西侧靠生活阳台玻璃幕墙的实体墙（墙体编号w_vrv_east，插座协调点sock_balcony_waterheater），这只是设计协调点，不是现场安装确认；仍需核对开发商或现有设备是否可用、天然气条件、实际安装墙面、容量、尺寸、排烟、冷凝水、给排水、专用电路和物业要求，现场条件未闭合前不得下单；2026-10-05（DEC-2026-10-05-R5）业主换选型号方向为海尔 KL7PRO（16L 水伺服增压静音，预算 2,600，价格线 ≤2,500 直接买 / >3,000 转 JM6S/JM6C），MK6/HWF Pro 转价值/下探备选，BLK-WATER-HEATER-SITE 未解除前不下单, quantity_basis: 1台候选，类别与型号方向已定、现场待核, planned_cny: 2600, status: selection_confirmed_site_pending}
         - {id: COST-160-06, priority: P0确认, priority_name: 防尘与自动清洁, priority_order: 6, name: 云鲸J6上下水版扫地机器人, description: "按既有客卫悬空台盆柜下主位安装，使用sock_gbath_robot电源、台盆进水三通和墙排方案；业主确认设备预算3,000元，采购前复核实机版本、柜下净空、穿墙排水和检修条件", quantity_basis: 1台，型号与预算已确认、现场接口待核, planned_cny: 3000, status: budget_confirmed_site_pending}
         - {id: COST-160-07, priority: P2, priority_name: 明确留到二期, priority_order: 99, name: 二期家电排除项, description: "洗碗机、干衣机和净水设备不从一期16,000元家电额度重复扣款，除非业主书面调整阶段", quantity_basis: 排除清单, planned_cny: 0, status: excluded_to_phase_2}
         - {id: COST-160-08, priority: P1, priority_name: 业主定标生活电器, priority_order: 7, name: 嵌入式微蒸烤一体机, description: "业主定标方向（DEC-2026-10-05-R4）：美的 GC5（TR850E-TSBC00，55L，微/蒸/烤/空气炸四合一，变频微波+双孔直喷+上下管热风，额定 3200W，机身 595×565×454mm）；官方现价 4,199（2026-10-05 页面观察，非成交价），目标 ≤3,800、封顶 4,200；同档竞品比价未做；电气需 16A/2.5mm² 专用回路（GB 55038 7.4.4），嵌位（600 宽高柜段）与点位随橱柜方案冻结后落，台面/高柜开孔前必须定型号", quantity_basis: 1台，业主定标方向、嵌位待设计, planned_cny: 4000, status: candidate}

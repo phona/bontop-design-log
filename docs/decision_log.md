@@ -1538,3 +1538,11 @@
 - **账目**：沿用"追加即抬上限"先例（同 DEC-2026-09-12-R3 云鲸），必需家电预算 12,000 → 16,000，一期执行上限及已分配额 20.6 万 → 21 万（`control.phase_ceiling_cny`/`allocated_cny`/`budget_reconciliation.phase_1_ceiling_cny`、PKG-160 planned/need、竣工结算 pass_condition、`config/facts.yaml` fact.phase1_ceiling_cny 权威值同步），未分配仍为 0。
 - **接口前置**：3200W 按 GB 55038 7.4.4 需 16A/2.5mm² 专用回路（现有厨房插座回路 4mm² 预留口径不足以共路承载），回路 21→22、点位与嵌位随橱柜 600 宽高柜方案冻结后落，台账面/高柜开孔前必须定型号；已入 topology pending_parameters。
 - **未做**：同档竞品（方太/凯度/西门子等 3,000–6,000 档）比价未跑；嵌位设计未定；phase-scope/house.yaml 场景对象（3D 摆位与算量）随嵌位定案后另迭代，本轮仅入预算与采购台账。
+
+### DEC-2026-10-05-R5 热水器型号方向换选海尔 KL7PRO
+
+- **日期**：2026-10-05。
+- **换选**：业主确认热水器型号方向由美的 JSQ30-MK6（1,399，价值档）换为**海尔 KL7PRO（静音王）16L 水伺服+增压+静音**，预算 2,600；京东活动页观察区间 2,444–2,612（业主侧检索转述，一手核价待下单前补）。价格线：≤2,500 直接买 / 2,500–2,800 正常 / >3,000 转 JM6S/JM6C。登记 `AQ-160-05-C`，`hot_water_decision.preferred_model` 更新；MK6/HWF Pro 原始证据链（AQ-160-05-A/B，观察日 2026-09-14）留档为价值/下探备选，只追加不覆盖。
+- **账目**：`COST-160-05` planned null → 2,600（selection_confirmed_site_pending 不变）；PKG-160 need 14,825 → 16,496（热水器 floor 929→2,600），**超池 496** 挂 funding_status owner_review_pending_20261005——冰箱/洗衣机/热水器均为"现有设备不可用"条件件，任一不成立即回落，全部成立需业主追加约 500。
+- **不变**：BLK-WATER-HEATER-SITE 全部前置（安装墙面 w_vrv_east、燃气表、排烟、CO 红线、物业审批）未解除前不得下单；"开发商设备可用则不买"仍是第一反转条件；16L 一厨两卫与"回水管已预埋、不上零冷水主机"口径不变。
+- **未做**：KL7PRO 南宁一手核价与安装边界报价；JM6C/KL7PRO 同门对比的实测噪声数据。
