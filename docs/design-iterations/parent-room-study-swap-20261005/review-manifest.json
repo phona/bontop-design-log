@@ -4,7 +4,7 @@
   "iteration_id": "parent-room-study-swap-20261005",
   "subject": "父母房↔书房功能互换（几何不动）+ 客房隔开 + 书房储物扩容 + 删除轻训练器材",
   "state": "batch_a_b1_b2_done",
-  "state_note": "批次 A（衣柜 roomOverride）+ B-1（B5-A 电脑回路改道）+ B-2（起夜路径 9 灯 + 客房床头组，DEC-2026-10-05-R14）已完成；标准 v1.1 修订回路规则为\"优先并入既有照明回路\"。电气点位 98→110，回路仍 22。verify:all / test:server 609/609 / typecheck / test:app 470/470 全绿。剩余：B-2 床头电位最终坐标待量房（剪力墙探测）、night_living_mid 取电、批次 D 浏览器证据。",
+  "state_note": "批次 A（衣柜 roomOverride）+ B-1（B5-A 电脑回路改道）+ B-2（起夜路径 9 灯 + 客房床头组，DEC-2026-10-05-R15）已完成；标准 v1.1 修订回路规则为\"优先并入既有照明回路\"。电气点位 98→110，回路仍 22。verify:all / test:server 609/609 / typecheck / test:app 470/470 全绿。剩余：B-2 床头电位最终坐标待量房（剪力墙探测）、night_living_mid 取电、批次 D 浏览器证据。 另：DEC-2026-10-05-R17 关闭床头壁灯/阅读灯（业主明确不做）。",
   "source_version": {
     "config_refs": [
       "config/house.yaml",

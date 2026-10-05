@@ -95,7 +95,7 @@
   reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
   applies_to: [web, blender]
 
-# ── 2026-10-05 起夜路径 night_light（DEC-2026-10-05-R14）──
+# ── 2026-10-05 起夜路径 night_light（DEC-2026-10-05-R15）──
 # electrical.height 即安装完成面（0.25–0.40m），anchorY_offset 一律 0，不重复书写高度绝对值。
 - id: night_guest_bed_side
   anchorY_offset: 0
