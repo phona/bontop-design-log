@@ -457,6 +457,137 @@
       },
       "temperatureK": 4000,
       "enabled": true
+    },
+    {
+      "id": "night_guest_bed_side",
+      "room": "bedroom_se",
+      "type": "night_light",
+      "position": {
+        "x": 13.4,
+        "y": 0.3,
+        "z": 7.6
+      },
+      "temperatureK": 3000,
+      "enabled": true,
+      "circuit": "lighting_bedrooms_bath",
+      "wallId": "w_be_west",
+      "wallSide": "east"
+    },
+    {
+      "id": "night_guest_head",
+      "room": "bedroom_se",
+      "type": "night_light",
+      "position": {
+        "x": 16.4,
+        "y": 0.35,
+        "z": 7.6
+      },
+      "temperatureK": 3000,
+      "enabled": true,
+      "circuit": "lighting_bedrooms_bath",
+      "wallId": "w_east_upper",
+      "wallSide": "west"
+    },
+    {
+      "id": "night_guest_door",
+      "room": "living_dining",
+      "type": "night_light",
+      "position": {
+        "x": 13.4,
+        "y": 0.3,
+        "z": 6.9
+      },
+      "temperatureK": 3000,
+      "enabled": true,
+      "circuit": "entry_base",
+      "wallId": "w_be_west",
+      "wallSide": "west"
+    },
+    {
+      "id": "night_living_north",
+      "room": "living_dining",
+      "type": "night_light",
+      "position": {
+        "x": 13.4,
+        "y": 0.3,
+        "z": 5.1
+      },
+      "temperatureK": 3000,
+      "enabled": true,
+      "circuit": "entry_base",
+      "wallId": "w_liv_east",
+      "wallSide": "west"
+    },
+    {
+      "id": "night_living_mid",
+      "room": "living_dining",
+      "type": "night_light",
+      "position": {
+        "x": 11,
+        "y": 0.3,
+        "z": 5.6
+      },
+      "temperatureK": 3000,
+      "enabled": true,
+      "circuit": "entry_base"
+    },
+    {
+      "id": "night_corridor",
+      "room": "living_dining",
+      "type": "night_light",
+      "position": {
+        "x": 7.6,
+        "y": 0.3,
+        "z": 5.3
+      },
+      "temperatureK": 3000,
+      "enabled": true,
+      "circuit": "entry_base"
+    },
+    {
+      "id": "night_gbath_door",
+      "room": "guest_bath",
+      "type": "night_light",
+      "position": {
+        "x": 5.66,
+        "y": 0.3,
+        "z": 3.45
+      },
+      "temperatureK": 3000,
+      "enabled": true,
+      "circuit": "lighting_bedrooms_bath",
+      "wallId": "w_gbath_west",
+      "wallSide": "east"
+    },
+    {
+      "id": "night_gbath_vanity",
+      "room": "guest_bath",
+      "type": "night_light",
+      "position": {
+        "x": 7.04,
+        "y": 0.35,
+        "z": 4.05
+      },
+      "temperatureK": 3000,
+      "enabled": true,
+      "circuit": "lighting_bedrooms_bath",
+      "wallId": "w_gbath_east_open_vanity",
+      "wallSide": "west"
+    },
+    {
+      "id": "night_gbath_inner",
+      "room": "guest_bath",
+      "type": "night_light",
+      "position": {
+        "x": 7.04,
+        "y": 0.3,
+        "z": 2.95
+      },
+      "temperatureK": 3000,
+      "enabled": true,
+      "circuit": "lighting_bedrooms_bath",
+      "wallId": "w_gbath_east",
+      "wallSide": "west"
     }
   ],
   "plumbing": [

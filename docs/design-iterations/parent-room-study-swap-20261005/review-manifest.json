@@ -3,8 +3,8 @@
   "project": "bontop-design-log",
   "iteration_id": "parent-room-study-swap-20261005",
   "subject": "父母房↔书房功能互换（几何不动）+ 客房隔开 + 书房储物扩容 + 删除轻训练器材",
-  "state": "batch_a_and_b1_done",
-  "state_note": "批次 A（衣柜 roomOverride）+ B-1（B5-A 电脑回路改道，DEC-2026-10-05-R13）已完成，verify:facts/mep/electrical 绿，test:server 608/609。B-2 客房床头组（前置量房）、批次 C 起夜预留、批次 D 证据仍待。",
+  "state": "batch_a_b1_b2_done",
+  "state_note": "批次 A（衣柜 roomOverride）+ B-1（B5-A 电脑回路改道）+ B-2（起夜路径 9 灯 + 客房床头组，DEC-2026-10-05-R14）已完成；标准 v1.1 修订回路规则为\"优先并入既有照明回路\"。电气点位 98→110，回路仍 22。verify:all / test:server 609/609 / typecheck / test:app 470/470 全绿。剩余：B-2 床头电位最终坐标待量房（剪力墙探测）、night_living_mid 取电、批次 D 浏览器证据。",
   "source_version": {
     "config_refs": [
       "config/house.yaml",
@@ -149,8 +149,8 @@
   "review": {
     "verdict": "BLOCKED",
     "blocking_issues": [
-      "P0-2 客房床头电位高度不可用（待 B-2/量房）",
-      "量房四项未回",
+      "量房四项未回（剪力墙/凸窗带/门洞/飘窗台高）",
+      "night_living_mid 取电方式未定",
       "同版本浏览器证据未采集"
     ]
   }
