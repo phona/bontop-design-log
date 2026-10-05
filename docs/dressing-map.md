@@ -32,7 +32,7 @@
 | bed | bed_180_01 | 1.8m 实木床 | 本地家具厂 / 源氏木语 / 1.8×2.0m 中浅胡桃木细框架 + 暖米灰软包床头 | 1800×2000mm | 按实物选材替换 |
 | mattress | mattress_180_01 | 1.8m 独立袋装弹簧床垫 | 喜临门 / 雅兰 / 20-25cm 独立袋装弹簧 + 乳胶 | 1800×2000mm | 按实物选材替换 |
 | wardrobe | wardrobe_240_01 | 2.4m 定制衣柜 | 本地全屋定制工厂 / 2.4×0.6×2.7m，平开门 | 2400×600×2700mm | 按实物选材替换 |
-| wardrobe | wardrobe_north_950_custom_01 | 主卧北墙950定制模块化衣柜（R7 首版 superseded，历史保留） | 本地全屋定制工厂 / 待核样 / 950×580×2450mm，三扇窄平开门，一体木饰面，非通顶 | 950×580×2450mm | 底色 medium_light_walnut_warm_smoked_oak |
+| wardrobe | wardrobe_north_950_custom_01_r7_superseded | 主卧北墙950定制模块化衣柜（R7 首版 superseded，历史保留；2026-10-04 改后缀 id 以免与 R8 active 版互相覆盖） | 本地全屋定制工厂 / 待核样 / 950×580×2450mm，三扇窄平开门，一体木饰面，非通顶 | 950×580×2450mm | 底色 medium_light_walnut_warm_smoked_oak |
 | wardrobe | study_seasonal_wardrobe_170_01 | 1.7m 模块化季节后台柜（书房） | 本地全屋定制工厂 / 宜家 modular 系列 / 1.70×0.55×2.40m 模块化组合柜，换季收纳 | 1700×550×2400mm | 按实物选材替换 |
 | home_fitness | home_fitness_light_set_01 | 轻训练套（可调哑铃对+底座、可卷训练垫，可调凳复用书房现有） | Keep / 迪卡侬 / 本地体育用品店 / 可调哑铃 2×24kg 带底座 + 可卷训练垫 1.8m | 哑铃对+底座+垫一套 | 按实物选材替换 |
 | dresser | light_midcentury_dresser_01 | 轻中古六抽矮柜（主卧南侧窗带） | 林氏家居 / 源氏木语 / 本地家具厂（按中古款筛选） / 1.40×0.48×0.85m 六抽屉细腿矮柜，中古木色（与梳妆桌同族） | 1400×480×850mm | 按实物选材替换 |

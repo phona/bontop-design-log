@@ -12,8 +12,11 @@
 | `config/electrical.yaml` | 共 98 个点位 | `fact.electrical_points_count` |
 | `config/plumbing.yaml` | 共 22 个点位 | `fact.plumbing_points_count` |
 | `config/ceiling.yaml` | 共 23 个吊顶分区 | `fact.ceiling_zones_count` |
+| `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 144 处 | `fact.mep_routes_count` + 契约 `c.mep_layer_below_drop_bottom` |
 
 > 上表数字必须与 yaml 实际条目数一致，否则 `verify:facts` 的 count/fact 对账直接失败。
+
+> **2026-10-04 新增登记（契约 `c.mep_layer_below_drop_bottom`）**：走线表的**分层标高整层低于降板完成面**——强电 2.45m / 弱电 2.50m / 冷媒 2.55m / 冷凝水 2.35m，而 0.30m 降板的完成面是 2.80−0.30=**2.50m**、0.15m 降板与铝扣板是 **2.65m**。实算 **144 处**「路线点位低于所经吊顶完成面」，涉及 63 条路线 / 13 个吊顶分区。这不是逐条算错，是两套口径从未对齐；**未裁定前不许改数据消音**，裁定项见 `docs/pending-site-data.md #41`（分层标高升入降板空腔 2.50–3.00m，或调整降板厚度/范围）。契约以 error 级强制：实算数与上表登记的 144 不符即失败（变多=有人乱加路线，变少=有人改数据消音）。
 
 ## 1. 走线总则
 

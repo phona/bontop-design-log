@@ -93,7 +93,17 @@ export function checkWallPointPlacements(
     const lineDistance = distance({ x: item.x, z: item.z }, projection);
     const outside = rawT < -EPS || rawT > 1 + EPS;
 
-    if (outside || lineDistance > tolerance) {
+    // 2026-10-04 A4-b：原先这里 `issues.push(...); continue;`——
+    // 投影超段/离墙超差的点位被提前放行，**结构上永不再接受 wall_side 合法性、
+    // 侧别方向、渲染面朝向、端点距离、洞口避让这五类检查**。
+    // 这正是「静默跳过」这类万恶之源：一个点位几何已经不对，后面的语义检查全部不跑，
+    // 于是它既不会因为墙段错而被发现，也不会因为缺 wall_side 而被发现。
+    // 现在改为**不跳过**：几何问题照记，后续检查继续在（被 clamp 到端点的）投影上跑，
+    // 让一个坏点位把该说的都说出来，而不是只说一句「投影超出墙段」就消失。
+    // 唯一例外是「距墙段端点」子检查：投影已被 clamp 到端点，该值必然为 0，
+    // 再报一条只是同一次失败的复读，故用 geometryOk 单独门控。
+    const geometryOk = !outside && lineDistance <= tolerance;
+    if (!geometryOk) {
       issues.push({
         level: 'warning',
         id: item.id,
@@ -103,7 +113,6 @@ export function checkWallPointPlacements(
           ? `投影超出墙段（距墙线 ${lineDistance.toFixed(2)}m）`
           : `离墙线垂直距离 ${lineDistance.toFixed(2)}m`,
       });
-      continue;
     }
 
     const sideOffset = (item.x - projection.x) * (-dz / len) + (item.z - projection.z) * (dx / len);
@@ -146,7 +155,7 @@ export function checkWallPointPlacements(
 
     const along = t * len;
     const endpointDistance = Math.min(along, len - along);
-    if (endpointDistance < tolerance) {
+    if (geometryOk && endpointDistance < tolerance) {
       issues.push({
         level: 'warning',
         id: item.id,

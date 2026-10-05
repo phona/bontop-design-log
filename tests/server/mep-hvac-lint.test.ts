@@ -25,7 +25,11 @@ test('real MEP configuration lints without false errors and reports warnings str
   assert.equal(result.counts.resolvedRoutes, 73);
   assert.equal(result.errors.length, 0);
   assert.equal(result.warnings.filter((issue) => issue.code === 'hvac_coverage_missing').length, 0);
-  assert.equal(result.warnings.length, 9);
+  // 2026-10-04 A1：吊顶净空规则从「要求 zone.area 与 zone.height 同时存在」（本项目交集为 0、
+  // 永不触发）改为按 thickness 反算完成面，因此本用例从 9 条变成 9 + 144 条。
+  // 144 与 facts 契约 c.mep_layer_below_drop_bottom 的登记基数同源（docs/pending-site-data.md #41）。
+  assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 144);
+  assert.equal(result.warnings.length, 154);
   assert.ok(result.warnings.some((issue) => issue.code === 'supply_return_overlap'));
   assert.ok(result.warnings.some((issue) => issue.code === 'nonphysical_route'));
   const balcony = config.routes.find((r) => r.id === 'drain-balcony')!;

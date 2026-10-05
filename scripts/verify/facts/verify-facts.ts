@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { lintFacts, type FactsRegistry, type FactsWorkspace } from '../../../shared/facts-lint.js';
+import { endpointSourcesFromFacts, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
 
 const REGISTRY = 'config/facts.yaml';
 const REPO_ROOT = process.cwd();
@@ -84,6 +85,45 @@ const layoutFloorRegions = ((overlay?.elements ?? []) as any[])
     points: (e.points ?? []).map((p: any) => ({ x: p.x, z: p.z })),
   }));
 
+// ── mep 契约用的端点坐标 / 房间净高（c.mep_layer_below_drop_bottom 的输入）────────
+// 端点解析直接复用 shared/mep-hvac-coordination-schema.ts 的
+// endpointSourcesFromFacts + resolveMepEndpoint——与 scripts/verify/mep/verify-mep-lint.ts
+// 走**同一套**解析逻辑，保证 facts 契约与 verify:mep 的吊顶净空告警对同一批点位给出同一结论。
+// 房间净高复刻 SceneBuilder.addCeilingZones：`rooms.find(r => r.id === zone.room)?.height ?? 2.8`，
+// 与 CeilingZoneBuilder 的 topY = ceilingHeight − thickness + SLAB_EPS 同口径。
+const mepDocs = ['config/electrical.yaml', 'config/plumbing.yaml', 'config/ceiling.yaml', 'config/hvac.yaml']
+  .map((p) => ({ p, doc: loadDoc(p) as any }));
+
+const mepEndpoints: Record<string, { x: number; z: number; y?: number }> = {};
+const mepSources = mepDocs.length ? endpointSourcesFromFacts({
+  electrical: mepDocs[0].doc,
+  plumbing: mepDocs[1].doc,
+  ceiling: mepDocs[2].doc,
+  hvac: mepDocs[3].doc,
+}) : undefined;
+if (mepSources) {
+  const mepConfig = loadDoc('config/mep-hvac-coordination.yaml') as { routes?: unknown[] } | null;
+  const wanted = new Set<string>();
+  for (const route of (mepConfig?.routes ?? []) as Array<Record<string, unknown>>) {
+    if (!route || typeof route !== 'object') continue;
+    for (const side of [route.from, route.to]) if (typeof side === 'string') wanted.add(side);
+    for (const via of (Array.isArray(route.via) ? route.via : [])) {
+      if (via && typeof via === 'object' && typeof (via as { id?: unknown }).id === 'string') wanted.add((via as { id: string }).id);
+    }
+  }
+  for (const id of [...wanted].sort()) {
+    const at = resolveMepEndpoint(id, mepSources);
+    if (at) mepEndpoints[id] = at;
+  }
+}
+const mepRoomHeights: Record<string, number> = {};
+for (const room of (geometry?.rooms ?? []) as any[]) {
+  if (room?.id && typeof room.height === 'number') mepRoomHeights[room.id] = room.height;
+}
+if (geometry?.platform?.id && typeof geometry.platform.height === 'number') {
+  mepRoomHeights[geometry.platform.id] = geometry.platform.height;
+}
+
 const coverageFiles = [
   ...fs.readdirSync(rel('config')).filter((f) => f.endsWith('.yaml')).map((f) => `config/${f}`),
   ...fs.readdirSync(rel('config/layout')).filter((f) => f.endsWith('.yaml')).map((f) => `config/layout/${f}`),
@@ -110,6 +150,9 @@ const workspace: FactsWorkspace = {
     'coverage.files': coverageFiles,
     'layout.rooms': layoutRooms,
     'layout.floor_regions': layoutFloorRegions,
+    // MEP 契约（c.mep_layer_below_drop_bottom）的端点坐标与房间净高。
+    'mep.endpoints': mepEndpoints,
+    'mep.room_heights': mepRoomHeights,
   },
 };
 

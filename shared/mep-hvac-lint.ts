@@ -27,6 +27,43 @@ export interface MepLintLayoutContext {
   referenceConstraints?: Array<{ id: string; range: { x1: number; x2: number; z1: number; z2: number }; reason?: string; status?: string; reference_beam_bottom_y?: number }>;
 }
 
+/** 实心吊顶（降板/铝扣板/一体）的类型集合：与 shared/render/CeilingZoneBuilder.ts 的 SOLID_TYPES 同源。 */
+const SOLID_CEILING_TYPES = new Set(['drop', 'integrated', 'aluminum_buckle']);
+
+/**
+ * 吊顶「完成面」标高——即从房间内看到的吊顶表面高度。
+ *
+ * 2026-10-04 A1：原实现直接读 `zone.height`，而 `config/ceiling.yaml` 的 23 条里
+ * 6 条有 height 无 area（ac_indoor）、17 条有 area 无 height（drop/aluminum），
+ * **交集为 0 → 那条吊顶净空规则对本项目永远不触发**（`if (!zone.area || zone.height === undefined) continue`）。
+ * 本轮不动 config/ceiling.yaml（另有并行迭代在写该文件），改为按 CeilingZoneBuilder 的
+ * 同一口径**反算**：`完成面 = 房间净高 − thickness`，其中房间净高取
+ * `rooms.find(r => r.id === zone.room)?.height ?? 2.8`，与 SceneBuilder.addCeilingZones
+ * 调 buildCeilingZone(zone, roomHeight) 完全一致（CeilingZoneBuilder 里
+ * `topY = ceilingHeight − zone.thickness + SLAB_EPS`，板下表面即完成面）。
+ *
+ * 判定方向随之修正：
+ *   - 实心吊顶：点位在 footprint 内且 y **低于**完成面 → 管路会穿出吊顶、暴露在室内 → 告警。
+ *     （原实现的 `y > zoneHeight` 对实心区是反的：管路高于完成面说明它在吊顶空腔里，正是对的。）
+ *   - ac_indoor：`zone.height` 是内机包络顶面，保持原语义 `y > height` → 撞内机/结构。
+ */
+export function ceilingSurfaceY(zone: CeilingZone, roomHeight = 2.8): number | undefined {
+  if (SOLID_CEILING_TYPES.has(zone.type) && zone.thickness !== undefined && zone.thickness > 0) {
+    return roomHeight - zone.thickness;
+  }
+  return zone.height;
+}
+
+/** 实心吊顶为 true（其「高度」是完成面，点位不得低于它）；ac_indoor 为 false（其「高度」是包络顶，点位不得高于它）。 */
+export function isSolidCeilingZone(zone: CeilingZone): boolean {
+  return SOLID_CEILING_TYPES.has(zone.type) && zone.thickness !== undefined && zone.thickness > 0;
+}
+
+function inFootprint(p: Point, area: [number, number, number, number]): boolean {
+  const [x1, z1, x2, z2] = area;
+  return p.x >= Math.min(x1, x2) && p.x <= Math.max(x1, x2) && p.z >= Math.min(z1, z2) && p.z <= Math.max(z1, z2);
+}
+
 type Point = { x: number; y?: number; z: number };
 type Box = { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
 
@@ -239,12 +276,38 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
       }
     }
     if (ceiling.length) {
+      const roomHeights = new Map((context.layout?.rooms ?? []).map((room) => [room.id, room.height]));
+      // 同一「路线 × 吊顶分区」只报一次：否则一条 8 段的路线能刷出 8 条同文告警，
+      // 把真正需要看的信号淹掉。去重不降级——severity 仍是 warning，条数只是汇报口径。
+      const reportedZones = new Set<string>();
       for (const zone of ceiling) {
-        if (!zone.area || zone.height === undefined) continue;
-        const [x1, z1, x2, z2] = zone.area;
-        const inside = points.some((p) => p.x >= Math.min(x1, x2) && p.x <= Math.max(x1, x2) && p.z >= Math.min(z1, z2) && p.z <= Math.max(z1, z2));
-        const zoneHeight = zone.height;
-        if (inside && points.some((p) => (p.y ?? layer?.height ?? 0) > zoneHeight)) add(result, issue('warning', 'ceiling_clearance_unverified', `Route ${route.id} enters ceiling zone ${zone.id} above its declared height`, route.id));
+        // 2026-10-04 A1：不再要求 zone.height 存在（那会让本规则对 17 条 drop/aluminum 区
+        // 永久静默）；实心区按 thickness 反算完成面，见 ceilingSurfaceY 的口径说明。
+        if (!zone.area) continue;
+        const surfaceY = ceilingSurfaceY(zone, roomHeights.get(zone.room) ?? 2.8);
+        if (surfaceY === undefined) continue;
+        const solid = isSolidCeilingZone(zone);
+        // 逐点判定（不再用「任一点在 footprint 内 + 另一个点超高」这种跨点组合，
+        // 那会把只是擦个角的路线误报成问题）。
+        for (const p of points) {
+          if (!inFootprint(p, zone.area)) continue;
+          const y = p.y ?? layer?.height ?? 0;
+          const below = solid && y < surfaceY - 1e-9;
+          const above = !solid && y > surfaceY + 1e-9;
+          if (!below && !above) continue;
+          const key = `${zone.id}:${below ? 'below' : 'above'}`;
+          if (reportedZones.has(key)) break;
+          reportedZones.add(key);
+          add(result, issue(
+            'warning',
+            'ceiling_clearance_unverified',
+            solid
+              ? `Route ${route.id} dips below the finished ceiling surface of ${zone.id} (${surfaceY.toFixed(2)}m) inside its footprint`
+              : `Route ${route.id} enters ceiling zone ${zone.id} above its declared height (${surfaceY.toFixed(2)}m)`,
+            route.id,
+          ));
+          break;
+        }
       }
     }
     // 梁碰撞：只有 status: confirmed 且带 reference_beam_bottom_y 的约束才构成硬碰撞（inferred/pending 仅走 reference_constraint_uncertain 提醒）

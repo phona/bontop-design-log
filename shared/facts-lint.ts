@@ -120,8 +120,9 @@ export type ContractKind =
   | 'count'
   | 'pointer'
   | 'type_ref'
-  | 'supersede';
-
+  | 'supersede'
+  | 'ceiling_clearance'
+  | 'covered_or_marked';
 export interface Contract {
   id: string;
   kind: ContractKind;
@@ -1492,6 +1493,244 @@ function collectExemptions(registry: FactsRegistry): Exemption[] {
   return out;
 }
 
+// ─── T3.11 ceiling_clearance：MEP 路线标高不得低于所经吊顶完成面 ─────────────
+//
+// 治一个「静默缺失」：config/mep-hvac-coordination.yaml 的分层标高（强电 2.45 / 弱电 2.50 /
+// 冷媒 2.55 / 冷凝水 2.35 …）与 config/ceiling.yaml 的降板完成面（2.80 − thickness）是两套
+// 从未对齐的口径。修之前没有任何门禁看这件事——73 条路线照跑，谁也不说它穿出了吊顶。
+//
+// 完成面口径必须与 shared/render/CeilingZoneBuilder.ts 一致：
+//   `topY = ceilingHeight − zone.thickness + SLAB_EPS`，板下表面即完成面；
+//   ceilingHeight 取 `rooms.find(r => r.id === zone.room)?.height ?? 2.8`。
+// 这里不读 config/ceiling.yaml 的 `height` 字段（本项目 drop/aluminum 条目没有该字段，
+// 读了就永远 0 命中），一律按 thickness 反算。
+//
+// 处置原则（2026-10-04 A1）：
+//   - severity: error —— 新增的、未登记的冲突一律是 error，不许静默过关；
+//   - 既有冲突是**系统性口径未对齐**，根因是设计侧决策（分层标高升入降板空腔 or 调整降板），
+//     不是逐条算错。因此登记一个 `registered_conflicts` 基数，并强制它与机器实算值相等：
+//       实算 ≠ 登记  → error（两个方向都报：变多说明有人乱加路线，变少说明有人改数据消音）；
+//       实算 ≠ prose → error（防止只改登记不改文档）。
+//     冲突清单由引擎以 INFO 逐条列出，配 contract.pending 在报告里露面——
+//     「0 命中」和「有冲突」都不可能悄悄腐烂。
+
+const SOLID_CEILING_TYPES_FACTS = new Set(['drop', 'integrated', 'aluminum_buckle']);
+
+interface CeilingClearanceZone { id: string; area: [number, number, number, number]; surface: number }
+interface ClearancePoint { x: number; z: number; y?: number }
+
+function inFootprintFacts(p: ClearancePoint, area: [number, number, number, number]): boolean {
+  const [x1, z1, x2, z2] = area;
+  return p.x >= Math.min(x1, x2) && p.x <= Math.max(x1, x2) && p.z >= Math.min(z1, z2) && p.z <= Math.max(z1, z2);
+}
+
+/** 复刻 shared/mep-hvac-coordination-schema.ts 的 mepRoutePoints：from + via + to，y 取 *route 的高度字段。 */
+function clearanceRoutePoints(route: Record<string, unknown>, endpoints: Record<string, { x: number; z: number; y?: number }>): ClearancePoint[] {
+  const pointOf = (endpoint: unknown): ClearancePoint | undefined => {
+    if (typeof endpoint === 'string') return endpoints[endpoint];
+    if (isRecord(endpoint) && typeof endpoint.x === 'number' && typeof endpoint.z === 'number') {
+      return { x: endpoint.x, z: endpoint.z, y: typeof endpoint.y === 'number' ? endpoint.y : undefined };
+    }
+    return undefined;
+  };
+  const heights = (route as { from_height?: unknown; to_height?: unknown });
+  const from = pointOf(route.from);
+  const to = pointOf(route.to);
+  const via = Array.isArray(route.via) ? route.via.filter(isRecord).map((v) => ({
+    x: v.x as number,
+    z: v.z as number,
+    y: typeof v.y === 'number' ? (v.y as number) : undefined,
+  })) : [];
+  return [
+    ...(from ? [{ ...from, y: typeof heights.from_height === 'number' ? heights.from_height : from.y }] : []),
+    ...via,
+    ...(to ? [{ ...to, y: typeof heights.to_height === 'number' ? heights.to_height : to.y }] : []),
+  ];
+}
+
+function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
+  const source = str(contract.source);
+  const doc = ws.load(source);
+  if (doc === null) {
+    add(result, issue('error', 'ceiling_clearance_unresolvable', `${contract.id}：${source} 不可读`, source));
+    tally(result, 'ceiling_clearance_unresolvable');
+    return;
+  }
+  // items_path 为空串表示文档根就是数组（如 config/plumbing.yaml）。
+  const routes = resolvePath(doc, str(contract.items_path));
+  if (!Array.isArray(routes)) {
+    add(result, issue('error', 'ceiling_clearance_unresolvable', `${contract.id}：${source} 的 items_path ${str(contract.items_path) || '(根)'} 不是数组`, source));
+    tally(result, 'ceiling_clearance_unresolvable');
+    return;
+  }
+  const ceiling = ws.load(str(contract.ceiling_source));
+  if (!Array.isArray(ceiling)) {
+    add(result, issue('error', 'ceiling_clearance_unresolvable', `${contract.id}：${str(contract.ceiling_source)} 不是数组`, str(contract.ceiling_source)));
+    tally(result, 'ceiling_clearance_unresolvable');
+    return;
+  }
+  const endpoints = (ws.datasets?.[str(contract.endpoints_key)] ?? {}) as Record<string, { x: number; z: number; y?: number }>;
+  const roomHeights = (ws.datasets?.[str(contract.room_heights_key)] ?? {}) as Record<string, number>;
+  const defaultRoomHeight = num(contract.default_room_height, 2.8);
+  const tol = num(contract.tolerance, 0);
+
+  // 路线自身没写 y 时，退回该分层的 layer.height——与 shared/mep-hvac-lint.ts 的
+  // `p.y ?? layer?.height ?? 0` 同口径，否则 facts 契约与 verify:mep 会对同一条路线给出
+  // 不同的冲突结论（未写 y 的点位在这里会被当成 0，平白多出一批假冲突）。
+  const layerHeights = new Map<string, number>();
+  const layersDoc = isRecord(doc) ? doc.layers : undefined;
+  if (isRecord(layersDoc)) {
+    for (const [name, spec] of Object.entries(layersDoc)) {
+      if (isRecord(spec) && typeof spec.height === 'number') layerHeights.set(name, spec.height);
+    }
+  }
+
+  const zones: CeilingClearanceZone[] = [];
+  for (const raw of ceiling) {
+    if (!isRecord(raw)) continue;
+    const type = str(raw.type);
+    if (!SOLID_CEILING_TYPES_FACTS.has(type)) continue;
+    const thickness = raw.thickness;
+    const area = raw.area;
+    if (typeof thickness !== 'number' || thickness <= 0 || !Array.isArray(area) || area.length !== 4) continue;
+    const roomHeight = roomHeights[str(raw.room)] ?? defaultRoomHeight;
+    zones.push({ id: str(raw.id), area: area as [number, number, number, number], surface: roomHeight - thickness });
+  }
+
+  const conflicts: string[] = [];
+  for (const route of routes) {
+    if (!isRecord(route)) continue;
+    const points = clearanceRoutePoints(route, endpoints);
+    if (!points.length) continue;
+    const layerHeight = typeof route.layer === 'string' ? layerHeights.get(route.layer) : undefined;
+    const yOf = (p: ClearancePoint): number => p.y ?? layerHeight ?? 0;
+    for (const zone of zones) {
+      if (!points.some((p) => inFootprintFacts(p, zone.area))) continue;
+      // 同一个点必须**同时**满足「在 footprint 内」和「低于完成面」。
+      // 曾经的写法把两条 some 分开扫，于是路线末端沿墙下引到 0.3m 插座的那一段
+      // （坐标不在任何吊顶分区里）也被算成吊顶冲突——凭空多出 27 处假冲突。
+      if (points.some((p) => inFootprintFacts(p, zone.area) && yOf(p) < zone.surface - tol)) conflicts.push(`${str(route.id)}@${zone.id}`);
+    }
+  }
+  const actual = conflicts.length;
+  note(result, `${contract.id}：实算 ${actual} 处「路线点位低于所经吊顶完成面」，涉及 ${new Set(conflicts.map((c) => c.split('@')[0])).size} 条路线 / ${new Set(conflicts.map((c) => c.split('@')[1])).size} 个吊顶分区（${[...new Set(conflicts.map((c) => c.split('@')[1]))].join('、')}）`);
+
+  const prose = (Array.isArray(contract.prose) ? contract.prose : []).filter(isRecord);
+  let checked = 0;
+  for (const one of prose) {
+    const path = str(one.path);
+    const extract = str(one.extract);
+    if (!path || !extract) continue;
+    const hits = grep(ws, path, extract);
+    const expect = typeof one.expect_matches === 'number' ? one.expect_matches : 1;
+    if (hits.length !== expect) {
+      add(result, issue('error', 'count_mirror_unresolvable', `${contract.id}：${path} 用 /${extract}/ 命中 ${hits.length} 次，期望 ${expect} 次——禁止静默跳过`, path));
+      tally(result, 'count_mirror_unresolvable');
+      continue;
+    }
+    const declared = toNumber(matchText(hits[0], typeof one.group === 'number' ? one.group : 1));
+    checked += 1;
+    if (!Number.isFinite(declared) || declared !== actual) {
+      add(result, issue(
+        contractLevel(contract),
+        'count_mismatch',
+        `${contract.id}：prose 声明 ${declared} 处，机器实算 ${actual} 处（${loc(lines, path, hits[0].index)}）——登记数与实算不符，禁止静默跳过`,
+        loc(lines, path, hits[0].index),
+      ));
+      tally(result, 'count_mismatch');
+    }
+  }
+  if (prose.length > 0 && checked === 0) {
+    add(result, issue(contractLevel(contract), 'count_unregistered', `${contract.id}：实算 ${actual} 处冲突，但登记的 prose 计数声明无一可解析`, source));
+    tally(result, 'count_unregistered');
+  }
+
+  const registered = typeof contract.registered_conflicts === 'number' ? contract.registered_conflicts : undefined;
+  if (registered !== undefined && registered !== actual) {
+    add(result, issue(
+      contractLevel(contract),
+      'ceiling_clearance_baseline_drift',
+      `${contract.id}：登记的既有冲突基数 ${registered} ≠ 机器实算 ${actual}。只有两种合法解释：①设计侧真的裁定了（分层标高升入降板空腔 or 调整降板厚度，需同步更新 prose 与 registered_conflicts 并关闭 docs/pending-site-data.md #41）；②有人改数据消音。二者都必须是有意识的改动，git diff 里看得见`,
+      source,
+    ));
+    tally(result, 'ceiling_clearance_baseline_drift');
+  }
+}
+
+// ─── T3.12 covered_or_marked：点位要么被引用，要么显式表态 ────────────────────
+//
+// 治「静默缺席」：一个点位躺在 config 里，没有任何 route 引用它，note 里也不说为什么——
+// 水电交底时它就是「没人认领」的那一处。本项目给排水 22 个点位里曾有 11 个处在这个状态
+// （既有正确先例是 drain_mbath_toilet：note 明写「本轮不画 MEP route，待 SKU + 量房」）。
+//
+// 本契约把「必须表态」变成门禁：每个点位要么出现在某条 route 的 from/to/via.id 里，
+// 要么 note 里含显式 deferred 标记（`marker`，缺省即视为没表态）→ error。
+// 新增一个既不画线也不登记的点位，立刻失败；把标记删掉，也立刻失败。
+
+function collectReferencedIds(doc: unknown, itemsPath: string, refFields: string[]): Set<string> {
+  const routes = resolvePath(doc, itemsPath);
+  if (!Array.isArray(routes)) return new Set();
+  const ids = new Set<string>();
+  for (const route of routes) {
+    if (!isRecord(route)) continue;
+    for (const field of refFields) {
+      const value = route[field];
+      if (typeof value === 'string') { ids.add(value); continue; }
+      if (Array.isArray(value)) {
+        for (const entry of value) {
+          if (typeof entry === 'string') { ids.add(entry); continue; }
+          if (isRecord(entry) && typeof entry.id === 'string') ids.add(entry.id);
+        }
+      }
+    }
+  }
+  return ids;
+}
+
+function runCoveredOrMarked(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
+  const source = str(contract.source);
+  const doc = ws.load(source);
+  if (doc === null) {
+    add(result, issue('error', 'covered_or_marked_unresolvable', `${contract.id}：${source} 不可读`, source));
+    tally(result, 'covered_or_marked_unresolvable');
+    return;
+  }
+  const items = resolvePath(doc, str(contract.items_path));
+  if (!Array.isArray(items)) {
+    add(result, issue('error', 'covered_or_marked_unresolvable', `${contract.id}：${source} 的 items_path ${str(contract.items_path) || '(根)'} 不是数组`, source));
+    tally(result, 'covered_or_marked_unresolvable');
+    return;
+  }
+  const keyField = str(contract.key_field, 'id');
+  const marker = str(contract.marker);
+  const noteField = str(contract.note_field, 'note');
+  const refSource = str(contract.ref_source);
+  const refDoc = ws.load(refSource);
+  if (refDoc === null) {
+    add(result, issue('error', 'covered_or_marked_unresolvable', `${contract.id}：${refSource} 不可读`, refSource));
+    tally(result, 'covered_or_marked_unresolvable');
+    return;
+  }
+  const referenced = collectReferencedIds(refDoc, str(contract.ref_items_path), stringList(contract.ref_fields));
+  let marked = 0;
+  for (const item of items) {
+    if (!isRecord(item)) continue;
+    const id = str(item[keyField]);
+    if (!id) continue;
+    if (referenced.has(id)) continue;
+    const note = str(item[noteField]);
+    if (marker && note.includes(marker)) { marked += 1; continue; }
+    add(result, issue(
+      contractLevel(contract),
+      'uncovered_and_unmarked',
+      `${contract.id}：${source} 的 ${id} 既不是 ${refSource} 任何 route 的 from/to/via，note 里也没有显式 deferred 标记「${marker}」——静默缺席，必须表态`,
+      locate(ws, source, id),
+    ));
+    tally(result, 'uncovered_and_unmarked');
+  }
+  note(result, `${contract.id}：${items.length} 个点位中 ${referenced.size > 0 ? '' : ''}${marked} 个以显式 deferred 标记登记（未画 route），其余由 ${refSource} 的 route 引用`);
+}
+
 // ─── 入口 ────────────────────────────────────────────────────────────────────
 
 export function lintFacts(registry: FactsRegistry, ws: FactsWorkspace): FactsLintResult {
@@ -1514,6 +1753,8 @@ export function lintFacts(registry: FactsRegistry, ws: FactsWorkspace): FactsLin
       case 'pointer': runPointer(ws, result, lines, contract); break;
       case 'type_ref': runTypeRef(ws, result, lines, contract); break;
       case 'supersede': runSupersede(ws, result, contract); break;
+      case 'ceiling_clearance': runCeilingClearance(ws, result, lines, contract); break;
+      case 'covered_or_marked': runCoveredOrMarked(ws, result, lines, contract); break;
       default: break;
     }
   }

@@ -796,3 +796,105 @@ test('带 pending 的豁免与契约在 INFO 里露面，不退化成静默待�
   assert.match(notes, /业主改口径/);
   assert.match(notes, /contract c\.armed 待决/);
 });
+
+// ─── 2026-10-04 A1/A7 新增的两个契约 kind ──────────────────────────────────
+
+test('ceiling_clearance：点位低于所经吊顶完成面即计冲突；同一批点必须同时满足两个条件', () => {
+  const contract = {
+    id: 'c.probe_ceiling', kind: 'ceiling_clearance' as const, severity: 'error' as const,
+    source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/ceiling.yaml',
+    endpoints_key: 'mep.endpoints', room_heights_key: 'mep.room_heights',
+    default_room_height: 2.8, tolerance: 0.005, registered_conflicts: 1,
+    prose: [{ path: 'docs/guidance.md', extract: '冲突\\s*(\\d+)\\s*处', expect_matches: 1 }],
+  };
+  const files = {
+    'config/mep.yaml': [
+      'layers:',
+      '  strong_power: { height: 2.45 }',
+      'routes:',
+      '  - id: bad',
+      '    layer: strong_power',
+      '    from_height: 2.45',
+      '    to_height: 2.45',
+      '    via: [{x: 8.0, z: 4.6, y: 2.45}]',
+      '    to: {x: 8.5, z: 4.6}',
+      '  - id: ok_above',
+      '    layer: strong_power',
+      '    from_height: 2.55',
+      '    to_height: 2.55',
+      '    via: [{x: 8.0, z: 4.6, y: 2.55}]',
+      '    to: {x: 8.5, z: 4.6}',
+      // 单独看不低于完成面的点位在 footprint 外：两条 some 合起来误判的来源
+      '  - id: mixed',
+      '    layer: strong_power',
+      '    from_height: 2.55',
+      '    to_height: 2.55',
+      '    via: [{x: 8.0, z: 4.6, y: 2.55}, {x: 0.5, z: 7.0, y: 0.3}]',
+      '    to: {x: 8.5, z: 4.6}',
+    ].join('\n'),
+    'config/ceiling.yaml': [
+      '- id: drop_a',
+      '  room: living_dining',
+      '  type: drop',
+      '  thickness: 0.30',
+      '  area: [7.20, 4.30, 13.40, 5.20]',
+    ].join('\n'),
+    'docs/guidance.md': '冲突 1 处\n',
+  };
+  const datasets = {
+    'mep.endpoints': {},
+    'mep.room_heights': { living_dining: 2.8 },
+  };
+  const result = lintFacts({ ...emptyRegistry, contracts: [contract] }, workspaceOf(files, datasets));
+  assert.equal(result.errors.length, 0, result.errors.map((e) => e.message).join('\n'));
+  assert.match((result.notes ?? []).join('\n'), /实算 1 处/);
+
+  // 登记基数写得比实算多 → baseline_drift（两个方向都报：多了=乱加路线，少了=改数据消音）
+  const drift = lintFacts({ ...emptyRegistry, contracts: [{ ...contract, registered_conflicts: 2 }] }, workspaceOf(files, datasets));
+  assert.equal(drift.errors.filter((i) => i.code === 'ceiling_clearance_baseline_drift').length, 1);
+
+  // prose 计数与实算不符 → count_mismatch
+  const stale = lintFacts({ ...emptyRegistry, contracts: [{ ...contract }] }, workspaceOf({ ...files, 'docs/guidance.md': '冲突 9 处\n' }, datasets));
+  assert.equal(stale.errors.filter((i) => i.code === 'count_mismatch').length, 1);
+
+  // prose 计数字符串被删掉 → count_mirror_unresolvable，禁止静默跳过
+  const gone = lintFacts({ ...emptyRegistry, contracts: [{ ...contract }] }, workspaceOf({ ...files, 'docs/guidance.md': '无\n' }, datasets));
+  assert.equal(gone.errors.filter((i) => i.code === 'count_mirror_unresolvable').length, 1);
+});
+
+test('covered_or_marked：点位要么被 route 引用，要么 note 含显式 deferred 标记', () => {
+  const contract = {
+    id: 'c.probe_covered', kind: 'covered_or_marked' as const, severity: 'error' as const,
+    source: 'config/plumbing.yaml', key_field: 'id', note_field: 'note',
+    marker: '本轮不画 MEP route',
+    ref_source: 'config/mep.yaml', ref_items_path: 'routes', ref_fields: ['from', 'to', 'via'],
+  };
+  const files = {
+    'config/plumbing.yaml': [
+      '- id: referenced',
+      '  note: "被 route 引用"',
+      '- id: marked',
+      '  note: "本轮不画 MEP route，待量房"',
+      '- id: silent',
+      '  note: "什么都没说"',
+    ].join('\n'),
+    'config/mep.yaml': [
+      'routes:',
+      '  - id: r1',
+      '    from: referenced',
+      '    to: {x: 1, z: 1}',
+      '    via: [{x: 2, z: 2, y: 2.5}]',
+    ].join('\n'),
+  };
+  const result = lintFacts({ ...emptyRegistry, contracts: [contract] }, workspaceOf(files));
+  assert.equal(result.errors.filter((i) => i.code === 'uncovered_and_unmarked').length, 1);
+  assert.match(result.errors[0].message, /silent/);
+  assert.match(result.errors[0].message, /本轮不画 MEP route/);
+
+  // 补上标记即通过
+  const fixed = lintFacts(
+    { ...emptyRegistry, contracts: [contract] },
+    workspaceOf({ ...files, 'config/plumbing.yaml': files['config/plumbing.yaml'].replace('什么都没说', '本轮不画 MEP route，待量房') }),
+  );
+  assert.equal(fixed.errors.length, 0);
+});

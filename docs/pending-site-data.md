@@ -1,6 +1,6 @@
 # 量房待填清单
 
-> 量表共 39 条（2026-10-04 登记，与 `fact.pending_site_data_count` 对账：新增/关闭条目必须同步此数）。
+> 量表共 46 条（2026-10-04 登记，与 `fact.pending_site_data_count` 对账：新增/关闭条目必须同步此数）。
 
 > 交房后现场量房，逐项填入。每项标注精度等级：
 > - `inferred`：从图纸/规范推断（当前值）
@@ -117,3 +117,17 @@
 - [ ] 幕墙竖梃全貌
 - [ ] 空调外机位全貌+百叶
 - [ ] 入户门正面+侧面
+## 追加登记（2026-10-04 A 组整改：把静默缺失变成显式待办）
+
+> 本节 7 条（#40–#46）全部是**本轮才发现的结构性缺口**：此前方言/数据里带病运行，门禁抓不到。
+> 逐条写清「卡在谁那」，未裁定前**一律不改数据**。
+
+| # | 数据项 | 填入文件 | 格式 | 当前值 | 精度 | 影响 |
+|---|--------|----------|------|--------|------|------|
+| 40 | 套内 + 赠送 vs 预测建面的**加法口径** | config/house.yaml `project` / `notes` | `{净口径, 毛口径, 赠送计入规则}` | 三个真实存在的口径：**94.76㎡（合同净）** / **123.21㎡（94.76 + 12.90 + 13.95 + 1.60，模型 bbox 毛口径 + 赠送）** / **119.38㎡（预测建面）**。94.76 + 28.45 = 123.21 ≠ 119.38，等式不闭合 | pending | 预算基数、地面/柜体延米、得房率叙述。两个加数（入户花园 11.06→12.90、西设备平台 2.48→1.60）已按 `model-geometry.yaml` bbox 修正；**剩余的不是算错，是三套口径从未对齐**。需合同分户图裁定「净/毛/赠送计入」三者关系后再回写 |
+| 41 | MEP 吊顶内分层标高 vs 降板底面 | config/mep-hvac-coordination.yaml `layers` / `routes` | `{layer.height, route.via[].y, from_height}` | 分层标高（强电 2.45 / 弱电 2.50 / 冷媒 2.55 / 冷凝水 2.35 / 送风 2.68 / 回风 2.72）**整层低于 0.30m 降板的完成面 2.50m**（0.15m 降板/铝扣板为 2.65m）；降板底面权威 = `config/ceiling.yaml` 的 `height`（= 2.80 − thickness，与 `shared/render/CeilingZoneBuilder.ts` 的 topY 同口径） | pending | 强电/弱电/冷凝水若真按 2.45/2.35 敷设，会落在降板完成面**下方**即室内可见面；走向需整体升入降板空腔 2.50–3.00m，或调整降板厚度/范围。已由契约 `c.mep_layer_below_drop_bottom` 强制登记，冲突数只减不增 |
+| 42 | `sock_child_ac` 声明墙段与坐标不符 | config/electrical.yaml `sock_child_ac` | `{wall, wall_side, x, z}` | 声明 `wall: w_gbath_west`（该墙段实际跨度 z[2.20,3.55]），点位 z=4.00 → 投影超出墙段 0.45m；DEC-2026-08-01-012 原文为「西北次卧南墙 `w_nw_south` (4.0,4.30)」，而 MEP route `strong-ac-child` 已按穿 `w_nw_south` 后东行至本点位建模；几何上 (5.60,4.00) 落在 `w_gbath_west_open_vanity`（x=5.60, z[3.55,4.30]）上 | inferred | 儿童房空调电源点位归属墙段决定开槽/预埋对象；也决定 `verify-point-placement` 的 `wall_side` 与渲染面朝向。量房带图核对是东段共享墙还是南墙，二选一后回写 `wall` + `wall_side`。**升级路径**（2026-10-04 A4-b 已把 `verify-point-placement` 的提前 `continue` 改成 fail-loud）：本点位现在除「投影超出墙段 0.45m」外还会被追加检查 `wall_side` 合法性与渲染面朝向，`verify:data-consistency` 的 warning 数由 6 → 7；一旦回写 `wall`/`wall_side` 后几何仍不符，或侧别/朝向判定为 error，`verify:all` 立即 non-zero——不再可能靠 continue 静默过关 |
+| 43 | LEB 局部等电位端子箱 | config/plumbing.yaml（`type: leb`，**当前未建模**） | `{x, z, height, 联结金属构件清单}` | 未建模、位置未知。GB 55038-2025 第 7.4.7 条要求设局部等电位联结的场所（本项目主卫/客卫）应做 LEB；`shared/types.ts` 的 `PlumbingPointType` 已增 `leb` 枚举值，但**不得在位置未知时造点位** | pending | 卫浴金属构件（花洒/龙头/毛巾架/排水口/采暖管）等电位联结的施工圈法；端子箱位置还影响卫浴柜开门净空与贴砖面 |
+| 44 | 给排水 11 处点位无 MEP 走线引用 | config/plumbing.yaml + config/mep-hvac-coordination.yaml | `{route 或显式 deferred 标记}` | 22 个点位中 11 处既不是任何 route 的 `to`/`via`，note 里也没有显式 deferred 声明（`drain_mbath_toilet` 是既有正确先例）。已逐条补显式标记，并由契约 `c.plumbing_point_route_or_marked` 强制 | pending（逐点） | 水电交底时这 11 处「没人认领」；其中 `drain_mbath_vanity`/`drain_gbath_vanity` 已有 prose 路径（穿墙回沉箱），待立管位置与 SKU 冻结后升级为正式 route |
+| 45 | 进线相数 / 需用系数 / 总开额定电流 / 进线截面 | config/electrical-topology.yaml `pending_parameters` | `{相数, 需用系数, 总开额定电流 A, 进线截面 mm²}` | 仓内唯一进线口径为「≥10mm² 铜芯」（GB 55038 7.4.3-3），而全部回路的 capacity 合计 27.9kW——10mm² 铜芯单相约 11kW，**二者无法自洽**；需用系数、总开额定电流均无记录 | pending | 进线开关/线径选型直接决定强弱电箱规格（#30）与电改预算（#28）；卡在**供电局**（报装容量/相数）与设计侧（需用系数取值） |
+| 46 | 外机供电线径升级判据 | config/electrical.yaml `sock_vrf_outdoor_a2` / config/electrical-topology.yaml | `{厂家铭牌输入功率, 实测 EER, 线径 mm²}` | proposed 口径 C32A + 4.0mm²(φ20)。输入功率估 ≈6kW（按 EER≈3.5 估）→ 27.3A，对 4.0mm²（约 27–32A）余量 <10%；若实测 EER≈3.0 则 30.3A 已触上限，需升 6mm² | pending | 外机供电为第 20 路独立回路（DEC-2026-10-04-R2），线径返工涉及平台侧出墙方式与防水；卡在**厂家**（MJV-200W-E01-LHIV 铭牌输入功率/额定电流）与正式配电图 |

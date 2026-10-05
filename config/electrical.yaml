@@ -97,7 +97,7 @@
   height: 2.5
   count: 1
   position_status: pending
-  note: "餐厅空调内机电源（DEC-2026-10-03-R6 新增第 6 台内机 MJV-28T2，藏于客餐厅北缘边吊西端，与 sock_living_ac 同带；暂并入 hvac_power_living，最终供电分组以厂家正式配电图为准）；⚠️ 对应内机采购判读为 56T2（900mm 机身），电源点位不随机型变化；容量表以合同附图为准"
+  note: "餐厅空调内机电源（业主 2026-10-05 确认成交配置为 42T2；机位暂沿用客餐厅北缘边吊西端，与 sock_living_ac 同带；暂并入 hvac_power_living，最终供电分组以厂家正式配电图为准）。该内机为 P-SS 泵型；泵出口、电源/控制接法与冷凝水接驳按厂家资料待核，机位/风口和走线只作协调方案。"
 
 - id: switch_living_entrance
   room: living_dining
@@ -422,7 +422,7 @@
   z: 4.00
   height: 2.5
   count: 1
-  note: "儿童房空调内机电源（南墙边吊内东端，随内机 2026-08-26 南移；南墙通顶衣柜上方）"
+  note: "儿童房空调内机电源（南墙边吊内东端，随内机 2026-08-26 南移；南墙通顶衣柜上方）；⚠️ wall 归属待量房确认：声明 w_gbath_west 的实际跨度 z[2.20,3.55] 不含本点位 z=4.00（投影超出墙段 0.45m，见 docs/pending-site-data.md #42）——候选为 DEC-2026-08-01-012 原始的 w_nw_south 或几何上包含本点位的 w_gbath_west_open_vanity，二者均无授权记录，本轮不动（沿用 electrical-upgrade-20260908「随空调厂家深化一并复核」的登记结论）"
 
 # 厨房（DEC-2026-08-02-013 布局重排：灶台→东墙，水槽→北墙；DEC-014 冰箱→东墙南端，南界 z=2.9）
 - id: sock_kitchen_counter

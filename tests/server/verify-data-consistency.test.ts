@@ -57,8 +57,37 @@ describe('wall point placement consistency', () => {
     assert.equal(issues.some(issue => issue.level === 'warning' && issue.opening === 'd_test' && issue.distance !== undefined && issue.distance < 0.15), true);
   });
 
-  it('errors when the default render side faces away from the owning room', () => {
-    // 竖墙 from (0,0) 到 (0,10)：left 朝西；房间质心在西侧时默认朝西 = 正确，质心在东侧 = 渲染面与房间异侧
+  // 2026-10-04 A4-b：治「投影超出墙段 → 提前 continue → 后续检查静默跳过」。
+  // 这条病根让 sock_child_ac 长期只说一句「投影超出墙段 0.45m」，
+  // 既不报它缺 wall_side，也不报它会不会撞洞口、渲染面朝哪边。
+  it('keeps checking a point whose projection falls outside the wall segment', () => {
+    // 墙 x[0,10]，门洞在 x=5 宽 2。点位 x=12 → 投影超段（clamp 到端点 x=10）。
+    const issues = checkWallPointPlacements([wall], [{ id: 'beyond', wall: 'w_test', x: 12, z: 0 }], new Set());
+    // ① 几何问题照记
+    assert.equal(issues.some(i => i.message.includes('投影超出墙段')), true);
+    // ② 但后续检查没有被跳过：缺 wall_side 仍然要报（修复前这条永不出现）
+    assert.equal(issues.some(i => i.level === 'warning' && i.message === '缺少墙面侧别'), true);
+    // ③ 「距墙段端点」是 clamp 的必然结果（0.00m），只复读同一次失败，不允许刷屏
+    assert.equal(issues.some(i => i.message.includes('距墙段端点')), false);
+  });
+
+  it('keeps checking openings for a point that overshoots the wall line', () => {
+    // x=5 在墙段内、但离墙线 0.6m（超容差 0.15），且正落在门洞 x[4,6] 上方：
+    // 两个问题都必须说出来（修复前只报前者，洞口检查被 continue 吞掉）。
+    const issues = checkWallPointPlacements([wall], [{ id: 'offline', wall: 'w_test', x: 5, z: 0.3, wall_side: 'south' }], new Set());
+    assert.equal(issues.some(i => i.message.includes('离墙线垂直距离')), true);
+    assert.equal(issues.some(i => i.level === 'error' && i.opening === 'd_test'), true);
+  });
+
+  it('still reports wall_side errors for an out-of-segment point', () => {
+    // 竖墙 z[0,10]；点位 z=14 超段（clamp 到 z=10），且声明 wall_side: east 而实际偏移在西侧。
+    const vertical = { ...wall, x1: 0, z1: 0, x2: 0, z2: 10, openings: [] };
+    const issues = checkWallPointPlacements([vertical], [{ id: 'beyond_side', wall: 'w_test', x: -0.3, z: 14, wall_side: 'east' }], new Set());
+    assert.equal(issues.some(i => i.message.includes('投影超出墙段')), true);
+    assert.equal(issues.some(i => i.level === 'error' && i.message.includes('错误侧别')), true);
+  });
+
+  it('errors when the default render side faces away from the owning room', () => {    // 竖墙 from (0,0) 到 (0,10)：left 朝西；房间质心在西侧时默认朝西 = 正确，质心在东侧 = 渲染面与房间异侧
     const vertical = { ...wall, x1: 0, z1: 0, x2: 0, z2: 10, openings: [] };
     const centroids = new Map([
       ['room_west', { x: -2, z: 5 }],

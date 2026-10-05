@@ -207,10 +207,14 @@ scan:
       scalars: [kw]
       pattern: 'kW'
       reason: 暖通/电气功率双口径（设计 21.6kW vs 成交判读 25.3kW）无法用单一 regex 抽出权威值，已在 fact.hvac_indoor_kw_total 显式豁免；其余散写于 notes 的功率不建 fact
-    - path: config/house.yaml
-      scalars: [area_sqm]
-      pattern: '㎡'
-      reason: rooms/gift_areas 的面积是模型镜像字段，由 verify-data-consistency A/B 项与 fact.usable_area / fact.parent_room_area / fact.west_platform_area 专项对账；notes 里的设计图标注为留档
+    # 2026-10-04 A3：原来的**文件级** area_sqm 豁免（pattern: '㎡'）已撤掉。
+    # 它把 house.yaml 整份文件的面积数字一起盖住，569 汇总行的「94.76 + 11.06 + 13.95
+    # + 2.48 ≈ 119.38」就在这张毯子底下裸奔了三年——A2 修出的两个错加数就是这么漏掉的。
+    # 现在改为**行级**处置：rooms/gift_areas 的面积字段由 verify-data-consistency A/B 项
+    # 与 fact.usable_area / fact.parent_room_area / fact.west_platform_area 专项对账；
+    # notes 里的每个数字要么建 mirror（模型可导出的），要么逐条 exempt + reason。
+    # 新的验收：见 fact.rooms_area_caliber 之后新增的
+    # c.house_area_notes_registered 契约与各 fact 的 mirrors/exempt。
     - path: config/hvac.yaml
       scalars: [area_sqm]
       pattern: '㎡'
@@ -524,6 +528,14 @@ facts:
         extract: '本清单以套内\s*([\d.]+)\s*㎡'
         severity: error
         expect_matches: 1
+      # 2026-10-04 A3：house.yaml 的 area_sqm 文件级豁免撤掉后，project.corrections
+      # 与 notes 汇总行里的「套内 94.76㎡」必须被认领。两处都命中（第 46 行
+      # corrections、第 569 行 notes 汇总），expect_matches: 2；两处同值 94.76，
+      # 任一处漂移都会让 hits[0] 与权威值不等 → fact_mismatch。
+      - path: config/house.yaml
+        extract: '套内\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 2
 
   - id: fact.floor_height_net
     kind: derived
@@ -564,6 +576,13 @@ facts:
         extract: '3\.6×\d\.\d+=([\d.]+)'
         severity: error
         expect_matches: 1
+      # 2026-10-04 A3：house.yaml 撤掉 area_sqm 文件级豁免后，kitchen room note 里的
+      # 「3.6×2.4=8.64㎡」必须被认领。与 pending-site-data 那条是同一事实的两处复述，
+      # 各自 expect_matches: 1，任一被删 → mirror_unresolvable（禁止静默跳过）。
+      - path: config/house.yaml
+        extract: '3\.6×\d\.\d+=([\d.]+)㎡'
+        severity: error
+        expect_matches: 1
 
   - id: fact.kitchen_south_boundary
     kind: derived
@@ -598,6 +617,22 @@ facts:
         extract: '西平台\s*1\.6×\d\.\d+m'
         severity: warning
         expect_matches: 1
+      # 2026-10-04 A2/A3：撤掉 house.yaml 的 area_sqm 文件级豁免后，平台面积在
+      # house.yaml 里有三处 prose 副本（gift_areas note 的 1.60㎡、hvac notes 的
+      # 1.60㎡、569 汇总行的 1.60㎡），全部建 mirror。任一处被改成 2.48 之类的
+      # 旧口径，立刻 fact_mismatch——A2 就是这么把 2.48 抓出来的。
+      - path: config/house.yaml
+        extract: '西设备平台\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+      - path: config/house.yaml
+        extract: '仅有一个\s*([\d.]+)\s*㎡\s*设备平台'
+        severity: error
+        expect_matches: 1
+      - path: config/house.yaml
+        extract: '仅西设备平台可用，面积约\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
     exempt:
       # 2026-10-04：1.39㎡ 是 bbox 1.60㎡ 扣除 r=1.0 西北圆角楔形后的**估算可用面积**
       # （1.60 − (1² − π·1²/4) = 1.60 − 0.2146 ≈ 1.385，文中取 1.39），不是独立事实。
@@ -606,6 +641,11 @@ facts:
       - path: docs/pending-site-data.md
         pattern: '1\.39'
         reason: 'bbox 1.60㎡ 扣除 r=1.0 圆角楔形后的估算可用面积，非独立事实；权威值见 fact.west_platform_area'
+      # 2026-10-04 A2/A3：同一个 1.39㎡ 在 house.yaml 也有两处（hvac notes 与 572 行
+      # notes 汇总）。措辞锁定为「可用约 1.39㎡」，改成别的写法立刻 unregistered。
+      - path: config/house.yaml
+        pattern: '可用约\s*1\.39㎡'
+        reason: 'bbox 1.60㎡ 扣除 r=1.0 圆角楔形后的估算可用面积，非独立事实；权威值见 fact.west_platform_area 的 bbox 1.60㎡（圆角扣除量暂无机读算子，人工可依 1.60 − (1² − π·1²/4) ≈ 1.385 复核）'
 
   - id: fact.parent_room_area
     kind: derived
@@ -629,6 +669,66 @@ facts:
         severity: error
         expect_matches: 1
 
+  # 预测建面：与套内 94.76㎡ 是两套口径，A2 之前被「≈」连成伪等式。
+  # 现在建为独立 fact，569 汇总行与 project.corrections 各一处镜像。
+  - id: fact.building_area
+    kind: derived
+    value: "@config/house.yaml:project.building_area"
+    unit: ㎡
+    mirrors:
+      - path: README.md
+        extract: '预测建筑面积[^0-9]{0,20}([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+      - path: docs/designer_brief.md
+        extract: '预测建筑面积\*\*：\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+      # house.yaml 第 46 行（project.corrections 留档）与第 569 行（notes 汇总）各一处。
+      - path: config/house.yaml
+        extract: '预测建面\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 2
+
+  # 入户花园赠送面积：bbox 4.45×2.90 = 12.905㎡（A2 把旧值 11.06㎡ 改成 12.90㎡）。
+  # prose 按两位小数记 12.90，机器值 12.905；tolerance 0.01 只吸收四舍五入，
+  # 不容忍 11.06 那类量级漂移。
+  - id: fact.entry_garden_area
+    kind: derived
+    value: "@config/layout/model-geometry.yaml:rooms#find:id=entry_garden.boundary#bbox_area"
+    unit: ㎡
+    mirrors:
+      - path: config/house.yaml
+        extract: '入户花园\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+        tolerance: 0.01
+
+  # 客餐厅 bbox 口径面积：DEC-014/021 的 45.88㎡（x[7.20,13.40] × z[2.40,9.80]）。
+  # 同行的「设计图合并标注 35.2㎡ 为旧口径」由 fact.rooms_area_caliber 的
+  # 「设计图」豁免登记。
+  - id: fact.living_dining_bbox_area
+    kind: derived
+    value: "@config/layout/model-geometry.yaml:rooms#find:id=living_dining.boundary#bbox_area"
+    unit: ㎡
+    mirrors:
+      - path: config/house.yaml
+        extract: 'bbox 口径\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+
+  # 主卫面积：2.60×1.76 = 4.576㎡（prose 记 4.58，tolerance 吸收两位小数取舍）。
+  - id: fact.master_bath_area
+    kind: derived
+    value: "@config/layout/model-geometry.yaml:rooms#find:id=master_bath.boundary#bbox_area"
+    unit: ㎡
+    mirrors:
+      - path: config/house.yaml
+        extract: '2\.60×\d\.\d+≈([\d.]+)㎡'
+        severity: error
+        expect_matches: 1
+        tolerance: 0.01
+
   - id: fact.gas_alarm_z
     kind: derived
     value: "@config/electrical.yaml:#find:id=sock_kitchen_gas.z"
@@ -649,13 +749,51 @@ facts:
     kind: derived
     value: "@config/house.yaml:rooms#field_sum:area"
     unit: ㎡
-    # rooms 求和是「多边形毛口径」，project.usable_area 是「合同净口径」。
-    # 两者相差约 26.75㎡ 是已知且有意为之的量房前偏差，不报 error，
-    # 但在这里显式豁免，把隐性偏差变成可审计项。
+    # rooms 求和是「多边形毛口径」，project.usable_area 是「合同净口径」，
+    # gift_areas 的 bbox 又是第三套口径，project.building_area 是第四套（预测建面）。
+    # 2026-10-04 A2：已把 house.yaml 汇总行 notes 的两个错加数改成模型 bbox 口径
+    #（入户花园 11.06→12.90、西设备平台 2.48→1.60），并删掉「≈ 预测建面 119.38㎡」
+    # 这个伪等式（94.76 + 28.45 = 123.21 ≠ 119.38）。**剩余的是口径闭合性问题，不是
+    # 算术问题**：净口径 / 毛口径 / 赠送计入规则三者的对齐需合同分户图裁定，
+    # 见 docs/pending-site-data.md #40。因此本处豁免是为「四套口径并存」留的显式登记，
+    # 不是为某个错值开脱。
     exempt:
       - path: config/house.yaml
         pattern: 'usable_area'
-        reason: rooms=多边形毛口径 / usable=合同净口径，量房后对账
+        reason: "rooms=多边形毛口径 / usable=合同净口径 / gift_areas=bbox 毛口径 / building_area=预测建面，四套口径并存；已修正汇总行错加数，剩余口径闭合性由 docs/pending-site-data.md #40 跟踪（需合同分户图裁定后才可对账）"
+        pending: "套内 94.76㎡（合同净）+ 赠送 28.45㎡（模型 bbox 毛）= 123.21㎡ ≠ 预测建面 119.38㎡；需合同分户图裁定净/毛/赠送计入规则三者关系，跟踪 docs/pending-site-data.md #40"
+      # #40 把三个口径的数值原样复述在量房清单里（94.76 合同净 / 123.21 模型毛+赠送 /
+      # 119.38 预测建面）。它们不是新的独立事实，权威值分别在上面的
+      # project.usable_area / rooms#field_sum:area + gift_areas bbox / project.building_area；
+      # 等式不闭合是口径问题，由 #40 的待决跟踪。用「94.76㎡（合同净）」这个具名措辞锁定，
+      # 哪一天该行被改写成本措辞不再命中，立刻 unregistered_fact_occurrence 提醒回来补登记。
+      - path: docs/pending-site-data.md
+        pattern: '94\.76㎡（合同净）'
+        reason: "docs/pending-site-data.md #40 复述三个面积口径（94.76㎡ 合同净 / 123.21㎡ 模型 bbox 毛+赠送 / 119.38㎡ 预测建面）；权威值分别在 config/house.yaml 的 project.usable_area / rooms 多边形+gift_areas bbox / project.building_area，三者不可直接相加这一结论由 #40 跟踪"
+      # ─── 2026-10-04 A3：house.yaml notes 的面积行级登记 ────────────────────
+      # 文件级豁免撤掉后，notes 里每个面积数字都要单独表态。分类原则：
+      #   ① 模型可导出 → 建 mirror（fact.usable_area / fact.building_area /
+      #      fact.entry_garden_area / fact.living_dining_bbox_area /
+      #      fact.master_bath_area / fact.west_platform_area / fact.kitchen_area）
+      #   ② 设计图人工标注 / 开发商净标注 / corrections 时间序留档 / 推导和 → 本处 exempt
+      - path: config/house.yaml
+        pattern: '确认\s*94\.76㎡'
+        reason: "project.corrections 第 38 行是 2026-07-02 的面积裁定留档（估算 95㎡ → 确认 94.76㎡），时间序记录；现行权威值在 project.usable_area，已由 fact.usable_area 的 house.yaml mirror 对账（expect_matches: 2 覆盖第 46/569 两行）"
+      - path: config/house.yaml
+        pattern: '设计图'
+        reason: "house.yaml rooms/gift_areas 的 notes 里凡写「设计图标注 / 净标注 / 合并标注 / 净面积标注」的面积是点石设计图的人工标注口径（净口径），权威面积以 model-geometry 多边形与 fact.*_area 的机器推导为准；同一 note 里的模型口径数字（17.9/18.16/8.39/8.35/2.42 等）与净标注不同量纲，故整行豁免而不逐值对账"
+      - path: config/house.yaml
+        pattern: '开发商 6\.09㎡'
+        reason: "厨房 6.09㎡ 是开发商标注的净面积口径，与本 fact 的多边形毛口径（fact.kitchen_area，3.6×2.4=8.64㎡）不同量纲；同 note 已自证「净尺寸待量房」，净/毛关系随 #40 一并裁定"
+      - path: config/house.yaml
+        pattern: '南向大阳台\s*[\d.]+\s*㎡'
+        reason: "south_balcony status: not_modeled——模型未按室内地面建模、无几何权威源，13.95㎡ 是合同图标注口径；待量房/合同图确认地面通铺与计入规则后再建 mirror（docs/pending-site-data.md #40）"
+      - path: config/house.yaml
+        pattern: '赠送约\s*28\.45㎡'
+        reason: "28.45㎡ = 12.90（entry_garden bbox）+ 13.95（south_balcony 合同标注）+ 1.60（platform bbox），是 #40 口径裁定用的推导和，不是独立事实；两个 bbox 加数分别由 fact.entry_garden_area / fact.west_platform_area 对账，第三个无几何权威源"
+      - path: config/house.yaml
+        pattern: '123\.21\s*≠\s*119\.38'
+        reason: "123.21㎡ = 94.76（合同净）+ 28.45（模型 bbox 毛+赠送）的推导和，与预测建面 119.38㎡ 的差就是 #40 要裁定的口径缺口；推导和被显式登记为不可对账项，避免再出现「≈」伪等式"
 
   # 暖通内机合计功率无法用单一 regex 抽出权威值：config/hvac.yaml 同时存在
   # 「设计口径 21.6kW（R6）」与「成交照片判读 25.3kW（R1）」，两轨都真实有效，
@@ -790,6 +928,13 @@ facts:
         extract: 'plumbing\.yaml[^0-9]{0,12}共\s*(\d+)\s*个点位'
         severity: error
         expect_matches: 1
+      # 2026-10-04 A7：#44 逐条登记 22 个点位里 11 处无 MEP 走线引用的事实，
+      # 首捕（22）与机器条目数对账；「11 处」是补登记前的基数，登记后由契约
+      # c.plumbing_point_route_or_marked 改成盯「未标记点数必须为 0」。
+      - path: docs/pending-site-data.md
+        extract: '(\d+)\s*个点位中\s*(\d+)\s*处既不是任何 route'
+        severity: error
+        expect_matches: 1
 
   - id: fact.ceiling_zones_count
     kind: derived
@@ -826,7 +971,7 @@ facts:
   # 量房待确认项条数：39 条是「还有什么没量」的账面。新增/关闭条目必须同步。
   - id: fact.pending_site_data_count
     kind: derived
-    value: "@docs/pending-site-data.md:量表共 39 条"
+    value: "@docs/pending-site-data.md:量表共 46 条"
     unit: 条
     mirrors:
       - path: docs/pending-site-data.md
@@ -1083,6 +1228,50 @@ contracts:
     target_path: furnishings
     key_field: type
 
+  # ⑤ 材料条目 id 在全表内必须唯一。2026-10-04 A5 之前，materials.yaml 有 71 条却只有
+  # 70 个唯一 id：R7 首版 950 衣柜（950×580×2450，superseded）与 R8 active 版
+  # （950×580×2800）用了同一个 id `wardrobe_north_950_custom_01`，按 id 索引时
+  # 后者静默覆盖前者（覆盖方向取决于读取顺序，行为不可预测）。
+  # 已把历史版改成 `wardrobe_north_950_custom_01_r7_superseded`；本契约把这类
+  # 「同号不同物」钉死：再造一个重复 id → duplicate_id（error）。
+  - id: c.materials_id_unique
+    kind: unique
+    source: config/materials.yaml
+    pattern: '^\s*-\s*id:\s*["'']?([a-z0-9_]+)["'']?'
+
+  # ⑦ LEB 局部等电位：GB 55038-2025 7.4.7。2026-10-04 A6。
+  # ──────────────────────────────────────────────────────────────────────────
+  # 现状：shared/types.ts 与 shared/project-render-facts-schema.ts 的 PlumbingPointType
+  # 已补 `leb` 枚举值，但 config/plumbing.yaml 里**一个 leb 点位都没有**——端子箱位置
+  # 未知（pending #43），位置未知时不许造点位。
+  # 因此本契约登记为「已武装、0 命中」的前置契约：词汇一旦有人启用就开始强制
+  # 「每个 leb 点位必须带坐标/高度 + note（note 里写联结金属构件清单与规范关系）」，
+  # 而 0 命中这件事通过 pending 在报告 INFO 里露面，不会悄悄腐烂。
+  - id: c.leb_point_requires_bond_schedule
+    kind: requires_when
+    path: config/plumbing.yaml
+    when: { field: type, equals: leb }
+    then: [x, z, height, note]
+    min_matches: 0
+    pending: "LEB 局部等电位端子箱：GB 55038-2025 7.4.7 要求设局部等电位联结的场所（本项目主卫/客卫）应做 LEB；端子箱位置、需联结金属构件清单（花洒/龙头/毛巾架/排水口/采暖管）与联结截面均未知，位置未知前不得在 config/plumbing.yaml 造点位。枚举值已在 shared/types.ts 与 shared/project-render-facts-schema.ts 补齐；待位置与构件清单回来后落点，本契约立即强制 note 写明联结清单与规范关系。跟踪 docs/pending-site-data.md #43"
+
+  # ⑧ 给排水点位要么被 route 引用，要么显式登记 deferred。2026-10-04 A7。
+  # ──────────────────────────────────────────────────────────────────────────
+  # config/plumbing.yaml 22 个点位里曾有 11 个既不是任何 route 的 to/via，note 里也没说
+  # 为什么——「静默缺席」。既有正确先例是 drain_mbath_toilet：note 明写
+  # 「本轮不画 MEP route，待 SKU + 量房后单独深化」。
+  # 本契约把这句话变成硬门禁：标记删掉 → error；新增不画线也不登记的点位 → error。
+  - id: c.plumbing_point_route_or_marked
+    kind: covered_or_marked
+    severity: error
+    source: config/plumbing.yaml
+    key_field: id
+    note_field: note
+    marker: '本轮不画 MEP route'
+    ref_source: config/mep-hvac-coordination.yaml
+    ref_items_path: routes
+    ref_fields: [from, to, via]
+
   - id: c.hvac_price_boundary_mutex
     kind: mutex
     scope: [config/hvac.yaml, schedule/procurement.md]
@@ -1136,6 +1325,37 @@ contracts:
     then: [height]
     max_abs: 2.8
     max_abs_field: height
+
+  # ⑥ MEP 路线标高不得低于它所经过的吊顶完成面。2026-10-04 A1 新增。
+  # ──────────────────────────────────────────────────────────────────────────
+  # 病根：mep-hvac-coordination.yaml 的 layers.height（强电 2.45 / 弱电 2.50 / 冷媒 2.55 /
+  # 冷凝水 2.35 / 送风 2.68 / 回风 2.72）与 ceiling.yaml 的降板完成面（2.80 − thickness
+  # = 2.50 / 2.65）是两套从未对齐的口径，而 shared/mep-hvac-lint.ts 的吊顶净空规则
+  # 要求 `zone.area && zone.height !== undefined` 才跑——ceiling.yaml 23 条里 17 条有 area
+  # 无 height、6 条有 height 无 area，交集为 0，**那条规则对本项目永远不触发**。
+  # 现在：mep-lint 改为按 thickness 反算完成面（与 CeilingZoneBuilder 同口径，见
+  # ceilingSurfaceY 注释）；本契约在 facts 层把同一判据固化为 error 级门禁。
+  #
+  # severity: error——任何**未登记的新增冲突**都是 error，不许静默过关。
+  # 既有 144 处是系统性口径未对齐，根因是设计侧决策，故登记基数 registered_conflicts
+  # 并强制「登记数 == 机器实算数 == docs/mep-construction-guidance.md §0 的 prose 数」：
+  # 三个数任一不相等都报错，变多变少都不允许悄悄发生。
+  - id: c.mep_layer_below_drop_bottom
+    kind: ceiling_clearance
+    severity: error
+    source: config/mep-hvac-coordination.yaml
+    items_path: routes
+    ceiling_source: config/ceiling.yaml
+    endpoints_key: mep.endpoints
+    room_heights_key: mep.room_heights
+    default_room_height: 2.8
+    tolerance: 0.005
+    registered_conflicts: 144
+    prose:
+      - path: docs/mep-construction-guidance.md
+        extract: '低于降板完成面的既有冲突\s*(\d+)\s*处'
+        expect_matches: 1
+    pending: "MEP 吊顶内分层标高整层低于降板完成面（强电 2.45 < 2.50、冷凝水 2.35 < 2.50、弱电 2.50 < 0.15m 降板的 2.65 等），实算 144 处；需设计侧裁定：分层标高升入降板空腔（2.50–3.00m）或调整降板厚度/范围。跟踪 docs/pending-site-data.md #41；裁定后同步更新 docs/mep-construction-guidance.md §0 的登记数与本契约的 registered_conflicts"
 
   - id: c.layout_region_room_overlap
     kind: overlap

@@ -881,7 +881,11 @@ export interface ElectricalLintResult {
   counts: { errors: number; warnings: number; circuits: number; controls: number; coveredPoints: number; uncoveredPoints: number };
 }
 
-export type PlumbingPointType = 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor';
+// 2026-10-04 A6：新增 `leb`（局部等电位端子箱）。GB 55038-2025 7.4.7 要求设局部等电位
+// 联结的场所应做 LEB，本项目主卫/客卫均在列。**枚举值补齐不等于可以造点位**——
+// 端子箱位置未知，config/plumbing.yaml 里一个 leb 点都没建，登记见
+// docs/pending-site-data.md #43；位置/联结清单回来后再落点。
+export type PlumbingPointType = 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor' | 'leb';
 
 export interface PlumbingPoint {
   id: string;
