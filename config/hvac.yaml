@@ -223,8 +223,8 @@ plans:
           render_interior: false
           render_coordination: true
           system: condensate
-          position: { x: 10.0, y: 0.1, z: 6.2 }
-          reason: "仅为冷凝水候选接入点，待量房确认；不是地漏、立管或施工点，不得假定接入现有地漏。"
+          position: { x: 6.70, y: 0.10, z: 3.70 }
+          reason: "2026-10-05 业主裁定改线：客厅/餐厅冷凝水候选竖管由客餐厅平顶区 (10.00,6.20) 移至客卫开放洗漱区吊顶范围内 (6.70,3.70)——原位置竖直下引段位于无吊顶区。仍为候选接入点，量房确认立管/地漏/存水弯接入方式前不是施工点，不得假定接入现有地漏。"
         - id: condensate_master_candidate
           kind: condensate_drain_candidate
           status: pending
@@ -396,14 +396,14 @@ plans:
           system: condensate
           from: indoor_dining
           to: condensate_living_candidate
-          reason: "对应 MEP condensate-dining 显式路线坐标 (8.00,4.75)→(8.00,5.05)→(10.00,5.05)→(10.00,6.10)，暂并入客厅共用候选竖管。餐厅机为 P-SS 泵型，泵出口、扬程、允许接法、连续坡度、存水弯、立管接点与检修条件均待厂家/现场核实；此候选不证明重力排水成立、不代表施工，禁止默认接入现有地漏。"
+          reason: "对应 MEP condensate-dining 显式路线：2026-10-05 业主裁定改线，自内机 (8.00,4.75) 在北缘边吊内 1% 坡正交西行（z=4.6 轴线）→开放边界（w_liv_west 已删除）入走廊吊顶→正交北折进客卫开放洗漱区吊顶，与客厅共用候选竖管 (6.70,3.70)；不再经 (8.00,5.05)→(10.00,5.05)→(10.00,6.10) 横穿客餐厅平顶。泵出口、扬程、允许接法、连续坡度、存水弯、立管接点与检修条件均待厂家/现场核实；此候选不证明重力排水成立、不代表施工，禁止默认接入现有地漏。"
         - id: condensate_living_candidate_route
           status: pending
           system: condensate
           from: indoor_living
           to: condensate_living_candidate
           constraint_refs: [ref_south_window_band_ld100]
-          reason: "冷凝水坡度、存水弯和立管接点待现场确认；南侧参考窗带梁位绕行优先，不得默认穿梁、开孔或接入现有地漏。"
+          reason: "冷凝水 2026-10-05 业主裁定改线：自内机 (10.30,4.75) 在北缘边吊内 1% 坡正交西行（z=4.6 轴线，与冷媒主管同轴）→开放边界（w_liv_west 已删除）入走廊吊顶→正交北折进客卫开放洗漱区吊顶→候选竖管 (6.70,3.70)；不再横穿客餐厅平顶。坡度、存水弯和立管接点待现场确认；不得默认穿梁、开孔或接入现有地漏。"
         - id: condensate_master_candidate_route
           status: pending
           system: condensate
