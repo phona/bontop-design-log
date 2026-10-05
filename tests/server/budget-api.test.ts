@@ -77,16 +77,16 @@ describe('Budget + Risks + Schemes API', () => {
   it('GET /api/budget phase=phase_1 returns phase metadata and filtered calculation', async () => {
     const res = await request(app).get('/api/budget?phase=phase_1_basic_occupancy').expect(200);
     assert.equal(res.body.phase, 'phase_1_basic_occupancy');
-    assert.equal(res.body.phaseCeiling, 206000);
-    assert.equal(res.body.phaseAllocated, 206000);
+    assert.equal(res.body.phaseCeiling, 210000);
+    assert.equal(res.body.phaseAllocated, 210000);
     assert.equal(res.body.phaseUnallocated, 0);
-    assert.equal(res.body.phaseMeta.budget.ceilingCny, 206000);
-    assert.equal(res.body.phaseMeta.budget.allocatedCny, 206000);
+    assert.equal(res.body.phaseMeta.budget.ceilingCny, 210000);
+    assert.equal(res.body.phaseMeta.budget.allocatedCny, 210000);
     assert.equal(res.body.phaseMeta.budget.unallocatedCny, 0);
     assert.equal(res.body.phaseMeta.budget.authority, 'schedule/phase-1/control.yaml');
-    // 现行口径来自 control.yaml；作废的 190,000 / 208,000 只作 historicalBaseline 留档露出
-    assert.equal(res.body.totalBudget, 206000);
-    assert.equal(res.body.projectCeiling, 206000);
+    // 现行口径来自 control.yaml（DEC-2026-10-05-R4 抬池后 210,000）；作废的 190,000 / 208,000 只作 historicalBaseline 留档露出
+    assert.equal(res.body.totalBudget, 210000);
+    assert.equal(res.body.projectCeiling, 210000);
     assert.equal(res.body.historicalBaseline.projectCeilingCny, 190000);
     assert.equal(res.body.historicalBaseline.totalBudgetCny, 208000);
     assert.equal(res.body.historicalBaseline.status, 'historical_reference_only');
@@ -102,7 +102,7 @@ describe('Budget + Risks + Schemes API', () => {
     assert.equal(res.body.phaseCeiling, undefined);
     assert.equal(res.body.phaseAllocated, undefined);
     assert.equal(res.body.phaseUnallocated, undefined);
-    assert.equal(res.body.totalBudget, 206000);
+    assert.equal(res.body.totalBudget, 210000);
   });
 
   it('GET /api/risks returns risks', async () => {

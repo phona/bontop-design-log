@@ -492,9 +492,9 @@ facts:
 
   - id: fact.phase1_ceiling_cny
     kind: narrative
-    value: "@schedule/phase-1/control.yaml:phase_ceiling_cny: 206000"
+    value: "@schedule/phase-1/control.yaml:phase_ceiling_cny: 210000"
     unit: 元
-    as_of: DEC-2026-10-03-R3
+    as_of: DEC-2026-10-05-R4
     mirrors:
       # C1（2026-10-04 消解，不是豁免）——base.json 的 project_ceiling=190,000 与现行权威
       # schedule/phase-1/control.yaml:phase_ceiling_cny=206,000 长期不一致。前两轮只能挂

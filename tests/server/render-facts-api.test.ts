@@ -120,13 +120,13 @@ describe('render facts API', () => {
   it('returns electrical topology with lint independently of MEP route data', async () => {
     const app = createApp(() => facts);
     const response = await request(app).get('/api/electrical-topology').expect(200);
-    assert.equal(response.body.circuits.length, 20); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2 外机专用回路
+    assert.equal(response.body.circuits.length, 21); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2 外机专用回路；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）
     assert.equal(response.body.controls.length, 11);
     assert.equal(response.body.panels[0].id, 'panel_strong');
     assert.equal(response.body.panels[0].source_point_id, 'panel_strong_entry_left');
-    assert.equal(response.body.lint.counts.errors, 98); // DEC-2026-10-04-R2：回路成员 67→68，sock_vrf_outdoor_a2 在 fixture 点位集中未知各计 1 error
-    assert.equal(response.body.lint.counts.warnings, 22); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2 计入 dedicated_parameters_pending（7→8）
-    assert.equal(response.body.lint.counts.coveredPoints, 68); // DEC-2026-10-04-R2：+sock_vrf_outdoor_a2
+    assert.equal(response.body.lint.counts.errors, 98); // DEC-2026-10-04-R2：回路成员 67→68，sock_vrf_outdoor_a2 在 fixture 点位集中未知各计 1 error；DEC-2026-10-05-R3：浴霸点位为改名不改成员总数，fixture 同步后已知
+    assert.equal(response.body.lint.counts.warnings, 24); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2 计入 dedicated_parameters_pending（7→8）；DEC-2026-10-05-R3：浴霸一路拆两路（8→9）；DEC-2026-10-05-R4：+微蒸烤专用回路 pending_parameters（+1）
+    assert.equal(response.body.lint.counts.coveredPoints, 68); // DEC-2026-10-04-R2：+sock_vrf_outdoor_a2；DEC-2026-10-05-R3：点位改名不增减成员数
     assert.equal(response.body.circuits.filter((circuit: { purpose: string }) => circuit.purpose === 'ordinary_power').length, 7); // DEC-2026-10-03-R1：卧室缩为 master/parent_child/study 三路
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'control_target_missing'), false);
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'electrical_parameters_pending'), false);

@@ -13,7 +13,7 @@ const raw = readFileSync('config/electrical-topology.yaml', 'utf8');
 test('real electrical topology parses and lints', () => {
   const topology = parseElectricalTopology(raw, points);
   const result = lintElectricalTopology(topology, points);
-  assert.equal(topology.circuits.length, 20); // DEC-2026-10-03-R1：25 路合并至 19 路；DEC-2026-10-04-R2：+外机专用回路第 20 路
+  assert.equal(topology.circuits.length, 21); // DEC-2026-10-03-R1：25 路合并至 19 路；DEC-2026-10-04-R2：+外机专用回路；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）
   assert.equal(topology.controls.length, 11);
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 15);
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 39); // DEC-2026-10-03-R1：+sock_living_tv_high +sock_kitchen_counter_east
@@ -89,7 +89,7 @@ test('lint validates panel topology/source semantics and status at runtime', () 
 test('electrical JSON CLI emits pure JSON', () => {
   const output = execFileSync('npx', ['tsx', 'scripts/verify/electrical/verify-electrical-lint.ts', '--json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const result = JSON.parse(output) as { errors: unknown[]; warnings: unknown[]; counts: { circuits: number } };
-  assert.equal(result.counts.circuits, 20); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2
+  assert.equal(result.counts.circuits, 21); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）
   assert.ok(Array.isArray(result.errors));
   assert.ok(Array.isArray(result.warnings));
 });

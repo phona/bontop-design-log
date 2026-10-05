@@ -133,9 +133,9 @@ describe('BudgetCalculator', () => {
     const snapshot = calc.calculate(scheme);
     // 2026-10-04 之前本测试断言 `totalBudget == Σcategories.budget`（208,000，base.json
     // 四池快照）。base.json 交出活字段身份后，totalBudget / projectCeiling 一律等于
-    // schedule/phase-1/control.yaml 的 phase_ceiling_cny（206,000）。
-    assert.equal(snapshot.totalBudget, 206000);
-    assert.equal(snapshot.projectCeiling, 206000);
+    // schedule/phase-1/control.yaml 的 phase_ceiling_cny（210,000，DEC-2026-10-05-R4 抬池后）。
+    assert.equal(snapshot.totalBudget, 210000);
+    assert.equal(snapshot.projectCeiling, 210000);
     // 分科目明细仍可读（base.json 是唯一可用的分科预算拆分），历史合计走 historicalBaseline 露出
     const archivedTotal = snapshot.categories.reduce((s, c) => s + c.budget, 0);
     assert.equal(archivedTotal, 208000);
@@ -425,10 +425,10 @@ describe('BudgetCalculator', () => {
       selections: { hvac: { default: 'A2', roomOverrides: {} } },
     };
     const snapshot = calc.calculate(scheme);
-    // 现行一期执行上限与已分配额一律来自 schedule/phase-1/control.yaml（206,000），
+    // 现行一期执行上限与已分配额一律来自 schedule/phase-1/control.yaml（210,000），
     // 不再读 config/budget/base.json 的 total_budget 208,000 / project_ceiling 190,000。
-    assert.equal(snapshot.totalBudget, 206000);
-    assert.equal(snapshot.projectCeiling, 206000);
+    assert.equal(snapshot.totalBudget, 210000);
+    assert.equal(snapshot.projectCeiling, 210000);
     assert.deepEqual(snapshot.historicalBaseline, {
       source: 'config/budget/base.json',
       totalBudgetCny: 208000,
@@ -513,8 +513,8 @@ describe('BudgetCalculator', () => {
     const snapshot = calc.calculate(scheme);
     // 上限来自 schedule/phase-1/control.yaml control.phase_ceiling_cny，
     // 而不是 config/budget/base.json 的作废值 project_ceiling=190,000。
-    assert.equal(snapshot.projectCeiling, 206000);
-    assert.equal(snapshot.overCeilingBy, snapshot.totalActual - 206000);
+    assert.equal(snapshot.projectCeiling, 210000);
+    assert.equal(snapshot.overCeilingBy, snapshot.totalActual - 210000);
     // 作废口径仍可读，但只作为 historicalBaseline 留档露出，不参与计算。
     assert.equal(snapshot.historicalBaseline?.projectCeilingCny, 190000);
     assert.equal(snapshot.historicalBaseline?.status, 'historical_reference_only');

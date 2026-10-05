@@ -462,9 +462,10 @@ const realWorkspace = (): FactsWorkspace => {
   };
 };
 
-test('真实登记表：fact.circuit_count 的四个镜像在真实文件上全部解析且与权威值 20 路一致', () => {
+test('真实登记表：fact.circuit_count 的四个镜像在真实文件上全部解析且与权威值 21 路一致', () => {
   // 2026-10-04 数据修正（A1/A2）后，acceptance.yaml:283 与 pending-site-data.md:90 的
-  // 「19 路」已改为「20 路」，与 electrical-topology.yaml circuits.length=20 收敛。
+  // 「19 路」已改为「20 路」，与 electrical-topology.yaml circuits.length=20 收敛；
+  // 2026-10-05 DEC-2026-10-05-R3 浴霸拆每卫一路 → 21 路，四个镜像同步。
   // 本测试原先断言「必须抓到 19 ≠ 20 的漂移」；漂移已修，故改为断言收敛后的不变量：
   // 四个 mirror（acceptance / pending-site-data / mep-construction-guidance / checklist×2）
   // 的 expect_matches 全部命中、且抽得值都等于权威值 → 0 error。

@@ -1520,3 +1520,21 @@
 - **未做**：`docs/decision_log.md` 历史正文、`docs/design-iterations/*` 既有迭代、`docs/hvac-rfq-brief-20261003.md`（询价请求原文）均未改写，仅 `docs/hvac-rfq-brief-20261003.md` 的"一句话结论"补了一行"询价口径，非成交配置"标注。
 - **发现的存量缺陷（不属本轮，未修）**：`app/src/render/HouseScene.ts` 的 `inspectMasterBedroomCondensate()` 在浏览器里返回 `ok=false`——`exportRoot` 只遍历到 3 个 `condensate-pipe-*` 零件（`mb_vanity_pvc_box` 与 `mb_vanity_pvc_wardrobe_entry` 各自产出的那几段），而同一份 config 在 CLI/Node 构建路径下有 13 个，`tests/server/shared/scene-builder.test.ts` 的十段连续性断言也全绿。用 `git stash` 回到本轮改动前的 HEAD 复测，浏览器侧同样 `ok=false`，确认与本轮 x=3.70 落地无关，是浏览器构建路径与 CLI 构建路径不一致造成的独立缺口。已记入 `hvac-caliber-sync-20261005/review-manifest.json` 的 `blocking_issues`。
 - **证据与实施记录**：`docs/design-iterations/hvac-caliber-sync-20261005/`；前置 `docs/design-iterations/hvac-contract-mapping-20261005/`（本轮在其 brief 上补了 `scope_addendum`，登记渲染层与测试层文件）。
+
+### DEC-2026-10-05-R3 浴霸设备锚点定案与卫浴回路拆分
+
+- **日期**：2026-10-05。
+- **设备定标**：凉霸不做；浴霸业主定标自购**奥普 S2-Air ×2**（风暖 2750W + 换气 49W + 照明 24W 三合一，集成吊顶式、线控面板；京东自营 SKU 100205465310，国补备案型号，补贴到手 680.97/台，2026-10-05 页面观察、非成交价），两台 ≈1,362、目标 1,500（含配件余量），定入 `schedule/phase-1/control.yaml` 的 `COST-100-06`（ownership_pending → candidate）。下单窗口在量房与扣板开孔方案冻结后。
+- **归属与账目**：浴霸/凉霸从 PKG-070 捆绑报价 9,537（QR-2026-10-03-08）划出，登记 QR-2026-10-05-01（supersedes）；PKG-070 estimated_need 23,037 → 18,000（铝扣板裸价目标 4,500 为反推值，商家重报待取得）；COST-070-03 planned 9,537 → 4,500；PKG-070 对父包口径缺口由 ≈6,000 收窄到 ≈1,000。
+- **电气拆分**：`config/electrical-topology.yaml` 的 `dedicated_bath_heaters`（两卫共路 C20A）拆为 `dedicated_bath_heater_mbath` / `dedicated_bath_heater_gbath` 每卫一路 C20A+漏保（两台风暖同开 ≈5.6kW 不可共路，GB 55038 7.4.4）；容量口径 ≈2.5kW → ≈2.8/2.9kW；回路总数 20 → 21（`fact.circuit_count` 派生随之），`config/acceptance.yaml` 箱体/分路/漏保条款同步 21 路口径，390mm 箱体双排结论不变（pending-site-data #30 继续跟踪）。
+- **点位合并**：`config/electrical.yaml` 原独立排气点位 `sock_mbath_exhaust`/`sock_gbath_exhaust` 并入浴霸点位 `sock_mbath_batheheater`（1.30,2.70，原位保留）/`sock_gbath_batheheater`（6.30,2.95，自原排气位南移避开淋浴区正上方）；点位总数 98 不变（`fact.electrical_points_count` 口径不变）；线控面板与两卫照明开关同墙并排预埋，面板点位随设备定案补登。`config/mep-hvac-coordination.yaml` 两条卫浴电源路由的终点/分支描述随改。
+- **反转条件**：收房发现开发商场已预留取暖换气设备；S2-Air 面罩开孔尺寸与所选扣板系统不匹配；国补额度失效。
+- **未做**：同档竞品比价未跑（采纳为首选前须按 shopping-research 流程补）；洗碗机等家电品类归属见 `schedule/procurement.md` §07 与 phase-scope 排除项。
+
+### DEC-2026-10-05-R4 微蒸烤一体机定标进入一期与必需家电池扩容
+
+- **日期**：2026-10-05。
+- **定标**：业主确认**美的 GC5 嵌入式微蒸烤一体机**（TR850E-TSBC00，55L，微/蒸/烤/空气炸四合一，变频微波+双孔直喷+上下管热风，额定 3200W，机身 595×565×454mm）进入一期，目标 ≤3,800、封顶 4,200（官方现价 4,199，2026-10-05 页面观察、非成交价），登记 `COST-160-08`（planned 4,000，candidate）+ `AQ-160-06`。
+- **账目**：沿用"追加即抬上限"先例（同 DEC-2026-09-12-R3 云鲸），必需家电预算 12,000 → 16,000，一期执行上限及已分配额 20.6 万 → 21 万（`control.phase_ceiling_cny`/`allocated_cny`/`budget_reconciliation.phase_1_ceiling_cny`、PKG-160 planned/need、竣工结算 pass_condition、`config/facts.yaml` fact.phase1_ceiling_cny 权威值同步），未分配仍为 0。
+- **接口前置**：3200W 按 GB 55038 7.4.4 需 16A/2.5mm² 专用回路（现有厨房插座回路 4mm² 预留口径不足以共路承载），回路 21→22、点位与嵌位随橱柜 600 宽高柜方案冻结后落，台账面/高柜开孔前必须定型号；已入 topology pending_parameters。
+- **未做**：同档竞品（方太/凯度/西门子等 3,000–6,000 档）比价未跑；嵌位设计未定；phase-scope/house.yaml 场景对象（3D 摆位与算量）随嵌位定案后另迭代，本轮仅入预算与采购台账。
