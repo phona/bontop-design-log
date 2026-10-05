@@ -21,8 +21,8 @@ function sample(route: Record<string, unknown>) {
 
 test('real MEP configuration lints without false errors and reports warnings structurally', () => {
   const result = lintMepCoordination(config, sources);
-  assert.equal(result.counts.routes, 78); // DEC-2026-10-04-R2：+strong-ac-dining 71→72、+strong-ac-outdoor 72→73；2026-10-05 给排水 v1：+5 条排水 route 73→78
-  assert.equal(result.counts.resolvedRoutes, 78);
+  assert.equal(result.counts.routes, 80); // R18 客餐厅下出风 78→80 // DEC-2026-10-04-R2：+strong-ac-dining 71→72、+strong-ac-outdoor 72→73；2026-10-05 给排水 v1：+5 条排水 route 73→78
+  assert.equal(result.counts.resolvedRoutes, 80);
   assert.equal(result.errors.length, 0);
   assert.equal(result.warnings.filter((issue) => issue.code === 'hvac_coverage_missing').length, 0);
   // 2026-10-04 A1：吊顶净空规则从「要求 zone.area 与 zone.height 同时存在」（本项目交集为 0、
@@ -36,7 +36,10 @@ test('real MEP configuration lints without false errors and reports warnings str
   assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 154);
   // 158 = 149(ceiling)+3(nonphysical)+6(overlap)；登记基数 149→154（R11 冷凝水改线 + R13 书房电脑回路改道）后为
   // 163 = 154+3+6。无 layout context（本用例不传 layout），故不含穿墙类告警。
-  assert.equal(result.warnings.length, 163);
+  // DEC-2026-10-05-R18：两台双出风内机第二出口下出风新增 2 条送风路线，与既有送/回风同属
+  // 「内机本体出口处送回风贴近」类别（粗 envelope 在机身端点必然相交，非路由错误），
+  // overlap 6→8、总告警 163→165。ceiling_clearance 仍 154（两条新路线点位均在边吊空腔内、无新增外露）。
+  assert.equal(result.warnings.length, 165);
   assert.ok(result.warnings.some((issue) => issue.code === 'supply_return_overlap'));
   assert.ok(result.warnings.some((issue) => issue.code === 'nonphysical_route'));
   const balcony = config.routes.find((r) => r.id === 'drain-balcony')!;

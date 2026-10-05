@@ -106,8 +106,8 @@ test('real render facts resolve all configured MEP routes through HVAC ceiling a
   const facts = { electrical, plumbing, ceiling, hvac };
   const factSources = endpointSourcesFromFacts(facts);
   const report = resolveMepRoutes(config, factSources);
-  assert.equal(report.total, 78); // DEC-2026-10-04-R2：+strong-ac-dining 71→72、+strong-ac-outdoor 72→73；2026-10-05 给排水 v1：+5 条排水 route 73→78
-  assert.equal(report.resolved, 78);
+  assert.equal(report.total, 80); // DEC-2026-10-04-R2：+strong-ac-dining 71→72、+strong-ac-outdoor 72→73；2026-10-05 给排水 v1：+5 条排水 route 73→78；DEC-2026-10-05-R18：+supply-air-living/dining-bottom 78→80
+  assert.equal(report.resolved, 80);
   assert.equal(report.unresolved, 0);
   const expectedAirRoutes = ['supply-air-study', 'return-air-study', 'supply-air-parent', 'return-air-parent', 'supply-air-child', 'return-air-child'];
   const expectedCondensateRoutes = ['condensate-living', 'condensate-master', 'condensate-study', 'condensate-parent', 'condensate-child'];
@@ -116,7 +116,7 @@ test('real render facts resolve all configured MEP routes through HVAC ceiling a
     assert.equal(resolved.unresolved.length, 0);
     if (id.startsWith('condensate-')) assert.equal(resolved.metadata.pendingReview, true);
   }
-  assert.equal(new Set(config.routes.filter((route) => route.layer === 'supply_air').map((route) => route.to)).size, 6); // DEC-2026-10-03-R6：+supply-air-dining
+  assert.equal(new Set(config.routes.filter((route) => route.layer === 'supply_air').map((route) => route.to)).size, 8); // DEC-2026-10-03-R6：+supply-air-dining；DEC-2026-10-05-R18：两台双出风内机第二出口下出风，+supply-air-living-bottom/+supply-air-dining-bottom，6→8
   assert.equal(new Set(config.routes.filter((route) => route.layer === 'return_air').map((route) => route.to)).size, 6); // DEC-2026-10-03-R6：+return-air-dining
   assert.equal(config.routes.filter((route) => route.layer === 'condensate').length, 6); // DEC-2026-10-03-R6：+condensate-dining
   validateMepCoordination(config, factSources);
