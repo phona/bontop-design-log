@@ -287,7 +287,12 @@ describe('spatial validation CLI integration', () => {
     assert.equal(wallCollisions.length, 0, 'the authorized TV cabinet move must clear the known house furniture penetration');
     assert.equal(first.report.issues.some((issue: { code: string; entity: string }) => issue.code === 'furniture_furniture_collision' && issue.entity.includes('tv_wall_low')), false);
     assert.ok(first.inputs.placedFurniture > 0);
-    assert.ok(first.report.issues.some((issue: { code: string }) => issue.code === 'furniture_furniture_contact_tolerance'));
+    // 2026-10-05 功能互换 v0：轻训练三件套（原 contact-tolerance 已知对）整体删除，
+    // 客房床/衣柜与书房桌椅均保持净距 → 当前屋内不应再有任何家具间接触/碰撞问题；
+    // 正样本哨兵改为既有且与本次改动无关的 glass clearance 警告（8 处），
+    // 以保证"检测器仍在产出 finding"这一契约不被静默放宽。
+    assert.equal(first.report.issues.filter((issue: { code: string }) => issue.code === 'furniture_furniture_collision' || issue.code === 'furniture_furniture_contact_tolerance').length, 0);
+    assert.ok(first.report.issues.some((issue: { code: string }) => issue.code === 'furniture_glass_clearance_insufficient'));
     assert.deepEqual(first.report, second.report);
     assert.deepEqual(first.inputs, second.inputs);
 

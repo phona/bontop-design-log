@@ -82,10 +82,14 @@ function main(): void {
   const byId = new Map(materials.map((m) => [m.id, m]));
   const lines: string[] = [];
   const today = new Date().toISOString().slice(0, 10);
+  // fact.furnishings_count 的镜像出口：house.yaml furnishings 的递归条目数（含 count-only）。
+  const furnishingCount = Object.values(house.furnishings ?? {}).reduce((sum, items) => sum + items.length, 0);
 
   lines.push('# 装扮映射表（Twinmotion 云渲染用）');
   lines.push('');
   lines.push(`生成：${today}，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json`);
+  lines.push('');
+  lines.push(`数据规模：house.yaml furnishings 共 ${furnishingCount} 件（与 \`fact.furnishings_count\` 对账）。`);
   lines.push('');
   lines.push('用法：glb 导入 Twinmotion 后按本表替换材质/家具/灯光；reimport 同名 glb 时材质覆盖按节点名保留。');
   lines.push('');

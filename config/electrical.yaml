@@ -60,7 +60,7 @@
   z: 8.40
   height: 0.3
   count: 1
-  note: "饮水机位（2026-09-07 修正：原挂 w_liv_east @z=9.0，投影超出该墙段 3.45m——w_liv_east 仅到 z=5.55，且 z>8.70 段为东南室外凹口无墙可挂；改挂书房西墙 w_be_west 客厅侧南段，距墙段南端 0.30m、避书房门洞区（z≤6.55），紧邻沙发区角落）"
+  note: "饮水机位（2026-09-07 修正：原挂 w_liv_east @z=9.0，投影超出该墙段 3.45m——w_liv_east 仅到 z=5.55，且 z>8.70 段为东南室外凹口无墙可挂；改挂客房西墙 w_be_west 客厅侧南段，距墙段南端 0.30m、避客房门洞区（z≤6.55），紧邻沙发区角落）"
 
 - id: sock_living_table
   room: living_dining
@@ -228,7 +228,7 @@
   count: 1
   note: "主卧空调内机电源（2026-09-06 R7：门头盒东端空腔内，近走廊穿孔 z≈4.6；内机吊顶内供电常规做法，随冷媒管进盒）"
 
-# 西南次卧（父母房）
+# 西南次卧（书房，2026-10-05 功能互换：原父母房）
 - id: sock_parent_bed_l
   room: study
   wall: w_mb_east
@@ -269,7 +269,7 @@
   x: 6.075
   z: 5.55
   height: 1.3
-  note: "西南次卧灯光双控（父母房门西侧实体门垛；DEC-2026-09-08-R1 补声明 wall_side south；R2 由 x=6.00 移至门垛 [6.00,6.15] 中心 6.075——原位西半板面被北墙通顶衣柜（x[4.20,6.00]）东侧板遮挡；距 d_study 门洞边缘 0.075m 贴门套安装登记 warning）"
+  note: "西南次卧灯光双控（书房门西侧实体门垛；DEC-2026-09-08-R1 补声明 wall_side south；R2 由 x=6.00 移至门垛 [6.00,6.15] 中心 6.075——原位西半板面被北墙通顶衣柜（x[4.20,6.00]）东侧板遮挡；距 d_study 门洞边缘 0.075m 贴门套安装登记 warning）"
 
 - id: ac_panel_parent
   room: study
@@ -279,7 +279,7 @@
   x: 4.20
   z: 6.314
   height: 0.7
-  note: "父母房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：床头东墙，与 switch_parent_bed（z=6.40）/sock_parent_bed_l（z=6.60）组床头三联 h=0.7（取证发现门口门垛 x[6.00,6.15] 仅容一板且 switch_parent_door 西半已被衣柜侧板遮挡，线控器无处落位，改床头同主卧口径）；品牌中立，定标后按厂商线控规格终核，site_pending"
+  note: "书房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：床头东墙，（2026-10-05 功能互换：原父母房，点位原位保留）与 switch_parent_bed（z=6.40）/sock_parent_bed_l（z=6.60）组床头三联 h=0.7（取证发现门口门垛 x[6.00,6.15] 仅容一板且 switch_parent_door 西半已被衣柜侧板遮挡，线控器无处落位，改床头同主卧口径）；品牌中立，定标后按厂商线控规格终核，site_pending"
 
 - id: sock_parent_desk
   room: study
@@ -302,7 +302,7 @@
   height: 0.3
   note: "西南次卧网口"
 
-# 书房（原东南次卧）
+# 客房（原东南次卧，2026-10-05 功能互换：原书房）
 - id: sock_study_desk
   room: bedroom_se
   wall: w_be_west
@@ -312,7 +312,7 @@
   z: 7.90
   height: 0.3
   count: 3
-  note: "书房桌面: 电脑+显示器+手机（2026-08-25 书桌长边贴西墙、南端近幕墙，点位在桌北段西侧，距桌缘 <0.5m；2026-08-27 随书桌北移）"
+  note: "客房备用插座（2026-08-25 原书房桌面位：电脑+显示器+手机；2026-10-05 功能互换书桌迁出，改为客房备用，含充电器/落地设备；原 3 位 count 保留，量房后按客房实际需求复核）"
 
 - id: net_study
   room: bedroom_se
@@ -322,7 +322,7 @@
   x: 13.40
   z: 7.90
   height: 0.3
-  note: "书房网口（随书桌定西墙，同插座；2026-08-27 随书桌北移）"
+  note: "客房网口（原随书桌定西墙，同插座；2026-10-05 功能互换后保留为客房网口，客人可上网）"
 
 - id: sock_study_extra
   room: bedroom_se
@@ -333,7 +333,7 @@
   z: 5.55
   height: 0.3
   count: 1
-  note: "书房备用插座（DEC-2026-09-08-R1 补声明 wall_side south）"
+  note: "客房备用插座（DEC-2026-09-08-R1 补声明 wall_side south；2026-10-05 功能互换后位于床头北墙，兼作床头插座；另一侧床头电位待排布定稿后申报）"
 
 - id: switch_study
   room: bedroom_se
@@ -343,7 +343,7 @@
   x: 13.40
   z: 7.0
   height: 1.3
-  note: "书房灯光开关"
+  note: "客房灯光开关（2026-10-05 功能互换，id/位置不变）"
 
 - id: ac_panel_study
   room: bedroom_se
@@ -353,7 +353,7 @@
   x: 13.40
   z: 7.12
   height: 1.3
-  note: "书房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：与 switch_study（z=7.0）组双联，距 d_bese 门洞边缘 0.57m；品牌中立，定标后按厂商线控规格终核，site_pending"
+  note: "客房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：与 switch_study（z=7.0）组双联，距 d_bese 门洞边缘 0.57m；（2026-10-05 功能互换，id/位置不变）品牌中立，定标后按厂商线控规格终核，site_pending"
 
 # 儿童房（西北次卧）
 - id: sock_child_bed
@@ -735,7 +735,7 @@
   count: 1
   note: "主卧电动窗帘电源"
 
-# 父母房电动窗帘
+# 书房电动窗帘（2026-10-05 功能互换：原父母房）
 - id: sock_parent_curtain
   room: study
   wall: w_st_east
@@ -745,9 +745,9 @@
   z: 9.50
   height: 2.5
   count: 1
-  note: "父母房电动窗帘电源（DEC-2026-09-08-R1 补声明 wall_side west）"
+  note: "书房电动窗帘电源（DEC-2026-09-08-R1 补声明 wall_side west；2026-10-05 功能互换，id/位置不变）"
 
-# 书房电动窗帘
+# 客房电动窗帘（2026-10-05 功能互换：原书房）
 - id: sock_study_curtain
   room: bedroom_se
   wall: w_be_west
@@ -757,9 +757,9 @@
   z: 8.40
   height: 2.5
   count: 1
-  note: "书房电动窗帘电源（西墙南端，天花内走线到南墙窗帘电机；2026-08-27 随南墙凹进北移）"
+  note: "客房电动窗帘电源（西墙南端，天花内走线到南墙窗帘电机；2026-08-27 随南墙凹进北移；2026-10-05 功能互换，id/位置不变）"
 
-# 书房空调内机电源
+# 客房空调内机电源（2026-10-05 功能互换：原书房）
 - id: sock_study_ac
   room: bedroom_se
   type: socket
@@ -767,9 +767,9 @@
   z: 6.00
   height: 2.5
   count: 1
-  note: "书房空调内机电源（北墙边吊内，随内机北移）"
+  note: "客房空调内机电源（北墙边吊内，随内机北移；2026-10-05 功能互换，id/位置不变）"
 
-# 父母房空调内机电源
+# 书房空调内机电源（2026-10-05 功能互换：原父母房）
 - id: sock_parent_ac
   room: study
   type: socket
@@ -777,7 +777,7 @@
   z: 6.20
   height: 2.5
   count: 1
-  note: "父母房空调内机电源（北缘边吊内，随内机北移）"
+  note: "书房空调内机电源（北缘边吊内，随内机北移；2026-10-05 功能互换，id/位置不变）"
 
 # 客卫智能马桶预留
 - id: sock_gbath_toilet
@@ -926,7 +926,7 @@
   z: 7.675
   height: 2.8
   temp: 3000
-  note: "父母房吸顶灯"
+  note: "书房吸顶灯（2026-10-05 功能互换，id/位置不变）"
 - id: light_child_dome
   room: bedroom_nw
   type: dome
@@ -942,7 +942,7 @@
   z: 7.125
   height: 2.8
   temp: 3000
-  note: "书房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中）"
+  note: "客房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中；2026-10-05 功能互换，id/位置不变）"
 - id: light_corridor_1
   room: living_dining
   type: downlight

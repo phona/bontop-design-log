@@ -1546,3 +1546,16 @@
 - **账目**：`COST-160-05` planned null → 2,600（selection_confirmed_site_pending 不变）；PKG-160 need 14,825 → 16,496（热水器 floor 929→2,600），**超池 496** 挂 funding_status owner_review_pending_20261005——冰箱/洗衣机/热水器均为"现有设备不可用"条件件，任一不成立即回落，全部成立需业主追加约 500。
 - **不变**：BLK-WATER-HEATER-SITE 全部前置（安装墙面 w_vrv_east、燃气表、排烟、CO 红线、物业审批）未解除前不得下单；"开发商设备可用则不买"仍是第一反转条件；16L 一厨两卫与"回水管已预埋、不上零冷水主机"口径不变。
 - **未做**：KL7PRO 南宁一手核价与安装边界报价；JM6C/KL7PRO 同门对比的实测噪声数据。
+
+### DEC-2026-10-05-R9 父母房↔书房功能互换 v0（几何不动）+ 删除轻训练器材 + 起夜照明立项
+
+- **日期**：2026-10-05。迭代工作区 `docs/design-iterations/parent-room-study-swap-20261005/`（讨论轮次 R1–R8 全部留痕）。
+- **互换范围（只换功能，不换几何）**：`room id=study`（x[4.20,7.20] z[5.55,9.80]）功能名 父母房→**书房**；`room id=bedroom_se`（x[13.40,16.40] z[5.55,8.70]）功能名 书房→**客房**。墙体、门、窗、天花、空调机位、风管、冷凝水、窗帘盒一律未动；`model-geometry.yaml`/`overlay.yaml` 仅改 `name` 与 reason 注释。
+- **家具互换 v0（候选未冻结）**：客房移入 `wardrobe_180 @(15.25,5.85) r180`（北墙边吊下，AABB x[14.35,16.15] z[5.55,6.15]）与 `bed_150 @(15.35,7.60) r270`（床头靠东外墙，AABB x[14.35,16.35] z[6.85,8.35]，床尾半进凸窗带）+ `mattress_150`；书房保留书桌椅原位，`study_seasonal_wardrobe_wall @(5.15,5.825) r0` 由客房东墙平移至北墙边吊下（AABB x[4.30,6.00] z[5.55,6.10]），原 `bed_150/mattress_150/wardrobe_180` 随功能迁出。
+- **删除轻训练器材**：`bench_adjustable`/`adjustable_dumbbell_pair`/`rollable_training_mat` 三条 placed 与 `home_fitness_light_set_01`（¥1,800 candidate 未核价、未下单）整体移除，`config/materials.yaml` 条目、`config/procurement.yaml` 条目、`design-rules.yaml` 的 `home_fitness_light_set` 映射与 topic 行、`data/current-scheme.json` 的 selection 全部删除；`shared/types.ts` / `shared/render/FixtureFactory.ts` 的 recipe/dims 保留备用。DEC-2026-08-26-046 / DEC-2026-09-03-053 的“书房多功能健身”叙事整体作废。
+- **起夜照明立项（必做项，采购归二期）**：业主拍板 A+B——本户按标准落地 + 沉淀可复用标准。产出 `docs/standards/night-path-lighting.md` v1（坐标无关标准）与 `night-path-lighting-instance.md`（8–9 个候选点位 NP-1..NP-9、新增独立回路 `lighting_night_path`、混合控制：路径本地 PIR/存在感应保底 + 床头触摸调光小夜灯）。**采购与安装推到二期，但预留条件（床头双侧电位、`lighting_night_path` 回路与底盒、调光零线、网口、北墙隔声条件）必须进一期水电交底清单**，否则二期变砸墙工程。
+- **客房定位**：按“正常客房”设计（父母/客人偶尔来住），不做无障碍/隔声加码预设；电梯井共墙（新发现：`bedroom_se` 北墙 x[13.40,15.25] 与 `elevator_shaft` 直接共墙）与凸窗带可用性（飘窗台 2.07m 系推断值）列量房必测项，缓解手段只用免费的（床头靠东外墙 + 北墙衣柜声屏障 + 风口拨叶避床）。
+- **空调不受影响**：两房均为成交的 MJV-28T2/P-SS 2.8kW（`ac_parent`/`ac_study`），¥36,000 合同与逐房映射不动；`config/facts.yaml` 的 `fact.parent_room_area` 三方对账措辞随功能名更新（hvac.yaml 用「书房」、询价文档保留历史名「父母房」，fact id 不改）。
+- **口径债登记（未收口，禁止默认）**：`ordinary_power_study`（书房电脑专用回路，DEC-2026-10-03-R1）的物理管线现在通向客房，电脑已随功能迁到书房——要么改道，要么显式修订该决议口径；已写入 `config/electrical-topology.yaml` 注释。
+- **测试与验证**：`study-seasonal-storage.test.ts` 作废，新增 `tests/server/parent-room-study-swap.test.ts`（6 项）；`budget-calculator`/`cli-glb-export`/`spatial-validation` 三处断言随新状态改写；`scripts/generate-dressing-map.ts` 恢复 `furnishings 共 N 件` 对账行（此前丢失导致 `verify:facts` 红灯）。`npm run verify:all`、`test:server`（608/608）、`test:app`（470/470）、`typecheck` 全绿。
+- **待决（仍 open）**：书房储物内容/柜体形式与预算、书房东墙与客厅 65" 电视挂装边界、客房排布升级（方案 A 依赖凸窗带实测）、衣柜 final 选型、健身器材是否彻底取消、命名口径映射表、`facts.yaml` 其余跨文件收口。

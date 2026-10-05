@@ -1,0 +1,235 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: parent-room-study-swap-20261005
+subject: 客房（bedroom_se）与书房（study）候选 datum——仅讨论，未落配置
+units: m
+coordinate_system: Three.js右手系，Y向上，+x东，+z南，北朝上
+status: discussion # 全部为候选，未施工冻结；几何权威源不允许改动
+datums:
+  - id: datum-guest-room
+    name: 客房（bedroom_se，几何边界 datum）
+    anchor: { kind: room_anchor, ref: bedroom_se, wall_side: null, service_ref: null }
+    source_refs: { fact_refs: [fact-room-geometry-bedroom-se, fact-doors-both-rooms], decision_refs: [decision-guest-separation] }
+    views:
+      plan:
+        required: true
+        origin: 房间局部坐标
+        axes: x东西/z南北
+        direction: "北墙 z=5.55 共电梯井；西门 x=13.40 有门洞；南向凸窗内缘 z=7.60"
+        boundary: { x: [13.40, 16.40], z: [5.55, 8.70] }
+        drop_north: { x: [13.40, 15.80], z: [5.55, 6.15], bottom: 2.50 }
+        drop_ne_corner: { x: [15.80, 16.40], z: [5.55, 5.85], bottom: 2.50 }
+        door_sweep: { x: [13.40, 14.30], z: [5.65, 6.55] }
+        bay_inner_z: 7.60
+        dimension_semantics: confirmed_geometry
+      elevation:
+        required: true
+        viewing_side: west
+        vertical_axis: y
+        height: 2.80
+        clearances: { ceiling_drop_bottom: 2.50, wardrobe_max_height: 2.40 }
+        dimension_semantics: confirmed_geometry
+      section:
+        required: true
+        cut_direction: north-south
+        depth_axis: z
+        clearances: { elevator_shared_wall: site_pending, living_shared_wall: site_pending }
+        thickness: null
+        dimension_semantics: confirmed_geometry
+    geometry: { x: [13.40, 16.40], z: [5.55, 8.70] }
+    constraints: ["几何/天花/机电路由一律不动（只换功能）", "衣柜/柜体高度 ≤2.40m", "家具不得侵入 d_bese 扫掠域", "凸窗外凸 1.10m，东/西墙柜体段实际至 z=7.60"]
+    interfaces: [d_bese, ac_study, elevator_shaft, living_dining]
+    status: confirmed_geometry
+  - id: datum-guest-layout-a
+    name: 客房排布方案 A（倾向）——床靠东外墙 + 1.8m 衣柜北墙
+    anchor: { kind: wall_anchor, ref: w_east_upper, wall_side: west, service_ref: null }
+    source_refs: { fact_refs: [fact-bay-band-limits, fact-elevator-adjacency, pending-wardrobe-product], decision_refs: [align-guest-room-layout] }
+    views:
+      plan:
+        required: true
+        origin: 房间局部坐标
+        axes: x东西/z南北
+        direction: "床头靠东外墙 x=16.40、床体西伸；床尾半进凸窗带"
+        position: { bed: { x: [14.40, 16.40], z: [6.55, 8.55] }, wardrobe: { x: [14.20, 16.00], z: [5.55, 6.15] } }
+        rotation: 0
+        dimensions: { bed: { width: 1.50, length: 2.00 }, wardrobe: { width: 1.80, depth: 0.60 } }
+        dimension_semantics: candidate
+      elevation:
+        required: true
+        viewing_side: east
+        vertical_axis: y
+        height: null
+        dimensions: { wardrobe_height: 2.40 }
+        dimension_semantics: candidate
+      section:
+        required: true
+        cut_direction: east-west
+        depth_axis: x
+        clearances: { wardrobe_front_channel: 0.40, note: "偏紧，需 3D 复核；可南移床体换取 0.10–0.15m" }
+        thickness: 0.60
+        dimension_semantics: candidate
+    geometry: { bed: { x: [14.40, 16.40], z: [6.55, 8.55] }, wardrobe: { x: [14.20, 16.00], z: [5.55, 6.15] } }
+    constraints: ["床头同时远离电梯井（北）与客厅电视墙（西）", "北墙衣柜兼电梯井侧声屏障（效果 site_pending）", "床尾进入凸窗带约 0.95m，凸窗带为可用地面但南侧玻璃", "衣柜门前通道约 0.40m，低于本项目 0.65m 口径，3D 评审须显式接受或调整"]
+    interfaces: [bed_150_guest, wardrobe_180_guest, d_bese, ceiling_study_ac]
+    status: candidate_not_frozen
+  - id: datum-guest-layout-b
+    name: 客房排布方案 B——床靠北墙全避凸窗带 + 衣柜缩西墙门下
+    anchor: { kind: wall_anchor, ref: w_be_north, wall_side: south, service_ref: null }
+    source_refs: { fact_refs: [fact-doors-both-rooms, fact-bay-band-limits], decision_refs: [align-guest-room-layout] }
+    views:
+      plan:
+        required: true
+        origin: 房间局部坐标
+        axes: x东西/z南北
+        direction: "床头靠北墙（z=5.55，电梯井侧），床体南伸至凸窗内缘"
+        position: { bed: { x: [14.35, 15.85], z: [5.60, 7.60] }, wardrobe: { x: [13.40, 14.00], z: [6.60, 7.75] } }
+        rotation: 0
+        dimensions: { bed: { width: 1.50, length: 2.00 }, wardrobe: { width: 1.20, depth: 0.60 } }
+        dimension_semantics: candidate
+      elevation:
+        required: true
+        viewing_side: north
+        vertical_axis: y
+        height: null
+        dimensions: { wardrobe_height: 2.40 }
+        dimension_semantics: candidate
+      section:
+        required: true
+        cut_direction: east-west
+        depth_axis: x
+        clearances: { entry_channel: "x13.40–14.30 约 1.0m，含门扫掠" }
+        thickness: 0.60
+        dimension_semantics: candidate
+    geometry: { bed: { x: [14.35, 15.85], z: [5.60, 7.60] }, wardrobe: { x: [13.40, 14.00], z: [6.60, 7.75] } }
+    constraints: ["床完全避开凸窗带、通道宽松", "床头贴电梯井共墙（隔声 site_pending）", "衣柜仅 1.05m 净墙段可用（西墙门下 z[6.55,7.60]），须缩至 1.2m 级", "收纳量明显低于方案 A"]
+    interfaces: [bed_150_guest, wardrobe_180_guest, d_bese, elevator_shaft]
+    status: candidate_not_frozen
+  - id: datum-study-room
+    name: 书房（study，几何边界 datum）
+    anchor: { kind: room_anchor, ref: study, wall_side: null, service_ref: null }
+    source_refs: { fact_refs: [fact-room-geometry-study, fact-furniture-current], decision_refs: [decision-function-swap-only] }
+    views:
+      plan:
+        required: true
+        origin: 房间局部坐标
+        axes: x东西/z南北
+        direction: "北门 d_study 开口 x6.15–7.05；书桌+椅西墙南端原位保留"
+        boundary: { x: [4.20, 7.20], z: [5.55, 9.80] }
+        drop_north: { z: [5.55, 6.45], bottom: 2.50 }
+        door_sweep: { x: [6.15, 7.05], z: [5.55, 6.45] }
+        south_bay_outer_z: 10.90
+        dimension_semantics: confirmed_geometry
+      elevation:
+        required: true
+        viewing_side: east
+        vertical_axis: y
+        height: 2.80
+        clearances: { ceiling_drop_bottom: 2.50, cabinet_max_height: 2.40, south_sill: 2.07 }
+        dimension_semantics: confirmed_geometry
+      section:
+        required: true
+        cut_direction: east-west
+        depth_axis: x
+        clearances: { tv_mount_zone: "客厅侧 z=8.00 挂装位" }
+        thickness: null
+        dimension_semantics: confirmed_geometry
+    geometry: { x: [4.20, 7.20], z: [5.55, 9.80] }
+    constraints: ["几何不动，仅 name/注释与家具/点位语义改写", "原床/床头插座/衣柜迁出；书桌椅原位", "保留改回卧室的可能：墙面不全部占满，预留 1.5m 床位"]
+    interfaces: [d_study, ac_parent, tv_65, living_dining]
+    status: confirmed_geometry
+  - id: datum-study-north-cabinet
+    name: 书房北墙季节后台柜（由客房东墙平移）
+    anchor: { kind: wall_anchor, ref: w_st_north, wall_side: south, service_ref: null }
+    source_refs: { fact_refs: [fact-furniture-current, fact-study-storage-walls], decision_refs: [decision-study-storage] }
+    views:
+      plan:
+        required: true
+        origin: 房间局部坐标
+        axes: x东西/z南北
+        direction: "柜门朝南入房；避让 d_study 扫掠 x6.15–7.05"
+        position: { x: [4.30, 6.00], z: [5.55, 6.10] }
+        rotation: 0
+        dimensions: { length: 1.70, depth: 0.55, height: 2.40 }
+        dimension_semantics: candidate
+      elevation:
+        required: true
+        viewing_side: north
+        vertical_axis: y
+        height: 2.40
+        dimensions: { top_panel: 0.10, drop_bottom: 2.50 }
+        dimension_semantics: candidate
+      section:
+        required: true
+        cut_direction: north-south
+        depth_axis: z
+        clearances: { door_sweep: "x≥6.15 避让", hvac_inspection: site_pending }
+        thickness: 0.55
+        dimension_semantics: candidate
+    geometry: { x: [4.30, 6.00], z: [5.55, 6.10], height: 2.40 }
+    constraints: ["沿用原 wardrobe_180 的 footprint 包络 x4.20–6.00 z5.55–6.15（吊顶条件平移成立）", "防倾倒固定待墙体构造确认", "内容物（换季/被褥/行李箱）由 align-study-storage-content 裁定"]
+    interfaces: [d_study, ceiling_parent_ac, ac_parent]
+    status: candidate_not_frozen
+  - id: datum-study-south-shelf
+    name: 书房南墙书架/开架（飘窗台下）
+    anchor: { kind: wall_anchor, ref: w_st_south, wall_side: north, service_ref: null }
+    source_refs: { fact_refs: [fact-study-storage-walls, pending-bay-sill-height], decision_refs: [decision-study-storage] }
+    views:
+      plan:
+        required: true
+        origin: 房间局部坐标
+        axes: x东西/z南北
+        direction: 贴南墙、西端避让书桌 footprint
+        position: { x: [5.20, 7.00], z: [9.45, 9.80] }
+        rotation: 0
+        dimensions: { length: 1.80, depth: 0.35, height: 2.00 }
+        dimension_semantics: candidate
+      elevation:
+        required: true
+        viewing_side: south
+        vertical_axis: y
+        height: 2.00
+        dimensions: { sill_height: 2.07, note: "窗台 2.07m 为推断值，量房 #20 待核；柜高 ≤2.00m" }
+        dimension_semantics: candidate
+      section:
+        required: true
+        cut_direction: east-west
+        depth_axis: x
+        clearances: { bay_window_outside: "外凸至 z=10.90" }
+        thickness: 0.35
+        dimension_semantics: candidate
+    geometry: { x: [5.20, 7.00], z: [9.45, 9.80], height: 2.00 }
+    constraints: ["飘窗台高 2.07m 量房确认前柜高不得放宽", "西端避让书桌/椅 footprint", "开架 vs 封闭柜由 align-study-storage-content 裁定"]
+    interfaces: [study_south_bay, desk]
+    status: candidate_not_frozen
+  - id: datum-study-east-wall
+    name: 书房东墙储物候选（受限：客厅电视墙）
+    anchor: { kind: wall_anchor, ref: w_st_east, wall_side: west, service_ref: null }
+    source_refs: { fact_refs: [fact-study-storage-walls], decision_refs: [align-study-east-wall-tv] }
+    views:
+      plan:
+        required: true
+        origin: 房间局部坐标
+        axes: x东西/z南北
+        direction: "贴东墙 x=7.20，z6.45–9.80 共 3.35m；客厅侧同墙已占满（通顶柜 z5.55–6.90、低柜 z6.95–9.05、65 寸挂装 z=8.00）"
+        position: { x: [6.65, 7.20], z: [6.45, 9.80] }
+        rotation: 90
+        dimensions: { run_length: 3.35, depth: 0.55 }
+        dimension_semantics: candidate
+      elevation:
+        required: true
+        viewing_side: west
+        vertical_axis: y
+        height: null
+        dimensions: { tv_mount_z: 8.00 }
+        dimension_semantics: candidate
+      section:
+        required: true
+        cut_direction: north-south
+        depth_axis: z
+        clearances: { tv_anchor_zone: "挂装锚栓与双层墙厚未处理" }
+        thickness: 0.55
+        dimension_semantics: candidate
+    geometry: { x: [6.65, 7.20], z: [6.45, 9.80] }
+    constraints: ["客厅侧 65 寸挂装锚栓（z=8.00）与书房侧柜体的墙内冲突未证明前，不得做满墙深柜", "候选形态：吊柜（底≥1.60m）+矮柜（≤0.85m）+中部留空，或整墙留空改南/西墙", "墙体为隔墙/剪力墙属性与厚度 site_pending"]
+    interfaces: [tv_65, wall_cabinet_tall, tv_wall_low]
+    status: candidate_not_frozen

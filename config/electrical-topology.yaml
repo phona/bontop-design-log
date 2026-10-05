@@ -1,3 +1,4 @@
+# 2026-10-05 功能互换（iteration parent-room-study-swap-20261005）：本文件中"父母房"已整体改写为"书房"（room id=study），"书房"改写为"客房"（room id=bedroom_se）。仅改功能叙述文字；回路、点位 id 一律未动。
 version: '1.0'
 
 # 2026-10-03（DEC-2026-10-03-R1）施工冻结前收口：25 路 → 19 路（R1）；2026-10-04（DEC-2026-10-04-R2）外机供电补齐第 20 路（20kW 外机按 GB 55038 7.4.4 单独成路）。
@@ -76,7 +77,7 @@ circuits:
     capacity: "≤0.8kW（9 点位合计估算）"
     wire_size: "1.5mm²(φ16)"
     breaker: "C16A"
-    note: "卧室/厨卫照明合并回路（DEC-2026-10-03-R1）：主卧吸顶灯与床头壁灯、父母房/儿童房/书房吸顶灯、厨房/两卫平板灯；控制绑定见 control_master_bed_door / control_parent_bed_door / control_child_light / control_study_light / control_kitchen_light / control_mbath_light / control_gbath_light"
+    note: "卧室/厨卫照明合并回路（DEC-2026-10-03-R1）：主卧吸顶灯与床头壁灯、书房/儿童房/客房吸顶灯、厨房/两卫平板灯；控制绑定见 control_master_bed_door / control_parent_bed_door / control_child_light / control_study_light / control_kitchen_light / control_mbath_light / control_gbath_light"
   - id: hvac_power_living
     panel_id: panel_strong
     purpose: hvac_power
@@ -97,7 +98,7 @@ circuits:
     capacity: "待厂家铭牌核验（当前≤0.5kW仅为方案预留值，非已核定内机/泵负荷）"
     wire_size: "2.5mm²(φ20)"
     breaker: "C16A+漏保"
-    note: "主卧/父母房/儿童房/书房空调电源合并回路（型号依次为 56T2、28T2、28T2、28T2；DEC-2026-10-03-R1 四点合并为一路）。status 仍 pending；厂家正式配电图确认前不冻结供电分组、额定负荷、P-SS 泵供电及端子接法；若要求逐台独立回路或集中供电，按厂家图重新定义点位 type 与回路口径。DEC-2026-10-04-R2 插座线径方案值 2.5mm²(φ20)，breaker C16A+漏保待正式配电图终核；内机/泵电气参数待厂家资料确认，压缩机在室外机。"
+    note: "主卧/书房/儿童房/客房空调电源合并回路（型号依次为 56T2、28T2、28T2、28T2；DEC-2026-10-03-R1 四点合并为一路）。status 仍 pending；厂家正式配电图确认前不冻结供电分组、额定负荷、P-SS 泵供电及端子接法；若要求逐台独立回路或集中供电，按厂家图重新定义点位 type 与回路口径。DEC-2026-10-04-R2 插座线径方案值 2.5mm²(φ20)，breaker C16A+漏保待正式配电图终核；内机/泵电气参数待厂家资料确认，压缩机在室外机。"
   # DEC-2026-10-04-R2：外机供电补齐为第 20 路。本回路是 R1「19 路」遗漏的最大单体负载——20kW 外机。
   # GB 55038-2025 7.4.4：2kW 及以上用电设备回路应分别设置 → 外机必须单独成路，回路总数 19→20。
   - id: hvac_power_outdoor_a2
@@ -183,7 +184,11 @@ circuits:
     breaker: "C20A+漏保"
     note: "客餐厅普通电源（含网关与电视氛围灯带，2026-09-07-056 补入；DEC-2026-09-09-R1 补扫地机基站柜内位；DEC-2026-10-03-R1 补 sock_living_tv_high 电视/音响高位取电）；现场分组待交底"
   # DEC-2026-10-03-R1：原 ordinary_power_bedrooms（14 点位共一个 C20 支路）拆为三段，
-  # 书房电脑/显示器单独成路，其余按房分路（GB 55038 7.4.4 按其他功能用房分路）。
+  # 按房分路（GB 55038 7.4.4 按其他功能用房分路）。
+  # 2026-10-05 功能互换后的口径债（constraint B5，iteration parent-room-study-swap-20261005）：
+  #   ordinary_power_study 的**物理管线现在通向 bedroom_se（客房）**，而电脑/显示器已随功能迁到 study（书房）。
+  #   两条出路：(a) 把该专用回路改道到 study（书房）；(b) 显式修订 DEC-2026-10-03-R1 的"电脑不混路"口径。
+  #   在 alignment 收口前，本文件保持物理现状不改，仅在此声明债；不得默许电脑与儿童房共回路。
   - id: ordinary_power_master
     panel_id: panel_strong
     purpose: ordinary_power
@@ -201,7 +206,7 @@ circuits:
     capacity: "≈0.8kW"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
-    note: "父母房 + 儿童房普通电源（DEC-2026-10-03-R1 拆出）"
+    note: "书房 + 儿童房普通电源（DEC-2026-10-03-R1 拆出；书房侧点位含原床头位，随床迁出后改为书房备用，量房后按实际用电点复核）"
   - id: ordinary_power_study
     panel_id: panel_strong
     purpose: ordinary_power
@@ -210,7 +215,7 @@ circuits:
     capacity: "≈1.0kW（电脑 + 显示器 + 外设）"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
-    note: "书房普通电源单独成路（DEC-2026-10-03-R1 拆出，电脑负载不与他人混路）"
+    note: "普通电源单独成路（DEC-2026-10-03-R1 拆出，原电脑负载不与他人混路；点位物理位于 bedroom_se 客房，2026-10-05 功能互换后该专用回路的归属见上方 B5 口径债，待 alignment 收口）"
   - id: ordinary_power_service
     panel_id: panel_strong
     purpose: ordinary_power
@@ -257,7 +262,7 @@ controls:
     status: proposed
     switch_point_ids: [switch_parent_bed, switch_parent_door]
     target_point_ids: [light_parent_dome]
-    note: "父母房床头/门口双控：受控为父母房吸顶灯（2026-09-07-056 方案绑定，待交底确认）"
+    note: "书房床头/门口双控：受控为书房吸顶灯（2026-09-07-056 方案绑定，待交底确认）"
   - id: control_dining
     kind: switch
     status: proposed
@@ -275,7 +280,7 @@ controls:
     status: proposed
     switch_point_ids: [switch_study]
     target_point_ids: [light_study_dome]
-    note: "书房吸顶灯单控（2026-09-07-056 补）"
+    note: "客房吸顶灯单控（2026-09-07-056 补）"
   - id: control_child_light
     kind: switch_2way
     status: proposed
@@ -309,7 +314,7 @@ controls:
 
 pending_parameters:
   - "2026-10-03（DEC-2026-10-03-R1）：19 路为合并后目标；GB 55038 7.4.3-1 要求所有电源插座回路 ≤30mA RCD，本表已全部补 +漏保。若中央空调厂商正式配电图要求硬接线不设漏保，则按厂家图重新定义 sock_*_ac 的 type 与回路口径"
-  - "空调当前暂并为 2 路（客厅+餐厅 / 主卧+父母房+儿童房+书房），回路均 pending；室内机成交映射为客厅71T2、餐厅42T2、主卧56T2、父母房/儿童房/书房28T2×3，全部 P-SS 泵型。厂家正式配电图需核额定负荷、内机/泵供电、端子及集中或逐台供电方式，再确认线径、断路器与回路拆并。"
+  - "空调当前暂并为 2 路（客厅+餐厅 / 主卧+书房+儿童房+客房），回路均 pending；室内机成交映射为客厅71T2、餐厅42T2、主卧56T2、书房/儿童房/客房28T2×3，全部 P-SS 泵型。厂家正式配电图需核额定负荷、内机/泵供电、端子及集中或逐台供电方式，再确认线径、断路器与回路拆并。"
   - "强电箱规格未确认（DEC-2026-10-04-R2 按 20 路重算，DEC-2026-10-05-R3 浴霸拆每卫一路后为 21 路）：390mm 箱体单/双排未知。单排约 20 位、扣 2P 进线开关 + 浪涌后约 16 位可用，**21 路确定装不下 → 单排箱（约 16 位可用）出局，必须双排或换箱**；GB 55038 7.4.3-2 规定单排箱底边 ≥1.80m、双排 ≥1.60m，现 panel_strong_entry_left mount_height 1.65m 仅双排合规（若现场为单排箱，须换箱或把箱底边上移至 ≥1.80m）。进线截面须 ≥10mm² 铜芯（7.4.3-3）。见 pending-site-data #30"
   - "拓扑未建模进线开关：GB 55038 7.4.3-1 要求设能同时断开相线与中性线且具隔离功能的进线开关，并设短路与过负荷保护；量房开箱确认"
   - "回路 capacity/wire_size/breaker 为方案 proposed 值（合并后仍按 docs/mep-construction-guidance.md §3.1 口径：照明 1.5mm²、插座 ≥2.5mm²、大功率/厨房 4mm²），施工前按设备铭牌与交底终核"
@@ -319,6 +324,6 @@ pending_parameters:
   - "卫生间局部等电位联结（LEB）无对应点位类型可建（plumbing/schema 枚举未含），本轮只进验收与量房清单；GB 55038 7.4.7 要求装有固定浴盆或淋浴器的卫生间设等电位联结作为附加防护"
   - "位置待冻结的点位（position_status: pending，依赖 SKU/燃气公司方案）：sock_kitchen_counter_east、sock_mbath_toilet、sock_gbath_toilet、sock_balcony_washer、sock_balcony_dryer、sock_dining_ac、sock_gbath_batheheater（DEC-2026-10-05-R3，随扣板排布终核）"
   - "强弱电箱之间的实际分隔与进线关系待现场确认"
-  - "空调6台内机供电分组待厂家配电图确认：成交型号为客厅71T2、餐厅42T2、主卧56T2、父母房/儿童房/书房28T2×3，均为 P-SS 泵型；不得沿用型号功率/泵负荷估值作为定案。hvac_power_living 已含 sock_dining_ac；厂家需确认额定负荷、内机与泵供电/端子、集中或逐台供电方式，之后再冻结回路拆并及点位 type。"
+  - "空调6台内机供电分组待厂家配电图确认：成交型号为客厅71T2、餐厅42T2、主卧56T2、书房/儿童房/客房28T2×3，均为 P-SS 泵型；不得沿用型号功率/泵负荷估值作为定案。hvac_power_living 已含 sock_dining_ac；厂家需确认额定负荷、内机与泵供电/端子、集中或逐台供电方式，之后再冻结回路拆并及点位 type。"
   - "中央空调外机供电**已单独成路** hvac_power_outdoor_a2（DEC-2026-10-04-R2，当时为第 20 路；DEC-2026-10-05-R3 浴霸拆两路后回路总数 21）：20kW 外机（220V，DEC-2026-10-04-R1）按 GB 55038 7.4.4 属 2kW 及以上用电设备、已单独成路；箱体位数按 20 路重算后 R3 增至 21 路，双排结论不变。仍待厂家正式配电图与量房终核：断路器/线径（现 proposed C32A+漏保 / 4.0mm²(φ20)）、是否由强电箱单独放缆或接开发商外立面预留插座、点位 sock_vrf_outdoor_a2 最终落位；若厂家要求硬接线不设漏保，须重新定义该点位 type 与回路口径"
   - "微蒸烤一体机候选（美的 GC5，额定 3200W，DEC-2026-10-05-R4 业主定标方向）：按 GB 55038 7.4.4 需 16A/2.5mm² 专用回路（现厨房插座回路 4mm² 预留口径不足以共路承载 3,200W），回路 21→22、点位与嵌位随橱柜 600 宽高柜方案冻结后落，水电交底前必须闭合；同档竞品比价未做"

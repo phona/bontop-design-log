@@ -393,42 +393,70 @@ function main(): void {
     }
   }
 
-  // 书房：季节后台柜边界与轻训练使用态
-  const seWardrobe = placedIndex.get('bedroom_se/study_seasonal_wardrobe_wall');
-  const seDesk = placedIndex.get('bedroom_se/desk');
-  const seChair = placedIndex.get('bedroom_se/chair');
-  const BESE_DOOR_SWEEP: Aabb = { minX: 13.40, maxX: 14.30, minZ: 5.65, maxZ: 6.55 }; // d_bese 北门扇扫掠域
-  const STUDY_TRAINING_USE: Aabb = { minX: 14.30, maxX: 15.80, minZ: 5.65, maxZ: 7.45 }; // 轻训练三件套使用态 AABB
+  // 2026-10-05 功能互换（iteration parent-room-study-swap-20261005）：bedroom_se 由书房改为客房，
+  // study 由父母房改为书房。原「书房：季节后台柜 + 轻训练使用态」专项整体作废，替换为客房寝区判据。
+  // 客房（bedroom_se）：wardrobe_180 北墙边吊下 + bed_150 床头靠东外墙；d_bese 门扇扫掠域禁入。
+  const guestWardrobe = placedIndex.get('bedroom_se/wardrobe_180');
+  const guestBed = placedIndex.get('bedroom_se/bed_150');
+  const BESE_DOOR_SWEEP: Aabb = { minX: 13.40, maxX: 14.30, minZ: 5.65, maxZ: 6.55 }; // d_bese 西门洞扇扫掠域
+  const BESE_BAY_INNER_Z = 7.60;  // 南向凸窗内缘：z>7.60 为凸窗带（2.07m 以上为窗带，床高 <2.07m 可进，柜体不得进）
+  const BESE_SOUTH_GLASS_Z = 8.70; // 南玻璃栏板/房间南界，家具不得越过
 
-  if (!seWardrobe) {
-    errors.push('bedroom_se: missing placed study_seasonal_wardrobe_wall (季节后台柜)');
+  if (!guestWardrobe) {
+    errors.push('bedroom_se: missing placed wardrobe_180 (客房衣柜，随功能自原父母房迁入)');
   } else {
-    if (seWardrobe.box.minZ < 5.90 - GAP_EPS) {
-      errors.push(`${seWardrobe.label}: 北缘 z=${seWardrobe.box.minZ.toFixed(3)} < 5.90（侵入东北角吊段）`);
+    if (guestWardrobe.box.minX < 14.30 + GAP_EPS) {
+      errors.push(`${guestWardrobe.label}: 西缘 x=${guestWardrobe.box.minX.toFixed(3)} < 14.30（侵入 d_bese 门扫掠域）`);
     }
-    if (seWardrobe.box.maxZ > 7.60 + GAP_EPS) {
-      errors.push(`${seWardrobe.label}: 南缘 z=${seWardrobe.box.maxZ.toFixed(3)} > 7.60（越过凸窗内缘）`);
+    if (guestWardrobe.box.maxX > 16.35 + GAP_EPS) {
+      errors.push(`${guestWardrobe.label}: 东缘 x=${guestWardrobe.box.maxX.toFixed(3)} > 16.35（须留完成面余量，不贴死 x=16.40）`);
     }
-    if (seWardrobe.box.maxX > 16.35 + GAP_EPS) {
-      errors.push(`${seWardrobe.label}: 东缘 x=${seWardrobe.box.maxX.toFixed(3)} > 16.35（须留完成面余量，不贴死 x=16.40）`);
+    if (guestWardrobe.box.minZ < 5.55 - GAP_EPS || guestWardrobe.box.maxZ > 6.15 + GAP_EPS) {
+      errors.push(`${guestWardrobe.label}: z 包络 [${guestWardrobe.box.minZ.toFixed(3)},${guestWardrobe.box.maxZ.toFixed(3)}] 越出北墙边吊段 z[5.55,6.15]（柜体 2.40m+顶封板 0.10m 抵 2.50m 吊底）`);
     }
-    if (intersects(seWardrobe.box, BESE_DOOR_SWEEP)) {
-      errors.push(`${seWardrobe.label}: intersects d_bese door sweep zone (13.40,5.65)→(14.30,6.55)`);
-    }
-    for (const other of [seDesk, seChair]) {
-      if (other && intersects(seWardrobe.box, other.box)) {
-        errors.push(`${seWardrobe.label}: overlaps ${other.label}`);
+    if (guestBed && intersects(guestWardrobe.box, guestBed.box)) {
+      errors.push(`${guestWardrobe.label}: overlaps ${guestBed.label}`);
+    } else if (guestBed) {
+      const channel = guestBed.box.minZ - guestWardrobe.box.maxZ;
+      if (channel < 0.65 - GAP_EPS) {
+        warnings.push(`${guestWardrobe.label}: 柜前通道 ${channel.toFixed(3)}m < 0.65m 项目惯例（推拉门可降为约 0.45m，属惯例突破须显式记录）`);
       }
     }
   }
-
-  for (const [name, obstacle] of [['desk', seDesk], ['chair', seChair], ['study_seasonal_wardrobe_wall', seWardrobe]] as const) {
-    if (obstacle && intersects(STUDY_TRAINING_USE, obstacle.box)) {
-      errors.push(`bedroom_se: 轻训练使用态 AABB (14.30,5.65)→(15.80,7.45) 与 ${name} 冲突`);
+  if (!guestBed) {
+    errors.push('bedroom_se: missing placed bed_150 (客房床，随功能自原父母房迁入)');
+  } else {
+    if (intersects(guestBed.box, BESE_DOOR_SWEEP)) {
+      errors.push(`${guestBed.label}: intersects d_bese door sweep zone (13.40,5.65)→(14.30,6.55)`);
+    }
+    if (guestBed.box.maxZ > BESE_SOUTH_GLASS_Z - 0.20 + GAP_EPS) {
+      errors.push(`${guestBed.label}: 南缘 z=${guestBed.box.maxZ.toFixed(3)} ≥ ${(BESE_SOUTH_GLASS_Z - 0.20).toFixed(2)}（距南玻璃 8.70 需留 ≥0.20m，帘体与堆叠 site_pending）`);
+    }
+    // 床头靠东外墙（rotation=270 时床头在局部 -z → 世界 +x）：床头侧距东墙 ≤0.10m
+    const headAtEast = Math.abs(guestBed.item.rotation ?? 0) === 270;
+    if (!headAtEast) {
+      warnings.push(`${guestBed.label}: rotation=${guestBed.item.rotation}，床头未靠东外墙（方案 A 要求床头同时远离电梯井与客厅电视墙）`);
+    } else if (guestBed.box.maxX > 16.40 + GAP_EPS) {
+      errors.push(`${guestBed.label}: 东缘 x=${guestBed.box.maxX.toFixed(3)} > 16.40（越出东外墙）`);
     }
   }
-  if (intersects(STUDY_TRAINING_USE, BESE_DOOR_SWEEP)) {
-    errors.push('bedroom_se: 轻训练使用态 AABB (14.30,5.65)→(15.80,7.45) 与 d_bese 门扫掠域冲突');
+
+  // 书房（study）：季节后台柜由客房东墙平移至北墙边吊下；d_study 门扇扫掠域禁入。
+  const studyCabinet = placedIndex.get('study/study_seasonal_wardrobe_wall');
+  const STUDY_DOOR_SWEEP: Aabb = { minX: 6.15, maxX: 7.05, minZ: 5.55, maxZ: 6.45 }; // d_study 北门扇扫掠域
+  const STUDY_NORTH_DROP_Z = 6.45; // 北墙边吊段（底 2.50m）：柜体 2.40m+顶封板 0.10m 抵吊底
+  if (!studyCabinet) {
+    errors.push('study: missing placed study_seasonal_wardrobe_wall (书房北墙季节后台柜，由客房平移)');
+  } else {
+    if (intersects(studyCabinet.box, STUDY_DOOR_SWEEP)) {
+      errors.push(`${studyCabinet.label}: intersects d_study door sweep zone (6.15,5.55)→(7.05,6.45)`);
+    }
+    if (studyCabinet.box.maxZ > STUDY_NORTH_DROP_Z + GAP_EPS) {
+      errors.push(`${studyCabinet.label}: 南缘 z=${studyCabinet.box.maxZ.toFixed(3)} > ${STUDY_NORTH_DROP_Z.toFixed(2)}（越出北墙边吊段，柜顶将撞吊底）`);
+    }
+    if (studyCabinet.box.minZ < 5.55 - GAP_EPS) {
+      errors.push(`${studyCabinet.label}: 北缘 z=${studyCabinet.box.minZ.toFixed(3)} < 5.55（越出房间北界）`);
+    }
   }
 
   for (const w of warnings) console.warn(`WARN  ${w}`);

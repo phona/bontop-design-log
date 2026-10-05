@@ -458,14 +458,6 @@ materials:
     waste_rate: 1
     unit: 组
     notes: ["书房季节后台（2026-09 迭代），按组整价口径，候选待核价"]
-  - id: home_fitness_light_set_01
-    name: "轻训练套（可调哑铃对+底座+可卷训练垫）"
-    room: bedroom_se
-    category: 家具
-    current_stage: selection
-    waste_rate: 1
-    unit: 套
-    notes: ["一套整价口径；可调凳复用现有不计入；可见器材只渲染不计价；候选待核价"]
   - id: light_midcentury_dresser_01
     name: "轻中古六抽矮柜（主卧南侧窗带）"
     room: master_bedroom

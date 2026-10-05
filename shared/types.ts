@@ -1343,8 +1343,8 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   barbell_olympic: { width: 2.2, depth: 0.08 },
   weight_plate_set: { width: 0.63, depth: 0.42 },
   bench_adjustable: { width: 1.24, depth: 0.55 },
-  adjustable_dumbbell_pair: { width: 0.55, depth: 0.45 }, // 2026-09-03 可调哑铃对含底座包络（渲染用，预算走 home_fitness 单套口径）
-  rollable_training_mat: { width: 0.25, depth: 0.25 }, // 2026-09-03 卷起态圆筒（立放 footprint；渲染用，不单独计价）
+  adjustable_dumbbell_pair: { width: 0.55, depth: 0.45 }, // 2026-09-03 可调哑铃对含底座包络（渲染用；2026-10-05 轻训练套整体删除，recipe/dims 保留备用）
+  rollable_training_mat: { width: 0.25, depth: 0.25 }, // 2026-09-03 卷起态圆筒（立放 footprint；渲染用；2026-10-05 删除，dims 保留备用）
   rubber_training_mat: { width: 1.8, depth: 1.6 },
   low_weight_storage: { width: 0.95, depth: 0.42 },
   low_room_cabinet: { width: 0.40, depth: 1.20 }, // 2026-08-26 书房东墙低柜，世界 footprint 0.40×1.20m；配置 rotation=0 沿东墙南北向展开，柜门朝西，不是健身器材收纳

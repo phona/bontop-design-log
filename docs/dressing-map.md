@@ -1,8 +1,8 @@
 # 装扮映射表（Twinmotion 云渲染用）
 
-生成：2026-09-06，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-10-05，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
-数据规模：house.yaml furnishings 共 92 件（与 `fact.furnishings_count` 对账）。
+数据规模：house.yaml furnishings 共 87 件（与 `fact.furnishings_count` 对账）。
 
 用法：glb 导入 Twinmotion 后按本表替换材质/家具/灯光；reimport 同名 glb 时材质覆盖按节点名保留。
 
@@ -32,9 +32,8 @@
 | bed | bed_180_01 | 1.8m 实木床 | 本地家具厂 / 源氏木语 / 1.8×2.0m 中浅胡桃木细框架 + 暖米灰软包床头 | 1800×2000mm | 按实物选材替换 |
 | mattress | mattress_180_01 | 1.8m 独立袋装弹簧床垫 | 喜临门 / 雅兰 / 20-25cm 独立袋装弹簧 + 乳胶 | 1800×2000mm | 按实物选材替换 |
 | wardrobe | wardrobe_240_01 | 2.4m 定制衣柜 | 本地全屋定制工厂 / 2.4×0.6×2.7m，平开门 | 2400×600×2700mm | 按实物选材替换 |
-| wardrobe | wardrobe_north_950_custom_01_r7_superseded | 主卧北墙950定制模块化衣柜（R7 首版 superseded，历史保留；2026-10-04 改后缀 id 以免与 R8 active 版互相覆盖） | 本地全屋定制工厂 / 待核样 / 950×580×2450mm，三扇窄平开门，一体木饰面，非通顶 | 950×580×2450mm | 底色 medium_light_walnut_warm_smoked_oak |
+| wardrobe | wardrobe_north_950_custom_01 | 主卧北墙950定制模块化衣柜（R8 active） | 本地全屋定制工厂 / 待核样 / 950×580×2800mm，三扇窄平开门+顶部固定木饰面门头，真正通顶；冷凝水管槽隐藏于顶部 | 950×580×2800mm | 底色 medium_light_walnut_warm_smoked_oak |
 | wardrobe | study_seasonal_wardrobe_170_01 | 1.7m 模块化季节后台柜（书房） | 本地全屋定制工厂 / 宜家 modular 系列 / 1.70×0.55×2.40m 模块化组合柜，换季收纳 | 1700×550×2400mm | 按实物选材替换 |
-| home_fitness | home_fitness_light_set_01 | 轻训练套（可调哑铃对+底座、可卷训练垫，可调凳复用书房现有） | Keep / 迪卡侬 / 本地体育用品店 / 可调哑铃 2×24kg 带底座 + 可卷训练垫 1.8m | 哑铃对+底座+垫一套 | 按实物选材替换 |
 | dresser | light_midcentury_dresser_01 | 轻中古六抽矮柜（主卧南侧窗带） | 林氏家居 / 源氏木语 / 本地家具厂（按中古款筛选） / 1.40×0.48×0.85m 六抽屉细腿矮柜，中古木色（与梳妆桌同族） | 1400×480×850mm | 按实物选材替换 |
 | sofa | sofa_3seat_01 | 直排现代中古沙发（深棕/黑棕仿皮，低矮简洁轮廓） | 林氏家居 / 源氏木语 / 本地家具厂（按中古款筛选） / 2.8m 直排三人位，细金属腿或矮木腿，无拉扣无弧形背 | 2800×900×750mm（坐高≤420mm） | 按实物选材替换 |
 | dining_table | dining_table_01 | 1.4m 深胡桃色餐桌（木质视觉，造型简洁） | 本地家具厂 / 林氏家居 / 1.4×0.8m 深胡桃贴皮/板式台面 + 黑色金属或深木腿 | 1400×800×750mm | 按实物选材替换 |
@@ -51,6 +50,7 @@
 | washer | washer_01 | 10kg 滚筒洗衣机 | 小天鹅 / 海尔 / 10kg 滚筒变频 | 标准 | 按实物选材替换 |
 | dryer | dryer_01 | 9kg 热泵烘干机 | 小天鹅 / 海尔 / 9kg 热泵式 | 标准 | 按实物选材替换 |
 | shower_enclosure | shower_enclosure_01 | 淋浴房玻璃隔断 | 本地卫浴 / 莱博顿 / 304不锈钢边框 + 钢化玻璃 | 标准 | 按实物选材替换 |
+| robot_vacuum | robot_vacuum_narwal_j6_01 | 云鲸 J6 上下水版 | 云鲸 / J6 上下水版 | 基站约410×433.5×198mm | 按实物选材替换 |
 
 ## 2. 家具体块清单 → 库家具替换参照
 
@@ -66,7 +66,10 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | master_bedroom | mb_washbasin_cabinet | 1 | 1.05×0.5 | (0.575, 3.16) / 0° |
 | master_bedroom | master_dressing_table | 1 | 0.9×0.45 | (0.425, 6.05) / 90° |
 | master_bedroom | dressing_stool | 1 | 0.42×0.4 | (0.42, 6.05) / 90° |
-| master_bedroom | master_hot_season_low_dresser | 1 | 1.4×0.48 | (1.05, 9.20) / 180° |
+| master_bedroom | master_hot_season_low_dresser | 1 | 1.4×0.48 | (1.05, 9.2) / 180° |
+| master_bedroom | condensate_pipe_ac_outlet | 1 | 0.4×0.46 | (3.7, 5.1) / 0° |
+| master_bedroom | mb_vanity_pvc_wardrobe_entry | 1 | 1.175×0.03 | (4.1, 4.62) / 0° |
+| master_bedroom | mb_vanity_pvc_service_chase | 1 | 0.925×0.06 | (2.925, 4.62) / 0° |
 | master_bedroom | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bedroom | mb_vanity_base_cabinet | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bedroom | mb_vanity_lower_board | 1 | — | count-only（不在 glb，按实物补摆） |
@@ -77,35 +80,30 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | master_bedroom | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_nw | bed_150 | 1 | 1.5×2 | (4.6, 2.3) / 270° |
 | bedroom_nw | wardrobe_180 | 1 | 1.8×0.6 | (3.5, 4) / 0° |
-| bedroom_nw | desk | 1 | 1.2×0.6 | (2.90, 2.10) / 90° |
+| bedroom_nw | desk | 1 | 1.2×0.6 | (2.9, 2.1) / 90° |
 | bedroom_nw | chair | 1 | 0.5×0.5 | (3.35, 3) / 270° |
 | bedroom_nw | shelf | 1 | 0.8×0.4 | (3, 1.3) / 0° |
 | bedroom_nw | mattress_150 | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_nw | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_nw | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| bedroom_se | desk | 1 | 1.2×0.6 | (13.7, 8.05) / 90° |
-| bedroom_se | chair | 1 | 0.5×0.5 | (14.4, 8.05) / 270° |
-| bedroom_se | study_seasonal_wardrobe_wall | 1 | 1.7×0.55 | (16.075, 6.75) / 270° |
-| bedroom_se | bench_adjustable | 1 | 1.24×0.55 | (15.3, 7.95) / 0° |
-| bedroom_se | adjustable_dumbbell_pair | 1 | 0.55×0.45 | (16.15, 7.9) / 90° |
-| bedroom_se | rollable_training_mat | 1 | 0.25×0.25 | (16.075, 5.775) / 0° |
+| bedroom_se | wardrobe_180 | 1 | 1.8×0.6 | (15.25, 5.85) / 180° |
+| bedroom_se | bed_150 | 1 | 1.5×2 | (15.35, 7.6) / 270° |
+| bedroom_se | mattress_150 | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_se | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_se | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| study | bed_150 | 1 | 1.5×2 | (5.2, 7.75) / 90° |
-| study | wardrobe_180 | 1 | 1.8×0.6 | (5.1, 5.85) / 180° |
 | study | desk | 1 | 1.2×0.6 | (4.5, 9.2) / 90° |
 | study | chair | 1 | 0.5×0.5 | (5.1, 9.2) / 270° |
-| study | mattress_150 | 1 | — | count-only（不在 glb，按实物补摆） |
+| study | study_seasonal_wardrobe_wall | 1 | 1.7×0.55 | (5.15, 5.825) / 0° |
 | study | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | study | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | living_dining | wall_cabinet_tall | 1 | 1.35×0.35 | (7.375, 6.225) / 270° |
-| living_dining | tv_wall_low | 1 | 2.1×0.4 | (7.4, 8) / 270° |
+| living_dining | tv_wall_low | 1 | 2.1×0.4 | (7.48, 8) / 270° |
 | living_dining | tv_65 | 1 | 1.45×0.25 | (7.42, 8) / 270° |
 | living_dining | floor_lamp | 1 | 0.32×0.32 | (11, 9.35) / 0° |
-| living_dining | plant_fiddle | 1 | 0.5×0.5 | (7.90, 9.18) / 270° |
+| living_dining | plant_fiddle | 1 | 0.5×0.5 | (7.93, 9.18) / 270° |
 | living_dining | sofa_3seat | 1 | 2.8×0.9 | (11, 7.7) / 270° |
 | living_dining | coffee_table | 1 | 0.7×0.7 | (9.7, 7.7) / 0° |
-| living_dining | entry_half_height_cabinet | 1 | 2×0.35 | (11.5, 3.9) / 90° |
+| living_dining | entry_half_height_cabinet | 1 | 2×0.35 | (11.5, 4) / 90° |
 | living_dining | dining_table | 1 | 1.4×0.8 | (7.9, 3.45) / 0° |
 | living_dining | dining_chair | 4 | 0.45×0.45 | (7.55, 2.75) / 0°；(8.25, 2.75) / 0°；(7.55, 4.15) / 180°；(8.25, 4.15) / 180° |
 | living_dining | curtain_set | 2 | — | count-only（不在 glb，按实物补摆） |
@@ -122,18 +120,20 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | kitchen | cabinet_wall | 2 | — | count-only（不在 glb，按实物补摆） |
 | kitchen | countertop_quartz | 5 | — | count-only（不在 glb，按实物补摆） |
 | kitchen | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bath | toilet | 1 | 0.4×0.6 | (2.3, 1.5) / 270° |
+| master_bath | toilet | 1 | 0.4×0.6 | (2.275, 1.5) / 270° |
 | master_bath | towel_set | 1 | 0.04×0.28 | (0.24, 2.23) / 0° |
 | master_bath | exhaust_fan | 1 | 0.3×0.3 | (1, 2.7) |
 | master_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bath | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | vanity | 1 | 0.7×0.4 | (6.9, 3.925) / 270° |
+| guest_bath | vanity | 1 | 0.7×0.5 | (6.79, 3.925) / 270° |
 | guest_bath | toilet | 1 | 0.4×0.6 | (6.75, 3.05) / 270° |
 | guest_bath | exhaust_fan | 1 | 0.3×0.3 | (6.35, 2.45) |
+| guest_bath | robot_dock_gbath | 1 | 0.41×0.4335 | (6.823, 3.925) / 270° |
 | guest_bath | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
 | guest_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | guest_bath | towel_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | guest_bath | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
+| guest_bath | mirror_cabinet_gbath | 1 | — | count-only（不在 glb，按实物补摆） |
 | balcony | washer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
 | balcony | dryer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
 | balcony | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
@@ -145,15 +145,15 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 
 | id | 房间 | 类型 | 位置 (x, z) | 高度 (m) | 色温 (K) | 回路 | 备注 |
 |---|---|---|---|---|---|---|---|
-| light_dining_pendant | living_dining | 吊灯 | (7.9, 3.45) | 2.8 | 3000 | dining | 餐桌吊灯天花出线（DEC-2026-08-02-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，开关在餐桌旁墙上h1.3，距桌面75cm |
+| light_dining_pendant | living_dining | 吊灯 | (7.9, 3.45) | 2.8 | 3000 | dining | 餐桌吊灯天花出线（DEC-2026-08-02-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1 落实），距桌面75cm |
 | living_track_main | living_dining | 明装轨道灯 | (10.8, 7.15) | 2.8 | 3000 | living_base | 一条黑色明装约2.8m短轨、4灯头，客厅基础光回路；无新增吊顶/电视背景墙 |
-| light_tv_strip | living_dining | 灯带 | (7.2, 7.7) | 2 | 3000 | tv_ambient | 电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-2026-08-02-013） |
+| light_tv_strip | living_dining | 灯带 | (7.2, 7.7) | 2 | 3000 | tv_ambient | 电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-2026-08-02-013；控制方式：灯带驱动遥控/APP，无墙控点位，DEC-2026-09-08-R1 业主确认方向，如需墙控另开迭代） |
 | light_master_dome | master_bedroom | 吸顶灯 | (2.6, 7.6) | 2.8 | 3000 | — | 主卧吸顶灯 |
-| light_master_wall_l | master_bedroom | 壁灯 | (4.2, 6.95) | 1.35 | 3000 | — | R6 北侧床头壁灯：候选 z=6.95、h=1.35；关于床中心 z=7.40 对称，东墙实体墙，wall_side west，点位不得被床头柜/床头板遮挡，仍 site_pending |
-| light_master_wall_r | master_bedroom | 壁灯 | (4.2, 7.85) | 1.35 | 3000 | — | R6 南侧床头壁灯：候选 z=7.85、h=1.35；关于床中心 z=7.40 对称，东墙实体墙，wall_side west，点位不得被床头柜/床头板遮挡，仍 site_pending |
-| light_parent_dome | study | 吸顶灯 | (5.7, 7.675) | 2.8 | 3000 | — | 父母房吸顶灯 |
+| light_master_wall_l | master_bedroom | 壁灯 | (4.2, 6.245) | 1.35 | 3000 | — | 方案A 北侧床头壁灯：z=6.245、h=1.35；与 master_bedside_cabinet_350_north 中心轴对齐，位于床头板北侧；哑黑隐藏转轴可调短筒，自带底部按键，完整朝主卧突出且最大墙面突出量≤190mm；实际SKU、东墙结构与固定节点仍 site_pending |
+| light_master_wall_r | master_bedroom | 壁灯 | (4.2, 8.555) | 1.35 | 3000 | — | 方案A 南侧床头壁灯：z=8.555、h=1.35；与 master_bedside_cabinet_350_south 中心轴对齐，位于床头板南侧；哑黑隐藏转轴可调短筒，自带底部按键，完整朝主卧突出且最大墙面突出量≤190mm；实际SKU、东墙结构与固定节点及南帘真实关系仍 site_pending |
+| light_parent_dome | study | 吸顶灯 | (5.7, 7.675) | 2.8 | 3000 | — | 书房吸顶灯（2026-10-05 功能互换，id/位置不变） |
 | light_child_dome | bedroom_nw | 吸顶灯 | (4.1, 2.7) | 2.8 | 3000 | — | 西北次卧吸顶灯 |
-| light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.8 | 3000 | — | 书房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中） |
+| light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.8 | 3000 | — | 客房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中；2026-10-05 功能互换，id/位置不变） |
 | light_corridor_1 | living_dining | 筒灯 | (7.9, 5) | 2.8 | 3000 | entry_base | 走廊口筒灯嵌入既有 ceiling_living 边吊，不新增吊顶；坐标由原 (7.9,5.75) 调整至既有边吊合法范围 (7.9,5.0)，避开电视高柜 x≤7.55，并仍靠近原走廊口 |
 | light_entry_down | entry_garden | 筒灯 | (13, 1.45) | 2.8 | 3000 | entry_base | 玄关筒灯 |
 | light_entry_foyer | living_dining | 筒灯 | (12.4, 3.35) | 2.5 | 3000 | entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区 |
@@ -175,8 +175,8 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | south_east_curtain | 玻璃幕墙 | 高 2.8m | Low-E 微反玻璃 |
 | master_bedroom_west_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卧西墙飘窗（z=5.55~8.80 直墙段） |
 | master_bedroom_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卧南墙环幕飘窗（南缘 z=10.90） |
-| study_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 父母房南墙飘窗（南缘 z=10.90，与主卧齐平） |
-| bedroom_se_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 书房南向凸窗（南缘 z=11.05） |
+| study_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 书房南墙飘窗（南缘 z=10.90，与主卧齐平） |
+| bedroom_se_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 客房南向凸窗（南缘 z=11.05） |
 | bedroom_nw_west_bay | 飘窗 | 深 1.1m / 台高 2.07m | 西北次卧西墙飘窗 |
 | corridor_west_bay | 飘窗 | 深 1.1m / 台高 2.07m | 走廊西墙飘窗 |
 | master_bath_west_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卫西北角飘窗 |
@@ -193,7 +193,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 
 ### 地面（含人字拼 A/B）
 - glb 内嵌贴图仅打底（程序化生成，质感非最终）；Library > **Materials > Wood** 搜 `herringbone` 可得带多版面+倒角的真人字拼，拖到地面节点即替换
-- 直铺选浅胡桃色（#c49a6c 方向）柔光木地板款；替换后对比人字拼/直铺，作为 DEC-2026-08-01-011 门店终审前的云端证据
+- 直铺选浅胡桃色（#c49a6c 方向）柔光木地板款；替换后对比人字拼/直铺，作为 DEC-011 门店终审前的云端证据
 
 ### 玻璃幕（5 段 curtain_run + 9 处飘窗）
 - Library > **Materials > Glass** 拖至 `west_curtain` 等节点；Properties 里 reflectance 微升、tint 微绿 ≈ Low-E 微反质感

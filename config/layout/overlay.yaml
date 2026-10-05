@@ -12,7 +12,7 @@ suppress:
     reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
   - id: suppress_south_west
     walls: [w_mb_south, w_st_south]
-    reason: "主卧+父母房南墙实体删除，为飘窗让路"
+    reason: "主卧+书房南墙实体删除，为飘窗让路（2026-10-05 功能互换后功能名，墙体不变）"
   - id: suppress_living_south
     wall: w_liv_south
     reason: "客厅南墙落地玻璃幕"
@@ -118,7 +118,7 @@ elements:
     depth: 1.1
     sill: 2.07
     height: 0.76
-    reason: "父母房南墙飘窗（南缘 z=10.90，与主卧齐平）"
+    reason: "书房南墙飘窗（南缘 z=10.90，与主卧齐平）"
 
   - id: bedroom_se_south_bay
     type: bay_sill
@@ -126,7 +126,7 @@ elements:
     depth: 1.1
     sill: 2.07
     height: 0.76
-    reason: "书房南向凸窗（南缘 z=11.05）"
+    reason: "客房南向凸窗（南缘 z=11.05）"
 
   - id: bedroom_nw_west_bay
     type: bay_sill
@@ -197,7 +197,7 @@ elements:
       - { x: 7.2, z: 7.8 }
       - { x: 4.2, z: 7.8 }
     follow: study
-    reason: "父母房（study，x[4.20,7.20] z[5.55,9.80]） footprint 南侧的通道性地面条带 z[5.55,7.8]（3.0m×2.25m），整块落在 study 多边形内，故声明 follow: study 跟随父母房地材（DEC-041 过渡地面约定的同一机制）。2026-10-04 更正：原 reason「主卧与父母房之间的走廊」不成立——主卧 master_bedroom 占 x[0,4.20]、与父母房在 x=4.20 直接相邻，两者之间不存在独立走廊；本条带实为父母房内部的过道区。几何与地材归属维持不变（删该 element 会破坏 GLB 导出的既有断言 tests/server/cli-glb-export.test.ts），仅更正描述并显式声明子区域归属"
+    reason: "书房（study，x[4.20,7.20] z[5.55,9.80]） footprint 南侧的通道性地面条带 z[5.55,7.8]（3.0m×2.25m），整块落在 study 多边形内，故声明 follow: study 跟随书房地材（DEC-041 过渡地面约定的同一机制）。2026-10-04 更正：原 reason「主卧与父母房之间的走廊」不成立——主卧 master_bedroom 占 x[0,4.20]、与该房在 x=4.20 直接相邻，两者之间不存在独立走廊；本条带实为该房内部的过道区。2026-10-05 功能互换：该房由父母房改为书房，注释随功能改写，几何与地材归属不变。几何与地材归属维持不变（删该 element 会破坏 GLB 导出的既有断言 tests/server/cli-glb-export.test.ts），仅更正描述并显式声明子区域归属"
 
   - id: main_corridor_floor
     type: floor_region
@@ -234,9 +234,9 @@ elements:
   - { id: curtain_master_strip_fabric, type: curtain, points: [{ x: 0, z: 4.06 }, { x: 0, z: 5.55 }], room: master_bedroom, kind: sheer_blackout, height: 2.8 }
   - { id: curtain_mb_washbasin_blinds, type: curtain, points: [{ x: 0, z: 2.86 }, { x: 0, z: 4.00 }], room: master_bath, kind: blinds, height: 2.8, offset: 0.03 }
   - { id: frosted_mb_washbasin_privacy, type: frosted_privacy, points: [{ x: 0, z: 2.86 }, { x: 0, z: 4.00 }], height: 2.8, sill: 0.0, finish: frosted_privacy }
-  # 父母房（南墙）
+  # 书房（南墙）
   - { id: curtain_parent_south, type: curtain, wall: w_st_south, room: study, kind: sheer_blackout, height: 2.8 }
-  # 书房（东南次卧南墙）
+  # 客房（东南次卧南墙）
   - { id: curtain_study_south, type: curtain, wall: w_be_south, room: bedroom_se, kind: sheer_blackout, height: 2.8 }
   # 西北次卧只保留北墙凹进段
   - { id: curtain_nw_north, type: curtain, wall: w_nw_north, room: bedroom_nw, kind: sheer_blackout, height: 2.8 }

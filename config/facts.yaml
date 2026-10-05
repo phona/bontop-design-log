@@ -664,6 +664,11 @@ facts:
         pattern: '可用约\s*1\.39㎡'
         reason: 'bbox 1.60㎡ 扣除 r=1.0 圆角楔形后的估算可用面积，非独立事实；权威值见 fact.west_platform_area 的 bbox 1.60㎡（圆角扣除量暂无机读算子，人工可依 1.60 − (1² − π·1²/4) ≈ 1.385 复核）'
 
+  # 2026-10-05 功能互换（iteration parent-room-study-swap-20261005）：room id=study 的功能名
+  # 由「父母房」改为「书房」，几何、面积、内机（ac_parent）与冷负荷分母均不变。fact id 保留
+  # 原名 fact.parent_room_area（id 不改，只改功能叙述），语义改为「study 房面积」；
+  # 三方对账的措辞随功能名更新：hvac.yaml 用新功能名「书房」，RFQ 文档是历史询价记录、
+  # 保留当时的功能名「父母房」，两处都指向同一房间 id=study、同一面积 12.75㎡。
   - id: fact.parent_room_area
     kind: derived
     value: "@config/house.yaml:rooms#find:id=study.area"
@@ -673,12 +678,12 @@ facts:
       # 2026-10-04：原镜像指向 config/house.yaml 自身 notes —— 权威值就是
       # house.yaml 的 rooms.study.area，镜像又回到同一文件，属**自指检查**，改什么都能过。
       # 且原 extract 拿「点石设计图净标注 8.35㎡」与「多边形毛口径 12.75㎡」比大小，
-      # 两个量纲永远不可能相等，是注定失败的检查（8.35㎡ 实为东南书房 bedroom_se 标注，
+      # 两个量纲永远不可能相等，是注定失败的检查（8.35㎡ 实为东南客房 bedroom_se 标注，
       # 见 docs/decision_log.md DEC-2026-08-27-047，原记录误引，已删）。
-      # 改为**跨文件三方对账**：父母房面积是冷负荷的分母（2.8kW ÷ 12.75㎡ ≈ 220W/㎡），
+      # 改为**跨文件三方对账**：study 房面积是冷负荷的分母（2.8kW ÷ 12.75㎡ ≈ 220W/㎡），
       # house.yaml / hvac.yaml / RFQ 三处必须同值，任一处漂移都会让冷负荷结论失据。
       - path: config/hvac.yaml
-        extract: '父母房\s*([\d.]+)\s*㎡'
+        extract: '书房\s*([\d.]+)\s*㎡'
         severity: error
         expect_matches: 1
       - path: docs/hvac-rfq-brief-20261003.md

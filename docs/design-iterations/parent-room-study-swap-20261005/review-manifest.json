@@ -1,0 +1,148 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "parent-room-study-swap-20261005",
+  "subject": "父母房↔书房功能互换（几何不动）+ 客房隔开 + 书房储物扩容 + 删除轻训练器材",
+  "state": "v0_implemented_candidate_not_frozen",
+  "state_note": "v0 家具互换与健身删除已实施（DEC-2026-10-05-R9），全部条目保持 candidate_not_frozen；verify:all / test:server 608 / test:app 470 / typecheck 全绿。剩余 alignment 未收口前不得宣称施工冻结；起夜照明与书房柜体采购归二期，预留条件须进一期水电交底。",
+  "source_version": {
+    "config_refs": [
+      "config/house.yaml",
+      "config/electrical.yaml",
+      "config/ceiling.yaml",
+      "config/hvac.yaml",
+      "config/materials.yaml",
+      "config/design-rules.yaml",
+      "config/procurement.yaml",
+      "config/facts.yaml",
+      "config/layout/model-geometry.yaml",
+      "config/layout/overlay.yaml"
+    ],
+    "asset_refs": [
+      "shared/types.ts",
+      "shared/render/FixtureFactory.ts"
+    ],
+    "render_facts_ref": "data/project-render-facts.json（derived；本轮未重新生成）",
+    "source_digest": "现行配置即为讨论基线：study=父母房 12.75㎡（bed_150/wardrobe_180/desk/chair），bedroom_se=书房 9.45㎡bbox/8.35㎡净（desk/chair/study_seasonal_wardrobe_wall + 轻训练三件 placed），两房均为 MJV-28T2/P-SS 2.8kW（ac_parent @5.50,6.00 / ac_study @15.10,5.85），home_fitness_light_set ¥1,800 candidate 未核价未下单，PKG-150 ¥19,000 一期家具池含父母房床/床垫/成品衣柜",
+    "generated_at": "2026-10-05T14:00:00+08:00"
+  },
+  "validation": {
+    "commands": [],
+    "results": [],
+    "config_status": "NOT_RUN",
+    "geometry_status": "NOT_RUN",
+    "consistency_status": "NOT_RUN",
+    "functional_checks_status": "NOT_RUN",
+    "application_status": "NOT_RUN",
+    "typecheck_status": "NOT_RUN",
+    "generated_files_touched_directly": false,
+    "note": "讨论轮次不跑验证；实施轮必须按 decision-brief.acceptance.validation_commands 全量执行"
+  },
+  "evidence": {
+    "required_views": [
+      "客房门口视角（含 d_bese 扫掠域）",
+      "客房床/衣柜视角（方案一与方案二各一）",
+      "客房北墙电梯井侧视角",
+      "书房北墙季节后台柜视角",
+      "书房南墙书架/东墙柜体视角",
+      "书房桌面工作视角",
+      "起夜路径（客房→客卫）第一人称视角"
+    ],
+    "status": "not_collected",
+    "items": [],
+    "runtime_browser": {
+      "wrapper": null,
+      "command": null,
+      "status": "not_collected",
+      "session": null,
+      "url": null,
+      "app_ready": null,
+      "warnings": [],
+      "banner": null,
+      "snapshot": null,
+      "png": null,
+      "runtime_query": null,
+      "note": "讨论轮次不采集浏览器证据；不得伪造"
+    }
+  },
+  "aesthetic_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": [
+      "未采集同版本浏览器证据（客房/书房/起夜路径视角）"
+    ],
+    "non_blocking_notes": [],
+    "evidence_refs": [],
+    "requested_changes": [],
+    "assumptions": [
+      "讨论轮次不产出美学结论"
+    ]
+  },
+  "functional_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": [
+      "起夜照明方案（点位/回路/控制策略）未定",
+      "电梯井共墙噪声未实测",
+      "客房面积收缩后排布未定",
+      "书房储物内容/柜体形式未定",
+      "书房东墙与 65 寸电视挂装关系未处理"
+    ],
+    "non_blocking_notes": [
+      "起夜动线 8–9m 的代价已由业主接受（R4），对策升级为必做项：接近自动亮起的起夜地面灯"
+    ],
+    "evidence_refs": [],
+    "requested_changes": [],
+    "assumptions": [
+      "家具不承担 HVAC/结构/隔声责任"
+    ]
+  },
+  "risks": [
+    "起夜动线显著变长（老人安全）",
+    "客房北墙贴电梯井（隔声/振动未知）",
+    "客房面积 12.75→8.35/9.45㎡ 后排布拥挤（衣柜门前约 0.4m）",
+    "书房东墙即客厅电视墙，深柜受限",
+    "配置未改但文档（name/注释/facts 对账）已开始漂移",
+    "删除健身释放预算可能被书房柜体增量吃掉，净值接近零"
+  ],
+  "runtime_aabb": {
+    "note": "本轮无新 AABB；候选坐标仅存在于 design-datum.yaml（datum-guest-layout-a/b、datum-study-*），未经 verify:furniture 验证"
+  },
+  "site_pending_preserved": [
+    "电梯井夜间噪声",
+    "客房北墙/西墙构造与厚度",
+    "飘窗台高 2.07m（量房 #20）",
+    "衣柜真实产品外廓（≤2.40m/1.8m）",
+    "起夜路径照明深化",
+    "d_bese 门洞位置文档漂移",
+    "门套/执手突出量（沿用）"
+  ],
+  "retrospective": {
+    "triggered": true,
+    "triggers": [
+      "user_defined_new_goal（功能互换 + 客房隔开 + 书房储物扩容）"
+    ],
+    "records": [
+      "R1：只换功能不换几何 + 删除健身器材",
+      "R2：父母建议客房与主人区隔开 → 东南客房；书房承担更多储物；新发现电梯井共墙",
+      "R3：不急着开工、持续讨论、建立五件协议工作区"
+    ],
+    "rebaselined": false
+  },
+  "delivery": {
+    "status": "blocked",
+    "blocking_issues": [
+      "10 项 alignment 未收口",
+      "无同版本浏览器证据",
+      "家具候选未过 verify:furniture",
+      "facts.yaml 跨文件对账未改写"
+    ],
+    "delivery_ready": false,
+    "follow_up_site_pending": [
+      "电梯井噪声实测",
+      "客房墙体构造",
+      "飘窗台高",
+      "衣柜选型",
+      "起夜照明深化"
+    ],
+    "delivery_notes": "v0 已让模型说真话：房间功能名、家具、预算条目与测试断言一致；下一轮按 alignment 顺序推进（凸窗带/电梯噪声实测 → 客房排布定稿 → 书房储物 → 二期采购）。"
+  }
+}

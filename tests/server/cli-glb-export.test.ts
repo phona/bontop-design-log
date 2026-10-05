@@ -427,15 +427,31 @@ test('CLI overlay and furniture world bboxes preserve the house z contract', () 
   assert.ok(lowDresserBox.min.z <= 8.96 + 1e-5 && lowDresserBox.min.z >= 8.96 - 0.02, `dresser min.z=${lowDresserBox.min.z} (drawer/handle protrusion north of the body edge)`);
   assert.ok(lowDresserBox.max.y < 2.07, `dresser height ${lowDresserBox.max.y} must stay below the 2.07m sill`);
 
-  // 书房季节后台柜 @(16.075,6.75) r270：权威 AABB x[15.80,16.35] z[5.90,7.60]；门板/门缝向西侧突出 ≤0.05m
-  const seasonalWardrobe = findByType(exportRoot, 'bedroom_se', 'study_seasonal_wardrobe_wall');
+  // 2026-10-05 功能互换 v0：书房（study）北墙季节后台柜 @(5.15,5.825) r0，权威 AABB x[4.30,6.00] z[5.55,6.10]；
+  // 由原 bedroom_se 东墙柜平移而来（安装条件平移：2.40m 柜体顶封板抵 2.50m 北墙边吊底）
+  const seasonalWardrobe = findByType(exportRoot, 'study', 'study_seasonal_wardrobe_wall');
   assert.ok(seasonalWardrobe, 'missing study_seasonal_wardrobe_wall export');
-  assert.deepEqual(seasonalWardrobe.position.toArray(), [16.075, 0, 6.75]);
+  assert.deepEqual(seasonalWardrobe.position.toArray(), [5.15, 0, 5.825]);
   const seasonalBox = new THREE.Box3().setFromObject(seasonalWardrobe);
-  assert.ok(near(seasonalBox.min.z, 5.90), `seasonal min.z=${seasonalBox.min.z}`);
-  assert.ok(near(seasonalBox.max.z, 7.60), `seasonal max.z=${seasonalBox.max.z}`);
-  assert.ok(near(seasonalBox.max.x, 16.35), `seasonal max.x=${seasonalBox.max.x}`);
-  assert.ok(seasonalBox.min.x <= 15.80 + 1e-5 && seasonalBox.min.x >= 15.80 - 0.05, `seasonal min.x=${seasonalBox.min.x} (door protrusion west of the 15.80 body edge)`);
+  assert.ok(near(seasonalBox.min.x, 4.30) && near(seasonalBox.max.x, 6.00), `seasonal x=[${seasonalBox.min.x},${seasonalBox.max.x}]`);
+  // 名义 AABB z[5.55,6.10]；门板/门缝朝南（入房）突出 ≤0.03m，故 runtime max.z≈6.128
+  assert.ok(near(seasonalBox.min.z, 5.55), `seasonal min.z=${seasonalBox.min.z}`);
+  assert.ok(seasonalBox.max.z >= 6.10 - 1e-5 && seasonalBox.max.z <= 6.10 + 0.03 + 1e-3, `seasonal max.z=${seasonalBox.max.z} (door protrusion south of the 6.10 body edge)`);
+
+  // 2026-10-05 功能互换 v0：客房（bedroom_se）寝区——wardrobe_180 北墙边吊下 + bed_150 床头靠东外墙
+  const guestWardrobe = findByType(exportRoot, 'bedroom_se', 'wardrobe_180');
+  assert.ok(guestWardrobe, 'missing wardrobe_180 export');
+  assert.deepEqual(guestWardrobe.position.toArray(), [15.25, 0, 5.85]);
+  const guestWardrobeBox = new THREE.Box3().setFromObject(guestWardrobe);
+  assert.ok(near(guestWardrobeBox.min.x, 14.35) && near(guestWardrobeBox.max.x, 16.15), `guest wardrobe x=[${guestWardrobeBox.min.x},${guestWardrobeBox.max.x}]`);
+  assert.ok(near(guestWardrobeBox.min.z, 5.55) && near(guestWardrobeBox.max.z, 6.15), `guest wardrobe z=[${guestWardrobeBox.min.z},${guestWardrobeBox.max.z}]`);
+
+  const guestBed = findByType(exportRoot, 'bedroom_se', 'bed_150');
+  assert.ok(guestBed, 'missing bed_150 export');
+  assert.deepEqual(guestBed.position.toArray(), [15.35, 0, 7.60]);
+  const guestBedBox = new THREE.Box3().setFromObject(guestBed);
+  assert.ok(near(guestBedBox.min.x, 14.35) && near(guestBedBox.max.x, 16.35), `guest bed x=[${guestBedBox.min.x},${guestBedBox.max.x}]`);
+  assert.ok(near(guestBedBox.min.z, 6.85) && near(guestBedBox.max.z, 8.35), `guest bed z=[${guestBedBox.min.z},${guestBedBox.max.z}]`);
 
   const sceneBox = new THREE.Box3().setFromObject(exportRoot);
   assert.ok(sceneBox.min.z > -3, `unexpected overlay/furniture z min=${sceneBox.min.z}`);
@@ -485,17 +501,18 @@ test('shared export data produces an inspectable GLB', async () => {
     ['master_bedroom', 'master_dressing_table'],
     ['master_bedroom', 'dressing_stool'],
     ['master_bedroom', 'master_hot_season_low_dresser'],
-    ['bedroom_se', 'study_seasonal_wardrobe_wall'],
-    ['bedroom_se', 'bench_adjustable'],
-    ['bedroom_se', 'adjustable_dumbbell_pair'],
-    ['bedroom_se', 'rollable_training_mat'],
-    ['bedroom_se', 'desk'],
-    ['bedroom_se', 'chair'],
+    ['study', 'study_seasonal_wardrobe_wall'],
+    ['study', 'desk'],
+    ['study', 'chair'],
+    ['bedroom_se', 'wardrobe_180'],
+    ['bedroom_se', 'bed_150'],
   ] as const) {
     assert.ok(summary.nodeIds.some((id) => id.startsWith(`furniture:${room}:${type}:`)), `missing GLB node furniture:${room}:${type}:*`);
   }
-  for (const removed of ['master_wardrobe_tall_240', 'squat_rack', 'barbell_olympic', 'weight_plate_set', 'rubber_training_mat', 'low_room_cabinet']) {
-    assert.equal(summary.nodeIds.some((id) => id.startsWith(`furniture:master_bedroom:${removed}:`) || id.startsWith(`furniture:bedroom_se:${removed}:`)), false, `removed furniture ${removed} must not export`);
+  for (const removed of ['master_wardrobe_tall_240', 'squat_rack', 'barbell_olympic', 'weight_plate_set', 'rubber_training_mat', 'low_room_cabinet', 'bench_adjustable', 'adjustable_dumbbell_pair', 'rollable_training_mat']) {
+    for (const room of ['master_bedroom', 'bedroom_se', 'study']) {
+      assert.equal(summary.nodeIds.some((id) => id.startsWith(`furniture:${room}:${removed}:`)), false, `removed furniture ${removed} must not export (${room})`);
+    }
   }
   assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:') && entry.part.startsWith('basin-') && entry.role === 'ceramic'), 'kitchen sink ceramic role missing');
   assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:') && entry.role === 'fixture_metal'), 'kitchen gas stove fixture_metal base role missing');

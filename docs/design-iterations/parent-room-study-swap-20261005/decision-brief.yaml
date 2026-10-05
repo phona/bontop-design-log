@@ -1,0 +1,64 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: parent-room-study-swap-20261005
+subject: 父母房↔书房功能互换（几何不动）+ 客房隔开 + 书房储物扩容 + 删除轻训练器材
+priority:
+  user_goal: 把客房（供父母/客人）放到东南角 bedroom_se，与主人区（主卧/主卫）完全隔开；西侧中间房 study 改纯书房并扩容储物；删除书房轻训练器材。全程只换功能不换几何，不急着开工，先把方案聊透
+  subject_refs: [study, bedroom_se, bed_150, wardrobe_180, study_seasonal_wardrobe_wall, desk, chair, shelf, home_fitness_light_set]
+  review_priority: [起夜动线 8–9m 的接受度与照明对策, 电梯井共墙隔声, 客房面积从 12.75㎡ 收缩到 8.35/9.45㎡ 后的家具排布, 书房东墙柜体与客厅 65 寸电视挂装的关系, 书房储物装什么与预算出处]
+
+  ranked: [功能互换零硬成本（合同/机电/天花全部不动）, 客房与主人区隔开（父母诉求）, 老人使用安全（起夜动线、防滑、床边可达）, 家具成品化可逆（不通顶、可搬走）, 书房储物扩容但不塞满（保留一间房改回卧室的可能）, 预算只做平移与等额置换（不新增科目）]
+  non_negotiables: ["model-geometry.yaml / overlay.yaml 只允许改 name 与注释文字，禁止任何几何/顶点/墙体/房间边界改动", "两房空调 MJV-28T2/P-SS 机位、风管、冷凝水与 ¥36,000 成交合同不动", "家具不得侵入 d_study 扫掠域 x[6.15,7.05] z[5.55,6.45] 与 d_bese 扫掠域 x[13.40,14.30] z[5.65,6.55]", "bedroom_se 内衣柜/柜体高度 ≤2.40m（北墙边吊与东北角吊底 2.50m）", "电气挂墙点位必须在实体墙上、玻璃幕墙不得挂载", "不新增同义家具类型（复用 bed_150/mattress_150/wardrobe_180/shelf/study_seasonal_wardrobe_wall）"]
+  tradeoffs_accepted: [客卫只能共用，东南翼加卫生间须改西侧排水立管、不现实, 起夜动线由约 2m 增至约 8–9m，用低位感应照明/床头小夜灯/客卫门口扶手与防滑缓解, 客房面积收缩且北墙贴电梯井、西墙贴客厅电视墙，用床头方位（靠东外墙）与北墙衣柜声屏障缓解, 书房东墙是客厅电视墙，深柜方案受限，可能改用吊柜/矮柜或把主力储物放到南墙/西墙, 删除健身器材释放的预算（约 ¥1,800 未核价）大概率被书房柜体增量吃掉，净值接近零]
+frozen: false # 讨论轮次；10 项 alignment 未收口、无浏览器证据、无配置改动
+freeze_record: null
+allowed_scope:
+  files: [config/house.yaml, config/layout/model-geometry.yaml（仅 name/注释）, config/layout/overlay.yaml（仅 name/注释/reason 文字）, config/electrical.yaml, config/ceiling.yaml（仅注释）, config/hvac.yaml（仅 basis/note 文字）, config/materials.yaml, config/design-rules.yaml, config/procurement.yaml, config/facts.yaml, schedule/phase-1/control.yaml, schedule/phase-1/schedule.md, schedule/phase-1/budget.md, schedule/phase-1/checklist.md, docs/decision_log.md, docs/dressing-map.md, data/project-render-facts.json（仅经生成命令）, tests/server/study-seasonal-storage.test.ts, tests/server/cli-glb-export.test.ts, tests/server/shared/scene-builder.test.ts, tests/server/furniture-profile.test.ts, docs/design-iterations/parent-room-study-swap-20261005/]
+  objects: [study, bedroom_se, bed_150, mattress_150, wardrobe_180, desk, chair, study_seasonal_wardrobe_wall, shelf, bench_adjustable, adjustable_dumbbell_pair, rollable_training_mat, home_fitness_light_set, sock_parent_bed_l, sock_parent_bed_r, switch_parent_door, sock_study_desk, sock_study_extra, switch_study, sock_parent_curtain, sock_study_curtain, light_parent_dome, light_study_dome, ac_parent, ac_study]
+  archetypes: [room_function, bedroom_furniture, study_storage, electrical_interface, seasonal_storage]
+  views: [plan, elevation, section, perspective]
+  changes: [房间 name/notes 功能改写, 家具配置增删迁与摆位候选, 电气点位语义重定位与新增（床头双侧电位/小夜灯）, 天花板与 HVAC 注释改写, 预算/采购条目增删, facts.yaml 跨文件对账改写, 专项校验与测试改写, 生成物再生成（仅经生成命令）]
+forbidden:
+  files: [config/layout/model-geometry.yaml（几何部分）, config/layout/overlay.yaml（几何部分）]
+  objects: [w_mb_east, w_be_west, w_be_north, w_st_north, w_st_east, d_study, d_bese, ac_parent, ac_study, ceiling_study_ac, ceiling_study_ac_corner, ceiling_parent_ac, curtain_box_study_south, curtain_parent_south, curtain_study_south, guest_bath, master_bath, master_bedroom, bedroom_nw]
+  assumptions: [电梯井夜间噪声可接受（实测前不得假定）, 客房北墙/西墙可开孔可挂重（结构/构造确认前不得假定）, 飘窗台高 2.07m（量房确认前不得假定）, 1.8m 成品衣柜可在 bedroom_se 落地（须以 AABB 与扫掠域证明）, 起夜路径照明可实施（电气回路容量确认前不得假定）]
+  out_of_scope_changes: [不做通顶定制柜（所有新柜体 ≤2.40m、成品化）, 不在东南翼新增卫生间, 不改动空调合同/机型/机位/风管/冷凝水, 不新增第二间健身空间, 不把候选尺寸写成施工冻结值, 不做家具软布线, 无关房间重构（儿童房/主卧/客厅家具一律不动）, 新依赖, git 操作, 直接编辑生成物]
+open_questions:
+  - { id: align-guest-bath-distance, category: function, question: "起夜动线由约 2m 增至约 8–9m 是否接受？低位感应照明/床头小夜灯/客卫门口扶手防滑做到什么程度？", fact_refs: [fact-night-path-distance, fact-bathrooms-only-west, fact-lighting-baseline], options: [接受并用照明+扶手缓解, 只能接受更短动线（则互换方案需重议）, 暂不决定], selected: "接受并用照明缓解（2026-10-05 R4 业主拍板），且照明升级为必做项：人接近即自动亮起的起夜地面灯，覆盖客房→客厅→主走廊→客卫全程", user_response: "'这个没关系，我们还需要做，接近就自动亮起地面灯，提高起夜的体验感'", status: resolved }
+  - { id: align-elevator-noise, category: function, question: "客房北墙与电梯井共墙，是否在量房时实测夜间噪声并预留北墙隔声预算？床头是否因此固定靠东外墙？", fact_refs: [fact-elevator-adjacency, pending-elevator-noise], options: [量房实测后定床头方位与隔声, 先按床头靠东外墙设计、不做隔声, 暂不决定], selected: null, user_response: null, status: open }
+  - { id: align-study-storage-content, category: function, question: "书房储物具体装什么（书/文件/设备/行李箱被褥/换季衣物）？决定开架 vs 封闭柜、深度、是否吊柜", fact_refs: [fact-study-storage-walls, decision-study-storage], options: [以书+文件为主（南墙开架+东墙吊柜）, 以换季被褥/行李箱为主（北墙后台柜+床箱思路延续）, 混合（开架+封闭柜都做）, 暂不决定], selected: null, user_response: null, status: open }
+  - { id: align-study-east-wall-tv, category: construction, question: "书房东墙即客厅电视墙（客厅侧通顶柜 z[5.55,6.90]、低柜 z[6.95,9.05]、65\" 挂装 z=8.00 已占满），书房侧深柜/吊柜如何避让挂装锚栓与双层墙厚？", fact_refs: [fact-study-storage-walls], options: [东墙只做吊柜（底≥1.60m）+矮柜（≤0.85m），中部留空给挂装区, 东墙整体留空、主力储物改南墙+西墙, 暂不决定], selected: null, user_response: null, status: open }
+  - { id: align-guest-room-layout, category: geometry, question: "客房排布：方案一（床靠东外墙 x[14.40,16.40]、1.8m 衣柜北墙边吊下、床尾半进凸窗带）vs 方案二（床靠北墙全避凸窗带、衣柜缩至 1.2–1.5m 放西墙门下）？", fact_refs: [fact-room-geometry-bedroom-se, fact-doors-both-rooms, fact-bay-band-limits, pending-wardrobe-product], options: [方案一（收纳足、床头远离双噪声源、衣柜门前约 0.4m 偏紧）, 方案二（通道宽松、收纳少、床头贴电梯井墙）, 3D 评审后定], selected: null, user_response: null, status: open }
+  - { id: align-wardrobe-180-fit, category: budget, question: "1.8m 成品衣柜是否保留（PKG-150 池内、¥19,000 描述改写）还是缩到 1.5m/1.2m？2.4m 高推拉门款何时选型", fact_refs: [fact-phase1-scope, pending-wardrobe-product], options: [保留 1.8m（方案一北墙落位）, 缩 1.5m/1.2m（方案二西墙落位）, 暂不决定], selected: null, user_response: null, status: open }
+  - { id: align-study-storage-budget, category: budget, question: "书房柜体增量预算出处：删除健身释放的约 ¥1,800 + QR-2026-10-03-26（¥18,000 固定柜体候选，未下单）扩范围，还是归二期？", fact_refs: [fact-fitness-budget, fact-phase1-scope, fact-preprovision-list], options: [PKG-150/QR-26 范围内调剂, 归二期, 暂不决定], selected: "归二期：书房柜体与起夜照明的采购/安装全部推到二期；但 fact-preprovision-list 预留条件（床头双侧电位、起夜回路 lighting_night_path 与底盒、调光零线、网口、北墙隔声条件）必须留在一期水电交底清单内，成本接近零（多走管多留盒），否则二期变成砸墙工程", user_response: "推到二期。但是我们可以先设计3D模型，做好规划", status: resolved }
+  - { id: align-fitness-cancellation, category: budget, question: "健身器材彻底取消（删 home_fitness_light_set +  procurement 条目），还是迁移到主卧/客厅保留轻训练？", fact_refs: [fact-fitness-budget, decision-fitness-removal], options: [彻底取消, 迁移保留（迁移目标与收纳方式另定）, 暂不决定], selected: null, user_response: null, status: open }
+  - { id: align-naming-scope, category: scope, question: "room id 一律不改、仅改 name 与注释，并在决策日志建'旧功能→新功能'映射表；HVAC/电气点位 id（ac_parent/ac_study/sock_study_*）只改注释不改 id。是否采纳？", fact_refs: [decision-function-swap-only], options: [采纳（低风险、可追溯）, 连 id 一起改名（接受几十处级联改动与测试回归）, 暂不决定], selected: null, user_response: null, status: open }
+  - { id: align-facts-crossfile-rewrite, category: data, question: "config/facts.yaml 跨文件对账当前把'父母房 12.75㎡'与 HVAC 220W/㎡ 绑定；互换后改写为'父母房 8.35㎡ / 书房 12.75㎡' 并重算 W/㎡，是否随本轮收口？", fact_refs: [fact-swap-cost-neutral], options: [随本轮一并改写并跑 verify:facts, 留到实施轮处理, 暂不决定], selected: null, user_response: null, status: open }
+  - { id: align-night-path-lighting-design, category: electrical, question: "起夜地面灯方案：点位（客房内床边/客房门外/客厅过渡段/主走廊/客卫门口与内卫）、是否新增独立照明回路（建议 lighting_night_path，避免与日常灯混回路）、控制策略（独立 PIR 感应保底 vs 智能网关联动 vs 混合），照度/色温/防眩光/延时参数如何定？", fact_refs: [fact-lighting-baseline, decision-night-path-lighting, pending-night-path-surfaces, pending-night-path-illuminance, pending-robot-base-conflict], options: [混合：路径独立感应保底 + 客房内智能调光小夜灯, 全独立感应回路（简单可靠、无网络依赖）, 全智能联动（依赖网关与配置）, 暂不决定], selected: "混合：新增独立回路 lighting_night_path（C16A）；路径段本地 PIR/存在感应保底；床头 NP-2 触摸+感应调光小夜灯作体验层。标准已成文 docs/standards/night-path-lighting.md v1，本户实例 docs/design-iterations/parent-room-study-swap-20261005/night-path-lighting-instance.md（8–9 个候选点位）。点位与选型仍待 4 项量房前置项", user_response: "A+B 一起做", status: resolved }
+  - { id: align-guest-positioning, category: function, question: "客房定位：父母偶尔来住 / 季节性长住 / 长期同住？是否需为轮椅助行器预留？", fact_refs: [decision-guest-room-positioning, fact-preprovision-list], options: [A 正常客房（偶尔来住、成品化、可逆）, B 季节性长住（按老人房标准加码）, C 长期同住（建议重新评估是否互换）], selected: "A 正常客房：不加码无障碍/隔声预设，保持成品化可逆可升级；'以后有预算再慢慢改'必须以 fact-preprovision-list 的预留条件为前提（水电交底前留电位/回路/底盒/零线/网口）", user_response: "'你想复杂了，就按正常的客房设计，之后有预算了再慢慢改'", status: resolved }
+  - { id: align-portfolio-scope, category: scope, question: "业主表示'不只这套房子'：起夜照明是否沉淀为可复用标准（路径定义方法/点位规则/回路规则/验收清单），以便应用到其他住宅？", fact_refs: [decision-accept-hard-costs, decision-night-path-lighting], options: [沉淀为独立可复用标准文档, 只在本项目内做, 暂不决定], selected: "A+B 一起做：成文 docs/standards/night-path-lighting.md v1（不绑坐标、可复用）+ 本户按标准落地（night-path-lighting-instance.md）；本户定位按'客房（父母/客人）'推进", user_response: "'A + B一起做。我们继续其它议题'", status: resolved }
+alignment:
+  records: []
+  unresolved: [align-study-storage-content, align-fitness-cancellation, align-elevator-noise, align-study-east-wall-tv, align-guest-room-layout, align-wardrobe-180-fit, align-naming-scope, align-facts-crossfile-rewrite]
+  re_alignment_required: true
+acceptance:
+  validation_commands: [npm run generate:project-render-facts, npm run export:dressing-map, npm run verify:furniture, npm run verify:consistency, npm run verify:facts, npm run verify:mep, npm run verify:all, npm run test:server, npm run test:app, npm run typecheck, npm run build:app]
+  browser_evidence_required: true
+  required_views: [客房门口视角（含 d_bese 扫掠域）, 客房床/衣柜视角（方案一与方案二各一）, 客房北墙电梯井侧视角, 书房北墙季节后台柜视角, 书房南墙书架/东墙柜体视角, 书房桌面工作视角, 起夜路径（客房→客卫）第一人称视角]
+  aesthetic_review: BLOCKED
+  functional_review: BLOCKED
+  construction_review: pending
+  blocking_issues: [起夜动线 8–9m 未与业主确认, 电梯井共墙噪声未实测, 客房面积收缩后排布未定（方案一/二）, 书房储物内容与柜体形式未定, 书房东墙与客厅 65" 电视挂装关系未处理, 1.8m 衣柜 2.4m 高款未选型, 书房柜体预算出处未定, 健身器材彻底取消还是迁移未定, 命名口径未确认, facts.yaml 跨文件对账未改写]
+  done_when: [10 项 alignment 全部关闭, 客房与书房家具候选 AABB 通过 verify:furniture（含门扫掠/凸窗带/吊顶高度约束）, facts.yaml 跨文件对账改写后 verify:facts 通过, test:server/test:app/verify:all/typecheck 全绿, 同版本浏览器证据 valid（含起夜路径视角）, 美学/功能双评审 PASS, decision_log 新增 DEC 条目并建新旧功能映射表]
+  delivery_notes_required: true
+  freeze_gates: [起夜动线接受度对齐, 电梯井噪声实测与床头方位对齐, 客房排布方案选定, 书房储物内容与柜体形式对齐, 书房东墙/电视挂装边界对齐, 衣柜选型与预算出处对齐, 健身器材处置对齐, 命名口径对齐, facts 跨文件改写回归]
+discussion_log:
+  - { round: 1, date: "2026-10-05", summary: "业主提出交换父母房与书房并删除健身器材；确认只换功能不换几何。产出：互换零硬成本结论（合同/机电/天花不动）、两房布置草案、三个待解决问题（面积/动线/噪音）、四项待拍板" }
+  - { round: 2, date: "2026-10-05", summary: "父母建议客房与主人区隔开 → 支持东南客房方案；书房承担更多储物。产出：隔开的收益与三个新问题（起夜动线、电梯井共墙[新发现]、客厅共墙）、书房四面墙储物盘点、客房两个排布方案" }
+  - { round: 3, date: "2026-10-05", summary: "业主确认不急着开工、持续讨论，同意建立本迭代工作区（五件协议）" }
+  - { round: 4, date: "2026-10-05", summary: "业主确认接受互换的功能代价（面积收缩/起夜动线/卫浴共用），方案继续；同时立项起夜路径照明——人接近即自动亮起的地面灯（覆盖客房→客厅→主走廊→客卫）；业主补充'不只这套房子'，需确认是否沉淀为可复用标准" }
+  - { round: 5, date: "2026-10-05", summary: "业主拍板 A+B：起夜照明同时'本户落地 + 沉淀为可复用标准'。产出 docs/standards/night-path-lighting.md v1（坐标无关标准）+ 本户实例 8–9 个候选点位（NP-1..NP-9）与独立回路 lighting_night_path；发现过渡段暗区超 3m 上限需补 NP-9。剩余 9 项 alignment，转入客房排布议题" }
+  - { round: 6, date: "2026-10-05", summary: "业主要求先聊透约束（'不然我觉得你会做偏'）。产出约束台账 constraints-ledger.md v1（A 几何结构/B 合同采购/C 既有决策/D 标准验证/E 自我审计 7 项/F 优先队列），并把待决事项重排为 Tier 0/1/2 一次只问一个" }
+  - { round: 7, date: "2026-10-05", summary: "Q1 关闭：客房按正常客房设计（偶尔来住），不做无障碍/隔声加码，'有预算再慢慢改'；同时明确该承诺成立的前提是 fact-preprovision-list（水电交底前必须预留电位/回路/底盒/零线/网口/北墙隔声条件），可后补项与必预留项分开列。电梯噪声仍实测，但缓解手段只用免费的（床头靠东外墙+北墙衣柜声屏障）" }
+  - { round: 8, date: "2026-10-05", summary: "Q2 关闭：书房柜体与起夜照明采购/安装全部推到二期；但预留条件（床头双侧电位、lighting_night_path 回路与底盒、调光零线、网口、北墙隔声条件）必须进一期水电交底清单，否则二期变砸墙。业主同意先做 3D 设计与规划、不急着继续。推进方式改为三阶段：阶段0 纸面预演（零改动）→ 阶段1 候选入配置+3D 评审（可回滚）→ 阶段2 量房实测后定稿并走正式实施+二期采购" }
+  - { round: 9, date: "2026-10-05", summary: "业主拍板开始：v0 最小交换按稳健摆法实施完毕（DEC-2026-10-05-R9）。两房家具/名称互换、健身器材全链路删除、facts 对账更新、测试与生成物同步、schedule PKG-150 描述改写；verify:all + test:server 608 + test:app 470 + typecheck 全绿，全部 candidate_not_frozen、可回滚。下一步：量房四项实测（凸窗带/电梯噪声/门洞位置/墙体构造）后定客房排布终版与书房储物" }

@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { load } from 'js-yaml';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { RuleEngine } from '../../server/rule-engine.js';
@@ -565,39 +566,31 @@ describe('BudgetCalculator', () => {
     assert.equal(prices.size, 3, 'per-room pricing, not a single whole-house default');
   });
 
-  it('home_fitness bills only the count-only set; placed equipment stays render-only', () => {
+  it('light training set is fully removed: no topic, no furnishing mapping, no budget line (2026-10-05 swap)', () => {
+    // 2026-10-05 功能互换 + 删除健身器材（iteration parent-room-study-swap-20261005）：
+    // 原口径是「home_fitness_light_set count-only 一套计价、可见三件只渲染不计价」；
+    // 现在整个 topic / 材料条目 / 采购条目 / 映射全部删除，预算与采购链路不得残留。
     const catalog = ProjectCatalog.load('.');
-    // 可见器材 adjustable_dumbbell_pair / bench_adjustable / rollable_training_mat 故意不映射
-    // （只渲染不计价）；只有 count-only 的 home_fitness_light_set 应产生一条预算行
-    (catalog as unknown as { furnishings: FurnishingsYaml }).furnishings = {
-      bedroom_se: [
-        { type: 'adjustable_dumbbell_pair', x: 15.0, z: 6.5, rotation: 0 },
-        { type: 'bench_adjustable', x: 15.2, z: 6.65, rotation: 90 },
-        { type: 'rollable_training_mat', x: 15.2, z: 6.6, rotation: 0 },
-        { type: 'home_fitness_light_set', count: 1 },
-      ],
-    };
-    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
-    const calc = new BudgetCalculator(catalog, realRules);
-    const scheme: CurrentScheme = {
-      updatedAt: new Date().toISOString(),
-      selections: {
-        home_fitness: { default: 'home_fitness_light_set_01', roomOverrides: {} },
-      },
-    };
-    const snapshot = calc.calculate(scheme);
-    const fitnessItems = snapshot.lineItems.filter((li) => li.topic === 'home_fitness');
-    assert.equal(fitnessItems.length, 1, 'exactly one home_fitness line (the count-only set)');
-    assert.equal(fitnessItems[0].roomId, 'bedroom_se');
-    assert.equal(fitnessItems[0].optionId, 'home_fitness_light_set_01');
-    assert.equal(fitnessItems[0].quantity, 1);
-    assert.equal(fitnessItems[0].unitPrice, 1800);
-    assert.equal(fitnessItems[0].cost, 1800);
+    const rules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const scheme = JSON.parse(readFileSync('data/current-scheme.json', 'utf8')) as CurrentScheme;
+    const materials = load(readFileSync('config/materials.yaml', 'utf8')) as { materials: Array<{ id: string }> };
+    const procurement = load(readFileSync('config/procurement.yaml', 'utf8')) as { materials: Array<{ id: string }> };
+
+    assert.equal(materials.materials.some((m) => m.id === 'home_fitness_light_set_01'), false, 'materials.yaml must not keep the fitness set');
+    assert.equal(procurement.materials.some((p) => p.id === 'home_fitness_light_set_01'), false, 'procurement.yaml must not keep the fitness set');
+    assert.equal(scheme.selections.home_fitness, undefined, 'current-scheme.json must not select home_fitness');
+    assert.equal(rules.budget?.furnishingTypeToTopic?.['home_fitness_light_set'], undefined, 'design-rules must not map the furnishing type');
     assert.equal(
-      snapshot.lineItems.filter((li) => li.roomId === 'bedroom_se').length,
-      1,
-      'placed dumbbell/bench/mat produce no budget lines (render-only, anti triple-billing)'
+      (rules.budget?.lineItems ?? []).some((line) => line.topic === 'home_fitness'),
+      false,
+      'design-rules must not keep the home_fitness topic line item',
     );
+
+    const snapshot = new BudgetCalculator(catalog, rules).calculate(scheme);
+    assert.equal(snapshot.lineItems.some((li) => li.topic === 'home_fitness'), false, 'no home_fitness budget line may survive');
+    for (const type of ['bench_adjustable', 'adjustable_dumbbell_pair', 'rollable_training_mat', 'squat_rack', 'barbell_olympic', 'weight_plate_set', 'rubber_training_mat']) {
+      assert.equal(snapshot.lineItems.some((li) => li.topic === type), false, `${type} must not be priced`);
+    }
   });
 
   it('wardrobe_180_01 topic fix: orphan miscellaneous topic gone, existing priced lines unchanged', () => {

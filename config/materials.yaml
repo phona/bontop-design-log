@@ -1,7 +1,7 @@
 notes:
   - "外立面玻璃幕墙已由开发商安装完成，装修阶段无需采购封窗，只需核对门窗口位置及幕墙保护"
   - "本清单以套内 94.76㎡、层高 3.0m 为基数估算"
-  - "本清单共 71 条材料项（2026-10-05 复核，与 fact.materials_count / c.materials_count_matches_note 对账：增删条目必须同步此数）"
+  - "本清单共 70 条材料项（2026-10-05 复核：删除 home_fitness_light_set_01 轻训练套，iteration parent-room-study-swap-20261005；与 fact.materials_count / c.materials_count_matches_note 对账：增删条目必须同步此数）"
 
 # Formal GLB material-role contract. Values reference entries below; shader topology stays in Blender Python.
 render_roles:
@@ -1385,29 +1385,6 @@ materials:
     price_source: "林氏家居天猫旗舰店"
     notes: "DEC-026：取消工业风方几与岩板茶几；客厅沙发前，可后期升级"
     appearance: { type: "solid_color", color: "#2f2822" }
-
-  - id: "home_fitness_light_set_01"
-    topic_id: "home_fitness"
-    alternative_group: "home_fitness"
-    category: "家具"
-    name: "轻训练套（可调哑铃对+底座、可卷训练垫，可调凳复用书房现有）"
-    brand: "Keep / 迪卡侬 / 本地体育用品店"
-    model: "可调哑铃 2×24kg 带底座 + 可卷训练垫 1.8m"
-    spec: "哑铃对+底座+垫一套"
-    unit: "套"
-    price_per_unit: 1800
-    coverage_per_unit: 1
-    loss_rate: 1
-    calc_mode: "count"
-    supplier: "京东 / 天猫 / 迪卡侬门店"
-    online_link: ""
-    sample_acquired: false
-    sample_date: null
-    status: "candidate"
-    pros: ["一套覆盖轻训练需求", "可卷垫换季可收纳进后台柜"]
-    cons: ["可调哑铃手感不如固定哑铃"]
-    price_source: "可调哑铃对+底座约 1.2-1.6k + 可卷垫约 0.2-0.4k（估）"
-    notes: "【计价口径】按套整价：一套=可调哑铃对+底座+可卷训练垫；可调凳复用书房现有 bench_adjustable 不计入；可见器材（哑铃/垫/凳 placed 实例）只渲染不计价，防一套三次计价。候选待核价"
 
   # === 家电补全（2026-08-01 P0 新增 appliances 池，calc_mode=fixed 单件整屋） ===
 

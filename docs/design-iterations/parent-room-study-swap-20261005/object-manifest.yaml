@@ -1,0 +1,138 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: parent-room-study-swap-20261005
+subject: 功能互换对象清单（客房=bedroom_se / 书房=study / 健身器材删除）
+object_policy:
+  fixed_count_required: true
+  split_by: [function, owner, material, collision, maintenance, interface, review]
+  visual_relationship_required: true
+  candidate_state: true
+  source_version: discussion-20261005
+  responsibility_boundary: "家具不承担 HVAC、冷凝水、结构、隔声责任；电梯井隔声、墙体构造、门洞位置须由现场/结构责任人确认；所有坐标均为候选，未施工冻结"
+objects:
+  - id: guest_room_bedroom_se
+    type: room_function
+    archetypes: [guest_bedroom]
+    owner: project
+    function: 客房（供父母/客人）：与主人区（主卧/主卫）隔开，独立于卧室翼
+    material: 既有墙体/天花/玻璃幕墙（不改）
+    geometry_source: config/layout/model-geometry.yaml（bedroom_se，几何不动）
+    datum_refs: [datum-guest-room, datum-guest-layout-a, datum-guest-layout-b]
+    fact_refs: [fact-room-geometry-bedroom-se, fact-guest-separation-achievable, fact-elevator-adjacency, fact-night-path-distance, decision-guest-separation]
+    decision_refs: [decision-guest-separation]
+    dependencies: [d_bese, ac_study, w_be_west, w_be_north, w_east_upper]
+    interfaces: [{ id: guest-door-sweep, target_object_id: d_bese, kind: clearance, requirement: "床/衣柜/床头柜 AABB 不得侵入扫掠域 x[13.40,14.30] z[5.65,6.55]", status: open }, { id: guest-elevator-noise, target_object_id: elevator_shaft, kind: acoustic, requirement: "北墙共墙隔声与床头方位待量房实测噪声后定", status: open }, { id: guest-wardrobe-height, target_object_id: ceiling_study_ac, kind: clearance, requirement: "柜体高度 ≤2.40m（北墙边吊/东北角吊底 2.50m）", status: open }]
+    collision: { policy: candidate_aabb, geometry_ref: datum-guest-room, review_ref: "verify:furniture" }
+    maintenance: { boundary: 成品家具可拆走，房间可退回书房（保留网口/桌用插座/电动窗帘电源）, access_clearance: site_pending, replaceable_parts: [], inspection_requirements: ["不承担 HVAC/冷凝水责任", "床头电位开孔待墙体构造确认"] }
+    parts: []
+    visual_relationships: [{ target_object_id: living_dining, relation: separated, requirement: "西墙贴客厅电视墙，床靠东外墙远离噪声源" }, { target_object_id: master_bedroom, relation: separated, requirement: "隔客餐厅+主走廊，不共墙（父母'隔开'诉求的实现点）" }]
+    validation_refs: [verify:furniture, verify:all]
+    status: candidate_not_frozen
+  - id: study_west
+    type: room_function
+    archetypes: [study]
+    owner: project
+    function: 书房（纯书房）：工作/学习 + 全屋扩容储物层之一
+    material: 既有墙体/天花/飘窗（不改）
+    geometry_source: config/layout/model-geometry.yaml（study，几何不动）
+    datum_refs: [datum-study-room, datum-study-north-cabinet, datum-study-south-shelf, datum-study-east-wall]
+    fact_refs: [fact-room-geometry-study, fact-study-storage-walls, decision-study-storage]
+    decision_refs: [decision-study-storage]
+    dependencies: [d_study, ac_parent, w_st_east, w_st_south, w_mb_east]
+    interfaces: [{ id: study-door-sweep, target_object_id: d_study, kind: clearance, requirement: "柜体 AABB 不得侵入扫掠域 x[6.15,7.05] z[5.55,6.45]", status: open }, { id: study-east-tv-mount, target_object_id: tv_65, kind: clearance, requirement: "东墙柜体须避让客厅侧 65\" 挂装锚栓（z=8.00）与双层墙厚，方案未定", status: open }, { id: study-south-sill, target_object_id: study_south_bay, kind: clearance, requirement: "南墙柜体高度 ≤2.00m（飘窗台 2.07m 待量房核）", status: open }]
+    collision: { policy: candidate_aabb, geometry_ref: datum-study-room, review_ref: "verify:furniture" }
+    maintenance: { boundary: 成品柜/开架可拆走，房间可退回卧室（预留 1.5m 床位可能，墙面不全部占满）, access_clearance: site_pending, replaceable_parts: [], inspection_requirements: ["不承担 HVAC/冷凝水责任"] }
+    parts: []
+    visual_relationships: [{ target_object_id: living_dining, relation: shared_wall, requirement: "东墙即客厅电视墙，柜体与挂装/柜体双层关系待处理" }, { target_object_id: master_bedroom, relation: shared_wall, requirement: "西墙与主卧共剪力墙（shear inferred），吊柜固定待结构确认" }]
+    validation_refs: [verify:furniture, verify:all]
+    status: candidate_not_frozen
+  - id: bed_150_guest
+    type: furniture
+    archetypes: [bed]
+    owner: furniture
+    function: 客房 1.5m 床（成品，可搬走；PKG-150 一期池内随功能迁至 bedroom_se）
+    material: 待选成品（含液压床箱低箱款选型待定）
+    geometry_source: 候选（本轮未落坐标）
+    datum_refs: [datum-guest-layout-a, datum-guest-layout-b]
+    fact_refs: [fact-furniture-current, fact-phase1-scope, fact-bay-band-limits]
+    decision_refs: [decision-guest-separation]
+    dependencies: [wardrobe_180_guest, d_bese, sock_parent_bed_l, sock_parent_bed_r]
+    interfaces: [{ id: bed-door-sweep, target_object_id: d_bese, kind: clearance, requirement: "AABB 不得交扫掠域 x[13.40,14.30] z[5.65,6.55]", status: open }, { id: bed-head-power, target_object_id: sock_parent_bed_l, kind: electrical, requirement: "床头双侧电位：现仅 sock_study_extra @(14.50,5.55) 一侧，另一侧需申报新增", status: open }]
+    collision: { policy: candidate_aabb, geometry_ref: datum-guest-layout-a, review_ref: "verify:furniture" }
+    maintenance: { boundary: 成品可搬走，房间可退回书房, access_clearance: site_pending, replaceable_parts: [], inspection_requirements: [] }
+    parts: []
+    visual_relationships: [{ target_object_id: elevator_shaft, relation: oriented, requirement: "床头避开北墙（电梯井侧）——方案一靠东外墙", status: open }]
+    validation_refs: [verify:furniture]
+    status: candidate_not_frozen
+  - id: wardrobe_180_guest
+    type: furniture
+    archetypes: [wardrobe]
+    owner: furniture
+    function: 客房衣柜 1.8m×0.6m×≤2.40m 推拉门（PKG-150 一期池内；2.4m 高度款受限吊顶）
+    material: 待选成品
+    geometry_source: 候选（本轮未落坐标）
+    datum_refs: [datum-guest-layout-a, datum-guest-layout-b]
+    fact_refs: [fact-room-geometry-bedroom-se, pending-wardrobe-product]
+    decision_refs: [decision-guest-separation]
+    dependencies: [bed_150_guest, ceiling_study_ac, ceiling_study_ac_corner, d_bese]
+    interfaces: [{ id: wardrobe-height-limit, target_object_id: ceiling_study_ac, kind: clearance, requirement: "柜体 ≤2.40m（吊底 2.50m，留顶封板 0.10m）", status: open }, { id: wardrobe-acoustic-role, target_object_id: elevator_shaft, kind: acoustic, requirement: "方案一中北墙衣柜兼作电梯井侧声屏障（效果待实测）", status: open }]
+    collision: { policy: candidate_aabb, geometry_ref: datum-guest-layout-a, review_ref: "verify:furniture" }
+    maintenance: { boundary: 成品可搬走, access_clearance: site_pending, replaceable_parts: [门板, 滑轮], inspection_requirements: ["防倾倒固定待墙体构造确认"] }
+    parts: []
+    visual_relationships: [{ target_object_id: bed_150_guest, relation: separated, requirement: "柜前通道余量方案一约 0.4m（偏紧，3D 复核）", status: open }]
+    validation_refs: [verify:furniture]
+    status: candidate_not_frozen
+  - id: study_desk_chair_west
+    type: furniture
+    archetypes: [desk]
+    owner: furniture
+    function: 书房书桌+椅（原位保留：西墙南端 desk @(4.50,9.20)+chair @(5.10,9.20)，桌后插座原位有效）
+    material: 现有
+    geometry_source: config/house.yaml study 段（不变）
+    datum_refs: [datum-study-room]
+    fact_refs: [fact-furniture-current, fact-electrical-current]
+    decision_refs: [decision-function-swap-only]
+    dependencies: [sock_parent_desk, w_st_south, study_south_bay]
+    interfaces: [{ id: desk-power-keep, target_object_id: sock_parent_desk, kind: electrical, requirement: "桌后插座/网口原位保留，交叉验证偏差 <1.5m", status: resolved }]
+    collision: { policy: existing_placed, geometry_ref: datum-study-room, review_ref: "verify:furniture" }
+    maintenance: { boundary: 成品, access_clearance: site_pending, replaceable_parts: [], inspection_requirements: [] }
+    parts: []
+    visual_relationships: []
+    validation_refs: [verify:furniture]
+    status: existing_unchanged
+  - id: study_seasonal_wardrobe_wall_moved
+    type: furniture
+    archetypes: [seasonal_storage]
+    owner: furniture
+    function: 季节后台柜 1.70m×0.55m×2.40m：由 bedroom_se 东墙原位移至 study 北墙边吊下（安装条件平移成立：2.40m 柜体+0.10m 顶封板抵 2.50m 吊底）
+    material: 待选成品/模块化
+    geometry_source: 候选（新坐标未落）
+    datum_refs: [datum-study-north-cabinet]
+    fact_refs: [fact-furniture-current, fact-room-geometry-study, fact-study-storage-walls]
+    decision_refs: [decision-study-storage]
+    dependencies: [d_study, ceiling_parent_ac]
+    interfaces: [{ id: cabinet-door-sweep, target_object_id: d_study, kind: clearance, requirement: "避让扫掠域 x[6.15,7.05] z[5.55,6.45]；候选 footprint 参照原 wardrobe_180 x[4.20,6.00] z[5.55,6.15]", status: open }, { id: cabinet-anti-tip, target_object_id: w_st_north, kind: structure, requirement: "防倾倒固定待墙体构造/钢筋探测确认", status: open }]
+    collision: { policy: candidate_aabb, geometry_ref: datum-study-north-cabinet, review_ref: "verify:furniture" }
+    maintenance: { boundary: 可移动/拆装, access_clearance: site_pending, replaceable_parts: [门板], inspection_requirements: [] }
+    parts: []
+    visual_relationships: []
+    validation_refs: [verify:furniture]
+    status: candidate_not_frozen
+  - id: fitness_removal_set
+    type: removal
+    archetypes: [light_fitness]
+    owner: budget
+    function: 删除书房轻训练器材：placed 三件（bench_adjustable/adjustable_dumbbell_pair/rollable_training_mat）+ home_fitness_light_set 预算/采购条目（约 ¥1,800 candidate 未核价、未下单）
+    material: 无
+    geometry_source: config/house.yaml bedroom_se 段 + config/materials.yaml + config/procurement.yaml
+    datum_refs: []
+    fact_refs: [fact-fitness-budget, decision-fitness-removal]
+    decision_refs: [decision-fitness-removal]
+    dependencies: [study-seasonal-storage.test.ts, design-rules.yaml furnishingTypeToTopic]
+    interfaces: [{ id: fitness-budget-removal, target_object_id: home_fitness_light_set, kind: budget, requirement: "删除后须保证不伪造节省；彻底取消或迁移由 align-fitness-cancellation 裁定", status: open }]
+    collision: { policy: n_a, geometry_ref: null, review_ref: "verify:furniture" }
+    maintenance: { boundary: n_a, access_clearance: n_a, replaceable_parts: [], inspection_requirements: [] }
+    parts: []
+    visual_relationships: []
+    validation_refs: [verify:furniture, verify:all]
+    status: pending_alignment
