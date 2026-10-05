@@ -1,6 +1,6 @@
 # 量房待填清单
 
-> 量表共 47 条（2026-10-05 登记 DEC-2026-10-05-R2 新增 #47，与 `fact.pending_site_data_count` 对账：新增/关闭条目必须同步此数）。
+> 量表共 48 条（2026-10-05 给排水 v1 落地：#6/#7/#9/#10/#16/#17/#18/#19 改为「已入模型（inferred）」并新增 #48 入户花园去留**设计待决**，与 `fact.pending_site_data_count` 对账：新增/关闭条目必须同步此数）。
 
 > 交房后现场量房，逐项填入。每项标注精度等级：
 > - `inferred`：从图纸/规范推断（当前值）
@@ -60,11 +60,22 @@
 |---|--------|----------|------|--------|------|------|
 | 4 | 强电箱位置/容量 | electrical.yaml `type: strong_panel` | `{x, z, mount_height, body_height, width, depth, circuits, capacity}` | living_dining / `w_foyer_east` 西侧，`x=13.40, z=3.60`；开发商预留嵌墙；底部离地 1.65m；本体高度暂占位 0.39m；390×210mm（宽×深，箱体全尺寸口径见 #30 的 390×390×210mm，单/双排待复测） | 位置 inferred；嵌墙属性/箱体规格/本体高度 pending | 回路规划；开发商预留嵌墙和本体高度待复测，回路数/容量仍待开箱量尺 |
 | 5 | 弱电箱位置 | electrical.yaml `type: weak_panel` | `{x, z, mount_height, body_height, width, depth}` | living_dining / `w_foyer_east` 西侧，`x=13.40, z=3.60`；开发商预留嵌墙；底部离地 0.50m；本体高度暂占位 0.40m；400×300mm | 位置 inferred；嵌墙属性/箱体规格/本体高度 pending | 网关/路由；开发商预留嵌墙和本体高度待复测，箱体高度和入户线路待开箱确认 |
-| 6 | 卫生间排水立管 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断主卫(0.3,1.3) 客卫(5.8,2.4) | inferred | 马桶/地漏定位 |
-| 7 | 厨房排水立管 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断(10.5,0.3) | inferred | 水槽定位 |
-| 8 | 给水入户点 | plumbing.yaml `type: water_supply` | `{x, z, diameter}` | 待确认 | — | 水管走向 |
-| 9 | 燃气表位置 | plumbing.yaml `type: gas_meter` | `{x, z, height}` | 推断厨房北墙(8.0,0.2) h=1.5 | inferred | 热水器/灶具 |
-| 10 | 排烟道位置 | 新文件 ductwork.yaml | `{x, z, diameter}` | 推断厨房(9.0,0.1) | inferred | 油烟机烟管 |
+| 6 | 卫生间排水立管 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | **v1 已入模型（`inferred`，±0.3m）**：主卫 `drain_riser_master_bath` (0.3,1.3) / 客卫 `drain_riser_guest_bath` (5.8,2.4)，管径 0.075；量房日升级 `measured` | inferred → 量房日升级 measured | 马桶/地漏定位 |
+| 7 | 厨房排水立管 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | **v1 已入模型（`inferred`，±0.3m）**：`drain_riser_kitchen` (10.5,0.3)，管径 0.075；量房日升级 `measured` | inferred → 量房日升级 measured | 水槽定位 |
+| 8 | 给水入户点 | plumbing.yaml `type: water_supply` | `{x, z, diameter}` | 待确认（**仍未建点位**：坐标未知，schema 要求 x/z，位置未知时不许造点位——同 #43 LEB 先例） | — | 水管走向；**5 处给水（shower_mbath/shower_gbath/faucet_kitchen_sink/faucet_kitchen_purifier/faucet_garden）的路线以本项为前提** |
+| 9 | 燃气表位置 | plumbing.yaml `type: gas_meter` | `{x, z, height}` | **v1 已入模型（`inferred`，±0.2m）**：`gas_meter_kitchen` (8.0,0.2) h=1.5（燃气路由本身不做，仅锚点）；量房日升级 `measured` | inferred → 量房日升级 measured | 热水器/灶具 |
+| 10 | 排烟道位置 | plumbing.yaml `type: duct`（业主 2026-10-05 批准并入，不新建 ductwork.yaml） | `{x, z, diameter}` | **v1 已入模型（`inferred`，±0.2m）**：`duct_kitchen_exhaust` (9.0,0.1)，断面 0.15；量房日升级 `measured` | inferred → 量房日升级 measured | 油烟机烟管 |
+
+### 给排水 v1 已入模型锚点 —— 量房日升级勾选（2026-10-05 落地）
+
+> 2026-10-05 给排水 v1：下面 5 个锚点的坐标**全部取自本表原先登记的推断值，一个数都没新造**，已写入 `config/plumbing.yaml`（`status: inferred` / `construction_status: pending` / `not_for_construction: true`），并各带 1~2 条 `status: inferred` 的 MEP 排水路线（`drain-mbath-vanity-to-riser` / `drain-gbath-vanity-to-riser` / `drain-kitchen-sink-to-riser` / `drain-kitchen-dishwasher-to-riser` / `drain-mbath-toilet-to-riser`）。`water_entry`（#8）仍未建点位。
+> **现场动作（逐项勾选）**：☐ 测实际位置（立管/表位/排烟道，拍照）→ ☐ 与推断值比对 → ☐ 偏差 >±0.3m（燃气表/排烟道 >±0.2m）则**重画相关路线**并回写 `config/plumbing.yaml` + `config/mep-hvac-coordination.yaml` → ☐ `status` 升 `measured`、删 `uncertainty_m` / `not_for_construction` → ☐ 关闭本表对应条目。
+
+- [ ] #6 → `drain_riser_master_bath` (0.30,1.30)：测主卫排水立管实际位置；关联路线 `drain-mbath-vanity-to-riser` / `drain-mbath-toilet-to-riser`。⚠️ 推断位在主卫西北圆角幕墙切角外侧（距弧心 (1.00,2.10) 1.06m），量房重点核立管是否在房间内侧——在房间内侧则两条路线折线缩短、不再越幕墙。
+- [ ] #6 → `drain_riser_guest_bath` (5.80,2.40)：测客卫排水立管实际位置；关联路线 `drain-gbath-vanity-to-riser`。
+- [ ] #7/#16 → `drain_riser_kitchen` (10.50,0.30)：测厨房排水立管实际位置；关联路线 `drain-kitchen-sink-to-riser` / `drain-kitchen-dishwasher-to-riser`，并复核 `faucet_kitchen_sink` / `drain_kitchen_sink` 的 x 坐标口径（DEC-2026-08-02-013 北墙落地柜台面）。
+- [ ] #18/#9 → `gas_meter_kitchen` (8.00,0.20) h=1.5，±0.2m：测燃气表位（气源/报警器/切断阀另见 #32）；**无 MEP 路线**（本项目燃气路由除外）。
+- [ ] #17/#10 → `duct_kitchen_exhaust` (9.00,0.10)，±0.2m：测厨房排烟道实际位置（油烟机烟管走向随 SKU 冻结）；**无 MEP 路线**。
 
 ## 建筑细节
 
@@ -75,10 +86,10 @@
 | 13 | 入户门尺寸/开启方向 | model-geometry.yaml openings | 更新 width/room | 待量 | — | 玄关柜布局 |
 | 14 | 空调外机位净尺寸 | house.yaml west_platform | 更新 width/length | 1.6×1.00m（bbox；含 r=1.0 西北圆角可用约 1.39㎡） | inferred | HVAC 选型 |
 | 15 | 幕墙可开启扇位置/尺寸 | house.yaml constraints.exterior | 每面位置+宽+高+开启方式 | 四面均有推拉窗，约1m宽 | estimated | 纱窗/窗帘轨道避让/通风方案 |
-| 16 | 厨房排水立管实际位置 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断(10.5,0.3) | inferred | 北墙水槽x坐标 |
-| 17 | 厨房排烟道实际位置 | 新文件 ductwork.yaml | `{x, z, diameter}` | 推断(9.0,0.1) | inferred | 烟管走向 |
-| 18 | 厨房燃气表实际位置 | plumbing.yaml `type: gas_meter` | `{x, z, height}` | 推断(8.0,0.2) h=1.5 | inferred | 燃气管路由 |
-| 19 | 主卫排水立管实际位置 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | 推断(0.3,1.3) | inferred | 洗手台外移坐标 |
+| 16 | 厨房排水立管实际位置 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | **v1 已入模型（`inferred`，±0.3m）**：`drain_riser_kitchen` (10.5,0.3)（与 #7 同值同点，量房日合并升级 `measured`） | inferred → 量房日升级 measured | 北墙水槽x坐标 |
+| 17 | 厨房排烟道实际位置 | plumbing.yaml `type: duct`（业主 2026-10-05 批准并入，不新建 ductwork.yaml） | `{x, z, diameter}` | **v1 已入模型（`inferred`，±0.2m）**：`duct_kitchen_exhaust` (9.0,0.1)，断面 0.15 | inferred → 量房日升级 measured | 烟管走向 |
+| 18 | 厨房燃气表实际位置 | plumbing.yaml `type: gas_meter` | `{x, z, height}` | **v1 已入模型（`inferred`，±0.2m）**：`gas_meter_kitchen` (8.0,0.2) h=1.5（与 #9 同值同点，量房日合并升级 `measured`） | inferred → 量房日升级 measured | 燃气管路由 |
+| 19 | 主卫排水立管实际位置 | plumbing.yaml `type: drain_riser` | `{x, z, diameter}` | **v1 已入模型（`inferred`，±0.3m）**：`drain_riser_master_bath` (0.3,1.3) | inferred → 量房日升级 measured | 洗手台外移坐标 |
 | 20 | 全屋飘窗实际sill高度 | overlay.yaml bay_sill | 更新 sill 值 | 卧室系≈2.07 / 厨房≈2.12 / 客厅系≈2.57（邻户图 LH 读法+样板间视频目视；旧值全屋2.55系客厅值误推广且穿楼板无效，已废） | inferred→待量房终核 | 飘窗利用方案/儿童房衣柜降高/窗帘盒 |
 | 21 | 厨房实际南界/餐厅带划分 | model-geometry.yaml 顶点 v_kit_s2/v_ent_kit2 | 更新 z | 推断 z=2.40（与 model-geometry.yaml v_kit_s2.z=2.40 现行口径一致；创想图读法 2.90 已废） | inferred | DEC-014 厨房面积/餐桌方案前提 |
 | 22 | 冰箱实际位置 | electrical.yaml sock_kitchen_fridge | `{x, z}` | 推断东墙南端 (10.80,2.05)（自 DEC-021 起漂移，本轮回纠） | inferred | 插座/高柜设计；与玄关强弱电箱位置无关 |
@@ -102,7 +113,7 @@
 
 ## 追加登记（2026-10-04 A 组整改：把静默缺失变成显式待办）
 
-> 本节 7 条（#40–#46）全部是**本轮才发现的结构性缺口**：此前方言/数据里带病运行，门禁抓不到。
+> 本节 8 条（#40–#47、#48）全部是**本轮才发现的结构性缺口**：此前方言/数据里带病运行，门禁抓不到。
 > 逐条写清「卡在谁那」，未裁定前**一律不改数据**。
 
 | # | 数据项 | 填入文件 | 格式 | 当前值 | 精度 | 影响 |
@@ -111,10 +122,11 @@
 | 41 | MEP 吊顶内分层标高 vs 降板底面 | config/mep-hvac-coordination.yaml `layers` / `routes` | `{layer.height, route.via[].y, from_height}` | 分层标高（强电 2.45 / 弱电 2.50 / 冷媒 2.55 / 冷凝水 2.35 / 送风 2.68 / 回风 2.72）**整层低于 0.30m 降板的完成面 2.50m**（0.15m 降板/铝扣板为 2.65m）；降板底面权威 = `config/ceiling.yaml` 的 `height`（= 2.80 − thickness，与 `shared/render/CeilingZoneBuilder.ts` 的 topY 同口径） | pending | 强电/弱电/冷凝水若真按 2.45/2.35 敷设，会落在降板完成面**下方**即室内可见面；走向需整体升入降板空腔 2.50–3.00m，或调整降板厚度/范围。已由契约 `c.mep_layer_below_drop_bottom` 强制登记，冲突数只减不增 |
 | 42 | `sock_child_ac` 声明墙段与坐标不符 | config/electrical.yaml `sock_child_ac` | `{wall, wall_side, x, z}` | 声明 `wall: w_gbath_west`（该墙段实际跨度 z[2.20,3.55]），点位 z=4.00 → 投影超出墙段 0.45m；DEC-2026-08-01-012 原文为「西北次卧南墙 `w_nw_south` (4.0,4.30)」，而 MEP route `strong-ac-child` 已按穿 `w_nw_south` 后东行至本点位建模；几何上 (5.60,4.00) 落在 `w_gbath_west_open_vanity`（x=5.60, z[3.55,4.30]）上 | inferred | 儿童房空调电源点位归属墙段决定开槽/预埋对象；也决定 `verify-point-placement` 的 `wall_side` 与渲染面朝向。量房带图核对是东段共享墙还是南墙，二选一后回写 `wall` + `wall_side`。**升级路径**（2026-10-04 A4-b 已把 `verify-point-placement` 的提前 `continue` 改成 fail-loud）：本点位现在除「投影超出墙段 0.45m」外还会被追加检查 `wall_side` 合法性与渲染面朝向，`verify:data-consistency` 的 warning 数由 6 → 7；一旦回写 `wall`/`wall_side` 后几何仍不符，或侧别/朝向判定为 error，`verify:all` 立即 non-zero——不再可能靠 continue 静默过关 |
 | 43 | LEB 局部等电位端子箱 | config/plumbing.yaml（`type: leb`，**当前未建模**） | `{x, z, height, 联结金属构件清单}` | 未建模、位置未知。GB 55038-2025 第 7.4.7 条要求设局部等电位联结的场所（本项目主卫/客卫）应做 LEB；`shared/types.ts` 的 `PlumbingPointType` 已增 `leb` 枚举值，但**不得在位置未知时造点位** | pending | 卫浴金属构件（花洒/龙头/毛巾架/排水口/采暖管）等电位联结的施工圈法；端子箱位置还影响卫浴柜开门净空与贴砖面 |
-| 44 | 给排水 11 处点位无 MEP 走线引用 | config/plumbing.yaml + config/mep-hvac-coordination.yaml | `{route 或显式 deferred 标记}` | 22 个点位中 11 处既不是任何 route 的 `to`/`via`，note 里也没有显式 deferred 声明（`drain_mbath_toilet` 是既有正确先例）。已逐条补显式标记，并由契约 `c.plumbing_point_route_or_marked` 强制 | pending（逐点） | 水电交底时这 11 处「没人认领」；其中 `drain_mbath_vanity`/`drain_gbath_vanity` 已有 prose 路径（穿墙回沉箱），待立管位置与 SKU 冻结后升级为正式 route |
+| 44 | 给排水 11 处点位无 MEP 走线引用 | config/plumbing.yaml + config/mep-hvac-coordination.yaml | `{route 或显式 deferred 标记}` | 27 个点位中 7 处既不是任何 route 的 `to`/`via`，note 里也没有显式 deferred 声明（`drain_mbath_toilet` 是既有正确先例）。已逐条补显式标记，并由契约 `c.plumbing_point_route_or_marked` 强制 | pending（逐点） | 水电交底时这 7 处「没人认领」。2026-10-05 给排水 v1：5 处排水点位（`drain_mbath_vanity`/`drain_gbath_vanity`/`drain_mbath_toilet`/`drain_kitchen_sink`/`drain_kitchen_dishwasher`）+ `faucet_kitchen_sink` 已画 v1 路线并移除 deferred 标记；剩余 7 处为 `shower_mbath`/`shower_gbath`（给水入户点 #8 未定）、`faucet_kitchen_purifier`（#8 + SKU 未选型）、`faucet_garden`/`drain_garden`（#48 设计待决）、`gas_meter_kitchen`/`duct_kitchen_exhaust`（非管路锚点，燃气/烟管路由另案） |
 | 45 | 进线相数 / 需用系数 / 总开额定电流 / 进线截面 | config/electrical-topology.yaml `pending_parameters` | `{相数, 需用系数, 总开额定电流 A, 进线截面 mm²}` | 仓内唯一进线口径为「≥10mm² 铜芯」（GB 55038 7.4.3-3），而全部回路的 capacity 合计 27.9kW——10mm² 铜芯单相约 11kW，**二者无法自洽**；需用系数、总开额定电流均无记录 | pending | 进线开关/线径选型直接决定强弱电箱规格（#30）与电改预算（#28）；卡在**供电局**（报装容量/相数）与设计侧（需用系数取值） |
 | 46 | 外机供电线径升级判据 | config/electrical.yaml `sock_vrf_outdoor_a2` / config/electrical-topology.yaml | `{厂家铭牌输入功率, 实测 EER, 线径 mm²}` | proposed 口径 C32A + 4.0mm²(φ20)。输入功率估 ≈6kW（按 EER≈3.5 估）→ 27.3A，对 4.0mm²（约 27–32A）余量 <10%；若实测 EER≈3.0 则 30.3A 已触上限，需升 6mm² | pending | 外机供电为第 20 路独立回路（DEC-2026-10-04-R2），线径返工涉及平台侧出墙方式与防水；卡在**厂家**（MJV-200W-E01-LHIV 铭牌输入功率/额定电流）与正式配电图 |
 | 47 | 次卧标签数与房间映射裁决 | config/layout/model-geometry.yaml `rooms:` / DEC-2026-10-05-R1 逐房映射 | `{逐房标签, 房间数, 标注面积/周长}` | 合同附图与 CAD 的"次卧"标签数互相不一致：`cad/design/01_floor_plan/floor_plan_design_2026-07-05.dxf` 与 `Drawing2.dxf` 各出现 **3 个**"次卧"标注（两间同为 8.39㎡ 但周长 11.81/11.85m 不同，另一间 8.35㎡），合同转录写"次卧×5"，而空间模型只有**三间**次级卧室（study / bedroom_nw / bedroom_se）。本轮空调逐房映射按模型三间落地（study=28T2、bedroom_nw=28T2、bedroom_se=28T2），但标签数冲突未裁决 | pending | 直接决定 28T2×3 是否真的对应三间、CAD 标注面积能否用于房间口径对账（与 #12 房间净尺寸联动）；卡在**量房**（逐房核对标签与周长）+ 合同附图重读 |
+| 48 | **入户花园 `faucet_garden` + `drain_garden` 去留**（设计待决，**不是量房待决**） | config/plumbing.yaml `faucet_garden` / `drain_garden` | `{保留｜删除, 前置条件}` | 两点位按「入户花园为开发商已完成区」处理：已加 `status: inferred` / `construction_status: pending` / `not_for_construction: true`，note 写明「能否开孔/接管需量房+物业确认；**若不能，删除该点位**」。业主 2026-10-05 已接受「不能开孔/接管就删除两点位」这个选项；`drain_garden` 按业主决定不画 MEP 路线，`c.plumbing_point_route_or_marked` 的 deferred 标记保留 | pending | 浇花水龙头/花园地漏是否成立；删除则 `fact.plumbing_points_count` 27→25、`docs/mep-construction-guidance.md §0` 规模表、`config/electrical-topology.yaml` 口径注释与本列表数同步回退，`water-garden-requirement` / `drain-garden-requirement` 两条 design_requirement 路线一并评审。**卡在业主 + 物业**（开发商完成面能否开孔/接管），量房只提供事实输入 |
 
 ## 量房工具清单
 

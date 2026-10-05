@@ -21,15 +21,16 @@ function sample(route: Record<string, unknown>) {
 
 test('real MEP configuration lints without false errors and reports warnings structurally', () => {
   const result = lintMepCoordination(config, sources);
-  assert.equal(result.counts.routes, 73); // DEC-2026-10-04-R2：+strong-ac-dining 71→72、+strong-ac-outdoor 72→73
-  assert.equal(result.counts.resolvedRoutes, 73);
+  assert.equal(result.counts.routes, 78); // DEC-2026-10-04-R2：+strong-ac-dining 71→72、+strong-ac-outdoor 72→73；2026-10-05 给排水 v1：+5 条排水 route 73→78
+  assert.equal(result.counts.resolvedRoutes, 78);
   assert.equal(result.errors.length, 0);
   assert.equal(result.warnings.filter((issue) => issue.code === 'hvac_coverage_missing').length, 0);
   // 2026-10-04 A1：吊顶净空规则从「要求 zone.area 与 zone.height 同时存在」（本项目交集为 0、
   // 永不触发）改为按 thickness 反算完成面，因此本用例从 9 条变成 9 + 144 条。
-  // 144 与 facts 契约 c.mep_layer_below_drop_bottom 的登记基数同源（docs/pending-site-data.md #41）。
-  assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 144);
-  assert.equal(result.warnings.length, 154);
+  // 149 与 facts 契约 c.mep_layer_below_drop_bottom 的登记基数同源（docs/pending-site-data.md #41）：
+  // 2026-10-05 给排水 v1 新增 5 条排水路线，每条在所属厨卫铝扣板吊顶范围内新增 1 处（144→149）。
+  assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 149);
+  assert.equal(result.warnings.length, 158); // 无 layout context（本用例不传 layout），故不含穿墙类告警；带 layout 的 verify:mep 为 173
   assert.ok(result.warnings.some((issue) => issue.code === 'supply_return_overlap'));
   assert.ok(result.warnings.some((issue) => issue.code === 'nonphysical_route'));
   const balcony = config.routes.find((r) => r.id === 'drain-balcony')!;

@@ -952,6 +952,9 @@ facts:
       # 2026-10-04 A7：#44 逐条登记 22 个点位里 11 处无 MEP 走线引用的事实，
       # 首捕（22）与机器条目数对账；「11 处」是补登记前的基数，登记后由契约
       # c.plumbing_point_route_or_marked 改成盯「未标记点数必须为 0」。
+      # 2026-10-05 给排水 v1：点位 22→27（新增 drain_riser×3 / gas_meter / duct），
+      # 其中 6 处补了 v1 路线（5 条排水 + water-kitchen-requirement 的 to 改指点位），
+      # 显式 deferred 标记 11→7（gas_meter / duct 是非管路锚点，按契约登记 deferred）。
       - path: docs/pending-site-data.md
         extract: '(\d+)\s*个点位中\s*(\d+)\s*处既不是任何 route'
         severity: error
@@ -992,7 +995,7 @@ facts:
   # 量房待确认项条数：39 条是「还有什么没量」的账面。新增/关闭条目必须同步。
   - id: fact.pending_site_data_count
     kind: derived
-    value: "@docs/pending-site-data.md:量表共 47 条"
+    value: "@docs/pending-site-data.md:量表共 48 条"
     unit: 条
     mirrors:
       - path: docs/pending-site-data.md
@@ -1281,7 +1284,8 @@ contracts:
   # config/plumbing.yaml 22 个点位里曾有 11 个既不是任何 route 的 to/via，note 里也没说
   # 为什么——「静默缺席」。既有正确先例是 drain_mbath_toilet：note 明写
   # 「本轮不画 MEP route，待 SKU + 量房后单独深化」。
-  # 本契约把这句话变成硬门禁：标记删掉 → error；新增不画线也不登记的点位 → error。
+  # 2026-10-05 给排水 v1：22→27 个点位（+drain_riser×3 / gas_meter / drain_riser_kitchen 同源的
+  # 排烟道与燃气表），显式 deferred 标记由 11 降到 7；本契约把「必须表态」继续钉死。
   - id: c.plumbing_point_route_or_marked
     kind: covered_or_marked
     severity: error
@@ -1371,12 +1375,12 @@ contracts:
     room_heights_key: mep.room_heights
     default_room_height: 2.8
     tolerance: 0.005
-    registered_conflicts: 144
+    registered_conflicts: 149
     prose:
       - path: docs/mep-construction-guidance.md
         extract: '低于降板完成面的既有冲突\s*(\d+)\s*处'
         expect_matches: 1
-    pending: "MEP 吊顶内分层标高整层低于降板完成面（强电 2.45 < 2.50、冷凝水 2.35 < 2.50、弱电 2.50 < 0.15m 降板的 2.65 等），实算 144 处；需设计侧裁定：分层标高升入降板空腔（2.50–3.00m）或调整降板厚度/范围。跟踪 docs/pending-site-data.md #41；裁定后同步更新 docs/mep-construction-guidance.md §0 的登记数与本契约的 registered_conflicts"
+    pending: "MEP 吊顶内分层标高整层低于降板完成面（强电 2.45 < 2.50、冷凝水 2.35 < 2.50、弱电 2.50 < 0.15m 降板的 2.65 等），实算 149 处（2026-10-05 给排水 v1 新增 5 条排水路线，144→149，每条在所属厨卫铝扣板吊顶范围内新增 1 处，未改任何分层标高）；需设计侧裁定：分层标高升入降板空腔（2.50–3.00m）或调整降板厚度/范围。跟踪 docs/pending-site-data.md #41；裁定后同步更新 docs/mep-construction-guidance.md §0 的登记数与本契约的 registered_conflicts"
 
   - id: c.layout_region_room_overlap
     kind: overlap

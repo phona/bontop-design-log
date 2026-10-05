@@ -36,8 +36,13 @@ export const ElectricalPointSchema = z.object({
   x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
 }).strict();
 export const PlumbingPointSchema = z.object({
-  id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor', 'leb']),
+  id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor', 'leb', 'drain_riser', 'gas_meter', 'duct']),
   x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(),
+  status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
+  construction_status: z.enum(['confirmed', 'inferred', 'pending']).optional(),
+  uncertainty_m: finiteNumber.positive().optional(),
+  not_for_construction: z.boolean().optional(),
+  diameter: finiteNumber.positive().optional(),
 }).strict();
 export const CeilingZoneSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(VALID_CEILING_TYPES), thickness: finiteNumber.optional(),
@@ -168,10 +173,19 @@ export function parseElectricalTopology(raw: string, points?: ElectricalPoint[])
   return topology;
 }
 export const PlumbingPointsSchema = z.array(PlumbingPointSchema);
-// 投影内的 plumbing 来自 parsePlumbingPoints（wall_side 已映射为 wallSide），与 shared/types.ts 的 PlumbingPoint 对齐
+// 投影内的 plumbing 来自 parsePlumbingPoints（wall_side 已映射为 wallSide），与 shared/types.ts 的 PlumbingPoint 对齐。
+// 字段声明顺序必须与 parsePlumbingPoints 的产出顺序一致：wall_side 被解构后以 wallSide **追加在末尾**，
+// 故 wallSide 在本 schema 里也必须声明在最后一位，否则 parse(JSON.stringify(projection)) 的键序与
+// 产出键序不同，verify:project-render-facts 的字符串比对会误报 stale。
 export const PlumbingPointProjectionSchema = z.object({
   id: z.string(), room: z.string(), type: PlumbingPointSchema.shape.type,
-  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), note: z.string().optional(), height: finiteNumber.optional(), wallSide: WallSideSchema.optional(),
+  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), note: z.string().optional(), height: finiteNumber.optional(),
+  status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
+  construction_status: z.enum(['confirmed', 'inferred', 'pending']).optional(),
+  uncertainty_m: finiteNumber.positive().optional(),
+  not_for_construction: z.boolean().optional(),
+  diameter: finiteNumber.positive().optional(),
+  wallSide: WallSideSchema.optional(),
 }).strict();
 export const CeilingZonesSchema = z.array(CeilingZoneSchema);
 export const ProjectRenderFactsSchema = z.object({ electrical: ElectricalPointsSchema, plumbing: PlumbingPointsSchema, ceiling: CeilingZonesSchema, hvac: ProjectHvacFactsSchema }).strict();

@@ -1,22 +1,22 @@
 # 机电走线施工指导（水路 / 电路 / 中央空调，燃气除外）
 
-> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（73 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057；2026-10-04 DEC-2026-10-04-R2 补外机供电 strong-ac-outdoor，72→73）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
+> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（78 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057；2026-10-04 DEC-2026-10-04-R2 补外机供电 strong-ac-outdoor，72→73；2026-10-05 给排水 v1 补 5 条排水路线并改 water-kitchen-requirement 端点，73→78）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
 > **不是施工放线依据**：所有坐标为协调值，穿墙点、梁位、立管、墙体类型均需交房量房后终核修正。配置驱动，修正只改 yaml，渲染与校验自动跟随。
 
 ## 0. 规模口径（与 config/facts.yaml 对账）
 
 | 数据源 | 条目数 | 登记事实 |
 |---|---:|---|
-| `config/mep-hvac-coordination.yaml` | 共 73 条路由 | `fact.mep_routes_count` |
+| `config/mep-hvac-coordination.yaml` | 共 78 条路由 | `fact.mep_routes_count` |
 | `config/mep-hvac-coordination.yaml` | 共 8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风） | `fact.mep_layers_count` |
 | `config/electrical.yaml` | 共 98 个点位 | `fact.electrical_points_count` |
-| `config/plumbing.yaml` | 共 22 个点位 | `fact.plumbing_points_count` |
+| `config/plumbing.yaml` | 共 27 个点位 | `fact.plumbing_points_count` |
 | `config/ceiling.yaml` | 共 23 个吊顶分区 | `fact.ceiling_zones_count` |
-| `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 144 处 | `fact.mep_routes_count` + 契约 `c.mep_layer_below_drop_bottom` |
+| `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 149 处 | `fact.mep_routes_count` + 契约 `c.mep_layer_below_drop_bottom` |
 
 > 上表数字必须与 yaml 实际条目数一致，否则 `verify:facts` 的 count/fact 对账直接失败。
 
-> **2026-10-04 新增登记（契约 `c.mep_layer_below_drop_bottom`）**：走线表的**分层标高整层低于降板完成面**——强电 2.45m / 弱电 2.50m / 冷媒 2.55m / 冷凝水 2.35m，而 0.30m 降板的完成面是 2.80−0.30=**2.50m**、0.15m 降板与铝扣板是 **2.65m**。实算 **144 处**「路线点位低于所经吊顶完成面」，涉及 63 条路线 / 13 个吊顶分区。这不是逐条算错，是两套口径从未对齐；**未裁定前不许改数据消音**，裁定项见 `docs/pending-site-data.md #41`（分层标高升入降板空腔 2.50–3.00m，或调整降板厚度/范围）。契约以 error 级强制：实算数与上表登记的 144 不符即失败（变多=有人乱加路线，变少=有人改数据消音）。
+> **2026-10-04 新增登记（契约 `c.mep_layer_below_drop_bottom`）**：走线表的**分层标高整层低于降板完成面**——强电 2.45m / 弱电 2.50m / 冷媒 2.55m / 冷凝水 2.35m，而 0.30m 降板的完成面是 2.80−0.30=**2.50m**、0.15m 降板与铝扣板是 **2.65m**。实算 **149 处**「路线点位低于所经吊顶完成面」，涉及 68 条路线 / 13 个吊顶分区（2026-10-05 给排水 v1 新增 5 条排水路线，每条在所属厨卫铝扣板吊顶范围内新增 1 处——144→149、63→68，与 5 条新路线一一对应，未改任何分层标高）。这不是逐条算错，是两套口径从未对齐；**未裁定前不许改数据消音**，裁定项见 `docs/pending-site-data.md #41`（分层标高升入降板空腔 2.50–3.00m，或调整降板厚度/范围）。契约以 error 级强制：实算数与上表登记的 149 不符即失败（变多=有人乱加路线，变少=有人改数据消音）。
 
 ## 1. 走线总则
 
