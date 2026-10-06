@@ -1065,7 +1065,7 @@
   height: 0.7
   count: 1
   circuit: ordinary_power_parent_child
-  note: "客房床头插座·北侧（2026-10-05 R14 新增；h=0.7 床头高度，挂在 w_east_upper 卧室侧。w_east_upper 为剪力墙 inferred，开孔/锚固条件 site_pending，量房探测后确认）"
+  note: "客房床头插座·北侧（2026-10-05 R15 新增；h=0.7 床头高度，挂在 w_east_upper 卧室侧。w_east_upper 为剪力墙 inferred，开孔/锚固条件 site_pending，量房探测后确认）"
 - id: sock_guest_bed_r
   room: bedroom_se
   wall: w_east_upper
@@ -1076,7 +1076,7 @@
   height: 0.7
   count: 1
   circuit: ordinary_power_parent_child
-  note: "客房床头插座·南侧（2026-10-05 R14 新增；h=0.7；w_east_upper 剪力墙 inferred，开孔条件 site_pending）"
+  note: "客房床头插座·南侧（2026-10-05 R15 新增；h=0.7；w_east_upper 剪力墙 inferred，开孔条件 site_pending）"
 - id: switch_guest_bed
   room: bedroom_se
   wall: w_east_upper
@@ -1085,7 +1085,7 @@
   x: 16.40
   z: 7.60
   height: 1.3
-  note: "客房床头双控（2026-10-05 R14 新增）：与门边 switch_study 组双控控制客房吸顶灯 light_study_dome；control_study_light 由单控扩为双控。剪力墙 inferred，底盒预埋条件 site_pending"
+  note: "客房床头双控（2026-10-05 R15 新增）：与门边 switch_study 组双控控制客房吸顶灯 light_study_dome；control_study_light 由单控扩为双控。剪力墙 inferred，底盒预埋条件 site_pending"
 
 # 起夜路径 NP-1/NP-2（客房内）
 - id: night_guest_bed_side
@@ -1097,7 +1097,7 @@
   z: 7.60
   height: 0.30
   circuit: lighting_bedrooms_bath
-  note: "起夜 NP-1 床沿下位灯（R14）：挂在客房西墙 w_be_west 卧室侧、床西侧（上下床侧）地面引导，与床西缘距约 1.0m；避 d_bese 门扫掠域（z 6.05 洞口以北/以南均不侵入）；高度 0.30m 符合 night_light 0.25–0.40m 区间"
+  note: "起夜 NP-1 床沿下位灯（R15）：挂在客房西墙 w_be_west 卧室侧、床西侧（上下床侧）地面引导，与床西缘距约 1.0m；避 d_bese 门扫掠域（z 6.05 洞口以北/以南均不侵入）；高度 0.30m 符合 night_light 0.25–0.40m 区间"
 - id: night_guest_head
   room: bedroom_se
   wall: w_east_upper
@@ -1107,7 +1107,7 @@
   z: 7.60
   height: 0.35
   circuit: lighting_bedrooms_bath
-  note: "起夜 NP-2 床头小夜灯（R14）：床头正上方低位，触摸+感应双模；w_east_upper 剪力墙 inferred，挂装条件 site_pending"
+  note: "起夜 NP-2 床头小夜灯（R15）：床头正上方低位，触摸+感应双模；w_east_upper 剪力墙 inferred，挂装条件 site_pending"
 
 # 起夜路径 NP-3/NP-4（客房门外 + 客厅过渡段）
 - id: night_guest_door
@@ -1119,7 +1119,7 @@
   z: 6.90
   height: 0.30
   circuit: entry_base
-  note: "起夜 NP-3 客房门外灯（R14）：挂在 d_bese 门洞以南的客厅侧墙面（门洞跨度约 z[5.65,6.55]，本点位 z=6.90 在跨度外 0.35m，避开 stay-in-opening 校验），出门即亮；w_be_west 为实体隔墙非玻璃幕墙"
+  note: "起夜 NP-3 客房门外灯（R15）：挂在 d_bese 门洞以南的客厅侧墙面（门洞跨度约 z[5.65,6.55]，本点位 z=6.90 在跨度外 0.35m，避开 stay-in-opening 校验），出门即亮；w_be_west 为实体隔墙非玻璃幕墙"
 - id: night_living_north
   room: living_dining
   wall: w_liv_east
@@ -1129,7 +1129,7 @@
   z: 5.10
   height: 0.30
   circuit: entry_base
-  note: "起夜 NP-4a 客厅北段灯（R14）：w_liv_east 客厅侧，补客房门与走廊之间的北线引导"
+  note: "起夜 NP-4a 客厅北段灯（R15）：w_liv_east 客厅侧，补客房门与走廊之间的北线引导"
 - id: night_living_mid
   room: living_dining
   type: night_light
@@ -1137,7 +1137,7 @@
   z: 5.60
   height: 0.30
   circuit: entry_base
-  note: "起夜 NP-4b 客厅中段灯（R14）：路径中段约 4m 开敞区无墙无家具，暂按落地立柱候选；⚠️取电方式未定（地插/家具底部灯带/就近插座），site_pending；若不设此点，NP-3 与 NP-5 之间暗区超出标准 §4-1 的 3m 上限"
+  note: "起夜 NP-4b 客厅中段灯（R15）：路径中段约 4m 开敞区无墙无家具，暂按落地立柱候选；⚠️取电方式未定（地插/家具底部灯带/就近插座），site_pending；若不设此点，NP-3 与 NP-5 之间暗区超出标准 §4-1 的 3m 上限"
 
 # 起夜路径 NP-5（主走廊）
 - id: night_corridor
@@ -1147,7 +1147,7 @@
   z: 5.30
   height: 0.30
   circuit: entry_base
-  note: "起夜 NP-5 走廊口灯（R14）：路径西端转入主走廊的拐角，客厅侧落地立柱候选。⚠️走廊条带 x[4.20,7.20] z[4.30,5.55] 在 model-geometry 无 room 归属，点位只能落在客厅侧；走廊段本体由 light_corridor_1 日常下照兜底（2.8m，起夜刺眼）。取电方式 site_pending"
+  note: "起夜 NP-5 走廊口灯（R15）：路径西端转入主走廊的拐角，客厅侧落地立柱候选。⚠️走廊条带 x[4.20,7.20] z[4.30,5.55] 在 model-geometry 无 room 归属，点位只能落在客厅侧；走廊段本体由 light_corridor_1 日常下照兜底（2.8m，起夜刺眼）。取电方式 site_pending"
 
 # 起夜路径 NP-6/NP-7/NP-8（客卫）
 - id: night_gbath_door
@@ -1159,7 +1159,7 @@
   z: 3.45
   height: 0.30
   circuit: lighting_bedrooms_bath
-  note: "起夜 NP-6 客卫门口灯（R14）：w_gbath_west 墙段内（z[2.20,3.55]）、d_gbath 门洞北侧，内卫出门第一米；开放洗漱区侧由 NP-7 覆盖"
+  note: "起夜 NP-6 客卫门口灯（R15）：w_gbath_west 墙段内（z[2.20,3.55]）、d_gbath 门洞北侧，内卫出门第一米；开放洗漱区侧由 NP-7 覆盖"
 - id: night_gbath_vanity
   room: guest_bath
   wall: w_gbath_east_open_vanity
@@ -1169,7 +1169,7 @@
   z: 4.05
   height: 0.35
   circuit: lighting_bedrooms_bath
-  note: "起夜 NP-7 洗漱区灯（R14）：洗手台前停留位；避让台盆下扫地机基站 robot_dock_gbath @(6.823,3.925)（不同高、不同位，量房复核）"
+  note: "起夜 NP-7 洗漱区灯（R15）：洗手台前停留位；避让台盆下扫地机基站 robot_dock_gbath @(6.823,3.925)（不同高、不同位，量房复核）"
 - id: night_gbath_inner
   room: guest_bath
   wall: w_gbath_east
@@ -1179,4 +1179,4 @@
   z: 2.95
   height: 0.30
   circuit: lighting_bedrooms_bath
-  note: "起夜 NP-8 内卫灯（R14）：马桶前停留位；存在感应（人站着不动也亮）"
+  note: "起夜 NP-8 内卫灯（R15）：马桶前停留位；存在感应（人站着不动也亮）"

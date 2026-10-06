@@ -408,7 +408,7 @@ facts:
     kind: derived
     value: "@config/electrical-topology.yaml:circuits.length"
     unit: 路
-    as_of: DEC-2026-10-04-R2
+    as_of: DEC-2026-10-05-R3
     mirrors:
       - path: config/acceptance.yaml
         extract: '本户\s*(\d+)\s*条回路'
@@ -432,7 +432,7 @@ facts:
         reason: 权威源自身的轮次叙述（25 路→19 路→20 路）为时间序留档；回路数以 circuits.length 为唯一权威
       - path: config/acceptance.yaml
         pattern: '路'
-        reason: 验收单复述「本户 20 路」的箱体与分路判据；第 283 行「19 条回路」是本门禁唯一断点，已由上面的 mirror 单列
+        reason: 验收单复述「本户 21 路」的箱体与分路判据；第 283 行「21 条回路」由上面的 mirror 单列校验（DEC-2026-10-05-R3 浴霸拆每卫一路 20→21，旧文本「19 条回路」已随该轮同步改写）
       - path: config/hvac.yaml
         pattern: '路'
         reason: hvac.yaml 只在 notes 里复述拓扑结论（19→20 / 第 20 路），非回路权威源
@@ -447,7 +447,7 @@ facts:
         reason: house.yaml mep_strategy 复述 R2 结论（外机供电第 20 路），权威在 topology circuits
       - path: docs/pending-site-data.md
         pattern: '第\s*\d+\s*路'
-        reason: 量房清单 #39 复述 R2 结论；#30 的「19 路」由上面的 mirror 单列校验
+        reason: 量房清单 #39 复述 R2 结论；#30 的「21 路 + 2P」由上面的 mirror 单列校验（DEC-2026-10-05-R3 浴霸拆每卫一路 20→21）
       - path: docs/mep-construction-guidance.md
         pattern: '合并至'
         reason: 施工指导表格复述历史合并口径（25 路合并至 20 路），权威在 topology
@@ -456,7 +456,7 @@ facts:
     kind: derived
     value: "@config/mep-hvac-coordination.yaml:routes.length"
     unit: 条
-    as_of: DEC-2026-10-04-R2
+    as_of: DEC-2026-10-05-R18
     mirrors:
       - path: config/mep-hvac-coordination.yaml
         extract: '本表 routes 共\s*(\d+)\s*条'
@@ -943,6 +943,14 @@ facts:
         extract: 'config/electrical\.yaml 共\s*(\d+)\s*个点位'
         severity: error
         expect_matches: 1
+      # 2026-10-05 补齐 guidance mirror：§0 规模表的电气点位行（110）此前只由
+      # electrical-topology.yaml 单点对账；plumbing/ceiling/layers 都有 guidance mirror，
+      # 电气这条缺位 —— 施工指导是水电交底现场最常翻的那份，缺 mirror 等于交底单与登记表
+      # 可以各自漂移。正则与 plumbing/ceiling 两条同族（`\.yaml[^0-9]{0,12}共 N 个…`）。
+      - path: docs/mep-construction-guidance.md
+        extract: 'electrical\.yaml[^0-9]{0,12}共\s*(\d+)\s*个点位'
+        severity: error
+        expect_matches: 1
 
   # 给排水点位 / 吊顶分区：分别决定防水范围与吊顶工程量。
   - id: fact.plumbing_points_count
@@ -1039,10 +1047,15 @@ contracts:
     # 220 处噪声）。因此真正要抓的是两类：
     #   ① 反查不到 → dangling_reference
     #   ② 反查到了、但标题主题与引用语境不符 → reference_subject_mismatch
-    ref_pattern: '(DEC-(?:\d{4}-\d{2}-\d{2}-)?\d{3})\b'
+    # 编号族：既兼容 3 位序号（DEC-2026-08-26-045 / 短引 DEC-045），
+    # 也兼容同日多轮修订号 `-Rnn`（DEC-2026-10-04-R2 / DEC-2026-10-05-R15）。
+    # `R` 族的反查口径与 3 位序号不同：序号可按数字反查（DEC-045 → DEC-2026-…-045），
+    # 而 `Rnn` 必须带日期才是全引（DEC-2026-10-05-R15）；裸 `DEC-Rnn` 不构成可反查短引，
+    # 宁可报 dangling 也不猜。
+    ref_pattern: '(DEC-(?:\d{4}-\d{2}-\d{2}-)?(?:\d{3}|R\d{1,3}))\b'
     ref_scope: [config/, shared/, docs/, server/]
     target: docs/decision_log.md
-    target_pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-\d{3})\b.*'
+    target_pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3}))\b.*'
     # 已知错配：DEC-045 序号反查到 DEC-2026-08-26-045「主卧空调檐口」，
     # 但全仓把 DEC-045 当「主卫东墙底柜+下板+主板+PVC 盒四件同轴」引用，该决策从未入账。
     # 2026-10-04：该条 subject_assertion 已移至 c.dec045_subject_pending_adjudication
@@ -1385,7 +1398,23 @@ contracts:
       - path: docs/mep-construction-guidance.md
         extract: '低于降板完成面的既有冲突\s*(\d+)\s*处'
         expect_matches: 1
-    pending: "MEP 吊顶内分层标高整层低于降板完成面（强电 2.45 < 2.50、冷凝水 2.35 < 2.50、弱电 2.50 < 0.15m 降板的 2.65 等），实算 153 处（2026-10-05 给排水 v1 新增 5 条排水路线，144→149；DEC-2026-10-05-R11 客餐厅冷凝水改线 149→154 合计 +5；DEC-2026-10-05-R19 厨房铝扣板收回 z=2.4、餐厅改两条服务带后，refrigerant-trunk 原在厨房铝扣板（完成面 2.65）内的线段改在西侧服务带（完成面 2.50）空腔内，其 2.55 标高由低于改为高于完成面，该 hit 合法消失，154→153）；需设计侧裁定：分层标高升入降板空腔（2.50–3.00m）或调整降板厚度/范围。跟踪 docs/pending-site-data.md #41；裁定后同步更新 docs/mep-construction-guidance.md §0 的登记数与本契约的 registered_conflicts"
+    # ⑦ 修正通道（repair_channel）：本契约抓的既有冲突只能由**设计侧裁定**消解
+    # （分层标高升入降板空腔 2.50–3.00m or 调整降板厚度/范围），而此前引擎只告诉人
+    # 「不许静默消音」，没告诉人「正当修正长什么样」——于是任何一次几何改动都像消音。
+    # 本字段把修正出口显式登记，让合规修改变成可审计动作而不是游击改动：
+    #   decision_ref —— 修正必须附的 DEC 编号（全引，编号族见 c.dec_ref_resolvable）。
+    #     裁定落地前（docs/pending-site-data.md #41 未关）登记为 `pending:` 占位，
+    #     引擎按 exempt.pending 同纪律在 INFO 里露面；一旦设计侧出修正 DEC，必须换成该全引。
+    #   sync_files   —— 该修正必须同步的四个文件：改几何/降板（ceiling.yaml）→ 同步
+    #     施工指导 §0 prose → 同步待决台账 #41 → 同步本登记表的 registered_conflicts。
+    # 引擎校验通道自身齐全（decision_ref 空/既非 DEC 全引又非 pending 占位、sync_files
+    # 空或文件不存在 → repair_channel_invalid error），并在基线漂移报错时把该出口写进
+    # issue 正文。**error 语义不变**：registered_conflicts ≠ 实算 仍是 error，
+    # 通道只回答「要改的话必须怎么改」，不提供任何免检。
+    repair_channel:
+      decision_ref: 'pending:docs/pending-site-data.md #41 裁定后替换为设计侧修正 DEC 全引'
+      sync_files: [config/ceiling.yaml, docs/mep-construction-guidance.md, docs/pending-site-data.md, config/facts.yaml]
+    pending: "MEP 吊顶内分层标高整层低于降板完成面（强电 2.45 < 2.50、冷凝水 2.35 < 2.50、弱电 2.50 < 0.15m 降板的 2.65 等），实算 153 处（2026-10-05 给排水 v1 新增 5 条排水路线，144→149；DEC-2026-10-05-R11 客餐厅冷凝水改线 149→154 合计 +5；DEC-2026-10-05-R19 厨房铝扣板收回 z=2.4、餐厅改两条服务带后，refrigerant-trunk 原在厨房铝扣板（完成面 2.65）内的线段改在西侧服务带（完成面 2.50）空腔内，其 2.55 标高由低于改为高于完成面，该 hit 合法消失，154→153）；需设计侧裁定：分层标高升入降板空腔（2.50–3.00m）或调整降板厚度/范围。跟踪 docs/pending-site-data.md #41；正当修正通道见 repair_channel（须附修正 DEC 全引并同步 ceiling.yaml / mep-construction-guidance.md §0 / pending-site-data.md #41 / 本登记表 registered_conflicts）；裁定后同步更新 docs/mep-construction-guidance.md §0 的登记数与本契约的 registered_conflicts"
 
   - id: c.layout_region_room_overlap
     kind: overlap

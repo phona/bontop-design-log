@@ -35,5 +35,7 @@ if (jsonOutput) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 else {
   process.stdout.write(`Electrical lint: ${result.counts.errors ? 'error' : result.counts.warnings ? 'warning' : 'ok'} (${result.counts.errors} errors, ${result.counts.warnings} warnings)\n`);
   for (const item of [...result.errors, ...result.warnings]) process.stdout.write(`${item.level.toUpperCase()} [${item.code}] ${item.message}\n`);
+  // 2026-10 新增三条规范规则后的按规则汇总（新增输出行；既有行/JSON 字段不变）
+  process.stdout.write(`Rule summary: ${Object.entries(result.counts.byCode).sort(([a], [b]) => a.localeCompare(b)).map(([code, count]) => `${code}=${count}`).join(', ')}\n`);
 }
 if (result.errors.length > 0) process.exitCode = 1;

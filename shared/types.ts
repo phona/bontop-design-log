@@ -824,6 +824,13 @@ export interface ElectricalPoint {
   body_height?: number;
   status?: ElectricalPointStatus;
   position_status?: ElectricalPointStatus;
+  /**
+   * 智能开关零线口径（2026-10 电气 lint (c) `switch_neutral_policy_undeclared` 的落点）：
+   * `true` = 底盒已预留零线（智能开关可回零线供电）、`false` = 单火线方案不回零。
+   * 缺省即"未声明"，lint 会按 warning 登记；note 里写"零线/中性线/neutral"等价于显式声明。
+   * 依据：config/house.yaml 智能家居条目承诺"智能开关零线"，schema 侧长期无字段可机器核验。
+   */
+  neutral?: boolean;
   appearance?: ElectricalFixtureAppearance;
   note?: string;
 }

@@ -1647,17 +1647,20 @@ function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines:
 
   const registered = typeof contract.registered_conflicts === 'number' ? contract.registered_conflicts : undefined;
   if (registered !== undefined && registered !== actual) {
+    // 修正出口写进 error 正文：让人在失败现场就看到「正当修正长什么样」，
+    // 而不是只收到一句禁令后自己猜能不能改。error 语义不变（仍 error）。
+    const hint = repairChannelHint(contract);
     add(result, issue(
       contractLevel(contract),
       'ceiling_clearance_baseline_drift',
-      `${contract.id}：登记的既有冲突基数 ${registered} ≠ 机器实算 ${actual}。只有两种合法解释：①设计侧真的裁定了（分层标高升入降板空腔 or 调整降板厚度，需同步更新 prose 与 registered_conflicts 并关闭 docs/pending-site-data.md #41）；②有人改数据消音。二者都必须是有意识的改动，git diff 里看得见`,
+      `${contract.id}：登记的既有冲突基数 ${registered} ≠ 机器实算 ${actual}。只有两种合法解释：①设计侧真的裁定了（分层标高升入降板空腔 or 调整降板厚度，需同步更新 prose 与 registered_conflicts 并关闭 docs/pending-site-data.md #41）；②有人改数据消音。二者都必须是有意识的改动，git diff 里看得见${hint ? `。${hint}` : ''}`,
       source,
     ));
     tally(result, 'ceiling_clearance_baseline_drift');
   }
 }
 
-// ─── T3.12 covered_or_marked：点位要么被引用，要么显式表态 ────────────────────
+// ─── covered_or_marked：点位要么被引用，要么显式表态 ───────────────────────────
 //
 // 治「静默缺席」：一个点位躺在 config 里，没有任何 route 引用它，note 里也不说为什么——
 // 水电交底时它就是「没人认领」的那一处。本项目给排水 22 个点位里曾有 11 个处在这个状态
@@ -1731,6 +1734,89 @@ function runCoveredOrMarked(ws: FactsWorkspace, result: FactsLintResult, lines: 
   note(result, `${contract.id}：${items.length} 个点位中 ${referenced.size > 0 ? '' : ''}${marked} 个以显式 deferred 标记登记（未画 route），其余由 ${refSource} 的 route 引用`);
 }
 
+// ─── repair_channel：契约的「正当修正出口」校验（T3 附加层）────────────────────
+//
+// 治一个「只有禁令、没有出路」的死角：像 c.mep_layer_below_drop_bottom 这类契约，根因是
+// 设计侧口径未对齐，**只能**由设计侧裁定后修几何/降板才能消解。此前引擎对基线漂移只喊
+// 「不许静默消音」，却从不说明「合规的修正长什么样」——于是每次有人动数据都像消音，
+// 连带正当修正也不敢做（做了就被 error 挡住，只能偷偷改）。
+//
+// repair_channel 把出口显式登记成结构化字段：
+//   decision_ref —— 修正必须附的 DEC 全引（编号族与 c.dec_ref_resolvable 一致：
+//                   `DEC-YYYY-MM-DD-(nnn|Rnn)`）；裁定落地前允许 `pending:<待决入口>` 占位，
+//                   与 exempt 的 pending 同纪律——在 INFO 里露面，不假装已有 DEC 背书。
+//   sync_files   —— 该修正必须同步的文件清单（改一处必须连带同步其余，prose/登记表同改）。
+//
+// 引擎只做两件事：
+//   ① 校验通道自身齐全：decision_ref 空 / 既非 DEC 全引又非 pending 占位 / sync_files 空 /
+//      文件不存在 → repair_channel_invalid（error）。通道腐烂比没有通道更糟——
+//      它会让人以为有出路可走，走出去才发现是墙。
+//   ② 契约报出偏差时（目前接在 ceiling_clearance 的基线漂移上），把该出口写进 issue 正文，
+//      并在 INFO 里登记。**不改变任何契约的 error 语义**：registered_conflicts ≠ 实算
+//      仍是 error；通道回答「要改的话必须怎么改」，不提供免检。
+
+export interface RepairChannel {
+  /** DEC 全引，或 `pending:<指向待决入口的自由文本>` 占位。 */
+  decision_ref: string;
+  /** 修正必须同步的文件（仓库相对路径）。 */
+  sync_files: string[];
+}
+
+const DEC_FULL_REF_RE = /^DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3})$/;
+
+function repairChannelOf(contract: Contract): RepairChannel | undefined {
+  const raw = contract.repair_channel;
+  if (!isRecord(raw)) return undefined;
+  return { decision_ref: str(raw.decision_ref), sync_files: stringList(raw.sync_files) };
+}
+
+/** 报错时附在 issue 正文末尾的「正当修正出口」；通道未登记时返回空串（行为与从前一致）。 */
+function repairChannelHint(contract: Contract): string {
+  const channel = repairChannelOf(contract);
+  if (!channel) return '';
+  const files = channel.sync_files.length ? channel.sync_files.join('、') : '(未登记)';
+  const ref = DEC_FULL_REF_RE.test(channel.decision_ref)
+    ? channel.decision_ref
+    : `DEC 全引（当前登记：${channel.decision_ref || '空'}）`;
+  return `正当修正通道：附 ${ref} 修改设计侧几何/口径，并同步 ${files}；未附 DEC 的改动一律视为消音`;
+}
+
+function validateRepairChannel(ws: FactsWorkspace, result: FactsLintResult, contract: Contract): void {
+  const channel = repairChannelOf(contract);
+  if (!channel) return;
+  const { decision_ref, sync_files } = channel;
+  const where = str(contract.source) || contract.id;
+  if (!decision_ref) {
+    add(result, issue('error', 'repair_channel_invalid', `${contract.id}：repair_channel.decision_ref 为空——正当修正必须挂 DEC 编号，无出处即无修正`, where));
+    tally(result, 'repair_channel_invalid');
+  } else if (!DEC_FULL_REF_RE.test(decision_ref) && !decision_ref.startsWith('pending:')) {
+    add(result, issue(
+      'error',
+      'repair_channel_invalid',
+      `${contract.id}：repair_channel.decision_ref「${decision_ref}」既不是 DEC 全引（DEC-YYYY-MM-DD-(nnn|Rnn)），也不是 pending: 占位——修正出处必须可解析`,
+      where,
+    ));
+    tally(result, 'repair_channel_invalid');
+  }
+  if (!sync_files.length) {
+    add(result, issue('error', 'repair_channel_invalid', `${contract.id}：repair_channel.sync_files 为空——修正必须登记要同步的文件，否则改完几何没人同步 prose 与登记表`, where));
+    tally(result, 'repair_channel_invalid');
+  }
+  for (const file of sync_files) {
+    if (ws.read(file) !== null) continue;
+    add(result, issue('error', 'repair_channel_invalid', `${contract.id}：repair_channel.sync_files 中的 ${file} 不存在——登记出口腐烂`, where));
+    tally(result, 'repair_channel_invalid');
+  }
+  // 通道自身没报错才露面：待决占位与 exempt.pending 同纪律（INFO 单列，不假装已有 DEC）。
+  const intact = sync_files.length > 0 && sync_files.every((f) => ws.read(f) !== null);
+  if (!intact) return;
+  if (decision_ref.startsWith('pending:')) {
+    note(result, `contract ${contract.id} 修正通道待决 — ${decision_ref.slice('pending:'.length)}｜DEC 落地后须替换 decision_ref 并同步：${sync_files.join('、')}`);
+  } else if (DEC_FULL_REF_RE.test(decision_ref)) {
+    note(result, `contract ${contract.id} 修正通道已登记 — ${decision_ref}｜改设计侧必须同步：${sync_files.join('、')}`);
+  }
+}
+
 // ─── 入口 ────────────────────────────────────────────────────────────────────
 
 export function lintFacts(registry: FactsRegistry, ws: FactsWorkspace): FactsLintResult {
@@ -1771,6 +1857,9 @@ export function lintFacts(registry: FactsRegistry, ws: FactsWorkspace): FactsLin
   for (const contract of registry.contracts ?? []) {
     if (contract.pending) note(result, `contract ${contract.id} 待决 — ${contract.pending}`);
   }
+  // repair_channel 自校验：通道是「正当修正的登记出口」，它自己腐烂（缺字段/文件被删/
+  // DEC 形状非法）比没有出口更糟——会让人以为有路可走。与豁免必须写 reason 同一纪律。
+  for (const contract of registry.contracts ?? []) validateRepairChannel(ws, result, contract);
   result.counts.errors = result.errors.length;
   result.counts.warnings = result.warnings.length;
   return result;

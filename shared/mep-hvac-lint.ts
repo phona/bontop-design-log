@@ -1,4 +1,4 @@
-import type { CeilingZone, HvacAnchor, HvacTerminal, ResolvedLayout } from './types.js';
+import type { CeilingZone, HvacAnchor, HvacTerminal, ResolvedLayout, ResolvedWall, Vertex } from './types.js';
 import {
   isMepPhysicalRoute,
   mepRoutePoints,
@@ -16,9 +16,21 @@ export interface MepLintIssue {
   message: string;
   routeId?: string;
   relatedRouteId?: string;
+  /** (e) warning 分桶：交底前必须清 / 量房后复判 / 模型包络近似。既有字段语义不变，只新增。 */
+  category?: MepLintCategory;
 }
 export interface MepLintCounts { errors: number; warnings: number; routes: number; resolvedRoutes: number; }
-export interface MepLintResult { errors: MepLintIssue[]; warnings: MepLintIssue[]; counts: MepLintCounts; }
+/**
+ * (e) 三桶口径：
+ *   - must_fix_before_briefing：水电交底前必须清（本轮新规则 (a)(b)(c)(d) 全部落入此桶，以及默认值）；
+ *   - survey_dependent：量房后自然消或需复判（吊顶净空未核实、剪力墙穿透、梁碰撞）；
+ *   - envelope_approximation：模型包络近似/非物理需求路线，不代表设计错误。
+ */
+export type MepLintCategory = 'must_fix_before_briefing' | 'survey_dependent' | 'envelope_approximation';
+export const MEP_LINT_CATEGORIES: readonly MepLintCategory[] = ['must_fix_before_briefing', 'survey_dependent', 'envelope_approximation'];
+export interface MepLintCategoryBucket { count: number; codes: Array<{ code: string; count: number }>; }
+export type MepLintCategorySummary = Record<MepLintCategory, MepLintCategoryBucket>;
+export interface MepLintResult { errors: MepLintIssue[]; warnings: MepLintIssue[]; counts: MepLintCounts; /** (e) 分桶汇总；可选是为了让只构造 errors/warnings/counts 的调用方（渲染器/徽标的 fixture）不必补桶。 */ categories?: MepLintCategorySummary; }
 
 export interface MepLintLayoutContext {
   layout?: ResolvedLayout;
@@ -29,6 +41,67 @@ export interface MepLintLayoutContext {
 
 /** 实心吊顶（降板/铝扣板/一体）的类型集合：与 shared/render/CeilingZoneBuilder.ts 的 SOLID_TYPES 同源。 */
 const SOLID_CEILING_TYPES = new Set(['drop', 'integrated', 'aluminum_buckle']);
+
+/** (e) issue code → 分桶。未登记 code 一律按「交底前必须清」处理（数据/契约缺口，不是量房能消的近似）。 */
+const ISSUE_CATEGORY: Record<string, MepLintCategory> = {
+  // 本轮新规则 (a)(b)(c)(d)：交底前必须清
+  gravity_slope_geometry_mismatch: 'must_fix_before_briefing',
+  route_not_orthogonal: 'must_fix_before_briefing',
+  penetration_door_clearance: 'must_fix_before_briefing',
+  shear_wall_parallel_route: 'must_fix_before_briefing',
+  // 量房后自然消或需复判
+  ceiling_clearance_unverified: 'survey_dependent',
+  shear_wall_penetration: 'survey_dependent',
+  beam_collision: 'survey_dependent',
+  // 模型包络近似 / 非物理需求路线
+  supply_return_overlap: 'envelope_approximation',
+  reference_constraint_uncertain: 'envelope_approximation',
+  suppressed_wall_crossing: 'envelope_approximation',
+  nonphysical_route: 'envelope_approximation',
+};
+const DEFAULT_CATEGORY: MepLintCategory = 'must_fix_before_briefing';
+function categoryOf(code: string): MepLintCategory { return ISSUE_CATEGORY[code] ?? DEFAULT_CATEGORY; }
+function emptyCategoryBuckets(): MepLintCategorySummary {
+  return {
+    must_fix_before_briefing: { count: 0, codes: [] },
+    survey_dependent: { count: 0, codes: [] },
+    envelope_approximation: { count: 0, codes: [] },
+  };
+}
+function summarizeCategories(issues: MepLintIssue[]): MepLintCategorySummary {
+  const buckets = emptyCategoryBuckets();
+  const perCode = new Map<string, { category: MepLintCategory; count: number }>();
+  for (const item of issues) {
+    const category = item.category ?? categoryOf(item.code);
+    buckets[category].count += 1;
+    const entry = perCode.get(item.code) ?? { category, count: 0 };
+    entry.count += 1;
+    perCode.set(item.code, entry);
+  }
+  for (const [code, entry] of perCode) buckets[entry.category].codes.push({ code, count: entry.count });
+  for (const category of MEP_LINT_CATEGORIES) buckets[category].codes.sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
+  return buckets;
+}
+
+// ── (a)(b) 平面/竖向几何检查的共用阈值 ──
+/** (a) 与声明坡度允许的相对偏差：±50%（规范只定最小坡度；过小流不动、过大冲刷管壁与存水弯）。 */
+const GRAVITY_SLOPE_TOLERANCE = 0.5;
+/** (a) 水平长度不足 30cm 的段不参与坡度判定：1–2% 坡度在 0.3m 上只有 3–6mm 落差，低于 y 取值精度， */
+/** 逐段判会把示意性 vertex 刷成告警（墙排柜内大落差同理，另见 WALL_DRAIN_METHOD）。 */
+const GRAVITY_MIN_RUN = 0.3;
+/** (a) 墙排（gravity_wall_drain）允许柜内大落差，故按全线汇总落差/水平长度判定，不逐段判。 */
+const WALL_DRAIN_METHOD = 'wall_drain';
+/** (b) 斜线段阈值：Δx 与 Δz 同时超过 2cm 即算斜线（小于放线/取整公差）。 */
+const ORTHOGONAL_TOLERANCE = 0.02;
+/** (b) 只覆盖地埋/垫层给排水层：顶面强电/弱电/冷媒/风管在本项目数据里存在示意性斜线 */
+/** （如 bend_corridor 按吊顶走向示意、端点±0.1m 就位 jog），属包络近似；给排水斜线直接影响 */
+/** 连续坡度、放线正交约定与存水弯，故本轮只抓给排水两层。 */
+const ORTHOGONAL_LAYERS = new Set(['water_supply', 'drainage']);
+/** (c) 穿点与同墙门洞的最小净距。 */
+const DOOR_CLEARANCE_MIN = 0.15;
+/** (d) 与剪力墙平行距离阈值 / 最小并行持续长度。 */
+const SHEAR_PARALLEL_MAX_DISTANCE = 0.15;
+const SHEAR_PARALLEL_MIN_RUN = 1.0;
 
 /**
  * 吊顶「完成面」标高——即从房间内看到的吊顶表面高度。
@@ -70,7 +143,10 @@ type Box = { minX: number; maxX: number; minY: number; maxY: number; minZ: numbe
 function issue(level: MepLintLevel, code: string, message: string, routeId?: string, relatedRouteId?: string): MepLintIssue {
   return { level, code, message, ...(routeId ? { routeId } : {}), ...(relatedRouteId ? { relatedRouteId } : {}) };
 }
-function add(result: MepLintResult, item: MepLintIssue): void { result[item.level === 'error' ? 'errors' : 'warnings'].push(item); }
+function add(result: MepLintResult, item: MepLintIssue): void {
+  // 每条 finding 都带 category：分桶口径集中在 categoryOf 一处，新增 code 不会漏桶。
+  result[item.level === 'error' ? 'errors' : 'warnings'].push({ ...item, category: categoryOf(item.code) });
+}
 function pointEqual(a: Point, b: Point): boolean { return a.x === b.x && a.z === b.z; }
 function segmentsCross(a: Point, b: Point, c: Point, d: Point): boolean {
   const cross = (p: Point, q: Point, r: Point) => (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x);
@@ -186,25 +262,143 @@ function routeWallIntersection(points: Point[], wall: { x1: number; z1: number; 
   }
   return undefined;
 }
-interface PenetrationDecl { wall?: string; at?: { x: number; z: number } }
+interface PenetrationDecl { wall?: string; at?: { x: number; z: number }; height?: number }
 function penetrationsOf(route: MepRoute): PenetrationDecl[] {
   const raw = (route as MepRoute & { penetration?: unknown }).penetration;
   if (!Array.isArray(raw)) return [];
   const out: PenetrationDecl[] = [];
   for (const entry of raw) {
     if (typeof entry !== 'object' || entry === null) continue;
-    const e = entry as { wall?: unknown; at?: unknown };
+    const e = entry as { wall?: unknown; at?: unknown; height?: unknown };
     const at = typeof e.at === 'object' && e.at !== null ? e.at as { x?: unknown; z?: unknown } : undefined;
     out.push({
       wall: typeof e.wall === 'string' ? e.wall : undefined,
       at: at && typeof at.x === 'number' && typeof at.z === 'number' ? { x: at.x, z: at.z } : undefined,
+      ...(typeof e.height === 'number' ? { height: e.height } : {}),
     });
   }
   return out;
 }
 
+/** 墙的走向主轴（角点坐标 x1,z1→x2,z2）：x 向墙沿 x 量距，z 向墙沿 z 量距。 */
+function wallAxis(wall: { x1: number; z1: number; x2: number; z2: number }): 'x' | 'z' {
+  return Math.abs(wall.x2 - wall.x1) >= Math.abs(wall.z2 - wall.z1) ? 'x' : 'z';
+}
+function alongValue(point: Point, axis: 'x' | 'z'): number { return axis === 'x' ? point.x : point.z; }
+function wallSpan(wall: { x1: number; z1: number; x2: number; z2: number }, axis: 'x' | 'z'): { lo: number; hi: number } {
+  return { lo: Math.min(alongValue({ x: wall.x1, z: wall.z1 }, axis), alongValue({ x: wall.x2, z: wall.z2 }, axis)), hi: Math.max(alongValue({ x: wall.x1, z: wall.z1 }, axis), alongValue({ x: wall.x2, z: wall.z2 }, axis)) };
+}
+/** 点到墙线的垂直距离（墙是无限长直线意义上的距离，端点外延同样适用）。 */
+function perpendicularDistance(point: Point, wall: { x1: number; z1: number; x2: number; z2: number }): number {
+  const dx = wall.x2 - wall.x1, dz = wall.z2 - wall.z1;
+  const length = Math.hypot(dx, dz);
+  if (length < 1e-9) return Number.POSITIVE_INFINITY;
+  return Math.abs(dx * (point.z - wall.z1) - dz * (point.x - wall.x1)) / length;
+}
+/** (c) 同墙门洞区间：已解算的 opening 直接带 x/z 中心；未解算时按 anchor/offset/width 自行换算。 */
+interface DoorSpan { id: string; axis: 'x' | 'z'; from: number; to: number; top?: number }
+function doorSpans(wall: ResolvedWall, vertices?: Vertex[]): DoorSpan[] {
+  const raw = (wall as { openings?: unknown }).openings;
+  if (!Array.isArray(raw)) return [];
+  const vmap = new Map((vertices ?? []).map((vertex) => [vertex.id, { x: vertex.x, z: vertex.z }]));
+  const axis = wallAxis(wall);
+  const spans: DoorSpan[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const e = entry as { id?: unknown; type?: unknown; width?: unknown; height?: unknown; x?: unknown; z?: unknown; anchor?: unknown; offset?: unknown };
+    if (typeof e.type === 'string' && e.type !== 'door') continue;
+    if (typeof e.width !== 'number' || !(e.width > 0)) continue; // 洞宽不可解析 → 静默跳过
+    const center = openingCenter(e, wall, axis, vmap);
+    if (center === undefined) continue; // 锚点/offset 不可解 → 静默跳过（不报错、不误报）
+    spans.push({ id: typeof e.id === 'string' ? e.id : `${wall.id}:opening`, axis, from: center - e.width / 2, to: center + e.width / 2, ...(typeof e.height === 'number' ? { top: e.height } : {}) });
+  }
+  return spans;
+}
+function openingCenter(
+  e: { x?: unknown; z?: unknown; anchor?: unknown; offset?: unknown },
+  wall: { x1: number; z1: number; x2: number; z2: number },
+  axis: 'x' | 'z',
+  vmap: Map<string, Point>,
+): number | undefined {
+  // 已由 layout-resolver 解算过的 opening：中心就是 (x,z)
+  if (typeof e.x === 'number' && typeof e.z === 'number') return axis === 'x' ? e.x : e.z;
+  // 原始 model-geometry 结构：anchor 顶点 + 沿墙 offset（锚点到洞中心）+ width
+  const anchor = typeof e.anchor === 'string' ? vmap.get(e.anchor) : (typeof e.anchor === 'object' && e.anchor !== null && typeof (e.anchor as Point).x === 'number' ? e.anchor as Point : undefined);
+  if (!anchor || typeof e.offset !== 'number') return undefined;
+  const dx = wall.x2 - wall.x1, dz = wall.z2 - wall.z1;
+  const length = Math.hypot(dx, dz);
+  if (length < 1e-9) return undefined;
+  const nearStart = Math.hypot(anchor.x - wall.x1, anchor.z - wall.z1) <= Math.hypot(anchor.x - wall.x2, anchor.z - wall.z2);
+  const base = nearStart ? { x: wall.x1, z: wall.z1 } : { x: wall.x2, z: wall.z2 };
+  const sign = nearStart ? 1 : -1;
+  return alongValue({ x: base.x + (dx / length) * e.offset * sign, z: base.z + (dz / length) * e.offset * sign }, axis);
+}
+/** 穿点到门洞区间的沿墙净距（0 = 落在门洞里）。 */
+function doorClearance(point: Point, span: DoorSpan): number {
+  const position = alongValue(point, span.axis);
+  if (position < span.from) return span.from - position;
+  if (position > span.to) return position - span.to;
+  return 0;
+}
+/**
+ * (a) 声明坡度 vs 实际落差比。墙排（wall drain）按全线汇总落差/水平长度判定——
+ * 柜内转 90° 会吃掉大部分落差，逐段判会把正常墙排全刷成告警；其它重力管逐段判，
+ * 水平长度 <GRAVITY_MIN_RUN 的竖降段跳过。返回偏差最大的那一处（每路线只报一次）。
+ */
+function gravitySlopeDeviation(points: Point[], slope: number, wallDrain: boolean): { ratio: number; multiple: number; detail: string } | undefined {
+  if (wallDrain) {
+    const drop = Math.abs((points[points.length - 1].y as number) - (points[0].y as number));
+    const length = points.slice(1).reduce((sum, point, index) => sum + Math.hypot(point.x - points[index].x, point.z - points[index].z), 0);
+    if (length < 1e-6) return undefined;
+    const ratio = drop / length;
+    if (Math.abs(ratio / slope - 1) <= GRAVITY_SLOPE_TOLERANCE) return undefined;
+    return { ratio, multiple: ratio / slope, detail: `wall drain drops ${drop.toFixed(3)}m over ${length.toFixed(2)}m of horizontal run` };
+  }
+  let worst: { ratio: number; multiple: number; detail: string } | undefined;
+  for (let i = 1; i < points.length; i += 1) {
+    const a = points[i - 1], b = points[i];
+    const length = Math.hypot(b.x - a.x, b.z - a.z);
+    if (length < GRAVITY_MIN_RUN) continue; // 竖降/柜内接管/示意性 vertex，不参与坡度判定
+    const ratio = Math.abs((b.y as number) - (a.y as number)) / length;
+    if (Math.abs(ratio / slope - 1) <= GRAVITY_SLOPE_TOLERANCE) continue;
+    if (!worst || Math.abs(ratio / slope - 1) > Math.abs(worst.multiple - 1)) {
+      worst = { ratio, multiple: ratio / slope, detail: `segment #${i} (${a.x},${a.z})→(${b.x},${b.z}) over ${length.toFixed(2)}m` };
+    }
+  }
+  return worst;
+}
+/** (d) 折线中与剪力墙平行且垂直距离 <0.15m 的最长「持续」长度（相邻合格段累加，遇非平行/超距段断开）。 */
+function shearParallelRun(points: Point[], wall: ResolvedWall): { run: number; distance: number } {
+  const dx = wall.x2 - wall.x1, dz = wall.z2 - wall.z1;
+  const wallLength = Math.hypot(dx, dz);
+  if (wallLength < 1e-9) return { run: 0, distance: Number.POSITIVE_INFINITY };
+  const ux = dx / wallLength, uz = dz / wallLength;
+  const axis = wallAxis(wall);
+  const { lo, hi } = wallSpan(wall, axis);
+  let best = { run: 0, distance: Number.POSITIVE_INFINITY }, run = 0, runDistance = Number.POSITIVE_INFINITY;
+  for (let i = 1; i < points.length; i += 1) {
+    const a = points[i - 1], b = points[i];
+    const sx = b.x - a.x, sz = b.z - a.z;
+    const length = Math.hypot(sx, sz);
+    const sin = length > 1e-9 ? Math.abs(ux * sz - uz * sx) / length : 1;
+    const distance = Math.min(perpendicularDistance(a, wall), perpendicularDistance(b, wall));
+    if (length > 1e-9 && sin < 0.02 && distance <= SHEAR_PARALLEL_MAX_DISTANCE) {
+      const from = Math.min(alongValue(a, axis), alongValue(b, axis));
+      const to = Math.max(alongValue(a, axis), alongValue(b, axis));
+      run += Math.max(0, Math.min(to, hi) - Math.max(from, lo)); // 只算与墙身重叠的那段
+      runDistance = Math.min(runDistance, distance);
+    } else {
+      if (run > best.run) best = { run, distance: runDistance };
+      run = 0;
+      runDistance = Number.POSITIVE_INFINITY;
+    }
+  }
+  if (run > best.run) best = { run, distance: runDistance };
+  return best;
+}
+
 export function lintMepCoordination(config: MepCoordination, sources: MepEndpointSources, context: MepLintLayoutContext = {}): MepLintResult {
-  const result: MepLintResult = { errors: [], warnings: [], counts: { errors: 0, warnings: 0, routes: config.routes.length, resolvedRoutes: 0 } };
+  const result: MepLintResult = { errors: [], warnings: [], counts: { errors: 0, warnings: 0, routes: config.routes.length, resolvedRoutes: 0 }, categories: emptyCategoryBuckets() };
   const ids = sourceIds(sources);
   const resolved = resolveMepRoutes(config, sources);
   result.counts.resolvedRoutes = resolved.resolved;
@@ -240,6 +434,27 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         const up = /up|升|高/i.test(explicitDirection);
         if ((down && lowToHigh) || (up && !lowToHigh && route.to_height !== route.from_height)) add(result, issue('error', 'gravity_direction_height_conflict', `Gravity route ${route.id} explicit direction conflicts with heights`, route.id));
       }
+      // (a) 现有重力检查只比 from/to 两个端点，折线中段的上升段与「声明坡度 vs 实际落差比」都不看。
+      const headingDown = /down|降|低|drain/i.test(route.flow_direction ?? '');
+      if (slope !== undefined && points.length >= 2 && points.every((p) => p.y !== undefined)) {
+        const rise = points.findIndex((point, index) => index > 0 && (point.y as number) > (points[index - 1].y as number) + 1e-9);
+        if (headingDown && rise > 0) {
+          const previous = points[rise - 1], current = points[rise];
+          add(result, issue('warning', 'gravity_slope_geometry_mismatch', `Gravity route ${route.id} segment #${rise} (${previous.x},${previous.z})→(${current.x},${current.z}) rises ${(previous.y as number).toFixed(3)}m → ${(current.y as number).toFixed(3)}m; flow_direction down requires non-increasing via heights`, route.id));
+        }
+        const deviation = gravitySlopeDeviation(points, slope, route.method?.includes(WALL_DRAIN_METHOD) ?? false);
+        if (deviation) add(result, issue('warning', 'gravity_slope_geometry_mismatch', `Gravity route ${route.id} ${deviation.detail} develops ${(deviation.ratio * 100).toFixed(2)}% against declared slope ${(slope * 100).toFixed(2)}% (${deviation.multiple.toFixed(2)}× the declared slope, tolerance ±50%)`, route.id));
+      }
+    }
+    // (b) 相邻点斜线段（只覆盖给排水层，见 ORTHOGONAL_LAYERS 说明）
+    if (ORTHOGONAL_LAYERS.has(route.layer)) {
+      const diagonal = points.findIndex((point, index) => index > 0
+        && Math.abs(point.x - points[index - 1].x) > ORTHOGONAL_TOLERANCE
+        && Math.abs(point.z - points[index - 1].z) > ORTHOGONAL_TOLERANCE);
+      if (diagonal > 0) {
+        const previous = points[diagonal - 1], current = points[diagonal];
+        add(result, issue('warning', 'route_not_orthogonal', `Route ${route.id} segment #${diagonal} (${previous.x},${previous.z})→(${current.x},${current.z}) moves Δx=${Math.abs(current.x - previous.x).toFixed(2)}m and Δz=${Math.abs(current.z - previous.z).toFixed(2)}m at once; plumbing runs must stay orthogonal (Manhattan) polylines`, route.id));
+      }
     }
     if (route.source_status === 'design_requirement' && route.status === 'confirmed') add(result, issue('error', 'evidence_status_conflict', `Design requirement route ${route.id} cannot be confirmed`, route.id));
     if (route.status !== 'confirmed' && route.construction_status === 'confirmed') add(result, issue('error', 'construction_status_conflict', `Non-confirmed route ${route.id} cannot have confirmed construction status`, route.id));
@@ -251,6 +466,35 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     const airEnvelope = air && isPhysicalBoxRoute(route, points) ? airRouteBox(route, points) : undefined;
     const box = layer && isPhysicalBoxRoute(route, points) ? (air ? airEnvelope?.box : routeBox(route, points)) : undefined;
     boxes.push({ route, box, points, airHeightConfirmed: airEnvelope?.heightConfirmed });
+    if (context.layout) {
+      const penetrations = penetrationsOf(route);
+      // (c) 穿点与同墙门洞净距：门垛 <0.15m 的穿孔现场做不出套管/盒，交底前必须清。
+      const wallsById = new Map(context.layout.walls.map((wall) => [wall.id, wall]));
+      for (const declared of penetrations) {
+        if (!declared.wall || !declared.at) continue;
+        const wall = wallsById.get(declared.wall);
+        if (!wall) continue;
+        const spans = doorSpans(wall, context.layout.vertices);
+        if (!spans.length) continue; // 没有可解析门洞数据 → 静默跳过，不报错也不误报
+        const nearest = spans.map((span) => ({ span, clearance: doorClearance(declared.at!, span) })).sort((a, b) => a.clearance - b.clearance)[0];
+        if (nearest.clearance >= DOOR_CLEARANCE_MIN) continue;
+        const span = nearest.span;
+        // 穿点在门洞顶以上 = 过门头（门楣/过梁复核）；在门洞高度内 = 会打到门垛；低于门洞 = 低位过洞口（门槛/地面做法）。
+        const vertical = span.top !== undefined && declared.height !== undefined
+          ? (declared.height > span.top ? `; declared height ${declared.height.toFixed(2)}m is above the door head ${span.top.toFixed(2)}m (over-header crossing, check the lintel)` : `; declared height ${declared.height.toFixed(2)}m is inside the door opening height ${span.top.toFixed(2)}m`)
+          : '';
+        add(result, issue('warning', 'penetration_door_clearance', `Route ${route.id} declared penetration on ${wall.id} at (${declared.at.x.toFixed(2)},${declared.at.z.toFixed(2)}) is ${nearest.clearance.toFixed(2)}m from door opening ${span.id} (${span.axis} ${span.from.toFixed(2)}–${span.to.toFixed(2)}); keep at least ${DOOR_CLEARANCE_MIN.toFixed(2)}m from the door jamb${vertical}`, route.id));
+      }
+      // (d) 与剪力墙并行：贴墙长距离并行会限制开槽/植筋并易打穿保护层，需在交底前复核。
+      if (points.length >= 2) {
+        for (const wall of context.layout.walls) {
+          if (wall.structure !== 'shear') continue;
+          const parallel = shearParallelRun(points, wall);
+          if (parallel.run <= SHEAR_PARALLEL_MIN_RUN) continue;
+          add(result, issue('warning', 'shear_wall_parallel_route', `Route ${route.id} runs parallel to shear wall ${wall.id} for ${parallel.run.toFixed(2)}m at ${parallel.distance.toFixed(2)}m; keep clear of the shear wall or confirm the sleeve/ groove strategy before briefing`, route.id));
+        }
+      }
+    }
     if (context.layout && from && to) {
       const penetrations = penetrationsOf(route);
       for (const wall of context.layout.walls) {
@@ -373,6 +617,8 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
   }
   result.counts.errors = result.errors.length;
   result.counts.warnings = result.warnings.length;
+  // (e) 分桶统计覆盖 errors + warnings：三桶 count 之和 == finding 总数（含 error）。
+  result.categories = summarizeCategories([...result.errors, ...result.warnings]);
   return result;
 }
 

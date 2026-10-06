@@ -1,0 +1,179 @@
+{
+  "iteration_id": "mep-lint-governance-20261006",
+  "subject": "MEP lint / 电气 lint warning 分类治理台账（accept / reject / pending_adjudication）",
+  "supersedes": "docs/design-iterations/mep-routing-20260901/review-manifest.json 的「15 条已接受项 / 0 error / 22 warning」基线（2026-09-07 快照，已不再是现行基线）",
+  "linked_docs": [
+    "docs/mep-construction-guidance.md §6",
+    "docs/pending-site-data.md",
+    "config/facts.yaml 契约 c.mep_layer_below_drop_bottom / c.leb_point_requires_bond_schedule"
+  ],
+  "state_note": "所有 count 为 2026-10-06 实跑口径：npm run verify:mep（shared/mep-hvac-lint.ts，result.categories 三桶）与 npm run verify:electrical（shared/electrical-lint.ts，result.counts.byCode）的 JSON 输出即权威；本台账由 tests/server/mep-guidance-baseline.test.ts 逐条与实算对账——台账数字必须与实时 lint 完全一致，任何一侧漂移（lint 新规则加入、台账未同步）测试即 fail。台账本身是「某一轮实测快照」，必须写实测数；而 docs/mep-construction-guidance.md 里凡出现 warning 总数处只写「与实算一致」的语义（不写死 219 / 71），由测试实时回抽比对。",
+  "verification_commands": [
+    "npm run verify:mep",
+    "npm run verify:electrical",
+    "npm run verify:facts",
+    "npm run test:server",
+    "npm run typecheck"
+  ],
+  "dispositions": [
+    {
+      "code": "penetration_door_clearance",
+      "count": 15,
+      "category": "must_fix_before_briefing",
+      "disposition": "reject",
+      "basis": "交底前必须清：穿点距门洞 <0.15m 或过门头高度关系不清，Case 1（w_strip_east 4.20,4.60 距 d_mb 仅 0.05m）、Case 3（w_nw_south 4.35,4.30 距 d_bnw 0.20m）、Case 5（w_be_west 13.40,6.29 距 d_bese 0.00m 过门头）等点位已在 docs/mep-construction-guidance.md §1/§2.2/§5 标注为量房重点复核项；GB 50327 承重墙剔槽不得损坏钢筋 + 门套/过梁构造决定了这类穿点不能照图施工",
+      "owner": "设计侧（mep 协同）",
+      "clearing_condition": "量房实测门洞/门套/过梁尺寸后逐条重定穿点（净距 ≥0.15m 或明确过门头高度窗口），回写 config/mep-hvac-coordination.yaml 的 penetration 与 design-datum.yaml，verify:mep 该类归零；未归零不许进水电交底"
+    },
+    {
+      "code": "gravity_slope_geometry_mismatch",
+      "count": 14,
+      "category": "must_fix_before_briefing",
+      "disposition": "reject",
+      "basis": "交底前必须清：重力管（排水/冷凝水）声明 1%（阳台 2%）坡度，折线段实际高差推不出该坡度（容差 ±50%）；冷凝水倒坡会积水、排水倒坡会堵塞，GB 50327 / 厂家安装手册的「全程保坡、禁止上弯」是硬要求，且 §1 明确「重力管全程 1% 坡」",
+      "owner": "设计侧（mep 协同）",
+      "clearing_condition": "逐条改线或改标高使实际坡度落在声明值 ±50% 内，回写 config/mep-hvac-coordination.yaml 的 via/slope/from_height/to_height；未归零不许进水电交底"
+    },
+    {
+      "code": "shear_wall_parallel_route",
+      "count": 8,
+      "category": "must_fix_before_briefing",
+      "disposition": "reject",
+      "basis": "交底前必须清：8 条路线长距离贴 inferred 剪力墙平行敷设（w_mb_east 0.08–0.10m × 2.9–3.6m、w_mbath_east 0.00–0.10m × 1.2–1.3m）；§3.2 剪力墙浅槽上限为 φ16 单回路、槽深 20–25mm，长距离贴墙段必须明确套管/剔槽/避钢筋策略，否则现场只能乱开槽",
+      "owner": "设计侧（mep 协同）+ 量房",
+      "clearing_condition": "量房探测仪扫筋后逐段定「贴墙走管 / 剔浅槽 / 移位」策略并写进 route reason；或把路线移出剪力墙净距 ≥0.20m；未定不许进水电交底"
+    },
+    {
+      "code": "route_not_orthogonal",
+      "count": 3,
+      "category": "must_fix_before_briefing",
+      "disposition": "reject",
+      "basis": "交底前必须清：water-master-bath #1 (0.575,2.96)→(0.26,2.80)、water-guest-bath #5 (5.6,3.2)→(7.1,3.05)、water-garden-requirement #2 (10.5,1.42)→(10.85,1.5) 均为斜线段；§1「全部正交折线」是本项目走线体系的铁律，斜线段既无法按贴墙/贴吊顶规则放线也无法上图交底",
+      "owner": "设计侧（mep 协同）",
+      "clearing_condition": "三条斜线段正交化为曼哈顿折线（端点保持不动，插入转折点），回写 config/mep-hvac-coordination.yaml；未归零不许进水电交底"
+    },
+    {
+      "code": "ceiling_clearance_unverified",
+      "count": 153,
+      "category": "survey_dependent",
+      "disposition": "pending_adjudication",
+      "basis": "153 处即 §0 契约 c.mep_layer_below_drop_bottom 的 registered_conflicts 实算数（涉及 62 条路线 / 14 个吊顶分区）：分层标高整层低于降板/铝扣板完成面是系统性口径未对齐，不是逐条算错；根因是设计侧决策（分层标高升入降板空腔 2.50–3.00m 或调整降板厚度/范围），量房不能消解",
+      "owner": "业主 + 设计侧（裁定降板/标高）",
+      "clearing_condition": "docs/pending-site-data.md #41 裁定后按契约 repair_channel 出口执行：附设计侧修正 DEC 全引，并同步 config/ceiling.yaml、docs/mep-construction-guidance.md §0、docs/pending-site-data.md #41、config/facts.yaml 的 registered_conflicts 四个文件；裁定前一律维持 153，禁止改数据消音"
+    },
+    {
+      "code": "shear_wall_penetration",
+      "count": 7,
+      "category": "survey_dependent",
+      "disposition": "accept",
+      "basis": "accept-as-warning：7 条均为 inferred 墙体穿越的工艺提醒（w_strip_east z≈4.6 三管同孔区等），shared/mep-hvac-lint.ts 的 shear_wall_penetration 规则对 inferred 墙只出 warning、对墙与路线双双 confirmed 才升 error，升级路径已由 tests/server/mep-hvac-lint.test.ts 锁定；§2.1 已声明交房量房确认墙体类型后按规则自动升降级",
+      "owner": "量房（墙体类型终核）",
+      "clearing_condition": "量房按物业结构图 + 钢筋探测仪逐墙确认，回填 config/layout/model-geometry.yaml 的 structure / structure_status 后规则自动升降级；本项不要求主动清除"
+    },
+    {
+      "code": "supply_return_overlap",
+      "count": 8,
+      "category": "envelope_approximation",
+      "disposition": "accept",
+      "basis": "模型包络近似：shared/mep-hvac-lint.ts 的 airRouteBox 注释明确风路线没有 height、depth 只是竖向代理，「can produce a warning, but never supports a confirmed error」——本代码结构上不可能升 error；8 条对应 6 台双出风内机的送/回风支管（含 supply-air-*-bottom 组装段），实际风口位置随厂家深化图定",
+      "owner": "设计侧（mep 协同）",
+      "clearing_condition": "厂家正式风口/复合风管深化图到手后若给风路线补 height 字段，重叠判定才具备事实基础；届时重新评估是否需要按实际包络收口，不要求提前清除"
+    },
+    {
+      "code": "reference_constraint_uncertain",
+      "count": 5,
+      "category": "envelope_approximation",
+      "disposition": "accept",
+      "basis": "模型包络近似：5 条邻户图比例映射的参考梁位（±150mm、not_for_construction）按 §2.5 口径只提醒不判碰撞，reference_constraint_uncertain 对 confirmed 约束直接跳过、永不出 error；§2.5.1 现状为 3 条 inferred + 2 条 pending，beam_collision 规则休眠",
+      "owner": "量房（梁位实测）",
+      "clearing_condition": "量房逐条实测梁底并转 confirmed 后由 beam_collision 接手硬判定；本项不要求提前清除，但 §5 的量房清单必须逐条拍照回填"
+    },
+    {
+      "code": "nonphysical_route",
+      "count": 3,
+      "category": "envelope_approximation",
+      "disposition": "accept",
+      "basis": "非物理需求路线：drain-kitchen-requirement / water-garden-requirement / drain-garden-requirement 的 source_status 为 design_requirement，仅表达用水/排水需求、不假定实际立管位置（各自 reason 已写明），lint 对 design_requirement 起终点重合只出 warning、不当 physical route 判",
+      "owner": "设计侧（mep 协同）",
+      "clearing_condition": "量房确认给水入户点（#8）与入户花园去留（#48）后，design_requirement 路线或升级为 plan_supported 实体路线、或随点位删除一并移除；未裁定前保留为需求表达"
+    },
+    {
+      "code": "suppressed_wall_crossing",
+      "count": 3,
+      "category": "envelope_approximation",
+      "disposition": "pending_adjudication",
+      "basis": "两条推断立管的机器信号：drain-master-bath / drain-mbath-vanity-to-riser / drain-mbath-toilet-to-riser 越过的 w_bath_north 是主卫西北圆角幕墙的弦线近似（真实弧交点 z≈1.39，lint 取弦线交点 (0.3,1.99)），根因是 docs/pending-site-data.md #19 推断主卫排水立管 (0.3,1.3) 可能落在圆角幕墙切角外侧",
+      "owner": "量房（立管位实测）",
+      "clearing_condition": "量房实测主卫排水立管实际位置：若在房间内侧（圆角以南/以东）则路线折线缩短、不再越幕墙，三类计数同步下降；若确在切角外侧则按幕墙禁穿铁律另寻接法。裁定前视同未决事实保留，不得删 suppress 消音"
+    },
+    {
+      "code": "dedicated_parameters_pending",
+      "count": 9,
+      "category": "electrical_pending_dependency",
+      "disposition": "pending_adjudication",
+      "basis": "电气拓扑本身的待定参数（回路 pending、线径/断路器 proposed、箱体规格未确认），依赖 docs/pending-site-data.md #30（开箱）/#39 ⑤（厂家配电图）/#46（外机线径铭牌）逐项闭环",
+      "owner": "设计侧（电气）+ 厂家 + 量房",
+      "clearing_condition": "逐条回写 config/electrical-topology.yaml 的回路/断路器/线径并把 status 从 pending 升 proposed/confirmed；未闭环前保留为显式待办"
+    },
+    {
+      "code": "point_uncovered",
+      "count": 29,
+      "category": "electrical_pending_dependency",
+      "disposition": "pending_adjudication",
+      "basis": "29 个点位未被 Phase 1 拓扑覆盖（弱网/AP/花园/客房等），属范围划分问题而非漏画：弱电网点按 DEC-2026-10-03-R1 归弱电箱系统、部分点位依赖 #48 入户花园去留与 SKU 冻结",
+      "owner": "设计侧（电气）",
+      "clearing_condition": "逐点位二选一：纳入某回路，或在 config/electrical-topology.yaml 的 controls/circuits 里显式登记 deferred 理由；与 #48 / #33 / #32 联动"
+    },
+    {
+      "code": "pending_parameter",
+      "count": 14,
+      "category": "electrical_pending_dependency",
+      "disposition": "pending_adjudication",
+      "basis": "14 条 pending_parameter 文本登记项（进线开关未建模、箱体规格、空调厂家配电图、LEB 点位、微蒸烤专用回路等），全部已在 config/electrical-topology.yaml 的 pending_parameters 里显式写清依赖与责任人",
+      "owner": "设计侧（电气）+ 供电局 + 厂家 + 业主",
+      "clearing_condition": "依赖项逐条闭环（#30 开箱、#39 厂家图、#43 LEB、微蒸烤 SKU DEC-2026-10-05-R4）后从 pending_parameters 移除；水电交底前必须收敛进线/箱体/空调三项"
+    },
+    {
+      "code": "switch_neutral_policy_undeclared",
+      "count": 17,
+      "category": "electrical_code_commitment",
+      "disposition": "reject",
+      "basis": "config/house.yaml 的 smart_home 已承诺「智能开关零线」，而 17 个 switch 点位既无 neutral 字段、note 也未声明零线口径——lint 规则按该承诺判定，属承诺与数据不一致，必须补齐而非接受",
+      "owner": "设计侧（电气）",
+      "clearing_condition": "逐点位补 neutral 策略（智能开关零线 or 单火兼容），写进 config/electrical.yaml 对应点位的 neutral 字段或 note；补齐后 verify:electrical 该类归零，未归零不许进水电交底"
+    },
+    {
+      "code": "bath_socket_splash_box_undeclared",
+      "count": 2,
+      "category": "electrical_code_commitment",
+      "disposition": "reject",
+      "basis": "GB 55038-2025 第 7.4.5 条强制要求卫生间电源插座加设防溅措施；sock_mbath_batcheheater / sock_gbath_batheheater 两个浴霸插座 note 未声明防溅/防水盒（两卫共 8 个 socket，另 6 个已声明）——条文级硬依据，不接受为 warning 常驻",
+      "owner": "设计侧（电气）",
+      "clearing_condition": "在两个点位 note 补防溅/防水盒做法（并随 DEC-2026-10-05-R3 的扣板排布确认 300×600 模块开孔），补齐后 verify:electrical 该类归零，未归零不许进水电交底"
+    }
+  ],
+  "summary": {
+    "mep_total_warnings": 219,
+    "mep_buckets": {
+      "must_fix_before_briefing": 40,
+      "survey_dependent": 160,
+      "envelope_approximation": 19
+    },
+    "electrical_total_warnings": 71,
+    "electrical_by_disposition": {
+      "electrical_pending_dependency": 52,
+      "electrical_code_commitment": 19
+    },
+    "disposition_counts": {
+      "accept": 4,
+      "reject": 6,
+      "pending_adjudication": 5
+    }
+  },
+  "final_state": {
+    "status": "open",
+    "lint": "verify:mep 0 error / 与实算一致的 warning；verify:electrical 0 error / 与实算一致的 warning；must_fix 桶 40 条一律 reject（不许接受），交底前必须归零",
+    "tests": "tests/server/mep-guidance-baseline.test.ts 动态对账本文数与 docs/mep-construction-guidance.md §0/§6、docs/pending-site-data.md 表头口径",
+    "disclaimer": "全部 route 仍为 preliminary/proposed/pending，非施工放线依据；本台账只记录「哪些 warning 可以带着走、哪些必须交底前清」，不构成任何放线许可"
+  }
+}

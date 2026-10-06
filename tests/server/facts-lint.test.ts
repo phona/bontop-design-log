@@ -503,10 +503,12 @@ const fkRegistry = (extra: Record<string, unknown> = {}): FactsRegistry => ({
   contracts: [{
     id: 'c.dec_ref_resolvable',
     kind: 'fk',
-    ref_pattern: '(DEC-(?:\\d{4}-\\d{2}-\\d{2}-)?\\d{3})\\b',
+    // 与 config/facts.yaml 的现役正则同族：3 位序号（DEC-045 / DEC-2026-08-26-045）
+    // 与同日修订号 `-Rnn`（DEC-2026-10-04-R2 / DEC-2026-10-05-R15）都必须在门禁内。
+    ref_pattern: '(DEC-(?:\\d{4}-\\d{2}-\\d{2}-)?(?:\\d{3}|R\\d{1,3}))\\b',
     ref_scope: ['config/'],
     target: 'docs/decision_log.md',
-    target_pattern: '^#+\\s*(DEC-\\d{4}-\\d{2}-\\d{2}-\\d{3})\\b.*',
+    target_pattern: '^#+\\s*(DEC-\\d{4}-\\d{2}-\\d{2}-(?:\\d{3}|R\\d{1,3}))\\b.*',
     ...extra,
   }],
 });
@@ -562,6 +564,83 @@ test('fk：subject_assertions 主题相符时不报', () => {
   }, { 'contract.files': ['config/a.yaml'] });
   const result = lintFacts(fkRegistry({ subject_assertions: [{ ref: 'DEC-045', expect: '主卫|悬浮板' }] }), ws);
   assert.equal(result.errors.filter((i) => i.code === 'reference_subject_mismatch').length, 0);
+});
+
+// ─── 2026-10-05 R 系编号族：`DEC-YYYY-MM-DD-Rnn` 进门禁 ───────────────────────
+//
+// 背景：decision_log 自 2026-09-04 起大量使用同日多轮修订号（-R1/-R2/…/R20），
+// 而旧 ref_pattern 只认 3 位序号，约 400 处 R 系引用整批在门禁外——改号（R14→R15）
+// 无人发现。以下用例把「R 系全引可解析 / R 系悬空可报」固化成不变量。
+
+test('fk：R 系全引 DEC-YYYY-MM-DD-Rnn 直接命中 decision_log 标题，不悬空也不进短引 notes', () => {
+  const ws = workspaceOf({
+    'config/a.yaml': '# 见 DEC-2026-10-05-R15\n# 另见 DEC-2026-10-04-R2\n',
+    'docs/decision_log.md': [
+      '### DEC-2026-10-04-R2 外机供电补齐第 20 路',
+      '### DEC-2026-10-05-R15 起夜路径照明 + 客房床头组落地',
+    ].join('\n'),
+  }, { 'contract.files': ['config/a.yaml'] });
+  const result = lintFacts(fkRegistry(), ws);
+  assert.equal(result.errors.length, 0);
+  assert.equal(result.warnings.length, 0);
+  // R 系全引是直接命中，不走「短引按序号反查」那条降级路径
+  assert.equal((result.notes ?? []).filter((n) => n.includes('短引按序号')).length, 0);
+});
+
+test('fk：R 系编号在 decision_log 无对应标题即 dangling_reference（R14 已改号 R15 场景）', () => {
+  const ws = workspaceOf({
+    'config/a.yaml': '# 见 DEC-2026-10-05-R14\n',
+    'docs/decision_log.md': '### DEC-2026-10-05-R15 起夜路径照明 + 客房床头组落地\n',
+  }, { 'contract.files': ['config/a.yaml'] });
+  const result = lintFacts(fkRegistry(), ws);
+  const hit = result.errors.filter((i) => i.code === 'dangling_reference');
+  assert.equal(hit.length, 1);
+  assert.match(hit[0].message, /DEC-2026-10-05-R14/);
+  assert.match(hit[0].message, /无对应条目/);
+});
+
+test('fk：裸 DEC-Rnn（缺日期）不可按序号反查 → dangling，宁可报错也不猜是哪天', () => {
+  // R 族与 3 位序号不同：序号全局唯一（DEC-045 → DEC-2026-…-045），
+  // Rnn 同日多条（10-03/10-05/09-12 都有 R3），缺日期时反查是多对一，猜就是错。
+  const ws = workspaceOf({
+    'config/a.yaml': '# 见 DEC-R3\n',
+    'docs/decision_log.md': [
+      '### DEC-2026-09-12-R3 云鲸 J6 按 3,000 元追加进入一期',
+      '### DEC-2026-10-05-R3 浴霸设备锚点定案与卫浴回路拆分',
+    ].join('\n'),
+  }, { 'contract.files': ['config/a.yaml'] });
+  const result = lintFacts(fkRegistry(), ws);
+  assert.equal(result.errors.filter((i) => i.code === 'dangling_reference').length, 1);
+  // 不静默降级成 warning：裸 R 短引必须补全日期才是可解析引用
+  assert.equal(result.warnings.length, 0);
+});
+
+test('fk：R 系子修订引用（R7.1）按父条目 R7 解析，不悬空', () => {
+  const ws = workspaceOf({
+    'config/a.yaml': '# 见 DEC-2026-09-06-R7.1\n',
+    'docs/decision_log.md': '### DEC-2026-09-06-R7.1 衣柜-悬浮板 L 形转角与门头盒一体收口修正\n',
+  }, { 'contract.files': ['config/a.yaml'] });
+  const result = lintFacts(fkRegistry(), ws);
+  assert.equal(result.errors.length, 0);
+});
+
+test('真实登记表：c.dec_ref_resolvable 的 ref/target 正则覆盖 R 系编号，且不放宽到非编号形态', () => {
+  const registry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as FactsRegistry;
+  const contract = (registry.contracts ?? []).find((c) => c.id === 'c.dec_ref_resolvable')!;
+  assert.ok(contract, 'config/facts.yaml 必须登记 c.dec_ref_resolvable');
+  const refRe = new RegExp(String(contract.ref_pattern));
+  for (const id of ['DEC-045', 'DEC-2026-08-26-045', 'DEC-2026-10-04-R2', 'DEC-2026-10-05-R15']) {
+    assert.ok(refRe.test(`引用 ${id} 处`), `ref_pattern 必须覆盖 ${id}`);
+  }
+  // 反向护栏：正则不许悄悄放宽到非决策编号形态（宽松比漏报更难发现）
+  for (const notId of ['DEC-2026-10-05-R', 'DEC-2026-10-05-R1234', 'DEC-14']) {
+    assert.equal(refRe.test(`引用 ${notId} 处`), false, `ref_pattern 不应匹配 ${notId}`);
+  }
+  const targetRe = new RegExp(String(contract.target_pattern), 'm');
+  assert.ok(targetRe.test('### DEC-2026-10-05-R15 起夜路径照明'));
+  assert.ok(targetRe.test('### DEC-2026-08-26-045 主卧空调檐口定案'));
+  // 正文里提到编号不是标题，不得计入目标集合
+  assert.equal(targetRe.test('本文提到 DEC-2026-10-05-R15 但不是标题行'), false);
 });
 
 test('fk：登记表自身必须从扫描域排除，否则自引用既虚增计数又污染定位', () => {
@@ -898,4 +977,124 @@ test('covered_or_marked：点位要么被 route 引用，要么 note 含显式 d
     workspaceOf({ ...files, 'config/plumbing.yaml': files['config/plumbing.yaml'].replace('什么都没说', '本轮不画 MEP route，待量房') }),
   );
   assert.equal(fixed.errors.length, 0);
+});
+
+// ─── 2026-10-05 repair_channel：契约的「正当修正出口」 ──────────────────────────
+
+const channelProbe = (repair_channel: unknown): FactsRegistry => ({
+  ...emptyRegistry,
+  contracts: [{
+    id: 'c.probe_repair', kind: 'requires_when',
+    path: 'config/a.yaml', when: { field: 'status', equals: 'x' }, then: ['y'], min_matches: 0,
+    repair_channel,
+  }],
+});
+
+test('repair_channel：DEC 全引 + 非空 sync_files 即通过并在 INFO 露面；字段缺失即 error', () => {
+  // 齐全：decision_ref 是合法 DEC 全引，sync_files 两个文件都真实存在
+  const ok = lintFacts(channelProbe({
+    decision_ref: 'DEC-2026-10-05-R20',
+    sync_files: ['config/ceiling.yaml', 'config/facts.yaml'],
+  }), realWorkspace());
+  assert.equal(ok.errors.length, 0, ok.errors.map((e) => e.message).join('\n'));
+  assert.match((ok.notes ?? []).join('\n'), /c\.probe_repair 修正通道已登记 — DEC-2026-10-05-R20/);
+  assert.match((ok.notes ?? []).join('\n'), /config\/ceiling\.yaml、config\/facts\.yaml/);
+
+  // 裁定落地前的 pending: 占位同样放行（与 exempt.pending 同纪律：INFO 露面，不假装已有 DEC）
+  const pending = lintFacts(channelProbe({
+    decision_ref: 'pending:docs/pending-site-data.md #41 裁定后替换为设计侧修正 DEC 全引',
+    sync_files: ['config/ceiling.yaml', 'docs/mep-construction-guidance.md', 'docs/pending-site-data.md', 'config/facts.yaml'],
+  }), realWorkspace());
+  assert.equal(pending.errors.length, 0);
+  assert.match((pending.notes ?? []).join('\n'), /c\.probe_repair 修正通道待决/);
+
+  // decision_ref 缺失 → 无出处即无修正
+  const noRef = lintFacts(channelProbe({ sync_files: ['config/facts.yaml'] }), realWorkspace());
+  assert.equal(noRef.errors.filter((i) => i.code === 'repair_channel_invalid').length, 1);
+  assert.match(noRef.errors[0].message, /decision_ref 为空/);
+
+  // decision_ref 既非 DEC 全引又非 pending: 占位（野字符串）→ 出处不可解析
+  const badRef = lintFacts(channelProbe({ decision_ref: 'DEC-14', sync_files: ['config/facts.yaml'] }), realWorkspace());
+  assert.equal(badRef.errors.filter((i) => i.code === 'repair_channel_invalid').length, 1);
+  assert.match(badRef.errors[0].message, /DEC-14/);
+
+  // sync_files 缺失 → 修正不同步 prose/登记表
+  const noFiles = lintFacts(channelProbe({ decision_ref: 'DEC-2026-10-05-R20' }), realWorkspace());
+  assert.equal(noFiles.errors.filter((i) => i.code === 'repair_channel_invalid').length, 1);
+  assert.match(noFiles.errors[0].message, /sync_files 为空/);
+
+  // sync_files 指向不存在的文件 → 登记出口腐烂
+  const gone = lintFacts(channelProbe({ decision_ref: 'DEC-2026-10-05-R20', sync_files: ['config/ceiling.yaml', 'config/gone.yaml'] }), realWorkspace());
+  assert.equal(gone.errors.filter((i) => i.code === 'repair_channel_invalid').length, 1);
+  assert.match(gone.errors[0].message, /config\/gone\.yaml 不存在/);
+});
+
+test('repair_channel：基线漂移的 error 正文带上正当修正出口（禁令之外给出路）', () => {
+  const files = {
+    'config/mep.yaml': [
+      'layers:',
+      '  strong_power: { height: 2.45 }',
+      'routes:',
+      '  - id: bad',
+      '    layer: strong_power',
+      '    from_height: 2.45',
+      '    to_height: 2.45',
+      '    via: [{x: 8.0, z: 4.6, y: 2.45}]',
+      '    to: {x: 8.5, z: 4.6}',
+    ].join('\n'),
+    'config/ceiling.yaml': [
+      '- id: drop_a',
+      '  room: living_dining',
+      '  type: drop',
+      '  thickness: 0.30',
+      '  area: [7.20, 4.30, 13.40, 5.20]',
+    ].join('\n'),
+    'docs/guidance.md': '冲突 1 处\n',
+    // repair_channel.sync_files 指向的文件必须在（合成）workspace 里可读，否则通道自校验即报腐烂
+    'docs/mep-construction-guidance.md': '规模表与登记数见 §0\n',
+  };
+  const datasets = { 'mep.endpoints': {}, 'mep.room_heights': { living_dining: 2.8 } };  const contract = {
+    id: 'c.probe_ceiling', kind: 'ceiling_clearance' as const, severity: 'error' as const,
+    source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/ceiling.yaml',
+    endpoints_key: 'mep.endpoints', room_heights_key: 'mep.room_heights',
+    default_room_height: 2.8, tolerance: 0.005, registered_conflicts: 2,
+    prose: [{ path: 'docs/guidance.md', extract: '冲突\\s*(\\d+)\\s*处', expect_matches: 1 }],
+    repair_channel: {
+      decision_ref: 'DEC-2026-10-05-R20',
+      sync_files: ['config/ceiling.yaml', 'docs/mep-construction-guidance.md'],
+    },
+  };
+  const drift = lintFacts({ ...emptyRegistry, contracts: [contract] }, workspaceOf(files, datasets));
+  const hit = drift.errors.filter((i) => i.code === 'ceiling_clearance_baseline_drift');
+  assert.equal(hit.length, 1);
+  // error 语义不变（仍 error），但正文必须给出「正当修正长什么样」
+  assert.match(hit[0].message, /登记的既有冲突基数 2 ≠ 机器实算 1/);
+  assert.match(hit[0].message, /正当修正通道：附 DEC-2026-10-05-R20 修改设计侧几何\/口径/);
+  assert.match(hit[0].message, /同步 config\/ceiling\.yaml、docs\/mep-construction-guidance\.md/);
+
+  // 基数与实算一致时不报错，通道仍在 INFO 露面（登记出口不许静默消失）
+  const aligned = lintFacts({ ...emptyRegistry, contracts: [{ ...contract, registered_conflicts: 1 }] }, workspaceOf(files, datasets));
+  assert.equal(aligned.errors.length, 0);
+  assert.match((aligned.notes ?? []).join('\n'), /c\.probe_ceiling 修正通道已登记 — DEC-2026-10-05-R20/);
+});
+
+test('真实登记表：c.mep_layer_below_drop_bottom 的 repair_channel 字段齐全且 sync_files 全部存在', () => {
+  const registry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as FactsRegistry;
+  const contract = (registry.contracts ?? []).find((c) => c.id === 'c.mep_layer_below_drop_bottom')!;
+  assert.ok(contract, 'config/facts.yaml 必须登记 c.mep_layer_below_drop_bottom');
+  const channel = contract.repair_channel as { decision_ref?: string; sync_files?: unknown } | undefined;
+  assert.ok(channel, 'c.mep_layer_below_drop_bottom 必须登记 repair_channel（正当修正出口）');
+  assert.ok(channel.decision_ref && channel.decision_ref.length > 0, 'decision_ref 不许为空');
+  assert.match(
+    channel.decision_ref,
+    /^(?:DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3})|pending:)/,
+    'decision_ref 必须是 DEC 全引或 pending: 占位',
+  );
+  assert.deepEqual(
+    channel.sync_files,
+    ['config/ceiling.yaml', 'docs/mep-construction-guidance.md', 'docs/pending-site-data.md', 'config/facts.yaml'],
+  );
+  for (const file of channel.sync_files as string[]) {
+    assert.doesNotThrow(() => readFileSync(file, 'utf8'), `sync_files 中的 ${file} 必须存在`);
+  }
 });

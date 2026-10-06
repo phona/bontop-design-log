@@ -12,7 +12,7 @@ version: '1.0'
 #    现 mount_height 1.65m 仅在双排时合规——箱体单/双排与容量列入 pending-site-data #30。
 # 口径：开关点位经 controls 绑定灯具、网络点位（含 DEC-2026-10-03-R1 新增 net_gateway / net_ap_corridor）
 # 归弱电箱系统，均不进入强电供电回路成员（Phase 1 口径）。
-# 点位口径：config/electrical.yaml 共 110 个点位（2026-10-05 R14 起夜照明 + 客房床头组后由 98 增至 110；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。
+# 点位口径：config/electrical.yaml 共 110 个点位（2026-10-05 R15 起夜照明 + 客房床头组后由 98 增至 110；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。
 
 panels:
   # id 是 topology 内部 panel 标识；source_point_id 指向 electrical.yaml 的真实箱体点位。
@@ -281,7 +281,7 @@ controls:
     status: proposed
     switch_point_ids: [switch_study, switch_guest_bed]
     target_point_ids: [light_study_dome]
-    note: "客房吸顶灯门+床头双控（2026-10-05 R14：原书房单控随功能互换改为客房双控，床头联 switch_guest_bed 落在 w_east_upper 床头位；起夜可床边一键开灯，不必摸黑走到门口）"
+    note: "客房吸顶灯门+床头双控（2026-10-05 R15：原书房单控随功能互换改为客房双控，床头联 switch_guest_bed 落在 w_east_upper 床头位；起夜可床边一键开灯，不必摸黑走到门口）"
   - id: control_child_light
     kind: switch_2way
     status: proposed

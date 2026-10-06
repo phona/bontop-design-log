@@ -100,7 +100,7 @@
 - id: night_guest_bed_side
   anchorY_offset: 0
   basis: "床沿下位灯贴安装完成面（0.30m）表现低位引导光，不做灯体下沉"
-  reason: "起夜路径 NP-1：床西侧（上下床侧）地面引导，verified against R14 候选排布。"
+  reason: "起夜路径 NP-1：床西侧（上下床侧）地面引导，verified against R15 候选排布。"
   applies_to: [web, blender]
 - id: night_guest_head
   anchorY_offset: 0

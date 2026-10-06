@@ -1588,7 +1588,7 @@ materials:
     notes: "备选：木地板；回南天注意除湿，价格含安装。DEC-041 起归入统一 floor topic，可按房间覆盖选用"
     appearance: { type: "wood_plank", color: "#a97c50", pattern: "straight", plank_mm: [195, 1220], finish: "matte", seed: 42 }
 
-  # === 一期自动清洁设备（2026-09-12 DEC-R3） ===
+  # === 一期自动清洁设备（2026-09-12 DEC-2026-09-12-R3） ===
 
   - id: "robot_vacuum_narwal_j6_01"
     topic_id: "robot_vacuum"

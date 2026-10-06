@@ -108,7 +108,7 @@ function addLedStrip(group: THREE.Group, fixture: RenderLightingFixture, glow: T
   return 1;
 }
 
-// 2026-10-05 起夜路径低位灯（DEC-2026-10-05-R14）：0.25–0.40m 安装高度的小型盒体，
+// 2026-10-05 起夜路径低位灯（DEC-2026-10-05-R15）：0.25–0.40m 安装高度的小型盒体，
 // 贴墙安装（wall_side 决定朝内）或落地立柱；暖白光，不做顶部投光。
 function addNightLight(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE.Color): number {
   // 贴墙安装时把灯体从墙线朝房间内推半墙厚，避免嵌在墙里（与 WallLampGeometry 同口径：
