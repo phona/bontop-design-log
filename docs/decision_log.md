@@ -1710,3 +1710,23 @@
 - **影响**：`config/mep-hvac-coordination.yaml` 的 `layers` 标高与相关 route 的 via/from/to/penetration 高度按区分层重算；重力管（冷凝水/排水）坡度与"不得上弯"铁律继续成立；路线条数 87 不变（除非绕梁必须新增，需另登 DEC）。
 - **验证**：`verify:all` / `test:server` / `typecheck` 见执行记录；GLB 重导。
 - **未动**：走线路由平面、吊顶范围与降板厚度、穿墙点平面坐标、空调内外机与末端选型。
+
+### DEC-2026-10-06-R6 施工排期捋顺：补三个接口冻结阻断项 + 两处依赖倒挂修正
+
+- **日期**：2026-10-06。触发：业主要求"整个施工进度捋顺，以便围绕基座模型数据推进"；对 `schedule/phase-1/control.yaml` 23 个包做依赖体检（无序号倒挂、无悬空引用），发现 4 处真实缺陷。
+- **诊断**：
+  1. **水电与空调之间没有交底节点**：`PKG-030`（空调第一次安装，seq 30）与 `PKG-040`（水电改造，seq 40）都只依赖 `PKG-020`，互不依赖。而空调内机/外机供电（`hvac_power_living/bedrooms/outdoor`）属 `PKG-040` 的 `COST-040-05`，控制线与冷凝水接点同样在水电 scope——空调商可在无电气交接的情况下先进场；而 `SCH-040-01`（点位/回路与空调匹配）是 before_covering 检查，等于空调装完才核冲突。
+  2. **橱柜深化图是水电点位的 owner，却排在水电之后**：微蒸烤预留点位（`sock_kitchen_oven`）、厨房台面电位、客卫扫地机基站柜格，全部等橱柜深化图，而 `PKG-110`（橱柜安装）在 `PKG-040` 之后 seq 110。缺的是"设计冻结"前置，不是安装前置。
+  3. **吊顶封板不依赖防水**：`PKG-070` deps 只有 `[PKG-030, PKG-040]`，与 `PKG-050`（防水及闭水，含主卫沉箱二次排水）无依赖关系——闭水失败需返工时可能要动已封吊顶。
+  4. **洁具不显式依赖水电**：`PKG-100` deps `[PKG-060, PKG-080]`，仅通过 060←050←040 传递；洁具直接消费水电成果（角阀、专用三孔、防水），传递链太长。
+  5. **量房数据未成为任何阻断项**：`docs/pending-site-data.md` 52 项（给水入户点 #8、梁位 7 条、墙类型、立管/燃气表/排烟道、强电箱开箱、沉箱分界线）只挂在 `BLK-HANDOVER` 之下，没有独立门槛。
+- **修正（不改任何付款门槛金额与 sequence 编号）**：
+  1. 新增 `BLK-MEP-INTERFACE-FREEZE`（alignment_required）：水电/空调接口未联合冻结——点位与回路、吊顶内分层标高（#41 分区口径）、穿墙孔位高度、冷凝水接入点与立管、检修口与风口。`clears_when`：水电、空调、设计、施工四方联合交底并签认（附签认记录）。**挂到 `PKG-030.blockers` 与 `PKG-040.blockers` 双方**。
+  2. 新增 `BLK-CABINET-FREEZE-FOR-MEP`（alignment_required）：橱柜深化图未冻结而它是水电点位的 owner。`clears_when`：橱柜深化图与水电点位表双向核对完成（微蒸烤预留点位/台面电位/基站柜格落实到图）。**挂到 `PKG-040.blockers`**——注意这是设计冻结前置，`PKG-110` 安装包本身仍保留在 seq 110。
+  3. 新增 `BLK-SURVEY-DATA-FREEZE`（site_pending）：量房待填清单 52 项未清零。`clears_when`：影响水电与空调的条目逐项转为实测或显式豁免。**挂到 `PKG-000` / `PKG-030` / `PKG-040`**。
+  4. `PKG-070.dependencies` 加 `PKG-050`（二次排水/防水/闭水在封板前完成，卫浴铝扣板吊顶须在贴砖后）。
+  5. `PKG-100.dependencies` 加 `PKG-040`（洁具直接消费水电成果）。
+  6. 新增两条交底留痕检查：`SCH-030-04`（空调侧：进场前提供机身/接管/检修口与水电接口清单）、`SCH-040-03`（水电侧：联合交底记录与签认归档，critical / before_covering）。
+- **影响**：`schedule:render` 重出 checklist/budget；auditable checks 86 → 88。
+- **未动**：sequence 编号、付款门槛（payment_gate）、各包预算与 COST 拆分、既有 blocker 定义。
+- **验证**：`npm run verify:schedule` / `verify:facts` / `verify:all` / `test:server` / `typecheck` 见执行记录。

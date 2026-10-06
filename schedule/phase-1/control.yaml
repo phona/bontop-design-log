@@ -611,6 +611,18 @@ global_blockers:
     status: site_pending
     item: 已确认一期采用燃气热水器；模型虽有厨房西侧实体墙的暂定协调点，但交房前仍未确认是否已有开发商设备、实际安装墙面、燃气表位置、排烟路径、冷凝水排放和物业审批条件
     clears_when: 现场核对现有设备和燃气条件，形成最终安装位置、排烟、给排水、专用电路及物业审批记录
+  - id: BLK-MEP-INTERFACE-FREEZE
+    status: alignment_required
+    item: 水电与中央空调的接口未联合冻结——点位与回路、吊顶内分层标高（#41 分区口径）、穿墙孔位高度、冷凝水接入点与立管、检修口与风口均未会签
+    clears_when: 水电、空调、设计、施工四方联合交底并签认点位回路标高孔位与冷凝水接点，签认记录归档
+  - id: BLK-CABINET-FREEZE-FOR-MEP
+    status: alignment_required
+    item: 橱柜深化图是水电点位的 owner（微蒸烤预留点位 sock_kitchen_oven、厨房台面电位、客卫扫地机基站柜格上下水）但尚未冻结，而橱柜安装包排在 seq 110、晚于水电 seq 40
+    clears_when: 橱柜深化图与水电点位表双向核对完成，微蒸烤预留点位、台面电位与基站柜格落实到图（设计冻结前置，不是安装前置）
+  - id: BLK-SURVEY-DATA-FREEZE
+    status: site_pending
+    item: 量房待填清单 52 项未清零——给水入户点 #8、梁位 7 条、41 面墙结构类型、排水立管与燃气表与排烟道、强电箱开箱、沉箱深度与分界线
+    clears_when: 影响水电与中央空调的条目逐项转为实测值或显式豁免，并回填 config 与 docs/pending-site-data.md
   - id: BLK-FRIDGE-FIT
     status: site_pending
     item: 设计模型把冰箱位暂记为约700毫米宽×700毫米深，当前收集到的501升候选有宽约833毫米者，冰箱型号不能在净开口复测前下单
@@ -736,7 +748,7 @@ work_packages:
     dependencies: []
     readiness: blocked
     status: not_started
-    blockers: [BLK-HANDOVER, BLK-STRUCTURE, BLK-HVAC-DEEPENING, BLK-GAS-DOOR]
+    blockers: [BLK-HANDOVER, BLK-STRUCTURE, BLK-HVAC-DEEPENING, BLK-GAS-DOOR, BLK-SURVEY-DATA-FREEZE]
     owner_roles: [业主, 设计师, 施工方, 空调商]
     payment_gate: GATE-000-COMPLETE
     checks:
@@ -886,7 +898,7 @@ work_packages:
     dependencies: [PKG-020]
     readiness: blocked
     status: not_started
-    blockers: [BLK-STRUCTURE, BLK-HVAC-DEEPENING]
+    blockers: [BLK-STRUCTURE, BLK-HVAC-DEEPENING, BLK-MEP-INTERFACE-FREEZE, BLK-SURVEY-DATA-FREEZE]
     owner_roles: [空调商, 设计师, 施工方, 业主]
     payment_gate: GATE-030-FIRST-FIX
     acceptance_refs: [check_hvac_weld, check_hvac_drain, check_hvac_level, check_hvac_outdoor, check_hvac_exhaust_outlet, check_elec_ac_service_access]
@@ -939,11 +951,18 @@ work_packages:
     dependencies: [PKG-020]
     readiness: blocked
     status: not_started
-    blockers: [BLK-HVAC-DEEPENING]
+    blockers: [BLK-HVAC-DEEPENING, BLK-MEP-INTERFACE-FREEZE, BLK-CABINET-FREEZE-FOR-MEP, BLK-SURVEY-DATA-FREEZE]
     owner_roles: [水电施工, 设计师, 空调商, 业主]
     payment_gate: GATE-040-HIDDEN-WORK
     acceptance_refs: [check_plumb_pressure, check_plumb_drain, check_elec_continuity, check_elec_switch, check_elec_pe_polarity, check_elec_insulation, check_elec_rcd_30ma, check_elec_leb, check_elec_strong_weak_separation, check_elec_panel_labeling, check_elec_circuit_separation, check_elec_gas_alarm, check_plumb_prefilter_and_prv, check_plumb_softener_reserved, check_plumb_valve_per_point, check_elec_zero_line_all_switches, check_elec_leb_bonding_list]
     checks:
+      - id: SCH-030-04
+        severity: critical
+        checkpoint: before_covering
+        item: 空调与水电联合交底记录归档
+        method: 空调商提供内机与接管清单（机身尺寸、供电取电方式、检修口、冷凝水接点），与水电点位表和吊顶分层标高逐项核对并四方签认
+        pass_condition: 签认记录覆盖全部六台内机与外机，供电回路、控制线、冷凝水接入点与分层标高无冲突
+        evidence_required: [coordination_record, circuit_schedule, signed_interface_sheet]
       - id: SCH-040-01
         severity: critical
         checkpoint: before_covering
@@ -959,6 +978,13 @@ work_packages:
         pass_condition: 照片可定位每条管线且文件路径已登记
         evidence_required: [concealed_work_photos]
 
+      - id: SCH-040-03
+        severity: critical
+        checkpoint: before_covering
+        item: 水电与空调、橱柜接口冻结完成
+        method: 核对 BLK-MEP-INTERFACE-FREEZE 与 BLK-CABINET-FREEZE-FOR-MEP 的解除证据：联合交底签认记录、橱柜深化图与点位表双向核对结论
+        pass_condition: 两项阻断均有书面解除证据，微蒸烤预留点位、分层标高、穿墙孔位高度与冷凝水接点已落实到交底单
+        evidence_required: [signed_interface_sheet, cabinet_drawing_reference, briefing_sheet]
   - id: PKG-050
     sequence: 50
     name: 防水及闭水
@@ -1053,7 +1079,7 @@ work_packages:
         - {id: COST-070-03, name: 厨房卫生间集成吊顶, description: "铝制扣板、边条、安装及设备开孔，不含取暖换气设备（DEC-2026-10-05-R3：浴霸划出自购定入 COST-100-06，凉霸不做）；2026-10-03 捆绑书面报价 9,537 元（含收边、2浴霸、凉霸、灯）保留为设备拆分证据，裸价重报待取得", quantity_basis: "反推裸价目标 4,500 元（9,537 − 凉霸 999 − 浴霸 ≈4,000），非成交价；按厨房和两个卫生间面积核", planned_cny: 4500, status: quoted_pending_optimization}
         - {id: COST-070-04, name: 风口检修口灯孔和窗帘盒边缘处理, description: 按确认图纸逐个计数，明确开孔和加固是否另收费, quantity_basis: 待空调灯具和窗帘图确认, planned_cny: null, status: interface_pending}
     duration_workdays: {min: 8, max: 12}
-    dependencies: [PKG-030, PKG-040]
+    dependencies: [PKG-030, PKG-040, PKG-050]
     readiness: blocked
     status: not_started
     blockers: [BLK-HVAC-DEEPENING]
@@ -1167,7 +1193,7 @@ work_packages:
         - {id: COST-100-05, name: 淋浴区玻璃隔断, description: "当前旧预算曾放在家电类，必须确认是否回到卫生间项目并避免重复计费；2026-10-05 业主侧口径：8mm 钢化+3C 固定玻璃约900/台×2=1,800（与 need 一致，ownership 仍待定账）", quantity_basis: 2处候选，待设计确认, planned_cny: null, status: ownership_pending}
         - {id: COST-100-06, name: 卫生间取暖换气设备, description: "业主定标自购（DEC-2026-10-05-R3）：奥普 S2-Air 浴霸×2（风暖 2750W+换气 49W+照明 24W 三合一，集成吊顶式、线控面板），京东自营国补价 680.97/台（2026-10-05 页面观察，非成交价），两台 ≈1,362、目标 1,500 含配件余量；换气模块承担原独立排气；收房仍核对开发商场既有设备，若已提供则反转删项", quantity_basis: 2台；下单窗口在量房与扣板开孔方案冻结后, planned_cny: 1500, status: candidate}
     duration_workdays: {min: 3, max: 5}
-    dependencies: [PKG-060, PKG-080]
+    dependencies: [PKG-060, PKG-080, PKG-040]
     readiness: blocked
     status: not_started
     blockers: []

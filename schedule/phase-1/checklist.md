@@ -81,7 +81,7 @@
 - 依赖：无；就绪：`blocked`；执行：`not_started`
 - 责任角色：业主、设计师、施工方、空调商；付款门槛：`GATE-000-COMPLETE`
 - 当前付款门槛状态：`pending`
-- 阻塞项：BLK-HANDOVER、BLK-STRUCTURE、BLK-HVAC-DEEPENING、BLK-GAS-DOOR
+- 阻塞项：BLK-HANDOVER、BLK-STRUCTURE、BLK-HVAC-DEEPENING、BLK-GAS-DOOR、BLK-SURVEY-DATA-FREEZE
 
 ### 预算拆分核对
 
@@ -189,7 +189,7 @@
 - 依赖：PKG-020；就绪：`blocked`；执行：`not_started`
 - 责任角色：空调商、设计师、施工方、业主；付款门槛：`GATE-030-FIRST-FIX`
 - 当前付款门槛状态：`pending`
-- 阻塞项：BLK-STRUCTURE、BLK-HVAC-DEEPENING
+- 阻塞项：BLK-STRUCTURE、BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-SURVEY-DATA-FREEZE
 
 ### 预算拆分核对
 
@@ -228,7 +228,7 @@
 - 依赖：PKG-020；就绪：`blocked`；执行：`not_started`
 - 责任角色：水电施工、设计师、空调商、业主；付款门槛：`GATE-040-HIDDEN-WORK`
 - 当前付款门槛状态：`pending`
-- 阻塞项：BLK-HVAC-DEEPENING
+- 阻塞项：BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-CABINET-FREEZE-FOR-MEP、BLK-SURVEY-DATA-FREEZE
 
 ### 预算拆分核对
 
@@ -266,8 +266,10 @@
 | [ ] | check_plumb_valve_per_point | major/引用 | 每个用水点一只全铜角阀（含洗衣机快接、洗碗机/净水器三通）+ 硬接编织管 | 1. 按用水点清单逐个核对：每个冷/热出水点配一只全铜角阀，一处不许缺。<br>2. 洗衣机位用专用快接角阀；洗碗机、净水器进水用三通角阀；智能马桶位角阀与同柱插座按既定分层口径错开。<br>3. 角阀到龙头/设备一律硬接编织管（螺纹加橡胶垫压紧）；严禁普通软管直接插接进水口。<br>4. 手扳每处接头检查螺纹扣数，查看编织管端口金属丝未被剪断、管身无折扁。<br> | 用水点角阀一只不少且为全铜；洗衣机/洗碗机/净水器用对应专用角阀；连接为硬接编织管，无软管直插 | 照片或检测记录 | pending |
 | [ ] | check_elec_zero_line_all_switches | major/引用 | 全盒零线：每个开关底盒 3 根 1.5mm²（L/N/灯控） | 1. 封槽前逐个开关底盒开盖核线：全屋每一个开关底盒内穿 3 根 1.5mm²（L / N / 灯控），缺零线的底盒当场补穿，不得封墙后再说。<br>2. 筒灯、灯带、浴霸线控面板同样留零线（线控面板从 N 取电，不借用灯具线）。<br>3. 万用表复测：盒内 N 与同回路 N 导通，L-N 间不短路，并核对线色与线径。<br>4. 按 DEC-2026-10-06-R2 登记的开关/面板点位清单逐点勾选，漏一处即不合格。<br> | 全部开关底盒与灯控面板含零线；零线导通、无借用、无短路 | 照片或检测记录 | pending |
 | [ ] | check_elec_leb_bonding_list | critical/引用 | 两卫 LEB 端子箱 + BV-6mm² 黄绿联结干线 + 待联结金属构件清单（防水层施工前完成） | 1. 两卫各设局部等电位端子箱（LEB），位置避开柜门开启区与贴砖完成面，位置口径见 docs/pending-site-data.md #43。<br>2. 联结干线用 BV-6mm² 黄绿线；逐件联结用 BVR-2.5~4mm² 沿墙脚暗敷，联结点去漆压接。<br>3. 按清单逐件核：给水管角阀与软管金属段、金属地漏篦子与排水口、花洒金属杆与软管、龙头、毛巾架、浴霸金属外壳、金属镜柜。<br>4. 入户给水管/燃气管若为金属材质，须与接地装置联结（GB 55038-2025 7.4.7）。<br>5. 全部联结与导通测试在防水层施工前完成并拍照；封墙、贴砖后不得补埋。<br> | 端子箱存在；清单内金属构件全部联结；导通合格；防水层施工前完成并有工序交接照片 | 照片或检测记录 | pending |
+| [ ] | SCH-030-04 | critical/before_covering | 空调与水电联合交底记录归档 | 空调商提供内机与接管清单（机身尺寸、供电取电方式、检修口、冷凝水接点），与水电点位表和吊顶分层标高逐项核对并四方签认 | 签认记录覆盖全部六台内机与外机，供电回路、控制线、冷凝水接入点与分层标高无冲突 | coordination_record、circuit_schedule、signed_interface_sheet | pending |
 | [ ] | SCH-040-01 | critical/before_covering | 点位和回路与家具、家电及空调匹配 | 按空间逐点核对位置、用途、回路、线径、控制关系和设备功率资料 | 不存在无用途点位、缺失点位或与固定设施冲突的点位 | point_schedule、circuit_schedule、marked_site_photos | pending |
 | [ ] | SCH-040-02 | critical/before_covering | 隐蔽管线影像归档 | 每面墙和地面拍摄全景、局部及带尺寸定位照片 | 照片可定位每条管线且文件路径已登记 | concealed_work_photos | pending |
+| [ ] | SCH-040-03 | critical/before_covering | 水电与空调、橱柜接口冻结完成 | 核对 BLK-MEP-INTERFACE-FREEZE 与 BLK-CABINET-FREEZE-FOR-MEP 的解除证据：联合交底签认记录、橱柜深化图与点位表双向核对结论 | 两项阻断均有书面解除证据，微蒸烤预留点位、分层标高、穿墙孔位高度与冷凝水接点已落实到交底单 | signed_interface_sheet、cabinet_drawing_reference、briefing_sheet | pending |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
@@ -344,7 +346,7 @@
 
 - 通俗说明：先搭建吊顶内部支撑骨架，再联合检查吊顶里面的空调和水电；确认压力、排水、开口和检修条件全部合格后，才用石膏板或吊顶板封闭。
 - 预算：¥6,000；合同：—；已付：¥0；预测：—
-- 依赖：PKG-030、PKG-040；就绪：`blocked`；执行：`not_started`
+- 依赖：PKG-030、PKG-040、PKG-050；就绪：`blocked`；执行：`not_started`
 - 责任角色：吊顶施工、空调商、水电施工、设计师、业主；付款门槛：`GATE-070-CEILING-CLOSED`
 - 当前付款门槛状态：`pending`
 - 阻塞项：BLK-HVAC-DEEPENING
@@ -438,7 +440,7 @@
 
 - 通俗说明：安装马桶、浴室柜、台盆、龙头、花洒、地漏和相关五金，逐件试水、排水并检查接头是否渗漏、安装是否牢固。
 - 预算：¥8,000；合同：—；已付：¥0；预测：—
-- 依赖：PKG-060、PKG-080；就绪：`blocked`；执行：`not_started`
+- 依赖：PKG-060、PKG-080、PKG-040；就绪：`blocked`；执行：`not_started`
 - 责任角色：洁具供应商、水电施工、业主；付款门槛：`GATE-100-COMPLETE`
 - 当前付款门槛状态：`pending`
 
