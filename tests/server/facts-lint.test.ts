@@ -277,6 +277,26 @@ test('fk：引用 id 不在目标集合里即 dangling；severity: warning 时�
   assert.match(result.warnings[0].message, /floor_tile_04/);
 });
 
+test('fk：exclude 排除迭代证据文件中的偶然型号串', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{
+      id: 'c.model_ref', kind: 'fk',
+      ref_pattern: '(JSQ[0-9A-Za-z\\-]+)',
+      ref_scope: ['docs/'],
+      exclude: ['docs/design-iterations/'],
+      target: 'config/models.yaml',
+      target_pattern: '(JSQ[0-9A-Za-z\\-]+)',
+    }],
+  };
+  const result = lintFacts(registry, workspaceOf({
+    'docs/design-iterations/evidence.png': 'random binary decoded as JSQy',
+    'docs/procurement.md': '已核型号 JSQ30-MK6',
+    'config/models.yaml': 'JSQ30-MK6',
+  }, { 'contract.files': ['docs/design-iterations/evidence.png', 'docs/procurement.md', 'config/models.yaml'] }));
+  assert.equal(result.errors.length, 0);
+});
+
 test('requires：条件对象的同级缺少 then 字段时报错', () => {
   const registry: FactsRegistry = {
     ...emptyRegistry,

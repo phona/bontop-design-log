@@ -1,7 +1,7 @@
 notes:
   - "外立面玻璃幕墙已由开发商安装完成，装修阶段无需采购封窗，只需核对门窗口位置及幕墙保护"
   - "本清单以套内 94.76㎡、层高 3.0m 为基数估算"
-  - "本清单共 70 条材料项（2026-10-05 复核：删除 home_fitness_light_set_01 轻训练套，iteration parent-room-study-swap-20261005；与 fact.materials_count / c.materials_count_matches_note 对账：增删条目必须同步此数）"
+  - "本清单共 74 条材料项（2026-10-05 复核：删除 home_fitness_light_set_01 轻训练套，iteration parent-room-study-swap-20261005；与 fact.materials_count / c.materials_count_matches_note 对账：增删条目必须同步此数）"
 
 # Formal GLB material-role contract. Values reference entries below; shader topology stays in Blender Python.
 render_roles:
@@ -721,6 +721,54 @@ materials:
     notes: "业主侧新增瓷砖候选方向（2026-10-03）：业主封顶价与价格类型 cap 见 owner_cap_cny / QR-2026-10-03-04（权威叙述在 schedule/procurement.md §09 与 docs/material_selection_log.md，本条目不重复抄录金额）；status 未取证/待现场核价，量房清单见 docs/pending-site-data.md #35。封顶价须与 floor_tile_01/02/03 同口径（含损耗、配送上楼、退补规则）比较后才可定标，且不得替代 floor_pbr_tile_612 / floor_tile_antislip_400 / floor_tile_deco_small 三个既有分区方向。"
     appearance: { type: "ceramic_tile_v2", color: "#cfc7bb", pattern: "straight" }
 
+  - id: "floor_tile_kt_200x1200_01"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "KT 200×1200木纹长条砖（方案比较候选）"
+    brand: "KT"
+    model: "200×1200mm 木纹砖（具体系列、型号、色号待门店确认）"
+    spec: "200x1200mm"
+    unit: "片"
+    price_per_unit: 29
+    coverage_per_unit: 0.24
+    loss_rate: 1.08
+    calc_mode: "area"
+    supplier: "KT门店（业主提供报价）"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "pending_verification"
+    pros: ["200×1200窄长木纹比例，可与约900×150方案直接比较", "业主提供了单片报价"]
+    cons: ["具体SKU、色号及釉面未确认", "门店片数与项目统一面积/损耗口径待核", "铺贴及辅材费用未确认"]
+    price_source: "业主提供的KT门店报价（2026-10-06，非成交价；516片×29元=14,964元）"
+    notes: "当前仅用于窄长木纹砖方案的视觉与材料预算比较，不代表最终选定。门店报价200×1200、516片、29元/片，材料小计14,964元。渲染沿用项目中性浅暖木纹占位色，只比较砖幅比例与直铺缝线，不代表门店实物颜色、纹理或表面效果。报价数量须按房间净面积与统一损耗率复核。"
+    appearance: { type: "wood_plank", color: "#d8bd93", pattern: "straight", plank_mm: [200, 1200], finish: "soft", seed: 42, grout_mm: 2, grout_color: "#d2b78d", tone_var: 0.3, grain_var: 0.5, seam: 0.35, roughness: 0.4 }
+
+  - id: "floor_tile_jyt_900x150_01"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "金意陶约900×150木纹长条砖（方案比较候选）"
+    brand: "金意陶"
+    model: "约900×150mm 木纹砖（具体系列、型号、色号待门店确认）"
+    spec: "约900x150mm"
+    unit: "片"
+    price_per_unit: 17.8
+    coverage_per_unit: 0.135
+    loss_rate: 1.08
+    calc_mode: "area"
+    supplier: "金意陶门店（业主提供报价）"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "pending_verification"
+    pros: ["窄长木纹比例，可与200×1200方案直接比较", "业主提供了单片报价"]
+    cons: ["约数规格及具体SKU未确认", "门店片数与项目统一面积/损耗口径待核", "色号、釉面、铺贴及辅材费用未确认"]
+    price_source: "业主提供的金意陶门店报价（2026-10-06，非成交价；约970片×17.8元=17,266元）"
+    notes: "当前仅用于窄长木纹砖方案的视觉与材料预算比较，不代表最终选定。门店报约900×150、约970片、优惠单价17.8元/片，材料小计17,266元；按标称尺寸 coverage_per_unit=0.135㎡。渲染沿用项目中性浅暖木纹占位色，只比较砖幅比例与直铺缝线，不代表门店实物颜色、纹理或表面效果。报价数量须按房间净面积与统一损耗率复核。"
+    appearance: { type: "wood_plank", color: "#d8bd93", pattern: "straight", plank_mm: [150, 900], finish: "soft", seed: 42, grout_mm: 2, grout_color: "#d2b78d", tone_var: 0.3, grain_var: 0.5, seam: 0.35, roughness: 0.4 }
+
   # === 湿区分化（DEC-2026-08-21-042：主卫/阳台防滑小砖 + 客卫小花砖点缀） ===
 
   - id: "floor_tile_antislip_400"
@@ -818,6 +866,55 @@ materials:
     price_source: "冠珠门店报价"
     notes: "建议卫生间用，厨房搭配亮色"
     appearance: { type: "ceramic_tile_v2", color: "#a8a09a", pattern: "straight" }
+
+  # === KT 门店报价：按规格和单价登记的非选定材料候选 ===
+  - id: "floor_tile_kt_600x600_01"
+    topic_id: "floor"
+    alternative_group: "floor_tile"
+    category: "地砖"
+    name: "KT 600×600地砖（主/客卫报价候选）"
+    brand: "KT"
+    model: "600×600mm（系列、型号、色号、表面与防滑等级未提供）"
+    spec: "600x600mm"
+    unit: "片"
+    price_per_unit: 28
+    coverage_per_unit: 0.36
+    loss_rate: 1.08
+    calc_mode: "area"
+    supplier: "KT门店（业主提供报价）"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "pending_verification"
+    pros: ["主卫与客卫报价采用同规格、同单价"]
+    cons: ["具体SKU、外观与防滑性能未提供", "门店片数与统一损耗口径待复核", "铺贴及辅材费用未提供"]
+    price_source: "业主提供的KT门店报价（2026-10-06，非成交价；主卫20片、客卫10片，均28元/片；各房间小计见config/tile-comparison.yaml）"
+    notes: "仅作为主/客卫新方案比较选项。外观为中性几何占位，用于查看600×600砖幅，不代表产品颜色、纹理、釉面或防滑属性。"
+    appearance: { type: "ceramic_tile_v2", color: "#d3d0ca", pattern: "straight", tile_mm: 600, roughness: 0.5 }
+
+  - id: "wall_tile_kt_600x1200_01"
+    topic_id: "wall"
+    alternative_group: "wall_tile"
+    category: "墙砖"
+    name: "KT 600×1200墙砖（厨卫报价候选）"
+    brand: "KT"
+    model: "600×1200mm（系列、型号、色号与表面未提供）"
+    spec: "600x1200mm"
+    unit: "片"
+    price_per_unit: 68
+    coverage_per_unit: 0.72
+    loss_rate: 1.05
+    calc_mode: "area"
+    supplier: "KT门店（业主提供报价）"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "pending_verification"
+    pros: ["厨房及主/客卫墙面报价采用同规格、同单价"]
+    cons: ["具体SKU与外观未提供", "门店片数与墙面净面积、损耗口径待复核", "加工、铺贴及辅材费用未提供"]
+    price_source: "业主提供的KT门店报价（2026-10-06，非成交价；厨房10片、客卫24片、干区12片、主卫20片，均68元/片；分项见config/tile-comparison.yaml）"
+    notes: "仅作为厨房和卫生间墙面新方案比较选项。外观为中性几何占位，用于查看600×1200砖幅，不代表产品颜色、纹理或表面效果。干区所属房间未指定，不在本条目中推定。"
+    appearance: { type: "ceramic_tile_v2", color: "#e5e2db", pattern: "straight", tile_mm: [600, 1200] }
 
   - id: "bed_180_01"
     topic_id: "bed"

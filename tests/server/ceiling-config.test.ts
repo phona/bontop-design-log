@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { VALID_CEILING_TYPES } from '../../server/config-loader.js';
+import { CeilingZoneSchema } from '../../shared/project-render-facts-schema.js';
 
 interface CeilingEntry {
   id: string;
@@ -38,4 +39,16 @@ test('ceiling.yaml: corridor/foyer gap entries exist with matching floor_region 
     assert.equal(e.thickness, 0.30);
     assert.deepEqual(e.area, area);
   }
+});
+
+test('ceiling corner_radii accepts a partial set of known corners and rejects unknown keys', () => {
+  const partialCorners = CeilingZoneSchema.safeParse({
+    id: 'ceiling_test', room: 'living', type: 'drop', corner_radii: { nw: 0.4, se: 0.2 },
+  });
+  assert.equal(partialCorners.success, true);
+
+  const typoCorner = CeilingZoneSchema.safeParse({
+    id: 'ceiling_test', room: 'living', type: 'drop', corner_radii: { north_west: 0.4 },
+  });
+  assert.equal(typoCorner.success, false);
 });

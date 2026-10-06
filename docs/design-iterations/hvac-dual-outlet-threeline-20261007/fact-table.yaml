@@ -1,0 +1,44 @@
+# Fact Table — 客餐厅三层线风口（DEC-2026-10-07-R03）
+schema: interior-design-fact-table/v1
+iteration_id: hvac-dual-outlet-threeline-20261007
+
+facts:
+  - id: f-three-lines
+    statement: 客餐厅设备带读作三层水平线：侧立面上出风层（supply_living 南 [9.70,13.20] / supply_dining 北 [7.70,9.70]，y=2.65）、底面前侧下出风层（z=4.85，supply_living_bottom x=10.30 / supply_dining_bottom x=8.00，y=2.50）、底面后侧回风/检修层（z=4.45，return_living x=12.60 / return_dining x=7.90，y=2.49）
+    basis: [config/hvac.yaml, dec-2026-10-07-r03]
+    affects: [风口表达, 效果图, 剖面节点]
+
+  - id: f-decorative-sealed
+    statement: 8 个 LD-deco-*（kind=decorative_louver / system=decorative）为封闭装饰段：背板封闭、无风道连接、不进 MEP 路线、装饰回风段不开滤网/检修口；两台机器送回风各自独立，不存在共用风道
+    basis: [config/hvac.yaml, dec-2026-10-07-r03]
+    affects: [施工交底, MEP]
+
+  - id: f-render-language
+    statement: HvacTerminal 新增 render_style=linear_slot（满长连续叶片、无成品外框、无状态方框；功能段保留槽内贴边状态发丝线、装饰段无状态线）与 grille_height 显式高度；客餐厅 14 个风口全部 linear_slot，其余房间维持 panel
+    basis: [shared/render/HvacGeometryBuilder.ts, dec-2026-10-07-r03]
+    affects: [Web/CLI 渲染, GLB 导出]
+
+  - id: f-return-color-change
+    statement: 回风排 finish 由缺省（标准白）改 matte_black，三层同语言；回退选项=仅 finish 回白（一个字段）
+    basis: [config/hvac.yaml, dec-2026-10-07-r03]
+    affects: [视觉, 吊顶封板前交底]
+
+  - id: f-geometry-frozen
+    statement: 吊顶分区仍 25、标高/梁体/机位（x=10.30/8.00）未动；R18 正交语言与 R100 阳角继续适用；MEP routes 仍 87 条
+    basis: [config/ceiling.yaml, config/mep-hvac-coordination.yaml, verify:all]
+    affects: [验收]
+
+  - id: f-contract-sizes
+    statement: 合同附件（DEC-2026-10-04-R1）出风名义 750×150/1000×150、回风名义 1000×300/1300×300、通长加长 100 元/米另计；模型示意高度送风 0.15/回风 0.25 与名义 300mm 的差 site_pending
+    basis: [config/hvac.yaml load_design.basis, q1]
+    affects: [深化尺寸]
+
+  - id: f-counts
+    statement: A2 diagram terminals 20 → 27（其中客餐厅 6 功能 + 8 装饰 + 5 冷凝水候选；其余房间 8）；可渲染 terminal 14 → 22；cli-glb-export.test.ts 同步
+    basis: [tests/server/cli-glb-export.test.ts, data/project-render-facts.json]
+    affects: [测试]
+
+open_items:
+  - 厂家安装图未回：双出风两出口方向/风量分配、42T2 旋转 180° 允许性（接水盘/泵/电控盒朝向）、下出风有效面积/静压、回风底回/侧回
+  - 回风黑色 vs 标准白回退决策
+  - git 提交方式

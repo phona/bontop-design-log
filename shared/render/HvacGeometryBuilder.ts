@@ -75,6 +75,24 @@ function statusFrame(width: number, height: number, material: THREE.Material): T
   return new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(corners), material);
 }
 
+function statusHairline(width: number, height: number, material: THREE.Material): THREE.LineSegments {
+  // DEC-2026-10-07-R03：linear_slot 功能段的状态提示从整框方框改为槽内贴边发丝线，
+  // 保留 inferred/pending 的颜色语义，不再把风口读成孤立矩形。
+  const w = width / 2 - 0.004;
+  const h = height / 2 - 0.004;
+  const corners = [
+    new THREE.Vector3(-w, -h, 0.011), new THREE.Vector3(w, -h, 0.011),
+    new THREE.Vector3(w, -h, 0.011), new THREE.Vector3(w, h, 0.011),
+    new THREE.Vector3(w, h, 0.011), new THREE.Vector3(-w, h, 0.011),
+    new THREE.Vector3(-w, h, 0.011), new THREE.Vector3(-w, -h, 0.011),
+  ];
+  return new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(corners), material);
+}
+
+function terminalHeight(terminal: HvacTerminal): number {
+  return terminal.grille_height ?? (terminal.system === 'return_air' ? 0.25 : 0.15);
+}
+
 function buildTerminalGeometry(terminal: HvacTerminal): THREE.Group {
   const mountFace = terminal.mount_face ?? 'bottom';
   const group = new THREE.Group();
@@ -83,13 +101,36 @@ function buildTerminalGeometry(terminal: HvacTerminal): THREE.Group {
   const body = new THREE.MeshStandardMaterial({ color: dark ? 0x141414 : 0xf5f5f5, roughness: dark ? 0.85 : 0.9 });
   const frame = new THREE.MeshStandardMaterial({ color: dark ? 0x26262a : 0xd4d4d4, roughness: dark ? 0.75 : 0.7 });
   const statusLine = new THREE.LineBasicMaterial({ color: STATUS_COLOR[terminal.status] });
+  const linearSlot = terminal.render_style === 'linear_slot';
   if (terminal.system === 'access') {
     group.add(new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.42, 0.015), body));
     group.add(frameOutline(0.45, 0.42, 0.02, frame));
     group.add(statusFrame(0.45, 0.42, statusLine));
+  } else if (linearSlot) {
+    // DEC-2026-10-07-R03：通长线性槽——满长连续叶片、无成品外框；功能段留槽内贴边状态发丝线，
+    // 装饰段（kind=decorative_louver，背板封闭无风道）不画任何状态线。
+    const width = terminal.length ?? 0.9;
+    const height = terminalHeight(terminal);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.01), body);
+    back.position.z = -0.008;
+    group.add(back);
+    const slatCount = Math.max(3, Math.min(7, Math.round(height / 0.04)));
+    const usable = height - 0.024;
+    for (let i = 0; i < slatCount; i++) {
+      const slat = new THREE.Mesh(new THREE.BoxGeometry(width, 0.012, 0.03), frame);
+      slat.position.set(0, usable / 2 - (usable / (slatCount - 1)) * i, 0.004);
+      slat.rotation.x = 0.45;
+      group.add(slat);
+    }
+    for (const endX of [-(width / 2), width / 2]) {
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.016, height, 0.018), frame);
+      cap.position.set(endX, 0, 0.002);
+      group.add(cap);
+    }
+    if (terminal.kind !== 'decorative_louver') group.add(statusHairline(width, height, statusLine));
   } else {
     const width = terminal.length ?? (terminal.system === 'return_air' ? 0.6 : 0.8);
-    const height = terminal.system === 'return_air' ? 0.25 : 0.15;
+    const height = terminalHeight(terminal);
     const back = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.01), body);
     back.position.z = -0.008;
     group.add(back);
@@ -118,7 +159,7 @@ function addDescriptor(root: THREE.Group, descriptor: HvacEntityDescriptor, inde
   const source = descriptor.source as HvacTerminal;
   const anchor = descriptor.source as HvacAnchor;
   metadata(object, descriptor.kind === 'anchor' ? 'hvac_equipment' : 'hvac_terminal', descriptor, descriptor.kind === 'terminal'
-    ? { mount_face: source.mount_face ?? 'bottom' }
+    ? { mount_face: source.mount_face ?? 'bottom', render_style: source.render_style ?? 'panel', decorative: source.kind === 'decorative_louver' }
     : { hvacKind: anchor.ref?.source === 'outdoor' ? 'outdoor' : anchor.ref?.source === 'ceiling' ? 'indoor' : 'power' });
   let partIndex = 0;
   object.traverse((child) => {

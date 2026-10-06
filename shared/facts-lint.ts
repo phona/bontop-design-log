@@ -646,7 +646,7 @@ function runFk(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, co
   };
 
   const refs = new Map<string, string[]>();
-  for (const file of contractPaths(ws, contract.ref_scope, 'contract.files')) {
+  for (const file of contractPaths(ws, contract.ref_scope, 'contract.files', contract.exclude)) {
     for (const m of grep(ws, file, str(contract.ref_pattern))) {
       const id = matchText(m, 1);
       const bucket = refs.get(id) ?? [];

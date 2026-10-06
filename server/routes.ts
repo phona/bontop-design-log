@@ -15,6 +15,8 @@ import type { CurrentScheme, CurtainState, ProjectRenderFacts, ProjectRenderFact
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import type { PresentationStateStore } from './presentation-state.js';
 import { filterCurtainElements, loadPhaseBudgetMeta, loadPhaseScopes, parsePhaseId } from './phase-scope.js';
+import { buildTileCostComparison, loadTileComparisonConfig } from './tile-cost-comparison.js';
+import type { ResolvedLayout } from '../shared/types.js';
 
 export interface ApiDeps {
   catalog: ProjectCatalog;
@@ -29,6 +31,7 @@ export interface ApiDeps {
   getProjectRenderFacts?: () => ProjectRenderFacts | undefined;
   getProjectRenderFactsProjection?: () => ProjectRenderFactsProjection | undefined;
   getMepLintContext?: () => MepLintLayoutContext;
+  getResolvedLayout?: () => ResolvedLayout;
 }
 
 export function createApiRouter(deps: ApiDeps): Router {
@@ -56,6 +59,39 @@ export function createApiRouter(deps: ApiDeps): Router {
       return;
     }
     res.json(projection);
+  });
+
+  router.get('/tiles/comparison', (_req, res) => {
+    try {
+      const layout = deps.getResolvedLayout?.();
+      if (!layout) {
+        res.status(503).json({ error: 'resolved current layout is not ready' });
+        return;
+      }
+      const config = loadTileComparisonConfig();
+      const comparison = buildTileCostComparison(layout, config, catalog);
+      res.json({
+        ...comparison,
+        interpretation: {
+          rawQuotedAmountsPreserved: true,
+          userDerivedTotalsStatus: 'assumption_only_not_store_confirmed',
+          jinyiBathroomLines: 'raw room and surface mappings remain unresolved; optional area-based hypotheses are low/medium confidence and are not promoted to confirmed quote data',
+          fullDesignAndRenderingStatus: 'illustrative_comparison_only_not_final_selection',
+        },
+        quoteScopeDetails: config.candidates.map(candidate => ({
+          candidateId: candidate.id,
+          scope: candidate.quote_scope,
+          additionalLines: candidate.additional_quote_lines,
+          additionalOriginalTotalYuan: candidate.additional_quote_original_total_yuan,
+          userDerivedAdditionalDiscountedTotalYuan: candidate.user_derived_additional_quote_discounted_total_yuan,
+          userDerivedDiscountStatus: candidate.user_derived_discount_status,
+          reportedFullMaterialTotalYuan: candidate.reported_full_material_total_yuan,
+          alternativeReportedFullMaterialTotalYuan: candidate.alternative_reported_full_material_total_yuan,
+        })),
+      });
+    } catch (err) {
+      res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
   });
 
   router.get('/mep-coordination', (_req, res) => {

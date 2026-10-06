@@ -195,6 +195,11 @@ const apiDeps = {
       suppressedWallIds: (overlay?.suppress ?? []).flatMap((item) => item.walls ?? (item.wall ? [item.wall] : [])),
     };
   },
+  getResolvedLayout: () => {
+    const layout = layoutLoader.getConfig();
+    if (!layout || !('vertices' in layout)) throw new Error('current vertex layout is not ready');
+    return resolveLayout(layout as unknown as VertexLayoutYaml);
+  },
   getProjectRenderFactsProjection: () => {
     const facts = projectRenderFactsLoader.getFacts();
     const overrides = projectRenderFactsLoader.getOverrides();

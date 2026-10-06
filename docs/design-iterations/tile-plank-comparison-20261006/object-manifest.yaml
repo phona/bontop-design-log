@@ -1,0 +1,88 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: tile-plank-comparison-20261006
+subject: 干区地砖比较对象
+object_policy:
+  fixed_count_required: true
+  split_by: [material, review]
+  visual_relationship_required: true
+objects:
+  - id: floor_tile_kt_200x1200_01
+    type: floor_material_candidate
+    archetypes: [floor_region]
+    owner: 业主待定标
+    function: 干区地面选材候选与预算比较
+    material: 占位浅暖木纹，非KT实物
+    geometry_source: config/layout/model-geometry.yaml
+    datum_refs: [dry-floor-polygons]
+    fact_refs: [dry-area, two-options]
+    decision_refs: [DEC-2026-10-06-TILE-01]
+    dependencies: [config/materials.yaml, config/tile-comparison.yaml]
+    interfaces:
+      - {id: wet-boundary, target_object_id: existing-wet-floor, kind: material, requirement: 本轮不改变湿区分区, status: confirmed}
+    collision: {policy: none, geometry_ref: null, review_ref: null}
+    maintenance: {boundary: 地砖与近色缝, access_clearance: null, replaceable_parts: [], inspection_requirements: [样板和铺贴工艺待门店核验]}
+    parts: []
+    visual_relationships:
+      - {target_object_id: floor_tile_jyt_900x150_01, relation: aligned, requirement: 同占位色纹同机位比较砖幅, evidence_refs: [evidence/kt-detail.png, evidence/jyt-detail.png]}
+    validation_refs: [evidence/kt-detail.png]
+    status: verified
+  - id: floor_tile_jyt_900x150_01
+    type: floor_material_candidate
+    archetypes: [floor_region]
+    owner: 业主待定标
+    function: 干区地面选材候选与预算比较
+    material: 占位浅暖木纹，非金意陶实物
+    geometry_source: config/layout/model-geometry.yaml
+    datum_refs: [dry-floor-polygons]
+    fact_refs: [dry-area, two-options]
+    decision_refs: [DEC-2026-10-06-TILE-01]
+    dependencies: [config/materials.yaml, config/tile-comparison.yaml]
+    interfaces:
+      - {id: wet-boundary, target_object_id: existing-wet-floor, kind: material, requirement: 本轮不改变湿区分区, status: confirmed}
+    collision: {policy: none, geometry_ref: null, review_ref: null}
+    maintenance: {boundary: 地砖与近色缝, access_clearance: null, replaceable_parts: [], inspection_requirements: [实际尺寸及样板待门店核验]}
+    parts: []
+    visual_relationships:
+      - {target_object_id: floor_tile_kt_200x1200_01, relation: aligned, requirement: 同占位色纹同机位比较砖幅, evidence_refs: [evidence/kt-detail.png, evidence/jyt-detail.png]}
+    validation_refs: [evidence/jyt-detail.png]
+    status: verified
+  - id: floor_tile_kt_600x600_01
+    type: wet_floor_material_candidate
+    archetypes: [floor_region]
+    owner: 业主待定标
+    function: KT主客卫地面材料比较
+    material: 600×600中性色占位，防滑与花色未验证
+    geometry_source: config/layout/model-geometry.yaml
+    datum_refs: [wet-floor-polygons]
+    fact_refs: [two-options]
+    decision_refs: [DEC-2026-10-06-TILE-01]
+    dependencies: [config/materials.yaml, config/tile-comparison.yaml]
+    interfaces: []
+    collision: {policy: none, geometry_ref: null, review_ref: null}
+    maintenance: {boundary: 地砖与砖缝, access_clearance: null, replaceable_parts: [], inspection_requirements: [湿脚防滑与找坡待门店及施工方核验]}
+    parts: []
+    visual_relationships: []
+    validation_refs: [evidence/kt-guest-bath-plan.png, evidence/bath-floor-format.svg]
+    status: verified
+  - id: wall_tile_kt_600x1200_01
+    type: wall_material_candidate
+    archetypes: [wall]
+    owner: 业主待定标
+    function: KT厨房及主客卫墙面材料比较
+    material: 600×1200中性色占位，花色和铺向未验证
+    geometry_source: config/layout/model-geometry.yaml
+    datum_refs: [wet-wall-finishes]
+    fact_refs: [two-options]
+    decision_refs: [DEC-2026-10-06-TILE-01]
+    dependencies: [config/materials.yaml, config/tile-comparison.yaml]
+    interfaces: []
+    collision: {policy: none, geometry_ref: null, review_ref: null}
+    maintenance: {boundary: 砖面、阴阳角与收口, access_clearance: null, replaceable_parts: [], inspection_requirements: [真实净贴面积与铺贴方向待核验]}
+    parts: []
+    visual_relationships: []
+    validation_refs: [evidence/kt-kitchen-wall.png]
+    status: verified
+notes:
+  - 金意陶厨卫规格不明处不是可确认材料对象，仅以低置信度推演和无砖缝占位图表达；待店家明细后补对象。
+  - 生活阳台保持现行材料预算基线，未纳入两店新报价。

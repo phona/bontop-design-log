@@ -948,6 +948,12 @@ export interface CeilingZone {
   thickness?: number;
   area?: [number, number, number, number];
   corner_radius?: number;
+  /** 逐角圆角（米），键为平面角 nw/ne/se/sw；声明的角覆盖 corner_radius。 */
+  corner_radii?: Partial<Record<'nw' | 'ne' | 'se' | 'sw', number>>;
+  /** 阴角圆弧（米）：加材料把内凹角改成圆角拐肘，键同为平面角。 */
+  concave_fillets?: Partial<Record<'nw' | 'ne' | 'se' | 'sw', number>>;
+  /** 铝扣板分格缝声明（仅 type: aluminum_buckle 生效）。 */
+  buckle_panel?: { module: number; seam_width?: number; seam_color?: string };
   inspection_layer?: string;
   inspection_opacity?: number;
   x?: number;
@@ -959,7 +965,7 @@ export interface CeilingZone {
 }
 
 export type HvacStatus = 'confirmed' | 'inferred' | 'pending';
-export type HvacSystem = 'refrigerant' | 'power' | 'condensate' | 'supply_air' | 'return_air' | 'access';
+export type HvacSystem = 'refrigerant' | 'power' | 'condensate' | 'supply_air' | 'return_air' | 'access' | 'decorative';
 
 export interface VrfOutdoorUnit {
   id: string;
@@ -994,7 +1000,7 @@ export interface HvacTerminal {
   system: HvacSystem;
   position: Vec3;
   reason?: string;
-  kind?: 'terminal' | 'condensate_drain_candidate';
+  kind?: 'terminal' | 'condensate_drain_candidate' | 'decorative_louver';
   confirmed?: boolean;
   render_interior?: boolean;
   render_coordination?: boolean;
@@ -1003,6 +1009,10 @@ export interface HvacTerminal {
   length?: number;
   /** 风口面板面漆：matte_white=标准浅灰塑料百叶（缺省）；matte_black=通长隐藏式风槽黑色内衬定制（客餐厅效果槽，DEC-2026-10-05-R16）。 */
   finish?: 'matte_white' | 'matte_black';
+  /** 风口渲染语言：panel=带外框成品百叶（缺省）；linear_slot=通长线性槽（满长连续叶片、无外框、无状态方框；DEC-2026-10-07-R03 客餐厅三层线）。 */
+  render_style?: 'linear_slot' | 'panel';
+  /** 风口面板高度（米）显式覆盖；缺省按 system 默认（回风 0.25 / 其余 0.15）。合同附件名义尺寸见 reason。 */
+  grille_height?: number;
 }
 
 export interface HvacReferenceConstraint {

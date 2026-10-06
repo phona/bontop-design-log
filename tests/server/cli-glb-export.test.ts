@@ -66,8 +66,26 @@ interface CeilingEntry {
   thickness?: number;
   area?: [number, number, number, number];
   corner_radius?: number;
+  corner_radii?: Record<string, number>;
+  buckle_panel?: { module: number; seam_width?: number; seam_color?: string };
   inspection_layer?: string;
   inspection_opacity?: number;
+}
+
+/** 任一被声明的圆角（corner_radius 或 corner_radii 里的正值）⇒ 走圆角分支（slab + 围边）。 */
+function isRounded(entry: CeilingEntry): boolean {
+  return (entry.corner_radius ?? 0) > 0 || Object.values(entry.corner_radii ?? {}).some((value) => (value ?? 0) > 0);
+}
+
+/** 铝扣板分格缝数量：按 module 排块，缝数 = (格数 − 1) × 2 方向。 */
+function seamCount(entry: CeilingEntry): number {
+  const area = entry.area;
+  if (entry.type !== 'aluminum_buckle' || !entry.buckle_panel || !area || isRounded(entry)) return 0;
+  const [x1, z1, x2, z2] = area;
+  const module = entry.buckle_panel.module;
+  const countX = Math.floor((Math.abs(x2 - x1) + 1e-9) / module);
+  const countZ = Math.floor((Math.abs(z2 - z1) + 1e-9) / module);
+  return Math.max(0, countX - 1) + Math.max(0, countZ - 1);
 }
 
 function readCeilingEntries(): CeilingEntry[] {
@@ -253,7 +271,7 @@ test('CLI with real render facts exports every renderable A2 HVAC anchor and ter
   assert.equal(report.hvacStatus, 'implemented');
   assert.equal(new Set(ids).size, ids.length);
   assert.equal(report.hvacEquipment, 19);
-  assert.equal(report.hvacTerminals, 14); // DEC-2026-10-05-R18：+supply_living_bottom/+supply_dining_bottom（两台双出风内机第二出口下出风），12→14
+  assert.equal(report.hvacTerminals, 22); // DEC-2026-10-05-R18：+supply_living_bottom/+supply_dining_bottom 12→14；DEC-2026-10-07-R03：客餐厅三层线 +8 个 LD-deco-* 封闭装饰段（背板封闭无风道）14→22
   for (const id of [
     'outdoor_a2', 'indoor_living', 'indoor_dining', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child',
     'power_living', 'power_dining', 'power_master', 'power_study', 'power_parent', 'power_child',
@@ -276,6 +294,15 @@ test('CLI with real render facts exports every renderable A2 HVAC anchor and ter
   assert.ok(Math.abs(ret!.position.x + 0.5 / 2 - 3.95) < 1e-9, `return nominal east x=${ret!.position.x + 0.5 / 2}`);
   assert.ok(supplyBox.max.x < 4.14, `supply rendered east edge x=${supplyBox.max.x}`);
   assert.ok(returnBox.max.x < 4.14, `return rendered east edge x=${returnBox.max.x}`);
+  // DEC-2026-10-07-R03：客餐厅三层线——8 个封闭装饰段必须同场导出，并与功能段共用 linear_slot 语言。
+  for (const id of ['LD-deco-side-south', 'LD-deco-side-north', 'LD-deco-supply-west', 'LD-deco-supply-mid', 'LD-deco-supply-east', 'LD-deco-return-west', 'LD-deco-return-mid', 'LD-deco-return-east']) {
+    assert.ok(exportRoot.getObjectByName(`hvac:A2:terminal:${id}`), `missing decorative louver ${id}`);
+  }
+  for (const id of ['supply_living', 'supply_dining', 'supply_living_bottom', 'supply_dining_bottom', 'return_living', 'return_dining', 'LD-deco-side-south', 'LD-deco-side-north', 'LD-deco-supply-west', 'LD-deco-supply-mid', 'LD-deco-supply-east', 'LD-deco-return-west', 'LD-deco-return-mid', 'LD-deco-return-east']) {
+    const object = index.hvac.terminals.get(`hvac:A2:terminal:${id}`);
+    assert.ok(object, `terminal ${id} must be indexed`);
+    assert.equal(object.userData.render_style, 'linear_slot', `terminal ${id} must use linear_slot`);
+  }
 });
 
 test('CLI exports every solid ceiling.yaml zone with the Web metadata contract', () => {
@@ -289,12 +316,12 @@ test('CLI exports every solid ceiling.yaml zone with the Web metadata contract',
   const { scene, report, index } = buildCliHouseScene();
   const solids = collectObjects(scene).filter((object) => object.userData.type === 'ceiling_zone_solid');
   assert.equal(report.ceilingZones, solidEntries.length);
-  const expectedSolidCount = solidEntries.reduce((count, entry) => count + (entry.corner_radius && entry.corner_radius > 0 ? 2 : 5), 0);
+  const expectedSolidCount = solidEntries.reduce((count, entry) => count + (isRounded(entry) ? 2 : 5) + seamCount(entry), 0);
   assert.equal(solids.length, expectedSolidCount);
   for (const entry of solidEntries) {
     const objectId = `ceiling:${entry.id}`;
     const matching = solids.filter((object) => object.userData.objectId === objectId);
-    const expectedParts = entry.corner_radius && entry.corner_radius > 0 ? 2 : 5;
+    const expectedParts = (isRounded(entry) ? 2 : 5) + seamCount(entry);
     assert.equal(matching.length, expectedParts, `expected ${expectedParts} rounded slab/edge solids for ${objectId}`);
     for (const object of matching) {
       assert.equal(object.userData.roomId, entry.room);
@@ -319,6 +346,12 @@ test('CLI exports every solid ceiling.yaml zone with the Web metadata contract',
   }
   assert.equal(solids.some((object) => object.userData.objectId === 'ceiling:ac_living'), false);
   assert.equal(solids.some((object) => object.userData.objectId === 'ceiling:ac_master'), false);
+  // 铝扣板分格缝随分区导出，且仍属于该分区（走 ceilingMeshes 索引，俯视/轨道模式跟随隐藏）
+  for (const entry of solidEntries.filter((candidate) => seamCount(candidate) > 0)) {
+    const seams = solids.filter((object) => object.userData.objectId === `ceiling:${entry.id}` && object.userData.part === 'buckle-seam');
+    assert.equal(seams.length, seamCount(entry), `${entry.id} should export ${seamCount(entry)} panel seams`);
+    assert.ok(seams.every((object) => index.ceilingMeshes.includes(object as THREE.Mesh)), `${entry.id} seams follow the ceiling visibility rule`);
+  }
 });
 
 test('CLI overlay and furniture world bboxes preserve the house z contract', () => {

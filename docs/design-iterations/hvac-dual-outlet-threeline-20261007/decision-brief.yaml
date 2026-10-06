@@ -1,0 +1,71 @@
+# Decision Brief — 客餐厅双出风风口三层线语言（frozen）
+schema: interior-design-decision-brief/v1
+iteration_id: hvac-dual-outlet-threeline-20261007
+frozen: true
+frozen_at: 2026-10-07
+owner: 业主
+
+priority:
+  - 保持现有吊顶几何、梁体关系、设备带位置、客餐厅空间设计不变，只修正风口表达与施工节点
+  - 两台双出风内机（71T2 客厅 / 42T2 餐厅）送回风各自独立，不得画成共用风道
+  - 一眼看过去是完整设备带，不是 6 个设备洞；底面不得出现 4 块孤立矩形百叶
+  - 三层风口平行、对齐、同一设计语言；风口实际尺寸以安装要求/有效通风面积/检修空间为约束，不为美观压缩到不可施工
+
+allowed_scope:
+  - config/hvac.yaml 的客餐厅 terminals（三层线口径 + 8 个封闭装饰段）
+  - shared/types.ts、shared/project-render-facts-schema.ts 的 HvacTerminal 扩展（decorative/linear_slot/grille_height）
+  - shared/render/HvacGeometryBuilder.ts 的 linear_slot 渲染分支
+  - config/ceiling.yaml、config/mep-hvac-coordination.yaml 的说明文字（不动几何/路线）
+  - data/project-render-facts.json（脚本重生成）、tests 计数同步、docs/design-iterations/hvac-dual-outlet-threeline-20261007/ 五件套、docs/decision_log.md DEC-2026-10-07-R03
+
+forbidden:
+  - 修改吊顶分区/标高/梁体/圆角/机位
+  - 增加 MEP 路线（装饰段不挂路线，87 条不变）
+  - 把装饰段接入任何风道/滤网/检修口
+  - 修改其余房间风口语言（panel 不变）
+  - 修改 generated 文件（data/project-render-facts.json 只能脚本重生成）
+  - 用效果图像素反推坐标；以"基本完成"替代验证门
+
+decisions:
+  - id: DEC-2026-10-07-R03
+    content: 三层线语言：侧立面上出风 / 底面前侧下出风 / 底面后侧回风检修，各自功能段独立 + 8 个 LD-deco-* 封闭装饰段延续；linear_slot 渲染；回风改 matte_black
+    status: frozen
+  - id: DEC-2026-10-07-R03-schema
+    content: HvacSystem+decorative、kind+decorative_louver（schema 强制 confirmed=false/render_interior=true/render_coordination=false）、render_style、grille_height
+    status: frozen
+
+open_questions:
+  - q1: 双出风两出口方向/风量分配、42T2 旋转 180° 允许性、下出风有效面积/静压、回风底回/侧回——美的 MJV-XXT2/P-SS 厂家安装图（site_pending，不改配置；公开渠道未找到 /P-SS 说明书，勿用 /DX-GC 等非同族手册替代）
+  - q2: 回风排是否回退标准白（当前黑，三层同语言；回退=改 finish 一个字段）
+  - q3: git 提交方式（Skill 禁令与 AGENTS.md 提交要求冲突，沿用上轮待裁定）
+  - q4: 模型示意高度（回风 0.25）与合同名义 300mm 的差异、模型段长与合同 1000/1300 的差异——待厂家图/现场复核
+
+acceptance:
+  validation_commands:
+    - npm run generate:project-render-facts
+    - npm run verify:all
+    - npm run test:server
+    - npm run typecheck
+    - cd app && npm run test:app
+  evidence_required:
+    - 客餐厅主效果图（完整设备带）
+    - 从客厅看餐厅视角
+    - 从餐厅看客厅视角
+    - 设备带近景（仰视见底面两层线）
+    - D1 两台内机平面布置/风口对应关系图
+    - D2 天花剖面节点图
+  acceptance_criteria:
+    - 一眼看过去是完整设备带，不是 6 个设备洞
+    - 两台机器的实际送回风区域清楚且独立
+    - 三层风口全部平行、对齐、同一设计语言
+    - 不改变现有客餐厅吊顶总体结构
+    - 图纸能直接给空调施工方和木工讨论深化尺寸
+  review_required: [aesthetic, functional]（双 PASS 才 delivery_ready）
+
+alignment:
+  - id: align1
+    channel: 直接指令（双出风结构说明 + 参考视觉三层线）
+    answer: 三层线语言 + 装饰段封闭延续 —— ud1
+  - id: align2
+    channel: 直接指令（"统一宽度、轴线、材质和百叶形式"）
+    answer: 回风排跟随 matte_black 黑槽语言 —— ud2

@@ -1738,7 +1738,7 @@
 - **成本口径**：六个干区净铺 111.864㎡；沿用材料预算 8% 计划损耗。KT 同面积预估 504 片、主砖 ¥14,616；金意陶按约数 900×150 暂估 895 片、主砖 ¥15,931。分别保留门店原报 516 片／¥14,964 与 970 片／¥17,266，不把报价片数写回几何。人工、辅材、加工、配送、税费和美缝单列，未知不作零元。
 - **产物与下一关口**：两款独立材料候选、只读成本比较与同机位示意图见 `config/materials.yaml`、`config/tile-comparison.yaml`、`schedule/procurement.md` 和 `docs/design-iterations/tile-plank-comparison-20261006/evidence/`。两张原始手写报价照已归档；KT 主客卫/厨墙按报价中可读规格作占位比较。业主允许对金意陶原图作**标不确定性的推演**：③的48片约400×400砖名义面积7.68㎡，接近两卫现行净地面合计7.726㎡，可用作两卫地面效果假设；②④可能是卫浴墙面但规格和房间归属不明，①用途不明。推演不得写回原报价事实字段或作为定标依据。店家提供实际 SKU、样板、箱规、逐房净面积及全安装报价后，业主再决定最终默认材料；本轮不改 `data/current-scheme.json`。
 
-### DEC-2026-10-07-R01 餐厅边吊只倒外露阳角 + 厨卫铝扣板加分格缝
+### DEC-2026-10-07-R01 餐厅边吊只倒外露阳角 + 厨卫铝扣板加分格缝（同日经 R04 改判：餐区改「一圈圆」R150）
 
 - **日期**：2026-10-07。触发：业主看模型后指出「餐厅边吊过渡应该是外圆弧，现在都是内圆弧，很奇怪；厨卫好像没有铝扣板吊顶建模」。
 - **裁定①（圆角）**：只给**外露阳角**倒 R100，对接/同标高连续/贴墙/阴角交汇**一律正交**。`shared/render/CeilingZoneBuilder.ts` 的 `corner_radius` 原本是「整块 area 矩形四角同半径」，把每条服务带的四个角全抹圆——凡是属于对接或连续的角就被切出凹口（`quadraticCurveTo` 控制点落在直角上 = 切角），平视俯视都读成内圆弧。新增 `corner_radii: { nw|ne|se|sw }` 逐角声明（`corner_radius` 保留四角同半径旧语义，向后兼容）：`ceiling_dining_west_band` 只留 `nw: 0.10`（西缘 x=7.20 在 z[2.40,4.30] 无墙，西侧 bulkhead 折向厨房 2.65→2.50 台阶，是该带唯一敞空阳角），`ceiling_dining_north_band` 取消圆角（NW 沿厨房台阶与西带连续、NE 贴 `w_ent_west`、SE 与门厅吊顶同标高对接、SW 是与西带交汇的阴角，按 R18 附则保持正交）。`ceiling_living`/`ceiling_master_ac` 沿用 R18 已审定的四角同半径，本轮不动。
@@ -1765,3 +1765,31 @@
 - **验证**：`verify:schedule` Exit 0（3 phases / 23 packages / 91 components / ¥210,000 allocated / known pending gap 由 35,994 降至 **33,794**，净 −2,200）→ `schedule:render` 再生 `budget.md`/`schedule.md`/`checklist.md` → `verify:all` Exit 0 以外唯一 FAIL 为 `verify:facts` 的 `dangling_reference`（瓷砖比价并行工作在 `docs/design-iterations/tile-plank-comparison-20261006/evidence/jyt-guest-bath-hypothesis.png` 引用 `JSQy` 而 `control.yaml` 仅有 `JSQ30-HWF`/`JSQ30-MK6`，与本条无关，已由 DEC-2026-10-07-R01 登记同一模式；`control.yaml` 现存热水器型号未因本条被删改）→ `test:server` 647 tests / 646 pass / 1 fail（失败项为 `mep-guidance-baseline` 的 `factsRun.status === 0` 断言，根因同上，非本条引入）→ `typecheck` Exit 0。本轮自查：首次 `verify:facts` 曾报 2 条 `unregistered_fact_occurrence`（`COST-100-02` 描述内 `¥1,500`/`¥2,000` 字面量），已按项目约定去掉 `¥` 前缀后归零（15→13 warnings）。
 - **关联文件**：`schedule/phase-1/control.yaml`（PKG-100、`COST-100-01`~`05`、`COST-150-01`、`BLK-MASTER-VANITY-SKU`）、`schedule/phase-2/control.yaml`（`P2-100` 边界补注）、`docs/decision_log.md`（本条）。
 - **决策人**：业主。
+
+### DEC-2026-10-07-R03 客餐厅双出风内机风口三层线语言：功能段独立 + 装饰段封闭（只改表达与节点，不动吊顶几何）
+
+- **日期**：2026-10-07。触发：业主核对美的双出风内机结构（侧面上出风 + 底面前侧下出风 + 底面后侧回风/检修，非普通侧出风+底回风）后，要求设备带读作规整的三层水平线，消除"底面 4 块孤立矩形百叶"观感，并令两台机器的送回风各自独立、不得画成共用风道；同时保持现有吊顶几何、梁体关系、设备带位置与客餐厅空间设计不变。
+- **三层线口径（设备带 ceiling_living x[7.20,13.40]×z[4.30,5.20]，底 2.50）**：
+  1. **侧立面上出风层**：南立面（客厅侧）功能段 `supply_living` x[9.70,13.20] 3.5m 属 71T2；北立面（餐厅侧）功能段 `supply_dining` x[7.70,9.70] 2.0m 属 42T2（旋转 180° 朝北）；两段同标高 y=2.65、同款 matte_black linear_slot。
+  2. **底面前侧下出风层**（z=4.85，y=2.50）：`supply_living_bottom` x=10.30 0.9m 属 71T2 第二出口；`supply_dining_bottom` x=8.00 0.9m 属 42T2 第二出口；同轴等宽。
+  3. **底面后侧回风/检修层**（z=4.45，y=2.49）：`return_living` x=12.60 1.0m 属 71T2；`return_dining` x=7.90 0.9m 属 42T2；铰接回检一体。
+  - 非功能区以 **8 个 `LD-deco-*` 封闭装饰段**（`kind: decorative_louver` / `system: decorative`）同款延续：`LD-deco-side-south` x[7.20,9.70]、`LD-deco-side-north` x[9.70,13.40]（西端 [7.20,7.70] 保持与餐厅西服务带正交交接不贴百叶）、`LD-deco-supply-west/mid/east`（z=4.85：[7.20,7.55]/[8.45,9.85]/[10.75,13.40]）、`LD-deco-return-west/mid/east`（z=4.45：[7.20,7.45]/[8.35,12.10]/[13.10,13.40]）。**背板封闭、无风道连接、不进 MEP 路线、不开滤网/检修口；两台机器送回风各自独立，不得误读为共用风道。**
+- **渲染语言**：`HvacTerminal` 新增 `render_style: 'linear_slot'`（满长连续叶片、无成品外框、无状态方框；功能段保留槽内贴边状态发丝线，装饰段无任何状态线）与 `grille_height` 显式高度字段；`system` 增 `decorative`、`kind` 增 `decorative_louver`（schema 强制 decorative_louver 必须 decorative 系统 + confirmed=false + render_interior=true + render_coordination=false）。6 个功能段与 8 个装饰段全部 linear_slot，其余房间保持 panel 语言不变。
+- **回风材质变更**：R16"回风暂标准白"自此按业主"三层同语言"指令改为 matte_black（可选回退：仅 finish 一字段回白，登记于 decision-brief open_questions）。
+- **尺寸口径（不代厂家决定）**：合同附件（DEC-2026-10-04-R1）出风名义 750×150 / 1000×150、回风名义 1000×300 / 1300×300、通长加长 100 元/米另计——已写入各 terminal reason；模型示意回风高度 0.25 与名义 300mm 的差、段长与名义的差、双出风两出口风量分配、42T2 旋转 180° 允许性、下出风有效面积/静压、回风底回/侧回形式，全部 site_pending，以厂家安装图为约束。
+- **未动**：吊顶分区（25）、标高、梁体、两台机位（x=10.30/8.00）、R18 正交语言与 R100 阳角、R11 冷凝水、R20 回风收界；MEP routes 仍 **87 条**（装饰段不挂路线）。
+- **验证**：`generate:project-render-facts`  → `verify:facts`（dangling_reference 归零）/ `verify:mep` / `test:server`（cli-glb-export 计数 14→22）+ `test:app` + `typecheck`；GLB 导出 22 个 terminal 名称唯一。
+- **决策人**：业主。
+
+### DEC-2026-10-07-R04（改判 R01）餐厅吊顶环改成「一圈圆」R150，阴角也要圆弧
+
+- **日期**：2026-10-07 下午。触发：业主看 R01 结果（只倒外露阳角、其余全正交）后判定「餐厅的得是一圈圆的，不然就很丑」——并确认**主卧的设计是对的**（`ceiling_master_ac` R100 圆角盒 + L 形拐角维持原样，不动）。
+- **裁定**：餐厅吊顶环统一 **R150**，**只做餐区能看到的角**；业主在候选项里明确选了「整圈连续圆角（跨分区统一半径）」+「只做餐区能看到的角」。R01 的「只倒外露阳角、其余全正交」结论对餐区视野内的转角作废。
+- **几何**：餐区这一圈有**两个阴角 + 三个外露端头**，不是只有交汇那一个——
+  - 阴角 (7.70,3.00)（西带东 bulkhead 折向北带南 bulkhead，餐桌区最显眼的内凹角）→ `ceiling_dining_north_band` 的 `concave_fillets: { sw: 0.15 }`；
+  - 阴角 (7.70,4.30)（西带东 bulkhead 折向设备带北立面）→ `ceiling_dining_west_band` 的 `concave_fillets: { se: 0.15 }`；
+  - 外露阳角：西带 NW(7.20,2.40)（西 bulkhead 折向厨房台阶）与北带 SE(10.80,3.00)（南 bulkhead 东端折向墙/门厅折段）→ 各自 `corner_radii` R150。
+  - 保持直角：沿厨房台阶连续处、贴 `w_ent_west`、与走廊/设备带/门厅同标高对接处；走廊↔设备带 0.35m 错台与门厅 0.1m 折段不在餐区视野内，本轮不动（业主选定范围）。
+- **新能力**：`CeilingZoneBuilder` 新增 `concave_fillets`（阴角圆弧）。阳角圆角是减材料（角前 R 停住、以角为圆心切过去）；阴角是**加材料**（沿两边各越过角 R、绕 `角 + R·(dirIn+dirOut)` 的圆心圆弧接回）。混合轮廓走采样多边形 + 实体挤出路径；`roundedShape` 的显式弧心机制不适用于此，故在 builder 内自建 `buildMixedRectangleOutline`。
+- **与 R18 附则的关系**：R18 附则「设备带/餐厅侧交汇保持正交」对**餐区视野内的转角**被本轮改判覆盖（业主 2026-10-07 明确要一圈圆）；对**不可见的对接/连续处**仍然有效。`ceiling_living`/`ceiling_master_ac` 的 R100 四角同半径不动。
+- **验证**：`verify:all` 0 error / `verify:project-render-facts` ceiling=25 / `test:app` 482 passed / `test:server` 649 passed / `typecheck`；CLI 场景实测：西带 AABB x[7.20,7.85]（阴角加材料到 7.70+0.15）、北带 z 到 3.15，两个 fillet 在 z 向不相交。

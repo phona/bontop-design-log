@@ -1,0 +1,116 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "tile-plank-comparison-20261006",
+  "subject": "木纹长条砖与厨卫墙地砖效果及材料成本预演",
+  "state": "delivery_ready",
+  "source_version": {
+    "config_refs": ["config/materials.yaml", "config/tile-comparison.yaml", "data/current-scheme.json", "config/layout/model-geometry.yaml"],
+    "asset_refs": ["app/src/render/TextureFactory.ts", "app/src/render/TextureManager.ts", "shared/three-scene-geometry.ts"],
+    "render_facts_ref": "data/project-render-facts.json",
+    "source_digest": "5cac566a7d7ec61894d5abdefbf109b92a0327cf1bab6590e4dd97b33074536f",
+    "generated_at": "2026-10-06"
+  },
+  "validation": {
+    "commands": ["npm run verify:all", "npm run test:server", "npm run test:app", "npm run typecheck"],
+    "results": ["verify:all PASS (13 existing fact warnings)", "test:server PASS 648/648", "test:app PASS 479/479", "typecheck PASS"],
+    "config_status": "PASS",
+    "geometry_status": "PASS",
+    "consistency_status": "PASS",
+    "functional_checks_status": "PASS",
+    "application_status": "PASS",
+    "typecheck_status": "PASS",
+    "generated_files_touched_directly": false
+  },
+  "evidence": [
+    {
+      "id": "dry-floor-pair",
+      "url": "http://127.0.0.1:5176/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady() && houseScene.isReady()",
+      "ready_checked_at": "2026-10-06",
+      "config_error_banner": "",
+      "target_objects": ["客餐厅与六个干区地面"],
+      "target_object_ids": ["floor:living_dining"],
+      "runtime_query_refs": ["evidence/evidence-notes.md"],
+      "camera": {"mode": "orbit-top-down", "is_overview": false, "position": [9.3, 6.5, 7.3], "target": [9.3, 0, 7.29], "view_type": "plan"},
+      "snapshot_path": "evidence/app-snapshot.txt",
+      "screenshot_path": "evidence/kt-detail.png + evidence/jyt-detail.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["5cac566a7d7ec61894d5abdefbf109b92a0327cf1bab6590e4dd97b33074536f"],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "bath-floor-pair",
+      "url": "http://127.0.0.1:5176/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady() && houseScene.isReady()",
+      "ready_checked_at": "2026-10-06",
+      "config_error_banner": "",
+      "target_objects": ["客卫地面与KT墙面占位"],
+      "target_object_ids": ["floor:guest_bath"],
+      "runtime_query_refs": ["evidence/evidence-notes.md"],
+      "camera": {"mode": "orbit-top-down", "is_overview": false, "position": [6.35, 5.5, 3.26], "target": [6.35, 0, 3.25], "view_type": "plan"},
+      "snapshot_path": "evidence/app-snapshot.txt",
+      "screenshot_path": "evidence/kt-guest-bath-plan.png + evidence/jyt-guest-bath-hypothesis.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["5cac566a7d7ec61894d5abdefbf109b92a0327cf1bab6590e4dd97b33074536f"],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "kitchen-wall-pair",
+      "url": "http://127.0.0.1:5176/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady() && houseScene.isReady()",
+      "ready_checked_at": "2026-10-06",
+      "config_error_banner": "",
+      "target_objects": ["厨房西墙"],
+      "target_object_ids": ["w_kit_west"],
+      "runtime_query_refs": ["evidence/evidence-notes.md"],
+      "camera": {"mode": "orbit", "is_overview": false, "position": [9, 1.7, 1.2], "target": [7.2, 1.4, 1.2], "view_type": "perspective"},
+      "snapshot_path": "evidence/app-snapshot.txt",
+      "screenshot_path": "evidence/kt-kitchen-wall.png + evidence/jyt-kitchen-wall-unknown.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["5cac566a7d7ec61894d5abdefbf109b92a0327cf1bab6590e4dd97b33074536f"],
+      "status": "valid",
+      "invalid_reason": null
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "PASS", "blocking_issues": [],
+    "non_blocking_notes": ["同尺度浴室示意图使600与400砖缝密度可读；墙面未知处用平面色占位"],
+    "evidence_refs": ["evidence/kt-detail.png", "evidence/jyt-detail.png", "evidence/bath-floor-format.svg", "evidence/kt-kitchen-wall.png", "evidence/jyt-kitchen-wall-unknown.png"],
+    "requested_changes": [], "assumptions": ["金意陶400×400用于两卫只是业主授权的低至中置信度推演"]
+  },
+  "functional_review": {
+    "verdict": "PASS", "blocking_issues": [],
+    "non_blocking_notes": ["KT含保留阳台的地面子合计¥15,444；金意陶厨卫规格及归属未知未被写成确定方案"],
+    "evidence_refs": ["config/tile-comparison.yaml", "server/tile-cost-comparison.ts", "schedule/procurement.md"],
+    "requested_changes": [], "assumptions": ["通过范围限于规格效果和计划材料成本预演，非采购定标"]
+  },
+  "risks": ["金意陶厨卫逐项归属与部分规格待门店书面确认", "两店SKU、实物釉面、防滑、箱规和全安装费用待核"],
+  "retrospective": {
+    "triggered": true,
+    "triggers": ["初版直接换材后未触发渲染，截图相同", "旧墙面归一化UV与米制矩形砖纹理不匹配", "一次后端断连的诊断截图无效"],
+    "records": ["补调用 renderFrame/重拍同机位", "墙面UV改米制并加入测试", "无效截图未交付，独立服务恢复后重拍"],
+    "rebaselined": true
+  },
+  "delivery": {
+    "status": "comparative_preview_ready",
+    "blocking_issues": [],
+    "completion_conditions": ["两款主砖同机位示意", "KT厨卫已知规格示意", "金意陶厨卫未知清楚标示", "成本与报价口径可追溯", "验证及双评通过"],
+    "follow_up_site_pending": ["取得金意陶厨卫逐项正式报价", "取得两店实际SKU和样板", "复尺净贴面积及确认施工全包价"],
+    "delivery_ready": true
+  }
+}

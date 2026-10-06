@@ -1,0 +1,62 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: tile-plank-comparison-20261006
+subject: 干区木纹长条砖双方案效果与成本比较
+created_at: 2026-10-06
+status: frozen
+source_policy:
+  authority_refs: [config/layout/model-geometry.yaml, config/materials.yaml, data/current-scheme.json, config/design-rules.yaml]
+  observation_refs: [config/tile-comparison.yaml, evidence/kt-quote-original.jpg, evidence/jyt-quote-original.jpg]
+  measurement_refs: []
+  runtime_refs: [evidence/kt-detail.png, evidence/jyt-detail.png]
+  evidence_refs: [schedule/procurement.md]
+facts:
+  confirmed:
+    - id: dry-area
+      statement: 六个干区以当前几何解析得净铺面积111.864㎡
+      source_refs: [config/layout/model-geometry.yaml, config/design-rules.yaml]
+      impact: material
+      verification_method: GET /api/tiles/comparison
+    - id: baseline
+      statement: 当前保存的方案仍为600×1200默认地砖，主卫、客卫、生活阳台另有覆盖
+      source_refs: [data/current-scheme.json]
+      impact: material
+      verification_method: 读取当前方案
+  inferred:
+    - id: seam-density
+      statement: 约900×150的砖缝较200×1200更密；同色同铺法近景已显示差别
+      source_refs: [evidence/kt-detail.png, evidence/jyt-detail.png]
+      basis: 同机位、同占位纹理、仅变更标称砖幅
+      confidence: high
+      impact: low
+  user_decision:
+    - id: two-options
+      statement: 两款窄长木纹砖连同主客卫、厨房墙砖都做效果与成本比较，暂不二选一
+      source_refs: [本会话业主2026-10-06答复]
+      impact: material
+    - id: authorized-inference
+      statement: 金意陶手写缺字可按照片推断，但必须标注不确定
+      source_refs: [本会话业主2026-10-06答复]
+      impact: material
+  site_pending:
+    - id: real-product
+      statement: 两款实际SKU、花色、釉面、样板、箱规、同批供应、施工及配送报价未核实
+      source_refs: [config/tile-comparison.yaml]
+      impact: material
+      verification_method: 门店书面报价与实物样板
+unknowns_requiring_alignment:
+  - id: jyt-zone-spec
+    question: 金意陶厨砖规格、卫浴①—④的房间/墙地归属及②④规格
+    reason_result_changes: 原图无法可靠读取，影响两店完整新设计效果与按房间算量
+    fact_refs: [baseline]
+    option_refs: [门店正式明细, 业主文字确认]
+    status: site_pending
+  - id: balcony-scope
+    question: 生活阳台是否纳入两店新方案
+    reason_result_changes: 两份手写清单均无明确生活阳台分项
+    fact_refs: [baseline]
+    option_refs: [纳入, 保留现行基线]
+    status: site_pending
+notes:
+  - 两张手写原图已归档；金意陶厨卫折后6660元为用户按整笔九折推算，照片未确认锁价。
+  - 不能在金意陶厨卫归属与规格缺失时交付完整新方案效果；已完成的干区比较仍可单独复核。

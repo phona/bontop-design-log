@@ -1,0 +1,43 @@
+# Object Manifest — 客餐厅三层线风口（DEC-2026-10-07-R03）
+schema: interior-design-object-manifest/v1
+iteration_id: hvac-dual-outlet-threeline-20261007
+
+band:
+  - id: ceiling_living
+    role: 客餐厅设备带（藏 71T2/42T2 + 三层风口），x[7.20,13.40] × z[4.30,5.20]，底 2.50，本轮几何未动
+
+functionals:
+  - id: supply_living / supply_dining
+    role: 侧立面上出风功能段（71T2 朝南 x[9.70,13.20] 3.5m / 42T2 旋转 180° 朝北 x[7.70,9.70] 2.0m）
+    style: linear_slot + matte_black，y=2.65
+    maintenance: 叶片可调避直吹；有效面积/静压按厂家风量核算
+  - id: supply_living_bottom / supply_dining_bottom
+    role: 底面前侧下出风功能段（71T2 x=10.30 / 42T2 x=8.00，各 0.9m，同 z=4.85 轴线）
+    style: linear_slot + matte_black + grille_height 0.15，y=2.50
+    maintenance: 检修口随厂家图
+  - id: return_living / return_dining
+    role: 底面后侧回风/滤网/检修一体功能段（71T2 x=12.60 1.0m / 42T2 x=7.90 0.9m，z=4.45）
+    style: linear_slot + matte_black + grille_height 0.25，y=2.49（R16'回风暂标准白'本轮改黑，回退项见 decision-brief）
+    maintenance: 铰接回检一体，滤网及内机经格栅维护；装饰段不开检修口
+
+decoratives:
+  - id: LD-deco-side-south / LD-deco-side-north
+    role: 侧立面上出风层装饰延续（南 [7.20,9.70] 2.5m / 北 [9.70,13.40] 3.7m）
+    sealed: 背板封闭、无风道连接、不进 MEP 路线；北段西端保持与 ceiling_dining_west_band 正交交接
+  - id: LD-deco-supply-west / LD-deco-supply-mid / LD-deco-supply-east
+    role: 底面前侧下出风层装饰延续（[7.20,7.55] / [8.45,9.85] / [10.75,13.40]）
+    sealed: 背板封闭、无风道连接、不进 MEP 路线；mid 段位于两台机器之间，两台送风各自独立
+  - id: LD-deco-return-west / LD-deco-return-mid / LD-deco-return-east
+    role: 底面后侧回风层装饰延续（[7.20,7.45] / [8.35,12.10] / [13.10,13.40]）
+    sealed: 背板封闭、无风道连接、不开滤网/检修口；mid 段位于两台回风之间，两台回风/检修各自独立
+
+separation:
+  - 71T2（ac_living x=10.30）：supply_living + supply_living_bottom + return_living + MEP supply-air-living / supply-air-living-bottom / return-air-living
+  - 42T2（ac_dining x=8.00）：supply_dining + supply_dining_bottom + return_dining + MEP supply-air-dining / supply-air-dining-bottom / return-air-dining
+  - 两台之间不存在共用风道；装饰段不得被读作风道（reason 逐条声明）
+
+schema_effects:
+  - HvacSystem: +decorative
+  - HvacTerminal.kind: +decorative_louver（强制 system=decorative、confirmed=false、render_interior=true、render_coordination=false）
+  - HvacTerminal: +render_style（linear_slot|panel）、+grille_height
+  - CLI/Web terminal 计数 14 → 22（cli-glb-export.test.ts 同步）

@@ -1,0 +1,69 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: tile-plank-comparison-20261006
+subject: 干区木纹长条砖规格比较
+units: m
+coordinate_system: Three.js右手系，Y向上，X东西，Z南北；平面北为-Z
+status: frozen
+datums:
+  - id: dry-floor-polygons
+    name: 六个干区现行房间地面
+    anchor: {kind: room_anchor, ref: config/layout/model-geometry.yaml, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [dry-area], decision_refs: [two-options]}
+    views:
+      plan:
+        required: true
+        origin: 各房间现行多边形
+        axes: x/z
+        direction: 北朝上
+        position: {x: null, z: null}
+        rotation: null
+        dimensions: {length: null, width: null, depth: null, offset: null}
+        dimension_semantics: net
+      elevation:
+        required: false
+        viewing_side: 不适用
+        vertical_axis: y
+        height: null
+        dimensions: {width: null, height: null, sill: null, datum_offset: null}
+        dimension_semantics: not_applicable
+      section:
+        required: false
+        cut_direction: 不适用
+        depth_axis: y
+        clearances: {front: null, rear: null, top: null, bottom: null}
+        thickness: null
+        dimension_semantics: not_applicable
+    geometry: {x: null, y: null, z: null, width: null, depth: null, height: null, length: null, rotation: null, along: null}
+    constraints: [不改房间边界和标高, 两款使用同一地面多边形与同一机位]
+    interfaces: [现行湿区材料在本轮视觉比较中不变]
+    validation_refs: [GET /api/tiles/comparison, evidence/kt-detail.png, evidence/jyt-detail.png]
+    status: confirmed
+  - id: wet-floor-polygons
+    name: 主卫与客卫现行地面多边形
+    anchor: {kind: room_anchor, ref: config/layout/model-geometry.yaml, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [baseline], decision_refs: [authorized-inference]}
+    views:
+      plan: {required: true, origin: 主卫与客卫多边形, axes: x/z, direction: 北朝上, position: {x: null, z: null}, rotation: null, dimensions: {length: null, width: null, depth: null, offset: null}, dimension_semantics: net}
+      elevation: {required: false, viewing_side: 不适用, vertical_axis: y, height: null, dimensions: {width: null, height: null, sill: null, datum_offset: null}, dimension_semantics: not_applicable}
+      section: {required: false, cut_direction: 不适用, depth_axis: y, clearances: {front: null, rear: null, top: null, bottom: null}, thickness: null, dimension_semantics: not_applicable}
+    geometry: {x: null, y: null, z: null, width: null, depth: null, height: null, length: null, rotation: null, along: null}
+    constraints: [不改地漏与找坡, 材质为占位效果]
+    interfaces: [防滑性能与施工排水待现场和产品核验]
+    validation_refs: [evidence/kt-guest-bath-plan.png, evidence/jyt-guest-bath-hypothesis.png]
+    status: confirmed
+  - id: wet-wall-finishes
+    name: 厨房及主客卫现行墙面
+    anchor: {kind: room_anchor, ref: config/layout/model-geometry.yaml, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [baseline], decision_refs: [two-options]}
+    views:
+      plan: {required: false, origin: 厨房与卫浴房间, axes: x/z, direction: 北朝上, position: {x: null, z: null}, rotation: null, dimensions: {length: null, width: null, depth: null, offset: null}, dimension_semantics: not_applicable}
+      elevation: {required: true, viewing_side: 以场景当前内视机位, vertical_axis: y, height: null, dimensions: {width: null, height: null, sill: null, datum_offset: null}, dimension_semantics: not_applicable}
+      section: {required: false, cut_direction: 不适用, depth_axis: y, clearances: {front: null, rear: null, top: null, bottom: null}, thickness: null, dimension_semantics: not_applicable}
+    geometry: {x: null, y: null, z: null, width: null, depth: null, height: null, length: null, rotation: null, along: null}
+    constraints: [真实净贴面积及铺向未冻结, 金意陶墙砖规格未知]
+    interfaces: [门窗洞口, 橱柜完成面, 防水层]
+    validation_refs: [evidence/kt-kitchen-wall.png, evidence/jyt-kitchen-wall-unknown.png]
+    status: confirmed
+notes:
+  - 200×1200和约900×150仅为单片标称规格；未从截图推断房间坐标或门店实际尺寸。

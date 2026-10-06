@@ -58,6 +58,27 @@ export interface CeilingZone {
 - `area` 使用 model-geometry 同一局部坐标系（米），**禁止独立偏移**。
 - 新造型 effect 不满意的调整 = 改配置，不动代码。
 
+### 既有可选字段：圆角与铝扣板分格（2026-10-07 已落地）
+
+```yaml
+- id: ceiling_dining_west_band
+  type: drop
+  corner_radii: { nw: 0.15 }        # 外露阳角逐 R150；其余角保持直角
+  concave_fillets: { se: 0.15 }     # 阴角逐 R150 圆弧拐肘（加材料）
+- id: ceiling_kitchen
+  type: aluminum_buckle
+  buckle_panel: { module: 0.30 }    # 300×300 集成吊顶分格缝；可选 seam_width / seam_color
+```
+
+- `corner_radius: 0.10` = **四个角同半径**（旧语义，`ceiling_living`/`ceiling_master_ac` 仍用它）。
+- `corner_radii: { nw|ne|se|sw }` = **逐角覆盖**。角名是 `area [x1,z1,x2,z2]` 的四个平面角：`nw=(x1,z1)`、`ne=(x2,z1)`、`se=(x2,z2)`、`sw=(x1,z2)`。未列出的角回落到 `corner_radius`，两者都没给就是直角。
+- **第一轮口径（DEC-2026-10-07-R01，同日被 R04 改判）**：只给「外露阳角」倒圆，对接/同标高连续/贴墙一律直角——因为四角同半径会把对接/连续处切成凹口，平视俯视都读成"内圆弧"。
+- **第二轮口径（DEC-2026-10-07-R04，业主改判）**：餐区要"一圈圆"，统一 R150，且**阴角也要圆**（用 `concave_fillets` 见下）。即：外露阳角逐 R150 + 阴角逐 R150 圆弧拐肘；只有"沿台阶连续 / 贴墙 / 同标高对接"这些 invisible 的角保持直角。走廊↔设备带的 0.35m 错台、门厅 0.1m 折段不在餐区视野内，本轮不动。
+- `buckle_panel` 仅对 `type: aluminum_buckle` + 无圆角矩形 footprint 生效；`module` 取值 0.1–1.2m，缝为板面下 1.5–3.5mm 的暗色细条，沿 `area` 最小角起排块（边块不足一皮 = 现场切割板）。UV 已按米制标定，日后要改贴图不必重建几何。
+- `concave_fillets: { nw|ne|se|sw: R }` = **阴角圆弧**，和阳角圆角是两种几何：阳角是「在角前 R 停住、以角为圆心切过去」（减材料）；阴角是「沿两条边各越过角 R、绕 `角 + R·(dirIn+dirOut)` 圆弧接回」（**加材料**），把吊带折角改成圆角拐肘。2026-10-07 DEC-2026-10-07-R04（改判 R01）餐厅吊顶环「一圈圆」用它落餐区两个阴角：(7.70,3.00) 与 (7.70,4.30)。
+- 约束：单个圆角/阴角 ≤ `min(宽,深)/2`；**同一条边上两个角的处理量之和 ≤ 该边长度**（否则两处圆弧互相吞掉，`verify:rules` 报 error）；同一个角不能同时声明阳角圆角和阴角圆弧；`buckle_panel` 分格缝仍要求四角全正交。
+- `verify:spatial` 按 mesh AABB 校净空，阴角加材料会让该分区 AABB 超出 `area`（西带 SE 阴角 R150 → x 到 7.85），这是预期行为，不是越界。
+
 ## 4. 渲染分支（app/src/render/HouseScene.ts）
 
 在 `renderCeilingZones` 的 type 分派中加 case：

@@ -20,6 +20,7 @@ function makeCanvas() {
     beginPath: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
+    strokeRect: vi.fn(),
     save: vi.fn(),
     restore: vi.fn(),
     translate: vi.fn(),
@@ -89,6 +90,21 @@ describe('TextureFactory', () => {
   it('creates a CanvasTexture for ceramic_tile appearance', () => {
     const tex = createMaterialTexture({ type: 'ceramic_tile', color: '#f5f5f5' });
     expect(tex).toBeDefined();
+  });
+
+  it('ceramic_tile_v2 rectangular tile_mm returns per-axis physical world size', () => {
+    const result = createMaterialTexture({
+      type: 'ceramic_tile_v2', color: '#f5f5f5', tile_mm: [600, 1200],
+    });
+    expect('map' in result).toBe(true);
+    if ('map' in result) expect(result.worldSize).toEqual([2.4, 2.4]);
+  });
+
+  it('ceramic_tile_v2 numeric tile_mm retains square-tile world size', () => {
+    const result = createMaterialTexture({
+      type: 'ceramic_tile_v2', color: '#f5f5f5', tile_mm: 600,
+    });
+    if ('map' in result) expect(result.worldSize).toBeCloseTo(2.4, 5);
   });
 
   it('creates a CanvasTexture for matte_paint appearance', () => {

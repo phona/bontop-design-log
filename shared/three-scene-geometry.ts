@@ -24,6 +24,8 @@ export interface LineMeshOptions {
   minimumLength?: number;
   /** Preserve a box footprint for degenerate segments. */
   clampLengthToThickness?: boolean;
+  /** Store wall-facing BoxGeometry UVs in meters for physical-size material repeats. */
+  uvUnits?: 'meters';
 }
 
 export function setSceneObjectMetadata(
@@ -58,10 +60,29 @@ export function createLineMesh(
   const length = Math.hypot(b.x - a.x, b.z - a.z);
   if (length < (options.minimumLength ?? 0.001)) return null;
   const boxLength = options.clampLengthToThickness ? Math.max(length, thickness) : length;
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(boxLength, height, thickness), material);
+  const geometry = new THREE.BoxGeometry(boxLength, height, thickness);
+  if (options.uvUnits === 'meters') scaleBoxUvToMeters(geometry, boxLength, height, thickness);
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set((a.x + b.x) / 2, height / 2, (a.z + b.z) / 2);
   if (length > thickness) mesh.rotation.y = Math.atan2(b.z - a.z, b.x - a.x);
   return mesh;
+}
+
+function scaleBoxUvToMeters(geometry: THREE.BufferGeometry, width: number, height: number, depth: number): void {
+  // Lightweight renderer mocks may provide a placeholder BoxGeometry without attributes.
+  if (typeof geometry.getAttribute !== 'function') return;
+  const uv = geometry.getAttribute('uv');
+  const normal = geometry.getAttribute('normal');
+  if (!uv || !normal) return;
+  for (let i = 0; i < uv.count; i++) {
+    const nx = Math.abs(normal.getX(i));
+    const ny = Math.abs(normal.getY(i));
+    const nz = Math.abs(normal.getZ(i));
+    const uSize = nx > 0.5 ? depth : width;
+    const vSize = ny > 0.5 ? depth : height;
+    uv.setXY(i, uv.getX(i) * uSize, uv.getY(i) * vSize);
+  }
+  uv.needsUpdate = true;
 }
 
 export function splitSegmentByOpenings(segment: SceneSegment, openings: SceneOpening[]): SceneSegment[] {

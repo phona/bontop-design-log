@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="600" viewBox="0 0 980 600" role="img" aria-label="两种卫生间地砖规格的同尺度排砖示意">
+  <defs>
+    <pattern id="kt" width="120" height="120" patternUnits="userSpaceOnUse"><rect width="120" height="120" fill="#d3d0ca" stroke="#85898a" stroke-width="2"/></pattern>
+    <pattern id="jyt" width="80" height="80" patternUnits="userSpaceOnUse"><rect width="80" height="80" fill="#d3d0ca" stroke="#85898a" stroke-width="2"/></pattern>
+  </defs>
+  <rect width="980" height="600" fill="#f4f3ef"/>
+  <text x="45" y="55" font-family="sans-serif" font-size="27" fill="#242a2e" font-weight="700">卫生间地砖幅面 · 同比例示意</text>
+  <text x="45" y="87" font-family="sans-serif" font-size="17" fill="#50585d">两侧均以 1.5×2.1m 矩形比较砖缝密度；未表达真实房间切割、坡度、门槛或门店花色。</text>
+  <text x="140" y="132" font-family="sans-serif" font-size="22" fill="#242a2e" font-weight="700">KT 600×600</text>
+  <text x="585" y="132" font-family="sans-serif" font-size="22" fill="#242a2e" font-weight="700">金意陶 400×400（推演）</text>
+  <rect x="140" y="155" width="300" height="420" fill="url(#kt)" stroke="#333b3f" stroke-width="3"/>
+  <rect x="585" y="155" width="300" height="420" fill="url(#jyt)" stroke="#333b3f" stroke-width="3"/>
+  <text x="140" y="590" font-family="sans-serif" font-size="14" fill="#555d60">规格来自 KT 手写报价</text>
+  <text x="585" y="590" font-family="sans-serif" font-size="14" fill="#555d60">48片可能覆盖两卫，归属未获门店确认</text>
+</svg>

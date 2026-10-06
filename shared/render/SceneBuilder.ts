@@ -263,7 +263,14 @@ function addWallElement(root: THREE.Group, wall: WallElement, height: number, re
   for (const source of sourceSegments) {
     const segments = wall.openings?.length ? splitSegmentByOpenings(source, wall.openings) : [source];
     for (const segment of segments) {
-      const mesh = createLineMesh({ x: segment.x1, z: segment.z1 }, { x: segment.x2, z: segment.z2 }, height, WALL_THICKNESS, material);
+      const mesh = createLineMesh(
+        { x: segment.x1, z: segment.z1 },
+        { x: segment.x2, z: segment.z2 },
+        height,
+        WALL_THICKNESS,
+        material,
+        { uvUnits: 'meters' },
+      );
       if (!mesh) continue;
       const objectId = sourceSegments.length === 1 && segments.length === 1 ? wall.id : `${wall.id}:${segmentIndex}`;
       const segmentExportName = exportName ? `${objectId}:room=${wall.rooms!.join('|')}` : objectId;
@@ -619,6 +626,8 @@ function addCeilingZones(root: THREE.Group, zones: CeilingZoneSpec[], rooms: Res
       area: zone.area,
       thickness: zone.thickness,
       corner_radius: zone.corner_radius,
+      corner_radii: zone.corner_radii,
+      buckle_panel: zone.buckle_panel,
       inspection_layer: zone.inspection_layer,
       inspection_opacity: zone.inspection_opacity,
       type: zone.type,

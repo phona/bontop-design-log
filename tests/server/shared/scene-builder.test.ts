@@ -688,6 +688,27 @@ test('shared SceneBuilder builds rooms, split walls, overlays, ceiling zones, an
   assert.equal(ceilingSolids[0].userData.roomId, 'room');
 });
 
+test('wall-facing UVs use meters so 600×1200 tile scale survives normalized wall geometry', () => {
+  const result = buildScene({
+    rooms: [],
+    walls: [],
+    elements: [{ type: 'wall', id: 'wall:tile-scale', x1: 0, z1: 0, x2: 2.4, z2: 0 }],
+  });
+  const wall = result.index.wallMeshes.find((mesh) => mesh.userData.objectId === 'wall:tile-scale');
+  assert.ok(wall, 'wall should be built');
+  const geometry = wall.geometry;
+  const uv = geometry.getAttribute('uv');
+  const normal = geometry.getAttribute('normal');
+  const broadFaceUvs: Array<[number, number]> = [];
+  for (let i = 0; i < uv.count; i++) {
+    if (Math.abs(normal.getZ(i)) > 0.5) broadFaceUvs.push([uv.getX(i), uv.getY(i)]);
+  }
+  assert.equal(broadFaceUvs.length, 8, 'both broad wall faces should have four UV vertices');
+  const span = (axis: 0 | 1) => Math.max(...broadFaceUvs.map((point) => point[axis])) - Math.min(...broadFaceUvs.map((point) => point[axis]));
+  assert.ok(Math.abs(span(0) - 2.4) < 1e-5, 'horizontal UV span should equal wall length in meters');
+  assert.ok(Math.abs(span(1) - 3) < 1e-5, 'vertical UV span should equal default wall height in meters');
+});
+
 test('shared SceneBuilder keeps long furniture child names bounded and role-readable', () => {
   const result = buildScene({
     rooms: [],

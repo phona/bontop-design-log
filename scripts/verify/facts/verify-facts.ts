@@ -145,8 +145,12 @@ const workspace: FactsWorkspace = {
     // T1 scan 与 T3 fk/mutex 的文件全集（引擎再按 include/exclude/scope 过滤）。
     // 注意：登记表自身（config/facts.yaml）引用事实而不承载事实，必须从扫描域里排除，
     // 否则它写的每一个 `ref: 'DEC-045'` / 反引号 id 都会被当成真引用，既虚增计数又污染定位。
-    'scan.files': walk(['config', 'docs', 'schedule'], /^(node_modules|\.git)$/).filter((f) => f !== REGISTRY),
-    'contract.files': [...walk(['config', 'shared', 'docs', 'schedule', 'server', 'tests', 'data'], /^(node_modules|\.git)$/), 'README.md'].filter((f) => f !== REGISTRY),
+    // Evidence images must not be decoded as UTF-8 and regex-scanned for
+    // project identifiers; binary bytes can coincidentally match an ID.
+    'scan.files': walk(['config', 'docs', 'schedule'], /^(node_modules|\.git)$/)
+      .filter((f) => f !== REGISTRY && !/\.(?:png|jpe?g|webp|gif|pdf|glb|mp4)$/i.test(f)),
+    'contract.files': [...walk(['config', 'shared', 'docs', 'schedule', 'server', 'tests', 'data'], /^(node_modules|\.git)$/), 'README.md']
+      .filter((f) => f !== REGISTRY && !/\.(?:png|jpe?g|webp|gif|pdf|glb|mp4)$/i.test(f)),
     'coverage.files': coverageFiles,
     'layout.rooms': layoutRooms,
     'layout.floor_regions': layoutFloorRegions,

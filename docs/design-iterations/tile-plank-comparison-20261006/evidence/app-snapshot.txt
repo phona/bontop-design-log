@@ -1,0 +1,21 @@
+URL: http://127.0.0.1:5176/
+Title: 和萃 701 - 3D 装修设计
+Viewport: 1600 × 1000
+Ready query: window.__APP__.isReady() === true; houseScene.isReady() === true
+Config error banner: null
+
+Accessibility snapshot from the same source version, before the final paired captures:
+- heading "方案" [level=3, ref=e1]
+- button "方案面板折叠" [expanded=false, ref=e2]
+- button "俯视" [ref=e3]
+- button "玻璃质感" [ref=e4]
+- button "日照" [ref=e5]
+- button "湿度" [ref=e6]
+- button "机电总览" [ref=e7]
+- button "MEP 协调⚠ 79" [ref=e8]
+- button "HVAC" [ref=e9]
+- button "电气回路归属21 条 ⚠53" [ref=e10]
+
+Runtime object query found floor:living_dining, floor:guest_bath, floor:master_bath,
+and w_kit_west:room=kitchen. Source/role details and exact camera states:
+evidence-notes.md.

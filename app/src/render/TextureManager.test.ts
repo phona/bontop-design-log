@@ -5,7 +5,7 @@ const createdTextures: Array<{ repeat: { set: ReturnType<typeof vi.fn> }; anisot
 
 const mockCtx: Partial<CanvasRenderingContext2D> = {
   fillStyle: '', strokeStyle: '', lineWidth: 0,
-  fillRect: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(),
+  fillRect: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), strokeRect: vi.fn(),
   save: vi.fn(), restore: vi.fn(), translate: vi.fn(), rotate: vi.fn(),
   getImageData: vi.fn((_x: number, _y: number, w: number, h: number) => ({
     data: new Uint8ClampedArray(w * h * 4), width: w, height: h,
@@ -66,6 +66,17 @@ describe('TextureManager（PBR 升级）', () => {
       expect(t.repeat.set).toHaveBeenCalledWith(1 / 4.8, 1 / 4.8);
       expect(t.anisotropy).toBe(8);
     }
+  });
+
+  it('600×1200 陶瓷砖按 U/V 分别标定且尺寸进入材质缓存键', () => {
+    const tm = new TextureManager();
+    tm.setMeshes([], []);
+    tm.applyToRoom('kitchen', { type: 'ceramic_tile_v2', color: '#f5f5f5', tile_mm: [600, 1200] }, 'wall');
+    tm.applyToRoom('kitchen', { type: 'ceramic_tile_v2', color: '#f5f5f5', tile_mm: [300, 600] }, 'wall');
+    expect(tm.cachedMaterialCount).toBe(2);
+    expect(createdTextures.length).toBeGreaterThan(0);
+    expect(createdTextures[0].repeat.set).toHaveBeenCalledWith(1 / 2.4, 1 / 2.4);
+    expect(createdTextures[2].repeat.set).toHaveBeenCalledWith(1 / 1.2, 1 / 1.2);
   });
 
   it('旧类型（无 worldSize）保持 repeat(2,2) 兼容', () => {

@@ -333,13 +333,45 @@ materials:
     unit: 套
     notes: ["P0补录，到店确认型号价格"]
   - id: floor_pbr_tile_612
-    name: "600x1200木纹砖·步步高错缝（全屋通铺，DEC-041 定案）"
+    name: "600x1200木纹砖·步步高错缝（上轮设计基线）"
     room: null
     category: 地砖
     current_stage: selection
     waste_rate: 1.08
     unit: 片
-    notes: ["DEC-041 全屋地面定案（入户花园开发商已铺不计）；暂估价 75/片，门店四问后终核"]
+    notes: ["DEC-041 上轮全屋地面基线（入户花园开发商已铺不计）；2026-10-06 两款窄长木纹砖进入比较，未最终定标；暂估价 75/片"]
+  - id: floor_tile_kt_200x1200_01
+    name: "KT 200x1200木纹长条砖（比较候选）"
+    room: null
+    category: 地砖
+    current_stage: selection
+    waste_rate: 1.08
+    unit: 片
+    notes: ["业主上传2026-10-06手写报价：516片×29元；SKU/花色/箱规与全安装费用待核，具体报价行见config/tile-comparison.yaml"]
+  - id: floor_tile_jyt_900x150_01
+    name: "金意陶约900x150木纹长条砖（比较候选）"
+    room: null
+    category: 地砖
+    current_stage: selection
+    waste_rate: 1.08
+    unit: 片
+    notes: ["业主上传2026-10-06手写报价：970片×折后17.8元；规格约数、SKU/花色/箱规与全安装费用待核"]
+  - id: floor_tile_kt_600x600_01
+    name: "KT 600x600卫浴地砖（比较候选）"
+    room: bathroom
+    category: 地砖
+    current_stage: selection
+    waste_rate: 1.08
+    unit: 片
+    notes: ["KT手写报价主卫20片、客卫10片，28元/片；具体产品、防滑和找坡待核"]
+  - id: wall_tile_kt_600x1200_01
+    name: "KT 600x1200厨卫墙砖（比较候选）"
+    room: null
+    category: 墙砖
+    current_stage: selection
+    waste_rate: 1.05
+    unit: 片
+    notes: ["KT手写报价厨房/主客卫墙与干区墙均68元/片；干区墙的具体房间未明，净贴面积和铺向待核"]
   - id: floor_tile_antislip_400
     name: "暖灰哑光防滑砖（主卫/阳台）"
     room: bathroom

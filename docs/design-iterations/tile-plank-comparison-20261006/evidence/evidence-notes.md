@@ -1,0 +1,9 @@
+# 地砖规格效果取证｜2026-10-06
+
+- 来源：本地隔离预览 `http://127.0.0.1:5176/`（项目 API 4001）；页面标题「和萃 701 - 3D 装修设计」。截图时 `window.__APP__.isReady()` 与 `houseScene.isReady()` 均为 `true`，配置错误横幅为空；全部 PNG 为 1600×1000、可读取。
+- 视觉源校验：`config/materials.yaml`、`config/tile-comparison.yaml`、`app/src/render/TextureFactory.ts`、`app/src/render/TextureManager.ts`、`shared/three-scene-geometry.ts` 的 SHA-256 清单合成摘要 `5cac566a7d7ec61894d5abdefbf109b92a0327cf1bab6590e4dd97b33074536f`。所有图为同一源版本的运行时临时换材；未改 `data/current-scheme.json`。
+- 客餐厅近景 `[kt-detail.png](kt-detail.png)`／`[jyt-detail.png](jyt-detail.png)`：俯视相机 `(9.3, 6.5, 7.3)`，目标 `(9.3, 0, 7.29)`；宽景 `[kt-living.png](kt-living.png)`／`[jyt-living.png](jyt-living.png)`：相机 `(10.3, 12, 6.11)`，目标 `(10.3, 0, 6.1)`。六个干区只切换 `wood_plank.plank_mm` 的 `[200,1200]`／`[150,900]`，两图共用浅暖占位色、2mm 近色缝及直铺模式。
+- 客卫 `[kt-guest-bath-plan.png](kt-guest-bath-plan.png)`／`[jyt-guest-bath-hypothesis.png](jyt-guest-bath-hypothesis.png)`：俯视相机 `(6.35, 5.5, 3.26)`，目标 `(6.35, 0, 3.25)`。KT 地600×600、墙600×1200为报价可读规格；金意陶地400×400仅按48片可能覆盖两卫的低至中置信度假设，墙面平色占位表示规格未知。`[bath-floor-format.svg](bath-floor-format.svg)` 是同尺度砖缝示意，非真实排版图。
+- 厨房墙 `[kt-kitchen-wall.png](kt-kitchen-wall.png)`／`[jyt-kitchen-wall-unknown.png](jyt-kitchen-wall-unknown.png)`：室内相机 `(9, 1.7, 1.2)`，目标 `(7.2, 1.4, 1.2)`；KT 600×1200 为竖向长边示意，金意陶因原单无规格而用平色占位。实际铺向、色号、釉面和样板均未确认。
+- 原始报价为业主上传的 `[kt-quote-original.jpg](kt-quote-original.jpg)` 与 `[jyt-quote-original.jpg](jyt-quote-original.jpg)`；其字迹可读等级和金额口径见 `config/tile-comparison.yaml`、`schedule/procurement.md`。截图、同尺度示意和报价照片都不能代替样砖、施工排版或全安装报价。
+- 2026-10-06 收到并原样归档瓦工《常规铺砖工费明细表》为 `[mason-labor-rate-card.jpg](mason-labor-rate-card.jpg)`（SHA-256 `d3c38978084521230c21461e76351ddeacc107995fa90f21c66ea38e7186e913`，1187×1302 JPEG）；照片未见施工方名称、报价日期或总价。费率与条件摘要只写在 `schedule/procurement.md` 瓷砖组，机器可读工费口径在 `config/tile-comparison.yaml`。

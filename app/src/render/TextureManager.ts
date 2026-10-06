@@ -95,9 +95,11 @@ export class TextureManager {
   }
 
   private getOrBuild(appearance: MaterialAppearance): THREE.MeshStandardMaterial {
-    // 缓存键含 pattern/plank_mm/seed：同色不同拼法（直铺 vs 人字拼）不得共用材质
+    // 缓存键包含图案与物理尺寸：同色不同拼法/砖尺寸不得共用材质。
     const plankKey = Array.isArray(appearance.plank_mm) ? (appearance.plank_mm as number[]).join('x') : '';
-    const cacheKey = `${appearance.type}:${appearance.color}:${appearance.pattern ?? ''}:${plankKey}:${appearance.seed ?? ''}`;
+    const tileSize = appearance.tile_mm;
+    const tileKey = Array.isArray(tileSize) ? tileSize.join('x') : typeof tileSize === 'number' ? String(tileSize) : '';
+    const cacheKey = `${appearance.type}:${appearance.color}:${appearance.pattern ?? ''}:${plankKey}:${tileKey}:${appearance.seed ?? ''}`;
     let mat = this.cache.get(cacheKey);
     if (!mat) {
       mat = this.buildMaterial(cacheKey, appearance);
@@ -113,11 +115,15 @@ export class TextureManager {
     try {
       const result = createMaterialTexture(appearance);
       if ('map' in result) {
-        // worldSize（米）存在 → UV 米制标定（ShapeGeometry UV=顶点米坐标）；否则旧 2×2 兼容
-        const repeat = result.worldSize ? 1 / result.worldSize : 2;
+        // worldSize（米）存在 → UV 米制标定（ShapeGeometry UV=顶点米坐标）；矩形砖按 U/V 轴分别标定。
+        const repeat = Array.isArray(result.worldSize)
+          ? [1 / result.worldSize[0], 1 / result.worldSize[1]]
+          : result.worldSize
+            ? [1 / result.worldSize, 1 / result.worldSize]
+            : [2, 2];
         for (const t of [result.map, result.normalMap, result.roughnessMap]) {
           if (!t) continue;
-          t.repeat.set(repeat, repeat);
+          t.repeat.set(repeat[0], repeat[1]);
           t.anisotropy = 8; // 掠射角清晰度（如掉帧降至 4）
         }
         const mat = new THREE.MeshStandardMaterial({

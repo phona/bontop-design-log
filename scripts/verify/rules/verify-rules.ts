@@ -36,6 +36,9 @@ interface Positioned {
   type?: string;
 }
 
+/** 吊顶平面角（area [x1,z1,x2,z2] 的四角），逐角圆角 corner_radii 的合法键。 */
+const VALID_CEILING_CORNERS = ['nw', 'ne', 'se', 'sw'] as const;
+
 interface OverlaySuppress {
   id: string;
   wall?: string;
@@ -62,7 +65,7 @@ function main(): void {
 
   const electrical = yaml.load(fs.readFileSync('config/electrical.yaml', 'utf-8')) as Positioned[];
   const plumbing = yaml.load(fs.readFileSync('config/plumbing.yaml', 'utf-8')) as Positioned[];
-  const ceiling = yaml.load(fs.readFileSync('config/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; inspection_layer?: string; inspection_opacity?: number }>;
+  const ceiling = yaml.load(fs.readFileSync('config/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; corner_radii?: Record<string, number>; concave_fillets?: Record<string, number>; buckle_panel?: { module: number; seam_width?: number; seam_color?: string }; inspection_layer?: string; inspection_opacity?: number }>;
   const overlay = yaml.load(fs.readFileSync('config/layout/overlay.yaml', 'utf-8')) as { suppress: OverlaySuppress[] };
   const houseYaml = yaml.load(fs.readFileSync('config/house.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }>; gift_areas: Array<{ id: string; name: string }> };
   const modelGeom = yaml.load(fs.readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }> };
@@ -149,6 +152,53 @@ function main(): void {
     if (c.corner_radius !== undefined && (!Number.isFinite(c.corner_radius) || c.corner_radius < 0)) {
       report('error', `[ceiling_corner_radius] ceiling/${c.id}: corner_radius must be non-negative`);
     }
+    if (c.corner_radii !== undefined) {
+      if (typeof c.corner_radii !== 'object' || c.corner_radii === null || Array.isArray(c.corner_radii)) {
+        report('error', `[ceiling_corner_radii] ceiling/${c.id}: corner_radii must be a map of corner -> radius`);
+      } else {
+        for (const [corner, value] of Object.entries(c.corner_radii)) {
+          if (!VALID_CEILING_CORNERS.includes(corner as (typeof VALID_CEILING_CORNERS)[number])) {
+            report('error', `[ceiling_corner_radii] ceiling/${c.id}: unknown corner "${corner}" (expect ${VALID_CEILING_CORNERS.join('/')})`);
+            continue;
+          }
+          if (!Number.isFinite(value) || value < 0) {
+            report('error', `[ceiling_corner_radii] ceiling/${c.id}: ${corner} radius must be non-negative`);
+          }
+        }
+      }
+    }
+    if (c.buckle_panel !== undefined) {
+      const panel = c.buckle_panel; // 修复 verify-rules 崩溃：buckle_panel 校验块此前漏定义 panel 引用（R01 未提交工作遗留 ReferenceError）
+      if (c.type !== 'aluminum_buckle') {
+        report('error', `[ceiling_buckle_panel] ceiling/${c.id}: buckle_panel requires type aluminum_buckle`);
+      }
+      if (!Number.isFinite(panel.module) || panel.module < 0.1 || panel.module > 1.2) {
+        report('error', `[ceiling_buckle_panel] ceiling/${c.id}: module must be within 0.1–1.2 m`);
+      }
+      if (panel.seam_width !== undefined && (!Number.isFinite(panel.seam_width) || panel.seam_width <= 0 || panel.seam_width >= panel.module)) {
+        report('error', `[ceiling_buckle_panel] ceiling/${c.id}: seam_width must be > 0 and < module`);
+      }
+      if (panel.seam_color !== undefined && !/^#[0-9a-fA-F]{6}$/.test(panel.seam_color)) {
+        report('error', `[ceiling_buckle_panel] ceiling/${c.id}: seam_color must be #rrggbb`);
+      }
+      if ((c.corner_radius ?? 0) > 0 || Object.values(c.corner_radii ?? {}).some((value) => value > 0)) {
+        report('error', `[ceiling_buckle_panel] ceiling/${c.id}: seams need a square footprint (corner_radius/corner_radii must stay unset)`);
+      }
+    }
+    if (c.concave_fillets !== undefined) {
+      for (const [corner, value] of Object.entries(c.concave_fillets)) {
+        if (!VALID_CEILING_CORNERS.includes(corner as (typeof VALID_CEILING_CORNERS)[number])) {
+          report('error', `[ceiling_concave_fillets] ceiling/${c.id}: unknown corner "${corner}" (expect ${VALID_CEILING_CORNERS.join('/')})`);
+          continue;
+        }
+        if (!Number.isFinite(value) || value <= 0) {
+          report('error', `[ceiling_concave_fillets] ceiling/${c.id}: ${corner} fillet must be positive`);
+        }
+        if ((c.corner_radii?.[corner] ?? c.corner_radius ?? 0) > 0) {
+          report('error', `[ceiling_concave_fillets] ceiling/${c.id}: ${corner} cannot carry both a convex round and a concave fillet`);
+        }
+      }
+    }
   }
 
   // === ceiling area within unit bounds ===
@@ -165,6 +215,32 @@ function main(): void {
     }
     if (c.corner_radius !== undefined && c.corner_radius > Math.min(Math.abs(ax2 - ax1), Math.abs(az2 - az1)) / 2) {
       report('error', `[ceiling_corner_radius] ceiling/${c.id}: corner_radius exceeds half of the smaller area dimension`);
+    }
+    for (const [corner, value] of Object.entries(c.corner_radii ?? {})) {
+      if (value > Math.min(Math.abs(ax2 - ax1), Math.abs(az2 - az1)) / 2) {
+        report('error', `[ceiling_corner_radii] ceiling/${c.id}: ${corner} radius exceeds half of the smaller area dimension`);
+      }
+    }
+    for (const [corner, value] of Object.entries(c.concave_fillets ?? {})) {
+      if (value > Math.min(Math.abs(ax2 - ax1), Math.abs(az2 - az1)) / 2) {
+        report('error', `[ceiling_concave_fillets] ceiling/${c.id}: ${corner} fillet exceeds half of the smaller area dimension`);
+      }
+    }
+    // 同一条边上两个角的处理量之和不得超出边长，否则两处圆弧会相互吞掉
+    const consumedAt = (corner: string): number => {
+      const fillet = c.concave_fillets?.[corner] ?? 0;
+      return fillet > 0 ? fillet : (c.corner_radii?.[corner] ?? c.corner_radius ?? 0);
+    };
+    for (const [a, b, length] of [
+      ['sw', 'se', Math.abs(ax2 - ax1)],
+      ['se', 'ne', Math.abs(az2 - az1)],
+      ['ne', 'nw', Math.abs(ax2 - ax1)],
+      ['nw', 'sw', Math.abs(az2 - az1)],
+    ] as Array<[string, string, number]>) {
+      const total = consumedAt(a) + consumedAt(b);
+      if (total > length + 1e-6) {
+        report('error', `[ceiling_corner_radii] ceiling/${c.id}: ${a}+${b} treatments (${total.toFixed(3)}m) exceed the shared edge length ${length.toFixed(3)}m`);
+      }
     }
     if (c.inspection_layer !== undefined && !c.inspection_layer.trim()) {
       report('error', `[ceiling_inspection] ceiling/${c.id}: inspection_layer must be non-empty`);

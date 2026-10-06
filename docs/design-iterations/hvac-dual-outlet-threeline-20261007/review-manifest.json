@@ -1,0 +1,44 @@
+{
+  "schema": "interior-design-review-manifest/v1",
+  "iteration_id": "hvac-dual-outlet-threeline-20261007",
+  "decision_ref": "DEC-2026-10-07-R03",
+  "subject": "客餐厅双出风内机风口三层线语言：6 功能段独立 + 8 封闭装饰段，linear_slot 渲染，吊顶几何/路线不变",
+  "runtime_query": {
+    "method": "tsx tmp/r03/ld-runtime-check.ts（buildHvacGeometry over data/project-render-facts.json）",
+    "hvacTerminals": 22,
+    "living_dining_objects": {
+      "supply_living":         { "position": [11.45, 2.65, 5.21], "render_style": "linear_slot", "decorative": false, "size": [3.516, 0.15, 0.033] },
+      "LD-deco-side-south":    { "position": [8.45, 2.65, 5.21],  "render_style": "linear_slot", "decorative": true,  "size": [2.516, 0.15, 0.033] },
+      "supply_dining":         { "position": [8.70, 2.65, 4.30],  "render_style": "linear_slot", "decorative": false, "size": [2.016, 0.15, 0.033] },
+      "LD-deco-side-north":    { "position": [11.55, 2.65, 4.30], "render_style": "linear_slot", "decorative": true,  "size": [3.716, 0.15, 0.033] },
+      "supply_living_bottom":  { "position": [10.30, 2.50, 4.85], "render_style": "linear_slot", "decorative": false, "size": [0.916, 0.033, 0.15] },
+      "supply_dining_bottom":  { "position": [8.00, 2.50, 4.85],  "render_style": "linear_slot", "decorative": false, "size": [0.916, 0.033, 0.15] },
+      "LD-deco-supply-west":   { "position": [7.375, 2.50, 4.85], "render_style": "linear_slot", "decorative": true,  "size": [0.366, 0.033, 0.15] },
+      "LD-deco-supply-mid":    { "position": [9.15, 2.50, 4.85],  "render_style": "linear_slot", "decorative": true,  "size": [1.416, 0.033, 0.15] },
+      "LD-deco-supply-east":   { "position": [12.075, 2.50, 4.85],"render_style": "linear_slot", "decorative": true,  "size": [2.666, 0.033, 0.15] },
+      "return_living":         { "position": [12.60, 2.49, 4.45], "render_style": "linear_slot", "decorative": false, "size": [1.016, 0.033, 0.25] },
+      "return_dining":         { "position": [7.90, 2.49, 4.45],  "render_style": "linear_slot", "decorative": false, "size": [0.916, 0.033, 0.25] },
+      "LD-deco-return-west":   { "position": [7.325, 2.49, 4.45], "render_style": "linear_slot", "decorative": true,  "size": [0.266, 0.033, 0.25] },
+      "LD-deco-return-mid":    { "position": [10.225, 2.49, 4.45],"render_style": "linear_slot", "decorative": true,  "size": [3.766, 0.033, 0.25] },
+      "LD-deco-return-east":   { "position": [13.25, 2.49, 4.45], "render_style": "linear_slot", "decorative": true,  "size": [0.316, 0.033, 0.25] }
+    },
+    "continuity_check": {
+      "bottom_supply_row_z_4.85": "功能段 [7.55,8.45]+[9.85,10.75] 与装饰段 [7.20,7.55]+[8.45,9.85]+[10.75,13.40] 拼满 x[7.20,13.40] 无缺口",
+      "bottom_return_row_z_4.45": "功能段 [7.45,8.35]+[12.10,13.10] 与装饰段 [7.20,7.45]+[8.35,12.10]+[13.10,13.40] 拼满 x[7.20,13.40] 无缺口",
+      "side_south_face_z_5.20": "装饰 [7.20,9.70] + 功能 [9.70,13.20]；东端 [13.20,13.40] 为与走廊吊顶的正交交接，不贴百叶",
+      "side_north_face_z_4.30": "西端 [7.20,7.70] 正交交接不贴百叶；功能 [7.70,9.70] + 装饰 [9.70,13.40]",
+      "isolation_removed": "底面两排各为一条连续线（linear_slot 无成品外框），不再有 4 个孤立矩形百叶"
+    }
+  },
+  "unchanged": [
+    "吊顶分区 25 / 标高 / 梁体 / 机位 x=10.30、8.00 / R18 正交语言 / R100 阳角",
+    "MEP routes 87 条（装饰段不挂路线；两机送回风支路各自独立）",
+    "其余房间风口 panel 渲染语言"
+  ],
+  "open_risks": [
+    "厂家安装图未回（双出风口方向/风量分配、42T2 旋转 180° 允许性、下出风有效面积/静压、回风形式）——公开渠道未找到 MJV-XXT2/P-SS 说明书，勿用非同族手册替代",
+    "模型示意高度（回风 0.25）与合同名义 300mm 的差异待厂家图/现场复核",
+    "git 提交方式待业主裁定"
+  ],
+  "drive_by_fix": "scripts/verify/rules/verify-rules.ts 的 buckle_panel 校验块漏定义 panel 引用（R01 未提交工作遗留 ReferenceError），已补 const panel = c.buckle_panel; 使 verify:rules/verify:all 可运行；改动一行，与本迭代无关但阻断验证门"
+}

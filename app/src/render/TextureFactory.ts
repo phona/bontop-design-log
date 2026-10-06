@@ -8,6 +8,7 @@ export interface MaterialAppearance {
   species?: string;
   pattern?: string;
   variety?: string;
+  tile_mm?: number | [number, number];
   [key: string]: unknown;
 }
 
@@ -16,7 +17,7 @@ export interface ProceduralTextures {
   normalMap?: THREE.Texture;
   roughnessMap?: THREE.Texture;
   /** 贴图 canvas 代表的实际边长（米）；存在时 UV 按米制标定（repeat=1/worldSize），不存在走旧 repeat(2,2) */
-  worldSize?: number;
+  worldSize?: number | [number, number];
 }
 
 const NEW_TYPES = new Set(['wood_grain_v2', 'ceramic_tile_v2', 'stone']);
@@ -84,11 +85,18 @@ export function createMaterialTexture(appearance: MaterialAppearance): Procedura
     normalTex.wrapT = THREE.RepeatWrapping;
 
     const result: ProceduralTextures = { map: mapTex, normalMap: normalTex };
-    // DEC-042：ceramic_tile_v2 声明 tile_mm（物理砖边长，mm）时做米制标定——
-    // canvas 画 4×4 砖，真实边长 = 4×砖尺寸；米制 UV 地面按物理尺寸平铺。
+    // ceramic_tile_v2 声明 tile_mm（物理砖边长/长宽，mm）时做米制标定。
+    // 画布含四列砖；世界尺寸按两个 UV 轴分别计算，兼容正方砖数值格式。
     // 不带 tile_mm 的旧条目（如墙砖）保持 repeat(2,2) 兼容，观感不变。
-    if (appearance.type === 'ceramic_tile_v2' && typeof appearance.tile_mm === 'number') {
-      result.worldSize = (4 * (appearance.tile_mm as number)) / 1000;
+    if (appearance.type === 'ceramic_tile_v2') {
+      const tileSize = appearance.tile_mm;
+      if (typeof tileSize === 'number' && tileSize > 0) {
+        result.worldSize = (4 * tileSize) / 1000;
+      } else if (Array.isArray(tileSize) && tileSize.length === 2 && tileSize.every((size) => typeof size === 'number' && size > 0)) {
+        // Canvas is square: tile pixel height follows the physical aspect ratio,
+        // so this yields 4 tiles along U and the matching physical extent on V.
+        result.worldSize = [(4 * tileSize[0]) / 1000, (4 * tileSize[0]) / 1000];
+      }
     }
     return result;
   }
@@ -186,8 +194,11 @@ function drawCeramicTileV2(
   appearance: MaterialAppearance,
 ): void {
   const pattern = appearance.pattern || 'straight';
+  const tileSize = appearance.tile_mm;
   const tileW = 128;
-  const tileH = 128;
+  const tileH = Array.isArray(tileSize) && tileSize.length === 2 && tileSize[0] > 0 && tileSize[1] > 0
+    ? (128 * tileSize[1]) / tileSize[0]
+    : 128;
 
   ctx.fillStyle = appearance.color;
   ctx.fillRect(0, 0, w, h);

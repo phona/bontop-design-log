@@ -1,0 +1,55 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: tile-plank-comparison-20261006
+subject: 干区木纹长条砖双方案比较
+priority:
+  user_goal: 同时看到KT 200×1200与金意陶约900×150的效果及成本
+  ranked: [同条件可比效果, 同面积材料预算, 保留原门店报价及未知费用]
+  non_negotiables: [不猜具体SKU花色, 不把材料价当全安装价, 不覆盖未选定的当前方案]
+  tradeoffs_accepted: [使用同一占位材质隔离砖幅差异, 按现行8%损耗做计划估算]
+frozen: true
+freeze_record:
+  alignment_id: 本会话2026-10-06两种都考虑
+  original_user_response: 两种都考虑，我需要做效果，跟成本计算
+  normalized_decisions: [两个候选并行比较, 暂不选择最终产品, 主客卫及厨房墙砖加入两店新方案比较, 金意陶原图无法辨认处允许标注不确定性的推演, 生活阳台未见新报价并保留现行基线]
+  confirmed_by_user: true
+  confirmed_at: 2026-10-06
+  evidence_refs: [config/tile-comparison.yaml, schedule/procurement.md]
+allowed_scope:
+  files: [config/materials.yaml, config/tile-comparison.yaml, server/tile-cost-comparison.ts, server/routes.ts, server/index.ts, app/vite.config.ts, schedule/procurement.md, docs/decision_log.md, docs/design-iterations/tile-plank-comparison-20261006]
+  objects: [干区两款材料候选, KT主客卫及厨房墙砖候选, 金意陶厨卫待识别条目, 现行湿区材料预算基线]
+  archetypes: [floor_region]
+  views: [plan, perspective]
+  changes: [新增候选, 可复算成本, 同机位规格效果图, 两店厨卫与厨墙报价分区, 采购摘要]
+forbidden:
+  files: [config/layout/model-geometry.yaml, config/layout/overlay.yaml, data/current-scheme.json]
+  objects: [最终默认地砖]
+  assumptions: [门店实物颜色与占位图相同, 报价包含人工辅材, 门店规格约数为精确尺寸]
+  out_of_scope_changes: [几何改动, 施工图定标, 购买]
+open_questions:
+  - id: jyt-zone-spec
+    category: material
+    question: 金意陶厨房砖规格、卫生间①—④房间/墙地归属及②④规格是什么
+    selected: null
+    user_response: null
+    status: site_pending
+  - id: balcony-scope
+    category: material
+    question: 生活阳台是否也纳入两店新方案
+    selected: null
+    user_response: null
+    status: site_pending
+alignment:
+  records: [本会话业主要求两款都做效果和成本, 本会话业主确认主客卫与厨房墙砖一起作为新设计比较, 本会话业主上传两张手写原单并允许按照片推断但标注不确定]
+  unresolved: [金意陶厨卫归属及规格待门店核验, 生活阳台无新报价]
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run test:server, npm run test:app, npm run typecheck, npm run verify:all]
+  browser_evidence_required: true
+  required_views: [同机位客餐厅近景KT, 同机位客餐厅近景金意陶]
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: not_applicable
+  blocking_issues: []
+  done_when: [主砖同机位效果清楚, 干区与KT已知卫浴地面面积及损耗可复算, 厨卫及厨墙原始报价与推演分层, 未知规格用平面色占位或明确留空, 湿区基线与未知费用分开, 不冒充真实SKU或全安装价]
+  delivery_notes_required: true

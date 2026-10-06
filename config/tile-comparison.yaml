@@ -1,0 +1,175 @@
+version: 1
+area_source: config/layout/model-geometry.yaml
+area_basis: resolved room polygon area; dry floor rooms only
+dry_room_ids:
+  - living_dining
+  - kitchen
+  - master_bedroom
+  - study
+  - bedroom_nw
+  - bedroom_se
+planning:
+  loss_multiplier: 1.08
+  loss_multiplier_status: aligned with current floor-tile material estimate (8% allowance in config/materials.yaml)
+  carton_size: null
+  carton_size_status: unknown
+fees:
+  installation:
+    status: unknown
+  adhesive_and_grout:
+    status: unknown
+  cutting_and_edge_processing:
+    status: unknown
+  delivery_and_haul:
+    status: unknown
+  leveling_and_other_additions:
+    status: unknown
+  tax_and_invoice:
+    status: unknown
+candidates:
+  - id: kt_200x1200
+    material_id: floor_tile_kt_200x1200_01
+    supplier: KT
+    product_description: 木纹砖，报价规格 200×1200 mm
+    dimensions_mm:
+      length: 1200
+      width: 200
+    dimensions_status: quoted_exact
+    unit_price_yuan: 29
+    quoted_piece_count: 516
+    quoted_material_total_yuan: 14964
+    reported_full_material_total_yuan: 21108
+    quote_scope: 全屋地面主砖；另有挡水边、厨卫墙地砖单列报价
+    quote_observed_at: user-provided in conversation, 2026-10-06
+    quote_source: docs/design-iterations/tile-plank-comparison-20261006/evidence/kt-quote-original.jpg（业主上传手写单）
+    quote_status: photo_line_items_transcribed_full_total_arithmetic_reconciles
+    carton_size: null
+    carton_size_status: unknown
+    additional_quote_lines:
+      - { label: 挡水边 600×1200, piece_count: 12, unit_price_yuan: 68, quoted_total_yuan: 816, dimensions_mm: { length: 1200, width: 600 }, dimensions_status: quoted_exact, room_mapping_status: unspecified, surface_mapping_status: unspecified }
+      - { label: 厨房墙面 600×1200, piece_count: 10, unit_price_yuan: 68, quoted_total_yuan: 680, dimensions_mm: { length: 1200, width: 600 }, dimensions_status: quoted_exact, room_id: kitchen, room_mapping_status: explicit, surface: wall, surface_mapping_status: explicit, material_id: wall_tile_kt_600x1200_01 }
+      - { label: 客卫地面 600×600, piece_count: 10, unit_price_yuan: 28, quoted_total_yuan: 280, dimensions_mm: { length: 600, width: 600 }, dimensions_status: quoted_exact, room_id: guest_bath, room_mapping_status: explicit, surface: floor, surface_mapping_status: explicit, material_id: floor_tile_kt_600x600_01 }
+      - { label: 客卫墙面 600×1200, piece_count: 24, unit_price_yuan: 68, quoted_total_yuan: 1632, dimensions_mm: { length: 1200, width: 600 }, dimensions_status: quoted_exact, room_id: guest_bath, room_mapping_status: explicit, surface: wall, surface_mapping_status: explicit, material_id: wall_tile_kt_600x1200_01 }
+      - { label: 干区墙面 600×1200, piece_count: 12, unit_price_yuan: 68, quoted_total_yuan: 816, dimensions_mm: { length: 1200, width: 600 }, dimensions_status: quoted_exact, room_mapping_status: unspecified, surface: wall, surface_mapping_status: explicit, material_id: wall_tile_kt_600x1200_01 }
+      - { label: 主卫地面 600×600, piece_count: 20, unit_price_yuan: 28, quoted_total_yuan: 560, dimensions_mm: { length: 600, width: 600 }, dimensions_status: quoted_exact, room_id: master_bath, room_mapping_status: explicit, surface: floor, surface_mapping_status: explicit, material_id: floor_tile_kt_600x600_01 }
+      - { label: 主卫墙面 600×1200, piece_count: 20, unit_price_yuan: 68, quoted_total_yuan: 1360, dimensions_mm: { length: 1200, width: 600 }, dimensions_status: quoted_exact, room_id: master_bath, room_mapping_status: explicit, surface: wall, surface_mapping_status: explicit, material_id: wall_tile_kt_600x1200_01 }
+  - id: jinyi_approx_900x150
+    material_id: floor_tile_jyt_900x150_01
+    supplier: 金意陶
+    product_description: 木纹砖，报价规格约 900×150 mm
+    dimensions_mm:
+      length: 900
+      width: 150
+    dimensions_status: nominal_approximate_quoted
+    unit_price_yuan: 17.8
+    quoted_piece_count: 970
+    quoted_material_total_yuan: 17266
+    reported_full_material_total_yuan: 23926
+    alternative_reported_full_material_total_yuan: 27130
+    quote_scope: 全屋主要地面；不含厨卫砖单列项目
+    quote_observed_at: user-provided in conversation, 2026-10-06
+    quote_source: docs/design-iterations/tile-plank-comparison-20261006/evidence/jyt-quote-original.jpg（业主上传手写单）
+    quote_status: photo_shows_main_floor_discounted_unit_price_and_bathroom_line_discounts; full_material_total_user_derived_not_photo_confirmed
+    carton_size: null
+    carton_size_status: unknown
+    additional_quote_lines:
+      - { label: 厨房墙砖约40片, piece_count: 40, unit_price_yuan: 36, quoted_total_yuan: 1440, dimensions_status: unspecified, estimated_area_sqm: 10, estimated_area_status: approximate_store_estimate, room_id: kitchen, room_mapping_status: explicit, surface: wall, surface_mapping_status: explicit, visible_discount_status: no_discount_visible }
+      - { label: 卫生间砖①约400×600, piece_count: 30, unit_price_yuan: 11.8, quoted_total_yuan: 354, dimensions_mm: { length: 600, width: 400 }, dimensions_status: approximate, visible_discounted_unit_price_yuan: 10.6, visible_discount_status: visible_on_uploaded_photo }
+      - { label: 卫生间砖②手写规格不清, piece_count: 68, unit_price_yuan: 36, quoted_total_yuan: 2448, dimensions_status: unreadable, visible_discounted_unit_price_yuan: 32, visible_discount_status: visible_on_uploaded_photo, hypothesized_group: possible_bathroom_wall_quote, hypothesis_confidence: low, hypothesized_surface: wall, hypothesis_rationale: quantity and price could be a bathroom wall line; room, dimensions, and grouping with line ④ are not confirmed from the photo }
+      - { label: 卫生间砖③约400×400, piece_count: 48, unit_price_yuan: 11.8, quoted_total_yuan: 566, dimensions_mm: { length: 400, width: 400 }, dimensions_status: approximate, visible_discounted_unit_price_yuan: 10.6, visible_discount_status: visible_on_uploaded_photo, hypothesized_group: possible_both_baths_floor, hypothesis_confidence: low_to_medium, hypothesized_room_ids: [master_bath, guest_bath], hypothesized_surface: floor, hypothesis_rationale: nominal 48×0.4×0.4=7.68㎡ is close to current combined bathroom net area 7.726㎡, leaving effectively no allowance; dimensions are approximate and mapping is unconfirmed }
+      - { label: 卫生间砖④手写规格不清, piece_count: 72, unit_price_yuan: 36, quoted_total_yuan: 2592, dimensions_status: unreadable, visible_discounted_unit_price_yuan: 32, visible_discount_status: visible_on_uploaded_photo, hypothesized_group: possible_bathroom_wall_quote, hypothesis_confidence: low, hypothesized_surface: wall, hypothesis_rationale: quantity and price could be a bathroom wall line; room, dimensions, and grouping with line ② are not confirmed from the photo }
+    user_derived_additional_quote_discounted_total_yuan: 6660
+    user_derived_discount_status: user_derived_90_percent_assumption_not_confirmed_on_uploaded_photo
+    user_derived_discount_rate: 0.9
+    additional_quote_original_total_yuan: 7400
+    reported_full_material_total_status: derived_from_main_floor_discounted_total_plus_user_derived_additional_total
+    alternative_reported_full_material_total_status: user_derived_discount_assumption_not_confirmed_on_uploaded_photo
+wet_baseline:
+  source: current wet-zone project material candidates; not part of either store wood-plank quote
+  items:
+    - room_id: master_bath
+      material_id: floor_tile_antislip_400
+      description: 主卫 400×400 防滑砖
+    - room_id: balcony
+      material_id: floor_tile_antislip_400
+      description: 生活阳台 400×400 防滑砖
+    - room_id: guest_bath
+      material_id: floor_tile_deco_small
+      description: 客卫小花砖，按材料目录的每平方米单价
+kt_bath_floor_model:
+  material_id: floor_tile_kt_600x600_01
+  room_ids: [guest_bath, master_bath]
+  note: KT full scheme bathroom floor alternative; separate from current 400x400 wet-zone baseline
+masonry_rate_card:
+  source: docs/design-iterations/tile-plank-comparison-20261006/evidence/mason-labor-rate-card.jpg
+  observed_at: received in this conversation 2026-10-06; date printed on card unknown
+  quote_status: preliminary_labor_rate_card; extras_and_work_scopes_require_confirmation
+  currency: CNY
+  floor_rates_yuan_per_sqm:
+    - { specification: 800x800, price: 40 }
+    - { specification: 600x600, price: 45 }
+    - { specification: 600x1200, price: 55 }
+    - { specification: 750x1500, price: 60 }
+    - { specification: 900x1800, price: 80 }
+    - { specification: 木纹砖200x1200或150x900, price: 75 }
+  wall_rates_yuan_per_sqm:
+    - { specification: 400x800, price: 45 }
+    - { specification: 300x600, price: 50 }
+    - { specification: 800x800, price: 55 }
+    - { specification: 600x1200, price: 65 }
+    - { specification: 750x1500, price: 75 }
+    - { specification: 900x1800, price: 100 }
+  conditional_addons:
+    - id: wood_plank_fishbone_premium
+      label: 木纹砖鱼骨/人字铺贴加价
+      price: 50
+      unit: 元/㎡
+      status: conditional
+    - id: bathroom_floor_room_charge
+      label: 卫生间地面按间计价（面积不计）
+      price: 300
+      unit: 元/间
+      scope_status: ambiguous; image says area not counted, so flat-only and additive interpretations must remain separate
+      status: conditional
+    - id: aluminum_skirting_full_house
+      label: 全屋铝合金踢脚线关联地砖加价
+      price: 5
+      unit: 元/㎡
+      scope_status: only if selected for whole house; bathroom and balcony floor area excluded
+      status: conditional
+    - id: floor_protection_film
+      label: 地面贴砖保护膜
+      price: 5
+      unit: 元/㎡
+      status: optional
+  extras:
+    - { label: 嵌入式地脚线、窗边台贴小砖条, price: 20, unit: 元/m }
+    - { label: 飘窗台面贴砖, price: 100, unit: 元/m }
+    - { label: 反边, price: 60, unit: 元/m, note: 含海棠角；阳台带围栏另加20元/m }
+    - { label: 海棠角, price: 20, unit: 元/m }
+    - { label: 插座底盒圆弧开孔, price: 20, unit: 元/个, note: 如不需要需提前告知；否则默认包含 }
+    - { label: 卫生间贴砖灌砂浆包管, price: 200, unit: 元/条, note: 单管200元/条，双管300元/条 }
+    - { label: 壁龛, price: 400, unit: 元/个, note: 单层250元/个，双层400元/个 }
+    - { label: 便盆安装, price: 150, unit: 元/个 }
+    - { label: 瓷砖背面刷双组分背胶, price: 5, unit: 元/㎡, note: 单组分背胶不另收费；地砖刷双组分背胶为10元/㎡ }
+    - { label: 墙面拉毛（滚涂双组分背胶）, price: 150, unit: 元/间, note: 厨房、卫生间、阳台如用单组分背胶墙面收100元/间 }
+    - { label: 清理瓷砖背面脱磨剂, price: 10, unit: 元/㎡, note: 使用半干毛巾用力擦瓷砖背面，降低荷珠效果 }
+    - { label: 卫生间淋浴区做下沉式, price: 200, unit: 元/间 }
+    - { label: 卫生间做隔断预埋玻璃卡槽, price: 200, unit: 元/间 }
+  notes:
+    - 转角统一做圆弧工艺不另外收费。
+    - 密缝以及薄贴工艺单价另议。
+    - 阳台贴墙砖另加5元/㎡。
+    - 墙砖丈量方式：窗口面积不减；门口双包边减洞口面积，单包边不减面积。
+    - 厨房大砖搭配杂砖铺贴时以大砖单价为准，具体可再议。
+    - 常规地砖铺贴方式为半干水泥砂浆铺贴；本表为初步报价，特殊情况特殊报价。
+  bathroom_floor_charge_interpretations:
+    source_text: 卫生间地面300元/间（面积不计）
+    selection_status: unresolved
+    options:
+      - id: flat_per_room_replaces_area_rate
+        mode: flat_replaces_area_rate
+        note: "Literal reading: 300元/间 covers the bathroom floor labor; do not add 600x600 area rate."
+      - id: flat_per_room_added_to_area_rate_if_confirmed
+        mode: additive_only_if_mason_confirms
+        note: "Alternate reading requiring mason confirmation: add the 300元/间 to the 600x600 area-rate amount."

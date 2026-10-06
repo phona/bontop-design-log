@@ -46,14 +46,30 @@ export const PlumbingPointSchema = z.object({
 }).strict();
 export const CeilingZoneSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(VALID_CEILING_TYPES), thickness: finiteNumber.optional(),
-  area: z.tuple([finiteNumber, finiteNumber, finiteNumber, finiteNumber]).optional(), corner_radius: finiteNumber.nonnegative().optional(), inspection_layer: z.string().trim().min(1).optional(), inspection_opacity: finiteNumber.min(0).max(1).optional(), x: finiteNumber.optional(), z: finiteNumber.optional(), height: finiteNumber.optional(), model: z.string().optional(), power_point: z.string().optional(), note: z.string().optional(),
+  area: z.tuple([finiteNumber, finiteNumber, finiteNumber, finiteNumber]).optional(), corner_radius: finiteNumber.nonnegative().optional(),
+  // Zod 4 records with enum keys are exhaustive and no longer expose `.partial()`.
+  // Use a partial strict object to keep corner keys optional while rejecting typos.
+  corner_radii: z.object({
+    nw: finiteNumber.nonnegative().optional(),
+    ne: finiteNumber.nonnegative().optional(),
+    se: finiteNumber.nonnegative().optional(),
+    sw: finiteNumber.nonnegative().optional(),
+  }).strict().optional(),
+  concave_fillets: z.object({
+    nw: finiteNumber.positive().optional(),
+    ne: finiteNumber.positive().optional(),
+    se: finiteNumber.positive().optional(),
+    sw: finiteNumber.positive().optional(),
+  }).strict().optional(),
+  buckle_panel: z.object({ module: finiteNumber, seam_width: finiteNumber.optional(), seam_color: z.string().optional() }).strict().optional(),
+  inspection_layer: z.string().trim().min(1).optional(), inspection_opacity: finiteNumber.min(0).max(1).optional(), x: finiteNumber.optional(), z: finiteNumber.optional(), height: finiteNumber.optional(), model: z.string().optional(), power_point: z.string().optional(), note: z.string().optional(),
 }).strict();
 
 export const VrfOutdoorUnitSchema = z.object({
   id: nonEmpty, platform: nonEmpty, x: finiteNumber, z: finiteNumber, direction: nonEmpty, width: finiteNumber, depth: finiteNumber, height: finiteNumber, model: nonEmpty, note: z.string().optional(),
 }).strict();
 const HvacStatusSchema = z.enum(['confirmed', 'inferred', 'pending']);
-const HvacSystemSchema = z.enum(['refrigerant', 'power', 'condensate', 'supply_air', 'return_air', 'access']);
+const HvacSystemSchema = z.enum(['refrigerant', 'power', 'condensate', 'supply_air', 'return_air', 'access', 'decorative']);
 const reasonForUnconfirmed = <T extends z.ZodType<{ status: string; reason?: string }>>(schema: T) => schema.superRefine((value, ctx) => {
   if (value.status !== 'confirmed' && !value.reason?.trim()) ctx.addIssue({ code: 'custom', message: `${value.status} HVAC facts require reason`, path: ['reason'] });
 });
@@ -70,16 +86,24 @@ export const HvacTerminalSchema = z.object({
   system: HvacSystemSchema,
   position: Vec3Schema,
   reason: z.string().optional(),
-  kind: z.enum(['terminal', 'condensate_drain_candidate']).optional(),
+  kind: z.enum(['terminal', 'condensate_drain_candidate', 'decorative_louver']).optional(),
   confirmed: z.boolean().optional(),
   render_interior: z.boolean().optional(),
   render_coordination: z.boolean().optional(),
   mount_face: z.enum(['north', 'south', 'east', 'west', 'bottom']).optional(),
   length: z.number().positive().optional(),
   finish: z.enum(['matte_white', 'matte_black']).optional(),
+  render_style: z.enum(['linear_slot', 'panel']).optional(),
+  grille_height: z.number().positive().optional(),
 }).strict().superRefine((value, ctx) => {
   if (value.status !== 'confirmed' && !value.reason?.trim()) {
     ctx.addIssue({ code: 'custom', message: `${value.status} HVAC facts require reason`, path: ['reason'] });
+  }
+  if (value.kind === 'decorative_louver') {
+    if (value.system !== 'decorative') ctx.addIssue({ code: 'custom', message: 'decorative louver must use decorative system', path: ['system'] });
+    if (value.confirmed !== false) ctx.addIssue({ code: 'custom', message: 'decorative louver must set confirmed=false', path: ['confirmed'] });
+    if (value.render_interior !== true) ctx.addIssue({ code: 'custom', message: 'decorative louver must set render_interior=true', path: ['render_interior'] });
+    if (value.render_coordination !== false) ctx.addIssue({ code: 'custom', message: 'decorative louver must set render_coordination=false', path: ['render_coordination'] });
   }
   if (value.kind === 'condensate_drain_candidate') {
     if (value.system !== 'condensate') ctx.addIssue({ code: 'custom', message: 'condensate drain candidate must use condensate system', path: ['system'] });
