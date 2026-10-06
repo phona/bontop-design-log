@@ -1008,7 +1008,7 @@ facts:
   # 量房待确认项条数：39 条是「还有什么没量」的账面。新增/关闭条目必须同步。
   - id: fact.pending_site_data_count
     kind: derived
-    value: "@docs/pending-site-data.md:量表共 48 条"
+    value: "@docs/pending-site-data.md:量表共 52 条"
     unit: 条
     mirrors:
       - path: docs/pending-site-data.md
@@ -1191,7 +1191,11 @@ contracts:
     prose:
       - path: schedule/phase-1/checklist.md
         extract: '^\| \[ \] \| (check_[a-z_0-9]+)'
-        expect_matches: 39
+        # 2026-10-06 DEC-2026-10-06-R1/R2 给排水与电气兜底轮新增 10 项验收
+        # （前置/减压/软水预留/沉箱二次排水/外移位防水/每点角阀/全盒零线/LEB 联结清单/
+        #   浴霸排风出口/微蒸烤预留/空调检修取电）→ 39 → 49；
+        # 新项已挂到 PKG-030/040/050/110 的 acceptance_refs 并 schedule:render 落 checklist。
+        expect_matches: 49
         distinct: true
 
   # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写
@@ -1393,7 +1397,7 @@ contracts:
     room_heights_key: mep.room_heights
     default_room_height: 2.8
     tolerance: 0.005
-    registered_conflicts: 153
+    registered_conflicts: 160
     prose:
       - path: docs/mep-construction-guidance.md
         extract: '低于降板完成面的既有冲突\s*(\d+)\s*处'
@@ -1414,7 +1418,7 @@ contracts:
     repair_channel:
       decision_ref: 'pending:docs/pending-site-data.md #41 裁定后替换为设计侧修正 DEC 全引'
       sync_files: [config/ceiling.yaml, docs/mep-construction-guidance.md, docs/pending-site-data.md, config/facts.yaml]
-    pending: "MEP 吊顶内分层标高整层低于降板完成面（强电 2.45 < 2.50、冷凝水 2.35 < 2.50、弱电 2.50 < 0.15m 降板的 2.65 等），实算 153 处（2026-10-05 给排水 v1 新增 5 条排水路线，144→149；DEC-2026-10-05-R11 客餐厅冷凝水改线 149→154 合计 +5；DEC-2026-10-05-R19 厨房铝扣板收回 z=2.4、餐厅改两条服务带后，refrigerant-trunk 原在厨房铝扣板（完成面 2.65）内的线段改在西侧服务带（完成面 2.50）空腔内，其 2.55 标高由低于改为高于完成面，该 hit 合法消失，154→153）；需设计侧裁定：分层标高升入降板空腔（2.50–3.00m）或调整降板厚度/范围。跟踪 docs/pending-site-data.md #41；正当修正通道见 repair_channel（须附修正 DEC 全引并同步 ceiling.yaml / mep-construction-guidance.md §0 / pending-site-data.md #41 / 本登记表 registered_conflicts）；裁定后同步更新 docs/mep-construction-guidance.md §0 的登记数与本契约的 registered_conflicts"
+    pending: "MEP 吊顶内分层标高整层低于降板完成面（强电 2.45 < 2.50、冷凝水 2.35 < 2.50、弱电 2.50 < 0.15m 降板的 2.65 等），实算 160 处（2026-10-05 给排水 v1 新增 5 条排水路线，144→149；DEC-2026-10-05-R11 客餐厅冷凝水改线 149→154 合计 +5；DEC-2026-10-05-R19 厨房铝扣板收回 z=2.4、餐厅改两条服务带后，refrigerant-trunk 原在厨房铝扣板（完成面 2.65）内的线段改在西侧服务带（完成面 2.50）空腔内，其 2.55 标高由低于改为高于完成面，该 hit 合法消失，154→153；**2026-10-06 DEC-2026-10-06-R1 给排水缺项兜底新增 7 条 floor-branch 给排水路线（燃气热水器进水/主卫热水/客卫热水/回水/洗碗机进水/进水总阀/主卫沉箱二次排水），每条在所经厨卫/套间吊顶 footprint 内新增 1 处「floor-branch 点位低于吊顶完成面」hit——给排水走地 0.02–0.45m 本就低于完成面，与既有给排水 floor-branch 路线同源、非 #41 分层标高问题，153→160**）；#41 分层标高裁定（升入降板空腔 2.50–3.00m or 调降板）仍未作（见 DEC-2026-10-06-R3 ①），故 decision_ref 维持 pending 占位、本轮仅按 repair_channel 记 R1 正当修正（附全引 + 4 文件同步）。跟踪 docs/pending-site-data.md #41；正当修正通道见 repair_channel（须附修正 DEC 全引并同步 ceiling.yaml / mep-construction-guidance.md §0 / pending-site-data.md #41 / 本登记表 registered_conflicts）；裁定后同步更新 docs/mep-construction-guidance.md §0 的登记数与本契约的 registered_conflicts"
 
   - id: c.layout_region_room_overlap
     kind: overlap

@@ -38,8 +38,8 @@ function sample(route: Record<string, unknown>) {
 
 test('real MEP configuration lints without false errors and reports warnings structurally', () => {
   const result = lintMepCoordination(config, sources);
-  assert.equal(result.counts.routes, 80); // R18 客餐厅下出风 78→80 // DEC-2026-10-04-R2：+strong-ac-dining 71→72、+strong-ac-outdoor 72→73；2026-10-05 给排水 v1：+5 条排水 route 73→78
-  assert.equal(result.counts.resolvedRoutes, 80);
+  assert.equal(result.counts.routes, 87); // 80 → 87（DEC-2026-10-06-R1 给排水缺项兜底：+燃气热水器进水/主卫热水/客卫热水/回水/洗碗机进水/进水总阀/沉箱二次排水共 7 条路线）
+  assert.equal(result.counts.resolvedRoutes, 87);
   assert.equal(result.errors.length, 0);
   assert.equal(result.warnings.filter((issue) => issue.code === 'hvac_coverage_missing').length, 0);
   // 2026-10-04 A1：吊顶净空规则从「要求 zone.area 与 zone.height 同时存在」（本项目交集为 0、
@@ -50,31 +50,22 @@ test('real MEP configuration lints without false errors and reports warnings str
   //   · DEC-2026-10-05-R11 客餐厅冷凝水改线（condensate-living/dining 移入走廊/客卫吊顶网络）；
   //   · DEC-2026-10-05-R13 书房电脑专用回路改道（strong-power-study 复用 x=5.5 穿孔带，与同孔区三条既有路线同一类别）。
   // 归口裁定仍是 docs/pending-site-data.md #41；实算数与登记数不符即失败（变多/变少都不允许静默）。
-  assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 153); // DEC-2026-10-05-R19：厨房吊顶收回+餐厅服务带，trunk 2.55 改在 2.50 完成面上方，154→153
-  // 158 = 149(ceiling)+3(nonphysical)+6(overlap)；登记基数 149→154（R11 冷凝水改线 + R13 书房电脑回路改道）后为
-  // 163 = 154+3+6。无 layout context（本用例不传 layout），故不含穿墙类告警。
-  // DEC-2026-10-05-R18：两台双出风内机第二出口下出风新增 2 条送风路线，与既有送/回风同属
-  // 「内机本体出口处送回风贴近」类别（粗 envelope 在机身端点必然相交，非路由错误），
-  // overlap 6→8、总告警 163→165。R19 后 ceiling_clearance 153、总告警 164。
-  // 2026-10-04 A2 + 2026-10-05 复核：新增 (a) gravity_slope_geometry_mismatch 与 (b) route_not_orthogonal，
-  // 两条都不依赖 layout（穿墙类 (c)(d) 需要 layout，本用例不传 layout，仍为 0）：
-  //   · (a) 14 条 = 8 条「折线 y 全平但声明 1–2% 坡度」+ 1 条 drain-balcony 竖降段 41× 过陡
-  //     + 4 条冷凝水候选沿程 4–5× 过陡 + 1 条 drain-gbath-vanity-to-riser 墙排汇总 0.44× 不足坡；
-  //   · (b) 3 条 = water-master-bath / water-guest-bath / water-garden-requirement 的斜线段。
-  // 故 164 → 181 = 164 + 14(a) + 3(b)。ceiling 契约数 153 不变（registered_conflicts 154 同步口径见 facts.yaml）。
-  assert.equal(result.warnings.length, 181); // 164 → 181（(a) +14、(b) +3）
-  // (e) 分桶：无 layout 时 must_fix = (a)14 + (b)3，survey_dependent = 153 ceiling，envelope = 3 nonphysical + 8 overlap
+  assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 160); // DEC-2026-10-06-R1：新增 7 条 floor-branch 路线，每条在所经厨卫/套间吊顶 footprint 内新增 1 处低于完成面 hit，153→160（与既有给排水 floor-branch 路线同源，house/水走地 normal）；登记基数 160 由 docs/mep-construction-guidance.md §0 与 config/facts.yaml 同步（repair_channel，附 DEC-2026-10-06-R1）
+  // 158 = 149(ceiling)+3(nonphysical)+6(overlap)；...（历史基数沿革见 git 注释）...
+  // DEC-2026-10-06-R1：（a）重力坡度 14、 (b)斜线 3 已全清（0）；(C) 新增 6 条 design_requirement 路线使 nonphysical 3→9。
+  assert.equal(result.warnings.length, 177); // 164 → 177（ceiling 153→160 +7、(C) nonphysical 3→9 +6；(a)重力坡度、 (b)斜线 归零 -17）
+  // (e) 分桶：无 layout 时 must_fix = 0（重力坡度/斜线已清、穿墙类需 layout 不出现），survey_dependent = 160 ceiling，envelope = 9 nonphysical + 8 overlap
   const buckets = bucketsOf(result);
-  assert.equal(buckets.must_fix_before_briefing.count, 17);
-  assert.equal(buckets.survey_dependent.count, 153);
-  assert.equal(buckets.envelope_approximation.count, 11);
+  assert.equal(buckets.must_fix_before_briefing.count, 0);
+  assert.equal(buckets.survey_dependent.count, 160);
+  assert.equal(buckets.envelope_approximation.count, 17);
   assert.equal(Object.values(buckets).reduce((sum, bucket) => sum + bucket.count, 0), result.errors.length + result.warnings.length);
   for (const bucket of Object.values(buckets)) assert.equal(bucket.count, bucket.codes.reduce((sum, entry) => sum + entry.count, 0));
   assert.ok(result.warnings.some((issue) => issue.code === 'supply_return_overlap'));
   assert.ok(result.warnings.some((issue) => issue.code === 'nonphysical_route'));
   const balcony = config.routes.find((r) => r.id === 'drain-balcony')!;
   assert.equal(balcony.from_height, 0.60);
-  assert.equal(balcony.to_height, 0.02);
+  assert.equal(balcony.to_height, 0.586); // DEC-2026-10-06-R1：洗衣机改向专用墙排→阳台立管（不通地漏），2% 坡回算 0.014/0.70m，单调非升
 });
 
 test('missing power relation remains a coverage warning without an equivalent endpoint route', () => {
@@ -308,11 +299,18 @@ function doorCrossingRoute(at: { x: number; z: number }, height = 2.5) {
 test('penetration closer than 0.15m to a door opening in the same wall is flagged', () => {
   // 原始 model-geometry 结构（anchor 顶点 + 沿墙 offset + width）自行换算洞区间：v_a(1,-1) + offset 1.0 → 洞心 (1,0)，宽 0.9 → z[-0.45,0.45]
   const context = doorWallContext([{ id: 'd_test', type: 'door', anchor: 'v_a', offset: 1.0, width: 0.9, height: 2.1 }]);
+  // DEC-2026-10-06-R1：declared height 2.50m > 门头 2.10m = 合法过门头穿梁 → survey_dependent
   const close = lintMepCoordination(doorCrossingRoute({ x: 1, z: 0.5 }), sources, context);
   const found = close.warnings.find((i) => i.code === 'penetration_door_clearance')!;
   assert.match(found.message, /at \(1\.00,0\.50\) is 0\.05m from door opening d_test \(z -0\.45–0\.45\)/);
-  assert.match(found.message, /above the door head 2\.10m/);
+  assert.match(found.message, /above the door head 2\.10m \(过门头穿梁，需核梁底与套管/);
+  assert.equal(found.category, 'survey_dependent');
   assert.equal(close.errors.some((i) => i.code === 'penetration_door_clearance'), false);
+  // DEC-2026-10-06-R1：declared height 1.50m 落在门洞高度带内（<门头 2.10m）且贴门垛 → must_fix_before_briefing
+  const jamb = lintMepCoordination(doorCrossingRoute({ x: 1, z: 0.5 }, 1.5), sources, context);
+  const jambFound = jamb.warnings.find((i) => i.code === 'penetration_door_clearance')!;
+  assert.match(jambFound.message, /is inside the door opening height 2\.10m/);
+  assert.equal(jambFound.category, 'must_fix_before_briefing');
   const far = lintMepCoordination(doorCrossingRoute({ x: 1, z: 0.9 }), sources, context);
   assert.equal(far.warnings.some((i) => i.code === 'penetration_door_clearance'), false);
   // 没有可解析门洞数据的墙：静默跳过，既不报错也不误报
@@ -362,43 +360,41 @@ test('long parallel runs beside a shear wall are flagged, short ones are not', (
 
 // ── 新规则在真实配置上的命中 + (e) 分桶 ──
 
-test('the new geometry rules hit the expected real routes and keep zero errors', () => {
+test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify over-header penetrations', () => {
   const result = lintMepCoordination(config, sources, realContext());
-  assert.equal(result.counts.routes, 80);
-  assert.equal(result.counts.resolvedRoutes, 80);
+  assert.equal(result.counts.routes, 87);
+  assert.equal(result.counts.resolvedRoutes, 87);
   assert.equal(result.errors.length, 0);
-  // (a) 墙排汇总不足坡 + 地埋全平 + 过陡段
-  assert.ok(result.warnings.some((i) => i.code === 'gravity_slope_geometry_mismatch' && i.routeId === 'drain-gbath-vanity-to-riser' && /wall drain drops 0\.010m over 2\.25m/.test(i.message)));
-  assert.ok(result.warnings.some((i) => i.code === 'gravity_slope_geometry_mismatch' && i.routeId === 'drain-master-bath'));
-  // 同为墙排但汇集落差够（1.03%）的 drain-mbath-vanity-to-riser 不得被误报
-  assert.equal(result.warnings.some((i) => i.code === 'gravity_slope_geometry_mismatch' && i.routeId === 'drain-mbath-vanity-to-riser'), false);
-  assert.equal(countByCode(result, 'gravity_slope_geometry_mismatch'), 14);
-  // (b) 恰好 3 条给水路线的斜线段
-  assert.deepEqual(result.warnings.filter((i) => i.code === 'route_not_orthogonal').map((i) => i.routeId).sort(), ['water-garden-requirement', 'water-guest-bath', 'water-master-bath']);
-  // (c) 本次 review 的关键风险点：w_strip_east (4.2,4.6) 距门洞 d_mb 仅 0.05m
+  // (a) 重力坡度：R1 后 14 条全清（地埋全平/过陡、冷凝水候选沿程、drain-balcony 2% 回算、墙排汇总不足坡）
+  assert.equal(countByCode(result, 'gravity_slope_geometry_mismatch'), 0);
+  assert.equal(result.warnings.some((i) => i.code === 'gravity_slope_geometry_mismatch' && i.routeId === 'drain-gbath-vanity-to-riser'), false);
+  // (b) 斜线：3 条给水路线正交化后归零
+  assert.equal(countByCode(result, 'route_not_orthogonal'), 0);
+  // (c) 穿点距门洞：共 15 条不变；过门头（declared height > 门头 2.10m）→ survey_dependent，门洞高度内贴门垛 → must_fix
   const strip = result.warnings.filter((i) => i.code === 'penetration_door_clearance' && i.routeId === 'strong-ac-master');
   assert.equal(strip.length, 1);
   assert.match(strip[0].message, /on w_strip_east at \(4\.20,4\.60\) is 0\.05m from door opening d_mb \(z 4\.65–5\.55\)/);
+  assert.match(strip[0].message, /过门头穿梁，需核梁底与套管/);
+  assert.equal(strip[0].category, 'survey_dependent');
   assert.equal(countByCode(result, 'penetration_door_clearance'), 15);
-  // (d) w_mb_east 两侧 0.08–0.10m 的并行带（最长 strong-power-master 3.60m）
+  // 门洞高度带内贴门垛（water-balcony declared height 0.80m < 门头 2.10m）→ 留 must_fix
+  const balconyDoor = result.warnings.find((i) => i.code === 'penetration_door_clearance' && i.routeId === 'water-balcony')!;
+  assert.equal(balconyDoor.category, 'must_fix_before_briefing');
+  assert.match(balconyDoor.message, /is inside the door opening height 2\.10m/);
+  // (d) 剪力墙并行 8 条不变；w_mb_east 两侧 0.08–0.10m 的并行带（最长 strong-power-master 3.60m）
   const masterParallel = result.warnings.find((i) => i.code === 'shear_wall_parallel_route' && i.routeId === 'strong-power-master')!;
   assert.match(masterParallel.message, /parallel to shear wall w_mb_east for 3\.60m at 0\.10m/);
   assert.equal(countByCode(result, 'shear_wall_parallel_route'), 8);
-  // 分桶：三桶 count 之和 == error + warning 总数，且每桶 count == 各类 count 之和
+  // 分桶核算：三桶之和 == error + warning 总数，且每桶 count == 各类 count 之和
   const buckets = bucketsOf(result);
   const total = result.errors.length + result.warnings.length;
   assert.equal(Object.values(buckets).reduce((sum, bucket) => sum + bucket.count, 0), total);
   for (const bucket of Object.values(buckets)) assert.equal(bucket.count, bucket.codes.reduce((sum, entry) => sum + entry.count, 0));
-  // 本轮新规则全部落 must_fix_before_briefing
-  for (const code of ['gravity_slope_geometry_mismatch', 'route_not_orthogonal', 'penetration_door_clearance', 'shear_wall_parallel_route']) {
-    const bucket = buckets.must_fix_before_briefing.codes.find((entry) => entry.code === code)!;
-    assert.ok(bucket, `${code} should be bucketed as must_fix_before_briefing`);
-    assert.equal(bucket.count, countByCode(result, code));
-  }
-  // 量房依赖桶 / 包络近似桶的成员口径
-  assert.deepEqual(buckets.survey_dependent.codes.map((entry) => entry.code).sort(), ['ceiling_clearance_unverified', 'shear_wall_penetration']);
-  assert.deepEqual(buckets.envelope_approximation.codes.map((entry) => entry.code).sort(), ['nonphysical_route', 'reference_constraint_uncertain', 'supply_return_overlap', 'suppressed_wall_crossing']);
-  assert.equal(buckets.must_fix_before_briefing.count, 40);
-  assert.equal(buckets.survey_dependent.count, 160);
-  assert.equal(buckets.envelope_approximation.count, 19);
+  // 分桶代码明细必须与实算完全一致（gravity_slope/orthogonal 已出 must_fix；penetration_door_clearance 拆 must_fix 2 / survey 13）
+  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { shear_wall_parallel_route: 8, penetration_door_clearance: 2 });
+  assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 160, penetration_door_clearance: 13, shear_wall_penetration: 7 });
+  assert.deepEqual(Object.fromEntries(buckets.envelope_approximation.codes.map((e) => [e.code, e.count])), { nonphysical_route: 9, supply_return_overlap: 8, reference_constraint_uncertain: 5, suppressed_wall_crossing: 3 });
+  assert.equal(buckets.must_fix_before_briefing.count, 10);
+  assert.equal(buckets.survey_dependent.count, 180);
+  assert.equal(buckets.envelope_approximation.count, 25);
 });

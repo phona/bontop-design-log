@@ -639,7 +639,7 @@
       "type": "drain",
       "x": 2.6,
       "z": 1.5,
-      "note": "DEC-2026-10-03-R1 主卫马桶排污口（对齐马桶中心 (2.60,1.50)）：同层排水沉箱内接入，与干区地漏 drain_mbath_floor (2.0,1.15) 是两回事，不得并入地漏。2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-toilet-to-riser`（gravity_floor_drain，同层沉箱内接入推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；坑距、坐便器形式（落地/壁挂，pending #31/#36）、主卫排水立管实测位置（pending #19）均待量房与 SKU 冻结后终核",
+      "note": "DEC-2026-10-03-R1 主卫马桶排污口（对齐马桶中心 (2.60,1.50)）：同层排水沉箱内接入，与干区地漏 drain_mbath_floor (2.0,1.15) 是两回事，不得并入地漏。2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-toilet-to-riser`（gravity_floor_drain，同层沉箱内接入推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；坑距、坐便器形式（落地/壁挂，pending #31/#36）、主卫排水立管实测位置（pending #19）均待量房与 SKU 冻结后终核；DEC-2026-10-06-R1 管径分级：本马桶排污点口径 de110（管径字段本点未标 diameter，按 de110 分级补注）。",
       "height": 0.02
     },
     {
@@ -736,7 +736,7 @@
       "type": "faucet",
       "x": 9.5,
       "z": 0.3,
-      "note": "厨房净水器给水（DEC-2026-08-02-013 北墙落地柜台下，与水槽同侧）；**本轮不画 MEP route**：给水入户点未定（pending #8）+ 净水器 SKU 未选型（是否需要泵/压力桶决定管径与走向），待量房 + SKU 后单独深化（pending #44）",
+      "note": "厨房净水器给水（DEC-2026-08-02-013 北墙落地柜台下，与水槽同侧）；DEC-2026-10-06-R1 RO 浓水排放：净水器浓水不得直插密封下水，须接水槽排水三通或专用排污点（接管高度/水气分离/防虹吸做法），待 RO 净水器 SKU 冻结与量房后定（另登记 pending-site-data 新开项）；**本轮不画 MEP route**：给水入户点未定（pending #8）+ 净水器 SKU 未选型（是否需要泵/压力桶决定管径与走向），待量房 + SKU 后单独深化（pending #44）",
       "height": 0.3
     },
     {
@@ -765,7 +765,7 @@
       "type": "drain",
       "x": 6.5,
       "z": 1.5,
-      "note": "生活阳台地漏（地面）",
+      "note": "生活阳台地漏（地面）；DEC-2026-10-06-R1：洗衣机排水改走专用墙排→阳台立管（见 MEP route drain-balcony），**不通本点**，两路不共用防反水；本点仅作阳台地面泄水，**本轮不画 MEP route**（地面泄水汇入点/三通方式待量房确认阳台排水立管后另画）",
       "height": 0.02
     },
     {
@@ -818,7 +818,7 @@
       "type": "drain_riser",
       "x": 0.3,
       "z": 1.3,
-      "note": "主卫排水立管锚点（2026-10-05 v1 落地）：坐标取自 docs/pending-site-data.md #19（#6 卫生间排水立管同源）登记的主卫推断值 (0.3,1.3)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-mbath-vanity-to-riser / drain-mbath-toilet-to-riser 两条 v1 MEP route。⚠️ 推断位落在主卫西北圆弧幕墙的切角外侧（距弧心 (1.00,2.10) 1.06m > r=1.00），量房重点核立管是否在房间内侧；点位不声明 wall（不在任何墙线上，AGENTS.md 挂墙点位 wall_side 规则不适用）",
+      "note": "主卫排水立管锚点（2026-10-05 v1 落地）：坐标取自 docs/pending-site-data.md #19（#6 卫生间排水立管同源）登记的主卫推断值 (0.3,1.3)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-mbath-vanity-to-riser / drain-mbath-toilet-to-riser 两条 v1 MEP route。⚠️ 推断位落在主卫西北圆弧幕墙的切角外侧（距弧心 (1.00,2.10) 1.06m > r=1.00），量房重点核立管是否在房间内侧；点位不声明 wall（不在任何墙线上，AGENTS.md 挂墙点位 wall_side 规则不适用）；DEC-2026-10-06-R1 管径分级：本主卫排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径 de110/de75/de50 分级留待 #41 轮批量裁定）。",
       "status": "inferred",
       "construction_status": "pending",
       "uncertainty_m": 0.3,
@@ -831,7 +831,7 @@
       "type": "drain_riser",
       "x": 5.8,
       "z": 2.4,
-      "note": "客卫排水立管锚点（2026-10-05 v1 落地）：坐标取自 docs/pending-site-data.md #6（卫生间排水立管）登记的客卫推断值 (5.8,2.4)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-gbath-vanity-to-riser；点位不声明 wall（不在任何墙线上）",
+      "note": "客卫排水立管锚点（2026-10-05 v1 落地）：坐标取自 docs/pending-site-data.md #6（卫生间排水立管）登记的客卫推断值 (5.8,2.4)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-gbath-vanity-to-riser；点位不声明 wall（不在任何墙线上）；DEC-2026-10-06-R1 管径分级：本客卫排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径分级留待 #41 轮）。",
       "status": "inferred",
       "construction_status": "pending",
       "uncertainty_m": 0.3,
@@ -844,7 +844,7 @@
       "type": "drain_riser",
       "x": 10.5,
       "z": 0.3,
-      "note": "厨房排水立管锚点（2026-10-05 v1 落地）：坐标取自 docs/pending-site-data.md #7 与 #16（两条同值登记）推断的厨房排水立管 (10.5,0.3)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-kitchen-sink-to-riser / drain-kitchen-dishwasher-to-riser，以及 faucet_kitchen_sink / drain_kitchen_sink 的 x 坐标口径（DEC-2026-08-02-013 北墙落地柜台面）；点位不声明 wall（不在任何墙线上）",
+      "note": "厨房排水立管锚点（2026-10-05 v1 落地）：坐标取自 docs/pending-site-data.md #7 与 #16（两条同值登记）推断的厨房排水立管 (10.5,0.3)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-kitchen-sink-to-riser / drain-kitchen-dishwasher-to-riser，以及 faucet_kitchen_sink / drain_kitchen_sink 的 x 坐标口径（DEC-2026-08-02-013 北墙落地柜台面）；点位不声明 wall（不在任何墙线上）；DEC-2026-10-06-R1 管径分级：本厨房排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径分级留待 #41 轮）。",
       "status": "inferred",
       "construction_status": "pending",
       "uncertainty_m": 0.3,

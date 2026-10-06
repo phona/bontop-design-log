@@ -1661,6 +1661,35 @@
 - **遗留（非阻断，备查）**：return_dining 格栅西缘 7.45 与冷媒主管轴相切（建议后续东移 ≈5cm）；西带内三条导管与 φ32 主管同轴敷设（施工 guidance 需注明独立挂装/错高）；strong-light-dining 末段 0.46m 斜线+约 0.21m 带外段（R19 引入，下一轮正交化）；#41 分层标高系统性口径未回归。
 - **验证**：verify:all 0 / verify:mep 0 error（179 warning）/ test:server 609/609 / typecheck 0 / verify:facts OK（153 登记与实算一致，三项修复未改变 clearance 总数）。
 
+### DEC-2026-10-06-R1 水电工程口径兜底轮：几何自洽 + 给排水缺项建模
+
+- **日期**：2026-10-06。触发：全水电 review 后，业主授权"工程标准答案明确的项由 AI 按业界最佳实践兜住，不逐项请示"。
+- **范围**（两类，均不涉业主取舍）：①几何/坡度/坐标不自洽——lint 新规则 `route_not_orthogonal` 3 条、`gravity_slope_geometry_mismatch` 14 条、穿点坐标漂移（`water-master-bath` 穿点 x=0.26→0.575 对齐盆心、`water-master-bath` 首段斜线、`water-guest-bath` 末段斜线、`water-garden-requirement` seg2 斜线）；②给排水缺项建模——燃气热水器冷热水 + **回水管三通**（DEC-009 已决策预埋但配置层 0 路线）、洗碗机进水、全宅进水总阀 DN20 + 减压 0.25MPa + 前置过滤器位、主卫沉箱 DN50 二次排水、洗衣机专用墙排独立接管（**不通地漏**）、RO 浓水排放、管径分级 de110 排污 / de75 干管 / de50 支管 + 水封 ≥50mm + 通气管/间接排水。
+- **口径**（业界通行 / 规范 / 厂家安装手册）：重力管坡度 1%（阳台 2%）、禁上弯、禁直插密封下水；同层排水沉箱必须二次排水 + 轻质回填 + 回填前通球与 24h 闭水；管径分级按《建筑给水排水及采暖工程施工质量验收规范》GB 50242 与通用图集；等电位/防溅/零线按 GB 55038-2025。新点位/新路线一律带精度三件套（`status: inferred` + `construction_status: pending` + `not_for_construction`），坐标只取自 `docs/pending-site-data.md` 已登记推断值或以 `design_requirement` 路线表达需求（不写显式坐标端点）。
+- **影响**：#41 的 clearance 实算数可能因新增排水路线而变化——按契约 `c.mep_layer_below_drop_bottom.repair_channel` 通道办理（附本 DEC 全引 + 同步 ceiling.yaml / guidance §0 / pending-site-data #41 / facts.yaml 四处）。
+- **验证**：`verify:all` / `test:server` / `typecheck` 见执行记录。
+- **未动**：#41 分层标高裁定、强电箱迁位、空调内机逐台回路三项属设计迭代，另见 DEC-2026-10-06-R3。
+
+### DEC-2026-10-06-R2 电气兜底轮：微蒸烤预留接口 + 全盒零线 + 防溅盒 + 窗帘电源入盒
+
+- **日期**：2026-10-06。
+- **决策事项**：
+  1. **微蒸烤只做预留接口、不落设备锚点**（业主明示"不一定一二期落地"）： Kitchen 高柜内预留 16A 专用回路 1 路 + 底盒位，`position_status: pending` 随橱柜冻结落位，不写 `config/house.yaml` furnishings 锚点、不进 `materials.yaml`、不进预算成交项；回路 capacity 按 3.2kW 预留（GB 55038 7.4.4 类级），断路器按 C16A。
+  2. **全屋开关底盒统一预埋零线**（`neutral: true`，17 个 switch/switch_2way 点位）：单火智能开关在 LED/起夜灯负载下"鬼火微亮"近乎必然，预埋零线成本≈0、后补=重做一次电。`config/house.yaml` smart_home 的"智能开关零线"承诺由此逐点兑现。
+  3. **两处浴霸插座补防溅盒声明**（`sock_mbath_batcheheater` / `sock_gbath_batcheheater`）：GB 55038-2025 7.4.5 强制项，此前 note 漏声明，已由 `bath_socket_splash_box_undeclared` 抓出。
+  4. **三处电动窗帘电源移入窗帘盒**（`sock_master_curtain` / `sock_parent_curtain` / `sock_study_curtain`）：原坐标偏离各自窗帘盒 0.55m、落在南飘窗窗洞包络内且无吊顶/无 route 登记；改为贴窗帘盒中线（z 8.82 / 8.82 / 7.72、h 2.65），并补 3 条强电 route + 穿点声明。
+- **影响**：回路数 21→22 的口径以"预留接口"登记（未激活时不占箱位，激活时+1）。
+- **验证**：`verify:all` / `test:server` / `typecheck` 见执行记录。
+- **未动**：空调内机供电分组（等厂家正式配电图，见 R3）；配电箱单/双排与迁位（见 R3）。
+
+### DEC-2026-10-06-R3 三项设计迭代延后登记（业主授权默认方案，执行轮次待排）
+
+- **日期**：2026-10-06。业主已认可下列默认方向，但三者都要动 80 条路线标高/箱体几何/拓扑，混入 R1/R2 施工轮会不可验收，故先登记授权与执行条件。
+- **① #41 分层标高裁定 → 默认方案：管线分层升入降板空腔 2.50–3.00m，保走廊净高 2.50m**。触发条件：单独一轮，改 `config/mep-hvac-coordination.yaml` 各层 from/to/via 标高 + `config/ceiling.yaml` 降板厚度/范围，按 `repair_channel` 同步四处并重算 registered_conflicts。不做的代价：153 处"管线低于吊顶完成面"仍是交底阻断项。
+- **② 强电箱迁位 → 默认方案：从剪力墙 `w_foyer_east` 迁至非承重隔墙/玄关柜假墙内暗装**。触发条件：需先出玄关柜体与假墙做法（2–3 个候选位），并核物业对开发商预留箱的处置口径。不做的代价：21（潜在 22）路 + 进线 + 浪涌装不进 390mm 箱，或在承重墙上开大洞。
+- **③ 空调 6 台内机供电 → 默认方案：逐台独立回路**（6 路，替换现 2 路）。触发条件：厂家正式配电图（PKG-030 / BLK-HVAC-DEEPENING）确认是否允许及端子/集中供电方式。登记"若厂家要求逐台，箱位需 +4"。
+- **验证/未动**：本轮不改任何路线标高、箱体坐标与回路拓扑。
+
 ### DEC-2026-10-06-R4 中央空调方案级初步冻结（施工参数待深化）
 
 - **日期与决策人**：2026-10-06，业主在空调方案复核及三代参数图、安装收费图归档后确认。

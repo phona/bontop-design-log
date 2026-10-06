@@ -107,7 +107,8 @@
   x: 13.10
   z: 2.90
   height: 1.3
-  note: "客厅灯光双控（入户侧；DEC-2026-09-08-R1 由 x=11.60 移至门洞东墙垛中心 13.10：原位被 entry_half_height_cabinet（x[11.31,11.70]×h1.50）完全遮挡且在 d_ent 门扇（铰链西侧 x=11.80、内开）全开扫掠背面；东墙垛 x[12.80,13.40] 距铰链 1.30m 不受扫掠，距 opening 边缘 0.30m；量房复核门洞实际位置）"
+  neutral: true
+  note: "客厅灯光双控（入户侧；DEC-2026-09-08-R1 由 x=11.60 移至门洞东墙垛中心 13.10：原位被 entry_half_height_cabinet（x[11.31,11.70]×h1.50）完全遮挡且在 d_ent 门扇（铰链西侧 x=11.80、内开）全开扫掠背面；东墙垛 x[12.80,13.40] 距铰链 1.30m 不受扫掠，距 opening 边缘 0.30m；量房复核门洞实际位置）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: ac_panel_living
   room: living_dining
@@ -137,7 +138,8 @@
   x: 13.40
   z: 5.35
   height: 1.3
-  note: "客厅灯光双控（走廊侧；DEC-2026-09-08-R1 由 z=5.55 墙段端点南退 0.20m 消除贴角，并补声明 wall_side west）"
+  neutral: true
+  note: "客厅灯光双控（走廊侧；DEC-2026-09-08-R1 由 z=5.55 墙段端点南退 0.20m 消除贴角，并补声明 wall_side west）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 # 主卧
 - id: sock_master_bed_l
@@ -161,7 +163,8 @@
   z: 6.288
   height: 0.75
   appearance: { style: warm_white_matte_modular, module: two_way_rocker, faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008, panel_group: { id: master_bed_north_double, role: south, center_spacing: 0.086, union_width: 0.172 } }
-  note: "DEC-2026-09-08-R1 北侧床头吸顶灯控制：z=6.288、h=0.75，与 sock_master_bed_l（z=6.202）组双联围绕北柜轴 6.245 居中；与 switch_master_bed_l（南床头）/switch_master_door（门口）构成三控（control_master_bed_door，switch_multiway，中途开关按接线序定，site_pending）"
+  neutral: true
+  note: "DEC-2026-09-08-R1 北侧床头吸顶灯控制：z=6.288、h=0.75，与 sock_master_bed_l（z=6.202）组双联围绕北柜轴 6.245 居中；与 switch_master_bed_l（南床头）/switch_master_door（门口）构成三控（control_master_bed_door，switch_multiway，中途开关按接线序定，site_pending）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: sock_master_bed_r
   room: master_bedroom
@@ -183,7 +186,8 @@
   z: 8.598
   height: 0.75
   appearance: { style: warm_white_matte_modular, module: two_way_rocker, faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008, panel_group: { id: master_bed_south_double, role: south, center_spacing: 0.086, union_width: 0.172 } }
-  note: "方案A 南侧床头吸顶灯双控：z=8.598、h=0.75；与 sock_master_bed_r_head（z=8.512）组成暖白哑光一体双联框，模块中心距86mm、并集宽约172mm，围绕床头柜轴线z=8.555居中；阅读壁灯使用灯具自带按键；施工条件仍 site_pending"
+  neutral: true
+  note: "方案A 南侧床头吸顶灯双控：z=8.598、h=0.75；与 sock_master_bed_r_head（z=8.512）组成暖白哑光一体双联框，模块中心距86mm、并集宽约172mm，围绕床头柜轴线z=8.555居中；阅读壁灯使用灯具自带按键；施工条件仍 site_pending；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: switch_master_door
   room: master_bedroom
@@ -193,7 +197,8 @@
   x: 4.20
   z: 4.45
   height: 1.3
-  note: "主卧灯光双控（门口）；2026-09-02 随床北移联动：床北移后原 w_mb_east 位与 sock_master_bed_l 避让距离不足 0.4m，改挂 w_strip_east 实体墙垛、面向寝区（west）。resolver 解算 d_mb 门洞实为 z[4.65,5.55]（占满墙段南端），唯一实体墙垛为北段 z[4.30,4.65]，故取 z=4.45（距洞口北缘 0.20m），非原拟的南侧 5.35"
+  neutral: true
+  note: "主卧灯光双控（门口）；2026-09-02 随床北移联动：床北移后原 w_mb_east 位与 sock_master_bed_l 避让距离不足 0.4m，改挂 w_strip_east 实体墙垛、面向寝区（west）。resolver 解算 d_mb 门洞实为 z[4.65,5.55]（占满墙段南端），唯一实体墙垛为北段 z[4.30,4.65]，故取 z=4.45（距洞口北缘 0.20m），非原拟的南侧 5.35；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: sock_master_bed_r_head
   room: master_bedroom
@@ -259,7 +264,8 @@
   x: 4.20
   z: 6.40
   height: 0.7
-  note: "西南次卧灯光双控（床头，DEC-017 随床头改西墙）"
+  neutral: true
+  note: "西南次卧灯光双控（床头，DEC-017 随床头改西墙）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: switch_parent_door
   room: study
@@ -269,7 +275,8 @@
   x: 6.075
   z: 5.55
   height: 1.3
-  note: "西南次卧灯光双控（书房门西侧实体门垛；DEC-2026-09-08-R1 补声明 wall_side south；R2 由 x=6.00 移至门垛 [6.00,6.15] 中心 6.075——原位西半板面被北墙通顶衣柜（x[4.20,6.00]）东侧板遮挡；距 d_study 门洞边缘 0.075m 贴门套安装登记 warning）"
+  neutral: true
+  note: "西南次卧灯光双控（书房门西侧实体门垛；DEC-2026-09-08-R1 补声明 wall_side south；R2 由 x=6.00 移至门垛 [6.00,6.15] 中心 6.075——原位西半板面被北墙通顶衣柜（x[4.20,6.00]）东侧板遮挡；距 d_study 门洞边缘 0.075m 贴门套安装登记 warning）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: ac_panel_parent
   room: study
@@ -343,7 +350,8 @@
   x: 13.40
   z: 7.0
   height: 1.3
-  note: "客房灯光开关（2026-10-05 功能互换，id/位置不变）"
+  neutral: true
+  note: "客房灯光开关（2026-10-05 功能互换，id/位置不变）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: ac_panel_study
   room: bedroom_se
@@ -375,7 +383,8 @@
   x: 5.60
   z: 3.214
   height: 1.2
-  note: "儿童房床头灯光双控（DEC-2026-09-08-R1：与 sock_child_bed（z=3.30）组双联，h=1.2 与插座同安全高度；与门口 switch_child 构成双控 control_child_light）"
+  neutral: true
+  note: "儿童房床头灯光双控（DEC-2026-09-08-R1：与 sock_child_bed（z=3.30）组双联，h=1.2 与插座同安全高度；与门口 switch_child 构成双控 control_child_light）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: sock_child_desk
   room: bedroom_nw
@@ -402,7 +411,8 @@
   x: 4.475
   z: 4.30
   height: 1.3
-  note: "儿童房灯光开关（DEC-2026-09-08-R1：x=4.35 落入南墙通顶衣柜 AABB x[2.60,4.40] 被掩埋，移至衣柜东缘与门洞西缘间 0.15m 门垛中心 4.475；距 d_bnw 门洞边缘 0.075m 贴门套安装登记 warning；落实原注释'门垛旁'意图；type 随 control_child_light 双控角色由 switch 改 switch_2way）"
+  neutral: true
+  note: "儿童房灯光开关（DEC-2026-09-08-R1：x=4.35 落入南墙通顶衣柜 AABB x[2.60,4.40] 被掩埋，移至衣柜东缘与门洞西缘间 0.15m 门垛中心 4.475；距 d_bnw 门洞边缘 0.075m 贴门套安装登记 warning；落实原注释'门垛旁'意图；type 随 control_child_light 双控角色由 switch 改 switch_2way）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: ac_panel_child
   room: bedroom_nw
@@ -491,6 +501,22 @@
   count: 1
   note: "燃气报警器插座（DEC-2026-10-03-R1 位置；本次按机体最近缘重算后北移至 (10.80,0.20) h=2.35）：R1 的「距油烟机/排风口 0.65m」是点到点算法（点到 range_hood/gas_stove 具体心 10.50,1.18）、不达标——按机体最近缘算油烟机 rot90 宽 0.9 沿 z 展至 z∈[0.73,1.63]（北缘 0.73）、灶具 0.75 展至 z∈[0.81,1.55]（北缘 0.81），z=0.55 时仅 0.18m/0.26m 均 <0.5m。北移至 z=0.20 后重算：距油烟机北缘 0.73−0.20=0.53m>0.5 ✓、距灶具北缘 0.81−0.20=0.61m>0.5 ✓、距厨房铝扣板吊顶（净高 2.55m）0.20m、距推断燃气表 (8.0,0.2) 2.80m<4m 覆盖半径 ✓，满足 CJJ/T 146-2011 距灶具及排风口 >0.5m（天然气密度 <1 近顶安装）。⚠️烟机/灶具体心位置来自 house.yaml range_hood/gas_stove @(10.50,1.18) rot90，机体分别沿 z 展 0.9/0.75；若实物 SKU 变更致该 0.9/0.75 机身宽度变化须复算。最终仍以燃气公司报警器+切断阀方案与实物 SKU 为准（site_pending）；若家用液化气则相反需低装"
 
+# DEC-2026-10-06-R2 微蒸烤一体机预留接口（业主明示"不一定一二期落地"→只做预留，不落设备锚点）：
+# 16A 单相三孔、GB 55038-2025 7.4.4 类级预留（≈3.2kW）；position_status: pending，
+# 嵌位随橱柜 600 宽高柜冻结后落——**必须落在柜外/开放格可徒手插拔处（禁止藏在机器背后）**；
+# 激活时拆为独立 C16A+漏保 / 2.5mm² 专用回路（回路 21→22），未激活前不占箱位（不进 topology 回路）。
+# 候选设备：美的 GC5（额定 3200W，DEC-2026-10-05-R4 业主定标方向）；同档竞品比价未做。
+- id: sock_kitchen_oven
+  room: kitchen
+  type: socket
+  x: 10.80
+  z: 1.95
+  height: 1.2
+  count: 1
+  position_status: pending
+  status: pending
+  note: "DEC-2026-10-06-R2 微蒸烤预留接口（业主明示不一定一二期落地，故只预留不落设备锚点）：16A 单相三孔、GB 55038-2025 7.4.4 类级预留（≈3.2kW），嵌位随橱柜 600 宽高柜冻结后落；⚠️本点位为预留占位（position_status: pending / status: proposed），必须落在柜外或开放格可徒手插拔处，禁止藏在机器背后（同冰箱高柜取电可及性口径）；激活时拆为独立 C16A+漏保/2.5mm² 专用回路 dedicated_kitchen_oven（拓扑回路 21→22），未激活前不占箱位、不进 topology 回路成员；候选 美的 GC5 额定 3200W（DEC-2026-10-05-R4），同档竞品比价未做；坐标/回路与 config/mep-hvac-coordination.yaml 走线在业主确认采购后随橱柜冻结一并落"
+
 - id: switch_kitchen
   room: kitchen
   wall: w_ent_west
@@ -499,7 +525,8 @@
   x: 10.80
   z: 1.0
   height: 1.3
-  note: "厨房灯光开关"
+  neutral: true
+  note: "厨房灯光开关；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 # 主卫
 - id: sock_mbath_vanity
@@ -533,7 +560,8 @@
   x: 2.10
   z: 2.91
   height: 1.3
-  note: "主卫灯光开关（2026-08-30 移至门洞东侧实体墙垛近门处；避开通长镜面、台盆及 d_mbath 门洞，插座向东错开；待量房确认）"
+  neutral: true
+  note: "主卫灯光开关（2026-08-30 移至门洞东侧实体墙垛近门处；避开通长镜面、台盆及 d_mbath 门洞，插座向东错开；待量房确认）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: sock_mbath_batheheater
   room: master_bath
@@ -542,7 +570,7 @@
   z: 2.70
   height: 2.5
   count: 1
-  note: "主卫浴霸电源（DEC-2026-10-05-R3：原独立排气点位并入——设备锚点奥普 S2-Air 风暖 2750W+换气 49W+照明 24W 三合一，业主自购候选、京东自营国补价 680.97/台（2026-10-05 页面观察），下单窗口在量房与扣板方案冻结后；吊顶内，位于干区非淋浴正上方；排风管仍随铝扣板吊顶内藏走向；线控面板与主卫照明开关同墙并排预埋，面板点位随设备定案补登；收房核对开发商场既有取暖换气设备，若已提供则反转删点）"
+  note: "主卫浴霸电源（DEC-2026-10-05-R3：原独立排气点位并入——设备锚点奥普 S2-Air 风暖 2750W+换气 49W+照明 24W 三合一，业主自购候选、京东自营国补价 680.97/台（2026-10-05 页面观察），下单窗口在量房与扣板方案冻结后；吊顶内，位于干区非淋浴正上方；排风管仍随铝扣板吊顶内藏走向；线控面板与主卫照明开关同墙并排预埋，面板点位随设备定案补登；收房核对开发商场既有取暖换气设备，若已提供则反转删点）；DEC-2026-10-06-R2 插座带防溅盒（GB 55038-2025 7.4.5）"
 
 # 客卫
 - id: sock_gbath_vanity
@@ -575,7 +603,8 @@
   x: 5.60
   z: 3.925
   height: 1.3
-  note: "客卫灯光开关；移至 w_gbath_west_open_vanity 东侧墙面，位于开放洗漱区墙段 z[3.55,4.30] 中部，避开 d_gbath 门洞与 vanity"
+  neutral: true
+  note: "客卫灯光开关；移至 w_gbath_west_open_vanity 东侧墙面，位于开放洗漱区墙段 z[3.55,4.30] 中部，避开 d_gbath 门洞与 vanity；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: sock_gbath_batheheater
   room: guest_bath
@@ -585,7 +614,7 @@
   height: 2.5
   count: 1
   position_status: pending
-  note: "客卫浴霸电源（DEC-2026-10-05-R3：原独立排气点位 (6.35,2.45) 并入且南移——原位在北侧淋浴区正上方，风暖不宜；设备锚点奥普 S2-Air 同主卫，位于南干区铝扣板分区内，300×600 模块开孔随扣板排布终核；线控面板与客卫照明开关同墙并排预埋，面板点位随设备定案补登）"
+  note: "客卫浴霸电源（DEC-2026-10-05-R3：原独立排气点位 (6.35,2.45) 并入且南移——原位在北侧淋浴区正上方，风暖不宜；设备锚点奥普 S2-Air 同主卫，位于南干区铝扣板分区内，300×600 模块开孔随扣板排布终核；线控面板与客卫照明开关同墙并排预埋，面板点位随设备定案补登）；DEC-2026-10-06-R2 插座带防溅盒（GB 55038-2025 7.4.5）"
 
 # 生活阳台
 - id: sock_balcony_washer
@@ -688,7 +717,8 @@
   x: 10.80
   z: 0.5
   height: 1.3
-  note: "入户花园灯光开关"
+  neutral: true
+  note: "入户花园灯光开关；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 # 走廊
 - id: switch_corridor
@@ -699,7 +729,8 @@
   x: 7.20
   z: 4.10
   height: 1.3
-  note: "走廊灯光开关（DEC-2026-09-08-R1：改挂 w_gbath_east_open_vanity 归位意图坐标 (7.20,4.10)——原挂 w_gbath_east 但 z=4.10 超出该墙段 z[2.20,3.55]，渲染被钳至南端墙角偏移 0.55m；补声明 wall_side east 走廊面）"
+  neutral: true
+  note: "走廊灯光开关（DEC-2026-09-08-R1：改挂 w_gbath_east_open_vanity 归位意图坐标 (7.20,4.10)——原挂 w_gbath_east 但 z=4.10 超出该墙段 z[2.20,3.55]，渲染被钳至南端墙角偏移 0.55m；补声明 wall_side east 走廊面）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: switch_dining
   room: living_dining
@@ -709,7 +740,8 @@
   x: 7.20
   z: 3.98
   height: 1.3
-  note: "餐桌吊灯墙控开关（DEC-2026-09-08-R1：落实 light_dining_pendant 原注释'开关在餐桌旁墙上h1.3'；距桌心 (7.90,3.45) 0.88m，与 switch_corridor 相邻组联）"
+  neutral: true
+  note: "餐桌吊灯墙控开关（DEC-2026-09-08-R1：落实 light_dining_pendant 原注释'开关在餐桌旁墙上h1.3'；距桌心 (7.90,3.45) 0.88m，与 switch_corridor 相邻组联）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 # === 新增点位（2026-07-25 基线补齐） ===
 
@@ -724,40 +756,56 @@
   note: "洗碗机插座（DEC-2026-08-02-013 北墙落地柜台下，单独回路，⚠️坐标待量房）"
 
 # 主卧电动窗帘
+# DEC-2026-10-06-R2：原位 (4.20,9.50) 偏离 curtain_box_master_south（z[8.70,8.95]）0.55m
+# 且落在南飘窗窗洞包络内、无吊顶/无 route 登记。改为贴窗帘盒中线 z=8.82、h=2.65（盒底标高）。
+# 挂墙核查：w_mb_east 为 x=4.20 实体隔墙（shear/inferred），z 段 [5.55,9.80]，z=8.82 在段内、
+# 距南端端点 0.98m，不在 overlay suppress 列表（西/南向 suppress 的是 w_mb_south 与幕墙，不是本墙）；
+# wall_side west = 朝 master_bedroom 寝区（房间质心 x=2.10 在墙西侧），仍成立，故 wall/wall_side 原样保留。
 - id: sock_master_curtain
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
   type: socket
   x: 4.20
-  z: 9.50
-  height: 2.5
+  z: 8.82
+  height: 2.65
   count: 1
-  note: "主卧电动窗帘电源"
+  note: "主卧电动窗帘电源（DEC-2026-10-06-R2 移入窗帘盒（盒底 2.65m）藏电机；原 (4.20,9.50) 偏离 curtain_box_master_south（z[8.70,8.95]）0.55m 且落在南飘窗窗洞包络内、无吊顶/无 route，现贴盒中线 z=8.82、h=2.65 与 curtain_box_master_south 盒底标高齐平；wall 仍挂 w_mb_east 实体隔墙（非 suppress），wall_side west 朝寝区不变；走线 route 见 config/mep-hvac-coordination.yaml）"
 
 # 书房电动窗帘（2026-10-05 功能互换：原父母房）
+# DEC-2026-10-06-R2：原位 (7.20,9.50) 偏离 curtain_box_parent_south（z[8.70,8.95]）0.55m
+# 且落在南飘窗窗洞包络内、无吊顶/无 route 登记。改为贴窗帘盒中线 z=8.82、h=2.65（盒底标高）。
+# 挂墙核查：w_st_east 为 x=7.20 实体隔墙，z 段 [5.55,9.80]，z=8.82 在段内、距南端端点 0.98m，
+# 不在 overlay suppress 列表（suppress 的是 w_mb_south / w_st_south 幕墙与南墙实体，不是本墙）；
+# wall_side west = 朝 study（房间质心 x=5.70 在墙西侧），仍成立，故 wall/wall_side 原样保留。
 - id: sock_parent_curtain
   room: study
   wall: w_st_east
   wall_side: west
   type: socket
   x: 7.20
-  z: 9.50
-  height: 2.5
+  z: 8.82
+  height: 2.65
   count: 1
-  note: "客房电动窗帘电源（DEC-2026-09-08-R1 补声明 wall_side west；2026-10-05 功能互换，id/位置不变；B5-A 后并入 ordinary_power_parent_child）"
+  note: "客房电动窗帘电源（DEC-2026-10-06-R2 移入窗帘盒（盒底 2.65m）藏电机；原 (7.20,9.50) 偏离 curtain_box_parent_south（z[8.70,8.95]）0.55m 且落在南飘窗窗洞包络内、无吊顶/无 route，现贴盒中线 z=8.82、h=2.65 与 curtain_box_parent_south 盒底标高齐平；wall 仍挂 w_st_east 实体隔墙（非 suppress），wall_side west 朝 study 不变；DEC-2026-09-08-R1 补声明 wall_side west；2026-10-05 功能互换，id/位置不变；B5-A 后并入 ordinary_power_parent_child；走线 route 见 config/mep-hvac-coordination.yaml）"
 
 # 客房电动窗帘（2026-10-05 功能互换：原书房）
+# DEC-2026-10-06-R2：原位 (13.40,8.40) 偏离 curtain_box_study_south（z[7.60,7.85]）0.55m
+# 且落在南飘窗窗洞包络内、无吊顶/无 route 登记。改为贴窗帘盒中线 z=7.72、h=2.65（盒底标高）。
+# 挂墙核查：w_be_west 为 x=13.40 实体隔墙，z 段 [5.55,9.80]，z=7.72 在段内；墙上有 d_bese 门洞
+# （anchor v_be_se_s、offset 3.70m → 洞口 along≈3.70、宽 0.90 → along[3.25,4.15]），本点位 along=2.17，
+# 距洞口近缘 1.08m 无 opening 冲突；不在 overlay suppress 列表（suppress 的是 w_be_south 凸窗实体墙，
+# 不是本墙）；wall_side east = 朝 bedroom_se（房间质心 x=14.90 在墙东侧），仍成立，故 wall/wall_side 原样保留。
 - id: sock_study_curtain
   room: bedroom_se
   wall: w_be_west
   wall_side: east
   type: socket
   x: 13.40
-  z: 8.40
-  height: 2.5
+  z: 7.72
+  height: 2.65
   count: 1
-  note: "客房电动窗帘电源（西墙南端，天花内走线到南墙窗帘电机；2026-08-27 随南墙凹进北移；2026-10-05 功能互换，id/位置不变）"
+  note: "客房电动窗帘电源（DEC-2026-10-06-R2 移入窗帘盒（盒底 2.65m）藏电机；原 (13.40,8.40) 偏离 curtain_box_study_south（z[7.60,7.85]）0.55m 且落在南飘窗窗洞包络内、无吊顶/无 route，现贴盒中线 z=7.72、h=2.65 与 curtain_box_study_south 盒底标高齐平；wall 仍挂 w_be_west 实体隔墙（非 suppress，且距 d_bese 门洞近缘 1.08m 不侵门洞），wall_side east 朝客房不变；西墙南端天花内走线到南墙窗帘电机；2026-08-27 随南墙凹进北移；2026-10-05 功能互换，id/位置不变；走线 route 见 config/mep-hvac-coordination.yaml）"
 
 # 客房空调内机电源（2026-10-05 功能互换：原书房）
 - id: sock_study_ac
@@ -1085,7 +1133,8 @@
   x: 16.40
   z: 7.60
   height: 1.3
-  note: "客房床头双控（2026-10-05 R15 新增）：与门边 switch_study 组双控控制客房吸顶灯 light_study_dome；control_study_light 由单控扩为双控。剪力墙 inferred，底盒预埋条件 site_pending"
+  neutral: true
+  note: "客房床头双控（2026-10-05 R15 新增）：与门边 switch_study 组双控控制客房吸顶灯 light_study_dome；control_study_light 由单控扩为双控。剪力墙 inferred，底盒预埋条件 site_pending；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 # 起夜路径 NP-1/NP-2（客房内）
 - id: night_guest_bed_side

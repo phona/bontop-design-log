@@ -889,7 +889,7 @@ work_packages:
     blockers: [BLK-STRUCTURE, BLK-HVAC-DEEPENING]
     owner_roles: [空调商, 设计师, 施工方, 业主]
     payment_gate: GATE-030-FIRST-FIX
-    acceptance_refs: [check_hvac_weld, check_hvac_drain, check_hvac_level, check_hvac_outdoor]
+    acceptance_refs: [check_hvac_weld, check_hvac_drain, check_hvac_level, check_hvac_outdoor, check_hvac_exhaust_outlet, check_elec_ac_service_access]
     checks:
       - id: SCH-030-01
         severity: critical
@@ -942,7 +942,7 @@ work_packages:
     blockers: [BLK-HVAC-DEEPENING]
     owner_roles: [水电施工, 设计师, 空调商, 业主]
     payment_gate: GATE-040-HIDDEN-WORK
-    acceptance_refs: [check_plumb_pressure, check_plumb_drain, check_elec_continuity, check_elec_switch, check_elec_pe_polarity, check_elec_insulation, check_elec_rcd_30ma, check_elec_leb, check_elec_strong_weak_separation, check_elec_panel_labeling, check_elec_circuit_separation, check_elec_gas_alarm]
+    acceptance_refs: [check_plumb_pressure, check_plumb_drain, check_elec_continuity, check_elec_switch, check_elec_pe_polarity, check_elec_insulation, check_elec_rcd_30ma, check_elec_leb, check_elec_strong_weak_separation, check_elec_panel_labeling, check_elec_circuit_separation, check_elec_gas_alarm, check_plumb_prefilter_and_prv, check_plumb_softener_reserved, check_plumb_valve_per_point, check_elec_zero_line_all_switches, check_elec_leb_bonding_list]
     checks:
       - id: SCH-040-01
         severity: critical
@@ -982,7 +982,7 @@ work_packages:
     blockers: []
     owner_roles: [防水施工, 施工方, 业主]
     payment_gate: GATE-050-FLOOD-TEST
-    acceptance_refs: [check_wp_coats, check_wp_flood]
+    acceptance_refs: [check_wp_coats, check_wp_flood, check_plumb_master_bath_secondary_drain, check_plumb_external_vanity_waterproof]
     checks:
       - id: SCH-050-01
         severity: critical
@@ -1211,7 +1211,7 @@ work_packages:
     blockers: []
     owner_roles: [橱柜供应商, 设计师, 业主]
     payment_gate: GATE-110-COMPLETE
-    acceptance_refs: [check_carp_cabinet]
+    acceptance_refs: [check_carp_cabinet, check_elec_micro_oven_reserved]
     checks:
       - id: SCH-110-01
         severity: critical

@@ -70,15 +70,19 @@ function emptyCategoryBuckets(): MepLintCategorySummary {
 }
 function summarizeCategories(issues: MepLintIssue[]): MepLintCategorySummary {
   const buckets = emptyCategoryBuckets();
-  const perCode = new Map<string, { category: MepLintCategory; count: number }>();
+  // 按 (category, code) 分别累计：同一 code 可能落在不同桶（如 penetration_door_clearance 按过门头/门洞内拆到
+  // survey_dependent 与 must_fix_before_briefing，见 (c) DEC-2026-10-06-R1），不能只按 code 合并到一个桶，
+  // 否则该 code 全部划入首个出现的桶，导致桶 codes 之和 ≠ 桶 count（分桶自证断言失败）。
+  const perCategoryCode = new Map<string, { category: MepLintCategory; code: string; count: number }>();
   for (const item of issues) {
     const category = item.category ?? categoryOf(item.code);
     buckets[category].count += 1;
-    const entry = perCode.get(item.code) ?? { category, count: 0 };
+    const key = `${category}::${item.code}`;
+    const entry = perCategoryCode.get(key) ?? { category, code: item.code, count: 0 };
     entry.count += 1;
-    perCode.set(item.code, entry);
+    perCategoryCode.set(key, entry);
   }
-  for (const [code, entry] of perCode) buckets[entry.category].codes.push({ code, count: entry.count });
+  for (const entry of perCategoryCode.values()) buckets[entry.category].codes.push({ code: entry.code, count: entry.count });
   for (const category of MEP_LINT_CATEGORIES) buckets[category].codes.sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
   return buckets;
 }
@@ -144,8 +148,8 @@ function issue(level: MepLintLevel, code: string, message: string, routeId?: str
   return { level, code, message, ...(routeId ? { routeId } : {}), ...(relatedRouteId ? { relatedRouteId } : {}) };
 }
 function add(result: MepLintResult, item: MepLintIssue): void {
-  // 每条 finding 都带 category：分桶口径集中在 categoryOf 一处，新增 code 不会漏桶。
-  result[item.level === 'error' ? 'errors' : 'warnings'].push({ ...item, category: categoryOf(item.code) });
+  // 每条 finding 都带 category：默认按 categoryOf(code) 分桶；若调用方显式给了 category（如 penetration_door_clearance 按过门头/门洞内细分），以显式值为准。
+  result[item.level === 'error' ? 'errors' : 'warnings'].push({ ...item, category: item.category ?? categoryOf(item.code) });
 }
 function pointEqual(a: Point, b: Point): boolean { return a.x === b.x && a.z === b.z; }
 function segmentsCross(a: Point, b: Point, c: Point, d: Point): boolean {
@@ -479,11 +483,17 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         const nearest = spans.map((span) => ({ span, clearance: doorClearance(declared.at!, span) })).sort((a, b) => a.clearance - b.clearance)[0];
         if (nearest.clearance >= DOOR_CLEARANCE_MIN) continue;
         const span = nearest.span;
-        // 穿点在门洞顶以上 = 过门头（门楣/过梁复核）；在门洞高度内 = 会打到门垛；低于门洞 = 低位过洞口（门槛/地面做法）。
-        const vertical = span.top !== undefined && declared.height !== undefined
-          ? (declared.height > span.top ? `; declared height ${declared.height.toFixed(2)}m is above the door head ${span.top.toFixed(2)}m (over-header crossing, check the lintel)` : `; declared height ${declared.height.toFixed(2)}m is inside the door opening height ${span.top.toFixed(2)}m`)
-          : '';
-        add(result, issue('warning', 'penetration_door_clearance', `Route ${route.id} declared penetration on ${wall.id} at (${declared.at.x.toFixed(2)},${declared.at.z.toFixed(2)}) is ${nearest.clearance.toFixed(2)}m from door opening ${span.id} (${span.axis} ${span.from.toFixed(2)}–${span.to.toFixed(2)}); keep at least ${DOOR_CLEARANCE_MIN.toFixed(2)}m from the door jamb${vertical}`, route.id));
+        // (c) 过门头穿点分类（DEC-2026-10-06-R1）：declared height > 门头高度（span.top）= 合法过门头穿梁，
+        // 真风险在过梁/梁底而非门垛 → 归 survey_dependent（量房核梁底与套管后消）；declared height 落在门洞
+        // 高度带内（≤span.top）且净距 <0.15m = 会打到门垛/门套 → 留 must_fix_before_briefing；取不到门头高度时保守按 must_fix。
+        const overHeader = span.top !== undefined && declared.height !== undefined && declared.height > span.top;
+        const clearanceCategory: MepLintCategory = overHeader ? 'survey_dependent' : 'must_fix_before_briefing';
+        const vertical = overHeader
+          ? `; declared height ${declared.height!.toFixed(2)}m is above the door head ${span.top!.toFixed(2)}m (过门头穿梁，需核梁底与套管，量房后消)`
+          : (span.top !== undefined && declared.height !== undefined
+              ? `; declared height ${declared.height!.toFixed(2)}m is inside the door opening height ${span.top!.toFixed(2)}m`
+              : '');
+        add(result, { ...issue('warning', 'penetration_door_clearance', `Route ${route.id} declared penetration on ${wall.id} at (${declared.at.x.toFixed(2)},${declared.at.z.toFixed(2)}) is ${nearest.clearance.toFixed(2)}m from door opening ${span.id} (${span.axis} ${span.from.toFixed(2)}–${span.to.toFixed(2)}); keep at least ${DOOR_CLEARANCE_MIN.toFixed(2)}m from the door jamb${vertical}`, route.id), category: clearanceCategory });
       }
       // (d) 与剪力墙并行：贴墙长距离并行会限制开槽/植筋并易打穿保护层，需在交底前复核。
       if (points.length >= 2) {

@@ -12,7 +12,7 @@ version: '1.0'
 #    现 mount_height 1.65m 仅在双排时合规——箱体单/双排与容量列入 pending-site-data #30。
 # 口径：开关点位经 controls 绑定灯具、网络点位（含 DEC-2026-10-03-R1 新增 net_gateway / net_ap_corridor）
 # 归弱电箱系统，均不进入强电供电回路成员（Phase 1 口径）。
-# 点位口径：config/electrical.yaml 共 110 个点位（2026-10-05 R15 起夜照明 + 客房床头组后由 98 增至 110；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。
+# 点位口径：config/electrical.yaml 共 111 个点位（2026-10-06 R2 电气兜底轮新增微蒸烤预留接口 sock_kitchen_oven 后由 110 增至 111；此前 2026-10-05 R15 起夜照明 + 客房床头组由 98 增至 110；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。新增点位为 position_status: pending 的预留接口，未激活前不进任何 topology 回路、不占箱位。
 
 panels:
   # id 是 topology 内部 panel 标识；source_point_id 指向 electrical.yaml 的真实箱体点位。
@@ -327,4 +327,4 @@ pending_parameters:
   - "强弱电箱之间的实际分隔与进线关系待现场确认"
   - "空调6台内机供电分组待厂家配电图确认：成交型号为客厅71T2、餐厅42T2、主卧56T2、书房/儿童房/客房28T2×3，均为 P-SS 泵型；不得沿用型号功率/泵负荷估值作为定案。hvac_power_living 已含 sock_dining_ac；厂家需确认额定负荷、内机与泵供电/端子、集中或逐台供电方式，之后再冻结回路拆并及点位 type。"
   - "中央空调外机供电**已单独成路** hvac_power_outdoor_a2（DEC-2026-10-04-R2，当时为第 20 路；DEC-2026-10-05-R3 浴霸拆两路后回路总数 21）：20kW 外机（220V，DEC-2026-10-04-R1）按 GB 55038 7.4.4 属 2kW 及以上用电设备、已单独成路；箱体位数按 20 路重算后 R3 增至 21 路，双排结论不变。仍待厂家正式配电图与量房终核：断路器/线径（现 proposed C32A+漏保 / 4.0mm²(φ20)）、是否由强电箱单独放缆或接开发商外立面预留插座、点位 sock_vrf_outdoor_a2 最终落位；若厂家要求硬接线不设漏保，须重新定义该点位 type 与回路口径"
-  - "微蒸烤一体机候选（美的 GC5，额定 3200W，DEC-2026-10-05-R4 业主定标方向）：按 GB 55038 7.4.4 需 16A/2.5mm² 专用回路（现厨房插座回路 4mm² 预留口径不足以共路承载 3,200W），回路 21→22、点位与嵌位随橱柜 600 宽高柜方案冻结后落，水电交底前必须闭合；同档竞品比价未做"
+  - "微蒸烤一体机候选（美的 GC5，额定 3200W，DEC-2026-10-05-R4 业主定标方向）：**已按 DEC-2026-10-06-R2 落 `sock_kitchen_oven` 预留点位**（config/electrical.yaml 厨房段，`position_status: pending` + `status: pending`，count 1 / height 1.2 台面高柜电位；注意 `status` 枚举只允许 measured/likely/inferred/pending，故预留层级落在 `position_status: pending` 而非任务书原拟的 `status: proposed`；不进 topology 回路、未激活前不占箱位，故本表 circuits 仍为 21 路）。落位硬约束：必须落在柜外/开放格可徒手插拔处，禁止藏在机器背后（同冰箱高柜取电可及性口径）。按 GB 55038 7.4.4 需 16A / 2.5mm² 专用回路（现厨房插座回路 4mm² 预留口径不足以共路承载 3,200W）。**激活条件 = 业主确认采购 + 橱柜 600 宽高柜冻结**（二者缺一不可）；**激活动作 = 新增 `dedicated_kitchen_oven` 回路（C16A+漏保 / 2.5mm² / capacity ≈3.2kW）并使 `fact.circuit_count` 走 21→22 同步**（circuits.length、config/acceptance.yaml 回路数、docs 规模口径、箱体位数四处同步）。水电交底前必须闭合；同档竞品比价未做"

@@ -1,24 +1,24 @@
 # 机电走线施工指导（水路 / 电路 / 中央空调，燃气除外）
 
-> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（80 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057；2026-10-04 DEC-2026-10-04-R2 补外机供电 strong-ac-outdoor，72→73；2026-10-05 给排水 v1 补 5 条排水路线并改 water-kitchen-requirement 端点，73→78；2026-10-05 DEC-2026-10-05-R18 两台内机方向相反+下出风成组补 2 条送风路线，78→80）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
+> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（87 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057；2026-10-04 DEC-2026-10-04-R2 补外机供电 strong-ac-outdoor，72→73；2026-10-05 给排水 v1 补 5 条排水路线并改 water-kitchen-requirement 端点，73→78；2026-10-05 DEC-2026-10-05-R18 两台内机方向相反+下出风成组补 2 条送风路线，78→80；2026-10-06 DEC-2026-10-06-R1 给排水缺项兜底补 7 条给排水路线，80→87）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
 > **不是施工放线依据**：所有坐标为协调值，穿墙点、梁位、立管、墙体类型均需交房量房后终核修正。配置驱动，修正只改 yaml，渲染与校验自动跟随。
 
 ## 0. 规模口径（与 config/facts.yaml 对账）
 
 | 数据源 | 条目数 | 登记事实 |
 |---|---:|---|
-| `config/mep-hvac-coordination.yaml` | 共 80 条路由 | `fact.mep_routes_count` |
+| `config/mep-hvac-coordination.yaml` | 共 87 条路由 | `fact.mep_routes_count` |
 | `config/mep-hvac-coordination.yaml` | 共 8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风） | `fact.mep_layers_count` |
-| `config/electrical.yaml` | 共 110 个点位 | `fact.electrical_points_count` |
+| `config/electrical.yaml` | 共 111 个点位 | `fact.electrical_points_count` |
 | `config/plumbing.yaml` | 共 27 个点位 | `fact.plumbing_points_count` |
 | `config/ceiling.yaml` | 共 25 个吊顶分区 | `fact.ceiling_zones_count` |
-| `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 153 处 | 契约 `c.mep_layer_below_drop_bottom`（`registered_conflicts: 153`） |
+| `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 160 处 | 契约 `c.mep_layer_below_drop_bottom`（`registered_conflicts: 160`） |
 
 > 上表数字必须与 yaml 实际条目数一致，否则 `verify:facts` 的 count/fact 对账直接失败。
 >
-> **表头口径说明**：末行的登记数 **153 处**是**契约登记数**，不是任何 `fact.*` 计数的复述——它由 `config/facts.yaml` 契约 `c.mep_layer_below_drop_bottom` 的 `registered_conflicts` 字段承载，并靠该契约的 `prose` 正则回抽本表末行数字做双向绑定（该行上方没有对应的 `fact.mep_routes_count` 之类的派生事实，登记事实列因此只写契约名）。
+> **表头口径说明**：末行的登记数 **160 处**是**契约登记数**，不是任何 `fact.*` 计数的复述——它由 `config/facts.yaml` 契约 `c.mep_layer_below_drop_bottom` 的 `registered_conflicts` 字段承载，并靠该契约的 `prose` 正则回抽本表末行数字做双向绑定（该行上方没有对应的 `fact.mep_routes_count` 之类的派生事实，登记事实列因此只写契约名）。
 
-> **2026-10-04 新增登记（契约 `c.mep_layer_below_drop_bottom`）**：走线表的**分层标高整层低于降板完成面**——强电 2.45m / 弱电 2.50m / 冷媒 2.55m / 冷凝水 2.35m，而 0.30m 降板的完成面是 2.80−0.30=**2.50m**、0.15m 降板与铝扣板是 **2.65m**。实算 **153 处**「路线点位低于所经吊顶完成面」，涉及 **62 条路线 / 14 个吊顶分区**。分解链条按契约登记口径（与 `git log -p config/facts.yaml` 的 144→149→154→153 一致）：① 2026-10-05 给排水 v1 新增 5 条排水路线，每条在所属厨卫铝扣板吊顶范围内新增 1 处——144→149；② 2026-10-05 DEC-2026-10-05-R11 客餐厅冷凝水改线，`condensate-living`/`condensate-dining` 不再横穿客餐厅平顶，改经走廊吊顶进客卫开放洗漱区并移入候选端点——149→154，合计 +5 全部为分区内 hit；③ 2026-10-05 DEC-2026-10-05-R19 厨房铝扣板范围收回真实南墙 z=2.40（DEC-014 口径），z[2.40,4.30] 餐区改由 `ceiling_dining_north_band` + `ceiling_dining_west_band` 两条石膏板服务带（底 2.50）承担管线通道、餐桌中部恢复 2.80 平顶，`refrigerant-trunk` 原在厨房铝扣板（完成面 2.65）内的线段随之改在西侧服务带（完成面 2.50）空腔内，其 2.55 标高由低于完成面变为高于完成面，该 hit 合法消失——154→153。这不是逐条算错，是两套口径从未对齐；**未裁定前不许改数据消音**，裁定项见 `docs/pending-site-data.md #41`（分层标高升入降板空腔 2.50–3.00m，或调整降板厚度/范围）。契约以 error 级强制：实算数与上表登记的 153 不符即失败（变多=有人乱加路线，变少=有人改数据消音）。
+> **2026-10-04 新增登记（契约 `c.mep_layer_below_drop_bottom`）**：走线表的**分层标高整层低于降板完成面**——强电 2.45m / 弱电 2.50m / 冷媒 2.55m / 冷凝水 2.35m，而 0.30m 降板的完成面是 2.80−0.30=**2.50m**、0.15m 降板与铝扣板是 **2.65m**。实算 **160 处**「路线点位低于所经吊顶完成面」，涉及 **69 条路线 / 14 个吊顶分区**。分解链条按契约登记口径（与 `git log -p config/facts.yaml` 的 144→149→154→153→160 一致）：① 2026-10-05 给排水 v1 新增 5 条排水路线，每条在所属厨卫铝扣板吊顶范围内新增 1 处——144→149；② 2026-10-05 DEC-2026-10-05-R11 客餐厅冷凝水改线，`condensate-living`/`condensate-dining` 不再横穿客餐厅平顶，改经走廊吊顶进客卫开放洗漱区并移入候选端点——149→154，合计 +5 全部为分区内 hit；③ 2026-10-05 DEC-2026-10-05-R19 厨房铝扣板范围收回真实南墙 z=2.40（DEC-014 口径），z[2.40,4.30] 餐区改由 `ceiling_dining_north_band` + `ceiling_dining_west_band` 两条石膏板服务带（底 2.50）承担管线通道、餐桌中部恢复 2.80 平顶，`refrigerant-trunk` 原在厨房铝扣板（完成面 2.65）内的线段随之改在西侧服务带（完成面 2.50）空腔内，其 2.55 标高由低于完成面变为高于完成面，该 hit 合法消失——154→153；④ 2026-10-06 DEC-2026-10-06-R1 给排水缺项兜底新增 7 条 floor-branch 给排水路线（燃气热水器进水 / 主卫热水 / 客卫热水 / 回水管 / 洗碗机进水 / 进水总阀 / 主卫沉箱二次排水），每条在所经厨卫/套间吊顶 footprint 内新增 1 处「点位低于吊顶完成面」hit——给排水走地 0.02–0.45m 本就低于完成面，与既有给排水 floor-branch 路线同源、非 #41 分层标高问题，153→160（本轮按 `repair_channel` 附 DEC-2026-10-06-R1 全引 + 4 文件同步记此正当修正）。这不是逐条算错，是两套口径从未对齐；**未裁定前不许改数据消音**，裁定项见 `docs/pending-site-data.md #41`（分层标高升入降板空腔 2.50–3.00m，或调整降板厚度/范围）。契约以 error 级强制：实算数与上表登记的 160 不符即失败（变多=有人乱加路线，变少=有人改数据消音）。
 
 ## 1. 走线总则
 
@@ -90,6 +90,7 @@ w_mbath_south（2026-08-25 台盆外移条带新建墙，给水/冷凝水穿点 
 
 ## 3. 规格与依据（三档置信度）
 
+
 ### 3.1 规范条文级（验收的硬依据）
 
 | 事项 | 规格 | 依据 |
@@ -128,6 +129,21 @@ w_mbath_south（2026-08-25 台盆外移条带新建墙，给水/冷凝水穿点 
 
 吊顶内分层标高（强电 2.45 / 弱电 2.50 / 冷媒 2.55 / 冷凝水 2.35 / 送风 2.68 / 回风 2.72m）、主干轴线（z=4.6、x=13.3、x=7.45）、全部穿点坐标——见 `design-datum.yaml`。
 
+### 3.4 给排水规格与口径（2026-10-06 DEC-2026-10-06-R1 新增）
+
+给排水管径分级、水封与附属通气管/间接排水的工程口径（依据 GB 50242《建筑给水排水及采暖工程施工质量验收规范》与通用图集；本项目量房后按实测立管复核）：
+
+| 项目 | 口径 |
+|---|---|
+| 排污（马桶）管径 | **de110** |
+| 排水干管管径 | **de75** |
+| 排水支管管径 | **de50** |
+| 水封 | 各受水点存水弯/水封 **≥50mm**；墙排/地漏均须保证 |
+| 通气管 / 间接排水 | 按需设通气管或间接排水；排水口不得密封直插（须留溢流/间接接入，防虹吸与气堵） |
+| 同层排水沉箱二次排水 | 主卫/客卫沉箱最低处设 **DN50 二次排水**，向二次口找 1% 坡 + 轻质回填 + 回填前通球与 24h 闭水（见 pending-site-data #50） |
+
+> **管径登记口径**：排污 de110 / 干管 de75 / 支管 de50 为施工分级口径；`config/plumbing.yaml` 排水立管的 `diameter: 0.075` 与其马桶排污/立管 note 已按本口径补 `de110` 注记（**只加 note 文本、不改 diameter 数值**——0.075m 是既有登记值，全宅 de110 批量升级属设计决策，留待 docs/pending-site-data.md #41 轮裁定）。
+
 ## 4. 现场作业规则（给施工队的硬约束）
 
 1. 玻璃幕墙/窗带墙体：禁止挂点、打孔、开槽（项目铁律）。
@@ -165,22 +181,20 @@ npm run typecheck
 - `suppressed_wall_crossing`：路线进入 `config/layout/overlay.yaml` suppress 的幕墙/窗帘区 → warning；confirmed 路线升 error。
 - `nonphysical_route`：起终点重合（`design_requirement` 口径另走 `degenerate_requirement`）→ warning；confirmed 升 error。
 - `route_overlap`：两条路线包络重叠（双双 confirmed 才 error）；共享主干的 trunk/branch 已按白名单排除。
-- `gravity_slope_geometry_mismatch`（**本轮新增**）：重力管声明 1%（阳台 2%）坡度，但折线段实际高差推不出该坡度（容差 ±50%）→ warning。要么改线、要么改标高，交底前必须逐条清，否则现场按错坡度敷设会倒坡积水。
-- `route_not_orthogonal`（**本轮新增**）：折线段非曼哈顿正交 → warning。斜线段既不像工程图也无法按 §1 的贴墙/贴吊顶规则放线，交底前必须正交化。
-- `penetration_door_clearance`（**本轮新增**）：声明穿点距门洞 <0.15m，或过门头高度关系不清 → warning。穿点贴门洞会打在门套/过梁上，交底前必须实测门洞尺寸后重定穿点。
+- `gravity_slope_geometry_mismatch`：重力管声明 1%（阳台 2%）坡度，但折线段实际高差推不出该坡度（容差 ±50%）→ warning。DEC-2026-10-06-R1 已把 14 条全清（地埋全平/过陡、冷凝水候选沿程、墙排汇总不足坡、drain-balcony 2% 回算），当前实配 0 命中；现场仍须按 §1「重力管全程 1% 坡、禁止上弯」敷设。
+- `route_not_orthogonal`：折线段非曼哈顿正交 → warning。DEC-2026-10-06-R1 已把 3 条给水路线（water-master-bath / water-guest-bath / water-garden-requirement）正交化，当前实配 0 命中；§1「全部正交折线」仍是铁律。
+- `penetration_door_clearance`（**本轮新增**）：声明穿点距同墙门洞 <0.15m → warning。DEC-2026-10-06-R1 细分类别：declared height **高于门头高度** = 合法过门头穿梁，真风险在过梁/梁底而非门垛 → 归 survey_dependent（量房核梁底与套管后消，当前 13 条）；declared height **落在门洞高度带内**（会打门垛/门套）且净距 <0.15m → 留 must_fix_before_briefing（当前 2 条：water-guest-bath / water-balcony 低位过门洞）。交底前按类别逐条实测门洞/门套/过梁尺寸后重定穿点。
 - `shear_wall_parallel_route`（**本轮新增**）：路线长距离贴剪力墙平行敷设 → warning。贴墙段须明确套管/剔槽/避钢筋策略，否则剪力墙开槽超出 §3.2 的浅槽上限。
 
 **当前基线（2026-10-06 实跑口径；数字由 `tests/server/mep-guidance-baseline.test.ts` 动态对账，不写死）**：
 
 - `npm run verify:mep` = **0 error / 与实算一致的 warning 数**（`shared/mep-hvac-lint.ts` 只输出三桶，未登记 code 一律落 must_fix 桶）；
 - `npm run verify:electrical` = **0 error / 与实算一致的 warning 数**。
-
 | 桶 / 规则组 | 条数 | 代码明细 |
 |---|---:|---|
-| MEP must_fix_before_briefing（交底前必须清） | 40 | penetration_door_clearance 15 + gravity_slope_geometry_mismatch 14 + shear_wall_parallel_route 8 + route_not_orthogonal 3 |
-| MEP survey_dependent（量房后自然消/复判） | 160 | ceiling_clearance_unverified 153 + shear_wall_penetration 7 |
-| MEP envelope_approximation（模型包络近似/非物理需求） | 19 | supply_return_overlap 8 + reference_constraint_uncertain 5 + nonphysical_route 3 + suppressed_wall_crossing 3 |
-| 电气 参数/覆盖依赖待定 | 52 | dedicated_parameters_pending 9 + point_uncovered 29 + pending_parameter 14 |
-| 电气 规范承诺未兑现 | 19 | switch_neutral_policy_undeclared 17 + bath_socket_splash_box_undeclared 2 |
+| MEP must_fix_before_briefing（交底前必须清） | 10 | shear_wall_parallel_route 8 + penetration_door_clearance 2 |
+| MEP survey_dependent（量房后自然消/复判） | 180 | ceiling_clearance_unverified 160 + penetration_door_clearance 13 + shear_wall_penetration 7 |
+| MEP envelope_approximation（模型包络近似/非物理需求） | 25 | nonphysical_route 9 + supply_return_overlap 8 + reference_constraint_uncertain 5 + suppressed_wall_crossing 3 |
+| 电气 参数/覆盖依赖待定 | 53 | dedicated_parameters_pending 9 + point_uncovered 30 + pending_parameter 14 |
 
 > 上表六组是**分类台账**，不是「已接受项」清单。逐条的 accept / reject / pending_adjudication 裁决、依据 DEC、责任人与解除条件，见治理台账 `docs/design-iterations/mep-lint-governance-20261006/review-manifest.json`（本轮新建）。旧的 `docs/design-iterations/mep-routing-20260901/review-manifest.json` 只留 v1/v2/v3 三轮评审结论，其中「15 条已接受项 / 22 warning」是 2026-09-07 的快照，**不再是现行基线**。

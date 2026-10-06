@@ -226,7 +226,7 @@ test('pending-site-data 表头口径：「量表共 N 条」= 编号数，实际
   assert.equal(claimed, numbered.length, `表头声称 ${claimed} 个编号，实际编号行 ${numbered.length}`);
   assert.deepEqual(subItems, ['3a'], '子项行应恰为 #3a（#3 的 A2 HVAC 子项）');
   assert.equal(rows.length, claimed + subItems.length, '表格行数必须 = 编号数 + 子项数');
-  assert.equal(rows.length, 49, '当前口径：48 个编号 + #3a = 49 行');
+  assert.equal(rows.length, 53, '当前口径：52 个编号 + #3a = 53 行');
 });
 
 // ─── 治理台账：逐条与实算一致，且覆盖全部实算 code ───────────────────────
@@ -287,7 +287,7 @@ test('文档不许再把 2026-09-07 的快照当现行基线', () => {
   // 旧基线 0 error / 22 warning、15 条已接受项、68 条路线 / 13 个吊顶分区、13 处穿墙点
   assert.equal(/0 error \/ 22 warning/.test(guidance), false, '§6 的旧基线「0 error / 22 warning」必须已替换为实跑口径');
   assert.equal(/68 条路线/.test(guidance), false, '§0 必须已是 62 条路线，不许再出现 68 条路线');
-  assert.match(guidance, /涉及\s*\*\*62 条路线 \/ 14 个吊顶分区\*\*/);
+  assert.match(guidance, /涉及\s*\*\*69 条路线 \/ 14 个吊顶分区\*\*/);
   assert.equal(/13 个吊顶分区/.test(guidance), false, '§0 必须已是 14 个吊顶分区');
   assert.equal(/design-datum\.yaml`（13 处）/.test(guidance), false, '§1 的穿墙点留档条数必须已按 design-datum.yaml 实条数改写');
   assert.equal(/plumbing type 枚举暂不扩展/.test(guidance), false, '§3.1a 的 LEB 枚举口径必须已按 shared/types.ts 现状改写');

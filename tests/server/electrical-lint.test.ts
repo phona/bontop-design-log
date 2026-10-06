@@ -22,15 +22,17 @@ test('real electrical topology parses and lints', () => {
   assert.equal(topology.controls.length, 11);
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 24); // 2026-10-05 R15 起夜路径 9 个 night_light 并入照明回路（15→24），不开新回路
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 41); // 2026-10-05 R15 客房床头插座 ×2 并入 ordinary_power_parent_child（39→41） // DEC-2026-10-03-R1：+sock_living_tv_high +sock_kitchen_counter_east
-  assert.equal(result.counts.coveredPoints, 79); // 2026-10-05 R15：+9 night_light +2 床头插座（68→79）；床头双控 switch_guest_bed 非负载点，仍计未覆盖 // DEC-2026-10-04-R2：+sock_vrf_outdoor_a2（外机专用取电）
+  assert.equal(result.counts.coveredPoints, 79); // 2026-10-05 R15：+9 night_light +2 床头插座（68→79）；床头双控 switch_guest_bed 非负载点，仍计未覆盖 // DEC-2026-10-04-R2：+sock_vrf_outdoor_a2（外机专用取电）// DEC-2026-10-06-R2：+sock_kitchen_oven 不进 topology 回路，coveredPoints 不变
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.length > 0);
   // 2026-10 三条规范规则（全部 warning）落地后的新计数：原 52 warnings = 9 dedicated + 29 uncovered + 14 pending
   // +2 卫浴防溅 +17 开关零线口径 +0 插座回路 RCD（现有 16 路均已声明"漏保"）= 71
-  assert.equal(result.warnings.length, 71);
+  // DEC-2026-10-06-R2 电气兜底轮：17 个开关补 neutral: true、2 个浴霸插座补防溅盒 note → 两类归零（-19）；
+  // 新增微蒸烤预留点位 sock_kitchen_oven（未激活、不进 topology 回路）→ point_uncovered +1（29→30）→ 71-19+1=53
+  assert.equal(result.warnings.length, 53);
   assert.equal(result.counts.byCode.rcd_missing_on_socket_circuit ?? 0, 0); // 命中 0：16 路含 socket 成员的回路 breaker 均已声明"漏保"
-  assert.equal(result.counts.byCode.bath_socket_splash_box_undeclared ?? 0, 2);
-  assert.equal(result.counts.byCode.switch_neutral_policy_undeclared ?? 0, 17);
+  assert.equal(result.counts.byCode.bath_socket_splash_box_undeclared ?? 0, 0); // DEC-2026-10-06-R2：两卫浴霸插座 note 已补防溅盒声明（2→0）
+  assert.equal(result.counts.byCode.switch_neutral_policy_undeclared ?? 0, 0); // DEC-2026-10-06-R2：17 个 switch/switch_2way 已补 neutral: true（17→0）
 });
 
 test('unknown point and duplicate member are rejected by parser', () => {
@@ -83,7 +85,7 @@ test('lint keeps historical uncovered points as warnings and maps circuit facts'
   assert.equal(result.warnings.filter((i) => i.code === 'declared_circuit_uncovered').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered'));
   assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 0);
-  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 29); // 2026-10-05 R15：+switch_guest_bed（床头双控开关非负载点，28→29） // 外机点位已入回路，不增未覆盖 // DEC-2026-10-04-R2：+ac_panel_dining（餐区第 6 台线控器）27→28
+  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 30); // 2026-10-05 R15：+switch_guest_bed（床头双控开关非负载点，28→29）// DEC-2026-10-06-R2：+sock_kitchen_oven（微蒸烤预留接口，未激活前不进 topology 回路，29→30） // 外机点位已入回路，不增未覆盖 // DEC-2026-10-04-R2：+ac_panel_dining（餐区第 6 台线控器）27→28
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'switch_master_bed_l'));
 });
 
@@ -120,37 +122,40 @@ test('every socket-bearing circuit must declare ≤30mA RCD protection (GB 55038
 test('bathroom socket points must declare a splash box (GB 55038-2025 7.4.5)', () => {
   const topology = parseElectricalTopology(raw, points) as ElectricalTopology;
   const result = lintElectricalTopology(topology, points);
-  // 违反方向：两个卫浴高位浴霸点位 note 未声明防溅盒（review 已知数据缺陷，只告警不阻断）
-  assert.deepEqual(idsOf(result, 'bath_socket_splash_box_undeclared'), ['sock_gbath_batheheater', 'sock_mbath_batheheater']);
+  // DEC-2026-10-06-R2：两个卫浴高位浴霸点位 note 已补防溅盒声明 → 原违反方向清空（2→0）
+  assert.deepEqual(idsOf(result, 'bath_socket_splash_box_undeclared'), []);
   const bathSockets = points.filter((point) => (point.room === 'master_bath' || point.room === 'guest_bath') && isSocket(point));
   assert.equal(bathSockets.length, 8);
-  // 合规方向：同两卫另外 6 个插座 note 已写"防溅"，不报
-  assert.equal(bathSockets.filter((point) => /防溅/.test(point.note ?? '')).length, 6);
-
-  // 合规方向（补齐 note 后告警消失，证明判据就是 note 文本而非点位 id）
-  const patched = points.map((point) => (point.id === 'sock_gbath_batheheater' ? { ...point, note: `${point.note ?? ''}；吊顶内干区高位，加防溅盒` } : point));
-  assert.deepEqual(idsOf(lintElectricalTopology(topology, patched), 'bath_socket_splash_box_undeclared'), ['sock_mbath_batheheater']);
+  // DEC-2026-10-06-R2：两卫 8 个插座 note 全部声明"防溅"（原 6 个 + 本轮补齐的 2 个浴霸位）
+  assert.equal(bathSockets.filter((point) => /防溅/.test(point.note ?? '')).length, 8);
+  // 违反方向（剥掉本轮补的防溅声明后告警复现，证明判据就是 note 文本而非点位 id）
+  const strippedNote = (note: string) => note.replace(/；DEC-2026-10-06-R2 插座带防溅盒（GB 55038-2025 7.4.5）/, '');
+  const stripped = points.map((point) => (point.id === 'sock_mbath_batheheater' ? { ...point, note: strippedNote(point.note ?? '') } : point));
+  assert.deepEqual(idsOf(lintElectricalTopology(topology, stripped), 'bath_socket_splash_box_undeclared'), ['sock_mbath_batheheater']);
 });
 
 test('switch points must declare an explicit neutral policy (config/house.yaml 智能开关零线)', () => {
   const topology = parseElectricalTopology(raw, points) as ElectricalTopology;
   const switchPoints = points.filter((point) => point.type === 'switch' || point.type === 'switch_2way');
   assert.equal(switchPoints.length, 17);
-  // 违反方向：schema 长期无 neutral 字段、note 也不写零线 → 17 个全命中（已知缺陷，warning 起步）
-  assert.equal(lintElectricalTopology(topology, points).warnings.filter((issue) => issue.code === 'switch_neutral_policy_undeclared').length, 17);
-
-  // 合规方向 1：显式 neutral 字段（本次同步给 ElectricalPoint / ElectricalPointSchema 补的 optional 字段）
-  const withNeutral = points.map((point) => (point.type.startsWith('switch') ? { ...point, neutral: true } : point));
-  assert.equal(lintElectricalTopology(topology, withNeutral).warnings.filter((issue) => issue.code === 'switch_neutral_policy_undeclared').length, 0);
-
-  // 合规方向 2：note 写明"零线"等价于显式声明（单火线方案也可写"单火线不回零线"关机口径）
-  const withNote = points.map((point) => (point.id === 'switch_kitchen' ? { ...point, note: `${point.note ?? ''}；智能开关零线已预留` } : point));
-  assert.equal(lintElectricalTopology(topology, withNote).warnings.filter((issue) => issue.code === 'switch_neutral_policy_undeclared').length, 16);
-  assert.ok(!idsOf(lintElectricalTopology(topology, withNote), 'switch_neutral_policy_undeclared').includes('switch_kitchen'));
+  // DEC-2026-10-06-R2：17 个点位已全部补 neutral: true → 原"17 个全命中"违规方向清空（17→0）
+  assert.equal(lintElectricalTopology(topology, points).warnings.filter((issue) => issue.code === 'switch_neutral_policy_undeclared').length, 0);
+  assert.deepEqual(switchPoints.filter((point) => point.neutral !== true).map((point) => point.id), []);
+  // note 统一口径同时落地（备用可读口径，与 neutral 字段无冲突）
+  assert.equal(switchPoints.filter((point) => /零线/.test(point.note ?? '')).length, 17);
 
   // schema 同步：neutral 为 optional boolean；strict 仍然拒绝未知键
   assert.equal(ElectricalPointSchema.parse({ id: 'switch_probe', room: 'kitchen', type: 'switch', x: 1, z: 2, neutral: false }).neutral, false);
   assert.throws(() => ElectricalPointSchema.parse({ id: 'switch_probe', room: 'kitchen', type: 'switch', x: 1, z: 2, neutral_required: true }));
+
+  // 违反方向 1：剥掉 neutral 字段且 note 不写零线 → 该点告警复现（判据在字段/note，不在点位 id）
+  const strippedSwitchNote = (note: string) => note.replace(/；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）/, '');
+  const withoutNeutral = points.map((point) => (point.id === 'switch_kitchen' ? { ...point, neutral: undefined, note: strippedSwitchNote(point.note ?? '') } : point));
+  assert.deepEqual(idsOf(lintElectricalTopology(topology, withoutNeutral), 'switch_neutral_policy_undeclared'), ['switch_kitchen']);
+
+  // 违反方向 2：note 写明"零线"等价于显式声明（单火线方案也可写"单火线不回零线"关机口径）
+  const withNote = points.map((point) => (point.id === 'switch_kitchen' ? { ...point, neutral: undefined, note: `${strippedSwitchNote(point.note ?? '')}；智能开关零线已预留` } : point));
+  assert.equal(lintElectricalTopology(topology, withNote).warnings.filter((issue) => issue.code === 'switch_neutral_policy_undeclared').length, 0);
 });
 
 test('lint validates panel topology/source semantics and status at runtime', () => {
@@ -170,7 +175,8 @@ test('electrical JSON CLI emits pure JSON', () => {
   assert.ok(Array.isArray(result.errors));
   assert.ok(Array.isArray(result.warnings));
   // 既有字段语义不变 + 新增的按规则汇总字段（纯附加，兼容旧消费方；零命中的规则不出现在 byCode 里）
-  assert.equal(result.counts.byCode?.switch_neutral_policy_undeclared ?? 0, 17);
-  assert.equal(result.counts.byCode?.bath_socket_splash_box_undeclared ?? 0, 2);
+  // DEC-2026-10-06-R2：switch_neutral_policy_undeclared / bath_socket_splash_box_undeclared 两类已归零
+  assert.equal(result.counts.byCode?.switch_neutral_policy_undeclared ?? 0, 0);
+  assert.equal(result.counts.byCode?.bath_socket_splash_box_undeclared ?? 0, 0);
   assert.equal(result.counts.byCode?.rcd_missing_on_socket_circuit ?? 0, 0);
 });
