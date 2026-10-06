@@ -4,23 +4,205 @@
   "decision_ref": "DEC-2026-10-07-R03",
   "subject": "客餐厅双出风内机风口三层线语言：6 功能段独立 + 8 封闭装饰段，linear_slot 渲染，吊顶几何/路线不变",
   "runtime_query": {
-    "method": "tsx tmp/r03/ld-runtime-check.ts（buildHvacGeometry over data/project-render-facts.json）",
+    "method": "npx tsx scripts/render/diagrams/ld-threeline-runtime-check.ts（buildHvacGeometry over data/project-render-facts.json）",
     "hvacTerminals": 22,
     "living_dining_objects": {
-      "supply_living":         { "position": [11.45, 2.65, 5.21], "render_style": "linear_slot", "decorative": false, "size": [3.516, 0.15, 0.033] },
-      "LD-deco-side-south":    { "position": [8.45, 2.65, 5.21],  "render_style": "linear_slot", "decorative": true,  "size": [2.516, 0.15, 0.033] },
-      "supply_dining":         { "position": [8.70, 2.65, 4.30],  "render_style": "linear_slot", "decorative": false, "size": [2.016, 0.15, 0.033] },
-      "LD-deco-side-north":    { "position": [11.55, 2.65, 4.30], "render_style": "linear_slot", "decorative": true,  "size": [3.716, 0.15, 0.033] },
-      "supply_living_bottom":  { "position": [10.30, 2.50, 4.85], "render_style": "linear_slot", "decorative": false, "size": [0.916, 0.033, 0.15] },
-      "supply_dining_bottom":  { "position": [8.00, 2.50, 4.85],  "render_style": "linear_slot", "decorative": false, "size": [0.916, 0.033, 0.15] },
-      "LD-deco-supply-west":   { "position": [7.375, 2.50, 4.85], "render_style": "linear_slot", "decorative": true,  "size": [0.366, 0.033, 0.15] },
-      "LD-deco-supply-mid":    { "position": [9.15, 2.50, 4.85],  "render_style": "linear_slot", "decorative": true,  "size": [1.416, 0.033, 0.15] },
-      "LD-deco-supply-east":   { "position": [12.075, 2.50, 4.85],"render_style": "linear_slot", "decorative": true,  "size": [2.666, 0.033, 0.15] },
-      "return_living":         { "position": [12.60, 2.49, 4.45], "render_style": "linear_slot", "decorative": false, "size": [1.016, 0.033, 0.25] },
-      "return_dining":         { "position": [7.90, 2.49, 4.45],  "render_style": "linear_slot", "decorative": false, "size": [0.916, 0.033, 0.25] },
-      "LD-deco-return-west":   { "position": [7.325, 2.49, 4.45], "render_style": "linear_slot", "decorative": true,  "size": [0.266, 0.033, 0.25] },
-      "LD-deco-return-mid":    { "position": [10.225, 2.49, 4.45],"render_style": "linear_slot", "decorative": true,  "size": [3.766, 0.033, 0.25] },
-      "LD-deco-return-east":   { "position": [13.25, 2.49, 4.45], "render_style": "linear_slot", "decorative": true,  "size": [0.316, 0.033, 0.25] }
+      "supply_living": {
+        "position": [
+          11.45,
+          2.65,
+          5.21
+        ],
+        "render_style": "linear_slot",
+        "decorative": false,
+        "size": [
+          3.516,
+          0.15,
+          0.033
+        ]
+      },
+      "LD-deco-side-south": {
+        "position": [
+          8.45,
+          2.65,
+          5.21
+        ],
+        "render_style": "linear_slot",
+        "decorative": true,
+        "size": [
+          2.516,
+          0.15,
+          0.033
+        ]
+      },
+      "supply_dining": {
+        "position": [
+          8.7,
+          2.65,
+          4.3
+        ],
+        "render_style": "linear_slot",
+        "decorative": false,
+        "size": [
+          2.016,
+          0.15,
+          0.033
+        ]
+      },
+      "LD-deco-side-north": {
+        "position": [
+          11.55,
+          2.65,
+          4.3
+        ],
+        "render_style": "linear_slot",
+        "decorative": true,
+        "size": [
+          3.716,
+          0.15,
+          0.033
+        ]
+      },
+      "supply_living_bottom": {
+        "position": [
+          10.3,
+          2.5,
+          4.85
+        ],
+        "render_style": "linear_slot",
+        "decorative": false,
+        "size": [
+          0.916,
+          0.033,
+          0.15
+        ]
+      },
+      "supply_dining_bottom": {
+        "position": [
+          8.0,
+          2.5,
+          4.85
+        ],
+        "render_style": "linear_slot",
+        "decorative": false,
+        "size": [
+          0.916,
+          0.033,
+          0.15
+        ]
+      },
+      "LD-deco-supply-west": {
+        "position": [
+          7.375,
+          2.5,
+          4.85
+        ],
+        "render_style": "linear_slot",
+        "decorative": true,
+        "size": [
+          0.366,
+          0.033,
+          0.15
+        ]
+      },
+      "LD-deco-supply-mid": {
+        "position": [
+          9.15,
+          2.5,
+          4.85
+        ],
+        "render_style": "linear_slot",
+        "decorative": true,
+        "size": [
+          1.416,
+          0.033,
+          0.15
+        ]
+      },
+      "LD-deco-supply-east": {
+        "position": [
+          12.075,
+          2.5,
+          4.85
+        ],
+        "render_style": "linear_slot",
+        "decorative": true,
+        "size": [
+          2.666,
+          0.033,
+          0.15
+        ]
+      },
+      "return_living": {
+        "position": [
+          12.6,
+          2.49,
+          4.45
+        ],
+        "render_style": "linear_slot",
+        "decorative": false,
+        "size": [
+          1.016,
+          0.033,
+          0.25
+        ]
+      },
+      "return_dining": {
+        "position": [
+          7.9,
+          2.49,
+          4.45
+        ],
+        "render_style": "linear_slot",
+        "decorative": false,
+        "size": [
+          0.916,
+          0.033,
+          0.25
+        ]
+      },
+      "LD-deco-return-west": {
+        "position": [
+          7.325,
+          2.49,
+          4.45
+        ],
+        "render_style": "linear_slot",
+        "decorative": true,
+        "size": [
+          0.266,
+          0.033,
+          0.25
+        ]
+      },
+      "LD-deco-return-mid": {
+        "position": [
+          10.225,
+          2.49,
+          4.45
+        ],
+        "render_style": "linear_slot",
+        "decorative": true,
+        "size": [
+          3.766,
+          0.033,
+          0.25
+        ]
+      },
+      "LD-deco-return-east": {
+        "position": [
+          13.25,
+          2.49,
+          4.45
+        ],
+        "render_style": "linear_slot",
+        "decorative": true,
+        "size": [
+          0.316,
+          0.033,
+          0.25
+        ]
+      }
     },
     "continuity_check": {
       "bottom_supply_row_z_4.85": "功能段 [7.55,8.45]+[9.85,10.75] 与装饰段 [7.20,7.55]+[8.45,9.85]+[10.75,13.40] 拼满 x[7.20,13.40] 无缺口",
