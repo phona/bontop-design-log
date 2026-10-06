@@ -19,6 +19,7 @@ import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
 import { CommandPalette } from './ui/CommandPalette.js';
 import { TopDownButton } from './ui/TopDownButton.js';
 import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/HvacCoordinationButton.js';
+import { WallTileButton, type WallTileButtonState } from './ui/WallTileButton.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
 import { PlacementPanel } from './ui/PlacementPanel.js';
 import { SunlightSystem } from './render/SunlightSystem.js';
@@ -58,6 +59,10 @@ export class App {
   private hvacCoordinationButton: HvacCoordinationButton | null = null;
   private hvacCoordinationState: HvacCoordinationButtonState = 'loading';
   private hvacCoordinationVisible = false;
+  // 贴砖检视态：独立子系统，与 HVAC / MEP / 电气回路开关平级且互不引用（DEC-2026-10-07-R08）
+  private wallTileButton: WallTileButton | null = null;
+  private wallTileState: WallTileButtonState = 'loading';
+  private wallTileVisible = false;
   private mepCoordinationVisible = false;
   private mepCoordinationReady = false;
   private mepLintResult: MepLintResult | null = null;
@@ -165,6 +170,7 @@ export class App {
     this.setupHvacCoordinationButton();
     this.setupMepCoordinationButton();
     this.setupElectricalTopologyButton();
+    this.setupWallTileButton();
     const mepLintBadge = document.getElementById('mep-lint-badge');
     if (mepLintBadge) renderMepLintBadge(mepLintBadge, this.mepLintResult);
     this.setupDragHandlers();
@@ -256,6 +262,8 @@ export class App {
     this.updateModeIndicator();
     this.requestRender();
     this.readyState = 'ready';
+    // 贴砖检视态不依赖 HVAC projection 的就绪时序，只等场景本身加载完成即可用。
+    this.setWallTileState('ready');
     this.resolveReady();
     } catch (error) {
       this.readyState = 'failed';
@@ -473,6 +481,30 @@ export class App {
       this.houseScene.setHvacCoordinationVisible(false);
     }
     this.hvacCoordinationButton?.sync();
+  }
+
+  private setupWallTileButton(): void {
+    this.wallTileButton = new WallTileButton({
+      onToggle: () => this.setWallTileInspectionVisible(!this.wallTileVisible),
+      getState: () => this.wallTileState,
+      getActive: () => this.wallTileVisible,
+    });
+  }
+
+  private setWallTileInspectionVisible(visible: boolean): void {
+    this.wallTileVisible = this.wallTileState === 'ready' && visible;
+    this.houseScene.setWallTileInspectionVisible(this.wallTileVisible);
+    this.wallTileButton?.sync();
+    this.requestRender();
+  }
+
+  private setWallTileState(state: WallTileButtonState): void {
+    this.wallTileState = state;
+    if (state !== 'ready') {
+      this.wallTileVisible = false;
+      this.houseScene.setWallTileInspectionVisible(false);
+    }
+    this.wallTileButton?.sync();
   }
 
   private setupMepCoordinationButton(): void {

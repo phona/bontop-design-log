@@ -812,6 +812,47 @@ export class HouseScene implements SceneApi {
     return this.materials.glassHighFidelityEnabled;
   }
 
+  /**
+   * 贴砖检视态（DEC-2026-10-07-R08）。与 HVAC 协调态 / 管井检视态 / MEP 总览**完全独立**：
+   * 只遍历 inspectionLayer === 'wall-tile'；不被 setHvacCoordinationVisible 调用，也不调用 HVAC 路径。
+   *
+   * 材质策略刻意重写一份而不与 setPipeChaseInspectionVisible 抽共享 helper（业主明确要求
+   * 不共用渲染机制）：pipe-chase 的关闭分支把材质硬编码回默认值，会丢掉本层初始态。
+   * 这里改为按 SceneBuilder 建网格时写入的 userData.inspectionInitial 快照可逆恢复。
+   */
+  setWallTileInspectionVisible(visible: boolean): void {
+    this.exportRoot.traverse((object) => {
+      if (object.userData?.inspectionLayer !== 'wall-tile') return;
+      const mesh = object as THREE.Mesh;
+      const initial = (mesh.userData?.inspectionInitial ?? {}) as Record<string, unknown>;
+      const materials = Array.isArray(mesh.material)
+        ? (mesh.material as THREE.Material[])
+        : mesh.material
+          ? [(mesh.material as THREE.Material)]
+          : [];
+      // 真透视：关掉深度测试，贴砖区可穿过墙体与柜体被看到；
+      // 这同时顺带避开叠加面与墙体的共面 z-fighting，无需做侧向偏移。
+      for (const material of materials) {
+        if (!(material instanceof THREE.MeshStandardMaterial)) continue;
+        if (visible) {
+          material.transparent = true;
+          material.opacity = Number(mesh.userData?.inspectionOpacity ?? 0.55);
+          material.depthTest = false;
+          material.depthWrite = false;
+        } else {
+          material.transparent = initial.transparent !== false;
+          material.opacity = Number(initial.opacity ?? 0.38);
+          material.depthTest = initial.depthTest !== false;
+          material.depthWrite = initial.depthWrite !== false;
+        }
+        material.needsUpdate = true;
+      }
+      mesh.renderOrder = visible ? 100 : 0;
+      mesh.visible = visible ? true : Boolean(initial.visible ?? false);
+    });
+    this.requestRender();
+  }
+
   private setPipeChaseInspectionVisible(visible: boolean): void {
     this.exportRoot.traverse((object) => {
       if (object.userData?.inspectionLayer !== 'pipe-chase') return;
