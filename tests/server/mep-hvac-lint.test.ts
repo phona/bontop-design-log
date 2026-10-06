@@ -49,15 +49,22 @@ test('real MEP configuration lints without false errors and reports warnings str
   // 2026-10-05 登记基数 149 → 154（docs/mep-construction-guidance.md 与 config/facts.yaml 已同步）：
   //   · DEC-2026-10-05-R11 客餐厅冷凝水改线（condensate-living/dining 移入走廊/客卫吊顶网络）；
   //   · DEC-2026-10-05-R13 书房电脑专用回路改道（strong-power-study 复用 x=5.5 穿孔带，与同孔区三条既有路线同一类别）。
-  // 归口裁定仍是 docs/pending-site-data.md #41；实算数与登记数不符即失败（变多/变少都不允许静默）。
-  assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 160); // DEC-2026-10-06-R1：新增 7 条 floor-branch 路线，每条在所经厨卫/套间吊顶 footprint 内新增 1 处低于完成面 hit，153→160（与既有给排水 floor-branch 路线同源，house/水走地 normal）；登记基数 160 由 docs/mep-construction-guidance.md §0 与 config/facts.yaml 同步（repair_channel，附 DEC-2026-10-06-R1）
-  // 158 = 149(ceiling)+3(nonphysical)+6(overlap)；...（历史基数沿革见 git 注释）...
-  // DEC-2026-10-06-R1：（a）重力坡度 14、 (b)斜线 3 已全清（0）；(C) 新增 6 条 design_requirement 路线使 nonphysical 3→9。
-  assert.equal(result.warnings.length, 177); // 164 → 177（ceiling 153→160 +7、(C) nonphysical 3→9 +6；(a)重力坡度、 (b)斜线 归零 -17）
-  // (e) 分桶：无 layout 时 must_fix = 0（重力坡度/斜线已清、穿墙类需 layout 不出现），survey_dependent = 160 ceiling，envelope = 9 nonphysical + 8 overlap
+  // DEC-2026-10-06-R1：新增 7 条 floor-branch 路线，每条在所经厨卫/套间吊顶 footprint 内新增 1 处低于完成面 hit，153→160。
+  // DEC-2026-10-06-R5（#41 裁定，管线分层升入降板空舱）：160 → 24。
+  //   · 分层标高按 A 区（完成面 2.50）≥2.55 / B 区铝扣板（完成面 2.65）≥2.70 分区抬升，
+  //     参考梁约束带内 ≤ 梁底−0.05，强电/弱电/冷媒/冷凝水/送风/回风六层全部进入吊顶空腔；
+  //   · 配套口径修正（DEC 明文授权）：water_supply / drainage 两个走地分层退出「低于吊顶完成面」比较，
+  //     原 20 处地面管 hit 不再计入（地面管与吊顶完成面无可比性）；
+  //   · 残留 24 处为显式登记的少数项：竖直下引至设备点位的末点（to_height 0.02–1.60m）、
+  //     贴在完成面上的设备开口（回风格栅 2.49）、窗帘盒内电动窗帘电源（0.7m），
+  //     以及 2 条绕不开梁带的冷凝水候选路线（condensate-living / condensate-dining，见下条用例与 reason 全引）。
+  assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 24);
+  // DEC-2026-10-06-R5：177 → 41（ceiling 160→24 −136；(C) nonphysical 9 与 supply_return_overlap 8 不变）
+  assert.equal(result.warnings.length, 41);
+  // (e) 分桶：无 layout 时 must_fix = 0（重力坡度/斜线已清、穿墙类需 layout 不出现），survey_dependent = 24 ceiling，envelope = 9 nonphysical + 8 overlap
   const buckets = bucketsOf(result);
   assert.equal(buckets.must_fix_before_briefing.count, 0);
-  assert.equal(buckets.survey_dependent.count, 160);
+  assert.equal(buckets.survey_dependent.count, 24);
   assert.equal(buckets.envelope_approximation.count, 17);
   assert.equal(Object.values(buckets).reduce((sum, bucket) => sum + bucket.count, 0), result.errors.length + result.warnings.length);
   for (const bucket of Object.values(buckets)) assert.equal(bucket.count, bucket.codes.reduce((sum, entry) => sum + entry.count, 0));
@@ -392,9 +399,120 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   for (const bucket of Object.values(buckets)) assert.equal(bucket.count, bucket.codes.reduce((sum, entry) => sum + entry.count, 0));
   // 分桶代码明细必须与实算完全一致（gravity_slope/orthogonal 已出 must_fix；penetration_door_clearance 拆 must_fix 2 / survey 13）
   assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { shear_wall_parallel_route: 8, penetration_door_clearance: 2 });
-  assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 160, penetration_door_clearance: 13, shear_wall_penetration: 7 });
+  assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 24, penetration_door_clearance: 13, shear_wall_penetration: 7 });
   assert.deepEqual(Object.fromEntries(buckets.envelope_approximation.codes.map((e) => [e.code, e.count])), { nonphysical_route: 9, supply_return_overlap: 8, reference_constraint_uncertain: 5, suppressed_wall_crossing: 3 });
   assert.equal(buckets.must_fix_before_briefing.count, 10);
-  assert.equal(buckets.survey_dependent.count, 180);
+  assert.equal(buckets.survey_dependent.count, 44);
   assert.equal(buckets.envelope_approximation.count, 25);
+});
+
+// ── DEC-2026-10-06-R5：#41 分层标高升入降板空腔（A/B 分区 + 梁硬约束 + 走地分层豁免）──
+
+/** 取一条真实路线在吊顶 footprint 内的 via 点标高（只查 via：from/to 可能是设备末点，本就该低于完成面）。 */
+function viaYsInCeilings(routeId: string): Array<{ y: number; zone: string }> {
+  const route = config.routes.find((r) => r.id === routeId)!;
+  const out: Array<{ y: number; zone: string }> = [];
+  for (const v of route.via ?? []) {
+    const zone = (ceiling as Array<{ id: string; area?: number[]; type: string; thickness?: number }>).find((z) => z.area
+      && v.x >= Math.min(z.area[0], z.area[2]) && v.x <= Math.max(z.area[0], z.area[2])
+      && v.z >= Math.min(z.area[1], z.area[3]) && v.z <= Math.max(z.area[1], z.area[3]));
+    if (zone && typeof v.y === 'number') out.push({ y: v.y, zone: zone.id });
+  }
+  return out;
+}
+/** 走廊满吊 footprint（ceiling_main_corridor，完成面 2.50 → A 区下限 2.55）。 */
+const CORRIDOR: [number, number, number, number] = [4.2, 4.3, 7.2, 5.55];
+/** 厨房铝扣板 footprint（ceiling_kitchen，完成面 2.65 → B 区下限 2.70）。 */
+const KITCHEN: [number, number, number, number] = [7.2, 0, 10.8, 2.4];
+/** 客卫铝扣板 footprint（ceiling_guest_bath，完成面 2.65 → B 区下限 2.70）。 */
+const GUEST_BATH: [number, number, number, number] = [5.6, 2.2, 7.1, 4.3];
+
+test('DEC-2026-10-06-R5: carried layers are lifted into the drop-ceiling cavity on both A and B bands', () => {
+  // A 区（完成面 2.50）：四层承载管在吊顶 footprint 内 ≥2.55 且 ≤2.75
+  for (const id of ['strong-main', 'strong-light-child', 'weak-main-living', 'weak-ap', 'refrigerant-master', 'refrigerant-child', 'strong-ac-parent']) {
+    const pts = viaYsInCeilings(id);
+    assert.ok(pts.length > 0, `${id} 应有 via 点落在吊顶 footprint 内`);
+    for (const p of pts) assert.ok(p.y >= 2.55 && p.y <= 2.75, `${id} 在 ${p.zone} 内应为 2.55–2.75（A 区），实际 ${p.y}`);
+  }
+  // 走廊服务带参考梁底 2.65 → 带内 ≤2.60；主干必经 bend_corridor (7.2,4.3) 与 z=4.6 轴线
+  for (const id of ['strong-main', 'strong-ac-living', 'weak-master', 'refrigerant-master']) {
+    const route = config.routes.find((r) => r.id === id)!;
+    const spine = (route.via ?? []).filter((v) => v.x >= 6.9 && v.x <= 7.5 && v.z >= 3.6 && v.z <= 8).map((v) => v.y as number);
+    assert.ok(spine.length > 0, `${id} 应有点落在走廊服务带梁带内`);
+    for (const y of spine) assert.ok(y <= 2.60, `${id} 在走廊服务带梁带内应 ≤2.60（参考梁底 2.65 − 0.05）`);
+  }
+  // B 区（厨房铝扣板，完成面 2.65）：进入该区的管路段 ≥2.70 且 ≤2.76
+  for (const id of ['strong-power-kitchen', 'strong-ded-dishwasher', 'strong-ded-washer-dryer', 'strong-light-kitchen', 'refrigerant-trunk']) {
+    const route = config.routes.find((r) => r.id === id)!;
+    const inKitchen = (route.via ?? []).filter((v) => v.x >= KITCHEN[0] && v.x <= KITCHEN[2] && v.z >= KITCHEN[1] && v.z <= KITCHEN[3]).map((v) => v.y as number);
+    assert.ok(inKitchen.length > 0, `${id} 应有段落进入厨房铝扣板 footprint`);
+    for (const y of inKitchen) assert.ok(y >= 2.70 && y <= 2.76, `${id} 厨房段应在 2.70–2.76（B 区），实际 ${y}`);
+  }
+  // B 区（客卫铝扣板）：≥2.70
+  for (const id of ['strong-light-gbath', 'strong-power-gbath', 'strong-ded-bathheaters-gbath']) {
+    const route = config.routes.find((r) => r.id === id)!;
+    const inBath = (route.via ?? []).filter((v) => v.x >= GUEST_BATH[0] && v.x <= GUEST_BATH[2] && v.z >= GUEST_BATH[1] && v.z <= GUEST_BATH[3]).map((v) => v.y as number);
+    assert.ok(inBath.length > 0, `${id} 应有段落进入客卫铝扣板 footprint`);
+    for (const y of inBath) assert.ok(y >= 2.70 && y <= 2.76, `${id} 客卫段应在 2.70–2.76（B 区），实际 ${y}`);
+  }
+  // 层间关系仍在：强电最低 → 弱电 → 冷凝水 → 冷媒 → 送风 2.68 / 回风 2.72
+  const h = (layer: string) => config.layers[layer as keyof typeof config.layers].height;
+  assert.ok(h('strong_power') < h('weak_power') && h('weak_power') < h('condensate') && h('condensate') < h('supply_air'));
+  assert.equal(h('strong_power'), 2.55);
+  assert.equal(h('weak_power'), 2.60);
+  assert.equal(h('condensate'), 2.65);
+  assert.equal(h('supply_air'), 2.68);
+  assert.equal(h('return_air'), 2.72);
+  // 穿点高度随层高同步抬升（不能低于所在吊顶承载层标高，否则穿墙段埋在墙里）
+  for (const route of config.routes) {
+    for (const p of (route.penetration ?? []) as Array<{ height?: number }>) {
+      if (typeof p.height !== 'number') continue;
+      if (p.height >= 2.5) assert.ok(p.height >= 2.55, `${route.id} 穿点高度 ${p.height} 低于 A 区承载层下限 2.55`);
+      else assert.ok(p.height <= 0.8, `${route.id} 走地穿点高度应 ≤0.80m（给排水），实际 ${p.height}`);
+    }
+  }
+  // 冷凝水坡度铁律在抬高后仍成立：全程非升 + 声明 1% 与几何一致（由 gravity_slope_geometry_mismatch = 0 兜住）
+  assert.equal(countByCode(lintMepCoordination(config, sources, realContext()), 'gravity_slope_geometry_mismatch'), 0);
+  for (const route of config.routes.filter((r) => r.layer === 'condensate' && r.method?.includes('gravity'))) {
+    const ys = [route.from_height as number, ...(route.via ?? []).map((v) => v.y as number)];
+    for (let i = 1; i < ys.length; i += 1) assert.ok(ys[i] <= ys[i - 1] + 1e-9, `${route.id} 第 ${i} 段上弯，违反重力铁律`);
+  }
+  // 绕不开梁带的两条冷凝水候选路线：保留原标高并逐条显式登记（DEC-2026-10-06-R5 允许的残留）
+  for (const id of ['condensate-living', 'condensate-dining']) {
+    const route = config.routes.find((r) => r.id === id)!;
+    assert.equal(route.from_height, 2.35, `${id} 应保留原 from_height 2.35（绕不开走廊服务带梁带）`);
+    assert.match(route.reason ?? '', /DEC-2026-10-06-R5 显式残留/);
+  }
+});
+
+test('DEC-2026-10-06-R5: floor-level plumbing layers are exempt from the ceiling clearance comparison', () => {
+  // 走地给排水分层（water_supply 0.18 / drainage 0.10）与吊顶完成面无可比性，退出比较（DEC 明文授权）
+  const result = lintMepCoordination(config, sources, realContext());
+  const flagged = result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').map((issue) => issue.routeId);
+  for (const route of config.routes) {
+    if (route.layer === 'water_supply' || route.layer === 'drainage') {
+      assert.equal(flagged.includes(route.id), false, `走地分层 ${route.id} 不应参与 ceiling_clearance_unverified 比较`);
+    }
+  }
+  // 同一份配置、同一批点位：只要把 layer 换成吊顶承载层，比较立即恢复（证明不是"规则被关掉"而是"范围收窄"）
+  const asCarried = structuredClone(config);
+  const target = asCarried.routes.find((r) => r.id === 'water-kitchen-requirement')!;
+  (target as { layer: string }).layer = 'strong_power';
+  const lifted = lintMepCoordination(asCarried, sources, realContext());
+  assert.ok(lifted.warnings.some((issue) => issue.code === 'ceiling_clearance_unverified' && issue.routeId === 'water-kitchen-requirement'));
+  // 六个承载层都参与；water_supply / drainage 都不参与
+  for (const layer of ['strong_power', 'weak_power', 'refrigerant', 'condensate', 'supply_air', 'return_air']) {
+    const probe = structuredClone(config);
+    const route = probe.routes.find((r) => r.id === 'water-kitchen-requirement')!;
+    (route as { layer: string }).layer = layer;
+    const res = lintMepCoordination(probe, sources, realContext());
+    assert.ok(res.warnings.some((issue) => issue.code === 'ceiling_clearance_unverified' && issue.routeId === 'water-kitchen-requirement'), `${layer} 应参与 clearance 比较`);
+  }
+  for (const layer of ['water_supply', 'drainage']) {
+    const probe = structuredClone(config);
+    const route = probe.routes.find((r) => r.id === 'water-kitchen-requirement')!;
+    (route as { layer: string }).layer = layer;
+    const res = lintMepCoordination(probe, sources, realContext());
+    assert.equal(res.warnings.some((issue) => issue.code === 'ceiling_clearance_unverified' && issue.routeId === 'water-kitchen-requirement'), false, `${layer} 应退出 clearance 比较`);
+  }
 });

@@ -1397,11 +1397,25 @@ contracts:
     room_heights_key: mep.room_heights
     default_room_height: 2.8
     tolerance: 0.005
-    registered_conflicts: 160
+    registered_conflicts: 24
     prose:
       - path: docs/mep-construction-guidance.md
         extract: '低于降板完成面的既有冲突\s*(\d+)\s*处'
         expect_matches: 1
+    # (D) DEC-2026-10-06-R5 明文授权的 check 范围口径（授权来源写在此处，不许悄悄改）：
+    #   「配套口径修正：c.mep_layer_below_drop_bottom 的检查范围收窄为吊顶承载层（强电/弱电/冷媒/冷凝水/送风/回风）；
+    #    走地给排水分层（water_supply 0.18 / drainage 0.10）不参与"低于吊顶完成面"比较——地面管与吊顶完成面无可比性，
+    #    原口径把 13 处地面管计入冲突、稀释真信号。该口径变化按契约修正通道登记（附本 DEC 全引 + 4 文件同步），不是消音。」
+    # 落地现状（2026-10-06 本轮，双引擎同口径）：shared/mep-hvac-lint.ts 的 ceiling_clearance_unverified 与
+    #   shared/facts-lint.ts 的 T3.11 均已按此口径收窄为吊顶承载层 6 类（CEILING_CARRIED_LAYERS /
+    #   CEILING_CARRIED_LAYERS_FACTS），两侧实算一致 = **24 处**；20 处走地给排水按 DEC 裁定退出比较。
+    #   verify:mep 与 verify:facts 对同一条路线给出同一结论，不存在两套口径。
+    check_scope:
+      compared_layers: [strong_power, weak_power, refrigerant, condensate, supply_air, return_air]
+      exempt_layers: [water_supply, drainage]
+      exemption_basis: 'DEC-2026-10-06-R5（docs/decision_log.md「#41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m」配套口径修正）'
+      exemption_count_in_current_engine: 20
+      engine_note: '双引擎均已收窄：shared/mep-hvac-lint.ts（CEILING_CARRIED_LAYERS）与 shared/facts-lint.ts（CEILING_CARRIED_LAYERS_FACTS）实算一致 = 24；registered_conflicts 登记 24'
     # ⑦ 修正通道（repair_channel）：本契约抓的既有冲突只能由**设计侧裁定**消解
     # （分层标高升入降板空腔 2.50–3.00m or 调整降板厚度/范围），而此前引擎只告诉人
     # 「不许静默消音」，没告诉人「正当修正长什么样」——于是任何一次几何改动都像消音。
@@ -1416,9 +1430,10 @@ contracts:
     # issue 正文。**error 语义不变**：registered_conflicts ≠ 实算 仍是 error，
     # 通道只回答「要改的话必须怎么改」，不提供任何免检。
     repair_channel:
-      decision_ref: 'pending:docs/pending-site-data.md #41 裁定后替换为设计侧修正 DEC 全引'
+      decision_ref: 'DEC-2026-10-06-R5'
       sync_files: [config/ceiling.yaml, docs/mep-construction-guidance.md, docs/pending-site-data.md, config/facts.yaml]
-    pending: "MEP 吊顶内分层标高整层低于降板完成面（强电 2.45 < 2.50、冷凝水 2.35 < 2.50、弱电 2.50 < 0.15m 降板的 2.65 等），实算 160 处（2026-10-05 给排水 v1 新增 5 条排水路线，144→149；DEC-2026-10-05-R11 客餐厅冷凝水改线 149→154 合计 +5；DEC-2026-10-05-R19 厨房铝扣板收回 z=2.4、餐厅改两条服务带后，refrigerant-trunk 原在厨房铝扣板（完成面 2.65）内的线段改在西侧服务带（完成面 2.50）空腔内，其 2.55 标高由低于改为高于完成面，该 hit 合法消失，154→153；**2026-10-06 DEC-2026-10-06-R1 给排水缺项兜底新增 7 条 floor-branch 给排水路线（燃气热水器进水/主卫热水/客卫热水/回水/洗碗机进水/进水总阀/主卫沉箱二次排水），每条在所经厨卫/套间吊顶 footprint 内新增 1 处「floor-branch 点位低于吊顶完成面」hit——给排水走地 0.02–0.45m 本就低于完成面，与既有给排水 floor-branch 路线同源、非 #41 分层标高问题，153→160**）；#41 分层标高裁定（升入降板空腔 2.50–3.00m or 调降板）仍未作（见 DEC-2026-10-06-R3 ①），故 decision_ref 维持 pending 占位、本轮仅按 repair_channel 记 R1 正当修正（附全引 + 4 文件同步）。跟踪 docs/pending-site-data.md #41；正当修正通道见 repair_channel（须附修正 DEC 全引并同步 ceiling.yaml / mep-construction-guidance.md §0 / pending-site-data.md #41 / 本登记表 registered_conflicts）；裁定后同步更新 docs/mep-construction-guidance.md §0 的登记数与本契约的 registered_conflicts"
+    pending: "**2026-10-06 DEC-2026-10-06-R5 已裁定并执行**（#41 分层标高升入降板空腔，保走廊净高 2.50m；废止「降板加厚」方案②）。分层标高改为**分区口径**：A 区（走廊满吊/门厅满吊/客厅北缘边吊/餐厅两条服务带/各房边吊，完成面 2.50）强电 2.55 / 弱电 2.60 / 冷凝水 2.65 / 冷媒 2.60、上限 2.75；B 区（厨房铝扣板/主卫铝扣板/客卫铝扣板，完成面 2.65，空腔仅 150mm）进入该区的管路段 2.70–2.76；送风 2.68 / 回风 2.72 原位不变（已在空腔内，回风格栅面板贴完成面 2.49）。参考梁约束带内 ≤ 梁底−0.05（南窗带 2.73→2.68、厨房北窗带 2.65→2.60、厨房局部梁头 2.56→2.51、主卫梁头 2.41→2.36、走廊服务带 2.65→2.60）。**登记数 160 → 24**：其中 −20 为走地给排水（water_supply/drainage）按 DEC 配套口径修正退出比较、−136−20=−116 为吊顶承载层抬入空腔；verify:mep 与 verify:facts 双引擎实算一致 = 24。残留 24 处全部显式登记：① 竖直下引至设备点位的末点（to_height 0.02–1.60m，点位坐标在 config/electrical.yaml / config/plumbing.yaml，本轮禁改，竖直下引段本身合法）；② 贴在完成面上的设备开口（回风格栅 2.49，见 config/ceiling.yaml 回风口坐标 2.49）；③ 窗帘盒内电动窗帘电源（0.7m）；④ condensate-living / condensate-dining 两条绕不开走廊服务带梁带的候选路线（末端立管接点 (6.70,3.70) 固定、客卫吊顶区四面有墙，重力管不得上弯，无法同时满足「梁带内 ≤2.60」与「客卫段 ≥2.70」，按 DEC「确实绕不开的保留原标高」处理，量房实测梁底后复判）。**分解链条**：144→149→154→153→160（历史，见下）→ 160→24（DEC-2026-10-06-R5：分层标高升入降板空腔，−136 为承载层抬入空腔、−20 为走地给排水按 DEC 配套口径修正退出比较）。#41 已裁定，decision_ref 由 pending 占位改为 DEC-2026-10-06-R5 全引；跟踪 docs/pending-site-data.md #41（已改写为「已裁定 + 残留」）。"
+    # 历史分解链条（保留备查）：144→149（2026-10-05 给排水 v1 新增 5 条排水路线）；149→154（DEC-2026-10-05-R11 客餐厅冷凝水改线）；154→153（DEC-2026-10-05-R19 厨房铝扣板收回 z=2.4，refrigerant-trunk 该 hit 合法消失）；153→160（DEC-2026-10-06-R1 给排水缺项兜底新增 7 条 floor-branch 路线，每条在所经厨卫/套间吊顶 footprint 内新增 1 处 hit——给排水走地 0.02–0.45m 本就低于完成面，与既有给排水 floor-branch 路线同源、非 #41 分层标高问题）。
 
   - id: c.layout_region_room_overlap
     kind: overlap

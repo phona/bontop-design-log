@@ -42,6 +42,24 @@ export interface MepLintLayoutContext {
 /** 实心吊顶（降板/铝扣板/一体）的类型集合：与 shared/render/CeilingZoneBuilder.ts 的 SOLID_TYPES 同源。 */
 const SOLID_CEILING_TYPES = new Set(['drop', 'integrated', 'aluminum_buckle']);
 
+/**
+ * (D) DEC-2026-10-06-R5 明文授权的口径修正：`ceiling_clearance_unverified`
+ * （与契约 `c.mep_layer_below_drop_bottom` 同源）的比较范围收窄为**吊顶承载层**。
+ *
+ * 授权来源：docs/decision_log.md「DEC-2026-10-06-R5 #41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m」
+ * ——「配套口径修正：c.mep_layer_below_drop_bottom 的检查范围收窄为吊顶承载层（强电/弱电/冷媒/冷凝水/送风/回风）；
+ *   走地给排水分层（water_supply 0.18 / drainage 0.10）不参与"低于吊顶完成面"比较——地面管与吊顶完成面无可比性，
+ *   原口径把 13 处地面管计入冲突、稀释真信号。该口径变化按契约修正通道登记（附本 DEC 全引 + 4 文件同步），不是消音。」
+ *
+ * 理由（不是消音）：给水/排水走地面垫层，标高 0.02–0.80m 与任何吊顶完成面（2.50/2.65）不存在可比性，
+ * 把地面管计入"低于吊顶完成面"只会稀释真信号；地面管自身的坡度/正交/禁直插规则由
+ * gravity_slope_geometry_mismatch / route_not_orthogonal 独立负责，不因本修正失去覆盖。
+ *
+ * 同步落点：`config/facts.yaml` 契约 `c.mep_layer_below_drop_bottom` 的 registered_conflicts / check 口径、
+ * `docs/mep-construction-guidance.md` §0/§3.3/§6、`docs/pending-site-data.md` #41。
+ */
+const CEILING_CARRIED_LAYERS = new Set(['strong_power', 'weak_power', 'refrigerant', 'condensate', 'supply_air', 'return_air']);
+
 /** (e) issue code → 分桶。未登记 code 一律按「交底前必须清」处理（数据/契约缺口，不是量房能消的近似）。 */
 const ISSUE_CATEGORY: Record<string, MepLintCategory> = {
   // 本轮新规则 (a)(b)(c)(d)：交底前必须清
@@ -529,7 +547,9 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         }
       }
     }
-    if (ceiling.length) {
+    if (ceiling.length && CEILING_CARRIED_LAYERS.has(route.layer)) {
+      // (D) DEC-2026-10-06-R5：只有吊顶承载层参与「低于吊顶完成面」比较；
+      // water_supply / drainage 走地面垫层，与吊顶完成面无可比性，整体退出本比较（见 CEILING_CARRIED_LAYERS 注释的授权全引）。
       const roomHeights = new Map((context.layout?.rooms ?? []).map((room) => [room.id, room.height]));
       // 同一「路线 × 吊顶分区」只报一次：否则一条 8 段的路线能刷出 8 条同文告警，
       // 把真正需要看的信号淹掉。去重不降级——severity 仍是 warning，条数只是汇报口径。

@@ -1516,6 +1516,15 @@ function collectExemptions(registry: FactsRegistry): Exemption[] {
 
 const SOLID_CEILING_TYPES_FACTS = new Set(['drop', 'integrated', 'aluminum_buckle']);
 
+// 2026-10-06 DEC-2026-10-06-R5：比较范围收窄为「吊顶承载层」。走地给排水分层
+// （water_supply 0.18 / drainage 0.10）退出本比较——地面管与吊顶完成面无可比性，
+// 原口径把 20 处地面管计入冲突、稀释真信号。授权来源与豁免量见
+// config/facts.yaml c.mep_layer_below_drop_bottom.check_scope；其坡度/正交/禁直插
+// 仍由 verify:mep 的 gravity_slope_geometry_mismatch / route_not_orthogonal 独立负责。
+const CEILING_CARRIED_LAYERS_FACTS = new Set([
+  'strong_power', 'weak_power', 'refrigerant', 'condensate', 'supply_air', 'return_air',
+]);
+
 interface CeilingClearanceZone { id: string; area: [number, number, number, number]; surface: number }
 interface ClearancePoint { x: number; z: number; y?: number }
 
@@ -1600,6 +1609,7 @@ function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines:
   const conflicts: string[] = [];
   for (const route of routes) {
     if (!isRecord(route)) continue;
+    if (typeof route.layer === 'string' && !CEILING_CARRIED_LAYERS_FACTS.has(route.layer)) continue;
     const points = clearanceRoutePoints(route, endpoints);
     if (!points.length) continue;
     const layerHeight = typeof route.layer === 'string' ? layerHeights.get(route.layer) : undefined;
