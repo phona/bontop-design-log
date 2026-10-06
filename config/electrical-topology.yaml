@@ -110,7 +110,7 @@ circuits:
     capacity: "≈6kW 输入（20kW 制冷量 / 估 EER≈3.5）"
     wire_size: "4.0mm²(φ20)（proposed，按 docs/mep-construction-guidance.md §3.1 大功率单独回路口径；厂家端子与线长确认后可能升 6mm²）"
     breaker: "C32A+漏保（proposed，待厂家配电图）"
-    note: "DEC-2026-10-04-R2：本条补齐外机供电四层数据缺口的最后一块（electrical 点位 + topology 回路 + mep 走线 + hvac 电力参数）。本回路是 R1「19 路」拓扑遗漏的最大单体负载——美的领航者Ⅳ MJV-200W-E01-LHIV 20kW 外机；GB 55038-2025 7.4.4 要求 2kW 及以上用电设备回路分别设置，故外机单独成路，**回路总数因此由 19 变 20**。breaker/wire_size 为 proposed；是否由强电箱单独放缆、或接开发商外立面预留插座，待厂家正式配电图与量房终核——若厂家要求硬接线不设漏保，须重新定义 sock_vrf_outdoor_a2 的 type 与回路口径（同头部注释 1 口径）。sock_vrf_outdoor_a2 为 position_status: pending。走线见 config/mep-hvac-coordination.yaml strong-ac-outdoor。"
+    note: "DEC-2026-10-04-R2：本条补齐外机供电四层数据缺口的最后一块（electrical 点位 + topology 回路 + mep 走线 + hvac 电力参数）。本回路是 R1「19 路」拓扑遗漏的最大单体负载——美的领航者Ⅳ MJV-200W-E01-LHIV 20kW 外机；GB 55038-2025 7.4.4 要求 2kW 及以上用电设备回路分别设置，故外机单独成路，**回路总数因此由 19 变 20**。breaker/wire_size 为 proposed；是否由强电箱单独放缆、或接开发商外立面预留插座，待厂家正式配电图与量房终核——若厂家要求硬接线不设漏保，须重新定义 sock_vrf_outdoor_a2 的 type 与回路口径（同头部注释 1 口径）。2026-10-06 业主补图所列三代 MJV-200W-E01-LHⅢ 为制冷额定 5.9kW/27A、最大输入 8.56kW/39A，仅是不同代际参考，不能证明合同四代 LHIV 的最大电流，也不能据此直接判定 C32A/4mm² 合格；待合同机型铭牌/正式配电图按最大输入、线长、敷设方式重新核定。原图及去重说明见 docs/design-iterations/hvac-resix-20261003/evidence/evidence-notes.md。sock_vrf_outdoor_a2 为 position_status: pending。走线见 config/mep-hvac-coordination.yaml strong-ac-outdoor。"
   - id: dedicated_kitchen_fridge
     panel_id: panel_strong
     purpose: dedicated_load

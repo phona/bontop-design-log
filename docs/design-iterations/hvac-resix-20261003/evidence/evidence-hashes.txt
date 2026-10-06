@@ -2,4 +2,6 @@
 b1adfe5ca3aa6e31744cc14d6c329e952c5b8d715a4379b41fd69a6aacb5f61a  hvac-contract-attachment-p1-20261004.jpg
 4304b3b8eaa43d7164da1e2c69929bce0149e9e596ffbe0508031628b2ff47c2  hvac-contract-attachment-p2-20261004.jpg
 ec3ad8f71aa802a8bd429384a0188699afa93dadf66c8cdc15f9f38994c0296b  midea-indoor-unit-spec-20261003.jpg
+d96876fd6b46bd73e2abde998403685628e4e5d48dc88e4c27ac6151a6ebeaf3  owner-lhiii-outdoor-spec-20261006.png
+b623b7bc5ab50bb73c0863d2c786417679340019b8088b21460af6c115de32be  owner-midea-install-charge-poster-20261006.jpg
 1d8d3ce24ae8b4c22af7f8022686cc1cf618e54aa0c8b215e50329911967c4ec  reference-quote-bangtai-110-20260427.xlsx
