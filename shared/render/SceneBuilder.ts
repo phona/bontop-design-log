@@ -20,6 +20,11 @@ import { buildBaySillGeometry } from './BaySillGeometry.js';
 import { buildRailingGeometry } from './RailingGeometryBuilder.js';
 
 const WALL_THICKNESS = 0.12;
+/** Tile inspection overlay colors. Visible face (正砖) vs cabinet-covered face (杂砖). */
+const TILE_VISIBLE_COLOR = 0x3f7fbf;
+const TILE_COVERED_COLOR = 0xd98c2b;
+/** Tile inspection overlay opacity in its own (inspection) state. */
+const TILE_INSPECTION_OPACITY = 0.55;
 /** Room floors and declared floor regions intentionally share one elevation. */
 export const FLOOR_Y = 0.005;
 const DEFAULT_FLOOR = 0xe8e0d5;
@@ -480,7 +485,7 @@ function addCurtain(root: THREE.Group, element: CurtainElement, rooms: ResolvedR
   index.curtains.set(element.id, entry);
 }
 
-function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { type: 'wall' }>, report: SceneBuildReport, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex): void {
+function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { type: 'wall' }>, report: SceneBuildReport, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex, walls: Array<WallSegment & { height?: number }> = []): void {
   const id = element.id;
   switch (element.type) {
     case 'floor_region': {
@@ -524,6 +529,95 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
     case 'wall_run':
       addLineMeshes(root, element.points, element.height, WALL_THICKNESS, new THREE.MeshStandardMaterial({ color: DEFAULT_PAINT, roughness: 0.85 }), element.type, id);
       return;
+    case 'wall_region': {
+      // 贴砖检视态（DEC-2026-10-07-R05/R06）。inspection-only 叠加层：
+      // 正常视图完全不可见；仅在独立开关 setWallTileInspectionVisible(true) 时显示，
+      // 且 depthTest=false 做真透视，故无需理会与墙体的共面 z-fighting。
+      // 刻意不复用 setPipeChaseInspectionVisible 的材质策略（会把关闭态硬编码成默认值、
+      // 丢掉本层初始态）——关闭时按 userData.inspectionInitial 快照恢复。
+      const wall = walls.find((candidate) => candidate.id === element.wall);
+      if (!wall) {
+        report.unsupported.push(`${id}: wall_region references unknown wall ${element.wall}`);
+        return;
+      }
+      const polyline: WallSegment[] = wall.segments?.length
+        ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+        : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+      const pointAt = (distance: number): Point | null => {
+        let remaining = distance;
+        for (const segment of polyline) {
+          const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
+          if (length <= 1e-9) continue;
+          if (remaining <= length + 1e-9) {
+            const t = Math.min(1, Math.max(0, remaining / length));
+            return { x: segment.x1 + (segment.x2 - segment.x1) * t, z: segment.z1 + (segment.z2 - segment.z1) * t };
+          }
+          remaining -= length;
+        }
+        return null;
+      };
+      const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
+      const from = Math.min(element.along[0], element.along[1]);
+      const to = Math.max(element.along[0], element.along[1]);
+      const bottom = element.bottom ?? 0;
+      if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
+        report.unsupported.push(`${id}: wall_region along [${from}, ${to}] is outside wall ${element.wall} (length ${total.toFixed(3)})`);
+        return;
+      }
+      if (!(element.height > bottom)) {
+        report.unsupported.push(`${id}: wall_region height ${element.height} must exceed bottom ${bottom}`);
+        return;
+      }
+      const start = pointAt(Math.max(0, from));
+      const end = pointAt(Math.min(total, to));
+      if (!start || !end) {
+        report.unsupported.push(`${id}: wall_region could not resolve along interval on wall ${element.wall}`);
+        return;
+      }
+      const span = Math.hypot(end.x - start.x, end.z - start.z);
+      if (span <= 1e-9) {
+        report.unsupported.push(`${id}: wall_region resolved to a zero-length span on wall ${element.wall}`);
+        return;
+      }
+      const color = element.color ?? (element.zone === 'covered' ? TILE_COVERED_COLOR : TILE_VISIBLE_COLOR);
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(color),
+        roughness: 0.9,
+        transparent: true,
+        opacity: 0.38,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+        depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, element.height - bottom), material);
+      mesh.position.set((start.x + end.x) / 2, bottom + (element.height - bottom) / 2, (start.z + end.z) / 2);
+      // PlaneGeometry 法线为局部 +Z；绕 Y 旋转使其立起并垂直于墙段走向。
+      mesh.rotation.y = Math.atan2(-(end.z - start.z), end.x - start.x);
+      setSceneObjectMetadata(mesh, element.type, id);
+      mesh.userData = {
+        ...mesh.userData,
+        wallId: element.wall,
+        along: [from, to],
+        zone: element.zone ?? 'visible',
+        inspectionLayer: 'wall-tile',
+        inspectionVisibleOnly: true,
+        inspectionOpacity: TILE_INSPECTION_OPACITY,
+        // 关闭态恢复快照：刻意保存初始值而不是硬编码，避免重写 pipe-chase 那套丢初始态的写法。
+        inspectionInitial: {
+          visible: false,
+          opacity: 0.38,
+          transparent: true,
+          depthTest: true,
+          depthWrite: false,
+          renderOrder: 0,
+        },
+      };
+      mesh.visible = false;
+      root.add(mesh);
+      return;
+    }
     case 'curtain_run': {
       if (element.points.length < 2) return;
       const materials = { ...defaultMaterials(), ...provider };
@@ -841,7 +935,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   const wallHeights = new Map(input.walls.map((wall) => [wall.id, wall.height ?? 3.0]));
   for (const element of input.elements) {
     if (element.type === 'wall') addWallElement(exportRoot, element, wallHeights.get(element.id) ?? 3.0, report, index, provider, input.rooms);
-    else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index);
+    else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index, input.walls);
   }
   for (const wall of input.walls) {
     if (!wall.id) continue;

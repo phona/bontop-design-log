@@ -1852,3 +1852,24 @@
 - **遗留**：① D1 贴砖高度待业主终裁（A/B 差 ¥3,700–4,100）；② KT 分房报量需回店按房重出；③ 杂砖单价待门店核价；④ 遮蔽面 5–7㎡ 待厨房橱柜布局收口；⑤ 门口单/双包边待量房；⑥ 厨房防水是否在 PKG-050 目标内待核。
 - **关联文件**：`tmp/verify-wall-tile.ts`（复算脚本，不入库）、`schedule/phase-1/control.yaml`（PKG-060、`COST-060-08`）。
 - **决策人**：业主。
+
+### DEC-2026-10-07-R08 贴砖检视态子系统落地：wall_region 元素类型 + 三层独立开关 + 预算同源
+
+- **日期**：2026-10-07。触发：业主要求「贴砖区域做个开关，点击后用颜色透视出来」，并两次澄清「只是用 HVAC 举例，**贴砖面积展示应该是独立的**」「是 3D 开关，**希望独立展示，而不是跟 HVAC 共用一套开关、共用渲染机制**」。
+- **选定实现**：方案甲——新增 `wall_region` 元素类型（`floor_region` 的垂直版），**不扩展** `wall_run`（后者语义是「有碰撞的真实半墙」，如 `vanity_screen_halfwall`；混入显示壳会让「是不是真墙」变含糊，正是 R05/R06 翻车的同类问题）。
+- **「独立」的四层落地（结构性隔离，非约定）**：
+  ① **层标签互斥**——检视层标签为 `'wall-tile'`；`setPipeChaseInspectionVisible` 的首行即 `if (object.userData?.inspectionLayer !== 'pipe-chase') return`，天然跳过本层，反之亦然。
+  ② **重建不互毁**——HVAC 重建只清 `name === 'HVAC_CONFIRMED_ENTITIES'` 的子树；`wall_region` 网格由 `addOverlayElement(exportRoot, …)` 建在 overlay 树下，HVAC 怎么重刷都不影响。
+  ③ **可见性函数独立**——新增 `setWallTileInspectionVisible(visible)`，只遍历 `'wall-tile'`；**不挂进 `setHvacCoordinationVisible`，也不调用 HVAC 路径**（v1 曾拟挂在 HVAC 开关上，按业主澄清已否弃）。
+  ④ **渲染策略独立**——刻意不复用 pipe-chase 那段材质策略、**不抽共享 helper**（§6 选 A）：pipe-chase 的关闭分支把材质硬编码回默认值，会丢掉本层初始态；本层改为「建网格时把初始态写进 `userData.inspectionInitial` 快照，关闭时按快照恢复」，可逆。
+- **视觉与交互**：inspection-only 叠加层——**正常视图完全不可见**；开关打开时显示为半透明双面垂直四边形（visible 正砖区蓝 `#3f7fbf` / covered 遮蔽区橙 `#d98c2b`，初始 opacity 0.38、检视态 0.55、renderOrder 100），并 **`depthTest = false` 做真透视**（同时顺带避开与墙体的共面 z-fighting，故无需侧向偏移）。关闭时按快照恢复初始态。
+- **单源化（本条核心）**：贴砖范围从「从几何推导」改为 **`overlay.yaml` 的 `wall_region` 声明**，3D 检视态与 `COST-060-08` 预算读**同一份数据**。声明：3 室 **13 段、14.86m、12.213 ㎡**（厨房 4.80m / 主卫 4.36m / 客卫 5.70m），D1 按 A 档（厨房 0.90m / 湿区淋浴 1.80m / 其余 0.30m），按 `zone` 拆可见面 8.343 ㎡ 与遮蔽面 3.87 ㎡。
+- **两层校验（`tmp/verify-wall-tile.ts`，不入库，业主可随时 `npx tsx tmp/verify-wall-tile.ts` 复跑，退出码 0 = 一致）**：
+  - **L1 声明层**：读 overlay 的 `wall_region` → 面积 → 喂 `COST-060-08`。
+  - **L2 交叉层**：从 `model-geometry.yaml` 独立复算，逐条断言——引用的墙存在、**未被 suppress**（主卫北墙 `suppress_north_recess`、西墙 `suppress_west_wall` 均为玻璃幕墙，故主卫仅 4.36m）、`along` 不越界、**同墙不重叠声明（防双计）**、`height` ≤ 净高 2.65m；并把「声明总长」与「独立推导可贴总长」对上。
+  - 实测 18 条断言全 OK。**它当场抓出一处台账滞后**：声明算得 580 而台账仍是 450，已随之更正——这正是单源校验的价值。
+- **台账随动**：`COST-060-08` planned_cny **450 → 580**（可见面 8.343 ㎡ × 66.7 元/㎡ × 1.05 ≈ 584 取整；遮蔽面 3.87 ㎡ 走杂砖、单价全库无记录暂计 0 并显形）；PKG-060 `estimated_need_cny` 42,950 → **43,080**；缺口 12,950 → **13,080**；全局 known pending gap 34,244 → **34,374**。
+- **未触及（既定隔离）**：`config/tile-comparison.yaml`、`docs/design-iterations/tile-plank-comparison-20261006/`、`config/materials.yaml` 及瓷砖并行工作其余文件一律未碰；`setPipeChaseInspectionVisible` 本体一行未加。
+- **这不是施工依据**：检视态是显示层。墙砖范围仍以量房后橱柜排版图与门店按房报价为准；`height` 与 `zone` 均为 D1/D7 裁定前的建议基线，业主终裁只改数值并重跑脚本。
+- **关联文件**：`shared/types.ts`、`shared/render/SceneBuilder.ts`、`shared/render/layout-bounds.ts`、`server/overlay-merge.ts`、`scripts/verify/collision/verify-collision-coverage.ts`、`config/layout/overlay.yaml`、`schedule/phase-1/control.yaml`、`tmp/verify-wall-tile.ts`、`tmp/probe-walltile.ts`。
+- **决策人**：业主。

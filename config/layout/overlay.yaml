@@ -285,3 +285,124 @@ elements:
     height: 2.55
     panels: 4
     open: true
+
+  # === 贴砖检视态（DEC-2026-10-07-R05/R06；D1=A 档：厨房 0.90m / 湿区淋浴 1.80m / 其余 0.30m）===
+  # 独立子系统：inspection-only 叠加层，仅在 HouseScene.setWallTileInspectionVisible(true) 时显示，
+  # 与 HVAC 协调态 / 管井检视态 / MEP 总览完全隔离（层标签 'wall-tile'，互不遍历）。
+  # 可贴实体墙长由 tmp/verify-wall-tile.ts 的 L2 交叉层从 model-geometry 独立复算校验：
+  #   - 引用的墙必须存在且未被 suppress（主卫北墙 suppress_north_recess、西墙 suppress_west_wall
+  #     均为玻璃幕墙，故主卫仅 4.36m 而非 6.12m）
+  #   - along 区间必须落在该墙长度内；同一墙段不得重叠声明（防双计）
+  # along 自该墙 from 端沿墙累计。zone=covered 表示橱柜后遮蔽面（走杂砖），visible 为可见面（正砖）。
+  # 高度与 zone 均为 D1/D7 裁定前的建议基线，业主终裁后只改 height/zone 数值并重跑脚本。
+
+  # ── 厨房 4.80m（北墙 w_kit_north 3.60m 为 suppress_kitchen_north 玻璃幕墙不可贴；
+  #    z=2.40 的 3.60m 是四联动推拉门开口而非墙，均不在此列）──
+  - id: walltile_kitchen_ent_west
+    type: wall_region
+    wall: w_ent_west
+    along: [0.50, 2.90]      # z[2.40, 0.00] 段 = 2.40m（东墙，与入户门厅共墙）
+    bottom: 0.00
+    height: 0.90
+    zone: covered
+    reason: 厨房东墙，§05「东墙灶台/烟机/冰箱」，橱柜与设备遮蔽面走杂砖
+  - id: walltile_kitchen_vrv_east
+    type: wall_region
+    wall: w_vrv_east
+    along: [0.00, 1.00]      # 1.00m
+    bottom: 0.00
+    height: 0.90
+    zone: visible
+    reason: 厨房西北角实墙段，无橱柜遮蔽，可见面走正砖
+  - id: walltile_kitchen_balc_east
+    type: wall_region
+    wall: w_balc_east
+    along: [0.00, 1.20]      # z[1.00, 2.20] 段 = 1.20m（R06 新补，v2/v3 曾漏计）
+    bottom: 0.00
+    height: 0.90
+    zone: covered
+    reason: 厨房西墙生活阳台门与辅助台面区，遮蔽面走杂砖；此段为 R06 复算补回
+  - id: walltile_kitchen_west_stub
+    type: wall_region
+    wall: w_kit_west
+    along: [0.00, 0.20]      # 0.20m 残段
+    bottom: 0.00
+    height: 0.90
+    zone: covered
+    reason: 残段，地柜后遮蔽面走杂砖
+
+  # ── 主卫 4.36m（西淋浴湿区 x[0,1.2]、东马桶；北墙与西墙均为玻璃幕墙不可贴）──
+  - id: walltile_mbath_east
+    type: wall_region
+    wall: w_mbath_east
+    along: [0.00, 1.76]      # z[1.10, 2.86] 段 = 1.76m
+    bottom: 0.00
+    height: 0.30
+    zone: visible
+    reason: 主卫东墙，马桶区非淋浴，按防水口径其他≥0.3m
+  - id: walltile_mbath_south_shower
+    type: wall_region
+    wall: w_mbath_south
+    along: [0.00, 1.20]      # x[0, 1.20] 段 = 1.20m，淋浴湿区
+    bottom: 0.00
+    height: 1.80
+    zone: visible
+    reason: 主卫南墙西段，西淋浴湿区 x[0,1.2]，按防水口径淋浴区≥1.8m
+  - id: walltile_mbath_south_dry
+    type: wall_region
+    wall: w_mbath_south
+    along: [1.20, 2.60]      # x[1.20, 2.60] 段 = 1.40m
+    bottom: 0.00
+    height: 0.30
+    zone: visible
+    reason: 主卫南墙东段，非淋浴区
+
+  # ── 客卫 5.70m（北端淋浴 z≈2.30~2.75 贴东墙；南侧 z=3.55~4.30 为开放洗漱区）──
+  - id: walltile_gbath_north_shower
+    type: wall_region
+    wall: w_balc_south
+    along: [0.00, 1.50]      # 1.50m，客卫北墙
+    bottom: 0.00
+    height: 1.80
+    zone: visible
+    reason: 客卫北墙，淋浴区，按防水口径淋浴区≥1.8m
+  - id: walltile_gbath_east_shower
+    type: wall_region
+    wall: w_gbath_east
+    along: [0.00, 0.55]      # z[2.20, 2.75] 段 = 0.55m，淋浴贴东墙
+    bottom: 0.00
+    height: 1.80
+    zone: visible
+    reason: 客卫东墙北段，花洒贴此墙挂载，淋浴区
+  - id: walltile_gbath_east_rest
+    type: wall_region
+    wall: w_gbath_east
+    along: [0.55, 1.35]      # z[2.75, 3.55] 段 = 0.80m
+    bottom: 0.00
+    height: 0.30
+    zone: visible
+    reason: 客卫东墙南段，非淋浴
+  - id: walltile_gbath_east_open_vanity
+    type: wall_region
+    wall: w_gbath_east_open_vanity
+    along: [0.00, 0.75]      # 0.75m
+    bottom: 0.00
+    height: 0.30
+    zone: covered
+    reason: 客卫东侧开放洗漱区，悬浮台盆柜后遮蔽面走杂砖（柜体包络待与 J6 实机同图会审）
+  - id: walltile_gbath_west
+    type: wall_region
+    wall: w_gbath_west
+    along: [0.00, 1.35]      # 1.35m
+    bottom: 0.00
+    height: 0.30
+    zone: visible
+    reason: 客卫西墙，非淋浴
+  - id: walltile_gbath_west_open_vanity
+    type: wall_region
+    wall: w_gbath_west_open_vanity
+    along: [0.00, 0.75]      # 0.75m
+    bottom: 0.00
+    height: 0.30
+    zone: covered
+    reason: 客卫西侧开放洗漱区，悬浮台盆柜后遮蔽面走杂砖

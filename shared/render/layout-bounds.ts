@@ -63,6 +63,9 @@ export function computeLayoutBounds(input: LayoutBoundsInput): LayoutBounds {
       case 'wall_run':
         for (let i = 0; i < element.points.length - 1; i++) expandSegment(element.points[i].x, element.points[i].z, element.points[i + 1].x, element.points[i + 1].z, wallThickness / 2);
         break;
+      case 'wall_region':
+        // 贴砖检视态叠加层：几何落在所引用墙的 along 区间内，bounds 由该墙线段承担。
+        break;
       case 'curtain_run':
       case 'shower_screen':
         for (let i = 0; i < element.points.length - 1; i++) expandSegment(element.points[i].x, element.points[i].z, element.points[i + 1].x, element.points[i + 1].z, glassThickness / 2);

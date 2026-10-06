@@ -71,6 +71,23 @@ const WallRunSchema = z
   })
   .strict();
 
+// 贴砖检视态叠加层（DEC-2026-10-07-R05/R06）：inspection-only，引用已有墙 + along 区间 + 竖向范围。
+// wall 必须在 model-geometry 的墙声明中存在且未被 suppress；along 自该墙 from 端累计。
+// zone: covered=橱柜后遮蔽面（走杂砖）/ visible=可见面（正砖）。
+const WallRegionSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('wall_region'),
+    wall: z.string().min(1),
+    along: z.tuple([z.number().nonnegative(), z.number().positive()]),
+    bottom: z.number().nonnegative().default(0),
+    height: z.number().positive(),
+    zone: z.enum(['visible', 'covered']).default('visible'),
+    color: z.string().optional(),
+    reason: z.string().optional(),
+  })
+  .strict();
+
 // 淋浴玻璃隔断（独立玻璃，points-only，无碰撞；2026-08-21）
 const ShowerScreenSchema = z
   .object({
@@ -204,6 +221,7 @@ const OverlaySchema = z
         z.discriminatedUnion('type', [
           CurtainRunSchema,
           WallRunSchema,
+          WallRegionSchema,
           ShowerScreenSchema,
           SlidingDoorRunSchema,
           HingedGlassDoorSchema,
