@@ -1730,3 +1730,38 @@
 - **影响**：`schedule:render` 重出 checklist/budget；auditable checks 86 → 88。
 - **未动**：sequence 编号、付款门槛（payment_gate）、各包预算与 COST 拆分、既有 blocker 定义。
 - **验证**：`npm run verify:schedule` / `verify:facts` / `verify:all` / `test:server` / `typecheck` 见执行记录。
+
+### DEC-2026-10-06-TILE-01 干区窄长木纹砖双方案预演
+
+- **业主决定**：地面方向改为窄长木纹砖，KT 200×1200 与金意陶约 900×150 两款都做效果和成本比较，暂不选定具体产品；本轮按直铺错缝、相同中性浅暖木纹占位外观比较砖幅与缝线。原 600×1200 木纹砖保留为上轮设计基线，不再视作窄长砖采购定标。
+- **比较边界**：先比较几何解析的六个干区；业主随后确认主卫、客卫与厨房墙砖也要作为两店新设计方案一起比较。生活阳台在两店清单中未明确列项，仍作现行基线并记录报价缺项。入户花园不计新铺。两款门店花色、釉面、版面数和实际 SKU 均未核验，渲染不可代替门店样板。
+- **成本口径**：六个干区净铺 111.864㎡；沿用材料预算 8% 计划损耗。KT 同面积预估 504 片、主砖 ¥14,616；金意陶按约数 900×150 暂估 895 片、主砖 ¥15,931。分别保留门店原报 516 片／¥14,964 与 970 片／¥17,266，不把报价片数写回几何。人工、辅材、加工、配送、税费和美缝单列，未知不作零元。
+- **产物与下一关口**：两款独立材料候选、只读成本比较与同机位示意图见 `config/materials.yaml`、`config/tile-comparison.yaml`、`schedule/procurement.md` 和 `docs/design-iterations/tile-plank-comparison-20261006/evidence/`。两张原始手写报价照已归档；KT 主客卫/厨墙按报价中可读规格作占位比较。业主允许对金意陶原图作**标不确定性的推演**：③的48片约400×400砖名义面积7.68㎡，接近两卫现行净地面合计7.726㎡，可用作两卫地面效果假设；②④可能是卫浴墙面但规格和房间归属不明，①用途不明。推演不得写回原报价事实字段或作为定标依据。店家提供实际 SKU、样板、箱规、逐房净面积及全安装报价后，业主再决定最终默认材料；本轮不改 `data/current-scheme.json`。
+
+### DEC-2026-10-07-R01 餐厅边吊只倒外露阳角 + 厨卫铝扣板加分格缝
+
+- **日期**：2026-10-07。触发：业主看模型后指出「餐厅边吊过渡应该是外圆弧，现在都是内圆弧，很奇怪；厨卫好像没有铝扣板吊顶建模」。
+- **裁定①（圆角）**：只给**外露阳角**倒 R100，对接/同标高连续/贴墙/阴角交汇**一律正交**。`shared/render/CeilingZoneBuilder.ts` 的 `corner_radius` 原本是「整块 area 矩形四角同半径」，把每条服务带的四个角全抹圆——凡是属于对接或连续的角就被切出凹口（`quadraticCurveTo` 控制点落在直角上 = 切角），平视俯视都读成内圆弧。新增 `corner_radii: { nw|ne|se|sw }` 逐角声明（`corner_radius` 保留四角同半径旧语义，向后兼容）：`ceiling_dining_west_band` 只留 `nw: 0.10`（西缘 x=7.20 在 z[2.40,4.30] 无墙，西侧 bulkhead 折向厨房 2.65→2.50 台阶，是该带唯一敞空阳角），`ceiling_dining_north_band` 取消圆角（NW 沿厨房台阶与西带连续、NE 贴 `w_ent_west`、SE 与门厅吊顶同标高对接、SW 是与西带交汇的阴角，按 R18 附则保持正交）。`ceiling_living`/`ceiling_master_ac` 沿用 R18 已审定的四角同半径，本轮不动。
+- **裁定②（铝扣板）**：厨卫铝扣板**早已建模**（`ceiling_kitchen`/`ceiling_master_bath`/`ceiling_guest_bath`，`type: aluminum_buckle`，完成面 2.65）；业主「没有建模」的观感来自两点——天花只在第一人称可见（`setCeilingVisible(mode === 'first-person')`，轨道/俯视整层隐藏），且铝扣板是无分格的浅灰光面板。新增 `buckle_panel: { module: 0.30 }`：300×300 集成吊顶分格缝，沿 `area` 最小角起排块，缝为板面下 1.5–3.5mm 暗色细条（第一人称抬头可见模块，俯视/轨道跟随隐藏），边块不足一皮按现场切割板处理。
+- **顺带修正**：三条铝扣板 note 的「净高约2.55m」与模型/`verify:mep` B 区口径（完成面 2.65，板厚 0.15 自 2.80 原顶降板）不一致，改为 2.65。
+- **未动**：`ceiling.yaml` 分区数仍 25；MEP 分层标高、路由、风口、家具与电气点位不变；R18 附则「设备带/餐厅侧正交、禁斜切/喇叭/渐变/多层台阶」继续适用。
+- **验证**：`verify:all`（唯一 FAIL 为工作区内并行未提交的瓷砖比价工作遗留的 `dangling_reference`，与本条无关；已用 stash 对照复现）/ `verify:project-render-facts` / `test:server` 645 passed、2 failed（同为上述瓷砖比价与墙砖 UV 米制标定的遗留失败，stash 对照复现）/ `test:app` 479 passed / `typecheck`。
+
+### DEC-2026-10-07-R02 卫浴 PKG-100 第二次收口：主卫柜先入账 1,500 + 花洒降档 + 玻璃屏归属定案 + 条带定制柜划归二期
+
+- **日期**：2026-10-07。触发：业主以"墙里贵、墙外耗材化"原则复审 PKG-100，要求压缩并收口；本轮经同口径比对（`COST-100-01`~`06` 逐项对 R12 台账）后定案。
+- **裁定①（主卫浴室柜）**：DEC-2026-10-05-R12 的"主卫 3,000（约1.05m 哑白柜体+浅灰台面+圆上盆+通长镜面）"下调至 **¥1,500，业主先入账、柜型/台盆形式/龙头形式均未定**。客卫 ¥2,000（悬浮+云鲸 J6 基站仓，非标定制）**不动**。`COST-100-02` 由 5,000 → **3,500**。
+  - **口径澄清（本轮新查明）**：主卫"浴室柜"在建模侧是两套彼此独立的东西——①`mb_washbasin_cabinet`（1.05m×0.50m，AABB x[0.05,1.10]，`design-rules` 归 `vanity`，自带浅灰台面+圆上盆，**挂墙可用、不依赖底柜支撑**）= R12 那 3,000 的本体；②`mb_vanity_base_cabinet`（1.38m×0.565m×0.62m，AABB x[1.975,2.54]，`design-rules` 归 **`wardrobe`**）+ 两块同包络悬浮板 `mb_vanity_lower_board`/`main_board` + 三个 PVC 管井件 `mb_vanity_pvc_box`/`pvc_wardrobe_entry`/`pvc_service_chase` + `condensate_pipe_ac_outlet` = **定制柜/HVAC 协调账，从来不在 R12 的 3,000 里，也不在任何预算科目里**。前者归 `COST-100-02`，后者归二期，二者不得混淆。
+  - **未定的三条路径与 MEP 后果**（业主选择"之后再说"，本条只冻结预算、不冻结柜型）：**A** 买柜体+岩板台面，台上盆与壁挂龙头仍按 DEC-2026-10-03-R1 单配 → `faucet_mbath_vanity` 盆心 x=0.575、`drain_mbath_vanity` 墙排中心、`water-master-bath` 穿 `w_mbath_south` 点 x=0.575 **全部不动**，给排水参数与柜体 SKU 解耦；**B** 厂家一体盆成品柜 ¥1,500 全包 → 台上盆设计意图放弃，上述三点随柜体重定、`water-master-bath`（`plan_supported`，DEC-2026-10-06-R1 刚正交化至 x=0.575，且同时供台盆龙头与 `toilet_mbath`）**退回 pending 重画**；**C** 维持 R12 原设计 ¥3,000。**推荐 A**：省 600~1,300 且不动 MEP。
+  - **新增阻塞** `BLK-MASTER-VANITY-SKU`：柜体 SKU 未冻结前，主卫给排水不能按"已定案"施工；该 SKU 是水电交底前置（design 冻结前置，不是安装前置）。
+- **裁定②（花洒）**：R12 的"千元级恒温档 ¥2,000"下调至 **¥1,300，两套均普通明装、阀体与阀芯不降级**。同时显式登记：**放弃花洒侧二级恒温**，恒温改由海尔 KL7PRO 水伺服（DEC-2026-10-05-R5）在热水器侧承担一级。此举同时作废 R12 dedup 中"供水侧与水伺服热水器兼容"的恒温档前提。阀体/阀芯保持"墙里件"定位，不得按耗材采购。
+- **裁定③（玻璃屏）**：`COST-100-05` 固定淋浴玻璃屏 ×2 ¥1,800 **定案归 PKG-100**，`ownership_pending` 关闭。家电池（PKG-160 need 16,496 已超计划额 496）不接这笔。**登记口径冲突**：`config/materials.yaml` 的 `shower_enclosure_01` notes 仍写"归 appliances 池避免与 sanitary 三件套计数混淆"，与本条冲突，`materials.yaml` 侧待同步（遗留，不阻断记账）。
+- **裁定④（条带定制柜组）**：`mb_vanity_base_cabinet` + 两块同包络悬浮板 + 三个 PVC 管井件 + `condensate_pipe_ac_outlet` **整组划归二期**，对应 `P2-100` / `COST-150-01`，一期 `planned_cny` 保持 0。业主"定制柜放到二期、不急着落地"即该组现行状态，**本条不新增一期预算**。
+  - **边界含糊待补**：`P2-100`/`COST-150-01` 现名"主卧通顶定制衣柜"（对应 `master_wardrobe_tall_240` 2.4m 隔断柜），而冷凝水管实际墙行段（管心 x=2.50、z=3.10..4.30，穿 `w_mbath_south`）由 `mb_vanity_base_cabinet` 条带柜组收纳。条带柜组是否含在 P2-100 的 3,000–5,000 内，此前无任何 DEC 或台账说明，**二期启动前必须写清**；按项目单价反算该组约 1,500–2,300（柜体 ¥800/㎡ 投影 + 石英石 ¥400/延米 + PVC 井），为推断非报价。
+  - **一期过渡态**：条带将处于"1.05m 洗手柜 + 台上盆可用 / 无底柜收纳 / **冷凝水管裸露于主卧墙面至二期**"状态，属已知可接受过渡，不得按缺陷整改。
+- **未动**：`COST-100-01` 马桶维持 ZQ6650 cap ¥5,598，状态保持 `owner_selected_pending_verification`（坑距 pending-site-data #31/#36 未解、与九牧 11383-2-1/31KB-1、箭牌 AE1182U 同口径比价未跑，**不得写成 locked**）；`COST-100-04` 五金维持 ¥2,600；`COST-100-06` 浴霸 R3 定案 ¥1,500 不变（仍不计入 need 口径）。
+- **金额**：`estimated_need_cny` 16,998 → **14,798**（5,598 + 3,500 + 1,300 + 1,100 + 1,800 + 1,500），超父包计划额 8,000 **6,798**（原 8,998）。含浴霸全口径 16,298。**本轮净降 2,200，其中 1,500 来自主卫柜、700 来自花洒。**
+- **遗留**：① 主卫柜 SKU（路径 A/B/C）未定，`BLK-MASTER-VANITY-SKU` 未清；② 五金提质（地漏/角阀本体由 30–60 / 15–25 提至全铜级，约 +400）**本轮未采纳**，维持 2,600，砸墙级风险由业主接受；③ `materials.yaml shower_enclosure_01` 的 appliances 归属与裁定③冲突待同步；④ P2-100 条带柜组边界待补；⑤ 两卫马桶同柱给水/插座撞线（(`2.60,1.50)` / (`7.10,3.05)`，同柱同高程）仍阻塞 SKU 冻结。
+- **验证**：`verify:schedule` Exit 0（3 phases / 23 packages / 91 components / ¥210,000 allocated / known pending gap 由 35,994 降至 **33,794**，净 −2,200）→ `schedule:render` 再生 `budget.md`/`schedule.md`/`checklist.md` → `verify:all` Exit 0 以外唯一 FAIL 为 `verify:facts` 的 `dangling_reference`（瓷砖比价并行工作在 `docs/design-iterations/tile-plank-comparison-20261006/evidence/jyt-guest-bath-hypothesis.png` 引用 `JSQy` 而 `control.yaml` 仅有 `JSQ30-HWF`/`JSQ30-MK6`，与本条无关，已由 DEC-2026-10-07-R01 登记同一模式；`control.yaml` 现存热水器型号未因本条被删改）→ `test:server` 647 tests / 646 pass / 1 fail（失败项为 `mep-guidance-baseline` 的 `factsRun.status === 0` 断言，根因同上，非本条引入）→ `typecheck` Exit 0。本轮自查：首次 `verify:facts` 曾报 2 条 `unregistered_fact_occurrence`（`COST-100-02` 描述内 `¥1,500`/`¥2,000` 字面量），已按项目约定去掉 `¥` 前缀后归零（15→13 warnings）。
+- **关联文件**：`schedule/phase-1/control.yaml`（PKG-100、`COST-100-01`~`05`、`COST-150-01`、`BLK-MASTER-VANITY-SKU`）、`schedule/phase-2/control.yaml`（`P2-100` 边界补注）、`docs/decision_log.md`（本条）。
+- **决策人**：业主。

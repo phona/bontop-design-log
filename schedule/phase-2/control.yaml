@@ -25,7 +25,7 @@ items:
   - {id: P2-070, name: 窗帘电机, estimate_min_cny: 3000, estimate_max_cny: 4000, status: proposed}
   - {id: P2-080, name: 家庭健身设备, estimate_min_cny: 1000, estimate_max_cny: 1500, status: proposed}
   - {id: P2-090, name: 晾衣架, estimate_min_cny: 600, estimate_max_cny: 700, status: proposed}
-  - {id: P2-100, name: 主卧通顶定制衣柜（一期后移，藏空调冷凝水管槽，必须定制）, estimate_min_cny: 3000, estimate_max_cny: 5000, status: proposed}
+  - {id: P2-100, name: 主卧通顶定制衣柜（一期后移，藏空调冷凝水管槽，必须定制）, estimate_min_cny: 3000, estimate_max_cny: 5000, status: proposed, note: "DEC-2026-10-07-R02 边界补注：本条现名仅对应 master_wardrobe_tall_240（2.4m 通顶隔断柜）。空调冷凝水管墙行段（管心 x=2.50、z=3.10..4.30，经 mb_vanity_pvc_service_chase 穿 w_mbath_south 入主卫吊顶）实际由主卫条带柜组收纳，该组含 mb_vanity_base_cabinet（1.38m×0.565m×0.62m）+ mb_vanity_lower_board + mb_vanity_main_board（均与底柜同包络）+ mb_vanity_pvc_box/wardrobe_entry/service_chase + condensate_pipe_ac_outlet，design-rules 归 wardrobe 而非 vanity。条带柜组是否含在本条 3000-5000 内，此前无任何 DEC 或台账说明；按项目单价反算该组约1500-2300（柜体800/㎡投影+石英石400/延米+PVC井），为推断非报价。二期启动前必须写清覆盖边界，若未含则新增 P2-101。一期过渡态：条带为1.05m洗手柜可用、无底柜收纳、冷凝水管裸露于主卧墙面，属已知可接受过渡。条带柜组与 mb_washbasin_cabinet（1.05m，归 vanity，预算在 COST-100-02）不得混同或双计"}
   - {id: P2-110, name: 客厅与书房窗帘（一期后移）, estimate_min_cny: 4000, estimate_max_cny: 6000, status: proposed}
   - {id: P2-120, name: 书房与西北次卧家具（一期后移）, estimate_min_cny: 3000, estimate_max_cny: 5000, status: proposed}
   - {id: P2-130, name: 壁床柜（一期后移）, estimate_min_cny: 3000, estimate_max_cny: 5000, status: proposed}

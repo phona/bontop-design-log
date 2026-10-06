@@ -627,6 +627,10 @@ global_blockers:
     status: site_pending
     item: 设计模型把冰箱位暂记为约700毫米宽×700毫米深，当前收集到的501升候选有宽约833毫米者，冰箱型号不能在净开口复测前下单
     clears_when: 现场复测完成面净宽、净深、净高、开门余量和散热缝，并筛选出尺寸满足的型号
+  - id: BLK-MASTER-VANITY-SKU
+    status: alignment_required
+    item: 主卫浴室柜预算已按1,500元入账（DEC-2026-10-07-R02），但柜型、台盆形式与龙头形式未定（路径A 柜体+岩板台面+台上盆+壁挂龙头单配 / B 成品一体盆柜全包 / C 维持R12设计3,000）。若弃用台上盆与壁挂龙头，则 faucet_mbath_vanity 盆心 x=0.575、drain_mbath_vanity 墙排中心、water-master-bath 穿 w_mbath_south 点 x=0.575（该路线为 plan_supported，DEC-2026-10-06-R1 刚正交化，且同时供台盆龙头与马桶）与 DEC-2026-10-03-R1 的预埋口径同时作废，主卫给排水退回 pending 重画；厂家电商/1688 方案的 MOQ、起批数、运费、是否含安装与南宁配送口径亦未核
+    clears_when: 柜体SKU与台盆/龙头形式冻结，主卫给排水预埋点回填或重画并经量房复核，且含安装的南宁到手价取得
 
 glossary:
   - term: 工作包
@@ -1177,9 +1181,9 @@ work_packages:
     budget_pool: hard_finish
     budget:
       planned_cny: 8000
-      estimated_need_cny: 16998
-      estimated_need_note: 2026-10-03 业主询价轮次：智能马桶封顶5,598 + 浴室柜台盆镜柜约6,000 + 花洒约2,600 + 龙头下水角阀约1,200 + 固定玻璃屏约1,800 + 通用五金约1,500 = 18,698；2026-10-05（DEC-2026-10-05-R12）业主下调：花洒2,600→2,000（千元级恒温档）、浴室柜6,000→5,000（主卫3,000+客卫2,000含J6基站仓深化）、龙头下水角阀1,200→1,100（业主侧拆分口径500~600/套），need=5,598+5,000+2,000+1,100+1,800+1,500=16,998，超父包8,998。业主侧讨论口径"1.8万封顶含安装补件尾巴"未正式定标为 cap。马桶具体型号 ZQ6650-SA-CJM305 的坑距 305 承诺待核（pending-site-data 第 31 项），定死前须同口径比价。玻璃屏归属仍可能与PKG-070重叠；DEC-2026-10-05-R3 浴霸定入本包（COST-100-06，目标 1,500 未计入本 need 口径）；资金来源待业主决定
-      funding_status: owner_review_pending_20261003
+      estimated_need_cny: 14798
+      estimated_need_note: 2026-10-03 业主询价轮次：智能马桶封顶5,598 + 浴室柜台盆镜柜约6,000 + 花洒约2,600 + 龙头下水角阀约1,200 + 固定玻璃屏约1,800 + 通用五金约1,500 = 18,698。2026-10-05（DEC-2026-10-05-R12）第一次下调：花洒2,600→2,000、浴室柜6,000→5,000（主卫3,000+客卫2,000含J6基站仓）、龙头下水角阀1,200→1,100，need=16,998，超父包8,998。2026-10-07（DEC-2026-10-07-R02）第二次收口：主卫浴室柜3,000→1,500（业主先入账、柜型/台盆形式/龙头形式未定，BLK-MASTER-VANITY-SKU 未清）、花洒2,000→1,300（两套普通明装、阀体不降级、放弃花洒侧二级恒温改由 KL7PRO 水伺服承担一级）、玻璃屏1,800归属定案归本包（ownership_pending 关闭；与 materials.yaml shower_enclosure_01 的 appliances 归属冲突待同步）、条带定制柜组（mb_vanity_base_cabinet+两块悬浮板+三个PVC管井件+condensate_pipe_ac_outlet）划归二期 P2-100/COST-150-01 且不新增一期预算，need=5,598+3,500+1,300+1,100+1,800+1,500=14,798，超父包6,798。马桶维持 ZQ6650 cap 5,598 未动（坑距 pending-site-data #31/#36 未解、与九牧11383-2-1/31KB-1、箭牌AE1182U 同口径比价未跑，不得写成 locked）；五金维持2,600（提质+400 本轮未采纳）；DEC-2026-10-05-R3 浴霸 COST-100-06 目标1,500 仍未计入本 need 口径（含浴霸全口径16,298）。主卫柜三条路径的 MEP 后果见 DEC-2026-10-07-R02，其中弃用台上盆+壁挂龙头则 water-master-bath 退回 pending 重画
+      funding_status: owner_review_pending_20261007
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -1187,16 +1191,16 @@ work_packages:
       allocation_status: pending_fixture_schedule
       components:
         - {id: COST-100-01, name: 马桶, description: "分别记录主卫生间和客卫生间的型号坑距角阀软管安装及旧孔处理；2026-10-03 轮次登记九牧智能马桶ZQ6650两台封顶5,598元（cap），须核305/400坑距、低水压、送装与质保，并按shopping-research补取证后与九牧11383-2-1/31KB-1、箭牌AE1182U同口径比较；2026-10-05 业主侧出现具体型号方向 ZQ6650-SA-CJM305（2,799/台，后缀含坑距 305 承诺）——两卫坑距 305/400 未核（pending-site-data #31）前不得定死", quantity_basis: "2台，业主封顶5,598元（2026-10-03）", planned_cny: 5598, status: owner_selected_pending_verification}
-        - {id: COST-100-02, name: 浴室柜台盆和镜柜, description: "分卫生间记录柜体材质尺寸龙头下水安装和墙体固定条件；2026-10-05（DEC-2026-10-05-R12）业主下调至共5,000元：主卫3,000保留设计（约1.05m，哑白柜体+浅灰台面+圆上盆；主卫为通长镜面非镜柜）、客卫2,000定制/非标（悬浮+云鲸J6基站仓，约500mm仓宽为假设值，须与J6实机外廓/柜下净空同图会审）", quantity_basis: "2套，2026-10-05 目标5,000元", planned_cny: 5000, status: candidate_pending_quote}
-        - {id: COST-100-03, name: 花洒, description: "分卫生间记录混水阀花洒组件安装辅材和水压适配；2026-10-05（DEC-2026-10-05-R12）业主下调至千元级恒温档共2,000元（京造/九牧/恒洁同档待选型），供水侧与水伺服热水器兼容", quantity_basis: "2套，2026-10-05 目标2,000元", planned_cny: 2000, status: candidate}
+        - {id: COST-100-02, name: 浴室柜台盆和镜柜, description: "分卫生间记录柜体材质尺寸龙头下水安装和墙体固定条件；2026-10-07（DEC-2026-10-07-R02）业主先入账 1,500 元/主卫，柜型/台盆形式/龙头形式均未定（BLK-MASTER-VANITY-SKU），客卫 2,000 元 定制/非标不变（悬浮+云鲸J6基站仓，约500mm仓宽为假设值，须与J6实机外廓/柜下净空同图会审）。三条路径及 MEP 后果：A 买柜体+岩板台面、台上盆与壁挂龙头按 DEC-2026-10-03-R1 单配 → faucet_mbath_vanity 盆心 x=0.575、drain_mbath_vanity 墙排中心、water-master-bath 穿 w_mbath_south 点 x=0.575 全不动、给排水参数与柜体 SKU 解耦（推荐，约1,800~2,400）；B 厂家一体盆成品柜 1,500 全包 → 台上盆意图放弃、上述三点随柜体重定、water-master-bath 退回 pending 重画；C 维持 R12 设计 3,000。**主卫 1,500 只是预算入账，不等于成品一体盆方案**。注意与 mb_vanity_base_cabinet（1.38m 定制底柜+悬浮板+PVC管井族，归 wardrobe、二期 P2-100）是两套东西，不得混同或双计", quantity_basis: "2套：主卫1,500（预算先入账，选型未定）+ 客卫2,000（J6非标定制），2026-10-07 目标3,500元", planned_cny: 3500, status: candidate_pending_quote}
+        - {id: COST-100-03, name: 花洒, description: "分卫生间记录混水阀花洒组件安装辅材和水压适配；2026-10-07（DEC-2026-10-07-R02）由 R12 的千元级恒温档2,000下调至1,300：两套均普通明装、阀体与阀芯不降级；显式放弃花洒侧二级恒温，恒温改由海尔 KL7PRO 水伺服（DEC-2026-10-05-R5）在热水器侧承担一级；阀体/阀芯保持墙里件定位，不得按耗材采购；京造/九牧/恒洁同档待选型", quantity_basis: "2套，2026-10-07 目标1,300元", planned_cny: 1300, status: candidate}
         - {id: COST-100-04, name: 地漏角阀软管及卫生间小五金, description: "按点位逐件列数量品牌型号和安装费用；2026-10-03 轮次的龙头下水角阀约1,200元与通用五金约1,500元同归本项，不得叠加；2026-10-05（DEC-2026-10-05-R12）龙头下水角阀按业主侧拆分口径1,100元（500~600/套×2）", quantity_basis: "待点位表确认，2026-10-03 轮次合计约2,700元、2026-10-05 下调至2,600元", planned_cny: null, status: quantity_pending}
-        - {id: COST-100-05, name: 淋浴区玻璃隔断, description: "当前旧预算曾放在家电类，必须确认是否回到卫生间项目并避免重复计费；2026-10-05 业主侧口径：8mm 钢化+3C 固定玻璃约900/台×2=1,800（与 need 一致，ownership 仍待定账）", quantity_basis: 2处候选，待设计确认, planned_cny: null, status: ownership_pending}
+        - {id: COST-100-05, name: 淋浴区玻璃隔断, description: "2026-10-07（DEC-2026-10-07-R02）归属定案归 PKG-100，ownership_pending 关闭：8mm 钢化+3C 固定玻璃约900/台×2=1,800（主客卫各一处，与 DEC-2026-09-07-054 客卫整面固定玻璃无门一致；不做昂贵推拉淋浴房，复杂轨道与门铰属可砍溢价）。家电池 PKG-160 need 16,496 已超计划额496，不接这笔。遗留口径冲突：config/materials.yaml 的 shower_enclosure_01 notes 仍写「归 appliances 池避免与 sanitary 三件套计数混淆」，materials 侧待同步，同步前本条为记账权威", quantity_basis: "2处（主卫/客卫各1处）", planned_cny: 1800, status: ownership_resolved}
         - {id: COST-100-06, name: 卫生间取暖换气设备, description: "业主定标自购（DEC-2026-10-05-R3）：奥普 S2-Air 浴霸×2（风暖 2750W+换气 49W+照明 24W 三合一，集成吊顶式、线控面板），京东自营国补价 680.97/台（2026-10-05 页面观察，非成交价），两台 ≈1,362、目标 1,500 含配件余量；换气模块承担原独立排气；收房仍核对开发商场既有设备，若已提供则反转删项", quantity_basis: 2台；下单窗口在量房与扣板开孔方案冻结后, planned_cny: 1500, status: candidate}
     duration_workdays: {min: 3, max: 5}
     dependencies: [PKG-060, PKG-080, PKG-040]
     readiness: blocked
     status: not_started
-    blockers: []
+    blockers: [BLK-MASTER-VANITY-SKU]
     owner_roles: [洁具供应商, 水电施工, 业主]
     payment_gate: GATE-100-COMPLETE
     acceptance_refs: [check_dw_drain, check_plumb_drain]
@@ -1466,7 +1470,7 @@ work_packages:
       source_ref: furniture_soft
       allocation_status: pending_furniture_schedule
       components:
-        - {id: COST-150-01, name: 主卧通顶定制衣柜（后移二期）, description: 藏空调冷凝水管槽，成品柜无法替代，维持定制但推至二期；逐柜记录位置、宽高深、材质、内部格局、五金、运输安装和墙体固定条件, quantity_basis: 二期启动前深化, planned_cny: 0, status: deferred_to_phase_2}
+        - {id: COST-150-01, name: 主卧通顶定制衣柜（后移二期）, description: "藏空调冷凝水管槽，成品柜无法替代，维持定制但推至二期；逐柜记录位置、宽高深、材质、内部格局、五金、运输安装和墙体固定条件。2026-10-07（DEC-2026-10-07-R02）边界补注：本项现名仅对应 master_wardrobe_tall_240（2.4m 通顶隔断柜），而空调冷凝水管墙行段（管心 x=2.50、z=3.10..4.30，经 mb_vanity_pvc_service_chase 穿 w_mbath_south 入主卫吊顶）实际由主卫条带柜组收纳——mb_vanity_base_cabinet（1.38m×0.565m×0.62m，AABB x[1.975,2.54]，design-rules 归 wardrobe，在 w_mbath_east 西侧完成面退让15mm）+ mb_vanity_lower_board + mb_vanity_main_board（均与底柜同包络）+ mb_vanity_pvc_box/wardrobe_entry/service_chase 三件 + condensate_pipe_ac_outlet。条带柜组是否含在本项及 P2-100 的 3000-5000 内，此前无任何 DEC 或台账说明，二期启动前必须写清；按项目单价反算该组约1500-2300（柜体800/㎡投影+石英石400/延米+PVC井），为推断非报价。一期过渡态：条带为1.05m洗手柜可用、无底柜收纳、冷凝水管裸露于主卧墙面，属已知可接受过渡，不得按缺陷整改。与 mb_washbasin_cabinet（1.05m，design-rules 归 vanity，预算在 COST-100-02）是两套东西，不得混同或双计", quantity_basis: "二期启动前深化（含条带柜组边界待写清）", planned_cny: 0, status: deferred_to_phase_2}
         - {id: COST-150-02, name: 一期床架, description: 分房间记录尺寸、材质、结构、送货安装和保修；仅保留主卧与父母房，东南书房和西北次卧床具后移二期, quantity_basis: 2张（主卧+父母房）, planned_cny: null, status: quantity_pending}
         - {id: COST-150-03, name: 一期床垫, description: 与床架分开报价，分房间记录尺寸、软硬度、材料和试睡退换条件；仅保留主卧与父母房, quantity_basis: 2张（主卧+父母房）, planned_cny: null, status: selection_pending}
         - {id: COST-150-04, name: 东南书房与西北次卧家具（后移二期）, description: 书桌、书椅、书架/置物架、床具及柜体均不列入一期采购；西北次卧仅保留一期窗帘, quantity_basis: 二期范围, planned_cny: 0, status: deferred_to_phase_2}
