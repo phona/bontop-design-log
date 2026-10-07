@@ -22,6 +22,8 @@ import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/H
 import { WallTileButton, type WallTileButtonState } from './ui/WallTileButton.js';
 import { CeilingZoneButton, type CeilingZoneButtonState } from './ui/CeilingZoneButton.js';
 import { CeilingZonePanel } from './render/analysis/CeilingZonePanel.js';
+import { CeilingQuotePanel } from './render/analysis/CeilingQuotePanel.js';
+import { CeilingQuoteButton } from './ui/CeilingQuoteButton.js';
 import { TRADE_LABEL } from './render/analysis/ceiling-zone-colors.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
 import { PlacementPanel } from './ui/PlacementPanel.js';
@@ -71,6 +73,10 @@ export class App {
   private ceilingZoneState: CeilingZoneButtonState = 'loading';
   private ceilingZoneVisible = false;
   private ceilingZonePanel: CeilingZonePanel | null = null;
+  // 吊顶报价面板（DEC-2026-10-08-C03）：与分区高亮平级，纯数据面板，不碰 3D
+  private ceilingQuoteButton: CeilingQuoteButton | null = null;
+  private ceilingQuotePanel: CeilingQuotePanel | null = null;
+  private ceilingQuoteVisible = false;
   private mepCoordinationVisible = false;
   private mepCoordinationReady = false;
   private mepLintResult: MepLintResult | null = null;
@@ -180,6 +186,7 @@ export class App {
     this.setupElectricalTopologyButton();
     this.setupWallTileButton();
     this.setupCeilingZoneButton();
+    this.setupCeilingQuoteButton();
     const mepLintBadge = document.getElementById('mep-lint-badge');
     if (mepLintBadge) renderMepLintBadge(mepLintBadge, this.mepLintResult);
     this.setupDragHandlers();
@@ -276,6 +283,8 @@ export class App {
     // 吊顶分区高亮同样只依赖场景本身：分区声明随 /api/project 的 house.ceilingZones 一起到。
     this.ceilingZonePanel = new CeilingZonePanel(this.houseScene);
     this.setCeilingZoneState('ready');
+    // 吊顶报价面板：拉 /api/ceiling/quotes，不进 3D，所以同样只在场景就绪后建
+    this.ceilingQuotePanel = new CeilingQuotePanel(() => this.refreshOverviewData());
     this.resolveReady();
     } catch (error) {
       this.readyState = 'failed';
@@ -572,6 +581,18 @@ export class App {
       this.houseScene.setCeilingZoneHighlightVisible(false);
     }
     this.ceilingZoneButton?.sync();
+  }
+
+  private setupCeilingQuoteButton(): void {
+    this.ceilingQuoteButton = new CeilingQuoteButton({
+      onToggle: () => {
+        this.ceilingQuoteVisible = !this.ceilingQuoteVisible;
+        if (this.ceilingQuoteVisible) this.ceilingQuotePanel?.show();
+        else this.ceilingQuotePanel?.hide();
+        this.ceilingQuoteButton?.sync();
+      },
+      getActive: () => this.ceilingQuoteVisible,
+    });
   }
 
   private setupMepCoordinationButton(): void {

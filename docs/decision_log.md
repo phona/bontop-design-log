@@ -1974,3 +1974,15 @@
 - **验证**：`tests/server/ceiling-quotes.test.ts` 7 条（量与价分离、并排总额/差额/可比性、回落标记、切换只改一行且留 .bak 保留注释、fail-closed 五种坏输入、基线卡金额不变、坏文件回落）；联机烟测：加假报价 `smoke_kima`（板面 55/㎡、窗帘盒 32/m）→ `POST /active` → carpentry ¥1,627 → **¥2,808**（55×40.6676 + 32×17.85）、`pendingLabor` 清空、`totalActual` +¥1,181；未知 id 被拒并列出可用卡；烟测后已删除该卡并还原 active。`test:server` 685/685/0 → `verify:all` Exit 0 → `typecheck` 0。
 - **关联文件**：`config/ceiling-quotes.yaml`（新）、`server/ceiling-quotes.ts`（新）、`server/budget-calculator.ts`、`server/routes.ts`、`server/mcp-server.ts`、`shared/types.ts`、`config/facts.yaml`、`tests/server/ceiling-quotes.test.ts`（新）。
 - **决策人**：业主。
+
+### DEC-2026-10-08-C04 吊顶报价面板：App 内并排看数 + 一键切换
+
+- **日期**：2026-10-08。触发：C03 只给了 API/MCP 两个切换入口，业主要求 App 里也能看、也能切。
+- **选定方案**：机电组新增「吊顶报价」按钮 → `app/src/render/analysis/CeilingQuotePanel.ts`（`#right-panel-stack` 动态面板，样式沿用 `analysis.css` 与 `OverviewMenu` 瓷砖预览的语言）：
+  - **面板不算量**：只渲染 `GET /api/ceiling/quotes` 返回的内容——头部是「板面 40.668㎡ · 窗帘盒 17.85m」（服务端 takeoff 实算），下面每张卡两行 `数量 × 单价 = 小计` + 合计 + 与生效卡的差额。浏览器里不出现第二套面积口径。
+  - **切换即 API**：卡上「切换为生效」→ `POST /api/ceiling/quotes/active` → 刷新面板 + 回调 `App.refreshOverviewData()` 刷新总览/预算 → 播报摘要。失败时把服务端错误原文显示在面板顶部（不静默、不抛异常）。
+  - **把后果讲清楚**：面板脚注写明「只改写 active 一行、留 .bak、量不变只换单价、需进 Git」；没写含项范围的卡显示 `comparable` 警告，`per_unit: null` 的行显示「待报价」而不是 0。
+- **为什么不并进「吊顶分区」面板**：分区面板答「哪里要吊顶、多少量」，报价面板答「哪家多少钱、切哪家」——一个是几何视图、一个是价格台账，混在一起会让业主在 3D 检视时被价格干扰；按钮平级、面板平级，代码也平级（`CeilingQuotePanel` 不引用 3D 与分区高亮任何状态）。
+- **验证**：`app/src/render/analysis/CeilingQuotePanel.test.ts` 4 条（渲染算式与生效标记/差额、点击切换的 POST 体与回调、切换失败显示错误、接口坏掉不抛异常）+ `app/src/ui/CeilingQuoteButton.test.ts` 3 条；`test:app` 510/510 → `typecheck` 0 → `build:app` 通过；接口自检 `GET /api/ceiling/quotes` 返回 activeId/quantities/comparison 三块，面板取数即用。
+- **关联文件**：`app/src/render/analysis/CeilingQuotePanel.ts`（新）、`app/src/render/analysis/CeilingQuotePanel.test.ts`（新）、`app/src/ui/CeilingQuoteButton.ts`（新）、`app/src/ui/CeilingQuoteButton.test.ts`（新）、`app/src/render/analysis/analysis.css`、`app/index.html`、`app/src/App.ts`。
+- **决策人**：业主。

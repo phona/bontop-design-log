@@ -70,3 +70,112 @@
 .measurement-btn-save:hover {
   background: rgba(59, 130, 246, 0.2);
 }
+
+/* ─── 吊顶报价面板（DEC-2026-10-08-C03）─── */
+.ceiling-quote-basis {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 10px;
+  color: #b8c4d4;
+  font-size: 12px;
+}
+
+.ceiling-quote-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.ceiling-quote-card.is-active {
+  border-color: #2a9d8f;
+  background: rgba(42, 157, 143, 0.12);
+}
+
+.ceiling-quote-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.ceiling-quote-meta {
+  color: #9aa4b2;
+  font-size: 11px;
+  flex: 1;
+}
+
+.ceiling-quote-row {
+  color: #ccd;
+  font-size: 12px;
+  margin: 2px 0;
+}
+
+.ceiling-quote-total {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.ceiling-quote-up { color: #f4a261; }
+.ceiling-quote-down { color: #7fd1c4; }
+.ceiling-quote-pending { color: #e9c46a; }
+
+.ceiling-quote-tag {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-left: 4px;
+  font-size: 10px;
+  color: #9aa4b2;
+}
+
+.ceiling-quote-tag-active {
+  border-color: #2a9d8f;
+  color: #7fd1c4;
+}
+
+.ceiling-quote-warn {
+  margin-top: 4px;
+  color: #e9c46a;
+  font-size: 11px;
+}
+
+.ceiling-quote-error {
+  color: #e63946;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.ceiling-quote-switch {
+  background: #2a2a3e;
+  color: #ccd;
+  border: 1px solid #3a3a5e;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ceiling-quote-switch:hover:not(:disabled) {
+  background: #3a3a5e;
+  color: #fff;
+}
+
+.ceiling-quote-switch:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.ceiling-quote-foot {
+  margin-top: 8px;
+  color: #9aa4b2;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.ceiling-quote-foot code {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 0 3px;
+}
