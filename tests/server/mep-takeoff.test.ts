@@ -54,8 +54,8 @@ test('线径解析只认显式字符串，猜不了', () => {
   assert.equal(parseWireSizeMm2('待厂家铭牌核验'), null);
 });
 
-test('端点全部可解析：102 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
-  assert.equal(resolution.total, 102);
+test('端点全部可解析：133 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
+  assert.equal(resolution.total, 133);
   assert.equal(resolution.unresolved, 0);
 });
 
@@ -144,10 +144,10 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   assert.equal(takeoff.coverage.routedPointIds.length + takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount);
   // 两个 status 均 pending 的点位不进入可报价基线（微蒸烤预留 + 墙体归属待量房的儿童房空调插座）。
   // 2026-10-07 声明式补客客厅 ordinary_power_living 十条路由后，已画线点位 57 → 67。
-  assert.equal(takeoff.coverage.routedPointIds.length, 67);
-  assert.equal(takeoff.coverage.byType.socket?.routed, 26);
+  assert.equal(takeoff.coverage.routedPointIds.length, 98);
+  assert.equal(takeoff.coverage.byType.socket?.routed, 34);
   assert.equal(takeoff.coverage.byType.faucet?.routed, 4);
-  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 67);
+  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 98);
   // 未路由点位逐条显形，不进采购量
   assert.equal(takeoff.coverage.unroutedPoints.length, takeoff.coverage.unroutedPointIds.length);
 });

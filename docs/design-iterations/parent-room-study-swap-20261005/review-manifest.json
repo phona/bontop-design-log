@@ -4,7 +4,7 @@
   "iteration_id": "parent-room-study-swap-20261005",
   "subject": "父母房↔书房功能互换（几何不动）+ 客房隔开 + 书房储物扩容 + 删除轻训练器材",
   "state": "batch_a_b1_b2_done",
-  "state_note": "批次 A（衣柜 roomOverride）+ B-1（B5-A 电脑回路改道）+ B-2（起夜路径 9 灯 + 客房床头组，DEC-2026-10-05-R15）已完成；标准 v1.1 修订回路规则为\"优先并入既有照明回路\"。电气点位 98→110，回路仍 22。verify:all / test:server 609/609 / typecheck / test:app 470/470 全绿。剩余：B-2 床头电位最终坐标待量房（剪力墙探测）、night_living_mid 取电、批次 D 浏览器证据。 另：DEC-2026-10-05-R17 关闭床头壁灯/阅读灯（业主明确不做）。",
+  "state_note": "批次 A（衣柜 roomOverride）+ B-1（B5-A 电脑回路改道）+ B-2（起夜路径点位 + 客房床头组）已完成；R17 不做客房嵌入/壁装床头灯。R12 删除客卫 NP-6/7/8 内置低位灯，客卫使用现有主灯手动照明，后续感应需求可用可插拔灯解决。电气点位当前 108 个，内置起夜灯 6 个；此前验证结果为历史基线，R12 后 verify:all 待复核。剩余：NP-4b 取电及路径覆盖、量房墙体/门洞复核、批次 D 浏览器证据。 R13：Web/GLB 夜灯共用竖向几何；墙装灯体出墙，开敞点为低位灯柱。人体感应逻辑与落地灯碰撞仍未实现。",
   "source_version": {
     "config_refs": [
       "config/house.yaml",
@@ -22,21 +22,34 @@
       "shared/types.ts",
       "shared/render/FixtureFactory.ts"
     ],
-    "render_facts_ref": "data/project-render-facts.json（derived；本轮未重新生成）",
+    "render_facts_ref": "data/project-render-facts.json（derived；DEC-2026-10-07-R12 后重新生成）",
     "source_digest": "现行配置即为讨论基线：study=父母房 12.75㎡（bed_150/wardrobe_180/desk/chair），bedroom_se=书房 9.45㎡bbox/8.35㎡净（desk/chair/study_seasonal_wardrobe_wall + 轻训练三件 placed），两房均为 MJV-28T2/P-SS 2.8kW（ac_parent @5.50,6.00 / ac_study @15.10,5.85），home_fitness_light_set ¥1,800 candidate 未核价未下单，PKG-150 ¥19,000 一期家具池含父母房床/床垫/成品衣柜",
     "generated_at": "2026-10-05T14:00:00+08:00"
   },
   "validation": {
-    "commands": [],
-    "results": [],
-    "config_status": "NOT_RUN",
-    "geometry_status": "NOT_RUN",
-    "consistency_status": "NOT_RUN",
-    "functional_checks_status": "NOT_RUN",
-    "application_status": "NOT_RUN",
-    "typecheck_status": "NOT_RUN",
+    "commands": [
+      "npm run verify:all",
+      "compiled verifier set from TypeScript output in /tmp (same verifier entrypoints)",
+      "npm run typecheck",
+      "verify:lighting-config + verify:project-render-facts (compiled entrypoints)",
+      "agent-browser local visual inspection"
+    ],
+    "results": [
+      "npm run verify:all blocked before the first verifier by sandbox tsx IPC listen EPERM at /tmp/tsx-1000/*.pipe",
+      "Compiled verifier entrypoints: 13 passed; verify-data-consistency reports the pre-existing sock_child_ac wall-segment error tracked in docs/pending-site-data.md #42",
+      "project-render-facts regenerated successfully: 21 lighting fixtures; YAML/JSON parse checks passed",
+      "npm run typecheck: passed",
+      "verify:lighting-config: passed; verify:project-render-facts: passed (21 fixtures)",
+      "Browser ready at http://localhost:5175/; wall and floor night_light objectIds present; close-up evidence saved under tmp/screenshots/night-lights/"
+    ],
+    "config_status": "PASS_WITH_EXISTING_WARNING_BASELINE",
+    "geometry_status": "PASS_WITH_EXISTING_WARNINGS",
+    "consistency_status": "FAIL_UNRELATED_EXISTING_SOCK_CHILD_AC",
+    "functional_checks_status": "PARTIAL_VERIFIED",
+    "application_status": "PARTIAL_BROWSER_VERIFIED",
+    "typecheck_status": "PASS",
     "generated_files_touched_directly": false,
-    "note": "讨论轮次不跑验证；实施轮必须按 decision-brief.acceptance.validation_commands 全量执行"
+    "note": "R12 scope is synchronized. Exact npm verify:all could not start under the sandbox because tsx could not create its IPC pipe; compiled verifier entrypoints were used to assess the same checks. One unrelated existing point-placement error remains at sock_child_ac (#42). No test suite was run. R13 static model visual review passed; browser runtime still has no proximity-trigger/PIR behavior and floor bollards are not included in camera collision."
   },
   "evidence": {
     "required_views": [
@@ -48,21 +61,86 @@
       "书房桌面工作视角",
       "起夜路径（客房→客卫）第一人称视角"
     ],
-    "status": "not_collected",
-    "items": [],
+    "status": "partial",
+    "items": [
+      {
+        "id": "night_wall_closeup_after_v4",
+        "view": "客厅低位墙灯近景",
+        "url": "http://localhost:5175/",
+        "title": "和萃 701 - 3D 装修设计",
+        "app_ready": true,
+        "config_error_banner": false,
+        "ui_warning_badge": "178 (existing MEP warning summary)",
+        "camera": {
+          "position": [
+            12.05,
+            1.15,
+            6.75
+          ],
+          "target": [
+            13.36,
+            0.3,
+            5.1
+          ]
+        },
+        "object_ids": [
+          "electrical:night_living_north"
+        ],
+        "runtime_query": "type=Group; mountKind=wall; position≈[13.323,0.30,5.10]; wallSide=west",
+        "snapshot": "tmp/screenshots/night-lights/night_wall_closeup_after_v4.snapshot.txt",
+        "png": "tmp/screenshots/night-lights/night_wall_closeup_after_v4.png",
+        "source_refs": [
+          "shared/render/NightLightGeometry.ts",
+          "app/src/render/InteriorLightingSystem.ts"
+        ]
+      },
+      {
+        "id": "night_corridor_isolated_after_v2",
+        "view": "走廊口落地灯近景（仅该夜灯 SpotLight 可见）",
+        "url": "http://localhost:5175/",
+        "title": "和萃 701 - 3D 装修设计",
+        "app_ready": true,
+        "config_error_banner": false,
+        "ui_warning_badge": "178 (existing MEP warning summary)",
+        "camera": {
+          "position": [
+            8.8,
+            1.2,
+            7.5
+          ],
+          "target": [
+            7.6,
+            0.15,
+            5.3
+          ]
+        },
+        "object_ids": [
+          "electrical:night_corridor"
+        ],
+        "runtime_query": "type=Group; mountKind=floor_standing; position=[7.60,0,5.30]; totalHeight≈0.30m",
+        "snapshot": "tmp/screenshots/night-lights/night_corridor_isolated_after_v2.snapshot.txt",
+        "png": "tmp/screenshots/night-lights/night_corridor_isolated_after_v2.png",
+        "source_refs": [
+          "shared/render/NightLightGeometry.ts",
+          "app/src/render/InteriorLightingSystem.ts"
+        ]
+      }
+    ],
     "runtime_browser": {
-      "wrapper": null,
-      "command": null,
-      "status": "not_collected",
-      "session": null,
-      "url": null,
-      "app_ready": null,
-      "warnings": [],
+      "wrapper": "/home/tao/.local/bin/agent-browser",
+      "command": "agent-browser --session bontop-f957d2ec2c5f (open, wait networkidle, app ready poll, snapshot, runtime query, screenshot, close)",
+      "status": "partial_valid",
+      "session": "bontop-f957d2ec2c5f",
+      "url": "http://localhost:5175/",
+      "app_ready": true,
+      "warnings": [
+        "178 UI warning badge is the existing MEP summary; no config-error banner observed"
+      ],
       "banner": null,
-      "snapshot": null,
-      "png": null,
-      "runtime_query": null,
-      "note": "讨论轮次不采集浏览器证据；不得伪造"
+      "snapshot": "tmp/screenshots/night-lights/night_wall_closeup_after_v4.snapshot.txt; tmp/screenshots/night-lights/night_corridor_isolated_after_v2.snapshot.txt",
+      "png": "tmp/screenshots/night-lights/night_wall_closeup_after_v4.png; tmp/screenshots/night-lights/night_corridor_isolated_after_v2.png",
+      "runtime_query": "electrical:night_living_north mountKind=wall; electrical:night_corridor mountKind=floor_standing; 6 night_light fixtures loaded",
+      "note": "Captures the two model archetypes only; the full bedroom-to-bath path required by this iteration remains unreviewed. Sensor proximity behavior and floor-lamp collision are not implemented."
     }
   },
   "aesthetic_review": {
@@ -153,5 +231,44 @@
       "night_living_mid 取电方式未定",
       "同版本浏览器证据未采集"
     ]
+  },
+  "local_reviews": {
+    "night_light_model": {
+      "aesthetic": {
+        "verdict": "PASS",
+        "blocking_issues": [],
+        "non_blocking_notes": [
+          "Wall housing, sensor window and diffuser are visible; bollard base, post and diffuser ring are readable. Floor exposure in the preview is bright, limiting photometric judgment."
+        ],
+        "evidence_refs": [
+          "tmp/screenshots/night-lights/night_wall_closeup_after_v4.png",
+          "tmp/screenshots/night-lights/night_corridor_isolated_after_v2.png"
+        ],
+        "requested_changes": [],
+        "assumptions": [
+          "Review covers static shape and visible light only."
+        ]
+      },
+      "functional": {
+        "verdict": "BLOCKED",
+        "blocking_issues": [
+          "Proximity-trigger/timeout behavior is not simulated in the browser.",
+          "Freestanding night-light fixtures are not registered in first-person collision detection."
+        ],
+        "non_blocking_notes": [
+          "Wall side and mount offsets now place wall housings outside the modeled wall finish face. NP-5 remains floor-standing because the nearby wall is occupied by cabinetry or constrained by a door opening."
+        ],
+        "evidence_refs": [
+          "tmp/screenshots/night-lights/night_wall_closeup_after_v4.png",
+          "tmp/screenshots/night-lights/night_corridor_isolated_after_v2.png",
+          "app/src/render/InteriorLightingSystem.ts",
+          "config/render/overrides.yaml"
+        ],
+        "requested_changes": [],
+        "assumptions": [
+          "The current requested scope was static night-light model improvement; collision and sensor interaction remain separate implementation scope."
+        ]
+      }
+    }
   }
 }

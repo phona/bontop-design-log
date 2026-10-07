@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { LightingRenderConfig, RenderLightingFixture, WallLampConfig } from '../types.js';
 
-const DEFAULT_WALL_HALF_THICKNESS = 0.06;
+export const DEFAULT_WALL_HALF_THICKNESS = 0.06;
 const BACKPLATE_DEPTH = 0.008;
 
 const FALLBACK_WALL_LAMP: Omit<WallLampConfig, 'id'> = {

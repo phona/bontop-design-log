@@ -969,7 +969,7 @@ facts:
         extract: 'config/electrical\.yaml 共\s*(\d+)\s*个点位'
         severity: error
         expect_matches: 1
-      # 2026-10-05 补齐 guidance mirror：§0 规模表的电气点位行（110）此前只由
+      # 2026-10-05 补齐 guidance mirror：§0 规模表的电气点位行（历史 110；当前 108）此前只由
       # electrical-topology.yaml 单点对账；plumbing/ceiling/layers 都有 guidance mirror，
       # 电气这条缺位 —— 施工指导是水电交底现场最常翻的那份，缺 mirror 等于交底单与登记表
       # 可以各自漂移。正则与 plumbing/ceiling 两条同族（`\.yaml[^0-9]{0,12}共 N 个…`）。
@@ -1425,7 +1425,7 @@ contracts:
     room_heights_key: mep.room_heights
     default_room_height: 2.8
     tolerance: 0.005
-    registered_conflicts: 31
+    registered_conflicts: 55
     prose:
       - path: docs/mep-construction-guidance.md
         extract: '低于降板完成面的既有冲突\s*(\d+)\s*处'
@@ -1436,7 +1436,7 @@ contracts:
     #    原口径把 13 处地面管计入冲突、稀释真信号。该口径变化按契约修正通道登记（附本 DEC 全引 + 4 文件同步），不是消音。」
     # 落地现状（2026-10-06 本轮，双引擎同口径）：shared/mep-hvac-lint.ts 的 ceiling_clearance_unverified 与
     #   shared/facts-lint.ts 的 T3.11 均已按此口径收窄为吊顶承载层 6 类（CEILING_CARRIED_LAYERS /
-    #   CEILING_CARRIED_LAYERS_FACTS），两侧实算一致 = **31 处**；20 处走地给排水按 DEC 裁定退出比较。
+    #   CEILING_CARRIED_LAYERS_FACTS），两侧实算一致 = **55 处**；20 处走地给排水按 DEC 裁定退出比较。
     #   verify:mep 与 verify:facts 对同一条路线给出同一结论，不存在两套口径。
     check_scope:
       compared_layers: [strong_power, weak_power, refrigerant, condensate, supply_air, return_air]

@@ -2218,3 +2218,38 @@
 - **连带登记**：ceiling_clearance_unverified 25 → **32**、`c.mep_layer_below_drop_bottom` 登记基数 24 → **31**。新增 7 条全部属于既有残留同类（"竖直下引至设备点位的末点"），随本次路由声明一起登记，非数据消音。
 - **关联文件**：`config/mep-hvac-coordination.yaml`、`shared/mep-hvac-coordination-schema.ts`、`shared/mep-hvac-lint.ts`、`docs/mep-construction-guidance.md`（92→102、24→31）、`config/facts.yaml`、`docs/design-iterations/mep-lint-governance-20261006/review-manifest.json`、`tests/server/mep-takeoff.test.ts`。
 - **决策人**：业主。
+
+### DEC-2026-10-07-R12 删除客卫内置起夜灯，后续按需使用可插拔感应夜灯
+
+- **日期**：2026-10-07。触发：业主认为马桶/洗漱区低位灯会增加防水与安装复杂度，并确认客卫内可以直接打开现有卫生间主灯。
+- **裁定**：删除客卫三个内置 `night_light` 点位：NP-6 `night_gbath_door`、NP-7 `night_gbath_vanity`、NP-8 `night_gbath_inner`。夜间入卫后使用现有 `light_gbath_panel`，由 `switch_gbath` 手动控制；若入住后发现需要自动低位引导，再按需添置可插拔感应夜灯，不纳入本期预埋和回路方案。
+- **配置影响**：`config/electrical.yaml` 点位数 111 → 108；`lighting_bedrooms_bath` 成员 14 → 11（9 个日常灯 + 2 个客房起夜灯），照明回路成员总数 24 → 21；删除三个对应的 `config/render/overrides.yaml` 渲染覆盖。客卫普通照明回路与 `control_gbath_light` 保留。
+- **实例文档**：更新 `night-path-lighting-instance.md` 的有效点位、控制和入口手动开灯说明；2026-10-05 的 `electrical-recommendation-20261005.md` 保留原建议作为历史记录，并标记本条为后续裁定。
+- **边界**：本裁定只删除客卫内置夜灯，不代表卫生间照明防水/湿区设计已验收；现有客卫平板灯方案不变。若后续使用插电感应夜灯，按实际安装位置和产品要求核对防溅/湿区条件。
+- **验证**：`data/project-render-facts.json` 已由投影生成器重生成（21 灯具）。`npm run verify:all` 在沙箱内被 tsx IPC 管道 `listen EPERM /tmp/tsx-1000/*.pipe` 阻断；将 verifier 编译到 `/tmp` 后分别运行，layout/topology、家具、rules、collision、spatial、MEP、电气、render-facts、lighting-config、facts、MEP takeoff、schedule 共 13 项通过。`verify-data-consistency` 仍报既有 `sock_child_ac` 墙段越界错误（tracked `docs/pending-site-data.md #42`，与本条无关）。本轮未运行测试。
+- **决策人**：业主。
+
+
+### DEC-2026-10-07-R13 夜灯模型改为贴墙灯体 + 低位落地引导柱
+
+- **日期**：2026-10-07。业主要求改进夜灯模型，避免浏览器把低位灯显示为扁片或普通吸顶灯。
+- **实现**：新增共享 `NightLightGeometry`，浏览器与 GLB/export 共用同一模型。贴墙灯显示竖向外壳、感应窗、下沿扩散片与遮光檐；灯体中心按墙半厚度 0.06m + 灯体半深 + 3mm 余量推出完成面。无墙点显示约 0.30m 总高的底座灯柱、环绕扩散段与感应带。浏览器 `InteriorLightingSystem` 增加独立 `night_light` 分支，使用低亮度、短距离向地照明，不再落到 dome fallback，也不再用实体扁平光斑。
+- **NP-5 口径**：`night_corridor` 暂保留落地柱。`w_st_east` 客厅侧被电视墙柜体占用，`w_st_north` 右端邻书房门洞；电气点位仍没有 `wall`/`wall_side`。已修正 `config/render/overrides.yaml` 中误写 `w_st_north` 墙装的理由，统一为开敞点落地灯候选。取电和实际安全净空仍待现场深化。
+- **边界**：本条改进的是静态模型与光束表现。传感窗/传感带是外观标记，浏览器尚未实现人体接近触发、延时熄灭或夜间照度阈值；落地灯柱也尚未接入第一人称碰撞检测，因此不能用本条证明真实感应行为或通行安全。
+- **验证**：`npm run typecheck` 通过；`verify:lighting-config` 与 `verify:project-render-facts` 编译后检查通过（21 lighting fixtures）；浏览器 `http://localhost:5175/` 就绪，wall/floor night-light 对象均存在，保存近景见 `tmp/screenshots/night-lights/night_wall_closeup_after_v4.png` 与 `night_corridor_isolated_after_v2.png`。未运行测试套件。
+- **独立审阅**：夜灯几何审美审阅 `PASS`；功能审阅 `BLOCKED`（感应触发与落地灯碰撞仍未实现）。
+- **决策人**：业主。
+
+### DEC-2026-10-07-M05 并行声明式补路由：书房/客房/儿童房 + 四卧两卫 + 走廊入户（三条回路 23 条）
+
+- **日期**：2026-10-07。触发：M04 之后，业主要求把 batch2/3/6 并行落地。
+- **执行方式**：三个 subagent 并行起草（各写 `tmp/routes-batchN.yaml`，禁止改 config 防写冲突），主会话合并后统一过全门禁。批次互不重叠（不同房间、不同回路），无合并冲突。
+- **路由声明（`config/mep-hvac-coordination.yaml` 102→133 条）**：
+  - **batch2 `ordinary_power_parent_child` 8 条**：书房/客房/儿童房插座。借既有空调/照明同孔带穿 `w_be_west` 门头、`w_st_north`、`w_nw_south` 进各房，扇形扇出到北/西/东三墙；**一律不穿透剪力墙**（`w_mb_east`/`w_east_upper`/`w_be_north` 全部只贴板面明敷+竖直接线，reason 声明暗盒锚固 site_pending）。
+  - **batch3 `lighting_bedrooms_bath` 16 条**：主卧三控拆成 3 条等标高连续管（中途开关选北床头，改序只动跳线不改管）；起夜灯与开关同位不同高用纯竖直段（1.30m 接开关、继续沉 0.95m 接 0.35m 起夜灯，共享一根管下引）。`switch_kitchen` 因房间属厨房**故意留白**归厨房批；客卫 NP-6/7/8 因并发 R12 删点而取消路由、草案留档。
+  - **batch6 `lighting_entry_base` 7 条**：走廊/入户筒灯与起夜灯，全部从 `strong-light-entry-base`/`strong-light-corridor` 终点分支；NP-4a/NP-3 同墙带串链共享 2.25m 竖直下引；两个落地立柱候选各自下引（不在客厅地面做 3.40m 外露拉线，多花约 2.55m 管并显式登记，不暗省）。
+- **效果**：点位闭环 **67/134 (50%) → 98/134 (73%)**；未路由 64 → **33**；强电管计价 192.1m → **253.4m**；导线 561m → **815m**；`ordinary_power_parent_child` 与 `lighting_entry_base` **回路清零**。
+- **连带登记**：路由数 133、ceiling_clearance_unverified 32→56、`c.mep_layer_below_drop_bottom` 31→55、lint 90→125、must_fix 桶 17→23（shear_wall_parallel_route 8→14）；全部新增 ceiling hit 均为"路由下行至声明设备点位的竖直末段"，属 §0 已登记①类残留同源，非消音。
+- **门禁**：verify:facts / verify:mep-takeoff / verify:schedule / verify:mep(0 error) / typecheck(0) 全绿；`test:server` 731/742，余 11 个失败均为并发会话 `config/hvac.yaml` 的 `outdoor_a2` anchor 与 VRF 外机 id 重复所致（hvac.yaml 自 11ef1ff 未变，属既有问题）。
+- **剩余 33 个未路由点位**：厨房 5（依赖橱柜深化）、主卫/客卫/阳台 10（依赖台盆 SKU / 归属裁定）、给排水 6（依赖 #8 入户点、#44 净水器）、空调线控器 6（依赖归属）、客厅双控 2、其余专用回路 4。
+- **决策人**：业主。

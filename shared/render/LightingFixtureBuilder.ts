@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { LightingRenderConfig, RenderLightingFixture, TrackLightConfig } from '../types.js';
 import { getResolvedTrackLightHeads, getTrackLightConfig } from './TrackLightLayout.js';
 import { buildWallLampVisual, getWallLampConfig, wallSideNormal } from './WallLampGeometry.js';
+import { buildNightLightVisual } from './NightLightGeometry.js';
 
 export interface LightingFixtureBuildResult {
   group: THREE.Group;
@@ -108,24 +109,13 @@ function addLedStrip(group: THREE.Group, fixture: RenderLightingFixture, glow: T
   return 1;
 }
 
-// 2026-10-05 起夜路径低位灯（DEC-2026-10-05-R15）：0.25–0.40m 安装高度的小型盒体，
-// 贴墙安装（wall_side 决定朝内）或落地立柱；暖白光，不做顶部投光。
+// 2026-10-05 起夜路径低位灯（DEC-2026-10-05-R15）：wallSide 决定贴墙灯体法线；
+// 无墙锚点时按低位落地灯柱表现。两条渲染链共用同一个几何生成器。
 function addNightLight(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE.Color): number {
-  // 贴墙安装时把灯体从墙线朝房间内推半墙厚，避免嵌在墙里（与 WallLampGeometry 同口径：
-  // wall_side 指向房间内侧；无 wall_side 的落地立柱保持原位）。
-  const wallNormal = wallSideNormal(fixture.wallSide);
-  const inset = wallNormal ? 0.06 : 0;
-  const px = fixture.position.x + (wallNormal ? wallNormal.x * inset : 0);
-  const pz = fixture.position.z + (wallNormal ? wallNormal.z * inset : 0);
-  const py = fixture.position.y;
-  const body = part(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.08), emissive(glow)), fixture, 'body', 'night_light');
-  body.position.set(px, py, pz);
-  group.add(body);
-  // 低位向下微倾的指示光斑（视觉标记，不做真实照明计算）
-  const spill = part(new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.006, 0.06), new THREE.MeshBasicMaterial({ color: glow.clone().multiplyScalar(0.55), transparent: true, opacity: 0.55 })), fixture, 'spill', 'night_light_spill');
-  spill.position.set(px, py - 0.03, pz);
-  group.add(spill);
-  return 2;
+  const visual = buildNightLightVisual(fixture, glow);
+  group.userData = { ...group.userData, ...visual.userData };
+  group.add(visual);
+  return visual.children.length;
 }
 
 function buildFixture(fixture: RenderLightingFixture, lighting?: LightingRenderConfig): { group: THREE.Group; parts: number } {

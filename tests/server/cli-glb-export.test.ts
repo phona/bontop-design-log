@@ -233,7 +233,7 @@ test('CLI facts projection exports lighting fixture geometry and no-facts CLI do
   assert.equal(withoutFacts.exportRoot.getObjectByName('LIGHTING_FIXTURES'), undefined);
   const withFacts = buildCliHouseScene(undefined, undefined, undefined, undefined, 'data/project-render-facts.json');
   const fixtures = [...withFacts.index.lightingFixtures.values()];
-  assert.equal(fixtures.length, 24); // 2026-10-05 R15：+9 个 night_light 渲染件（15→24）
+  assert.equal(fixtures.length, 21); // R15 起夜灯 + R12 删除客卫 3 个内置点位后（24→21）
   assert.equal(withFacts.report.lightingFixtures, fixtures.length);
   assert.deepEqual(new Set(fixtures.map((fixture) => fixture.userData.fixtureType)), new Set(['pendant', 'track_light', 'led_strip', 'dome', 'wall_lamp', 'downlight', 'night_light'])); // 2026-10-05 R15：+night_light
   for (const fixture of fixtures) {

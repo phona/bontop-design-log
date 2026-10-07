@@ -124,21 +124,6 @@
   applies_to: [web, blender]
 - id: night_corridor
   anchorY_offset: 0
-  basis: "走廊低位灯贴安装完成面（0.30m），与 2.8m 日常下照分工"
-  reason: "起夜路径 NP-5：w_st_north 走廊侧；light_corridor_1 日常下照起夜刺眼，仅作兜底。"
-  applies_to: [web, blender]
-- id: night_gbath_door
-  anchorY_offset: 0
-  basis: "客卫门口灯贴安装完成面（0.30m）"
-  reason: "起夜路径 NP-6：d_gbath 门洞以南开放洗漱区，门前最后一米。"
-  applies_to: [web, blender]
-- id: night_gbath_vanity
-  anchorY_offset: 0
-  basis: "洗漱区灯贴安装完成面（0.35m），洗手台前停留位"
-  reason: "起夜路径 NP-7：避让台盆下扫地机基站（不同高不同位，量房复核）。"
-  applies_to: [web, blender]
-- id: night_gbath_inner
-  anchorY_offset: 0
-  basis: "内卫灯贴安装完成面（0.30m），马桶前停留位，存在感应"
-  reason: "起夜路径 NP-8：人站着不动也亮。"
+  basis: "走廊口低位落地灯柱，总体高度约 0.30m；不伪作墙装灯"
+  reason: "起夜路径 NP-5：当前点 (7.60,5.30) 无墙锚点，最近实体墙转角约 0.47m；w_st_east 客厅侧被电视墙柜体占用，w_st_north 右端邻 d_study 门垛。保持开敞点候选并按落地灯柱表现，取电 site_pending；light_corridor_1 日常下照仅作兜底。"
   applies_to: [web, blender]

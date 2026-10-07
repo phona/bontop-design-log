@@ -491,8 +491,8 @@ elements:
     along: [0.00, 0.75]      # 0.75m
     bottom: 0.00
     height: 0.30
-    zone: covered
-    reason: 客卫西侧开放洗漱区，悬浮台盆柜后遮蔽面走杂砖
+    zone: visible
+    reason: 客卫西侧开放洗漱区，可见面走正砖（正对洗漱位侧视墙，无柜体遮蔽；2026-10-07 业主纠错：原 covered 系建档时自东墙柜后段误复制）
 
   # === 涂漆检视态（墙顶面涂装 PKG-080；与贴砖检视态平级且互不引用）===
   # 独立子系统：inspection-only 叠加层，仅在 HouseScene.setPaintInspectionVisible(true) 时显示，

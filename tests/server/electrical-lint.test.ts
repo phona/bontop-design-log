@@ -20,9 +20,9 @@ test('real electrical topology parses and lints', () => {
   const result = lintElectricalTopology(topology, points);
   assert.equal(topology.circuits.length, 21); // DEC-2026-10-03-R1：25 路合并至 19 路；DEC-2026-10-04-R2：+外机专用回路；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）
   assert.equal(topology.controls.length, 11);
-  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 24); // 2026-10-05 R15 起夜路径 9 个 night_light 并入照明回路（15→24），不开新回路
+  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 21); // R15 起夜灯并入照明回路，R12 删除客卫 3 个内置点位（24→21）
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 41); // 2026-10-05 R15 客房床头插座 ×2 并入 ordinary_power_parent_child（39→41） // DEC-2026-10-03-R1：+sock_living_tv_high +sock_kitchen_counter_east
-  assert.equal(result.counts.coveredPoints, 79); // 2026-10-05 R15：+9 night_light +2 床头插座（68→79）；床头双控 switch_guest_bed 非负载点，仍计未覆盖 // DEC-2026-10-04-R2：+sock_vrf_outdoor_a2（外机专用取电）// DEC-2026-10-06-R2：+sock_kitchen_oven 不进 topology 回路，coveredPoints 不变
+  assert.equal(result.counts.coveredPoints, 76); // R15 增起夜点与床头插座；R12 删除客卫 3 灯后 79→76。床头双控 switch_guest_bed 非负载点，仍计未覆盖
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.length > 0);
   // 2026-10 三条规范规则（全部 warning）落地后的新计数：原 52 warnings = 9 dedicated + 29 uncovered + 14 pending

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { LightingRenderConfig, RenderLightingFixture } from '@shared/types';
 import { getResolvedTrackLightHeads, getTrackLightConfig } from '@shared/render/TrackLightLayout';
 import { buildWallLampVisual, getWallLampConfig, getWallLampLensPosition, wallSideNormal } from '@shared/render/WallLampGeometry';
+import { buildNightLightVisual } from '@shared/render/NightLightGeometry';
 
 /**
  * 室内灯光系统（spec: 2026-08-12-interior-lighting-design.md）
@@ -128,6 +129,27 @@ export class InteriorLightingSystem {
         visual = buildWallLampVisual(fixture, wallLampConfig, color);
         break;
       }
+      case 'night_light': {
+        const normal = wallSideNormal(fixture.wallSide);
+        const guide = new THREE.SpotLight(color, 0.18, 0.95, Math.PI / 7, 0.96, 2);
+        guide.castShadow = false;
+        guide.position.set(
+          x + (normal ? normal.x * 0.065 : 0),
+          Math.max(0.05, y - 0.045),
+          z + (normal ? normal.z * 0.065 : 0),
+        );
+        guide.target.position.set(
+          x + (normal ? normal.x * 0.42 : 0),
+          0.015,
+          z + (normal ? normal.z * 0.42 : 0),
+        );
+        this.group.add(guide.target);
+        targets.push(guide.target);
+        light = guide;
+        lights = [guide];
+        visual = buildNightLightVisual(fixture, color);
+        break;
+      }
       case 'led_strip': {
         const point = new THREE.PointLight(color, 5, 4.5, 1.2);
         point.position.set(x, y, z);
@@ -149,6 +171,7 @@ export class InteriorLightingSystem {
     }
 
     visual.userData = {
+      ...visual.userData,
       type: 'lighting_fixture',
       objectId: `electrical:${fixture.id}`,
       fixtureType: fixture.type,

@@ -12,7 +12,7 @@ version: '1.0'
 #    现 mount_height 1.65m 仅在双排时合规——箱体单/双排与容量列入 pending-site-data #30。
 # 口径：开关点位经 controls 绑定灯具、网络点位（含 DEC-2026-10-03-R1 新增 net_gateway / net_ap_corridor）
 # 归弱电箱系统，均不进入强电供电回路成员（Phase 1 口径）。
-# 点位口径：config/electrical.yaml 共 111 个点位（2026-10-06 R2 电气兜底轮新增微蒸烤预留接口 sock_kitchen_oven 后由 110 增至 111；此前 2026-10-05 R15 起夜照明 + 客房床头组由 98 增至 110；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。新增点位为 position_status: pending 的预留接口，未激活前不进任何 topology 回路、不占箱位。
+# 点位口径：config/electrical.yaml 共 108 个点位（历史上 2026-10-06 R2 新增 sock_kitchen_oven 后为 111；DEC-2026-10-07-R12 删除客卫内置夜灯 NP-6/7/8 后减至 108；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。新增点位为 position_status: pending 的预留接口，未激活前不进任何 topology 回路、不占箱位。
 
 panels:
   # id 是 topology 内部 panel 标识；source_point_id 指向 electrical.yaml 的真实箱体点位。
@@ -73,8 +73,8 @@ circuits:
     panel_id: panel_strong
     purpose: lighting
     status: proposed
-    member_point_ids: [light_master_dome, light_master_wall_l, light_master_wall_r, light_parent_dome, light_child_dome, light_study_dome, light_kitchen_panel, light_mbath_panel, light_gbath_panel, night_guest_bed_side, night_guest_head, night_gbath_door, night_gbath_vanity, night_gbath_inner]
-    capacity: "≤0.9kW（14 点位合计估算：9 日常灯 + 5 起夜低位灯，各约 3–5W）"
+    member_point_ids: [light_master_dome, light_master_wall_l, light_master_wall_r, light_parent_dome, light_child_dome, light_study_dome, light_kitchen_panel, light_mbath_panel, light_gbath_panel, night_guest_bed_side, night_guest_head]
+    capacity: "≤0.9kW（11 点位合计估算：9 日常灯 + 2 起夜低位灯，各约 3–5W）"
     wire_size: "1.5mm²(φ16)"
     breaker: "C16A"
     note: "卧室/厨卫照明合并回路（DEC-2026-10-03-R1）：主卧吸顶灯与床头壁灯、书房/儿童房/客房吸顶灯、厨房/两卫平板灯；控制绑定见 control_master_bed_door / control_parent_bed_door / control_child_light / control_study_light / control_kitchen_light / control_mbath_light / control_gbath_light"

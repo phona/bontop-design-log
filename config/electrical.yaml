@@ -1098,7 +1098,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # 2026-10-05 起夜路径照明 + 客房床头组（DEC-2026-10-05-R15，全部 candidate_not_frozen）
 # 依据：docs/design-iterations/parent-room-study-swap-20261005/electrical-recommendation-20261005.md
-#   · 起夜灯 NP-1..NP-9：类型 night_light，安装高度 0.25–0.40m，并入既有照明回路（不开新回路）；
+#   · 起夜低位灯当前保留 NP-1/NP-2/NP-3/NP-4a/NP-4b/NP-5，共 6 个；客卫 NP-6/7/8 按 DEC-2026-10-07-R12 删除，后续如需感应由可插拔夜灯解决；
 #   · 客房床头组：插座 ×2（h=0.7）+ 床头双控，并入 ordinary_power_parent_child；
 #   · 北墙 w_be_north 与东墙 w_east_upper 均为 shear（inferred）——开孔/挂装条件 site_pending，
 #     坐标在量房探测前只是候选。
@@ -1199,35 +1199,3 @@
   height: 0.30
   circuit: entry_base
   note: "起夜 NP-5 走廊口灯（R15）：路径西端转入主走廊的拐角，客厅侧落地立柱候选。⚠️走廊条带 x[4.20,7.20] z[4.30,5.55] 在 model-geometry 无 room 归属，点位只能落在客厅侧；走廊段本体由 light_corridor_1 日常下照兜底（2.8m，起夜刺眼）。取电方式 site_pending"
-
-# 起夜路径 NP-6/NP-7/NP-8（客卫）
-- id: night_gbath_door
-  room: guest_bath
-  wall: w_gbath_west
-  wall_side: east
-  type: night_light
-  x: 5.66
-  z: 3.45
-  height: 0.30
-  circuit: lighting_bedrooms_bath
-  note: "起夜 NP-6 客卫门口灯（R15）：w_gbath_west 墙段内（z[2.20,3.55]）、d_gbath 门洞北侧，内卫出门第一米；开放洗漱区侧由 NP-7 覆盖"
-- id: night_gbath_vanity
-  room: guest_bath
-  wall: w_gbath_east_open_vanity
-  wall_side: west
-  type: night_light
-  x: 7.04
-  z: 4.05
-  height: 0.35
-  circuit: lighting_bedrooms_bath
-  note: "起夜 NP-7 洗漱区灯（R15）：洗手台前停留位；避让台盆下扫地机基站 robot_dock_gbath @(6.823,3.925)（不同高、不同位，量房复核）"
-- id: night_gbath_inner
-  room: guest_bath
-  wall: w_gbath_east
-  wall_side: west
-  type: night_light
-  x: 7.04
-  z: 2.95
-  height: 0.30
-  circuit: lighting_bedrooms_bath
-  note: "起夜 NP-8 内卫灯（R15）：马桶前停留位；存在感应（人站着不动也亮）"

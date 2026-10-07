@@ -7,7 +7,7 @@
   "docs/pending-site-data.md",
   "config/facts.yaml 契约 c.mep_layer_below_drop_bottom / c.leb_point_requires_bond_schedule"
  ],
- "state_note": "所有 count 为 2026-10-06 实跑口径（DEC-2026-10-06-R5 执行后：verify:mep 0 error / 83 warning，ceiling_clearance_unverified 160→24）：npm run verify:mep（shared/mep-hvac-lint.ts，result.categories 三桶）与 npm run verify:electrical（shared/electrical-lint.ts，result.counts.byCode）的 JSON 输出即权威；本台账由 tests/server/mep-guidance-baseline.test.ts 逐条与实算对账——台账数字必须与实时 lint 完全一致，任何一侧漂移（lint 新规则加入、台账未同步）测试即 fail。台账本身是「某一轮实测快照」，必须写实测数；而 docs/mep-construction-guidance.md 里凡出现 warning 总数处只写「与实算一致」的语义（不写死 215 / 53），由测试实时回抽比对。⚠️ 2026-10-06 同步口径：MEP 侧 DEC-2026-10-06-R1 已清 gravity_slope_geometry_mismatch（14→0）与 route_not_orthogonal（3→0），penetration_door_clearance 按「过门头穿梁→survey_dependent / 门洞内贴门垛→must_fix」细分类别（15 拆 2+13）；电气侧 R2 已兑现 switch_neutral↦中性线预埋、bath_socket_splash_box↦防溅盒（两类归零），本台账据实删去这两条 reject 项并把 point_uncovered 29→30。 ｜2026-10-07 v1 水路估算后口径：verify:mep 0 error / 83 warning；新增 code penetration_missing ×7（全部来自 water-v1-* 估算干管，量房日补 penetration 后归零），must_fix_before_briefing 桶 10→17（其中 7 条为 v1 估算待补）。 ｜2026-10-07 声明式补客餐厅 ordinary_power_living 十条路由（含 3 条纯竖直段）+ isMepPhysicalRoute/lint 同口径放行 route_kind=physical 竖直段：ceiling_clearance_unverified 25→32（新增 7 条均为路由下行至声明设备点位的竖直段，属已登记残留同类），nonphysical_route 维持 2。",
+ "state_note": "所有 count 为 2026-10-06 实跑口径（DEC-2026-10-06-R5 执行后：verify:mep 0 error / 83 warning，ceiling_clearance_unverified 160→24）：npm run verify:mep（shared/mep-hvac-lint.ts，result.categories 三桶）与 npm run verify:electrical（shared/electrical-lint.ts，result.counts.byCode）的 JSON 输出即权威；本台账由 tests/server/mep-guidance-baseline.test.ts 逐条与实算对账——台账数字必须与实时 lint 完全一致，任何一侧漂移（lint 新规则加入、台账未同步）测试即 fail。台账本身是「某一轮实测快照」，必须写实测数；而 docs/mep-construction-guidance.md 里凡出现 warning 总数处只写「与实算一致」的语义（不写死 215 / 53），由测试实时回抽比对。⚠️ 2026-10-06 同步口径：MEP 侧 DEC-2026-10-06-R1 已清 gravity_slope_geometry_mismatch（14→0）与 route_not_orthogonal（3→0），penetration_door_clearance 按「过门头穿梁→survey_dependent / 门洞内贴门垛→must_fix」细分类别（15 拆 2+13）；电气侧 R2 已兑现 switch_neutral↦中性线预埋、bath_socket_splash_box↦防溅盒（两类归零），本台账据实删去这两条 reject 项并把 point_uncovered 29→30。 ｜2026-10-07 v1 水路估算后口径：verify:mep 0 error / 83 warning；新增 code penetration_missing ×7（全部来自 water-v1-* 估算干管，量房日补 penetration 后归零），must_fix_before_briefing 桶 10→17（其中 7 条为 v1 估算待补）。 ｜2026-10-07 声明式补客餐厅 ordinary_power_living 十条路由（含 3 条纯竖直段）+ isMepPhysicalRoute/lint 同口径放行 route_kind=physical 竖直段：ceiling_clearance_unverified 25→32（新增 7 条均为路由下行至声明设备点位的竖直段，属已登记残留同类），nonphysical_route 维持 2。 ｜2026-10-07 DEC-2026-10-07-M05 声明式补 23 条路由（书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）：总 warning 90→125。新增集中于 ceiling_clearance_unverified 32→56（全部为\"路由下行至声明设备点位的竖直末段\"，§0 已登记①类残留同源）与 shear_wall_parallel_route 8→14（贴剪力墙竖槽，已在各条 reason 声明扫筋/量房）；未新增 penetration_missing。",
  "verification_commands": [
   "npm run verify:mep",
   "npm run verify:electrical",
@@ -81,7 +81,7 @@
   },
   {
    "code": "penetration_door_clearance",
-   "count": 15,
+   "count": 19,
    "category": "must_fix_before_briefing",
    "disposition": "reject",
    "basis": "DEC-2026-10-06-R1 细分类别后共 15 条、按 declared height 与门头 2.10m 关系拆桶：13 条 declared height>门头=合法过门头穿梁→survey_dependent（量房核梁底与套管后消）；仅 2 条 declared height 落在门洞高度带内且净距<0.15m（water-guest-bath (5.9,3.55) 距 d_gbath 0.00m、water-balcony (7.2,1.08) 距 d_kit_balc 0.12m）→must_fix_before_briefing。台账 category 记 must_fix（交底前必须清的那 2 条），count 记总 15；过门头 13 条的量房消解口径见 cleaning_condition",
@@ -97,7 +97,7 @@
   },
   {
    "code": "shear_wall_parallel_route",
-   "count": 8,
+   "count": 14,
    "category": "must_fix_before_briefing",
    "disposition": "reject",
    "basis": "交底前必须清：8 条路线长距离贴 inferred 剪力墙平行敷设（w_mb_east 0.08–0.10m × 2.05–3.60m、w_mbath_east 0.00–0.10m × 1.20–1.30m）；§3.2 剪力墙浅槽上限为 φ16 单回路、槽深 20–25mm，长距离贴墙段必须明确套管/剔槽/避钢筋策略，否则现场只能乱开槽",
@@ -106,7 +106,7 @@
   },
   {
    "code": "ceiling_clearance_unverified",
-   "count": 32,
+   "count": 56,
    "category": "survey_dependent",
    "disposition": "pending_adjudication",
    "basis": "24 处（DEC-2026-10-06-R5 前为 160 处）= §0 契约 c.mep_layer_below_drop_bottom 的吊顶承载层实算数：#41 分层标高已按 A 区（完成面 2.50：强电 2.55/弱电 2.60/冷凝水 2.65/冷媒 2.60，上限 2.75）+ B 区铝扣板（完成面 2.65：进入段 2.70–2.76）分区抬入降板空腔，参考梁约束带内 ≤ 梁底−0.05；同时走地给排水（water_supply/drainage）按 DEC 配套口径修正退出本比较（授权全引见 shared/mep-hvac-lint.ts 的 CEILING_CARRIED_LAYERS 与 config/facts.yaml 的 check_scope）。残留 24 处全部显式登记：① 竖直下引至设备点位的末点（to_height 0.02–1.60m）8 处；② 贴完成面的设备开口（回风格栅 2.49）6 处；③ 窗帘盒内电动窗帘电源（0.7m）1 处；④ weak-gateway 走廊下引末点 1 处；⑤ condensate-living / condensate-dining 绕不开走廊服务带梁带的候选路线各 3 处共 6 处；⑥ condensate-master / condensate-child 立管竖直下引末点 2 处。契约侧 registered_conflicts 登记 44（facts T3.11 引擎仍统计全部分层，含 20 处已豁免的走地给排水）。",
@@ -115,7 +115,7 @@
   },
   {
    "code": "shear_wall_penetration",
-   "count": 9,
+   "count": 10,
    "category": "survey_dependent",
    "disposition": "accept",
    "basis": "accept-as-warning：7 条均为 inferred 墙体穿越的工艺提醒（w_strip_east z≈4.6 三管同孔区等），shared/mep-hvac-lint.ts 的 shear_wall_penetration 规则对 inferred 墙只出 warning、对墙与路线双双 confirmed 才升 error，升级路径已由 tests/server/mep-hvac-lint.test.ts 锁定；§2.1 已声明交房量房确认墙体类型后按规则自动升降级",
@@ -124,11 +124,11 @@
   }
  ],
  "summary": {
-  "mep_total_warnings": 90,
+  "mep_total_warnings": 125,
   "mep_buckets": {
-   "must_fix_before_briefing": 15,
-   "survey_dependent": 54,
-   "envelope_approximation": 21
+   "must_fix_before_briefing": 23,
+   "survey_dependent": 83,
+   "envelope_approximation": 19
   },
   "electrical_total_warnings": 53,
   "electrical_by_disposition": {
