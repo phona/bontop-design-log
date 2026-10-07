@@ -322,6 +322,22 @@ export class OverviewMenu {
           subtotalYuan: number;
           vsPlannedDeltaYuan: number;
         }>;
+        quotes: Array<{
+          quoteId: string;
+          source: string;
+          form: string;
+          rateYuanPerSqm: number;
+          areaSqm: number;
+          totalYuan: number;
+          vsPlannedDeltaYuan: number;
+          vsBrushingModelDeltaYuan: number;
+          impliedAllowanceYuanPerSqm: number;
+          coverage: string;
+          coats: string;
+          quoteStatus: string;
+          observedAt?: string;
+          evidence?: string;
+        }>;
         warnings: string[];
       };
     }).paintBudgetPreview;
@@ -344,6 +360,22 @@ export class OverviewMenu {
       const deltaText = delta > 0 ? `高于计划 ¥${delta.toLocaleString()}` : `低于计划 ¥${Math.abs(delta).toLocaleString()}`;
       row.textContent = `面漆${scenario.topcoats}遍${scenario.deductOpenings ? '、扣门窗洞' : '、不扣门窗洞（对照）'}：${scenario.areaSqm.toFixed(2)}㎡ → 面漆 ${scenario.topcoatBuckets} 桶 + 底漆 ${scenario.primerBuckets} 桶，材料 ¥${scenario.materialYuan.toLocaleString()} + 人工 ¥${scenario.laborYuan.toLocaleString()} = ¥${scenario.subtotalYuan.toLocaleString()}（${deltaText}）`;
       this.budgetEl.appendChild(row);
+    }
+
+    // 外部报价（包工包料等）：折算成总额，与计划额、与自下而上模型三方对照。
+    // 覆盖范围未确认的报价不解释成「省了/超了」，而是显形为「隐含额度」。
+    for (const quote of preview.quotes ?? []) {
+      const row = document.createElement('div');
+      row.className = 'overview-row overview-paint-budget-quote';
+      const delta = quote.vsPlannedDeltaYuan;
+      const deltaText = delta > 0 ? `高于计划 ¥${delta.toLocaleString()}` : `低于计划 ¥${Math.abs(delta).toLocaleString()}`;
+      row.textContent = `报价 ${quote.source}（包工包料 ¥${quote.rateYuanPerSqm.toLocaleString()}/㎡ × ${quote.areaSqm.toFixed(2)}㎡ = ¥${quote.totalYuan.toLocaleString()}，${deltaText}）`;
+      this.budgetEl.appendChild(row);
+
+      const detail = document.createElement('div');
+      detail.className = 'overview-empty overview-paint-budget-quote-note';
+      detail.textContent = `与自下而上涂刷模型差 ¥${quote.vsBrushingModelDeltaYuan.toLocaleString()}（折合 ${quote.impliedAllowanceYuanPerSqm.toLocaleString()} 元/㎡）：若该报价含基层修补、找平批刮腻子、颜色样板与成品保护，这部分就是那几项的隐含额度。覆盖范围${quote.coverage === 'pending_confirmation' ? '与遍数均' : ''}未确认，暂不与 PKG-080 计划额划等号。`;
+      this.budgetEl.appendChild(detail);
     }
 
     const note = document.createElement('div');

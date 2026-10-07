@@ -405,6 +405,34 @@ test('paint cost comparison outputs every declared scenario with coat/deduction 
   assert.deepEqual(comparison.reconciliation.modeledRangeCny, [9621.15, 11111.9]);
 });
 
+test('paint cost comparison turns an all-in quote into comparable totals', () => {
+  const layout = resolveLayout(MG);
+  const catalog = ProjectCatalog.load('.');
+  const comparison = buildPaintCostComparison(layout, loadPaintComparisonConfig(), catalog);
+  assert.equal(comparison.quotes.length, 1);
+  const quote = comparison.quotes[0];
+  assert.equal(quote.quoteId, 'dulux_turnkey_55');
+  assert.equal(quote.source, '多乐士');
+  assert.equal(quote.form, 'turnkey_labor_and_material');
+  assert.equal(quote.rateYuanPerSqm, 55);
+  // 计价面积取净计费面积（与默认情景同源：门窗洞已扣）
+  assert.equal(quote.areaSqm, 245.646);
+  assert.equal(quote.totalYuan, 13510.53);           // 55 × 245.646
+  assert.equal(quote.vsPlannedDeltaYuan, 2010.53);   // vs PKG-080 计划 11500
+  assert.equal(quote.vsOwnerTargetDeltaYuan, 2510.53); // vs 业主目标 11000
+  // 与自下而上涂刷模型（2 遍 + 扣洞 = 10781.15）的差额 = 基层/腻子/样品保护的隐含额度
+  assert.equal(quote.vsBrushingModelDeltaYuan, 2729.38);
+  assert.equal(quote.impliedAllowanceYuanPerSqm, 11.11);
+  // 覆盖范围/遍数未确认 → 状态显形，且 warning 必须提示
+  assert.equal(quote.coverage, 'pending_confirmation');
+  assert.equal(quote.coats, 'pending_confirmation');
+  assert.equal(quote.quoteStatus, 'owner_reported_unconfirmed');
+  assert.ok(
+    comparison.warnings.some((w) => w.includes('dulux_turnkey_55') && w.includes('覆盖范围未确认')),
+    '未确认覆盖范围的报价必须显形',
+  );
+});
+
 test('paint cost comparison surfaces unconfirmed primer assumptions as warnings instead of hiding them', () => {
   const layout = resolveLayout(MG);
   const catalog = ProjectCatalog.load('.');

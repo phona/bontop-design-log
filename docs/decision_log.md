@@ -2059,3 +2059,16 @@
 - **验证**：`tests/server/paint-scope.test.ts` 18 条（22 段声明 / 拆洞后 35 块且可逆 / **逐房间独立复算毛面积** / 门洞拆出左条+右条+通长带 / 窗洞缺 along 告警 / 房间集合与 `wall_finish` 一致且 entry_garden=unpainted / **净面积 = 毛 − 门洞 − 窗洞 且等于预算行项目合计** / 成本四情景 / 未确认假设显形 / 声明漂移即抛错 / 无浏览器全局与 HVAC 耦合 / GLB 默认排除）；`tests/server/paint-comparison-api.test.ts` 5 条；`app/src/scene/HouseScene.test.ts` **+4 条**（含"净面积与门洞扣除量"专测）；`app/src/ui/PaintButton.test.ts` 4 条；`app/src/ui/OverviewMenu.test.ts` +2 条。`typecheck` 0 → `test:server` 708/708/0 → `test:app` 520/520/0 → `verify:all` Exit 0（`verify:facts` 回到基线 14 warnings）→ 起服务实测 `/api/paint/comparison` 与 `/api/budget` 数值一致。
 - **关联文件**：`shared/paint-scope.ts`（新）、`shared/render/SceneBuilder.ts`、`app/src/render/HouseScene.ts`、`server/paint-cost-comparison.ts`、`server/budget-calculator.ts`、`server/overlay-merge.ts`、`shared/types.ts`、`config/layout/overlay.yaml`（−4 段声明 + bay_sill/glass_infill 加 `along`）、`config/house.yaml`（entry_garden → unpainted）、`config/paint-comparison.yaml`（删手写洞口常量、`deduct_openings: true`）、`config/facts.yaml`、`tests/server/paint-scope.test.ts`、`tests/server/paint-comparison-api.test.ts`、`app/src/scene/HouseScene.test.ts`、`app/src/ui/OverviewMenu.test.ts`。
 - **决策人**：业主。
+
+### DEC-2026-10-08-C07 登记多乐士包工包料报价 55 元/㎡，并折算成三方对照
+
+- **日期**：2026-10-08。业主提供：「多乐士包工包料 55 一平」，要求登记。
+- **为什么不能只写个数**：一个裸单价在本项目里是死数字——没有面积口径就没有总额，没有覆盖范围就不能和 PKG-080 计划额比。按 tile-comparison.yaml 的 `candidates` 范式，把外部报价作为**证据**登记进 `config/paint-comparison.yaml` 的 `quotes[]`（不是本模型的假设），由 `server/paint-cost-comparison.ts` 折算成三项对照。
+- **登记内容**：`dulux_turnkey_55`，source 多乐士，form `turnkey_labor_and_material`（包工包料），`material_id: latex_paint_01`（对账 materials.yaml 的同一款漆，确保"用的还是这款漆"这个前提可验证），`rate: 55`，`area_basis: net_area`（业主裁定的净计费口径：门窗洞已扣），`observed_at: 2026-10-08`，`quote_status: owner_reported_unconfirmed`，`evidence: 待补`。
+- **覆盖范围未确认，显形而不猜**：`coverage: pending_confirmation` + `coats: pending_confirmation`。是否含基层修补（COST-080-01）、找平批刮腻子（COST-080-02）、颜色样板与成品保护（COST-080-04）未知，遍数也未确认。服务端据此出一条 warning，面板上明确写"暂不与 PKG-080 计划额划等号"。**不替业主推断覆盖范围。**
+- **折算结果**（净计费面积 245.646㎡）：总额 **¥13,510.53**；高于 PKG-080 计划额 ¥11,500 约 **¥2,010.53**；高于业主目标 ¥11,000 约 ¥2,510.53；高于自下而上"涂刷"模型 ¥10,781.15 约 **¥2,729.38**（折合 **11.11 元/㎡**）。
+- **这 11.11 元/㎡ 就是下一步要问清的**：自下而上模型只算涂刷（主材桶数 + 涂刷人工），不含基层/腻子/样品保护。若该报价确实含这几项，11.11 元/㎡ 就是它们的隐含额度——需要回店里要一份分项报价单，把这 2,729 元拆开，才能判断贵还是便宜。**不要因为总额超计划 2,010 元就否定它，也不要因为"多乐士"三个字就认下。**
+- **未入台账**：本次只登记进涂漆口径文件与对比面板，**没有改 `schedule/phase-1/control.yaml` 的报价轮次**（那需要书面证据、price_type、component_ids 覆盖口径，走正式 QR 轮次）。拿到报价单后再补 QR 轮次并 schedule:render。
+- **验证**：`tests/server/paint-scope.test.ts` +1 条（报价折算三项对照 + 未确认覆盖范围 warning）；`app/src/ui/OverviewMenu.test.ts` 补报价行渲染断言；`test:server` 涂漆相关 24/24、`test:app` OverviewMenu 10/10；起服务实测 `/api/paint/comparison` 返回 quotes 块。
+- **关联文件**：`config/paint-comparison.yaml`（+quotes 段）、`server/paint-cost-comparison.ts`（PaintQuoteInput/PaintQuoteResult + 折算与 warning）、`shared/types.ts`（PaintBudgetPreview.quotes）、`app/src/ui/OverviewMenu.ts`（报价行 + 隐含额度说明）、`tests/server/paint-scope.test.ts`、`app/src/ui/OverviewMenu.test.ts`。
+- **决策人**：业主。

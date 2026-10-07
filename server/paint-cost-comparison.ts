@@ -58,6 +58,47 @@ export interface PaintComparisonConfig {
   };
   scenarios: Array<{ id: string; topcoats: number; deduct_openings: boolean }>;
   fees_status: Record<string, string>;
+  /** 外部报价（证据，不是本模型的假设）。 */
+  quotes?: PaintQuoteInput[];
+}
+
+export interface PaintQuoteInput {
+  id: string;
+  source: string;
+  material_id?: string;
+  form: string;
+  unit: string;
+  rate: number;
+  area_basis?: 'net_area' | 'gross_area';
+  coverage?: string;
+  coats?: string;
+  quote_status: string;
+  observed_at?: string;
+  evidence?: string;
+  note?: string;
+}
+
+/** 报价折算结果：把「X 元每平米」变成可与计划额、与自下而上模型对照的总额。 */
+export interface PaintQuoteResult {
+  quoteId: string;
+  source: string;
+  form: string;
+  rateYuanPerSqm: number;
+  areaSqm: number;
+  totalYuan: number;
+  vsPlannedDeltaYuan: number;
+  vsOwnerTargetDeltaYuan: number;
+  /** 与自下而上「涂刷」模型（默认情景）的差额——即基层/腻子/样品保护的隐含额度。 */
+  vsBrushingModelDeltaYuan: number;
+  /** 折算到面积的等效单价拆分提示：报价总额 − 模型涂刷额。 */
+  impliedAllowanceYuanPerSqm: number;
+  coverage: string;
+  coats: string;
+  quoteStatus: string;
+  observedAt?: string;
+  evidence?: string;
+  materialId?: string;
+  note?: string;
 }
 
 export interface PaintAssumption {
@@ -130,6 +171,7 @@ export interface PaintCostComparison {
     selectedScenarioId: null;
   };
   scenarios: PaintScenarioResult[];
+  quotes: PaintQuoteResult[];
   assumptions: PaintAssumption[];
   feesStatus: Record<string, string>;
   warnings: string[];
@@ -310,6 +352,38 @@ export function buildPaintCostComparison(
   });
 
   const subtotals = results.map((result) => result.subtotalYuan);
+
+  // 外部报价折算：面积口径默认取净计费面积（与默认情景同源），与计划额/业主目标/
+  // 自下而上涂刷模型三方对照。覆盖范围未确认的报价，差额不解释成「省了/超了」，
+  // 而是显形为「隐含额度」，等覆盖范围确认后再拆分。
+  const defaultScenario = results.find((result) => result.deductOpenings) ?? results[0];
+  const quoteResults: PaintQuoteResult[] = (config.quotes ?? []).map((quote) => {
+    requiredPositiveNumber(quote.rate, `quote ${quote.id} rate`);
+    const areaSqm = round3(
+      quote.area_basis === 'gross_area' ? scope.grossAreaSqm : scope.netAreaSqm,
+    );
+    const totalYuan = round2(quote.rate * areaSqm);
+    return {
+      quoteId: quote.id,
+      source: quote.source,
+      form: quote.form,
+      rateYuanPerSqm: quote.rate,
+      areaSqm,
+      totalYuan,
+      vsPlannedDeltaYuan: round2(totalYuan - reconciliation.planned_cny),
+      vsOwnerTargetDeltaYuan: round2(totalYuan - reconciliation.owner_target_cny),
+      vsBrushingModelDeltaYuan: round2(totalYuan - defaultScenario.subtotalYuan),
+      impliedAllowanceYuanPerSqm: round2(quote.rate - defaultScenario.subtotalYuan / areaSqm),
+      coverage: quote.coverage ?? 'unconfirmed',
+      coats: quote.coats ?? 'unconfirmed',
+      quoteStatus: quote.quote_status,
+      ...(quote.observed_at ? { observedAt: quote.observed_at } : {}),
+      ...(quote.evidence ? { evidence: quote.evidence } : {}),
+      ...(quote.material_id ? { materialId: quote.material_id } : {}),
+      ...(quote.note ? { note: quote.note } : {}),
+    };
+  });
+
   const assumptions: PaintAssumption[] = [
     {
       key: 'net_wall_area_sqm',
@@ -382,6 +456,13 @@ export function buildPaintCostComparison(
   ];
 
   const warnings: string[] = [...scope.warnings];
+  for (const quote of quoteResults) {
+    if (quote.coverage === 'pending_confirmation' || quote.coverage === 'unconfirmed') {
+      warnings.push(
+        `包工包料报价 ${quote.quoteId}（${quote.source} ${quote.rateYuanPerSqm} 元每平米）覆盖范围未确认：是否含基层修补/找平批刮腻子/颜色样板与成品保护未知，其与涂刷模型的差额暂按「隐含额度」看待，不与 PKG-080 计划额直接划等号`,
+      );
+    }
+  }
   if (planning.primer_price_status !== 'confirmed' || planning.primer_coverage_status !== 'confirmed') {
     warnings.push('底漆单价/覆盖率未确认（primer_price_status / primer_coverage_status），材料费含未确认假设');
   }
@@ -434,6 +515,7 @@ export function buildPaintCostComparison(
       selectedScenarioId: null,
     },
     scenarios: results,
+    quotes: quoteResults,
     assumptions,
     feesStatus: config.fees_status ?? {},
     warnings,

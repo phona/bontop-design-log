@@ -62,3 +62,26 @@ fees_status:
   skim_coat_putty: unknown                # COST-080-02，待报价
   sample_and_protection: unknown          # COST-080-04，待合同范围
   status_note: 只登记状态不填金额，对齐 tile-comparison.yaml 的 fees 约定
+
+# 外部报价（对齐 tile-comparison.yaml 的 candidates：报价是证据，不是本模型的假设）。
+# 本模型自下而上只算「涂刷」：主材（桶）+ 涂刷人工；基层修补/找平批刮腻子/样品与成品保护
+# 都不在材料与人工里，所以包工包料报价与模型差额的那部分，正是那几项的隐含额度。
+quotes:
+  - id: dulux_turnkey_55
+    source: 多乐士
+    # 对账 materials.yaml 的同一款漆，确保「包工包料用的还是这款漆」这个前提可验证
+    material_id: latex_paint_01
+    form: turnkey_labor_and_material      # 包工包料
+    unit: yuan_per_sqm
+    rate: 55
+    # 计价面积口径用净计费面积（与 selectedScenarioId=null 的默认情景同源：门洞窗洞已扣）。
+    area_basis: net_area
+    # 覆盖范围**未确认**：是否含基层修补（COST-080-01）、找平批刮腻子（COST-080-02）、
+    # 颜色样板与成品保护（COST-080-04）未知；遍数也未确认。
+    # 未确认前不得与 PKG-080 计划额直接划等号，只按面积折算总额做对照，并在 warnings 里显形。
+    coverage: pending_confirmation
+    coats: pending_confirmation
+    quote_status: owner_reported_unconfirmed
+    observed_at: '2026-10-08'
+    evidence: 待补（书面报价单或可追溯的沟通记录）
+    note: 业主 2026-10-08 提供：「多乐士包工包料 55 一平」

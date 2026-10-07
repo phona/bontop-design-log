@@ -241,6 +241,23 @@ describe('OverviewMenu', () => {
           { scenarioId: 'topcoats2_deduct', topcoats: 2, deductOpenings: true, areaSqm: 245.646, topcoatBuckets: 5, primerBuckets: 3, totalBuckets: 8, materialYuan: 4640, laborRateYuanPerSqm: 25, laborYuan: 6141.15, subtotalYuan: 10781.15, vsPlannedDeltaYuan: -718.85, vsOwnerTargetDeltaYuan: -218.85 },
           { scenarioId: 'topcoats1_deduct', topcoats: 1, deductOpenings: true, areaSqm: 245.646, topcoatBuckets: 3, primerBuckets: 3, totalBuckets: 6, materialYuan: 3480, laborRateYuanPerSqm: 25, laborYuan: 6141.15, subtotalYuan: 9621.15, vsPlannedDeltaYuan: -1878.85, vsOwnerTargetDeltaYuan: -1378.85 },
         ],
+        quotes: [
+          {
+            quoteId: 'dulux_turnkey_55',
+            source: '多乐士',
+            form: 'turnkey_labor_and_material',
+            rateYuanPerSqm: 55,
+            areaSqm: 245.646,
+            totalYuan: 13510.53,
+            vsPlannedDeltaYuan: 2010.53,
+            vsOwnerTargetDeltaYuan: 2510.53,
+            vsBrushingModelDeltaYuan: 2729.38,
+            impliedAllowanceYuanPerSqm: 11.11,
+            coverage: 'pending_confirmation',
+            coats: 'pending_confirmation',
+            quoteStatus: 'owner_reported_unconfirmed',
+          },
+        ],
         assumptions: [],
         feesStatus: {},
         warnings: ['底漆单价/覆盖率未确认（primer_price_status / primer_coverage_status），材料费含未确认假设'],
@@ -254,6 +271,9 @@ describe('OverviewMenu', () => {
     expect(rendered).toContain('毛墙面 155.65㎡ − 门洞 13.23㎡ − 窗洞 0.00㎡ = 净墙面 142.42㎡（3D 已高亮）+ 顶面 103.22㎡');
     expect(rendered).toContain('面漆2遍、扣门窗洞：245.65㎡ → 面漆 5 桶 + 底漆 3 桶，材料 ¥4,640 + 人工 ¥6,141.15 = ¥10,781.15（低于计划 ¥718.85）');
     expect(rendered).toContain('面漆1遍、扣门窗洞：245.65㎡ → 面漆 3 桶 + 底漆 3 桶，材料 ¥3,480 + 人工 ¥6,141.15 = ¥9,621.15（低于计划 ¥1,878.85）');
+    expect(rendered).toContain('报价 多乐士（包工包料 ¥55/㎡ × 245.65㎡ = ¥13,510.53，高于计划 ¥2,010.53）');
+    expect(rendered).toContain('与自下而上涂刷模型差 ¥2,729.38（折合 11.11 元/㎡）');
+    expect(rendered).toContain('覆盖范围与遍数均未确认');
     expect(rendered).toContain('不计入整包');
     expect(rendered).toContain('COST-080-01/02/04');
     expect(rendered).toContain('⚠ 底漆单价/覆盖率未确认');

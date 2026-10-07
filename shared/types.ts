@@ -536,6 +536,26 @@ export interface PaintBudgetPreview {
     vsPlannedDeltaYuan: number;
     vsOwnerTargetDeltaYuan: number;
   }>;
+  /** 外部报价折算（证据，非本模型假设）；覆盖范围未确认的只对照、不划等号。 */
+  quotes: Array<{
+    quoteId: string;
+    source: string;
+    form: string;
+    rateYuanPerSqm: number;
+    areaSqm: number;
+    totalYuan: number;
+    vsPlannedDeltaYuan: number;
+    vsOwnerTargetDeltaYuan: number;
+    vsBrushingModelDeltaYuan: number;
+    impliedAllowanceYuanPerSqm: number;
+    coverage: string;
+    coats: string;
+    quoteStatus: string;
+    observedAt?: string;
+    evidence?: string;
+    materialId?: string;
+    note?: string;
+  }>;
   assumptions: Array<{
     key: string;
     value: number | string | boolean;
