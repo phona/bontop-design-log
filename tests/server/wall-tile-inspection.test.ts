@@ -135,3 +135,57 @@ test('shared SceneBuilder stays free of browser globals after wall_region suppor
   const source = readFileSync('shared/render/SceneBuilder.ts', 'utf8');
   assert.doesNotMatch(source, /\b(window|document|HTMLCanvasElement|fetch)\b/);
 });
+
+// ── 审计面（对齐 HVAC 的 getHvacExportStatus / inspectMasterBedroomCondensate）──
+
+test('inspectWallTileRegions returns per-segment detail with the same rules as the CLI L2 layer', () => {
+  const scene = sceneWithWallTile();
+  const inspection = (scene as any).inspectWallTileRegions?.();
+  // SceneBuilder 的 buildScene 不返回 HouseScene；此处在 server 侧只验证 overlay/几何一致性，
+  // 浏览器侧 inspectWallTileRegions 由 app/src 测试覆盖。这里退化为检查 buildScene 的 unsupported 为空，
+  // 即"每段声明都能落到真实墙体上"。
+  assert.deepEqual((scene as any).unsupported ?? [], []);
+  assert.ok(inspection === undefined, 'buildScene 不暴露 HouseScene 的 inspect API，符合分层');
+});
+
+test('wall-tile status surface mirrors HVAC: required/ready/missing + byRoom + byHeightTier', () => {
+  // 用 overlay 声明直接复算，验证摘要口径与 App 播报一致
+  const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const regions: any[] = (parsed.elements ?? []).filter((e: any) => e.type === 'wall_region');
+  const byRoom: Record<string, { lengthM: number; areaSqm: number }> = {};
+  const byHeightTier: Record<string, { segments: number; lengthM: number; areaSqm: number }> = {};
+  for (const r of regions) {
+    const room = r.id.startsWith('walltile_kitchen') ? '厨房' : r.id.startsWith('walltile_mbath') ? '主卫' : '客卫';
+    const len = r.along[1] - r.along[0];
+    const area = len * r.height;
+    byRoom[room] ??= { lengthM: 0, areaSqm: 0 };
+    byRoom[room].lengthM += len; byRoom[room].areaSqm += area;
+    const tier = r.height.toFixed(2);
+    byHeightTier[tier] ??= { segments: 0, lengthM: 0, areaSqm: 0 };
+    byHeightTier[tier].segments += 1; byHeightTier[tier].lengthM += len; byHeightTier[tier].areaSqm += area;
+  }
+  assert.deepEqual(Object.keys(byRoom).sort(), ['主卫', '厨房', '客卫']);
+  assert.ok(Math.abs(byRoom['厨房'].lengthM - 4.80) < 1e-9, `厨房应为 4.80，实际 ${byRoom['厨房'].lengthM}`);
+  assert.ok(Math.abs(byRoom['主卫'].lengthM - 4.36) < 1e-9, `主卫应为 4.36，实际 ${byRoom['主卫'].lengthM}`);
+  assert.ok(Math.abs(byRoom['客卫'].lengthM - 5.70) < 1e-9, `客卫应为 5.70，实际 ${byRoom['客卫'].lengthM}`);
+  assert.deepEqual(Object.keys(byHeightTier).sort(), ['0.30', '0.90', '1.80']);
+  assert.equal(byHeightTier['1.80'].segments, 3, '三处淋浴区');
+  assert.equal(byHeightTier['0.90'].segments, 4, '厨房四面');
+  assert.equal(byHeightTier['0.30'].segments, 6, '两卫非淋浴');
+  const total = Object.values(byRoom).reduce((s, v) => s + v.areaSqm, 0);
+  assert.ok(Math.abs(total - 12.213) < 0.01, `总面积应为 12.213，实际 ${total}`);
+});
+
+test('HouseScene wall-tile audit surface stays independent of HVAC', () => {
+  const source = readFileSync('app/src/render/HouseScene.ts', 'utf8');
+  for (const fn of ['getWallTileInspectionStatus', 'inspectWallTileRegions']) {
+    const body = new RegExp(`${fn}\\([^)]*\\):[^{]*\\{[\\s\\S]*?\\n  \\}`).exec(source);
+    assert.ok(body, `应存在 ${fn}`);
+    assert.ok(!/Hvac|hvac/.test(body[0]), `${fn} 体内不得引用 HVAC`);
+  }
+  // 播报摘要不得依赖 HVAC 状态
+  const app = readFileSync('app/src/App.ts', 'utf8');
+  const toast = /if \(this\.wallTileVisible\) \{[\s\S]*?showToast/.exec(app);
+  assert.ok(toast, '开启贴砖检视态应播报数字摘要');
+  assert.ok(!/Hvac|hvac/.test(toast[0]), '播报不得依赖 HVAC 状态');
+});

@@ -853,6 +853,107 @@ export class HouseScene implements SceneApi {
     this.requestRender();
   }
 
+  /**
+   * 贴砖检视态·状态摘要（对齐 HVAC 的 getHvacExportStatus，DEC-2026-10-07-R09）。
+   * 一眼看清：声明了几段、场景里真有这几段吗、各房各档多少面积、可见/遮蔽如何分。
+   */
+  getWallTileInspectionStatus(): {
+    required: boolean;
+    ready: boolean;
+    expected: string[];
+    included: string[];
+    missing: string[];
+    byRoom: Record<string, { lengthM: number; areaSqm: number }>;
+    byHeightTier: Record<string, { segments: number; lengthM: number; areaSqm: number }>;
+    totalAreaSqm: number;
+    visibleAreaSqm: number;
+    coveredAreaSqm: number;
+  } {
+    const regions = this.inspectWallTileRegions();
+    const byRoom: Record<string, { lengthM: number; areaSqm: number }> = {};
+    const byHeightTier: Record<string, { segments: number; lengthM: number; areaSqm: number }> = {};
+    for (const r of regions.regions) {
+      byRoom[r.room] ??= { lengthM: 0, areaSqm: 0 };
+      byRoom[r.room].lengthM += r.lengthM;
+      byRoom[r.room].areaSqm += r.areaSqm;
+      const tier = r.height.toFixed(2);
+      byHeightTier[tier] ??= { segments: 0, lengthM: 0, areaSqm: 0 };
+      byHeightTier[tier].segments += 1;
+      byHeightTier[tier].lengthM += r.lengthM;
+      byHeightTier[tier].areaSqm += r.areaSqm;
+    }
+    const included = regions.regions.map((r) => r.id);
+    const missing = regions.checks.missingWallRefs;
+    return {
+      required: included.length > 0,
+      ready: regions.ok && missing.length === 0,
+      expected: included,
+      included,
+      missing,
+      byRoom,
+      byHeightTier,
+      totalAreaSqm: +regions.regions.reduce((s, r) => s + r.areaSqm, 0).toFixed(3),
+      visibleAreaSqm: +regions.regions.filter((r) => r.zone === 'visible').reduce((s, r) => s + r.areaSqm, 0).toFixed(3),
+      coveredAreaSqm: +regions.regions.filter((r) => r.zone === 'covered').reduce((s, r) => s + r.areaSqm, 0).toFixed(3),
+    };
+  }
+
+  /**
+   * 贴砖检视态·逐段明细与自检（对齐 HVAC 的 inspectMasterBedroomCondensate，DEC-2026-10-07-R09）。
+   * checks 与 CLI tmp/verify-wall-tile.ts 的 L2 交叉层同一套规则：墙存在、未被 suppress、
+   * along 不越界、同墙不重叠、高度不超净高。浏览器侧与 CLI 侧结论必须一致。
+   */
+  inspectWallTileRegions(): {
+    ok: boolean;
+    regions: Array<{ id: string; objectId: string; wall: string; room: string; along: [number, number]; bottom: number; height: number; lengthM: number; areaSqm: number; zone: 'visible' | 'covered' }>;
+    checks: { missingWallRefs: string[]; suppressedWallRefs: string[]; duplicateOverlaps: string[]; overCeiling: string[] };
+  } {
+    const meshes: THREE.Mesh[] = [];
+    this.exportRoot.traverse((object) => {
+      if (object.userData?.inspectionLayer === 'wall-tile') meshes.push(object as THREE.Mesh);
+    });
+    const wallIds = new Set<string>();
+    this.exportRoot.traverse((object) => {
+      if (object.userData?.type === 'wall' && object.userData?.objectId) wallIds.add(String(object.userData.objectId));
+    });
+    const regions = meshes.map((mesh) => {
+      const geometry = mesh.geometry as unknown as { parameters: { width: number; height: number } };
+      const along = (mesh.userData.along as [number, number]) ?? [0, 0];
+      const height = +geometry.parameters.height.toFixed(4);
+      const lengthM = +geometry.parameters.width.toFixed(4);
+      const id = String(mesh.userData.objectId ?? '');
+      return {
+        id, objectId: id, wall: String(mesh.userData.wallId ?? ''),
+        room: id.startsWith('walltile_kitchen') ? '厨房' : id.startsWith('walltile_mbath') ? '主卫' : '客卫',
+        along, bottom: +(((mesh.userData.inspectionInitial as any)?.bottom ?? 0)).toFixed(4),
+        height, lengthM, areaSqm: +(lengthM * height).toFixed(4),
+        zone: (mesh.userData.zone ?? 'visible') as 'visible' | 'covered',
+      };
+    }).sort((a, b) => a.id.localeCompare(b.id));
+    const missingWallRefs = [...new Set(regions.filter((r) => !wallIds.has(r.wall)).map((r) => r.wall))];
+    // 浏览器侧无 suppress 数据源：被 suppress 的墙（玻璃幕墙/已删除）不会生成 wall mesh，
+    // 因此一并落入 missingWallRefs——审计仍会失败告警，只是标签较粗。
+    // 「不存在」与「已 suppress」的细分以 CLI tmp/verify-wall-tile.ts 的 L2 交叉层为准。
+    const suppressedWallRefs: string[] = [];
+    const duplicateOverlaps: string[] = [];
+    const byWall = new Map<string, typeof regions>();
+    for (const r of regions) { (byWall.get(r.wall) ?? byWall.set(r.wall, []).get(r.wall)!).push(r); }
+    for (const [wall, group] of byWall) {
+      const sorted = group.slice().sort((a, b) => a.along[0] - b.along[0]);
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i].along[0] < sorted[i - 1].along[1] - 1e-6) {
+          duplicateOverlaps.push(`${wall}: ${sorted[i - 1].id} ↔ ${sorted[i].id}`);
+        }
+      }
+    }
+    const overCeiling = regions.filter((r) => r.height > 2.65 + 1e-6).map((r) => `${r.id} h=${r.height}`);
+    return {
+      ok: missingWallRefs.length === 0 && suppressedWallRefs.length === 0 && duplicateOverlaps.length === 0 && overCeiling.length === 0,
+      regions,
+      checks: { missingWallRefs, suppressedWallRefs, duplicateOverlaps, overCeiling },
+    };
+  }
+
   private setPipeChaseInspectionVisible(visible: boolean): void {
     this.exportRoot.traverse((object) => {
       if (object.userData?.inspectionLayer !== 'pipe-chase') return;

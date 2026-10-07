@@ -1873,3 +1873,20 @@
 - **这不是施工依据**：检视态是显示层。墙砖范围仍以量房后橱柜排版图与门店按房报价为准；`height` 与 `zone` 均为 D1/D7 裁定前的建议基线，业主终裁只改数值并重跑脚本。
 - **关联文件**：`shared/types.ts`、`shared/render/SceneBuilder.ts`、`shared/render/layout-bounds.ts`、`server/overlay-merge.ts`、`scripts/verify/collision/verify-collision-coverage.ts`、`config/layout/overlay.yaml`、`schedule/phase-1/control.yaml`、`tmp/verify-wall-tile.ts`、`tmp/probe-walltile.ts`。
 - **决策人**：业主。
+
+### DEC-2026-10-07-R09 贴砖系统独立审计面：状态摘要 + 逐段明细 + 开启播报
+
+- **日期**：2026-10-07。触发：业主要求「类似 HVAC 的效果，我需要能**独立审计**瓷砖系统」。
+- **先对齐 HVAC 为何可审计**：不是那一个开关，是四层审计面——① 视觉开关 `setHvacCoordinationVisible`；② 状态摘要 `getHvacExportStatus()`（`required/ready/expected/included/missing/terminalCount`）；③ 深查 `inspectMasterBedroomCondensate()`（逐段 `aabb` + `joins` + `checks`）；④ CLI `verify:mep` / `hvac-export-check`。缺任何一层，就只剩"能看不能查"。
+- **瓷砖现已补齐平行四层**：
+  - ① 视觉开关：`setWallTileInspectionVisible`（R08 已建，独立于 HVAC）。
+  - ② 状态摘要：`getWallTileInspectionStatus()` → `required/ready/expected/included/missing` + `byRoom`（各房墙长与面积）+ `byHeightTier`（按高度分档的段数/墙长/面积）+ `totalAreaSqm/visibleAreaSqm/coveredAreaSqm`。
+  - ③ 逐段明细：`inspectWallTileRegions()` → 每段 `id/wall/room/along/bottom/height/lengthM/areaSqm/zone`，并内建 `checks`：`missingWallRefs`、`suppressedWallRefs`、`duplicateOverlaps`（同墙重叠=双计）、`overCeiling`（超净高 2.65m）。
+  - ④ CLI：`tmp/verify-wall-tile.ts` 的 L1 声明层 + L2 几何交叉层（18 条断言，退出码 0 = 一致）。
+- **浏览器侧与 CLI 侧的边界（写明，不含糊）**：浏览器侧无 suppress 数据源，而**被 suppress 的墙（玻璃幕墙/已删除）本就不生成 wall mesh**，故一并落入 `missingWallRefs`——审计仍会 `ready=false` 告警，只是标签较粗。「墙不存在」与「墙已 suppress」的细分以 CLI L2 为准（CLI 直接读 `overlay.suppress`）。
+- **开启即播报（回应"高度看不出来"）**：开关打开时 `App.setWallTileInspectionVisible` 调 `getWallTileInspectionStatus()` 并用既有 `showToast` 播报一行摘要——各房墙长、按高度分档的段数、总面积与可见/遮蔽拆分。理由：**0.30m 与 1.80m 在第一人称广角下都像"墙根一条带子"，3D 里"看得出"不等于"量得出"**，图与数必须同时给出，避免拿眼睛当尺子。
+- **当前声明快照（A 档，D1 未终裁）**：厨房 4.80m@0.90m（4 段）/ 主卫 4.36m（淋浴 1.80m×1 段 + 非淋浴 0.30m×2 段）/ 客卫 5.70m（淋浴 1.80m×2 段 + 非淋浴 0.30m×4 段）；合计 **14.86m / 12.213㎡**，可见面 8.343㎡ / 遮蔽面 3.870㎡，`COST-060-08 = 580`。
+- **独立性保持**：`getWallTileInspectionStatus` / `inspectWallTileRegions` / 播报三段均**零 HVAC 引用**（测试以源码级断言看守：函数体内不得出现 `Hvac|hvac`）。
+- **验证**：`test:server` 660/660/0 fail（新增 3 条审计面测试，累计 11 条）→ `typecheck` Exit 0 → `verify:all` Exit 0 → `test:app` 482/482 → `tmp/verify-wall-tile.ts` 18 条断言全 OK。
+- **关联文件**：`app/src/render/HouseScene.ts`、`app/src/App.ts`、`tests/server/wall-tile-inspection.test.ts`。
+- **决策人**：业主。

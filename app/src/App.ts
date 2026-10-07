@@ -496,6 +496,16 @@ export class App {
     this.houseScene.setWallTileInspectionVisible(this.wallTileVisible);
     this.wallTileButton?.sync();
     this.requestRender();
+    // 打开时同步播报数字摘要：3D 透视看不出准确高度（0.3m 与 1.8m 在广角下都像墙根一条带），
+    // 所以「图」与「数」必须同时给出，避免拿眼睛当尺子（DEC-2026-10-07-R09）。
+    if (this.wallTileVisible) {
+      const s = this.houseScene.getWallTileInspectionStatus();
+      const rooms = Object.entries(s.byRoom).map(([r, v]) => `${r} ${v.lengthM.toFixed(2)}m`).join(' · ');
+      const tiers = Object.entries(s.byHeightTier)
+        .sort((a, b) => Number(b[0]) - Number(a[0]))
+        .map(([h, v]) => `${h}m×${v.segments}段`).join(' / ');
+      this.showToast(`贴砖区：${rooms}｜高度 ${tiers}｜${s.totalAreaSqm.toFixed(2)}㎡（可见 ${s.visibleAreaSqm.toFixed(2)} / 遮蔽 ${s.coveredAreaSqm.toFixed(2)}）`);
+    }
   }
 
   private setWallTileState(state: WallTileButtonState): void {
