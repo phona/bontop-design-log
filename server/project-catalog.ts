@@ -1,5 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { join, basename, isAbsolute, relative, resolve, sep } from 'node:path';
 import { load } from 'js-yaml';
 import type {
   MaterialsYaml,
@@ -23,6 +23,11 @@ import { resolveLayout } from './layout-resolver.js';
 import type { VertexLayoutYaml, ResolvedRoom, WallDef, RoomDef, ResolvedOpening } from '../shared/types.js';
 import type { PhaseId } from '../shared/types.js';
 import { filterFurnishings } from './phase-scope.js';
+
+function isWithinDirectory(directory: string, candidate: string): boolean {
+  const rel = relative(directory, candidate);
+  return !isAbsolute(rel) && rel !== '..' && !rel.startsWith(`..${sep}`);
+}
 
 export interface BudgetCategory {
   key: string;
@@ -210,12 +215,18 @@ export class ProjectCatalog {
   }
 
   static getLayouts(configDir = '.'): LayoutOption[] {
-    const layoutDir = join(configDir, 'config/layout');
     const results: LayoutOption[] = [];
     try {
+      // Resolve symlinks before exposing or accepting a layout.  A lexical
+      // `relative()` check alone still permits a layout YAML symlink to point
+      // outside config/layout.
+      const layoutDir = realpathSync(resolve(configDir, 'config/layout'));
       const files = readdirSync(layoutDir).filter((f) => f.endsWith('.yaml'));
       for (const file of files) {
-        const yaml = load(readFileSync(join(layoutDir, file), 'utf8')) as CadLayoutYaml;
+        const path = realpathSync(join(layoutDir, file));
+        if (!isWithinDirectory(layoutDir, path)) continue;
+        const yaml = load(readFileSync(path, 'utf8')) as Partial<CadLayoutYaml> | undefined;
+        if (!yaml || !Array.isArray(yaml.rooms)) continue;
         results.push({
           name: basename(file, '.yaml'),
           path: `config/layout/${file}`,
@@ -239,9 +250,20 @@ export class ProjectCatalog {
     const budgetBase = JSON.parse(readFileSync(`${configDir}/config/budget/base.json`, 'utf8')) as {
       categories: Record<string, Omit<BudgetCategory, 'key'>>;
     };
-    const layoutPath = layoutName
-      ? `${configDir}/config/layout/${layoutName}.yaml`
-      : `${configDir}/config/layout/model-geometry.yaml`;
+    const layoutDir = realpathSync(resolve(configDir, 'config/layout'));
+    let layoutPath = realpathSync(join(layoutDir, 'model-geometry.yaml'));
+    if (layoutName !== undefined) {
+      if (typeof layoutName !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(layoutName)) {
+        throw new Error('invalid layout name');
+      }
+      const known = ProjectCatalog.getLayouts(configDir).some((layout) => layout.name === layoutName);
+      if (!known) throw new Error(`unknown layout: ${layoutName}`);
+      const candidate = realpathSync(join(layoutDir, `${layoutName}.yaml`));
+      if (!isWithinDirectory(layoutDir, candidate)) {
+        throw new Error('layout path escapes config/layout');
+      }
+      layoutPath = candidate;
+    }
     const layout = load(readFileSync(layoutPath, 'utf8')) as CadLayoutYaml;
     const houseMeta = load(readFileSync(`${configDir}/config/house.yaml`, 'utf8')) as HouseYaml;
     return new ProjectCatalog(materials, budgetBase, layout, houseMeta, basename(layoutPath, '.yaml'));

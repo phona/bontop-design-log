@@ -1,7 +1,7 @@
 schema: schedule.phase-scope/v1
 project_id: bontop-design-log
 version: 1.0.0
-updated_at: 2026-09-12
+updated_at: 2026-10-07
 
 # 这里只保存对 house.yaml / overlay.yaml 对象的引用；坐标、尺寸和预算不在此重复。
 phases:
@@ -19,18 +19,19 @@ phases:
     budget_exclude_topics: [dishwasher, water_purifier, dryer]
     furnishing_rules:
       master_bedroom:
-        include_types: [bed_180, master_bedside_cabinet_350_north, master_bedside_cabinet_350_south, mb_washbasin_cabinet, faucet, master_hot_season_low_dresser, mb_vanity_base_cabinet, mb_vanity_lower_board, mb_vanity_main_board, condensate_pipe_ac_outlet, mb_vanity_pvc_box, mb_vanity_pvc_wardrobe_entry, mb_vanity_pvc_service_chase, mattress_180, curtain_set, ceiling_light]
-        exclude_types: [master_north_wall_wardrobe_950, master_wardrobe_top_pelmet, master_dressing_table, dressing_stool]
+        include_types: [bed_180, master_bedside_cabinet_350_north, master_bedside_cabinet_350_south, mb_washbasin_cabinet, faucet, master_hot_season_low_dresser, mattress_180, curtain_set, ceiling_light]
+        exclude_types: [master_north_wall_wardrobe_950, master_wardrobe_top_pelmet, master_dressing_table, dressing_stool, mb_vanity_base_cabinet, mb_vanity_lower_board, mb_vanity_main_board, condensate_pipe_ac_outlet, mb_vanity_pvc_box, mb_vanity_pvc_wardrobe_entry, mb_vanity_pvc_service_chase]
       study:
-        include_types: [bed_150, wardrobe_180, mattress_150, curtain_set, ceiling_light]
-        exclude_types: [desk, chair]
+        include_types: [curtain_set, ceiling_light]
+        exclude_types: [bed_150, wardrobe_180, mattress_150, desk, chair, study_seasonal_wardrobe_wall]
       living_dining:
         include_types: [sofa_3seat, entry_half_height_cabinet, dining_table, dining_chair, ceiling_light]
         exclude_types: [wall_cabinet_tall, tv_wall_low, tv_65, coffee_table, floor_lamp, plant_fiddle, curtain_set]
       bedroom_nw:
         include_types: [curtain_set, ceiling_light]
       bedroom_se:
-        include_types: [ceiling_light]
+        include_types: [bed_150, wardrobe_180, mattress_150, ceiling_light]
+        exclude_types: [desk, chair, study_seasonal_wardrobe_wall, curtain_set]
       kitchen:
         include_types: [kitchen_cabinet_run, kitchen_countertop_bridge, cabinet_base, cabinet_wall, countertop_quartz, fridge, gas_stove, range_hood, sink, water_heater, ceiling_light]
         exclude_types: [dishwasher]

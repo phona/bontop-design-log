@@ -1,6 +1,6 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, readFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import express from 'express';
@@ -12,12 +12,30 @@ describe('Furnishings API (with real YAML file)', () => {
   let app: express.Express;
   const yamlPath = () => join(tmpDir, 'house.yaml');
 
+  function writeGeometryContext(): void {
+    mkdirSync(join(tmpDir, 'layout'), { recursive: true });
+    writeFileSync(join(tmpDir, 'layout/model-geometry.yaml'), `vertices:
+  - {id: v_living_1, x: 0, z: 0}
+  - {id: v_living_2, x: 10, z: 0}
+  - {id: v_living_3, x: 10, z: 10}
+  - {id: v_bedroom_1, x: 20, z: 0}
+  - {id: v_bedroom_2, x: 30, z: 0}
+  - {id: v_bedroom_3, x: 30, z: 10}
+walls: []
+rooms:
+  - {id: living_dining, boundary: [v_living_1, v_living_2, v_living_3]}
+  - {id: bedroom_nw, boundary: [v_bedroom_1, v_bedroom_2, v_bedroom_3]}
+`, 'utf8');
+    writeFileSync(join(tmpDir, 'layout/overlay.yaml'), 'suppress: []\n', 'utf8');
+  }
+
   before(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'furnishings-test-'));
+    writeGeometryContext();
     writeFileSync(yamlPath(), `furnishings:
   living_dining:
     - { type: sofa_3seat, x: 11, z: 7, rotation: 270 }
-    - { type: tv_stand, x: 7.4, z: 7, rotation: 90 }
+    - { type: tv_wall_low, x: 7.4, z: 7, rotation: 90 }
   bedroom_nw:
     - { type: bed_180, x: 4.6, z: 2.3, rotation: 270 }
 `, 'utf8');

@@ -2,6 +2,7 @@ import type {
   ElectricalLintIssue,
   ElectricalPoint,
   ElectricalTopology,
+  FurnishingsYaml,
   ResolvedLayout,
 } from './types.js';
 
@@ -27,9 +28,19 @@ const SPLASH_BOX_DECLARATION = /防溅|防水盒/;
 const SWITCH_TYPES = new Set(['switch', 'switch_2way']);
 const NEUTRAL_DECLARATION = /零线|中性线|neutral/i;
 
+function distanceToSegment(point: { x: number; z: number }, segment: { x1: number; z1: number; x2: number; z2: number }): number {
+  const dx = segment.x2 - segment.x1;
+  const dz = segment.z2 - segment.z1;
+  const lengthSquared = dx * dx + dz * dz;
+  if (lengthSquared <= 1e-12) return Math.hypot(point.x - segment.x1, point.z - segment.z1);
+  const t = Math.max(0, Math.min(1, ((point.x - segment.x1) * dx + (point.z - segment.z1) * dz) / lengthSquared));
+  return Math.hypot(point.x - (segment.x1 + t * dx), point.z - (segment.z1 + t * dz));
+}
+
 export interface ElectricalLintContext {
   layout?: ResolvedLayout;
   suppressedWallIds?: string[];
+  furnishings?: FurnishingsYaml;
 }
 
 export function lintElectricalTopology(
@@ -110,8 +121,32 @@ export function lintElectricalTopology(
   }
   for (const point of points) {
     if (!covered.has(point.id) && !point.circuit && !PANEL_TYPES.has(point.type)) issue('warning', 'point_uncovered', `Electrical point ${point.id} is not covered by Phase 1 topology`, point.id);
-    if (point.wall && context.suppressedWallIds?.includes(point.wall)) issue(point.type.startsWith('switch') ? 'error' : 'warning', 'suppressed_wall_mount', `Point ${point.id} references suppressed/glass wall ${point.wall}`, point.id);
+    if (point.wall && context.suppressedWallIds?.includes(point.wall)) issue('error', 'suppressed_wall_mount', `Point ${point.id} references suppressed/glass wall ${point.wall}`, point.id);
     if (point.wall && context.layout && !context.layout.walls.some((wall) => wall.id === point.wall)) issue('warning', 'unknown_wall', `Point ${point.id} references unknown wall ${point.wall}`, point.id);
+  }
+  const tvSocket = pointMap.get('sock_living_tv');
+  const tvCabinet = Object.values(context.furnishings ?? {})
+    .flat()
+    .find((item) => item.type === 'tv_wall_low' && typeof item.x === 'number' && typeof item.z === 'number');
+  if (tvSocket && tvCabinet && typeof tvSocket.x === 'number' && typeof tvSocket.z === 'number') {
+    const separation = Math.hypot(tvSocket.x - tvCabinet.x!, tvSocket.z - tvCabinet.z!);
+    if (separation > 1.5) {
+      issue('warning', 'tv_socket_near_tv_stand', `TV socket ${tvSocket.id} is ${separation.toFixed(2)}m from tv_wall_low; expected <= 1.50m`, tvSocket.id);
+    }
+  }
+  const curtainWalls = (context.layout?.walls ?? []).filter((wall) => context.suppressedWallIds?.includes(wall.id));
+  for (const point of points) {
+    if (!/窗帘/.test(point.note ?? '') || typeof point.x !== 'number' || typeof point.z !== 'number') continue;
+    if (curtainWalls.length === 0) {
+      issue('warning', 'curtain_power_near_curtain_wall', `Curtain power point ${point.id} cannot be checked because suppressed wall geometry is unavailable`, point.id);
+      continue;
+    }
+    const distance = Math.min(...curtainWalls.flatMap((wall) =>
+      (wall.segments?.length ? wall.segments : [wall]).map((segment) => distanceToSegment(point, segment)),
+    ));
+    if (distance > 2.0) {
+      issue('warning', 'curtain_power_near_curtain_wall', `Curtain power point ${point.id} is ${distance.toFixed(2)}m from the nearest curtain wall; expected <= 2.00m`, point.id);
+    }
   }
   // (b)(c) 点位级规范声明检查：按 config/electrical.yaml 的 room / type / note / neutral 判定。
   for (const point of points) {

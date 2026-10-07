@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import * as yaml from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
-import { endpointSourcesFromFacts, parseMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
+import { endpointSourcesFromFacts, parseMepCoordination, validateMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
 import { lintLevel, lintMepCoordination, MEP_LINT_CATEGORIES, type MepLintResult } from '../../../shared/mep-hvac-lint.js';
 import type { ProjectRenderFacts } from '../../../shared/types.js';
 
@@ -17,6 +17,11 @@ export function runMepLint(): MepLintResult {
   const overlay = load<{ suppress?: Array<{ wall?: string; walls?: string[] }> }>('config/layout/overlay.yaml');
   const plan = hvac.plans[0];
   const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac });
+  // Keep the cross-file coordination contract on the same verify:mep gate as
+  // geometry lint.  Lint is intentionally permissive for inferred/pending
+  // routes, while this validator rejects broken references and contradictory
+  // source/status declarations before any findings are emitted.
+  validateMepCoordination(config, sources);
   const suppressedWallIds = (overlay.suppress ?? []).flatMap((item) => item.walls ?? (item.wall ? [item.wall] : []));
   return lintMepCoordination(config, sources, {
     layout: resolveLayout(geometry as Parameters<typeof resolveLayout>[0]),

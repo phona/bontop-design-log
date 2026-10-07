@@ -600,6 +600,8 @@
       "wall": "w_mbath_south",
       "note": "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高）：盆随柜体收宽东移并居中至 x=0.575，柜体 x[0.05,1.10]；DEC-2026-10-03-R1：当前 faucet_kitchen_sink 同款 h=0.8 是抽象服务点，不足施工——台上盆+壁挂龙头需单独定义冷热水预埋、暗装阀体/出水嘴高度与墙排中心，等台盆/龙头 SKU 冻结后才能埋设，水电工不得按 0.8m 抽象点直接开槽（site_pending）",
       "height": 0.8,
+      "water_temp": "mixed",
+      "water_dn": 20,
       "wallSide": "south"
     },
     {
@@ -611,6 +613,7 @@
       "wall": "w_mbath_south",
       "note": "2026-08-25 台盆墙排下水（h0.35），穿墙回主卫沉箱接原立管；2026-09-02 初版随盆居中移至 x=0.575（假定情形，待量房核立管位置与下沉:300 分界线后终核）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-vanity-to-riser`（穿 w_mbath_south 回主卫沉箱，接推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级。原「立管位置未定 → 无法成线」的阻塞由 docs/pending-site-data.md #19 推断值 (0.3,1.3) ±0.3m 落模型解除（推断 ≠ 实测）；台盆/龙头 SKU 仍未冻结（DEC-2026-10-03-R1：台上盆+壁挂龙头的冷热水预埋、暗装阀体/出水嘴高度与墙排中心待 SKU），h=0.35 为抽象服务点，水电工不得按此直接开槽",
       "height": 0.35,
+      "drain_dn": 50,
       "wallSide": "south"
     },
     {
@@ -621,7 +624,9 @@
       "z": 2.76,
       "wall": "w_mbath_south",
       "note": "主卫淋浴花洒（2026-08-25 隔墙北移2.86随墙移：湿区西端 x[0,1.2]，花洒挂南墙朝北，玻璃隔断 x=1.2 左右分离）；**本轮不画 MEP route**：冷/热给水管路由既无 DEC 定案也无 prose 路径（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 热水器/龙头 SKU 后单独深化（pending #44）",
-      "height": 1
+      "height": 1,
+      "water_temp": "mixed",
+      "water_dn": 20
     },
     {
       "id": "toilet_mbath",
@@ -631,6 +636,8 @@
       "z": 1.5,
       "wall": "w_mbath_east",
       "note": "主卫马桶给水（DEC-2026-09-08-R1 补声明 wall_side west；DEC-2026-10-03-R1：坐便器形式（落地/壁挂）与坑距未定——壁挂则给水、电、排污全部进假墙，现有墙挂模型整体作废。与同柱电点 sock_mbath_toilet (2.60,1.50) h=0.3 撞线，交底前横向错开 ≥0.15m 或竖向分层；SKU 见 pending-site-data #31）",
+      "water_temp": "cold",
+      "water_dn": 20,
       "wallSide": "west"
     },
     {
@@ -640,7 +647,8 @@
       "x": 2.6,
       "z": 1.5,
       "note": "DEC-2026-10-03-R1 主卫马桶排污口（对齐马桶中心 (2.60,1.50)）：同层排水沉箱内接入，与干区地漏 drain_mbath_floor (2.0,1.15) 是两回事，不得并入地漏。2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-toilet-to-riser`（gravity_floor_drain，同层沉箱内接入推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；坑距、坐便器形式（落地/壁挂，pending #31/#36）、主卫排水立管实测位置（pending #19）均待量房与 SKU 冻结后终核；DEC-2026-10-06-R1 管径分级：本马桶排污点口径 de110（管径字段本点未标 diameter，按 de110 分级补注）。",
-      "height": 0.02
+      "height": 0.02,
+      "drain_dn": 110
     },
     {
       "id": "drain_mbath_shower",
@@ -649,7 +657,8 @@
       "x": 0.6,
       "z": 2.2,
       "note": "主卫淋浴地漏（地面；2026-08-25 隔墙北移 z=2.86 后随湿区内收，待量房确认）",
-      "height": 0.02
+      "height": 0.02,
+      "drain_dn": 50
     },
     {
       "id": "drain_mbath_floor",
@@ -658,7 +667,8 @@
       "x": 2,
       "z": 1.15,
       "note": "主卫干区地漏（地面）",
-      "height": 0.02
+      "height": 0.02,
+      "drain_dn": 50
     },
     {
       "id": "faucet_gbath_vanity",
@@ -669,6 +679,8 @@
       "wall": "w_gbath_east_open_vanity",
       "note": "客卫洗手池龙头：复用标准 faucet 模型，东侧延伸实体墙西侧（wall_side=west），中心线 z=3.90，底座标高约0.84m，贴近0.77m台面并避开台盆；墙体挂载与给排水按现场复核（DEC-2026-09-09-R1：给水预留三通，兼扫地机基站进水；排水接台盆下水——该下水路由本身待现场确认；DEC-2026-09-09-R6：悬浮柜+台下基站后下水定案墙排——穿南墙回内卫沉箱，地面无管，见 drain_gbath_vanity）",
       "height": 0.84,
+      "water_temp": "mixed",
+      "water_dn": 20,
       "wallSide": "west"
     },
     {
@@ -680,6 +692,7 @@
       "wall": "w_gbath_south",
       "note": "客卫洗漱区台盆墙排穿墙点（DEC-2026-09-09-R6：悬浮台盆柜+台下扫地机基站，下水不得走地面——下水器柜内转 90° 穿 w_gbath_south 回内卫沉箱/排水系统；穿点 x=6.90 对齐台盆轴线，避 d_gbath 门洞 x[5.70,6.40]；穿墙套管/坡度/沉箱与立管关系待现场及水电交底终核）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-gbath-vanity-to-riser`（穿 w_gbath_south 回内卫，接推断立管 drain_riser_guest_bath (5.8,2.4)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；台盆 SKU 仍未冻结，柜内转 90° 的存水弯/净高待 SKU 冻结后终核",
       "height": 0.3,
+      "drain_dn": 50,
       "wallSide": "north"
     },
     {
@@ -691,6 +704,8 @@
       "wall": "w_gbath_east",
       "note": "2026-08-29 客卫北端淋浴花洒；东墙实体墙西侧挂载，坐东朝西，淋浴区 z≈2.30~2.75；**本轮不画 MEP route**：给水管路由无定案（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 花洒 SKU 后单独深化（pending #44）",
       "height": 1,
+      "water_temp": "mixed",
+      "water_dn": 20,
       "wallSide": "west"
     },
     {
@@ -701,6 +716,8 @@
       "z": 3.05,
       "wall": "w_gbath_east",
       "note": "2026-08-29 客卫南段马桶给水；东墙实体墙西侧挂载，坐东朝西，服务马桶中心 (6.75,3.05)，真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于隔断南侧并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与同柱电点 sock_gbath_toilet (7.10,3.05) h=0.3、sock_gbath_towel h=1.2、干区地漏 drain_gbath_floor (6.45,3.05) 需统一竖向分层口径；坐便器形式与坑距未定，SKU 见 pending-site-data #31",
+      "water_temp": "cold",
+      "water_dn": 20,
       "wallSide": "west"
     },
     {
@@ -710,7 +727,8 @@
       "x": 6.3,
       "z": 2.45,
       "note": "2026-08-29 客卫北端淋浴地漏（地面，与花洒同步）",
-      "height": 0.02
+      "height": 0.02,
+      "drain_dn": 50
     },
     {
       "id": "drain_gbath_floor",
@@ -719,7 +737,8 @@
       "x": 6.45,
       "z": 3.05,
       "note": "2026-08-29 客卫南段马桶/干区地漏（地面，随马桶中心调整至 z=3.05）；外置洗漱区地漏若需要另行深化，位置待量房确认",
-      "height": 0.02
+      "height": 0.02,
+      "drain_dn": 50
     },
     {
       "id": "faucet_kitchen_sink",
@@ -728,7 +747,9 @@
       "x": 9.5,
       "z": 0.3,
       "note": "厨房洗菜盆冷热水（DEC-2026-08-02-013 北墙落地柜台面，上下水走地面非挂墙）；2026-10-05 给排水 v1 落地：排水侧已画 MEP route `drain-kitchen-sink-to-riser`（gravity_floor_drain 接推断立管 drain_riser_kitchen (10.5,0.3)），给水侧 `water-kitchen-requirement` 的 to 已由显式坐标改指本点位，method 由 floor_branch_candidate 升为 floor_branch、status 升为 inferred（两条均带精度三件套，不作为施工依据，量房升级）；⚠️ x 坐标仍以厨房排水立管实测（pending #7/#16）与给水入户点（pending #8）为前提，净水器 faucet_kitchen_purifier 与本点同坐标 (9.50,0.30)、同支路（按 strong-power-kitchen 惯例在 reason 声明共支路，不新增 to 数组）",
-      "height": 0.8
+      "height": 0.8,
+      "water_temp": "mixed",
+      "water_dn": 20
     },
     {
       "id": "faucet_kitchen_purifier",
@@ -737,7 +758,9 @@
       "x": 9.5,
       "z": 0.3,
       "note": "厨房净水器给水（DEC-2026-08-02-013 北墙落地柜台下，与水槽同侧）；DEC-2026-10-06-R1 RO 浓水排放：净水器浓水不得直插密封下水，须接水槽排水三通或专用排污点（接管高度/水气分离/防虹吸做法），待 RO 净水器 SKU 冻结与量房后定（另登记 pending-site-data 新开项）；**本轮不画 MEP route**：给水入户点未定（pending #8）+ 净水器 SKU 未选型（是否需要泵/压力桶决定管径与走向），待量房 + SKU 后单独深化（pending #44）",
-      "height": 0.3
+      "height": 0.3,
+      "water_temp": "cold",
+      "water_dn": 20
     },
     {
       "id": "drain_kitchen_sink",
@@ -746,7 +769,8 @@
       "x": 9.5,
       "z": 0.3,
       "note": "厨房洗菜盆下水（DEC-2026-08-02-013 移至北墙地面）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-kitchen-sink-to-riser`（gravity_floor_drain 接推断立管 drain_riser_kitchen (10.5,0.3)，同 z 无折线），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；⚠️ 接立管位置以 pending #7/#16 实测为准，量房日升级 measured 后回写",
-      "height": 0.02
+      "height": 0.02,
+      "drain_dn": 50
     },
     {
       "id": "faucet_balcony_washer",
@@ -757,6 +781,8 @@
       "wall": "w_balc_west",
       "note": "生活阳台洗衣机给水",
       "height": 0.8,
+      "water_temp": "mixed",
+      "water_dn": 20,
       "wallSide": "east"
     },
     {
@@ -766,7 +792,8 @@
       "x": 6.5,
       "z": 1.5,
       "note": "生活阳台地漏（地面）；DEC-2026-10-06-R1：洗衣机排水改走专用墙排→阳台立管（见 MEP route drain-balcony），**不通本点**，两路不共用防反水；本点仅作阳台地面泄水，**本轮不画 MEP route**（地面泄水汇入点/三通方式待量房确认阳台排水立管后另画）",
-      "height": 0.02
+      "height": 0.02,
+      "drain_dn": 50
     },
     {
       "id": "faucet_garden",
@@ -780,6 +807,8 @@
       "status": "inferred",
       "construction_status": "pending",
       "not_for_construction": true,
+      "water_temp": "cold",
+      "water_dn": 20,
       "wallSide": "east"
     },
     {
@@ -792,7 +821,8 @@
       "height": 0.02,
       "status": "inferred",
       "construction_status": "pending",
-      "not_for_construction": true
+      "not_for_construction": true,
+      "drain_dn": 50
     },
     {
       "id": "drain_kitchen_dishwasher",
@@ -801,7 +831,8 @@
       "x": 9,
       "z": 0.3,
       "note": "洗碗机排水（DEC-2026-08-02-013 移至北墙厨下）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-kitchen-dishwasher-to-riser`（gravity_floor_drain 接推断立管 drain_riser_kitchen (10.5,0.3)，与 drain-kitchen-sink-to-riser 同立管并联同轴，不重复画管），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；⚠️ 原 note 的「接排水管」至此落到推断立管（pending #7/#16），洗碗机 SKU 仍未选型（排水泵/高度影响接管方式），量房+SKU 后终核",
-      "height": 0.02
+      "height": 0.02,
+      "drain_dn": 50
     },
     {
       "id": "drain_balcony_washer",
@@ -810,7 +841,8 @@
       "x": 5.8,
       "z": 1.5,
       "note": "洗衣机墙排排水（不走地漏，防反水）",
-      "height": 0.6
+      "height": 0.6,
+      "drain_dn": 50
     },
     {
       "id": "drain_riser_master_bath",
@@ -823,7 +855,8 @@
       "construction_status": "pending",
       "uncertainty_m": 0.3,
       "not_for_construction": true,
-      "diameter": 0.075
+      "diameter": 0.075,
+      "drain_dn": 110
     },
     {
       "id": "drain_riser_guest_bath",
@@ -836,7 +869,8 @@
       "construction_status": "pending",
       "uncertainty_m": 0.3,
       "not_for_construction": true,
-      "diameter": 0.075
+      "diameter": 0.075,
+      "drain_dn": 110
     },
     {
       "id": "drain_riser_kitchen",
@@ -849,7 +883,8 @@
       "construction_status": "pending",
       "uncertainty_m": 0.3,
       "not_for_construction": true,
-      "diameter": 0.075
+      "diameter": 0.075,
+      "drain_dn": 110
     },
     {
       "id": "gas_meter_kitchen",

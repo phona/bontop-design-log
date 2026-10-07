@@ -24,6 +24,44 @@ const house = load('config/house.yaml');
 const elec = (load('config/electrical.yaml') ?? []) as any[];
 const plumb = (load('config/plumbing.yaml') ?? []) as any[];
 
+let fails = 0;
+let warns = 0;
+const fail = (m: string) => { fails++; console.log('FAIL', m); };
+const warn = (m: string) => { warns++; console.log('WARN', m); };
+
+function checkUniqueIds(items: unknown, label: string): void {
+  if (!Array.isArray(items)) {
+    fail(`${label} 必须是数组`);
+    return;
+  }
+  const seen = new Set<string>();
+  for (const [index, item] of items.entries()) {
+    const id = item && typeof item === 'object' && 'id' in item ? (item as { id?: unknown }).id : undefined;
+    if (typeof id !== 'string' || id.length === 0) {
+      fail(`${label}[${index}] 缺少非空 id`);
+      continue;
+    }
+    if (seen.has(id)) fail(`${label} 出现重复 id=${id}`);
+    seen.add(id);
+  }
+}
+
+// Map() would otherwise silently overwrite a duplicate and let all downstream
+// mirror checks compare against whichever entry happened to appear last.
+checkUniqueIds(mg.vertices, 'model-geometry.vertices');
+checkUniqueIds(mg.rooms, 'model-geometry.rooms');
+if (mg.platform) {
+  checkUniqueIds([mg.platform], 'model-geometry.platform');
+  if ((mg.rooms as any[]).some((room) => room?.id === mg.platform.id)) {
+    fail(`model-geometry.platform 与 rooms 重复 id=${mg.platform.id}`);
+  }
+}
+checkUniqueIds(mg.walls, 'model-geometry.walls');
+checkUniqueIds(house.rooms, 'house.rooms');
+checkUniqueIds(house.gift_areas, 'house.gift_areas');
+checkUniqueIds(elec, 'electrical.yaml');
+checkUniqueIds(plumb, 'plumbing.yaml');
+
 const verts = new Map<string, Pt>(
   (mg.vertices as any[]).map((v) => [v.id, { x: v.x, z: v.z }]),
 );
@@ -47,6 +85,27 @@ function shoelace(pts: Pt[]): number {
 
 interface ModelRoom { w: number; d: number; area: number; cx: number; cz: number }
 
+/**
+ * 房间镜像的例外必须逐项写明原因。
+ *
+ * model-geometry.rooms 是几何口径，house.rooms 是设计房间口径：入户花园
+ * 由 house.gift_areas 承载，电梯井只作为几何分区。west_platform 是独立
+ * platform 元素，south_balcony 是明确未建模的赠送面积；它们不能被无条件
+ * 放宽为“任意 model-only / house-only 区域”。
+ */
+const ROOM_MIRROR_EXEMPTIONS = {
+  modelOnly: new Map<string, string>([
+    ['entry_garden', 'model room is represented by house.gift_areas, not house.rooms'],
+    ['elevator_shaft', 'pure geometry/service shaft, intentionally excluded from design rooms'],
+  ]),
+  modelPlatform: new Map<string, string>([
+    ['west_platform', 'model platform is represented by house.gift_areas, not house.rooms'],
+  ]),
+  houseGiftOnly: new Map<string, string>([
+    ['south_balcony', 'gift area is explicitly not modelled as a room'],
+  ]),
+} as const;
+
 const modelRooms = new Map<string, ModelRoom>();
 function register(id: string, boundary: string[]): void {
   const pts = polyOf(boundary);
@@ -65,10 +124,32 @@ function register(id: string, boundary: string[]): void {
 for (const r of mg.rooms as any[]) register(r.id, r.boundary);
 if (mg.platform) register(mg.platform.id, mg.platform.boundary);
 
-let fails = 0;
-let warns = 0;
-const fail = (m: string) => { fails++; console.log('FAIL', m); };
-const warn = (m: string) => { warns++; console.log('WARN', m); };
+const modelRoomIds = new Set<string>((mg.rooms as any[]).map((room) => room.id));
+const houseRoomIds = new Set<string>((house.rooms ?? []).map((room: any) => room.id));
+const giftAreaIds = new Set<string>((house.gift_areas ?? []).map((area: any) => area.id));
+const modelPlatformId = mg.platform?.id as string | undefined;
+
+function validateMirrorExemptions(): void {
+  for (const [id, reason] of ROOM_MIRROR_EXEMPTIONS.modelOnly) {
+    if (!modelRoomIds.has(id)) fail(`镜像例外 modelOnly.${id} 未对应 model-geometry.rooms（${reason}）`);
+    if (houseRoomIds.has(id)) fail(`镜像例外 modelOnly.${id} 已出现在 house.rooms，需移除例外（${reason}）`);
+    if (!giftAreaIds.has(id) && id !== 'elevator_shaft') {
+      fail(`镜像例外 modelOnly.${id} 缺少对应 house.gift_areas 记录（${reason}）`);
+    }
+  }
+  for (const [id, reason] of ROOM_MIRROR_EXEMPTIONS.modelPlatform) {
+    if (modelPlatformId !== id) fail(`镜像例外 modelPlatform.${id} 未对应 model-geometry.platform（${reason}）`);
+    if (houseRoomIds.has(id)) fail(`镜像例外 modelPlatform.${id} 已出现在 house.rooms，需移除例外（${reason}）`);
+    if (!giftAreaIds.has(id)) fail(`镜像例外 modelPlatform.${id} 缺少对应 house.gift_areas 记录（${reason}）`);
+  }
+  for (const [id, reason] of ROOM_MIRROR_EXEMPTIONS.houseGiftOnly) {
+    if (!giftAreaIds.has(id)) fail(`镜像例外 houseGiftOnly.${id} 未对应 house.gift_areas（${reason}）`);
+    if (modelRoomIds.has(id) || modelPlatformId === id) fail(`镜像例外 houseGiftOnly.${id} 已被 model-geometry 建模，需移除例外（${reason}）`);
+    if (houseRoomIds.has(id)) fail(`镜像例外 houseGiftOnly.${id} 已出现在 house.rooms，需移除例外（${reason}）`);
+  }
+}
+
+validateMirrorExemptions();
 
 // A. rooms 镜像字段
 for (const r of (house.rooms ?? []) as any[]) {
@@ -77,6 +158,14 @@ for (const r of (house.rooms ?? []) as any[]) {
   if (Math.abs(r.width - m.w) > 0.01 || Math.abs(r.length - m.d) > 0.01 || Math.abs(r.area - m.area) > 0.05) {
     fail(`room ${r.id} 镜像漂移: house ${r.width}/${r.length}/${r.area} vs model ${m.w.toFixed(2)}/${m.d.toFixed(2)}/${m.area.toFixed(2)}`);
   }
+}
+
+// A2. 反向门禁：每个 model-geometry room 都必须有 house.rooms 镜像，除非
+// 上面逐项声明为 modelOnly。这样新增几何 room 不会静默脱离预算/设计口径。
+for (const id of modelRoomIds) {
+  if (houseRoomIds.has(id)) continue;
+  if (ROOM_MIRROR_EXEMPTIONS.modelOnly.has(id)) continue;
+  fail(`model room ${id} 缺少 house.rooms 镜像；若为纯几何/赠送区域，必须声明精确 modelOnly 例外`);
 }
 
 // B. gift_areas 质心

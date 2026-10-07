@@ -2371,6 +2371,19 @@ export class HouseScene implements SceneApi {
     return pickRoomIdFromHits(hits);
   }
 
+  getRoomIdAt(clientX: number, clientY: number): string | null {
+    const pointer = new THREE.Vector2(
+      (clientX / window.innerWidth) * 2 - 1,
+      -(clientY / window.innerHeight) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(pointer, this.camera);
+    const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+    return pickRoomIdFromHits(intersects.map((hit) => ({
+      roomId: hit.object.userData?.roomId as string | undefined,
+      type: hit.object.userData?.type as string | undefined,
+    })));
+  }
+
   private onPointerDown(event: PointerEvent) {
     this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;

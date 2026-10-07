@@ -13,7 +13,7 @@ import type {
 import { computeCeilingTakeoff, type CeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import { loadCeilingConfig } from './config-loader.js';
 import { loadCeilingQuotes, type CeilingQuotesFile } from './ceiling-quotes.js';
-import { resolveActiveCeilingRates, compareCeilingQuotes, type ResolvedCeilingRates } from './ceiling-quotes.js';
+import { resolveActiveCeilingRates, compareCeilingQuotes, type CeilingQuoteRateKey, type ResolvedCeilingRates } from './ceiling-quotes.js';
 import type { ProjectCatalog } from './project-catalog.js';
 import type { ResolvedLayout } from '../shared/types.js';
 import { isBudgetTopicIncluded, loadPhaseScopes } from './phase-scope.js';
@@ -54,13 +54,21 @@ function ceilingTakeoff(catalog: ProjectCatalog): CeilingTakeoff {
 }
 
 /** base.json 的兜底费率：生效报价没声明的计价行回落到它（回落必须看得见）。 */
-function fallbackCeilingRates(baseRaw: Record<string, BudgetCategoryRaw>): Record<'ceiling_zones' | 'curtain_box_linear', { per_unit: number | null; unit: string }> {
+/**
+ * base.json 的兜底吊顶费率。C12 新增的两行（边吊按米 / 满吊平顶按㎡）base.json 没有对应
+ * labor 行 → 回落 null（待报价）：不进预算 actual，只在报价面板显形。
+ */
+function fallbackCeilingRates(baseRaw: Record<string, BudgetCategoryRaw>): Record<CeilingQuoteRateKey, { per_unit: number | null; unit: string }> {
   const carpentry = baseRaw.carpentry;
   const entries = carpentry?.labor ? (Array.isArray(carpentry.labor) ? carpentry.labor : [carpentry.labor]) : [];
   const byArea = new Map(entries.map((entry) => [entry.area, entry]));
   return {
     ceiling_zones: { per_unit: byArea.get('ceiling_zones')?.rate ?? null, unit: byArea.get('ceiling_zones')?.unit ?? '元/㎡' },
     curtain_box_linear: { per_unit: byArea.get('curtain_box_linear')?.rate ?? null, unit: byArea.get('curtain_box_linear')?.unit ?? '元/m' },
+    gypsum_edge_drop_linear: { per_unit: null, unit: '元/m' },
+    gypsum_flat_sqm: { per_unit: null, unit: '元/㎡' },
+    // C13：厨卫铝扣板（归 QR-2026-10-03-08，不在木工 labor 行里）
+    aluminum_buckle_sqm: { per_unit: null, unit: '元/㎡' },
   };
 }
 

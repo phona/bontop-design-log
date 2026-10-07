@@ -71,12 +71,20 @@ export class AnnotationRenderer {
   }
 
   async load(): Promise<void> {
+    const loadArray = async <T>(url: string): Promise<T[]> => {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`${url} returned HTTP ${response.status}`);
+      const value: unknown = await response.json();
+      if (!Array.isArray(value)) throw new Error(`${url} returned a non-array response`);
+      return value as T[];
+    };
     const [electrical, plumbing, ceiling] = await Promise.all([
-      fetch('/api/annotations/electrical').then(r => r.json()) as Promise<ElectricalPoint[]>,
-      fetch('/api/annotations/plumbing').then(r => r.json()) as Promise<PlumbingPoint[]>,
-      fetch('/api/annotations/ceiling').then(r => r.json()) as Promise<CeilingZone[]>,
+      loadArray<ElectricalPoint>('/api/annotations/electrical'),
+      loadArray<PlumbingPoint>('/api/annotations/plumbing'),
+      loadArray<CeilingZone>('/api/annotations/ceiling'),
     ]);
 
+    this.clear();
     this.electricalData = electrical;
     this.plumbingData = plumbing;
     this.ceilingData = ceiling;
@@ -100,9 +108,7 @@ export class AnnotationRenderer {
   }
 
   private renderProblems(problems: Problem[]): void {
-    while (this.problemGroup.children.length) {
-      this.problemGroup.remove(this.problemGroup.children[0]);
-    }
+    this.clearChildren(this.problemGroup);
     for (const p of problems) {
       const color = p.severity === 'error' ? 0xff0000 : 0xff8800;
       const geo = new THREE.SphereGeometry(0.06, 8, 8);
@@ -231,13 +237,34 @@ export class AnnotationRenderer {
   getElectricalData(): ElectricalPoint[] { return this.electricalData; }
   getPlumbingData(): PlumbingPoint[] { return this.plumbingData; }
 
-  clear(): void {
-    Object.values(this.layerGroups).forEach(g => {
-      while (g.children.length) g.remove(g.children[0]);
-    });
-    while (this.problemGroup.children.length) {
-      this.problemGroup.remove(this.problemGroup.children[0]);
+  private clearChildren(group: THREE.Group): void {
+    const geometries = new Set<THREE.BufferGeometry>();
+    const materials = new Set<THREE.Material>();
+    const textures = new Set<THREE.Texture>();
+    for (const child of [...group.children]) {
+      child.traverse((object) => {
+        const renderable = object as THREE.Mesh | THREE.Sprite;
+        if ('geometry' in renderable && renderable.geometry instanceof THREE.BufferGeometry) {
+          geometries.add(renderable.geometry);
+        }
+        const objectMaterials = 'material' in renderable ? renderable.material : undefined;
+        for (const material of Array.isArray(objectMaterials) ? objectMaterials : objectMaterials ? [objectMaterials] : []) {
+          materials.add(material);
+          for (const value of Object.values(material)) {
+            if (value instanceof THREE.Texture) textures.add(value);
+          }
+        }
+      });
+      group.remove(child);
     }
+    for (const geometry of geometries) geometry.dispose();
+    for (const material of materials) material.dispose();
+    for (const texture of textures) texture.dispose();
+  }
+
+  clear(): void {
+    Object.values(this.layerGroups).forEach((group) => this.clearChildren(group));
+    this.clearChildren(this.problemGroup);
     this.labelSprites = [];
     this.electricalData = [];
     this.plumbingData = [];

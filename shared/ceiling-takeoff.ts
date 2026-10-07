@@ -18,6 +18,14 @@
 
 import type { CeilingZone } from './types.js';
 
+/**
+ * 计价形态（DEC-2026-10-08-C12）：同一个 `drop` 渲染类型下，「边吊」按**米**计价、
+ * 「满吊平顶」按**㎡**计价，单价差一倍以上（本案 160 元/米 vs 155 元/㎡）。
+ * 只声明在 yaml 里，代码只读不推断——猜错的代价是总额差上千元。
+ */
+export const CEILING_PRICING_FORMS = ['edge_drop', 'flat'] as const;
+export type CeilingPricingForm = (typeof CEILING_PRICING_FORMS)[number];
+
 /** 工艺/计价类别：与渲染类型（drop/integrated/aluminum_buckle）是两回事。 */
 export const CEILING_TRADE_CLASSES = ['gypsum_board', 'aluminum_buckle', 'curtain_box', 'drying_rack'] as const;
 export type CeilingTradeClass = (typeof CEILING_TRADE_CLASSES)[number];
@@ -44,6 +52,8 @@ export interface CeilingTakeoffZone {
   room: string;
   /** 渲染类型（决定几何）：drop / integrated / aluminum_buckle。 */
   type: string;
+  /** 计价形态：edge_drop（边吊，按米）/ flat（满吊平顶，按㎡）。未声明为 null 并进 unclassifiedPricingFormIds。 */
+  pricing_form: CeilingPricingForm | null;
   /** 工艺/计价类别；无法归类时为 null（并进 unclassifiedZoneIds）。 */
   trade: CeilingTradeClass | null;
   /** trade 来自 yaml 显式声明（true）还是按渲染类型回退（false）。 */
@@ -74,6 +84,12 @@ export interface CeilingTakeoffClassRollup {
   panelCount: number;
   /** 行业主口径：供报价时逐项列，别把不同单位混一张表。 */
   pricingUnit: 'sqm' | 'linear_m' | 'panel';
+  /** 边吊计价长度（米）：edge_drop 分区的长边之和。 */
+  edgeDropLinearM: number;
+  /** 边吊净面积（㎡）：edge_drop 分区之和。 */
+  edgeDropNetAreaM2: number;
+  /** 满吊平顶净面积（㎡）：flat 分区之和。 */
+  flatNetAreaM2: number;
 }
 
 export interface CeilingTakeoff {
@@ -89,6 +105,14 @@ export interface CeilingTakeoff {
   curtainBoxM2: number;
   curtainBoxLinearM: number;
   dryingRackM2: number;
+  /** 边吊计价长度（米）：edge_drop 分区长边之和。 */
+  edgeDropLinearM: number;
+  /** 边吊净面积（㎡）：edge_drop 分区之和。与 flatNetAreaM2 相加必须等于 gypsumBoardM2。 */
+  edgeDropNetAreaM2: number;
+  /** 满吊平顶净面积（㎡）：flat 分区之和。 */
+  flatNetAreaM2: number;
+  /** 归不进任何 pricing_form 的实心分区：显形，禁止猜。 */
+  unclassifiedPricingFormIds: string[];
   totalNetAreaM2: number;
   totalExpandedAreaM2: number;
   totalPerimeterM: number;
@@ -191,7 +215,7 @@ function resolveTrade(zone: CeilingZone): { trade: CeilingTradeClass | null; dec
 }
 
 function emptyClassRollup(unit: 'sqm' | 'linear_m' | 'panel'): CeilingTakeoffClassRollup {
-  return { zones: 0, netAreaM2: 0, expandedAreaM2: 0, perimeterM: 0, linearM: 0, panelCount: 0, pricingUnit: unit };
+  return { zones: 0, netAreaM2: 0, expandedAreaM2: 0, perimeterM: 0, linearM: 0, panelCount: 0, pricingUnit: unit, edgeDropLinearM: 0, edgeDropNetAreaM2: 0, flatNetAreaM2: 0 };
 }
 
 /**
@@ -220,6 +244,10 @@ export function computeCeilingTakeoff(zones: CeilingZone[], rooms?: CeilingTakeo
     curtainBoxM2: 0,
     curtainBoxLinearM: 0,
     dryingRackM2: 0,
+    edgeDropLinearM: 0,
+    edgeDropNetAreaM2: 0,
+    flatNetAreaM2: 0,
+    unclassifiedPricingFormIds: [],
     totalNetAreaM2: 0,
     totalExpandedAreaM2: 0,
     totalPerimeterM: 0,
@@ -243,6 +271,12 @@ export function computeCeilingTakeoff(zones: CeilingZone[], rooms?: CeilingTakeo
     const width = Math.abs(x2 - x1);
     const depth = Math.abs(z2 - z1);
     const { trade, declared } = resolveTrade(zone);
+    const pricingForm: CeilingPricingForm | null =
+      typeof zone.pricing_form === 'string' && (CEILING_PRICING_FORMS as readonly string[]).includes(zone.pricing_form)
+        ? (zone.pricing_form as CeilingPricingForm)
+        : null;
+    // 只有石膏板分区需要声明计价形态：铝扣板按板块/㎡、窗帘盒按米各有计价行，不在此列
+    if (pricingForm === null && trade === 'gypsum_board') result.unclassifiedPricingFormIds.push(zone.id);
     if (trade === null) result.unclassifiedZoneIds.push(zone.id);
 
     const treatment = resolveTreatment(x1, z1, x2, z2, zone.corner_radius, zone.corner_radii, zone.concave_fillets);
@@ -261,6 +295,7 @@ export function computeCeilingTakeoff(zones: CeilingZone[], rooms?: CeilingTakeo
       id: zone.id,
       room: zone.room,
       type: zone.type,
+      pricing_form: pricingForm,
       trade,
       tradeDeclared: declared,
       thickness: zone.thickness,
@@ -293,6 +328,12 @@ export function computeCeilingTakeoff(zones: CeilingZone[], rooms?: CeilingTakeo
       rollup.perimeterM += treatment.perimeterM;
       rollup.linearM += entry.longSideM;
       rollup.panelCount += entry.panelCount ?? 0;
+      // 计价形态汇总：边吊按米（长边）、满吊按㎡（净面积）
+      if (pricingForm === 'edge_drop') {
+        rollup.edgeDropLinearM += entry.longSideM;
+        rollup.edgeDropNetAreaM2 += netAreaM2;
+      }
+      if (pricingForm === 'flat') rollup.flatNetAreaM2 += netAreaM2;
     }
     solid.push({ zone, x1, z1, x2, z2, width, depth, measured: entry });
   }
@@ -304,6 +345,9 @@ export function computeCeilingTakeoff(zones: CeilingZone[], rooms?: CeilingTakeo
   result.curtainBoxM2 = result.byClass.curtain_box.netAreaM2;
   result.curtainBoxLinearM = result.byClass.curtain_box.linearM;
   result.dryingRackM2 = result.byClass.drying_rack.netAreaM2;
+  result.edgeDropLinearM = result.byClass.gypsum_board.edgeDropLinearM;
+  result.edgeDropNetAreaM2 = result.byClass.gypsum_board.edgeDropNetAreaM2;
+  result.flatNetAreaM2 = result.byClass.gypsum_board.flatNetAreaM2;
 
   // 房间对照：哪些房间有吊顶、哪些是 2.80m 原顶、分区引用了不存在的房间
   const roomsWithCeiling = new Set<string>();

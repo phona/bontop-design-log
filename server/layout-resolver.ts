@@ -34,6 +34,49 @@ function indexVertices(vertices: Vertex[]): Map<string, VMap> {
   return map;
 }
 
+/** Validate the identity/edge invariants before resolving any derived geometry. */
+function validateLayoutIdentityAndEdges(raw: VertexLayoutYaml, vmap: Map<string, VMap>): void {
+  const ids = new Map<string, string>();
+  const register = (id: string, kind: string): void => {
+    const previous = ids.get(id);
+    if (previous) throw new Error(`Duplicate layout id: ${id} (${previous} and ${kind})`);
+    ids.set(id, kind);
+  };
+  const point = (id: string, kind: string): VMap => {
+    const value = vmap.get(id);
+    if (!value) throw new Error(`${kind} references unknown vertex: ${id}`);
+    return value;
+  };
+  const edge = (from: string, to: string, kind: string): void => {
+    const a = point(from, kind);
+    const b = point(to, kind);
+    if (Math.hypot(a.x - b.x, a.z - b.z) < 1e-9) {
+      throw new Error(`${kind} has zero-length edge: ${from} → ${to}`);
+    }
+  };
+  for (const room of raw.rooms) {
+    register(room.id, 'room');
+    if (room.boundary.length < 3) throw new Error(`Room ${room.id} boundary has < 3 vertices`);
+    for (let i = 0; i < room.boundary.length; i += 1) {
+      edge(room.boundary[i], room.boundary[(i + 1) % room.boundary.length], `Room ${room.id}`);
+    }
+  }
+  if (raw.platform) {
+    register(raw.platform.id, 'platform');
+    if (raw.platform.boundary.length < 3) throw new Error(`Platform ${raw.platform.id} boundary has < 3 vertices`);
+    for (let i = 0; i < raw.platform.boundary.length; i += 1) {
+      edge(raw.platform.boundary[i], raw.platform.boundary[(i + 1) % raw.platform.boundary.length], `Platform ${raw.platform.id}`);
+    }
+  }
+  for (const wall of raw.walls) {
+    register(wall.id, 'wall');
+    edge(wall.from, wall.to, `Wall ${wall.id}`);
+    for (const opening of wall.openings ?? []) {
+      register(opening.id, `opening on wall ${wall.id}`);
+    }
+  }
+}
+
 type Pt = { x: number; z: number };
 
 function polygonArea(pts: Pt[]): number {
@@ -325,6 +368,7 @@ function resolveOpening(
 
 export function resolveLayout(raw: VertexLayoutYaml): ResolvedLayout {
   const vmap = indexVertices(raw.vertices);
+  validateLayoutIdentityAndEdges(raw, vmap);
   const openEdges: ResolvedLayout['openEdges'] = [];
 
   // Resolve rooms

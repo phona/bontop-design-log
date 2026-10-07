@@ -1,4 +1,4 @@
-import type { CeilingZone, HvacAnchor, HvacTerminal, ResolvedLayout, ResolvedWall, Vertex } from './types.js';
+import type { CeilingZone, HvacAnchor, HvacTerminal, ResolvedLayout, ResolvedWall, ResolvedWallSegment, Vertex } from './types.js';
 import {
   isMepPhysicalRoute,
   mepRoutePoints,
@@ -154,9 +154,110 @@ export function isSolidCeilingZone(zone: CeilingZone): boolean {
   return SOLID_CEILING_TYPES.has(zone.type) && zone.thickness !== undefined && zone.thickness > 0;
 }
 
-function inFootprint(p: Point, area: [number, number, number, number]): boolean {
-  const [x1, z1, x2, z2] = area;
-  return p.x >= Math.min(x1, x2) && p.x <= Math.max(x1, x2) && p.z >= Math.min(z1, z2) && p.z <= Math.max(z1, z2);
+type CeilingCorner = 'nw' | 'ne' | 'se' | 'sw';
+const CEILING_CORNERS: readonly CeilingCorner[] = ['nw', 'ne', 'se', 'sw'];
+type FootprintPoint = { x: number; z: number };
+
+function footprintArcSamples(center: FootprintPoint, start: FootprintPoint, end: FootprintPoint): FootprintPoint[] {
+  const radius = Math.hypot(start.x - center.x, start.z - center.z);
+  if (radius <= 1e-9) return [];
+  const a0 = Math.atan2(start.z - center.z, start.x - center.x);
+  const a1 = Math.atan2(end.z - center.z, end.x - center.x);
+  let delta = a1 - a0;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta <= -Math.PI) delta += Math.PI * 2;
+  const steps = Math.max(4, Math.ceil(Math.abs(delta) / (Math.PI / 16)));
+  const samples: FootprintPoint[] = [];
+  for (let step = 1; step < steps; step += 1) {
+    const angle = a0 + (delta * step) / steps;
+    samples.push({ x: center.x + Math.cos(angle) * radius, z: center.z + Math.sin(angle) * radius });
+  }
+  return samples;
+}
+
+/** Same mixed rounded/concave rectangle outline used by CeilingZoneBuilder,
+ * kept dependency-free so the lint follows the rendered footprint without
+ * importing the Three.js renderer into server-side validation. */
+function ceilingFootprint(zone: CeilingZone): FootprintPoint[] | undefined {
+  if (!zone.area) return undefined;
+  const [rawX1, rawZ1, rawX2, rawZ2] = zone.area;
+  const x1 = Math.min(rawX1, rawX2), x2 = Math.max(rawX1, rawX2);
+  const z1 = Math.min(rawZ1, rawZ2), z2 = Math.max(rawZ1, rawZ2);
+  const width = x2 - x1, depth = z2 - z1;
+  if (!(width > 0) || !(depth > 0)) return undefined;
+  const radii = { nw: 0, ne: 0, se: 0, sw: 0 } as Record<CeilingCorner, number>;
+  const fillets = { nw: 0, ne: 0, se: 0, sw: 0 } as Record<CeilingCorner, number>;
+  const max = Math.min(width, depth) / 2;
+  for (const corner of CEILING_CORNERS) {
+    const round = zone.corner_radii?.[corner] ?? zone.corner_radius ?? 0;
+    const fillet = zone.concave_fillets?.[corner] ?? 0;
+    if (!Number.isFinite(round) || !Number.isFinite(fillet) || round < 0 || fillet < 0 || round > max || fillet > max || (round > 0 && fillet > 0)) return undefined;
+    radii[corner] = round;
+    fillets[corner] = fillet;
+  }
+  const edges: Array<[CeilingCorner, CeilingCorner, number]> = [
+    ['sw', 'se', width], ['se', 'ne', depth], ['ne', 'nw', width], ['nw', 'sw', depth],
+  ];
+  for (const [a, b, length] of edges) {
+    const usedA = fillets[a] > 0 ? fillets[a] : radii[a];
+    const usedB = fillets[b] > 0 ? fillets[b] : radii[b];
+    if (usedA + usedB > length + 1e-9) return undefined;
+  }
+  const events: Array<{ key: CeilingCorner; point: FootprintPoint; dirIn: FootprintPoint; dirOut: FootprintPoint }> = [
+    { key: 'sw', point: { x: x1, z: z2 }, dirIn: { x: 0, z: 1 }, dirOut: { x: 1, z: 0 } },
+    { key: 'se', point: { x: x2, z: z2 }, dirIn: { x: 1, z: 0 }, dirOut: { x: 0, z: -1 } },
+    { key: 'ne', point: { x: x2, z: z1 }, dirIn: { x: 0, z: -1 }, dirOut: { x: -1, z: 0 } },
+    { key: 'nw', point: { x: x1, z: z1 }, dirIn: { x: -1, z: 0 }, dirOut: { x: 0, z: 1 } },
+  ];
+  const distance = (a: FootprintPoint, b: FootprintPoint) => Math.hypot(a.x - b.x, a.z - b.z);
+  const outline: FootprintPoint[] = [];
+  for (const event of events) {
+    const { point, dirIn, dirOut } = event;
+    const fillet = fillets[event.key], round = radii[event.key];
+    let entry: FootprintPoint, exit: FootprintPoint;
+    let arc: { center: FootprintPoint; start: FootprintPoint; end: FootprintPoint } | undefined;
+    if (fillet > 0) {
+      entry = { x: point.x + dirIn.x * fillet, z: point.z + dirIn.z * fillet };
+      exit = { x: point.x + dirOut.x * fillet, z: point.z + dirOut.z * fillet };
+      arc = { center: { x: point.x + (dirIn.x + dirOut.x) * fillet, z: point.z + (dirIn.z + dirOut.z) * fillet }, start: entry, end: exit };
+    } else if (round > 0) {
+      entry = { x: point.x - dirIn.x * round, z: point.z - dirIn.z * round };
+      exit = { x: point.x + dirOut.x * round, z: point.z + dirOut.z * round };
+      arc = { center: point, start: entry, end: exit };
+    } else {
+      entry = point; exit = point;
+    }
+    if (outline.length === 0 || distance(outline[outline.length - 1], entry) > 1e-9) outline.push(entry);
+    if (arc) outline.push(...footprintArcSamples(arc.center, arc.start, arc.end));
+    if (!arc || distance(entry, exit) > 1e-9) outline.push(exit);
+  }
+  return outline.length >= 3 ? outline : undefined;
+}
+
+function pointOnSegment(point: FootprintPoint, a: FootprintPoint, b: FootprintPoint): boolean {
+  const cross = (b.x - a.x) * (point.z - a.z) - (b.z - a.z) * (point.x - a.x);
+  if (Math.abs(cross) > 1e-8) return false;
+  return point.x >= Math.min(a.x, b.x) - 1e-8 && point.x <= Math.max(a.x, b.x) + 1e-8
+    && point.z >= Math.min(a.z, b.z) - 1e-8 && point.z <= Math.max(a.z, b.z) + 1e-8;
+}
+
+function pointInFootprint(point: FootprintPoint, outline: FootprintPoint[]): boolean {
+  let inside = false;
+  for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
+    const a = outline[i], b = outline[j];
+    if (pointOnSegment(point, a, b)) return true;
+    if ((a.z > point.z) !== (b.z > point.z) && point.x < ((b.x - a.x) * (point.z - a.z)) / (b.z - a.z) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
+function routeTouchesFootprint(a: FootprintPoint, b: FootprintPoint, outline: FootprintPoint[]): boolean {
+  if (pointInFootprint(a, outline) || pointInFootprint(b, outline)) return true;
+  for (let i = 0; i < outline.length; i += 1) {
+    const c = outline[i], d = outline[(i + 1) % outline.length];
+    if (segmentsCross(a, b, c, d) || pointOnSegment(a, c, d) || pointOnSegment(b, c, d)) return true;
+  }
+  return false;
 }
 
 type Point = { x: number; y?: number; z: number };
@@ -238,24 +339,36 @@ function hvacPowerEndpointEquivalents(sources: MepEndpointSources): Map<string, 
       .map((anchor) => [anchor.id, anchor.ref!.id]),
   );
 }
-function wallCrosses(points: Point[], wall: { x1: number; z1: number; x2: number; z2: number }): boolean {
-  const wallStart = { x: wall.x1, z: wall.z1 };
-  const wallEnd = { x: wall.x2, z: wall.z2 };
-  for (let i = 1; i < points.length; i += 1) if (segmentsCross(points[i - 1], points[i], wallStart, wallEnd)) return true;
-  // A route may intentionally place the declared penetration at a polyline
-  // vertex. `segmentsCross` is strict and therefore misses that exact case;
-  // treat a vertex as a crossing only when the adjacent segments leave it on
-  // opposite sides of the wall (a route merely ending or running along a wall
-  // is not a penetration).
-  const wallVector = { x: wallEnd.x - wallStart.x, z: wallEnd.z - wallStart.z };
-  const side = (point: Point) => wallVector.x * (point.z - wallStart.z) - wallVector.z * (point.x - wallStart.x);
-  const onWall = (point: Point) => Math.abs(side(point)) <= 1e-9
-    && point.x >= Math.min(wallStart.x, wallEnd.x) - 1e-9
-    && point.x <= Math.max(wallStart.x, wallEnd.x) + 1e-9
-    && point.z >= Math.min(wallStart.z, wallEnd.z) - 1e-9
-    && point.z <= Math.max(wallStart.z, wallEnd.z) + 1e-9;
-  for (let i = 1; i < points.length - 1; i += 1) {
-    if (onWall(points[i]) && side(points[i - 1]) * side(points[i + 1]) < 0) return true;
+type WallGeometry = { x1: number; z1: number; x2: number; z2: number; segments?: Array<ResolvedWallSegment> };
+
+/** Resolve rounded walls to their generated arc chords. The x1/z1→x2/z2
+ * chord is only a compatibility fallback for legacy callers that construct a
+ * ResolvedWall without `segments`; using it for an arc creates false wall
+ * crossings through the empty corner wedge. */
+function wallSegments(wall: WallGeometry): Array<ResolvedWallSegment> {
+  if (wall.segments && wall.segments.length > 0) return wall.segments;
+  return [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2, kind: 'line' }];
+}
+
+function wallCrosses(points: Point[], wall: WallGeometry): boolean {
+  for (const segment of wallSegments(wall)) {
+    const wallStart = { x: segment.x1, z: segment.z1 };
+    const wallEnd = { x: segment.x2, z: segment.z2 };
+    for (let i = 1; i < points.length; i += 1) if (segmentsCross(points[i - 1], points[i], wallStart, wallEnd)) return true;
+    // A route may intentionally place the declared penetration at a polyline
+    // vertex. `segmentsCross` is strict and therefore misses that exact case;
+    // treat a vertex as a crossing only when the adjacent segments leave it on
+    // opposite sides of this actual line/arc chord.
+    const wallVector = { x: wallEnd.x - wallStart.x, z: wallEnd.z - wallStart.z };
+    const side = (point: Point) => wallVector.x * (point.z - wallStart.z) - wallVector.z * (point.x - wallStart.x);
+    const onWall = (point: Point) => Math.abs(side(point)) <= 1e-9
+      && point.x >= Math.min(wallStart.x, wallEnd.x) - 1e-9
+      && point.x <= Math.max(wallStart.x, wallEnd.x) + 1e-9
+      && point.z >= Math.min(wallStart.z, wallEnd.z) - 1e-9
+      && point.z <= Math.max(wallStart.z, wallEnd.z) + 1e-9;
+    for (let i = 1; i < points.length - 1; i += 1) {
+      if (onWall(points[i]) && side(points[i - 1]) * side(points[i + 1]) < 0) return true;
+    }
   }
   return false;
 }
@@ -266,21 +379,23 @@ function segmentIntersection(a: Point, b: Point, c: Point, d: Point): { x: numbe
   const t = ((c.x - a.x) * d2z - (c.z - a.z) * d2x) / denom;
   return { x: a.x + t * d1x, z: a.z + t * d1z };
 }
-function routeWallIntersection(points: Point[], wall: { x1: number; z1: number; x2: number; z2: number }): { x: number; z: number } | undefined {
-  const wallStart = { x: wall.x1, z: wall.z1 };
-  const wallEnd = { x: wall.x2, z: wall.z2 };
-  for (let i = 1; i < points.length; i += 1) {
-    if (segmentsCross(points[i - 1], points[i], wallStart, wallEnd)) return segmentIntersection(points[i - 1], points[i], wallStart, wallEnd);
-  }
-  const wallVector = { x: wallEnd.x - wallStart.x, z: wallEnd.z - wallStart.z };
-  const side = (point: Point) => wallVector.x * (point.z - wallStart.z) - wallVector.z * (point.x - wallStart.x);
-  const onWall = (point: Point) => Math.abs(side(point)) <= 1e-9
-    && point.x >= Math.min(wallStart.x, wallEnd.x) - 1e-9
-    && point.x <= Math.max(wallStart.x, wallEnd.x) + 1e-9
-    && point.z >= Math.min(wallStart.z, wallEnd.z) - 1e-9
-    && point.z <= Math.max(wallStart.z, wallEnd.z) + 1e-9;
-  for (let i = 1; i < points.length - 1; i += 1) {
-    if (onWall(points[i]) && side(points[i - 1]) * side(points[i + 1]) < 0) return { x: points[i].x, z: points[i].z };
+function routeWallIntersection(points: Point[], wall: WallGeometry): { x: number; z: number } | undefined {
+  for (const segment of wallSegments(wall)) {
+    const wallStart = { x: segment.x1, z: segment.z1 };
+    const wallEnd = { x: segment.x2, z: segment.z2 };
+    for (let i = 1; i < points.length; i += 1) {
+      if (segmentsCross(points[i - 1], points[i], wallStart, wallEnd)) return segmentIntersection(points[i - 1], points[i], wallStart, wallEnd);
+    }
+    const wallVector = { x: wallEnd.x - wallStart.x, z: wallEnd.z - wallStart.z };
+    const side = (point: Point) => wallVector.x * (point.z - wallStart.z) - wallVector.z * (point.x - wallStart.x);
+    const onWall = (point: Point) => Math.abs(side(point)) <= 1e-9
+      && point.x >= Math.min(wallStart.x, wallEnd.x) - 1e-9
+      && point.x <= Math.max(wallStart.x, wallEnd.x) + 1e-9
+      && point.z >= Math.min(wallStart.z, wallEnd.z) - 1e-9
+      && point.z <= Math.max(wallStart.z, wallEnd.z) + 1e-9;
+    for (let i = 1; i < points.length - 1; i += 1) {
+      if (onWall(points[i]) && side(points[i - 1]) * side(points[i + 1]) < 0) return { x: points[i].x, z: points[i].z };
+    }
   }
   return undefined;
 }
@@ -558,30 +673,51 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         // 2026-10-04 A1：不再要求 zone.height 存在（那会让本规则对 17 条 drop/aluminum 区
         // 永久静默）；实心区按 thickness 反算完成面，见 ceilingSurfaceY 的口径说明。
         if (!zone.area) continue;
+        // Use the same rounded/concave outline that is rendered. Treating
+        // every area as an axis-aligned rectangle reports routes that only
+        // pass through a rounded-away corner, and checking vertices alone
+        // misses a route whose endpoints are outside but whose run crosses a
+        // ceiling band.
+        const footprint = ceilingFootprint(zone);
+        if (!footprint) continue;
         const surfaceY = ceilingSurfaceY(zone, roomHeights.get(zone.room) ?? 2.8);
         if (surfaceY === undefined) continue;
         const solid = isSolidCeilingZone(zone);
-        // 逐点判定（不再用「任一点在 footprint 内 + 另一个点超高」这种跨点组合，
-        // 那会把只是擦个角的路线误报成问题）。
-        for (const p of points) {
-          if (!inFootprint(p, zone.area)) continue;
-          const y = p.y ?? layer?.height ?? 0;
-          const below = solid && y < surfaceY - 1e-9;
-          const above = !solid && y > surfaceY + 1e-9;
-          if (!below && !above) continue;
-          const key = `${zone.id}:${below ? 'below' : 'above'}`;
-          if (reportedZones.has(key)) break;
-          reportedZones.add(key);
-          add(result, issue(
-            'warning',
-            'ceiling_clearance_unverified',
-            solid
-              ? `Route ${route.id} dips below the finished ceiling surface of ${zone.id} (${surfaceY.toFixed(2)}m) inside its footprint`
-              : `Route ${route.id} enters ceiling zone ${zone.id} above its declared height (${surfaceY.toFixed(2)}m)`,
-            route.id,
-          ));
-          break;
+        const violating = (point: Point): boolean => {
+          if (!pointInFootprint(point, footprint)) return false;
+          const y = point.y ?? layer?.height ?? 0;
+          return solid ? y < surfaceY - 1e-9 : y > surfaceY + 1e-9;
+        };
+        let below = false;
+        let above = false;
+        for (const point of points) {
+          if (!violating(point)) continue;
+          if (solid) below = true;
+          else above = true;
         }
+        // A straight run can cross a ceiling footprint between two route
+        // vertices. Preserve the per-route/per-zone de-duplication while
+        // checking those segments too.
+        for (let i = 1; i < points.length; i += 1) {
+          if (!routeTouchesFootprint(points[i - 1], points[i], footprint)) continue;
+          const aY = points[i - 1].y ?? layer?.height ?? 0;
+          const bY = points[i].y ?? layer?.height ?? 0;
+          if (solid && aY < surfaceY - 1e-9 && bY < surfaceY - 1e-9) below = true;
+          if (!solid && aY > surfaceY + 1e-9 && bY > surfaceY + 1e-9) above = true;
+        }
+        const violationKind = solid && below ? 'below' : !solid && above ? 'above' : undefined;
+        if (!violationKind) continue;
+        const key = `${zone.id}:${violationKind}`;
+        if (reportedZones.has(key)) continue;
+        reportedZones.add(key);
+        add(result, issue(
+          'warning',
+          'ceiling_clearance_unverified',
+          solid
+            ? `Route ${route.id} dips below the finished ceiling surface of ${zone.id} (${surfaceY.toFixed(2)}m) inside its footprint`
+            : `Route ${route.id} enters ceiling zone ${zone.id} above its declared height (${surfaceY.toFixed(2)}m)`,
+          route.id,
+        ));
       }
     }
     // 梁碰撞：只有 status: confirmed 且带 reference_beam_bottom_y 的约束才构成硬碰撞（inferred/pending 仅走 reference_constraint_uncertain 提醒）

@@ -4,16 +4,18 @@ import { resolveLayout } from '../../../server/layout-resolver.js';
 import { parseOverlay } from '../../../server/overlay-merge.js';
 import { parseElectricalTopology } from '../../../shared/project-render-facts-schema.js';
 import { lintElectricalTopology } from '../../../shared/electrical-lint.js';
-import type { ElectricalPoint, VertexLayoutYaml } from '../../../shared/types.js';
+import type { ElectricalPoint, FurnishingsYaml, VertexLayoutYaml } from '../../../shared/types.js';
 
 export function runElectricalLint() {
   const points = yaml.load(readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
   const topology = parseElectricalTopology(readFileSync('config/electrical-topology.yaml', 'utf8'), points);
   const geometry = yaml.load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml;
   const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const house = yaml.load(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
   return lintElectricalTopology(topology, points, {
     layout: resolveLayout(geometry),
     suppressedWallIds: overlay.suppress.flatMap((item) => item.wall ? [item.wall] : item.walls ?? []),
+    furnishings: house.furnishings ?? {},
   });
 }
 

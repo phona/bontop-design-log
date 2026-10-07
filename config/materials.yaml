@@ -1621,7 +1621,7 @@ materials:
     pros: ["干湿分离", "钢化玻璃安全"]
     cons: ["需按卫生间尺寸定制"]
     price_source: "快环建材市场卫浴区报价"
-    notes: "两卫淋浴区；归 appliances 池避免与 sanitary 三件套计数混淆"
+    notes: "两卫淋浴区固定玻璃屏；记账归属 PKG-100 / COST-100-05（见 schedule/phase-1/control.yaml，DEC-2026-10-07-R02），家电池不计，避免重复"
 
   - id: "sliding_door_glass_01"
     category: "推拉门玻璃"

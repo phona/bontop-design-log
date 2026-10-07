@@ -34,6 +34,8 @@ export const MepRouteSchema = z.object({
 }).strict();
 export const MepCoordinationSchema = z.object({
   version: z.string(), status: z.string(), note: z.string().optional(),
+  // Zod 4 enum-key records are exhaustive: every route layer needs render metadata,
+  // so a missing layer fails at load time instead of crashing the renderer later.
   layers: z.record(MepLayerSchema, z.object({ label: z.string(), color: z.string(), height: z.number().finite() }).strict()),
   routes: z.array(MepRouteSchema),
 }).strict();
@@ -124,8 +126,21 @@ export function resolveMepRoutes(config: MepCoordination, sources: MepEndpointSo
 
 export function validateMepCoordination(config: MepCoordination, sources: MepEndpointSources): void {
   const ids = new Set<string>();
+  const sourceKinds = new Map<string, string>();
   const plumbingIds = new Set(sources.plumbing.map((item) => item.id));
-  for (const item of [...sources.electrical, ...sources.plumbing, ...sources.hvacAnchors, ...sources.hvacTerminals, ...sources.outdoor]) ids.add(item.id);
+  const registerSources = (kind: string, items: Array<{ id: string }>): void => {
+    for (const item of items) {
+      const previous = sourceKinds.get(item.id);
+      if (previous) throw new Error(`Duplicate MEP endpoint id ${item.id} (${previous} and ${kind})`);
+      sourceKinds.set(item.id, kind);
+      ids.add(item.id);
+    }
+  };
+  registerSources('electrical', sources.electrical);
+  registerSources('plumbing', sources.plumbing);
+  registerSources('hvac anchor', sources.hvacAnchors);
+  registerSources('hvac terminal', sources.hvacTerminals);
+  registerSources('VRF outdoor', sources.outdoor);
   const routeIds = new Set<string>();
   for (const route of config.routes) {
     if (routeIds.has(route.id)) throw new Error(`Duplicate MEP route id: ${route.id}`);
@@ -136,8 +151,13 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
     }
     const from = resolveMepEndpoint(route.from, sources);
     const to = resolveMepEndpoint(route.to, sources);
+    const requirementRoute = route.route_kind === 'requirement' || route.source_status === 'design_requirement';
+    const candidateRoute = route.route_kind === 'candidate';
     if (from && to && samePlanPoint(from, to) && route.status === 'confirmed') {
       throw new Error(`MEP route ${route.id} is a degenerate self-connection and cannot be a confirmed physical route`);
+    }
+    if ((requirementRoute || candidateRoute) && route.status === 'confirmed') {
+      throw new Error(`MEP route ${route.id} is marked ${requirementRoute ? 'requirement' : 'candidate'} and cannot be confirmed`);
     }
     for (const [name, value] of [['diameter', route.diameter], ['width', route.width], ['depth', route.depth], ['height', route.height]] as const) {
       if (value !== undefined && (!Number.isFinite(value) || value <= 0)) throw new Error(`MEP route ${route.id} ${name} must be positive`);
@@ -148,13 +168,10 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
     if ((route.layer === 'water_supply' || route.layer === 'drainage') && !['plan_supported', 'design_requirement'].includes(route.source_status)) {
       throw new Error(`Plumbing route ${route.id} requires plan_supported or design_requirement evidence`);
     }
-    if (route.source_status === 'design_requirement' && route.status === 'confirmed') {
-      throw new Error(`Design requirement route ${route.id} cannot be confirmed`);
-    }
-    if ((route.layer === 'water_supply' || route.layer === 'drainage') && route.source_status === 'design_requirement') {
+    if ((route.layer === 'water_supply' || route.layer === 'drainage') && requirementRoute) {
       for (const endpoint of [route.from, route.to]) {
         if (typeof endpoint === 'string' && plumbingIds.has(endpoint)) {
-          throw new Error(`Design requirement plumbing route ${route.id} must not imply an authoritative plumbing endpoint: ${endpoint}`);
+          throw new Error(`Requirement plumbing route ${route.id} must not imply an authoritative plumbing endpoint: ${endpoint}`);
         }
       }
     }

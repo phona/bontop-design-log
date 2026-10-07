@@ -24,6 +24,8 @@ export type PlacementItem = {
   wall_side?: 'north' | 'south' | 'east' | 'west';
   x?: number;
   z?: number;
+  status?: 'measured' | 'likely' | 'inferred' | 'pending';
+  position_status?: 'measured' | 'likely' | 'inferred' | 'pending';
 };
 
 export type PlacementIssue = {
@@ -103,15 +105,16 @@ export function checkWallPointPlacements(
     // 唯一例外是「距墙段端点」子检查：投影已被 clamp 到端点，该值必然为 0，
     // 再报一条只是同一次失败的复读，故用 geometryOk 单独门控。
     const geometryOk = !outside && lineDistance <= tolerance;
+    const pendingPosition = item.status === 'pending' || item.position_status === 'pending';
     if (!geometryOk) {
       issues.push({
-        level: 'warning',
+        level: pendingPosition ? 'error' : 'warning',
         id: item.id,
         wall: item.wall,
         distance: lineDistance,
         message: outside
-          ? `投影超出墙段（距墙线 ${lineDistance.toFixed(2)}m）`
-          : `离墙线垂直距离 ${lineDistance.toFixed(2)}m`,
+          ? `${pendingPosition ? '待现场裁定点位' : '点位'}投影超出墙段（距墙线 ${lineDistance.toFixed(2)}m）`
+          : `${pendingPosition ? '待现场裁定点位' : '点位'}离墙线垂直距离 ${lineDistance.toFixed(2)}m`,
       });
     }
 
@@ -232,4 +235,3 @@ export function openingEdgeDistance(itemAlong: number, openingCenterAlong: numbe
     Math.abs(itemAlong - (openingCenterAlong + width / 2)),
   );
 }
-

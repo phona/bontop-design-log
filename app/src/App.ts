@@ -1286,7 +1286,12 @@ export class App {
         const { category, type } = this.infrastructurePlaceMode;
         const apiUrl = category === 'electrical' ? '/api/electrical' : '/api/plumbing';
         const id = `${type}_${Date.now()}`;
-        const room = 'living_dining';
+        const room = this.houseScene.getRoomIdAt(centerX, centerY);
+        if (!room) {
+          console.warn('Cannot place infrastructure outside a resolved room');
+          this.exitInfrastructurePlaceMode();
+          return;
+        }
         const height = category === 'electrical'
           ? (type === 'switch' ? 1.3 : type === 'floor_socket' ? 0.05 : 0.3)
           : 0;

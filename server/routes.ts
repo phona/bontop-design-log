@@ -26,10 +26,19 @@ import {
   resolveActiveCeilingRates,
   compareCeilingQuotes,
   ceilingQuoteQuantities,
+  type CeilingQuoteRateKey,
 } from './ceiling-quotes.js';
+import {
+  loadCeilingMaterialCost,
+  computeCeilingMaterialCost,
+} from './ceiling-material-cost.js';
 
-/** base.json 的兜底吊顶费率：生效报价未声明的计价行回落到它。 */
-function baseJsonCeilingRates(): Record<'ceiling_zones' | 'curtain_box_linear', { per_unit: number | null; unit: string }> {
+/**
+ * base.json 的兜底吊顶费率：生效报价未声明的计价行回落到它。
+ * C12 新增的两行（边吊按米 / 满吊平顶按㎡）在 base.json 里没有对应 labor 行，
+ * 回落值就是 null（待报价）——不编金额，只在报价面板显形。
+ */
+function baseJsonCeilingRates(): Record<CeilingQuoteRateKey, { per_unit: number | null; unit: string }> {
   const raw = JSON.parse(readFileSync('config/budget/base.json', 'utf8')) as {
     categories: Record<string, { labor?: { rate: number | null; unit: string; area: string } | Array<{ rate: number | null; unit: string; area: string }> }>;
   };
@@ -39,9 +48,16 @@ function baseJsonCeilingRates(): Record<'ceiling_zones' | 'curtain_box_linear', 
   return {
     ceiling_zones: { per_unit: byArea.get('ceiling_zones')?.rate ?? null, unit: byArea.get('ceiling_zones')?.unit ?? '元/㎡' },
     curtain_box_linear: { per_unit: byArea.get('curtain_box_linear')?.rate ?? null, unit: byArea.get('curtain_box_linear')?.unit ?? '元/m' },
+    gypsum_edge_drop_linear: { per_unit: null, unit: '元/m' },
+    gypsum_flat_sqm: { per_unit: null, unit: '元/㎡' },
+    aluminum_buckle_sqm: { per_unit: null, unit: '元/㎡' },
   };
 }
 import type { ResolvedLayout } from '../shared/types.js';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 export interface ApiDeps {
   catalog: ProjectCatalog;
@@ -60,7 +76,7 @@ export interface ApiDeps {
 }
 
 export function createApiRouter(deps: ApiDeps): Router {
-  const { catalog, state, getRuleEngine, getBudgetCalculator, archiveStore } = deps;
+  const { state, getRuleEngine, getBudgetCalculator, archiveStore } = deps;
   const router = Router();
   const phaseScopes = loadPhaseScopes();
 
@@ -94,7 +110,7 @@ export function createApiRouter(deps: ApiDeps): Router {
         return;
       }
       const config = loadTileComparisonConfig();
-      const comparison = buildTileCostComparison(layout, config, catalog);
+      const comparison = buildTileCostComparison(layout, config, deps.catalog);
       res.json({
         ...comparison,
         interpretation: {
@@ -130,7 +146,7 @@ export function createApiRouter(deps: ApiDeps): Router {
         return;
       }
       const config = loadPaintComparisonConfig();
-      const comparison = buildPaintCostComparison(layout, config, catalog);
+      const comparison = buildPaintCostComparison(layout, config, deps.catalog);
       res.json({
         ...comparison,
         interpretation: {
@@ -169,6 +185,7 @@ export function createApiRouter(deps: ApiDeps): Router {
       const topology = loadElectricalTopologyConfig();
       const lint = lintElectricalTopology(topology, points, {
         ...(deps.getMepLintContext?.()?.layout ? { layout: deps.getMepLintContext?.()?.layout } : {}),
+        furnishings: deps.catalog.getFurnishings(),
         suppressedWallIds: (() => {
           const ids = deps.getMepLintContext?.()?.suppressedWallIds;
           return ids ? [...ids] : undefined;
@@ -245,6 +262,12 @@ export function createApiRouter(deps: ApiDeps): Router {
           curtainBoxM2: takeoff.curtainBoxM2,
           curtainBoxLinearM: takeoff.curtainBoxLinearM,
           overlaps: takeoff.overlaps,
+          // C12：石膏板分形态计价的量与覆盖不变量（边吊长边 + 满吊面积 ≠ 面积，别拿两种单位相加）
+          gypsumNetAreaM2: takeoff.gypsumBoardM2,
+          edgeDropLinearM: takeoff.edgeDropLinearM,
+          edgeDropNetAreaM2: takeoff.edgeDropNetAreaM2,
+          flatNetAreaM2: takeoff.flatNetAreaM2,
+          unclassifiedPricingFormIds: takeoff.unclassifiedPricingFormIds,
         },
         resolved: resolveActiveCeilingRates(file, fallback),
         comparison: compareCeilingQuotes(file, takeoff, fallback),
@@ -254,10 +277,29 @@ export function createApiRouter(deps: ApiDeps): Router {
     }
   });
 
+  // ─── 吊顶主材参考成本区间（DEC-2026-10-08-C09）───
+  // GET：把 config/ceiling-material-cost.yaml 的区间与施工方「包工包料 − 纯人工」的材料额度
+  // 摆到同一把尺子上，只出三态判定（不低于/区间内/不高于），不出「贵/便宜」的市场判断。
+  // 只读，无 POST：区间是参考证据，不是可切换的报价。
+  router.get('/ceiling/material-cost', (_req, res) => {
+    try {
+      const zones = deps.getProjectRenderFacts?.()?.ceiling ?? loadCeilingConfig();
+      const takeoff = computeCeilingTakeoff(zones, deps.catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
+      const config = loadCeilingMaterialCost();
+      res.json(computeCeilingMaterialCost(config, takeoff));
+    } catch (err) {
+      res.status(500).json({ error: `failed to compute ceiling material cost: ${err instanceof Error ? err.message : String(err)}` });
+    }
+  });
+
   router.post('/ceiling/quotes/active', (req, res) => {
-    const id = typeof req.body?.id === 'string' ? req.body.id : '';
-    if (!id) {
-      res.status(400).json({ error: 'body.id is required' });
+    if (!isRecord(req.body)) {
+      res.status(400).json({ error: 'request body must be an object' });
+      return;
+    }
+    const id = req.body.id;
+    if (typeof id !== 'string' || id.trim() === '') {
+      res.status(400).json({ error: 'body.id must be a non-empty string' });
       return;
     }
     try {
@@ -290,7 +332,12 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.get('/project', (req, res) => {
-    const layoutName = req.query.layout as string | undefined;
+    const rawLayoutName = req.query.layout;
+    if (rawLayoutName !== undefined && (typeof rawLayoutName !== 'string' || rawLayoutName.trim() === '')) {
+      res.status(400).json({ error: 'layout must be a single layout name' });
+      return;
+    }
+    const layoutName = rawLayoutName as string | undefined;
     let phase;
     try {
       phase = parsePhaseId(req.query.phase);
@@ -298,9 +345,15 @@ export function createApiRouter(deps: ApiDeps): Router {
       res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
       return;
     }
-    const projectCatalog = layoutName
-      ? ProjectCatalog.load('.', layoutName)
-      : deps.catalog;
+    let projectCatalog: ProjectCatalog;
+    try {
+      projectCatalog = layoutName
+        ? ProjectCatalog.load('.', layoutName)
+        : deps.catalog;
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
     const overlay = deps.getOverlay();
     const sceneElements = mergeSceneElements(projectCatalog.getWalls(), overlay);
     const modelLinks = loadModelPackageLinks();
@@ -340,9 +393,17 @@ export function createApiRouter(deps: ApiDeps): Router {
       res.status(503).json({ error: 'presentation state is not configured' });
       return;
     }
-    const { roomId, state: curtainState, expectedUpdatedAt } = req.body ?? {};
+    if (!isRecord(req.body)) {
+      res.status(400).json({ error: 'request body must be an object' });
+      return;
+    }
+    const { roomId, state: curtainState, expectedUpdatedAt } = req.body;
     if (roomId !== undefined && typeof roomId !== 'string') {
       res.status(400).json({ error: 'roomId must be a string' });
+      return;
+    }
+    if ((typeof roomId === 'string' && roomId.trim() === '') || (typeof expectedUpdatedAt !== 'undefined' && (typeof expectedUpdatedAt !== 'string' || expectedUpdatedAt.trim() === ''))) {
+      res.status(400).json({ error: 'roomId must be non-empty and expectedUpdatedAt must be a string' });
       return;
     }
     if (typeof curtainState !== 'string') {
@@ -370,10 +431,48 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.patch('/scheme/current', (req, res) => {
-    const { selections, reason, source, expectedUpdatedAt } = req.body ?? {};
+    if (!isRecord(req.body)) {
+      res.status(400).json({ error: 'request body must be an object' });
+      return;
+    }
+    const { selections, reason, source, expectedUpdatedAt } = req.body;
     if (!Array.isArray(selections)) {
       res.status(400).json({ error: 'selections must be an array' });
       return;
+    }
+    if (reason !== undefined && typeof reason !== 'string') {
+      res.status(400).json({ error: 'reason must be a string' });
+      return;
+    }
+    if (source !== undefined && typeof source !== 'string') {
+      res.status(400).json({ error: 'source must be a string' });
+      return;
+    }
+    if (expectedUpdatedAt !== undefined && (typeof expectedUpdatedAt !== 'string' || expectedUpdatedAt.trim() === '')) {
+      res.status(400).json({ error: 'expectedUpdatedAt must be a string' });
+      return;
+    }
+    for (const [index, patch] of selections.entries()) {
+      if (!isRecord(patch)) {
+        res.status(400).json({ error: `selections[${index}] must be an object` });
+        return;
+      }
+      if (typeof patch.topic !== 'string' || patch.topic.trim() === '') {
+        res.status(400).json({ error: `selections[${index}].topic must be a non-empty string` });
+        return;
+      }
+      if (patch.optionId !== null && typeof patch.optionId !== 'string') {
+        res.status(400).json({ error: `selections[${index}].optionId must be a string or null` });
+        return;
+      }
+      if (patch.roomId !== undefined && patch.roomId !== null && typeof patch.roomId !== 'string') {
+        res.status(400).json({ error: `selections[${index}].roomId must be a string or null` });
+        return;
+      }
+      if (patch.reason !== undefined && typeof patch.reason !== 'string') {
+        res.status(400).json({ error: `selections[${index}].reason must be a string` });
+        return;
+      }
     }
     try {
       const result = state.applySelections(selections, reason, source, expectedUpdatedAt);
@@ -392,6 +491,22 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.post('/decisions', (req, res) => {
+    if (!isRecord(req.body)) {
+      res.status(400).json({ error: 'request body must be an object' });
+      return;
+    }
+    for (const field of ['topic', 'reason', 'source'] as const) {
+      if (req.body[field] !== undefined && typeof req.body[field] !== 'string') {
+        res.status(400).json({ error: `${field} must be a string` });
+        return;
+      }
+    }
+    for (const field of ['roomId', 'optionId'] as const) {
+      if (req.body[field] !== undefined && req.body[field] !== null && typeof req.body[field] !== 'string') {
+        res.status(400).json({ error: `${field} must be a string or null` });
+        return;
+      }
+    }
     try {
       const entry = state.recordDecision(req.body ?? {});
       res.status(201).json(entry);
@@ -402,7 +517,7 @@ export function createApiRouter(deps: ApiDeps): Router {
 
   router.get('/topics', (_req, res) => {
     res.json(
-      catalog.getTopics().map((t) => ({
+      deps.catalog.getTopics().map((t) => ({
         id: t.id,
         name: t.name,
         perRoom: t.perRoom,
@@ -412,7 +527,7 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.get('/topics/:id/options', (req, res) => {
-    const topic = catalog.getTopic(req.params.id);
+    const topic = deps.catalog.getTopic(req.params.id);
     if (!topic) {
       res.status(404).json({ error: 'topic not found' });
       return;
@@ -430,7 +545,7 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.get('/topics/:id/options/:optionId', (req, res) => {
-    const option = catalog.getOption(req.params.id, req.params.optionId);
+    const option = deps.catalog.getOption(req.params.id, req.params.optionId);
     if (!option) {
       res.status(404).json({ error: 'option not found' });
       return;
@@ -439,12 +554,11 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.post('/view-context', (req, res) => {
-    const { objectId } = req.body ?? {};
-    if (typeof objectId !== 'string') {
-      res.status(400).json({ error: 'objectId is required' });
+    if (!isRecord(req.body) || typeof req.body.objectId !== 'string' || req.body.objectId.trim() === '') {
+      res.status(400).json({ error: 'objectId must be a non-empty string' });
       return;
     }
-    res.json(state.setViewContext(objectId));
+    res.json(state.setViewContext(req.body.objectId));
   });
 
   router.get('/view-context', (_req, res) => {
@@ -456,7 +570,11 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.post('/visual-commands', (req, res) => {
-    const { type, payload } = req.body ?? {};
+    if (!isRecord(req.body)) {
+      res.status(400).json({ error: 'request body must be an object' });
+      return;
+    }
+    const { type, payload } = req.body;
     if (type !== 'set_camera_target' && type !== 'highlight_object' && type !== 'set_curtain_state') {
       res.status(400).json({ error: 'invalid visual command type' });
       return;
@@ -466,7 +584,19 @@ export function createApiRouter(deps: ApiDeps): Router {
         res.status(503).json({ error: 'presentation state is not configured' });
         return;
       }
-      const curtainPayload = payload as { roomId?: string; state?: CurtainState } | undefined;
+      if (!isRecord(payload)) {
+        res.status(400).json({ error: 'payload must be an object for set_curtain_state' });
+        return;
+      }
+      if (payload.roomId !== undefined && (typeof payload.roomId !== 'string' || payload.roomId.trim() === '')) {
+        res.status(400).json({ error: 'payload.roomId must be a string' });
+        return;
+      }
+      if (typeof payload.state !== 'string') {
+        res.status(400).json({ error: 'payload.state must be a string' });
+        return;
+      }
+      const curtainPayload = payload as { roomId?: string; state: CurtainState };
       try {
         const result = deps.presentationState.setCurtainState({ roomId: curtainPayload?.roomId, state: curtainPayload?.state as CurtainState });
         const cmd = state.appendVisualCommand(type, { roomId: curtainPayload?.roomId, state: curtainPayload?.state });
@@ -476,12 +606,25 @@ export function createApiRouter(deps: ApiDeps): Router {
       }
       return;
     }
+    if (!isRecord(payload)) {
+      res.status(400).json({ error: 'payload must be an object' });
+      return;
+    }
+    const targetField = type === 'set_camera_target' ? 'targetId' : 'objectId';
+    if (typeof payload[targetField] !== 'string' || payload[targetField].trim() === '') {
+      res.status(400).json({ error: `payload.${targetField} must be a non-empty string` });
+      return;
+    }
     const cmd = state.appendVisualCommand(type, payload);
     res.status(201).json(cmd);
   });
 
   router.post('/visual-commands/ack', (req, res) => {
-    const { ids } = req.body ?? {};
+    if (!isRecord(req.body)) {
+      res.status(400).json({ error: 'request body must be an object' });
+      return;
+    }
+    const { ids } = req.body;
     if (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string')) {
       res.status(400).json({ error: 'ids must be an array of strings' });
       return;
@@ -506,7 +649,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     try {
       const layout = deps.getResolvedLayout?.();
       if (layout) {
-        const comparison = buildTileCostComparison(layout, loadTileComparisonConfig(), catalog);
+        const comparison = buildTileCostComparison(layout, loadTileComparisonConfig(), deps.catalog);
         const displayNames = new Map(comparison.candidates.map(candidate => [candidate.id, candidate.productDescription]));
         tileBudgetPreview = {
           status: 'comparison_overlay_only' as const,
@@ -527,7 +670,7 @@ export function createApiRouter(deps: ApiDeps): Router {
       const layout = deps.getResolvedLayout?.();
       if (layout) {
         const paintConfig = loadPaintComparisonConfig();
-        const paintComparison = buildPaintCostComparison(layout, paintConfig, catalog);
+        const paintComparison = buildPaintCostComparison(layout, paintConfig, deps.catalog);
         paintBudgetPreview = {
           status: 'comparison_overlay_only' as const,
           includedInTotalActual: false as const,
@@ -554,14 +697,14 @@ export function createApiRouter(deps: ApiDeps): Router {
   router.get('/risks', (_req, res) => {
     const scheme = state.getCurrentScheme();
     const engine = getRuleEngine();
-    const result = engine.evaluate(scheme, catalog);
+    const result = engine.evaluate(scheme, deps.catalog);
     res.json(result);
   });
 
   router.get('/design-check', (_req, res) => {
     const scheme = state.getCurrentScheme();
     const engine = getRuleEngine();
-    const result = engine.evaluate(scheme, catalog);
+    const result = engine.evaluate(scheme, deps.catalog);
     res.json(result);
   });
 
@@ -570,9 +713,17 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.post('/schemes', (req, res) => {
-    const { name, reason } = req.body ?? {};
-    if (!name || typeof name !== 'string') {
-      res.status(400).json({ error: 'name is required' });
+    if (!isRecord(req.body)) {
+      res.status(400).json({ error: 'request body must be an object' });
+      return;
+    }
+    const { name, reason } = req.body;
+    if (typeof name !== 'string' || name.trim() === '') {
+      res.status(400).json({ error: 'name must be a non-empty string' });
+      return;
+    }
+    if (reason !== undefined && typeof reason !== 'string') {
+      res.status(400).json({ error: 'reason must be a string' });
       return;
     }
     const scheme = state.getCurrentScheme();
@@ -604,8 +755,8 @@ export function createApiRouter(deps: ApiDeps): Router {
   });
 
   router.get('/schemes/compare', (req, res) => {
-    const archiveId = req.query.other as string;
-    if (!archiveId) {
+    const archiveId = req.query.other;
+    if (typeof archiveId !== 'string' || archiveId.trim() === '') {
       res.status(400).json({ error: 'query param "other" (archiveId) required' });
       return;
     }
@@ -617,9 +768,9 @@ export function createApiRouter(deps: ApiDeps): Router {
     state.setCompareArchive(archiveId, { ...archived, updatedAt: archived.createdAt } as CurrentScheme);
     const current = state.getCurrentScheme();
     const currentBudget = getBudgetCalculator().calculate(current);
-    const currentRisks = getRuleEngine().evaluate(current, catalog);
+    const currentRisks = getRuleEngine().evaluate(current, deps.catalog);
     const compareBudget = getBudgetCalculator().calculate({ ...archived, updatedAt: archived.createdAt } as CurrentScheme);
-    const compareRisks = getRuleEngine().evaluate({ ...archived, updatedAt: archived.createdAt } as CurrentScheme, catalog);
+    const compareRisks = getRuleEngine().evaluate({ ...archived, updatedAt: archived.createdAt } as CurrentScheme, deps.catalog);
 
     const allTopics = new Set([
       ...Object.keys(current.selections),
@@ -642,8 +793,8 @@ export function createApiRouter(deps: ApiDeps): Router {
       const curOptId = current.selections[topic]?.default ?? null;
       const cmpOptId = archived.selections[topic]?.default ?? null;
       if (curOptId === cmpOptId) continue;
-      const curOpt = curOptId ? catalog.getOption(topic, curOptId) : null;
-      const cmpOpt = cmpOptId ? catalog.getOption(topic, cmpOptId) : null;
+      const curOpt = curOptId ? deps.catalog.getOption(topic, curOptId) : null;
+      const cmpOpt = cmpOptId ? deps.catalog.getOption(topic, cmpOptId) : null;
       selectionDiffs.push({
         topic,
         current: curOpt?.name ?? curOptId,

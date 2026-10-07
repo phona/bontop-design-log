@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Express, Request, Response, NextFunction } from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 interface McpSession {
@@ -79,19 +78,14 @@ export async function attachMcpTransports(app: Express, createMcpServer: () => M
     }
   });
 
-  app.get('/sse', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const sseServer = createMcpServer();
-      const sseTransport = new SSEServerTransport('/messages', res);
-      await sseServer.connect(sseTransport);
-      await sseTransport.start();
-    } catch (err) {
-      console.error('[mcp] GET /sse error:', err);
-      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
-    }
+  // The legacy SSE transport needs a session-aware /messages endpoint. This
+  // server only keeps Streamable HTTP sessions, so do not expose an endpoint
+  // that opens an SSE stream which can never receive its follow-up messages.
+  app.get('/sse', (_req: Request, res: Response) => {
+    res.status(404).json({ error: 'SSE transport is not available; use /mcp' });
   });
 
-  app.post('/messages', async (_req: Request, res: Response) => {
-    res.status(503).json({ error: 'SSE session routing not implemented in Spec 1' });
+  app.post('/messages', (_req: Request, res: Response) => {
+    res.status(404).json({ error: 'SSE transport is not available; use /mcp' });
   });
 }

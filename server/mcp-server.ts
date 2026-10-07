@@ -22,13 +22,14 @@ import {
   loadCeilingQuotes,
   setActiveCeilingQuote,
   resolveActiveCeilingRates,
+  type CeilingQuoteRateKey,
   compareCeilingQuotes,
   ceilingQuoteQuantities,
 } from './ceiling-quotes.js';
 import { readFileSync } from 'node:fs';
 
 /** base.json 的兜底吊顶费率：生效报价未声明的计价行回落到它（与 budget-calculator 同源）。 */
-function baseJsonCeilingRates(): Record<'ceiling_zones' | 'curtain_box_linear', { per_unit: number | null; unit: string }> {
+function baseJsonCeilingRates(): Record<CeilingQuoteRateKey, { per_unit: number | null; unit: string }> {
   const raw = JSON.parse(readFileSync('config/budget/base.json', 'utf8')) as {
     categories: Record<string, { labor?: { rate: number | null; unit: string; area: string } | Array<{ rate: number | null; unit: string; area: string }> }>;
   };
@@ -38,6 +39,9 @@ function baseJsonCeilingRates(): Record<'ceiling_zones' | 'curtain_box_linear', 
   return {
     ceiling_zones: { per_unit: byArea.get('ceiling_zones')?.rate ?? null, unit: byArea.get('ceiling_zones')?.unit ?? '元/㎡' },
     curtain_box_linear: { per_unit: byArea.get('curtain_box_linear')?.rate ?? null, unit: byArea.get('curtain_box_linear')?.unit ?? '元/m' },
+    gypsum_edge_drop_linear: { per_unit: null, unit: '元/m' },
+    gypsum_flat_sqm: { per_unit: null, unit: '元/㎡' },
+    aluminum_buckle_sqm: { per_unit: null, unit: '元/㎡' },
   };
 }
 import { parseSpecDimensions } from './spec-parser.js';
@@ -77,7 +81,7 @@ export interface McpDeps {
 }
 
 export function createMcpServer(deps: McpDeps): McpServer {
-  const { catalog, state, getRuleEngine, getBudgetCalculator, getPitfallEngine, getLifecycleEngine, getTradeoffEngine, getAcceptanceEngine, getBudgetAdvisor, getBudgetValueAnalyzer, archiveStore } = deps;
+  const { state, getRuleEngine, getBudgetCalculator, getPitfallEngine, getLifecycleEngine, getTradeoffEngine, getAcceptanceEngine, getBudgetAdvisor, getBudgetValueAnalyzer, archiveStore } = deps;
   const server = new McpServer(
     { name: 'bontop-design', version: '0.2.0' },
     { capabilities: { tools: {} } }
@@ -88,9 +92,9 @@ export function createMcpServer(deps: McpDeps): McpServer {
     { title: 'Get project summary', description: 'Return house, topics, and budget base.' },
     async () => {
       return text({
-        rooms: catalog.getRooms().map((r) => ({ id: r.id, name: r.name })),
-        topics: catalog.getTopics().map((t) => ({ id: t.id, name: t.name, perRoom: t.perRoom })),
-        budgetCategories: catalog.getBudgetCategories(),
+        rooms: deps.catalog.getRooms().map((r) => ({ id: r.id, name: r.name })),
+        topics: deps.catalog.getTopics().map((t) => ({ id: t.id, name: t.name, perRoom: t.perRoom })),
+        budgetCategories: deps.catalog.getBudgetCategories(),
       });
     }
   );
@@ -102,7 +106,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       description:
         'Return data maturity: geometry/structure/MEP precision (inferred/estimated/measured), material confirmation stats (candidate vs confirmed), and survey status. Use to gauge whether budget/dimension outputs are estimates or measured.',
     },
-    async () => text(catalog.getDataPrecision())
+    async () => text(deps.catalog.getDataPrecision())
   );
 
   server.registerTool(
@@ -122,7 +126,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
     { title: 'List topics', description: 'List all design topics.' },
     async () =>
       text(
-        catalog.getTopics().map((t) => ({
+        deps.catalog.getTopics().map((t) => ({
           id: t.id,
           name: t.name,
           perRoom: t.perRoom,
@@ -139,7 +143,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       inputSchema: z.object({ topic: z.string() }),
     },
     async (args) => {
-      const options = catalog.getOptions(args.topic);
+      const options = deps.catalog.getOptions(args.topic);
       if (options.length === 0) return text({ error: 'topic not found' });
       return text(options.map((o) => ({ id: o.id, name: o.name, price_per_unit: o.price_per_unit })));
     }
@@ -153,7 +157,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       inputSchema: z.object({ topic: z.string(), optionId: z.string() }),
     },
     async (args) => {
-      const option = catalog.getOption(args.topic, args.optionId);
+      const option = deps.catalog.getOption(args.topic, args.optionId);
       if (!option) return text({ error: 'option not found' });
       return text(option);
     }
@@ -189,7 +193,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const newScheme = state.getCurrentScheme();
       const prevBudget = calc.calculate(result.previousScheme);
       const newBudget = calc.calculate(newScheme);
-      const newRisks = engine.evaluate(newScheme, catalog);
+      const newRisks = engine.evaluate(newScheme, deps.catalog);
       const prevMap = prevActualByKey(prevBudget.categories);
       const categoryDeltas = newBudget.categories
         .map((c, i) => ({
@@ -238,7 +242,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const newScheme = state.getCurrentScheme();
       const prevBudget = calc.calculate(result.previousScheme);
       const newBudget = calc.calculate(newScheme);
-      const newRisks = engine.evaluate(newScheme, catalog);
+      const newRisks = engine.evaluate(newScheme, deps.catalog);
       const prevMap = prevActualByKey(prevBudget.categories);
       const categoryDeltas = newBudget.categories
         .map((c, i) => ({
@@ -364,7 +368,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       return text(
         computeCeilingTakeoff(
           loadCeilingConfig(),
-          catalog.getRooms().map((room) => ({ id: room.id, height: room.height }))
+          deps.catalog.getRooms().map((room) => ({ id: room.id, height: room.height }))
         )
       );
     }
@@ -380,7 +384,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
     async () => {
       try {
         const file = loadCeilingQuotes();
-        const takeoff = computeCeilingTakeoff(loadCeilingConfig(), catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
+        const takeoff = computeCeilingTakeoff(loadCeilingConfig(), deps.catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
         return text({
           activeId: file.active,
           quantities: ceilingQuoteQuantities(takeoff),
@@ -404,7 +408,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
     async (args) => {
       try {
         const file = setActiveCeilingQuote(args.id);
-        const takeoff = computeCeilingTakeoff(loadCeilingConfig(), catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
+        const takeoff = computeCeilingTakeoff(loadCeilingConfig(), deps.catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
         const fallback = baseJsonCeilingRates();
         return text({
           switched: true,
@@ -428,7 +432,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
     async () => {
       const scheme = state.getCurrentScheme();
       const engine = getRuleEngine();
-      return text(engine.evaluate(scheme, catalog));
+      return text(engine.evaluate(scheme, deps.catalog));
     }
   );
 
@@ -441,7 +445,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
     async () => {
       const scheme = state.getCurrentScheme();
       const engine = getRuleEngine();
-      return text(engine.evaluate(scheme, catalog));
+      return text(engine.evaluate(scheme, deps.catalog));
     }
   );
 
@@ -485,13 +489,13 @@ export function createMcpServer(deps: McpDeps): McpServer {
 
       const current = state.getCurrentScheme();
       const currentBudget = getBudgetCalculator().calculate(current);
-      const currentRisks = getRuleEngine().evaluate(current, catalog);
+      const currentRisks = getRuleEngine().evaluate(current, deps.catalog);
       const compareBudget = getBudgetCalculator().calculate({
         ...archived,
         updatedAt: archived.createdAt,
       } as CurrentScheme);
       const compareRisks = getRuleEngine().evaluate(
-        { ...archived, updatedAt: archived.createdAt } as CurrentScheme, catalog
+        { ...archived, updatedAt: archived.createdAt } as CurrentScheme, deps.catalog
       );
 
       const allTopics = new Set([
@@ -515,8 +519,8 @@ export function createMcpServer(deps: McpDeps): McpServer {
         const curOptId = current.selections[topic]?.default ?? null;
         const cmpOptId = archived.selections[topic]?.default ?? null;
         if (curOptId === cmpOptId) continue;
-        const curOpt = curOptId ? catalog.getOption(topic, curOptId) : null;
-        const cmpOpt = cmpOptId ? catalog.getOption(topic, cmpOptId) : null;
+        const curOpt = curOptId ? deps.catalog.getOption(topic, curOptId) : null;
+        const cmpOpt = cmpOptId ? deps.catalog.getOption(topic, cmpOptId) : null;
         selectionDiffs.push({
           topic,
           current: curOpt?.name ?? curOptId,
@@ -612,13 +616,13 @@ export function createMcpServer(deps: McpDeps): McpServer {
     },
     async (args) => {
       for (const change of args.changes) {
-        if (!catalog.isValidTopic(change.topic)) {
+        if (!deps.catalog.isValidTopic(change.topic)) {
           return text({ error: `what_if: unknown topic "${change.topic}"` });
         }
-        if (change.optionId !== null && !catalog.isValidOption(change.topic, change.optionId)) {
+        if (change.optionId !== null && !deps.catalog.isValidOption(change.topic, change.optionId)) {
           return text({ error: `what_if: unknown option "${change.optionId}" for topic "${change.topic}"` });
         }
-        if (change.roomId !== undefined && !catalog.isValidRoom(change.roomId)) {
+        if (change.roomId !== undefined && !deps.catalog.isValidRoom(change.roomId)) {
           return text({ error: `what_if: unknown room "${change.roomId}"` });
         }
       }
@@ -646,9 +650,9 @@ export function createMcpServer(deps: McpDeps): McpServer {
       }
 
       const currentBudget = calc.calculate(current);
-      const currentRisks = engine.evaluate(current, catalog);
+      const currentRisks = engine.evaluate(current, deps.catalog);
       const simBudget = calc.calculate(tempScheme);
-      const simRisks = engine.evaluate(tempScheme, catalog);
+      const simRisks = engine.evaluate(tempScheme, deps.catalog);
 
       const currentRiskIds = new Set(currentRisks.risks.map((r) => r.id));
       const simRiskIds = new Set(simRisks.risks.map((r) => r.id));
@@ -763,13 +767,13 @@ export function createMcpServer(deps: McpDeps): McpServer {
     },
     async (args) => {
       if (args.roomId) {
-        const detail = catalog.getRoomLayoutDetail(args.roomId);
+        const detail = deps.catalog.getRoomLayoutDetail(args.roomId);
         if (!detail) return text({ error: `room not found: ${args.roomId}` });
         return text(detail);
       }
-      const allRooms = catalog
+      const allRooms = deps.catalog
         .getRooms()
-        .map((r) => catalog.getRoomLayoutDetail(r.id))
+        .map((r) => deps.catalog.getRoomLayoutDetail(r.id))
         .filter((d) => d !== undefined);
       return text(allRooms);
     }
@@ -783,7 +787,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       inputSchema: z.object({ roomId: z.string().optional() }),
     },
     async (args) => {
-      const furnishings = catalog.getFurnishings();
+      const furnishings = deps.catalog.getFurnishings();
       const result: Record<
         string,
         Array<{
@@ -801,7 +805,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
         const items = furnishings[rid];
         if (!items) continue;
         result[rid] = [];
-        const counts = catalog.getFurnishingCounts(rid);
+        const counts = deps.catalog.getFurnishingCounts(rid);
         const byType = new Map<string, Array<{ x: number; z: number; rotation: number }>>();
         for (const item of items) {
           if (item.x === undefined || item.z === undefined) continue;
@@ -811,7 +815,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
         }
         for (const [type, count] of Object.entries(counts)) {
           if (!count || count <= 0) continue;
-          const material = findMaterialByFurnitureType(catalog, type);
+          const material = findMaterialByFurnitureType(deps.catalog, type);
           const dimensions = material ? parseSpecDimensions(material.spec) : null;
           const positions = byType.get(type);
           result[rid].push({
@@ -887,7 +891,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       if (!m) return text({ error: 'date must be MM-DD' });
       const date = { month: Number(m[1]), day: Number(m[2]) };
       const overlay = deps.getOverlay?.();
-      const analysis = computeSunlightAnalysis(catalog, overlay, env, date);
+      const analysis = computeSunlightAnalysis(deps.catalog, overlay, env, date);
       return text(analysis);
     }
   );
@@ -916,7 +920,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
         const now = new Date();
         date = { month: now.getMonth() + 1, day: now.getDate() };
       }
-      const analysis = computeHumidityAnalysis(catalog, deps.getOverlay?.(), env, date);
+      const analysis = computeHumidityAnalysis(deps.catalog, deps.getOverlay?.(), env, date);
       return text({ ...analysis, advisories: humidityAdvisories(analysis) });
     }
   );

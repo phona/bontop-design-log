@@ -1,6 +1,6 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import express from 'express';
@@ -12,8 +12,30 @@ describe('Plumbing API', () => {
   let app: express.Express;
   const yamlPath = () => join(tmpDir, 'plumbing.yaml');
 
+  function writeGeometryContext(): void {
+    mkdirSync(join(tmpDir, 'layout'), { recursive: true });
+    writeFileSync(join(tmpDir, 'layout/model-geometry.yaml'), `vertices:
+  - {id: v_kitchen_1, x: 0, z: 0}
+  - {id: v_kitchen_2, x: 10, z: 0}
+  - {id: v_kitchen_3, x: 10, z: 10}
+  - {id: v_master_bath_1, x: 20, z: 0}
+  - {id: v_master_bath_2, x: 30, z: 0}
+  - {id: v_master_bath_3, x: 30, z: 10}
+  - {id: v_guest_bath_1, x: 40, z: 0}
+  - {id: v_guest_bath_2, x: 50, z: 0}
+  - {id: v_guest_bath_3, x: 50, z: 10}
+walls: []
+rooms:
+  - {id: kitchen, boundary: [v_kitchen_1, v_kitchen_2, v_kitchen_3]}
+  - {id: master_bath, boundary: [v_master_bath_1, v_master_bath_2, v_master_bath_3]}
+  - {id: guest_bath, boundary: [v_guest_bath_1, v_guest_bath_2, v_guest_bath_3]}
+`, 'utf8');
+    writeFileSync(join(tmpDir, 'layout/overlay.yaml'), 'suppress: []\n', 'utf8');
+  }
+
   before(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'plumbing-test-'));
+    writeGeometryContext();
     writeFileSync(yamlPath(), `- id: faucet_kitchen
   room: kitchen
   type: faucet

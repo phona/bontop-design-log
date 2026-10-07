@@ -14,18 +14,20 @@ function payload(): CeilingQuotesPayload {
         id: 'a', contractor: '甲', quoted_at: '2026-10-08', status: 'quoted',
         active: true, comparable: true, comparability_notes: [],
         total: null, deltaVsActive: null, pendingRows: ['curtain_box_linear'],
+        outOfScopeRows: [], coveredScope: '吊顶板面（㎡，混合口径）',
         rows: [
-          { key: 'ceiling_zones', label: '吊顶板面（㎡）', quantity: 40.6676, unit: '元/㎡', per_unit: 45, rate_source: 'quote', subtotal: 1830.04 },
-          { key: 'curtain_box_linear', label: '窗帘盒（延长米）', quantity: 17.85, unit: '元/m', per_unit: null, rate_source: 'base.json', subtotal: null },
+          { key: 'ceiling_zones', label: '吊顶板面（㎡，混合口径）', quantity: 40.6676, unit: '元/㎡', per_unit: 45, rate_source: 'quote', subtotal: 1830.04, out_of_scope: false },
+          { key: 'curtain_box_linear', label: '窗帘盒（延长米）', quantity: 17.85, unit: '元/m', per_unit: null, rate_source: 'base.json', subtotal: null, out_of_scope: false },
         ],
       },
       {
         id: 'b', contractor: '乙', quoted_at: '2026-10-09', status: 'candidate',
         active: false, comparable: true, comparability_notes: [],
         total: 2027.6, deltaVsActive: 197.56, pendingRows: [],
+        outOfScopeRows: ['ceiling_zones'], coveredScope: '窗帘盒（延长米）',
         rows: [
-          { key: 'ceiling_zones', label: '吊顶板面（㎡）', quantity: 40.6676, unit: '元/㎡', per_unit: 38, rate_source: 'quote', subtotal: 1545.37 },
-          { key: 'curtain_box_linear', label: '窗帘盒（延长米）', quantity: 17.85, unit: '元/m', per_unit: 27, rate_source: 'quote', subtotal: 482.23 },
+          { key: 'ceiling_zones', label: '吊顶板面（㎡，混合口径）', quantity: 40.6676, unit: '元/㎡', per_unit: null, rate_source: 'quote', subtotal: null, out_of_scope: true },
+          { key: 'curtain_box_linear', label: '窗帘盒（延长米）', quantity: 17.85, unit: '元/m', per_unit: 27, rate_source: 'quote', subtotal: 482.23, out_of_scope: false },
         ],
       },
     ],
@@ -96,5 +98,27 @@ describe('CeilingQuotePanel', () => {
     const panel = new CeilingQuotePanel();
     panel.show();
     await vi.waitFor(() => expect(document.querySelector('.ceiling-quote-error')?.textContent).toContain('network down'));
+  });
+});
+
+describe('CeilingQuotePanel 分形态计价与超出范围（DEC-2026-10-08-C12）', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="right-panel-stack"></div>';
+  });
+
+  it('边吊按米显示、超出范围的行不显示金额也不写「待报价」', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => payload() })) as never);
+    const panel = new CeilingQuotePanel();
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#ceiling-quote-list')!.textContent).toContain('甲'));
+
+    const cards = document.querySelectorAll('.ceiling-quote-card');
+    const b = cards[1] as HTMLElement;
+    // 混合口径行超出本家范围：标「不在本家报价范围」，不出现「待报价」式的金额占位
+    expect(b.textContent).toContain('不在本家报价范围');
+    expect(b.textContent).toContain('本家覆盖：窗帘盒（延长米）');
+    // 生效卡没有任何超出范围行 → 不显示范围提示
+    const a = cards[0] as HTMLElement;
+    expect(a.textContent).not.toContain('不在本家报价范围');
   });
 });

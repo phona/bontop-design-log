@@ -194,6 +194,20 @@ scan:
     - path: docs/material_selection_log.md
       pattern: '.'
       reason: 选材过程日志，金额/功率为到店询价记录
+    # --- 吊顶方案留档：数字全是方案口径与算量推导，权威量在 takeoff ---
+    - path: docs/ceiling-scheme-20261008.md
+      pattern: '.'
+      reason: 吊顶材料与施工方案留档（DEC-2026-10-08-C08）：价格是业主转述施工方口径（owner-provided，未取得书面报价单），面积/米数均复述 shared/ceiling-takeoff.ts 的实算值（石膏板 23.222㎡、窗帘盒 17.85m、吊顶板面 40.667㎡、铝扣板 16.366㎡、晾衣架 1.08㎡），小计金额由这几个量推导，不构成第二套面积口径；权威量以 npm run takeoff:ceiling 为准
+    - path: config/ceiling-quotes.yaml
+      scalars: [area_sqm]
+      pattern: '㎡'
+      reason: 报价卡片的含项范围说明引用 takeoff 实算量，用来说明「155 元/㎡ 只适用石膏板 23.222㎡、不是本行 40.667㎡」这一口径差；卡片只声明单价与含项，量的权威在 shared/ceiling-takeoff.ts
+    # 主材参考成本区间：张价与每平米价全是参考区间（owner-provided），不是成交价；
+    # 张价→元/㎡ 由 server/ceiling-material-cost.ts 按 sheet_size_m2 现算，配置里没有折算结果。
+    - path: config/ceiling-material-cost.yaml
+      scalars: [area_sqm, money]
+      pattern: '.'
+      reason: 吊顶主材参考成本区间（DEC-2026-10-08-C09）：区间值是业主提供的公开渠道零售观察（owner-provided），不是成交价或报价单；张价到元每平米由 server/ceiling-material-cost.ts 按 sheet_size_m2 现算，配置只存张价区间与单张面积，面积口径权威在 shared/ceiling-takeoff.ts
     - path: docs/dressing-map.md
       pattern: '.'
       reason: 软装摆位图说明，功率为灯具标注口径
@@ -1466,6 +1480,21 @@ coverage:
   - { file: config/ceiling-quotes.yaml, field: "active", readers: ["server/ceiling-quotes.ts", "server/budget-calculator.ts", "server/routes.ts", "server/mcp-server.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "quotes", readers: ["server/ceiling-quotes.ts", "server/routes.ts", "server/mcp-server.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "version", readers: [] }
+  # DEC-2026-10-08-C09 建立、C10 改证据台账：吊顶主材参考成本区间。area_basis 决定对账面积
+  # 取 takeoff 的哪个工艺类别；items[] 是材料清单，每条带 observations[] 价格证据台账
+  # （grade/rate/min/max/sheet_size_m2/source/observed_at/caliber）；
+  # contractor_rates 是施工方转述的两个单价（材料额度 = 包工包料 − 纯人工，代码现算）。
+  # 只读接口 GET /api/ceiling/material-cost，无 POST：区间是参考证据，不是可切换的报价。
+  - { file: config/ceiling-material-cost.yaml, field: "version", readers: [] }
+  - { file: config/ceiling-material-cost.yaml, field: "area_basis", readers: ["server/ceiling-material-cost.ts", "docs/ceiling-scheme-20261008.md"] }
+  - { file: config/ceiling-material-cost.yaml, field: "items", readers: ["server/ceiling-material-cost.ts", "docs/ceiling-scheme-20261008.md"] }
+  - { file: config/ceiling-material-cost.yaml, field: "observations", readers: ["server/ceiling-material-cost.ts", "docs/ceiling-scheme-20261008.md"] }
+  # usage_assumptions：把「元/米」折算成「元/㎡」的必要输入。`source: takeoff_perimeter`
+  # 的用量由代码从 takeoff 周长实算，手抄会被 fail closed 拦下——本案分区碎（10 区、
+  # 周长 70.95m ÷ 23.222㎡ = 3.06 米每平米）让边龙骨用量是大平顶经验值 0.4 的 7.7 倍，
+  # 只有实算才看得见。
+  - { file: config/ceiling-material-cost.yaml, field: "usage_assumptions", readers: ["server/ceiling-material-cost.ts", "docs/ceiling-scheme-20261008.md"] }
+  - { file: config/ceiling-material-cost.yaml, field: "contractor_rates", readers: ["server/ceiling-material-cost.ts", "docs/ceiling-scheme-20261008.md"] }
   # DEC-2026-10-08-C01：吊顶算量子系统。trade 是显式声明的工艺/计价类别
   # （gypsum_board/aluminum_buckle/curtain_box/drying_rack），算量与高亮分区都从它取口径，
   # 禁止任何模块靠 id 命名推断归类。

@@ -102,6 +102,75 @@ elements:
     assert.match(res.body.error, /unsupported phase/);
   });
 
+  // 吊顶主材参考成本区间（DEC-2026-10-08-C09）：只读、无 POST，三态判定 + owner_provided 告警。
+  it('GET /api/ceiling/material-cost returns range verdict without market judgement', async () => {
+    const res = await request(app).get('/api/ceiling/material-cost').expect(200);
+    assert.equal(res.body.areaBasis, 'gypsum_board');
+    // C11：欧松板 27～29（verified）+ C7 同级旁证 26～30 + 龙骨按「米价 × 用量」折算 36～45
+    assert.equal(res.body.materialPerSqm.min, 98);
+    assert.equal(res.body.materialPerSqm.max, 120);
+    // C12 起按施工方分形态口径（边吊 160/米 + 平顶 155/㎡）算额度 → 122.71 元/㎡；
+    assert.equal(res.body.contractor.basis, 'forms');
+    assert.equal(res.body.contractor.allowancePerSqm, 122.71);
+    assert.equal(res.body.contractor.formBreakdown.length, 2);
+    assert.equal(res.body.verdict, 'above_range');
+    assert.equal(res.body.slackVsMaxYuanPerSqm, 2.71);
+    assert.deepEqual(res.body.ownerOnlyPerSqm, { min: 70, max: 115 });
+    assert.ok(res.body.warnings.some((note: string) => note.includes('高于参考上限') || note.includes('低于参考下限')));
+    assert.ok(res.body.warnings.some((note: string) => note.includes('两个口径') || note.includes('业主转述')));
+    assert.ok(res.body.warnings.some((note: string) => note.includes('未经施工图确认')));
+    assert.ok(res.body.warnings.some((note: string) => note.includes('全部分区周长上界')));
+    assert.ok(res.body.warnings.some((note: string) => note.includes('不含施工方利润')));
+    // 证据分级显形：只有欧松板是 verified，龙骨与 C7 都是 comparable（旁证）
+    assert.deepEqual(res.body.evidenceMix.verified, ['千年舟 9mm 欧松板（OSB）']);
+    assert.equal(res.body.evidenceMix.comparable.length, 2);
+    // 张价按各观察自己的规格折算；工程 3000×1200 的 47.7/53.3 只登记不折算
+    const osb = res.body.items.find((item: { id: string }) => item.id === 'osb_9mm_qiannianzhou_enf');
+    assert.equal(osb.basisUsed, 'verified');
+    assert.equal(osb.perSqm.min, 27);
+    assert.ok(osb.derivation.includes('2.9768'));
+    const gypsum = res.body.items.find((item: { id: string }) => item.id === 'gypsum_board_c7_knauf');
+    assert.equal(gypsum.basisUsed, 'comparable');
+    assert.equal(gypsum.offSpecEvidence.length, 2);
+    assert.equal(gypsum.offSpecEvidence[0].sheet_size_m2, 3.6);
+    // 龙骨：逐构件折算 + 边龙骨用量由 takeoff 周长实算（3.06 米每平米，是大平顶经验值 0.4 的 7.7 倍）
+    const frame = res.body.items.find((item: { id: string }) => item.id === 'lanzhen50_frame');
+    assert.equal(frame.basis, 'per_metre_derived');
+    assert.equal(frame.derivedComponents.length, 3);
+    const edge = frame.derivedComponents.find((c: { component: string }) => c.component === '边龙骨');
+    assert.deepEqual(edge.metresPerSqm, [3.06, 3.06]);
+    assert.equal(edge.usageStatus, 'model_derived_upper_bound');
+    assert.equal(frame.perSqm.min, 36);
+    assert.equal(frame.perSqm.max, 45);
+    // 上人型主龙骨 20.81 元/米只登记不折算
+    assert.ok(frame.offSpecEvidence.some((obs: { rate?: number }) => obs.rate === 20.81));
+  });
+
+  // C12：施工方其实按「边吊 160 元/米 + 平顶 155 元/㎡」两队计，代码现在能分开算
+  it('GET /api/ceiling/quotes 分形态计价：边吊按米、平顶按㎡，总额不再被口径卡住', async () => {
+    const res = await request(app).get('/api/ceiling/quotes').expect(200);
+    // 量：边吊长边 21.475m（按米计价）、满吊平顶 7.39㎡（按㎡计价），
+    // 覆盖不变量用**面积**验：边吊面积 + 平顶面积 = 石膏板净面积（两种单位不许相加）
+    assert.ok(Math.abs(res.body.quantities.gypsum_edge_drop_linear - 21.475) < 1e-9);
+    assert.ok(Math.abs(res.body.quantities.gypsum_flat_sqm - 7.39) < 1e-9);
+    assert.ok(Math.abs(res.body.takeoff.edgeDropNetAreaM2 + res.body.takeoff.flatNetAreaM2 - res.body.takeoff.gypsumNetAreaM2) < 1e-9);
+    assert.deepEqual(res.body.takeoff.unclassifiedPricingFormIds, []);
+    const card = res.body.comparison.find((entry: { id: string }) => entry.id === 'owner_turnkey_20261008')!;
+    // 21.475×160 + 7.39×155 + 17.85×105
+    assert.ok(Math.abs(card.total - (21.475 * 160 + 7.39 * 155 + 17.85 * 105)) < 1e-6);
+    assert.ok(Math.abs(card.total - 6455.7) < 1e-6);
+    assert.deepEqual(card.pendingRows, []);
+    // 混合口径的板面行（含厨卫铝扣板）这家不报：超出范围，不算待报价
+    assert.deepEqual(card.outOfScopeRows, ['ceiling_zones', 'aluminum_buckle_sqm']);
+    assert.ok(card.comparability_notes.some((note: string) => note.includes('不在本家报价范围')));
+    assert.ok(card.coveredScope.includes('石膏板边吊（延长米）'));
+    const row = card.rows.find((r: { key: string }) => r.key === 'ceiling_zones');
+    assert.equal(row.out_of_scope, true);
+    assert.equal(row.subtotal, null);
+    // 生效卡仍是基线口径，预算不被候选卡改写
+    assert.equal(res.body.activeId, 'baseline_self_computed');
+  });
+
   it('PATCH /api/scheme/current changes selection', async () => {
     const res = await request(app)
       .patch('/api/scheme/current')

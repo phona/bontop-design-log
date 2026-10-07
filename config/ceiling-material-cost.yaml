@@ -1,0 +1,262 @@
+version: 1
+# 吊顶主材参考成本区间（DEC-2026-10-08-C09 建立，DEC-2026-10-08-C10 用可核实价格重算）。
+#
+# 铁律：
+#  1. **只记区间，不写死单价**。这几样的公开零售价并不透明，经销商、工程渠道差异极大，
+#     任何「一个数」都会在两个月内腐烂。区间上限/下限都是参考，不是成交价、不是报价单。
+#  2. **每条价格都要带证据台账 `observations[]`**，按 grade 分流（见下），没有台账的数不入库。
+#  3. **张价 → 元/㎡ 一律由 sheet_size_m2 折算**（代码算），且**按每条观察自己的规格折算**——
+#     家装 1200×2400（2.88㎡）与工程 3000×1200（3.6㎡）差一倍，混着折算会得出离谱的每平米价。
+#  4. **面积口径只有一份**：shared/ceiling-takeoff.ts 的石膏板净面积（当前 23.222㎡）。
+#     本文件不存任何面积，只存单价与单价区间。
+#  5. **施工方材料额度不由本文件宣布**：包工包料单价 − 纯人工单价 = 材料额度，由调用方把
+#     两个单价传进来现算（业主 2026-10-08 口径为 155 − 60 = 95 元/㎡）。
+#  6. **结论只出三态**：below_range（低于下限）/ within_range（区间内）/ above_range（高于上限）。
+#     本项目没有南宁本地进货单，禁止输出「贵/便宜」的市场判断。
+#
+# observations[].grade 取值与用途：
+#   verified            电商在售页/平台 SKU 页可核实的价格 → 计入可核实区间（最高优先）
+#   comparable          同级**不同型号**的可核实价（C7 无公开成交价时用它做旁证）→ 次优先，
+#                       判定里必须标注「旁证，不是该型号成交价」
+#   comparable_off_spec 可核实但**规格不同**（如工程 3000×1200 vs 家装 1200×2400）→ 只登记，
+#                       **不折叠进区间**，否则不同口径混算
+#   owner_reported      业主转述口径 → 最后兜底，判定必须标 owner_only
+#   in_stock_no_price   能确认 SKU 在售但价格隐藏 → 只证明「这个规格买得到」，不参与计算
+#   product_confirmed   只能确认产品存在、无价格 → 同上，仅显形
+#
+#  ⑦ **型材按米计价要能折算**：必须有 `usage_assumptions` 用量口径（米/㎡）才许折算。
+#      `source: takeoff_perimeter` 的用量由代码从 takeoff 周长实算，**不许手抄**——
+#      本案吊顶分区碎（10 区 / 周长 27.07m / 面积 23.222㎡），边龙骨用量是大平顶经验值的近 3 倍，
+#      只有实算才能看出这一点。没有用量口径的米价只登记（`per_metre_unconverted`），不折算。
+#  ⑧ **横撑龙骨**：施工要点给「横撑龙骨间距宜 600–800mm」，本案家装石膏板吊顶通常不加横撑，
+#      故不计入区间；若现场要求加横撑，按 1.25～1.67 m/㎡ × 副龙骨单价另计（约 +8～11 元/㎡）。
+#      这是个未裁定项，代码只告警不取值。
+area_basis: gypsum_board
+
+# 施工方 2026-10-08 转述的单价（owner-provided，无书面报价单）。
+# 材料额度 = 包工包料 − 纯人工，由代码现算；C12 起按施工方**真实的分形态口径**算，
+# 不再用「全部按 155 元每平米」这个会把边吊低估的近似口径。
+contractor_rates:
+  evidence: owner_reported
+  # 分形态口径：边吊按米、满吊平顶按㎡，人工同形态。code 用 takeoff 的
+  # edgeDropLinearM / flatNetAreaM2 求总额，再除以石膏板净面积得到材料额度（元/㎡）。
+  forms:
+    - form: edge_drop
+      unit: 元/m
+      turnkey_per_unit: 160
+      labor_only_per_unit: 60
+    - form: flat
+      unit: 元/㎡
+      turnkey_per_unit: 155
+      labor_only_per_unit: 60
+  # 旧口径（全部按 155 元每平米）保留作对照：它把边吊按平米算，低估边吊单价 → 低估材料额度
+  flat_only_per_sqm:
+    turnkey: 155
+    labor_only: 60
+  note: >-
+    分形态口径下石膏板部分：包工包料 21.475m×160 + 7.390㎡×155 = 4,581.45 元（折 197.31 元每平米）；
+    纯人工 21.475×60 + 7.390×60 = 1,731.90 元（74.75 元每平米）；
+    材料额度 2,849.55 元 = 122.71 元每平米。旧口径只给 95 元每平米，差额全在边吊比平顶贵。
+
+# 龙骨用量口径（DEC-2026-10-08-C11）：把米价折算成 元/㎡ 的必要输入。
+# 前两条来自规范与行业用量说明（**未取得施工图级确认**，status: unconfirmed）；
+# 第三条由代码从 takeoff 实算，不手抄。
+usage_assumptions:
+  - id: main_rail_spacing
+    component: 主龙骨
+    metres_per_sqm: 1.0
+    range: [0.83, 1.25]
+    basis: 主龙骨间距 1000mm（规范区间 800–1200mm）→ 1/1.2 ～ 1/0.8 米每平米
+    source: 龙骨用量说明（100㎡ 算例）+《建筑用轻钢龙骨》GB/T 11981 + 施工技术要点（主龙骨间距应 <1.2m、吊杆间距 <1.2m）
+    status: unconfirmed
+  - id: sub_rail_spacing
+    component: 副龙骨
+    metres_per_sqm: 2.5
+    range: [2.5, 3.33]
+    basis: 副龙骨间距 400mm、不加横撑（规范区间 300–400mm）→ 1/0.4 ～ 1/0.3 米每平米
+    source: 龙骨用量说明（100㎡ 算例）+ 施工技术要点（次龙骨间距宜 400mm）；潮湿区宜 300–400mm
+    status: unconfirmed
+  - id: perimeter_from_takeoff
+    component: 边龙骨
+    source: takeoff_perimeter
+    basis: 本案吊顶**全部分区周长** ÷ 石膏板净面积（takeoff 实算）。这是**上界口径**：真实边龙骨只沿墙与错台边缘，内部同标高相接的边不需要
+    source_note: >-
+      大平顶经验值 0.4 米每平米是按 10m×10m **单区**算的（周长 40m ÷ 100㎡）。
+      本案是 10 个分区（客餐厅设备带/走廊/门厅/各房边吊）、周长合计 70.95m、面积 23.222㎡
+      → 3.06 米每平米，是经验值的 7.7 倍。分区越碎，边龙骨与配件的用量越高，这是本案结构本身的特点。
+      实际用量介于「墙边+错台边」与这个上界之间，须现场核定。
+    status: model_derived_upper_bound
+
+items:
+  # ─── 基层板 ───────────────────────────────────────────────────────────────
+  - id: osb_9mm_qiannianzhou_enf
+    layer: 基层板
+    name: 千年舟 9mm 欧松板（OSB）
+    spec: 1220×2440×9mm
+    basis: per_sheet
+    sheet_size_m2: 2.9768
+    observations:
+      - grade: verified
+        rate: 80
+        unit: 元/张
+        source: 电商索引商品页（百度索引）
+        observed_at: '2026-10-08'
+        caliber: 在售索引价，标题明确「千年舟无醛级 9mm…欧松板 OSB」，厚度 9mm 明确，未见起订量标注
+      - grade: verified
+        rate: 85
+        unit: 元/张
+        source: 工程建材报价明细表（jc881.com，报价日期 2025-09-26）
+        observed_at: '2026-10-08'
+        caliber: 工程报价表口径而非零售成交价；规格 1220×2440×9mm、E0 级（低于本案 ENF 档），故此价偏保守
+      - grade: in_stock_no_price
+        source: 京东 SKU 页（千年舟欧式环保无醛级精选型阻燃 OSB）
+        observed_at: '2026-10-08'
+        caliber: 9mm SKU 在售但价格隐藏，只能证明「该规格阻燃板买得到」，不能证明价格；阻燃档高于本案需求
+      - grade: owner_reported
+        min: 80
+        max: 140
+        unit: 元/张
+        source: 业主 2026-10-08 转述
+        observed_at: '2026-10-08'
+        caliber: 上限 140 无可核实来源；可核实证据只支持到 85，故判定只用 verified（80～85）
+    note: >-
+      另有一条「千年舟 ENF 欧松/LSB 板 99 元/张」：等级对得上（ENF），但检索结果没有标明厚度，
+      **不能当 9mm 价**，因此不入台账。ENF 级 9mm 的真实成交价是下一步要向本地经销商要的数。
+
+  # ─── 饰面板 ───────────────────────────────────────────────────────────────
+  - id: gypsum_board_c7_knauf
+    layer: 饰面板
+    name: 可耐福 C7 石膏板
+    spec: 规格未确认（家装常见 1200×2400；工程报价表为 3000×1200）
+    basis: per_sheet
+    # 按家装常见口径折算；该口径本身未确认 → 代码出 caliber warning
+    sheet_size_m2: 2.88
+    observations:
+      - grade: product_confirmed
+        source: 产品资料/官方口径
+        observed_at: '2026-10-08'
+        caliber: 可确认 C7（可聆诺系列）当前在售，功能为耐水、抗菌、防霉、抗下陷、净醛净味；**未抓到可信公开成交价**
+      - grade: comparable
+        rate: 75
+        unit: 元/张
+        sheet_size_m2: 2.88
+        source: 工程建材报价明细表（jc881.com，2025-09-26）
+        observed_at: '2026-10-08'
+        caliber: 可耐福**耐潮板** 9.5mm、1200×2400，与 C7 的耐水功能同档；是 C7 的旁证价，不是 C7 成交价
+      - grade: comparable
+        rate: 85
+        unit: 元/张
+        sheet_size_m2: 2.88
+        source: 工程建材报价明细表（jc881.com，2025-09-26）
+        observed_at: '2026-10-08'
+        caliber: 可耐福**耐水板** 9.5mm、1200×2400，功能档位接近 C7（C7 另有净醛/抗菌/抗下陷）；旁证价，非 C7 成交价
+      - grade: comparable_off_spec
+        rate: 47.70
+        unit: 元/张
+        sheet_size_m2: 3.6
+        source: 鑫方盛商品页（zgjx.xfs.com）
+        observed_at: '2026-10-08'
+        caliber: 可耐福**普通**纸面石膏板 9.5mm、**3000×1200**、**100 张起订**：规格与家装 1200×2400 不同、起订量是工程口径、且功能档低于 C7，三条都不适用 → 只登记不折算
+      - grade: comparable_off_spec
+        rate: 53.30
+        unit: 元/张
+        sheet_size_m2: 3.6
+        source: 鑫方盛商品页（txy.xfs.com）
+        observed_at: '2026-10-08'
+        caliber: 可耐福**普通**纸面石膏板 12mm、**3000×1200**、**80 张起订**：同上，规格/起订/功能三条不适用 → 只登记不折算
+      - grade: owner_reported
+        min: 45
+        max: 70
+        unit: 元/张
+        source: 业主 2026-10-08 转述
+        observed_at: '2026-10-08'
+        caliber: 业主口径无可核实来源；相较于同级耐潮/耐水板的可核实价（75/85）明显偏低，判定不用它
+    note: >-
+      C7 是本案最贵的一张板，也是唯一**拿不到可核实成交价**的主材。旁证区间 26～30 元/㎡
+      来自同档耐潮/耐水板，若 C7 真实拿货价高于旁证（它有净醛/抗菌等额外功能），
+      材料侧余量会进一步压缩。
+
+  # ─── 龙骨 ─────────────────────────────────────────────────────────────────
+  # 由「可核实的型材米价 × 用量口径」折算成 元/㎡（DEC-2026-10-08-C11 新增 usage_assumptions）。
+  # 米价是可耐福**普通/卡式系列**（非蓝臻），故等级 comparable；蓝臻只有京东在售、价格隐藏。
+  - id: lanzhen50_frame
+    layer: 龙骨
+    name: 可耐福蓝臻 50 轻钢龙骨（主/副/边）
+    spec: 副龙骨 50×19×0.5 / 卡式主龙骨 37×20×0.8 / 边龙骨 20×30×0.5
+    basis: per_metre_derived
+    observations:
+      - grade: comparable
+        rate: 8.50
+        unit: 元/米
+        component: 主龙骨
+        source: 工程建材报价明细表（jc881.com，2025-09-26）
+        observed_at: '2026-10-08'
+        caliber: 可耐福卡式主龙骨 37×20×0.8（不上人型，家装适用）；**非蓝臻系列**，蓝臻为同品牌更高档系列，实际价应不低于此
+      - grade: comparable
+        rate: 6.34
+        unit: 元/米
+        component: 副龙骨
+        source: 工程建材报价明细表（jc881.com，2025-09-26）
+        observed_at: '2026-10-08'
+        caliber: 可耐福 50 副龙骨 50×19×0.5；未注明蓝臻系列
+      - grade: comparable
+        rate: 4.10
+        unit: 元/米
+        component: 边龙骨
+        source: 工程建材报价明细表（jc881.com，2025-09-26）
+        observed_at: '2026-10-08'
+        caliber: 可耐福边龙骨 20×30×0.5；未注明蓝臻系列
+      - grade: comparable_off_spec
+        rate: 20.81
+        unit: 元/米
+        component: 主龙骨
+        source: 招标信息页（qianlima，2026-09-20，可耐福/顶诺/圣戈班杰科同列）
+        observed_at: '2026-10-08'
+        caliber: 50 主龙骨 50×15×1.2mm、GB/T 11981-2024，是**上人型**（板厚 1.2mm）。本案为不上人家装吊顶，不需要该规格 → 只登记不折算；它标出了 50 系列主龙骨的价位上限
+      - grade: in_stock_no_price
+        component: 全系列
+        source: 京东 SKU 页（轻钢主龙骨价格行情）
+        observed_at: '2026-10-08'
+        caliber: 能确认蓝臻 50 卡主骨 10 支/包、副龙骨 20 支/包、角线 20 支/包的包装规格在售，价格隐藏
+      - grade: owner_reported
+        min: 18
+        max: 28
+        unit: 元/㎡
+        source: 业主 2026-10-08 转述
+        observed_at: '2026-10-08'
+        caliber: 已是折算到面积的口径，但业主没给折算依据；与本次「米价 × 用量」实算的 28～37 元/㎡ 相比偏低（差在边龙骨用量与蓝臻溢价）
+    note: >-
+      系列命名需现场核对：公开资料显示「蓝臻」是可耐福吊顶**系统**系列（蓝臻系列石膏板 +
+      配套热镀锌轻钢龙骨 + 专用配件），另有「蓝均 Pro 系列 + 蓝均镀铝锌龙骨」的提法。
+      进场时必须按包装标识核对到底买的是哪一套，避免把普通卡式龙骨当蓝臻验收。
+
+  # ─── 辅材与损耗 ───────────────────────────────────────────────────────────
+  - id: hangers_and_fasteners
+    layer: 辅材
+    name: 吊杆、吊件、膨胀、自攻螺丝等配套辅材
+    spec: 按实际用量
+    basis: per_sqm
+    observations:
+      - grade: owner_reported
+        min: 5
+        max: 8
+        unit: 元/㎡
+        source: 业主 2026-10-08 转述
+        observed_at: '2026-10-08'
+        caliber: 无任何可核实来源；施工方「辅材包含在包工包料价格内」的口径以这一档为参照
+
+  - id: cutting_and_waste
+    layer: 损耗
+    name: 切割与边角损耗
+    spec: 约 5%～10%
+    basis: per_sqm
+    observations:
+      - grade: owner_reported
+        min: 4
+        max: 8
+        unit: 元/㎡
+        source: 业主 2026-10-08 转述
+        observed_at: '2026-10-08'
+        caliber: >-
+          无任何可核实来源。石膏板与欧松板都要切割，边吊/窗帘盒/灯槽越多损耗越高；
+          本方案欧松板满铺，按满铺口径估，局部加强方案会低一些。

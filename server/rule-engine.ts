@@ -212,7 +212,16 @@ export class RuleEngine {
       if (!triggered) continue;
 
       const requiredTopic = catalog.getTopic(require.topic);
-      if (!requiredTopic) continue;
+      if (!requiredTopic) {
+        violations.push({
+          id: rule.id,
+          description: rule.description,
+          topic: when.topic,
+          roomId: null,
+          requirement: { topic: require.topic, minValue: require.minValue, fields: require.fields },
+        });
+        continue;
+      }
 
       const requiredOptionId = selectionMap[require.topic];
       if (!requiredOptionId) {
@@ -221,24 +230,24 @@ export class RuleEngine {
           description: rule.description,
           topic: when.topic,
           roomId: null,
-          requirement: { topic: require.topic, minValue: require.minValue },
+          requirement: { topic: require.topic, minValue: require.minValue, fields: require.fields },
         });
         continue;
       }
 
+      const requiredOption = catalog.getOption(require.topic, requiredOptionId);
+      if (!requiredOption) {
+        violations.push({
+          id: rule.id,
+          description: rule.description,
+          topic: when.topic,
+          roomId: null,
+          requirement: { topic: require.topic, minValue: require.minValue, fields: require.fields },
+        });
+        continue;
+      }
+      const data = requiredOption.data as Record<string, unknown> | undefined;
       if (require.minValue) {
-        const requiredOption = catalog.getOption(require.topic, requiredOptionId);
-        if (!requiredOption) {
-          violations.push({
-            id: rule.id,
-            description: rule.description,
-            topic: when.topic,
-            roomId: null,
-            requirement: { topic: require.topic, minValue: require.minValue },
-          });
-          continue;
-        }
-        const data = requiredOption.data as Record<string, unknown> | undefined;
         const fieldValue = data?.[require.minValue.field];
         if (fieldValue === undefined || Number(fieldValue) < require.minValue.value) {
           violations.push({
@@ -246,9 +255,19 @@ export class RuleEngine {
             description: rule.description,
             topic: when.topic,
             roomId: null,
-            requirement: { topic: require.topic, minValue: require.minValue },
+            requirement: { topic: require.topic, minValue: require.minValue, fields: require.fields },
           });
         }
+      }
+      const missingFields = (require.fields ?? []).filter((field) => data?.[field] === undefined || data?.[field] === null || data?.[field] === '');
+      if (missingFields.length > 0) {
+        violations.push({
+          id: rule.id,
+          description: `${rule.description}（缺少字段：${missingFields.join(', ')}）`,
+          topic: when.topic,
+          roomId: null,
+          requirement: { topic: require.topic, minValue: require.minValue, fields: require.fields },
+        });
       }
     }
     return violations;

@@ -1,4 +1,5 @@
 import express from 'express';
+import { isIP } from 'node:net';
 import { load } from 'js-yaml';
 import { ProjectCatalog } from './project-catalog.js';
 import { DesignState } from './design-state.js';
@@ -36,6 +37,15 @@ const HOST = process.env.HOST ?? 'localhost';
 const DATA_DIR = process.env.DATA_DIR ?? './data';
 const CONFIG_PATH = process.env.CONFIG_PATH ?? 'config/design-rules.yaml';
 
+function isLoopbackHost(host: string): boolean {
+  const normalized = host.trim().toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+  if (normalized === 'localhost') return true;
+  const family = isIP(normalized);
+  if (family === 4) return normalized.split('.')[0] === '127';
+  if (family === 6) return normalized === '::1' || normalized.startsWith('::ffff:127.');
+  return false;
+}
+
 const registry = new ConfigRegistry();
 const projectRenderFactsLoader = new ProjectRenderFactsLoader();
 registry.register(projectRenderFactsLoader);
@@ -50,6 +60,7 @@ let budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
 let budgetAdvisor = new BudgetAdvisor(catalog, budgetCalculator, ruleEngine);
 let budgetValueAnalyzer = new BudgetValueAnalyzer(catalog, budgetCalculator, ruleEngine.getConfig());
 let pitfallEngine = new PitfallEngine({ version: '1.0', pitfalls: [], templates: [] });
+let state: DesignState | undefined;
 const lifecycleEngine = new LifecycleEngine();
 const tradeoffEngine = new TradeoffEngine();
 const acceptanceEngine = new AcceptanceEngine();
@@ -65,8 +76,9 @@ function rebuildDerived(): void {
     budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
     budgetAdvisor = new BudgetAdvisor(catalog, budgetCalculator, ruleEngine);
     budgetValueAnalyzer = new BudgetValueAnalyzer(catalog, budgetCalculator, ruleEngine.getConfig());
-    const pitfallConfig = pitfallsLoader.getConfig() ?? { version: '1.0', pitfalls: [], templates: [] };
+  const pitfallConfig = pitfallsLoader.getConfig() ?? { version: '1.0', pitfalls: [], templates: [] };
   pitfallEngine = new PitfallEngine(pitfallConfig);
+  state?.updateCatalog(catalog);
 }
 
 const designRulesLoader = new ConfigLoader<DesignRulesConfig>(
@@ -157,7 +169,6 @@ pitfallsLoader.load();
 overlayLoader.load();
 projectRenderFactsLoader.load();
 
-let state: DesignState;
 try {
   state = DesignState.load(catalog, DATA_DIR);
 } catch (err) {
@@ -170,7 +181,10 @@ const presentationState = new PresentationStateStore(DATA_DIR, () => overlayLoad
 
 const apiDeps = {
   get catalog() { return catalog; },
-  state,
+  get state() {
+    if (!state) throw new Error('design state is not ready');
+    return state;
+  },
   getRuleEngine: () => ruleEngine,
   getBudgetCalculator: () => budgetCalculator,
   getPitfallEngine: () => pitfallEngine,
@@ -217,7 +231,23 @@ const apiDeps = {
 };
 
 const app = express();
-app.use(express.json());
+const writesEnabled = isLoopbackHost(HOST);
+if (!writesEnabled) {
+  console.warn(`[server] HOST=${HOST} is not loopback; HTTP write operations are disabled`);
+}
+app.use((req, res, next) => {
+  if (!writesEnabled && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    res.status(403).json({
+      error: 'Remote write access is disabled',
+      detail: `Set HOST to localhost, 127.0.0.1, or ::1 to enable write operations. Current HOST is ${HOST}.`,
+    });
+    return;
+  }
+  next();
+});
+// All API and MCP requests use small structured payloads.  Keep malformed or
+// oversized JSON from consuming the server before route-level validation runs.
+app.use(express.json({ limit: '1mb', strict: true }));
 app.use('/api', createApiRouter(apiDeps));
 app.use(
   '/api/analysis',

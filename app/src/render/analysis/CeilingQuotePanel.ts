@@ -17,7 +17,12 @@ export interface CeilingQuoteRow {
   per_unit: number | null;
   rate_source: 'quote' | 'base.json';
   subtotal: number | null;
+  /** true = 本家不报这项：不进总额，也不算待报价。 */
+  out_of_scope: boolean;
 }
+
+/** 按延长米计价的行（其余按㎡）。与服务端 CEILING_QUOTE_LINEAR_KEYS 同源。 */
+const LINEAR_ROW_KEYS = new Set(['curtain_box_linear', 'gypsum_edge_drop_linear']);
 
 export interface CeilingQuoteCard {
   id: string;
@@ -30,6 +35,10 @@ export interface CeilingQuoteCard {
   total: number | null;
   deltaVsActive: number | null;
   pendingRows: string[];
+  /** 本家明确不报的行（DEC-2026-10-08-C12）。 */
+  outOfScopeRows: string[];
+  /** 这家覆盖的报价范围。 */
+  coveredScope: string;
   rows: CeilingQuoteRow[];
 }
 
@@ -104,16 +113,24 @@ export class CeilingQuotePanel {
 
     const cards = this.payload.comparison.map((card) => {
       const rows = card.rows.map((row) => {
+        // 超出范围的行：金额不编、不参与合计，明确写「不在本家范围」而不是「待报价」
+        if (row.out_of_scope) {
+          const unit = LINEAR_ROW_KEYS.has(row.key) ? `${qty(row.quantity)} m` : `${qty(row.quantity, 3)} ㎡`;
+          return `<div class="ceiling-quote-row ceiling-quote-row-out">${row.label}：${unit} · <span class="ceiling-quote-tag">不在本家报价范围</span></div>`;
+        }
         const rate = row.per_unit === null ? '待报价' : `${row.per_unit} ${row.unit}`;
         const subtotal = row.subtotal === null ? '待报价' : money(row.subtotal);
         const fallback = row.rate_source === 'base.json' ? '<span class="ceiling-quote-tag">回落 base.json</span>' : '';
-        const quantity = row.key === 'curtain_box_linear' ? `${qty(row.quantity)} m` : `${qty(row.quantity, 3)} ㎡`;
+        const quantity = LINEAR_ROW_KEYS.has(row.key) ? `${qty(row.quantity)} m` : `${qty(row.quantity, 3)} ㎡`;
         return `<div class="ceiling-quote-row">${row.label}：${quantity} × ${rate} = <strong>${subtotal}</strong>${fallback}</div>`;
       }).join('');
 
       const total = card.total === null
         ? '<span class="ceiling-quote-pending">总额待报价（不编金额）</span>'
         : `<strong>${money(card.total)}</strong>${card.deltaVsActive !== null ? ` <span class="${card.deltaVsActive > 0 ? 'ceiling-quote-up' : 'ceiling-quote-down'}">${card.deltaVsActive > 0 ? '+' : ''}${money(card.deltaVsActive)} vs 生效</span>` : ''}`;
+      const scope = card.coveredScope
+        ? `<div class="ceiling-quote-scope">本家覆盖：${card.coveredScope}${card.outOfScopeRows.length > 0 ? '；不含项见下行' : ''}</div>`
+        : '';
       const notes = card.comparability_notes.length > 0
         ? `<div class="ceiling-quote-warn">${card.comparability_notes.join('；')}</div>`
         : '';
@@ -128,6 +145,7 @@ export class CeilingQuotePanel {
           ${action}
         </div>
         ${rows}
+        ${scope}
         <div class="ceiling-quote-total">合计：${total}</div>
         ${notes}
       </div>`;

@@ -30,4 +30,82 @@ quotes:
         per_unit: null
         unit: 元/m
         scope_note: 窗帘盒人工按延长米计价，费率待取得施工方报价；含双轨安装与电动窗帘电源预留的做法待确认
+    # C12/C13：该卡只用混合口径的板面行计价（天然覆盖边吊/平顶/铝扣板），
+    # 四条拆分行对它而言是「不用」而不是「没报」→ 超出范围，避免把总额卡成待报价
+    out_of_scope: [gypsum_edge_drop_linear, gypsum_flat_sqm, aluminum_buckle_sqm]
     note: DEC-2026-10-08-C02 拆分行之后的默认卡；quantity_basis 见 GET /api/ceiling/takeoff
+
+  # DEC-2026-10-08-C08 登记、C12 改成按施工方口径的分形态计价行。
+  # 业主 2026-10-08 转述的报价结构（owner-provided，无书面分项报价单）：
+  #   边吊 160 元/米、平顶 155 元/㎡、窗帘盒 105 元/米、线型灯安装 10 元/米、灯孔免费。
+  # 注意这不是「155 元/㎡ 包一切」：边吊按**米**报，与平顶按**㎡**是两行，
+  # 混成一行会让总额差 ¥700～1,100（见 docs/ceiling-scheme-20261008.md §3.3）。
+  - id: owner_turnkey_20261008
+    contractor: 施工方（业主转述，未取得书面报价单）
+    quoted_at: 2026-10-08
+    status: candidate
+    rates:
+      # 施工方不报这一行：40.668㎡ 里含厨卫铝扣板 16.366㎡（归 QR-2026-10-03-08 那张
+      # ¥9,537 铝扣板单）与隐藏晾衣架吊顶 1.08㎡（未报价）。不是「待报价」而是「不在范围」——
+      # 所以本卡总额照算，但必须在对比里显形，别让人以为总额已含铝扣板。
+      ceiling_zones:
+        per_unit: null
+        unit: 元/㎡
+        scope_note: 本家不报此项（out_of_scope）：石膏板已拆到边吊/平顶两行，剩下的厨卫铝扣板 16.366㎡ 归 QR-2026-10-03-08 铝扣板捆绑单、隐藏晾衣架吊顶 1.08㎡ 未报价
+      # 边吊按米：8 个边吊/服务带/设备带分区的长边之和（usage 见 takeoff.edgeDropLinearM）
+      gypsum_edge_drop_linear:
+        per_unit: 160
+        unit: 元/m
+        scope_note: 业主转述「边吊 160 元/米」，包工包料、辅材在内；计价长度口径（中线长边 vs 展开边）未与施工方确认，L 形拐角处两种口径差最多 1.2m
+      # 满吊平顶按㎡：主走廊 + 入户门厅两个满吊分区（takeoff.flatNetAreaM2）
+      gypsum_flat_sqm:
+        per_unit: 155
+        unit: 元/㎡
+        scope_note: 业主转述「平顶 155 元/㎡」，包工包料、辅材在内；是否含超高费/损耗/清运/成品保护待书面确认
+      curtain_box_linear:
+        per_unit: 105
+        unit: 元/m
+        scope_note: 窗帘盒包工包料 105 元/米（辅材在内），对应 17.85m；是否含双轨固定基层、电动窗帘电源预留待书面确认
+    out_of_scope: [ceiling_zones, aluminum_buckle_sqm]
+    note: >-
+      DEC-2026-10-08-C12。总额 = 边吊 21.475m×160 + 平顶 7.390㎡×155 + 窗帘盒 17.85m×105 = ¥6,455.70，
+      覆盖范围仅「石膏板边吊 + 石膏板满吊平顶 + 窗帘盒」。**未含**：厨卫铝扣板（另有
+      QR-2026-10-03-08）、隐藏晾衣架吊顶 1.08㎡、线型灯安装（10 元/米，长度未声明故不计）、
+      灯孔（免费）。active 仍为 baseline_self_computed，切到本卡会把预算人工整体改写，
+      须等书面分项报价单。
+
+  # DEC-2026-10-08-C13：厨卫铝扣板独立成行，先按业主估价 150 元/㎡ 入卡。
+  # **这不是报价**：owner estimate，用来先把预算占住；真实价要等商家按
+  # 「铝扣板+收边+开孔」拆裸价重报（原 ¥9,537 捆绑单含 2 浴霸 + 凉霸 + 灯，不能直接用）。
+  - id: aluminum_buckle_owner_estimate_150
+    contractor: 业主估价（非报价单）
+    quoted_at: 2026-10-08
+    status: candidate
+    rates:
+      aluminum_buckle_sqm:
+        per_unit: 150
+        unit: 元/㎡
+        scope_note: 业主 2026-10-08 估价，**非成交价**。对应厨卫 3 区 16.366㎡ / 185 块（300×300 分格：厨房 96、主卫 54、客卫 35）。注意此价低于从 ¥9,537 捆绑单剔除浴霸/凉霸/灯后反推的裸价（≈275～408 元/㎡），只能当下限口径
+      # 混合口径行含铝扣板 16.366㎡，本卡只报铝扣板 → 其余全部超出范围，避免与别家重复计费
+      ceiling_zones:
+        per_unit: null
+        unit: 元/㎡
+        scope_note: 本卡只估厨卫铝扣板；石膏板（边吊/平顶）与隐藏晾衣架吊顶不属本卡范围
+      gypsum_edge_drop_linear:
+        per_unit: null
+        unit: 元/m
+        scope_note: 不属本卡范围（见 owner_turnkey_20261008 与书面分项报价单）
+      gypsum_flat_sqm:
+        per_unit: null
+        unit: 元/㎡
+        scope_note: 不属本卡范围（见 owner_turnkey_20261008 与书面分项报价单）
+      curtain_box_linear:
+        per_unit: null
+        unit: 元/m
+        scope_note: 不属本卡范围（见 owner_turnkey_20261008 与书面分项报价单）
+    out_of_scope: [ceiling_zones, gypsum_edge_drop_linear, gypsum_flat_sqm, curtain_box_linear]
+    note: >-
+      DEC-2026-10-08-C13。铝扣板 16.366㎡ × 150 元/㎡ = ¥2,454.90。
+      原 QR-2026-10-03-08 捆绑报价 ¥9,537（含收边 + 2 浴霸 + 凉霸 + 灯）已拆分：凉霸不做（−999）、
+      浴霸自购奥普 S2-Air ≈¥1,362 划入 COST-100-06；已要求商家拆出「铝扣板+收边+开孔」裸价重报，
+      目标 ≈¥4,500（≈275 元/㎡）。拿到书面裸价后把 per_unit 与 status 换掉。

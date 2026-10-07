@@ -400,6 +400,7 @@ export interface ConstraintViolation {
   requirement: {
     topic: string;
     minValue?: { field: string; value: number };
+    fields?: string[];
   };
 }
 
@@ -616,7 +617,11 @@ export interface BudgetSnapshot {
       total: number | null;
       deltaVsActive: number | null;
       pendingRows: string[];
-      rows: Array<{ key: string; label: string; quantity: number; unit: string; per_unit: number | null; rate_source: string; subtotal: number | null }>;
+      /** C12：本家明确不报的行（≠ 待报价：不报的项目进总额，待报价的项目卡住总额）。 */
+      outOfScopeRows: string[];
+      /** C12：本家已报价的范围，便于与别家比。 */
+      coveredScope: string;
+      rows: Array<{ key: string; label: string; quantity: number; unit: string; per_unit: number | null; rate_source: string; subtotal: number | null; out_of_scope: boolean }>;
     }>;
   };
 }
@@ -1113,8 +1118,8 @@ export const VALID_CEILING_TYPES = [
 ] as const;
 
 /** 吊顶工艺/计价类别（算量与高亮口径，与渲染类型正交）。真源在 shared/ceiling-takeoff.ts。 */
-import type { CeilingTradeClass } from './ceiling-takeoff.js';
-export type { CeilingTradeClass };
+import type { CeilingPricingForm, CeilingTradeClass } from './ceiling-takeoff.js';
+export type { CeilingPricingForm, CeilingTradeClass };
 
 export interface CeilingZone {
   id: string;
@@ -1135,6 +1140,12 @@ export interface CeilingZone {
    * **不靠 id 命名推断**（见 shared/ceiling-takeoff.ts）。
    */
   trade?: CeilingTradeClass;
+  /**
+   * 计价形态（DEC-2026-10-08-C12）：同一个 drop 类型下，边吊按**米**、满吊平顶按**㎡**计价，
+   * 本案单价差一倍以上（160 元/米 vs 155 元/㎡）。不写 → takeoff 记 unclassifiedPricingFormIds，
+   * **不猜**。省略时不允许回退默认值：猜错的代价是总额差上千元。
+   */
+  pricing_form?: CeilingPricingForm;
   inspection_layer?: string;
   inspection_opacity?: number;
   x?: number;

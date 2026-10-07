@@ -141,6 +141,17 @@
   font-size: 11px;
 }
 
+/* 本家不报的计价行：灰掉、不显示金额（DEC-2026-10-08-C12） */
+.ceiling-quote-row-out {
+  opacity: 0.62;
+}
+
+.ceiling-quote-scope {
+  margin-top: 4px;
+  color: #9aa4b2;
+  font-size: 11px;
+}
+
 .ceiling-quote-error {
   color: #e63946;
   font-size: 12px;

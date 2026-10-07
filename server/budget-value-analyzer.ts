@@ -80,19 +80,26 @@ export class BudgetValueAnalyzer {
       if (!currentOptionId || options.length < 2) continue;
 
       const currentOption = this.catalog.getOption(topic, currentOptionId);
-      const currentPrice = currentOption?.price_per_unit ?? 0;
-      const topicQty = lineItems
-        .filter((li) => li.topic === topic)
-        .reduce((s, li) => s + li.quantity, 0);
+      const topicItems = lineItems.filter((li) => li.topic === topic);
+      const currentCost = topicItems.reduce((sum, li) => sum + li.cost, 0);
       const affectedRooms = new Set(
-        lineItems.filter((li) => li.topic === topic && li.roomId).map((li) => li.roomId as string)
+        topicItems.filter((li) => li.roomId).map((li) => li.roomId as string)
       );
 
       for (const option of options) {
         if (option.id === currentOptionId) continue;
         const price = option.price_per_unit ?? 0;
-        if (price >= currentPrice) continue;
-        const savings = (currentPrice - price) * (topicQty || 1);
+        const coveragePerUnit = option.coverage_per_unit ?? 1;
+        const lossRate = option.loss_rate ?? 1;
+        const candidateCost = topicItems.reduce(
+          (sum, li) => sum + price * li.quantity / coveragePerUnit * lossRate,
+          0,
+        );
+        // Compare the fully calculated topic cost. A cheaper unit price can still
+        // cost more when its coverage or loss allowance differs from the current
+        // material, so unit-price comparison is not sufficient here.
+        if (candidateCost >= currentCost) continue;
+        const savings = currentCost - candidateCost;
         alternatives.push({
           topic,
           fromOptionId: currentOptionId,

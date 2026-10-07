@@ -54,6 +54,36 @@ export class DesignState {
     return new DesignState(catalog, dataDir);
   }
 
+  /** Swap in the latest validated catalog after config hot reload. */
+  updateCatalog(catalog: ProjectCatalog): void {
+    this.catalog = catalog;
+    const before = JSON.stringify(this.scheme.selections);
+    const selections = { ...this.scheme.selections };
+    for (const topic of catalog.getTopics()) {
+      const existing = selections[topic.id];
+      if (!existing) {
+        selections[topic.id] = { default: topic.options[0]?.id ?? null, roomOverrides: {} };
+        continue;
+      }
+      const selectedDefault = existing.default && catalog.isValidOption(topic.id, existing.default)
+        ? existing.default
+        : topic.options[0]?.id ?? null;
+      const roomOverrides = Object.fromEntries(
+        Object.entries(existing.roomOverrides).filter(([roomId, optionId]) =>
+          catalog.isValidRoom(roomId) && catalog.isValidOption(topic.id, optionId),
+        ),
+      );
+      selections[topic.id] = { default: selectedDefault, roomOverrides };
+    }
+    for (const topicId of Object.keys(selections)) {
+      if (!catalog.isValidTopic(topicId)) delete selections[topicId];
+    }
+    if (JSON.stringify(selections) !== before) {
+      this.scheme = { ...this.scheme, selections, updatedAt: nowIso() };
+      this.persist();
+    }
+  }
+
   private schemePath(): string {
     return `${this.dataDir}/current-scheme.json`;
   }
