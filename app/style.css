@@ -173,6 +173,13 @@ html, body {
   padding: 4px;
   z-index: 90;
   pointer-events: none;
+  transition: right 0.25s ease;
+}
+
+/* 任一顶栏弹出面板（图层抽屉/环境/告警/设置）打开时，右侧信息栈整体左移让位；
+   面板关闭后滑回原位。宽度 300 + 右距 16 + 间隙 16 = 332px。 */
+body:has(.toolbar-popover:not([hidden])) #right-panel-stack {
+  right: 332px;
 }
 
 #right-panel-stack > * {
@@ -579,7 +586,8 @@ html, body {
   backdrop-filter: blur(8px);
 }
 
-#toolbar button {
+#toolbar button,
+.toolbar-popover button {
   background: rgba(20, 20, 30, 0.85);
   color: #ddd;
   border: 1px solid #555;
@@ -590,21 +598,131 @@ html, body {
   transition: background 0.2s, border-color 0.2s;
 }
 
-#toolbar button:hover:not(:disabled) {
+#toolbar button:hover:not(:disabled),
+.toolbar-popover button:hover:not(:disabled) {
   background: rgba(40, 40, 60, 0.95);
   border-color: #88aaff;
 }
 
-#toolbar button:disabled {
+#toolbar button:disabled,
+.toolbar-popover button:disabled {
   cursor: not-allowed;
   color: #888;
   border-color: #444;
 }
 
-#toolbar button.active {
+#toolbar button.active,
+.toolbar-popover button.active {
   background: rgba(60, 100, 180, 0.9);
   border-color: #88ccff;
   color: #fff;
+}
+
+/* ─── 顶栏弹出面板：图层抽屉 / 环境 / 告警 / 设置 ─── */
+.toolbar-popover {
+  position: fixed;
+  top: 96px;
+  right: 16px;
+  width: min(300px, calc(100vw - 32px));
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  z-index: 91;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: rgba(15, 15, 20, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.toolbar-popover[hidden] {
+  display: none;
+}
+
+#layers-panel > button {
+  width: 100%;
+  text-align: left;
+}
+
+/* 检视层子控件（图层过滤/图例）收进抽屉后铺满行宽，高度自然展开、由抽屉整体滚动 */
+#layers-panel .mep-controls {
+  width: 100%;
+  max-height: none;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.layers-section {
+  margin: 6px 0 2px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #8ea0c0;
+}
+
+.layers-section:first-of-type {
+  margin-top: 0;
+}
+
+.layers-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.layers-actions button {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.toolbar-count {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 16px;
+  background: rgba(96, 165, 250, 0.25);
+  color: #bfdbfe;
+}
+
+#alerts-toggle-btn {
+  border-color: #eab308;
+  color: #fde68a;
+}
+
+#alerts-toggle-btn.alerts-error {
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+.alert-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #e2e8f0;
+}
+
+.alert-row:hover {
+  border-color: #88aaff;
+}
+
+.alert-row .alert-detail {
+  color: #94a3b8;
+}
+
+.layers-note {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.4;
 }
 
 #mep-overview-btn {
@@ -808,6 +926,11 @@ html, body {
     max-height: calc(100vh - var(--right-panel-top) - 8px);
     gap: 12px;
     padding: 2px;
+  }
+
+  /* 窄屏下弹出面板已近全宽，让位无意义，保持原位（重叠与改版前一致） */
+  body:has(.toolbar-popover:not([hidden])) #right-panel-stack {
+    right: 8px;
   }
 
   #right-panel-stack .dynamic-panel,

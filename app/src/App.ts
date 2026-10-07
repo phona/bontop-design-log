@@ -33,6 +33,8 @@ import { InteriorLightingSystem } from './render/InteriorLightingSystem.js';
 import { SunlightPanel } from './ui/SunlightPanel.js';
 import { SunlightButton } from './ui/SunlightButton.js';
 import { GlassFidelityButton } from './ui/GlassFidelityButton.js';
+import { Popover } from './ui/Popover.js';
+import { LayersPanel, LAYER_KEYS, type LayerDescriptor, type LayerKey } from './ui/LayersPanel.js';
 
 const SUNLIGHT_STORAGE_KEY = 'sunlight-enabled';
 import { DaylightHeatmap } from './render/analysis/DaylightHeatmap.js';
@@ -123,6 +125,12 @@ export class App {
   private daylightHeatmap: DaylightHeatmap | null = null;
   private humidityOverlay: HumidityOverlay | null = null;
   private humidityButton: HumidityButton | null = null;
+  // 顶栏收敛（图层抽屉 / 环境 / 告警 / 设置）：只做表现层编排，各检视层 setter 仍平级独立
+  private layersPanel: LayersPanel | null = null;
+  private envPopover: Popover | null = null;
+  private alertsPopover: Popover | null = null;
+  private settingsPopover: Popover | null = null;
+  private layerComboSuppressed = false;
   private curtainPresentationState: CurtainPresentationState = { default: 'open', roomOverrides: {}, updatedAt: '' };
   private readonly hvacCoordinationApi = (visible: boolean) => this.setHvacCoordinationVisible(Boolean(visible));
   private readyState: 'loading' | 'ready' | 'failed' = 'loading';
@@ -194,6 +202,8 @@ export class App {
     this.setupPaintButton();
     this.setupCeilingZoneButton();
     this.setupCeilingQuoteButton();
+    this.setupLayersPanel();
+    this.setupToolbarPopovers();
     const mepLintBadge = document.getElementById('mep-lint-badge');
     if (mepLintBadge) renderMepLintBadge(mepLintBadge, this.mepLintResult);
     this.setupDragHandlers();
@@ -501,6 +511,7 @@ export class App {
     this.hvacCoordinationVisible = this.hvacCoordinationState === 'ready' && visible;
     this.houseScene.setHvacCoordinationVisible(this.hvacCoordinationVisible);
     this.hvacCoordinationButton?.sync();
+    this.syncLayersSummary(true);
     this.requestRender();
   }
 
@@ -511,6 +522,7 @@ export class App {
       this.houseScene.setHvacCoordinationVisible(false);
     }
     this.hvacCoordinationButton?.sync();
+    this.syncLayersSummary();
   }
 
   private setupWallTileButton(): void {
@@ -521,14 +533,15 @@ export class App {
     });
   }
 
-  private setWallTileInspectionVisible(visible: boolean): void {
+  private setWallTileInspectionVisible(visible: boolean, announce = true): void {
     this.wallTileVisible = this.wallTileState === 'ready' && visible;
     this.houseScene.setWallTileInspectionVisible(this.wallTileVisible);
     this.wallTileButton?.sync();
+    this.syncLayersSummary(true);
     this.requestRender();
     // 打开时同步播报数字摘要：3D 透视看不出准确高度（0.3m 与 1.8m 在广角下都像墙根一条带），
     // 所以「图」与「数」必须同时给出，避免拿眼睛当尺子（DEC-2026-10-07-R09）。
-    if (this.wallTileVisible) {
+    if (this.wallTileVisible && announce) {
       const s = this.houseScene.getWallTileInspectionStatus();
       const rooms = Object.entries(s.byRoom).map(([r, v]) => `${r} ${v.lengthM.toFixed(2)}m`).join(' · ');
       const tiers = Object.entries(s.byHeightTier)
@@ -545,6 +558,7 @@ export class App {
       this.houseScene.setWallTileInspectionVisible(false);
     }
     this.wallTileButton?.sync();
+    this.syncLayersSummary();
   }
 
   private setupPaintButton(): void {
@@ -555,14 +569,15 @@ export class App {
     });
   }
 
-  private setPaintInspectionVisible(visible: boolean): void {
+  private setPaintInspectionVisible(visible: boolean, announce = true): void {
     this.paintVisible = this.paintState === 'ready' && visible;
     this.houseScene.setPaintInspectionVisible(this.paintVisible);
     this.paintButton?.sync();
+    this.syncLayersSummary(true);
     this.requestRender();
     // 打开时播报数字摘要：涂漆面到顶，3D 里看不出每面墙归属哪个房间、算不算在涂装范围内，
     // 「图」与「数」必须同时给出（同贴砖检视态 DEC-2026-10-07-R09 的理由）。
-    if (this.paintVisible) {
+    if (this.paintVisible && announce) {
       const s = this.houseScene.getPaintInspectionStatus();
       const rooms = Object.entries(s.byRoom).map(([r, v]) => `${r} ${v.lengthM.toFixed(2)}m`).join(' · ');
       // 顶面涂装只在成本口径里单列（/api/budget 的 paintBudgetPreview），未在本 3D 层显示；
@@ -585,6 +600,7 @@ export class App {
       this.houseScene.setPaintInspectionVisible(false);
     }
     this.paintButton?.sync();
+    this.syncLayersSummary();
   }
 
   // ─── 吊顶分区高亮（DEC-2026-10-08-C01）───
@@ -598,10 +614,11 @@ export class App {
     });
   }
 
-  private setCeilingZoneHighlightVisible(visible: boolean): void {
+  private setCeilingZoneHighlightVisible(visible: boolean, announce = true): void {
     this.ceilingZoneVisible = this.ceilingZoneState === 'ready' && visible;
     this.houseScene.setCeilingZoneHighlightVisible(this.ceilingZoneVisible);
     this.ceilingZoneButton?.sync();
+    this.syncLayersSummary(true);
     this.requestRender();
     if (this.ceilingZoneVisible) {
       this.ceilingZonePanel?.show();
@@ -613,10 +630,12 @@ export class App {
           + `${k === 'curtain_box' && v.linearM > 0 ? `/${v.linearM.toFixed(2)}m` : ''}`
           + `${v.panelCount > 0 ? `/${v.panelCount}块` : ''}`)
         .join(' · ');
-      this.showToast(
-        `吊顶分区 ${s.zonesInScene} 个：净 ${s.totalNetAreaM2.toFixed(2)}㎡（展开 ${s.totalExpandedAreaM2.toFixed(2)}㎡）｜${classes}`
-        + `${s.unclassifiedZoneIds.length > 0 ? `｜未归类 ${s.unclassifiedZoneIds.join('、')}` : ''}`
-      );
+      if (announce) {
+        this.showToast(
+          `吊顶分区 ${s.zonesInScene} 个：净 ${s.totalNetAreaM2.toFixed(2)}㎡（展开 ${s.totalExpandedAreaM2.toFixed(2)}㎡）｜${classes}`
+          + `${s.unclassifiedZoneIds.length > 0 ? `｜未归类 ${s.unclassifiedZoneIds.join('、')}` : ''}`
+        );
+      }
       this.ceilingZonePanel?.refresh();
     } else {
       this.ceilingZonePanel?.hide();
@@ -630,6 +649,7 @@ export class App {
       this.houseScene.setCeilingZoneHighlightVisible(false);
     }
     this.ceilingZoneButton?.sync();
+    this.syncLayersSummary();
   }
 
   private setupCeilingQuoteButton(): void {
@@ -644,46 +664,189 @@ export class App {
     });
   }
 
+  // ─── 顶栏收敛：图层抽屉 / 告警聚合 / 弹出面板 ───
+  // 编排只发生在 UI 层：这里通过各平级 setter 组合调用，不绕过它们碰场景或互相引用。
+
+  private setupLayersPanel(): void {
+    const layers: LayerDescriptor[] = [
+      { key: 'mep_overview', isReady: () => this.hvacCoordinationState === 'ready' || this.mepCoordinationReady, isActive: () => this.mepOverviewVisible },
+      { key: 'mep_coordination', isReady: () => this.mepCoordinationReady, isActive: () => this.mepCoordinationVisible },
+      { key: 'hvac', isReady: () => this.hvacCoordinationState === 'ready', isActive: () => this.hvacCoordinationVisible },
+      { key: 'electrical_topology', isReady: () => this.electricalTopology !== null, isActive: () => this.electricalTopologyVisible || this.mepOverviewVisible },
+      { key: 'wall_tile', isReady: () => this.wallTileState === 'ready', isActive: () => this.wallTileVisible },
+      { key: 'paint', isReady: () => this.paintState === 'ready', isActive: () => this.paintVisible },
+      { key: 'ceiling_zone', isReady: () => this.ceilingZoneState === 'ready', isActive: () => this.ceilingZoneVisible },
+    ];
+    this.layersPanel = new LayersPanel({
+      layers,
+      onClearAll: () => this.clearAllLayers(),
+      onApplyCombo: (keys) => this.applyLayerCombo(keys),
+      group: 'toolbar',
+    });
+    this.layersPanel.sync();
+  }
+
+  private setupToolbarPopovers(): void {
+    this.envPopover = new Popover('env-toggle-btn', 'env-panel', { group: 'toolbar' });
+    this.alertsPopover = new Popover('alerts-toggle-btn', 'alerts-panel', { group: 'toolbar' });
+    this.settingsPopover = new Popover('settings-toggle-btn', 'settings-panel', { group: 'toolbar' });
+    document.getElementById('alert-row-mep')?.addEventListener('click', () => {
+      this.setMepCoordinationLayerVisible(true);
+    });
+    document.getElementById('alert-row-electrical')?.addEventListener('click', () => {
+      this.setElectricalTopologyVisible(true);
+    });
+    this.syncAlertsSummary();
+  }
+
+  private syncLayersSummary(persist = false): void {
+    // 全关/恢复组合期间抑制持久化：清空不是一次"手动组合"，不应覆盖「上次组合」存档
+    this.layersPanel?.sync(persist && !this.layerComboSuppressed);
+  }
+
+  /** 顶栏 ⚠ 徽章：聚合 MEP lint 与电气回路 lint 的告警计数（口径不同，明细在面板里分列）。 */
+  private syncAlertsSummary(): void {
+    const mepCounts = this.mepLintResult?.counts;
+    const elecCounts = this.electricalTopology?.lint?.counts;
+    const mepErrors = mepCounts?.errors ?? 0;
+    const mepWarnings = mepCounts?.warnings ?? 0;
+    const elecWarnings = elecCounts?.warnings ?? 0;
+    const total = mepErrors + mepWarnings + elecWarnings;
+    const btn = document.getElementById('alerts-toggle-btn');
+    if (btn) {
+      btn.hidden = total === 0;
+      btn.classList.toggle('alerts-error', mepErrors > 0);
+      btn.title = mepErrors > 0
+        ? `检视层问题：MEP lint error ${mepErrors} / warning ${mepWarnings}；电气回路 warning ${elecWarnings}`
+        : `检视层问题：MEP lint warning ${mepWarnings}；电气回路 warning ${elecWarnings}`;
+    }
+    const countEl = document.getElementById('alerts-count');
+    if (countEl) countEl.textContent = String(total);
+    const mepDetail = document.getElementById('alert-mep-detail');
+    if (mepDetail) {
+      mepDetail.textContent = mepCounts
+        ? `✗ ${mepErrors} · ⚠ ${mepWarnings} · 路线 resolved ${mepCounts.resolvedRoutes}/${mepCounts.routes}`
+        : '未就绪';
+    }
+    const elecDetail = document.getElementById('alert-electrical-detail');
+    if (elecDetail) {
+      elecDetail.textContent = elecCounts
+        ? `${elecCounts.circuits} 条回路 · ⚠ ${elecWarnings} · 未覆盖 ${elecCounts.uncoveredPoints}`
+        : '未就绪';
+    }
+  }
+
+  /** 全关：逐个调用平级 setter；未就绪的层由 setter 自身的 ready 钳制兜住。不覆盖「上次组合」存档。 */
+  private clearAllLayers(): void {
+    this.layerComboSuppressed = true;
+    try {
+      this.setMepOverviewVisible(false);
+      this.setMepCoordinationLayerVisible(false);
+      this.setHvacCoordinationVisible(false);
+      this.setElectricalTopologyVisible(false);
+      this.setWallTileInspectionVisible(false);
+      this.setPaintInspectionVisible(false);
+      this.setCeilingZoneHighlightVisible(false);
+    } finally {
+      this.layerComboSuppressed = false;
+    }
+    this.syncLayersSummary();
+  }
+
+  private applyLayerCombo(keys: LayerKey[]): void {
+    this.clearAllLayers();
+    this.layerComboSuppressed = true;
+    try {
+      for (const key of keys) this.toggleLayerByKey(key, { announce: false });
+    } finally {
+      this.layerComboSuppressed = false;
+    }
+    this.syncLayersSummary(true);
+  }
+
+  private toggleLayerByKey(key: LayerKey, opts: { announce?: boolean } = {}): void {
+    const announce = opts.announce ?? true;
+    switch (key) {
+      case 'mep_overview': this.setMepOverviewVisible(!this.mepOverviewVisible); return;
+      case 'mep_coordination': this.setMepCoordinationLayerVisible(!this.mepCoordinationVisible); return;
+      case 'hvac': this.setHvacCoordinationVisible(!this.hvacCoordinationVisible); return;
+      case 'electrical_topology': this.setElectricalTopologyVisible(!this.electricalTopologyVisible); return;
+      case 'wall_tile': this.setWallTileInspectionVisible(!this.wallTileVisible, announce); return;
+      case 'paint': this.setPaintInspectionVisible(!this.paintVisible, announce); return;
+      case 'ceiling_zone': this.setCeilingZoneHighlightVisible(!this.ceilingZoneVisible, announce); return;
+    }
+  }
+
+  private dismissToolbarPopovers(): boolean {
+    let closed = false;
+    for (const popover of [this.layersPanel, this.envPopover, this.alertsPopover, this.settingsPopover]) {
+      if (popover?.isOpen()) {
+        popover.close();
+        closed = true;
+      }
+    }
+    return closed;
+  }
+
   private setupMepCoordinationButton(): void {
     const overviewButton = document.getElementById('mep-overview-btn') as HTMLButtonElement | null;
     overviewButton?.addEventListener('click', () => {
-      this.mepOverviewVisible = !this.mepOverviewVisible;
-      this.houseScene.setMepOverviewVisible(this.mepOverviewVisible, this.hvacCoordinationState === 'ready' || this.mepCoordinationReady);
-      if (this.electricalTopology) {
-        this.houseScene.setElectricalTopologyVisible(this.mepOverviewVisible || this.electricalTopologyVisible);
-        this.syncElectricalTopologyButton();
-      }
-      overviewButton.classList.toggle('active', this.mepOverviewVisible);
-      overviewButton.textContent = this.mepOverviewVisible ? '退出机电总览' : '机电总览';
-      this.requestRender();
+      this.setMepOverviewVisible(!this.mepOverviewVisible);
     });
     const button = document.getElementById('mep-coordination-btn') as HTMLButtonElement | null;
     if (!button) return;
     button.addEventListener('click', () => {
-      this.mepCoordinationVisible = this.mepCoordinationReady && !this.mepCoordinationVisible;
-      this.houseScene.setMepCoordinationVisible(this.mepCoordinationVisible);
-      const controls = document.getElementById('mep-coordination-controls');
-      if (controls) controls.hidden = !this.mepCoordinationVisible;
-      button.classList.toggle('active', this.mepCoordinationVisible);
-      this.setButtonLabel(button, this.mepCoordinationVisible ? 'MEP · 路线' : 'MEP 协调');
-      this.requestRender();
+      this.setMepCoordinationLayerVisible(!this.mepCoordinationVisible);
     });
     document.getElementById('mep-bends-toggle')?.addEventListener('change', (event) => {
       this.houseScene.setMepBendsVisible((event.target as HTMLInputElement).checked);
     });
   }
 
+  /** 机电总览：组合层（吊顶+点位+HVAC+MEP 路线），顺带压亮电气回路，但不动用户对回路的独立开关意图。 */
+  private setMepOverviewVisible(visible: boolean): void {
+    this.mepOverviewVisible = visible;
+    this.houseScene.setMepOverviewVisible(this.mepOverviewVisible, this.hvacCoordinationState === 'ready' || this.mepCoordinationReady);
+    if (this.electricalTopology) {
+      this.houseScene.setElectricalTopologyVisible(this.mepOverviewVisible || this.electricalTopologyVisible);
+      this.syncElectricalTopologyButton();
+    }
+    const overviewButton = document.getElementById('mep-overview-btn') as HTMLButtonElement | null;
+    overviewButton?.classList.toggle('active', this.mepOverviewVisible);
+    if (overviewButton) overviewButton.textContent = this.mepOverviewVisible ? '退出机电总览' : '机电总览';
+    this.syncLayersSummary(true);
+    this.requestRender();
+  }
+
+  /** MEP 协调（实体水电 + HVAC 路线）：独立检视层。 */
+  private setMepCoordinationLayerVisible(visible: boolean): void {
+    this.mepCoordinationVisible = this.mepCoordinationReady && visible;
+    this.houseScene.setMepCoordinationVisible(this.mepCoordinationVisible);
+    const controls = document.getElementById('mep-coordination-controls');
+    if (controls) controls.hidden = !this.mepCoordinationVisible;
+    const button = document.getElementById('mep-coordination-btn') as HTMLButtonElement | null;
+    button?.classList.toggle('active', this.mepCoordinationVisible);
+    if (button) this.setButtonLabel(button, this.mepCoordinationVisible ? 'MEP · 路线' : 'MEP 协调');
+    this.syncLayersSummary(true);
+    this.requestRender();
+  }
+
   private setupElectricalTopologyButton(): void {
     const button = document.getElementById('electrical-topology-btn') as HTMLButtonElement | null;
     if (!button) return;
     button.addEventListener('click', () => {
-      if (!this.electricalTopology) return;
-      this.electricalTopologyVisible = !this.electricalTopologyVisible;
-      this.houseScene.setElectricalTopologyVisible(this.mepOverviewVisible || this.electricalTopologyVisible);
-      this.syncElectricalTopologyButton();
-      this.requestRender();
+      this.setElectricalTopologyVisible(!this.electricalTopologyVisible);
     });
     this.syncElectricalTopologyButton();
+  }
+
+  private setElectricalTopologyVisible(visible: boolean): void {
+    if (!this.electricalTopology) return;
+    this.electricalTopologyVisible = visible;
+    this.houseScene.setElectricalTopologyVisible(this.mepOverviewVisible || this.electricalTopologyVisible);
+    this.syncElectricalTopologyButton();
+    this.syncLayersSummary(true);
+    this.requestRender();
   }
 
   private syncElectricalTopologyButton(): void {
@@ -702,6 +865,7 @@ export class App {
       if (badge) badge.hidden = true;
     }
     if (controls) controls.hidden = !effectivelyVisible;
+    this.syncLayersSummary();
   }
 
   private setButtonLabel(button: HTMLButtonElement, text: string): void {
@@ -785,6 +949,8 @@ export class App {
     button.disabled = !ready;
     this.setButtonLabel(button, ready ? 'MEP 协调' : 'MEP 未就绪');
     button.classList.toggle('active', this.mepCoordinationVisible);
+    this.syncLayersSummary();
+    this.syncAlertsSummary();
   }
 
   private setupExportButton(): void {
@@ -970,6 +1136,7 @@ export class App {
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
       // ── Special cases that need extra logic ──
       if (e.code === 'Escape') {
+        if (this.dismissToolbarPopovers()) return;
         if (this.overviewMenu.isVisible()) { this.overviewMenu.hide(); return; }
         if (this.commandPalette.isVisible()) { this.commandPalette.hide(); return; }
         if (this.placementPanel.isVisible()) { this.placementPanel.hide(); return; }
@@ -1009,6 +1176,22 @@ export class App {
         this.houseScene.toggleTopDown();
         this.topDownButton?.sync();
         return;
+      }
+
+      // ── 图层抽屉数字键（轨道模式）：1-7 开关对应检视层，0 全关 ──
+      if (
+        this.houseScene.mode === 'orbit'
+        && !e.repeat
+        && typeof e.code === 'string'
+        && e.code.startsWith('Digit')
+      ) {
+        const digit = Number(e.code.slice('Digit'.length));
+        if (!Number.isNaN(digit) && digit <= LAYER_KEYS.length) {
+          e.preventDefault();
+          if (digit === 0) this.clearAllLayers();
+          else this.toggleLayerByKey(LAYER_KEYS[digit - 1]);
+          return;
+        }
       }
 
       if (shouldToggleSeeThrough(e.code, e.repeat, this.houseScene.mode)) {
@@ -1581,8 +1764,7 @@ export class App {
         this.electricalTopology = null;
         this.houseScene.setElectricalTopologyVisible(false);
         this.syncElectricalTopologyButton();
-      }
-      try {
+      }      try {
         const response = await fetch('/api/render-facts/projection');
         if (!response.ok) throw new Error('render facts projection is not ready');
 
@@ -1659,6 +1841,7 @@ export class App {
     } else {
       this.setHvacCoordinationState('unimplemented');
     }
+    this.syncAlertsSummary();
     this.requestRender();
   }
 
