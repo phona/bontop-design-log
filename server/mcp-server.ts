@@ -18,6 +18,28 @@ import type { PresentationStateStore } from './presentation-state.js';
 import { computeSunlightAnalysis, computeHumidityAnalysis, humidityAdvisories } from './analysis-service.js';
 import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import { loadCeilingConfig } from './config-loader.js';
+import {
+  loadCeilingQuotes,
+  setActiveCeilingQuote,
+  resolveActiveCeilingRates,
+  compareCeilingQuotes,
+  ceilingQuoteQuantities,
+} from './ceiling-quotes.js';
+import { readFileSync } from 'node:fs';
+
+/** base.json 的兜底吊顶费率：生效报价未声明的计价行回落到它（与 budget-calculator 同源）。 */
+function baseJsonCeilingRates(): Record<'ceiling_zones' | 'curtain_box_linear', { per_unit: number | null; unit: string }> {
+  const raw = JSON.parse(readFileSync('config/budget/base.json', 'utf8')) as {
+    categories: Record<string, { labor?: { rate: number | null; unit: string; area: string } | Array<{ rate: number | null; unit: string; area: string }> }>;
+  };
+  const carpentry = raw.categories.carpentry;
+  const entries = carpentry?.labor ? (Array.isArray(carpentry.labor) ? carpentry.labor : [carpentry.labor]) : [];
+  const byArea = new Map(entries.map((entry) => [entry.area, entry]));
+  return {
+    ceiling_zones: { per_unit: byArea.get('ceiling_zones')?.rate ?? null, unit: byArea.get('ceiling_zones')?.unit ?? '元/㎡' },
+    curtain_box_linear: { per_unit: byArea.get('curtain_box_linear')?.rate ?? null, unit: byArea.get('curtain_box_linear')?.unit ?? '元/m' },
+  };
+}
 import { parseSpecDimensions } from './spec-parser.js';
 
 function text(data: unknown) {
@@ -345,6 +367,55 @@ export function createMcpServer(deps: McpDeps): McpServer {
           catalog.getRooms().map((room) => ({ id: room.id, height: room.height }))
         )
       );
+    }
+  );
+
+  server.registerTool(
+    'get_ceiling_quotes',
+    {
+      title: 'Get ceiling quotes',
+      description:
+        'Return every contractor quote card from config/ceiling-quotes.yaml priced against the SAME ceiling takeoff (single source of quantities): board labour (元/㎡) and curtain-box labour (元/m), per-candidate totals, deltas vs the active card, and comparability notes (quotes without a scope note are marked not directly comparable). The active card is the one feeding the budget.',
+    },
+    async () => {
+      try {
+        const file = loadCeilingQuotes();
+        const takeoff = computeCeilingTakeoff(loadCeilingConfig(), catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
+        return text({
+          activeId: file.active,
+          quantities: ceilingQuoteQuantities(takeoff),
+          resolved: resolveActiveCeilingRates(file, baseJsonCeilingRates()),
+          comparison: compareCeilingQuotes(file, takeoff, baseJsonCeilingRates()),
+        });
+      } catch (err) {
+        return text({ error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+  );
+
+  server.registerTool(
+    'set_ceiling_quote',
+    {
+      title: 'Set active ceiling quote',
+      description:
+        'Switch the active ceiling quote card (rewrites only the `active:` line of config/ceiling-quotes.yaml, keeping a .bak). Quantities never change — only unit prices. The switched file must be committed to Git (README: no verbal changes).',
+      inputSchema: z.object({ id: z.string().describe('Quote id from config/ceiling-quotes.yaml') }),
+    },
+    async (args) => {
+      try {
+        const file = setActiveCeilingQuote(args.id);
+        const takeoff = computeCeilingTakeoff(loadCeilingConfig(), catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
+        const fallback = baseJsonCeilingRates();
+        return text({
+          switched: true,
+          activeId: file.active,
+          resolved: resolveActiveCeilingRates(file, fallback),
+          comparison: compareCeilingQuotes(file, takeoff, fallback),
+          note: '已改写 config/ceiling-quotes.yaml 的 active 一行（原文件留 .bak）；该改动需进 Git。',
+        });
+      } catch (err) {
+        return text({ error: err instanceof Error ? err.message : String(err) });
+      }
     }
   );
 

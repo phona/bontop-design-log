@@ -1,0 +1,33 @@
+version: 1
+# 吊顶报价卡片（DEC-2026-10-08-C03）。
+#
+# 铁律：
+#  1. **量不在这里**。工程量一律由 shared/ceiling-takeoff.ts 从 config/ceiling.yaml 实算
+#     （板面 ㎡、窗帘盒 延长米、铝扣板块数）。报价方只报单价 + 含项范围，
+#     不允许自带面积——否则 A 家按毛面积、B 家按展开面积，两边永远对不上。
+#  2. `active:` 指向生效卡片；切换只改这一行（API / MCP / 手改都一样），
+#     改动走 Git（README「没有口头变更」），改写前自动留 .bak。
+#  3. `per_unit: null` = 待报价：数量照样显形、金额不编，杜绝「换个报价把活儿变没」。
+#  4. 未写的计价行回落到 config/budget/base.json 的对应 labor rate，
+#     对比结果里标记 rate_source: base.json——回落必须看得见，不悄悄替换。
+#  5. 含项口径不同（辅材/安装/损耗/税费）必须在 scope_note 写清，否则该候选
+#     在对比里 comparable: false（AGENTS.md 采购铁律：不同口径不可直接比较）。
+active: baseline_self_computed
+
+quotes:
+  # 现状基线：业主既定 40 元/㎡ 板面人工 + 窗帘盒按延长米尚未取得报价。
+  # 这不是施工方报价，是把 C01/C02 已落地的口径固化成一张卡，保证「没有报价时可回退」。
+  - id: baseline_self_computed
+    contractor: 基线口径（非施工方报价）
+    quoted_at: null
+    status: baseline
+    rates:
+      ceiling_zones:
+        per_unit: 40
+        unit: 元/㎡
+        scope_note: 木工吊顶板面人工（石膏板 + 铝扣板 + 隐藏晾衣架吊顶），沿用 base.json 既有费率；是否含辅材/耗材/修补未与施工方逐项确认
+      curtain_box_linear:
+        per_unit: null
+        unit: 元/m
+        scope_note: 窗帘盒人工按延长米计价，费率待取得施工方报价；含双轨安装与电动窗帘电源预留的做法待确认
+    note: DEC-2026-10-08-C02 拆分行之后的默认卡；quantity_basis 见 GET /api/ceiling/takeoff

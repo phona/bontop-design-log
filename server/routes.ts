@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { readFileSync } from 'node:fs';
 import { ProjectCatalog } from './project-catalog.js';
 import type { DesignState } from './design-state.js';
 import type { RuleEngine } from './rule-engine.js';
@@ -17,6 +18,27 @@ import type { PresentationStateStore } from './presentation-state.js';
 import { filterCurtainElements, loadPhaseBudgetMeta, loadPhaseScopes, parsePhaseId } from './phase-scope.js';
 import { buildTileCostComparison, loadTileComparisonConfig } from './tile-cost-comparison.js';
 import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
+import {
+  loadCeilingQuotes,
+  setActiveCeilingQuote,
+  resolveActiveCeilingRates,
+  compareCeilingQuotes,
+  ceilingQuoteQuantities,
+} from './ceiling-quotes.js';
+
+/** base.json 的兜底吊顶费率：生效报价未声明的计价行回落到它。 */
+function baseJsonCeilingRates(): Record<'ceiling_zones' | 'curtain_box_linear', { per_unit: number | null; unit: string }> {
+  const raw = JSON.parse(readFileSync('config/budget/base.json', 'utf8')) as {
+    categories: Record<string, { labor?: { rate: number | null; unit: string; area: string } | Array<{ rate: number | null; unit: string; area: string }> }>;
+  };
+  const carpentry = raw.categories.carpentry;
+  const entries = carpentry?.labor ? (Array.isArray(carpentry.labor) ? carpentry.labor : [carpentry.labor]) : [];
+  const byArea = new Map(entries.map((entry) => [entry.area, entry]));
+  return {
+    ceiling_zones: { per_unit: byArea.get('ceiling_zones')?.rate ?? null, unit: byArea.get('ceiling_zones')?.unit ?? '元/㎡' },
+    curtain_box_linear: { per_unit: byArea.get('curtain_box_linear')?.rate ?? null, unit: byArea.get('curtain_box_linear')?.unit ?? '元/m' },
+  };
+}
 import type { ResolvedLayout } from '../shared/types.js';
 
 export interface ApiDeps {
@@ -174,6 +196,55 @@ export function createApiRouter(deps: ApiDeps): Router {
       res.json(computeCeilingTakeoff(zones, deps.catalog.getRooms().map((room) => ({ id: room.id, height: room.height }))));
     } catch (err) {
       res.status(500).json({ error: 'failed to compute ceiling takeoff' });
+    }
+  });
+
+  // ─── 吊顶报价卡片（DEC-2026-10-08-C03）───
+  // GET：量取 takeoff、价取 ceiling-quotes.yaml，并排对比全部候选；
+  // POST /active：切换生效卡片，只改写 active 一行（留 .bak、走 Git）。
+  router.get('/ceiling/quotes', (_req, res) => {
+    try {
+      const zones = deps.getProjectRenderFacts?.()?.ceiling ?? loadCeilingConfig();
+      const takeoff = computeCeilingTakeoff(zones, deps.catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
+      const file = loadCeilingQuotes();
+      const fallback = baseJsonCeilingRates();
+      res.json({
+        activeId: file.active,
+        quantities: ceilingQuoteQuantities(takeoff),
+        takeoff: {
+          totalNetAreaM2: takeoff.totalNetAreaM2,
+          curtainBoxM2: takeoff.curtainBoxM2,
+          curtainBoxLinearM: takeoff.curtainBoxLinearM,
+          overlaps: takeoff.overlaps,
+        },
+        resolved: resolveActiveCeilingRates(file, fallback),
+        comparison: compareCeilingQuotes(file, takeoff, fallback),
+      });
+    } catch (err) {
+      res.status(500).json({ error: `failed to load ceiling quotes: ${err instanceof Error ? err.message : String(err)}` });
+    }
+  });
+
+  router.post('/ceiling/quotes/active', (req, res) => {
+    const id = typeof req.body?.id === 'string' ? req.body.id : '';
+    if (!id) {
+      res.status(400).json({ error: 'body.id is required' });
+      return;
+    }
+    try {
+      const file = setActiveCeilingQuote(id);
+      const zones = deps.getProjectRenderFacts?.()?.ceiling ?? loadCeilingConfig();
+      const takeoff = computeCeilingTakeoff(zones, deps.catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
+      const fallback = baseJsonCeilingRates();
+      res.json({
+        switched: true,
+        activeId: file.active,
+        resolved: resolveActiveCeilingRates(file, fallback),
+        comparison: compareCeilingQuotes(file, takeoff, fallback),
+        note: '已改写 config/ceiling-quotes.yaml 的 active 一行（原文件留 .bak）；按 README「没有口头变更」，该改动需进 Git。',
+      });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 

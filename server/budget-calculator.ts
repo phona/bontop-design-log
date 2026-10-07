@@ -12,6 +12,8 @@ import type {
 } from '../shared/types.js';
 import { computeCeilingTakeoff, type CeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import { loadCeilingConfig } from './config-loader.js';
+import { loadCeilingQuotes, type CeilingQuotesFile } from './ceiling-quotes.js';
+import { resolveActiveCeilingRates, compareCeilingQuotes, type ResolvedCeilingRates } from './ceiling-quotes.js';
 import type { ProjectCatalog } from './project-catalog.js';
 import { isBudgetTopicIncluded, loadPhaseScopes } from './phase-scope.js';
 import { controlPathForPhase, loadPhaseControlAuthority } from './phase-control.js';
@@ -22,6 +24,17 @@ import { controlPathForPhase, loadPhaseControlAuthority } from './phase-control.
  */
 function ceilingTakeoff(catalog: ProjectCatalog): CeilingTakeoff {
   return computeCeilingTakeoff(loadCeilingConfig(), catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
+}
+
+/** base.json 的兜底费率：生效报价没声明的计价行回落到它（回落必须看得见）。 */
+function fallbackCeilingRates(baseRaw: Record<string, BudgetCategoryRaw>): Record<'ceiling_zones' | 'curtain_box_linear', { per_unit: number | null; unit: string }> {
+  const carpentry = baseRaw.carpentry;
+  const entries = carpentry?.labor ? (Array.isArray(carpentry.labor) ? carpentry.labor : [carpentry.labor]) : [];
+  const byArea = new Map(entries.map((entry) => [entry.area, entry]));
+  return {
+    ceiling_zones: { per_unit: byArea.get('ceiling_zones')?.rate ?? null, unit: byArea.get('ceiling_zones')?.unit ?? '元/㎡' },
+    curtain_box_linear: { per_unit: byArea.get('curtain_box_linear')?.rate ?? null, unit: byArea.get('curtain_box_linear')?.unit ?? '元/m' },
+  };
 }
 
 const QUANTITY_FORMULAS: Record<string, (room: RoomLayout) => number> = {
@@ -54,7 +67,8 @@ export class BudgetCalculator {
     baseRaw: Record<string, BudgetCategoryRaw>,
     rooms: RoomLayout[],
     phase: PhaseId,
-    takeoff: CeilingTakeoff
+    takeoff: CeilingTakeoff,
+    quoteRates: ResolvedCeilingRates
   ): void {
     for (const cat of categories) {
       const raw = baseRaw[cat.key];
@@ -62,7 +76,11 @@ export class BudgetCalculator {
       const laborEntries = Array.isArray(raw.labor) ? raw.labor : [raw.labor];
 
       for (const labor of laborEntries) {
-      const { rate, area } = labor;
+      const { area } = labor;
+      // 吊顶两条计价行的单价以生效报价为准（DEC-2026-10-08-C03）；未声明则回落 base.json。
+      const quoted = area === 'ceiling_zones' || area === 'curtain_box_linear' ? quoteRates[area] : undefined;
+      const rate = quoted ? quoted.per_unit : labor.rate;
+      const unit = quoted ? quoted.unit : labor.unit;
       let quantity = 0;
 
       switch (area) {
@@ -136,7 +154,7 @@ export class BudgetCalculator {
       }
       if (rate === null || rate === undefined) {
         // 待报价：数量入 pendingLabor 显形，金额不编（README：没有无依据决策）
-        cat.pendingLabor = [...(cat.pendingLabor ?? []), { area, quantity, unit: labor.unit ?? '', reason: 'rate 待报价' }];
+        cat.pendingLabor = [...(cat.pendingLabor ?? []), { area, quantity, unit, reason: 'rate 待报价' }];
         continue;
       }
       cat.actual += Math.round(rate * quantity);
@@ -289,7 +307,30 @@ export class BudgetCalculator {
       };
     });
 
-    this.computeLabor(categories, budgetRaw.categories, this.catalog.getRooms(), phase, ceilingTakeoff(this.catalog));
+    const takeoff = ceilingTakeoff(this.catalog);
+    // 生效报价（DEC-2026-10-08-C03）：报价文件缺失/非法时按「无报价」处理，
+    // 回落 base.json 的 labor rate——预算不能被一个坏配置文件冻结。
+    let quotes: CeilingQuotesFile | null = null;
+    try {
+      quotes = loadCeilingQuotes();
+    } catch (err) {
+      console.error('[budget-calculator] ceiling-quotes.yaml 不可用，回落 base.json 费率：', err instanceof Error ? err.message : String(err));
+    }
+    const quoteRates = resolveActiveCeilingRates(
+      quotes ?? { version: 1, active: 'base.json', quotes: [] },
+      fallbackCeilingRates(budgetRaw.categories),
+    );
+
+    this.computeLabor(categories, budgetRaw.categories, this.catalog.getRooms(), phase, takeoff, quoteRates);
+
+    // 报价对比进快照：active 那家就是 actual 的来源，其余候选只并排展示、不动金额。
+    const ceilingQuotes = quotes
+      ? {
+          activeId: quotes.active,
+          source: quoteRates.ceiling_zones.source === 'quote' ? 'quote' as const : 'base.json' as const,
+          comparison: compareCeilingQuotes(quotes, takeoff, fallbackCeilingRates(budgetRaw.categories)),
+        }
+      : undefined;
 
     // Status computed AFTER computeLabor: labor can push a category over budget.
     for (const cat of categories) {
@@ -334,6 +375,7 @@ export class BudgetCalculator {
       categories,
       lineItems: allLineItems,
       attribution,
+      ...(ceilingQuotes ? { ceilingQuotes } : {}),
     };
   }
 }

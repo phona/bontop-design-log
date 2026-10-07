@@ -1958,3 +1958,19 @@
 - **验证**：`tests/server/budget-calculator.test.ts` 新增 1 条（板面量排除窗帘盒 + `pendingLabor` 精确等于 17.85m + base.json 两行结构）；`test:server` 678/678/0 → `verify:facts` / `verify:schedule` Exit 0 → `typecheck` Exit 0。
 - **关联文件**：`config/budget/base.json`、`server/budget-calculator.ts`、`shared/types.ts`（`LaborRate.rate` 可空、`BudgetCategoryRaw.labor` 可为数组、`BudgetCategory.pendingLabor`）、`tests/server/budget-calculator.test.ts`。
 - **决策人**：业主。
+
+### DEC-2026-10-08-C03 吊顶报价卡片：多家报价可切换（量不变、只换单价）
+
+- **日期**：2026-10-08。触发：业主问「有多个报价的话，这套架构支持切换吗」，看完 C01/C02 的分层后选方案 A（报价卡片 + 生效开关）。
+- **分层结论（先说清楚哪些本来就有）**：**工程量层早已支持多家报价**——所有量由 `shared/ceiling-takeoff.ts` 从 `config/ceiling.yaml` 单独实算，报价方之间只差单价，所以 A 家按毛面积、B 家按展开面积这种「口径对不上」从根上不可能发生。**不支持的是单价层**：`base.json` 的 `labor[].rate` 只有一个生效值，切报价=改文件，不能并排对比、不能一键切换、旧报价不留档。
+- **选定方案**：新增 `config/ceiling-quotes.yaml`（`active:` + `quotes[]`，每张卡只写**单价 + 含项范围**，禁止自带面积）+ `server/ceiling-quotes.ts`：
+  - `GET /api/ceiling/quotes`：全部候选并排（板面 ㎡、窗帘盒 延长米两行，逐行 subtotal、总额、与生效卡的差额）。
+  - `POST /api/ceiling/quotes/active` 与 MCP `set_ceiling_quote`：切换生效卡。**只改写 `active:` 一行**（正则定点替换，保留注释与排版，先留 `.bak`），保证 Git diff 只有一行、业主看得懂；找不到唯一 active 行或 id 不存在 → 抛错不写盘。
+  - `BudgetCalculator` 的两个吊顶计价行单价改从**生效卡**取；卡里没写的行回落到 `base.json` 并在对比里标记 `rate_source: 'base.json'`——回落必须看得见，不悄悄替换。
+  - 预算快照新增 `ceilingQuotes` 字段（`activeId` + 全量对比），API/MCP/App 拿预算的地方都能看到「当前金额是哪家报出来的」。
+- **默认卡 = 现状口径**：`baseline_self_computed` 把 C01/C02 已落地的口径固化成卡（板面 40 元/㎡、窗帘盒 rate null），保证「没有施工方报价时可回退、金额与 C02 完全一致」——测试钉死 carpentry 仍为 ¥1,627、`pendingLabor` 仍为 17.85m。
+- **不可直接比较要显形**：报价卡没写 `scope_note`（含辅材/安装/损耗/税费的口径）→ 该候选 `comparable: false` 并给出原因；有 `per_unit: null` 的行 → `total: null`、进 `pendingRows`，**不许把待报价当 0 元**（AGENTS.md 采购铁律）。
+- **抗摔**：`ceiling-quotes.yaml` 坏掉（YAML 错/version 错/active 指向不存在的卡）时预算**不冻结**——`BudgetCalculator` 捕获后回落 `base.json` 费率并在服务端日志报错；`parseCeilingQuotes` 本身 fail closed，绝不给默认值。
+- **验证**：`tests/server/ceiling-quotes.test.ts` 7 条（量与价分离、并排总额/差额/可比性、回落标记、切换只改一行且留 .bak 保留注释、fail-closed 五种坏输入、基线卡金额不变、坏文件回落）；联机烟测：加假报价 `smoke_kima`（板面 55/㎡、窗帘盒 32/m）→ `POST /active` → carpentry ¥1,627 → **¥2,808**（55×40.6676 + 32×17.85）、`pendingLabor` 清空、`totalActual` +¥1,181；未知 id 被拒并列出可用卡；烟测后已删除该卡并还原 active。`test:server` 685/685/0 → `verify:all` Exit 0 → `typecheck` 0。
+- **关联文件**：`config/ceiling-quotes.yaml`（新）、`server/ceiling-quotes.ts`（新）、`server/budget-calculator.ts`、`server/routes.ts`、`server/mcp-server.ts`、`shared/types.ts`、`config/facts.yaml`、`tests/server/ceiling-quotes.test.ts`（新）。
+- **决策人**：业主。

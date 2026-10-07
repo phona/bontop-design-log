@@ -1449,6 +1449,9 @@ coverage:
   - { file: config/budget-pitfalls.yaml, field: "pitfalls", readers: [] }
   - { file: config/budget-pitfalls.yaml, field: "templates", readers: [] }
   - { file: config/ceiling.yaml, field: "*", readers: [] }
+  - { file: config/ceiling-quotes.yaml, field: "active", readers: ["server/ceiling-quotes.ts", "server/budget-calculator.ts", "server/routes.ts", "server/mcp-server.ts"] }
+  - { file: config/ceiling-quotes.yaml, field: "quotes", readers: ["server/ceiling-quotes.ts", "server/routes.ts", "server/mcp-server.ts"] }
+  - { file: config/ceiling-quotes.yaml, field: "version", readers: [] }
   # DEC-2026-10-08-C01：吊顶算量子系统。trade 是显式声明的工艺/计价类别
   # （gypsum_board/aluminum_buckle/curtain_box/drying_rack），算量与高亮分区都从它取口径，
   # 禁止任何模块靠 id 命名推断归类。

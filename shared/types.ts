@@ -486,6 +486,27 @@ export interface BudgetSnapshot {
   attribution?: Record<string, BudgetAttribution>;
   /** Dry-floor tile + ordinary labor comparison; informational overlay excluded from budget totals. */
   tileBudgetPreview?: TileBudgetPreview;
+  /**
+   * 吊顶报价卡片对比（DEC-2026-10-08-C03）。`active` 那一家就是当前 actual 的来源；
+   * 其余候选仅并排展示，未生效不影响任何金额。工程量一律来自 ceiling takeoff。
+   */
+  ceilingQuotes?: {
+    activeId: string;
+    source: 'quote' | 'base.json';
+    comparison: Array<{
+      id: string;
+      contractor: string;
+      quoted_at: string | null;
+      status: string;
+      active: boolean;
+      comparable: boolean;
+      comparability_notes: string[];
+      total: number | null;
+      deltaVsActive: number | null;
+      pendingRows: string[];
+      rows: Array<{ key: string; label: string; quantity: number; unit: string; per_unit: number | null; rate_source: string; subtotal: number | null }>;
+    }>;
+  };
 }
 
 export interface DataConfidence {

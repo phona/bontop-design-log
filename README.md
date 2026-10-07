@@ -120,6 +120,8 @@ npm run takeoff:ceiling -- --json  # 机器可读
 
 计价口径（DEC-2026-10-08-C02）：木工人工分两行——**板面**（石膏板+铝扣板+晾衣架吊顶）40 元/㎡ × 40.667㎡，**窗帘盒**按延长米 17.85m 单列，费率待报价（数量已显形在预算快照的 `pendingLabor`，取到报价后只填 `config/budget/base.json` 的 `rate`，不改代码）。
 
+多家报价切换（DEC-2026-10-08-C03）：`config/ceiling-quotes.yaml` 一卡一家，卡里**只写单价和含项范围、禁止自带面积**（量永远来自 takeoff）。`GET /api/ceiling/quotes` 并排看全部候选（逐行 subtotal、总额、与生效卡差额、可比性标记）；`POST /api/ceiling/quotes/active` 或 MCP `set_ceiling_quote` 切换——只改写 `active:` 一行（留 `.bak`，Git diff 只有一行）。没写 `scope_note` 的候选会标 `comparable: false`；`per_unit: null` 的行数量显形、总额不编；配置文件坏掉时预算自动回落 `base.json` 费率，不冻结。
+
 ## 核心原则
 
 1. **没有口头变更**：任何改动必须进 Git。
