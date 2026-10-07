@@ -551,7 +551,11 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     for (const side of item.unresolved) add(result, issue('error', 'endpoint_unresolved', `MEP route ${route.id} ${side} endpoint is unresolved`, route.id));
     const points = mepRoutePoints(route, from, to);
     const isRequirementLike = route.source_status === 'design_requirement' || route.route_kind === 'requirement' || route.route_kind === 'candidate';
-    const coincidentEndpoints = Boolean(from && to && pointEqual(from, to));
+    // 首末平面点重合 ≠ 假路由：纯竖直段（同墙不同安装高度，如电视墙 0.30/1.70/2.00m）是真实管段。
+    // 只有显式声明 route_kind: physical 且确有高度差才算，判定权在声明不在算法（与 isMepPhysicalRoute 同口径）。
+    const verticalPhysical = route.route_kind === 'physical'
+      && points.some((point, index) => index > 0 && (point.y ?? 0) !== (points[index - 1].y ?? 0));
+    const coincidentEndpoints = Boolean(from && to && pointEqual(from, to)) && !verticalPhysical;
     if (coincidentEndpoints) {
       add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', route.status === 'confirmed' ? 'confirmed_self_connection' : isRequirementLike ? 'degenerate_requirement' : 'nonphysical_route', `MEP route ${route.id} has coincident endpoints; it is not a physical route`, route.id));
     }

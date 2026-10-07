@@ -2208,3 +2208,13 @@
 - **仍待办**：为未路由点位生成确定性候选路径（点坐标 → 所属回路已有路由最近点 → 正交路径，标 `route_kind: candidate`），使每个点位都有可审计折线；完成前采购量一律视为**不完整**而非完整。
 - **关联文件**：`shared/mep-takeoff.ts`、`config/mep-takeoff.yaml`、`scripts/verify/mep/verify-mep-takeoff.ts`（C8/C9）、`tests/server/mep-takeoff.test.ts`。
 - **决策人**：业主。
+
+### DEC-2026-10-07-M04 声明式补客餐厅电源回路路由 + 纯竖直段纳入物理路由口径
+
+- **日期**：2026-10-07。触发：业主要求"声明式一条条规划电路"，从点最多的 `ordinary_power_living` 开始。
+- **路由声明（`config/mep-hvac-coordination.yaml` 92→102 条）**：为客客厅 10 个未路由点位各声明一条路由——电视墙四孔（下行+φ25 高位独立管+灯带电源）、西墙网关/扫地机、东墙窗帘盒带取水点/电动窗帘预留、三个地插（客厅×2+餐厅×1，由最近吊顶缘下行进垫层）。每条写清 from/via/to、标高、几何依据与待量房项；地插路由的 from 用吊顶缘内联坐标并在 reason 注明 junction 与垫层做法待设计裁定。
+- **口径修正（`shared/mep-hvac-coordination-schema.ts` 与 `shared/mep-hvac-lint.ts` 同步）**：`isMepPhysicalRoute` 与 lint 的 `coincidentEndpoints` 原判据是"首末平面点重合即非物理路由"，导致**同墙不同安装高度的竖直段**（电视墙 0.30/1.70/2.00m）无法声明为真实管段。改为：纯竖直段只有在**显式声明 `route_kind: physical` 且确有高度差**时才算物理路由——判定权交回声明者，不由算法猜；零长度仍不算。两个引擎同口径，消除"算量算得出、lint 报非物理"的撕裂。
+- **量化效果**：`ordinary_power_living` 管长 11.6m → **25.4m**、导线 36.4m → **79.9m**；强电管计价 178.3m → **192.1m**；未路由点位 77 → **67**。
+- **连带登记**：ceiling_clearance_unverified 25 → **32**、`c.mep_layer_below_drop_bottom` 登记基数 24 → **31**。新增 7 条全部属于既有残留同类（"竖直下引至设备点位的末点"），随本次路由声明一起登记，非数据消音。
+- **关联文件**：`config/mep-hvac-coordination.yaml`、`shared/mep-hvac-coordination-schema.ts`、`shared/mep-hvac-lint.ts`、`docs/mep-construction-guidance.md`（92→102、24→31）、`config/facts.yaml`、`docs/design-iterations/mep-lint-governance-20261006/review-manifest.json`、`tests/server/mep-takeoff.test.ts`。
+- **决策人**：业主。

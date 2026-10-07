@@ -93,7 +93,13 @@ export function isMepPhysicalRoute(route: MepRoute, points: Array<{ x: number; y
   if (route.route_kind === 'requirement' || route.route_kind === 'candidate') return false;
   if (route.source_status === 'design_requirement') return false;
   if (route.route_kind !== 'physical' && points.length >= 2 && samePlanPoint(points[0], points[points.length - 1])) return false;
-  return points.some((point, index) => index > 0 && (point.x !== points[index - 1].x || point.z !== points[index - 1].z));
+  const hasPlanMovement = points.some((point, index) => index > 0 && (point.x !== points[index - 1].x || point.z !== points[index - 1].z));
+  if (hasPlanMovement) return true;
+  // 纯竖直段（首末平面点重合，仅高度不同）：同墙不同安装高度的点位（如电视墙 0.30/1.70/2.00m）
+  // 是真实管段。只有**显式声明 route_kind: physical** 才算物理路由——由声明者断言"这是真实管段"，
+  // 不由算法猜；零长度（连高度都相同）仍不算。
+  return route.route_kind === 'physical'
+    && points.some((point, index) => index > 0 && (point.y ?? 0) !== (points[index - 1].y ?? 0));
 }
 
 function routeMetadata(route: MepRoute, from?: { x: number; z: number }, to?: { x: number; z: number }): MepRouteSemanticMetadata {
