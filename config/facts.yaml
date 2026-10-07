@@ -1619,7 +1619,6 @@ coverage:
   - { file: config/mep-takeoff.yaml, field: "sources", readers: ["scripts/project/mep-takeoff.ts", "scripts/verify/mep/verify-mep-takeoff.ts"] }
   - { file: config/mep-takeoff.yaml, field: "covered_layers", readers: ["shared/mep-takeoff.ts"] }
   - { file: config/mep-takeoff.yaml, field: "excluded_layers", readers: ["shared/mep-takeoff.ts"] }
-  - { file: config/mep-takeoff.yaml, field: "allowance_unrouted_points", readers: ["shared/mep-takeoff.ts"] }
   - { file: config/mep-takeoff.yaml, field: "units", readers: ["shared/mep-takeoff.ts"] }
   - { file: config/mep-takeoff.yaml, field: "trunk_wire_size", readers: ["shared/mep-takeoff.ts"] }
   - { file: config/mep-takeoff.yaml, field: "include_terminal_drop", readers: ["shared/mep-takeoff.ts"] }

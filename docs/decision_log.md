@@ -2197,3 +2197,14 @@
 - **尚未完工（下一步）**：`GET /api/mep/quotes` + `POST /api/mep/quotes/active` + MCP `get_mep_quotes`/`set_mep_quote` 的接线（吊顶已有同款）；`shared/mep-hvac-lint.ts` 增加「同回路路径重复/并排」规则，让 `verify:mep` 持续报而不是一次性脚本。
 - **关联文件**：`shared/quote-cards.ts`（新，通用）、`shared/mep-takeoff.ts`（计价口径 + union + cluster 折扣）、`server/ceiling-quotes.ts`（改薄封装）、`server/mep-quotes.ts`（新）、`config/mep-quotes.yaml`（改卡片模型，5 卡 32 行）、`config/mep-takeoff.yaml`（口径说明 + cluster 旋钮）、`config/facts.yaml`（coverage 更新 + circuit_count 镜像改 `回路?`）。
 - **决策人**：业主。
+
+### DEC-2026-10-07-M03 删掉 allowance 臆测数据：没有路由的点位不进采购量
+
+- **日期**：2026-10-07。触发：业主发现"强电管 470.2m 里 292m 不是模型算出来的"，质问"之前不是强调要通过模型里的数据做计算吗"，裁定"删掉臆测数据，以模型里的为准"。
+- **问题根因**：`config/mep-takeoff.yaml` 的 `allowance_unrouted_points`（socket 5m / switch 4m / night_light 3m…）是一张**手写经验表**。111 个点位里 72 个没有 physical route，几何上算不出长度，于是按"每点几米"查表凑数——**只有"哪些点没路由"来自模型，"每点几米"来自行业经验**。它被加进 `strongPowerTotalM` 后和真实几何量混成一个数报出，构成"用标注过的猜测冒充计算"。
+- **处置**：① 删除 `allowance_unrouted_points` 与 `allowance_cluster_discount`（配置与代码同步删，不留旋钮）；② 未路由点位改为只进 `coverage.unroutedPoints` 清单（id/房间/类型/所属回路），**不进任何采购量**；③ 新增门禁 C8（allowance 复活即 fail）与 C9（清单计数必须与 byType 一致）。
+- **数字变化（可复算）**：强电管 470.2m → **178.3m**（全部为已画线路由的同回路 union）；导线 1,534m → **561m**；给水 84.5m → 58.6m；排水 29.0m → 18.2m；**未路由点位 77 个显形**。材料总额 ¥18,069 → **¥13,808**（对照 PKG-040 planned ¥15,000 转为 −¥1,192）。
+- **这不是"设计变便宜了"**：77 个点位（客餐厅插座、双控开关、起夜灯、空调线控器…）现在**没有路径所以没有量**。总额下降的原因是账面不再包含臆测，**不是因为工程变少**。要把量补回来，只能补路由（量房或按模型坐标生成候选路由），不能再给经验值。
+- **仍待办**：为未路由点位生成确定性候选路径（点坐标 → 所属回路已有路由最近点 → 正交路径，标 `route_kind: candidate`），使每个点位都有可审计折线；完成前采购量一律视为**不完整**而非完整。
+- **关联文件**：`shared/mep-takeoff.ts`、`config/mep-takeoff.yaml`、`scripts/verify/mep/verify-mep-takeoff.ts`（C8/C9）、`tests/server/mep-takeoff.test.ts`。
+- **决策人**：业主。

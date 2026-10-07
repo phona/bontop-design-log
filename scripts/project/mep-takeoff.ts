@@ -67,10 +67,10 @@ if (asJson) {
 } else {
   const n = (value: number, digits = 1): string => value.toFixed(digits).padStart(9);
   console.log(`水电子系统算量（状态 ${takeoff.status}；房间基线 ${rooms.length} 间）\n`);
-  console.log('—— 管长（physical route 实算 + 未画点位按 allowance 补齐）——');
+  console.log('—— 管长（**只含画了 physical route 的部分**；未路由点位不进量，见下方「未路由点位」）——');
   console.log(`  强电 ${n(takeoff.conduit.strongPowerM)}m   弱电 ${n(takeoff.conduit.weakPowerM)}m   给水 ${n(takeoff.conduit.waterSupplyM)}m   排水 ${n(takeoff.conduit.drainageM)}m`);
-  console.log(`  已画线 ${n(takeoff.conduit.drawnM)}m  + 未画补齐 ${n(takeoff.conduit.allowanceM)}m  = ${n(takeoff.conduit.totalM)}m`);
-  console.log(`  未归属主干 ${n(takeoff.trunkConduitM)}m（线径未裁定前不进数）`);
+  console.log(`  强电计价（同回路 union） ${n(takeoff.conduit.strongPowerTotalM)}m ＝ 逻辑 Σ各条 ${n(takeoff.conduit.strongPowerLogicalM)}m 去重后；跨回路去重下限 ${n(takeoff.conduit.strongPowerUnionAllM)}m`);
+  console.log(`  管长合计 ${n(takeoff.conduit.totalM)}m｜未归属主干 ${n(takeoff.trunkConduitM)}m（线径未裁定前不进数）`);
 
   console.log('\n—— 导线（按回路线径分桶，含 ' + takeoff.wire.lossApplied + ' 损耗）——');
   for (const bucket of takeoff.wire.bySize) {
@@ -89,8 +89,11 @@ if (asJson) {
 
   console.log('\n—— 覆盖度（点位有没有被 physical route 画到）——');
   for (const [type, entry] of Object.entries(takeoff.coverage.byType)) {
-    console.log(`  ${type.padEnd(16)} ${entry.total} 个：已画 ${entry.routed} / 未画 ${entry.unrouted}，补齐 ${n(entry.allowanceM)}m${entry.allowancePerPoint === null && entry.unrouted > 0 ? '（无 allowance 规则→已显形）' : ''}`);
+    console.log(`  ${type.padEnd(16)} ${entry.total} 个：已画 ${entry.routed} / 未画 ${entry.unrouted}${entry.unrouted > 0 ? '（未画=无路由，不进采购量）' : ''}`);
   }
+  console.log(`\n  **未路由点位 ${takeoff.coverage.unroutedPoints.length} 个——不进入任何采购量**：`);
+  for (const p of takeoff.coverage.unroutedPoints.slice(0, 30)) console.log(`    - ${p.id}（${p.room}/${p.type}${p.circuit ? '/' + p.circuit : ''}）`);
+  if (takeoff.coverage.unroutedPoints.length > 30) console.log(`    …其余 ${takeoff.coverage.unroutedPoints.length - 30} 个见 --json`);
 
   console.log('\n—— 显形项 ——');
   console.log(`  只声明要求未画线的路由 ${takeoff.requirementRoutes.length} 条：${takeoff.requirementRoutes.map((item) => item.id).join(', ') || '无'}`);

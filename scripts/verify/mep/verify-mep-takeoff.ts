@@ -124,6 +124,28 @@ const failures = [
   ...contracts.filter((contract) => String(contract.actual) !== String(contract.expected)),
   ...(dataErrors.length > 0 ? [{ id: 'C5', label: '不存在未声明的数据错误', expected: 0, actual: dataErrors.length, decRef: '补齐缺失声明或修正配置' }] : []),
 ];
+// C8：未路由点位只显形、不进量（2026-10-07 业主裁定：删掉臆测数据）。
+// 若 allowance 复活（未路由点的长度又进了管长），这里会直接失败。
+const UNROUTED = takeoff.coverage.unroutedPoints;
+const allowanceResidue = [
+  ...Object.entries(takeoff.coverage.byType).filter(([, v]) => 'allowanceM' in (v as object)),
+  ...(('allowanceM' in (takeoff.conduit as object)) ? ['conduit.allowanceM'] : []),
+];
+contracts.push({
+  id: 'C8',
+  label: '未路由点位不进采购量（allowance 已删净）',
+  expected: 0,
+  actual: allowanceResidue.length,
+  decRef: '恢复 allowance 即违反 DEC-2026-10-07-M03，须走 DEC',
+});
+contracts.push({
+  id: 'C9',
+  label: '未路由点位已显形（数量与清单一致）',
+  expected: UNROUTED.length,
+  actual: takeoff.coverage.unroutedPointIds.length,
+  decRef: '清单与计数不一致＝有点位被静默丢弃',
+});
+
 const jsonOutput = process.argv.includes('--json');
 
 if (jsonOutput) {
@@ -133,10 +155,11 @@ if (jsonOutput) {
     blockers: takeoff.blockers,
     pendingUnresolved,
     dataErrors,
+    unroutedPoints: takeoff.coverage.unroutedPoints.length,
     takeoff: { conduit: takeoff.conduit, wire: takeoff.wire, pipe: takeoff.pipe, devices: takeoff.devices, unresolved: takeoff.unresolved, deferred: takeoff.deferred, requirementRoutes: takeoff.requirementRoutes },
   }, null, 2));
 } else {
-  console.log(`水电子系统算量校验：${takeoff.status}｜管长 ${takeoff.conduit.totalM.toFixed(1)}m（已画 ${takeoff.conduit.drawnM.toFixed(1)} + 补齐 ${takeoff.conduit.allowanceM.toFixed(1)}）｜导线 ${takeoff.wire.totalWireM.toFixed(0)}m｜Cat6 ${takeoff.cable.cat6M.toFixed(0)}m`);
+  console.log(`水电子系统算量校验：${takeoff.status}｜管长 ${takeoff.conduit.totalM.toFixed(1)}m（全部为已画线路由，未路由点位不进量）｜导线 ${takeoff.wire.totalWireM.toFixed(0)}m｜Cat6 ${takeoff.cable.cat6M.toFixed(0)}m`);
   console.log(`  给水 ${takeoff.pipe.totalWaterM.toFixed(1)}m｜排水 ${takeoff.pipe.totalDrainageM.toFixed(1)}m｜底盒 ${takeoff.devices.boxes}｜箱体 ${takeoff.devices.panelModules} 模数`);
   for (const contract of contracts) {
     const ok = String(contract.actual) === String(contract.expected);

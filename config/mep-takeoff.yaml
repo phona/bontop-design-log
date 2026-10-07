@@ -12,7 +12,7 @@ version: 1
 #  1. 没有声明就没有数——缺失字段进 takeoff.unresolved 并被计数，下游 comparable:false。
 #  2. 不靠 id 命名推断线径/管径/冷热——全部读显式字段（plumbing.water_temp/water_dn/drain_dn、
 #     electrical.circuit + topology.wire_size）。
-#  3. 量房日只改 L1（点位/路由/拓扑）与 allowance 的 status，不改本文件的 sources。
+#  3. 量房日只改 L1（点位/路由/拓扑）：补画路由、点位升 measured。不改本文件的 sources。
 
 sources:
   electrical_points: config/electrical.yaml
@@ -30,43 +30,16 @@ excluded_layers:
   - { layer: supply_air, reason: '风管与风口由中央空调合同承担（COST-030-02/-03）' }
   - { layer: return_air, reason: '风管与风口由中央空调合同承担（COST-030-02/-03）' }
 
-# 末端补齐规则：未被任何 physical route 端点覆盖的点位，按 type 给每点管长（米）。
-# 这是全仓唯一允许存在的"经验值"，改它等于改工程量，必须走 DEC/业主批准。
-# default: null = 没列到的类型不进数，直接进 unresolved（禁止兜底猜）。
 #
 # **计价口径（2026-10-07 修正，DEC-2026-10-07-M02）**：
-#   强电管 = Σ_回路 union(该回路画线路由) + 未画点位 allowance。
+#   强电管 = Σ_回路 union(该回路画线路由)。**没有路由的点位不进采购量**（见 coverage.unroutedPoints）。
+#   2026-10-07（DEC-2026-10-07-M03）：删除 allowance_unrouted_points 经验表与 cluster 折扣——
+#   用"每点几米"把无路径点位凑进采购数量属于臆测，业主裁定删除。要补量就补路由，不给经验值。
 #   逻辑口径（Σ各条长度）只作诊断输出（conduit.strongPowerLogicalM），**不得用于采购计价**——
 #   它把多回路并排（实测跨回路去重后仅 102m vs Σ216.8m）和同回路星形回线重复计量。
 #   导线 = 该回路 union 长度 × 芯数 × 损耗（同一回路共享段只穿一次线）。
 #   allowange_cluster_discount：同墙连续点位共用竖直下引时的折扣系数（1.0 = 不打折）。
-#   量房实测后应把折扣调到实测值，并在路由画全后彻底退役 allowance。
-allowance_cluster_discount: 1.0   # 同墙连续点位共用下引的折扣；1.0=不打折（保守），量房后按实测收紧
-allowance_unrouted_points:
-  # —— 电气类（米/个，含竖向下引）——
-  socket: 5.0
-  floor_socket: 6.0
-  switch: 4.0
-  switch_2way: 5.0
-  night_light: 3.0
-  ac_controller: 4.0
-  network: 4.0
-  ceiling_light: 3.0
-  pendant: 3.0
-  dome: 3.0
-  wall_lamp: 3.0
-  downlight: 4.0
-  led_strip: 4.0
-  track_light: 4.0
-  # —— 给排水类（米/个，排水含绕行与存水弯）——
-  faucet: 4.0
-  toilet: 4.0
-  shower: 4.0
-  washer: 4.0
-  faucet_outdoor: 6.0
-  drain: 5.0
-  drain_riser: 0.0
-  default: null
+
 
 # 导线芯数：按回路的 purpose 取（topology 已声明 purpose）。
 # lighting=3 是因为本项目铁律"每个开关底盒 3 根 1.5mm²（L/N/灯控）"（config/acceptance.yaml）。
@@ -90,10 +63,11 @@ units:
 trunk_wire_size: null
 # 路由终点标高是吊顶分层高（强电 2.55 / 给水 0.18），点位安装高度另算：
 # 竖向下引段计入管长（to_height − point.height，纯算术，见 shared/mep-takeoff.ts terminalDrop）。
-# 关掉它会让"已画线点位"比"未画线点位"的 allowance 口径不一致（后者本来就含下引）。
+# 关掉它会让已画线点位的管长系统性少算（竖直下引是真实管段）。
 include_terminal_drop: true
 # 实测口径（2026-10-07）：已画线端点以顶面设备为主——空调插座 height 2.5、灯具 2.7~2.8、箱体 1.65，
-# 竖向下引实际只贡献 1.35m；低装插座/开关（height 0.3~1.3）本来就没画线，走上面的 allowance（含下引）。
+# 竖向下引实际只贡献 1.35m——因为已画线端点以顶面设备为主（空调插座 2.5m、灯具 2.7~2.8m、箱体 1.65m）。
+# 低装插座/开关没有路由，其下引段随该点位一起落在 unroutedPoints，不进采购量。
 # 因此本开关不是"修正大缺口"，而是让两类点位口径一致：谁的下引都不漏、也不重。
 trunk_note: '强电主干承载全部 21 回路，线径取决于 #45 进线相数/需用系数裁定；裁定前不进数'
 

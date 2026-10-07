@@ -122,10 +122,15 @@ test('层长双实现交叉验证（折线 + 竖向下引段）', () => {
 test('导线按 topology wire_size 分桶，不按 id 猜', () => {
   const bySize = new Map(takeoff.wire.bySize.map((bucket) => [bucket.wireSize, bucket]));
   assert.deepEqual([...bySize.keys()].sort(), ['1.5', '2.5', '4.0']);
-  // 21 回路 = 1.5mm²×5（照明）+ 2.5mm²×14 + 4.0mm²×2（外机/厨房）
+  // 21 回路 = 1.5mm²×5（照明）+ 2.5mm²×14 + 4.0mm²×2（外机/厨房）。
+  // 删除 allowance 后（DEC-2026-10-07-M03），**只有画了路由的回路才进导线量**：
+  // 某个回路的点位全部未路由时该回路不出现在桶里（无管长即无导线），故 2.5mm² 现为 13 个。
   assert.equal(bySize.get('1.5')!.circuits.length, 5);
-  assert.equal(bySize.get('2.5')!.circuits.length, 14);
+  assert.equal(bySize.get('2.5')!.circuits.length, 13);
   assert.equal(bySize.get('4.0')!.circuits.length, 2);
+  // 未路由点位必须显形，且不得进任何采购量
+  assert.equal(takeoff.coverage.unroutedPoints.length, takeoff.coverage.unroutedPointIds.length);
+  assert.ok(takeoff.coverage.unroutedPoints.length > 0, '未路由点位必须显形（删 allowance 后必然 >0）');
   for (const bucket of takeoff.wire.bySize) {
     assert.ok(Math.abs(bucket.wireM - bucket.conduitM * bucket.cores * rules.units.loss.wire) < 1e-9, '导线 = 管长 × 芯数 × 损耗');
   }
@@ -187,10 +192,14 @@ test('给排水分桶只认显式声明，缺声明进 unresolved', () => {
   assert.ok(drainKeys.every((key) => /^de(50|75|110)$/.test(key)), `排水桶 ${drainKeys.join(',')}`);
 });
 
-test('deferred：空调线控器与未激活预留点位显形，不算错也不算漏', () => {
+test('deferred：未激活预留点位显形，不算错也不算漏', () => {
   const ids = takeoff.deferred.map((item) => item.id);
   assert.ok(ids.includes('sock_kitchen_oven'));
-  assert.ok(ids.filter((id) => id.startsWith('ac_panel_')).length === 6);
+  assert.ok(ids.includes('sock_child_ac'));
+  // 空调线控器：删除 allowance 后不再产生"信号管 24m"这种估算量，
+  // 改为在 unroutedPoints 里显形（归属空调商/水电未声明），见 DEC-2026-10-07-M03。
+  const acPanels = takeoff.coverage.unroutedPoints.filter((point) => point.type === 'ac_controller');
+  assert.equal(acPanels.length, 6);
 });
 
 test('未四舍五入：数量保留原始浮点', () => {

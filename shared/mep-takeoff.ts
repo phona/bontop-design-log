@@ -57,7 +57,6 @@ export interface MepTakeoffRules {
   };
   covered_layers: string[];
   excluded_layers: Array<{ layer: string; reason: string }>;
-  allowance_unrouted_points: Record<string, number | null>;
   units: {
     cores_by_purpose: Record<string, number>;
     dual_control_extra_cores: number;
@@ -69,8 +68,6 @@ export interface MepTakeoffRules {
   /** 是否把路由终点到点位安装高度的竖向下引段计入管长（纯算术：to_height − point.height）。 */
   include_terminal_drop: boolean;
   panel: { main_switch_poles: number; spd_modules: number; spare_ratio: number; round_up: boolean };
-  /** 同墙连续点位共用竖直下引的折扣系数（1.0 = 不打折，保守口径）。 */
-  allowance_cluster_discount?: number;
   declared_devices?: Record<string, { count: number; basis: string }>;
   non_mep_items?: Array<{ id: string; reason: string }>;
   /**
@@ -114,8 +111,6 @@ export interface CoverageByType {
   total: number;
   routed: number;
   unrouted: number;
-  allowancePerPoint: number | null;
-  allowanceM: number;
 }
 
 export interface MepTakeoff {
@@ -128,15 +123,15 @@ export interface MepTakeoff {
     drainageM: number;
     totalM: number;
     drawnM: number;
-    allowanceM: number;
+
     /** 其中竖向下引段（to_height − 点位安装高度）的合计，纯算术派生。 */
     terminalDropM: number;
     /**
-     * 全口径管长 = 已画线路由 + 未画点位按 allowance 的补齐。
+     * **可采购管长 = 只有画了 physical route 的部分**（未路由点位不进量，见 coverage.unroutedPoints）。
      * 电工管（φ20/φ25）必须用这两个数计价：只算 drawnM 会漏掉约六成管。
      */
     drawnRouteUnionM: number;
-    /** **计价口径（唯一）**：同回路 union + 未画点位 allowance。逻辑口径不得用于采购计价。 */
+    /** **计价口径（唯一）**：同回路 union（只含已画线路由）。逻辑口径不得用于采购计价。 */
     strongPowerTotalM: number;
     /** 诊断：Σ各条长度（逻辑口径，含多回路并排与同回路星形重复）。 */
     strongPowerLogicalM: number;
@@ -144,10 +139,8 @@ export interface MepTakeoff {
     strongPowerUnionAllM: number;
     /** 计价组成：Σ_回路 union(该回路画线路由)。 */
     strongPowerUnionPerCircuitM: number;
-    /** 计价组成：未画点位 allowance（不含空调线控器/网口）。 */
-    strongPowerAllowanceM: number;
     weakPowerTotalM: number;
-    electricalAllowanceM: number;
+
   };
   /** 主干（端点不归属任何回路的 physical route 段）长度；线径未裁定前单独显形。 */
   trunkConduitM: number;
@@ -174,7 +167,9 @@ export interface MepTakeoff {
     unroutedPointIds: string[];
     byType: Record<string, CoverageByType>;
     /** 按房间统计：点数 + 补齐管长 + 已画线路由归属到该房间的长度。 */
-    byRoom: Record<string, { points: number; routed: number; unrouted: number; allowanceM: number; drawnRouteM: number }>;
+    byRoom: Record<string, { points: number; routed: number; unrouted: number; drawnRouteM: number }>;
+    /** 未画线路由的点位清单：**不进采购量**，只显形（缺路径就不是可采购数量）。 */
+    unroutedPoints: Array<{ id: string; room: string; type: string; circuit?: string }>;
     /** 已画线路由里端点不是电气点位的（主干/内联坐标），单独显形，不摊到任何房间。 */
     unassignedRouteM: number;
   };
@@ -227,9 +222,6 @@ function validateTakeoffRules(rules: MepTakeoffRules): Array<{ id: string; reaso
   const check = (id: string, value: unknown, minimum = 0): void => {
     if (!validFinite(value, minimum)) issues.push({ id, reason: `${id} 必须是有限数值且 >= ${minimum}，实际为 ${String(value)}` });
   };
-  for (const [type, value] of Object.entries(rules.allowance_unrouted_points ?? {})) {
-    if (value !== null) check(`rules.allowance_unrouted_points.${type}`, value);
-  }
   for (const [purpose, value] of Object.entries(rules.units?.cores_by_purpose ?? {})) {
     check(`rules.units.cores_by_purpose.${purpose}`, value, 1);
   }
@@ -359,10 +351,11 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   /** 每条回路的画线路由平面路径（同回路 union：同一回路内共享段只铺一次管、只穿一次线）。 */
   const circuitPaths = new Map<string, Array<Array<{ x: number; z: number }>>>();
   const strongPaths: Array<Array<{ x: number; z: number }>> = [];
-  const byRoom: Record<string, { points: number; routed: number; unrouted: number; allowanceM: number; drawnRouteM: number }> = {};
+  const byRoom: Record<string, { points: number; routed: number; unrouted: number; drawnRouteM: number }> = {};
+  const unroutedPoints: Array<{ id: string; room: string; type: string; circuit?: string }> = [];
   const roomOf = (id: string): string | undefined => elecById.get(id)?.room;
-  const bumpRoom = (room: string, field: 'points' | 'routed' | 'unrouted' | 'allowanceM' | 'drawnRouteM', value = 1): void => {
-    byRoom[room] ??= { points: 0, routed: 0, unrouted: 0, allowanceM: 0, drawnRouteM: 0 };
+  const bumpRoom = (room: string, field: 'points' | 'routed' | 'unrouted' | 'drawnRouteM', value = 1): void => {
+    byRoom[room] ??= { points: 0, routed: 0, unrouted: 0, drawnRouteM: 0 };
     (byRoom[room] as unknown as Record<string, number>)[field] += value;
   };
   let unassignedRouteM = 0;
@@ -463,9 +456,10 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     attribute(route, length, [route.from, route.to]);
   }
 
-  // ---------- 2. 覆盖度：哪些点位没有物理路由，按 allowance 补齐 ----------
+  // ---------- 2. 覆盖度：哪些点位没有 physical route ----------
+  // 铁律（2026-10-07 业主裁定）：**没有路由的点位不进采购量**——只进 unroutedPoints 清单显形，
+  // 等补齐路由（或量房）后再进量。禁止用"每点几米"的经验值把无路径点位凑进采购数量。
   const allowanceByType: Record<string, CoverageByType> = {};
-  const circuitAllowance = new Map<string, number>();
   const routedPointIds: string[] = [];
   const unroutedPointIds: string[] = [];
 
@@ -473,7 +467,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     if (nonMepPointIds.has(point.id)) return; // 燃气表/烟道：已在 excluded 显形，不进水电量
     if (kind === 'electrical' && isDeferredElectricalPoint(point as ElectricalPoint)) return;
     const type = point.type;
-    allowanceByType[type] ??= { total: 0, routed: 0, unrouted: 0, allowancePerPoint: null, allowanceM: 0 };
+    allowanceByType[type] ??= { total: 0, routed: 0, unrouted: 0 };
     allowanceByType[type].total += 1;
     const room = ('room' in point && typeof point.room === 'string' ? point.room : undefined) ?? 'unknown';
     bumpRoom(room, 'points');
@@ -486,38 +480,17 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     allowanceByType[type].unrouted += 1;
     unroutedPointIds.push(point.id);
     bumpRoom(room, 'unrouted');
-    const perPoint = rules.allowance_unrouted_points[type] ?? null;
-    if (perPoint === null || perPoint === undefined) {
-      unresolved.push({ id: point.id, reason: `点位无 physical route 且 allowance_unrouted_points 未声明 ${type}（禁止兜底猜）`, kind: 'error' });
-      return;
-    }
-    if (!validFinite(perPoint)) return;
-    const discount = rules.allowance_cluster_discount ?? 1;
-    const effective = perPoint * discount;
-    allowanceByType[type].allowancePerPoint = perPoint;
-    allowanceByType[type].allowanceM += effective;
-    bumpRoom(room, 'allowanceM', perPoint);
-    if (kind === 'electrical') {
-      if (point.type === 'network') {
-        cat6M += perPoint;
-        const extra = rules.units.weak_extra_cores?.[point.id];
-        if (validFinite(extra) && extra > 0) cat6Extra[point.id] = (cat6Extra[point.id] ?? 0) + perPoint * extra;
-        return;
-      }
-      if (point.type === 'ac_controller') {
-        controlConduitM += perPoint;
-        deferred.push({ id: point.id, reason: '空调线控器信号线随内机穿管预留，不进强电回路（口径见 electrical-topology pending_parameters）；归属（空调商/水电）待声明' });
-        return;
-      }
-      const circuitId = pointCircuit.get(point.id);
-      if (circuitId && circuitById.has(circuitId)) circuitAllowance.set(circuitId, (circuitAllowance.get(circuitId) ?? 0) + effective);
-      if (point.type === 'switch_2way') switch2WayLength.set(point.id, perPoint);
-    }
+    // 没有路由 = 没有可采购的长度。只登记，不估米数。
+    unroutedPoints.push({
+      id: point.id,
+      room,
+      type,
+      ...(kind === 'electrical' && pointCircuit.get(point.id) ? { circuit: pointCircuit.get(point.id) } : {}),
+    });
   };
   for (const point of electrical) considerPoint(point, 'electrical');
   for (const point of plumbing) considerPoint(point, 'plumbing');
 
-  const allowanceM = Object.values(allowanceByType).reduce((sum, entry) => sum + entry.allowanceM, 0);
   const drawnM = Object.values(layerLength).reduce((sum, value) => sum + value, 0);
 
   // 同回路 union：同一回路内多端点星形回线的共享段只铺一次管、只穿一次线
@@ -529,7 +502,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   for (const circuit of circuits) {
     // 导线 = 该回路物理布线树（同回路 union，共享段只穿一次线）× 芯数 × 损耗。
     // 不能用 Σ各条长度：同一回路多端点星形回线会把共享段穿 N 次线。
-    const conduit = (circuitUnion.get(circuit.id) ?? 0) + (circuitAllowance.get(circuit.id) ?? 0);
+    const conduit = circuitUnion.get(circuit.id) ?? 0;
     if (conduit <= EPS) continue;
     const wireSize = parseWireSizeMm2(circuit.wire_size);
     if (!wireSize) {
@@ -684,33 +657,6 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     if (!resolved || resolved.unresolved.length > 0 || !resolved.metadata.physicalRoute) continue;
     attributePipe(route, resolved);
   }
-  const waterAllowance = new Map<string, number>();
-  const drainageAllowance = new Map<string, number>();
-  for (const point of plumbing) {
-    if (drawnPointIds.has(point.id)) continue;
-    const perPoint = rules.allowance_unrouted_points[point.type];
-    if (perPoint === null || perPoint === undefined || !validFinite(perPoint)) continue;
-    if (SUPPLY_TYPES.has(point.type)) {
-      if (point.water_temp === undefined || point.water_dn === undefined) continue; // 已由 considerPoint 显形
-      for (const key of pipeKeysForWater(point.water_temp, point.water_dn)) {
-        waterAllowance.set(key, (waterAllowance.get(key) ?? 0) + perPoint);
-      }
-    } else if (point.type === 'drain' || point.type === 'drain_riser') {
-      if (point.drain_dn === undefined) continue;
-      const key = `de${point.drain_dn}`;
-      drainageAllowance.set(key, (drainageAllowance.get(key) ?? 0) + perPoint);
-    }
-  }
-  for (const [key, meters] of waterAllowance) {
-    const bucket = water.get(key) ?? { key, meters: 0 };
-    bucket.meters += meters;
-    water.set(key, bucket);
-  }
-  for (const [key, meters] of drainageAllowance) {
-    const bucket = drainage.get(key) ?? { key, meters: 0 };
-    bucket.meters += meters;
-    drainage.set(key, bucket);
-  }
   for (const bucket of water.values()) bucket.meters *= pipeLoss;
   for (const bucket of drainage.values()) bucket.meters *= pipeLoss;
 
@@ -734,15 +680,6 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     ...deferred.map((item) => ({ id: item.id, reason: item.reason, kind: 'deferred' as const })),
   ];
 
-  // 电气类点位的补齐管长归强电（network 归弱电）；**ac_controller 归空调商**（控制/通讯线按厂家接线图，
-  // 不能默认当普通 220V 线路，见 DEC-2026-10-07-M01 反转条件）；给排水类的补齐归各自层。
-  const STRONG_ALLOWANCE_TYPES = new Set(['socket', 'floor_socket', 'switch', 'switch_2way', 'night_light', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light', 'pendant', 'ceiling_light', 'usb']);
-  const strongAllowanceM = Object.entries(allowanceByType)
-    .filter(([type]) => STRONG_ALLOWANCE_TYPES.has(type))
-    .reduce((sum, [, entry]) => sum + entry.allowanceM, 0);
-  const networkAllowanceM = allowanceByType.network?.allowanceM ?? 0;
-  const electricalAllowanceM = strongAllowanceM + networkAllowanceM + (allowanceByType.ac_controller?.allowanceM ?? 0);
-
   return {
     status: anyPending ? 'estimated_from_routes' : 'measured_after_survey',
     conduit: {
@@ -750,19 +687,16 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       weakPowerM: layerLength.weak_power ?? 0,
       waterSupplyM: layerLength.water_supply ?? 0,
       drainageM: layerLength.drainage ?? 0,
-      totalM: drawnM + allowanceM,
+      totalM: drawnM,
       drawnM,
-      allowanceM,
       terminalDropM: drawnM - drawnMWithoutDrop,
       /** 已画线路由去重后的走线长度（并排只算一次）：人工/开槽按这个计价，管材按各条长度之和。 */
       drawnRouteUnionM: unionPlanLength(drawnPlanPaths),
-      strongPowerTotalM: strongUnionPerCircuitM + strongAllowanceM,
+      strongPowerTotalM: strongUnionPerCircuitM,
       strongPowerLogicalM: layerLength.strong_power ?? 0,
       strongPowerUnionAllM: unionPlanLength(strongPaths),
       strongPowerUnionPerCircuitM: strongUnionPerCircuitM,
-      strongPowerAllowanceM: strongAllowanceM,
-      weakPowerTotalM: (layerLength.weak_power ?? 0) + networkAllowanceM,
-      electricalAllowanceM,
+      weakPowerTotalM: layerLength.weak_power ?? 0,
     },
     trunkConduitM,
     controlConduitM,
@@ -793,10 +727,11 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       byType: allowanceByType,
       byRoom,
       unassignedRouteM,
+      unroutedPoints,
     },
     byCircuit: circuits.map((circuit) => {
       const bucket = [...buckets.values()].find((item) => item.circuits.includes(circuit.id));
-      const conduit = (circuitConduit.get(circuit.id) ?? 0) + (circuitAllowance.get(circuit.id) ?? 0);
+      const conduit = circuitUnion.get(circuit.id) ?? 0;
       return {
         circuitId: circuit.id,
         purpose: circuit.purpose ?? '未声明',
