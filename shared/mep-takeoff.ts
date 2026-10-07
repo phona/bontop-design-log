@@ -202,7 +202,7 @@ export function parseWireSizeMm2(raw: string | undefined): string | null {
   return match ? match[1] : null;
 }
 
-const SUPPLY_TYPES = new Set(['faucet', 'toilet', 'shower', 'washer', 'faucet_outdoor']);
+const SUPPLY_TYPES = new Set(['faucet', 'toilet', 'shower', 'washer', 'faucet_outdoor', 'water_supply', 'water_heater']);
 const BOX_TYPES = new Set(['socket', 'floor_socket', 'switch', 'switch_2way', 'network', 'usb']);
 
 type PipeSegmentSpec = {

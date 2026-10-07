@@ -33,6 +33,7 @@ const FIXTURE_TYPES: Record<string, string> = {
   ac_controller: 'ac_controller',
   faucet: 'faucet',
   faucet_outdoor: 'faucet_outdoor',
+  water_supply: 'water_supply',
   toilet: 'toilet',
   shower: 'shower',
   drain: 'drain',

@@ -38,8 +38,8 @@ function sample(route: Record<string, unknown>) {
 
 test('real MEP configuration lints without false errors and reports warnings structurally', () => {
   const result = lintMepCoordination(config, sources);
-  assert.equal(result.counts.routes, 132); // 80→87（R1 给排水兜底）→92（v1 水路估算）→102（客客厅十条）→133（DEC-2026-10-07-M05 再补 23 条：书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）→132（R15 删除 NP-4b 路线）
-  assert.equal(result.counts.resolvedRoutes, 132);
+  assert.equal(result.counts.routes, 138); // 80→87（R1 给排水兜底）→92（v1 水路估算）→102（客客厅十条）→133（DEC-2026-10-07-M05 再补 23 条：书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）→132（R15 删除 NP-4b 路线）→134（DEC-2026-10-08-W01 上下水：净水器进水 + 阳台地漏两条）→138（DEC-2026-10-08-W03：客卫热水改绑 + 两卫 4 处地漏排水）
+  assert.equal(result.counts.resolvedRoutes, 138);
   assert.equal(result.errors.length, 0);
   assert.equal(result.warnings.filter((issue) => issue.code === 'hvac_coverage_missing').length, 0);
   // 2026-10-04 A1：吊顶净空规则从「要求 zone.area 与 zone.height 同时存在」（本项目交集为 0、
@@ -62,11 +62,11 @@ test('real MEP configuration lints without false errors and reports warnings str
   //（新增全部为"路由下行至声明设备点位的竖直末段"，与既有 24 处①类残留同源）。
   assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 56);
   // DEC-2026-10-06-R5：177 → 41 → 2026-10-07 M04/M05：90 → 125（见上）
-  assert.equal(result.warnings.length, 66); // 无 layout 上下文：穿墙/剪力墙类（59 条）不触发
+  assert.equal(result.warnings.length, 70); // 无 layout 上下文：穿墙/剪力墙类（59 条）不触发；DEC-2026-10-08-W02 +5 → W03 后 +4 条 inline_endpoint_without_point_anchor（给排水无锚点端点的量房判读清单）
   // (e) 分桶：无 layout 时 must_fix = 0（重力坡度/斜线已清、穿墙类需 layout 不出现），survey_dependent = 24 ceiling，envelope = 9 nonphysical + 8 overlap
   const buckets = bucketsOf(result);
   assert.equal(buckets.must_fix_before_briefing.count, 0);
-  assert.equal(buckets.survey_dependent.count, 56); // 无 layout：survey_dependent 只剩 ceiling_clearance_unverified 56
+  assert.equal(buckets.survey_dependent.count, 60); // 无 layout：ceiling_clearance_unverified 56 + inline_endpoint_without_point_anchor 4（W03 客卫热水改绑后由 5 降为 4）
   assert.equal(buckets.envelope_approximation.count, 10); // 无 layout：supply_return_overlap 8 + nonphysical_route 2（reference_constraint_uncertain 需 hvac plan 不触发）
   assert.equal(Object.values(buckets).reduce((sum, bucket) => sum + bucket.count, 0), result.errors.length + result.warnings.length);
   for (const bucket of Object.values(buckets)) assert.equal(bucket.count, bucket.codes.reduce((sum, entry) => sum + entry.count, 0));
@@ -371,8 +371,8 @@ test('long parallel runs beside a shear wall are flagged, short ones are not', (
 
 test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify over-header penetrations', () => {
   const result = lintMepCoordination(config, sources, realContext());
-  assert.equal(result.counts.routes, 132); // 80→87（R1 给排水兜底）→92（v1 水路估算）→102（客客厅十条）→133（DEC-2026-10-07-M05 再补 23 条：书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）→132（R15 删除 NP-4b 路线）
-  assert.equal(result.counts.resolvedRoutes, 132);
+  assert.equal(result.counts.routes, 138);
+  assert.equal(result.counts.resolvedRoutes, 138);
   assert.equal(result.errors.length, 0);
   // (a) 重力坡度：R1 后 14 条全清（地埋全平/过陡、冷凝水候选沿程、drain-balcony 2% 回算、墙排汇总不足坡）
   assert.equal(countByCode(result, 'gravity_slope_geometry_mismatch'), 0);
@@ -401,16 +401,17 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   for (const bucket of Object.values(buckets)) assert.equal(bucket.count, bucket.codes.reduce((sum, entry) => sum + entry.count, 0));
   // 分桶代码明细必须与实算完全一致（gravity_slope/orthogonal 已出 must_fix；penetration_door_clearance 拆 must_fix 2 / survey 13）
   // unsupported_span 33 条：2026-10-07 飞线依托检查（吊顶承载层水平段无吊顶空腔/贴墙/穿墙/竖直/垫层依托）
-  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { shear_wall_parallel_route: 14, penetration_missing: 7, penetration_door_clearance: 2, unsupported_span: 34 });
-  assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 56, penetration_door_clearance: 17, shear_wall_penetration: 10 });
-  assert.deepEqual(Object.fromEntries(buckets.envelope_approximation.codes.map((e) => [e.code, e.count])), { nonphysical_route: 2, supply_return_overlap: 8, reference_constraint_uncertain: 5, suppressed_wall_crossing: 4 });
-  assert.equal(buckets.must_fix_before_briefing.count, 57); // 23 + unsupported_span 34（strong-power-living 4.16m 横穿客厅中部等）
-  assert.equal(buckets.survey_dependent.count, 83); // ceiling 24→56、penetration_door_clearance 15→19、shear_wall_penetration 7→10
-  assert.equal(buckets.envelope_approximation.count, 19); // nonphysical 9→2、suppressed_wall_crossing 3→4
+  // inline_endpoint_without_point_anchor 4 条：DEC-2026-10-08-W02 端点绑定兜底（给排水无锚点端点的量房判读清单；W03 客卫热水改绑 faucet_gbath_vanity 后由 5 降为 4）
+  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { shear_wall_parallel_route: 14, penetration_missing: 7, penetration_door_clearance: 2, unsupported_span: 33 });
+  assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 56, penetration_door_clearance: 17, shear_wall_penetration: 10, inline_endpoint_without_point_anchor: 4 });
+  assert.deepEqual(Object.fromEntries(buckets.envelope_approximation.codes.map((e) => [e.code, e.count])), { nonphysical_route: 2, supply_return_overlap: 8, reference_constraint_uncertain: 5, suppressed_wall_crossing: 6 });
+  assert.equal(buckets.must_fix_before_briefing.count, 56); // 23 + unsupported_span 33（strong-power-living 4.16m 横穿客厅中部等）
+  assert.equal(buckets.survey_dependent.count, 87); // 83 + W02 inline_endpoint_without_point_anchor 5 − W03 客卫热水改绑后 1 条归零
+  assert.equal(buckets.envelope_approximation.count, 21); // nonphysical 9→2、suppressed_wall_crossing 3→4→6（W03 两卫 4 处地漏接主卫推断立管，2 条越主卫西北圆弧幕墙弦线，见两条 route reason 的登记）
   // 飞线依托检查自证：最长飞线是 strong-power-living 出边吊后的 4.16m 无依托段（reason 声称「平吊板上方敷设」
   // 但 weak-ap reason 明说客厅中部保持原顶 2.80m 无吊顶——两处自相矛盾被机器显形）
   const flying = result.warnings.filter((i) => i.code === 'unsupported_span');
-  assert.equal(flying.length, 34);
+  assert.equal(flying.length, 33);
   const worstFlying = flying.reduce((a, b) => (b.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') > (a.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') ? b : a);
   assert.equal(worstFlying.routeId, 'strong-power-living');
   assert.match(worstFlying.message, /flies unsupported for 4\.16m/);

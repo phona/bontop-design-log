@@ -1074,7 +1074,7 @@ export interface ElectricalLintResult {
 // pending-site-data #6/#7/#16/#19（排水立管）、#9/#18（燃气表）、#10/#17（厨房排烟道，
 // 业主 2026-10-05 批准并入 plumbing.yaml，不新建 ductwork.yaml）。三个值都只承载
 // **已登记的推断锚点**：坐标必须能在 docs/pending-site-data.md 找到出处，一个数都不新造。
-export type PlumbingPointType = 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor' | 'leb' | 'drain_riser' | 'gas_meter' | 'duct';
+export type PlumbingPointType = 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor' | 'leb' | 'drain_riser' | 'gas_meter' | 'duct' | 'water_supply' | 'water_heater';
 
 /**
  * 给排水点位精度等级。取值口径与 docs/pending-site-data.md 的三级精度一致

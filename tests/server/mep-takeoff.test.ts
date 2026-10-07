@@ -54,8 +54,8 @@ test('线径解析只认显式字符串，猜不了', () => {
   assert.equal(parseWireSizeMm2('待厂家铭牌核验'), null);
 });
 
-test('端点全部可解析：132 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
-  assert.equal(resolution.total, 132);
+test('端点全部可解析：138 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
+  assert.equal(resolution.total, 138);
   assert.equal(resolution.unresolved, 0);
 });
 
@@ -143,11 +143,23 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   const plumbingCount = plumbing.filter((point) => !nonMep.has(String(point.id))).length;
   assert.equal(takeoff.coverage.routedPointIds.length + takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount);
   // 两个 status 均 pending 的点位不进入可报价基线（微蒸烤预留 + 墙体归属待量房的儿童房空调插座）。
-  // 2026-10-07 声明式补客客厅 ordinary_power_living 十条路由后，已画线点位 57 → 67；R15 删除 NP-4b 后 98→97。
-  assert.equal(takeoff.coverage.routedPointIds.length, 97);
+  // 2026-10-07 声明式补客客厅 ordinary_power_living 十条路由后，已画线点位 57 → 67；R15 删除 NP-4b 后 98→97；
+  // DEC-2026-10-08-W01 给排水 15 条路线端点由内联坐标改绑点位 id + 新增 2 条路线，97→103。
+  // 新增 routed 六点：shower_mbath / shower_gbath（v1 干管本来就画到它们，只是端点是内联坐标）、
+  //   faucet_kitchen_purifier / drain_balcony_floor（本轮新支路）、water_entry / drain_riser_balcony（本轮新点位）。
+  assert.equal(takeoff.coverage.routedPointIds.length, 104); // W02：+water_heater 锚点
   assert.equal(takeoff.coverage.byType.socket?.routed, 34);
-  assert.equal(takeoff.coverage.byType.faucet?.routed, 4);
-  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 97);
+  assert.equal(takeoff.coverage.byType.faucet?.routed, 5);
+  assert.equal(takeoff.coverage.byType.shower?.routed, 2);
+  assert.equal(takeoff.coverage.byType.drain?.routed, 11);
+  // W03 注意：两卫 4 处地漏**本来就在 routed 里**（drain-master-bath / drain-guest-bath 已把它们连成链），
+  // 只是链子在 drain_mbath_floor / drain_gbath_floor 断头、没接立管；W03 补的是"接到立管"而非覆盖率，
+  // 故 routed 仍为 104、排水 de50 由 16.09m → 21.39m（+5.30m）才是本轮的真实效果。
+  assert.equal(takeoff.coverage.byType.drain?.unrouted, 1); // 仅 drain_garden（#48 去留未决）
+  assert.equal(takeoff.coverage.byType.drain_riser?.routed, 4);
+  assert.equal(takeoff.coverage.byType.water_supply?.routed, 1);
+  assert.equal(takeoff.coverage.byType.water_heater?.routed, 1);
+  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 104);
   // 未路由点位逐条显形，不进采购量
   assert.equal(takeoff.coverage.unroutedPoints.length, takeoff.coverage.unroutedPointIds.length);
 });

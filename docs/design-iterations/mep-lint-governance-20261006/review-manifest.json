@@ -7,7 +7,7 @@
   "docs/pending-site-data.md",
   "config/facts.yaml 契约 c.mep_layer_below_drop_bottom / c.leb_point_requires_bond_schedule"
  ],
- "state_note": "所有 count 为 2026-10-06 实跑口径（DEC-2026-10-06-R5 执行后：verify:mep 0 error / 83 warning，ceiling_clearance_unverified 160→24）：npm run verify:mep（shared/mep-hvac-lint.ts，result.categories 三桶）与 npm run verify:electrical（shared/electrical-lint.ts，result.counts.byCode）的 JSON 输出即权威；本台账由 tests/server/mep-guidance-baseline.test.ts 逐条与实算对账——台账数字必须与实时 lint 完全一致，任何一侧漂移（lint 新规则加入、台账未同步）测试即 fail。台账本身是「某一轮实测快照」，必须写实测数；而 docs/mep-construction-guidance.md 里凡出现 warning 总数处只写「与实算一致」的语义（不写死 215 / 53），由测试实时回抽比对。⚠️ 2026-10-06 同步口径：MEP 侧 DEC-2026-10-06-R1 已清 gravity_slope_geometry_mismatch（14→0）与 route_not_orthogonal（3→0），penetration_door_clearance 按「过门头穿梁→survey_dependent / 门洞内贴门垛→must_fix」细分类别（15 拆 2+13）；电气侧 R2 已兑现 switch_neutral↦中性线预埋、bath_socket_splash_box↦防溅盒（两类归零），本台账据实删去这两条 reject 项并把 point_uncovered 29→30。 ｜2026-10-07 v1 水路估算后口径：verify:mep 0 error / 83 warning；新增 code penetration_missing ×7（全部来自 water-v1-* 估算干管，量房日补 penetration 后归零），must_fix_before_briefing 桶 10→17（其中 7 条为 v1 估算待补）。 ｜2026-10-07 声明式补客餐厅 ordinary_power_living 十条路由（含 3 条纯竖直段）+ isMepPhysicalRoute/lint 同口径放行 route_kind=physical 竖直段：ceiling_clearance_unverified 25→32（新增 7 条均为路由下行至声明设备点位的竖直段，属已登记残留同类），nonphysical_route 维持 2。 ｜2026-10-07 DEC-2026-10-07-M05 声明式补 23 条路由（书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）：总 warning 90→125。新增集中于 ceiling_clearance_unverified 32→56（全部为\"路由下行至声明设备点位的竖直末段\"，§0 已登记①类残留同源）与 shear_wall_parallel_route 8→14（贴剪力墙竖槽，已在各条 reason 声明扫筋/量房）；未新增 penetration_missing。",
+ "state_note": "所有 count 为 2026-10-06 实跑口径（DEC-2026-10-06-R5 执行后：verify:mep 0 error / 83 warning，ceiling_clearance_unverified 160→24）：npm run verify:mep（shared/mep-hvac-lint.ts，result.categories 三桶）与 npm run verify:electrical（shared/electrical-lint.ts，result.counts.byCode）的 JSON 输出即权威；本台账由 tests/server/mep-guidance-baseline.test.ts 逐条与实算对账——台账数字必须与实时 lint 完全一致，任何一侧漂移（lint 新规则加入、台账未同步）测试即 fail。台账本身是「某一轮实测快照」，必须写实测数；而 docs/mep-construction-guidance.md 里凡出现 warning 总数处只写「与实算一致」的语义（不写死 215 / 53），由测试实时回抽比对。⚠️ 2026-10-06 同步口径：MEP 侧 DEC-2026-10-06-R1 已清 gravity_slope_geometry_mismatch（14→0）与 route_not_orthogonal（3→0），penetration_door_clearance 按「过门头穿梁→survey_dependent / 门洞内贴门垛→must_fix」细分类别（15 拆 2+13）；电气侧 R2 已兑现 switch_neutral↦中性线预埋、bath_socket_splash_box↦防溅盒（两类归零），本台账据实删去这两条 reject 项并把 point_uncovered 29→30。 ｜2026-10-07 v1 水路估算后口径：verify:mep 0 error / 83 warning；新增 code penetration_missing ×7（全部来自 water-v1-* 估算干管，量房日补 penetration 后归零），must_fix_before_briefing 桶 10→17（其中 7 条为 v1 估算待补）。 ｜2026-10-07 声明式补客餐厅 ordinary_power_living 十条路由（含 3 条纯竖直段）+ isMepPhysicalRoute/lint 同口径放行 route_kind=physical 竖直段：ceiling_clearance_unverified 25→32（新增 7 条均为路由下行至声明设备点位的竖直段，属已登记残留同类），nonphysical_route 维持 2。 ｜2026-10-07 DEC-2026-10-07-M05 声明式补 23 条路由（书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）：总 warning 90→125。新增集中于 ceiling_clearance_unverified 32→56（全部为\"路由下行至声明设备点位的竖直末段\"，§0 已登记①类残留同源）与 shear_wall_parallel_route 8→14（贴剪力墙竖槽，已在各条 reason 声明扫筋/量房）；未新增 penetration_missing。 ｜ 2026-10-08 DEC-2026-10-08-W02：登记 inline_endpoint_without_point_anchor ×5（survey_dependent，端点绑定兜底的量房判读清单）与 unsupported_span ×33（并行会话未提交规则，代为登记）。",
  "verification_commands": [
   "npm run verify:mep",
   "npm run verify:electrical",
@@ -72,10 +72,10 @@
   },
   {
    "code": "suppressed_wall_crossing",
-   "count": 4,
+   "count": 6,
    "category": "envelope_approximation",
    "disposition": "pending_adjudication",
-   "basis": "两条推断立管的机器信号：drain-master-bath / drain-mbath-vanity-to-riser / drain-mbath-toilet-to-riser 越过的 w_bath_north 是主卫西北圆角幕墙的弦线近似（真实弧交点 z≈1.39，lint 取弦线交点 (0.3,1.99)），根因是 docs/pending-site-data.md #19 推断主卫排水立管 (0.3,1.3) 可能落在圆角幕墙切角外侧",
+   "basis": "两条推断立管的机器信号：drain-master-bath / drain-mbath-vanity-to-riser / drain-mbath-toilet-to-riser / drain-mbath-shower-to-riser / drain-mbath-floor-to-riser（后两条 DEC-2026-10-08-W03 新增）越过的 w_bath_north 是主卫西北圆角幕墙的弦线近似（真实弧交点 z≈1.39，lint 取弦线交点 (0.3,1.99)），根因是 docs/pending-site-data.md #19 推断主卫排水立管 (0.3,1.3) 可能落在圆角幕墙切角外侧",
    "owner": "量房（立管位实测）",
    "clearing_condition": "量房实测主卫排水立管实际位置：若在房间内侧（圆角以南/以东）则路线折线缩短、不再越幕墙，三类计数同步下降；若确在切角外侧则按幕墙禁穿铁律另寻接法。裁定前视同未决事实保留，不得删 suppress 消音"
   },
@@ -121,14 +121,32 @@
    "basis": "accept-as-warning：7 条均为 inferred 墙体穿越的工艺提醒（w_strip_east z≈4.6 三管同孔区等），shared/mep-hvac-lint.ts 的 shear_wall_penetration 规则对 inferred 墙只出 warning、对墙与路线双双 confirmed 才升 error，升级路径已由 tests/server/mep-hvac-lint.test.ts 锁定；§2.1 已声明交房量房确认墙体类型后按规则自动升降级",
    "owner": "量房（墙体类型终核）",
    "clearing_condition": "量房按物业结构图 + 钢筋探测仪逐墙确认，回填 config/layout/model-geometry.yaml 的 structure / structure_status 后规则自动升降级；本项不要求主动清除"
+  },
+  {
+   "code": "inline_endpoint_without_point_anchor",
+   "count": 4,
+   "category": "survey_dependent",
+   "disposition": "pending_adjudication",
+   "basis": "DEC-2026-10-08-W02 端点绑定兜底：给排水路线的内联端点 0.02m 内没有同专业点位可跟随，量房时这些端点不会自动更新。4 条 =（原第 5 条 water-hot-water-gbath-requirement to(6.7,2.7) 已由 DEC-2026-10-08-W03 改绑 faucet_gbath_vanity 并补 w_gbath_south 穿墙声明，本条随之归零） drain-kitchen-requirement to(6.95,0.5) 推断立管接入方向 / water-water-heater-recalc-requirement to(0.4,2.6) 回水阀预留 / water-kitchen-dishwasher-branch to(8.8,0.3) 洗碗机锚点 / drain-mbath-secondary-requirement to(1.4,1.15) #50 二次排水口方向",
+   "owner": "量房（业主/设计师）",
+   "clearing_condition": "量房日按实测立管位/洗碗机锚点/二次排水口位逐条重画或补登记点位；补成点位 id 后本 code 该项自动清零"
+  },
+  {
+   "code": "unsupported_span",
+   "count": 33,
+   "category": "must_fix_before_briefing",
+   "disposition": "reject",
+   "basis": "并行会话在 shared/mep-hvac-lint.ts 未提交的飞线依托规则（2026-10-07）：吊顶承载层水平段全程无依托（不在实心吊顶 footprint、不贴墙 ≤0.25m、不穿墙、非竖直、不在地垫层）≥0.3m。渲染得出、现场做不出，故 reject。**本条由 DEC-2026-10-08-W02 代为登记以使门禁可通过；阈值/口径/归属 DEC 以该会话为准，落地时须复核 33 这个数**",
+   "owner": "设计侧（该规则所属会话）",
+   "clearing_condition": "逐条补依托（改平面贴墙/入吊顶空腔/声明穿墙）或将该段降为 requirement；归零后从 dispositions 移除"
   }
  ],
  "summary": {
-  "mep_total_warnings": 125,
+  "mep_total_warnings": 164,
   "mep_buckets": {
-   "must_fix_before_briefing": 23,
-   "survey_dependent": 83,
-   "envelope_approximation": 19
+   "must_fix_before_briefing": 56,
+   "survey_dependent": 87,
+   "envelope_approximation": 21
   },
   "electrical_total_warnings": 53,
   "electrical_by_disposition": {
@@ -136,8 +154,8 @@
   },
   "disposition_counts": {
    "accept": 4,
-   "reject": 3,
-   "pending_adjudication": 5
+   "reject": 4,
+   "pending_adjudication": 6
   }
  },
  "final_state": {

@@ -110,7 +110,7 @@ pipe_route_segments:
   # —— 已画的末端支路（physical）——
   water-master-bath:                [{from_index: 0, to_index: 1, water_temp: mixed, water_dn: 20}, {from_index: 1, to_index: 3, water_temp: cold, water_dn: 20}]
   water-guest-bath:                 [{from_index: 0, to_index: 1, water_temp: mixed, water_dn: 20}, {from_index: 1, to_index: 6, water_temp: cold, water_dn: 20}]
-  water-balcony:                    [{from_index: 0, to_index: 3, water_temp: mixed, water_dn: 20}]
+  water-balcony:                    [{from_index: 0, to_index: 4, water_temp: mixed, water_dn: 20}]  # DEC-2026-10-08-W02：插入 0.08m 端点就位 jog via 后折线为 5 点（0–4）
   water-kitchen-requirement:        [{from_index: 0, to_index: 3, water_temp: mixed, water_dn: 20}]
   water-kitchen-dishwasher-branch:  [{from_index: 0, to_index: 1, water_temp: cold, water_dn: 20}]
   drain-balcony:                    [{from_index: 0, to_index: 1, drain_dn: 50}]
@@ -133,6 +133,16 @@ pipe_route_segments:
   water-v1-entry-to-gbath-cold:  [{from_index: 0, to_index: 2, water_temp: cold, water_dn: 20}]
   water-v1-recirc-loop:          [{from_index: 0, to_index: 2, water_temp: hot, water_dn: 20}]
   drain-mbath-secondary-requirement:  [{from_index: 0, to_index: 2, drain_dn: 50}]
+  # DEC-2026-10-08-W01 新增 2 条（端点均为点位 id，但规格需显式声明：
+  # 净水器支路只走冷水、阳台地漏支管 de50 而入流立管 de110，端点规格不一致，禁止按首端点扩散）
+  water-purifier-branch:           [{from_index: 0, to_index: 1, water_temp: cold, water_dn: 20}]
+  drain-balcony-floor-to-riser:    [{from_index: 0, to_index: 1, drain_dn: 50}]
+  # DEC-2026-10-08-W03 两卫 4 处地漏支路：点位 drain_dn 50 → 立管 drain_dn 110，端点规格不一致，
+  # 显式声明支管口径 de50（接入立管的分歧/水封做法待量房）。
+  drain-mbath-shower-to-riser:     [{from_index: 0, to_index: 2, drain_dn: 50}]
+  drain-mbath-floor-to-riser:      [{from_index: 0, to_index: 2, drain_dn: 50}]
+  drain-gbath-shower-to-riser:     [{from_index: 0, to_index: 2, drain_dn: 50}]
+  drain-gbath-floor-to-riser:      [{from_index: 0, to_index: 2, drain_dn: 50}]
   # 未声明而端点规格一致的路由（drain-master-bath / drain-guest-bath / drain-mbath-toilet-to-riser）
   # 走端点一致路径，不需要分段。
   # water-garden-requirement / drain-garden-requirement 仍是 requirement（pending-site-data #48 去留未决），

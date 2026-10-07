@@ -79,9 +79,30 @@ const ISSUE_CATEGORY: Record<string, MepLintCategory> = {
   reference_constraint_uncertain: 'envelope_approximation',
   suppressed_wall_crossing: 'envelope_approximation',
   nonphysical_route: 'envelope_approximation',
+  // (g) DEC-2026-10-08-W02 端点绑定兜底：重合未绑现在就能改（交底前必须清）；
+  //     给排水无锚点端点要量房人工判读（量房后复判）。
+  endpoint_not_bound_to_point: 'must_fix_before_briefing',
+  inline_endpoint_without_point_anchor: 'survey_dependent',
 };
 const DEFAULT_CATEGORY: MepLintCategory = 'must_fix_before_briefing';
 
+/**
+ * (g) DEC-2026-10-08-W02 端点绑定兜底：内联端点与已登记点位的"重合但未绑定"判定。
+ * 0.02m = 坐标两位小数的舍入量级（0.01m）再留一倍余量：≤0.02m 只可能是"抄了点位坐标但写成了字面量"，
+ * 不可能是两处独立布置（设备位之间不可能这么近）。>0.02m 的偏移视为有意的工艺差
+ * （如 faucet_garden 龙头出水口 (10.85,1.5) vs 底盒位 (10.80,1.5) 的 0.05m），不报警。
+ */
+const ENDPOINT_BIND_TOLERANCE = 0.02;
+const ENDPOINT_BIND_LAYERS = new Set(['water_supply', 'drainage', 'strong_power', 'weak_power']);
+const PLUMBING_SUPPLY_TYPES = new Set(['faucet', 'toilet', 'shower', 'washer', 'faucet_outdoor', 'water_supply']);
+const PLUMBING_DRAIN_TYPES = new Set(['drain', 'drain_riser']);
+
+/** 端点绑定兜底用的"同专业点位池"：给水只对给水类点位比、排水只对 drain/drain_riser 比，避免把龙头算成排水锚点。 */
+function endpointBindPool(route: MepRoute, sources: MepEndpointSources): Array<{ id: string; x: number; z: number }> {
+  if (route.layer === 'water_supply') return sources.plumbing.filter((point) => PLUMBING_SUPPLY_TYPES.has(point.type));
+  if (route.layer === 'drainage') return sources.plumbing.filter((point) => PLUMBING_DRAIN_TYPES.has(point.type));
+  return sources.electrical;
+}
 function categoryOf(code: string): MepLintCategory { return ISSUE_CATEGORY[code] ?? DEFAULT_CATEGORY; }
 function emptyCategoryBuckets(): MepLintCategorySummary {
   return {
@@ -605,6 +626,42 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     const coincidentEndpoints = Boolean(from && to && pointEqual(from, to)) && !verticalPhysical;
     if (coincidentEndpoints) {
       add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', route.status === 'confirmed' ? 'confirmed_self_connection' : isRequirementLike ? 'degenerate_requirement' : 'nonphysical_route', `MEP route ${route.id} has coincident endpoints; it is not a physical route`, route.id));
+    }
+    // (g) DEC-2026-10-08-W02 端点绑定兜底：量房的标准动作是"改 plumbing.yaml / electrical.yaml 的点位坐标"，
+    //     而既有端点规则只查 id 存不存在/能不能解析（endpoint_unknown / endpoint_unresolved），
+    //     查不出"这个内联坐标本来是抄某个点位的"——点位一移，路线端点留在原地，模型静默失真。
+    //     两条规则互补（实测命中：重合未绑 5 条、给排水无锚点 10 条）：
+    //       endpoint_not_bound_to_point          ≤0.02m 重合 → 现在就能绑上（可操作，must_fix 桶）
+    //       inline_endpoint_without_point_anchor  给排水层 >0.02m 无锚点 → 量房判读清单（survey 桶）
+    //     三个明文边界：
+    //       ① requirement / candidate 路线一律豁免——validateMepCoordination 禁止 design_requirement
+    //          路线引用给排水点位 id（"must not imply an authoritative plumbing endpoint"），
+    //          对它们报警只会产出改不掉的 warning（#48 花园两条即属此类）。
+    //       ② 只查 from/to，不查 via——via 是几何弯点而非设备位；折点 stale 由 route_not_orthogonal
+    //          与端点重生成时一并处理，不在此重复计费。
+    //       ③ 强电/弱电只查"重合未绑"：它们的内联端点多数是吊顶缘汇流点（DEC-2026-10-07-M04 的地插
+    //          from 即此口径），本就不该绑设备点位；报"无锚点"会是纯噪音。
+    if (!isRequirementLike && ENDPOINT_BIND_LAYERS.has(route.layer)) {
+      const pool = endpointBindPool(route, sources);
+      for (const side of ['from', 'to'] as const) {
+        const endpoint = route[side];
+        if (typeof endpoint !== 'object' || endpoint === null) continue;
+        const nearest = pool
+          .map((point) => ({ id: point.id, distance: Math.hypot(point.x - endpoint.x, point.z - endpoint.z) }))
+          .sort((a, b) => a.distance - b.distance);
+        const closest = nearest[0];
+        if (!closest) continue;
+        if (closest.distance <= ENDPOINT_BIND_TOLERANCE) {
+          const tie = nearest[1] && nearest[1].distance <= ENDPOINT_BIND_TOLERANCE
+            ? ` (same distance also matches ${nearest[1].id}; pick by the route reason)`
+            : '';
+          add(result, issue('warning', 'endpoint_not_bound_to_point',
+            `Route ${route.id} ${side} endpoint (${endpoint.x},${endpoint.z}) coincides with point ${closest.id} but is written as an inline coordinate; updating that point at survey will not drag this endpoint${tie}`, route.id));
+        } else if (route.layer === 'water_supply' || route.layer === 'drainage') {
+          add(result, issue('warning', 'inline_endpoint_without_point_anchor',
+            `Route ${route.id} ${side} endpoint (${endpoint.x},${endpoint.z}) has no model point to follow (nearest ${closest.id} is ${closest.distance.toFixed(2)}m away); needs survey adjudication`, route.id));
+        }
+      }
     }
     const isDuct = route.layer === 'supply_air' || route.layer === 'return_air' || route.method === 'rectangular';
     if (route.diameter !== undefined && isDuct) add(result, issue('warning', 'diameter_not_for_duct', `MEP route ${route.id} uses diameter on rectangular/air route; use width/depth/height`, route.id));

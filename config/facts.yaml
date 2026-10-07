@@ -482,7 +482,7 @@ facts:
     kind: derived
     value: "@config/mep-hvac-coordination.yaml:routes.length"
     unit: 条
-    as_of: DEC-2026-10-07-R15
+    as_of: DEC-2026-10-08-W03
     mirrors:
       - path: config/mep-hvac-coordination.yaml
         extract: '本表 routes 共\s*(\d+)\s*条'
@@ -969,7 +969,7 @@ facts:
         extract: 'config/electrical\.yaml 共\s*(\d+)\s*个点位'
         severity: error
         expect_matches: 1
-      # 2026-10-05 补齐 guidance mirror：§0 规模表的电气点位行（历史 110；当前 108）此前只由
+      # 2026-10-05 补齐 guidance mirror：§0 规模表的电气点位行（历史 110；当前 107）此前只由
       # electrical-topology.yaml 单点对账；plumbing/ceiling/layers 都有 guidance mirror，
       # 电气这条缺位 —— 施工指导是水电交底现场最常翻的那份，缺 mirror 等于交底单与登记表
       # 可以各自漂移。正则与 plumbing/ceiling 两条同族（`\.yaml[^0-9]{0,12}共 N 个…`）。

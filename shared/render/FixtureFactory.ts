@@ -831,6 +831,17 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
+    // 给水入户点（水表 / 总阀箱）：DEC-2026-10-08-W01 推断点位专用。箱体 + 表前阀 + 表体三段，
+    // 只表达"入户设备在这个平面锚点"，管径/阀件规格属厂家与量房深化。
+    type: 'water_supply',
+    parts: [
+      { shape: 'box', size: [0.40, 0.50, 0.18], position: [0, 0.25, 0], color: '#d8dbde', metalness: 0.35, roughness: 0.5 },
+      { shape: 'box', size: [0.34, 0.40, 0.04], position: [0, 0.25, 0.11], color: '#9aa1a6', metalness: 0.6, roughness: 0.35, part: 'water-entry-door' },
+      { shape: 'cylinder', size: [0.10, 0.06, 0.10], position: [0, 0.40, 0.0], color: '#b9bfc4', metalness: 0.7, roughness: 0.3, part: 'water-entry-valve' },
+      { shape: 'cylinder', size: [0.11, 0.16, 0.11], position: [0, 0.20, 0.0], rotation: [Math.PI / 2, 0, 0], color: '#c3c8cc', metalness: 0.6, roughness: 0.35, part: 'water-entry-meter' },
+    ],
+  },
+  {
     type: 'shower',
     parts: [
       { shape: 'cylinder', size: [0.015, 1.2, 0.015], position: [0, 0.6, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.2 },
