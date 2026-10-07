@@ -8,7 +8,7 @@
     "config_refs": ["config/materials.yaml", "config/tile-comparison.yaml", "data/current-scheme.json", "config/layout/model-geometry.yaml"],
     "asset_refs": ["app/src/render/TextureFactory.ts", "app/src/render/TextureManager.ts", "shared/three-scene-geometry.ts"],
     "render_facts_ref": "data/project-render-facts.json",
-    "source_digest": "5cac566a7d7ec61894d5abdefbf109b92a0327cf1bab6590e4dd97b33074536f",
+    "source_digest": "cdb19fcd7de867fdbb555bdc231e339d993fbca74d40735cb03763c610f7df5e",
     "generated_at": "2026-10-06"
   },
   "validation": {
@@ -40,7 +40,7 @@
       "png_exists": true,
       "png_readable": true,
       "non_empty_screenshot": true,
-      "version_refs": ["5cac566a7d7ec61894d5abdefbf109b92a0327cf1bab6590e4dd97b33074536f"],
+      "version_refs": ["cdb19fcd7de867fdbb555bdc231e339d993fbca74d40735cb03763c610f7df5e"],
       "status": "valid",
       "invalid_reason": null
     },
@@ -61,7 +61,7 @@
       "png_exists": true,
       "png_readable": true,
       "non_empty_screenshot": true,
-      "version_refs": ["5cac566a7d7ec61894d5abdefbf109b92a0327cf1bab6590e4dd97b33074536f"],
+      "version_refs": ["cdb19fcd7de867fdbb555bdc231e339d993fbca74d40735cb03763c610f7df5e"],
       "status": "valid",
       "invalid_reason": null
     },
@@ -82,7 +82,7 @@
       "png_exists": true,
       "png_readable": true,
       "non_empty_screenshot": true,
-      "version_refs": ["5cac566a7d7ec61894d5abdefbf109b92a0327cf1bab6590e4dd97b33074536f"],
+      "version_refs": ["cdb19fcd7de867fdbb555bdc231e339d993fbca74d40735cb03763c610f7df5e"],
       "status": "valid",
       "invalid_reason": null
     }

@@ -17,7 +17,10 @@ const rulesConfig: DesignRulesConfig = {
       hvac: 'hvac',
     },
     lineItems: [
-      { topic: 'floor', quantityField: 'floorArea' },
+      { topic: 'floor', quantityField: 'floorArea', applyRooms: [
+        'master_bath', 'guest_bath', 'kitchen', 'balcony', 'living_dining',
+        'master_bedroom', 'study', 'bedroom_nw', 'bedroom_se',
+      ] },
       { topic: 'wall', quantityField: 'wetWallArea' },
       { topic: 'paint', quantityField: 'paintWallArea' },
       { topic: 'hvac' },
@@ -28,6 +31,38 @@ const rulesConfig: DesignRulesConfig = {
 };
 
 describe('BudgetCalculator', () => {
+  it('uses resolved floor polygon areas only for the floor topic applyRooms', () => {
+    const catalog = ProjectCatalog.load('.');
+    const projectRules = load(readFileSync('config/design-rules.yaml', 'utf8')) as DesignRulesConfig;
+    const floorApplyRooms = projectRules.budget?.lineItems?.find(item => item.topic === 'floor')?.applyRooms ?? [];
+    const allRooms = catalog.getRooms();
+    const selectedRooms = allRooms.filter(room => floorApplyRooms.includes(room.id));
+    assert.ok(floorApplyRooms.length > 0);
+    assert.ok(!floorApplyRooms.includes('entry_garden'));
+    assert.ok(!floorApplyRooms.includes('elevator_shaft'));
+
+    const areaFromResolvedPolygons = selectedRooms.reduce((sum, room) => sum + (room.area ?? room.width * room.depth), 0);
+    const areaFromBoundingBoxes = selectedRooms.reduce((sum, room) => sum + room.width * room.depth, 0);
+    assert.notEqual(areaFromResolvedPolygons, areaFromBoundingBoxes, 'polygon area should differ from at least one room bounding box');
+
+    const calc = new BudgetCalculator(catalog, projectRules);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        floor: { default: 'floor_tile_01', roomOverrides: {} },
+        wall: { default: 'wall_tile_01', roomOverrides: {} },
+        paint: { default: 'latex_paint_01', roomOverrides: {} },
+        hvac: { default: 'A1', roomOverrides: {} },
+      },
+    };
+    const snapshot = calc.calculate(scheme);
+    const masonry = snapshot.categories.find(category => category.key === 'masonry');
+    assert.ok(masonry);
+    const laborAdded = masonry.actual - masonry.autoActual;
+    assert.equal(laborAdded, Math.round(45 * areaFromResolvedPolygons));
+    assert.notEqual(laborAdded, Math.round(45 * areaFromBoundingBoxes));
+  });
+
   it('calculates HVAC as global topic', () => {
     const catalog = ProjectCatalog.load('.');
     const calc = new BudgetCalculator(catalog, rulesConfig);

@@ -433,6 +433,28 @@ export interface BudgetAttribution {
   ratio: number;
 }
 
+export interface TileBudgetPreview {
+  status: 'comparison_overlay_only';
+  includedInTotalActual: false;
+  includedInCategoryTotals: false;
+  scopeNote: string;
+  dryFloorMaterialAndOrdinaryLaborByCandidate: Array<{
+    candidateId: string;
+    displayName: string;
+    netAreaSqm: number;
+    modeledDryFloorMaterialYuan: number;
+    ordinaryLaborRateYuanPerSqm: number;
+    ordinaryLaborSubtotalYuan: number;
+    sameScopeSubtotalYuan: number;
+    scopeNote: string;
+    excludesBathroom: true;
+    excludesWalls: true;
+    excludesBalcony: true;
+    excludesOtherExtras: true;
+    includedInOwnerLaborBudgetPool: false;
+  }>;
+}
+
 export interface BudgetSnapshot {
   totalBudget: number;
   totalActual: number;
@@ -460,6 +482,8 @@ export interface BudgetSnapshot {
   categories: BudgetCategory[];
   lineItems: BudgetLineItem[];
   attribution?: Record<string, BudgetAttribution>;
+  /** Dry-floor tile + ordinary labor comparison; informational overlay excluded from budget totals. */
+  tileBudgetPreview?: TileBudgetPreview;
 }
 
 export interface DataConfidence {

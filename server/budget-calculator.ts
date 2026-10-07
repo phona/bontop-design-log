@@ -45,7 +45,15 @@ export class BudgetCalculator {
 
       switch (area) {
         case 'floor':
-          quantity = rooms.reduce((sum, r) => sum + r.width * r.depth, 0);
+          {
+            const floorApplyRooms = this.rulesConfig.budget?.lineItems
+              ?.find((item) => item.topic === 'floor' && item.quantityField === 'floorArea')
+              ?.applyRooms ?? [];
+            const allowedRoomIds = new Set(floorApplyRooms);
+            quantity = rooms
+              .filter((room) => allowedRoomIds.has(room.id))
+              .reduce((sum, room) => sum + (room.area ?? room.width * room.depth), 0);
+          }
           break;
         case 'ceiling':
           quantity = rooms.reduce((sum, r) => sum + r.width * r.depth, 0);

@@ -174,4 +174,45 @@ describe('OverviewMenu', () => {
     expect(rendered).toContain('200,000');
     expect(rendered).not.toContain('208,000');
   });
+
+  it('renders tile scenario subtotals as a comparison overlay without changing budget totals', () => {
+    const menu = new OverviewMenu();
+    menu.setBudget({
+      totalBudget: 200000,
+      totalActual: 50000,
+      categories: [],
+      lineItems: [],
+      tileBudgetPreview: {
+        status: 'comparison_overlay_only',
+        includedInTotalActual: false,
+        includedInCategoryTotals: false,
+        scopeNote: '按干区净面积和8%损耗估算。',
+        dryFloorMaterialAndOrdinaryLaborByCandidate: [
+          { candidateId: 'kt_200x1200', supplier: 'KT', netAreaSqm: 111.864, modeledDryFloorMaterialYuan: 14616, ordinaryLaborRateYuanPerSqm: 75, ordinaryLaborSubtotalYuan: 8389.8, sameScopeSubtotalYuan: 23005.8, scopeNote: '常规铺贴' },
+          { candidateId: 'jinyi_approx_900x150', supplier: '金意陶', netAreaSqm: 111.864, modeledDryFloorMaterialYuan: 15931, ordinaryLaborRateYuanPerSqm: 75, ordinaryLaborSubtotalYuan: 8389.8, sameScopeSubtotalYuan: 24320.8, scopeNote: '常规铺贴' },
+        ],
+      },
+    } as any);
+    menu.show();
+
+    const rendered = (elements.budget.appendChild as ReturnType<typeof vi.fn>).mock.calls
+      .map(([child]) => String(child.textContent ?? child.innerHTML ?? '')).join('\n');
+    expect(rendered).toContain('已用');
+    expect(rendered).toContain('瓷砖方案对比（干区地面）');
+    expect(rendered).toContain('KT 200×1200：材料+普通铺贴 ¥23,005.8（111.86㎡，铺贴¥75/㎡）');
+    expect(rendered).toContain('金意陶约900×150：材料+普通铺贴 ¥24,320.8（111.86㎡，铺贴¥75/㎡）');
+    expect(rendered).toContain('不计入整包“已用”');
+    expect(rendered).toContain('整包分类合计仍按现有预算计算，不含此叠加');
+    expect(rendered).toContain('卫浴、墙砖、阳台及杂项另计');
+    expect(rendered).toContain('不重复计入');
+  });
+
+  it('omits the tile scenario block when no preview is supplied', () => {
+    const menu = new OverviewMenu();
+    menu.setBudget({ totalBudget: 200000, totalActual: 50000, categories: [], lineItems: [] });
+    menu.show();
+    const rendered = (elements.budget.appendChild as ReturnType<typeof vi.fn>).mock.calls
+      .map(([child]) => String(child.textContent ?? child.innerHTML ?? '')).join('\n');
+    expect(rendered).not.toContain('瓷砖方案对比');
+  });
 });

@@ -133,6 +133,12 @@ describe('GET /api/tiles/comparison', () => {
     assert.equal(body.masonryLaborEstimate.ktBathroomFloors.additiveIfConfirmedInterpretationYuan, 947.67);
     assert.equal(body.masonryLaborEstimate.ktBathroomFloors.selectedInterpretation, null);
     assert.equal(body.masonryLaborEstimate.includedInOwnerLaborBudgetPool, false);
+    assert.deepEqual(
+      body.dryFloorMaterialAndOrdinaryLaborByCandidate.map((item: { candidateId: string; sameScopeSubtotalYuan: number }) => [item.candidateId, item.sameScopeSubtotalYuan]),
+      [['kt_200x1200', 23005.8], ['jinyi_approx_900x150', 24320.8]],
+    );
+    assert.equal(body.dryFloorMaterialAndOrdinaryLaborByCandidate[0].excludesBathroom, true);
+    assert.equal(body.dryFloorMaterialAndOrdinaryLaborByCandidate[0].includedInOwnerLaborBudgetPool, false);
     assert.equal(body.interpretation.rawQuotedAmountsPreserved, true);
     assert.equal(body.interpretation.fullDesignAndRenderingStatus, 'illustrative_comparison_only_not_final_selection');
     assert.equal('amountYuan' in body.feeStatus.installation, false);

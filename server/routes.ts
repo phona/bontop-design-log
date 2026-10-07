@@ -31,7 +31,7 @@ export interface ApiDeps {
   getProjectRenderFacts?: () => ProjectRenderFacts | undefined;
   getProjectRenderFactsProjection?: () => ProjectRenderFactsProjection | undefined;
   getMepLintContext?: () => MepLintLayoutContext;
-  getResolvedLayout?: () => ResolvedLayout;
+  getResolvedLayout?: () => ResolvedLayout | undefined;
 }
 
 export function createApiRouter(deps: ApiDeps): Router {
@@ -380,8 +380,29 @@ export function createApiRouter(deps: ApiDeps): Router {
     const calc = getBudgetCalculator();
     const snapshot = calc.calculate(scheme, phase);
     const phaseBudget = loadPhaseBudgetMeta(phaseScopes[phase]);
+    let tileBudgetPreview;
+    try {
+      const layout = deps.getResolvedLayout?.();
+      if (layout) {
+        const comparison = buildTileCostComparison(layout, loadTileComparisonConfig(), catalog);
+        const displayNames = new Map(comparison.candidates.map(candidate => [candidate.id, candidate.productDescription]));
+        tileBudgetPreview = {
+          status: 'comparison_overlay_only' as const,
+          includedInTotalActual: false as const,
+          includedInCategoryTotals: false as const,
+          scopeNote: 'Dry floor only; excludes bathroom, walls, balcony, and extras. Labor uses net laid area and is not included in the owner labor budget pool.',
+          dryFloorMaterialAndOrdinaryLaborByCandidate: comparison.dryFloorMaterialAndOrdinaryLaborByCandidate.map(candidate => ({
+            ...candidate,
+            displayName: displayNames.get(candidate.candidateId) ?? candidate.candidateId,
+          })),
+        };
+      }
+    } catch {
+      // The budget snapshot remains available when current layout or tile comparison inputs are unavailable.
+    }
     res.json({
       ...snapshot,
+      ...(tileBudgetPreview ? { tileBudgetPreview } : {}),
       phase,
       ...(phaseBudget.ceilingCny !== undefined ? { phaseCeiling: phaseBudget.ceilingCny } : {}),
       ...(phaseBudget.allocatedCny !== undefined ? { phaseAllocated: phaseBudget.allocatedCny } : {}),

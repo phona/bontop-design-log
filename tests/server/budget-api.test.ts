@@ -2,7 +2,9 @@ import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import express from 'express';
-import { mkdirSync, rmSync } from 'node:fs';
+import type { Request, Response } from 'express';
+import { mkdirSync, rmSync, readFileSync } from 'node:fs';
+import { load } from 'js-yaml';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { DesignState } from '../../server/design-state.js';
 import { RuleEngine } from '../../server/rule-engine.js';
@@ -10,7 +12,8 @@ import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
 import { ConfigRegistry } from '../../server/config-loader.js';
-import type { DesignRulesConfig } from '../../shared/types.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { DesignRulesConfig, ResolvedLayout, VertexLayoutYaml } from '../../shared/types.js';
 
 const TEST_DATA_DIR = './tmp/test-data-budget-api';
 
@@ -41,21 +44,26 @@ const rulesConfig: DesignRulesConfig = {
 describe('Budget + Risks + Schemes API', () => {
   let app: express.Express;
   let archiveStore: ArchivedSchemesStore;
+  let catalog: ProjectCatalog;
+  let state: DesignState;
+  let calc: BudgetCalculator;
+  let resolvedLayout: ResolvedLayout | undefined;
+  let apiRouter: ReturnType<typeof createApiRouter>;
 
   before(() => {
     rmSync(TEST_DATA_DIR, { recursive: true, force: true });
     mkdirSync(TEST_DATA_DIR, { recursive: true });
-    const catalog = ProjectCatalog.load('.');
-    const state = DesignState.load(catalog, TEST_DATA_DIR);
+    catalog = ProjectCatalog.load('.');
+    const geometry = load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml;
+    resolvedLayout = resolveLayout(geometry);
+    state = DesignState.load(catalog, TEST_DATA_DIR);
     const engine = new RuleEngine(rulesConfig);
-    const calc = new BudgetCalculator(catalog, rulesConfig);
+    calc = new BudgetCalculator(catalog, rulesConfig);
     archiveStore = new ArchivedSchemesStore(TEST_DATA_DIR);
 
     app = express();
     app.use(express.json());
-    app.use(
-      '/api',
-      createApiRouter({
+    apiRouter = createApiRouter({
         catalog,
         state,
         getRuleEngine: () => engine,
@@ -63,15 +71,56 @@ describe('Budget + Risks + Schemes API', () => {
         archiveStore,
         getConfigRegistry: () => new ConfigRegistry(),
         getOverlay: () => undefined,
-      })
-    );
+        getResolvedLayout: () => resolvedLayout,
+      });
+    app.use('/api', apiRouter);
   });
 
-  it('GET /api/budget returns budget snapshot', async () => {
-    const res = await request(app).get('/api/budget').expect(200);
-    assert.ok(res.body.totalBudget > 0);
-    assert.ok(Array.isArray(res.body.categories));
-    assert.ok(Array.isArray(res.body.lineItems));
+  function invokeBudgetRoute(): { statusCode: number; body: Record<string, any> } {
+    const stack = (apiRouter as unknown as {
+      stack: Array<{ route?: { path: string; stack: Array<{ handle: (req: Request, res: Response) => void }> } }>;
+    }).stack;
+    const route = stack.map(layer => layer.route).find(item => item?.path === '/budget');
+    assert.ok(route, 'GET /budget route should be registered');
+    let statusCode = 200;
+    let body: Record<string, any> = {};
+    const response = {
+      status(code: number) { statusCode = code; return this; },
+      json(value: Record<string, any>) { body = value; return this; },
+    } as unknown as Response;
+    route.stack[0].handle({ query: {} } as Request, response);
+    return { statusCode, body };
+  }
+
+  it('GET /api/budget returns the tile budget preview as an overlay only', () => {
+    const { statusCode, body } = invokeBudgetRoute();
+    assert.equal(statusCode, 200);
+    assert.ok(body.totalBudget > 0);
+    assert.ok(Array.isArray(body.categories));
+    assert.ok(Array.isArray(body.lineItems));
+    assert.equal(body.tileBudgetPreview.status, 'comparison_overlay_only');
+    assert.equal(body.tileBudgetPreview.includedInTotalActual, false);
+    assert.equal(body.tileBudgetPreview.includedInCategoryTotals, false);
+    assert.match(body.tileBudgetPreview.scopeNote, /excludes bathroom, walls, balcony, and extras/);
+    assert.deepEqual(
+      body.tileBudgetPreview.dryFloorMaterialAndOrdinaryLaborByCandidate.map((row: { candidateId: string; sameScopeSubtotalYuan: number }) => [row.candidateId, row.sameScopeSubtotalYuan]),
+      [['kt_200x1200', 23005.8], ['jinyi_approx_900x150', 24320.8]],
+    );
+    assert.equal(body.totalActual, calc.calculate(state.getCurrentScheme()).totalActual);
+    assert.deepEqual(body.categories.map((item: { key: string; actual: number }) => [item.key, item.actual]),
+      calc.calculate(state.getCurrentScheme()).categories.map(item => [item.key, item.actual]));
+  });
+
+  it('GET /api/budget omits tile comparison overlay if resolved layout is unavailable', () => {
+    const prior = resolvedLayout;
+    try {
+      resolvedLayout = undefined;
+      const { statusCode, body } = invokeBudgetRoute();
+      assert.equal(statusCode, 200);
+      assert.equal('tileBudgetPreview' in body, false);
+    } finally {
+      resolvedLayout = prior;
+    }
   });
 
   it('GET /api/budget phase=phase_1 returns phase metadata and filtered calculation', async () => {

@@ -281,11 +281,49 @@ export class OverviewMenu {
       this.appendBudgetRow('已用', this.budget.totalActual);
       this.appendBudgetRow('剩余', this.budget.totalBudget - this.budget.totalActual);
     }
-    if (phaseCeiling !== undefined) {
-      this.renderBudgetCategories();
-      return;
-    }
     this.renderBudgetCategories();
+    this.renderTileBudgetPreview();
+  }
+
+  private renderTileBudgetPreview(): void {
+    if (!this.budget) return;
+    const preview = (this.budget as BudgetSnapshot & {
+      tileBudgetPreview?: {
+        status: 'comparison_overlay_only';
+        includedInTotalActual: false;
+        includedInCategoryTotals: false;
+        scopeNote: string;
+        dryFloorMaterialAndOrdinaryLaborByCandidate: Array<{
+          candidateId: 'kt_200x1200' | 'jinyi_approx_900x150';
+          supplier: string;
+          netAreaSqm: number;
+          modeledDryFloorMaterialYuan: number;
+          ordinaryLaborRateYuanPerSqm: number;
+          ordinaryLaborSubtotalYuan: number;
+          sameScopeSubtotalYuan: number;
+          scopeNote: string;
+        }>;
+      };
+    }).tileBudgetPreview;
+    if (!preview || preview.status !== 'comparison_overlay_only') return;
+
+    const heading = document.createElement('div');
+    heading.className = 'overview-row overview-tile-budget-heading';
+    heading.textContent = '瓷砖方案对比（干区地面）';
+    this.budgetEl.appendChild(heading);
+
+    for (const candidate of preview.dryFloorMaterialAndOrdinaryLaborByCandidate) {
+      const row = document.createElement('div');
+      row.className = 'overview-row overview-tile-budget-candidate';
+      const label = candidate.candidateId === 'kt_200x1200' ? 'KT 200×1200' : '金意陶约900×150';
+      row.textContent = `${label}：材料+普通铺贴 ¥${candidate.sameScopeSubtotalYuan.toLocaleString()}（${candidate.netAreaSqm.toFixed(2)}㎡，铺贴¥${candidate.ordinaryLaborRateYuanPerSqm.toLocaleString()}/㎡）`;
+      this.budgetEl.appendChild(row);
+    }
+
+    const note = document.createElement('div');
+    note.className = 'overview-empty overview-tile-budget-note';
+    note.textContent = `仅作同口径方案比较，不计入整包“已用”；整包分类合计仍按现有预算计算，不含此叠加。卫浴、墙砖、阳台及杂项另计。普通铺贴工费从人工预算池核算，不重复计入。${preview.scopeNote ? ` ${preview.scopeNote}` : ''}`;
+    this.budgetEl.appendChild(note);
   }
 
   private appendBudgetRow(label: string, value: number | undefined): void {

@@ -140,6 +140,24 @@ describe('tile cost comparison', () => {
     assert.match(labor.scopeStatus, /not an all-inclusive/);
   });
 
+  it('compares dry-floor tile material plus ordinary labor on the same explicit scope', () => {
+    const result = buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog);
+    assert.deepEqual(
+      result.dryFloorMaterialAndOrdinaryLaborByCandidate.map(item => [item.candidateId, item.sameScopeSubtotalYuan]),
+      [['kt_200x1200', 23005.8], ['jinyi_approx_900x150', 24320.8]],
+    );
+    for (const item of result.dryFloorMaterialAndOrdinaryLaborByCandidate) {
+      assert.equal(item.netAreaSqm, 111.864);
+      assert.equal(item.ordinaryLaborSubtotalYuan, 8389.8);
+      assert.equal(item.excludesBathroom, true);
+      assert.equal(item.excludesWalls, true);
+      assert.equal(item.excludesBalcony, true);
+      assert.equal(item.excludesOtherExtras, true);
+      assert.equal(item.includedInOwnerLaborBudgetPool, false);
+      assert.match(item.scopeNote, /without tile purchase loss/);
+    }
+  });
+
   it('rejects quote candidates whose mapped catalog price no longer matches', () => {
     const config = loadTileComparisonConfig();
     config.candidates[0].unit_price_yuan = 30;

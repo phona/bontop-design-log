@@ -273,6 +273,20 @@ export interface TileCostComparison {
     includesWallTileQuotes: false;
   };
   masonryRateCard: MasonryRateCard;
+  dryFloorMaterialAndOrdinaryLaborByCandidate: Array<{
+    candidateId: string;
+    netAreaSqm: number;
+    modeledDryFloorMaterialYuan: number;
+    ordinaryLaborRateYuanPerSqm: number;
+    ordinaryLaborSubtotalYuan: number;
+    sameScopeSubtotalYuan: number;
+    scopeNote: string;
+    excludesBathroom: true;
+    excludesWalls: true;
+    excludesBalcony: true;
+    excludesOtherExtras: true;
+    includedInOwnerLaborBudgetPool: false;
+  }>;
   masonryLaborEstimate: {
     basis: string;
     scopeStatus: string;
@@ -671,6 +685,20 @@ export function buildTileCostComparison(
       includesWallTileQuotes: false,
     },
     masonryRateCard: config.masonry_rate_card,
+    dryFloorMaterialAndOrdinaryLaborByCandidate: candidates.map(candidate => ({
+      candidateId: candidate.id,
+      netAreaSqm: netDryAreaSqm,
+      modeledDryFloorMaterialYuan: candidate.modeled.materialCostYuan,
+      ordinaryLaborRateYuanPerSqm: woodPlankLaborRate.price,
+      ordinaryLaborSubtotalYuan: dryFloorLaborSubtotalYuan,
+      sameScopeSubtotalYuan: round2(candidate.modeled.materialCostYuan + dryFloorLaborSubtotalYuan),
+      scopeNote: 'Dry main floor only at ordinary paving rate; excludes bathroom, walls, balcony, and all extras. Labor uses net laid area without tile purchase loss and is not added to the owner labor budget pool.',
+      excludesBathroom: true,
+      excludesWalls: true,
+      excludesBalcony: true,
+      excludesOtherExtras: true,
+      includedInOwnerLaborBudgetPool: false,
+    })),
     masonryLaborEstimate: {
       basis: 'resolved net laid floor area; no tile purchase loss multiplier applied to labor area',
       scopeStatus: 'rate-card labor estimate only; not an all-inclusive installation quote',
