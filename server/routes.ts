@@ -19,6 +19,7 @@ import { filterCurtainElements, loadPhaseBudgetMeta, loadPhaseScopes, parsePhase
 import { buildTileCostComparison, loadTileComparisonConfig } from './tile-cost-comparison.js';
 import { buildPaintCostComparison, loadPaintComparisonConfig } from './paint-cost-comparison.js';
 import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
+import { loadModelPackageLinks } from './model-package-links.js';
 import {
   loadCeilingQuotes,
   setActiveCeilingQuote,
@@ -280,6 +281,14 @@ export function createApiRouter(deps: ApiDeps): Router {
     res.json({ layouts: ProjectCatalog.getLayouts('.') });
   });
 
+  router.get('/model-package-links', (_req, res) => {
+    try {
+      res.json(loadModelPackageLinks());
+    } catch (err) {
+      res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   router.get('/project', (req, res) => {
     const layoutName = req.query.layout as string | undefined;
     let phase;
@@ -294,9 +303,13 @@ export function createApiRouter(deps: ApiDeps): Router {
       : deps.catalog;
     const overlay = deps.getOverlay();
     const sceneElements = mergeSceneElements(projectCatalog.getWalls(), overlay);
+    const modelLinks = loadModelPackageLinks();
     res.json({
       phase,
       phaseMeta: { ...phaseScopes[phase], budget: loadPhaseBudgetMeta(phaseScopes[phase]) },
+      modelPackageLinks: phase === 'full'
+        ? modelLinks.links
+        : modelLinks.links.filter((link) => link.phase_id === phase),
       house: {
         rooms: projectCatalog.getRooms(),
         platform: projectCatalog.getPlatform(),

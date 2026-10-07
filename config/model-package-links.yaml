@@ -1,0 +1,270 @@
+schema: project.model-package-links/v1
+
+# 内部关系索引：把现有分期工作包连到模型中的系统/区域，供 AI、预算视图和 3D 预览查询。
+# 不复制预算金额、成本项名称、坐标、尺寸或商品证据；分别以 phase control、几何/场景配置、采购入口为准。
+# 粒度固定在工作包/阶段条目，不逐个辅材或网格拆分。selector 只声明过滤条件，代码不得按名称猜测。
+
+authorities:
+  phase_scope: schedule/phase-scope.yaml
+  phase_1_budget: schedule/phase-1/control.yaml
+  phase_2_scope: schedule/phase-2/control.yaml
+  phase_3_scope: schedule/phase-3/control.yaml
+  model_geometry: config/layout/model-geometry.yaml
+  overlay: config/layout/overlay.yaml
+  furnishings: config/house.yaml
+  electrical: config/electrical.yaml
+  plumbing: config/plumbing.yaml
+  electrical_topology: config/electrical-topology.yaml
+  mep_routes: config/mep-hvac-coordination.yaml
+  hvac: config/hvac.yaml
+  ceiling: config/ceiling.yaml
+
+# source selectors use the declared source's existing IDs/fields. No amount, quantity, product detail or phase decision is authored here.
+# mapping_status distinguishes full links from partial/unmodelled scopes; never invent a 3D type solely to satisfy a link.
+links:
+  - id: MODEL-PKG-000
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-000}
+    mapping_status: project_scope
+    scope: [{source: model_geometry, select: {all: true}}]
+  - id: MODEL-PKG-005
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-005}
+    mapping_status: project_scope
+    scope: [{source: model_geometry, select: {all: true}}]
+  - id: MODEL-PKG-010
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-010}
+    mapping_status: project_scope
+    scope: [{source: model_geometry, select: {all: true}}]
+  - id: MODEL-PKG-020
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-020}
+    mapping_status: mapped
+    scope:
+      - {source: model_geometry, select: {collections: [walls, openings]}}
+  - id: MODEL-PKG-030
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-030}
+    mapping_status: partial
+    scope:
+      - {source: hvac, select: {plan_ids: [A2]}}
+      - {source: mep_routes, select: {layers: [refrigerant, condensate, supply_air, return_air]}}
+      - {source: electrical, select: {ids: [sock_living_ac, sock_dining_ac, sock_master_ac, sock_parent_ac, sock_child_ac, sock_study_ac, sock_vrf_outdoor_a2, ac_panel_living, ac_panel_dining, ac_panel_master, ac_panel_parent, ac_panel_child, ac_panel_study]}}
+  - id: MODEL-PKG-040
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-040}
+    mapping_status: partial
+    scope:
+      - {source: electrical, select: {all: true}}
+      - {source: plumbing, select: {all: true}}
+      - {source: electrical_topology, select: {all: true}}
+      - {source: mep_routes, select: {layers: [strong_power, weak_power, water_supply, drainage]}}
+  - id: MODEL-PKG-050
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-050}
+    mapping_status: partial
+    scope:
+      - {source: model_geometry, select: {room_ids: [master_bath, guest_bath, kitchen, balcony]}}
+      - {source: plumbing, select: {room_ids: [master_bath, guest_bath, kitchen, balcony]}}
+      - {source: overlay, select: {types: [floor_region, wall_region], room_ids: [master_bath, guest_bath, kitchen, balcony]}}
+  - id: MODEL-PKG-060
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-060}
+    mapping_status: mapped
+    scope:
+      - {source: model_geometry, select: {collections: [rooms]}}
+      - {source: overlay, select: {types: [floor_region, wall_region, sill_region]}}
+  - id: MODEL-PKG-070
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-070}
+    mapping_status: mapped
+    scope: [{source: ceiling, select: {all: true}}]
+  - id: MODEL-PKG-080
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-080}
+    mapping_status: mapped
+    scope: [{source: overlay, select: {types: [paint_region]}}]
+  - id: MODEL-PKG-090
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-090}
+    mapping_status: partial
+    scope:
+      - {source: model_geometry, select: {collections: [openings]}}
+      - {source: overlay, select: {types: [sliding_door_run]}}
+  - id: MODEL-PKG-100
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-100}
+    mapping_status: partial
+    scope:
+      - {source: furnishings, select: {room_ids: [master_bath, guest_bath, master_bedroom], types: [toilet, shower_set, vanity, faucet, mb_washbasin_cabinet, mirror_cabinet_gbath, exhaust_fan]}}
+      - {source: plumbing, select: {room_ids: [master_bath, guest_bath, master_bedroom]}}
+      - {source: overlay, select: {types: [shower_screen]}}
+  - id: MODEL-PKG-110
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-110}
+    mapping_status: mapped
+    scope: [{source: furnishings, select: {room_ids: [kitchen], types: [kitchen_cabinet_run, kitchen_countertop_bridge, cabinet_base, cabinet_wall, countertop_quartz, sink]}}]
+  - id: MODEL-PKG-120
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-120}
+    mapping_status: mapped
+    scope: [{source: electrical, select: {types: [ceiling_light, pendant, dome, wall_lamp, downlight, led_strip, track_light, night_light]}}]
+  - id: MODEL-PKG-125
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-125}
+    mapping_status: mapped
+    scope:
+      - {source: electrical, select: {types: [socket, switch, switch_2way, network, usb, floor_socket]}}
+      - {source: electrical_topology, select: {all: true}}
+  - id: MODEL-PKG-130
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-130}
+    mapping_status: mapped
+    scope: [{source: overlay, select: {types: [floor_region, wall_region, sill_region]}}]
+  - id: MODEL-PKG-135
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-135}
+    mapping_status: partial
+    scope:
+      - {source: model_geometry, select: {collections: [rooms, walls, openings]}}
+      - {source: overlay, select: {types: [floor_region, wall_region, paint_region, sill_region]}}
+  - id: MODEL-PKG-140
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-140}
+    mapping_status: partial
+    scope:
+      - {source: hvac, select: {plan_ids: [A2]}}
+      - {source: mep_routes, select: {layers: [refrigerant, condensate, supply_air, return_air]}}
+      - {source: electrical, select: {ids: [sock_living_ac, sock_dining_ac, sock_master_ac, sock_parent_ac, sock_child_ac, sock_study_ac, sock_vrf_outdoor_a2, ac_panel_living, ac_panel_dining, ac_panel_master, ac_panel_parent, ac_panel_child, ac_panel_study]}}
+  - id: MODEL-PKG-145
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-145}
+    mapping_status: partial
+    scope:
+      - {source: overlay, select: {types: [curtain]}}
+      - {source: ceiling, select: {trade: [curtain_box]}}
+      - {source: electrical, select: {ids: [sock_living_curtain, sock_master_curtain, sock_parent_curtain, sock_study_curtain]}}
+  - id: MODEL-PKG-150
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-150}
+    mapping_status: partial
+    scope: [{source: furnishings, select: {all: true}}]
+  - id: MODEL-PKG-160
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-160}
+    mapping_status: partial
+    scope:
+      - {source: furnishings, select: {types: [fridge, washer, gas_stove, range_hood, water_heater, dishwasher, robot_dock_gbath]}}
+      - {source: electrical, select: {ids: [sock_kitchen_fridge, sock_kitchen_hood, sock_kitchen_gas, sock_kitchen_oven, sock_balcony_washer, sock_balcony_dryer, sock_balcony_waterheater, sock_gbath_robot]}}
+      - {source: plumbing, select: {ids: [faucet_balcony_washer, drain_balcony_washer, faucet_gbath_vanity, drain_gbath_vanity]}}
+  - id: MODEL-PKG-170
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-170}
+    mapping_status: project_scope
+    scope: [{source: model_geometry, select: {all: true}}]
+  - id: MODEL-PKG-900
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-900}
+    mapping_status: project_scope
+    scope: [{source: model_geometry, select: {all: true}}]
+
+  - id: MODEL-P2-010
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-010}
+    mapping_status: mapped
+    scope: [{source: furnishings, select: {room_ids: [living_dining], types: [tv_wall_low, tv_65, wall_cabinet_tall]}}]
+  - id: MODEL-P2-020
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-020}
+    mapping_status: mapped
+    scope: [{source: furnishings, select: {room_ids: [balcony], types: [dryer]}}]
+  - id: MODEL-P2-030
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-030}
+    mapping_status: mapped
+    scope: [{source: furnishings, select: {room_ids: [kitchen], types: [dishwasher]}}]
+  - id: MODEL-P2-040
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-040}
+    mapping_status: partial
+    scope: [{source: plumbing, select: {ids: [faucet_kitchen_purifier]}}]
+  - id: MODEL-P2-060
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-060}
+    mapping_status: mapped
+    scope: [{source: furnishings, select: {room_ids: [living_dining], types: [coffee_table, floor_lamp, plant_fiddle]}}]
+  - id: MODEL-P2-070
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-070}
+    mapping_status: partial
+    scope:
+      - {source: overlay, select: {types: [curtain]}}
+      - {source: electrical, select: {ids: [sock_living_curtain, sock_master_curtain, sock_parent_curtain, sock_study_curtain]}}
+  - id: MODEL-P2-080
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-080}
+    mapping_status: not_modelled
+    note: 当前 house.yaml 没有家庭健身设备对象；待二期选品后再补显式 ID。
+  - id: MODEL-P2-090
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-090}
+    mapping_status: partial
+    scope: [{source: ceiling, select: {trade: [drying_rack]}}]
+  - id: MODEL-P2-100
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-100}
+    mapping_status: partial
+    scope: [{source: furnishings, select: {room_ids: [master_bedroom], types: [master_north_wall_wardrobe_950, mb_vanity_base_cabinet, mb_vanity_lower_board, mb_vanity_main_board, mb_vanity_pvc_box, mb_vanity_pvc_wardrobe_entry, mb_vanity_pvc_service_chase]}}]
+  - id: MODEL-P2-110
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-110}
+    mapping_status: partial
+    scope: [{source: furnishings, select: {room_ids: [living_dining, study], types: [curtain_set]}}]
+  - id: MODEL-P2-120
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-120}
+    mapping_status: mapped
+    scope: [{source: furnishings, select: {room_ids: [study, bedroom_nw]}}]
+  - id: MODEL-P2-130
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-130}
+    mapping_status: not_modelled
+    note: 当前 house.yaml 没有壁床柜实体对象；待二期方案确定后再补显式 ID。
+  - id: MODEL-P2-140
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-140}
+    mapping_status: mapped
+    scope: [{source: furnishings, select: {room_ids: [living_dining], types: [wall_cabinet_tall]}}]
+  - id: MODEL-P2-150
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-150}
+    mapping_status: not_modelled
+    note: 当前 house.yaml 没有独立展示柜实体对象；待二期方案确定后再补显式 ID。
+  - id: MODEL-P2-160
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-160}
+    mapping_status: mapped
+    scope: [{source: electrical, select: {types: [downlight, track_light, led_strip, pendant]}}]
+
+  - id: MODEL-P3-010
+    phase_id: phase_3_styling
+    budget_ref: {source: phase_3_scope, id: P3-010}
+    mapping_status: not_modelled
+    note: P3-010 是装饰画/墙面陈设，不能用涂漆区域代替；后续选品时再补对象。
+  - id: MODEL-P3-020
+    phase_id: phase_3_styling
+    budget_ref: {source: phase_3_scope, id: P3-020}
+    mapping_status: not_modelled
+    note: 当前模型没有地毯、靠垫或补充织物的独立对象。
+  - id: MODEL-P3-030
+    phase_id: phase_3_styling
+    budget_ref: {source: phase_3_scope, id: P3-030}
+    mapping_status: partial
+    scope: [{source: furnishings, select: {types: [plant_fiddle]}}]
+    note: 绿植已有琴叶榕对象；小型摆件尚未建模。
+  - id: MODEL-P3-040
+    phase_id: phase_3_styling
+    budget_ref: {source: phase_3_scope, id: P3-040}
+    mapping_status: mapped
+    scope: [{source: electrical, select: {types: [downlight, track_light, led_strip, pendant]}}]
