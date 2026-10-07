@@ -283,10 +283,83 @@ export class OverviewMenu {
     }
     this.renderBudgetCategories();
     this.renderTileBudgetPreview();
+    this.renderPaintBudgetPreview();
+  }
+
+  /**
+   * 涂漆范围/用量对账（DEC-2026-10-08-R01）。与瓷砖同款定位：只读叠加，不进总额。
+   * 面积来自 overlay.yaml 的 paint_region 声明——与 3D「涂漆区」按钮高亮的是同一批声明，
+   * 所以面板看到的面积和模型里点亮的墙面必须一致。
+   */
+  private renderPaintBudgetPreview(): void {
+    const preview = (this.budget as BudgetSnapshot & {
+      paintBudgetPreview?: {
+        status: 'comparison_overlay_only';
+        scope: {
+          paintRoomCount: number;
+          wallRegionEntryCount: number;
+          grossWallAreaSqm: number;
+          doorGapAreaSqm: number;
+          windowGapAreaSqm: number;
+          netWallAreaSqm: number;
+          ceilingAreaSqm: number;
+          grossAreaSqm: number;
+          netAreaSqm: number;
+          highlightedIn3d: 'walls_only';
+        };
+        material: { name: string; brand: string; unit: string; pricePerUnit: number; coveragePerUnit: number };
+        labor: { rateYuanPerSqm: number; scopeNote: string };
+        reconciliation: { pkgId: string; plannedCny: number; ownerTargetCny: number; selectedScenarioId: null };
+        scenarios: Array<{
+          scenarioId: string;
+          topcoats: number;
+          deductOpenings: boolean;
+          areaSqm: number;
+          topcoatBuckets: number;
+          primerBuckets: number;
+          materialYuan: number;
+          laborYuan: number;
+          subtotalYuan: number;
+          vsPlannedDeltaYuan: number;
+        }>;
+        warnings: string[];
+      };
+    }).paintBudgetPreview;
+    if (!preview || preview.status !== 'comparison_overlay_only') return;
+
+    const heading = document.createElement('div');
+    heading.className = 'overview-row overview-paint-budget-heading';
+    heading.textContent = '涂漆范围与用量（墙+顶）';
+    this.budgetEl.appendChild(heading);
+
+    const scopeRow = document.createElement('div');
+    scopeRow.className = 'overview-row overview-paint-budget-scope';
+    scopeRow.textContent = `声明 ${preview.scope.wallRegionEntryCount} 段墙面 / ${preview.scope.paintRoomCount} 间房：毛墙面 ${preview.scope.grossWallAreaSqm.toFixed(2)}㎡ − 门洞 ${preview.scope.doorGapAreaSqm.toFixed(2)}㎡ − 窗洞 ${preview.scope.windowGapAreaSqm.toFixed(2)}㎡ = 净墙面 ${preview.scope.netWallAreaSqm.toFixed(2)}㎡（3D 已高亮）+ 顶面 ${preview.scope.ceilingAreaSqm.toFixed(2)}㎡`;
+    this.budgetEl.appendChild(scopeRow);
+
+    for (const scenario of preview.scenarios) {
+      const row = document.createElement('div');
+      row.className = 'overview-row overview-paint-budget-candidate';
+      const delta = scenario.vsPlannedDeltaYuan;
+      const deltaText = delta > 0 ? `高于计划 ¥${delta.toLocaleString()}` : `低于计划 ¥${Math.abs(delta).toLocaleString()}`;
+      row.textContent = `面漆${scenario.topcoats}遍${scenario.deductOpenings ? '、扣门窗洞' : '、不扣门窗洞（对照）'}：${scenario.areaSqm.toFixed(2)}㎡ → 面漆 ${scenario.topcoatBuckets} 桶 + 底漆 ${scenario.primerBuckets} 桶，材料 ¥${scenario.materialYuan.toLocaleString()} + 人工 ¥${scenario.laborYuan.toLocaleString()} = ¥${scenario.subtotalYuan.toLocaleString()}（${deltaText}）`;
+      this.budgetEl.appendChild(row);
+    }
+
+    const note = document.createElement('div');
+    note.className = 'overview-empty overview-paint-budget-note';
+    note.textContent = `仅作口径对账，不计入整包"已用"；与 ${preview.reconciliation.pkgId} 计划额 ¥${preview.reconciliation.plannedCny.toLocaleString()}、业主目标 ¥${preview.reconciliation.ownerTargetCny.toLocaleString()} 比较。门窗洞按实扣除（业主 2026-10-08 裁定），遍数未裁定前不选单一情景。不含基层修补、找平批刮腻子、颜色样板与成品保护（COST-080-01/02/04），故不可与 PKG-080 全额划等号。`;
+    this.budgetEl.appendChild(note);
+
+    for (const warning of preview.warnings ?? []) {
+      const warn = document.createElement('div');
+      warn.className = 'overview-empty overview-paint-budget-warning';
+      warn.textContent = `⚠ ${warning}`;
+      this.budgetEl.appendChild(warn);
+    }
   }
 
   private renderTileBudgetPreview(): void {
-    if (!this.budget) return;
     const preview = (this.budget as BudgetSnapshot & {
       tileBudgetPreview?: {
         status: 'comparison_overlay_only';

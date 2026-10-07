@@ -110,7 +110,9 @@ budget:
       calcMode: area
       applyRooms: [master_bath, guest_bath, kitchen, balcony]
     - topic: paint
-      quantityField: paintWallArea
+      # 数量唯一来源：overlay.yaml 的 paint_region 声明（见 server/budget-calculator.ts 的
+      # loadPaintScopeAreaByRoom）。墙+顶，不扣门窗洞口，只对 wall_finish=paint 的房间算量。
+      quantityField: paintScopeArea
       calcMode: area
     - topic: hvac
       calcMode: fixed

@@ -20,6 +20,7 @@ import { CommandPalette } from './ui/CommandPalette.js';
 import { TopDownButton } from './ui/TopDownButton.js';
 import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/HvacCoordinationButton.js';
 import { WallTileButton, type WallTileButtonState } from './ui/WallTileButton.js';
+import { PaintButton, type PaintButtonState } from './ui/PaintButton.js';
 import { CeilingZoneButton, type CeilingZoneButtonState } from './ui/CeilingZoneButton.js';
 import { CeilingZonePanel } from './render/analysis/CeilingZonePanel.js';
 import { CeilingQuotePanel } from './render/analysis/CeilingQuotePanel.js';
@@ -44,7 +45,7 @@ import './ui/keybindings.js';
 import { parseProjectRenderFactsProjection } from '@shared/project-render-facts-schema';
 import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
 import type { CaptureOptions, RoomAuditCaptureOptions } from '@shared/types';
-import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose } from '@shared/types';
+import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose, BudgetSnapshot } from '@shared/types';
 import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
 import type { MepLintResult } from '@shared/mep-hvac-lint';
 
@@ -68,6 +69,11 @@ export class App {
   private wallTileButton: WallTileButton | null = null;
   private wallTileState: WallTileButtonState = 'loading';
   private wallTileVisible = false;
+  // 涂漆检视态：同样独立，与贴砖/HVAC/MEP/电气回路平级且互不引用
+  private paintButton: PaintButton | null = null;
+  private paintState: PaintButtonState = 'loading';
+  private paintVisible = false;
+  private lastBudget: BudgetSnapshot | null = null;
   // 吊顶分区高亮：独立子系统（DEC-2026-10-08-C01），与贴砖/HVAC/MEP 平级且互不引用
   private ceilingZoneButton: CeilingZoneButton | null = null;
   private ceilingZoneState: CeilingZoneButtonState = 'loading';
@@ -185,6 +191,7 @@ export class App {
     this.setupMepCoordinationButton();
     this.setupElectricalTopologyButton();
     this.setupWallTileButton();
+    this.setupPaintButton();
     this.setupCeilingZoneButton();
     this.setupCeilingQuoteButton();
     const mepLintBadge = document.getElementById('mep-lint-badge');
@@ -280,6 +287,8 @@ export class App {
     this.readyState = 'ready';
     // 贴砖检视态不依赖 HVAC projection 的就绪时序，只等场景本身加载完成即可用。
     this.setWallTileState('ready');
+    // 涂漆检视态同理：只依赖 overlay.yaml 的 paint_region 声明随场景一起建好。
+    this.setPaintState('ready');
     // 吊顶分区高亮同样只依赖场景本身：分区声明随 /api/project 的 house.ceilingZones 一起到。
     this.ceilingZonePanel = new CeilingZonePanel(this.houseScene);
     this.setCeilingZoneState('ready');
@@ -536,6 +545,46 @@ export class App {
       this.houseScene.setWallTileInspectionVisible(false);
     }
     this.wallTileButton?.sync();
+  }
+
+  private setupPaintButton(): void {
+    this.paintButton = new PaintButton({
+      onToggle: () => this.setPaintInspectionVisible(!this.paintVisible),
+      getState: () => this.paintState,
+      getActive: () => this.paintVisible,
+    });
+  }
+
+  private setPaintInspectionVisible(visible: boolean): void {
+    this.paintVisible = this.paintState === 'ready' && visible;
+    this.houseScene.setPaintInspectionVisible(this.paintVisible);
+    this.paintButton?.sync();
+    this.requestRender();
+    // 打开时播报数字摘要：涂漆面到顶，3D 里看不出每面墙归属哪个房间、算不算在涂装范围内，
+    // 「图」与「数」必须同时给出（同贴砖检视态 DEC-2026-10-07-R09 的理由）。
+    if (this.paintVisible) {
+      const s = this.houseScene.getPaintInspectionStatus();
+      const rooms = Object.entries(s.byRoom).map(([r, v]) => `${r} ${v.lengthM.toFixed(2)}m`).join(' · ');
+      // 顶面涂装只在成本口径里单列（/api/budget 的 paintBudgetPreview），未在本 3D 层显示；
+      // 预算是异步拉的，取不到就只报墙面，不猜数。
+      const ceiling = (this.lastBudget as (BudgetSnapshot & { paintBudgetPreview?: { scope?: { ceilingAreaSqm?: number } } }) | null)
+        ?.paintBudgetPreview?.scope?.ceilingAreaSqm;
+      const ceilingText = typeof ceiling === 'number'
+        ? `｜顶面 ${ceiling.toFixed(2)}㎡（成本口径，未在 3D 显示）`
+        : '';
+      // 净面积口径（DEC-2026-10-08-C06）：门洞已按实扣除，高亮范围 == 计费范围
+      const gapText = s.gapAreaSqm > 0 ? `（已扣门洞 ${s.gapAreaSqm.toFixed(2)}㎡）` : '';
+      this.showToast(`涂漆区：${rooms}｜净墙面 ${s.wallAreaSqm.toFixed(2)}㎡${gapText}${ceilingText}`);
+    }
+  }
+
+  private setPaintState(state: PaintButtonState): void {
+    this.paintState = state;
+    if (state !== 'ready') {
+      this.paintVisible = false;
+      this.houseScene.setPaintInspectionVisible(false);
+    }
+    this.paintButton?.sync();
   }
 
   // ─── 吊顶分区高亮（DEC-2026-10-08-C01）───
@@ -891,6 +940,8 @@ export class App {
 
     this.stateSync.onBudgetChange((budget) => {
       this.schemePanel.updateBudget(budget);
+      // 涂漆区 toast 的顶面数字取自这里（paintBudgetPreview），轮询到新预算也要跟上。
+      this.lastBudget = budget;
     });
 
     this.houseScene.setOnObjectClick((target) => {
@@ -1327,6 +1378,7 @@ export class App {
     this.applyCurtainPresentationState(presentationState);
     this.overviewMenu.setDecisionLog(decisions);
     this.overviewMenu.setBudget(budget);
+    this.lastBudget = budget;
     this.overviewMenu.setRisks(risks);
     this.overviewMenu.setArchivedSchemes(archives);
   }

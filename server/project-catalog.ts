@@ -66,6 +66,7 @@ function mergeRoom(layoutRoom: LayoutRoom, meta?: HouseYaml['rooms'][number]): R
     height: layoutRoom.height,
     type: meta?.type ?? 'public',
     needs_waterproof: meta?.needs_waterproof,
+    wall_finish: meta?.wall_finish,
     area: layoutRoom.area,
   };
 }
@@ -178,6 +179,7 @@ export class ProjectCatalog {
           ...r,
           type: (meta?.type ?? 'public') as RoomLayout['type'],
           needs_waterproof: meta?.needs_waterproof,
+          wall_finish: meta?.wall_finish,
           wallOpenings: wallOpeningsByRoom.get(r.id),
         });
       }

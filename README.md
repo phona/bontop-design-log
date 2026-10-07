@@ -122,6 +122,22 @@ npm run takeoff:ceiling -- --json  # 机器可读
 
 多家报价切换（DEC-2026-10-08-C03）：`config/ceiling-quotes.yaml` 一卡一家，卡里**只写单价和含项范围、禁止自带面积**（量永远来自 takeoff）。`GET /api/ceiling/quotes` 并排看全部候选（逐行 subtotal、总额、与生效卡差额、可比性标记）；`POST /api/ceiling/quotes/active` 或 MCP `set_ceiling_quote` 切换——只改写 `active:` 一行（留 `.bak`，Git diff 只有一行）。没写 `scope_note` 的候选会标 `comparable: false`；`per_unit: null` 的行数量显形、总额不编；配置文件坏掉时预算自动回落 `base.json` 费率，不冻结。
 
+### 涂漆（墙顶面涂装）一键高亮与成本核算（DEC-2026-10-08-C05）
+
+机电组点「涂漆区」按钮：按 `config/layout/overlay.yaml` 的 **`paint_region` 声明**（22 段）透视高亮涂装墙面——绿色单色、初始 opacity 0.38、检视态 0.55、`renderOrder` 100、`depthTest=false`；平面沿墙法线**朝声明房间侧外偏移 0.068m**，因此同一段墙上的贴砖面与双面涂漆的另一面不会共面。开关与贴砖/HVAC/管井/吊顶/MEP 各自独立，互不调用。打开时 toast 播报逐房间周长与墙面合计（顶面只在成本口径里单列，不在 3D 显示）。
+
+面积只有一个真相：3D 高亮、成本核算、预算 `painting` 科目读**同一批声明**。
+
+```bash
+npx tsx --test tests/server/paint-scope.test.ts   # 22 段声明 + 逐房间独立复算面积 + 成本四情景
+```
+
+当前声明快照：5 间房（主卧/书房/客餐厅/西北次卧/客房）22 段声明。入户花园已出范围——开发商已做好墙面，收房后视情况再定；厨房本来就在范围外（贴砖墙）。
+
+**门窗洞按实扣除**（业主 2026-10-08 裁定）：3D 每段平面在洞口处拆成「洞口以下的左右条 + 洞口以上的通长带」，毛墙面 **155.65㎡** − 门洞 **13.23㎡** = 净墙面 **142.42㎡**（3D 高亮的就是这个范围）+ 顶面 footprint **103.22㎡** = 净计费面积 **245.65㎡**。窗洞当前为 **0**——全部 8 樘窗都在 suppress 的玻璃幕墙/飘窗让路墙上，本就不是涂装面；`bay_sill`/`glass_infill` 增加可选 `along`，将来窗声明落到实体墙上会自动扣，缺 `along` 则告警而非静默少扣。拆洞与面积算法只有一个实现：`shared/paint-scope.ts`，3D / 成本 / 预算三处共用。
+
+成本核算：`config/paint-comparison.yaml` 是唯一口径文件（遍数、底漆假设、扣减开关、人工费率、对账基准），`server/paint-cost-comparison.ts` 与 `materials.yaml` / `config/budget/base.json` / `schedule/phase-1/control.yaml` 逐项对账，算不出就 503。查询出口：`GET /api/paint/comparison`、`GET /api/budget` 的 `paintBudgetPreview`（`status: 'comparison_overlay_only'`，不进总额），MCP 同源。四个情景并列（面漆 1/2 遍 × 扣/不扣门窗洞），`selectedScenarioId` 恒为 null——遍数拍板前不给单一数字：默认（2 遍、扣洞）面漆 5 桶 + 底漆 3 桶，材料 ¥4,640 + 人工 ¥6,141 = **¥10,781**，低于 PKG-080 计划 ¥11,500 约 ¥719；1 遍口径 ¥9,621。不含基层修补、找平批刮腻子、颜色样板与成品保护（COST-080-01/02/04）。
+
 ## 核心原则
 
 1. **没有口头变更**：任何改动必须进 Git。

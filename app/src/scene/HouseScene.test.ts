@@ -249,16 +249,212 @@ describe('HouseScene', () => {
     expect(snapshotHvac(scene, pipe)).toEqual({ hvacVisible: false, pipeRenderOrder: pipe.renderOrder, pipeOpacity: (pipe.material as THREE.MeshStandardMaterial).opacity, pipeDepthTest: (pipe.material as THREE.MeshStandardMaterial).depthTest, pipeVisible: pipe.visible });
   });
 
+  // ── 涂漆检视态与 贴砖 / HVAC / 管井检视态的相互隔离（墙顶面涂装 PKG-080）──
+  // 与贴砖同款的行为级证明：切换涂漆开关，逐字段断言其他层毫发无损。
+
+  const makePaintMesh = () => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    mesh.userData = {
+      inspectionLayer: 'wall-paint', inspectionVisibleOnly: true, inspectionOpacity: 0.55,
+      wallId: 'w_mbath_east', roomId: 'master_bedroom', along: [1.76, 3.2],
+      inspectionInitial: { visible: false, opacity: 0.38, transparent: true, depthTest: true, depthWrite: false, renderOrder: 0 },
+    };
+    mesh.visible = false;
+    return mesh;
+  };
+
+  it('toggling paint inspection leaves wall-tile, HVAC and pipe-chase state untouched', () => {
+    const scene = Object.create(HouseScene.prototype) as any;
+    scene.exportRoot = new THREE.Group();
+    const paint = makePaintMesh();
+    const tile = makeWallTileMesh();
+    const pipe = makePipeChaseMesh();
+    scene.exportRoot.add(paint);
+    scene.exportRoot.add(tile);
+    scene.exportRoot.add(pipe);
+    const hvacRenderer = { visible: true, isCoordinationVisible: () => hvacRenderer.visible, setCoordinationVisible: (v: boolean) => { hvacRenderer.visible = v; } };
+    scene.hvacRenderer = hvacRenderer;
+    const snapshot = () => ({
+      tile: { visible: tile.visible, renderOrder: tile.renderOrder, opacity: (tile.material as THREE.MeshStandardMaterial).opacity },
+      pipe: { renderOrder: pipe.renderOrder, opacity: (pipe.material as THREE.MeshStandardMaterial).opacity, depthTest: (pipe.material as THREE.MeshStandardMaterial).depthTest, visible: pipe.visible },
+      hvac: hvacRenderer.isCoordinationVisible(),
+    });
+    const before = snapshot();
+
+    scene.setPaintInspectionVisible(true);
+    expect(paint.visible).toBe(true);
+    expect(paint.renderOrder).toBe(100);
+    expect((paint.material as THREE.MeshStandardMaterial).depthTest).toBe(false);
+    expect(snapshot()).toEqual(before);
+
+    scene.setPaintInspectionVisible(false);
+    expect(paint.visible).toBe(false);
+    expect(paint.renderOrder).toBe(0);
+    expect((paint.material as THREE.MeshStandardMaterial).opacity).toBe(0.38);
+    expect((paint.material as THREE.MeshStandardMaterial).depthTest).toBe(true);
+    expect(snapshot()).toEqual(before);
+  });
+
+  it('toggling wall-tile and HVAC coordination leaves paint state untouched', () => {
+    const scene = Object.create(HouseScene.prototype) as any;
+    scene.exportRoot = new THREE.Group();
+    const paint = makePaintMesh();
+    scene.exportRoot.add(paint);
+    scene.setPaintInspectionVisible(true);
+    const paintOpen = {
+      visible: paint.visible,
+      renderOrder: paint.renderOrder,
+      opacity: (paint.material as THREE.MeshStandardMaterial).opacity,
+      depthTest: (paint.material as THREE.MeshStandardMaterial).depthTest,
+    };
+
+    const tile = makeWallTileMesh();
+    const pipe = makePipeChaseMesh();
+    scene.exportRoot.add(tile);
+    scene.exportRoot.add(pipe);
+    const hvacRenderer = { visible: false, isCoordinationVisible: () => hvacRenderer.visible, setCoordinationVisible: (v: boolean) => { hvacRenderer.visible = v; } };
+    scene.hvacRenderer = hvacRenderer;
+
+    // 贴砖与 HVAC 两条路径都真实生效（tile / pipe 都动），但涂漆层一动不动
+    scene.setWallTileInspectionVisible(true);
+    expect(tile.visible).toBe(true);
+    scene.setHvacCoordinationVisible(true);
+    expect(hvacRenderer.isCoordinationVisible()).toBe(true);
+    expect(pipe.renderOrder).toBe(100);
+    expect({ visible: paint.visible, renderOrder: paint.renderOrder, opacity: (paint.material as THREE.MeshStandardMaterial).opacity, depthTest: (paint.material as THREE.MeshStandardMaterial).depthTest }).toEqual(paintOpen);
+
+    scene.setHvacCoordinationVisible(false);
+    scene.setWallTileInspectionVisible(false);
+    expect({ visible: paint.visible, renderOrder: paint.renderOrder, opacity: (paint.material as THREE.MeshStandardMaterial).opacity, depthTest: (paint.material as THREE.MeshStandardMaterial).depthTest }).toEqual(paintOpen);
+  });
+
+  it('paint audit surface reports per-room scope, missing walls and double-counting guards', () => {
+    const scene = Object.create(HouseScene.prototype) as any;
+    scene.exportRoot = new THREE.Group();
+    // regionId 指向声明；一段声明可能被门洞拆成多块（objectId 带 :sN 后缀）
+    const mk = (objectId: string, regionId: string, wall: string, room: string, along: [number, number], regionAlong: [number, number], height: number) => {
+      const mesh = makePaintMesh();
+      mesh.userData.objectId = objectId;
+      mesh.userData.regionId = regionId;
+      mesh.userData.wallId = wall;
+      mesh.userData.roomId = room;
+      mesh.userData.along = along;
+      mesh.userData.regionAlong = regionAlong;
+      mesh.userData.inspectionInitial.bottom = 0;
+      const geo = new THREE.BoxGeometry();
+      (geo as any).parameters = { width: along[1] - along[0], height };
+      mesh.geometry = geo;
+      scene.exportRoot.add(mesh);
+      return mesh;
+    };
+    mk('paint_master_bedroom_w_mbath_east', 'paint_master_bedroom_w_mbath_east', 'w_mbath_east', 'master_bedroom', [1.76, 3.2], [1.76, 3.2], 2.8);
+    mk('paint_bedroom_nw_w_mbath_east', 'paint_bedroom_nw_w_mbath_east', 'w_mbath_east', 'bedroom_nw', [0, 3.2], [0, 3.2], 2.8);
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    wall.userData = { type: 'wall', objectId: 'w_mbath_east' };
+    (wall.geometry as any).parameters = { width: 3.2, height: 2.8, depth: 0.12 };
+    scene.exportRoot.add(wall);
+
+    const status = scene.getPaintInspectionStatus();
+    expect(status.highlightedIn3d).toBe('walls_only');
+    expect(status.byRoom['master_bedroom'].lengthM).toBeCloseTo(1.44);
+    expect(status.byRoom['bedroom_nw'].lengthM).toBeCloseTo(3.2);
+    expect(status.wallAreaSqm).toBeCloseTo(1.44 * 2.8 + 3.2 * 2.8);
+    // 段数按声明计，不按网格计（拆洞会多块）
+    expect(status.byRoom['master_bedroom'].segments).toBe(1);
+    expect(status.included).toEqual(['paint_bedroom_nw_w_mbath_east', 'paint_master_bedroom_w_mbath_east']);
+    // 同一面墙的双面涂漆按 (墙, 房间) 判重，不是跨房间判重
+    expect(status.ready).toBe(true);
+    expect(scene.inspectPaintRegions().checks.duplicateOverlaps).toEqual([]);
+    expect(scene.inspectPaintRegions().checks.outOfWallSpan).toEqual([]);
+
+    // 同房重叠 → 必须抓到
+    mk('paint_master_bedroom_w_mbath_east_dup', 'paint_master_bedroom_w_mbath_east_dup', 'w_mbath_east', 'master_bedroom', [1.0, 2.0], [1.0, 2.0], 2.8);
+    const dup = scene.inspectPaintRegions().checks.duplicateOverlaps;
+    expect(dup.length).toBeGreaterThan(0);
+    expect(scene.getPaintInspectionStatus().ready).toBe(false);
+
+    // 同房超墙长 → 必须抓到（跨房间允许，双面涂漆合法）
+    const overflow = Object.create(HouseScene.prototype) as any;
+    overflow.exportRoot = new THREE.Group();
+    const meshA = makePaintMesh();
+    meshA.userData.objectId = 'a';
+    meshA.userData.regionId = 'a';
+    meshA.userData.wallId = 'w_short';
+    meshA.userData.roomId = 'master_bedroom';
+    meshA.userData.along = [0, 3];
+    meshA.userData.regionAlong = [0, 3];
+    const geoA = new THREE.BoxGeometry();
+    (geoA as any).parameters = { width: 3, height: 2.8 };
+    meshA.geometry = geoA;
+    const shortWall = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    shortWall.userData = { type: 'wall', objectId: 'w_short' };
+    (shortWall.geometry as any).parameters = { width: 2, height: 2.8, depth: 0.12 };
+    overflow.exportRoot.add(meshA);
+    overflow.exportRoot.add(shortWall);
+    expect(overflow.inspectPaintRegions().checks.outOfWallSpan.length).toBeGreaterThan(0);
+
+    // 引用了场景里不存在的墙 → missing 且 not ready
+    const missing = Object.create(HouseScene.prototype) as any;
+    missing.exportRoot = new THREE.Group();
+    const orphan = makePaintMesh();
+    orphan.userData.objectId = 'orphan';
+    orphan.userData.regionId = 'orphan';
+    orphan.userData.wallId = 'w_nowhere';
+    const orphanGeo = new THREE.BoxGeometry();
+    (orphanGeo as any).parameters = { width: 1, height: 2.8 };
+    orphan.geometry = orphanGeo;
+    missing.exportRoot.add(orphan);
+    expect(missing.inspectPaintRegions().checks.missingWallRefs).toContain('w_nowhere');
+    expect(missing.getPaintInspectionStatus().ready).toBe(false);
+  });
+
+  it('paint status reports net area and the door gap it deducted', () => {
+    const scene = Object.create(HouseScene.prototype) as any;
+    scene.exportRoot = new THREE.Group();
+    const mk = (objectId: string, regionId: string, along: [number, number], regionAlong: [number, number], width: number, height: number, rectBottom = 0) => {
+      const mesh = makePaintMesh();
+      mesh.userData.objectId = objectId;
+      mesh.userData.regionId = regionId;
+      mesh.userData.wallId = 'w_x';
+      mesh.userData.roomId = 'study';
+      mesh.userData.along = along;
+      mesh.userData.regionAlong = regionAlong;
+      mesh.userData.rectBottom = rectBottom;
+      const geo = new THREE.BoxGeometry();
+      (geo as any).parameters = { width, height };
+      mesh.geometry = geo;
+      scene.exportRoot.add(mesh);
+      return mesh;
+    };
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    wall.userData = { type: 'wall', objectId: 'w_x' };
+    (wall.geometry as any).parameters = { width: 3, height: 2.8, depth: 0.12 };
+    scene.exportRoot.add(wall);
+    // 一段 3m 声明被 0.9m 门洞拆成 左条 + 右条 + 楣上通长带
+    mk('r:s0', 'r', [0, 1.05], [0, 3], 1.05, 2.1, 0);
+    mk('r:s1', 'r', [1.95, 3], [0, 3], 1.05, 2.1, 0);
+    mk('r:s2', 'r', [0, 3], [0, 3], 3, 0.7, 2.1);
+
+    const status = scene.getPaintInspectionStatus();
+    expect(status.grossWallAreaSqm).toBeCloseTo(8.4, 3);   // 3 × 2.8
+    expect(status.wallAreaSqm).toBeCloseTo(6.51, 3);       // 1.05×2.1 ×2 + 3×0.7
+    expect(status.gapAreaSqm).toBeCloseTo(1.89, 3);        // 0.9 × 2.1
+    expect(status.byRoom['study'].segments).toBe(1);
+    expect(status.ready).toBe(true);
+  });
+
   it('wall-tile audit surface reports declared tiers and detects double-counted overlaps', () => {
     const scene = Object.create(HouseScene.prototype) as any;
     scene.exportRoot = new THREE.Group();
-    const mk = (id: string, wall: string, along: [number, number], height: number, zone = 'visible') => {
+    const mk = (id: string, wall: string, along: [number, number], height: number, zone = 'visible', opts: { bottom?: number; roomId?: string } = {}) => {
       const mesh = makeWallTileMesh();
       mesh.userData.objectId = id;
       mesh.userData.wallId = wall;
       mesh.userData.along = along;
       mesh.userData.zone = zone;
-      mesh.userData.inspectionInitial.bottom = 0;
+      mesh.userData.roomId = opts.roomId;
+      mesh.userData.bottom = opts.bottom ?? 0;
+      mesh.userData.inspectionInitial.bottom = opts.bottom ?? 0;
       // 用真实尺寸替换 BoxGeometry，供 inspect 读取 width/height
       const geo = new THREE.BoxGeometry();
       (geo as any).parameters = { width: along[1] - along[0], height };

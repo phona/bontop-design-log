@@ -1,0 +1,64 @@
+# 涂漆（墙顶面涂装 PKG-080）成本核算口径。
+# 与 tile-comparison.yaml 同构：面积唯一来源是声明式配置，所有参数显式带状态，算不出就报错。
+# 本文件只写机器字段（数字带字段名），不写 ¥/㎡/× 单位后缀，规避 facts.yaml 的
+# unregistered_fact_occurrence 扫描。
+version: 1
+
+# 面积来源：overlay.yaml 的 paint_region 声明（3D 涂漆检视态高亮的同一批声明）。
+# 顶面 footprint 另取 model-geometry.yaml 的 resolved room area。
+# 门窗洞口一律按实扣除，扣除量由 shared/paint-scope.ts 从声明与 openings 几何相交实算——
+# **禁止在这里手写洞口面积常量**（C05 曾手写一个自算的洞口面积，口径漏了 3 樘门且不可复核，已废）。
+area_source: config/layout/overlay.yaml#paint_region
+room_finish_source: config/house.yaml#rooms[].wall_finish
+
+planning:
+  # 损耗与 materials.yaml 的 latex_paint_01.loss_rate 必须一致，服务端会对账，不一致直接报错。
+  loss_multiplier: 1.1
+  topcoat_material_id: latex_paint_01
+  # 遍数：面漆 2 遍 + 底漆 1 遍。materials.yaml 的 coverage_per_unit=120 是「每桶每遍」，
+  # 不并进 coverage；docs/material_selection_log.md 里「2 桶面漆 + 1 桶底漆」的旧估算法
+  # 未按遍数展开，已由本模型取代。
+  topcoats: 2
+  primer_included: true
+  # 底漆未进 materials.yaml（避免动其条数计数不变量与方案面板候选列表），
+  # 覆盖率与单价均为待门店确认的假设，状态显式标注。
+  primer_coverage_per_unit: 120
+  primer_price_basis: same_as_topcoat
+  primer_coverage_status: unconfirmed
+  primer_price_status: unconfirmed
+
+deductions:
+  # 2026-10-08（DEC-2026-10-08-C06）业主裁定：门洞、窗洞都按实扣除。
+  # 门洞来自 model-geometry 的 walls[].openings；窗洞来自 overlay 的 bay_sill / glass_infill，
+  # 只有写了 along 才能定位——当前涂装范围内窗洞为 0（全部 8 樘窗都在 suppress 的
+  # 玻璃幕墙/飘窗让路墙上，bay_sill 引用的墙无一在涂装声明里）。
+  deduct_openings: true
+  reason: 业主裁定门窗洞均按实扣除；3D 高亮同步拆洞，高亮范围与计费范围一致
+
+labor:
+  # 与 config/budget/base.json painting.labor 一致（25 元/㎡）。
+  rate_yuan_per_sqm: 25
+  rate_source: config/budget/base.json#painting.labor
+  # 只含涂刷相关人工；基层修补（COST-080-01）、找平批刮腻子（COST-080-02）、
+  # 颜色样板与成品保护（COST-080-04）都未计入，故本模型不可直接与 PKG-080 全额划等号。
+  scope_note: 涂刷相关人工；不含基层修补、找平批刮腻子、颜色样板与成品保护（COST-080-01/02/04）
+
+reconciliation:
+  # 与 schedule/phase-1/control.yaml 的 PKG-080 与报价 QR-2026-10-03-10 对账。
+  pkg_id: PKG-080
+  planned_cny: 11500
+  owner_target_cny: 11000
+
+scenarios:
+  # deduct_openings=false 的「毛面积」情景仅为对照保留，说明扣与不扣差多少；
+  # 业主已裁定扣，故 true 是默认计费口径。遍数仍未裁定，故 selectedScenarioId 恒为 null。
+  - { id: topcoats2_no_deduct, topcoats: 2, deduct_openings: false }
+  - { id: topcoats2_deduct, topcoats: 2, deduct_openings: true }
+  - { id: topcoats1_no_deduct, topcoats: 1, deduct_openings: false }
+  - { id: topcoats1_deduct, topcoats: 1, deduct_openings: true }
+
+fees_status:
+  base_repair: unknown                    # COST-080-01，待交房查验与现场测量
+  skim_coat_putty: unknown                # COST-080-02，待报价
+  sample_and_protection: unknown          # COST-080-04，待合同范围
+  status_note: 只登记状态不填金额，对齐 tile-comparison.yaml 的 fees 约定

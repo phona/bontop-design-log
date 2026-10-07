@@ -131,6 +131,7 @@
         <button id="mep-coordination-btn" title="MEP 实体水电 + HVAC 路线" disabled><span class="btn-label">MEP 实体路线：加载中</span><span id="mep-lint-badge" class="btn-badge" hidden></span></button>
         <button id="hvac-coordination-btn" title="HVAC 设备与约束（不显示实体路线）" disabled>HVAC 设备/约束：加载中</button>
         <button id="wall-tile-btn" title="贴砖检视态：高亮厨卫已声明的贴砖区（可见面蓝 / 遮蔽面橙，透视显示）；显示层，不作出料依据" disabled>贴砖区：加载中</button>
+        <button id="paint-btn" title="涂漆检视态：高亮已声明的涂漆墙面（按房间外偏移避免与贴砖面共面，透视显示）；顶面涂装只在成本口径中单列，不在本层显示" disabled>涂漆区：加载中</button>
         <button id="ceiling-zone-btn" title="吊顶分区高亮：按 config/ceiling.yaml 的逐分区声明上色（同工艺同色族、每区一色），并给出面积/延长米/板块数；显示层，报价以 GET /api/ceiling/takeoff 为准" disabled>吊顶分区：加载中</button>
         <button id="ceiling-quote-btn" title="吊顶报价：多家报价并排对比（工程量不变，只换单价），点卡内按钮切换生效报价（改写 config/ceiling-quotes.yaml 的 active，需进 Git）">吊顶报价</button>
         <button id="electrical-topology-btn" title="显示电气回路归属；仅表示面板—回路—点位归属，不代表电缆、线管或施工路径"><span class="btn-label">电气回路归属</span><span id="electrical-topology-badge" class="btn-badge" hidden></span></button>

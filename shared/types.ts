@@ -41,6 +41,8 @@ export interface RoomLayout {
   needs_waterproof?: boolean;
   area?: number;
   wallOpenings?: ResolvedOpening[];
+  /** 房间墙面完成面意图源为 config/house.yaml 的 room.wall_finish；预算/成本据此判定涂装范围。 */
+  wall_finish?: 'paint' | 'tile' | 'unpainted';
 }
 
 export interface IndoorUnit {
@@ -185,7 +187,7 @@ export interface HouseRoom {
   id: string;
   name?: string;
   type?: 'public' | 'private' | 'service';
-  wall_finish?: 'paint' | 'tile';
+  wall_finish?: 'paint' | 'tile' | 'unpainted';
   needs_waterproof?: boolean;
   [key: string]: unknown;
 }
@@ -457,6 +459,94 @@ export interface TileBudgetPreview {
   }>;
 }
 
+export interface PaintBudgetPreview {
+  status: 'comparison_overlay_only';
+  includedInTotalActual: false;
+  includedInCategoryTotals: false;
+  scopeNote: string;
+  scope: {
+    entries: Array<{
+      id: string;
+      wall: string;
+      room: string;
+      along: [number, number];
+      bottom: number;
+      top: number;
+      wallLength: number;
+      /** 毛面积：声明区间 × 全高（未扣洞）。 */
+      grossAreaSqm: number;
+      /** 拆洞后的实刷矩形（3D 每块面对一个）。 */
+      rects: Array<{ from: number; to: number; bottom: number; top: number }>;
+      /** 净面积 = Σ rects。 */
+      netAreaSqm: number;
+      /** 落在本段声明里的门/窗洞。 */
+      gaps: Array<{ id: string; kind: 'door' | 'window'; from: number; to: number; bottom: number; top: number; areaSqm: number }>;
+    }>;
+    paintRoomCount: number;
+    wallRegionEntryCount: number;
+    wallAreaByRoom: Record<string, number>;
+    /** 毛墙面面积（含门洞窗洞）。 */
+    grossWallAreaSqm: number;
+    doorGapAreaSqm: number;
+    /** 窗洞占位（当前 0：窗全在玻璃幕墙上）。 */
+    windowGapAreaSqm: number;
+    /** 净墙面面积 = 毛 − 门洞 − 窗洞。 */
+    netWallAreaSqm: number;
+    ceilingAreaByRoom: Record<string, number>;
+    ceilingAreaSqm: number;
+    grossAreaSqm: number;
+    /** 墙 + 顶的净面积（默认计费口径）。 */
+    netAreaSqm: number;
+    highlightedIn3d: 'walls_only';
+  };
+  material: {
+    id: string;
+    name: string;
+    brand: string;
+    unit: string;
+    pricePerUnit: number;
+    coveragePerUnit: number;
+    lossRate: number;
+    priceYuanPerSqmPerCoat: number;
+  };
+  labor: {
+    rateYuanPerSqm: number;
+    rateSource: string;
+    scopeNote: string;
+  };
+  reconciliation: {
+    pkgId: string;
+    plannedCny: number;
+    ownerTargetCny: number;
+    modeledRangeCny: [number, number];
+    selectedScenarioId: null;
+  };
+  scenarios: Array<{
+    scenarioId: string;
+    topcoats: number;
+    deductOpenings: boolean;
+    areaSqm: number;
+    topcoatBuckets: number;
+    primerBuckets: number;
+    totalBuckets: number;
+    materialYuan: number;
+    laborRateYuanPerSqm: number;
+    laborYuan: number;
+    subtotalYuan: number;
+    vsPlannedDeltaYuan: number;
+    vsOwnerTargetDeltaYuan: number;
+  }>;
+  assumptions: Array<{
+    key: string;
+    value: number | string | boolean;
+    status: 'from_overlay_declaration' | 'from_materials_yaml' | 'from_budget_base_json' | 'assumed_unconfirmed';
+    source: string;
+    note?: string;
+  }>;
+  feesStatus: Record<string, string>;
+  warnings: string[];
+}
+
 export interface BudgetSnapshot {
   totalBudget: number;
   totalActual: number;
@@ -486,6 +576,8 @@ export interface BudgetSnapshot {
   attribution?: Record<string, BudgetAttribution>;
   /** Dry-floor tile + ordinary labor comparison; informational overlay excluded from budget totals. */
   tileBudgetPreview?: TileBudgetPreview;
+  /** 涂漆范围/用量/人工与 PKG-080 对账；同为只读叠加，不并入预算总额。 */
+  paintBudgetPreview?: PaintBudgetPreview;
   /**
    * 吊顶报价卡片对比（DEC-2026-10-08-C03）。`active` 那一家就是当前 actual 的来源；
    * 其余候选仅并排展示，未生效不影响任何金额。工程量一律来自 ceiling takeoff。
@@ -687,6 +779,7 @@ export type SceneElement =
   | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean; parts?: CurtainRunPart[] }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   | { type: 'wall_region'; id: string; wall: string; along: [number, number]; bottom?: number; height: number; zone?: 'visible' | 'covered'; color?: string; reason?: string }
+  | { type: 'paint_region'; id: string; wall: string; room: string; along: [number, number]; bottom?: number; height?: number; color?: string; reason?: string }
   | {
       type: 'glass_infill';
       id: string;
@@ -697,7 +790,7 @@ export type SceneElement =
     }
   | { type: 'frosted_privacy'; id: string; points: CurtainPoint[]; height: number; sill?: number; offset?: number; finish: 'frosted_privacy' }
   | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string }
-  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[] }
+  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[]; along?: [number, number] }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }
   | { type: 'hinged_glass_door'; id: string; points: [OverlayPoint, OverlayPoint]; height: number; open?: boolean; swing?: 'north' | 'south'; hinge?: 'start' | 'end' }

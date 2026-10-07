@@ -88,6 +88,26 @@ const WallRegionSchema = z
   })
   .strict();
 
+
+
+// 涂漆检视态叠加层（墙顶面涂装 PKG-080）：inspection-only，与 wall_region 平级且互不引用。
+// wall 必须在 model-geometry 的墙声明中存在且未被 suppress；along 自该墙 from 端累计。
+// room 声明漆面归属房间——渲染端据此把平面朝该房间侧外偏移，避免与同墙贴砖面/另一侧涂漆面共面。
+// height 缺省取该墙声明高度；面积 = (along[1]-along[0]) × (height-bottom)。
+const PaintRegionSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('paint_region'),
+    wall: z.string().min(1),
+    room: z.string().min(1),
+    along: z.tuple([z.number().nonnegative(), z.number().positive()]),
+    bottom: z.number().nonnegative().default(0),
+    height: z.number().positive().optional(),
+    color: z.string().optional(),
+    reason: z.string().optional(),
+  })
+  .strict();
+
 // 淋浴玻璃隔断（独立玻璃，points-only，无碰撞；2026-08-21）
 const ShowerScreenSchema = z
   .object({
@@ -130,6 +150,8 @@ const GlassInfillSchema = z
     width: z.number().positive(),
     height: z.number().positive(),
     sill: z.number().min(0).default(0.9),
+    // 同 BaySillSchema.along：窗洞落在涂装实体墙上时必须写，否则涂装面积无法扣它。
+    along: z.tuple([z.number().nonnegative(), z.number().positive()]).optional(),
   })
   .strict();
 
@@ -173,6 +195,9 @@ const BaySillSchema = z
     depth: z.number().positive(),
     sill: z.number().min(0),
     height: z.number().positive(),
+    // 沿墙区间（自 from 端累计）。仅当飘窗/窗带落在**有涂装声明的实体墙**上时才必须写：
+    // 涂装范围按实扣窗洞需要它定位；缺了会被 shared/paint-scope.ts 记 warning 而不是静默少扣。
+    along: z.tuple([z.number().nonnegative(), z.number().positive()]).optional(),
     reason: z.string().min(1).optional(),
   })
   .strict()
@@ -222,6 +247,7 @@ const OverlaySchema = z
           CurtainRunSchema,
           WallRunSchema,
           WallRegionSchema,
+          PaintRegionSchema,
           ShowerScreenSchema,
           SlidingDoorRunSchema,
           HingedGlassDoorSchema,

@@ -18,6 +18,7 @@ import { scalePlaneUvToMeters } from './uv-utils.js';
 import { curtainRibbonShape, curtainShape, gatheredCurtainSegments, offsetCurtainPointsInterior, roundedShape } from './CurtainGeometry.js';
 import { buildBaySillGeometry } from './BaySillGeometry.js';
 import { buildRailingGeometry } from './RailingGeometryBuilder.js';
+import { computePaintScope, type PaintWallInput, type PaintWindowInput } from '../paint-scope.js';
 
 const WALL_THICKNESS = 0.12;
 /** Tile inspection overlay colors. Visible face (正砖) vs cabinet-covered face (杂砖). */
@@ -25,6 +26,16 @@ const TILE_VISIBLE_COLOR = 0x3f7fbf;
 const TILE_COVERED_COLOR = 0xd98c2b;
 /** Tile inspection overlay opacity in its own (inspection) state. */
 const TILE_INSPECTION_OPACITY = 0.55;
+/** Paint inspection overlay color (single scope: every declared 涂漆 face). */
+const PAINT_INSPECTION_COLOR = 0x5c9e52;
+/** Paint inspection overlay opacity in its own (inspection) state. */
+const PAINT_INSPECTION_OPACITY = 0.55;
+/**
+ * 涂漆平面沿墙法线朝房间侧外偏移的距离（半墙厚 + 间隙）。
+ * 同一段墙可能同时存在贴砖面（wall_region，位于墙中心线）与本房间/另一侧房间的涂漆面，
+ * 不偏移会共面 z-fighting；偏移方向由声明的 room 与该房间中心点判定，与 doorInwardNormal 同款。
+ */
+const PAINT_FACE_OFFSET = WALL_THICKNESS / 2 + 0.008;
 /** Room floors and declared floor regions intentionally share one elevation. */
 export const FLOOR_Y = 0.005;
 const DEFAULT_FLOOR = 0xe8e0d5;
@@ -485,7 +496,7 @@ function addCurtain(root: THREE.Group, element: CurtainElement, rooms: ResolvedR
   index.curtains.set(element.id, entry);
 }
 
-function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { type: 'wall' }>, report: SceneBuildReport, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex, walls: Array<WallSegment & { height?: number }> = []): void {
+function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { type: 'wall' }>, report: SceneBuildReport, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex, walls: Array<WallSegment & { height?: number }> = [], paintWindows: PaintWindowInput[] = []): void {
   const id = element.id;
   switch (element.type) {
     case 'floor_region': {
@@ -612,10 +623,160 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
           depthTest: true,
           depthWrite: false,
           renderOrder: 0,
+          bottom,
         },
       };
       mesh.visible = false;
       root.add(mesh);
+      return;
+    }
+    case 'paint_region': {
+      // 涂漆检视态（墙顶面涂装 PKG-080）。inspection-only 叠加层，与 wall_region 平级且互不引用：
+      // 正常视图完全不可见；仅在独立开关 setPaintInspectionVisible(true) 时显示，depthTest=false 真透视。
+      // 关闭时按 userData.inspectionInitial 快照恢复（刻意不复用 pipe-chase 的硬编码恢复）。
+      const wall = walls.find((candidate) => candidate.id === element.wall);
+      if (!wall) {
+        report.unsupported.push(`${id}: paint_region references unknown wall ${element.wall}`);
+        return;
+      }
+      const polyline: WallSegment[] = wall.segments?.length
+        ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+        : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+      const pointAt = (distance: number): Point | null => {
+        let remaining = distance;
+        for (const segment of polyline) {
+          const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
+          if (length <= 1e-9) continue;
+          if (remaining <= length + 1e-9) {
+            const t = Math.min(1, Math.max(0, remaining / length));
+            return { x: segment.x1 + (segment.x2 - segment.x1) * t, z: segment.z1 + (segment.z2 - segment.z1) * t };
+          }
+          remaining -= length;
+        }
+        return null;
+      };
+      const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
+      const from = Math.min(element.along[0], element.along[1]);
+      const to = Math.max(element.along[0], element.along[1]);
+      const bottom = element.bottom ?? 0;
+      const height = element.height ?? wall.height ?? 2.8;
+      if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
+        report.unsupported.push(`${id}: paint_region along [${from}, ${to}] is outside wall ${element.wall} (length ${total.toFixed(3)})`);
+        return;
+      }
+      if (!(height > bottom)) {
+        report.unsupported.push(`${id}: paint_region height ${height} must exceed bottom ${bottom}`);
+        return;
+      }
+      const start = pointAt(Math.max(0, from));
+      const end = pointAt(Math.min(total, to));
+      if (!start || !end) {
+        report.unsupported.push(`${id}: paint_region could not resolve along interval on wall ${element.wall}`);
+        return;
+      }
+      const span = Math.hypot(end.x - start.x, end.z - start.z);
+      if (span <= 1e-9) {
+        report.unsupported.push(`${id}: paint_region resolved to a zero-length span on wall ${element.wall}`);
+        return;
+      }
+      // 朝声明房间侧外偏移：用房间中心点与墙面中点判定墙向量的左右侧（同 doorInwardNormal）。
+      const room = rooms.find((candidate) => candidate.id === element.room);
+      if (!room) {
+        report.unsupported.push(`${id}: paint_region references unknown room ${element.room}`);
+        return;
+      }
+      if (!Number.isFinite(room.x) || !Number.isFinite(room.z)) {
+        // 拿不到房间中心点就无法定向偏移；此时若默认某一侧，双面涂漆的两个平面会共面 z-fighting。
+        // 宁可让它在这里现形，也不静默产出一层错几何。
+        report.unsupported.push(`${id}: paint_region room ${element.room} has no resolved centre (x/z)`);
+        return;
+      }
+      const dx = end.x - start.x;
+      const dz = end.z - start.z;
+      const dirLength = Math.hypot(dx, dz) || 1;
+      const left = { x: -dz / dirLength, z: dx / dirLength };
+      const mid = { x: (start.x + end.x) / 2, z: (start.z + end.z) / 2 };
+      const side = (room.x - mid.x) * left.x + (room.z - mid.z) * left.z;
+      const normal = Math.abs(side) > 1e-6 ? (side > 0 ? left : { x: -left.x, z: -left.z }) : left;
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(element.color ?? PAINT_INSPECTION_COLOR),
+        roughness: 0.9,
+        transparent: true,
+        opacity: 0.38,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+        depthWrite: false,
+      });
+
+      // 门窗洞按实扣除（DEC-2026-10-08-C06）：一段声明拆成多块实刷矩形
+      // （门洞 → 左条 + 右条 + 门楣条；窗洞同理）。面积自动变净，3D 与成本从此同源。
+      const wallInput: PaintWallInput = {
+        id: wall.id ?? element.wall,
+        x1: wall.x1,
+        z1: wall.z1,
+        x2: wall.x2,
+        z2: wall.z2,
+        ...(wall.segments ? { segments: wall.segments } : {}),
+        ...(wall.height !== undefined ? { height: wall.height } : {}),
+        ...(wall.openings ? { openings: wall.openings } : {}),
+      };
+      const scope = computePaintScope([wallInput], [{ id, wall: element.wall, room: element.room, along: [from, to], bottom, height }], paintWindows);
+      const rects = scope.regions[0]?.rects ?? [];
+
+      rects.forEach((rect, index) => {
+        const rectStart = pointAt(rect.from);
+        const rectEnd = pointAt(rect.to);
+        if (!rectStart || !rectEnd) {
+          report.unsupported.push(`${id}: split rect [${rect.from}, ${rect.to}] could not be resolved on wall ${element.wall}`);
+          return;
+        }
+        const rectSpan = Math.hypot(rectEnd.x - rectStart.x, rectEnd.z - rectStart.z);
+        if (rectSpan <= 1e-9) return;
+        const rectDx = rectEnd.x - rectStart.x;
+        const rectDz = rectEnd.z - rectStart.z;
+        const rectDir = Math.hypot(rectDx, rectDz) || 1;
+        const rectLeft = { x: -rectDz / rectDir, z: rectDx / rectDir };
+        const rectMid = { x: (rectStart.x + rectEnd.x) / 2, z: (rectStart.z + rectEnd.z) / 2 };
+        const rectSide = (room.x - rectMid.x) * rectLeft.x + (room.z - rectMid.z) * rectLeft.z;
+        const rectNormal = Math.abs(rectSide) > 1e-6 ? (rectSide > 0 ? rectLeft : { x: -rectLeft.x, z: -rectLeft.z }) : rectLeft;
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(rectSpan, rect.top - rect.bottom), material);
+        mesh.position.set(
+          rectMid.x + rectNormal.x * PAINT_FACE_OFFSET,
+          (rect.bottom + rect.top) / 2,
+          rectMid.z + rectNormal.z * PAINT_FACE_OFFSET,
+        );
+        mesh.rotation.y = Math.atan2(-rectDz, rectDx);
+        // 拆洞后一段声明对应多个网格，objectId 必须唯一；regionId 仍指向声明本身，
+        // 供 inspectPaintRegions 按声明去重（26 段声明的语义不变）。
+        const meshId = rects.length > 1 ? `${id}:s${index}` : id;
+        setSceneObjectMetadata(mesh, element.type, meshId);
+        mesh.userData = {
+          ...mesh.userData,
+          wallId: element.wall,
+          roomId: element.room,
+          regionId: id,
+          regionAlong: [from, to],
+          along: [rect.from, rect.to],
+          // 拆洞后每块矩形有自己的竖向带；审计面据此还原整段声明的竖向范围算毛面积
+          rectBottom: rect.bottom,
+          inspectionLayer: 'wall-paint',
+          inspectionVisibleOnly: true,
+          inspectionOpacity: PAINT_INSPECTION_OPACITY,
+          // 关闭态恢复快照：保存初始值而不是硬编码，避免重写 pipe-chase 那套丢初始态的写法。
+          inspectionInitial: {
+            visible: false,
+            opacity: 0.38,
+            transparent: true,
+            depthTest: true,
+            depthWrite: false,
+            renderOrder: 0,
+          },
+        };
+        mesh.visible = false;
+        root.add(mesh);
+      });
       return;
     }
     case 'curtain_run': {
@@ -935,9 +1096,29 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     index.rooms[input.platform.id] = { ...input.platform };
   }
   const wallHeights = new Map(input.walls.map((wall) => [wall.id, wall.height ?? 3.0]));
+  // 涂装按实扣窗洞的声明源：overlay 的 bay_sill / glass_infill（sill=洞底，height=窗带高）。
+  // 只有写了 along 的才能定位；没写的会在 computePaintScope 里记 warning（显形而非静默少扣）。
+  const paintWindows: PaintWindowInput[] = (input.elements ?? [])
+    .filter((element) => element.type === 'bay_sill' || element.type === 'glass_infill')
+    .flatMap((element) => {
+      const sill = element.sill ?? 0;
+      const along = (element as { along?: [number, number] }).along;
+      const wallIds = element.type === 'bay_sill'
+        ? ((element as { walls?: string[] }).walls ?? ((element as { wall?: string }).wall ? [(element as { wall?: string }).wall!] : []))
+        : [element.wall];
+      return wallIds
+        .filter((wallId): wallId is string => Boolean(wallId))
+        .map((wallId) => ({
+          id: element.id,
+          wall: wallId,
+          sill,
+          height: element.height,
+          ...(along ? { along } : {}),
+        }));
+    });
   for (const element of input.elements) {
     if (element.type === 'wall') addWallElement(exportRoot, element, wallHeights.get(element.id) ?? 3.0, report, index, provider, input.rooms);
-    else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index, input.walls);
+    else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index, input.walls, paintWindows);
   }
   for (const wall of input.walls) {
     if (!wall.id) continue;

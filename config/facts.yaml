@@ -227,6 +227,10 @@ scan:
       scalars: [area_sqm]
       pattern: '㎡'
       reason: 旧四池口径的估算基数，面积权威在 config/house.yaml
+    - path: config/layout/overlay.yaml
+      scalars: [area_sqm]
+      pattern: '㎡'
+      reason: 检视态叠加层注释里的面积是人工汇总口径（贴砖 12.21㎡、涂漆墙 184.35㎡/顶 116.13㎡/合计 300.48㎡ 等）；机器口径由 geometry 与声明实算，tests/server/wall-tile-inspection.test.ts 与 tests/server/paint-scope.test.ts 逐房间独立复算对账
     - path: config/layout/model-geometry.yaml
       scalars: [area_sqm]
       pattern: '㎡'
@@ -1456,6 +1460,17 @@ coverage:
   # （gypsum_board/aluminum_buckle/curtain_box/drying_rack），算量与高亮分区都从它取口径，
   # 禁止任何模块靠 id 命名推断归类。
   - { file: config/ceiling.yaml, field: "trade", readers: ["shared/ceiling-takeoff.ts", "shared/project-render-facts-schema.ts", "shared/render/CeilingZoneBuilder.ts", "shared/render/SceneBuilder.ts", "scripts/verify/rules/verify-rules.ts", "scripts/project/ceiling-takeoff.ts"] }
+  # DEC-2026-10-08-R01：涂漆（墙顶面涂装 PKG-080）成本核算口径。area_source 只作溯源标注，
+  # 真正的面积来自 config/layout/overlay.yaml 的 paint_region 声明（同一份声明也驱动 3D 检视态）。
+  - { file: config/paint-comparison.yaml, field: "version", readers: [] }
+  - { file: config/paint-comparison.yaml, field: "area_source", readers: ["server/paint-cost-comparison.ts"] }
+  - { file: config/paint-comparison.yaml, field: "room_finish_source", readers: ["server/paint-cost-comparison.ts", "tests/server/paint-scope.test.ts"] }
+  - { file: config/paint-comparison.yaml, field: "planning", readers: ["server/paint-cost-comparison.ts"] }
+  - { file: config/paint-comparison.yaml, field: "deductions", readers: ["server/paint-cost-comparison.ts"] }
+  - { file: config/paint-comparison.yaml, field: "labor", readers: ["server/paint-cost-comparison.ts"] }
+  - { file: config/paint-comparison.yaml, field: "reconciliation", readers: ["server/paint-cost-comparison.ts", "app/src/ui/OverviewMenu.ts"] }
+  - { file: config/paint-comparison.yaml, field: "scenarios", readers: ["server/paint-cost-comparison.ts", "app/src/ui/OverviewMenu.ts"] }
+  - { file: config/paint-comparison.yaml, field: "fees_status", readers: ["server/paint-cost-comparison.ts"] }
   - { file: config/design-rules.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/design-rules.yaml, field: "objectMapping", readers: ["shared/types.ts"] }
   - { file: config/design-rules.yaml, field: "budget", readers: ["shared/types.ts", "scripts/schedule/control.ts"] }

@@ -971,6 +971,203 @@ export class HouseScene implements SceneApi {
     };
   }
 
+  /**
+   * 涂漆检视态（墙顶面涂装 PKG-080）。与贴砖检视态 / HVAC 协调态 / 管井检视态 / MEP 总览**完全独立**：
+   * 只遍历 inspectionLayer === 'wall-paint'；不被任何其他开关调用，也不调用其他路径。
+   *
+   * 材质策略同样按 userData.inspectionInitial 快照可逆恢复（不共用 pipe-chase 的硬编码恢复）。
+   * 与贴砖层的唯一差别：涂漆平面在 SceneBuilder 已沿墙法线朝声明房间侧外偏移，
+   * 故同一段墙上的贴砖面与本侧/另一侧涂漆面不会共面 z-fighting。
+   */
+  setPaintInspectionVisible(visible: boolean): void {
+    this.exportRoot.traverse((object) => {
+      if (object.userData?.inspectionLayer !== 'wall-paint') return;
+      const mesh = object as THREE.Mesh;
+      const initial = (mesh.userData?.inspectionInitial ?? {}) as Record<string, unknown>;
+      const materials = Array.isArray(mesh.material)
+        ? (mesh.material as THREE.Material[])
+        : mesh.material
+          ? [(mesh.material as THREE.Material)]
+          : [];
+      // 真透视：关掉深度测试，涂漆面可穿过墙体与柜体被看到。
+      for (const material of materials) {
+        if (!(material instanceof THREE.MeshStandardMaterial)) continue;
+        if (visible) {
+          material.transparent = true;
+          material.opacity = Number(mesh.userData?.inspectionOpacity ?? 0.55);
+          material.depthTest = false;
+          material.depthWrite = false;
+        } else {
+          material.transparent = initial.transparent !== false;
+          material.opacity = Number(initial.opacity ?? 0.38);
+          material.depthTest = initial.depthTest !== false;
+          material.depthWrite = initial.depthWrite !== false;
+        }
+        material.needsUpdate = true;
+      }
+      mesh.renderOrder = visible ? 100 : 0;
+      mesh.visible = visible ? true : Boolean(initial.visible ?? false);
+    });
+    this.requestRender();
+  }
+
+  /**
+   * 涂漆检视态·状态摘要（对齐 getWallTileInspectionStatus）。
+   * 只统计 3D 真正高亮的**墙面**部分；顶面涂装面积是成本口径，见 /api/budget 的 paintBudgetPreview。
+   */
+  getPaintInspectionStatus(): {
+    required: boolean;
+    ready: boolean;
+    expected: string[];
+    included: string[];
+    missing: string[];
+    byRoom: Record<string, { segments: number; lengthM: number; areaSqm: number }>;
+    /** 净墙面面积（已扣门洞/窗洞）。 */
+    wallAreaSqm: number;
+    /** 毛墙面面积（未扣洞，= 净 + 洞口占位）。 */
+    grossWallAreaSqm: number;
+    /** 洞口占位合计 = 毛 − 净。 */
+    gapAreaSqm: number;
+    highlightedIn3d: 'walls_only';
+  } {
+    const inspection = this.inspectPaintRegions();
+    const byRoom: Record<string, { segments: number; lengthM: number; areaSqm: number }> = {};
+    const seenRegion = new Set<string>();
+    for (const r of inspection.regions) {
+      byRoom[r.room] ??= { segments: 0, lengthM: 0, areaSqm: 0 };
+      byRoom[r.room].lengthM += r.lengthM;
+      byRoom[r.room].areaSqm += r.areaSqm;
+      if (!seenRegion.has(r.regionId)) {
+        // 一段声明被门洞拆成多块平面，段数按声明计，不按网格计
+        seenRegion.add(r.regionId);
+        byRoom[r.room].segments += 1;
+      }
+    }
+    const included = [...new Set(inspection.regions.map((r) => r.regionId))];
+    const net = +inspection.regions.reduce((s, r) => s + r.areaSqm, 0).toFixed(3);
+    const grossByRegion = new Map<string, number>();
+    for (const r of inspection.regions) if (!grossByRegion.has(r.regionId)) grossByRegion.set(r.regionId, r.grossAreaSqm);
+    const gross = +[...grossByRegion.values()].reduce((s, v) => s + v, 0).toFixed(3);
+    return {
+      required: included.length > 0,
+      ready: inspection.ok && included.length > 0,
+      expected: included,
+      included,
+      missing: inspection.checks.missingWallRefs,
+      byRoom,
+      wallAreaSqm: net,
+      grossWallAreaSqm: gross,
+      gapAreaSqm: +(gross - net).toFixed(3),
+      highlightedIn3d: 'walls_only',
+    };
+  }
+
+  /**
+   * 涂漆检视态·逐段明细与自检（规则与贴砖层同一套，但有三处涂漆专属差异）：
+   *   1. room 取 SceneBuilder 写入的 userData.roomId（声明式归属），不做 id 前缀猜测；
+   *   2. 双面涂漆的共墙（w_mb_east / w_st_east / w_be_west / w_nw_south / w_mbath_east /
+   *      w_ent_west / w_ent_south_w）两个房间各占一面，越界与重叠判定必须按 (墙, 房间) 分组，
+   *      不能按墙分组，否则双面合法声明会被误判为双计；
+   *   3. 高度上限是该墙自身高度（涂装到顶），不是贴砖那套 2.65 净高口径。
+   */
+  inspectPaintRegions(): {
+    ok: boolean;
+    /** 逐网格明细：一段声明可能因门洞/窗洞被拆成多块（id 带 :sN 后缀，regionId 指向声明）。 */
+    regions: Array<{ id: string; regionId: string; objectId: string; wall: string; room: string; along: [number, number]; regionAlong: [number, number]; bottom: number; height: number; lengthM: number; areaSqm: number; grossAreaSqm: number }>;
+    checks: { missingWallRefs: string[]; suppressedWallRefs: string[]; outOfWallSpan: string[]; duplicateOverlaps: string[]; overWallHeight: string[] };
+  } {
+    const meshes: THREE.Mesh[] = [];
+    this.exportRoot.traverse((object) => {
+      if (object.userData?.inspectionLayer === 'wall-paint') meshes.push(object as THREE.Mesh);
+    });
+    const wallLengthById = new Map<string, number>();
+    const wallHeightById = new Map<string, number>();
+    this.exportRoot.traverse((object) => {
+      if (object.userData?.type !== 'wall' || !object.userData?.objectId) return;
+      const geometry = (object as THREE.Mesh).geometry as unknown as { parameters?: { width?: number; height?: number } } | undefined;
+      const id = String(object.userData.objectId);
+      if (geometry?.parameters?.width) wallLengthById.set(id, geometry.parameters.width);
+      if (geometry?.parameters?.height) wallHeightById.set(id, geometry.parameters.height);
+    });
+    const maxWallHeight = Math.max(0, ...[...wallHeightById.values()]);
+    const rawRegions = meshes.map((mesh) => {
+      const geometry = mesh.geometry as unknown as { parameters: { width: number; height: number } };
+      const along = (mesh.userData.along as [number, number]) ?? [0, 0];
+      const regionAlong = (mesh.userData.regionAlong as [number, number]) ?? along;
+      const height = +geometry.parameters.height.toFixed(4);
+      const lengthM = +geometry.parameters.width.toFixed(4);
+      const id = String(mesh.userData.objectId ?? '');
+      return {
+        id, regionId: String(mesh.userData.regionId ?? id), objectId: id, wall: String(mesh.userData.wallId ?? ''),
+        room: String(mesh.userData.roomId ?? ''),
+        along, regionAlong,
+        // 竖向带下沿：SceneBuilder 拆洞时写在 userData.rectBottom；兼容未拆洞的旧网格
+        bottom: +Number((mesh.userData as any).rectBottom ?? (mesh.userData.inspectionInitial as any)?.bottom ?? 0).toFixed(4),
+        height, lengthM,
+        // 拆洞后 areaSqm 是净面积；grossAreaSqm 由下方按声明汇总后回填（同一段声明只算一次）
+        areaSqm: +(lengthM * height).toFixed(4),
+        grossAreaSqm: 0,
+      };
+    }).sort((a, b) => a.id.localeCompare(b.id));
+
+    // 毛面积按**声明**算一次（拆洞后一段声明有多块网格，逐块算会把同一段重复计）
+    const regionExtent = new Map<string, { span: number; bottom: number; top: number }>();
+    for (const r of rawRegions) {
+      const top = r.bottom + r.height;
+      const current = regionExtent.get(r.regionId);
+      if (!current) regionExtent.set(r.regionId, { span: r.regionAlong[1] - r.regionAlong[0], bottom: r.bottom, top });
+      else {
+        current.bottom = Math.min(current.bottom, r.bottom);
+        current.top = Math.max(current.top, top);
+      }
+    }
+    const grossByRegion = new Map<string, number>();
+    for (const [regionId, extent] of regionExtent) {
+      grossByRegion.set(regionId, +((extent.span * (extent.top - extent.bottom)).toFixed(4)));
+    }
+    const regions = rawRegions.map((r) => ({ ...r, grossAreaSqm: grossByRegion.get(r.regionId) ?? r.grossAreaSqm }));
+
+    const missingWallRefs = [...new Set(regions.filter((r) => r.room && !wallLengthById.has(r.wall)).map((r) => r.wall))];
+    // 浏览器侧无 suppress 数据源：被 suppress 的墙（玻璃幕墙/已删除）不会生成 wall mesh，
+    // 因此一并落入 missingWallRefs；「不存在」与「已 suppress」的细分以 tests/server/paint-scope.test.ts 的复算为准。
+    const suppressedWallRefs: string[] = [];
+    const outOfWallSpan: string[] = [];
+    const duplicateOverlaps: string[] = [];
+    // 按 (墙, 房间) 分组：双面涂漆的共墙由两个房间各声明一段，不能跨房间判重。
+    // 判重/越界一律用**整段声明的跨度**（regionAlong），不能用拆洞后的条带跨度——
+    // 否则同一段声明被门洞拆成的左右条会被误判成互不重叠。
+    const byWallRoom = new Map<string, Array<{ regionId: string; regionAlong: [number, number] }>>();
+    for (const r of regions) {
+      if (!r.room) continue;
+      const key = `${r.wall}|${r.room}`;
+      (byWallRoom.get(key) ?? byWallRoom.set(key, []).get(key)!).push({ regionId: r.regionId, regionAlong: r.regionAlong });
+    }
+    for (const [key, group] of byWallRoom) {
+      const wall = key.split('|')[0];
+      const perRegion = new Map<string, [number, number]>();
+      for (const item of group) if (!perRegion.has(item.regionId)) perRegion.set(item.regionId, item.regionAlong);
+      const total = [...perRegion.values()].reduce((sum, span) => sum + (span[1] - span[0]), 0);
+      const wallLength = wallLengthById.get(wall);
+      if (wallLength !== undefined && total > wallLength + 1e-6) {
+        outOfWallSpan.push(`${wall}: declared ${total.toFixed(3)}m exceeds wall length ${wallLength.toFixed(3)}m`);
+      }
+      const sorted = [...perRegion.entries()].sort((a, b) => a[1][0] - b[1][0]);
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i][1][0] < sorted[i - 1][1][1] - 1e-6) {
+          duplicateOverlaps.push(`${wall}: ${sorted[i - 1][0]} ↔ ${sorted[i][0]}`);
+        }
+      }
+    }
+    const overWallHeight = maxWallHeight > 0
+      ? regions.filter((r) => r.height > maxWallHeight + 1e-6).map((r) => `${r.id} h=${r.height} > wall ${maxWallHeight}`)
+      : [];
+    return {
+      ok: missingWallRefs.length === 0 && suppressedWallRefs.length === 0 && outOfWallSpan.length === 0 && duplicateOverlaps.length === 0 && overWallHeight.length === 0,
+      regions,
+      checks: { missingWallRefs, suppressedWallRefs, outOfWallSpan, duplicateOverlaps, overWallHeight },
+    };
+  }
+
   private setPipeChaseInspectionVisible(visible: boolean): void {
     this.exportRoot.traverse((object) => {
       if (object.userData?.inspectionLayer !== 'pipe-chase') return;

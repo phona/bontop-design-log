@@ -207,6 +207,67 @@ describe('OverviewMenu', () => {
     expect(rendered).toContain('不重复计入');
   });
 
+  it('renders the paint scope/usage reconciliation without changing budget totals', () => {
+    const menu = new OverviewMenu();
+    menu.setBudget({
+      totalBudget: 200000,
+      totalActual: 50000,
+      categories: [],
+      lineItems: [],
+      paintBudgetPreview: {
+        status: 'comparison_overlay_only',
+        includedInTotalActual: false,
+        includedInCategoryTotals: false,
+        scopeNote: 'walls + ceilings, openings not deducted',
+        scope: {
+          entries: [],
+          paintRoomCount: 5,
+          wallRegionEntryCount: 22,
+          wallAreaByRoom: { master_bedroom: 27.622 },
+          grossWallAreaSqm: 155.652,
+          doorGapAreaSqm: 13.23,
+          windowGapAreaSqm: 0,
+          netWallAreaSqm: 142.422,
+          ceilingAreaByRoom: { master_bedroom: 26.844 },
+          ceilingAreaSqm: 103.224,
+          grossAreaSqm: 258.876,
+          netAreaSqm: 245.646,
+          highlightedIn3d: 'walls_only',
+        },
+        material: { id: 'latex_paint_01', name: '金装净味五合一', brand: '多乐士', unit: '桶', pricePerUnit: 580, coveragePerUnit: 120, lossRate: 1.1, priceYuanPerSqmPerCoat: 4.83 },
+        labor: { rateYuanPerSqm: 25, rateSource: 'config/budget/base.json', scopeNote: '涂刷相关人工' },
+        reconciliation: { pkgId: 'PKG-080', plannedCny: 11500, ownerTargetCny: 11000, modeledRangeCny: [10797.78, 12732.03], selectedScenarioId: null },
+        scenarios: [
+          { scenarioId: 'topcoats2_deduct', topcoats: 2, deductOpenings: true, areaSqm: 245.646, topcoatBuckets: 5, primerBuckets: 3, totalBuckets: 8, materialYuan: 4640, laborRateYuanPerSqm: 25, laborYuan: 6141.15, subtotalYuan: 10781.15, vsPlannedDeltaYuan: -718.85, vsOwnerTargetDeltaYuan: -218.85 },
+          { scenarioId: 'topcoats1_deduct', topcoats: 1, deductOpenings: true, areaSqm: 245.646, topcoatBuckets: 3, primerBuckets: 3, totalBuckets: 6, materialYuan: 3480, laborRateYuanPerSqm: 25, laborYuan: 6141.15, subtotalYuan: 9621.15, vsPlannedDeltaYuan: -1878.85, vsOwnerTargetDeltaYuan: -1378.85 },
+        ],
+        assumptions: [],
+        feesStatus: {},
+        warnings: ['底漆单价/覆盖率未确认（primer_price_status / primer_coverage_status），材料费含未确认假设'],
+      },
+    } as any);
+    menu.show();
+
+    const rendered = (elements.budget.appendChild as ReturnType<typeof vi.fn>).mock.calls
+      .map(([child]) => String(child.textContent ?? child.innerHTML ?? '')).join('\n');
+    expect(rendered).toContain('涂漆范围与用量（墙+顶）');
+    expect(rendered).toContain('毛墙面 155.65㎡ − 门洞 13.23㎡ − 窗洞 0.00㎡ = 净墙面 142.42㎡（3D 已高亮）+ 顶面 103.22㎡');
+    expect(rendered).toContain('面漆2遍、扣门窗洞：245.65㎡ → 面漆 5 桶 + 底漆 3 桶，材料 ¥4,640 + 人工 ¥6,141.15 = ¥10,781.15（低于计划 ¥718.85）');
+    expect(rendered).toContain('面漆1遍、扣门窗洞：245.65㎡ → 面漆 3 桶 + 底漆 3 桶，材料 ¥3,480 + 人工 ¥6,141.15 = ¥9,621.15（低于计划 ¥1,878.85）');
+    expect(rendered).toContain('不计入整包');
+    expect(rendered).toContain('COST-080-01/02/04');
+    expect(rendered).toContain('⚠ 底漆单价/覆盖率未确认');
+  });
+
+  it('omits the paint scenario block when no preview is supplied', () => {
+    const menu = new OverviewMenu();
+    menu.setBudget({ totalBudget: 200000, totalActual: 50000, categories: [], lineItems: [] } as any);
+    menu.show();
+    const rendered = (elements.budget.appendChild as ReturnType<typeof vi.fn>).mock.calls
+      .map(([child]) => String(child.textContent ?? child.innerHTML ?? '')).join('\n');
+    expect(rendered).not.toContain('涂漆范围与用量');
+  });
+
   it('omits the tile scenario block when no preview is supplied', () => {
     const menu = new OverviewMenu();
     menu.setBudget({ totalBudget: 200000, totalActual: 50000, categories: [], lineItems: [] });

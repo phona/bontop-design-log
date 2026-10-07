@@ -283,7 +283,7 @@ gift_areas:
       x: 13.025
       z: 1.45
     type: "public"
-    wall_finish: "paint"
+    wall_finish: "unpainted"
     needs_waterproof: false
     width: 6.70
     length: 1.65
@@ -291,7 +291,7 @@ gift_areas:
     area: 11.06
     status: "design"
     orientation: "北"
-    notes: "合同图北面开敞外廊，赠送面积，开发商已用玻璃幕墙封闭；内含电梯厅及消防通道，实际可入户使用面积约 11㎡，不得完全封闭"
+    notes: "合同图北面开敞外廊，赠送面积，开发商已用玻璃幕墙封闭；内含电梯厅及消防通道，实际可入户使用面积约 11㎡，不得完全封闭。2026-10-08（DEC-2026-10-08-C06）业主裁定：墙面开发商已做好，本期不刷，收房后看情况再定（可能二期），故 wall_finish 由 paint 改为 unpainted，涂装范围（overlay 的 paint_region）随之移除该房全部声明"
     windows: []
     doors:
       - width: 0.90

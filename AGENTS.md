@@ -14,6 +14,8 @@
 > `config/layout/model-geometry.yaml` 是户型几何的唯一权威源；`config/layout/overlay.yaml` 出一切意图。代码只读、只执行，禁止推断。
 >
 > `parse_cad.py` 仅用于从 CAD 初始化或参考导出，默认不覆盖 `model-geometry.yaml`。需要新行为 → 新增 element type + 声明式配置。
+>
+> **检视态叠加层（inspection-only）现役清单**：`wall_region`（贴砖，层标签 `wall-tile`）、`paint_region`（涂漆，层标签 `wall-paint`）、`floor_region`/吊顶分区、`pipe-chase`（管井）、HVAC 协调态、MEP 总览、电气回路归属。它们必须**平级且互不引用**：每个 `set*InspectionVisible` 只遍历自己的层标签、按 `userData.inspectionInitial` 快照可逆恢复，禁止互相调用、禁止抽共享材质 helper（pipe-chase 的关闭分支硬编码默认值，会丢掉其他层的初始态）。`paint_region` 额外要求平面朝声明的 `room` 侧外偏移，否则同墙的贴砖面与另一侧涂漆面共面 z-fighting。
 
 ## 坐标系约定
 

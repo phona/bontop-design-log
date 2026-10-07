@@ -17,6 +17,7 @@ import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import type { PresentationStateStore } from './presentation-state.js';
 import { filterCurtainElements, loadPhaseBudgetMeta, loadPhaseScopes, parsePhaseId } from './phase-scope.js';
 import { buildTileCostComparison, loadTileComparisonConfig } from './tile-cost-comparison.js';
+import { buildPaintCostComparison, loadPaintComparisonConfig } from './paint-cost-comparison.js';
 import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import {
   loadCeilingQuotes,
@@ -111,6 +112,33 @@ export function createApiRouter(deps: ApiDeps): Router {
           reportedFullMaterialTotalYuan: candidate.reported_full_material_total_yuan,
           alternativeReportedFullMaterialTotalYuan: candidate.alternative_reported_full_material_total_yuan,
         })),
+      });
+    } catch (err) {
+      res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // 涂漆成本核算（墙顶面涂装 PKG-080）。与 /tiles/comparison 平级：只读，无 POST/PUT。
+  // 面积来源是 overlay.yaml 的 paint_region 声明（3D 涂漆检视态高亮的同一批声明），
+  // 算不出就 503，绝不静默凑一个数。
+  router.get('/paint/comparison', (_req, res) => {
+    try {
+      const layout = deps.getResolvedLayout?.();
+      if (!layout) {
+        res.status(503).json({ error: 'resolved current layout is not ready' });
+        return;
+      }
+      const config = loadPaintComparisonConfig();
+      const comparison = buildPaintCostComparison(layout, config, catalog);
+      res.json({
+        ...comparison,
+        interpretation: {
+          rawAreasPreserved: true,
+          selectedScenarioId: null,
+          scenariosStatus: '口径未拍板前并列展示，不选单一情景',
+          scopeStatus: 'illustrative_comparison_only_not_final_quote',
+          disclaimer: '不含基层修补、找平批刮腻子、颜色样板与成品保护（COST-080-01/02/04）；顶面未在 3D 涂漆检视态中显示',
+        },
       });
     } catch (err) {
       res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
@@ -481,9 +509,27 @@ export function createApiRouter(deps: ApiDeps): Router {
     } catch {
       // The budget snapshot remains available when current layout or tile comparison inputs are unavailable.
     }
+    let paintBudgetPreview;
+    try {
+      const layout = deps.getResolvedLayout?.();
+      if (layout) {
+        const paintConfig = loadPaintComparisonConfig();
+        const paintComparison = buildPaintCostComparison(layout, paintConfig, catalog);
+        paintBudgetPreview = {
+          status: 'comparison_overlay_only' as const,
+          includedInTotalActual: false as const,
+          includedInCategoryTotals: false as const,
+          scopeNote: 'Declared paint regions (walls) plus room footprint ceilings; openings not deducted by default. Material covers primer + topcoats, labor covers brushing only. Excludes base repair, skim coat, color sample and protection (COST-080-01/02/04).',
+          ...paintComparison,
+        };
+      }
+    } catch {
+      // 同理：paint 对比输入不可用时，预算快照本身必须仍然可用。
+    }
     res.json({
       ...snapshot,
       ...(tileBudgetPreview ? { tileBudgetPreview } : {}),
+      ...(paintBudgetPreview ? { paintBudgetPreview } : {}),
       phase,
       ...(phaseBudget.ceilingCny !== undefined ? { phaseCeiling: phaseBudget.ceilingCny } : {}),
       ...(phaseBudget.allocatedCny !== undefined ? { phaseAllocated: phaseBudget.allocatedCny } : {}),

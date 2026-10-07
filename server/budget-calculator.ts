@@ -15,8 +15,35 @@ import { loadCeilingConfig } from './config-loader.js';
 import { loadCeilingQuotes, type CeilingQuotesFile } from './ceiling-quotes.js';
 import { resolveActiveCeilingRates, compareCeilingQuotes, type ResolvedCeilingRates } from './ceiling-quotes.js';
 import type { ProjectCatalog } from './project-catalog.js';
+import type { ResolvedLayout } from '../shared/types.js';
 import { isBudgetTopicIncluded, loadPhaseScopes } from './phase-scope.js';
 import { controlPathForPhase, loadPhaseControlAuthority } from './phase-control.js';
+import { computePaintScopeForLayout, loadPaintScopeInputs } from './paint-cost-comparison.js';
+
+/**
+ * 涂装**净**面积（净墙 + 顶）逐房间表：唯一来源是 overlay.yaml 的 paint_region 声明 +
+ * catalog 的 resolved 房间面积，走 shared/paint-scope.ts 的同一套拆洞算法，
+ * 与 3D「涂漆区」检视态、/api/paint/comparison、paintBudgetPreview 完全同源。
+ * 无声明的房间不进表（= 不算量），不给默认值、不猜面积；算不出就抛错，
+ * 由调用方降级——绝不退化成一个拍系数公式。
+ */
+function loadPaintScopeAreaByRoom(catalog: ProjectCatalog): Map<string, number> {
+  const areaByRoom = new Map<string, number>();
+  const inputs = loadPaintScopeInputs();
+  if (!inputs.regions.length) return areaByRoom;
+  const rooms = catalog.getRooms();
+  // 墙几何（x/z/segments/openings）+ 房间 footprint 都取 catalog，与 /api/paint/comparison 的
+  // resolved layout 版本是同一批数据的两个入口；算不出直接抛，由调用方处理。
+  const scope = computePaintScopeForLayout(
+    { rooms, walls: catalog.getWalls() } as unknown as ResolvedLayout,
+    catalog,
+    inputs,
+  );
+  for (const [roomId, wallArea] of Object.entries(scope.wallAreaByRoom)) {
+    areaByRoom.set(roomId, wallArea + (scope.ceilingAreaByRoom[roomId] ?? 0));
+  }
+  return areaByRoom;
+}
 
 /**
  * 吊顶工程量：按 `config/ceiling.yaml` 的逐分区声明实算，不再按房间面积近似。
@@ -40,7 +67,6 @@ function fallbackCeilingRates(baseRaw: Record<string, BudgetCategoryRaw>): Recor
 const QUANTITY_FORMULAS: Record<string, (room: RoomLayout) => number> = {
   floorArea: (room) => room.area ?? room.width * room.depth,
   wetWallArea: (room) => (room.width + room.depth) * 2 * room.height * 0.7,
-  paintWallArea: (room) => (room.width + room.depth) * 2 * room.height * 0.75,
   // 已废弃：吊顶算量请用 shared/ceiling-takeoff.ts 的逐分区实算（见 computeLabor 的 ceiling_zones）。
   // 这个房间面积别名会把没有吊顶的平顶也计费，仅为兼容旧 lineItem 声明而保留。
   ceilingArea: (room) => room.area ?? room.width * room.depth,
@@ -50,10 +76,20 @@ const QUANTITY_FORMULAS: Record<string, (room: RoomLayout) => number> = {
 };
 
 export class BudgetCalculator {
+  private paintScopeCache: Map<string, number> | null = null;
+
   constructor(
     private catalog: ProjectCatalog,
     private rulesConfig: DesignRulesConfig
   ) {}
+
+  /** 涂装面积（墙+顶）逐房间表，进程内缓存：一次请求里材料与人工必须读到同一份口径。 */
+  private paintScopeAreaByRoom(): Map<string, number> {
+    if (!this.paintScopeCache) {
+      this.paintScopeCache = loadPaintScopeAreaByRoom(this.catalog);
+    }
+    return this.paintScopeCache;
+  }
 
   /**
    * 一个人工费分类可以有多条计价行（DEC-2026-10-08-C02：窗帘盒从吊顶 40 元/㎡ 里拆出来，
@@ -113,7 +149,8 @@ export class BudgetCalculator {
           quantity = takeoff.curtainBoxLinearM;
           break;
         case 'paint_wall':
-          quantity = rooms.reduce((sum, r) => sum + (r.width + r.depth) * 2 * r.height * 0.75, 0);
+          // 与材料侧同源：overlay.yaml 的 paint_region 声明 + resolved 房间面积（墙+顶）。
+          quantity = rooms.reduce((sum, r) => sum + (this.paintScopeAreaByRoom().get(r.id) ?? 0), 0);
           break;
         case 'wet_floor': {
           const wetRooms = rooms.filter((r) => r.needs_waterproof === true);
@@ -231,8 +268,13 @@ export class BudgetCalculator {
 
       if (topic.perRoom) {
         const rooms = this.catalog.getRooms();
+        // 涂装面积单独走声明表：数量来源是 overlay.yaml 的 paint_region（并与 catalog 的
+        // resolved 房间面积相加得到墙+顶），不再用 QUANTITY_FORMULAS 的拍系数公式。
+        const paintScope = li.quantityField === 'paintScopeArea'
+          ? this.paintScopeAreaByRoom()
+          : null;
         const quantityFn = li.quantityField ? QUANTITY_FORMULAS[li.quantityField] : null;
-        if (!quantityFn) continue;
+        if (!paintScope && !quantityFn) continue;
 
         for (const room of rooms) {
           const overrideOptionId = scheme.selections[li.topic]?.roomOverrides?.[room.id];
@@ -245,7 +287,9 @@ export class BudgetCalculator {
           const option = this.catalog.getOption(li.topic, optionId);
           if (!option) continue;
 
-          const quantity = quantityFn(room);
+          const quantity = paintScope
+            ? (paintScope.get(room.id) ?? 0)
+            : quantityFn!(room);
           const pricePerUnit = option.price_per_unit ?? 0;
           const coveragePerUnit = option.coverage_per_unit ?? 1;
           const lossRate = option.loss_rate ?? 1.0;

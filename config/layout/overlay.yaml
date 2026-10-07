@@ -406,3 +406,184 @@ elements:
     height: 0.30
     zone: covered
     reason: 客卫西侧开放洗漱区，悬浮台盆柜后遮蔽面走杂砖
+
+  # === 涂漆检视态（墙顶面涂装 PKG-080；与贴砖检视态平级且互不引用）===
+  # 独立子系统：inspection-only 叠加层，仅在 HouseScene.setPaintInspectionVisible(true) 时显示，
+  # 与 HVAC 协调态 / 管井检视态 / MEP 总览 / 贴砖检视态完全隔离（层标签 'wall-paint'，互不遍历）。
+  # room 声明漆面归属房间：平面沿墙法线朝该房间侧外偏移，避免与同墙的贴砖面、或共墙另一侧
+  #   涂漆面共面 z-fighting（w_mb_east / w_st_east / w_be_west / w_nw_south / w_mbath_east /
+  #   w_ent_west / w_ent_south_w 均为双面涂漆，两个房间各声明一段）。
+  # along 自该墙 from 端沿墙累计；height 缺省取墙高；面积 = (along[1]-along[0]) × (height-bottom)。
+  # 涂装范围由 house.yaml 的 room.wall_finish='paint' 决定（house.yaml 是房间 Finish 意图源）。
+  # 2026-10-08（DEC-2026-10-08-C06）：入户花园出范围——开发商已做好墙面，收房后视情况再定
+  # （可能二期），故 house.yaml 给它的 wall_finish 改为 unpainted，本处 4 段声明随之删除，剩 22 段。
+  # 声明由 tmp/gen-paint-regions.ts 生成；tests/server/paint-scope.test.ts 用同款几何交叉
+  # 算法独立复算，逐房间对账（毛墙面 155.65㎡ / 门洞占位 13.23㎡ / 净墙面 142.42㎡ / 顶面 103.22㎡）。
+  # 门洞按实扣除：每段声明的平面在洞口处拆成左条+右条+门楣条，3D 高亮与面积同时变净
+  # （shared/paint-scope.ts 是唯一算法源）。窗洞当前为 0——全部 8 樘窗都在 suppress 的
+  # 玻璃幕墙/飘窗让路墙上（bay_sill 引用的墙无一在涂装声明里），本就不该计涂装。
+  # 顶面涂装只在成本口径里单列（config/paint-comparison.yaml），不在本 3D 层显示。
+
+  # ── 西北次卧 9.40m / 26.32㎡ ──
+  - id: paint_bedroom_nw_w_balc_west
+    type: paint_region
+    wall: w_balc_west
+    room: bedroom_nw
+    along: [0.10, 1.20]
+    height: 2.80
+    reason: "西北次卧墙面涂装（w_balc_west，与客卫/阳台共墙）"
+  - id: paint_bedroom_nw_w_gbath_west
+    type: paint_region
+    wall: w_gbath_west
+    room: bedroom_nw
+    along: [0.00, 1.35]
+    height: 2.80
+    reason: "西北次卧墙面涂装（w_gbath_west，客卫侧贴砖本侧涂漆）"
+  - id: paint_bedroom_nw_w_gbath_west_open_vanity
+    type: paint_region
+    wall: w_gbath_west_open_vanity
+    room: bedroom_nw
+    along: [0.00, 0.75]
+    height: 2.80
+    reason: "西北次卧墙面涂装（w_gbath_west_open_vanity，客卫侧贴砖本侧涂漆）"
+  - id: paint_bedroom_nw_w_mbath_east
+    type: paint_region
+    wall: w_mbath_east
+    room: bedroom_nw
+    along: [0.00, 3.20]
+    height: 2.80
+    reason: "西北次卧墙面涂装（w_mbath_east，主卫侧贴砖本侧涂漆；主卧侧另有一段见下）"
+  - id: paint_bedroom_nw_w_nw_south
+    type: paint_region
+    wall: w_nw_south
+    room: bedroom_nw
+    along: [0.00, 3.00]
+    height: 2.80
+    reason: "西北次卧墙面涂装（w_nw_south，主卧侧另有一段见下）"
+
+  # ── 客房 9.30m / 26.04㎡ ──
+  - id: paint_bedroom_se_w_be_north
+    type: paint_region
+    wall: w_be_north
+    room: bedroom_se
+    along: [0.00, 3.00]
+    height: 2.80
+    reason: "客房墙面涂装（w_be_north）"
+  - id: paint_bedroom_se_w_be_west
+    type: paint_region
+    wall: w_be_west
+    room: bedroom_se
+    along: [0.00, 3.15]
+    height: 2.80
+    reason: "客房墙面涂装（w_be_west，客餐厅侧另有一段见下）"
+  - id: paint_bedroom_se_w_east_upper
+    type: paint_region
+    wall: w_east_upper
+    room: bedroom_se
+    along: [0.00, 3.15]
+    height: 2.80
+    reason: "客房墙面涂装（w_east_upper）"
+
+  # ── 客餐厅 14.25m / 39.90㎡ ──
+  - id: paint_living_dining_w_be_west
+    type: paint_region
+    wall: w_be_west
+    room: living_dining
+    along: [0.00, 4.25]
+    height: 2.80
+    reason: "客餐厅墙面涂装（w_be_west，客房侧另有一段见上）"
+  - id: paint_living_dining_w_ent_south_w
+    type: paint_region
+    wall: w_ent_south_w
+    room: living_dining
+    along: [0.00, 2.60]
+    height: 2.80
+    reason: "客餐厅墙面涂装（w_ent_south_w，入户花园侧另有一段见上）"
+  - id: paint_living_dining_w_ent_west
+    type: paint_region
+    wall: w_ent_west
+    room: living_dining
+    along: [0.00, 0.50]
+    height: 2.80
+    reason: "客餐厅墙面涂装（w_ent_west 残段，入户花园侧另有一段见上）"
+  - id: paint_living_dining_w_foyer_east
+    type: paint_region
+    wall: w_foyer_east
+    room: living_dining
+    along: [0.00, 1.40]
+    height: 2.80
+    reason: "客餐厅墙面涂装（w_foyer_east）"
+  - id: paint_living_dining_w_liv_east
+    type: paint_region
+    wall: w_liv_east
+    room: living_dining
+    along: [0.00, 1.25]
+    height: 2.80
+    reason: "客餐厅墙面涂装（w_liv_east）"
+  - id: paint_living_dining_w_st_east
+    type: paint_region
+    wall: w_st_east
+    room: living_dining
+    along: [0.00, 4.25]
+    height: 2.80
+    reason: "客餐厅墙面涂装（w_st_east，书房侧另有一段见下）"
+
+  # ── 主卧 11.14m / 31.19㎡ ──
+  - id: paint_master_bedroom_w_mb_east
+    type: paint_region
+    wall: w_mb_east
+    room: master_bedroom
+    along: [0.00, 4.25]
+    height: 2.80
+    reason: "主卧墙面涂装（w_mb_east，书房侧另有一段见下）"
+  - id: paint_master_bedroom_w_mbath_east
+    type: paint_region
+    wall: w_mbath_east
+    room: master_bedroom
+    along: [1.76, 3.20]
+    height: 2.80
+    reason: "主卧墙面涂装（w_mbath_east z[2.86,4.30] 段；主卫侧同墙贴砖，本侧涂漆"
+  - id: paint_master_bedroom_w_mbath_south
+    type: paint_region
+    wall: w_mbath_south
+    room: master_bedroom
+    along: [0.00, 2.60]
+    height: 2.80
+    reason: "主卧墙面涂装（w_mbath_south；主卫门 d_mbath 从此墙穿入，该门洞按实扣除）"
+  - id: paint_master_bedroom_w_nw_south
+    type: paint_region
+    wall: w_nw_south
+    room: master_bedroom
+    along: [0.00, 1.60]
+    height: 2.80
+    reason: "主卧墙面涂装（w_nw_south x[2.60,4.20] 段，西北次卧侧另有一段见上）"
+  - id: paint_master_bedroom_w_strip_east
+    type: paint_region
+    wall: w_strip_east
+    room: master_bedroom
+    along: [0.00, 1.25]
+    height: 2.80
+    reason: "主卧墙面涂装（w_strip_east）"
+
+  # ── 书房 11.50m / 32.20㎡ ──
+  - id: paint_study_w_mb_east
+    type: paint_region
+    wall: w_mb_east
+    room: study
+    along: [0.00, 4.25]
+    height: 2.80
+    reason: "书房墙面涂装（w_mb_east，主卧侧另有一段见上）"
+  - id: paint_study_w_st_east
+    type: paint_region
+    wall: w_st_east
+    room: study
+    along: [0.00, 4.25]
+    height: 2.80
+    reason: "书房墙面涂装（w_st_east，客餐厅侧另有一段见上）"
+  - id: paint_study_w_st_north
+    type: paint_region
+    wall: w_st_north
+    room: study
+    along: [0.00, 3.00]
+    height: 2.80
+    reason: "书房墙面涂装（w_st_north）"
