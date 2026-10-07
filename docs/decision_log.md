@@ -1944,3 +1944,17 @@
   - **隔离铁律（源码级测试看守）**：`setCeilingZoneHighlightVisible` / `setCeilingZoneSolo` / `getCeilingZoneHighlightStatus` / `inspectCeilingZones` / `applyCeilingZoneColors` / `restoreCeilingZoneMaterials` 与 App 的播报段，函数体内**不得出现 `Hvac|hvac|WallTile|wall-tile`**（与贴砖检视态 R08/R10 同一手法）。
 - **关联文件**：`shared/ceiling-takeoff.ts`（新）、`shared/types.ts`、`shared/project-render-facts-schema.ts`、`shared/render/CeilingZoneBuilder.ts`、`shared/render/SceneBuilder.ts`、`config/ceiling.yaml`、`config/budget/base.json`、`server/budget-calculator.ts`、`server/routes.ts`、`server/mcp-server.ts`、`scripts/project/ceiling-takeoff.ts`（新）、`package.json`、`data/project-render-facts.json`、`tests/server/ceiling-takeoff.test.ts`、`tests/server/budget-calculator.test.ts`、`tests/server/render-facts-api.test.ts`。
 - **决策人**：业主。
+
+### DEC-2026-10-08-C02 窗帘盒人工从吊顶 ㎡ 行拆出，按延长米单列（rate 待报价）
+
+- **日期**：2026-10-08。触发：业主在看懂 C01 的分类小计后要求「拆窗帘盒人工」。
+- **问题**：C01 把木工人工统一按 40 元/㎡ 铺在「全部实心分区净面积 45.130㎡」上，其中窗帘盒 4.463㎡ 也按 ㎡ 计（≈¥178）。但窗帘盒的行业主口径是**元/延长米**（藏双轨、电动窗帘电源、与墙体/顶面收口都按米算），混在 ㎡ 里既对不上施工方报价单，也违反 README「没有合并项报价」。
+- **选定方案**：`config/budget/base.json` 的 `carpentry.labor` 从单对象改为**数组两条计价行**，`server/budget-calculator.ts` 的 `computeLabor` 同时兼容单对象与数组（其余分类不动）：
+  1. `ceiling_zones`（元/㎡，rate 40）：吊顶**板面** = 总净面积 − 窗帘盒 = 40.667㎡ → **¥1,627**；
+  2. `curtain_box_linear`（元/m，**rate: null = 待报价**）：数量 **17.85 延长米**，取自 `shared/ceiling-takeoff.ts` 的 `byClass.curtain_box.linearM`，与 3D 图例、CLI、API 同一份口径。
+- **rate 留空但不静默归零**：`BudgetCategory.pendingLabor` 显形输出 `{area:'curtain_box_linear', quantity:17.85, unit:'元/m', reason:'rate 待报价'}`，API/MCP 的预算快照直接带这个字段；报价回来后只需在 `base.json` 填一个数，不改代码。若把 rate 拍成 0，就是拿「拆分」掩护「少算一笔钱」——README「没有无依据决策」不允许。
+- **预算影响**：carpentry actual 由 ¥1,805 降到 **¥1,627**（−¥178，即窗帘盒那 4.463㎡ 的 ㎡ 计价整笔拆出）；`totalActual` 同步下移。**注意预算风险转向**：板面 ¥1,627 + 窗帘盒人工（17.85m × 未定费率）之和可能超过 carpentry 的 ¥5,000 预算——原口径把两者捆在一起时这个风险被掩盖了。取得施工方按米报价后必须与 ¥5,000 对账，超了走 DEC 调预算而不是改数量。
+- **未触及**：`shared/ceiling-takeoff.ts` 一行未改（窗帘盒的面积/延长米/分类小计口径 C01 已定）；不改其他分类的 labor 结构；不预设窗帘盒费率（示例：若 30 元/m 则 ¥536，**仅为算术示例，不是报价**）。
+- **验证**：`tests/server/budget-calculator.test.ts` 新增 1 条（板面量排除窗帘盒 + `pendingLabor` 精确等于 17.85m + base.json 两行结构）；`test:server` 678/678/0 → `verify:facts` / `verify:schedule` Exit 0 → `typecheck` Exit 0。
+- **关联文件**：`config/budget/base.json`、`server/budget-calculator.ts`、`shared/types.ts`（`LaborRate.rate` 可空、`BudgetCategoryRaw.labor` 可为数组、`BudgetCategory.pendingLabor`）、`tests/server/budget-calculator.test.ts`。
+- **决策人**：业主。

@@ -275,15 +275,37 @@ describe('BudgetCalculator', () => {
     const snapshot = calc.calculate(scheme);
     const carpentry = snapshot.categories.find((c) => c.key === 'carpentry');
     assert.ok(carpentry);
-    // area: 'ceiling_zones' → shared/ceiling-takeoff.ts 的实心分区净面积 45.130㎡ × 40 元/㎡。
+    // area: 'ceiling_zones' → shared/ceiling-takeoff.ts 的吊顶板面净面积（总净面积 45.130 − 窗帘盒 4.463 = 40.667㎡）× 40 元/㎡。
     // 旧口径按房间面积合计 142.92㎡（¥5,717），把无吊顶平顶/电梯井/入户花园都计了费。
     // 注意：人工费进 cat.actual（不是 autoActual），与 computeLabor 既有口径一致。
     assert.ok(
-      Math.abs(carpentry.actual - Math.round(40 * 45.13)) <= 2,
-      `carpentry labor should be ~1805 (40 元/㎡ × 45.13㎡), got ${carpentry.actual}`
+      Math.abs(carpentry.actual - Math.round(40 * (45.13 - 4.463))) <= 2,
+      `carpentry 板面人工应为 ~1627（40 元/㎡ × 40.667㎡），实际 ${carpentry.actual}`
     );
-    assert.ok(carpentry.actual < carpentry.budget, '按分区实算后木工人工应低于预算');
+    assert.ok(carpentry.actual < carpentry.budget, '按分区实算后木工板面人工应低于预算');
     assert.ok(!('ceiling' in JSON.parse(readFileSync('config/budget/base.json', 'utf8')).categories.carpentry.labor), 'base.json 不应再引用废弃的 ceiling 键');
+  });
+
+  it('DEC-2026-10-08-C02: 窗帘盒人工拆成延长米行，数量显形、金额待报价', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        hvac: { default: 'A1', roomOverrides: {} },
+        floor: { default: 'floor_tile_01', roomOverrides: {} },
+        wall: { default: 'wall_tile_01', roomOverrides: {} },
+        paint: { default: 'latex_paint_01', roomOverrides: {} },
+      },
+    };
+    const carpentry = calc.calculate(scheme).categories.find((c) => c.key === 'carpentry')!;
+    // 窗帘盒 5 区 17.85 延长米：数量必须显形，rate 未定所以不进 actual
+    assert.deepEqual(carpentry.pendingLabor, [
+      { area: 'curtain_box_linear', quantity: 17.85, unit: '元/m', reason: 'rate 待报价' },
+    ]);
+    // 板面行不含窗帘盒面积（4.463㎡ × 40 = ¥178 已从 actual 里拆出）
+    const raw = JSON.parse(readFileSync('config/budget/base.json', 'utf8')) as { categories: Record<string, { labor: Array<{ area: string }> }> };
+    assert.deepEqual(raw.categories.carpentry.labor.map((line) => line.area), ['ceiling_zones', 'curtain_box_linear']);
   });
 
   it('fixed labor rate is added as flat value', () => {

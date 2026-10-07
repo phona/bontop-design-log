@@ -425,6 +425,8 @@ export interface BudgetCategory {
   autoActual: number;
   status: 'draft' | 'ok' | 'near' | 'over' | 'reserved';
   notes: string;
+  /** 待报价的人工计价行：数量已实算，rate 未定，因此未计入 actual（显形而非静默归零）。 */
+  pendingLabor?: Array<{ area: string; quantity: number; unit: string; reason: string }>;
 }
 
 export interface BudgetAttribution {
@@ -1420,7 +1422,8 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
 };
 
 export interface LaborRate {
-  rate: number;
+  /** null = 待报价：数量照算并显形进 BudgetCategory.pendingLabor，但不计入 actual。 */
+  rate: number | null;
   unit: string;
   area: string;
 }
@@ -1428,7 +1431,8 @@ export interface LaborRate {
 export interface BudgetCategoryRaw {
   budget: number;
   material: number;
-  labor?: LaborRate;
+  /** 单条（既有分类）或多条（DEC-2026-10-08-C02 起 carpentry 按㎡/延长米分行）。 */
+  labor?: LaborRate | LaborRate[];
   actual: number;
   status: string;
   notes: string;

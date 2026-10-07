@@ -116,7 +116,9 @@ npm run takeoff:ceiling            # 分区表 + 工艺小计 + 显形项（重�
 npm run takeoff:ceiling -- --json  # 机器可读
 ```
 
-当前声明快照：19 个实心分区，净 **45.130㎡** / 展开 **77.053㎡**；石膏板吊顶 10 区 23.222㎡、铝扣板 3 区 16.366㎡（185 块 300×300）、窗帘盒 5 区 4.463㎡（**17.85 延长米**）、隐藏晾衣架吊顶 1 区 1.080㎡。查询出口：`GET /api/ceiling/takeoff`、MCP `get_ceiling_takeoff`；木工人工量已从“房间面积近似（142.92㎡）”改为分区实算。显形项（平面重叠、未归类、未计量分区）见 `computeCeilingTakeoff()` 的 `overlaps` / `unclassifiedZoneIds` / `excludedIds`，未裁定前不当作 resolved。
+当前声明快照：19 个实心分区，净 **45.130㎡** / 展开 **77.053㎡**；石膏板吊顶 10 区 23.222㎡、铝扣板 3 区 16.366㎡（185 块 300×300）、窗帘盒 5 区 4.463㎡（**17.85 延长米**）、隐藏晾衣架吊顶 1 区 1.080㎡。查询出口：`GET /api/ceiling/takeoff`、MCP `get_ceiling_takeoff`；木工人工量已从"房间面积近似（142.92㎡）"改为分区实算。显形项（平面重叠、未归类、未计量分区）见 `computeCeilingTakeoff()` 的 `overlaps` / `unclassifiedZoneIds` / `excludedIds`，未裁定前不当作 resolved。
+
+计价口径（DEC-2026-10-08-C02）：木工人工分两行——**板面**（石膏板+铝扣板+晾衣架吊顶）40 元/㎡ × 40.667㎡，**窗帘盒**按延长米 17.85m 单列，费率待报价（数量已显形在预算快照的 `pendingLabor`，取到报价后只填 `config/budget/base.json` 的 `rate`，不改代码）。
 
 ## 核心原则
 

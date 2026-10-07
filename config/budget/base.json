@@ -55,14 +55,23 @@
     "carpentry": {
       "budget": 5000,
       "material": 0,
-      "labor": {
-        "rate": 40,
-        "unit": "元/㎡",
-        "area": "ceiling_zones"
-      },
+      "labor": [
+        {
+          "rate": 40,
+          "unit": "元/㎡",
+          "area": "ceiling_zones",
+          "note": "吊顶板面（石膏板 + 铝扣板 + 隐藏晾衣架吊顶）按 config/ceiling.yaml 逐分区实算净面积计价；窗帘盒已拆到 curtain_box_linear，不重复计"
+        },
+        {
+          "rate": null,
+          "unit": "元/m",
+          "area": "curtain_box_linear",
+          "note": "窗帘盒人工按延长米单列（DEC-2026-10-08-C02，README「没有合并项报价」）；数量已由 shared/ceiling-takeoff.ts 实算并显形在 BudgetCategory.pendingLabor，取得施工方报价后填 rate"
+        }
+      ],
       "actual": 0,
       "status": "draft",
-      "notes": "厨卫铝扣板吊顶 + 客餐厅局部吊顶，层高 3.0m。人工量按 config/ceiling.yaml 逐分区实算（shared/ceiling-takeoff.ts），不再按房间面积近似；工艺小计/窗帘盒延长米/铝扣板板块数见 GET /api/ceiling/takeoff，报价时须逐项列（没有合并项报价）。"
+      "notes": "厨卫铝扣板吊顶 + 客餐厅局部吊顶，层高 3.0m。人工量按 config/ceiling.yaml 逐分区实算（shared/ceiling-takeoff.ts），不再按房间面积近似；板面按㎡、窗帘盒按延长米分行，数量见 GET /api/ceiling/takeoff，报价时须逐项列（没有合并项报价）。"
     },
     "painting": {
       "budget": 11500,

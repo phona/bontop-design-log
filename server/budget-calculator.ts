@@ -42,6 +42,13 @@ export class BudgetCalculator {
     private rulesConfig: DesignRulesConfig
   ) {}
 
+  /**
+   * 一个人工费分类可以有多条计价行（DEC-2026-10-08-C02：窗帘盒从吊顶 40 元/㎡ 里拆出来，
+   * 改按延长米单列——README「没有合并项报价」）。`raw.labor` 兼容两种写法：
+   * 单对象（既有各分类）或数组（carpentry）。
+   * rate 为 null = 待报价：**不计入 actual，但数量必须显形**（cat.pendingLabor），
+   * 否则「拆分」会变成「悄悄少算一笔钱」。
+   */
   private computeLabor(
     categories: BudgetCategory[],
     baseRaw: Record<string, BudgetCategoryRaw>,
@@ -52,8 +59,10 @@ export class BudgetCalculator {
     for (const cat of categories) {
       const raw = baseRaw[cat.key];
       if (!raw?.labor) continue;
+      const laborEntries = Array.isArray(raw.labor) ? raw.labor : [raw.labor];
 
-      const { rate, area } = raw.labor;
+      for (const labor of laborEntries) {
+      const { rate, area } = labor;
       let quantity = 0;
 
       switch (area) {
@@ -73,12 +82,17 @@ export class BudgetCalculator {
         case 'ceiling':
           quantity = rooms.reduce((sum, r) => sum + r.width * r.depth, 0);
           break;
-        // 吊顶实算口径：config/ceiling.yaml 的实心分区净面积合计
-        // （石膏板 + 铝扣板 + 窗帘盒 + 晾衣架吊顶，ac_indoor 不计）。
+        // 吊顶板面人工（石膏板 + 铝扣板 + 隐藏晾衣架吊顶）按实算净面积计价；
+        // 窗帘盒已按 DEC-2026-10-08-C02 拆到 curtain_box_linear，不重复计。
         // 分类小计/延长米/板块数见 takeoff.byClass，由 GET /api/ceiling/takeoff 与
         // MCP get_ceiling_takeoff 输出，报价时按 README「没有合并项报价」逐项列。
         case 'ceiling_zones':
-          quantity = takeoff.totalNetAreaM2;
+          quantity = takeoff.totalNetAreaM2 - takeoff.curtainBoxM2;
+          break;
+        // 窗帘盒人工：按延长米（行业主口径，与算量子系统的 byClass.curtain_box.linearM 同源）。
+        // rate 待报价时数量照样显形（见函数末尾 pendingLabor）。
+        case 'curtain_box_linear':
+          quantity = takeoff.curtainBoxLinearM;
           break;
         case 'paint_wall':
           quantity = rooms.reduce((sum, r) => sum + (r.width + r.depth) * 2 * r.height * 0.75, 0);
@@ -114,12 +128,19 @@ export class BudgetCalculator {
           break;
         }
         case 'fixed':
+          if (rate === null || rate === undefined) break;
           cat.actual += rate;
           continue;
         default:
           continue;
       }
+      if (rate === null || rate === undefined) {
+        // 待报价：数量入 pendingLabor 显形，金额不编（README：没有无依据决策）
+        cat.pendingLabor = [...(cat.pendingLabor ?? []), { area, quantity, unit: labor.unit ?? '', reason: 'rate 待报价' }];
+        continue;
+      }
       cat.actual += Math.round(rate * quantity);
+      }
     }
   }
 
