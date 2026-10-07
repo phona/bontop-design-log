@@ -16,6 +16,7 @@ import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import type { PresentationStateStore } from './presentation-state.js';
 import { filterCurtainElements, loadPhaseBudgetMeta, loadPhaseScopes, parsePhaseId } from './phase-scope.js';
 import { buildTileCostComparison, loadTileComparisonConfig } from './tile-cost-comparison.js';
+import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import type { ResolvedLayout } from '../shared/types.js';
 
 export interface ApiDeps {
@@ -164,6 +165,15 @@ export function createApiRouter(deps: ApiDeps): Router {
       res.json(loadCeilingConfig());
     } catch (err) {
       res.status(500).json({ error: 'failed to load ceiling config' });
+    }
+  });
+
+  router.get('/ceiling/takeoff', (_req, res) => {
+    try {
+      const zones = deps.getProjectRenderFacts?.()?.ceiling ?? loadCeilingConfig();
+      res.json(computeCeilingTakeoff(zones, deps.catalog.getRooms().map((room) => ({ id: room.id, height: room.height }))));
+    } catch (err) {
+      res.status(500).json({ error: 'failed to compute ceiling takeoff' });
     }
   });
 

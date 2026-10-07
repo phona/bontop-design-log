@@ -105,6 +105,19 @@ cat docs/decision_log.md
 
 点击“湿度”按钮：各房间按结露/发霉风险等级着色（绿低/黄中/红高），高风险重点表面（回南天地面、朝北外墙、热桥角部）以脉冲标记显示，点击房间查看因子拆解。回南天窗口（02-15~04-15）内冷表面因子自动生效，日照面板会显示提示条。分析数据：`GET /api/analysis/humidity?date=MM-DD`，MCP 工具 `get_humidity_risks`。湿度因子声明见 `config/environment.yaml` 的 `humidity:` 段。
 
+### 吊顶分区高亮与算量（DEC-2026-10-08-C01）
+
+机电组点“吊顶分区”按钮：按 `config/ceiling.yaml` 的逐分区声明上色——**每个分区一个颜色**（同工艺同一色相带，按分区 id 哈希取点，新增/删除分区不打乱已有颜色），图例按工艺分组并给出净面积/展开面积/延长米（窗帘盒）/板块数（铝扣板），点图例某行可隔离该分区。hover 任一分区即在“机电信息”里看到工艺、净面积、展开面积与板块数。
+
+算量与 3D 严格同源（同一个函数 `shared/ceiling-takeoff.ts`，几何口径与 `CeilingZoneBuilder` 一致）：
+
+```bash
+npm run takeoff:ceiling            # 分区表 + 工艺小计 + 显形项（重叠/未归类/不计量）
+npm run takeoff:ceiling -- --json  # 机器可读
+```
+
+当前声明快照：19 个实心分区，净 **45.130㎡** / 展开 **77.053㎡**；石膏板吊顶 10 区 23.222㎡、铝扣板 3 区 16.366㎡（185 块 300×300）、窗帘盒 5 区 4.463㎡（**17.85 延长米**）、隐藏晾衣架吊顶 1 区 1.080㎡。查询出口：`GET /api/ceiling/takeoff`、MCP `get_ceiling_takeoff`；木工人工量已从“房间面积近似（142.92㎡）”改为分区实算。显形项（平面重叠、未归类、未计量分区）见 `computeCeilingTakeoff()` 的 `overlaps` / `unclassifiedZoneIds` / `excludedIds`，未裁定前不当作 resolved。
+
 ## 核心原则
 
 1. **没有口头变更**：任何改动必须进 Git。

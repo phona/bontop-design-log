@@ -10,14 +10,26 @@ import type {
   BudgetCategoryRaw,
   PhaseId,
 } from '../shared/types.js';
+import { computeCeilingTakeoff, type CeilingTakeoff } from '../shared/ceiling-takeoff.js';
+import { loadCeilingConfig } from './config-loader.js';
 import type { ProjectCatalog } from './project-catalog.js';
 import { isBudgetTopicIncluded, loadPhaseScopes } from './phase-scope.js';
 import { controlPathForPhase, loadPhaseControlAuthority } from './phase-control.js';
+
+/**
+ * 吊顶工程量：按 `config/ceiling.yaml` 的逐分区声明实算，不再按房间面积近似。
+ * 工艺/计价类别（trade）拆分见 shared/ceiling-takeoff.ts；返回值为原始浮点，不取整。
+ */
+function ceilingTakeoff(catalog: ProjectCatalog): CeilingTakeoff {
+  return computeCeilingTakeoff(loadCeilingConfig(), catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
+}
 
 const QUANTITY_FORMULAS: Record<string, (room: RoomLayout) => number> = {
   floorArea: (room) => room.area ?? room.width * room.depth,
   wetWallArea: (room) => (room.width + room.depth) * 2 * room.height * 0.7,
   paintWallArea: (room) => (room.width + room.depth) * 2 * room.height * 0.75,
+  // 已废弃：吊顶算量请用 shared/ceiling-takeoff.ts 的逐分区实算（见 computeLabor 的 ceiling_zones）。
+  // 这个房间面积别名会把没有吊顶的平顶也计费，仅为兼容旧 lineItem 声明而保留。
   ceilingArea: (room) => room.area ?? room.width * room.depth,
   linearKitchen: (room) => room.depth * 0.8,
   doorCount: () => 1,
@@ -34,7 +46,8 @@ export class BudgetCalculator {
     categories: BudgetCategory[],
     baseRaw: Record<string, BudgetCategoryRaw>,
     rooms: RoomLayout[],
-    phase: PhaseId
+    phase: PhaseId,
+    takeoff: CeilingTakeoff
   ): void {
     for (const cat of categories) {
       const raw = baseRaw[cat.key];
@@ -55,8 +68,17 @@ export class BudgetCalculator {
               .reduce((sum, room) => sum + (room.area ?? room.width * room.depth), 0);
           }
           break;
+        // 已废弃：按房间面积近似吊顶人工量（把无吊顶平顶/电梯井/入户花园都计了费）。
+        // 保留分支只为兜底，新口径一律用 ceiling_zones；删除前须确认没有分类再引用它。
         case 'ceiling':
           quantity = rooms.reduce((sum, r) => sum + r.width * r.depth, 0);
+          break;
+        // 吊顶实算口径：config/ceiling.yaml 的实心分区净面积合计
+        // （石膏板 + 铝扣板 + 窗帘盒 + 晾衣架吊顶，ac_indoor 不计）。
+        // 分类小计/延长米/板块数见 takeoff.byClass，由 GET /api/ceiling/takeoff 与
+        // MCP get_ceiling_takeoff 输出，报价时按 README「没有合并项报价」逐项列。
+        case 'ceiling_zones':
+          quantity = takeoff.totalNetAreaM2;
           break;
         case 'paint_wall':
           quantity = rooms.reduce((sum, r) => sum + (r.width + r.depth) * 2 * r.height * 0.75, 0);
@@ -246,7 +268,7 @@ export class BudgetCalculator {
       };
     });
 
-    this.computeLabor(categories, budgetRaw.categories, this.catalog.getRooms(), phase);
+    this.computeLabor(categories, budgetRaw.categories, this.catalog.getRooms(), phase, ceilingTakeoff(this.catalog));
 
     // Status computed AFTER computeLabor: labor can push a category over budget.
     for (const cat of categories) {

@@ -1,6 +1,21 @@
 import type { Topic, CurrentScheme, TopicSelection, CurtainPresentationState, CurtainState, ElectricalTopology } from '@shared/types';
 import { getTopicsForObject } from '../data/objectMapping.js';
 import { setupCollapsiblePanel } from './CollapsiblePanel.js';
+import { TRADE_LABEL } from '../render/analysis/ceiling-zone-colors.js';
+import type { CeilingTradeClass } from '@shared/ceiling-takeoff';
+
+/** 吊顶分区 hover 信息：声明字段 + HouseScene 挂上的算量（DEC-2026-10-08-C01）。 */
+export interface CeilingHoverInfo {
+  room?: string;
+  type?: string;
+  trade?: CeilingTradeClass;
+  area?: [number, number, number, number];
+  thickness?: number;
+  height?: number;
+  netAreaM2?: number;
+  expandedAreaM2?: number;
+  panelCount?: number;
+}
 
 export interface HoverTarget {
   objectId: string;
@@ -26,7 +41,7 @@ export interface HoverTarget {
     controlsIncomplete?: boolean; controlsPending?: boolean; notForConstruction?: boolean;
     representation?: string; relation?: string;
   };
-  ceiling?: { area?: [number, number, number, number]; thickness?: number; type?: string; room?: string; height?: number };
+  ceiling?: CeilingHoverInfo;
 }
 
 export interface InfoPanelCallbacks {
@@ -189,9 +204,13 @@ export class InfoPanel {
       const c = target.ceiling;
       if (c.room) fields.push(['房间', c.room]);
       if (c.type) fields.push(['类型', c.type]);
+      if (c.trade) fields.push(['工艺', TRADE_LABEL[c.trade as keyof typeof TRADE_LABEL] ?? String(c.trade)]);
       if (c.area) fields.push(['范围', `x[${c.area[0]},${c.area[2]}] z[${c.area[1]},${c.area[3]}]`]);
+      if (c.netAreaM2 !== undefined) fields.push(['净面积', `${c.netAreaM2.toFixed(3)}㎡（展开 ${(c.expandedAreaM2 ?? 0).toFixed(3)}㎡）`]);
+      if (c.panelCount !== undefined) fields.push(['铝扣板块数', `${c.panelCount} 块`]);
       if (c.thickness !== undefined) fields.push(['厚度', `${c.thickness}m`]);
       if (c.height !== undefined) fields.push(['标高', `${c.height}m`]);
+      fields.push(['提示', '显示层；报价数量以 npm run takeoff:ceiling / GET /api/ceiling/takeoff 为准']);
     } else if (target.infrastructure) {
       const i = target.infrastructure;
       if (i.fixtureType) fields.push(['点位类型', i.fixtureType]);

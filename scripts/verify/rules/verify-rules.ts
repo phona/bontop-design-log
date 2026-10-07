@@ -1,6 +1,7 @@
 import { ProjectCatalog } from '../../../server/project-catalog.js';
 import { VALID_CEILING_TYPES } from '../../../server/config-loader.js';
 import { FURNITURE_DIMS } from '../../../shared/types.js';
+import { CEILING_TRADE_CLASSES } from '../../../shared/ceiling-takeoff.js';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 
@@ -65,7 +66,7 @@ function main(): void {
 
   const electrical = yaml.load(fs.readFileSync('config/electrical.yaml', 'utf-8')) as Positioned[];
   const plumbing = yaml.load(fs.readFileSync('config/plumbing.yaml', 'utf-8')) as Positioned[];
-  const ceiling = yaml.load(fs.readFileSync('config/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; corner_radii?: Record<string, number>; concave_fillets?: Record<string, number>; buckle_panel?: { module: number; seam_width?: number; seam_color?: string }; inspection_layer?: string; inspection_opacity?: number }>;
+  const ceiling = yaml.load(fs.readFileSync('config/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; corner_radii?: Record<string, number>; concave_fillets?: Record<string, number>; buckle_panel?: { module: number; seam_width?: number; seam_color?: string }; inspection_layer?: string; inspection_opacity?: number; trade?: string }>;
   const overlay = yaml.load(fs.readFileSync('config/layout/overlay.yaml', 'utf-8')) as { suppress: OverlaySuppress[] };
   const houseYaml = yaml.load(fs.readFileSync('config/house.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }>; gift_areas: Array<{ id: string; name: string }> };
   const modelGeom = yaml.load(fs.readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }> };
@@ -148,6 +149,18 @@ function main(): void {
     }
     if (!VALID_CEILING_TYPES.includes(c.type as (typeof VALID_CEILING_TYPES)[number])) {
       report('error', `[ceiling_type] ceiling/${c.id}: 未知 type "${c.type}"`);
+    }
+    // === trade（工艺/计价类别）：算量与高亮分区的唯一归类来源，禁止与渲染类型矛盾 ===
+    if (c.trade !== undefined) {
+      if (!CEILING_TRADE_CLASSES.includes(c.trade as (typeof CEILING_TRADE_CLASSES)[number])) {
+        report('error', `[ceiling_trade] ceiling/${c.id}: 未知 trade "${c.trade}" (expect ${CEILING_TRADE_CLASSES.join('/')})`);
+      } else if (c.type === 'aluminum_buckle' && c.trade !== 'aluminum_buckle') {
+        report('error', `[ceiling_trade] ceiling/${c.id}: type aluminum_buckle 的 trade 必须是 aluminum_buckle（实测 "${c.trade}"）`);
+      } else if ((c.trade === 'curtain_box' || c.trade === 'drying_rack') && c.type !== 'drop' && c.type !== 'integrated') {
+        report('error', `[ceiling_trade] ceiling/${c.id}: trade ${c.trade} 只能配 type drop/integrated（实测 "${c.type}"）`);
+      } else if (c.trade === 'gypsum_board' && c.type !== 'drop' && c.type !== 'integrated') {
+        report('error', `[ceiling_trade] ceiling/${c.id}: trade gypsum_board 只能配 type drop/integrated（实测 "${c.type}"）`);
+      }
     }
     if (c.corner_radius !== undefined && (!Number.isFinite(c.corner_radius) || c.corner_radius < 0)) {
       report('error', `[ceiling_corner_radius] ceiling/${c.id}: corner_radius must be non-negative`);

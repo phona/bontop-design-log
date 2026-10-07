@@ -12,6 +12,7 @@ import {
   type RenderLightingOverride,
   type LightingRenderConfig,
 } from './types.js';
+import { CEILING_TRADE_CLASSES } from './ceiling-takeoff.js';
 
 const finiteNumber = z.number().refine(Number.isFinite, 'must be finite');
 const nonEmpty = z.string().trim().min(1);
@@ -62,6 +63,8 @@ export const CeilingZoneSchema = z.object({
     sw: finiteNumber.positive().optional(),
   }).strict().optional(),
   buckle_panel: z.object({ module: finiteNumber, seam_width: finiteNumber.optional(), seam_color: z.string().optional() }).strict().optional(),
+  // 工艺/计价类别（算量与高亮口径）。strict schema：错字直接在这里报错，不进算量。
+  trade: z.enum(CEILING_TRADE_CLASSES).optional(),
   inspection_layer: z.string().trim().min(1).optional(), inspection_opacity: finiteNumber.min(0).max(1).optional(), x: finiteNumber.optional(), z: finiteNumber.optional(), height: finiteNumber.optional(), model: z.string().optional(), power_point: z.string().optional(), note: z.string().optional(),
 }).strict();
 

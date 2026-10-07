@@ -966,6 +966,10 @@ export const VALID_CEILING_TYPES = [
   'aluminum_buckle',
 ] as const;
 
+/** 吊顶工艺/计价类别（算量与高亮口径，与渲染类型正交）。真源在 shared/ceiling-takeoff.ts。 */
+import type { CeilingTradeClass } from './ceiling-takeoff.js';
+export type { CeilingTradeClass };
+
 export interface CeilingZone {
   id: string;
   room: string;
@@ -979,6 +983,12 @@ export interface CeilingZone {
   concave_fillets?: Partial<Record<'nw' | 'ne' | 'se' | 'sw', number>>;
   /** 铝扣板分格缝声明（仅 type: aluminum_buckle 生效）。 */
   buckle_panel?: { module: number; seam_width?: number; seam_color?: string };
+  /**
+   * 工艺/计价类别：与渲染类型（type）正交，供算量与高亮分区着色用。
+   * 省略时按 type 回退（aluminum_buckle→aluminum_buckle，其余 drop/integrated→gypsum_board），
+   * **不靠 id 命名推断**（见 shared/ceiling-takeoff.ts）。
+   */
+  trade?: CeilingTradeClass;
   inspection_layer?: string;
   inspection_opacity?: number;
   x?: number;

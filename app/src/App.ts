@@ -20,6 +20,9 @@ import { CommandPalette } from './ui/CommandPalette.js';
 import { TopDownButton } from './ui/TopDownButton.js';
 import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/HvacCoordinationButton.js';
 import { WallTileButton, type WallTileButtonState } from './ui/WallTileButton.js';
+import { CeilingZoneButton, type CeilingZoneButtonState } from './ui/CeilingZoneButton.js';
+import { CeilingZonePanel } from './render/analysis/CeilingZonePanel.js';
+import { TRADE_LABEL } from './render/analysis/ceiling-zone-colors.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
 import { PlacementPanel } from './ui/PlacementPanel.js';
 import { SunlightSystem } from './render/SunlightSystem.js';
@@ -63,6 +66,11 @@ export class App {
   private wallTileButton: WallTileButton | null = null;
   private wallTileState: WallTileButtonState = 'loading';
   private wallTileVisible = false;
+  // 吊顶分区高亮：独立子系统（DEC-2026-10-08-C01），与贴砖/HVAC/MEP 平级且互不引用
+  private ceilingZoneButton: CeilingZoneButton | null = null;
+  private ceilingZoneState: CeilingZoneButtonState = 'loading';
+  private ceilingZoneVisible = false;
+  private ceilingZonePanel: CeilingZonePanel | null = null;
   private mepCoordinationVisible = false;
   private mepCoordinationReady = false;
   private mepLintResult: MepLintResult | null = null;
@@ -171,6 +179,7 @@ export class App {
     this.setupMepCoordinationButton();
     this.setupElectricalTopologyButton();
     this.setupWallTileButton();
+    this.setupCeilingZoneButton();
     const mepLintBadge = document.getElementById('mep-lint-badge');
     if (mepLintBadge) renderMepLintBadge(mepLintBadge, this.mepLintResult);
     this.setupDragHandlers();
@@ -264,6 +273,9 @@ export class App {
     this.readyState = 'ready';
     // 贴砖检视态不依赖 HVAC projection 的就绪时序，只等场景本身加载完成即可用。
     this.setWallTileState('ready');
+    // 吊顶分区高亮同样只依赖场景本身：分区声明随 /api/project 的 house.ceilingZones 一起到。
+    this.ceilingZonePanel = new CeilingZonePanel(this.houseScene);
+    this.setCeilingZoneState('ready');
     this.resolveReady();
     } catch (error) {
       this.readyState = 'failed';
@@ -515,6 +527,51 @@ export class App {
       this.houseScene.setWallTileInspectionVisible(false);
     }
     this.wallTileButton?.sync();
+  }
+
+  // ─── 吊顶分区高亮（DEC-2026-10-08-C01）───
+  // 与贴砖检视态完全平级：自己的按钮、自己的面板、自己的开关函数；不引用 HVAC/MEP/贴砖。
+
+  private setupCeilingZoneButton(): void {
+    this.ceilingZoneButton = new CeilingZoneButton({
+      onToggle: () => this.setCeilingZoneHighlightVisible(!this.ceilingZoneVisible),
+      getState: () => this.ceilingZoneState,
+      getActive: () => this.ceilingZoneVisible,
+    });
+  }
+
+  private setCeilingZoneHighlightVisible(visible: boolean): void {
+    this.ceilingZoneVisible = this.ceilingZoneState === 'ready' && visible;
+    this.houseScene.setCeilingZoneHighlightVisible(this.ceilingZoneVisible);
+    this.ceilingZoneButton?.sync();
+    this.requestRender();
+    if (this.ceilingZoneVisible) {
+      this.ceilingZonePanel?.show();
+      // 开启即播报：3D 里「看得出一块吊顶」不等于「量得出多少面积」，图与数必须同时给出。
+      const s = this.houseScene.getCeilingZoneHighlightStatus();
+      const classes = Object.entries(s.byClass)
+        .filter(([, v]) => v.zones > 0)
+        .map(([k, v]) => `${TRADE_LABEL[k as keyof typeof TRADE_LABEL] ?? k} ${v.netAreaM2.toFixed(2)}㎡`
+          + `${k === 'curtain_box' && v.linearM > 0 ? `/${v.linearM.toFixed(2)}m` : ''}`
+          + `${v.panelCount > 0 ? `/${v.panelCount}块` : ''}`)
+        .join(' · ');
+      this.showToast(
+        `吊顶分区 ${s.zonesInScene} 个：净 ${s.totalNetAreaM2.toFixed(2)}㎡（展开 ${s.totalExpandedAreaM2.toFixed(2)}㎡）｜${classes}`
+        + `${s.unclassifiedZoneIds.length > 0 ? `｜未归类 ${s.unclassifiedZoneIds.join('、')}` : ''}`
+      );
+      this.ceilingZonePanel?.refresh();
+    } else {
+      this.ceilingZonePanel?.hide();
+    }
+  }
+
+  private setCeilingZoneState(state: CeilingZoneButtonState): void {
+    this.ceilingZoneState = state;
+    if (state !== 'ready') {
+      this.ceilingZoneVisible = false;
+      this.houseScene.setCeilingZoneHighlightVisible(false);
+    }
+    this.ceilingZoneButton?.sync();
   }
 
   private setupMepCoordinationButton(): void {

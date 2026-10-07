@@ -59,11 +59,17 @@ import { buildHvacGeometry, type HvacEntityIndex } from '@shared/render/HvacGeom
 import { buildHvacBuilderSources, type HvacBuilderSources } from '@shared/render/HvacBuilder';
 import { buildInfrastructure, type InfrastructureWallSegment } from '@shared/render/InfrastructureBuilder';
 import { computeLayoutBounds, DEFAULT_LAYOUT_BOUNDS, type LayoutBounds } from '@shared/render/layout-bounds';
+import { computeCeilingTakeoff, type CeilingTakeoff, type CeilingTradeClass } from '@shared/ceiling-takeoff';
+import type { CeilingZone } from '@shared/types';
+import { ceilingZoneColor, type CeilingZoneColorMode } from './analysis/ceiling-zone-colors.js';
 import type { WallSegment, ResolvedRoom, ResolvedOpening } from '@shared/types';
 
 export const GLASS_THICKNESS = 0.024;
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
+/** 吊顶分区高亮的显示参数（DEC-2026-10-08-C01）：不透明度高于贴砖检视态——分区是"面"不是"带"。 */
+const CEILING_ZONE_HIGHLIGHT_OPACITY = 0.92;
+const CEILING_ZONE_SOLO_DIM_OPACITY = 0.14;
 
 interface CurtainRegistryEntry {
   id: string;
@@ -109,6 +115,13 @@ export class HouseScene implements SceneApi {
   private wallMeshes: THREE.Mesh[] = [];
   private ceilingMeshes: THREE.Mesh[] = [];
   private ceilingRaycast: Array<THREE.Mesh['raycast']> = [];
+  // ─── 吊顶分区高亮（DEC-2026-10-08-C01）───
+  // 做成 HouseScene 的状态而不是一次性 traverse：setMode / buildFromCatalog 重建 /
+  // MEP 总览都会重写天花可见性与材质，高亮必须在这些路径之后重放，否则"开着开着就灭了"。
+  private ceilingZoneHighlightActive = false;
+  private ceilingZoneHighlightMode: CeilingZoneColorMode = 'zone';
+  private ceilingZoneSoloId: string | null = null;
+  private ceilingZoneOriginalMaterials = new Map<THREE.Mesh, THREE.Material>();
   private curtainRegistry = new Map<string, CurtainRegistryEntry>();
   private curtainPresentationState: CurtainPresentationState = { default: 'open', roomOverrides: {}, updatedAt: '' };
   private glassMeshes: THREE.Mesh[] = [];
@@ -662,6 +675,10 @@ export class HouseScene implements SceneApi {
     this.textureManager.setMeshes(this.floorMeshes, this.wallMeshes, this.ceilingMeshes);
     // 重建后按当前模式恢复天花可见性（新 ceiling mesh 默认 visible=true，
     // 否则轨道/俯视模式下天花板会盖住房间，直到下一次模式切换才被隐藏）
+    // 高亮激活时先丢掉旧快照（旧 mesh 已被移出场景），再由 setCeilingVisible 重新上色。
+    if (this.ceilingZoneHighlightActive) this.restoreCeilingZoneMaterials();
+    // hover 用的分区算量缓存随重建失效
+    this.ceilingZoneInfoCache = null;
     this.setCeilingVisible(this._mode === 'first-person');
     const materials = HouseScene.extractMaterials(projectData.topics);
     this.textureManager.loadMaterials(materials);
@@ -1656,6 +1673,250 @@ export class HouseScene implements SceneApi {
       }
       material.needsUpdate = true;
     }
+    // 高亮激活时重放分区配色：本函数会在 setMode / MEP 总览 / 重建后被反复调用，
+    // 不重放就会出现"开着开关了个模式，高亮灭了"。
+    if (this.ceilingZoneHighlightActive) this.applyCeilingZoneColors();
+  }
+
+  // ─── 吊顶分区高亮（DEC-2026-10-08-C01）───────────────────────────────
+  // 与 pipe-chase 检视态、贴砖检视态同一手法但**互不引用**：层标签隔离、各自的开关与恢复路径。
+  // 唯一区别：高亮按 zone 上色（不是开关），因此需要"配色模式 + solo 隔离"两个状态。
+
+  /**
+   * 打开/关闭「吊顶分区高亮」。开启期间强制天花可见——轨道/俯视模式下 setCeilingVisible(false)
+   * 会把天花藏掉，而"一键看见哪里要吊顶"必须看得见；关闭后恢复模式默认可见性。
+   */
+  setCeilingZoneHighlightVisible(visible: boolean): void {
+    if (!visible) {
+      this.restoreCeilingZoneMaterials();
+      this.ceilingZoneSoloId = null;
+    }
+    this.ceilingZoneHighlightActive = visible;
+    if (visible) {
+      this.setCeilingVisible(true, CEILING_ZONE_HIGHLIGHT_OPACITY);
+    } else {
+      // 恢复模式默认（第一人称显示，轨道/俯视隐藏；MEP 总览期间保持半透明）
+      if (this.mepOverviewState) this.setCeilingVisible(true, this.mepOverviewState.ceilingOpacity);
+      else this.setCeilingVisible(this._mode === 'first-person');
+    }
+    this.requestRender();
+  }
+
+  /** 配色模式：'zone' = 每分区独立色（默认）；'trade' = 按工艺类别归并。 */
+  setCeilingZoneHighlightMode(mode: CeilingZoneColorMode): void {
+    this.ceilingZoneHighlightMode = mode;
+    if (this.ceilingZoneHighlightActive) this.applyCeilingZoneColors();
+    this.requestRender();
+  }
+
+  /** 隔离单个分区（图例行点击）：该区满色，其余压暗；传 null 取消隔离。 */
+  setCeilingZoneSolo(zoneId: string | null): void {
+    this.ceilingZoneSoloId = zoneId;
+    if (this.ceilingZoneHighlightActive) {
+      if (zoneId === null) {
+        // 取消隔离时清掉上一轮压暗，重新按配色铺一遍
+        this.restoreCeilingZoneMaterials();
+        this.applyCeilingZoneColors();
+      } else {
+        this.applyCeilingZoneColors();
+      }
+    }
+    this.requestRender();
+  }
+
+  /**
+   * 给每个吊顶分区上色。必须走 `exportRoot.traverse` 而不是 `this.ceilingMeshes`：
+   * `SceneBuilder` 把 `ceilingPersistent`（圆角/阴角分区，含 ceiling_master_ac）排除在
+   * ceilingMeshes 之外，只用那个数组会漏掉主卧门头盒。
+   */
+  private applyCeilingZoneColors(): void {
+    this.exportRoot.traverse((object) => {
+      const type = object.userData?.type;
+      if (type !== 'ceiling_zone' && type !== 'ceiling_zone_solid') return;
+      const mesh = object as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const objectId = String(mesh.userData?.objectId ?? '');
+      const zoneId = objectId.startsWith('ceiling:') ? objectId.slice('ceiling:'.length) : '';
+      if (!zoneId) return;
+      if (!this.ceilingZoneOriginalMaterials.has(mesh)) {
+        this.ceilingZoneOriginalMaterials.set(mesh, (mesh.material as THREE.Material).clone());
+      }
+      const ceiling = (mesh.userData?.ceiling ?? {}) as { trade?: CeilingTradeClass };
+      const soloDim = this.ceilingZoneSoloId !== null && this.ceilingZoneSoloId !== zoneId;
+      const material = mesh.material as THREE.MeshStandardMaterial;
+      if (material instanceof THREE.MeshStandardMaterial) {
+        material.color.set(ceilingZoneColor(zoneId, ceiling.trade ?? null, this.ceilingZoneHighlightMode));
+        material.transparent = true;
+        material.opacity = soloDim ? CEILING_ZONE_SOLO_DIM_OPACITY : CEILING_ZONE_HIGHLIGHT_OPACITY;
+        material.depthTest = false;
+        material.depthWrite = false;
+        material.needsUpdate = true;
+      }
+      // 真透视：关掉深度测试，吊顶分区可穿过墙体家具被看到（与贴砖检视态同手法）
+      mesh.visible = true;
+      mesh.renderOrder = 60;
+    });
+  }
+
+  /** 关闭高亮时按快照还原材质与可见性，不写死默认值（与 inspectionInitial 同一原则）。 */
+  private restoreCeilingZoneMaterials(): void {
+    for (const [mesh, material] of this.ceilingZoneOriginalMaterials) {
+      mesh.material = material;
+      mesh.renderOrder = 0;
+    }
+    this.ceilingZoneOriginalMaterials.clear();
+  }
+
+  /** 场景里真实存在的吊顶分区（按 objectId 去重，含 persistent 区）。 */
+  private collectCeilingZoneMeshes(): Map<string, THREE.Mesh[]> {
+    const byZone = new Map<string, THREE.Mesh[]>();
+    this.exportRoot.traverse((object) => {
+      const type = object.userData?.type;
+      if (type !== 'ceiling_zone' && type !== 'ceiling_zone_solid') return;
+      const objectId = String(object.userData?.objectId ?? '');
+      if (!objectId.startsWith('ceiling:')) return;
+      const zoneId = objectId.slice('ceiling:'.length);
+      const list = byZone.get(zoneId) ?? [];
+      list.push(object as THREE.Mesh);
+      byZone.set(zoneId, list);
+    });
+    return byZone;
+  }
+
+  /**
+   * 吊顶分区·状态摘要（对齐 getWallTileInspectionStatus，DEC-2026-10-08-C01）。
+   * 图与数必须同时给出：3D 里"看得出有一块吊顶"不等于"量得出多少面积"。
+   */
+  getCeilingZoneHighlightStatus(): {
+    required: boolean;
+    ready: boolean;
+    active: boolean;
+    mode: CeilingZoneColorMode;
+    zonesInScene: number;
+    unclassifiedZoneIds: string[];
+    totalNetAreaM2: number;
+    totalExpandedAreaM2: number;
+    curtainBoxLinearM: number;
+    aluminumBucklePanelCount: number;
+    byClass: Record<string, { zones: number; netAreaM2: number; expandedAreaM2: number; linearM: number; panelCount: number }>;
+  } {
+    const takeoff = this.getCeilingZoneTakeoff();
+    const byClass: Record<string, { zones: number; netAreaM2: number; expandedAreaM2: number; linearM: number; panelCount: number }> = {};
+    for (const [key, rollup] of Object.entries(takeoff.byClass)) {
+      byClass[key] = {
+        zones: rollup.zones,
+        netAreaM2: rollup.netAreaM2,
+        expandedAreaM2: rollup.expandedAreaM2,
+        linearM: rollup.linearM,
+        panelCount: rollup.panelCount,
+      };
+    }
+    return {
+      required: takeoff.zones.length > 0,
+      ready: takeoff.zones.length > 0 && takeoff.unclassifiedZoneIds.length === 0,
+      active: this.ceilingZoneHighlightActive,
+      mode: this.ceilingZoneHighlightMode,
+      zonesInScene: takeoff.zones.length,
+      unclassifiedZoneIds: takeoff.unclassifiedZoneIds,
+      totalNetAreaM2: takeoff.totalNetAreaM2,
+      totalExpandedAreaM2: takeoff.totalExpandedAreaM2,
+      curtainBoxLinearM: takeoff.curtainBoxLinearM,
+      aluminumBucklePanelCount: takeoff.aluminumBucklePanelCount,
+      byClass,
+    };
+  }
+
+  /**
+   * 吊顶分区·逐区明细 + 算量（与 shared/ceiling-takeoff.ts 同口径，数据源是场景里的
+   * `userData.ceiling` 声明 blob——浏览器不直读 config/ceiling.yaml）。
+   */
+  inspectCeilingZones(): {
+    takeoff: CeilingTakeoff;
+    zones: Array<{
+      id: string; objectId: string; room: string; roomName: string;
+      trade: CeilingTradeClass | null; type: string; thickness: number; bottomY: number;
+      netAreaM2: number; expandedAreaM2: number; perimeterM: number; longSideM: number;
+      panelCount?: number; color: string; meshCount: number;
+    }>;
+    sceneZoneIds: string[];
+  } {
+    const byZone = this.collectCeilingZoneMeshes();
+    const zones: CeilingZone[] = [];
+    for (const [zoneId] of byZone) {
+      const sample = byZone.get(zoneId)![0];
+      const ceiling = (sample.userData?.ceiling ?? {}) as Partial<CeilingZone> & { room?: string };
+      zones.push({
+        id: zoneId,
+        room: String(ceiling.room ?? sample.userData?.roomId ?? ''),
+        type: String(ceiling.type ?? 'drop'),
+        thickness: ceiling.thickness,
+        area: ceiling.area,
+        corner_radius: ceiling.corner_radius,
+        corner_radii: ceiling.corner_radii,
+        concave_fillets: ceiling.concave_fillets,
+        buckle_panel: ceiling.buckle_panel,
+        trade: ceiling.trade,
+      } as CeilingZone);
+    }
+    const takeoff = computeCeilingTakeoff(
+      zones,
+      Object.values(this.rooms).map((room) => ({ id: room.id, height: room.height })),
+    );
+    const measured = new Map(takeoff.zones.map((zone) => [zone.id, zone]));
+    return {
+      takeoff,
+      sceneZoneIds: [...byZone.keys()].sort(),
+      zones: zones.map((zone) => {
+        const entry = measured.get(zone.id);
+        const roomName = this.rooms[zone.room]?.name ?? zone.room;
+        return {
+          id: zone.id,
+          objectId: `ceiling:${zone.id}`,
+          room: zone.room,
+          roomName,
+          trade: entry?.trade ?? null,
+          type: zone.type,
+          thickness: entry?.thickness ?? zone.thickness ?? 0,
+          bottomY: entry?.bottomY ?? 0,
+          netAreaM2: entry?.netAreaM2 ?? 0,
+          expandedAreaM2: entry?.expandedAreaM2 ?? 0,
+          perimeterM: entry?.perimeterM ?? 0,
+          longSideM: entry?.longSideM ?? 0,
+          panelCount: entry?.panelCount,
+          color: ceilingZoneColor(zone.id, entry?.trade ?? null, this.ceilingZoneHighlightMode),
+          meshCount: byZone.get(zone.id)?.length ?? 0,
+        };
+      }).sort((a, b) => a.id.localeCompare(b.id)),
+    };
+  }
+
+  /** 算量口径直接复用：图例面板的数字与预算/CLI 出自同一个函数。 */
+  getCeilingZoneTakeoff(): CeilingTakeoff {
+    return this.inspectCeilingZones().takeoff;
+  }
+
+  /** 当前隔离的分区 id（null = 无隔离）；图例面板回显用。 */
+  getCeilingZoneSolo(): string | null {
+    return this.ceilingZoneSoloId;
+  }
+
+  /**
+   * 分区算量缓存：hover 每帧都会构造 target，不能每次重算 traverse + shoelace。
+   * 只在 buildFromCatalog 重建时失效。
+   */
+  private ceilingZoneInfoCache: Map<string, { netAreaM2: number; expandedAreaM2: number; panelCount?: number; trade: CeilingTradeClass | null }> | null = null;
+
+  private ceilingZoneInfo(): Map<string, { netAreaM2: number; expandedAreaM2: number; panelCount?: number; trade: CeilingTradeClass | null }> {
+    if (!this.ceilingZoneInfoCache) {
+      const { zones } = this.inspectCeilingZones();
+      this.ceilingZoneInfoCache = new Map(zones.map((zone) => [zone.id, {
+        netAreaM2: zone.netAreaM2,
+        expandedAreaM2: zone.expandedAreaM2,
+        panelCount: zone.panelCount,
+        trade: zone.trade,
+      }]));
+    }
+    return this.ceilingZoneInfoCache;
   }
 
   private objectDisplayName(objectId: string, type: string, roomId?: string, fixtureType?: string, wallSide?: WallSide): string {
@@ -1810,7 +2071,15 @@ export class HouseScene implements SceneApi {
           relation: data.relation as string | undefined,
           notForConstruction: Boolean(data.notForConstruction ?? data.not_for_construction),
         } : undefined,
-        ceiling: type === 'ceiling_zone' || type === 'ceiling_zone_solid' ? data.ceiling as { area?: [number, number, number, number]; thickness?: number; type?: string; room?: string; height?: number } | undefined : undefined,
+        ceiling: type === 'ceiling_zone' || type === 'ceiling_zone_solid'
+          ? (() => {
+              const blob = (data.ceiling ?? {}) as Record<string, unknown>;
+              const zoneId = String(data.objectId ?? '').replace(/^ceiling:/, '');
+              // 挂上分区算量（hover 就看得到净面积/展开面积/板块数），图数同源
+              const info = zoneId ? this.ceilingZoneInfo().get(zoneId) : undefined;
+              return (info ? { ...blob, ...info } : blob) as Record<string, unknown>;
+            })()
+          : undefined,
       };
       const isMepRouteTarget = type === 'mep_coordination_route';
       const isElectricalTopologyTarget = type.startsWith('electrical_topology_');

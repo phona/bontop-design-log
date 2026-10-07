@@ -97,6 +97,16 @@ describe('render facts API', () => {
     assert.equal(response.body.lint.warnings.length, direct.warnings.length);
   });
 
+  it('serves the ceiling takeoff from the same declared zones', async () => {
+    const app = createApp(() => facts);
+    const response = await request(app).get('/api/ceiling/takeoff').expect(200);
+    // 注入的 facts 里只有一个没有 area/thickness 的占位分区 → 计入 excludedIds，不产出几何口径
+    assert.deepEqual(response.body.excludedIds, ['ceiling_1']);
+    assert.equal(response.body.zones.length, 0);
+    assert.equal(response.body.totalNetAreaM2, 0);
+    assert.deepEqual(response.body.overlaps, []);
+  });
+
   it('returns 503 until the aggregate loader has a valid snapshot', async () => {
     const app = createApp(() => undefined);
     const response = await request(app).get('/api/render-facts').expect(503);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { scaleBoxUvToMeters, scalePlaneUvToMeters } from './uv-utils.js';
+import type { CeilingTradeClass } from '../ceiling-takeoff.js';
 
 /** Plan corners of a ceiling zone footprint, in the area `[x1, z1, x2, z2]` order. */
 export type CeilingCorner = 'nw' | 'ne' | 'se' | 'sw';
@@ -41,6 +42,11 @@ export interface CeilingZoneSpec {
   inspection_layer?: string;
   /** Material opacity while the declared inspection layer is active. */
   inspection_opacity?: number;
+  /**
+   * 工艺/计价类别（算量与高亮口径，与 `type` 正交）。只随 `userData.ceiling` 透出，
+   * 不影响几何；省略时按 type 回退（见 shared/ceiling-takeoff.ts）。
+   */
+  trade?: CeilingTradeClass;
   note?: string;
 }
 

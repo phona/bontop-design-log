@@ -16,6 +16,8 @@ import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import type { PresentationStateStore } from './presentation-state.js';
 import { computeSunlightAnalysis, computeHumidityAnalysis, humidityAdvisories } from './analysis-service.js';
+import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
+import { loadCeilingConfig } from './config-loader.js';
 import { parseSpecDimensions } from './spec-parser.js';
 
 function text(data: unknown) {
@@ -326,6 +328,23 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const scheme = state.getCurrentScheme();
       const calc = getBudgetCalculator();
       return text(calc.calculate(scheme));
+    }
+  );
+
+  server.registerTool(
+    'get_ceiling_takeoff',
+    {
+      title: 'Get ceiling takeoff',
+      description:
+        'Return per-zone ceiling quantities measured from config/ceiling.yaml (net/expanded area, perimeter, curtain-box linear metres, aluminium buckle panel count) rolled up by trade class (gypsum_board / aluminum_buckle / curtain_box / drying_rack) and by room. Use it to price PKG-070吊顶 components item by item instead of the deprecated room-area approximation. Excluded (ac_indoor), unmeasured, unclassified and overlapping zones are reported explicitly.',
+    },
+    async () => {
+      return text(
+        computeCeilingTakeoff(
+          loadCeilingConfig(),
+          catalog.getRooms().map((room) => ({ id: room.id, height: room.height }))
+        )
+      );
     }
   );
 

@@ -69,6 +69,7 @@
 - id: drying_rack_living
   room: living_dining
   type: drop
+  trade: drying_rack
   thickness: 0.15
   area: [7.20, 9.20, 9.00, 9.80]
   note: "客厅南侧隐藏式晾衣架吊顶（预埋加固板+电源 sock_living_drying）"
@@ -76,6 +77,7 @@
 - id: curtain_box_living
   room: living_dining
   type: drop
+  trade: curtain_box
   thickness: 0.15
   area: [9.00, 9.55, 13.40, 9.80]
   note: "客厅南墙窗帘盒（深 0.25m 容双轨，电动电源已预留；与晾衣架吊顶同底标高 2.65m，兼遮南窗带浅梁）"
@@ -188,6 +190,7 @@
 - id: curtain_box_master_west
   room: master_bedroom
   type: drop
+  trade: curtain_box
   thickness: 0.15
   area: [1.10, 5.55, 1.35, 8.80]
   note: "主卧西飘窗窗帘盒（贴飘窗内缘 x=1.10，覆盖西飘窗 z[5.55,8.80] 段）；2026-08-26 边吊迁东墙后不再由 ceiling_master_ac 兼任，独立补建"
@@ -195,6 +198,7 @@
 - id: curtain_box_master_south
   room: master_bedroom
   type: drop
+  trade: curtain_box
   thickness: 0.15
   area: [0.00, 8.70, 4.20, 8.95]
   note: "主卧南环幕窗帘盒（贴南飘窗内缘 z=8.70，电动电源已预留）"
@@ -202,6 +206,7 @@
 - id: curtain_box_parent_south
   room: study
   type: drop
+  trade: curtain_box
   thickness: 0.15
   area: [4.20, 8.70, 7.20, 8.95]
   note: "书房南墙窗帘盒（贴南飘窗内缘 z=8.70，电动电源已预留；2026-10-05 功能互换，id/位置不变）"
@@ -209,6 +214,7 @@
 - id: curtain_box_study_south
   room: bedroom_se
   type: drop
+  trade: curtain_box
   thickness: 0.15
   area: [13.40, 7.60, 16.40, 7.85]
   note: "客房南墙窗帘盒（贴南向凸窗内缘 z=7.60；2026-08-27 随南墙凹进 z=8.70 北移；电动电源已预留；2026-10-05 功能互换，id/位置不变；床尾半进凸窗带，帘与床南缘净距 0.35m）"

@@ -721,9 +721,11 @@ function addCeilingZones(root: THREE.Group, zones: CeilingZoneSpec[], rooms: Res
       thickness: zone.thickness,
       corner_radius: zone.corner_radius,
       corner_radii: zone.corner_radii,
+      concave_fillets: zone.concave_fillets,
       buckle_panel: zone.buckle_panel,
       inspection_layer: zone.inspection_layer,
       inspection_opacity: zone.inspection_opacity,
+      trade: zone.trade,
       type: zone.type,
       room: zone.room,
     };

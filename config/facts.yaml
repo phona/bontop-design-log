@@ -1008,7 +1008,7 @@ facts:
   # 量房待确认项条数：39 条是「还有什么没量」的账面。新增/关闭条目必须同步。
   - id: fact.pending_site_data_count
     kind: derived
-    value: "@docs/pending-site-data.md:量表共 52 条"
+    value: "@docs/pending-site-data.md:量表共 53 条"
     unit: 条
     mirrors:
       - path: docs/pending-site-data.md
@@ -1449,6 +1449,10 @@ coverage:
   - { file: config/budget-pitfalls.yaml, field: "pitfalls", readers: [] }
   - { file: config/budget-pitfalls.yaml, field: "templates", readers: [] }
   - { file: config/ceiling.yaml, field: "*", readers: [] }
+  # DEC-2026-10-08-C01：吊顶算量子系统。trade 是显式声明的工艺/计价类别
+  # （gypsum_board/aluminum_buckle/curtain_box/drying_rack），算量与高亮分区都从它取口径，
+  # 禁止任何模块靠 id 命名推断归类。
+  - { file: config/ceiling.yaml, field: "trade", readers: ["shared/ceiling-takeoff.ts", "shared/project-render-facts-schema.ts", "shared/render/CeilingZoneBuilder.ts", "shared/render/SceneBuilder.ts", "scripts/verify/rules/verify-rules.ts", "scripts/project/ceiling-takeoff.ts"] }
   - { file: config/design-rules.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/design-rules.yaml, field: "objectMapping", readers: ["shared/types.ts"] }
   - { file: config/design-rules.yaml, field: "budget", readers: ["shared/types.ts", "scripts/schedule/control.ts"] }

@@ -58,11 +58,11 @@
       "labor": {
         "rate": 40,
         "unit": "元/㎡",
-        "area": "ceiling"
+        "area": "ceiling_zones"
       },
       "actual": 0,
       "status": "draft",
-      "notes": "厨卫铝扣板吊顶 + 客餐厅局部吊顶，层高 3.0m"
+      "notes": "厨卫铝扣板吊顶 + 客餐厅局部吊顶，层高 3.0m。人工量按 config/ceiling.yaml 逐分区实算（shared/ceiling-takeoff.ts），不再按房间面积近似；工艺小计/窗帘盒延长米/铝扣板板块数见 GET /api/ceiling/takeoff，报价时须逐项列（没有合并项报价）。"
     },
     "painting": {
       "budget": 11500,

@@ -1908,3 +1908,39 @@
 - **验证**：`test:app` 56 files / **485** tests 全过（新增 3 条行为级 + 1 条审计面，`HouseScene.test.ts` 单文件 50/50）→ `test:server` 660/660/0 → `typecheck` Exit 0 → `verify:all` Exit 0 → `tmp/verify-wall-tile.ts` 18 条断言全 OK。
 - **关联文件**：`app/src/scene/HouseScene.test.ts`。
 - **决策人**：业主。
+
+### DEC-2026-10-08-C01 吊顶算量子系统独立：按分区实算替代房间面积近似（+ trade 工艺分类与一键高亮）
+
+- **日期**：2026-10-08。触发：业主问「吊顶区域，有单独计算的子系统吗？」并要求补上，同时要求「页面加个按钮，一键高亮需要吊顶的区域，不同的吊顶区域用不同的颜色」。
+- **问题（口径错误，不是精度问题）**：`config/budget/base.json` 的 `carpentry.labor.area` 长期是 `ceiling`，而 `server/budget-calculator.ts` 的 `case 'ceiling'` 取的是**房间 bbox 面积合计 142.92㎡**——把没有吊顶的 2.80m 平顶、电梯井（4.90㎡）、入户花园（12.91㎡）全计了费，`living_dining` 也按整间 45.88㎡ 计（实际只有 10.57㎡ 是吊顶）。历史快照 `docs/design-iterations/phase1-scope-20260912/evidence/phase1-j6-final-body.txt:119-120` 的 `carpentry ¥5,717 / ¥5,000`（over）就是这个近似值的果。
+- **选定方案**：新建 `shared/ceiling-takeoff.ts`（纯函数、零依赖、与渲染同源），按 `config/ceiling.yaml` 的**逐分区声明**实算；同时把「渲染类型」与「工艺/计价类别」分开：
+  - **面积口径与渲染严格一致**：阳角圆角扣 `r²(1−π/4)`、阴角 fillet 加 `F²(1−π/4)`；解析值用 `tests/server/ceiling-takeoff.test.ts` 与 `buildMixedRectangleOutline` + shoelace 交叉验证（渲染弧线被采样成折线，必然略小于解析真值）。
+  - **展开面积 = 净面积 + 周长×厚度**（施工方对石膏板吊顶通常按展开报价）。
+  - **`trade` 工艺类别显式声明，禁止靠 id 前缀推断**（AGENTS.md「代码只读、只执行，禁止推断」）：`gypsum_board` / `aluminum_buckle` / `curtain_box` / `drying_rack`，落在 `config/ceiling.yaml` 的 6 个分区上（5 窗帘盒 + 1 晾衣架吊顶）；`shared/project-render-facts-schema.ts` 用 strict 枚举接住错字，`shared/render/SceneBuilder.ts` 随 `userData.ceiling` 透出到浏览器。归不了的进 `unclassifiedZoneIds` 显形，不猜。
+  - **不静默丢弃**：`excludedIds`（6 台 `ac_indoor` 无 area）、`invalidZoneIds`（渲染侧也会拒绝的几何）、`roomIdsWithoutCeiling`（保持 2.80m 原顶的生活阳台/电梯井）、`overlaps` 全部显式输出。
+- **业主两问的答复**：
+  - **窗帘盒算了吗？算。** 5 个 `curtain_box_*` 全部计量：净 4.463㎡，并**单列延长米 17.85m**（窗帘盒行业主口径是元/米，混在 ㎡ 里会失真）。
+  - **区分吊顶类型了吗？区分。** 见上表 `trade` 四类，高亮配色与图例分组、算量小计、报价口径全部按它走。
+- **当前声明快照（19 个实心分区 / 25 条声明）**：
+
+  | 工艺类别 | 分区 | 净㎡ | 展开㎡ | 延长米 | 板块 | 计价主口径 |
+  |---|---|---|---|---|---|---|
+  | gypsum_board 石膏板吊顶 | 10 | 23.222 | 44.506 | 27.07 | — | 元/㎡ |
+  | aluminum_buckle 铝扣板 | 3 | 16.366 | 20.554 | 8.30 | 185 | 元/㎡ 或 元/块 |
+  | curtain_box 窗帘盒 | 5 | 4.463 | 10.193 | 17.85 | — | 元/延长米 |
+  | drying_rack 隐藏晾衣架吊顶 | 1 | 1.080 | 1.800 | 1.80 | — | 元/㎡ |
+  | **合计** | **19** | **45.130** | **77.053** | — | — | — |
+
+  铝扣板板块数 185 = 厨房 96（⌈3.6/0.3⌉×⌈2.4/0.3⌉）+ 主卫 54 + 客卫 35；**必须用带 eps 的 ceil**——`1.5/0.3` 在浮点下是 `5.000000000000001`，裸 `Math.ceil` 会把客卫算成 42 块。
+- **预算影响（需业主确认的部分单列）**：`base.json` 的 `carpentry.labor.area` 由 `ceiling` 改为 `ceiling_zones`，人工量 = 40 元/㎡ × 45.130㎡ ≈ **¥1,805**（原 ¥5,717），carpentry 由 over 翻 ok，`totalActual` **≈ −¥3,911**。**窗帘盒与铝扣板的费率未动**：`byClass` 只输出数量拆分，改单价=重新谈价，超出本条范围；报价阶段按 README「没有合并项报价」逐项列，主口径见 `GET /api/ceiling/takeoff` / `npm run takeoff:ceiling` / MCP `get_ceiling_takeoff`。若业主希望保留保守预算，`case 'ceiling'` 分支仍在，可回退。
+- **待业主裁定（不擅自改几何）**：`curtain_box_master_south`（z[8.70,8.95]）与 `curtain_box_master_west`（x[1.10,1.35], z[5.55,8.80]）在 x[1.10,1.35]×z[8.70,8.80] 上**重叠 0.25×0.10m = 0.025㎡**（合计净面积含这部分重复计费，已由 `takeoff.overlapAreaM2` 单独计量）。是「西盒应收在 z=8.70」还是「转角有意交汇」属设计裁定，本轮只显形不改数。
+- **验证**：`tests/server/ceiling-takeoff.test.ts` 12 条（含 eps-ceil 浮点回归、id 改名不跟随归类、重叠检出、渲染轮廓交叉验证）+ `budget-calculator.test.ts` 木工人工口径断言 + `render-facts-api.test.ts` `/api/ceiling/takeoff`；`app/src/render/CeilingZoneHighlight.test.ts` 9 条 + `analysis/ceiling-zone-colors.test.ts` 5 条 + `ui/CeilingZoneButton.test.ts` 3 条；`test:server` 677/677/0 → `test:app` 504/504 → `typecheck` Exit 0 → `verify:all` Exit 0。线上复核：`GET /api/ceiling/takeoff` 19 区 / 净 45.130㎡ / 展开 77.053㎡ / 185 块 / 窗帘盒 17.85m；`GET /api/budget` carpentry 1,805（status ok）。
+- **查询三层出口**：`GET /api/ceiling/takeoff`（API）、`get_ceiling_takeoff`（MCP）、`npm run takeoff:ceiling`（CLI，可归档）。三者同源同口径，业主/AI 30 秒可拿逐区面积/展开面积/延长米/板块数，PKG-070 的「待报价/待算量」不再靠手抄。
+- **一键高亮按钮（同一DEC交付）**：机电组新增「吊顶分区」按钮（`#ceiling-zone-btn`），开启即给每个分区上色并弹出图例面板。
+  - **颜色**：HSL 连续偏移而非固定调色板——19 个实心分区必须 19 个互不相同的颜色（固定色板必然撞色）；每个工艺类别一个色相带（石膏板蓝灰 / 铝扣板青 / 窗帘盒黄 / 晾衣架橙），按 `zoneId` 哈希取点，**新增或删除分区不打乱已有颜色**；图例顶部可切「每分区一色 / 按工艺归并」。
+  - **必须走 `exportRoot.traverse` 而不是 `ceilingMeshes`**：后者被 `SceneBuilder` 排除了 `ceilingPersistent` 分区（圆角/阴角区，含主卧门头盒 `ceiling_master_ac`），只用它会漏分区。
+  - **与既有机制的打架点全部用「状态 + 重放」解决**：`setCeilingVisible` 在 `setMode` / MEP 总览 / 重建后都会重写天花材质，高亮因此在 `setCeilingVisible` 末尾重放配色；关闭时按 `Map<Mesh, Material>` 快照还原（不写死默认值），反复开关不累积快照。高亮期间强制天花可见（轨道/俯视默认隐藏），关闭即恢复模式默认。
+  - **图例即审计**：按工艺分组、每组小计（净/展开/延长米/板块数），行点击=隔离该分区（其余压暗 0.14），hover 该分区在机电信息里给出工艺、净面积、展开面积与板块数。数字全部来自 `HouseScene.inspectCeilingZones()` → `shared/ceiling-takeoff.ts`，与预算/CLI 同一份口径（图数同源，不抓第二套数）。
+  - **隔离铁律（源码级测试看守）**：`setCeilingZoneHighlightVisible` / `setCeilingZoneSolo` / `getCeilingZoneHighlightStatus` / `inspectCeilingZones` / `applyCeilingZoneColors` / `restoreCeilingZoneMaterials` 与 App 的播报段，函数体内**不得出现 `Hvac|hvac|WallTile|wall-tile`**（与贴砖检视态 R08/R10 同一手法）。
+- **关联文件**：`shared/ceiling-takeoff.ts`（新）、`shared/types.ts`、`shared/project-render-facts-schema.ts`、`shared/render/CeilingZoneBuilder.ts`、`shared/render/SceneBuilder.ts`、`config/ceiling.yaml`、`config/budget/base.json`、`server/budget-calculator.ts`、`server/routes.ts`、`server/mcp-server.ts`、`scripts/project/ceiling-takeoff.ts`（新）、`package.json`、`data/project-render-facts.json`、`tests/server/ceiling-takeoff.test.ts`、`tests/server/budget-calculator.test.ts`、`tests/server/render-facts-api.test.ts`。
+- **决策人**：业主。
