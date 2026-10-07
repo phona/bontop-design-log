@@ -1,0 +1,170 @@
+version: 1
+# 水电算量与成本的数据底座 · 规则层（L2）。
+#
+# 本文件只放**规则**，不放任何量：米数、芯数、模数、金额一律由 shared/mep-takeoff.ts 派生。
+# 施工方报价"自带面积/米数"一律拒绝——量在这里派生，报价方只报单价与含项范围
+# （与 config/ceiling-quotes.yaml 铁律 1 同源）。
+#
+# 坐标不重复登记：路由端点解析统一走 shared/mep-hvac-coordination-schema.ts 的
+# resolveMepRoutes（含 hvac anchors，如 bend_corridor），本文件不建第二份坐标表。
+#
+# 铁律：
+#  1. 没有声明就没有数——缺失字段进 takeoff.unresolved 并被计数，下游 comparable:false。
+#  2. 不靠 id 命名推断线径/管径/冷热——全部读显式字段（plumbing.water_temp/water_dn/drain_dn、
+#     electrical.circuit + topology.wire_size）。
+#  3. 量房日只改 L1（点位/路由/拓扑）与 allowance 的 status，不改本文件的 sources。
+
+sources:
+  electrical_points: config/electrical.yaml
+  plumbing_points: config/plumbing.yaml
+  circuits: config/electrical-topology.yaml
+  routes: config/mep-hvac-coordination.yaml
+  hvac: config/hvac.yaml
+  ceiling: config/ceiling.yaml
+
+# 参与水电算量的层；其余层显式排除并记 reason（空调包 PKG-030，见 control.yaml COST-030-02）
+covered_layers: [strong_power, weak_power, water_supply, drainage]
+excluded_layers:
+  - { layer: refrigerant, reason: '铜管与保温由中央空调合同承担（COST-030-02）' }
+  - { layer: condensate, reason: '冷凝水管与保温由中央空调合同承担（COST-030-02）' }
+  - { layer: supply_air, reason: '风管与风口由中央空调合同承担（COST-030-02/-03）' }
+  - { layer: return_air, reason: '风管与风口由中央空调合同承担（COST-030-02/-03）' }
+
+# 末端补齐规则：未被任何 physical route 端点覆盖的点位，按 type 给每点管长（米）。
+# 这是全仓唯一允许存在的"经验值"，改它等于改工程量，必须走 DEC/业主批准。
+# default: null = 没列到的类型不进数，直接进 unresolved（禁止兜底猜）。
+#
+# **计价口径（2026-10-07 修正，DEC-2026-10-07-M02）**：
+#   强电管 = Σ_回路 union(该回路画线路由) + 未画点位 allowance。
+#   逻辑口径（Σ各条长度）只作诊断输出（conduit.strongPowerLogicalM），**不得用于采购计价**——
+#   它把多回路并排（实测跨回路去重后仅 102m vs Σ216.8m）和同回路星形回线重复计量。
+#   导线 = 该回路 union 长度 × 芯数 × 损耗（同一回路共享段只穿一次线）。
+#   allowange_cluster_discount：同墙连续点位共用竖直下引时的折扣系数（1.0 = 不打折）。
+#   量房实测后应把折扣调到实测值，并在路由画全后彻底退役 allowance。
+allowance_cluster_discount: 1.0   # 同墙连续点位共用下引的折扣；1.0=不打折（保守），量房后按实测收紧
+allowance_unrouted_points:
+  # —— 电气类（米/个，含竖向下引）——
+  socket: 5.0
+  floor_socket: 6.0
+  switch: 4.0
+  switch_2way: 5.0
+  night_light: 3.0
+  ac_controller: 4.0
+  network: 4.0
+  ceiling_light: 3.0
+  pendant: 3.0
+  dome: 3.0
+  wall_lamp: 3.0
+  downlight: 4.0
+  led_strip: 4.0
+  track_light: 4.0
+  # —— 给排水类（米/个，排水含绕行与存水弯）——
+  faucet: 4.0
+  toilet: 4.0
+  shower: 4.0
+  washer: 4.0
+  faucet_outdoor: 6.0
+  drain: 5.0
+  drain_riser: 0.0
+  default: null
+
+# 导线芯数：按回路的 purpose 取（topology 已声明 purpose）。
+# lighting=3 是因为本项目铁律"每个开关底盒 3 根 1.5mm²（L/N/灯控）"（config/acceptance.yaml）。
+units:
+  cores_by_purpose:
+    lighting: 3            # L/N/灯控：本项目铁律「每个开关底盒 3 根 1.5mm²」（config/acceptance.yaml）
+    power: 3
+    ordinary_power: 3      # L/N/PE
+    hvac_power: 3
+    dedicated_load: 3
+  dual_control_extra_cores: 1     # switch_2way 点位额外一根控制线
+  # 弱点位额外芯数（按点位 id 显式声明，带依据）
+  weak_extra_cores:
+    net_gateway: 1        # electrical.yaml:885「2 根 Cat6：WAN 上联 + LAN 回弱电箱交换机」，基准 1 根 + 额外 1 根
+  loss:
+    wire: 1.05
+    pipe: 1.08
+
+# 主干（physical route 中端点不带 circuit 的段，如强电箱→走廊枢纽）归属：
+# null = 不猜线径，进 unresolved，由业主/设计指定后回填。这是刻意的"显形"而非缺陷。
+trunk_wire_size: null
+# 路由终点标高是吊顶分层高（强电 2.55 / 给水 0.18），点位安装高度另算：
+# 竖向下引段计入管长（to_height − point.height，纯算术，见 shared/mep-takeoff.ts terminalDrop）。
+# 关掉它会让"已画线点位"比"未画线点位"的 allowance 口径不一致（后者本来就含下引）。
+include_terminal_drop: true
+# 实测口径（2026-10-07）：已画线端点以顶面设备为主——空调插座 height 2.5、灯具 2.7~2.8、箱体 1.65，
+# 竖向下引实际只贡献 1.35m；低装插座/开关（height 0.3~1.3）本来就没画线，走上面的 allowance（含下引）。
+# 因此本开关不是"修正大缺口"，而是让两类点位口径一致：谁的下引都不漏、也不重。
+trunk_note: '强电主干承载全部 21 回路，线径取决于 #45 进线相数/需用系数裁定；裁定前不进数'
+
+# 配电箱模数：modules = circuits + main_switch_poles + spd_modules，再按 spare_ratio 向上取整
+panel:
+  main_switch_poles: 2            # GB 55038 7.4.3-1 进线开关（2P）
+  spd_modules: 1                  # 二级浪涌保护器
+  spare_ratio: 0.2                # 余量系数（DEC-2026-10-08 吊顶报价同款思路：宁可多留模数）
+  round_up: true
+
+# 被验收强制但既不是点位也不是路由的器件数量。这是**声明**（ scope 声明，附依据），
+# 不是估出来的量：basis 必须指到 config/acceptance.yaml 的具体验收项。
+declared_devices:
+  leb_kits:
+    count: 2
+    basis: 'config/acceptance.yaml check_elec_leb：两卫各设局部等电位端子箱，防水层前预埋'
+  entry_valve_kit:
+    count: 1
+    basis: 'config/acceptance.yaml check_plumb_prefilter_and_prv：入户总阀 DN20 + 可调减压阀 0.25MPa + 前置过滤器位（带排污与旁通三通）'
+  gas_alarm_kit:
+    count: 1
+    basis: 'config/acceptance.yaml check_elec_gas_alarm：燃气报警器与自动切断阀，型号/位见 pending-site-data #32'
+  exhaust_duct_kit:
+    count: 2
+    basis: 'config/acceptance.yaml check_hvac_exhaust_outlet：两卫浴霸排风管出外墙 φ100 防火止回阀 + 套管'
+
+# 不属于水电包的设施：显式排除并记 reason，防止施工方把活儿算进来或我们漏算
+non_mep_items:
+  - { id: gas_meter_kitchen, reason: '燃气表与燃气管道由燃气公司施工（COST-040-09 单独结算）' }
+  - { id: duct_kitchen_exhaust, reason: '开发商既有烟道；公共烟道止回阀属橱柜/烟机安装边界' }
+
+# 口径等级：estimated_from_routes = 路由与点位均为 inferred/proposed；measured_after_survey = 量房后
+status_rule: '任何 covered_layers 内 physical route 的 construction_status 仍为 pending → estimated_from_routes'
+
+# 跨规格给排水路由不得按首个端点扩散。需要一条 physical route 在折线中途发生
+# 冷热/管径变化时，在这里按 mepRoutePoints 的下标显式声明 pipe_route_segments：
+# 每条路由的折线点数 = 1(起点) + via 数 + 1(终点)；分段必须从 0 连续覆盖到最后一条边。
+# mixed = 两根物理管（热 + 冷），由 pipeKeysForWater 自动拆成 mixed/dn 与 cold/dn 两个桶。
+pipe_route_segments:
+  # —— 已画的末端支路（physical）——
+  water-master-bath:                [{from_index: 0, to_index: 1, water_temp: mixed, water_dn: 20}, {from_index: 1, to_index: 3, water_temp: cold, water_dn: 20}]
+  water-guest-bath:                 [{from_index: 0, to_index: 1, water_temp: mixed, water_dn: 20}, {from_index: 1, to_index: 6, water_temp: cold, water_dn: 20}]
+  water-balcony:                    [{from_index: 0, to_index: 3, water_temp: mixed, water_dn: 20}]
+  water-kitchen-requirement:        [{from_index: 0, to_index: 3, water_temp: mixed, water_dn: 20}]
+  water-kitchen-dishwasher-branch:  [{from_index: 0, to_index: 1, water_temp: cold, water_dn: 20}]
+  drain-balcony:                    [{from_index: 0, to_index: 1, drain_dn: 50}]
+  drain-mbath-vanity-to-riser:      [{from_index: 0, to_index: 3, drain_dn: 50}]
+  drain-gbath-vanity-to-riser:      [{from_index: 0, to_index: 3, drain_dn: 50}]
+  drain-kitchen-sink-to-riser:      [{from_index: 0, to_index: 1, drain_dn: 50}]
+  drain-kitchen-dishwasher-to-riser: [{from_index: 0, to_index: 1, drain_dn: 50}]
+  # —— v1 估算干管（2026-10-07 提升为 physical；坐标取既有推断锚点，uncertainty ±0.3m，
+  #    construction_status 恒 pending，量房日实测后改写；详见各路由 reason）——
+  water-entry-valve-requirement:      [{from_index: 0, to_index: 2, water_temp: cold, water_dn: 25}]
+  water-water-heater-inlet-requirement: [{from_index: 0, to_index: 2, water_temp: cold, water_dn: 25}]
+  water-hot-water-mbath-requirement:  [{from_index: 0, to_index: 2, water_temp: hot, water_dn: 25}]
+  water-hot-water-gbath-requirement:  [{from_index: 0, to_index: 2, water_temp: hot, water_dn: 25}]
+  water-water-heater-recirc-requirement: [{from_index: 0, to_index: 2, water_temp: hot, water_dn: 25}]
+  drain-kitchen-requirement:          [{from_index: 0, to_index: 3, drain_dn: 50}]
+  # —— v1 估算干管（2026-10-07 新增，uncertainty ±0.3m，量房实测后改写）——
+  water-v1-heater-to-mbath-hot:  [{from_index: 0, to_index: 2, water_temp: hot, water_dn: 25}]
+  water-v1-entry-to-mbath-cold:  [{from_index: 0, to_index: 2, water_temp: cold, water_dn: 25}]
+  water-v1-heater-to-gbath-hot:  [{from_index: 0, to_index: 2, water_temp: hot, water_dn: 20}]
+  water-v1-entry-to-gbath-cold:  [{from_index: 0, to_index: 2, water_temp: cold, water_dn: 20}]
+  water-v1-recirc-loop:          [{from_index: 0, to_index: 2, water_temp: hot, water_dn: 20}]
+  drain-mbath-secondary-requirement:  [{from_index: 0, to_index: 2, drain_dn: 50}]
+  # 未声明而端点规格一致的路由（drain-master-bath / drain-guest-bath / drain-mbath-toilet-to-riser）
+  # 走端点一致路径，不需要分段。
+  # water-garden-requirement / drain-garden-requirement 仍是 requirement（pending-site-data #48 去留未决），
+  # 不计量——不存在"先算上再说"。
+#   route-id:
+#     - { from_index: 0, to_index: 2, water_temp: mixed, water_dn: 20 }
+#     - { from_index: 2, to_index: 3, water_temp: cold, water_dn: 20 }
+# 给水 mixed 会派生为 mixed（热水/保温口径）+ cold 两个物料桶；排水每段必须声明 drain_dn。
+# 未声明或端点规格冲突的路由进入 unresolved，不能进入报价。

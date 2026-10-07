@@ -1,0 +1,74 @@
+version: 1
+# 水电人工与包干费率层（L3）。**价未取得前一律 null**：数量照样显形、金额不编。
+# 铁律（与 config/ceiling-quotes.yaml 同源）：
+#  1. per_unit: null = 待报价。禁止用"经验值"填充——缺报价就显形 quote_pending。
+#  2. 每个费率必须带 scope_note（含什么/不含什么），否则成本层 comparable:false（AGENTS.md：不同口径不可直接比较）。
+#  3. by_area 与 by_meter 两种人工模型**互斥**，同时启用即双计，代码会报错。
+#  4. 回填只改本文件与 config/mep-quotes.yaml，代码零改动。
+
+# 人工模型：两种口径二选一（业主拿到哪种报价就启用哪种）
+labor_models:
+  - id: clear_labor_by_area
+    enabled: true
+    unit: sqm
+    rate: 40
+    price_type: owner_direction
+    scope_note: '清包人工（按套内面积）：含开槽/封槽/穿管穿线/打压/通球/等电位联结/垃圾清运；不含主材、开关插座面板、灯具、洁具、燃气管、空调铜管与冷凝水。**rate=40 为业主 2026-10-07 指定口径，不是施工方报价**；⚠️口径纠正：仓库内原 40 元/㎡ 是木工吊顶板面人工（config/ceiling-quotes.yaml），业主基线"人工约5,000多"折算为 52.76 元/㎡——两个数不同源，取 40 即低于业主自己的目标，须与施工方确认含项后再锁定。市价参考中值 60 元/㎡（二线 50~100 / 新一线 70~75）作对照。'
+  - id: clear_labor_by_meter
+    enabled: false
+    unit: m
+    rates:
+      strong_conduit: null      # 元/m，强电管（含开槽、穿线、底盒安装）
+      weak_conduit: null        # 元/m，弱电管
+      water_pipe: null          # 元/m，PPR 给水管（含热熔、试压）
+      drainage_pipe: null       # 元/m，PVC-U 排水管（含坡度、存水弯）
+    # 2026-10-07 参考区间（不参与计算）：强电暗管 35~55、水路暗管 60~90、排水 50~80 元/m
+    scope_note: '清包人工（按米）：同上含项；须与 by_area 二选一。**计价基数必须是去重后的走线长度（takeoff.conduit.drawnRouteUnionM），不是管长（strongPowerTotalM）**——已画强电路由有 48.3% 是多回路并排走同一条天花轴线，Σ各条长度 202.8m 去重后仅 103.2m；同一条槽并排 3~4 根管只开一次，按管长计价会为同一段槽付 3~4 次钱。另注意市面"元/米"报价多含配件/空开（包工包料口径），与单独计算的材料不可相加（双计）。'
+
+# 按项计费的增项人工（数量来自 shared/mep-takeoff.ts 的 devices/penetrations）
+extras:
+  penetration_per_hole:
+    rate: 25
+    price_type: public_reference
+    reference_rate: 25
+    unit: 元/孔
+    scope_note: '市价参考中值（公开页 10~30 元/个）；按 takeoff 穿墙孔个数计；若清包含打孔则不重复计'
+  leb_install:
+    rate: 150
+    price_type: derived_estimate
+    reference_rate: 150
+    unit: 元/套
+    scope_note: '推导价：常见 100~200 元/套（安装+联结+导通测试），无公开页佐证；材料见 mep-quotes leb_kit'
+  pressure_and_test:
+    rate: 300
+    price_type: derived_estimate
+    reference_rate: 300
+    unit: 元/次
+    scope_note: '推导价：打压+绝缘+等电位+漏保试合及记录拍照，常见 200~500 元/次，无公开页佐证'
+
+# 辅材包干：端子/管卡/胀塞/胶水/胶带/生料带/黄腊管/封槽料/网格布/套管/防火泥
+aux_material_lump:
+  amount: 1200
+  price_type: derived_estimate
+  reference_amount: 1200
+  unit: 元
+  scope_note: '推导价：端子/管卡/胀塞/PVC胶水/绝缘胶带/生料带/黄腊管/封槽料/网格布/套管/防火泥，95㎡ 全屋重排常见 800~1500 元；WAGO 221-413 三孔参考 ¥6.29/个（DigiKey 单买价，批量更低）。若施工方口径为辅材另计，改回 null 并在报价卡逐项列，禁双重计取'
+
+# 不可预见费比例（凿到钢筋、立管位置与推断不符、箱体需更换等）
+contingency_ratio: 0.10
+contingency_note: '量房前判定值；量房后按实测余量复核'
+
+# 三口径：报价单必须先声明属于哪一口径，否则不可比
+scopes:
+  owner_supplied_material:
+    label: 甲供主材 + 施工方人工
+    includes: [业主自购主材]
+    excludes: [人工, 辅材, 机械开孔, 运输上楼]
+  clear_labor:
+    label: 清包（业主买全部材料）
+    includes: [人工, 辅材, 机械开孔]
+    excludes: [主材, 开关插座面板, 灯具, 洁具, 燃气管, 空调铜管与冷凝水, 橱柜]
+  full_package:
+    label: 施工方全包（含主材）
+    includes: [主材, 辅材, 人工, 机械开孔]
+    excludes: [开关插座面板, 灯具, 洁具, 燃气管, 空调铜管与冷凝水, 橱柜]

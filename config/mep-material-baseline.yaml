@@ -1,0 +1,132 @@
+version: 1
+# 水电主材与器件选型基线（2026-10-07 归档，DEC-2026-10-07-M01）。
+#
+# 这是什么：业主侧提供的一版「主流国产、不过度堆料、但把基础质量拉满」水电材料基线，
+# 含规格表、品牌候选档位、业主锁死选项与成本目标。**它是选型方向，不是采购决策**：
+# 按 AGENTS.md 采购铁律，成为决策前须补南宁门店同口径书面报价（跑 shopping-research），
+# 并把本文件里的 `price_type: direction` 升级为 quoted_sheet / locked。
+#
+# 与算量/成本底座的关系：
+#   - 规格（管径/线径/芯数）→ 已在 config/mep-takeoff.yaml 的 units / pipe_route_segments 生效；
+#   - 品牌候选与单价    → 已在 config/mep-quotes.yaml 的 candidates / active 生效；
+#   - 本文件只承载「选型基线」这一层，**不重复任何单价与米数**（禁双写）。
+#
+# 三条已定边界：
+#   1. 冷凝水管/冷媒管/风管归中央空调合同（COST-030-02），不在本基线内；
+#   2. 前置过滤器本期只埋三通与排污管，设备本体另列；
+#   3. 未决项（见 reversal_conditions）不先行锁死。
+
+# ─── 一、规格基线（按系统）───
+specs:
+  water_supply:
+    trunk:   { material: PPR热水管, spec: '25×3.5mm S3.2', applies: '入户总管与热水干管；冷热主管同用热水管' }
+    branch:  { material: PPR热水管, spec: '20×2.8mm S3.2', applies: '台盆、马桶等单点末端，不必全屋25' }
+    high_flow: { material: PPR热水管, spec: '25×3.5mm', applies: '双卫、花洒主支路视拓扑保留25' }
+    fittings: { material: 'PPR 弯头/三通/直接', spec: '与管材同品牌同系列', rule: '禁止杂牌管件混牌' }
+    valves:  { material: 铜球阀, spec: 全通径, applies: '入户总阀与重要分区阀' }
+    prefilter_interface: { material: 前置过滤器接口, spec: 'DN20/25', applies: '先留安装与检修空间；设备本体另列' }
+  drainage:
+    pipe:    { material: PVC-U排水管, spec: 'de50 / de75 / de110', note: '分级口径以 docs/mep-construction-guidance.md §3.4 为准' }
+    fittings:{ material: 'PVC-U 弯头/三通等', spec: '与管材同品牌同系列', rule: '尽量45°组合，少生硬90°（保坡度）' }
+  electrical_conductor:
+    lighting:      { material: BV铜线, spec: '1.5mm²', note: '普通照明够用；本项目开关底盒按 L/N/灯控 三根 1.5mm²' }
+    socket:        { material: BV铜线, spec: '2.5mm²', note: 'L/N/PE 三线同规格，不允许地线缩水' }
+    kitchen:       { material: BV铜线, spec: '4mm²', note: '厨房独立回路' }
+    bathroom:      { material: BV铜线, spec: '2.5或4mm²', note: '按浴霸/智能马桶负载拆回路；本项目两卫浴霸已各拆独立回路' }
+    washer_dryer:  { material: BV铜线, spec: '4mm² 独立回路', note: '洗衣与烘干分两条专用回路（GB 55038 7.4.4）' }
+    steam_oven:    { material: BV铜线, spec: '4mm² 独立回路', note: '按设备额定功率最终确认——见 reversal_conditions 第1条' }
+    hvac:          { material: 'BV/BYJ', spec: '按美的安装要求', note: '不得提前拍脑袋定线径；pending-site-data 第39项' }
+    earth:         { material: BV黄绿线, spec: '与所在回路匹配', note: '同电线品牌，禁止“地线统一缩水”' }
+  electrical_conduit:
+    conduit:  { material: PVC阻燃线管, spec: 'φ16 / φ20 / φ25', note: '主力20管；剪力墙段按φ16单回路浅槽（mep-construction-guidance §4.2）' }
+    fittings: { material: '弯头/直接/锁母', spec: '同品牌同系列', rule: '尽量大弧弯，保证以后抽线' }
+    boxes:    { material: 86型阻燃底盒, spec: '加深型优先', note: '智能开关位尤其要深盒——但剪力墙位用40mm薄盒，见 reversal_conditions 第2条' }
+  distribution:
+    panel:    { material: 暗装配电箱, spec: '回路数 + 20%左右余量', note: '本项目实算 29 模数（21回路+2P进线+SPD×1.2），390mm 单排装不下，须双排或换箱' }
+    main_breaker: { material: 断路器, spec: '根据入户容量', note: '不能只看“63A越大越好”；pending-site-data 第45项（相数/需用系数）' }
+    branch_protection: { material: 'RCBO/漏保', spec: '按回路配置', note: '厨房、卫生间、插座等重点做漏保；本项目16/21回路带漏保' }
+    spd:      { material: SPD, spec: '2级', note: '开发商原箱若无则加；与换箱决策联动' }
+  weak_current:
+    cable:    { material: '六类非屏蔽CAT6', spec: '纯铜 23AWG 级', note: '家庭不必全屋超六类；本项目 net_gateway 段需2根（WAN+LAN）' }
+    conduit:  { material: PVC管, spec: '独立穿管', note: '不得与强电共管；本项目弱电管按 φ25 独立' }
+    ap:       { material: CAT6, spec: 'PoE兼容', note: '每个预定点一根独立线回弱电箱；本项目已留客厅/走廊吊顶 PoE AP 点' }
+    fiber:    { material: 单模皮线光纤, spec: '2芯以上', note: '入户到弱电箱预留——现行配置无光纤点位，见 pending_actions' }
+    weak_panel: { material: 加大箱体, spec: '可放光猫/交换机', note: '别用开发商那种小盒子；现登记箱体 400×300mm' }
+  auxiliaries:
+    terminals: { material: 'WAGO类接线端子', spec: '正规型号', rule: '禁止电线在线管内接头' }
+    clips:     { material: '金属/尼龙管卡', spec: '合适间距固定', rule: '管线不得铺完后晃动' }
+    tape:      { material: 电工胶带, spec: '阻燃', note: '3M/公牛；辅材不用省' }
+    fish_tape: { material: 穿线钢丝, spec: '—', rule: '线管封闭前确保可抽换' }
+
+# ─── 二、品牌候选档位（不是成交价，也不是唯一选择）───
+brand_tiers:
+  PPR水管: [伟星, 日丰, 中财]
+  PVC-U排水: [联塑, 中财, 日丰]
+  阻燃电工管: [联塑, 中财, 伟星]
+  电线: [桂林国际, 金杯, 远东, 上上]
+  底盒: [公牛, 正泰, 联塑]
+  配电与保护: [正泰, 德力西, 施耐德, ABB]
+  网线: [普天, 一舟, 康普]
+  阀门: [埃美柯, 杰克龙, 伟星]
+  胶带: [3M, 公牛]
+
+# ─── 三、业主锁死选项（2026-10-07 口径；改这些要走 DEC）───
+locked_choices:
+  - 'PPR：伟星/日丰/中财；25×3.5 S3.2 做主干，20×2.8 S3.2 做普通末端'
+  - '电线：正规国标 BV；1.5 照明 / 2.5 普通插座 / 4 平方厨房与大功率回路'
+  - '线管：联塑/中财 φ20 为主，大弧弯'
+  - '排水：联塑 PVC-U'
+  - '网线：六类纯铜'
+  - '配电：正泰够用；想提升质感再上施耐德/ABB'
+  - '取向：钱花在线材、保护器件、PPR 和隐藏工程上，而不是品牌溢价'
+
+# ─── 四、成本目标（业主侧目标口径，不是报价）───
+cost_target:
+  materials_cny: { min: 10000, max: 14000, price_type: owner_budget_pool }
+  labor_cny: { approx: 5000, price_type: direction, note: '折算 52.76 元/㎡（5000 ÷ 94.76㎡）。此前本行误写"对应约40元/㎡清包口径"——仓库内 40 元/㎡ 是木工吊顶板面人工（config/ceiling-quotes.yaml），与水清包不同源，2026-10-07 更正' }
+  stage_total_cny: { min: 16000, max: 20000, price_type: owner_budget_pool }
+  cross_check:
+    note: '2026-10-07 业主裁定：没有单价表就不产出报价。代码当前只算量不算钱（config/mep-quotes.yaml 与 config/mep-labor.yaml 的单价/费率全为 null，总额恒 null）。下列数字是同日的历史量级测算，**仅作参考锚点，不作为依据、不进入任何台账**。'
+    historical_reference_only:
+      materials_cny: 10010      # 公开页参考价 6 项 + 推导估计 18 项，24 项 active 单价
+      labor_cny: 5686           # 市价参考 60 元/㎡（二线 50~100 / 新一线 70~75 取中值）
+      labor_cny_owner_40: 3790   # 业主指定 40 元/㎡ 口径（非报价；低于业主自身 5,000 目标）
+      conduit_strong_priced_m: 470.2   # M02 后计价口径（同回路 union + allowance）；逻辑口径 216.8m 仅诊断
+      wire_total_m: 1534
+      stage_total_owner_40_cards: 18069  # 2026-10-07 M02：报价卡并排总额（不含 10% 不可预见）；业主指定人工 40 元/㎡ + 伟星家装绿/远东/中财H415/正泰档
+      stage_total_owner_40_before_m02: 20414  # M02 修正前口径（含 10% 不可预见、管长为逻辑口径），留档备查
+    conclusion: '量级与业主目标区间相容（材料落在 1.0~1.4 万下沿、全阶段贴 1.6~2 万上限），但"PKG-040 计划额 15,000 是否够"必须等师傅材料单与人工报价回填后才能定论'
+
+# ─── 五、反转条件（这些事实会改选型，见 DEC-2026-10-07-M01）───
+reversal_conditions:
+  - id: 1
+    topic: 微蒸烤回路线径
+    baseline: '4mm² 独立回路'
+    conflicts_with: 'config/electrical-topology.yaml 现为 C16A+漏保 / 2.5mm²（美的 GC5 额定 3200W，16A 插座口径）'
+    reversal: '按设备铭牌与 16A 插座终核；若定 4mm²，同步改 wire_size、管径（φ20→φ25）与箱体模数'
+  - id: 2
+    topic: 底盒深浅
+    baseline: '加深型优先'
+    conflicts_with: '剪力墙段上限是 φ16 单回路 + 40mm 薄盒（mep-construction-guidance §4.2）'
+    reversal: '填充墙用深盒、剪力墙用薄盒；智能开关深盒需求靠把点位挪到填充墙解决'
+  - id: 3
+    topic: 配电箱单双排
+    baseline: '回路数 + 20% 余量'
+    conflicts_with: 'pending-site-data 第30项未判单/双排；21路+2P进线+SPD 须双排'
+    reversal: '量房开箱复测；若现场为单排箱须换箱或上移箱体（GB 55038 7.4.3-2）'
+  - id: 4
+    topic: 前置过滤器与减压阀
+    baseline: '只留 DN20/25 接口'
+    conflicts_with: 'config/acceptance.yaml check_plumb_prefilter_and_prv 要求「总阀→减压阀 0.25MPa→前置位带排污与旁通三通」且三通与排污管埋到位'
+    reversal: '本期不装机也必须埋三通与排污管；设备本体与软水机归属另立'
+  - id: 5
+    topic: 弱电箱与光纤
+    baseline: '加大箱体可放光猫/交换机 + 2芯光纤入户'
+    conflicts_with: '现行配置无光纤点位；现登记弱电箱 400×300mm 为开发商预留'
+    reversal: '量房核开发商箱体尺寸与入户光电复合缆；确定后补点位并按 pending-site-data 新开项登记'
+
+# ─── 六、归档后的下一步 ──
+pending_actions:
+  - '师傅开材料单后，把单据交回做「规格 / 数量 / 单价 / 是否必要 / 是否超配」采购审核表（对照 config/mep-quotes.yaml 的 active 单价与 takeoff 数量）'
+  - '取得南宁门店同口径书面报价后，把 config/mep-quotes.yaml 的 price_type 从 public_reference / derived_estimate 升级为 quoted_sheet，并回填 observed_at 与 source_url'
+  - '光纤点位、弱电箱规格按 reversal_conditions 第5条量房后补登记'

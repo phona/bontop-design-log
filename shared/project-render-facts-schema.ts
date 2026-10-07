@@ -44,6 +44,11 @@ export const PlumbingPointSchema = z.object({
   uncertainty_m: finiteNumber.positive().optional(),
   not_for_construction: z.boolean().optional(),
   diameter: finiteNumber.positive().optional(),
+  // 算量分桶字段（shared/mep-takeoff.ts 读取）。strict schema：错字/漏声明都在这里显形，
+  // 不允许从 note 文字反推冷热与管径（AGENTS.md「禁止推断」）。
+  water_temp: z.enum(['hot', 'cold', 'mixed']).optional(),
+  water_dn: z.union([z.literal(20), z.literal(25), z.literal(32)]).optional(),
+  drain_dn: z.union([z.literal(50), z.literal(75), z.literal(110)]).optional(),
 }).strict();
 export const CeilingZoneSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(VALID_CEILING_TYPES), thickness: finiteNumber.optional(),
@@ -213,6 +218,11 @@ export const PlumbingPointProjectionSchema = z.object({
   uncertainty_m: finiteNumber.positive().optional(),
   not_for_construction: z.boolean().optional(),
   diameter: finiteNumber.positive().optional(),
+  // 算量分桶字段。声明位置必须与 parsePlumbingPoints 的产出键序一致（PlumbingPointSchema 里
+  // 这三个字段声明在 diameter 之后，故 zod parse 的产出也排在 diameter 之后、wallSide 之前）。
+  water_temp: z.enum(['hot', 'cold', 'mixed']).optional(),
+  water_dn: z.union([z.literal(20), z.literal(25), z.literal(32)]).optional(),
+  drain_dn: z.union([z.literal(50), z.literal(75), z.literal(110)]).optional(),
   wallSide: WallSideSchema.optional(),
 }).strict();
 export const CeilingZonesSchema = z.array(CeilingZoneSchema);

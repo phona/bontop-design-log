@@ -3,6 +3,8 @@
   wall: w_mbath_south
   wall_side: south
   type: faucet
+  water_temp: "mixed"
+  water_dn: 20
   x: 0.575
   z: 2.96
   height: 0.8
@@ -13,6 +15,7 @@
   wall: w_mbath_south
   wall_side: south
   type: drain
+  drain_dn: 50
   x: 0.575
   z: 2.96
   height: 0.35
@@ -22,6 +25,8 @@
   room: master_bath
   wall: w_mbath_south
   type: shower
+  water_temp: "mixed"
+  water_dn: 20
   x: 0.50
   z: 2.76
   height: 1.0
@@ -32,6 +37,8 @@
   wall: w_mbath_east
   wall_side: west
   type: toilet
+  water_temp: "cold"
+  water_dn: 20
   x: 2.60
   z: 1.5
   note: "主卫马桶给水（DEC-2026-09-08-R1 补声明 wall_side west；DEC-2026-10-03-R1：坐便器形式（落地/壁挂）与坑距未定——壁挂则给水、电、排污全部进假墙，现有墙挂模型整体作废。与同柱电点 sock_mbath_toilet (2.60,1.50) h=0.3 撞线，交底前横向错开 ≥0.15m 或竖向分层；SKU 见 pending-site-data #31）"
@@ -42,6 +49,7 @@
 - id: drain_mbath_toilet
   room: master_bath
   type: drain
+  drain_dn: 110
   x: 2.60
   z: 1.50
   height: 0.02
@@ -50,6 +58,7 @@
 - id: drain_mbath_shower
   room: master_bath
   type: drain
+  drain_dn: 50
   x: 0.60
   z: 2.20
   height: 0.02
@@ -58,6 +67,7 @@
 - id: drain_mbath_floor
   room: master_bath
   type: drain
+  drain_dn: 50
   x: 2.0
   z: 1.15
   height: 0.02
@@ -68,6 +78,8 @@
   wall: w_gbath_east_open_vanity
   wall_side: west
   type: faucet
+  water_temp: "mixed"
+  water_dn: 20
   x: 7.05
   z: 3.90
   height: 0.84
@@ -78,6 +90,7 @@
   wall: w_gbath_south
   wall_side: north
   type: drain
+  drain_dn: 50
   x: 6.90
   z: 3.55
   height: 0.3
@@ -88,6 +101,8 @@
   wall: w_gbath_east
   wall_side: west
   type: shower
+  water_temp: "mixed"
+  water_dn: 20
   x: 7.10
   z: 2.45
   height: 1.0
@@ -98,6 +113,8 @@
   wall: w_gbath_east
   wall_side: west
   type: toilet
+  water_temp: "cold"
+  water_dn: 20
   x: 7.10
   z: 3.05
   note: "2026-08-29 客卫南段马桶给水；东墙实体墙西侧挂载，坐东朝西，服务马桶中心 (6.75,3.05)，真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于隔断南侧并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与同柱电点 sock_gbath_toilet (7.10,3.05) h=0.3、sock_gbath_towel h=1.2、干区地漏 drain_gbath_floor (6.45,3.05) 需统一竖向分层口径；坐便器形式与坑距未定，SKU 见 pending-site-data #31"
@@ -105,6 +122,7 @@
 - id: drain_gbath_shower
   room: guest_bath
   type: drain
+  drain_dn: 50
   x: 6.30
   z: 2.45
   height: 0.02
@@ -113,6 +131,7 @@
 - id: drain_gbath_floor
   room: guest_bath
   type: drain
+  drain_dn: 50
   x: 6.45
   z: 3.05
   height: 0.02
@@ -121,6 +140,8 @@
 - id: faucet_kitchen_sink
   room: kitchen
   type: faucet
+  water_temp: "mixed"
+  water_dn: 20
   x: 9.50
   z: 0.30
   height: 0.8
@@ -129,6 +150,8 @@
 - id: faucet_kitchen_purifier
   room: kitchen
   type: faucet
+  water_temp: "cold"
+  water_dn: 20
   x: 9.50
   z: 0.30
   height: 0.3
@@ -137,6 +160,7 @@
 - id: drain_kitchen_sink
   room: kitchen
   type: drain
+  drain_dn: 50
   x: 9.5
   z: 0.3
   height: 0.02
@@ -147,6 +171,8 @@
   wall: w_balc_west
   wall_side: east
   type: faucet
+  water_temp: "mixed"
+  water_dn: 20
   x: 5.60
   z: 1.5
   height: 0.8
@@ -155,6 +181,7 @@
 - id: drain_balcony_floor
   room: balcony
   type: drain
+  drain_dn: 50
   x: 6.5
   z: 1.5
   height: 0.02
@@ -165,6 +192,8 @@
   wall: w_ent_west
   wall_side: east
   type: faucet
+  water_temp: "cold"
+  water_dn: 20
   x: 10.80
   z: 1.5
   height: 0.8
@@ -176,6 +205,7 @@
 - id: drain_garden
   room: entry_garden
   type: drain
+  drain_dn: 50
   x: 13.0
   z: 1.5
   height: 0.02
@@ -189,6 +219,7 @@
 - id: drain_kitchen_dishwasher
   room: kitchen
   type: drain
+  drain_dn: 50
   x: 9.00
   z: 0.30
   height: 0.02
@@ -197,6 +228,7 @@
 - id: drain_balcony_washer
   room: balcony
   type: drain
+  drain_dn: 50
   x: 5.80
   z: 1.50
   height: 0.60
@@ -215,6 +247,7 @@
 - id: drain_riser_master_bath
   room: master_bath
   type: drain_riser
+  drain_dn: 110
   x: 0.30
   z: 1.30
   diameter: 0.075
@@ -227,6 +260,7 @@
 - id: drain_riser_guest_bath
   room: guest_bath
   type: drain_riser
+  drain_dn: 110
   x: 5.80
   z: 2.40
   diameter: 0.075
@@ -239,6 +273,7 @@
 - id: drain_riser_kitchen
   room: kitchen
   type: drain_riser
+  drain_dn: 110
   x: 10.50
   z: 0.30
   diameter: 0.075

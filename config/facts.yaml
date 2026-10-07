@@ -430,6 +430,14 @@ facts:
         extract: '本户\s*(\d+)\s*路'
         severity: error
         expect_matches: 2
+      - path: config/mep-quotes.yaml
+        extract: '(\d+)\s*回路?'
+        severity: error
+        expect_matches: 10
+      - path: config/mep-material-baseline.yaml
+        extract: '(\d+)\s*路'
+        severity: error
+        expect_matches: 1
     exempt:
       - path: config/electrical-topology.yaml
         pattern: '路'
@@ -1574,3 +1582,40 @@ coverage:
   - { file: config/facts.yaml, field: "facts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
   - { file: config/facts.yaml, field: "contracts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
   - { file: config/facts.yaml, field: "coverage", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
+
+  # ─── 水电子系统算量与成本底座（P0，2026-10-07）───
+  # 特征：量全部由代码从既有声明（点位/回路/路由/管径冷热字段）派生，配置只放规则与单价；
+  # 未回填单价时金额恒 null、总额恒 null（shared/mep-cost.ts 禁部分求和冒充总额）。
+  - { file: config/mep-takeoff.yaml, field: "version", readers: [] }
+  - { file: config/mep-takeoff.yaml, field: "sources", readers: ["scripts/project/mep-takeoff.ts", "scripts/verify/mep/verify-mep-takeoff.ts"] }
+  - { file: config/mep-takeoff.yaml, field: "covered_layers", readers: ["shared/mep-takeoff.ts"] }
+  - { file: config/mep-takeoff.yaml, field: "excluded_layers", readers: ["shared/mep-takeoff.ts"] }
+  - { file: config/mep-takeoff.yaml, field: "allowance_unrouted_points", readers: ["shared/mep-takeoff.ts"] }
+  - { file: config/mep-takeoff.yaml, field: "units", readers: ["shared/mep-takeoff.ts"] }
+  - { file: config/mep-takeoff.yaml, field: "trunk_wire_size", readers: ["shared/mep-takeoff.ts"] }
+  - { file: config/mep-takeoff.yaml, field: "include_terminal_drop", readers: ["shared/mep-takeoff.ts"] }
+  - { file: config/mep-takeoff.yaml, field: "panel", readers: ["shared/mep-takeoff.ts", "scripts/verify/mep/verify-mep-takeoff.ts"] }
+  - { file: config/mep-takeoff.yaml, field: "declared_devices", readers: ["shared/mep-takeoff.ts"] }
+  - { file: config/mep-takeoff.yaml, field: "non_mep_items", readers: ["shared/mep-takeoff.ts", "tests/server/mep-takeoff.test.ts"] }
+  - { file: config/mep-takeoff.yaml, field: "status_rule", readers: [] }
+  - { file: config/mep-takeoff.yaml, field: "trunk_note", readers: [] }
+  - { file: config/mep-quotes.yaml, field: "version", readers: ["shared/quote-cards.ts"] }
+  - { file: config/mep-quotes.yaml, field: "active", readers: ["server/mep-quotes.ts", "scripts/project/mep-takeoff.ts"] }
+  - { file: config/mep-quotes.yaml, field: "quotes", readers: ["server/mep-quotes.ts", "scripts/project/mep-takeoff.ts"] }
+  - { file: config/mep-labor.yaml, field: "version", readers: [] }
+  - { file: config/mep-labor.yaml, field: "labor_models", readers: ["server/mep-quotes.ts"] }
+  - { file: config/mep-labor.yaml, field: "extras", readers: ["server/mep-quotes.ts"] }
+  - { file: config/mep-labor.yaml, field: "aux_material_lump", readers: ["server/mep-quotes.ts"] }
+  - { file: config/mep-labor.yaml, field: "contingency_ratio", readers: [] }
+  - { file: config/mep-labor.yaml, field: "contingency_note", readers: [] }
+  - { file: config/mep-labor.yaml, field: "scopes", readers: [] }
+  # ─── 水电主材选型基线（2026-10-07 归档，DEC-2026-10-07-M01）───
+  # 说明：本文件是「选型方向」层，单价在 config/mep-quotes.yaml、米数由 takeoff 派生，
+  # 故多数字段的 reader 是引用它字段名的文档（docs/decision_log.md / schedule/procurement.md）。
+  - { file: config/mep-material-baseline.yaml, field: "version", readers: [] }
+  - { file: config/mep-material-baseline.yaml, field: "specs", readers: ["docs/decision_log.md"] }
+  - { file: config/mep-material-baseline.yaml, field: "brand_tiers", readers: ["docs/decision_log.md"] }
+  - { file: config/mep-material-baseline.yaml, field: "locked_choices", readers: ["docs/decision_log.md", "schedule/procurement.md"] }
+  - { file: config/mep-material-baseline.yaml, field: "cost_target", readers: ["docs/decision_log.md"] }
+  - { file: config/mep-material-baseline.yaml, field: "reversal_conditions", readers: ["docs/decision_log.md", "schedule/procurement.md"] }
+  - { file: config/mep-material-baseline.yaml, field: "pending_actions", readers: ["schedule/procurement.md"] }

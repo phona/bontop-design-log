@@ -1092,6 +1092,15 @@ export interface PlumbingPoint {
   not_for_construction?: boolean;
   /** 管路/设备口径直径（米），如排水立管 0.075、排烟道 0.15。 */
   diameter?: number;
+  /**
+   * 给水水温口径（算量分冷热桶用）。mixed = 冷热双进（台盆/淋浴/洗衣机）。
+   * 由 shared/mep-takeoff.ts 读取，禁止从 note 文字推断。
+   */
+  water_temp?: 'hot' | 'cold' | 'mixed';
+  /** 给水管公称口径（PPR，mm）。仅给水类点位声明。 */
+  water_dn?: 20 | 25 | 32;
+  /** 排水管公称口径（PVC-U，mm）。分级见 docs/mep-construction-guidance.md §3.4（de110/de75/de50）。 */
+  drain_dn?: 50 | 75 | 110;
 }
 
 export const VALID_CEILING_TYPES = [

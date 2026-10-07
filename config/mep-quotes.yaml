@@ -1,0 +1,701 @@
+# 水电报价卡片（2026-10-07 迁移到 shared/quote-cards.ts 卡片模型，与吊顶报价同源语义）。
+#
+# 一张卡 = 一个可执行方案（品牌档位 + 人工口径）。**量不在这里**：工程量由
+# shared/mep-takeoff.ts 从 config/electrical.yaml / plumbing.yaml / electrical-topology.yaml /
+# mep-hvac-coordination.yaml 实算，报价方只报单价 + 含项范围，不允许自带米数/面积。
+#
+# 铁律：
+#  1. `active:` 指向生效卡片；切换只改这一行（POST /api/mep/quotes/active 或 MCP set_mep_quote，
+#     都会留 .bak、保留注释），Git diff 只有一行。
+#  2. `per_unit: null` = 待报价：数量照样显形、金额不编，杜绝「换个报价把活儿变没」。
+#  3. 未声明的行回落到 config/mep-labor.yaml（server/mep-quotes.ts 的 mepQuoteFallback() 读取），
+#     并标 rate_source: mep-labor.yaml——回落必须看得见，不悄悄替换。人工五行的费率在那里维护。
+#  4. `out_of_scope` = 这家不报这项（≠ 待报价）：总额照算，该行只显形。
+#  5. 缺 scope_note 的报价行 → comparable:false（AGENTS.md：不同口径不可直接比较）。
+#  6. **同品牌同规格不同系列价差可达 2~3 倍**（伟星 25×3.5：家装绿 ¥110/根 vs 工程灰 ¥42.10/根）。
+#     系列/货号/压力等级必须写进采购单，不能只写「伟星25热水管」——本文件用卡片区分档位。
+#  7. 页面按根(4m)/卷(100m)/箱(305m)计价时，各行 scope_note 都记录了「页面价 ÷ 包装」的换算。
+
+version: 1
+active: owner_baseline_40
+quotes:
+  - id: owner_baseline_40
+    contractor: 业主口径基线（伟星家装绿 + 远东 + 中财H415 + 正泰 + 人工 40 元/㎡）
+    quoted_at: '2026-10-07'
+    status: baseline
+    note: 材料取当前最低可信档 + 业主指定人工口径；推导价行的依据写在各行 scope_note
+    rates:
+      water_cold_20:
+        per_unit: 16.9
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 20×2.8mm×4m 2.0MPa｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜家装系列（冷热通用）；同规格工程灰 ¥26.30/根＝6.58 元/m，价差 2.6 倍，系列选择是业主决策
+      water_cold_25:
+        per_unit: 27.5
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 25×3.5mm×4m 2.0MPa｜页面 ¥110/4m｜public_reference｜https://txy.xfs.com/productsku/081554.html｜**注意：¥110 是每根 4m 价，折 27.50 元/m**；报价单若写"25 管 110 元"必须问清是根还是米
+      water_hot_20:
+        per_unit: 16.9
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 20×2.8mm×4m 2.0MPa（冷热通用）｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜与 cold/20 同管同价（PPR 冷热同料，无需分冷热水管采购）
+      water_hot_25:
+        per_unit: 27.5
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 25×3.5mm×4m 2.0MPa｜页面 ¥110/4m｜public_reference｜https://txy.xfs.com/productsku/081554.html｜27.50 元/m；按 4m 定尺采购时余料计入损耗
+      water_mixed_20:
+        per_unit: 16.9
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 20×2.8mm×4m 2.0MPa｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜mixed 桶＝该段冷热各一根，takeoff 已拆成两根计入；本项单价对应一根
+      fitting_ppr:
+        per_unit: 2.29
+        unit: 元/m
+        scope_note: >-
+          家装绿｜弯头20 ¥4.98 / 三通20 ¥5.60 / 三通25 ¥9.80 / 直通25 ¥5.60｜页面 ¥6.53/1个｜derived_estimate｜https://zgjx.xfs.com/productsku/081561.html｜按普通件三款均价 ¥6.53/个 × 管件系数 0.35 个/m 推导；**不含内丝件**（内丝弯头25×1/2
+          ¥32.30、内丝活接20×1/2 ¥61.60、25×3/4 ¥86.00），内丝件按实际点位另立一行
+      drain_50:
+        per_unit: 5.38
+        unit: 元/m
+        scope_note: Ⅰ型｜50×2.0mm×4m｜页面 ¥21.53/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 5.38 元/m；尽量 45° 组合、少 90° 硬弯（保坡度）
+      drain_75:
+        per_unit: 10.28
+        unit: 元/m
+        scope_note: Ⅰ型｜75×2.3mm×4m｜页面 ¥41.13/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 10.28 元/m；本项目当前 takeoff 无 de75 量（支管直接 de50 接入立管）
+      drain_110:
+        per_unit: 13
+        unit: 元/m
+        scope_note: Ⅰ型｜110×3.2mm×4m｜页面 ¥52/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 13.00 元/m；分级口径见 docs/mep-construction-guidance.md §3.4
+      fitting_pvc:
+        per_unit: 1.76
+        unit: 元/m
+        scope_note: Ⅰ型｜45°/90°弯头/三通/变径｜页面 ¥1.76/1m｜derived_estimate｜管件系数 0.27 个/m × 普通件均价约 ¥6.5/个（价目表未含 PVC 管件 SKU，按 PPR 管件同结构类比推导）
+      wire_1_5:
+        per_unit: 2.52
+        unit: 元/m
+        scope_note: 1.5mm² 100m/卷｜页面 ¥252.27/100m｜public_reference｜https://item.jd.com/product/UwIa_hzUtH6qnNy72jVnaw.html｜折 2.52 元/m；采购单须写清红/蓝/黄/绿各多少卷，不能只写"1.5 国标线"
+      wire_2_5:
+        per_unit: 3.92
+        unit: 元/m
+        scope_note: 2.5mm² 100m/卷｜页面 ¥392.35/100m｜public_reference｜https://item.jd.com/product/msFhbpBZCMGcIRLRYibxKw.html｜折 3.92 元/m；L/N/PE 三线同规格，地线不许缩水
+      wire_4_0:
+        per_unit: 6.27
+        unit: 元/m
+        scope_note: 4mm² 100m/卷｜页面 ¥627.3/100m｜public_reference｜https://m.maigoo.com/brand/product_1319.html｜折 6.27 元/m（此前推导估 5.69，现按页面价更正）
+      wire_trunk:
+        per_unit: 6.27
+        unit: 元/m
+        scope_note: ZC-BV｜主干线（线径待 pending-site-data 第45项裁定，暂按 BV4 同价）｜页面 ¥6.27/1m｜derived_estimate｜暂按 BV4 页面价；线径裁定后回填
+      conduit_20:
+        per_unit: 1.45
+        unit: 元/m
+        scope_note: H415 重型｜20×4m 重型 H415｜页面 ¥5.8/4m｜public_reference｜https://txy.xfs.com/productsku/15642649.html｜折 1.45 元/m；active 取重型阻燃档，符合本项目"阻燃线管"要求
+      conduit_25:
+        per_unit: 1.89
+        unit: 元/m
+        scope_note: H415 重型｜φ25 阻燃电工管｜页面 ¥1.89/1m｜derived_estimate｜按同档 φ20 ¥1.45/m × 1.3 推导（价目表未含 φ25 SKU）
+      breaker_mcb:
+        per_unit: 17.82
+        unit: 元/个
+        scope_note: NXB-63｜1P C16｜页面 ¥17.82/1个｜public_reference｜https://www.eppe.cn/｜本项目 5 个照明回路用 C16 微断
+      breaker_rcd:
+        per_unit: 57.24
+        unit: 元/个
+        scope_note: NXBLE-32 C32 30mA 6kA｜1P+N C32 30mA 6kA｜页面 ¥57.24/1个｜public_reference｜https://www.eppe.cn/｜本项目 16 个回路带漏保；页面为 C32 档，C16/C20 档单价须向门店核（通常略低）
+      spd:
+        per_unit: 120
+        unit: 元/个
+        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜21 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
+      panel:
+        per_unit: 12
+        unit: 元/模
+        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜21 回路 + 2P 进线 + 浪涌需双排 → 29 模数；单排约 16 位可用装不下（pending-site-data 第30项）
+      cat6:
+        per_unit: 2.78
+        unit: 元/m
+        scope_note: 六类非屏蔽｜纯铜 0.52mm 305m/箱｜页面 ¥849/305m｜public_reference｜https://item.jd.com/product/_YRQAuYXByUhzAzBqHRxoQ.html｜折 2.78 元/m；须防铜包铝，核导体材质
+      box86:
+        per_unit: 6
+        unit: 元/个
+        scope_note: 86 型阻燃｜底盒（深盒）｜页面 ¥6/1个｜derived_estimate｜中等质量暗盒约 ¥5~8/个；剪力墙位需另购 40mm 薄盒（价目表未含底盒 SKU）
+      leb_kit:
+        per_unit: 150
+        unit: 元/套
+        scope_note: LEB｜等电位端子箱 + BV-6mm² 干线 + BVR 联连线｜页面 ¥150/1套｜derived_estimate｜端子箱 ¥30~60 + 联结线约 20m + 辅件；防水层前预埋不可补埋
+      entry_valve_kit:
+        per_unit: 260
+        unit: 元/套
+        scope_note: DN20 全径｜总阀 + 减压阀 0.25MPa + 前置位三通/旁通｜页面 ¥260/1套｜derived_estimate｜公开参考 DN20 球阀约 ¥65、DN25 约 ¥80，加减压阀与三通/旁通件；PPR 内丝件另有页面价未计入
+      gas_alarm_kit:
+        per_unit: 300
+        unit: 元/套
+        scope_note: 家用｜燃气报警器 + 电磁切断阀｜页面 ¥300/1套｜derived_estimate｜常见 200~500 元；型号位见 pending-site-data 第32项
+      exhaust_duct_kit:
+        per_unit: 200
+        unit: 元/套
+        scope_note: φ100｜浴霸排风管 + 防火止回阀 + 套管｜页面 ¥200/1套｜derived_estimate｜约 150~300 元/套；外立面开孔需物业核定
+      hot_pipe_insulation:
+        per_unit: 3
+        unit: 元/m
+        scope_note: NBR/PVC｜PPR 热水管保温套管｜页面 ¥3/1m｜derived_estimate｜常见 2~5 元/m；冷凝水管保温归空调包 COST-030-02
+      labor_by_area:
+        per_unit: 40
+        unit: 元/㎡
+        scope_note: 业主 2026-10-07 指定口径（非施工方报价）；含开槽/封槽/穿管穿线/打压/通球/等电位/垃圾清运，不含主材面板灯具洁具燃气管空调铜管冷凝水。注意仓库内 40 元/㎡ 原为木工吊顶板面口径，业主基线"约5000多"折算 52.76 元/㎡，两者不同源
+      extra_penetration:
+        per_unit: 25
+        unit: 元/孔
+        scope_note: 市价参考中值（公开页 10~30 元/个）；若清包含打孔则不重复计
+      extra_leb_install:
+        per_unit: 150
+        unit: 元/套
+        scope_note: 推导价 100~200 元/套；材料见 leb_kit 行
+      extra_pressure_test:
+        per_unit: 300
+        unit: 元/次
+        scope_note: 推导价 200~500 元/次（打压+绝缘+等电位+漏保试合及记录）
+      aux_lump:
+        per_unit: 1200
+        unit: 元
+        scope_note: 推导价 800~1500 元（端子/管卡/胀塞/胶水/胶带/生料带/黄腊管/封槽料/网格布/套管/防火泥）；WAGO 221-413 参考 ¥6.29/个。若施工方口径为辅材另计，改 null 并逐项列
+  - id: weixing_home_green
+    contractor: 伟星家装绿 + 远东 + 中财H415 + 正泰
+    quoted_at: '2026-10-07'
+    status: candidate
+    note: 与 baseline 同档，仅作并排对照（人工回落 mep-labor.yaml）
+    rates:
+      water_cold_20:
+        per_unit: 16.9
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 20×2.8mm×4m 2.0MPa｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜家装系列（冷热通用）；同规格工程灰 ¥26.30/根＝6.58 元/m，价差 2.6 倍，系列选择是业主决策
+      water_cold_25:
+        per_unit: 27.5
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 25×3.5mm×4m 2.0MPa｜页面 ¥110/4m｜public_reference｜https://txy.xfs.com/productsku/081554.html｜**注意：¥110 是每根 4m 价，折 27.50 元/m**；报价单若写"25 管 110 元"必须问清是根还是米
+      water_hot_20:
+        per_unit: 16.9
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 20×2.8mm×4m 2.0MPa（冷热通用）｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜与 cold/20 同管同价（PPR 冷热同料，无需分冷热水管采购）
+      water_hot_25:
+        per_unit: 27.5
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 25×3.5mm×4m 2.0MPa｜页面 ¥110/4m｜public_reference｜https://txy.xfs.com/productsku/081554.html｜27.50 元/m；按 4m 定尺采购时余料计入损耗
+      water_mixed_20:
+        per_unit: 16.9
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 20×2.8mm×4m 2.0MPa｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜mixed 桶＝该段冷热各一根，takeoff 已拆成两根计入；本项单价对应一根
+      fitting_ppr:
+        per_unit: 2.29
+        unit: 元/m
+        scope_note: >-
+          家装绿｜弯头20 ¥4.98 / 三通20 ¥5.60 / 三通25 ¥9.80 / 直通25 ¥5.60｜页面 ¥6.53/1个｜derived_estimate｜https://zgjx.xfs.com/productsku/081561.html｜按普通件三款均价 ¥6.53/个 × 管件系数 0.35 个/m 推导；**不含内丝件**（内丝弯头25×1/2
+          ¥32.30、内丝活接20×1/2 ¥61.60、25×3/4 ¥86.00），内丝件按实际点位另立一行
+      drain_50:
+        per_unit: 5.38
+        unit: 元/m
+        scope_note: Ⅰ型｜50×2.0mm×4m｜页面 ¥21.53/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 5.38 元/m；尽量 45° 组合、少 90° 硬弯（保坡度）
+      drain_75:
+        per_unit: 10.28
+        unit: 元/m
+        scope_note: Ⅰ型｜75×2.3mm×4m｜页面 ¥41.13/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 10.28 元/m；本项目当前 takeoff 无 de75 量（支管直接 de50 接入立管）
+      drain_110:
+        per_unit: 13
+        unit: 元/m
+        scope_note: Ⅰ型｜110×3.2mm×4m｜页面 ¥52/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 13.00 元/m；分级口径见 docs/mep-construction-guidance.md §3.4
+      fitting_pvc:
+        per_unit: 1.76
+        unit: 元/m
+        scope_note: Ⅰ型｜45°/90°弯头/三通/变径｜页面 ¥1.76/1m｜derived_estimate｜管件系数 0.27 个/m × 普通件均价约 ¥6.5/个（价目表未含 PVC 管件 SKU，按 PPR 管件同结构类比推导）
+      wire_1_5:
+        per_unit: 2.52
+        unit: 元/m
+        scope_note: 1.5mm² 100m/卷｜页面 ¥252.27/100m｜public_reference｜https://item.jd.com/product/UwIa_hzUtH6qnNy72jVnaw.html｜折 2.52 元/m；采购单须写清红/蓝/黄/绿各多少卷，不能只写"1.5 国标线"
+      wire_2_5:
+        per_unit: 3.92
+        unit: 元/m
+        scope_note: 2.5mm² 100m/卷｜页面 ¥392.35/100m｜public_reference｜https://item.jd.com/product/msFhbpBZCMGcIRLRYibxKw.html｜折 3.92 元/m；L/N/PE 三线同规格，地线不许缩水
+      wire_4_0:
+        per_unit: 6.27
+        unit: 元/m
+        scope_note: 4mm² 100m/卷｜页面 ¥627.3/100m｜public_reference｜https://m.maigoo.com/brand/product_1319.html｜折 6.27 元/m（此前推导估 5.69，现按页面价更正）
+      wire_trunk:
+        per_unit: 6.27
+        unit: 元/m
+        scope_note: ZC-BV｜主干线（线径待 pending-site-data 第45项裁定，暂按 BV4 同价）｜页面 ¥6.27/1m｜derived_estimate｜暂按 BV4 页面价；线径裁定后回填
+      conduit_20:
+        per_unit: 1.45
+        unit: 元/m
+        scope_note: H415 重型｜20×4m 重型 H415｜页面 ¥5.8/4m｜public_reference｜https://txy.xfs.com/productsku/15642649.html｜折 1.45 元/m；active 取重型阻燃档，符合本项目"阻燃线管"要求
+      conduit_25:
+        per_unit: 1.89
+        unit: 元/m
+        scope_note: H415 重型｜φ25 阻燃电工管｜页面 ¥1.89/1m｜derived_estimate｜按同档 φ20 ¥1.45/m × 1.3 推导（价目表未含 φ25 SKU）
+      breaker_mcb:
+        per_unit: 17.82
+        unit: 元/个
+        scope_note: NXB-63｜1P C16｜页面 ¥17.82/1个｜public_reference｜https://www.eppe.cn/｜本项目 5 个照明回路用 C16 微断
+      breaker_rcd:
+        per_unit: 57.24
+        unit: 元/个
+        scope_note: NXBLE-32 C32 30mA 6kA｜1P+N C32 30mA 6kA｜页面 ¥57.24/1个｜public_reference｜https://www.eppe.cn/｜本项目 16 个回路带漏保；页面为 C32 档，C16/C20 档单价须向门店核（通常略低）
+      spd:
+        per_unit: 120
+        unit: 元/个
+        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜21 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
+      panel:
+        per_unit: 12
+        unit: 元/模
+        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜21 回路 + 2P 进线 + 浪涌需双排 → 29 模数；单排约 16 位可用装不下（pending-site-data 第30项）
+      cat6:
+        per_unit: 2.78
+        unit: 元/m
+        scope_note: 六类非屏蔽｜纯铜 0.52mm 305m/箱｜页面 ¥849/305m｜public_reference｜https://item.jd.com/product/_YRQAuYXByUhzAzBqHRxoQ.html｜折 2.78 元/m；须防铜包铝，核导体材质
+      box86:
+        per_unit: 6
+        unit: 元/个
+        scope_note: 86 型阻燃｜底盒（深盒）｜页面 ¥6/1个｜derived_estimate｜中等质量暗盒约 ¥5~8/个；剪力墙位需另购 40mm 薄盒（价目表未含底盒 SKU）
+      leb_kit:
+        per_unit: 150
+        unit: 元/套
+        scope_note: LEB｜等电位端子箱 + BV-6mm² 干线 + BVR 联连线｜页面 ¥150/1套｜derived_estimate｜端子箱 ¥30~60 + 联结线约 20m + 辅件；防水层前预埋不可补埋
+      entry_valve_kit:
+        per_unit: 260
+        unit: 元/套
+        scope_note: DN20 全径｜总阀 + 减压阀 0.25MPa + 前置位三通/旁通｜页面 ¥260/1套｜derived_estimate｜公开参考 DN20 球阀约 ¥65、DN25 约 ¥80，加减压阀与三通/旁通件；PPR 内丝件另有页面价未计入
+      gas_alarm_kit:
+        per_unit: 300
+        unit: 元/套
+        scope_note: 家用｜燃气报警器 + 电磁切断阀｜页面 ¥300/1套｜derived_estimate｜常见 200~500 元；型号位见 pending-site-data 第32项
+      exhaust_duct_kit:
+        per_unit: 200
+        unit: 元/套
+        scope_note: φ100｜浴霸排风管 + 防火止回阀 + 套管｜页面 ¥200/1套｜derived_estimate｜约 150~300 元/套；外立面开孔需物业核定
+      hot_pipe_insulation:
+        per_unit: 3
+        unit: 元/m
+        scope_note: NBR/PVC｜PPR 热水管保温套管｜页面 ¥3/1m｜derived_estimate｜常见 2~5 元/m；冷凝水管保温归空调包 COST-030-02
+      labor_by_area:
+        per_unit: 40
+        unit: 元/㎡
+        scope_note: 业主 2026-10-07 指定口径（非施工方报价）；含开槽/封槽/穿管穿线/打压/通球/等电位/垃圾清运，不含主材面板灯具洁具燃气管空调铜管冷凝水。注意仓库内 40 元/㎡ 原为木工吊顶板面口径，业主基线"约5000多"折算 52.76 元/㎡，两者不同源
+      extra_penetration:
+        per_unit: 25
+        unit: 元/孔
+        scope_note: 市价参考中值（公开页 10~30 元/个）；若清包含打孔则不重复计
+      extra_leb_install:
+        per_unit: 150
+        unit: 元/套
+        scope_note: 推导价 100~200 元/套；材料见 leb_kit 行
+      extra_pressure_test:
+        per_unit: 300
+        unit: 元/次
+        scope_note: 推导价 200~500 元/次（打压+绝缘+等电位+漏保试合及记录）
+      aux_lump:
+        per_unit: 1200
+        unit: 元
+        scope_note: 推导价 800~1500 元（端子/管卡/胀塞/胶水/胶带/生料带/黄腊管/封槽料/网格布/套管/防火泥）；WAGO 221-413 参考 ¥6.29/个。若施工方口径为辅材另计，改 null 并逐项列
+  - id: weixing_engineering_grey
+    contractor: 伟星工程灰 + 远东 + 中财H415 + 正泰
+    quoted_at: '2026-10-07'
+    status: candidate
+    note: PPR 换工程系列：同规格单价约为家装绿的 38%；入户饮用水管用工程系列需业主明确接受
+    rates:
+      water_cold_20:
+        per_unit: 6.58
+        unit: 元/m
+        scope_note: 【伟星工程灰】家装绿｜S3.2 20×2.8mm×4m 2.0MPa｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜家装系列（冷热通用）；同规格工程灰 ¥26.30/根＝6.58 元/m，价差 2.6 倍，系列选择是业主决策
+      water_cold_25:
+        per_unit: 10.53
+        unit: 元/m
+        scope_note: 【伟星工程灰】家装绿｜S3.2 25×3.5mm×4m 2.0MPa｜页面 ¥110/4m｜public_reference｜https://txy.xfs.com/productsku/081554.html｜**注意：¥110 是每根 4m 价，折 27.50 元/m**；报价单若写"25 管 110 元"必须问清是根还是米
+      water_hot_20:
+        per_unit: 6.58
+        unit: 元/m
+        scope_note: 【伟星工程灰】家装绿｜S3.2 20×2.8mm×4m 2.0MPa（冷热通用）｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜与 cold/20 同管同价（PPR 冷热同料，无需分冷热水管采购）
+      water_hot_25:
+        per_unit: 10.53
+        unit: 元/m
+        scope_note: 【伟星工程灰】家装绿｜S3.2 25×3.5mm×4m 2.0MPa｜页面 ¥110/4m｜public_reference｜https://txy.xfs.com/productsku/081554.html｜27.50 元/m；按 4m 定尺采购时余料计入损耗
+      water_mixed_20:
+        per_unit: 6.58
+        unit: 元/m
+        scope_note: 【伟星工程灰】家装绿｜S3.2 20×2.8mm×4m 2.0MPa｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜mixed 桶＝该段冷热各一根，takeoff 已拆成两根计入；本项单价对应一根
+      fitting_ppr:
+        per_unit: 2.29
+        unit: 元/m
+        scope_note: >-
+          家装绿｜弯头20 ¥4.98 / 三通20 ¥5.60 / 三通25 ¥9.80 / 直通25 ¥5.60｜页面 ¥6.53/1个｜derived_estimate｜https://zgjx.xfs.com/productsku/081561.html｜按普通件三款均价 ¥6.53/个 × 管件系数 0.35 个/m 推导；**不含内丝件**（内丝弯头25×1/2
+          ¥32.30、内丝活接20×1/2 ¥61.60、25×3/4 ¥86.00），内丝件按实际点位另立一行
+      drain_50:
+        per_unit: 5.38
+        unit: 元/m
+        scope_note: Ⅰ型｜50×2.0mm×4m｜页面 ¥21.53/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 5.38 元/m；尽量 45° 组合、少 90° 硬弯（保坡度）
+      drain_75:
+        per_unit: 10.28
+        unit: 元/m
+        scope_note: Ⅰ型｜75×2.3mm×4m｜页面 ¥41.13/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 10.28 元/m；本项目当前 takeoff 无 de75 量（支管直接 de50 接入立管）
+      drain_110:
+        per_unit: 13
+        unit: 元/m
+        scope_note: Ⅰ型｜110×3.2mm×4m｜页面 ¥52/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 13.00 元/m；分级口径见 docs/mep-construction-guidance.md §3.4
+      fitting_pvc:
+        per_unit: 1.76
+        unit: 元/m
+        scope_note: Ⅰ型｜45°/90°弯头/三通/变径｜页面 ¥1.76/1m｜derived_estimate｜管件系数 0.27 个/m × 普通件均价约 ¥6.5/个（价目表未含 PVC 管件 SKU，按 PPR 管件同结构类比推导）
+      wire_1_5:
+        per_unit: 2.52
+        unit: 元/m
+        scope_note: 1.5mm² 100m/卷｜页面 ¥252.27/100m｜public_reference｜https://item.jd.com/product/UwIa_hzUtH6qnNy72jVnaw.html｜折 2.52 元/m；采购单须写清红/蓝/黄/绿各多少卷，不能只写"1.5 国标线"
+      wire_2_5:
+        per_unit: 3.92
+        unit: 元/m
+        scope_note: 2.5mm² 100m/卷｜页面 ¥392.35/100m｜public_reference｜https://item.jd.com/product/msFhbpBZCMGcIRLRYibxKw.html｜折 3.92 元/m；L/N/PE 三线同规格，地线不许缩水
+      wire_4_0:
+        per_unit: 6.27
+        unit: 元/m
+        scope_note: 4mm² 100m/卷｜页面 ¥627.3/100m｜public_reference｜https://m.maigoo.com/brand/product_1319.html｜折 6.27 元/m（此前推导估 5.69，现按页面价更正）
+      wire_trunk:
+        per_unit: 6.27
+        unit: 元/m
+        scope_note: ZC-BV｜主干线（线径待 pending-site-data 第45项裁定，暂按 BV4 同价）｜页面 ¥6.27/1m｜derived_estimate｜暂按 BV4 页面价；线径裁定后回填
+      conduit_20:
+        per_unit: 1.45
+        unit: 元/m
+        scope_note: H415 重型｜20×4m 重型 H415｜页面 ¥5.8/4m｜public_reference｜https://txy.xfs.com/productsku/15642649.html｜折 1.45 元/m；active 取重型阻燃档，符合本项目"阻燃线管"要求
+      conduit_25:
+        per_unit: 1.89
+        unit: 元/m
+        scope_note: H415 重型｜φ25 阻燃电工管｜页面 ¥1.89/1m｜derived_estimate｜按同档 φ20 ¥1.45/m × 1.3 推导（价目表未含 φ25 SKU）
+      breaker_mcb:
+        per_unit: 17.82
+        unit: 元/个
+        scope_note: NXB-63｜1P C16｜页面 ¥17.82/1个｜public_reference｜https://www.eppe.cn/｜本项目 5 个照明回路用 C16 微断
+      breaker_rcd:
+        per_unit: 57.24
+        unit: 元/个
+        scope_note: NXBLE-32 C32 30mA 6kA｜1P+N C32 30mA 6kA｜页面 ¥57.24/1个｜public_reference｜https://www.eppe.cn/｜本项目 16 个回路带漏保；页面为 C32 档，C16/C20 档单价须向门店核（通常略低）
+      spd:
+        per_unit: 120
+        unit: 元/个
+        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜21 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
+      panel:
+        per_unit: 12
+        unit: 元/模
+        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜21 回路 + 2P 进线 + 浪涌需双排 → 29 模数；单排约 16 位可用装不下（pending-site-data 第30项）
+      cat6:
+        per_unit: 2.78
+        unit: 元/m
+        scope_note: 六类非屏蔽｜纯铜 0.52mm 305m/箱｜页面 ¥849/305m｜public_reference｜https://item.jd.com/product/_YRQAuYXByUhzAzBqHRxoQ.html｜折 2.78 元/m；须防铜包铝，核导体材质
+      box86:
+        per_unit: 6
+        unit: 元/个
+        scope_note: 86 型阻燃｜底盒（深盒）｜页面 ¥6/1个｜derived_estimate｜中等质量暗盒约 ¥5~8/个；剪力墙位需另购 40mm 薄盒（价目表未含底盒 SKU）
+      leb_kit:
+        per_unit: 150
+        unit: 元/套
+        scope_note: LEB｜等电位端子箱 + BV-6mm² 干线 + BVR 联连线｜页面 ¥150/1套｜derived_estimate｜端子箱 ¥30~60 + 联结线约 20m + 辅件；防水层前预埋不可补埋
+      entry_valve_kit:
+        per_unit: 260
+        unit: 元/套
+        scope_note: DN20 全径｜总阀 + 减压阀 0.25MPa + 前置位三通/旁通｜页面 ¥260/1套｜derived_estimate｜公开参考 DN20 球阀约 ¥65、DN25 约 ¥80，加减压阀与三通/旁通件；PPR 内丝件另有页面价未计入
+      gas_alarm_kit:
+        per_unit: 300
+        unit: 元/套
+        scope_note: 家用｜燃气报警器 + 电磁切断阀｜页面 ¥300/1套｜derived_estimate｜常见 200~500 元；型号位见 pending-site-data 第32项
+      exhaust_duct_kit:
+        per_unit: 200
+        unit: 元/套
+        scope_note: φ100｜浴霸排风管 + 防火止回阀 + 套管｜页面 ¥200/1套｜derived_estimate｜约 150~300 元/套；外立面开孔需物业核定
+      hot_pipe_insulation:
+        per_unit: 3
+        unit: 元/m
+        scope_note: NBR/PVC｜PPR 热水管保温套管｜页面 ¥3/1m｜derived_estimate｜常见 2~5 元/m；冷凝水管保温归空调包 COST-030-02
+      labor_by_area:
+        per_unit: 40
+        unit: 元/㎡
+        scope_note: 业主 2026-10-07 指定口径（非施工方报价）；含开槽/封槽/穿管穿线/打压/通球/等电位/垃圾清运，不含主材面板灯具洁具燃气管空调铜管冷凝水。注意仓库内 40 元/㎡ 原为木工吊顶板面口径，业主基线"约5000多"折算 52.76 元/㎡，两者不同源
+      extra_penetration:
+        per_unit: 25
+        unit: 元/孔
+        scope_note: 市价参考中值（公开页 10~30 元/个）；若清包含打孔则不重复计
+      extra_leb_install:
+        per_unit: 150
+        unit: 元/套
+        scope_note: 推导价 100~200 元/套；材料见 leb_kit 行
+      extra_pressure_test:
+        per_unit: 300
+        unit: 元/次
+        scope_note: 推导价 200~500 元/次（打压+绝缘+等电位+漏保试合及记录）
+      aux_lump:
+        per_unit: 1200
+        unit: 元
+        scope_note: 推导价 800~1500 元（端子/管卡/胀塞/胶水/胶带/生料带/黄腊管/封槽料/网格布/套管/防火泥）；WAGO 221-413 参考 ¥6.29/个。若施工方口径为辅材另计，改 null 并逐项列
+  - id: liansu
+    contractor: 联塑 + 远东 + 中财H415 + 正泰
+    quoted_at: '2026-10-07'
+    status: candidate
+    note: PPR/排水全换联塑（最低档）；管件必须同品牌同系列
+    rates:
+      water_cold_20:
+        per_unit: 4.2
+        unit: 元/m
+        scope_note: 【联塑】家装绿｜S3.2 20×2.8mm×4m 2.0MPa｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜家装系列（冷热通用）；同规格工程灰 ¥26.30/根＝6.58 元/m，价差 2.6 倍，系列选择是业主决策
+      water_cold_25:
+        per_unit: 6.6
+        unit: 元/m
+        scope_note: 【联塑】家装绿｜S3.2 25×3.5mm×4m 2.0MPa｜页面 ¥110/4m｜public_reference｜https://txy.xfs.com/productsku/081554.html｜**注意：¥110 是每根 4m 价，折 27.50 元/m**；报价单若写"25 管 110 元"必须问清是根还是米
+      water_hot_20:
+        per_unit: 4.2
+        unit: 元/m
+        scope_note: 【联塑】家装绿｜S3.2 20×2.8mm×4m 2.0MPa（冷热通用）｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜与 cold/20 同管同价（PPR 冷热同料，无需分冷热水管采购）
+      water_hot_25:
+        per_unit: 6.6
+        unit: 元/m
+        scope_note: 【联塑】家装绿｜S3.2 25×3.5mm×4m 2.0MPa｜页面 ¥110/4m｜public_reference｜https://txy.xfs.com/productsku/081554.html｜27.50 元/m；按 4m 定尺采购时余料计入损耗
+      water_mixed_20:
+        per_unit: 4.2
+        unit: 元/m
+        scope_note: 【联塑】家装绿｜S3.2 20×2.8mm×4m 2.0MPa｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜mixed 桶＝该段冷热各一根，takeoff 已拆成两根计入；本项单价对应一根
+      fitting_ppr:
+        per_unit: 2.29
+        unit: 元/m
+        scope_note: >-
+          家装绿｜弯头20 ¥4.98 / 三通20 ¥5.60 / 三通25 ¥9.80 / 直通25 ¥5.60｜页面 ¥6.53/1个｜derived_estimate｜https://zgjx.xfs.com/productsku/081561.html｜按普通件三款均价 ¥6.53/个 × 管件系数 0.35 个/m 推导；**不含内丝件**（内丝弯头25×1/2
+          ¥32.30、内丝活接20×1/2 ¥61.60、25×3/4 ¥86.00），内丝件按实际点位另立一行
+      drain_50:
+        per_unit: 5.38
+        unit: 元/m
+        scope_note: Ⅰ型｜50×2.0mm×4m｜页面 ¥21.53/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 5.38 元/m；尽量 45° 组合、少 90° 硬弯（保坡度）
+      drain_75:
+        per_unit: 10.28
+        unit: 元/m
+        scope_note: Ⅰ型｜75×2.3mm×4m｜页面 ¥41.13/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 10.28 元/m；本项目当前 takeoff 无 de75 量（支管直接 de50 接入立管）
+      drain_110:
+        per_unit: 13
+        unit: 元/m
+        scope_note: Ⅰ型｜110×3.2mm×4m｜页面 ¥52/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 13.00 元/m；分级口径见 docs/mep-construction-guidance.md §3.4
+      fitting_pvc:
+        per_unit: 1.76
+        unit: 元/m
+        scope_note: Ⅰ型｜45°/90°弯头/三通/变径｜页面 ¥1.76/1m｜derived_estimate｜管件系数 0.27 个/m × 普通件均价约 ¥6.5/个（价目表未含 PVC 管件 SKU，按 PPR 管件同结构类比推导）
+      wire_1_5:
+        per_unit: 2.52
+        unit: 元/m
+        scope_note: 1.5mm² 100m/卷｜页面 ¥252.27/100m｜public_reference｜https://item.jd.com/product/UwIa_hzUtH6qnNy72jVnaw.html｜折 2.52 元/m；采购单须写清红/蓝/黄/绿各多少卷，不能只写"1.5 国标线"
+      wire_2_5:
+        per_unit: 3.92
+        unit: 元/m
+        scope_note: 2.5mm² 100m/卷｜页面 ¥392.35/100m｜public_reference｜https://item.jd.com/product/msFhbpBZCMGcIRLRYibxKw.html｜折 3.92 元/m；L/N/PE 三线同规格，地线不许缩水
+      wire_4_0:
+        per_unit: 6.27
+        unit: 元/m
+        scope_note: 4mm² 100m/卷｜页面 ¥627.3/100m｜public_reference｜https://m.maigoo.com/brand/product_1319.html｜折 6.27 元/m（此前推导估 5.69，现按页面价更正）
+      wire_trunk:
+        per_unit: 6.27
+        unit: 元/m
+        scope_note: ZC-BV｜主干线（线径待 pending-site-data 第45项裁定，暂按 BV4 同价）｜页面 ¥6.27/1m｜derived_estimate｜暂按 BV4 页面价；线径裁定后回填
+      conduit_20:
+        per_unit: 1.45
+        unit: 元/m
+        scope_note: H415 重型｜20×4m 重型 H415｜页面 ¥5.8/4m｜public_reference｜https://txy.xfs.com/productsku/15642649.html｜折 1.45 元/m；active 取重型阻燃档，符合本项目"阻燃线管"要求
+      conduit_25:
+        per_unit: 1.89
+        unit: 元/m
+        scope_note: H415 重型｜φ25 阻燃电工管｜页面 ¥1.89/1m｜derived_estimate｜按同档 φ20 ¥1.45/m × 1.3 推导（价目表未含 φ25 SKU）
+      breaker_mcb:
+        per_unit: 17.82
+        unit: 元/个
+        scope_note: NXB-63｜1P C16｜页面 ¥17.82/1个｜public_reference｜https://www.eppe.cn/｜本项目 5 个照明回路用 C16 微断
+      breaker_rcd:
+        per_unit: 57.24
+        unit: 元/个
+        scope_note: NXBLE-32 C32 30mA 6kA｜1P+N C32 30mA 6kA｜页面 ¥57.24/1个｜public_reference｜https://www.eppe.cn/｜本项目 16 个回路带漏保；页面为 C32 档，C16/C20 档单价须向门店核（通常略低）
+      spd:
+        per_unit: 120
+        unit: 元/个
+        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜21 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
+      panel:
+        per_unit: 12
+        unit: 元/模
+        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜21 回路 + 2P 进线 + 浪涌需双排 → 29 模数；单排约 16 位可用装不下（pending-site-data 第30项）
+      cat6:
+        per_unit: 2.78
+        unit: 元/m
+        scope_note: 六类非屏蔽｜纯铜 0.52mm 305m/箱｜页面 ¥849/305m｜public_reference｜https://item.jd.com/product/_YRQAuYXByUhzAzBqHRxoQ.html｜折 2.78 元/m；须防铜包铝，核导体材质
+      box86:
+        per_unit: 6
+        unit: 元/个
+        scope_note: 86 型阻燃｜底盒（深盒）｜页面 ¥6/1个｜derived_estimate｜中等质量暗盒约 ¥5~8/个；剪力墙位需另购 40mm 薄盒（价目表未含底盒 SKU）
+      leb_kit:
+        per_unit: 150
+        unit: 元/套
+        scope_note: LEB｜等电位端子箱 + BV-6mm² 干线 + BVR 联连线｜页面 ¥150/1套｜derived_estimate｜端子箱 ¥30~60 + 联结线约 20m + 辅件；防水层前预埋不可补埋
+      entry_valve_kit:
+        per_unit: 260
+        unit: 元/套
+        scope_note: DN20 全径｜总阀 + 减压阀 0.25MPa + 前置位三通/旁通｜页面 ¥260/1套｜derived_estimate｜公开参考 DN20 球阀约 ¥65、DN25 约 ¥80，加减压阀与三通/旁通件；PPR 内丝件另有页面价未计入
+      gas_alarm_kit:
+        per_unit: 300
+        unit: 元/套
+        scope_note: 家用｜燃气报警器 + 电磁切断阀｜页面 ¥300/1套｜derived_estimate｜常见 200~500 元；型号位见 pending-site-data 第32项
+      exhaust_duct_kit:
+        per_unit: 200
+        unit: 元/套
+        scope_note: φ100｜浴霸排风管 + 防火止回阀 + 套管｜页面 ¥200/1套｜derived_estimate｜约 150~300 元/套；外立面开孔需物业核定
+      hot_pipe_insulation:
+        per_unit: 3
+        unit: 元/m
+        scope_note: NBR/PVC｜PPR 热水管保温套管｜页面 ¥3/1m｜derived_estimate｜常见 2~5 元/m；冷凝水管保温归空调包 COST-030-02
+      labor_by_area:
+        per_unit: 40
+        unit: 元/㎡
+        scope_note: 业主 2026-10-07 指定口径（非施工方报价）；含开槽/封槽/穿管穿线/打压/通球/等电位/垃圾清运，不含主材面板灯具洁具燃气管空调铜管冷凝水。注意仓库内 40 元/㎡ 原为木工吊顶板面口径，业主基线"约5000多"折算 52.76 元/㎡，两者不同源
+      extra_penetration:
+        per_unit: 25
+        unit: 元/孔
+        scope_note: 市价参考中值（公开页 10~30 元/个）；若清包含打孔则不重复计
+      extra_leb_install:
+        per_unit: 150
+        unit: 元/套
+        scope_note: 推导价 100~200 元/套；材料见 leb_kit 行
+      extra_pressure_test:
+        per_unit: 300
+        unit: 元/次
+        scope_note: 推导价 200~500 元/次（打压+绝缘+等电位+漏保试合及记录）
+      aux_lump:
+        per_unit: 1200
+        unit: 元
+        scope_note: 推导价 800~1500 元（端子/管卡/胀塞/胶水/胶带/生料带/黄腊管/封槽料/网格布/套管/防火泥）；WAGO 221-413 参考 ¥6.29/个。若施工方口径为辅材另计，改 null 并逐项列
+  - id: schneider_upgrade
+    contractor: 伟星家装绿 + 远东 + 中财H415 + 施耐德
+    quoted_at: '2026-10-07'
+    status: candidate
+    note: 只升配电档：施耐德漏保/微断公开页参考价（型号跨度大，须逐型号核）
+    rates:
+      water_cold_20:
+        per_unit: 16.9
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 20×2.8mm×4m 2.0MPa｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜家装系列（冷热通用）；同规格工程灰 ¥26.30/根＝6.58 元/m，价差 2.6 倍，系列选择是业主决策
+      water_cold_25:
+        per_unit: 27.5
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 25×3.5mm×4m 2.0MPa｜页面 ¥110/4m｜public_reference｜https://txy.xfs.com/productsku/081554.html｜**注意：¥110 是每根 4m 价，折 27.50 元/m**；报价单若写"25 管 110 元"必须问清是根还是米
+      water_hot_20:
+        per_unit: 16.9
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 20×2.8mm×4m 2.0MPa（冷热通用）｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜与 cold/20 同管同价（PPR 冷热同料，无需分冷热水管采购）
+      water_hot_25:
+        per_unit: 27.5
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 25×3.5mm×4m 2.0MPa｜页面 ¥110/4m｜public_reference｜https://txy.xfs.com/productsku/081554.html｜27.50 元/m；按 4m 定尺采购时余料计入损耗
+      water_mixed_20:
+        per_unit: 16.9
+        unit: 元/m
+        scope_note: 家装绿｜S3.2 20×2.8mm×4m 2.0MPa｜页面 ¥67.6/4m｜public_reference｜https://txy.xfs.com/productsku/081553.html｜mixed 桶＝该段冷热各一根，takeoff 已拆成两根计入；本项单价对应一根
+      fitting_ppr:
+        per_unit: 2.29
+        unit: 元/m
+        scope_note: >-
+          家装绿｜弯头20 ¥4.98 / 三通20 ¥5.60 / 三通25 ¥9.80 / 直通25 ¥5.60｜页面 ¥6.53/1个｜derived_estimate｜https://zgjx.xfs.com/productsku/081561.html｜按普通件三款均价 ¥6.53/个 × 管件系数 0.35 个/m 推导；**不含内丝件**（内丝弯头25×1/2
+          ¥32.30、内丝活接20×1/2 ¥61.60、25×3/4 ¥86.00），内丝件按实际点位另立一行
+      drain_50:
+        per_unit: 5.38
+        unit: 元/m
+        scope_note: Ⅰ型｜50×2.0mm×4m｜页面 ¥21.53/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 5.38 元/m；尽量 45° 组合、少 90° 硬弯（保坡度）
+      drain_75:
+        per_unit: 10.28
+        unit: 元/m
+        scope_note: Ⅰ型｜75×2.3mm×4m｜页面 ¥41.13/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 10.28 元/m；本项目当前 takeoff 无 de75 量（支管直接 de50 接入立管）
+      drain_110:
+        per_unit: 13
+        unit: 元/m
+        scope_note: Ⅰ型｜110×3.2mm×4m｜页面 ¥52/4m｜public_reference｜https://huazhucai.com/product/7197271357514579968｜折 13.00 元/m；分级口径见 docs/mep-construction-guidance.md §3.4
+      fitting_pvc:
+        per_unit: 1.76
+        unit: 元/m
+        scope_note: Ⅰ型｜45°/90°弯头/三通/变径｜页面 ¥1.76/1m｜derived_estimate｜管件系数 0.27 个/m × 普通件均价约 ¥6.5/个（价目表未含 PVC 管件 SKU，按 PPR 管件同结构类比推导）
+      wire_1_5:
+        per_unit: 2.52
+        unit: 元/m
+        scope_note: 1.5mm² 100m/卷｜页面 ¥252.27/100m｜public_reference｜https://item.jd.com/product/UwIa_hzUtH6qnNy72jVnaw.html｜折 2.52 元/m；采购单须写清红/蓝/黄/绿各多少卷，不能只写"1.5 国标线"
+      wire_2_5:
+        per_unit: 3.92
+        unit: 元/m
+        scope_note: 2.5mm² 100m/卷｜页面 ¥392.35/100m｜public_reference｜https://item.jd.com/product/msFhbpBZCMGcIRLRYibxKw.html｜折 3.92 元/m；L/N/PE 三线同规格，地线不许缩水
+      wire_4_0:
+        per_unit: 6.27
+        unit: 元/m
+        scope_note: 4mm² 100m/卷｜页面 ¥627.3/100m｜public_reference｜https://m.maigoo.com/brand/product_1319.html｜折 6.27 元/m（此前推导估 5.69，现按页面价更正）
+      wire_trunk:
+        per_unit: 6.27
+        unit: 元/m
+        scope_note: ZC-BV｜主干线（线径待 pending-site-data 第45项裁定，暂按 BV4 同价）｜页面 ¥6.27/1m｜derived_estimate｜暂按 BV4 页面价；线径裁定后回填
+      conduit_20:
+        per_unit: 1.45
+        unit: 元/m
+        scope_note: H415 重型｜20×4m 重型 H415｜页面 ¥5.8/4m｜public_reference｜https://txy.xfs.com/productsku/15642649.html｜折 1.45 元/m；active 取重型阻燃档，符合本项目"阻燃线管"要求
+      conduit_25:
+        per_unit: 1.89
+        unit: 元/m
+        scope_note: H415 重型｜φ25 阻燃电工管｜页面 ¥1.89/1m｜derived_estimate｜按同档 φ20 ¥1.45/m × 1.3 推导（价目表未含 φ25 SKU）
+      breaker_mcb:
+        per_unit: 28.24
+        unit: 元/个
+        scope_note: 【施耐德】NXB-63｜1P C16｜页面 ¥17.82/1个｜public_reference｜https://www.eppe.cn/｜本项目 5 个照明回路用 C16 微断
+      breaker_rcd:
+        per_unit: 182.57
+        unit: 元/个
+        scope_note: 【施耐德】NXBLE-32 C32 30mA 6kA｜1P+N C32 30mA 6kA｜页面 ¥57.24/1个｜public_reference｜https://www.eppe.cn/｜本项目 16 个回路带漏保；页面为 C32 档，C16/C20 档单价须向门店核（通常略低）
+      spd:
+        per_unit: 120
+        unit: 元/个
+        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜21 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
+      panel:
+        per_unit: 12
+        unit: 元/模
+        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜21 回路 + 2P 进线 + 浪涌需双排 → 29 模数；单排约 16 位可用装不下（pending-site-data 第30项）
+      cat6:
+        per_unit: 2.78
+        unit: 元/m
+        scope_note: 六类非屏蔽｜纯铜 0.52mm 305m/箱｜页面 ¥849/305m｜public_reference｜https://item.jd.com/product/_YRQAuYXByUhzAzBqHRxoQ.html｜折 2.78 元/m；须防铜包铝，核导体材质
+      box86:
+        per_unit: 6
+        unit: 元/个
+        scope_note: 86 型阻燃｜底盒（深盒）｜页面 ¥6/1个｜derived_estimate｜中等质量暗盒约 ¥5~8/个；剪力墙位需另购 40mm 薄盒（价目表未含底盒 SKU）
+      leb_kit:
+        per_unit: 150
+        unit: 元/套
+        scope_note: LEB｜等电位端子箱 + BV-6mm² 干线 + BVR 联连线｜页面 ¥150/1套｜derived_estimate｜端子箱 ¥30~60 + 联结线约 20m + 辅件；防水层前预埋不可补埋
+      entry_valve_kit:
+        per_unit: 260
+        unit: 元/套
+        scope_note: DN20 全径｜总阀 + 减压阀 0.25MPa + 前置位三通/旁通｜页面 ¥260/1套｜derived_estimate｜公开参考 DN20 球阀约 ¥65、DN25 约 ¥80，加减压阀与三通/旁通件；PPR 内丝件另有页面价未计入
+      gas_alarm_kit:
+        per_unit: 300
+        unit: 元/套
+        scope_note: 家用｜燃气报警器 + 电磁切断阀｜页面 ¥300/1套｜derived_estimate｜常见 200~500 元；型号位见 pending-site-data 第32项
+      exhaust_duct_kit:
+        per_unit: 200
+        unit: 元/套
+        scope_note: φ100｜浴霸排风管 + 防火止回阀 + 套管｜页面 ¥200/1套｜derived_estimate｜约 150~300 元/套；外立面开孔需物业核定
+      hot_pipe_insulation:
+        per_unit: 3
+        unit: 元/m
+        scope_note: NBR/PVC｜PPR 热水管保温套管｜页面 ¥3/1m｜derived_estimate｜常见 2~5 元/m；冷凝水管保温归空调包 COST-030-02
+      labor_by_area:
+        per_unit: 40
+        unit: 元/㎡
+        scope_note: 业主 2026-10-07 指定口径（非施工方报价）；含开槽/封槽/穿管穿线/打压/通球/等电位/垃圾清运，不含主材面板灯具洁具燃气管空调铜管冷凝水。注意仓库内 40 元/㎡ 原为木工吊顶板面口径，业主基线"约5000多"折算 52.76 元/㎡，两者不同源
+      extra_penetration:
+        per_unit: 25
+        unit: 元/孔
+        scope_note: 市价参考中值（公开页 10~30 元/个）；若清包含打孔则不重复计
+      extra_leb_install:
+        per_unit: 150
+        unit: 元/套
+        scope_note: 推导价 100~200 元/套；材料见 leb_kit 行
+      extra_pressure_test:
+        per_unit: 300
+        unit: 元/次
+        scope_note: 推导价 200~500 元/次（打压+绝缘+等电位+漏保试合及记录）
+      aux_lump:
+        per_unit: 1200
+        unit: 元
+        scope_note: 推导价 800~1500 元（端子/管卡/胀塞/胶水/胶带/生料带/黄腊管/封槽料/网格布/套管/防火泥）；WAGO 221-413 参考 ¥6.29/个。若施工方口径为辅材另计，改 null 并逐项列
