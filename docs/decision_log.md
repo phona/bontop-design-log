@@ -1890,3 +1890,21 @@
 - **验证**：`test:server` 660/660/0 fail（新增 3 条审计面测试，累计 11 条）→ `typecheck` Exit 0 → `verify:all` Exit 0 → `test:app` 482/482 → `tmp/verify-wall-tile.ts` 18 条断言全 OK。
 - **关联文件**：`app/src/render/HouseScene.ts`、`app/src/App.ts`、`tests/server/wall-tile-inspection.test.ts`。
 - **决策人**：业主。
+
+### DEC-2026-10-07-R10 贴砖/HVAC 相互隔离的行为级证明（补 R08/R09 的实证）
+
+- **日期**：2026-10-07。触发：业主要求「我需要它独立，**代码、还有开关都不会影响 HVAC**」——这是要证据，不是要承诺。
+- **R08/R09 只做到源码级断言**（函数体内不得出现 `Hvac|hvac`），那只能证明"没写耦合"，不能证明"运行时不互相影响"。本条补行为级证明与调用图对账。
+- **调用图对账（穷举全部调用点）**：
+  - `setHvacCoordinationVisible` 的调用方只有：`HouseScene` 自身 3 处（含 `setMepOverviewVisible` 的开/关分支）、`App` 的按钮 `onToggle`、`App` 的就绪降级、以及挂到 `window` 的调试 API。**无一处触达 `setWallTileInspectionVisible`。**
+  - `setWallTileInspectionVisible` 的调用方只有：`App` 的贴砖按钮 `onToggle`、`App.setWallTileState` 的就绪降级。**无一处触达 HVAC。**
+  - `setPipeChaseInspectionVisible` 只被 `setHvacCoordinationVisible` 调用；其首行 `!== 'pipe-chase'` 直接跳过 `'wall-tile'`。
+  - `setMepCoordinationVisible` 只调 `mepRenderer.setVisible()`——**不动全局材质**，碰不到贴砖层；`setMepOverviewVisible` 的开关分支也只操作 `ceilingMeshes` / `infrastructureMeshes` 两个具名数组与 HVAC 状态快照恢复。
+- **行为级测试（`app/src/scene/HouseScene.test.ts` 新增 3 条，`test:app` 50/50 通过）**：
+  ① **切贴砖开关 → HVAC/管井侧逐字段快照比对不变**：构造含 wall-tile + pipe-chase + HVAC 实体的 `exportRoot`，把 HVAC 置为可见，记录 `{hvacVisible, pipeRenderOrder, pipeOpacity, pipeDepthTest, pipeVisible}` 快照；`setWallTileInspectionVisible(true/false)` 前后 `toEqual(before)`。同时反向验证贴砖层自身确实亮/灭、且关闭时按 `inspectionInitial` 快照恢复（opacity 0.38 / depthTest true / renderOrder 0）而非硬编码默认值。
+  ② **切 HVAC 开关 → 贴砖层状态不变**：先把贴砖层打开并快照，再 `setHvacCoordinationVisible(true/false)`，断言贴砖层四字段 `toEqual(tileOpen)`；同时断言管井层照 HVAC 语义正常变化（renderOrder 0→100→0），**证明 HVTL 路径本身是活的、不是被我掐断**——隔离不是靠"关掉对方功能"实现的。
+  ③ **审计面自身**：`getWallTileInspectionStatus()` 的 `byRoom` / `byHeightTier` / `total/visible/covered` 面积与手动复算一致；引用场景中不存在的墙 → `ready=false` 且列入 `missing`；再造一段与既有区间重叠的声明 → `inspectWallTileRegions().checks.duplicateOverlaps` 非空（防双计真的会响）。
+- **同时确认的既有失败模式**（承接 R06）：被 suppress 的墙不生成 wall mesh，故 `inspectWallTileRegions` 的 `missingWallRefs` 会覆盖它，`ready` 仍为 false——浏览器侧审计不会漏，只是标签较粗；细分仍以 CLI `tmp/verify-wall-tile.ts` 的 L2 为准。
+- **验证**：`test:app` 56 files / **485** tests 全过（新增 3 条行为级 + 1 条审计面，`HouseScene.test.ts` 单文件 50/50）→ `test:server` 660/660/0 → `typecheck` Exit 0 → `verify:all` Exit 0 → `tmp/verify-wall-tile.ts` 18 条断言全 OK。
+- **关联文件**：`app/src/scene/HouseScene.test.ts`。
+- **决策人**：业主。

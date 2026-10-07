@@ -157,6 +157,145 @@ describe('HouseScene', () => {
     expect(otherCeiling.renderOrder).toBeUndefined();
   });
 
+  // ── 贴砖检视态与 HVAC / 管井检视态的相互隔离（DEC-2026-10-07-R08/R09）──
+  // 这是行为级证明，比源码断言更强：真的去切贴砖开关，然后逐个断言 HVAC 侧状态毫发无损。
+
+  const makeWallTileMesh = () => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    mesh.userData = {
+      inspectionLayer: 'wall-tile', inspectionVisibleOnly: true, inspectionOpacity: 0.55,
+      wallId: 'w_mbath_south', along: [0, 1.2], zone: 'visible',
+      inspectionInitial: { visible: false, opacity: 0.38, transparent: true, depthTest: true, depthWrite: false, renderOrder: 0 },
+    };
+    mesh.visible = false;
+    return mesh;
+  };
+  const makePipeChaseMesh = () => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    mesh.userData = { inspectionLayer: 'pipe-chase', inspectionOpacity: 0.18, inspectionVisibleOnly: true };
+    return mesh;
+  };
+  /** 抓取 HVAC 侧可观测状态：HVAC 渲染器可见性 + 管井层的 renderOrder/材质/可见性。 */
+  const snapshotHvac = (scene: any, pipe: THREE.Mesh) => ({
+    hvacVisible: scene.hvacRenderer.isCoordinationVisible(),
+    pipeRenderOrder: pipe.renderOrder,
+    pipeOpacity: (pipe.material as THREE.MeshStandardMaterial).opacity,
+    pipeDepthTest: (pipe.material as THREE.MeshStandardMaterial).depthTest,
+    pipeVisible: pipe.visible,
+  });
+
+  it('toggling wall-tile inspection leaves HVAC and pipe-chase state untouched', () => {
+    const scene = Object.create(HouseScene.prototype) as any;
+    scene.exportRoot = new THREE.Group();
+    const tile = makeWallTileMesh();
+    const pipe = makePipeChaseMesh();
+    const hvacEntity = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    hvacEntity.userData = { objectId: 'hvac:equipment:ac_master' };
+    scene.exportRoot.add(tile);
+    scene.exportRoot.add(pipe);
+    scene.exportRoot.add(hvacEntity);
+    // HVAC 侧：先置一个已知状态（这里置为可见，确保切换贴砖不会把它关掉）
+    const hvacRenderer = { visible: true, isCoordinationVisible: () => hvacRenderer.visible, setCoordinationVisible: (v: boolean) => { hvacRenderer.visible = v; } };
+    scene.hvacRenderer = hvacRenderer;
+
+    const before = snapshotHvac(scene, pipe);
+
+    scene.setWallTileInspectionVisible(true);
+    // 贴砖层确实亮了
+    expect(tile.visible).toBe(true);
+    expect(tile.renderOrder).toBe(100);
+    expect((tile.material as THREE.MeshStandardMaterial).depthTest).toBe(false);
+    // HVAC / 管井侧一个字段都没变
+    expect(snapshotHvac(scene, pipe)).toEqual(before);
+
+    scene.setWallTileInspectionVisible(false);
+    // 贴砖层回到初始态（按快照恢复，不是硬编码默认值）
+    expect(tile.visible).toBe(false);
+    expect(tile.renderOrder).toBe(0);
+    expect((tile.material as THREE.MeshStandardMaterial).opacity).toBe(0.38);
+    expect((tile.material as THREE.MeshStandardMaterial).depthTest).toBe(true);
+    // HVAC / 管井侧仍然一个字段都没变
+    expect(snapshotHvac(scene, pipe)).toEqual(before);
+    // 与贴砖无关的实体不受影响
+    expect(hvacEntity.renderOrder).toBeUndefined();
+  });
+
+  it('toggling HVAC coordination leaves wall-tile state untouched', () => {
+    const scene = Object.create(HouseScene.prototype) as any;
+    scene.exportRoot = new THREE.Group();
+    const tile = makeWallTileMesh();
+    // 先把贴砖层打开
+    scene.exportRoot.add(tile);
+    scene.setWallTileInspectionVisible(true);
+    const tileOpen = { visible: tile.visible, renderOrder: tile.renderOrder, opacity: (tile.material as THREE.MeshStandardMaterial).opacity, depthTest: (tile.material as THREE.MeshStandardMaterial).depthTest };
+
+    const pipe = makePipeChaseMesh();
+    scene.exportRoot.add(pipe);
+    const hvacRenderer = { visible: false, isCoordinationVisible: () => hvacRenderer.visible, setCoordinationVisible: (v: boolean) => { hvacRenderer.visible = v; } };
+    scene.hvacRenderer = hvacRenderer;
+    const pipeBefore = { renderOrder: pipe.renderOrder, opacity: (pipe.material as THREE.MeshStandardMaterial).opacity, depthTest: (pipe.material as THREE.MeshStandardMaterial).depthTest, visible: pipe.visible };
+
+    // 开 HVAC（内部会连带切管井检视态）
+    scene.setHvacCoordinationVisible(true);
+    expect(hvacRenderer.visible).toBe(true);
+    // 贴砖层状态完全没被动过
+    expect({ visible: tile.visible, renderOrder: tile.renderOrder, opacity: (tile.material as THREE.MeshStandardMaterial).opacity, depthTest: (tile.material as THREE.MeshStandardMaterial).depthTest }).toEqual(tileOpen);
+    // 管井层照 HVAC 语义正常变化（证明这条路径本身是活的，不是被我掐断了）
+    expect(pipe.renderOrder).toBe(100);
+
+    scene.setHvacCoordinationVisible(false);
+    expect({ visible: tile.visible, renderOrder: tile.renderOrder, opacity: (tile.material as THREE.MeshStandardMaterial).opacity, depthTest: (tile.material as THREE.MeshStandardMaterial).depthTest }).toEqual(tileOpen);
+    expect(pipe.renderOrder).toBe(0);
+    expect(snapshotHvac(scene, pipe)).toEqual({ hvacVisible: false, pipeRenderOrder: pipe.renderOrder, pipeOpacity: (pipe.material as THREE.MeshStandardMaterial).opacity, pipeDepthTest: (pipe.material as THREE.MeshStandardMaterial).depthTest, pipeVisible: pipe.visible });
+  });
+
+  it('wall-tile audit surface reports declared tiers and detects double-counted overlaps', () => {
+    const scene = Object.create(HouseScene.prototype) as any;
+    scene.exportRoot = new THREE.Group();
+    const mk = (id: string, wall: string, along: [number, number], height: number, zone = 'visible') => {
+      const mesh = makeWallTileMesh();
+      mesh.userData.objectId = id;
+      mesh.userData.wallId = wall;
+      mesh.userData.along = along;
+      mesh.userData.zone = zone;
+      mesh.userData.inspectionInitial.bottom = 0;
+      // 用真实尺寸替换 BoxGeometry，供 inspect 读取 width/height
+      const geo = new THREE.BoxGeometry();
+      (geo as any).parameters = { width: along[1] - along[0], height };
+      mesh.geometry = geo;
+      scene.exportRoot.add(mesh);
+      return mesh;
+    };
+    mk('walltile_kitchen_ent_west', 'w_ent_west', [0.5, 2.9], 0.9, 'covered');
+    mk('walltile_kitchen_vrv_east', 'w_vrv_east', [0, 1], 0.9);
+    mk('walltile_mbath_south_shower', 'w_mbath_south', [0, 1.2], 1.8);
+    mk('walltile_mbath_south_dry', 'w_mbath_south', [1.2, 2.6], 0.3);
+    // 参照墙：只有存在的墙才不会进 missingWallRefs
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    wall.userData = { type: 'wall', objectId: 'w_mbath_south' };
+    scene.exportRoot.add(wall);
+
+    const status = scene.getWallTileInspectionStatus();
+    expect(status.byRoom['厨房'].lengthM).toBeCloseTo(3.4);
+    expect(status.byRoom['主卫'].lengthM).toBeCloseTo(2.6);
+    expect(status.byHeightTier['1.80'].segments).toBe(1);
+    expect(status.byHeightTier['0.90'].segments).toBe(2);
+    expect(status.byHeightTier['0.30'].segments).toBe(1);
+    expect(status.totalAreaSqm).toBeCloseTo(3.4 * 0.9 + 1.2 * 1.8 + 1.4 * 0.3);
+    expect(status.coveredAreaSqm).toBeCloseTo(2.4 * 0.9);
+    expect(status.visibleAreaSqm).toBeCloseTo(1.0 * 0.9 + 1.2 * 1.8 + 1.4 * 0.3);
+    // w_ent_west / w_vrv_east 未在场景中建墙 mesh → ready=false 且列入 missing
+    expect(status.ready).toBe(false);
+    expect(status.missing).toContain('w_ent_west');
+    expect(status.missing).toContain('w_vrv_east');
+    const detail = scene.inspectWallTileRegions();
+    expect(detail.checks.duplicateOverlaps).toEqual([]);
+
+    // 再造一段与既有区间重叠的声明 → 必须被抓到（防双计）
+    mk('walltile_mbath_south_dup', 'w_mbath_south', [1.0, 2.0], 0.3);
+    expect(scene.inspectWallTileRegions().checks.duplicateOverlaps.length).toBeGreaterThan(0);
+  });
+
   it('makes only inspection-declared ceiling covers translucent during HVAC inspection', () => {
     const scene = Object.create(HouseScene.prototype) as any;
     const inspected = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
