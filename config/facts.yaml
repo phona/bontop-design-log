@@ -1199,7 +1199,9 @@ contracts:
         # （前置/减压/软水预留/沉箱二次排水/外移位防水/每点角阀/全盒零线/LEB 联结清单/
         #   浴霸排风出口/微蒸烤预留/空调检修取电）→ 39 → 49；
         # 新项已挂到 PKG-030/040/050/110 的 acceptance_refs 并 schedule:render 落 checklist。
-        expect_matches: 49
+        # 2026-10-08 新增 check_sill_tile（窗台/防水台面砖检查，D4 客厅落地幕墙根部防水台条带
+        # 收口）→ 49 → 50；已 schedule:render 落 checklist。
+        expect_matches: 50
         distinct: true
 
   # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写
