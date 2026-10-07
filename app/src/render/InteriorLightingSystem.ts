@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { LightingRenderConfig, RenderLightingFixture } from '@shared/types';
 import { getResolvedTrackLightHeads, getTrackLightConfig } from '@shared/render/TrackLightLayout';
 import { buildWallLampVisual, getWallLampConfig, getWallLampLensPosition, wallSideNormal } from '@shared/render/WallLampGeometry';
-import { buildNightLightVisual } from '@shared/render/NightLightGeometry';
+import { buildNightLightVisual, getNightLightMountNormal } from '@shared/render/NightLightGeometry';
 
 /**
  * 室内灯光系统（spec: 2026-08-12-interior-lighting-design.md）
@@ -130,18 +130,19 @@ export class InteriorLightingSystem {
         break;
       }
       case 'night_light': {
-        const normal = wallSideNormal(fixture.wallSide);
+        const normal = getNightLightMountNormal(fixture);
+        const sourceOffset = fixture.mountAnchor?.kind === 'furniture_face' ? 0.04 : 0.065;
         const guide = new THREE.SpotLight(color, 0.18, 0.95, Math.PI / 7, 0.96, 2);
         guide.castShadow = false;
         guide.position.set(
-          x + (normal ? normal.x * 0.065 : 0),
+          x + normal.x * sourceOffset,
           Math.max(0.05, y - 0.045),
-          z + (normal ? normal.z * 0.065 : 0),
+          z + normal.z * sourceOffset,
         );
         guide.target.position.set(
-          x + (normal ? normal.x * 0.42 : 0),
+          x + normal.x * 0.42,
           0.015,
-          z + (normal ? normal.z * 0.42 : 0),
+          z + normal.z * 0.42,
         );
         this.group.add(guide.target);
         targets.push(guide.target);
@@ -178,6 +179,7 @@ export class InteriorLightingSystem {
       roomId: fixture.room,
       ...(fixture.wallId !== undefined ? { wallId: fixture.wallId } : {}),
       ...(fixture.wallSide !== undefined ? { wallSide: fixture.wallSide } : {}),
+      ...(fixture.mountAnchor !== undefined ? { mountAnchor: fixture.mountAnchor } : {}),
       ...(fixture.type === 'wall_lamp' && fixture.wallSide !== undefined
         ? { mountNormal: wallSideNormal(fixture.wallSide)?.toArray() }
         : {}),

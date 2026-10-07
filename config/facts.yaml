@@ -482,7 +482,7 @@ facts:
     kind: derived
     value: "@config/mep-hvac-coordination.yaml:routes.length"
     unit: 条
-    as_of: DEC-2026-10-05-R18
+    as_of: DEC-2026-10-07-R15
     mirrors:
       - path: config/mep-hvac-coordination.yaml
         extract: '本表 routes 共\s*(\d+)\s*条'

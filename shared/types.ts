@@ -956,6 +956,13 @@ export type ElectricalPointType =
 
 export type ElectricalPointStatus = 'measured' | 'likely' | 'inferred' | 'pending';
 export type WallSide = 'north' | 'south' | 'east' | 'west';
+export interface FurnitureFaceMountAnchor {
+  kind: 'furniture_face';
+  furnitureId: string;
+  face: WallSide;
+  /** Distance from the furniture finish face to the fixture body. */
+  surfaceGap?: number;
+}
 
 export interface ElectricalFixtureAppearance {
   style: 'warm_white_matte_modular';
@@ -979,6 +986,7 @@ export interface ElectricalPoint {
   z: number;
   wall?: string;
   wallSide?: WallSide;
+  mountAnchor?: FurnitureFaceMountAnchor;
   temp?: number;
   circuit?: string;
   count?: number;
@@ -1369,6 +1377,8 @@ export interface RenderLightingFixture {
   wallId?: string;
   /** Cardinal direction from the wall into the owning room. */
   wallSide?: WallSide;
+  /** Explicit cabinet/furniture face anchor for wall-free mounted fixtures. */
+  mountAnchor?: FurnitureFaceMountAnchor;
 }
 
 export interface ImplementedHvacProjection {

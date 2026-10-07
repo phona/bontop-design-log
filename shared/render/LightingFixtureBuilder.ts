@@ -109,8 +109,8 @@ function addLedStrip(group: THREE.Group, fixture: RenderLightingFixture, glow: T
   return 1;
 }
 
-// 2026-10-05 起夜路径低位灯（DEC-2026-10-05-R15）：wallSide 决定贴墙灯体法线；
-// 无墙锚点时按低位落地灯柱表现。两条渲染链共用同一个几何生成器。
+// 2026-10-05 起夜路径低位灯（DEC-2026-10-05-R15）：必须挂墙或吸附柜体面；
+// 浏览器与 GLB/export 共用同一个几何生成器。
 function addNightLight(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE.Color): number {
   const visual = buildNightLightVisual(fixture, glow);
   group.userData = { ...group.userData, ...visual.userData };
@@ -128,6 +128,7 @@ function buildFixture(fixture: RenderLightingFixture, lighting?: LightingRenderC
     roomId: fixture.room,
     ...(fixture.wallId !== undefined ? { wallId: fixture.wallId } : {}),
     ...(fixture.wallSide !== undefined ? { wallSide: fixture.wallSide } : {}),
+    ...(fixture.mountAnchor !== undefined ? { mountAnchor: fixture.mountAnchor } : {}),
     ...(fixture.type === 'wall_lamp' && fixture.wallSide !== undefined
       ? { mountNormal: wallSideNormal(fixture.wallSide)?.toArray() }
       : {}),

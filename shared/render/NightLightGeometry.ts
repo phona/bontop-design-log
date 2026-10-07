@@ -25,11 +25,22 @@ function sensorMaterial(): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color: 0x393a39, roughness: 0.32, metalness: 0.12 });
 }
 
+export function getNightLightMountNormal(fixture: RenderLightingFixture): THREE.Vector3 {
+  const hostSide = fixture.mountAnchor?.kind === 'furniture_face' ? fixture.mountAnchor.face : fixture.wallSide;
+  const normal = wallSideNormal(hostSide);
+  if (!normal) {
+    throw new Error(`Night light ${fixture.id} must have a wallSide or furniture_face anchor`);
+  }
+  return normal;
+}
+
 function buildWallMounted(fixture: RenderLightingFixture, glow: THREE.Color): THREE.Group {
   const group = new THREE.Group();
-  const normal = wallSideNormal(fixture.wallSide)!;
+  const furnitureAnchor = fixture.mountAnchor?.kind === 'furniture_face' ? fixture.mountAnchor : undefined;
+  const normal = getNightLightMountNormal(fixture);
   const bodyDepth = 0.028;
-  const finishFaceOffset = DEFAULT_WALL_HALF_THICKNESS + bodyDepth / 2 + 0.003;
+  const surfaceGap = furnitureAnchor?.surfaceGap ?? 0.003;
+  const finishFaceOffset = (furnitureAnchor ? 0 : DEFAULT_WALL_HALF_THICKNESS) + bodyDepth / 2 + surfaceGap;
   group.position.set(
     fixture.position.x + normal.x * finishFaceOffset,
     fixture.position.y,
@@ -59,47 +70,16 @@ function buildWallMounted(fixture: RenderLightingFixture, glow: THREE.Color): TH
   );
   sensor.position.set(0, 0.047, 0.018);
   group.add(body, diffuser, baffle, sensor);
-  group.userData = { mountKind: 'wall', wallSide: fixture.wallSide, mountNormal: normal.toArray() };
-  return group;
-}
-
-function buildFloorStanding(fixture: RenderLightingFixture, glow: THREE.Color): THREE.Group {
-  const group = new THREE.Group();
-  group.position.set(fixture.position.x, 0, fixture.position.z);
-  const totalHeight = Math.max(0.24, Math.min(0.38, fixture.position.y));
-  const baseHeight = 0.014;
-  const stemHeight = totalHeight - baseHeight;
-
-  const base = tagged(
-    new THREE.Mesh(new THREE.BoxGeometry(0.10, baseHeight, 0.10), housingMaterial()),
-    fixture, 'weighted-base', 'night_light_housing',
-  );
-  base.position.y = baseHeight / 2;
-
-  const stem = tagged(
-    new THREE.Mesh(new THREE.BoxGeometry(0.052, stemHeight, 0.052), housingMaterial()),
-    fixture, 'bollard-body', 'night_light_housing',
-  );
-  stem.position.y = baseHeight + stemHeight / 2;
-
-  const diffuser = tagged(
-    new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.034, 20), glowMaterial(glow)),
-    fixture, 'wraparound-diffuser', 'night_light_diffuser',
-  );
-  diffuser.position.y = Math.min(0.115, totalHeight * 0.40);
-
-  const sensorBand = tagged(
-    new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.027, 0.012, 20), sensorMaterial()),
-    fixture, 'sensor-band', 'night_light_sensor',
-  );
-  sensorBand.position.y = totalHeight - 0.055;
-
-  group.add(base, stem, diffuser, sensorBand);
-  group.userData = { mountKind: 'floor_standing', totalHeight };
+  group.userData = {
+    mountKind: furnitureAnchor ? 'furniture_face' : 'wall',
+    ...(fixture.wallSide ? { wallSide: fixture.wallSide } : {}),
+    ...(furnitureAnchor ? { furnitureId: furnitureAnchor.furnitureId, hostFace: furnitureAnchor.face } : {}),
+    mountNormal: normal.toArray(),
+  };
   return group;
 }
 
 /** One low-glare geometry shared by browser and GLB/export rendering. */
 export function buildNightLightVisual(fixture: RenderLightingFixture, glow: THREE.Color): THREE.Group {
-  return fixture.wallSide ? buildWallMounted(fixture, glow) : buildFloorStanding(fixture, glow);
+  return buildWallMounted(fixture, glow);
 }

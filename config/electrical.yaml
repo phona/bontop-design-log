@@ -1098,7 +1098,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # 2026-10-05 起夜路径照明 + 客房床头组（DEC-2026-10-05-R15，全部 candidate_not_frozen）
 # 依据：docs/design-iterations/parent-room-study-swap-20261005/electrical-recommendation-20261005.md
-#   · 起夜低位灯当前保留 NP-1/NP-2/NP-3/NP-4a/NP-4b/NP-5，共 6 个；客卫 NP-6/7/8 按 DEC-2026-10-07-R12 删除，后续如需感应由可插拔夜灯解决；
+#   · 起夜低位灯当前保留 NP-1/NP-2/NP-3/NP-4a/NP-5，共 5 个；客卫 NP-6/7/8 按 DEC-2026-10-07-R12 删除，NP-4b 按 DEC-2026-10-07-R15 删除；客卫如需感应由可插拔夜灯解决；
 #   · 客房床头组：插座 ×2（h=0.7）+ 床头双控，并入 ordinary_power_parent_child；
 #   · 北墙 w_be_north 与东墙 w_east_upper 均为 shear（inferred）——开孔/挂装条件 site_pending，
 #     坐标在量房探测前只是候选。
@@ -1181,21 +1181,17 @@
   height: 0.30
   circuit: entry_base
   note: "起夜 NP-4a 客厅北段灯（R15）：w_liv_east 客厅侧，补客房门与走廊之间的北线引导"
-- id: night_living_mid
-  room: living_dining
-  type: night_light
-  x: 11.00
-  z: 5.60
-  height: 0.30
-  circuit: entry_base
-  note: "起夜 NP-4b 客厅中段灯（R15）：路径中段约 4m 开敞区无墙无家具，暂按落地立柱候选；⚠️取电方式未定（地插/家具底部灯带/就近插座），site_pending；若不设此点，NP-3 与 NP-5 之间暗区超出标准 §4-1 的 3m 上限"
-
 # 起夜路径 NP-5（主走廊）
 - id: night_corridor
   room: living_dining
   type: night_light
-  x: 7.60
-  z: 5.30
+  mount_anchor:
+    kind: furniture_face
+    furniture_id: "furniture:living_dining:wall_cabinet_tall:0"
+    face: north
+    surface_gap: 0.003
+  x: 7.45
+  z: 5.55
   height: 0.30
   circuit: entry_base
-  note: "起夜 NP-5 走廊口灯（R15）：路径西端转入主走廊的拐角，客厅侧落地立柱候选。⚠️走廊条带 x[4.20,7.20] z[4.30,5.55] 在 model-geometry 无 room 归属，点位只能落在客厅侧；走廊段本体由 light_corridor_1 日常下照兜底（2.8m，起夜刺眼）。取电方式 site_pending"
+  note: "起夜 NP-5 走廊口低位灯：吸附到 wall_cabinet_tall 北端板（furniture:living_dining:wall_cabinet_tall:0），面向走廊北侧，完成面缝隙 3mm；不设通道落地柱。柜体端板固定方式、暗藏供电和感应朝向待柜体/水电深化，site_pending；light_corridor_1 日常下照仅作兜底。"

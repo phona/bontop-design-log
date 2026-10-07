@@ -519,30 +519,23 @@
       "wallSide": "west"
     },
     {
-      "id": "night_living_mid",
-      "room": "living_dining",
-      "type": "night_light",
-      "position": {
-        "x": 11,
-        "y": 0.3,
-        "z": 5.6
-      },
-      "temperatureK": 3000,
-      "enabled": true,
-      "circuit": "entry_base"
-    },
-    {
       "id": "night_corridor",
       "room": "living_dining",
       "type": "night_light",
       "position": {
-        "x": 7.6,
+        "x": 7.45,
         "y": 0.3,
-        "z": 5.3
+        "z": 5.55
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base"
+      "circuit": "entry_base",
+      "mountAnchor": {
+        "kind": "furniture_face",
+        "furnitureId": "furniture:living_dining:wall_cabinet_tall:0",
+        "face": "north",
+        "surfaceGap": 0.003
+      }
     }
   ],
   "plumbing": [

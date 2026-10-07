@@ -56,6 +56,9 @@ export function buildProjectRenderFactsProjection(
     if (fixture.height === undefined) {
       throw new Error(`Lighting fixture ${fixture.id} has no electrical.height: render anchor must derive from the single source of truth`);
     }
+    if (fixture.mountAnchor && fixture.type !== 'night_light') {
+      throw new Error(`Furniture-face mount_anchor is only supported for night_light fixtures: ${fixture.id}`);
+    }
     return {
       id: fixture.id,
       room: fixture.room,
@@ -75,6 +78,7 @@ export function buildProjectRenderFactsProjection(
       ...(fixture.recessed !== undefined ? { recessed: fixture.recessed } : {}),
       ...(fixture.wall !== undefined ? { wallId: fixture.wall } : {}),
       ...(fixture.wallSide !== undefined ? { wallSide: fixture.wallSide } : {}),
+      ...(fixture.mountAnchor !== undefined ? { mountAnchor: fixture.mountAnchor } : {}),
     };
   });
 

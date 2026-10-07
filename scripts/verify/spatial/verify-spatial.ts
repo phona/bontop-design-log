@@ -386,6 +386,7 @@ function renderLightingFixtures(electrical: ElectricalPoint[]): RenderLightingFi
       ...(point.circuit ? { circuit: point.circuit } : {}),
       ...(point.heads !== undefined ? { heads: point.heads } : {}),
       ...(point.recessed !== undefined ? { recessed: point.recessed } : {}),
+      ...(point.mountAnchor !== undefined ? { mountAnchor: point.mountAnchor } : {}),
     }));
 }
 
@@ -472,6 +473,67 @@ function validateLighting(
       } else if (zone && anchorY > hostBottom + 0.10) {
         issues.push({ level: 'warning', code: 'lighting_ceiling_host_clearance', entity: point.id, source, message: `ceiling fixture ${point.id} is below the declared ceiling zone bottom by ${(anchorY - hostBottom).toFixed(3)}m`, evidence: { zone: zone.id, anchor_y: anchorY, zone_bottom: hostBottom } });
       }
+    }
+  }
+  return issues;
+}
+
+function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings: FurnishingsYaml): SpatialIssue[] {
+  const issues: SpatialIssue[] = [];
+  const source = 'config/electrical.yaml + config/house.yaml';
+  const placed = new Map<string, { room: string; item: FurnishingsYaml[string][number]; bounds: { minX: number; maxX: number; minZ: number; maxZ: number } }>();
+
+  for (const [room, items] of Object.entries(furnishings)) {
+    let runtimeIndex = 0;
+    for (const item of items) {
+      const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
+      if (!isPlaced) continue;
+      const id = `furniture:${room}:${item.type}:${runtimeIndex}`;
+      runtimeIndex++;
+      if (item.x === undefined || item.z === undefined) continue;
+      const dimensions = FURNITURE_DIMS[item.type];
+      if (!dimensions) continue;
+      const radians = (item.rotation ?? 0) * Math.PI / 180;
+      const widthX = Math.abs(Math.cos(radians)) * dimensions.width + Math.abs(Math.sin(radians)) * dimensions.depth;
+      const depthZ = Math.abs(Math.sin(radians)) * dimensions.width + Math.abs(Math.cos(radians)) * dimensions.depth;
+      placed.set(id, { room, item, bounds: {
+        minX: item.x - widthX / 2,
+        maxX: item.x + widthX / 2,
+        minZ: item.z - depthZ / 2,
+        maxZ: item.z + depthZ / 2,
+      } });
+    }
+  }
+
+  for (const point of electrical) {
+    const anchor = point.mountAnchor;
+    if (!anchor) continue;
+    if (point.type !== 'night_light') {
+      issues.push({ level: 'error', code: 'furniture_face_mount_wrong_type', entity: point.id, source, message: `furniture-face mount anchor is only supported for night_light, got ${point.type}`, evidence: { anchor } });
+      continue;
+    }
+    const host = placed.get(anchor.furnitureId);
+    if (!host) {
+      issues.push({ level: 'error', code: 'furniture_face_mount_host_missing', entity: point.id, source, message: `night light ${point.id} references missing placed furniture ${anchor.furnitureId}`, evidence: { furniture_id: anchor.furnitureId } });
+      continue;
+    }
+    const { minX, maxX, minZ, maxZ } = host.bounds;
+    const axisClearance = 0.055;
+    const faceDistance = anchor.face === 'north' ? Math.abs(point.z - minZ)
+      : anchor.face === 'south' ? Math.abs(point.z - maxZ)
+        : anchor.face === 'west' ? Math.abs(point.x - minX)
+          : Math.abs(point.x - maxX);
+    const withinFace = anchor.face === 'north' || anchor.face === 'south'
+      ? point.x >= minX + axisClearance && point.x <= maxX - axisClearance
+      : point.z >= minZ + axisClearance && point.z <= maxZ - axisClearance;
+    if (faceDistance > 0.01 || !withinFace) {
+      issues.push({ level: 'error', code: 'furniture_face_mount_outside_face', entity: point.id, source, message: `night light ${point.id} does not fit on ${anchor.face} face of ${anchor.furnitureId}`, evidence: { point: { x: point.x, z: point.z }, host_bounds: host.bounds, face: anchor.face, face_distance: faceDistance, axis_clearance: axisClearance } });
+    }
+    if (anchor.surfaceGap !== undefined && (anchor.surfaceGap < 0 || anchor.surfaceGap > 0.02)) {
+      issues.push({ level: 'error', code: 'furniture_face_mount_gap_invalid', entity: point.id, source, message: `night light ${point.id} surface_gap must be between 0 and 0.02m`, evidence: { surface_gap: anchor.surfaceGap, furniture_id: anchor.furnitureId } });
+    }
+    if (host.room !== point.room) {
+      issues.push({ level: 'warning', code: 'furniture_face_mount_room_mismatch', entity: point.id, source, message: `night light ${point.id} is assigned to ${point.room} but its furniture host is in ${host.room}`, evidence: { furniture_id: anchor.furnitureId, point_room: point.room, host_room: host.room } });
     }
   }
   return issues;
@@ -634,9 +696,11 @@ function main(): void {
   try {
     scene = buildScene({ rooms: layout.rooms, platform: layout.platform, walls: layout.walls, elements, ceilingZones: ceiling, furnishings: house.furnishings, electrical, plumbing, lightingFixtures: renderLightingFixtures(electrical), options: { lighting } });
     issues.push(...validateLighting(electrical, layout.walls, new Set(suppressIds), ceiling, layout.rooms, config.lighting_host_overrides, scene.index.lightingFixtures));
+    issues.push(...validateFurnitureFaceMounts(electrical, house.furnishings ?? {}));
     issues.push(...validateScene(scene, house.furnishings ?? {}, layout.rooms, layout.walls, elements, layout, config));
   } catch (error) {
     issues.push(...validateLighting(electrical, layout.walls, new Set(suppressIds), ceiling, layout.rooms, config.lighting_host_overrides));
+    issues.push(...validateFurnitureFaceMounts(electrical, house.furnishings ?? {}));
     issues.push({ level: 'error', code: 'scene_build_failed', entity: 'HOUSE_EXPORT', source: 'shared/render/SceneBuilder.ts', message: error instanceof Error ? error.message : String(error), evidence: {} });
   }
 

@@ -2235,11 +2235,20 @@
 - **日期**：2026-10-07。业主要求改进夜灯模型，避免浏览器把低位灯显示为扁片或普通吸顶灯。
 - **实现**：新增共享 `NightLightGeometry`，浏览器与 GLB/export 共用同一模型。贴墙灯显示竖向外壳、感应窗、下沿扩散片与遮光檐；灯体中心按墙半厚度 0.06m + 灯体半深 + 3mm 余量推出完成面。无墙点显示约 0.30m 总高的底座灯柱、环绕扩散段与感应带。浏览器 `InteriorLightingSystem` 增加独立 `night_light` 分支，使用低亮度、短距离向地照明，不再落到 dome fallback，也不再用实体扁平光斑。
 - **NP-5 口径**：`night_corridor` 暂保留落地柱。`w_st_east` 客厅侧被电视墙柜体占用，`w_st_north` 右端邻书房门洞；电气点位仍没有 `wall`/`wall_side`。已修正 `config/render/overrides.yaml` 中误写 `w_st_north` 墙装的理由，统一为开敞点落地灯候选。取电和实际安全净空仍待现场深化。
-- **边界**：本条改进的是静态模型与光束表现。传感窗/传感带是外观标记，浏览器尚未实现人体接近触发、延时熄灭或夜间照度阈值；落地灯柱也尚未接入第一人称碰撞检测，因此不能用本条证明真实感应行为或通行安全。
+- **边界**：本条改进的是静态模型与光束表现。传感窗/传感带是外观标记，浏览器尚未实现人体接近触发、延时熄灭或夜间照度阈值；落地灯柱也尚未接入第一人称碰撞检测，因此不能用本条证明真实感应行为或通行安全。另：业主已明确 NP-2 用插电式床头小夜灯、不做嵌入/壁装；现 `night_guest_head` 电气源仍有 wall/wall_side 锚点，实际插座供电与配件建模未在本条更改中收口。
 - **验证**：`npm run typecheck` 通过；`verify:lighting-config` 与 `verify:project-render-facts` 编译后检查通过（21 lighting fixtures）；浏览器 `http://localhost:5175/` 就绪，wall/floor night-light 对象均存在，保存近景见 `tmp/screenshots/night-lights/night_wall_closeup_after_v4.png` 与 `night_corridor_isolated_after_v2.png`。未运行测试套件。
 - **独立审阅**：夜灯几何审美审阅 `PASS`；功能审阅 `BLOCKED`（感应触发与落地灯碰撞仍未实现）。
 - **决策人**：业主。
 
+### DEC-2026-10-07-R14 NP-5 吸附到最近柜体端板，取消通道落地柱
+
+- **日期**：2026-10-07。触发：业主指出 NP-5 落地柱立在通行线上，要求吸附到最近墙面或柜体。
+- **事实核查**：`w_st_east` 客厅侧被通顶柜/电视低柜占用；`w_st_north` 右端邻 `d_study` 门洞且实体门垛仅 0.15m。最近可用支撑是 `wall_cabinet_tall` 北端板，柜体 footprint x[7.20,7.55] z[5.55,6.90]。
+- **裁定/表达**：NP-5 从 `(7.60,5.30)` 改为柜体北端板 `(7.45,5.55)`、y=0.30m，朝北照向走廊；在 `electrical.yaml` 声明 `mount_anchor.kind: furniture_face`、稳定实例 `furniture:living_dining:wall_cabinet_tall:0`、`face: north`、`surface_gap: 0.003`。不再把落地柱用于 NP-5，也不根据备注自动猜宿主。
+- **回路/数量**：点位仍为 `night_corridor`，原 `entry_base` 回路与 108 个点位总数不变。同步更新 `strong-light-entry-night-corridor` 到 `(7.45,5.55)` 柜面锚点；该支路延伸至柜端板，MEP 算量强电管总长 539.8m → 540.2m（+0.4m）。柜端板固定方式、柜内暗藏供电/检修路径仍需柜体与水电深化核实。
+- **覆盖余量**：NP-4b `(11.00,5.60)` 到新 NP-5 `(7.45,5.55)` 约 3.55m，仍略超夜路径标准 3m 候选上限；须实走后另行调整，不在本条猜测新点位。
+- **验证**：`npm run typecheck` 通过；render facts 已投影到柜面 `mountAnchor`；`verify:spatial` 0 error（含宿主存在、柜面范围/端边余量/3mm gap 检查），ProjectRenderFacts 与 lighting-config 检查通过。`verify:mep` 0 errors / 125 warnings；`verify:mep-takeoff` 通过，路由端点 133/133、回路/覆盖度检查通过。提权运行的 `npm run verify:all` 执行到 data consistency 后被既有 `sock_child_ac` 墙段越界错误（#42）拦停；其余前置拓扑/布局/家具/rules/collision/spatial 检查通过。并行工作区同时存在 DEC-2026-10-07-M05（MEP 路由 102→133）；R14 仅调整 `strong-light-entry-night-corridor` 终点，不改动 M05 其它路由。浏览器确认 `mountKind=furniture_face`、宿主 `wall_cabinet_tall:0`，SpotLight runtime 朝北；柜端板近景见 `tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v2.png`。NP-4b 落地灯柱碰撞与实际人体感应行为仍未实现；本轮未运行测试套件。
+- **决策人**：业主。
 ### DEC-2026-10-07-M05 并行声明式补路由：书房/客房/儿童房 + 四卧两卫 + 走廊入户（三条回路 23 条）
 
 - **日期**：2026-10-07。触发：M04 之后，业主要求把 batch2/3/6 并行落地。
@@ -2253,3 +2262,16 @@
 - **门禁**：verify:facts / verify:mep-takeoff / verify:schedule / verify:mep(0 error) / typecheck(0) 全绿；`test:server` 731/742，余 11 个失败均为并发会话 `config/hvac.yaml` 的 `outdoor_a2` anchor 与 VRF 外机 id 重复所致（hvac.yaml 自 11ef1ff 未变，属既有问题）。
 - **剩余 33 个未路由点位**：厨房 5（依赖橱柜深化）、主卫/客卫/阳台 10（依赖台盆 SKU / 归属裁定）、给排水 6（依赖 #8 入户点、#44 净水器）、空调线控器 6（依赖归属）、客厅双控 2、其余专用回路 4。
 - **决策人**：业主。
+
+
+### DEC-2026-10-07-R15 删除客厅中段 NP-4b 起夜灯
+
+- **业主决定**：删除 `electrical:night_living_mid`（NP-4b）及其 `strong-light-entry-night-living-mid` MEP 路由。夜灯尽量利用柜体隐藏；NP-5 已吸附到 `wall_cabinet_tall` 北端板，优先在柜体侧隐藏供电。当前不新增柜体灯带或替代点位，避免为没有明确宿主与位置的方案增加复杂度。
+- **现状**：建模夜灯点位由 6 个减为 5 个（NP-2 规划为插电小夜灯，其电气接口另行收口）；电气点位由 108 减为 107；MEP 路由由 133 减为 132。NP-4a `(13.40,5.10)` 到 NP-5 `(7.45,5.55)` 直线距离约 5.97m，超过夜路径标准 §4-1 的 3m 暗区候选上限。该覆盖缺口保持开放；需现场走路径、核照度后再决定是否有合适柜体可承载补光。日常顶灯不计为低位自动感应覆盖。
+- **验证**：`npm run typecheck` 通过；`verify:mep` 0 errors / 125 warnings；`verify:electrical` 0 errors / 53 warnings；ProjectRenderFacts（20 fixtures）、lighting-config、facts 对账通过；MEP takeoff 通过，132/132 路由端点解析，534.0m conduit，97 routed + 33 unrouted。`npm run verify:all` 前置拓扑/布局/家具/rules/collision/spatial 通过，随后被既有无关 `sock_child_ac` 墙段越界错误 #42 拦停。未运行测试套件。
+
+### DEC-2026-10-07-R16 移除夜灯通用落地柱形态
+
+- **业主决定**：夜灯不再提供落地灯柱形态；所有 `night_light` 必须声明实体墙 `wallSide` 或柜体 `furniture_face` 锚点。NP-4b 已删除，不能通过无锚点夜灯回退生成落地模型。
+- **实现**：从共享浏览器/GLB 几何中移除底座、柱身、环绕扩散罩和感应带；无墙面或柜面锚点时明确报错。保留贴墙灯体与柜体贴装两种形态。
+- **验证**：`npm run typecheck` 通过；`verify:project-render-facts` 确认当前 20 个灯具投影有效；未运行测试套件。

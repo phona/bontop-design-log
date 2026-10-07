@@ -104,5 +104,6 @@
 - 点位 98 → 110（+2 床头插座、+1 床头双控、+9 起夜 night_light）。
 - 回路：lighting_bedrooms_bath ≤0.8→≤0.9kW、lighting_entry_base ≤0.3→≤0.4kW、ordinary_power_parent_child ≈1.2→≈1.3kW；总回路仍 22（+微蒸烤），起夜未新增。
 - 新增类型 night_light（schema/types/3×LIGHT_TYPES/渲染件/overrides 9 条）。
+> 本行是 2026-10-05 的历史候选快照；后续以 `config/electrical.yaml` 和 DEC-2026-10-07-R12/R14/R15 为准，NP-4b 与 NP-6/7/8 已删除，NP-5 已移至柜体端板。
 - 起夜点位：NP-1 (13.40,7.60) 客房西墙、NP-2 (16.40,7.60) 东墙床头、NP-3 (13.40,6.90) 门外南侧、NP-4a (13.40,5.10) 客厅北段、NP-4b (11.00,5.60) 客厅中段（取电 site_pending）、NP-5 (7.60,5.30) 走廊口（客厅侧，走廊条带无 room）、NP-6 (5.66,3.45)、NP-7 (7.04,4.05)、NP-8 (7.04,2.95) 客卫三处。
 - verify:all / test:server 609/609 / typecheck / test:app 470/470 全绿。

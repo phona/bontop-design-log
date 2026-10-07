@@ -4,7 +4,7 @@
   "iteration_id": "parent-room-study-swap-20261005",
   "subject": "父母房↔书房功能互换（几何不动）+ 客房隔开 + 书房储物扩容 + 删除轻训练器材",
   "state": "batch_a_b1_b2_done",
-  "state_note": "批次 A（衣柜 roomOverride）+ B-1（B5-A 电脑回路改道）+ B-2（起夜路径点位 + 客房床头组）已完成；R17 不做客房嵌入/壁装床头灯。R12 删除客卫 NP-6/7/8 内置低位灯，客卫使用现有主灯手动照明，后续感应需求可用可插拔灯解决。电气点位当前 108 个，内置起夜灯 6 个；此前验证结果为历史基线，R12 后 verify:all 待复核。剩余：NP-4b 取电及路径覆盖、量房墙体/门洞复核、批次 D 浏览器证据。 R13：Web/GLB 夜灯共用竖向几何；墙装灯体出墙，开敞点为低位灯柱。人体感应逻辑与落地灯碰撞仍未实现。",
+  "state_note": "批次 A（衣柜 roomOverride）+ B-1（B5-A 电脑回路改道）+ B-2（起夜路径点位 + 客房床头组）已完成；R17 不做客房嵌入/壁装床头灯。R12 删除客卫 NP-6/7/8 内置低位灯；R15 删除客厅中段 NP-4b。当前电气点位 107 个、建模夜灯点位 5 个，NP-5 采用 wall_cabinet_tall 北端板柜体锚点与侧向隐藏供电。NP-4a→NP-5 直线约 5.97m 的覆盖缺口、量房墙体/门洞复核及批次 D 浏览器证据仍开放。R13 的几何类型保留墙装/落地两种通用形态；本户开敞区柱状点 NP-4b 已删除。人体感应触发仍未在浏览器实现；NP-2 的插电灯型与现有墙面电气点位映射待单独收口。 R16 已从夜灯通用几何中移除落地柱分支，未锚定墙面/柜面的 night_light 现在拒绝渲染。",
   "source_version": {
     "config_refs": [
       "config/house.yaml",
@@ -22,7 +22,7 @@
       "shared/types.ts",
       "shared/render/FixtureFactory.ts"
     ],
-    "render_facts_ref": "data/project-render-facts.json（derived；DEC-2026-10-07-R12 后重新生成）",
+    "render_facts_ref": "data/project-render-facts.json（derived；R14 已重生成，NP-5 mountAnchor 指向柜体北端板）",
     "source_digest": "现行配置即为讨论基线：study=父母房 12.75㎡（bed_150/wardrobe_180/desk/chair），bedroom_se=书房 9.45㎡bbox/8.35㎡净（desk/chair/study_seasonal_wardrobe_wall + 轻训练三件 placed），两房均为 MJV-28T2/P-SS 2.8kW（ac_parent @5.50,6.00 / ac_study @15.10,5.85），home_fitness_light_set ¥1,800 candidate 未核价未下单，PKG-150 ¥19,000 一期家具池含父母房床/床垫/成品衣柜",
     "generated_at": "2026-10-05T14:00:00+08:00"
   },
@@ -32,7 +32,8 @@
       "compiled verifier set from TypeScript output in /tmp (same verifier entrypoints)",
       "npm run typecheck",
       "verify:lighting-config + verify:project-render-facts (compiled entrypoints)",
-      "agent-browser local visual inspection"
+      "agent-browser local visual inspection",
+      "compiled verify:spatial / verify:project-render-facts / verify:lighting-config after R14"
     ],
     "results": [
       "npm run verify:all blocked before the first verifier by sandbox tsx IPC listen EPERM at /tmp/tsx-1000/*.pipe",
@@ -40,16 +41,21 @@
       "project-render-facts regenerated successfully: 21 lighting fixtures; YAML/JSON parse checks passed",
       "npm run typecheck: passed",
       "verify:lighting-config: passed; verify:project-render-facts: passed (21 fixtures)",
-      "Browser ready at http://localhost:5175/; wall and floor night_light objectIds present; close-up evidence saved under tmp/screenshots/night-lights/"
+      "Browser ready at http://localhost:5175/; wall and floor night_light objectIds present; close-up evidence saved under tmp/screenshots/night-lights/",
+      "R14 furniture-face anchor: spatial verification passed (0 errors); project-render-facts verified 21 fixtures; lighting config verified",
+      "R14 exact npm run verify:all reached verify-data-consistency, then stopped at pre-existing sock_child_ac wall-segment error #42; preceding topology/layout/furniture/rules/collision/spatial checks passed.",
+      "Supplementary compiled verifier set passed MEP/electrical/project-render-facts/lighting/facts/takeoff/schedule; parallel DEC-2026-10-07-M05 route expansion (102→133) was present and passed its takeoff checks.",
+      "R14 verify:mep: 0 errors / 125 warnings after updating the NP-5 cabinet-face route.",
+      "R14 verify:mep-takeoff: PASS; 133 route endpoints resolved; conduit total increased 539.8m→540.2m for the cabinet-end route."
     ],
     "config_status": "PASS_WITH_EXISTING_WARNING_BASELINE",
     "geometry_status": "PASS_WITH_EXISTING_WARNINGS",
     "consistency_status": "FAIL_UNRELATED_EXISTING_SOCK_CHILD_AC",
     "functional_checks_status": "PARTIAL_VERIFIED",
-    "application_status": "PARTIAL_BROWSER_VERIFIED",
+    "application_status": "PARTIAL_BROWSER_VERIFIED_R14_CABINET_FACE",
     "typecheck_status": "PASS",
     "generated_files_touched_directly": false,
-    "note": "R12 scope is synchronized. Exact npm verify:all could not start under the sandbox because tsx could not create its IPC pipe; compiled verifier entrypoints were used to assess the same checks. One unrelated existing point-placement error remains at sock_child_ac (#42). No test suite was run. R13 static model visual review passed; browser runtime still has no proximity-trigger/PIR behavior and floor bollards are not included in camera collision."
+    "note": "R15 source config, topology, docs and generated render facts are synchronized. `npm run verify:all` was run with IPC access and stopped at the existing unrelated `sock_child_ac` wall projection error #42; prior topology/layout/furniture/rules/collision/spatial checks passed. One unrelated existing point-placement error remains at sock_child_ac (#42). No test suite was run. `typecheck`, `verify:mep` (0 errors/125 warnings), electrical lint (0 errors/53 warnings), render-facts (20 fixtures), lighting-config, facts, and MEP takeoff passed; takeoff reports 132 routes and 534.0m conduit. R13 static model visual review passed; browser runtime still has no proximity-trigger/PIR behavior. NP-4b was subsequently deleted by owner decision R15. R14 anchor resolves to the actual placed cabinet instance and fits its north end face with the declared 3mm gap. Final NP-5 preview confirms furniture-face anchor; current functional blockers are the NP-4a→NP-5 coverage gap and live proximity-trigger behavior; NP-4b was deleted by owner decision R15. R14 also updated strong-light-entry-night-corridor to the cabinet face; MEP lint/takeoff pass after the route update."
   },
   "evidence": {
     "required_views": [
@@ -123,6 +129,80 @@
         "source_refs": [
           "shared/render/NightLightGeometry.ts",
           "app/src/render/InteriorLightingSystem.ts"
+        ],
+        "superseded": true,
+        "superseded_by": "night_corridor_cabinet_face_after_v1",
+        "note": "Pre-R14 diagnostic screenshot of the bollard at the obsolete floor position; retained for history only."
+      },
+      {
+        "id": "night_corridor_cabinet_face_after_v1",
+        "view": "NP-5 cabinet north end-panel close-up",
+        "url": "http://localhost:5175/",
+        "title": "和萃 701 - 3D 装修设计",
+        "app_ready": true,
+        "config_error_banner": false,
+        "ui_warning_badge": "178 (existing MEP warning summary)",
+        "camera": {
+          "position": [
+            8.1,
+            1.2,
+            4.1
+          ],
+          "target": [
+            7.45,
+            0.3,
+            5.55
+          ]
+        },
+        "object_ids": [
+          "electrical:night_corridor",
+          "furniture:living_dining:wall_cabinet_tall:0"
+        ],
+        "runtime_query": "electrical:night_corridor mountKind=furniture_face, furnitureId=furniture:living_dining:wall_cabinet_tall:0, hostFace=north, normal=[0,0,-1], position≈[7.45,0.30,5.533]",
+        "snapshot": "tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v1.snapshot.txt",
+        "png": "tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v1.png",
+        "source_refs": [
+          "config/electrical.yaml",
+          "config/render/overrides.yaml",
+          "shared/render/NightLightGeometry.ts",
+          "app/src/render/InteriorLightingSystem.ts"
+        ],
+        "superseded": true,
+        "superseded_by": "night_corridor_cabinet_face_after_v2",
+        "note": "Initial cabinet-face diagnostic screenshot; superseded by the final regenerated projection capture."
+      },
+      {
+        "id": "night_corridor_cabinet_face_after_v2",
+        "view": "NP-5 snapped to cabinet north end panel",
+        "url": "http://localhost:5176/",
+        "title": "和萃 701 - 3D 装修设计",
+        "app_ready": true,
+        "config_error_banner": false,
+        "ui_warning_badge": "178 (existing MEP warning summary)",
+        "camera": {
+          "position": [
+            8.1,
+            1.2,
+            4.1
+          ],
+          "target": [
+            7.45,
+            0.3,
+            5.55
+          ]
+        },
+        "object_ids": [
+          "electrical:night_corridor",
+          "furniture:living_dining:wall_cabinet_tall:0"
+        ],
+        "runtime_query": "mountKind=furniture_face; furnitureId=furniture:living_dining:wall_cabinet_tall:0; hostFace=north; normal=[0,0,-1]; fixture position≈[7.45,0.30,5.533]",
+        "snapshot": "tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v2.snapshot.txt",
+        "png": "tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v2.png",
+        "source_refs": [
+          "config/electrical.yaml",
+          "data/project-render-facts.json",
+          "shared/render/NightLightGeometry.ts",
+          "app/src/render/InteriorLightingSystem.ts"
         ]
       }
     ],
@@ -131,16 +211,16 @@
       "command": "agent-browser --session bontop-f957d2ec2c5f (open, wait networkidle, app ready poll, snapshot, runtime query, screenshot, close)",
       "status": "partial_valid",
       "session": "bontop-f957d2ec2c5f",
-      "url": "http://localhost:5175/",
+      "url": "http://localhost:5176/",
       "app_ready": true,
       "warnings": [
         "178 UI warning badge is the existing MEP summary; no config-error banner observed"
       ],
       "banner": null,
-      "snapshot": "tmp/screenshots/night-lights/night_wall_closeup_after_v4.snapshot.txt; tmp/screenshots/night-lights/night_corridor_isolated_after_v2.snapshot.txt",
-      "png": "tmp/screenshots/night-lights/night_wall_closeup_after_v4.png; tmp/screenshots/night-lights/night_corridor_isolated_after_v2.png",
-      "runtime_query": "electrical:night_living_north mountKind=wall; electrical:night_corridor mountKind=floor_standing; 6 night_light fixtures loaded",
-      "note": "Captures the two model archetypes only; the full bedroom-to-bath path required by this iteration remains unreviewed. Sensor proximity behavior and floor-lamp collision are not implemented."
+      "snapshot": "tmp/screenshots/night-lights/night_wall_closeup_after_v4.snapshot.txt; tmp/screenshots/night-lights/night_corridor_isolated_after_v2.snapshot.txt; tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v1.snapshot.txt; tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v2.snapshot.txt",
+      "png": "tmp/screenshots/night-lights/night_wall_closeup_after_v4.png; tmp/screenshots/night-lights/night_corridor_isolated_after_v2.png; tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v1.png; tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v2.png",
+      "runtime_query": "Historical R13 capture showed floor-standing NP-5; final R14 capture showed NP-5 mountKind=furniture_face. Current source: 5 night_light points (NP-1/2/3/4a wall; NP-5 cabinet face); DEC-2026-10-07-R16 removes the generic floor-standing branch.",
+      "note": "Includes historical R13 wall/floor archetype close-ups and final R14 cabinet-face NP-5 capture. Full bedroom-to-bath path remains unreviewed; NP-4a→NP-5 coverage remains unresolved and live PIR behavior is not implemented; NP-4b was deleted by owner decision R15."
     }
   },
   "aesthetic_review": {
@@ -228,7 +308,7 @@
     "verdict": "BLOCKED",
     "blocking_issues": [
       "量房四项未回（剪力墙/凸窗带/门洞/飘窗台高）",
-      "night_living_mid 取电方式未定",
+      "NP-4a 到柜体 NP-5 的约 5.97m 覆盖缺口待复核（NP-4b 已删除）",
       "同版本浏览器证据未采集"
     ]
   },
@@ -238,7 +318,7 @@
         "verdict": "PASS",
         "blocking_issues": [],
         "non_blocking_notes": [
-          "Wall housing, sensor window and diffuser are visible; bollard base, post and diffuser ring are readable. Floor exposure in the preview is bright, limiting photometric judgment."
+          "Historical R13 capture showed both wall and bollard forms; R16 removes the bollard branch. Current project instances use wall or cabinet-face anchors."
         ],
         "evidence_refs": [
           "tmp/screenshots/night-lights/night_wall_closeup_after_v4.png",
@@ -252,17 +332,25 @@
       "functional": {
         "verdict": "BLOCKED",
         "blocking_issues": [
-          "Proximity-trigger/timeout behavior is not simulated in the browser.",
-          "Freestanding night-light fixtures are not registered in first-person collision detection."
+          "NP-4b was deleted by owner decision R15; NP-4a to cabinet-mounted NP-5 has an approximately 5.97m straight-line coverage gap.",
+          "Sensor windows/bands are visual only; no proximity-trigger, night threshold, or timeout behavior is implemented."
         ],
         "non_blocking_notes": [
-          "Wall side and mount offsets now place wall housings outside the modeled wall finish face. NP-5 remains floor-standing because the nearby wall is occupied by cabinetry or constrained by a door opening."
+          "NP-5 is snapped to the north end panel of wall_cabinet_tall at (7.45,5.55), oriented north with a 3mm surface gap; the corridor post has been removed.",
+          "NP-4a→NP-5 is approximately 5.97m in straight-line distance; path coverage remains unresolved after NP-4b deletion."
         ],
         "evidence_refs": [
           "tmp/screenshots/night-lights/night_wall_closeup_after_v4.png",
           "tmp/screenshots/night-lights/night_corridor_isolated_after_v2.png",
           "app/src/render/InteriorLightingSystem.ts",
-          "config/render/overrides.yaml"
+          "config/render/overrides.yaml",
+          "config/electrical.yaml",
+          "docs/design-iterations/parent-room-study-swap-20261005/night-path-lighting-instance.md",
+          "tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v1.png",
+          "config/electrical.yaml",
+          "shared/render/NightLightGeometry.ts",
+          "tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v2.png",
+          "scripts/verify/spatial/verify-spatial.ts"
         ],
         "requested_changes": [],
         "assumptions": [

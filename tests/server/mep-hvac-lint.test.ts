@@ -38,8 +38,8 @@ function sample(route: Record<string, unknown>) {
 
 test('real MEP configuration lints without false errors and reports warnings structurally', () => {
   const result = lintMepCoordination(config, sources);
-  assert.equal(result.counts.routes, 133); // 80→87（R1 给排水兜底）→92（v1 水路估算）→102（客客厅十条）→133（DEC-2026-10-07-M05 再补 23 条：书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）
-  assert.equal(result.counts.resolvedRoutes, 133);
+  assert.equal(result.counts.routes, 132); // 80→87（R1 给排水兜底）→92（v1 水路估算）→102（客客厅十条）→133（DEC-2026-10-07-M05 再补 23 条：书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）→132（R15 删除 NP-4b 路线）
+  assert.equal(result.counts.resolvedRoutes, 132);
   assert.equal(result.errors.length, 0);
   assert.equal(result.warnings.filter((issue) => issue.code === 'hvac_coverage_missing').length, 0);
   // 2026-10-04 A1：吊顶净空规则从「要求 zone.area 与 zone.height 同时存在」（本项目交集为 0、
@@ -371,8 +371,8 @@ test('long parallel runs beside a shear wall are flagged, short ones are not', (
 
 test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify over-header penetrations', () => {
   const result = lintMepCoordination(config, sources, realContext());
-  assert.equal(result.counts.routes, 133);
-  assert.equal(result.counts.resolvedRoutes, 133);
+  assert.equal(result.counts.routes, 132);
+  assert.equal(result.counts.resolvedRoutes, 132);
   assert.equal(result.errors.length, 0);
   // (a) 重力坡度：R1 后 14 条全清（地埋全平/过陡、冷凝水候选沿程、drain-balcony 2% 回算、墙排汇总不足坡）
   assert.equal(countByCode(result, 'gravity_slope_geometry_mismatch'), 0);

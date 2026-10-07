@@ -134,9 +134,9 @@ describe('render facts API', () => {
     assert.equal(response.body.controls.length, 11);
     assert.equal(response.body.panels[0].id, 'panel_strong');
     assert.equal(response.body.panels[0].source_point_id, 'panel_strong_entry_left');
-    assert.equal(response.body.lint.counts.errors, 107); // fixture 只有 1 点位；拓扑未知成员数随 R12 删除客卫 3 灯后 110→107
+    assert.equal(response.body.lint.counts.errors, 106); // fixture 只有 1 点位；R12 删除客卫 3 灯、R15 删除 NP-4b 后 110→106
     assert.equal(response.body.lint.counts.warnings, 24); // R12 删除的三灯不影响该 fixture 下的 warning 来源
-    assert.equal(response.body.lint.counts.coveredPoints, 76); // R12 删除客卫 3 灯后覆盖点数 79→76
+    assert.equal(response.body.lint.counts.coveredPoints, 75); // R12 删除客卫 3 灯、R15 删除 NP-4b 后覆盖点数 79→75
     assert.equal(response.body.circuits.filter((circuit: { purpose: string }) => circuit.purpose === 'ordinary_power').length, 7); // DEC-2026-10-03-R1：卧室缩为 master/parent_child/study 三路
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'control_target_missing'), false);
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'electrical_parameters_pending'), false);

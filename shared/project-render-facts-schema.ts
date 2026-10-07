@@ -18,6 +18,18 @@ const finiteNumber = z.number().refine(Number.isFinite, 'must be finite');
 const nonEmpty = z.string().trim().min(1);
 const WallSideSchema = z.enum(['north', 'south', 'east', 'west']);
 const Vec3Schema = z.object({ x: finiteNumber, y: finiteNumber, z: finiteNumber }).strict();
+const FurnitureFaceMountAnchorConfigSchema = z.object({
+  kind: z.literal('furniture_face'),
+  furniture_id: nonEmpty,
+  face: WallSideSchema,
+  surface_gap: finiteNumber.nonnegative().optional(),
+}).strict();
+const FurnitureFaceMountAnchorProjectionSchema = z.object({
+  kind: z.literal('furniture_face'),
+  furnitureId: nonEmpty,
+  face: WallSideSchema,
+  surfaceGap: finiteNumber.nonnegative().optional(),
+}).strict();
 const ElectricalFixtureAppearanceSchema = z.object({
   style: z.literal('warm_white_matte_modular'),
   module: z.enum(['five_hole_replaceable_usb_c', 'two_way_rocker']),
@@ -34,7 +46,7 @@ const ElectricalFixtureAppearanceSchema = z.object({
 
 export const ElectricalPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['socket', 'switch', 'switch_2way', 'network', 'usb', 'floor_socket', 'strong_panel', 'weak_panel', 'ac_controller', 'ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light', 'night_light']),
-  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), neutral: z.boolean().optional(),
+  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), mount_anchor: FurnitureFaceMountAnchorConfigSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), neutral: z.boolean().optional(),
 }).strict();
 export const PlumbingPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor', 'leb', 'drain_riser', 'gas_meter', 'duct']),
@@ -298,7 +310,7 @@ const HvacProjectionSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('unimplemented'), planId: z.string().nullable() }).strict(),
 ]);
 export const ProjectRenderFactsProjectionSchema = z.object({
-  version: z.literal('2.0'), lighting: LightingRenderConfigSchema.optional(), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean(), circuit: z.string().optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), wallId: z.string().optional(), wallSide: WallSideSchema.optional() }).strict()),
+  version: z.literal('2.0'), lighting: LightingRenderConfigSchema.optional(), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean(), circuit: z.string().optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), wallId: z.string().optional(), wallSide: WallSideSchema.optional(), mountAnchor: FurnitureFaceMountAnchorProjectionSchema.optional() }).strict()),
   plumbing: z.array(PlumbingPointProjectionSchema), ceiling: CeilingZonesSchema, hvac: HvacProjectionSchema,
   materials: z.object({ floor: z.object({ default: z.string().nullable(), roomOverrides: z.record(z.string(), z.string()) }).strict() }).strict(),
   presentation: z.object({ curtains: CurtainRenderProjectionSchema }).strict(),
@@ -344,7 +356,16 @@ export function validateProjectHvacFacts(hvac: ProjectHvacFacts, facts: Pick<Pro
   return hvac;
 }
 export function parseElectricalPoints(raw: string): ElectricalPoint[] {
-  return ElectricalPointsSchema.parse(parseYaml(raw)).map(({ wall_side, ...point }) => ({ ...point, ...(wall_side ? { wallSide: wall_side } : {}) }));
+  return ElectricalPointsSchema.parse(parseYaml(raw)).map(({ wall_side, mount_anchor, ...point }) => ({
+    ...point,
+    ...(wall_side ? { wallSide: wall_side } : {}),
+    ...(mount_anchor ? { mountAnchor: {
+      kind: mount_anchor.kind,
+      furnitureId: mount_anchor.furniture_id,
+      face: mount_anchor.face,
+      ...(mount_anchor.surface_gap !== undefined ? { surfaceGap: mount_anchor.surface_gap } : {}),
+    } } : {}),
+  }));
 }
 export function parsePlumbingPoints(raw: string): PlumbingPoint[] {
   return PlumbingPointsSchema.parse(parseYaml(raw)).map(({ wall_side, ...point }) => ({ ...point, ...(wall_side ? { wallSide: wall_side } : {}) }));

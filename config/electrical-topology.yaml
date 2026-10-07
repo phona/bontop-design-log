@@ -12,7 +12,7 @@ version: '1.0'
 #    现 mount_height 1.65m 仅在双排时合规——箱体单/双排与容量列入 pending-site-data #30。
 # 口径：开关点位经 controls 绑定灯具、网络点位（含 DEC-2026-10-03-R1 新增 net_gateway / net_ap_corridor）
 # 归弱电箱系统，均不进入强电供电回路成员（Phase 1 口径）。
-# 点位口径：config/electrical.yaml 共 108 个点位（历史上 2026-10-06 R2 新增 sock_kitchen_oven 后为 111；DEC-2026-10-07-R12 删除客卫内置夜灯 NP-6/7/8 后减至 108；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。新增点位为 position_status: pending 的预留接口，未激活前不进任何 topology 回路、不占箱位。
+# 点位口径：config/electrical.yaml 共 107 个点位（历史上 2026-10-06 R2 新增 sock_kitchen_oven 后为 111；DEC-2026-10-07-R12 删除客卫内置夜灯 NP-6/7/8、DEC-2026-10-07-R15 删除客厅 NP-4b 后减至 107；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。新增点位为 position_status: pending 的预留接口，未激活前不进任何 topology 回路、不占箱位。
 
 panels:
   # id 是 topology 内部 panel 标识；source_point_id 指向 electrical.yaml 的真实箱体点位。
@@ -60,9 +60,9 @@ circuits:
     panel_id: panel_strong
     purpose: lighting
     status: confirmed
-    member_point_ids: [light_corridor_1, light_entry_down, light_entry_foyer, night_guest_door, night_living_north, night_living_mid, night_corridor]
+    member_point_ids: [light_corridor_1, light_entry_down, light_entry_foyer, night_guest_door, night_living_north, night_corridor]
     source_circuit_id: entry_base
-    capacity: "≤0.4kW（3 日常灯 + 4 起夜低位灯）"
+    capacity: "≤0.4kW（3 日常灯 + 3 起夜低位灯）"
     wire_size: "1.5mm²(φ16)"
     breaker: "C16A"
     note: "沿用 electrical.yaml 已声明 circuit: entry_base（走廊/入户筒灯）"
