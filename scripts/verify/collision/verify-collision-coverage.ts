@@ -62,7 +62,7 @@ function main() {
   console.log(`  railing_run elements (no collision, by design): ${railings.length}`);
 
   const collidableTypes = new Set(['wall', 'curtain_run', 'wall_run']);
-  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'glass_infill', 'frosted_privacy', 'shower_screen', 'curtain', 'wall_region', 'paint_region']);
+  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'glass_infill', 'frosted_privacy', 'shower_screen', 'curtain', 'wall_region', 'sill_region', 'paint_region']);
   const conditionalCollidableTypes = new Set(['sliding_door_run', 'hinged_glass_door']);
 
   for (const el of overlay.elements ?? []) {

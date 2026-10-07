@@ -125,6 +125,16 @@ phases:
         severity: critical
         rooms: [master_bath, guest_bath, balcony]
 
+      - id: check_sill_tile
+        item: "窗台/防水台面砖检查"
+        method: "逐个落地窗核对防水台 L 型两段——矮台竖面与水平台面是否都贴砖/窗台石、是否出檐收口、打胶是否连续；倒水试验窗框下沿不渗漏"
+        standard: "防水台竖面与水平台面全段贴砖或窗台石，出檐/打胶收口连续，窗框下沿倒水不渗"
+        severity: major
+        rooms: [living_dining]
+        evidence:
+          - "客厅落地幕墙根部防水台竖面与台面铺贴照片"
+          - "窗框下沿倒水试验照片"
+
   - phase: painting
     name: "油漆验收"
     items:

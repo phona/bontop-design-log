@@ -918,7 +918,9 @@ export class HouseScene implements SceneApi {
   /**
    * 贴砖检视态·逐段明细与自检（对齐 HVAC 的 inspectMasterBedroomCondensate，DEC-2026-10-07-R09）。
    * checks 与 CLI tmp/verify-wall-tile.ts 的 L2 交叉层同一套规则：墙存在、未被 suppress、
-   * along 不越界、同墙不重叠、高度不超净高。浏览器侧与 CLI 侧结论必须一致。
+   * along 不越界、同墙同脸竖向堆叠不重叠、顶标高不超净高。浏览器侧与 CLI 侧结论必须一致。
+   * R11：room 取 SceneBuilder 写入的 userData.roomId（共墙两侧各贴各的脸，按 (wall, room) 分组）；
+   * 旧声明无 roomId 时退回 id 前缀映射。
    */
   inspectWallTileRegions(): {
     ok: boolean;
@@ -933,6 +935,12 @@ export class HouseScene implements SceneApi {
     this.exportRoot.traverse((object) => {
       if (object.userData?.type === 'wall' && object.userData?.objectId) wallIds.add(String(object.userData.objectId));
     });
+    const roomOf = (id: string, roomId: unknown): string => {
+      if (typeof roomId === 'string' && roomId.length > 0) {
+        return ({ kitchen: '厨房', master_bath: '主卫', guest_bath: '客卫', balcony: '阳台', living_dining: '客厅' } as Record<string, string>)[roomId] ?? roomId;
+      }
+      return id.startsWith('walltile_kitchen') ? '厨房' : id.startsWith('walltile_mbath') ? '主卫' : id.startsWith('walltile_balc') ? '阳台' : '客卫';
+    };
     const regions = meshes.map((mesh) => {
       const geometry = mesh.geometry as unknown as { parameters: { width: number; height: number } };
       const along = (mesh.userData.along as [number, number]) ?? [0, 0];
@@ -941,8 +949,8 @@ export class HouseScene implements SceneApi {
       const id = String(mesh.userData.objectId ?? '');
       return {
         id, objectId: id, wall: String(mesh.userData.wallId ?? ''),
-        room: id.startsWith('walltile_kitchen') ? '厨房' : id.startsWith('walltile_mbath') ? '主卫' : '客卫',
-        along, bottom: +(((mesh.userData.inspectionInitial as any)?.bottom ?? 0)).toFixed(4),
+        room: roomOf(id, mesh.userData.roomId),
+        along, bottom: +(((mesh.userData.bottom as number | undefined) ?? (mesh.userData.inspectionInitial as any)?.bottom ?? 0)).toFixed(4),
         height, lengthM, areaSqm: +(lengthM * height).toFixed(4),
         zone: (mesh.userData.zone ?? 'visible') as 'visible' | 'covered',
       };
@@ -953,17 +961,23 @@ export class HouseScene implements SceneApi {
     // 「不存在」与「已 suppress」的细分以 CLI tmp/verify-wall-tile.ts 的 L2 交叉层为准。
     const suppressedWallRefs: string[] = [];
     const duplicateOverlaps: string[] = [];
-    const byWall = new Map<string, typeof regions>();
-    for (const r of regions) { (byWall.get(r.wall) ?? byWall.set(r.wall, []).get(r.wall)!).push(r); }
-    for (const [wall, group] of byWall) {
-      const sorted = group.slice().sort((a, b) => a.along[0] - b.along[0]);
+    // R11：重叠判定改二维——同一面墙同一侧脸（wall+room）上 along 与竖向同时重叠才算双计。
+    // 共墙两侧脸（w_balc_south 客卫淋浴 1.80m / 阳台 0.30m）各归各的脸；
+    // 同一侧脸的上下堆叠段（东墙 0.90 杂砖带 + 0.90→1.40 挡水条）竖向不重叠，不算双计。
+    const byFace = new Map<string, typeof regions>();
+    for (const r of regions) { const k = `${r.wall}|${r.room}`; (byFace.get(k) ?? byFace.set(k, []).get(k)!).push(r); }
+    for (const [face, group] of byFace) {
+      // along 起点相同时按 bottom 排序：竖向堆叠段必须让低段在前，否则"上段 vs 下段"的竖向比较会误判。
+      const sorted = group.slice().sort((a, b) => a.along[0] - b.along[0] || a.bottom - b.bottom);
       for (let i = 1; i < sorted.length; i++) {
-        if (sorted[i].along[0] < sorted[i - 1].along[1] - 1e-6) {
-          duplicateOverlaps.push(`${wall}: ${sorted[i - 1].id} ↔ ${sorted[i].id}`);
+        const alongOverlap = sorted[i].along[0] < sorted[i - 1].along[1] - 1e-6;
+        const verticalOverlap = sorted[i].bottom < sorted[i - 1].bottom + sorted[i - 1].height - 1e-6;
+        if (alongOverlap && verticalOverlap) {
+          duplicateOverlaps.push(`${face}: ${sorted[i - 1].id} ↔ ${sorted[i].id}`);
         }
       }
     }
-    const overCeiling = regions.filter((r) => r.height > 2.65 + 1e-6).map((r) => `${r.id} h=${r.height}`);
+    const overCeiling = regions.filter((r) => r.bottom + r.height > 2.65 + 1e-6).map((r) => `${r.id} bottom=${r.bottom} h=${r.height}`);
     return {
       ok: missingWallRefs.length === 0 && suppressedWallRefs.length === 0 && duplicateOverlaps.length === 0 && overCeiling.length === 0,
       regions,

@@ -462,10 +462,10 @@ describe('HouseScene', () => {
       scene.exportRoot.add(mesh);
       return mesh;
     };
-    mk('walltile_kitchen_ent_west', 'w_ent_west', [0.5, 2.9], 0.9, 'covered');
-    mk('walltile_kitchen_vrv_east', 'w_vrv_east', [0, 1], 0.9);
-    mk('walltile_mbath_south_shower', 'w_mbath_south', [0, 1.2], 1.8);
-    mk('walltile_mbath_south_dry', 'w_mbath_south', [1.2, 2.6], 0.3);
+    mk('walltile_kitchen_ent_west', 'w_ent_west', [0.5, 2.9], 0.9, 'covered', { roomId: 'kitchen' });
+    mk('walltile_kitchen_vrv_east', 'w_vrv_east', [0, 1], 0.9, 'visible', { roomId: 'kitchen' });
+    mk('walltile_mbath_south_shower', 'w_mbath_south', [0, 1.2], 1.8, 'visible', { roomId: 'master_bath' });
+    mk('walltile_mbath_south_dry', 'w_mbath_south', [1.2, 2.6], 0.3, 'visible', { roomId: 'master_bath' });
     // 参照墙：只有存在的墙才不会进 missingWallRefs
     const wall = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
     wall.userData = { type: 'wall', objectId: 'w_mbath_south' };
@@ -490,6 +490,20 @@ describe('HouseScene', () => {
     // 再造一段与既有区间重叠的声明 → 必须被抓到（防双计）
     mk('walltile_mbath_south_dup', 'w_mbath_south', [1.0, 2.0], 0.3);
     expect(scene.inspectWallTileRegions().checks.duplicateOverlaps.length).toBeGreaterThan(0);
+
+    // R11：同一面墙同一侧脸上下堆叠（along 重叠但竖向只贴边）不算双计——
+    // 灶台挡水条 0.90→1.40 叠在东墙 0→0.90 杂砖带之上。
+    mk('walltile_kitchen_ent_hood_wall', 'w_ent_west', [0.5, 2.9], 0.5, 'visible', { bottom: 0.9, roomId: 'kitchen' });
+    expect(scene.inspectWallTileRegions().checks.duplicateOverlaps.filter((o: string) => o.includes('w_ent_west'))).toEqual([]);
+    // 竖向也重叠才算双计
+    mk('walltile_kitchen_ent_dup_full', 'w_ent_west', [0.5, 2.9], 0.95, 'visible', { bottom: 0, roomId: 'kitchen' });
+    expect(scene.inspectWallTileRegions().checks.duplicateOverlaps.filter((o: string) => o.includes('w_ent_west')).length).toBeGreaterThan(0);
+
+    // R11 D4：防水台 L 型两段共用 along、竖面 0→0.15 与台面 0.15→0.30 竖直接边，不算双计
+    mk('silltile_living_south_front', 'w_liv_south', [0, 6.2], 0.15, 'visible', { bottom: 0, roomId: 'living_dining' });
+    mk('silltile_living_south_top', 'w_liv_south', [0, 6.2], 0.15, 'visible', { bottom: 0.15, roomId: 'living_dining' });
+    expect(scene.inspectWallTileRegions().checks.duplicateOverlaps.filter((o: string) => o.includes('w_liv_south'))).toEqual([]);
+    expect(scene.getWallTileInspectionStatus().byRoom['客厅'].areaSqm).toBeCloseTo(0.93 + 0.93, 4);
   });
 
   it('makes only inspection-declared ceiling covers translucent during HVAC inspection', () => {

@@ -1909,6 +1909,111 @@
 - **关联文件**：`app/src/scene/HouseScene.test.ts`。
 - **决策人**：业主。
 
+### DEC-2026-10-07-R11 贴砖范围业主质询终裁：杂砖带保留 + 灶台挡水条 + 生活阳台 + room 脸语义
+
+- **日期**：2026-10-07。触发：业主看贴砖检视态截图质询三条——①「厨房这个位置怎么需要贴瓷砖？」（图3 = 东墙烟机/高柜后）；②「这个位置怎么没有安排贴瓷砖？」（图2 = 厨房-阳台门/地漏区）；③「落地窗一圈的防水台少了贴瓷砖」。先出 `docs/design-iterations/tile-scope-owner-review-20261007.md` 分析报告，再逐条裁定。
+- **裁定**：**D1=A**（冰箱高柜后 0.90m 杂砖带维持贴砖走杂砖，与 R05 业主指示一致）；**D2=补贴**（灶台挡水条补上）；**D3=B**（生活阳台按 0.30m 湿区最低口径贴两段墙）；**D4**（防水台初判「落地窗根部下方小条带、水平面不进 3D 贴砖层、挂交底/验收/extras、材料待终裁」——**同日被 D4=L 型终裁覆盖，见本节附则**）；**D5=补**（`wall_region` 补 `room` 字段）。
+- **范围变化（overlay.yaml wall_region 13 → 16 段）**：
+  - 新增 `walltile_kitchen_ent_hood_wall`：东墙 `w_ent_west` 沿 along[1.27,2.17]（烟机宽 0.90m，z[0.73,1.63]）自台面 0.90 贴至 **1.40**（模型 `range_hood` 底缘 y=1.35，取整包住机身边）——R05 的 0.90m 带止于台面完成面 0.89m，**台面以上到烟机底约 0.5㎡ 的油溅区本是裸墙缺口**，本条补正砖可见面。
+  - 新增 `walltile_balc_west_washer`（`w_balc_west` 1.20m 全墙，洗衣机/烘干机背墙，给水/墙排/插座均在此面）与 `walltile_balc_south`（`w_balc_south` 沿 along[0,1.50] **阳台侧**），均 0.30m。**门洞墙 `w_balc_east` 阳台侧 1.20m 既定不贴**（厨房侧杂砖带已覆盖门垛，D3=B 不收）。
+  - D4 防水台（客厅落地幕墙 `w_liv_south` 根部 6.20m 条带贴砖/窗台石）：水平面不在 `wall_region` 表达域，挂 `COST-060-05` extras 双锚点（小砖条 20 元/米 ≈124 / 飘窗台面贴砖 100 元/米 ≈620）+ `config/acceptance.yaml` 新增 `check_sill_tile` + PKG-060 `acceptance_refs` + budget-pitfalls 验收条；材料（墙砖/窗台石）与是否含各飘窗台面待业主终裁，**PKG-060 need 暂不含此项**。
+- **D5 脸语义（`room` 字段，对齐 `paint_region`）**：共墙两侧各贴各的脸——`w_balc_south` 客卫淋浴 1.80m 与阳台 0.30m 同墙并存；预算与审计按 `(wall, room)` 分组去重，不再按 id 前缀猜房间。渲染**不加侧向偏移**（仍走墙中心线 + 检视态 `depthTest=false` 真透视，从两侧都看得见砖面带），`room` 只进账面/审计。`SceneBuilder` 校验 room 存在并把 `roomId/bottom` 写入 userData；`HouseScene.inspectWallTileRegions` 的 room 映射改 `userData.roomId`（旧声明无则退前缀）。
+- **判重规则改二维**：同墙同脸上 along 与**竖向**同时重叠才算双计——东墙 0.90m 杂砖带与 0.90→1.40 挡水条共用 along 区间、竖直接边，不判重；`tmp/verify-wall-tile.ts` L2 与 `HouseScene` 审计同改（along 起点相同按 bottom 排序，防"上段 vs 下段"误判）。`height` 口径明确为**顶标高**（非带高），`bottom` 缺省 0，同一墙可上下堆叠。
+- **L2 新增断言**：① `room` 在已知房间表；② 声明 along 区间必须落在**该墙属于此房间的那一段**（`faceSpanOf`——共墙贴错脸现形）；③ 厨卫三间仍「声明 union == 独立推导」，**阳台改「声明 union ⊆ 推导」并显式登记 1.20m 缺口**（`tileableOf(阳台)=3.90` vs 声明 2.70）；④ 总长口径改 **union**（同一墙堆叠只算一次墙长）。
+- **台账随动**：union 墙长 14.86 → **17.56m**；A 档面积 12.213 → **13.473㎡**（可见面 8.343 → **9.603㎡**，遮蔽面 3.87㎡ 不变）；`COST-060-08` planned_cny 580 → **670**；PKG-060 `estimated_need_cny` 43,080 → **43,170**、缺口 → **13,170**；全局 known pending gap 34,374 → **34,464**。A 档区间 1,649–1,832 → **1,819–2,021**；B 全通高满铺改按 union 17.56m×2.65m=46.53㎡ → **6,284–6,982**。`budget.md`/`checklist.md` 由 `verify:schedule` 重新生成。
+- **验证**：`npx tsx tmp/verify-wall-tile.ts` 退出码 0（L2 逐条 + 台账全 OK）→ `test:server` 708/708/0 → `typecheck` Exit 0 → `verify:all` Exit 0 → `verify:schedule` valid（¥34,464）。`test:app` 519/520——**唯一失败 `paint status reports net area...` 属并行涂漆 WIP（DEC-2026-10-08-C05/C06 未提交改动），与本条无关**，已向业主显形。
+- **关联文件**：`config/layout/overlay.yaml`、`shared/types.ts`、`server/overlay-merge.ts`、`shared/render/SceneBuilder.ts`、`app/src/render/HouseScene.ts`、`tmp/verify-wall-tile.ts`、`tests/server/wall-tile-inspection.test.ts`、`app/src/scene/HouseScene.test.ts`、`schedule/phase-1/control.yaml`、`config/acceptance.yaml`、`config/budget-pitfalls.yaml`、`docs/design-iterations/tile-scope-owner-review-20261007.md`。
+- **决策人**：业主。
+
+#### R11 附则（同日续，D4=L 型终裁）：防水台落地
+
+- **触发**：业主指出 D4 的防水台理解错了造型——不是窗框下的水平小条，而是**落地窗根部矮台的 L 型截面：竖面 + 水平台面都要贴，做出檐收口**；尺寸「开发商已做、按业界标准估」；范围「涉及落地窗的地方都会有」。
+- **范围逐窗核对（model-geometry + overlay 实算）**：全宅只有 `w_liv_south`（客厅 6.20m）是真·齐地玻璃且贴近人活动面——卧室/书房/客卫各玻璃根部都在 2.07m 高飘窗台之后（台面挡住，根部不可见）、厨房北幕墙根在地柜后（不可见）、入户花园为开发商完成区、南阳台 BLK 冻结。故本轮只挂客厅一处，其余不贴但理由全部显形。
+- **尺寸口径（推断，量级待量房）**：150 高 × 150 出檐。依据：业界常规落地窗窗台留 100–200mm（防外力撞击玻璃、窗台内侧做防水收口），取中值且与 300×600 墙砖整砖模数合。
+- **构件**：overlay 新增 `bay_sill living_south_waterproof_ledge`（`wall: w_liv_south`，sill 0 / height 0.15 / depth 0.15）——本模型此前按「玻璃齐地」建，缺此构件，本条补上。bay_sill 按既有惯例属非碰撞类。
+- **新元素类型 `sill_region`**（贴砖层扩展到水平/窗台面）：`element`（引用 bay_sill）+ `face: front|top` + 可选 `along` + `zone/room`。front = 玻璃线处竖面；top = 墙线向房间侧伸 depth 的水平台面（靠 room 中心定法线，故 top 必须声明 room）。两段复用 `wall-tile` 层标签与同一个贴砖开关，与 `wall_region` 平级互不引用；`verify-collision-coverage` 登记为非碰撞。
+- **面积与台账**：L 型两段 6.20m×(0.15+0.15)=**1.86㎡**（front 0.93 + top 0.93）进可见面→ 可见面 9.603→**11.463㎡**，A 档面积 13.473→**15.333㎡**；`COST-060-08` planned_cny 670→**800**；PKG-060 need 43,170→**43,300**、缺口 **13,300**；全局 pending gap 34,464→**34,594**。A 档区间 1,819–2,021→**2,070–2,300**。人工（窗边台贴小砖条 20 元/米 ≈124）仍挂 COST-060-05 extras 不入 need。
+- **测试补强**：`sceneWithWallTile` 改走 `mergeSceneElements`+`resolveLayout`（与 App 同路径——直接喂原始 YAML 的 bay_sill 没有 points 会炸，此前临摹路径一直没走到 bay_sill）；`unsupported` 断言从 `(scene as any).unsupported ?? []`（恒真）修正为 `scene.report.unsupported`——这个恒真断言正是本轮第一版 sill 网格没建出来却没被抓到的原因。app 侧补 L 型两段竖直接边不判重用例。
+- **验证**：`tmp/verify-wall-tile.ts` 退出码 0（新增防水台面积/构件断言）｜`test:server` 708/708｜`test:app` 520/520（`/tmp` tmpfs 写满导致 7 个套件加载失败，`TMPDIR` 迁出后全绿，环境问题非代码）｜`typecheck` 0｜`verify:all` 0｜`verify:schedule` valid ¥34,594。
+
+### DEC-2026-10-08-C01 吊顶算量子系统独立：按分区实算替代房间面积近似（+ trade 工艺分类与一键高亮）
+
+- **日期**：2026-10-08。触发：业主问「吊顶区域，有单独计算的子系统吗？」并要求补上，同时要求「页面加个按钮，一键高亮需要吊顶的区域，不同的吊顶区域用不同的颜色」。
+- **问题（口径错误，不是精度问题）**：`config/budget/base.json` 的 `carpentry.labor.area` 长期是 `ceiling`，而 `server/budget-calculator.ts` 的 `case 'ceiling'` 取的是**房间 bbox 面积合计 142.92㎡**——把没有吊顶的 2.80m 平顶、电梯井（4.90㎡）、入户花园（12.91㎡）全计了费，`living_dining` 也按整间 45.88㎡ 计（实际只有 10.57㎡ 是吊顶）。历史快照 `docs/design-iterations/phase1-scope-20260912/evidence/phase1-j6-final-body.txt:119-120` 的 `carpentry ¥5,717 / ¥5,000`（over）就是这个近似值的果。
+- **选定方案**：新建 `shared/ceiling-takeoff.ts`（纯函数、零依赖、与渲染同源），按 `config/ceiling.yaml` 的**逐分区声明**实算；同时把「渲染类型」与「工艺/计价类别」分开：
+  - **面积口径与渲染严格一致**：阳角圆角扣 `r²(1−π/4)`、阴角 fillet 加 `F²(1−π/4)`；解析值用 `tests/server/ceiling-takeoff.test.ts` 与 `buildMixedRectangleOutline` + shoelace 交叉验证（渲染弧线被采样成折线，必然略小于解析真值）。
+  - **展开面积 = 净面积 + 周长×厚度**（施工方对石膏板吊顶通常按展开报价）。
+  - **`trade` 工艺类别显式声明，禁止靠 id 前缀推断**（AGENTS.md「代码只读、只执行，禁止推断」）：`gypsum_board` / `aluminum_buckle` / `curtain_box` / `drying_rack`，落在 `config/ceiling.yaml` 的 6 个分区上（5 窗帘盒 + 1 晾衣架吊顶）；`shared/project-render-facts-schema.ts` 用 strict 枚举接住错字，`shared/render/SceneBuilder.ts` 随 `userData.ceiling` 透出到浏览器。归不了的进 `unclassifiedZoneIds` 显形，不猜。
+  - **不静默丢弃**：`excludedIds`（6 台 `ac_indoor` 无 area）、`invalidZoneIds`（渲染侧也会拒绝的几何）、`roomIdsWithoutCeiling`（保持 2.80m 原顶的生活阳台/电梯井）、`overlaps` 全部显式输出。
+- **业主两问的答复**：
+  - **窗帘盒算了吗？算。** 5 个 `curtain_box_*` 全部计量：净 4.463㎡，并**单列延长米 17.85m**（窗帘盒行业主口径是元/米，混在 ㎡ 里会失真）。
+  - **区分吊顶类型了吗？区分。** 见上表 `trade` 四类，高亮配色与图例分组、算量小计、报价口径全部按它走。
+- **当前声明快照（19 个实心分区 / 25 条声明）**：
+
+  | 工艺类别 | 分区 | 净㎡ | 展开㎡ | 延长米 | 板块 | 计价主口径 |
+  |---|---|---|---|---|---|---|
+  | gypsum_board 石膏板吊顶 | 10 | 23.222 | 44.506 | 27.07 | — | 元/㎡ |
+  | aluminum_buckle 铝扣板 | 3 | 16.366 | 20.554 | 8.30 | 185 | 元/㎡ 或 元/块 |
+  | curtain_box 窗帘盒 | 5 | 4.463 | 10.193 | 17.85 | — | 元/延长米 |
+  | drying_rack 隐藏晾衣架吊顶 | 1 | 1.080 | 1.800 | 1.80 | — | 元/㎡ |
+  | **合计** | **19** | **45.130** | **77.053** | — | — | — |
+
+  铝扣板板块数 185 = 厨房 96（⌈3.6/0.3⌉×⌈2.4/0.3⌉）+ 主卫 54 + 客卫 35；**必须用带 eps 的 ceil**——`1.5/0.3` 在浮点下是 `5.000000000000001`，裸 `Math.ceil` 会把客卫算成 42 块。
+- **预算影响（需业主确认的部分单列）**：`base.json` 的 `carpentry.labor.area` 由 `ceiling` 改为 `ceiling_zones`，人工量 = 40 元/㎡ × 45.130㎡ ≈ **¥1,805**（原 ¥5,717），carpentry 由 over 翻 ok，`totalActual` **≈ −¥3,911**。**窗帘盒与铝扣板的费率未动**：`byClass` 只输出数量拆分，改单价=重新谈价，超出本条范围；报价阶段按 README「没有合并项报价」逐项列，主口径见 `GET /api/ceiling/takeoff` / `npm run takeoff:ceiling` / MCP `get_ceiling_takeoff`。若业主希望保留保守预算，`case 'ceiling'` 分支仍在，可回退。
+- **待业主裁定（不擅自改几何）**：`curtain_box_master_south`（z[8.70,8.95]）与 `curtain_box_master_west`（x[1.10,1.35], z[5.55,8.80]）在 x[1.10,1.35]×z[8.70,8.80] 上**重叠 0.25×0.10m = 0.025㎡**（合计净面积含这部分重复计费，已由 `takeoff.overlapAreaM2` 单独计量）。是「西盒应收在 z=8.70」还是「转角有意交汇」属设计裁定，本轮只显形不改数。
+- **验证**：`tests/server/ceiling-takeoff.test.ts` 12 条（含 eps-ceil 浮点回归、id 改名不跟随归类、重叠检出、渲染轮廓交叉验证）+ `budget-calculator.test.ts` 木工人工口径断言 + `render-facts-api.test.ts` `/api/ceiling/takeoff`；`app/src/render/CeilingZoneHighlight.test.ts` 9 条 + `analysis/ceiling-zone-colors.test.ts` 5 条 + `ui/CeilingZoneButton.test.ts` 3 条；`test:server` 677/677/0 → `test:app` 504/504 → `typecheck` Exit 0 → `verify:all` Exit 0。线上复核：`GET /api/ceiling/takeoff` 19 区 / 净 45.130㎡ / 展开 77.053㎡ / 185 块 / 窗帘盒 17.85m；`GET /api/budget` carpentry 1,805（status ok）。
+- **查询三层出口**：`GET /api/ceiling/takeoff`（API）、`get_ceiling_takeoff`（MCP）、`npm run takeoff:ceiling`（CLI，可归档）。三者同源同口径，业主/AI 30 秒可拿逐区面积/展开面积/延长米/板块数，PKG-070 的「待报价/待算量」不再靠手抄。
+- **一键高亮按钮（同一DEC交付）**：机电组新增「吊顶分区」按钮（`#ceiling-zone-btn`），开启即给每个分区上色并弹出图例面板。
+  - **颜色**：HSL 连续偏移而非固定调色板——19 个实心分区必须 19 个互不相同的颜色（固定色板必然撞色）；每个工艺类别一个色相带（石膏板蓝灰 / 铝扣板青 / 窗帘盒黄 / 晾衣架橙），按 `zoneId` 哈希取点，**新增或删除分区不打乱已有颜色**；图例顶部可切「每分区一色 / 按工艺归并」。
+  - **必须走 `exportRoot.traverse` 而不是 `ceilingMeshes`**：后者被 `SceneBuilder` 排除了 `ceilingPersistent` 分区（圆角/阴角区，含主卧门头盒 `ceiling_master_ac`），只用它会漏分区。
+  - **与既有机制的打架点全部用「状态 + 重放」解决**：`setCeilingVisible` 在 `setMode` / MEP 总览 / 重建后都会重写天花材质，高亮因此在 `setCeilingVisible` 末尾重放配色；关闭时按 `Map<Mesh, Material>` 快照还原（不写死默认值），反复开关不累积快照。高亮期间强制天花可见（轨道/俯视默认隐藏），关闭即恢复模式默认。
+  - **图例即审计**：按工艺分组、每组小计（净/展开/延长米/板块数），行点击=隔离该分区（其余压暗 0.14），hover 该分区在机电信息里给出工艺、净面积、展开面积与板块数。数字全部来自 `HouseScene.inspectCeilingZones()` → `shared/ceiling-takeoff.ts`，与预算/CLI 同一份口径（图数同源，不抓第二套数）。
+  - **隔离铁律（源码级测试看守）**：`setCeilingZoneHighlightVisible` / `setCeilingZoneSolo` / `getCeilingZoneHighlightStatus` / `inspectCeilingZones` / `applyCeilingZoneColors` / `restoreCeilingZoneMaterials` 与 App 的播报段，函数体内**不得出现 `Hvac|hvac|WallTile|wall-tile`**（与贴砖检视态 R08/R10 同一手法）。
+- **关联文件**：`shared/ceiling-takeoff.ts`（新）、`shared/types.ts`、`shared/project-render-facts-schema.ts`、`shared/render/CeilingZoneBuilder.ts`、`shared/render/SceneBuilder.ts`、`config/ceiling.yaml`、`config/budget/base.json`、`server/budget-calculator.ts`、`server/routes.ts`、`server/mcp-server.ts`、`scripts/project/ceiling-takeoff.ts`（新）、`package.json`、`data/project-render-facts.json`、`tests/server/ceiling-takeoff.test.ts`、`tests/server/budget-calculator.test.ts`、`tests/server/render-facts-api.test.ts`。
+- **决策人**：业主。
+
+### DEC-2026-10-08-C02 窗帘盒人工从吊顶 ㎡ 行拆出，按延长米单列（rate 待报价）
+
+- **日期**：2026-10-08。触发：业主在看懂 C01 的分类小计后要求「拆窗帘盒人工」。
+- **问题**：C01 把木工人工统一按 40 元/㎡ 铺在「全部实心分区净面积 45.130㎡」上，其中窗帘盒 4.463㎡ 也按 ㎡ 计（≈¥178）。但窗帘盒的行业主口径是**元/延长米**（藏双轨、电动窗帘电源、与墙体/顶面收口都按米算），混在 ㎡ 里既对不上施工方报价单，也违反 README「没有合并项报价」。
+- **选定方案**：`config/budget/base.json` 的 `carpentry.labor` 从单对象改为**数组两条计价行**，`server/budget-calculator.ts` 的 `computeLabor` 同时兼容单对象与数组（其余分类不动）：
+  1. `ceiling_zones`（元/㎡，rate 40）：吊顶**板面** = 总净面积 − 窗帘盒 = 40.667㎡ → **¥1,627**；
+  2. `curtain_box_linear`（元/m，**rate: null = 待报价**）：数量 **17.85 延长米**，取自 `shared/ceiling-takeoff.ts` 的 `byClass.curtain_box.linearM`，与 3D 图例、CLI、API 同一份口径。
+- **rate 留空但不静默归零**：`BudgetCategory.pendingLabor` 显形输出 `{area:'curtain_box_linear', quantity:17.85, unit:'元/m', reason:'rate 待报价'}`，API/MCP 的预算快照直接带这个字段；报价回来后只需在 `base.json` 填一个数，不改代码。若把 rate 拍成 0，就是拿「拆分」掩护「少算一笔钱」——README「没有无依据决策」不允许。
+- **预算影响**：carpentry actual 由 ¥1,805 降到 **¥1,627**（−¥178，即窗帘盒那 4.463㎡ 的 ㎡ 计价整笔拆出）；`totalActual` 同步下移。**注意预算风险转向**：板面 ¥1,627 + 窗帘盒人工（17.85m × 未定费率）之和可能超过 carpentry 的 ¥5,000 预算——原口径把两者捆在一起时这个风险被掩盖了。取得施工方按米报价后必须与 ¥5,000 对账，超了走 DEC 调预算而不是改数量。
+- **未触及**：`shared/ceiling-takeoff.ts` 一行未改（窗帘盒的面积/延长米/分类小计口径 C01 已定）；不改其他分类的 labor 结构；不预设窗帘盒费率（示例：若 30 元/m 则 ¥536，**仅为算术示例，不是报价**）。
+- **验证**：`tests/server/budget-calculator.test.ts` 新增 1 条（板面量排除窗帘盒 + `pendingLabor` 精确等于 17.85m + base.json 两行结构）；`test:server` 678/678/0 → `verify:facts` / `verify:schedule` Exit 0 → `typecheck` Exit 0。
+- **关联文件**：`config/budget/base.json`、`server/budget-calculator.ts`、`shared/types.ts`（`LaborRate.rate` 可空、`BudgetCategoryRaw.labor` 可为数组、`BudgetCategory.pendingLabor`）、`tests/server/budget-calculator.test.ts`。
+- **决策人**：业主。
+
+### DEC-2026-10-08-C03 吊顶报价卡片：多家报价可切换（量不变、只换单价）
+
+- **日期**：2026-10-08。触发：业主问「有多个报价的话，这套架构支持切换吗」，看完 C01/C02 的分层后选方案 A（报价卡片 + 生效开关）。
+- **分层结论（先说清楚哪些本来就有）**：**工程量层早已支持多家报价**——所有量由 `shared/ceiling-takeoff.ts` 从 `config/ceiling.yaml` 单独实算，报价方之间只差单价，所以 A 家按毛面积、B 家按展开面积这种「口径对不上」从根上不可能发生。**不支持的是单价层**：`base.json` 的 `labor[].rate` 只有一个生效值，切报价=改文件，不能并排对比、不能一键切换、旧报价不留档。
+- **选定方案**：新增 `config/ceiling-quotes.yaml`（`active:` + `quotes[]`，每张卡只写**单价 + 含项范围**，禁止自带面积）+ `server/ceiling-quotes.ts`：
+  - `GET /api/ceiling/quotes`：全部候选并排（板面 ㎡、窗帘盒 延长米两行，逐行 subtotal、总额、与生效卡的差额）。
+  - `POST /api/ceiling/quotes/active` 与 MCP `set_ceiling_quote`：切换生效卡。**只改写 `active:` 一行**（正则定点替换，保留注释与排版，先留 `.bak`），保证 Git diff 只有一行、业主看得懂；找不到唯一 active 行或 id 不存在 → 抛错不写盘。
+  - `BudgetCalculator` 的两个吊顶计价行单价改从**生效卡**取；卡里没写的行回落到 `base.json` 并在对比里标记 `rate_source: 'base.json'`——回落必须看得见，不悄悄替换。
+  - 预算快照新增 `ceilingQuotes` 字段（`activeId` + 全量对比），API/MCP/App 拿预算的地方都能看到「当前金额是哪家报出来的」。
+- **默认卡 = 现状口径**：`baseline_self_computed` 把 C01/C02 已落地的口径固化成卡（板面 40 元/㎡、窗帘盒 rate null），保证「没有施工方报价时可回退、金额与 C02 完全一致」——测试钉死 carpentry 仍为 ¥1,627、`pendingLabor` 仍为 17.85m。
+- **不可直接比较要显形**：报价卡没写 `scope_note`（含辅材/安装/损耗/税费的口径）→ 该候选 `comparable: false` 并给出原因；有 `per_unit: null` 的行 → `total: null`、进 `pendingRows`，**不许把待报价当 0 元**（AGENTS.md 采购铁律）。
+- **抗摔**：`ceiling-quotes.yaml` 坏掉（YAML 错/version 错/active 指向不存在的卡）时预算**不冻结**——`BudgetCalculator` 捕获后回落 `base.json` 费率并在服务端日志报错；`parseCeilingQuotes` 本身 fail closed，绝不给默认值。
+- **验证**：`tests/server/ceiling-quotes.test.ts` 7 条（量与价分离、并排总额/差额/可比性、回落标记、切换只改一行且留 .bak 保留注释、fail-closed 五种坏输入、基线卡金额不变、坏文件回落）；联机烟测：加假报价 `smoke_kima`（板面 55/㎡、窗帘盒 32/m）→ `POST /active` → carpentry ¥1,627 → **¥2,808**（55×40.6676 + 32×17.85）、`pendingLabor` 清空、`totalActual` +¥1,181；未知 id 被拒并列出可用卡；烟测后已删除该卡并还原 active。`test:server` 685/685/0 → `verify:all` Exit 0 → `typecheck` 0。
+- **关联文件**：`config/ceiling-quotes.yaml`（新）、`server/ceiling-quotes.ts`（新）、`server/budget-calculator.ts`、`server/routes.ts`、`server/mcp-server.ts`、`shared/types.ts`、`config/facts.yaml`、`tests/server/ceiling-quotes.test.ts`（新）。
+- **决策人**：业主。
+
+### DEC-2026-10-08-C04 吊顶报价面板：App 内并排看数 + 一键切换
+
+- **日期**：2026-10-08。触发：C03 只给了 API/MCP 两个切换入口，业主要求 App 里也能看、也能切。
+- **选定方案**：机电组新增「吊顶报价」按钮 → `app/src/render/analysis/CeilingQuotePanel.ts`（`#right-panel-stack` 动态面板，样式沿用 `analysis.css` 与 `OverviewMenu` 瓷砖预览的语言）：
+  - **面板不算量**：只渲染 `GET /api/ceiling/quotes` 返回的内容——头部是「板面 40.668㎡ · 窗帘盒 17.85m」（服务端 takeoff 实算），下面每张卡两行 `数量 × 单价 = 小计` + 合计 + 与生效卡的差额。浏览器里不出现第二套面积口径。
+  - **切换即 API**：卡上「切换为生效」→ `POST /api/ceiling/quotes/active` → 刷新面板 + 回调 `App.refreshOverviewData()` 刷新总览/预算 → 播报摘要。失败时把服务端错误原文显示在面板顶部（不静默、不抛异常）。
+  - **把后果讲清楚**：面板脚注写明「只改写 active 一行、留 .bak、量不变只换单价、需进 Git」；没写含项范围的卡显示 `comparable` 警告，`per_unit: null` 的行显示「待报价」而不是 0。
+- **为什么不并进「吊顶分区」面板**：分区面板答「哪里要吊顶、多少量」，报价面板答「哪家多少钱、切哪家」——一个是几何视图、一个是价格台账，混在一起会让业主在 3D 检视时被价格干扰；按钮平级、面板平级，代码也平级（`CeilingQuotePanel` 不引用 3D 与分区高亮任何状态）。
+- **验证**：`app/src/render/analysis/CeilingQuotePanel.test.ts` 4 条（渲染算式与生效标记/差额、点击切换的 POST 体与回调、切换失败显示错误、接口坏掉不抛异常）+ `app/src/ui/CeilingQuoteButton.test.ts` 3 条；`test:app` 510/510 → `typecheck` 0 → `build:app` 通过；接口自检 `GET /api/ceiling/quotes` 返回 activeId/quantities/comparison 三块，面板取数即用。
+- **关联文件**：`app/src/render/analysis/CeilingQuotePanel.ts`（新）、`app/src/render/analysis/CeilingQuotePanel.test.ts`（新）、`app/src/ui/CeilingQuoteButton.ts`（新）、`app/src/ui/CeilingQuoteButton.test.ts`（新）、`app/src/render/analysis/analysis.css`、`app/index.html`、`app/src/App.ts`。
+- **决策人**：业主。
+
 ### DEC-2026-10-08-C05 涂漆（墙顶面涂装）子系统独立：一键高亮 + 声明式成本核算 + 预算面积同源
 
 - **日期**：2026-10-08。触发：业主问「墙面的涂漆系统有专门的一键高亮、还有成本核算功能吗」——查证结论是**都没有**：只有方案面板选漆色 + `paintWallArea = (宽+深)×2×高×0.75` 这个拍系数公式。业主要求「做成瓷砖那样类似的成本核算与一键高亮功能」。

@@ -496,7 +496,7 @@ function addCurtain(root: THREE.Group, element: CurtainElement, rooms: ResolvedR
   index.curtains.set(element.id, entry);
 }
 
-function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { type: 'wall' }>, report: SceneBuildReport, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex, walls: Array<WallSegment & { height?: number }> = [], paintWindows: PaintWindowInput[] = []): void {
+function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { type: 'wall' }>, report: SceneBuildReport, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex, walls: Array<WallSegment & { height?: number }> = [], paintWindows: PaintWindowInput[] = [], allElements: readonly Exclude<SceneElement, { type: 'wall' }>[] = []): void {
   const id = element.id;
   switch (element.type) {
     case 'floor_region': {
@@ -590,6 +590,13 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         report.unsupported.push(`${id}: wall_region resolved to a zero-length span on wall ${element.wall}`);
         return;
       }
+      // R11 room 语义：贴砖面归属房间（共墙两侧各贴各的脸，预算/审计按 (wall, room) 去重）。
+      // 只校验房间存在，不要求中心点（wall_region 不做侧向偏移：渲染仍走墙中心线，
+      // 检视态 depthTest=false 真透视，从两侧都能看到砖面带）。
+      if (element.room && !rooms.some((candidate) => candidate.id === element.room)) {
+        report.unsupported.push(`${id}: wall_region references unknown room ${element.room}`);
+        return;
+      }
       const color = element.color ?? (element.zone === 'covered' ? TILE_COVERED_COLOR : TILE_VISIBLE_COLOR);
       const material = new THREE.MeshStandardMaterial({
         color: new THREE.Color(color),
@@ -610,7 +617,9 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       mesh.userData = {
         ...mesh.userData,
         wallId: element.wall,
+        roomId: element.room,
         along: [from, to],
+        bottom,
         zone: element.zone ?? 'visible',
         inspectionLayer: 'wall-tile',
         inspectionVisibleOnly: true,
@@ -628,6 +637,136 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       };
       mesh.visible = false;
       root.add(mesh);
+      return;
+    }
+    case 'sill_region': {
+      // 防水台/窗台贴砖带（DEC-2026-10-07-R11，业主 D4=L 型终裁：竖面+台面都贴、做收口）。
+      // inspection-only，与 wall_region 平级、共用 'wall-tile' 层标签（同一个贴砖开关）。
+      // 引用一个 bay_sill 构件（防水台几何）：face=front 贴其朝向房间的竖面、
+      // face=top 贴水平台面（台面要房间侧法线，故 top 必须声明 room）。
+      const target = allElements.find((candidate) => candidate.id === element.element);
+      if (!target || target.type !== 'bay_sill') {
+        report.unsupported.push(`${id}: sill_region references unknown or non-bay_sill element ${element.element}`);
+        return;
+      }
+      const targetWallIds = 'wallRefs' in target && target.wallRefs?.length
+        ? target.wallRefs.map((ref) => ref.wallId)
+        : ((target as { walls?: string[] }).walls ?? ((target as { wall?: string }).wall ? [(target as { wall?: string }).wall!] : []));
+      if (targetWallIds.length === 0) {
+        report.unsupported.push(`${id}: sill_region 暂不支持 points-only bay_sill（${element.element}）`);
+        return;
+      }
+      const polyline: WallSegment[] = targetWallIds.flatMap((wallId) => {
+        const wall = walls.find((candidate) => candidate.id === wallId);
+        if (!wall) {
+          report.unsupported.push(`${id}: sill_region target references unknown wall ${wallId}`);
+          return [];
+        }
+        return wall.segments?.length
+          ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+          : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+      });
+      const pointAt = (distance: number): Point | null => {
+        let remaining = distance;
+        for (const segment of polyline) {
+          const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
+          if (length <= 1e-9) continue;
+          if (remaining <= length + 1e-9) {
+            const t = Math.min(1, Math.max(0, remaining / length));
+            return { x: segment.x1 + (segment.x2 - segment.x1) * t, z: segment.z1 + (segment.z2 - segment.z1) * t };
+          }
+          remaining -= length;
+        }
+        return null;
+      };
+      const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
+      if (!(total > 0)) {
+        report.unsupported.push(`${id}: sill_region target ${element.element} resolved to zero-length run`);
+        return;
+      }
+      const from = Math.min(element.along?.[0] ?? 0, element.along?.[1] ?? total);
+      const to = Math.max(element.along?.[0] ?? 0, element.along?.[1] ?? total);
+      if (from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
+        report.unsupported.push(`${id}: sill_region along [${from},${to}] outside target run (length ${total.toFixed(3)})`);
+        return;
+      }
+      const start = pointAt(Math.max(0, from));
+      const end = pointAt(Math.min(total, to));
+      if (!start || !end) {
+        report.unsupported.push(`${id}: sill_region could not resolve along interval on target ${element.element}`);
+        return;
+      }
+      const span = Math.hypot(end.x - start.x, end.z - start.z);
+      if (span <= 1e-9) {
+        report.unsupported.push(`${id}: sill_region resolved to a zero-length span`);
+        return;
+      }
+      const color = element.color ?? (element.zone === 'covered' ? TILE_COVERED_COLOR : TILE_VISIBLE_COLOR);
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(color),
+        roughness: 0.9,
+        transparent: true,
+        opacity: 0.38,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+        depthWrite: false,
+      });
+      const mid = { x: (start.x + end.x) / 2, z: (start.z + end.z) / 2 };
+      const writeMeta = (mesh: THREE.Mesh, kind: 'sill-front' | 'sill-top', bottom: number) => {
+        setSceneObjectMetadata(mesh, element.type, id);
+        mesh.userData = {
+          ...mesh.userData,
+          wallId: targetWallIds[0],
+          elementId: element.element,
+          roomId: element.room,
+          kind,
+          along: [from, to],
+          bottom,
+          zone: element.zone ?? 'visible',
+          inspectionLayer: 'wall-tile',
+          inspectionVisibleOnly: true,
+          inspectionOpacity: TILE_INSPECTION_OPACITY,
+          inspectionInitial: {
+            visible: false,
+            opacity: 0.38,
+            transparent: true,
+            depthTest: true,
+            depthWrite: false,
+            renderOrder: 0,
+            bottom,
+          },
+        };
+        mesh.visible = false;
+        root.add(mesh);
+      };
+      if (element.face === 'front') {
+        // 竖面：在玻璃/墙线处的竖直面，band = target.sill → target.sill+target.height
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, target.height), material);
+        mesh.position.set(mid.x, target.sill + target.height / 2, mid.z);
+        mesh.rotation.y = Math.atan2(-(end.z - start.z), end.x - start.x);
+        writeMeta(mesh, 'sill-front', target.sill);
+        return;
+      }
+      // 水平台面：自墙线向房间侧延伸 target.depth，顶面标高 = target.sill + target.height
+      const room = rooms.find((candidate) => candidate.id === element.room);
+      if (!room) {
+        report.unsupported.push(`${id}: sill_region face=top references unknown room ${element.room}`);
+        return;
+      }
+      if (!Number.isFinite(room.x) || !Number.isFinite(room.z)) {
+        report.unsupported.push(`${id}: sill_region face=top room ${element.room} has no resolved centre (x/z)`);
+        return;
+      }
+      const dirLength = span || 1;
+      const left = { x: -(end.z - start.z) / dirLength, z: (end.x - start.x) / dirLength };
+      const side = (room.x - mid.x) * left.x + (room.z - mid.z) * left.z;
+      const normal = Math.abs(side) > 1e-6 ? (side > 0 ? left : { x: -left.x, z: -left.z }) : left;
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, target.depth), material);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(mid.x + normal.x * (target.depth / 2), target.sill + target.height, mid.z + normal.z * (target.depth / 2));
+      writeMeta(mesh, 'sill-top', target.sill + target.height);
       return;
     }
     case 'paint_region': {
@@ -1118,7 +1257,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     });
   for (const element of input.elements) {
     if (element.type === 'wall') addWallElement(exportRoot, element, wallHeights.get(element.id) ?? 3.0, report, index, provider, input.rooms);
-    else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index, input.walls, paintWindows);
+    else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index, input.walls, paintWindows, input.elements.filter((e) => e.type !== 'wall'));
   }
   for (const wall of input.walls) {
     if (!wall.id) continue;

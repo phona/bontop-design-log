@@ -168,6 +168,21 @@ elements:
     height: 0.71
     reason: "厨房北墙飘窗（z=0 北缘）"
 
+  # 客厅南墙落地幕墙根部防水台（R11/D4=L 型终裁的构件；本模型此前按"玻璃齐地"建，缺此构件）。
+  # 尺寸为业界常规口径的估算（业主 2026-10-07 指示"开发商已做、按标准估"）：搜索口径——
+  # 落地窗窗台常规留 100–200mm 高出地面（防外力撞击玻璃、做内侧防水收口），取中值 150，
+  # 且与 300×600 墙砖模数合；出檐（向室内伸进）同取 150。**量级待量房核实**。
+  # 范围核对：全宅仅 w_liv_south（6.20m）是真·齐地玻璃且人在屋里走得近——其余玻璃根部
+  # 都在 2.07m 高飘窗台之后（不可见）、厨房北幕墙根在地柜后（不可见）、入户花园为开发商
+  # 完成区、南阳台 BLK 冻结，均不挂贴砖。
+  - id: living_south_waterproof_ledge
+    type: bay_sill
+    wall: w_liv_south
+    depth: 0.15
+    sill: 0.00
+    height: 0.15
+    reason: "客厅落地幕墙根部防水台（150 高 × 150 出檐常规口径，量级待量房核实）；竖面与水平台面由 sill_region 挂贴砖"
+
   # 地板补区
   - id: entry_garden_floor
     type: floor_region
@@ -286,7 +301,7 @@ elements:
     panels: 4
     open: true
 
-  # === 贴砖检视态（DEC-2026-10-07-R05/R06；D1=A 档：厨房 0.90m / 湿区淋浴 1.80m / 其余 0.30m）===
+  # === 贴砖检视态（DEC-2026-10-07-R05/R06/R11；D1=A 档：厨房 0.90m / 湿区淋浴 1.80m / 其余 0.30m）===
   # 独立子系统：inspection-only 叠加层，仅在 HouseScene.setWallTileInspectionVisible(true) 时显示，
   # 与 HVAC 协调态 / 管井检视态 / MEP 总览完全隔离（层标签 'wall-tile'，互不遍历）。
   # 可贴实体墙长由 tmp/verify-wall-tile.ts 的 L2 交叉层从 model-geometry 独立复算校验：
@@ -294,6 +309,11 @@ elements:
   #     均为玻璃幕墙，故主卫仅 4.36m 而非 6.12m）
   #   - along 区间必须落在该墙长度内；同一墙段不得重叠声明（防双计）
   # along 自该墙 from 端沿墙累计。zone=covered 表示橱柜后遮蔽面（走杂砖），visible 为可见面（正砖）。
+  # height 为贴砖带【顶标高】（不是带高），bottom 缺省 0；同一面墙可上下堆叠多段（如灶台挡水条
+  # 叠在东墙 0.90m 杂砖带之上），二维不重叠即可。
+  # room（2026-10-07 R11 补，对齐 paint_region）：声明贴砖面归属房间——共墙（w_balc_south 客卫/阳台、
+  # w_balc_east 厨房/阳台）两侧各贴各的，预算与审计按 (wall, room) 脸去重，不再按 id 前缀猜房间。
+  # 渲染仍走墙中心线 + 检视态 depthTest=false 真透视，不加侧向偏移（D5 只补账面/审计语义）。
   # 高度与 zone 均为 D1/D7 裁定前的建议基线，业主终裁后只改 height/zone 数值并重跑脚本。
 
   # ── 厨房 4.80m（北墙 w_kit_north 3.60m 为 suppress_kitchen_north 玻璃幕墙不可贴；
@@ -301,14 +321,28 @@ elements:
   - id: walltile_kitchen_ent_west
     type: wall_region
     wall: w_ent_west
+    room: kitchen
     along: [0.50, 2.90]      # z[2.40, 0.00] 段 = 2.40m（东墙，与入户门厅共墙）
     bottom: 0.00
     height: 0.90
     zone: covered
     reason: 厨房东墙，§05「东墙灶台/烟机/冰箱」，橱柜与设备遮蔽面走杂砖
+  # R11 补（业主 2026-10-07 裁定 D2=补贴）：灶台/烟机后挡水墙。0.90m 杂砖带止于台面完成面 0.89m，
+  # 而台面以上至烟机底（模型 range_hood 底缘 y=1.35，取整贴到 1.40 包住机身边）是油溅裸墙缺口。
+  # 本段与下方杂砖带共用 along 区间 [1.27,2.17]（= 烟机宽 0.90m，z[0.73,1.63]），竖向 0.90→1.40 不重叠。
+  - id: walltile_kitchen_ent_hood_wall
+    type: wall_region
+    wall: w_ent_west
+    room: kitchen
+    along: [1.27, 2.17]
+    bottom: 0.90
+    height: 1.40
+    zone: visible
+    reason: 厨房东墙灶台/烟机后挡水墙（台面 0.89 贴至 1.40 包住烟机底缘 1.35），正砖可见面
   - id: walltile_kitchen_vrv_east
     type: wall_region
     wall: w_vrv_east
+    room: kitchen
     along: [0.00, 1.00]      # 1.00m
     bottom: 0.00
     height: 0.90
@@ -317,6 +351,7 @@ elements:
   - id: walltile_kitchen_balc_east
     type: wall_region
     wall: w_balc_east
+    room: kitchen
     along: [0.00, 1.20]      # z[1.00, 2.20] 段 = 1.20m（R06 新补，v2/v3 曾漏计）
     bottom: 0.00
     height: 0.90
@@ -325,16 +360,60 @@ elements:
   - id: walltile_kitchen_west_stub
     type: wall_region
     wall: w_kit_west
+    room: kitchen
     along: [0.00, 0.20]      # 0.20m 残段
     bottom: 0.00
     height: 0.90
     zone: covered
     reason: 残段，地柜后遮蔽面走杂砖
 
+  # ── 生活阳台（R11 新增；业主 2026-10-07 裁定 D3=B）──
+  # 湿区口径 0.30m：洗衣机/烘干机贴 w_balc_west（给水 faucet_balcony_washer / 墙排 drain_balcony_washer
+  # 均在这面墙），湿溅面必须贴；w_balc_south 贴阳台侧（客卫花洒侧另段见下，两侧各贴各的脸）。
+  # 门洞墙 w_balc_east 的【阳台侧】不贴：厨房侧杂砖带已覆盖门垛，阳台侧只剩 0.2m×2 门垛，D3-B 不收。
+  - id: walltile_balc_west_washer
+    type: wall_region
+    wall: w_balc_west
+    room: balcony
+    along: [0.00, 1.20]      # z[1.00, 2.20] 段 = 1.20m（整墙，洗衣机/烘干机背墙）
+    bottom: 0.00
+    height: 0.30
+    zone: visible
+    reason: 生活阳台西墙洗衣机/烘干机背墙，湿区 0.30m 防水口径
+  - id: walltile_balc_south
+    type: wall_region
+    wall: w_balc_south
+    room: balcony
+    along: [0.00, 1.50]      # x[5.60, 7.10] 段 = 1.50m（与客卫北墙共墙，本段为阳台侧脸）
+    bottom: 0.00
+    height: 0.30
+    zone: visible
+    reason: 生活阳台南墙阳台侧，湿区 0.30m 防水口径（客卫淋浴侧见 walltile_gbath_north_shower）
+
+  # ── 客厅落地幕墙根部防水台（R11 D4=L 型终裁：竖面 + 水平台面都贴、做出檐收口）──
+  # 几何 = living_south_waterproof_ledge（bay_sill，150 高 × 150 出檐，业界常规口径待量房）。
+  # front = 竖面（玻璃线处竖直面，沿墙 6.20m × 0.15m）；top = 水平台面（墙线向室内伸 0.15m）。
+  # 两段复用 'wall-tile' 层标签与开关（贴砖区显示中时与墙砖同屏），与 wall_region 平级互不引用。
+  - id: silltile_living_south_front
+    type: sill_region
+    element: living_south_waterproof_ledge
+    face: front
+    zone: visible
+    room: living_dining
+    reason: 客厅落地幕墙防水台竖面，L 型贴砖的竖直面（D4 终裁）
+  - id: silltile_living_south_top
+    type: sill_region
+    element: living_south_waterproof_ledge
+    face: top
+    zone: visible
+    room: living_dining
+    reason: 客厅落地幕墙防水台水平台面，L 型贴砖的出檐收口面（D4 终裁）
+
   # ── 主卫 4.36m（西淋浴湿区 x[0,1.2]、东马桶；北墙与西墙均为玻璃幕墙不可贴）──
   - id: walltile_mbath_east
     type: wall_region
     wall: w_mbath_east
+    room: master_bath
     along: [0.00, 1.76]      # z[1.10, 2.86] 段 = 1.76m
     bottom: 0.00
     height: 0.30
@@ -343,6 +422,7 @@ elements:
   - id: walltile_mbath_south_shower
     type: wall_region
     wall: w_mbath_south
+    room: master_bath
     along: [0.00, 1.20]      # x[0, 1.20] 段 = 1.20m，淋浴湿区
     bottom: 0.00
     height: 1.80
@@ -351,6 +431,7 @@ elements:
   - id: walltile_mbath_south_dry
     type: wall_region
     wall: w_mbath_south
+    room: master_bath
     along: [1.20, 2.60]      # x[1.20, 2.60] 段 = 1.40m
     bottom: 0.00
     height: 0.30
@@ -361,6 +442,7 @@ elements:
   - id: walltile_gbath_north_shower
     type: wall_region
     wall: w_balc_south
+    room: guest_bath
     along: [0.00, 1.50]      # 1.50m，客卫北墙
     bottom: 0.00
     height: 1.80
@@ -369,6 +451,7 @@ elements:
   - id: walltile_gbath_east_shower
     type: wall_region
     wall: w_gbath_east
+    room: guest_bath
     along: [0.00, 0.55]      # z[2.20, 2.75] 段 = 0.55m，淋浴贴东墙
     bottom: 0.00
     height: 1.80
@@ -377,6 +460,7 @@ elements:
   - id: walltile_gbath_east_rest
     type: wall_region
     wall: w_gbath_east
+    room: guest_bath
     along: [0.55, 1.35]      # z[2.75, 3.55] 段 = 0.80m
     bottom: 0.00
     height: 0.30
@@ -385,6 +469,7 @@ elements:
   - id: walltile_gbath_east_open_vanity
     type: wall_region
     wall: w_gbath_east_open_vanity
+    room: guest_bath
     along: [0.00, 0.75]      # 0.75m
     bottom: 0.00
     height: 0.30
@@ -393,6 +478,7 @@ elements:
   - id: walltile_gbath_west
     type: wall_region
     wall: w_gbath_west
+    room: guest_bath
     along: [0.00, 1.35]      # 1.35m
     bottom: 0.00
     height: 0.30
@@ -401,6 +487,7 @@ elements:
   - id: walltile_gbath_west_open_vanity
     type: wall_region
     wall: w_gbath_west_open_vanity
+    room: guest_bath
     along: [0.00, 0.75]      # 0.75m
     bottom: 0.00
     height: 0.30

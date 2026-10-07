@@ -71,14 +71,17 @@ const WallRunSchema = z
   })
   .strict();
 
-// 贴砖检视态叠加层（DEC-2026-10-07-R05/R06）：inspection-only，引用已有墙 + along 区间 + 竖向范围。
+// 贴砖检视态叠加层（DEC-2026-10-07-R05/R06/R11）：inspection-only，引用已有墙 + along 区间 + 竖向范围。
 // wall 必须在 model-geometry 的墙声明中存在且未被 suppress；along 自该墙 from 端累计。
 // zone: covered=橱柜后遮蔽面（走杂砖）/ visible=可见面（正砖）。
+// room（R11 补）：贴砖面归属房间。共墙两侧各贴各的脸，预算/审计按 (wall, room) 去重；
+// height 为贴砖带顶标高（非带高），同一墙可上下堆叠多段、二维不重叠即可。
 const WallRegionSchema = z
   .object({
     id: z.string().min(1),
     type: z.literal('wall_region'),
     wall: z.string().min(1),
+    room: z.string().optional(),
     along: z.tuple([z.number().nonnegative(), z.number().positive()]),
     bottom: z.number().nonnegative().default(0),
     height: z.number().positive(),
@@ -88,7 +91,23 @@ const WallRegionSchema = z
   })
   .strict();
 
-
+// 防水台/窗台贴砖带（DEC-2026-10-07-R11 D4=L 型终裁）：inspection-only，与 wall_region 平级、
+// 共用同一 'wall-tile' 层标签与开关（贴砖区显示中），互不引用各自循环。
+// 引用一个 bay_sill 构件（防水台几何），face=front 贴其朝向房间的竖面、face=top 贴水平台面；
+// along 缺省取该构件整条墙跑。zone/room 口径与 wall_region 相同。
+const SillRegionSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('sill_region'),
+    element: z.string().min(1),
+    face: z.enum(['front', 'top']),
+    along: z.tuple([z.number().nonnegative(), z.number().positive()]).optional(),
+    zone: z.enum(['visible', 'covered']).default('visible'),
+    color: z.string().optional(),
+    room: z.string().optional(),
+    reason: z.string().optional(),
+  })
+  .strict();
 
 // 涂漆检视态叠加层（墙顶面涂装 PKG-080）：inspection-only，与 wall_region 平级且互不引用。
 // wall 必须在 model-geometry 的墙声明中存在且未被 suppress；along 自该墙 from 端累计。
@@ -247,6 +266,7 @@ const OverlaySchema = z
           CurtainRunSchema,
           WallRunSchema,
           WallRegionSchema,
+          SillRegionSchema,
           PaintRegionSchema,
           ShowerScreenSchema,
           SlidingDoorRunSchema,
