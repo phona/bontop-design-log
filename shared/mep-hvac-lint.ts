@@ -67,6 +67,9 @@ const ISSUE_CATEGORY: Record<string, MepLintCategory> = {
   route_not_orthogonal: 'must_fix_before_briefing',
   penetration_door_clearance: 'must_fix_before_briefing',
   shear_wall_parallel_route: 'must_fix_before_briefing',
+  // (f) 2026-10-07 飞线依托检查：吊顶承载层的水平段全程无依托（吊顶空腔/贴墙/穿墙/竖直下引/垫层）= 悬空飞线，
+  // 渲染得出、现场做不出；requirement/candidate 路线由 issue 处按实例改判 envelope_approximation。
+  unsupported_span: 'must_fix_before_briefing',
   // 量房后自然消或需复判
   ceiling_clearance_unverified: 'survey_dependent',
   shear_wall_penetration: 'survey_dependent',
@@ -78,6 +81,7 @@ const ISSUE_CATEGORY: Record<string, MepLintCategory> = {
   nonphysical_route: 'envelope_approximation',
 };
 const DEFAULT_CATEGORY: MepLintCategory = 'must_fix_before_briefing';
+
 function categoryOf(code: string): MepLintCategory { return ISSUE_CATEGORY[code] ?? DEFAULT_CATEGORY; }
 function emptyCategoryBuckets(): MepLintCategorySummary {
   return {
@@ -124,6 +128,20 @@ const DOOR_CLEARANCE_MIN = 0.15;
 /** (d) 与剪力墙平行距离阈值 / 最小并行持续长度。 */
 const SHEAR_PARALLEL_MAX_DISTANCE = 0.15;
 const SHEAR_PARALLEL_MIN_RUN = 1.0;
+/**
+ * (f) 飞线依托检查阈值：
+ *   - 贴墙距离 0.25m：与 penetration_point_mismatch 的 0.25m 同族容差——路由坐标两位小数（±0.1m 级包络近似）、
+ *     墙线与墙完成面本身差半个墙厚，0.15m 会把 weak-study（0.20m）这类真实"贴墙敷管"刷成误报；
+ *   - 纯竖直段平面位移 ≤0.05m：下引/上引到点位是必然动作，依托判定不管竖直段落点（那由点位规则管）；
+ *   - 垫层带 ≤0.35m：floor_branch_candidate 进垫层后的水平段、走地给排水分层（0.18/0.10）都靠它豁免；
+ *   - 采样步长 0.1m：无依托连续长度按「首末无依托样本间距」取严格下界（两侧过渡半区间不计），
+ *     0.3m 阈值与 GRAVITY_MIN_RUN 同族——端点就位 jog（≤0.3m）不报。
+ */
+const SUPPORT_HUG_DISTANCE = 0.25;
+const SUPPORT_VERTICAL_PLANAR = 0.05;
+const SUPPORT_FLOOR_BAND_MAX = 0.35;
+const SUPPORT_SAMPLE_STEP = 0.1;
+const SUPPORT_MIN_UNSUPPORTED_RUN = 0.3;
 
 /**
  * 吊顶「完成面」标高——即从房间内看到的吊顶表面高度。
@@ -432,6 +450,14 @@ function perpendicularDistance(point: Point, wall: { x1: number; z1: number; x2:
   if (length < 1e-9) return Number.POSITIVE_INFINITY;
   return Math.abs(dx * (point.z - wall.z1) - dz * (point.x - wall.x1)) / length;
 }
+/** (f) 点到墙段（含圆角墙弧弦）的平面距离：贴墙依托判定用；垂足出段时取到端点的距离。 */
+function pointSegmentDistance(point: Point, chord: { x1: number; z1: number; x2: number; z2: number }): number {
+  const dx = chord.x2 - chord.x1, dz = chord.z2 - chord.z1;
+  const lengthSquared = dx * dx + dz * dz;
+  if (lengthSquared < 1e-12) return Math.hypot(point.x - chord.x1, point.z - chord.z1);
+  const t = Math.max(0, Math.min(1, ((point.x - chord.x1) * dx + (point.z - chord.z1) * dz) / lengthSquared));
+  return Math.hypot(point.x - (chord.x1 + t * dx), point.z - (chord.z1 + t * dz));
+}
 /** (c) 同墙门洞区间：已解算的 opening 直接带 x/z 中心；未解算时按 anchor/offset/width 自行换算。 */
 interface DoorSpan { id: string; axis: 'x' | 'z'; from: number; to: number; top?: number }
 function doorSpans(wall: ResolvedWall, vertices?: Vertex[]): DoorSpan[] {
@@ -542,6 +568,27 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
   const boxes: Array<{ route: MepRoute; box?: Box; points: Point[]; airHeightConfirmed?: boolean }> = [];
   const ceiling = context.ceiling ?? sources.ceiling;
   const suppressed = new Set(context.suppressedWallIds ?? []);
+  // (f) 飞线依托检查的两类依托缓存：实心吊顶分区（空腔依托，footprint/完成面与渲染同源）与非 suppressed
+  // 墙段（贴墙依托，圆角墙取弧弦）。幕墙（suppressed）不能挂载也不能剔槽，不构成依托——穿幕墙的缺口
+  // 由 suppressed_wall_crossing 独立负责。仅在有 layout 上下文时启用本规则（无 layout 时贴墙依托不可判，
+  // 强行评估会把 strong-light-tv 这类贴墙段刷成误报）。
+  const supportCeilingZones: Array<{ footprint: FootprintPoint[]; surfaceY: number }> = [];
+  const supportWallChords: Array<{ x1: number; z1: number; x2: number; z2: number }> = [];
+  if (context.layout) {
+    const supportRoomHeights = new Map(context.layout.rooms.map((room) => [room.id, room.height]));
+    for (const zone of ceiling) {
+      if (!isSolidCeilingZone(zone)) continue;
+      const footprint = ceilingFootprint(zone);
+      if (!footprint) continue;
+      const surfaceY = ceilingSurfaceY(zone, supportRoomHeights.get(zone.room) ?? 2.8);
+      if (surfaceY === undefined) continue;
+      supportCeilingZones.push({ footprint, surfaceY });
+    }
+    for (const wall of context.layout.walls) {
+      if (suppressed.has(wall.id)) continue;
+      for (const chord of wallSegments(wall)) supportWallChords.push({ x1: chord.x1, z1: chord.z1, x2: chord.x2, z2: chord.z2 });
+    }
+  }
 
   for (const item of resolved.routes) {
     const { route, from, to } = item;
@@ -722,6 +769,63 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
             : `Route ${route.id} enters ceiling zone ${zone.id} above its declared height (${surfaceY.toFixed(2)}m)`,
           route.id,
         ));
+      }
+    }
+    // (f) 飞线依托检查：吊顶承载层的每个非竖直段按 0.1m 步长采样，样本必须落在至少一类依托上——
+    // 吊顶空腔内（实心分区 footprint 且 ≥ 完成面）、贴墙 ≤0.25m（含穿墙段：穿墙样本到墙段距离≈0，
+    // 声明缺口由 penetration_missing 独立负责，不在此重复计费）、垫层内 ≤0.35m。纯竖直下引/上引段豁免。
+    // 无依托连续 ≥0.3m（与 GRAVITY_MIN_RUN 同族的端点就位 jog 容差）即报；每条路线只报最长一段 + 缺口统计。
+    if (context.layout && CEILING_CARRIED_LAYERS.has(route.layer) && points.length >= 2) {
+      const layerHeight = layer?.height ?? 0;
+      const supportedAt = (p: Point): boolean => {
+        const y = p.y ?? layerHeight;
+        if (y <= SUPPORT_FLOOR_BAND_MAX) return true;
+        for (const zone of supportCeilingZones) {
+          if (y >= zone.surfaceY - 1e-9 && pointInFootprint(p, zone.footprint)) return true;
+        }
+        for (const chord of supportWallChords) {
+          if (pointSegmentDistance(p, chord) <= SUPPORT_HUG_DISTANCE) return true;
+        }
+        return false;
+      };
+      let worst: { run: number; from: Point; to: Point; y: number } | undefined;
+      let gapCount = 0;
+      let totalUnsupported = 0;
+      // 记一个连续无依托区间：run 取「首末无依托样本间距」（严格下界，两侧过渡半步不计），
+      // 遇到有依托样本即收口——否则墙/吊顶中段的依托会被首末两端并成一个大缺口，把真依托也计成飞线。
+      const closeGap = (from: Point, to: Point, run: number): void => {
+        if (run < SUPPORT_MIN_UNSUPPORTED_RUN) return;
+        gapCount += 1;
+        totalUnsupported += run;
+        if (!worst || run > worst.run) worst = { run, from, to, y: ((from.y ?? 0) + (to.y ?? 0)) / 2 };
+      };
+      for (let i = 1; i < points.length; i += 1) {
+        const a = points[i - 1], b = points[i];
+        const planar = Math.hypot(b.x - a.x, b.z - a.z);
+        if (planar <= SUPPORT_VERTICAL_PLANAR) continue; // 纯竖直下引/上引段
+        const aY = a.y ?? layerHeight, bY = b.y ?? layerHeight;
+        const steps = Math.max(1, Math.ceil(planar / SUPPORT_SAMPLE_STEP));
+        const at = (t: number): Point => ({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, y: aY + (bY - aY) * t });
+        let runStart = -1;
+        const stepLen = planar / steps;
+        for (let s = 0; s <= steps; s += 1) {
+          if (!supportedAt(at(s / steps))) {
+            if (runStart < 0) runStart = s;
+          } else if (runStart >= 0) {
+            closeGap(at(runStart / steps), at((s - 1) / steps), (s - 1 - runStart) * stepLen);
+            runStart = -1;
+          }
+        }
+        if (runStart >= 0) closeGap(at(runStart / steps), at(steps / steps), (steps - runStart) * stepLen);
+      }
+      if (worst) {
+        const gapNote = gapCount > 1 ? `; ${gapCount} unsupported gaps totalling ${totalUnsupported.toFixed(2)}m` : '';
+        add(result, {
+          ...issue(route.status === 'confirmed' ? 'error' : 'warning', 'unsupported_span',
+            `Route ${route.id} flies unsupported for ${worst.run.toFixed(2)}m from (${worst.from.x.toFixed(2)},${worst.from.z.toFixed(2)}) to (${worst.to.x.toFixed(2)},${worst.to.z.toFixed(2)}) at ${worst.y.toFixed(2)}m; ceiling-carried runs must stay inside a ceiling cavity, hug a wall, pass through a wall, drop vertically, or lie in the floor screed${gapNote}`,
+            route.id),
+          category: isRequirementLike ? 'envelope_approximation' : 'must_fix_before_briefing',
+        });
       }
     }
     // 梁碰撞：只有 status: confirmed 且带 reference_beam_bottom_y 的约束才构成硬碰撞（inferred/pending 仅走 reference_constraint_uncertain 提醒）

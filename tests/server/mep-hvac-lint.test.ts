@@ -371,7 +371,7 @@ test('long parallel runs beside a shear wall are flagged, short ones are not', (
 
 test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify over-header penetrations', () => {
   const result = lintMepCoordination(config, sources, realContext());
-  assert.equal(result.counts.routes, 132);
+  assert.equal(result.counts.routes, 132); // 80→87（R1 给排水兜底）→92（v1 水路估算）→102（客客厅十条）→133（DEC-2026-10-07-M05 再补 23 条：书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）→132（R15 删除 NP-4b 路线）
   assert.equal(result.counts.resolvedRoutes, 132);
   assert.equal(result.errors.length, 0);
   // (a) 重力坡度：R1 后 14 条全清（地埋全平/过陡、冷凝水候选沿程、drain-balcony 2% 回算、墙排汇总不足坡）
@@ -400,12 +400,22 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   assert.equal(Object.values(buckets).reduce((sum, bucket) => sum + bucket.count, 0), total);
   for (const bucket of Object.values(buckets)) assert.equal(bucket.count, bucket.codes.reduce((sum, entry) => sum + entry.count, 0));
   // 分桶代码明细必须与实算完全一致（gravity_slope/orthogonal 已出 must_fix；penetration_door_clearance 拆 must_fix 2 / survey 13）
-  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { shear_wall_parallel_route: 14, penetration_missing: 7, penetration_door_clearance: 2 });
+  // unsupported_span 33 条：2026-10-07 飞线依托检查（吊顶承载层水平段无吊顶空腔/贴墙/穿墙/竖直/垫层依托）
+  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { shear_wall_parallel_route: 14, penetration_missing: 7, penetration_door_clearance: 2, unsupported_span: 34 });
   assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 56, penetration_door_clearance: 17, shear_wall_penetration: 10 });
   assert.deepEqual(Object.fromEntries(buckets.envelope_approximation.codes.map((e) => [e.code, e.count])), { nonphysical_route: 2, supply_return_overlap: 8, reference_constraint_uncertain: 5, suppressed_wall_crossing: 4 });
-  assert.equal(buckets.must_fix_before_briefing.count, 23); // 2026-10-07 M04/M05：shear_wall_parallel 8→14、penetration_missing 7 新增
+  assert.equal(buckets.must_fix_before_briefing.count, 57); // 23 + unsupported_span 34（strong-power-living 4.16m 横穿客厅中部等）
   assert.equal(buckets.survey_dependent.count, 83); // ceiling 24→56、penetration_door_clearance 15→19、shear_wall_penetration 7→10
   assert.equal(buckets.envelope_approximation.count, 19); // nonphysical 9→2、suppressed_wall_crossing 3→4
+  // 飞线依托检查自证：最长飞线是 strong-power-living 出边吊后的 4.16m 无依托段（reason 声称「平吊板上方敷设」
+  // 但 weak-ap reason 明说客厅中部保持原顶 2.80m 无吊顶——两处自相矛盾被机器显形）
+  const flying = result.warnings.filter((i) => i.code === 'unsupported_span');
+  assert.equal(flying.length, 34);
+  const worstFlying = flying.reduce((a, b) => (b.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') > (a.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') ? b : a);
+  assert.equal(worstFlying.routeId, 'strong-power-living');
+  assert.match(worstFlying.message, /flies unsupported for 4\.16m/);
+  // 走地给排水两层不参与依托检查（与 ceiling_clearance 口径修正同源：地面管与吊顶依托无可比性）
+  assert.equal(flying.some((i) => result.warnings.find((w) => w === i && w.routeId?.startsWith('drain-') === true && config.routes.find((r) => r.id === w.routeId)?.layer === 'drainage')), false);
 });
 
 // ── DEC-2026-10-06-R5：#41 分层标高升入降板空腔（A/B 分区 + 梁硬约束 + 走地分层豁免）──
@@ -517,4 +527,82 @@ test('DEC-2026-10-06-R5: floor-level plumbing layers are exempt from the ceiling
     const res = lintMepCoordination(probe, sources, realContext());
     assert.equal(res.warnings.some((issue) => issue.code === 'ceiling_clearance_unverified' && issue.routeId === 'water-kitchen-requirement'), false, `${layer} 应退出 clearance 比较`);
   }
+});
+
+// ── (f) 飞线依托检查（unsupported_span）：吊顶承载层的水平段必须有依托 ──
+
+/** 支持检查专用 context：可注自定墙 / 实心吊顶分区 / suppressed 墙，不传墙时默认一面 x=1 的测试墙。 */
+function supportContext(walls: Array<Record<string, unknown>> = [], zones: Array<Record<string, unknown>> = [], suppressed: string[] = []): MepLintLayoutContext {
+  return {
+    layout: {
+      rooms: [], vertices: [], openEdges: [],
+      walls: (walls.length ? walls : [{}]).map((w) => ({ id: 'w_test', x1: 1, z1: -1, x2: 1, z2: 1, height: 2.8, ...w })),
+    } as unknown as ResolvedLayout,
+    ...(zones.length ? { ceiling: zones as unknown as MepLintLayoutContext['ceiling'] } : {}),
+    ...(suppressed.length ? { suppressedWallIds: suppressed } : {}),
+  };
+}
+const FAR_WALL = { id: 'w_far', x1: 50, z1: 0, x2: 50, z2: 2 };
+function flyingRoute(extra: Record<string, unknown> = {}) {
+  return sample({
+    id: 'fly', layer: 'strong_power', status: 'inferred', source_status: 'proposed', method: 'conduit',
+    diameter: 0.02, from_height: 2.55, to_height: 2.55, from: { x: 0, z: 0, y: 2.55 }, to: { x: 3, z: 0, y: 2.55 }, ...extra,
+  });
+}
+
+test('a mid-room horizontal run with no ceiling, wall, or screed support is flagged as flying', () => {
+  const result = lintMepCoordination(flyingRoute(), sources, supportContext([FAR_WALL]));
+  const found = result.warnings.find((i) => i.code === 'unsupported_span')!;
+  assert.match(found.message, /flies unsupported for 3\.00m from \(0\.00,0\.00\) to \(3\.00,0\.00\) at 2\.55m/);
+  assert.equal(found.category, 'must_fix_before_briefing');
+  // 多段飞线：报最长一段 + 缺口统计；两段各 1.20m、共 2.40m
+  const crossed = lintMepCoordination(flyingRoute(), sources, supportContext([{ id: 'w_mid', x1: 1.5, z1: -1, x2: 1.5, z2: 1 }]));
+  const crossedFound = crossed.warnings.find((i) => i.code === 'unsupported_span')!;
+  assert.match(crossedFound.message, /flies unsupported for 1\.20m/);
+  assert.match(crossedFound.message, /2 unsupported gaps totalling 2\.40m/);
+});
+
+test('runs inside a solid ceiling cavity, hugging a wall, crossing a wall, dropping vertically, or in the screed are all supported', () => {
+  // 吊顶空腔：实心分区（drop，完成面 = 2.8 − 0.3 = 2.50），管路 2.55 ≥ 2.50 即有依托
+  const cavity = { id: 'cz', room: 'r', type: 'drop', thickness: 0.3, area: [-1, -1, 4, 1] };
+  const covered = lintMepCoordination(flyingRoute(), sources, supportContext([FAR_WALL], [cavity]));
+  assert.equal(covered.warnings.some((i) => i.code === 'unsupported_span'), false);
+  // 贴墙：0.10m ≤ 0.25m
+  const hugged = lintMepCoordination(flyingRoute({ from: { x: 1.1, z: -0.9, y: 2.5 }, to: { x: 1.1, z: 0.9, y: 2.5 }, from_height: 2.5, to_height: 2.5 }), sources, supportContext());
+  assert.equal(hugged.warnings.some((i) => i.code === 'unsupported_span'), false);
+  // 穿墙：短距穿越段全程在墙的贴墙距离内（声明缺口由 penetration_missing 另行负责）
+  const crossing = lintMepCoordination(flyingRoute({ from: { x: 0.8, z: 0, y: 2.5 }, to: { x: 1.2, z: 0, y: 2.5 }, from_height: 2.5, to_height: 2.5 }), sources, supportContext());
+  assert.equal(crossing.warnings.some((i) => i.code === 'unsupported_span'), false);
+  // 纯竖直下引段：平面零位移豁免（route_kind: physical 纯竖段口径）
+  const drop = lintMepCoordination(sample({
+    id: 'drop', layer: 'strong_power', route_kind: 'physical', status: 'inferred', source_status: 'proposed', method: 'conduit',
+    diameter: 0.02, from_height: 2.55, to_height: 0.3, from: { x: 0, z: 0 }, to: { x: 0, z: 0 },
+  }), sources, supportContext([FAR_WALL]));
+  assert.equal(drop.warnings.some((i) => i.code === 'unsupported_span'), false);
+  // 垫层内水平段：floor_branch_candidate 进垫层后的平移
+  const screed = lintMepCoordination(flyingRoute({ from_height: 0.02, to_height: 0.02, from: { x: 0, z: 0, y: 0.02 }, to: { x: 3, z: 0, y: 0.02 } }), sources, supportContext([FAR_WALL]));
+  assert.equal(screed.warnings.some((i) => i.code === 'unsupported_span'), false);
+});
+
+test('hugging a suppressed curtain wall is not support, and confirmed routes escalate to error', () => {
+  // 幕墙不能挂载不能剔槽（AGENTS.md 铁律）→ 贴幕墙不构成依托
+  const curtain = lintMepCoordination(flyingRoute({ from: { x: 1.1, z: -0.9, y: 2.5 }, to: { x: 1.1, z: 0.9, y: 2.5 }, from_height: 2.5, to_height: 2.5 }), sources, supportContext([], [], ['w_test']));
+  assert.ok(curtain.warnings.some((i) => i.code === 'unsupported_span'));
+  // confirmed 路由飞线升 error（与 penetration_missing 同策略）；requirement/candidate 归 envelope_approximation
+  const confirmed = lintMepCoordination(flyingRoute({ status: 'confirmed', reason: 'x' }), sources, supportContext([FAR_WALL]));
+  assert.ok(confirmed.errors.some((i) => i.code === 'unsupported_span'));
+  const requirement = lintMepCoordination(flyingRoute({ source_status: 'design_requirement' }), sources, supportContext([FAR_WALL]));
+  assert.equal(requirement.warnings.find((i) => i.code === 'unsupported_span')!.category, 'envelope_approximation');
+});
+
+test('endpoint jogs shorter than 0.3m and water layers stay out of the flying check', () => {
+  // 0.25m 无依托 jog < 0.3m 阈值：不报
+  const jog = lintMepCoordination(flyingRoute({ to: { x: 0.25, z: 0, y: 2.55 } }), sources, supportContext([FAR_WALL]));
+  assert.equal(jog.warnings.some((i) => i.code === 'unsupported_span'), false);
+  // 走地给排水分层不在吊顶承载层口径内（依托问题由坡度/正交规则管）
+  const water = lintMepCoordination(sample({
+    id: 'water-fly', layer: 'water_supply', status: 'pending', source_status: 'plan_supported', method: 'floor_branch',
+    diameter: 0.025, from_height: 0.18, to_height: 0.80, from: { x: 0, z: 0, y: 0.18 }, to: { x: 3, z: 0, y: 0.8 },
+  }), sources, supportContext([FAR_WALL]));
+  assert.equal(water.warnings.some((i) => i.code === 'unsupported_span'), false);
 });
