@@ -482,19 +482,21 @@ const realWorkspace = (): FactsWorkspace => {
   };
 };
 
-test('真实登记表：fact.circuit_count 的四个镜像在真实文件上全部解析且与权威值 21 路一致', () => {
+test('真实登记表：fact.circuit_count 的六个镜像在真实文件上全部解析且与权威值 21 路一致', () => {
   // 2026-10-04 数据修正（A1/A2）后，acceptance.yaml:283 与 pending-site-data.md:90 的
   // 「19 路」已改为「20 路」，与 electrical-topology.yaml circuits.length=20 收敛；
   // 2026-10-05 DEC-2026-10-05-R3 浴霸拆每卫一路 → 21 路，四个镜像同步。
   // 2026-10-07 水电子系统算量底座（P0）新增第 5 个镜像：config/mep-quotes.yaml 的 scope_note
-  // 复述「21 路 + 2P 进线 + 浪溢需双排」，随回路数变化强制同步（报价口径不许腐烂）。
+  // 复述「21 回路 + 2P 进线 + 浪涌需双排」，随回路数变化强制同步（报价口径不许腐烂）。
+  // 同日 DEC-2026-10-07-M01 新增第 6 个镜像：config/mep-material-baseline.yaml 的
+  // reversal_conditions 复述「21 路确定装不下→必须双排或换箱」，箱体结论不许腐烂。
   // 本测试原先断言「必须抓到 19 ≠ 20 的漂移」；漂移已修，故改为断言收敛后的不变量：
-  // 五个 mirror（acceptance / pending-site-data / mep-construction-guidance / checklist×2 /
-  // mep-quotes×2）的 expect_matches 全部命中、且抽得值都等于权威值 → 0 error。
+  // 六个 mirror（acceptance / pending-site-data / mep-construction-guidance / checklist×2 /
+  // mep-quotes×10 / mep-material-baseline×1）的 expect_matches 全部命中、且抽得值都等于权威值 → 0 error。
   const registry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as FactsRegistry;
   const circuit = (registry.facts ?? []).find((f) => f.id === 'fact.circuit_count')!;
   assert.ok(circuit, 'config/facts.yaml 必须登记 fact.circuit_count');
-  assert.equal(circuit.mirrors?.length, 5, 'fact.circuit_count 必须保留 5 个镜像，不许删');
+  assert.equal(circuit.mirrors?.length, 6, 'fact.circuit_count 必须保留 6 个镜像，不许删');
   const result = lintFacts({ ...emptyRegistry, facts: [circuit] }, realWorkspace());
   assert.deepEqual(result.errors, [], `circuit_count 对账应全绿，实际：${JSON.stringify(result.errors)}`);
 });
