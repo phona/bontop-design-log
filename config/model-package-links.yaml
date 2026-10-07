@@ -109,13 +109,19 @@ links:
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-120}
     mapping_status: mapped
-    scope: [{source: electrical, select: {types: [ceiling_light, pendant, dome, wall_lamp, downlight, led_strip, track_light, night_light]}}]
+    # 灯具词汇表以 config/electrical.yaml 的 type 为准（pendant吊灯/dome吸顶/wall_lamp壁灯/
+    # downlight筒灯/led_strip灯带/track_light明装轨道灯，另 night_light 夜灯）。
+    # 不写 ceiling_light：本项目没有这个 type，吸顶灯一律用 dome（曾因写了 ceiling_light
+    # 被 assertSelector 拒掉，导致 /api/project 500）。
+    scope: [{source: electrical, select: {types: [pendant, dome, wall_lamp, downlight, led_strip, track_light, night_light]}}]
   - id: MODEL-PKG-125
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-125}
     mapping_status: mapped
     scope:
-      - {source: electrical, select: {types: [socket, switch, switch_2way, network, usb, floor_socket]}}
+      # USB 不是独立 type：USB 插座是 socket 的模块特性
+      # （appearance.module: five_hole_replaceable_usb_c），已由下面的 socket 覆盖。
+      - {source: electrical, select: {types: [socket, switch, switch_2way, network, floor_socket]}}
       - {source: electrical_topology, select: {all: true}}
   - id: MODEL-PKG-130
     phase_id: phase_1_basic_occupancy

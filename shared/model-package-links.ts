@@ -41,3 +41,5 @@ export const ModelPackageLinksSchema = z.object({
 
 export type ModelPackageLink = z.infer<typeof ModelPackageLinkSchema>;
 export type ModelPackageLinks = z.infer<typeof ModelPackageLinksSchema>;
+/** 单条 scope 引用（source + select）：服务端 assertSelector 用它取 selector 类型。 */
+export type ModelPackageScopeRef = z.infer<typeof ScopeRefSchema>;
