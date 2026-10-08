@@ -2347,7 +2347,7 @@
 - **关联文件**：`config/house.yaml`、`config/layout/overlay.yaml`、`tmp/gen-paint-regions.ts`、`tests/server/wall-tile-inspection.test.ts`、`tests/server/paint-scope.test.ts`、`tests/server/paint-comparison-api.test.ts`、`docs/decision_log.md`（本条）。
 - **决策人**：业主。
 
-### DEC-2026-10-08-R01 补记：cove 从「逐边直条」改版为「沿轮廓扫掠」（业主 3D 评审判丑后返工）
+### DEC-2026-10-08-R01.1 cove 从「逐边直条」改版为「沿轮廓扫掠」（业主 3D 评审判丑后返工）
 
 - **触发**：第一版（每条声明边一根直条、切点处硬截断）业主 3D 评审结论「非常的丑」——SW 拐肘处弧带悬空断头、SE 切点裸端面，比正交线更差。审美元素 FAIL，按协议返工。
 - **修正**：`CeilingZoneBuilder` 重写为轮廓跟随扫掠——`buildCoveSegments`（sw→se→ne→nw 事件序，凹拐肘弧段恒纳入、凸圆角仅两侧边都声明时纳入、方角两侧声明时经角点连接）+ `buildCoveRuns`（连续段提取，路径点自带外法线：直边 rotate90(travel)、弧段径向朝/离圆心）+ `buildCoveRunMesh`（截面环带索引化扫掠 + 两端 fan 端面）。首版法线 bug（行进方向固定 90° 旋转在拐肘弧段朝向翻转）由测试 bbox 断言暴露后修正。
@@ -2364,7 +2364,7 @@
 - **关联文件**：`config/layout/overlay.yaml`、`tests/server/wall-tile-inspection.test.ts`、`tmp/tile-report.ts`、`docs/decision_log.md`（本条）。
 - **决策人**：业主（质询确认）；E2 原裁 2026-10-07 R05。
 
-### DEC-2026-10-08-R01 补记二：端头统一 + 直边法线 bug 修复（业主第二轮评审「跟西北角差远了/西北角后面同样毛病」）
+### DEC-2026-10-08-R01.2 端头统一 + 直边法线 bug 修复（业主第二轮评审「跟西北角差远了/西北角后面同样毛病」）
 
 - **触发**：业主指出两处端头缺陷——①东端在 SE 圆角切点悬空停驻，读作「消退波浪」，与西北角（SW 拐肘）的完整包角效果差距大；②西北角后面（西带北端 se 拐肘鼓位）弧面包到鼓位后以斜截面收尾，读作悬空 flare。
 - **端头统一规则**：拐肘/凸圆角一律「两邻边都声明弧面才包裹」，否则在切点干净截断——包裹的弧线要么转过角扎进墙线，要么连续到邻带，不再有任何悬空停驻。落地：北带 `cove_fillets` 增 `west/east`（west 段整体埋入西带体量、零视觉成本，仅为让 SW 拐肘满足包裹规则；east 让 SE 圆角被包裹后沿东立面北上扎进 w_ent_west 墙线 (10.80,2.40)）；西带 se 拐肘因南侧未声明而不再包裹，东缘弧面在切点 (7.70,4.15) 干净截断。
