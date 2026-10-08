@@ -241,7 +241,8 @@
 #   2. 全部带精度三件套（status: inferred / construction_status: pending）+ not_for_construction: true + uncertainty_m；
 #      量房日测实际位置 → 比对推断值 → 偏差 >uncertainty_m 则重画相关路线，并升级 status: measured。
 #   3. `water_entry`（给水入户点，#8）**不建点位**：坐标未知且 schema 要求 x/z，位置未知时不许造点位
-#      （同 LEB #43 的先例）。给水路线继续以 #8 为前提保持 pending。
+#      （同 LEB #43 的先例）。——2026-10-08-W01 推翻本条：按最佳实践推断落库（见 #67 行登记）；
+#      2026-10-07-F03 修正落位为户内阀位锚点 (7.35,0.45)（平台侧接入候选由路线折线表达，见点位 note）。
 #   4. 业主 2026-10-05 批准：厨房排烟道并入本文件（type: duct，pending #17/#10），不新建 ductwork.yaml。
 
 - id: drain_riser_master_bath
@@ -312,7 +313,7 @@
 - id: water_entry
   room: kitchen
   type: water_supply
-  x: 7.00
+  x: 7.35
   z: 0.45
   height: 0.18
   water_temp: cold
@@ -322,7 +323,7 @@
   construction_status: pending
   not_for_construction: true
   uncertainty_m: 0.3
-  note: "给水入户点（台账 #8；DEC-2026-10-08-W01 按最佳实践推断落库）。坐标取自仓内既有候选——water-kitchen-requirement / water-water-heater-inlet-requirement / water-entry-valve-requirement 三条路线一直在用的 (7.00,0.45) 折点，即沿 w_vrv_east 自 VRV 设备平台侧穿垫层进厨房西北角，与 pending-site-data #8/#49 登记的入户候选同源。业界依据：新交付住宅水表井多在公区/户外，入户管通常经设备平台/管井进厨房；本户型厨房与平台仅一墙（x=7.2），是最短路径。**量房日第一项必须闭环**：拍全屋给水立管/水表/分水器 → 定 x/z/管径 → 回写本点并升 status: measured。在此之前不得作为施工依据（not_for_construction: true）。⚠️ 平台侧能否开孔/接管需物业确认；若物业禁止，入户点改厨房北墙或生活阳台，届时本点与 5 条引用路线一起改写。户内安装顺序按 acceptance.yaml check_plumb_prefilter_and_prv：总阀 → 减压阀 → 前置过滤器位"
+  note: "给水入户点（台账 #8；DEC-2026-10-08-W01 按最佳实践推断落库；DEC-2026-10-07-F03 修正落位）。**两个语义解耦**：① 平台侧接入候选——水自 VRV 设备平台侧穿 w_vrv_east 垫层入户，接入折点 (7.00,0.45)（墙外侧）由 water-kitchen-requirement 的折线与穿墙声明表达，口径不变（pending #8 量房闭环）；② 本点位=穿墙后的**户内阀位锚点**（总阀→减压阀→前置过滤器安装位，acceptance.yaml check_plumb_prefilter_and_prv + pending #49 联动）——阀件必须在户内可操作位，落 (7.35,0.45)（厨房西北角、墙内侧 0.15m，bound 合规）。业界依据：新交付住宅水表井多在公区/户外，入户管通常经设备平台/管井进厨房；本户型厨房与平台仅一墙（x=7.2），是最短路径。**量房日第一项必须闭环**：拍全屋给水立管/水表/分水器 → 定 x/z/管径 → 回写本点并升 status: measured。在此之前不得作为施工依据（not_for_construction: true）。⚠️ 平台侧能否开孔/接管需物业确认；若物业禁止，入户点改厨房北墙或生活阳台，届时本点与 5 条引用路线一起改写。户内安装顺序按 acceptance.yaml check_plumb_prefilter_and_prv：总阀 → 减压阀 → 前置过滤器位"
 
 - id: drain_riser_balcony
   room: balcony

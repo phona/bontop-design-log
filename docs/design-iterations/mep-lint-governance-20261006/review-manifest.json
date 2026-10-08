@@ -90,7 +90,7 @@
   },
   {
    "code": "penetration_missing",
-   "count": 7,
+   "count": 6,
    "category": "must_fix_before_briefing",
    "disposition": "reject",
    "basis": "2026-10-07 v1 水路估算新增：5 条 water-v1-* 正交干管（热水器→两卫冷/热/回水）为未交房估算路由，路由跨墙但穿点未知，故 lint 以 penetration_missing 显形 7 处。处理方式＝量房日按实测墙位逐条补 penetration（含套管/避筋/过梁标高），补完即归零；在量房前它代表「已知但不可知」，不是可忽略项。n"
@@ -133,18 +133,18 @@
   },
   {
    "code": "unsupported_span",
-   "count": 33,
+   "count": 8,
    "category": "must_fix_before_briefing",
    "disposition": "reject",
-   "basis": "并行会话在 shared/mep-hvac-lint.ts 未提交的飞线依托规则（2026-10-07）：吊顶承载层水平段全程无依托（不在实心吊顶 footprint、不贴墙 ≤0.25m、不穿墙、非竖直、不在地垫层）≥0.3m。渲染得出、现场做不出，故 reject。**本条由 DEC-2026-10-08-W02 代为登记以使门禁可通过；阈值/口径/归属 DEC 以该会话为准，落地时须复核 33 这个数**",
+   "basis": "DEC-2026-10-07-F01/F02 飞线依托检查落地：六类依托（吊顶空腔/贴墙≤0.25m/穿墙/纯竖直/垫层≤0.35m/首末段设备接线段 ≤2m 且 y∈[2.66,2.85] 原顶暗敷带）。首扫 33 条，F01 改线批清至 8 条显式保留（condensate-living/dining R5 梁带残留、condensate-master 衣柜顶隐藏、mbath 条带×3 模型缺条带南墙、switch-garden 开发商花园明敷、refrigerant-trunk 外机平台设备连接段），每条 reason 带 DEC 归因；渲染得出、现场做不出，保留项均登记为模型包络缺口，量房复核。",
    "owner": "设计侧（该规则所属会话）",
    "clearing_condition": "逐条补依托（改平面贴墙/入吊顶空腔/声明穿墙）或将该段降为 requirement；归零后从 dispositions 移除"
   }
  ],
  "summary": {
-  "mep_total_warnings": 164,
+  "mep_total_warnings": 138,
   "mep_buckets": {
-   "must_fix_before_briefing": 56,
+   "must_fix_before_briefing": 30,
    "survey_dependent": 87,
    "envelope_approximation": 21
   },

@@ -163,6 +163,20 @@ const SUPPORT_VERTICAL_PLANAR = 0.05;
 const SUPPORT_FLOOR_BAND_MAX = 0.35;
 const SUPPORT_SAMPLE_STEP = 0.1;
 const SUPPORT_MIN_UNSUPPORTED_RUN = 0.3;
+/**
+ * (f) 首末段设备接线段依托（DEC-2026-10-07-F02 口径）：原顶 2.80 区的灯具/地插/外机接线段
+ * 走楼板底抹灰层暗敷或设备自带路径（吸顶灯接线盒、灯轨槽、外机连接管），是标准工艺且有结构依托——
+ * 这是依托模型补全（此前只认吊顶空腔/墙/垫层，漏了第四类真实依托「结构楼板底」），不是消音。
+ * 三重硬约束防滥用：
+ *   ① 只认**首段或末段**（接设备的一跨），中段大面积横移不得套用；
+ *   ② 该段平面长 ≤2.0m（合理接线距离）；
+ *   ③ 段两端 y 均值 ∈ [2.66,2.85]（原顶 2.80 − 灰层/管径 ≈2.68，容差到 2.66；上限防飞到楼板上方）；
+ * 且 from/to 必须是点位 id（不是内联坐标）——设备接线段语义由端点绑定设备保证。
+ * 不满足任一约束（超长、中段、y 不在暗敷带）照报 unsupported_span。
+ */
+const SUPPORT_FIXTURE_TAIL_MAX = 2.0;
+const SUPPORT_SOFFIT_BAND_MIN = 2.66;
+const SUPPORT_SOFFIT_BAND_MAX = 2.85;
 
 /**
  * 吊顶「完成面」标高——即从房间内看到的吊顶表面高度。
@@ -848,6 +862,11 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
       let worst: { run: number; from: Point; to: Point; y: number } | undefined;
       let gapCount = 0;
       let totalUnsupported = 0;
+      // (f) 设备接线段位次：默认末段（points 最后一段）；若末段是纯竖直/短 jog（≤0.3m 的到位步），
+      // 设接线段是倒数第二段（横移到位点/下引点上方的那一跨）。首段对称（from 侧设备起升）。
+      const planarOf = (i: number): number => Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
+      let tailIdx = points.length - 1;
+      if (tailIdx >= 2 && planarOf(tailIdx) <= 0.3) tailIdx -= 1;
       // 记一个连续无依托区间：run 取「首末无依托样本间距」（严格下界，两侧过渡半步不计），
       // 遇到有依托样本即收口——否则墙/吊顶中段的依托会被首末两端并成一个大缺口，把真依托也计成飞线。
       const closeGap = (from: Point, to: Point, run: number): void => {
@@ -861,6 +880,11 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         const planar = Math.hypot(b.x - a.x, b.z - a.z);
         if (planar <= SUPPORT_VERTICAL_PLANAR) continue; // 纯竖直下引/上引段
         const aY = a.y ?? layerHeight, bY = b.y ?? layerHeight;
+        // (f) 首末段设备接线段：见 SUPPORT_FIXTURE_TAIL_MAX 注释的口径与三重约束
+        const meanY = (aY + bY) / 2;
+        if (planar <= SUPPORT_FIXTURE_TAIL_MAX
+          && meanY >= SUPPORT_SOFFIT_BAND_MIN && meanY <= SUPPORT_SOFFIT_BAND_MAX
+          && ((i === tailIdx && typeof route.to === 'string') || (i === 1 && typeof route.from === 'string'))) continue;
         const steps = Math.max(1, Math.ceil(planar / SUPPORT_SAMPLE_STEP));
         const at = (t: number): Point => ({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, y: aY + (bY - aY) * t });
         let runStart = -1;

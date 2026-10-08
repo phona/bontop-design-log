@@ -38,8 +38,8 @@ function sample(route: Record<string, unknown>) {
 
 test('real MEP configuration lints without false errors and reports warnings structurally', () => {
   const result = lintMepCoordination(config, sources);
-  assert.equal(result.counts.routes, 138); // 80→87（R1 给排水兜底）→92（v1 水路估算）→102（客客厅十条）→133（DEC-2026-10-07-M05 再补 23 条：书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）→132（R15 删除 NP-4b 路线）→134（DEC-2026-10-08-W01 上下水：净水器进水 + 阳台地漏两条）→138（DEC-2026-10-08-W03：客卫热水改绑 + 两卫 4 处地漏排水）
-  assert.equal(result.counts.resolvedRoutes, 138);
+  assert.equal(result.counts.routes, 137); // 80→87（R1 给排水兜底）→92（v1 水路估算）→102（客客厅十条）→133（DEC-2026-10-07-M05 再补 23 条：书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）→132（R15 删除 NP-4b 路线）→134（DEC-2026-10-08-W01 上下水：净水器进水 + 阳台地漏两条）→138（W03）→137（F01 撤并 east-wall 冗余竖直下引路由，取电由 curtain 上行段覆盖）
+  assert.equal(result.counts.resolvedRoutes, 137);
   assert.equal(result.errors.length, 0);
   assert.equal(result.warnings.filter((issue) => issue.code === 'hvac_coverage_missing').length, 0);
   // 2026-10-04 A1：吊顶净空规则从「要求 zone.area 与 zone.height 同时存在」（本项目交集为 0、
@@ -371,8 +371,8 @@ test('long parallel runs beside a shear wall are flagged, short ones are not', (
 
 test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify over-header penetrations', () => {
   const result = lintMepCoordination(config, sources, realContext());
-  assert.equal(result.counts.routes, 138);
-  assert.equal(result.counts.resolvedRoutes, 138);
+  assert.equal(result.counts.routes, 137);
+  assert.equal(result.counts.resolvedRoutes, 137);
   assert.equal(result.errors.length, 0);
   // (a) 重力坡度：R1 后 14 条全清（地埋全平/过陡、冷凝水候选沿程、drain-balcony 2% 回算、墙排汇总不足坡）
   assert.equal(countByCode(result, 'gravity_slope_geometry_mismatch'), 0);
@@ -402,19 +402,22 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // 分桶代码明细必须与实算完全一致（gravity_slope/orthogonal 已出 must_fix；penetration_door_clearance 拆 must_fix 2 / survey 13）
   // unsupported_span 33 条：2026-10-07 飞线依托检查（吊顶承载层水平段无吊顶空腔/贴墙/穿墙/竖直/垫层依托）
   // inline_endpoint_without_point_anchor 4 条：DEC-2026-10-08-W02 端点绑定兜底（给排水无锚点端点的量房判读清单；W03 客卫热水改绑 faucet_gbath_vanity 后由 5 降为 4）
-  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { shear_wall_parallel_route: 14, penetration_missing: 7, penetration_door_clearance: 2, unsupported_span: 33 });
+  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { shear_wall_parallel_route: 14, penetration_missing: 6, penetration_door_clearance: 2, unsupported_span: 8 });
   assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 56, penetration_door_clearance: 17, shear_wall_penetration: 10, inline_endpoint_without_point_anchor: 4 });
   assert.deepEqual(Object.fromEntries(buckets.envelope_approximation.codes.map((e) => [e.code, e.count])), { nonphysical_route: 2, supply_return_overlap: 8, reference_constraint_uncertain: 5, suppressed_wall_crossing: 6 });
-  assert.equal(buckets.must_fix_before_briefing.count, 56); // 23 + unsupported_span 33（strong-power-living 4.16m 横穿客厅中部等）
+  assert.equal(buckets.must_fix_before_briefing.count, 30); // F01 改线批：unsupported_span 33→8；F03 water_entry 落位修正后绑定路线不再穿墙，penetration_missing 7→6（condensate×3 R5 残留、mbath 条带×3 模型缺墙、switch-garden 花园明敷、refrigerant-trunk 外机连接段）
   assert.equal(buckets.survey_dependent.count, 87); // 83 + W02 inline_endpoint_without_point_anchor 5 − W03 客卫热水改绑后 1 条归零
   assert.equal(buckets.envelope_approximation.count, 21); // nonphysical 9→2、suppressed_wall_crossing 3→4→6（W03 两卫 4 处地漏接主卫推断立管，2 条越主卫西北圆弧幕墙弦线，见两条 route reason 的登记）
   // 飞线依托检查自证：最长飞线是 strong-power-living 出边吊后的 4.16m 无依托段（reason 声称「平吊板上方敷设」
   // 但 weak-ap reason 明说客厅中部保持原顶 2.80m 无吊顶——两处自相矛盾被机器显形）
+  // F01 改线批：33 条命中清至 8 条显式保留（每条 reason 带 DEC-2026-10-07-F01 归因）
   const flying = result.warnings.filter((i) => i.code === 'unsupported_span');
-  assert.equal(flying.length, 33);
+  assert.equal(flying.length, 8);
   const worstFlying = flying.reduce((a, b) => (b.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') > (a.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') ? b : a);
-  assert.equal(worstFlying.routeId, 'strong-power-living');
-  assert.match(worstFlying.message, /flies unsupported for 4\.16m/);
+  assert.equal(worstFlying.routeId, 'condensate-living');
+  assert.match(worstFlying.message, /flies unsupported for 3\.60m/);
+  // 改线自证：strong-power-living 干线已改走 w_be_west 东脸 + 窗帘盒带（原 4.16m 横穿客厅中部已清）
+  assert.equal(flying.some((i) => i.routeId === 'strong-power-living'), false);
   // 走地给排水两层不参与依托检查（与 ceiling_clearance 口径修正同源：地面管与吊顶依托无可比性）
   assert.equal(flying.some((i) => result.warnings.find((w) => w === i && w.routeId?.startsWith('drain-') === true && config.routes.find((r) => r.id === w.routeId)?.layer === 'drainage')), false);
 });
@@ -606,4 +609,51 @@ test('endpoint jogs shorter than 0.3m and water layers stay out of the flying ch
     diameter: 0.025, from_height: 0.18, to_height: 0.80, from: { x: 0, z: 0, y: 0.18 }, to: { x: 3, z: 0, y: 0.8 },
   }), sources, supportContext([FAR_WALL]));
   assert.equal(water.warnings.some((i) => i.code === 'unsupported_span'), false);
+});
+
+test('fixture tail/head runs (≤2m at soffit band, endpoint on a point) count as support, mid-runs and out-of-band y do not', () => {
+  // 末段+首段设备接线段：两端都是点位、各 ≤2m、y=2.70（原顶暗敷带）→ 全豁免（DEC-2026-10-07-F02）
+  // sock_mbath_vanity (0.78,2.96) / sock_mbath_batheheater (1.30,2.70) 为 fixture 用真实点位
+  const tail = lintMepCoordination(sample({
+    id: 'tail-ok', layer: 'strong_power', status: 'inferred', source_status: 'proposed', method: 'conduit',
+    diameter: 0.02, from_height: 2.7, to_height: 2.7,
+    from: 'sock_mbath_vanity', via: [{ x: 2.0, z: 1.5, y: 2.7 }], to: 'sock_mbath_batheheater',
+  }), sources, supportContext([FAR_WALL]));
+  assert.equal(tail.warnings.some((i) => i.code === 'unsupported_span'), false);
+  // 首段设备起升段：from 为点位（outdoor_a2 6.4,0.5）、0.91m、y 在带内 → 豁免（外机连接管先例）
+  const head = lintMepCoordination(sample({
+    id: 'head-ok', layer: 'refrigerant', status: 'inferred', source_status: 'preliminary', method: 'insulated_copper_trunk',
+    diameter: 0.032, from_height: 2.7, to_height: 2.7,
+    from: 'outdoor_a2', via: [], to: { x: 5.5, z: 0.35, y: 2.7 },
+  }), sources, supportContext([FAR_WALL]));
+  assert.equal(head.warnings.some((i) => i.code === 'unsupported_span'), false);
+  // 中段不豁免：首末段都合规，中间 1.25m 横移照报
+  const mid = lintMepCoordination(sample({
+    id: 'mid-no', layer: 'strong_power', status: 'inferred', source_status: 'proposed', method: 'conduit',
+    diameter: 0.02, from_height: 2.7, to_height: 2.7,
+    from: 'sock_mbath_vanity', via: [{ x: 2.0, z: 1.5, y: 2.7 }, { x: 2.6, z: 0.4, y: 2.7 }], to: 'sock_mbath_batheheater',
+  }), sources, supportContext([FAR_WALL]));
+  assert.ok(mid.warnings.some((i) => i.code === 'unsupported_span'));
+  // y 不在原顶暗敷带（2.55 条带高）：bend_corridor (7.2,4.3) 首段 1.12m ≤2m 但 y=2.55 → 照报
+  const offBand = lintMepCoordination(sample({
+    id: 'band-no', layer: 'strong_power', status: 'inferred', source_status: 'proposed', method: 'conduit',
+    diameter: 0.02, from_height: 2.55, to_height: 2.55,
+    from: 'bend_corridor', via: [{ x: 6.2, z: 4.0, y: 2.55 }], to: 'net_gateway',
+  }), sources, supportContext([FAR_WALL]));
+  assert.ok(offBand.warnings.some((i) => i.code === 'unsupported_span'));
+  // 超长：首段 0.95m 豁免后，末段 3.86m > 2.0m（客厅中部原顶区无依托）→ 照报
+  // （sock_living_sofa_l (11.0,6.05) / net_living (7.2,7.7) 均为真实点位；z>5.2 出 ceiling_living 无吊顶）
+  const tooLong = lintMepCoordination(sample({
+    id: 'long-no', layer: 'strong_power', status: 'inferred', source_status: 'proposed', method: 'conduit',
+    diameter: 0.02, from_height: 2.7, to_height: 2.7,
+    from: 'sock_living_sofa_l', via: [{ x: 11.0, z: 7.0, y: 2.7 }], to: 'net_living',
+  }), sources, supportContext([FAR_WALL]));
+  assert.ok(tooLong.warnings.some((i) => i.code === 'unsupported_span'));
+  // 端点是内联坐标（非点位）：不构成设备接线语义，不豁免
+  const inlineEnd = lintMepCoordination(sample({
+    id: 'inline-no', layer: 'strong_power', status: 'inferred', source_status: 'proposed', method: 'conduit',
+    diameter: 0.02, from_height: 2.7, to_height: 2.7,
+    from: { x: 3, z: 0, y: 2.7 }, via: [{ x: 2.25, z: 0, y: 2.7 }], to: { x: 1.5, z: 0, y: 2.7 },
+  }), sources, supportContext([FAR_WALL]));
+  assert.ok(inlineEnd.warnings.some((i) => i.code === 'unsupported_span'));
 });

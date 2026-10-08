@@ -2276,6 +2276,7 @@
 - **实现**：从共享浏览器/GLB 几何中移除底座、柱身、环绕扩散罩和感应带；无墙面或柜面锚点时明确报错。保留贴墙灯体与柜体贴装两种形态。
 - **验证**：`npm run typecheck` 通过；`verify:project-render-facts` 确认当前 20 个灯具投影有效；未运行测试套件。
 
+
 ### DEC-2026-10-08-W01 上下水按最佳实践推断落库：water_entry / 阳台立管 落点 + 13 条路线端点绑定
 
 - **日期**：2026-10-08。触发：业主要求"没有上下水点位就按业界常用点位先落模型，量房日只核对不现场找点位"，明确不愿"一边找点位一边改代码"；授权口径为**全量落库**（推断点位 + 端点绑定 + 新增支路），全部带 `not_for_construction` / `construction_status: pending`，量房日升级 `measured`。
@@ -2291,6 +2292,7 @@
 - **本轮同步更新的测试基线**：`tests/server/mep-takeoff.test.ts`（routed 97→103、faucet 4→5、新增 shower 2 / drain_riser 4 / water_supply 1 断言、端点解析 132→134）、`tests/server/mep-hvac-lint.test.ts`（路由数 132→134 ×2）、`tests/server/cli-glb-export.test.ts`（plumbing fixtures 20→21，新增 `water_supply` 渲染配方）。
 - **关联文件**：`config/plumbing.yaml`、`config/mep-hvac-coordination.yaml`、`config/mep-takeoff.yaml`、`config/facts.yaml`、`shared/types.ts`、`shared/project-render-facts-schema.ts`、`shared/mep-takeoff.ts`、`shared/render/InfrastructureBuilder.ts`、`shared/render/FixtureFactory.ts`、`docs/mep-construction-guidance.md`、`docs/pending-site-data.md`、`tests/server/mep-takeoff.test.ts`、`docs/decision_log.md`（本条）。
 - **决策人**：业主。
+
 
 ### DEC-2026-10-08-W02 端点绑定兜底：linter 两条新规则 + 10 处内联端点焊死 + water_heater 管道锚点
 
@@ -2309,6 +2311,16 @@
 - **已知外部问题（非本轮）**：并行会话在 `shared/mep-hvac-lint.ts` 有未提交的 `unsupported_span`（飞线依托）改动，其新代码 `from.y`/`to.y` 两个 TS18048 报错 + 未跟踪的 `scripts/verify/mep/debug-support.ts` 4 个 TS2322 报错，使 `npm run typecheck` 当前为红——与本轮规则无关，需该会话自行收口。
 - **关联文件**：`shared/mep-hvac-lint.ts`、`shared/types.ts`、`shared/project-render-facts-schema.ts`、`shared/mep-takeoff.ts`、`config/plumbing.yaml`、`config/mep-hvac-coordination.yaml`、`config/facts.yaml`、`docs/mep-construction-guidance.md`、`docs/pending-site-data.md`、`tests/server/mep-takeoff.test.ts`、`docs/decision_log.md`（本条）。
 - **决策人**：业主。
+
+### DEC-2026-10-08-R01 北带南缘弧面衔接：门头盒与餐厅平顶交线改 R150 内凹弧（改判 R18 附则/R04 正交裁定）
+
+- **日期**：2026-10-08。触发：业主在删除测试收尾后指令「把这个吊顶柜跟门口的平吊衔接好弧面」。
+- **背景**：北带（ceiling_dining_north_band）南立面与餐桌平顶 2.80 的交线（3.1m）此前按 R18 附则「一次正交交接」+ R04「对接处一律正交」执行。本轮删除测试（业主驱动）确认：带子的不可删核心是门头收口（0.25m 豁口若不封，餐厅侧直接看穿门轨/方钢/导管与铝扣板空腔）；业主裁定**保留带子、不做成纯装饰**（穿门断面 x=8.6×3 / x=10.8×1 为真实功能，已在同轮修复 strong-power-kitchen 暴露段）。
+- **决策**：南立面与平顶 2.80 交线改 **R150 内凹弧面**——`cove_fillets: { south: 0.15 }`，石膏板弧形基层+板；弧面跨 SW 拐肘切点 x=7.85 至 SE 阳角切点 x=10.65（全长 2.80m），与 R04「一圈圆」同半径语言。半徑取 R150 为 Agent 默认（对业主发出的半径/做法对齐询问未获回复，按既有一圈圆语言取同值；**业主可一句话改判 R250+ 或仅节点备注**）。
+- **实现**：`shared/project-render-facts-schema.ts` + `shared/types.ts` 新增 `cove_fillets`（键 north/east/south/west，strict）；`shared/render/CeilingZoneBuilder.ts` 新增 `resolveCoveFillets`（半径 ≤ 立面高度、≤ 边净长，违规 fail closed 拒绝生成）+ `buildCoveStrips`（四分之一圆弧截面沿边挤出，立面贴 fascia 顶、外缘切平顶）；`scripts/verify/rules/verify-rules.ts` 新增 cove_fillets 校验（边名/正值/不超立面高）；`tests/server/ceiling-cove.test.ts` 三项（解析/几何落点/fail closed）全绿。
+- **未动/待办**：电路穿门断面与 power-kitchen 修复（同日完成）不受影响；弧面工艺与延长米造价待施工方报价（site/vendor_pending）；门头 2.55/2.50 与进深瘦身仍等门厂安装图。
+- **决策人**：业主（弧面指令）；R150 默认值为 Agent 判定、已声明可逆。
+
 
 ### DEC-2026-10-08-W03 上下水补齐（除入户花园）：客卫热水孤岛改绑 + 两卫 4 处地漏重力排水
 
@@ -2334,3 +2346,75 @@
 - **同轮顺带**：`walltile_gbath_west_open_vanity` zone covered→visible（可见面正砖）纠错——原 covered 系 R08 建档时自东墙柜后段误复制，该墙正对洗漱位无遮蔽。
 - **关联文件**：`config/house.yaml`、`config/layout/overlay.yaml`、`tmp/gen-paint-regions.ts`、`tests/server/wall-tile-inspection.test.ts`、`tests/server/paint-scope.test.ts`、`tests/server/paint-comparison-api.test.ts`、`docs/decision_log.md`（本条）。
 - **决策人**：业主。
+
+### DEC-2026-10-08-R01 补记：cove 从「逐边直条」改版为「沿轮廓扫掠」（业主 3D 评审判丑后返工）
+
+- **触发**：第一版（每条声明边一根直条、切点处硬截断）业主 3D 评审结论「非常的丑」——SW 拐肘处弧带悬空断头、SE 切点裸端面，比正交线更差。审美元素 FAIL，按协议返工。
+- **修正**：`CeilingZoneBuilder` 重写为轮廓跟随扫掠——`buildCoveSegments`（sw→se→ne→nw 事件序，凹拐肘弧段恒纳入、凸圆角仅两侧边都声明时纳入、方角两侧声明时经角点连接）+ `buildCoveRuns`（连续段提取，路径点自带外法线：直边 rotate90(travel)、弧段径向朝/离圆心）+ `buildCoveRunMesh`（截面环带索引化扫掠 + 两端 fan 端面）。首版法线 bug（行进方向固定 90° 旋转在拐肘弧段朝向翻转）由测试 bbox 断言暴露后修正。
+- **声明扩展**：`ceiling_dining_west_band` 增 `cove_fillets: { east: 0.15 }`——弧面经 SW 拐肘弧段切点 (7.70,3.15) 切向连续延伸到西带东立面，可见段 z[3.15,4.15]，北段 z[2.40,3.15] 埋入北带体量、南端经 se 拐肘弧段收入 ceiling_living 交线 (7.85,4.30)。北带 SE 端在凸圆角切点 (10.65,3.00) 干净截断（凸圆角两侧边未全声明，不包裹）。
+- **验证**：`tests/server/ceiling-cove.test.ts` 4/4（双带声明/北带扫掠 bbox/西带连续性/fail-closed）；本轮涉改文件 typecheck 零错误；API server 已改 `tsx --watch` 重启，render-facts 双带 cove 字段在线验证通过。浏览器端由业主复评（evidence_review 未关闭）。
+
+### DEC-2026-10-07-C15 厨房贴砖按 E2 贴满落地：三面可贴墙 0.90m 建议基线升至吊顶完成面 2.65
+
+- **日期**：2026-10-07。触发：业主看贴砖统计后质询「厨房西面不应该通铺瓷砖吗」——与 R05/R11 已裁的 E2 相印证，属决策已定、声明未跟上。
+- **背景**：E2（`decision_log` 1806，R05 裁定、R11 复核未变）：餐厅无实体墙可贴，**把厨房三面可贴墙（≈3.60m）贴满，透过推拉门形成连续砖面**。但 R08 建的 `wall_region` 声明按 D1=A 防水口径停在 0.90m 建议基线（overlay 注明「高度与 zone 均为 D1/D7 裁定前的建议基线」），E2 一直未落到声明层——客卫饰面终裁（C14）暴露了同一类「房间级意图 vs 分段声明」打架，厨房是它的镜像案例。
+- **决策**：三段升至 2.65（厨房铝扣板吊顶完成面，与两卫同口径）：东墙 `w_ent_west` 2.40m（covered，柜墙暂整段记杂砖）、西墙实墙段 `w_vrv_east` 1.00m（**visible 正砖**，无橱柜）、西墙南端残段 `w_kit_west` 0.20m（covered，冰箱位背墙）。`w_balc_east` 1.20m **不贴满**（阳台门洞 0.80m 占大半，不在 E2 三面范围内），维持 0.90m 杂砖带（辅助台面防溅口径）。E2 的「入户门厅 0.50m 过渡段收口」暂不落（「可」字选项；落它需删 `paint_living_dining_w_ent_west` 漆面段 1.4㎡，与门厅收口终裁一起做）。
+- **已知口径误差（D7 待收口）**：东墙整段记杂砖是把「吊柜以上可见带」保守算进了遮蔽面——吊柜包络未定（D7），落定后应拆出 2.2→2.65 可见正砖带；残段同（冰箱高柜顶上是否可见）。
+- **数字变化**：厨房贴砖 4.77→**11.07㎡**（正砖 1.35→3.10 / 杂砖 3.42→7.97）；全屋贴砖 17.323→**23.623㎡**。高度分档：2.65m×5（客卫淋浴 2 + 厨房 E2 3）、0.90m 只剩阳台门段 1 段。声明仍 17 段 / 19 网格。
+- **关联文件**：`config/layout/overlay.yaml`、`tests/server/wall-tile-inspection.test.ts`、`tmp/tile-report.ts`、`docs/decision_log.md`（本条）。
+- **决策人**：业主（质询确认）；E2 原裁 2026-10-07 R05。
+
+### DEC-2026-10-08-R01 补记二：端头统一 + 直边法线 bug 修复（业主第二轮评审「跟西北角差远了/西北角后面同样毛病」）
+
+- **触发**：业主指出两处端头缺陷——①东端在 SE 圆角切点悬空停驻，读作「消退波浪」，与西北角（SW 拐肘）的完整包角效果差距大；②西北角后面（西带北端 se 拐肘鼓位）弧面包到鼓位后以斜截面收尾，读作悬空 flare。
+- **端头统一规则**：拐肘/凸圆角一律「两邻边都声明弧面才包裹」，否则在切点干净截断——包裹的弧线要么转过角扎进墙线，要么连续到邻带，不再有任何悬空停驻。落地：北带 `cove_fillets` 增 `west/east`（west 段整体埋入西带体量、零视觉成本，仅为让 SW 拐肘满足包裹规则；east 让 SE 圆角被包裹后沿东立面北上扎进 w_ent_west 墙线 (10.80,2.40)）；西带 se 拐肘因南侧未声明而不再包裹，东缘弧面在切点 (7.70,4.15) 干净截断。
+- **真 bug 修复**：`buildCoveSegments` 直边端点解析错位（from 取了前前个角点）→ 直边行进方向与外法线整体倾斜，西带东缘弧面斜置——即业主所见「西北角后面的毛病」的主因之一。修正为 from=同对角点出口、to=下一角点入口；测试 bbox 断言拦住。
+- **验证**：`ceiling-cove.test.ts` 4/4（北带可见主段 bbox：SW 拐肘 7.70 → 东立面外缘 10.95 → 墙线 2.40；西带 2.40..4.15 切点截断；fail-closed）；本轮文件 typecheck 零错误；三机位实拍（东端/西带北端/西北角）确认无悬空收尾、拐肘过渡切向连续（tmp/v2-*.png）。
+
+### DEC-2026-10-07-F01 飞线改线批：unsupported_span 首扫 33 条清至 8 条显式保留
+
+- **触发**：`unsupported_span` 飞线依托检查（本轮新增 lint 规则，见 F02）在真实配置首扫 33 条——其中 `strong-power-living` 干线出边吊后 4.16m 横穿客厅中部原顶区，与 `weak-ap` reason「客厅中部保持原顶 2.80m 无吊顶」的声明直接矛盾；`weak-gateway`/`weak-ap` 门厅段 z=4.2 轴线落在门厅吊顶（z[2.9,4.3]）与客厅边吊（z[4.3,5.2]）之间的无吊顶死区；另有 M05 批量补的卧室照明/插座分支出吊后 0.9–1.9m 无依托横移。
+- **决策**（依托类目内可清的全部清零，模型包络缺口显式保留）：
+  - **改线 17 条**：`strong-power-living` 干线改沿 w_be_west 东脸（x=13.4 贴墙）南下至 z=9.65 入 curtain_box_living/drying_rack_living 吊顶带西行（方案 A，业主批准），`strong-power-living-east-wall` 冗余竖直下引路由撤并（sock_living_water 取电由 strong-power-living-curtain 上行段覆盖，下引量由 takeoff terminalDrop 派生——路由总数 138→137）；`weak-gateway`/`weak-ap` 门厅段改走 ceiling_living 轴线 z=4.6（weak-ap 删 (8.6,5.8) 旧残留节点，点位实际已在边吊内 4.75）；`strong-light-entry-foyer` 分叉点改到干线穿墙后的门厅吊顶内 (11.30,3.00,2.55)，删除与 strong-light-entry-base 重复的花园段与独立穿孔；`strong-light-entry-base` 花园段改贴 w_ent_south_w 内脸（z=2.88）；`strong-ded-washer-dryer` 穿点 z=1.6→2.15（过门洞 d_kit_balc 南侧实体段，净距恰 0.15m），阳台内贴 w_balc_south/w_balc_west；`strong-ded-bathheaters-gbath` 斜降段正交化（先吊顶内东行至 sock 上方再贴 w_gbath_east 下引）；`strong-power-child` 地插改垫层分支（边吊内分叉下引进垫层，sofa_l 先例）；`childbed` 改沿边吊东行后贴 w_gbath_west 系墙南下；卧室/客厅 12 条末段 y 统一 2.7（原顶暗敷带，见 F02）。
+  - **保留 8 条**（每条 reason 带 F01 归因，全部为模型表达缺口而非设计放行）：condensate-living/dining（R5 梁带残留，量房实测梁底后复判）、condensate-master（通顶衣柜顶隐藏，家具不入机判依托）、strong-power-mbath-service / strong-ded-bathheaters-mbath / strong-light-mbath-panel（主卧条带内西行，条带南墙未入模型）、strong-light-entry-switch-garden（开发商花园完成面无吊顶模型，明敷待物业）、refrigerant-trunk（VRV 平台设备连接段，室外无依托几何）。
+- **验证**：verify:mep 0 error / 139 warning（unsupported_span 8）；`mep-hvac-lint.test.ts` 26/26；治理 §6 分桶表与 review-manifest 同步（unsupported_span 33→8）。
+- **关联文件**：`config/mep-hvac-coordination.yaml`、`shared/mep-hvac-lint.ts`（F02 类目）、`tests/server/mep-hvac-lint.test.ts`、`docs/mep-construction-guidance.md` §0/§6、`docs/design-iterations/mep-lint-governance-20261006/review-manifest.json`、`docs/decision_log.md`（本条）。
+- **决策人**：业主（方案 A 干线走向经业主批准）。
+
+### DEC-2026-10-07-F02 unsupported_span 依托模型补全：首末段设备接线段（原顶暗敷带）
+
+- **触发**：依托检查首轮口径（吊顶空腔/贴墙/穿墙/纯竖直/垫层五类）把原顶 2.80 区的灯具/地插/外机接线段全部刷成飞线——但吸顶灯接线盒、灯轨槽、外机连接管走**楼板底抹灰层暗敷**是标准工艺且有结构依托，属于依托模型漏了第四类真实依托「结构楼板底」，不是设计错误。
+- **决策**：补第六类依托——**首末段设备接线段**：段为折线首段（from 为点位 id）或末段（末段若为 ≤0.3m 到位步则取倒数第二段；to 为点位 id），平面长 ≤2.0m，段两端 y 均值 ∈ [2.66,2.85]（原顶 2.80 − 灰层/管径 ≈2.68，容差到 2.66；上限防飞到楼板上方）。三重硬约束防滥用：只认首/末一跨、≤2m、y 带窄；中段横移、超长、y 出带照报 unsupported_span。
+- **与消音的边界**：本类目有物理依据（楼板底暗敷为标准工艺）、有 DEC 登记本条、有可证伪的硬约束；不符合三约束的段不豁免——本轮改线后仍保留 8 条 unsupported_span（见 F01）即为证明。
+- **验证**：`mep-hvac-lint.test.ts` fixture 用例 6 断言（末段豁免/首段豁免/中段不豁/y 出带不豁/超长不豁/内联端点不豁）。
+- **关联文件**：`shared/mep-hvac-lint.ts`（SUPPORT_FIXTURE_TAIL_MAX / SUPPORT_SOFFIT_BAND_*）、`tests/server/mep-hvac-lint.test.ts`、`docs/decision_log.md`（本条）。
+- **决策人**：业主。
+
+### DEC-2026-10-07-C16 主卫饰面终裁：与客卫 C14 同口径"带+漆"——淋浴南墙砖到顶 2.65，其余 0.30m 带 + 乳胶漆
+
+- **日期**：2026-10-07。触发：业主问「卫生间都通铺了吗」并裁定「主卫跟客卫一样的」。
+- **背景**：主卫是全屋最后一个"渲染假象 vs 账面错位"的房间——`house.yaml wall_finish: tile` 让渲染整墙刷砖，声明/预算却停在 D1=A 建议基线（3.11㎡ 防水带，淋浴南墙仅 1.80m 未到顶）。C14 修复客卫时已指出主卫是同构案例。
+- **决策**：① `house.yaml` 主卫 `wall_finish: 'tile'→'paint'`；② 淋浴南墙 `walltile_mbath_south_shower` height 1.80→**2.65**（砖到顶硬线；西/北墙玻璃幕墙不贴，砖面止于玻璃碰接）；③ 漆面补主卫 2 段（`w_mbath_east` [0,1.76] 全段 + `w_mbath_south` 掐掉淋浴到顶跨后 [1.20,2.60]，门洞 d_mbath [1.15,1.95] 跨内部分拆洞实扣）。主卫有玻璃幕墙采光，"带+漆"前提天然成立，无台盆防溅带需求（台盆已外移主卧条带）。
+- **数字变化**：贴砖 23.623→**24.643㎡**（淋浴段 1.20×0.85=+1.02）；高度分档 2.65m×**6**（两卫淋浴 3 + 厨房 E2 3）、1.80m 档消失；漆面 26→**28 段**（7 房）、毛面 174.720㎡、门洞占位 13.23→**14.805**（主卫门跨内 1.575）、净面 159.915㎡、顶面 106.374→**110.95**（主卫 footprint 4.576）、净计费 259.016→**270.865㎡**；涂装科目 actual 7852.10→**8212.10**；2 遍+扣洞 11411.63（vs 计划 -88.37，几近持平）；毛口径情景桶数 5+3→**6+3**；多乐士整包 14897.58。相关测试基线（wall-tile / paint-scope / paint-comparison-api）同轮更新。
+- **待量房项**：主卫西墙/北墙玻璃根 sill 未定（邻户图与 R11 逐窗核对双空白），已登记量房清单 **#54**——齐地幕墙则按 D4=L 补 `bay_sill`+`sill_region`，高窗台系则根下实体墙须补淋浴湿区贴砖声明，两分支都要动主卫西墙。
+- **关联文件**：`config/house.yaml`、`config/layout/overlay.yaml`、`tests/server/wall-tile-inspection.test.ts`、`tests/server/paint-scope.test.ts`、`tests/server/paint-comparison-api.test.ts`、`tmp/mbath-numbers.ts`、`docs/decision_log.md`（本条）。
+- **决策人**：业主。
+
+### DEC-2026-10-07-F03 water_entry 落位修正：平台侧接入候选与户内阀位锚点解耦
+
+- **触发**：verify-rules bounds error——`water_entry`（DEC-2026-10-08-W01 落库）坐标 (7.00,0.45) 在厨房西墙 w_vrv_east（x=7.20）外侧 0.20m（VRV 设备平台侧），却声明 `room: kitchen`，bounds 检查（tolerance 0.05）报错并阻断 verify:all。
+- **辨析**：W01 的语义是"入户接入点在平台侧"（水表井/立管在公区，入户管经平台穿墙进厨房）——接入候选折点 (7.00,0.45) 本身没错且与 pending #8/#49、三条 requirement 路线的同源候选一致；错的是把**接入点**与**阀位锚点**两个语义压进了同一个点位——W01 note 自己写明本点用途是「总阀→减压阀→前置过滤器位」安装顺序锚（acceptance.yaml check_plumb_prefilter_and_prv），而阀件必须在户内可操作位，不能在室外平台。
+- **决策**：两语义解耦——① 平台侧接入候选 (7.00,0.45) 保持不变，由 `water-kitchen-requirement` 的折线与 w_vrv_east 穿墙声明表达（口径不动，量房闭环同 #8）；② 点位本体修正为穿墙后的**户内阀位锚点** (7.35,0.45)（厨房西北角墙内侧 0.15m，bound 合规，room: kitchen 成立），status: inferred / not_for_construction: true / uncertainty_m 0.3 不变；③ 绑定本点的 4 条路线（water-water-heater-inlet / water-v1-entry-to-mbath-cold / water-v1-entry-to-gbath-cold / water-entry-valve-requirement）via 随新坐标改正交折线（原折点 x=7.00 在墙外，改 x=7.35 户内沿墙北上/南下，路线全程正交）。
+- **验证**：verify-rules 0 error（bounds 清零）；verify:mep 0 error；`mep-hvac-lint.test.ts` / `mep-takeoff.test.ts` 全绿；pending-site-data #8 行同步。
+- **关联文件**：`config/plumbing.yaml`（water_entry + §头纪律注释补记）、`config/mep-hvac-coordination.yaml`（4 条绑定路线 via）、`docs/pending-site-data.md` #8、`docs/decision_log.md`（本条）。
+- **决策人**：业主。
+
+### DEC-2026-10-07-C17 全宅幕墙玻璃均为落地窗（业主实地断言）：主卫湿区补 3 座防水台贴砖，干区存在不贴
+
+- **日期**：2026-10-07。触发：业主三次申明「落地窗都有防水台」并在出示逐窗 sill 推断表后最终裁定「是落地窗，都是落地窗」。
+- **裁决**：业主实地依据（样板间/选房观察）优先于邻户图的 LH 推断读法——「sill≈2.07 系」（#20，推断值、本待量房）被业主断言推翻；邻户图 LH/LW 改判疑为**开启扇/上光带尺寸**而非玻璃边（760mm 高的窗带在幕墙上不合常理，读法存疑但不删除历史记录）。幕墙玻璃均按**齐地落地窗**处理，玻璃根防水台按业主规则全宅存在。
+- **落地范围（湿区优先）**：主卫按 D4=L 同款新增 3 座 bay_sill——西墙淋浴两直段（w_west_lower 0.76m + w_west_ap 1.00m）+ 北墙（w_bath_north 2.60m），150 高 × 150 出檐常规口径；sill_region 6 段（front+top）共 4.36m × 0.30 = **1.308㎡ 正砖**。干区（主卧/书房/客房/儿童房/厨房）防水台**存在但不建模不贴砖**——干区无防水驱动，贴砖属美学选项待业主日后逐间决定；厨房北幕墙根在地柜后不可见。
+- **数字变化**：贴砖声明 sill_region 2→**8 段**、全屋 24.643→**25.951㎡**（主卫 4.13→**5.44**）；高度档 0.15m×8；网格 19→**25**。COST-060-08 planned 800→**892**；PKG-060 need 43,300→**43,392**、缺口 13,300→13,392；全局 known pending gap 34,594→**34,686**（control.yaml/budget.md/procurement.md 三处同步）。
+- **登记翻转**：#20（全屋飘窗 sill）改判 owner_asserted——儿童房衣柜降高/主卧斗柜 h<2.07 等由高窗台推断派生的约束**随之作废**，相关家具 v0 候选（床尾凸窗带可站人性）需重新评审；#54 分支收敛为①（齐地），量房终核反坎实存与尺寸，若量出高窗台系则回滚声明改补西墙墙砖。
+- **关联文件**：`config/layout/overlay.yaml`、`schedule/phase-1/control.yaml`、`schedule/phase-1/budget.md`、`schedule/procurement.md`、`docs/pending-site-data.md`（#20/#54）、`tests/server/wall-tile-inspection.test.ts`、`tmp/tile-report.ts`、`docs/decision_log.md`（本条）。
+- **决策人**：业主（实地断言）；量房 #20/#54 终核保留。
