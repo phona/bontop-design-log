@@ -31,6 +31,9 @@ describe('spatial / penetration boundary', () => {
     const produced = penetration.report.issues.filter((issue) => PENETRATION_CODES.has(issue.code));
     assert.ok(produced.length > 0, 'the house still yields penetration findings, so the linter is not silently vacuous');
     // 当前口径：0 error / 8 warning（玻璃净距不足），见 docs/penetration-lint.md。
+    // 这是**真实 house 快照断言**，不是恒真式：将来出现真实穿模时它就会红。
+    // 正确处理顺序是先把几何修对，或给一条带保质期的 waiver，再回来改这个数；
+    // 绝不允许为了让这条变绿而放宽断言（改成 >= 0、跳过本用例之类）。
     assert.equal(penetration.report.counts.errors, 0);
   });
 });

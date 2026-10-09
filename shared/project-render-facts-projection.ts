@@ -1,7 +1,6 @@
 import type {
   CurrentScheme,
   CurtainPresentationState,
-  ElectricalPoint,
   ProjectRenderFacts,
   ProjectRenderFactsProjection,
   RenderLightingOverride,
@@ -9,21 +8,8 @@ import type {
 } from './types.js';
 import { buildCurtainRenderProjection, type CurtainOverlayLike } from './curtain-projection.js';
 import { getTrackLightConfig, resolveTrackLightHeads } from './render/TrackLightLayout.js';
+import { buildRenderLightingFixtures, isLightingFixtureType } from './lighting-fixtures.js';
 
-const LIGHT_TYPES = new Set<ElectricalPoint['type']>([
-  'night_light',
-  'ceiling_light',
-  'pendant',
-  'dome',
-  'wall_lamp',
-  'downlight',
-  'led_strip',
-  'track_light',
-]);
-
-function renderCoordinate(value: number): number {
-  return Number(value.toFixed(6));
-}
 
 export function buildProjectRenderFactsProjection(
   facts: ProjectRenderFacts,
@@ -33,58 +19,12 @@ export function buildProjectRenderFactsProjection(
   presentation: CurtainPresentationState,
   lighting: LightingRenderConfig = { fixtures: [] },
 ): ProjectRenderFactsProjection {
-  const fixtures = facts.electrical.filter((point) => LIGHT_TYPES.has(point.type));
+  const fixtures = facts.electrical.filter((point) => isLightingFixtureType(point.type));
   const fixtureIds = new Set(fixtures.map((fixture) => fixture.id));
-  const overrideById = new Map<string, RenderLightingOverride>();
-
-  for (const override of overrides) {
-    if (!fixtureIds.has(override.id)) {
-      const point = facts.electrical.find((candidate) => candidate.id === override.id);
-      throw new Error(point
-        ? `Render override ${override.id} does not reference a lighting fixture`
-        : `Render override ${override.id} references an unknown electrical id`);
-    }
-    if (overrideById.has(override.id)) {
-      throw new Error(`Duplicate render override for lighting fixture ${override.id}`);
-    }
-    overrideById.set(override.id, override);
-  }
-
-  const lightingFixtures = fixtures.map((fixture) => {
-    const override = overrideById.get(fixture.id);
-    if (!override) throw new Error(`Missing render override for lighting fixture ${fixture.id}`);
-    if (fixture.height === undefined) {
-      throw new Error(`Lighting fixture ${fixture.id} has no electrical.height: render anchor must derive from the single source of truth`);
-    }
-    if (fixture.mountAnchor && fixture.type !== 'night_light') {
-      throw new Error(`Furniture-face mount_anchor is only supported for night_light fixtures: ${fixture.id}`);
-    }
-    return {
-      id: fixture.id,
-      room: fixture.room,
-      type: fixture.type,
-      position: {
-        x: renderCoordinate(fixture.x + (override.offsetX ?? 0)),
-        // 渲染锚点在**此处**派生：electrical.height（施工安装完成面，唯一事实源）
-        // + overrides.anchorY_offset（渲染侧相对偏移）。overrides.yaml 不再重复
-        // 书写高度绝对值，从结构上消灭双写。
-        y: renderCoordinate(fixture.height + override.anchorY_offset),
-        z: renderCoordinate(fixture.z + (override.offsetZ ?? 0)),
-      },
-      temperatureK: fixture.temp ?? 3000,
-      enabled: true,
-      ...(fixture.circuit !== undefined ? { circuit: fixture.circuit } : {}),
-      ...(fixture.heads !== undefined ? { heads: fixture.heads } : {}),
-      ...(fixture.recessed !== undefined ? { recessed: fixture.recessed } : {}),
-      ...(fixture.wall !== undefined ? { wallId: fixture.wall } : {}),
-      ...(fixture.wallSide !== undefined ? { wallSide: fixture.wallSide } : {}),
-      ...(fixture.mountAnchor !== undefined ? { mountAnchor: fixture.mountAnchor } : {}),
-    };
-  });
-
-  if (lightingFixtures.length !== fixtures.length) {
-    throw new Error(`Render fixture count mismatch: expected ${fixtures.length}, got ${lightingFixtures.length}`);
-  }
+  // 灯具派生（offset 平移 / anchorY_offset 锚点 / fail-closed / 宿主墙透传）只有一份实现，
+  // 与 linter 的 runtime 场景共用 shared/lighting-fixtures.ts：渲染看到的灯与被校验的灯
+  // 在定义上就是同一个点位。这里不再本地复制坐标或高度派生。
+  const lightingFixtures = buildRenderLightingFixtures(facts.electrical, overrides);
 
   const floor = scheme.selections.floor ?? { default: null, roomOverrides: {} };
   const selectedHvacPlanId = scheme.selections.hvac?.default ?? null;

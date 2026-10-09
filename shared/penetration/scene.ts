@@ -6,7 +6,8 @@ import { resolveLayout } from '../../server/layout-resolver.js';
 import { mergeSceneElements, parseOverlay } from '../../server/overlay-merge.js';
 import { parseCeilingZones, parseElectricalPoints, parseLightingRenderConfig, parsePlumbingPoints, parseRenderLightingOverrides } from '../../shared/project-render-facts-schema.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
-import { type FurnishingsYaml, type ElectricalPoint, type PlumbingPoint, type VertexLayoutYaml, type SceneElement, type ResolvedWall, type ResolvedRoom, type RenderLightingFixture } from '../../shared/types.js';import type { Aabb3, GlassPathSegment, OverlayElementRef, PlanSegment, RuntimeSpatialObject } from '../spatial-validation.js';
+import { buildRenderLightingFixtures } from '../../shared/lighting-fixtures.js';
+import { type FurnishingsYaml, type ElectricalPoint, type PlumbingPoint, type VertexLayoutYaml, type SceneElement, type ResolvedWall, type ResolvedRoom, type RenderLightingOverride } from '../../shared/types.js';import type { Aabb3, GlassPathSegment, OverlayElementRef, PlanSegment, RuntimeSpatialObject } from '../spatial-validation.js';
 
 /**
  * 场景采集层：把「权威配置 → runtime 场景 → 可判定实体」这一路收敛成**唯一实现**。
@@ -35,8 +36,6 @@ export interface SpatialConfig {
   }>;
   furniture_profiles?: Record<string, { profile: string; role?: string; site_trim?: boolean }>;
   mep_coordination_types?: string[];
-  /** 机电协调构件的参与策略申报（来自 config/anti-penetration.yaml，由 CLI 合并进来）。 */
-  mep_parts?: { participation: Array<{ types: string[]; policy: 'excluded' | 'solid'; note?: string }> };
   // relationships 白名单已于 2026-10-09 迁入 config/anti-penetration.yaml 的 waivers，
   // 由 shared/penetration/registry.ts 的 relationshipSpecsFromWaivers 还原后消费；
   // 本文件不再从 spatial-validation.yaml 读关系声明。
@@ -263,48 +262,6 @@ function furnitureEntries(result: ReturnType<typeof buildScene>): BoxEntry[] {
   });
 }
 
-export function parseRenderFixtureHeights(): Map<string, number> {
-  const overrides = parseRenderLightingOverrides(readFileSync(path.join(ROOT, 'config/render/overrides.yaml'), 'utf8'));
-  const electrical = new Map<string, number>();
-  for (const point of parseElectricalPoints(readFileSync(path.join(ROOT, 'config/electrical.yaml'), 'utf8'))) {
-    if (point.height !== undefined) electrical.set(point.id, point.height);
-  }
-  // 渲染锚点 = electrical.height（施工安装完成面，唯一事实源）+ anchorY_offset。
-  // overrides.yaml 只存相对偏移，因此这里必须回查电气源，与投影派生处保持同一算法。
-  const heights = new Map<string, number>();
-  for (const override of overrides) {
-    const base = electrical.get(override.id);
-    if (base === undefined) continue;
-    heights.set(override.id, base + override.anchorY_offset);
-  }
-  return heights;
-}
-
-export function renderLightingFixtures(electrical: ElectricalPoint[]): RenderLightingFixture[] {
-  const heights = parseRenderFixtureHeights();
-  return electrical
-    .filter((point) => LIGHT_TYPES.has(point.type))
-    .map((point) => ({
-      id: point.id,
-      room: point.room,
-      type: point.type,
-      position: { x: point.x, y: heights.get(point.id) ?? point.height ?? 2.8, z: point.z },
-      temperatureK: point.temp ?? 3000,
-      enabled: true,
-      ...(point.circuit ? { circuit: point.circuit } : {}),
-      ...(point.heads !== undefined ? { heads: point.heads } : {}),
-      ...(point.recessed !== undefined ? { recessed: point.recessed } : {}),
-      // 宿主墙与侧向必须随点位一起进 runtime，口径与权威投影
-      // shared/project-render-facts-projection.ts 逐字一致；漏传会让靠 wall/wall_side
-      // 声明的起夜灯在 FixtureFactory 抛错，整场 buildScene 失败（scene_build_failed）。
-      ...(point.wall !== undefined ? { wallId: point.wall } : {}),
-      ...(point.wallSide !== undefined ? { wallSide: point.wallSide } : {}),
-      ...(point.mountAnchor !== undefined ? { mountAnchor: point.mountAnchor } : {}),
-    }));
-}
-
-const LIGHT_TYPES = new Set(['wall_lamp', 'ceiling_light', 'pendant', 'dome', 'downlight', 'track_light', 'led_strip', 'night_light']);
-
 export interface SceneInputs {
   layout: ReturnType<typeof resolveLayout>;
   overlay: ReturnType<typeof parseOverlay>;
@@ -313,6 +270,8 @@ export interface SceneInputs {
   house: RawHouse;
   ceiling: ReturnType<typeof parseCeilingZones>;
   electrical: ElectricalPoint[];
+  /** config/render/overrides.yaml 的渲染挂点偏移（只存相对量，坐标/高度派生在 shared/lighting-fixtures.ts）。 */
+  renderOverrides: RenderLightingOverride[];
   plumbing: PlumbingPoint[];
   lighting: ReturnType<typeof parseLightingRenderConfig>;
   suppressIds: string[];
@@ -347,12 +306,13 @@ export function loadSceneInputs(options: LoadSceneOptions = {}): SceneInputs {
   const house = readYaml<RawHouse>('config/house.yaml');
   const ceiling = parseCeilingZones(readFileSync(path.join(ROOT, 'config/ceiling.yaml'), 'utf8'));
   const electrical = parseElectricalPoints(readFileSync(path.join(ROOT, 'config/electrical.yaml'), 'utf8'));
+  const renderOverrides = parseRenderLightingOverrides(readFileSync(path.join(ROOT, 'config/render/overrides.yaml'), 'utf8'));
   const plumbing = parsePlumbingPoints(readFileSync(path.join(ROOT, 'config/plumbing.yaml'), 'utf8'));
   const lighting = parseLightingRenderConfig(readFileSync(path.join(ROOT, 'config/render/lighting.yaml'), 'utf8'));
   const elements = mergeSceneElements(layout.walls, overlay);
   const suppressIds = suppressionWallIds(overlay, layout.walls);
   const structuralPaths = pathSegmentsFromOverlay(elements, layout);
-  return { layout, overlay, elements, config, house, ceiling, electrical, plumbing, lighting, suppressIds, structuralPaths, layoutWarnings };
+  return { layout, overlay, elements, config, house, ceiling, electrical, renderOverrides, plumbing, lighting, suppressIds, structuralPaths, layoutWarnings };
 }
 
 /** 构建 runtime 场景。抛错即调用方出口，这里不吞。 */
@@ -366,7 +326,10 @@ export function buildRuntimeScene(inputs: SceneInputs): ReturnType<typeof buildS
     furnishings: inputs.house.furnishings,
     electrical: inputs.electrical,
     plumbing: inputs.plumbing,
-    lightingFixtures: renderLightingFixtures(inputs.electrical),
+    // 灯具派生只走共享实现 shared/lighting-fixtures.ts（权威投影调用同一个函数）：
+    // offset 平移、anchorY_offset 锚点、宿主墙透传、fail-closed 全部只有一份口径，
+    // linter 校验的灯因此与 app/GLB 渲染的灯是同一个点位。
+    lightingFixtures: buildRenderLightingFixtures(inputs.electrical, inputs.renderOverrides),
     options: { lighting: inputs.lighting },
   });
 }

@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import type { resolveLayout } from '../../../server/layout-resolver.js';
 import { parseOverlay } from '../../../server/overlay-merge.js';
 import type { parseCeilingZones } from '../../../shared/project-render-facts-schema.js';
-import { FURNITURE_DIMS, type FurnishingsYaml, type ElectricalPoint, type SceneElement, type ResolvedWall, type ResolvedRoom } from '../../../shared/types.js';
+import { FURNITURE_DIMS, type FurnishingsYaml, type ElectricalPoint, type RenderLightingOverride, type SceneElement, type ResolvedWall, type ResolvedRoom } from '../../../shared/types.js';
 import {
   deriveRuntimeGlassJoins,
   makeSpatialReport,
@@ -35,17 +35,16 @@ import {
   objectBox,
   objectHasMesh,
   overlayRefs,
-  parseRenderFixtureHeights,
   pathSegmentsFromOverlay,
   suppressionWallIds,
   type SceneInputs,
   type SpatialConfig,
 } from '../../../shared/penetration/scene.js';
+import { buildRenderLightingFixtureHeights, isLightingFixtureType } from '../../../shared/lighting-fixtures.js';
 import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
 import { loadAntiPenetrationConfig, relationshipSpecsFromWaivers } from '../../../shared/penetration/registry.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
-const LIGHT_TYPES = new Set(['wall_lamp', 'ceiling_light', 'pendant', 'dome', 'downlight', 'track_light', 'led_strip', 'night_light']);
 
 function resolvedWallSegments(layout: ReturnType<typeof resolveLayout>): PlanSegment[] {
   return layout.walls.flatMap((wall) => {
@@ -88,14 +87,17 @@ function validateLighting(
   ceilingZones: ReturnType<typeof parseCeilingZones>,
   rooms: ResolvedRoom[],
   hostOverrides: SpatialConfig['lighting_host_overrides'] = [],
+  renderOverrides: RenderLightingOverride[],
   runtimeFixtures?: Map<string, THREE.Group>,
 ): SpatialIssue[] {
   const issues: SpatialIssue[] = [];
   const source = 'config/electrical.yaml';
   const wallMap = new Map(walls.map((wall) => [wall.id, wall]));
   const hostOverrideById = new Map((hostOverrides ?? []).map((override) => [override.id, override]));
-  const heights = parseRenderFixtureHeights();
-  for (const point of electrical.filter((item) => LIGHT_TYPES.has(item.type))) {
+  // 期望锚点高度与渲染锚点同源：shared/lighting-fixtures.ts 的同一派生式
+  // （electrical.height + anchorY_offset），不在这里另算一遍。
+  const heights = buildRenderLightingFixtureHeights(electrical, renderOverrides);
+  for (const point of electrical.filter((item) => isLightingFixtureType(item.type))) {
     const runtime = runtimeFixtures?.get(`electrical:${point.id}`);
     if (runtimeFixtures && (!runtime || !objectHasMesh(runtime))) {
       issues.push({ level: 'error', code: 'lighting_runtime_missing', entity: point.id, source, message: `lighting point ${point.id} did not produce a real runtime fixture`, evidence: { object_id: `electrical:${point.id}`, type: point.type } });
@@ -304,11 +306,11 @@ function main(): void {
   let scene: ReturnType<typeof buildRuntimeScene>;
   try {
     scene = buildRuntimeScene(inputs);
-    issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides, scene.index.lightingFixtures));
+    issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides, inputs.renderOverrides, scene.index.lightingFixtures));
     issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}));
     issues.push(...validateScene(inputs, scene, antiConfig));
   } catch (error) {
-    issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides));
+    issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides, inputs.renderOverrides));
     issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}));
     issues.push({ level: 'error', code: 'scene_build_failed', entity: 'HOUSE_EXPORT', source: 'shared/render/SceneBuilder.ts', message: error instanceof Error ? error.message : String(error), evidence: {} });
   }

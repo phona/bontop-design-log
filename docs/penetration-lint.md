@@ -38,6 +38,8 @@
 
 `--shadow` 附加「规则判定 vs OBB 判定」对照与 `relationships` 白名单审计，进 `report.shadow`，**不计入 errors/warnings、不影响退出码**。`--today YYYY-MM-DD` 注入豁免到期判定日（默认取运行日），保证测试可复现。
 
+因为到期判定日可注入，**waiver 到期那天零代码改动就会由绿转红**：到期豁免不静默失效，原问题按原规则 code 复活，message 带上「（豁免 `<id>` 已于 `<date>` 到期，自动复活）」、`evidence` 带上 `expired_waiver` / `waiver_expires`（穿透层没有独立的 `pen.waiver_expired` code，复活项沿用原规则 code，只靠这两处标注可追溯）。这是到期复活机制的设计意图，不是 CI 故障——CI 上看到「昨天还绿今天红了」，先按这两个信号查豁免到期，别去动几何。
+
 ## OBB 窄相位：已实现，未接管判定
 
 `shared/penetration/obb.ts` 由 runtime mesh 的 `matrixWorld` + `geometry.boundingBox` 推导 OBB，15 轴 SAT 求穿透深度与最小平移向量（MTV）。OBB 恒包含于 AABB，因此 OBB 判相交 ⇒ AABB 必判相交：**只能消假阳，不可能放过真阳**。
