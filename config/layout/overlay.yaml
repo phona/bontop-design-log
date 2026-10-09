@@ -897,4 +897,4 @@ elements:
     room: kitchen
     faces: [underside, front]
     finish: ordinary
-    reason: "⚠️ 漆/砖归属待业主终裁：厨房三面可贴墙已贴砖（walltile_kitchen_*），北墙 w_kit_north 是 suppress_kitchen_north 玻璃幕墙（不可贴），全厨房没有任何 paint_region 声明。本处按业主「都算上」的指示暂按 ordinary 普通漆登记；若厨房飘窗应走厨卫专用漆或贴砖，需改 finish 或改挂 sill_region。两端面均与实体墙重合不声明；尺寸待复尺"
+    reason: "业主 2026-10-09 裁定：先按**统一刷漆价格**计入 ordinaryAreaSqm。业界做法留档——厨房/飘窗窗台首选贴砖（与厨房墙砖连续、收口最简、耐油污好打理）；若维持刷漆，窗台应加阳角条并升级为厨卫/外墙漆（耐擦洗、防老化开裂），普通内墙乳胶漆在厨卫窗台并不合适。厨房三面可贴墙已贴砖（walltile_kitchen_*）、北墙 w_kit_north 是 suppress_kitchen_north 玻璃幕墙（不可贴）、全厨房无 paint_region，故本处是厨房唯一涂装面；将来若改贴砖需改挂 sill_region 并从 ordinaryAreaSqm 移出。两端面与实体墙重合不声明；尺寸待复尺"
