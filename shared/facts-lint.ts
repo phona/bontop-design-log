@@ -148,6 +148,9 @@ export interface FactsRegistry {
   facts?: Fact[];
   contracts?: Contract[];
   coverage?: Coverage[];
+  /** 决策日志的文件清单（DEC 条目正文所在）。`repair_channel.decision_ref` 的存在性校验以它为准；
+   *  不登记则跳过该校验（并在 INFO 露面，不静默）。 */
+  decision_log_files?: string[];
 }
 
 // ─── 小工具 ──────────────────────────────────────────────────────────────────
@@ -1780,11 +1783,14 @@ function runCoveredOrMarked(ws: FactsWorkspace, result: FactsLintResult, lines: 
 //                   与 exempt 的 pending 同纪律——在 INFO 里露面，不假装已有 DEC 背书。
 //   sync_files   —— 该修正必须同步的文件清单（改一处必须连带同步其余，prose/登记表同改）。
 //
-// 引擎只做两件事：
+// 引擎只做三件事：
 //   ① 校验通道自身齐全：decision_ref 空 / 既非 DEC 全引又非 pending 占位 / sync_files 空 /
 //      文件不存在 → repair_channel_invalid（error）。通道腐烂比没有通道更糟——
 //      它会让人以为有出路可走，走出去才发现是墙。
-//   ② 契约报出偏差时（目前接在 ceiling_clearance 的基线漂移上），把该出口写进 issue 正文，
+//   ② 校验 DEC 全引**真的存在于决策日志**（登记表顶层 `decision_log_files` 列出的文件里
+//      有同名 `### DEC-` 标题）→ repair_channel_ref_unresolvable（error）。只验格式等于
+//      允许「指引人去查一条不存在的 DEC」；未登记 decision_log_files 时跳过并在 INFO 露面。
+//   ③ 契约报出偏差时（目前接在 ceiling_clearance 的基线漂移上），把该出口写进 issue 正文，
 //      并在 INFO 里登记。**不改变任何契约的 error 语义**：registered_conflicts ≠ 实算
 //      仍是 error；通道回答「要改的话必须怎么改」，不提供免检。
 
@@ -1796,6 +1802,15 @@ export interface RepairChannel {
 }
 
 const DEC_FULL_REF_RE = /^DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3})$/;
+
+/** decision_ref 指向的 DEC 是否真的作为条目存在于决策日志里。
+ *  只认标题形态（`### DEC-…`），不认 prose 里的提及——否则「正文引用了一个已删编号」
+ *  也会被判成存在。边界用 `(?![\w.\-])`：`DEC-…-R01` 不匹配 `R01.1`，`DEC-…-051` 不匹配
+ *  `051-补`（基号不存在就是不存在，补号救不了它）。 */
+function decisionRefResolves(ws: FactsWorkspace, files: string[], ref: string): boolean {
+  const pattern = `^#{2,6}\\s*${escapeLiteral(ref)}(?![0-9A-Za-z.\\-_])`;
+  return files.some((file) => grep(ws, file, pattern).length > 0);
+}
 
 function repairChannelOf(contract: Contract): RepairChannel | undefined {
   const raw = contract.repair_channel;
@@ -1814,7 +1829,7 @@ function repairChannelHint(contract: Contract): string {
   return `正当修正通道：附 ${ref} 修改设计侧几何/口径，并同步 ${files}；未附 DEC 的改动一律视为消音`;
 }
 
-function validateRepairChannel(ws: FactsWorkspace, result: FactsLintResult, contract: Contract): void {
+function validateRepairChannel(ws: FactsWorkspace, result: FactsLintResult, contract: Contract, registry: FactsRegistry): void {
   const channel = repairChannelOf(contract);
   if (!channel) return;
   const { decision_ref, sync_files } = channel;
@@ -1840,6 +1855,24 @@ function validateRepairChannel(ws: FactsWorkspace, result: FactsLintResult, cont
     add(result, issue('error', 'repair_channel_invalid', `${contract.id}：repair_channel.sync_files 中的 ${file} 不存在——登记出口腐烂`, where));
     tally(result, 'repair_channel_invalid');
   }
+  // ③ DEC 全引必须真的存在于决策日志：只验格式等于允许「指引人去查一条不存在的 DEC」，
+  //    而 error 正文会拿它当合规出路，腐烂的出路比没有出路更糟。
+  //    决策日志文件清单来自登记表顶层 `decision_log_files`；未登记则跳过并在 INFO 露面
+  //    （引擎是通用的，别的仓可能没有决策日志——但不许静默跳过）。
+  const logFiles = stringList(registry.decision_log_files);
+  if (DEC_FULL_REF_RE.test(decision_ref)) {
+    if (!logFiles.length) {
+      note(result, `contract ${contract.id} 修正通道未校验 DEC 存在性 — 登记表未声明 decision_log_files，跳过 ${decision_ref} 的存在性校验`);
+    } else if (!decisionRefResolves(ws, logFiles, decision_ref)) {
+      add(result, issue(
+        'error',
+        'repair_channel_ref_unresolvable',
+        `${contract.id}：repair_channel.decision_ref「${decision_ref}」在决策日志里没有对应条目（已搜 ${logFiles.length} 个文件）——出口腐烂：error 正文会指引人去改一条不存在的 DEC。请修正编号，或先在决策日志登记该 DEC`,
+        where,
+      ));
+      tally(result, 'repair_channel_ref_unresolvable');
+    }
+  }
   // 通道自身没报错才露面：待决占位与 exempt.pending 同纪律（INFO 单列，不假装已有 DEC）。
   const intact = sync_files.length > 0 && sync_files.every((f) => ws.read(f) !== null);
   if (!intact) return;
@@ -1847,8 +1880,7 @@ function validateRepairChannel(ws: FactsWorkspace, result: FactsLintResult, cont
     note(result, `contract ${contract.id} 修正通道待决 — ${decision_ref.slice('pending:'.length)}｜DEC 落地后须替换 decision_ref 并同步：${sync_files.join('、')}`);
   } else if (DEC_FULL_REF_RE.test(decision_ref)) {
     note(result, `contract ${contract.id} 修正通道已登记 — ${decision_ref}｜改设计侧必须同步：${sync_files.join('、')}`);
-  }
-}
+  }}
 
 // ─── 入口 ────────────────────────────────────────────────────────────────────
 
@@ -1892,7 +1924,7 @@ export function lintFacts(registry: FactsRegistry, ws: FactsWorkspace): FactsLin
   }
   // repair_channel 自校验：通道是「正当修正的登记出口」，它自己腐烂（缺字段/文件被删/
   // DEC 形状非法）比没有出口更糟——会让人以为有路可走。与豁免必须写 reason 同一纪律。
-  for (const contract of registry.contracts ?? []) validateRepairChannel(ws, result, contract);
+  for (const contract of registry.contracts ?? []) validateRepairChannel(ws, result, contract, registry);
   result.counts.errors = result.errors.length;
   result.counts.warnings = result.warnings.length;
   return result;

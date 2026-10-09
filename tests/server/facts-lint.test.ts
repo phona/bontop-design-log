@@ -1119,6 +1119,71 @@ test('repair_channel：DEC 全引 + 非空 sync_files 即通过并在 INFO 露�
   assert.match(gone.errors[0].message, /config\/gone\.yaml 不存在/);
 });
 
+test('repair_channel：DEC 全引必须真的存在于 decision_log_files，否则出口腐烂', () => {
+  // 背景：只验格式等于允许「error 正文指引人去改一条不存在的 DEC」——2026-10-09 决策日志
+  // 拆成 14 个文件后，编号被改号/删掉时这条路会静默腐烂，故补存在性校验。
+  const registry = (decision_log_files: string[], decision_ref: string): FactsRegistry => ({
+    ...channelProbe({ decision_ref, sync_files: ['config/ceiling.yaml'] }),
+    decision_log_files,
+  });
+
+  // 命中：ref 在第二个文件里作为标题存在
+  const ok = lintFacts(registry(
+    ['docs/decisions/a.md', 'docs/decisions/b.md'],
+    'DEC-2026-10-06-R5',
+  ), workspaceOf({
+    'docs/decisions/a.md': '### DEC-2026-10-06-R1 别的\n',
+    'docs/decisions/b.md': '### DEC-2026-10-06-R5 #41 裁定\n正文\n',
+    'config/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(ok.errors.length, 0, ok.errors.map((e) => e.message).join('\n'));
+
+  // 未命中：清单里两个文件都没有这个编号 → error（不是 warning：出口腐烂比没有出口更糟）
+  const stale = lintFacts(registry(
+    ['docs/decisions/a.md', 'docs/decisions/b.md'],
+    'DEC-2026-10-06-R5',
+  ), workspaceOf({
+    'docs/decisions/a.md': '### DEC-2026-10-06-R1 别的\n',
+    'docs/decisions/b.md': '### DEC-2026-10-06-R50 笔误成 50\n',
+    'config/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(stale.errors.length, 1);
+  assert.equal(stale.errors[0].code, 'repair_channel_ref_unresolvable');
+  assert.match(stale.errors[0].message, /DEC-2026-10-06-R5/);
+  assert.match(stale.errors[0].message, /已搜 2 个文件/);
+
+  // 只认标题、不认 prose 提及：正文里引用一个已删编号不算存在
+  const prose = lintFacts(registry(['docs/decisions/a.md'], 'DEC-2026-10-06-R5'), workspaceOf({
+    'docs/decisions/a.md': '正文引用 DEC-2026-10-06-R5 已废止\n',
+    'config/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(prose.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
+
+  // 边界：`R01` 不冒充 `R01.1`；基号 `051` 不冒充 `051-补`
+  const boundary = lintFacts(registry(['docs/decisions/a.md'], 'DEC-2026-10-08-R01'), workspaceOf({
+    'docs/decisions/a.md': '### DEC-2026-10-08-R01.1 cove 改版\n',
+    'config/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(boundary.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
+  const boundary2 = lintFacts(registry(['docs/decisions/a.md'], 'DEC-2026-09-02-051'), workspaceOf({
+    'docs/decisions/a.md': '### DEC-2026-09-02-051-补 百叶段南延\n',
+    'config/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(boundary2.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
+
+  // 未登记 decision_log_files：跳过存在性校验，但必须在 INFO 露面，不静默
+  const undeclared = lintFacts(channelProbe({ decision_ref: 'DEC-2026-10-05-R20', sync_files: ['config/ceiling.yaml'] }), realWorkspace());
+  assert.equal(undeclared.errors.length, 0);
+  assert.match((undeclared.notes ?? []).join('\n'), /未校验 DEC 存在性/);
+
+  // pending: 占位不参与存在性校验（它本来就声明「还没有 DEC」）
+  const pending = lintFacts({
+    ...channelProbe({ decision_ref: 'pending:docs/pending-site-data.md #41', sync_files: ['config/ceiling.yaml'] }),
+    decision_log_files: ['docs/decisions/a.md'],
+  }, workspaceOf({ 'docs/decisions/a.md': '### DEC-2026-10-06-R1 别的\n', 'config/ceiling.yaml': 'zones: []\n' }));
+  assert.equal(pending.errors.length, 0);
+});
+
 test('repair_channel：基线漂移的 error 正文带上正当修正出口（禁令之外给出路）', () => {
   const files = {
     'config/mep.yaml': [
