@@ -5,6 +5,7 @@ import {
   type SpatialIssue,
 } from '../../../shared/spatial-validation.js';
 import { runPenetrationChecks } from '../../../shared/penetration/registry.js';
+import { computeObbShadow } from '../../../shared/penetration/shadow.js';
 import {
   buildRuntimeScene,
   collectPenetrationObjects,
@@ -56,6 +57,7 @@ function main(): void {
 
   let collected: ReturnType<typeof collectPenetrationObjects> | undefined;
   let penetration: ReturnType<typeof runPenetrationChecks> | undefined;
+  let shadowEntries: ReturnType<typeof computeObbShadow> | undefined;
   if (inputs) {
     try {
       const scene = buildRuntimeScene(inputs);
@@ -65,12 +67,18 @@ function main(): void {
       penetration = runPenetrationChecks(inputs, scene, todayStamp);
       issues.push(...penetration.issues);
       issues.push(...penetration.registryIssues);
+      shadowEntries = args.has('--shadow')
+        ? computeObbShadow({ furniture: collected.furnitureEntries, relationships: inputs.config.relationships, mepTypes: inputs.config.mep_coordination_types, ruleIssues: penetration.issues })
+        : undefined;
     } catch (error) {
       issues.push({ level: 'error', code: 'scene_build_failed', entity: 'HOUSE_EXPORT', source: 'shared/render/SceneBuilder.ts', message: error instanceof Error ? error.message : String(error), evidence: {} });
     }
   }
 
   const report = makeSpatialReport(issues.sort((a, b) => a.code.localeCompare(b.code) || a.entity.localeCompare(b.entity) || a.message.localeCompare(b.message)));
+  // --shadow：附加「规则判定 vs OBB」对照。只观察不判定——不计入 errors/warnings，不影响退出码。
+  const shadow = shadowEntries;
+
   const output = JSON.stringify({
     version: 1,
     report,
@@ -86,11 +94,16 @@ function main(): void {
       }
       : null,
     ...(inputs && inputs.layoutWarnings.length > 0 ? { runtimeWarnings: inputs.layoutWarnings } : {}),
+    ...(shadow ? { shadow } : {}),
   }, null, 2);
 
   if (args.has('--json')) console.log(output);
   else {
     console.log(`Penetration lint: ${report.counts.errors} error(s), ${report.counts.warnings} warning(s), ${report.counts.info} info`);
+    if (shadow) {
+      const s = shadow.summary;
+      console.log(`OBB shadow (observe-only): ${s.candidates} candidate pair(s) → ${s.agree} agree / ${s.falsePositives} false positive / ${s.falseNegatives} false negative; exemption audit ${s.exemptPairsAudited} pair(s), ${s.overBroadExemptions} over-broad`);
+    }
     for (const issue of report.issues) console.log(`${issue.level === 'error' ? '✗' : issue.level === 'warning' ? '⚠' : '·'} [${issue.code}] ${issue.entity}: ${issue.message}`);
   }
   if (args.has('--out')) {

@@ -45,7 +45,8 @@ export interface RuntimePenetrationInput {
   source?: string;
 }
 
-function relationshipAllowsExact(idA: string, idB: string, relationships: RelationshipSpec[] = []): boolean {
+/** 精确配对豁免：只有声明绑定的这一对（顺序无关）才放行，禁止按类型全局放行。 */
+export function relationshipExemptsPair(idA: string, idB: string, relationships: RelationshipSpec[] = []): boolean {
   return (relationships ?? []).some((relationship) => {
     const objects = relationship.objects?.length === 2
       ? relationship.objects
@@ -239,7 +240,7 @@ export function validateRuntimePenetration(input: RuntimePenetrationInput): Spat
       // drift; keep the deliberate 3mm contact visible while suppressing
       // sub-10µm cross-room face noise.
       const overlap = aabbOverlapDepth(a.box, b.box, 1e-5);
-      if (!overlap || relationshipAllowsExact(a.id, b.id, input.relationships)) continue;
+      if (!overlap || relationshipExemptsPair(a.id, b.id, input.relationships)) continue;
       const penetration = Math.min(overlap.x, overlap.y, overlap.z);
       const level = penetration <= collisionMargin ? 'warning' : 'error';
       issues.push({ level, code: level === 'error' ? 'furniture_furniture_collision' : 'furniture_furniture_contact_tolerance', entity: `${a.id}↔${b.id}`, source, message: `runtime furniture envelopes overlap by ${penetration.toFixed(3)}m`, evidence: { furnitureA: a.box, furnitureB: b.box, overlap_m: overlap, collision_margin_m: collisionMargin, ids: [a.id, b.id] } });

@@ -377,6 +377,8 @@ export interface PenetrationObjects {
   ceilings: RuntimeSpatialObject[];
   /** 带 segment/thickness 的墙条目，净距规则直接用。 */
   wallEntries: BoxEntry[];
+  /** 玻璃/窗帘/栏杆条目（含 pathSegments），shadow 对照用。 */
+  glassEntries: BoxEntry[];
   /** 家具 runtime 条目（含 object 引用，供 mesh 存在性检查）。 */
   furnitureEntries: BoxEntry[];
 }
@@ -415,6 +417,7 @@ export function collectPenetrationObjects(result: ReturnType<typeof buildScene>,
     })),
     ceilings: ceilingEntries.map((entry): RuntimeSpatialObject => ({ id: entry.entity, type: entry.type, box: entry.box })),
     wallEntries,
+    glassEntries,
     furnitureEntries: furniture,
   };
 }

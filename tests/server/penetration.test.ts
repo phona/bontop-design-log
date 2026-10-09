@@ -249,6 +249,18 @@ describe('penetration CLI integration', () => {
     assert.deepEqual(JSON.parse(outResult.stdout), JSON.parse(readFileSync(outputPath, 'utf8')));
   });
 
+  it('keeps --shadow observe-only: same verdict with and without it', () => {
+    const plain = spawnSync('npx', ['tsx', 'scripts/verify/penetration/verify-penetration.ts', '--json'], { encoding: 'utf8' });
+    const shadowed = spawnSync('npx', ['tsx', 'scripts/verify/penetration/verify-penetration.ts', '--json', '--shadow'], { encoding: 'utf8' });
+    assert.equal(plain.status, shadowed.status, 'shadow must not change the exit code');
+    const plainReport = JSON.parse(plain.stdout);
+    const shadowReport = JSON.parse(shadowed.stdout);
+    assert.deepEqual(plainReport.report, shadowReport.report, 'shadow must not change the verdict');
+    assert.equal(plainReport.shadow, undefined, 'no shadow block without the flag');
+    assert.ok(shadowReport.shadow, 'shadow block appears with the flag');
+    assert.equal(typeof shadowReport.shadow.summary.candidates, 'number');
+  });
+
   it('fails closed when the runtime scene cannot be built', () => {
     // 不改配置：用不存在的 --out 目标无法构造该分支，这里只锁定退出码契约——
     // 缺路径必须 exit 2 而不是静默写盘。
