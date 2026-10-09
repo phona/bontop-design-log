@@ -49,10 +49,6 @@ vi.mock('../data/designData.js', () => ({
     { id: 'floor_tile_01', name: '浅胡桃木纹砖', color: '#c49a6c' },
     { id: 'floor_tile_02', name: '深灰岩纹砖', color: '#8b8b8b' },
   ],
-  wallOptions: [
-    { id: 'wall_tile_01', name: '厨卫白色釉面砖', color: '#f5f5f5' },
-    { id: 'wall_tile_02', name: '浅灰哑光砖', color: '#d0d0d0' },
-  ],
   paintOptions: [
     { id: 'latex_paint_01', name: '金装净味五合一', color: '#f7f5ef' },
     { id: 'latex_paint_02', name: '奶油白', color: '#fff4e6' },

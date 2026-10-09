@@ -3,8 +3,10 @@ version: "1.0"
 objectMapping:
   - pattern: "floor:*"
     topics: [floor]
+  # DEC-2026-10-08-C19 下架「墙砖方案」贴图预览后 wall topic 已无注册实现，
+  # 点墙只关联涂装主题（未注册主题 InfoPanel 会跳过，留 wall 只是死配置）。
   - pattern: "wall:*"
-    topics: [wall, paint]
+    topics: [paint]
   - pattern: "ceiling:*"
     topics: [paint]
   - pattern: "hvac:*"
