@@ -427,6 +427,19 @@ scan:
       pattern: '36,000'
       reason: 材料清单 hvac_01 的 price_per_unit/notes 复述 DEC-2026-10-04-R1 定标成交 36,000 元（2026-10-05 由预研估价 29,000 改写）；权威金额由 fact.hvac_contract_cny 的三方镜像对账
 
+    # 主卫 PVC 服务井包络 0.94×2.59×2.15m：runtime 实测包络的**叙述引用**，权威记录是
+    # docs/pending-site-data.md #55（同文件已按「量房清单口径」豁免，且该条含完整坐标
+    # x[1.99,2.93] y[0.10,2.69] z[2.49,4.63]）。属「双口径未收敛」：该包络是预留区还是
+    # 实体管尚未裁定（#55 跟踪），裁定前 prose 只引用不新建数字；config/anti-penetration.yaml
+    # 的注释已改为指向 #55，不再手抄尺寸（禁双写）。
+    - path: docs/penetration-lint.md
+      scalars: [dimension]
+      pattern: '0\.94'
+      reason: 引用 pending-site-data #55 的 runtime 实测包络尺寸，权威在 #55（含完整坐标）；口径未裁定，不新建数字
+    - path: docs/decisions/15-penetration-lint.md
+      scalars: [dimension]
+      pattern: '0\.94'
+      reason: DEC 历史条目（只登记不改写），引用 #55 的实测包络尺寸；权威在 #55
 # ─── T2 对账层 ───────────────────────────────────────────────────────────────
 
 facts:
@@ -1631,6 +1644,9 @@ coverage:
   # 对这批声明做体检（validateRelationshipSpecs），因此它直接 loadAntiPenetrationConfig()。
   # verify:penetration 只经 runPenetrationChecks 间接触达，不重复登记。
   - { file: config/anti-penetration.yaml, field: "waivers", readers: ["shared/penetration/registry.ts", "scripts/verify/spatial/verify-spatial.ts"] }
+  # envelopes 段（活动包络申报）的真实消费方：CLI 加载、envelopes.ts 计算、
+  # shadow.ts 透传、types.ts 定义形状。shadow-only，不参与 errors/warnings。
+  - { file: config/anti-penetration.yaml, field: "envelopes", readers: ["shared/penetration/types.ts", "shared/penetration/envelopes.ts", "shared/penetration/shadow.ts", "scripts/verify/penetration/verify-penetration.ts"] }
   - { file: config/tradeoffs.yaml, field: "tradeoffs", readers: [] }
   - { file: config/verify-rules.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/verify-rules.yaml, field: "bounds", readers: ["shared/render/layout-bounds.ts", "shared/types.ts"] }
