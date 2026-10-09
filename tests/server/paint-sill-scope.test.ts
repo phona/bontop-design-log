@@ -27,7 +27,7 @@ import type { ResolvedRoom, WallSegment } from '../../shared/types.js';
  *   ② front 面被吊顶遮挡的部分被扣除：外露面积 + 遮挡面积 == 宽度 × (top − sill)（守恒）；
  *   ③ 与声明墙完全重合的端面被排除，并 push 指名道姓的 warning；
  *   ④ faces 没声明的面一律不算（不许多算一张脸）；
- *   ⑤ finish 分流：ordinary 与 wet_area 互斥，面积只落到声明的那一格；
+ *   ⑤ finish 分流：ordinary 与 anti_mold 互斥，面积只落到声明的那一格；
  *   ⑥ 真实声明端到端（config/layout/overlay.yaml 的 paint_master_bath_west_bay）数字可对账；
  *   ⑦ fail-closed：bay_sill element / room 不存在时调用方 computePaintScopeForLayout 必须抛错。
  *
@@ -316,24 +316,24 @@ test('faces 没声明的面一律不算：真实声明只产出 underside / fron
 
 // ───────────────────────── ⑤ finish 分流 ─────────────────────────
 
-test('finish 分流：面积只落到声明的那一格，ordinary 与 wet_area 互斥', () => {
+test('finish 分流：面积只落到声明的那一格，ordinary 与 anti_mold 互斥', () => {
   // 守的不变量：湿区（主卫上飘窗）面积必须与普通墙漆面积分开落账，
   // 否则会被普通墙漆的单价/材料/人工一起吃进去——主卫是淋浴湿区，不能混算。
   const geometry = synthStrip();
   const ordinary = computePaintSillScope(declaration(['underside', 'front'], 'ordinary'), geometry, SYNTH_BAY, SYNTH_ROOM, [SYNTH_DROP], []);
-  const wet = computePaintSillScope(declaration(['underside', 'front'], 'wet_area'), geometry, SYNTH_BAY, SYNTH_ROOM, [SYNTH_DROP], []);
+  const wet = computePaintSillScope(declaration(['underside', 'front'], 'anti_mold'), geometry, SYNTH_BAY, SYNTH_ROOM, [SYNTH_DROP], []);
 
   assert.equal(ordinary.areaByFinish.ordinary, ordinary.totalAreaSqm);
-  assert.equal(ordinary.areaByFinish.wet_area, 0);
-  assert.equal(wet.areaByFinish.wet_area, wet.totalAreaSqm);
+  assert.equal(ordinary.areaByFinish.anti_mold, 0);
+  assert.equal(wet.areaByFinish.anti_mold, wet.totalAreaSqm);
   assert.equal(wet.areaByFinish.ordinary, 0);
   assert.equal(ordinary.totalAreaSqm, wet.totalAreaSqm); // 同一几何，finish 只改分流不改面积
   assert.equal(ordinary.totalAreaSqm, 3.34); // 顶面 2.0 + 前缘外露 1.34
 
-  // 真实声明走 wet_area：普通墙漆那一格必须是 0
+  // 真实声明走 anti_mold：普通墙漆那一格必须是 0
   const scope = realScope();
-  assert.equal(REAL_DECLARATION!.finish, 'wet_area');
-  assert.equal(scope.areaByFinish.wet_area, scope.totalAreaSqm);
+  assert.equal(REAL_DECLARATION!.finish, 'anti_mold');
+  assert.equal(scope.areaByFinish.anti_mold, scope.totalAreaSqm);
   assert.equal(scope.areaByFinish.ordinary, 0);
 });
 
@@ -413,7 +413,7 @@ test('真实声明端到端：paint_master_bath_west_bay 的面积/种类/告警
   // 2026-10-09 精度修复：2.536296 + 1.019070 + 0.638 = 4.193366 → round3 = 4.193㎡
   // （旧口径逐段 round3 后累加得 4.198㎡，与浏览器独立三角网格复算 4.193365㎡ 对不上）
   assert.equal(scope.totalAreaSqm, 4.193);
-  assert.equal(scope.areaByFinish.wet_area, 4.193);
+  assert.equal(scope.areaByFinish.anti_mold, 4.193);
   assert.equal(scope.areaByFinish.ordinary, 0);
   assert.ok(isRoundedTo3(scope.totalAreaSqm), '汇总面积必须四舍五入到 3 位');
   for (const surface of scope.surfaces) {

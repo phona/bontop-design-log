@@ -304,8 +304,8 @@ export class OverviewMenu {
           netWallAreaSqm: number;
           ceilingAreaSqm: number;
           ordinaryAreaSqm: number;
-          wetAreaSqm: number;
-          wetAreaStatus: 'pending_system_quote_and_site_validation';
+          antiMoldSqm: number;
+          antiMoldStatus: 'pending_system_quote_and_site_validation';
           grossAreaSqm: number;
           netAreaSqm: number;
           highlightedIn3d: 'walls_only';
@@ -356,10 +356,10 @@ export class OverviewMenu {
     scopeRow.textContent = `声明 ${preview.scope.wallRegionEntryCount} 段墙面 / ${preview.scope.paintRoomCount} 间房：毛墙面 ${preview.scope.grossWallAreaSqm.toFixed(2)}㎡ − 门洞 ${preview.scope.doorGapAreaSqm.toFixed(2)}㎡ − 窗洞 ${preview.scope.windowGapAreaSqm.toFixed(2)}㎡ = 净墙面 ${preview.scope.netWallAreaSqm.toFixed(2)}㎡（3D 已高亮）+ 明确顶面 ${preview.scope.ceilingAreaSqm.toFixed(2)}㎡ = 普通涂装 ${preview.scope.ordinaryAreaSqm.toFixed(2)}㎡`;
     this.budgetEl.appendChild(scopeRow);
 
-    if (preview.scope.wetAreaSqm > 0) {
+    if (preview.scope.antiMoldSqm > 0) {
       const wetRow = document.createElement('div');
       wetRow.className = 'overview-row overview-paint-budget-wet-area';
-      wetRow.textContent = `主卫上飘窗湿区涂装 ${preview.scope.wetAreaSqm.toFixed(3)}㎡：完整材料系统、基层适配与人工待现场核验和分项报价，未计入上方普通漆金额。`;
+      wetRow.textContent = `主卫上飘窗防霉漆涂装 ${preview.scope.antiMoldSqm.toFixed(3)}㎡：防霉漆漆种/遍数/基层防霉处理与人工待现场核验和分项报价，未计入上方普通漆金额。`;
       this.budgetEl.appendChild(wetRow);
     }
 

@@ -21,7 +21,7 @@ import { controlPathForPhase, loadPhaseControlAuthority } from './phase-control.
 import { computePaintScopeForLayout, loadPaintScopeInputs } from './paint-cost-comparison.js';
 
 /**
- * 涂装**净**面积（净墙 + 顶）逐房间表：唯一来源是 overlay.yaml 的 paint_region 声明 +
+ * 涂装**净**面积（净墙 + 顶 + 普通漆窗台）逐房间表：唯一来源是 overlay.yaml 的 paint_region 声明 +
  * catalog 的 resolved 房间面积，走 shared/paint-scope.ts 的同一套拆洞算法，
  * 与 3D「涂漆区」检视态、/api/paint/comparison、paintBudgetPreview 完全同源。
  * 无声明的房间不进表（= 不算量），不给默认值、不猜面积；算不出就抛错，
@@ -39,8 +39,13 @@ function loadPaintScopeAreaByRoom(catalog: ProjectCatalog): Map<string, number> 
     catalog,
     inputs,
   );
-  for (const [roomId, wallArea] of Object.entries(scope.wallAreaByRoom)) {
-    areaByRoom.set(roomId, wallArea + (scope.ceilingAreaByRoom[roomId] ?? 0));
+  // 普通漆计价面积 = 净墙 + 顶面 + **普通漆窗台**（主卫上飘窗走防霉漆、单独计价，不进本行）。
+  // 2026-10-09 补：此前只加墙+顶，8 处新声明的上飘窗普通漆面积（43.097㎡）没进预算，
+  // 与 /api/paint/comparison 的 ordinaryAreaSqm 对不上——预算侧少算即说谎。
+  const roomIds = new Set([...Object.keys(scope.wallAreaByRoom), ...Object.keys(scope.ordinarySillAreaByRoom)]);
+  for (const roomId of roomIds) {
+    const wallArea = scope.wallAreaByRoom[roomId] ?? 0;
+    areaByRoom.set(roomId, wallArea + (scope.ceilingAreaByRoom[roomId] ?? 0) + (scope.ordinarySillAreaByRoom[roomId] ?? 0));
   }
   return areaByRoom;
 }

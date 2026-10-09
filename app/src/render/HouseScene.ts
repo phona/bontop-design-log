@@ -1100,7 +1100,7 @@ export class HouseScene implements SceneApi {
     gapAreaSqm: number;
     /** 构件（上飘窗）外露面面积合计：湿区待分项报价，单独列、不计入 wallAreaSqm。 */
     componentAreaSqm: number;
-    /** 其中 finish=wet_area 的部分（当前全部来自主卫上飘窗）。 */
+    /** 其中 finish=anti_mold 的部分（当前全部来自主卫上飘窗）。 */
     wetComponentAreaSqm: number;
     highlightedIn3d: 'walls_and_declared_sill_faces';
   } {
@@ -1130,7 +1130,7 @@ export class HouseScene implements SceneApi {
     for (const r of walls) if (!grossByRegion.has(r.regionId)) grossByRegion.set(r.regionId, r.grossAreaSqm);
     const gross = +[...grossByRegion.values()].reduce((s, v) => s + v, 0).toFixed(3);
     const componentAreaSqm = +components.reduce((s, r) => s + r.areaSqm, 0).toFixed(3);
-    const wetComponentAreaSqm = +components.filter((r) => r.finish === 'wet_area').reduce((s, r) => s + r.areaSqm, 0).toFixed(3);
+    const wetComponentAreaSqm = +components.filter((r) => r.finish === 'anti_mold').reduce((s, r) => s + r.areaSqm, 0).toFixed(3);
     return {
       required: included.length > 0,
       ready: inspection.ok && included.length > 0,

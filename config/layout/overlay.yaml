@@ -827,11 +827,74 @@ elements:
 
   # 主卫上飘窗涂装意图：只声明模型可证的外露底面、前缘与未被实体墙遮挡的起始端面。
   # 2.07/0.76m 沿用现有 bay_sill 待复尺；顶面铝扣板以 ceilingFinishY 几何平面裁垂面。
-  # 根部玻璃、窗框、玻璃根部防水反坎均不刷；直接淋水范围/湿区系统与基层现场确认。
+  # 根部玻璃、窗框、玻璃根部防水反坎均不刷；直接淋水范围与基层现场确认。
+  # 2026-10-09 业主裁定：主卫上飘窗刷**防霉漆**（非普通乳胶漆）——漆种/遍数/基层防霉处理
+  # 自成一格，finish 由 wet_area 改名 anti_mold 以对齐材料体系；费率待现场核验与分项报价。
   - id: paint_master_bath_west_bay
     type: paint_sill_region
     element: master_bath_west_bay
     room: master_bath
     faces: [underside, front, start_end]
-    finish: wet_area
-    reason: "上飘窗外露底面、朝室内前缘及西端面；玻璃根部与隐藏东端排除；尺寸待复尺"
+    finish: anti_mold
+    reason: "上飘窗外露底面、朝室内前缘及西端面；玻璃根部与隐藏东端排除；尺寸待复尺；刷防霉漆"
+
+  # ── 其余上飘窗涂装（2026-10-09 业主裁定「都算上」，仅主卫那处刷防霉漆）──
+  # faces 一律声明全 4 面：与实体墙重合的端面由 shared/paint-sill-scope.ts 的 wallCoversCap
+  # 自动排除并留下指名 warning，不在此手工判断哪一端被墙盖住——几何变了结论自适应。
+  # room 按「outline 质心/顶点落在哪个房间矩形」几何归属；与 id 命名不一致的两处已显式标注。
+  - id: paint_master_bedroom_west_bay
+    type: paint_sill_region
+    element: master_bedroom_west_bay
+    room: master_bedroom
+    faces: [underside, front, start_end, end_end]
+    finish: ordinary
+    reason: "主卧西墙飘窗外露面（西/东两端面均外露），普通乳胶漆"
+  - id: paint_master_bedroom_south_bay
+    type: paint_sill_region
+    element: master_bedroom_south_bay
+    room: master_bedroom
+    faces: [underside, front, start_end]
+    finish: ordinary
+    reason: "主卧南墙飘窗外露面，东端面与实体墙重合不声明；普通乳胶漆"
+  - id: paint_study_south_bay
+    type: paint_sill_region
+    element: study_south_bay
+    room: study
+    faces: [underside, front]
+    finish: ordinary
+    reason: "书房南墙飘窗外露面，两端面均与实体墙重合不声明；普通乳胶漆"
+  - id: paint_bedroom_se_south_bay
+    type: paint_sill_region
+    element: bedroom_se_south_bay
+    room: bedroom_se
+    faces: [underside, front]
+    finish: ordinary
+    reason: "东南卧南墙飘窗外露面，两端面均与实体墙重合不声明；普通乳胶漆"
+  - id: paint_bedroom_nw_north_bay
+    type: paint_sill_region
+    element: bedroom_nw_north_bay
+    room: bedroom_nw
+    faces: [underside, front]
+    finish: ordinary
+    reason: "西北次卧北墙飘窗外露面，两端面均与实体墙重合不声明；普通乳胶漆"
+  - id: paint_bedroom_nw_west_bay
+    type: paint_sill_region
+    element: bedroom_nw_west_bay
+    room: master_bath
+    faces: [underside, front, start_end]
+    finish: ordinary
+    reason: "⚠️ 名实不符待核：id 名为「西北次卧西墙」，但 outline x[0,1.1]×z[2.1,2.86] 几何上整块落在 master_bath 矩形内（bedroom_nw 西界是 x=2.6）。room 按几何归属取 master_bath——这决定吊顶遮挡用哪间房的 zone（主卫铝扣板完成面 2.65 会遮住约 0.5㎡）。若命名才对（该飘窗其实属西北次卧），需改 room 并重算。东端面与实体墙重合不声明；尺寸待复尺"
+  - id: paint_corridor_west_bay
+    type: paint_sill_region
+    element: corridor_west_bay
+    room: master_bedroom
+    faces: [underside, front, end_end]
+    finish: ordinary
+    reason: "⚠️ 名实不符待核：id 名为「走廊西墙」，但 outline x[0,1.1]×z[2.86,5.55] 几何上整块落在 master_bedroom 矩形内（走廊本体是 x[4.2,7.2]×z[4.3,6.45]）。room 按几何归属取 master_bedroom；该区域无主卧吊顶分区覆盖，故 room 取哪间都不改变遮挡结果，只影响算量归房。西端面与实体墙重合不声明；尺寸待复尺"
+  - id: paint_kitchen_north_bay
+    type: paint_sill_region
+    element: kitchen_north_bay
+    room: kitchen
+    faces: [underside, front]
+    finish: ordinary
+    reason: "⚠️ 漆/砖归属待业主终裁：厨房三面可贴墙已贴砖（walltile_kitchen_*），北墙 w_kit_north 是 suppress_kitchen_north 玻璃幕墙（不可贴），全厨房没有任何 paint_region 声明。本处按业主「都算上」的指示暂按 ordinary 普通漆登记；若厨房飘窗应走厨卫专用漆或贴砖，需改 finish 或改挂 sill_region。两端面均与实体墙重合不声明；尺寸待复尺"

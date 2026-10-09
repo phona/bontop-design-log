@@ -150,10 +150,14 @@ export interface PaintCostComparison {
     ceilingAreaByRoom: Record<string, number>;
     ceilingAreaSqm: number;
     sillAreaByRoom: Record<string, number>;
+    /** 普通漆窗台逐房间（预算侧普通漆行的组成部分）。 */
+    ordinarySillAreaByRoom: Record<string, number>;
+    /** 防霉漆窗台逐房间（当前只有主卫上飘窗）。 */
+    antiMoldSillAreaByRoom: Record<string, number>;
     ordinarySillAreaSqm: number;
-    wetAreaSqm: number;
+    antiMoldSqm: number;
     ordinaryAreaSqm: number;
-    wetAreaStatus: 'pending_system_quote_and_site_validation';
+    antiMoldStatus: 'pending_system_quote_and_site_validation';
     sillSurfaces: PaintScopeResult['sillSurfaces'];
     grossAreaSqm: number;
     /** 墙 + 顶的净面积（默认计费口径）。 */
@@ -516,7 +520,7 @@ export function buildPaintCostComparison(
   ];
 
   const warnings: string[] = [...scope.warnings];
-  if (scope.wetAreaSqm > 0) warnings.push(`主卫上飘窗湿区涂装 ${scope.wetAreaSqm.toFixed(3)}㎡ 已从普通墙漆单价/材料费/人工中排除；湿区完整涂装系统、基层适配、直接淋水等级及人工均待现场核验与分项报价，不能将其记作零元或已含。`);
+  if (scope.antiMoldSqm > 0) warnings.push(`主卫上飘窗防霉漆涂装 ${scope.antiMoldSqm.toFixed(3)}㎡ 已从普通墙漆单价/材料费/人工中排除；防霉漆完整涂装系统（漆种/遍数/基层防霉处理）、直接淋水等级及人工均待现场核验与分项报价，不能将其记作零元或已含。`);
   for (const quote of quoteResults) {
     if (quote.coverage === 'pending_confirmation' || quote.coverage === 'unconfirmed') {
       warnings.push(
@@ -550,10 +554,12 @@ export function buildPaintCostComparison(
       ceilingAreaByRoom: scope.ceilingAreaByRoom,
       ceilingAreaSqm: scope.ceilingAreaSqm,
       sillAreaByRoom: scope.sillAreaByRoom,
+      ordinarySillAreaByRoom: scope.ordinarySillAreaByRoom,
+      antiMoldSillAreaByRoom: scope.antiMoldSillAreaByRoom,
       ordinarySillAreaSqm: scope.ordinarySillAreaSqm,
-      wetAreaSqm: scope.wetAreaSqm,
+      antiMoldSqm: scope.antiMoldSqm,
       ordinaryAreaSqm: scope.ordinaryAreaSqm,
-      wetAreaStatus: 'pending_system_quote_and_site_validation',
+      antiMoldStatus: 'pending_system_quote_and_site_validation',
       sillSurfaces: scope.sillSurfaces,
       grossAreaSqm: scope.grossAreaSqm,
       netAreaSqm: scope.netAreaSqm,

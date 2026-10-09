@@ -184,10 +184,12 @@ test('underside keeps the wall-paint layer label and a reversible initial snapsh
       found.push(object as THREE.Mesh);
     }
   });
-  assert.equal(found.length, 1);
-  const mesh = found[0];
+  // 2026-10-09 起 overlay 有 9 个 paint_sill_region，各产一张 underside；按 elementId 锁定主卫那处
+  assert.equal(found.length, 9, '每个 paint_sill_region 各产一张 underside');
+  const mesh = found.find((candidate) => candidate.userData.elementId === 'master_bath_west_bay')!;
+  assert.ok(mesh, '主卫上飘窗的 underside 必须存在');
   assert.equal(mesh.userData.inspectionLayer, 'wall-paint', '新面必须仍是 wall-paint 标签');
-  assert.equal(mesh.userData.finish, 'wet_area');
+  assert.equal(mesh.userData.finish, 'anti_mold');
   assert.deepEqual(mesh.userData.inspectionInitial, { visible: false, opacity: 0.38, transparent: true, depthTest: true, depthWrite: false, renderOrder: 0 });
   assert.equal(mesh.visible, false);
   // 同一件 material 被多张面共享（ underside + front + start_end ），关闭态按快照逐网格恢复

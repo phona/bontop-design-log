@@ -136,7 +136,7 @@ const PaintSillRegionSchema = z
     element: z.string().min(1),
     room: z.string().min(1),
     faces: z.array(z.enum(['underside', 'front', 'start_end', 'end_end'])).min(1),
-    finish: z.enum(['ordinary', 'wet_area']),
+    finish: z.enum(['ordinary', 'anti_mold']),
     color: z.string().optional(),
     reason: z.string().optional(),
   })

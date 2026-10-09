@@ -8,6 +8,7 @@
 - `DEC-2026-10-09-G01` 门禁编排器取代 `&&` 链（已计入 `16-verify-gate.md`，此处不重复）
 - `DEC-2026-10-09-P02` 涂装范围扩展到显式顶面与上飘窗外露面，并修正顶面多计 7.726㎡
 - `DEC-2026-10-09-P03` 上飘窗涂装精度与几何口径修正：逐段 round3 累加改内部全精度、底面映射与 bay_sill 本体对齐、审计分水平/立面
+- `DEC-2026-10-09-P04` 全部上飘窗纳入涂装范围：主卫刷防霉漆独立计价，其余 8 处按普通漆；预算侧补算漏记的窗台面积
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -58,3 +59,20 @@
 - **决策人**：并行会话实施（commit `4e6c763`），业主授权后由 AI 补登记本 DEC 并校正文档数字。
 - **验证**：`test:server` **869/869**、`test:app` **564/564**、`typecheck` 干净、`verify:facts` OK、`verify:all` **14/15**（唯一失败是既有的 `sock_child_ac`）。测试已钉 4.193㎡；`README.md` 与两处测试字面量由 4.198/267.337 校正为 4.193/267.332（原靠 ±0.02 容差掩盖）。代码注释中保留的「4.198㎡」均为**旧值说明**（记载曾用口径），非现行口径。
 - **后续议题**：湿区窗台 4.193㎡ 的材料系统/基层适配/人工仍待现场核验与分项报价；`paint_sill_region` 仅声明主卫一处，其余上飘窗是否纳入待业主裁定。
+
+---
+
+### DEC-2026-10-09-P04 全部上飘窗纳入涂装范围：主卫刷防霉漆独立计价，其余 8 处按普通漆；预算侧补算漏记的窗台面积
+
+- **日期**：2026-10-09。触发：业主要求「所有上飘窗都算上」，并指出「主卫的上飘窗需要刷防霉漆，更复杂」。
+- **问题（覆盖面只有 1/12）**：overlay 有 12 个 `bay_sill`，其中 3 个防水台已由 `sill_region`（贴砖）覆盖、1 个主卫上飘窗有 `paint_sill_region`，**其余 8 个没有任何涂装声明**——漆面统计只覆盖十二分之一。按主卫那处的量级（约 4.2㎡/个）推算，8 个漏算约 25–35㎡，属实质性预算口径缺口（P02 后续议题② 已登记，本条落地）。
+- **选定方案**：
+  - **8 处全部补 `paint_sill_region` 声明**，`finish: ordinary`；`faces` 取**精确面集**（与 `wallCoversCap` 实测一致：被实体墙盖住的端面不声明）。未采用「声明全 4 面让算法排除」的方案——那会产生 11 条「已排除」warning 并流入 `/api/paint/comparison` 的 warnings 与 UI 警告列表，而 warning 本该意味着「需要关注」。`wallCoversCap` 安全网保留：将来几何变化导致声明面被墙盖住时照常 warning，提示声明过期。
+  - **主卫上飘窗改刷防霉漆**：`finish` 由 `wet_area` 改名 `anti_mold`（全仓约 45 处触点：枚举、`PaintScopeResult.antiMoldSqm`、API scope、UI 行、测试），中文措辞由「湿区涂装」改为「防霉漆涂装（漆种/遍数/基层防霉处理）」——`antiMoldStatus: pending_system_quote_and_site_validation` 不变，仍单独计价、不进普通漆金额。
+  - **room 按几何归属**：`bedroom_nw_west_bay` 的 outline x[0,1.1]×z[2.1,2.86] 整块落在 master_bath 矩形内（bedroom_nw 西界是 x=2.6）、`corridor_west_bay` 整块落在 master_bedroom 矩形内（走廊本体是 x[4.2,7.2]×z[4.3,6.45]）——**id 命名与几何不符**，两处均按几何归属并在 reason 里显式标注「名实不符待核」。房间归属决定吊顶遮挡用哪间房的 zone（主卫铝扣板完成面 2.65 会遮住约 0.5㎡），不能按名字猜。
+- **决策依据**：43.097㎡ 普通漆窗台 + 4.193㎡ 防霉漆窗台由 `computePaintSillScope` 逐面实算（与 3D mesh 同一 outline）；普通计费面积 263.139 → 306.236㎡。
+- **预算影响（重要）**：修复一处**预算侧漏算**——`server/budget-calculator.ts` 的 `loadPaintScopeAreaByRoom` 原先只加「净墙 + 顶面」，**完全没加窗台面积**，导致预算行项目比 `/api/paint/comparison` 的 `ordinaryAreaSqm` 少 43.097㎡（被 `paint-scope.test.ts` 的守恒断言「预算行项目合计必须等于普通计费面积」抓住）。已修：改为「净墙 + 顶 + 普通漆窗台」，房间集合取两者并集（厨房只有窗台声明、无 `paint_region`，按并集才进预算）。`painting.actual` 7977.02 → **9284.15** 元。
+- **关联文件**：`config/layout/overlay.yaml`（+8 段声明、主卫 finish 改名）、`shared/paint-scope.ts`（新增 `ordinarySillAreaByRoom` / `antiMoldSillAreaByRoom`）、`server/overlay-merge.ts`（枚举）、`shared/types.ts`、`shared/paint-sill-scope.ts`、`server/paint-cost-comparison.ts`（API scope 暴露分房面积 + 告警措辞）、`server/budget-calculator.ts`（预算面积含窗台）、`app/src/render/HouseScene.ts`、`app/src/ui/OverviewMenu.ts`、`tests/server/{paint-scope,paint-comparison-api,paint-sill-scope,paint-sill-scene}.test.ts`、`app/src/ui/OverviewMenu.test.ts`、`README.md`、本文件。
+- **决策人**：业主（「都算上」+ 主卫防霉漆）。
+- **验证**：`test:server` **869/869**、`test:app` **564/564**、`typecheck`（根 + app）干净、`verify:facts` OK、`verify:all` **14/15**（唯一失败是既有的 `sock_child_ac`）。`scope.warnings` 为 0（精确声明不产噪音）。
+- **后续议题**：① `kitchen_north_bay` 的漆/砖归属待业主终裁（厨房三面可贴墙已贴砖、北墙是 suppress 玻璃幕墙、全厨房无 `paint_region`；本处按「都算上」暂按 ordinary 登记）；② `bedroom_nw_west_bay` / `corridor_west_bay` 的 id 命名与几何归属不符，待确认命名还是几何；③ 上飘窗是异形面（水平+立面混合），普通漆按平墙费率计价可能偏低，费率口径待报价轮确认；④ 9 处飘窗的 `sill/height/depth` 仍为待复尺值，得房后复尺重算。

@@ -105,10 +105,14 @@ export interface PaintScopeResult {
   ceilingAreaSqm: number;
   /** Separately priced special-system surfaces; never silently charged at ordinary wall-paint rates. */
   sillAreaByRoom: Record<string, number>;
+  /** 其中按普通乳胶漆计价的那部分，逐房间——预算侧普通漆行必须含它。 */
+  ordinarySillAreaByRoom: Record<string, number>;
+  /** 其中按防霉漆计价的那部分，逐房间。 */
+  antiMoldSillAreaByRoom: Record<string, number>;
   ordinarySillAreaSqm: number;
-  wetAreaSqm: number;
+  antiMoldSqm: number;
   ordinaryAreaSqm: number;
-  sillSurfaces: Array<{ declaration: { id: string; element: string; room: string; faces: string[]; finish: 'ordinary' | 'wet_area' }; surfaces: Array<{ id: string; kind: string; points: Array<{ x: number; z: number }>; bottom: number; top: number; areaSqm: number; occludedAreaSqm: number }>; totalAreaSqm: number; warnings: string[] }>;
+  sillSurfaces: Array<{ declaration: { id: string; element: string; room: string; faces: string[]; finish: 'ordinary' | 'anti_mold' }; surfaces: Array<{ id: string; kind: string; points: Array<{ x: number; z: number }>; bottom: number; top: number; areaSqm: number; occludedAreaSqm: number }>; totalAreaSqm: number; warnings: string[] }>;
   grossAreaSqm: number;
   netAreaSqm: number;
   /**
@@ -234,7 +238,7 @@ export function computePaintScope(
   walls: PaintWallInput[],
   regions: PaintRegionInput[],
   windows: PaintWindowInput[],
-  options: { ceilingAreaByRoom?: Record<string, number>; suppressedWallIds?: Set<string>; sillAreas?: Array<{ room: string; finish: 'ordinary' | 'wet_area'; totalAreaSqm: number }> } = {},
+  options: { ceilingAreaByRoom?: Record<string, number>; suppressedWallIds?: Set<string>; sillAreas?: Array<{ room: string; finish: 'ordinary' | 'anti_mold'; totalAreaSqm: number }> } = {},
 ): PaintScopeResult {
   const wallById = new Map(walls.map((wall) => [wall.id, wall]));
   const windowsByWall = new Map<string, PaintWindowInput[]>();
@@ -319,15 +323,22 @@ export function computePaintScope(
   const ceilingAreaByRoom = options.ceilingAreaByRoom ?? {};
   const ceilingAreaSqm = r3(Object.values(ceilingAreaByRoom).reduce((sum, value) => sum + value, 0));
   const sillAreaByRoom: Record<string, number> = {};
+  const ordinarySillAreaByRoom: Record<string, number> = {};
+  const antiMoldSillAreaByRoom: Record<string, number> = {};
   let ordinarySillAreaSqm = 0;
-  let wetAreaSqm = 0;
+  let antiMoldSqm = 0;
   for (const sill of options.sillAreas ?? []) {
     sillAreaByRoom[sill.room] = r3((sillAreaByRoom[sill.room] ?? 0) + sill.totalAreaSqm);
-    if (sill.finish === 'ordinary') ordinarySillAreaSqm += sill.totalAreaSqm;
-    else wetAreaSqm += sill.totalAreaSqm;
+    if (sill.finish === 'ordinary') {
+      ordinarySillAreaByRoom[sill.room] = r3((ordinarySillAreaByRoom[sill.room] ?? 0) + sill.totalAreaSqm);
+      ordinarySillAreaSqm += sill.totalAreaSqm;
+    } else {
+      antiMoldSillAreaByRoom[sill.room] = r3((antiMoldSillAreaByRoom[sill.room] ?? 0) + sill.totalAreaSqm);
+      antiMoldSqm += sill.totalAreaSqm;
+    }
   }
   ordinarySillAreaSqm = r3(ordinarySillAreaSqm);
-  wetAreaSqm = r3(wetAreaSqm);
+  antiMoldSqm = r3(antiMoldSqm);
   const ordinaryAreaSqm = r3(netWallAreaSqm + ceilingAreaSqm + ordinarySillAreaSqm);
   return {
     regions: results.sort((a, b) => a.id.localeCompare(b.id)),
@@ -339,12 +350,14 @@ export function computePaintScope(
     ceilingAreaByRoom,
     ceilingAreaSqm,
     sillAreaByRoom,
+    ordinarySillAreaByRoom,
+    antiMoldSillAreaByRoom,
     ordinarySillAreaSqm,
-    wetAreaSqm,
+    antiMoldSqm,
     ordinaryAreaSqm,
     sillSurfaces: [],
-    grossAreaSqm: r3(grossWallAreaSqm + ceilingAreaSqm + ordinarySillAreaSqm + wetAreaSqm),
-    netAreaSqm: r3(netWallAreaSqm + ceilingAreaSqm + ordinarySillAreaSqm + wetAreaSqm),
+    grossAreaSqm: r3(grossWallAreaSqm + ceilingAreaSqm + ordinarySillAreaSqm + antiMoldSqm),
+    netAreaSqm: r3(netWallAreaSqm + ceilingAreaSqm + ordinarySillAreaSqm + antiMoldSqm),
     warnings,
   };
 }

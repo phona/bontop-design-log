@@ -8,7 +8,7 @@ export interface PaintSillFaceInput {
   element: string;
   room: string;
   faces: Array<'underside' | 'front' | 'start_end' | 'end_end'>;
-  finish: 'ordinary' | 'wet_area';
+  finish: 'ordinary' | 'anti_mold';
 }
 
 export interface PaintSillSurface {
@@ -32,7 +32,7 @@ export interface PaintSillScopeResult {
   declaration: PaintSillFaceInput;
   surfaces: PaintSillSurface[];
   totalAreaSqm: number;
-  areaByFinish: Record<'ordinary' | 'wet_area', number>;
+  areaByFinish: Record<'ordinary' | 'anti_mold', number>;
   warnings: string[];
 }
 
@@ -145,5 +145,5 @@ export function computePaintSillScope(
     surfaces.push(...verticalSurface(declaration.id, face, a, b, sill, top, ceilingZones, room));
   }
   const totalAreaSqm = round3(surfaces.reduce((sum, face) => sum + face.areaSqm, 0));
-  return { declaration, surfaces, totalAreaSqm, areaByFinish: { ordinary: declaration.finish === 'ordinary' ? totalAreaSqm : 0, wet_area: declaration.finish === 'wet_area' ? totalAreaSqm : 0 }, warnings };
+  return { declaration, surfaces, totalAreaSqm, areaByFinish: { ordinary: declaration.finish === 'ordinary' ? totalAreaSqm : 0, anti_mold: declaration.finish === 'anti_mold' ? totalAreaSqm : 0 }, warnings };
 }
