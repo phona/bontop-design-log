@@ -106,8 +106,17 @@ describe('mep ceiling clearance lint (A1)', () => {
           construction_status: 'pending', method: 'conduit', diameter: 0.02, from_height: 2.55, to_height: 2.55,
           // (8.0,4.6)y=2.55 在 ceiling_living 的 footprint 内且高于完成面 2.50；
           // 起点/终点也显式写 from_height/to_height=2.55，否则退回 strong_power 分层 2.45 制造假冲突。
-          // (0.5,7.0)y=0.30 远低于任何完成面，但该坐标在主卧中部、不在任何吊顶分区里。
-          from: { x: 7.5, z: 4.6 }, via: [{ x: 8.0, z: 4.6, y: 2.55 }, { x: 0.5, z: 7.0, y: 0.3 }], to: { x: 8.5, z: 4.6 },
+          // (4.5,7.0)y=0.30 远低于任何完成面，但该坐标在主卧中部、不在任何吊顶分区里
+          // （已逐区核对 config/ceiling.yaml 的 area，无任何 footprint 含 (4.5,7.0)）。
+          // 2026-10-07 夹具修正：原先这里写的是 (0.5,7.0)，从 (8.0,4.6) 直连 (0.5,7.0) 的对角段
+          // 会穿过 curtain_box_master_west（area [1.10,5.55,1.35,8.80]，完成面 2.65m），
+          // 触发 shared/mep-hvac-lint.ts:820-828 的「直线段跨 footprint 且两端低于完成面」规则，
+          // 于是本用例（只测 per-point 分支）反而报出一条 ceiling_clearance_unverified。
+          // 把该点从 (0.5,7.0) 东移到 (4.5,7.0) 后，两段都不再跨窗帘盒 footprint，只剩
+          // 「点在 footprint 内但高于完成面」与「点低于完成面但不在 footprint 内」两个 per-point 情形，
+          // 即本用例原本要守的不变量。注意真实 verify:mep 里这类 ceiling_clearance_unverified 属
+          // survey_dependent 桶（非 error、verifier 通过），说明生产接受该段级规则，故修夹具而非修规则。
+          from: { x: 7.5, z: 4.6 }, via: [{ x: 8.0, z: 4.6, y: 2.55 }, { x: 4.5, z: 7.0, y: 0.3 }], to: { x: 8.5, z: 4.6 },
         }],
       },
       sources,

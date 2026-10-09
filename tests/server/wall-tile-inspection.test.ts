@@ -263,7 +263,11 @@ test('HouseScene wall-tile audit surface stays independent of HVAC', () => {
   }
   // 播报摘要不得依赖 HVAC 状态
   const app = readFileSync('app/src/App.ts', 'utf8');
-  const toast = /if \(this\.wallTileVisible\) \{[\s\S]*?showToast/.exec(app);
+  // app/src/App.ts:544 的播报守卫已从 `if (this.wallTileVisible) {` 演进为 `if (this.wallTileVisible && announce) {`
+  // （:536 签名多带 announce = true，DEC-2026-10-07-R09：开关复用点不需要每次同步都播报）。
+  // 旧正则 `if \(this\.wallTileVisible\) \{` 写死无 announce 守卫，故失配；放行额外条件后
+  // 原检测意图不变——仍然要求「开启即播报数字摘要」且播报段不得依赖 HVAC 状态。
+  const toast = /if \(this\.wallTileVisible[^)]*\) \{[\s\S]*?showToast/.exec(app);
   assert.ok(toast, '开启贴砖检视态应播报数字摘要');
   assert.ok(!/Hvac|hvac/.test(toast[0]), '播报不得依赖 HVAC 状态');
 });

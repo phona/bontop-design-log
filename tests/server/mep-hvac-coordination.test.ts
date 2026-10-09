@@ -20,7 +20,13 @@ const sources: MepEndpointSources = { electrical, plumbing, ceiling: [], hvacAnc
 function sourceIds(): MepEndpointSources {
   return {
     ...sources,
-    hvacAnchors: ['outdoor_a2', 'indoor_living', 'indoor_dining', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child', 'bend_corridor'].map((id) => ({ id, status: 'inferred', system: 'refrigerant' as const, position: { x: 0, y: 0, z: 0 } })),
+    // 注：'outdoor_a2' 不能出现在 hvacAnchors 里——shared/mep-hvac-coordination-schema.ts:137-144 的
+    // registerSources 禁止同一 id 跨 kind 重复注册（hvac anchor vs VRF outdoor），否则 validateMepCoordination
+    // 第一句就抛 "Duplicate MEP endpoint id outdoor_a2"，把本文件所有测试挡在断言之前。
+    // 真实生产路径 endpointSourcesFromFacts（schema:214-226）从 plan.diagram.anchors 与 plan.outdoor 分建、
+    // id 不重叠，所以生产不会撞车；此前夹具把 outdoor_a2 同时塞进两个 kind 是测试自身写错。
+    // outdoor_a2 仍由下面的 outdoor 条目提供，sources.outdoor 一样能解析到 (6.4, 0.5)。
+    hvacAnchors: ['indoor_living', 'indoor_dining', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child', 'bend_corridor'].map((id) => ({ id, status: 'inferred', system: 'refrigerant' as const, position: { x: 0, y: 0, z: 0 } })),
     hvacTerminals: ['supply_living', 'return_living', 'supply_master', 'return_master', 'supply_study', 'return_study', 'supply_parent', 'return_parent', 'supply_child', 'return_child', 'condensate_living_candidate', 'condensate_master_candidate', 'condensate_study_candidate', 'condensate_parent_candidate', 'condensate_child_candidate', 'net_unused'].map((id) => ({ id, status: 'pending', system: id.startsWith('supply') ? 'supply_air' as const : id.startsWith('return') ? 'return_air' as const : 'condensate' as const, position: { x: 0, y: 0, z: 0 } })),
     outdoor: [{ id: 'outdoor_a2', platform: 'west_platform', x: 6.4, z: 0.5, direction: 'south', width: 0.9, depth: 0.335, height: 0.7, model: 'test' }],
   };
@@ -106,8 +112,9 @@ test('real render facts resolve all configured MEP routes through HVAC ceiling a
   const facts = { electrical, plumbing, ceiling, hvac };
   const factSources = endpointSourcesFromFacts(facts);
   const report = resolveMepRoutes(config, factSources);
-  assert.equal(report.total, 102); // 80→87（DEC-2026-10-06-R1 给排水兜底）→92（2026-10-07 v1 水路估算：6 条要求提升 + 5 条干管）→102（2026-10-07 DEC-2026-10-07-M04 声明式补客客厅 ordinary_power_living 十条路由）
-  assert.equal(report.resolved, 102);
+  assert.equal(report.total, 137); // 80→87（DEC-2026-10-06-R1 给排水兜底）→92（2026-10-07 v1 水路估算：6 条要求提升 + 5 条干管）→102（2026-10-07 DEC-2026-10-07-M04 声明式补客客厅 ordinary_power_living 十条路由）→137（2026-10-07 之后 config/mep-hvac-coordination.yaml 继续补路由，本处只跟随增长）
+  // 路线数随 config/mep-hvac-coordination.yaml 增长；改这个数之前先跑 `npm run verify:mep` 确认 resolved/unresolved 结构没变（resolved=137/unresolved=0 才算健康）
+  assert.equal(report.resolved, 137); // 与 total 同步：137 条全部解析成功，无 unresolved
   assert.equal(report.unresolved, 0);
   const expectedAirRoutes = ['supply-air-study', 'return-air-study', 'supply-air-parent', 'return-air-parent', 'supply-air-child', 'return-air-child'];
   const expectedCondensateRoutes = ['condensate-living', 'condensate-master', 'condensate-study', 'condensate-parent', 'condensate-child'];

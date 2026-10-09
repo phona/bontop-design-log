@@ -5,10 +5,24 @@ import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { parseElectricalTopology, ElectricalPointSchema } from '../../shared/project-render-facts-schema.js';
 import { lintElectricalTopology } from '../../shared/electrical-lint.js';
-import type { ElectricalPoint, ElectricalTopology } from '../../shared/types.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import { parseOverlay } from '../../server/overlay-merge.js';
+import type { ElectricalPoint, ElectricalTopology, FurnishingsYaml, VertexLayoutYaml } from '../../shared/types.js';
 
 const points = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
 const raw = readFileSync('config/electrical-topology.yaml', 'utf8');
+
+// 真实 verifier（scripts/verify/electrical/verify-electrical-lint.ts:12-19）是带 layout context 调 lintElectricalTopology 的：
+// shared/electrical-lint.ts:137-148 的窗帘规则要靠 context.layout 找出 suppressed wall 几何，
+// 拿不到就会对 5 个窗帘电源点各报一条 "cannot be checked because suppressed wall geometry is unavailable" 噪声。
+// 本测试此前漏传 context（多 5 条 curtain_power_near_curtain_wall 噪声：53→58），
+// 因此这里照抄 verifier 的取法：model-geometry.yaml + overlay.yaml → resolveLayout/parseOverlay，
+// 几何一律由项目现有 resolver 解析，不在测试里手抄。
+const layoutContext = () => ({
+  layout: resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml),
+  suppressedWallIds: parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).suppress.flatMap((item) => (item.wall ? [item.wall] : item.walls ?? [])),
+  furnishings: (parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml }).furnishings ?? {},
+});
 
 const byCode = (result: ReturnType<typeof lintElectricalTopology>, code: string) => result.warnings.filter((issue) => issue.code === code);
 const idsOf = (result: ReturnType<typeof lintElectricalTopology>, code: string) => byCode(result, code).map((issue) => issue.id).sort();
@@ -17,7 +31,7 @@ const isSocket = (point: ElectricalPoint | undefined) => point !== undefined && 
 
 test('real electrical topology parses and lints', () => {
   const topology = parseElectricalTopology(raw, points);
-  const result = lintElectricalTopology(topology, points);
+  const result = lintElectricalTopology(topology, points, layoutContext());
   assert.equal(topology.circuits.length, 21); // DEC-2026-10-03-R1：25 路合并至 19 路；DEC-2026-10-04-R2：+外机专用回路；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）
   assert.equal(topology.controls.length, 11);
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 20); // R15 起夜灯并入照明回路；R12 删除客卫 3 灯、R15 删除 NP-4b（24→20）

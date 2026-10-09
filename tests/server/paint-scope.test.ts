@@ -499,7 +499,10 @@ test('paint scope reconciliation stays free of browser globals and HVAC coupling
   assert.ok(!/Hvac|hvac/.test(paintStatus![0]));
 
   const app = readFileSync('app/src/App.ts', 'utf8');
-  const appPaint = /private setPaintInspectionVisible\(visible: boolean\): void \{[\s\S]*?\n  \}/.exec(app);
+  // app/src/App.ts:572 的签名已带 `announce = true`（DEC-2026-10-07-R09：同一开关被 PaintButton
+  // onToggle 与图层同步复用，关态时不应重复播报），旧正则 `\(visible: boolean\): void` 写死单参故失配。
+  // 这里放行新增参数（[^)]*），但保持原检测意图：仍然只取开关函数体、仍然要求体内不得引用 HVAC。
+  const appPaint = /private setPaintInspectionVisible\(visible: boolean[^)]*\): void \{[\s\S]*?\n  \}/.exec(app);
   assert.ok(appPaint);
   assert.ok(!/Hvac|hvac/.test(appPaint![0]), 'App 的涂漆开关播报不得引用 HVAC');
 });

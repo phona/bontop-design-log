@@ -124,7 +124,12 @@ describe('RuleEngine', () => {
     assert.equal(result.risks[0].severity, 'medium');
   });
 
-  it('returns empty constraints when required topic not registered', () => {
+  // 43b931f 起 server/rule-engine.ts:215-224 把 `if (!requiredTopic) continue;` 改成
+  // 显式 push 一条 constraintViolation 后 continue——「require 指向的 topic 根本没在 catalog 注册」
+  // 从静默跳过变成 fail-loud：静默会让「规则写错 topic 名」这种配置漂移永远不暴露，
+  // 而与同函数下面 requiredOptionId 缺失（:227-236）、requiredOption 缺失（:238-244）两个分支的处理保持一致
+  // （三个分支都 push 同一形状的 violation）。本测试名/断言停留在改之前的「静默跳过」语义，已过期。
+  it('reports a violation when a required topic is not registered', () => {
     const engine = new RuleEngine(config);
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
@@ -136,7 +141,12 @@ describe('RuleEngine', () => {
       getTopic: () => undefined,
       getOption: () => undefined,
     } as any);
-    assert.equal(result.constraintViolations.length, 0);
+    // catalog 里没有 range_hood topic → 规则命中但 required topic 未注册，按 43b931f 的既定设计报 violation
+    assert.equal(result.constraintViolations.length, 1);
+    assert.equal(result.constraintViolations[0].id, 'high_airflow_requires_hood');
+    assert.equal(result.constraintViolations[0].topic, 'hvac');
+    assert.equal(result.constraintViolations[0].requirement.topic, 'range_hood');
+    assert.equal(result.constraintViolations[0].roomId, null);
   });
 
   it('handles empty risks and constraints', () => {

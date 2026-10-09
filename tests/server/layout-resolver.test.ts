@@ -74,7 +74,10 @@ describe('resolveLayout', () => {
   it('throws on unknown vertex in room boundary', () => {
     const yaml = makeRectRoom();
     yaml.rooms[0].boundary = ['v1', 'v999', 'v3', 'v4'];
-    assert.throws(() => resolveLayout(yaml), /Unknown vertex: v999/);
+    // 旧正则 /Unknown vertex: v999/ 失配：server/layout-resolver.ts:47 的句式已演进为
+    // `${kind} references unknown vertex: ${id}`（带 room 前缀 + 小写 references），报错信息更可定位。
+    // 只匹配稳定的后半句，避免被 room kind/id 变化再次打断。
+    assert.throws(() => resolveLayout(yaml), /references unknown vertex: v999/);
   });
 
   it('throws on self-intersecting boundary', () => {
