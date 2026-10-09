@@ -571,8 +571,9 @@
       "x": 0.5,
       "z": 2.76,
       "wall": "w_mbath_south",
-      "note": "主卫淋浴花洒（2026-08-25 隔墙北移2.86随墙移：湿区西端 x[0,1.2]，花洒挂南墙朝北，玻璃隔断 x=1.2 左右分离）；**本轮不画 MEP route**：冷/热给水管路由既无 DEC 定案也无 prose 路径（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 热水器/龙头 SKU 后单独深化（pending #44）",
+      "note": "主卫淋浴花洒（2026-08-25 隔墙北移2.86随墙移：湿区西端 x[0,1.2]，花洒挂南墙朝北，玻璃隔断 x=1.2 左右分离）；**本轮不画 MEP route**：冷/热给水管路由既无 DEC 定案也无 prose 路径（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 热水器/龙头 SKU 后单独深化（pending #44）；状态依据：花洒本体与挂位为 2026-08-25 随隔墙北移确定的设计值（docs/decisions/12-plumbing.md 登记该两点给水路线端点内联问题），故 status=inferred；pending 的是给水管路而非本点位位置，路由缺口由 #44 跟踪",
       "height": 1,
+      "status": "inferred",
       "water_temp": "mixed",
       "water_dn": 20
     },
@@ -650,8 +651,9 @@
       "x": 7.1,
       "z": 2.45,
       "wall": "w_gbath_east",
-      "note": "2026-08-29 客卫北端淋浴花洒；东墙实体墙西侧挂载，坐东朝西，淋浴区 z≈2.30~2.75；**本轮不画 MEP route**：给水管路由无定案（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 花洒 SKU 后单独深化（pending #44）",
+      "note": "2026-08-29 客卫北端淋浴花洒；东墙实体墙西侧挂载，坐东朝西，淋浴区 z≈2.30~2.75；**本轮不画 MEP route**：给水管路由无定案（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 花洒 SKU 后单独深化（pending #44）；状态依据：花洒本体与挂位为 2026-08-29 确定的设计值（docs/decisions/12-plumbing.md 登记该两点给水路线端点内联问题），故 status=inferred；pending 的是给水管路而非本点位位置",
       "height": 1,
+      "status": "inferred",
       "water_temp": "mixed",
       "water_dn": 20,
       "wallSide": "west"

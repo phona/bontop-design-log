@@ -146,13 +146,16 @@ export function collectElements(): ElementInput[] {
   for (const point of parsePlumbingPoints(read(ELEMENT_SOURCES.plumbing))) {
     const note = (point as { note?: string }).note;
     const decision = extractDecision(note);
+    // 与电气同口径：position_status（位置准不准）优先于 status（这项定没定）。
+    // 早期只读 position_status，导致已有 `status: inferred` 的给排水点被误判成 undeclared。
     const positionStatus = (point as { position_status?: string }).position_status;
+    const itemStatus = (point as { status?: string }).status;
     elements.push({
       id: `plumbing:${point.id}`,
       kind: 'plumbing',
       label: `${point.type} ${point.id}`,
       ...(point.room ? { room: point.room } : {}),
-      ...(positionStatus ? { configStatus: positionStatus } : {}),
+      ...(positionStatus ? { configStatus: positionStatus } : itemStatus ? { configStatus: itemStatus } : {}),
       ...(decision ? { decision } : {}),
     });
   }

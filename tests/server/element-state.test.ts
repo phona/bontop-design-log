@@ -223,21 +223,21 @@ describe('element census snapshot', () => {
     const elements = collectElements();
     const result = deriveElementStates({ elements, ledger: { entries: [] }, issues: [] });
     assert.equal(result.summary.total, 164, '构件总数（电气 107 + 给排水 32 + 吊顶/HVAC 25）');
-    // 空台账 undeclared 来历：b0c425c 基线 74 →（769401e 电气 46 项补申报）28 →（本次接入
-    // config/hvac.yaml，6 个 ac_* 内机从 hvac anchor 拿到 confirmed）22。这 6 条 hvac anchor
-    // 的 confirmed 是本次修复的直接贡献（-6）；电气补申报的 -46 来自并行提交，非本次改动。
-    assert.equal(result.summary.undeclared, 22, '空台账下的未声明状态数——纯申报缺口，不受台账/门禁影响');
-    assert.ok(result.summary.undeclared / result.summary.total < 0.5, '未声明占比不应过半——过半说明申报大面积缺失，应优先补申报而不是继续加规则');
+    // 申报缺口的历史：b0c425c 基线 74 → 电气 46 项按依据补申报 → hvac anchor 接入 6 项
+    // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15。
+    // 剩下的 15 个是「指不出依据所以不填」的诚实残留（12 个吊顶分区 + 3 个无任何状态线索的构件）。
+    assert.equal(result.summary.undeclared, 15, '空台账下的未声明状态数——纯申报缺口，不受台账/门禁影响');
+    assert.ok(result.summary.undeclared / result.summary.total < 0.15, '申报缺口应维持在低位；重新升高说明有新构件没申报');
   });
 
   it('binds most elements once the real ledger and decisions are in play', () => {
     const elements = collectElements();
     const ledger = parsePendingLedger(LEDGER);
     const result = deriveElementStates({ elements, ledger, issues: [] });
-    // 接上真实台账后，undeclared 从空台账的 22 再降到 16——否则说明派生没接上台账这份权威源。
-    // 来历同样叠加了电气补申报：b0c425c 68 →（769401e 电气补申报）22 →（本次 hvac 接入 -6）16。
-    assert.equal(result.summary.undeclared, 16, '台账把 6 个「无 config 状态、无 DEC、无 hvac anchor」的构件绑成了 pending（undeclared -6）');
-    assert.equal(result.summary.pending, 34, 'pending = config 声明 pending 23 + 台账新绑 11');
+    // 接上真实台账后 undeclared 从 15 降到 12（3 个构件被台账绑成 pending）——
+    // 降不下来说明派生没接上台份权威源。
+    assert.equal(result.summary.undeclared, 12, '真实台账下只剩 12 个吊顶分区');
+    assert.equal(result.summary.pending, 29);
     assert.ok((result.summary.byStatus.confirmed ?? 0) > 0, 'DEC 引用必须把构件绑成 confirmed');
   });
 });
