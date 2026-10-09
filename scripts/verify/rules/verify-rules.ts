@@ -39,6 +39,7 @@ interface Positioned {
 
 /** 吊顶平面角（area [x1,z1,x2,z2] 的四角），逐角圆角 corner_radii 的合法键。 */
 const VALID_CEILING_CORNERS = ['nw', 'ne', 'se', 'sw'] as const;
+const VALID_CEILING_EDGES = ['north', 'east', 'south', 'west'] as const;
 
 interface OverlaySuppress {
   id: string;
@@ -66,7 +67,7 @@ function main(): void {
 
   const electrical = yaml.load(fs.readFileSync('config/electrical.yaml', 'utf-8')) as Positioned[];
   const plumbing = yaml.load(fs.readFileSync('config/plumbing.yaml', 'utf-8')) as Positioned[];
-  const ceiling = yaml.load(fs.readFileSync('config/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; corner_radii?: Record<string, number>; concave_fillets?: Record<string, number>; buckle_panel?: { module: number; seam_width?: number; seam_color?: string }; inspection_layer?: string; inspection_opacity?: number; trade?: string }>;
+  const ceiling = yaml.load(fs.readFileSync('config/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; thickness?: number; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; corner_radii?: Record<string, number>; concave_fillets?: Record<string, number>; cove_fillets?: Record<string, number>; buckle_panel?: { module: number; seam_width?: number; seam_color?: string }; inspection_layer?: string; inspection_opacity?: number; trade?: string }>;
   const overlay = yaml.load(fs.readFileSync('config/layout/overlay.yaml', 'utf-8')) as { suppress: OverlaySuppress[] };
   const houseYaml = yaml.load(fs.readFileSync('config/house.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }>; gift_areas: Array<{ id: string; name: string }> };
   const modelGeom = yaml.load(fs.readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }> };
@@ -209,6 +210,20 @@ function main(): void {
         }
         if ((c.corner_radii?.[corner] ?? c.corner_radius ?? 0) > 0) {
           report('error', `[ceiling_concave_fillets] ceiling/${c.id}: ${corner} cannot carry both a convex round and a concave fillet`);
+        }
+      }
+    }
+    if (c.cove_fillets !== undefined) {
+      for (const [edge, value] of Object.entries(c.cove_fillets)) {
+        if (!VALID_CEILING_EDGES.includes(edge as (typeof VALID_CEILING_EDGES)[number])) {
+          report('error', `[ceiling_cove_fillets] ceiling/${c.id}: unknown edge "${edge}" (expect ${VALID_CEILING_EDGES.join('/')})`);
+          continue;
+        }
+        if (!Number.isFinite(value) || value <= 0) {
+          report('error', `[ceiling_cove_fillets] ceiling/${c.id}: ${edge} cove must be positive`);
+        }
+        if (value > (c.thickness ?? 0) && (c.thickness ?? 0) > 0) {
+          report('error', `[ceiling_cove_fillets] ceiling/${c.id}: ${edge} cove radius ${value} exceeds fascia height ${c.thickness}`);
         }
       }
     }
