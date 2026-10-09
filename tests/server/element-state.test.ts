@@ -224,9 +224,9 @@ describe('element census snapshot', () => {
     const result = deriveElementStates({ elements, ledger: { entries: [] }, issues: [] });
     assert.equal(result.summary.total, 164, '构件总数（电气 107 + 给排水 32 + 吊顶/HVAC 25）');
     // 申报缺口的历史：b0c425c 基线 74 → 电气 46 项按依据补申报 → hvac anchor 接入 6 项
-    // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15。
-    // 剩下的 15 个是「指不出依据所以不填」的诚实残留（12 个吊顶分区 + 3 个无任何状态线索的构件）。
-    assert.equal(result.summary.undeclared, 15, '空台账下的未声明状态数——纯申报缺口，不受台账/门禁影响');
+    // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15 → 吊顶分区补 DEC 溯源 10 项 → 5。
+    // 剩下的 5 个是「指不出依据所以不填」的诚实残留（2 个吊顶分区无 DEC 出处 + 3 个无任何状态线索的构件）。
+    assert.equal(result.summary.undeclared, 5, '空台账下的未声明状态数——纯申报缺口，不受台账/门禁影响');
     assert.ok(result.summary.undeclared / result.summary.total < 0.15, '申报缺口应维持在低位；重新升高说明有新构件没申报');
   });
 
@@ -236,7 +236,7 @@ describe('element census snapshot', () => {
     const result = deriveElementStates({ elements, ledger, issues: [] });
     // 接上真实台账后 undeclared 从 15 降到 12（3 个构件被台账绑成 pending）——
     // 降不下来说明派生没接上台份权威源。
-    assert.equal(result.summary.undeclared, 12, '真实台账下只剩 12 个吊顶分区');
+    assert.equal(result.summary.undeclared, 2, '真实台账下只剩 2 个无出处的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
     assert.equal(result.summary.pending, 29);
     assert.ok((result.summary.byStatus.confirmed ?? 0) > 0, 'DEC 引用必须把构件绑成 confirmed');
   });

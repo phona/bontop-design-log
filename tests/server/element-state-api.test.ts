@@ -65,10 +65,11 @@ describe('element state API', () => {
     assert.equal(res.body.cachedAt, null, '不带 conflicts 时不缓存，cachedAt 必须是 null');
     assert.equal(res.body.states.length, 164);
     assert.equal(res.body.summary.total, 164);
-    // 与 tests/server/element-state.test.ts 的真实台账快照同口径（无 issue，纯申报缺口 12）
-    assert.equal(res.body.summary.undeclared, 12);
+    // 与 tests/server/element-state.test.ts 的真实台账快照同口径（无 issue，纯申报缺口 2：
+    // 吊顶分区补 DEC 溯源后只剩 ceiling_child_ac / ceiling_main_corridor 两个无出处分区）
+    assert.equal(res.body.summary.undeclared, 2);
     assert.equal(res.body.summary.pending, 29);
-    assert.equal(res.body.summary.byStatus.undeclared, 12);
+    assert.equal(res.body.summary.byStatus.undeclared, 2);
     assert.ok(res.body.summary.byKind.electrical === 107 && res.body.summary.byKind.plumbing === 32);
   });
 
