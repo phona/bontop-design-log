@@ -1,0 +1,100 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: element-state-overlay-20261009
+subject: 构件级工程状态 3D 叠加层验收（W3/W4）
+priority:
+  user_goal: 3D 反映装修目标与状态；人与 agent 围绕同一套工程数据协作完成落地
+  ranked:
+    - 状态在 3D 可见（6 色 + 标记层 + 面板）
+    - 每个构件的依据可追溯（statusSource / 未决问题 / 冲突）
+    - 默认关闭不破坏既有视觉
+  non_negotiables:
+    - 不新建第二份状态真相（只派生）
+    - 状态词汇复用 HVAC confirmed/inferred/pending
+    - 禁止任何 git 操作
+  tradeoffs_accepted:
+    - 合批构件（电气/给排水 139 个）用标记层而非逐件上色（SceneBatcher 不支持逐件上色）
+frozen: true
+freeze_record:
+  alignment_id: align-2026-10-09-E01
+  original_user_response: "「3D模型能反应装修目标与状态，人跟AI能围绕这套工程，完成整套装修落地」；「不需要mcp了，其实agent直接读配置跟curl请求接口跟mcp效果差不多的」"
+  normalized_decisions:
+    - "状态投影经 GET /api/element-state 送进 3D，不建 MCP"
+    - "叠加层默认关闭，开启后按 status 上色 + 标记层 + 面板 + solo"
+    - "conflicted 与 status 共用同一层（conflicted 本就是 ElementState 的一种状态）"
+  confirmed_by_user: true
+  confirmed_at: "2026-10-09"
+  evidence_refs:
+    - docs/decisions/18-engineering-state.md
+allowed_scope:
+  files:
+    - server/element-state-service.ts
+    - server/routes.ts
+    - server/index.ts
+    - app/src/render/HouseScene.ts
+    - app/src/render/analysis/ElementStatePanel.ts
+    - app/src/ui/ElementStateButton.ts
+    - app/src/ui/InfoPanel.ts
+    - app/src/App.ts
+    - app/src/render/ElementStateHighlight.test.ts
+    - shared/element-state.ts
+  objects: []
+  archetypes: []
+  views: [perspective]
+  changes:
+    - "新增 GET /api/element-state（conflicts=1 / refresh=1）"
+    - "新增状态叠加层（上色 + 标记层 + solo + 面板 + 按钮）"
+    - "InfoPanel 通用状态读数渲染器"
+forbidden:
+  files:
+    - config/ 下任何设计配置
+    - shared/render/SceneBatcher.ts
+    - shared/render/SceneBuilder.ts
+    - data/project-render-facts.json（生成物）
+  objects: []
+  assumptions:
+    - "不许把 inferred 伪装成 measured"
+    - "不许为让数字好看而补申报"
+  out_of_scope_changes:
+    - MEP 路由几何
+    - 家具布置
+    - 吊顶分区几何
+open_questions:
+  - id: OQ1
+    category: function
+    question: 点击 3D 状态标记无法读出该构件状态（穿透命中背后物体），是否阻断？
+    fact_refs: [F11]
+    options:
+      - "修复：给标记挂 objectId 别名或在 targetFromIntersects 认 elementStateId"
+      - "接受：以面板表格作为唯一读数入口，移除 3D 点击读数承诺"
+    selected: null
+    user_response: null
+    status: open
+alignment:
+  records:
+    - alignment_id: align-2026-10-09-E01
+      question: 状态层的数据通道与形态
+      answer: HTTP 端点 + 叠加层，不做 MCP
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands:
+    - npm run typecheck
+    - npm run test:server
+    - npm run test:app
+    - npm run verify:all
+    - npm run verify:facts
+  browser_evidence_required: true
+  required_views:
+    - view-sock-child-ac-pending
+    - view-kitchen-mixed-status
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: not_applicable
+  blocking_issues:
+    - "3D 点击状态标记读出背后物体信息（误导性），见 F11"
+  done_when:
+    - 五份模板填妥且版本关联
+    - 每条 required view 有有效同版本浏览器证据
+    - 双评审按固定契约返回，无 FAIL/BLOCKED
+  delivery_notes_required: true

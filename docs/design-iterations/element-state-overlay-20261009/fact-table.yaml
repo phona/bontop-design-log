@@ -1,0 +1,168 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: element-state-overlay-20261009
+subject: 构件级工程状态 3D 叠加层（DEC-2026-10-09-E01 W3/W4）验收
+created_at: "2026-10-09T13:05:20Z"
+status: blocked
+source_policy:
+  authority_refs:
+    - config/electrical.yaml
+    - config/plumbing.yaml
+    - config/ceiling.yaml
+    - config/hvac.yaml
+    - docs/pending-site-data.md
+    - docs/decisions/18-engineering-state.md
+    - config/state-model.yaml
+  observation_refs:
+    - docs/design-iterations/element-state-overlay-20261009/evidence/view-sock-child-ac-pending.png
+    - docs/design-iterations/element-state-overlay-20261009/evidence/view-kitchen-mixed-status.png
+  measurement_refs: []
+  runtime_refs:
+    - docs/design-iterations/element-state-overlay-20261009/evidence/runtime-element-state-overlay.json
+    - docs/design-iterations/element-state-overlay-20261009/evidence/snapshot-element-state-panel.txt
+  evidence_refs:
+    - "agent-browser session bontop-84f55155：open→wait networkidle→isReady()=true→banner empty→runtime query→snapshot→screenshot×2→solo→close"
+facts:
+  confirmed:
+    - id: F1
+      category: confirmed
+      statement: GET /api/element-state 返回 164 个构件，summary 与 CLI 一致
+      value: {total: 164, confirmed: 74, inferred: 49, pending: 29, undeclared: 12}
+      source_refs: [server/element-state-service.ts, server/routes.ts]
+      basis: curl 实测 + agent-browser runtime 查询双重确认
+      confidence: high
+      impact: none
+      affected_objects: []
+      affected_views: []
+      owner: agent
+      status: resolved
+      verification_method: "curl localhost:4000/api/element-state；window.__APP__.houseScene.elementStateStates.length"
+    - id: F2
+      category: confirmed
+      statement: 状态标记层生成 139 个标记（电气 107 + 给排水 32），全部落图、无幽灵标记
+      value: 139
+      source_refs: [app/src/render/HouseScene.ts]
+      basis: runtime 查询 markerGroup.children.length；与 collectElements 的合批构件数一致
+      confidence: high
+      impact: none
+      affected_objects: []
+      affected_views: [perspective]
+      owner: agent
+      status: resolved
+      verification_method: "agent-browser eval markerGroup.children.length"
+    - id: F3
+      category: confirmed
+      statement: 标记配色复用 HVAC STATUS_COLOR 词汇，confirmed/inferred/pending 三色与 HvacGeometryBuilder 一致
+      value: {confirmed: "#38bdf8", inferred: "#f59e0b", pending: "#94a3b8"}
+      source_refs: [shared/render/HvacGeometryBuilder.ts, app/src/render/HouseScene.ts]
+      basis: runtime 查询每个标记 material.color 十六进制值
+      confidence: high
+      impact: none
+      affected_objects: []
+      affected_views: [perspective]
+      owner: agent
+      status: resolved
+      verification_method: "agent-browser eval 遍历 markerGroup 统计 color"
+    - id: F4
+      category: confirmed
+      statement: 面板图例与表格计数和 API summary 逐项一致（74/49/29/12）
+      value: {confirmed: 74, inferred: 49, pending: 29, undeclared: 12}
+      source_refs: [app/src/render/analysis/ElementStatePanel.ts]
+      basis: snapshot 文本含「已确认 74 / 推断 49 / 待现场数据 29 / 未申报 12」
+      confidence: high
+      impact: none
+      affected_objects: []
+      affected_views: []
+      owner: agent
+      status: resolved
+      verification_method: "agent-browser snapshot -i -c"
+    - id: F5
+      category: confirmed
+      statement: solo 两条路径均生效：图例按 status、表格行按构件 id
+      value: {statusSolo: "pending", idSolo: "electrical:sock_child_ac"}
+      source_refs: [app/src/render/analysis/ElementStatePanel.ts]
+      basis: 点击 data-solo-status / tr[data-solo-id] 后 houseScene.getElementStateSolo() 返回对应值
+      confidence: high
+      impact: none
+      affected_objects: []
+      affected_views: [perspective]
+      owner: agent
+      status: resolved
+      verification_method: "agent-browser eval 点击 + 查询 solo"
+    - id: F6
+      category: confirmed
+      statement: 默认关闭时视觉零变化有测试证明（8 个维度含材质引用同一性）
+      value: 8
+      source_refs: [app/src/render/ElementStateHighlight.test.ts]
+      basis: 快照 material/color/opacity/transparent/depthTest/depthWrite/visible/renderOrder 后注入 states，逐项 toBe/相等断言
+      confidence: high
+      impact: none
+      affected_objects: []
+      affected_views: []
+      owner: agent
+      status: resolved
+      verification_method: "npm run test:app 558/558"
+  inferred:
+    - id: F7
+      category: inferred
+      statement: 命令校验全绿，typecheck/test:server/test:app/verify:facts 均通过
+      value: {typecheck: 0, test_server: "867/867", test_app: "558/558", verify_facts: "OK 40 warning"}
+      source_refs: [package.json]
+      basis: 本轮实跑；但按协议绿命令只是证据层之一，不替代几何/功能/美学评审
+      confidence: high
+      impact: none
+      affected_objects: []
+      affected_views: []
+      owner: agent
+      status: resolved
+      verification_method: "适配器命令逐条实跑"
+  user_decision:
+    - id: F8
+      category: user_decision
+      statement: 业主要求「3D 反映装修目标与状态，人与 agent 围绕同一套工程数据协作」，并明确不需要 MCP
+      value: null
+      source_refs: [会话记录]
+      basis: 用户原话；agent 直接读配置/跑 CLI/curl 既有 API 已足够（POST /api/visual-commands 覆盖高亮与相机）
+      confidence: high
+      impact: material
+      affected_objects: []
+      affected_views: []
+      owner: 业主
+      status: resolved
+      verification_method: 用户确认
+  site_pending:
+    - id: F9
+      category: site_pending
+      statement: sock_child_ac 的 3D 标记落在 (5.52,2.50,3.55)，即 projectPoint 钳制后的位置，非配置声明的 z=4.00
+      value: {marker: [5.52, 2.5, 3.55], declared_z: 4.0}
+      source_refs: [config/electrical.yaml, shared/render/InfrastructureBuilder.ts]
+      basis: runtime 查询标记位置；该点位 status=pending、卡空调厂家深化图（#42）
+      confidence: high
+      impact: material
+      affected_objects: [electrical:sock_child_ac]
+      affected_views: [perspective]
+      owner: 业主+空调厂家
+      status: open
+      verification_method: 厂家图到手后回写 wall/wall_side 并重跑投影
+    - id: F10
+      category: site_pending
+      statement: 湿区窗台 4.198㎡ 的材料系统/基层适配/人工待现场核验与分项报价
+      value: 4.198
+      source_refs: [config/anti-penetration.yaml, shared/paint-sill-scope.ts]
+      basis: wetAreaStatus = pending_system_quote_and_site_validation
+      confidence: high
+      impact: low
+      affected_objects: []
+      affected_views: []
+      owner: 业主
+      status: open
+      verification_method: 现场核验后分项报价
+unknowns_requiring_alignment:
+  - id: U1
+    question: 3D 中点击状态标记无法读出该构件状态（raycast 穿透标记命中背后物体），是否作为阻断项修复？
+    reason_result_changes: 影响「点任一构件看依据」这一既定范围；当前行为具有误导性（点待定球弹出无关物体信息）
+    fact_refs: [F11]
+    option_refs: []
+    status: answered
+notes:
+  - "本轮为验收（acceptance），实施已在先前 commit 完成；按 git 禁令未执行任何 git 操作，档案文件留待业主手动提交。"

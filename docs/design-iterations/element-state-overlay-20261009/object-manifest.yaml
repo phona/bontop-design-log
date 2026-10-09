@@ -1,0 +1,48 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: element-state-overlay-20261009
+subject: 叠加层职责拆分（不把状态责任混进设计构件）
+created_at: "2026-10-09T13:05:20Z"
+objects:
+  - id: OBJ1
+    name: 状态数据通道
+    responsibility: 从权威源派生 164 个构件的状态并经 HTTP 送出
+    files: [server/element-state-service.ts, shared/element-state.ts, shared/element-sources.ts, shared/pending-ledger.ts]
+    owner: agent
+    depends_on: [config/electrical.yaml, config/plumbing.yaml, config/ceiling.yaml, config/hvac.yaml, docs/pending-site-data.md]
+    interfaces: [GET /api/element-state]
+    maintenance_boundary: 只读权威源，不写回
+    collision_policy: 不参与几何碰撞
+    validation_refs: [tests/server/element-state-api.test.ts, tests/server/element-state.test.ts]
+  - id: OBJ2
+    name: 3D 状态叠加层
+    responsibility: 按 status 上色（非合批）+ 标记层（合批）+ solo + 快照还原
+    files: [app/src/render/HouseScene.ts]
+    owner: agent
+    depends_on: [OBJ1]
+    interfaces: [setElementStates, setElementStateHighlightVisible, setElementStateSolo, inspectElementStates]
+    maintenance_boundary: 默认关闭；关闭后视觉与注入前逐项一致
+    collision_policy: 不参与几何碰撞；标记 depthTest=false 仅供诊断
+    validation_refs: [app/src/render/ElementStateHighlight.test.ts]
+  - id: OBJ3
+    name: 状态面板与开关
+    responsibility: 图例/计数/未决问题/冲突列表 + solo 入口 + 显隐开关
+    files: [app/src/render/analysis/ElementStatePanel.ts, app/src/ui/ElementStateButton.ts, app/src/App.ts]
+    owner: agent
+    depends_on: [OBJ1, OBJ2]
+    interfaces: [onToggle, data-solo-status, tr[data-solo-id]]
+    maintenance_boundary: 只读展示；不改状态
+    collision_policy: 不适用
+    validation_refs: [app/src/render/ElementStateHighlight.test.ts]
+  - id: OBJ4
+    name: 构件状态读数（InfoPanel）
+    responsibility: 点击 3D 构件时通用渲染其状态记录
+    files: [app/src/ui/InfoPanel.ts, app/src/render/HouseScene.ts]
+    owner: agent
+    depends_on: [OBJ1]
+    interfaces: [HoverTarget.elementState]
+    maintenance_boundary: 不按类别加硬编码分支
+    collision_policy: 不适用
+    validation_refs: [app/src/render/ElementStateHighlight.test.ts]
+    known_gap: 合批构件的标记无 objectId，3D 点击读数穿透到背后物体（F11）
+shared_visual_datum: 与吊顶分区高亮同手法（快照-还原、solo 压暗、renderOrder），但互不引用

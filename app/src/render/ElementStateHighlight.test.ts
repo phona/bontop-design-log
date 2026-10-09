@@ -341,3 +341,116 @@ describe('构件状态叠加层·隔离铁律', () => {
     expect(/BATCHED_ELEMENT_KINDS = new Set/.test(source)).toBe(true);
   });
 });
+
+/**
+ * B1 修复·点击状态标记读出**标记本身**，而非背后物体（误导缺陷）。
+ *
+ * 机理（已实测）：标记 depthTest=false + renderOrder=200 画在最上层，但 raycast 按**真实几何距离**
+ * 排序；标记 userData 只有 { elementStateId, elementStateStatus }、没有 objectId，会被
+ * targetFromIntersects 的 `if (!data?.objectId && !data?.roomId) continue;` 守卫跳过、又排在真实
+ * 构件之后——于是点一个灰色待定球弹出背后风管信息。修复：targetFromIntersects 先扫一遍 intersects，
+ * 命中标记（userData.elementStateId 存在）就**显式优先**用它构造 HoverTarget，用 elementStateId 查
+ * elementStateById 挂 elementState。诊断层的视觉优先级在此覆盖 raycast 的几何排序。
+ */
+describe('B1 修复·指针路径优先认领构件状态标记', () => {
+  /** 造一个「带 objectId 的背后物体」命中（模拟 raycast 距离排序里排在标记前面的真实构件）。 */
+  const behindObject = (objectId: string, type: string, roomId = 'dining') => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    mesh.userData = { objectId, type, roomId };
+    return { object: mesh };
+  };
+
+  function sceneWithMarker() {
+    const scene = makeScene(ELEMENTS);
+    // 注入带 openQuestion 的完整记录（sock_child_ac 的 blockedBy 含「空调厂家深化图」）
+    scene.setElementStates(ELEMENTS.map((e) => ({
+      id: e.id, kind: e.kind, label: e.id, status: e.status, statusSource: `x`, conflicts: e.conflicts ?? [],
+      ...(e.openQuestion ? { openQuestion: e.openQuestion } : {}),
+    })));
+    scene.setElementStateHighlightVisible(true);
+    const marker = markerFor(scene, 'electrical:sock_child_ac');
+    expect(marker, '应生成 electrical:sock_child_ac 标记').toBeTruthy();
+    return { scene, marker: marker! };
+  }
+
+  it('命中状态标记 → HoverTarget 带正确 objectId(=elementStateId) 与 elementState 记录', () => {
+    const { scene, marker } = sceneWithMarker();
+    const target = (scene as any).targetFromIntersects([{ object: marker }], false);
+    expect(target).not.toBeNull();
+    expect(target.objectId).toBe('electrical:sock_child_ac');
+    expect(target.type).toBe('electrical');
+    expect(target.elementState?.id).toBe('electrical:sock_child_ac');
+    expect(target.elementState?.status).toBe('pending');
+    // InfoPanel 据此渲染「卡在」行：blockedBy 含「空调厂家深化图」
+    expect(target.elementState?.openQuestion?.blockedBy).toContain('空调厂家深化图');
+    // 铁律：不靠给标记塞 objectId 修（requirement 2）——标记自身 userData 仍无 objectId
+    expect((marker as any).userData.objectId).toBeUndefined();
+    expect((marker as any).userData.elementStateId).toBe('electrical:sock_child_ac');
+  });
+
+  it('B1 核心：标记排在带 objectId 的物体之后（距离排序）时，仍优先返回标记而非背后物体', () => {
+    const { scene, marker } = sceneWithMarker();
+    // 复现实测：同一屏幕坐标 raycast 返回背后风管/吊顶/墙在前、标记在后（rank 4+）
+    const intersects = [
+      behindObject('ceiling:ceiling_child_ac', 'ceiling_zone_solid'),
+      behindObject('w_gbath_west_open_vanity', 'wall'),
+      behindObject('hvac:A2:terminal:supply_dining', 'hvac_terminal'),
+      { object: marker },
+    ];
+    const target = (scene as any).targetFromIntersects(intersects, false);
+    // 修复前这里返回 hvac:A2:terminal:supply_dining（点灰球读风管，误导）
+    expect(target.objectId).toBe('electrical:sock_child_ac');
+    expect(target.objectId).not.toBe('hvac:A2:terminal:supply_dining');
+    expect(target.elementState?.openQuestion?.blockedBy).toContain('空调厂家深化图');
+  });
+
+  it('公共指针入口 raycastFromScreenCenter 也走标记优先（端到端，hoverableOnly 亦然）', () => {
+    const { scene, marker } = sceneWithMarker();
+    (scene as any).raycaster = {
+      setFromCamera() {},
+      intersectObjects() {
+        return [behindObject('hvac:A2:terminal:supply_dining', 'hvac_terminal'), { object: marker }];
+      },
+    };
+    (scene as any).camera = {};
+    const target = scene.raycastFromScreenCenter({ hoverableOnly: true });
+    expect(target?.objectId).toBe('electrical:sock_child_ac');
+    expect(target?.elementState?.id).toBe('electrical:sock_child_ac');
+  });
+
+  it('回归保护：无标记命中时读数行为完全不变（hvac 仍按既有优先级胜 ceiling，且不臆造 elementState）', () => {
+    const { scene } = sceneWithMarker();
+    // 同样两个背后物体，但**不含**标记 → 必须走既有距离/类别优先级，与修复前逐字一致
+    const target = (scene as any).targetFromIntersects([
+      behindObject('ceiling:ceiling_child_ac', 'ceiling_zone_solid'),
+      behindObject('hvac:A2:terminal:supply_dining', 'hvac_terminal'),
+    ], false);
+    expect(target.objectId).toBe('hvac:A2:terminal:supply_dining');
+    // 该 hvac 无状态记录：不臆造 elementState（renderMepContext 路径不回归）
+    expect(target.elementState).toBeUndefined();
+  });
+
+  it('回归保护：非标记的电气点位本体仍走既有逻辑，挂 infrastructure + elementState（renderMepContext 不回归）', () => {
+    const { scene } = sceneWithMarker();
+    const unit = new THREE.Group();
+    unit.userData = { type: 'electrical', objectId: 'electrical:sock_child_ac', hoverable: true, fixtureType: 'socket', height: 1.2 };
+    const target = (scene as any).targetFromIntersects([{ object: unit }], false);
+    expect(target.objectId).toBe('electrical:sock_child_ac');
+    expect(target.infrastructure?.fixtureType).toBe('socket');
+    expect(target.elementState?.id).toBe('electrical:sock_child_ac');
+  });
+
+  it('标记查不到状态记录时交回既有逻辑，不臆造读数（防御）', () => {
+    const { scene, marker } = sceneWithMarker();
+    // 造一个表里没有的 elementStateId 的假标记：预扫应跳过它，回落既有 objectId 逻辑
+    const orphan = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+    orphan.userData = { elementStateId: 'electrical:ghost_not_in_table', elementStateStatus: 'pending' };
+    const target = (scene as any).targetFromIntersects([
+      behindObject('hvac:A2:terminal:supply_dining', 'hvac_terminal'),
+      { object: orphan },
+    ], false);
+    expect(target.objectId).toBe('hvac:A2:terminal:supply_dining');
+    // 真标记仍在 intersects 里时才被认领（这里故意不放真标记）
+    expect(marker.userData.elementStateId).toBe('electrical:sock_child_ac');
+  });
+});

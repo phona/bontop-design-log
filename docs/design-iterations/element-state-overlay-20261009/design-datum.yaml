@@ -1,0 +1,31 @@
+schema: interior-design-design-datum/v3
+project: bontop-design-log
+iteration_id: element-state-overlay-20261009
+subject: 构件工程状态叠加层的显示基准
+created_at: "2026-10-09T13:05:20Z"
+datums:
+  - id: D1
+    anchor: service_route
+    target: 构件工程状态（electrical/plumbing/ceiling/hvac 四类，共 164 个）
+    plan:
+      axes: "x 东西(+东/-西)，z 南北(+南/-北)，Three.js 右手系"
+      origin: 同 model-geometry.yaml，无独立偏移
+      direction: 同几何权威源
+      units: 米
+      position: 由 buildScene() runtime mesh 世界坐标决定（标记层取子树包围盒中心）
+      semantics: 构件 id 与 3D userData.objectId 同源（electrical:sock_child_ac 等）
+    elevation:
+      axes: y 向上
+      origin: 室内地坪 0
+      units: 米
+      position: 标记为半径 0.03m 球体，位于构件世界坐标处
+      semantics: 状态色只表置信度，不表高度；高度由构件自身声明决定
+    section: 不适用（叠加层无剖面语义）
+  - id: D2
+    anchor: free_position
+    target: 状态面板（#element-state-panel）
+    plan: { axes: 屏幕坐标, origin: 左上, units: px, position: 动态注入图层抽屉, semantics: 只读视图 }
+    elevation: 不适用
+    section: 不适用
+facts_refs: [F1, F2, F3, F4, F5, F6, F8]
+decisions_refs: [align-2026-10-09-E01]

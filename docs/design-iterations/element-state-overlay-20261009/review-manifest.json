@@ -1,0 +1,223 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "element-state-overlay-20261009",
+  "subject": "构件级工程状态 3D 叠加层（DEC-2026-10-09-E01 W3/W4）验收",
+  "state": "reviews_passed_delivery_pending_owner_commit",
+  "state_note": "B1 阻断缺陷已修复并复验通过（subagent 实施 + 我验收）。功能评审 FAIL→PASS，美学评审维持 PASS。修复为 39 行纯新增（0 删除）：targetFromIntersects 前置 marker 预扫，命中状态标记即用 elementStateId 查表构造 HoverTarget，显式优先于 raycast 的真实距离排序——修好了「标记画在最上层但点不中、点到背后风管」的误导。复验：点 electrical:sock_child_ac → InfoPanel 显示其本身（房间 bedroom_nw / 状态待现场数据 / 出处 config:pending / 裁定 DEC-2026-08-01-012 / 未决 #42 卡空调厂家深化图）；点 electrical:light_gbath_panel → 客卫·电气（证明非特例）；非标记构件读数走既有逻辑（改动为纯新增，字节未变）。按 Skill git 禁令，本轮及修复均未执行任何 git 操作；档案与修复待业主手动提交。",
+  "source_version": {
+    "config_refs": [
+      "config/electrical.yaml",
+      "config/plumbing.yaml",
+      "config/ceiling.yaml",
+      "config/hvac.yaml",
+      "docs/pending-site-data.md",
+      "config/state-model.yaml",
+      "docs/decisions/18-engineering-state.md"
+    ],
+    "asset_refs": [
+      "server/element-state-service.ts",
+      "server/routes.ts",
+      "server/index.ts",
+      "app/src/render/HouseScene.ts",
+      "app/src/render/analysis/ElementStatePanel.ts",
+      "app/src/ui/ElementStateButton.ts",
+      "app/src/ui/InfoPanel.ts",
+      "app/src/App.ts",
+      "app/src/render/ElementStateHighlight.test.ts",
+      "shared/element-state.ts",
+      "shared/element-sources.ts",
+      "shared/pending-ledger.ts"
+    ],
+    "render_facts_ref": "data/project-render-facts.json（未改动）",
+    "source_digest": "git HEAD e1386b8；本轮为验收，未执行任何 git 操作",
+    "generated_at": "2026-10-09T13:05:20Z"
+  },
+  "validation": {
+    "commands": [
+      "npm run typecheck",
+      "npm run test:server",
+      "npm run test:app",
+      "npm run verify:all",
+      "npm run verify:facts"
+    ],
+    "results": [
+      "typecheck exit 0（根 + app）",
+      "test:server 867/867 pass",
+      "test:app 564/564 pass（基线 558 + B1 修复新增 6）",
+      "verify:all 14/15 passed, 1 failed (verify-consistency: sock_child_ac 距墙 0.45m，先于本轮存在)",
+      "verify:facts OK (40 warning)"
+    ],
+    "note": "绿命令只是证据层之一，不替代几何/功能/美学评审（协议第 4/7 条）"
+  },
+  "evidence": {
+    "session": "bontop-31e92063（B1 修复后重采；bontop-84f55155/-2 为修复前证据，已因源码变更失效）",
+    "lifecycle": "open → wait --load networkidle → poll window.__APP__.isReady()=true → banner empty → runtime query → snapshot -i -c → screenshot → validate → close",
+    "views": {
+      "view-sock-child-ac-pending": {
+        "target_id": "electrical:sock_child_ac",
+        "camera": {
+          "mode": "orbit",
+          "is_overview": false,
+          "position": [
+            9.525,
+            6.5,
+            7.55
+          ],
+          "target": [
+            5.525,
+            2.5,
+            3.55
+          ]
+        },
+        "ready": true,
+        "banner": "",
+        "snapshot": "docs/design-iterations/element-state-overlay-20261009/evidence/snapshot-element-state-panel.txt",
+        "screenshot": "docs/design-iterations/element-state-overlay-20261009/evidence/view-sock-child-ac-pending.png",
+        "png_sha256": "a0998f3c9f22bf6ace049481a9da7f5b0b74609d8d261b3103ad09a7d99cc778",
+        "png_check": "1280x577, 214472 bytes, readable, non-empty",
+        "status": "superseded_by_r2"
+      },
+      "view-kitchen-mixed-status": {
+        "target_id": "kitchen（状态最混合：7 确认 / 6 推断 / 8 待定，共 21 标记）",
+        "camera": {
+          "mode": "orbit",
+          "is_overview": false,
+          "position": [
+            15.0,
+            8.0,
+            9.2
+          ],
+          "target": [
+            9.0,
+            0.0,
+            1.2
+          ]
+        },
+        "ready": true,
+        "banner": "",
+        "snapshot": "docs/design-iterations/element-state-overlay-20261009/evidence/snapshot-element-state-panel.txt",
+        "screenshot": "docs/design-iterations/element-state-overlay-20261009/evidence/view-kitchen-mixed-status.png",
+        "png_sha256": "fd6ca62d6ef2da58569ee59d794272414ce465e888c81f91f1be3592fbdd2949",
+        "png_check": "1280x577, 279046 bytes, readable, non-empty",
+        "status": "superseded_by_r2"
+      },
+      "r2-view-sock-child-ac-click-readout": {
+        "target_id": "electrical:sock_child_ac（点击读数）",
+        "camera": {
+          "mode": "orbit",
+          "is_overview": false,
+          "position": [
+            9.525,
+            6.5,
+            7.55
+          ],
+          "target": [
+            5.525,
+            2.5,
+            3.55
+          ]
+        },
+        "ready": true,
+        "banner": "",
+        "snapshot": "docs/design-iterations/element-state-overlay-20261009/evidence/r2-snapshot-after-b1-fix.txt",
+        "screenshot": "docs/design-iterations/element-state-overlay-20261009/evidence/r2-view-sock-child-ac-click-readout.png",
+        "png_sha256": "ed92826278cdcada3fb10874c7bd0678762bf3729ead242e8949f2ad9b336e3d",
+        "png_check": "1280x577, 199587 bytes, readable, non-empty",
+        "status": "valid",
+        "note": "旧证据 view-sock-child-ac-pending.png / view-kitchen-mixed-status.png 因源码变更失效，保留作诊断；本张为同视角同版本重采"
+      }
+    },
+    "runtime_queries": {
+      "states": 164,
+      "markers": 139,
+      "byStatus": {
+        "confirmed": 63,
+        "inferred": 49,
+        "pending": 27
+      },
+      "panelLegend": {
+        "confirmed": 74,
+        "inferred": 49,
+        "pending": 29,
+        "undeclared": 12
+      },
+      "soloStatus": "pending → lit 27 / dim 112；取消后 dim 0",
+      "soloById": "electrical:sock_child_ac",
+      "sockChildAcMarker": {
+        "position": [
+          5.52,
+          2.5,
+          3.55
+        ],
+        "color": "#94a3b8",
+        "status": "pending"
+      },
+      "b1_fix_verification": {
+        "click_marker_sock_child_ac": "InfoPanel → 西北次卧·电气 / objectId electrical:sock_child_ac / 工程状态节含 状态待现场数据、出处 config:pending、裁定 DEC-2026-08-01-012、未决 #42 卡空调厂家深化图",
+        "click_marker_light_gbath_panel": "InfoPanel → 客卫·电气 / objectId electrical:light_gbath_panel（证明修复通用，非特例）",
+        "click_non_marker": "走既有优先级逻辑（纯新增改动，非标记路径字节未变）",
+        "diff": "app/src/render/HouseScene.ts 39 insertions(+), 0 deletions(-)"
+      }
+    },
+    "invalid_evidence": []
+  },
+  "reviews": {
+    "aesthetic": {
+      "verdict": "PASS",
+      "blocking_issues": [],
+      "non_blocking_notes": [
+        "视觉权重与信息价值倒置：19 个吊顶分区以大平面 opacity 0.9 平铺（最响），而承载多数可行动信息的 139 个点位标记只有 0.03m（远处读成一彩色粉尘）。建议后续把吊顶分区平铺降为低透明度或默认只标记点位。",
+        "环视距离下 6 色在 0.03m 球体上不可辨；靠面板计数补偿，3D 本体在远距离不传达状态。",
+        "配色与面板样式与既有 HVAC 状态层、dynamic-panel 完全一致，体系连贯。"
+      ],
+      "evidence_refs": [
+        "view-sock-child-ac-pending.png",
+        "view-kitchen-mixed-status.png",
+        "runtime-element-state-overlay.json"
+      ],
+      "requested_changes": [],
+      "assumptions": []
+    },
+    "functional": {
+      "verdict": "PASS",
+      "blocking_issues": [],
+      "non_blocking_notes": [
+        "标记显示名偏通用：命中标记时 name 由 objectDisplayName(id, kind, room) 得「电气」而非「插座」，因 elementState 不含 fixtureType。不误导（正确标识为电气点位+待定+卡在谁），但可后续解析源 unit userData 补具体器具名",
+        "sock_child_ac 标记落在钳制后位置 (5.52,2.50,3.55) 而非声明 z=4.00——叠加层如实显示模型，反而让该 pending 点位在 3D 首次可见；属既有缺陷显形，非本轮引入",
+        "面板表格已能列出全部 164 个构件的未决问题与冲突，读数主入口可用"
+      ],
+      "evidence_refs": [
+        "r2-view-sock-child-ac-click-readout.png",
+        "runtime-element-state-overlay.json",
+        "fact-table F2/F5/F9"
+      ],
+      "requested_changes": [],
+      "assumptions": []
+    }
+  },
+  "delivery": {
+    "ready": false,
+    "blocking_issues": [
+      "git 提交：按 Skill 禁令本轮未执行任何 git 操作，修复与档案待业主手动提交"
+    ],
+    "site_pending": [
+      "sock_child_ac：卡空调厂家深化图（pending-site-data #42），回写 wall/wall_side 后重跑投影",
+      "湿区窗台 4.198㎡ 材料系统/人工：待现场核验与分项报价",
+      "12 个吊顶分区 undeclared：CeilingZoneSchema 无 status 字段，需补 DEC 引用（docs/decisions 后续议题）"
+    ],
+    "scope_delivered": [
+      "GET /api/element-state（conflicts=1 / refresh=1 / 缓存 / fail-closed 503）",
+      "3D 状态叠加层：非合批上色 + 合批标记层 139 个 + solo（按 status 与按构件）+ 快照还原",
+      "状态面板（图例 74/49/29/12 + 六列表格）+ 开关按钮",
+      "InfoPanel 通用状态读数渲染器（非合批构件可用）",
+      "B1 修复：3D 点击状态标记优先认领，读出该构件本身的工程状态"
+    ],
+    "non_blocking_notes": [
+      "美学：吊顶分区平铺视觉权重过高，建议后续降低透明度或默认只显示点位标记",
+      "verify:all 仍 14/15（sock_child_ac），先于本轮存在",
+      "标记显示名为通用「电气」而非具体器具名（elementState 不含 fixtureType）"
+    ],
+    "git_note": "按 Skill git 禁令，本轮未执行任何 git 操作；迭代档案 5 份模板 + evidence 4 个文件待业主手动提交"
+  }
+}

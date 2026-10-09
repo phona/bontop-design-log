@@ -2588,6 +2588,16 @@ export class HouseScene implements SceneApi {
     intersects: Array<{ object: THREE.Object3D }>,
     hoverableOnly: boolean,
   ): HoverTarget | null {
+    // 【B1 修复】构件状态标记层优先认领指针命中。
+    // 标记是画在最上层的诊断层（depthTest=false + renderOrder=ELEMENT_STATE_MARKER_RENDER_ORDER=200），
+    // 用户视觉上点它就该读到它本身；但 raycast 按**真实几何距离**排序，而标记 userData 没有
+    // objectId/roomId，会被下方 `if (!data?.objectId && !data?.roomId) continue;` 守卫直接跳过、
+    // 且常排在真实构件之后——于是点一个灰色待定球弹出背后风管信息（误导，见缺陷 B1）。
+    // 故先单独扫一遍 intersects：命中任一标记（userData.elementStateId 存在）就用它构造 HoverTarget，
+    // **显式优先**于下方一切距离/类别优先级排序——诊断层的视觉优先级在此覆盖 raycast 的几何排序。
+    const markerTarget = this.markerTargetFromIntersects(intersects);
+    if (markerTarget) return markerTarget;
+
     let best: { target: HoverTarget; priority: number } | null = null;
     for (const hit of intersects) {
       let object: THREE.Object3D | null = hit.object;
@@ -2699,6 +2709,35 @@ export class HouseScene implements SceneApi {
       if (best.priority === 0) break;
     }
     return best?.target ?? null;
+  }
+
+  /**
+   * B1 修复·标记优先：从 intersects 里挑出第一个「构件状态标记」命中并构造 HoverTarget。
+   * 判据：hit.object.userData.elementStateId 存在（标记层见 applyElementStateMarkers，其 userData
+   * 只有 { elementStateId, elementStateStatus }，没有 objectId/roomId）。
+   * 用 elementStateId 作 objectId，并查 elementStateById 挂 elementState：InfoPanel 的标题、
+   * 电气回路归属（按 electrical: 前缀取 pointId）都按真实点位走，工程状态节由 elementState 驱动。
+   * 为何不用既有 objectId 顺序逻辑：那按真实几何距离排序，标记没有 objectId 会被守卫跳过、
+   * 又排在真实构件之后——修不了「距离排序」这条（缺陷 B1 第 2 条机理），必须显式优先。
+   * 查不到状态记录（标记在、表里没有）时跳过该命中、交回既有逻辑，不臆造读数。
+   */
+  private markerTargetFromIntersects(
+    intersects: Array<{ object: THREE.Object3D }>,
+  ): HoverTarget | null {
+    for (const hit of intersects) {
+      const elementStateId = hit.object?.userData?.elementStateId as string | undefined;
+      if (!elementStateId) continue;
+      const elementState = this.elementStateById.get(elementStateId);
+      if (!elementState) continue;
+      return {
+        objectId: elementStateId,
+        name: this.objectDisplayName(elementStateId, elementState.kind, elementState.room),
+        type: elementState.kind,
+        room: elementState.room,
+        elementState,
+      };
+    }
+    return null;
   }
 
   raycastFromScreenCenter(options?: { hoverableOnly?: boolean }): HoverTarget | null {

@@ -37,4 +37,13 @@
   - **2 个给排水点**：采集器缺陷——plumbing 分支只读 `position_status` 不读 `status`，导致已有 `status: inferred` 的 `duct_kitchen_exhaust`/`gas_meter_kitchen` 被误判 undeclared。已修。
   - **2 个花洒**：note 已写明「本轮不画 MEP route，待量房 + SKU（pending #44）」，且 `docs/decisions/12-plumbing.md:33` 登记过这两点——故 `status: inferred`，pending 的是给水管路而非点位位置。
   - **诚实残留 12 个吊顶分区**：`CeilingZoneSchema` 是 `.strict()` 且**没有 status 字段**，加不进去；且它们是「几何声明」不是「待决决策」，硬加字段等于造假。这 12 个的 note 也都没有可引用的 DEC。保留 undeclared 作为「该补 DEC 引用」的行动项，不是缺陷。
-- **后续议题**：① **W3/W4 未做**——3D 状态叠加层与问题标记层（消费同一 `ElementState`）；② `undeclared` 68 个的补录优先序（电气点位占大头，可 kind 批量确认）；③ 台账解析器目前只认 electrical/plumbing/ceiling 三类构件承载文件，house.yaml 的 furnishings 尚未纳入（需要 `furniture:room:type:index` 的稳定 id 映射）；④ `state:project` 的 issue 来源只取 3 个与构件绑定相关的 verifier，全量门禁结论看 `verify:all -- --json`。
+- **W3/W4 已完成并经正式迭代协议验收（2026-10-09，档案 `docs/design-iterations/element-state-overlay-20261009/`）**：
+  - **状态与差异合成一层**：`conflicted` 本就是 `ElementState` 的一种状态、冲突码已在 `conflicts[]` 里，因此不做两层叠加层，一个层同时反映「置信度」与「冲突」。
+  - **数据通道**：`GET /api/element-state`（`conflicts=1` / `refresh=1`；conflicts 路径缓存、非 conflicts 路径现算——3D 看到陈旧状态比慢一点危险；输入异常 503，不返回空 states 假装没有状态）。**未建 MCP**（agent 读配置 / 跑 CLI / curl 既有 API 已足够）。
+  - **3D 叠加层**：完全对称于吊顶分区 overlay（快照-还原、solo、图例、面板、按钮）；配色复用 `HvacGeometryBuilder.STATUS_COLOR` 词汇与前三色，补 measured(绿)/conflicted(红)/undeclared(紫)，**不发明新状态词**。
+  - **合批 split**：`SceneBatcher` 只支持逐件可见、不支持逐件上色，而电气+给排水 139 个正是状态最多的构件 → 非合批直接上色，合批走独立标记层（139 个 0.03m 球，共享几何，仅开启期间存在）。
+  - **验收抓到的两个真 bug 均已修**：① 标记位置原先取「模型组世界坐标」，20/128 个（吊灯/轨道灯/壁灯，组 position 是原点、偏移在子 mesh）被拍到 (0,0,0)——改为一律取子树包围盒中心（(0,0,0) 在本户型是合法坐标，不能用「是否原点」判退化）；② 3D 点击标记读出背后物体（标记 `depthTest=false` 画在最上层但 raycast 按真实距离排序，且无 `objectId` 被守卫跳过）——`targetFromIntersects` 前置 marker 预扫，用 `elementStateId` 查表并显式优先。
+  - **评审结论**：美学 PASS / 功能 PASS（B1 修复后复验通过），`reviews_passed_delivery_pending_owner_commit`；`test:app` 564/564、`test:server` 867/867、typecheck 干净、`verify:facts` OK。
+  - **意外收获**：`sock_child_ac` 的标记落在 `projectPoint` 钳制后的 (5.52,2.50,3.55) 而非声明的 z=4.00——叠加层如实显示模型，反而让这个 pending 点位在 3D 里第一次可见。
+  - **非阻断备注**：① 标记显示名为通用「电气」而非具体器具名（`elementState` 不含 `fixtureType`）；② 吊顶分区大平铺视觉权重高于 139 个点位标记，与信息价值倒置，建议后续降透明度或默认只显示点位。
+- **后续议题**：① `undeclared` 12 个吊顶分区的补录优先序（`CeilingZoneSchema` 是 strict 且无 status 字段，需先补 DEC 引用或扩 schema）；② 台账解析器目前只认 electrical/plumbing/ceiling 三类构件承载文件，house.yaml 的 furnishings 尚未纳入（需要 `furniture:room:type:index` 的稳定 id 映射）；③ `state:project` 的 issue 来源只取 3 个与构件绑定相关的 verifier，全量门禁结论看 `verify:all -- --json`；④ 标记显示名补具体器具名；⑤ 吊顶分区平铺的视觉权重调整。
