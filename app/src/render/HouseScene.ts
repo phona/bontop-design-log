@@ -83,7 +83,7 @@ interface CurtainRegistryEntry {
 
 interface ProjectData {
   house: {
-    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string; wallOpenings?: ResolvedOpening[] }>;
+    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string; wallOpenings?: ResolvedOpening[]; points?: import('@shared/types').CurtainPoint[] }>;
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
     ceilingZones?: import('@shared/types').CeilingZone[];
     furnishings?: FurnishingsYaml;
@@ -1722,6 +1722,17 @@ export class HouseScene implements SceneApi {
   setWallColor(roomIds: string[], color: string) {
     const set = new Set(roomIds);
     for (const mesh of this.wallMeshes) {
+      // 共墙按面给材质（DEC-2026-10-07-R12）：face-split 墙只染贴邻目标房间的侧面槽位。
+      const faceRooms = mesh.userData.faceRooms as { left: string | null; right: string | null } | undefined;
+      if (faceRooms) {
+        const slots = mesh.userData.faceSlots as { left: number; right: number } | undefined;
+        if (!slots) continue;
+        const materials = mesh.material as THREE.MeshStandardMaterial[];
+        for (const side of ['left', 'right'] as const) {
+          if (faceRooms[side] && set.has(faceRooms[side] as string)) materials[slots[side]]?.color.set(color);
+        }
+        continue;
+      }
       if (set.has(mesh.userData.roomId as string)) {
         (mesh.material as THREE.MeshStandardMaterial).color.set(color);
       }
@@ -1730,6 +1741,18 @@ export class HouseScene implements SceneApi {
 
   setPaintColor(color: string) {
     for (const mesh of this.wallMeshes) {
+      const faceRooms = mesh.userData.faceRooms as { left: string | null; right: string | null } | undefined;
+      if (faceRooms) {
+        const slots = mesh.userData.faceSlots as { left: number; right: number } | undefined;
+        if (!slots) continue;
+        const materials = mesh.material as THREE.MeshStandardMaterial[];
+        for (const side of ['left', 'right'] as const) {
+          const room = faceRooms[side] ? this.roomMeta.get(faceRooms[side] as string) : undefined;
+          if (room?.wall_finish === 'tile') continue;
+          materials[slots[side]]?.color.set(color);
+        }
+        continue;
+      }
       const roomId = mesh.userData.roomId as string;
       const room = this.roomMeta.get(roomId);
       if (room?.wall_finish === 'tile') continue;

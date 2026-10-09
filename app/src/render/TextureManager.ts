@@ -57,6 +57,16 @@ export class TextureManager {
 
     if (meshType === undefined || meshType === 'all' || meshType === 'wall') {
       for (const mesh of this.wallMeshes) {
+        // 共墙按面给材质（DEC-2026-10-07-R12）：faceRooms 声明了左右侧面各归属哪个房间，
+        // 只把外观拷进贴邻该房间的槽位；整段单材质墙仍走 roomId 整体匹配。
+        const faceRooms = mesh.userData.faceRooms as { left: string | null; right: string | null } | undefined;
+        if (faceRooms) {
+          const slots = mesh.userData.faceSlots as { left: number; right: number } | undefined;
+          if (!slots) continue;
+          if (faceRooms.left === roomId) this.copyToMeshAt(mesh, slots.left, mat);
+          if (faceRooms.right === roomId) this.copyToMeshAt(mesh, slots.right, mat);
+          continue;
+        }
         if (mesh.userData.roomId === roomId) {
           this.copyToMesh(mesh, mat);
         }
@@ -162,5 +172,12 @@ export class TextureManager {
     const m = mesh.material as THREE.MeshStandardMaterial;
     m.copy(mat);
     m.needsUpdate = true;
+  }
+
+  private copyToMeshAt(mesh: THREE.Mesh, slot: number, mat: THREE.MeshStandardMaterial): void {
+    const materials = mesh.material as THREE.MeshStandardMaterial[];
+    if (!Array.isArray(materials) || !materials[slot]) return;
+    materials[slot].copy(mat);
+    materials[slot].needsUpdate = true;
   }
 }

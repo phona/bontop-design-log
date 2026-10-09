@@ -13,7 +13,7 @@ import {
   buildKitchenCountertopBridge,
   buildWardrobe180,
 } from './FixtureFactory.js';
-import { createLineMesh, createPolygonGeometry, setSceneObjectMetadata, splitSegmentByOpenings } from '../three-scene-geometry.js';
+import { computeWallFaceSpans, createLineMesh, createPolygonGeometry, setSceneObjectMetadata, splitSegmentByOpenings, wallFaceSlots } from '../three-scene-geometry.js';
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { curtainRibbonShape, curtainShape, gatheredCurtainSegments, offsetCurtainPointsInterior, roundedShape } from './CurtainGeometry.js';
 import { buildBaySillGeometry } from './BaySillGeometry.js';
@@ -279,21 +279,49 @@ function addWallElement(root: THREE.Group, wall: WallElement, height: number, re
   for (const source of sourceSegments) {
     const segments = wall.openings?.length ? splitSegmentByOpenings(source, wall.openings) : [source];
     for (const segment of segments) {
-      const mesh = createLineMesh(
-        { x: segment.x1, z: segment.z1 },
-        { x: segment.x2, z: segment.z2 },
-        height,
-        WALL_THICKNESS,
-        material,
-        { uvUnits: 'meters' },
-      );
-      if (!mesh) continue;
-      const objectId = sourceSegments.length === 1 && segments.length === 1 ? wall.id : `${wall.id}:${segmentIndex}`;
-      const segmentExportName = exportName ? `${objectId}:room=${wall.rooms!.join('|')}` : objectId;
-      setSceneObjectMetadata(mesh, 'wall', objectId, segmentExportName);
-      mesh.userData.wallType = wallType;
-      mesh.userData.roomId = wall.rooms?.[0];
-      root.add(mesh); wallSegments.push(mesh); report.walls++; segmentIndex++;
+      // 共墙按面给材质（DEC-2026-10-07-R12）：墙左右两侧贴邻房间 finish 不同时用材质数组，
+      // 两个侧面各跟贴邻房间；区间过渡点来自房间多边形顶点的墙线投影。
+      const faceSpans = computeWallFaceSpans(segment, rooms, WALL_THICKNESS / 2 + 0.02);
+      for (let spanIndex = 0; spanIndex < faceSpans.length; spanIndex++) {
+        const span = faceSpans[spanIndex];
+        const segA = { x: segment.x1 + (segment.x2 - segment.x1) * span.t0, z: segment.z1 + (segment.z2 - segment.z1) * span.t0 };
+        const segB = { x: segment.x1 + (segment.x2 - segment.x1) * span.t1, z: segment.z1 + (segment.z2 - segment.z1) * span.t1 };
+        // 两侧贴邻不同房间才拆面（同房间两脸同材质）；单侧临空保持整段单材质。
+        const useFaceMaterials = !!span.left && !!span.right && span.left !== span.right;
+        let meshMaterial: THREE.Material | THREE.Material[] = material;
+        let faceRooms: { left: string | null; right: string | null } | undefined;
+        let faceSlots: { left: number; right: number } | undefined;
+        if (useFaceMaterials) {
+          faceSlots = wallFaceSlots(segB.x - segA.x, segB.z - segA.z);
+          faceRooms = { left: span.left, right: span.right };
+          // 槽位 0..3（两端头/顶/底）共用基础材质；两个大侧面各 clone 一份供按房间独立换材。
+          const mats: THREE.Material[] = [material, material, material, material, material, material];
+          mats[faceSlots.left] = material.clone();
+          mats[faceSlots.right] = material.clone();
+          meshMaterial = mats;
+        }
+        const mesh = createLineMesh(
+          segA,
+          segB,
+          height,
+          WALL_THICKNESS,
+          meshMaterial,
+          { uvUnits: 'meters' },
+        );
+        if (!mesh) continue;
+        const baseId = sourceSegments.length === 1 && segments.length === 1 && faceSpans.length === 1 ? wall.id : `${wall.id}:${segmentIndex}`;
+        const objectId = faceSpans.length > 1 ? `${baseId}.${spanIndex}` : baseId;
+        const segmentExportName = exportName ? `${objectId}:room=${wall.rooms!.join('|')}` : objectId;
+        setSceneObjectMetadata(mesh, 'wall', objectId, segmentExportName);
+        mesh.userData.wallType = wallType;
+        mesh.userData.roomId = wall.rooms?.[0];
+        if (faceRooms && faceSlots) {
+          mesh.userData.faceRooms = faceRooms;
+          mesh.userData.faceSlots = faceSlots;
+        }
+        root.add(mesh); wallSegments.push(mesh); report.walls++;
+      }
+      segmentIndex++;
     }
   }
   for (const opening of wall.openings ?? []) {
@@ -656,16 +684,20 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         report.unsupported.push(`${id}: sill_region 暂不支持 points-only bay_sill（${element.element}）`);
         return;
       }
-      const polyline: WallSegment[] = targetWallIds.flatMap((wallId) => {
-        const wall = walls.find((candidate) => candidate.id === wallId);
-        if (!wall) {
-          report.unsupported.push(`${id}: sill_region target references unknown wall ${wallId}`);
-          return [];
-        }
-        return wall.segments?.length
-          ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
-          : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-      });
+      // bay_sill 的 wallRefs 段自带坐标（服务端 mergeSceneElements 已解析，含被 suppress 的玻璃幕墙），
+      // 优先直用；仅裸 walls/wall 引用（未走 merge 的路径）才回退到墙表查找。
+      const polyline: WallSegment[] = 'wallRefs' in target && target.wallRefs?.length
+        ? target.wallRefs.flatMap((ref) => ref.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 })))
+        : targetWallIds.flatMap((wallId) => {
+            const wall = walls.find((candidate) => candidate.id === wallId);
+            if (!wall) {
+              report.unsupported.push(`${id}: sill_region target references unknown wall ${wallId}`);
+              return [];
+            }
+            return wall.segments?.length
+              ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+              : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+          });
       const pointAt = (distance: number): Point | null => {
         let remaining = distance;
         for (const segment of polyline) {

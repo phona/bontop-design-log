@@ -43,6 +43,8 @@ export interface RoomLayout {
   wallOpenings?: ResolvedOpening[];
   /** 房间墙面完成面意图源为 config/house.yaml 的 room.wall_finish；预算/成本据此判定涂装范围。 */
   wall_finish?: 'paint' | 'tile' | 'unpainted';
+  /** 非矩形房间的边界多边形（矩形房间缺省，按 x/z/width/depth 还原）；供共墙按面材质判定贴邻侧。 */
+  points?: CurtainPoint[];
 }
 
 export interface IndoorUnit {
@@ -716,6 +718,8 @@ export interface LayoutRoom {
   height: number;
   area?: number;
   perimeter?: number;
+  /** 非矩形房间边界多边形（resolveRoom 输出）；共墙按面材质的贴邻侧判定用。 */
+  points?: CurtainPoint[];
 }
 
 export interface PlatformLayout {

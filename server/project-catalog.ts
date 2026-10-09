@@ -73,6 +73,7 @@ function mergeRoom(layoutRoom: LayoutRoom, meta?: HouseYaml['rooms'][number]): R
     needs_waterproof: meta?.needs_waterproof,
     wall_finish: meta?.wall_finish,
     area: layoutRoom.area,
+    ...(layoutRoom.points ? { points: layoutRoom.points } : {}),
   };
 }
 
