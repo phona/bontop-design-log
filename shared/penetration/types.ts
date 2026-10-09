@@ -25,6 +25,15 @@ export interface PenetrationRuleSpec {
   note?: string;
 }
 
+/**
+ * 关系语义类型：这两件家具为什么合法重叠。
+ *
+ * 2026-10-09 原 `config/spatial-validation.yaml` 的 `relationships` 白名单整体迁入
+ * 本配置的 `waivers[]`，`type` 随迁到 `WaiverSpec.kind`——不丢信息，也不让「合法重叠」
+ * 的语义退化成一句没有类型的 reason。
+ */
+export type RelationshipKind = 'stacked' | 'attached' | 'contained';
+
 /** 带保质期的豁免。没有 reason 的豁免视为谎言。 */
 export interface WaiverSpec {
   id: string;
@@ -32,6 +41,12 @@ export interface WaiverSpec {
   rule: string;
   /** 被豁免的实体对（两个 runtime id，顺序无关）。 */
   pair: [string, string];
+  /**
+   * 语义类型（原 relationships 的 `type`）：stacked 叠放 / attached 咬合依附 /
+   * contained 内含。**只作人读与登记，不参与豁免判定**——判定永远只按
+   * 「rule + 稳定 runtime id 对」匹配，因此补错 kind 不会悄悄放行任何一对。
+   */
+  kind?: RelationshipKind;
   reason: string;
   owner: string;
   /** YYYY-MM-DD；到期后豁免失效并复活为 error。 */

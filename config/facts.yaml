@@ -1613,7 +1613,10 @@ coverage:
   - { file: config/spatial-validation.yaml, field: "junctions", readers: ["shared/spatial-validation.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "allowed_collinear_overlaps", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "allowed_overlay_wall_junctions", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
-  - { file: config/spatial-validation.yaml, field: "relationships", readers: ["shared/spatial-validation.ts", "shared/penetration/rules.ts", "shared/penetration/registry.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  # 2026-10-09 删除：relationships 顶层键已整体迁入 config/anti-penetration.yaml 的
+  # waivers[]（13 条合法重叠白名单补上 reason/owner/expires，语义类型随迁到 waiver.kind）。
+  # 该键在 spatial-validation.yaml 里已不存在，故整条登记删除；给一个不存在的字段登记
+  # reader 正是「覆盖矩阵说谎」，比不登记更坏。新的读取方登记在下方 waivers 一行。
   - { file: config/spatial-validation.yaml, field: "overlay_replacements", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts", "shared/penetration/registry.ts"] }
   - { file: config/spatial-validation.yaml, field: "lighting_host_overrides", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   # version 暂无 reader（与 plumbing/tradeoffs 等同为未消费字段，显式登记为空，不装作有人读）
@@ -1623,7 +1626,11 @@ coverage:
   - { file: config/anti-penetration.yaml, field: "rules", readers: ["shared/penetration/registry.ts"] }
   - { file: config/anti-penetration.yaml, field: "sibling_policy", readers: ["tests/server/penetration-registry.test.ts"] }
   - { file: config/anti-penetration.yaml, field: "mep_parts", readers: ["shared/penetration/registry.ts"] }
-  - { file: config/anti-penetration.yaml, field: "waivers", readers: ["shared/penetration/registry.ts"] }
+  # waivers 另有一个**直接**读者 scripts/verify/spatial/verify-spatial.ts：2026-10-09 起
+  # 原 spatial-validation.yaml 的 relationships 白名单迁入 waivers，该 CLI 仍要在 spatial 侧
+  # 对这批声明做体检（validateRelationshipSpecs），因此它直接 loadAntiPenetrationConfig()。
+  # verify:penetration 只经 runPenetrationChecks 间接触达，不重复登记。
+  - { file: config/anti-penetration.yaml, field: "waivers", readers: ["shared/penetration/registry.ts", "scripts/verify/spatial/verify-spatial.ts"] }
   - { file: config/tradeoffs.yaml, field: "tradeoffs", readers: [] }
   - { file: config/verify-rules.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/verify-rules.yaml, field: "bounds", readers: ["shared/render/layout-bounds.ts", "shared/types.ts"] }

@@ -42,6 +42,7 @@ import {
   type SpatialConfig,
 } from '../../../shared/penetration/scene.js';
 import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
+import { loadAntiPenetrationConfig, relationshipSpecsFromWaivers } from '../../../shared/penetration/registry.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const LIGHT_TYPES = new Set(['wall_lamp', 'ceiling_light', 'pendant', 'dome', 'downlight', 'track_light', 'led_strip', 'night_light']);
@@ -220,14 +221,17 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
   return issues;
 }
 
-function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntimeScene>): SpatialIssue[] {
+function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntimeScene>, antiConfig: ReturnType<typeof loadAntiPenetrationConfig>): SpatialIssue[] {
   const issues: SpatialIssue[] = [];
   const source = 'config/house.yaml + shared/render/SceneBuilder.ts + shared/render/FixtureFactory.ts';
   const { layout, config, house } = inputs;
   const structuralPaths = inputs.structuralPaths;
   const collected = collectPenetrationObjects(scene, structuralPaths);
   const furnitureById = new Map(collected.furnitureEntries.map((entry) => [entry.entity, entry]));
-  issues.push(...validateRelationshipSpecs(config.relationships, collected.furniture.map((entry) => entry.id), 'config/spatial-validation.yaml'));
+  // 「合法重叠」白名单 2026-10-09 从本文件的 relationships 迁入
+  // config/anti-penetration.yaml 的 waivers；声明体检仍在本 CLI（形状 + 稳定 runtime id
+  // 绑定），豁免的执行在穿透层，两边不重复判同一件事。
+  issues.push(...validateRelationshipSpecs(relationshipSpecsFromWaivers(antiConfig), collected.furniture.map((entry) => entry.id), 'config/anti-penetration.yaml'));
 
   // 运行时权威性（声明 ↔ runtime 是否一一对应）留在本层。
   issues.push(...validateRuntimeAuthority({
@@ -282,6 +286,9 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
 function main(): void {
   const args = new Set(process.argv.slice(2));
   const inputs: SceneInputs = loadSceneInputs({ captureWarnings: args.has('--json') });
+  // 关系声明已迁入 anti-penetration 的 waivers；读不动必须红，不能因为拿不到白名单
+  // 就假装没有合法重叠（那会把 13 处叠放/咬合全数误报成穿模）。
+  const antiConfig = loadAntiPenetrationConfig();
   const { layout, overlay, elements, config, house, suppressIds, structuralPaths, layoutWarnings } = inputs;
   const issues: SpatialIssue[] = [];
   if (overlay.suppress.some((entry) => entry.region && suppressionWallIds({ ...overlay, suppress: [entry] }, layout.walls).length === 0)) {
@@ -299,7 +306,7 @@ function main(): void {
     scene = buildRuntimeScene(inputs);
     issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides, scene.index.lightingFixtures));
     issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}));
-    issues.push(...validateScene(inputs, scene));
+    issues.push(...validateScene(inputs, scene, antiConfig));
   } catch (error) {
     issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides));
     issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}));

@@ -53,7 +53,7 @@ rules:
     # 下限同样是 warning：规则内部对 ≤ collision_margin 的接触降级为 warning。
     severity: warning
     enabled: true
-    note: "家具互撞；≤ collision_margin 的接触由规则内部降级为 warning，合法叠放/咬合仍须在 spatial-validation.yaml 的 relationships 绑定稳定 runtime id"
+    note: "家具互撞；≤ collision_margin 的接触由规则内部降级为 warning，合法叠放/咬合/内含须在下方 waivers 绑定稳定 runtime id 并带 reason/owner/expires"
 
   - id: pen.glass.glass
     codes: [glass_runtime_collision]
@@ -102,5 +102,120 @@ mep_parts:
 # 每条豁免必须带 reason / owner / expires。到期自动复活为 error 并带上豁免编号，
 # 不存在「永久静默」。豁免按 rule + 实体对匹配（顺序无关），必须绑定稳定 runtime id，
 # 禁止按家具类型全局放行。
-# 当前无豁免。
-waivers: []
+#
+# 2026-10-09：原 config/spatial-validation.yaml 的 13 条 relationships 白名单整体迁入
+# 下方 waivers。它们原先同时承担「结构真相（声明一次不变）」与「工艺妥协（随采购变更
+# 失效）」两种生命周期，且没有 reason/owner/expires，失效了也不会显形。迁入后统一走
+# 保质期机制：kind 保留原 type 的语义（stacked 叠放 / attached 咬合依附 / contained
+# 内含），判定仍只按 rule + 稳定 runtime id 对，与迁移前逐条一致。
+#
+# ⚠️ owner=业主 / expires=2027-06-30 是**待业主确认的占位值**：owner 取项目决策人，
+# expires 与「量房/厂家确认后回写」节奏对齐。SKU 冻结或量房回来后必须逐条回写真实
+# 责任人与复核日；在那之前，这些豁免的时效性未经业主签字确认。
+waivers:
+  # ── 阳台洗烘叠放 ──
+  - id: laundry_stack
+    rule: pen.furniture.furniture
+    pair: [furniture:balcony:washer:0, furniture:balcony:dryer:1]
+    kind: stacked
+    reason: "10kg 滚筒洗衣机与 9kg 热泵烘干机按厂家叠放支架垂直堆叠（支架承重 ≥120kg，见 config/budget-pitfalls.yaml「叠放未确认承重」）；两者共用阳台西墙给水 faucet_balcony_washer / 墙排 drain_balcony_washer 与两条专用回路插座（DEC-2026-10-03-R1 按 GB 55038 7.4.4 拆分），且生活阳台面积极小、东墙又有门洞，无并排条件。SKU 冻结后须复核叠放支架承重、开门侧与检修带（docs/pending-site-data.md #33）"
+    owner: 业主
+    expires: 2027-06-30
+
+  # ── 厨房地柜 / 台面 / 嵌入式设备 ──
+  - id: countertop_run
+    rule: pen.furniture.furniture
+    pair: [furniture:kitchen:kitchen_cabinet_run:0, furniture:kitchen:kitchen_countertop_bridge:1]
+    kind: stacked
+    reason: "北墙地柜第一段与跨洗碗机位的桥台面同属一组台下柜：台面由柜体上口承托，两者在端部共面收口，是「柜体 + 台面」的一体构造，不是两件独立家具各占一地"
+    owner: 业主
+    expires: 2027-06-30
+
+  - id: countertop_run_corner
+    rule: pen.furniture.furniture
+    pair: [furniture:kitchen:kitchen_countertop_bridge:1, furniture:kitchen:kitchen_cabinet_run:2]
+    kind: stacked
+    reason: "桥台面东端与水槽柜段端部共面收口：同一台面高度连续跨过洗碗机位后接上水槽柜，属同一组地柜的台面连续性接触，不是两台柜体互撞"
+    owner: 业主
+    expires: 2027-06-30
+
+  - id: kitchen_cabinet_corner_join
+    rule: pen.furniture.furniture
+    pair: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:kitchen_cabinet_run:4]
+    kind: attached
+    reason: "L 形厨房地柜：北墙水槽柜段与东墙灶台柜段在转角相交并共用转角柜体，是同一组地柜的两个分支，不是两个独立柜体压在同一块地上"
+    owner: 业主
+    expires: 2027-06-30
+
+  - id: kitchen_dishwasher_under_counter
+    rule: pen.furniture.furniture
+    pair: [furniture:kitchen:kitchen_cabinet_run:0, furniture:kitchen:dishwasher:3]
+    kind: attached
+    reason: "嵌入式洗碗机整机收在北墙地柜台下（DEC-2026-08-02-013），门板与柜体齐平，属嵌入式安装而非独立占地；机位坐标仍待量房（config/house.yaml 原注），SKU 冻结后复核开门侧与检修带"
+    owner: 业主
+    expires: 2027-06-30
+
+  - id: kitchen_dishwasher_under_counter_corner
+    rule: pen.furniture.furniture
+    pair: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:dishwasher:3]
+    kind: attached
+    reason: "同一台洗碗机同时贴邻水槽柜段端部（DEC-2026-08-02-013「水槽柜西侧紧邻」），两侧柜体门板收口共面；与 kitchen_dishwasher_under_counter 是同一处嵌入关系在两个柜体段上的投影，不是两次独立占地"
+    owner: 业主
+    expires: 2027-06-30
+
+  - id: kitchen_sink_cutout
+    rule: pen.furniture.furniture
+    pair: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:sink:8]
+    kind: attached
+    reason: "水槽嵌入台面开孔：config/house.yaml 在该柜体段显式声明 cutouts {kind: sink, id: kitchen-sink}，开孔位置由既有水槽点位与柜体中心换算为 run-local offset，水槽是台面构件而非独立占地体"
+    owner: 业主
+    expires: 2027-06-30
+
+  - id: kitchen_cooktop_cutout
+    rule: pen.furniture.furniture
+    pair: [furniture:kitchen:kitchen_cabinet_run:4, furniture:kitchen:gas_stove:6]
+    kind: attached
+    reason: "灶具嵌入台面开孔：config/house.yaml 在该柜体段显式声明 cutouts {kind: cooktop, id: kitchen-cooktop}，开孔由既有灶具点位经世界偏移再按柜体旋转换算为 run-local offset，属台面开孔安装"
+    owner: 业主
+    expires: 2027-06-30
+
+  - id: kitchen_fridge_corner
+    rule: pen.furniture.furniture
+    pair: [furniture:kitchen:kitchen_cabinet_run:4, furniture:kitchen:fridge:5]
+    kind: attached
+    reason: "冰箱占东墙南端高柜位（DEC-021 厨房缩至南侧边界后定位），与东墙灶台柜段端部在转角收口并靠；冰箱实际位置与 SKU 仍 pending（docs/pending-site-data.md #22/#33），定位变更时本豁免随之失效并须重审"
+    owner: 业主
+    expires: 2027-06-30
+
+  # ── 主卫浴室柜组 / 主卧梳妆位 / 通顶衣柜收口 ──
+  - id: vanity_layers
+    rule: pen.furniture.furniture
+    pair: [furniture:master_bedroom:mb_vanity_base_cabinet:9, furniture:master_bedroom:mb_vanity_lower_board:10]
+    kind: attached
+    reason: "主卫浴室柜组的分层构造：下悬浮板与底柜同轴（同一 along / 宽 / 深，主体退让东墙完成面 15mm，端部由独立收口处理，见 config/house.yaml 原注），是同一组家具的上下构件，不是两台独立柜体"
+    owner: 业主
+    expires: 2027-06-30
+
+  - id: vanity_layers_upper
+    rule: pen.furniture.furniture
+    pair: [furniture:master_bedroom:mb_vanity_lower_board:10, furniture:master_bedroom:mb_vanity_main_board:11]
+    kind: attached
+    reason: "主卫浴室柜组：上悬浮板与下悬浮板同轴叠置（同一 along / 宽 / 深，主体退让东墙完成面 15mm），三层柜体构件属同一组家具，板件之间的共面不是互撞"
+    owner: 业主
+    expires: 2027-06-30
+
+  - id: dressing_stool_storage
+    rule: pen.furniture.furniture
+    pair: [furniture:master_bedroom:dressing_stool:7, furniture:master_bedroom:master_dressing_table:6]
+    kind: contained
+    reason: "梳妆凳收纳态完整收入梳妆桌 footprint 之内（config/house.yaml 原注「收纳态完整收入桌下，使用时向东拉出」），是「内含」关系而非互撞；拉出使用态属活动包络，本轮静态判定不覆盖"
+    owner: 业主
+    expires: 2027-06-30
+
+  - id: wardrobe_top_pelmet
+    rule: pen.furniture.furniture
+    pair: [furniture:master_bedroom:master_north_wall_wardrobe_950:1, furniture:master_bedroom:master_wardrobe_top_pelmet:2]
+    kind: attached
+    reason: "通顶衣柜顶部薄收口件：config/house.yaml 原注「通顶柜顶部薄收口，主体固定门头已由衣柜对象表达；不承担 HVAC 责任」，与衣柜主体是同一通顶柜的上下构件，不是两件独立家具"
+    owner: 业主
+    expires: 2027-06-30

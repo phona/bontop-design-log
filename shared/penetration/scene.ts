@@ -37,7 +37,9 @@ export interface SpatialConfig {
   mep_coordination_types?: string[];
   /** 机电协调构件的参与策略申报（来自 config/anti-penetration.yaml，由 CLI 合并进来）。 */
   mep_parts?: { participation: Array<{ types: string[]; policy: 'excluded' | 'solid'; note?: string }> };
-  relationships?: Array<{ id: string; type: string; objects?: string[]; inner?: string; outer?: string }>;
+  // relationships 白名单已于 2026-10-09 迁入 config/anti-penetration.yaml 的 waivers，
+  // 由 shared/penetration/registry.ts 的 relationshipSpecsFromWaivers 还原后消费；
+  // 本文件不再从 spatial-validation.yaml 读关系声明。
   junctions?: import('../spatial-validation.js').JunctionSpec[];
   allowed_collinear_overlaps?: Array<{ walls: string[]; max_overlap: number; reason?: string }>;
   allowed_overlay_wall_junctions?: import('../spatial-validation.js').OverlayWallJunctionSpec[];

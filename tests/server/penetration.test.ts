@@ -4,6 +4,11 @@
 // 浅层墙厚、家具互撞与 relationship 豁免、玻璃/栏杆 runtime 收口），以及
 // verify:penetration CLI 的真实 house 结论。声明完整性、拓扑、运行时权威性仍归
 // tests/server/spatial-validation.test.ts。
+//
+// 2026-10-09：生产配置里的 relationship 白名单已迁入 config/anti-penetration.yaml 的
+// waivers，经 shared/penetration/registry.ts 的 relationshipSpecsFromWaivers 还原后消费；
+// rules.ts 的 relationshipExemptsPair 仍是豁免原语（合成场景与 --shadow 审计都在用），
+// 迁移的逐条一致性由 tests/server/penetration-registry.test.ts 锁定。
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

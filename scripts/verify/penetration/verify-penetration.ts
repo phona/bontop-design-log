@@ -68,7 +68,7 @@ function main(): void {
       issues.push(...penetration.issues);
       issues.push(...penetration.registryIssues);
       shadowEntries = args.has('--shadow')
-        ? computeObbShadow({ furniture: collected.furnitureEntries, relationships: inputs.config.relationships, mepTypes: inputs.config.mep_coordination_types, ruleIssues: penetration.issues })
+        ? computeObbShadow({ furniture: collected.furnitureEntries, relationships: penetration.relationships, mepTypes: inputs.config.mep_coordination_types, ruleIssues: penetration.issues })
         : undefined;
     } catch (error) {
       issues.push({ level: 'error', code: 'scene_build_failed', entity: 'HOUSE_EXPORT', source: 'shared/render/SceneBuilder.ts', message: error instanceof Error ? error.message : String(error), evidence: {} });

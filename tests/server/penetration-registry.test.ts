@@ -12,12 +12,15 @@ import {
   PENETRATION_RULE_CODES,
   applyPenetrationPolicy,
   loadAntiPenetrationConfig,
+  relationshipSpecsFromWaivers,
   validateAntiPenetrationRegistry,
   validateMepParticipation,
   resolveMepParticipation,
   type MepParticipationInput,
 } from '../../shared/penetration/registry.js';
 import { validateFurnitureOpenings } from '../../shared/penetration/openings.js';
+import { relationshipExemptsPair, validateRuntimePenetration } from '../../shared/penetration/rules.js';
+import { requiredClearance } from '../../shared/spatial-validation.js';
 import { loadSceneInputs, buildRuntimeScene, collectPenetrationObjects } from '../../shared/penetration/scene.js';
 import type { SpatialIssue } from '../../shared/spatial-validation.js';
 
@@ -30,6 +33,9 @@ describe('anti-penetration registry', () => {
     const config = loadAntiPenetrationConfig();
     assert.deepEqual(validateAntiPenetrationRegistry(config), []);
     assert.equal(IMPLEMENTED_RULES.length, (config.rules ?? []).length);
+    // 13 条迁移进来的 relationships 豁免也必须全部合规（reason/owner/expires + 已知规则），
+    // 否则 validateAntiPenetrationRegistry 不会返回空数组。
+    assert.equal((config.waivers ?? []).length, 13, 'the migrated relationship whitelist has 13 entries');
   });
 
   it('fails closed when config declares a rule with no implementation', () => {
@@ -121,6 +127,101 @@ describe('penetration waivers', () => {
     const codes = validateAntiPenetrationRegistry(broken).map((item) => item.code);
     assert.ok(codes.includes('pen.waiver_incomplete'));
     assert.ok(codes.includes('pen.waiver_rule_unknown'));
+  });
+});
+
+describe('relationship waiver migration (2026-10-09)', () => {
+  // 迁移前 `config/spatial-validation.yaml` 的 13 条 relationships 白名单（HEAD f6be0ab 逐条留档）。
+  // 它们整体迁入了本配置的 waivers[]；这里锁三件事：一条不少、一对不错、判定口径不变。
+  // 少一条 = 合法叠放被误报成穿模；多一条 = 悄悄放行一次真互撞。
+  const PRE_MIGRATION = [
+    { id: 'laundry_stack', type: 'stacked', pair: ['furniture:balcony:washer:0', 'furniture:balcony:dryer:1'] },
+    { id: 'countertop_run', type: 'stacked', pair: ['furniture:kitchen:kitchen_cabinet_run:0', 'furniture:kitchen:kitchen_countertop_bridge:1'] },
+    { id: 'countertop_run_corner', type: 'stacked', pair: ['furniture:kitchen:kitchen_countertop_bridge:1', 'furniture:kitchen:kitchen_cabinet_run:2'] },
+    { id: 'vanity_layers', type: 'attached', pair: ['furniture:master_bedroom:mb_vanity_base_cabinet:9', 'furniture:master_bedroom:mb_vanity_lower_board:10'] },
+    { id: 'vanity_layers_upper', type: 'attached', pair: ['furniture:master_bedroom:mb_vanity_lower_board:10', 'furniture:master_bedroom:mb_vanity_main_board:11'] },
+    { id: 'dressing_stool_storage', type: 'contained', pair: ['furniture:master_bedroom:dressing_stool:7', 'furniture:master_bedroom:master_dressing_table:6'] },
+    { id: 'kitchen_cabinet_corner_join', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:kitchen_cabinet_run:4'] },
+    { id: 'kitchen_dishwasher_under_counter', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:0', 'furniture:kitchen:dishwasher:3'] },
+    { id: 'kitchen_dishwasher_under_counter_corner', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:dishwasher:3'] },
+    { id: 'kitchen_sink_cutout', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:sink:8'] },
+    { id: 'kitchen_cooktop_cutout', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:4', 'furniture:kitchen:gas_stove:6'] },
+    { id: 'kitchen_fridge_corner', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:4', 'furniture:kitchen:fridge:5'] },
+    { id: 'wardrobe_top_pelmet', type: 'attached', pair: ['furniture:master_bedroom:master_north_wall_wardrobe_950:1', 'furniture:master_bedroom:master_wardrobe_top_pelmet:2'] },
+  ];
+
+  it('keeps all 13 migrated relationships as complete waivers carrying the original kind', () => {
+    const config = loadAntiPenetrationConfig();
+    const waivers = config.waivers ?? [];
+    assert.equal(waivers.length, PRE_MIGRATION.length, 'one waiver per pre-migration relationship, no more no less');
+    for (const expected of PRE_MIGRATION) {
+      const waiver = waivers.find((item) => item.id === expected.id);
+      assert.ok(waiver, `waiver ${expected.id} is missing`);
+      assert.equal(waiver!.rule, 'pen.furniture.furniture', 'these waivers exempt furniture-vs-furniture only');
+      assert.deepEqual([...waiver!.pair].sort(), [...expected.pair].sort(), `waiver ${expected.id} must bind the same stable runtime id pair`);
+      assert.equal(waiver!.kind, expected.type, `waiver ${expected.id} must carry the original semantic type`);
+      assert.ok(waiver!.reason.length > 20, `waiver ${expected.id} needs a readable reason, not a placeholder`);
+      assert.ok(waiver!.owner.length > 0, `waiver ${expected.id} needs an owner`);
+      assert.match(waiver!.expires, /^\d{4}-\d{2}-\d{2}$/, `waiver ${expected.id} needs a YYYY-MM-DD expiry`);
+    }
+    // 语义类型必须仍是原来的三种之一：kind 是留档信息，不该悄悄长出新值。
+    for (const waiver of waivers) {
+      assert.ok(['stacked', 'attached', 'contained'].includes(waiver.kind ?? ''), `waiver ${waiver.id} has an unknown kind`);
+    }
+  });
+
+  it('exempts exactly the same runtime pairs as the pre-migration relationships whitelist', () => {
+    const config = loadAntiPenetrationConfig();
+    const specs = relationshipSpecsFromWaivers(config);
+    const expected = new Set(PRE_MIGRATION.map((item) => [...item.pair].sort().join('|')));
+    const actual = new Set(specs.map((spec) => [...(spec.objects ?? [])].sort().join('|')));
+    assert.deepEqual([...actual].sort(), [...expected].sort(), 'the derived relationship set must be pair-identical');
+
+    // 判定口径：对**全部** runtime 家具对，豁免结论与迁移前逐条一致（不是只查这 13 对）。
+    const inputs = loadSceneInputs();
+    const collected = collectPenetrationObjects(buildRuntimeScene(inputs), inputs.structuralPaths);
+    const ids = collected.furniture.map((entry) => entry.id);
+    const beforeExempts = (a: string, b: string) => PRE_MIGRATION.some((item) => {
+      const [x, y] = [a, b].sort();
+      const [p, q] = [...item.pair].sort();
+      return x === p && y === q;
+    });
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        assert.equal(
+          relationshipExemptsPair(ids[i], ids[j], specs),
+          beforeExempts(ids[i], ids[j]),
+          `pair ${ids[i]} / ${ids[j]} changed its exemption verdict`,
+        );
+      }
+    }
+  });
+
+  it('lets the waiver policy suppress exactly what the old relationship whitelist suppressed', () => {
+    const config = loadAntiPenetrationConfig();
+    const specs = relationshipSpecsFromWaivers(config);
+    const inputs = loadSceneInputs();
+    const collected = collectPenetrationObjects(buildRuntimeScene(inputs), inputs.structuralPaths);
+    const common = {
+      furniture: collected.furniture,
+      walls: collected.walls,
+      glass: collected.glass,
+      ceilings: collected.ceilings,
+      mepTypes: inputs.config.mep_coordination_types,
+      collisionMargin: inputs.config.tolerance_profiles?.default?.collision_margin ?? 0.005,
+      glassRequiredClearance: requiredClearance(inputs.config.tolerance_profiles?.curtain_wall ?? {}),
+      source: 'test',
+    };
+    // 迁移前：关系白名单在 rules.ts 内部拦；迁移后：waiver 策略在 registry.ts 拦。
+    // 两者的净结果必须同一个集合。
+    const withWhitelist = validateRuntimePenetration({ ...common, relationships: specs });
+    const withoutWhitelist = validateRuntimePenetration(common);
+    const key = (issue: SpatialIssue) => `${issue.code}|${issue.entity}`;
+    const whitelistKeys = new Set(withWhitelist.map(key));
+    const suppressed = withoutWhitelist.filter((issue) => !whitelistKeys.has(key(issue)));
+    assert.ok(suppressed.length > 0, 'the migrated whitelist must still suppress real overlaps');
+    const kept = applyPenetrationPolicy(withoutWhitelist, config, '2026-10-09');
+    assert.deepEqual(kept.map(key).sort(), withWhitelist.map(key).sort(), 'waiver policy must reproduce the whitelist result exactly');
   });
 });
 

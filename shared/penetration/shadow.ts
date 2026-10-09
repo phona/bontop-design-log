@@ -21,6 +21,8 @@ import type { Aabb3, RelationshipSpec, SpatialIssue } from '../spatial-validatio
  *
  * 因此本模块只对照家具↔家具，并额外做一件有真实价值的事：审计 `relationships`
  * 白名单是否过宽——被豁免的对如果 OBB 说根本不撞，说明这条豁免是假白名单。
+ * （2026-10-09：白名单已迁入 `config/anti-penetration.yaml` 的 waivers，由
+ * `relationshipSpecsFromWaivers` 还原后喂进来，审计口径不变。）
  *
  * 为什么安全：OBB 恒包含于 AABB，OBB 判相交 ⇒ AABB 必判相交。本层只能消假阳，
  * 不可能放过真阳；但也正因如此，未评审前不得把 OBB 设为 authoritative。
@@ -40,7 +42,7 @@ export interface ShadowDivergenceEntry {
 
 export interface ExemptionAuditEntry {
   pair: [string, string];
-  /** 声明了哪种关系（来自 config/spatial-validation.yaml 的 relationships）。 */
+  /** 声明了哪种关系（stacked/attached/contained；2026-10-09 起随 relationships 白名单迁入 anti-penetration 的 waivers）。 */
   relationship: string;
   /** OBB 是否确认这一对真的相交——false 即「假白名单」（豁免了其实不撞的一对）。 */
   obb_confirms_overlap: boolean;

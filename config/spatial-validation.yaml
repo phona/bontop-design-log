@@ -166,51 +166,10 @@ allowed_overlay_wall_junctions:
   - { element: north_recess_curtain, wall: w_balc_west, type: endpoint, x: 5.60, z: 1.10, reason: "北凹口幕墙与阳台西墙端部接头" }
   - { element: south_east_curtain, wall: w_be_west, type: t, x: 13.40, z: 8.70, reason: "东南书房凹口南幕墙与旧东侧墙线 T 接" }
 
-# 显式允许的空间关系。相同平面 footprint 的叠放件必须在这里声明。
-relationships:
-  - id: laundry_stack
-    type: stacked
-    objects: [furniture:balcony:washer:0, furniture:balcony:dryer:1]
-  - id: countertop_run
-    type: stacked
-    objects: [furniture:kitchen:kitchen_cabinet_run:0, furniture:kitchen:kitchen_countertop_bridge:1]
-  - id: countertop_run_corner
-    type: stacked
-    objects: [furniture:kitchen:kitchen_countertop_bridge:1, furniture:kitchen:kitchen_cabinet_run:2]
-  - id: vanity_layers
-    type: attached
-    objects: [furniture:master_bedroom:mb_vanity_base_cabinet:9, furniture:master_bedroom:mb_vanity_lower_board:10]
-  - id: vanity_layers_upper
-    type: attached
-    objects: [furniture:master_bedroom:mb_vanity_lower_board:10, furniture:master_bedroom:mb_vanity_main_board:11]
-  - id: dressing_stool_storage
-    type: contained
-    inner: furniture:master_bedroom:dressing_stool:7
-    outer: furniture:master_bedroom:master_dressing_table:6
-  # 厨房真实运行包络的声明式接口：L 形柜体在转角相交，桥台面跨
-  # 洗碗机位，水槽/灶具嵌入台面，冰箱与东墙柜体在转角收口。它们是
-  # 已冻结的 attached/cutout 关系，不是对任意家具重叠的宽泛豁免。
-  - id: kitchen_cabinet_corner_join
-    type: attached
-    objects: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:kitchen_cabinet_run:4]
-  - id: kitchen_dishwasher_under_counter
-    type: attached
-    objects: [furniture:kitchen:kitchen_cabinet_run:0, furniture:kitchen:dishwasher:3]
-  - id: kitchen_dishwasher_under_counter_corner
-    type: attached
-    objects: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:dishwasher:3]
-  - id: kitchen_sink_cutout
-    type: attached
-    objects: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:sink:8]
-  - id: kitchen_cooktop_cutout
-    type: attached
-    objects: [furniture:kitchen:kitchen_cabinet_run:4, furniture:kitchen:gas_stove:6]
-  - id: kitchen_fridge_corner
-    type: attached
-    objects: [furniture:kitchen:kitchen_cabinet_run:4, furniture:kitchen:fridge:5]
-  - id: wardrobe_top_pelmet
-    type: attached
-    objects: [furniture:master_bedroom:master_north_wall_wardrobe_950:1, furniture:master_bedroom:master_wardrobe_top_pelmet:2]
+# 「合法重叠」白名单（relationships）已于 2026-10-09 整体迁入
+# config/anti-penetration.yaml 的 waivers[]：原 13 条只按 type + 两个 runtime id 声明，
+# 没有 reason/owner/expires，失效了不会显形；迁入后统一走带保质期的豁免机制，语义类型
+# 随迁到 waiver.kind，豁免判定（规则 + 稳定 runtime id 对）逐条不变。
 
 # 被 suppress 的实体墙必须由恰好一个围护替代物接管。
 # curtain_run/railing_run 的 wall refs 来自 overlay，禁止在这里复制路径坐标。

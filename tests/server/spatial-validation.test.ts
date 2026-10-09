@@ -199,9 +199,13 @@ describe('spatial validation primitives', () => {
     assert.ok(unknownGlass.some((issue) => issue.code === 'glass_runtime_unknown' && issue.entity === 'extra'));
 
     // 关系声明只体检形状与引用，不豁免互撞（豁免的执行在穿透层）。
+    // 2026-10-09：关系声明的权威源已从 config/spatial-validation.yaml 的 relationships
+    // 迁到 config/anti-penetration.yaml 的 waivers（由 relationshipSpecsFromWaivers 还原），
+    // 体检仍在本侧——见 tests/server/penetration-registry.test.ts 的迁移锁。
     assert.ok(validateRelationshipSpecs(
       [{ id: 'bad-global', type: 'attached', objects: ['washer', 'dryer'] }],
       ['furniture:balcony:washer:0', 'furniture:balcony:dryer:1'],
+      'config/anti-penetration.yaml',
     ).some((issue) => issue.code === 'relationship_instance_unstable'));
   });
 });

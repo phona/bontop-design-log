@@ -4,6 +4,7 @@ import { load as parseYaml } from 'js-yaml';
 import {
   deriveRuntimeGlassJoins,
   requiredClearance,
+  type RelationshipSpec,
   type SpatialIssue,
 } from '../spatial-validation.js';
 import { validateRuntimePenetration } from './rules.js';
@@ -104,6 +105,33 @@ export function validateAntiPenetrationRegistry(config: AntiPenetrationConfig, s
   return issues;
 }
 
+/**
+ * 把 waivers 还原成 `RelationshipSpec` 形状（原 `config/spatial-validation.yaml`
+ * `relationships` 白名单的迁移形态）。
+ *
+ * 2026-10-09：13 条「合法重叠」声明从 spatial-validation.yaml 的 relationships 整体迁入
+ * 本配置的 waivers，语义类型随迁到 `WaiverSpec.kind`（stacked/attached/contained），
+ * 因此这里按 kind 还原 `type`、按 pair 还原 `objects`（顺序无关，与原 inner/outer 两种
+ * 写法等价）。**还原不改判定**：豁免永远只按「规则 + 稳定 runtime id 对」匹配，type/kind
+ * 不参与。
+ *
+ * 消费者只有两个，都不在这里执行豁免：
+ *   ① `verify:spatial` 的 `validateRelationshipSpecs`——形状与稳定 runtime id 绑定的声明体检；
+ *   ② `--shadow` 的 `computeObbShadow`——relationships 豁免审计（假白名单检测）。
+ *
+ * 为什么豁免的执行点**不**放在 rules.ts 的关系白名单上：那会让 waivers 被第二处静默，
+ * 而 `applyWaivers` 是唯一同时带 `rule` 绑定与 `expires` 到期复活的地方。把 waivers 还原成
+ * relationships 再喂回 `validateRuntimePenetration`，到期豁免会被关系白名单先拦下，
+ * 「到期自动复活为 error」就永远不触发——正是本次迁移要消灭的「永久静默」。
+ */
+export function relationshipSpecsFromWaivers(config: AntiPenetrationConfig): RelationshipSpec[] {
+  return (config.waivers ?? []).map((waiver) => ({
+    id: waiver.id,
+    type: waiver.kind ?? 'attached',
+    objects: [waiver.pair[0], waiver.pair[1]],
+  }));
+}
+
 /** 每个 placed 的机电协调类型都必须显式申报参与策略；未申报 → fail-closed。 */
 export function resolveMepParticipation(type: string, config: AntiPenetrationConfig): MepParticipationPolicy | undefined {
   return config.mep_parts?.participation?.find((entry) => entry.types.includes(type))?.policy;
@@ -184,6 +212,11 @@ export interface PenetrationRunResult {
   issues: SpatialIssue[];
   /** 规则层自身配置问题（申报/豁免/mep 策略），与几何结论分开上报。 */
   registryIssues: SpatialIssue[];
+  /**
+   * 由 waivers 还原的 relationships 声明。给 `--shadow` 的豁免审计复用，
+   * 避免 CLI 再读一遍配置；不参与判定（见 `relationshipSpecsFromWaivers`）。
+   */
+  relationships: RelationshipSpec[];
 }
 
 /**
@@ -203,7 +236,11 @@ export function runPenetrationChecks(inputs: SceneInputs, scene: ReturnType<type
     walls: collected.walls,
     glass: collected.glass,
     ceilings: collected.ceilings,
-    relationships: inputs.config.relationships,
+    // 家具互撞的「合法重叠」豁免由 config/anti-penetration.yaml 的 waivers 承担
+    // （2026-10-09 从 spatial-validation.yaml 的 relationships 迁入）。这里**不再**向
+    // rules.ts 传 relationships：豁免执行点收敛到下面的 applyPenetrationPolicy →
+    // applyWaivers（唯一一处），只有它同时绑定理句与 expires 到期复活。把 waivers
+    // 还原成关系白名单再喂进来，等于给同一批豁免开第二个静默出口，到期复活会失效。
     glassJoins: deriveRuntimeGlassJoins(inputs.structuralPaths, inputs.config.overlay_replacements ?? []),
     mepTypes: inputs.config.mep_coordination_types,
     collisionMargin: inputs.config.tolerance_profiles?.default?.collision_margin ?? 0.005,
@@ -224,7 +261,7 @@ export function runPenetrationChecks(inputs: SceneInputs, scene: ReturnType<type
   issues.push(...validateFurnitureOpenings({ walls: inputs.layout.walls, furniture: collected.furnitureEntries, source: SOURCE }));
   issues.push(...placedClearanceIssues(inputs, collected));
 
-  return { issues: applyPenetrationPolicy(issues, config, today), registryIssues };
+  return { issues: applyPenetrationPolicy(issues, config, today), registryIssues, relationships: relationshipSpecsFromWaivers(config) };
 }
 
 function placedClearanceIssues(inputs: SceneInputs, collected: ReturnType<typeof collectPenetrationObjects>): SpatialIssue[] {

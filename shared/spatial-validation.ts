@@ -698,11 +698,19 @@ export interface RelationshipSpec {
   outer?: string;
 }
 
-/** Config-level guard against silently reintroducing type-wide exemptions. */
+/**
+ * Config-level guard against silently reintroducing type-wide exemptions.
+ *
+ * 2026-10-09：关系声明的权威源从 `config/spatial-validation.yaml` 的 `relationships`
+ * 迁到 `config/anti-penetration.yaml` 的 `waivers[]`（由
+ * `shared/penetration/registry.ts` 的 `relationshipSpecsFromWaivers` 还原成这里的
+ * `RelationshipSpec` 形状）。函数本身留在本文件：它做的是**声明体检**（形状 + 稳定
+ * runtime id 绑定），与豁免的执行（穿透层的 waivers）不是同一件事，不随迁移搬走。
+ */
 export function validateRelationshipSpecs(
   relationships: RelationshipSpec[] = [],
   runtimeIds: string[] = [],
-  source = 'config/spatial-validation.yaml',
+  source = 'config/anti-penetration.yaml',
 ): SpatialIssue[] {
   const issues: SpatialIssue[] = [];
   const known = new Set(runtimeIds);
