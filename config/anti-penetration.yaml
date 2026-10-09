@@ -1,0 +1,106 @@
+# 防穿模（penetration）规则登记表。
+#
+# 本文件只声明**规则、严重级与豁免**；几何坐标一律来自 model-geometry/overlay/house，
+# 容差一律来自 config/spatial-validation.yaml 的 tolerance_profiles——这里不复制任何
+# 坐标或容差，禁止出现第二套数字。
+#
+# severity 语义：**该规则全部 code 的级别下限**。规则按几何量自判的级别若更严则保持
+# （配置盖不住 error），若更松则被抬到下限——即配置只许加严，不许放宽。
+# 因此同时产出 error 与 warning 两种 code 的规则，下限必须写 warning：
+# 写成 error 会把「净距不足」这类本应只显形的问题抬成阻断级。
+version: 1
+
+# ── 规则登记表 ────────────────────────────────────────────────────────────
+# id          稳定规则 id，进 Git diff 可评审
+# codes       该规则产出的 issue code（豁免按 code 匹配）
+# kinds       参与的物体对（人读用，不参与判定）
+# severity    下限级别：error 阻断 verify:all，warning 只显形
+# enabled     false 时该规则的结论降为 info 并在 message 标注，不静默消失
+rules:
+  - id: pen.furniture.wall
+    codes: [furniture_wall_collision]
+    kinds: furniture↔wall
+    severity: error
+    enabled: true
+    note: "家具进入墙体实体（有限墙厚 slab 穿越，未过中心线也 fail-closed）"
+
+  - id: pen.furniture.wall_clearance
+    codes: [furniture_clearance_insufficient, furniture_endpoint_clearance_insufficient, furniture_host_unknown, furniture_host_runtime_missing]
+    kinds: furniture↔host wall
+    severity: error
+    enabled: true
+    note: "定制家具对宿主墙完成面的退让净距与端部收口；site_trim 现场裁切语义随 evidence 带出"
+
+  - id: pen.furniture.glass
+    codes: [furniture_glass_collision, furniture_glass_clearance_insufficient]
+    kinds: furniture↔glass/curtain/railing
+    # 下限必须是 warning：穿越是 error，净距不足按 curtain_wall profile 只显形。
+    # 写成 error 会把当前 8 处已知净距不足抬成阻断级，属于放宽/加严口径错误。
+    severity: warning
+    enabled: true
+    note: "家具穿越或贴近玻璃/窗帘/栏杆路径；净距不足按 curtain_wall profile（50mm）报 warning"
+
+  - id: pen.furniture.ceiling
+    codes: [furniture_ceiling_collision]
+    kinds: furniture↔ceiling
+    severity: error
+    enabled: true
+    note: "家具进入吊顶实体/降板"
+
+  - id: pen.furniture.furniture
+    codes: [furniture_furniture_collision, furniture_furniture_contact_tolerance]
+    kinds: furniture↔furniture
+    # 下限同样是 warning：规则内部对 ≤ collision_margin 的接触降级为 warning。
+    severity: warning
+    enabled: true
+    note: "家具互撞；≤ collision_margin 的接触由规则内部降级为 warning，合法叠放/咬合仍须在 spatial-validation.yaml 的 relationships 绑定稳定 runtime id"
+
+  - id: pen.glass.glass
+    codes: [glass_runtime_collision]
+    kinds: glass↔glass
+    severity: error
+    enabled: true
+    note: "玻璃/栏杆 runtime mesh 无共同端点闭包即互撞；栏杆 handrail/bar 为内部构造件，不作为独立 pane"
+
+  - id: pen.furniture.opening_blocked
+    codes: [pen.furniture.opening_blocked]
+    kinds: furniture↔door opening
+    severity: error
+    enabled: true
+    note: "家具 footprint 压住门洞清宽（door/cased_opening/sliding_door；窗洞不挡通行，不在本规则内）"
+
+# ── 兄弟 mesh 不变式 ──────────────────────────────────────────────────────
+# 2026-10-09 实测：60 个 placed 家具 → 60 条采集记录，**零重复**。即当前
+# FixtureFactory 每个 placed 家具只产出一条 runtime 记录，不存在复合家具子 mesh
+# 互撞的假阳来源。因此不加「同实体豁免」这种推测性规则；改为用不变式测试兜底：
+# 一旦将来某个 fixture 开始产出多条记录，测试先红，再决定是豁免还是修几何。
+sibling_policy:
+  one_entry_per_entity: true
+  note: "同一 runtime 实体只应产生一条采集记录；违反时 tests/server/penetration.test.ts 的 sibling 不变式先红"
+
+# ── 机电协调构件的参与策略 ────────────────────────────────────────────────
+# config/spatial-validation.yaml 的 mep_coordination_types 目前被整体排除在
+# 「家具互撞」之外（注释原意：管线/检视构件必须有尺寸，但不作为家具互撞对象，
+# 穿墙由 MEP 专项校验负责）。
+#
+# 2026-10-09 实测：4 个 placed 机电件中，mb_vanity_pvc_service_chase 的包络是
+# 0.94×2.59×2.15m 的**预留区**（按设计穿越 4 段墙、与 6 件家具重叠），不是实体管。
+# 把它当实体判穿透会得到 10 处「穿模」，但那不是缺陷而是建模口径未裁定。
+#
+# 因此这里要求**逐类型显式申报**，未申报 → fail-closed（pen.mep_participation_undeclared）：
+#   excluded  不作为实体参与互撞（当前口径）
+#   solid     按实体参与墙穿透检查（需要业主/厂家确认该构件是实体后再改）
+# 预留区与实体管的口径裁定、以及那 10 处重叠的定性，跟踪 docs/pending-site-data.md，
+# 未裁定前不得为了绿灯改坐标或改口径。
+mep_parts:
+  participation:
+    - types: [mb_vanity_pvc_box, mb_vanity_pvc_service_chase, mb_vanity_pvc_wardrobe_entry, condensate_pipe_ac_outlet]
+      policy: excluded
+      note: "预埋管/检视构件按预留区口径，穿墙由 verify:mep 专项负责；其中 mb_vanity_pvc_service_chase 的 4 处墙穿越 + 6 处家具重叠待口径裁定（见 docs/pending-site-data.md）"
+
+# ── 豁免（waiver）────────────────────────────────────────────────────────
+# 每条豁免必须带 reason / owner / expires。到期自动复活为 error 并带上豁免编号，
+# 不存在「永久静默」。豁免按 rule + 实体对匹配（顺序无关），必须绑定稳定 runtime id，
+# 禁止按家具类型全局放行。
+# 当前无豁免。
+waivers: []

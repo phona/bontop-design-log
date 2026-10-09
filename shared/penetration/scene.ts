@@ -35,6 +35,8 @@ export interface SpatialConfig {
   }>;
   furniture_profiles?: Record<string, { profile: string; role?: string; site_trim?: boolean }>;
   mep_coordination_types?: string[];
+  /** 机电协调构件的参与策略申报（来自 config/anti-penetration.yaml，由 CLI 合并进来）。 */
+  mep_parts?: { participation: Array<{ types: string[]; policy: 'excluded' | 'solid'; note?: string }> };
   relationships?: Array<{ id: string; type: string; objects?: string[]; inner?: string; outer?: string }>;
   junctions?: import('../spatial-validation.js').JunctionSpec[];
   allowed_collinear_overlaps?: Array<{ walls: string[]; max_overlap: number; reason?: string }>;

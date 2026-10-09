@@ -1043,7 +1043,7 @@ facts:
   # 量房待确认项条数：39 条是「还有什么没量」的账面。新增/关闭条目必须同步。
   - id: fact.pending_site_data_count
     kind: derived
-    value: "@docs/pending-site-data.md:量表共 54 条"
+    value: "@docs/pending-site-data.md:量表共 55 条"
     unit: 条
     mirrors:
       - path: docs/pending-site-data.md
@@ -1605,16 +1605,24 @@ coverage:
   - { file: config/render/lighting.yaml, field: "fixtures", readers: ["shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
   - { file: config/render/overrides.yaml, field: "*", readers: [] }
   - { file: config/spatial-validation.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
-  - { file: config/spatial-validation.yaml, field: "tolerance_profiles", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "tolerance_profiles", readers: ["shared/penetration/scene.ts", "shared/penetration/registry.ts"] }
   - { file: config/spatial-validation.yaml, field: "furniture_profiles", readers: ["shared/furniture-profile.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "furniture_profile_overrides", readers: ["shared/furniture-profile.ts", "shared/penetration/scene.ts"] }
-  - { file: config/spatial-validation.yaml, field: "mep_coordination_types", readers: ["shared/furniture-profile.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "mep_coordination_types", readers: ["shared/furniture-profile.ts", "shared/penetration/registry.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "junctions", readers: ["shared/spatial-validation.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "allowed_collinear_overlaps", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "allowed_overlay_wall_junctions", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
-  - { file: config/spatial-validation.yaml, field: "relationships", readers: ["shared/spatial-validation.ts", "shared/penetration/rules.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "relationships", readers: ["shared/spatial-validation.ts", "shared/penetration/rules.ts", "shared/penetration/registry.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "overlay_replacements", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "lighting_host_overrides", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  # version 暂无 reader（与 plumbing/tradeoffs 等同为未消费字段，显式登记为空，不装作有人读）
+  - { file: config/anti-penetration.yaml, field: "version", readers: [] }
+  # rules/waivers/mep_parts 的唯一读取方是 shared/penetration/registry.ts；
+  # verify:spatial 与 verify:penetration 都经 runPenetrationChecks 间接触达，不重复登记。
+  - { file: config/anti-penetration.yaml, field: "rules", readers: ["shared/penetration/registry.ts"] }
+  - { file: config/anti-penetration.yaml, field: "sibling_policy", readers: ["tests/server/penetration-registry.test.ts"] }
+  - { file: config/anti-penetration.yaml, field: "mep_parts", readers: ["shared/penetration/registry.ts"] }
+  - { file: config/anti-penetration.yaml, field: "waivers", readers: ["shared/penetration/registry.ts"] }
   - { file: config/tradeoffs.yaml, field: "tradeoffs", readers: [] }
   - { file: config/verify-rules.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/verify-rules.yaml, field: "bounds", readers: ["shared/render/layout-bounds.ts", "shared/types.ts"] }

@@ -32,10 +32,14 @@ scripts/
 | 户型拓扑/布局及全量校验 | `npm run verify:all` |
 | 家具、点位、规则、碰撞校验 | `npm run verify:furniture`、`verify:consistency`、`verify:rules`、`verify:collision` |
 | 共享 project facts/灯光校验 | `npm run verify:project-render-facts`、`npm run verify:lighting-config` |
+| 空间声明/拓扑/安装校验 | `npm run verify:spatial` |
+| 防穿模（实体互撞/净距） | `npm run verify:penetration` |
 | GLB 导出/比较 | `npm run export:glb`、`npm run compare:glb` |
 | Floor-plan capture | `python scripts/render/capture/capture_floor_plan_screenshot.py` |
 | Floor-plan watcher | `python scripts/render/capture/watch_floor_plan_and_compare.py` |
 | 俯视图/MEP 图 | `python scripts/render/diagrams/draw-topdown.py`、`draw-mep-hvac-plan.py` |
+
+`verify:spatial` 与 `verify:penetration` 共用 `shared/penetration/scene.ts` 的场景采集与规则实现：前者管声明完整性、墙线拓扑、运行时权威性与安装语义，后者只管实体互撞与净距（规则登记表 `config/anti-penetration.yaml`）。两者都纳入 `verify:all`。
 
 `project-render-facts` 与 lighting 配置同时服务 Web/API/共享场景，因此仍属 active 主线：生成快照为 `data/project-render-facts.json`，实现位于 `scripts/project/` 与 `scripts/verify/project/`，并继续包含在 `verify:all`。
 

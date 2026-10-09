@@ -8,21 +8,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { PENETRATION_LAYER_CODES } from '../../shared/penetration/registry.js';
 
-/** 穿透族 code 登记表：同时是「什么属于 penetration」的唯一清单。 */
-const PENETRATION_CODES = new Set([
-  'furniture_wall_collision',
-  'furniture_clearance_insufficient',
-  'furniture_endpoint_clearance_insufficient',
-  'furniture_host_unknown',
-  'furniture_host_runtime_missing',
-  'furniture_glass_collision',
-  'furniture_glass_clearance_insufficient',
-  'furniture_ceiling_collision',
-  'furniture_furniture_collision',
-  'furniture_furniture_contact_tolerance',
-  'glass_runtime_collision',
-]);
+/** 穿透族 code 全集：引用注册表的单一清单，不在此另抄一份。 */
+const PENETRATION_CODES = new Set(PENETRATION_LAYER_CODES);
 
 const runCli = (script: string) => {
   const result = spawnSync('npx', ['tsx', script, '--json'], { encoding: 'utf8' });

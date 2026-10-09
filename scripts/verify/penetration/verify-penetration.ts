@@ -1,21 +1,16 @@
 import { writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import {
-  deriveRuntimeGlassJoins,
   makeSpatialReport,
-  requiredClearance,
-  type GlassPathSegment,
-  type RuntimeGlassJoinSpec,
   type SpatialIssue,
 } from '../../../shared/spatial-validation.js';
-import { validateRuntimePenetration } from '../../../shared/penetration/rules.js';
+import { runPenetrationChecks } from '../../../shared/penetration/registry.js';
 import {
   buildRuntimeScene,
   collectPenetrationObjects,
   loadSceneInputs,
   type SceneInputs,
 } from '../../../shared/penetration/scene.js';
-import { declaredDims, profileFor, validateFurnitureClearance } from '../../../shared/penetration/clearance.js';
 
 /**
  * 防穿模 linter（penetration）入口：两块实体是否占了同一块空间。
@@ -30,41 +25,24 @@ import { declaredDims, profileFor, validateFurnitureClearance } from '../../../s
  */
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
-const SOURCE = 'config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/rules.ts';
 
-function placedFurnitureClearanceIssues(inputs: SceneInputs, collected: ReturnType<typeof collectPenetrationObjects>): SpatialIssue[] {
-  const issues: SpatialIssue[] = [];
-  const config = inputs.config;
-  const wallMap = new Map(inputs.layout.walls.map((wall) => [wall.id, wall]));
-  const furnitureById = new Map(collected.furnitureEntries.map((entry) => [entry.entity, entry]));
-  for (const [roomId, items] of Object.entries(inputs.house.furnishings ?? {})) {
-    let runtimeIndex = 0;
-    for (const [index, raw] of items.entries()) {
-      const item = raw as unknown as Record<string, unknown>;
-      const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
-      if (!isPlaced) continue;
-      const type = String(item.type ?? '');
-      const runtimeId = `furniture:${roomId}:${type}:${runtimeIndex}`;
-      runtimeIndex++;
-      // 缺尺寸/无 runtime 实例的条目不进净距判定，与 verify:spatial 的循环契约一致
-      // （尺寸缺失由 verify:spatial 的 furniture_dimensions_missing 单一负责）。
-      const dims = declaredDims(item, type);
-      if (!dims || dims.width <= 0 || dims.depth <= 0) continue;
-      const entry = furnitureById.get(runtimeId);
-      if (!entry) continue;
-      // 未登记类型由 verify:spatial 的 furniture_profile_unregistered fail-closed
-      // 单一负责；这里静默跳过该类型的净距，避免两个 CLI 对同一份 override 各判一半。
-      const override = profileFor(type, config);
-      if (!override) continue;
-      const profile = config.tolerance_profiles?.[override.profile] ?? config.tolerance_profiles?.default ?? {};
-      issues.push(...validateFurnitureClearance({ entry, type, override, profile, wallEntries: collected.wallEntries, wallMap, source: SOURCE }));
+function resolveToday(): string {
+  const index = process.argv.indexOf('--today');
+  const value = index >= 0 ? process.argv[index + 1] : undefined;
+  if (value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      console.error('verify:penetration --today requires YYYY-MM-DD');
+      process.exitCode = 2;
+      return '1970-01-01';
     }
+    return value;
   }
-  return issues;
+  return new Date().toISOString().slice(0, 10);
 }
 
 function main(): void {
   const args = new Set(process.argv.slice(2));
+  const todayStamp = resolveToday();
   const issues: SpatialIssue[] = [];
 
   let inputs: SceneInputs;
@@ -77,31 +55,19 @@ function main(): void {
   }
 
   let collected: ReturnType<typeof collectPenetrationObjects> | undefined;
+  let penetration: ReturnType<typeof runPenetrationChecks> | undefined;
   if (inputs) {
     try {
       const scene = buildRuntimeScene(inputs);
       collected = collectPenetrationObjects(scene, inputs.structuralPaths);
+      // 全部穿透规则走注册表：配置声明 severity 下限、豁免与机电参与策略，
+      // 与 verify:spatial 共用同一入口，不会各自漂移。
+      penetration = runPenetrationChecks(inputs, scene, todayStamp);
+      issues.push(...penetration.issues);
+      issues.push(...penetration.registryIssues);
     } catch (error) {
       issues.push({ level: 'error', code: 'scene_build_failed', entity: 'HOUSE_EXPORT', source: 'shared/render/SceneBuilder.ts', message: error instanceof Error ? error.message : String(error), evidence: {} });
     }
-  }
-
-  if (inputs && collected) {
-    const config = inputs.config;
-    const glassJoins: RuntimeGlassJoinSpec[] = deriveRuntimeGlassJoins(inputs.structuralPaths, config.overlay_replacements ?? []);
-    issues.push(...validateRuntimePenetration({
-      furniture: collected.furniture,
-      walls: collected.walls,
-      glass: collected.glass,
-      ceilings: collected.ceilings,
-      relationships: config.relationships,
-      glassJoins,
-      mepTypes: config.mep_coordination_types,
-      collisionMargin: config.tolerance_profiles?.default?.collision_margin ?? 0.005,
-      glassRequiredClearance: requiredClearance(config.tolerance_profiles?.curtain_wall ?? {}),
-      source: SOURCE,
-    }));
-    issues.push(...placedFurnitureClearanceIssues(inputs, collected));
   }
 
   const report = makeSpatialReport(issues.sort((a, b) => a.code.localeCompare(b.code) || a.entity.localeCompare(b.entity) || a.message.localeCompare(b.message)));

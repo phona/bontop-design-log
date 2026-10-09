@@ -27,7 +27,6 @@ import {
   type RuntimeGlassJoinSpec,
   type SpatialIssue,
 } from '../../../shared/spatial-validation.js';
-import { validateRuntimePenetration } from '../../../shared/penetration/rules.js';
 import {
   buildRuntimeScene,
   collectPenetrationObjects,
@@ -42,7 +41,8 @@ import {
   type SceneInputs,
   type SpatialConfig,
 } from '../../../shared/penetration/scene.js';
-import { declaredDims, profileFor, validateFurnitureClearance } from '../../../shared/penetration/clearance.js';
+import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
+import { runPenetrationChecks } from '../../../shared/penetration/registry.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const LIGHT_TYPES = new Set(['wall_lamp', 'ceiling_light', 'pendant', 'dome', 'downlight', 'track_light', 'led_strip', 'night_light']);
@@ -221,49 +221,31 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
   return issues;
 }
 
-function validateScene(
-  result: ReturnType<typeof buildRuntimeScene>,
-  furnishings: FurnishingsYaml,
-  rooms: ResolvedRoom[],
-  walls: ResolvedWall[],
-  elements: SceneElement[],
-  layout: ReturnType<typeof resolveLayout>,
-  ceilingConfig: SpatialConfig,
-): SpatialIssue[] {
+function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntimeScene>, today: string): SpatialIssue[] {
   const issues: SpatialIssue[] = [];
   const source = 'config/house.yaml + shared/render/SceneBuilder.ts + shared/render/FixtureFactory.ts';
-  const structuralPaths = pathSegmentsFromOverlay(elements, layout);
-  const collected = collectPenetrationObjects(result, structuralPaths);
-  const { wallEntries } = collected;
+  const { layout, config, house } = inputs;
+  const structuralPaths = inputs.structuralPaths;
+  const collected = collectPenetrationObjects(scene, structuralPaths);
   const furnitureById = new Map(collected.furnitureEntries.map((entry) => [entry.entity, entry]));
-  const wallMap = new Map(walls.map((wall) => [wall.id, wall]));
-  const runtimeGlassJoins: RuntimeGlassJoinSpec[] = deriveRuntimeGlassJoins(structuralPaths, ceilingConfig.overlay_replacements ?? []);
-  issues.push(...validateRelationshipSpecs(ceilingConfig.relationships, collected.furniture.map((entry) => entry.id), 'config/spatial-validation.yaml'));
+  issues.push(...validateRelationshipSpecs(config.relationships, collected.furniture.map((entry) => entry.id), 'config/spatial-validation.yaml'));
 
-  // 运行时权威性（声明 ↔ runtime 是否一一对应）与实体穿透（两块实体是否同占一处）
-  // 分属两层，共用 shared/penetration 的同一份采集结果，因此不会各自漂移容差。
+  // 运行时权威性（声明 ↔ runtime 是否一一对应）留在本层。
   issues.push(...validateRuntimeAuthority({
     furniture: collected.furniture,
-    expectedFurnitureIds: placedFurnitureRuntimeIds(furnishings),
+    expectedFurnitureIds: placedFurnitureRuntimeIds(house.furnishings ?? {}),
     expectedGlassElementIds: [...new Set(structuralPaths.map((path) => path.elementId))],
     glass: collected.glass,
     source,
   }));
 
-  issues.push(...validateRuntimePenetration({
-    furniture: collected.furniture,
-    walls: collected.walls,
-    glass: collected.glass,
-    ceilings: collected.ceilings,
-    relationships: ceilingConfig.relationships,
-    glassJoins: runtimeGlassJoins,
-    mepTypes: ceilingConfig.mep_coordination_types,
-    collisionMargin: ceilingConfig.tolerance_profiles?.default?.collision_margin ?? 0.005,
-    glassRequiredClearance: requiredClearance(ceilingConfig.tolerance_profiles?.curtain_wall ?? {}),
-    source,
-  }));
+  // 实体穿透/净距全部走规则注册表：与 verify:penetration 同一入口、同一配置，
+  // 因此 severity 调整与豁免对两个 CLI 同时生效，不会各自漂移。
+  const penetration = runPenetrationChecks(inputs, scene, today);
+  issues.push(...penetration.issues);
+  issues.push(...penetration.registryIssues);
 
-  for (const [roomId, items] of Object.entries(furnishings)) {
+  for (const [roomId, items] of Object.entries(house.furnishings ?? {})) {
     let runtimeIndex = 0;
     for (const [index, raw] of items.entries()) {
       const item = raw as unknown as Record<string, unknown>;
@@ -288,7 +270,7 @@ function validateScene(
       // edges. Boundary crossing is checked against the authoritative wall
       // and glass solids below; an axis-aligned room-box test would reject
       // legitimate furniture at rounded/shared corners.
-      const override = profileFor(type, ceilingConfig);
+      const override = profileFor(type, config);
       if (!override) {
         // 配置注释声明的意图：未登记的 placed 类型 fail-closed。不猜测角色、不静默放过，
         // 也不因无法判定而跳过后续校验整条记录（该条记录作为一个真实问题上报）。
@@ -296,19 +278,31 @@ function validateScene(
         issues.push({ level: 'error', code: 'furniture_profile_unregistered', entity: entry.entity, source, message: `placed furniture type ${type} is not registered in furniture_profiles / mep_coordination_types`, evidence: { room: roomId, type } });
         continue;
       }
-      const profile = ceilingConfig.tolerance_profiles?.[override.profile] ?? ceilingConfig.tolerance_profiles?.default ?? {};
-      // 宿主墙净距 / 端部净距属穿透族规则，实现与 verify:penetration 共用同一份。
-      issues.push(...validateFurnitureClearance({ entry, type, override, profile, wallEntries, wallMap, source }));
     }
   }
 
-  if (result.report.skippedFurniture.length > 0) for (const item of result.report.skippedFurniture) issues.push({ level: 'error', code: 'furniture_runtime_skipped', entity: item, source, message: `SceneBuilder skipped a placed furniture fixture`, evidence: { item } });
-  if (result.report.unsupported.length > 0) for (const item of result.report.unsupported) issues.push({ level: 'error', code: 'scene_runtime_unsupported', entity: item, source, message: `SceneBuilder reported unsupported runtime geometry`, evidence: { item } });
+  if (scene.report.skippedFurniture.length > 0) for (const item of scene.report.skippedFurniture) issues.push({ level: 'error', code: 'furniture_runtime_skipped', entity: item, source, message: `SceneBuilder skipped a placed furniture fixture`, evidence: { item } });
+  if (scene.report.unsupported.length > 0) for (const item of scene.report.unsupported) issues.push({ level: 'error', code: 'scene_runtime_unsupported', entity: item, source, message: `SceneBuilder reported unsupported runtime geometry`, evidence: { item } });
   return issues;
+}
+
+function resolveToday(): string {
+  const index = process.argv.indexOf('--today');
+  const value = index >= 0 ? process.argv[index + 1] : undefined;
+  if (value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      console.error('verify:spatial --today requires YYYY-MM-DD');
+      process.exitCode = 2;
+      return '1970-01-01';
+    }
+    return value;
+  }
+  return new Date().toISOString().slice(0, 10);
 }
 
 function main(): void {
   const args = new Set(process.argv.slice(2));
+  const todayStamp = resolveToday();
   const inputs: SceneInputs = loadSceneInputs({ captureWarnings: args.has('--json') });
   const { layout, overlay, elements, config, house, suppressIds, structuralPaths, layoutWarnings } = inputs;
   const issues: SpatialIssue[] = [];
@@ -327,7 +321,7 @@ function main(): void {
     scene = buildRuntimeScene(inputs);
     issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides, scene.index.lightingFixtures));
     issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}));
-    issues.push(...validateScene(scene, house.furnishings ?? {}, layout.rooms, layout.walls, elements, layout, config));
+    issues.push(...validateScene(inputs, scene, todayStamp));
   } catch (error) {
     issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides));
     issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}));
