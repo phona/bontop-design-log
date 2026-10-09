@@ -28,6 +28,7 @@ import { parseEnvironment } from '../shared/environment-schema.js';
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import { createAnalysisRouter } from './analysis-routes.js';
 import { PresentationStateStore } from './presentation-state.js';
+import { getElementState } from './element-state-service.js';
 import { resolveLayout } from './layout-resolver.js';
 import type { MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
 import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml, VertexLayoutYaml } from '../shared/types.js';
@@ -228,6 +229,8 @@ const apiDeps = {
       projectRenderFactsLoader.getLighting(),
     );
   },
+  // 构件级工程状态投影：现算（conflicts 路径在服务内缓存），输入异常时抛错 → 路由 503。
+  getElementState: (options: { withConflicts?: boolean; refresh?: boolean }) => getElementState(options),
 };
 
 const app = express();

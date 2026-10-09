@@ -32,6 +32,7 @@ import {
   loadCeilingMaterialCost,
   computeCeilingMaterialCost,
 } from './ceiling-material-cost.js';
+import type { ElementStatePayload } from './element-state-service.js';
 
 /**
  * base.json 的兜底吊顶费率：生效报价未声明的计价行回落到它。
@@ -59,6 +60,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** query 布尔参数：只认 1/true/0/false/空串，其余显形报错——不让 `conflicts=yes` 静默变成 false。 */
+function parseFlagParam(value: unknown, name: string): boolean {
+  if (value === undefined) return false;
+  if (typeof value !== 'string') throw new Error(`${name} must be a single flag value`);
+  if (value === '' || value === '1' || value === 'true') return true;
+  if (value === '0' || value === 'false') return false;
+  throw new Error(`${name} must be one of 1, true, 0, false`);
+}
+
 export interface ApiDeps {
   catalog: ProjectCatalog;
   state: DesignState;
@@ -71,6 +81,8 @@ export interface ApiDeps {
   getEnvironment?: () => EnvironmentConfig | undefined;
   getProjectRenderFacts?: () => ProjectRenderFacts | undefined;
   getProjectRenderFactsProjection?: () => ProjectRenderFactsProjection | undefined;
+  /** 构件级工程状态投影（现算/缓存，输入异常时抛错由路由转 503）。 */
+  getElementState?: (options: { withConflicts?: boolean; refresh?: boolean }) => ElementStatePayload | undefined;
   getMepLintContext?: () => MepLintLayoutContext;
   getResolvedLayout?: () => ResolvedLayout | undefined;
 }
@@ -100,6 +112,34 @@ export function createApiRouter(deps: ApiDeps): Router {
       return;
     }
     res.json(projection);
+  });
+
+  // ─── 构件级工程状态投影（`npm run state:project` 的 HTTP 出口）───
+  // 浏览器里的 3D 读不了文件系统，把这同一份派生搬到端点上：每个构件确认到什么程度、
+  // 卡在谁（pending 台账）、和谁冲突（verifier issue）。
+  //   conflicts=1  附 verifier 结论（跑三个 verifier 约 3 秒，结果在服务内缓存，不每请求都跑）
+  //   refresh=1    忽略缓存强制重算（与 conflicts=1 搭配）
+  // 输入读不到/解析失败 → 503，绝不返回空 states 假装没有状态。
+  router.get('/element-state', (req, res) => {
+    let withConflicts: boolean;
+    let refresh: boolean;
+    try {
+      withConflicts = parseFlagParam(req.query.conflicts, 'conflicts');
+      refresh = parseFlagParam(req.query.refresh, 'refresh');
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    try {
+      const payload = deps.getElementState?.({ withConflicts, refresh });
+      if (!payload) {
+        res.status(503).json({ error: 'element state is not ready' });
+        return;
+      }
+      res.json(payload);
+    } catch (err) {
+      res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
   });
 
   router.get('/tiles/comparison', (_req, res) => {
