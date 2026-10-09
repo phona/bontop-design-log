@@ -230,6 +230,19 @@ describe('OverviewMenu', () => {
           netWallAreaSqm: 142.422,
           ceilingAreaByRoom: { master_bedroom: 26.844 },
           ceilingAreaSqm: 103.224,
+          // 「涂装范围扩展」后 scope 多了窗台石/湿区这几个字段：OverviewMenu.ts:356 的汇总行
+          // 现在会把 ceilingAreaSqm 继续加成 ordinaryAreaSqm，:359 还会按 wetAreaSqm>0 单列一行，
+          // 旧 mock 没给这两个数 → 渲染时 `undefined.toFixed()` 直接抛。
+          // 取值依据 server/paint-cost-comparison.ts computePaintScopeForLayout（overlay 的
+          // paint_ceiling_region ×7 + paint_sill_region ×1）现算：主卫上飘窗外露面合计 4.606㎡
+          // （湿区，finish=wet_area），故 ordinarySillAreaSqm=0；
+          // ordinaryAreaSqm = 净墙 142.422 + 顶面 103.224 + 普通窗台 0 = 245.646（= 本 mock 的 netAreaSqm）。
+          // scope.sillSurfaces（逐面明细）OverviewMenu 不读，这里从略。
+          sillAreaByRoom: { master_bath: 4.606 },
+          ordinarySillAreaSqm: 0,
+          wetAreaSqm: 4.606,
+          wetAreaStatus: 'pending_system_quote_and_site_validation',
+          ordinaryAreaSqm: 245.646,
           grossAreaSqm: 258.876,
           netAreaSqm: 245.646,
           highlightedIn3d: 'walls_only',
@@ -268,7 +281,9 @@ describe('OverviewMenu', () => {
     const rendered = (elements.budget.appendChild as ReturnType<typeof vi.fn>).mock.calls
       .map(([child]) => String(child.textContent ?? child.innerHTML ?? '')).join('\n');
     expect(rendered).toContain('涂漆范围与用量（墙+顶）');
-    expect(rendered).toContain('毛墙面 155.65㎡ − 门洞 13.23㎡ − 窗洞 0.00㎡ = 净墙面 142.42㎡（3D 已高亮）+ 顶面 103.22㎡');
+    expect(rendered).toContain('毛墙面 155.65㎡ − 门洞 13.23㎡ − 窗洞 0.00㎡ = 净墙面 142.42㎡（3D 已高亮）+ 明确顶面 103.22㎡ = 普通涂装 245.65㎡');
+    // 湿区窗台涂装单列，不混进普通漆金额（OverviewMenu.ts:359-364）
+    expect(rendered).toContain('主卫上飘窗湿区涂装 4.606㎡：完整材料系统、基层适配与人工待现场核验和分项报价，未计入上方普通漆金额。');
     expect(rendered).toContain('面漆2遍、扣门窗洞：245.65㎡ → 面漆 5 桶 + 底漆 3 桶，材料 ¥4,640 + 人工 ¥6,141.15 = ¥10,781.15（低于计划 ¥718.85）');
     expect(rendered).toContain('面漆1遍、扣门窗洞：245.65㎡ → 面漆 3 桶 + 底漆 3 桶，材料 ¥3,480 + 人工 ¥6,141.15 = ¥9,621.15（低于计划 ¥1,878.85）');
     expect(rendered).toContain('报价 多乐士（包工包料 ¥55/㎡ × 245.65㎡ = ¥13,510.53，高于计划 ¥2,010.53）');

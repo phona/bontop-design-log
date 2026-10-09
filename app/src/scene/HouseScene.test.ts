@@ -125,6 +125,37 @@ vi.stubGlobal('window', mockWindow);
 import { HouseScene, GLASS_THICKNESS } from '../render/HouseScene';
 import { expectedVisibleCurtainNodes } from '@shared/curtain-projection';
 import * as THREE from 'three';
+import { readFileSync } from 'node:fs';
+import { load } from 'js-yaml';
+
+/**
+ * 涂漆审计（HouseScene.inspectPaintRegions）的墙长/墙高数据源在「涂装范围扩展」一轮里换了：
+ * 过去从 wall mesh 的 geometry.parameters.width/height 反推，现在改为读
+ * this.wallSegmentIndex（= SceneBuilder index.wallSegments）与 this.rooms
+ * （app/src/render/HouseScene.ts:1099-1102）。
+ * 于是下面这些 Object.create(HouseScene.prototype) 的 mock 场景只给 exportRoot 就不够了——
+ * wallSegmentIndex 为 undefined 时 `for (const [id, segments] of this.wallSegmentIndex)`
+ * 直接抛 "not iterable"，this.rooms 为 undefined 时 Math.max(...Object.values(undefined)) 也炸。
+ * 补齐用的几何一律现读 config/layout/model-geometry.yaml（真实顶点/墙/房高），不在测试里手编。
+ */
+const modelGeometry = load(readFileSync('../config/layout/model-geometry.yaml', 'utf8')) as {
+  vertices: Array<{ id: string; x: number; z: number }>;
+  walls: Array<{ id: string; from: string; to: string; height: number }>;
+  rooms: Array<{ id: string; name: string; height: number }>;
+};
+const vertexById = new Map(modelGeometry.vertices.map((vertex) => [vertex.id, vertex]));
+/** 与 SceneBuilder index.wallSegments 同构：model-geometry 的墙均为单段直线，取 from→to 端点。 */
+const realWallSegments = new Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>();
+for (const wall of modelGeometry.walls) {
+  const from = vertexById.get(wall.from);
+  const to = vertexById.get(wall.to);
+  if (!from || !to) continue;
+  realWallSegments.set(wall.id, [{ x1: from.x, z1: from.z, x2: to.x, z2: to.z }]);
+}
+/** HouseScene.rooms 的同构 mock：墙高上限只读 room.height（涂装到顶，取全场最高房高）。 */
+const realRooms = Object.fromEntries(
+  modelGeometry.rooms.map((room) => [room.id, { id: room.id, name: room.name, height: room.height }]),
+);
 
 describe('HouseScene', () => {
   it('renders the declared pipe-chase inspection layer above its transparent covers and restores normal state', () => {
@@ -331,6 +362,10 @@ describe('HouseScene', () => {
   it('paint audit surface reports per-room scope, missing walls and double-counting guards', () => {
     const scene = Object.create(HouseScene.prototype) as any;
     scene.exportRoot = new THREE.Group();
+    // 旧 mock 只给 exportRoot 就够（审计从 wall mesh 的 geometry.parameters 反推墙长墙高）；
+    // 现在墙长走 wallSegmentIndex、墙高走 rooms（HouseScene.ts:1099-1102），两者都必须按真实布局补齐。
+    scene.wallSegmentIndex = realWallSegments;
+    scene.rooms = realRooms;
     // regionId 指向声明；一段声明可能被门洞拆成多块（objectId 带 :sN 后缀）
     const mk = (objectId: string, regionId: string, wall: string, room: string, along: [number, number], regionAlong: [number, number], height: number) => {
       const mesh = makePaintMesh();
@@ -355,7 +390,7 @@ describe('HouseScene', () => {
     scene.exportRoot.add(wall);
 
     const status = scene.getPaintInspectionStatus();
-    expect(status.highlightedIn3d).toBe('walls_only');
+    expect(status.highlightedIn3d).toBe('walls_and_declared_sill_faces');
     expect(status.byRoom['master_bedroom'].lengthM).toBeCloseTo(1.44);
     expect(status.byRoom['bedroom_nw'].lengthM).toBeCloseTo(3.2);
     expect(status.wallAreaSqm).toBeCloseTo(1.44 * 2.8 + 3.2 * 2.8);
@@ -376,10 +411,15 @@ describe('HouseScene', () => {
     // 同房超墙长 → 必须抓到（跨房间允许，双面涂漆合法）
     const overflow = Object.create(HouseScene.prototype) as any;
     overflow.exportRoot = new THREE.Group();
+    // 旧 mock 用虚构墙 w_short（长度靠 geometry.parameters.width=2 反推）；现在墙长来自
+    // wallSegmentIndex，虚构 id 在索引里查不到只会进 missingWallRefs、根本触发不到越界判定，
+    // 所以换成真实布局里主卧的涂装墙 w_mbath_south（model-geometry：v_mb_sw→v_mbath_se，2.60m）。
+    overflow.wallSegmentIndex = realWallSegments;
+    overflow.rooms = realRooms;
     const meshA = makePaintMesh();
     meshA.userData.objectId = 'a';
     meshA.userData.regionId = 'a';
-    meshA.userData.wallId = 'w_short';
+    meshA.userData.wallId = 'w_mbath_south';
     meshA.userData.roomId = 'master_bedroom';
     meshA.userData.along = [0, 3];
     meshA.userData.regionAlong = [0, 3];
@@ -387,8 +427,10 @@ describe('HouseScene', () => {
     (geoA as any).parameters = { width: 3, height: 2.8 };
     meshA.geometry = geoA;
     const shortWall = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
-    shortWall.userData = { type: 'wall', objectId: 'w_short' };
-    (shortWall.geometry as any).parameters = { width: 2, height: 2.8, depth: 0.12 };
+    shortWall.userData = { type: 'wall', objectId: 'w_mbath_south' };
+    // 墙 mesh 的 geometry.parameters 现已不被审计读取（墙长走 wallSegmentIndex），
+    // 这里仍按真实尺寸写，避免留下与索引不一致的假几何。
+    (shortWall.geometry as any).parameters = { width: 2.6, height: 2.8, depth: 0.12 };
     overflow.exportRoot.add(meshA);
     overflow.exportRoot.add(shortWall);
     expect(overflow.inspectPaintRegions().checks.outOfWallSpan.length).toBeGreaterThan(0);
@@ -396,6 +438,10 @@ describe('HouseScene', () => {
     // 引用了场景里不存在的墙 → missing 且 not ready
     const missing = Object.create(HouseScene.prototype) as any;
     missing.exportRoot = new THREE.Group();
+    // 同上：索引/房高必须给（真实布局），否则 for-of 先抛 not iterable，压根走不到 missing 判定；
+    // w_nowhere 不在真实索引里，正是本用例要的「引用了不存在的墙」。
+    missing.wallSegmentIndex = realWallSegments;
+    missing.rooms = realRooms;
     const orphan = makePaintMesh();
     orphan.userData.objectId = 'orphan';
     orphan.userData.regionId = 'orphan';
@@ -411,11 +457,18 @@ describe('HouseScene', () => {
   it('paint status reports net area and the door gap it deducted', () => {
     const scene = Object.create(HouseScene.prototype) as any;
     scene.exportRoot = new THREE.Group();
+    // 旧 mock 只给 exportRoot：墙长靠 wall mesh 的 geometry.parameters.width=3 反推，
+    // 墙高根本没被用到。现在两者都来自 wallSegmentIndex / rooms（HouseScene.ts:1099-1102），
+    // 所以必须补真实索引；顺带把虚构墙 w_x 换成真实布局里书房北墙 w_st_north
+    // （model-geometry：v_mb_ne→v_st_ne，3.00m；overlay 的 paint_study_w_st_north 正是 [0, 3.00]），
+    // 3m 声明的墙长依据从此是真的，不是测试里手编的 3。
+    scene.wallSegmentIndex = realWallSegments;
+    scene.rooms = realRooms;
     const mk = (objectId: string, regionId: string, along: [number, number], regionAlong: [number, number], width: number, height: number, rectBottom = 0) => {
       const mesh = makePaintMesh();
       mesh.userData.objectId = objectId;
       mesh.userData.regionId = regionId;
-      mesh.userData.wallId = 'w_x';
+      mesh.userData.wallId = 'w_st_north';
       mesh.userData.roomId = 'study';
       mesh.userData.along = along;
       mesh.userData.regionAlong = regionAlong;
@@ -427,7 +480,7 @@ describe('HouseScene', () => {
       return mesh;
     };
     const wall = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
-    wall.userData = { type: 'wall', objectId: 'w_x' };
+    wall.userData = { type: 'wall', objectId: 'w_st_north' };
     (wall.geometry as any).parameters = { width: 3, height: 2.8, depth: 0.12 };
     scene.exportRoot.add(wall);
     // 一段 3m 声明被 0.9m 门洞拆成 左条 + 右条 + 楣上通长带
