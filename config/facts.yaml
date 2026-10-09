@@ -1065,7 +1065,7 @@ facts:
   # 量房待确认项条数：39 条是「还有什么没量」的账面。新增/关闭条目必须同步。
   - id: fact.pending_site_data_count
     kind: derived
-    value: "@docs/pending-site-data.md:量表共 55 条"
+    value: "@docs/pending-site-data.md:量表共 56 条"
     unit: 条
     mirrors:
       - path: docs/pending-site-data.md

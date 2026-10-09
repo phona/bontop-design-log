@@ -72,3 +72,17 @@
 - **关联文件**：`config/mep-hvac-coordination.yaml`、`config/mep-takeoff.yaml`、`config/plumbing.yaml`（4 个点位 note）、`config/facts.yaml`、`docs/mep-construction-guidance.md`、`tests/server/mep-hvac-lint.test.ts`、`tests/server/mep-takeoff.test.ts`、`docs/decisions/12-plumbing.md`（本条）。
 - **决策人**：业主。
 
+
+### DEC-2026-10-09-W04 厨房烟道迁东墙冰箱旁 + 两卫浴霸排气道 infer（业界标准，量房敲定）
+
+- **日期**：2026-10-09。触发：① 业主提供现场信息——厨房公共烟道在邻户原始结构图 `survey/neighbor_ys01_original_structure_2025-06.png`（点石 YS-01，同户型）里、冰箱旁；二轮复核据此发现 `config/plumbing.yaml` 的推断坐标 `duct_kitchen_exhaust (9.0,0.1)` 落在被 `suppress_kitchen_north` 改成玻璃幕墙的 `w_kit_north` 上——土建竖向烟道不可能与幕墙共存，是坐标错误而非真硬伤。② 二轮复核同时暴露两卫浴霸换气"有设备、无出路"（换气扇在，排风无对外终点）。
+- **改动 A — 厨房烟道迁位**：`duct_kitchen_exhaust` 由 (9.0,0.1) 迁到 **(10.60,1.50)**，据邻户 YS-01 + 业主现场指认落于厨房**东墙实体墙 `w_ent_west`** 油烟机(10.50,1.18)/冰箱高柜旁。收益：烟道改挂实体墙（不再与幕墙冲突）；油烟机烟管改走相邻高柜内、不再横穿厨房 150mm 铝扣板吊顶空腔（连带消解"φ150 烟管占满空腔"）。raster 1:65 读不出精确 mm，(10.60,1.50) 为 industry-standard 推断位，量房测准后升 measured。
+- **改动 B — 两处卫浴排气道 infer 点**：新增 `duct_mbath_exhaust (0.55,1.60)` / `duct_gbath_exhaust (6.10,2.45)`，`type: duct`、`diameter: 0.10`（φ100）、`status: inferred` / `not_for_construction` / `uncertainty_m: 0.3`、note 带 `本轮不画 MEP route` deferred 标记；各近本卫排水立管（主卫 0.3,1.3 / 客卫 5.8,2.4）并服务吊顶换气扇（主卫 1.00,2.70 / 客卫 6.35,2.45）。依据 `config/acceptance.yaml check_hvac_exhaust_outlet`（DEC-2026-10-06-R1）口径"排风出外墙 φ100 防火止回阀、禁接公共烟道与排水立管"——但几何上两卫均无可用外墙（主卫西/北=玻璃幕墙禁穿孔、客卫四面皆内墙），故按业界标准 infer「专用/公共排气道接口」。
+- **关键风险（本轮显形留痕，未解）**：若开发商**未预留**卫浴公共/专用排气道，则两间（一间全玻璃外墙内卫、一间纯内卫）**无合规排风路径**——设计级硬伤，且直接决定客卫"带+漆"饰面终裁的成立性。已在 `docs/pending-site-data.md` 新增 **#56**（量房第一梯队必查）：预留→回写接口位+画 route+改 acceptance 口径；未预留→须在饰面/吊顶冻结前与物业/设计师定专用竖井或补救通风，并重估客卫带+漆。
+- **数字变化（可复算）**：`config/plumbing.yaml` 点位 **30→32**、`type: duct` **1→3**；`fact.plumbing_points_count` **30→32**；`docs/mep-construction-guidance.md` 规模表 **30→32**；`docs/pending-site-data.md` #44「N 个点位中」30→32、表头「量表共 N 条」**55→56**、新增 #56；`data/project-render-facts.json` 重新生成 plumbing **30→32**；`tests/server/mep-guidance-baseline.test.ts` 行数基线 **56→57**（随合法新增同步，非削弱测试）。
+- **边界（本轮明确不做）**：① **不改 `config/acceptance.yaml` 的"排风出外墙"标准本身**——其正确写法（接入预留排气道 vs 出外墙）取决于量房事实，留 #56 量房动作，避免无据改写验收契约；② 不给烟道/排气道画 MEP route（属楼宇土建竖井，接口位待量房）；③ 推断值一律 `not_for_construction`，不作施工放线依据。
+- **量房闭环（带回两数即收口）**：① 厨房烟道精确 mm（校准 10.60,1.50）；② 两卫是否预留卫浴公共排气道及接口位（#56——决定两卫排风能否成立、客卫带+漆要不要退）。
+- **验证（本轮实跑）**：`verify:facts` OK、`verify:mep` 0 error、`verify:mep-takeoff` OK（新点不进采购量）、`verify:project-render-facts` plumbing=32、`verify:penetration` 0 error、`typecheck` 0、`test:server` **830 pass / 0 fail**。唯一仍红 `verify:data-consistency → sock_child_ac`（投影超墙段 0.45m）为 #42 预存、卡厂家图，基线复现一致，与本轮无关。
+- **关联文件**：`config/plumbing.yaml`、`config/facts.yaml`、`docs/mep-construction-guidance.md`、`docs/pending-site-data.md`、`data/project-render-facts.json`、`tests/server/mep-guidance-baseline.test.ts`、`docs/decisions/12-plumbing.md`（本条）。
+- **决策人**：业主。
+
