@@ -618,16 +618,18 @@ function runUnique(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex
   for (const [base, entries] of groups) {
     const plain = entries.filter((e) => !norm(e.id, e.at, e.file).supplement);
     if (plain.length > 1) {
-      for (const dup of plain.slice(1)) {
-        const item = issue(
-          contractLevel(contract),
-          'duplicate_id',
-          `${contract.id}：${dup.file} 中 id ${base} 重复 ${plain.length} 次（正牌 ${plain.length} 次），重号位置 ${loc(lines, dup.file, dup.at)}`,
-          loc(lines, dup.file, dup.at),
-        );
-        add(result, item);
-        tally(result, item.code);
-      }
+      // 一个重号报一条，但**列出全部位置**：DEC 日志拆成 14 个文件后，重号往往横跨两个
+      // 主题文件，只报其中一个位置没法判断该改哪边。location 取最后一处（新来者），
+      // 便于直接跳过去删。
+      const where = plain.map((e) => loc(lines, e.file, e.at)).join(' / ');
+      const item = issue(
+        contractLevel(contract),
+        'duplicate_id',
+        `${contract.id}：id ${base} 重复 ${plain.length} 次（正牌 ${plain.length} 次），位置 ${where}`,
+        loc(lines, plain[plain.length - 1].file, plain[plain.length - 1].at),
+      );
+      add(result, item);
+      tally(result, item.code);
     }
   }
 }

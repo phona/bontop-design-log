@@ -246,6 +246,15 @@ test('unique：source 为文件数组时跨文件查重，位置指向重号所�
   assert.equal(dup.errors.length, 1);
   assert.equal(dup.errors[0].code, 'duplicate_id');
   assert.equal(dup.errors[0].location, 'docs/decisions/b.md:2');
+  // 重号横跨两个文件时，正文必须同时列出两边位置，否则不知道该改哪边
+  assert.match(dup.errors[0].message, /docs\/decisions\/a\.md:1 \/ docs\/decisions\/b\.md:2/);
+
+  // allow_suffix 的补充判定依赖所在文件的正文：补号写在别的文件也不能误报重号
+  const supplement = lintFacts(registry, workspaceOf({
+    'docs/decisions/a.md': '# DEC-2026-01-01-001 甲\n',
+    'docs/decisions/b.md': '# DEC-2026-01-01-001-补 甲的补充\n',
+  }));
+  assert.equal(supplement.errors.length, 0);
 });
 
 test('fk：target 为文件数组时引用可在任一路径解析，全部缺失才 dangling', () => {
