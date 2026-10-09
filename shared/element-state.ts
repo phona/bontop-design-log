@@ -173,9 +173,13 @@ export function deriveElementStates(input: ElementStateInput): ElementStateResul
     const conflicts = [...new Set((issuesByElement.get(element.id) ?? []).map((issue) => issue.code))].sort();
     const errorIssues = (issuesByElement.get(element.id) ?? []).filter((issue) => issue.level === 'error');
     const openQuestion = ledger.get(element.id);
-    // openQuestion 与 status 解耦：即使 status 由 config 字段决定，也要带上「卡在谁」——
-    // 那才是可行动的部分。config 声称已核实、台账却仍开着 → 矛盾，显形。
-    if (openQuestion && element.configStatus && model.statusVocabulary[element.configStatus] && model.statusVocabulary[element.configStatus] !== 'pending') {
+    // openQuestion 与 status 解耦：即使 status 由 config 字段决定，也带上「卡在谁」——
+    // 那才是可行动的部分。
+    // 矛盾告警只对 measured（现场实测）生效：inferred/likely 是设计值，和「还有未决问题」
+    // 完全可以并存（如 faucet_garden：status=inferred + construction_status=pending +
+    // not_for_construction，台账 #48 追踪的是「保留还是删除」这个设计决策）。只有实测过的
+    // 东西还挂在待决台账上，才是「有人忘了关台账」的真矛盾。
+    if (openQuestion && element.configStatus && model.statusVocabulary[element.configStatus] === 'measured') {
       warnings.push({
         code: 'state.config_vs_ledger_conflict',
         entity: element.id,
