@@ -1,0 +1,74 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: dining-ceiling-cove-restore-20261008
+subject: 餐厅吊顶弧面回归 + 东南角接门厅平吊（DEC-2026-10-08-R03，废止 R02 弧面取消部分）
+priority:
+  user_goal: 恢复弧面；弧面在东南角 (10.80,3.00) 转弯接到门厅平吊西缘，消除「狗啃」式断口。
+  ranked:
+    - 门头盒恢复南缘 R150 翻弧（可见段至 SE 角点）
+    - 门厅吊顶西缘新增 R150 翻弧（可见段 z[3.00,4.30]）
+    - 西带恢复东立面 R150 翻弧（R01 原口径）
+  non_negotiables: [不动任何分区 area/thickness/平面圆角/pricing_form/标高, 不动算量与定价, 北带不得加 east cove（R01 补记四：东缘外侧露天 void）, 不改 builder]
+  tradeoffs_accepted: [东南角为 90° 折弯转弯而非西北角式相切扫掠（跨分区连续路径需 builder 改造，本轮不做）；弧面工艺 +1.3m 计入 site/vendor_pending 询价]
+frozen: true
+freeze_record:
+  alignment_id: alignment-r03
+  original_user_response: '"要弧面，但是弧面是拐到门关的平吊上，而不是现在这样，像狗啃一样" + 方案澄清（全量恢复 R01 + 东南角接门厅；实施方式 A）+「搞」'
+  normalized_decisions:
+    - '废止 DEC-2026-10-08-R02 关于取消两条服务带 cove_fillets 的部分。'
+    - 'ceiling_dining_north_band 恢复 cove_fillets { south: 0.15, west: 0.15 }。'
+    - 'ceiling_dining_west_band 恢复 cove_fillets { east: 0.15 }。'
+    - 'ceiling_entry_foyer 新增 cove_fillets { west: 0.15 }（东南角转弯的可见延续）。'
+    - '北带不加 east；SE 角保持正交（R01 补记六终裁）；不改 builder。'
+  confirmed_by_user: true
+  confirmed_at: 2026-10-08
+  evidence_refs: [业主截图（东南角断口）、tmp/probe-r03.mts 几何实测、tmp/probe-cove-wrap2.mts（方角包弧补丁留档）、docs/design-iterations/dining-ceiling-no-cove-20261008/（R02 frozen brief）]
+allowed_scope:
+  files: [config/ceiling.yaml, tests/server/ceiling-cove.test.ts, tests/server/cli-glb-export.test.ts, data/project-render-facts.json, docs/decision_log.md, docs/design-iterations/dining-ceiling-cove-restore-20261008/]
+  objects: [ceiling_dining_north_band, ceiling_dining_west_band, ceiling_entry_foyer]
+  archetypes: [ceiling_hvac]
+  views: [plan, elevation, section, perspective]
+  changes: [三区 cove_fillets 声明与 note 追加, R03 口径测试重写, cli-glb-export 期望公式补 coveCount 与 R03 断言, render-facts 重生成, R02/R03 决策留痕]
+forbidden:
+  files: [shared/render/CeilingZoneBuilder.ts, config/hvac.yaml, config/mep-hvac-coordination.yaml, config/electrical.yaml]
+  objects: [其他吊顶分区, 家具, 电气, MEP 路线]
+  assumptions: [给北带加 east cove（补记四判死）, SE 角倒圆（R01 终裁正交 + 贴墙月牙缝风险）, 跨分区 cove 路径（builder 级，另案）]
+  out_of_scope_changes: [算量, 定价, 标高, 分区几何, builder 改造]
+open_questions:
+  - id: q_runtime
+    category: evidence
+    question: 东南角 90° 转弯与门厅西缘弧面在 Web 三人称机位的实际观感；两弧接缝是否干净。
+    options: [业主运行时验收：①餐桌看东南角 ②客厅/餐区东侧看门厅西缘 ③东南角特写]
+    selected: null
+    user_response: null
+    status: site_pending
+  - id: q_arc_price
+    category: procurement
+    question: 弧面工艺按延长米报价（全场约 5.25m，含 45° 拼角 1 处）。
+    options: [并入施工方书面分项报价（site/vendor_pending）]
+    selected: null
+    user_response: null
+    status: site_pending
+alignment:
+  records:
+    - id: alignment-r03
+      channel: 会话澄清 + 明确指令
+      original_answer: 全量恢复 R01 + 东南角接门厅（推荐）／先出计划再看→审阅通过「搞」
+      normalized_decision: 按 A 案实施：三行 cove 配置 + 测试 + 重生成 + DEC；不改 builder。
+      affected_refs: [config/ceiling.yaml#ceiling_dining_north_band, config/ceiling.yaml#ceiling_dining_west_band, config/ceiling.yaml#ceiling_entry_foyer]
+      timestamp: 2026-10-08
+      pending_site_items: [三人称 runtime 验收, 弧面报价]
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run verify:facts, npm run verify:project-render-facts, npm run test:server, npm run typecheck, cd app && npx vitest run]
+  browser_evidence_required: true
+  required_views: [餐桌看向东南角, 客厅/餐区东侧看向门厅西缘, 东南角特写]
+  aesthetic_review: PENDING
+  functional_review: PENDING
+  construction_review: pending
+  blocking_issues: [runtime 三人称验收未完成, 弧面延长米报价未取得]
+  done_when:
+    - 三区 cove_fillets 声明与 R03 一致，北带 east 为空，平面圆角/尺寸/标高保留。
+    - ceiling-cove 5/5、cli-glb-export 13/13、ceiling-takeoff 12/12 通过；typecheck 零错误；app 529/529。
+    - 东南角无断口、弧面转弯接门厅西缘（业主实见确认）。

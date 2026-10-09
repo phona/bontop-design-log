@@ -57,16 +57,16 @@ test('龙骨按「米价 × 用量」逐构件折算，用量可复核', () => {
   assert.equal(sub.rateYuanPerMetre, 6.34);
   assert.deepEqual(sub.metresPerSqm, [2.5, 3.33]); // 间距 400–300mm
   assert.deepEqual(sub.perSqm, [16, 21]);
-  // 边龙骨由 takeoff 周长实算：70.95m ÷ 23.222㎡ = 3.06，不许手抄
+  // 边龙骨由 takeoff 周长实算：71.55m ÷ 23.231㎡ = 3.08，不许手抄（R05 镜像凹弧后基数：北带两阴角加料，gypsum 23.222→23.231）
   const edge = frame.derivedComponents.find((c) => c.component === '边龙骨')!;
   assert.equal(edge.rateYuanPerMetre, 4.1);
-  assert.deepEqual(edge.metresPerSqm, [3.06, 3.06]);
+  assert.deepEqual(edge.metresPerSqm, [3.08, 3.08]);
   assert.deepEqual(edge.perSqm, [13, 13]);
   assert.equal(edge.usageStatus, 'model_derived_upper_bound');
   assert.equal(frame.perSqm!.min, 36); // 7 + 16 + 13
   assert.equal(frame.perSqm!.max, 45); // 11 + 21 + 13
   assert.ok(frame.derivation!.includes('8.5元/米'));
-  assert.ok(frame.derivation!.includes('3.06米每平米'));
+  assert.ok(frame.derivation!.includes('3.08米每平米'));
   assert.equal(frame.basisUsed, 'comparable', '米价是可耐福普通/卡式系列，蓝臻本身无公开价');
 });
 
@@ -88,7 +88,7 @@ test('材料合计区间与金额区间 = 各项相加 × takeoff 面积', () =>
   assert.equal(result.materialTotal.min, sumMin);
 });
 
-test('材料额度按施工方分形态口径算：122.71 元/㎡，判定 above_range（C12 修正 C11）', () => {
+test('材料额度按施工方分形态口径算：122.66 元/㎡，判定 above_range（C12 修正 C11；R05 后基数 23.231㎡）', () => {
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
   assert.equal(result.contractor.basis, 'forms');
   // 边吊 21.48m×160 + 平顶 7.39㎡×155 = 4,581.45；纯人工 21.48×60 + 7.39×60 = 1,731.90
@@ -100,11 +100,11 @@ test('材料额度按施工方分形态口径算：122.71 元/㎡，判定 above
   assert.equal(breakdown[0].materialYuan, 2147.5);
   assert.equal(breakdown[1].form, 'flat');
   assert.equal(breakdown[1].turnkeyYuan, 1145.45);
-  // 4,581.45 − 1,731.90 = 2,849.55 → ÷ 23.222 = 122.71 元/㎡
-  assert.equal(result.contractor.allowancePerSqm, 122.71);
-  // 98～120 → 122.71 略高于上限 2.71
+  // 4,581.45 − 1,731.90 = 2,849.55 → ÷ 23.231 = 122.66 元/㎡（R05 镜像凹弧使 gypsum 23.222→23.231，钉盘随基数走）
+  assert.equal(result.contractor.allowancePerSqm, 122.66);
+  // 98～120 → 122.66 略高于上限 2.66
   assert.equal(result.verdict, 'above_range');
-  assert.equal(result.slackVsMaxYuanPerSqm, 2.71);
+  assert.equal(result.slackVsMaxYuanPerSqm, 2.66);
 });
 
 test('C11 的「低于下限」是旧口径的假象：全按 155 元/㎡ 算额度只有 95', () => {
@@ -144,7 +144,7 @@ test('敏感性：业主口径与可核实口径并列，差多少就是未核�
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
   assert.deepEqual(result.ownerOnlyPerSqm, { min: 70, max: 115 });
   assert.deepEqual(result.ownerOnlyCoverage.missing, []);
-  // 分形态口径下额度 122.71 已高于业主口径上限 115，两个口径不再给出相反结论；
+  // 分形态口径下额度 122.66 已高于业主口径上限 115，两个口径不再给出相反结论；
   // 未核实数据的影响改由 ownerOnly(70～115) 与 materialPerSqm(98～120) 的差体现
   assert.ok(result.warnings.some((note) => note.includes('两个口径') || note.includes('业主转述')));
 });

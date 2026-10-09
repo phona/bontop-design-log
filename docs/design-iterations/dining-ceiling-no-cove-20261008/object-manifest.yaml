@@ -1,0 +1,77 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: dining-ceiling-no-cove-20261008
+subject: 餐厅西/北服务带上部翻弧取消
+object_policy:
+  fixed_count_required: false
+  split_by: [function, owner, material, collision, maintenance, interface, review]
+  visual_relationship_required: true
+objects:
+  - id: ceiling_dining_west_band
+    type: ceiling_zone
+    archetypes: [ceiling_hvac]
+    owner: 吊顶施工（管线功能由 HVAC）
+    function: 西侧服务带，容纳冷媒主管并与相邻吊顶交接
+    material: 石膏板系统（既有方案）
+    geometry_source: config/ceiling.yaml#ceiling_dining_west_band
+    datum_refs: [datum-west-band]
+    fact_refs: [f_west_band_authority, f_cove_generation]
+    decision_refs: [alignment-r02]
+    dependencies: [refrigerant-trunk, ceiling_dining_north_band, ceiling_main_corridor, ceiling_living]
+    interfaces:
+      - {id: if-west-plan-turn, target_object_id: ceiling_dining_north_band, kind: visual, requirement: SE/SW 平面圆角转接保留现有 R150 几何，交接连续性待运行时核验, status: open}
+      - {id: if-west-trunk, target_object_id: refrigerant-trunk, kind: hvac, requirement: 冷媒主管原路线与服务带尺寸保持不变, status: confirmed}
+    collision: {policy: reviewed, geometry_ref: config/ceiling.yaml#ceiling_dining_west_band, review_ref: null}
+    maintenance: {boundary: 服务带内管线检修由既有检修口方案负责, access_clearance: null, replaceable_parts: [], inspection_requirements: [检查移除翻弧后未遮挡管线检修关系]}
+    parts:
+      - id: west-band-slab-perimeter
+        role: 服务带板体及平面圆角侧面
+        independent: true
+        owner: 吊顶施工
+        material: 石膏板系统
+        geometry_source: ceiling zone builder
+        datum_refs: [datum-west-band]
+        dependencies: []
+        collision: none
+        maintenance_boundary: 不承载独立检修责任
+        validation_refs: [配置检查, 运行时对象 part 检查]
+    visual_relationships:
+      - {target_object_id: ceiling_dining_north_band, relation: adjacent, requirement: 保持原平面 R150 转角关系；取消上部翻弧, evidence_refs: [用户 Image #1, 用户 Image #2]}
+    validation_refs: [npm run verify:all, npm run test:server, npm run typecheck]
+    status: implemented
+  - id: ceiling_dining_north_band
+    type: ceiling_zone
+    archetypes: [ceiling_hvac]
+    owner: 吊顶施工（门头/管线功能由 HVAC、电气）
+    function: 厨房门头盒、线路衔接及餐桌吊灯出线服务带
+    material: 石膏板系统（既有方案）
+    geometry_source: config/ceiling.yaml#ceiling_dining_north_band
+    datum_refs: [datum-north-band]
+    fact_refs: [f_north_band_authority, f_foyer_shared_boundary, f_cove_generation]
+    decision_refs: [alignment-r02]
+    dependencies: [ceiling_dining_west_band, ceiling_entry_foyer, light_dining_pendant, ceiling_kitchen]
+    interfaces:
+      - {id: if-north-foyer, target_object_id: ceiling_entry_foyer, kind: visual, requirement: x=10.80、z=[2.90,3.00] 共边；不得因旧截图推断新增连接体或缺口, status: open}
+      - {id: if-north-pendant, target_object_id: light_dining_pendant, kind: electrical, requirement: 保留既有吊灯出线方案和吊顶字段, status: confirmed}
+      - {id: if-north-kitchen, target_object_id: ceiling_kitchen, kind: visual, requirement: 保留既有厨房门头台阶关系, status: confirmed}
+    collision: {policy: reviewed, geometry_ref: config/ceiling.yaml#ceiling_dining_north_band, review_ref: null}
+    maintenance: {boundary: 门头盒与服务带内线路按既有方案检修, access_clearance: null, replaceable_parts: [], inspection_requirements: [检查东端与门厅共边运行时显示, 检查门头及线路功能未受影响]}
+    parts:
+      - id: north-band-slab-perimeter
+        role: 服务带板体及平面圆角侧面
+        independent: true
+        owner: 吊顶施工
+        material: 石膏板系统
+        geometry_source: ceiling zone builder
+        datum_refs: [datum-north-band]
+        dependencies: []
+        collision: none
+        maintenance_boundary: 不承载独立检修责任
+        validation_refs: [配置检查, 运行时对象 part 检查]
+    visual_relationships:
+      - {target_object_id: ceiling_entry_foyer, relation: adjacent, requirement: 共同边界衔接连续，具体表面归属由运行时验收确认, evidence_refs: []}
+      - {target_object_id: ceiling_dining_west_band, relation: adjacent, requirement: 保留平面圆角转接，取消上部翻弧, evidence_refs: [用户 Image #2]}
+    validation_refs: [npm run verify:all, npm run test:server, npm run typecheck]
+    status: implemented
+notes:
+  - 生成器代码未纳入修改范围；若取消配置后仍出现异常曲面，需先以稳定 objectId/part 运行时证据定位，再另行形成明确修复范围。

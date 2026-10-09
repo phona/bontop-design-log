@@ -1,0 +1,133 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: dining-ceiling-no-cove-20261008
+subject: 餐厅西侧/北侧服务带上部翻弧取消
+created_at: 2026-10-08
+status: frozen
+source_policy:
+  authority_refs: [AGENTS.md, config/ceiling.yaml, shared/render/CeilingZoneBuilder.ts]
+  observation_refs: [会话图片 Image #1, 会话图片 Image #2]
+  measurement_refs: []
+  runtime_refs: []
+  evidence_refs: []
+entry_shape:
+  id: ""
+  category: confirmed
+  statement: ""
+  value: null
+  source_refs: []
+  basis: ""
+  confidence: high
+  impact: material
+  affected_objects: []
+  affected_views: []
+  owner: ""
+  status: resolved
+  verification_method: ""
+  user_confirmation_ref: null
+facts:
+  confirmed:
+    - id: f_current_build_state
+      category: confirmed
+      statement: 项目尚未交房，硬装、水电、吊顶和空调均未施工；设计预演可比较吊顶造型调整。
+      value: 未施工
+      source_refs: [AGENTS.md#当前施工状态]
+      basis: 项目当前控制口径。
+      confidence: high
+      impact: material
+      affected_objects: [ceiling_dining_west_band, ceiling_dining_north_band]
+      affected_views: [perspective, section]
+      owner: 业主/设计
+      status: resolved
+      verification_method: 施工状态由业主更新项目说明。
+      user_confirmation_ref: null
+    - id: f_west_band_authority
+      category: confirmed
+      statement: 西侧服务带 area=[7.20,2.40,7.70,4.30]、thickness=0.30；平面 NW 外圆角与 SE 内圆角均为 R150；此前东边声明 cove_fillets R150。
+      value: {area: [7.20, 2.40, 7.70, 4.30], thickness: 0.30, plan_rounds_m: [0.15, 0.15], cove_east_m: 0.15}
+      source_refs: [config/ceiling.yaml#ceiling_dining_west_band]
+      basis: 配置权威值。
+      confidence: high
+      impact: material
+      affected_objects: [ceiling_dining_west_band]
+      affected_views: [plan, elevation, section, perspective]
+      owner: 设计
+      status: resolved
+      verification_method: 修改后检查配置仅移除 cove_fillets，其他几何字段不变。
+      user_confirmation_ref: null
+    - id: f_north_band_authority
+      category: confirmed
+      statement: 北侧服务带 area=[7.70,2.40,10.80,3.00]、thickness=0.30；平面 SW 内圆角为 R150；此前南边和西边声明 cove_fillets R150。
+      value: {area: [7.70, 2.40, 10.80, 3.00], thickness: 0.30, plan_sw_round_m: 0.15, cove_edges_m: {south: 0.15, west: 0.15}}
+      source_refs: [config/ceiling.yaml#ceiling_dining_north_band]
+      basis: 配置权威值。
+      confidence: high
+      impact: material
+      affected_objects: [ceiling_dining_north_band]
+      affected_views: [plan, elevation, section, perspective]
+      owner: 设计
+      status: resolved
+      verification_method: 修改后检查配置仅移除 cove_fillets，其他几何字段不变。
+      user_confirmation_ref: null
+    - id: f_cove_generation
+      category: confirmed
+      statement: CeilingZoneBuilder 仅在解析到正的 coveRadius 时创建并加入 coveStrips；取消这些 cove 声明会阻止上部翻弧条带生成。
+      value: {condition: coveRadius > 0, part: cove}
+      source_refs: [shared/render/CeilingZoneBuilder.ts#buildCoveSegments, shared/render/CeilingZoneBuilder.ts#coveStrips]
+      basis: 静态实现分支直接判断。
+      confidence: high
+      impact: material
+      affected_objects: [ceiling_dining_west_band, ceiling_dining_north_band]
+      affected_views: [elevation, section, perspective]
+      owner: 设计/渲染
+      status: resolved
+      verification_method: 配置渲染与运行时 part 检查待验收。
+      user_confirmation_ref: null
+    - id: f_foyer_shared_boundary
+      category: confirmed
+      statement: ceiling_entry_foyer 的 area=[10.80,2.90,13.40,4.30]，与北侧服务带在 x=10.80、z=2.90至3.00 共边；本轮不据此前述边界推断悬空或增加连接体。
+      value: {entry_foyer_area: [10.80, 2.90, 13.40, 4.30], shared_x: 10.80, shared_z: [2.90, 3.00]}
+      source_refs: [config/ceiling.yaml#ceiling_entry_foyer, config/ceiling.yaml#ceiling_dining_north_band]
+      basis: 矩形配置边界相邻；未做运行时几何结论。
+      confidence: high
+      impact: material
+      affected_objects: [ceiling_dining_north_band, ceiling_entry_foyer]
+      affected_views: [plan, perspective]
+      owner: 设计
+      status: resolved
+      verification_method: 后续运行时几何验收共同边界显示。
+      user_confirmation_ref: null
+  inferred: []
+  user_decision:
+    - id: ud_remove_cove
+      category: user_decision
+      statement: 取消西、北服务带上部立面转平顶的圆弧，顶面与竖直垂面直接交接；保留既有平面 R150 圆角以及带体尺寸、标高和功能。
+      value: {remove_cove_fillets: true, preserve_plan_rounds: true, preserve_geometry: true}
+      source_refs: [本轮会话中用户对明确代码调整方案的“好，让luna去改，你验收”授权]
+      basis: 用户批准了删除两处 cove_fillets、保留平面圆角的具体修改方案。
+      confidence: high
+      impact: material
+      affected_objects: [ceiling_dining_west_band, ceiling_dining_north_band]
+      affected_views: [elevation, section, perspective]
+      owner: 业主
+      status: resolved
+      verification_method: 验收两个目标机位并检查运行时曲面零件。
+      user_confirmation_ref: alignment-r02
+  site_pending:
+    - id: sp_visual_runtime
+      category: site_pending
+      statement: 配置修改后的运行时两机位观感、东北侧接缝及曲面残留尚待独立验收。
+      value: null
+      source_refs: [会话图片 Image #1, 会话图片 Image #2]
+      basis: 当前图片为变更前截图，不能证明变更后的运行时结果。
+      confidence: high
+      impact: blocking
+      affected_objects: [ceiling_dining_west_band, ceiling_dining_north_band, ceiling_entry_foyer]
+      affected_views: [perspective]
+      owner: 验收代理
+      status: open
+      verification_method: 浏览器 ready/runtime 查询、目标视角截图及独立审美/功能 review。
+      user_confirmation_ref: null
+unknowns_requiring_alignment: []
+notes:
+  - 不沿用此前未经证实的“东北角悬空 100 mm”说法；配置显示北带与门厅吊顶存在共边，仍以运行时证据验收。

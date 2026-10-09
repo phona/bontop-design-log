@@ -1643,3 +1643,11 @@ export interface CompareSchemesResult {
     areaDelta: StructuralDiffEntry[];
   };
 }
+  /**
+   * 镜像凹弧的开口象限（DEC-2026-10-08-R05）：键为角，值为该凹弧填补的开口象限，
+   * 必须等于镜像弧心象限（sw→nw, se→sw, ne→se, nw→ne）。用于跨分区拐肘——
+   * 门头盒 SE 凹弧填西南开口、与门厅吊顶西缘相切；不声明则走默认方向。
+   */
+  concave_fillets_open?: Partial<Record<'nw' | 'ne' | 'se' | 'sw', 'nw' | 'ne' | 'se' | 'sw'>>;
+  /** 立面凹弧（米）：键为边 north/east/south/west，沿该边立面与房间平顶交线加四分之一圆弧过渡。 */
+  cove_fillets?: Partial<Record<'north' | 'east' | 'south' | 'west', number>>;

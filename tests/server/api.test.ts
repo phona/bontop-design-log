@@ -109,12 +109,13 @@ elements:
     // C11：欧松板 27～29（verified）+ C7 同级旁证 26～30 + 龙骨按「米价 × 用量」折算 36～45
     assert.equal(res.body.materialPerSqm.min, 98);
     assert.equal(res.body.materialPerSqm.max, 120);
-    // C12 起按施工方分形态口径（边吊 160/米 + 平顶 155/㎡）算额度 → 122.71 元/㎡；
+    // C12 起按施工方分形态口径（边吊 160/米 + 平顶 155/㎡）算额度 → 122.66 元/㎡
+    // （DEC-2026-10-08-R05 镜像凹弧后 gypsum 基数 23.231㎡，钉盘随基数走；判定不变）
     assert.equal(res.body.contractor.basis, 'forms');
-    assert.equal(res.body.contractor.allowancePerSqm, 122.71);
+    assert.equal(res.body.contractor.allowancePerSqm, 122.66);
     assert.equal(res.body.contractor.formBreakdown.length, 2);
     assert.equal(res.body.verdict, 'above_range');
-    assert.equal(res.body.slackVsMaxYuanPerSqm, 2.71);
+    assert.equal(res.body.slackVsMaxYuanPerSqm, 2.66);
     assert.deepEqual(res.body.ownerOnlyPerSqm, { min: 70, max: 115 });
     assert.ok(res.body.warnings.some((note: string) => note.includes('高于参考上限') || note.includes('低于参考下限')));
     assert.ok(res.body.warnings.some((note: string) => note.includes('两个口径') || note.includes('业主转述')));
@@ -133,12 +134,12 @@ elements:
     assert.equal(gypsum.basisUsed, 'comparable');
     assert.equal(gypsum.offSpecEvidence.length, 2);
     assert.equal(gypsum.offSpecEvidence[0].sheet_size_m2, 3.6);
-    // 龙骨：逐构件折算 + 边龙骨用量由 takeoff 周长实算（3.06 米每平米，是大平顶经验值 0.4 的 7.7 倍）
+    // 龙骨：逐构件折算 + 边龙骨用量由 takeoff 周长实算（3.08 米每平米，是大平顶经验值 0.4 的 7.7 倍；R05 后基数）
     const frame = res.body.items.find((item: { id: string }) => item.id === 'lanzhen50_frame');
     assert.equal(frame.basis, 'per_metre_derived');
     assert.equal(frame.derivedComponents.length, 3);
     const edge = frame.derivedComponents.find((c: { component: string }) => c.component === '边龙骨');
-    assert.deepEqual(edge.metresPerSqm, [3.06, 3.06]);
+    assert.deepEqual(edge.metresPerSqm, [3.08, 3.08]);
     assert.equal(edge.usageStatus, 'model_derived_upper_bound');
     assert.equal(frame.perSqm.min, 36);
     assert.equal(frame.perSqm.max, 45);

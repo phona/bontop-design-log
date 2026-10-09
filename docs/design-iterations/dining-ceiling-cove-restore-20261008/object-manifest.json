@@ -1,0 +1,65 @@
+{
+  "schema": "inter-design-object-manifest/v1",
+  "iteration_id": "dining-ceiling-cove-restore-20261008",
+  "as_of": "2026-10-08",
+  "objects": [
+    {
+      "id": "ceiling_dining_north_band",
+      "change": "R05：拆 cove_fillets；SE 阳角圆→镜像凹弧（concave_fillets se + concave_fillets_open se:sw）",
+      "before": "corner_radii {se:0.15} + cove_fillets {south,west}",
+      "after": "concave_fillets {sw,se} + concave_fillets_open {se:sw}，无 cove、无 corner_radii",
+      "invariants": [
+        "area [7.70,2.40,10.80,3.00] 不动",
+        "thickness 0.30 不动",
+        "SW 阴角 R150 不动",
+        "pricing_form edge_drop 不动",
+        "净面积 1.860→1.870㎡（两阴角加料）"
+      ]
+    },
+    {
+      "id": "ceiling_dining_west_band",
+      "change": "R05：拆 cove_fillets east",
+      "before": "cove_fillets {east:0.15}",
+      "after": "无 cove_fillets",
+      "invariants": [
+        "area/corner_radii {nw:0.15}/concave_fillets {se:0.15}/pricing_form 全不动"
+      ]
+    },
+    {
+      "id": "ceiling_entry_foyer",
+      "change": "R05：拆 cove_fillets west",
+      "before": "cove_fillets {west:0.15}",
+      "after": "无 cove_fillets",
+      "invariants": [
+        "area [10.80,2.90,13.40,4.30]/thickness/pricing_form flat 全不动",
+        "西缘自 (10.80,3.15) 起与门头盒镜像凹弧相切相接（不可见段 z[2.90,3.15] 背靠背藏于墙垛/裙边后）"
+      ]
+    }
+  ],
+  "files_touched": [
+    "config/ceiling.yaml（三区）",
+    "shared/render/CeilingZoneBuilder.ts（concave_fillets_open 镜像凹弧机制）",
+    "shared/project-render-facts-schema.ts + shared/types.ts（新字段）",
+    "tests/server/ceiling-cove.test.ts（重写为 R05 口径）",
+    "tests/server/cli-glb-export.test.ts（无 cove + 镜像凹弧断言）",
+    "tests/server/ceiling-takeoff.test.ts（北带 1.870㎡ 基线 + outlineArea 传开口象限）",
+    "tests/server/ceiling-material-cost.test.ts + tests/server/api.test.ts（钉盘 122.66/3.08）",
+    "data/project-render-facts.json（重生成）",
+    "docs/decision_log.md（DEC-2026-10-08-R05）",
+    "docs/design-iterations/dining-ceiling-cove-restore-20261008/（五件套）"
+  ],
+  "files_explicitly_untouched": [
+    "shared/ceiling-takeoff.ts（解析公式与方向无关，零改动）",
+    "config/hvac.yaml / config/mep-hvac-coordination.yaml",
+    "docs/design-iterations/dining-ceiling-no-cove-20261008/（R02 frozen 留档）"
+  ],
+  "quantities": {
+    "takeoff_before": "gypsum 23.231㎡（R04 态 23.222→R05 23.231）",
+    "takeoff_after": "gypsum 23.231㎡ / total 45.140㎡",
+    "delta": "北带 +0.0097㎡（SE 由阳角圆切料改凹弧加料）"
+  },
+  "tmp_evidence": [
+    "tmp/probe-r05.mts（镜像凹弧实测：切点/相切/不越界/fail-closed）",
+    "tmp/probe-r03.mts / probe-r04 系列（历史状态实测）"
+  ]
+}

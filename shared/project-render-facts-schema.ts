@@ -79,6 +79,23 @@ export const CeilingZoneSchema = z.object({
     se: finiteNumber.positive().optional(),
     sw: finiteNumber.positive().optional(),
   }).strict().optional(),
+  // 镜像凹弧的开口象限（DEC-2026-10-08-R05）：键为角 nw/ne/se/sw，值为该凹弧填补的开口
+  // 象限（必须等于镜像弧心象限 sw→nw/se→sw/ne→se/nw→ne）。用于跨分区拐肘——门头盒 SE 凹弧
+  // 填西南开口、与门厅吊顶西缘相切；默认（不声明）方向会扎进邻区体量。
+  concave_fillets_open: z.object({
+    nw: z.enum(['nw', 'ne', 'se', 'sw']).optional(),
+    ne: z.enum(['nw', 'ne', 'se', 'sw']).optional(),
+    se: z.enum(['nw', 'ne', 'se', 'sw']).optional(),
+    sw: z.enum(['nw', 'ne', 'se', 'sw']).optional(),
+  }).strict().optional(),
+  // 立面凹弧（米）：键为边 north/east/south/west，沿该边立面与房间平顶 2.80 的交线加
+  // 四分之一圆弧过渡；半径即弧半径（DEC-2026-10-08-R01）。
+  cove_fillets: z.object({
+    north: finiteNumber.positive().optional(),
+    east: finiteNumber.positive().optional(),
+    south: finiteNumber.positive().optional(),
+    west: finiteNumber.positive().optional(),
+  }).strict().optional(),
   buckle_panel: z.object({ module: finiteNumber, seam_width: finiteNumber.optional(), seam_color: z.string().optional() }).strict().optional(),
   // 工艺/计价类别（算量与高亮口径）。strict schema：错字直接在这里报错，不进算量。
   trade: z.enum(CEILING_TRADE_CLASSES).optional(),

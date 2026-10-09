@@ -34,7 +34,7 @@ function outlineArea(id: string): number | undefined {
     radii[corner] = zone.corner_radii?.[corner] ?? zone.corner_radius ?? 0;
     fillets[corner] = zone.concave_fillets?.[corner] ?? 0;
   }
-  const outline = buildMixedRectangleOutline(x1, z1, x2, z2, radii, fillets);
+  const outline = buildMixedRectangleOutline(x1, z1, x2, z2, radii, fillets, zone.concave_fillets_open);
   if (!outline) return undefined;
   let sum = 0;
   for (let i = 0; i < outline.length; i += 1) {
@@ -80,7 +80,10 @@ test('逐分区净面积与声明一致（含圆角/阴角修正）', () => {
   assert.ok(Math.abs(byId.get('ceiling_master_ac')!.netAreaM2 - (1.33875 - 4 * 0.01 * (1 - Math.PI / 4))) < 1e-9);
   // 餐厅服务带：一阳角 R150 配一阴角 R150，净面积回到外框
   assert.ok(Math.abs(byId.get('ceiling_dining_west_band')!.netAreaM2 - 0.95) < 1e-9);
-  assert.ok(Math.abs(byId.get('ceiling_dining_north_band')!.netAreaM2 - 1.86) < 1e-9);
+  // 北带（DEC-2026-10-08-R05）：SW 阴角 + SE 镜像凹弧（填西南开口、与门厅西缘相切），两处各加料 0.15²(1−π/4)
+  assert.ok(
+    Math.abs(byId.get('ceiling_dining_north_band')!.netAreaM2 - (1.86 + 2 * 0.15 * 0.15 * (1 - Math.PI / 4))) < 1e-9,
+  );
 });
 
 test('解析化面积与渲染轮廓（buildMixedRectangleOutline + shoelace）一致', () => {
@@ -88,17 +91,18 @@ test('解析化面积与渲染轮廓（buildMixedRectangleOutline + shoelace）�
     const measured = byId.get(id)!;
     const rendered = outlineArea(id);
     assert.ok(rendered !== undefined, `${id} 渲染侧应能建出轮廓`);
-    // 弧线被采样成折线（每象限 8 段），渲染轮廓必然略小于解析真值；
-    // 因此断言「解析值更大且差在采样误差内」，而不是相等。
-    assert.ok(measured.netAreaM2 > rendered!, `${id}: 解析面积应大于折线轮廓`);
-    assert.ok(measured.netAreaM2 - rendered! < 0.05, `${id}: takeoff ${measured.netAreaM2} vs render ${rendered} 差 ${(measured.netAreaM2 - rendered!).toFixed(4)}`);
+    // 弧线被采样成折线（每象限 8 段），渲染轮廓与解析真值存在采样级误差；
+    // 阳角弦切使折线偏小、阴角弦补使折线偏大，方向随角部组合变化，
+    // 因此断言「差在采样误差内」（对称容差），不预设方向。
+    const diff = Math.abs(measured.netAreaM2 - rendered!);
+    assert.ok(diff < 0.05, `${id}: takeoff ${measured.netAreaM2} vs render ${rendered} 差 ${diff.toFixed(4)} 超采样误差`);
   }
 });
 
 test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   const { byClass } = takeoff;
   assert.equal(byClass.gypsum_board.zones, 10);
-  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 23.222) < 0.01);
+  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 23.231) < 0.01);
   assert.equal(byClass.aluminum_buckle.zones, 3);
   assert.ok(Math.abs(byClass.aluminum_buckle.netAreaM2 - 16.366) < 0.01);
   assert.equal(byClass.aluminum_buckle.panelCount, 185);
@@ -109,8 +113,8 @@ test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   assert.equal(byClass.curtain_box.pricingUnit, 'linear_m');
   assert.equal(byClass.drying_rack.zones, 1);
   assert.ok(Math.abs(byClass.drying_rack.netAreaM2 - 1.08) < 1e-9);
-  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 45.13) < 0.01);
-  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 77.053) < 0.05);
+  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 45.14) < 0.01);
+  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 77.242) < 0.05);
 });
 
 test('窗帘盒逐个点名：5 个都在，且都是显式声明的 trade', () => {

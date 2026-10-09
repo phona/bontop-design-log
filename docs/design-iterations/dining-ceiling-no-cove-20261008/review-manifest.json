@@ -1,0 +1,63 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "dining-ceiling-no-cove-20261008",
+  "subject": "餐厅西/北服务带取消上部翻弧",
+  "state": "implementation",
+  "source_version": {
+    "config_refs": ["config/ceiling.yaml"],
+    "asset_refs": [],
+    "render_facts_ref": null,
+    "source_digest": null,
+    "generated_at": null
+  },
+  "validation": {
+    "commands": ["npm run verify:all", "npm run test:server", "npm run typecheck"],
+    "results": [],
+    "config_status": "PENDING",
+    "geometry_status": "PENDING",
+    "consistency_status": "PENDING",
+    "functional_checks_status": "PENDING",
+    "application_status": "PENDING",
+    "typecheck_status": "PENDING",
+    "generated_files_touched_directly": false
+  },
+  "evidence": [],
+  "aesthetic_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": ["变更后目标视角证据及独立审美评审待验收"],
+    "non_blocking_notes": [],
+    "evidence_refs": [],
+    "requested_changes": [],
+    "assumptions": []
+  },
+  "functional_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": ["需确认服务带、门头、接口及东北共边运行时几何"],
+    "non_blocking_notes": [],
+    "evidence_refs": [],
+    "requested_changes": [],
+    "assumptions": []
+  },
+  "risks": [
+    "截图中的异常几何来源尚未通过运行时 objectId/part 证据定位；本轮仅移除已确认的 cove_fillets 配置。"
+  ],
+  "retrospective": {
+    "triggered": false,
+    "triggers": [],
+    "records": [],
+    "rebaselined": false
+  },
+  "delivery": {
+    "status": "in_progress",
+    "blocking_issues": ["验证、浏览器证据、审美与功能复核尚未完成"],
+    "completion_conditions": [
+      "配置几何未超出本轮授权范围",
+      "验证命令结果通过并记录",
+      "Image #1 与 Image #2 同机位有效证据留档",
+      "审美与功能评审均通过"
+    ],
+    "follow_up_site_pending": [],
+    "delivery_ready": false
+  }
+}

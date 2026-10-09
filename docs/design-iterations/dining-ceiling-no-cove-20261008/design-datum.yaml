@@ -1,0 +1,83 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: dining-ceiling-no-cove-20261008
+subject: 餐厅服务带剖面造型修订
+units: m
+coordinate_system: Three.js 右手系；Y 向上；+x 东，+z 南；俯视北朝上；标高以完成地面为基准
+status: frozen
+datums:
+  - id: datum-west-band
+    name: 餐厅西侧服务带（保留平面 R150，移除上部翻弧）
+    anchor: {kind: ceiling_anchor, ref: ceiling_dining_west_band, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [f_west_band_authority, ud_remove_cove], decision_refs: [alignment-r02]}
+    views:
+      plan:
+        required: true
+        origin: config area corner [7.20,2.40]
+        axes: x 东西向，z 南北向
+        direction: 从餐区俯视，北朝上（-z）
+        position: {x: 7.20, z: 2.40}
+        rotation: null
+        dimensions: {length: 1.90, width: 0.50, depth: 1.90, offset: null}
+        dimension_semantics: total
+      elevation:
+        required: true
+        viewing_side: 餐区朝西侧服务带东立面
+        vertical_axis: y
+        height: 2.50
+        dimensions: {width: 1.90, height: 0.30, sill: null, datum_offset: null}
+        dimension_semantics: clear
+      section:
+        required: true
+        cut_direction: 东西向横切服务带
+        depth_axis: x
+        clearances: {front: null, rear: null, top: null, bottom: null}
+        thickness: 0.30
+        dimension_semantics: assembly
+    geometry: {x: null, y: 2.50, z: null, width: 0.50, depth: 1.90, height: 0.30, length: null, rotation: null, along: null}
+    constraints:
+      - "area=[7.20,2.40,7.70,4.30]"
+      - 垂面与顶面直接交接，不做上部翻弧
+      - 平面 NW/SE R150 保留
+    interfaces: [ceiling_kitchen, ceiling_main_corridor, ceiling_dining_north_band, ceiling_living]
+    validation_refs: [config/ceiling.yaml#ceiling_dining_west_band, 用户 Image #1]
+    status: confirmed
+  - id: datum-north-band
+    name: 餐厅北侧服务带/门头盒（保留平面 SW R150，移除上部翻弧）
+    anchor: {kind: ceiling_anchor, ref: ceiling_dining_north_band, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [f_north_band_authority, f_foyer_shared_boundary, ud_remove_cove], decision_refs: [alignment-r02]}
+    views:
+      plan:
+        required: true
+        origin: config area corner [7.70,2.40]
+        axes: x 东西向，z 南北向
+        direction: 从餐区俯视，北朝上（-z）
+        position: {x: 7.70, z: 2.40}
+        rotation: null
+        dimensions: {length: 3.10, width: 0.60, depth: 0.60, offset: null}
+        dimension_semantics: total
+      elevation:
+        required: true
+        viewing_side: 餐区朝北侧服务带北立面
+        vertical_axis: y
+        height: 2.50
+        dimensions: {width: 3.10, height: 0.30, sill: null, datum_offset: null}
+        dimension_semantics: clear
+      section:
+        required: true
+        cut_direction: 南北向横切服务带
+        depth_axis: z
+        clearances: {front: null, rear: null, top: null, bottom: null}
+        thickness: 0.30
+        dimension_semantics: assembly
+    geometry: {x: null, y: 2.50, z: null, width: 3.10, depth: 0.60, height: 0.30, length: null, rotation: null, along: null}
+    constraints:
+      - "area=[7.70,2.40,10.80,3.00]"
+      - 垂面与顶面直接交接，不做上部翻弧
+      - 平面 SW R150 保留
+      - 东端与 ceiling_entry_foyer 共边，不推断缺口
+    interfaces: [ceiling_kitchen, ceiling_dining_west_band, ceiling_entry_foyer, 餐厅平顶]
+    validation_refs: [config/ceiling.yaml#ceiling_dining_north_band, config/ceiling.yaml#ceiling_entry_foyer, 用户 Image #2]
+    status: confirmed
+notes:
+  - 当前记录只冻结已授权造型变化；上部几何删除后的运行时显示待验收。

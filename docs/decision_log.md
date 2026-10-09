@@ -2418,3 +2418,69 @@
 - **登记翻转**：#20（全屋飘窗 sill）改判 owner_asserted——儿童房衣柜降高/主卧斗柜 h<2.07 等由高窗台推断派生的约束**随之作废**，相关家具 v0 候选（床尾凸窗带可站人性）需重新评审；#54 分支收敛为①（齐地），量房终核反坎实存与尺寸，若量出高窗台系则回滚声明改补西墙墙砖。
 - **关联文件**：`config/layout/overlay.yaml`、`schedule/phase-1/control.yaml`、`schedule/phase-1/budget.md`、`schedule/procurement.md`、`docs/pending-site-data.md`（#20/#54）、`tests/server/wall-tile-inspection.test.ts`、`tmp/tile-report.ts`、`docs/decision_log.md`（本条）。
 - **决策人**：业主（实地断言）；量房 #20/#54 终核保留。
+
+### DEC-2026-10-08-R01-补记三：着色域拆分（业主第三轮「法线还有问题?」）
+
+- **触发**：业主特写示出弧面呈「融化的斜面」观感。根因：`computeVertexNormals` 在共享顶点上把轮廓三段（立面线/平顶线/四分之一圆弧）的法线平均——直段被弧化着色，整个凹弧读成软塌过渡。
+- **修正**：`buildCoveRunMesh` 按轮廓分段生成独立顶点块（fascia 条/平顶条/弧条互不共享顶点），法线不再跨切线折点平均——立面与平顶保持平面着色、仅弧段顺滑。
+- **验证**：`ceiling-cove.test.ts` 4/4、本轮文件 typecheck 零错误；SE 圆角与拐肘两机位实拍（tmp/v3-*.png）确认折线锐利、弧面顺滑。
+
+### DEC-2026-10-08-R01-补记四：SE 端头废除「东立面回转」，改圆角半程截断（业主第四轮评审）
+
+- **触发**：业主指出 SE 圆角实拍（tmp/v3-se-round.png）明显不对。根因：二轮引入的「过 SE 圆角沿东立面北上扎进墙线」方案，东立面外侧是入户花园**露天 void**——回转段弧面头顶无平顶、悬在室外，形成可见豁口（豁口即弧面上方的天空）。
+- **修正**：北带 `cove_fillets` 收回 `east`，保留 `{ south, west }`；渲染规则新增「悬空端半程包裹」——凸圆角仅一侧邻边声明弧面时，包到弧中点截断、端面转进转角空气腔：房间内读作「弧线消失进转角」，无裸切面、无越体量回转、无露天饰带。
+- **验证**：`ceiling-cove.test.ts` 4/4（可见主段 x≤10.694/z≥2.788 = 弧中点截断落点；西带切点截断不变；fail-closed）；typecheck 零错误；同机位实拍（tmp/v4-se-round.png）豁口消失、转角干净。
+
+### DEC-2026-10-08-R01-补记五：SE 角「白色竖向凸起」身份审计（回应外部 GPT 分析的关键提问）
+
+- **审计方式**：运行时场景枚举（region x[9.8,11.6] y[2.3,2.95] z[2.3,3.6] 全 mesh bbox 清单）。
+- **结论**：用户/GPT 指认的「中央白色竖向凸起」= **w_ent_west 实体墙**（入户花园西墙：x[10.74,10.86]、z[2.40,2.90]、通高 0→2.80），是模型里一直存在的建筑构件，**不是弧面扫掠生成的几何**。相邻还有 w_ent_south_w（x[10.80,11.80]、z[2.84,2.96]，东向围墙）。该墙西脸（x=10.74）比带东缘（x=10.80）**西凸约 6cm**，带 SE 圆角 + cove 端帽（v4 中点 10.694,2.894）距墙角约 4cm——这个角实际挤了四个构件（带圆角立面、cove 端帽、墙垛、门厅裙边），视觉主导者是墙垛。
+- **对外部建议的核对**：GPT 建议的「二维参数化截面+沿路径挤出+端部收口」架构与现状实现一致（`coveProfilePoints`/`buildCoveSegments`/`buildCoveRuns`/`buildCoveRunMesh`，round 2 起）；「BoxGeometry 拼接 / 增加细分掩盖」不符合实际（自定义索引 BufferGeometry 扫掠，分段 π/16）；「梁体」不存在（开口上空无登记梁）；切向连续为构造保证（arcSamples 与邻边相切、轮廓四分之一圆与立面/平顶相切）。其余待决为构图判断而非几何缺陷。
+
+### DEC-2026-10-08-R01-补记六（终裁）：SE 角回到正交，其余弧面维持
+
+- **决策**：业主终裁「这个角回到正交吧，其它的不动」——北带 SE 角取消圆角（`corner_radii.se` 移除，R04 该角的 R150 圆角废止），南缘弧面直行到角点 (10.80,3.00) 方角直截、贴 w_ent_west 墙垛收头，本角不再有任何曲面。SW 拐肘、西带东缘弧面、ceiling_living R100、主卧门头盒 R100 全部维持。
+- **连带修正**：①`tests/server/ceiling-takeoff.test.ts` 北带净面积基线更新为「外框 + SW 阴角加料 0.15²(1−π/4)」；②同测试「解析 vs 折线轮廓」断言的方向性假设修正为对称容差——阳角弦切使折线偏小、阴角弦补使折线偏大，方向随角部组合变化，原「解析必大于折线」对未配对阴角不成立（北带实测反向 4e-5），对称容差仍保留检测真公式漂移的能力（西带 0.0126 既有间隙仍在容差内、被覆盖）。
+- **验证**：ceiling-takeoff + ceiling-cove + ceiling-config 共 19/19 通过；本轮文件 typecheck 零错误；SE 角同机位实拍（tmp/v5-se-orthogonal.png）方角干净、无豁口。DEC-2026-10-08-R01 全部子项关闭，悬账仅剩：弧面工艺造价（site/vendor_pending）、门头 2.55/2.50 与进深（等门厂安装图）。
+
+### DEC-2026-10-08-R02 餐厅服务带取消上部翻弧（弧面部分已被 R03 废止）
+
+- **触发与批准**：业主就东南角弧面断口截图指示「好，让luna去改，你验收」——Luna 提出取消两条服务带的上部翻弧（顶面直接转竖直垂面），业主批准实施。
+- **实施**（Luna，2026-10-08，未提交Git）：删除 `ceiling_dining_west_band.cove_fillets.east` 与 `ceiling_dining_north_band.cove_fillets.{south,west}`；保留平面 R150 圆角、尺寸、标高与功能字段；`tests/server/ceiling-cove.test.ts` 改写为锁定「无翻弧」行为；迭代五件套落 `docs/design-iterations/dining-ceiling-no-cove-20261008/`（frozen）。
+- **状态**：runtime 双机位验收与 aesthetic/functional review 均未完成（brief blocking_issues 原样保留）；业主随后提出「要弧面、弧面拐到门厅平吊上」，**本票关于取消弧面的部分由 DEC-2026-10-08-R03 废止**；R02 保留的平面圆角/尺寸/标高口径继续有效。
+- **关联文件**：`config/ceiling.yaml`（两区 note 的 R02 记载）、`docs/design-iterations/dining-ceiling-no-cove-20261008/`（frozen 五件套）。
+- **补记说明**：本条目由 R03 实施方补登（R02 原实施未落日志，导致 config 引用悬空被 verify:facts 拦截）；内容以 R02 frozen brief 与 config note 为准。
+
+### DEC-2026-10-08-R03 弧面回归 + 东南角接门厅平吊（废止 R02 弧面取消部分）
+
+- **触发**：业主 2026-10-08 下午指令「要弧面，但是弧面是拐到门厅的平吊上，而不是现在这样，像狗啃一样」。业主另明确：R01 补记六「SE 角回正交」是**多轮返工后改不动的退路，不是审美选择**——故本轮回合不以正交为既定约束，但也不重开倒圆（见下）。
+- **决策**：①**废止 R02 关于取消弧面的部分**（R02 由 Luna 实施、runtime 双机位验收与审美评审均未完成即被本票覆盖）；②恢复 R01 三处 cove：门头盒 `{south,west}`、西带 `{east}`；③**新增门厅吊顶 `ceiling_entry_foyer` 西缘 `cove_fillets: {west:0.15}`**——门厅西缘朝客厅 2.80 原顶，是合法弧面位，作为门头盒南缘弧面在东南角 (10.80,3.00) 的转弯延续（北端埋 w_ent_west 墙垛南脸、南端埋 ceiling_living 设备带实体，可见段 z[3.00,4.30]）；④**北带不加 east cove**——东缘外侧为入户花园露天 void，R01 补记四已用实拍判死该方向（弧面悬空露天空豁口）。
+- **为什么不倒圆做西北角同款**：西北角（SW 拐肘）的相切扫掠靠「阴角实体 R150 + 两段弧各沿分区轮廓在共面边相接」；东南角是阳角贴墙，且业主要的延续方向（南向门厅）不在门头盒自身轮廓上（该轮廓在北端拐进露天 void），builder 只沿本分区轮廓扫掠、cove 不跨分区走路。相切同款需「倒圆 + 跨分区 cove 路径」两项 builder 级改造；本轮取 A 案（90° 折弯转弯），业主确认木工落地非难点（R150 划缝弯板 + 阳角 45° 拼角为标准工艺）。
+- **几何实测**（tmp/probe-r03.mts，parseCeilingZones + buildCeilingZone）：门头盒 2 条 cove（南缘 x[7.70,10.80] z[3.00,3.15]——**东端严格止于角点 10.80，east 未复活**；西缘 x[7.55,7.70] 埋入西带体量）；西带 1 条 x[7.70,7.85] z[2.40,4.15]（可见 z[3.15,4.15]）；门厅 1 条 x[10.65,10.80] z[2.90,4.30]；均无 NaN，fail-closed 回归正常。
+- **造价影响**：全场弧面合计约 5.25m（门头盒南缘 2.95 + 西带东缘 1.0 + 门厅西缘 1.3，含东南角 45° 拼角 1 处），较 R01 终裁态 +1.3m；弧面按延长米报价维持 site/vendor_pending，长度已补准，并入施工方询价清单。
+- **验证**：`ceiling-cove.test.ts` 重写为 R03 口径 5/5 通过（声明/三段 bbox/east 复活防护/fail-closed）；render-facts 已重生成（三区 cove_fillets 入账）；算量、定价、标高、分区、MEP 全未动（cove 为饰面节点，不进 takeoff）。
+- **关联文件**：`config/ceiling.yaml`（三分区 cove_fillets + note）、`tests/server/ceiling-cove.test.ts`、`data/project-render-facts.json`、`tmp/probe-r03.mts`、`docs/design-iterations/dining-ceiling-cove-restore-20261008/`（五件套）。
+- **决策人**：业主（范围经澄清确认：全量恢复 R01 + 东南角接门厅；实施方式 A）。
+
+### DEC-2026-10-08-R04 东南角逐回 R150 圆角 + 弧面半程包裹（重开 R01 补记六正交终裁）
+
+- **触发**：R03 实施、server 重启后，业主第一次在 Web 里看到真实弧面，裁定「要的是角本身圆过来」——东南角方角 + 弧面 90° 折弯「比之前好但还不是弧面」；并明确当年回正交是多轮返工后「改不动」的退路而非审美偏好，故重开补记六终裁。
+- **决策**：①北带 `corner_radii: { se: 0.15 }`（与 DEC-2026-10-07-R04 该角原圆角同半径）；②南缘弧面按既有半程包裹规则扫至圆弧中点 (10.694,2.894) 淡进转角，由门厅西缘弧面接力向南；③**仍不声明 east cove**（R01 补记四：东缘外侧露天 void，全包裹即天空豁口）；④跨分区相切连续（B2，builder 级）留作后续选项，本轮不做。
+- **几何实测**（tmp/probe-b4.mts + probe-r03.mts，真实配置实跑）：南缘 run bbox x[7.700,10.694] z[2.788,3.150]——半程截断落点与 R01 补记四记载的 (10.694,2.788) 一致；西缘埋入段、门厅西缘段不变；无 NaN，fail-closed 正常。
+- **连带修正**：①北带净面积回到外框 1.860㎡（SE 阳角弦切与 SW 阴角加料相互抵消），gypsum 总量 23.226→**23.222㎡**、合计 45.135→**45.130㎡**；②**material-cost 测试的 122.71 元/㎡ 基线自动修复**——该基线本就按 23.222㎡ 计算，是 R01 补记六拿掉圆角时留下的漂移，本轮倒圆后自然收敛；③ceiling-cove / ceiling-takeoff 测试基线同步更新（44/44 通过）。
+- **已知残留**：圆角退缩区在门厅西裙边处留约 10cm 影线级口子（w_ent_west 墙垛 x[10.74,10.86] 覆盖大部），待 Web 三人称验收；不能接受则走 B2（跨分区 cove 路径可把角区一并包入）。
+- **关联文件**：`config/ceiling.yaml`、`tests/server/ceiling-cove.test.ts`、`tests/server/ceiling-takeoff.test.ts`、`data/project-render-facts.json`、`tmp/probe-b4.mts`、`docs/design-iterations/dining-ceiling-cove-restore-20261008/`（五件套追加）。
+- **决策人**：业主（Web 实见后裁定）。
+
+### DEC-2026-10-08-R05 东南角逐改镜像凹弧 + 垂面弧全拆（废止 R03/R04 的 cove 与阳角圆）
+
+- **触发**：业主 Web 实见 R04（SE 阳角圆 + 垂面 cove）后明确定调：「我不是要这个弧面」「怎么又是加了垂面的弧呢」「不应该是垂直的平面吗」——此前六轮迭代中业主反复否定的正是立面与平顶交接处的弧（cove）；业主要的“弧”自始至终是**东南角本身圆过来、圆弧过渡到门厅西面**（R02 亲批的“顶面直接转为竖直垂面”即硬相交语言）。
+- **几何定性（本轮关键分析）**：东南角 (10.80,3.00) 对**组合轮廓**（门头盒 + 门厅吊顶）是**阴角**——门头盒占西北、门厅占东北/东南，开口在西南（270° 料 / 90° 空），与 SW 拐肘 (7.70,3.00) 同构。R04 的阳角圆（切料）既切出「口子」（业主最早示的“缺了个口子”），弧又止于与门厅背靠背的东缘、到不了“另一边”。**唯一能相切过渡到门厅西面的是凹弧（加料填口）**。
+- **决策**：①**垂面弧全拆**：门头盒 `cove_fillets {south,west}`、西带 `{east}`、门厅 `{west}` 全部移除（R03 恢复的与 R01 遗留的），立面与平顶恢复硬相交（R02 语言）；②北带 SE 由 `corner_radii se 0.15`（阳角圆）改为 `concave_fillets se 0.15` + **`concave_fillets_open: { se: sw }`（镜像凹弧，builder 新机制）**：沿南缘往回至切点 (10.65,3.00)、弧心 (10.65,3.15)，与门厅吊顶西缘 x=10.80 在 (10.80,3.15) 相切——弧面从门头盒南面相切一路过渡到门厅西面，无口子；③加料区 x[10.65,10.80]×z[3.00,3.15] 为开放餐区，不与门厅/墙垛重叠（镜像方向若取默认会扎进门厅体量，builder 对非法象限 fail closed）。
+- **builder 改动**（`shared/render/CeilingZoneBuilder.ts`）：`CeilingZoneSpec` 增 `concave_fillets_open`（镜像凹弧的开口象限声明，合法象限 sw→nw/se→sw/ne→se/nw→ne）；`resolveConcaveFillets` 增声明校验（角上必须有凹弧、象限必须等于镜像弧心象限，否则 null）；`buildMixedRectangleOutline` 凹弧分支按 `sign = open ? −1 : +1` 镜像取切点与弧心；schema 同步加字段。**takeoff 解析公式与方向无关（阴角恒加料 f²(1−π/4)），零改动**。
+- **几何实测**（tmp/probe-r05.mts，真实配置实跑）：北带轮廓 bbox x[7.70,10.80] y[2.50,2.80] z[2.40,**3.15**]（南界至切点）；切点 (10.65,3.00) 与 (10.80,3.15) 精确在轮廓上；弧采样点均在 R0.15 圆（圆心 (10.65,3.15)）上；无点越过 x=10.80；三区 cove mesh 均为 0；非法象限/无凹弧角声明均 fail closed。
+- **数量变化**：北带净面积 1.860→**1.870㎡**（两阴角各 +0.15²(1−π/4)）；gypsum 23.231㎡、合计 45.140㎡；**material-cost 钉盘随基数更新**（边龙骨 3.06→3.08 米/㎡、材料额度 122.71→122.66 元/㎡、slack 2.71→2.66；判定 above_range 不变；C12 文档的 122.71 为其当年 23.222 基数的历史记录，不回改）。
+- **验证**：ceiling-cove 5/5（重写为 R05 口径：无 cove + 镜像凹弧切点/相切/不越界/fail-closed）、ceiling-takeoff 12/12、cli-glb-export 13/13、ceiling-material-cost 14/14；typecheck 0；render-facts 已重生成且 server 重启后在线确认（北带 fillets{se,sw}+open{se:sw}、无 cove）。
+- **遗留**：门厅西缘自 (10.80,3.15) 起与凹弧相切相接——该 0.25m 段（z[2.90,3.15]）与门头盒东缘背靠背藏于墙垛/裙边后，不可见；Web 三人称实见待业主确认“弧从南面相切转到门厅西面”的观感。
+- **关联文件**：`config/ceiling.yaml`（三区）、`shared/render/CeilingZoneBuilder.ts`、`shared/project-render-facts-schema.ts`、`tests/server/ceiling-cove.test.ts`（重写）、`tests/server/cli-glb-export.test.ts`、`tests/server/ceiling-takeoff.test.ts`、`tests/server/ceiling-material-cost.test.ts`、`data/project-render-facts.json`、`tmp/probe-r05.mts`。
+- **决策人**：业主（Web 实见后裁定：路线 2 builder 级根治 + 垂面弧全拆）。

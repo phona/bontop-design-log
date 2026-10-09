@@ -67,6 +67,9 @@ interface CeilingEntry {
   area?: [number, number, number, number];
   corner_radius?: number;
   corner_radii?: Record<string, number>;
+  concave_fillets?: Record<string, number>;
+  cove_fillets?: Record<string, number>;
+  concave_fillets_open?: Record<string, string>;
   buckle_panel?: { module: number; seam_width?: number; seam_color?: string };
   inspection_layer?: string;
   inspection_opacity?: number;
@@ -74,7 +77,9 @@ interface CeilingEntry {
 
 /** 任一被声明的圆角（corner_radius 或 corner_radii 里的正值）⇒ 走圆角分支（slab + 围边）。 */
 function isRounded(entry: CeilingEntry): boolean {
-  return (entry.corner_radius ?? 0) > 0 || Object.values(entry.corner_radii ?? {}).some((value) => (value ?? 0) > 0);
+  return (entry.corner_radius ?? 0) > 0
+    || Object.values(entry.corner_radii ?? {}).some((value) => (value ?? 0) > 0)
+    || Object.values(entry.concave_fillets ?? {}).some((value) => (value ?? 0) > 0);
 }
 
 /** 铝扣板分格缝数量：按 module 排块，缝数 = (格数 − 1) × 2 方向。 */
@@ -86,6 +91,27 @@ function seamCount(entry: CeilingEntry): number {
   const countX = Math.floor((Math.abs(x2 - x1) + 1e-9) / module);
   const countZ = Math.floor((Math.abs(z2 - z1) + 1e-9) / module);
   return Math.max(0, countX - 1) + Math.max(0, countZ - 1);
+}
+
+/**
+ * cove 扫掠段数：builder 的 run = 沿轮廓走向（south→east→north→west）上
+ * **连续声明弧面**的极大链；未声明弧面的边打断 run。每条 run 导出 1 个 cove solid。
+ * DEC-2026-10-08-R03：门头盒 {south,west} 被 east 打断 → 2 段；西带 {east}、门厅 {west} 各 1 段。
+ */
+function coveCount(entry: CeilingEntry): number {
+  const walk: Array<'south' | 'east' | 'north' | 'west'> = ['south', 'east', 'north', 'west'];
+  let runs = 0;
+  let inRun = false;
+  for (const edge of walk) {
+    const coved = (entry.cove_fillets?.[edge] ?? 0) > 0;
+    if (coved) {
+      if (!inRun) runs += 1;
+      inRun = true;
+    } else {
+      inRun = false;
+    }
+  }
+  return runs;
 }
 
 function readCeilingEntries(): CeilingEntry[] {
@@ -316,13 +342,31 @@ test('CLI exports every solid ceiling.yaml zone with the Web metadata contract',
   const { scene, report, index } = buildCliHouseScene();
   const solids = collectObjects(scene).filter((object) => object.userData.type === 'ceiling_zone_solid');
   assert.equal(report.ceilingZones, solidEntries.length);
-  const expectedSolidCount = solidEntries.reduce((count, entry) => count + (isRounded(entry) ? 2 : 5) + seamCount(entry), 0);
+  const expectedSolidCount = solidEntries.reduce((count, entry) => count + (isRounded(entry) ? 2 : 5) + seamCount(entry) + coveCount(entry), 0);
   assert.equal(solids.length, expectedSolidCount);
   for (const entry of solidEntries) {
     const objectId = `ceiling:${entry.id}`;
     const matching = solids.filter((object) => object.userData.objectId === objectId);
-    const expectedParts = (isRounded(entry) ? 2 : 5) + seamCount(entry);
+    const expectedParts = (isRounded(entry) ? 2 : 5) + seamCount(entry) + coveCount(entry);
     assert.equal(matching.length, expectedParts, `expected ${expectedParts} rounded slab/edge solids for ${objectId}`);
+    // DEC-2026-10-08-R05：垂面弧全拆（回 R02 硬垂直面）；北带 SE 为镜像凹弧（跨分区、与门厅西缘相切）
+    if (entry.id === 'ceiling_dining_north_band') {
+      assert.equal(entry.cove_fillets, undefined, 'north band must not declare a cove (DEC-2026-10-08-R05: all vertical-face arcs removed)');
+      assert.equal(coveCount(entry), 0, 'north band exports no cove runs');
+      assert.deepEqual(entry.concave_fillets, { sw: 0.15, se: 0.15 });
+      assert.deepEqual(entry.concave_fillets_open, { se: 'sw' }, 'SE mirrored concave fillet fills the SW opening (cross-zone tangent to the foyer west edge)');
+      assert.equal(entry.corner_radii, undefined, 'north band SE keeps no convex round (R04 superseded by R05)');
+      assert.equal(matching.filter((object) => object.userData.part === 'rounded-perimeter').length, 1, 'north band should retain its plan-rounded vertical perimeter');
+    }
+    if (entry.id === 'ceiling_dining_west_band') {
+      assert.equal(entry.cove_fillets, undefined, 'west band must not declare a cove (DEC-2026-10-08-R05)');
+      assert.equal(coveCount(entry), 0, 'west band exports no cove runs');
+      assert.equal(matching.filter((object) => object.userData.part === 'rounded-perimeter').length, 1, 'west band should retain its plan-rounded vertical perimeter');
+    }
+    if (entry.id === 'ceiling_entry_foyer') {
+      assert.equal(entry.cove_fillets, undefined, 'foyer must not declare a cove (DEC-2026-10-08-R05)');
+      assert.equal(coveCount(entry), 0, 'foyer exports no cove runs');
+    }
     for (const object of matching) {
       assert.equal(object.userData.roomId, entry.room);
       if (entry.inspection_layer) assert.equal(object.userData.ceiling.inspection_layer, entry.inspection_layer);
@@ -346,6 +390,10 @@ test('CLI exports every solid ceiling.yaml zone with the Web metadata contract',
   }
   assert.equal(solids.some((object) => object.userData.objectId === 'ceiling:ac_living'), false);
   assert.equal(solids.some((object) => object.userData.objectId === 'ceiling:ac_master'), false);
+  // DEC-2026-10-08-R05：垂面弧全拆——任何分区都不得声明 cove
+  for (const entry of solidEntries) {
+    assert.equal(entry.cove_fillets, undefined, `${entry.id} should not declare a cove`);
+  }
   // 铝扣板分格缝随分区导出，且仍属于该分区（走 ceilingMeshes 索引，俯视/轨道模式跟随隐藏）
   for (const entry of solidEntries.filter((candidate) => seamCount(candidate) > 0)) {
     const seams = solids.filter((object) => object.userData.objectId === `ceiling:${entry.id}` && object.userData.part === 'buckle-seam');

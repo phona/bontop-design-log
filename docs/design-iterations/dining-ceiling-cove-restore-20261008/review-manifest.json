@@ -1,0 +1,70 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "dining-ceiling-cove-restore-20261008",
+  "subject": "餐厅吊顶弧面回归 + 东南角接门厅平吊（DEC-2026-10-08-R03）",
+  "state": "implemented_runtime_review_pending",
+  "state_note": "R05 实施完成：垂面弧全拆（回 R02 硬垂直面）+ 东南角逐改镜像凹弧（builder 新机制 concave_fillets_open），弧面从门头盒南面相切过渡到门厅西缘、无口子。server 测试 744/758（余 14 项均为并行会话存量失败，与基线完全一致，零新增）；material-cost 钉盘随 R05 几何基数更新（122.66/3.08）。server 已重启在线确认新配置。runtime 三人称验收待业主。",
+  "source_version": {
+    "config_refs": [
+      "config/ceiling.yaml",
+      "docs/decision_log.md（DEC-2026-10-08-R03 及 R02 补记）"
+    ],
+    "asset_refs": [
+      "shared/render/CeilingZoneBuilder.ts（未改）",
+      "shared/render/SceneBuilder.ts（未改）"
+    ],
+    "render_facts_ref": "data/project-render-facts.json（已重生成，三区 cove_fillets 入账）",
+    "generated_at": "2026-10-08"
+  },
+  "validation": {
+    "commands": [
+      "npm run verify:facts",
+      "npm run verify:project-render-facts",
+      "npx tsx --test tests/server/ceiling-cove.test.ts",
+      "npx tsx --test tests/server/cli-glb-export.test.ts",
+      "npx tsx --test tests/server/ceiling-takeoff.test.ts",
+      "npm run test:server",
+      "npm run typecheck",
+      "cd app && npx vitest run"
+    ],
+    "results": [
+      "verify:facts: OK（40 warnings）",
+      "verify:project-render-facts: OK（ceiling=25）",
+      "ceiling-cove: 5/5（R05 口径：无 cove + 镜像凹弧切点/相切/不越界/fail-closed）",
+      "ceiling-takeoff: 12/12（北带净面积 1.870㎡）",
+      "cli-glb-export: 13/13",
+      "ceiling-material-cost: 14/14 + api: 12/12（钉盘随 23.231㎡ 基数更新为 122.66/3.08）",
+      "test:server: 744 pass / 14 fail（14 项均为并行会话存量；与 stash 基线完全一致，零新增）",
+      "typecheck: 0 error",
+      "app vitest: 529/529（64 files）"
+    ],
+    "config_status": "PASS",
+    "geometry_status": "PASS（tmp/probe-r03.mts 实测：4 条 cove mesh、无 NaN、南缘止于 x=10.80、fail-closed 正常）",
+    "consistency_status": "PASS（render-facts 重生成；takeoff 零变化）",
+    "functional_checks_status": "N/A（饰面节点，无功能回路）",
+    "application_status": "NOT_RUN（Web runtime 三人称验收待业主）",
+    "typecheck_status": "PASS",
+    "generated_files_touched_directly": false,
+    "note": "命令绿只是证据层之一；审美终审必须业主在 Web 里实见。"
+  },
+  "evidence": {
+    "required_views": [
+      "餐桌看向东南角（断口应消失、弧面转弯接门厅西缘）",
+      "客厅/餐区东侧看向门厅西缘（新增 1.3m 弧面连续、两端收口干净）",
+      "东南角特写（两弧 90° 接缝是否可接受）"
+    ],
+    "required_views_status": "site_pending",
+    "user_screenshot_ref": "业主 2026-10-08 提供的东南角断口截图（R01 态）"
+  },
+  "delivery": {
+    "blocking_issues": [
+      "runtime 三人称视觉验收未完成（aesthetic_review: PENDING）——镜像凹弧的相切过渡观感",
+      "门厅西缘与凹弧切点 (10.80,3.15) 的相接段待实见确认"
+    ],
+    "done_when": [
+      "业主 Web 实见确认东南角转弯效果",
+      "施工方弧面报价入 contracts/ 并更新 config/ceiling-quotes.yaml 候选卡"
+    ]
+  }
+}
