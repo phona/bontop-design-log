@@ -1107,6 +1107,7 @@ x_decision_files: &decision_files
   - docs/decisions/15-penetration-lint.md
   - docs/decisions/16-verify-gate.md
   - docs/decisions/17-paint-scope-extension.md
+  - docs/decisions/18-engineering-state.md
 
 contracts:
 
@@ -1658,6 +1659,10 @@ coverage:
   # envelopes 段（活动包络申报）的真实消费方：CLI 加载、envelopes.ts 计算、
   # shadow.ts 透传、types.ts 定义形状。shadow-only，不参与 errors/warnings。
   - { file: config/anti-penetration.yaml, field: "envelopes", readers: ["shared/penetration/types.ts", "shared/penetration/envelopes.ts", "shared/penetration/shadow.ts", "scripts/verify/penetration/verify-penetration.ts"] }
+  - { file: config/state-model.yaml, field: "priority", readers: ["scripts/project/state-projection.ts", "shared/element-state.ts"] }
+  - { file: config/state-model.yaml, field: "status_vocabulary", readers: ["scripts/project/state-projection.ts", "shared/element-state.ts"] }
+  - { file: config/state-model.yaml, field: "element_bearing_files", readers: ["scripts/project/state-projection.ts", "shared/pending-ledger.ts"] }
+  - { file: config/state-model.yaml, field: "issue_sources", readers: ["scripts/project/state-projection.ts"] }
   - { file: config/tradeoffs.yaml, field: "tradeoffs", readers: [] }
   - { file: config/verify-rules.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/verify-rules.yaml, field: "bounds", readers: ["shared/render/layout-bounds.ts", "shared/types.ts"] }

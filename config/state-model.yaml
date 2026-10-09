@@ -1,0 +1,39 @@
+# 构件级工程状态派生模型（`npm run state:project`）
+#
+# 本文件只声明**规则顺序与状态词映射**，不复制任何坐标、面积或构件的状态值——
+# 那些权威仍在 config/*.yaml、docs/pending-site-data.md、docs/decisions/ 与各 verifier。
+# 派生不出来的状态是 `undeclared`：一种要显形的状态，不是「默认已确认」。
+
+version: 1
+
+# 优先级：从高到低，第一条命中的规则决定该构件的 status。
+#   conflict       有 error 级 verifier issue 触及它      → conflicted
+#   config_status  config 里有 status/position_status    → 按下面词汇表映射
+#   ledger         命中 docs/pending-site-data.md 某条   → pending（附 #编号与「卡在谁」）
+#   decision       声明 note 里有 DEC 引用               → confirmed
+#   fallback        以上都不命中                         → undeclared（显形）
+# 顺序可调，但删掉任何一条都会让对应实现变成「未申报规则」而告警——覆盖矩阵不许说谎。
+priority: [conflict, config_status, ledger, decision, fallback]
+
+# config 状态词 → 统一状态词。
+#   likely → inferred：两者都未经现场核实，统一按「推断」处理；原值保留在 statusSource 里。
+status_vocabulary:
+  measured: measured
+  likely: inferred
+  inferred: inferred
+  pending: pending
+  confirmed: confirmed
+
+# 台账「填入文件」列里，哪些文件承载场景构件（要按 objectId 前缀拼起来做存在性核对）。
+# 指向 procurement/materials/schedule/budget 的条目本来就不绑定场景构件，不做核对。
+element_bearing_files:
+  config/electrical.yaml: electrical
+  config/plumbing.yaml: plumbing
+  config/ceiling.yaml: ceiling
+
+# 派生时读取的 issue 来源（verifier 名，对应 scripts/verify/ 下的入口）。
+# 只取**与构件绑定相关**的 verifier；全量门禁结论看 `npm run verify:all -- --json`。
+issue_sources:
+  - verify-spatial
+  - verify-penetration
+  - verify-electrical

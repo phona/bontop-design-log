@@ -28,6 +28,7 @@
     "verify:penetration": "tsx scripts/verify/penetration/verify-penetration.ts",
     "generate:project-render-facts": "tsx scripts/project/project-render-facts-projection.ts data/project-render-facts.json",
     "takeoff:ceiling": "tsx scripts/project/ceiling-takeoff.ts",
+    "state:project": "tsx scripts/project/state-projection.ts",
     "takeoff:mep": "tsx scripts/project/mep-takeoff.ts",
     "verify:all": "tsx scripts/verify/verify-all.ts",
     "export:dressing-map": "tsx scripts/generate-dressing-map.ts",

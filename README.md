@@ -161,6 +161,17 @@ npm run verify:penetration -- --json --shadow    # 附加 OBB 对照与白名单
 
 机电协调构件（管/管井）逐类型显式申报参与策略 `excluded`/`solid`，未申报即 fail-closed；`mb_vanity_pvc_service_chase` 的预留区口径未裁定，10 处墙/家具重叠登记为 `docs/pending-site-data.md` #55 显形债务，未裁定前不当作缺陷、也不为了绿灯改坐标。活动包络（门扇开启、抽屉、电器门）尚未覆盖，详见 `docs/penetration-lint.md`。
 
+### 工程状态查询（DEC-2026-10-09-E01）
+
+```bash
+npm run state:project                # 人读：逐构件状态 + 未裁定/有冲突清单
+npm run state:project -- --json      # 机器可读：每构件一条 {status, statusSource, openQuestion, conflicts}
+```
+
+回答一个问题：**每个构件确认到什么程度、卡在谁、和谁冲突。** 状态只派生不存储——权威仍在 `config/*.yaml` 的 `status`/`position_status`、`docs/pending-site-data.md` 的 55 条待决、179 条 DEC 与各 verifier 结论；本命令产出的是视图。优先级：门禁 error(`conflicted`) > config 字段 > 待决台账(`pending`) > DEC 引用(`confirmed`) > **`undeclared`（派生不出来，显形而不是默认已确认）**。规则顺序与状态词映射在 `config/state-model.yaml`，可评审。
+
+当前快照：**164 个构件** = confirmed 73 / undeclared 68 / pending 21 / inferred 2（`tests/server/element-state.test.ts` 钉住总数与申报缺口，数字变化必须是有意的）。`sock_child_ac` 可答：「pending，卡在空调厂家深化图（#42）」。不需要 MCP——agent 读配置、跑这条命令、curl 既有 API 已足够。
+
 ## 核心原则
 
 1. **没有口头变更**：任何改动必须进 Git。
