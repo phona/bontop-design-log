@@ -844,8 +844,11 @@ elements:
   # 而 warning 本该意味着「需要关注」。wallCoversCap 安全网仍保留——将来几何变化导致
   # 某个声明面被墙盖住时照常 warning，提示声明过期。
   # room 按「outline 落在哪个房间矩形」几何归属；与 id 命名不一致的两处已在各自 reason 标注。
-  # 已知遗留：master_bath_west_bay 与 bedroom_nw_west_bay 的 outline 重叠 0.110㎡
-  # （根因 w_west_ap 是零长段，见 docs/pending-site-data.md #57），约 0.186㎡ 涂装面被双计。
+  # 已知遗留：master_bath_west_bay 与 bedroom_nw_west_bay 的 outline 重叠 0.110㎡，
+  # 约 0.186㎡ 涂装面（底面 0.110 + 前缘 0.076）被双计，占全部涂装面 0.060%。
+  # 根因是西北角圆角（v_bath_nw radius 1.00）：弧划归 w_bath_north、w_west_ap 被修剪为
+  # 零长段（resolver 正确行为），角部飘窗包住该弧，其投影与西墙飘窗投影在
+  # x[0,1.1]×z[2.10,2.20] 相撞。详见 docs/pending-site-data.md #57，待复尺定弧端收口。
   - id: paint_master_bedroom_west_bay
     type: paint_sill_region
     element: master_bedroom_west_bay
