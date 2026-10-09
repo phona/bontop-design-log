@@ -378,27 +378,25 @@ test('真实声明端到端：paint_master_bath_west_bay 的面积/种类/告警
   assert.ok(Math.abs(frontWidth * (ceilingFinish - bay.sill) - frontArea) < 0.01, '前缘外露面积与总宽 × 外露高度对账');
   assert.ok(Math.abs(frontWidth * (bay.sill + bay.height - ceilingFinish) - frontOccluded) < 0.01, '前缘遮挡面积与总宽 × 遮挡高度对账');
 
-  // start_end 端面：从 wallPath[0] 到 frontPath[0]，同样整段在铝扣板投影内 → 只算到 2.65
-  // ⚠ 已知缺陷（不在本文件修，仅登记）：buildBaySillGeometry 第 189 行
-  //   `[...outerLeft, ...outerRight.reverse()]` 的 reverse() 是原地反转，
-  //   返回的 wallPath 因此与 frontPath 方向相反，start_end/end_end 于是被配成
-  //   「横跨整条窗台的斜肢」而不是两端的 1.1m 端面。当前模型输出即下列实测值；
-  //   若按声明 reason「西端面」的本意，应为 (0,2.1)→(1.1,2.1) 宽 1.1m、
-  //   外露 1.1 × 0.58 = 0.638㎡。修复前本测试只锁当前行为 + 守守恒，不背书语义。
+  // start_end 端面：从 wallPath[0] 到 frontPath[0]，同样整段在铝扣板投影内 → 只算到 2.65。
+  // 2026-10-09 修复登记：buildBaySillGeometry 曾用 `outerRight.reverse()` 直接原地反转，
+  // 使返回的 wallPath 与 frontPath 方向相反，start_end/end_end 被配成横跨整条窗台的
+  // 1.803m 斜肢（面积 1.046㎡）而非两端的 1.1m 端面。已改为反转副本，wallPath 恢复
+  // source order；现在 start_end = (0,2.1)→(1.1,2.1)，正是声明 reason「西端面」的本意。
   const startEnd = scope.surfaces.filter((surface) => surface.kind === 'start_end');
   assert.equal(startEnd.length, 1);
   assert.equal(startEnd[0].bottom, 2.07);
   assert.equal(startEnd[0].top, ceilingFinish);
-  assert.equal(startEnd[0].areaSqm, 1.046); // 实测：round3(1.802776 × 0.58) = 1.046
-  assert.equal(startEnd[0].occludedAreaSqm, 0.324); // 实测：round3(1.802776 × 0.18) = 0.324
+  assert.equal(startEnd[0].areaSqm, 0.638); // 修复后：round3(1.1 × 0.58) = 0.638（西端面，非斜肢）
+  assert.equal(startEnd[0].occludedAreaSqm, 0.198); // 修复后：round3(1.1 × 0.18) = 0.198
   const capWidth = dist(geometry.wallPath[0], geometry.frontPath[0]);
-  assert.ok(Math.abs(capWidth - 1.802776) < 1e-6, `端面宽度 ${capWidth}`);
+  assert.ok(Math.abs(capWidth - 1.1) < 1e-6, `端面宽度 ${capWidth} 必须是两端 1.1m 端面，不是横跨窗台的斜肢`);
   assert.ok(Math.abs(capWidth * (ceilingFinish - bay.sill) - startEnd[0].areaSqm) < 1e-3);
   assert.ok(Math.abs(capWidth * (bay.sill + bay.height - ceilingFinish) - startEnd[0].occludedAreaSqm) < 1e-3);
 
   // 汇总账（业主口径）：顶面 + 前缘 + 端面
-  assert.equal(scope.totalAreaSqm, 4.606); // 实测：2.536 + 1.024 + 1.046
-  assert.equal(scope.areaByFinish.wet_area, 4.606);
+  assert.equal(scope.totalAreaSqm, 4.198); // 修复后实测：2.536 + 1.024 + 0.638
+  assert.equal(scope.areaByFinish.wet_area, 4.198);
   assert.equal(scope.areaByFinish.ordinary, 0);
   for (const surface of scope.surfaces) {
     assert.ok(isRoundedTo3(surface.areaSqm), '面积必须四舍五入到 3 位');

@@ -810,6 +810,8 @@ export type SceneElement =
   | { type: 'wall_region'; id: string; wall: string; room?: string; along: [number, number]; bottom?: number; height: number; zone?: 'visible' | 'covered'; color?: string; reason?: string }
   | { type: 'sill_region'; id: string; element: string; face: 'front' | 'top'; along?: [number, number]; zone?: 'visible' | 'covered'; color?: string; room?: string; reason?: string }
   | { type: 'paint_region'; id: string; wall: string; room: string; along: [number, number]; bottom?: number; height?: number; color?: string; reason?: string }
+  | { type: 'paint_sill_region'; id: string; element: string; room: string; faces: Array<'underside' | 'front' | 'start_end' | 'end_end'>; finish: 'ordinary' | 'wet_area'; color?: string; reason?: string }
+  | { type: 'paint_ceiling_region'; id: string; room: string; reason?: string }
   | {
       type: 'glass_infill';
       id: string;

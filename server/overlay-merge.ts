@@ -127,6 +127,28 @@ const PaintRegionSchema = z
   })
   .strict();
 
+// 飘窗涂装面（inspection-only；几何完全复用 bay_sill 的真实轮廓）。
+// only explicitly exposed faces may be included. `finish` separates wet-area system quantities.
+const PaintSillRegionSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('paint_sill_region'),
+    element: z.string().min(1),
+    room: z.string().min(1),
+    faces: z.array(z.enum(['underside', 'front', 'start_end', 'end_end'])).min(1),
+    finish: z.enum(['ordinary', 'wet_area']),
+    color: z.string().optional(),
+    reason: z.string().optional(),
+  })
+  .strict();
+
+const PaintCeilingRegionSchema = z.object({
+  id: z.string().min(1),
+  type: z.literal('paint_ceiling_region'),
+  room: z.string().min(1),
+  reason: z.string().optional(),
+}).strict();
+
 // 淋浴玻璃隔断（独立玻璃，points-only，无碰撞；2026-08-21）
 const ShowerScreenSchema = z
   .object({
@@ -267,7 +289,9 @@ const OverlaySchema = z
           WallRunSchema,
           WallRegionSchema,
           SillRegionSchema,
-          PaintRegionSchema,
+  PaintRegionSchema,
+  PaintSillRegionSchema,
+  PaintCeilingRegionSchema,
           ShowerScreenSchema,
           SlidingDoorRunSchema,
           HingedGlassDoorSchema,

@@ -1042,7 +1042,7 @@ export class HouseScene implements SceneApi {
     grossWallAreaSqm: number;
     /** 洞口占位合计 = 毛 − 净。 */
     gapAreaSqm: number;
-    highlightedIn3d: 'walls_only';
+    highlightedIn3d: 'walls_and_declared_sill_faces';
   } {
     const inspection = this.inspectPaintRegions();
     const byRoom: Record<string, { segments: number; lengthM: number; areaSqm: number }> = {};
@@ -1072,7 +1072,7 @@ export class HouseScene implements SceneApi {
       wallAreaSqm: net,
       grossWallAreaSqm: gross,
       gapAreaSqm: +(gross - net).toFixed(3),
-      highlightedIn3d: 'walls_only',
+      highlightedIn3d: 'walls_and_declared_sill_faces',
     };
   }
 
@@ -1096,37 +1096,48 @@ export class HouseScene implements SceneApi {
     });
     const wallLengthById = new Map<string, number>();
     const wallHeightById = new Map<string, number>();
+    for (const [id, segments] of this.wallSegmentIndex) {
+      wallLengthById.set(id, segments.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0));
+      wallHeightById.set(id, Math.max(0, ...Object.values(this.rooms).map((room) => room.height)));
+    }
+    const renderedWallIds = new Set<string>();
     this.exportRoot.traverse((object) => {
-      if (object.userData?.type !== 'wall' || !object.userData?.objectId) return;
-      const geometry = (object as THREE.Mesh).geometry as unknown as { parameters?: { width?: number; height?: number } } | undefined;
-      const id = String(object.userData.objectId);
-      if (geometry?.parameters?.width) wallLengthById.set(id, geometry.parameters.width);
-      if (geometry?.parameters?.height) wallHeightById.set(id, geometry.parameters.height);
+      if (object.userData?.type === 'wall' && object.userData?.objectId) renderedWallIds.add(String(object.userData.objectId));
     });
     const maxWallHeight = Math.max(0, ...[...wallHeightById.values()]);
     const rawRegions = meshes.map((mesh) => {
-      const geometry = mesh.geometry as unknown as { parameters: { width: number; height: number } };
       const along = (mesh.userData.along as [number, number]) ?? [0, 0];
       const regionAlong = (mesh.userData.regionAlong as [number, number]) ?? along;
-      const height = +geometry.parameters.height.toFixed(4);
-      const lengthM = +geometry.parameters.width.toFixed(4);
+      const face = typeof mesh.userData.face === 'string' ? String(mesh.userData.face) : 'wall';
+      const bounds = mesh.userData.face
+        ? { bottom: Number(mesh.userData.rectBottom ?? mesh.userData.bottom ?? 0), top: Number(mesh.userData.rectTop ?? mesh.userData.top ?? mesh.userData.bottom ?? 0) }
+        : null;
+      const geometry = mesh.geometry as unknown as { parameters?: { width?: number; height?: number } };
+      const height = bounds ? Math.max(0, bounds.top - bounds.bottom) : Number(geometry.parameters?.height ?? 0);
+      const lengthM = mesh.userData.face
+        ? Number(mesh.userData.areaSqm ?? 0) / Math.max(height, 1e-9)
+        : Number(geometry.parameters?.width ?? 0);
       const id = String(mesh.userData.objectId ?? '');
       return {
-        id, regionId: String(mesh.userData.regionId ?? id), objectId: id, wall: String(mesh.userData.wallId ?? ''),
+        id, regionId: String(mesh.userData.regionId ?? id), objectId: id, wall: String(mesh.userData.wallId ?? ''), face,
         room: String(mesh.userData.roomId ?? ''),
         along, regionAlong,
         // 竖向带下沿：SceneBuilder 拆洞时写在 userData.rectBottom；兼容未拆洞的旧网格
-        bottom: +Number((mesh.userData as any).rectBottom ?? (mesh.userData.inspectionInitial as any)?.bottom ?? 0).toFixed(4),
+        bottom: +Number(bounds?.bottom ?? mesh.userData.rectBottom ?? (mesh.userData.inspectionInitial as any)?.bottom ?? 0).toFixed(4),
         height, lengthM,
         // 拆洞后 areaSqm 是净面积；grossAreaSqm 由下方按声明汇总后回填（同一段声明只算一次）
-        areaSqm: +(lengthM * height).toFixed(4),
+        areaSqm: mesh.userData.face ? Number(mesh.userData.areaSqm ?? 0) : +(lengthM * height).toFixed(4),
         grossAreaSqm: 0,
       };
     }).sort((a, b) => a.id.localeCompare(b.id));
 
     // 毛面积按**声明**算一次（拆洞后一段声明有多块网格，逐块算会把同一段重复计）
+    // 飘窗外露面（face ≠ 'wall'）没有「声明跨度」可言，按各网格实测面积直接累加；
+    // grossByRegion 必须先声明再使用——它同时被下面的墙面分支与飘窗分支写入。
+    const grossByRegion = new Map<string, number>();
     const regionExtent = new Map<string, { span: number; bottom: number; top: number }>();
     for (const r of rawRegions) {
+      if (r.face !== 'wall') { grossByRegion.set(r.regionId, (grossByRegion.get(r.regionId) ?? 0) + r.areaSqm); continue; }
       const top = r.bottom + r.height;
       const current = regionExtent.get(r.regionId);
       if (!current) regionExtent.set(r.regionId, { span: r.regionAlong[1] - r.regionAlong[0], bottom: r.bottom, top });
@@ -1135,16 +1146,15 @@ export class HouseScene implements SceneApi {
         current.top = Math.max(current.top, top);
       }
     }
-    const grossByRegion = new Map<string, number>();
     for (const [regionId, extent] of regionExtent) {
       grossByRegion.set(regionId, +((extent.span * (extent.top - extent.bottom)).toFixed(4)));
     }
     const regions = rawRegions.map((r) => ({ ...r, grossAreaSqm: grossByRegion.get(r.regionId) ?? r.grossAreaSqm }));
 
-    const missingWallRefs = [...new Set(regions.filter((r) => r.room && !wallLengthById.has(r.wall)).map((r) => r.wall))];
+    const missingWallRefs = [...new Set(regions.filter((r) => r.face === 'wall' && r.room && !wallLengthById.has(r.wall)).map((r) => r.wall))];
     // 浏览器侧无 suppress 数据源：被 suppress 的墙（玻璃幕墙/已删除）不会生成 wall mesh，
     // 因此一并落入 missingWallRefs；「不存在」与「已 suppress」的细分以 tests/server/paint-scope.test.ts 的复算为准。
-    const suppressedWallRefs: string[] = [];
+    const suppressedWallRefs = [...new Set(regions.filter((r) => r.face === 'wall' && r.wall && wallLengthById.has(r.wall) && !renderedWallIds.has(r.wall)).map((r) => r.wall))];
     const outOfWallSpan: string[] = [];
     const duplicateOverlaps: string[] = [];
     // 按 (墙, 房间) 分组：双面涂漆的共墙由两个房间各声明一段，不能跨房间判重。
@@ -1152,6 +1162,7 @@ export class HouseScene implements SceneApi {
     // 否则同一段声明被门洞拆成的左右条会被误判成互不重叠。
     const byWallRoom = new Map<string, Array<{ regionId: string; regionAlong: [number, number] }>>();
     for (const r of regions) {
+      if (r.face !== 'wall') continue;
       if (!r.room) continue;
       const key = `${r.wall}|${r.room}`;
       (byWallRoom.get(key) ?? byWallRoom.set(key, []).get(key)!).push({ regionId: r.regionId, regionAlong: r.regionAlong });
@@ -1173,7 +1184,7 @@ export class HouseScene implements SceneApi {
       }
     }
     const overWallHeight = maxWallHeight > 0
-      ? regions.filter((r) => r.height > maxWallHeight + 1e-6).map((r) => `${r.id} h=${r.height} > wall ${maxWallHeight}`)
+      ? regions.filter((r) => r.face === 'wall' && r.height > maxWallHeight + 1e-6).map((r) => `${r.id} h=${r.height} > wall ${maxWallHeight}`)
       : [];
     return {
       ok: missingWallRefs.length === 0 && suppressedWallRefs.length === 0 && outOfWallSpan.length === 0 && duplicateOverlaps.length === 0 && overWallHeight.length === 0,

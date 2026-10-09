@@ -303,6 +303,9 @@ export class OverviewMenu {
           windowGapAreaSqm: number;
           netWallAreaSqm: number;
           ceilingAreaSqm: number;
+          ordinaryAreaSqm: number;
+          wetAreaSqm: number;
+          wetAreaStatus: 'pending_system_quote_and_site_validation';
           grossAreaSqm: number;
           netAreaSqm: number;
           highlightedIn3d: 'walls_only';
@@ -350,8 +353,15 @@ export class OverviewMenu {
 
     const scopeRow = document.createElement('div');
     scopeRow.className = 'overview-row overview-paint-budget-scope';
-    scopeRow.textContent = `声明 ${preview.scope.wallRegionEntryCount} 段墙面 / ${preview.scope.paintRoomCount} 间房：毛墙面 ${preview.scope.grossWallAreaSqm.toFixed(2)}㎡ − 门洞 ${preview.scope.doorGapAreaSqm.toFixed(2)}㎡ − 窗洞 ${preview.scope.windowGapAreaSqm.toFixed(2)}㎡ = 净墙面 ${preview.scope.netWallAreaSqm.toFixed(2)}㎡（3D 已高亮）+ 顶面 ${preview.scope.ceilingAreaSqm.toFixed(2)}㎡`;
+    scopeRow.textContent = `声明 ${preview.scope.wallRegionEntryCount} 段墙面 / ${preview.scope.paintRoomCount} 间房：毛墙面 ${preview.scope.grossWallAreaSqm.toFixed(2)}㎡ − 门洞 ${preview.scope.doorGapAreaSqm.toFixed(2)}㎡ − 窗洞 ${preview.scope.windowGapAreaSqm.toFixed(2)}㎡ = 净墙面 ${preview.scope.netWallAreaSqm.toFixed(2)}㎡（3D 已高亮）+ 明确顶面 ${preview.scope.ceilingAreaSqm.toFixed(2)}㎡ = 普通涂装 ${preview.scope.ordinaryAreaSqm.toFixed(2)}㎡`;
     this.budgetEl.appendChild(scopeRow);
+
+    if (preview.scope.wetAreaSqm > 0) {
+      const wetRow = document.createElement('div');
+      wetRow.className = 'overview-row overview-paint-budget-wet-area';
+      wetRow.textContent = `主卫上飘窗湿区涂装 ${preview.scope.wetAreaSqm.toFixed(3)}㎡：完整材料系统、基层适配与人工待现场核验和分项报价，未计入上方普通漆金额。`;
+      this.budgetEl.appendChild(wetRow);
+    }
 
     for (const scenario of preview.scenarios) {
       const row = document.createElement('div');

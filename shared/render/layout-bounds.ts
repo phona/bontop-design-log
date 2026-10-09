@@ -70,6 +70,8 @@ export function computeLayoutBounds(input: LayoutBoundsInput): LayoutBounds {
         // 防水台贴砖带（R11 D4）：几何落在所引用 bay_sill 的墙跑上，bounds 由该构件承担。
         break;
       case 'paint_region':
+      case 'paint_sill_region':
+      case 'paint_ceiling_region':
         // 涂漆检视态叠加层：同上，bounds 由所引用墙线段承担。
         break;
       case 'curtain_run':

@@ -1106,6 +1106,7 @@ x_decision_files: &decision_files
   - docs/decisions/14-style-furniture.md
   - docs/decisions/15-penetration-lint.md
   - docs/decisions/16-verify-gate.md
+  - docs/decisions/17-paint-scope-extension.md
 
 contracts:
 

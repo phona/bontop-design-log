@@ -1,7 +1,14 @@
 import type { BaySillSegment, BaySillWallReference, ResolvedRoom } from '../types.js';
 
 export interface BaySillPoint { x: number; z: number }
-export interface BaySillGeometry { outline: BaySillPoint[]; segments: BaySillSegment[] }
+export interface BaySillGeometry {
+  outline: BaySillPoint[];
+  segments: BaySillSegment[];
+  /** Room-facing edge of the sill footprint, in source path order. */
+  frontPath: BaySillPoint[];
+  /** Window/wall-side edge of the sill footprint, in source path order. */
+  wallPath: BaySillPoint[];
+}
 
 type Segment = BaySillSegment & { wall: BaySillPoint; inner: BaySillPoint };
 
@@ -179,9 +186,12 @@ export function buildBaySillGeometry(refs: BaySillWallReference[], rooms: Resolv
     if (i === 0) outerRight.push(innerLine[0]);
     if (Math.hypot(outerRight.at(-1)!.x - innerLine[1].x, outerRight.at(-1)!.z - innerLine[1].z) > CONTINUITY_EPSILON) outerRight.push(innerLine[1]);
   }
-  const outline = [...outerLeft, ...outerRight.reverse()];
+  // outline 需要墙侧边反向闭合，但 reverse() 是原地反转——直接写会连 wallPath 的顺序
+  // 一起翻掉，使 start_end/end_end 变成横跨整条窗台的斜肢而不是两端端面。故反转副本。
+  const wallPathReversed = [...outerRight].reverse();
+  const outline = [...outerLeft, ...wallPathReversed];
   if (outline.length < 4 || Math.abs(outline.reduce((sum, p, i) => { const q = outline[(i + 1) % outline.length]; return sum + p.x * q.z - q.x * p.z; }, 0)) < 1e-9) throw new Error('bay_sill produced a degenerate footprint');
-  return { outline, segments: source };
+  return { outline, segments: source, frontPath: outerLeft, wallPath: outerRight };
 }
 
 export function baySillBbox(geometry: BaySillGeometry): { minX: number; maxX: number; minZ: number; maxZ: number } {

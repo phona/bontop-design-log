@@ -17,6 +17,7 @@ import { computeWallFaceSpans, createLineMesh, createPolygonGeometry, setSceneOb
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { curtainRibbonShape, curtainShape, gatheredCurtainSegments, offsetCurtainPointsInterior, roundedShape } from './CurtainGeometry.js';
 import { buildBaySillGeometry } from './BaySillGeometry.js';
+import { computePaintSillScope } from '../paint-sill-scope.js';
 import { buildRailingGeometry } from './RailingGeometryBuilder.js';
 import { computePaintScope, type PaintWallInput, type PaintWindowInput } from '../paint-scope.js';
 
@@ -524,7 +525,7 @@ function addCurtain(root: THREE.Group, element: CurtainElement, rooms: ResolvedR
   index.curtains.set(element.id, entry);
 }
 
-function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { type: 'wall' }>, report: SceneBuildReport, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex, walls: Array<WallSegment & { height?: number }> = [], paintWindows: PaintWindowInput[] = [], allElements: readonly Exclude<SceneElement, { type: 'wall' }>[] = []): void {
+function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { type: 'wall' }>, report: SceneBuildReport, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex, walls: Array<WallSegment & { height?: number }> = [], paintWindows: PaintWindowInput[] = [], allElements: readonly Exclude<SceneElement, { type: 'wall' }>[] = [], ceilingZones: CeilingZoneSpec[] = []): void {
   const id = element.id;
   switch (element.type) {
     case 'floor_region': {
@@ -950,6 +951,64 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       });
       return;
     }
+    case 'paint_sill_region': {
+      const bay = allElements.find((candidate): candidate is Extract<SceneElement, { type: 'bay_sill' }> => candidate.id === element.element && candidate.type === 'bay_sill');
+      const room = rooms.find((candidate) => candidate.id === element.room);
+      if (!bay || !room || !bay.wallRefs?.length) {
+        report.unsupported.push(`${id}: paint_sill_region requires bay_sill ${element.element} with resolved wallRefs and room ${element.room}`);
+        return;
+      }
+      const geometry = buildBaySillGeometry(bay.wallRefs, rooms, bay.depth);
+      const scope = computePaintSillScope(element, geometry, bay, room, ceilingZones, walls);
+      report.unsupported.push(...scope.warnings);
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(element.color ?? PAINT_INSPECTION_COLOR),
+        roughness: 0.9,
+        transparent: true,
+        opacity: 0.38,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+        depthWrite: false,
+      });
+      scope.surfaces.forEach((surface) => {
+        let mesh: THREE.Mesh;
+        if (surface.kind === 'underside') {
+          const shape = new THREE.Shape();
+          shape.moveTo(surface.points[0].x, surface.points[0].z);
+          for (const point of surface.points.slice(1)) shape.lineTo(point.x, point.z);
+          shape.closePath();
+          mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), material);
+          mesh.rotation.x = -Math.PI / 2;
+          mesh.position.y = surface.bottom;
+        } else {
+          const [a, b] = surface.points;
+          const span = Math.hypot(b.x - a.x, b.z - a.z);
+          mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, surface.top - surface.bottom), material);
+          mesh.position.set((a.x + b.x) / 2, (surface.top + surface.bottom) / 2, (a.z + b.z) / 2);
+          mesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
+        }
+        setSceneObjectMetadata(mesh, element.type, surface.id);
+        mesh.userData = {
+          ...mesh.userData,
+          regionId: id,
+          elementId: element.element,
+          roomId: element.room,
+          face: surface.kind,
+          finish: element.finish,
+          areaSqm: surface.areaSqm,
+          occludedAreaSqm: surface.occludedAreaSqm,
+          inspectionLayer: 'wall-paint',
+          inspectionVisibleOnly: true,
+          inspectionOpacity: PAINT_INSPECTION_OPACITY,
+          inspectionInitial: { visible: false, opacity: 0.38, transparent: true, depthTest: true, depthWrite: false, renderOrder: 0 },
+        };
+        mesh.visible = false;
+        root.add(mesh);
+      });
+      return;
+    }
     case 'curtain_run': {
       if (element.points.length < 2) return;
       const materials = { ...defaultMaterials(), ...provider };
@@ -1019,6 +1078,11 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
     }
     case 'curtain':
       addCurtain(root, element, rooms, provider, index);
+      return;
+    case 'paint_ceiling_region':
+      // Ceiling finish quantities are declared here and costed from the same room/zone geometry.
+      // The 3D paint layer currently highlights declared walls and sill faces; room ceiling meshes
+      // remain the ceiling inspection layer's responsibility.
       return;
     default: {
       const exhaustive: never = element;
@@ -1289,7 +1353,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     });
   for (const element of input.elements) {
     if (element.type === 'wall') addWallElement(exportRoot, element, wallHeights.get(element.id) ?? 3.0, report, index, provider, input.rooms);
-    else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index, input.walls, paintWindows, input.elements.filter((e) => e.type !== 'wall'));
+    else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index, input.walls, paintWindows, input.elements.filter((e) => e.type !== 'wall'), input.ceilingZones);
   }
   for (const wall of input.walls) {
     if (!wall.id) continue;

@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import type { ResolvedLayout } from '../shared/types.js';
+import { buildBaySillGeometry } from '../shared/render/BaySillGeometry.js';
+import { computePaintSillScope, type PaintSillFaceInput } from '../shared/paint-sill-scope.js';
 import type { ProjectCatalog } from './project-catalog.js';
+import { mergeSceneElements, parseOverlay } from './overlay-merge.js';
+import { loadCeilingConfig } from './config-loader.js';
 import {
   computePaintScope,
   type PaintRegionInput,
@@ -24,6 +28,8 @@ export interface PaintRegionDeclaration extends PaintRegionInput {
   color?: string;
   reason?: string;
 }
+
+export interface PaintSillRegionDeclaration extends PaintSillFaceInput { type: 'paint_sill_region'; reason?: string }
 
 export interface PaintComparisonConfig {
   version: number;
@@ -143,10 +149,16 @@ export interface PaintCostComparison {
     netWallAreaSqm: number;
     ceilingAreaByRoom: Record<string, number>;
     ceilingAreaSqm: number;
+    sillAreaByRoom: Record<string, number>;
+    ordinarySillAreaSqm: number;
+    wetAreaSqm: number;
+    ordinaryAreaSqm: number;
+    wetAreaStatus: 'pending_system_quote_and_site_validation';
+    sillSurfaces: PaintScopeResult['sillSurfaces'];
     grossAreaSqm: number;
     /** 墙 + 顶的净面积（默认计费口径）。 */
     netAreaSqm: number;
-    highlightedIn3d: 'walls_only';
+    highlightedIn3d: 'walls_and_declared_sill_faces';
   };
   material: {
     id: string;
@@ -190,6 +202,8 @@ export function loadPaintComparisonConfig(path = 'config/paint-comparison.yaml')
 
 export interface PaintScopeInputs {
   regions: PaintRegionDeclaration[];
+  sillRegions: PaintSillRegionDeclaration[];
+  ceilingRooms: Array<{ id: string; type: 'paint_ceiling_region'; room: string; reason?: string }>;
   suppressedWallIds: Set<string>;
   windows: PaintWindowInput[];
 }
@@ -214,6 +228,8 @@ export function loadPaintScopeInputs(path = 'config/layout/overlay.yaml'): Paint
   const regions = (overlay.elements ?? []).filter(
     (element) => element?.type === 'paint_region',
   ) as unknown as PaintRegionDeclaration[];
+  const sillRegions = (overlay.elements ?? []).filter((element) => element?.type === 'paint_sill_region') as unknown as PaintSillRegionDeclaration[];
+  const ceilingRooms = (overlay.elements ?? []).filter((element) => element?.type === 'paint_ceiling_region') as unknown as PaintScopeInputs['ceilingRooms'];
   const windows: PaintWindowInput[] = (overlay.elements ?? [])
     .filter((element) => element?.type === 'bay_sill' || element?.type === 'glass_infill')
     .flatMap((element) => {
@@ -227,7 +243,7 @@ export function loadPaintScopeInputs(path = 'config/layout/overlay.yaml'): Paint
         .filter((wallId): wallId is string => Boolean(wallId))
         .map((wallId) => ({ id: element.id as string, wall: wallId, sill, height, ...(along ? { along } : {}) }));
     });
-  return { regions, suppressedWallIds, windows };
+  return { regions, sillRegions, ceilingRooms, suppressedWallIds, windows };
 }
 
 /** buildScene 的墙 / catalog 的墙 / resolved layout 的墙 → 共享算法的输入形状。 */
@@ -242,6 +258,26 @@ function toPaintWalls(walls: Array<Record<string, any>>): PaintWallInput[] {
     ...(wall.height !== undefined ? { height: Number(wall.height) } : {}),
     ...(wall.openings ? { openings: wall.openings } : {}),
   }));
+}
+
+/** Exact union for axis-aligned ceiling footprints; overlapping declarations subtract once. */
+function rectangleUnionArea(rectangles: Array<[number, number, number, number]>): number {
+  if (!rectangles.length) return 0;
+  const xs = [...new Set(rectangles.flatMap(([x1, , x2]) => [x1, x2]))].sort((a, b) => a - b);
+  let area = 0;
+  for (let i = 0; i < xs.length - 1; i++) {
+    const x1 = xs[i], x2 = xs[i + 1];
+    const intervals = rectangles.filter(([a, , b]) => a < x2 && b > x1).map(([, z1, , z2]) => [z1, z2] as [number, number]).sort((a, b) => a[0] - b[0]);
+    let length = 0, start = NaN, end = NaN;
+    for (const [z1, z2] of intervals) {
+      if (!Number.isFinite(start)) { start = z1; end = z2; }
+      else if (z1 <= end) end = Math.max(end, z2);
+      else { length += end - start; start = z1; end = z2; }
+    }
+    if (Number.isFinite(start)) length += end - start;
+    area += (x2 - x1) * length;
+  }
+  return area;
 }
 
 /**
@@ -260,20 +296,41 @@ export function computePaintScopeForLayout(
   const ceilingAreaByRoom: Record<string, number> = {};
   const roomById = new Map(layout.rooms.map((room) => [room.id, room]));
   const declaredRooms = new Set(inputs.regions.map((region) => region.room));
-  for (const roomId of declaredRooms) {
+  const ceilingRoomIds = new Set(inputs.ceilingRooms.map((region) => region.room));
+  const ceilingZones = loadCeilingConfig();
+  for (const roomId of ceilingRoomIds) {
     const room = roomById.get(roomId);
-    if (!room) throw new Error(`paint_region room ${roomId} not found in resolved layout`);
+    if (!room) throw new Error(`paint_ceiling_region room ${roomId} not found in resolved layout`);
     const areaSqm = room.area ?? room.width * room.depth;
     requiredPositiveNumber(areaSqm, `Resolved footprint for ${roomId}`);
-    ceilingAreaByRoom[roomId] = round3(areaSqm);
+    const nonPaintRects = ceilingZones
+      .filter((zone) => zone.room === roomId && zone.type === 'aluminum_buckle' && zone.area)
+      .map((zone) => {
+        const [x1, z1, x2, z2] = zone.area!;
+        return [Math.max(x1, room.x - room.width / 2), Math.max(z1, room.z - room.depth / 2), Math.min(x2, room.x + room.width / 2), Math.min(z2, room.z + room.depth / 2)] as [number, number, number, number];
+      })
+      .filter(([x1, z1, x2, z2]) => x2 > x1 && z2 > z1);
+    ceilingAreaByRoom[roomId] = round3(Math.max(0, areaSqm - rectangleUnionArea(nonPaintRects)));
   }
 
+  const mergedElements = mergeSceneElements(layout.walls as any, parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
+  const bayById = new Map(mergedElements.filter((element) => element.type === 'bay_sill').map((element) => [element.id, element]));
+  const sillScopes = inputs.sillRegions.map((declaration) => {
+    const bay = bayById.get(declaration.element);
+    const room = roomById.get(declaration.room);
+    if (!bay || bay.type !== 'bay_sill' || !bay.wallRefs?.length) throw new Error(`paint_sill_region ${declaration.id} references unresolved bay_sill ${declaration.element}`);
+    if (!room) throw new Error(`paint_sill_region ${declaration.id} references unknown room ${declaration.room}`);
+    const geometry = buildBaySillGeometry(bay.wallRefs, layout.rooms, bay.depth);
+    return computePaintSillScope(declaration, geometry, bay, room, ceilingZones, layout.walls as any);
+  });
   const scope = computePaintScope(
     toPaintWalls(layout.walls as unknown as Array<Record<string, any>>),
     inputs.regions,
     inputs.windows,
-    { ceilingAreaByRoom, suppressedWallIds: inputs.suppressedWallIds },
+    { ceilingAreaByRoom, suppressedWallIds: inputs.suppressedWallIds, sillAreas: sillScopes.map((item) => ({ room: item.declaration.room, finish: item.declaration.finish, totalAreaSqm: item.totalAreaSqm })) },
   );
+  scope.sillSurfaces = sillScopes as unknown as PaintScopeResult['sillSurfaces'];
+  scope.warnings.push(...sillScopes.flatMap((item) => item.warnings));
 
   const finishRooms = new Set(
     catalog.getRooms().filter((room) => room.wall_finish === 'paint').map((room) => room.id),
@@ -285,6 +342,9 @@ export function computePaintScopeForLayout(
       `paint_region declarations diverge from house.yaml wall_finish: declared-without-finish=[${drift.join(', ')}]; finish-without-declaration=[${undeclared.join(', ')}]`,
     );
   }
+  const ceilingMissing = [...declaredRooms].filter((id) => !ceilingRoomIds.has(id));
+  const ceilingExtra = [...ceilingRoomIds].filter((id) => !declaredRooms.has(id));
+  if (ceilingMissing.length || ceilingExtra.length) throw new Error(`paint_ceiling_region declarations diverge from paint rooms: missing=[${ceilingMissing.join(', ')}]; extra=[${ceilingExtra.join(', ')}]`);
   return scope;
 }
 
@@ -324,7 +384,7 @@ export function buildPaintCostComparison(
     requiredPositiveNumber(scenario.topcoats, `scenario ${scenario.id} topcoats`);
     // 净面积是基准口径（业主裁定扣洞）；deduct_openings=false 的情景把洞口加回去做对照。
     const areaSqm = round3(
-      (scope.netWallAreaSqm + scope.ceilingAreaSqm) + (scenario.deduct_openings ? 0 : scope.doorGapAreaSqm + scope.windowGapAreaSqm),
+      scope.ordinaryAreaSqm + (scenario.deduct_openings ? 0 : scope.doorGapAreaSqm + scope.windowGapAreaSqm),
     );
     requiredPositiveNumber(areaSqm, `scenario ${scenario.id} area`);
     const rawTopcoat = (areaSqm / material.coverage_per_unit) * scenario.topcoats * lossRate;
@@ -360,7 +420,7 @@ export function buildPaintCostComparison(
   const quoteResults: PaintQuoteResult[] = (config.quotes ?? []).map((quote) => {
     requiredPositiveNumber(quote.rate, `quote ${quote.id} rate`);
     const areaSqm = round3(
-      quote.area_basis === 'gross_area' ? scope.grossAreaSqm : scope.netAreaSqm,
+      quote.area_basis === 'gross_area' ? (scope.grossWallAreaSqm + scope.ceilingAreaSqm + scope.ordinarySillAreaSqm) : scope.ordinaryAreaSqm,
     );
     const totalYuan = round2(quote.rate * areaSqm);
     return {
@@ -456,6 +516,7 @@ export function buildPaintCostComparison(
   ];
 
   const warnings: string[] = [...scope.warnings];
+  if (scope.wetAreaSqm > 0) warnings.push(`主卫上飘窗湿区涂装 ${scope.wetAreaSqm.toFixed(3)}㎡ 已从普通墙漆单价/材料费/人工中排除；湿区完整涂装系统、基层适配、直接淋水等级及人工均待现场核验与分项报价，不能将其记作零元或已含。`);
   for (const quote of quoteResults) {
     if (quote.coverage === 'pending_confirmation' || quote.coverage === 'unconfirmed') {
       warnings.push(
@@ -488,9 +549,15 @@ export function buildPaintCostComparison(
       netWallAreaSqm: scope.netWallAreaSqm,
       ceilingAreaByRoom: scope.ceilingAreaByRoom,
       ceilingAreaSqm: scope.ceilingAreaSqm,
+      sillAreaByRoom: scope.sillAreaByRoom,
+      ordinarySillAreaSqm: scope.ordinarySillAreaSqm,
+      wetAreaSqm: scope.wetAreaSqm,
+      ordinaryAreaSqm: scope.ordinaryAreaSqm,
+      wetAreaStatus: 'pending_system_quote_and_site_validation',
+      sillSurfaces: scope.sillSurfaces,
       grossAreaSqm: scope.grossAreaSqm,
       netAreaSqm: scope.netAreaSqm,
-      highlightedIn3d: 'walls_only',
+      highlightedIn3d: 'walls_and_declared_sill_faces',
     },
     material: {
       id: material.id,

@@ -84,6 +84,12 @@ const SOLID_TYPES = new Set(['drop', 'integrated', 'aluminum_buckle']);
 const CORNERS: readonly CeilingCorner[] = ['nw', 'ne', 'se', 'sw'];
 const COVE_EDGES: readonly CoveEdge[] = ['north', 'east', 'south', 'west'];
 
+/** Nominal finish plane elevation; the render builder adds a 2mm anti-z-fighting offset. */
+export function ceilingFinishY(zone: Pick<CeilingZoneSpec, 'thickness'>, ceilingHeight = 2.8): number {
+  if (zone.thickness === undefined || zone.thickness <= 0) throw new Error('ceiling zone thickness must be positive');
+  return ceilingHeight - zone.thickness;
+}
+
 function roundedRectangleShape(width: number, depth: number, radii: Record<CeilingCorner, number>): THREE.Shape {
   const halfW = width / 2;
   const halfD = depth / 2;
@@ -611,7 +617,7 @@ export function buildCeilingZone(zone: CeilingZoneSpec, ceilingHeight = 2.8): TH
   if (w <= 0 || d <= 0) return null;
   const cx = (x1 + x2) / 2;
   const cz = (z1 + z2) / 2;
-  const topY = ceilingHeight - zone.thickness + SLAB_EPS;
+  const topY = ceilingFinishY(zone, ceilingHeight) + SLAB_EPS;
   const isBuckle = zone.type === 'aluminum_buckle';
   const radii = resolveCornerRadii(zone, w, d);
   if (!radii) return null;

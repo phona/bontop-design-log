@@ -103,6 +103,12 @@ export interface PaintScopeResult {
   /** 顶面 footprint 按房汇总（调用方给）。 */
   ceilingAreaByRoom: Record<string, number>;
   ceilingAreaSqm: number;
+  /** Separately priced special-system surfaces; never silently charged at ordinary wall-paint rates. */
+  sillAreaByRoom: Record<string, number>;
+  ordinarySillAreaSqm: number;
+  wetAreaSqm: number;
+  ordinaryAreaSqm: number;
+  sillSurfaces: Array<{ declaration: { id: string; element: string; room: string; faces: string[]; finish: 'ordinary' | 'wet_area' }; surfaces: Array<{ id: string; kind: string; points: Array<{ x: number; z: number }>; bottom: number; top: number; areaSqm: number; occludedAreaSqm: number }>; totalAreaSqm: number; warnings: string[] }>;
   grossAreaSqm: number;
   netAreaSqm: number;
   /**
@@ -228,7 +234,7 @@ export function computePaintScope(
   walls: PaintWallInput[],
   regions: PaintRegionInput[],
   windows: PaintWindowInput[],
-  options: { ceilingAreaByRoom?: Record<string, number>; suppressedWallIds?: Set<string> } = {},
+  options: { ceilingAreaByRoom?: Record<string, number>; suppressedWallIds?: Set<string>; sillAreas?: Array<{ room: string; finish: 'ordinary' | 'wet_area'; totalAreaSqm: number }> } = {},
 ): PaintScopeResult {
   const wallById = new Map(walls.map((wall) => [wall.id, wall]));
   const windowsByWall = new Map<string, PaintWindowInput[]>();
@@ -312,6 +318,17 @@ export function computePaintScope(
 
   const ceilingAreaByRoom = options.ceilingAreaByRoom ?? {};
   const ceilingAreaSqm = r3(Object.values(ceilingAreaByRoom).reduce((sum, value) => sum + value, 0));
+  const sillAreaByRoom: Record<string, number> = {};
+  let ordinarySillAreaSqm = 0;
+  let wetAreaSqm = 0;
+  for (const sill of options.sillAreas ?? []) {
+    sillAreaByRoom[sill.room] = r3((sillAreaByRoom[sill.room] ?? 0) + sill.totalAreaSqm);
+    if (sill.finish === 'ordinary') ordinarySillAreaSqm += sill.totalAreaSqm;
+    else wetAreaSqm += sill.totalAreaSqm;
+  }
+  ordinarySillAreaSqm = r3(ordinarySillAreaSqm);
+  wetAreaSqm = r3(wetAreaSqm);
+  const ordinaryAreaSqm = r3(netWallAreaSqm + ceilingAreaSqm + ordinarySillAreaSqm);
   return {
     regions: results.sort((a, b) => a.id.localeCompare(b.id)),
     wallAreaByRoom,
@@ -321,8 +338,13 @@ export function computePaintScope(
     netWallAreaSqm: r3(netWallAreaSqm),
     ceilingAreaByRoom,
     ceilingAreaSqm,
-    grossAreaSqm: r3(grossWallAreaSqm + ceilingAreaSqm),
-    netAreaSqm: r3(netWallAreaSqm + ceilingAreaSqm),
+    sillAreaByRoom,
+    ordinarySillAreaSqm,
+    wetAreaSqm,
+    ordinaryAreaSqm,
+    sillSurfaces: [],
+    grossAreaSqm: r3(grossWallAreaSqm + ceilingAreaSqm + ordinarySillAreaSqm + wetAreaSqm),
+    netAreaSqm: r3(netWallAreaSqm + ceilingAreaSqm + ordinarySillAreaSqm + wetAreaSqm),
     warnings,
   };
 }

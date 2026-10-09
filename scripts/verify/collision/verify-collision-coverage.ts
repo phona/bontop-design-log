@@ -62,7 +62,10 @@ function main() {
   console.log(`  railing_run elements (no collision, by design): ${railings.length}`);
 
   const collidableTypes = new Set(['wall', 'curtain_run', 'wall_run']);
-  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'glass_infill', 'frosted_privacy', 'shower_screen', 'curtain', 'wall_region', 'sill_region', 'paint_region']);
+  // 涂装叠加层三类（paint_region / paint_ceiling_region / paint_sill_region）都是「要刷漆的声明面」，
+  // 不是场景实体：不产碰撞体、不进 first-person 碰撞。漏登记会让本脚本 fail-closed 报
+  // unknown element type——2026-10-09 新增后两类时正是这么发现的。
+  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'glass_infill', 'frosted_privacy', 'shower_screen', 'curtain', 'wall_region', 'sill_region', 'paint_region', 'paint_ceiling_region', 'paint_sill_region']);
   const conditionalCollidableTypes = new Set(['sliding_door_run', 'hinged_glass_door']);
 
   for (const el of overlay.elements ?? []) {

@@ -793,3 +793,45 @@ elements:
     along: [1.20, 2.60]
     height: 2.80
     reason: "主卫南墙干区涂装；[0,1.20] 为淋浴砖到顶跨不漆，门洞跨内部分拆洞实扣"
+
+  # ── 显式顶面范围：沿用原有房间顶面涂装口径，但只扣除 config/ceiling.yaml 明确为铝扣板的投影。 ──
+  # 飘窗底面/窗台本体按其 bay_sill 几何另计；主卫顶面铝扣板覆盖主卫投影，故不计普通墙漆。
+  - id: paint_ceiling_bedroom_nw
+    type: paint_ceiling_region
+    room: bedroom_nw
+    reason: "沿用现有原顶涂装口径；量房后核对吊顶/梁位"
+  - id: paint_ceiling_bedroom_se
+    type: paint_ceiling_region
+    room: bedroom_se
+    reason: "沿用现有原顶涂装口径；量房后核对吊顶/梁位"
+  - id: paint_ceiling_living_dining
+    type: paint_ceiling_region
+    room: living_dining
+    reason: "沿用现有原顶涂装口径；明示排除已声明的非涂漆顶面投影"
+  - id: paint_ceiling_master_bedroom
+    type: paint_ceiling_region
+    room: master_bedroom
+    reason: "沿用现有原顶涂装口径；量房后核对吊顶/梁位"
+  - id: paint_ceiling_study
+    type: paint_ceiling_region
+    room: study
+    reason: "沿用现有原顶涂装口径；量房后核对吊顶/梁位"
+  - id: paint_ceiling_guest_bath
+    type: paint_ceiling_region
+    room: guest_bath
+    reason: "沿用现有原顶涂装口径，扣除 ceiling_guest_bath 铝扣板投影"
+  - id: paint_ceiling_master_bath
+    type: paint_ceiling_region
+    room: master_bath
+    reason: "主卫铝扣板吊顶（ceiling_master_bath）投影不计普通墙漆"
+
+  # 主卫上飘窗涂装意图：只声明模型可证的外露底面、前缘与未被实体墙遮挡的起始端面。
+  # 2.07/0.76m 沿用现有 bay_sill 待复尺；顶面铝扣板以 ceilingFinishY 几何平面裁垂面。
+  # 根部玻璃、窗框、玻璃根部防水反坎均不刷；直接淋水范围/湿区系统与基层现场确认。
+  - id: paint_master_bath_west_bay
+    type: paint_sill_region
+    element: master_bath_west_bay
+    room: master_bath
+    faces: [underside, front, start_end]
+    finish: wet_area
+    reason: "上飘窗外露底面、朝室内前缘及西端面；玻璃根部与隐藏东端排除；尺寸待复尺"

@@ -675,7 +675,7 @@ export function createApiRouter(deps: ApiDeps): Router {
           status: 'comparison_overlay_only' as const,
           includedInTotalActual: false as const,
           includedInCategoryTotals: false as const,
-          scopeNote: 'Declared paint regions (walls) plus room footprint ceilings; openings not deducted by default. Material covers primer + topcoats, labor covers brushing only. Excludes base repair, skim coat, color sample and protection (COST-080-01/02/04).',
+          scopeNote: 'Declared wall paint plus explicit ceiling regions and declared exposed bay faces. Aluminium-buckle ceiling projections are excluded. Wet-area bay finish is shown as pending and excluded from ordinary paint prices until system and site conditions are quoted.',
           ...paintComparison,
         };
       }
