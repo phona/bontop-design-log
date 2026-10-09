@@ -441,7 +441,7 @@ test('net area equals gross minus door and window gaps, and matches the budget l
   assert.ok(Math.abs(scope.netWallAreaSqm - 159.915) <= 0.02, `净墙面 ${scope.netWallAreaSqm}`);
   assert.ok(Math.abs(scope.netWallAreaSqm - (scope.grossWallAreaSqm - scope.doorGapAreaSqm - scope.windowGapAreaSqm)) <= 0.01);
   assert.ok(Math.abs(scope.ceilingAreaSqm - 103.224) <= 0.02, `顶面 ${scope.ceilingAreaSqm}`);
-  assert.ok(Math.abs(scope.netAreaSqm - 267.337) <= 0.02, `墙+顶+窗台净面积 ${scope.netAreaSqm}`);
+  assert.ok(Math.abs(scope.netAreaSqm - 267.332) <= 0.02, `墙+顶+窗台净面积 ${scope.netAreaSqm}`);
   assert.deepEqual(scope.warnings, []);
 
   // 顶面旧值 110.95㎡ 错在：把客卫 3.15㎡ / 主卫 4.576㎡ 的**整间铝扣板顶面**当成普通

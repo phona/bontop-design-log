@@ -81,7 +81,7 @@ describe('GET /api/paint/comparison', () => {
     assert.ok(Math.abs(payload.scope.ceilingAreaSqm - 103.224) <= 0.02, `顶面 ${payload.scope.ceilingAreaSqm}`);
     assert.ok(Math.abs(payload.scope.grossAreaSqm - 282.137) <= 0.02);
     // 净面积 = 墙 + 顶 + 普通窗台 + 湿区窗台（全部涂装面，含单独计价的湿区）
-    assert.ok(Math.abs(payload.scope.netAreaSqm - 267.337) <= 0.02, `净计费面积 ${payload.scope.netAreaSqm}`);
+    assert.ok(Math.abs(payload.scope.netAreaSqm - 267.332) <= 0.02, `净计费面积 ${payload.scope.netAreaSqm}`);
     // 普通墙漆计价面积：湿区窗台单独计价，不按普通漆费率计费（旧 270.865 把湿区窗台也算进普通口径）
     assert.ok(Math.abs(payload.scope.ordinaryAreaSqm - 263.139) <= 0.02, `普通计费面积 ${payload.scope.ordinaryAreaSqm}`);
     // 守恒：普通 + 湿区 = 全部涂装面
@@ -207,7 +207,7 @@ describe('GET /api/budget paint preview overlay', () => {
     assert.equal(preview.includedInTotalActual, false);
     assert.equal(preview.includedInCategoryTotals, false);
     assert.equal(preview.scope.highlightedIn3d, 'walls_and_declared_sill_faces');
-    assert.ok(Math.abs(preview.scope.netAreaSqm - 267.337) <= 0.02);
+    assert.ok(Math.abs(preview.scope.netAreaSqm - 267.332) <= 0.02);
     // 湿区窗台单独计价：预览里必须显形，不能悄悄并进普通墙漆面积
     assert.equal(preview.scope.wetAreaSqm, 4.193);
     assert.equal(preview.scope.wetAreaStatus, 'pending_system_quote_and_site_validation');

@@ -7,6 +7,7 @@
 
 - `DEC-2026-10-09-G01` 门禁编排器取代 `&&` 链（已计入 `16-verify-gate.md`，此处不重复）
 - `DEC-2026-10-09-P02` 涂装范围扩展到显式顶面与上飘窗外露面，并修正顶面多计 7.726㎡
+- `DEC-2026-10-09-P03` 上飘窗涂装精度与几何口径修正：逐段 round3 累加改内部全精度、底面映射与 bay_sill 本体对齐、审计分水平/立面
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -37,3 +38,23 @@
 - **决策人**：业主（授权接管 codex 未完成工作）+ AI 执行。
 - **验证**：`test:server` **839/839**、`test:app` **533/533**、`typecheck`（根 + app）干净、`verify:facts` OK（39 warning）、`verify:all` **14/15 通过**——唯一失败是既有的 `verify-consistency`（`sock_child_ac` 卡空调厂家深化图，先于本次改动，归属已证实）。`verify-collision-coverage` 由 8 error 转 OK。
 - **后续议题**：① 湿区窗台的材料系统/基层适配/人工需现场核验后分项报价（`wetAreaStatus` 跟踪）；② `paint_sill_region` 目前只声明了主卫一处，其余上飘窗（西北次卧/主卫北墙等）是否纳入需业主逐处裁定；③ 声明的 `2.07/0.76m` 飘窗尺寸本身是待复尺值。
+
+---
+
+### DEC-2026-10-09-P03 上飘窗涂装精度与几何口径修正：逐段 round3 累加改内部全精度、底面映射与 bay_sill 本体对齐、审计分水平/立面
+
+- **日期**：2026-10-09。触发：P02 落地后复核发现三个口径缺陷——面积算错、3D 盖错位、审计公式套错面。
+- **问题（三个都是口径错，不是精度不够）**：
+  1. **逐段 round3 再累加会系统性放大误差**：`shared/paint-sill-scope.ts` 原对每个折线段 `round3(area)` 后再求和，弧段折线的每段宽度是无理数量级，误差单向累积——真实主卫上飘窗汇总成 **4.198㎡**，而浏览器独立三角网格复算只有 **4.193365㎡**（差 0.0046㎡，全是高估）。
+  2. **涂装底面与 bay_sill 本体不同位同形**：`SceneBuilder` 给 `paint_sill_region` 底面（flat ShapeGeometry）只写了 `rotation.x = -PI/2`，没做 bay_sill 本体那套 `scale.y = -1`——平面 Shape 的第二个坐标被翻成负值，真实飘窗脚印 `z=[1.10,2.20]` 被打到 `z=[-2.20,-1.10]`。**预算里算了 2.536㎡ 却盖不到目标实体**，业主在 3D 里看到的高亮面和算钱的面不是同一块。
+  3. **审计把水平面当墙面算**：审计用「面积÷高」反推段长时没区分朝向，把 4.198㎡ 的水平底面套成 **4,198,000,003.81m**。
+- **选定方案**：
+  - **全精度内算、汇总才 round3**：`areaSqm` / `occludedAreaSqm` 内部保留全精度，只在 `totalAreaSqm` / `areaByFinish`（给业主看的口径）处 round3。修正后 **4.193㎡**，与独立三角网格复算一致。
+  - **平面→世界映射收敛为单一函数**：新增 `applyPlanFootprint(mesh)`（`rotation.x = -PI/2` + `scale.set(1,-1,1)`），bay_sill 本体与 `paint_sill_region` 底面**共用**——从结构上保证「算钱的面」与「模型的实体」重合，杜绝再次分叉。
+  - **审计面加朝向与标高**：mesh userData 增 `surfaceOrientation: 'horizontal' | 'vertical'` 与 `bottom` / `top`；水平面只有面积有意义，不得套墙的面积÷高公式。
+- **决策依据**：4.193㎡ 由浏览器独立三角网格复算（4.193365㎡）对账；底面重合由共用同一映射函数保证；审计朝向由 `surfaceOrientation` 显式声明。
+- **预算影响**：湿区窗台 4.198 → **4.193㎡**；全部涂装面 267.337 → **267.332㎡**；毛涂装面 282.142 → **282.137㎡**。**普通乳胶漆计费面积不变（263.139㎡）**、`painting.actual` 不变（7977.02 元）——湿区窗台本就单独计价，精度修正只影响湿区那一行。
+- **关联文件**：`shared/paint-sill-scope.ts`、`shared/render/SceneBuilder.ts`、`app/src/render/HouseScene.ts`、`app/src/ui/OverviewMenu.test.ts`、`tests/server/{paint-sill-scope,paint-sill-scene,paint-scope,paint-comparison-api}.test.ts`、`README.md`、本文件。
+- **决策人**：并行会话实施（commit `4e6c763`），业主授权后由 AI 补登记本 DEC 并校正文档数字。
+- **验证**：`test:server` **869/869**、`test:app` **564/564**、`typecheck` 干净、`verify:facts` OK、`verify:all` **14/15**（唯一失败是既有的 `sock_child_ac`）。测试已钉 4.193㎡；`README.md` 与两处测试字面量由 4.198/267.337 校正为 4.193/267.332（原靠 ±0.02 容差掩盖）。代码注释中保留的「4.198㎡」均为**旧值说明**（记载曾用口径），非现行口径。
+- **后续议题**：湿区窗台 4.193㎡ 的材料系统/基层适配/人工仍待现场核验与分项报价；`paint_sill_region` 仅声明主卫一处，其余上飘窗是否纳入待业主裁定。
