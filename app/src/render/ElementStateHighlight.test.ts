@@ -159,6 +159,37 @@ describe('构件级工程状态叠加层', () => {
     expect(scene.elementStateOriginalMaterials.size).toBe(0);
   });
 
+  it('合批标记位置取子树包围盒中心：组在原点的构件也不会被拍到 (0,0,0)，且原点是合法坐标', () => {
+    // 2026-10-09 验收发现：吊灯/轨道灯/壁灯的模型组 position 是原点、偏移在子 mesh 上，
+    // 直接取组坐标会让 20/128 个标记落在 (0,0,0)。
+    // 只让 makeScene 建 normal；degenerate 手工搭，否则 makeScene 会先建一个**空组**占掉同一 objectId
+    const scene = makeScene([
+      { id: 'electrical:normal', kind: 'electrical', status: 'inferred', batched: true, position: [5.6, 2.5, 4.0] },
+    ]);
+    // 手工搭一个「组 position 是原点、偏移全在子 mesh 上」的构件（真实项目里的吊灯/轨道灯/壁灯）
+    const group = new THREE.Group();
+    group.userData = { type: 'electrical', objectId: 'electrical:degenerate', hoverable: true };
+    const child = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1));
+    child.position.set(3.2, 2.7, 6.5);
+    group.add(child);
+    scene.exportRoot.add(group);
+    scene.setElementStates([
+      { id: 'electrical:normal', kind: 'electrical', label: 'n', status: 'inferred', statusSource: 'x', conflicts: [] },
+      { id: 'electrical:degenerate', kind: 'electrical', label: 'd', status: 'inferred', statusSource: 'x', conflicts: [] },
+    ]);
+    scene.setElementStateHighlightVisible(true);
+    const markers: any[] = scene.elementStateMarkerGroup.children;
+    const normal = markers.find((m) => m.userData.elementStateId === 'electrical:normal');
+    const degenerate = markers.find((m) => m.userData.elementStateId === 'electrical:degenerate');
+    expect(normal.position.toArray()).toEqual([5.6, 2.5, 4.0]);
+    // (0,0,0) 在本户型是合法坐标（西北角）——不许因为「是原点」就特殊处理
+    expect(degenerate.position.x).toBeCloseTo(3.2, 5);
+    expect(degenerate.position.y).toBeCloseTo(2.7, 5);
+    expect(degenerate.position.z).toBeCloseTo(6.5, 5);
+    // 不许落在原点
+    expect(degenerate.position.length()).toBeGreaterThan(1);
+  });
+
   it('开启后非合批 mesh 上 status 色；关闭后按快照还原（不写死默认值）', () => {
     const scene = makeScene(ELEMENTS);
     scene.setElementStates(ELEMENTS.map((e) => ({ id: e.id, kind: e.kind, label: e.id, status: e.status, statusSource: `x`, conflicts: [] })));

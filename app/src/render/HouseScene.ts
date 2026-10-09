@@ -2359,6 +2359,14 @@ export class HouseScene implements SceneApi {
       if (!objectId || positions.has(objectId)) return;
       const kind = objectId.slice(0, objectId.indexOf(':'));
       if (!BATCHED_ELEMENT_KINDS.has(kind)) return;
+      // 一律取子树包围盒中心：一部分构件（吊灯/轨道灯/壁灯）的模型组 position 是原点、
+      // 偏移全在子 mesh 上，直接取组坐标会把标记拍到 (0,0,0)；而 (0,0,0) 在本户型是合法
+      // 坐标（西北角），不能用「是否原点」判退化。空盒（理论上不该发生）才回落到组坐标。
+      const box = new THREE.Box3().setFromObject(object);
+      if (!box.isEmpty()) {
+        positions.set(objectId, box.getCenter(new THREE.Vector3()));
+        return;
+      }
       object.getWorldPosition(world);
       positions.set(objectId, world.clone());
     });
