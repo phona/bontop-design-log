@@ -99,6 +99,10 @@ export function computeWallFaceSpans(
   for (const room of rooms) {
     for (const v of roomPolygon(room)) {
       const t = ((v.x - segment.x1) * ux + (v.z - segment.z1) * uz) / len;
+      // 只取墙内投影（t∈(0,1)）作为过渡点；再各留 2% 余量：顶点投影贴在墙端时，
+      // 该处"贴邻关系切换"的样本区间会窄到 1e-4 以下被下面的过滤吞掉，而余量内的
+      // 判定结果与相邻区间相同（同一个房间顶点投影不会改变两侧归属）。代价是墙端
+      // 2% 以内（本项目最短墙 0.20m → 4mm）不拆面，按整段归属处理。
       if (t > 0.02 && t < 0.98) splits.add(Math.round(t * 1e4) / 1e4);
     }
   }

@@ -1770,3 +1770,89 @@ describe('HouseScene', () => {
     });
   });
 });
+
+// ─── 共墙按面给材质（DEC-2026-10-07-R12）──────────────────────────────────
+// 墙左右两侧贴邻不同房间时 SceneBuilder 给材质数组，HouseScene 的换色/涂漆只能
+// 碰贴邻目标房间的那个侧面槽位——否则会把一个房间的颜色染到共墙另一侧的房间
+// （本机制要修的"材质串脸"）。这里直接往 wallMeshes 喂 face-split mesh，
+// 不依赖真实几何，专测 userData 分发与 fail-closed 分支。
+
+describe('HouseScene 共墙按面给材质（DEC-2026-10-07-R12）', () => {
+  /** mock 的 MockMaterial.color.set 是普通方法，先套 spy 才能断言调用。 */
+  function spyColor(mat: any) {
+    return vi.spyOn(mat.color, 'set');
+  }
+
+  function makeScene(wallFinish: Record<string, string> = {}) {
+    const scene = new HouseScene({ addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement);
+    const roomMeta = new Map<string, { wall_finish?: string }>();
+    for (const [id, finish] of Object.entries(wallFinish)) roomMeta.set(id, { wall_finish: finish });
+    (scene as any).roomMeta = roomMeta;
+    (scene as any).wallMeshes = [];
+    return scene;
+  }
+
+  function faceMesh(left: string, right: string, slots: { left: number; right: number } = { left: 4, right: 5 }) {
+    const mats = Array.from({ length: 6 }, () => new THREE.MeshStandardMaterial());
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), mats);
+    mesh.userData = { type: 'wall', faceRooms: { left, right }, faceSlots: slots };
+    return { mesh, mats, spies: mats.map(spyColor) };
+  }
+
+  it('setWallColor 只染贴邻目标房间的侧面槽位', () => {
+    const scene = makeScene();
+    const { mesh, spies } = faceMesh('bedroom_nw', 'guest_bath');
+    (scene as any).wallMeshes.push(mesh);
+
+    scene.setWallColor(['guest_bath'], '#ff0000');
+    expect(spies[5]).toHaveBeenCalledWith('#ff0000');
+    expect(spies[4]).not.toHaveBeenCalled();
+
+    scene.setWallColor(['bedroom_nw'], '#0000ff');
+    expect(spies[4]).toHaveBeenCalledWith('#0000ff');
+    // 共墙另一侧仍是上一次的颜色，没有被二次覆盖
+    expect(spies[5]).toHaveBeenCalledTimes(1);
+  });
+
+  it('setPaintColor 跳过 tile 脸，两侧都 paint 时各染各的', () => {
+    const scene = makeScene({ guest_bath: 'tile', bedroom_nw: 'paint' });
+    const { mesh, spies } = faceMesh('bedroom_nw', 'guest_bath');
+    (scene as any).wallMeshes.push(mesh);
+
+    scene.setPaintColor('#00ff00');
+    expect(spies[4]).toHaveBeenCalledWith('#00ff00');
+    expect(spies[5]).not.toHaveBeenCalled();
+  });
+
+  it('单材质墙仍走 roomId 整体匹配', () => {
+    const scene = makeScene({ living_dining: 'paint' });
+    const mat = new THREE.MeshStandardMaterial();
+    const spy = spyColor(mat);
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), mat);
+    mesh.userData = { type: 'wall', roomId: 'living_dining' };
+    (scene as any).wallMeshes.push(mesh);
+
+    scene.setPaintColor('#123456');
+    expect(spy).toHaveBeenCalledWith('#123456');
+  });
+
+  it('畸形 face 数据 fail-closed：不抛错、不串脸', () => {
+    const scene = makeScene({ guest_bath: 'paint', bedroom_nw: 'paint' });
+    // faceRooms 缺 faceSlots
+    const noSlots = new THREE.Mesh(new THREE.BoxGeometry(), Array.from({ length: 6 }, () => new THREE.MeshStandardMaterial()));
+    noSlots.userData = { type: 'wall', faceRooms: { left: 'bedroom_nw', right: 'guest_bath' } };
+    const noSlotsSpies = (noSlots.material as any[]).map(spyColor);
+    // faceSlots 齐全但 material 不是数组（退化成整段单材质）
+    const single = new THREE.MeshStandardMaterial();
+    const singleSpy = spyColor(single);
+    const notArray = new THREE.Mesh(new THREE.BoxGeometry(), single);
+    notArray.userData = { type: 'wall', faceRooms: { left: 'bedroom_nw', right: 'guest_bath' }, faceSlots: { left: 4, right: 5 } };
+    (scene as any).wallMeshes.push(noSlots, notArray);
+
+    expect(() => scene.setWallColor(['guest_bath'], '#ff0000')).not.toThrow();
+    expect(() => scene.setPaintColor('#00ff00')).not.toThrow();
+    // 绝不回退整段单材质：那会把 guest_bath 的颜色染到 bedroom_nw 那一侧
+    expect(singleSpy).not.toHaveBeenCalled();
+    expect(noSlotsSpies.every((s: any) => !s.mock.calls.length)).toBe(true);
+  });
+});

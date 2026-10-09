@@ -1719,17 +1719,31 @@ export class HouseScene implements SceneApi {
     }
   }
 
+  /**
+   * 共墙按面给材质（DEC-2026-10-07-R12）：取 face-split 墙某个侧面的材质。
+   * userData 不完整（缺 faceSlots，或 material 不是材质数组）时返回 null，由调用方跳过该侧面——
+   * 与 TextureManager.copyToMeshAt 同一套 fail-closed 口径。绝不回退到整段单材质：
+   * 那会把一个房间的颜色染到共墙另一侧贴邻的房间（本机制要修的正是"材质串脸"）。
+   */
+  private faceMaterial(mesh: THREE.Mesh, side: 'left' | 'right'): THREE.MeshStandardMaterial | null {
+    const slots = mesh.userData.faceSlots as { left: number; right: number } | undefined;
+    if (!slots) return null;
+    const materials = mesh.material as THREE.Material[] | THREE.Material;
+    if (!Array.isArray(materials)) return null;
+    const mat = materials[slots[side]];
+    return mat instanceof THREE.MeshStandardMaterial ? mat : null;
+  }
+
   setWallColor(roomIds: string[], color: string) {
     const set = new Set(roomIds);
     for (const mesh of this.wallMeshes) {
       // 共墙按面给材质（DEC-2026-10-07-R12）：face-split 墙只染贴邻目标房间的侧面槽位。
       const faceRooms = mesh.userData.faceRooms as { left: string | null; right: string | null } | undefined;
       if (faceRooms) {
-        const slots = mesh.userData.faceSlots as { left: number; right: number } | undefined;
-        if (!slots) continue;
-        const materials = mesh.material as THREE.MeshStandardMaterial[];
         for (const side of ['left', 'right'] as const) {
-          if (faceRooms[side] && set.has(faceRooms[side] as string)) materials[slots[side]]?.color.set(color);
+          const roomId = faceRooms[side];
+          if (!roomId || !set.has(roomId)) continue;
+          this.faceMaterial(mesh, side)?.color.set(color);
         }
         continue;
       }
@@ -1743,13 +1757,11 @@ export class HouseScene implements SceneApi {
     for (const mesh of this.wallMeshes) {
       const faceRooms = mesh.userData.faceRooms as { left: string | null; right: string | null } | undefined;
       if (faceRooms) {
-        const slots = mesh.userData.faceSlots as { left: number; right: number } | undefined;
-        if (!slots) continue;
-        const materials = mesh.material as THREE.MeshStandardMaterial[];
         for (const side of ['left', 'right'] as const) {
-          const room = faceRooms[side] ? this.roomMeta.get(faceRooms[side] as string) : undefined;
+          const roomId = faceRooms[side];
+          const room = roomId ? this.roomMeta.get(roomId) : undefined;
           if (room?.wall_finish === 'tile') continue;
-          materials[slots[side]]?.color.set(color);
+          this.faceMaterial(mesh, side)?.color.set(color);
         }
         continue;
       }
