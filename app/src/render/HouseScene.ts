@@ -74,6 +74,16 @@ import type { WallSegment, ResolvedRoom, ResolvedOpening } from '@shared/types';
 export const GLASS_THICKNESS = 0.024;
 const DEFAULT_FLOOR = '#e8e0d5';
 const WALL_THICKNESS = 0.12;
+
+/**
+ * 墙 mesh 的 objectId → 源墙 id。SceneBuilder.addWallElement 在开门洞拆段后写
+ * `墙:N`，共墙按房间拆面后再追加 `.M`。墙 id 本身不含 ':'，故截第一个 ':' 即得源墙。
+ * 审计必须按源墙 id 判 suppress，否则拆过的实体墙会被误判成玻璃幕墙。
+ */
+function sourceWallIdOf(objectId: string): string {
+  const colon = objectId.indexOf(':');
+  return colon === -1 ? objectId : objectId.slice(0, colon);
+}
 /** 吊顶分区高亮的显示参数（DEC-2026-10-08-C01）：不透明度高于贴砖检视态——分区是"面"不是"带"。 */
 const CEILING_ZONE_HIGHLIGHT_OPACITY = 0.92;
 const CEILING_ZONE_SOLO_DIM_OPACITY = 0.14;
@@ -1070,7 +1080,10 @@ export class HouseScene implements SceneApi {
 
   /**
    * 涂漆检视态·状态摘要（对齐 getWallTileInspectionStatus）。
-   * 只统计 3D 真正高亮的**墙面**部分；顶面涂装面积是成本口径，见 /api/budget 的 paintBudgetPreview。
+   * **墙面与构件面严格分列**：wallAreaSqm 只含墙面（已扣门洞/窗洞），与 /api/budget 的
+   * paintBudgetPreview.scope.netWallAreaSqm 同口径；构件（上飘窗）外露面单列 componentAreaSqm，
+   * 绝不并进墙面——湿区系统/基层/人工都还没报价，混进去就等于按普通漆计价。
+   * 顶面涂装面积是成本口径，见 /api/budget 的 paintBudgetPreview，3D 不显示。
    */
   getPaintInspectionStatus(): {
     required: boolean;
@@ -1078,22 +1091,31 @@ export class HouseScene implements SceneApi {
     expected: string[];
     included: string[];
     missing: string[];
-    byRoom: Record<string, { segments: number; lengthM: number; areaSqm: number }>;
-    /** 净墙面面积（已扣门洞/窗洞）。 */
+    byRoom: Record<string, { segments: number; lengthM: number; areaSqm: number; componentAreaSqm: number }>;
+    /** 净墙面面积（已扣门洞/窗洞；不含构件面）。 */
     wallAreaSqm: number;
-    /** 毛墙面面积（未扣洞，= 净 + 洞口占位）。 */
+    /** 毛墙面面积（未扣洞，= 净 + 洞口占位；不含构件面）。 */
     grossWallAreaSqm: number;
     /** 洞口占位合计 = 毛 − 净。 */
     gapAreaSqm: number;
+    /** 构件（上飘窗）外露面面积合计：湿区待分项报价，单独列、不计入 wallAreaSqm。 */
+    componentAreaSqm: number;
+    /** 其中 finish=wet_area 的部分（当前全部来自主卫上飘窗）。 */
+    wetComponentAreaSqm: number;
     highlightedIn3d: 'walls_and_declared_sill_faces';
   } {
     const inspection = this.inspectPaintRegions();
-    const byRoom: Record<string, { segments: number; lengthM: number; areaSqm: number }> = {};
+    const byRoom: Record<string, { segments: number; lengthM: number; areaSqm: number; componentAreaSqm: number }> = {};
     const seenRegion = new Set<string>();
     for (const r of inspection.regions) {
-      byRoom[r.room] ??= { segments: 0, lengthM: 0, areaSqm: 0 };
-      byRoom[r.room].lengthM += r.lengthM;
-      byRoom[r.room].areaSqm += r.areaSqm;
+      byRoom[r.room] ??= { segments: 0, lengthM: 0, areaSqm: 0, componentAreaSqm: 0 };
+      // 构件面只进 componentAreaSqm（lengthM 恒 0，水平底面没有墙长），不碰墙面两列
+      if (r.orientation === 'wall') {
+        byRoom[r.room].lengthM += r.lengthM;
+        byRoom[r.room].areaSqm += r.areaSqm;
+      } else {
+        byRoom[r.room].componentAreaSqm += r.areaSqm;
+      }
       if (!seenRegion.has(r.regionId)) {
         // 一段声明被门洞拆成多块平面，段数按声明计，不按网格计
         seenRegion.add(r.regionId);
@@ -1101,10 +1123,14 @@ export class HouseScene implements SceneApi {
       }
     }
     const included = [...new Set(inspection.regions.map((r) => r.regionId))];
-    const net = +inspection.regions.reduce((s, r) => s + r.areaSqm, 0).toFixed(3);
+    const walls = inspection.regions.filter((r) => r.orientation === 'wall');
+    const components = inspection.regions.filter((r) => r.orientation !== 'wall');
+    const net = +walls.reduce((s, r) => s + r.areaSqm, 0).toFixed(3);
     const grossByRegion = new Map<string, number>();
-    for (const r of inspection.regions) if (!grossByRegion.has(r.regionId)) grossByRegion.set(r.regionId, r.grossAreaSqm);
+    for (const r of walls) if (!grossByRegion.has(r.regionId)) grossByRegion.set(r.regionId, r.grossAreaSqm);
     const gross = +[...grossByRegion.values()].reduce((s, v) => s + v, 0).toFixed(3);
+    const componentAreaSqm = +components.reduce((s, r) => s + r.areaSqm, 0).toFixed(3);
+    const wetComponentAreaSqm = +components.filter((r) => r.finish === 'wet_area').reduce((s, r) => s + r.areaSqm, 0).toFixed(3);
     return {
       required: included.length > 0,
       ready: inspection.ok && included.length > 0,
@@ -1115,22 +1141,28 @@ export class HouseScene implements SceneApi {
       wallAreaSqm: net,
       grossWallAreaSqm: gross,
       gapAreaSqm: +(gross - net).toFixed(3),
+      componentAreaSqm,
+      wetComponentAreaSqm,
       highlightedIn3d: 'walls_and_declared_sill_faces',
     };
   }
 
   /**
-   * 涂漆检视态·逐段明细与自检（规则与贴砖层同一套，但有三处涂漆专属差异）：
+   * 涂漆检视态·逐段明细与自检（规则与贴砖层同一套，但有四处涂漆专属差异）：
    *   1. room 取 SceneBuilder 写入的 userData.roomId（声明式归属），不做 id 前缀猜测；
    *   2. 双面涂漆的共墙（w_mb_east / w_st_east / w_be_west / w_nw_south / w_mbath_east /
    *      w_ent_west / w_ent_south_w）两个房间各占一面，越界与重叠判定必须按 (墙, 房间) 分组，
    *      不能按墙分组，否则双面合法声明会被误判为双计；
-   *   3. 高度上限是该墙自身高度（涂装到顶），不是贴砖那套 2.65 净高口径。
+   *   3. 高度上限是该墙自身高度（涂装到顶），不是贴砖那套 2.65 净高口径；
+   *   4. suppress 判定按**源墙 id**（sourceWallIdOf）桥接：墙 mesh 的 objectId 在开门洞拆段 /
+   *      共墙拆面后带 `:N` / `.M` 后缀，精确 objectId 比对会把 10 段实体墙误判成玻璃幕墙。
+   *      三类面（墙 / 构件垂直面 / 构件水平面）也在此分开：墙面按 PlaneGeometry 宽高取长度与
+   *      净面积，构件垂直面按真实标高 bottom→top，构件水平面只保留面积、长度恒 0。
    */
   inspectPaintRegions(): {
     ok: boolean;
     /** 逐网格明细：一段声明可能因门洞/窗洞被拆成多块（id 带 :sN 后缀，regionId 指向声明）。 */
-    regions: Array<{ id: string; regionId: string; objectId: string; wall: string; room: string; along: [number, number]; regionAlong: [number, number]; bottom: number; height: number; lengthM: number; areaSqm: number; grossAreaSqm: number }>;
+    regions: Array<{ id: string; regionId: string; objectId: string; wall: string; room: string; along: [number, number]; regionAlong: [number, number]; bottom: number; top: number; height: number; lengthM: number; areaSqm: number; grossAreaSqm: number; face: string; orientation: 'wall' | 'vertical' | 'horizontal'; finish: string }>;
     checks: { missingWallRefs: string[]; suppressedWallRefs: string[]; outOfWallSpan: string[]; duplicateOverlaps: string[]; overWallHeight: string[] };
   } {
     const meshes: THREE.Mesh[] = [];
@@ -1143,23 +1175,41 @@ export class HouseScene implements SceneApi {
       wallLengthById.set(id, segments.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0));
       wallHeightById.set(id, Math.max(0, ...Object.values(this.rooms).map((room) => room.height)));
     }
+    // 墙 mesh 的 objectId 不恒等于源墙 id：开门洞拆段后是 `墙:N`，共墙按房间拆面后再加 `.M`
+    // （SceneBuilder.addWallElement）。用精确 objectId 判断「整墙 mesh 是否存在」会把 10 段
+    // 实体墙误判成 suppress 的玻璃幕墙（getPaintInspectionStatus().ready 直接变 false）。
+    // 这里按源墙 id 桥接：截掉第一个 ':' 及其后的拆分后缀，还原它真正属于的那面墙。
     const renderedWallIds = new Set<string>();
     this.exportRoot.traverse((object) => {
-      if (object.userData?.type === 'wall' && object.userData?.objectId) renderedWallIds.add(String(object.userData.objectId));
+      if (object.userData?.type !== 'wall') return;
+      const objectId = object.userData?.objectId ? String(object.userData.objectId) : '';
+      if (!objectId) return;
+      renderedWallIds.add(objectId);
+      renderedWallIds.add(sourceWallIdOf(objectId));
     });
     const maxWallHeight = Math.max(0, ...[...wallHeightById.values()]);
     const rawRegions = meshes.map((mesh) => {
       const along = (mesh.userData.along as [number, number]) ?? [0, 0];
       const regionAlong = (mesh.userData.regionAlong as [number, number]) ?? along;
       const face = typeof mesh.userData.face === 'string' ? String(mesh.userData.face) : 'wall';
-      const bounds = mesh.userData.face
-        ? { bottom: Number(mesh.userData.rectBottom ?? mesh.userData.bottom ?? 0), top: Number(mesh.userData.rectTop ?? mesh.userData.top ?? mesh.userData.bottom ?? 0) }
-        : null;
+      // 三类面必须分开：墙平面（PlaneGeometry，长宽即几何）/ 构件垂直面（真实标高 bottom→top）/
+      // 构件水平面（底面，只有面积有意义）。混在一起就会把 4.198㎡ 的底面按「面积÷高」
+      // 反推出 4,198,000,003.81m 的假墙长。
+      const orientation: 'wall' | 'vertical' | 'horizontal' = face === 'wall'
+        ? 'wall'
+        : (typeof mesh.userData.surfaceOrientation === 'string' && mesh.userData.surfaceOrientation === 'horizontal' ? 'horizontal' : 'vertical');
+      const bounds = face === 'wall'
+        ? null
+        : { bottom: Number(mesh.userData.rectBottom ?? mesh.userData.bottom ?? 0), top: Number(mesh.userData.rectTop ?? mesh.userData.top ?? mesh.userData.bottom ?? 0) };
       const geometry = mesh.geometry as unknown as { parameters?: { width?: number; height?: number } };
       const height = bounds ? Math.max(0, bounds.top - bounds.bottom) : Number(geometry.parameters?.height ?? 0);
-      const lengthM = mesh.userData.face
-        ? Number(mesh.userData.areaSqm ?? 0) / Math.max(height, 1e-9)
-        : Number(geometry.parameters?.width ?? 0);
+      const lengthM = orientation === 'horizontal'
+        // 水平底面没有墙长：不造长度，面积单独列
+        ? 0
+        : face === 'wall'
+          ? Number(geometry.parameters?.width ?? 0)
+          // 构件垂直面：平面跨度 × 带高 == 面积，反推长度是精确的（且此时 top/bottom 已是真实标高）
+          : (height > 1e-9 ? Number(mesh.userData.areaSqm ?? 0) / height : 0);
       const id = String(mesh.userData.objectId ?? '');
       return {
         id, regionId: String(mesh.userData.regionId ?? id), objectId: id, wall: String(mesh.userData.wallId ?? ''), face,
@@ -1167,16 +1217,18 @@ export class HouseScene implements SceneApi {
         along, regionAlong,
         // 竖向带下沿：SceneBuilder 拆洞时写在 userData.rectBottom；兼容未拆洞的旧网格
         bottom: +Number(bounds?.bottom ?? mesh.userData.rectBottom ?? (mesh.userData.inspectionInitial as any)?.bottom ?? 0).toFixed(4),
-        height, lengthM,
+        top: +Number(bounds?.top ?? mesh.userData.top ?? 0).toFixed(4),
+        height, lengthM, orientation,
+        finish: String(mesh.userData.finish ?? 'ordinary'),
         // 拆洞后 areaSqm 是净面积；grossAreaSqm 由下方按声明汇总后回填（同一段声明只算一次）
-        areaSqm: mesh.userData.face ? Number(mesh.userData.areaSqm ?? 0) : +(lengthM * height).toFixed(4),
+        areaSqm: face === 'wall' ? +(lengthM * height).toFixed(4) : Number(mesh.userData.areaSqm ?? 0),
         grossAreaSqm: 0,
       };
     }).sort((a, b) => a.id.localeCompare(b.id));
 
     // 毛面积按**声明**算一次（拆洞后一段声明有多块网格，逐块算会把同一段重复计）
-    // 飘窗外露面（face ≠ 'wall'）没有「声明跨度」可言，按各网格实测面积直接累加；
-    // grossByRegion 必须先声明再使用——它同时被下面的墙面分支与飘窗分支写入。
+    // 构件外露面（face ≠ 'wall'）没有「声明跨度」可言，按各网格实测面积直接累加；
+    // grossByRegion 必须先声明再使用——它同时被下面的墙面分支与构件分支写入。
     const grossByRegion = new Map<string, number>();
     const regionExtent = new Map<string, { span: number; bottom: number; top: number }>();
     for (const r of rawRegions) {
@@ -1195,9 +1247,10 @@ export class HouseScene implements SceneApi {
     const regions = rawRegions.map((r) => ({ ...r, grossAreaSqm: grossByRegion.get(r.regionId) ?? r.grossAreaSqm }));
 
     const missingWallRefs = [...new Set(regions.filter((r) => r.face === 'wall' && r.room && !wallLengthById.has(r.wall)).map((r) => r.wall))];
-    // 浏览器侧无 suppress 数据源：被 suppress 的墙（玻璃幕墙/已删除）不会生成 wall mesh，
-    // 因此一并落入 missingWallRefs；「不存在」与「已 suppress」的细分以 tests/server/paint-scope.test.ts 的复算为准。
-    const suppressedWallRefs = [...new Set(regions.filter((r) => r.face === 'wall' && r.wall && wallLengthById.has(r.wall) && !renderedWallIds.has(r.wall)).map((r) => r.wall))];
+    // 被 suppress 的墙（玻璃幕墙/已删除）不会生成 wall mesh。判定必须走「源墙 id」而不是
+    // 精确 objectId：开门洞/共墙拆面后 objectId 带 `:N` / `.M` 后缀，精确比对会把 10 段
+    // 实体墙误判成玻璃幕墙。真正被 suppress 的墙（如 w_west_ap）连拆分 mesh 都没有，仍然检出。
+    const suppressedWallRefs = [...new Set(regions.filter((r) => r.face === 'wall' && r.wall && wallLengthById.has(r.wall) && !renderedWallIds.has(r.wall) && !renderedWallIds.has(sourceWallIdOf(r.wall))).map((r) => r.wall))];
     const outOfWallSpan: string[] = [];
     const duplicateOverlaps: string[] = [];
     // 按 (墙, 房间) 分组：双面涂漆的共墙由两个房间各声明一段，不能跨房间判重。

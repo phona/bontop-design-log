@@ -603,7 +603,12 @@ export class App {
         : '';
       // 净面积口径（DEC-2026-10-08-C06）：门洞已按实扣除，高亮范围 == 计费范围
       const gapText = s.gapAreaSqm > 0 ? `（已扣门洞 ${s.gapAreaSqm.toFixed(2)}㎡）` : '';
-      this.showToast(`涂漆区：${rooms}｜净墙面 ${s.wallAreaSqm.toFixed(2)}㎡${gapText}${ceilingText}`);
+      // 构件面（上飘窗外露面）单独列：湿区完整系统/基层/人工都还没报价，
+      // 既不能漏报（3D 里确实高亮了），也不能并进净墙面（那就按普通漆计价了）。
+      const componentText = s.componentAreaSqm > 0
+        ? `｜上飘窗外露面 ${s.componentAreaSqm.toFixed(3)}㎡（湿区待分项报价，未计入净墙面）`
+        : '';
+      this.showToast(`涂漆区：${rooms}｜净墙面 ${s.wallAreaSqm.toFixed(2)}㎡${gapText}${ceilingText}${componentText}`);
     }
   }
 

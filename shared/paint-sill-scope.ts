@@ -17,7 +17,14 @@ export interface PaintSillSurface {
   points: BaySillPoint[];
   bottom: number;
   top: number;
+  /**
+   * 单张面面积，**内部保留全精度**（不逐段 round3）：弧段折线的每段宽度是无理数量级，
+   * 先 round3 再累加会系统性放大误差——真实主卫上飘窗逐段 round3 曾汇总成 4.198㎡，
+   * 而独立三角网格复算只有 4.193365㎡。round3 只发生在最终汇总（totalAreaSqm /
+   * areaByFinish），那才是给业主看的口径。
+   */
   areaSqm: number;
+  /** 同 areaSqm：被吊顶遮挡而不计的面积，保留全精度。 */
   occludedAreaSqm: number;
 }
 
@@ -102,7 +109,7 @@ function verticalSurface(id: string, kind: PaintSillSurface['kind'], a: BaySillP
     const p2 = { x: a.x + (b.x - a.x) * to, z: a.z + (b.z - a.z) * to };
     const width = distance(p1, p2);
     const area = width * Math.max(0, exposedTop - sill);
-    if (area > EPS) result.push({ id: `${id}:${i}`, kind, points: [p1, p2], bottom: sill, top: exposedTop, areaSqm: round3(area), occludedAreaSqm: round3(width * Math.max(0, top - exposedTop)) });
+    if (area > EPS) result.push({ id: `${id}:${i}`, kind, points: [p1, p2], bottom: sill, top: exposedTop, areaSqm: area, occludedAreaSqm: width * Math.max(0, top - exposedTop) });
   }
   return result;
 }
@@ -120,7 +127,7 @@ export function computePaintSillScope(
   const warnings: string[] = [];
   const sill = bay.sill, top = bay.sill + bay.height;
   if (declaration.faces.includes('underside')) {
-    const areaSqm = round3(polygonArea(geometry.outline));
+    const areaSqm = polygonArea(geometry.outline);
     if (areaSqm > 0) surfaces.push({ id: declaration.id, kind: 'underside', points: geometry.outline, bottom: sill, top: sill, areaSqm, occludedAreaSqm: 0 });
   }
   if (declaration.faces.includes('front')) {

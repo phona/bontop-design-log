@@ -450,18 +450,20 @@ test('net area equals gross minus door and window gaps, and matches the budget l
   // 窗台是「单独计价的特殊系统面」：湿区窗台不进普通墙漆费率，湿区单列待分项报价。
   // 旧窗台值源于 BaySillGeometry.reverse() 原地反转污染 wallPath：start_end 被配成横跨
   // 整条窗台的 1.803m 斜肢（1.046㎡）而不是 1.1m 真端面（0.638㎡），窗台因此虚高成 4.606㎡。
-  assert.deepEqual(scope.sillAreaByRoom, { master_bath: 4.198 });
+  // 2026-10-09 精度口径修复：不再逐段 round3 再累加，改为内部全精度 + 汇总 round3，
+  // 4.198 → 4.193㎡（与浏览器独立三角网格复算 4.193365㎡ 一致；旧口径系统性高 0.0046㎡）。
+  assert.deepEqual(scope.sillAreaByRoom, { master_bath: 4.193 });
   assert.equal(scope.ordinarySillAreaSqm, 0, '当前没有按普通漆计价的窗台');
-  assert.equal(scope.wetAreaSqm, 4.198, '主卫上飘窗外露面是湿区，单独计价');
+  assert.equal(scope.wetAreaSqm, 4.193, '主卫上飘窗外露面是湿区，单独计价');
   assert.equal(scope.sillSurfaces.length, 1, '只有一条 paint_sill_region 声明');
   const sillSurface = scope.sillSurfaces[0];
   assert.equal(sillSurface.declaration.room, 'master_bath');
   assert.equal(sillSurface.declaration.finish, 'wet_area');
-  assert.equal(sillSurface.totalAreaSqm, 4.198);
+  assert.equal(sillSurface.totalAreaSqm, 4.193);
 
   // 普通计费面积 = 净墙 + 顶 + 普通窗台（湿区窗台不按普通墙漆费率计费）
   assert.equal(scope.ordinaryAreaSqm, 263.139);
-  assert.equal(scope.grossAreaSqm, 282.142, '毛面积含湿区窗台');
+  assert.equal(scope.grossAreaSqm, 282.137, '毛面积含湿区窗台');
   // 守恒：普通 + 湿区 = 全部涂装面（netAreaSqm），一处不漏也不重复计
   assert.ok(
     Math.abs(scope.ordinaryAreaSqm + scope.wetAreaSqm - scope.netAreaSqm) <= 0.01,

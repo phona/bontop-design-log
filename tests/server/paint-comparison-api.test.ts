@@ -79,7 +79,7 @@ describe('GET /api/paint/comparison', () => {
     // 顶面旧值 110.95㎡ 错在把客卫 3.15㎡ / 主卫 4.576㎡ 的整间铝扣板顶面当成普通乳胶漆顶面
     // 计费；集成吊顶不是涂装面，按投影扣除后 = 103.224㎡
     assert.ok(Math.abs(payload.scope.ceilingAreaSqm - 103.224) <= 0.02, `顶面 ${payload.scope.ceilingAreaSqm}`);
-    assert.ok(Math.abs(payload.scope.grossAreaSqm - 282.142) <= 0.02);
+    assert.ok(Math.abs(payload.scope.grossAreaSqm - 282.137) <= 0.02);
     // 净面积 = 墙 + 顶 + 普通窗台 + 湿区窗台（全部涂装面，含单独计价的湿区）
     assert.ok(Math.abs(payload.scope.netAreaSqm - 267.337) <= 0.02, `净计费面积 ${payload.scope.netAreaSqm}`);
     // 普通墙漆计价面积：湿区窗台单独计价，不按普通漆费率计费（旧 270.865 把湿区窗台也算进普通口径）
@@ -87,9 +87,10 @@ describe('GET /api/paint/comparison', () => {
     // 守恒：普通 + 湿区 = 全部涂装面
     assert.ok(Math.abs(payload.scope.ordinaryAreaSqm + payload.scope.wetAreaSqm - payload.scope.netAreaSqm) <= 0.01);
     assert.equal(payload.scope.ordinarySillAreaSqm, 0, '当前没有按普通漆计价的窗台');
-    assert.equal(payload.scope.wetAreaSqm, 4.198, '主卫上飘窗外露面是湿区，单独计价');
+    // 2026-10-09 精度口径修复：内部全精度 + 汇总 round3，4.198 → 4.193㎡
+    assert.equal(payload.scope.wetAreaSqm, 4.193, '主卫上飘窗外露面是湿区，单独计价');
     assert.equal(payload.scope.wetAreaStatus, 'pending_system_quote_and_site_validation');
-    assert.deepEqual(payload.scope.sillAreaByRoom, { master_bath: 4.198 });
+    assert.deepEqual(payload.scope.sillAreaByRoom, { master_bath: 4.193 });
     assert.equal(payload.scope.sillSurfaces.length, 1, '只有一条 paint_sill_region 声明');
     // 3D 高亮从「只高亮墙」扩展到「墙 + 已声明的窗台面」：窗台端面旧值源于
     // BaySillGeometry.reverse() 原地反转污染 wallPath，被配成横跨整条窗台的 1.803m 斜肢
@@ -208,11 +209,11 @@ describe('GET /api/budget paint preview overlay', () => {
     assert.equal(preview.scope.highlightedIn3d, 'walls_and_declared_sill_faces');
     assert.ok(Math.abs(preview.scope.netAreaSqm - 267.337) <= 0.02);
     // 湿区窗台单独计价：预览里必须显形，不能悄悄并进普通墙漆面积
-    assert.equal(preview.scope.wetAreaSqm, 4.198);
+    assert.equal(preview.scope.wetAreaSqm, 4.193);
     assert.equal(preview.scope.wetAreaStatus, 'pending_system_quote_and_site_validation');
     assert.equal(preview.scope.doorGapAreaSqm, 14.805);
     // 涂装科目自身按声明+拆洞实算，取「普通墙漆计价面积」263.139㎡
-    // （= 净面积 267.337 − 湿区窗台 4.198；旧值 270.865 把湿区窗台也算进普通口径）
+    // （= 净面积 267.337 − 湿区窗台 4.193；旧值 270.865 把湿区窗台也算进普通口径）
     const painting = body.categories.find((category: any) => category.key === 'painting');
     assert.ok(Math.abs(painting.autoActual - 1399.02235) <= 1, `painting autoActual=${painting.autoActual}`);
     assert.ok(Math.abs(painting.actual - 7977.02235) <= 1, `painting actual=${painting.actual}`);

@@ -161,6 +161,17 @@ type CurtainElement = Extract<SceneElement, { type: 'curtain' }>;
 type SlidingDoorElement = Extract<SceneElement, { type: 'sliding_door_run' }>;
 type HingedGlassDoorElement = Extract<SceneElement, { type: 'hinged_glass_door' }>;
 
+/**
+ * 平面 Shape(x,z) → 世界 (x,z) 的唯一映射：绕 X 轴 −90° 立起来，再用 y 轴负向缩放把
+ * z 翻回正值（Shape 的第二个坐标就是局部 y，翻负后经旋转正好落回世界 +z）。
+ * bay_sill 本体（extrude 沿 +y 长高）与 paint_sill_region 底面（flat ShapeGeometry）
+ * 必须共用它，否则「预算里算了面积的涂装面」与「模型里的实体」不会重合。
+ */
+function applyPlanFootprint(mesh: THREE.Mesh): void {
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.scale.set(1, -1, 1);
+}
+
 function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'curtainRun' | 'frostedPrivacy' | 'showerScreen' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass' | 'hingedGlassDoorFrame' | 'hingedGlassDoorGlass'>> {
   return {
     wall: ({ shaft }) => new THREE.MeshStandardMaterial({ color: shaft ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 }),
@@ -557,8 +568,7 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       for (const point of geometry.outline.slice(1)) shape.lineTo(point.x, point.z);
       shape.closePath();
       const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: element.height, bevelEnabled: false, steps: 1 }), new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.9 }));
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.scale.set(1, -1, 1);
+      applyPlanFootprint(mesh);
       mesh.position.y = element.sill;
       setSceneObjectMetadata(mesh, element.type, id);
       mesh.castShadow = true;
@@ -980,7 +990,11 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
           for (const point of surface.points.slice(1)) shape.lineTo(point.x, point.z);
           shape.closePath();
           mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), material);
-          mesh.rotation.x = -Math.PI / 2;
+          // 底面必须与 bay_sill 本体同位同形：本体用 rotation.x=-PI/2 + scale.y=-1 把
+          // 平面 Shape(x,z) 原样升到世界 (x,z)。只写 rotation.x 会把 z 翻成负值——
+          // 真实飘窗脚印 z=[1.10,2.20] 曾被打到 z=[-2.20,-1.10]，预算里算了 2.536㎡
+          // 却盖不到目标实体。故两处共用同一个映射函数。
+          applyPlanFootprint(mesh);
           mesh.position.y = surface.bottom;
         } else {
           const [a, b] = surface.points;
@@ -996,6 +1010,12 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
           elementId: element.element,
           roomId: element.room,
           face: surface.kind,
+          // 供审计区分「墙平面 / 构件水平面 / 构件垂直面」：水平面只有面积有意义，
+          // 不能套墙的面积÷高公式去反推一段墙长（曾把 4.198㎡ 变成 4,198,000,003.81m）。
+          surfaceOrientation: surface.kind === 'underside' ? 'horizontal' : 'vertical',
+          // 立面给真实标高（bottom/top），审计据此算带高与长度；水平面 bottom===top。
+          bottom: surface.bottom,
+          top: surface.top,
           finish: element.finish,
           areaSqm: surface.areaSqm,
           occludedAreaSqm: surface.occludedAreaSqm,

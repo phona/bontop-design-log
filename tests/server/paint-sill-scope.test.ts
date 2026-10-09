@@ -56,6 +56,12 @@ function isRoundedTo3(value: number): boolean {
   return Math.abs(value * 1000 - Math.round(value * 1000)) < 1e-6;
 }
 
+/**
+ * 与 shared/paint-sill-scope.ts 汇总口径同款的 round3（独立实现，用于对账）。
+ * 2026-10-09 精度修复后：单张面保留全精度，只有 totalAreaSqm / areaByFinish 走这一刀。
+ */
+const to3 = (n: number): number => Math.round((n + Number.EPSILON) * 1000) / 1000;
+
 /** 会遮挡垂面的吊顶类型（声明级常量，与被测模块的过滤条件同一份口径）。 */
 const OBSCURING_CEILING_TYPES = ['aluminum_buckle', 'drop', 'integrated'];
 
@@ -204,9 +210,13 @@ test('underside 面积等于 outline 多边形面积：独立鞋带公式 + 解�
   const analytic = 2.6 * 1.0 - (1 - Math.PI / 4) + 1.6 * 0.1 - 0.1 * 0.1 / 2 - (Math.PI * 0.1 ** 2 / 4 - 0.1 * 0.1 / 2);
   assert.ok(Math.abs(analytic - sampled) < 0.002, `解析闭式 ${analytic} 与折线采样 ${sampled} 偏差超差（弧被 16 段折线逼近，系统性略小）`);
   assert.ok(Math.abs(sampled - underside!.areaSqm) < 1e-3, `outline 折线面积 ${sampled} 与实现顶面 ${underside!.areaSqm} 对不上`);
-  assert.equal(underside!.areaSqm, 2.536); // 实测（2026-10 配置）：round3(2.536295751…)
+  // 2026-10-09 精度口径修复：单张面保留全精度（不逐段 round3），round3 只发生在汇总。
+  // 旧口径逐段 round3 后累加成 4.198㎡，独立三角网格复算只有 4.193365㎡——差 0.0046㎡
+  // 全部来自「先舍后加」。现在顶面本身是全精度值，汇总时再取 3 位。
+  assert.ok(Math.abs(underside!.areaSqm - 2.536295751410121) < 1e-9, `顶面应保留全精度，实际 ${underside!.areaSqm}`);
+  assert.equal(to3(underside!.areaSqm), 2.536); // 汇总口径仍四舍五入到 3 位
   assert.equal(polygonArea(realBaySillGeometryForCase1().outline), sampled); // 与模块同款算法交叉对账
-  assert.ok(isRoundedTo3(underside!.areaSqm));
+  assert.ok(isRoundedTo3(to3(scope.totalAreaSqm)));
   assert.equal(underside!.occludedAreaSqm, 0); // 顶面是水平面，不存在被吊顶遮挡一说
   assert.equal(underside!.id, REAL_DECLARATION!.id);
 });
@@ -240,13 +250,14 @@ test('front 面只计到吊顶完成面：被遮挡段不计入面积，且外�
   assert.equal(covered.top, 2.65);
   assert.ok(Math.abs(covered.areaSqm - expectedCovered.areaSqm) < 1e-3, `${covered.areaSqm} vs ${expectedCovered.areaSqm}`);
   assert.ok(Math.abs(covered.occludedAreaSqm - expectedCovered.occludedAreaSqm) < 1e-3);
-  assert.equal(covered.areaSqm, 0.58); // 1.0m 宽 × (2.65 − 2.07)
-  assert.equal(covered.occludedAreaSqm, 0.18); // 1.0m 宽 × (2.83 − 2.65)
+  // 单张面保留全精度（1.0 × 0.58 的浮点结果就是 0.5800000000000001），round3 只在汇总
+  assert.ok(Math.abs(covered.areaSqm - 0.58) < 1e-12, `${covered.areaSqm}`);
+  assert.ok(Math.abs(covered.occludedAreaSqm - 0.18) < 1e-12, `${covered.occludedAreaSqm}`);
 
   // 外露半段：一路算到窗台顶 2.83，零遮挡
   assert.equal(exposed.top, SYNTH_TOP);
-  assert.equal(exposed.areaSqm, 0.76); // 1.0m 宽 × (2.83 − 2.07)
-  assert.equal(exposed.occludedAreaSqm, 0);
+  assert.ok(Math.abs(exposed.areaSqm - 0.76) < 1e-12, `${exposed.areaSqm}`); // 1.0m 宽 × (2.83 − 2.07)
+  assert.ok(Math.abs(exposed.occludedAreaSqm - 0) < 1e-12);
   assert.ok(Math.abs(exposed.areaSqm - expectedExposed.areaSqm) < 1e-3);
 
   // 守恒：整条前缘的面积 + 遮挡 == 总宽 × 窗台全高（2 × 0.76 = 1.52）
@@ -282,7 +293,7 @@ test('与声明墙完全重合的端面被排除为隐蔽面，并留下指名�
   // 另一端面没有墙重合，照算——排除只针对重合的那一端，不是一律砍掉端面
   const endEnd = scope.surfaces.filter((surface) => surface.kind === 'end_end');
   assert.equal(endEnd.length, 1);
-  assert.equal(endEnd[0].areaSqm, 0.76); // 1.0m × (2.83 − 2.07)，x=2 在合成吊顶投影外，无遮挡
+  assert.ok(Math.abs(endEnd[0].areaSqm - 0.76) < 1e-12, `${endEnd[0].areaSqm}`); // 1.0m × (2.83 − 2.07)，x=2 在合成吊顶投影外，无遮挡
   assert.deepEqual(scope.surfaces.map((surface) => surface.kind).sort(), ['end_end', 'front', 'front', 'underside']);
 });
 
@@ -354,7 +365,8 @@ test('真实声明端到端：paint_master_bath_west_bay 的面积/种类/告警
 
   // 顶面：outline 折线鞋带公式（36 点，含 16 段圆角折线 + 16 段反向小弧折线）
   const underside = scope.surfaces.find((surface) => surface.kind === 'underside')!;
-  assert.equal(underside.areaSqm, 2.536); // round3(2.536295751…) = 实测 2.536
+  assert.ok(Math.abs(underside.areaSqm - 2.536295751410121) < 1e-9, `顶面全精度 ${underside.areaSqm}`);
+  assert.equal(to3(underside.areaSqm), 2.536);
 
   // 前缘：整条 frontPath 都落在 ceiling_master_bath 的投影 [0,1.1,2.6,2.86] 内
   //（独立点判定），所以每一段都只算到 2.65 完成面，2.65→2.83 记遮挡。
@@ -364,16 +376,19 @@ test('真实声明端到端：paint_master_bath_west_bay 的面积/种类/告警
   for (const surface of frontSurfaces) {
     assert.equal(surface.bottom, 2.07);
     assert.equal(surface.top, ceilingFinish);
-    assert.ok(isRoundedTo3(surface.areaSqm) && isRoundedTo3(surface.occludedAreaSqm));
-    // 逐段守恒：外露 + 遮挡 == 段宽 × 0.76（容差 1e-3 吸收 round3）
-    assert.ok(Math.abs(surface.areaSqm + surface.occludedAreaSqm - dist(surface.points[0], surface.points[1]) * bay.height) < 1e-3);
+    // 逐段守恒：外露 + 遮挡 == 段宽 × 0.76（全精度下是恒等，容差只吸收浮点尾差）
+    assert.ok(Math.abs(surface.areaSqm + surface.occludedAreaSqm - dist(surface.points[0], surface.points[1]) * bay.height) < 1e-12);
   }
   const frontWidth = geometry.frontPath.slice(1).reduce((sum, point, index) => sum + dist(geometry.frontPath[index], point), 0);
   assert.ok(Math.abs(frontWidth - 1.757017) < 1e-6, `前缘总宽 ${frontWidth}`);
   const frontArea = frontSurfaces.reduce((sum, surface) => sum + surface.areaSqm, 0);
   const frontOccluded = frontSurfaces.reduce((sum, surface) => sum + surface.occludedAreaSqm, 0);
-  assert.equal(frontArea, 1.024); // 实测：16 × 0.006 + 0.928（逐段 round3 后累加）
-  assert.equal(frontOccluded, 0.32); // 实测：16 × 0.002 + 0.288
+  // 2026-10-09 精度口径修复：内部保留全精度，逐段累加后正好等于「总宽 × 高度」的解析值。
+  // 旧口径逐段 round3 得 1.024 / 0.32，比解析值各高 ~0.005 / ~0.004。
+  assert.ok(Math.abs(frontArea - frontWidth * (ceilingFinish - bay.sill)) < 1e-9, `前缘外露 ${frontArea}`);
+  assert.ok(Math.abs(frontOccluded - frontWidth * (bay.sill + bay.height - ceilingFinish)) < 1e-9, `前缘遮挡 ${frontOccluded}`);
+  assert.ok(Math.abs(frontArea - 1.019070) < 1e-6, `前缘外露面积 ${frontArea}`); // 1.757017 × 0.58
+  assert.ok(Math.abs(frontOccluded - 0.316263) < 1e-6, `前缘遮挡面积 ${frontOccluded}`); // 1.757017 × 0.18
   // 独立复算（整条前缘一次算，不逐段 round3）：1.757017 × 0.58 = 1.019070 / × 0.18 = 0.316263
   assert.ok(Math.abs(frontWidth * (ceilingFinish - bay.sill) - frontArea) < 0.01, '前缘外露面积与总宽 × 外露高度对账');
   assert.ok(Math.abs(frontWidth * (bay.sill + bay.height - ceilingFinish) - frontOccluded) < 0.01, '前缘遮挡面积与总宽 × 遮挡高度对账');
@@ -387,19 +402,21 @@ test('真实声明端到端：paint_master_bath_west_bay 的面积/种类/告警
   assert.equal(startEnd.length, 1);
   assert.equal(startEnd[0].bottom, 2.07);
   assert.equal(startEnd[0].top, ceilingFinish);
-  assert.equal(startEnd[0].areaSqm, 0.638); // 修复后：round3(1.1 × 0.58) = 0.638（西端面，非斜肢）
-  assert.equal(startEnd[0].occludedAreaSqm, 0.198); // 修复后：round3(1.1 × 0.18) = 0.198
+  assert.ok(Math.abs(startEnd[0].areaSqm - 0.638) < 1e-12, `${startEnd[0].areaSqm}`); // 1.1 × 0.58（西端面，非斜肢）
+  assert.ok(Math.abs(startEnd[0].occludedAreaSqm - 0.198) < 1e-12, `${startEnd[0].occludedAreaSqm}`); // 1.1 × 0.18
   const capWidth = dist(geometry.wallPath[0], geometry.frontPath[0]);
   assert.ok(Math.abs(capWidth - 1.1) < 1e-6, `端面宽度 ${capWidth} 必须是两端 1.1m 端面，不是横跨窗台的斜肢`);
   assert.ok(Math.abs(capWidth * (ceilingFinish - bay.sill) - startEnd[0].areaSqm) < 1e-3);
   assert.ok(Math.abs(capWidth * (bay.sill + bay.height - ceilingFinish) - startEnd[0].occludedAreaSqm) < 1e-3);
 
-  // 汇总账（业主口径）：顶面 + 前缘 + 端面
-  assert.equal(scope.totalAreaSqm, 4.198); // 修复后实测：2.536 + 1.024 + 0.638
-  assert.equal(scope.areaByFinish.wet_area, 4.198);
+  // 汇总账（业主口径）：顶面 + 前缘 + 端面，只在汇总这一刀 round3
+  // 2026-10-09 精度修复：2.536296 + 1.019070 + 0.638 = 4.193366 → round3 = 4.193㎡
+  // （旧口径逐段 round3 后累加得 4.198㎡，与浏览器独立三角网格复算 4.193365㎡ 对不上）
+  assert.equal(scope.totalAreaSqm, 4.193);
+  assert.equal(scope.areaByFinish.wet_area, 4.193);
   assert.equal(scope.areaByFinish.ordinary, 0);
+  assert.ok(isRoundedTo3(scope.totalAreaSqm), '汇总面积必须四舍五入到 3 位');
   for (const surface of scope.surfaces) {
-    assert.ok(isRoundedTo3(surface.areaSqm), '面积必须四舍五入到 3 位');
     assert.ok(surface.areaSqm >= 0 && surface.occludedAreaSqm >= 0);
   }
 });
