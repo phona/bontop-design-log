@@ -146,6 +146,20 @@ npx tsx --test tests/server/paint-scope.test.ts   # 22 段声明 + 逐房间独�
 
 成本核算：`config/paint-comparison.yaml` 是唯一口径文件（遍数、底漆假设、扣减开关、人工费率、对账基准），`server/paint-cost-comparison.ts` 与 `materials.yaml` / `config/budget/base.json` / `schedule/phase-1/control.yaml` 逐项对账，算不出就 503。查询出口：`GET /api/paint/comparison`、`GET /api/budget` 的 `paintBudgetPreview`（`status: 'comparison_overlay_only'`，不进总额），MCP 同源。四个情景并列（面漆 1/2 遍 × 扣/不扣门窗洞），`selectedScenarioId` 恒为 null——遍数拍板前不给单一数字：默认（2 遍、扣洞）面漆 5 桶 + 底漆 3 桶，材料 ¥4,640 + 人工 ¥6,141 = **¥10,781**，低于 PKG-080 计划 ¥11,500 约 ¥719；1 遍口径 ¥9,621。不含基层修补、找平批刮腻子、颜色样板与成品保护（COST-080-01/02/04）。
 
+### 防穿模校验（DEC-2026-10-09-P01）
+
+```bash
+npm run verify:penetration                       # 实体互撞/净距（人读）
+npm run verify:penetration -- --json             # 机器可读，无时间戳、稳定排序
+npm run verify:penetration -- --json --shadow    # 附加 OBB 对照与白名单审计（只观察，不影响退出码）
+```
+
+`verify:penetration` 只判「两块实体是否占了同一块空间」：家具穿墙（只进一侧墙厚、未过中心线也 fail-closed）、家具对宿主墙完成面的退让净距、家具穿/贴玻璃窗帘栏杆、家具进吊顶、家具互撞、玻璃栏杆互撞、家具堵门洞。声明完整性、墙线拓扑、运行时权威性、灯具宿主归 `verify:spatial`，两者不重复判同一件事（`tests/server/penetration-boundary.test.ts` 一票否定越界）。两个 CLI 共用 `shared/penetration/scene.ts` 的场景采集，几何一律来自 `buildScene()` 的 runtime mesh。
+
+规则、严重级与豁免只有一份真相：`config/anti-penetration.yaml`。**severity 是下限**——规则按几何量自判更严则保持，配置只许加严、不许放宽；`enabled: false` 降为 info 并标注，不静默消失。豁免必须写 `reason`/`owner`/`expires`，按「规则 + 实体对」匹配且必须绑定稳定 runtime id，禁止按家具类型全局放行；到期自动复活为 error。容差仍只读 `config/spatial-validation.yaml`，配置文件里不出现第二套数字。当前结论：0 error / 8 warning（均为 `furniture_glass_clearance_insufficient`，既有净距不足）。
+
+机电协调构件（管/管井）逐类型显式申报参与策略 `excluded`/`solid`，未申报即 fail-closed；`mb_vanity_pvc_service_chase` 的预留区口径未裁定，10 处墙/家具重叠登记为 `docs/pending-site-data.md` #55 显形债务，未裁定前不当作缺陷、也不为了绿灯改坐标。活动包络（门扇开启、抽屉、电器门）尚未覆盖，详见 `docs/penetration-lint.md`。
+
 ## 核心原则
 
 1. **没有口头变更**：任何改动必须进 Git。

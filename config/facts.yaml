@@ -1082,6 +1082,7 @@ x_decision_files: &decision_files
   - docs/decisions/12-plumbing.md
   - docs/decisions/13-mep-integration.md
   - docs/decisions/14-style-furniture.md
+  - docs/decisions/15-penetration-lint.md
 
 contracts:
 
@@ -1606,14 +1607,14 @@ coverage:
   - { file: config/render/overrides.yaml, field: "*", readers: [] }
   - { file: config/spatial-validation.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/spatial-validation.yaml, field: "tolerance_profiles", readers: ["shared/penetration/scene.ts", "shared/penetration/registry.ts"] }
-  - { file: config/spatial-validation.yaml, field: "furniture_profiles", readers: ["shared/furniture-profile.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "furniture_profiles", readers: ["shared/furniture-profile.ts", "shared/penetration/scene.ts", "scripts/verify/spatial/verify-spatial.ts"] }
   - { file: config/spatial-validation.yaml, field: "furniture_profile_overrides", readers: ["shared/furniture-profile.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "mep_coordination_types", readers: ["shared/furniture-profile.ts", "shared/penetration/registry.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "junctions", readers: ["shared/spatial-validation.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "allowed_collinear_overlaps", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "allowed_overlay_wall_junctions", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/spatial-validation.yaml, field: "relationships", readers: ["shared/spatial-validation.ts", "shared/penetration/rules.ts", "shared/penetration/registry.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
-  - { file: config/spatial-validation.yaml, field: "overlay_replacements", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "overlay_replacements", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts", "shared/penetration/registry.ts"] }
   - { file: config/spatial-validation.yaml, field: "lighting_host_overrides", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   # version 暂无 reader（与 plumbing/tradeoffs 等同为未消费字段，显式登记为空，不装作有人读）
   - { file: config/anti-penetration.yaml, field: "version", readers: [] }

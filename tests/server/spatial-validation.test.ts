@@ -209,7 +209,7 @@ describe('spatial validation primitives', () => {
 describe('spatial validation CLI integration', () => {
   it('runs the project adapter, validates runtime lighting/furniture, and emits parseable stable JSON', () => {
     // 穿透族断言（家具穿墙、家具互撞、玻璃净距）已移至 tests/server/penetration.test.ts
-    // 与 tests/server/penetration-parity.test.ts；这里只保留 spatial 自身结论。
+    // 与 tests/server/penetration-boundary.test.ts；这里只保留 spatial 自身结论。
     const run = () => {
       const result = spawnSync('npx', ['tsx', 'scripts/verify/spatial/verify-spatial.ts', '--json'], { encoding: 'utf8' });
       assert.equal(result.status, 0, result.stderr);

@@ -42,7 +42,6 @@ import {
   type SpatialConfig,
 } from '../../../shared/penetration/scene.js';
 import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
-import { runPenetrationChecks } from '../../../shared/penetration/registry.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const LIGHT_TYPES = new Set(['wall_lamp', 'ceiling_light', 'pendant', 'dome', 'downlight', 'track_light', 'led_strip', 'night_light']);
@@ -221,7 +220,7 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
   return issues;
 }
 
-function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntimeScene>, today: string): SpatialIssue[] {
+function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntimeScene>): SpatialIssue[] {
   const issues: SpatialIssue[] = [];
   const source = 'config/house.yaml + shared/render/SceneBuilder.ts + shared/render/FixtureFactory.ts';
   const { layout, config, house } = inputs;
@@ -238,12 +237,6 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
     glass: collected.glass,
     source,
   }));
-
-  // 实体穿透/净距全部走规则注册表：与 verify:penetration 同一入口、同一配置，
-  // 因此 severity 调整与豁免对两个 CLI 同时生效，不会各自漂移。
-  const penetration = runPenetrationChecks(inputs, scene, today);
-  issues.push(...penetration.issues);
-  issues.push(...penetration.registryIssues);
 
   for (const [roomId, items] of Object.entries(house.furnishings ?? {})) {
     let runtimeIndex = 0;
@@ -286,23 +279,8 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
   return issues;
 }
 
-function resolveToday(): string {
-  const index = process.argv.indexOf('--today');
-  const value = index >= 0 ? process.argv[index + 1] : undefined;
-  if (value) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      console.error('verify:spatial --today requires YYYY-MM-DD');
-      process.exitCode = 2;
-      return '1970-01-01';
-    }
-    return value;
-  }
-  return new Date().toISOString().slice(0, 10);
-}
-
 function main(): void {
   const args = new Set(process.argv.slice(2));
-  const todayStamp = resolveToday();
   const inputs: SceneInputs = loadSceneInputs({ captureWarnings: args.has('--json') });
   const { layout, overlay, elements, config, house, suppressIds, structuralPaths, layoutWarnings } = inputs;
   const issues: SpatialIssue[] = [];
@@ -321,7 +299,7 @@ function main(): void {
     scene = buildRuntimeScene(inputs);
     issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides, scene.index.lightingFixtures));
     issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}));
-    issues.push(...validateScene(inputs, scene, todayStamp));
+    issues.push(...validateScene(inputs, scene));
   } catch (error) {
     issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides));
     issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}));
