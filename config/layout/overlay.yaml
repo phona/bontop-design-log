@@ -172,9 +172,9 @@ elements:
   # 尺寸为业界常规口径的估算（业主 2026-10-07 指示"开发商已做、按标准估"）：搜索口径——
   # 落地窗窗台常规留 100–200mm 高出地面（防外力撞击玻璃、做内侧防水收口），取中值 150，
   # 且与 300×600 墙砖模数合；出檐（向室内伸进）同取 150。**量级待量房核实**。
-  # 范围核对：全宅仅 w_liv_south（6.20m）是真·齐地玻璃且人在屋里走得近——其余玻璃根部
-  # 都在 2.07m 高飘窗台之后（不可见）、厨房北幕墙根在地柜后（不可见）、入户花园为开发商
-  # 完成区、南阳台 BLK 冻结，均不挂贴砖。
+  # 范围核对（R11 附则）：当时判「全宅仅 w_liv_south 齐地」。2026-10-07 C17 业主实地断言推翻
+  # 「飘窗台 2.07 系」推断——幕墙玻璃均为落地窗，玻璃根都有防水台；贴砖挂湿区（主卫），
+  # 干区（卧室/书房/厨房）防水台存在但不挂贴砖，见各 bay_sill 与 #20/#54。
   - id: living_south_waterproof_ledge
     type: bay_sill
     wall: w_liv_south
@@ -182,6 +182,25 @@ elements:
     sill: 0.00
     height: 0.15
     reason: "客厅落地幕墙根部防水台（150 高 × 150 出檐常规口径，量级待量房核实）；竖面与水平台面由 sill_region 挂贴砖"
+
+  # ── 主卫湿区防水台（2026-10-07 C17：业主断言幕墙玻璃均为落地窗、根部都有防水台；
+  #    主卫为淋浴湿区，按 D4=L 同款建模+贴砖，存在性/尺寸量房 #54 终核）。
+  #    西墙北段 w_west_ap（z[1.10,2.10]，端点 v_bath_nw 带圆角）合并器不产弧段线，
+  #    该 1.00m 防水台不入声明、留现场收口（量房 #54）。──
+  - id: mbath_west_lower_waterproof_ledge
+    type: bay_sill
+    wall: w_west_lower
+    depth: 0.15
+    sill: 0.00
+    height: 0.15
+    reason: "主卫西墙淋浴段（z[2.10,2.86] 直段）根部防水台，D4=L 同款 150×150"
+  - id: mbath_north_waterproof_ledge
+    type: bay_sill
+    wall: w_bath_north
+    depth: 0.15
+    sill: 0.00
+    height: 0.15
+    reason: "主卫北墙（x[0,2.60]，西段在淋浴湿区内）根部防水台，D4=L 同款"
 
   # 地板补区
   - id: entry_garden_floor
@@ -308,7 +327,9 @@ elements:
   #   - 引用的墙必须存在且未被 suppress（主卫北墙 suppress_north_recess、西墙 suppress_west_wall
   #     均为玻璃幕墙，故主卫仅 4.36m 而非 6.12m）
   #   - along 区间必须落在该墙长度内；同一墙段不得重叠声明（防双计）
-  # along 自该墙 from 端沿墙累计。zone=covered 表示橱柜后遮蔽面（走杂砖），visible 为可见面（正砖）。
+  # along 自该墙 from 端沿墙累计。zone 字段保留 schema 兼容（缺省 visible）；**杂砖概念已废止
+  # （2026-10-08 C18，业主裁定）**：全库无杂砖单价、遮蔽面省钱为 0，且"东墙整段记杂砖"会让
+  # 吊柜以上可见面被标杂砖——原 zone=covered 声明全部改回 visible，所有贴砖按正砖采购。
   # height 为贴砖带【顶标高】（不是带高），bottom 缺省 0；同一面墙可上下堆叠多段（如灶台挡水条
   # 叠在东墙 0.90m 杂砖带之上），二维不重叠即可。
   # room（2026-10-07 R11 补，对齐 paint_region）：声明贴砖面归属房间——共墙（w_balc_south 客卫/阳台、
@@ -318,15 +339,18 @@ elements:
 
   # ── 厨房 4.80m（北墙 w_kit_north 3.60m 为 suppress_kitchen_north 玻璃幕墙不可贴；
   #    z=2.40 的 3.60m 是四联动推拉门开口而非墙，均不在此列）──
+  # 2026-10-07 E2 落地（DEC-2026-10-07-C15）：三面可贴墙贴满至吊顶完成面 2.65（透过推拉门形成连续砖面），
+  # 由 D1=A 建议基线 0.90m 升高；w_balc_east 阳台门段不在 E2 贴满范围（门洞占大半），维持 0.90m 防溅带。
+  # 柜后遮蔽/可见的段内细分（吊柜包络）仍待 D7 橱柜布局收口，当前按整段口径记账。
   - id: walltile_kitchen_ent_west
     type: wall_region
     wall: w_ent_west
     room: kitchen
     along: [0.50, 2.90]      # z[2.40, 0.00] 段 = 2.40m（东墙，与入户门厅共墙）
     bottom: 0.00
-    height: 0.90
-    zone: covered
-    reason: 厨房东墙，§05「东墙灶台/烟机/冰箱」，橱柜与设备遮蔽面走杂砖
+    height: 2.65
+    zone: visible
+    reason: 厨房东墙 E2 贴满至 2.65（灶台/烟机/冰箱柜墙；C18 废止杂砖后整段正砖，吊柜以上不再有口径分歧；门厅 0.50m 过渡段收口待门厅终裁）
   # R11 补（业主 2026-10-07 裁定 D2=补贴）：灶台/烟机后挡水墙。0.90m 杂砖带止于台面完成面 0.89m，
   # 而台面以上至烟机底（模型 range_hood 底缘 y=1.35，取整贴到 1.40 包住机身边）是油溅裸墙缺口。
   # 本段与下方杂砖带共用 along 区间 [1.27,2.17]（= 烟机宽 0.90m，z[0.73,1.63]），竖向 0.90→1.40 不重叠。
@@ -345,9 +369,9 @@ elements:
     room: kitchen
     along: [0.00, 1.00]      # 1.00m
     bottom: 0.00
-    height: 0.90
+    height: 2.65
     zone: visible
-    reason: 厨房西北角实墙段，无橱柜遮蔽，可见面走正砖
+    reason: 厨房西墙实墙段（与 VRV 设备间共墙），无橱柜遮蔽，E2 贴满至 2.65 正砖
   - id: walltile_kitchen_balc_east
     type: wall_region
     wall: w_balc_east
@@ -355,17 +379,17 @@ elements:
     along: [0.00, 1.20]      # z[1.00, 2.20] 段 = 1.20m（R06 新补，v2/v3 曾漏计）
     bottom: 0.00
     height: 0.90
-    zone: covered
-    reason: 厨房西墙生活阳台门与辅助台面区，遮蔽面走杂砖；此段为 R06 复算补回
+    zone: visible
+    reason: 厨房西墙生活阳台门段（门洞 0.80m 占大半），辅助台面防溅带 0.90m 正砖；不在 E2 贴满范围
   - id: walltile_kitchen_west_stub
     type: wall_region
     wall: w_kit_west
     room: kitchen
     along: [0.00, 0.20]      # 0.20m 残段
     bottom: 0.00
-    height: 0.90
-    zone: covered
-    reason: 残段，地柜后遮蔽面走杂砖
+    height: 2.65
+    zone: visible
+    reason: 西墙南端残段（冰箱位背墙），E2 贴满至 2.65 正砖（冰箱高柜包络待 D7，仅供家具深化参考）
 
   # ── 生活阳台（R11 新增；业主 2026-10-07 裁定 D3=B）──
   # 湿区口径 0.30m：洗衣机/烘干机贴 w_balc_west（给水 faucet_balcony_washer / 墙排 drain_balcony_washer
@@ -409,6 +433,36 @@ elements:
     room: living_dining
     reason: 客厅落地幕墙防水台水平台面，L 型贴砖的出檐收口面（D4 终裁）
 
+  # ── 主卫湿区防水台贴砖（C17）：两座 bay_sill 的 front+top 共 4 段，3.36m × 0.30 = 1.008㎡ 正砖 ──
+  - id: silltile_mbath_west_lower_front
+    type: sill_region
+    element: mbath_west_lower_waterproof_ledge
+    face: front
+    zone: visible
+    room: master_bath
+    reason: 主卫西墙淋浴段防水台竖面贴砖
+  - id: silltile_mbath_west_lower_top
+    type: sill_region
+    element: mbath_west_lower_waterproof_ledge
+    face: top
+    zone: visible
+    room: master_bath
+    reason: 主卫西墙淋浴段防水台台面贴砖
+  - id: silltile_mbath_north_front
+    type: sill_region
+    element: mbath_north_waterproof_ledge
+    face: front
+    zone: visible
+    room: master_bath
+    reason: 主卫北墙防水台竖面贴砖（西段在淋浴湿区内）
+  - id: silltile_mbath_north_top
+    type: sill_region
+    element: mbath_north_waterproof_ledge
+    face: top
+    zone: visible
+    room: master_bath
+    reason: 主卫北墙防水台台面贴砖
+
   # ── 主卫 4.36m（西淋浴湿区 x[0,1.2]、东马桶；北墙与西墙均为玻璃幕墙不可贴）──
   - id: walltile_mbath_east
     type: wall_region
@@ -425,9 +479,9 @@ elements:
     room: master_bath
     along: [0.00, 1.20]      # x[0, 1.20] 段 = 1.20m，淋浴湿区
     bottom: 0.00
-    height: 1.80
+    height: 2.65
     zone: visible
-    reason: 主卫南墙西段，西淋浴湿区 x[0,1.2]，按防水口径淋浴区≥1.8m
+    reason: 主卫南墙西段，西淋浴湿区 x[0,1.2]，砖到顶 2.65（业主 2026-10-07 终裁 C16，与客卫 C14 同口径；西墙为玻璃幕墙不贴，砖面止于玻璃碰接）
   - id: walltile_mbath_south_dry
     type: wall_region
     wall: w_mbath_south
@@ -438,25 +492,28 @@ elements:
     zone: visible
     reason: 主卫南墙东段，非淋浴区
 
-  # ── 客卫 5.70m（北端淋浴 z≈2.30~2.75 贴东墙；南侧 z=3.55~4.30 为开放洗漱区）──
+  # ── 客卫 6.45m（北端淋浴 z≈2.30~2.75 贴东墙；南侧 z=3.55~4.30 为开放洗漱区）──
+  # 2026-10-07 业主终裁（饰面"带+漆"，前置北墙外窗已定）：淋浴区砖到顶（吊顶完成面 2.65），
+  # 马桶区/开放洗漱区 0.30m 砖带 + 上部乳胶漆，台盆后新增 0.77→1.10 防溅带；
+  # 北墙窗洞的砖面扣减待量房开窗后按实计。
   - id: walltile_gbath_north_shower
     type: wall_region
     wall: w_balc_south
     room: guest_bath
     along: [0.00, 1.50]      # 1.50m，客卫北墙
     bottom: 0.00
-    height: 1.80
+    height: 2.65
     zone: visible
-    reason: 客卫北墙，淋浴区，按防水口径淋浴区≥1.8m
+    reason: 客卫北墙，淋浴区砖到顶（业主 2026-10-07 终裁，吊顶完成面 2.65；北墙窗洞扣减量房后计）
   - id: walltile_gbath_east_shower
     type: wall_region
     wall: w_gbath_east
     room: guest_bath
     along: [0.00, 0.55]      # z[2.20, 2.75] 段 = 0.55m，淋浴贴东墙
     bottom: 0.00
-    height: 1.80
+    height: 2.65
     zone: visible
-    reason: 客卫东墙北段，花洒贴此墙挂载，淋浴区
+    reason: 客卫东墙北段，花洒贴此墙挂载，淋浴区砖到顶（业主 2026-10-07 终裁）
   - id: walltile_gbath_east_rest
     type: wall_region
     wall: w_gbath_east
@@ -465,7 +522,7 @@ elements:
     bottom: 0.00
     height: 0.30
     zone: visible
-    reason: 客卫东墙南段，非淋浴
+    reason: 客卫东墙南段（马桶区），0.30m 砖带 + 上部乳胶漆
   - id: walltile_gbath_east_open_vanity
     type: wall_region
     wall: w_gbath_east_open_vanity
@@ -473,8 +530,17 @@ elements:
     along: [0.00, 0.75]      # 0.75m
     bottom: 0.00
     height: 0.30
-    zone: covered
-    reason: 客卫东侧开放洗漱区，悬浮台盆柜后遮蔽面走杂砖（柜体包络待与 J6 实机同图会审）
+    zone: visible
+    reason: 客卫东侧开放洗漱区，悬浮台盆柜后 0.30m 防溅带正砖（柜体包络待与 J6 实机同图会审；C18 废止杂砖）
+  - id: walltile_gbath_east_vanity_splash
+    type: wall_region
+    wall: w_gbath_east_open_vanity
+    room: guest_bath
+    along: [0.00, 0.75]      # 0.75m，与下方柜后杂砖段同沿墙区间、竖向堆叠不重叠
+    bottom: 0.77
+    height: 1.10
+    zone: visible
+    reason: 台盆后防溅带（业主 2026-10-07 终裁）：台上盆+壁挂龙头（底座 0.84）溅水面，0.77 台面 → 1.10 镜柜下沿，材质与台面同材或 300×600 正砖
   - id: walltile_gbath_west
     type: wall_region
     wall: w_gbath_west
@@ -674,3 +740,56 @@ elements:
     along: [0.00, 3.00]
     height: 2.80
     reason: "书房墙面涂装（w_st_north）"
+
+  # ── 客卫 4 段（2026-10-07 业主终裁：饰面"带+漆"，wall_finish 改 paint 后由 tmp/gen-paint-regions.ts
+  #    产出 5 段、人工剔除 1 段）：北墙 w_balc_south 整面淋浴砖到顶（walltile_gbath_north_shower）不漆；
+  #    w_gbath_east 掐掉淋浴区间 [0,0.55]，只留马桶区 [0.55,1.35]。已知口径：0.30m 砖带/0.77→1.10 防溅带
+  #    与漆面在高度上部分重叠（约 1.1㎡ 漆面多计，漆按桶采购内吸收）；内隔墙 w_gbath_south 两脸
+  #    （约 5.5㎡，含门洞）待 paint-scope 支持同房间内隔墙双脸后增补，当前未声明。
+  - id: paint_guest_bath_w_gbath_east
+    type: paint_region
+    wall: w_gbath_east
+    room: guest_bath
+    along: [0.55, 1.35]
+    height: 2.80
+    reason: "客卫东墙南段（马桶区）上部涂装；[0,0.55] 为淋浴砖到顶不漆"
+  - id: paint_guest_bath_w_gbath_east_open_vanity
+    type: paint_region
+    wall: w_gbath_east_open_vanity
+    room: guest_bath
+    along: [0.00, 0.75]
+    height: 2.80
+    reason: "客卫开放洗漱区东墙涂装（柜后 0.30m 杂砖带与 0.77→1.10 防溅带高度上部分重叠，见上注）"
+  - id: paint_guest_bath_w_gbath_west
+    type: paint_region
+    wall: w_gbath_west
+    room: guest_bath
+    along: [0.00, 1.35]
+    height: 2.80
+    reason: "客卫西墙（内卫侧）涂装（0.30m 砖带高度上部分重叠，见上注）"
+  - id: paint_guest_bath_w_gbath_west_open_vanity
+    type: paint_region
+    wall: w_gbath_west_open_vanity
+    room: guest_bath
+    along: [0.00, 0.75]
+    height: 2.80
+    reason: "客卫开放洗漱区西墙（浴室柜对面）涂装（0.30m 砖带高度上部分重叠，见上注）"
+
+  # ── 主卫 2 段（2026-10-07 C16 终裁：与客卫同口径"带+漆"，wall_finish 改 paint 后由
+  #    tmp/gen-paint-regions.ts 产出 2 段、人工剔除淋浴到顶跨）：西/北墙为玻璃幕墙（suppress）
+  #    不漆不贴；w_mbath_south 掐掉淋浴砖到顶跨 [0,1.20]，只留干区 [1.20,2.60]（含门洞 d_mbath
+  #    [1.15,1.95] 的跨内部分，净面积按拆洞实扣）。
+  - id: paint_master_bath_w_mbath_east
+    type: paint_region
+    wall: w_mbath_east
+    room: master_bath
+    along: [0.00, 1.76]
+    height: 2.80
+    reason: "主卫东墙（马桶区）涂装；0.30m 砖带高度上部分重叠按桶吸收，见客卫注"
+  - id: paint_master_bath_w_mbath_south
+    type: paint_region
+    wall: w_mbath_south
+    room: master_bath
+    along: [1.20, 2.60]
+    height: 2.80
+    reason: "主卫南墙干区涂装；[0,1.20] 为淋浴砖到顶跨不漆，门洞跨内部分拆洞实扣"

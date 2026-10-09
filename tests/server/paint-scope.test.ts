@@ -95,7 +95,7 @@ test('overlay paint_region declarations pass the Zod discriminated union', () =>
   const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
   const regions: any[] = (parsed.elements ?? []).filter((e: any) => e.type === 'paint_region');
   // DEC-2026-10-08-C06：入户花园出范围（开发商已做好，收房后再定），4 段声明已删
-  assert.equal(regions.length, 22, 'C05 声明 26 段，C06 删除入户花园 4 段后为 22 段');
+  assert.equal(regions.length, 28, '2026-10-07 C14/C16 两卫饰面终裁后 28 段（22 + 客卫 4 + 主卫 2）');
   for (const r of regions) {
     assert.equal(r.bottom, 0, 'schema 默认 bottom=0');
     assert.ok(r.height > 0, `${r.id} height 必须为正`);
@@ -109,7 +109,7 @@ test('mergeSceneElements preserves paint_region elements alongside overlay types
   const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
   const merged = mergeSceneElements(resolvedWalls(), parsed);
   const regions: any[] = merged.filter((e: any) => e.type === 'paint_region');
-  assert.equal(regions.length, 22);
+  assert.equal(regions.length, 28);
 });
 
 test('buildScene emits paint meshes with reversible initial state, split at door openings', () => {
@@ -117,8 +117,8 @@ test('buildScene emits paint meshes with reversible initial state, split at door
   assert.deepEqual(scene.unsupported ?? [], [], '所有 paint_region 都必须能落地');
   const meshes = paintMeshes(scene.exportRoot);
   const regionIds = [...new Set(meshes.map((mesh: any) => mesh.userData.regionId))];
-  assert.equal(regionIds.length, 22, '声明仍是 22 段');
-  assert.ok(meshes.length > 22, `门洞必须把声明拆成多块平面，实际 ${meshes.length} 块`);
+  assert.equal(regionIds.length, 28, '声明仍是 28 段');
+  assert.ok(meshes.length > 28, `门洞必须把声明拆成多块平面，实际 ${meshes.length} 块`);
   for (const mesh of meshes) {
     assert.equal(mesh.visible, false, '默认不可见（GLB 导出自动排除）');
     assert.equal(mesh.renderOrder, 0);
@@ -142,7 +142,7 @@ test('every door opening on a declared wall is split out of the paint planes', (
     (byRegion.get(regionId) ?? byRegion.set(regionId, []).get(regionId)!).push(mesh);
   }
   const splitRegions = [...byRegion.entries()].filter(([, group]) => group.length > 1);
-  assert.equal(splitRegions.length, 7, '5 房范围内有 7 段声明被门洞穿过');
+  assert.equal(splitRegions.length, 8, '7 房范围内有 8 段声明被门洞穿过（主卫干区段被 d_mbath 穿过）');
   for (const [regionId, group] of splitRegions) {
     assert.ok(group.length >= 2 && group.length <= 3, `${regionId} 拆成 ${group.length} 块`);
   }
@@ -154,8 +154,8 @@ test('every door opening on a declared wall is split out of the paint planes', (
   const gross = (OV.elements ?? [])
     .filter((e: any) => e.type === 'paint_region')
     .reduce((sum: number, e: any) => sum + (e.along[1] - e.along[0]) * (e.height - (e.bottom ?? 0)), 0);
-  assert.ok(Math.abs(gross - 155.652) <= 0.02, `毛墙面 ${gross.toFixed(3)}`);
-  assert.ok(Math.abs(net - 142.422) <= 0.02, `净墙面 ${net.toFixed(3)}`);
+  assert.ok(Math.abs(gross - 174.720) <= 0.02, `毛墙面 ${gross.toFixed(3)}`);
+  assert.ok(Math.abs(net - 159.915) <= 0.02, `净墙面 ${net.toFixed(3)}`);
 });
 
 test('splitRectByGaps keeps the lintel above a door and both side strips', () => {
@@ -287,13 +287,26 @@ test('declared paint areas match an independent geometric recomputation, room by
     ids.add(region.wall);
     declaredIdsByRoom.set(region.room, ids);
   }
+  // 2026-10-07 客卫"带+漆"终裁：砖到顶（wall_region height ≥ 2.6）的 (wall, room) 跨面不漆，
+  // 独立复算按声明跨长剔除；0.30m 砖带/防溅带与漆的高度重叠是已知按桶吸收量，声明与复算
+  // 两侧同按整面计，互相抵消不进入本对账。
+  const tileToCeilSpan = new Map<string, number>();
+  for (const e of (OV.elements ?? [])) {
+    if (e.type !== 'wall_region' || (e.height ?? 0) < 2.6) continue;
+    const span = e.along[1] - e.along[0];
+    tileToCeilSpan.set(`${e.wall}|${e.room}`, (tileToCeilSpan.get(`${e.wall}|${e.room}`) ?? 0) + span);
+  }
   let totalWall = 0;
   let totalCeiling = 0;
   for (const room of MG.rooms) {
     if (!paintFinish.has(room.id)) continue;
     const expected = paintFaceCoverage(room.boundary);
-    const expectedLength = +expected.reduce((sum: number, hit) => sum + hit.lengthM, 0).toFixed(3);
-    const expectedWalls = new Set(expected.map((hit) => hit.wall));
+    const pruned = expected.map((hit) => {
+      const tiled = tileToCeilSpan.get(`${hit.wall}|${room.id}`) ?? 0;
+      return { wall: hit.wall, lengthM: Math.max(0, hit.lengthM - tiled) };
+    }).filter((hit) => hit.lengthM > 1e-9);
+    const expectedLength = +pruned.reduce((sum: number, hit) => sum + hit.lengthM, 0).toFixed(3);
+    const expectedWalls = new Set(pruned.map((hit) => hit.wall));
     const declared = declaredWallByRoom.get(room.id) ?? 0;
     assert.ok(
       Math.abs(declared - expectedLength * (room.height ?? 2.8)) <= 0.02,
@@ -304,8 +317,8 @@ test('declared paint areas match an independent geometric recomputation, room by
     totalWall += expectedLength * (room.height ?? 2.8);
     totalCeiling += roomFootprint(room);
   }
-  assert.ok(Math.abs(totalWall - 155.652) <= 0.02, `涂装墙面毛面积应约 155.65 ㎡，实算 ${totalWall.toFixed(2)}`);
-  assert.ok(Math.abs(totalCeiling - 103.224) <= 0.02, `顶面合计应约 103.22 ㎡，实算 ${totalCeiling.toFixed(2)}`);
+  assert.ok(Math.abs(totalWall - 174.720) <= 0.02, `涂装墙面毛面积应约 174.72 ㎡，实算 ${totalWall.toFixed(2)}`);
+  assert.ok(Math.abs(totalCeiling - 110.95) <= 0.02, `顶面合计应约 110.95 ㎡，实算 ${totalCeiling.toFixed(2)}`);
 });
 
 test('paint_region rooms equal the catalog rooms whose wall_finish is paint', () => {
@@ -317,8 +330,8 @@ test('paint_region rooms equal the catalog rooms whose wall_finish is paint', ()
   // 2026-10-08 业主裁定：入户花园开发商已做好墙面，本期不刷
   assert.equal(catalog.getRooms().find((r) => r.id === 'entry_garden')?.wall_finish, 'unpainted');
   assert.ok(!declared.has('entry_garden'), '入户花园不在涂装范围');
-  // 边缘房间：都不在涂装范围
-  for (const outOfScope of ['elevator_shaft', 'kitchen', 'master_bath', 'guest_bath', 'balcony']) {
+  // 边缘房间：都不在涂装范围（guest_bath 2026-10-07 终裁改"带+漆"后已入涂装范围）
+  for (const outOfScope of ['elevator_shaft', 'kitchen', 'balcony']) {
     assert.ok(!declared.has(outOfScope), `${outOfScope} 不在涂装范围`);
   }
   for (const notModeled of ['west_platform', 'south_balcony']) {
@@ -330,13 +343,13 @@ test('net area equals gross minus door and window gaps, and matches the budget l
   const layout = resolveLayout(MG);
   const catalog = ProjectCatalog.load('.');
   const scope = computePaintScopeForLayout(layout, catalog, loadPaintScopeInputs());
-  assert.equal(scope.doorGapAreaSqm, 13.23, '入户花园出范围后门洞占位 13.23㎡');
+  assert.equal(scope.doorGapAreaSqm, 14.805, '门洞占位 13.23 + 主卫门跨内 1.575㎡');
   assert.equal(scope.windowGapAreaSqm, 0, '窗洞当前为 0：窗全在 suppress 的玻璃幕墙上');
-  assert.ok(Math.abs(scope.grossWallAreaSqm - 155.652) <= 0.02, `毛墙面 ${scope.grossWallAreaSqm}`);
-  assert.ok(Math.abs(scope.netWallAreaSqm - 142.422) <= 0.02, `净墙面 ${scope.netWallAreaSqm}`);
+  assert.ok(Math.abs(scope.grossWallAreaSqm - 174.720) <= 0.02, `毛墙面 ${scope.grossWallAreaSqm}`);
+  assert.ok(Math.abs(scope.netWallAreaSqm - 159.915) <= 0.02, `净墙面 ${scope.netWallAreaSqm}`);
   assert.ok(Math.abs(scope.netWallAreaSqm - (scope.grossWallAreaSqm - scope.doorGapAreaSqm - scope.windowGapAreaSqm)) <= 0.01);
-  assert.ok(Math.abs(scope.ceilingAreaSqm - 103.224) <= 0.02, `顶面 ${scope.ceilingAreaSqm}`);
-  assert.ok(Math.abs(scope.netAreaSqm - 245.646) <= 0.02, `墙+顶净面积 ${scope.netAreaSqm}`);
+  assert.ok(Math.abs(scope.ceilingAreaSqm - 110.95) <= 0.02, `顶面 ${scope.ceilingAreaSqm}`);
+  assert.ok(Math.abs(scope.netAreaSqm - 270.865) <= 0.02, `墙+顶净面积 ${scope.netAreaSqm}`);
   assert.deepEqual(scope.warnings, []);
 
   // 预算侧读取的必须是同一个净面积
@@ -346,7 +359,7 @@ test('net area equals gross minus door and window gaps, and matches the budget l
   const painted = snapshot.lineItems.filter((li) => li.topic === 'paint').reduce((sum, li) => sum + li.quantity, 0);
   assert.ok(Math.abs(painted - scope.netAreaSqm) <= 0.01, `预算行项目合计 ${painted} 必须等于净面积 ${scope.netAreaSqm}`);
   const painting = snapshot.categories.find((category) => category.key === 'painting')!;
-  assert.ok(Math.abs(painting.actual - 7447.02) <= 1, `painting actual=${painting.actual}`);
+  assert.ok(Math.abs(painting.actual - 8212.10) <= 1, `painting actual=${painting.actual}`);
   assert.equal(painting.status, 'ok');
 });
 
@@ -359,8 +372,8 @@ test('paint cost comparison reconciles declared scope with materials/base/contro
   assert.equal(comparison.areaSource, config.area_source);
   assert.equal(comparison.roomFinishSource, config.room_finish_source);
   assert.match(comparison.areaSource, /paint_region/);
-  assert.equal(comparison.scope.paintRoomCount, 5);
-  assert.equal(comparison.scope.wallRegionEntryCount, 22);
+  assert.equal(comparison.scope.paintRoomCount, 7);
+  assert.equal(comparison.scope.wallRegionEntryCount, 28);
   assert.equal(comparison.material.id, 'latex_paint_01');
   assert.equal(comparison.material.pricePerUnit, 580);
   assert.equal(comparison.material.coveragePerUnit, 120);
@@ -382,27 +395,27 @@ test('paint cost comparison outputs every declared scenario with coat/deduction 
 
   // 默认口径：2 遍面漆 + 1 遍底漆，扣门窗洞
   const twoCoats = byId.get('topcoats2_deduct')!;
-  assert.equal(twoCoats.areaSqm, 245.646);
+  assert.equal(twoCoats.areaSqm, 270.865);
   assert.equal(twoCoats.topcoatBuckets, 5, '2 遍面漆需 5 桶');
   assert.equal(twoCoats.primerBuckets, 3, '1 遍底漆需 3 桶');
   assert.equal(twoCoats.materialYuan, 4640);
-  assert.equal(twoCoats.laborYuan, 6141.15);
-  assert.equal(twoCoats.subtotalYuan, 10781.15);
-  assert.equal(twoCoats.vsPlannedDeltaYuan, -718.85);
-  assert.equal(twoCoats.vsOwnerTargetDeltaYuan, -218.85);
+  assert.equal(twoCoats.laborYuan, 6771.63);
+  assert.equal(twoCoats.subtotalYuan, 11411.63);
+  assert.equal(twoCoats.vsPlannedDeltaYuan, -88.37);
+  assert.equal(twoCoats.vsOwnerTargetDeltaYuan, 411.63);
 
   // 对照：不扣洞 = 毛面积
   const twoCoatsGross = byId.get('topcoats2_no_deduct')!;
-  assert.equal(twoCoatsGross.areaSqm, 258.876);
-  assert.equal(twoCoatsGross.laborYuan, 6471.9);
-  assert.equal(twoCoatsGross.subtotalYuan, 11111.9);
+  assert.equal(twoCoatsGross.areaSqm, 285.67);
+  assert.equal(twoCoatsGross.laborYuan, 7141.75);
+  assert.equal(twoCoatsGross.subtotalYuan, 12361.75);
 
   const oneCoat = byId.get('topcoats1_deduct')!;
   assert.equal(oneCoat.topcoatBuckets, 3);
   assert.equal(oneCoat.materialYuan, 3480);
-  assert.equal(oneCoat.subtotalYuan, 9621.15);
+  assert.equal(oneCoat.subtotalYuan, 10251.63);
 
-  assert.deepEqual(comparison.reconciliation.modeledRangeCny, [9621.15, 11111.9]);
+  assert.deepEqual(comparison.reconciliation.modeledRangeCny, [10251.63, 12361.75]);
 });
 
 test('paint cost comparison turns an all-in quote into comparable totals', () => {
@@ -416,13 +429,13 @@ test('paint cost comparison turns an all-in quote into comparable totals', () =>
   assert.equal(quote.form, 'turnkey_labor_and_material');
   assert.equal(quote.rateYuanPerSqm, 55);
   // 计价面积取净计费面积（与默认情景同源：门窗洞已扣）
-  assert.equal(quote.areaSqm, 245.646);
-  assert.equal(quote.totalYuan, 13510.53);           // 55 × 245.646
-  assert.equal(quote.vsPlannedDeltaYuan, 2010.53);   // vs PKG-080 计划 11500
-  assert.equal(quote.vsOwnerTargetDeltaYuan, 2510.53); // vs 业主目标 11000
+  assert.equal(quote.areaSqm, 270.865);
+  assert.equal(quote.totalYuan, 14897.58);           // 55 × 270.865
+  assert.equal(quote.vsPlannedDeltaYuan, 3397.58);   // vs PKG-080 计划 11500
+  assert.equal(quote.vsOwnerTargetDeltaYuan, 3897.58); // vs 业主目标 11000
   // 与自下而上涂刷模型（2 遍 + 扣洞 = 10781.15）的差额 = 基层/腻子/样品保护的隐含额度
-  assert.equal(quote.vsBrushingModelDeltaYuan, 2729.38);
-  assert.equal(quote.impliedAllowanceYuanPerSqm, 11.11);
+  assert.equal(quote.vsBrushingModelDeltaYuan, 3485.95);
+  assert.equal(quote.impliedAllowanceYuanPerSqm, 12.87);
   // 覆盖范围/遍数未确认 → 状态显形，且 warning 必须提示
   assert.equal(quote.coverage, 'pending_confirmation');
   assert.equal(quote.coats, 'pending_confirmation');
@@ -444,7 +457,7 @@ test('paint cost comparison surfaces unconfirmed primer assumptions as warnings 
   const netWall = comparison.assumptions.find((a) => a.key === 'net_wall_area_sqm')!;
   assert.equal(netWall.status, 'from_overlay_declaration');
   const doorGap = comparison.assumptions.find((a) => a.key === 'door_gap_area_sqm')!;
-  assert.equal(doorGap.value, 13.23);
+  assert.equal(doorGap.value, 14.805);
   const windowGap = comparison.assumptions.find((a) => a.key === 'window_gap_area_sqm')!;
   assert.equal(windowGap.value, 0);
   const laborRate = comparison.assumptions.find((a) => a.key === 'labor_rate_yuan_per_sqm')!;

@@ -216,7 +216,9 @@ rooms:
   - name: "主卫"
     id: "master_bath"
     type: "private"
-    wall_finish: "tile"
+    # 2026-10-07 业主终裁 C16：与客卫 C14 同口径"带+漆"——淋浴南墙砖到顶 2.65（西/北墙玻璃幕墙不贴），
+    # 马桶区/干区 0.30m 砖带 + 上部乳胶漆；主卫有玻璃幕墙采光，漆面前提天然成立。
+    wall_finish: "paint"
     needs_waterproof: true
     width: 2.60
     length: 1.76
@@ -240,7 +242,9 @@ rooms:
   - name: "客卫"
     id: "guest_bath"
     type: "private"
-    wall_finish: "tile"
+    # 2026-10-07 业主终裁：客卫饰面改"带+漆"——湿区（淋浴）砖到顶 2.65、马桶区/开放洗漱区 0.30m 砖带 +
+    # 上部乳胶漆，台盆后 0.77→1.10 防溅带（见 overlay wall_region）；前置北墙外窗已定，暗卫漆面风险解除。
+    wall_finish: "paint"
     needs_waterproof: true
     width: 1.50
     length: 2.10
