@@ -39,7 +39,7 @@ allowed_scope:
     - docs/hvac-rfq-brief-20261003.md
     - docs/material_selection_log.md
     - docs/pending-site-data.md
-    - docs/decision_log.md
+    - docs/decisions/
     - docs/design-iterations/hvac-caliber-sync-20261005/
   changes:
     - x=3.70（业主已在 hvac-contract-mapping-20261005 选定）向渲染层/测试层机械落地
@@ -59,13 +59,14 @@ scope_addendum_note: >-
 forbidden:
   assumptions: [不得猜 42T2/56T2 外廓, 不得猜厂家配电与泵出口接法, 不得从型号自行推断机位]
   out_of_scope_changes:
-    - 不得删除 docs/decision_log.md 与 docs/design-iterations/* 的既有条目（历史决议只登记不改写）
+    - 不得删除 docs/decisions/ 与 docs/design-iterations/* 的既有条目（历史决议只登记不改写）；
+      位置迁移（如 2026-10-09 DEC-2026-10-09-S01 的主题拆分）须另登记 DEC，且不得改写条目正文
     - 不得删除 config/procurement.yaml 外键引用的 materials 条目（hvac_01 / hvac_02 只能改内容）
     - 除已选主卧内机中心 x=3.70 外移动机位或电气点位
     - 未确认前冻结冷媒或冷凝水施工路线
 open_questions:
   - {id: x370-coupling, question: 'x=3.70 是否需同步渲染层与测试层', status: resolved, selected: '同步（机械落地，不引入新事实）', handling: '冷凝水横管由 0.30m 延长到 0.40m 以保持接到 x=4.10 墙完成面'}
-  - {id: old-caliber-docs, question: '旧口径文档段落如何处理', status: resolved, selected: '删除无引用、无契约依赖者；被不可改写记录引用的只删旧口径陈述', handling: 'hvac-deepening-20260907.md 因 decision_log 引用只删状态行旧口径；architecture 对比表保留'}
+  - {id: old-caliber-docs, question: '旧口径文档段落如何处理', status: resolved, selected: '删除无引用、无契约依赖者；被不可改写记录引用的只删旧口径陈述', handling: 'hvac-deepening-20260907.md 因决策日志引用只删状态行旧口径；architecture 对比表保留'}
   - {id: secondary-bedroom-label-count, question: '合同附图"次卧"标签数与转录/空间模型冲突', status: site_pending, handling: '新增 docs/pending-site-data.md #47，量房时逐房核对'}
 acceptance:
   validation_commands: [npm run verify:all, npm run test:server, npm run test:app, npm run typecheck]

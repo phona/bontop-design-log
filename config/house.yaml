@@ -154,7 +154,7 @@ rooms:
     area: 12.75
     status: "design"
     orientation: "南"
-    notes: "左侧中间房间（2026-10-05 功能互换：原父母房改书房）。镜像 model-geometry（设计图标注面积待量房终核；模型多边形毛口径 12.75㎡；点石设计图该房净标注 8.39㎡ 属净口径、不同量纲；8.35㎡ 系东南客房 bedroom_se 标注，原记录误引于此已删，依据 docs/decision_log.md DEC-2026-08-27-047）。v0 候选未冻结：书桌椅原位；北墙边吊下为 1.70m 季节后台柜（由客房平移）；南墙书架/东墙柜体/起夜无关的其他储物扩容与书房电脑专用回路改道均待 Q3/Q4 后补，见 docs/design-iterations/parent-room-study-swap-20261005/"
+    notes: "左侧中间房间（2026-10-05 功能互换：原父母房改书房）。镜像 model-geometry（设计图标注面积待量房终核；模型多边形毛口径 12.75㎡；点石设计图该房净标注 8.39㎡ 属净口径、不同量纲；8.35㎡ 系东南客房 bedroom_se 标注，原记录误引于此已删，依据 docs/decisions/02-layout-public.md DEC-2026-08-27-047）。v0 候选未冻结：书桌椅原位；北墙边吊下为 1.70m 季节后台柜（由客房平移）；南墙书架/东墙柜体/起夜无关的其他储物扩容与书房电脑专用回路改道均待 Q3/Q4 后补，见 docs/design-iterations/parent-room-study-swap-20261005/"
     windows:
       - width: 1.50
         height: 1.40

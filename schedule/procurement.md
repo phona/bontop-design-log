@@ -460,7 +460,7 @@
 - [`config/hvac.yaml`](../config/hvac.yaml) 与 [`docs/hvac-deepening-20260907.md`](../docs/hvac-deepening-20260907.md)：含成交前历史方案；当前成交映射为客厅 71T2、餐厅 42T2、主卧 56T2、书房、儿童房、客房各 28T2，25.3kW/6 台，外机 20kW、连接率约 1.27。现场尺寸、厂家配置/负荷/配电资料和施工条件仍待核。
 - [`contracts/`](../contracts/)：报价单、拍照与合同扫描件等凭据归档目录，按轮次分子目录存放。
 - [`config/house.yaml`](../config/house.yaml)、[`config/materials.yaml`](../config/materials.yaml)、[`config/electrical.yaml`](../config/electrical.yaml)：空间、材料候选、设备接口和电气点位。
-- [`docs/decision_log.md`](../docs/decision_log.md)：主卫/客卫、餐厨四叶门、地砖分区、照明、一期范围和 2026-10-03 空调定标的业主决策记录。
+- [`docs/decisions/README.md`](../docs/decisions/README.md)：业主决策记录总入口（2026-10-09 起按主题拆成 14 个文件：控制预算 / 布局 / 主卧 / 卫浴 / 空调 / 电气 / 照明 / 吊顶造型 / 吊顶算量 / 涂漆 / 贴砖饰面 / 给排水 / MEP / 风格家具），覆盖主卫/客卫、餐厨四叶门、地砖分区、照明、一期范围和 2026-10-03 空调定标。
 
 **2026-10-07 卫浴第二次收口（DEC-2026-10-07-R02）**：PKG-100 `estimated_need_cny` 16,998 → **14,798**（缺口 8,998 → **6,798**）。随后 2026-10-07 R11 贴砖收口使 PKG-060 当前缺口为 ¥14,296（C17 防水台 +71、C18 废止杂砖 +855）；当前控制视图已知缺口合计 **¥35,590**，以 `schedule/phase-1/budget.md` 为准。四项裁定——
 ① **主卫浴室柜 3,000 → 1,500（业主先入账，柜型/台盆形式/龙头形式未定，新增阻塞 `BLK-MASTER-VANITY-SKU`）**，客卫 J6 柜 2,000 不变。三条路径：**A** 买柜体+岩板台面、台上盆与壁挂龙头按 DEC-2026-10-03-R1 单配 → `faucet_mbath_vanity` 盆心 x=0.575 / `drain_mbath_vanity` 墙排中心 / `water-master-bath` 穿墙点 x=0.575 **全不动**，给排水参数与柜体 SKU 解耦，约 1,800–2,400（推荐）；**B** 厂家一体盆成品柜 1,500 全包 → 台上盆意图放弃、上述三点随柜体重定、`water-master-bath` 退回 pending 重画；**C** 维持 R12 设计 3,000。厂家电商"岩板+实木+镜+五金"思路需按 `shopping-research` 补取证（MOQ/起批/运费/是否含安装/南宁配送），未取证前不写 locked。

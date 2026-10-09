@@ -46,7 +46,7 @@ const SOLID_CEILING_TYPES = new Set(['drop', 'integrated', 'aluminum_buckle']);
  * (D) DEC-2026-10-06-R5 明文授权的口径修正：`ceiling_clearance_unverified`
  * （与契约 `c.mep_layer_below_drop_bottom` 同源）的比较范围收窄为**吊顶承载层**。
  *
- * 授权来源：docs/decision_log.md「DEC-2026-10-06-R5 #41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m」
+ * 授权来源：docs/decisions/13-mep-integration.md「DEC-2026-10-06-R5 #41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m」
  * ——「配套口径修正：c.mep_layer_below_drop_bottom 的检查范围收窄为吊顶承载层（强电/弱电/冷媒/冷凝水/送风/回风）；
  *   走地给排水分层（water_supply 0.18 / drainage 0.10）不参与"低于吊顶完成面"比较——地面管与吊顶完成面无可比性，
  *   原口径把 13 处地面管计入冲突、稀释真信号。该口径变化按契约修正通道登记（附本 DEC 全引 + 4 文件同步），不是消音。」

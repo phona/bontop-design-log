@@ -1103,7 +1103,7 @@ materials:
     pros: ["定制模块化", "一体木饰面"]
     cons: ["与 d_mb 开启门扇（x≥3.30）干涉约250mm，已由 650 收窄版替代", "价格与真实完成面外廓待核"]
     price_source: "pending"
-    notes: "R7 首版 950W×580D×2450H：东缘 x=3.55 与 d_mb 开启门扇带 x[3.30,4.20] z[4.63,4.67] 干涉；2026-09-06 由 wardrobe_north_650_custom_01 替代，仅历史保留。**2026-10-04 历史版改后缀 id**：原 id 与 R8 active 版 `wardrobe_north_950_custom_01`（950×580×2800mm）完全同号，按 id 索引时本条会覆盖 active 版（materials.yaml 71 条 / 70 个唯一 id 就是这么来的），故历史版改用独立 id 以免互相覆盖；引用本条历史方案的文档见 docs/dressing-map.md 与 docs/decision_log.md DEC-2026-09-06 相关条目"
+    notes: "R7 首版 950W×580D×2450H：东缘 x=3.55 与 d_mb 开启门扇带 x[3.30,4.20] z[4.63,4.67] 干涉；2026-09-06 由 wardrobe_north_650_custom_01 替代，仅历史保留。**2026-10-04 历史版改后缀 id**：原 id 与 R8 active 版 `wardrobe_north_950_custom_01`（950×580×2800mm）完全同号，按 id 索引时本条会覆盖 active 版（materials.yaml 71 条 / 70 个唯一 id 就是这么来的），故历史版改用独立 id 以免互相覆盖；引用本条历史方案的文档见 docs/dressing-map.md 与 docs/decisions/03-master-bedroom.md DEC-2026-09-06 相关条目"
     appearance: { type: "wood", color: "medium_light_walnut_warm_smoked_oak" }
 
   - id: "wardrobe_north_600_finished_01"

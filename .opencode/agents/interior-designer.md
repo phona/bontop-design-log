@@ -71,7 +71,7 @@ get_project_summary · get_data_confidence · get_budget · explain_budget_value
 
 ## 关键配置（可直接读）
 
-`config/house.yaml`（户型）· `config/layout/model-geometry.yaml`（几何，vertices 架构）· `config/layout/overlay.yaml`（玻璃幕/飘窗/窗帘）· `config/materials.yaml`（材料）· `config/budget/base.json`（四池预算 + ceiling）· `config/electrical.yaml` / `plumbing.yaml` / `ceiling.yaml`（MEP）· `config/acceptance.yaml`（验收）· `docs/decision_log.md`（决策历史）
+`config/house.yaml`（户型）· `config/layout/model-geometry.yaml`（几何，vertices 架构）· `config/layout/overlay.yaml`（玻璃幕/飘窗/窗帘）· `config/materials.yaml`（材料）· `config/budget/base.json`（四池预算 + ceiling）· `config/electrical.yaml` / `plumbing.yaml` / `ceiling.yaml`（MEP）· `config/acceptance.yaml`（验收）· `docs/decisions/`（决策历史：README 是入口，14 个主题文件按域归档）
 
 ## 红线
 

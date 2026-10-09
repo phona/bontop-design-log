@@ -329,6 +329,17 @@ function pathMatches(spec: string, file: string): boolean {
   return spec.endsWith('/') ? file.startsWith(spec) : isPath(spec, file);
 }
 
+/** 契约字段既接受单文件路径，也接受路径数组。
+ *  为什么需要：DEC 日志 2026-10-09 按主题拆成 `docs/decisions/` 14 个文件后，
+ *  `c.dec_unique.source`（查重）与 `c.dec_ref_resolvable.target`（外键解析）必须覆盖全部文件，
+ *  否则跨文件重号查不到、DEC 短引反查会集体 dangling。
+ *  向后兼容：字符串形式照旧；不存在/不可读的文件跳过（与单文件语义一致）。 */
+function pathList(v: unknown): string[] {
+  if (Array.isArray(v)) return stringList(v);
+  const one = str(v);
+  return one ? [one] : [];
+}
+
 function stringList(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
   return v.filter((x): x is string => typeof x === 'string');
@@ -571,40 +582,48 @@ function contractPaths(ws: FactsWorkspace, spec: unknown, datasetsKey: string, e
     prefixes.some((p) => pathMatches(p, file)) && !excludes.some((p) => pathMatches(p, file)));
 }
 
-/** T3.1 unique：pattern 首捕为 id；allow_suffix 命中的视为补充条目，不与正牌判重。 */
+/** T3.1 unique：pattern 首捕为 id；allow_suffix 命中的视为补充条目，不与正牌判重。
+ *  `source` 可以是单文件或文件数组（DEC 日志拆分后跨文件查重）。 */
 function runUnique(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
-  const source = str(contract.source);
-  if (!source) return;
-  const text = ws.read(source);
-  if (text === null) return;
+  const sources = pathList(contract.source);
+  if (!sources.length) return;
   const suffixes = stringList(contract.allow_suffix);
-  const norm = (id: string, at: number): { base: string; supplement: boolean } => {
+  // supplement 判定依赖所在文件的正文（allow_suffix 的 CJK 后缀在标题里、不在捕获组里），
+  // 所以每个文件的正文要各自缓存，不能只用第一个文件的 text。
+  const texts = new Map<string, string>();
+  for (const file of sources) {
+    const text = ws.read(file);
+    if (text !== null) texts.set(file, text);
+  }
+  const norm = (id: string, at: number, file: string): { base: string; supplement: boolean } => {
     for (const suffix of suffixes) {
       if (id.endsWith(suffix)) return { base: id.slice(0, -suffix.length), supplement: true };
     }
     // 捕获组不含 CJK 后缀（如 `-补`），但标题正文紧跟其后：看匹配之后是否接着后缀。
-    const tail = text.slice(at + id.length, at + id.length + 8);
+    const tail = (texts.get(file) ?? '').slice(at + id.length, at + id.length + 8);
     if (suffixes.some((suffix) => tail.startsWith(suffix))) return { base: id, supplement: true };
     return { base: id, supplement: false };
   };
-  const groups = new Map<string, Array<{ id: string; at: number }>>();
-  for (const m of grep(ws, source, str(contract.pattern))) {
-    const id = matchText(m, 1);
-    const at = m.index + Math.max(0, m[0].indexOf(id)); // m.index 是整段匹配起点，id 可能不从 0 开始
-    const { base } = norm(id, at);
-    const bucket = groups.get(base) ?? [];
-    bucket.push({ id, at });
-    groups.set(base, bucket);
+  const groups = new Map<string, Array<{ id: string; at: number; file: string }>>();
+  for (const file of texts.keys()) {
+    for (const m of grep(ws, file, str(contract.pattern))) {
+      const id = matchText(m, 1);
+      const at = m.index + Math.max(0, m[0].indexOf(id)); // m.index 是整段匹配起点，id 可能不从 0 开始
+      const { base } = norm(id, at, file);
+      const bucket = groups.get(base) ?? [];
+      bucket.push({ id, at, file });
+      groups.set(base, bucket);
+    }
   }
   for (const [base, entries] of groups) {
-    const plain = entries.filter((e) => !norm(e.id, e.at).supplement);
+    const plain = entries.filter((e) => !norm(e.id, e.at, e.file).supplement);
     if (plain.length > 1) {
       for (const dup of plain.slice(1)) {
         const item = issue(
           contractLevel(contract),
           'duplicate_id',
-          `${contract.id}：${source} 中 id ${base} 重复 ${plain.length} 次（正牌 ${plain.length} 次），重号位置 ${loc(lines, source, dup.at)}`,
-          loc(lines, source, dup.at),
+          `${contract.id}：${dup.file} 中 id ${base} 重复 ${plain.length} 次（正牌 ${plain.length} 次），重号位置 ${loc(lines, dup.file, dup.at)}`,
+          loc(lines, dup.file, dup.at),
         );
         add(result, item);
         tally(result, item.code);
@@ -626,9 +645,11 @@ function runUnique(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex
  * —— 这类错配只有比对标题主题才能发现，报 `reference_subject_mismatch`。
  */
 function runFk(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
-  const target = str(contract.target);
+  const targets = pathList(contract.target);
   const fullText = new Map<string, string>();
-  for (const m of grep(ws, target, str(contract.target_pattern))) fullText.set(matchText(m, 1), m[0]);
+  for (const file of targets) {
+    for (const m of grep(ws, file, str(contract.target_pattern))) fullText.set(matchText(m, 1), m[0]);
+  }
   const bySerial = new Map<string, string[]>();
   for (const id of fullText.keys()) {
     const s = id.match(/-(\d{1,3})$/);
@@ -681,7 +702,7 @@ function runFk(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, co
     tally(result, item.code);
   };
   for (const [id, sites] of [...dangling.entries()].sort((a, b) => a[0].localeCompare(b[0], 'en'))) {
-    emit('dangling_reference', id, sites, `在 ${target} 中无对应条目`);
+    emit('dangling_reference', id, sites, `在 ${targets.join(' / ')} 中无对应条目`);
   }
   for (const [id, sites] of [...ambiguous.entries()].sort((a, b) => a[0].localeCompare(b[0], 'en'))) {
     const s = serialOf(id);

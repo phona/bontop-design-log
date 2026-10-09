@@ -220,6 +220,63 @@ test('unique：allow_suffix 的补充条目不与正牌判重，两个无后缀�
   assert.equal(dup.errors[0].location, 'docs/decision_log.md:4');
 });
 
+// 背景：DEC 日志 2026-10-09 按主题拆成 docs/decisions/ 14 个文件（DEC-2026-10-09-S01），
+// 查重与外键解析必须跨文件仍然有效，否则拆分会静默削弱门禁。
+test('unique：source 为文件数组时跨文件查重，位置指向重号所在文件', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{
+      id: 'c.dec_unique',
+      kind: 'unique',
+      source: ['docs/decisions/a.md', 'docs/decisions/b.md'],
+      pattern: '^#+\\s*(DEC-\\d{4}-\\d{2}-\\d{2}-[A-Za-z0-9.]+)',
+      allow_suffix: ['-补', '-补2', '.1', '.2', '.3'],
+    }],
+  };
+  const clean = lintFacts(registry, workspaceOf({
+    'docs/decisions/a.md': '# DEC-2026-01-01-001 甲\n# DEC-2026-01-01-002 乙\n',
+    'docs/decisions/b.md': '# DEC-2026-01-02-001 丙\n# DEC-2026-01-01-002-补 乙的补充\n',
+  }));
+  assert.equal(clean.errors.length, 0);
+
+  const dup = lintFacts(registry, workspaceOf({
+    'docs/decisions/a.md': '# DEC-2026-01-01-001 甲\n',
+    'docs/decisions/b.md': '# DEC-2026-01-02-003 丙\n# DEC-2026-01-01-001 甲重号\n',
+  }));
+  assert.equal(dup.errors.length, 1);
+  assert.equal(dup.errors[0].code, 'duplicate_id');
+  assert.equal(dup.errors[0].location, 'docs/decisions/b.md:2');
+});
+
+test('fk：target 为文件数组时引用可在任一路径解析，全部缺失才 dangling', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{
+      id: 'c.dec_ref_resolvable',
+      kind: 'fk',
+      ref_pattern: '(DEC-(?:\\d{4}-\\d{2}-\\d{2}-)?(?:\\d{3}|R\\d{1,3}))\\b',
+      ref_scope: ['config/'],
+      target: ['docs/decisions/a.md', 'docs/decisions/b.md'],
+      target_pattern: '^#+\\s*(DEC-\\d{4}-\\d{2}-\\d{2}-(?:\\d{3}|R\\d{1,3}))\\b.*',
+    }],
+  };
+  const files = { 'scan.files': ['config/x.yaml'] };
+  const resolved = lintFacts(registry, workspaceOf({
+    'docs/decisions/a.md': '### DEC-2026-01-01-001 甲\n',
+    'docs/decisions/b.md': '### DEC-2026-01-02-R2 丙\n',
+    'config/x.yaml': 'note: 依据 DEC-2026-01-01-001 与 DEC-2026-01-02-R2\n',
+  }, files));
+  assert.equal(resolved.errors.length, 0);
+
+  const dangling = lintFacts(registry, workspaceOf({
+    'docs/decisions/a.md': '### DEC-2026-01-01-001 甲\n',
+    'docs/decisions/b.md': '### DEC-2026-01-02-R2 丙\n',
+    'config/x.yaml': 'note: 依据 DEC-2026-03-03-009\n',
+  }, files));
+  assert.equal(dangling.errors.length, 1);
+  assert.equal(dangling.errors[0].code, 'dangling_reference');
+});
+
 test('sum：逐项 allocation 求和与声明的 total 不等时报错，相等则通过', () => {
   const registry: FactsRegistry = {
     ...emptyRegistry,

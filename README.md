@@ -52,7 +52,10 @@ interior-design-project/
 │   ├── designer_brief.md
 │   ├── acceptance_checklist.md
 │   ├── material_selection_log.md
-│   └── decision_log.md
+│   └── decisions/             # 决策日志（按主题拆分为 14 个文件）
+│       ├── README.md          #   索引 + 模板 + 待决策事项
+│       ├── 01-control-budget.md
+│       └── …
 ├── audit/                     # 审计日志
 │   ├── audit.log
 │   └── git_tags.md
@@ -93,8 +96,11 @@ cat config/budget/base.json
 # 查看审计日志
 cat audit/audit.log
 
-# 查看待决策事项
-cat docs/decision_log.md
+# 查看待决策事项（决策日志入口：索引 + 模板 + 待决）
+cat docs/decisions/README.md
+
+# 查某条决策（反查编号）
+grep -rn "DEC-2026-10-08-R01" docs/decisions/
 ```
 
 ### 日照模拟

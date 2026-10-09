@@ -44,10 +44,12 @@
 # T3 `contracts`（契约层，8 种内置 kind，均声明式、无表达式/eval）
 #    unique    对 source 全文 grep，pattern 首捕为 id；重复即 error。
 #              `allow_suffix` 列出的后缀视为补充条目（如 `-补`/`.1`），不与正牌判重。
-#              最小示例：{ id: c.x, kind: unique, source: docs/decision_log.md,
+#              `source` 接受单文件路径或路径数组（DEC 日志 2026-10-09 拆分后跨文件查重）。
+#              最小示例：{ id: c.x, kind: unique, source: docs/decisions/01-control-budget.md,
 #                          pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-[A-Za-z0-9.]+)' }
 #    fk        ref_scope 各文件里 grep ref_pattern 拿引用 id 集合；target 文件里 grep
 #              target_pattern 拿目标 id 集合；引用∖目标 = dangling。
+#              `target` 同样接受路径数组（取各文件 id 集合的并集）。
 #              最小示例：{ id: c.y, kind: fk, ref_scope: [config/],
 #                          ref_pattern: '- id:\s*"?([a-z0-9_]+)"?',
 #                          target: config/materials.yaml,
@@ -132,9 +134,16 @@ scan:
   exempt_occurrences:
 
     # --- 时间序档案：全仓 DEC 历史，数值都是「当时快照」---
+    # 2026-10-09 DEC-2026-10-09-S01：单文件 docs/decision_log.md 按主题拆成 docs/decisions/
+    # 14 个文件 + README，豁免跟着改成目录前缀（引擎 pathMatches 支持 `xxx/` 前缀）。
+    # 旧路径一并保留：拆分说明与历史条目正文里仍写字面 docs/decision_log.md。
+    - path: docs/decisions/
+      pattern: '.'
+      reason: 时间序决策档案：金额/回路数/功率/面积均为当轮快照，权威值以当轮 DEC 引用的 config 字段为准；本目录只做追溯，不做对账
+
     - path: docs/decision_log.md
       pattern: '.'
-      reason: 时间序决策档案：金额/回路数/功率/面积均为当轮快照，权威值以当轮 DEC 引用的 config 字段为准；本文件只做追溯，不做对账
+      reason: 拆分前的单一决策日志（DEC-2026-10-09-S01 起内容迁至 docs/decisions/）；登记此行是为兜住拆分说明与历史正文里的字面旧路径
 
     - path: docs/design-iterations/
       pattern: '.'
@@ -705,7 +714,7 @@ facts:
       # house.yaml 的 rooms.study.area，镜像又回到同一文件，属**自指检查**，改什么都能过。
       # 且原 extract 拿「点石设计图净标注 8.35㎡」与「多边形毛口径 12.75㎡」比大小，
       # 两个量纲永远不可能相等，是注定失败的检查（8.35㎡ 实为东南客房 bedroom_se 标注，
-      # 见 docs/decision_log.md DEC-2026-08-27-047，原记录误引，已删）。
+      # 见 docs/decisions/02-layout-public.md DEC-2026-08-27-047，原记录误引，已删）。
       # 改为**跨文件三方对账**：study 房面积是冷负荷的分母（2.8kW ÷ 12.75㎡ ≈ 220W/㎡），
       # house.yaml / hvac.yaml / RFQ 三处必须同值，任一处漂移都会让冷负荷结论失据。
       - path: config/hvac.yaml
@@ -1055,16 +1064,38 @@ facts:
 
 # ─── T3 契约层 ───────────────────────────────────────────────────────────────
 
+# DEC 日志 2026-10-09 按主题拆分（DEC-2026-10-09-S01）后的 14 个主题文件。
+# 三条契约（查重 + 两道外键）共用同一份清单，用 YAML 锚点避免三处手抄漂移；
+# README 不在此列——它只有索引表，没有 `### DEC-` 条目正文。
+x_decision_files: &decision_files
+  - docs/decisions/01-control-budget.md
+  - docs/decisions/02-layout-public.md
+  - docs/decisions/03-master-bedroom.md
+  - docs/decisions/04-bathrooms.md
+  - docs/decisions/05-hvac.md
+  - docs/decisions/06-electrical.md
+  - docs/decisions/07-lighting.md
+  - docs/decisions/08-ceiling-form.md
+  - docs/decisions/09-ceiling-takeoff.md
+  - docs/decisions/10-paint.md
+  - docs/decisions/11-tile-finish.md
+  - docs/decisions/12-plumbing.md
+  - docs/decisions/13-mep-integration.md
+  - docs/decisions/14-style-furniture.md
+
 contracts:
 
   - id: c.dec_unique
     kind: unique
-    source: docs/decision_log.md
+    # 2026-10-09 DEC-2026-10-09-S01：DEC 日志拆成 docs/decisions/ 14 个主题文件，
+    # source 改文件数组（引擎 runUnique 支持 string|string[]），跨文件查重不削弱。
+    source: *decision_files
     pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-[A-Za-z0-9.]+)'
     allow_suffix: ['-补', '-补2', '-补3', '.1', '.2', '.3']
     # 注意：`-补` 等含 CJK 的后缀不在 pattern 的字符类里，引擎会再看匹配之后的正文；
     # 因此 `DEC-...-051-补` 与 `DEC-...-051` 不被判为重号，但两个**无后缀**的同号
     # 标题会立刻报 duplicate_id。
+    # README 不入 source：它只有索引表，没有 `### DEC-` 条目正文。
 
   - id: c.dec_ref_resolvable
     kind: fk
@@ -1080,7 +1111,7 @@ contracts:
     # 宁可报 dangling 也不猜。
     ref_pattern: '(DEC-(?:\d{4}-\d{2}-\d{2}-)?(?:\d{3}|R\d{1,3}))\b'
     ref_scope: [config/, shared/, docs/, server/]
-    target: docs/decision_log.md
+    target: *decision_files
     target_pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3}))\b.*'
     # 已知错配：DEC-045 序号反查到 DEC-2026-08-26-045「主卧空调檐口」，
     # 但全仓把 DEC-045 当「主卫东墙底柜+下板+主板+PVC 盒四件同轴」引用，该决策从未入账。
@@ -1097,7 +1128,7 @@ contracts:
   #   ① 补录正式条目并重编号（项目已有 DEC-052/053 改号先例）；
   #   ② 把 66 处引用改指向正确编号。
   # 待谁裁决：业主 + 设计侧（选①还是②，以及补录条目的正文）。
-  # 跟踪入口：docs/decision_log.md（新增/改编号条目）；本契约即显式待决登记。
+  # 跟踪入口：docs/decisions/README.md（新增/改编号条目）；本契约即显式待决登记。
   # 实现方式：从 c.dec_ref_resolvable 摘出该条 assertion，单独置为 warning 级契约，
   # 其余外键检查（dangling_reference 仍为 error）完全不受影响。
   - id: c.dec045_subject_pending_adjudication
@@ -1105,12 +1136,12 @@ contracts:
     severity: warning
     ref_pattern: '(DEC-045)\b'
     ref_scope: [config/, shared/, docs/, server/]
-    target: docs/decision_log.md
+    target: *decision_files
     target_pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-\d{3})\b.*'
     subject_assertions:
       - ref: 'DEC-045'
         expect: '主卫|悬浮板|vanity|PVC|四件|台盆'
-        note: 'DEC-045 序号反查到 DEC-2026-08-26-045（主卧空调檐口），但全仓 66 处引用意指主卫四件套；需裁决：补录正式条目并重编号，或改引用指向正确编号；跟踪：docs/decision_log.md'
+        note: 'DEC-045 序号反查到 DEC-2026-08-26-045（主卧空调檐口），但全仓 66 处引用意指主卫四件套；需裁决：补录正式条目并重编号，或改引用指向正确编号；跟踪：docs/decisions/README.md'
 
   - id: c.procurement_subset_of_materials
     kind: fk
@@ -1171,7 +1202,7 @@ contracts:
     kind: fk
     ref_pattern: '(JSQ[0-9A-Za-z\-]+)'
     ref_scope: [schedule/phase-1/checklist.md, docs/]
-    exclude: [docs/decision_log.md, docs/design-iterations/]
+    exclude: [docs/decisions/, docs/decision_log.md, docs/design-iterations/]
     target: schedule/phase-1/control.yaml
     target_pattern: '(JSQ[0-9A-Za-z\-]+)'
 
@@ -1228,11 +1259,11 @@ contracts:
 
   # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写
   # `config/xxx.yaml`、`docs/xxx.md`、`tests/server/xxx.test.ts`，文件被改名、搬归档、
-  # 或从没存在过，链接静默失效。时间序档案（decision_log / design-iterations）按既有约定豁免。
+  # 或从没存在过，链接静默失效。时间序档案（docs/decisions / design-iterations）按既有约定豁免。
   - id: c.prose_paths_exist
     kind: pointer
     ref_scope: [README.md, docs/, schedule/, config/, shared/, server/]
-    exclude: [docs/decision_log.md, docs/design-iterations/, docs/superpowers/, tmp/, node_modules/, config/facts.yaml]
+    exclude: [docs/decision_log.md, docs/decisions/, docs/design-iterations/, docs/superpowers/, tmp/, node_modules/, config/facts.yaml]
     path_pattern: '((?:config|docs|schedule|shared|server|scripts|app|tests|assets|cad|survey|renders)/[A-Za-z0-9_\-./]+\.(?:yaml|json|md|ts|tsx|py))'
 
   # ④ 规则引用的家具 type 必须存在于 house.yaml furnishings。固化上一轮手修成果
@@ -1441,7 +1472,7 @@ contracts:
     check_scope:
       compared_layers: [strong_power, weak_power, refrigerant, condensate, supply_air, return_air]
       exempt_layers: [water_supply, drainage]
-      exemption_basis: 'DEC-2026-10-06-R5（docs/decision_log.md「#41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m」配套口径修正）'
+      exemption_basis: 'DEC-2026-10-06-R5（docs/decisions/13-mep-integration.md「#41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m」配套口径修正）'
       exemption_count_in_current_engine: 20
       engine_note: '双引擎均已收窄：shared/mep-hvac-lint.ts（CEILING_CARRIED_LAYERS）与 shared/facts-lint.ts（CEILING_CARRIED_LAYERS_FACTS）实算一致 = 24；registered_conflicts 登记 24'
     # ⑦ 修正通道（repair_channel）：本契约抓的既有冲突只能由**设计侧裁定**消解
@@ -1530,6 +1561,10 @@ coverage:
   - { file: config/facts.yaml, field: "scan", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
   - { file: config/facts.yaml, field: "facts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
   - { file: config/facts.yaml, field: "contracts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
+  # x_decision_files 是 2026-10-09 DEC-2026-10-09-S01 引入的 YAML 锚点：DEC 日志拆成
+  # docs/decisions/ 14 个文件后，三条契约（查重 + 两道外键）共用同一份文件清单，避免手抄漂移。
+  # 纯声明式复用，没有代码 reader。
+  - { file: config/facts.yaml, field: "x_decision_files", readers: [] }
   - { file: config/facts.yaml, field: "coverage", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
   - { file: config/house.yaml, field: "project", readers: ["shared/render/CurtainGeometry.ts", "shared/render/FixtureFactory.ts"] }
   - { file: config/house.yaml, field: "rooms", readers: ["shared/environment-schema.ts", "shared/glazing.ts"] }
@@ -1588,6 +1623,9 @@ coverage:
   - { file: config/verify-rules.yaml, field: "proximity", readers: ["scripts/verify/rules/verify-rules.ts"] }
   - { file: config/verify-rules.yaml, field: "clearance", readers: ["shared/types.ts", "scripts/verify/rules/verify-rules.ts"] }
   - { file: config/verify-rules.yaml, field: "name_consistency", readers: ["scripts/verify/rules/verify-rules.ts"] }
+  # data/decision-log.json 是空数组占位（历史 MCP record_decision 出口；现行决策只登记在
+  # docs/decisions/），数组根文件用伪字段 `*` 登记一次；无声称读者。
+  - { file: data/decision-log.json, field: "*", readers: [] }
   - { file: data/current-scheme.json, field: "updatedAt", readers: ["shared/curtain-projection.ts", "shared/project-render-facts-schema.ts"] }
   - { file: data/current-scheme.json, field: "selections", readers: ["shared/project-render-facts-projection.ts", "shared/types.ts"] }
   - { file: data/presentation-state.json, field: "default", readers: ["shared/curtain-projection.ts", "shared/mep-hvac-coordination-schema.ts"] }
@@ -1639,11 +1677,12 @@ coverage:
   - { file: config/mep-labor.yaml, field: "scopes", readers: [] }
   # ─── 水电主材选型基线（2026-10-07 归档，DEC-2026-10-07-M01）───
   # 说明：本文件是「选型方向」层，单价在 config/mep-quotes.yaml、米数由 takeoff 派生，
-  # 故多数字段的 reader 是引用它字段名的文档（docs/decision_log.md / schedule/procurement.md）。
+  # 故多数字段的 reader 是引用它字段名的文档。2026-10-09 DEC-2026-10-09-S01 起
+  # DEC-2026-10-07-M01 住在 docs/decisions/13-mep-integration.md（原 docs/decision_log.md）。
   - { file: config/mep-material-baseline.yaml, field: "version", readers: [] }
-  - { file: config/mep-material-baseline.yaml, field: "specs", readers: ["docs/decision_log.md"] }
-  - { file: config/mep-material-baseline.yaml, field: "brand_tiers", readers: ["docs/decision_log.md"] }
-  - { file: config/mep-material-baseline.yaml, field: "locked_choices", readers: ["docs/decision_log.md", "schedule/procurement.md"] }
-  - { file: config/mep-material-baseline.yaml, field: "cost_target", readers: ["docs/decision_log.md"] }
-  - { file: config/mep-material-baseline.yaml, field: "reversal_conditions", readers: ["docs/decision_log.md", "schedule/procurement.md"] }
+  - { file: config/mep-material-baseline.yaml, field: "specs", readers: ["docs/decisions/13-mep-integration.md"] }
+  - { file: config/mep-material-baseline.yaml, field: "brand_tiers", readers: ["docs/decisions/13-mep-integration.md"] }
+  - { file: config/mep-material-baseline.yaml, field: "locked_choices", readers: ["docs/decisions/13-mep-integration.md", "schedule/procurement.md"] }
+  - { file: config/mep-material-baseline.yaml, field: "cost_target", readers: ["docs/decisions/13-mep-integration.md"] }
+  - { file: config/mep-material-baseline.yaml, field: "reversal_conditions", readers: ["docs/decisions/13-mep-integration.md", "schedule/procurement.md"] }
   - { file: config/mep-material-baseline.yaml, field: "pending_actions", readers: ["schedule/procurement.md"] }
