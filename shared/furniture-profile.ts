@@ -1,4 +1,4 @@
-// 家具角色（profile）的显式查表内核，供 verify:spatial CLI 与单测共用。
+// 家具角色（profile）的显式查表内核，供 verify:spatial / verify:penetration 两个 CLI 与单测共用。
 //
 // 设计意图（对应 config/spatial-validation.yaml 中 furniture_profiles 的注释）：
 // 每种 placed 家具类型都必须**显式登记**角色，禁止由代码按字符串名推断。

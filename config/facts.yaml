@@ -1605,16 +1605,16 @@ coverage:
   - { file: config/render/lighting.yaml, field: "fixtures", readers: ["shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
   - { file: config/render/overrides.yaml, field: "*", readers: [] }
   - { file: config/spatial-validation.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
-  - { file: config/spatial-validation.yaml, field: "tolerance_profiles", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
-  - { file: config/spatial-validation.yaml, field: "furniture_profiles", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
-  - { file: config/spatial-validation.yaml, field: "furniture_profile_overrides", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
-  - { file: config/spatial-validation.yaml, field: "mep_coordination_types", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
-  - { file: config/spatial-validation.yaml, field: "junctions", readers: ["shared/spatial-validation.ts", "scripts/verify/spatial/verify-spatial.ts"] }
-  - { file: config/spatial-validation.yaml, field: "allowed_collinear_overlaps", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
-  - { file: config/spatial-validation.yaml, field: "allowed_overlay_wall_junctions", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
-  - { file: config/spatial-validation.yaml, field: "relationships", readers: ["shared/spatial-validation.ts", "scripts/verify/spatial/verify-spatial.ts"] }
-  - { file: config/spatial-validation.yaml, field: "overlay_replacements", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
-  - { file: config/spatial-validation.yaml, field: "lighting_host_overrides", readers: ["scripts/verify/spatial/verify-spatial.ts"] }
+  - { file: config/spatial-validation.yaml, field: "tolerance_profiles", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "furniture_profiles", readers: ["shared/furniture-profile.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "furniture_profile_overrides", readers: ["shared/furniture-profile.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "mep_coordination_types", readers: ["shared/furniture-profile.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "junctions", readers: ["shared/spatial-validation.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "allowed_collinear_overlaps", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "allowed_overlay_wall_junctions", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "relationships", readers: ["shared/spatial-validation.ts", "shared/penetration/rules.ts", "scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "overlay_replacements", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
+  - { file: config/spatial-validation.yaml, field: "lighting_host_overrides", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   - { file: config/tradeoffs.yaml, field: "tradeoffs", readers: [] }
   - { file: config/verify-rules.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/verify-rules.yaml, field: "bounds", readers: ["shared/render/layout-bounds.ts", "shared/types.ts"] }

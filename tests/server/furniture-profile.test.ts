@@ -11,7 +11,7 @@ import {
   resolveFurnitureProfile,
   isFurnitureProfileRegistered,
   type FurnitureProfileConfig,
-} from '../../scripts/verify/spatial/furniture-profile.js';
+} from '../../shared/furniture-profile.js';
 
 // ─── 纯逻辑 ────────────────────────────────────────────────────────────────
 

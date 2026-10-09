@@ -18,7 +18,7 @@ import {
   validateOverlayReplacements,
   deriveRuntimeGlassJoins,
   validateRelationshipSpecs,
-  validateRuntimeScene,
+  validateRuntimeAuthority,
   validateWallLampMount,
   validateWallTopology,
   type Aabb3,
@@ -180,100 +180,36 @@ describe('spatial validation primitives', () => {
     assert.ok(dangling.some((issue) => issue.code === 'lighting_mount_off_wall'));
   });
 
-  it('validates injectable runtime cardinality, exact relationships and glass joins', () => {
-    const missingAndUnknown = validateRuntimeScene({
+  it('validates injectable runtime cardinality and relationship declarations', () => {
+    // 权威性：声明 ↔ runtime 是否一一对应。实体互撞属穿透层，见
+    // tests/server/penetration.test.ts，两边不重复判同一件事。
+    const missingAndUnknown = validateRuntimeAuthority({
       furniture: [{ id: 'f-a', type: 'cabinet', box: box(0, 1, 0, 1, 0, 1) }, { id: 'f-extra', type: 'cabinet', box: box(2, 3, 0, 1, 0, 1) }],
       expectedFurnitureIds: ['f-a', 'f-b'],
     });
     assert.ok(missingAndUnknown.some((issue) => issue.code === 'furniture_runtime_missing' && issue.entity === 'f-b'));
     assert.ok(missingAndUnknown.some((issue) => issue.code === 'furniture_runtime_unknown' && issue.entity === 'f-extra'));
 
-    const injectedWallCollision = validateRuntimeScene({
-      furniture: [{ id: 'f-cross', type: 'cabinet', box: box(-0.01, 0.3, 0, 1, 1, 2) }],
-      walls: [{ id: 'wall-runtime', type: 'wall', wallId: 'solid', box: box(-0.06, 0.06, 0, 3, 0, 3), segment: wall('solid', 0, 0, 0, 3), thickness: 0.12 }],
-    });
-    assert.ok(injectedWallCollision.some((issue) => issue.code === 'furniture_wall_collision' && issue.level === 'error'));
-    const shallowRuntimeWallCollision = validateRuntimeScene({
-      furniture: [{ id: 'f-shallow', type: 'cabinet', box: box(0.055, 0.30, 0, 1, 1, 2) }],
-      walls: [{ id: 'wall-runtime', type: 'wall', wallId: 'solid', box: box(-0.06, 0.06, 0, 3, 0, 3), segment: wall('solid', 0, 0, 0, 3), thickness: 0.12 }],
-    });
-    const shallowIssue = shallowRuntimeWallCollision.find((issue) => issue.code === 'furniture_wall_collision');
-    assert.ok(shallowIssue && shallowIssue.level === 'error', 'entering the wall slab without reaching its centreline must still fail closed');
-    assert.ok(Number((shallowIssue.evidence as { penetration_m?: number }).penetration_m) > 0);
-    const unknownGlass = validateRuntimeScene({
+    const unknownGlass = validateRuntimeAuthority({
       furniture: [],
       expectedGlassElementIds: ['known'],
       glass: [{ id: 'runtime-extra', type: 'curtain_run', elementId: 'extra', box: box(0, 1, 0, 1, 0, 1) }],
     });
     assert.ok(unknownGlass.some((issue) => issue.code === 'glass_runtime_missing' && issue.entity === 'known'));
     assert.ok(unknownGlass.some((issue) => issue.code === 'glass_runtime_unknown' && issue.entity === 'extra'));
+
+    // 关系声明只体检形状与引用，不豁免互撞（豁免的执行在穿透层）。
     assert.ok(validateRelationshipSpecs(
       [{ id: 'bad-global', type: 'attached', objects: ['washer', 'dryer'] }],
       ['furniture:balcony:washer:0', 'furniture:balcony:dryer:1'],
     ).some((issue) => issue.code === 'relationship_instance_unstable'));
-
-    const exactRelation = validateRuntimeScene({
-      furniture: [
-        { id: 'f-a', type: 'cabinet', box: box(0, 1, 0, 1, 0, 1) },
-        { id: 'f-b', type: 'board', box: box(0.8, 1.8, 0, 1, 0, 1) },
-        { id: 'f-c', type: 'board', box: box(0.8, 1.8, 0, 1, 0, 1) },
-      ],
-      relationships: [{ id: 'only-a-b', type: 'attached', objects: ['f-a', 'f-b'] }],
-    });
-    assert.ok(!exactRelation.some((issue) => issue.entity === 'f-a↔f-b' && issue.code === 'furniture_furniture_collision'));
-    assert.ok(exactRelation.some((issue) => issue.entity === 'f-a↔f-c' && issue.code === 'furniture_furniture_collision'));
-
-    const glassPathA = { ...wall('wa', 0, 0, 1, 0), elementId: 'ga' };
-    const glassPathB = { ...wall('wb', 1, 0, 2, 0), elementId: 'gb' };
-    const legalJoin = validateRuntimeScene({
-      furniture: [],
-      glass: [
-        { id: 'ga-mesh', type: 'curtain_run', elementId: 'ga', box: box(0, 1, 0, 1, -0.02, 0.02), pathSegments: [glassPathA] },
-        { id: 'gb-mesh', type: 'railing_run', elementId: 'gb', box: box(0.9, 2, 0, 1, -0.02, 0.02), pathSegments: [glassPathB] },
-      ],
-    });
-    assert.equal(legalJoin.filter((issue) => issue.code === 'glass_runtime_collision').length, 0);
-    const duplicateJoin = validateRuntimeScene({
-      furniture: [],
-      glass: [
-        { id: 'ga-mesh', type: 'curtain_run', elementId: 'ga', box: box(0, 1, 0, 1, -0.02, 0.02), pathSegments: [glassPathA] },
-        { id: 'gb-mesh', type: 'railing_run', elementId: 'gb', box: box(0.4, 1.6, 0, 1, -0.02, 0.02), pathSegments: [{ ...wall('wb', 0.4, 0, 1.6, 0), elementId: 'gb' }] },
-      ],
-    });
-    assert.ok(duplicateJoin.some((issue) => issue.code === 'glass_runtime_collision'));
-
-    const cornerPathA = { ...wall('corner-a', 0, 0, 1, 0), id: 'corner:a', elementId: 'same-corner' };
-    const cornerPathB = { ...wall('corner-b', 1, 0, 1, 1), id: 'corner:b', elementId: 'same-corner' };
-    const unjoinedCorner = validateRuntimeScene({
-      furniture: [],
-      glass: [
-        { id: 'corner-mesh-a', type: 'curtain_run', elementId: 'same-corner', box: box(0, 1, 0, 1, -0.02, 0.02), pathSegments: [cornerPathA] },
-        { id: 'corner-mesh-b', type: 'curtain_run', elementId: 'same-corner', box: box(0.98, 1.02, 0, 1, 0, 1), pathSegments: [cornerPathB] },
-      ],
-    });
-    assert.ok(unjoinedCorner.some((issue) => issue.code === 'glass_runtime_collision'), 'same-element 90-degree corner needs an explicit configured join');
-    const joinedCorner = validateRuntimeScene({
-      furniture: [],
-      glass: [
-        { id: 'corner-mesh-a', type: 'curtain_run', elementId: 'same-corner', box: box(0, 1, 0, 1, -0.02, 0.02), pathSegments: [cornerPathA] },
-        { id: 'corner-mesh-b', type: 'curtain_run', elementId: 'same-corner', box: box(0.98, 1.02, 0, 1, 0, 1), pathSegments: [cornerPathB] },
-      ],
-      glassJoins: [{ elementId: 'same-corner', pathA: 'corner:a', pathB: 'corner:b', join: 'continuous' }],
-    });
-    assert.equal(joinedCorner.filter((issue) => issue.code === 'glass_runtime_collision').length, 0);
-    const samePathMeshes = validateRuntimeScene({
-      furniture: [],
-      glass: [
-        { id: 'one-element-mesh-a', type: 'curtain_run', elementId: 'one-element', box: box(0, 1, 0, 1, -0.02, 0.02), pathSegments: [cornerPathA] },
-        { id: 'one-element-mesh-b', type: 'curtain_run', elementId: 'one-element', box: box(0.2, 0.8, 0, 1, -0.02, 0.02), pathSegments: [cornerPathA] },
-      ],
-    });
-    assert.equal(samePathMeshes.filter((issue) => issue.code === 'glass_runtime_collision').length, 0, 'sibling meshes bound to one path are not self-collisions');
   });
 });
 
 describe('spatial validation CLI integration', () => {
   it('runs the project adapter, validates runtime lighting/furniture, and emits parseable stable JSON', () => {
+    // 穿透族断言（家具穿墙、家具互撞、玻璃净距）已移至 tests/server/penetration.test.ts
+    // 与 tests/server/penetration-parity.test.ts；这里只保留 spatial 自身结论。
     const run = () => {
       const result = spawnSync('npx', ['tsx', 'scripts/verify/spatial/verify-spatial.ts', '--json'], { encoding: 'utf8' });
       assert.equal(result.status, 0, result.stderr);
@@ -283,16 +219,7 @@ describe('spatial validation CLI integration', () => {
     const second = run();
     assert.equal(first.version, 1);
     assert.equal(first.report.counts.errors, 0);
-    const wallCollisions = first.report.issues.filter((issue: { code: string }) => issue.code === 'furniture_wall_collision');
-    assert.equal(wallCollisions.length, 0, 'the authorized TV cabinet move must clear the known house furniture penetration');
-    assert.equal(first.report.issues.some((issue: { code: string; entity: string }) => issue.code === 'furniture_furniture_collision' && issue.entity.includes('tv_wall_low')), false);
     assert.ok(first.inputs.placedFurniture > 0);
-    // 2026-10-05 功能互换 v0：轻训练三件套（原 contact-tolerance 已知对）整体删除，
-    // 客房床/衣柜与书房桌椅均保持净距 → 当前屋内不应再有任何家具间接触/碰撞问题；
-    // 正样本哨兵改为既有且与本次改动无关的 glass clearance 警告（8 处），
-    // 以保证"检测器仍在产出 finding"这一契约不被静默放宽。
-    assert.equal(first.report.issues.filter((issue: { code: string }) => issue.code === 'furniture_furniture_collision' || issue.code === 'furniture_furniture_contact_tolerance').length, 0);
-    assert.ok(first.report.issues.some((issue: { code: string }) => issue.code === 'furniture_glass_clearance_insufficient'));
     assert.deepEqual(first.report, second.report);
     assert.deepEqual(first.inputs, second.inputs);
 
