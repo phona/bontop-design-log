@@ -31,7 +31,8 @@
     "verify:all": "tsx scripts/verify/layout/verify-topology.ts && tsx scripts/verify/layout/verify-layout.ts && tsx scripts/verify/placement/verify-furniture-placement.ts && tsx scripts/verify/rules/verify-rules.ts && tsx scripts/verify/collision/verify-collision-coverage.ts && npm run verify:spatial && tsx scripts/verify/data/verify-data-consistency.ts && npm run verify:mep && npm run verify:electrical && npm run verify:project-render-facts && npm run verify:lighting-config && npm run verify:facts && npm run verify:mep-takeoff && npm run verify:schedule",
     "export:dressing-map": "tsx scripts/generate-dressing-map.ts",
     "export:glb": "tsx scripts/render/glb/export-glb.ts",
-    "compare:glb": "tsx scripts/render/glb/compare-glb.ts"
+    "compare:glb": "tsx scripts/render/glb/compare-glb.ts",
+    "gate:visual": "tsx scripts/gate/visual-state-gate.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
