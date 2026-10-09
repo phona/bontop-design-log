@@ -1,3 +1,5 @@
+import type { ElementStateLike } from '../render/analysis/element-state-colors.js';
+
 export interface HoverTarget {
   objectId: string;
   name: string;
@@ -16,6 +18,8 @@ export interface HoverTarget {
     representation?: string; relation?: string;
   };
   ceiling?: Record<string, unknown>;
+  /** 构件级工程状态记录（HouseScene 用 objectId 查表挂上；InfoPanel 通用渲染）。 */
+  elementState?: ElementStateLike;
 }
 
 export class HoverTooltip {

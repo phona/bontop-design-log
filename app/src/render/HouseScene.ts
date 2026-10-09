@@ -62,6 +62,13 @@ import { computeLayoutBounds, DEFAULT_LAYOUT_BOUNDS, type LayoutBounds } from '@
 import { computeCeilingTakeoff, type CeilingTakeoff, type CeilingTradeClass } from '@shared/ceiling-takeoff';
 import type { CeilingZone } from '@shared/types';
 import { ceilingZoneColor, type CeilingZoneColorMode } from './analysis/ceiling-zone-colors.js';
+import {
+  elementStatusColor,
+  isElementStatus,
+  ELEMENT_STATUS_ORDER,
+  type ElementStateLike,
+  type ElementStatus,
+} from './analysis/element-state-colors.js';
 import type { WallSegment, ResolvedRoom, ResolvedOpening } from '@shared/types';
 
 export const GLASS_THICKNESS = 0.024;
@@ -70,6 +77,25 @@ const WALL_THICKNESS = 0.12;
 /** 吊顶分区高亮的显示参数（DEC-2026-10-08-C01）：不透明度高于贴砖检视态——分区是"面"不是"带"。 */
 const CEILING_ZONE_HIGHLIGHT_OPACITY = 0.92;
 const CEILING_ZONE_SOLO_DIM_OPACITY = 0.14;
+
+// ─── 构件级工程状态叠加层（DEC-2026-10-09-E01 的 3D 出口）────────────────────
+// 与吊顶分区高亮同一手法（traverse + userData 过滤 + 材质快照 + solo 隔离），但多一条
+// **合批 split**：electrical/plumbing 点位被 SceneBatcher 合成 BatchedMesh，只支持逐 unit
+// 可见（setUnitVisible）与整 scope 上色（updateScopeMaterials），**不支持逐件上色**——而这些
+// 恰恰是状态最多的构件（electrical 107 + plumbing 32 = 139/164）。所以：
+//   非合批的（吊顶分区/家具/墙/地，含 kind=hvac 的 ceiling:ac_*）→ 材质快照直接上色；
+//   合批的（electrical/plumbing）→ 独立标记层：按点位世界坐标放小标记 mesh，按 status 上色，
+//     挂在 elementStateMarkerGroup 下，关闭时整组移除。默认关闭 = 视觉零变化（铁律）。
+/** 被 SceneBatcher 合批、无法逐件上色的构件类别（见 SceneBatcher.ts 顶部说明）。 */
+const BATCHED_ELEMENT_KINDS = new Set<string>(['electrical', 'plumbing']);
+const ELEMENT_STATE_HIGHLIGHT_OPACITY = 0.9;
+const ELEMENT_STATE_SOLO_DIM_OPACITY = 0.12;
+/** 合批点位的状态标记几何：半径 0.03m 的球（电气面板面片约 0.086m，球径 0.06m 不喧宾夺主）。 */
+const ELEMENT_STATE_MARKER_RADIUS = 0.03;
+/** 直接上色的非合批 mesh 的 renderOrder（避开吊顶分区高亮的 60，两者可叠加）。 */
+const ELEMENT_STATE_RENDER_ORDER = 70;
+/** 标记层画在最上层（关深度测试，保证状态点穿过墙体家具也看得见）。 */
+const ELEMENT_STATE_MARKER_RENDER_ORDER = 200;
 
 interface CurtainRegistryEntry {
   id: string;
@@ -122,6 +148,17 @@ export class HouseScene implements SceneApi {
   private ceilingZoneHighlightMode: CeilingZoneColorMode = 'zone';
   private ceilingZoneSoloId: string | null = null;
   private ceilingZoneOriginalMaterials = new Map<THREE.Mesh, THREE.Material>();
+  // ─── 构件级工程状态叠加层（DEC-2026-10-09-E01）───
+  // 与吊顶分区高亮一样做成 HouseScene 的状态而非一次性 traverse：setMode / buildFromCatalog
+  // 重建 / placeInfrastructureFixtures 都会重写场景，高亮必须能重放，否则"开着开着就灭了"。
+  private elementStateHighlightActive = false;
+  private elementStateSoloTarget: string | null = null;
+  private elementStateStates: ElementStateLike[] = [];
+  private elementStateById = new Map<string, ElementStateLike>();
+  // 快照同时存材质克隆 + renderOrder + visible：关闭时逐项还原，不写死默认值（铁律：零变化）。
+  private elementStateOriginalMaterials = new Map<THREE.Mesh, { material: THREE.Material; renderOrder: number; visible: boolean }>();
+  private elementStateMarkerGroup: THREE.Group | null = null;
+  private elementStateMarkerGeometry: THREE.SphereGeometry | null = null;
   private curtainRegistry = new Map<string, CurtainRegistryEntry>();
   private curtainPresentationState: CurtainPresentationState = { default: 'open', roomOverrides: {}, updatedAt: '' };
   private glassMeshes: THREE.Mesh[] = [];
@@ -680,6 +717,9 @@ export class HouseScene implements SceneApi {
     // hover 用的分区算量缓存随重建失效
     this.ceilingZoneInfoCache = null;
     this.setCeilingVisible(this._mode === 'first-person');
+    // 状态叠加层若正开着：旧快照指向已被移出场景的 mesh，先还原（清快照+移标记），
+    // 稍后 electrical/plumbing 合批完再重放（见文件末尾 remergeStaticUnits 之后）。
+    if (this.elementStateHighlightActive) this.restoreElementStateMaterials();
     const materials = HouseScene.extractMaterials(projectData.topics);
     this.textureManager.loadMaterials(materials);
     this.textureManager.preload();
@@ -700,6 +740,9 @@ export class HouseScene implements SceneApi {
       this.exportRoot,
     );
     this.applyTransparentRenderOrder();
+    // 状态叠加层重放：此时 electrical 已合批、unit 组带坐标在场；给排水点位由
+    // placeInfrastructureFixtures 稍后落位，那里会再重放一次把 plumbing 标记补齐。
+    if (this.elementStateHighlightActive) this.applyElementStateColors();
     this.readyState = 'ready';
     this.resolveReady();
     } catch (error) {
@@ -1633,6 +1676,9 @@ export class HouseScene implements SceneApi {
       if (MERGE_STATIC_UNITS && isMergeableUnit(model)) mergeUnitMaterials(model);
     }
     this.batcher.batchScope('plumbing', result.objects, this.decorations.root);
+    // 状态叠加层若正开着：给排水点位刚落位，重放一次把 plumbing 标记层补齐
+    // （非合批 mesh 已在快照里，重复进入只是重新上色，不重复快照）。
+    if (this.elementStateHighlightActive) this.applyElementStateColors();
   }
 
   clearTopicObjects(topicId: string) {
@@ -2157,6 +2203,278 @@ export class HouseScene implements SceneApi {
     return this.ceilingZoneSoloId;
   }
 
+  // ─── 构件级工程状态叠加层（DEC-2026-10-09-E01）────────────────────────────
+  // 完全对称于吊顶分区高亮：快照-还原不写死默认值、solo 隔离、状态摘要在 HouseScene 里算。
+  // 唯一结构差异是合批 split（见文件顶部 BATCHED_ELEMENT_KINDS 注释）：electrical/plumbing
+  // 无法逐件上色，改走独立标记层。
+
+  /**
+   * 注入服务端 /api/element-state 的 states[]。**只存数据，不碰任何材质/可见性**——
+   * 这是「默认关闭 = 视觉零变化」铁律的第一道保证：App fetch 到就调用，用户不点开关前场景不动。
+   * 高亮已激活时才重放（场景重建后 App 重新拉取数据的路径）。
+   */
+  setElementStates(states: ElementStateLike[]): void {
+    this.elementStateStates = Array.isArray(states) ? states.slice() : [];
+    this.elementStateById = new Map(this.elementStateStates.map((state) => [state.id, state]));
+    if (this.elementStateHighlightActive) this.applyElementStateColors();
+  }
+
+  /** 打开/关闭「构件状态高亮」。关闭即按快照还原 + 移除标记层，视觉回到注入前。 */
+  setElementStateHighlightVisible(visible: boolean): void {
+    if (!visible) {
+      this.restoreElementStateMaterials();
+      this.elementStateSoloTarget = null;
+    }
+    this.elementStateHighlightActive = visible;
+    if (visible) this.applyElementStateColors();
+    this.requestRender();
+  }
+
+  /**
+   * solo 一个 **status** 或一个 **构件 id**：命中的满色，其余压暗；传 null 取消。
+   * 两种语义共用一个入口（isElementStatus 判别），面板与 InfoPanel 都能调。
+   */
+  setElementStateSolo(target: string | null): void {
+    this.elementStateSoloTarget = target;
+    if (this.elementStateHighlightActive) {
+      if (target === null) {
+        // 取消隔离时清掉上一轮压暗，重新按配色铺一遍
+        this.restoreElementStateMaterials();
+        this.applyElementStateColors();
+      } else {
+        this.applyElementStateColors();
+      }
+    }
+    this.requestRender();
+  }
+
+  /** 当前 solo 目标（null = 无隔离）；面板回显用。 */
+  getElementStateSolo(): string | null {
+    return this.elementStateSoloTarget;
+  }
+
+  /** 一个状态记录是否是当前 solo 的「高亮对象」。无 solo 时一律算高亮（不压暗）。 */
+  private isElementStateSoloTarget(state: ElementStateLike): boolean {
+    const target = this.elementStateSoloTarget;
+    if (target === null) return true;
+    if (isElementStatus(target)) return state.status === target;
+    return state.id === target;
+  }
+
+  /**
+   * 给场景里的构件上状态色。两条路：
+   *  ① 非合批（吊顶分区/家具/墙/地/ceiling:ac_*）：traverse exportRoot，按 userData.objectId
+   *     命中状态表，材质快照后上色（与 applyCeilingZoneColors 同手法，快照多存 renderOrder/visible）。
+   *  ② 合批（electrical/plumbing）：交给 applyElementStateMarkers 放独立标记层。
+   * 所有局部 Map/常量先声明再使用（铁律：不得先用后声明）。
+   */
+  private applyElementStateColors(): void {
+    const direct = new Map<string, ElementStateLike>();
+    const batched = new Map<string, ElementStateLike>();
+    for (const state of this.elementStateStates) {
+      if (BATCHED_ELEMENT_KINDS.has(state.kind)) batched.set(state.id, state);
+      else direct.set(state.id, state);
+    }
+    if (direct.size > 0) {
+      this.exportRoot.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const objectId = String(mesh.userData?.objectId ?? '');
+        const state = direct.get(objectId);
+        if (!state) return;
+        if (Array.isArray(mesh.material)) return; // 多材质 mesh 不逐件上色（罕见；避免 array.clone 崩）
+        if (!this.elementStateOriginalMaterials.has(mesh)) {
+          // 快照存**原材质引用**（不克隆），随即换上一个克隆体来上色。比吊顶分区的
+          // 「克隆快照 + 原地改原材质」更强：① 关闭时还原的是同一个对象，视觉/引用零变化；
+          // ② 墙/地等非合批 mesh 可能与别的 mesh 共享材质（TextureManager），原地改会误染他人。
+          this.elementStateOriginalMaterials.set(mesh, {
+            material: mesh.material as THREE.Material,
+            renderOrder: mesh.renderOrder,
+            visible: mesh.visible,
+          });
+          mesh.material = (mesh.material as THREE.Material).clone();
+        }
+        const soloDim = this.elementStateSoloTarget !== null && !this.isElementStateSoloTarget(state);
+        const material = mesh.material as THREE.MeshStandardMaterial;
+        if (material instanceof THREE.MeshStandardMaterial) {
+          material.color.set(elementStatusColor(state.status));
+          material.transparent = true;
+          material.opacity = soloDim ? ELEMENT_STATE_SOLO_DIM_OPACITY : ELEMENT_STATE_HIGHLIGHT_OPACITY;
+          material.depthTest = false;
+          material.depthWrite = false;
+          material.needsUpdate = true;
+        }
+        // 真透视：关深度测试，状态层可穿过墙体家具被看到（与吊顶/贴砖/涂漆检视态同手法）。
+        mesh.visible = true;
+        mesh.renderOrder = ELEMENT_STATE_RENDER_ORDER;
+      });
+    }
+    this.applyElementStateMarkers(batched);
+  }
+
+  /**
+   * 合批构件的独立标记层：按点位世界坐标放半径 0.03m 的小球，按 status 上色。
+   * 为什么不直接给 BatchedMesh 上色：SceneBatcher 只支持整 scope 上色（updateScopeMaterials），
+   * 一改就把 76 个插座全染成同一个 status 色——而它们状态各异。标记层绕开合批，逐点各自上色。
+   * 性能：≤164 个球（实际 electrical 107 + plumbing 32 = 139），共享一个 SphereGeometry，
+   * 每球一个 MeshBasicMaterial（为 solo 压暗各自调 opacity），关深度测试画在最上层；
+   * 只在开启期间存在，关闭即整组移除并 dispose。
+   */
+  private applyElementStateMarkers(batched: Map<string, ElementStateLike>): void {
+    this.clearElementStateMarkers();
+    if (batched.size === 0) return;
+    const positions = this.collectBatchedElementPositions();
+    const group = new THREE.Group();
+    group.name = 'ELEMENT_STATE_MARKERS';
+    const geometry = new THREE.SphereGeometry(ELEMENT_STATE_MARKER_RADIUS, 10, 8);
+    for (const state of batched.values()) {
+      const position = positions.get(state.id);
+      if (!position) continue; // 申报了但场景里没落图——不造幽灵标记
+      const soloDim = this.elementStateSoloTarget !== null && !this.isElementStateSoloTarget(state);
+      const material = new THREE.MeshBasicMaterial({
+        color: elementStatusColor(state.status),
+        transparent: soloDim,
+        opacity: soloDim ? ELEMENT_STATE_SOLO_DIM_OPACITY : 1,
+        depthTest: false,
+        depthWrite: false,
+      });
+      const marker = new THREE.Mesh(geometry, material);
+      marker.position.copy(position);
+      marker.userData = { elementStateId: state.id, elementStateStatus: state.status };
+      marker.renderOrder = ELEMENT_STATE_MARKER_RENDER_ORDER;
+      group.add(marker);
+    }
+    this.elementStateMarkerGeometry = geometry;
+    this.elementStateMarkerGroup = group;
+    this.scene.add(group);
+  }
+
+  /** 合批点位的世界坐标索引：合批后零件 mesh 被 SceneBatcher 摘下暂存，但 unit 组本身仍在场景里
+   * （只摘零件不摘组），且 model.position 就是点位 x/z/height——读组的世界坐标即可。 */
+  private collectBatchedElementPositions(): Map<string, THREE.Vector3> {
+    const positions = new Map<string, THREE.Vector3>();
+    const world = new THREE.Vector3();
+    this.scene.traverse((object) => {
+      const objectId = String(object.userData?.objectId ?? '');
+      if (!objectId || positions.has(objectId)) return;
+      const kind = objectId.slice(0, objectId.indexOf(':'));
+      if (!BATCHED_ELEMENT_KINDS.has(kind)) return;
+      object.getWorldPosition(world);
+      positions.set(objectId, world.clone());
+    });
+    return positions;
+  }
+
+  /** 移除并 dispose 标记层（含每球材质与共享几何）；整组从场景摘掉，关闭后零残留。 */
+  private clearElementStateMarkers(): void {
+    if (this.elementStateMarkerGroup) {
+      this.elementStateMarkerGroup.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const material = mesh.material as THREE.Material | undefined;
+        material?.dispose?.();
+      });
+      this.elementStateMarkerGroup.parent?.remove(this.elementStateMarkerGroup);
+      this.elementStateMarkerGroup = null;
+    }
+    this.elementStateMarkerGeometry?.dispose();
+    this.elementStateMarkerGeometry = null;
+  }
+
+  /** 关闭高亮时按快照还原（材质/visible/renderOrder 全还原，不写死默认值）+ 移除标记层。 */
+  private restoreElementStateMaterials(): void {
+    for (const [mesh, snapshot] of this.elementStateOriginalMaterials) {
+      const highlight = mesh.material;
+      // 还原的是快照里存的**同一个原材质对象**——视觉与引用都回到注入前（铁律：零变化）。
+      mesh.material = snapshot.material;
+      mesh.renderOrder = snapshot.renderOrder;
+      mesh.visible = snapshot.visible;
+      // 归还高亮期换上的克隆体（原材质可能被别处共享，绝不能 dispose 它）。
+      if (highlight !== snapshot.material && !Array.isArray(highlight)) highlight.dispose?.();
+    }
+    this.elementStateOriginalMaterials.clear();
+    this.clearElementStateMarkers();
+  }
+
+  /** 场景里出现过的 objectId 集合（含合批后存活的 unit 组）；用于 inScene 判定。 */
+  private collectSceneElementIds(): Set<string> {
+    const ids = new Set<string>();
+    this.scene.traverse((object) => {
+      const objectId = String(object.userData?.objectId ?? '');
+      if (objectId) ids.add(objectId);
+    });
+    return ids;
+  }
+
+  /**
+   * 状态叠加层·聚合（喂 ElementStatePanel）。图与数同源：面板不另行抓数，
+   * 全部来自注入的 states + 场景里真实落位的 id。遍历场景判 inScene，只在开面板时跑一次。
+   */
+  inspectElementStates(): {
+    summary: { total: number; byStatus: Record<string, number>; byKind: Record<string, number> };
+    byStatus: Array<{ status: ElementStatus; count: number }>;
+    byKind: Array<{ kind: string; count: number }>;
+    elements: Array<ElementStateLike & { batched: boolean; inScene: boolean }>;
+  } {
+    const byStatus: Record<string, number> = {};
+    const byKind: Record<string, number> = {};
+    for (const state of this.elementStateStates) {
+      byStatus[state.status] = (byStatus[state.status] ?? 0) + 1;
+      byKind[state.kind] = (byKind[state.kind] ?? 0) + 1;
+    }
+    const sceneIds = this.collectSceneElementIds();
+    const elements = this.elementStateStates.map((state) => ({
+      ...state,
+      batched: BATCHED_ELEMENT_KINDS.has(state.kind),
+      inScene: sceneIds.has(state.id),
+    }));
+    return {
+      summary: { total: this.elementStateStates.length, byStatus, byKind },
+      byStatus: ELEMENT_STATUS_ORDER.map((status) => ({ status, count: byStatus[status] ?? 0 })),
+      byKind: Object.keys(byKind).sort().map((kind) => ({ kind, count: byKind[kind] })),
+      elements,
+    };
+  }
+
+  /**
+   * 状态叠加层·状态摘要（对齐 getCeilingZoneHighlightStatus 的返回形状）。
+   * 按钮据此显示「可用/不可用」，开启 toast 播报数字。
+   */
+  getElementStateHighlightStatus(): {
+    required: boolean;
+    ready: boolean;
+    active: boolean;
+    total: number;
+    byStatus: Record<string, number>;
+    byKind: Record<string, number>;
+    undeclared: number;
+    conflicted: number;
+    pending: number;
+    solo: string | null;
+    unmatchedIds: string[];
+  } {
+    const { summary, elements } = this.inspectElementStates();
+    const unmatchedIds = elements.filter((element) => !element.inScene).map((element) => element.id);
+    return {
+      required: summary.total > 0,
+      ready: summary.total > 0 && elements.some((element) => element.inScene),
+      active: this.elementStateHighlightActive,
+      total: summary.total,
+      byStatus: summary.byStatus,
+      byKind: summary.byKind,
+      undeclared: summary.byStatus.undeclared ?? 0,
+      conflicted: summary.byStatus.conflicted ?? 0,
+      pending: summary.byStatus.pending ?? 0,
+      solo: this.elementStateSoloTarget,
+      unmatchedIds,
+    };
+  }
+
+  /** 按 objectId 取一条状态记录（InfoPanel 通用渲染用）；无则 undefined。 */
+  getElementState(objectId: string): ElementStateLike | undefined {
+    return this.elementStateById.get(objectId);
+  }
+
   /**
    * 分区算量缓存：hover 每帧都会构造 target，不能每次重算 traverse + shoelace。
    * 只在 buildFromCatalog 重建时失效。
@@ -2290,6 +2608,8 @@ export class HouseScene implements SceneApi {
         name,
         type,
         room,
+        // 挂上构件工程状态记录（用 objectId 查表）；InfoPanel 据此通用渲染，不按类别加分支。
+        elementState: this.elementStateById.get(id),
         curtainId: data.curtainId as string | undefined,
         curtainKind: data.curtainId ? this.curtainRegistry.get(data.curtainId as string)?.kind : undefined,
         layer: data.layer as HoverTarget['layer'],

@@ -3,6 +3,11 @@ import { getTopicsForObject } from '../data/objectMapping.js';
 import { setupCollapsiblePanel } from './CollapsiblePanel.js';
 import { TRADE_LABEL } from '../render/analysis/ceiling-zone-colors.js';
 import type { CeilingTradeClass } from '@shared/ceiling-takeoff';
+import {
+  elementStatusColorHex,
+  ELEMENT_STATUS_LABEL,
+  type ElementStateLike,
+} from '../render/analysis/element-state-colors.js';
 
 /** 吊顶分区 hover 信息：声明字段 + HouseScene 挂上的算量（DEC-2026-10-08-C01）。 */
 export interface CeilingHoverInfo {
@@ -42,6 +47,8 @@ export interface HoverTarget {
     representation?: string; relation?: string;
   };
   ceiling?: CeilingHoverInfo;
+  /** 构件级工程状态记录（HouseScene 用 objectId 查表挂上；renderElementState 通用渲染）。 */
+  elementState?: ElementStateLike;
 }
 
 export interface InfoPanelCallbacks {
@@ -133,6 +140,8 @@ export class InfoPanel {
       };
     }
     this.renderMepContext(this.currentTarget);
+    // 工程状态记录独立成节：通用渲染器遍历字段，不按类别分支（见 renderElementState）。
+    if (this.currentTarget.elementState) this.renderElementState(this.currentTarget.elementState);
 
     if (this.currentTarget.curtainId && this.currentTarget.room) {
       this.topicsEl.appendChild(this.renderCurtainSection(this.currentTarget.room, this.currentTarget.curtainKind ?? 'sheer_blackout'));
@@ -226,6 +235,52 @@ export class InfoPanel {
       const key = document.createElement('span'); key.textContent = `${label}：`;
       const val = document.createElement('span'); val.textContent = value;
       row.appendChild(key); row.appendChild(val); section.appendChild(row);
+    }
+    this.topicsEl.appendChild(section);
+  }
+
+  /**
+   * 构件工程状态·**通用渲染器**：遍历一条 ElementState 记录的固定字段集，产出 [标签, 值] 行。
+   * 为什么不按类别分支：状态记录对所有构件是同一套字段（status/statusSource/openQuestion/
+   * decision/conflicts），与 kind/type 无关——对比 renderMepContext 的
+   * `if(mep)/else if(electricalTopology)/else if(ceiling)` 按类分支，那种写法每加一种构件
+   * 就要加一个分支。这里字段集一致，天然扁平；将来服务端加字段也只改这一处。
+   */
+  private renderElementState(state: ElementStateLike): void {
+    const section = document.createElement('div');
+    section.className = 'info-topic-section info-element-state';
+    const title = document.createElement('h4');
+    title.textContent = '工程状态';
+    section.appendChild(title);
+
+    const statusLabel = ELEMENT_STATUS_LABEL[state.status] ?? state.status;
+    const rows: Array<[string, string]> = [
+      ['状态', statusLabel],
+      ['状态出处', state.statusSource],
+    ];
+    if (state.decision) rows.push(['裁定', state.decision]);
+    if (state.openQuestion) {
+      rows.push(['未决问题', `#${state.openQuestion.ref} ${state.openQuestion.summary}`]);
+      rows.push(['卡在', state.openQuestion.blockedBy]);
+    }
+    if (state.conflicts.length > 0) rows.push(['冲突', state.conflicts.join('，')]);
+
+    for (const [label, value] of rows) {
+      const row = document.createElement('div');
+      row.className = 'info-mep-row';
+      const key = document.createElement('span');
+      key.textContent = `${label}：`;
+      row.appendChild(key);
+      if (label === '状态') {
+        // 色片：把 InfoPanel 的颜色和 3D 状态叠加层对应起来（同一 elementStatusColorHex）。
+        const swatch = document.createElement('span');
+        swatch.style.cssText = `display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; background:${elementStatusColorHex(state.status)}; border:1px solid rgba(255,255,255,.25);`;
+        row.appendChild(swatch);
+      }
+      const val = document.createElement('span');
+      val.textContent = value;
+      row.appendChild(val);
+      section.appendChild(row);
     }
     this.topicsEl.appendChild(section);
   }

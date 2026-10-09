@@ -155,3 +155,64 @@ describe('InfoPanel', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 });
+
+describe('InfoPanel · 工程状态通用渲染器', () => {
+  let elements: ReturnType<typeof setupDOM>;
+
+  beforeEach(() => {
+    elements = setupDOM();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const createdTexts = (): string[] =>
+    (document.createElement as ReturnType<typeof vi.fn>).mock.results.map((result) => result.value.textContent as string);
+
+  it('通用渲染器遍历状态记录字段，不按类别分支：status/statusSource/openQuestion/decision/conflicts 全显形', () => {
+    const panel = new InfoPanel({ onSelectOption: vi.fn() });
+    panel.showObject({
+      objectId: 'electrical:sock_child_ac', name: '儿童房空调插座', type: 'electrical',
+      elementState: {
+        id: 'electrical:sock_child_ac', kind: 'electrical', label: 'socket', status: 'pending',
+        statusSource: 'pending-site-data #42', decision: 'DEC-2026-10-09-E01',
+        openQuestion: { ref: '42', summary: '儿童房空调电源', blockedBy: '卡在空调厂家深化图' },
+        conflicts: ['spatial.collision', 'clearance'],
+      },
+    });
+    const texts = createdTexts();
+    expect(texts).toContain('工程状态');
+    expect(texts).toContain('状态：');
+    expect(texts).toContain('待现场数据');       // status 标签
+    expect(texts).toContain('pending-site-data #42'); // statusSource
+    expect(texts).toContain('DEC-2026-10-09-E01');    // decision
+    expect(texts).toContain('卡在空调厂家深化图');     // openQuestion.blockedBy
+    expect(texts).toContain('spatial.collision，clearance'); // conflicts
+    expect(elements.topics.appendChild).toHaveBeenCalled();
+  });
+
+  it('同一渲染器服务不同 kind：电气与吊顶的状态记录走同一条字段遍历（无按类分支）', () => {
+    const panel = new InfoPanel({ onSelectOption: vi.fn() });
+    panel.showObject({
+      objectId: 'ceiling:ceiling_living', name: '客厅吊顶', type: 'ceiling_zone_solid',
+      elementState: {
+        id: 'ceiling:ceiling_living', kind: 'ceiling', label: 'gypsum', status: 'confirmed',
+        statusSource: 'config:confirmed', conflicts: [],
+      },
+    });
+    const texts = createdTexts();
+    expect(texts).toContain('工程状态');
+    expect(texts).toContain('已确认');
+    expect(texts).toContain('config:confirmed');
+    // 无 openQuestion/decision/conflicts 时不渲染对应行
+    expect(texts).not.toContain('卡在');
+    expect(texts).not.toContain('冲突：');
+  });
+
+  it('没有 elementState 时不渲染工程状态节（不打扰既有 MEP/吊顶读数）', () => {
+    const panel = new InfoPanel({ onSelectOption: vi.fn() });
+    panel.showObject({ objectId: 'floor:living_dining', name: '客餐厅', type: 'floor', room: 'living_dining' });
+    expect(createdTexts()).not.toContain('工程状态');
+  });
+});

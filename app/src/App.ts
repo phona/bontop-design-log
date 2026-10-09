@@ -23,6 +23,9 @@ import { WallTileButton, type WallTileButtonState } from './ui/WallTileButton.js
 import { PaintButton, type PaintButtonState } from './ui/PaintButton.js';
 import { CeilingZoneButton, type CeilingZoneButtonState } from './ui/CeilingZoneButton.js';
 import { CeilingZonePanel } from './render/analysis/CeilingZonePanel.js';
+import { ElementStateButton, type ElementStateButtonState } from './ui/ElementStateButton.js';
+import { ElementStatePanel } from './render/analysis/ElementStatePanel.js';
+import type { ElementStateLike } from './render/analysis/element-state-colors.js';
 import { CeilingQuotePanel } from './render/analysis/CeilingQuotePanel.js';
 import { CeilingQuoteButton } from './ui/CeilingQuoteButton.js';
 import { TRADE_LABEL } from './render/analysis/ceiling-zone-colors.js';
@@ -85,6 +88,12 @@ export class App {
   private ceilingQuoteButton: CeilingQuoteButton | null = null;
   private ceilingQuotePanel: CeilingQuotePanel | null = null;
   private ceilingQuoteVisible = false;
+  // 构件级工程状态高亮（DEC-2026-10-09-E01）：独立子系统，与吊顶/贴砖/HVAC/MEP 平级且互不引用。
+  // 数据来自 GET /api/element-state?conflicts=1；服务端未就绪时静默降级为「不可用」。
+  private elementStateButton: ElementStateButton | null = null;
+  private elementStateState: ElementStateButtonState = 'loading';
+  private elementStateVisible = false;
+  private elementStatePanel: ElementStatePanel | null = null;
   private mepCoordinationVisible = false;
   private mepCoordinationReady = false;
   private mepLintResult: MepLintResult | null = null;
@@ -202,6 +211,7 @@ export class App {
     this.setupPaintButton();
     this.setupCeilingZoneButton();
     this.setupCeilingQuoteButton();
+    this.setupElementStateButton();
     this.setupLayersPanel();
     this.setupToolbarPopovers();
     const mepLintBadge = document.getElementById('mep-lint-badge');
@@ -304,6 +314,10 @@ export class App {
     this.setCeilingZoneState('ready');
     // 吊顶报价面板：拉 /api/ceiling/quotes，不进 3D，所以同样只在场景就绪后建
     this.ceilingQuotePanel = new CeilingQuotePanel(() => this.refreshOverviewData());
+    // 构件工程状态面板（DEC-2026-10-09-E01）：数据来自 /api/element-state，静默拉取，
+    // 不阻塞 ready；服务端没上这个端点就降级成「不可用」，不弹错误刷屏。
+    this.elementStatePanel = new ElementStatePanel(this.houseScene);
+    void this.loadElementStates();
     this.resolveReady();
     } catch (error) {
       this.readyState = 'failed';
@@ -652,6 +666,81 @@ export class App {
     this.syncLayersSummary();
   }
 
+  // ─── 构件级工程状态高亮（DEC-2026-10-09-E01）───
+  // 与吊顶分区高亮平级：自己的按钮、面板、开关函数；不引用 HVAC/MEP/贴砖/吊顶。
+  // 差别只在数据来源（异步 fetch）与合批 split（后者在 HouseScene 内部，App 不感知）。
+
+  /** 按需把 #element-state-btn 注入图层抽屉（跟在吊顶分区按钮后）；保持所有 DOM 改动在 app/src 内。 */
+  private ensureElementStateButton(): void {
+    if (document.getElementById('element-state-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'element-state-btn';
+    btn.title = '构件工程状态高亮：按 /api/element-state 给每个构件上「确认了吗 / 卡在谁 / 和谁冲突」的状态色（电气/给排水为合批渲染，以状态标记层显示）；显示层，权威状态见 npm run state:project';
+    btn.disabled = true;
+    btn.textContent = '工程状态：加载中';
+    const anchor = document.getElementById('ceiling-zone-btn');
+    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+    else document.getElementById('layers-panel')?.appendChild(btn);
+  }
+
+  private setupElementStateButton(): void {
+    this.ensureElementStateButton();
+    this.elementStateButton = new ElementStateButton({
+      onToggle: () => this.setElementStateHighlightVisible(!this.elementStateVisible),
+      getState: () => this.elementStateState,
+      getActive: () => this.elementStateVisible,
+    });
+  }
+
+  /** 拉 /api/element-state（带 conflicts=1 让 conflicted 也显示）→ 注入 HouseScene。
+   *  失败/无数据静默降级为「不可用」：服务端可能还没上这个端点，不弹错误刷屏。 */
+  private async loadElementStates(): Promise<void> {
+    try {
+      const response = await fetch('/api/element-state?conflicts=1');
+      if (!response.ok) throw new Error(`element-state ${response.status}`);
+      const payload = await response.json() as { states?: ElementStateLike[] };
+      const states = Array.isArray(payload.states) ? payload.states : [];
+      if (states.length === 0) {
+        this.setElementStateState('unavailable');
+        return;
+      }
+      this.houseScene.setElementStates(states);
+      this.setElementStateState('ready');
+    } catch {
+      this.setElementStateState('unavailable');
+    }
+  }
+
+  private setElementStateHighlightVisible(visible: boolean): void {
+    this.elementStateVisible = this.elementStateState === 'ready' && visible;
+    this.houseScene.setElementStateHighlightVisible(this.elementStateVisible);
+    this.elementStateButton?.sync();
+    this.syncLayersSummary(true);
+    this.requestRender();
+    if (this.elementStateVisible) {
+      this.elementStatePanel?.show();
+      this.elementStatePanel?.refresh();
+      // 开启即播报数字摘要：3D 里「看得出一片色」不等于「数得出几个待决/冲突」。
+      const s = this.houseScene.getElementStateHighlightStatus();
+      this.showToast(
+        `构件状态 ${s.total} 个：已确认 ${s.byStatus.confirmed ?? 0} · 推断 ${s.byStatus.inferred ?? 0}`
+        + ` · 待现场 ${s.pending} · 未申报 ${s.undeclared} · 冲突 ${s.conflicted}`,
+      );
+    } else {
+      this.elementStatePanel?.hide();
+    }
+  }
+
+  private setElementStateState(state: ElementStateButtonState): void {
+    this.elementStateState = state;
+    if (state !== 'ready') {
+      this.elementStateVisible = false;
+      this.houseScene.setElementStateHighlightVisible(false);
+    }
+    this.elementStateButton?.sync();
+    this.syncLayersSummary();
+  }
+
   private setupCeilingQuoteButton(): void {
     this.ceilingQuoteButton = new CeilingQuoteButton({
       onToggle: () => {
@@ -747,6 +836,7 @@ export class App {
       this.setWallTileInspectionVisible(false);
       this.setPaintInspectionVisible(false);
       this.setCeilingZoneHighlightVisible(false);
+      this.setElementStateHighlightVisible(false);
     } finally {
       this.layerComboSuppressed = false;
     }
