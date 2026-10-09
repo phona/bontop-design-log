@@ -55,6 +55,83 @@ export interface WaiverSpec {
 
 export type MepParticipationPolicy = 'excluded' | 'solid';
 
+// ── 活动包络（envelope）申报：shadow-only ──────────────────────────────────
+// 现行规则只验默认静态状态。「用起来才穿模」（门扇开启弧、推拉门开启态、电器门/
+// 抽屉/拉篮/椅子拉出、衣柜平开门 vs 床）不可见。活动包络补这一洞，但**只进
+// report.shadow、不计入 errors/warnings、不影响退出码**（见 shared/penetration/
+// envelopes.ts）。铁律：不许猜几何——每个包络都从已声明数据推导，未申报的类型
+// 不生成包络并显形为 envelope_undeclared（info）。
+export type EnvelopeKind = 'door_swing' | 'sliding_open' | 'appliance_door' | 'drawer' | 'chair_pullout' | 'wardrobe_door';
+
+/** 世界象限方向（北=-z / 南=+z / 西=-x / 东=+x）。 */
+export type WorldFace = 'north' | 'south' | 'east' | 'west';
+
+/**
+ * 单个家具类型的活动包络申报。**只登记有依据的类型**（依据写在 declared_basis：
+ * config/house.yaml 注释、docs/、或厂家常识）；未登记的类型不生成包络，并在 shadow
+ * 汇总里显形为 envelope_undeclared——符合「未申报 → 显形，不猜」。
+ */
+export interface FurnitureEnvelopeSpec {
+  /** 稳定申报 id，进 Git diff 可评审；也作为 shadow 命中的 enabled_by。 */
+  id: string;
+  /** 登记的 placed 类型。 */
+  type: string;
+  kind: EnvelopeKind;
+  /**
+   * 门/抽屉/柜门朝哪个世界象限开（appliance_door / drawer / wardrobe_door 平开 /
+   * chair_pullout 固定方向）。wardrobe 平开门用它定正面；拉出用 pullout_axis 时留空。
+   */
+  open_face?: WorldFace;
+  /** appliance_door：开启时机门向 open_face 探出的净空（米）。厂家安装净空常识值。 */
+  swing_m?: number;
+  /** drawer：抽屉/拉篮沿 open_face 拉出的行程（米）。 */
+  extend_m?: number;
+  /** chair_pullout：椅子拉出距离（米）。 */
+  pullout_m?: number;
+  /**
+   * chair_pullout：拉出方向来源。'backrest' = 从 FixtureFactory recipe 的靠背所在
+   * local -z 推导，按该 placed 的 rotation 旋转（不猜固定世界向）；缺省用 open_face。
+   */
+  pullout_axis?: 'backrest';
+  /** wardrobe_door 平开：单扇门宽（米）。 */
+  leaf_width_m?: number;
+  /** wardrobe_door 平开：扇数。 */
+  leaf_count?: number;
+  /** wardrobe_door 推拉：扇厚（米），开启态包络≈静态正面 + 扇厚（贴面滑移，近似无外探）。 */
+  sliding?: boolean;
+  panel_thickness_m?: number;
+  /**
+   * wardrobe_door：门扇所在的模型局部轴（'local+z' / 'local-z'），正面世界向由该轴按 placed
+   * rotation 推导（贴最近世界象限）。用于同一类型多个 placed 朝向相反时（如 wardrobe_180 一靠
+   * 南墙一靠北墙）。依据 = FixtureFactory 门板局部坐标（wardrobe_180 门板在 local -z、
+   * master_north_wall_wardrobe_950 门板在 local +z）。设了它就以它为准，忽略 open_face。
+   */
+  door_face_axis?: 'local+z' | 'local-z';
+  /** 依据出处（必填）：让「为什么这个类型有包络、朝这个方向」可评审、可追溯。 */
+  declared_basis: string;
+}
+
+/** 门扇开启弧的扇形近似参数（shadow-only）。 */
+export interface DoorSwingEnvelopeConfig {
+  enabled?: boolean;
+  /** 90° 扇形近似为 N 个有向盒（扇形→有向盒的近似误差见 envelopes.ts 注释）。 */
+  wedges?: number;
+  note?: string;
+}
+
+export interface SlidingOpenEnvelopeConfig {
+  enabled?: boolean;
+  note?: string;
+}
+
+export interface EnvelopeConfig {
+  door_swing?: DoorSwingEnvelopeConfig;
+  sliding_open?: SlidingOpenEnvelopeConfig;
+  /** 按类型申报的家具活动包络。 */
+  furniture?: FurnitureEnvelopeSpec[];
+  note?: string;
+}
+
 export interface MepParticipationSpec {
   types: string[];
   /** excluded：不作为实体参与互撞（当前口径，穿墙由 MEP 专项校验负责）；
@@ -76,6 +153,8 @@ export interface AntiPenetrationConfig {
     note?: string;
   };
   waivers?: WaiverSpec[];
+  /** 活动包络申报（shadow-only，见 EnvelopeConfig）。不影响任何 error/warning/退出码。 */
+  envelopes?: EnvelopeConfig;
 }
 
 /** 配置 severity 是下限：只在比规则自判级别更严时生效。 */

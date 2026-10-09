@@ -1,6 +1,7 @@
 import type { BoxEntry } from './scene.js';
 import { aabbOverlaps, obbFromObject, satOverlap, type Obb } from './obb.js';
 import { relationshipExemptsPair } from './rules.js';
+import { computeEnvelopeShadow, type EnvelopeInput, type EnvelopeReport } from './envelopes.js';
 import type { Aabb3, RelationshipSpec, SpatialIssue } from '../spatial-validation.js';
 
 /**
@@ -55,6 +56,12 @@ export interface ShadowInput {
   mepTypes?: string[];
   /** 规则层本轮产出的 issue，用于取「规则怎么说」。 */
   ruleIssues: SpatialIssue[];
+  /**
+   * 活动包络（envelope）输入。提供时才计算 envelope shadow，并并进同一份
+   * `report.shadow.envelopes`（shadow-only，不影响 errors/warnings/退出码）。
+   * 缺省（如既有单测）不生成 envelopes 段，保持向后兼容。
+   */
+  envelopes?: EnvelopeInput;
 }
 
 export interface ShadowReport {
@@ -71,6 +78,8 @@ export interface ShadowReport {
   };
   divergences: ShadowDivergenceEntry[];
   exemptionAudit: ExemptionAuditEntry[];
+  /** 活动包络 shadow（info-only）。仅当传入 envelopes 输入时存在。 */
+  envelopes?: EnvelopeReport;
 }
 
 function obbOf(entry: BoxEntry): Obb | null {
@@ -144,5 +153,6 @@ export function computeObbShadow(input: ShadowInput): ShadowReport {
     },
     divergences,
     exemptionAudit,
+    ...(input.envelopes ? { envelopes: computeEnvelopeShadow(input.envelopes) } : {}),
   };
 }

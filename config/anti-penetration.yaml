@@ -219,3 +219,98 @@ waivers:
     reason: "通顶衣柜顶部薄收口件：config/house.yaml 原注「通顶柜顶部薄收口，主体固定门头已由衣柜对象表达；不承担 HVAC 责任」，与衣柜主体是同一通顶柜的上下构件，不是两件独立家具"
     owner: 业主
     expires: 2027-06-30
+
+# ── 活动包络（envelopes）申报：shadow-only ──────────────────────────────────
+# 补「用起来才穿模」这一洞：门扇开启占位、推拉门开启态、冰箱/洗碗机/洗衣机门、
+# 抽屉/拉篮、椅子拉出、衣柜平开门 vs 床。**结论只进 report.shadow.envelopes，
+# 不计入 errors/warnings、不影响退出码**（见 shared/penetration/envelopes.ts）。
+#
+# 铁律：不许猜几何。每个包络都从**已声明数据**推导，且每个登记的家具类型都在
+# declared_basis 写明依据出处（config/house.yaml 注释 / docs / 厂家常识）。
+# **未登记的类型不生成包络**，并在 shadow 汇总里显形为 envelope_undeclared（info）——
+# 「未申报 → 显形，不猜」。业主可据 report.shadow.envelopes.hits 逐条裁定。
+envelopes:
+  # 门扇开启弧：从 model-geometry 的 openings（swing/hinge/width）+ 墙段方向推导，
+  # 复刻 SceneBuilder 合页与开门向约定。90° 扫掠扇形近似为 wedges 个有向盒（保守外包）。
+  # 只对照家具/玻璃/吊顶，不碰墙（合页贴墙固有接触 + OBB-vs-墙 slab 是另一套中心线口径）。
+  door_swing:
+    enabled: true
+    wedges: 3
+    note: "门扇 90° 扫掠扇形近似为 3 个有向盒；只对声明了 swing+hinge 的 door 建模（d_elev/d_study/d_kit_balc 未声明 swing，不猜）"
+  # 推拉门开启态：只对 overlay 的 sliding_door_run open:true 建模，面板叠收位置复刻 SceneBuilder。
+  sliding_open:
+    enabled: true
+    note: "kitchen_dining_sliding_door open:true，三活扇叠收东端；开启态包络=叠收面板（复刻 SceneBuilder along 公式）"
+
+  # 家具活动包络：**只登记有依据的类型**。方向/行程/扇宽随申报；未申报 → envelope_undeclared。
+  furniture:
+    # ── 电器门（appliance_door）：门朝哪开由放置/注释声明，探出净空为厂家常识估计值 ──
+    - id: env.fridge.door
+      type: fridge
+      kind: appliance_door
+      open_face: west
+      swing_m: 0.6
+      declared_basis: "DEC-021 冰箱占东墙南端高柜位（嵌东墙柜体，门朝厨房即西）；0.6m 开门净空为厂家常识估计（侧对门叶≈半宽 0.35 开 90°+铰件），非施工依据"
+    - id: env.dishwasher.door
+      type: dishwasher
+      kind: appliance_door
+      open_face: south
+      swing_m: 0.5
+      declared_basis: "DEC-2026-08-02-013 洗碗机收北墙地柜台下、门板与柜体齐平，门朝厨房（南）；0.5m 下翻门净空为厂家常识估计，非施工依据"
+    - id: env.washer.door
+      type: washer
+      kind: appliance_door
+      open_face: east
+      swing_m: 0.5
+      declared_basis: "config/house.yaml「10kg 滚筒贴西墙面朝东」——前开门朝东；0.5m 圆门净空为厂家常识估计，非施工依据"
+    - id: env.dryer.door
+      type: dryer
+      kind: appliance_door
+      open_face: east
+      swing_m: 0.5
+      declared_basis: "config/house.yaml 热泵烘干机叠放洗衣机上、同面朝东；0.5m 圆门净空为厂家常识估计，非施工依据"
+
+    # ── 抽屉/拉篮（drawer）：拉出方向由放置/注释声明 ──
+    - id: env.low_dresser.drawer
+      type: master_hot_season_low_dresser
+      kind: drawer
+      open_face: north
+      extend_m: 0.35
+      declared_basis: "config/house.yaml「主卧南侧窗带轻中古六抽矮柜…抽屉朝北」；0.35m 拉出行程为成品抽屉常识值（非施工依据）"
+
+    # ── 椅子拉出（chair_pullout）：拉出向从 FixtureFactory recipe 的靠背 local -z 按 rotation 推导 ──
+    - id: env.dining_chair.pullout
+      type: dining_chair
+      kind: chair_pullout
+      pullout_axis: backrest
+      pullout_m: 0.45
+      declared_basis: "成品餐椅围桌、使用时拉出；FixtureFactory dining_chair 靠背在 local -z，拉出向=该向按 placed rotation 旋转（不猜固定世界向）；0.45m 为任务给定拉出距"
+    - id: env.chair.pullout
+      type: chair
+      kind: chair_pullout
+      pullout_axis: backrest
+      pullout_m: 0.45
+      declared_basis: "config/house.yaml 书桌椅「现实可推入桌下」（bedroom_nw）/「原位保留」（study）；FixtureFactory chair 靠背在 local -z，拉出向按 rotation 推导；0.45m 拉出距"
+    - id: env.dressing_stool.pullout
+      type: dressing_stool
+      kind: chair_pullout
+      open_face: east
+      pullout_m: 0.4
+      declared_basis: "config/house.yaml「收纳态完整收入桌下，使用时向东拉出」——拉出向=东，显式声明"
+
+    # ── 衣柜门（wardrobe_door）：铰开按平开门扇扫掠，推拉按贴面薄包络 ──
+    - id: env.wardrobe_950.door
+      type: master_north_wall_wardrobe_950
+      kind: wardrobe_door
+      open_face: south
+      door_face_axis: local+z
+      leaf_width_m: 0.29
+      leaf_count: 3
+      declared_basis: "config/house.yaml「三扇约0.29m平开门朝南」；FixtureFactory 门板在 local +z，rotation=0 → 朝南；每扇 90° 扫掠用「正面探出 0.29m」的保守盒外包（不知每扇铰侧，只过冲不漏）"
+    - id: env.wardrobe_180.slide
+      type: wardrobe_180
+      kind: wardrobe_door
+      sliding: true
+      door_face_axis: local-z
+      panel_thickness_m: 0.04
+      declared_basis: "config/house.yaml「推拉门成品衣柜」；FixtureFactory wardrobe_180 门板在 local -z，正面按 placed rotation 推导（bedroom_nw 靠南墙朝北 / bedroom_se 靠北墙朝南）——推拉扇贴面滑移，开启态包络≈静态正面+扇厚（近似无外探）"

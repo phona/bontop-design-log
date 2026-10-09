@@ -4,7 +4,7 @@ import {
   makeSpatialReport,
   type SpatialIssue,
 } from '../../../shared/spatial-validation.js';
-import { runPenetrationChecks } from '../../../shared/penetration/registry.js';
+import { runPenetrationChecks, loadAntiPenetrationConfig } from '../../../shared/penetration/registry.js';
 import { computeObbShadow } from '../../../shared/penetration/shadow.js';
 import {
   buildRuntimeScene,
@@ -68,7 +68,28 @@ function main(): void {
       issues.push(...penetration.issues);
       issues.push(...penetration.registryIssues);
       shadowEntries = args.has('--shadow')
-        ? computeObbShadow({ furniture: collected.furnitureEntries, relationships: penetration.relationships, mepTypes: inputs.config.mep_coordination_types, ruleIssues: penetration.issues })
+        ? computeObbShadow({
+            furniture: collected.furnitureEntries,
+            relationships: penetration.relationships,
+            mepTypes: inputs.config.mep_coordination_types,
+            ruleIssues: penetration.issues,
+            // 活动包络（shadow-only）：门扇开启弧 / 推拉门开启态 / 家具活动包络，结论只进
+            // report.shadow.envelopes，不计入 errors/warnings、不影响退出码。
+            envelopes: {
+              walls: inputs.layout.walls,
+              rooms: inputs.layout.rooms,
+              elements: inputs.elements,
+              furniture: collected.furnitureEntries,
+              targets: [
+                ...collected.furnitureEntries,
+                ...collected.glassEntries,
+                ...collected.ceilings.map((ceiling) => ({ entity: ceiling.id, type: ceiling.type, box: ceiling.box })),
+              ],
+              config: loadAntiPenetrationConfig().envelopes ?? {},
+              mepTypes: inputs.config.mep_coordination_types,
+              source: 'config/anti-penetration.yaml + config/layout/ + shared/penetration/envelopes.ts',
+            },
+          })
         : undefined;
     } catch (error) {
       issues.push({ level: 'error', code: 'scene_build_failed', entity: 'HOUSE_EXPORT', source: 'shared/render/SceneBuilder.ts', message: error instanceof Error ? error.message : String(error), evidence: {} });
@@ -103,6 +124,10 @@ function main(): void {
     if (shadow) {
       const s = shadow.summary;
       console.log(`OBB shadow (observe-only): ${s.candidates} candidate pair(s) → ${s.agree} agree / ${s.falsePositives} false positive / ${s.falseNegatives} false negative; exemption audit ${s.exemptPairsAudited} pair(s), ${s.overBroadExemptions} over-broad`);
+      if (shadow.envelopes) {
+        const e = shadow.envelopes.summary;
+        console.log(`envelope hits: ${e.hits} envelope(s) / ${e.hit_pairs} overlap pair(s) (info-only); ${e.undeclared_types} undeclared type(s) — see report.shadow.envelopes`);
+      }
     }
     for (const issue of report.issues) console.log(`${issue.level === 'error' ? '✗' : issue.level === 'warning' ? '⚠' : '·'} [${issue.code}] ${issue.entity}: ${issue.message}`);
   }
