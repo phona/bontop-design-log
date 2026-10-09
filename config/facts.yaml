@@ -440,6 +440,15 @@ scan:
       scalars: [dimension]
       pattern: '0\.94'
       reason: DEC 历史条目（只登记不改写），引用 #55 的实测包络尺寸；权威在 #55
+    # 空调厂家确认单是**汇总视图（rendered view）**：单子上的每个数字/型号都是从已登记的权威源
+    # 抄来做面对面核对用的——价格与型号口径在 config/hvac.yaml + docs/decisions/05-hvac.md
+    # （DEC-2026-10-04-R1）、现场几何在 config/ceiling.yaml / house.yaml / model-geometry.yaml、
+    # 待决项在 docs/pending-site-data.md #39/#42。本文件不得成为第二份数字真相：单子开头已写明
+    # 「如与本单不符，以权威源与合同附件为准」。若某数字在权威源里没有对应，应删单子上的它，
+    # 而不是给它登记 fact。
+    - path: docs/hvac-vendor-confirmation-sheet.md
+      pattern: '.'
+      reason: 汇总视图：数字/型号均为已登记权威值的转抄（config/hvac.yaml、DEC-2026-10-04-R1、#39/#42、合同附件），用于上门逐条核对；不构成第二份数字真相，单子内已声明权威优先
 # ─── T2 对账层 ───────────────────────────────────────────────────────────────
 
 facts:
