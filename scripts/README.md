@@ -29,7 +29,7 @@ scripts/
 | 用途 | 入口 |
 |---|---|
 | CAD 提取 | `python scripts/cad/parse_cad.py` |
-| 户型拓扑/布局及全量校验 | `npm run verify:all` |
+| 全量门禁（15 个 verifier 全跑 + 汇总退出码） | `npm run verify:all`；`--json` 出结构化信封，`--only <name>` 单跑，`--fail-fast` 复现旧短路行为 |
 | 家具、点位、规则、碰撞校验 | `npm run verify:furniture`、`verify:consistency`、`verify:rules`、`verify:collision` |
 | 共享 project facts/灯光校验 | `npm run verify:project-render-facts`、`npm run verify:lighting-config` |
 | 空间声明/拓扑/安装校验 | `npm run verify:spatial` |
@@ -38,6 +38,8 @@ scripts/
 | Floor-plan capture | `python scripts/render/capture/capture_floor_plan_screenshot.py` |
 | Floor-plan watcher | `python scripts/render/capture/watch_floor_plan_and_compare.py` |
 | 俯视图/MEP 图 | `python scripts/render/diagrams/draw-topdown.py`、`draw-mep-hvac-plan.py` |
+
+`npm run verify:all` 由 `scripts/verify/verify-all.ts` 编排：依次跑完全部 15 个 verifier 再汇总退出码（0 ⇔ 全过，历史「N 步全过」证据仍有效），不再因单点红灯中止。支持 `--json` 的 verifier 会在信封里带上 `report`，不支持的标 `structured:false` 并附原始文本——不假装全部已结构化。
 
 `verify:spatial` 与 `verify:penetration` 共用 `shared/penetration/scene.ts` 的场景采集与规则实现：前者管声明完整性、墙线拓扑、运行时权威性与安装语义，后者只管实体互撞与净距（规则登记表 `config/anti-penetration.yaml`）。两者都纳入 `verify:all`。
 
