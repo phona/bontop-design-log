@@ -386,6 +386,11 @@ function renderLightingFixtures(electrical: ElectricalPoint[]): RenderLightingFi
       ...(point.circuit ? { circuit: point.circuit } : {}),
       ...(point.heads !== undefined ? { heads: point.heads } : {}),
       ...(point.recessed !== undefined ? { recessed: point.recessed } : {}),
+      // 宿主墙与侧向必须随点位一起进 runtime，口径与权威投影
+      // shared/project-render-facts-projection.ts 逐字一致；漏传会让靠 wall/wall_side
+      // 声明的起夜灯在 FixtureFactory 抛错，整场 buildScene 失败（scene_build_failed）。
+      ...(point.wall !== undefined ? { wallId: point.wall } : {}),
+      ...(point.wallSide !== undefined ? { wallSide: point.wallSide } : {}),
       ...(point.mountAnchor !== undefined ? { mountAnchor: point.mountAnchor } : {}),
     }));
 }
