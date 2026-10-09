@@ -81,7 +81,6 @@ vi.mock('../data/designData.js', () => ({
 import { TopicRegistry } from './TopicRegistry';
 import { HvacTopic } from './HvacTopic';
 import { FloorTopic } from './FloorTopic';
-import { WallTopic } from './WallTopic';
 import { PaintTopic } from './PaintTopic';
 import { CabinetTopic } from './CabinetTopic';
 import { CountertopTopic } from './CountertopTopic';
@@ -127,12 +126,11 @@ describe('TopicRegistry', () => {
     const mock = createMockSceneApi();
     const registry = new TopicRegistry(mock.api as any);
     const topics = registry.list();
-    expect(topics.length).toBe(9);
+    expect(topics.length).toBe(8);
     const ids = topics.map((t) => t.id);
     expect(ids).toContain('hvac');
     expect(ids).toContain('floor');
     expect(ids).toContain('curtain');
-    expect(ids).toContain('wall');
     expect(ids).toContain('paint');
     expect(ids).toContain('cabinet');
     expect(ids).toContain('countertop');
@@ -160,7 +158,7 @@ describe('TopicRegistry', () => {
     const custom = { id: 'custom', name: 'Custom', options: [], apply: vi.fn() };
     registry.register(custom as any);
     expect(registry.get('custom')).toBeDefined();
-    expect(registry.list().length).toBe(10);
+    expect(registry.list().length).toBe(9);
   });
 });
 
@@ -366,84 +364,6 @@ describe('FloorTopic', () => {
     const ids = topic.apply(scene as any, 'nonexistent');
     expect(ids).toEqual([]);
     expect(scene.setFloorMaterial).not.toHaveBeenCalled();
-  });
-
-  it('validate should return empty array', () => {
-    expect(topic.validate()).toEqual([]);
-  });
-});
-
-describe('WallTopic', () => {
-  let topic: WallTopic;
-
-  beforeEach(() => {
-    topic = new WallTopic();
-  });
-
-  it('should have correct id and name', () => {
-    expect(topic.id).toBe('wall');
-    expect(topic.name).toBe('墙砖方案');
-  });
-
-  it('should have options from wallOptions', () => {
-    expect(topic.options.length).toBe(2);
-    expect(topic.options[0].id).toBe('wall_tile_01');
-  });
-
-  it('should apply wall material to tile rooms and return wall ids', () => {
-    const scene = {
-      setWallMaterial: vi.fn(),
-      getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['kitchen', 'master_bath', 'guest_bath']),
-    };
-    const ids = topic.apply(scene as any, 'wall_tile_01');
-    expect(scene.getRoomIdsWithWallFinish).toHaveBeenCalledWith('tile');
-    expect(scene.setWallMaterial).toHaveBeenCalledWith(
-      'kitchen',
-      { type: 'ceramic_tile_v2', color: '#f5f5f5', scale: 2 }
-    );
-    expect(ids).toEqual(['wall:kitchen', 'wall:master_bath', 'wall:guest_bath']);
-  });
-
-  it('should apply second wall option', () => {
-    const scene = {
-      setWallMaterial: vi.fn(),
-      getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['kitchen', 'master_bath', 'guest_bath']),
-    };
-    const ids = topic.apply(scene as any, 'wall_tile_02');
-    expect(scene.getRoomIdsWithWallFinish).toHaveBeenCalledWith('tile');
-    expect(scene.setWallMaterial).toHaveBeenCalledWith(
-      'kitchen',
-      { type: 'ceramic_tile_v2', color: '#d0d0d0', scale: 2 }
-    );
-    expect(ids.length).toBe(3);
-  });
-
-  it('DEC-041: per-room override beats default', () => {
-    const scene = {
-      setWallMaterial: vi.fn(),
-      getRoomIdsWithWallFinish: vi.fn().mockReturnValue(['kitchen', 'master_bath']),
-    };
-    const selection = { default: 'wall_tile_01', roomOverrides: { kitchen: 'wall_tile_02' } };
-    topic.apply(scene as any, 'wall_tile_01', selection);
-    expect(scene.setWallMaterial).toHaveBeenCalledWith(
-      'kitchen',
-      { type: 'ceramic_tile_v2', color: '#d0d0d0', scale: 2 }
-    );
-    expect(scene.setWallMaterial).toHaveBeenCalledWith(
-      'master_bath',
-      { type: 'ceramic_tile_v2', color: '#f5f5f5', scale: 2 }
-    );
-  });
-
-  it('should return empty array for unknown option', () => {
-    const scene = {
-      setWallMaterial: vi.fn(),
-      setCeilingMaterial: vi.fn(),
-      getRoomIdsWithWallFinish: vi.fn(),
-    };
-    const ids = topic.apply(scene as any, 'nonexistent');
-    expect(ids).toEqual([]);
-    expect(scene.setWallMaterial).not.toHaveBeenCalled();
   });
 
   it('validate should return empty array', () => {

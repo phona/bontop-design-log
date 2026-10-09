@@ -40,7 +40,6 @@ export interface StateListener {
 const DEFAULT_SELECTIONS: Record<string, string> = {
   hvac: 'A2',
   floor: 'floor_tile_01',
-  wall: 'wall_tile_01',
   paint: 'latex_paint_01',
 };
 

@@ -34,7 +34,6 @@ function ensureAppearance(options: TopicOption[]): TopicOption[] {
 }
 
 export const floorOptions = ensureAppearance(byTopicId('floor'));
-export const wallOptions = ensureAppearance(byTopicId('wall'));
 // materials.yaml 的乳胶漆条目 topic_id 为 "paint"（历史误写 'latex_paint' 导致选项列表恒为空，DEC-041 修正）
 export const paintOptions = ensureAppearance(byTopicId('paint'));
 export const cabinetOptions = ensureAppearance(byTopicId('cabinet'));
@@ -49,7 +48,6 @@ export const interiorDoorOptions = [
 
 export const materialCategories: Record<string, TopicOption[]> = {
   floor: floorOptions,
-  wall: wallOptions,
   paint: paintOptions,
   cabinet: cabinetOptions,
   countertop: countertopOptions,

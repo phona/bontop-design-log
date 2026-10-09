@@ -1,7 +1,6 @@
 import type { Topic, SceneApi } from '@shared/types';
 import { HvacTopic } from './HvacTopic.js';
 import { FloorTopic } from './FloorTopic.js';
-import { WallTopic } from './WallTopic.js';
 import { PaintTopic } from './PaintTopic.js';
 import { CabinetTopic } from './CabinetTopic.js';
 import { CountertopTopic } from './CountertopTopic.js';
@@ -17,7 +16,6 @@ export class TopicRegistry {
     this.scene = scene;
     this.register(new HvacTopic());
     this.register(new FloorTopic());
-    this.register(new WallTopic());
     this.register(new PaintTopic());
     this.register(new CabinetTopic());
     this.register(new CountertopTopic());
