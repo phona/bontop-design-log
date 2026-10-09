@@ -27,6 +27,13 @@ export interface ElementInput {
   room?: string;
   /** config 的 `status` / `position_status` 原值。 */
   configStatus?: string;
+  /**
+   * config_status 规则下的权威出处覆盖。采集器从某份具体配置接来状态时，可带出比
+   * `config:<raw>` 更具体的出处（例如 `config/hvac.yaml anchor indoor_living:confirmed`），
+   * 让 statusSource 说清「来自哪个文件的哪一条、依据是什么」。缺省时退回 `config:<raw>`，
+   * 行为与原先完全一致（电气/给排水仍走默认格式）。
+   */
+  configStatusSource?: string;
   /** 声明 note 里出现的 DEC 引用（裁定依据）。 */
   decision?: string;
 }
@@ -200,7 +207,7 @@ export function deriveElementStates(input: ElementStateInput): ElementStateResul
               warnings.push({ code: 'state.status_unknown', entity: element.id, message: `config status "${raw}" is not in state-model statusVocabulary` });
               break;
             }
-            return { ...base, status: mapped, statusSource: `config:${raw}` };
+            return { ...base, status: mapped, statusSource: element.configStatusSource ?? `config:${raw}` };
           }
           break;
         }

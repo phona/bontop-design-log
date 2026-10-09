@@ -25,7 +25,7 @@ import {
   type IssueLike,
   type StateModel,
 } from '../../shared/element-state.js';
-import { collectElements } from '../../shared/element-sources.js';
+import { collectElements, mapHvacStatus, mergeCeilingHvacAnchors } from '../../shared/element-sources.js';
 
 const LEDGER = readFileSync('docs/pending-site-data.md', 'utf8');
 
@@ -210,26 +210,124 @@ describe('real project projection', () => {
 });
 
 describe('element census snapshot', () => {
-  // 快照门禁：构件总数与「未声明状态」数是**申报缺口的度量**。它变化只意味着两件事——
+  // 快照门禁：构件总数与「未声明状态」数是**申报缺口的度量**。它变化只意味着几件事——
   //   ① 有人往配置里加了构件但没申报 status/position_status → 去申报，别改这个数；
-  //   ② 有人删了构件 → 故意更新此快照并在 commit 里说明。
+  //   ② 有人删了构件 → 故意更新此快照并在 commit 里说明；
+  //   ③ 有人给既有构件补了 status/position_status 申报（如并行提交 769401e 给 46 个电气点位
+  //      补申报，undeclared 随之下降）→ 合法改进，更新此快照并在 commit 里说明来历；
+  //   ④ 采集器新接了一份权威状态源（如本次接入 config/hvac.yaml）→ 相应构件不再是申报缺口，
+  //      数字下降，在 commit 里说明来历。
   // 用空 issues 求 undeclared：把「申报缺口」与「门禁当前有没有 error」解耦，
   // 否则一个真实冲突会让这个数莫名少 1，掩盖申报缺口本身。
   it('pins the element census so undeclared elements cannot slip in silently', () => {
     const elements = collectElements();
     const result = deriveElementStates({ elements, ledger: { entries: [] }, issues: [] });
     assert.equal(result.summary.total, 164, '构件总数（电气 107 + 给排水 32 + 吊顶/HVAC 25）');
-    assert.equal(result.summary.undeclared, 74, '空台账下的未声明状态数——纯申报缺口，不受台账/门禁影响');
-    assert.ok(result.summary.undeclared / result.summary.total > 0.3, '缺口占比过高时应优先补申报，而不是继续加规则');
+    // 空台账 undeclared 来历：b0c425c 基线 74 →（769401e 电气 46 项补申报）28 →（本次接入
+    // config/hvac.yaml，6 个 ac_* 内机从 hvac anchor 拿到 confirmed）22。这 6 条 hvac anchor
+    // 的 confirmed 是本次修复的直接贡献（-6）；电气补申报的 -46 来自并行提交，非本次改动。
+    assert.equal(result.summary.undeclared, 22, '空台账下的未声明状态数——纯申报缺口，不受台账/门禁影响');
+    assert.ok(result.summary.undeclared / result.summary.total < 0.5, '未声明占比不应过半——过半说明申报大面积缺失，应优先补申报而不是继续加规则');
   });
 
   it('binds most elements once the real ledger and decisions are in play', () => {
     const elements = collectElements();
     const ledger = parsePendingLedger(LEDGER);
     const result = deriveElementStates({ elements, ledger, issues: [] });
-    // 接上真实台账后，undeclared 必须从 74 降下来——否则说明派生没接上权威源
-    assert.equal(result.summary.undeclared, 68, '台账把 6 个「无 config 状态、无 DEC」的构件绑成了 pending');
-    assert.equal(result.summary.pending, 21, 'pending = config 声明 pending 10 + 台账新绑 11');
+    // 接上真实台账后，undeclared 从空台账的 22 再降到 16——否则说明派生没接上台账这份权威源。
+    // 来历同样叠加了电气补申报：b0c425c 68 →（769401e 电气补申报）22 →（本次 hvac 接入 -6）16。
+    assert.equal(result.summary.undeclared, 16, '台账把 6 个「无 config 状态、无 DEC、无 hvac anchor」的构件绑成了 pending（undeclared -6）');
+    assert.equal(result.summary.pending, 34, 'pending = config 声明 pending 23 + 台账新绑 11');
     assert.ok((result.summary.byStatus.confirmed ?? 0) > 0, 'DEC 引用必须把构件绑成 confirmed');
+  });
+});
+
+describe('hvac ceiling anchors → authoritative status', () => {
+  // 修的是「权威状态本就存在、采集器没去读」：config/hvac.yaml 的 anchor 通过
+  // `ref.source: ceiling` + `ref.id` 指回 ceiling 构件，并带 status。采集器接入后，
+  // 6 个 ac_* 内机不再是 undeclared。
+  const CEILING_TO_ANCHOR: Record<string, string> = {
+    ac_living: 'indoor_living',
+    ac_dining: 'indoor_dining',
+    ac_master: 'indoor_master',
+    ac_study: 'indoor_study',
+    ac_parent: 'indoor_parent',
+    ac_child: 'indoor_child',
+  };
+
+  it('binds all six ac_* indoor units to their hvac.yaml anchor (no longer undeclared)', () => {
+    const elements = collectElements();
+    const result = deriveElementStates({ elements, ledger: { entries: [] }, issues: [] });
+    const byId = new Map(result.states.map((state) => [state.id, state]));
+    for (const [ceilingId, anchorId] of Object.entries(CEILING_TO_ANCHOR)) {
+      const state = byId.get(`ceiling:${ceilingId}`);
+      assert.ok(state, `ceiling:${ceilingId} 必须被采集到`);
+      assert.equal(state.kind, 'hvac');
+      assert.notEqual(state.status, 'undeclared', `${ceilingId} 不再应是 undeclared——权威状态在 config/hvac.yaml`);
+      assert.equal(state.status, 'confirmed', `${ceilingId} 的 anchor ${anchorId} 是 confirmed（DEC-2026-10-04-R1 成交映射）`);
+      assert.match(state.statusSource, /config\/hvac\.yaml/, `statusSource 必须指向 config/hvac.yaml`);
+      assert.ok(state.statusSource.includes(anchorId), `statusSource 必须列出 anchor id ${anchorId}，实际：${state.statusSource}`);
+    }
+    // 六个 hvac 构件全部 confirmed，undeclared 不再含任何一个 ac_*
+    const acStates = result.states.filter((state) => /^ceiling:ac_/.test(state.id));
+    assert.equal(acStates.length, 6);
+    assert.equal(acStates.filter((state) => state.status === 'confirmed').length, 6);
+  });
+
+  it('lets the collector-provided configStatusSource override the default config:<raw> source', () => {
+    // 采集器把 hvac anchor 的出处带进 configStatusSource，派生据此覆盖默认的 `config:<raw>`。
+    const result = deriveElementStates({
+      elements: [{ id: 'ceiling:ac_child', kind: 'hvac', label: 'x', configStatus: 'confirmed', configStatusSource: 'config/hvac.yaml anchor indoor_child:confirmed' }],
+      ledger: { entries: [] },
+      issues: [],
+    });
+    assert.equal(result.states[0].status, 'confirmed');
+    assert.equal(result.states[0].statusSource, 'config/hvac.yaml anchor indoor_child:confirmed');
+  });
+
+  it('takes the most conservative status when several anchors reference one ceiling id', () => {
+    // 一个内机常同时被 refrigerant/power/condensate 三个 anchor 引用；只要一条没确认，
+    // 整个构件就不能按 confirmed 计——否则「电源 confirmed」会盖掉「冷凝水仍 pending」。
+    const mixed = mergeCeilingHvacAnchors([
+      { id: 'indoor_child', status: 'confirmed' },
+      { id: 'power_child', status: 'confirmed' },
+      { id: 'condensate_child', status: 'pending', reason: '冷凝水候选接入点待量房确认立管' },
+    ]);
+    assert.equal(mixed.status, 'pending', '有一条 pending 就取 pending（最保守）');
+    assert.deepEqual(mixed.anchorIds, ['condensate_child', 'indoor_child', 'power_child'], '列出全部 anchor id，不许只报一个');
+    for (const id of ['condensate_child', 'indoor_child', 'power_child']) {
+      assert.ok(mixed.statusSource.includes(id), `statusSource 必须包含 ${id}`);
+    }
+
+    const inferred = mergeCeilingHvacAnchors([
+      { id: 'a', status: 'confirmed' },
+      { id: 'b', status: 'inferred', reason: '示意' },
+    ]);
+    assert.equal(inferred.status, 'inferred', 'confirmed + inferred 取 inferred');
+
+    const allConfirmed = mergeCeilingHvacAnchors([
+      { id: 'a', status: 'confirmed' },
+      { id: 'b', status: 'confirmed' },
+    ]);
+    assert.equal(allConfirmed.status, 'confirmed', '全部 confirmed 才 confirmed');
+  });
+
+  it('carries the anchor reason into statusSource for traceability', () => {
+    const merged = mergeCeilingHvacAnchors([
+      { id: 'branch_child', status: 'inferred', reason: '儿童房冷媒支路按南墙边吊转入示意，分歧、梁位和套管待厂家深化。' },
+    ]);
+    assert.match(merged.statusSource, /config\/hvac\.yaml/);
+    assert.ok(merged.statusSource.includes('儿童房冷媒支路'), `reason 必须出现在 statusSource 里，实际：${merged.statusSource}`);
+    assert.equal(merged.status, 'inferred');
+  });
+
+  it('maps the HVAC status vocabulary to ElementState words', () => {
+    // HVAC confirmed/inferred/pending 在 status_vocabulary 里同名同义；confirmed 对应
+    // ElementState 的 confirmed（有成交/裁定依据的确认），不降级成电气 measured/likely。
+    assert.equal(mapHvacStatus('confirmed'), 'confirmed');
+    assert.equal(mapHvacStatus('inferred'), 'inferred');
+    assert.equal(mapHvacStatus('pending'), 'pending');
+    assert.throws(() => mapHvacStatus('measured'), /Unknown HVAC status/, '电气词 measured 不是 HVAC 词——抛错，不静默猜测');
+    assert.throws(() => mapHvacStatus('likely'), /Unknown HVAC status/, 'likely 同理');
   });
 });
