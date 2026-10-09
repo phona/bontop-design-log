@@ -9,6 +9,7 @@
 - `DEC-2026-10-09-P02` 涂装范围扩展到显式顶面与上飘窗外露面，并修正顶面多计 7.726㎡
 - `DEC-2026-10-09-P03` 上飘窗涂装精度与几何口径修正：逐段 round3 累加改内部全精度、底面映射与 bay_sill 本体对齐、审计分水平/立面
 - `DEC-2026-10-09-P04` 全部上飘窗纳入涂装范围：主卫刷防霉漆独立计价，其余 8 处按普通漆；预算侧补算漏记的窗台面积
+- `DEC-2026-10-09-P05` 相邻上飘窗端面去重：背靠背的内部接缝按「算 0 次」剔除，并留档包围盒测量的错误
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -76,3 +77,47 @@
 - **决策人**：业主（「都算上」+ 主卫防霉漆）。
 - **验证**：`test:server` **869/869**、`test:app` **564/564**、`typecheck`（根 + app）干净、`verify:facts` OK、`verify:all` **14/15**（唯一失败是既有的 `sock_child_ac`）。`scope.warnings` 为 0（精确声明不产噪音）。
 - **后续议题**：① `kitchen_north_bay` 已由业主 2026-10-09 裁定「按统一刷漆价格先算」→ 维持 `ordinary`；业界做法留档于该声明 reason（厨房/飘窗窗台首选贴砖，与厨房墙砖连续、耐油污；若维持刷漆应加阳角条并升级厨卫/外墙漆，普通内墙乳胶漆在厨卫窗台并不合适），将来改贴砖需改挂 `sill_region` 并从 `ordinaryAreaSqm` 移出；② `bedroom_nw_west_bay` / `corridor_west_bay` 的 id 命名与几何归属不符（前者整块落在 master_bath 矩形、后者整块落在 master_bedroom 矩形），git 考古显示两者分属不同 commit 引入（`8440e60` 走廊西墙飘窗 depth 0.5/sill 2.55、`096bad8` 西北次卧西墙飘窗），后被统一为 depth 1.1/sill 2.07/h 0.76；③ **西墙幕墙两个 bay_sill 声明重叠 0.110㎡**（`master_bath_west_bay` z[1.10,2.20] vs `bedroom_nw_west_bay` z[2.10,2.86]，sill/height 完全相同 → 同一高度带双重声明，两处都已声明 paint_sill_region 故被双计），已登记 `docs/pending-site-data.md` #57；④ 上飘窗是异形面（水平+立面混合），普通漆按平墙费率计价可能偏低，费率口径待报价轮确认；⑤ 9 处飘窗的 `sill/height/depth` 仍为待复尺值，得房后复尺重算。
+
+---
+
+### DEC-2026-10-09-P05 相邻上飘窗端面去重：背靠背的内部接缝按「算 0 次」剔除
+
+- **日期**：2026-10-09。触发：业主确认「得做一些去重」后，追问「是因为曲面角吗」，据实核查发现此前两版根因描述都不准确，遂重做测量并落地去重。
+- **测量纠错（重要，留档防止再犯）**：此前两版数字都是**包围盒相交**，不是真相 polygon 相交——
+  - v1 报「重叠 0.110㎡」：拿 master_bath_west_bay 与 bedroom_nw_west_bay 的**包围盒**相交（1.1×0.10）
+  - v2 报「双计 0.186㎡」：在 v1 基础上加了一个用首末点当弦算的前缘面重叠，同样不实
+  - **真相**：用 2mm 网格在两多边形交叠区采样，全部 12 个 bay_sill 两两普查——真相 polygon 相交只有两处、
+    各 **0.002148㎡**（`bedroom_nw_west_bay↔master_bath_west_bay`、`master_bedroom_west_bay↔master_bedroom_south_bay`）。
+    另两处「重叠」是异高度带（防水基座 sill 0/h 0.15 vs 飘窗台 sill 2.07/h 0.76），不同面、不冲突。
+  - **教训**：轴对齐包围盒相交会严重高估；裁一个多边形必须用**另一个多边形的真实边**，且裁剪方向搞反
+    （拿矩形去裁复杂多边形）就会静默退化成包围盒相交。已用网格采样交叉验证。
+- **主体双计在端面，不在 footprint**：三对相邻飘窗在分界线上各自声明了 `start_end`/`end_end`，
+  而两个盒体在该线**背靠背**（一个在南、一个在北），那张端面是内部接缝、不外露：
+  | 相邻对 | 分界线 | 双方各计的端面 |
+  |---|---|---|
+  | `master_bath_west_bay` ↔ `bedroom_nw_west_bay` | z=2.10 | 0.638㎡ × 2 |
+  | `corridor_west_bay` ↔ `master_bedroom_west_bay` | z=5.55 | 0.836㎡ × 2 |
+  | `master_bedroom_south_bay` ↔ `master_bedroom_west_bay` | z=8.80（主卧 SW 圆角） | 0.638㎡ × 2 |
+  合计双计 **4.224㎡**，占原全部涂装面 310.429㎡ 的 **1.36%**。
+- **圆角的作用是减小而非造成重叠**：西北角 `v_bath_nw` radius 1.00，弧从西墙切点 (0,2.10) 到北墙切点
+  (1.00,1.10)；resolver 按设计把弧划归 `w_bath_north` 所有并把 `w_west_ap` 修剪成零长段（正确行为）。
+  圆角把西墙起点从 z=1.10 推到 z=2.10，才使 footprint 重叠从 1.21㎡ 缩到 0.002148㎡。
+- **选定方案**：新增 `shared/paint-sill-scope.ts` 的 `bayCoversCap` + `dedupeAdjacentBayCaps`，
+  与既有 `wallCoversCap` 同构——端面与**另一个 bay_sill 的轮廓边完全重合**即判为内部接缝并剔除，
+  留指名 warning 经 `/api/paint/comparison` 与 UI 可见（不静默改数）。只认**完全覆盖**：部分重合
+  （如防水基座只盖住 0.15m）说明该面仍有外露部分，不能整张排除。
+- **为什么两张都剔除而不是留一张**：业主 2026-10-09 裁定「算 0 次」。几何上两个盒体背靠背，
+  该面朝向室内那一侧被对方盒体占满，没有外露面可计；若两张都留则是把同一张内部接缝计两次。
+- **数字**：全部涂装面 310.429 → **306.205㎡**；普通计费 306.236 → **302.65㎡**；防霉漆 4.193 → **3.555㎡**；
+  普通窗台 43.097 → **39.511㎡**；`painting.actual` 9284.15 → **9175.09** 元；
+  报价对标：总价 16842.98 → 16645.75 元，vs 计划 +5145.75、vs 业主目标 +5645.75、vs 涂装模型 +3859.5。
+- **关联文件**：`shared/paint-sill-scope.ts`（+`bayCoversCap`/`dedupeAdjacentBayCaps`）、
+  `server/paint-cost-comparison.ts`（接去重、传全部 bay_sill 轮廓而非仅已声明的）、
+  `tests/server/{paint-scope,paint-comparison-api}.test.ts`、`README.md`、本文件。
+- **决策人**：业主（「算 0 次」）。
+- **验证**：`test:server` **869/869**、`test:app` **564/564**、`typecheck`（根+app）干净、
+  `verify:facts` OK、`verify:all` **14/15**（唯一失败是既有 `sock_child_ac`）。
+  `scope.warnings` 现有 6 条，全部是内部接缝剔除（测试断言 `/excluded as an internal seam/` 全匹配，
+  不允许夹带别的问题）；合成场景（无 bay_sill）warnings 仍为空。
+- **后续议题**：① 真相 polygon 相交残留 0.0043㎡（两处各 0.002148㎡，位于 x[1.00,1.10] 的弧端扫掠区）
+  仍待复尺定弧端收口；② 上飘窗是异形面，普通漆按平墙费率计价可能偏低；③ 9 处飘窗尺寸待复尺。

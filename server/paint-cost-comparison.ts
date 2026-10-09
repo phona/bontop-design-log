@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import type { ResolvedLayout } from '../shared/types.js';
 import { buildBaySillGeometry } from '../shared/render/BaySillGeometry.js';
-import { computePaintSillScope, type PaintSillFaceInput } from '../shared/paint-sill-scope.js';
+import { computePaintSillScope, dedupeAdjacentBayCaps, type PaintSillFaceInput } from '../shared/paint-sill-scope.js';
+import type { BaySillPoint } from '../shared/render/BaySillGeometry.js';
 import type { ProjectCatalog } from './project-catalog.js';
 import { mergeSceneElements, parseOverlay } from './overlay-merge.js';
 import { loadCeilingConfig } from './config-loader.js';
@@ -319,14 +320,24 @@ export function computePaintScopeForLayout(
 
   const mergedElements = mergeSceneElements(layout.walls as any, parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
   const bayById = new Map(mergedElements.filter((element) => element.type === 'bay_sill').map((element) => [element.id, element]));
-  const sillScopes = inputs.sillRegions.map((declaration) => {
-    const bay = bayById.get(declaration.element);
-    const room = roomById.get(declaration.room);
-    if (!bay || bay.type !== 'bay_sill' || !bay.wallRefs?.length) throw new Error(`paint_sill_region ${declaration.id} references unresolved bay_sill ${declaration.element}`);
-    if (!room) throw new Error(`paint_sill_region ${declaration.id} references unknown room ${declaration.room}`);
-    const geometry = buildBaySillGeometry(bay.wallRefs, layout.rooms, bay.depth);
-    return computePaintSillScope(declaration, geometry, bay, room, ceilingZones, layout.walls as any);
-  });
+  // 全部 bay_sill 的轮廓（不只是已声明涂装的）：端面是否外露由**物理相邻关系**决定，
+  // 与隔壁那间飘窗有没有声明涂装无关。
+  const bayOutlines: Record<string, BaySillPoint[]> = {};
+  for (const [id, bay] of bayById) {
+    if (bay.type !== 'bay_sill' || !bay.wallRefs?.length) continue;
+    bayOutlines[id] = buildBaySillGeometry(bay.wallRefs, layout.rooms, bay.depth).outline;
+  }
+  const sillScopes = dedupeAdjacentBayCaps(
+    inputs.sillRegions.map((declaration) => {
+      const bay = bayById.get(declaration.element);
+      const room = roomById.get(declaration.room);
+      if (!bay || bay.type !== 'bay_sill' || !bay.wallRefs?.length) throw new Error(`paint_sill_region ${declaration.id} references unresolved bay_sill ${declaration.element}`);
+      if (!room) throw new Error(`paint_sill_region ${declaration.id} references unknown room ${declaration.room}`);
+      const geometry = buildBaySillGeometry(bay.wallRefs, layout.rooms, bay.depth);
+      return computePaintSillScope(declaration, geometry, bay, room, ceilingZones, layout.walls as any);
+    }),
+    bayOutlines,
+  );
   const scope = computePaintScope(
     toPaintWalls(layout.walls as unknown as Array<Record<string, any>>),
     inputs.regions,

@@ -114,6 +114,89 @@ function verticalSurface(id: string, kind: PaintSillSurface['kind'], a: BaySillP
   return result;
 }
 
+/**
+ * 端面是否与**另一个 bay_sill 的轮廓边**完全重合。
+ *
+ * 相邻两个上飘窗各自向外挑 1.1m，在分界线上两个盒体背靠背（一个在南、一个在北），
+ * 那张端面是内部接缝、不外露——若两边都按 start_end/end_end 计一遍就是双计。
+ * 真实案例：主卫角部飘窗与主卫西墙飘窗同在 z=2.10 各计一张 0.638㎡ 端面；
+ * 走廊西飘窗与主卧西飘窗同在 z=5.55 各计一张 0.836㎡ 端面。
+ *
+ * 与 wallCoversCap 的分工：wallCoversCap 挡「端面被实体墙盖住」，本函数挡
+ * 「端面与相邻飘窗盒体背靠背」。两者都只做安全网，判定为隐蔽即留指名 warning。
+ * 只认**完全覆盖**（covered >= length）：部分重合（如防水基座只盖住 0.15m）
+ * 说明那个面仍有外露部分，不能整张排除。
+ */
+export function bayCoversCap(
+  a: BaySillPoint,
+  b: BaySillPoint,
+  selfElementId: string,
+  others: Array<{ id: string; outline: BaySillPoint[] }>,
+): string[] {
+  const length = distance(a, b);
+  if (length <= EPS) return [];
+  const dx = (b.x - a.x) / length, dz = (b.z - a.z) / length;
+  const matched: string[] = [];
+  for (const other of others) {
+    if (other.id === selfElementId) continue;
+    let covered = 0;
+    for (let i = 0; i < other.outline.length; i++) {
+      const p = other.outline[i], q = other.outline[(i + 1) % other.outline.length];
+      const sx = q.x - p.x, sz = q.z - p.z;
+      const sl = Math.hypot(sx, sz);
+      if (sl <= EPS || Math.abs(dx * sz - dz * sx) > 1e-5) continue;
+      const cross = Math.abs((p.x - a.x) * dz - (p.z - a.z) * dx);
+      if (cross > 1e-5) continue;
+      const t1 = (p.x - a.x) * dx + (p.z - a.z) * dz;
+      const t2 = (q.x - a.x) * dx + (q.z - a.z) * dz;
+      covered += Math.max(0, Math.min(length, Math.max(t1, t2)) - Math.max(0, Math.min(t1, t2)));
+    }
+    if (covered >= length - 1e-5) matched.push(other.id);
+  }
+  return matched;
+}
+
+/**
+ * 跨声明去重：把「与相邻 bay_sill 轮廓边完全重合」的 start_end/end_end 端面剔除，
+ * 并重算 totalAreaSqm / areaByFinish。被剔除的面以指名 warning 回到调用方，
+ * 经 /api/paint/comparison 的 warnings 与 UI 警告列表可见——不静默改数。
+ *
+ * 对称剔除：A 的端面与 B 的轮廓重合、B 的端面与 A 的轮廓重合时，**两张都剔除**
+ * （背靠背的内部接缝没有外露面可计）。这是 2026-10-09 业主裁定「算 0 次」的执行点。
+ */
+export function dedupeAdjacentBayCaps(
+  scopes: PaintSillScopeResult[],
+  outlines: Record<string, BaySillPoint[]>,
+): PaintSillScopeResult[] {
+  const others = Object.entries(outlines).map(([id, outline]) => ({ id, outline }));
+  return scopes.map((scope) => {
+    const dropped: Array<{ kind: string; area: number; neighbours: string[] }> = [];
+    const surfaces = scope.surfaces.filter((face) => {
+      if (face.kind !== 'start_end' && face.kind !== 'end_end') return true;
+      const a = face.points[0], b = face.points[face.points.length - 1];
+      if (!a || !b) return true;
+      const neighbours = bayCoversCap(a, b, scope.declaration.element, others);
+      if (!neighbours.length) return true;
+      dropped.push({ kind: face.kind, area: face.areaSqm, neighbours });
+      return false;
+    });
+    if (!dropped.length) return scope;
+    const totalAreaSqm = round3(surfaces.reduce((sum, face) => sum + face.areaSqm, 0));
+    const finish = scope.declaration.finish;
+    const warnings = [
+      ...scope.warnings,
+      ...dropped.map((d) => `${scope.declaration.id} ${d.kind} fully coincides with the boundary of adjacent bay_sill ${d.neighbours.join('/')} and was excluded as an internal seam (the two bay boxes are back-to-back there, so the face is not exposed)`),
+    ];
+    return {
+      ...scope,
+      surfaces,
+      totalAreaSqm,
+      areaByFinish: { ordinary: finish === 'ordinary' ? totalAreaSqm : 0, anti_mold: finish === 'anti_mold' ? totalAreaSqm : 0 },
+      warnings,
+    };
+  });
+}
+
 /** Calculate only explicitly declared sill faces, using the same outline/paths used by the scene mesh. */
 export function computePaintSillScope(
   declaration: PaintSillFaceInput,
