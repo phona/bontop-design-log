@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 import { loadCeilingConfig } from '../../../server/config-loader.js';
+import { collectFinishSceneMeshes } from '../../../shared/finish/scene.js';
 import {
   runFinishScopeChecks,
   loadFinishLintConfig,
@@ -118,8 +119,12 @@ function buildInput(): FinishScopeInput {
     }
   }
 
+  // F08：声明必须在 3D 场景里找到附着的实体。采集与测试共用 shared/finish/scene.ts，
+  // 结论不会两边漂移。场景建不起来时必须红——不能因为拿不到几何就假装没有飘空声明。
+  const scene = collectFinishSceneMeshes(layout as any);
+
   const config = loadFinishLintConfig();
-  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, openings, tolerance: config.tolerance ?? 0.01, source: SOURCE };
+  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, tolerance: config.tolerance ?? 0.01, source: SOURCE };
 }
 
 function main(): void {

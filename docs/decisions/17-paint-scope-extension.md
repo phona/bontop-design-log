@@ -404,3 +404,38 @@
   `verify:facts` OK（40 warning）、`verify:all` **15/16**（唯一失败是既有 `sock_child_ac`）。
 - **后续议题**：① 设备平台渲染仍 `follow: balcony`（室外灰砖面），若业主认为不铺砖就不该显示砖面，
   需另定它的渲染材质；② 顶面漆面积仍无第二套算法独立复算。
+
+---
+
+### DEC-2026-10-09-P13 新增 F08 面层声明必须附着在 3D 实体（回答「漆面是不是飘在空中」）
+
+- **日期**：2026-10-09。触发：业主提出「linter 可以校验漆面是不是附着在物体上吧？而不是离大谱的飘在空中」。
+- **这条检查抓什么**：声明是一回事，**场景里有没有实体是另一回事**。声明落空**不会报错**——
+  `computePaintScope` 照样按声明算出面积进预算，而 3D 里那块什么都没有。结果是
+  「预算算了钱、现场找不到活儿干」，而且从面积数字上完全看不出来。
+- **与既有检查的分工**：SceneBuilder 的 `report.unsupported` 只覆盖「引用不存在 / along 越界」
+  这类硬错误，且**只有测试在断言它为空**，不在门禁里；`verify:spatial` 管声明完整性与拓扑。
+  本规则把「声明 → 场景实体」的对应关系提升为门禁级，并覆盖 `paint_ceiling_region`
+  （它本身不产网格，只能通过「房间有无 ceiling 几何」间接判断）。
+- **实现**：
+  - 新增 `shared/finish/scene.ts` 的 `collectFinishSceneMeshes()`——`buildScene` 后遍历
+    `userData.objectId`，同时按 `ceiling:<room>` 收集有顶面网格的房间。与
+    `shared/penetration/scene.ts` 同构：verifier 与测试共用同一份采集，结论不会两边漂移。
+  - `shared/finish/rules.ts` 新增 `checkDeclarationAttached()`（F08）：
+    - `paint_region` / `walltile`：objectId 直接命中，或命中门洞拆分的 `${id}:s${n}`；
+    - `paint_sill_region` / `sill_region`：objectId 命中；
+    - `paint_ceiling_region`：声明顶面漆的房间必须有 ceiling 网格，否则「顶面漆飘在 2.80m 高度上，那儿没有顶」。
+  - 场景建不起来时**抛错**（fail-closed）：不能因为拿不到几何就假装没有飘空声明。
+- **规则编号**：F08 `finish.declaration_attached` / code `finish.declaration_unattached`，severity **error**。
+- **当前结论**：**0 命中**——45 段面层声明全部在场景里找到了实体，7 间顶面漆房间全有 ceiling 网格。
+  这条的价值在未来：谁加了一段声明却忘了让它落地，门禁当场红。
+- **关联文件**：`shared/finish/scene.ts`（新）、`shared/finish/rules.ts`、`shared/finish/registry.ts`、
+  `config/finish-lint.yaml`、`scripts/verify/finish/verify-finish-scope.ts`、
+  `tests/server/finish-scope.test.ts`（+3 条，含合成孤儿声明与人为清空 ceilingRooms 的负例）、本文件。
+- **决策人**：业主（提出该检查维度）。
+- **验证**：`test:server` **887/887**、`test:app` **564/564**、`typecheck`（根+app）干净、
+  `verify:facts` OK（40 warning）、`verify:all` **15/16**（唯一失败是既有 `sock_child_ac`）。
+  `verify:finish-scope` **0 error / 0 warning / 8 info**。
+- **面层核查层现状（F01–F08 八条）**：F01 漆砖互斥（同墙同侧重叠）、F02 同元素同面漆砖双声明、
+  F03 同侧重复涂漆、F04 声明挂错房间（悬空判据）、F05 顶面归属未登记、F06 铝扣板越界、
+  F07a 瓷砖盖门洞 / F07b 漆跨洞（info）、F08 声明未附着 3D 实体。

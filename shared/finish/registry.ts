@@ -95,6 +95,14 @@ export const IMPLEMENTED_RULES: FinishRuleSpec[] = [
     enabled: true,
     note: '漆声明跨洞 → info。跨洞正是漆的声明机制（声明整面墙，由 splitRectByGaps 拆成左条+右条+门楃条），面积与 3D 网眼都实扣；登记供核对，不判错。配置可加严。',
   },
+  {
+    id: 'finish.declaration_attached',
+    codes: ['finish.declaration_unattached'],
+    kinds: 'finish declaration vs buildScene meshes',
+    severity: 'error',
+    enabled: true,
+    note: '每个面层声明必须在 buildScene 的产出里找到自己（objectId 命中，或门洞拆分的 id:sN）。声明落空不会报错——computePaintScope 照样算面积进预算，而 3D 里什么都没有：预算算了钱、现场找不到活儿。paint_ceiling_region 本身不产网格，改判房间有无 ceiling 几何。',
+  },
 ];
 
 /** finish-scope 层 code 全集：parity 测试与文档都引这一份。 */

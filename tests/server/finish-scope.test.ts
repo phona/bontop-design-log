@@ -12,6 +12,7 @@ import {
   FINISH_RULE_CODES,
 } from '../../shared/finish/registry.js';
 import { validateFinishScope, type FinishScopeInput } from '../../shared/finish/rules.js';
+import { collectFinishSceneMeshes } from '../../shared/finish/scene.js';
 import * as path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
@@ -46,7 +47,17 @@ function buildInput(tolerance = 0.01): FinishScopeInput {
     const polyline = wall.segments?.length ? wall.segments.map((s: any) => ({ x1: s.x1, z1: s.z1, x2: s.x2, z2: s.z2 })) : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
     wallGeometry[wall.id] = { id: wall.id, polyline, length: polyline.reduce((sum: number, s: any) => sum + Math.hypot(s.x2 - s.x1, s.z2 - s.z1), 0), suppressed: Boolean(wall.suppressed) };
   }
-  return { walls, sills, rooms, wallGeometry, tolerance };
+  const ceilings: FinishScopeInput['ceilings'] = [];
+  const roomRects: FinishScopeInput['roomRects'] = [];
+  const ceilingPaintRooms = new Set<string>();
+  const wallPaintRooms = new Set<string>();
+  const openings: FinishScopeInput['openings'] = [];
+  for (const element of elements) {
+    if (element.type === 'paint_ceiling_region') ceilingPaintRooms.add(element.room);
+    if (element.type === 'paint_region') wallPaintRooms.add(element.room);
+  }
+  const scene = collectFinishSceneMeshes(layout);
+  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, tolerance };
 }
 
 const TODAY = '2026-10-09';
@@ -230,6 +241,39 @@ test('finish-scope：厨房上飘窗已由漆改砖，sill_region 的 face 枚�
   // 同一 element 的 front 被漆和砖同时声明才会被 F02 抓；现在只剩砖，必须干净
   const result = runFinishScopeChecks(input, TODAY, loadFinishLintConfig());
   assert.deepEqual(result.issues, [], '厨房上飘窗改贴砖后不应有任何 issue');
+});
+
+// F08：声明必须附着在 3D 实体
+test('finish-scope F08：真实配置的每个面层声明都附着在场景实体上', () => {
+  const input = buildInput();
+  assert.ok(input.sceneMeshIds && input.sceneMeshIds.size > 0, '场景必须采到网格');
+  assert.ok(input.sceneCeilingRooms && input.sceneCeilingRooms.size > 0, '场景必须采到 ceiling 网格');
+  const issues = validateFinishScope(input).filter((i) => i.code === 'finish.declaration_unattached');
+  assert.deepEqual(issues, [], '不应有声明落空/飘空');
+});
+
+test('finish-scope F08：声明在场景里产不出网格 → error', () => {
+  const input = buildInput();
+  const orphan: FinishScopeInput = {
+    ...input,
+    walls: [{ id: 'paint_ghost_wall', wall: 'w_x', room: 'roomA', along: [0, 2], bottom: 0, top: 2.8, finish: 'paint', type: 'paint_region' }],
+    sills: [{ id: 'silltile_ghost', element: 'ghost_bay', room: 'roomA', faces: ['front'], finish: 'tile', type: 'sill_region' }],
+    sceneCeilingRooms: new Set<string>(),
+    ceilingPaintRooms: new Set<string>(),
+  };
+  const issues = validateFinishScope(orphan).filter((i) => i.code === 'finish.declaration_unattached');
+  assert.equal(issues.length, 2, '应报 2 条（墙 + 飘窗台），实际 ' + issues.length);
+  assert.ok(issues.every((i) => i.level === 'error'));
+  assert.ok(issues.some((i) => i.entity === 'paint_ghost_wall'));
+  assert.ok(issues.some((i) => i.entity === 'silltile_ghost'));
+});
+
+test('finish-scope F08：声明了顶面漆但房间没有 ceiling 几何 → error', () => {
+  const input = buildInput();
+  const floating: FinishScopeInput = { ...input, walls: [], sills: [], sceneCeilingRooms: new Set<string>() };
+  const issues = validateFinishScope(floating).filter((i) => i.code === 'finish.declaration_unattached');
+  assert.ok(issues.length > 0, '7 间声明了顶面漆的房间应全部报飘空');
+  assert.ok(issues.every((i) => String(i.entity).startsWith('paint_ceiling_')));
 });
 
 test('finish-scope：IMPLEMENTED_RULES 与配置互为镜像', () => {

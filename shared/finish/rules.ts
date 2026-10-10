@@ -93,6 +93,10 @@ export interface FinishScopeInput {
   roomRects?: FinishRoomRect[];
   /** 墙上的门洞/窗洞。 */
   openings?: FinishOpening[];
+  /** F08 用：buildScene 实际产出的 objectId 集合。面层声明必须在这里找到自己，否则飘空。 */
+  sceneMeshIds?: Set<string>;
+  /** F08 用：有 ceiling 网格的房间（objectId = ceiling:<room>）。 */
+  sceneCeilingRooms?: Set<string>;
   /** 有 paint_ceiling_region 声明的房间（顶面已登记）。 */
   ceilingPaintRooms?: Set<string>;
   /** 有 paint_region 声明的房间（在涂装范围内）。 */
@@ -437,6 +441,62 @@ export function checkFinishOverOpening(input: FinishScopeInput): FinishIssue[] {
   return issues;
 }
 
+/**
+ * F08 面层声明必须附着在 3D 实体上：每个声明都要在 buildScene 的产出里找到自己。
+ *
+ * 这一条直接回答「漆面是不是飘在空中」：声明是一回事，**场景里有没有实体是另一回事**。
+ * 落空的声明不会报错——computePaintScope 照样按声明算出面积进预算，而 3D 里那块什么都没有。
+ * 预算算了钱、现场找不到活儿干。
+ *
+ * 与既有检查的分工：SceneBuilder 的 report.unsupported 只覆盖「引用不存在/区间越界」这类
+ * 硬错误，且只有测试在断言它为空；本规则把「声明 -> 场景实体」的对应关系提升为门禁级，
+ * 并覆盖 paint_ceiling_region（它本身不产网格，只能通过房间有无 ceiling 几何判断）。
+ */
+export function checkDeclarationAttached(input: FinishScopeInput): FinishIssue[] {
+  const issues: FinishIssue[] = [];
+  const meshIds = input.sceneMeshIds;
+  if (!meshIds) return issues;
+  for (const span of input.walls) {
+    const direct = meshIds.has(span.id);
+    const split = [...meshIds].some((id) => id.startsWith(span.id + ':s'));
+    if (!direct && !split) {
+      issues.push({
+        level: 'error',
+        code: 'finish.declaration_unattached',
+        entity: span.id,
+        message: span.type + ' ' + span.id + '（墙 ' + span.wall + '）在 3D 场景里产不出任何网格——声明落空：预算照算面积，现场找不到这活儿',
+        evidence: { declaration: span.id, type: span.type, wall: span.wall },
+      });
+    }
+  }
+  for (const sill of input.sills) {
+    if (!meshIds.has(sill.id)) {
+      issues.push({
+        level: 'error',
+        code: 'finish.declaration_unattached',
+        entity: sill.id,
+        message: sill.type + ' ' + sill.id + '（构件 ' + sill.element + '）在 3D 场景里产不出任何网格——声明落空：预算照算面积，现场找不到这活儿',
+        evidence: { declaration: sill.id, type: sill.type, element: sill.element },
+      });
+    }
+  }
+  const ceilingRooms = input.sceneCeilingRooms;
+  if (ceilingRooms) {
+    for (const roomId of input.ceilingPaintRooms ?? []) {
+      if (!ceilingRooms.has(roomId)) {
+        issues.push({
+          level: 'error',
+          code: 'finish.declaration_unattached',
+          entity: 'paint_ceiling_' + roomId,
+          message: '房间 ' + roomId + ' 声明了顶面漆但场景里没有 ceiling 网格——顶面漆无处附着（飘在 2.80m 高度上，那儿没有顶）',
+          evidence: { room: roomId, type: 'paint_ceiling_region' },
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 export function validateFinishScope(input: FinishScopeInput): FinishIssue[] {
   return [
     ...checkWallFinishOverlap(input),
@@ -446,5 +506,6 @@ export function validateFinishScope(input: FinishScopeInput): FinishIssue[] {
     ...checkCeilingFinishUnaccounted(input),
     ...checkBuckleZoneOutsideRoom(input),
     ...checkFinishOverOpening(input),
+    ...checkDeclarationAttached(input),
   ];
 }

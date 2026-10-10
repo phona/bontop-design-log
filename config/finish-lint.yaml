@@ -84,6 +84,19 @@ rules:
       漆声明跨洞 → info。跨洞正是漆的声明机制：声明整面墙，由 splitRectByGaps 拆成
       左条+右条+门楃条，面积与 3D 网眼都实扣。这里只登记「这段声明跨了洞、扣减正在
       发生」，供核对，不判错。业主若要升为 warning/error，直接改这条 severity。
+  - id: finish.declaration_attached
+    codes: [finish.declaration_unattached]
+    kinds: finish declaration vs buildScene meshes
+    severity: error
+    enabled: true
+    note: >
+      业主 2026-10-09 提出「linter 可以校验漆面是不是附着在物体上，而不是离大谱的飘在
+      空中」。每个面层声明必须在 buildScene 的产出里找到自己——objectId 直接命中，或命中
+      门洞拆分的 id:sN。声明落空**不会报错**：computePaintScope 照样按声明算面积进预算，
+      而 3D 里那块什么都没有，结果是「预算算了钱、现场找不到活儿干」。SceneBuilder 的
+      report.unsupported 只覆盖引用不存在/区间越界，且只有测试在断言它为空；本规则把
+      「声明 → 场景实体」提升为门禁级。paint_ceiling_region 本身不产网格，改判「声明顶面漆
+      的房间有无 ceiling 几何」——没有就是飘在 2.80m 高度上。
 
 # 判定容差（米）：水平/竖向重叠小于此值不算压。
 tolerance: 0.01
