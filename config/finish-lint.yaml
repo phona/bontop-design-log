@@ -46,6 +46,24 @@ rules:
       along 端点须落在声明房间的 boundary 多边形上（用多边形不用包围盒——
       本户型主卧×西北次卧、客餐厅×入户花园两对房间包围盒相交而多边形不重叠）。
       这正是「漆面悬在过道上」的几何判据。
+  - id: finish.ceiling_unaccounted
+    codes: [finish.ceiling_finish_unaccounted]
+    kinds: paint_ceiling_region vs ceiling zone
+    severity: error
+    enabled: true
+    note: >
+      在涂装范围内（有 paint_region）且有非铝扣板吊顶的房间必须有 paint_ceiling_region。
+      铝扣板整间的房间豁免——业主 2026-10-09 确认「铝扣板不用刷漆」，那种房间顶面
+      本来就不该有漆面，声明与否都记 0。失败模式是**静默少算**：computePaintScope
+      的 ceilingAreaByRoom 只对有声明的房间建项，漏声明的房间顶面一律按 0 计。
+  - id: finish.buckle_zone_bounds
+    codes: [finish.buckle_zone_outside_room, finish.buckle_zone_room_unknown]
+    kinds: aluminum_buckle zone vs room rect
+    severity: error
+    enabled: true
+    note: >
+      铝扣板矩形须整块落在声明房间内。computePaintScope 用「zone ∩ 房间矩形」扣减
+      顶面漆面积，zone 越界时扣减口径就错——多扣（扣到邻居头上）或少扣。
 
 # 判定容差（米）：水平/竖向重叠小于此值不算压。
 tolerance: 0.01

@@ -54,11 +54,35 @@ export interface FinishWallGeometry {
   suppressed?: boolean;
 }
 
+export interface FinishCeilingZone {
+  id: string;
+  room: string;
+  type: string;
+  /** [x1, z1, x2, z2] 世界矩形。 */
+  area?: [number, number, number, number];
+}
+
+export interface FinishRoomRect {
+  id: string;
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+}
+
 export interface FinishScopeInput {
   walls: FinishWallSpan[];
   sills: FinishSillClaim[];
   rooms: FinishRoomPolygon[];
   wallGeometry: Record<string, FinishWallGeometry>;
+  /** 吊顶 zone（config/ceiling.yaml）。 */
+  ceilings?: FinishCeilingZone[];
+  /** 房间外接矩形（resolved layout），用于校验铝扣板 zone 是否越界。 */
+  roomRects?: FinishRoomRect[];
+  /** 有 paint_ceiling_region 声明的房间（顶面已登记）。 */
+  ceilingPaintRooms?: Set<string>;
+  /** 有 paint_region 声明的房间（在涂装范围内）。 */
+  wallPaintRooms?: Set<string>;
   tolerance?: number;
   source?: string;
 }
@@ -270,11 +294,87 @@ export function checkPaintOutsideRoom(input: FinishScopeInput): FinishIssue[] {
   return issues;
 }
 
+/**
+ * F05 顶面面层归属未登记：房间**在涂装范围内**（有 paint_region）、吊顶里有**非铝扣板**
+ * zone（= 石膏板，要刷漆），却没有 paint_ceiling_region 声明。
+ *
+ * 失败模式是**静默少算**：`computePaintScope` 的 ceilingAreaByRoom 只对有
+ * paint_ceiling_region 的房间建项，漏声明的房间顶面一律按 0 计，不报错也不告警。
+ *
+ * 铝扣板整间的房间豁免（业主 2026-10-09 确认「铝扣板不用刷漆」）——那种房间顶面
+ * 本来就不该有漆面，声明与否都记 0。完全不在涂装范围的房间也豁免。
+ */
+export function checkCeilingFinishUnaccounted(input: FinishScopeInput): FinishIssue[] {
+  const issues: FinishIssue[] = [];
+  const ceilings = input.ceilings ?? [];
+  const roomRects = new Map((input.roomRects ?? []).map((room) => [room.id, room]));
+  const declared = input.ceilingPaintRooms ?? new Set<string>();
+  const inPaintScope = input.wallPaintRooms ?? new Set<string>();
+  const paintableByRoom = new Map<string, FinishCeilingZone[]>();
+  for (const zone of ceilings) {
+    if (zone.type === 'aluminum_buckle') continue;
+    if (!paintableByRoom.has(zone.room)) paintableByRoom.set(zone.room, []);
+    paintableByRoom.get(zone.room)!.push(zone);
+  }
+  for (const [roomId, zones] of paintableByRoom) {
+    if (declared.has(roomId)) continue;
+    if (!inPaintScope.has(roomId)) continue;   // 整间不在涂装范围（如入户花园开发商已做好）
+    const room = roomRects.get(roomId);
+    issues.push({
+      level: 'error',
+      code: 'finish.ceiling_finish_unaccounted',
+      entity: roomId,
+      message: `房间 ${roomId} 在涂装范围内（有 paint_region）且有 ${zones.length} 段非铝扣板吊顶（${[...new Set(zones.map((z) => z.type))].join('/')}），但没有 paint_ceiling_region——顶面漆面会按 0 静默少算`,
+      evidence: { room: roomId, paintableZones: zones.map((z) => z.id), types: [...new Set(zones.map((z) => z.type))], footprintSqm: room ? +(room.width * room.depth).toFixed(3) : null },
+    });
+  }
+  return issues;
+}
+
+/**
+ * F06 铝扣板 zone 越界：aluminum_buckle 的矩形没有整块落在声明房间里。
+ * `computePaintScope` 用「zone ∩ 房间矩形」扣减顶面漆面积，zone 越界时扣减口径
+ * 就会错——多扣（扣到邻居头上）或少扣（房间内有铝扣板却没扣掉）。
+ */
+export function checkBuckleZoneOutsideRoom(input: FinishScopeInput): FinishIssue[] {
+  const issues: FinishIssue[] = [];
+  const tol = input.tolerance ?? 0.01;
+  for (const zone of (input.ceilings ?? []).filter((z) => z.type === 'aluminum_buckle' && z.area)) {
+    const room = (input.roomRects ?? []).find((candidate) => candidate.id === zone.room);
+    if (!room) {
+      issues.push({
+        level: 'error',
+        code: 'finish.buckle_zone_room_unknown',
+        entity: zone.id,
+        message: `铝扣板 zone ${zone.id} 声明的房间 ${zone.room} 不存在`,
+        evidence: { room: zone.room },
+      });
+      continue;
+    }
+    const [x1, z1, x2, z2] = zone.area!;
+    const rx1 = room.x - room.width / 2, rx2 = room.x + room.width / 2;
+    const rz1 = room.z - room.depth / 2, rz2 = room.z + room.depth / 2;
+    const outside = Math.max(0, rx1 - x1) + Math.max(0, x2 - rx2) + Math.max(0, rz1 - z1) + Math.max(0, z2 - rz2);
+    if (outside > tol) {
+      issues.push({
+        level: 'error',
+        code: 'finish.buckle_zone_outside_room',
+        entity: zone.id,
+        message: `铝扣板 zone ${zone.id} 的矩形 [${x1},${z1},${x2},${z2}] 超出房间 ${zone.room} 边界共 ${outside.toFixed(3)}m——顶面扣减口径会错`,
+        evidence: { room: zone.room, zone: [x1, z1, x2, z2], roomRect: [+rx1.toFixed(3), +rz1.toFixed(3), +rx2.toFixed(3), +rz2.toFixed(3)], outsideM: +outside.toFixed(3) },
+      });
+    }
+  }
+  return issues;
+}
+
 export function validateFinishScope(input: FinishScopeInput): FinishIssue[] {
   return [
     ...checkWallFinishOverlap(input),
     ...checkSillFinishDuplicate(input),
     ...checkPaintDuplicateSameSide(input),
     ...checkPaintOutsideRoom(input),
+    ...checkCeilingFinishUnaccounted(input),
+    ...checkBuckleZoneOutsideRoom(input),
   ];
 }

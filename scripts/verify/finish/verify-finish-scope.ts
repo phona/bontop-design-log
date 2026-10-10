@@ -83,8 +83,18 @@ function buildInput(): FinishScopeInput {
     };
   }
 
+  // 吊顶：zone 清单 + 房间外接矩形 + 两组房间集合（供 F05/F06 判定「在不在涂装范围」）
+  const ceilings: FinishScopeInput['ceilings'] = [];
+  for (const zone of loadCeilingConfig() as any[]) {
+    if (!zone.room) continue;
+    ceilings.push({ id: zone.id, room: zone.room, type: zone.type, ...(zone.area ? { area: zone.area as [number, number, number, number] } : {}) });
+  }
+  const roomRects: FinishScopeInput['roomRects'] = (layout.rooms as any[]).map((room) => ({ id: room.id, x: room.x, z: room.z, width: room.width ?? 0, depth: room.depth ?? 0 }));
+  const ceilingPaintRooms = new Set(elements.filter((e) => e.type === 'paint_ceiling_region').map((e) => e.room));
+  const wallPaintRooms = new Set(elements.filter((e) => e.type === 'paint_region').map((e) => e.room));
+
   const config = loadFinishLintConfig();
-  return { walls, sills, rooms, wallGeometry, tolerance: config.tolerance ?? 0.01, source: SOURCE };
+  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, tolerance: config.tolerance ?? 0.01, source: SOURCE };
 }
 
 function main(): void {
@@ -116,6 +126,8 @@ function main(): void {
     inputs: {
       wallFinishDeclarations: input.walls.length,
       sillFinishDeclarations: input.sills.length,
+      ceilingZones: (input.ceilings ?? []).length,
+      ceilingPaintRooms: [...(input.ceilingPaintRooms ?? [])].length,
       rooms: input.rooms.length,
       walls: Object.keys(input.wallGeometry).length,
     },

@@ -12,6 +12,7 @@
 - `DEC-2026-10-09-P05` 相邻上飘窗端面去重：背靠背的内部接缝按「算 0 次」剔除，并留档包围盒测量的错误
 - `DEC-2026-10-09-P06` 建立 `verify:finish-scope` 面层范围核查层（F01–F04），查出 2.741㎡ 面层双计含一处 C18 后 stale 瓷砖声明
 - `DEC-2026-10-09-P07` 业主裁定「砖漆互斥 + 不能悬空」：F01–F04 全升 error，修 6 处声明、删 1 处 stale 瓷砖声明
+- `DEC-2026-10-09-P08` 吊顶纳入面层核查：新增 F05/F06，业主确认铝扣板不刷漆
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -235,3 +236,39 @@
 - **后续议题**：① 吊顶仍未纳入本层（`paint_ceiling_region` vs `aluminum_buckle` zone 无独立复核）；
   ② 业主要求「统一刷漆价格先算」的厨房上飘窗，其漆/砖归属仍待终裁（当前按 ordinary 计）；
   ③ `waivers[]` 仍为空——现在没有已知豁免项，这是好事。
+
+---
+
+### DEC-2026-10-09-P08 吊顶纳入面层核查：新增 F05（顶面归属未登记）/ F06（铝扣板越界），确认铝扣板不刷漆
+
+- **日期**：2026-10-09。触发：业主问「吊顶也是要刷漆面的吗」，并确认「铝扣板就不用刷漆了吧」。
+- **吊顶面层现状（已逐房间核实）**：
+  | 类别 | 房间 | 顶面 |
+  |---|---|---|
+  | 刷漆（5 间） | living_dining 44.580 / master_bedroom 26.844 / study 12.750 / bedroom_nw 9.600 / bedroom_se 9.450 | `drop` + `ac_indoor` 石膏板，整间 footprint 全算漆面，合计 **103.224㎡** |
+  | 不刷（3 间） | master_bath / guest_bath / kitchen | `aluminum_buckle` 铝扣板 |
+  | 无吊顶（2 间） | balcony / elevator_shaft | 无 ceiling zone |
+  | 出范围（1 间） | entry_garden | 有 `drop`（3.64㎡）但 DEC-2026-10-08-C06 已把 4 段声明删除（开发商已做好） |
+  `drop`（降板区）与 `ac_indoor`（空调内机区）同材质，与 2.80 平顶一起整间算漆面，所以这 5 间顶面面积 = 房间 footprint、无扣减。
+- **业主裁定**：**铝扣板不用刷漆**。据此 F05 对「整间铝扣板的房间」豁免。
+- **新增规则**（均 error）：
+  - **F05 `finish.ceiling_finish_unaccounted`**：房间**在涂装范围内**（有 `paint_region`）且吊顶里有**非铝扣板** zone，却没有 `paint_ceiling_region` → error。
+    失败模式是**静默少算**：`computePaintScope` 的 `ceilingAreaByRoom` 只对有声明的房间建项
+    （`ceilingRoomIds` 来自声明），漏声明的房间顶面一律按 0 计，不报错也不告警。
+    两类豁免：整间铝扣板（业主裁定不刷）；完全不在涂装范围（如 entry_garden）。
+  - **F06 `finish.buckle_zone_outside_room` / `buckle_zone_room_unknown`**：铝扣板矩形须整块落在声明房间内。
+    `computePaintScope` 用「zone ∩ 房间矩形」扣减顶面漆面积，zone 越界则扣减口径错——多扣（扣到邻居头上）或少扣。
+- **一个已存在的不对称，裁定后保留**：master_bath / guest_bath **显式声明** `paint_ceiling_region`（净面积记 0），
+   kitchen **不声明**。理由是主卫/客卫有墙漆声明（在涂装范围内），顶面不刷这个决定必须登记在案；
+  厨房整间都没漆（墙全贴砖、北墙玻璃幕墙），顶面不刷是顺带结果。F05 按「有没有 `paint_region`」
+  判定在不在涂装范围，正好复现这个不对称而不误报。
+- **关联文件**：`shared/finish/rules.ts`（+`checkCeilingFinishUnaccounted` / `checkBuckleZoneOutsideRoom`，
+  输入加 `ceilings` / `roomRects` / `ceilingPaintRooms` / `wallPaintRooms`）、`shared/finish/registry.ts`、
+  `config/finish-lint.yaml`、`scripts/verify/finish/verify-finish-scope.ts`（接入 `loadCeilingConfig`）、
+  `tests/server/finish-scope.test.ts`（+5 条，含铝扣板豁免与出范围豁免的负例）、`README.md`、本文件。
+- **决策人**：业主（「铝扣板就不用刷漆了吧」）。
+- **验证**：`test:server` **883/883**、`test:app` **564/564**、`typecheck`（根+app）干净、
+  `verify:facts` OK（41 warning）、`verify:all` **15/16**（唯一失败是既有 `sock_child_ac`）。
+  `verify:finish-scope` **0 error / 0 warning**，规则数 F01–F06 六条，配置与实现互为镜像。
+- **后续议题**：F06 目前只校验铝扣板越界，尚未独立复算顶面漆面积（第二套算法对账）；
+  `drop` / `ac_indoor` zone 只作「这个房间有石膏板吊顶」的证据，其自身矩形不参与扣减。

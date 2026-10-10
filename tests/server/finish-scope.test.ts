@@ -167,9 +167,63 @@ test('finish-scope：豁免命中后降为 info（用合成输入，不依赖真
   assert.equal(noWaiver.issues[0].level, 'error', '砖漆互斥裁定后 F01 是 error');
 });
 
+// ── F05 顶面面层归属 ──────────────────────────────────────────────────────
+const withCeilings = (over: Partial<FinishScopeInput>): FinishScopeInput => ({
+  ...buildInput(),
+  walls: [], sills: [],
+  ceilings: [
+    { id: 'cz_a', room: 'roomA', type: 'drop', area: [0, 0, 2, 2] },
+    { id: 'cz_b', room: 'roomB', type: 'aluminum_buckle', area: [0, 0, 2, 2] },
+    { id: 'cz_c', room: 'roomC', type: 'drop', area: [0, 0, 2, 2] },
+  ],
+  roomRects: [
+    { id: 'roomA', x: 1, z: 1, width: 2, depth: 2 },
+    { id: 'roomB', x: 1, z: 1, width: 2, depth: 2 },
+    { id: 'roomC', x: 1, z: 1, width: 2, depth: 2 },
+  ],
+  ceilingPaintRooms: new Set(['roomA']),
+  wallPaintRooms: new Set(['roomA', 'roomB', 'roomC']),
+  ...over,
+});
+
+test('finish-scope F05：涂装范围内有石膏板吊顶却没登记顶面 → error（静默少算）', () => {
+  const issues = validateFinishScope(withCeilings({}));
+  const hits = issues.filter((i) => i.code === 'finish.ceiling_finish_unaccounted');
+  assert.equal(hits.length, 1, `只应报 roomC，实际 ${hits.map((h) => h.entity).join(',')}`);
+  assert.equal(hits[0].entity, 'roomC');
+  assert.equal(hits[0].level, 'error');
+  assert.equal((hits[0].evidence as any).footprintSqm, 4);
+});
+
+test('finish-scope F05：铝扣板整间的房间豁免（业主确认铝扣板不用刷漆）', () => {
+  const issues = validateFinishScope(withCeilings({}));
+  const roomB = issues.filter((i) => i.entity === 'roomB' && i.code === 'finish.ceiling_finish_unaccounted');
+  assert.equal(roomB.length, 0, 'roomB 整间铝扣板，顶面本就不刷漆，不该报');
+});
+
+test('finish-scope F05：完全不在涂装范围的房间豁免（如入户花园开发商已做好）', () => {
+  const issues = validateFinishScope(withCeilings({ wallPaintRooms: new Set(['roomA', 'roomB']) }));
+  assert.equal(issues.filter((i) => i.code === 'finish.ceiling_finish_unaccounted').length, 0, 'roomC 无 paint_region → 不在涂装范围，不查');
+});
+
+test('finish-scope F06：铝扣板矩形越出房间 → error（扣减口径错）', () => {
+  const issues = validateFinishScope(withCeilings({
+    ceilings: [{ id: 'cz_bad', room: 'roomA', type: 'aluminum_buckle', area: [0, 0, 4, 4] }],
+  }));
+  const hits = issues.filter((i) => i.code === 'finish.buckle_zone_outside_room');
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].entity, 'cz_bad');
+  assert.equal((hits[0].evidence as any).outsideM, 4);
+});
+
+test('finish-scope F06：真实配置的铝扣板 zone 必须都整块落在自己房间里', () => {
+  const result = runFinishScopeChecks(buildInput(), TODAY, loadFinishLintConfig());
+  assert.deepEqual(result.issues.filter((i) => i.code.startsWith('finish.buckle_zone')), [], '厨房/主卫/客卫的铝扣板必须都在房间内');
+});
+
 test('finish-scope：IMPLEMENTED_RULES 与配置互为镜像', () => {
   const config = loadFinishLintConfig();
-  assert.equal(config.rules.length, IMPLEMENTED_RULES.length);
+  assert.equal(config.rules.length, IMPLEMENTED_RULES.length, '配置申报数必须等于实现数（F01-F06 六条）');
   for (const rule of IMPLEMENTED_RULES) {
     const declared = config.rules.find((r) => r.id === rule.id);
     assert.ok(declared, `规则 ${rule.id} 必须在配置申报`);

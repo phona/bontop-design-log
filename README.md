@@ -170,11 +170,11 @@ npm run verify:finish-scope -- --json           # 机器可读，无时间戳、
 
 `verify:finish-scope` 补的是防穿模没覆盖的一类问题：**漆/砖/防水台/吊顶都是「面层声明」，各自圈一片墙或一片顶；声明互相压时不产生任何几何错误，只会让面积数字重复**——而 3D 里看不出来（漆是 inspection-only 半透明叠加层，要开开关转视角，且「压了 0.3㎡」肉眼判不了）。所以这一层专职核查，与 `verify:spatial`（声明完整性/拓扑/运行时权威性）、`verify:penetration`（实体互撞）不重复判同一件事。
 
-四条规则，业主 2026-10-09 裁定后**全部为 error**：**F01** 同一面墙同一房间（=同侧）水平+竖向区间都相交 → 该面被计两次（跨房间是双面涂漆，合法不报；裁定「砖跟漆互斥」——一片墙 either 刷漆 or 贴砖，没有「按桶吸收」的中间态）；**F02** 同一 bay 元素的同一个面被漆与砖同时声明；**F03** 同一面墙同侧两段 `paint_region` 的 along 相交；**F04** `paint_region` 的 along 端点须落在声明房间的 **boundary 多边形**上（裁定「不能悬空」——这正是「漆面悬在过道上」的几何判据，过道区没有 room）。
+六条规则，业主 2026-10-09 裁定后**全部为 error**：**F01** 同一面墙同一房间（=同侧）水平+竖向区间都相交 → 该面被计两次（跨房间是双面涂漆，合法不报；裁定「砖跟漆互斥」——一片墙 either 刷漆 or 贴砖，没有「按桶吸收」的中间态）；**F02** 同一 bay 元素的同一个面被漆与砖同时声明；**F03** 同一面墙同侧两段 `paint_region` 的 along 相交；**F04** `paint_region` 的 along 端点须落在声明房间的 **boundary 多边形**上（裁定「不能悬空」——这正是「漆面悬在过道上」的几何判据，过道区没有 room）；**F05** 在涂装范围内（有 `paint_region`）且有非铝扣板吊顶的房间必须有 `paint_ceiling_region`（失败模式是**静默少算**：`computePaintScope` 的 `ceilingAreaByRoom` 只对有声明的房间建项；整间铝扣板的房间豁免——业主确认铝扣板不刷漆）；**F06** 铝扣板矩形须整块落在声明房间内（`computePaintScope` 用「zone ∩ 房间矩形」扣减，越界则扣减口径错）。
 
 房间归属一律走 boundary 多边形，不用 `x/z/width/depth` 包围盒：本户型主卧×西北次卧、客餐厅×入户花园两对房间包围盒相交而多边形不重叠。`height` 字段在 `paint_region`/`wall_region` 里的语义是**顶面标高**不是「高度」（`shared/paint-scope.ts` 的 `const top = region.height ?? wall.height ?? 2.8`），字段名有歧义但两侧一致。
 
-规则、severity 与豁免只有一份真相：`config/finish-lint.yaml`，与 `config/anti-penetration.yaml` 同构（severity 是下限只许加严；豁免必须 `reason`/`owner`/`expires`，到期自动复活；覆盖矩阵缺一方即报错）。DEC-2026-10-09-P07 按业主裁定把 F01–F04 从 warning 全升 error，并**修声明而非加豁免**：6 处 `paint_region` 加 `bottom` 让出防水/防溅砖带（客卫开放洗漱区东墙被两条砖带夹住，拆成上下两段声明），删除 `walltile_kitchen_ent_hood_wall`（C18 后 stale 的烟机挡水砖，多计 0.45㎡ 瓷砖）。当前结论：**0 error / 0 warning**，`waivers[]` 为空——没有已知豁免项。尚未覆盖吊顶（`paint_ceiling_region` vs `aluminum_buckle` zone），扣减目前只在 `computePaintScope` 内部做、无独立复核。
+规则、severity 与豁免只有一份真相：`config/finish-lint.yaml`，与 `config/anti-penetration.yaml` 同构（severity 是下限只许加严；豁免必须 `reason`/`owner`/`expires`，到期自动复活；覆盖矩阵缺一方即报错）。DEC-2026-10-09-P07 按业主裁定把 F01–F04 从 warning 全升 error，并**修声明而非加豁免**：6 处 `paint_region` 加 `bottom` 让出防水/防溅砖带（客卫开放洗漱区东墙被两条砖带夹住，拆成上下两段声明），删除 `walltile_kitchen_ent_hood_wall`（C18 后 stale 的烟机挡水砖，多计 0.45㎡ 瓷砖）。当前结论：**0 error / 0 warning**，`waivers[]` 为空——没有已知豁免项。吊顶已纳入（F05/F06）。当前吊顶面层归属：**5 间刷漆**（客餐厅 44.580 / 主卧 26.844 / 书房 12.750 / 西北次卧 9.600 / 东南次卧 9.450，`drop` + `ac_indoor` 石膏板整间算漆面，合计 103.224㎡）、**3 间不刷**（主卫/客卫/厨房，全 `aluminum_buckle` 铝扣板）、**2 间无吊顶**（阳台/电梯井）、**1 间出范围**（入户花园，DEC-2026-10-08-C06 开发商已做好）。F06 目前只校验越界，尚未独立复算顶面漆面积（第二套算法对账）。
 
 ### 工程状态查询（DEC-2026-10-09-E01）
 
