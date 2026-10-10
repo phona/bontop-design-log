@@ -178,8 +178,8 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | master_bedroom_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卧南墙环幕飘窗（南缘 z=10.90） |
 | study_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 书房南墙飘窗（南缘 z=10.90，与主卧齐平） |
 | bedroom_se_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 客房南向凸窗（南缘 z=11.05） |
-| bedroom_nw_west_bay | 飘窗 | 深 1.1m / 台高 2.07m | 西北次卧西墙飘窗 |
-| corridor_west_bay | 飘窗 | 深 1.1m / 台高 2.07m | 走廊西墙飘窗 |
+| master_bath_west_lower_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卫西墙南段飘窗（2026-10-09 由 bedroom_nw_west_bay 改名，原名「西北次卧西墙」与几何不符） |
+| master_bedroom_west_mid_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卧西墙中段飘窗（2026-10-09 由 corridor_west_bay 改名，原名「走廊西墙」与几何不符——模型里没有 corridor 这个 room） |
 | master_bath_west_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卫西北角飘窗 |
 | bedroom_nw_north_bay | 飘窗 | 深 1.1m / 台高 2.07m | 西北次卧北墙飘窗（z=1.10 凹进段） |
 | kitchen_north_bay | 飘窗 | 深 1.1m / 台高 2.12m | 厨房北墙飘窗（z=0 北缘） |

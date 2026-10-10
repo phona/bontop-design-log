@@ -14,6 +14,7 @@
 - `DEC-2026-10-09-P07` 业主裁定「砖漆互斥 + 不能悬空」：F01–F04 全升 error，修 6 处声明、删 1 处 stale 瓷砖声明
 - `DEC-2026-10-09-P08` 吊顶纳入面层核查：新增 F05/F06，业主确认铝扣板不刷漆
 - `DEC-2026-10-09-P09` 厨房上飘窗终裁改贴砖（竖面+底面），`sill_region` 的 face 枚举扩为 front/top/underside
+- `DEC-2026-10-09-P10` 两个「名实不符」飘窗按方案 A 改名：只改 id，不动几何/面积/room
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -80,7 +81,7 @@
 - **关联文件**：`config/layout/overlay.yaml`（+8 段声明、主卫 finish 改名）、`shared/paint-scope.ts`（新增 `ordinarySillAreaByRoom` / `antiMoldSillAreaByRoom`）、`server/overlay-merge.ts`（枚举）、`shared/types.ts`、`shared/paint-sill-scope.ts`、`server/paint-cost-comparison.ts`（API scope 暴露分房面积 + 告警措辞）、`server/budget-calculator.ts`（预算面积含窗台）、`app/src/render/HouseScene.ts`、`app/src/ui/OverviewMenu.ts`、`tests/server/{paint-scope,paint-comparison-api,paint-sill-scope,paint-sill-scene}.test.ts`、`app/src/ui/OverviewMenu.test.ts`、`README.md`、本文件。
 - **决策人**：业主（「都算上」+ 主卫防霉漆）。
 - **验证**：`test:server` **869/869**、`test:app` **564/564**、`typecheck`（根 + app）干净、`verify:facts` OK、`verify:all` **14/15**（唯一失败是既有的 `sock_child_ac`）。`scope.warnings` 为 0（精确声明不产噪音）。
-- **后续议题**：① `kitchen_north_bay` 已由业主 2026-10-09 裁定「按统一刷漆价格先算」→ 维持 `ordinary`；业界做法留档于该声明 reason（厨房/飘窗窗台首选贴砖，与厨房墙砖连续、耐油污；若维持刷漆应加阳角条并升级厨卫/外墙漆，普通内墙乳胶漆在厨卫窗台并不合适），将来改贴砖需改挂 `sill_region` 并从 `ordinaryAreaSqm` 移出；② `bedroom_nw_west_bay` / `corridor_west_bay` 的 id 命名与几何归属不符（前者整块落在 master_bath 矩形、后者整块落在 master_bedroom 矩形），git 考古显示两者分属不同 commit 引入（`8440e60` 走廊西墙飘窗 depth 0.5/sill 2.55、`096bad8` 西北次卧西墙飘窗），后被统一为 depth 1.1/sill 2.07/h 0.76；③ **西墙幕墙两个 bay_sill 声明重叠 0.110㎡**（`master_bath_west_bay` z[1.10,2.20] vs `bedroom_nw_west_bay` z[2.10,2.86]，sill/height 完全相同 → 同一高度带双重声明，两处都已声明 paint_sill_region 故被双计），已登记 `docs/pending-site-data.md` #57；④ 上飘窗是异形面（水平+立面混合），普通漆按平墙费率计价可能偏低，费率口径待报价轮确认；⑤ 9 处飘窗的 `sill/height/depth` 仍为待复尺值，得房后复尺重算。
+- **后续议题**：① `kitchen_north_bay` 已由业主 2026-10-09 裁定「按统一刷漆价格先算」→ 维持 `ordinary`；业界做法留档于该声明 reason（厨房/飘窗窗台首选贴砖，与厨房墙砖连续、耐油污；若维持刷漆应加阳角条并升级厨卫/外墙漆，普通内墙乳胶漆在厨卫窗台并不合适），将来改贴砖需改挂 `sill_region` 并从 `ordinaryAreaSqm` 移出；② ~~`bedroom_nw_west_bay` / `corridor_west_bay` 的 id 命名与几何归属不符~~ **已由 DEC-2026-10-09-P10 关闭**（按方案 A 改名为 `master_bath_west_lower_bay` / `master_bedroom_west_mid_bay`，只改 id 不动几何）；原始不符情况留档：前者整块落在 master_bath 矩形、后者整块落在 master_bedroom 矩形，git 考古显示两者分属不同 commit 引入（`8440e60` 走廊西墙飘窗 depth 0.5/sill 2.55、`096bad8` 西北次卧西墙飘窗），后被统一为 depth 1.1/sill 2.07/h 0.76；③ **西墙幕墙两个 bay_sill 声明重叠 0.110㎡**（`master_bath_west_bay` z[1.10,2.20] vs `bedroom_nw_west_bay` z[2.10,2.86]，sill/height 完全相同 → 同一高度带双重声明，两处都已声明 paint_sill_region 故被双计），已登记 `docs/pending-site-data.md` #57；④ 上飘窗是异形面（水平+立面混合），普通漆按平墙费率计价可能偏低，费率口径待报价轮确认；⑤ 9 处飘窗的 `sill/height/depth` 仍为待复尺值，得房后复尺重算。
 
 ---
 
@@ -326,3 +327,44 @@
 - **后续议题**：① `underside` 目前只服务厨房这一处；主卫那处仍是 `anti_mold` 漆（含底面），
   若将来主卫也要整贴砖可直接复用；② 通用判据「以现实使用的合理度为准」已确立，后续
   异形窗台费率、两个名实不符飘窗等取舍都按它走。
+
+---
+
+### DEC-2026-10-09-P10 两个「名实不符」飘窗按方案 A 改名：只改 id，不动几何/面积/room
+
+- **日期**：2026-10-09。触发：业主问「两个窗台是什么问题」，听完选 **A（改名）**而非 B（改几何）。
+- **问题**：两个 `bay_sill` 的 id 命名与几何位置对不上，都在**西墙玻璃幕墙（x=0）**上、是相邻两段：
+  | 原名 | 名字说它是 | outline 实际在哪 | 按几何归属的 room |
+  |---|---|---|---|
+  | `bedroom_nw_west_bay` | 西北次卧的西墙 | x[0,1.1]×z[2.10,2.86]，**整块在 master_bath 矩形内** | `master_bath` |
+  | `corridor_west_bay` | 走廊的西墙 | x[0,1.1]×z[2.86,5.55]，**整块在 master_bedroom 矩形内** | `master_bedroom` |
+  西北次卧的西界在 **x=2.6**（它在主卫东边），不可能有 x=0 的墙；**模型里根本没有 `corridor` 这个 room**——
+  走廊是房间覆盖栅格里的一个洞（x[4.2,7.2]×z[4.3,6.45]），离这扇窗 4 米远。
+- **为什么不是小事**：room 归属决定吊顶遮挡用哪间房的 zone。主卫是铝扣板、完成面 2.65，
+  会遮住飘窗台面上方约 0.5㎡。归属错了遮挡就算错。而且这是**认知陷阱**——配置里写着
+  `bedroom_nw_west_bay` + `room: bedroom_nw`，任何人下次来改都会以为它是西北次卧的窗。
+- **来源（git 考古）**：两个分属不同 commit 各自引入，**引入者当时就判错了房间**：
+  `corridor_west_bay` 出自 `8440e60`（原 depth 0.5 / sill 2.55 / h 0.45，reason「走廊西墙飘窗」）；
+  `bedroom_nw_west_bay` 出自 `096bad8`（reason「西北次卧西墙飘窗」）。后被统一为
+  depth 1.1 / sill 2.07 / h 0.76，错误一路带到现在。
+- **为什么选 A 不选 B**：B（把两个 bay 挪到名字说的位置）不可行——西北次卧西墙在 x=2.6，
+  那是主卫的东墙、已经有 `w_mbath_east` 了；走廊西墙在 x=4.2。挪过去会和现有墙/飘窗撞，
+  且要动几何就得重新量，属于猜。按业主「以现实使用的合理度为准」的判据：
+  **几何是量出来的，名字是人起的**——改名字零成本，改几何是猜。
+- **落地**（只改 id 与 reason，几何/面积/room/finish/faces 全不动）：
+  - `bedroom_nw_west_bay` → **`master_bath_west_lower_bay`**
+  - `paint_bedroom_nw_west_bay` → **`paint_master_bath_west_lower_bay`**
+  - `corridor_west_bay` → **`master_bedroom_west_mid_bay`**
+  - `paint_corridor_west_bay` → **`paint_master_bedroom_west_mid_bay`**
+  四条声明的 reason 都改写了：删掉原来的「⚠️ 名实不符待核」，换成明确的房间归属说明 +
+  「2026-10-09 由 <旧名> 改名，原名是引入者误判」的留档。`docs/dressing-map.md` 的两行同步。
+- **数字**：**完全不变**。普通计费 294.717㎡、防霉漆 3.555㎡、全部涂装面 298.272㎡、
+  窗台按房 `{master_bath:4.832, master_bedroom:16.706, study:5.04, bedroom_se:5.04, bedroom_nw:5.58}`，
+  `scope.warnings` 仍 6 条（相邻飘窗内部接缝，与本次改名无关）。
+- **关联文件**：`config/layout/overlay.yaml`（4 个 id + 4 条 reason + 1 处注释）、
+  `docs/dressing-map.md`、本文件。
+- **决策人**：业主（选 A）。
+- **验证**：`test:server` **884/884**、`test:app` **564/564**、`typecheck`（根+app）干净、
+  `verify:facts` OK（41 warning）、`verify:all` **15/16**（唯一失败是既有 `sock_child_ac`）。
+  `verify:finish-scope` **0 error / 0 warning**。改名后涂装数字逐项复算一致。
+- **后续议题**：DEC-2026-10-09-P04 的后续议题② 至此关闭（命名与几何已统一）。
