@@ -363,15 +363,24 @@ elements:
     height: 2.65
     zone: visible
     reason: 厨房西墙实墙段（与 VRV 设备间共墙），无橱柜遮蔽，E2 贴满至 2.65 正砖
-  - id: walltile_kitchen_balc_east
+  - id: walltile_kitchen_balc_east_west
     type: wall_region
     wall: w_balc_east
     room: kitchen
-    along: [0.00, 1.20]      # z[1.00, 2.20] 段 = 1.20m（R06 新补，v2/v3 曾漏计）
+    along: [0.00, 0.20]      # 门洞 d_kit_balc [0.20,1.00] 西侧剩余段（DEC-2026-10-09-P11 拆分）
     bottom: 0.00
     height: 0.90
     zone: visible
-    reason: 厨房西墙生活阳台门段（门洞 0.80m 占大半），辅助台面防溅带 0.90m 正砖；不在 E2 贴满范围
+    reason: "厨房西墙生活阳台门段西侧，辅助台面防溅带 0.90m 正砖；不在 E2 贴满范围。2026-10-09 由 walltile_kitchen_balc_east（整段 1.20m）拆分——门洞占中段 0.80m，瓷砖不扣洞（DEC-2026-10-09-P11）"
+  - id: walltile_kitchen_balc_east_east
+    type: wall_region
+    wall: w_balc_east
+    room: kitchen
+    along: [1.00, 1.20]      # 门洞 d_kit_balc [0.20,1.00] 东侧剩余段（DEC-2026-10-09-P11 拆分）
+    bottom: 0.00
+    height: 0.90
+    zone: visible
+    reason: "厨房西墙生活阳台门段东侧，辅助台面防溅带 0.90m 正砖；不在 E2 贴满范围。2026-10-09 由 walltile_kitchen_balc_east（整段 1.20m）拆分——门洞占中段 0.80m，瓷砖不扣洞（DEC-2026-10-09-P11）"
   - id: walltile_kitchen_west_stub
     type: wall_region
     wall: w_kit_west
@@ -468,7 +477,7 @@ elements:
     type: wall_region
     wall: w_mbath_south
     room: master_bath
-    along: [0.00, 1.20]      # x[0, 1.20] 段 = 1.20m，淋浴湿区
+    along: [0.00, 1.15]      # x[0, 1.15] 段 = 1.15m，淋浴湿区；2026-10-09 由 1.20 收至 1.15——门洞 d_mbath 自沿墙 1.15 起，瓷砖不扣洞（DEC-2026-10-09-P11）
     bottom: 0.00
     height: 2.65
     zone: visible
@@ -477,7 +486,7 @@ elements:
     type: wall_region
     wall: w_mbath_south
     room: master_bath
-    along: [1.20, 2.60]      # x[1.20, 2.60] 段 = 1.40m
+    along: [1.95, 2.60]      # x[1.95, 2.60] 段 = 0.65m；2026-10-09 由 1.20 推至 1.95——门洞 d_mbath 至沿墙 1.95 止，瓷砖不扣洞（DEC-2026-10-09-P11）
     bottom: 0.00
     height: 0.30
     zone: visible
@@ -794,7 +803,7 @@ elements:
     type: paint_region
     wall: w_mbath_south
     room: master_bath
-    along: [1.20, 2.60]
+    along: [1.15, 2.60]      # 2026-10-09 由 1.20 提前至 1.15——淋浴砖 P11 收至 1.15，漆必须与砖带衔接，否则留 0.05m 无人面层（DEC-2026-10-09-P11）
     bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：让出 walltile_mbath_south_dry 的 0.30m 防水砖带
     height: 2.80
     reason: "主卫南墙干区涂装；[0,1.20] 为淋浴砖到顶跨不漆，0.30m 以下为 walltile_mbath_south_dry 防水砖带，砖漆互斥不重叠（DEC-2026-10-09-P07）；门洞跨内部分拆洞实扣"

@@ -70,6 +70,18 @@ export interface FinishRoomRect {
   depth: number;
 }
 
+/** 墙上的门洞/窗洞（resolved layout 的 openings，已换算成沿墙区间）。 */
+export interface FinishOpening {
+  id: string;
+  wall: string;
+  kind: 'door' | 'window';
+  /** 沿墙区间（米，自墙起点算）。 */
+  from: number;
+  to: number;
+  bottom: number;
+  top: number;
+}
+
 export interface FinishScopeInput {
   walls: FinishWallSpan[];
   sills: FinishSillClaim[];
@@ -79,6 +91,8 @@ export interface FinishScopeInput {
   ceilings?: FinishCeilingZone[];
   /** 房间外接矩形（resolved layout），用于校验铝扣板 zone 是否越界。 */
   roomRects?: FinishRoomRect[];
+  /** 墙上的门洞/窗洞。 */
+  openings?: FinishOpening[];
   /** 有 paint_ceiling_region 声明的房间（顶面已登记）。 */
   ceilingPaintRooms?: Set<string>;
   /** 有 paint_region 声明的房间（在涂装范围内）。 */
@@ -368,6 +382,61 @@ export function checkBuckleZoneOutsideRoom(input: FinishScopeInput): FinishIssue
   return issues;
 }
 
+/**
+ * F07 面层盖住洞口：声明圈定的沿墙×竖向区间覆盖了门洞或窗洞。
+ * 拆成两条独立规则（砖 / 漆），因为二者扣减机制完全不同、级别也不同：
+ * `finish.tile_over_opening`（error）与 `finish.paint_over_opening`（info）。
+ *
+ * 为什么漆和砖不同级别：
+ * - **瓷砖 → error**。`shared/paint-scope.ts` 的 `splitRectByGaps` 只服务漆
+ *   （`computePaintScope` 与 SceneBuilder 的 paint_region 分支都走它），
+ *   `wall_region` 分支是**单张 PlaneGeometry、不拆洞**，瓷砖算量也按 `len × band` 不扣洞。
+ *   所以砖声明一旦盖住洞口就是**实打实多算**，且物理上不能贴砖过门洞。
+ * - **漆 → info**。跨越洞口正是漆的声明机制：声明整面墙，由 splitRectByGaps 拆成
+ *   左条+右条+门楣条，面积与 3D 网眼都实扣。这里只登记「这段声明跨了洞、扣减正在发生」，
+ *   供核对，不判错。
+ *
+ * 真实命中（2026-10-09 上线时）：3 条瓷砖声明盖住门洞共 1.05㎡——
+ * `walltile_mbath_south_shower` 0.05×2.10、`walltile_mbath_south_dry` 0.75×0.30、
+ * `walltile_kitchen_balc_east` 0.80×0.90（其 reason 原话「门洞 0.80m 占大半」却仍按整段 1.20m 声明）。
+ */
+export function checkFinishOverOpening(input: FinishScopeInput): FinishIssue[] {
+  const issues: FinishIssue[] = [];
+  const tol = input.tolerance ?? 0.01;
+  for (const span of input.walls) {
+    for (const opening of input.openings ?? []) {
+      if (opening.wall !== span.wall) continue;
+      const hOver = Math.min(opening.to, span.along[1]) - Math.max(opening.from, span.along[0]);
+      const vOver = Math.min(opening.top, span.top) - Math.max(opening.bottom, span.bottom);
+      if (hOver <= tol || vOver <= tol) continue;
+      const area = hOver * vOver;
+      const isTile = span.finish === 'tile';
+      const where = `墙 ${span.wall} 的 ${opening.kind === 'door' ? '门' : '窗'}洞 ${opening.id} [${opening.from},${opening.to}]×[${opening.bottom},${opening.top}]`;
+      const declared = `[${span.along[0]},${span.along[1]}]×[${span.bottom},${span.top}]`;
+      const overlap = `重叠 ${hOver.toFixed(3)}×${vOver.toFixed(3)}m = ${area.toFixed(3)}㎡`;
+      const shared = { wall: span.wall, opening: opening.id, kind: opening.kind, horizontalOverlapM: +hOver.toFixed(3), verticalOverlapM: +vOver.toFixed(3), overlapAreaSqm: +area.toFixed(3), declared: span.id };
+      if (isTile) {
+        issues.push({
+          level: 'error',
+          code: 'finish.tile_over_opening',
+          entity: span.id,
+          message: `${span.type} ${span.id} 圈定的 ${declared} 盖住${where} → ${overlap}。瓷砖算量不扣洞（splitRectByGaps 只服务漆，wall_region 是单张 PlaneGeometry），这是实打实多算，且物理上不能贴砖过门洞`,
+          evidence: { ...shared, finish: 'tile' },
+        });
+      } else {
+        issues.push({
+          level: 'info',
+          code: 'finish.paint_over_opening',
+          entity: span.id,
+          message: `${span.type} ${span.id} 的声明区间 ${declared} 跨过${where} → ${overlap}。漆的面积与 3D 网眼由 splitRectByGaps 实扣，此处仅登记供核对`,
+          evidence: { ...shared, finish: 'paint' },
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 export function validateFinishScope(input: FinishScopeInput): FinishIssue[] {
   return [
     ...checkWallFinishOverlap(input),
@@ -376,5 +445,6 @@ export function validateFinishScope(input: FinishScopeInput): FinishIssue[] {
     ...checkPaintOutsideRoom(input),
     ...checkCeilingFinishUnaccounted(input),
     ...checkBuckleZoneOutsideRoom(input),
+    ...checkFinishOverOpening(input),
   ];
 }

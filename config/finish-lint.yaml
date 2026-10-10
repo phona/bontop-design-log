@@ -64,6 +64,26 @@ rules:
     note: >
       铝扣板矩形须整块落在声明房间内。computePaintScope 用「zone ∩ 房间矩形」扣减
       顶面漆面积，zone 越界时扣减口径就错——多扣（扣到邻居头上）或少扣。
+  - id: finish.tile_over_opening
+    codes: [finish.tile_over_opening]
+    kinds: walltile(wall_region) vs door/window opening
+    severity: error
+    enabled: true
+    note: >
+      业主 2026-10-09 裁定「限制住不该刷漆贴砖的地方不要做」。瓷砖声明盖住门/窗洞 →
+      error：shared/paint-scope.ts 的 splitRectByGaps 只服务漆（computePaintScope 与
+      SceneBuilder 的 paint_region 分支都走它），wall_region 分支是单张 PlaneGeometry
+      不拆洞、瓷砖算量按 len × band 不扣洞——砖声明盖住洞就是实打实多算，且物理上
+      不能贴砖过门洞。上线时真实命中 3 条砖声明共 1.05㎡。
+  - id: finish.paint_over_opening
+    codes: [finish.paint_over_opening]
+    kinds: paint_region vs door/window opening
+    severity: info
+    enabled: true
+    note: >
+      漆声明跨洞 → info。跨洞正是漆的声明机制：声明整面墙，由 splitRectByGaps 拆成
+      左条+右条+门楃条，面积与 3D 网眼都实扣。这里只登记「这段声明跨了洞、扣减正在
+      发生」，供核对，不判错。业主若要升为 warning/error，直接改这条 severity。
 
 # 判定容差（米）：水平/竖向重叠小于此值不算压。
 tolerance: 0.01

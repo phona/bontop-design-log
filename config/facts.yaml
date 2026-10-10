@@ -432,6 +432,14 @@ scan:
     # x[1.99,2.93] y[0.10,2.69] z[2.49,4.63]）。属「双口径未收敛」：该包络是预留区还是
     # 实体管尚未裁定（#55 跟踪），裁定前 prose 只引用不新建数字；config/anti-penetration.yaml
     # 的注释已改为指向 #55，不再手抄尺寸（禁双写）。
+    - path: config/finish-lint.yaml
+      scalars: [area_sqm]
+      pattern: '1\.05'
+      reason: 面层核查层上线时 F07 抓到的门洞多算量（厨房 0.72 + 主卫干区 0.225 + 主卫淋浴 0.105），权威在 config/layout/overlay.yaml 的声明 reason 与 DEC-2026-10-09-P11；此处为规则说明里的汇总数，不新建口径
+    - path: config/finish-lint.yaml
+      scalars: [area_sqm]
+      pattern: '0\.3'
+      reason: 面层核查层注释里举例的 0.30m 防水砖带高度，权威在 config/layout/overlay.yaml 的 walltile_* 声明；此处为规则说明，不新建口径
     - path: docs/penetration-lint.md
       scalars: [dimension]
       pattern: '0\.94'

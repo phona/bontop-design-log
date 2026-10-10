@@ -12,12 +12,12 @@
  * 要开开关、转视角、而且「压了 0.3㎡」肉眼判不了。所以必须有一层专职核查。
  */
 
-export type FinishSeverity = 'error' | 'warning';
+export type FinishSeverity = 'error' | 'warning' | 'info';
 
 /** issue 级别：severityFloor 可能把 warning 降到 info（被豁免/被规则内部降级）。 */
 export type FinishIssueLevel = 'error' | 'warning' | 'info';
 
-export const SEVERITY_RANK: Record<FinishSeverity, number> = { error: 2, warning: 1 };
+export const SEVERITY_RANK: Record<FinishSeverity, number> = { error: 2, warning: 1, info: 0 };
 
 /** 配置里的一条规则申报。severity 是下限，规则内部可自行降级。 */
 export interface FinishRuleSpec {

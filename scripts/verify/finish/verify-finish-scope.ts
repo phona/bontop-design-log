@@ -93,8 +93,33 @@ function buildInput(): FinishScopeInput {
   const ceilingPaintRooms = new Set(elements.filter((e) => e.type === 'paint_ceiling_region').map((e) => e.room));
   const wallPaintRooms = new Set(elements.filter((e) => e.type === 'paint_region').map((e) => e.room));
 
+  // 门/窗洞：resolved layout 的 openings 带世界坐标 x/z/width，按 doorGapsOnWall 同款
+  // 投影换算成沿墙区间（本模型墙均为单段，保留折线通用性）。
+  const openings: FinishScopeInput['openings'] = [];
+  for (const wall of layout.walls as any[]) {
+    const polyline = wallGeometry[wall.id]?.polyline ?? [];
+    const total = wallGeometry[wall.id]?.length ?? 0;
+    for (const opening of wall.openings ?? []) {
+      let remaining = total, along = -1;
+      for (const segment of polyline) {
+        const dx = segment.x2 - segment.x1, dz = segment.z2 - segment.z1;
+        const length = Math.hypot(dx, dz);
+        if (length <= 1e-9) continue;
+        const t = ((opening.x - segment.x1) * dx + (opening.z - segment.z1) * dz) / (length * length);
+        if (t < -1e-6 || t > 1 + 1e-6) { remaining -= length; continue; }
+        const clamped = Math.min(1, Math.max(0, t));
+        along = total - remaining + length * clamped;
+        break;
+      }
+      if (along < 0) continue;
+      const half = (opening.width ?? 0) / 2;
+      const bottom = opening.sill ?? 0;
+      openings.push({ id: opening.id, wall: wall.id, kind: opening.type === 'door' ? 'door' : 'window', from: along - half, to: along + half, bottom, top: bottom + (opening.height ?? 2.1) });
+    }
+  }
+
   const config = loadFinishLintConfig();
-  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, tolerance: config.tolerance ?? 0.01, source: SOURCE };
+  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, openings, tolerance: config.tolerance ?? 0.01, source: SOURCE };
 }
 
 function main(): void {
@@ -127,6 +152,7 @@ function main(): void {
       wallFinishDeclarations: input.walls.length,
       sillFinishDeclarations: input.sills.length,
       ceilingZones: (input.ceilings ?? []).length,
+      openings: (input.openings ?? []).length,
       ceilingPaintRooms: [...(input.ceilingPaintRooms ?? [])].length,
       rooms: input.rooms.length,
       walls: Object.keys(input.wallGeometry).length,

@@ -79,6 +79,22 @@ export const IMPLEMENTED_RULES: FinishRuleSpec[] = [
     enabled: true,
     note: '铝扣板矩形须整块落在声明房间内；computePaintScope 用「zone ∩ 房间矩形」扣减，越界则扣减口径错。',
   },
+  {
+    id: 'finish.tile_over_opening',
+    codes: ['finish.tile_over_opening'],
+    kinds: 'walltile(wall_region) vs door/window opening',
+    severity: 'error',
+    enabled: true,
+    note: '瓷砖声明盖住门/窗洞 → error。瓷砖算量不扣洞（splitRectByGaps 只服务漆，wall_region 是单张 PlaneGeometry），盖住洞就是实打实多算，且物理上不能贴砖过门洞。',
+  },
+  {
+    id: 'finish.paint_over_opening',
+    codes: ['finish.paint_over_opening'],
+    kinds: 'paint_region vs door/window opening',
+    severity: 'info',
+    enabled: true,
+    note: '漆声明跨洞 → info。跨洞正是漆的声明机制（声明整面墙，由 splitRectByGaps 拆成左条+右条+门楃条），面积与 3D 网眼都实扣；登记供核对，不判错。配置可加严。',
+  },
 ];
 
 /** finish-scope 层 code 全集：parity 测试与文档都引这一份。 */
@@ -111,7 +127,7 @@ export function validateFinishRegistry(config: FinishLintConfig, source = CONFIG
       issues.push({ level: 'error', code: 'finish.rule_duplicate', entity: rule.id, message: `规则 ${rule.id} 在配置里重复申报`, evidence: { source } });
     }
     seen.add(rule.id);
-    if (rule.severity !== 'error' && rule.severity !== 'warning') {
+    if (rule.severity !== 'error' && rule.severity !== 'warning' && rule.severity !== 'info') {
       issues.push({ level: 'error', code: 'finish.rule_severity_invalid', entity: rule.id, message: `规则 ${rule.id} 的 severity 只能是 error/warning`, evidence: { severity: rule.severity } });
     }
     for (const code of rule.codes ?? []) {
