@@ -354,15 +354,6 @@ elements:
   # R11 补（业主 2026-10-07 裁定 D2=补贴）：灶台/烟机后挡水墙。0.90m 杂砖带止于台面完成面 0.89m，
   # 而台面以上至烟机底（模型 range_hood 底缘 y=1.35，取整贴到 1.40 包住机身边）是油溅裸墙缺口。
   # 本段与下方杂砖带共用 along 区间 [1.27,2.17]（= 烟机宽 0.90m，z[0.73,1.63]），竖向 0.90→1.40 不重叠。
-  - id: walltile_kitchen_ent_hood_wall
-    type: wall_region
-    wall: w_ent_west
-    room: kitchen
-    along: [1.27, 2.17]
-    bottom: 0.90
-    height: 1.40
-    zone: visible
-    reason: 厨房东墙灶台/烟机后挡水墙（台面 0.89 贴至 1.40 包住烟机底缘 1.35），正砖可见面
   - id: walltile_kitchen_vrv_east
     type: wall_region
     wall: w_vrv_east
@@ -751,29 +742,41 @@ elements:
     wall: w_gbath_east
     room: guest_bath
     along: [0.55, 1.35]
+    bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：让出 walltile_gbath_east_rest 的 0.30m 防水砖带
     height: 2.80
-    reason: "客卫东墙南段（马桶区）上部涂装；[0,0.55] 为淋浴砖到顶不漆"
-  - id: paint_guest_bath_w_gbath_east_open_vanity
+    reason: "客卫东墙南段（马桶区）上部涂装；[0,0.55] 为淋浴砖到顶不漆；0.30m 以下为 walltile_gbath_east_rest 防水砖带，砖漆互斥不重叠（DEC-2026-10-09-P07）"
+  - id: paint_guest_bath_w_gbath_east_open_vanity_lower
     type: paint_region
     wall: w_gbath_east_open_vanity
     room: guest_bath
     along: [0.00, 0.75]
+    bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：墙裙砖带 [0,0.30] 与防溅带 [0.77,1.10] 之间那一段
+    height: 0.77
+    reason: "客卫开放洗漱区东墙下段涂装；上是 walltile_gbath_east_open_vanity 0.30m 墙裙砖带、下是 walltile_gbath_east_vanity_splash 0.77→1.10 台盆防溅带，砖漆互斥不重叠（DEC-2026-10-09-P07，废止原「按桶吸收」口径）"
+  - id: paint_guest_bath_w_gbath_east_open_vanity_upper
+    type: paint_region
+    wall: w_gbath_east_open_vanity
+    room: guest_bath
+    along: [0.00, 0.75]
+    bottom: 1.10                 # 砖漆互斥（DEC-2026-10-09-P07）：防溅带 [0.77,1.10] 以上至顶
     height: 2.80
-    reason: "客卫开放洗漱区东墙涂装（柜后 0.30m 杂砖带与 0.77→1.10 防溅带高度上部分重叠，见上注）"
+    reason: "客卫开放洗漱区东墙上段涂装；walltile_gbath_east_vanity_splash 防溅带止于 1.10，以上至 2.80 平顶为漆面，砖漆互斥不重叠（DEC-2026-10-09-P07）"
   - id: paint_guest_bath_w_gbath_west
     type: paint_region
     wall: w_gbath_west
     room: guest_bath
     along: [0.00, 1.35]
+    bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：让出 walltile_gbath_west 的 0.30m 防水砖带
     height: 2.80
-    reason: "客卫西墙（内卫侧）涂装（0.30m 砖带高度上部分重叠，见上注）"
+    reason: "客卫西墙（内卫侧）涂装；0.30m 以下为 walltile_gbath_west 防水砖带，砖漆互斥不重叠（DEC-2026-10-09-P07，废止原「按桶吸收」口径）"
   - id: paint_guest_bath_w_gbath_west_open_vanity
     type: paint_region
     wall: w_gbath_west_open_vanity
     room: guest_bath
     along: [0.00, 0.75]
+    bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：让出 walltile_gbath_west_open_vanity 的 0.30m 防水砖带
     height: 2.80
-    reason: "客卫开放洗漱区西墙（浴室柜对面）涂装（0.30m 砖带高度上部分重叠，见上注）"
+    reason: "客卫开放洗漱区西墙（浴室柜对面）涂装；0.30m 以下为 walltile_gbath_west_open_vanity 防水砖带，砖漆互斥不重叠（DEC-2026-10-09-P07，废止原「按桶吸收」口径）"
 
   # ── 主卫 2 段（2026-10-07 C16 终裁：与客卫同口径"带+漆"，wall_finish 改 paint 后由
   #    tmp/gen-paint-regions.ts 产出 2 段、人工剔除淋浴到顶跨）：西/北墙为玻璃幕墙（suppress）
@@ -784,15 +787,17 @@ elements:
     wall: w_mbath_east
     room: master_bath
     along: [0.00, 1.76]
+    bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：让出 walltile_mbath_east 的 0.30m 防水砖带
     height: 2.80
-    reason: "主卫东墙（马桶区）涂装；0.30m 砖带高度上部分重叠按桶吸收，见客卫注"
+    reason: "主卫东墙（马桶区）涂装；0.30m 以下为 walltile_mbath_east 防水砖带，砖漆互斥不重叠（DEC-2026-10-09-P07，废止原「按桶吸收」口径）"
   - id: paint_master_bath_w_mbath_south
     type: paint_region
     wall: w_mbath_south
     room: master_bath
     along: [1.20, 2.60]
+    bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：让出 walltile_mbath_south_dry 的 0.30m 防水砖带
     height: 2.80
-    reason: "主卫南墙干区涂装；[0,1.20] 为淋浴砖到顶跨不漆，门洞跨内部分拆洞实扣"
+    reason: "主卫南墙干区涂装；[0,1.20] 为淋浴砖到顶跨不漆，0.30m 以下为 walltile_mbath_south_dry 防水砖带，砖漆互斥不重叠（DEC-2026-10-09-P07）；门洞跨内部分拆洞实扣"
 
   # ── 显式顶面范围：沿用原有房间顶面涂装口径，但只扣除 config/ceiling.yaml 明确为铝扣板的投影。 ──
   # 飘窗底面/窗台本体按其 bay_sill 几何另计；主卫顶面铝扣板覆盖主卫投影，故不计普通墙漆。

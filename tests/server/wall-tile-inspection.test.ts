@@ -50,7 +50,7 @@ function wallTileMeshes(root: THREE.Object3D): THREE.Mesh[] {
 test('overlay wall_region declarations pass the Zod discriminated union', () => {
   const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
   const regions: any[] = (parsed.elements ?? []).filter((e: any) => e.type === 'wall_region');
-  assert.equal(regions.length, 17, '2026-10-07 客卫饰面终裁后 17 段墙（16 + 台盆防溅带）');
+  assert.equal(regions.length, 16, '2026-10-09 P07 删 C18 后 stale 的 walltile_kitchen_ent_hood_wall 后 16 段墙');
   // schema 会填入默认值：bottom 默认 0、zone 默认 visible
   for (const r of regions) {
     assert.ok(r.bottom >= 0, `${r.id} bottom 必须非负`);
@@ -80,14 +80,14 @@ test('mergeSceneElements preserves wall_region elements alongside overlay types'
   const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
   const merged = mergeSceneElements(resolvedWalls(), parsed);
   const regions: any[] = merged.filter((e: any) => e.type === 'wall_region');
-  assert.equal(regions.length, 17);
+  assert.equal(regions.length, 16, '2026-10-09 P07 删 walltile_kitchen_ent_hood_wall 后 16 段');
 });
 
-test('buildScene emits 23 inspection-only wall-tile meshes with reversible initial state', () => {
+test('buildScene emits 22 inspection-only wall-tile meshes with reversible initial state', () => {
   const scene = sceneWithWallTile();
   assert.deepEqual(scene.report.unsupported, [], '墙引用或 along 区间有误会在这里现形');
   const meshes = wallTileMeshes(scene.exportRoot);
-  assert.equal(meshes.length, 23);
+  assert.equal(meshes.length, 22);
   for (const mesh of meshes) {
     // inspection-only：正常视图必须完全不可见
     assert.equal(mesh.visible, false, `${mesh.userData.objectId} 默认应不可见`);
@@ -116,14 +116,12 @@ test('wall-tile geometry matches the declared wall span and height', () => {
   assert.ok(Math.abs(eastGeo.parameters.width - 2.40) < 1e-6, `宽度应为 2.40，实际 ${eastGeo.parameters.width}`);
   assert.ok(Math.abs(eastGeo.parameters.height - 2.65) < 1e-6, `高度应为 2.65，实际 ${eastGeo.parameters.height}`);
   assert.equal(east.userData.zone, 'visible', 'C18 废止杂砖后全屋正砖');
-  // R11 灶台挡水条：与东墙杂砖带同 along、竖向 0.90→1.40 堆叠，平面高度 0.50
-  const hood = byId.get('walltile_kitchen_ent_hood_wall')!;
-  assert.ok(hood, '灶台挡水条声明缺失');
-  const hoodGeo = hood.geometry as unknown as { parameters: { width: number; height: number } };
-  assert.ok(Math.abs(hoodGeo.parameters.width - 0.90) < 1e-6, `宽度应为 0.90，实际 ${hoodGeo.parameters.width}`);
-  assert.ok(Math.abs(hoodGeo.parameters.height - 0.50) < 1e-6, `带高应为 0.50，实际 ${hoodGeo.parameters.height}`);
-  assert.equal(hood.userData.zone, 'visible');
-  assert.equal(hood.userData.roomId, 'kitchen');
+  // DEC-2026-10-09-P07：R11 补的灶台挡水条 walltile_kitchen_ent_hood_wall 已删——
+  // C18 废止杂砖后东墙改整段正砖到 2.65，挡水条整块落在其内属 stale 重复声明
+  // （verify:finish-scope 的 F01 抓到 0.45㎡ 砖压砖）。原来这里断言挡水条网格存在，
+  // 现在改为断言它**不再存在**。
+  assert.equal(byId.has('walltile_kitchen_ent_hood_wall'), false, 'C18 后的 stale 挡水条必须已删除');
+  assert.equal(byId.has('walltile_kitchen_ent_west'), true, '整段正砖声明必须仍在');
   // R11 生活阳台：洗衣机墙 1.20m 与共墙阳台侧 1.50m，均 0.30m 湿区口径
   const washer = byId.get('walltile_balc_west_washer')!;
   assert.ok(washer, '阳台洗衣机墙声明缺失');
@@ -238,20 +236,19 @@ test('wall-tile status surface mirrors HVAC: required/ready/missing + byRoom + b
     byHeightTier[tier].segments += 1; byHeightTier[tier].lengthM += len; byHeightTier[tier].areaSqm += len * band;
   }
   assert.deepEqual(Object.keys(byRoom).sort(), ['主卫', '厨房', '客卫', '客厅', '阳台']);
-  assert.ok(Math.abs(byRoom['厨房'].lengthM - 5.70) < 1e-9, `厨房段长应为 5.70（含挡水条堆叠段），实际 ${byRoom['厨房'].lengthM}`);
+  assert.ok(Math.abs(byRoom['厨房'].lengthM - 4.80) < 1e-9, `厨房段长应为 4.80（删 C18 后 stale 挡水条），实际 ${byRoom['厨房'].lengthM}`);
   assert.ok(Math.abs(byRoom['主卫'].lengthM - 11.08) < 1e-9, `主卫应为 11.08（4.36 墙 + 6.72 防水台 front/top），实际 ${byRoom['主卫'].lengthM}`);
   assert.ok(Math.abs(byRoom['客卫'].lengthM - 6.45) < 1e-9, `客卫应为 6.45（5.70 + 防溅带堆叠 0.75），实际 ${byRoom['客卫'].lengthM}`);
   assert.ok(Math.abs(byRoom['阳台'].lengthM - 2.70) < 1e-9, `阳台应为 2.70，实际 ${byRoom['阳台'].lengthM}`);
   assert.ok(Math.abs(byRoom['客厅'].lengthM - 12.40) < 1e-9, `客厅应为防水台 front+top 两段各 6.20m，实际 ${byRoom['客厅'].lengthM}`);
-  assert.deepEqual(Object.keys(byHeightTier).sort(), ['0.15', '0.30', '0.33', '0.50', '0.90', '2.65']);
+  assert.deepEqual(Object.keys(byHeightTier).sort(), ['0.15', '0.30', '0.33', '0.90', '2.65'], '0.50 档随 C18 后 stale 挡水条一并删除');
   assert.equal(byHeightTier['2.65'].segments, 6, '砖到顶：客卫淋浴 2 + 厨房 E2 贴满 3 + 主卫淋浴 1（业主 2026-10-07 终裁）');
   assert.equal(byHeightTier['0.90'].segments, 1, '厨房阳台门段杂砖带（E2 贴满后仅此一段维持 0.90）');
   assert.equal(byHeightTier['0.30'].segments, 8, '两卫非淋浴 6 + 阳台 2');
   assert.equal(byHeightTier['0.33'].segments, 1, '客卫台盆防溅带（0.77→1.10）');
-  assert.equal(byHeightTier['0.50'].segments, 1, '灶台挡水条带高');
   assert.equal(byHeightTier['0.15'].segments, 6, '防水台竖面+台面：客厅 2 + 主卫 4（C17）');
   const total = Object.values(byRoom).reduce((s, v) => s + v.areaSqm, 0);
-  assert.ok(Math.abs(total - 25.651) < 0.01, `总面积应为 25.651，实际 ${total}`);
+  assert.ok(Math.abs(total - 25.201) < 0.01, `总面积应为 25.651，实际 ${total}`);
 });
 
 test('HouseScene wall-tile audit surface stays independent of HVAC', () => {

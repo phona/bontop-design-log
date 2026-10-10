@@ -11,6 +11,7 @@
 - `DEC-2026-10-09-P04` 全部上飘窗纳入涂装范围：主卫刷防霉漆独立计价，其余 8 处按普通漆；预算侧补算漏记的窗台面积
 - `DEC-2026-10-09-P05` 相邻上飘窗端面去重：背靠背的内部接缝按「算 0 次」剔除，并留档包围盒测量的错误
 - `DEC-2026-10-09-P06` 建立 `verify:finish-scope` 面层范围核查层（F01–F04），查出 2.741㎡ 面层双计含一处 C18 后 stale 瓷砖声明
+- `DEC-2026-10-09-P07` 业主裁定「砖漆互斥 + 不能悬空」：F01–F04 全升 error，修 6 处声明、删 1 处 stale 瓷砖声明
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -178,3 +179,59 @@
   （0.45㎡ 瓷砖双计），待业主确认；② 2.291㎡ 漆压砖的「按桶吸收」需业主书面确认后转入
   `waivers[]`；③ 本层尚未覆盖吊顶（paint_ceiling_region vs aluminum_buckle zone），
   当前扣减只在 `computePaintScope` 内部做、无独立复核。
+
+---
+
+### DEC-2026-10-09-P07 业主裁定「砖漆互斥 + 不能悬空」：F01–F04 全升 error，修 6 处声明 + 删 1 处 stale 瓷砖声明
+
+- **日期**：2026-10-09。触发：P06 建完 `verify:finish-scope` 报出 8 条 warning 后，业主裁定两条规则级口径：
+  **「砖跟漆应该是互斥的」**、**「不能悬空的」**。
+- **裁定落地**：
+  - F01 `finish.wall_overlap`（漆压砖/砖压漆）、F02 `finish.sill_finish_duplicate`（同元素同面漆砖双声明）、
+    F03 `finish.paint_duplicate_same_side`（同侧重复涂漆）→ 一律 **error**。一片墙 either 刷漆 or 贴砖，
+    不存在 P06 记录里那种「按桶吸收」的中间态。
+  - F04 `finish.paint_room_binding`（along 端点须落在声明房间 boundary 多边形上）→ **error**。
+    这正是「漆面悬在过道上」的几何判据；过道区没有 room，漆挂上去端点会离所有房间边界都远。
+  - 配置只许加严不许放宽，四条同时从 warning 升 error 符合该铁律。
+- **修声明让门禁回绿**（不是加豁免掩盖）：
+  - **6 处 `paint_region` 加 `bottom`，让出砖带**（漆从砖带顶面起算）：
+    `paint_master_bath_w_mbath_east` / `paint_master_bath_w_mbath_south` / `paint_guest_bath_w_gbath_east` /
+    `paint_guest_bath_w_gbath_west` / `paint_guest_bath_w_gbath_west_open_vanity` 均 `bottom: 0.30`
+    （让出 0.30m 防水砖带）；`paint_guest_bath_w_gbath_east_open_vanity` 因被**两条**砖带
+    （墙裙 [0,0.30] 与台盆防溅带 [0.77,1.10]）夹住，**拆成上下两段声明**：
+    `_lower`（[0.30,0.77]）与 `_upper`（[1.10,2.80]）。
+    各声明 reason 已把「按桶吸收」的旧口径改写为「砖漆互斥不重叠」。
+  - **删 `walltile_kitchen_ent_hood_wall`**（R11 补的灶台后挡水砖）：C18 废止杂砖后东墙改
+    `walltile_kitchen_ent_west` 整段正砖到 2.65，挡水条 along[1.27,2.17]×竖向[0.90,1.40]
+    整块落其内，属 **C18 之后的 stale 重复声明**，多计 0.45㎡ 瓷砖。删除不影响任何漆面计算。
+- **连带修正两处测试不变量**（都因「同房间同墙上下分段」变成合法而失效）：
+  - `paint-scope.test.ts` 的「同一面墙每个涂漆面必须是不同房间」→ 改为真实不变量
+    **「同墙同房的两块平面不许共面」**（竖向带重叠才会 z-fighting）；同一段声明被门洞拆出的多块跳过。
+  - `paint-scope.test.ts` 的 L2 独立复算：原假设漆刷整面高，现改为「可漆跨长 × 层高 − 同 (wall,room) 的部分高砖带面积」，
+    其中「到顶砖」（height ≥ 2.6）整跨剔除。复算仍只读 model-geometry boundary + overlay wall_region，不读 paint_region。
+  - `paint-comparison-api.test.ts` 的「每个 entry.top === 2.80」→ 改为「top > bottom 且净面积为正」
+    （客卫开放洗漱区东墙下段 top 是 0.77，不是 2.80）。
+- **数字**（普通漆计费面积因让出砖带而下降）：
+  | 指标 | P06 后 | P07 后 |
+  |---|---|---|
+  | 毛墙面 | 172.430 | **172.430**（不变，声明跨长未动） |
+  | 净墙面 | 157.850 | **157.850** |
+  | 门洞占位 | 14.580 | **14.580** |
+  | 普通计费 | 302.650 | **300.585㎡** |
+  | 全部涂装面 | 306.205 | **304.140㎡** |
+  | 防霉漆 | 3.555 | 3.555（不变） |
+  | `painting.actual` | 9113.11 | **9113.11** |
+  | 报价总额（55 元/㎡） | 16532.18 | **16532.18** |
+  注：净墙/门洞占位不变是因为让出的是 0.30m 砖带所在的竖向区间，而毛/净墙按声明跨长×全高算，
+  真正变化的是**漆面净面积**（客卫 −1.342㎡、主卫 −0.723㎡，合计 −2.065㎡）。
+- **关联文件**：`config/finish-lint.yaml`（四条规则 severity → error + note 补裁定）、
+  `shared/finish/registry.ts`（IMPLEMENTED_RULES 同步）、`config/layout/overlay.yaml`（6 处加 bottom、
+  1 处拆两段、删 1 条 stale 瓷砖声明）、`tests/server/{finish-scope,paint-scope,paint-comparison-api,wall-tile-inspection}.test.ts`、
+  `README.md`、本文件。
+- **决策人**：业主（「砖跟漆应该是互斥的」「不能悬空的」）。
+- **验证**：`test:server` **878/878**、`test:app` **564/564**、`typecheck`（根+app）干净、
+  `verify:facts` OK（41 warning）、`verify:all` **15/16**（唯一失败是既有 `sock_child_ac`）。
+  `verify:finish-scope` **0 error / 0 warning**。
+- **后续议题**：① 吊顶仍未纳入本层（`paint_ceiling_region` vs `aluminum_buckle` zone 无独立复核）；
+  ② 业主要求「统一刷漆价格先算」的厨房上飘窗，其漆/砖归属仍待终裁（当前按 ordinary 计）；
+  ③ `waivers[]` 仍为空——现在没有已知豁免项，这是好事。

@@ -14,22 +14,23 @@ rules:
   - id: finish.wall_overlap
     codes: [finish.wall_finish_overlap]
     kinds: paint_region vs walltile(wall_region)
-    severity: warning
+    severity: error
     enabled: true
     note: >
       同一面墙、同一房间（=同一侧）、水平与竖向区间都相交 → 该面被计两次。
-      跨房间（双面涂漆）合法不报。当前已知命中：主卫/客卫的 0.30m 砖带与
-      0.77→1.10 防溅带被同侧漆声明整面覆盖，合计 2.868㎡，声明里写「按桶吸收」。
+      跨房间（双面涂漆）合法不报。业主 2026-10-09 裁定「砖跟漆互斥」→ 本规则为
+      error：一片墙 either 刷漆 or 贴砖，不存在「按桶吸收」的中间态。同一墙上的
+      多段瓷砖声明竖向堆叠不重叠是合法的（见 F01 的 along+竖向双重判定）。
   - id: finish.sill_duplicate
     codes: [finish.sill_finish_duplicate]
     kinds: paint_sill_region vs sill_region
-    severity: warning
+    severity: error
     enabled: true
     note: 同一 bay 元素的同一个面被漆与砖同时声明。
   - id: finish.paint_duplicate_same_side
     codes: [finish.paint_duplicate_same_side]
     kinds: paint_region vs paint_region
-    severity: warning
+    severity: error
     enabled: true
     note: 同一面墙同一房间同侧两段涂漆声明 along 相交 → 纯计量重复。
   - id: finish.paint_room_binding
@@ -39,7 +40,7 @@ rules:
       - finish.paint_room_unresolvable
       - finish.paint_span_unresolvable
     kinds: paint_region vs room boundary
-    severity: warning
+    severity: error
     enabled: true
     note: >
       along 端点须落在声明房间的 boundary 多边形上（用多边形不用包围盒——

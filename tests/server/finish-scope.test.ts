@@ -51,34 +51,38 @@ function buildInput(tolerance = 0.01): FinishScopeInput {
 
 const TODAY = '2026-10-09';
 
-test('finish-scope：真实配置产出 8 条 warning，全是同侧面层重叠，无 error', () => {
+test('finish-scope：砖漆互斥裁定后真实配置必须全干净（0 error / 0 warning）', () => {
   const result = runFinishScopeChecks(buildInput(), TODAY, loadFinishLintConfig());
-  const errors = result.issues.filter((i) => i.level === 'error');
-  const warnings = result.issues.filter((i) => i.level === 'warning');
-  assert.equal(errors.length, 0, `不该有 error：${errors.map((e) => e.code).join(',')}`);
-  assert.equal(warnings.length, 8, `应有 8 条同侧面层重叠 warning，实际 ${warnings.length}`);
-  assert.equal(result.registryIssues.length, 0, '覆盖矩阵必须干净');
-  // 8 条里 7 条漆压砖、1 条砖压砖
-  const codes = warnings.map((w) => w.code);
-  assert.ok(codes.every((c) => c === 'finish.wall_finish_overlap'), `只应有 wall_finish_overlap，实际 ${[...new Set(codes)].join(',')}`);
+  assert.deepEqual(result.issues, [], `砖漆互斥 + 不能悬空两条裁定落地后不应再有任何 issue，实际 ${JSON.stringify(result.issues)}`);
+  assert.deepEqual(result.registryIssues, [], '覆盖矩阵必须干净');
 });
 
-test('finish-scope：厨房烟机墙挡水砖是 C18 之后的 stale 声明，与整段正砖重叠 0.45㎡', () => {
-  const result = runFinishScopeChecks(buildInput(), TODAY, loadFinishLintConfig());
-  const kitchen = result.issues.find((i) => i.entity.includes('walltile_kitchen_ent_west') && i.entity.includes('walltile_kitchen_ent_hood_wall'));
-  assert.ok(kitchen, '厨房东墙两条瓷砖声明必须互相重叠');
-  assert.equal((kitchen.evidence as any).overlapAreaSqm, 0.45);
-  assert.equal((kitchen.evidence as any).finishes[0], 'tile');
-  assert.equal((kitchen.evidence as any).finishes[1], 'tile');
+test('finish-scope：C18 后的 stale 挡水条已删除，厨房东墙只剩整段正砖一条声明', () => {
+  const input = buildInput();
+  const kitchenTiles = input.walls.filter((w) => w.wall === 'w_ent_west' && w.finish === 'tile');
+  assert.equal(kitchenTiles.length, 1, `厨房东墙应只剩 walltile_kitchen_ent_west 一条，实际 ${kitchenTiles.map((t) => t.id).join(',')}`);
+  assert.equal(kitchenTiles[0].id, 'walltile_kitchen_ent_west');
+  const result = runFinishScopeChecks(input, TODAY, loadFinishLintConfig());
+  assert.deepEqual(result.issues, [], '删掉 stale 挡水条后厨房东墙不应再有重叠');
 });
 
 test('finish-scope：height 字段是顶面标高不是高度（回归测试）', () => {
   // walltile_gbath_east_vanity_splash: bottom 0.77 / height 1.10，reason 写「0.77 台面 → 1.10 镜柜下沿」
   // 若按 bottom+height 算成 [0.77,1.87]，竖向重叠会从 0.33 变 1.10——曾在这里算错。
-  const result = runFinishScopeChecks(buildInput(), TODAY, loadFinishLintConfig());
-  const splash = result.issues.find((i) => i.entity.includes('walltile_gbath_east_vanity_splash'));
-  assert.ok(splash);
-  assert.equal((splash.evidence as any).verticalOverlapM, 0.33, '竖向重叠应为 1.10-0.77=0.33，不是 1.10');
+  // DEC-2026-10-09-P07 后该处的漆声明已拆成上下两段、让出两条砖带，所以不再有 issue；
+  // 这里改成直接钉 buildInput 解析出的竖向带，防止口径回退。
+  const input = buildInput();
+  const splash = input.walls.find((w) => w.id === 'walltile_gbath_east_vanity_splash');
+  assert.ok(splash, '台盆防溅带声明必须存在');
+  assert.equal(splash.bottom, 0.77);
+  assert.equal(splash.top, 1.1, 'height 是顶面标高：top 必须等于 1.10，不是 0.77+1.10=1.87');
+  const lower = input.walls.find((w) => w.id === 'paint_guest_bath_w_gbath_east_open_vanity_lower');
+  const upper = input.walls.find((w) => w.id === 'paint_guest_bath_w_gbath_east_open_vanity_upper');
+  assert.ok(lower && upper, '砖漆互斥后客卫开放洗漱区东墙必须拆成上下两段漆');
+  assert.equal(lower.bottom, 0.30);
+  assert.equal(lower.top, 0.77);
+  assert.equal(upper.bottom, 1.10);
+  assert.equal(upper.top, 2.80);
 });
 
 test('finish-scope：双面涂漆合法，跨房间不报', () => {
@@ -141,24 +145,26 @@ test('finish-scope：覆盖矩阵不许说谎', () => {
   assert.ok(validateFinishRegistry(stale).some((i) => i.code === 'finish.waiver_expired'));
 });
 
-test('finish-scope：豁免命中后降为 info，不影响 error 计数', () => {
+test('finish-scope：豁免命中后降为 info（用合成输入，不依赖真实配置的 issue）', () => {
   const config = loadFinishLintConfig();
+  const synthetic: FinishScopeInput = {
+    ...buildInput(),
+    walls: [{ id: 'p_x', wall: 'w_x', room: 'roomA', along: [0, 2], bottom: 0, top: 2.8, finish: 'paint', type: 'paint_region' },
+            { id: 't_x', wall: 'w_x', room: 'roomA', along: [0, 1], bottom: 0, top: 0.3, finish: 'tile', type: 'wall_region' }],
+    sills: [],
+  };
   const withWaiver = {
     ...config,
-    waivers: [{
-      id: 'w_mbath_east',
-      rule: 'finish.wall_overlap',
-      pair: ['walltile_mbath_east', 'paint_master_bath_w_mbath_east'] as [string, string],
-      reason: '0.30m 砖带按桶吸收，待业主书面确认',
-      owner: '业主',
-      expires: '2099-01-01',
-    }],
+    waivers: [{ id: 'w_x', rule: 'finish.wall_overlap', pair: ['p_x', 't_x'] as [string, string], reason: '测试豁免', owner: '测试', expires: '2099-01-01' }],
   };
-  const result = runFinishScopeChecks(buildInput(), TODAY, withWaiver);
-  const waived = result.issues.find((i) => i.entity.includes('walltile_mbath_east') && i.entity.includes('paint_master_bath_w_mbath_east'));
-  assert.equal(waived?.level, 'info', '豁免命中必须降为 info');
-  assert.equal((waived?.evidence as any).waivedBy, 'w_mbath_east');
-  assert.equal(result.issues.filter((i) => i.level === 'warning').length, 7, '其余 7 条仍是 warning');
+  const result = runFinishScopeChecks(synthetic, TODAY, withWaiver);
+  const hit = result.issues.find((i) => i.code === 'finish.wall_finish_overlap');
+  assert.ok(hit, '合成输入必须产出一条重叠');
+  assert.equal(hit.level, 'info', '豁免命中必须降为 info');
+  assert.equal((hit.evidence as any).waivedBy, 'w_x');
+  // 同一合成输入不加豁免 → 按配置 severity 下限升为 error
+  const noWaiver = runFinishScopeChecks(synthetic, TODAY, config);
+  assert.equal(noWaiver.issues[0].level, 'error', '砖漆互斥裁定后 F01 是 error');
 });
 
 test('finish-scope：IMPLEMENTED_RULES 与配置互为镜像', () => {
