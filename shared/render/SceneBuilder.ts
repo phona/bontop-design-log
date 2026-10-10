@@ -758,8 +758,36 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         depthWrite: false,
       });
       const mid = { x: (start.x + end.x) / 2, z: (start.z + end.z) / 2 };
-      const writeMeta = (mesh: THREE.Mesh, kind: 'sill-front' | 'sill-top' | 'sill-underside', bottom: number) => {
-        setSceneObjectMetadata(mesh, element.type, id);
+      // DEC-2026-10-09-P14：沿折线把 [from,to] 裁成一段段直线。
+      // 旧算法直接用「起终点弦」当整块面——直墙上成立，**弧墙（圆角）上不成立**：
+      // 真实案例 mbath_north_waterproof_ledge 挂在 w_bath_north（r=1.0 圆角弧 + 直线），
+      // 弦中点被算成 (1.30,1.60)，离真实墙面 0.50m，整块砖面悬在空中。逐段出网后每块都贴在墙上。
+      const clipped: Array<{ a: Point; b: Point }> = [];
+      {
+        let cursor = 0;
+        const lo = Math.max(0, from), hi = Math.min(total, to);
+        for (const segment of polyline) {
+          const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
+          if (length <= 1e-9) continue;
+          const s0 = cursor, s1 = cursor + length;
+          cursor = s1;
+          const a = Math.max(lo, s0), b = Math.min(hi, s1);
+          if (b - a <= 1e-9) continue;
+          const t0 = (a - s0) / length, t1 = (b - s0) / length;
+          clipped.push({
+            a: { x: segment.x1 + (segment.x2 - segment.x1) * t0, z: segment.z1 + (segment.z2 - segment.z1) * t0 },
+            b: { x: segment.x1 + (segment.x2 - segment.x1) * t1, z: segment.z1 + (segment.z2 - segment.z1) * t1 },
+          });
+        }
+      }
+      if (!clipped.length) {
+        report.unsupported.push(`${id}: sill_region resolved to a zero-length span`);
+        return;
+      }
+      const writeMeta = (mesh: THREE.Mesh, kind: 'sill-front' | 'sill-top' | 'sill-underside', bottom: number, part = 0, parts = 1) => {
+        // DEC-2026-10-09-P14：弧墙上沿折线逐段出网，objectId 必须唯一（parts>1 时加 :sN 后缀），
+        // 否则多块共用一个 id，导出与检视都去重不出。
+        setSceneObjectMetadata(mesh, element.type, parts > 1 ? `${id}:s${part}` : id);
         mesh.userData = {
           ...mesh.userData,
           wallId: targetWallIds[0],
@@ -786,11 +814,16 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         root.add(mesh);
       };
       if (element.face === 'front') {
-        // 竖面：在玻璃/墙线处的竖直面，band = target.sill → target.sill+target.height
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, target.height), material);
-        mesh.position.set(mid.x, target.sill + target.height / 2, mid.z);
-        mesh.rotation.y = Math.atan2(-(end.z - start.z), end.x - start.x);
-        writeMeta(mesh, 'sill-front', target.sill);
+        // 竖面：在玻璃/墙线处的竖直面，band = target.sill → target.sill+target.height。
+        // 逐段出网（DEC-2026-10-09-P14）：弧墙上单块平面只能贴弦，会离墙 0.5m。
+        clipped.forEach(({ a, b }, index) => {
+          const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
+          if (segSpan <= 1e-9) return;
+          const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, target.height), material);
+          mesh.position.set((a.x + b.x) / 2, target.sill + target.height / 2, (a.z + b.z) / 2);
+          mesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
+          writeMeta(mesh, 'sill-front', target.sill, index, clipped.length);
+        });
         return;
       }
       if (element.face === 'underside') {
@@ -825,14 +858,19 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         report.unsupported.push(`${id}: sill_region face=top room ${element.room} has no resolved centre (x/z)`);
         return;
       }
-      const dirLength = span || 1;
-      const left = { x: -(end.z - start.z) / dirLength, z: (end.x - start.x) / dirLength };
-      const side = (room.x - mid.x) * left.x + (room.z - mid.z) * left.z;
-      const normal = Math.abs(side) > 1e-6 ? (side > 0 ? left : { x: -left.x, z: -left.z }) : left;
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, target.depth), material);
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.set(mid.x + normal.x * (target.depth / 2), target.sill + target.height, mid.z + normal.z * (target.depth / 2));
-      writeMeta(mesh, 'sill-top', target.sill + target.height);
+      // 逐段出网（DEC-2026-10-09-P14）：每段各自算法线方向，弧墙上才不会整块飘出去。
+      clipped.forEach(({ a, b }, index) => {
+        const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
+        if (segSpan <= 1e-9) return;
+        const segMid = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
+        const left = { x: -(b.z - a.z) / segSpan, z: (b.x - a.x) / segSpan };
+        const side = (room.x - segMid.x) * left.x + (room.z - segMid.z) * left.z;
+        const normal = Math.abs(side) > 1e-6 ? (side > 0 ? left : { x: -left.x, z: -left.z }) : left;
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, target.depth), material);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(segMid.x + normal.x * (target.depth / 2), target.sill + target.height, segMid.z + normal.z * (target.depth / 2));
+        writeMeta(mesh, 'sill-top', target.sill + target.height, index, clipped.length);
+      });
       return;
     }
     case 'paint_region': {

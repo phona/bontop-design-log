@@ -470,7 +470,9 @@ export function checkDeclarationAttached(input: FinishScopeInput): FinishIssue[]
     }
   }
   for (const sill of input.sills) {
-    if (!meshIds.has(sill.id)) {
+    // DEC-2026-10-09-P14：弧墙上 sill_region 也沿折线逐段出网（objectId 加 :sN 后缀）
+    const split = [...meshIds].some((id) => id.startsWith(sill.id + ':s'));
+    if (!meshIds.has(sill.id) && !split) {
       issues.push({
         level: 'error',
         code: 'finish.declaration_unattached',

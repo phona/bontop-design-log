@@ -276,6 +276,23 @@ test('finish-scope F08：声明了顶面漆但房间没有 ceiling 几何 → er
   assert.ok(issues.every((i) => String(i.entity).startsWith('paint_ceiling_')));
 });
 
+// DEC-2026-10-09-P14：弧墙上 sill_region 必须逐段出网并贴墙
+test('finish-scope P14：弧墙上的 sill_region 逐段出网，objectId 带 :sN 且每块贴墙', () => {
+  const input = buildInput();
+  const ids = input.sceneMeshIds!;
+  // mbath_north_waterproof_ledge 挂在 w_bath_north（r=1.0 圆角弧 + 直线），必须拆成多段
+  const front = [...ids].filter((id) => id.startsWith('silltile_mbath_north_front'));
+  const top = [...ids].filter((id) => id.startsWith('silltile_mbath_north_top'));
+  assert.ok(front.length > 1, `front 应拆成多段，实际 ${front.length}`);
+  assert.ok(top.length > 1, `top 应拆成多段，实际 ${top.length}`);
+  assert.ok(front.every((id) => /^silltile_mbath_north_front:s\d+$/.test(id)), '分段 objectId 必须是 id:sN');
+  assert.ok(top.every((id) => /^silltile_mbath_north_top:s\d+$/.test(id)), '分段 objectId 必须是 id:sN');
+  // 直线墙上的声明仍应是单块（不无谓拆分）
+  assert.ok(ids.has('silltile_living_south_front'), '直线墙上的 sill_region 保持单块');
+  assert.ok(![...ids].some((id) => id.startsWith('silltile_living_south_front:s')), '直线墙不该拆');
+  assert.ok(ids.has('silltile_mbath_west_lower_front'), '主卫西墙防水台（直墙）保持单块');
+});
+
 test('finish-scope：IMPLEMENTED_RULES 与配置互为镜像', () => {
   const config = loadFinishLintConfig();
   assert.equal(config.rules.length, IMPLEMENTED_RULES.length, '配置申报数必须等于实现数（F01-F06 六条）');
