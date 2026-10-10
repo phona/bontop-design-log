@@ -90,7 +90,7 @@
 | [`14-style-furniture.md`](./14-style-furniture.md) | 风格/家具/地面 | 7 | 16 KB | `DEC-2026-08-20-024` … `DEC-2026-08-21-042` |
 | [`15-penetration-lint.md`](./15-penetration-lint.md) | 防穿模 linter（实体互撞/净距） | 1 | 6 KB | `DEC-2026-10-09-P01` |
 | [`16-verify-gate.md`](./16-verify-gate.md) | 门禁编排与工程状态 | 1 | 3 KB | `DEC-2026-10-09-G01` |
-| [`17-paint-scope-extension.md`](./17-paint-scope-extension.md) | 涂装范围扩展（显式顶面/上飘窗外露面/全飘窗入算） | 10 | 45 KB | `DEC-2026-10-09-P02` … `DEC-2026-10-09-P11` |
+| [`17-paint-scope-extension.md`](./17-paint-scope-extension.md) | 涂装范围扩展（显式顶面/上飘窗外露面/全飘窗入算） | 11 | 50 KB | `DEC-2026-10-09-P02` … `DEC-2026-10-09-P12` |
 | [`17-paint-scope-extension.md`](./17-paint-scope-extension.md) | 涂装范围扩展（显式顶面/上飘窗外露面） | 1 | 4 KB | `DEC-2026-10-09-P02` |
 | [`18-engineering-state.md`](./18-engineering-state.md) | 工程状态投影（逐构件确认度） | 1 | 3 KB | `DEC-2026-10-09-S01` |
 

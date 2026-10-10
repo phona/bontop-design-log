@@ -6,6 +6,7 @@ import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import type { CurrentScheme, DesignRulesConfig, FurnishingsYaml } from '../../shared/types.js';
+import { parseOverlay } from '../../server/overlay-merge.js';
 
 const rulesConfig: DesignRulesConfig = {
   version: '1.0',
@@ -44,6 +45,17 @@ describe('BudgetCalculator', () => {
     const areaFromResolvedPolygons = selectedRooms.reduce((sum, room) => sum + (room.area ?? room.width * room.depth), 0);
     const areaFromBoundingBoxes = selectedRooms.reduce((sum, room) => sum + room.width * room.depth, 0);
     assert.notEqual(areaFromResolvedPolygons, areaFromBoundingBoxes, 'polygon area should differ from at least one room bounding box');
+    // DEC-2026-10-09-P12：非房间地面（走廊等）靠 overlay 的 floor_region costed 标志进算量
+    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const costedFloorRegionArea = (overlay.elements ?? [])
+      .filter((element: any) => element.type === 'floor_region' && element.costed === true)
+      .reduce((sum: number, element: any) => {
+        const pts = element.points as Array<{ x: number; z: number }>;
+        let acc = 0;
+        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) acc += pts[j].x * pts[i].z - pts[i].x * pts[j].z;
+        return sum + Math.abs(acc) / 2;
+      }, 0);
+    assert.ok(costedFloorRegionArea > 0, '至少主走廊应标 costed');
 
     const calc = new BudgetCalculator(catalog, projectRules);
     const scheme: CurrentScheme = {
@@ -59,7 +71,7 @@ describe('BudgetCalculator', () => {
     const masonry = snapshot.categories.find(category => category.key === 'masonry');
     assert.ok(masonry);
     const laborAdded = masonry.actual - masonry.autoActual;
-    assert.equal(laborAdded, Math.round(45 * areaFromResolvedPolygons));
+    assert.equal(laborAdded, Math.round(45 * (areaFromResolvedPolygons + costedFloorRegionArea)));
     assert.notEqual(laborAdded, Math.round(45 * areaFromBoundingBoxes));
   });
 

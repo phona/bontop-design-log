@@ -240,7 +240,9 @@ elements:
       - { x: 7.2, z: 4.30 }
       - { x: 7.2, z: 5.55 }
       - { x: 4.2, z: 5.55 }
-    reason: "主走廊连接左翼和右翼（x[0,4.2] 段已并入主卫套间）"
+    follow: living_dining
+    costed: true
+    reason: "主走廊连接左翼和右翼（x[0,4.2] 段已并入主卫套间）。2026-10-09 业主裁定「走廊需要铺砖」：补 follow: living_dining（DEC-040 走廊与客餐厅通铺同材，600×1200 木纹砖 75 元/㎡）与 costed: true——本区域不在任何房间内，applyRooms 只能列房间 id，靠这个标志进预算 floor 算量（3.75㎡，DEC-2026-10-09-P12）"
 
   - id: north_platform_floor
     type: floor_region
@@ -251,7 +253,7 @@ elements:
       - { x: 7.2, z: 1.0 }
       - { x: 5.6, z: 1.0 }
     follow: balcony
-    reason: "VRV 设备平台地板（跟随生活阳台地材，设备平台与阳台同为室外灰砖面）"
+    reason: "VRV 设备平台地板（跟随生活阳台地材）。2026-10-09 业主裁定「设备平台不需要铺砖」→ 不设 costed，1.60㎡ 不进预算 floor 算量（DEC-2026-10-09-P12）；渲染仍跟随阳台地材以保持室外灰砖面的视觉连贯，如需改为裸混凝土面请另议"
 
   # === 窗帘（2026-08-02）：引用墙 id 保持 vertices 联动；kind 显式指定（湿区百叶，其余纱帘+遮光） ===
   # 客餐厅（南向落地玻璃幕）

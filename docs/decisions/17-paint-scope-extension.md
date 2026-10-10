@@ -368,3 +368,39 @@
   `verify:facts` OK（41 warning）、`verify:all` **15/16**（唯一失败是既有 `sock_child_ac`）。
   `verify:finish-scope` **0 error / 0 warning**。改名后涂装数字逐项复算一致。
 - **后续议题**：DEC-2026-10-09-P04 的后续议题② 至此关闭（命名与几何已统一）。
+
+---
+
+### DEC-2026-10-09-P12 非房间地面进预算：`floor_region` 加 `costed` 标志，主走廊 3.75㎡ 计入、设备平台 1.60㎡ 不计
+
+- **日期**：2026-10-09。触发：业主问「地面评估下缺少哪些，如果不缺就不用补」。
+- **评估结论（先查后说）**：
+  - **已经兜住的**：`floor_region` 互相**零重叠**（网格采样实测）；`facts-lint` 的 T3.8 已有
+    `ignore_follow` 语义（只抓「没 follow 却整块落在别人房间里」的，声明了 follow 的按约定
+    不计交叠并留 INFO）；`follow` **真生效**（`TextureManager.ts:101` 读 `userData.follow`
+    套用被跟随房间地材）；房间地面 121.51㎡ 由 `applyRooms` 9 间覆盖；`floor_region` 本身
+    不进成本，所以它的"重叠"不影响预算。
+  - **缺的**：走廊 3.75㎡ 与 VRV 设备平台 1.60㎡ **不在任何房间内**，而 floor lineItem 的
+    `applyRooms` 只能列房间 id，这两块地进不了 `floorArea`。
+    （`entry_garden_floor` 12.91㎡ 未计费是**有意的**——DEC-041 开发商已铺、移出算量，不算缺口。）
+- **业主裁定**：**「设备平台不需要铺砖，走廊需要」**。
+- **落地**：
+  - `shared/types.ts` + `server/overlay-merge.ts`：`floor_region` 加 `costed?: boolean`。
+  - `config/layout/overlay.yaml`：`main_corridor_floor` 补 `follow: living_dining`
+    （DEC-040 走廊与客餐厅通铺同材，600×1200 木纹砖 75 元/㎡）+ `costed: true`；
+    `north_platform_floor` **不设 costed**，reason 登记业主裁定与"如需改裸混凝土面请另议"。
+    顺带补上走廊原本缺失的 `follow`（5 条里唯一没有的一条，渲染会落回默认地材）。
+  - `server/budget-calculator.ts`：新增 `loadCostedFloorRegionArea()`，读 overlay 里
+    `costed: true` 的 `floor_region`、**按声明多边形实算面积**（不硬编码数字，配置是唯一权威），
+    加进 floor 分支的 quantity。
+- **为什么不硬编码面积**：硬编码就出现了第二个真相源，改几何时数字不会跟着动——
+  与 `loadPaintScopeAreaByRoom` 读 overlay 声明同理。
+- **数字**：floor 算量 121.51 → **125.26㎡**（+3.75 走廊）；设备平台 1.60㎡ 按裁定不计。
+  瓦工人工按 45 元/㎡ 计，laborAdded 相应增加（测试已钉）。
+- **关联文件**：`shared/types.ts`、`server/overlay-merge.ts`、`config/layout/overlay.yaml`、
+  `server/budget-calculator.ts`、`tests/server/budget-calculator.test.ts`、本文件。
+- **决策人**：业主（「设备平台不需要铺砖，走廊需要」）。
+- **验证**：`test:server` **884/884**、`test:app` **564/564**、`typecheck`（根+app）干净、
+  `verify:facts` OK（40 warning）、`verify:all` **15/16**（唯一失败是既有 `sock_child_ac`）。
+- **后续议题**：① 设备平台渲染仍 `follow: balcony`（室外灰砖面），若业主认为不铺砖就不该显示砖面，
+  需另定它的渲染材质；② 顶面漆面积仍无第二套算法独立复算。

@@ -223,6 +223,10 @@ const FloorRegionSchema = z
     reason: z.string().min(1).optional(),
     // DEC-041：过渡带跟随某房间的有效地面选材（无 follow 则跟随 floor default）
     follow: z.string().min(1).optional(),
+    // DEC-2026-10-09-P12：是否计入预算 floor 算量。floor_region 不在任何房间内，
+    // applyRooms 只能列房间 id，所以非房间地面要靠这个标志进预算（业主 2026-10-09 裁定：
+    // 走廊要铺砖 → costed: true；VRV 设备平台不铺砖 → 不设）。
+    costed: z.boolean().optional(),
   })
   .strict();
 

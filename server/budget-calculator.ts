@@ -12,6 +12,7 @@ import type {
 } from '../shared/types.js';
 import { computeCeilingTakeoff, type CeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import { loadCeilingConfig } from './config-loader.js';
+import { parseOverlay } from './overlay-merge.js';
 import { loadCeilingQuotes, type CeilingQuotesFile } from './ceiling-quotes.js';
 import { resolveActiveCeilingRates, compareCeilingQuotes, type CeilingQuoteRateKey, type ResolvedCeilingRates } from './ceiling-quotes.js';
 import type { ProjectCatalog } from './project-catalog.js';
@@ -27,6 +28,30 @@ import { computePaintScopeForLayout, loadPaintScopeInputs } from './paint-cost-c
  * 无声明的房间不进表（= 不算量），不给默认值、不猜面积；算不出就抛错，
  * 由调用方降级——绝不退化成一个拍系数公式。
  */
+/**
+ * DEC-2026-10-09-P12：非房间地面的算量入口。
+ *
+ * 走廊/设备平台这类地面不在任何房间内，而 floor lineItem 的 applyRooms 只能列房间 id，
+ * 所以它们的面积进不了 `floorArea`——业主 2026-10-09 裁定「走廊需要铺砖」后，
+ * 主走廊 3.75㎡ 就是靠这个标志进预算的。面积从 overlay 声明的多边形实算，
+ * **不硬编码数字**（配置是唯一权威）；设备平台裁定不铺砖，不设 costed，自然不计。
+ */
+function loadCostedFloorRegionArea(catalog: ProjectCatalog): number {
+  const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
+  let total = 0;
+  for (const element of overlay as Array<Record<string, any>>) {
+    if (element?.type !== 'floor_region' || element.costed !== true) continue;
+    const points = (element.points ?? []) as Array<{ x: number; z: number }>;
+    if (points.length < 3) continue;
+    let sum = 0;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      sum += points[j].x * points[i].z - points[i].x * points[j].z;
+    }
+    total += Math.abs(sum) / 2;
+  }
+  return Math.round(total * 100) / 100;
+}
+
 function loadPaintScopeAreaByRoom(catalog: ProjectCatalog): Map<string, number> {
   const areaByRoom = new Map<string, number>();
   const inputs = loadPaintScopeInputs();
@@ -139,9 +164,12 @@ export class BudgetCalculator {
               ?.find((item) => item.topic === 'floor' && item.quantityField === 'floorArea')
               ?.applyRooms ?? [];
             const allowedRoomIds = new Set(floorApplyRooms);
-            quantity = rooms
+            const roomArea = rooms
               .filter((room) => allowedRoomIds.has(room.id))
               .reduce((sum, room) => sum + (room.area ?? room.width * room.depth), 0);
+            // DEC-2026-10-09-P12：非房间地面（走廊等）不在 applyRooms 里，
+            // 靠 overlay 的 floor_region costed 标志进算量。少算即说谎。
+            quantity = roomArea + loadCostedFloorRegionArea(this.catalog);
           }
           break;
         // 已废弃：按房间面积近似吊顶人工量（把无吊顶平顶/电梯井/入户花园都计了费）。

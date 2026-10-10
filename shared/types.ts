@@ -821,7 +821,7 @@ export type SceneElement =
       sill: number;
     }
   | { type: 'frosted_privacy'; id: string; points: CurtainPoint[]; height: number; sill?: number; offset?: number; finish: 'frosted_privacy' }
-  | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string }
+  | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string; costed?: boolean }
   | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[]; along?: [number, number] }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }
