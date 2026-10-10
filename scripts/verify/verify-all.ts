@@ -35,6 +35,7 @@ const VERIFIERS: VerifierSpec[] = [
   { name: 'verify-collision', script: 'scripts/verify/collision/verify-collision-coverage.ts' },
   { name: 'verify-spatial', script: 'scripts/verify/spatial/verify-spatial.ts' },
   { name: 'verify-penetration', script: 'scripts/verify/penetration/verify-penetration.ts' },
+  { name: 'verify-finish-scope', script: 'scripts/verify/finish/verify-finish-scope.ts' },
   { name: 'verify-consistency', script: 'scripts/verify/data/verify-data-consistency.ts' },
   { name: 'verify-mep', script: 'scripts/verify/mep/verify-mep-lint.ts' },
   { name: 'verify-electrical', script: 'scripts/verify/electrical/verify-electrical-lint.ts' },

@@ -1534,6 +1534,14 @@ coverage:
   - { file: config/budget-pitfalls.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/budget-pitfalls.yaml, field: "pitfalls", readers: [] }
   - { file: config/budget-pitfalls.yaml, field: "templates", readers: [] }
+  # 面层范围核查配置。rules[] 由 shared/finish/registry.ts 的 IMPLEMENTED_RULES 镜像校验
+  # （缺一方即 finish.rule_undeclared/code_unknown）；waivers[] 是带保质期的豁免登记册，
+  # tolerance 是判定容差（米）——小于此值的水平/竖向重叠不算压。
+  - { file: config/finish-lint.yaml, field: "version", readers: ["shared/finish/types.ts", "scripts/verify/finish/verify-finish-scope.ts"] }
+  - { file: config/finish-lint.yaml, field: "rules", readers: ["shared/finish/registry.ts", "scripts/verify/finish/verify-finish-scope.ts"] }
+  - { file: config/finish-lint.yaml, field: "waivers", readers: ["shared/finish/types.ts", "shared/finish/registry.ts"] }
+  - { file: config/finish-lint.yaml, field: "tolerance", readers: ["shared/finish/types.ts", "shared/finish/rules.ts", "scripts/verify/finish/verify-finish-scope.ts"] }
+  - { file: config/finish-lint.yaml, field: "note", readers: [] }
   - { file: config/ceiling.yaml, field: "*", readers: [] }
   - { file: config/ceiling-quotes.yaml, field: "active", readers: ["server/ceiling-quotes.ts", "server/budget-calculator.ts", "server/routes.ts", "server/mcp-server.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "quotes", readers: ["server/ceiling-quotes.ts", "server/routes.ts", "server/mcp-server.ts"] }

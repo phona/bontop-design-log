@@ -10,6 +10,7 @@
 - `DEC-2026-10-09-P03` 上飘窗涂装精度与几何口径修正：逐段 round3 累加改内部全精度、底面映射与 bay_sill 本体对齐、审计分水平/立面
 - `DEC-2026-10-09-P04` 全部上飘窗纳入涂装范围：主卫刷防霉漆独立计价，其余 8 处按普通漆；预算侧补算漏记的窗台面积
 - `DEC-2026-10-09-P05` 相邻上飘窗端面去重：背靠背的内部接缝按「算 0 次」剔除，并留档包围盒测量的错误
+- `DEC-2026-10-09-P06` 建立 `verify:finish-scope` 面层范围核查层（F01–F04），查出 2.741㎡ 面层双计含一处 C18 后 stale 瓷砖声明
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -121,3 +122,59 @@
   不允许夹带别的问题）；合成场景（无 bay_sill）warnings 仍为空。
 - **后续议题**：① 真相 polygon 相交残留 0.0043㎡（两处各 0.002148㎡，位于 x[1.00,1.10] 的弧端扫掠区）
   仍待复尺定弧端收口；② 上飘窗是异形面，普通漆按平墙费率计价可能偏低；③ 9 处飘窗尺寸待复尺。
+
+---
+
+### DEC-2026-10-09-P06 建立 `verify:finish-scope` 面层范围核查层（F01–F04），并查出 2.741㎡ 面层双计
+
+- **日期**：2026-10-09。触发：业主问「漆跟瓷砖都有 linter 了吗」——答案是**都没有**。
+  防穿模有 P01–P04 + 专职 linter，漆和砖只有测试没有 linter。业主指出根因：
+  「不然你每次都得开浏览器，而且也看不太出来」——漆是 inspection-only 半透明叠加层，
+  要开开关转视角，且「压了 0.3㎡」肉眼判不了，浏览器核对面层归属不可行。
+- **命名**：原拟 `verify-finish`，只说了领域没说要查什么（对比 `verify-penetration` 是拿
+  问题命名）。改 **`verify-finish-scope`**——与项目既有 `paint-scope` / `paint-sill-scope` /
+  `paint_region` 的「scope」词汇一致，且「scope」正是本层查的东西：每片面层声明圈了多少地。
+- **结构**（照 `shared/penetration/` 同构）：
+  `shared/finish/{types,rules,registry}.ts` + `config/finish-lint.yaml` +
+  `scripts/verify/finish/verify-finish-scope.ts` + `tests/server/finish-scope.test.ts`。
+  已登记进 `scripts/verify/verify-all.ts`（门禁 15 → 16 个 verifier）与 `package.json`。
+- **规则**：
+  | 规则 | code | 查什么 |
+  |---|---|---|
+  | F01 | `finish.wall_finish_overlap` | 同一面墙、同一房间（=同侧）、水平与竖向区间都相交 → 该面被计两次。跨房间是双面涂漆，合法不报 |
+  | F02 | `finish.sill_finish_duplicate` | 同一 bay 元素的同一个面被漆（paint_sill_region）与砖（sill_region）同时声明 |
+  | F03 | `finish.paint_duplicate_same_side` | 同一面墙同一房间同侧两段 paint_region 的 along 相交 → 纯计量重复 |
+  | F04 | `finish.paint_outside_room` 等 4 个 code | along 端点须落在声明房间的 boundary **多边形**上；挂 suppress 墙或定位失败显形 |
+- **查出现状 8 条 warning、合计 2.741㎡ 双计**（此前手工只查到 7 条 2.868㎡，且竖向区间算错）：
+  - **7 条漆压砖**（2.291㎡）：主卫/客卫的 0.30m 砖带与台盆防溅带被同侧漆声明整面覆盖。
+    声明 `reason` 写「按桶吸收」——已核：6 桶面漆覆盖 302.65㎡，减掉这些量仍是 6 桶，说法成立。
+  - **1 条砖压砖（0.45㎡）——真 stale 声明**：`walltile_kitchen_ent_hood_wall`（烟机后挡水砖，
+    along[1.27,2.17] 竖向[0.90,1.40]）整块落在 `walltile_kitchen_ent_west`（同墙 along[0.5,2.9]
+    竖向[0,2.65] 满铺）内。后者 reason 写明「C18 废止杂砖后整段正砖」——即 C18 已废止杂砖带、
+    改整段正砖，R11 为填「油溅裸墙缺口」而补的 hood_wall 从此多余，却一直没删。
+- **一个必须记下来的字段歧义**：`height` 在 `paint_region` / `wall_region` 里的语义是
+  **顶面标高**，不是「高度」——`shared/paint-scope.ts` `const top = region.height ?? wall.height ?? 2.8`；
+  SceneBuilder wall_region 分支 `PlaneGeometry(span, element.height - bottom)`、
+  `position.y = bottom + (element.height - bottom) / 2`。字段名有歧义但两侧一致。
+  本层第一版按 `bottom + height` 算，把竖向区间整体上移，导致 `vanity_splash` 重叠从 0.248
+  虚报成 0.825、hood_wall 从 0.45 虚报成 1.26。已改口径并加回归测试钉住
+  （`walltile_gbath_east_vanity_splash` bottom 0.77 / height 1.10 → 竖向[0.77,1.10]，
+  reason 原话「0.77 台面 → 1.10 镜柜下沿」）。
+- **房间归属用 boundary 多边形不用包围盒**：本户型有两对房间包围盒相交而多边形不重叠
+  （主卧×西北次卧 2.304㎡、客餐厅×入户花园 1.300㎡，已用 2mm 网格复算真相交均为 0）。
+  用包围盒判「墙属于哪个房间」会误判，F04 因此一律走多边形。
+- **severity 一律先 warning**：配置只许加严不许放宽；`config/finish-lint.yaml` 的 `waivers[]`
+  **当前为空**——2.291㎡ 的漆压砖是已知项但尚未经业主书面确认，所以先让 warning 显形，
+  不预设豁免。确认后按 `pair + reason/owner/expires` 补登记，到期自动复活。
+- **关联文件**：`shared/finish/{types,rules,registry}.ts`、`config/finish-lint.yaml`、
+  `scripts/verify/finish/verify-finish-scope.ts`、`scripts/verify/verify-all.ts`、`package.json`、
+  `tests/server/finish-scope.test.ts`、`config/facts.yaml`（coverage 登记 5 个字段）、
+  `docs/decisions/README.md`、本文件。
+- **决策人**：业主（要求建 linter）。
+- **验证**：`test:server` **878/878**、`test:app` **564/564**、`typecheck`（根+app）干净、
+  `verify:facts` OK（41 warning）、`verify:all` **15/16**（唯一失败是既有 `sock_child_ac`）。
+  `verify:finish-scope` 0 error / 8 warning。
+- **后续议题**：① 厨房 `walltile_kitchen_ent_hood_wall` 是 C18 后的 stale 声明，建议直接删除
+  （0.45㎡ 瓷砖双计），待业主确认；② 2.291㎡ 漆压砖的「按桶吸收」需业主书面确认后转入
+  `waivers[]`；③ 本层尚未覆盖吊顶（paint_ceiling_region vs aluminum_buckle zone），
+  当前扣减只在 `computePaintScope` 内部做、无独立复核。

@@ -1,0 +1,280 @@
+/**
+ * 面层范围核查规则层：面层声明之间是否互相压、是否重复、是否挂错了房间。
+ *
+ * 与防穿模层的分工：penetration 查「两块实体占同一块空间」，本层查
+ * 「两片面层声明圈同一块面」。前者是几何碰撞，后者是**计量口径冲突**——
+ * 冲突不产生任何几何错误，只会让面积数字重复或遗漏。
+ *
+ * 实现约束：
+ * - 只读已声明数据（overlay + resolved layout + ceiling config），不猜任何几何。
+ * - 「同侧」判定用 room：同一面墙两侧各属一个房间，两侧都刷漆是合法的
+ *   （双面涂漆），只有**同房间同侧**重复才是真重复。
+ * - 房间归属用 boundary **多边形**，不用 x/z/width/depth 包围盒——本户型有
+ *   两对房间包围盒相交而多边形不重叠（主卧×西北次卧、客餐厅×入户花园），
+ *   用包围盒判归属会误判。
+ * - `height` 字段的语义是**顶面标高**，不是「高度」：
+ *   shared/paint-scope.ts `const top = region.height ?? wall.height ?? 2.8`；
+ *   SceneBuilder wall_region 分支 `PlaneGeometry(span, element.height - bottom)`、
+ *   `position.y = bottom + (element.height - bottom) / 2`。字段名有歧义但两侧一致，
+ *   本层按同一口径取 top = height（曾按 bottom+height 算错，把竖向区间整体上移）。
+ */
+
+export interface FinishWallSpan {
+  id: string;
+  wall: string;
+  room: string;
+  along: [number, number];
+  bottom: number;
+  top: number;
+  /** 面层种类：漆 / 砖。 */
+  finish: 'paint' | 'tile';
+  type: string;
+}
+
+export interface FinishSillClaim {
+  id: string;
+  element: string;
+  room: string;
+  /** 该声明圈定的面。 */
+  faces: string[];
+  finish: 'paint' | 'tile';
+  type: string;
+}
+
+export interface FinishRoomPolygon {
+  id: string;
+  points: Array<{ x: number; z: number }>;
+}
+
+export interface FinishWallGeometry {
+  id: string;
+  /** 墙的折线（含弧段细分），用于把 along 换成世界坐标。 */
+  polyline: Array<{ x1: number; z1: number; x2: number; z2: number }>;
+  length: number;
+  suppressed?: boolean;
+}
+
+export interface FinishScopeInput {
+  walls: FinishWallSpan[];
+  sills: FinishSillClaim[];
+  rooms: FinishRoomPolygon[];
+  wallGeometry: Record<string, FinishWallGeometry>;
+  tolerance?: number;
+  source?: string;
+}
+
+export interface FinishIssue {
+  level: 'error' | 'warning' | 'info';
+  code: string;
+  entity: string;
+  message: string;
+  evidence: Record<string, unknown>;
+}
+
+const EPS = 1e-6;
+
+function pointAt(polyline: FinishWallGeometry['polyline'], distance: number): { x: number; z: number } | null {
+  let remaining = distance;
+  for (const segment of polyline) {
+    const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
+    if (length <= EPS) continue;
+    if (remaining <= length + EPS) {
+      const t = Math.min(1, Math.max(0, remaining / length));
+      return { x: segment.x1 + (segment.x2 - segment.x1) * t, z: segment.z1 + (segment.z2 - segment.z1) * t };
+    }
+    remaining -= length;
+  }
+  return null;
+}
+
+function distancePointToSegment(p: { x: number; z: number }, a: { x: number; z: number }, b: { x: number; z: number }): number {
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const lenSq = dx * dx + dz * dz;
+  if (lenSq <= EPS) return Math.hypot(p.x - a.x, p.z - a.z);
+  let t = ((p.x - a.x) * dx + (p.z - a.z) * dz) / lenSq;
+  t = Math.min(1, Math.max(0, t));
+  return Math.hypot(p.x - (a.x + dx * t), p.z - (a.z + dz * t));
+}
+
+function distanceToPolygonBoundary(p: { x: number; z: number }, polygon: FinishRoomPolygon['points']): number {
+  let best = Infinity;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    best = Math.min(best, distancePointToSegment(p, polygon[j], polygon[i]));
+  }
+  return best;
+}
+
+function overlapLength(a: [number, number], b: [number, number]): number {
+  return Math.min(a[1], b[1]) - Math.max(a[0], b[0]);
+}
+
+/**
+ * F01 面层重叠：同一面墙、同一房间（= 同一侧）、水平与竖向区间都相交。
+ * 漆盖砖、砖盖漆都算——谁盖谁不影响「这片面被计了两次」这个事实。
+ */
+export function checkWallFinishOverlap(input: FinishScopeInput): FinishIssue[] {
+  const tol = input.tolerance ?? 0.01;
+  const issues: FinishIssue[] = [];
+  const byWall = new Map<string, FinishWallSpan[]>();
+  for (const span of input.walls) {
+    if (!byWall.has(span.wall)) byWall.set(span.wall, []);
+    byWall.get(span.wall)!.push(span);
+  }
+  for (const [wall, spans] of byWall) {
+    for (let i = 0; i < spans.length; i++) {
+      for (let j = i + 1; j < spans.length; j++) {
+        const a = spans[i], b = spans[j];
+        // 同房间 = 同一侧；不同房间是双面涂漆，合法
+        if (a.room !== b.room) continue;
+        const hOver = overlapLength(a.along, b.along);
+        const vOver = Math.min(a.top, b.top) - Math.max(a.bottom, b.bottom);
+        if (hOver <= tol || vOver <= tol) continue;
+        const area = hOver * vOver;
+        issues.push({
+          level: 'warning',
+          code: 'finish.wall_finish_overlap',
+          entity: `${a.id} x ${b.id}`,
+          message: `墙 ${wall} 房间 ${a.room}：${a.finish} 段 [${a.along[0]},${a.along[1]}]x[${a.bottom},${a.top}] 与 ${b.finish} 段 [${b.along[0]},${b.along[1]}]x[${b.bottom},${b.top}] 水平重叠 ${hOver.toFixed(3)}m、竖向重叠 ${vOver.toFixed(3)}m → 同一面被计两次 ${area.toFixed(3)}㎡`,
+          evidence: { wall, room: a.room, horizontalOverlapM: +hOver.toFixed(3), verticalOverlapM: +vOver.toFixed(3), overlapAreaSqm: +area.toFixed(3), declarations: [a.id, b.id], finishes: [a.finish, b.finish] },
+        });
+      }
+    }
+  }
+  return issues;
+}
+
+/**
+ * F02 同元素同面重复声明：一个 bay 元素的同一个面被两片面层声明圈定。
+ * 漆（paint_sill_region）与砖（sill_region）指向同一 element+face 即双计。
+ */
+export function checkSillFinishDuplicate(input: FinishScopeInput): FinishIssue[] {
+  const issues: FinishIssue[] = [];
+  const claims = new Map<string, FinishSillClaim[]>();
+  for (const claim of input.sills) {
+    for (const face of claim.faces) {
+      const key = `${claim.element}::${face}`;
+      if (!claims.has(key)) claims.set(key, []);
+      claims.get(key)!.push(claim);
+    }
+  }
+  for (const [key, list] of claims) {
+    if (list.length < 2) continue;
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i], b = list[j];
+        if (a.finish === b.finish && a.type === b.type) continue;
+        issues.push({
+          level: 'warning',
+          code: 'finish.sill_finish_duplicate',
+          entity: `${a.id} x ${b.id}`,
+          message: `飘窗/台 ${a.element} 的 ${key.split('::')[1]} 面同时被 ${a.type}(${a.id}) 与 ${b.type}(${b.id}) 声明 → 该面被计两次`,
+          evidence: { element: a.element, face: key.split('::')[1], declarations: [a.id, b.id], types: [a.type, b.type], finishes: [a.finish, b.finish] },
+        });
+      }
+    }
+  }
+  return issues;
+}
+
+/**
+ * F03 同侧重复涂漆：同一面墙、同一房间、两段 paint_region 的 along 相交。
+ * 与 F01 的区别：F01 抓漆vs砖，本条抓漆vs漆（同侧重复声明纯属计量重复）。
+ */
+export function checkPaintDuplicateSameSide(input: FinishScopeInput): FinishIssue[] {
+  const tol = input.tolerance ?? 0.01;
+  const issues: FinishIssue[] = [];
+  const byKey = new Map<string, FinishWallSpan[]>();
+  for (const span of input.walls) {
+    if (span.finish !== 'paint') continue;
+    const key = `${span.wall}::${span.room}`;
+    if (!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key)!.push(span);
+  }
+  for (const [key, spans] of byKey) {
+    if (spans.length < 2) continue;
+    for (let i = 0; i < spans.length; i++) {
+      for (let j = i + 1; j < spans.length; j++) {
+        const a = spans[i], b = spans[j];
+        const hOver = overlapLength(a.along, b.along);
+        const vOver = Math.min(a.top, b.top) - Math.max(a.bottom, b.bottom);
+        if (hOver <= tol || vOver <= tol) continue;
+        issues.push({
+          level: 'warning',
+          code: 'finish.paint_duplicate_same_side',
+          entity: `${a.id} x ${b.id}`,
+          message: `墙 ${a.wall} 房间 ${a.room} 同侧两段涂漆声明 along 重叠 ${hOver.toFixed(3)}m（[${a.along[0]},${a.along[1]}] 与 [${b.along[0]},${b.along[1]}]）→ 同侧重复计 ${(hOver * vOver).toFixed(3)}㎡`,
+          evidence: { wall: a.wall, room: a.room, overlapM: +hOver.toFixed(3), declarations: [a.id, b.id] },
+        });
+      }
+    }
+  }
+  return issues;
+}
+
+/**
+ * F04 声明挂错房间：paint_region 的 along 区间端点不在**声明房间的 boundary 多边形**上。
+ * 这正是「漆面悬在过道上」的几何判据——过道区没有 room，漆若挂上去，端点离任何
+ * 房间边界都远。用多边形不用包围盒（见文件头说明）。
+ */
+export function checkPaintOutsideRoom(input: FinishScopeInput): FinishIssue[] {
+  const tol = input.tolerance ?? 0.05;
+  const issues: FinishIssue[] = [];
+  for (const span of input.walls) {
+    if (span.finish !== 'paint') continue;
+    const geometry = input.wallGeometry[span.wall];
+    const room = input.rooms.find((candidate) => candidate.id === span.room);
+    if (!geometry || !room) {
+      issues.push({
+        level: 'error',
+        code: 'finish.paint_room_unresolvable',
+        entity: span.id,
+        message: `涂漆声明 ${span.id} 引用的墙 ${span.wall} 或房间 ${span.room} 无法解析`,
+        evidence: { wall: span.wall, room: span.room },
+      });
+      continue;
+    }
+    if (geometry.suppressed) {
+      issues.push({
+        level: 'warning',
+        code: 'finish.paint_on_suppressed_wall',
+        entity: span.id,
+        message: `涂漆声明 ${span.id} 挂在被 suppress 的墙 ${span.wall} 上（该墙不产生实体面）`,
+        evidence: { wall: span.wall },
+      });
+      continue;
+    }
+    const from = pointAt(geometry.polyline, Math.min(...span.along));
+    const to = pointAt(geometry.polyline, Math.max(...span.along));
+    if (!from || !to) {
+      issues.push({
+        level: 'error',
+        code: 'finish.paint_span_unresolvable',
+        entity: span.id,
+        message: `涂漆声明 ${span.id} 的 along [${span.along[0]},${span.along[1]}] 无法在墙 ${span.wall}（长 ${geometry.length.toFixed(3)}m）上定位`,
+        evidence: { wall: span.wall, along: span.along, wallLength: +geometry.length.toFixed(3) },
+      });
+      continue;
+    }
+    const dFrom = distanceToPolygonBoundary(from, room.points);
+    const dTo = distanceToPolygonBoundary(to, room.points);
+    if (dFrom > tol || dTo > tol) {
+      issues.push({
+        level: 'warning',
+        code: 'finish.paint_outside_room',
+        entity: span.id,
+        message: `涂漆声明 ${span.id}（房间 ${span.room}）的 along 端点距该房间 boundary 最远 ${Math.max(dFrom, dTo).toFixed(3)}m——墙面不构成声明房间的边界，漆面可能落在过道或其他房间`,
+        evidence: { wall: span.wall, room: span.room, distanceFromM: +dFrom.toFixed(3), distanceToM: +dTo.toFixed(3), from: { x: +from.x.toFixed(3), z: +from.z.toFixed(3) }, to: { x: +to.x.toFixed(3), z: +to.z.toFixed(3) } },
+      });
+    }
+  }
+  return issues;
+}
+
+export function validateFinishScope(input: FinishScopeInput): FinishIssue[] {
+  return [
+    ...checkWallFinishOverlap(input),
+    ...checkSillFinishDuplicate(input),
+    ...checkPaintDuplicateSameSide(input),
+    ...checkPaintOutsideRoom(input),
+  ];
+}

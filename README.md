@@ -161,6 +161,21 @@ npm run verify:penetration -- --json --shadow    # 附加 OBB 对照与白名单
 
 机电协调构件（管/管井）逐类型显式申报参与策略 `excluded`/`solid`，未申报即 fail-closed；`mb_vanity_pvc_service_chase` 的预留区口径未裁定，10 处墙/家具重叠登记为 `docs/pending-site-data.md` #55 显形债务，未裁定前不当作缺陷、也不为了绿灯改坐标。活动包络（门扇开启、抽屉、电器门）尚未覆盖，详见 `docs/penetration-lint.md`。
 
+### 面层范围核查（DEC-2026-10-09-P06）
+
+```bash
+npm run verify:finish-scope                     # 面层声明之间是否互相压/重复/挂错房
+npm run verify:finish-scope -- --json           # 机器可读，无时间戳、稳定排序
+```
+
+`verify:finish-scope` 补的是防穿模没覆盖的一类问题：**漆/砖/防水台/吊顶都是「面层声明」，各自圈一片墙或一片顶；声明互相压时不产生任何几何错误，只会让面积数字重复**——而 3D 里看不出来（漆是 inspection-only 半透明叠加层，要开开关转视角，且「压了 0.3㎡」肉眼判不了）。所以这一层专职核查，与 `verify:spatial`（声明完整性/拓扑/运行时权威性）、`verify:penetration`（实体互撞）不重复判同一件事。
+
+四条规则：**F01** 同一面墙同一房间（=同侧）水平+竖向区间都相交 → 该面被计两次（跨房间是双面涂漆，合法不报）；**F02** 同一 bay 元素的同一个面被漆与砖同时声明；**F03** 同一面墙同侧两段 `paint_region` 的 along 相交；**F04** `paint_region` 的 along 端点须落在声明房间的 **boundary 多边形**上（这正是「漆面悬在过道上」的几何判据——过道区没有 room）。
+
+房间归属一律走 boundary 多边形，不用 `x/z/width/depth` 包围盒：本户型主卧×西北次卧、客餐厅×入户花园两对房间包围盒相交而多边形不重叠。`height` 字段在 `paint_region`/`wall_region` 里的语义是**顶面标高**不是「高度」（`shared/paint-scope.ts` 的 `const top = region.height ?? wall.height ?? 2.8`），字段名有歧义但两侧一致。
+
+规则、severity 与豁免只有一份真相：`config/finish-lint.yaml`，与 `config/anti-penetration.yaml` 同构（severity 是下限只许加严；豁免必须 `reason`/`owner`/`expires`，到期自动复活；覆盖矩阵缺一方即报错）。`waivers[]` **当前为空**——已知项先让 warning 显形，不预设豁免。当前结论：0 error / 8 warning / 合计 2.741㎡ 双计，其中 7 条是主卫客卫砖带被同侧漆整面覆盖（声明写「按桶吸收」，已核桶数不变），**1 条是真 stale 声明**：`walltile_kitchen_ent_hood_wall`（R11 补的烟机后挡水砖）整块落在 `walltile_kitchen_ent_west`（C18 后改的整段正砖）内，多计 0.45㎡ 瓷砖，建议删除。尚未覆盖吊顶（`paint_ceiling_region` vs `aluminum_buckle` zone），扣减目前只在 `computePaintScope` 内部做、无独立复核。
+
 ### 工程状态查询（DEC-2026-10-09-E01）
 
 ```bash

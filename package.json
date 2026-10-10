@@ -26,6 +26,7 @@
     "verify:schedule": "tsx scripts/schedule/control.ts",
     "verify:spatial": "tsx scripts/verify/spatial/verify-spatial.ts",
     "verify:penetration": "tsx scripts/verify/penetration/verify-penetration.ts",
+    "verify:finish-scope": "tsx scripts/verify/finish/verify-finish-scope.ts",
     "generate:project-render-facts": "tsx scripts/project/project-render-facts-projection.ts data/project-render-facts.json",
     "takeoff:ceiling": "tsx scripts/project/ceiling-takeoff.ts",
     "state:project": "tsx scripts/project/state-projection.ts",

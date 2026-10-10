@@ -1,0 +1,59 @@
+# 面层范围核查（finish-scope）配置。
+#
+# 这一层补的洞：漆/砖/防水台/吊顶都是「面层声明」，各自圈一片墙或一片顶。
+# 声明互相压时**面积数字不报错、3D 里也看不出来**——漆是 inspection-only 半透明
+# 叠加层，要开开关转视角，而且「压了 0.3㎡」肉眼判不了。所以专职一层核查。
+#
+# 铁律（与 config/anti-penetration.yaml 一致）：
+# - severity 是**下限**，只许加严不许放宽；规则内部可自行降级。
+# - 豁免必须带 reason/owner/expires；到期自动复活为 error。
+# - 覆盖矩阵：代码实现与配置申报互为镜像，缺一方即报错。
+version: 1
+
+rules:
+  - id: finish.wall_overlap
+    codes: [finish.wall_finish_overlap]
+    kinds: paint_region vs walltile(wall_region)
+    severity: warning
+    enabled: true
+    note: >
+      同一面墙、同一房间（=同一侧）、水平与竖向区间都相交 → 该面被计两次。
+      跨房间（双面涂漆）合法不报。当前已知命中：主卫/客卫的 0.30m 砖带与
+      0.77→1.10 防溅带被同侧漆声明整面覆盖，合计 2.868㎡，声明里写「按桶吸收」。
+  - id: finish.sill_duplicate
+    codes: [finish.sill_finish_duplicate]
+    kinds: paint_sill_region vs sill_region
+    severity: warning
+    enabled: true
+    note: 同一 bay 元素的同一个面被漆与砖同时声明。
+  - id: finish.paint_duplicate_same_side
+    codes: [finish.paint_duplicate_same_side]
+    kinds: paint_region vs paint_region
+    severity: warning
+    enabled: true
+    note: 同一面墙同一房间同侧两段涂漆声明 along 相交 → 纯计量重复。
+  - id: finish.paint_room_binding
+    codes:
+      - finish.paint_outside_room
+      - finish.paint_on_suppressed_wall
+      - finish.paint_room_unresolvable
+      - finish.paint_span_unresolvable
+    kinds: paint_region vs room boundary
+    severity: warning
+    enabled: true
+    note: >
+      along 端点须落在声明房间的 boundary 多边形上（用多边形不用包围盒——
+      本户型主卧×西北次卧、客餐厅×入户花园两对房间包围盒相交而多边形不重叠）。
+      这正是「漆面悬在过道上」的几何判据。
+
+# 判定容差（米）：水平/竖向重叠小于此值不算压。
+tolerance: 0.01
+
+# 豁免登记册。当前为空——2.868㎡ 的漆压砖是已知项但尚未经业主书面确认，
+# 所以先让 warning 显形，不预设豁免。确认后按此处格式补 pair + reason/owner/expires。
+waivers: []
+
+note: >
+  verify:finish-scope 与 verify:spatial / verify:penetration 的分工：本层只判
+  面层声明之间的关系（压/重复/挂错房），不做声明完整性、墙线拓扑、运行时权威性
+  （那些归 verify:spatial），也不判实体互撞（归 verify:penetration）。
