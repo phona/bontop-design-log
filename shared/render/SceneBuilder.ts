@@ -682,7 +682,8 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       // 防水台/窗台贴砖带（DEC-2026-10-07-R11，业主 D4=L 型终裁：竖面+台面都贴、做收口）。
       // inspection-only，与 wall_region 平级、共用 'wall-tile' 层标签（同一个贴砖开关）。
       // 引用一个 bay_sill 构件（防水台几何）：face=front 贴其朝向房间的竖面、
-      // face=top 贴水平台面（台面要房间侧法线，故 top 必须声明 room）。
+      // face=top 贴水平台面（台面要房间侧法线，故 top 必须声明 room）、
+      // face=underside 贴飘窗盒朝下的底面（标高 = target.sill，DEC-2026-10-09-P09）。
       const target = allElements.find((candidate) => candidate.id === element.element);
       if (!target || target.type !== 'bay_sill') {
         report.unsupported.push(`${id}: sill_region references unknown or non-bay_sill element ${element.element}`);
@@ -757,7 +758,7 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         depthWrite: false,
       });
       const mid = { x: (start.x + end.x) / 2, z: (start.z + end.z) / 2 };
-      const writeMeta = (mesh: THREE.Mesh, kind: 'sill-front' | 'sill-top', bottom: number) => {
+      const writeMeta = (mesh: THREE.Mesh, kind: 'sill-front' | 'sill-top' | 'sill-underside', bottom: number) => {
         setSceneObjectMetadata(mesh, element.type, id);
         mesh.userData = {
           ...mesh.userData,
@@ -790,6 +791,28 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         mesh.position.set(mid.x, target.sill + target.height / 2, mid.z);
         mesh.rotation.y = Math.atan2(-(end.z - start.z), end.x - start.x);
         writeMeta(mesh, 'sill-front', target.sill);
+        return;
+      }
+      if (element.face === 'underside') {
+        // DEC-2026-10-09-P09：飘窗盒**底面**（朝下、标高 = target.sill）。业主 2026-10-09
+        // 裁定厨房上飘窗整体贴砖，「底面肯定要的，以现实使用的合理度为准」——高飘窗
+        // （sill 2.12m）的底面是抬头可见的实体面，只贴竖面会留一片没人管的面。
+        // 几何必须与 paint_sill_region 的 underside 同源：buildBaySillGeometry 的
+        // footprint + applyPlanFootprint 映射，否则「预算算的面积」与「模型里的面」不重合
+        // （真实飘窗脚印 z=[1.10,2.20] 曾因只写 rotation.x 被打到 z=[-2.20,-1.10]）。
+        if (!target.wallRefs?.length) {
+          report.unsupported.push(`${id}: sill_region face=underside 需要 target 带 resolved wallRefs`);
+          return;
+        }
+        const geometry = buildBaySillGeometry(target.wallRefs, rooms, target.depth);
+        const shape = new THREE.Shape();
+        shape.moveTo(geometry.outline[0].x, geometry.outline[0].z);
+        for (const point of geometry.outline.slice(1)) shape.lineTo(point.x, point.z);
+        shape.closePath();
+        const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), material);
+        applyPlanFootprint(mesh);
+        mesh.position.y = target.sill;
+        writeMeta(mesh, 'sill-underside', target.sill);
         return;
       }
       // 水平台面：自墙线向房间侧延伸 target.depth，顶面标高 = target.sill + target.height

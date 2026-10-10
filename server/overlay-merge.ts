@@ -100,7 +100,7 @@ const SillRegionSchema = z
     id: z.string().min(1),
     type: z.literal('sill_region'),
     element: z.string().min(1),
-    face: z.enum(['front', 'top']),
+    face: z.enum(['front', 'top', 'underside']),
     along: z.tuple([z.number().nonnegative(), z.number().positive()]).optional(),
     zone: z.enum(['visible', 'covered']).default('visible'),
     color: z.string().optional(),

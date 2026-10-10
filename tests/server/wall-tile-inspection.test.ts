@@ -62,7 +62,7 @@ test('overlay wall_region declarations pass the Zod discriminated union', () => 
   }
   // R11 D4=L 型：防水台贴砖带（sill_region）两段——front 竖面 + top 台面，均引用同一 bay_sill 构件
   const sills: any[] = (parsed.elements ?? []).filter((e: any) => e.type === 'sill_region');
-  assert.equal(sills.length, 6, '防水台声明 6 段：客厅 L 型 2 + 主卫湿区 2 台 × front/top 4（C17；w_west_ap 圆角段留现场收口）');
+  assert.equal(sills.length, 8, 'DEC-2026-10-09-P09 起 8 段：原防水台 6 + 厨房上飘窗 front+underside 2');
   const baySillIds = new Set((parsed.elements ?? []).filter((e: any) => e.type === 'bay_sill').map((e: any) => e.id));
   const living = (parsed.elements ?? []).find((e: any) => e.id === 'living_south_waterproof_ledge');
   assert.equal(living?.type, 'bay_sill', '客厅防水台构件必须是 bay_sill');
@@ -70,7 +70,7 @@ test('overlay wall_region declarations pass the Zod discriminated union', () => 
   assert.equal(living.depth, 0.15);
   for (const s of sills) {
     assert.ok(baySillIds.has(s.element), `sill_region ${s.id} 必须引用已声明的 bay_sill`);
-    assert.ok(s.face === 'front' || s.face === 'top');
+    assert.ok(s.face === 'front' || s.face === 'top' || s.face === 'underside', `${s.id} face 只能是 front/top/underside`);
   }
   assert.equal(sills.filter((s) => s.room === 'living_dining').length, 2, '客厅 L 型两段');
   assert.equal(sills.filter((s) => s.room === 'master_bath').length, 4, '主卫湿区 2 台 × front/top（C17；w_west_ap 圆角段留现场收口）');
@@ -80,14 +80,14 @@ test('mergeSceneElements preserves wall_region elements alongside overlay types'
   const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
   const merged = mergeSceneElements(resolvedWalls(), parsed);
   const regions: any[] = merged.filter((e: any) => e.type === 'wall_region');
-  assert.equal(regions.length, 16, '2026-10-09 P07 删 walltile_kitchen_ent_hood_wall 后 16 段');
+  assert.equal(regions.length, 16, "2026-10-09 P07 删 walltile_kitchen_ent_hood_wall 后 16 段墙");
 });
 
-test('buildScene emits 22 inspection-only wall-tile meshes with reversible initial state', () => {
+test('buildScene emits 24 inspection-only wall-tile meshes with reversible initial state', () => {
   const scene = sceneWithWallTile();
   assert.deepEqual(scene.report.unsupported, [], '墙引用或 along 区间有误会在这里现形');
   const meshes = wallTileMeshes(scene.exportRoot);
-  assert.equal(meshes.length, 22);
+  assert.equal(meshes.length, 24);
   for (const mesh of meshes) {
     // inspection-only：正常视图必须完全不可见
     assert.equal(mesh.visible, false, `${mesh.userData.objectId} 默认应不可见`);
@@ -236,19 +236,19 @@ test('wall-tile status surface mirrors HVAC: required/ready/missing + byRoom + b
     byHeightTier[tier].segments += 1; byHeightTier[tier].lengthM += len; byHeightTier[tier].areaSqm += len * band;
   }
   assert.deepEqual(Object.keys(byRoom).sort(), ['主卫', '厨房', '客卫', '客厅', '阳台']);
-  assert.ok(Math.abs(byRoom['厨房'].lengthM - 4.80) < 1e-9, `厨房段长应为 4.80（删 C18 后 stale 挡水条），实际 ${byRoom['厨房'].lengthM}`);
+  assert.ok(Math.abs(byRoom['厨房'].lengthM - 12.00) < 1e-9, `厨房段长应为 12.00（墙砖 4.80 + 上飘窗 front 3.60 + underside 3.60，DEC-2026-10-09-P09），实际 ${byRoom['厨房'].lengthM}`);
   assert.ok(Math.abs(byRoom['主卫'].lengthM - 11.08) < 1e-9, `主卫应为 11.08（4.36 墙 + 6.72 防水台 front/top），实际 ${byRoom['主卫'].lengthM}`);
   assert.ok(Math.abs(byRoom['客卫'].lengthM - 6.45) < 1e-9, `客卫应为 6.45（5.70 + 防溅带堆叠 0.75），实际 ${byRoom['客卫'].lengthM}`);
   assert.ok(Math.abs(byRoom['阳台'].lengthM - 2.70) < 1e-9, `阳台应为 2.70，实际 ${byRoom['阳台'].lengthM}`);
   assert.ok(Math.abs(byRoom['客厅'].lengthM - 12.40) < 1e-9, `客厅应为防水台 front+top 两段各 6.20m，实际 ${byRoom['客厅'].lengthM}`);
-  assert.deepEqual(Object.keys(byHeightTier).sort(), ['0.15', '0.30', '0.33', '0.90', '2.65'], '0.50 档随 C18 后 stale 挡水条一并删除');
+  assert.deepEqual(Object.keys(byHeightTier).sort(), ['0.15', '0.30', '0.33', '0.71', '0.90', '1.10', '2.65'], '0.50 档随 C18 后 stale 挡水条删除；0.71/1.10 是厨房上飘窗 front/underside（DEC-2026-10-09-P09）');
   assert.equal(byHeightTier['2.65'].segments, 6, '砖到顶：客卫淋浴 2 + 厨房 E2 贴满 3 + 主卫淋浴 1（业主 2026-10-07 终裁）');
   assert.equal(byHeightTier['0.90'].segments, 1, '厨房阳台门段杂砖带（E2 贴满后仅此一段维持 0.90）');
   assert.equal(byHeightTier['0.30'].segments, 8, '两卫非淋浴 6 + 阳台 2');
   assert.equal(byHeightTier['0.33'].segments, 1, '客卫台盆防溅带（0.77→1.10）');
   assert.equal(byHeightTier['0.15'].segments, 6, '防水台竖面+台面：客厅 2 + 主卫 4（C17）');
   const total = Object.values(byRoom).reduce((s, v) => s + v.areaSqm, 0);
-  assert.ok(Math.abs(total - 25.201) < 0.01, `总面积应为 25.651，实际 ${total}`);
+  assert.ok(Math.abs(total - 31.717) < 0.01, `总面积应为 31.717（含厨房上飘窗 front 2.556 + underside 3.960，DEC-2026-10-09-P09），实际 ${total}`);
 });
 
 test('HouseScene wall-tile audit surface stays independent of HVAC', () => {

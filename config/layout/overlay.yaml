@@ -903,10 +903,26 @@ elements:
     faces: [underside, front, end_end]
     finish: ordinary
     reason: "⚠️ 名实不符待核：id 名为「走廊西墙」，但 outline x[0,1.1]×z[2.86,5.55] 几何上整块落在 master_bedroom 矩形内（走廊本体是 x[4.2,7.2]×z[4.3,6.45]）。room 按几何归属取 master_bedroom；该区域无主卧吊顶分区覆盖，故 room 取哪间都不改变遮挡结果，只影响算量归房。西端面与实体墙重合不声明；尺寸待复尺"
-  - id: paint_kitchen_north_bay
-    type: paint_sill_region
+  # ── 厨房上飘窗贴砖（2026-10-09 业主终裁：先刷漆 → 改贴砖，DEC-2026-10-09-P09）──
+  # 依据与「按现实使用的合理度为准」：厨房三面可贴墙已贴砖（walltile_kitchen_*）、
+  # 北墙 w_kit_north 是 suppress_kitchen_north 玻璃幕墙（不可贴）、全厨房无 paint_region，
+  # 这处上飘窗是全厨房唯一需要定面层的面。给一间接了墙砖工艺的房间单独开一套刷漆
+  # 工序（找平+阳角条+厨卫漆）不经济；贴砖只是瓦工顺手带一段，且与墙砖连续、收口最简、
+  # 耐油污。竖面与底面都贴——底面朝下、标高 2.12m 抬头可见，只贴竖面会留一片没人管的面。
+  # 标准侧依据：GB/T 11228-2008《住宅厨房》管厨房墙砖高度（溅水区覆盖），
+  # 但**没有国标条文直接规定厨房窗台必须贴砖**——本条是工序经济性+现状一致性判断，
+  # 不是规范强制，已如实登记。
+  - id: silltile_kitchen_north_bay_front
+    type: sill_region
     element: kitchen_north_bay
+    face: front
+    zone: visible
     room: kitchen
-    faces: [underside, front]
-    finish: ordinary
-    reason: "业主 2026-10-09 裁定：先按**统一刷漆价格**计入 ordinaryAreaSqm。业界做法留档——厨房/飘窗窗台首选贴砖（与厨房墙砖连续、收口最简、耐油污好打理）；若维持刷漆，窗台应加阳角条并升级为厨卫/外墙漆（耐擦洗、防老化开裂），普通内墙乳胶漆在厨卫窗台并不合适。厨房三面可贴墙已贴砖（walltile_kitchen_*）、北墙 w_kit_north 是 suppress_kitchen_north 玻璃幕墙（不可贴）、全厨房无 paint_region，故本处是厨房唯一涂装面；将来若改贴砖需改挂 sill_region 并从 ordinaryAreaSqm 移出。两端面与实体墙重合不声明；尺寸待复尺"
+    reason: "厨房上飘窗竖面贴砖（业主 2026-10-09 终裁，DEC-2026-10-09-P09）；与厨房墙砖连续、海棠角收口；北墙玻璃幕墙不可贴，故这是厨房唯一可定面层的飘窗面"
+  - id: silltile_kitchen_north_bay_underside
+    type: sill_region
+    element: kitchen_north_bay
+    face: underside
+    zone: visible
+    room: kitchen
+    reason: "厨房上飘窗底面贴砖（业主 2026-10-09：「底面肯定要的，以现实使用的合理度为准」）；标高 2.12m 朝下、抬头可见，只贴竖面会留 3.96㎡ 没人管的面"

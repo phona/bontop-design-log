@@ -13,6 +13,7 @@
 - `DEC-2026-10-09-P06` 建立 `verify:finish-scope` 面层范围核查层（F01–F04），查出 2.741㎡ 面层双计含一处 C18 后 stale 瓷砖声明
 - `DEC-2026-10-09-P07` 业主裁定「砖漆互斥 + 不能悬空」：F01–F04 全升 error，修 6 处声明、删 1 处 stale 瓷砖声明
 - `DEC-2026-10-09-P08` 吊顶纳入面层核查：新增 F05/F06，业主确认铝扣板不刷漆
+- `DEC-2026-10-09-P09` 厨房上飘窗终裁改贴砖（竖面+底面），`sill_region` 的 face 枚举扩为 front/top/underside
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -272,3 +273,56 @@
   `verify:finish-scope` **0 error / 0 warning**，规则数 F01–F06 六条，配置与实现互为镜像。
 - **后续议题**：F06 目前只校验铝扣板越界，尚未独立复算顶面漆面积（第二套算法对账）；
   `drop` / `ac_indoor` zone 只作「这个房间有石膏板吊顶」的证据，其自身矩形不参与扣减。
+
+---
+
+### DEC-2026-10-09-P09 厨房上飘窗终裁改贴砖（竖面 + 底面），`sill_region` 的 face 枚举扩为 `front`/`top`/`underside`
+
+- **日期**：2026-10-09。触发：业主问「厨房上飘窗这种，业界里最佳实践是什么？有论文或者手册什么的参考吗」，
+  终裁「好，那就贴砖」，并补一条通用判据——**「以现实使用的合理度为准」**。
+- **标准侧查证结果（如实登记，不夸大）**：
+  - 有依据的：**GB/T 11228-2008《住宅厨房》**管厨房墙面砖高度（贴 1.2–1.5m 覆盖溅水区）；
+    **GB 50210《建筑装饰装修工程质量验收标准》**管饰面砖/涂饰质量；**JGJ 367-2015《住宅室内装饰装修设计规范》**
+    含窗台细部；**GB 50327-2001《住宅装饰装修工程施工规范》**管工艺；**T/CBDA 1-2017《住宅装饰装修工程技术规程》**。
+  - **没有查到任何国标条文直接规定「厨房窗台必须贴砖」**。业界做法（非条文）：厨房/飘窗窗台首选贴砖、
+    与厨房墙砖连续、阳角海棠角收口；若刷漆需加阳角条并升级厨卫/外墙漆（普通内墙漆在西晒与油污下易开裂起皮）。
+  - **所以本条不是规范强制，是工序经济性 + 现状一致性判断**，已按此登记。
+- **决定性事实（不是规范，是现状）**：厨房三面可贴墙已贴砖（`walltile_kitchen_*`）、
+  北墙 `w_kit_north` 是 `suppress_kitchen_north` 玻璃幕墙（不可贴）、全厨房零 `paint_region`——
+  这处上飘窗是全厨房**唯一需要定面层的面**。给一间接了墙砖工艺的房间单独开一套刷漆工序
+  （找平 + 阳角条 + 厨卫漆）不经济；贴砖只是瓦工顺手带一段。
+- **立面裁定（含业主原话）**：竖面与底面**都贴**。业主：「底面肯定要的，以现实使用的合理度为准」。
+  该飘窗 sill 2.12m，底面朝下、抬头可见，只贴竖面会留约 3.96㎡ 没人管的面。
+- **实现**：
+  - `shared/types.ts` 与 `server/overlay-merge.ts` 的 `sill_region.face` 枚举由 `'front' | 'top'`
+    扩为 **`'front' | 'top' | 'underside'`**。
+  - `shared/render/SceneBuilder.ts` 新增 `face=underside` 分支：几何必须与 `paint_sill_region` 的
+    underside **同源**——`buildBaySillGeometry` 的 footprint + `applyPlanFootprint` 映射
+    （只写 `rotation.x` 会把 z 翻负，真实飘窗脚印 z=[1.10,2.20] 曾被打到 z=[-2.20,-1.10]，
+    导致预算算了面积却盖不到实体）。平面标高 = `target.sill`。
+  - `config/layout/overlay.yaml`：删除 `paint_kitchen_north_bay`（`paint_sill_region`，ordinary），
+    新增 `silltile_kitchen_north_bay_front` 与 `silltile_kitchen_north_bay_underside` 两条 `sill_region`。
+- **数字**（厨房上飘窗整块移出涂装范围）：
+  | 指标 | P08 后 | P09 后 |
+  |---|---|---|
+  | `paint_sill_region` 段数 | 8 | 8（厨房那条本就是第 9 条，现删） |
+  | 普通漆窗台 | 39.511 | **33.643㎡** |
+  | 普通计费 | 300.585 | **294.717㎡** |
+  | 全部涂装面 | 304.140 | **298.272㎡** |
+  | `sillAreaByRoom` | 含 kitchen 5.868 | **kitchen 消失** |
+  | 报价总额（55 元/㎡） | 16532.18 | **16209.44** |
+  | vs PKG-080 计划 | +5032.18 | **+4709.44** |
+  | `painting.actual` | 9113.11 | **8934.91** |
+  | 瓷砖总面积（wall-tile 检视） | 25.201 | **31.717㎡**（+front 2.556 + underside 3.960） |
+  净墙/顶面/防霉漆均不变。
+- **关联文件**：`shared/types.ts`、`server/overlay-merge.ts`、`shared/render/SceneBuilder.ts`、
+  `config/layout/overlay.yaml`、`tests/server/{finish-scope,paint-scope,paint-comparison-api,paint-sill-scene,wall-tile-inspection}.test.ts`、
+  `README.md`、本文件。
+- **决策人**：业主（「那就贴砖」「底面肯定要的，以现实使用的合理度为准」）。
+- **验证**：`test:server` **884/884**、`test:app` **564/564**、`typecheck`（根+app）干净、
+  `verify:facts` OK（41 warning）、`verify:all` **15/16**（唯一失败是既有 `sock_child_ac`）。
+  `verify:finish-scope` **0 error / 0 warning**。新增回归测试：厨房上飘窗必须恰好是
+  front + underside 两条瓷砖声明、无漆声明混入。
+- **后续议题**：① `underside` 目前只服务厨房这一处；主卫那处仍是 `anti_mold` 漆（含底面），
+  若将来主卫也要整贴砖可直接复用；② 通用判据「以现实使用的合理度为准」已确立，后续
+  异形窗台费率、两个名实不符飘窗等取舍都按它走。

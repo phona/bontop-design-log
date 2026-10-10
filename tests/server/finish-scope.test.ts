@@ -221,6 +221,17 @@ test('finish-scope F06：真实配置的铝扣板 zone 必须都整块落在自�
   assert.deepEqual(result.issues.filter((i) => i.code.startsWith('finish.buckle_zone')), [], '厨房/主卫/客卫的铝扣板必须都在房间内');
 });
 
+test('finish-scope：厨房上飘窗已由漆改砖，sill_region 的 face 枚举必须含 underside', () => {
+  const input = buildInput();
+  const kitchen = input.sills.filter((s) => s.element === 'kitchen_north_bay');
+  assert.equal(kitchen.length, 2, `厨房上飘窗应有 front + underside 两条瓷砖声明，实际 ${kitchen.map((k) => k.id).join(',')}`);
+  assert.deepEqual(kitchen.map((k) => k.faces[0]).sort(), ['front', 'underside']);
+  assert.ok(kitchen.every((k) => k.finish === 'tile'), '必须全是瓷砖，不是漆');
+  // 同一 element 的 front 被漆和砖同时声明才会被 F02 抓；现在只剩砖，必须干净
+  const result = runFinishScopeChecks(input, TODAY, loadFinishLintConfig());
+  assert.deepEqual(result.issues, [], '厨房上飘窗改贴砖后不应有任何 issue');
+});
+
 test('finish-scope：IMPLEMENTED_RULES 与配置互为镜像', () => {
   const config = loadFinishLintConfig();
   assert.equal(config.rules.length, IMPLEMENTED_RULES.length, '配置申报数必须等于实现数（F01-F06 六条）');

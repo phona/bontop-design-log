@@ -184,8 +184,8 @@ test('underside keeps the wall-paint layer label and a reversible initial snapsh
       found.push(object as THREE.Mesh);
     }
   });
-  // 2026-10-09 起 overlay 有 9 个 paint_sill_region，各产一张 underside；按 elementId 锁定主卫那处
-  assert.equal(found.length, 9, '每个 paint_sill_region 各产一张 underside');
+  // DEC-2026-10-09-P09：厨房上飘窗改贴砖后 paint_sill_region 由 9 段变 8 段
+  assert.equal(found.length, 8, '每个 paint_sill_region 各产一张 underside');
   const mesh = found.find((candidate) => candidate.userData.elementId === 'master_bath_west_bay')!;
   assert.ok(mesh, '主卫上飘窗的 underside 必须存在');
   assert.equal(mesh.userData.inspectionLayer, 'wall-paint', '新面必须仍是 wall-paint 标签');
