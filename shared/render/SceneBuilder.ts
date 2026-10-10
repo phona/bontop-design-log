@@ -172,6 +172,38 @@ function applyPlanFootprint(mesh: THREE.Mesh): void {
   mesh.scale.set(1, -1, 1);
 }
 
+/**
+ * 沿折线把沿墙区间 [from,to] 裁成一段段直线（DEC-2026-10-09-P14）。
+ *
+ * 为什么必须有这一步：贴砖/涂漆面原来都直接取「起终点弦」当整块平面——
+ * 直墙上弦就是墙，成立；**弧墙（圆角）上弦不是墙**。真实案例：圆角墙
+ * w_bath_north（r=1.0 圆角弧 + z=1.10 直线，沿墙总长 3.170m）上一条全跨度声明，
+ * 弦中点被算成 (1.30,1.60)，离真实墙面 0.50m，整块面悬在空中。
+ *
+ * 这里按折线逐段裁剪，返回的每段都是墙上真实的一段直线，调用方逐段出网即可。
+ * 直墙只有一段（不拆）；只有沿墙区间跨越多个折线段时才拆。
+ */
+function clipAlongSpan(polyline: WallSegment[], from: number, to: number): Array<{ a: Point; b: Point }> {
+  const clipped: Array<{ a: Point; b: Point }> = [];
+  const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
+  let cursor = 0;
+  const lo = Math.max(0, from), hi = Math.min(total, to);
+  for (const segment of polyline) {
+    const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
+    if (length <= 1e-9) continue;
+    const s0 = cursor, s1 = cursor + length;
+    cursor = s1;
+    const a = Math.max(lo, s0), b = Math.min(hi, s1);
+    if (b - a <= 1e-9) continue;
+    const t0 = (a - s0) / length, t1 = (b - s0) / length;
+    clipped.push({
+      a: { x: segment.x1 + (segment.x2 - segment.x1) * t0, z: segment.z1 + (segment.z2 - segment.z1) * t0 },
+      b: { x: segment.x1 + (segment.x2 - segment.x1) * t1, z: segment.z1 + (segment.z2 - segment.z1) * t1 },
+    });
+  }
+  return clipped;
+}
+
 function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'curtainRun' | 'frostedPrivacy' | 'showerScreen' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass' | 'hingedGlassDoorFrame' | 'hingedGlassDoorGlass'>> {
   return {
     wall: ({ shaft }) => new THREE.MeshStandardMaterial({ color: shaft ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 }),
@@ -624,11 +656,6 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         report.unsupported.push(`${id}: wall_region could not resolve along interval on wall ${element.wall}`);
         return;
       }
-      const span = Math.hypot(end.x - start.x, end.z - start.z);
-      if (span <= 1e-9) {
-        report.unsupported.push(`${id}: wall_region resolved to a zero-length span on wall ${element.wall}`);
-        return;
-      }
       // R11 room 语义：贴砖面归属房间（共墙两侧各贴各的脸，预算/审计按 (wall, room) 去重）。
       // 只校验房间存在，不要求中心点（wall_region 不做侧向偏移：渲染仍走墙中心线，
       // 检视态 depthTest=false 真透视，从两侧都能看到砖面带）。
@@ -648,34 +675,53 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         polygonOffsetUnits: -2,
         depthWrite: false,
       });
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, element.height - bottom), material);
-      mesh.position.set((start.x + end.x) / 2, bottom + (element.height - bottom) / 2, (start.z + end.z) / 2);
-      // PlaneGeometry 法线为局部 +Z；绕 Y 旋转使其立起并垂直于墙段走向。
-      mesh.rotation.y = Math.atan2(-(end.z - start.z), end.x - start.x);
-      setSceneObjectMetadata(mesh, element.type, id);
-      mesh.userData = {
-        ...mesh.userData,
-        wallId: element.wall,
-        roomId: element.room,
-        along: [from, to],
-        bottom,
-        zone: element.zone ?? 'visible',
-        inspectionLayer: 'wall-tile',
-        inspectionVisibleOnly: true,
-        inspectionOpacity: TILE_INSPECTION_OPACITY,
-        // 关闭态恢复快照：刻意保存初始值而不是硬编码，避免重写 pipe-chase 那套丢初始态的写法。
-        inspectionInitial: {
-          visible: false,
-          opacity: 0.38,
-          transparent: true,
-          depthTest: true,
-          depthWrite: false,
-          renderOrder: 0,
+      // DEC-2026-10-09-P14（sill_region 同款）：沿折线把 [from,to] 裁成一段段直线。
+      // 旧算法直接用「起终点弦」当整块面——直墙上成立，**弧墙（圆角）上不成立**：
+      // 圆角墙 w_bath_north（r=1.0 圆角弧 + 直线，沿墙 3.170m）上一条全跨度声明，
+      // 弦中点被算成 (1.30,1.60)，离真实墙面 0.50m，整块砖面悬在空中。逐段出网后每块都贴在墙上。
+      const clipped = clipAlongSpan(polyline, from, to);
+      if (!clipped.length) {
+        report.unsupported.push(`${id}: wall_region resolved to a zero-length span on wall ${element.wall}`);
+        return;
+      }
+      const writeMeta = (mesh: THREE.Mesh, part = 0, parts = 1) => {
+        // 弧墙上沿折线逐段出网，objectId 必须唯一（parts>1 时加 :sN 后缀），
+        // 否则多块共用一个 id，导出与检视都去重不出。
+        setSceneObjectMetadata(mesh, element.type, parts > 1 ? `${id}:s${part}` : id);
+        mesh.userData = {
+          ...mesh.userData,
+          wallId: element.wall,
+          roomId: element.room,
+          along: [from, to],
           bottom,
-        },
+          zone: element.zone ?? 'visible',
+          inspectionLayer: 'wall-tile',
+          inspectionVisibleOnly: true,
+          inspectionOpacity: TILE_INSPECTION_OPACITY,
+          // 关闭态恢复快照：刻意保存初始值而不是硬编码，避免重写 pipe-chase 那套丢初始态的写法。
+          inspectionInitial: {
+            visible: false,
+            opacity: 0.38,
+            transparent: true,
+            depthTest: true,
+            depthWrite: false,
+            renderOrder: 0,
+            bottom,
+          },
+        };
+        mesh.visible = false;
+        root.add(mesh);
       };
-      mesh.visible = false;
-      root.add(mesh);
+      // 逐段出网（DEC-2026-10-09-P14）：每段用自己的中点与旋转角，弧墙上才不会整块飘出去。
+      clipped.forEach(({ a, b }, index) => {
+        const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
+        if (segSpan <= 1e-9) return;
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, element.height - bottom), material);
+        mesh.position.set((a.x + b.x) / 2, bottom + (element.height - bottom) / 2, (a.z + b.z) / 2);
+        // PlaneGeometry 法线为局部 +Z；绕 Y 旋转使其立起并垂直于墙段走向。
+        mesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
+        writeMeta(mesh, index, clipped.length);
+      });
       return;
     }
     case 'sill_region': {
@@ -757,29 +803,11 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         polygonOffsetUnits: -2,
         depthWrite: false,
       });
-      const mid = { x: (start.x + end.x) / 2, z: (start.z + end.z) / 2 };
       // DEC-2026-10-09-P14：沿折线把 [from,to] 裁成一段段直线。
       // 旧算法直接用「起终点弦」当整块面——直墙上成立，**弧墙（圆角）上不成立**：
       // 真实案例 mbath_north_waterproof_ledge 挂在 w_bath_north（r=1.0 圆角弧 + 直线），
       // 弦中点被算成 (1.30,1.60)，离真实墙面 0.50m，整块砖面悬在空中。逐段出网后每块都贴在墙上。
-      const clipped: Array<{ a: Point; b: Point }> = [];
-      {
-        let cursor = 0;
-        const lo = Math.max(0, from), hi = Math.min(total, to);
-        for (const segment of polyline) {
-          const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
-          if (length <= 1e-9) continue;
-          const s0 = cursor, s1 = cursor + length;
-          cursor = s1;
-          const a = Math.max(lo, s0), b = Math.min(hi, s1);
-          if (b - a <= 1e-9) continue;
-          const t0 = (a - s0) / length, t1 = (b - s0) / length;
-          clipped.push({
-            a: { x: segment.x1 + (segment.x2 - segment.x1) * t0, z: segment.z1 + (segment.z2 - segment.z1) * t0 },
-            b: { x: segment.x1 + (segment.x2 - segment.x1) * t1, z: segment.z1 + (segment.z2 - segment.z1) * t1 },
-          });
-        }
-      }
+      const clipped = clipAlongSpan(polyline, from, to);
       if (!clipped.length) {
         report.unsupported.push(`${id}: sill_region resolved to a zero-length span`);
         return;
@@ -934,13 +962,6 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         report.unsupported.push(`${id}: paint_region room ${element.room} has no resolved centre (x/z)`);
         return;
       }
-      const dx = end.x - start.x;
-      const dz = end.z - start.z;
-      const dirLength = Math.hypot(dx, dz) || 1;
-      const left = { x: -dz / dirLength, z: dx / dirLength };
-      const mid = { x: (start.x + end.x) / 2, z: (start.z + end.z) / 2 };
-      const side = (room.x - mid.x) * left.x + (room.z - mid.z) * left.z;
-      const normal = Math.abs(side) > 1e-6 ? (side > 0 ? left : { x: -left.x, z: -left.z }) : left;
       const material = new THREE.MeshStandardMaterial({
         color: new THREE.Color(element.color ?? PAINT_INSPECTION_COLOR),
         roughness: 0.9,
@@ -968,32 +989,38 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       const scope = computePaintScope([wallInput], [{ id, wall: element.wall, room: element.room, along: [from, to], bottom, height }], paintWindows);
       const rects = scope.regions[0]?.rects ?? [];
 
-      rects.forEach((rect, index) => {
-        const rectStart = pointAt(rect.from);
-        const rectEnd = pointAt(rect.to);
-        if (!rectStart || !rectEnd) {
-          report.unsupported.push(`${id}: split rect [${rect.from}, ${rect.to}] could not be resolved on wall ${element.wall}`);
-          return;
-        }
-        const rectSpan = Math.hypot(rectEnd.x - rectStart.x, rectEnd.z - rectStart.z);
-        if (rectSpan <= 1e-9) return;
-        const rectDx = rectEnd.x - rectStart.x;
-        const rectDz = rectEnd.z - rectStart.z;
-        const rectDir = Math.hypot(rectDx, rectDz) || 1;
-        const rectLeft = { x: -rectDz / rectDir, z: rectDx / rectDir };
-        const rectMid = { x: (rectStart.x + rectEnd.x) / 2, z: (rectStart.z + rectEnd.z) / 2 };
-        const rectSide = (room.x - rectMid.x) * rectLeft.x + (room.z - rectMid.z) * rectLeft.z;
-        const rectNormal = Math.abs(rectSide) > 1e-6 ? (rectSide > 0 ? rectLeft : { x: -rectLeft.x, z: -rectLeft.z }) : rectLeft;
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(rectSpan, rect.top - rect.bottom), material);
+      // DEC-2026-10-09-P14：拆洞得到的每个矩形还要**沿折线再裁成一段段直线**。
+      // 旧算法在每个矩形内直接取「起终点弦」当整块面——直墙上成立，弧墙（圆角）上不成立：
+      // 圆角墙 w_bath_north（r=1.0 圆角弧 + 直线）上一条全跨度声明，弦中点离真实墙面 0.50m，
+      // 整块漆面悬在空中。逐段出网后每块都贴在墙上，且每段各自算法线方向（朝房间侧外偏移）。
+      const pieces = rects.flatMap((rect) =>
+        clipAlongSpan(polyline, rect.from, rect.to).map(({ a, b }) => ({ rect, a, b })),
+      );
+      if (!pieces.length) {
+        report.unsupported.push(`${id}: paint_region resolved to a zero-length span on wall ${element.wall}`);
+        return;
+      }
+
+      pieces.forEach(({ rect, a, b }, index) => {
+        const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
+        if (segSpan <= 1e-9) return;
+        const segDx = b.x - a.x;
+        const segDz = b.z - a.z;
+        const segDir = Math.hypot(segDx, segDz) || 1;
+        const segLeft = { x: -segDz / segDir, z: segDx / segDir };
+        const segMid = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
+        const segSide = (room.x - segMid.x) * segLeft.x + (room.z - segMid.z) * segLeft.z;
+        const segNormal = Math.abs(segSide) > 1e-6 ? (segSide > 0 ? segLeft : { x: -segLeft.x, z: -segLeft.z }) : segLeft;
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, rect.top - rect.bottom), material);
         mesh.position.set(
-          rectMid.x + rectNormal.x * PAINT_FACE_OFFSET,
+          segMid.x + segNormal.x * PAINT_FACE_OFFSET,
           (rect.bottom + rect.top) / 2,
-          rectMid.z + rectNormal.z * PAINT_FACE_OFFSET,
+          segMid.z + segNormal.z * PAINT_FACE_OFFSET,
         );
-        mesh.rotation.y = Math.atan2(-rectDz, rectDx);
-        // 拆洞后一段声明对应多个网格，objectId 必须唯一；regionId 仍指向声明本身，
+        mesh.rotation.y = Math.atan2(-segDz, segDx);
+        // 拆洞 + 弧墙逐段后一段声明对应多个网格，objectId 必须唯一；regionId 仍指向声明本身，
         // 供 inspectPaintRegions 按声明去重（26 段声明的语义不变）。
-        const meshId = rects.length > 1 ? `${id}:s${index}` : id;
+        const meshId = pieces.length > 1 ? `${id}:s${index}` : id;
         setSceneObjectMetadata(mesh, element.type, meshId);
         mesh.userData = {
           ...mesh.userData,

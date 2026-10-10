@@ -103,6 +103,14 @@ export const IMPLEMENTED_RULES: FinishRuleSpec[] = [
     enabled: true,
     note: '每个面层声明必须在 buildScene 的产出里找到自己（objectId 命中，或门洞拆分的 id:sN）。声明落空不会报错——computePaintScope 照样算面积进预算，而 3D 里什么都没有：预算算了钱、现场找不到活儿。paint_ceiling_region 本身不产网格，改判房间有无 ceiling 几何。',
   },
+  {
+    id: 'finish.mesh_unattached',
+    codes: ['finish.mesh_unattached', 'finish.mesh_unattached_unknown_anchor'],
+    kinds: 'buildScene finish mesh vs wall polyline / bay footprint',
+    severity: 'error',
+    enabled: true,
+    note: '逐块判「网格有没有贴在它该贴的几何上」——F08 只查 id 在不在场景里，查不出「网格存在但位置错了」（弧墙上 mid 取起终点弦中点，整块飘 0.50m，F08 一声不响）。墙类（wall_region/paint_region/sill-front）比中心到墙折线的最近距离；sill 类（sill-top/sill-underside/paint_sill_region）比中心到 bay footprint 边界的距离或在 footprint 内——必须用距离法，前缘面中心本身就在边界上，射线法 inPoly 对边界点不稳定（一次性探针曾因此误报 16 块）。拿不到 wallId/elementId/几何时报 unknown_anchor，不静默跳过。容差 0.12m（不是 config 的 0.01 重叠容差：漆面合法外偏移 0.068m）。逐块判与网格总数无关，逐段出网不影响。',
+  },
 ];
 
 /** finish-scope 层 code 全集：parity 测试与文档都引这一份。 */

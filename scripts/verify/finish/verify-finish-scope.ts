@@ -121,10 +121,12 @@ function buildInput(): FinishScopeInput {
 
   // F08：声明必须在 3D 场景里找到附着的实体。采集与测试共用 shared/finish/scene.ts，
   // 结论不会两边漂移。场景建不起来时必须红——不能因为拿不到几何就假装没有飘空声明。
+  // F09 同源：网格中心 + 锚点（wallId/elementId）+ bay footprint 也一并采回来，
+  // 判「网格贴在墙上」用的是同一份 buildScene 产出，不是第二套几何。
   const scene = collectFinishSceneMeshes(layout as any);
 
   const config = loadFinishLintConfig();
-  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, tolerance: config.tolerance ?? 0.01, source: SOURCE };
+  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, sceneMeshes: scene.meshes, sceneBayOutlines: scene.bayOutlines, tolerance: config.tolerance ?? 0.01, source: SOURCE };
 }
 
 /**
@@ -180,6 +182,8 @@ function main(): void {
       ceilingPaintRooms: [...(input.ceilingPaintRooms ?? [])].length,
       rooms: input.rooms.length,
       walls: Object.keys(input.wallGeometry).length,
+      sceneMeshes: input.sceneMeshes?.length ?? 0,
+      bayFootprints: input.sceneBayOutlines?.size ?? 0,
     },
     issues: sorted,
   }, null, 2);

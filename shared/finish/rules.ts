@@ -17,6 +17,9 @@
  *   SceneBuilder wall_region 分支 `PlaneGeometry(span, element.height - bottom)`、
  *   `position.y = bottom + (element.height - bottom) / 2`。字段名有歧义但两侧一致，
  *   本层按同一口径取 top = height（曾按 bottom+height 算错，把竖向区间整体上移）。
+ *
+ * F08/F09 的分工：F08 查「声明在场景里有没有实体」，F09 查「实体有没有贴在它该贴的几何上」。
+ * 两条都要——只查前者，弧墙上用弦中点定位的整块悬空砖面会一声不响地过去。
  */
 
 export interface FinishWallSpan {
@@ -44,6 +47,36 @@ export interface FinishSillClaim {
 export interface FinishRoomPolygon {
   id: string;
   points: Array<{ x: number; z: number }>;
+}
+
+/**
+ * F09 用：一块面层网格的附着锚点（= buildScene 写进 userData 的东西）。
+ * 采集方 `shared/finish/scene.ts` 与判据方本文件共用这一份契约，避免两边各写一套字段名。
+ */
+export interface FinishMeshAnchor {
+  /** userData.type：wall_region / paint_region / sill_region / paint_sill_region。 */
+  type: string;
+  /** userData.kind（sill_region）：sill-front / sill-top / sill-underside。 */
+  kind?: string;
+  /** userData.face（paint_sill_region）：underside / front / start_end / end_end。 */
+  face?: string;
+  /** userData.wallId：墙类锚。 */
+  wallId?: string;
+  /** userData.elementId：bay_sill 构件 id，sill 类锚。 */
+  elementId?: string;
+}
+
+/**
+ * F09 的判定单位：一块面层网格 = 锚点 + objectId + 世界包围盒中心。
+ * 采集方 `shared/finish/scene.ts` 与判据方本文件共用这一份契约。
+ * 之所以是清单而不是 `Map<objectId, ...>`：objectId 不保证唯一
+ * （`computePaintSillScope` 的 start_end 与 end_end 都产 `${id}:${i}`），
+ * 按 id 收敛会静默漏掉一块网格不判。
+ */
+export interface FinishSceneMesh extends FinishMeshAnchor {
+  objectId: string;
+  /** 世界包围盒中心（x/z）。 */
+  centre: { x: number; z: number };
 }
 
 export interface FinishWallGeometry {
@@ -97,6 +130,10 @@ export interface FinishScopeInput {
   sceneMeshIds?: Set<string>;
   /** F08 用：有 ceiling 网格的房间（objectId = ceiling:<room>）。 */
   sceneCeilingRooms?: Set<string>;
+  /** F09 用：buildScene 产出的每块面层网格（世界包围盒中心 + userData 锚点）。逐块判据。 */
+  sceneMeshes?: FinishSceneMesh[];
+  /** F09 用：bay_sill 构件的 footprint 多边形（key = 构件 id），sill 类网格的锚。 */
+  sceneBayOutlines?: Map<string, Array<{ x: number; z: number }>>;
   /** 有 paint_ceiling_region 声明的房间（顶面已登记）。 */
   ceilingPaintRooms?: Set<string>;
   /** 有 paint_region 声明的房间（在涂装范围内）。 */
@@ -144,6 +181,29 @@ function distanceToPolygonBoundary(p: { x: number; z: number }, polygon: FinishR
     best = Math.min(best, distancePointToSegment(p, polygon[j], polygon[i]));
   }
   return best;
+}
+
+/** 点到折线（墙的弧段细分后的各段）的最近距离。 */
+function distanceToPolyline(p: { x: number; z: number }, polyline: FinishWallGeometry['polyline']): number {
+  let best = Infinity;
+  for (const segment of polyline) {
+    best = Math.min(best, distancePointToSegment(p, { x: segment.x1, z: segment.z1 }, { x: segment.x2, z: segment.z2 }));
+  }
+  return best;
+}
+
+/**
+ * 射线法包含判定。**只用于「中心明显在多边形内部」这一支**：落在边界上的点射线法不稳定
+ * （半开半闭的区间比较会让边界点随机报内/外），所以边界点一律走上面的距离支，不依赖它。
+ * 见 F09 注释。
+ */
+function pointInPolygon(p: { x: number; z: number }, polygon: Array<{ x: number; z: number }>): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i], b = polygon[j];
+    if ((a.z > p.z) !== (b.z > p.z) && p.x < ((b.x - a.x) * (p.z - a.z)) / (b.z - a.z) + a.x) inside = !inside;
+  }
+  return inside;
 }
 
 function overlapLength(a: [number, number], b: [number, number]): number {
@@ -499,6 +559,138 @@ export function checkDeclarationAttached(input: FinishScopeInput): FinishIssue[]
   return issues;
 }
 
+/**
+ * F09 网格必须贴在墙面几何上：逐块判「这块面层网格有没有落在它声明附着的几何上」。
+ *
+ * 为什么 F08 不够：F08 只查「声明的 id 在不在 buildScene 的产出里」，查不出
+ * **网格存在但位置错了**。真实案例：SceneBuilder 用 `mid = 起终点弦中点`定位，
+ * 直墙上弦就是墙、成立；弧墙（圆角）上弦不是墙——`mbath_north_waterproof_ledge`
+ * 挂在 w_bath_north，弦中点被算到离真实墙面 0.50m 处，整块砖面悬在卫生间中间，
+ * 而 F08 一声不响（id 明明在场景里）。面积照算、现场找不到这块砖。
+ *
+ * 判据按 mesh 的 type/kind 分三类，**逐块独立判**，所以与网格总数无关：
+ * wall_region/paint_region 改逐段出网后 objectId 带 `:sN`、块数会变，本条一块一块判，
+ * 不受影响（`:sN` 后缀天然被容忍——判据里根本不解析 id，只看 userData 与中心）。
+ *
+ * 1. `wall_region` / `paint_region` / `sill_region` 的 `sill-front`：
+ *    中心到 `wallGeometry[wallId].polyline` 任一段的最近距离 ≤ 容差。
+ * 2. `sill_region` 的 `sill-top` / `sill-underside`、以及 `paint_sill_region`：
+ *    中心到该 bay footprint 的**边界**距离 ≤ 容差，**或**中心在 footprint 内部。
+ * 3. 拿不到 wallId / elementId / 对应几何：报 `finish.mesh_unattached_unknown_anchor`，
+ *    不静默跳过（fail-closed）。
+ *
+ * ## 为什么第 2 类用「到边界距离」而不是射线法 inPoly
+ * 前缘面（front）与两端面（start_end/end_end）的中心**本身就落在 footprint 边界上**，
+ * 射线法对边界点不稳定（半开区间比较让同一个点随机判成内/外）。此前的一次性探针正是
+ * 只用 inPoly，把 16 块几何正确的网格误报成飘空。距离法对边界点是稳定的（距离恒 ≈ 0），
+ * 所以边界点全部走距离支；射线法只用来放行「中心明显在 footprint 内部」的网格——
+ * 台面（top）与底面（underside）的中心本来就在 depth/2 处，合法地不在边界上。
+ * 反过来若只用距离支，每一块 top/underside 都会因距边界 0.55m 被误报。
+ * 两支合起来才是「贴着这块 bay 几何」的完整判据。
+ *
+ * ## 容差为什么不是 config 里的 tolerance
+ * `config/finish-lint.yaml` 的 `tolerance: 0.01` 是 F01/F03 的**重叠**容差。面层网格
+ * 天生不贴在墙中心线上：paint_region 外偏移 `PAINT_FACE_OFFSET = 0.12/2 + 0.008 = 0.068m`
+ * （墙厚半 + 8mm，避开 z-fighting），sill-top 在 depth/2 处。用 0.01 会把每一块漆面都判成
+ * 飘空。故取 0.12m——与弧墙悬空实测值 0.50m 差 4 倍，与合法偏移 0.068m 差 2 倍，两头都够。
+ * 这是「已有的一次性探针用的那个 tolerance」，不是本条新造的数字。
+ */
+const MESH_ATTACH_TOLERANCE = 0.12;
+
+export function checkMeshAttachedToGeometry(input: FinishScopeInput): FinishIssue[] {
+  const issues: FinishIssue[] = [];
+  const meshes = input.sceneMeshes;
+  if (!meshes) return issues;
+  const outlines = input.sceneBayOutlines ?? new Map<string, Array<{ x: number; z: number }>>();
+  const tol = MESH_ATTACH_TOLERANCE;
+  for (const mesh of meshes) {
+    const { objectId, centre, ...anchor } = mesh;
+    const kind = anchor.kind ?? anchor.face ?? '';
+    const isWallAnchored = anchor.type === 'wall_region'
+      || anchor.type === 'paint_region'
+      || (anchor.type === 'sill_region' && kind === 'sill-front');
+    const isBayAnchored = (anchor.type === 'sill_region' && (kind === 'sill-top' || kind === 'sill-underside'))
+      || anchor.type === 'paint_sill_region';
+    if (!isWallAnchored && !isBayAnchored) {
+      issues.push({
+        level: 'error',
+        code: 'finish.mesh_unattached_unknown_anchor',
+        entity: objectId,
+        message: `面层网格 ${objectId} 的 type=${anchor.type} kind/face=${kind || '(空)'} 不属于任何已知锚类 → 判据写不出来，按飘空处理`,
+        evidence: { mesh: objectId, type: anchor.type, kind: kind || null },
+      });
+      continue;
+    }
+    if (isWallAnchored) {
+      if (!anchor.wallId) {
+        issues.push({
+          level: 'error',
+          code: 'finish.mesh_unattached_unknown_anchor',
+          entity: objectId,
+          message: `面层网格 ${objectId}（${anchor.type}）的 userData 里没有 wallId → 不知道它该贴哪面墙，按飘空处理`,
+          evidence: { mesh: objectId, type: anchor.type, kind: kind || null },
+        });
+        continue;
+      }
+      const geometry = input.wallGeometry[anchor.wallId];
+      if (!geometry) {
+        issues.push({
+          level: 'error',
+          code: 'finish.mesh_unattached_unknown_anchor',
+          entity: objectId,
+          message: `面层网格 ${objectId}（${anchor.type}）声明的墙 ${anchor.wallId} 在 wallGeometry 里不存在 → 拿不到折线，按飘空处理`,
+          evidence: { mesh: objectId, type: anchor.type, wallId: anchor.wallId, kind: kind || null },
+        });
+        continue;
+      }
+      const distance = distanceToPolyline(centre, geometry.polyline);
+      if (distance > tol) {
+        issues.push({
+          level: 'error',
+          code: 'finish.mesh_unattached',
+          entity: objectId,
+          message: `面层网格 ${objectId}（${anchor.type}${kind ? '/' + kind : ''}）的世界包围盒中心 (${centre.x.toFixed(3)}, ${centre.z.toFixed(3)}) 距墙 ${anchor.wallId} 的折线最近 ${distance.toFixed(3)}m > ${tol}m → 网格没有贴在墙面几何上。F08 只查「网格存在」，查不出位置错了：弧墙上用弦中点定位就会整块飘出去`,
+          evidence: { mesh: objectId, type: anchor.type, kind: kind || null, wallId: anchor.wallId, centre: { x: +centre.x.toFixed(3), z: +centre.z.toFixed(3) }, distanceM: +distance.toFixed(3), toleranceM: tol, anchor: 'wall_polyline' },
+        });
+      }
+      continue;
+    }
+    if (!anchor.elementId) {
+      issues.push({
+        level: 'error',
+        code: 'finish.mesh_unattached_unknown_anchor',
+        entity: objectId,
+        message: `面层网格 ${objectId}（${anchor.type}）的 userData 里没有 elementId → 不知道它该贴哪个 bay 构件，按飘空处理`,
+        evidence: { mesh: objectId, type: anchor.type, kind: kind || null },
+      });
+      continue;
+    }
+    const outline = outlines.get(anchor.elementId);
+    if (!outline || outline.length < 3) {
+      issues.push({
+        level: 'error',
+        code: 'finish.mesh_unattached_unknown_anchor',
+        entity: objectId,
+        message: `面层网格 ${objectId}（${anchor.type}）引用的构件 ${anchor.elementId} 建不出 footprint（wallRefs 缺失或几何退化）→ 拿不到锚，按飘空处理`,
+        evidence: { mesh: objectId, type: anchor.type, elementId: anchor.elementId, kind: kind || null },
+      });
+      continue;
+    }
+    // 到边界距离（边界点稳定）或中心在 footprint 内（top/underside 的合法位置）。
+    const distance = distanceToPolygonBoundary(centre, outline);
+    if (distance > tol && !pointInPolygon(centre, outline)) {
+      issues.push({
+        level: 'error',
+        code: 'finish.mesh_unattached',
+        entity: objectId,
+        message: `面层网格 ${objectId}（${anchor.type}/${kind || '?'}）的世界包围盒中心 (${centre.x.toFixed(3)}, ${centre.z.toFixed(3)}) 距构件 ${anchor.elementId} 的 footprint 边界 ${distance.toFixed(3)}m 且不在 footprint 内 → 网格没有贴在这块防水台/飘窗几何上`,
+        evidence: { mesh: objectId, type: anchor.type, kind: kind || null, elementId: anchor.elementId, centre: { x: +centre.x.toFixed(3), z: +centre.z.toFixed(3) }, distanceM: +distance.toFixed(3), toleranceM: tol, anchor: 'bay_footprint' },
+      });
+    }
+  }
+  return issues;
+}
+
 export function validateFinishScope(input: FinishScopeInput): FinishIssue[] {
   return [
     ...checkWallFinishOverlap(input),
@@ -509,5 +701,6 @@ export function validateFinishScope(input: FinishScopeInput): FinishIssue[] {
     ...checkBuckleZoneOutsideRoom(input),
     ...checkFinishOverOpening(input),
     ...checkDeclarationAttached(input),
+    ...checkMeshAttachedToGeometry(input),
   ];
 }

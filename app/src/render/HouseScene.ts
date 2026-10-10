@@ -1017,8 +1017,17 @@ export class HouseScene implements SceneApi {
     // R11：重叠判定改二维——同一面墙同一侧脸（wall+room）上 along 与竖向同时重叠才算双计。
     // 共墙两侧脸（w_balc_south 客卫淋浴 1.80m / 阳台 0.30m）各归各的脸；
     // 同一侧脸的上下堆叠段（东墙 0.90 杂砖带 + 0.90→1.40 挡水条）竖向不重叠，不算双计。
+    // DEC-2026-10-09-P14：弧墙上同一段声明会沿折线拆成多块网格（objectId 带 :sN 后缀），
+    // 判重必须按**声明**先去重——否则同段声明的各块会互相"重叠"，把审计变成假警报
+    // （与 inspectPaintRegions 按 regionId 去重同款，那侧的注释在 :1259）。
+    const declarationIdOf = (objectId: string): string => objectId.replace(/:s\d+$/, '');
     const byFace = new Map<string, typeof regions>();
-    for (const r of regions) { const k = `${r.wall}|${r.room}`; (byFace.get(k) ?? byFace.set(k, []).get(k)!).push(r); }
+    for (const r of regions) {
+      const k = `${r.wall}|${r.room}`;
+      const list = byFace.get(k) ?? byFace.set(k, []).get(k)!;
+      if (list.some((item) => declarationIdOf(item.id) === declarationIdOf(r.id))) continue;
+      list.push(r);
+    }
     for (const [face, group] of byFace) {
       // along 起点相同时按 bottom 排序：竖向堆叠段必须让低段在前，否则"上段 vs 下段"的竖向比较会误判。
       const sorted = group.slice().sort((a, b) => a.along[0] - b.along[0] || a.bottom - b.bottom);

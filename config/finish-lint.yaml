@@ -97,6 +97,29 @@ rules:
       report.unsupported 只覆盖引用不存在/区间越界，且只有测试在断言它为空；本规则把
       「声明 → 场景实体」提升为门禁级。paint_ceiling_region 本身不产网格，改判「声明顶面漆
       的房间有无 ceiling 几何」——没有就是飘在 2.80m 高度上。
+  - id: finish.mesh_unattached
+    codes:
+      - finish.mesh_unattached
+      - finish.mesh_unattached_unknown_anchor
+    kinds: buildScene finish mesh vs wall polyline / bay footprint
+    severity: error
+    enabled: true
+    note: >
+      业主 2026-10-09 追问「瓷砖呢？有没有悬空」。F08 只查「声明的 id 在不在 buildScene
+      的产出里」，查不出**网格存在但位置错了**：SceneBuilder 用 mid = 起终点弦中点定位，
+      直墙上弦就是墙、成立，弧墙（圆角）上弦不是墙——挂在 w_bath_north 的防水台弦中点
+      被算到离真实墙面 0.50m 处，整块砖面悬在卫生间中间，而 F08 一声不响。本条逐块判
+      「这块网格有没有贴在它该贴的几何上」：墙类（wall_region / paint_region /
+      sill-front）比中心到墙折线的最近距离；sill 类（sill-top / sill-underside /
+      paint_sill_region）比中心到 bay footprint 边界的距离，或中心在 footprint 内。
+      **必须用距离法，不许用射线法 inPoly**：前缘面（front）与两端面的中心本身就落在
+      footprint 边界上，inPoly 对边界点不稳定（半开区间比较让同一点随机判内/外），
+      此前的一次性探针正是因此把 16 块几何正确的网格误报成飘空。反过来若只用到边界距离，
+      台面/底面中心合法地落在 depth/2 处，又会被全量误报——两支合起来才是完整判据。
+      拿不到 wallId / elementId / 对应几何时报 finish.mesh_unattached_unknown_anchor，
+      不静默跳过（fail-closed）。容差 0.12m：不是本配置的 tolerance（0.01 是重叠容差），
+      漆面合法外偏移 PAINT_FACE_OFFSET = 0.068m，用 0.01 会把每块漆面都判成飘空。
+      逐块判与网格总数无关——wall_region/paint_region 改逐段出网后数量会变，本条不受影响。
 
 # 判定容差（米）：水平/竖向重叠小于此值不算压。
 tolerance: 0.01

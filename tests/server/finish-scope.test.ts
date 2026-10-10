@@ -11,7 +11,7 @@ import {
   IMPLEMENTED_RULES,
   FINISH_RULE_CODES,
 } from '../../shared/finish/registry.js';
-import { validateFinishScope, type FinishScopeInput } from '../../shared/finish/rules.js';
+import { validateFinishScope, type FinishScopeInput, type FinishSceneMesh } from '../../shared/finish/rules.js';
 import { collectFinishSceneMeshes } from '../../shared/finish/scene.js';
 import * as path from 'node:path';
 
@@ -57,7 +57,7 @@ function buildInput(tolerance = 0.01): FinishScopeInput {
     if (element.type === 'paint_region') wallPaintRooms.add(element.room);
   }
   const scene = collectFinishSceneMeshes(layout);
-  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, tolerance };
+  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, sceneMeshes: scene.meshes, sceneBayOutlines: scene.bayOutlines, tolerance };
 }
 
 const TODAY = '2026-10-09';
@@ -319,11 +319,152 @@ test('finish-scope：豁免到期后复活为 error（--today 可固定日期保
 
 test('finish-scope：IMPLEMENTED_RULES 与配置互为镜像', () => {
   const config = loadFinishLintConfig();
-  assert.equal(config.rules.length, IMPLEMENTED_RULES.length, '配置申报数必须等于实现数（F01-F06 六条）');
+  assert.equal(config.rules.length, IMPLEMENTED_RULES.length, '配置申报数必须等于实现数（F01–F09 九条）');
   for (const rule of IMPLEMENTED_RULES) {
     const declared = config.rules.find((r) => r.id === rule.id);
     assert.ok(declared, `规则 ${rule.id} 必须在配置申报`);
     for (const code of rule.codes) assert.ok(declared.codes.includes(code), `${rule.id} 的 ${code} 必须登记`);
   }
   assert.equal(FINISH_RULE_CODES.length, new Set(FINISH_RULE_CODES).size, 'code 不许重复');
+});
+
+// ── F09 网格必须贴在墙面几何上（F08 查不出「网格存在但位置错了」）─────────────
+const F09_CODES = ['finish.mesh_unattached', 'finish.mesh_unattached_unknown_anchor'];
+
+/** 合成一块面层网格：只填判据要用的字段，其余照抄真实采集到的样子。 */
+function syntheticMesh(over: Partial<FinishSceneMesh> & Pick<FinishSceneMesh, 'objectId' | 'centre'>): FinishSceneMesh {
+  return { type: 'wall_region', ...over };
+}
+
+test('finish-scope F09：真实配置每块面层网格都贴在它的锚几何上（0 命中）', () => {
+  const input = buildInput();
+  const meshes = input.sceneMeshes!;
+  assert.ok(meshes.length > 100, `场景必须采到上百块面层网格，实际 ${meshes.length}`);
+  // 逐段出网的 objectId 必须被逐块判定（弧墙 sill_region 的 :sN）
+  const split = meshes.filter((mesh) => /:s\d+$/.test(mesh.objectId));
+  assert.ok(split.length > 10, `弧墙逐段出网的网格必须参与逐块判定，实际 ${split.length}`);
+  const issues = validateFinishScope(input).filter((i) => F09_CODES.includes(i.code));
+  assert.deepEqual(issues, [], `现有声明都贴着墙，不应有命中，实际 ${JSON.stringify(issues)}`);
+});
+
+test('finish-scope F09：objectId 会撞车，所以判据必须逐块遍历 sceneMeshes 而不是按 id 收敛', () => {
+  // computePaintSillScope 的 start_end 与 end_end 都产 `${id}:${i}`，真实配置里
+  // paint_master_bedroom_west_bay:0 被两块网格共用。按 objectId 建 Map 必然丢一块不判。
+  const input = buildInput();
+  const byId = new Map<string, number>();
+  for (const mesh of input.sceneMeshes!) byId.set(mesh.objectId, (byId.get(mesh.objectId) ?? 0) + 1);
+  const collisions = [...byId].filter(([, count]) => count > 1);
+  assert.ok(collisions.length > 0, `真实配置里应当有 objectId 撞车（本次 ${JSON.stringify(collisions)}），否则这条测试失去守的不变量`);
+  const centres = collectFinishSceneMeshes(resolveLayout(readYaml('config/layout/model-geometry.yaml'))).meshCentres;
+  assert.ok(centres.size < input.sceneMeshes!.length, '按 id 收敛的中心表必须比逐块清单少——这就是不能用 Map 当判据输入的原因');
+});
+
+test('finish-scope F09：网格飘离墙面 >0.12m → error（弧墙弦中点那种 0.50m 悬空）', () => {
+  const input = buildInput();
+  const wall = input.wallGeometry.w_bath_north;
+  assert.ok(wall && wall.polyline.length > 1, 'w_bath_north 必须是弧墙（多段折线）');
+  // 全跨度 wall_region 挂在弧墙上：弦中点离真实墙面 0.50m（SceneBuilder 现算法的产物）
+  const floating = syntheticMesh({
+    objectId: 'walltile_probe_float',
+    type: 'wall_region',
+    wallId: 'w_bath_north',
+    centre: { x: 1.3, z: 1.6 },
+  });
+  const issues = validateFinishScope({ ...input, sceneMeshes: [...input.sceneMeshes!, floating] })
+    .filter((i) => i.code === 'finish.mesh_unattached');
+  assert.equal(issues.length, 1, '合成飘空网格必须被抓到');
+  assert.equal(issues[0].entity, 'walltile_probe_float');
+  assert.equal(issues[0].level, 'error');
+  assert.ok((issues[0].evidence as any).distanceM > 0.12, 'evidence 必须给出实测距离');
+  assert.equal((issues[0].evidence as any).anchor, 'wall_polyline');
+});
+
+test('finish-scope F09：合法偏移不误报——漆面外偏移 0.068m、台面在 depth/2 处', () => {
+  const input = buildInput();
+  // 逐块复算：把判据反向往容差上靠，确认真实配置里最坏的情况也稳稳在 0.12m 内
+  const worst = input.sceneMeshes!
+    .filter((mesh) => mesh.type === 'paint_region')
+    .map((mesh) => ({ id: mesh.objectId, d: distanceToPolylineFor(mesh, input) }))
+    .sort((a, b) => b.d - a.d)[0];
+  assert.ok(worst.d <= 0.12, `漆面最大偏移必须 ≤0.12m（PAINT_FACE_OFFSET=0.068），实际 ${worst.d}`);
+  const issues = validateFinishScope(input).filter((i) => i.code === 'finish.mesh_unattached');
+  assert.deepEqual(issues, [], '合法偏移不许误报');
+});
+
+/** 测试内复用的「中心到墙折线最近距离」，用来钉容差余量（不依赖被测代码）。 */
+function distanceToPolylineFor(mesh: FinishSceneMesh, input: FinishScopeInput): number {
+  const polyline = input.wallGeometry[mesh.wallId!]?.polyline ?? [];
+  let best = Infinity;
+  for (const segment of polyline) {
+    const dx = segment.x2 - segment.x1, dz = segment.z2 - segment.z1;
+    const lenSq = dx * dx + dz * dz;
+    let t = lenSq <= 1e-12 ? 0 : ((mesh.centre.x - segment.x1) * dx + (mesh.centre.z - segment.z1) * dz) / lenSq;
+    t = Math.min(1, Math.max(0, t));
+    best = Math.min(best, Math.hypot(mesh.centre.x - (segment.x1 + dx * t), mesh.centre.z - (segment.z1 + dz * t)));
+  }
+  return best;
+}
+
+test('finish-scope F09：sill 类网格飘离 bay footprint → error，且判据是「到边界距离」不是 inPoly', () => {
+  const input = buildInput();
+  const outline = input.sceneBayOutlines!.get('kitchen_north_bay')!;
+  assert.ok(outline.length >= 4, '厨房上飘窗 footprint 必须采到');
+  const centre = { x: (Math.min(...outline.map((p) => p.x)) + Math.max(...outline.map((p) => p.x))) / 2, z: (Math.min(...outline.map((p) => p.z)) + Math.max(...outline.map((p) => p.z))) / 2 };
+  const floating = syntheticMesh({
+    objectId: 'silltile_probe_float_top',
+    type: 'sill_region',
+    kind: 'sill-top',
+    elementId: 'kitchen_north_bay',
+    wallId: 'w_kit_north',
+    // 平移 2.5m：足够跳出 footprint（厨房上飘窗 3.6m×1.1m），又不会被别的 bay 吸收
+    centre: { x: centre.x + 2.5, z: centre.z },
+  });
+  const issues = validateFinishScope({ ...input, sceneMeshes: [...input.sceneMeshes!, floating] })
+    .filter((i) => i.code === 'finish.mesh_unattached');
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].entity, 'silltile_probe_float_top');  assert.equal((issues[0].evidence as any).anchor, 'bay_footprint');
+});
+
+test('finish-scope F09：前缘面中心就在 footprint 边界上，距离法不许误报（探针曾误报 16 块）', () => {
+  const input = buildInput();
+  // 取一块真实 front 网格的中心，再取它所在 footprint 的一个顶点——顶点是最刁的边界点
+  const front = input.sceneMeshes!.find((mesh) => mesh.type === 'paint_sill_region' && mesh.face === 'front');
+  assert.ok(front, '场景里必须有 paint_sill_region 的 front 网格');
+  const outline = input.sceneBayOutlines!.get(front.elementId!)!;
+  const vertex = outline[0];
+  const onBoundary = syntheticMesh({
+    objectId: 'paint_probe_boundary',
+    type: 'paint_sill_region',
+    face: 'front',
+    elementId: front.elementId,
+    centre: { x: vertex.x, z: vertex.z },
+  });
+  const inside = syntheticMesh({
+    objectId: 'paint_probe_inside',
+    type: 'paint_sill_region',
+    face: 'underside',
+    elementId: front.elementId,
+    centre: { x: vertex.x, z: vertex.z },
+  });
+  const issues = validateFinishScope({ ...input, sceneMeshes: [...input.sceneMeshes!, onBoundary, inside] })
+    .filter((i) => i.code === 'finish.mesh_unattached');
+  assert.deepEqual(issues, [], '边界点与内部点都不许误报——距离支覆盖边界，包含支覆盖内部');
+});
+
+test('finish-scope F09：拿不到锚不静默跳过 → finish.mesh_unattached_unknown_anchor（fail-closed）', () => {
+  const input = buildInput();
+  const noWall = syntheticMesh({ objectId: 'walltile_probe_no_wall', type: 'wall_region', centre: { x: 0, z: 0 } });
+  const unknownWall = syntheticMesh({ objectId: 'walltile_probe_ghost_wall', type: 'wall_region', wallId: 'w_does_not_exist', centre: { x: 0, z: 0 } });
+  const noElement = syntheticMesh({ objectId: 'silltile_probe_no_element', type: 'sill_region', kind: 'sill-top', wallId: 'w_kit_north', centre: { x: 0, z: 0 } });
+  const ghostBay = syntheticMesh({ objectId: 'silltile_probe_ghost_bay', type: 'sill_region', kind: 'sill-underside', elementId: 'ghost_bay', wallId: 'w_kit_north', centre: { x: 0, z: 0 } });
+  const oddKind = syntheticMesh({ objectId: 'walltile_probe_odd_kind', type: 'sill_region', kind: 'sill-what', wallId: 'w_kit_north', elementId: 'kitchen_north_bay', centre: { x: 0, z: 0 } });
+  const issues = validateFinishScope({ ...input, sceneMeshes: [noWall, unknownWall, noElement, ghostBay, oddKind] })
+    .filter((i) => i.code === 'finish.mesh_unattached_unknown_anchor');
+  assert.equal(issues.length, 5, `五种缺锚情形都要显形，实际 ${issues.map((i) => i.entity).join(',')}`);
+  assert.ok(issues.every((i) => i.level === 'error'));
+});
+
+test('finish-scope F09：没采集场景网格时不判（与 F08 一致，不造 issue）', () => {
+  const input = { ...buildInput(), sceneMeshes: undefined };
+  assert.deepEqual(validateFinishScope(input).filter((i) => F09_CODES.includes(i.code)), []);
 });

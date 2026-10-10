@@ -480,3 +480,49 @@
 - **后续议题**：几何附着核查目前是**一次性探针**，未固化为规则。若要常驻，应在 F08 里加
   「网格中心到最近墙段的距离」判定——但需先处理 `paint_sill_region` 前缘面在边界上的误报
   （改用「到 bay footprint 边界的距离」而非 `inPoly`）。
+
+---
+
+### DEC-2026-10-09-P15 新增 F09「网格必须贴在墙面几何上」：把一次性探针固化为门禁规则
+
+- **日期**：2026-10-09。触发：P14 的「后续议题」——几何附着核查当时是**一次性探针**，
+  未固化；而 F08 查不出「网格存在但位置错了」，谁再引入一个弦中点/偏移错误，门禁一声不响。
+- **规则编号**：F09 `finish.mesh_unattached`（+ `finish.mesh_unattached_unknown_anchor`），
+  severity **error**。
+- **判据（逐块判，与网格总数无关）**：
+  1. `wall_region` / `paint_region` / `sill_region` 的 `sill-front`：网格世界包围盒中心到
+     `wallGeometry[wallId].polyline` 任一段的最近距离 ≤ 0.12m；
+  2. `sill_region` 的 `sill-top` / `sill-underside`、以及 `paint_sill_region`：中心到该 bay
+     footprint **边界**的距离 ≤ 0.12m，**或**中心在 footprint 内；
+  3. 拿不到 wallId / elementId / 对应几何 → `finish.mesh_unattached_unknown_anchor`（error），
+     不静默跳过（fail-closed）。
+- **为什么第 2 类必须用「到边界距离」而不是射线法 `inPoly`**：前缘面（front）与两端面
+  （start_end/end_end）的中心**本身就落在 footprint 边界上**，射线法对边界点不稳定
+  （半开区间比较让同一个点随机判成内/外）——P14 那次探针正是只用 `inPoly`，把 16 块几何
+  正确的网格误报成飘空。距离法对边界点稳定（恒 ≈ 0），所以边界点全走距离支；`inPoly`
+  只用来放行「中心明显在 footprint 内部」的网格（台面/底面中心合法地落在 depth/2 处）。
+  **两支都要**：只用到边界距离会把每一块 top/underside 误报（距边界 0.55m），只用 `inPoly`
+  会把每一块 front 误报。测试里用「取 footprint 顶点当中心」钉住这个边界点不误报。
+- **容差为什么是 0.12m 而不是 config 的 `tolerance: 0.01`**：0.01 是 F01/F03 的**重叠**容差。
+  面层网格天生不贴在墙中心线上——paint_region 外偏移 `PAINT_FACE_OFFSET = 0.12/2 + 0.008 =
+  0.068m`（墙厚半 + 8mm 避 z-fighting），sill-top 在 depth/2 处。用 0.01 会把每块漆面都判成
+  飘空。0.12m 与弧墙悬空实测值 0.50m 差 4 倍、与合法偏移 0.068m 差 2 倍，两头都够；
+  这个数字沿用 P14 探针的口径，不是新造的。
+- **逐块清单而不是 `Map<objectId, …>`**：`computePaintSillScope` 的 start_end 与 end_end
+  都产 `${id}:${i}`，真实配置里 `paint_master_bedroom_west_bay:0` 被两块网格共用
+  （154 块网格、153 个 id）。按 id 收敛必然静默漏判一块，故采集返回 `meshes` 清单逐块判，
+  `meshCentres`（id → 中心）只作视图。测试钉住了这个撞车。
+- **不钉网格数量**：另一个 agent 正把 wall_region/paint_region 改成逐段出网（数量会变），
+  F09 逐块判附着，与总数无关；实测该改动落地后，全跨度挂在 w_bath_north 的探针声明产出
+  17 块 `:sN` 网格，F09 **0 命中**（不误报）。
+- **当前结论**：**0 命中**——154 块面层网格全部贴在各自锚几何上。探针三段全过：真实产出
+  0 命中；旧算法「弦中点」单块几何报 0.500m 悬空；把任意一块平移 0.5m 立刻报 1 条。
+- **关联文件**：`shared/finish/scene.ts`（采集扩为 meshCentres/meshes/bayOutlines）、
+  `shared/finish/rules.ts`（新增 `checkMeshAttachedToGeometry()` + `distanceToPolyline` /
+  `pointInPolygon`）、`shared/finish/registry.ts`、`config/finish-lint.yaml`、
+  `scripts/verify/finish/verify-finish-scope.ts`、`tests/server/finish-scope.test.ts`（+7 条）、
+  本文件。
+- **决策人**：业主（追问瓷砖有没有悬空）+ 工程侧把一次性探针固化为门禁。
+- **面层核查层现状（F01–F09 九条）**：F01 漆砖互斥、F02 同元素同面漆砖双声明、
+  F03 同侧重复涂漆、F04 声明挂错房间、F05 顶面归属未登记、F06 铝扣板越界、
+  F07a 瓷砖盖门洞 / F07b 漆跨洞（info）、F08 声明未附着 3D 实体、F09 网格未贴墙。
