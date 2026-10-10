@@ -143,9 +143,9 @@ npx tsx --test tests/server/paint-sill-scope.test.ts  # 上飘窗外露面几何
 
 **门窗洞按实扣除**（业主 2026-10-08 裁定）：3D 每段平面在洞口处拆成「洞口以下的左右条 + 洞口以上的通长带」，毛墙面 **174.720㎡** − 门洞 **14.805㎡** = 净墙面 **159.915㎡**（3D 高亮的就是这个范围）+ 明确顶面 **103.224㎡** + 上飘窗 **43.066㎡**（普通漆 39.511 + 防霉漆 3.555）= 全部涂装面 **304.140㎡**；其中**按普通乳胶漆计费 300.585㎡**（防霉漆窗台单独计价，不进普通漆金额；砖漆互斥后两卫漆声明已让出防水/防溅砖带）。顶面口径 2026-10-09 修正：`paint_ceiling_region` 按房取 footprint 后**扣除整间铝扣板投影**——客卫 3.15㎡ 与主卫 4.576㎡ 的顶面整间都是铝扣板，不是涂装面（旧实现按满 footprint 计，多计 7.726㎡，已由独立复算纠正）。窗洞当前为 **0**——全部 8 樘窗都在 suppress 的玻璃幕墙/飘窗让路墙上，本就不是涂装面；`bay_sill`/`glass_infill` 增加可选 `along`，将来窗声明落到实体墙上会自动扣，缺 `along` 则告警而非静默少扣。拆洞与面积算法只有一个实现：`shared/paint-scope.ts`，3D / 成本 / 预算三处共用。
 
-外部报价登记（DEC-2026-10-08-C07）：`config/paint-comparison.yaml` 的 `quotes[]` 收包工包料类报价，按声明的净计费面积折算总额，并给出「vs PKG-080 计划额 / vs 业主目标 / vs 自下而上涂刷模型」三方对照。当前登记：多乐士包工包料 55 元/㎡ × 263.139㎡ = **¥14,472.65**（高于计划 ¥2,972.65；与默认情景差 ¥3,254.17 = 折合 12.37 元/㎡，即基层/腻子/样品成品保护的隐含额度）。覆盖范围与遍数未确认，只对照、不与计划额划等号。
+外部报价登记（DEC-2026-10-08-C07）：`config/paint-comparison.yaml` 的 `quotes[]` 收包工包料类报价，按声明的净计费面积折算总额，并给出「vs PKG-080 计划额 / vs 业主目标 / vs 自下而上涂刷模型」三方对照。当前登记：多乐士包工包料 55 元/㎡ × 300.585㎡ = **¥16,532.18**（高于计划 ¥5,032.18；与默认情景差 ¥3,797.56 = 折合 12.63 元/㎡，即基层/腻子/样品成品保护的隐含额度）。覆盖范围与遍数未确认，只对照、不与计划额划等号。
 
-成本核算：`config/paint-comparison.yaml` 是唯一口径文件（遍数、底漆假设、扣减开关、人工费率、对账基准），`server/paint-cost-comparison.ts` 与 `materials.yaml` / `config/budget/base.json` / `schedule/phase-1/control.yaml` 逐项对账，算不出就 503。查询出口：`GET /api/paint/comparison`、`GET /api/budget` 的 `paintBudgetPreview`（`status: 'comparison_overlay_only'`，不进总额），MCP 同源。四个情景并列（面漆 1/2 遍 × 扣/不扣门窗洞），`selectedScenarioId` 恒为 null——遍数拍板前不给单一数字：默认（2 遍、扣洞）面漆 5 桶 + 底漆 3 桶，材料 ¥4,640 + 人工 ¥6,141 = **¥10,781**，低于 PKG-080 计划 ¥11,500 约 ¥719；1 遍口径 ¥9,621。不含基层修补、找平批刮腻子、颜色样板与成品保护（COST-080-01/02/04）。
+成本核算：`config/paint-comparison.yaml` 是唯一口径文件（遍数、底漆假设、扣减开关、人工费率、对账基准），`server/paint-cost-comparison.ts` 与 `materials.yaml` / `config/budget/base.json` / `schedule/phase-1/control.yaml` 逐项对账，算不出就 503。查询出口：`GET /api/paint/comparison`、`GET /api/budget` 的 `paintBudgetPreview`（`status: 'comparison_overlay_only'`，不进总额），MCP 同源。四个情景并列（面漆 1/2 遍 × 扣/不扣门窗洞），`selectedScenarioId` 恒为 null——遍数拍板前不给单一数字：默认（2 遍、扣洞）面漆 6 桶 + 底漆 3 桶，材料 ¥5,220 + 人工 ¥7,514.62 = **¥12,734.62**，高于 PKG-080 计划 ¥11,500 约 ¥1,234.62；1 遍口径 ¥10,994.62。不含基层修补、找平批刮腻子、颜色样板与成品保护（COST-080-01/02/04）。
 
 ### 防穿模校验（DEC-2026-10-09-P01）
 
