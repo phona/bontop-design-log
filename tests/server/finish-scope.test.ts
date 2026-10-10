@@ -293,6 +293,30 @@ test('finish-scope P14：弧墙上的 sill_region 逐段出网，objectId 带 :s
   assert.ok(ids.has('silltile_mbath_west_lower_front'), '主卫西墙防水台（直墙）保持单块');
 });
 
+test('finish-scope：豁免到期后复活为 error（--today 可固定日期保证可复现）', () => {
+  const config = loadFinishLintConfig();
+  const stale = {
+    ...config,
+    waivers: [{ id: 'w_x', rule: 'finish.wall_overlap', pair: ['p_x', 't_x'] as [string, string], reason: '测试', owner: '测试', expires: '2020-01-01' }],
+  };
+  // 到期豁免必须先被 validateFinishRegistry 抓出来（复活为 error），再谈 applyFinishPolicy
+  const registry = validateFinishRegistry(stale);
+  assert.ok(registry.some((i) => i.code === 'finish.waiver_expired' && i.level === 'error'), '到期豁免必须复活为 error');
+  // 未到期的豁免命中后降 info
+  const fresh = { ...config, waivers: [{ id: 'w_x', rule: 'finish.wall_overlap', pair: ['p_x', 't_x'] as [string, string], reason: '测试', owner: '测试', expires: '2099-01-01' }] };
+  const synthetic: FinishScopeInput = {
+    ...buildInput(), walls: [], sills: [], sceneCeilingRooms: new Set<string>(), ceilingPaintRooms: new Set<string>(),
+    walls2: undefined,
+  } as any;
+  synthetic.walls = [
+    { id: 'p_x', wall: 'w_x', room: 'roomA', along: [0, 2], bottom: 0, top: 2.8, finish: 'paint', type: 'paint_region' },
+    { id: 't_x', wall: 'w_x', room: 'roomA', along: [1, 3], bottom: 0, top: 2.8, finish: 'tile', type: 'wall_region' },
+  ];
+  const hit = runFinishScopeChecks(synthetic, '2099-01-01', fresh).issues.find((i) => i.code === 'finish.wall_finish_overlap');
+  assert.equal(hit?.level, 'info', '未到期豁免命中必须降为 info');
+  assert.equal((hit?.evidence as any).waivedBy, 'w_x');
+});
+
 test('finish-scope：IMPLEMENTED_RULES 与配置互为镜像', () => {
   const config = loadFinishLintConfig();
   assert.equal(config.rules.length, IMPLEMENTED_RULES.length, '配置申报数必须等于实现数（F01-F06 六条）');

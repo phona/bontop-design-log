@@ -127,9 +127,28 @@ function buildInput(): FinishScopeInput {
   return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, tolerance: config.tolerance ?? 0.01, source: SOURCE };
 }
 
+/**
+ * 豁免到期用的「今天」。与 verify:penetration 一致提供 `--today YYYY-MM-DD`：
+ * 否则同一份配置在不同日子跑出不同结论（到期豁免复活），输出不可复现、也没法写进
+ * 需要固定日期的回归测试。不给参数时用系统当天。
+ */
+function resolveToday(): string {
+  const index = process.argv.indexOf('--today');
+  const value = index >= 0 ? process.argv[index + 1] : undefined;
+  if (value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      console.error('verify:finish-scope --today requires YYYY-MM-DD');
+      process.exitCode = 2;
+      return '1970-01-01';
+    }
+    return value;
+  }
+  return new Date().toISOString().slice(0, 10);
+}
+
 function main(): void {
   const args = new Set(process.argv.slice(2));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = resolveToday();
   const issues: FinishIssue[] = [];
 
   let input: FinishScopeInput;
