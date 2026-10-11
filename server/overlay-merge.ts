@@ -223,10 +223,12 @@ const FloorRegionSchema = z
     reason: z.string().min(1).optional(),
     // DEC-041：过渡带跟随某房间的有效地面选材（无 follow 则跟随 floor default）
     follow: z.string().min(1).optional(),
-    // DEC-2026-10-09-P12：是否计入预算 floor 算量。floor_region 不在任何房间内，
-    // applyRooms 只能列房间 id，所以非房间地面要靠这个标志进预算（业主 2026-10-09 裁定：
-    // 走廊要铺砖 → costed: true；VRV 设备平台不铺砖 → 不设）。
-    costed: z.boolean().optional(),
+    // DEC-2026-10-09-P16：**默认计入** floor 算量，标了才排除（opt-out）。
+    // 取代 P12 的 costed opt-in——那个手工布尔量重复了几何已知的信息（这块地是不是已被某个
+    // applyRooms 房间算过），同一事实存两处必致双计/漏计。现在「整块落在已计费房间内」由
+    // server/budget-calculator.ts 的 loadExtraFloorRegionArea 按几何自动跳过；excluded 只留给
+    // 几何说不清的例外（开发商已铺 / 业主裁定不铺），配 reason 写清为什么。
+    excluded: z.boolean().optional(),
   })
   .strict();
 

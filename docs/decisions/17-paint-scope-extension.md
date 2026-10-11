@@ -15,6 +15,12 @@
 - `DEC-2026-10-09-P08` 吊顶纳入面层核查：新增 F05/F06，业主确认铝扣板不刷漆
 - `DEC-2026-10-09-P09` 厨房上飘窗终裁改贴砖（竖面+底面），`sill_region` 的 face 枚举扩为 front/top/underside
 - `DEC-2026-10-09-P10` 两个「名实不符」飘窗按方案 A 改名：只改 id，不动几何/面积/room
+- `DEC-2026-10-09-P11` 新增 F07 面层不得盖住门/窗洞，修 3 条 stale 瓷砖声明共 1.05㎡
+- `DEC-2026-10-09-P12` 非房间地面进预算：`floor_region` 加 `costed`，主走廊 3.75㎡ 计入、设备平台不计
+- `DEC-2026-10-09-P13` 新增 F08 面层声明必须附着在 3D 实体（回答「漆面是不是飘在空中」）
+- `DEC-2026-10-09-P14` 修 `sill_region` 弧墙悬空：弦中点改沿折线逐段出网
+- `DEC-2026-10-09-P15` 修 `wall_region`/`paint_region` 弧墙悬空 + 新增 F09 网格几何附着核查
+- `DEC-2026-10-09-P16` 地面算量从 `costed` opt-in 改为几何驱动 opt-out：`excluded` 只留给例外，双计风险从根上消失
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -371,6 +377,57 @@
 
 ---
 
+### DEC-2026-10-09-P11 新增 F07 面层不得盖住门/窗洞，修 3 条 stale 瓷砖声明共 1.05㎡
+
+> **补写说明**：本条对应的改动在 commit `c1a2a49` 就已落地（F07 规则 + 3 条瓷砖声明修正），
+> 但当时只在 commit message 里写了编号、**没有落本文档**，目录也一直缺 P11–P15。
+> 2026-10-11 验收 P16 时发现此缺口，按 commit 实测事实补写。规则现状以 F07a/F07b 为准。
+
+- **日期**：2026-10-09（补写于 2026-10-11）。触发：业主问「Linter 兜底了哪几个部分」，
+  指出**漆面刷到门上**这个缺口我只是一次性手工验过、没有常驻守卫。业主裁定：
+  **「补，限制住不该刷漆贴砖的地方不要做」**。
+- **查证结果（第一版探针读错字段，已修正）**：洞口在 resolved layout 里是世界坐标
+  `x/z/width`，不是 `from/to`（一开始读错、得出「0 重叠」的假结论）。
+  按 `doorGapsOnWall` 同款投影换算后，**11 段声明跨洞**：
+  - **8 段 `paint_region`** —— 面积与 3D 网眼已由 `splitRectByGaps` 实扣，跨洞正是漆的声明机制
+    （声明整面墙，拆成左条+右条+门楃条），**没问题**。
+  - **3 段 `wall_region`（瓷砖）—— 真问题**：`wall_region` 分支是**单张 PlaneGeometry、不拆洞**，
+    瓷砖算量也按 `len × band` 不扣洞。所以砖声明盖住洞就是**实打实多算**，且物理上不能贴砖过门洞。
+- **规则**（拆两条，因为级别不同）：
+  - **F07a `finish.tile_over_opening`（error）**：瓷砖声明圈定的沿墙×竖向区间盖住门/窗洞。
+  - **F07b `finish.paint_over_opening`（info）**：漆声明跨洞。只登记「这段声明跨了洞、扣减正在发生」，
+    供核对，不判错。业主要升 severity 改 `config/finish-lint.yaml` 即可。
+  - 为什么必须拆两条：`severityFloor` 是「配置只许加严」，若合成一条且配置声明 error，
+    漆自判的 info 会被抬成 error——8 段正常声明瞬间全红。
+- **修声明让门禁回绿**（3 条，合计让出 **1.05㎡**）：
+  | 声明 | 原 along | 现 along | 让出 |
+  |---|---|---|---|
+  | `walltile_mbath_south_shower` | [0, 1.20] | **[0, 1.15]** | 0.05×2.10 = 0.105㎡ |
+  | `walltile_mbath_south_dry` | [1.20, 2.60] | **[1.95, 2.60]** | 0.75×0.30 = 0.225㎡ |
+  | `walltile_kitchen_balc_east` | [0, 1.20] 整段 | **拆 `_west` [0,0.20] + `_east` [1.00,1.20]** | 0.80×0.90 = 0.720㎡ |
+  `walltile_kitchen_balc_east` 的 reason 原话是「门洞 0.80m 占大半」却仍按整段 1.20m 声明——典型的口径漂移。
+- **连带修正（修复暴露的真问题，不是遮掩）**：
+  - 淋浴砖收到 1.15 后，`paint_master_bath_w_mbath_south` 还从 1.20 起算，**留了 0.05m 无人面层**。
+    已把该漆声明的 along 由 [1.20,2.60] 提前至 **[1.15,2.60]**，与砖带衔接。
+  - `paint-scope.test.ts` 的 L2 独立复算**原本不建模门洞**，声明跨洞时两边不再抵消
+    （master_bath 差 0.24㎡）。已改为**两边都扣洞**：声明侧按「声明区间 ∩ 洞口」算扣除量
+    （不调 `computePaintScope`，保持独立），复算侧扣「洞口跨度 × 洞口高度」
+    （门楣仍是墙，天然只扣洞口那一段）。到顶砖与洞重叠的部分不重复扣。
+- **数字**：普通计费 294.717 → **294.752㎡**；全部涂装面 298.272 → **298.307㎡**；
+  净墙面 157.850 → **157.885㎡**；门洞占位 14.580 → **14.670㎡**；
+  报价总额 16209.44 → **16211.36**；`painting.actual` 8934.91 → **8936.10**；
+  瓷砖检视总面积 31.157 → **30.640㎡**；`wall_region` 16 → **17 段**；瓷砖网眼 24 → **25**。
+- **关联文件**：`shared/finish/{rules,registry,types}.ts`、`config/finish-lint.yaml`、
+  `scripts/verify/finish/verify-finish-scope.ts`、`config/layout/overlay.yaml`（3 条瓷砖 + 1 条漆）、
+  `tests/server/{finish-scope,paint-scope,paint-comparison-api,wall-tile-inspection}.test.ts`、
+  `config/facts.yaml`、`README.md`。
+- **决策人**：业主（「补，限制住不该刷漆贴砖的地方不要做」）。
+- **验证**（commit `c1a2a49` 时）：`test:server` 884/884、`test:app` 564/564、
+  `typecheck`（根+app）干净、`verify:facts` OK、`verify:all` **15/16**（唯一失败是既有 `sock_child_ac`）。
+  `verify:finish-scope` **0 error / 0 warning / 8 info**。
+
+---
+
 ### DEC-2026-10-09-P12 非房间地面进预算：`floor_region` 加 `costed` 标志，主走廊 3.75㎡ 计入、设备平台 1.60㎡ 不计
 
 - **日期**：2026-10-09。触发：业主问「地面评估下缺少哪些，如果不缺就不用补」。
@@ -526,3 +583,81 @@
 - **面层核查层现状（F01–F09 九条）**：F01 漆砖互斥、F02 同元素同面漆砖双声明、
   F03 同侧重复涂漆、F04 声明挂错房间、F05 顶面归属未登记、F06 铝扣板越界、
   F07a 瓷砖盖门洞 / F07b 漆跨洞（info）、F08 声明未附着 3D 实体、F09 网格未贴墙。
+
+---
+
+### DEC-2026-10-09-P16 地面算量从 `costed` opt-in 改为几何驱动 opt-out：`excluded` 只留给例外
+
+- **日期**：2026-10-09。触发：业主看 P12 的落地方式，判「**太反直觉**」——「走廊要铺砖」
+  居然要在 overlay 上手写一个 `costed: true`，而这块地是不是已经被某个房间算过，几何上
+  本来就写得出来。
+- **为什么 `costed` 反直觉（根因，不是文风问题）**：`costed` 这个手工布尔量**重复了几何
+  已知的信息**——「这块 floor_region 是不是整块落在某个 `applyRooms` 房间内」。同一个事实
+  存两处（一处是几何、一处是手写标志），改一处忘另一处就是双计/漏计，而且**从任何单处都
+  看不出来**：看 overlay 只知道标志写了没写，看房间表只知道房间算没算，两边对不上时没有
+  第三处能报警。业主原话指向的正是这个「第二份真相」。
+- **新口径（照此实现，不许自行发挥）**：
+  ```
+  floor 算量 = Σ(applyRooms 房间 footprint)
+             + Σ(floor_region 面积，且该 region 不整块落在任何 applyRooms 房间内)
+             − Σ(显式 excluded 的 region 面积)
+  ```
+  **默认该算就算；只有例外才标 `excluded: true` 并带 reason。** 与 `costed` 的方向相反：
+  opt-out 的默认值就是对的，忘写标志不会再漏算；而 opt-in 忘写标志就是漏算。
+- **5 条 floor_region 逐条裁定**（探针实测，`applyRooms` = 9 间、footprint 合计 121.51㎡）：
+
+  | region | 面积（㎡） | 整块落在 | 新口径处置 |
+  |---|---|---|---|
+  | `entry_garden_floor` | 12.9050 | `entry_garden`（**不在** applyRooms） | **`excluded: true`**，reason 引 DEC-041 开发商已铺 |
+  | `entry_foyer_floor` | 3.6400 | `living_dining`（在 applyRooms） | **自动跳过**，不标任何标志 |
+  | `corridor_floor` | 6.7500 | `study`（在 applyRooms） | **自动跳过**，不标任何标志 |
+  | `main_corridor_floor` | 3.7500 | 无 | **自动计入**（删掉原 `costed: true`） |
+  | `north_platform_floor` | 1.3854（带弧） | 无 | **`excluded: true`**，reason 保留业主 2026-10-09 裁定不铺砖 |
+
+  `skippedInsideRoomArea` = 3.64 + 6.75 = **10.39㎡**（已被房间 footprint 算过，再算即双计）；
+  `excludedArea` = 12.905 + 1.3854 = **14.2904㎡**；`extraArea` = **3.75㎡**。
+- **面积守恒**：floor 算量 **125.26㎡ 一个数没变**（房间 121.51 + 主走廊 3.75）。P12 也是
+  125.26，但那是「手工标志蒙对」的 125.26；P16 是「几何推出来」的 125.26——**同一个数，
+  不同的可信度**。瓦工人工 45 元/㎡ 不变，涂装面积 294.752 / 3.555 / 298.307 / 312.977
+  全部不变（本条不动涂装口径）。`scene.unsupported` 仍为空。
+- **弧段不许静默算错**：`north_platform_floor` 的 NW 角 `radius: 1.0`（弧心 (6.6,1.0)），
+  朴素 shoelace 会按外接矩形算成 **1.60㎡**，真实 **1.3854㎡**（1.60 − [0.5 − π/4]）。
+  生产侧取**闭式解**：圆心 + 半径在两条邻边上定切点（垂足），「锐角三角形面积 − 圆弓面积
+  `r²(θ−sinθ)/2`」逐角结算，与 `shared/render` 的圆角同一套几何但不采样折线，所以不存在
+  「渲染端折线段数不同导致面积对不上」的第二套口径。切点落在邻边线段外、半径与弧心不自洽、
+  扫角退化 → **抛错**（fail-closed）。新口径下它被 `excluded` 所以不影响预算，但标志一去掉
+  就会咬人：摘掉 `excluded` 后 `extraArea` 立刻变成 18.0404，其中弧项贡献实测 **1.3854**
+  （探针差分证实），不是 1.60。
+- **包含判定**：房间有 `points`（异形房）走**多边形包含**（bbox 四角全在多边形内**或边上**），
+  否则回落 `x/z/width/depth` 包围盒。边界必须算「内」——`corridor_floor` 的四角正压在
+  `study` 的南/东/西边上，射线法对边界点不稳定会把它判成外面，双计就回来了。当前 11 间房里
+  6 间带 `points`（master_bedroom / living_dining / master_bath / guest_bath / kitchen /
+  balcony），其余 5 间是轴对齐矩形，两条分支在现行数据上都精确。
+- **双计风险从根上消失**：`corridor_floor`（6.75㎡，落在 study 内）和 `entry_foyer_floor`
+  （3.64㎡，落在 living_dining 内）是 P12 时期**只差一个手写标志**的两处双计候选——谁给
+  `corridor_floor` 补一个 `costed: true`，6.75㎡ 就静默双计。新口径下这两条**不需要标任何
+  标志**，而且标了也没用：负例①把 `corridor_floor` 的 `excluded` 显式设成 `false`，
+  `extraArea` 一动不动（对照组把 `study` 移出 `applyRooms` 后它才计入，证明跳过确实是几何
+  驱动、不是把区域吞了）。负例②把不在任何房间内的 `main_corridor_floor` 标 `excluded: true`，
+  `extraArea` 归零、`excludedArea` 留档 +3.75——「有意不算」与「漏算」从此可区分。
+- **落地文件**：
+  - `server/budget-calculator.ts`：`loadCostedFloorRegionArea(catalog)` → `loadExtraFloorRegionArea(rooms, applyRoomIds)`，
+    返回 `{ extraArea, excludedArea, skippedInsideRoomArea }` 三档留档；`case 'floor'` 改为
+    `quantity = roomArea + extraArea`。第三参数 `elements?` 是测试缝（缺省读 overlay.yaml），
+    供负例做合成复算，不必为跑测试改配置文件。
+  - `config/layout/overlay.yaml`：`main_corridor_floor` 删 `costed: true`；`north_platform_floor`
+    与 `entry_garden_floor` 加 `excluded: true` + reason；三条 reason 都改写成「为什么」。
+  - `shared/types.ts` / `server/overlay-merge.ts`：`costed?: boolean` → `excluded?: boolean`，
+    注释写清「默认计入，标了才排除」。
+  - `tests/server/budget-calculator.test.ts`：第 48–74 行按 `costed` 复算那段改为按新口径
+    **独立复算**（自带 shoelace + 包含判定，不调生产函数，两边各自算才算交叉验证），
+    并钉住 `extra === 3.75` 与 `floor 算量 === 125.26`；新增上述两条负例。
+- **决策人**：业主（「太反直觉」，要求改成几何驱动）。
+- **验证**：`npx tsc --noEmit` 干净；`test:server` **902/902**；`test:app` **564/564**；
+  `verify:facts` OK（53 warning）；`verify:all` **15/16**（唯一失败是既有 `sock_child_ac`，
+  与本条无关）。两条负例的「能红」证据：临时拿掉房间包含判定 → 负例①红（`extra` 从 3.75 变
+  14.14）；临时把 `excluded` 语义写反 → 负例②红（`extra` 变 18.04）。改动已还原。
+- **后续议题**：① `entry_garden_floor` 的 `excluded` 与「不在 applyRooms 内」在几何上结论一致
+  （双保险），保留显式标志是为了让「为什么不算」在声明处可读；若将来 entry_garden 进
+  applyRooms，这条 `excluded` 就是唯一防线，删除前须先改 DEC-041。② 设备平台渲染仍
+  `follow: balcony`（P12 遗留，未决）。

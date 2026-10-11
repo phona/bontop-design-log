@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
+import { loadExtraFloorRegionArea } from '../../server/budget-calculator.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import type { CurrentScheme, DesignRulesConfig, FurnishingsYaml } from '../../shared/types.js';
@@ -45,17 +46,62 @@ describe('BudgetCalculator', () => {
     const areaFromResolvedPolygons = selectedRooms.reduce((sum, room) => sum + (room.area ?? room.width * room.depth), 0);
     const areaFromBoundingBoxes = selectedRooms.reduce((sum, room) => sum + room.width * room.depth, 0);
     assert.notEqual(areaFromResolvedPolygons, areaFromBoundingBoxes, 'polygon area should differ from at least one room bounding box');
-    // DEC-2026-10-09-P12：非房间地面（走廊等）靠 overlay 的 floor_region costed 标志进算量
+    // DEC-2026-10-09-P16：非房间地面**默认**进算量，只有两种例外退出——① 整块落在某个
+    // applyRooms 房间内（几何判定，双计路径从根上消失）；② 显式 `excluded: true`。
+    // 这里独立复算同一口径（不调生产函数 loadExtraFloorRegionArea），两边各自算才算交叉验证。
     const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
-    const costedFloorRegionArea = (overlay.elements ?? [])
-      .filter((element: any) => element.type === 'floor_region' && element.costed === true)
-      .reduce((sum: number, element: any) => {
-        const pts = element.points as Array<{ x: number; z: number }>;
-        let acc = 0;
-        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) acc += pts[j].x * pts[i].z - pts[i].x * pts[j].z;
-        return sum + Math.abs(acc) / 2;
-      }, 0);
-    assert.ok(costedFloorRegionArea > 0, '至少主走廊应标 costed');
+    const shoelace = (pts: Array<{ x: number; z: number }>) => {
+      let acc = 0;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) acc += pts[j].x * pts[i].z - pts[i].x * pts[j].z;
+      return Math.abs(acc) / 2;
+    };
+    const inPolygonOrOnEdge = (p: { x: number; z: number }, poly: Array<{ x: number; z: number }>) => {
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const a = poly[j]; const b = poly[i];
+        const len = Math.hypot(b.x - a.x, b.z - a.z);
+        if (len < 1e-9) continue;
+        if (Math.abs((b.x - a.x) * (p.z - a.z) - (b.z - a.z) * (p.x - a.x)) / len > 1e-6) continue;
+        const dot = (p.x - a.x) * (b.x - a.x) + (p.z - a.z) * (b.z - a.z);
+        if (dot >= -1e-6 && dot <= len * len + 1e-6) return true;
+      }
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const a = poly[j]; const b = poly[i];
+        if ((a.z > p.z) !== (b.z > p.z)) {
+          const x = a.x + ((p.z - a.z) / (b.z - a.z)) * (b.x - a.x);
+          if (x > p.x) inside = !inside;
+        }
+      }
+      return inside;
+    };
+    const insideAnyApplyRoom = (element: any) => {
+      const pts = element.points as Array<{ x: number; z: number }>;
+      const minX = Math.min(...pts.map(p => p.x));
+      const maxX = Math.max(...pts.map(p => p.x));
+      const minZ = Math.min(...pts.map(p => p.z));
+      const maxZ = Math.max(...pts.map(p => p.z));
+      const corners = [{ x: minX, z: minZ }, { x: maxX, z: minZ }, { x: minX, z: maxZ }, { x: maxX, z: maxZ }];
+      return selectedRooms.some((room) => {
+        if (room.points && room.points.length >= 3) {
+          const poly = room.points.map(p => ({ x: p.x, z: p.z }));
+          return corners.every(c => inPolygonOrOnEdge(c, poly));
+        }
+        return minX >= room.x - room.width / 2 - 1e-6 && maxX <= room.x + room.width / 2 + 1e-6
+          && minZ >= room.z - room.depth / 2 - 1e-6 && maxZ <= room.z + room.depth / 2 + 1e-6;
+      });
+    };
+    // 弧段 region（north_platform_floor 的 NW 角 r=1.0）已被 excluded 滤掉，所以这里用朴素
+    // shoelace 复算不会碰到「外接矩形 1.60㎡ vs 真实 1.3854㎡」的坑；生产侧的圆角闭式解
+    // 由 .tmp 探针与 excludedArea 留档值另行核对（1.3854）。
+    const extra = (overlay.elements ?? [])
+      .filter((e: any) => e.type === 'floor_region' && e.excluded !== true)
+      .filter((e: any) => !insideAnyApplyRoom(e))
+      .reduce((sum: number, e: any) => sum + shoelace(e.points as Array<{ x: number; z: number }>), 0);
+    // 只剩主走廊 3.75㎡：门厅过渡面落在 living_dining 内、书房通道落在 study 内（都已被房间算过），
+    // 入户花园/设备平台显式 excluded
+    assert.equal(Math.round(extra * 100) / 100, 3.75, 'extra 应只剩主走廊 3.75㎡');
+    assert.ok(extra > 0, '主走廊必须计入，且不再依赖任何手工 costed 标志');
+    assert.equal(Math.round((areaFromResolvedPolygons + extra) * 100) / 100, 125.26, 'floor 算量必须仍是 125.26㎡');
 
     const calc = new BudgetCalculator(catalog, projectRules);
     const scheme: CurrentScheme = {
@@ -71,8 +117,58 @@ describe('BudgetCalculator', () => {
     const masonry = snapshot.categories.find(category => category.key === 'masonry');
     assert.ok(masonry);
     const laborAdded = masonry.actual - masonry.autoActual;
-    assert.equal(laborAdded, Math.round(45 * (areaFromResolvedPolygons + costedFloorRegionArea)));
+    assert.equal(laborAdded, Math.round(45 * (areaFromResolvedPolygons + extra)));
     assert.notEqual(laborAdded, Math.round(45 * areaFromBoundingBoxes));
+  });
+
+  // DEC-2026-10-09-P16 负例①：显式把 `excluded` 设成 false 救不回「整块落在已计费房间内」的双计。
+  // 旧 P12 口径下 corridor_floor 靠 `costed` 手工 opt-in，标志一多写/漏写就是双计或漏计；
+  // 新口径下它落在 study 内，任何标志都改不动这个结论——双计路径从根上消失。
+  it('DEC-2026-10-09-P16 负例①：excluded:false 救不回落在已计费房间内的双计', () => {
+    const catalog = ProjectCatalog.load('.');
+    const projectRules = load(readFileSync('config/design-rules.yaml', 'utf8')) as DesignRulesConfig;
+    const applyRooms = projectRules.budget?.lineItems?.find(item => item.topic === 'floor')?.applyRooms ?? [];
+    const elements = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
+    const rooms = catalog.getRooms();
+    const base = loadExtraFloorRegionArea(rooms, applyRooms);
+    const forced = loadExtraFloorRegionArea(rooms, applyRooms, elements.map((element: any) =>
+      element.id === 'corridor_floor' ? { ...element, excluded: false } : element));
+    assert.ok(Math.abs(forced.extraArea - base.extraArea) < 1e-6,
+      `corridor_floor 标 excluded:false 也不该进 extra（base ${base.extraArea} → forced ${forced.extraArea}）`);
+    assert.ok(Math.abs(forced.skippedInsideRoomArea - base.skippedInsideRoomArea) < 1e-6,
+      '显式 excluded:false 不改变它被几何跳过的事实（仍走 skippedInsideRoomArea，6.75㎡ 已由 study 房间 footprint 算过）');
+    assert.ok(Math.abs(forced.excludedArea - base.excludedArea) < 1e-6,
+      'excluded:false 更不该把它算成「有意排除」');
+    // 对照组：同一块地只要不再落在任何 applyRooms 房间内（去掉 study），就必须进 extra——
+    // 证明「跳过」确实是几何驱动，不是把这条 region 悄悄吞掉。
+    const outside = loadExtraFloorRegionArea(
+      rooms,
+      applyRooms.filter(id => id !== 'study'),
+      elements.map((element: any) => (element.id === 'corridor_floor' ? { ...element, excluded: false } : element)),
+    );
+    assert.ok(Math.abs(outside.extraArea - (base.extraArea + 6.75)) < 1e-6,
+      `去掉 study 后 corridor_floor 必须计入（base ${base.extraArea} → ${outside.extraArea}）`);
+    assert.ok(Math.abs(outside.skippedInsideRoomArea - (base.skippedInsideRoomArea - 6.75)) < 1e-6,
+      '对照组里它应从 skippedInsideRoomArea 挪到 extraArea，两档此消彼长');
+  });
+
+  // DEC-2026-10-09-P16 负例②：一条不在任何房间内的 region 标 `excluded: true` 就退出算量。
+  // 这是新口径唯一允许的例外口子，且必须留档到 excludedArea——「有意不算」和「漏算」要能区分。
+  it('DEC-2026-10-09-P16 负例②：不在任何房间内的 region 标 excluded:true 即退出', () => {
+    const catalog = ProjectCatalog.load('.');
+    const projectRules = load(readFileSync('config/design-rules.yaml', 'utf8')) as DesignRulesConfig;
+    const applyRooms = projectRules.budget?.lineItems?.find(item => item.topic === 'floor')?.applyRooms ?? [];
+    const elements = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
+    const rooms = catalog.getRooms();
+    const base = loadExtraFloorRegionArea(rooms, applyRooms);
+    const marked = loadExtraFloorRegionArea(rooms, applyRooms, elements.map((element: any) =>
+      element.id === 'main_corridor_floor' ? { ...element, excluded: true } : element));
+    assert.ok(Math.abs(marked.extraArea) < 1e-6,
+      `主走廊标 excluded:true 后 extra 必须归零（${marked.extraArea}），它是唯一默认计入的 region`);
+    assert.ok(Math.abs(marked.excludedArea - (base.excludedArea + 3.75)) < 1e-6,
+      `排除面积要留档（${base.excludedArea} → ${marked.excludedArea}）`);
+    assert.ok(Math.abs(marked.skippedInsideRoomArea - base.skippedInsideRoomArea) < 1e-6,
+      '显式排除不该挤占「落在已计费房间内」这一档');
   });
 
   it('calculates HVAC as global topic', () => {

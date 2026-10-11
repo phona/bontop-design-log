@@ -211,7 +211,8 @@ elements:
       - { x: 15.25, z: 2.90 }
       - { x: 10.8, z: 2.90 }
     follow: entry_garden
-    reason: "入户花园地板（跟随入户花园房间地材，避免与房间地面重叠时材质分裂）"
+    excluded: true
+    reason: "入户花园地板（跟随入户花园房间地材，避免与房间地面重叠时材质分裂）。excluded: true —— DEC-041 开发商已铺，业主已裁定移出算量（该房间也不在 floor applyRooms 内，几何判定同样不会计入，这里显式排除是为了让「为什么不算」在声明处可读，而非靠读者推断）；渲染仍可视化但不计费"
 
   - id: entry_foyer_floor
     type: floor_region
@@ -241,8 +242,7 @@ elements:
       - { x: 7.2, z: 5.55 }
       - { x: 4.2, z: 5.55 }
     follow: living_dining
-    costed: true
-    reason: "主走廊连接左翼和右翼（x[0,4.2] 段已并入主卫套间）。2026-10-09 业主裁定「走廊需要铺砖」：补 follow: living_dining（DEC-040 走廊与客餐厅通铺同材，600×1200 木纹砖 75 元/㎡）与 costed: true——本区域不在任何房间内，applyRooms 只能列房间 id，靠这个标志进预算 floor 算量（3.75㎡，DEC-2026-10-09-P12）"
+    reason: "主走廊连接左翼和右翼（x[0,4.2] 段已并入主卫套间）。2026-10-09 业主裁定「走廊需要铺砖」：补 follow: living_dining（DEC-040 走廊与客餐厅通铺同材，600×1200 木纹砖 75 元/㎡）。DEC-2026-10-09-P16 起不再需要任何手工标志——本区域 3.75㎡ 不在任何 applyRooms 房间内，新口径（默认计入、整块落在已计费房间内才跳过）自动把它算进 floor 算量，原 costed: true 已删"
 
   - id: north_platform_floor
     type: floor_region
@@ -253,7 +253,8 @@ elements:
       - { x: 7.2, z: 1.0 }
       - { x: 5.6, z: 1.0 }
     follow: balcony
-    reason: "VRV 设备平台地板（跟随生活阳台地材）。2026-10-09 业主裁定「设备平台不需要铺砖」→ 不设 costed，1.60㎡ 不进预算 floor 算量（DEC-2026-10-09-P12）；渲染仍跟随阳台地材以保持室外灰砖面的视觉连贯，如需改为裸混凝土面请另议"
+    excluded: true
+    reason: "VRV 设备平台地板（跟随生活阳台地材）。2026-10-09 业主裁定「设备平台不需要铺砖」→ excluded: true，约 1.385㎡（NW 角 r=1.0 圆角后的真实面积，非 1.60㎡ 外接矩形）不进预算 floor 算量（DEC-2026-10-09-P16 取代 P12 的「不设 costed」隐式排除：显式排除才能让例外在声明处显形）；渲染仍跟随阳台地材以保持室外灰砖面的视觉连贯，如需改为裸混凝土面请另议"
 
   # === 窗帘（2026-08-02）：引用墙 id 保持 vertices 联动；kind 显式指定（湿区百叶，其余纱帘+遮光） ===
   # 客餐厅（南向落地玻璃幕）

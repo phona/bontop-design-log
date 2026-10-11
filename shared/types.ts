@@ -821,7 +821,12 @@ export type SceneElement =
       sill: number;
     }
   | { type: 'frosted_privacy'; id: string; points: CurtainPoint[]; height: number; sill?: number; offset?: number; finish: 'frosted_privacy' }
-  | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string; costed?: boolean }
+  // floor_region 的算量口径（DEC-2026-10-09-P16）：**默认计入**，标了 `excluded: true` 才排除。
+  // 与旧 `costed` 相反——旧标志要求每条都手工 opt-in，等于把「这块地是不是已被某个 applyRooms
+  // 房间算过」这件几何已知的事再手抄一遍（改一处忘另一处即双计/漏计）。现在「整块落在已计费
+  // 房间内」由 server/budget-calculator.ts 的 loadExtraFloorRegionArea 按几何自动跳过，
+  // `excluded` 只保留给几何说不清的例外（开发商已铺 / 业主裁定不铺），且必须带 reason。
+  | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string; excluded?: boolean }
   | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[]; along?: [number, number] }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }

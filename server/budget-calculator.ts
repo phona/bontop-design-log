@@ -9,6 +9,7 @@ import type {
   RoomLayout,
   BudgetCategoryRaw,
   PhaseId,
+  CurtainPoint,
 } from '../shared/types.js';
 import { computeCeilingTakeoff, type CeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import { loadCeilingConfig } from './config-loader.js';
@@ -29,27 +30,206 @@ import { computePaintScopeForLayout, loadPaintScopeInputs } from './paint-cost-c
  * 由调用方降级——绝不退化成一个拍系数公式。
  */
 /**
- * DEC-2026-10-09-P12：非房间地面的算量入口。
+ * DEC-2026-10-09-P16：非房间地面的算量入口（几何驱动，取代 DEC-2026-10-09-P12 的 `costed` opt-in）。
  *
- * 走廊/设备平台这类地面不在任何房间内，而 floor lineItem 的 applyRooms 只能列房间 id，
- * 所以它们的面积进不了 `floorArea`——业主 2026-10-09 裁定「走廊需要铺砖」后，
- * 主走廊 3.75㎡ 就是靠这个标志进预算的。面积从 overlay 声明的多边形实算，
- * **不硬编码数字**（配置是唯一权威）；设备平台裁定不铺砖，不设 costed，自然不计。
+ * floor 算量口径：
+ *   Σ(applyRooms 房间 footprint)
+ *   + Σ(floor_region 面积，且该 region **不整块落在任何 applyRooms 房间内**)
+ *   − Σ(显式 excluded 的 region 面积)
+ * 默认该算就算；只有例外才标 `excluded: true` 并带 reason。
+ *
+ * 为什么废掉 `costed`：那个手工布尔量**重复了几何已知的信息**（这块地是不是已经被某个
+ * applyRooms 房间算过）。同一个事实存两处，改一处忘另一处就是双计/漏计，而且从任何单处
+ * 都看不出来——业主 2026-10-09 判「太反直觉」。现在「落在已计费房间内」由几何判定，
+ * 双计路径从根上消失；`excluded` 只留给几何说不清的例外（开发商已铺、业主裁定不铺）。
  */
-function loadCostedFloorRegionArea(catalog: ProjectCatalog): number {
-  const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
-  let total = 0;
-  for (const element of overlay as Array<Record<string, any>>) {
-    if (element?.type !== 'floor_region' || element.costed !== true) continue;
-    const points = (element.points ?? []) as Array<{ x: number; z: number }>;
-    if (points.length < 3) continue;
-    let sum = 0;
-    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-      sum += points[j].x * points[i].z - points[i].x * points[j].z;
+export interface FloorRegionTakeoff {
+  /** 不在任何已计费房间内、也未声明 excluded 的 floor_region 面积合计——要加进 floor 算量。 */
+  extraArea: number;
+  /** 显式 `excluded: true` 的面积合计（留档：这部分是有意不算的，不是漏算）。 */
+  excludedArea: number;
+  /** 整块落在某个已计费房间内而被跳过的面积合计（留档：已被房间 footprint 算过，再算即双计）。 */
+  skippedInsideRoomArea: number;
+}
+
+/** 几何容差：声明坐标只到 0.01m，边界贴合判定用 1e-6 足够，又不至于把隔壁区域吞进来。 */
+const GEO_EPS = 1e-6;
+
+/**
+ * 带圆角的多边形面积（㎡）。
+ *
+ * 圆角**不能**按外接矩形算：`north_platform_floor` 的 NW 角 r=1.0，直角外接算出 1.60㎡，
+ * 真实 1.3854㎡（1.60 − [0.5 − π/4]）。做法与 shared/render 的圆角同一套几何——圆心 + 半径
+ * 在两条邻边上定切点、锐角面积减圆弓面积；这里取闭式解（不采样折线），所以不存在
+ * 「渲染端折线段数不同导致面积对不上」的第二套口径。切点落在邻边线段之外、圆心与半径
+ * 不自洽、扫角退化时直接抛错（fail-closed）：一条坏弧声明应该让预算算不出来，
+ * 而不是悄悄少算 0.21㎡。
+ */
+function roundedPolygonArea(points: CurtainPoint[]): number {
+  const signed = points.reduce((sum, p, i) => {
+    const q = points[(i + 1) % points.length];
+    return sum + p.x * q.z - q.x * p.z;
+  }, 0) / 2;
+  const orient = Math.sign(signed) || 1;
+  let area = signed;
+  for (let i = 0; i < points.length; i++) {
+    const corner = points[i];
+    if (corner.radius === undefined) continue;
+    if (!(corner.radius > 0)) {
+      throw new Error(`floor_region 圆角半径必须为正（第 ${i} 点 radius=${corner.radius}）`);
     }
-    total += Math.abs(sum) / 2;
+    if (corner.cx === undefined || corner.cz === undefined) {
+      throw new Error(`floor_region 圆角点缺 cx/cz（第 ${i} 点），弧心不可定位`);
+    }
+    const center = { x: corner.cx, z: corner.cz };
+    const prev = points[(i - 1 + points.length) % points.length];
+    const next = points[(i + 1) % points.length];
+    const t1 = tangentPointOnEdge(corner, prev, center, corner.radius);
+    const t2 = tangentPointOnEdge(corner, next, center, corner.radius);
+    // 被圆角替掉的锐角三角形面积
+    const cornerArea = Math.abs(
+      (t1.x - corner.x) * (t2.z - corner.z) - (t2.x - corner.x) * (t1.z - corner.z)
+    ) / 2;
+    const a = { x: t1.x - center.x, z: t1.z - center.z };
+    const b = { x: t2.x - center.x, z: t2.z - center.z };
+    const theta = Math.atan2(Math.abs(a.x * b.z - a.z * b.x), a.x * b.x + a.z * b.z);
+    if (theta <= GEO_EPS || Math.PI - theta <= GEO_EPS) {
+      throw new Error(`floor_region 圆角扫角退化（${theta.toFixed(6)} rad），弧声明与邻边不匹配`);
+    }
+    // 弦与弧之间的圆弓面积（凸角时被磨掉、凹角时被补回的那一块）
+    const segment = corner.radius * corner.radius * (theta - Math.sin(theta)) / 2;
+    const cut = cornerArea - segment;
+    const turn = (corner.x - prev.x) * (next.z - corner.z) - (corner.z - prev.z) * (next.x - corner.x);
+    area += orient * turn > 0 ? -cut : cut;
   }
-  return Math.round(total * 100) / 100;
+  return Math.abs(area);
+}
+
+/** 圆心在「角点 → 邻点」这条边上的垂足（即圆角切点）；不在边线段内或半径不自洽即抛错。 */
+function tangentPointOnEdge(
+  corner: CurtainPoint,
+  along: CurtainPoint,
+  center: { x: number; z: number },
+  radius: number
+): { x: number; z: number } {
+  const dx = along.x - corner.x;
+  const dz = along.z - corner.z;
+  const len = Math.hypot(dx, dz);
+  if (len <= GEO_EPS) throw new Error('floor_region 圆角点的邻边长度为 0');
+  const ux = dx / len;
+  const uz = dz / len;
+  const t = (center.x - corner.x) * ux + (center.z - corner.z) * uz;
+  if (t < -GEO_EPS || t > len + GEO_EPS) {
+    throw new Error(`floor_region 圆角切点落在邻边线段之外（t=${t.toFixed(4)}，边长=${len.toFixed(4)}）`);
+  }
+  const point = { x: corner.x + ux * t, z: corner.z + uz * t };
+  if (Math.abs(Math.hypot(point.x - center.x, point.z - center.z) - radius) > 1e-3) {
+    throw new Error('floor_region 圆角半径与弧心不自洽（切点到弧心距离 ≠ radius）');
+  }
+  return point;
+}
+
+/** 点是否在多边形内或边上。边界算「内」：`corridor_floor` 的四角正压在 study 的南/东/西边上。 */
+function pointInPolygonOrOnEdge(point: { x: number; z: number }, polygon: Array<{ x: number; z: number }>): boolean {
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[j];
+    const b = polygon[i];
+    const len = Math.hypot(b.x - a.x, b.z - a.z);
+    if (len <= GEO_EPS) continue;
+    const cross = (b.x - a.x) * (point.z - a.z) - (b.z - a.z) * (point.x - a.x);
+    if (Math.abs(cross) / len > GEO_EPS) continue;
+    const dot = (point.x - a.x) * (b.x - a.x) + (point.z - a.z) * (b.z - a.z);
+    if (dot >= -GEO_EPS && dot <= len * len + GEO_EPS) return true;
+  }
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[j];
+    const b = polygon[i];
+    if ((a.z > point.z) !== (b.z > point.z)) {
+      const x = a.x + ((point.z - a.z) / (b.z - a.z)) * (b.x - a.x);
+      if (x > point.x) inside = !inside;
+    }
+  }
+  return inside;
+}
+
+/**
+ * 轴对齐包围盒是否整块落在某个房间内。
+ *
+ * 房间有 `points`（非矩形/带圆角的异形房）走**多边形包含**——四角全在多边形内或边上才算；
+ * 否则回落到 `x/z/width/depth` 包围盒（`resolveRoom` 的 x/z 是 bbox 中心，见
+ * server/layout-resolver.ts）。注意回落分支只对轴对齐矩形是精确的：当前 11 间房里
+ * 6 间带 points（master_bedroom/living_dining/master_bath/guest_bath/kitchen/balcony），
+ * 剩下 5 间都是轴对齐矩形，所以两条分支在现行数据上都精确。
+ */
+function boxInsideRoom(
+  box: { minX: number; maxX: number; minZ: number; maxZ: number },
+  room: RoomLayout
+): boolean {
+  const polygon = room.points;
+  if (polygon && polygon.length >= 3) {
+    const outline = polygon.map((p) => ({ x: p.x, z: p.z }));
+    return (
+      pointInPolygonOrOnEdge({ x: box.minX, z: box.minZ }, outline)
+      && pointInPolygonOrOnEdge({ x: box.maxX, z: box.minZ }, outline)
+      && pointInPolygonOrOnEdge({ x: box.minX, z: box.maxZ }, outline)
+      && pointInPolygonOrOnEdge({ x: box.maxX, z: box.maxZ }, outline)
+    );
+  }
+  const minX = room.x - room.width / 2;
+  const maxX = room.x + room.width / 2;
+  const minZ = room.z - room.depth / 2;
+  const maxZ = room.z + room.depth / 2;
+  return box.minX >= minX - GEO_EPS && box.maxX <= maxX + GEO_EPS
+    && box.minZ >= minZ - GEO_EPS && box.maxZ <= maxZ + GEO_EPS;
+}
+
+/**
+ * 非房间地面算量：overlay 的 floor_region 逐条按几何分派（默认计入，例外才排除）。
+ * `rooms` 是 catalog 全量房间，`applyRoomIds` 是 floor lineItem 的 applyRooms——
+ * 只有后者的 footprint 已经进了 `roomArea`，所以「整块落在其内」才等于双计。
+ *
+ * `elements` 是测试缝：缺省读 `config/layout/overlay.yaml`（生产唯一入口），
+ * 显式传入则可对同一套分派规则做合成复算（改标志/加区域），避免为跑负例去改配置文件。
+ */
+export function loadExtraFloorRegionArea(
+  rooms: RoomLayout[],
+  applyRoomIds: Iterable<string>,
+  elements?: unknown[]
+): FloorRegionTakeoff {
+  const overlay = elements ?? parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
+  const countedRoomIds = new Set(applyRoomIds);
+  const countedRooms = rooms.filter((room) => countedRoomIds.has(room.id));
+  let extraArea = 0;
+  let excludedArea = 0;
+  let skippedInsideRoomArea = 0;
+  for (const element of overlay as Array<Record<string, any>>) {
+    if (element?.type !== 'floor_region') continue;
+    const points = (element.points ?? []) as CurtainPoint[];
+    // schema 已挡（points min(3)），这里双保险：少于 3 点算不出面积，不当 0 混进去
+    if (points.length < 3) continue;
+    const area = roundedPolygonArea(points);
+    if (element.excluded === true) {
+      // 显式排除：只留给几何说不清的例外（开发商已铺 / 业主裁定不铺），reason 必须写为什么
+      excludedArea += area;
+      continue;
+    }
+    const xs = points.map((p) => p.x);
+    const zs = points.map((p) => p.z);
+    const box = {
+      minX: Math.min(...xs),
+      maxX: Math.max(...xs),
+      minZ: Math.min(...zs),
+      maxZ: Math.max(...zs),
+    };
+    if (countedRooms.some((room) => boxInsideRoom(box, room))) {
+      // 整块落在某个已计费房间内 → 这块地已经由房间 footprint 算过，再算就是双计
+      skippedInsideRoomArea += area;
+      continue;
+    }
+    extraArea += area;
+  }
+  return { extraArea, excludedArea, skippedInsideRoomArea };
 }
 
 function loadPaintScopeAreaByRoom(catalog: ProjectCatalog): Map<string, number> {
@@ -167,9 +347,12 @@ export class BudgetCalculator {
             const roomArea = rooms
               .filter((room) => allowedRoomIds.has(room.id))
               .reduce((sum, room) => sum + (room.area ?? room.width * room.depth), 0);
-            // DEC-2026-10-09-P12：非房间地面（走廊等）不在 applyRooms 里，
-            // 靠 overlay 的 floor_region costed 标志进算量。少算即说谎。
-            quantity = roomArea + loadCostedFloorRegionArea(this.catalog);
+            // DEC-2026-10-09-P16：非房间地面**默认**进算量。只有两种例外退出——
+            // ① 整块落在某个已计费房间内（几何判定，双计路径从根上消失）；
+            // ② 显式 `excluded: true` 且带 reason（开发商已铺 / 业主裁定不铺）。
+            // 取代 P12 的 `costed: true` opt-in：那个手工布尔量重复了几何已知的信息。
+            const { extraArea } = loadExtraFloorRegionArea(rooms, allowedRoomIds);
+            quantity = roomArea + extraArea;
           }
           break;
         // 已废弃：按房间面积近似吊顶人工量（把无吊顶平顶/电梯井/入户花园都计了费）。
