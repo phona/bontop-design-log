@@ -1,0 +1,7 @@
+- heading "方案" [level=3, ref=e1]
+- button "方案面板折叠" [expanded=false, ref=e2]
+- button "俯视" [ref=e3]
+- button "图层" [expanded=false, ref=e4]
+- button "环境" [expanded=false, ref=e5]
+- button "⚠191" [expanded=false, ref=e6]
+- button "⚙" [expanded=false, ref=e7]

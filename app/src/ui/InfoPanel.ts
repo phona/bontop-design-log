@@ -35,6 +35,7 @@ export interface HoverTarget {
     from?: unknown; to?: unknown; points?: Array<{ x: number; y?: number; z: number }>;
     reason?: string; label?: string; dimensions?: { diameter?: number; width?: number; depth?: number };
     lintLevel?: string; lintCodes?: string[]; lintWarnings?: string[];
+    receiverStatus?: 'unverified_candidate';
     notForConstruction?: boolean; source?: string; range?: { x1: number; x2: number; z1: number; z2: number };
     height?: number; uncertainty?: string; risk?: string; surveyConfirmation?: string;
   };
@@ -174,6 +175,7 @@ export class InfoPanel {
       if (m.label) fields.push(['名称', m.label]);
       if (m.from !== undefined) fields.push(['起点', this.formatEndpoint(m.from)]);
       if (m.to !== undefined) fields.push(['终点', this.formatEndpoint(m.to)]);
+      if (m.receiverStatus === 'unverified_candidate') fields.push(['排水接入', '未接真实排水点：终点只是候选坐标']);
       if (m.status) fields.push(['状态', m.status]);
       if (m.sourceStatus) fields.push(['来源', m.sourceStatus]);
       if (m.constructionStatus) fields.push(['施工状态', m.constructionStatus]);

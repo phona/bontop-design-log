@@ -1,0 +1,55 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: hvac-preinstall-20261011
+subject: 中央空调排水初稿及未接受纳点检视
+created_at: 2026-10-11
+status: aligned
+source_policy:
+  authority_refs: [config/hvac.yaml, config/mep-hvac-coordination.yaml, config/plumbing.yaml, config/layout/model-geometry.yaml]
+  observation_refs: [docs/decisions/05-hvac.md, schedule/procurement.md]
+  measurement_refs: []
+  runtime_refs: [docs/design-iterations/hvac-preinstall-20261011/evidence/runtime-query.json]
+  evidence_refs: [docs/hvac-pitfall-audit-20261011.md]
+facts:
+  confirmed:
+    - id: contract-six-pumps
+      statement: 已签合同配置六台 P-SS 带泵内机；业主确认目前仅付定金，内机未交付未装，门店是否采购/锁货待核。
+      source_refs: [config/hvac.yaml, docs/decisions/05-hvac.md, user:2026-10-11]
+      status: resolved
+    - id: six-candidate-routes
+      statement: 当前 MEP 有六条冷凝水候选线，其终点均为 HVAC 候选坐标而非确认的排水接口。
+      source_refs: [config/mep-hvac-coordination.yaml, config/hvac.yaml]
+      status: resolved
+  inferred:
+    - id: master-gravity-potential
+      statement: 主卧和儿童房有优先比较短重力路线的模型条件，但末端接入尚未闭合。
+      source_refs: [config/mep-hvac-coordination.yaml, config/plumbing.yaml]
+      confidence: medium
+      status: open
+    - id: living-kitchen-plan-corridor
+      statement: 客厅至厨房推断立管有约5.25m正交平面候选，可沿现有边吊和门厅/北服务带调查；标高与受纳接口未确认。
+      source_refs: [config/ceiling.yaml, config/layout/model-geometry.yaml, config/plumbing.yaml]
+      confidence: medium
+      status: open
+    - id: study-guest-bath-plan-corridor
+      statement: 书房北向客卫洗漱区有约2.50m正交平面候选，穿越模型中的w_st_north门洞外墙段；墙材、结构、许可与标高待核。
+      source_refs: [config/ceiling.yaml, config/layout/model-geometry.yaml]
+      confidence: medium
+      status: open
+  user_decision:
+    - id: low-maintenance-priority
+      statement: 业主优先追求交付后少操心，去泵不是目标本身。
+      source_refs: [user:2026-10-11]
+      status: resolved
+    - id: exclude-entry-garden-drain
+      statement: 业主明确不考虑入户花园作为东南客房冷凝水受纳区，只研究厨卫接入。
+      source_refs: [user:2026-10-11]
+      status: resolved
+  site_pending:
+    - id: actual-receivers
+      statement: 六条路线的真实排水接口、梁底与标高尚待交房实测及厂家深化。
+      source_refs: [docs/pending-site-data.md, config/plumbing.yaml]
+      verification_method: 三方量房与签认排水剖面
+      status: open
+unknowns_requiring_alignment: []
+notes: [本次只标注候选线及未连接端点，不增补推断管路。]

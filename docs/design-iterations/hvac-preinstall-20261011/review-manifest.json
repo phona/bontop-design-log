@@ -1,0 +1,104 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "hvac-preinstall-20261011",
+  "subject": "中央空调安装前核对初稿与冷凝水未接受纳点检视",
+  "state": "delivery_ready",
+  "source_version": {
+    "config_refs": [
+      "config/hvac.yaml",
+      "config/mep-hvac-coordination.yaml",
+      "config/plumbing.yaml"
+    ],
+    "asset_refs": [],
+    "render_facts_ref": null,
+    "source_digest": "docs/hvac-pitfall-audit-20261011.md sha256:6b9bccd8fcaab375c2a44d97c4640c47b4d8885f3d536a55c22c8519fc7e4127",
+    "generated_at": "2026-10-11"
+  },
+  "validation": {
+    "commands": ["npm run test:app", "npm run typecheck", "npm run gate:visual"],
+    "results": ["test:app 68 files / 565 tests passed", "targeted renderer and InfoPanel 13 tests passed after final UI change", "typecheck passed", "gate:visual CLEAR"],
+    "config_status": "PASS: no authoritative config changed",
+    "geometry_status": "PASS: no design geometry changed",
+    "consistency_status": "PASS: route data unchanged",
+    "functional_checks_status": "PASS: candidate endpoints remain linted and are now visibly marked",
+    "application_status": "PASS: runtime ready, six markers present",
+    "typecheck_status": "PASS",
+    "generated_files_touched_directly": false
+  },
+  "evidence": [
+    {
+      "id": "master-candidate-perspective",
+      "url": "http://localhost:5173/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-11",
+      "config_error_banner": "",
+      "target_objects": ["condensate-master route", "unverified-condensate-receiver marker"],
+      "target_object_ids": ["mep:route:condensate-master"],
+      "runtime_query_refs": ["docs/design-iterations/hvac-preinstall-20261011/evidence/runtime-query.json"],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [6, 5.2, 7],
+        "target": [2.5, 1.5, 3.1],
+        "view_type": "perspective"
+      },
+      "snapshot_path": "docs/design-iterations/hvac-preinstall-20261011/evidence/master-snapshot.txt",
+      "screenshot_path": "docs/design-iterations/hvac-preinstall-20261011/evidence/master-candidate-after.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": [
+        "config/mep-hvac-coordination.yaml sha256:62caee04f37d8c2af4aeea28215588982bebd80abc87cfad7298f1f529e920b9",
+        "app/src/render/MepCoordinationRenderer.ts sha256:d6c381c6eec871bd17716454ed13e25680b2d5f5e61a94de9eafeb4ef876b86f"
+      ],
+      "status": "valid",
+      "invalid_reason": null
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": ["红色终点标记在主卧目标视角可见但较小。"],
+    "evidence_refs": ["docs/design-iterations/hvac-preinstall-20261011/evidence/master-candidate-after.png"],
+    "requested_changes": [],
+    "assumptions": []
+  },
+  "functional_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": ["既有 MEP lint 继续检查候选几何；真实排水受纳点仍需现场和厂家深化。", "独立路线复核未发现 v4.2 平面长度重大错算；新增厨卫路线只有平面下限，尚无可施工标高。"],
+    "evidence_refs": ["app/src/render/MepCoordinationRenderer.ts", "docs/hvac-pitfall-audit-20261011.md", "config/ceiling.yaml", "config/layout/model-geometry.yaml"],
+    "requested_changes": [],
+    "assumptions": []
+  },
+  "substantive_review": {
+    "removed_or_reframed": [
+      "旧稿直接回 R6、零成本和四维净退化改为历史方案比选；已在文档历史证据节恢复逐房容量和旧取舍原因。",
+      "17/19dB、700×450×200、主卧玻璃17.9㎡和6.8–8.6kW、0.6m风口3.5–4.2m/s算例均恢复为旧参考，明确不得套成交/P-SS或替代逐房计算。",
+      "旧稿无泵三台、C40A/6mm²、售价3199/2599和深洗200–400元的确定说法降为待厂家或门店核验的历史线索。",
+      "旧稿两卫沉箱300/330mm及2.8m落差可支持280m水平管的算术未计梁、吊顶与真实接点，故撤销施工推论；两卫无排气道导致排风无解保留为待现场验证的条件结论。"
+    ],
+    "superseded_conclusions": [
+      "DEC-2026-10-05-R1取代R6逐房表；新22.7kW只是比选，不改合同。",
+      "客餐厅与东南客房按业主最新方向研究厨房共用主管；客卫作为餐厅和客房备选，原未接真实排水点的3D线不作施工依据。"
+    ],
+    "silent_failure_conditions": [
+      "本合同精确型号若不允许所画泵后汇流/扬程/止回，则J1/J2共管方案失效。",
+      "实测梁底、门头、厨房受水接口或墙材与模型不符，则对应路线和孔位数需重画。",
+      "一期管线若被二期柜体包死，当前可检修方案失效。"
+    ],
+    "evidence_refs": ["docs/decisions/05-hvac.md", "config/hvac.yaml", "config/ceiling.yaml", "config/mep-hvac-coordination.yaml", "schedule/phase-scope.yaml"]
+  },
+  "risks": ["该稿是安装前核对初稿，不能作为施工放线图；六台真实排水接点均未确认。", "新研究的厨房/客卫平面候选尚未写入 MEP 几何或 3D，必须先取得准确内机接水出口、泵扬程与可用接口标高。"],
+  "retrospective": {"triggered": false, "triggers": [], "records": [], "rebaselined": false},
+  "delivery": {
+    "status": "inspection_draft_ready",
+    "blocking_issues": [],
+    "completion_conditions": ["逐台风险和需补图纸已写入初稿", "六个候选终点在3D中明确标为未接真实排水点"],
+    "follow_up_site_pending": ["六台真实受纳点、梁底和接入标高", "准确型号安装图、逐房负荷计算书和外机平台图"],
+    "delivery_ready": true
+  }
+}

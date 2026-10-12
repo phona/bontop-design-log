@@ -81,8 +81,11 @@ export class MepCoordinationRenderer {
         to: { ref: route.to, source_status: toPoint?.source_status, construction_status: toPoint?.construction_status },
       };
       const routeKind = route.route_kind ?? (route.source_status === 'design_requirement' ? 'requirement' : undefined);
-      const visualMode = routeKind === 'requirement' ? 'requirement' : routeKind === 'candidate' ? 'candidate' : route.status;
-      const visualStyle = routeKind === 'requirement' || routeKind === 'candidate'
+      const endsAtCondensateCandidate = route.layer === 'condensate'
+        && typeof route.to === 'string' && route.to.startsWith('condensate_') && route.to.endsWith('_candidate');
+      const visualCandidate = routeKind === 'candidate' || endsAtCondensateCandidate;
+      const visualMode = routeKind === 'requirement' ? 'requirement' : visualCandidate ? 'candidate' : route.status;
+      const visualStyle = routeKind === 'requirement' || visualCandidate
         ? 'wireframe-dashed'
         : route.status === 'confirmed' ? 'solid' : route.status === 'inferred' ? 'dashed-marker' : 'low-opacity-dashed';
       const routeIssues = lint ? {
@@ -98,6 +101,7 @@ export class MepCoordinationRenderer {
         from_height: route.from_height, to_height: route.to_height,
         label: route.label, reason: route.reason, endpointMeta, points: rawPoints,
         physicalRoute: isMepPhysicalRoute(route, rawPoints), routeKind,
+        receiverStatus: endsAtCondensateCandidate ? 'unverified_candidate' : undefined,
         lintLevel: routeIssues && lint ? lintLevel({
           errors: routeIssues.errors,
           warnings: routeIssues.warnings,
@@ -106,7 +110,8 @@ export class MepCoordinationRenderer {
         lintCodes: routeIssues ? [...routeIssues.errors, ...routeIssues.warnings].map((item) => item.code) : [],
         lintWarnings: routeIssues ? routeIssues.warnings.map((item) => item.message) : [],
         visualMode, visualStyle,
-        warning: (route.layer === 'condensate' || route.layer === 'drainage') && route.method?.includes('gravity') ? '重力排水/冷凝水候选路线：待现场确认，非施工依据。' : undefined,
+        warning: endsAtCondensateCandidate ? '终点只是冷凝水候选坐标，尚未接到真实排水点；非施工依据。'
+          : (route.layer === 'condensate' || route.layer === 'drainage') && route.method?.includes('gravity') ? '重力排水/冷凝水候选路线：待现场确认，非施工依据。' : undefined,
         reviewLabel: route.construction_status === 'pending' ? '待现场确认' : undefined,
       };
       for (const endpoint of [route.from, route.to]) {
@@ -116,12 +121,12 @@ export class MepCoordinationRenderer {
         this.endpointIndex.set(key, routes);
       }
       const opacity = route.status === 'confirmed' ? 0.88 : route.status === 'pending' ? 0.32 : 0.58;
-      const isNonPhysical = routeKind !== undefined;
-      const routeColor = routeKind === 'requirement' ? 0xa78bfa : routeKind === 'candidate' ? 0x38bdf8 : this.statusColors[route.status];
+      const isNonPhysical = routeKind !== undefined || endsAtCondensateCandidate;
+      const routeColor = routeKind === 'requirement' ? 0xa78bfa : visualCandidate ? 0x38bdf8 : this.statusColors[route.status];
       const material = new THREE.MeshBasicMaterial({
         color: routeColor || hexColor(layer.color), transparent: true,
         opacity: opacity * this.opacityMultiplier, depthWrite: !isNonPhysical,
-        wireframe: routeKind !== undefined,
+        wireframe: routeKind !== undefined || endsAtCondensateCandidate,
       });
       material.userData.mepStatus = route.status;
       material.userData.mepRouteKind = routeKind;
@@ -158,6 +163,16 @@ export class MepCoordinationRenderer {
         segment.userData = { ...group.userData, segmentIndex: i, start: rawPoints[i], end: rawPoints[i + 1] };
         orientSegment(segment, start, end);
         group.add(segment);
+      }
+      if (endsAtCondensateCandidate) {
+        const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.95 * this.opacityMultiplier, depthTest: false });
+        markerMaterial.userData.mepBaseOpacity = 0.95;
+        const marker = new THREE.Mesh(new THREE.OctahedronGeometry(0.095), markerMaterial);
+        marker.name = 'unverified-condensate-receiver';
+        marker.position.copy(points[points.length - 1]);
+        marker.renderOrder = 2;
+        marker.userData = { ...group.userData, type: 'mep_coordination_route', name: '冷凝水终点未接真实排水点' };
+        group.add(marker);
       }
       if (visualStyle !== 'solid') {
         const overlayMaterial = new THREE.LineDashedMaterial({

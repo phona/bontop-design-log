@@ -2700,6 +2700,7 @@ export class HouseScene implements SceneApi {
           to: data.endpointMeta ? (data.endpointMeta as { to?: { ref?: unknown } }).to?.ref : undefined,
           points: data.points as Array<{ x: number; y?: number; z: number }> | undefined,
           reason: data.reason as string | undefined, label: data.label as string | undefined,
+          receiverStatus: data.receiverStatus as 'unverified_candidate' | undefined,
           dimensions: { diameter: data.diameter as number | undefined, width: data.width as number | undefined, depth: data.depth as number | undefined },
           lintLevel: data.lintLevel as string | undefined, lintCodes: data.lintCodes as string[] | undefined, lintWarnings: data.lintWarnings as string[] | undefined,
           notForConstruction: Boolean(data.notForConstruction ?? data.not_for_construction), source: data.source as string | undefined,

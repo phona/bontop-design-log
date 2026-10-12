@@ -48,6 +48,23 @@ describe('MepCoordinationRenderer', () => {
     renderer.dispose();
   });
 
+  it('marks a condensate route ending at an unverified candidate without changing its physical status', () => {
+    const renderer = new MepCoordinationRenderer(new THREE.Scene());
+    const layers = Object.fromEntries(['strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant', 'condensate', 'supply_air', 'return_air'].map((layer) => [layer, { label: layer, color: '#f00', height: 2 }]));
+    renderer.render({ version: '1', status: 'preliminary', layers, routes: [
+      { id: 'condensate-master', layer: 'condensate', status: 'pending', method: 'gravity_condensate_candidate', from: { x: 0, z: 0 }, to: 'condensate_master_candidate', via: [] },
+    ] } as unknown as MepCoordination, {
+      electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], outdoor: [],
+      hvacTerminals: [{ id: 'condensate_master_candidate', kind: 'condensate_drain_candidate', status: 'pending', system: 'condensate', position: { x: 1, y: 0.1, z: 0 } }],
+    });
+    const route = renderer.getRouteObject('condensate-master')!;
+    expect(route.userData.physicalRoute).toBe(true);
+    expect(route.userData.receiverStatus).toBe('unverified_candidate');
+    expect(route.userData.visualStyle).toBe('wireframe-dashed');
+    expect(route.getObjectByName('unverified-condensate-receiver')).toBeInstanceOf(THREE.Mesh);
+    renderer.dispose();
+  });
+
   it('keeps status summary distinct and indexes multiple routes per endpoint', () => {
     const renderer = new MepCoordinationRenderer(new THREE.Scene());
     const config = {

@@ -1,0 +1,23 @@
+{
+  "url": "http://localhost:5173/",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "config_error_banner": "",
+  "camera": {
+    "mode": "orbit",
+    "position": [6, 5.2, 7],
+    "target": [2.5, 1.5, 3.1],
+    "is_overview": false
+  },
+  "route_ids": [
+    "condensate-living",
+    "condensate-dining",
+    "condensate-master",
+    "condensate-child",
+    "condensate-parent",
+    "condensate-study"
+  ],
+  "all_receiver_status": "unverified_candidate",
+  "all_end_markers_present": true,
+  "master_visual_style": "wireframe-dashed"
+}

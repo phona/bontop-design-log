@@ -116,11 +116,13 @@ describe('InfoPanel', () => {
     const panel = new InfoPanel({ onSelectOption: vi.fn() });
     panel.showObject({
       objectId: 'mep:route:main', name: '主干', type: 'mep_coordination_route',
-      mep: { routeId: 'main', from: 'panel', to: 'socket', status: 'inferred', sourceStatus: 'proposed', constructionStatus: 'pending', reason: '待确认', notForConstruction: true },
+      mep: { routeId: 'main', from: 'panel', to: 'socket', status: 'inferred', sourceStatus: 'proposed', constructionStatus: 'pending', reason: '待确认', notForConstruction: true, receiverStatus: 'unverified_candidate' },
     });
     expect(elements.topics.appendChild).toHaveBeenCalled();
     const section = (elements.topics.appendChild as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(section.className).toBe('info-topic-section info-mep-context');
+    const created = (document.createElement as ReturnType<typeof vi.fn>).mock.results.map((result) => result.value);
+    expect(created.some((element) => element.textContent === '未接真实排水点：终点只是候选坐标')).toBe(true);
     expect(elements.topics.appendChild).toHaveBeenCalledTimes(1);
   });
 
