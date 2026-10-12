@@ -321,7 +321,7 @@ hard_finish_quote_rounds:
       owner_current_cny: 9537
       price_type: quoted_sheet
       status: quoted_pending_optimization
-      dedup_rule: 本轮唯一带报价单的项目。浴霸/凉霸/灯归属必须与 COST-100-06（取暖换气设备）和 PKG-120（基础灯具）二选一，否则双计；凉霸 999 元偏贵、5700K 灯具改 4000K、龙骨/安装/开孔是否全包均待谈
+      dedup_rule: "2026-10-03 捆绑单（厨卫铝扣板+收边+2浴霸+凉霸+灯 = 报价 9,537 / 业主目标 9,100）的历史报价锚点，PKG-070 唯一带报价单的项目。**DEC-2026-10-05-R3 已拆散该组合**：浴霸 ×2 划出自购进 COST-100-06（奥普 S2-Air，京东自营约 1,362，与本单内部价不同源）、凉霸不做（单内价 999）。剩余范围 = 厨卫铝扣板+收边+灯，须商家按裸价重报（procurement.md 反推目标约 4,500，非成交价）。**分项金额未拆、不能拆**：捆绑单内浴霸/凉霸/灯各自占多少无记录，报价单原件缺失（evidence_path 为空目录），而 control.ts:208 的合计取 owner_target_cny 且 supersedes 不过滤——在拿到分项前拆条会双计并打破 round_summary.all_in_target_cny=205098。拆分与 evidence 两个动作卡同一个原件。灯具归属（PKG-120 vs COST-070）仍待定；5700K 改 4000K、龙骨/安装/开孔是否全包仍待谈"
       locked_cny: null
       contract_ref: null
       evidence_path: contracts/2026-10-03/
