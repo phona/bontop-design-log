@@ -12,7 +12,7 @@
     ],
     "asset_refs": [],
     "render_facts_ref": null,
-    "source_digest": "docs/hvac-pitfall-audit-20261011.md sha256:6b9bccd8fcaab375c2a44d97c4640c47b4d8885f3d536a55c22c8519fc7e4127",
+    "source_digest": "docs/hvac-pitfall-audit-20261011.md sha256:511e3cfdf583b78cc2dbcbc2d348540e78adcf2de0869de0a51ae0eeedc21e98",
     "generated_at": "2026-10-11"
   },
   "validation": {
@@ -87,6 +87,7 @@
     ],
     "silent_failure_conditions": [
       "本合同精确型号若不允许所画泵后汇流/扬程/止回，则J1/J2共管方案失效。",
+      "现有A/B承载层窗口仅给J1到厨房4.60m主管约4mm理论余量；三台全程重力支管起点均超过模型A区上限，若未重画泵压段和吊顶剖面，四台带泵的设备选择也不能让排水方案自动成立。",
       "实测梁底、门头、厨房受水接口或墙材与模型不符，则对应路线和孔位数需重画。",
       "一期管线若被二期柜体包死，当前可检修方案失效。"
     ],
