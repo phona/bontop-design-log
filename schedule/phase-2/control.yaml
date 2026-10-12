@@ -35,4 +35,7 @@ items:
 audit:
   status: not_started
   note: 明细合计为¥42,100—¥67,200；云鲸J6上下水版已按业主确认的3,000元移入一期，不在二期重复计费；范围未冻结前不得采购
+  record_schema:
+    status_values: [pending, passed, failed, not_applicable]
+    note: 审计状态词汇与 schedule/phase-1/control.yaml 的 audit_log.record_schema 对齐：pending 表达「该条项目前尚未执行/尚未确认」——有登记、无结果，与「忘了登记」在机器上可区分；只有 passed 才算闭环。二期 items 逐项确认后追加记录，禁止覆盖历史
   records: []

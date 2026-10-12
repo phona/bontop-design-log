@@ -24,5 +24,8 @@ scope_candidates:
 audit:
   status: not_started
   note: 不预分配单项金额，避免在入住反馈形成前制造虚假精度
+  record_schema:
+    status_values: [pending, passed, failed, not_applicable]
+    note: 审计状态词汇与 schedule/phase-1/control.yaml 的 audit_log.record_schema 对齐：pending 表达「该条项目前尚未执行/尚未确认」——有登记、无结果，与「忘了登记」在机器上可区分；只有 passed 才算闭环。三期 items 逐项确认后追加记录，禁止覆盖历史
   records: []
 

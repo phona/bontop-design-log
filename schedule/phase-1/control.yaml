@@ -579,58 +579,86 @@ global_blockers:
     status: site_pending
     item: 尚未交房，无法完成现场量房及房屋查验
     clears_when: 交房查验完成并归档现场记录
+    owner_roles: [业主, 施工方, 设计师]
+    trigger: 交房与现场查验必须在开工交底和水电放位之前完成；未闭环则量房待填清单 52 项无法清零，水电与中央空调点位只能停在暂记值，开工日期顺延且后续所有深化都缺现场依据
   - id: BLK-STRUCTURE
     status: site_pending
     item: 墙体结构、梁底及允许打孔或穿墙条件未确认
     clears_when: 结构资料与现场复核结果完成会签
+    owner_roles: [业主, 施工方, 设计师]
+    trigger: 结构会签必须在水电放位、吊顶标高确定与空调穿墙孔开工前完成；未闭环则剪力墙穿墙与高于梁底的走线会被 verify:mep 判为 shear_wall_penetration / beam_collision，返工要凿墙并拆吊顶
   - id: BLK-HVAC-DEEPENING
     status: site_pending
     item: 中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审
     clears_when: 空调、设计和施工三方签认深化图
+    owner_roles: [空调商, 设计师, 施工方, 业主]
+    trigger: 三方会审与深化图签认必须在中央空调内机下单之前完成；本次审计确认装修期内换机只补差价、而内机下单后返工不是零成本——未闭环则风口、检修口与冷凝水管位只能按暂记值施工，封板后调整要拆吊顶并重新下单
   - id: BLK-SOUTH-BALCONY
     status: alignment_required
     item: 南阳台使用方式、地面和预算边界未冻结
     clears_when: 业主确认范围并同步预算及施工图
+    owner_roles: [业主, 设计师, 施工方]
+    trigger: 南阳台范围与地面做法必须在水电放位和泥瓦铺贴前冻结；未闭环则 COST-060-07 南阳台铺贴范围无法计入已确定工程量，泥瓦收口与一期预算口径同时悬空
   - id: BLK-GAS-DOOR
     status: site_pending
     item: 燃气厨房门的现场验收要求未确认
     clears_when: 燃气单位或物业书面确认厨房分隔要求
+    owner_roles: [业主, 施工方, 燃气单位, 物业]
+    trigger: 厨房门形式与燃气分隔要求必须在厨房门套下单和泥瓦收口前取得燃气单位或物业的书面确认；未闭环只能按最严做法预留门洞与门宽，后期调整涉及门套与墙面双返工
   - id: BLK-MASTER-WARDROBE
     status: alignment_required
     item: 主卧北墙通顶定制衣柜（藏空调冷凝水管槽，必须定制）随2026-09-12压缩决策整体后移至二期，一期用成品衣架和斗柜过渡；门扇、位置、高度及空调检修关系仍未关闭
     clears_when: 二期启动前深化图经业主、设计和厂家共同确认
+    owner_roles: [业主, 设计师, 定制供应商]
+    trigger: 门扇、位置、高度与空调检修关系必须在二期深化图确认与定制柜下单前关闭；未闭环则一期成品衣架和斗柜的过渡占地白占，二期柜体还可能与空调冷凝水管槽和检修口冲突，定制柜返工不是零成本
   - id: BLK-CURTAIN-SCOPE
     status: alignment_required
     item: 一期窗帘范围按2026-09-12压缩决策收窄为三个卧室（主卧/父母房/西北次卧）的遮光帘+纱帘，客厅和书房后移二期；各房遮光要求、布纱组合及轨道形式仍需逐房确认
     clears_when: 形成逐房窗帘清单并确认一期采购范围和报价
+    owner_roles: [业主, 设计师, 窗帘供应商]
+    trigger: 逐房遮光要求、布纱组合与轨道形式必须在窗帘下单和轨道安装前冻结；未闭环则一期窗帘 5,000 元额度形成不了有效报价，卧室先住后改还要二次上门拆装轨道
   - id: BLK-PHASE1-APPLIANCES
     status: alignment_required
     item: 一期家电额度在原9,000元下探组合基础上追加云鲸J6上下水版3,000元，2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤按4,000元进入一期后现按16,000元控制；J6型号和金额已由业主确认，客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结
     clears_when: 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金
+    owner_roles: [业主, 设计师, 家电供应商, 水电施工]
+    trigger: 逐台型号尺寸与含安装报价必须在家电下单前冻结，电位与上下水接口须在水电隐蔽验收前锁定；未闭环则 16,000 元额度仍按候选价记账，到货尺寸可能对不上已留电位和柜格，退换要二次上门并动已封板吊顶
   - id: BLK-WATER-HEATER-SITE
     status: site_pending
     item: 已确认一期采用燃气热水器；模型虽有厨房西侧实体墙的暂定协调点，但交房前仍未确认是否已有开发商设备、实际安装墙面、燃气表位置、排烟路径、冷凝水排放和物业审批条件
     clears_when: 现场核对现有设备和燃气条件，形成最终安装位置、排烟、给排水、专用电路及物业审批记录
+    owner_roles: [业主, 施工方, 水电施工, 物业]
+    trigger: 安装墙面、燃气表位置、排烟路径、冷凝水排放、给排水与专用电路必须在热水器下单和水电隐蔽验收前现场确认；未闭环则 KL7PRO 不得下单，暂记协调点 sock_balcony_waterheater 可能落位错误，返工要改电位、穿墙并动排烟道
   - id: BLK-MEP-INTERFACE-FREEZE
     status: alignment_required
     item: 水电与中央空调的接口未联合冻结——点位与回路、吊顶内分层标高（#41 分区口径）、穿墙孔位高度、冷凝水接入点与立管、检修口与风口均未会签
     clears_when: 水电、空调、设计、施工四方联合交底并签认点位回路标高孔位与冷凝水接点，签认记录归档
+    owner_roles: [水电施工, 空调商, 设计师, 施工方, 业主]
+    trigger: 四方联合交底必须在吊顶封板之前、也就是水电隐蔽验收与空调第一次安装之前完成；未闭环则点位回路标高孔位与冷凝水接点没有会签依据，封板后任何调整都要拆吊顶，verify:mep 的穿墙与梁底判据也无从校验
   - id: BLK-CABINET-FREEZE-FOR-MEP
     status: alignment_required
     item: 橱柜深化图是水电点位的 owner（微蒸烤预留点位 sock_kitchen_oven、厨房台面电位、客卫扫地机基站柜格上下水）但尚未冻结，而橱柜安装包排在 seq 110、晚于水电 seq 40
     clears_when: 橱柜深化图与水电点位表双向核对完成，微蒸烤预留点位、台面电位与基站柜格落实到图（设计冻结前置，不是安装前置）
+    owner_roles: [橱柜供应商, 设计师, 业主]
+    trigger: 橱柜深化图必须在水电放位（seq 40）之前冻结，而不是等橱柜安装（seq 110）；未闭环则微蒸烤预留点位 sock_kitchen_oven、厨房台面电位与扫地机基站柜格上下水只能按推测预留，柜体到场后对不上要凿墙改管并重贴砖
   - id: BLK-SURVEY-DATA-FREEZE
     status: site_pending
     item: 量房待填清单 52 项未清零——给水入户点 #8、梁位 7 条、41 面墙结构类型、排水立管与燃气表与排烟道、强电箱开箱、沉箱深度与分界线
     clears_when: 影响水电与中央空调的条目逐项转为实测值或显式豁免，并回填 config 与 docs/pending-site-data.md
+    owner_roles: [业主, 施工方, 设计师]
+    trigger: 影响水电与中央空调的待填项必须在水电放位与空调深化前逐项转为实测值或显式豁免；未闭环则给水入户点、梁位、41 面墙结构、排水立管与燃气表与排烟道、强电箱、沉箱深度全部停在暂记值，设计侧与施工侧会按不同猜测施工
   - id: BLK-FRIDGE-FIT
     status: site_pending
     item: 设计模型把冰箱位暂记为约700毫米宽×700毫米深，当前收集到的501升候选有宽约833毫米者，冰箱型号不能在净开口复测前下单
     clears_when: 现场复测完成面净宽、净深、净高、开门余量和散热缝，并筛选出尺寸满足的型号
+    owner_roles: [业主, 设计师, 家电供应商]
+    trigger: 完成面净宽、净深、净高、开门余量与散热缝必须在冰箱下单前复测并锁定型号；未闭环则宽约 833 毫米的 501 升候选放不进约 700 毫米的暂记开口，下单后只能退换或改柜体
   - id: BLK-MASTER-VANITY-SKU
     status: alignment_required
     item: 主卫浴室柜预算已按1,500元入账（DEC-2026-10-07-R02），但柜型、台盆形式与龙头形式未定（路径A 柜体+岩板台面+台上盆+壁挂龙头单配 / B 成品一体盆柜全包 / C 维持R12设计3,000）。若弃用台上盆与壁挂龙头，则 faucet_mbath_vanity 盆心 x=0.575、drain_mbath_vanity 墙排中心、water-master-bath 穿 w_mbath_south 点 x=0.575（该路线为 plan_supported，DEC-2026-10-06-R1 刚正交化，且同时供台盆龙头与马桶）与 DEC-2026-10-03-R1 的预埋口径同时作废，主卫给排水退回 pending 重画；厂家电商/1688 方案的 MOQ、起批数、运费、是否含安装与南宁配送口径亦未核
     clears_when: 柜体SKU与台盆/龙头形式冻结，主卫给排水预埋点回填或重画并经量房复核，且含安装的南宁到手价取得
+    owner_roles: [业主, 设计师, 洁具供应商]
+    trigger: 柜体 SKU 与台盆/龙头形式必须在主卫给排水预埋（水电隐蔽验收）之前冻结；未闭环则 faucet_mbath_vanity、drain_mbath_vanity 与 water-master-bath 三个预埋点连同 DEC-2026-10-03-R1 口径一起作废，主卫给排水退回 pending 重画，返工要动已贴砖墙面
 
 glossary:
   - term: 工作包
@@ -1628,6 +1656,6 @@ audit_log:
   status: empty
   record_schema:
     required: [id, package_id, check_id, status, checked_at, checked_by, evidence]
-    status_values: [passed, failed, not_applicable]
-    note: 同一package_id与check_id组合复验时追加新记录，并用supersedes指向上一条记录；禁止覆盖历史
+    status_values: [pending, passed, failed, not_applicable]
+    note: 状态词汇与 control.check_status_values 对齐。pending 的用途：表达「该检查尚未执行」——有登记、无结果，与「忘了登记」在机器上可区分。此前 89 个可审计检查（39 SCH + 50 acceptance）全部只能靠 records 缺席表达「没做」，而缺席既可能是未执行、也可能是漏登记，二者不可区分；补入 pending 后，未执行的检查可以被显式登记为 pending，缺席才唯一意味着漏登记。同一package_id与check_id组合复验时追加新记录，并用supersedes指向上一条记录；禁止覆盖历史
   records: []

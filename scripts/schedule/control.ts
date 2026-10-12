@@ -177,8 +177,32 @@ for (const record of quoteRoundRecords) {
   if (record.status === 'locked' && (record.locked_cny == null || !record.contract_ref)) {
     errors.push(`${record.id}: status locked requires locked_cny and contract_ref`);
   }
-  if (record.evidence_path && !fs.existsSync(path.join(root, record.evidence_path))) {
-    errors.push(`${record.id}: evidence_path does not exist: ${record.evidence_path}`);
+  if (record.evidence_path) {
+    // 证据存在性必须看**内容**，不能只看路径。fs.existsSync 对目录恒为 true 且不看条目，
+    // 于是「一个只放了 README.md 的空目录」会被判成有证据——QR-2026-10-03-08
+    // （唯一一条 price_type: quoted_sheet、¥9,537）的 evidence_path 指向
+    // contracts/2026-10-03/，该目录下只有 1119 字节的 README.md、没有任何报价单原件，
+    // 却长期通过本检查。判定改为：
+    //   - 指向文件 → 必须存在且非空（size > 0）；
+    //   - 指向目录 → 目录内至少要有一个**非 README** 的条目（README/说明文件与
+    //     点文件不算证据，否则又是同一漏洞换了个壳）。
+    const evidenceAbs = path.join(root, record.evidence_path);
+    let evidenceError: string | null = null;
+    try {
+      const stat = fs.statSync(evidenceAbs);
+      if (stat.isDirectory()) {
+        const entries = fs.readdirSync(evidenceAbs)
+          .filter((entry: string) => !entry.startsWith('.') && !entry.toLowerCase().startsWith('readme'));
+        if (!entries.length) {
+          evidenceError = `evidence_path 是目录但只有 README/说明文件，没有报价单或合同原件：${record.evidence_path}`;
+        }
+      } else if (stat.size === 0) {
+        evidenceError = `evidence_path 指向空文件（0 字节）：${record.evidence_path}`;
+      }
+    } catch {
+      evidenceError = `evidence_path does not exist: ${record.evidence_path}`;
+    }
+    if (evidenceError) errors.push(`${record.id}: ${evidenceError}`);
   }
 }
 const roundTargetTotal = quoteRoundRecords.reduce((sum: number, record: AnyRecord) => sum + (record.owner_target_cny ?? 0), 0);

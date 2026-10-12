@@ -21,7 +21,7 @@ priority:
     - "照明 11 路合为 5 路：牺牲单灯单路可控性换取箱体容量与合规分类"
     - "洗烘拆为两路：多用 1 个回路位换取 7.4.4 对 2kW 以上设备分别设置的合规解读"
     - "台面取电不在本轮定形（升降/侧板/轨道），由橱柜深化决定，本迭代只保证「两个可插取的分区」存在"
-frozen: true
+frozen: true   # 历史真值：2026-10-03 业主确认时点本 brief 确为 frozen。但回路规模已被下方 supersession 列出的 DEC 取代（19 路 → 20 路 → 21 路）；frozen 标记保留作历史留档，不再代表现行回路口径
 freeze_record:
   alignment_id: user-plan-approval-20261003-mep-freeze
   original_user_response: "业主提供外部 review 并询问看法 → 给出 8 项复核结论 + 6 项补充发现 → 审批《迭代方案：水电施工冻结前最后一轮收口》"
@@ -115,3 +115,35 @@ acceptance:
     external_blockers:
       - "api.test.ts:74 / budget-api.test.ts:78 仍断言 phase_1 ceiling=203000，而 schedule/budget 迭代已生效 206000——属该迭代待同步的旧断言"
       - "schedule/phase-1/control.yaml:62 已代修 YAML 语法（未加引号 funding_status: ...），纯语法无内容变更"
+
+# ---------------------------------------------------------------------------
+# supersession：2026-10-11 业主审计登记。本 brief 的结构化冻结值（19 路）已过期，
+# 但 scripts/ / server/ / tests/ 对 decision-brief.yaml 零引用
+# （config/facts.yaml:150 亦把 design-iterations 的 decision-brief 登记为
+# 「迭代过程留档，非现行事实源」），故过期不会响——没有任何门禁会因为
+# 「brief 的回路数与 config/electrical-topology.yaml 不一致」而失败。
+# 上方 frozen: true 与下方 freeze_record / validation_record 一律不改写，保持历史真值。
+# ---------------------------------------------------------------------------
+supersession:
+  status: superseded
+  superseded_at: "2026-10-06"
+  recorded_at: "2026-10-11"
+  superseded_by:
+    - "DEC-2026-10-04-R2（docs/decisions/06-electrical.md:200）：外机供电单独成路，回路总数 19 → 20"
+    - "DEC-2026-10-05-R3（docs/decisions/04-bathrooms.md:225，账目见同文件:230）：dedicated_bath_heaters 拆为 dedicated_bath_heater_mbath / dedicated_bath_heater_gbath，回路总数 20 → 21"
+    - "DEC-2026-10-06-R2（docs/decisions/06-electrical.md:234）：微蒸烤预留接口落 sock_kitchen_oven（config/electrical-topology.yaml:330 注释），激活动作会使 fact.circuit_count 走 21 → 22"
+    - "config 字段 config/electrical-topology.yaml:28 起的 circuits.length（现为 21）与 config/facts.yaml:464-467 的 fact.circuit_count（derived，value 指向 circuits.length）为现行权威口径，取代本 brief 的「19 路」"
+  drift:
+    - frozen: "priority.ranked「回路与箱体容量（25→19 路，箱体单/双排待确认）」与 freeze_record.normalized_decisions「接受 19 路目标拓扑」"
+      now: "circuits.length = 21 路"
+      verify_at: "config/electrical-topology.yaml:28 起 circuits 段；派生口径见 config/facts.yaml:464-467（fact.circuit_count）"
+    - frozen: "acceptance.validation_record.topology_integrity「19 路 / 66 members，全量覆盖、无跨回路重复、所有含 type: socket 的回路 breaker 含漏保」与 acceptance.functional_review.verdict「19 路全量覆盖 66 个 powerable 点位」"
+      now: "成员点位已随 DEC-2026-10-06-R2 电气兜底轮（全盒零线 / 防溅盒 / 窗帘电源入盒 / sock_kitchen_oven 预留）扩为 21 路，点位基数不再是 66"
+      verify_at: "docs/decisions/06-electrical.md:234（DEC-2026-10-06-R2）与 config/electrical.yaml / config/electrical-topology.yaml 现行点位清单"
+    - frozen: "open_questions.box-spec handling 口径「19 路下单排出局」"
+      now: "按 20 路 + 2P 进线开关 + 浪涌重算，390mm 单排约 16 位可用确定装不下 → 单排出局；现行结论仍为「双排或换箱」，但基数已由 19 改为 20/21"
+      verify_at: "docs/decisions/06-electrical.md:212-215（DEC-2026-10-04-R2）；docs/decisions/04-bathrooms.md:230（21 路口径）"
+    - frozen: "acceptance.validation_record.external_blockers「api.test.ts:74 / budget-api.test.ts:78 仍断言 phase_1 ceiling=203000」"
+      now: "该阻塞已由 DEC-2026-10-03-R3 / DEC-2026-10-05-R4 收口，测试断言与 schedule/phase-1/control.yaml 现均为 210000"
+      verify_at: "docs/decisions/05-hvac.md:45；schedule/phase-1/control.yaml:62；tests/server/api.test.ts 与 tests/server/budget-api.test.ts 现行断言"
+  reason: "根因是「没有任何代码读者」：scripts/、server/、tests/、app/ 对 decision-brief.yaml 零引用（grep 全库仅命中 docs/ 自身与 config/facts.yaml:150 的豁免说明），config/facts.yaml 的 include/exclude 也把 docs/design-iterations/ 整体排除在事实核验之外。事实核验只镜像 config 的回路数（fact.circuit_count），从不回读本 freeze_record，因此「冻 19 路 / 实际 21 路」可以无限期不响。本 brief 的四轮回路演进（19→20→21，及 22 路的预留激活动作）全部只落在 docs/decisions/06-electrical.md 与 config/electrical-topology.yaml 的注释里，无人回写该 freeze_record。现行回路口径唯一权威是 config/electrical-topology.yaml 的 circuits.length。"

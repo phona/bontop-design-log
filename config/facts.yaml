@@ -1350,6 +1350,38 @@ contracts:
     min_matches: 0
     pending: "control.yaml 的报价轮次词汇表目前没有 contract_decided 状态（空调成交记在 hvac 预算池 planned_cny 36,000 与 schedule/procurement.md §01）；业主裁决是否给报价轮次增加该状态，启用后本契约立即强制 contracted_cny + evidence_path"
 
+  # ── 全局阻塞项必须自报「谁负责」与「什么时候之前必须闭环」─────────────────
+  # 2026-10-11 业主审计：global_blockers 的 14 条长期只有 id / status / item /
+  # clears_when 四个字段。缺 owner_roles 意味着没人认领，缺 trigger 意味着没有期限，
+  # 而这两件事在数据上和「正在跟踪」长得一模一样——状态永远是 site_pending /
+  # alignment_required，既看不出该谁推动，也看不出拖下去会怎样。本契约把
+  # 「登记一条阻塞项就必须同时回答谁负责、何时之前闭环、否则后果是什么」
+  # 钉成 error，与 clears_when（解除条件）分工：clears_when 说清到什么算完，
+  # trigger 说清到什么时点之前必须完、不完的代价是什么。
+  #
+  # 为什么 when 用 clears_when 而不是 status 模式：
+  # runRequires 对整个文件做**深度递归**匹配，而 status 的
+  # `site_pending|alignment_required` 是未锚定子串正则——它除了命中 14 条 blocker，
+  # 还会连带命中 3 个成本组件：COST-060-07（status: alignment_required，南阳台铺贴
+  # 范围）、COST-160-05（selection_confirmed_site_pending）、COST-160-06
+  # （budget_confirmed_site_pending）。这三个是预算科目、不是阻塞项，本就不该有
+  # owner_roles / trigger；加锚 `^(site_pending|alignment_required)$` 也排不掉
+  # COST-060-07——它的 status 恰好就是完整的 alignment_required。`clears_when`
+  # （解除条件）才是 blocker 的专属字段：当前全文 14 处、全部落在 global_blockers，
+  # 且它与 owner_roles / trigger 同属治理三问。`min_matches: 1`：blocker 被清空或
+  # 字段被改名时立刻报错，不让契约静默空转。
+  #
+  # 已知限制（runRequires 的实现，shared/facts-lint.ts:798）：只查
+  # `hit[key] === undefined || hit[key] === null`，因此 **空值能骗过检查**——
+  # `owner_roles: []` 与 `trigger: ''` 都不算缺失，本契约不会报错。堵这个口要么在
+  # 引擎里补非空判定，要么靠人读；在此之前，写空数组等于没写，读者须自知。
+  - id: c.blocker_requires_owner_and_trigger
+    kind: requires_when
+    path: schedule/phase-1/control.yaml
+    when: { field: clears_when, exists: true }
+    then: [owner_roles, trigger]
+    min_matches: 1
+
   - id: c.rule_targets_exist
     kind: non_empty
     source: config/verify-rules.yaml
