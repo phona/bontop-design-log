@@ -39,16 +39,6 @@
   basis: "吸顶筒灯贴吊顶完成面下 25cm，用于表现灯罩厚度与出光半球（安装完成面 2.8m 为底盒/接线高度）"
   reason: "已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m。"
   applies_to: [web, blender]
-- id: light_master_wall_l
-  anchorY_offset: 0
-  basis: "床头壁灯为墙面明装，安装高度 1.35m 即灯具中心高度，无吊顶完成面可偏移"
-  reason: "2026-09-04 R2：床头壁灯降至 1.35m 阅读高度（枕头区成组，与 electrical.yaml height=1.35 对齐；覆盖旧 Blender 基线 1.6m 口径，候选未冻结，施工前按床架真实外廓终核）。"
-  applies_to: [web, blender]
-- id: light_master_wall_r
-  anchorY_offset: 0
-  basis: "床头壁灯为墙面明装，安装高度 1.35m 即灯具中心高度，无吊顶完成面可偏移"
-  reason: "2026-09-04 R2：床头壁灯降至 1.35m 阅读高度（枕头区成组，与 electrical.yaml height=1.35 对齐；覆盖旧 Blender 基线 1.6m 口径，候选未冻结，施工前按床架真实外廓终核）。"
-  applies_to: [web, blender]
 - id: light_parent_dome
   anchorY_offset: -0.25
   basis: "父母房吸顶筒灯贴吊顶完成面下 25cm，用于表现灯罩厚度与出光半球"
@@ -84,19 +74,6 @@
   basis: "厨房平板灯贴铝扣板吊顶完成面下 25cm，用于表现灯体厚度与出光面"
   reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
   applies_to: [web, blender]
-- id: light_mbath_panel
-  anchorY_offset: -0.25
-  basis: "主卫平板灯贴卫浴吊顶完成面下 25cm，用于表现灯体厚度与出光面"
-  reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
-  applies_to: [web, blender]
-- id: light_gbath_panel
-  anchorY_offset: -0.25
-  basis: "客卫平板灯贴卫浴吊顶完成面下 25cm，用于表现灯体厚度与出光面"
-  reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
-  applies_to: [web, blender]
-
-# ── 2026-10-05 起夜路径 night_light（DEC-2026-10-05-R15）──
-# electrical.height 即安装完成面（0.25–0.40m），anchorY_offset 一律 0，不重复书写高度绝对值。
 - id: night_guest_bed_side
   anchorY_offset: 0
   basis: "床沿下位灯贴安装完成面（0.30m）表现低位引导光，不做灯体下沉"

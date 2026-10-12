@@ -310,3 +310,29 @@
 - **决策人**：业主。
 
 
+
+### DEC-2026-10-12-R1 删主卧两盏明装床头壁灯，改小米床头灯插电
+
+- **日期**：2026-10-12。触发：业主在看一期灯具选型时决定「不想在主卧做嵌入式床头灯，删掉，简化这块的部署，一个小米床头灯就搞定了」。
+- **被本条推翻的旧结论（铁律 3：逐条列明为何可推翻）**：
+  1. **DEC-2026-09-08-R1 / 方案A 的「主卧南北床头各一盏壁灯」**——原为 `light_master_wall_l` (z=6.245) / `light_master_wall_r` (z=8.555)，挂 `w_mb_east`、h=1.35m、与南北床头柜轴线对齐、哑黑隐藏转轴可调短筒、自带底部按键、墙面突出 ≤190mm。**可推翻的理由**：该方案自带三项 site_pending（挂装 SKU、东墙结构与固定节点、南帘真实关系），本就是未冻结候选；业主以「简化部署」为由撤销，不涉及任何已施工或已采购承诺（项目尚未交房、硬装未施工）。
+  2. **「阅读壁灯使用灯具自带按键」的控制口径**（`config/electrical.yaml` `switch_master_bed_l` note 原文）——随壁灯删除一并作废，床头阅读与起夜改由床头灯自身承担。
+  3. **`control_master_bed_door` 的「床头壁灯不走多控」例外**——壁灯不存在后该例外自动消失，三控只针对 `light_master_dome` 一只灯具，控制关系比原先更简单。
+  4. **`lighting_bedrooms_bath` 回路的负荷口径**——11 点位 / ≤0.9kW 降为 9 点位 / ≤0.75kW（移除两盏壁灯的估算负载）。
+- **未被推翻、继续有效的**：主卧吸顶灯三控（门口/南床头/北床头）不变；床头双联框（开关+插座）不变；起夜路径标准对床头段「触摸/按键优先于感应」的要求不变，且现在由床头灯的机身按键天然满足。
+- **数据改动**：`config/electrical.yaml` 删 2 个点位（**107 → 105**，`fact.electrical_points_count` 同步）；`config/electrical-topology.yaml` 同步 member_point_ids / capacity / 表头计数 / control note；`config/render/overrides.yaml` 删 2 条 anchorY override；`config/spatial-validation.yaml` 的 `lighting_host_overrides` 清空（config 内已无 `wall_lamp` 类型点位，框架保留供将来新增）；`config/house.yaml` #25 的影响范围收窄。
+- **新增依赖（不是删完就完了）**：小米床头灯为**插电式**，取电位为既有 `sock_master_bed_l`（北，z≈6.202 h=0.7）与 `sock_master_bed_r_head`（南，z=8.512 h=0.7）——两插座均在 `ordinary_power_*` 回路且带漏保，**不新增电气工作量**，这是本次简化成立的前提。若最终只买一只，放哪侧、另一侧如何补，待灯具选型后由业主定。
+- **现场反转条件**：① 若床头灯需智能控制且依赖米家 App/蓝牙 Mesh，则违反起夜标准「禁止把起夜照明作为智能场景的唯一承载」——**必须选带机身物理按键的型号**；② 若业主改回壁灯，须重新声明挂装 SKU、东墙固定节点与南帘关系三项 site_pending；③ 若床头灯功率或插头规格与现有床头插座不兼容，则需改插座类型（属电气返工）。
+- **决策人**：业主。
+
+### DEC-2026-10-12-R2 两卫照明改用浴霸三合一自带，删平板灯与对应墙控
+
+- **日期**：2026-10-12。触发：选一期灯具时发现两卫既有平板灯与奥普 S2-Air 浴霸（风暖 2750W + 换气 49W + **照明 24W** 三合一）功能重叠，业主要求「用浴霸三合一就行，不另外加装」。
+- **被本条推翻/删除的旧结论（铁律 3：逐条列明为何可推翻）**：
+  1. **两卫各一盏独立平板灯 + 对应墙控开关**（`light_mbath_panel` / `light_gbath_panel` + `switch_mbath` / `switch_gbath`，`docs/dressing-map.md` 162/163 行有登记，4000K、2026-08-25/08-29 先后定位）。**可推翻的理由**：浴霸三合一已含 24W 照明，S2-Air 已于 DEC-2026-10-05-R3 定标自购（`COST-100-06`），两套光源在同一 3.15–4.58㎡ 空间内属重复投资；业主以「不搞复杂的东西」为由撤销，不涉及已施工或已采购承诺。
+  2. **`DEC-2026-10-07-R12` 中「进客卫后用现有 `light_gbath_panel` 主灯和 `switch_gbath` 手动照明」这一兜底指定**——该灯既已删除，此兜底失效。**这是本条最重要的连带后果**：R12 当初删客卫 NP-6/7/8 三个起夜灯时，指定的替代方案就是这个平板灯；现在两层都没了。
+  3. **`control_mbath_light` / `control_gbath_light` 两条控制绑定**与 `lighting_bedrooms_bath` 回路中的两卫成员。
+- **起夜覆盖的后果（业主已明确接受）**：两卫段起夜兜底退化为 ① 浴霸自带照明（线控面板为物理按键，满足 `docs/standards/night-path-lighting.md` §6「保底层不依赖网络/网关/App」）；② 业主原话「后面需要就用插座直接外挂夜灯，不搞这种复杂的东西」。**外挂方案有现实取电位**：`sock_mbath_toilet`（主卫，h=0.3）与 `sock_gbath_toilet`（客卫，h=0.3）均为马桶位低插座，另有 `sock_gbath_vanity`（h=1.0，洗手台前）——正好覆盖标准要求的两个停留位。**代价**：可插拔夜灯多为 PIR 而非存在感应，人在马桶前静止不动仍可能超时熄灭（标准 §4.3 未满足）；且属入住后按需补，不纳入一期预埋。
+- **数据改动**：`config/electrical.yaml` 删 4 个点位（**101 个**：−2 灯 −2 开关）；`config/electrical-topology.yaml` 删 2 条 control（**11→9**）、`lighting_bedrooms_bath` member 9→7、capacity ≤0.9kW→≤0.75kW→**≤0.6kW**、表头计数 105→101；`config/mep-hvac-coordination.yaml` 删 4 条卫浴照明路由（`strong-light-gbath` / `strong-light-mbath-panel` / `strong-light-mbath-switch` / `strong-light-gbath-switch`，**131 条**）；`config/render/overrides.yaml` 删 2 条 anchorY override；`docs/dressing-map.md` 两行改删除态；`docs/design-iterations/parent-room-study-swap-20261005/night-path-lighting-instance.md` 记录 R12 被部分推翻。
+- **现场反转条件**：① 若 S2-Air 面板的照明**不能独立于风暖开启**，则起夜开灯会顺带开风暖——下单前须核面板说明，不成立则至少一卫需保留独立光源；② 若量房发现浴霸线控面板无法在入门后便捷取得（R12 原文已挂此待确认项），则起夜兜底失效，需重新评估；③ 若业主改回独立平板灯，须恢复 4 个点位 + 2 条 control + 4 条路由，并按 300×300 模块重新选 SKU。
+- **决策人**：业主。

@@ -335,9 +335,9 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
   const right = point('sock_master_bed_r_head');
   const switchL = point('switch_master_bed_l');
   const switchN = point('switch_master_bed_north');
-  const lampL = point('light_master_wall_l');
-  const lampR = point('light_master_wall_r');
-  for (const p of [left, right, switchL, switchN, lampL, lampR]) {
+  // DEC-2026-10-12-R1：业主删主卧两盏明装床头壁灯（原 light_master_wall_l / light_master_wall_r）
+  // 改小米床头灯插电，取电位即 left / right 两个床头插座，故本组不再含壁灯点位。
+  for (const p of [left, right, switchL, switchN]) {
     assert.equal(p.wall, 'w_mb_east', `${p.id} must stay on w_mb_east`);
     assert.equal(p.wall_side, 'west', `${p.id} must keep wall_side west`);
     assert.equal(p.x, 4.20);
@@ -346,16 +346,6 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
   assert.equal(switchN.z, 6.288);
   assert.equal(right.z, 8.512);
   assert.equal(switchL.z, 8.598);
-  assert.equal(lampL.z, 6.245);
-  assert.equal(lampR.z, 8.555);
-  assert.equal(lampL.x, 4.2);
-  assert.equal(lampR.x, 4.2);
-  assert.equal(lampL.height, 1.35);
-  assert.equal(lampR.height, 1.35);
-  assert.equal(lampL.wall, 'w_mb_east');
-  assert.equal(lampR.wall, 'w_mb_east');
-  assert.equal(lampL.wall_side, 'west');
-  assert.equal(lampR.wall_side, 'west');
   // 两侧统一 380×350×500 候选柜分别服务北/南床头点位；两侧均为 172×86 暖白哑光一体双联框（北侧 DEC-2026-09-08-R1 补齐）。
   assert.equal(left.height, 0.75);
   assert.equal(right.height, 0.75);
@@ -380,14 +370,13 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
   const rightBox = runtimeElectricalAabb(right.id);
   const switchBox = runtimeElectricalAabb(switchL.id);
   const switchNBox = runtimeElectricalAabb(switchN.id);
-  const lampLBox = runtimeElectricalAabb(lampL.id);
-  const lampRBox = runtimeElectricalAabb(lampR.id);
+  // DEC-2026-10-12-R1：主卧两盏明装床头壁灯已删，原 lampLBox/lampRBox 及其
+  // 「壁灯不撞床 / 突出量 ≤190mm / 不得越过西侧完成面」断言一并移除；
+  // 床头阅读与起夜改由小米床头灯（插电，取 left/right 电位）承担。
 
   // 点位与对应床头柜中心轴对齐；两侧双联框两模块中心距86mm，边缘无缝相接。
   assert.ok(Math.abs((left.z! + switchN.z!) / 2 - (northCabinet.minZ + northCabinet.maxZ) / 2) < RUNTIME_EPS);
-  assert.ok(Math.abs(lampL.z! - (northCabinet.minZ + northCabinet.maxZ) / 2) < RUNTIME_EPS);
   assert.ok(Math.abs((right.z! + switchL.z!) / 2 - (southCabinet.minZ + southCabinet.maxZ) / 2) < RUNTIME_EPS);
-  assert.ok(Math.abs(lampR.z! - (southCabinet.minZ + southCabinet.maxZ) / 2) < RUNTIME_EPS);
   assert.ok(Math.abs(switchL.z! - right.z! - 0.086) < RUNTIME_EPS);
   assert.ok(Math.abs(switchN.z! - left.z! - 0.086) < RUNTIME_EPS);
   assert.ok(Math.abs(rightBox.maxZ - switchBox.minZ) < RUNTIME_EPS);
@@ -398,28 +387,20 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
   // 使用真实 runtime mesh，而非 FURNITURE_DIMS 推导：床 rail 包络 z[6.47,8.33]。
   assert.ok(bed.minZ - leftBox.maxZ >= 0.225 - RUNTIME_EPS, `north socket-to-bed gap ${bed.minZ - leftBox.maxZ}`);
   assert.ok(bed.minZ - switchNBox.maxZ >= 0.139 - RUNTIME_EPS, `north switch-to-bed gap ${bed.minZ - switchNBox.maxZ}`);
-  assert.ok(bed.minZ - lampLBox.maxZ >= 0.185 - RUNTIME_EPS, `north lamp-to-bed gap ${bed.minZ - lampLBox.maxZ}`);
   assert.ok(rightBox.minZ - bed.maxZ >= 0.139 - RUNTIME_EPS, `south socket-to-bed gap ${rightBox.minZ - bed.maxZ}`);
   assert.ok(switchBox.minZ - bed.maxZ >= 0.225 - RUNTIME_EPS, `south switch-to-bed gap ${switchBox.minZ - bed.maxZ}`);
-  assert.ok(lampRBox.minZ - bed.maxZ >= 0.185 - RUNTIME_EPS, `south lamp-to-bed gap ${lampRBox.minZ - bed.maxZ}`);
   // w_mb_east centerline x=4.20, default 120mm wall west finish face x=4.14.
-  // The complete lamp mesh must remain on the master-bedroom (-x) side.
-  assert.ok(lampLBox.maxX <= 4.14 + RUNTIME_EPS, `north lamp crosses west finish face: maxX=${lampLBox.maxX}`);
-  assert.ok(lampRBox.maxX <= 4.14 + RUNTIME_EPS, `south lamp crosses west finish face: maxX=${lampRBox.maxX}`);
-  assert.ok(lampLBox.minX < 4.14 - RUNTIME_EPS && lampRBox.minX < 4.14 - RUNTIME_EPS, 'wall lamps must project into the master bedroom');
-  assert.ok(4.14 - lampLBox.minX <= 0.190 + RUNTIME_EPS, `north lamp exceeds locked projection: ${4.14 - lampLBox.minX}`);
-  assert.ok(4.14 - lampRBox.minX <= 0.190 + RUNTIME_EPS, `south lamp exceeds locked projection: ${4.14 - lampRBox.minX}`);
-  for (const [id, box] of [[left.id, leftBox], [right.id, rightBox], [switchL.id, switchBox], [switchN.id, switchNBox], [lampL.id, lampLBox], [lampR.id, lampRBox]] as const) {
+  // 所有保留的床头电气点位必须留在主卧（-x）侧。
+  assert.ok(leftBox.maxX <= 4.14 + RUNTIME_EPS && rightBox.maxX <= 4.14 + RUNTIME_EPS, 'bedside electrical must not cross the west finish face');
+  for (const [id, box] of [[left.id, leftBox], [right.id, rightBox], [switchL.id, switchBox], [switchN.id, switchNBox]] as const) {
     assert.equal(aabbIntersects(box, bed), false, `${id} must not intersect the real bed mesh AABB`);
   }
 
   // 86面板/壁灯共轴布置在床头柜上方，采用立面净距：柜顶0.505m，86面板底约0.707m。
   assert.ok(leftBox.minY - northCabinet.maxY >= 0.202 - RUNTIME_EPS, `north cabinet-to-socket elevation gap ${leftBox.minY - northCabinet.maxY}`);
   assert.ok(switchNBox.minY - northCabinet.maxY >= 0.202 - RUNTIME_EPS, `north cabinet-to-switch elevation gap ${switchNBox.minY - northCabinet.maxY}`);
-  assert.ok(lampLBox.minY - northCabinet.maxY >= 0.805 - RUNTIME_EPS, `north cabinet-to-lamp elevation gap ${lampLBox.minY - northCabinet.maxY}`);
   assert.ok(rightBox.minY - southCabinet.maxY >= 0.202 - RUNTIME_EPS, `south cabinet-to-socket elevation gap ${rightBox.minY - southCabinet.maxY}`);
   assert.ok(switchBox.minY - southCabinet.maxY >= 0.202 - RUNTIME_EPS, `south cabinet-to-switch elevation gap ${switchBox.minY - southCabinet.maxY}`);
-  assert.ok(lampRBox.minY - southCabinet.maxY >= 0.805 - RUNTIME_EPS, `south cabinet-to-lamp elevation gap ${lampRBox.minY - southCabinet.maxY}`);
 });
 
 test('removed master-bedroom items stay removed; living room plant survives', () => {

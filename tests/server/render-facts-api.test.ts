@@ -131,12 +131,12 @@ describe('render facts API', () => {
     const app = createApp(() => facts);
     const response = await request(app).get('/api/electrical-topology').expect(200);
     assert.equal(response.body.circuits.length, 21); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2 外机专用回路；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）
-    assert.equal(response.body.controls.length, 11);
+    assert.equal(response.body.controls.length, 9); // DEC-2026-10-12-R2 删 control_mbath_light / control_gbath_light 后 11→9
     assert.equal(response.body.panels[0].id, 'panel_strong');
     assert.equal(response.body.panels[0].source_point_id, 'panel_strong_entry_left');
-    assert.equal(response.body.lint.counts.errors, 106); // fixture 只有 1 点位；R12 删除客卫 3 灯、R15 删除 NP-4b 后 110→106
+    assert.equal(response.body.lint.counts.errors, 98); // fixture 只有 1 点位，errors 主要是 topology 引用不存在点位的 unknown_point；R12 删除客卫 3 灯、R15 删除 NP-4b 后 110→106；R1 删两盏壁灯（-2）+ R2 删两卫平板灯与两个墙控开关（-4）后 106→98
     assert.equal(response.body.lint.counts.warnings, 24); // R12 删除的三灯不影响该 fixture 下的 warning 来源
-    assert.equal(response.body.lint.counts.coveredPoints, 75); // R12 删除客卫 3 灯、R15 删除 NP-4b 后覆盖点数 79→75
+    assert.equal(response.body.lint.counts.coveredPoints, 71); // R12 删除客卫 3 灯、R15 删除 NP-4b 后覆盖点数 79→75；R1 删两盏壁灯后 75→73；R2 删两卫平板灯后 73→71（switch 点不计 covered）
     assert.equal(response.body.circuits.filter((circuit: { purpose: string }) => circuit.purpose === 'ordinary_power').length, 7); // DEC-2026-10-03-R1：卧室缩为 master/parent_child/study 三路
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'control_target_missing'), false);
     assert.equal(response.body.lint.warnings.some((item: { code: string }) => item.code === 'electrical_parameters_pending'), false);

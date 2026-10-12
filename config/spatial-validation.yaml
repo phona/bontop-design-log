@@ -196,6 +196,7 @@ overlay_replacements:
 # host override 作为校验侧兼容镜像，检查实体墙、房间侧向和开口，禁止落到玻璃幕墙。
 # 实际灯具 mesh 法向/旋转本轮未覆盖；validateWallLampMount 的 normalDot
 # 仅用于纯函数反例，不代表 CLI 已验证 runtime 朝向（仍 site_pending）。
-lighting_host_overrides:
-  - { id: light_master_wall_l, wall: w_mb_east, wall_side: west }
-  - { id: light_master_wall_r, wall: w_mb_east, wall_side: west }
+# 2026-10-12 业主删主卧两盏明装床头壁灯（light_master_wall_l / light_master_wall_r）
+# 改小米床头灯插电，config 内已无 wall_lamp 点位，故本 override 列表为空；
+# 保留框架供将来新增壁灯类点位使用（新增时必须同时声明 wall/wall_side 并过实体墙校验）。
+lighting_host_overrides: []

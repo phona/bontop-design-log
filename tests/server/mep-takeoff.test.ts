@@ -54,8 +54,8 @@ test('线径解析只认显式字符串，猜不了', () => {
   assert.equal(parseWireSizeMm2('待厂家铭牌核验'), null);
 });
 
-test('端点全部可解析：137 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
-  assert.equal(resolution.total, 137);
+test('端点全部可解析：131 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
+  assert.equal(resolution.total, 131); // R1 删两条照明路由 137→135；R2 删四条卫浴照明路由 135→131
   assert.equal(resolution.unresolved, 0);
 });
 
@@ -147,7 +147,7 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   // DEC-2026-10-08-W01 给排水 15 条路线端点由内联坐标改绑点位 id + 新增 2 条路线，97→103。
   // 新增 routed 六点：shower_mbath / shower_gbath（v1 干管本来就画到它们，只是端点是内联坐标）、
   //   faucet_kitchen_purifier / drain_balcony_floor（本轮新支路）、water_entry / drain_riser_balcony（本轮新点位）。
-  assert.equal(takeoff.coverage.routedPointIds.length, 104); // W02：+water_heater 锚点
+  assert.equal(takeoff.coverage.routedPointIds.length, 98); // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删 strong-light-gbath/-mbath-panel/-mbath-switch/-gbath-switch 四条卫浴照明路由后 102→98
   assert.equal(takeoff.coverage.byType.socket?.routed, 34);
   assert.equal(takeoff.coverage.byType.faucet?.routed, 5);
   assert.equal(takeoff.coverage.byType.shower?.routed, 2);
@@ -159,7 +159,7 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   assert.equal(takeoff.coverage.byType.drain_riser?.routed, 4);
   assert.equal(takeoff.coverage.byType.water_supply?.routed, 1);
   assert.equal(takeoff.coverage.byType.water_heater?.routed, 1);
-  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 104);
+  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 98); // R1：电气点位 107→105、已路由 104→102；R2：电气点位 105→101、已路由 102→98
   // 未路由点位逐条显形，不进采购量
   assert.equal(takeoff.coverage.unroutedPoints.length, takeoff.coverage.unroutedPointIds.length);
 });
@@ -191,7 +191,7 @@ test('空调层与非水电设施被排除并带 reason', () => {
 });
 
 test('设备量：底盒/模数/断路器/穿墙孔', () => {
-  assert.equal(takeoff.devices.boxes, 77);
+  assert.equal(takeoff.devices.boxes, 75); // DEC-2026-10-12-R2 删 switch_mbath/switch_gbath 两个开关底盒后 77→75
   // 29 = ceil((21 回路 + 2P 进线 + 1 SPD) × 1.2)
   assert.equal(takeoff.devices.panelModules, Math.ceil((21 + 2 + 1) * 1.2));
   assert.equal(takeoff.devices.breakers.total, 21);

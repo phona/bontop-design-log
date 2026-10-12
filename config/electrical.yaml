@@ -193,7 +193,7 @@
   height: 0.75
   appearance: { style: warm_white_matte_modular, module: two_way_rocker, faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008, panel_group: { id: master_bed_south_double, role: south, center_spacing: 0.086, union_width: 0.172 } }
   neutral: true
-  note: "方案A 南侧床头吸顶灯双控：z=8.598、h=0.75；与 sock_master_bed_r_head（z=8.512）组成暖白哑光一体双联框，模块中心距86mm、并集宽约172mm，围绕床头柜轴线z=8.555居中；阅读壁灯使用灯具自带按键；施工条件仍 site_pending；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
+  note: "方案A 南侧床头吸顶灯双控：z=8.598、h=0.75；与 sock_master_bed_r_head（z=8.512）组成暖白哑光一体双联框，模块中心距86mm、并集宽约172mm，围绕床头柜轴线z=8.555居中；DEC-2026-10-12 业主删主卧两盏明装床头壁灯改小米床头灯插电，原「阅读壁灯使用灯具自带按键」随壁灯一并作废，床头阅读/起夜由床头灯承担（见 DEC-2026-10-12-R1）；施工条件仍 site_pending；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: switch_master_door
   room: master_bedroom
@@ -360,12 +360,12 @@
   room: bedroom_se
   wall: w_be_west
   wall_side: east
-  type: switch
+  type: switch_2way
   x: 13.40
   z: 7.0
   height: 1.3
   neutral: true
-  note: "客房灯光开关（2026-10-05 功能互换，id/位置不变）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
+  note: "客房灯光开关（2026-10-05 功能互换，id/位置不变）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）。2026-10-12 修正 type: switch → switch_2way——本点是 control_study_light（kind: switch_2way，switch_point_ids: [switch_study, switch_guest_bed]）的门口侧成员，原字段与拓扑矛盾；漏改会使 shared/mep-takeoff.ts 的 dualControlExtraM 少算本段双控额外芯线，且采购会买错一只一开单控装到双控位"
 
 - id: ac_panel_study
   room: bedroom_se
@@ -574,17 +574,6 @@
   position_status: pending
   note: "主卫马桶旁插座（智能盖预留；DEC-2026-09-08-R1 补声明 wall_side west；DEC-2026-10-03-R1：坐标保留不动但标 pending——与给水 toilet_mbath 同柱同高程 (2.60,1.50)，水口与 220V 插座撞线。水电交底前按马桶 SKU 把角阀与插座横向错开 ≥0.15m 或竖向分层，插座保持可拔插、不被水箱封死；带防溅盒（GB 55038 7.4.5 卫生间插座应加防溅措施））。skU/坑距/落地-壁挂见 pending-site-data #31；壁挂则给水+电+排污全进假墙"
 
-- id: switch_mbath
-  room: master_bedroom
-  wall: w_mbath_south
-  wall_side: south
-  type: switch
-  x: 2.10
-  z: 2.91
-  height: 1.3
-  neutral: true
-  note: "主卫灯光开关（2026-08-30 移至门洞东侧实体墙垛近门处；避开通长镜面、台盆及 d_mbath 门洞，插座向东错开；待量房确认）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
-
 - id: sock_mbath_batheheater
   room: master_bath
   type: socket
@@ -616,17 +605,6 @@
   height: 1.0
   count: 1
   note: "客卫开放洗漱区 vanity 插座·双联南位（DEC-2026-09-08-R1 业主拍板+1 位：吹风机/电动牙刷/剃须刀同用）；h=1.0 镜面下缘以下，带防溅盒；ordinary_power_service 回路成员；墙体挂载与给电按现场复核"
-
-- id: switch_gbath
-  room: guest_bath
-  wall: w_gbath_west_open_vanity
-  wall_side: east
-  type: switch
-  x: 5.60
-  z: 3.925
-  height: 1.3
-  neutral: true
-  note: "客卫灯光开关；移至 w_gbath_west_open_vanity 东侧墙面，位于开放洗漱区墙段 z[3.55,4.30] 中部，避开 d_gbath 门洞与 vanity；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
 
 - id: sock_gbath_batheheater
   room: guest_bath
@@ -980,30 +958,6 @@
   temp: 3000
   note: "主卧吸顶灯；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），主卧吸顶灯为设计声明→inferred；位置为设计值未实测"
   status: inferred
-- id: light_master_wall_l
-  room: master_bedroom
-  wall: w_mb_east
-  wall_side: west
-  type: wall_lamp
-  x: 4.2
-  z: 6.245
-  height: 1.35
-  temp: 3000
-  note: "方案A 北侧床头壁灯：z=6.245、h=1.35；与 master_bedside_cabinet_350_north 中心轴对齐，位于床头板北侧；哑黑隐藏转轴可调短筒，自带底部按键，完整朝主卧突出且最大墙面突出量≤190mm；实际SKU、东墙结构与固定节点仍 site_pending；状态依据：status 归入 topology 回路 lighting_bedrooms_bath（proposed），方案A 北床头壁灯→inferred；position_status 挂装 SKU/东墙结构/固定节点 site_pending（note 原文）→pending"
-  status: inferred
-  position_status: pending
-- id: light_master_wall_r
-  room: master_bedroom
-  wall: w_mb_east
-  wall_side: west
-  type: wall_lamp
-  x: 4.2
-  z: 8.555
-  height: 1.35
-  temp: 3000
-  note: "方案A 南侧床头壁灯：z=8.555、h=1.35；与 master_bedside_cabinet_350_south 中心轴对齐，位于床头板南侧；哑黑隐藏转轴可调短筒，自带底部按键，完整朝主卧突出且最大墙面突出量≤190mm；实际SKU、东墙结构与固定节点及南帘真实关系仍 site_pending；状态依据：status 归入 topology 回路 lighting_bedrooms_bath（proposed），方案A 南床头壁灯→inferred；position_status 挂装 SKU/东墙结构/南帘关系 site_pending（note 原文）→pending"
-  status: inferred
-  position_status: pending
 - id: light_parent_dome
   room: study
   type: dome
@@ -1072,27 +1026,6 @@
   temp: 4000
   note: "厨房平板灯（4000K 工作区例外）；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），厨卫 4000K 平板灯为设计声明→inferred；位置为设计值未实测"
   status: inferred
-- id: light_mbath_panel
-  room: master_bath
-  type: dome
-  x: 1.3
-  z: 1.98
-  height: 2.8
-  temp: 4000
-  note: "主卫平板灯（4000K；2026-08-25 隔墙北移 z=2.86 后移至卫内中心 z=1.98）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），主卫平板灯为设计声明→inferred；位置随隔墙北移取卫内中心，为设计值未实测"
-  status: inferred
-- id: light_gbath_panel
-  room: guest_bath
-  type: dome
-  x: 6.35
-  z: 2.78
-  height: 2.8
-  temp: 4000
-  note: "客卫平板灯（4000K；2026-08-29 按南马桶/北淋浴分区调整至内卫中部，待量房确认）；状态依据：status 归入 topology 回路 lighting_bedrooms_bath（proposed）→inferred；position_status 待量房确认（note 原文「待量房确认」）→pending"
-  status: inferred
-  position_status: pending
-
-# 主卧西侧地插（通用服务点，兼容便携投影）
 - id: sock_master_projector
   room: master_bedroom
   type: floor_socket

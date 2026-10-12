@@ -109,11 +109,14 @@ links:
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-120}
     mapping_status: mapped
-    # 灯具词汇表以 config/electrical.yaml 的 type 为准（pendant吊灯/dome吸顶/wall_lamp壁灯/
+    # 灯具词汇表以 config/electrical.yaml 的 type 为准（pendant吊灯/dome吸顶/
     # downlight筒灯/led_strip灯带/track_light明装轨道灯，另 night_light 夜灯）。
+    # 2026-10-12 DEC-2026-10-12-R1 删主卧两盏明装床头壁灯后，config 内已无 wall_lamp
+    # 类型点位，故从本 selector 移除（留着会让 assertSelector 拒掉、/api/project 500，
+    # 与历史上写 ceiling_light 同一失效模式）。
     # 不写 ceiling_light：本项目没有这个 type，吸顶灯一律用 dome（曾因写了 ceiling_light
     # 被 assertSelector 拒掉，导致 /api/project 500）。
-    scope: [{source: electrical, select: {types: [pendant, dome, wall_lamp, downlight, led_strip, track_light, night_light]}}]
+    scope: [{source: electrical, select: {types: [pendant, dome, downlight, led_strip, track_light, night_light]}}]
   - id: MODEL-PKG-125
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-125}
