@@ -92,12 +92,13 @@ materials:
     topic_id: "floor"
     alternative_group: "floor_tile"
     category: "地砖"
-    name: "600x1200木纹砖·步步高错缝（DEC-040 全屋定案，程序化 wood_plank 渲染）"
+    name: "600x1200木纹砖·步步高错缝（DEC-040 定案，2026-10-12 起不再是选型基准）"
     brand: "马可波罗 / 快环同档"
     model: "600×1200 浅暖橡木木纹砖（柔光/天鹅绒釉，型号待门店确认）"
     spec: "600x1200mm"
     unit: "片"
     price_per_unit: 75
+    price_status: "unverified_and_internally_inconsistent——本条 price_per_unit=75、price_source 写「65/片≈102元/㎡」，而 75÷0.72=104.2 元/㎡、65÷0.72=90.3 元/㎡，三个数互不相容；从未取得马可波罗/快环门店报价单。禁止把本条任何数值当作对比分母；需要大砖基准时用 config/tile-comparison.yaml 金意陶同店 600×1200（178片×115元/片，已报价）。"
     coverage_per_unit: 0.72
     loss_rate: 1.08
     calc_mode: "area"
@@ -109,7 +110,7 @@ materials:
     pros: ["长条比例像木地板", "错缝去方格感", "逐板明暗抖动+砖缝，渲染有真实拼板感", "工费/损耗与直铺同级，远低于人字拼"]
     cons: ["程序化纹理（非真扫描），型号/釉面待门店四问终审"]
     price_source: "暂按 800 木纹砖同档估算（65/片≈102元/㎡），门店报价后终核（DEC-2026-08-21-040）"
-    notes: "渲染改程序化 wood_plank 600×1200 工字错缝（2026-08-22：原 oak_veneer_02 PBR 为无缝平铺木皮，渲染成一片黄、无砖缝，弃用）；落地=600×1200 木纹砖错缝通铺+近色环氧彩砂美缝。DEC-040 推翻 DEC-024 人字拼后定为全屋默认。"
+    notes: "渲染改程序化 wood_plank 600×1200 工字错缝（2026-08-22：原 oak_veneer_02 PBR 为无缝平铺木皮，渲染成一片黄、无砖缝，弃用）；DEC-040 推翻 DEC-024 人字拼后定为全屋默认。**2026-10-12 业主改定 KT 200×1200 为当前选型基准**（见 floor_tile_kt_200x1200_01.baseline_note），本条自该日起不再是选型基准，仅保留为：(a) DEC-040 历史与渲染追溯；(b) 预算超支时回退大砖的备选。条目本身与其 appearance 不变，data/current-scheme.json 的 floor.default 已切走。价格三数不一致问题见 price_status。"
     appearance: { type: "wood_plank", color: "#d8bd93", pattern: "straight", plank_mm: [600, 1200], finish: "soft", seed: 42, grout_mm: 2, grout_color: "#d2b78d", tone_var: 0.3, grain_var: 0.5, seam: 0.35, roughness: 0.4 }
 
   - id: "wall_tile_01"
@@ -725,7 +726,7 @@ materials:
     topic_id: "floor"
     alternative_group: "floor_tile"
     category: "地砖"
-    name: "KT 200×1200木纹长条砖（方案比较候选）"
+    name: "KT 200×1200木纹长条砖（当前选型基准 2026-10-12）"
     brand: "KT"
     model: "200×1200mm 木纹砖（具体系列、型号、色号待门店确认）"
     spec: "200x1200mm"
@@ -739,8 +740,9 @@ materials:
     sample_acquired: false
     sample_date: null
     status: "pending_verification"
-    pros: ["200×1200窄长木纹比例，可与约900×150方案直接比较", "业主提供了单片报价"]
-    cons: ["具体SKU、色号及釉面未确认", "门店片数与项目统一面积/损耗口径待核", "铺贴及辅材费用未确认"]
+    pros: ["200×1200窄长木纹比例，可与约900×150方案直接比较", "业主提供了单片报价", "三候选同口径落地价中最低（见 tile-comparison.yaml same_store_landed_comparison）", "业主 2026-10-06 渲染对比后判定长条花面更丰富、直铺效果优于大砖"]
+    cons: ["具体SKU、色号及釉面未确认", "门店片数与项目统一面积/损耗口径待核", "铺贴及辅材费用未确认", "carton_size_status: unknown，箱规未知前不能按 516 片下单", "KT 报价单的分房墙砖量与模型不符（主卫超约25%、客卫超约14%、厨房少约5.52㎡），选 KT 须重算墙砖量"]
+    baseline_note: "2026-10-12 业主定 KT 200×1200 为当前选型基准（原话：先按 KT 200×1200 做分母，后面方案有更好的方案再说）。本条为可推翻的工作基准，不是终选：出现更优方案时按 docs/decisions/ 流程显式废止并登记新基准，不静默翻案。推翻对象：DEC-2026-08-01-040（600×1200 全屋定案为默认地面）——推翻理由是该结论只有 65 元/片≈102 元/㎡ 的估算价、无门店报价单支撑，而 KT 有手写报价单原件归档（docs/design-iterations/tile-plank-comparison-20261006/evidence/kt-quote-original.jpg）。DEC-040 的渲染与历史保留追溯，不作为当前基准。落地价依据见 config/tile-comparison.yaml；诺贝尔方向降为「预算超支时下探一档」的备选，不作基准。"
     price_source: "业主提供的KT门店报价（2026-10-06，非成交价；516片×29元=14,964元）"
     notes: "当前仅用于窄长木纹砖方案的视觉与材料预算比较，不代表最终选定。门店报价200×1200、516片、29元/片，材料小计14,964元。渲染沿用项目中性浅暖木纹占位色，只比较砖幅比例与直铺缝线，不代表门店实物颜色、纹理或表面效果。报价数量须按房间净面积与统一损耗率复核。"
     appearance: { type: "wood_plank", color: "#d8bd93", pattern: "straight", plank_mm: [200, 1200], finish: "soft", seed: 42, grout_mm: 2, grout_color: "#d2b78d", tone_var: 0.3, grain_var: 0.5, seam: 0.35, roughness: 0.4 }
