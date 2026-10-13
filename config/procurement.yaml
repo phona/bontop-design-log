@@ -333,21 +333,21 @@ materials:
     unit: 套
     notes: ["P0补录，到店确认型号价格"]
   - id: floor_pbr_tile_612
-    name: "600x1200木纹砖·步步高错缝（上轮设计基线）"
+    name: "600x1200木纹砖·步步高错缝（历史基线，2026-10-12 起不再是选型基准）"
     room: null
     category: 地砖
     current_stage: selection
     waste_rate: 1.08
     unit: 片
-    notes: ["DEC-041 上轮全屋地面基线（入户花园开发商已铺不计）；2026-10-06 两款窄长木纹砖进入比较，未最终定标；暂估价 75/片"]
+    notes: ["DEC-041 上轮全屋地面基线（入户花园开发商已铺不计）；2026-10-12 业主改定 KT 200×1200 为当前选型基准，本条降为：(a) DEC-040 历史与渲染追溯；(b) 预算超支时回退大砖的备选。data/current-scheme.json 的 floor.default 已切走。价格三数互不相容（price_per_unit=75 vs price_source「65/片≈102元/㎡」），从未取得马可波罗/快环门店报价单，禁止用作对比分母，详见 config/materials.yaml 该条目 price_status"]
   - id: floor_tile_kt_200x1200_01
-    name: "KT 200x1200木纹长条砖（比较候选）"
+    name: "KT 200x1200木纹长条砖（当前选型基准 2026-10-12）"
     room: null
     category: 地砖
     current_stage: selection
     waste_rate: 1.08
     unit: 片
-    notes: ["业主上传2026-10-06手写报价：516片×29元；SKU/花色/箱规与全安装费用待核，具体报价行见config/tile-comparison.yaml"]
+    notes: ["2026-10-12 业主定为当前选型基准（可推翻的工作基准，不是终选；出现更优方案须按 docs/decisions/ 流程显式废止并登记新基准），推翻 DEC-2026-08-01-040；data/current-scheme.json 的 floor.default 已切到本条。业主上传2026-10-06手写报价：516片×29元=14,964元。SKU/花色/箱规与全安装费用待核；carton_size unknown 前不能按 516 片下单；报价单分房墙砖量与模型不符（主卫超约25%、客卫超约14%、厨房少约5.52㎡），选 KT 须重算墙砖量。同口径落地价与美缝缝长模型见 config/tile-comparison.yaml"]
   - id: floor_tile_jyt_900x150_01
     name: "金意陶约900x150木纹长条砖（比较候选）"
     room: null
