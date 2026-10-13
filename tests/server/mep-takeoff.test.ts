@@ -122,7 +122,7 @@ test('层长双实现交叉验证（折线 + 竖向下引段）', () => {
 test('导线按 topology wire_size 分桶，不按 id 猜', () => {
   const bySize = new Map(takeoff.wire.bySize.map((bucket) => [bucket.wireSize, bucket]));
   assert.deepEqual([...bySize.keys()].sort(), ['1.5', '2.5', '4.0']);
-  // 21 回路 = 1.5mm²×5（照明）+ 2.5mm²×14 + 4.0mm²×2（外机/厨房）。
+  // 20 回路 = 1.5mm²×4（照明）+ 2.5mm²×14 + 4.0mm²×2（外机/厨房）。
   // 删除 allowance 后（DEC-2026-10-07-M03），**只有画了路由的回路才进导线量**：
   // 某个回路的点位全部未路由时该回路不出现在桶里（无管长即无导线），故 2.5mm² 现为 13 个。
   assert.equal(bySize.get('1.5')!.circuits.length, 4); // DEC-2026-10-13-R5 删 lighting_tv_ambient（1.5mm² 照明回路）后 5→4

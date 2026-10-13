@@ -42,9 +42,9 @@ specs:
     fittings: { material: '弯头/直接/锁母', spec: '同品牌同系列', rule: '尽量大弧弯，保证以后抽线' }
     boxes:    { material: 86型阻燃底盒, spec: '加深型优先', note: '智能开关位尤其要深盒——但剪力墙位用40mm薄盒，见 reversal_conditions 第2条' }
   distribution:
-    panel:    { material: 暗装配电箱, spec: '回路数 + 20%左右余量', note: '本项目实算 29 模数（21回路+2P进线+SPD×1.2），390mm 单排装不下，须双排或换箱' }
+    panel:    { material: 暗装配电箱, spec: '回路数 + 20%左右余量', note: '本项目实算 28 模数（20回路+2P进线+SPD×1.2），390mm 单排装不下，须双排或换箱' }
     main_breaker: { material: 断路器, spec: '根据入户容量', note: '不能只看“63A越大越好”；pending-site-data 第45项（相数/需用系数）' }
-    branch_protection: { material: 'RCBO/漏保', spec: '按回路配置', note: '厨房、卫生间、插座等重点做漏保；本项目16/21回路带漏保' }
+    branch_protection: { material: 'RCBO/漏保', spec: '按回路配置', note: '厨房、卫生间、插座等重点做漏保；本项目16/20回路带漏保' }
     spd:      { material: SPD, spec: '2级', note: '开发商原箱若无则加；与换箱决策联动' }
   weak_current:
     cable:    { material: '六类非屏蔽CAT6', spec: '纯铜 23AWG 级', note: '家庭不必全屋超六类；本项目 net_gateway 段需2根（WAN+LAN）' }

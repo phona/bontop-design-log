@@ -1,7 +1,7 @@
 /**
  * 水电子系统 · 算量与成本数据底座（L2 → L3 之间的唯一派生层）。
  *
- * 为什么需要它：PKG-040 的 9 个 COST 全是泛称（"给水管改造""电线线管底盒"），111 个点位 + 21 回路
+ * 为什么需要它：PKG-040 的 9 个 COST 全是泛称（"给水管改造""电线线管底盒"），100 个点位 + 20 回路
  * 从来没有派生出「要买多少米线、多少米管、几个模数」，于是「15,000 够不够」无法对账，施工方
  * 报一口价也无从核验。本模块把已有的**声明**（点位坐标、回路成员、路由、管径/冷热字段）派生为**量**。
  *
@@ -331,7 +331,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   for (const point of [...electrical, ...plumbing]) if (point.height !== undefined) pointHeights.set(point.id, { height: point.height });
 
   // ---------- 点位 → 回路 的三条声明通道（都不猜）----------
-  // ① topology.member_point_ids：回路成员（79/111 个点位）
+  // ① topology.member_point_ids：回路成员（79/100 个点位）
   const pointCircuit = new Map<string, string>();
   for (const circuit of circuits) {
     for (const member of circuit.member_point_ids ?? []) {

@@ -106,7 +106,7 @@ quotes:
       panel:
         per_unit: 12
         unit: 元/模
-        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜21 回路 + 2P 进线 + 浪涌需双排 → 29 模数；单排约 16 位可用装不下（pending-site-data 第30项）
+        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜20 回路 + 2P 进线 + 浪涌需双排 → 28 模数；单排约 16 位可用装不下（pending-site-data 第30项）
       cat6:
         per_unit: 2.78
         unit: 元/m
@@ -242,7 +242,7 @@ quotes:
       panel:
         per_unit: 12
         unit: 元/模
-        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜21 回路 + 2P 进线 + 浪涌需双排 → 29 模数；单排约 16 位可用装不下（pending-site-data 第30项）
+        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜20 回路 + 2P 进线 + 浪涌需双排 → 28 模数；单排约 16 位可用装不下（pending-site-data 第30项）
       cat6:
         per_unit: 2.78
         unit: 元/m
@@ -378,7 +378,7 @@ quotes:
       panel:
         per_unit: 12
         unit: 元/模
-        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜21 回路 + 2P 进线 + 浪涌需双排 → 29 模数；单排约 16 位可用装不下（pending-site-data 第30项）
+        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜20 回路 + 2P 进线 + 浪涌需双排 → 28 模数；单排约 16 位可用装不下（pending-site-data 第30项）
       cat6:
         per_unit: 2.78
         unit: 元/m
@@ -514,7 +514,7 @@ quotes:
       panel:
         per_unit: 12
         unit: 元/模
-        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜21 回路 + 2P 进线 + 浪涌需双排 → 29 模数；单排约 16 位可用装不下（pending-site-data 第30项）
+        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜20 回路 + 2P 进线 + 浪涌需双排 → 28 模数；单排约 16 位可用装不下（pending-site-data 第30项）
       cat6:
         per_unit: 2.78
         unit: 元/m
@@ -650,7 +650,7 @@ quotes:
       panel:
         per_unit: 12
         unit: 元/模
-        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜21 回路 + 2P 进线 + 浪涌需双排 → 29 模数；单排约 16 位可用装不下（pending-site-data 第30项）
+        scope_note: 双排暗装｜配电箱箱体（按模数计价）｜页面 ¥12/1模｜derived_estimate｜20 回路 + 2P 进线 + 浪涌需双排 → 28 模数；单排约 16 位可用装不下（pending-site-data 第30项）
       cat6:
         per_unit: 2.78
         unit: 元/m

@@ -497,7 +497,7 @@ facts:
         reason: 权威源自身的轮次叙述（25 路→19 路→20 路）为时间序留档；回路数以 circuits.length 为唯一权威
       - path: config/acceptance.yaml
         pattern: '路'
-        reason: 验收单复述「本户 21 路」的箱体与分路判据；第 283 行「21 条回路」由上面的 mirror 单列校验（DEC-2026-10-05-R3 浴霸拆每卫一路 20→21，旧文本「19 条回路」已随该轮同步改写）
+        reason: 验收单复述「本户 20 路」的箱体与分路判据；第 283 行「20 条回路」由上面的 mirror 单列校验（DEC-2026-10-05-R3 浴霸拆每卫一路 20→21，旧文本「19 条回路」已随该轮同步改写）
       - path: config/hvac.yaml
         pattern: '路'
         reason: hvac.yaml 只在 notes 里复述拓扑结论（19→20 / 第 20 路），非回路权威源
@@ -512,7 +512,7 @@ facts:
         reason: house.yaml mep_strategy 复述 R2 结论（外机供电第 20 路），权威在 topology circuits
       - path: docs/pending-site-data.md
         pattern: '第\s*\d+\s*路'
-        reason: 量房清单 #39 复述 R2 结论；#30 的「21 路 + 2P」由上面的 mirror 单列校验（DEC-2026-10-05-R3 浴霸拆每卫一路 20→21）
+        reason: 量房清单 #39 复述 R2 结论；#30 的「20 路 + 2P」由上面的 mirror 单列校验（DEC-2026-10-05-R3 浴霸拆每卫一路 20→21）
       - path: docs/mep-construction-guidance.md
         pattern: '合并至'
         reason: 施工指导表格复述历史合并口径（25 路合并至 20 路），权威在 topology

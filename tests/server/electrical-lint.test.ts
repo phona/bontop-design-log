@@ -107,7 +107,7 @@ test('lint keeps historical uncovered points as warnings and maps circuit facts'
 
 test('every socket-bearing circuit must declare ≤30mA RCD protection (GB 55038-2025 7.4.3-1)', () => {
   const topology = parseElectricalTopology(raw, points) as ElectricalTopology;
-  // 合规方向：21 路中 16 路含 socket 类成员，breaker 全是 "CxxA+漏保" 写法 → 不应命中
+  // 合规方向：20 路中 16 路含 socket 类成员，breaker 全是 "CxxA+漏保" 写法 → 不应命中
   const socketCircuits = topology.circuits.filter((circuit) => circuit.member_point_ids.some((id) => isSocket(pointMap.get(id))));
   assert.equal(socketCircuits.length, 16);
   const compliant = lintElectricalTopology(topology, points);
