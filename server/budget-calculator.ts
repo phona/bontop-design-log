@@ -10,6 +10,7 @@ import type {
   BudgetCategoryRaw,
   PhaseId,
   CurtainPoint,
+  DesignOption,
 } from '../shared/types.js';
 import { computeCeilingTakeoff, type CeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import { loadCeilingConfig } from './config-loader.js';
@@ -293,6 +294,56 @@ const QUANTITY_FORMULAS: Record<string, (room: RoomLayout) => number> = {
   fixtureCount: () => 1,
 };
 
+/**
+ * 候选价门控（2026-10-13 阶段 1：**纯加法，零行为变化**）。
+ *
+ * 背景：data/current-scheme.json 当前选中的 41 条材料里 39 条是 `candidate` /
+ * `pending_verification`（到店未确认），它们全额进 `totalActual`，而快照里没有任何字段
+ * 能让消费者看出这件事——`server/project-catalog.ts` 的 `getDataPrecision()` 早就统计
+ * 得出这个数并经 MCP `get_data_confidence` 暴露，`/api/budget` 却按全款计。
+ *
+ * 做法：把 `categoryAutoActual`（材料侧金额）按**材料 status** 拆成两份挂在
+ * `BudgetCategory.verifiedActual` / `.candidateActual` 上。`actual` / `autoActual` /
+ * `totalActual` 的口径本阶段一律不动；口径变更（candidate 出 actual）是独立的阶段 5，
+ * 须配 baseline 前后对照，否则 budget-calculator / budget-api / paint-comparison-api
+ * 的 20+ 处金额锚点会同时红、且没人说得清是哪一条该动。
+ *
+ * 判据只取 `option.data.status`：`materialToOption()` 已把整条 MaterialItem 摊进 `data`
+ * （server/project-catalog.ts:51-59），所以**不新增 `DesignOption.status` 顶层字段**——
+ * 同一事实存两处必然漂移，违反项目铁律。
+ */
+const VERIFIED_MATERIAL_STATUSES: ReadonlySet<string> = new Set([
+  'measured',
+  'confirmed',
+  'quoted_sheet',
+  'contracted',
+  'provided_by_developer',
+  'user_budget_confirmed',
+]);
+
+/**
+ * 合成选项白名单：这些 topic 的 option 不是 materials.yaml 条目，`data` 里**没有** status。
+ * 当前只有 `hvac`——price 来自 project-catalog.ts 的硬编码构造 +
+ * shared/houseData.ts 的七套 invented 报价表（阶段 2/3 换成 config/hvac.yaml）。
+ *
+ * 没有取证态字段 = 价格未取证 → 一律归「候选」。这里必须**显式留名**：新增合成选项得
+ * 先在这里表态，否则 `autoActualBucket()` 抛错——绝不静默掉进默认档，那会让「已取证」
+ * 的口径被悄悄注水。
+ */
+const SYNTHETIC_UNVERIFIED_TOPICS: ReadonlySet<string> = new Set(['hvac']);
+
+/** 一条材料金额的门控归属：verified（已取证）/ candidate（候选、待核验或无 status）。 */
+export function autoActualBucket(option: DesignOption | undefined, topicId: string): 'verified' | 'candidate' {
+  const status = (option?.data as { status?: unknown } | undefined)?.status;
+  if (typeof status === 'string') {
+    return VERIFIED_MATERIAL_STATUSES.has(status) ? 'verified' : 'candidate';
+  }
+  if (SYNTHETIC_UNVERIFIED_TOPICS.has(topicId)) return 'candidate';
+  throw new Error(
+    `[budget-calculator] topic "${topicId}" 的选项 ${option?.id ?? '(缺失)'} 没有 data.status，无法判定候选价门控归属；合成选项须显式登记到 SYNTHETIC_UNVERIFIED_TOPICS`,
+  );
+}
+
 export class BudgetCalculator {
   private paintScopeCache: Map<string, number> | null = null;
 
@@ -429,7 +480,28 @@ export class BudgetCalculator {
     const baseCategories = this.catalog.getBudgetCategories();
 
     const allLineItems: BudgetLineItem[] = [];
-    const categoryAutoActual = new Map<string, number>();
+    /**
+     * 材料侧金额的候选价门控累加器：两份之和恒等于原先那个单一 number 的值（见文件头部
+     * VERIFIED_MATERIAL_STATUSES 的说明）。只拆材料、不碰人工——`computeLabor` 与
+     * `manualActual` 都没有 status 可判，继续只进 `actual`。
+     */
+    const categoryAutoActual = new Map<string, { verified: number; candidate: number }>();
+
+    /** 累加一条材料金额：同一笔 cost 按 status 分流，`autoActual` 由两份相加得出。 */
+    const addAutoActual = (
+      categoryKey: string,
+      topicId: string,
+      cost: number,
+      option: DesignOption | undefined
+    ): void => {
+      const entry = categoryAutoActual.get(categoryKey) ?? { verified: 0, candidate: 0 };
+      if (autoActualBucket(option, topicId) === 'verified') {
+        entry.verified += cost;
+      } else {
+        entry.candidate += cost;
+      }
+      categoryAutoActual.set(categoryKey, entry);
+    };
 
     for (const li of lineItems) {
       if (!isBudgetTopicIncluded(li.topic, phase)) continue;
@@ -457,13 +529,12 @@ export class BudgetCalculator {
           lossRate: 1,
           cost: option.price_per_unit,
         });
-        categoryAutoActual.set(categoryKey, (categoryAutoActual.get(categoryKey) ?? 0) + option.price_per_unit);
+        addAutoActual(categoryKey, li.topic, option.price_per_unit, option);
         continue;
       }
 
       if (calcMode === 'count') {
         const typeToTopic = this.rulesConfig.budget?.furnishingTypeToTopic ?? {};
-        let totalCost = 0;
         for (const roomId of Object.keys(this.catalog.getFurnishingsForPhase(phase))) {
           const counts = this.catalog.getFurnishingCounts(roomId, phase);
           let qty = 0;
@@ -484,9 +555,11 @@ export class BudgetCalculator {
             quantity: qty, unitPrice: option.price_per_unit,
             coveragePerUnit: 1, lossRate: 1, cost,
           });
-          totalCost += cost;
+          // 门控必须逐房判：roomOverrides 能让同一 topic 在不同房间用不同 option
+          // （如 master_bedroom 的 wardrobe_north_950_custom_01，price 0 / candidate），
+          // 拿到循环外按 default 判一次就会把覆盖房的取证态判错。
+          addAutoActual(categoryKey, li.topic, cost, option);
         }
-        categoryAutoActual.set(categoryKey, (categoryAutoActual.get(categoryKey) ?? 0) + totalCost);
         continue;
       }
 
@@ -525,10 +598,7 @@ export class BudgetCalculator {
             coveragePerUnit, lossRate, cost,
           });
 
-          categoryAutoActual.set(
-            categoryKey,
-            (categoryAutoActual.get(categoryKey) ?? 0) + cost
-          );
+          addAutoActual(categoryKey, li.topic, cost, option);
         }
       } else {
         const optionId = scheme.selections[li.topic]?.default;
@@ -551,10 +621,7 @@ export class BudgetCalculator {
           cost,
         });
 
-        categoryAutoActual.set(
-          categoryKey,
-          (categoryAutoActual.get(categoryKey) ?? 0) + cost
-        );
+        addAutoActual(categoryKey, li.topic, cost, option);
       }
     }
 
@@ -563,13 +630,19 @@ export class BudgetCalculator {
     ) as { categories: Record<string, BudgetCategoryRaw>; project_ceiling?: number; status?: string };
 
     const categories: BudgetCategory[] = baseCategories.map((bc) => {
-      const autoActual = categoryAutoActual.get(bc.key) ?? 0;
+      const split = categoryAutoActual.get(bc.key);
+      const verifiedActual = split?.verified ?? 0;
+      const candidateActual = split?.candidate ?? 0;
       return {
         key: bc.key,
         budget: bc.budget,
-        actual: bc.actual + autoActual,
+        actual: bc.actual + verifiedActual + candidateActual,
         manualActual: bc.actual,
-        autoActual,
+        // autoActual 由两份相加得出，使 `verifiedActual + candidateActual === autoActual`
+        // 成为结构性不变量（而非恰好凑上的巧合），下游可以无条件断言它。
+        autoActual: verifiedActual + candidateActual,
+        verifiedActual,
+        candidateActual,
         status: bc.status as BudgetCategory['status'],
         notes: bc.notes,
       };

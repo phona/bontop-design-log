@@ -432,6 +432,26 @@ export interface BudgetCategory {
   notes: string;
   /** 待报价的人工计价行：数量已实算，rate 未定，因此未计入 actual（显形而非静默归零）。 */
   pendingLabor?: Array<{ area: string; quantity: number; unit: string; reason: string }>;
+  /**
+   * 候选价门控（2026-10-13 阶段 1，**纯加法**）：`autoActual` 中 status 属于
+   * measured / confirmed / quoted_sheet / contracted / provided_by_developer /
+   * user_budget_confirmed 的材料金额，即「已取证」的那一半。
+   * 其余全部进 `candidateActual`：candidate / pending_verification / estimated /
+   * owner_reported / rejected，以及没有 status 字段的合成选项（当前只有 hvac）。
+   *
+   * 为什么挂在科目上而不是 snapshot 顶层：OverviewMenu 的逐科渲染与 MCP 的
+   * categoryDeltas 要能直接复用，才能回答「哪个科目超支是候选价造成的」。
+   *
+   * 不变量：`verifiedActual + candidateActual === autoActual`。人工（computeLabor）与
+   * 人工录入（manualActual）都不进这两档，只进 `actual`。
+   *
+   * optional 是阶段 1 的接口约束：消费方（含 app 侧测试夹具）可以继续只造原有字段。
+   * 本阶段**不动** `actual` / `autoActual` / `totalActual` 的口径——把 candidate 剔出
+   * actual 是阶段 5 的独立一次改动，须配 baseline 前后对照。
+   */
+  verifiedActual?: number;
+  /** 见 `verifiedActual`：未取证（候选/待核验/无 status）的材料金额，先让它显形。 */
+  candidateActual?: number;
 }
 
 export interface BudgetAttribution {

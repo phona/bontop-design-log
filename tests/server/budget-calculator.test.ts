@@ -2,11 +2,11 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
-import { BudgetCalculator } from '../../server/budget-calculator.js';
+import { BudgetCalculator, autoActualBucket } from '../../server/budget-calculator.js';
 import { loadExtraFloorRegionArea } from '../../server/budget-calculator.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { RuleEngine } from '../../server/rule-engine.js';
-import type { CurrentScheme, DesignRulesConfig, FurnishingsYaml } from '../../shared/types.js';
+import type { CurrentScheme, DesignOption, DesignRulesConfig, FurnishingsYaml } from '../../shared/types.js';
 import { parseOverlay } from '../../server/overlay-merge.js';
 
 const rulesConfig: DesignRulesConfig = {
@@ -925,5 +925,103 @@ describe('BudgetCalculator', () => {
     for (const deferred of ['dishwasher', 'water_purifier', 'dryer']) {
       assert.equal(snapshot.lineItems.some((item) => item.topic === deferred), false, `${deferred} must stay in phase 2`);
     }
+  });
+
+  // === 候选价门控（2026-10-13 阶段 1：纯加法，零行为变化）===
+  // 背景：data/current-scheme.json 当前选中的 41 条材料里 39 条是 candidate /
+  // pending_verification（到店未确认），它们全额进 totalActual，而快照里没有任何字段
+  // 能让消费者看出这件事——catalog.getDataPrecision() 早就统计得出这个数并经 MCP
+  // get_data_confidence 暴露，/api/budget 却按全款计。阶段 1 只让问题显形：
+  // verifiedActual / candidateActual 两份之和恒等于 autoActual，actual 口径不动
+  // （口径变更是阶段 5，须配 baseline 前后对照）。
+  it('候选价门控：verifiedActual + candidateActual === autoActual，且候选价显形', () => {
+    const catalog = ProjectCatalog.load('.');
+    const rules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const scheme = JSON.parse(readFileSync('data/current-scheme.json', 'utf8')) as CurrentScheme;
+    const snapshot = new BudgetCalculator(catalog, rules).calculate(scheme);
+
+    for (const cat of snapshot.categories) {
+      assert.equal(typeof cat.verifiedActual, 'number', `${cat.key} 必须显式给出 verifiedActual，不能是 undefined 漏掉`);
+      assert.equal(typeof cat.candidateActual, 'number', `${cat.key} 必须显式给出 candidateActual，不能是 undefined 漏掉`);
+      assert.equal(
+        cat.verifiedActual! + cat.candidateActual!,
+        cat.autoActual,
+        `${cat.key}: verifiedActual + candidateActual 必须等于 autoActual`,
+      );
+    }
+    // 人工（computeLabor）与人工录入（manualActual）都不进这两档：瓦工、漆工只进 actual，
+    // 所以有人工的科目必须是 actual 严格大于两份之和。
+    for (const key of ['masonry', 'painting']) {
+      const cat = snapshot.categories.find((c) => c.key === key);
+      assert.ok(cat, `${key} 科目必须存在`);
+      assert.ok(
+        cat.actual > cat.verifiedActual! + cat.candidateActual!,
+        `${key} 的人工费不得进门控两份（actual=${cat.actual}，两份之和=${cat.verifiedActual! + cat.candidateActual!}）`,
+      );
+    }
+
+    const verifiedTotal = snapshot.categories.reduce((sum, c) => sum + (c.verifiedActual ?? 0), 0);
+    const candidateTotal = snapshot.categories.reduce((sum, c) => sum + (c.candidateActual ?? 0), 0);
+    const autoTotal = snapshot.categories.reduce((sum, c) => sum + c.autoActual, 0);
+    assert.equal(verifiedTotal + candidateTotal, autoTotal, '两份之和回到 autoActual 合计');
+    assert.ok(candidateTotal > 0, `候选价必须显形（当前 candidateActual 合计 ${candidateTotal}，若为 0 说明未取证全额入账的老问题又隐身了）`);
+    // 纯加法钉子：145626.63013333332 是 2026-10-13 阶段 1 动手前实测的 baseline
+    // （current-scheme.json + config/design-rules.yaml，full 相位）。门控只做拆分，
+    // 一个字节都不许改这个数。
+    assert.equal(snapshot.totalActual, 145626.63013333332, '阶段 1 不得改变 totalActual');
+  });
+
+  it('候选价门控：hvac 的 29000 被显式归类，不是 undefined 漏掉', () => {
+    // hvac 选项由 project-catalog.ts 硬编码构造，data 来自 shared/houseData.ts 的七套
+    // invented 报价表，**没有 status 字段**。它必须显式归「候选」（价格未取证），
+    // 不能掉进默认档。两条入口都要覆盖：project design-rules 的 hvac 是 calcMode:'fixed'，
+    // 而本文件顶部 rulesConfig 的 hvac 无 calcMode 且 topic.perRoom=false → 走非 perRoom 分支。
+    const catalog = ProjectCatalog.load('.');
+    const projectRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const scheme = JSON.parse(readFileSync('data/current-scheme.json', 'utf8')) as CurrentScheme;
+
+    for (const rules of [projectRules, rulesConfig]) {
+      const snapshot = new BudgetCalculator(catalog, rules).calculate(scheme);
+      const hvac = snapshot.categories.find((c) => c.key === 'hvac');
+      assert.ok(hvac);
+      assert.equal(hvac.autoActual, 29000, '阶段 1 不得改动任何既有数值');
+      assert.notEqual(hvac.candidateActual, undefined, 'hvac 必须被显式归类，不能是 undefined');
+      assert.equal(hvac.candidateActual, 29000, 'hvac 无 status → 价格未取证 → 归候选');
+      assert.equal(hvac.verifiedActual, 0, 'hvac 无 status → 不得算进已取证');
+    }
+  });
+
+  it('候选价门控：autoActualBucket 按 status 分类，合成选项与未登记 topic 显式处置', () => {
+    const catalog = ProjectCatalog.load('.');
+    const option = (id: string, status: unknown): DesignOption => ({
+      id,
+      topicId: 't',
+      name: id,
+      description: '',
+      price_per_unit: 0,
+      coverage_per_unit: 1,
+      loss_rate: 1,
+      data: status === undefined ? {} : { status },
+    });
+
+    // 已取证的 6 个 status（与 BudgetCategory.verifiedActual 的注释同名单）
+    for (const status of ['measured', 'confirmed', 'quoted_sheet', 'contracted', 'provided_by_developer', 'user_budget_confirmed']) {
+      assert.equal(autoActualBucket(option('x', status), 'any_topic'), 'verified', `${status} 属已取证`);
+    }
+    // 其余一律归候选。rejected 也归候选而不是剔除：选型里出现它本身就是异常，宁可显形。
+    for (const status of ['candidate', 'pending_verification', 'estimated', 'owner_reported', 'rejected']) {
+      assert.equal(autoActualBucket(option('x', status), 'any_topic'), 'candidate', `${status} 属未取证`);
+    }
+    // 两个 price 0 的真实条目：归位必须按 status 判，不能因为价格是 0 就混过去
+    const wardrobe = catalog.getOption('wardrobe', 'wardrobe_north_950_custom_01');
+    assert.equal(wardrobe?.price_per_unit, 0);
+    assert.equal(autoActualBucket(wardrobe, 'wardrobe'), 'candidate', '主卧 950 定制衣柜 price 0 / candidate → 候选（待现场/厂家核价）');
+    const entryDoor = catalog.getOption('entry_door', 'entry_door_01');
+    assert.equal(entryDoor?.price_per_unit, 0);
+    assert.equal(autoActualBucket(entryDoor, 'entry_door'), 'verified', '入户门开发商已装 / provided_by_developer → 已取证（无需采购）');
+    // hvac：白名单里的合成选项，无 status → 候选
+    assert.equal(autoActualBucket(catalog.getOption('hvac', 'A2'), 'hvac'), 'candidate', 'hvac 无 status 字段 → 未取证');
+    // 未登记的 status-less 合成选项必须抛错：不允许静默掉进任何一档
+    assert.throws(() => autoActualBucket(option('ghost', undefined), 'ghost_topic'), /没有 data\.status/);
   });
 });
