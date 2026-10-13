@@ -393,7 +393,15 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // (d) 剪力墙并行 8 → 14（2026-10-07 M04/M05 补路由贴剪力墙竖槽，见各条 reason 扫筋声明）
   const masterParallel = result.warnings.find((i) => i.code === 'shear_wall_parallel_route' && i.routeId === 'strong-power-master')!;
   assert.match(masterParallel.message, /parallel to shear wall w_mb_east for 3\.60m at 0\.10m/);
-  assert.equal(countByCode(result, 'shear_wall_parallel_route'), 13); // DEC-2026-10-12-R1 删 strong-light-bedrooms-master-wall-l（贴 w_mb_east 平行 1.355m）后 14→13
+  assert.equal(countByCode(result, 'shear_wall_parallel_route'), 11); // DEC-2026-10-12-R1 删 strong-light-bedrooms-master-wall-l（贴 w_mb_east 平行 1.355m）后 14→13；DEC-2026-10-13-R3 主卧吸顶灯移位后两条照明路由改走门头盒空腔、不再贴 w_mb_east 长距离平行，13→11
+  // DEC-2026-10-13-R3 锁定改善：重画后的两条路由不得再贴 w_mb_east 长距离平行。
+  // 若将来有人把几何改回贴墙（或把灯位改回 (2.60,7.60) 而不同步路由），这里立即 fail——
+  // 正是本轮第一次提交时漏掉同步、导致 shear 13→11 / unsupported_span 7→9 双向漂移的那个失效模式。
+  const shearRouteIds = result.warnings.filter((i) => i.code === 'shear_wall_parallel_route').map((i) => i.routeId);
+  assert.equal(shearRouteIds.includes('strong-light-master'), false, 'strong-light-master 应走 ceiling_master_ac 门头盒空腔，不得贴 w_mb_east 长距离平行');
+  assert.equal(shearRouteIds.includes('strong-light-bedrooms-master-bed-north'), false, 'strong-light-bedrooms-master-bed-north 同上');
+  // 未改动的南床头联络管仍贴墙（证明上面的 false 不是"规则失效"而是"这两条真的改了"）
+  assert.equal(shearRouteIds.includes('strong-light-bedrooms-master-bed-l'), true);
   // 分桶核算：三桶之和 == error + warning 总数，且每桶 count == 各类 count 之和
   const buckets = bucketsOf(result);
   const total = result.errors.length + result.warnings.length;
@@ -402,10 +410,10 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // 分桶代码明细必须与实算完全一致（gravity_slope/orthogonal 已出 must_fix；penetration_door_clearance 拆 must_fix 2 / survey 13）
   // unsupported_span 33 条：2026-10-07 飞线依托检查（吊顶承载层水平段无吊顶空腔/贴墙/穿墙/竖直/垫层依托）
   // inline_endpoint_without_point_anchor 4 条：DEC-2026-10-08-W02 端点绑定兜底（给排水无锚点端点的量房判读清单；W03 客卫热水改绑 faucet_gbath_vanity 后由 5 降为 4）
-  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { shear_wall_parallel_route: 13, penetration_missing: 6, penetration_door_clearance: 2, unsupported_span: 7 }); // R1 删 strong-light-bedrooms-master-wall-l 后 shear 14→13；R2 删四条卫浴照明路由后 unsupported_span 8→7
+  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { shear_wall_parallel_route: 11, penetration_missing: 6, penetration_door_clearance: 2, unsupported_span: 7 }); // R1 删 strong-light-bedrooms-master-wall-l 后 shear 14→13；R2 删四条卫浴照明路由后 unsupported_span 8→7；DEC-2026-10-13-R3 两条主卧照明路由改走门头盒空腔后 shear 13→11
   assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 53, penetration_door_clearance: 16, shear_wall_penetration: 9, inline_endpoint_without_point_anchor: 4 }); // R1 删两条照明路由后 ceiling 56→55；R2 删四条卫浴照明路由后 ceiling 55→53、door_clearance 17→16、shear_wall_penetration 10→9
   assert.deepEqual(Object.fromEntries(buckets.envelope_approximation.codes.map((e) => [e.code, e.count])), { nonphysical_route: 2, supply_return_overlap: 8, reference_constraint_uncertain: 5, suppressed_wall_crossing: 6 });
-  assert.equal(buckets.must_fix_before_briefing.count, 28); // R1 后 30→29；R2 删四条卫浴照明路由后 29→28。F01 改线批：unsupported_span 33→8；F03 water_entry 落位修正后绑定路线不再穿墙，penetration_missing 7→6（condensate×3 R5 残留、mbath 条带×3 模型缺墙、switch-garden 花园明敷、refrigerant-trunk 外机连接段）
+  assert.equal(buckets.must_fix_before_briefing.count, 26); // R1 后 30→29；R2 删四条卫浴照明路由后 29→28；DEC-2026-10-13-R3 主卧吸顶灯移位后两条照明路由改走 ceiling_master_ac 门头盒空腔（原贴 w_mb_east 平行 3.0m/1.31m），shear 13→11、桶 28→26。F01 改线批：unsupported_span 33→8；F03 water_entry 落位修正后绑定路线不再穿墙，penetration_missing 7→6（condensate×3 R5 残留、mbath 条带×3 模型缺墙、switch-garden 花园明敷、refrigerant-trunk 外机连接段）
   assert.equal(buckets.survey_dependent.count, 82); // R1 后 87→86；R2 删四条卫浴照明路由后 86→82。83 + W02 inline_endpoint_without_point_anchor 5 − W03 客卫热水改绑后 1 条归零
   assert.equal(buckets.envelope_approximation.count, 21); // nonphysical 9→2、suppressed_wall_crossing 3→4→6（W03 两卫 4 处地漏接主卫推断立管，2 条越主卫西北圆弧幕墙弦线，见两条 route reason 的登记）
   // 飞线依托检查自证：最长飞线是 strong-power-living 出边吊后的 4.16m 无依托段（reason 声称「平吊板上方敷设」

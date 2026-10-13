@@ -230,7 +230,7 @@ npm run typecheck
 - `npm run verify:electrical` = **0 error / 与实算一致的 warning 数**。
 | 桶 / 规则组 | 条数 | 代码明细 |
 |---|---:|---|
-| MEP must_fix_before_briefing（交底前必须清） | 28 | shear_wall_parallel_route 13 + unsupported_span 7 + penetration_missing 6 + penetration_door_clearance 2（2026-10-12 R2 删 4 条卫浴照明路由后按实算更新；R1/R2 前口径见 git diff）|
+| MEP must_fix_before_briefing（交底前必须清） | 26 | shear_wall_parallel_route 11 + unsupported_span 7 + penetration_missing 6 + penetration_door_clearance 2（2026-10-13 DEC-2026-10-13-R3：主卧吸顶灯移位后重画两条照明路由，原贴 w_mb_east 的长距离平行段改走 ceiling_master_ac 门头盒空腔，不再需要剪力墙竖槽与扫筋，故本行与桶计数同步下调——属改善非消音；2026-10-12 R2 删四条卫浴照明路由后按实算更新；更早口径见 git diff）|
 | MEP survey_dependent（量房后自然消/复判） | 82 | ceiling_clearance_unverified 53 + penetration_door_clearance 16 + shear_wall_penetration 9 + inline_endpoint_without_point_anchor 4（2026-10-12 R2 删 4 条卫浴照明路由后按实算更新；R1/R2 前口径见 git diff）|
 | MEP envelope_approximation（模型包络近似/非物理需求） | 21 | supply_return_overlap 8 + suppressed_wall_crossing 6 + reference_constraint_uncertain 5 + nonphysical_route 2（2026-10-12 R2 删 4 条卫浴照明路由后按实算更新；R1/R2 前口径见 git diff）|
 | 电气 参数/覆盖依赖待定 | 51 | dedicated_parameters_pending 9 + point_uncovered 28 + pending_parameter 14（2026-10-12 R1 删两盏壁灯、R2 删两卫墙控后，未覆盖开关点减少、总数由 53 降为 51；本格不得再写「code + 历史数字」，解析器会把重复 code 相加） |

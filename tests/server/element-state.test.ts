@@ -237,7 +237,7 @@ describe('element census snapshot', () => {
     // 接上真实台账后 undeclared 从 15 降到 12（3 个构件被台账绑成 pending）——
     // 降不下来说明派生没接上台份权威源。
     assert.equal(result.summary.undeclared, 2, '真实台账下只剩 2 个无出处的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
-    assert.equal(result.summary.pending, 26); // R1 删两盏壁灯（29→27）+ R2 删两卫平板灯与墙控（27→26）
+    assert.equal(result.summary.pending, 27); // R1 删两盏壁灯（29→27）+ R2 删两卫平板灯与墙控（27→26）+ 2026-10-13 DEC-2026-10-13-R2 新增 pending-site-data #61（主卫镜柜/台盆柜型式与镜位）绑住 plumbing:faucet_mbath_vanity（26→27）。#62 只谈走线方式、不再绑 ceiling_living——R4 已把原顶定案，绑上去等于把已决构件误降级为 pending
     assert.ok((result.summary.byStatus.confirmed ?? 0) > 0, 'DEC 引用必须把构件绑成 confirmed');
   });
 });

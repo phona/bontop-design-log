@@ -68,7 +68,7 @@ describe('element state API', () => {
     // 与 tests/server/element-state.test.ts 的真实台账快照同口径（无 issue，纯申报缺口 2：
     // 吊顶分区补 DEC 溯源后只剩 ceiling_child_ac / ceiling_main_corridor 两个无出处分区）
     assert.equal(res.body.summary.undeclared, 2);
-    assert.equal(res.body.summary.pending, 26); // R1 删两盏壁灯（29→27）+ R2 删两卫平板灯与墙控（27→26）
+    assert.equal(res.body.summary.pending, 27); // R1 删两盏壁灯（29→27）+ R2 删两卫平板灯与墙控（27→26）+ 2026-10-13 DEC-2026-10-13-R2 新增 pending-site-data #61 绑住 plumbing:faucet_mbath_vanity（26→27）；与 tests/server/element-state.test.ts 同口径
     assert.equal(res.body.summary.byStatus.undeclared, 2);
     assert.ok(res.body.summary.byKind.electrical === 101 && res.body.summary.byKind.plumbing === 32); // 电气点位 107→105（R1）→101（R2 删两卫平板灯与墙控）
   });

@@ -110,13 +110,17 @@ links:
     budget_ref: {source: phase_1_budget, id: PKG-120}
     mapping_status: mapped
     # 灯具词汇表以 config/electrical.yaml 的 type 为准（pendant吊灯/dome吸顶/
-    # downlight筒灯/led_strip灯带/track_light明装轨道灯，另 night_light 夜灯）。
+    # downlight筒灯/led_strip灯带/night_light夜灯）。
     # 2026-10-12 DEC-2026-10-12-R1 删主卧两盏明装床头壁灯后，config 内已无 wall_lamp
     # 类型点位，故从本 selector 移除（留着会让 assertSelector 拒掉、/api/project 500，
     # 与历史上写 ceiling_light 同一失效模式）。
+    # 2026-10-13 DEC-2026-10-13-R1 删客厅明装轨道灯（living_track_main → light_living_dome，
+    # type track_light → dome）后，config 内同样已无 track_light 类型点位，一并移除。
+    # 这是同一失效模式的第二次复发：删点位类型不同步本文件 → assertSelector 抛错 →
+    # /api/project 500。**删任何点位类型后必须 grep 本文件的 select.types。**
     # 不写 ceiling_light：本项目没有这个 type，吸顶灯一律用 dome（曾因写了 ceiling_light
     # 被 assertSelector 拒掉，导致 /api/project 500）。
-    scope: [{source: electrical, select: {types: [pendant, dome, downlight, led_strip, track_light, night_light]}}]
+    scope: [{source: electrical, select: {types: [pendant, dome, downlight, led_strip, night_light]}}]
   - id: MODEL-PKG-125
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-125}
@@ -254,7 +258,7 @@ links:
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-160}
     mapping_status: mapped
-    scope: [{source: electrical, select: {types: [downlight, track_light, led_strip, pendant]}}]
+    scope: [{source: electrical, select: {types: [downlight, led_strip, pendant]}}] # 2026-10-13 DEC-2026-10-13-R1：移除 track_light（config 内已无该类型点位，留着会让 assertSelector 拒掉）
 
   - id: MODEL-P3-010
     phase_id: phase_3_styling
@@ -276,4 +280,4 @@ links:
     phase_id: phase_3_styling
     budget_ref: {source: phase_3_scope, id: P3-040}
     mapping_status: mapped
-    scope: [{source: electrical, select: {types: [downlight, track_light, led_strip, pendant]}}]
+    scope: [{source: electrical, select: {types: [downlight, led_strip, pendant]}}] # 2026-10-13 DEC-2026-10-13-R1：移除 track_light（config 内已无该类型点位，留着会让 assertSelector 拒掉）
