@@ -424,3 +424,18 @@
 - **数据改动**：`config/ceiling.yaml` `ceiling_living` note 的「原顶/石膏板平吊」改为「原顶 2.80m」+ R4 定案号与三条理由；`config/mep-hvac-coordination.yaml` `strong-light-living` 标高 y 2.7→**2.78**（贴原顶板底）、reason 重写明敷。
 - **代价（不美化）**：客厅中部 1.95m 明装线槽外露，是原顶方案的固有代价。**是否接受、或改局部 10cm 假梁**，是一个尚未问过业主的视觉取舍，登记为 pending-site-data #62。
 - **决策人**：业主。
+
+### DEC-2026-10-13-R5 电视墙灯带不搞，删点位与整条照明回路（取电插座保留供后期加装）
+
+- **日期**：2026-10-13。触发：灯具系统收口时业主裁定「电视墙带不搞了，那句话，反正有插座，能后期加装」。
+- **被本条推翻的旧结论（铁律 3）**：
+  1. **`DEC-2026-08-02-013` 的电视墙灯带**（`light_tv_strip`，`living_dining`、(7.20,7.70)、h=2.0、3000K、led_strip、沿西墙 z5.8–8.2 出光朝下、电源取 `sock_living_tv_led`）。**可推翻的理由**：它是氛围光而非功能光——`config/render/lighting.yaml` 从未给它 detailed 配置，`config/electrical.yaml` 的 note 自认「控制方式为灯带驱动遥控/APP，无墙控点位」。业主从未要求过电视背景墙氛围光，且删它不影响任何一处的照度指标（§12 选型口径表里它那一行本来就是「氛围光，无照度指标」）。
+  2. **整条 `lighting_tv_ambient` 照明回路**（`member_point_ids: [light_tv_strip]`——该灯带是它唯一成员，删灯带即删回路）。**回路数 21 → 20**。
+  3. **`pending_parameters` 里「电视墙灯带控制方式为驱动遥控/APP，如需墙控另开迭代」这条待决项**——灯带已不装，控制方式不再有待决项，改为作废说明。
+- **为什么可以删而不用留 pending**：`position_status: pending` 的语义是「预留接口、位置待量房后激活」，而本条是**业主主动决定不做**，不是量不到。留着会让 takeoff 把一个不存在的灯具算进工程量、让 render 渲染一个不存在的构件、让 element census 多一个假构件。按 DEC-2026-10-12-R1/R2 的同一先例删除。
+- **后期加装的路径（业主原话「反正有插座」的兑现方式）**：`sock_living_tv_led` **保留不动**——它是 `ordinary_power_living` 回路的台面/设备插座，本来就不是灯带专用。后期要加走插电式灯带挂该插座即可，**零预埋、零开槽、不改回路**。这与业主「减少固定装修与电气耦合」的一贯方向一致，也是本条敢于整个删掉的底气。
+- **箱体结论不变（复算）**：删回路前 21 路 vs 390mm 单排箱「约 20 位、扣 2P 进线开关 + 浪涌后约 16 位可用」→ 装不下，必须双排。删后 **20 路 vs 同一 16 位可用仍装不下**，双排结论不变；`mount_height 1.65m` 仅双排合规的结论同样不变。断路器成本行由 21 路改为 20 路（照明 1P C16 由 5 路降为 4 路）。
+- **数据改动**：`config/electrical.yaml` 删 1 个点位（**101 → 100**），`led_strip` 成为 config 内第三个被清空的 type；`config/electrical-topology.yaml` 删 `lighting_tv_ambient` 回路（**21 → 20**）、表头点位计数 101→100、两处箱体结论同步；`config/mep-hvac-coordination.yaml` 删 `strong-light-tv` 路由（**131 → 130**）；`config/render/overrides.yaml` 删 1 条 override；`config/model-package-links.yaml` 三处 selector 移除 `led_strip`；`docs/mep-construction-guidance.md` §0 规模表与 §7.4.3-1 行同步；`schedule/procurement.md` §12 选型口径表删灯带行、§02 断路器成本行改 20 路；`data/project-render-facts.json` 与 `docs/dressing-map.md` 重新生成。
+- **同一失效模式第三次复发（重要）**：删点位类型不同步 `config/model-package-links.yaml` 的 `select.types` → `assertSelector` 抛错 → `/api/project` 500。先后踩过 `wall_lamp`（2026-10-12-R1）、`track_light`（2026-10-13-R1）、本次 `led_strip`。**前两次都只靠 test:server 报 500 才发现，说明「删类型后 grep 本文件」这个人工步骤不可靠**——已新增 `tests/server/model-package-links.test.ts` 断言：selector 里出现的每个 type 必须真实存在于 `config/electrical.yaml`，从机制上堵住，不再依赖人记得 grep。
+- **现场反转条件**：① 若业主改回要电视墙氛围光，走插电式灯带挂 `sock_living_tv_led`，**不需要恢复任何预埋**；② 若改回要暗装灯带，则须重新声明点位 + 回路 + 路由，并按 led_strip 类型同步 model-package-links；③ 若量房发现 `sock_living_tv_led` 实际不可用（被柜体/家电占位），则后期加装路径失效，须重开。
+- **决策人**：业主。

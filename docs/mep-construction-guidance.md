@@ -1,15 +1,15 @@
 # 机电走线施工指导（水路 / 电路 / 中央空调，燃气除外）
 
-> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（131 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057；2026-10-04 DEC-2026-10-04-R2 补外机供电 strong-ac-outdoor，72→73；2026-10-05 给排水 v1 补 5 条排水路线并改 water-kitchen-requirement 端点，73→78；2026-10-05 DEC-2026-10-05-R18 两台内机方向相反+下出风成组补 2 条送风路线，78→80；2026-10-06 DEC-2026-10-06-R1 给排水缺项兜底补 7 条给排水路线，80→87；2026-10-07 v1 水路估算：6 条给水 + 1 条排水 requirement 按推断锚点提升为 physical（uncertainty ±0.3m、construction_status 恒 pending），并新增 5 条 water-v1-* 正交干管路由（热水器→两卫冷/热/回水），87→133；DEC-2026-10-07-R15 删除 NP-4b 夜灯路线后当前为 132；2026-10-08 DEC-2026-10-08-W01 上下水按最佳实践推断落库：新建 water_entry / drain_riser_balcony 两个推断点位（坐标取自既有候选路线端点，一个数都没新造），15 条给排水路线端点由内联坐标改绑点位 id，新增净水器进水与阳台地漏两条路线——132→134，给排水点位 27→29；全部 status: inferred / construction_status: pending / not_for_construction，量房日升级 measured）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
+> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（130 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057；2026-10-04 DEC-2026-10-04-R2 补外机供电 strong-ac-outdoor，72→73；2026-10-05 给排水 v1 补 5 条排水路线并改 water-kitchen-requirement 端点，73→78；2026-10-05 DEC-2026-10-05-R18 两台内机方向相反+下出风成组补 2 条送风路线，78→80；2026-10-06 DEC-2026-10-06-R1 给排水缺项兜底补 7 条给排水路线，80→87；2026-10-07 v1 水路估算：6 条给水 + 1 条排水 requirement 按推断锚点提升为 physical（uncertainty ±0.3m、construction_status 恒 pending），并新增 5 条 water-v1-* 正交干管路由（热水器→两卫冷/热/回水），87→133；DEC-2026-10-07-R15 删除 NP-4b 夜灯路线后当前为 132；2026-10-08 DEC-2026-10-08-W01 上下水按最佳实践推断落库：新建 water_entry / drain_riser_balcony 两个推断点位（坐标取自既有候选路线端点，一个数都没新造），15 条给排水路线端点由内联坐标改绑点位 id，新增净水器进水与阳台地漏两条路线——132→134，给排水点位 27→29；全部 status: inferred / construction_status: pending / not_for_construction，量房日升级 measured）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
 > **不是施工放线依据**：所有坐标为协调值，穿墙点、梁位、立管、墙体类型均需交房量房后终核修正。配置驱动，修正只改 yaml，渲染与校验自动跟随。
 
 ## 0. 规模口径（与 config/facts.yaml 对账）
 
 | 数据源 | 条目数 | 登记事实 |
 |---|---:|---|
-| `config/mep-hvac-coordination.yaml` | 共 131 条路由 | `fact.mep_routes_count` |
+| `config/mep-hvac-coordination.yaml` | 共 130 条路由 | `fact.mep_routes_count` |
 | `config/mep-hvac-coordination.yaml` | 共 8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风） | `fact.mep_layers_count` |
-| `config/electrical.yaml` | 共 101 个点位 | `fact.electrical_points_count` |
+| `config/electrical.yaml` | 共 100 个点位 | `fact.electrical_points_count` |
 | `config/plumbing.yaml` | 共 32 个点位 | `fact.plumbing_points_count` |
 | `config/ceiling.yaml` | 共 25 个吊顶分区 | `fact.ceiling_zones_count` |
 | `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 52 处 | 契约 `c.mep_layer_below_drop_bottom`（`registered_conflicts: 55`） |
@@ -116,7 +116,7 @@ w_mbath_south（2026-08-25 台盆外移条带新建墙，给水/冷凝水穿点 
 
 | 条文 | 要求 | 本项目落实 |
 |---|---|---|
-| 7.4.3-1 | 家居配电箱应设能同时断开相线和中性线且具隔离功能的**电源进线开关**；电源配电回路应设短路和过负荷保护；**电源插座回路均应加设剩余电流动作值 ≤30mA 的保护电器** | topology 21 路中所有含 `type: socket` 的回路 breaker 均带 `+漏保`；进线开关未建模，列入量房开箱确认（pending-site-data #30） |
+| 7.4.3-1 | 家居配电箱应设能同时断开相线和中性线且具隔离功能的**电源进线开关**；电源配电回路应设短路和过负荷保护；**电源插座回路均应加设剩余电流动作值 ≤30mA 的保护电器** | topology 20 路中所有含 `type: socket` 的回路 breaker 均带 `+漏保`；进线开关未建模，列入量房开箱确认（pending-site-data #30） |
 | 7.4.3-2 | 保护电器单排布置的家居配电箱底边距地 **≥1.80m**；双排布置 **≥1.60m**；安装位置应便于使用维修维护 | 现 `panel_strong_entry_left` `mount_height: 1.65` → 双排箱合规、单排箱不合规；单/双排列为量房必测（#30） |
 | 7.4.3-3 | 家居配电箱进出电源线应选用铜导体，**电源进线截面 ≥10mm²** | 待开箱复核（#30） |
 | 7.4.4 | 住宅**照明回路、空调电源插座回路、电热水器等 2kW 及以上用电设备回路、厨房内的电源插座回路、其他功能用房的电源插座回路应分别设置**（类型级要求，不要求每房每灯独立） | 25 路合并至 20 路（DEC-2026-10-05-R3 浴霸按设备锚点拆每卫一路 → 21 路）：照明 5、空调内机 2、空调外机 1（2kW 以上设备单独成路）、专用 6（冰箱/洗碗机/洗衣机/烘干机/主卫浴霸/客卫浴霸）、普通 7 |

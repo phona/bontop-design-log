@@ -1,7 +1,7 @@
 // 构件级工程状态端点（GET /api/element-state）的契约测试。
 //
 // 守的不变量：
-//   ① 与 `npm run state:project` 同一份派生：158 个构件（2026-10-12 R1 删两盏壁灯 + R2 删两卫平板灯与墙控，164→158）、undeclared=2 / pending=26；
+//   ① 与 `npm run state:project` 同一份派生：157 个构件（2026-10-12 R1 删两盏壁灯 + R2 删两卫平板灯与墙控 164→158；DEC-2026-10-13-R5 删电视墙灯带 158→157）、undeclared=2 / pending=27；
 //   ② app 侧契约逐字段完整（status 只在枚举内、必填字段不许缺）；
 //   ③ conflicts 路径缓存：连续两次同一 cachedAt，refresh=1 换新时间戳；
 //   ④ fail-closed：输入异常 → 503，绝不返回空 states 假装没有状态。
@@ -63,14 +63,14 @@ describe('element state API', () => {
     assert.equal(res.body.version, 1);
     assert.equal(res.body.withConflicts, false);
     assert.equal(res.body.cachedAt, null, '不带 conflicts 时不缓存，cachedAt 必须是 null');
-    assert.equal(res.body.states.length, 158);
-    assert.equal(res.body.summary.total, 158); // DEC-2026-10-12-R1 删主卧两盏壁灯元素（164→162）；R2 删两卫平板灯与墙控（162→158）
+    assert.equal(res.body.states.length, 157);
+    assert.equal(res.body.summary.total, 157); // DEC-2026-10-12-R1 删主卧两盏壁灯元素（164→162）；R2 删两卫平板灯与墙控（162→158）；DEC-2026-10-13-R5 删电视墙灯带（158→157）
     // 与 tests/server/element-state.test.ts 的真实台账快照同口径（无 issue，纯申报缺口 2：
     // 吊顶分区补 DEC 溯源后只剩 ceiling_child_ac / ceiling_main_corridor 两个无出处分区）
     assert.equal(res.body.summary.undeclared, 2);
     assert.equal(res.body.summary.pending, 27); // R1 删两盏壁灯（29→27）+ R2 删两卫平板灯与墙控（27→26）+ 2026-10-13 DEC-2026-10-13-R2 新增 pending-site-data #61 绑住 plumbing:faucet_mbath_vanity（26→27）；与 tests/server/element-state.test.ts 同口径
     assert.equal(res.body.summary.byStatus.undeclared, 2);
-    assert.ok(res.body.summary.byKind.electrical === 101 && res.body.summary.byKind.plumbing === 32); // 电气点位 107→105（R1）→101（R2 删两卫平板灯与墙控）
+    assert.ok(res.body.summary.byKind.electrical === 100 && res.body.summary.byKind.plumbing === 32); // 电气点位 107→105（R1）→101（R2 删两卫平板灯与墙控）→100（DEC-2026-10-13-R5 删电视墙灯带）
   });
 
   it('GET /api/element-state?conflicts=1 attaches verifier conclusions and a cache timestamp', async () => {
@@ -79,7 +79,7 @@ describe('element state API', () => {
     assert.equal(typeof res.body.cachedAt, 'string');
     assert.ok(res.body.cachedAt.length > 0, '带 conflicts 时必须带 cachedAt，让人知道是不是旧数据');
     assert.ok(!Number.isNaN(Date.parse(res.body.cachedAt)), 'cachedAt 必须是 ISO 时间串');
-    assert.equal(res.body.summary.total, 158, '接上 verifier issue 后构件总数不变（DEC-2026-10-12-R1/R2 删壁灯与两卫平板灯后 164→158）');
+    assert.equal(res.body.summary.total, 157, '接上 verifier issue 后构件总数不变（DEC-2026-10-12-R1/R2 删壁灯与两卫平板灯后 164→158；DEC-2026-10-13-R5 删电视墙灯带后 158→157）');
     // 冲突集合不能凭空消失：verify-spatial / penetration / electrical-lint 当前有 issue
     assert.ok(res.body.states.some((state: { conflicts: string[] }) => state.conflicts.length > 0));
   });
@@ -163,10 +163,10 @@ describe('element state API', () => {
     const missing = await request(createApp()).get('/api/element-state').expect(503);
     assert.equal(missing.body.error, 'element state is not ready');
 
-    // 成功路径永远带满 158 条（DEC-2026-10-12-R1/R2 前为 164）：契约里没有「空 states」这种合法响应。
+    // 成功路径永远带满 157 条（DEC-2026-10-12-R1/R2 前为 164，DEC-2026-10-13-R5 后为 157）：契约里没有「空 states」这种合法响应。
     const ok = await request(createApp(getElementState)).get('/api/element-state').expect(200);
     assert.equal(ok.body.states.length, ok.body.summary.total);
-    assert.equal(ok.body.states.length, 158);
+    assert.equal(ok.body.states.length, 157);
   });
 
   it('rejects unrecognised flag values instead of silently reading them as false', async () => {

@@ -112,7 +112,7 @@ reversal_conditions:
   - id: 3
     topic: 配电箱单双排
     baseline: '回路数 + 20% 余量'
-    conflicts_with: 'pending-site-data 第30项未判单/双排；21路+2P进线+SPD 须双排'
+    conflicts_with: 'pending-site-data 第30项未判单/双排；20路+2P进线+SPD 须双排'
     reversal: '量房开箱复测；若现场为单排箱须换箱或上移箱体（GB 55038 7.4.3-2）'
   - id: 4
     topic: 前置过滤器与减压阀

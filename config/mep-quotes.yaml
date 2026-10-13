@@ -102,7 +102,7 @@ quotes:
       spd:
         per_unit: 120
         unit: 元/个
-        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜21 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
+        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜20 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
       panel:
         per_unit: 12
         unit: 元/模
@@ -238,7 +238,7 @@ quotes:
       spd:
         per_unit: 120
         unit: 元/个
-        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜21 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
+        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜20 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
       panel:
         per_unit: 12
         unit: 元/模
@@ -374,7 +374,7 @@ quotes:
       spd:
         per_unit: 120
         unit: 元/个
-        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜21 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
+        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜20 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
       panel:
         per_unit: 12
         unit: 元/模
@@ -510,7 +510,7 @@ quotes:
       spd:
         per_unit: 120
         unit: 元/个
-        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜21 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
+        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜20 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
       panel:
         per_unit: 12
         unit: 元/模
@@ -646,7 +646,7 @@ quotes:
       spd:
         per_unit: 120
         unit: 元/个
-        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜21 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
+        scope_note: 家用二级｜SPD 二级浪涌保护器｜页面 ¥120/1个｜derived_estimate｜20 回路 + 2P 进线开关 + 浪涌对 390mm 箱体需双排；常见 80~200 元/只（价目表未含 SPD SKU）
       panel:
         per_unit: 12
         unit: 元/模

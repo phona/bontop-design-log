@@ -4,7 +4,10 @@
 // （喂 app/GLB 的 data/project-render-facts.json）与 shared/penetration/scene.ts 的
 // renderLightingFixtures()（喂 verify:spatial / verify:penetration 的 runtime 场景）。
 // 分叉的那版不做 offsetX/offsetZ 平移、高度还静默兜底 2.8m，于是 linter 校验的是
-// 「位置上不存在的灯」（实例：light_tv_strip 的 offsetX: 0.15）。
+// 「位置上不存在的灯」（历史实例：light_tv_strip 的 offsetX: 0.15，该灯带已于
+// DEC-2026-10-13-R5 删除）。此后 config/render/overrides.yaml 里再无带平面偏移的
+// 在役 fixture，故本文件的两项 offset 覆盖改为**注入合成 fixture**——机制测试不依赖
+// 「恰好有个真实灯具带偏移」，选型一变测试就假绿/假红。
 //
 // 现在两边共用 shared/lighting-fixtures.ts 的同一个函数。本文件钉住三件事：
 // ① 同一份权威配置下，linter 侧派生结果与投影逐字段（含键序）一致；
@@ -67,23 +70,39 @@ describe('lighting fixture derivation parity', () => {
       assert.ok(actual, `linter derivation is missing lighting fixture ${expected.id}`);
       assert.deepEqual(actual.position, expected.position, `position drift for ${expected.id}`);
     }
-    // 活证据：light_tv_strip 声明 offsetX: 0.15（电视墙灯带向室内偏移）。
-    // 投影把它放在 x=7.35；linter 必须算同一个点，而不是电气点位原值 7.2。
-    const strip = derived.get('light_tv_strip');
-    assert.equal(strip?.position.x, 7.35);
-    assert.equal(houseElectrical().find((item) => item.id === 'light_tv_strip')?.x, 7.2);
+    // 合成 fixture 覆盖 offsetX：DEC-2026-10-13-R5 删电视墙灯带后，config 里再无带平面偏移的
+    // 在役 fixture（light_tv_strip 的 offsetX: 0.15 曾是唯一活证据）。机制本身仍要守，
+    // 故注入一个带 offsetX 的点位 + override，断言派生结果真的平移了。
+    const probePoint: ElectricalPoint = { id: 'offset_probe', room: 'living_dining', type: 'dome', x: 7.2, z: 7.7, height: 2.0, temp: 3000 };
+    const probeOverride: RenderLightingOverride = {
+      id: 'offset_probe', anchorY_offset: 0, offsetX: 0.15,
+      basis: 'probe', reason: 'probe', applies_to: ['web', 'blender'],
+    };
+    const probed = buildRenderLightingFixtures([probePoint], [probeOverride]);
+    assert.equal(probed.length, 1);
+    assert.equal(probed[0].position.x, 7.35, 'offsetX 必须真的进入派生（电气原值 7.2 + 0.15）');
+    assert.equal(probed[0].position.z, 7.7, '未声明 offsetZ 时 z 不得平移');
   });
 
   it('feeds the offset position into the linter runtime scene', () => {
-    const inputs = loadSceneInputs();
-    const scene = buildRuntimeScene(inputs);
-    const strip = scene.index.lightingFixtures.get('electrical:light_tv_strip');
-    assert.ok(strip, 'runtime scene must build a lighting fixture for light_tv_strip');
-    strip.updateWorldMatrix(true, true);
-    const box = new THREE.Box3().setFromObject(strip);
+    // 同样改为合成 fixture：config 里已无带平面偏移的在役灯具（DEC-2026-10-13-R5 删灯带）。
+    // runtime 场景的输入来自文件，故用临时替换的方式注入 probe，不断真实配置。
+    const probePoint: ElectricalPoint = { id: 'offset_probe', room: 'living_dining', type: 'downlight', x: 7.2, z: 7.7, height: 2.0, temp: 3000 };
+    const probeOverride: RenderLightingOverride = {
+      id: 'offset_probe', anchorY_offset: 0, offsetX: 0.15,
+      basis: 'probe', reason: 'probe', applies_to: ['web', 'blender'],
+    };
+    // 注意字段名是 renderOverrides（不是 lightingOverrides）——且必须与 electrical 同步替换，
+    // 否则真实 overrides 会引用被替换掉的 electrical id，buildRenderLightingFixtures fail-closed 抛错。
+    const inputs = { ...loadSceneInputs(), electrical: [probePoint], renderOverrides: [probeOverride] };
+    const scene = buildRuntimeScene(inputs as Parameters<typeof buildRuntimeScene>[0]);
+    const probe = scene.index.lightingFixtures.get('electrical:offset_probe');
+    assert.ok(probe, 'runtime scene must build a lighting fixture for the offset probe');
+    probe.updateWorldMatrix(true, true);
+    const box = new THREE.Box3().setFromObject(probe);
     assert.ok(!box.isEmpty());
-    // 灯带是 0.02×0.02×2.4 的盒体，中心即渲染锚点：x 必须落在 7.35（电气 7.2 + offsetX 0.15）。
-    assert.ok(Math.abs((box.min.x + box.max.x) / 2 - 7.35) < 1e-6, `runtime strip center x = ${(box.min.x + box.max.x) / 2}`);
+    // 锚点必须落在 7.35（电气 7.2 + offsetX 0.15），证明 offset 真的进了 runtime 而不只是投影。
+    assert.ok(Math.abs((box.min.x + box.max.x) / 2 - 7.35) < 1e-6, `runtime probe center x = ${(box.min.x + box.max.x) / 2}`);
   });
 
   it('derives the expected anchor height table from the same formula as the render anchor', () => {

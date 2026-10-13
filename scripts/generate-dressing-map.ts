@@ -155,6 +155,8 @@ function main(): void {
   lines.push('### 后续深化预留（当前未实施点位）');
   lines.push('厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。主卧南床头梳妆台的镜前灯为家具插接式部件，复用 `sock_master_bed_r`，不新增墙内灯位。');
   lines.push('');
+  lines.push('**已取消、不再纳入装扮**：电视墙灯带（DEC-2026-10-13-R5，业主裁定「不搞了」）。点位与整条照明回路已从 config 删除，**不要**在 Twinmotion/云渲染里摆这条灯带。取电插座 `sock_living_tv_led` 保留在电视墙，后期想要氛围光走插电式灯带挂该插座即可，零预埋零开槽。');
+  lines.push('');
 
   const glass = overlay.elements.filter((e) => e.type === 'curtain_run' || e.type === 'glass_infill');
   const bays = overlay.elements.filter((e) => e.type === 'bay_sill');

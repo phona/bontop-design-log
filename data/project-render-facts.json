@@ -28,19 +28,6 @@
       "circuit": "living_base"
     },
     {
-      "id": "light_tv_strip",
-      "room": "living_dining",
-      "type": "led_strip",
-      "position": {
-        "x": 7.35,
-        "y": 2,
-        "z": 7.7
-      },
-      "temperatureK": 3000,
-      "enabled": true,
-      "circuit": "tv_ambient"
-    },
-    {
       "id": "light_master_dome",
       "room": "master_bedroom",
       "type": "dome",

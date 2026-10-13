@@ -927,7 +927,7 @@
   note: "餐桌吊灯天花出线（DEC-2026-08-02-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1 落实），距桌面75cm"
 
 # === 室内灯光方案（2026-08-12 灯光渲染系统；全屋 3000K 暖光，厨卫 4000K）===
-# 点位即水电交底单；type: pendant吊灯/dome吸顶/downlight筒灯/led_strip灯带/night_light夜灯（2026-10-13：track_light 与 wall_lamp 两类已无在役点位——DEC-2026-10-12-R1 删主卧两盏壁灯、DEC-2026-10-13-R1 删客厅明装轨道灯；渲染端 makeTrackFixture/makeWallLampFixture 代码保留作通用能力，config/render/lighting.yaml 的 detailed fixtures 列表相应清空）
+# 点位即水电交底单；type: pendant吊灯/dome吸顶/downlight筒灯/night_light夜灯（2026-10-13：led_strip / track_light / wall_lamp 三类已无在役点位——DEC-2026-10-13-R5 删电视墙灯带（最后一个 led_strip）、DEC-2026-10-13-R1 删客厅明装轨道灯（最后一个 track_light）、DEC-2026-10-12-R1 删主卧两盏壁灯（最后两个 wall_lamp）；渲染端 makeStripFixture/makeTrackFixture/makeWallLampFixture 代码保留作通用能力，config/render/lighting.yaml 的 detailed fixtures 列表已清空）
 - id: light_living_dome
   room: living_dining
   type: dome
@@ -938,15 +938,6 @@
   circuit: living_base
   note: "客厅基础光吸顶灯（DEC-2026-10-13-R1 推翻 DEC-2026-08-26-043 的明装轨道灯：原顶条件下明装轨道①无吊顶可藏 1.95m 走线，只能明装线槽外露；②4 个可调灯头是点状配光，实测口径 U₀≈0，客厅一般活动 100 lx 要求 U₀≥0.7，原理上不满足；③轨道+加固板+可调头是三重可调冗余，业主从未要求过重点照明。改为贴原顶 2.80 安装的宽配光吸顶灯，光通量按 7,100–8,500 lm 选型）。出线沿用 strong-light-living 既有路由，出 ceiling_living 边吊后明装线槽沿原顶板面敷设至灯位（见 config/mep-hvac-coordination.yaml）。状态依据：归入 topology 回路 lighting_living_base（confirmed），客厅基础光吸顶灯为设计声明→inferred；位置为设计值未实测"
   status: inferred
-- id: light_tv_strip
-  room: living_dining
-  type: led_strip
-  x: 7.2
-  z: 7.7
-  height: 2.0
-  temp: 3000
-  circuit: tv_ambient
-  note: "电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-2026-08-02-013；控制方式：灯带驱动遥控/APP，无墙控点位，DEC-2026-09-08-R1 业主确认方向，如需墙控另开迭代）"
 - id: light_master_dome
   room: master_bedroom
   type: dome

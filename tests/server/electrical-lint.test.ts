@@ -32,11 +32,11 @@ const isSocket = (point: ElectricalPoint | undefined) => point !== undefined && 
 test('real electrical topology parses and lints', () => {
   const topology = parseElectricalTopology(raw, points);
   const result = lintElectricalTopology(topology, points, layoutContext());
-  assert.equal(topology.circuits.length, 21); // DEC-2026-10-03-R1：25 路合并至 19 路；DEC-2026-10-04-R2：+外机专用回路；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）
+  assert.equal(topology.circuits.length, 20); // DEC-2026-10-03-R1：25 路合并至 19 路；DEC-2026-10-04-R2：+外机专用回路；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）；DEC-2026-10-13-R5：删电视墙灯带整条 lighting_tv_ambient 回路（21→20）
   assert.equal(topology.controls.length, 9); // DEC-2026-10-12-R2 删 control_mbath_light / control_gbath_light 后 11→9
-  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 16); // R15 起夜灯并入照明回路；R12 删除客卫 3 灯、R15 删除 NP-4b（24→20）；R1 删主卧两盏壁灯（20→18）；R2 删两卫平板灯（18→16）
+  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 15); // R15 起夜灯并入照明回路；R12 删除客卫 3 灯、R15 删除 NP-4b（24→20）；R1 删主卧两盏壁灯（20→18）；R2 删两卫平板灯（18→16）；DEC-2026-10-13-R5 删电视墙灯带（16→15）板灯（18→16）
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 41); // 2026-10-05 R15 客房床头插座 ×2 并入 ordinary_power_parent_child（39→41） // DEC-2026-10-03-R1：+sock_living_tv_high +sock_kitchen_counter_east
-  assert.equal(result.counts.coveredPoints, 71); // R15 增起夜点与床头插座；R12 删除客卫 3 灯、R15 删除 NP-4b 后 79→75；R1 删两盏壁灯后 75→73；R2 删两卫平板灯后 73→71（switch 点不计 covered，故删 switch_mbath/switch_gbath 不影响本数）。床头双控 switch_guest_bed 非负载点，仍计未覆盖
+  assert.equal(result.counts.coveredPoints, 70); // R15 增起夜点与床头插座；R12 删除客卫 3 灯、R15 删除 NP-4b 后 79→75；R1 删两盏壁灯后 75→73；R2 删两卫平板灯后 73→71；DEC-2026-10-13-R5 删电视墙灯带后 71→70（switch 点不计 covered，故删 switch_mbath/switch_gbath 不影响本数）。床头双控 switch_guest_bed 非负载点，仍计未覆盖
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.length > 0);
   // 2026-10 三条规范规则（全部 warning）落地后的新计数：原 52 warnings = 9 dedicated + 29 uncovered + 14 pending
@@ -185,7 +185,7 @@ test('lint validates panel topology/source semantics and status at runtime', () 
 test('electrical JSON CLI emits pure JSON', () => {
   const output = execFileSync('npx', ['tsx', 'scripts/verify/electrical/verify-electrical-lint.ts', '--json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const result = JSON.parse(output) as { errors: unknown[]; warnings: unknown[]; counts: { circuits: number; byCode?: Record<string, number> } };
-  assert.equal(result.counts.circuits, 21); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）
+  assert.equal(result.counts.circuits, 20); // DEC-2026-10-04-R2：+hvac_power_outdoor_a2；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）；DEC-2026-10-13-R5 删电视墙灯带整条照明回路（21→20）
   assert.ok(Array.isArray(result.errors));
   assert.ok(Array.isArray(result.warnings));
   // 既有字段语义不变 + 新增的按规则汇总字段（纯附加，兼容旧消费方；零命中的规则不出现在 byCode 里）
