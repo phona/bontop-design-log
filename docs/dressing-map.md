@@ -1,6 +1,6 @@
 # 装扮映射表（Twinmotion 云渲染用）
 
-生成：2026-10-05，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-10-13，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
 数据规模：house.yaml furnishings 共 87 件（与 `fact.furnishings_count` 对账）。
 
@@ -10,7 +10,7 @@
 
 | 主题 | 当前选择 | 名称 | 品牌/型号 | 规格 | Twinmotion 替换建议 |
 |---|---|---|---|---|---|
-| floor | floor_pbr_tile_612 | 600x1200木纹砖·步步高错缝（DEC-040 全屋定案，程序化 wood_plank 渲染） | 马可波罗 / 快环同档 / 600×1200 浅暖橡木木纹砖（柔光/天鹅绒釉，型号待门店确认） | 600x1200mm | 底色 #d8bd93，木纹·直铺，条板 600x1200mm，光泽 soft |
+| floor | floor_tile_kt_200x1200_01 | KT 200×1200木纹长条砖（当前选型基准 2026-10-12） | KT / 200×1200mm 木纹砖（具体系列、型号、色号待门店确认） | 200x1200mm | 底色 #d8bd93，木纹·直铺，条板 200x1200mm，光泽 soft |
 | floor | floor_tile_antislip_400 | 中性灰哑光防滑砖（主卫/阳台） | 马可波罗 / 快环同档 / 400x400 中性灰哑光防滑砖（防滑等级 R10+，型号待门店确认） | 400x400mm | 底色 #90949a |
 | floor | floor_tile_deco_small | 复古小花砖（客卫点缀） | 快环建材市场花砖档口 / 200x200 复古釉面小花砖（花色到店选样） | 200x200mm | 底色 #b58a6f |
 | wall | wall_tile_01 | 厨卫白色釉面砖 | 东鹏 / 300x600 白色釉面砖 | 300x600mm | 底色 #f5f5f5 |
@@ -142,25 +142,21 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | entry_garden | shoe_cabinet | 1 | — | count-only（不在 glb，按实物补摆） |
 | entry_garden | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 
-## 3. 灯光点位（15 个）→ 灯具与光源摆放单
+## 3. 灯光点位（11 个）→ 灯具与光源摆放单
 
 | id | 房间 | 类型 | 位置 (x, z) | 高度 (m) | 色温 (K) | 回路 | 备注 |
 |---|---|---|---|---|---|---|---|
 | light_dining_pendant | living_dining | 吊灯 | (7.9, 3.45) | 2.8 | 3000 | dining | 餐桌吊灯天花出线（DEC-2026-08-02-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1 落实），距桌面75cm |
-| living_track_main | living_dining | 明装轨道灯 | (10.8, 7.15) | 2.8 | 3000 | living_base | 一条黑色明装约2.8m短轨、4灯头，客厅基础光回路；无新增吊顶/电视背景墙 |
+| light_living_dome | living_dining | 吸顶灯 | (10.8, 7.15) | 2.8 | 3000 | living_base | 客厅基础光吸顶灯（DEC-2026-10-13-R1 推翻 DEC-2026-08-26-043 的明装轨道灯：原顶条件下明装轨道①无吊顶可藏 1.95m 走线，只能明装线槽外露；②4 个可调灯头是点状配光，实测口径 U₀≈0，客厅一般活动 100 lx 要求 U₀≥0.7，原理上不满足；③轨道+加固板+可调头是三重可调冗余，业主从未要求过重点照明。改为贴原顶 2.80 安装的宽配光吸顶灯，光通量按 7,100–8,500 lm 选型）。出线沿用 strong-light-living 既有路由，出 ceiling_living 边吊后明装线槽沿原顶板面敷设至灯位（见 config/mep-hvac-coordination.yaml）。状态依据：归入 topology 回路 lighting_living_base（confirmed），客厅基础光吸顶灯为设计声明→inferred；位置为设计值未实测 |
 | light_tv_strip | living_dining | 灯带 | (7.2, 7.7) | 2 | 3000 | tv_ambient | 电视墙灯带（沿西墙 z5.8-8.2，电源 sock_living_tv_led 已有，DEC-2026-08-02-013；控制方式：灯带驱动遥控/APP，无墙控点位，DEC-2026-09-08-R1 业主确认方向，如需墙控另开迭代） |
-| light_master_dome | master_bedroom | 吸顶灯 | (2.6, 7.6) | 2.8 | 3000 | — | 主卧吸顶灯 |
-| light_master_wall_l | master_bedroom | 壁灯 | (4.2, 6.245) | 1.35 | 3000 | — | 方案A 北侧床头壁灯：z=6.245、h=1.35；与 master_bedside_cabinet_350_north 中心轴对齐，位于床头板北侧；哑黑隐藏转轴可调短筒，自带底部按键，完整朝主卧突出且最大墙面突出量≤190mm；实际SKU、东墙结构与固定节点仍 site_pending |
-| light_master_wall_r | master_bedroom | 壁灯 | (4.2, 8.555) | 1.35 | 3000 | — | 方案A 南侧床头壁灯：z=8.555、h=1.35；与 master_bedside_cabinet_350_south 中心轴对齐，位于床头板南侧；哑黑隐藏转轴可调短筒，自带底部按键，完整朝主卧突出且最大墙面突出量≤190mm；实际SKU、东墙结构与固定节点及南帘真实关系仍 site_pending |
-| light_parent_dome | study | 吸顶灯 | (5.7, 7.675) | 2.8 | 3000 | — | 书房吸顶灯（2026-10-05 功能互换，id/位置不变） |
-| light_child_dome | bedroom_nw | 吸顶灯 | (4.1, 2.7) | 2.8 | 3000 | — | 西北次卧吸顶灯 |
-| light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.8 | 3000 | — | 客房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中；2026-10-05 功能互换，id/位置不变） |
-| light_corridor_1 | living_dining | 筒灯 | (7.9, 5) | 2.8 | 3000 | entry_base | 走廊口筒灯嵌入既有 ceiling_living 边吊，不新增吊顶；坐标由原 (7.9,5.75) 调整至既有边吊合法范围 (7.9,5.0)，避开电视高柜 x≤7.55，并仍靠近原走廊口 |
-| light_entry_down | entry_garden | 筒灯 | (13, 1.45) | 2.8 | 3000 | entry_base | 玄关筒灯 |
-| light_entry_foyer | living_dining | 筒灯 | (12.4, 3.35) | 2.5 | 3000 | entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区 |
-| light_kitchen_panel | kitchen | 吸顶灯 | (9, 1.2) | 2.8 | 4000 | — | 厨房平板灯（4000K 工作区例外） |
-| ~~light_mbath_panel~~ | master_bath | ~~吸顶灯~~ | — | — | — | — | **2026-10-12 DEC-2026-10-12-R2 业主裁定删除**：两卫照明用浴霸三合一（奥普 S2-Air 自带 24W）自带、不另装平板灯；起夜兜底改插座外挂夜灯 |
-| ~~light_gbath_panel~~ | guest_bath | ~~吸顶灯~~ | — | — | — | — | **2026-10-12 DEC-2026-10-12-R2 业主裁定删除**：两卫照明用浴霸三合一（奥普 S2-Air 自带 24W）自带、不另装平板灯；起夜兜底改插座外挂夜灯 |
+| light_master_dome | master_bedroom | 吸顶灯 | (1.7, 6) | 2.8 | 3000 | — | 主卧吸顶灯（DEC-2026-10-13-R3 移位：原 (2.60,7.60) 落在 bed_180 平面投影内（床 AABB x[2.30,4.10]×z[6.47,8.33]），既正压床头眩光，又把房间最远的条带洗漱区甩到 3.91m/入射角 57°、照度仅灯正下方 1/6。移位至 (1.70,6.00)：房间开敞中部、避床/衣柜/梳妆桌/窗帘盒，到条带台盆 3.05m、到通顶衣柜 1.60m、到梳妆桌 1.28m；牺牲的是床面环境光，但 DEC-2026-10-12-R1 已把两盏床头壁灯改为小米床头灯插电，床头阅读/起夜本就不再依赖吸顶灯——三个功能缺口各有专属光源，吸顶灯只管一般照明，居中才是正确分工）。状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），主卧吸顶灯为设计声明→inferred；位置为设计值未实测 |
+| light_parent_dome | study | 吸顶灯 | (5.7, 7.675) | 2.8 | 3000 | — | 书房吸顶灯（2026-10-05 功能互换，id/位置不变）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），书房吸顶灯为设计声明→inferred；2026-10-05 功能互换位置不变，为设计值未实测 |
+| light_child_dome | bedroom_nw | 吸顶灯 | (4.1, 2.7) | 2.8 | 3000 | — | 西北次卧吸顶灯；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），每室一吸顶灯为设计声明→inferred；位置为房间设计值未实测 |
+| light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.8 | 3000 | — | 客房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中；2026-10-05 功能互换，id/位置不变）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），客房吸顶灯为设计声明→inferred；位置随房间南缘凹进取居中，为设计值未实测 |
+| light_corridor_1 | living_dining | 筒灯 | (7.9, 5) | 2.8 | 3000 | entry_base | 走廊口筒灯嵌入既有 ceiling_living 边吊，不新增吊顶；坐标由原 (7.9,5.75) 调整至既有边吊合法范围 (7.9,5.0)，避开电视高柜 x≤7.55，并仍靠近原走廊口；状态依据：归入 topology 回路 lighting_entry_base（confirmed），走廊口筒灯嵌入既有边吊为设计声明→inferred；坐标由原位移至边吊合法范围避电视高柜，位置为设计值未实测 |
+| light_entry_down | entry_garden | 筒灯 | (13, 1.45) | 2.8 | 3000 | entry_base | 玄关筒灯；状态依据：归入 topology 回路 lighting_entry_base（confirmed），玄关筒灯为设计声明→inferred；位置为设计值未实测 |
+| light_entry_foyer | living_dining | 筒灯 | (12.4, 3.35) | 2.5 | 3000 | entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区；状态依据：归入 topology 回路 lighting_entry_base（confirmed），门厅筒灯利用既有吊顶为设计声明→inferred；取红框中心避让半高柜与入户门，位置为设计值未实测 |
+| light_kitchen_panel | kitchen | 吸顶灯 | (9, 1.2) | 2.8 | 4000 | — | 厨房平板灯（4000K 工作区例外）；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），厨卫 4000K 平板灯为设计声明→inferred；位置为设计值未实测 |
 
 ### 后续深化预留（当前未实施点位）
 厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。主卧南床头梳妆台的镜前灯为家具插接式部件，复用 `sock_master_bed_r`，不新增墙内灯位。
@@ -178,11 +174,14 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | master_bedroom_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卧南墙环幕飘窗（南缘 z=10.90） |
 | study_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 书房南墙飘窗（南缘 z=10.90，与主卧齐平） |
 | bedroom_se_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 客房南向凸窗（南缘 z=11.05） |
-| master_bath_west_lower_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卫西墙南段飘窗（2026-10-09 由 bedroom_nw_west_bay 改名，原名「西北次卧西墙」与几何不符） |
-| master_bedroom_west_mid_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卧西墙中段飘窗（2026-10-09 由 corridor_west_bay 改名，原名「走廊西墙」与几何不符——模型里没有 corridor 这个 room） |
+| master_bath_west_lower_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卫西墙南段飘窗（2026-10-09 由 bedroom_nw_west_bay 改名，DEC-2026-10-09-P10：原名「西北次卧西墙」与几何不符——outline x[0,1.1]×z[2.10,2.86] 整块在 master_bath 矩形内，bedroom_nw 西界是 x=2.6。只改 id 不动几何/面积/room） |
+| master_bedroom_west_mid_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卧西墙中段飘窗（2026-10-09 由 corridor_west_bay 改名，DEC-2026-10-09-P10：原名「走廊西墙」与几何不符——outline x[0,1.1]×z[2.86,5.55] 整块在 master_bedroom 矩形内，且模型里根本没有 corridor 这个 room，走廊本体在 x[4.2,7.2]×z[4.3,6.45]，离这扇窗 4 米。只改 id 不动几何/面积/room） |
 | master_bath_west_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卫西北角飘窗 |
 | bedroom_nw_north_bay | 飘窗 | 深 1.1m / 台高 2.07m | 西北次卧北墙飘窗（z=1.10 凹进段） |
 | kitchen_north_bay | 飘窗 | 深 1.1m / 台高 2.12m | 厨房北墙飘窗（z=0 北缘） |
+| living_south_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 客厅落地幕墙根部防水台（150 高 × 150 出檐常规口径，量级待量房核实）；竖面与水平台面由 sill_region 挂贴砖 |
+| mbath_west_lower_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 主卫西墙淋浴段（z[2.10,2.86] 直段）根部防水台，D4=L 同款 150×150 |
+| mbath_north_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 主卫北墙（x[0,2.60]，西段在淋浴湿区内）根部防水台，D4=L 同款 |
 
 ## 5. 太阳定位参数
 

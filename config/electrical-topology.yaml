@@ -12,7 +12,7 @@ version: '1.0'
 #    现 mount_height 1.65m 仅在双排时合规——箱体单/双排与容量列入 pending-site-data #30。
 # 口径：开关点位经 controls 绑定灯具、网络点位（含 DEC-2026-10-03-R1 新增 net_gateway / net_ap_corridor）
 # 归弱电箱系统，均不进入强电供电回路成员（Phase 1 口径）。
-# 点位口径：config/electrical.yaml 共 101 个点位（历史上 2026-10-06 R2 新增 sock_kitchen_oven 后为 111；DEC-2026-10-07-R12 删除客卫内置夜灯 NP-6/7/8、DEC-2026-10-07-R15 删除客厅 NP-4b 后减至 107；2026-10-12 业主裁定删主卧两盏明装床头壁灯（light_master_wall_l / light_master_wall_r）改小米床头灯插电后减至 105；2026-10-12 DEC-2026-10-12-R2 业主裁定两卫照明用浴霸三合一自带、不另装平板灯，删 light_mbath_panel/light_gbath_panel/switch_mbath/switch_gbath 四点后减至 101；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。新增点位为 position_status: pending 的预留接口，未激活前不进任何 topology 回路、不占箱位。
+# 点位口径：config/electrical.yaml 共 101 个点位（历史上 2026-10-06 R2 新增 sock_kitchen_oven 后为 111；DEC-2026-10-07-R12 删除客卫内置夜灯 NP-6/7/8、DEC-2026-10-07-R15 删除客厅 NP-4b 后减至 107；2026-10-12 业主裁定删主卧两盏明装床头壁灯（light_master_wall_l / light_master_wall_r）改小米床头灯插电后减至 105；2026-10-12 DEC-2026-10-12-R2 业主裁定两卫照明用浴霸三合一自带、不另装平板灯，删 light_mbath_panel/light_gbath_panel/switch_mbath/switch_gbath 四点后减至 101；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。2026-10-13 DEC-2026-10-13-R2 曾误判「主卫镜位零电位」并新增 sock_mbath_vanity，随即发现 config 早已存在同名点位（room master_bedroom、(0.78,2.96)、h=0.95、count 2、w_mbath_south 南脸），已撤销该新增——点位维持 101，见 docs/decisions/06-electrical.md DEC-2026-10-13-R2 的自我更正段。新增点位为 position_status: pending 的预留接口，未激活前不进任何 topology 回路、不占箱位。
 
 panels:
   # id 是 topology 内部 panel 标识；source_point_id 指向 electrical.yaml 的真实箱体点位。
@@ -40,7 +40,7 @@ circuits:
     panel_id: panel_strong
     purpose: lighting
     status: confirmed
-    member_point_ids: [living_track_main]
+    member_point_ids: [light_living_dome]
     source_circuit_id: living_base
     capacity: "≤0.5kW"
     wire_size: "1.5mm²(φ16)"
@@ -250,14 +250,14 @@ controls:
     kind: switch_2way
     status: proposed
     switch_point_ids: [switch_living_entrance, switch_living_corridor]
-    target_point_ids: [living_track_main, light_entry_foyer]
-    note: "客厅入户侧/走廊侧双控：受控为客厅基础照明（track 主灯）+ 入户门厅筒灯（2026-09-07-056 方案绑定，待交底确认）"
+    target_point_ids: [light_living_dome, light_entry_foyer]
+    note: "客厅入户侧/走廊侧双控：受控为客厅基础照明（DEC-2026-10-13-R1 由明装轨道灯 living_track_main 改为吸顶灯 light_living_dome，点位 id 随类型一并更换）+ 入户门厅筒灯（2026-09-07-056 方案绑定，待交底确认）"
   - id: control_master_bed_door
     kind: switch_multiway
     status: confirmed
     switch_point_ids: [switch_master_bed_l, switch_master_bed_north, switch_master_door]
     target_point_ids: [light_master_dome]
-    note: "主卧门口/南床头/北床头三控，受控灯具为主卧吸顶灯 light_master_dome（2026-09-02 确认双控绑定；DEC-2026-09-08-R1 增北床头开关升三控 switch_multiway，中途开关按接线序定，交底确认）。2026-10-12 业主删主卧两盏明装床头壁灯（原 w_mb_east、h=1.35m、与南北床头柜轴线对齐）改小米床头灯插电，故本条不再有「壁灯不走多控」的例外；床头阅读与起夜由小米床头灯承担，见 procurement.md §12"
+    note: "主卧门口/南床头/北床头三控，受控灯具为主卧吸顶灯 light_master_dome（2026-09-02 确认双控绑定；DEC-2026-09-08-R1 增北床头开关升三控 switch_multiway，中途开关按接线序定，交底确认）。2026-10-12 业主删主卧两盏明装床头壁灯（原 w_mb_east、h=1.35m、与南北床头柜轴线对齐）改小米床头灯插电，故本条不再有「壁灯不走多控」的例外；床头阅读与起夜由小米床头灯承担，见 procurement.md §12。2026-10-13 DEC-2026-10-13-R3：light_master_dome 由 (2.60,7.60) 移至 (1.70,6.00)（原址正压 bed_180 投影、且把条带洗漱区甩到 3.91m/57°）；移位不改变本条三控绑定与接线序，只改灯具坐标"
   - id: control_parent_bed_door
     kind: switch_2way
     status: proposed

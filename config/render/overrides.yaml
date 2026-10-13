@@ -23,10 +23,10 @@
   basis: "餐桌吊灯挂点即安装完成面（2.8m），无灯体下沉，渲染与施工同高"
   reason: "已审计 Blender 基线：餐桌吊灯的最终渲染锚点。"
   applies_to: [web, blender]
-- id: living_track_main
-  anchorY_offset: 0
-  basis: "明装轨道灯贴安装完成面（2.8m）表现明装导轨，不模拟吊顶下沉"
-  reason: "已审计 Blender 基线：客厅黑色明装轨道灯的最终渲染锚点。"
+- id: light_living_dome
+  anchorY_offset: -0.25
+  basis: "客厅吸顶灯贴原顶板面（安装完成面 2.80m 为底盒/接线高度），渲染挂点低于完成面 25cm 以表现灯罩厚度与出光半球；与 light_master_dome 同口径"
+  reason: "DEC-2026-10-13-R1：替换原 living_track_main 条目（明装轨道灯 anchorY_offset 0，理由是「贴安装完成面表现明装导轨」）。改吸顶灯后轨道不再存在，挂点改为灯罩下缘，故 offset 0→-0.25。"
   applies_to: [web, blender]
 - id: light_tv_strip
   anchorY_offset: 0

@@ -1,28 +1,12 @@
 # Render-only detailed lighting configuration.
+#
+# 2026-10-13 DEC-2026-10-13-R1：detailed fixtures 列表清空。
+# 原唯一条目是 living_track_main（明装轨道灯，4 灯头 + 各自 target），随客厅主灯改吸顶灯
+# 一并作废——dome 类型没有 detailed 配置，渲染直接走 projection 的 lightingFixtures
+# （app/src/render/InteriorLightingSystem.ts 的 case 'dome' → makeDomeFixture）。
+#
 # Track offsets and target x/z are local to the fixture anchor; target.y is relative unless target_y_mode: absolute is set.
-fixtures:
-  - id: living_track_main
-    type: track_light
-    length: 2.8
-    target_y_mode: relative
-    heads:
-      - offset: { x: -1.05, z: 0 }
-        target: { x: -1.05, y: -2.2, z: 1.15 }
-        purpose: coffee_table
-        role: 茶几重点照明
-      - offset: { x: -0.35, z: 0 }
-        target: { x: -0.55, y: -2.2, z: 0.25 }
-        purpose: sofa
-        role: 沙发重点照明
-      - offset: { x: 0.35, z: 0 }
-        target: { x: 0.1, y: -2.2, z: 0.85 }
-        purpose: living_seating
-        role: 客厅座区整体照明
-      - offset: { x: 0.7, z: 0 }
-        target: { x: 0.85, y: -2.2, z: 1.25 }
-        purpose: living_south_or_corner
-        role: 客厅南侧或角落补光
-    direction: { x: 0, y: -1, z: 0 }
-    beam: 0.7
-    energy: 9
-    rotation: { x: 0, y: 0, z: 0 }
+# 保留本文件与 TrackLightConfig / WallLampConfig 类型作通用能力：DEC-2026-10-12-R1 删主卧两盏壁灯、
+# DEC-2026-10-13-R1 删客厅轨道灯后，track_light 与 wall_lamp 两类在 config/electrical.yaml 中
+# 已无在役点位，makeTrackFixture / makeWallLampFixture 代码保留但当前无调用方。
+fixtures: []

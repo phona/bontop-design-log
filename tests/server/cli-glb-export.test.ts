@@ -261,14 +261,18 @@ test('CLI facts projection exports lighting fixture geometry and no-facts CLI do
   const fixtures = [...withFacts.index.lightingFixtures.values()];
   assert.equal(fixtures.length, 16); // R15 起夜灯 - R12 客卫 3 灯 - R15 NP-4b（24→20）；DEC-2026-10-12-R1 删主卧两盏明装床头壁灯（20→18）；DEC-2026-10-12-R2 删两卫平板灯（18→16）
   assert.equal(withFacts.report.lightingFixtures, fixtures.length);
-  assert.deepEqual(new Set(fixtures.map((fixture) => fixture.userData.fixtureType)), new Set(['pendant', 'track_light', 'led_strip', 'dome', 'downlight', 'night_light'])); // 2026-10-05 R15：+night_light；2026-10-12 DEC-2026-10-12-R1：-wall_lamp（config 内已无壁灯点位）
+  assert.deepEqual(new Set(fixtures.map((fixture) => fixture.userData.fixtureType)), new Set(['pendant', 'led_strip', 'dome', 'downlight', 'night_light'])); // 2026-10-05 R15：+night_light；2026-10-12 DEC-2026-10-12-R1：-wall_lamp；2026-10-13 DEC-2026-10-13-R1：客厅主灯由 track_light 改 dome，config 内已无 track_light 点位
   for (const fixture of fixtures) {
     assert.equal(fixture.userData.type, 'lighting_fixture');
     assert.match(String(fixture.userData.objectId), /^electrical:/);
     assert.ok(fixture.userData.roomId);
   }
-  const track = fixtures.find((fixture) => fixture.userData.fixtureType === 'track_light')!;
-  assert.equal(track.children.filter((object) => String(object.userData.part).endsWith(':lens')).length, 4);
+  // DEC-2026-10-13-R1：客厅主灯 light_living_dome 由明装轨道灯改吸顶灯。
+  // dome 无 detailed 配置、无 part 子件，导出的节点名就是 electrical:<id>（与 light_dining_pendant 同型）。
+  const livingDome = fixtures.find((fixture) => fixture.userData.objectId === 'electrical:light_living_dome')!;
+  assert.ok(livingDome, 'missing electrical:light_living_dome fixture');
+  assert.equal(livingDome.userData.fixtureType, 'dome');
+  assert.equal(livingDome.userData.roomId, 'living_dining');
   installNodeFileReader();
   const data = await exportSceneToGlbData(withFacts.exportRoot);
   const directory = mkdtempSync(join(tmpdir(), 'lighting-glb-'));
@@ -276,12 +280,25 @@ test('CLI facts projection exports lighting fixture geometry and no-facts CLI do
   writeFileSync(glbPath, data instanceof ArrayBuffer ? new Uint8Array(data) : data);
   const summary = inspectGlb(glbPath);
   assert.ok(summary.nodeIds.includes('electrical:light_dining_pendant'));
-  assert.ok(summary.nodeIds.some((id) => id.includes('electrical:living_track_main:part=track')));
+  assert.ok(summary.nodeIds.includes('electrical:light_living_dome'));
+  assert.equal(summary.nodeIds.some((id) => id.includes(':part=track')), false, 'config 内已无 track_light 点位，导出不得再出现 part=track');
 });
 
 test('CLI track fixture heads are configuration-driven', () => {
   const facts = JSON.parse(readFileSync('data/project-render-facts.json', 'utf8'));
-  facts.lightingFixtures = facts.lightingFixtures.map((fixture: { type: string; heads?: number }) => fixture.type === 'track_light' ? { ...fixture, heads: 3 } : fixture);
+  // 2026-10-13 DEC-2026-10-13-R1 后 config 内已无 track_light 点位（客厅主灯改吸顶灯）。
+  // 本测试覆盖的是「灯头数由配置驱动」这一机制而非当前选型，故改为注入合成 track fixture，
+  // 不依赖真实 config 是否恰好有轨道灯——否则选型一变测试就假红/假绿。
+  const syntheticTrack = {
+    id: 'synthetic_track_probe',
+    room: 'living_dining',
+    type: 'track_light',
+    position: { x: 10.8, y: 2.55, z: 7.15 },
+    temperatureK: 3000,
+    enabled: true,
+    heads: 3,
+  };
+  facts.lightingFixtures = [...facts.lightingFixtures, syntheticTrack];
   const directory = mkdtempSync(join(tmpdir(), 'lighting-facts-'));
   const factsPath = join(directory, 'facts.json');
   writeFileSync(factsPath, JSON.stringify(facts));
