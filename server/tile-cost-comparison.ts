@@ -336,8 +336,75 @@ function requiredPositiveNumber(value: number, label: string): void {
   if (!Number.isFinite(value) || value <= 0) throw new Error(`${label} must be a positive finite number`);
 }
 
+/** 瓦工费率卡文件（config/masonry-labor.yaml）的形状：active 指向的一张报价卡。 */
+interface MasonryLaborQuote {
+  id: string;
+  contractor?: string;
+  quoted_at?: string;
+  status?: string;
+  source: string;
+  observed_at: string;
+  quote_status: string;
+  currency: string;
+  floor_rates_yuan_per_sqm: MasonryRateCard['floor_rates_yuan_per_sqm'];
+  wall_rates_yuan_per_sqm: MasonryRateCard['wall_rates_yuan_per_sqm'];
+  conditional_addons: MasonryRateCard['conditional_addons'];
+  extras: MasonryRateCard['extras'];
+  notes: string[];
+  bathroom_floor_charge_interpretations: MasonryRateCard['bathroom_floor_charge_interpretations'];
+}
+
+interface MasonryLaborFile {
+  version: number;
+  active: string;
+  quotes: MasonryLaborQuote[];
+}
+
+/**
+ * 瓦工费率的唯一机器可读源（2026-10-13 起）。
+ *
+ * 历史：该卡原为 config/tile-comparison.yaml 的 masonry_rate_card，只喂 /api/tiles/comparison；
+ * 而 server/budget-calculator.ts 的 computeLabor 另读 config/budget/base.json 的
+ * categories.masonry.labor（45 元/㎡），同一件事两处定价、互不对账。
+ * 提为项目级文件后，本函数是读取它的唯一入口。
+ *
+ * 身份：返回的是**费率假设层**，不是成交价——quote_status 为 preliminary_labor_rate_card，
+ * 来源是业主上传的瓦工费率表照片，无施工方名称/日期/签章/总价。
+ */
+export function loadMasonryRateCard(path = 'config/masonry-labor.yaml'): MasonryRateCard {
+  const file = load(readFileSync(path, 'utf8')) as MasonryLaborFile;
+  if (!Array.isArray(file.quotes) || file.quotes.length === 0) {
+    throw new Error(`${path}: quotes 不能为空`);
+  }
+  const quote = file.quotes.find(item => item.id === file.active);
+  if (!quote) {
+    throw new Error(`${path}: active="${file.active}" 在 quotes 中不存在（可用：${file.quotes.map(q => q.id).join(', ')}）`);
+  }
+  for (const field of ['source', 'observed_at', 'quote_status', 'currency'] as const) {
+    if (!quote[field]) throw new Error(`${path}: active 卡缺少必填字段 ${field}`);
+  }
+  return {
+    source: quote.source,
+    observed_at: quote.observed_at,
+    quote_status: quote.quote_status,
+    currency: quote.currency,
+    floor_rates_yuan_per_sqm: quote.floor_rates_yuan_per_sqm,
+    wall_rates_yuan_per_sqm: quote.wall_rates_yuan_per_sqm,
+    conditional_addons: quote.conditional_addons,
+    extras: quote.extras,
+    notes: quote.notes,
+    bathroom_floor_charge_interpretations: quote.bathroom_floor_charge_interpretations,
+  };
+}
+
 export function loadTileComparisonConfig(path = 'config/tile-comparison.yaml'): TileComparisonConfig {
-  return load(readFileSync(path, 'utf8')) as TileComparisonConfig;
+  const config = load(readFileSync(path, 'utf8')) as TileComparisonConfig;
+  // 单一来源铁律：费率卡 2026-10-13 已搬到 config/masonry-labor.yaml。
+  // 这里若还能读到内联 masonry_rate_card，说明有人回退了搬迁——fail-loud，不静默二选一。
+  if (config.masonry_rate_card) {
+    throw new Error(`${path}: 不得再内联 masonry_rate_card——已搬迁至 config/masonry-labor.yaml（瓦工费率唯一源）`);
+  }
+  return { ...config, masonry_rate_card: loadMasonryRateCard() };
 }
 
 export function buildTileCostComparison(

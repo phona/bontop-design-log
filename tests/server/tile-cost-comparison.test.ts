@@ -6,6 +6,7 @@ import { resolveLayout } from '../../server/layout-resolver.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import {
   buildTileCostComparison,
+  loadMasonryRateCard,
   loadTileComparisonConfig,
 } from '../../server/tile-cost-comparison.js';
 import type { VertexLayoutYaml } from '../../shared/types.js';
@@ -138,6 +139,27 @@ describe('tile cost comparison', () => {
     assert.equal(labor.ktBathroomFloors.selectedInterpretation, null);
     assert.equal(labor.includedInOwnerLaborBudgetPool, false);
     assert.match(labor.scopeStatus, /not an all-inclusive/);
+  });
+
+  it('瓦工费率卡唯一源在 config/masonry-labor.yaml，tile-comparison.yaml 不得内联', () => {
+    // 2026-10-13 搬迁：masonry_rate_card 从 tile-comparison.yaml 提到 config/masonry-labor.yaml。
+    // 理由是同一件事原来两处定价——该卡只喂 /api/tiles/comparison，而
+    // server/budget-calculator.ts 的 computeLabor 另读 config/budget/base.json 的
+    // categories.masonry.labor（45 元/㎡），互不对账。
+    // 本测试锁住搬迁结果：tile-comparison.yaml 不得回退内联卡。
+    const comparison = load(readFileSync('config/tile-comparison.yaml', 'utf8')) as Record<string, unknown>;
+    assert.ok(!('masonry_rate_card' in comparison), 'config/tile-comparison.yaml 不得再内联 masonry_rate_card——已搬迁至 config/masonry-labor.yaml');
+    assert.equal(comparison.masonry_rate_card_ref, 'config/masonry-labor.yaml', 'tile-comparison.yaml 应留下指向新文件的引用');
+
+    // 新文件必须是 active 卡可解析、且值与原卡逐字段相同（搬迁不改数）。
+    const card = loadMasonryRateCard();
+    assert.equal(card.source, 'docs/design-iterations/tile-plank-comparison-20261006/evidence/mason-labor-rate-card.jpg');
+    assert.match(card.quote_status, /preliminary_labor_rate_card/);
+    assert.equal(card.floor_rates_yuan_per_sqm.length, 6);
+    assert.equal(card.wall_rates_yuan_per_sqm.length, 6);
+    assert.equal(card.extras.length, 13);
+    assert.equal(card.conditional_addons.length, 4);
+    assert.equal(card.bathroom_floor_charge_interpretations.selection_status, 'unresolved');
   });
 
   it('compares dry-floor tile material plus ordinary labor on the same explicit scope', () => {
