@@ -117,11 +117,17 @@ for (const pkg of control.work_packages ?? []) {
 // DEC-2026-10-05-R12 复审补的门禁：flow 映射里的裸标量含半角逗号会被 js-yaml 在逗号处截断，
 // 残段变成带逗号的垃圾键（值为 undefined）。出现这类键说明 description/quantity_basis 尾部条款
 // 已从解析层静默丢失——报错并要求给值加双引号（同 COST-030-02 先例）。
+//
+// 2026-10-12 修正：原实现只查半角逗号 ','，但截断发生在「18,500」「4,000」「3,684」这类
+// 千分位里的半角逗号，而**残段垃圾键里往往只剩全角逗号「，」**——COST-060-02/060-04/120-01
+// 三条因此长期静默丢失尾部条款（description 截在「约4」「预算池18」「轨道灯约3」）。
+// 现同时查半角与全角；任一命中即报。
+const COMMA_CHARS = [',', '，'];
 for (const pkg of control.work_packages ?? []) {
   for (const component of pkg.budget?.components ?? []) {
-    const truncatedKeys = Object.keys(component).filter((key: string) => key.includes(','));
+    const truncatedKeys = Object.keys(component).filter((key: string) => COMMA_CHARS.some((ch) => key.includes(ch)));
     if (truncatedKeys.length) {
-      errors.push(`${component.id ?? pkg.id}: flow 标量疑被逗号截断（垃圾键：${truncatedKeys.join(' / ')}）——请给含半角逗号的 description/quantity_basis 加双引号`);
+      errors.push(`${component.id ?? pkg.id}: flow 标量疑被逗号截断（垃圾键：${truncatedKeys.join(' / ')}）——请给含逗号（半角 , 或全角 ，）的 description/quantity_basis 加双引号`);
     }
   }
 }
