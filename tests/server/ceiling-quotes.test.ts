@@ -12,6 +12,7 @@ import {
   resolveActiveCeilingRates,
   compareCeilingQuotes,
   ceilingQuoteQuantities,
+  CEILING_QUOTE_RATE_KEYS,
 } from '../../server/ceiling-quotes.js';
 import { computeCeilingTakeoff } from '../../shared/ceiling-takeoff.js';
 import { loadCeilingConfig } from '../../server/config-loader.js';
@@ -178,6 +179,28 @@ test('报价文件坏掉时预算不冻结：回落 base.json 费率', () => {
   const resolved = resolveActiveCeilingRates(empty, fallback);
   assert.equal(resolved.ceiling_zones.per_unit, 40);
   assert.equal(resolved.ceiling_zones.source, 'base.json');
+});
+
+test('报价文件缺失/非法（null）：全行走 base.json 回落，不抛、不伪造卡片', () => {
+  // 阶段 0 回归（budget-calculator.ts 的坏兜底）：读不到/读不懂 ceiling-quotes.yaml 时，
+  // 旧实现把 null 合成成 `{ version: 1, active: 'base.json', quotes: [] }`，
+  // resolveActiveCeilingRates 的 find() 找不到 active → throw；
+  // 而 GET /api/budget 对 calculate() 没有 try/catch → 整个预算接口 500，
+  // :579-580 注释承诺的「预算不能被一个坏配置文件冻结」是假的。
+  // 现在「无报价文件」是一等状态：传 null，全部计价行走 fallback。
+  const resolved = resolveActiveCeilingRates(null, fallback);
+  for (const key of CEILING_QUOTE_RATE_KEYS) {
+    assert.equal(resolved[key].source, 'base.json', `${key} 必须标记回落来源，不能冒充 quote`);
+    assert.equal(resolved[key].per_unit, fallback[key].per_unit, `${key} 单价必须取 fallback`);
+    assert.equal(resolved[key].unit, fallback[key].unit, `${key} 单位必须取 fallback`);
+  }
+  // 「非法」与「缺失」同一条出口：parse 抛错 → 调用方记 console.error → quotes 保持 null → 上面这条
+  assert.throws(() => parseCeilingQuotes(quotesFile([{ id: 'x', contractor: 'y', status: 'candidate', rates: {} }], 'ghost')), /不在 quotes 里/);
+  // 反证：旧实现的合成空卡今天仍然抛错（fail closed 未被削弱）——所以不能退回「伪造一张合法空卡」
+  assert.throws(
+    () => resolveActiveCeilingRates({ version: 1, active: 'base.json', quotes: [] }, fallback),
+    /active「base.json」不存在/,
+  );
 });
 
 // ─── DEC-2026-10-08-C12：边吊按米 / 平顶按㎡ 分形态计价 + out_of_scope ───

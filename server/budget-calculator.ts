@@ -650,17 +650,18 @@ export class BudgetCalculator {
 
     const takeoff = ceilingTakeoff(this.catalog);
     // 生效报价（DEC-2026-10-08-C03）：报价文件缺失/非法时按「无报价」处理，
-    // 回落 base.json 的 labor rate——预算不能被一个坏配置文件冻结。
+    // 全部计价行回落 base.json 的 labor rate——预算不能被一个坏配置文件冻结。
+    // 直接把 null 传给 resolveActiveCeilingRates，**不伪造报价卡**：旧实现在这里合成
+    // `{ active: 'base.json', quotes: [] }`，resolver 的 find() 返回 undefined 即抛错，
+    // 而 /api/budget 对 calculate() 没有 try/catch → 整个预算接口 500，兜底承诺是假的。
     let quotes: CeilingQuotesFile | null = null;
     try {
       quotes = loadCeilingQuotes();
     } catch (err) {
-      console.error('[budget-calculator] ceiling-quotes.yaml 不可用，回落 base.json 费率：', err instanceof Error ? err.message : String(err));
+      // 回落必须看得见：这条日志 + 每行 source='base.json' 是「配置坏了」的唯一痕迹。
+      console.error('[budget-calculator] ceiling-quotes.yaml 不可用，全部计价行回落 base.json 费率：', err instanceof Error ? err.message : String(err));
     }
-    const quoteRates = resolveActiveCeilingRates(
-      quotes ?? { version: 1, active: 'base.json', quotes: [] },
-      fallbackCeilingRates(budgetRaw.categories),
-    );
+    const quoteRates = resolveActiveCeilingRates(quotes, fallbackCeilingRates(budgetRaw.categories));
 
     this.computeLabor(categories, budgetRaw.categories, this.catalog.getRooms(), phase, takeoff, quoteRates);
 

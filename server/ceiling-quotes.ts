@@ -91,15 +91,25 @@ export function ceilingQuoteQuantities(takeoff: CeilingTakeoff): Record<CeilingQ
   };
 }
 
-/** 解析生效报价的各计价行单价；未声明的行回落到 fallback 并标 `source`，回落必须看得见。 */
+/**
+ * 解析生效报价的各计价行单价；未声明的行回落到 fallback 并标 `source`，回落必须看得见。
+ *
+ * `file` 为 null = 「没有报价文件」（调用方已把读取失败记进日志）。此时按无报价处理：
+ * **全部**计价行走 fallback，`source` 恒为 `'base.json'`。
+ * 为什么不在这里合成一张空卡：伪造 `{ active: 'base.json', quotes: [] }` 会让
+ * `file.quotes.find(...)` 返回 undefined → 抛错（旧 budget-calculator 正是这么 500 的）；
+ * 而伪造 `{ active: '__none__', quotes: [{ id: '__none__', ... }] }` 又把「完全没报价」
+ * 伪装成一张 status=baseline 的真卡，会流进报价对比面板。null 才是「无报价」的诚实形状。
+ */
 export function resolveActiveCeilingRates(
-  file: CeilingQuotesFile,
+  file: CeilingQuotesFile | null,
   fallback: Record<CeilingQuoteRateKey, { per_unit: number | null; unit: string }>,
 ): ResolvedCeilingRates {
-  const active = file.quotes.find((quote) => quote.id === file.active);
-  if (!active) throw new Error(`ceiling-quotes: active「${file.active}」不存在`);
+  // 文件在（哪怕 active 指向不存在的卡片）→ 照旧抛错：那是真的配错了，不能悄悄回落。
+  const active = file ? file.quotes.find((quote) => quote.id === file.active) : undefined;
+  if (file && !active) throw new Error(`ceiling-quotes: active「${file.active}」不存在`);
   const resolve = (key: CeilingQuoteRateKey): ResolvedCeilingRate => {
-    const fromQuote = active.rates[key];
+    const fromQuote = active?.rates[key];
     if (fromQuote) {
       return {
         per_unit: fromQuote.per_unit,
