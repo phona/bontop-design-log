@@ -1073,7 +1073,7 @@ facts:
   # 量房待确认项条数：60 条是「还有什么没量」的账面。新增/关闭条目必须同步。
   - id: fact.pending_site_data_count
     kind: derived
-    value: "@docs/pending-site-data.md:量表共 62 条"
+    value: "@docs/pending-site-data.md:量表共 63 条"
     unit: 条
     mirrors:
       - path: docs/pending-site-data.md
@@ -1586,6 +1586,21 @@ coverage:
   - { file: config/finish-lint.yaml, field: "tolerance", readers: ["shared/finish/types.ts", "shared/finish/rules.ts", "scripts/verify/finish/verify-finish-scope.ts"] }
   - { file: config/finish-lint.yaml, field: "note", readers: [] }
   - { file: config/ceiling.yaml, field: "*", readers: [] }
+  # 瓦工人工费率卡（2026-10-13 从 config/tile-comparison.yaml 的 masonry_rate_card 提为项目级）。
+  # 搬迁理由：该卡原先只喂 /api/tiles/comparison，而 server/budget-calculator.ts 的 computeLabor
+  # 另读 config/budget/base.json 的 categories.masonry.labor（45 元/㎡），同一件事两处定价。
+  # active 指向生效报价卡；quotes[] 是卡列表（当前仅 rate_card_photo，身份是 preliminary 费率假设，
+  # 不是成交价）；historical_reference 登记 base.json 45 元/㎡ 的退场身份。
+  # readers 会被真 grep：字段名一次不出现即报 declared_reader_does_not_read（error）。
+  - { file: config/masonry-labor.yaml, field: "version", readers: [] }
+  - { file: config/masonry-labor.yaml, field: "active", readers: ["server/tile-cost-comparison.ts"] }
+  - { file: config/masonry-labor.yaml, field: "quotes", readers: ["server/tile-cost-comparison.ts"] }
+  - { file: config/masonry-labor.yaml, field: "historical_reference", readers: [] }
+  # 搬迁后留下的指针：tile-comparison.yaml 不得回退内联 masonry_rate_card。该字段是纯数据指针，
+  # 无声称读者——守护由两处承担：server/tile-cost-comparison.ts 的 loadTileComparisonConfig
+  # 检测到内联 masonry_rate_card 即 fail-loud；tests/server/tile-cost-comparison.test.ts
+  # 断言本字段存在且内联卡不存在。
+  - { file: config/tile-comparison.yaml, field: "masonry_rate_card_ref", readers: [] }
   - { file: config/ceiling-quotes.yaml, field: "active", readers: ["server/ceiling-quotes.ts", "server/budget-calculator.ts", "server/routes.ts", "server/mcp-server.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "quotes", readers: ["server/ceiling-quotes.ts", "server/routes.ts", "server/mcp-server.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "version", readers: [] }
