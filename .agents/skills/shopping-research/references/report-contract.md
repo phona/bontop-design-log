@@ -35,6 +35,24 @@
 
 URL、时间和状态必须来自实际观察；状态阻塞时不要生成虚构商品证据。
 
+使用购物党、慢慢买或什么值得买时，证据对象可增加以下字段，以保留价格历史、爆料时间和促销口径：
+
+```json
+{
+  "sourceType": "price_comparison|deal_post|official_specs|original_listing",
+  "priceScope": "current|historical_low|historical_high|deal_report|original_current|promotion|coupon|subsidy|member|rebate|estimated_final",
+  "skuResolved": false,
+  "promotionConditions": "页面可见的券、补贴、会员、满减或有效期；未知则写 unknown",
+  "linkedOriginalUrl": "原平台商品详情链接；没有则写 null",
+  "jumpUrl": "比较站/爆料页跳转的原商城链接；没有则写 null",
+  "officialSpecUrl": "品牌官网型号页或官方说明书链接；没有则写 null"
+}
+```
+
+比较站的历史最低价、SMZDM 爆料时间价、当前原商城价、会员券价、返利价、活动价和预估到手价必须与当前展示价分开列；没有完成原平台详情页核验时，只能作为价格线索或异常提示，不能作为精确 SKU 报价或成交结论。
+
+品牌官网型号页和官方说明书可以支持规格核验，但不能替代原商城的当前价格、库存、地区送装或促销核验；官网宣传内容也不能替代第三方体验、耐用性或售后证据。
+
 ## 4. 候选对比
 
 用表格保留原始字段和口径，不强行压成单一分数。建议列：候选/平台/商品 ID/标题/店铺或公司、规格与单位、展示价、明确 SKU 价、券价、MOQ、阶梯价、运费、销量文本、广告标记、库存/配送、证据、状态、事实/推断/未知、淘汰或保留理由。

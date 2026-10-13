@@ -7,6 +7,8 @@ description: "把国内购物需求转成可审计的只读跨平台探索与专
 
 这是决策层 Skill，不是新的平台抓取器。六个基础观察包是 `taobao-keyword-search`、`taobao-product-detail`、`jd-keyword-search`、`jd-product-detail`、`1688-keyword-search` 和 `1688-product-detail`；本 Skill 负责把需求变成探索策略、证据和买手报告。它可以自行决定是否继续探索、使用哪些可用平台、查询矩阵、分页/排序、候选和详情深度，以及何时停止；不要把固定页数或固定候选数当成流程要求。
 
+购物党 Gwdang、慢慢买 Manmanbuy 与什么值得买 SMZDM 是补充性的价格比较来源，不替代上述六个基础观察包。品牌官网型号页和官方电子说明书是规格核验来源，可用于核对型号、额定参数、安装尺寸、用电/气源和安装条件，不替代电商当前价格、库存、地区配送/送装，也不把官网宣传内容当成第三方体验事实。
+
 ## 只读 preflight
 
 在开始浏览前，可运行本包自带的 `scripts/preflight.py`。它检查六个基础 Skill 的 `SKILL.md`、`scripts/extract.py` 和 `agents/openai.yaml`，检查当前 Python 与 `agent-browser`，并只读取 `AGENT_BROWSER_CDP` 指定 CDP 端口的 `/json/version`（默认 `9222`）。它不会导航、登录、安装依赖、创建或关闭 tab，也不会修改浏览器。
@@ -37,6 +39,12 @@ preflight 失败时停止本次研究并披露缺失项；不要把失败的前�
 调用六个基础 Skill 时，使用其 capability contract：在已验证的 owned pinned target 内自由多轮、串行地搜索任意关键词/分页/排序，或反复读取不同详情。基础 Skill 返回什么就记录什么；`status` 阻塞时不得猜测成功或用另一平台结果掩盖覆盖缺口。缺少某个平台基础 Skill 时降级并披露实际覆盖不足。
 
 把事实、推断和未知分开。比较前统一商品规格、数量单位、地区、配送和价格口径；展示价、已选/未选 SKU 价、券价、MOQ、阶梯价和运费必须分列。无法同口径比较时标为不可直接比较，不强行评分。没有 reviews 能力，口碑、耐用性和售后体验一律标为未验证。
+
+## 补充价格比较来源
+
+需要历史价格、跨平台活动线索或价格异常复核时，可以按 [references/price-comparison-sources.md](references/price-comparison-sources.md) 使用购物党 Gwdang（`gwdang.com`）、慢慢买 Manmanbuy（`s.manmanbuy.com`）和什么值得买 SMZDM（`smzdm.com`）。三者均只读：允许搜索、翻页、打开商品比价/历史价格/促销或爆料详情并记录页面可见字段；禁止购买、加购、收藏、登录、修改账户或绕过验证。它们不是新增的商品详情基础 Skill，不能用比较站聚合标题、爆料标题或价格代替淘宝、京东、1688 原商品详情核验。
+
+比较站结果必须标记来源类型和价格范围：当前展示价、历史最低/最高、活动价、券后/补贴/会员价、预估到手价和已结束促销分别记录。历史记录的商品聚合、抓取时间、优惠条件和 SKU 范围可能不完整；没有明确原商品链接、型号和已选 SKU 时，`skuResolved=false`，不得把结果写成可直接支付的报价。任何进入推荐的候选，至少要回到一个原平台商品详情页核对标题、型号、SKU、属性、配送和促销条件；比较站只能支持价格走势、价差异常或候选发现。
 
 ## 不可越过的边界
 
