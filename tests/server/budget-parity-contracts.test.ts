@@ -213,8 +213,8 @@ test('真实仓：墙砖面积三处一致（30.8105㎡），橱柜/地面两处
   assert.equal(run.status, 0, `verify-facts 必须退出 0。stderr: ${run.stderr}\nstdout: ${run.stdout}`);
   assert.match(run.stdout, /c\.masonry_tile_area_parity：3 处一致 = 30\.8105/);
   assert.match(run.stdout, /c\.floor_quantity_parity：3 处一致 = 123\.34/);
-  assert.match(run.stdout, /c\.cabinet_length_parity：3 处一致 = 4\.9599/);
-  assert.match(run.stdout, /c\.cabinet_area_parity：3 处一致 = 3\.7496/);
+  assert.match(run.stdout, /c\.cabinet_length_parity：3 处一致 = 5\.51/);
+  assert.match(run.stdout, /c\.cabinet_area_parity：3 处一致 = 4\.2226/);
 });
 
 test('真实仓负例：control.yaml 登记值改坏，verify-facts 必须报 parity_mismatch', () => {

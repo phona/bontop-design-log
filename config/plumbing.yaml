@@ -309,7 +309,7 @@
   construction_status: pending
   not_for_construction: true
   uncertainty_m: 0.2
-  note: "厨房排烟道锚点：**2026-10-09 迁位**——据邻户原始结构图 YS-01 + 业主现场指认，公共烟道在厨房东墙 w_ent_west（实体墙）油烟机/冰箱高柜旁；原推断值 (9.0,0.1) 落在被 suppress 的北玻璃幕墙 w_kit_north 上、土建烟道不可能与幕墙共存，故废。新值 (10.60,1.50) 取油烟机(10.50,1.18)与东墙南端冰箱高柜之间的 industry-standard 推断位，紧贴油烟机、烟管改走相邻高柜内、不再横穿 150mm 铝扣板吊顶空腔（连带消解 φ150 占满空腔）。raster 1:65 读数有限，精确 mm 待量房实测后回写并升 measured。断面按 0.15m 口径协调。**本轮不画 MEP route**：排烟道属成品土建管井，油烟机烟管走向待 SKU 与量房；mep-hvac-coordination 的 supply_air/return_air 层不覆盖排烟道，故不新增 duct 路线。不作为施工依据，量房日实测后升级 status: measured"
+  note: "厨房排烟道锚点：**2026-10-09 迁位**——据邻户原始结构图 YS-01 + 业主现场指认，公共烟道在厨房东墙 w_ent_west（实体墙）油烟机/冰箱高柜旁；原推断值 (9.0,0.1) 落在被 suppress 的北玻璃幕墙 w_kit_north 上、土建烟道不可能与幕墙共存，故废。新值 (10.60,1.50) 取油烟机(10.50,1.18)与东墙南端冰箱高柜之间的 industry-standard 推断位，紧贴油烟机、烟管改走相邻高柜内、不再横穿 150mm 铝扣板吊顶空腔（连带消解 φ150 占满空腔）。raster 1:65 读数有限，精确 mm 待量房实测后回写并升 measured。断面按 0.15m 口径协调。**本轮不画 MEP route**：排烟道属成品土建管井，油烟机烟管走向待 SKU 与量房；mep-hvac-coordination 的 supply_air/return_air 层不覆盖排烟道，故不新增 duct 路线。不作为施工依据，量房日实测后升级 status: measured；2026-10-14 3D trial 将 range_hood 候选移至 (10.50,1.50)，与本 inferred marker z 对齐且中心x差0.10m；烟道坐标和 ±0.20m / not_for_construction 状态均未改，准确接口/烟管走向待量房及SKU复核。"
 
 # === 2026-10-09 两卫浴霸换气排风 infer（业界标准，量房敲定；业主批准先 infer 一版）===
 # 依据 acceptance.yaml check_hvac_exhaust_outlet（DEC-2026-10-06-R1）：两卫排风出外墙 φ100 防火止回阀、禁接公共烟道与排水立管。

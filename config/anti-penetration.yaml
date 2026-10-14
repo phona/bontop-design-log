@@ -166,7 +166,7 @@ waivers:
 
   - id: kitchen_sink_cutout
     rule: pen.furniture.furniture
-    pair: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:sink:8]
+    pair: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:sink:7]
     kind: attached
     reason: "水槽嵌入台面开孔：config/house.yaml 在该柜体段显式声明 cutouts {kind: sink, id: kitchen-sink}，开孔位置由既有水槽点位与柜体中心换算为 run-local offset，水槽是台面构件而非独立占地体"
     owner: 业主
@@ -174,17 +174,9 @@ waivers:
 
   - id: kitchen_cooktop_cutout
     rule: pen.furniture.furniture
-    pair: [furniture:kitchen:kitchen_cabinet_run:4, furniture:kitchen:gas_stove:6]
+    pair: [furniture:kitchen:kitchen_cabinet_run:4, furniture:kitchen:gas_stove:5]
     kind: attached
     reason: "灶具嵌入台面开孔：config/house.yaml 在该柜体段显式声明 cutouts {kind: cooktop, id: kitchen-cooktop}，开孔由既有灶具点位经世界偏移再按柜体旋转换算为 run-local offset，属台面开孔安装"
-    owner: 业主
-    expires: 2027-06-30
-
-  - id: kitchen_fridge_corner
-    rule: pen.furniture.furniture
-    pair: [furniture:kitchen:kitchen_cabinet_run:4, furniture:kitchen:fridge:5]
-    kind: attached
-    reason: "冰箱占东墙南端高柜位（DEC-021 厨房缩至南侧边界后定位），与东墙灶台柜段端部在转角收口并靠；冰箱实际位置与 SKU 仍 pending（docs/pending-site-data.md #22/#33），定位变更时本豁免随之失效并须重审"
     owner: 业主
     expires: 2027-06-30
 
@@ -251,7 +243,7 @@ envelopes:
       kind: appliance_door
       open_face: west
       swing_m: 0.6
-      declared_basis: "DEC-021 冰箱占东墙南端高柜位（嵌东墙柜体，门朝厨房即西）；0.6m 开门净空为厂家常识估计（侧对门叶≈半宽 0.35 开 90°+铰件），非施工依据"
+      declared_basis: "2026-10-14 HR-518WUFIPZ 3D trial candidate in living_dining (10.94,3.48), rotation=90, modeled door faces west into dining circulation; 0.60m opening envelope is a visual study assumption, not confirmed hinge/reversible-door or manufacturer installation data. Check both slider states; keep final opening/installation clearance site_pending."
     - id: env.dishwasher.door
       type: dishwasher
       kind: appliance_door

@@ -1,0 +1,271 @@
+{
+  "url": "http://127.0.0.1:5173/",
+  "title": "和萃 701 - 3D 装修设计",
+  "app_ready": true,
+  "ready_state": "ready",
+  "banner": [],
+  "mode": "orbit",
+  "camera": {
+    "position": {
+      "x": 7.4,
+      "y": 14,
+      "z": 19.2
+    },
+    "target": {
+      "x": 7.4,
+      "y": 0,
+      "z": 3.65
+    }
+  },
+  "objects": {
+    "kitchen_dining_sliding_door": {
+      "name": "sliding_door:kitchen_dining_sliding_door",
+      "type": "sliding_door_run",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation_y": 0,
+      "declaredDimensions": null,
+      "aabb": {
+        "min": [
+          7.200000047683716,
+          -1.862645593320167e-10,
+          2.3200000017881393
+        ],
+        "max": [
+          10.799999952316284,
+          2.6099999993294474,
+          2.519999999552965
+        ]
+      }
+    },
+    "electrical:sock_kitchen_fridge": {
+      "name": "electrical:sock_kitchen_fridge",
+      "type": "electrical",
+      "position": [
+        10.725000000000001,
+        0.3,
+        2.05
+      ],
+      "rotation_y": -1.5707963267948966,
+      "declaredDimensions": null,
+      "aabb": null
+    },
+    "electrical:sock_kitchen_gas": {
+      "name": "electrical:sock_kitchen_gas",
+      "type": "electrical",
+      "position": [
+        10.725000000000001,
+        2.35,
+        0.20000000000000018
+      ],
+      "rotation_y": -1.5707963267948966,
+      "declaredDimensions": null,
+      "aabb": null
+    },
+    "furniture:living_dining:entry_half_height_cabinet:7": {
+      "name": "furniture:living_dining:entry_half_height_cabinet:7",
+      "type": "entry_half_height_cabinet",
+      "position": [
+        11.5,
+        0,
+        4
+      ],
+      "rotation_y": 1.5707963267948966,
+      "declaredDimensions": {
+        "width": 2,
+        "depth": 0.35
+      },
+      "aabb": {
+        "min": [
+          11.305000007152557,
+          8.940696516468449e-10,
+          2.9800000190734863
+        ],
+        "max": [
+          11.698000000052154,
+          1.5,
+          5.019999980926514
+        ]
+      }
+    },
+    "furniture:living_dining:dining_table:8": {
+      "name": "furniture:living_dining:dining_table:8",
+      "type": "dining_table",
+      "position": [
+        7.9,
+        0,
+        3.45
+      ],
+      "rotation_y": 0,
+      "declaredDimensions": {
+        "width": 1.4,
+        "depth": 0.8
+      },
+      "aabb": {
+        "min": [
+          7.200000011920929,
+          -9.53674295089968e-9,
+          3.0499999940395357
+        ],
+        "max": [
+          8.599999988079071,
+          0.7699999995529652,
+          3.8500000059604647
+        ]
+      }
+    },
+    "furniture:kitchen:kitchen_cabinet_run:4": {
+      "name": "furniture:kitchen:kitchen_cabinet_run:4",
+      "type": "kitchen_cabinet_run",
+      "position": [
+        10.48,
+        0,
+        1
+      ],
+      "rotation_y": 1.5707963267948966,
+      "declaredDimensions": null,
+      "aabb": {
+        "min": [
+          10.159999999973923,
+          8.940696724635266e-10,
+          0.2799999713897704
+        ],
+        "max": [
+          10.799999992847443,
+          0.8899999856948853,
+          1.7200000286102295
+        ]
+      }
+    },
+    "furniture:kitchen:fridge:5": {
+      "name": "furniture:kitchen:fridge:5",
+      "type": "fridge",
+      "position": [
+        10.45,
+        0,
+        2.05
+      ],
+      "rotation_y": 1.5707963267948966,
+      "declaredDimensions": {
+        "width": 0.7,
+        "depth": 0.7
+      },
+      "aabb": {
+        "min": [
+          10.100000005960464,
+          2.384185793236071e-8,
+          1.7000000059604643
+        ],
+        "max": [
+          10.799999994039535,
+          1.799999976158142,
+          2.3999999940395353
+        ]
+      }
+    },
+    "furniture:kitchen:gas_stove:6": {
+      "name": "furniture:kitchen:gas_stove:6",
+      "type": "gas_stove",
+      "position": [
+        10.5,
+        0,
+        1.18
+      ],
+      "rotation_y": 1.5707963267948966,
+      "declaredDimensions": {
+        "width": 0.75,
+        "depth": 0.6
+      },
+      "aabb": {
+        "min": [
+          10.319999992847443,
+          0.8759999999050051,
+          0.8499999868869781
+        ],
+        "max": [
+          10.685000002384186,
+          0.9449999928474426,
+          1.5100000131130218
+        ]
+      }
+    },
+    "furniture:kitchen:range_hood:7": {
+      "name": "furniture:kitchen:range_hood:7",
+      "type": "range_hood",
+      "position": [
+        10.5,
+        0,
+        1.18
+      ],
+      "rotation_y": 1.5707963267948966,
+      "declaredDimensions": {
+        "width": 0.9,
+        "depth": 0.5
+      },
+      "aabb": {
+        "min": [
+          10.25,
+          1.350000023841858,
+          0.7300000119209289
+        ],
+        "max": [
+          10.75,
+          2.549999952316284,
+          1.629999988079071
+        ]
+      }
+    }
+  },
+  "sliding_door_panels": [
+    {
+      "id": "sliding_door:kitchen_dining_sliding_door:panel:0",
+      "position": [
+        10.11,
+        1.275,
+        2.35
+      ],
+      "visible": true
+    },
+    {
+      "id": "sliding_door:kitchen_dining_sliding_door:panel:1",
+      "position": [
+        10.190000000000001,
+        1.275,
+        2.4
+      ],
+      "visible": true
+    },
+    {
+      "id": "sliding_door:kitchen_dining_sliding_door:panel:2",
+      "position": [
+        10.27,
+        1.275,
+        2.4499999999999997
+      ],
+      "visible": true
+    },
+    {
+      "id": "sliding_door:kitchen_dining_sliding_door:panel:3",
+      "position": [
+        10.350000000000001,
+        1.275,
+        2.5
+      ],
+      "visible": true
+    }
+  ],
+  "exhaust_duct_marker": [
+    {
+      "id": "plumbing:duct_kitchen_exhaust",
+      "type": "annotation",
+      "position": [
+        10.6,
+        0.5,
+        1.5
+      ]
+    }
+  ]
+}

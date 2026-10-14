@@ -1,0 +1,51 @@
+iteration_id: fridge-relocation-cooktop-reflow-20261014
+state: implementation
+frozen: true
+coordinate_system:
+  plan_axes: "Three.js right hand: x=东/西，z=南/北，y=up"
+  units: m
+  source: AGENTS.md
+anchors:
+  - id: kitchen_dining_threshold
+    type: room_anchor
+    status: confirmed
+    plan: "开口基准线 z=2.40，x=7.20–10.80；餐厨门当前常开，关闭状态覆盖全开口。"
+    elevation: "门高 2.55m；四扇一固三活。"
+    section: "门与家具碰撞按开/闭两态分别核验。"
+    source_refs: [config/layout/overlay.yaml, config/layout/model-geometry.yaml]
+  - id: fridge_hr518
+    type: free_position
+    status: agent_selected_trial_candidate
+    plan: { origin: model-geometry, axes: [x, z], position: { x: 10.94, z: 3.48 }, rotation: 90, dimensions_semantics: "width 0.833 along local x; depth 0.600 along local z; rotation 90 maps world x=0.600 and world z=0.833", opening_side: west }
+    elevation: { origin: floor, body_height_m: 1.910, installation_clearance: site_pending }
+    section: { viewing_side: west/dining, manufacturer_back_side_clearance: site_pending }
+    candidate_description: "候选中心由用户指定区域（长虹门南侧、入户门西侧）推导；world body AABB x[10.64,11.24], z[3.0635,3.8965], 与门头半高柜 east end panel 留约65mm；试位不是施工定位。"
+    source_refs: [user_request_plan, user_clarification_2026_10_14, config/house.yaml, config/layout/model-geometry.yaml, config/layout/overlay.yaml]
+  - id: east_cooktop_run
+    type: wall_anchor
+    status: agent_selected_trial_candidate
+    plan:
+      wall: w_ent_west
+      kitchen_side: west
+      existing_run: { center: { x: 10.48, z: 1.00 }, rotation: 90, length_m: 1.40, depth_m: 0.60 }
+      rejected_intermediate_run: { center: { x: 10.48, z: 1.325 }, rotation: 90, length_m: 2.05, depth_m: 0.60, world_z: [0.30, 2.35], reason: "open slider stack overlap 0.09m in penetration shadow" }
+      candidate_run: { center: { x: 10.48, z: 1.275 }, rotation: 90, length_m: 1.95, depth_m: 0.60, nominal_world_z: [0.30, 2.25], runtime_countertop_max_z: 2.27 }
+      open_slider_panel_min_z: 2.33
+      runtime_panel_gap_m: 0.06
+      proposed_cooktop_center: { x: 10.50, z: 1.50 }
+      proposed_center_status: agent_selected_trial_candidate
+    elevation: { cabinet_height_m: 0.86, countertop_thickness_m: 0.03, hood_height_reference: existing_runtime_model }
+    section: "烟道仅以 inferred anchor (10.60,1.50), ±0.20m 作协调参照；不因对齐而迁移锚点。当前1.95m候选与开态叠扇余60mm；初始2.05m已因0.09m overlap拒绝。"
+    source_refs: [config/house.yaml, config/plumbing.yaml, user_request_plan]
+  - id: entry_half_height_cabinet
+    type: free_position
+    status: inferred_object_mapping
+    plan: { origin: config/house.yaml, position: { x: 11.50, z: 4.00 }, rotation: 90, dimensions_m: { length: 2.00, depth: 0.35, height: 1.50 }, preserved_footprint: true }
+    elevation: { base_y_m: 0.00, body_height_m: 1.50 }
+    section: "保持主体及既有 footprint；只允许新冰箱确认后定义局部收口，不加深、不包覆冰箱。"
+    source_refs: [config/house.yaml, shared/types.ts, shared/render/FixtureFactory.ts]
+validation_views:
+  - plan: "俯视：冰箱目标/门轨开闭态、柜体延伸、灶具烟机烟道报警器和餐厅主要通道"
+  - perspective: "餐厅朝厨房看：冰箱正面、背侧收口、长虹门与门头柜关系"
+  - kitchen_elevation: "东墙连续柜体、灶具/烟机与烟道推定锚点"
+  - door_states: "长虹门 open/closed 两态分别检查冰箱碰撞"

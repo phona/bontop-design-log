@@ -1,0 +1,86 @@
+iteration_id: fridge-relocation-cooktop-reflow-20261014
+state: implementation
+frozen: true
+alignment:
+  id: fridge-area-clarification-2026-10-14
+  original_request: "冰箱放在厨房长虹推拉门南侧、入户门西侧区域；业主授权在此范围预研一个 3D 试位。"
+  normalized_decision: "本轮展示候选为 living_dining 中心 (10.94,3.48)、rotation=90、机门朝西；W×D×H 映射为 0.833×0.600×1.910m。与 entry_half_height_cabinet runtime side gap≈65mm。候选用于空间/视觉比较，不是业主已确认施工点位。"
+  timestamp: 2026-10-14
+priority:
+  - replace_the_existing_fridge_with_one_Hualing_HR_518WUFIPZ
+  - preserve_kitchen_dining_sliding_door_and_its_open_close_behavior
+  - extend_east_cooktop_worktop_into_old_fridge_segment
+  - keep_inferred_exhaust_duct_and_gas_alarm_coordinates_visible_and_stationary
+  - preserve_dining_table_chairs_water_heater_and_entry_half_height_cabinet_footprint
+  - treat_model_as_spatial_visual_trial_not_construction_setting_out
+allowed_scope:
+  - config/house.yaml kitchen fridge/cabinet/cooktop/hood furnishing records
+  - shared/types.ts fridge furniture dimensions
+  - shared/render/FixtureFactory.ts fridge model geometry
+  - config/electrical.yaml fridge/hood dependent point status and notes
+  - config/mep-hvac-coordination.yaml fridge feed status/note; final outlet path remains site pending
+  - config/electrical-topology.yaml circuit note
+  - config/anti-penetration.yaml fridge opening/cabinet relations
+  - config/plumbing.yaml exhaust-duct note only; do not move the anchor
+  - docs/pending-site-data.md, docs/decisions/02-layout-public.md, and this iteration dossier
+forbidden:
+  - config/layout/model-geometry.yaml geometry changes
+  - config/layout/overlay.yaml sliding door geometry/state changes
+  - moving the inferred exhaust duct or gas alarm point to conceal a conflict
+  - changing dining table/chairs, water heater, or the confirmed entry cabinet footprint
+  - inventing an accessible fridge outlet position or treating the old kitchen endpoint as connected to the relocated candidate
+  - representing manufacturer installation clearances as confirmed
+  - treating this trial as a construction setting-out drawing
+supersession_review:
+  - prior_decision: DEC-2026-08-06-021
+    prior_conclusion: "冰箱东墙南端高柜位 (10.45,2.05)，灶具/烟机 (10.50,1.18)，厨房南界 z=2.40；压缩灶具+冰箱进深以满足 d_kit_balc swing。"
+    proposed_supersession: "在本轮模型候选中替换冰箱型号/位置、扩展东墙操作柜并试移灶具/烟机；只覆盖该 decision 的 appliances/cabinet position，不改变厨房边界或阳台门 swing，也不取代施工冻结。"
+    reason: "业主本轮明确提出替换冰箱并比较餐厅侧摆位，且现冰箱南端段改作连续操作区。"
+    status: superseded_for_spatial_trial
+  - prior_decision: DEC-2026-10-09-W04
+    prior_conclusion: "排烟道锚点 (10.60,1.50) 为 inferred、±0.20m、not_for_construction。"
+    proposed_supersession: none
+    handling: "本轮保留其坐标与不确定状态；若其与烟机/柜体形成冲突，在模型和验收中显式报告，不因商务/视觉需要静默迁位。"
+    status: preserved
+open_questions:
+  - id: fridge_candidate_review
+    status: agent_selected_trial_candidate
+    question: "本轮使用 agent 从业主给定区域推导的中心 (10.94,3.48)、rotation=90、开门向西候选；不是施工批准点。"
+    required_for: [visual_review, construction_freeze]
+    basis: "body AABB x[10.64,11.24], z[3.0635,3.8965]；长虹门开态/闭态及 w_ent_south_w wall slab 均留净距；对 entry_half_height_cabinet 留约65mm侧缝。"
+    reversal: "业主看运行时目标视图后可改中心/朝向；厂家安装图可能反转 hinge/open-face clearance。"
+  - id: entry_cabinet_identity
+    status: inferred_for_trial
+    question: "‘门头柜’是否指 entry_half_height_cabinet（中心 (11.50,4.00)，占地约 2.0×0.35m）？"
+    required_for: [construction_freeze]
+    resolution: "当前按模型中位置匹配的 entry_half_height_cabinet 留缝；业主看样式时可指认对象映射。"
+  - id: cooktop_alignment
+    status: agent_selected_trial_candidate
+    question: "是否按 (10.50,1.50) 作为灶具/烟机试版中心，以烟道推定锚点 (10.60,1.50) 作接口参照？"
+    required_for: [visual_review, construction_freeze]
+    resolution: "本轮仅用作接口可视试位；烟道与报警器坐标保持原值/原状态。"
+  - id: manufacturer_clearance
+    status: site_pending
+    question: "厂家对 HR-518WUFIPZ 背/侧/顶净空、通风、开门角度与铰链侧的安装要求是什么？"
+    required_for: [construction_freeze]
+    owner: 业主/厂家
+    trigger: 橱柜复尺及设备下单前
+    interim: "模型只表达用户提供的机身尺寸；净空显式标待厂家资料。"
+  - id: fridge_outlet_access
+    status: site_pending
+    question: "新位置没有已核定、可免拉冰箱检修的电源接口；现 sock_kitchen_fridge 与 strong-ded-fridge 仍记录旧厨房 endpoint。"
+    required_for: [electrical_freeze, construction_freeze]
+    owner: 业主/电工
+    trigger: 水电交底与柜体深化前
+    interim: "保留旧 topology endpoint 作为回路占位，但 note 明确它不代表已连接本轮冰箱候选；不在本轮虚构 floor/cabinet socket。"
+acceptance:
+  - exactly_one_HR_518WUFIPZ_body_at_agent_selected_trial_datum_with_candidate_status_visible
+  - old_fridge_location_has_no_second_fridge
+  - longhong_door_open_and_closed_states_do_not_collide_with_fridge
+  - refrigerator_open_door_space_and_dining_main_path_are_reviewed
+  - east_cooktop_cabinet_extension_and_cooktop_position_are_explicit
+  - inferred_duct_and_gas_alarm_remain_at_declared_coordinates_and_conflicts_are_shown
+  - entry_half_height_cabinet_main_body_and_footprint_are_preserved_with_local_trim_only
+  - kitchen_dining_table_chairs_water_heater_remain_unchanged
+  - manufacturer_clearance_remains_site_pending
+  - current_source_version_browser_views_and_reviewer_verdicts_are_recorded

@@ -33,6 +33,7 @@
 - `DEC-2026-10-05-R10` v0 审查整改批次 A：衣柜预算 roomOverride 修正与防回归
 - `DEC-2026-10-05-R19` 厨房铝扣板收墙+餐厅两条服务带（案1）：餐桌区恢复 2.80 平顶
 - `DEC-2026-10-05-R20` 功能评审阻断项修复轮（三项）+ 双复评审通过
+- `DEC-2026-10-14-R01` 冰箱搬至长虹门南/入户门西侧的3D候选 + 东墙灶台段扩展
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -433,4 +434,17 @@
 - **复评审**：functional PASS（三项逐一复核消除，未引入新阻断）；aesthetic PASS（9.70 首尾相接判定为"恰好形成连续线"，构图语言不变）。证据：view2-v2/view5 同版本重采；MEP 徽标 179 与 CLI 179 对账一致。
 - **遗留（非阻断，备查）**：return_dining 格栅西缘 7.45 与冷媒主管轴相切（建议后续东移 ≈5cm）；西带内三条导管与 φ32 主管同轴敷设（施工 guidance 需注明独立挂装/错高）；strong-light-dining 末段 0.46m 斜线+约 0.21m 带外段（R19 引入，下一轮正交化）；#41 分层标高系统性口径未回归。
 - **验证**：verify:all 0 / verify:mep 0 error（179 warning）/ test:server 609/609 / typecheck 0 / verify:facts OK（153 登记与实算一致，三项修复未改变 clearance 总数）。
+
+### DEC-2026-10-14-R01 冰箱搬至长虹门南/入户门西侧的3D候选 + 东墙灶台段扩展
+
+- **日期/来源**：2026-10-14。用户沿用已讨论的HR-518WUFIPZ换位方案，并补清候选区域为「厨房长虹推拉门南侧、入户门西侧」，授权先预研一个3D试位。迭代记录：`docs/design-iterations/fridge-relocation-cooktop-reflow-20261014/`。
+- **试位（不是施工定位）**：当前仅一台冰箱，采用用户给定机身 833×600×1910mm，视觉试版按 W×D×H；中心 **(10.94,3.48)**、rotation=90、机门朝西，房间从 kitchen 改归 living_dining。world body AABB x[10.64,11.24]、z[3.0635,3.8965]、y[0,1.910]；与 entry_half_height_cabinet 运行时西缘留约65mm、与东墙/门口南侧实体面留约104mm。实际厂家侧/背/顶安装净空与门铰形式 site_pending。
+- **相邻门/动线实算候选**：长虹门中心线 z=2.40，开态叠扇/闭态整幅模型包络最南约 z=2.52，冰箱北缘 z=3.0635，间隙约0.544m；入户门洞 d_ent 西缘 x=11.80，冰箱东缘 x=11.24，余0.56m。冰箱向西开门的0.60m shadow envelope 最西到约 x=10.04，离餐椅 runtime 最大 x≈8.475 仍约1.565m。开门幅度/hinge side 和实际安装要求未由厂家确认。
+- **东墙柜/灶具试位（碰撞修正后）**：柜段从 length=1.40m 扩至 **1.95m**，中心 (10.48,1.275)、rotation=90，标称 z[0.30,2.25]；runtime 台面北缘约 z=2.27，长虹门开态叠扇南缘 z=2.33，留约 **60mm**。初始 2.05m / 中心 z=1.325 / 标称 end z=2.35 的中间候选与 open slider stack 发生 0.09m envelope overlap，故本轮依验证结果缩短100mm；该失败证据保留于 `evidence/penetration-shadow-intermediate-run205.json`。嵌入灶孔随 run 重算。灶具/烟机候选中心 **(10.50,1.50)**，沿用现 x 并将 z 与烟道 marker (10.60,1.50) 对齐。按现模型最近缘估算，报警器 sock_kitchen_gas (10.80,0.20) 到灶具/烟机北缘约0.925m/0.85m，均大于当前0.5m规则；只代表模型尺寸下的间距计算。
+- **算量镜像 delta（最终候选）**：地柜 run 合计 4.36→4.91m、地柜投影面积 3.7496→4.2226㎡，台面（地柜 run+north countertop bridge）4.96→5.51m；已同步 `schedule/phase-1/control.yaml` COST-110-01/03 的 `quantity_declared` 以维持 `c.cabinet_area_parity` / `c.cabinet_length_parity`，`planned_cny` 不动、橱柜书面报价/模块拆分仍 pending。初始 2.05m 中间候选对应5.01m/4.3086㎡/5.61m台面，因长虹门碰撞被否决并留作诊断记录；不作为当前量值。旧量值保留于 DEC-2026-08-06-021 与实施前指纹/evidence 供追溯，不静默删除。
+- **保持不动**：model-geometry、overlay 长虹门几何/开闭行为、餐桌椅、热水器、entry_half_height_cabinet 主体与 footprint、烟道坐标 (10.60,1.50) inferred/±0.20m/not_for_construction、燃气报警器点位均未迁改。仅将 overlay 对“东侧固定扇与旧冰箱邻接”的 DEC-044 旧文字标成历史假设，门仍原位 open:true。厨房 room 南界仍 z=2.40。
+- **旧决议推翻范围**：DEC-2026-08-06-021 的「冰箱留东墙南端 (10.45,2.05)、东墙柜仍1.40m、灶具/烟机中心 (10.50,1.18)」被本轮**临时空间候选**覆盖；原因是用户要求以新机搬至门南侧/入户门西侧作3D比较。其厨房几何、d_kit_balc swing 与长虹门决议不变。DEC-2026-10-09-W04 烟道锚点未被推翻，仍作推定接口而不是实测墙体。
+- **实质内容/删除审计**：删去已失效的 `kitchen_fridge_corner` attached waiver（原绑定厨房 run:4↔旧 kitchen fridge:5）；冰箱现在在 living_dining，保留此豁免会静默放行错误的柜体关系，故改为无豁免、直接做真实碰撞检查。冰箱从 kitchen furnishing list 移除、作为唯一实例追加到 living_dining；gas_stove/sink runtime 索引同步更新。没有删除产品候选或烟道/报警器数值依据；门头柜与用餐区其他实体未删改。
+- **新候选静默失效条件**：① `sock_kitchen_fridge` 与 `strong-ded-fridge` 仍指旧东墙点位，旧插座将处于延长柜体后；本轮只保留 dedicated circuit 拓扑占位并标明**不代表给新冰箱供电**，出新可及 outlet/route 前不可电气冻结；② HR-518WUFIPZ W×D×H 映射、0.60m机门envelope、65mm侧缝及烟道与hood实际接口均待厂家资料/复尺核；③ 烟道、燃气表、报警器为 inferred/site_pending，不能为通过视觉候选而迁点。owner=业主/厂家/电工；触发=设备下单、橱柜深化与水电交底前。
+- **状态/验证**：最终 after-v004 是 agent-selected visual candidate，不是业主批准的安装点。初始 2.05m 柜段经 open-panel envelope 检查发现 0.09m overlap，修为1.95m；source-fingerprinted runtime 和同机位长虹门开闭视图验证冰箱、门扇、入户门扫掠、门头柜与餐厅动线。v004只校正文案中 DEC-044 历史冰箱邻接假设，没有更改门几何或开闭状态。aesthetic 与 functional 独立复核均 PASS。`gate:visual` CLEAR、`verify:all` 17/17、`test:server` 1005/1005、`test:app` 570/570、`typecheck` PASS。烟道、燃气报警器、厂家净空/铰链和新冰箱可及电源继续 site_pending。
 

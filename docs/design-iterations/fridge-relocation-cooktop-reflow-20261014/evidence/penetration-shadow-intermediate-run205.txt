@@ -1,0 +1,17 @@
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> bontop-design-log@0.0.1 verify:penetration
+> tsx scripts/verify/penetration/verify-penetration.ts --shadow
+
+Penetration lint: 0 error(s), 8 warning(s), 0 info
+OBB shadow (observe-only): 0 candidate pair(s) → 0 agree / 0 false positive / 0 false negative; exemption audit 10 pair(s), 0 over-broad
+envelope hits: 7 envelope(s) / 9 overlap pair(s) (info-only); 35 undeclared type(s) — see report.shadow.envelopes
+⚠ [furniture_glass_clearance_insufficient] furniture:balcony:dryer:1↔north_recess_curtain: runtime furniture dryer is 0.050m from glass; 0.068m is required
+⚠ [furniture_glass_clearance_insufficient] furniture:balcony:washer:0↔north_recess_curtain: runtime furniture washer is 0.050m from glass; 0.068m is required
+⚠ [furniture_glass_clearance_insufficient] furniture:kitchen:kitchen_cabinet_run:0↔vrv_nw_railing:part=handrail:29:role=railing: runtime furniture kitchen_cabinet_run is 0.050m from glass; 0.068m is required
+⚠ [furniture_glass_clearance_insufficient] furniture:kitchen:kitchen_cabinet_run:2↔entry_garden_north_railing:part=handrail:55:role=railing: runtime furniture kitchen_cabinet_run is 0.050m from glass; 0.068m is required
+⚠ [furniture_glass_clearance_insufficient] furniture:kitchen:kitchen_countertop_bridge:1↔kitchen_north_curtain: runtime furniture kitchen_countertop_bridge is 0.008m from glass; 0.068m is required
+⚠ [furniture_glass_clearance_insufficient] furniture:master_bedroom:mb_washbasin_cabinet:5↔west_curtain:part=w_west_lower: runtime furniture mb_washbasin_cabinet is 0.063m from glass; 0.068m is required
+⚠ [furniture_glass_clearance_insufficient] furniture:master_bedroom:mb_washbasin_cabinet:5↔west_curtain:part=w_west_mid: runtime furniture mb_washbasin_cabinet is 0.038m from glass; 0.068m is required
+⚠ [furniture_glass_clearance_insufficient] furniture:study:desk:0↔west_curtain:part=w_mb_south: runtime furniture desk is 0.000m from glass; 0.068m is required

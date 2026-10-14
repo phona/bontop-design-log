@@ -478,7 +478,7 @@
   height: 0.3
   count: 1
   position_status: pending
-  note: "DEC-2026-10-03-R1 灶台段第二取电区（落点在地柜侧板/端板，不在灶具背后）：与 sock_kitchen_counter(8.60,0.30) 构成两个真正可插取的取电分区，同属 ordinary_power_kitchen。取电形式随橱柜深化定，优先级：柜下/端板翻盖 > 侧板电力轨道 > 升降插座（水油环境，最多 1 个，不作为唯一方案）"
+  note: "DEC-2026-10-03-R1 灶台段第二取电区（落点在地柜侧板/端板，不在灶具背后）：与 sock_kitchen_counter(8.60,0.30) 构成两个真正可插取的取电分区，同属 ordinary_power_kitchen。取电形式随橱柜深化定，优先级：柜下/端板翻盖 > 侧板电力轨道 > 升降插座（水油环境，最多 1 个，不作为唯一方案）；2026-10-14 东墙柜候选延长至 z=2.35 后，(10.80,1.70) 点位位于扩展 run 范围内，不能再默认可从旧侧板位置插取；保留 position_status: pending，橱柜方需在深化时落实可及端板/侧板点位。；2026-10-14 东墙run试版延长至 z=2.35 后，现 (10.80,1.70) 落在扩展柜段，不再视为已可及取电点；point remains position_status: pending，柜体深化时另定外露端板/侧板位置。"
 
 - id: sock_kitchen_fridge
   room: kitchen
@@ -489,7 +489,8 @@
   z: 2.05
   height: 0.3
   count: 1
-  note: "冰箱插座（DEC-014 移至东墙南端高柜位，DEC-021 随厨房缩界北移，单独回路；DEC-2026-10-03-R1：点位位于东墙通顶高柜内 (10.80,2.05) h=0.3——检修时不得靠拉整台冰箱取电，须在柜体侧板/顶格做可及检修口，随橱柜深化）"
+  position_status: pending
+  note: "冰箱专用回路旧点位占位（原东墙高柜位 (10.80,2.05)，historical DEC-014/021）；旧方案要求在高柜侧板/顶格设置可及检修口，不得靠拉整台冰箱取电。2026-10-14 3D candidate moved fridge to living_dining (10.94,3.48), and the old wall point will fall behind the extended cooktop cabinet. This old endpoint is not an accessible supply point for the trial fridge. Outlet form/position and route must be redesigned with electrician/cabinet shop before electrical freeze; do not assume this point feeds the trial candidate."
 
 - id: sock_kitchen_hood
   room: kitchen
@@ -497,10 +498,11 @@
   wall_side: west
   type: socket
   x: 10.80
-  z: 1.2
+  z: 1.5
   height: 2.2
   count: 1
-  note: "油烟机插座（DEC-2026-08-02-013 移至东墙灶台上方，DEC-021 随灶台北移）"
+  position_status: pending
+  note: "Historical layout basis DEC-2026-08-02-013 retained. 2026-10-14 3D trial shifts candidate hood/gas_stove center to (10.50,1.50), aligned to inferred exhaust duct_kitchen_exhaust (10.60,1.50); the socket point is a matching trial only. Hood SKU, final face/access and duct joint remain pending, so this point is explicitly position_status: pending."
 
 - id: sock_kitchen_purifier
   room: kitchen
@@ -520,7 +522,7 @@
   z: 0.20
   height: 2.35
   count: 1
-  note: "燃气报警器插座（DEC-2026-10-03-R1 位置；本次按机体最近缘重算后北移至 (10.80,0.20) h=2.35）：R1 的「距油烟机/排风口 0.65m」是点到点算法（点到 range_hood/gas_stove 具体心 10.50,1.18）、不达标——按机体最近缘算油烟机 rot90 宽 0.9 沿 z 展至 z∈[0.73,1.63]（北缘 0.73）、灶具 0.75 展至 z∈[0.81,1.55]（北缘 0.81），z=0.55 时仅 0.18m/0.26m 均 <0.5m。北移至 z=0.20 后重算：距油烟机北缘 0.73−0.20=0.53m>0.5 ✓、距灶具北缘 0.81−0.20=0.61m>0.5 ✓、距厨房铝扣板吊顶（净高 2.55m）0.20m、距推断燃气表 (8.0,0.2) 2.80m<4m 覆盖半径 ✓，满足 CJJ/T 146-2011 距灶具及排风口 >0.5m（天然气密度 <1 近顶安装）。⚠️烟机/灶具体心位置来自 house.yaml range_hood/gas_stove @(10.50,1.18) rot90，机体分别沿 z 展 0.9/0.75；若实物 SKU 变更致该 0.9/0.75 机身宽度变化须复算。最终仍以燃气公司报警器+切断阀方案与实物 SKU 为准（site_pending）；若家用液化气则相反需低装"
+  note: "燃气报警器插座（DEC-2026-10-03-R1 位置；本次按机体最近缘重算后北移至 (10.80,0.20) h=2.35）：R1 的「距油烟机/排风口 0.65m」是点到点算法（点到 range_hood/gas_stove 具体心 10.50,1.18）、不达标——按机体最近缘算油烟机 rot90 宽 0.9 沿 z 展至 z∈[0.73,1.63]（北缘 0.73）、灶具 0.75 展至 z∈[0.81,1.55]（北缘 0.81），z=0.55 时仅 0.18m/0.26m 均 <0.5m。北移至 z=0.20 后重算：距油烟机北缘 0.73−0.20=0.53m>0.5 ✓、距灶具北缘 0.81−0.20=0.61m>0.5 ✓、距厨房铝扣板吊顶（净高 2.55m）0.20m、距推断燃气表 (8.0,0.2) 2.80m<4m 覆盖半径 ✓，满足 CJJ/T 146-2011 距灶具及排风口 >0.5m（天然气密度 <1 近顶安装）。⚠️烟机/灶具体心位置来自 house.yaml range_hood/gas_stove @(10.50,1.18) rot90，机体分别沿 z 展 0.9/0.75；若实物 SKU 变更致该 0.9/0.75 机身宽度变化须复算。最终仍以燃气公司报警器+切断阀方案与实物 SKU 为准（site_pending）；若家用液化气则相反需低装；2026-10-14 试位复核（保持报警器原点不动）：gas_stove 候选中心 (10.50,1.50) 后最近缘距离约0.925m，range_hood 最近缘约0.85m；按当前模型外廓均大于现行0.5m阈值。仍待燃气公司按最终SKU/气源复核。；2026-10-14 试位复核（报警器位置保持不动）：gas_stove 候选中心 (10.50,1.50) 到最近缘约0.925m，range_hood 最近缘约0.85m；该值只按当前模型外廓，最终按燃气公司/实物SKU核定。"
 
 # DEC-2026-10-06-R2 微蒸烤一体机预留接口（业主明示"不一定一二期落地"→只做预留，不落设备锚点）：
 # 16A 单相三孔、GB 55038-2025 7.4.4 类级预留（≈3.2kW）；position_status: pending，

@@ -1620,7 +1620,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   low_weight_storage: { width: 0.95, depth: 0.42 },
   low_room_cabinet: { width: 0.40, depth: 1.20 }, // 2026-08-26 书房东墙低柜，世界 footprint 0.40×1.20m；配置 rotation=0 沿东墙南北向展开，柜门朝西，不是健身器材收纳
   chair: { width: 0.5, depth: 0.5 },
-  fridge: { width: 0.7, depth: 0.7 },
+  fridge: { width: 0.833, depth: 0.600 }, // HR-518WUFIPZ visual-trial body footprint; height is rendered by FixtureFactory (1.910m)
   gas_stove: { width: 0.75, depth: 0.6 },
   range_hood: { width: 0.9, depth: 0.5 },
   sink: { width: 0.8, depth: 0.6 },

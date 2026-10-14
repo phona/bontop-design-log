@@ -225,7 +225,8 @@ describe('element census snapshot', () => {
     assert.equal(result.summary.total, 157, '构件总数（电气 100 + 给排水 32 + 吊顶/HVAC 25；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100）');
     // 申报缺口的历史：b0c425c 基线 74 → 电气 46 项按依据补申报 → hvac anchor 接入 6 项
     // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15 → 吊顶分区补 DEC 溯源 10 项 → 5。
-    // 剩下的 5 个是「指不出依据所以不填」的诚实残留（2 个吊顶分区无 DEC 出处 + 3 个无任何状态线索的构件）。
+    // 本轮将烟机插座试位 (z=1.50) 显式标为 pending，故空台账快照仍留下 5 个未知：
+    // 两个吊顶分区 + 阳台洗衣机排水 + 主卧两窗帘盒。
     assert.equal(result.summary.undeclared, 5, '空台账下的未声明状态数——纯申报缺口，不受台账/门禁影响');
     assert.ok(result.summary.undeclared / result.summary.total < 0.15, '申报缺口应维持在低位；重新升高说明有新构件没申报');
   });
@@ -234,10 +235,10 @@ describe('element census snapshot', () => {
     const elements = collectElements();
     const ledger = parsePendingLedger(LEDGER);
     const result = deriveElementStates({ elements, ledger, issues: [] });
-    // 接上真实台账后 undeclared 从 15 降到 12（3 个构件被台账绑成 pending）——
-    // 降不下来说明派生没接上台份权威源。
+    // 接上真实台账后，#64 将冰箱旧端点显式绑为 pending；烟机插座本身亦由 config 标 pending。
+    // 吊顶两个分区仍无出处，不因其他 pending 项而静默归类。
     assert.equal(result.summary.undeclared, 2, '真实台账下只剩 2 个无出处的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
-    assert.equal(result.summary.pending, 27); // R1 删两盏壁灯（29→27）+ R2 删两卫平板灯与墙控（27→26）+ 2026-10-13 DEC-2026-10-13-R2 新增 pending-site-data #61（主卫镜柜/台盆柜型式与镜位）绑住 plumbing:faucet_mbath_vanity（26→27）。#62 只谈走线方式、不再绑 ceiling_living——R4 已把原顶定案，绑上去等于把已决构件误降级为 pending
+    assert.equal(result.summary.pending, 28); // 包括 #61/#64 与本轮 position_status: pending 的 sock_kitchen_hood 试位
     assert.ok((result.summary.byStatus.confirmed ?? 0) > 0, 'DEC 引用必须把构件绑成 confirmed');
   });
 });

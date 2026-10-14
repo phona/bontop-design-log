@@ -226,7 +226,7 @@ test('pending-site-data 表头口径：「量表共 N 条」= 编号数，实际
   assert.equal(claimed, numbered.length, `表头声称 ${claimed} 个编号，实际编号行 ${numbered.length}`);
   assert.deepEqual(subItems, ['3a'], '子项行应恰为 #3a（#3 的 A2 HVAC 子项）');
   assert.equal(rows.length, claimed + subItems.length, '表格行数必须 = 编号数 + 子项数');
-  assert.equal(rows.length, 64, '当前口径：63 个编号 + #3a = 64 行'); // 2026-10-13 DEC-2026-10-13-R1/R2 新增 #61/#62、R3 补 #63（厨房柜下灯条件性预留）后 60→63 编号
+  assert.equal(rows.length, 65, '当前口径：64 个编号 + #3a = 65 行'); // 2026-10-14 冰箱迁位增加 #64 新可及专用电源/路由待定
 });
 
 // ─── 治理台账：逐条与实算一致，且覆盖全部实算 code ───────────────────────

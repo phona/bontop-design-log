@@ -474,7 +474,14 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'fridge',
     parts: [
-      { shape: 'box', size: [0.7, 1.8, 0.7], position: [0, 0.9, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.3 },
+      // 0.827m case core + two 3mm side skins = the declared 0.833m exterior width.
+      { shape: 'box', size: [0.827, 1.910, 0.600], position: [0, 0.955, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.3 }, // HR-518WUFIPZ exterior dimensions for visual trial; manufacturer installation clearances remain site_pending
+      // Generic west-opening visual treatment (not a manufacturer-fidelity model): inset side skins finish the exposed room-facing case;
+      // a shallow front panel and pull distinguish the appliance face while keeping the total declared body envelope exact.
+      { shape: 'box', size: [0.006, 1.820, 0.540], position: [-0.4135, 0.955, 0], color: '#cbd0d4', metalness: 0.36, roughness: 0.30, part: 'fridge-side-skin-south', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.006, 1.820, 0.540], position: [0.4135, 0.955, 0], color: '#cbd0d4', metalness: 0.36, roughness: 0.30, part: 'fridge-side-skin-north', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.803, 1.800, 0.001], position: [0, 0.955, -0.2995], color: '#d4d8dc', metalness: 0.38, roughness: 0.28, part: 'fridge-front-panel', materialRole: 'appliance_front' },
+      { shape: 'box', size: [0.028, 0.800, 0.001], position: [0.350, 0.970, -0.2995], color: '#747b82', metalness: 0.55, roughness: 0.24, part: 'fridge-recessed-pull', materialRole: 'fixture_metal' },
     ],
   },
   {

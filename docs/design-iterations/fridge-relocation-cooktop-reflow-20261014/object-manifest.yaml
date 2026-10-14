@@ -1,0 +1,86 @@
+iteration_id: fridge-relocation-cooktop-reflow-20261014
+state: implementation
+frozen: true
+objects:
+  - id: fridge_hr518wufipz
+    owner: furniture/appliance
+    authority: "config/house.yaml + shared/types.ts + shared/render/FixtureFactory.ts"
+    status: agent_selected_trial_candidate
+    function: "替换当前唯一冰箱；按 HR-518WUFIPZ 用户数值的 W×D×H 试版映射表达机身。"
+    geometry: { room: living_dining, target_center: { x: 10.94, z: 3.48 }, rotation: 90, dimensions_m: { width: 0.833, depth: 0.600, height: 1.910 }, opening_face: west }
+    dependencies: [kitchen_dining_sliding_door, entry_half_height_cabinet, sock_kitchen_fridge, strong-ded-fridge]
+    collision: { policy: "body + 0.60m west clearance envelope; paired Longhong open/closed runtime AABBs and entry swing shadow checked", status: verified_for_visual_trial_no_candidate_overlap }
+    maintenance: { manufacturer_clearance: site_pending, outlet_access: site_pending, side_gap_to_entry_cabinet_m: 0.065 }
+    interfaces: [sock_kitchen_fridge, strong-ded-fridge, env.fridge.door]
+  - id: east_cooktop_cabinet_run
+    owner: furniture/casework
+    authority: "config/house.yaml kitchen_cabinet_run"
+    status: agent_selected_trial_candidate
+    function: "将旧冰箱段并入东墙连续操作台面。"
+    geometry: { current_center: { x: 10.48, z: 1.00 }, current_length_m: 1.40, rejected_intermediate_center: { x: 10.48, z: 1.325 }, rejected_intermediate_length_m: 2.05, candidate_center: { x: 10.48, z: 1.275 }, candidate_length_m: 1.95, current_depth_m: 0.60, candidate_end_z: 2.25, runtime_countertop_max_z: 2.27, open_slider_panel_min_z: 2.33, runtime_panel_gap_m: 0.06 }
+    dependencies: [gas_stove, range_hood, duct_kitchen_exhaust, sock_kitchen_counter_east]
+    collision: { policy: "cabinet/tabletop cutout and appliance runtime bodies; clear open Longhong stack by 60mm after rejecting 2.05m intermediate", status: verified_for_visual_trial }
+    maintenance: { note: "柜内插座/端板可及性随深化复核" }
+    interfaces: [gas_stove, range_hood, sock_kitchen_counter_east]
+  - id: gas_stove
+    owner: appliance/MEP
+    authority: "config/house.yaml + config/electrical.yaml + config/plumbing.yaml"
+    status: agent_selected_trial_candidate
+    function: "随扩柜调整到候选 (10.50,1.50)，与现有 inferred 烟道 z 轴协调。"
+    dependencies: [east_cooktop_cabinet_run, range_hood, duct_kitchen_exhaust, sock_kitchen_gas]
+    collision: { policy: "check cabinet cutout, hood, inferred shaft relation, alarm clearance", status: model_footprint_clear_site_pending_gas_confirmation }
+    interfaces: [kitchen_cooktop_cutout, sock_kitchen_gas]
+  - id: range_hood
+    owner: appliance/MEP
+    authority: "config/house.yaml + config/electrical.yaml + config/plumbing.yaml"
+    status: agent_selected_trial_candidate
+    function: "与新灶位及固定的推定烟道锚点协调。"
+    dependencies: [gas_stove, duct_kitchen_exhaust]
+    collision: { policy: "preserve/report any unresolved shaft/body conflict; only plan marker exists, not a shaft volume", status: plan_aligned_physical_interface_site_pending }
+    maintenance: { exhaust_route: "SKU 与现场测量后核定" }
+    interfaces: [sock_kitchen_hood, duct_kitchen_exhaust]
+  - id: exhaust_duct
+    owner: site/MEP
+    authority: "config/plumbing.yaml duct_kitchen_exhaust"
+    status: inferred_site_pending
+    function: "烟道位置仍按 (10.60,1.50) 推定展示；不为了匹配新灶位而静默移动。"
+    collision: { policy: "show/report overlap or mismatch rather than moving anchor", status: pending_review }
+    maintenance: { verification: "量房确认准确中心、断面及烟管接口" }
+  - id: gas_alarm_socket
+    owner: site/electrical
+    authority: "config/electrical.yaml sock_kitchen_gas"
+    status: existing_point_pending_gas_company_review
+    function: "保持 (10.80,0.20), h=2.35; 用新设备外廓复算距离。"
+    dependencies: [gas_stove, range_hood, gas_meter_kitchen]
+    collision: { policy: "no relocation to hide clearance conflict", status: model_footprint_clear_site_pending_gas_confirmation }
+  - id: fridge_electrical_feed
+    owner: electrical/MEP
+    authority: "config/electrical.yaml sock_kitchen_fridge + config/electrical-topology.yaml dedicated_kitchen_fridge + config/mep-hvac-coordination.yaml strong-ded-fridge"
+    status: old_endpoint_site_pending
+    function: "旧 kitchen wall outlet/route 保持作 dedicated circuit topology 占位；不声称它已接到 living_dining 冰箱试位。"
+    dependencies: [fridge_hr518wufipz]
+    collision: { policy: "do not invent cabinet-face/floor outlet; confirm accessible outlet and reroute before electrical freeze", status: site_pending }
+    maintenance: { access: "cannot require pulling the refrigerator to reach its dedicated outlet", status: site_pending }
+  - id: longhong_sliding_door
+    owner: doors
+    authority: "config/layout/overlay.yaml kitchen_dining_sliding_door"
+    status: frozen_existing
+    function: "保持门体与开闭行为；检查 open/closed 两态和 refrigerator relation。"
+    dependencies: [fridge_hr518wufipz]
+    collision: { policy: "paired same-camera runtime states; keep geometry/config open:true after inspection override", status: verified_open_closed }
+    interfaces: [kitchen_dining_threshold]
+  - id: entry_half_height_cabinet
+    owner: furniture/casework
+    authority: "config/house.yaml living_dining entry_half_height_cabinet"
+    status: mapping_unconfirmed_footprint_frozen_if_confirmed
+    function: "候选为用户称‘门头柜’；保留主体及 footprint，只允许局部收口。"
+    dependencies: [fridge_hr518wufipz]
+    collision: { policy: "do not expand or deepen; runtime side gap 65mm and finished generic fridge side shown", status: runtime_clear_mapping_still_inferred }
+    maintenance: { access_clearance: site_pending }
+  - id: dining_furniture_and_water_heater
+    owner: furniture/appliance
+    authority: "config/house.yaml"
+    status: frozen_existing
+    function: "保留餐桌椅与水暖气位置；作为通道及实物碰撞参照。"
+    dependencies: [fridge_hr518wufipz]
+    interfaces: [dining_table, dining_chair, water_heater]

@@ -65,10 +65,10 @@ describe('element state API', () => {
     assert.equal(res.body.cachedAt, null, '不带 conflicts 时不缓存，cachedAt 必须是 null');
     assert.equal(res.body.states.length, 157);
     assert.equal(res.body.summary.total, 157); // DEC-2026-10-12-R1 删主卧两盏壁灯元素（164→162）；R2 删两卫平板灯与墙控（162→158）；DEC-2026-10-13-R5 删电视墙灯带（158→157）
-    // 与 tests/server/element-state.test.ts 的真实台账快照同口径（无 issue，纯申报缺口 2：
-    // 吊顶分区补 DEC 溯源后只剩 ceiling_child_ac / ceiling_main_corridor 两个无出处分区）
+    // 与 tests/server/element-state.test.ts 的真实台账快照同口径：两个吊顶分区仍未挂 DEC；
+    // 厨房烟机插座因本轮移到试案位置，显式 position_status: pending。
     assert.equal(res.body.summary.undeclared, 2);
-    assert.equal(res.body.summary.pending, 27); // R1 删两盏壁灯（29→27）+ R2 删两卫平板灯与墙控（27→26）+ 2026-10-13 DEC-2026-10-13-R2 新增 pending-site-data #61 绑住 plumbing:faucet_mbath_vanity（26→27）；与 tests/server/element-state.test.ts 同口径
+    assert.equal(res.body.summary.pending, 28); // 含 #61 台盆镜柜、#64 冰箱新电源待定，以及试位中的 sock_kitchen_hood
     assert.equal(res.body.summary.byStatus.undeclared, 2);
     assert.ok(res.body.summary.byKind.electrical === 100 && res.body.summary.byKind.plumbing === 32); // 电气点位 107→105（R1）→101（R2 删两卫平板灯与墙控）→100（DEC-2026-10-13-R5 删电视墙灯带）
   });

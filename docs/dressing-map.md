@@ -1,6 +1,6 @@
 # 装扮映射表（Twinmotion 云渲染用）
 
-生成：2026-10-13，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-10-14，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
 数据规模：house.yaml furnishings 共 87 件（与 `fact.furnishings_count` 对账）。
 
@@ -107,14 +107,14 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | living_dining | entry_half_height_cabinet | 1 | 2×0.35 | (11.5, 4) / 90° |
 | living_dining | dining_table | 1 | 1.4×0.8 | (7.9, 3.45) / 0° |
 | living_dining | dining_chair | 4 | 0.45×0.45 | (7.55, 2.75) / 0°；(8.25, 2.75) / 0°；(7.55, 4.15) / 180°；(8.25, 4.15) / 180° |
+| living_dining | fridge | 1 | 0.833×0.6 | (10.94, 3.48) / 90° |
 | living_dining | curtain_set | 2 | — | count-only（不在 glb，按实物补摆） |
 | living_dining | ceiling_light | 2 | — | count-only（不在 glb，按实物补摆） |
-| kitchen | kitchen_cabinet_run | 3 | （体块无尺寸记录） | (7.86, 0.32) / 0°；(9.94, 0.32) / 0°；(10.48, 1) / 90° |
+| kitchen | kitchen_cabinet_run | 3 | （体块无尺寸记录） | (7.86, 0.32) / 0°；(9.94, 0.32) / 0°；(10.48, 1.325) / 90° |
 | kitchen | kitchen_countertop_bridge | 1 | 0.6×0.6 | (8.8, 0.32) / 0° |
 | kitchen | dishwasher | 1 | 0.6×0.6 | (8.8, 0.3) / 0° |
-| kitchen | fridge | 1 | 0.7×0.7 | (10.45, 2.05) / 90° |
-| kitchen | gas_stove | 1 | 0.75×0.6 | (10.5, 1.18) / 90° |
-| kitchen | range_hood | 1 | 0.9×0.5 | (10.5, 1.18) / 90° |
+| kitchen | gas_stove | 1 | 0.75×0.6 | (10.5, 1.5) / 90° |
+| kitchen | range_hood | 1 | 0.9×0.5 | (10.5, 1.5) / 90° |
 | kitchen | sink | 1 | 0.8×0.6 | (9.5, 0.3) / 0° |
 | kitchen | water_heater | 1 | 0.36×0.16 | (7.3, 1) / 270° |
 | kitchen | cabinet_base | 5 | — | count-only（不在 glb，按实物补摆） |

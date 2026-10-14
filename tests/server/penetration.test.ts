@@ -266,6 +266,21 @@ describe('penetration CLI integration', () => {
     assert.equal(typeof shadowReport.shadow.summary.candidates, 'number');
   });
 
+  it('guards the fridge trial opening envelope and east cabinet from the sliding-door stack', () => {
+    const result = spawnSync('npx', ['tsx', 'scripts/verify/penetration/verify-penetration.ts', '--json', '--shadow'], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const report = JSON.parse(result.stdout);
+    const hits = report.shadow.envelopes.hits as Array<{ envelope_id: string; overlaps: Array<{ entity: string }> }>;
+    const slider = hits.find((hit) => hit.envelope_id === 'envelope:sliding_open:kitchen_dining_sliding_door');
+    assert.ok(slider, 'the production shadow must include the open Longhong panel stack');
+    assert.ok(!slider.overlaps.some((overlap) => overlap.entity === 'furniture:kitchen:kitchen_cabinet_run:4'),
+      'the final 1.95m east run must clear the open slider stack (the rejected 2.05m run overlapped it)');
+    assert.ok(!hits.some((hit) => hit.envelope_id.startsWith('envelope:env.fridge.door:furniture:living_dining:fridge:')),
+      'the west-facing 0.60m fridge opening envelope must remain clear of placed furniture and door sweeps');
+    assert.ok(!hits.some((hit) => hit.envelope_id === 'envelope:door_swing:d_ent'),
+      'the entry-door swing must not intersect the fridge/cabinet trial');
+  });
+
   it('fails closed when the runtime scene cannot be built', () => {
     // 不改配置：用不存在的 --out 目标无法构造该分支，这里只锁定退出码契约——
     // 缺路径必须 exit 2 而不是静默写盘。

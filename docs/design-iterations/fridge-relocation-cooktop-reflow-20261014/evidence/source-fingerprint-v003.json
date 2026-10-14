@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "iteration_id": "fridge-relocation-cooktop-reflow-20261014",
+  "evidence_revision": "after-v003",
+  "algorithm": "sha256(path:sha256\\n sorted by path)",
+  "fingerprint": "921a607daa42d4f41a937dcb13e0251a1500fbf13cac49dd90368fd7efb88ceb",
+  "files": {
+    "app/src/App.ts": "dcba8a9f3897f6321cbda55d6fe5f8a00005a686fbf5736155d2a333affa1f1a",
+    "app/src/render/HouseScene.ts": "0c33e9635cecbf7ab8afe304e4ab8994e03e2539721387217be67f6680141bcd",
+    "config/anti-penetration.yaml": "096e3940b1c9bcffc15af48f469cd0f63d3dbefedee29ad031f6d87f79d2dafd",
+    "config/electrical-topology.yaml": "345bed0b1438a522dab9bcd93dc4d5a56d0dab396c86b9baf3309e317e9edce9",
+    "config/electrical.yaml": "038210c3e7e70cf22c8ea09bc130b60cf7e6b28159be577b3466195672fc8b46",
+    "config/facts.yaml": "0598d69b3b91a9080219cfd100a0db796683063a3f3f30d0726d0a1ad73021f9",
+    "config/house.yaml": "7d27b1b8311fc33e95c1485f991953353dbe14972a05d878c5f577cf5816852f",
+    "config/layout/model-geometry.yaml": "a55be14471ad8de3d3c8ad292e69c46f96ac0722c7f9dc28333864f8df073ba4",
+    "config/layout/overlay.yaml": "026b679a790684666adad08b167de20dd48b0c847cda09a413bc75dcc5f4f1e5",
+    "config/mep-hvac-coordination.yaml": "27669a8df0c3564ab0fcce3380594ac5f4a43c91e7f61ec45119c5974bc0fccd",
+    "config/plumbing.yaml": "b52eaa39cdac2f0e90ec23ee52dcac3c3665b156de84a1cb4d572ba7dabddcd8",
+    "schedule/phase-1/control.yaml": "09051e27ba90789a867589e1be44104037ef6ef312ceb2c587b294d2137d250a",
+    "shared/penetration/envelopes.ts": "3fef0cac58ca43a98610a4c964a088e6c2dba5d6013d3aa8039e441632145769",
+    "shared/render/FixtureFactory.ts": "9f580e9037b27ec72310ea68ae0f543759cc7d726594eec562cd0a9877c63715",
+    "shared/render/SceneBuilder.ts": "afcea60c9417a712db539bc325af2afc95dfc2c06e1a9b06c4e2f828a5abf97e",
+    "shared/types.ts": "42f53df62ddad0a79eb082a13f98182ed0fd3f4300eab3ee73318e2ca1048936"
+  },
+  "gate_visual_domains": {
+    "ceiling": "bd9dd7b0743d",
+    "electrical": "01bf1db01b27",
+    "plumbing": "7f1513d14f27"
+  }
+}

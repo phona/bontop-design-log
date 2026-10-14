@@ -63,7 +63,7 @@ project:
     - date: "2026-08-02"
       item: "厨房布局"
       from: "灶台/水槽在西墙"
-      to: "东墙（灶台+烟机+冰箱），北墙（水槽+切配，上下水走地面），西墙（阳台门+辅助台面）"
+      to: "3D试案：冰箱移至长虹门南侧、入户门西侧客餐厅候选位；东墙扩为连续灶台操作段（灶台+烟机），北墙（水槽+切配，上下水走地面），西墙（阳台门+辅助台面）"
     - date: "2026-08-21"
       item: "主卫终版/西北次卧B案/sill分房间"
       from: "主卫隔墙 z=4.3 + 方案A+C台盆外移；西北次卧衣柜靠北墙；sill 全屋统一 2.55"
@@ -208,8 +208,8 @@ rooms:
         position: "北墙"
     doors: []
     furniture_concept:
-      - "L 型地柜约 5.0m（北墙 3.6m 水槽切配 + 东墙 2.2m 灶台）"
-      - "冰箱位 0.7m × 0.7m（东墙南端高柜位，创想图一致）"
+      - "L 型地柜约 5.01m 实体柜段候选（北墙 2.96m 水槽切配 + 东墙 2.05m 灶台；台面桥另 0.60m；东墙端距长虹门轴留 0.05m）"
+      - "冰箱 HR-518WUFIPZ 3D候选：living_dining (10.94,3.48), rotation 90；机身按 W×D×H 833×600×1910mm 映射，安装净空/电源为 pending"
       - "大功率侧吸油烟机 ≥22m³/min"
       - "洗碗机/净水器预留上下水"
 
@@ -505,8 +505,12 @@ furnishings:
     - { type: dining_chair, x: 8.25, z: 4.15, rotation: 180 }
     - { type: curtain_set, count: 2 }
     - { type: ceiling_light, count: 2 }
+    # 2026-10-14 fridge/kitchen trial (not a construction position): user area is south of kitchen_dining_sliding_door and west of d_ent.
+    # Agent-selected center (10.94,3.48), rot90 => world footprint x[10.64,11.24] / z[3.0635,3.8965]; 65mm runtime reveal to entry_half_height_cabinet.
+    # Manufacturer clearances + a directly accessible dedicated-circuit outlet remain site_pending (docs/pending-site-data.md #22/#33/#64).
+    - { type: fridge, x: 10.94, z: 3.48, rotation: 90 }
   kitchen:
-    # 3D 用显式柜体段：北墙玻璃幕只做落地柜+台面；东墙实体墙承载灶台、烟机和冰箱高柜。
+    # 3D 用显式柜体段：北墙玻璃幕只做落地柜+台面；东墙实体墙承载灶台与烟机；冰箱已移至客餐厅候选位。
     # 北墙 run 拆两段留洗碗机位 x∈[8.50,9.10]（2026-08-23；紧贴水槽柜 x≥9.10 西侧，上下水就近；
     # sock_kitchen_dishwasher@9.0,0.3 台下，距机位 0.2m）
     - { type: kitchen_cabinet_run, x: 7.86, z: 0.32, rotation: 0, length: 1.28, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 }
@@ -515,14 +519,15 @@ furnishings:
     # 台面开孔位置由现有 sink@9.50,0.30 与本 run 中心@9.94,0.32 换算为 run-local offset。
     - { type: kitchen_cabinet_run, x: 9.94, z: 0.32, rotation: 0, length: 1.68, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [{ kind: sink, id: kitchen-sink, offset: [-0.44, -0.02], size: [0.70, 0.40] }] }
     - { type: dishwasher, x: 8.80, z: 0.30, rotation: 0 }  # 北墙地柜台下（DEC-2026-08-02-013，水槽柜西侧紧邻；⚠️坐标待量房）
-    # 灶台开孔位置由现有 gas_stove@10.50,1.18 与本 run 中心@10.48,1.00 换算为世界偏移，再按 rotation=90 逆变换为 run-local offset。
-    - { type: kitchen_cabinet_run, x: 10.48, z: 1.00, rotation: 90, length: 1.40, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [{ kind: cooktop, id: kitchen-cooktop, offset: [-0.18, 0.02], size: [0.45, 0.75] }] }
-    - { type: cabinet_base, count: 5.0 }      # 预算/库存：count-only 件数（5 组地柜）。柜体段**延米**以本文件 kitchen_cabinet_run 已放置段为准 = 北墙 2.96（1.28+1.68）+ 东墙 1.40 = 4.36m；台面另加北墙桥段 0.60m = 4.96m。2026-10-14 修正：原注释「北墙3.6+东墙2.2 = 5.8m」与几何不符（东墙 run 实为 1.40m），已按 c.cabinet_length_parity 对账改写
+    # 2026-10-14 3D trial, collision-corrected: initial 2.05m run overlapped the open slider stack by 0.09m; final candidate ends nominally at z=2.25 and leaves 60mm to the runtime panel edge (z=2.33).
+    # Cooktop/hood center (10.50,1.50) aligns with the inferred duct z=1.50 (x offset 0.10m).
+    # Cutout local offset inverse-rotated from world cooktop delta (+0.02,+0.175) at rotation=90 => [-0.175,+0.02].
+    - { type: kitchen_cabinet_run, x: 10.48, z: 1.275, rotation: 90, length: 1.95, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [{ kind: cooktop, id: kitchen-cooktop, offset: [-0.175, 0.02], size: [0.45, 0.75] }] }
+    - { type: cabinet_base, count: 5.0 }      # budget/inventory count-only; cabinet module count awaits cabinet shop breakdown. Modeled cabinet run total = north 2.96 + east trial 1.95 = 4.91m; countertop bridge adds 0.60m for 5.51m total worktop.
     - { type: cabinet_wall, count: 2.0 }
     - { type: countertop_quartz, count: 5.0 } # DEC-014 同地柜
-    - { type: fridge, x: 10.45, z: 2.05, rotation: 90 }     # DEC-021 东墙南端高柜位（厨房缩至 z=2.4）
-    - { type: gas_stove, x: 10.50, z: 1.18, rotation: 90 }  # DEC-021 东墙灶台北移
-    - { type: range_hood, x: 10.50, z: 1.18, rotation: 90 } # DEC-021 灶台上方烟机
+    - { type: gas_stove, x: 10.50, z: 1.50, rotation: 90 }  # 2026-10-14 trial: aligned in z with inferred exhaust anchor; SKU/site pending
+    - { type: range_hood, x: 10.50, z: 1.50, rotation: 90 } # 2026-10-14 trial: centered with cooktop; inferred duct unchanged
     - { type: sink, x: 9.50, z: 0.30, rotation: 0 }         # DEC-2026-08-02-013 北墙水槽
     # 热水器挂厨房西侧、靠生活阳台玻璃幕墙的 w_vrv_east 实体墙厨房侧，避开阳台门洞和北墙地柜；燃气路由/CO 安全红线待物业/燃气公司确认
     - { type: water_heater, x: 7.30, z: 1.00, rotation: 270 }
@@ -596,7 +601,7 @@ design_rationale:
   - "四房两厅两卫，目前两人居住；2026-10-05 功能互换后：东南客房供父母/客人（与主人区隔客餐厅+主走廊、不共墙），西侧中间房为书房"
   - "客餐厅合并，南向采光面大，电视墙方案"
   - "开放式厨房，增强客餐厅通透感，配大功率侧吸油烟机；厨房与客餐厅之间加三联动长虹玻璃吊轨推拉门（平时全开，爆炒关闭）"
-  - "厨房布局：东墙（灶台+烟机+冰箱），北墙（水槽+切配，面对玻璃窗），西墙（阳台门+辅助台面）；北墙上下水走地面"
+  - "厨房布局试案：东墙连续操作柜承载灶台+烟机；冰箱 HR-518WUFIPZ 暂候选在长虹门南侧、入户门西侧 (10.94,3.48)；北墙（水槽+切配，面对玻璃窗），西墙（阳台门+辅助台面）；北墙上下水走地面"
   - "入户花园作为进出门过渡区：东侧放可移动鞋柜+自立洞洞板；门内右手以 1.5m 定制半高柜衔接客厅，玄关侧随手收纳、餐厅侧餐边收纳，柜顶保留视线"
   - "主卧带独立卫生间，形成主卧套房；飘窗保留"
   - "主卫（2026-09-01 纯洗手柜版，待量房确认）：隔墙 z=2.86 与外置台盆位置不动；套间条带 1.10×0.50m 柜体仅承担洗手与封闭收纳，取消梳妆膝位和椅子，盆心/龙头/墙排及屏风尽量不动；卫内只留马桶+淋浴，不泡浴缸"

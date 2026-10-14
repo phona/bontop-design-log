@@ -839,33 +839,35 @@ describe('BudgetCalculator', () => {
 
     const cabinetItem = snapshot.lineItems.find((li) => li.topic === 'cabinet');
     assert.ok(cabinetItem, 'cabinet 行必须存在');
-    // 投影面积 = Σ(厨房柜体段长 × 柜高 0.86) = (1.28 + 1.68 + 1.40) × 0.86 = 4.36 × 0.86 = 3.7496㎡
-    assert.ok(Math.abs(cabinetItem.quantity - 3.7496) < 1e-9,
-      `柜体量必须是投影面积 3.7496㎡（4.36m × 0.86m），实际 ${cabinetItem.quantity}`);
+    // 2026-10-14 冰箱搬位试版先尝试 2.05m，shadow 检查见开态叠扇重叠 0.09m 后缩至1.95m：
+    // 投影面积 = (1.28 + 1.68 + 1.95) × 0.86 = 4.91 × 0.86 = 4.2226㎡。
+    // 旧基线4.36m/3.7496㎡与中间试值5.01m/4.3086㎡保留在 DEC-2026-10-14-R01 审计中。
+    assert.ok(Math.abs(cabinetItem.quantity - 4.2226) < 1e-9,
+      `柜体量必须是投影面积 4.2226㎡（4.91m × 0.86m），实际 ${cabinetItem.quantity}`);
     assert.equal(cabinetItem.unitPrice, 800);
-    assert.ok(Math.abs(cabinetItem.cost - 3149.664) < 1e-6,
-      `柜体主材必须从 1,612.80（1.92㎡ 被当成 1.92㎡ 板材）变成 3,149.664，实际 ${cabinetItem.cost}`);
+    assert.ok(Math.abs(cabinetItem.cost - 3546.984) < 1e-6,
+      `柜体候选价按 4.2226㎡ × 800 元/㎡并计损耗后为 3,546.984，实际 ${cabinetItem.cost}`);
 
     const countertopItem = snapshot.lineItems.find((li) => li.topic === 'countertop');
     assert.ok(countertopItem, 'countertop 行必须存在');
-    // 延米 = 柜体段 4.36 + 连续台面桥 0.60 = 4.96m（桥段 house.yaml 注明「只是连续台面，不生成柜体」）
-    assert.ok(Math.abs(countertopItem.quantity - 4.96) < 1e-9,
-      `台面量必须是 4.96 延米（4.36 柜体段 + 0.60 台面桥），实际 ${countertopItem.quantity}`);
+    // 延米 = 柜体段 4.91 + 连续台面桥 0.60 = 5.51m（桥段 house.yaml 注明「只是连续台面，不生成柜体」）
+    assert.ok(Math.abs(countertopItem.quantity - 5.51) < 1e-9,
+      `台面量必须是 5.51 延米（4.91 柜体段 + 0.60 台面桥），实际 ${countertopItem.quantity}`);
     assert.equal(countertopItem.unitPrice, 400);
-    assert.ok(Math.abs(countertopItem.cost - 2023.68) < 1e-6,
-      `台面主材必须从 783.36 变成 2,023.68，实际 ${countertopItem.cost}`);
+    assert.ok(Math.abs(countertopItem.cost - 2248.08) < 1e-6,
+      `台面候选价按 5.51 延米 × 400 元/延米并计损耗后为 2,248.08，实际 ${countertopItem.cost}`);
 
     const kitchenCabinet = snapshot.categories.find((c) => c.key === 'kitchen_cabinet');
     assert.ok(kitchenCabinet);
-    // 科目合计 2,396.16 → 5,173.344（+2,777.184）
-    assert.ok(Math.abs(kitchenCabinet.autoActual - 5173.344) < 1e-6,
-      `kitchen_cabinet.autoActual 必须从 2,396.16 抬到 5,173.344，实际 ${kitchenCabinet.autoActual}`);
+    // 2.05m 中间试算5,908.104 → 消除长虹门碰撞后的1.95m候选价5,795.064；不是已批准金额。
+    assert.ok(Math.abs(kitchenCabinet.autoActual - 5795.064) < 1e-6,
+      `kitchen_cabinet.autoActual 应反映本轮柜体与台面量及其损耗候选价 5,795.064，实际 ${kitchenCabinet.autoActual}`);
     // 阶段 5 口径变更：该科目没有 labor 行，材料款全是候选价 →
-    // actual = 0（已取证一分钱没有），autoActual 仍是材料全额 5,173.344，
+    // actual = 0（已取证一分钱没有），autoActual 仍是材料全额 5,795.064，
     // candidateActual 单独显形。旧断言「actual === autoActual」已不成立。
     assert.equal(kitchenCabinet.actual, 0, '阶段 5 后该科目 actual = 0（无 labor、材料全未取证）');
-    assert.ok(Math.abs(kitchenCabinet.candidateActual! - 5173.344) < 1e-6,
-      `kitchen_cabinet.candidateActual 应为 5,173.344，实际 ${kitchenCabinet.candidateActual}`);
+    assert.ok(Math.abs(kitchenCabinet.candidateActual! - 5795.064) < 1e-6,
+      `kitchen_cabinet.candidateActual 应为 5,795.064，实际 ${kitchenCabinet.candidateActual}`);
     assert.equal(kitchenCabinet.status, 'unpriced', '全未取证科目应标 unpriced 而非 ok');
   });
 

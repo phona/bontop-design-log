@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { buildFixture, getNorthWallWardrobe950DoorAabb, getRecipeTypes, setNorthWallWardrobe950DoorConfiguration, setNorthWallWardrobe950DoorState, setPartitionWardrobeDoorState, type NorthWallWardrobe950DoorConfiguration } from '../../../shared/render/FixtureFactory.js';
 import { buildScene } from '../../../shared/render/SceneBuilder.js';
 import { buildCliHouseScene } from '../../../scripts/render/glb/cli-glb-builder.js';
-import { getPartitionWardrobeDoorAabbs } from '../../../shared/types.js';
+import { FURNITURE_DIMS, getPartitionWardrobeDoorAabbs } from '../../../shared/types.js';
 import type { LightingRenderConfig, RenderLightingFixture, SceneElement } from '../../../shared/types.js';
 import { readFileSync as readTextFile } from 'node:fs';
 import { load } from 'js-yaml';
@@ -355,6 +355,22 @@ test('FixtureFactory assigns stable material roles to kitchen appliance surfaces
     fixture.traverse((object) => { if (object.userData.part) parts.push(object); });
     assert.deepEqual(parts.map((object) => object.userData.materialRole), roles, type);
   }
+});
+
+test('FixtureFactory fridge body footprint/height and generic front treatment match the HR-518WUFIPZ 3D trial datum', () => {
+  const fixture = buildFixture('fridge');
+  assert.ok(fixture);
+  fixture.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(fixture);
+  const parts = new Set<string>();
+  fixture.traverse((object) => { if (object.userData.part) parts.add(object.userData.part); });
+  assert.deepEqual(FURNITURE_DIMS.fridge, { width: 0.833, depth: 0.600 });
+  assert.ok(Math.abs(bounds.max.x - bounds.min.x - 0.833) < 1e-6, 'local fridge width must match the declared body width');
+  assert.ok(Math.abs(bounds.max.y - bounds.min.y - 1.910) < 1e-6, 'fridge body height must match the declared body height');
+  assert.ok(Math.abs(bounds.max.z - bounds.min.z - 0.600) < 1e-6, 'local fridge depth must match the declared body depth');
+  assert.ok(parts.has('fridge-front-panel'), 'the generic visual trial must distinguish the door face from the case');
+  assert.ok(parts.has('fridge-recessed-pull'), 'the generic visual trial must show an inset pull without expanding the body envelope');
+  assert.ok(parts.has('fridge-side-skin-south') && parts.has('fridge-side-skin-north'), 'the room-facing case sides must read as finished appliance panels without adding cabinet wrap');
 });
 
 test('FixtureFactory models gas_stove with readable burners, knobs, and stable bounds', () => {

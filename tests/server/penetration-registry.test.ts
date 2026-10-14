@@ -33,9 +33,9 @@ describe('anti-penetration registry', () => {
     const config = loadAntiPenetrationConfig();
     assert.deepEqual(validateAntiPenetrationRegistry(config), []);
     assert.equal(IMPLEMENTED_RULES.length, (config.rules ?? []).length);
-    // 13 条迁移进来的 relationships 豁免也必须全部合规（reason/owner/expires + 已知规则），
-    // 否则 validateAntiPenetrationRegistry 不会返回空数组。
-    assert.equal((config.waivers ?? []).length, 13, 'the migrated relationship whitelist has 13 entries');
+    // The original migration recorded 13 relationships. The 2026-10-14 fridge relocation removes the now-dead kitchen_fridge_corner relation, leaving 12 current waivers.
+    // Remaining waivers must still carry reason/owner/expires and known rules, otherwise the registry must fail closed.
+    assert.equal((config.waivers ?? []).length, 12, 'the current relationship registry has 12 entries after removing the obsolete fridge-corner relation');
   });
 
   it('fails closed when config declares a rule with no implementation', () => {
@@ -131,10 +131,9 @@ describe('penetration waivers', () => {
 });
 
 describe('relationship waiver migration (2026-10-09)', () => {
-  // 迁移前 `config/spatial-validation.yaml` 的 13 条 relationships 白名单（HEAD f6be0ab 逐条留档）。
-  // 它们整体迁入了本配置的 waivers[]；这里锁三件事：一条不少、一对不错、判定口径不变。
-  // 少一条 = 合法叠放被误报成穿模；多一条 = 悄悄放行一次真互撞。
-  const PRE_MIGRATION = [
+  // 历史：迁移前 `config/spatial-validation.yaml` 有13条 relationships 白名单（HEAD f6be0ab）；迁入 waivers[] 后，2026-10-14 冰箱移位使 `kitchen_fridge_corner` 成为死关系并移除，现锁12条仍适用的关系。
+  // 少一条 = 合法叠放被误报成穿模；多一条 = 悄悄放行一次真互撞；保留本历史说明供差异追溯。
+  const CURRENT_WAIVER_RELATIONSHIPS = [
     { id: 'laundry_stack', type: 'stacked', pair: ['furniture:balcony:washer:0', 'furniture:balcony:dryer:1'] },
     { id: 'countertop_run', type: 'stacked', pair: ['furniture:kitchen:kitchen_cabinet_run:0', 'furniture:kitchen:kitchen_countertop_bridge:1'] },
     { id: 'countertop_run_corner', type: 'stacked', pair: ['furniture:kitchen:kitchen_countertop_bridge:1', 'furniture:kitchen:kitchen_cabinet_run:2'] },
@@ -144,17 +143,16 @@ describe('relationship waiver migration (2026-10-09)', () => {
     { id: 'kitchen_cabinet_corner_join', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:kitchen_cabinet_run:4'] },
     { id: 'kitchen_dishwasher_under_counter', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:0', 'furniture:kitchen:dishwasher:3'] },
     { id: 'kitchen_dishwasher_under_counter_corner', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:dishwasher:3'] },
-    { id: 'kitchen_sink_cutout', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:sink:8'] },
-    { id: 'kitchen_cooktop_cutout', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:4', 'furniture:kitchen:gas_stove:6'] },
-    { id: 'kitchen_fridge_corner', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:4', 'furniture:kitchen:fridge:5'] },
+    { id: 'kitchen_sink_cutout', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:sink:7'] },
+    { id: 'kitchen_cooktop_cutout', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:4', 'furniture:kitchen:gas_stove:5'] },
     { id: 'wardrobe_top_pelmet', type: 'attached', pair: ['furniture:master_bedroom:master_north_wall_wardrobe_950:1', 'furniture:master_bedroom:master_wardrobe_top_pelmet:2'] },
   ];
 
-  it('keeps all 13 migrated relationships as complete waivers carrying the original kind', () => {
+  it('keeps the 12 current migrated relationships as complete waivers carrying the original kind', () => {
     const config = loadAntiPenetrationConfig();
     const waivers = config.waivers ?? [];
-    assert.equal(waivers.length, PRE_MIGRATION.length, 'one waiver per pre-migration relationship, no more no less');
-    for (const expected of PRE_MIGRATION) {
+    assert.equal(waivers.length, CURRENT_WAIVER_RELATIONSHIPS.length, 'one waiver per current relationship, no more no less');
+    for (const expected of CURRENT_WAIVER_RELATIONSHIPS) {
       const waiver = waivers.find((item) => item.id === expected.id);
       assert.ok(waiver, `waiver ${expected.id} is missing`);
       assert.equal(waiver!.rule, 'pen.furniture.furniture', 'these waivers exempt furniture-vs-furniture only');
@@ -170,10 +168,10 @@ describe('relationship waiver migration (2026-10-09)', () => {
     }
   });
 
-  it('exempts exactly the same runtime pairs as the pre-migration relationships whitelist', () => {
+  it('derives exactly the current runtime relationship pairs from waivers', () => {
     const config = loadAntiPenetrationConfig();
     const specs = relationshipSpecsFromWaivers(config);
-    const expected = new Set(PRE_MIGRATION.map((item) => [...item.pair].sort().join('|')));
+    const expected = new Set(CURRENT_WAIVER_RELATIONSHIPS.map((item) => [...item.pair].sort().join('|')));
     const actual = new Set(specs.map((spec) => [...(spec.objects ?? [])].sort().join('|')));
     assert.deepEqual([...actual].sort(), [...expected].sort(), 'the derived relationship set must be pair-identical');
 
@@ -181,7 +179,7 @@ describe('relationship waiver migration (2026-10-09)', () => {
     const inputs = loadSceneInputs();
     const collected = collectPenetrationObjects(buildRuntimeScene(inputs), inputs.structuralPaths);
     const ids = collected.furniture.map((entry) => entry.id);
-    const beforeExempts = (a: string, b: string) => PRE_MIGRATION.some((item) => {
+    const expectedExempts = (a: string, b: string) => CURRENT_WAIVER_RELATIONSHIPS.some((item) => {
       const [x, y] = [a, b].sort();
       const [p, q] = [...item.pair].sort();
       return x === p && y === q;
@@ -190,7 +188,7 @@ describe('relationship waiver migration (2026-10-09)', () => {
       for (let j = i + 1; j < ids.length; j++) {
         assert.equal(
           relationshipExemptsPair(ids[i], ids[j], specs),
-          beforeExempts(ids[i], ids[j]),
+          expectedExempts(ids[i], ids[j]),
           `pair ${ids[i]} / ${ids[j]} changed its exemption verdict`,
         );
       }

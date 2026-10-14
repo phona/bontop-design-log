@@ -1088,10 +1088,10 @@ facts:
         pattern: 'gift_areas'
         reason: 权威源自身字段声明；3 处赠送面积的逐项叙述在北开敞外廊/南大阳台/西设备平台三行 notes，面积口径另由 fact.west_platform_area 对账
 
-  # 量房待确认项条数：60 条是「还有什么没量」的账面。新增/关闭条目必须同步。
+  # 量房待确认项条数：文档编号数是「还有什么没量」的账面。新增/关闭条目必须同步。
   - id: fact.pending_site_data_count
     kind: derived
-    value: "@docs/pending-site-data.md:量表共 63 条"
+    value: "@docs/pending-site-data.md:量表共 64 条"
     unit: 条
     mirrors:
       - path: docs/pending-site-data.md

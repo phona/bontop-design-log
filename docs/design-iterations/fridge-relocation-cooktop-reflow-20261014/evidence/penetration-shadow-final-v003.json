@@ -1,0 +1,752 @@
+{
+  "version": 1,
+  "report": {
+    "issues": [
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:balcony:dryer:1↔north_recess_curtain",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture dryer is 0.050m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.05000008344650286,
+          "required_clearance_m": 0.068,
+          "glass_entity": "north_recess_curtain"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:balcony:washer:0↔north_recess_curtain",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture washer is 0.050m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.05000008344650286,
+          "required_clearance_m": 0.068,
+          "glass_entity": "north_recess_curtain"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:kitchen:kitchen_cabinet_run:0↔vrv_nw_railing:part=handrail:29:role=railing",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture kitchen_cabinet_run is 0.050m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.050000001005828354,
+          "required_clearance_m": 0.068,
+          "glass_entity": "vrv_nw_railing:part=handrail:29:role=railing"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:kitchen:kitchen_cabinet_run:2↔entry_garden_north_railing:part=handrail:55:role=railing",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture kitchen_cabinet_run is 0.050m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.05000000100582865,
+          "required_clearance_m": 0.068,
+          "glass_entity": "entry_garden_north_railing:part=handrail:55:role=railing"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:kitchen:kitchen_countertop_bridge:1↔kitchen_north_curtain",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture kitchen_countertop_bridge is 0.008m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.007999987974762302,
+          "required_clearance_m": 0.068,
+          "glass_entity": "kitchen_north_curtain"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:master_bedroom:mb_washbasin_cabinet:5↔west_curtain:part=w_west_lower",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture mb_washbasin_cabinet is 0.063m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.06280136454323086,
+          "required_clearance_m": 0.068,
+          "glass_entity": "west_curtain:part=w_west_lower"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:master_bedroom:mb_washbasin_cabinet:5↔west_curtain:part=w_west_mid",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture mb_washbasin_cabinet is 0.038m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.03800001181662077,
+          "required_clearance_m": 0.068,
+          "glass_entity": "west_curtain:part=w_west_mid"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:study:desk:0↔west_curtain:part=w_mb_south",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture desk is 0.000m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 1.7881393432617188e-7,
+          "required_clearance_m": 0.068,
+          "glass_entity": "west_curtain:part=w_mb_south"
+        }
+      }
+    ],
+    "errors": [],
+    "warnings": [
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:balcony:dryer:1↔north_recess_curtain",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture dryer is 0.050m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.05000008344650286,
+          "required_clearance_m": 0.068,
+          "glass_entity": "north_recess_curtain"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:balcony:washer:0↔north_recess_curtain",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture washer is 0.050m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.05000008344650286,
+          "required_clearance_m": 0.068,
+          "glass_entity": "north_recess_curtain"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:kitchen:kitchen_cabinet_run:0↔vrv_nw_railing:part=handrail:29:role=railing",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture kitchen_cabinet_run is 0.050m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.050000001005828354,
+          "required_clearance_m": 0.068,
+          "glass_entity": "vrv_nw_railing:part=handrail:29:role=railing"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:kitchen:kitchen_cabinet_run:2↔entry_garden_north_railing:part=handrail:55:role=railing",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture kitchen_cabinet_run is 0.050m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.05000000100582865,
+          "required_clearance_m": 0.068,
+          "glass_entity": "entry_garden_north_railing:part=handrail:55:role=railing"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:kitchen:kitchen_countertop_bridge:1↔kitchen_north_curtain",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture kitchen_countertop_bridge is 0.008m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.007999987974762302,
+          "required_clearance_m": 0.068,
+          "glass_entity": "kitchen_north_curtain"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:master_bedroom:mb_washbasin_cabinet:5↔west_curtain:part=w_west_lower",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture mb_washbasin_cabinet is 0.063m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.06280136454323086,
+          "required_clearance_m": 0.068,
+          "glass_entity": "west_curtain:part=w_west_lower"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:master_bedroom:mb_washbasin_cabinet:5↔west_curtain:part=w_west_mid",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture mb_washbasin_cabinet is 0.038m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 0.03800001181662077,
+          "required_clearance_m": 0.068,
+          "glass_entity": "west_curtain:part=w_west_mid"
+        }
+      },
+      {
+        "level": "warning",
+        "code": "furniture_glass_clearance_insufficient",
+        "entity": "furniture:study:desk:0↔west_curtain:part=w_mb_south",
+        "source": "config/house.yaml + shared/render/SceneBuilder.ts + shared/penetration/",
+        "message": "runtime furniture desk is 0.000m from glass; 0.068m is required",
+        "evidence": {
+          "gap_m": 1.7881393432617188e-7,
+          "required_clearance_m": 0.068,
+          "glass_entity": "west_curtain:part=w_mb_south"
+        }
+      }
+    ],
+    "counts": {
+      "errors": 0,
+      "warnings": 8,
+      "info": 0
+    }
+  },
+  "inputs": {
+    "rooms": 11,
+    "walls": 41,
+    "suppressedWalls": 14,
+    "placedFurniture": 60,
+    "runtimeObjects": {
+      "furniture": 60,
+      "walls": 51,
+      "glass": 148,
+      "ceilings": 122
+    }
+  },
+  "runtimeWarnings": [
+    "Room kitchen boundary was CW, auto-reversed to CCW",
+    "Room entry_garden boundary was CW, auto-reversed to CCW"
+  ],
+  "shadow": {
+    "summary": {
+      "candidates": 0,
+      "agree": 0,
+      "falsePositives": 0,
+      "falseNegatives": 0,
+      "exemptPairsAudited": 10,
+      "overBroadExemptions": 0
+    },
+    "divergences": [],
+    "exemptionAudit": [
+      {
+        "pair": [
+          "furniture:master_bedroom:master_north_wall_wardrobe_950:1",
+          "furniture:master_bedroom:master_wardrobe_top_pelmet:2"
+        ],
+        "relationship": "wardrobe_top_pelmet",
+        "obb_confirms_overlap": true,
+        "obb_depth_m": 0.01
+      },
+      {
+        "pair": [
+          "furniture:master_bedroom:master_dressing_table:6",
+          "furniture:master_bedroom:dressing_stool:7"
+        ],
+        "relationship": "dressing_stool_storage",
+        "obb_confirms_overlap": true,
+        "obb_depth_m": 0.42
+      },
+      {
+        "pair": [
+          "furniture:kitchen:kitchen_cabinet_run:0",
+          "furniture:kitchen:kitchen_countertop_bridge:1"
+        ],
+        "relationship": "countertop_run",
+        "obb_confirms_overlap": true,
+        "obb_depth_m": 0.02
+      },
+      {
+        "pair": [
+          "furniture:kitchen:kitchen_cabinet_run:0",
+          "furniture:kitchen:dishwasher:3"
+        ],
+        "relationship": "kitchen_dishwasher_under_counter",
+        "obb_confirms_overlap": true,
+        "obb_depth_m": 0.02
+      },
+      {
+        "pair": [
+          "furniture:kitchen:kitchen_countertop_bridge:1",
+          "furniture:kitchen:kitchen_cabinet_run:2"
+        ],
+        "relationship": "countertop_run_corner",
+        "obb_confirms_overlap": true,
+        "obb_depth_m": 0.02
+      },
+      {
+        "pair": [
+          "furniture:kitchen:kitchen_cabinet_run:2",
+          "furniture:kitchen:dishwasher:3"
+        ],
+        "relationship": "kitchen_dishwasher_under_counter_corner",
+        "obb_confirms_overlap": true,
+        "obb_depth_m": 0.02
+      },
+      {
+        "pair": [
+          "furniture:kitchen:kitchen_cabinet_run:2",
+          "furniture:kitchen:kitchen_cabinet_run:4"
+        ],
+        "relationship": "kitchen_cabinet_corner_join",
+        "obb_confirms_overlap": true,
+        "obb_depth_m": 0.36
+      },
+      {
+        "pair": [
+          "furniture:kitchen:kitchen_cabinet_run:2",
+          "furniture:kitchen:sink:7"
+        ],
+        "relationship": "kitchen_sink_cutout",
+        "obb_confirms_overlap": true,
+        "obb_depth_m": 0.13
+      },
+      {
+        "pair": [
+          "furniture:kitchen:kitchen_cabinet_run:4",
+          "furniture:kitchen:gas_stove:5"
+        ],
+        "relationship": "kitchen_cooktop_cutout",
+        "obb_confirms_overlap": true,
+        "obb_depth_m": 0.014
+      },
+      {
+        "pair": [
+          "furniture:balcony:washer:0",
+          "furniture:balcony:dryer:1"
+        ],
+        "relationship": "laundry_stack",
+        "obb_confirms_overlap": true,
+        "obb_depth_m": 0.0225
+      }
+    ],
+    "envelopes": {
+      "summary": {
+        "envelopes": 22,
+        "hits": 7,
+        "hit_pairs": 8,
+        "undeclared_types": 35
+      },
+      "hits": [
+        {
+          "envelope_id": "envelope:door_swing:d_mbath",
+          "pair": [
+            "envelope:door_swing:d_mbath",
+            "opening:d_mbath"
+          ],
+          "envelope_kind": "door_swing",
+          "enabled_by": "d_mbath",
+          "declared_basis": "config/layout/model-geometry.yaml 开口 d_mbath（type=door swing=inward hinge=end width=0.8）+ 墙段方向；扫掠用 3 盒近似扇形",
+          "overlaps": [
+            {
+              "entity": "north_recess_curtain",
+              "depth_m": 0.0669,
+              "mtv": [
+                0,
+                0,
+                -0.0669
+              ]
+            }
+          ],
+          "level": "info"
+        },
+        {
+          "envelope_id": "envelope:env.chair.pullout:furniture:bedroom_nw:chair:3",
+          "pair": [
+            "envelope:env.chair.pullout:furniture:bedroom_nw:chair:3",
+            "furniture:bedroom_nw:chair:3"
+          ],
+          "envelope_kind": "chair_pullout",
+          "enabled_by": "env.chair.pullout",
+          "declared_basis": "config/house.yaml 书桌椅「现实可推入桌下」（bedroom_nw）/「原位保留」（study）；FixtureFactory chair 靠背在 local -z，拉出向按 rotation 推导；0.45m 拉出距",
+          "overlaps": [
+            {
+              "entity": "furniture:bedroom_nw:bed_150:0",
+              "depth_m": 0.3,
+              "mtv": [
+                0,
+                0,
+                -0.3
+              ]
+            }
+          ],
+          "level": "info"
+        },
+        {
+          "envelope_id": "envelope:env.dishwasher.door:furniture:kitchen:dishwasher:3",
+          "pair": [
+            "envelope:env.dishwasher.door:furniture:kitchen:dishwasher:3",
+            "furniture:kitchen:dishwasher:3"
+          ],
+          "envelope_kind": "appliance_door",
+          "enabled_by": "env.dishwasher.door",
+          "declared_basis": "DEC-2026-08-02-013 洗碗机收北墙地柜台下、门板与柜体齐平，门朝厨房（南）；0.5m 下翻门净空为厂家常识估计，非施工依据",
+          "overlaps": [
+            {
+              "entity": "furniture:kitchen:kitchen_cabinet_run:0",
+              "depth_m": 0.02,
+              "mtv": [
+                -0.02,
+                0,
+                0
+              ]
+            },
+            {
+              "entity": "furniture:kitchen:kitchen_cabinet_run:2",
+              "depth_m": 0.02,
+              "mtv": [
+                0.02,
+                0,
+                0
+              ]
+            }
+          ],
+          "level": "info"
+        },
+        {
+          "envelope_id": "envelope:env.dressing_stool.pullout:furniture:master_bedroom:dressing_stool:7",
+          "pair": [
+            "envelope:env.dressing_stool.pullout:furniture:master_bedroom:dressing_stool:7",
+            "furniture:master_bedroom:dressing_stool:7"
+          ],
+          "envelope_kind": "chair_pullout",
+          "enabled_by": "env.dressing_stool.pullout",
+          "declared_basis": "config/house.yaml「收纳态完整收入桌下，使用时向东拉出」——拉出向=东，显式声明",
+          "overlaps": [
+            {
+              "entity": "furniture:master_bedroom:master_dressing_table:6",
+              "depth_m": 0.03,
+              "mtv": [
+                -0.03,
+                0,
+                0
+              ]
+            }
+          ],
+          "level": "info"
+        },
+        {
+          "envelope_id": "envelope:env.low_dresser.drawer:furniture:master_bedroom:master_hot_season_low_dresser:8",
+          "pair": [
+            "envelope:env.low_dresser.drawer:furniture:master_bedroom:master_hot_season_low_dresser:8",
+            "furniture:master_bedroom:master_hot_season_low_dresser:8"
+          ],
+          "envelope_kind": "drawer",
+          "enabled_by": "env.low_dresser.drawer",
+          "declared_basis": "config/house.yaml「主卧南侧窗带轻中古六抽矮柜…抽屉朝北」；0.35m 拉出行程为成品抽屉常识值（非施工依据）",
+          "overlaps": [
+            {
+              "entity": "west_curtain:part=w_mb_south",
+              "depth_m": 0.1466,
+              "mtv": [
+                0,
+                0,
+                0.1466
+              ]
+            }
+          ],
+          "level": "info"
+        },
+        {
+          "envelope_id": "envelope:env.washer.door:furniture:balcony:washer:0",
+          "pair": [
+            "envelope:env.washer.door:furniture:balcony:washer:0",
+            "furniture:balcony:washer:0"
+          ],
+          "envelope_kind": "appliance_door",
+          "enabled_by": "env.washer.door",
+          "declared_basis": "config/house.yaml「10kg 滚筒贴西墙面朝东」——前开门朝东；0.5m 圆门净空为厂家常识估计，非施工依据",
+          "overlaps": [
+            {
+              "entity": "furniture:balcony:dryer:1",
+              "depth_m": 0.005,
+              "mtv": [
+                -0.005,
+                0,
+                0
+              ]
+            }
+          ],
+          "level": "info"
+        },
+        {
+          "envelope_id": "envelope:sliding_open:kitchen_dining_sliding_door",
+          "pair": [
+            "envelope:sliding_open:kitchen_dining_sliding_door",
+            "sliding_door:kitchen_dining_sliding_door"
+          ],
+          "envelope_kind": "sliding_open",
+          "enabled_by": "kitchen_dining_sliding_door",
+          "declared_basis": "config/layout/overlay.yaml kitchen_dining_sliding_door（sliding_door_run open:true panels=4）；开启态面板位置复刻 SceneBuilder 叠收公式",
+          "overlaps": [
+            {
+              "entity": "ceiling:ceiling_dining_north_band",
+              "depth_m": 0.048,
+              "mtv": [
+                0,
+                0.048,
+                0
+              ]
+            }
+          ],
+          "level": "info"
+        }
+      ],
+      "undeclared": [
+        {
+          "type": "bed_150",
+          "instances": [
+            "furniture:bedroom_nw:bed_150:0",
+            "furniture:bedroom_se:bed_150:1"
+          ],
+          "note": "placed 类型 bed_150 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "bed_180",
+          "instances": [
+            "furniture:master_bedroom:bed_180:0"
+          ],
+          "note": "placed 类型 bed_180 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "coffee_table",
+          "instances": [
+            "furniture:living_dining:coffee_table:6"
+          ],
+          "note": "placed 类型 coffee_table 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "desk",
+          "instances": [
+            "furniture:bedroom_nw:desk:2",
+            "furniture:study:desk:0"
+          ],
+          "note": "placed 类型 desk 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "dining_table",
+          "instances": [
+            "furniture:living_dining:dining_table:8"
+          ],
+          "note": "placed 类型 dining_table 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "entry_half_height_cabinet",
+          "instances": [
+            "furniture:living_dining:entry_half_height_cabinet:7"
+          ],
+          "note": "placed 类型 entry_half_height_cabinet 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "exhaust_fan",
+          "instances": [
+            "furniture:guest_bath:exhaust_fan:2",
+            "furniture:master_bath:exhaust_fan:2"
+          ],
+          "note": "placed 类型 exhaust_fan 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "floor_lamp",
+          "instances": [
+            "furniture:living_dining:floor_lamp:3"
+          ],
+          "note": "placed 类型 floor_lamp 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "garden_entry_station",
+          "instances": [
+            "furniture:entry_garden:garden_entry_station:0"
+          ],
+          "note": "placed 类型 garden_entry_station 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "gas_stove",
+          "instances": [
+            "furniture:kitchen:gas_stove:5"
+          ],
+          "note": "placed 类型 gas_stove 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "kitchen_cabinet_run",
+          "instances": [
+            "furniture:kitchen:kitchen_cabinet_run:0",
+            "furniture:kitchen:kitchen_cabinet_run:2",
+            "furniture:kitchen:kitchen_cabinet_run:4"
+          ],
+          "note": "placed 类型 kitchen_cabinet_run 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "kitchen_countertop_bridge",
+          "instances": [
+            "furniture:kitchen:kitchen_countertop_bridge:1"
+          ],
+          "note": "placed 类型 kitchen_countertop_bridge 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "master_bedside_cabinet_350_north",
+          "instances": [
+            "furniture:master_bedroom:master_bedside_cabinet_350_north:3"
+          ],
+          "note": "placed 类型 master_bedside_cabinet_350_north 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "master_bedside_cabinet_350_south",
+          "instances": [
+            "furniture:master_bedroom:master_bedside_cabinet_350_south:4"
+          ],
+          "note": "placed 类型 master_bedside_cabinet_350_south 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "master_dressing_table",
+          "instances": [
+            "furniture:master_bedroom:master_dressing_table:6"
+          ],
+          "note": "placed 类型 master_dressing_table 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "master_wardrobe_top_pelmet",
+          "instances": [
+            "furniture:master_bedroom:master_wardrobe_top_pelmet:2"
+          ],
+          "note": "placed 类型 master_wardrobe_top_pelmet 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "mb_vanity_base_cabinet",
+          "instances": [
+            "furniture:master_bedroom:mb_vanity_base_cabinet:9"
+          ],
+          "note": "placed 类型 mb_vanity_base_cabinet 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "mb_vanity_lower_board",
+          "instances": [
+            "furniture:master_bedroom:mb_vanity_lower_board:10"
+          ],
+          "note": "placed 类型 mb_vanity_lower_board 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "mb_vanity_main_board",
+          "instances": [
+            "furniture:master_bedroom:mb_vanity_main_board:11"
+          ],
+          "note": "placed 类型 mb_vanity_main_board 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "mb_washbasin_cabinet",
+          "instances": [
+            "furniture:master_bedroom:mb_washbasin_cabinet:5"
+          ],
+          "note": "placed 类型 mb_washbasin_cabinet 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "mirror_cabinet_gbath",
+          "instances": [
+            "furniture:guest_bath:mirror_cabinet_gbath:3"
+          ],
+          "note": "placed 类型 mirror_cabinet_gbath 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "plant_fiddle",
+          "instances": [
+            "furniture:living_dining:plant_fiddle:4"
+          ],
+          "note": "placed 类型 plant_fiddle 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "range_hood",
+          "instances": [
+            "furniture:kitchen:range_hood:6"
+          ],
+          "note": "placed 类型 range_hood 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "robot_dock_gbath",
+          "instances": [
+            "furniture:guest_bath:robot_dock_gbath:4"
+          ],
+          "note": "placed 类型 robot_dock_gbath 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "shelf",
+          "instances": [
+            "furniture:bedroom_nw:shelf:4"
+          ],
+          "note": "placed 类型 shelf 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "sink",
+          "instances": [
+            "furniture:kitchen:sink:7"
+          ],
+          "note": "placed 类型 sink 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "sofa_3seat",
+          "instances": [
+            "furniture:living_dining:sofa_3seat:5"
+          ],
+          "note": "placed 类型 sofa_3seat 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "study_seasonal_wardrobe_wall",
+          "instances": [
+            "furniture:study:study_seasonal_wardrobe_wall:2"
+          ],
+          "note": "placed 类型 study_seasonal_wardrobe_wall 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "toilet",
+          "instances": [
+            "furniture:guest_bath:toilet:1",
+            "furniture:master_bath:toilet:0"
+          ],
+          "note": "placed 类型 toilet 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "towel_set",
+          "instances": [
+            "furniture:master_bath:towel_set:1"
+          ],
+          "note": "placed 类型 towel_set 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "tv_65",
+          "instances": [
+            "furniture:living_dining:tv_65:2"
+          ],
+          "note": "placed 类型 tv_65 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "tv_wall_low",
+          "instances": [
+            "furniture:living_dining:tv_wall_low:1"
+          ],
+          "note": "placed 类型 tv_wall_low 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "vanity",
+          "instances": [
+            "furniture:guest_bath:vanity:0"
+          ],
+          "note": "placed 类型 vanity 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "wall_cabinet_tall",
+          "instances": [
+            "furniture:living_dining:wall_cabinet_tall:0"
+          ],
+          "note": "placed 类型 wall_cabinet_tall 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        },
+        {
+          "type": "water_heater",
+          "instances": [
+            "furniture:kitchen:water_heater:8"
+          ],
+          "note": "placed 类型 water_heater 无活动包络申报，静态包络外不可判（未申报 → 显形，不猜）"
+        }
+      ]
+    }
+  }
+}
