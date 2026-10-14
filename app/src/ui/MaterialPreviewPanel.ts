@@ -19,6 +19,7 @@ export interface MaterialPreviewPanelState {
   floorId: string;
   floorMode: PreviewFloorMode;
   atlasId: string | null;
+  floorMattePercent: number;
   paintColor: string;
   paintLabel: string;
 }
@@ -72,6 +73,11 @@ export class MaterialPreviewPanel {
           <select data-control="atlas"></select>
         </label>
         <div class="preview-note" data-control="atlas-note"></div>
+        <label class="preview-control">地面哑光度（越高越不反光）
+          <output data-control="matte-label"></output>
+          <input data-control="matte" type="range" min="30" max="100" step="5" />
+        </label>
+        <p class="preview-note">厂家拼版图不包含真实表面光泽数据；此项只调预演中的反光程度。</p>
         <label class="preview-control">墙漆色号/名称
           <input data-control="paint-label" type="text" placeholder="例如：斯托白 45YY 83/062" />
         </label>
@@ -109,6 +115,11 @@ export class MaterialPreviewPanel {
     this.root.querySelector<HTMLSelectElement>('[data-control="atlas"]')!.onchange = (event) => {
       this.state.atlasId = (event.currentTarget as HTMLSelectElement).value || null;
       this.syncControls();
+      this.emit();
+    };
+    this.root.querySelector<HTMLInputElement>('[data-control="matte"]')!.oninput = (event) => {
+      this.state.floorMattePercent = Number((event.currentTarget as HTMLInputElement).value);
+      this.syncMatteReadout();
       this.emit();
     };
     this.root.querySelector<HTMLInputElement>('[data-control="paint-label"]')!.oninput = (event) => {
@@ -175,12 +186,18 @@ export class MaterialPreviewPanel {
     atlas.disabled = this.state.floorMode !== 'manufacturer_atlas' || this.atlases.length === 0;
     this.root.querySelector<HTMLElement>('[data-control="atlas-note"]')!.textContent = this.atlases.find((item) => item.id === atlas.value)?.note ?? '';
 
+    this.root.querySelector<HTMLInputElement>('[data-control="matte"]')!.value = String(this.state.floorMattePercent);
     this.root.querySelector<HTMLInputElement>('[data-control="paint-label"]')!.value = this.state.paintLabel;
     this.root.querySelector<HTMLInputElement>('[data-control="paint-color"]')!.value = this.state.paintColor;
     for (const slot of ['A', 'B'] as const) {
       this.root.querySelector<HTMLButtonElement>(`[data-load="${slot}"]`)!.disabled = !this.availableSlots[slot];
     }
+    this.syncMatteReadout();
     this.syncPaintReadout();
+  }
+
+  private syncMatteReadout(): void {
+    this.root.querySelector<HTMLOutputElement>('[data-control="matte-label"]')!.textContent = `${this.state.floorMattePercent}%`;
   }
 
   private syncPaintReadout(): void {

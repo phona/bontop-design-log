@@ -14,13 +14,13 @@ preview_assets:
     status: partial
     declaredFaceCount: 54
     grid:
-      x: 44
-      y: 65
+      x: 45
+      y: 66
       columns: 11
       rows: 4
-      cellWidth: 86
-      cellHeight: 510
-      gapX: 11
+      cellWidth: 88
+      cellHeight: 525
+      gapX: 13
       gapY: 12
       inset: 2
     source: 用户于 2026-10-14 提供的厂家拼版截图；原图复制至 app/public/materials/previews/。

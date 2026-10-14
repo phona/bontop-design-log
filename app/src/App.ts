@@ -573,10 +573,15 @@ export class App {
     const paintOption = this.topics.find((topic) => topic.id === 'paint')?.options.find((option) => option.id === paintId);
     const paintData = paintOption?.data as Record<string, unknown> | undefined;
     const paintAppearance = paintData?.appearance as MaterialAppearance | undefined;
+    const floorAppearance = this.getFloorAppearance(floorId);
+    const floorRoughness = typeof floorAppearance?.roughness === 'number'
+      ? floorAppearance.roughness
+      : floorAppearance?.finish === 'soft' ? 0.5 : 0.85;
     return {
       floorId,
       floorMode: 'procedural',
       atlasId: this.materialPreviewAtlases[0]?.id ?? null,
+      floorMattePercent: Math.round(floorRoughness * 100),
       paintColor: paintAppearance?.color ?? '#f7f5ef',
       paintLabel: paintOption?.name ?? '自定义预演色',
     };
@@ -595,6 +600,7 @@ export class App {
     return {
       ...base,
       mode: state.floorMode,
+      roughness: state.floorMattePercent / 100,
       ...(state.floorMode === 'manufacturer_atlas' && atlas ? { manufacturerAtlas: atlas.atlas } : {}),
     };
   }
@@ -632,7 +638,7 @@ export class App {
   private captureVisualPreviewSnapshot(): VisualPreviewSnapshot {
     const scheme = this.officialScheme;
     const material = this.materialPreviewState ?? (scheme ? this.makeMaterialPreviewState(scheme) : {
-      floorId: '', floorMode: 'procedural' as const, atlasId: null, paintColor: '#f7f5ef', paintLabel: '自定义预演色',
+      floorId: '', floorMode: 'procedural' as const, atlasId: null, floorMattePercent: 85, paintColor: '#f7f5ef', paintLabel: '自定义预演色',
     });
     return {
       material: { ...material },

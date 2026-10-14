@@ -257,6 +257,17 @@ body:has(.toolbar-popover:not([hidden])) #right-panel-stack {
   width: 100%;
 }
 
+.preview-control input[type="range"] {
+  width: 100%;
+  accent-color: #c89b62;
+}
+
+.preview-control output[data-control="matte-label"] {
+  color: #c9c1ad;
+  font-size: 12px;
+  text-align: right;
+}
+
 .preview-color-row {
   grid-template-columns: 1fr auto auto;
   align-items: center;
