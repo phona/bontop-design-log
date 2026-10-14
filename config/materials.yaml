@@ -3,6 +3,29 @@ notes:
   - "本清单以套内 94.76㎡、层高 3.0m 为基数估算"
   - "本清单共 74 条材料项（2026-10-05 复核：删除 home_fitness_light_set_01 轻训练套，iteration parent-room-study-swap-20261005；与 fact.materials_count / c.materials_count_matches_note 对账：增删条目必须同步此数）"
 
+# 临时 3D 预演素材，不属于采购候选，不进入 materials 数量或预算。
+# 用户提供的厂家拼版截图标注「一砖五十四面」，当前截图可辨识 11×4=44 面；剩余 10 面未提供。
+# 仅用于预演木纹变化，SKU / 色号 / 尺寸尚未与采购候选绑定，禁止据此认定具体产品色号。
+preview_assets:
+  - id: tile_face_sheet_user_reference_20261014
+    label: 厂家多板面样图（44/54 面，参考预览）
+    atlasUrl: /materials/previews/tile-face-sheet-20261014.png
+    atlasHash: 7520827e497621af51e427db07f87f997de1bb29f6a8a5eb1251cf1ca18947fd
+    status: partial
+    declaredFaceCount: 54
+    grid:
+      x: 44
+      y: 65
+      columns: 11
+      rows: 4
+      cellWidth: 86
+      cellHeight: 510
+      gapX: 11
+      gapY: 12
+      inset: 2
+    source: 用户于 2026-10-14 提供的厂家拼版截图；原图复制至 app/public/materials/previews/。
+    note: 拼版截图分辨率有限且型号未确认；仅作材质变化示意，不代表校准色、表面光泽或完整 54 面图库。
+
 # Formal GLB material-role contract. Values reference entries below; shader topology stays in Blender Python.
 render_roles:
   exterior_glazing: "curtain_wall_01"

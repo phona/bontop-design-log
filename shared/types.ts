@@ -158,12 +158,89 @@ export interface MaterialItem {
   pros?: string[];
   cons?: string[];
   price_source?: string;
-  appearance?: { type: string; color: string };
+  appearance?: MaterialAppearance;
   data?: Record<string, unknown>;
+}
+
+/** Pixel rectangle in a manufacturer atlas image. Coordinates are measured from the top-left. */
+export interface MaterialAtlasFace {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface MaterialManufacturerAtlas {
+  atlasUrl: string;
+  /** Stable asset digest/version; include this when replacing an image at the same URL. */
+  atlasHash?: string;
+  status?: 'partial' | 'reference' | 'complete';
+  declaredFaceCount?: number;
+  faces: MaterialAtlasFace[];
+}
+
+/** A user-facing atlas available only to temporary in-browser material previews. */
+export interface MaterialPreviewAtlasConfig {
+  id: string;
+  label: string;
+  atlasUrl: string;
+  atlasHash?: string;
+  status: 'partial' | 'reference' | 'complete';
+  declaredFaceCount?: number;
+  /** Regular contact-sheet layout, in source image pixels, excluding cell gutters. */
+  grid: {
+    x: number;
+    y: number;
+    columns: number;
+    rows: number;
+    cellWidth: number;
+    cellHeight: number;
+    gapX: number;
+    gapY: number;
+    inset?: number;
+  };
+  source: string;
+  note: string;
+}
+
+export type MaterialAppearanceSource =
+  | { kind: 'procedural' }
+  | { kind: 'image'; textureUrl: string; contentHash?: string }
+  | ({ kind: 'manufacturer_atlas' } & MaterialManufacturerAtlas);
+
+/** Shared material contract. Existing untagged appearances continue to use procedural rendering. */
+export interface MaterialAppearance {
+  type: string;
+  color: string;
+  /** Explicit source selection; absent source preserves legacy procedural behavior. */
+  source?: MaterialAppearanceSource;
+  /** Temporary preview override. Keep both procedural parameters and manufacturerAtlas in one candidate. */
+  mode?: 'procedural' | 'image' | 'manufacturer_atlas';
+  /** Optional atlas asset, independent from `mode`, so the same SKU can preview both render modes. */
+  manufacturerAtlas?: MaterialManufacturerAtlas;
+  /** Legacy single-image mode retained for existing callers/configuration. */
+  textureUrl?: string;
+  species?: string;
+  pattern?: string;
+  variety?: string;
+  tile_mm?: number | [number, number];
+  /** Runtime validates the two dimensions; number[] preserves compatibility with existing YAML-derived callers. */
+  plank_mm?: number[];
+  seed?: number;
+  grout_mm?: number;
+  grout_color?: string;
+  finish?: string;
+  roughness?: number;
+  tone_var?: number;
+  grain_var?: number;
+  seam?: number;
+  [key: string]: unknown;
 }
 
 export interface MaterialsYaml {
   notes?: string[];
+  preview_assets?: MaterialPreviewAtlasConfig[];
   materials: MaterialItem[];
 }
 

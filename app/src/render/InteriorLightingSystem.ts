@@ -19,6 +19,8 @@ interface LightEntry {
   lights: THREE.Light[];
   visual: THREE.Object3D;
   fixtureMats: THREE.MeshStandardMaterial[];
+  baseEnergies: number[];
+  baseColors: THREE.Color[];
 }
 
 // Keep every ceiling-mounted visual and its light source below the ceiling bottom.
@@ -53,6 +55,10 @@ export class InteriorLightingSystem {
   private group = new THREE.Group();
   private entries: LightEntry[] = [];
   private on = false;
+  private autoOn = false;
+  private mode: 'auto' | 'manual' = 'auto';
+  private temperatureOverrideK: number | null = null;
+  private brightnessMultiplier = 1;
   private roomOverrides = new Map<string, boolean>();
   private shadowCount = 0;
 
@@ -212,7 +218,16 @@ export class InteriorLightingSystem {
     } else {
       this.group.add(...lights, ...targets, visual);
     }
-    this.entries.push({ id: fixture.id, room: fixture.room, light, lights, visual, fixtureMats });
+    this.entries.push({
+      id: fixture.id,
+      room: fixture.room,
+      light,
+      lights,
+      visual,
+      fixtureMats,
+      baseEnergies: lights.map((item) => item.intensity),
+      baseColors: lights.map((item) => item.color.clone()),
+    });
   }
 
   // ── 灯具示意网格（通用体，不预览 SKU 外观）──
@@ -315,6 +330,7 @@ export class InteriorLightingSystem {
   // ── 开关与联动 ──
 
   private applyVisibility(): void {
+    this.on = this.mode === 'auto' ? this.autoOn : this.on;
     for (const entry of this.entries) {
       const roomOn = this.roomOverrides.get(entry.room) ?? true;
       const visible = this.on && roomOn;
@@ -326,12 +342,14 @@ export class InteriorLightingSystem {
   }
 
   toggle(): boolean {
+    this.mode = 'manual';
     this.on = !this.on;
     this.applyVisibility();
     return this.on;
   }
 
   setOn(on: boolean): void {
+    this.mode = 'manual';
     this.on = on;
     this.applyVisibility();
   }
@@ -343,7 +361,66 @@ export class InteriorLightingSystem {
 
   /** 太阳联动：夜晚或太阳高度角 <10°（黄昏掠射）自动开灯 */
   syncSolar(state: { isNight: boolean; altitudeDeg: number }): void {
-    this.setOn(state.isNight || state.altitudeDeg < 10);
+    this.autoOn = state.isNight || state.altitudeDeg < 10;
+    this.applyVisibility();
+  }
+
+  /** Switch between solar-following lights and the explicit preview switch. */
+  setPreviewMode(mode: 'auto' | 'manual', manualOn = this.on): void {
+    this.mode = mode;
+    if (mode === 'manual') this.on = manualOn;
+    this.applyVisibility();
+  }
+
+  setPreviewManualOn(on: boolean): void {
+    this.mode = 'manual';
+    this.on = on;
+    this.applyVisibility();
+  }
+
+  setPreviewTemperature(temperatureK: number | null): void {
+    this.temperatureOverrideK = temperatureK === null ? null : Math.max(1000, Math.min(10000, temperatureK));
+    this.applyAppearance();
+  }
+
+  setPreviewBrightness(multiplier: number): void {
+    this.brightnessMultiplier = Math.max(0, Math.min(2, Number.isFinite(multiplier) ? multiplier : 1));
+    this.applyAppearance();
+  }
+
+  /** Restore fixture temperatures and intensities from the active render config. */
+  clearPreviewOverrides(): void {
+    this.temperatureOverrideK = null;
+    this.brightnessMultiplier = 1;
+    this.roomOverrides.clear();
+    this.mode = 'auto';
+    this.applyAppearance();
+    this.applyVisibility();
+  }
+
+  getPreviewRooms(): Array<{ id: string; enabled: boolean }> {
+    return [...new Set(this.entries.map((entry) => entry.room))]
+      .sort((a, b) => a.localeCompare(b, 'zh-CN'))
+      .map((id) => ({ id, enabled: this.roomOverrides.get(id) ?? true }));
+  }
+
+  getPreviewState(): { mode: 'auto' | 'manual'; manualOn: boolean; temperatureK: number | null; brightness: number } {
+    return { mode: this.mode, manualOn: this.on, temperatureK: this.temperatureOverrideK, brightness: this.brightnessMultiplier };
+  }
+
+  private applyAppearance(): void {
+    for (const entry of this.entries) {
+      const color = this.temperatureOverrideK === null
+        ? entry.baseColors[0]
+        : kelvinToColor(this.temperatureOverrideK);
+      entry.lights.forEach((light, index) => {
+        light.color.copy(this.temperatureOverrideK === null ? entry.baseColors[index] : color);
+        light.intensity = entry.baseEnergies[index] * this.brightnessMultiplier;
+      });
+      for (const material of entry.fixtureMats) {
+        material.emissive.copy(color);
+      }
+    }
   }
 
   dispose(): void {

@@ -18,9 +18,17 @@ function dayIndexToDate(index: number): { month: number; day: number } {
   return { month: 12, day: 31 };
 }
 
+function dateToIndex(month: number, day: number): number {
+  let index = Math.max(0, day - 1);
+  for (let m = 0; m < month - 1; m++) index += MONTH_DAYS[m] ?? 0;
+  return index;
+}
+
 export class SunlightPanel {
   private el: HTMLDivElement | null = null;
   private visible = false;
+  private selectedDate = { month: 12, day: 22 };
+  private selectedHour = 12;
   private dateCb?: (month: number, day: number) => void;
   private hourCb?: (hour: number) => void;
   private playCb?: () => void;
@@ -67,10 +75,21 @@ export class SunlightPanel {
   }
 
   setHourDisplay(hour: number): void {
+    this.selectedHour = ((hour % 24) + 24) % 24;
     const slider = document.getElementById('sunlight-hour') as HTMLInputElement | null;
-    if (slider) slider.value = String(Math.round(hour * 4));
+    if (slider) slider.value = String(Math.round(this.selectedHour * 4));
     const label = document.getElementById('sunlight-hour-label');
-    if (label) label.textContent = formatHour(hour);
+    if (label) label.textContent = formatHour(this.selectedHour);
+  }
+
+  setDateDisplay(month: number, day: number): void {
+    this.selectedDate = { month, day };
+    let index = day - 1;
+    for (let m = 0; m < month - 1; m++) index += MONTH_DAYS[m] ?? 0;
+    const slider = document.getElementById('sunlight-date') as HTMLInputElement | null;
+    if (slider) slider.value = String(index);
+    const label = document.getElementById('sunlight-date-label');
+    if (label) label.textContent = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
 
   setPlaying(playing: boolean): void {
@@ -100,13 +119,13 @@ export class SunlightPanel {
       </div>
       <div id="sunlight-panel-content">
       <div id="sunlight-huinan-hint" style="display:none; background:#5b3a1a; color:#ffd591; border-radius:6px; padding:6px 8px; margin-bottom:10px; font-size:12px;">当前处于回南天窗口</div>
-      <label style="display:block; margin-bottom:4px;">日期 <span id="sunlight-date-label">12-22</span></label>
-      <input id="sunlight-date" type="range" min="0" max="364" value="355" style="width:100%;" />
+      <label style="display:block; margin-bottom:4px;">日期 <span id="sunlight-date-label">${String(this.selectedDate.month).padStart(2, '0')}-${String(this.selectedDate.day).padStart(2, '0')}</span></label>
+      <input id="sunlight-date" type="range" min="0" max="364" value="${dateToIndex(this.selectedDate.month, this.selectedDate.day)}" style="width:100%;" />
       <div style="display:flex; gap:6px; margin:8px 0;">
         ${SEASONS.map((s) => `<button data-season="${s.key}" style="flex:1; background:#2a2a3e; color:#ccd; border:1px solid #3a3a5e; border-radius:6px; padding:4px 0; cursor:pointer;">${s.label}</button>`).join('')}
       </div>
-      <label style="display:block; margin-bottom:4px;">时刻 <span id="sunlight-hour-label">12:00</span></label>
-      <input id="sunlight-hour" type="range" min="0" max="96" value="48" style="width:100%;" />
+      <label style="display:block; margin-bottom:4px;">时刻 <span id="sunlight-hour-label">${formatHour(this.selectedHour)}</span></label>
+      <input id="sunlight-hour" type="range" min="0" max="96" value="${Math.round(this.selectedHour * 4)}" style="width:100%;" />
       <div style="display:flex; gap:6px; margin-top:10px;">
         <button id="sunlight-play" style="flex:1; background:#2a2a3e; color:#ccd; border:1px solid #3a3a5e; border-radius:6px; padding:6px 0; cursor:pointer;">▶ 播放</button>
         <button id="sunlight-heatmap" style="flex:1; background:#2a2a3e; color:#ccd; border:1px solid #3a3a5e; border-radius:6px; padding:6px 0; cursor:pointer;">日照热力图</button>
@@ -125,6 +144,7 @@ export class SunlightPanel {
     const dateSlider = el.querySelector('#sunlight-date') as HTMLInputElement;
     dateSlider.addEventListener('input', () => {
       const { month, day } = dayIndexToDate(Number(dateSlider.value));
+      this.selectedDate = { month, day };
       const label = el.querySelector('#sunlight-date-label');
       if (label) label.textContent = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       this.dateCb?.(month, day);
@@ -133,6 +153,7 @@ export class SunlightPanel {
     const hourSlider = el.querySelector('#sunlight-hour') as HTMLInputElement;
     hourSlider.addEventListener('input', () => {
       const hour = Number(hourSlider.value) / 4;
+      this.selectedHour = hour;
       const label = el.querySelector('#sunlight-hour-label');
       if (label) label.textContent = formatHour(hour);
       this.hourCb?.(hour);
@@ -144,6 +165,7 @@ export class SunlightPanel {
         let index = 0;
         for (let m = 0; m < s.month - 1; m++) index += MONTH_DAYS[m];
         index += s.day - 1;
+        this.selectedDate = { month: s.month, day: s.day };
         dateSlider.value = String(index);
         const label = el.querySelector('#sunlight-date-label');
         if (label) label.textContent = `${String(s.month).padStart(2, '0')}-${String(s.day).padStart(2, '0')}`;

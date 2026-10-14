@@ -171,6 +171,8 @@ html, body {
   gap: 16px;
   align-items: stretch;
   padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: 90;
   pointer-events: none;
   transition: right 0.25s ease;
@@ -188,7 +190,7 @@ body:has(.toolbar-popover:not([hidden])) #right-panel-stack {
   min-width: 0;
   max-height: none;
   min-height: 0;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   pointer-events: auto;
 }
 
@@ -206,6 +208,121 @@ body:has(.toolbar-popover:not([hidden])) #right-panel-stack {
 
 #right-panel-stack .dynamic-panel {
   max-height: min(360px, calc(100vh - var(--right-panel-top) - 16px));
+}
+
+.lighting-preview-panel,
+.material-preview-panel {
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+}
+
+.lighting-preview-content,
+.material-preview-content {
+  display: grid;
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.lighting-preview-content[hidden],
+.material-preview-content[hidden] {
+  display: none;
+}
+
+.lighting-preview-row,
+.preview-control {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  color: #ddd;
+}
+
+.lighting-preview-row select,
+.preview-control select,
+.preview-control input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  background: #24243b;
+  color: #eee;
+}
+
+.lighting-preview-row input[type="range"] {
+  width: 100%;
+}
+
+.preview-color-row {
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+}
+
+.preview-color-row input[type="color"] {
+  width: 42px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.preview-color-row code {
+  color: #aaa;
+  font-size: 12px;
+}
+
+.preview-note {
+  color: #aaa;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.lighting-preview-section-title {
+  margin: 2px 0 4px;
+  color: #bfc5d2;
+  font-size: 12px;
+}
+
+.lighting-preview-rooms {
+  max-height: 118px;
+  overflow-y: auto;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+}
+
+.preview-preset-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.preview-preset-row button,
+.preview-reset,
+.lighting-preview-panel [data-control="reset"] {
+  min-height: 30px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: #292941;
+  color: #ddd;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.preview-preset-row button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.preview-preset-row button:hover:not(:disabled),
+.preview-reset:hover,
+.lighting-preview-panel [data-control="reset"]:hover {
+  background: #373754;
 }
 
 #right-panel-stack .mep-controls {

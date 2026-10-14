@@ -17,6 +17,7 @@ export class EnvironmentManager {
   private fillLight!: THREE.DirectionalLight;
   private ambientLight!: THREE.AmbientLight;
   private envMap: THREE.Texture | null = null;
+  private iblEnabled = true;
   private sunlightEnabled = false;
   private lastState: { altitudeDeg: number; azimuthDeg: number; isNight: boolean } = {
     altitudeDeg: 60,
@@ -61,7 +62,7 @@ export class EnvironmentManager {
     texture.dispose();
 
     this.envMap = envMap;
-    this.scene.environment = envMap;
+    this.scene.environment = this.iblEnabled ? envMap : null;
   }
 
   private setupLights(): void {
@@ -127,6 +128,18 @@ export class EnvironmentManager {
     this.dirLight.color.setHex(light.sunColorHex);
     this.dirLight.position.set(dir.x * SUN_RADIUS, Math.max(dir.y * SUN_RADIUS, 0.5), dir.z * SUN_RADIUS);
     this.ambientLight.intensity = light.ambientIntensity;
+    if (light.isNight) {
+      // The day-gradient environment map and fill light remain visible after sunset unless reduced explicitly.
+      this.scene.environment = null;
+      this.fillLight.color.setHex(0x7f8ab0);
+      this.fillLight.intensity = 0.06;
+      this.ambientLight.color.setHex(0x9aa6cf);
+    } else {
+      this.scene.environment = this.iblEnabled ? this.envMap : null;
+      this.fillLight.color.setHex(0xffffff);
+      this.fillLight.intensity = 0.3;
+      this.ambientLight.color.setHex(0xffffff);
+    }
     this.scene.background = light.isNight ? NIGHT_BACKGROUND : DAY_BACKGROUND;
   }
 
@@ -136,14 +149,20 @@ export class EnvironmentManager {
     this.dirLight.color.setHex(0xffffff);
     this.dirLight.position.set(12, 20, 8);
     this.ambientLight.intensity = 0.55;
+    this.ambientLight.color.setHex(0xffffff);
+    this.fillLight.color.setHex(0xffffff);
+    this.fillLight.intensity = 0.3;
+    this.scene.environment = this.iblEnabled ? this.envMap : null;
     this.scene.background = DAY_BACKGROUND;
   }
 
   toggleIBL(enabled: boolean): void {
-    this.scene.environment = enabled ? this.envMap : null;
+    this.iblEnabled = enabled;
+    const night = this.sunlightEnabled && this.lastState.isNight;
+    this.scene.environment = enabled && !night ? this.envMap : null;
   }
 
   getLightingState(): { altitudeDeg: number; azimuthDeg: number; isNight: boolean; iblEnabled: boolean } {
-    return { ...this.lastState, iblEnabled: this.scene.environment !== null };
+    return { ...this.lastState, iblEnabled: this.iblEnabled };
   }
 }

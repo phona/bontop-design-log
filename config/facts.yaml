@@ -1801,8 +1801,9 @@ coverage:
   - { file: config/layout/overlay.yaml, field: "suppress", readers: ["shared/spatial-validation.ts", "scripts/verify/collision/verify-collision-coverage.ts"] }
   - { file: config/layout/overlay.yaml, field: "elements", readers: ["shared/curtain-projection.ts", "shared/glazing.ts"] }
   - { file: config/materials.yaml, field: "notes", readers: ["shared/types.ts"] }
+  - { file: config/materials.yaml, field: "preview_assets", readers: ["server/project-catalog.ts", "shared/types.ts"] }
   - { file: config/materials.yaml, field: "render_roles", readers: [] }
-  - { file: config/materials.yaml, field: "materials", readers: ["shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: config/materials.yaml, field: "materials", readers: ["server/project-catalog.ts", "app/src/data/designData.ts", "shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
   - { file: config/mep-hvac-coordination.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/mep-hvac-coordination.yaml, field: "status", readers: ["shared/electrical-lint.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/mep-hvac-coordination.yaml, field: "note", readers: ["shared/mep-hvac-coordination-schema.ts"] }

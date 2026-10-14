@@ -7,6 +7,7 @@ import type {
   DesignOption,
   CatalogTopic,
   MaterialItem,
+  MaterialPreviewAtlasConfig,
   CadLayoutYaml,
   HouseYaml,
   LayoutRoom,
@@ -119,6 +120,7 @@ export class ProjectCatalog {
   private walls: WallSegment[] = [];
   private layoutSource: string = '';
   private rawMaterials: MaterialItem[] = [];
+  private materialPreviewAssets: MaterialPreviewAtlasConfig[] = [];
   private dataPrecision: Record<string, unknown> = {};
 
   constructor(
@@ -132,6 +134,7 @@ export class ProjectCatalog {
     hvacPlans?: HvacPlanOption[]
   ) {
     this.rawMaterials = materials.materials;
+    this.materialPreviewAssets = materials.preview_assets ?? [];
     this.dataPrecision = (houseMeta?.project?.data_precision as Record<string, unknown>) ?? {};
     for (const m of materials.materials) {
       const opt = materialToOption(m);
@@ -377,6 +380,10 @@ export class ProjectCatalog {
 
   getAllMaterials(): MaterialItem[] {
     return this.rawMaterials;
+  }
+
+  getMaterialPreviewAssets(): MaterialPreviewAtlasConfig[] {
+    return this.materialPreviewAssets;
   }
 
   getDataPrecision(): DataConfidence {

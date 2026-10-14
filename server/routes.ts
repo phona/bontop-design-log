@@ -395,6 +395,12 @@ export function createApiRouter(deps: ApiDeps): Router {
       topics: projectCatalog.getTopics().map((t) => ({
         id: t.id, name: t.name, perRoom: t.perRoom, optionCount: t.options.length,
       })),
+      materialPreview: {
+        materials: projectCatalog.getAllMaterials()
+          .filter((item) => item.topic_id === 'floor' || item.topic_id === 'paint')
+          .map((item) => ({ id: item.id, topic_id: item.topic_id, appearance: item.appearance })),
+        atlases: projectCatalog.getMaterialPreviewAssets(),
+      },
       budgetCategories: projectCatalog.getBudgetCategories(),
       environment: deps.getEnvironment?.() ?? null,
     });

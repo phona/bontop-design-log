@@ -1,16 +1,7 @@
 import * as THREE from 'three';
 import { mulberry32 } from './seeded-rng.js';
-
-export interface MaterialAppearance {
-  type: string;
-  color: string;
-  textureUrl?: string;
-  species?: string;
-  pattern?: string;
-  variety?: string;
-  tile_mm?: number | [number, number];
-  [key: string]: unknown;
-}
+import type { MaterialAppearance, MaterialManufacturerAtlas } from '../../../shared/types.js';
+export type { MaterialAppearance } from '../../../shared/types.js';
 
 export interface ProceduralTextures {
   map: THREE.Texture;
@@ -18,18 +9,47 @@ export interface ProceduralTextures {
   roughnessMap?: THREE.Texture;
   /** 贴图 canvas 代表的实际边长（米）；存在时 UV 按米制标定（repeat=1/worldSize），不存在走旧 repeat(2,2) */
   worldSize?: number | [number, number];
+  /** Resolves once an external image has been drawn into the generated texture canvas. */
+  ready?: Promise<void>;
 }
 
 const NEW_TYPES = new Set(['wood_grain_v2', 'ceramic_tile_v2', 'stone']);
 
+function withAssetVersion(url: string, hash?: string): string {
+  if (!hash) return url;
+  return `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(hash)}`;
+}
+
 export function createMaterialTexture(appearance: MaterialAppearance): ProceduralTextures | THREE.Texture {
-  if (appearance.textureUrl) {
+  const source = appearance.source;
+  const selectedMode = appearance.mode ?? (source?.kind === 'manufacturer_atlas' ? 'manufacturer_atlas' : source?.kind === 'image' ? 'image' : undefined);
+  if (selectedMode === 'manufacturer_atlas') {
+    const atlas = appearance.manufacturerAtlas ?? (source?.kind === 'manufacturer_atlas' ? source : undefined);
+    if (!atlas) throw new Error('manufacturer_atlas mode selected but no manufacturerAtlas asset is configured');
+    return drawManufacturerAtlasTextures(appearance, atlas);
+  }
+
+  const imageUrl = selectedMode === 'procedural'
+    ? undefined
+    : selectedMode === 'image'
+      ? (source?.kind === 'image' ? source.textureUrl : appearance.textureUrl)
+      : (source?.kind === 'image' ? source.textureUrl : appearance.textureUrl);
+  if (imageUrl) {
     const loader = new THREE.TextureLoader();
-    const tex = loader.load(appearance.textureUrl);
+    const versionedUrl = withAssetVersion(imageUrl, source?.kind === 'image' ? source.contentHash : undefined);
+    let resolveReady!: () => void;
+    let rejectReady!: (error: Error) => void;
+    const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
+    const tex = loader.load(versionedUrl, () => resolveReady(), undefined, (error) => {
+      rejectReady(new Error(`Material texture failed to load: ${versionedUrl}`, { cause: error }));
+    });
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.userData.ready = ready;
     return tex;
   }
+  if (selectedMode === 'image') throw new Error('image mode selected but no texture URL is configured');
 
   // wood_plank 走独立管线（1024 canvas + roughnessMap + worldSize 米制标定）
   if (appearance.type === 'wood_plank') {
@@ -111,6 +131,152 @@ export function createMaterialTexture(appearance: MaterialAppearance): Procedura
 function parseHex(color: string): [number, number, number] {
   const hex = parseInt(color.slice(1), 16);
   return [(hex >> 16) & 0xff, (hex >> 8) & 0xff, hex & 0xff];
+}
+
+type ManufacturerAtlasSource = MaterialManufacturerAtlas;
+const atlasImages = new Map<string, Promise<HTMLImageElement>>();
+
+function loadAtlasImageOnce(url: string, assetHash?: string): Promise<HTMLImageElement> {
+  const cacheKey = `${url}#${assetHash ?? ''}`;
+  const cached = atlasImages.get(cacheKey);
+  if (cached) return cached;
+  const pending = new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Manufacturer atlas image failed to load: ${url}`));
+    image.src = withAssetVersion(url, assetHash);
+  });
+  pending.catch(() => atlasImages.delete(cacheKey));
+  atlasImages.set(cacheKey, pending);
+  return pending;
+}
+
+/** Build manufacturer face crops on a physically-sized plank canvas, retaining generated seams and PBR relief. */
+function drawManufacturerAtlasTextures(appearance: MaterialAppearance, source: ManufacturerAtlasSource): ProceduralTextures {
+  if (appearance.type !== 'wood_plank') {
+    throw new Error('manufacturer_atlas source requires appearance.type="wood_plank"');
+  }
+  if (!Array.isArray(appearance.plank_mm) || appearance.plank_mm.length !== 2 || appearance.plank_mm.some((n) => !Number.isFinite(n) || n <= 0)) {
+    throw new Error('manufacturer_atlas requires plank_mm: [width, length] in millimeters');
+  }
+  if (!source.atlasUrl || !Array.isArray(source.faces) || source.faces.length === 0) {
+    throw new Error('manufacturer_atlas requires atlasUrl and at least one face rectangle');
+  }
+  if (source.status === 'complete' && source.declaredFaceCount !== undefined && source.faces.length !== source.declaredFaceCount) {
+    throw new Error(`Complete atlas declares ${source.declaredFaceCount} faces but contains ${source.faces.length}`);
+  }
+  for (const face of source.faces) {
+    if (![face.x, face.y, face.width, face.height].every(Number.isFinite) || face.x < 0 || face.y < 0 || face.width <= 0 || face.height <= 0) {
+      throw new Error(`Invalid manufacturer atlas face rectangle: ${face.id}`);
+    }
+  }
+
+  const [wmm, lmm] = appearance.plank_mm as [number, number];
+  const seed = typeof appearance.seed === 'number' ? appearance.seed : 42;
+  const rng = mulberry32(seed);
+  const pattern = appearance.pattern === 'herringbone' ? 'herringbone' : 'straight';
+  let Smm: number;
+  if (pattern === 'herringbone') {
+    const g = gcdI(wmm, lmm + wmm);
+    const m = (lmm + wmm) / g;
+    Smm = (m * (lmm + wmm)) / Math.SQRT2;
+  } else {
+    Smm = lmm * Math.ceil(4000 / lmm);
+    while (Smm % wmm !== 0 || (Smm / wmm) % 2 !== 0) Smm += lmm;
+  }
+  const worldSize = Smm / 1000;
+  const ppm = PLANK_CANVAS / worldSize;
+  const plankLength = (lmm / 1000) * ppm;
+  const plankWidth = (wmm / 1000) * ppm;
+  const gap = Math.max(0.75, (((typeof appearance.grout_mm === 'number' ? appearance.grout_mm : 2) / 1000) * ppm) / 2);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = PLANK_CANVAS;
+  const ctx = canvas.getContext('2d')!;
+  const heightCanvas = document.createElement('canvas');
+  heightCanvas.width = heightCanvas.height = PLANK_CANVAS;
+  const heightCtx = heightCanvas.getContext('2d')!;
+  const normalCanvas = document.createElement('canvas');
+  normalCanvas.width = normalCanvas.height = PLANK_CANVAS;
+  const normalCtx = normalCanvas.getContext('2d')!;
+  const roughCanvas = document.createElement('canvas');
+  roughCanvas.width = roughCanvas.height = PLANK_CANVAS;
+  const roughCtx = roughCanvas.getContext('2d')!;
+  const baseRoughness = typeof appearance.roughness === 'number'
+    ? Math.min(1, Math.max(0.05, appearance.roughness))
+    : appearance.finish === 'soft' ? 0.5 : 0.85;
+  const grout = typeof appearance.grout_color === 'string' ? appearance.grout_color : '#b0a18e';
+  ctx.fillStyle = grout;
+  ctx.fillRect(0, 0, PLANK_CANVAS, PLANK_CANVAS);
+  heightCtx.fillStyle = '#7c7c7c';
+  heightCtx.fillRect(0, 0, PLANK_CANVAS, PLANK_CANVAS);
+  const groutRough = clamp255(Math.min(1, baseRoughness + 0.15) * 255);
+  roughCtx.fillStyle = `rgb(${groutRough},${groutRough},${groutRough})`;
+  roughCtx.fillRect(0, 0, PLANK_CANVAS, PLANK_CANVAS);
+
+  const mapTex = new THREE.CanvasTexture(canvas);
+  mapTex.wrapS = mapTex.wrapT = THREE.RepeatWrapping;
+  mapTex.colorSpace = THREE.SRGBColorSpace;
+  const normalTex = new THREE.CanvasTexture(normalCanvas);
+  normalTex.wrapS = normalTex.wrapT = THREE.RepeatWrapping;
+  const roughTex = new THREE.CanvasTexture(roughCanvas);
+  roughTex.wrapS = roughTex.wrapT = THREE.RepeatWrapping;
+  const placements: Array<{ x: number; y: number; angle: number }> = [];
+
+  if (pattern === 'herringbone') {
+    const d = (plankLength + plankWidth) / Math.SQRT2;
+    const rowShift = plankWidth / Math.SQRT2;
+    for (let j = -2; j * d < PLANK_CANVAS + 2 * d; j++) {
+      const y = j * d;
+      const ox = (((j * rowShift) % d) + d) % d;
+      for (let k = -2; k * d + ox < PLANK_CANVAS + 2 * d; k++) {
+        placements.push({ x: k * d + ox, y, angle: ((k % 2) + 2) % 2 === 0 ? Math.PI / 4 : -Math.PI / 4 });
+      }
+    }
+  } else {
+    for (let j = -1; j * plankWidth < PLANK_CANVAS + plankWidth; j++) {
+      const y = j * plankWidth + plankWidth / 2;
+      const off = (((j % 2) + 2) % 2) * (plankLength / 2);
+      for (let k = -2; k * plankLength + off - plankLength / 2 < PLANK_CANVAS + plankLength; k++) {
+        placements.push({ x: k * plankLength + off, y, angle: 0 });
+      }
+    }
+  }
+
+  const ready = loadAtlasImageOnce(source.atlasUrl, source.atlasHash).then((image) => {
+    for (const placement of placements) {
+      const face = source.faces[Math.floor(rng() * source.faces.length)];
+      if (face.x + face.width > image.naturalWidth || face.y + face.height > image.naturalHeight) {
+        throw new Error(`Manufacturer atlas face ${face.id} exceeds image dimensions ${image.naturalWidth}×${image.naturalHeight}`);
+      }
+      const ix = -plankLength / 2 + gap;
+      const iy = -plankWidth / 2 + gap;
+      const iw = plankLength - 2 * gap;
+      const ih = plankWidth - 2 * gap;
+      for (const c of [ctx, heightCtx, roughCtx]) {
+        c.save();
+        c.translate(placement.x, placement.y);
+        c.rotate(placement.angle);
+      }
+      ctx.drawImage(image, face.x, face.y, face.width, face.height, ix, iy, iw, ih);
+      const bevel = Math.min(2, iw / 6, ih / 6);
+      heightCtx.fillStyle = '#8a8a8a';
+      heightCtx.fillRect(ix, iy, iw, ih);
+      heightCtx.fillStyle = '#909090';
+      heightCtx.fillRect(ix + bevel, iy + bevel, iw - 2 * bevel, ih - 2 * bevel);
+      heightCtx.fillStyle = '#969696';
+      heightCtx.fillRect(ix + 2 * bevel, iy + 2 * bevel, iw - 4 * bevel, ih - 4 * bevel);
+      const rough = clamp255((baseRoughness + (rng() - 0.5) * 0.12) * 255);
+      roughCtx.fillStyle = `rgb(${rough},${rough},${rough})`;
+      roughCtx.fillRect(ix, iy, iw, ih);
+      for (const c of [ctx, heightCtx, roughCtx]) c.restore();
+    }
+    normalCtx.drawImage(computeNormalMap(heightCanvas), 0, 0);
+    mapTex.needsUpdate = true;
+    normalTex.needsUpdate = true;
+    roughTex.needsUpdate = true;
+  });
+  return { map: mapTex, normalMap: normalTex, roughnessMap: roughTex, worldSize, ready };
 }
 
 function drawWoodGrainV2(

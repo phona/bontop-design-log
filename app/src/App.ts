@@ -35,6 +35,9 @@ import { SunlightSystem } from './render/SunlightSystem.js';
 import { InteriorLightingSystem } from './render/InteriorLightingSystem.js';
 import { SunlightPanel } from './ui/SunlightPanel.js';
 import { SunlightButton } from './ui/SunlightButton.js';
+import { LightingPreviewPanel, type LightingPreviewRoom, type LightingPreviewState } from './ui/LightingPreviewPanel.js';
+import { MaterialPreviewPanel, type MaterialPreviewOption, type MaterialPreviewPanelState, type PreviewSlot } from './ui/MaterialPreviewPanel.js';
+import { resolvePreviewAtlas, type MaterialPreviewAtlas } from './data/materialPreviewAtlas.js';
 import { GlassFidelityButton } from './ui/GlassFidelityButton.js';
 import { Popover } from './ui/Popover.js';
 import { LayersPanel, LAYER_KEYS, type LayerDescriptor, type LayerKey } from './ui/LayersPanel.js';
@@ -50,11 +53,17 @@ import './ui/keybindings.js';
 import { parseProjectRenderFactsProjection } from '@shared/project-render-facts-schema';
 import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
 import type { CaptureOptions, RoomAuditCaptureOptions } from '@shared/types';
-import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose, BudgetSnapshot } from '@shared/types';
+import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose, BudgetSnapshot, MaterialAppearance, MaterialPreviewAtlasConfig } from '@shared/types';
 import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
 import type { MepLintResult } from '@shared/mep-hvac-lint';
 
 const ORBIT_DISTANCE = 15;
+
+interface VisualPreviewSnapshot {
+  material: MaterialPreviewPanelState;
+  lighting: LightingPreviewState;
+  sunlight: { enabled: boolean; month: number; day: number; hour: number };
+}
 
 export class App {
   private stateSync: StateSync;
@@ -129,6 +138,13 @@ export class App {
   private sunlightSystem: SunlightSystem | null = null;
   private sunlightEnabled = false;
   private interiorLighting: InteriorLightingSystem | null = null;
+  private lightingPreviewPanel: LightingPreviewPanel | null = null;
+  private materialPreviewPanel: MaterialPreviewPanel | null = null;
+  private materialPreviewAtlases: MaterialPreviewAtlas[] = [];
+  private officialScheme: CurrentScheme | null = null;
+  private materialPreviewState: MaterialPreviewPanelState | null = null;
+  private visualPreviewActive = false;
+  private visualPreviewSlots: Record<PreviewSlot, VisualPreviewSnapshot | null> = { A: null, B: null };
   private sunlightButton: SunlightButton | null = null;
   private glassFidelityButton: GlassFidelityButton | null = null;
   private daylightHeatmap: DaylightHeatmap | null = null;
@@ -142,6 +158,10 @@ export class App {
   private layerComboSuppressed = false;
   private curtainPresentationState: CurtainPresentationState = { default: 'open', roomOverrides: {}, updatedAt: '' };
   private readonly hvacCoordinationApi = (visible: boolean) => this.setHvacCoordinationVisible(Boolean(visible));
+  private readonly materialTextureErrorHandler = (event: Event) => {
+    const message = (event as CustomEvent<{ message?: string }>).detail?.message ?? 'unknown texture error';
+    this.showToast(`厂家贴图加载失败：${message}`);
+  };
   private readyState: 'loading' | 'ready' | 'failed' = 'loading';
   private readyPromise: Promise<void>;
   private resolveReady!: () => void;
@@ -199,6 +219,7 @@ export class App {
     });
     this.modeIndicator = document.getElementById('mode-indicator') as HTMLDivElement;
     this.toastEl = document.getElementById('pointer-lock-toast') as HTMLDivElement;
+    window.addEventListener('material-texture-error', this.materialTextureErrorHandler);
 
     this.setupFurniturePanel();
     this.setupPlacementPanel();
@@ -250,6 +271,8 @@ export class App {
     try {
     this.stateSync.setPhase(this.phase);
     this.projectData = await this.stateSync.fetchProject({ phase: this.phase });
+    const previewAtlasConfig = this.projectData?.materialPreview?.atlases as MaterialPreviewAtlasConfig[] | undefined;
+    this.materialPreviewAtlases = (previewAtlasConfig ?? []).map(resolvePreviewAtlas);
     this.activeLayout = this.projectData?.house?.layoutSource ?? this.activeLayout;
     this.stateSync.setLayout(this.activeLayout);
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
@@ -267,6 +290,7 @@ export class App {
 
     this.topics = new TopicRegistry(this.houseScene).list();
     this.schemePanel.init(this.topics, (topicId: string, optionId: string) => {
+      this.finishVisualPreview();
       this.stateSync.updateScheme([{ topic: topicId, optionId }]);
     });
     this.infoPanel.setTopics(this.topics);
@@ -289,6 +313,7 @@ export class App {
       this.applyScheme(scheme);
       this.infoPanel.setScheme(scheme);
       this.overviewMenu.setScheme(scheme);
+      this.setupMaterialPreviewPanel(scheme);
     }
 
     const presentationState = await this.stateSync.getPresentationState();
@@ -300,6 +325,7 @@ export class App {
     await this.refreshOverviewData();
 
     this.setupSunlight();
+    this.setupLightingPreviewPanel();
     this.setupHumidity();
     this.setupGlassFidelity();
     this.updateModeIndicator();
@@ -413,6 +439,7 @@ export class App {
     this.sunlightSystem.setSolarChangeListener(() => {
       const st = this.houseScene.getEnvironmentManager().getLightingState();
       this.interiorLighting?.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
+      this.syncLightingPreviewPanel();
       this.requestRender();
     });
 
@@ -445,9 +472,234 @@ export class App {
       // 静态日光预设：室内灯回落到关闭
       this.interiorLighting?.syncSolar({ isNight: false, altitudeDeg: 90 });
     }
+    this.syncLightingPreviewPanel();
     this.houseScene.requestShadowUpdate();
     this.sunlightButton?.sync();
     this.requestRender();
+  }
+
+  private setupLightingPreviewPanel(): void {
+    if (!this.interiorLighting || this.lightingPreviewPanel) return;
+    const host = document.getElementById('right-panel-stack');
+    if (!host) return;
+    this.lightingPreviewPanel = new LightingPreviewPanel(host, {
+      onModeChange: (mode) => {
+        this.interiorLighting?.setPreviewMode(mode);
+        this.syncLightingPreviewPanel();
+        this.requestRender();
+      },
+      onManualOnChange: (on) => {
+        this.interiorLighting?.setPreviewManualOn(on);
+        this.syncLightingPreviewPanel();
+        this.houseScene.requestShadowUpdate();
+        this.requestRender();
+      },
+      onTemperatureChange: (temperatureK) => {
+        this.interiorLighting?.setPreviewTemperature(temperatureK);
+        this.syncLightingPreviewPanel();
+        this.requestRender();
+      },
+      onBrightnessChange: (multiplier) => {
+        this.interiorLighting?.setPreviewBrightness(multiplier);
+        this.syncLightingPreviewPanel();
+        this.requestRender();
+      },
+      onRoomChange: (roomId, enabled) => {
+        this.interiorLighting?.setRoomLights(roomId, enabled);
+        this.syncLightingPreviewPanel();
+        this.requestRender();
+      },
+      onReset: () => {
+        this.interiorLighting?.clearPreviewOverrides();
+        this.syncLightingPreviewPanel();
+        this.houseScene.requestShadowUpdate();
+        this.requestRender();
+      },
+    }, this.getLightingPreviewState());
+    this.syncLightingPreviewPanel();
+  }
+
+  private getLightingPreviewState(): LightingPreviewState {
+    const systemState = this.interiorLighting?.getPreviewState();
+    const roomNames = new Map<string, string>(
+      (this.projectData?.house?.rooms ?? []).map((room: { id: string; name?: string }) => [room.id, room.name ?? room.id]),
+    );
+    const rooms: LightingPreviewRoom[] = (this.interiorLighting?.getPreviewRooms() ?? []).map((room) => ({
+      ...room,
+      label: roomNames.get(room.id) ?? room.id,
+    }));
+    return {
+      mode: systemState?.mode ?? 'auto',
+      manualOn: systemState?.manualOn ?? false,
+      temperatureK: systemState?.temperatureK ?? null,
+      brightness: systemState?.brightness ?? 1,
+      rooms,
+    };
+  }
+
+  private syncLightingPreviewPanel(): void {
+    this.lightingPreviewPanel?.update(this.getLightingPreviewState());
+  }
+
+  private setupMaterialPreviewPanel(scheme: CurrentScheme): void {
+    if (this.materialPreviewPanel) return;
+    const host = document.getElementById('right-panel-stack');
+    const floorTopic = this.topics.find((topic) => topic.id === 'floor');
+    if (!host || !floorTopic) return;
+    const options: MaterialPreviewOption[] = floorTopic.options.map((option) => {
+      const appearance = this.getFloorAppearance(option.id);
+      return {
+        id: option.id,
+        label: option.name,
+        supportsManufacturerAtlas: appearance?.type === 'wood_plank',
+      };
+    });
+    const atlases = this.materialPreviewAtlases.map((atlas) => ({ id: atlas.id, label: atlas.label, note: atlas.note }));
+    this.materialPreviewState = this.makeMaterialPreviewState(scheme);
+    this.materialPreviewPanel = new MaterialPreviewPanel(host, options, atlases, {
+      onStateChange: (state) => this.applyMaterialPreviewState(state),
+      onReset: () => this.finishVisualPreview(),
+      onSavePreset: (slot) => this.saveVisualPreviewPreset(slot),
+      onRecallPreset: (slot) => this.recallVisualPreviewPreset(slot),
+    }, this.materialPreviewState);
+    this.syncMaterialPreviewPanel();
+  }
+
+  private makeMaterialPreviewState(scheme: CurrentScheme): MaterialPreviewPanelState {
+    const floorId = scheme.selections.floor?.default
+      ?? this.topics.find((topic) => topic.id === 'floor')?.options[0]?.id
+      ?? '';
+    const paintId = scheme.selections.paint?.default;
+    const paintOption = this.topics.find((topic) => topic.id === 'paint')?.options.find((option) => option.id === paintId);
+    const paintData = paintOption?.data as Record<string, unknown> | undefined;
+    const paintAppearance = paintData?.appearance as MaterialAppearance | undefined;
+    return {
+      floorId,
+      floorMode: 'procedural',
+      atlasId: this.materialPreviewAtlases[0]?.id ?? null,
+      paintColor: paintAppearance?.color ?? '#f7f5ef',
+      paintLabel: paintOption?.name ?? '自定义预演色',
+    };
+  }
+
+  private getFloorAppearance(optionId: string): MaterialAppearance | undefined {
+    const option = this.topics.find((topic) => topic.id === 'floor')?.options.find((item) => item.id === optionId);
+    const data = option?.data as Record<string, unknown> | undefined;
+    return data?.appearance as MaterialAppearance | undefined;
+  }
+
+  private getPreviewFloorAppearance(optionId: string, state?: MaterialPreviewPanelState): MaterialAppearance | undefined {
+    const base = this.getFloorAppearance(optionId);
+    if (!base || !state || optionId !== state.floorId) return base;
+    const atlas = state.atlasId ? this.materialPreviewAtlases.find((candidate) => candidate.id === state.atlasId) : undefined;
+    return {
+      ...base,
+      mode: state.floorMode,
+      ...(state.floorMode === 'manufacturer_atlas' && atlas ? { manufacturerAtlas: atlas.atlas } : {}),
+    };
+  }
+
+  private applyMaterialPreviewState(state: MaterialPreviewPanelState): void {
+    this.materialPreviewState = { ...state };
+    this.visualPreviewActive = true;
+    const floorSelection = this.officialScheme?.selections.floor;
+    const roomOverrides = floorSelection?.roomOverrides ?? {};
+    const defaultAppearance = this.getPreviewFloorAppearance(state.floorId, state);
+    try {
+      if (!defaultAppearance) throw new Error(`unknown floor preview option: ${state.floorId}`);
+      for (const roomId of this.houseScene.getAllRoomIds()) {
+        const roomOptionId = roomOverrides[roomId] ?? state.floorId;
+        const appearance = this.getPreviewFloorAppearance(roomOptionId, state);
+        if (appearance) this.houseScene.setFloorMaterial(roomId, appearance);
+      }
+      this.houseScene.applyFloorRegionMaterials(defaultAppearance, (roomId) => {
+        const roomOptionId = roomOverrides[roomId];
+        return roomOptionId ? this.getPreviewFloorAppearance(roomOptionId, state) ?? null : null;
+      });
+      // setPaintColor targets only non-tile wall faces; ceilings and the saved paint selection are untouched.
+      this.houseScene.setPaintColor(state.paintColor);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[material preview] failed', error);
+      this.finishVisualPreview();
+      this.showToast(`材料预演不可用：${message}`);
+      return;
+    }
+    this.syncMaterialPreviewPanel();
+    this.requestRender();
+  }
+
+  private captureVisualPreviewSnapshot(): VisualPreviewSnapshot {
+    const scheme = this.officialScheme;
+    const material = this.materialPreviewState ?? (scheme ? this.makeMaterialPreviewState(scheme) : {
+      floorId: '', floorMode: 'procedural' as const, atlasId: null, paintColor: '#f7f5ef', paintLabel: '自定义预演色',
+    });
+    return {
+      material: { ...material },
+      lighting: this.getLightingPreviewState(),
+      sunlight: {
+        enabled: this.sunlightEnabled,
+        month: this.sunlightSystem?.getDate().month ?? 12,
+        day: this.sunlightSystem?.getDate().day ?? 22,
+        hour: this.sunlightSystem?.getHour() ?? 12,
+      },
+    };
+  }
+
+  private saveVisualPreviewPreset(slot: PreviewSlot): void {
+    this.visualPreviewSlots[slot] = this.captureVisualPreviewSnapshot();
+    this.syncMaterialPreviewPanel();
+  }
+
+  private recallVisualPreviewPreset(slot: PreviewSlot): void {
+    const snapshot = this.visualPreviewSlots[slot];
+    if (!snapshot) return;
+    this.applySunlightPreviewState(snapshot.sunlight);
+    this.applyMaterialPreviewState(snapshot.material);
+    this.applyLightingPreviewState(snapshot.lighting);
+  }
+
+  private applySunlightPreviewState(state: VisualPreviewSnapshot['sunlight']): void {
+    if (this.sunlightEnabled !== state.enabled) this.setSunlightEnabled(state.enabled);
+    this.sunlightSystem?.setDate(state.month, state.day);
+    this.sunlightSystem?.setHour(state.hour);
+    this.sunlightPanel.setDateDisplay(state.month, state.day);
+    this.sunlightPanel.setHourDisplay(state.hour);
+    this.requestRender();
+  }
+
+  private applyLightingPreviewState(state: LightingPreviewState): void {
+    const lights = this.interiorLighting;
+    if (!lights) return;
+    lights.clearPreviewOverrides();
+    lights.setPreviewMode(state.mode, state.manualOn);
+    lights.setPreviewTemperature(state.temperatureK);
+    lights.setPreviewBrightness(state.brightness);
+    const enabledByRoom = new Map(state.rooms.map((room) => [room.id, room.enabled]));
+    for (const room of lights.getPreviewRooms()) {
+      if (enabledByRoom.get(room.id) === false) lights.setRoomLights(room.id, false);
+    }
+    this.syncLightingPreviewPanel();
+    this.requestRender();
+  }
+
+  private finishVisualPreview(): void {
+    this.visualPreviewActive = false;
+    this.interiorLighting?.clearPreviewOverrides();
+    if (this.officialScheme) this.applyScheme(this.officialScheme);
+    this.materialPreviewState = this.officialScheme ? this.makeMaterialPreviewState(this.officialScheme) : null;
+    if (this.materialPreviewState) this.syncMaterialPreviewPanel();
+    this.syncLightingPreviewPanel();
+    this.houseScene.requestShadowUpdate();
+    this.requestRender();
+  }
+
+  private syncMaterialPreviewPanel(): void {
+    if (!this.materialPreviewPanel || !this.materialPreviewState) return;
+    this.materialPreviewPanel.update(this.materialPreviewState, {
+      A: this.visualPreviewSlots.A !== null,
+      B: this.visualPreviewSlots.B !== null,
+    });
   }
 
   private setupHumidity(): void {
@@ -1251,6 +1503,7 @@ export class App {
       if (shouldToggleInteriorLights(e.code, e.repeat) && this.interiorLighting) {
         e.preventDefault();
         this.interiorLighting.toggle();
+        this.syncLightingPreviewPanel();
         this.houseScene.requestShadowUpdate();
         return;
       }
@@ -1620,6 +1873,7 @@ export class App {
   }
 
   private async handleOptionSelect(topicId: string, optionId: string, roomId: string | null): Promise<void> {
+    this.finishVisualPreview();
     const patch: SelectionPatch = { topic: topicId, optionId, roomId: roomId ?? null };
     await this.stateSync.updateScheme([patch]);
 
@@ -1751,6 +2005,7 @@ export class App {
       this.overviewMenu.setActiveLayout(this.activeLayout);
       this.topics = new TopicRegistry(this.houseScene).list();
       this.schemePanel.init(this.topics, (topicId: string, optionId: string) => {
+        this.finishVisualPreview();
         void this.stateSync.updateScheme([{ topic: topicId, optionId }]);
       });
       this.infoPanel.setTopics(this.topics);
@@ -1787,6 +2042,7 @@ export class App {
         this.analysisTools.checkFurnitureCollisions();
         this.topics = new TopicRegistry(this.houseScene).list();
         this.schemePanel.init(this.topics, (topicId: string, optionId: string) => {
+          this.finishVisualPreview();
           void this.stateSync.updateScheme([{ topic: topicId, optionId }]);
         });
         this.infoPanel.setTopics(this.topics);
@@ -1822,6 +2078,7 @@ export class App {
   }
 
   private async refreshInfrastructure(): Promise<void> {
+    const carriedPreview = this.visualPreviewActive ? this.captureVisualPreviewSnapshot() : null;
     this.setHvacCoordinationState('loading');
     this.houseScene.clearHvacProjection();
     this.houseScene.clearElectricalTopology();
@@ -1874,6 +2131,12 @@ export class App {
         this.houseScene.requestShadowUpdate();
         this.interiorLighting?.dispose();
         this.interiorLighting = nextInteriorLighting;
+        if (carriedPreview) {
+          this.applyLightingPreviewState(carriedPreview.lighting);
+          this.applyMaterialPreviewState(carriedPreview.material);
+        } else {
+          this.syncLightingPreviewPanel();
+        }
         const factsResponse = await fetch('/api/render-facts');
         this.renderFacts = factsResponse.ok ? await factsResponse.json() as ProjectRenderFacts : undefined;
         const sources = buildHvacBuilderSources({
@@ -1948,6 +2211,7 @@ export class App {
   }
 
   private applyScheme(scheme: CurrentScheme): void {
+    this.officialScheme = JSON.parse(JSON.stringify(scheme)) as CurrentScheme;
     for (const [topicId, selection] of Object.entries(scheme.selections)) {
       const effective = selection.default;
       if (effective) {
@@ -1955,6 +2219,12 @@ export class App {
         this.houseScene.setSelection(topicId, effective, selection);
         this.schemePanel.setActiveOption(topicId, effective, []);
       }
+    }
+    if (this.visualPreviewActive && this.materialPreviewState) {
+      this.applyMaterialPreviewState(this.materialPreviewState);
+    } else if (this.materialPreviewPanel) {
+      this.materialPreviewState = this.makeMaterialPreviewState(scheme);
+      this.syncMaterialPreviewPanel();
     }
     this.requestRender();
   }
@@ -2098,6 +2368,9 @@ export class App {
       cancelAnimationFrame(this.rafId);
     }
     this.fpController.dispose();
+    this.lightingPreviewPanel?.destroy();
+    this.materialPreviewPanel?.destroy();
+    window.removeEventListener('material-texture-error', this.materialTextureErrorHandler);
     this.houseScene.dispose();
     if ((window as Window & { setHvacCoordinationVisible?: unknown }).setHvacCoordinationVisible === this.hvacCoordinationApi) {
       delete (window as Window & { setHvacCoordinationVisible?: unknown }).setHvacCoordinationVisible;
