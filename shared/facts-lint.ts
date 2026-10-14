@@ -122,7 +122,11 @@ export type ContractKind =
   | 'type_ref'
   | 'supersede'
   | 'ceiling_clearance'
-  | 'covered_or_marked';
+  | 'covered_or_marked'
+  /** 量对账：同一个物理量在 N 个出现处必须相等（2026-10-14「三道强制对账」第一道）。 */
+  | 'quantity_parity'
+  /** 价单一源：同一张费率表/常量表在全仓只许出现一次（第二道）。 */
+  | 'single_source';
 export interface Contract {
   id: string;
   kind: ContractKind;
@@ -1882,6 +1886,208 @@ function validateRepairChannel(ws: FactsWorkspace, result: FactsLintResult, cont
     note(result, `contract ${contract.id} 修正通道已登记 — ${decision_ref}｜改设计侧必须同步：${sync_files.join('、')}`);
   }}
 
+// ─── quantity_parity：同一个物理量在多处必须相等 ─────────────────────────────
+//
+// 2026-10-14「预算计算架构根治」第一道强制对账。
+//
+// 治的失效模式（已实测，不是假设）：**同一个量在仓区里有 N 套值、互不对账**——
+//   墙砖面积 5 套：65.699（拍系数 0.7）/ 30.64（overlay 实算）/ 28.78 / 25.651 / 15.33（陈账）
+//   橱柜周长 3 套：1.92（拍系数 0.8）/ 4.36（house.yaml 柜体段）/ 5.8（house.yaml 注释）
+//   地面材料侧 vs 人工侧：121.510 vs 125.260（差 3.75㎡ 正是主走廊）
+// 每一次都是「总额看起来合理」掩盖了内部两个反向大错（masonry 池同时背着 +3,113 与
+// −3,356，净差只 ¥129）。所以对账必须由门禁做，不能靠人记得。
+//
+// 契约形状（config/facts.yaml）：
+//   - id: c.x_parity
+//     kind: quantity_parity
+//     unit: ㎡            # 只进错误信息，便于读
+//     tolerance: 0.005    # 浮点容差，默认 0.005
+//     compare:
+//       - { label: '…', value: 'dataset:budget.masonry.totalTileSqm' }
+//       - { label: '…', value: 'yaml:schedule/phase-1/control.yaml#COST-060-08.quantity_declared.total_tile_sqm' }
+//
+// 两种 value 来源：
+//   dataset:<点分键>   入口脚本（scripts/verify/facts/verify-facts.ts）预算好的机器源。
+//                      机器源必须来自**唯一的量层实现**（shared/masonry-takeoff.ts 等），
+//                      入口只负责装载，不写算法。
+//   yaml:<路径>#<id>.<点分路径>
+//                      **声明侧**：在 <路径> 里递归找 `id == <id>` 的对象，再按点分路径取值。
+//                      用于把 control.yaml / house.yaml 里的登记值拉进来对账。
+//                      `#<id>` 不可省略（见下方解析处：省了会让 .yaml 的点号造成歧义）。
+//
+// 缺失 → error（`parity_unresolvable`）：宁可红，不许「有一侧取不到就跳过」——
+// 跳过一次的那一侧从此再也对不上，而门禁是绿的。
+
+interface ParitySide { label: string; value: string }
+
+/** 在文档里递归找 `id == <id>` 的对象（control.yaml 的 components 嵌在 work_packages[].budget 下）。 */
+function findById(node: unknown, id: string): unknown {
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const hit = findById(item, id);
+      if (hit !== undefined) return hit;
+    }
+    return undefined;
+  }
+  if (!isRecord(node)) return undefined;
+  if (node.id === id) return node;
+  for (const value of Object.values(node)) {
+    const hit = findById(value, id);
+    if (hit !== undefined) return hit;
+  }
+  return undefined;
+}
+
+/**
+ * 取 dataset 值。本项目 `datasets` 的键约定是**点分扁平键**（`layout.floor_regions`、
+ * `mep.endpoints`，见 runOverlap 的直接查表），因此先按最长前缀当扁平键取，取不到再逐段下钻——
+ * 两种写法都认，避免「`budget.masonry.totalTileSqm` 被拆成三层嵌套」这种隐性约定。
+ */
+function datasetValue(ws: FactsWorkspace, dotted: string): unknown {
+  const datasets = ws.datasets ?? {};
+  const segments = dotted.split('.').filter((segment) => segment.length > 0);
+  for (let cut = segments.length; cut > 0; cut -= 1) {
+    const head = segments.slice(0, cut).join('.');
+    if (!Object.prototype.hasOwnProperty.call(datasets, head)) continue;
+    let current: unknown = datasets[head];
+    for (const segment of segments.slice(cut)) {
+      if (!isRecord(current)) return undefined;
+      current = current[segment];
+    }
+    return current;
+  }
+  return undefined;
+}
+
+function runQuantityParity(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
+  const tolerance = num(contract.tolerance, 0.005);
+  const unit = str(contract.unit);
+  const sides = (Array.isArray(contract.compare) ? contract.compare : [])
+    .filter((side): side is ParitySide => isRecord(side) && typeof side.label === 'string' && typeof side.value === 'string')
+    .map((side) => ({ label: side.label, value: side.value }));
+
+  if (sides.length < 2) {
+    add(result, issue('error', 'parity_unresolvable', `${contract.id}：compare 至少要有两侧（当前 ${sides.length}）——单侧无从对账`, str(contract.source)));
+    tally(result, 'parity_unresolvable');
+    return;
+  }
+
+  const resolved: Array<{ label: string; value: number; where: string }> = [];
+  for (const side of sides) {
+    let raw: unknown;
+    let where = side.value;
+    if (side.value.startsWith('dataset:')) {
+      where = side.value;
+      raw = datasetValue(ws, side.value.slice('dataset:'.length));
+    } else if (side.value.startsWith('yaml:')) {
+      // 形状固定为 `yaml:<路径>#<id>.<点分路径>`：`#<id>` 在整份文档里递归定位条目
+      // （control.yaml 的 components 嵌在 work_packages[].budget 下，路径不固定），
+      // 后面的点分路径从该条目继续取值。
+      // **不提供「省略 #<id> 的纯点分路径」写法**：YAML 文件名自带一个点号，会让
+      // 「文件名边界」与「路径分隔」歧义（`split('.')[0]` 会把扩展名一起截掉），
+      // 歧义写法正是静默取错值的入口。
+      const body = side.value.slice('yaml:'.length);
+      const hashAt = body.indexOf('#');
+      if (hashAt <= 0) {
+        add(result, issue('error', 'parity_unresolvable', `${contract.id}：yaml: 值必须写成 yaml:<路径>#<id>.<点分路径>（${side.value}）`, str(contract.source)));
+        tally(result, 'parity_unresolvable');
+        return;
+      }
+      const file = body.slice(0, hashAt);
+      const rest = body.slice(hashAt + 1);
+      const dotAt = rest.indexOf('.');
+      const id = dotAt >= 0 ? rest.slice(0, dotAt) : rest;
+      const dotted = dotAt >= 0 ? rest.slice(dotAt + 1) : '';
+      const doc = ws.load(file);
+      if (doc === null) {
+        add(result, issue('error', 'parity_unresolvable', `${contract.id}：${file} 不可读`, file));
+        tally(result, 'parity_unresolvable');
+        return;
+      }
+      const found = findById(doc, id);
+      if (found === undefined) {
+        add(result, issue('error', 'parity_unresolvable', `${contract.id}：${file} 里找不到 id=${id} 的条目`, locate(ws, file, id) ?? file));
+        tally(result, 'parity_unresolvable');
+        return;
+      }
+      raw = dotted ? resolvePath(found, dotted) : found;
+      // 位置给 `文件:行`（与其它契约一致），便于直接跳过去改。
+      where = locate(ws, file, id) ?? `${file}#${id}`;
+    } else {
+      add(result, issue('error', 'parity_unresolvable', `${contract.id}：value 必须以 dataset: 或 yaml: 开头（${side.value}）`, str(contract.source)));
+      tally(result, 'parity_unresolvable');
+      return;
+    }
+    if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+      add(result, issue('error', 'parity_unresolvable', `${contract.id}：${side.label} 取不到有限数值（${where} = ${String(raw)}）`, where));
+      tally(result, 'parity_unresolvable');
+      return;
+    }
+    resolved.push({ label: side.label, value: raw, where });
+  }
+
+  const first = resolved[0];
+  for (const other of resolved.slice(1)) {
+    if (Math.abs(first.value - other.value) <= tolerance) continue;
+    const detail = resolved.map((side) => `${side.label} = ${side.value}`).join(' ｜ ');
+    add(result, issue(
+      contractLevel(contract),
+      'parity_mismatch',
+      `${contract.id}：同一个量在 ${resolved.length} 处不一致（容差 ${tolerance}${unit ? ` ${unit}` : ''}）——${detail}`,
+      other.where,
+    ));
+    tally(result, 'parity_mismatch');
+  }
+  note(result, `${contract.id}：${resolved.length} 处一致 = ${first.value}${unit ? ` ${unit}` : ''}`);
+}
+
+// ─── single_source：同一张表在全仓只许出现一次 ───────────────────────────────
+//
+// 2026-10-14「预算计算架构根治」第二道强制对账（价单一源）。
+//
+// 治的失效模式（已实测）：base.json 的兜底吊顶费率表在 server/routes.ts、
+// server/mcp-server.ts、server/budget-calculator.ts 里**逐字复制了三份**（前两份连缩进
+// 都一致，md5 相同），连三条硬编码 null 也各抄一遍。三份复制时改一处漏两处不会有任何
+// 机制发现——「同一份费率」可以静默分成两个值，而两边都跑得通。
+//
+// 本契约把「只许有一份」变成门禁：`patterns` 里每个正则在整个 scope 内的命中数必须
+// 恰好等于 `expect`（默认 1）。多出来的一份会连位置一起报出来，直接跳过去删。
+//
+// 为什么用正则而不是「禁止 import」：要抓的不是「有人 import 了两遍」，而是
+// **表体本身被复制**——import 多少次都无所谓，抄内容才算违规。
+
+function runSingleSource(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
+  const patterns = stringList(contract.patterns);
+  if (!patterns.length) {
+    add(result, issue('error', 'single_source_unresolvable', `${contract.id}：patterns 为空——空契约不检查任何东西`, str(contract.source)));
+    tally(result, 'single_source_unresolvable');
+    return;
+  }
+  const expect = num(contract.expect, 1);
+  const files = contractPaths(ws, contract.scope, 'contract.files', contract.exclude);
+  if (!files.length) {
+    add(result, issue('error', 'single_source_unresolvable', `${contract.id}：scope ${JSON.stringify(stringList(contract.scope))} 在 contract.files 里匹配不到文件`, str(contract.source)));
+    tally(result, 'single_source_unresolvable');
+    return;
+  }
+  for (const pattern of patterns) {
+    const hits: Array<{ file: string; at: number }> = [];
+    for (const file of files) {
+      for (const m of grep(ws, file, pattern)) hits.push({ file, at: m.index });
+    }
+    if (hits.length === expect) continue;
+    const where = hits.map((hit) => loc(lines, hit.file, hit.at)).join(' / ');
+    add(result, issue(
+      contractLevel(contract),
+      expect === 1 ? 'single_source_violation' : 'single_source_count_mismatch',
+      `${contract.id}：模式 /${pattern}/ 在 ${files.length} 个被扫描文件里命中 ${hits.length} 次，期望 ${expect} 次${hits.length ? `——位置 ${where}` : ''}。`
+      + '同一张表/常量在全仓只许有一份实现；其余位置必须 import 复用，而不是把内容抄一遍',
+      hits.length ? hits[hits.length - 1].file : str(contract.source),
+    ));
+    tally(result, expect === 1 ? 'single_source_violation' : 'single_source_count_mismatch');
+  }
+}
+
 // ─── 入口 ────────────────────────────────────────────────────────────────────
 
 export function lintFacts(registry: FactsRegistry, ws: FactsWorkspace): FactsLintResult {
@@ -1906,6 +2112,8 @@ export function lintFacts(registry: FactsRegistry, ws: FactsWorkspace): FactsLin
       case 'supersede': runSupersede(ws, result, contract); break;
       case 'ceiling_clearance': runCeilingClearance(ws, result, lines, contract); break;
       case 'covered_or_marked': runCoveredOrMarked(ws, result, lines, contract); break;
+      case 'quantity_parity': runQuantityParity(ws, result, lines, contract); break;
+      case 'single_source': runSingleSource(ws, result, lines, contract); break;
       default: break;
     }
   }

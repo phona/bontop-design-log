@@ -148,6 +148,9 @@ test('paint_region on the arc wall is split per rect along the polyline and ever
     id: curved.id, x1: curved.x1, z1: curved.z1, x2: curved.x2, z2: curved.z2,
     ...(curved.segments ? { segments: curved.segments } : {}),
     ...(curved.height !== undefined ? { height: curved.height } : {}),
+    // 2026-10-14 阶段 4：openings 改为必填，避免「忘了传洞口」被当成「墙上没有洞」。
+    // 本夹具的弧墙没有门洞，显式给空数组。
+    openings: [],
   };
   const expected = computePaintScope([wallInput], [{ id: 'probe_paint', wall: 'w_bath_north', room: 'master_bath', along: [0, span], bottom: 0, height: 2.8 }], []);
   const net = meshes.reduce((sum: number, mesh: any) => sum + meshArea(mesh), 0);

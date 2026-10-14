@@ -7,7 +7,7 @@ import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { parseOverlay, mergeSceneElements } from '../../server/overlay-merge.js';
 import { buildPaintCostComparison, computePaintScopeForLayout, loadPaintComparisonConfig, loadPaintScopeInputs } from '../../server/paint-cost-comparison.js';
 import { doorGapsOnWall } from '../../shared/paint-scope.js';
-import { computePaintScope, type PaintWallInput, type PaintWindowInput } from '../../shared/paint-scope.js';
+import { computePaintScope, type PaintRegionInput, type PaintWallInput, type PaintWindowInput } from '../../shared/paint-scope.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import { loadCeilingConfig } from '../../server/config-loader.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
@@ -259,7 +259,9 @@ test('splitRectByGaps keeps the lintel above a door and both side strips', () =>
 });
 
 test('window declarations only deduct when along is resolvable, and warn when not', () => {
-  const wallWithWindow: PaintWallInput = { id: 'w', x1: 0, z1: 0, x2: 3, z2: 0, height: 2.8 };
+  // openings 必填（2026-10-14 阶段 4）：本场景没有门洞，所以显式给空数组。
+  // 旧代码允许整个字段缺席，那等于把「忘了传洞口」和「墙上真的没有洞」混为一谈。
+  const wallWithWindow: PaintWallInput = { id: 'w', x1: 0, z1: 0, x2: 3, z2: 0, height: 2.8, openings: [] };
   const windowWithAlong: PaintWindowInput = { id: 'win_a', wall: 'w', along: [1.0, 2.5], sill: 2.0, height: 0.7 };
   const scope = computePaintScope([wallWithWindow], [{ id: 'r', wall: 'w', room: 'room', along: [0, 3], bottom: 0, height: 2.8 }], [windowWithAlong]);
   assert.ok(Math.abs(scope.windowGapAreaSqm - 1.5 * 0.7) < 1e-6, '窗洞沿墙 1.5m × 窗带 0.7m');
@@ -384,7 +386,9 @@ test('declared paint areas match an independent geometric recomputation, room by
       id: wall.id, x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2,
       ...(wall.segments ? { segments: wall.segments } : {}),
       ...(wall.height !== undefined ? { height: wall.height } : {}),
-      ...(wall.openings ? { openings: wall.openings } : {}),
+      // 2026-10-14 阶段 4：openings 必填。这里是 model-geometry 适配处，
+      // 「不写 openings 键 = 无洞」的约定在此落地（与 toPaintWalls / SceneBuilder 同）。
+      openings: wall.openings ?? [],
     } as any);
     if (gaps.length) openingGapsByWall.set(wall.id, gaps.map((g) => ({ from: g.from, to: g.to, bottom: g.bottom, top: g.top })));
   }
@@ -548,7 +552,10 @@ test('net area equals gross minus door and window gaps, and matches the budget l
   const painted = snapshot.lineItems.filter((li) => li.topic === 'paint').reduce((sum, li) => sum + li.quantity, 0);
   assert.ok(Math.abs(painted - scope.ordinaryAreaSqm) <= 0.01, `预算行项目合计 ${painted} 必须等于普通计费面积 ${scope.ordinaryAreaSqm}`);
   const painting = snapshot.categories.find((category) => category.key === 'painting')!;
-  assert.ok(Math.abs(painting.actual - 8936.098) <= 1, `painting actual=${painting.actual}`);
+  // 阶段 5 口径变更：actual 只计已取证款 + 人工。painting 材料款是候选价 →
+  // actual = 纯人工 7,369（旧 8,936.098 = 人工 7,369 + 候选材料 1,567）。
+  assert.ok(Math.abs(painting.actual - 7369) <= 1, `painting actual=${painting.actual}`);
+  assert.ok(Math.abs(painting.candidateActual! - 1566.912) <= 1, `painting candidateActual=${painting.candidateActual}`);
   assert.equal(painting.status, 'ok');
 });
 
@@ -707,4 +714,62 @@ test('paint inspection overlay is excluded from GLB export by default visibility
   const scene: any = sceneWithPaintRegions();
   const meshes = paintMeshes(scene.exportRoot);
   assert.ok(meshes.every((mesh) => mesh.visible === false), 'GLTFExporter 默认只导可见对象，默认不可见即自动排除');
+});
+
+/**
+ * 2026-10-14 阶段 4：涂装算量的输入缺失一律 fail-closed。
+ *
+ * 三个最危险的休眠兜底：
+ *   - `region.height ?? wall.height ?? 2.8`：`WallSegment`（预算侧）没有 height 字段、
+ *     `ResolvedWall`（对比侧）有，同一条声明在两条路径上会落到不同顶标高；预算侧实际恒为
+ *     2.8m，而 base.json 的 painting 备注写「层高 3.0m，墙面面积比 2.8m 高约 7%」——
+ *     漏写一条 height 即静默少算 7% 涂装面积。
+ *   - `window.sill ?? 0`：缺窗台高的窗按落地扣洞，涂装面积凭空变小。
+ *   - `opening.sill ?? 0`：门取完成面（0m）是有物理依据的默认；非门洞口不享受。
+ */
+test('paint_region 缺 height 即抛错，不回落 wall.height 或 2.8m 默认层高', () => {
+  const wall: PaintWallInput = { id: 'w', x1: 0, z1: 0, x2: 3, z2: 0, height: 2.8, openings: [] };
+  const noHeight = { id: 'r', wall: 'w', room: 'room', along: [0, 3], bottom: 0 } as PaintRegionInput;
+  assert.throws(() => computePaintScope([wall], [noHeight], []), /缺 height/);
+  // 墙自己带 height 也不能救：两条路径（catalog.getWalls() 无 height / layout.walls 有 height）
+  // 必须给出同一个答案，否则预算侧与 /api/paint/comparison 会分叉。
+  const withWallHeight: PaintWallInput = { id: 'w', x1: 0, z1: 0, x2: 3, z2: 0, height: 3.0, openings: [] };
+  assert.throws(() => computePaintScope([withWallHeight], [noHeight], []), /缺 height/);
+});
+
+test('窗洞缺 sill 即抛错：不按落地扣洞（涂装面积会凭空变小）', () => {
+  const wall: PaintWallInput = { id: 'w', x1: 0, z1: 0, x2: 3, z2: 0, height: 2.8, openings: [] };
+  const windowNoSill = { id: 'win', wall: 'w', along: [1.0, 2.5], height: 0.7 } as PaintWindowInput;
+  assert.throws(() => computePaintScope([wall], [{ id: 'r', wall: 'w', room: 'room', along: [0, 3], bottom: 0, height: 2.8 }], [windowNoSill]), /缺 sill/);
+});
+
+test('门洞缺 sill 取完成面 0m（有物理依据的默认），非门洞口缺 sill 抛错', () => {
+  const doorRegion = computePaintScope(
+    [{ id: 'w', x1: 0, z1: 0, x2: 3, z2: 0, height: 2.8, openings: [{ id: 'd', type: 'door', x: 1.5, z: 0, width: 0.9, height: 2.1, room: 'room' }] }],
+    [{ id: 'r', wall: 'w', room: 'room', along: [0, 3], bottom: 0, height: 2.8 }],
+    [],
+  ).regions[0];
+  // 门从完成面起算：model-geometry.yaml 的 9 条 openings 全是 door 且全不写 sill。
+  assert.ok(Math.abs(doorRegion.gaps[0].bottom) < 1e-9, '门洞洞底 = 完成面 0m');
+  assert.ok(Math.abs(doorRegion.gaps[0].top - 2.1) < 1e-9);
+  // 非门洞口（窗/垭口）不享受这个默认：缺 sill 必须抛错。
+  assert.throws(() => computePaintScope(
+    [{ id: 'w', x1: 0, z1: 0, x2: 3, z2: 0, height: 2.8, openings: [{ id: 'c', type: 'cased_opening', x: 1.5, z: 0, width: 0.9, height: 2.1, room: 'room' }] }],
+    [{ id: 'r', wall: 'w', room: 'room', along: [0, 3], bottom: 0, height: 2.8 }],
+    [],
+  ), /缺 sill/);
+});
+
+test('loadPaintScopeInputs 原样透传 sill：不在加载层补 0，fail-closed 守卫才等得到 undefined', () => {
+  // 2026-10-14 阶段 4：加载层若写 `sill ?? 0`，缺声明的窗洞会在进入 computePaintScope 之前
+  // 就被静默改成"落地窗"，shared/paint-scope.ts 的抛错守卫永远等不到那个 undefined——
+  // 兜底发生在更上游，比没有守卫更糟。这里钉住「加载层不做值替换」。
+  const { windows } = loadPaintScopeInputs();
+  assert.ok(windows.length > 0, '本案应有 bay_sill / glass_infill 窗洞声明');
+  for (const window of windows) {
+    assert.equal(typeof window.sill, 'number', `${window.id} 的 sill 必须是显式声明的数值`);
+    assert.ok(window.sill !== undefined && window.sill >= 0 && window.sill < 2.8,
+      `${window.id} 的 sill ${window.sill} 应在层高范围内`);
+    assert.ok(window.height > 0, `${window.id} 的 height 必须为正`);
+  }
 });

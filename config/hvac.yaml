@@ -1,6 +1,25 @@
 plans:
   - id: A2
     kind: vrf_ducted
+    name: "美的领航者Ⅳ 一拖六（成交）"
+    summary: "20kW 外机 MJV-200W-E01-LHIV + 六台双出风 /P-SS 带冷凝提升泵内机；DEC-2026-10-04-R1 定标成交"
+    # 商务口径（2026-10-13 阶段 3 新增的**机器可读**块）：预算与选型面板的单价只读这里。
+    # 历史：单价原先硬编码在 shared/houseData.ts 的七套 invented 报价表里（A2 = 29,000），
+    # 与合同成交价 36,000 并存，业主端长期看到 29,000。那些表已删除。
+    # 口径边界见 scope_note：36,000 含辅材，**不含**复合风管与风口加长（加长 100 元/米另计）、不含税。
+    commercial:
+      status: contracted
+      price_cny: 36000
+      currency: CNY
+      decided_at: '2026-10-04'
+      decision_ref: "DEC-2026-10-04-R1"
+      vendor: "南宁长旺建材家居市场美的中央空调智慧空气馆长旺家中店"
+      price_basis: "合同附件（第十二条）分项报价：外机 MJV-200W-E01-LHIV 20kW 14,124 元 + 安装 1,400 元/台×6 = 8,400 元"
+      scope_note: "含辅材；不含复合风管与风口加长（加长 100 元/米另计）、不含税——非最终落地价"
+      source_refs:
+        - config/procurement.yaml
+        - config/materials.yaml
+        - schedule/phase-1/control.yaml
     outdoor:
       id: vrf_outdoor_a2
       platform: west_platform

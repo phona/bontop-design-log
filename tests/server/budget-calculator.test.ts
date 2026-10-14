@@ -2,12 +2,19 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
-import { BudgetCalculator, autoActualBucket } from '../../server/budget-calculator.js';
-import { loadExtraFloorRegionArea } from '../../server/budget-calculator.js';
+import { BudgetCalculator, autoActualBucket, loadMasonryTakeoff } from '../../server/budget-calculator.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import type { CurrentScheme, DesignOption, DesignRulesConfig, FurnishingsYaml } from '../../shared/types.js';
 import { parseOverlay } from '../../server/overlay-merge.js';
+
+/**
+ * 阶段 5 口径下的 labor 反推：actual − 已取证材料款 − 人工录入。
+ * 用于断言「actual 不含 candidateActual」这个不变量，避免在 fixture 里写死金额。
+ */
+function laborOf(cat: { actual: number; verifiedActual?: number; candidateActual?: number; manualActual?: number }): number {
+  return cat.actual - (cat.verifiedActual ?? 0) - (cat.manualActual ?? 0);
+}
 
 const rulesConfig: DesignRulesConfig = {
   version: '1.0',
@@ -23,7 +30,7 @@ const rulesConfig: DesignRulesConfig = {
         'master_bath', 'guest_bath', 'kitchen', 'balcony', 'living_dining',
         'master_bedroom', 'study', 'bedroom_nw', 'bedroom_se',
       ] },
-      { topic: 'wall', quantityField: 'wetWallArea' },
+      { topic: 'wall', quantityField: 'masonryTileArea' },
       { topic: 'paint', quantityField: 'paintWallArea' },
       { topic: 'hvac' },
     ],
@@ -48,7 +55,7 @@ describe('BudgetCalculator', () => {
     assert.notEqual(areaFromResolvedPolygons, areaFromBoundingBoxes, 'polygon area should differ from at least one room bounding box');
     // DEC-2026-10-09-P16：非房间地面**默认**进算量，只有两种例外退出——① 整块落在某个
     // applyRooms 房间内（几何判定，双计路径从根上消失）；② 显式 `excluded: true`。
-    // 这里独立复算同一口径（不调生产函数 loadExtraFloorRegionArea），两边各自算才算交叉验证。
+    // 这里独立复算同一口径（不调生产函数 loadMasonryTakeoff），两边各自算才算交叉验证。
     const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
     const shoelace = (pts: Array<{ x: number; z: number }>) => {
       let acc = 0;
@@ -101,7 +108,33 @@ describe('BudgetCalculator', () => {
     // 入户花园/设备平台显式 excluded
     assert.equal(Math.round(extra * 100) / 100, 3.75, 'extra 应只剩主走廊 3.75㎡');
     assert.ok(extra > 0, '主走廊必须计入，且不再依赖任何手工 costed 标志');
-    assert.equal(Math.round((areaFromResolvedPolygons + extra) * 100) / 100, 125.26, 'floor 算量必须仍是 125.26㎡');
+
+    // DEC-2026-10-13 阶段 2 第二半：floor 算量的唯一出口是 shared/masonry-takeoff.ts。
+    // 独立复算（上面的 shoelace + 几何包含）与生产实现必须给出同一个 extra，否则就是两套口径。
+    const takeoff = loadMasonryTakeoff(catalog);
+    assert.ok(Math.abs(takeoff.floorRegionExtraSqm - extra) < 1e-6,
+      `生产 takeoff 的 floorRegionExtraSqm ${takeoff.floorRegionExtraSqm} 必须等于独立复算 ${extra}`);
+
+    // 新口径：干区房 111.864 + 湿区房 7.726 + floor_region extra 3.75 = 123.34㎡。
+    // 与旧口径 125.26㎡ 的差是**生活阳台 1.92㎡**：它既不在 dry_room_ids 也不在 wet_room_ids
+    // （control.yaml 记其「湿区小砖、按间包干口径未裁」），因此不再默认计费，转进
+    // `pendingQuantity` 显形——「不计费」必须看得见，否则就是静默归零。
+    const floorQuantity = takeoff.dryFloorSqm + takeoff.wetFloorSqm;
+    assert.equal(Math.round(floorQuantity * 100) / 100, 123.34, 'floor 算量 = 干区 115.614 + 湿区 7.726');
+    assert.ok(Math.abs(floorQuantity - (125.26 - 1.92)) < 1e-6,
+      `新口径必须恰好比旧口径少生活阳台 1.92㎡（${floorQuantity} vs 125.26）`);
+    assert.ok(takeoff.unpriced.some(item => item.id === 'balcony' && Math.abs((item.quantity ?? 0) - 1.92) < 1e-6),
+      '生活阳台地面必须进 unpriced 显形清单');
+
+    // 房间集对账：干/湿区清单里的每一间都必须在 floor 的 applyRooms 内。
+    // applyRooms 现在是「二次闸门」而不是数量来源；若某间铺地房被它漏掉，墙砖/地砖会静默消失。
+    const floorRoomIds = new Set([
+      ...(load(readFileSync('config/tile-comparison.yaml', 'utf8')) as { dry_room_ids: string[]; wet_room_ids: string[] }).dry_room_ids,
+      ...(load(readFileSync('config/tile-comparison.yaml', 'utf8')) as { dry_room_ids: string[]; wet_room_ids: string[] }).wet_room_ids,
+    ]);
+    for (const roomId of floorRoomIds) {
+      assert.ok(floorApplyRooms.includes(roomId), `干/湿区房 ${roomId} 必须在 floor.applyRooms 内，否则静默漏计`);
+    }
 
     const calc = new BudgetCalculator(catalog, projectRules);
     const scheme: CurrentScheme = {
@@ -110,64 +143,81 @@ describe('BudgetCalculator', () => {
         floor: { default: 'floor_tile_01', roomOverrides: {} },
         wall: { default: 'wall_tile_01', roomOverrides: {} },
         paint: { default: 'latex_paint_01', roomOverrides: {} },
-        hvac: { default: 'A1', roomOverrides: {} },
+        hvac: { default: 'A2', roomOverrides: {} },
       },
     };
     const snapshot = calc.calculate(scheme);
     const masonry = snapshot.categories.find(category => category.key === 'masonry');
     assert.ok(masonry);
-    const laborAdded = masonry.actual - masonry.autoActual;
-    assert.equal(laborAdded, Math.round(45 * (areaFromResolvedPolygons + extra)));
+    // 阶段 5 口径变更：actual 不再含 candidateActual，所以 laborAdded 不能再用
+    // `actual - autoActual` 算（那会是负数）。本 fixture 材料款全未取证 →
+    // actual 就是纯人工，直接用 actual。
+    const laborAdded = masonry.actual;
+    // 阶段 3：瓦工人工按三个 area 分别计价，单价来自 config/masonry-labor.yaml 的费率卡
+    // （按本方案的选型规格取行），量来自 shared/masonry-takeoff.ts：
+    //   floor           干区地面（本方案选 floor_tile_01 = 800×800 → 卡上 40 元/㎡）
+    //   wet_floor_tile  湿区地面（同一选型 → 40 元/㎡）
+    //   wall_tile       墙砖+防水台（wall_tile_01 = 300×600 → 卡上 50 元/㎡）
+    const masonryTakeoff = loadMasonryTakeoff(catalog);
+    const expectedLabor = Math.round(40 * masonryTakeoff.dryFloorSqm)
+      + Math.round(40 * masonryTakeoff.wetFloorSqm)
+      + Math.round(50 * masonryTakeoff.totalTileSqm);
+    assert.equal(laborAdded, expectedLabor,
+      `瓦工人工必须按费率卡解析价 × takeoff 量逐行计价（实际 ${laborAdded}）`);
     assert.notEqual(laborAdded, Math.round(45 * areaFromBoundingBoxes));
+    // ±658 双轨的根治判据：材料侧逐行数量之和必须**等于**人工侧的算量。
+    // 旧口径材料侧只加 applyRooms 房间（121.510㎡）、人工侧另加 extra（125.260㎡），
+    // 差 3.75㎡ 正是主走廊——DEC-2026-10-09-P16 裁定「走廊需要铺砖」，结果人工收了钱、主材没收。
+    const floorLineQuantity = snapshot.lineItems
+      .filter(item => item.topic === 'floor')
+      .reduce((sum, item) => sum + item.quantity, 0);
+    assert.ok(Math.abs(floorLineQuantity - floorQuantity) < 1e-6,
+      `材料侧 floor 数量 ${floorLineQuantity} 必须等于人工侧算量 ${floorQuantity}（含主走廊 extra 单列的 roomId:null 行）`);
+    assert.ok(snapshot.lineItems.some(item => item.topic === 'floor' && item.roomId === null),
+      '主走廊 extra 必须单列一行 roomId:null，不摊进任何房间、也不静默丢弃');
   });
 
   // DEC-2026-10-09-P16 负例①：显式把 `excluded` 设成 false 救不回「整块落在已计费房间内」的双计。
   // 旧 P12 口径下 corridor_floor 靠 `costed` 手工 opt-in，标志一多写/漏写就是双计或漏计；
   // 新口径下它落在 study 内，任何标志都改不动这个结论——双计路径从根上消失。
+  // 2026-10-13 阶段 2 第二半：入口从 loadExtraFloorRegionArea 换成 loadMasonryTakeoff
+  // （shared/masonry-takeoff.ts 是地面算量唯一实现），缝仍是「注入 elements」。
   it('DEC-2026-10-09-P16 负例①：excluded:false 救不回落在已计费房间内的双计', () => {
     const catalog = ProjectCatalog.load('.');
-    const projectRules = load(readFileSync('config/design-rules.yaml', 'utf8')) as DesignRulesConfig;
-    const applyRooms = projectRules.budget?.lineItems?.find(item => item.topic === 'floor')?.applyRooms ?? [];
     const elements = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
-    const rooms = catalog.getRooms();
-    const base = loadExtraFloorRegionArea(rooms, applyRooms);
-    const forced = loadExtraFloorRegionArea(rooms, applyRooms, elements.map((element: any) =>
+    const base = loadMasonryTakeoff(catalog);
+    const forced = loadMasonryTakeoff(catalog, elements.map((element: any) =>
       element.id === 'corridor_floor' ? { ...element, excluded: false } : element));
-    assert.ok(Math.abs(forced.extraArea - base.extraArea) < 1e-6,
-      `corridor_floor 标 excluded:false 也不该进 extra（base ${base.extraArea} → forced ${forced.extraArea}）`);
-    assert.ok(Math.abs(forced.skippedInsideRoomArea - base.skippedInsideRoomArea) < 1e-6,
-      '显式 excluded:false 不改变它被几何跳过的事实（仍走 skippedInsideRoomArea，6.75㎡ 已由 study 房间 footprint 算过）');
-    assert.ok(Math.abs(forced.excludedArea - base.excludedArea) < 1e-6,
+    assert.ok(Math.abs(forced.floorRegionExtraSqm - base.floorRegionExtraSqm) < 1e-6,
+      `corridor_floor 标 excluded:false 也不该进 extra（base ${base.floorRegionExtraSqm} → forced ${forced.floorRegionExtraSqm}）`);
+    assert.ok(Math.abs(forced.floorRegionSkippedInsideRoomSqm - base.floorRegionSkippedInsideRoomSqm) < 1e-6,
+      '显式 excluded:false 不改变它被几何跳过的事实（仍走 skippedInsideRoom，6.75㎡ 已由 study 房间 footprint 算过）');
+    assert.ok(Math.abs(forced.floorRegionExcludedSqm - base.floorRegionExcludedSqm) < 1e-6,
       'excluded:false 更不该把它算成「有意排除」');
-    // 对照组：同一块地只要不再落在任何 applyRooms 房间内（去掉 study），就必须进 extra——
+    // 对照组：同一块地只要不再落在任何已计费房间内（把轮廓整体搬出户型），就必须进 extra——
     // 证明「跳过」确实是几何驱动，不是把这条 region 悄悄吞掉。
-    const outside = loadExtraFloorRegionArea(
-      rooms,
-      applyRooms.filter(id => id !== 'study'),
-      elements.map((element: any) => (element.id === 'corridor_floor' ? { ...element, excluded: false } : element)),
-    );
-    assert.ok(Math.abs(outside.extraArea - (base.extraArea + 6.75)) < 1e-6,
-      `去掉 study 后 corridor_floor 必须计入（base ${base.extraArea} → ${outside.extraArea}）`);
-    assert.ok(Math.abs(outside.skippedInsideRoomArea - (base.skippedInsideRoomArea - 6.75)) < 1e-6,
-      '对照组里它应从 skippedInsideRoomArea 挪到 extraArea，两档此消彼长');
+    const moved = loadMasonryTakeoff(catalog, elements.map((element: any) => (element.id === 'corridor_floor'
+      ? { ...element, excluded: false, points: (element.points as Array<{ x: number; z: number }>).map((p) => ({ ...p, x: p.x + 50, z: p.z + 50 })) }
+      : element)));
+    assert.ok(Math.abs(moved.floorRegionExtraSqm - (base.floorRegionExtraSqm + 6.75)) < 1e-6,
+      `搬出户型后 corridor_floor 必须计入（base ${base.floorRegionExtraSqm} → ${moved.floorRegionExtraSqm}）`);
+    assert.ok(Math.abs(moved.floorRegionSkippedInsideRoomSqm - (base.floorRegionSkippedInsideRoomSqm - 6.75)) < 1e-6,
+      '对照组里它应从 skippedInsideRoom 挪到 extra，两档此消彼长');
   });
 
   // DEC-2026-10-09-P16 负例②：一条不在任何房间内的 region 标 `excluded: true` 就退出算量。
-  // 这是新口径唯一允许的例外口子，且必须留档到 excludedArea——「有意不算」和「漏算」要能区分。
+  // 这是新口径唯一允许的例外口子，且必须留档到 excludedSqm——「有意不算」和「漏算」要能区分。
   it('DEC-2026-10-09-P16 负例②：不在任何房间内的 region 标 excluded:true 即退出', () => {
     const catalog = ProjectCatalog.load('.');
-    const projectRules = load(readFileSync('config/design-rules.yaml', 'utf8')) as DesignRulesConfig;
-    const applyRooms = projectRules.budget?.lineItems?.find(item => item.topic === 'floor')?.applyRooms ?? [];
     const elements = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
-    const rooms = catalog.getRooms();
-    const base = loadExtraFloorRegionArea(rooms, applyRooms);
-    const marked = loadExtraFloorRegionArea(rooms, applyRooms, elements.map((element: any) =>
+    const base = loadMasonryTakeoff(catalog);
+    const marked = loadMasonryTakeoff(catalog, elements.map((element: any) =>
       element.id === 'main_corridor_floor' ? { ...element, excluded: true } : element));
-    assert.ok(Math.abs(marked.extraArea) < 1e-6,
-      `主走廊标 excluded:true 后 extra 必须归零（${marked.extraArea}），它是唯一默认计入的 region`);
-    assert.ok(Math.abs(marked.excludedArea - (base.excludedArea + 3.75)) < 1e-6,
-      `排除面积要留档（${base.excludedArea} → ${marked.excludedArea}）`);
-    assert.ok(Math.abs(marked.skippedInsideRoomArea - base.skippedInsideRoomArea) < 1e-6,
+    assert.ok(Math.abs(marked.floorRegionExtraSqm) < 1e-6,
+      `主走廊标 excluded:true 后 extra 必须归零（${marked.floorRegionExtraSqm}），它是唯一默认计入的 region`);
+    assert.ok(Math.abs(marked.floorRegionExcludedSqm - (base.floorRegionExcludedSqm + 3.75)) < 1e-6,
+      `排除面积要留档（${base.floorRegionExcludedSqm} → ${marked.floorRegionExcludedSqm}）`);
+    assert.ok(Math.abs(marked.floorRegionSkippedInsideRoomSqm - base.floorRegionSkippedInsideRoomSqm) < 1e-6,
       '显式排除不该挤占「落在已计费房间内」这一档');
   });
 
@@ -186,7 +236,9 @@ describe('BudgetCalculator', () => {
     const snapshot = calc.calculate(scheme);
     const hvacCategory = snapshot.categories.find((c) => c.key === 'hvac');
     assert.ok(hvacCategory);
-    assert.equal(hvacCategory.autoActual, 29000);
+    // 2026-10-13 阶段 3：单价来自 config/hvac.yaml 的 commercial.price_cny（DEC-2026-10-04-R1
+    // 成交 36,000），不再是 shared/houseData.ts 里 A2 的 invented 29,000。
+    assert.equal(hvacCategory.autoActual, 36000);
   });
 
   it('calculates per-room floor topic', () => {
@@ -195,7 +247,7 @@ describe('BudgetCalculator', () => {
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
       selections: {
-        hvac: { default: 'A1', roomOverrides: {} },
+        hvac: { default: 'A2', roomOverrides: {} },
         floor: { default: 'floor_tile_01', roomOverrides: {} },
         wall: { default: 'wall_tile_01', roomOverrides: {} },
         paint: { default: 'latex_paint_01', roomOverrides: {} },
@@ -229,7 +281,7 @@ describe('BudgetCalculator', () => {
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
       selections: {
-        hvac: { default: 'A1', roomOverrides: {} },
+        hvac: { default: 'A2', roomOverrides: {} },
         floor: { default: 'floor_tile_01', roomOverrides: {} },
         wall: { default: 'wall_tile_01', roomOverrides: {} },
         paint: { default: 'latex_paint_01', roomOverrides: {} },
@@ -246,7 +298,7 @@ describe('BudgetCalculator', () => {
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
       selections: {
-        hvac: { default: 'A1', roomOverrides: {} },
+        hvac: { default: 'A2', roomOverrides: {} },
         floor: {
           default: 'floor_tile_01',
           roomOverrides: { master_bedroom: 'floor_tile_01' },
@@ -268,7 +320,7 @@ describe('BudgetCalculator', () => {
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
       selections: {
-        hvac: { default: 'A1', roomOverrides: {} },
+        hvac: { default: 'A2', roomOverrides: {} },
         floor: { default: 'floor_tile_01', roomOverrides: {} },
         wall: { default: 'wall_tile_01', roomOverrides: {} },
         paint: { default: 'latex_paint_01', roomOverrides: {} },
@@ -307,10 +359,10 @@ describe('BudgetCalculator', () => {
     const snapshot = calc.calculate(scheme);
     const hvacCategory = snapshot.categories.find((c) => c.key === 'hvac');
     assert.ok(hvacCategory);
-    assert.equal(hvacCategory.autoActual, 29000);
+    assert.equal(hvacCategory.autoActual, 36000);
     const hvacItem = snapshot.lineItems.find((li) => li.topic === 'hvac');
     assert.ok(hvacItem);
-    assert.equal(hvacItem.unitPrice, 29000);
+    assert.equal(hvacItem.unitPrice, 36000);
   });
 
   it('count calcMode computes cost from furnishings', () => {
@@ -348,7 +400,7 @@ describe('BudgetCalculator', () => {
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
       selections: {
-        hvac: { default: 'A1', roomOverrides: {} },
+        hvac: { default: 'A2', roomOverrides: {} },
         floor: { default: 'floor_tile_01', roomOverrides: {} },
         wall: { default: 'wall_tile_01', roomOverrides: {} },
         paint: { default: 'latex_paint_01', roomOverrides: {} },
@@ -358,11 +410,31 @@ describe('BudgetCalculator', () => {
 
     const masonry = snapshot.categories.find((c) => c.key === 'masonry');
     assert.ok(masonry);
-    assert.ok(masonry.actual > masonry.autoActual, 'masonry should have labor cost added');
+    // 阶段 5 口径变更：actual 只计已取证款 + 人工，不再含 candidateActual。
+    // 本 fixture 选 floor_tile_01，masonry 的材料款全是候选价 → actual = 纯人工。
+    // 断言从「actual > autoActual」改为「actual === 人工，且 candidateActual 单独显形」。
+    const laborAdded = masonry.actual - (masonry.verifiedActual ?? 0);
+    assert.ok(laborAdded > 0, `masonry 应有人工费进 actual（实际 ${masonry.actual}）`);
+    assert.ok((masonry.candidateActual ?? 0) > 0, 'masonry 的候选价应单独显形，不混进 actual');
+    assert.equal(masonry.actual, laborAdded, 'actual 应等于已取证材料款 + 人工，本 fixture 已取证材料款为 0');
 
     const painting = snapshot.categories.find((c) => c.key === 'painting');
     assert.ok(painting);
-    assert.ok(painting.actual > painting.autoActual, 'painting should have labor cost added');
+    // 阶段 5 口径变更：painting 的候选材料款不进 actual，actual = 纯人工。
+    // 注意本文件顶部的 rulesConfig fixture 里 paint 行项仍用旧字段名 `paintWallArea`，
+    // 因此这个 fixture 下 painting 的材料行为 0（生产 config 用 paintScopeArea，材料额 1,567）。
+    // 故此处只断言口径不变量，不断言具体金额——具体金额由 paint-scope.test.ts 用真实 config 钉。
+    assert.ok(painting.actual > 0, `painting 应有人工费进 actual（实际 ${painting.actual}）`);
+    assert.equal(
+      painting.actual,
+      (painting.verifiedActual ?? 0) + (painting.manualActual ?? 0) + laborOf(painting),
+      '阶段 5 口径：actual = 已取证材料款 + 人工录入 + 人工，不含 candidateActual',
+    );
+    assert.equal(
+      (painting.verifiedActual ?? 0) + (painting.candidateActual ?? 0),
+      painting.autoActual,
+      '阶段 1 门控不变量对 painting 成立',
+    );
 
     const hvac = snapshot.categories.find((c) => c.key === 'hvac');
     assert.ok(hvac);
@@ -374,7 +446,7 @@ describe('BudgetCalculator', () => {
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
       selections: {
-        hvac: { default: 'A1', roomOverrides: {} },
+        hvac: { default: 'A2', roomOverrides: {} },
         floor: { default: 'floor_tile_01', roomOverrides: {} },
         wall: { default: 'wall_tile_01', roomOverrides: {} },
         paint: { default: 'latex_paint_01', roomOverrides: {} },
@@ -400,7 +472,7 @@ describe('BudgetCalculator', () => {
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
       selections: {
-        hvac: { default: 'A1', roomOverrides: {} },
+        hvac: { default: 'A2', roomOverrides: {} },
         floor: { default: 'floor_tile_01', roomOverrides: {} },
         wall: { default: 'wall_tile_01', roomOverrides: {} },
         paint: { default: 'latex_paint_01', roomOverrides: {} },
@@ -422,7 +494,7 @@ describe('BudgetCalculator', () => {
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
       selections: {
-        hvac: { default: 'A1', roomOverrides: {} },
+        hvac: { default: 'A2', roomOverrides: {} },
         floor: { default: 'floor_tile_01', roomOverrides: {} },
         wall: { default: 'wall_tile_01', roomOverrides: {} },
         paint: { default: 'latex_paint_01', roomOverrides: {} },
@@ -441,7 +513,7 @@ describe('BudgetCalculator', () => {
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
       selections: {
-        hvac: { default: 'A1', roomOverrides: {} },
+        hvac: { default: 'A2', roomOverrides: {} },
         floor: { default: 'floor_tile_01', roomOverrides: {} },
         wall: { default: 'wall_tile_01', roomOverrides: {} },
         paint: { default: 'latex_paint_01', roomOverrides: {} },
@@ -454,9 +526,17 @@ describe('BudgetCalculator', () => {
         0,
         `manualActual should be 0 for ${cat.key}`
       );
+      // 阶段 5 口径变更前：actual = manual + verified + candidate（>= manual + autoActual）。
+      // 阶段 5 后：actual = manual + verified（**不含 candidate**）。
+      // 不变量改成「manual + verified <= actual」与「verified + candidate === autoActual」。
       assert.ok(
-        cat.actual >= cat.manualActual + cat.autoActual,
-        `actual should be >= manualActual + autoActual for ${cat.key} (labor adds on top)`
+        cat.actual >= cat.manualActual + (cat.verifiedActual ?? 0),
+        `actual 应 >= manualActual + verifiedActual for ${cat.key}（人工加在已取证材料款之上）`
+      );
+      assert.equal(
+        (cat.verifiedActual ?? 0) + (cat.candidateActual ?? 0),
+        cat.autoActual,
+        `verifiedActual + candidateActual === autoActual for ${cat.key}（阶段 1 门控不变量）`
       );
     }
   });
@@ -556,8 +636,10 @@ describe('BudgetCalculator', () => {
     const hvac = snapshot.categories.find((c) => c.key === 'hvac');
     assert.ok(hvac);
     assert.equal(hvac.budget, 29000, 'hvac budget now part of four-pool total');
-    assert.equal(hvac.actual, 29000);
-    assert.equal(hvac.status, 'near');
+    // 阶段 3：预算数（base.json，未随合同上调）与成交价分列——36,000 是实际，29,000 是旧分配额，
+    // 差额 7,000 正好由 status='over' 显形，不再被 invented 29,000 一口价盖住。
+    assert.equal(hvac.actual, 36000);
+    assert.equal(hvac.status, 'over');
   });
 
   it('furniture count mode prices via furnishingTypeToTopic mapping (P0 bug fix)', () => {
@@ -651,7 +733,13 @@ describe('BudgetCalculator', () => {
     }
   });
 
-  it('DEC-041: explicit entry_garden override re-enables billing (overrides always respected)', () => {
+  // DEC-2026-10-13 阶段 2 第二半改写：原断言是「entry_garden 的显式 override 能重新计费」。
+  // 新架构下 floor 的**数量**来自 shared/masonry-takeoff.ts 的干/湿区房间表，
+  // entry_garden 两表都不列（DEC-041：开发商已铺），所以它没有可计费的量——
+  // override 只决定「用哪个 option」，不能无中生有造出面积。要给它计费是 config 决定
+  // （把它加进 config/tile-comparison.yaml 的 dry_room_ids），不是 scheme 决定。
+  // 这正是本次根治的目标：数量的归属只有一处，方案层只能选材、不能改量。
+  it('DEC-041: entry_garden 没有声明的地面量，override 只能选材不能造量', () => {
     const catalog = ProjectCatalog.load('.');
     const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
     const calc = new BudgetCalculator(catalog, realRules);
@@ -661,8 +749,15 @@ describe('BudgetCalculator', () => {
     };
     const snapshot = calc.calculate(scheme);
     const entryItem = snapshot.lineItems.find((li) => li.topic === 'floor' && li.roomId === 'entry_garden');
+    // override 仍被尊重（行存在、option 是覆盖值），但数量为 0 → 不计费
     assert.ok(entryItem, 'explicit override bypasses applyRooms skip');
-    assert.ok((entryItem?.cost ?? 0) > 0);
+    assert.equal(entryItem?.optionId, 'floor_tile_01');
+    assert.equal(entryItem?.quantity, 0);
+    assert.equal(entryItem?.cost, 0);
+    // 且它必须在显形清单里留名，不是被静默吞掉
+    const masonry = snapshot.categories.find((c) => c.key === 'masonry');
+    assert.ok(masonry?.pendingQuantity?.some((item) => item.id === 'entry_garden'),
+      'entry_garden 必须进 pendingQuantity 显形');
   });
 
   it('cabinet scoped to kitchen only (calibration)', () => {
@@ -677,6 +772,101 @@ describe('BudgetCalculator', () => {
     const cabinetItems = snapshot.lineItems.filter((li) => li.topic === 'cabinet');
     assert.equal(cabinetItems.length, 1, 'cabinet only in kitchen');
     assert.equal(cabinetItems[0].roomId, 'kitchen');
+  });
+
+  // DEC-2026-10-13「预算计算架构根治」阶段 2 第二半：masonry 科目锚点（改前 → 改后）。
+  // 治的两条根因：① `wetWallArea = (宽+深)×2×高×0.7` 那个 0.7 全库无依据；
+  // ② 地面材料侧与人工侧各算一遍（121.510㎡ vs 125.260㎡，差 3.75㎡ 正是主走廊）。
+  it('阶段 2 第二半：masonry 锚点——墙砖声明实算、地面材料/人工同一出口', () => {
+    const catalog = ProjectCatalog.load('.');
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const scheme = JSON.parse(readFileSync('data/current-scheme.json', 'utf8')) as CurrentScheme;
+    const masonryTakeoff = loadMasonryTakeoff(catalog);
+    const snapshot = new BudgetCalculator(catalog, realRules).calculate(scheme);
+    const masonry = snapshot.categories.find((c) => c.key === 'masonry');
+    assert.ok(masonry);
+
+    // 墙砖：拍系数 65.6992㎡ → overlay 声明实算 30.8105㎡（wall_region 21.2555 + sill_region 9.5550）。
+    // 按 wall_tile_01 的 70 元/㎡（12 元/片 ÷ 0.18 ㎡/片 × 1.05 损耗）从 4,598.94 降到 2,156.74。
+    const wallQuantity = snapshot.lineItems.filter((li) => li.topic === 'wall').reduce((sum, li) => sum + li.quantity, 0);
+    assert.ok(Math.abs(wallQuantity - 30.81054967354321) < 1e-6,
+      `墙砖量必须等于 overlay 声明实算 30.8105㎡（wall 21.2555 + sill 9.5550），实际 ${wallQuantity}`);
+    const wallCost = snapshot.lineItems.filter((li) => li.topic === 'wall').reduce((sum, li) => sum + li.cost, 0);
+    assert.ok(Math.abs(wallCost - 2156.7384771480249) < 1e-6,
+      `墙砖主材必须从 4,598.944 降到 2,156.738（30.8105㎡ × 70 元/㎡），实际 ${wallCost}`);
+    // 客厅落地幕墙防水台（living_dining，sill_region front+top 1.86㎡）现在也进预算了——
+    // 旧口径 wall.applyRooms 只有厨卫+阳台，这 1.86㎡ 被静默丢掉。
+    const livingWall = snapshot.lineItems.find((li) => li.topic === 'wall' && li.roomId === 'living_dining');
+    assert.ok(livingWall && Math.abs(livingWall.quantity - 1.86) < 1e-6, '客厅防水台贴砖 1.86㎡ 必须计费');
+
+    // 地面：材料侧逐行之和 == 人工侧算量 == 123.34㎡（干区房 111.864 + 湿区房 7.726 + 主走廊 extra 3.75）。
+    const floorQuantity = snapshot.lineItems.filter((li) => li.topic === 'floor').reduce((sum, li) => sum + li.quantity, 0);
+    assert.ok(Math.abs(floorQuantity - 123.34) < 1e-6,
+      `floor 算量必须是 123.34㎡（旧口径材料侧 121.510 / 人工侧 125.260），实际 ${floorQuantity}`);
+    // 阶段 3 起人工按三行计价，单价取费率卡里**匹配当前选型规格**的行：
+    //   floor           干区 115.614㎡ × 75（选型 KT 200×1200 木纹砖）
+    //   wall_tile       贴砖 30.8105㎡ × 50（选型 wall_tile_01 300×600）
+    //   wet_floor_tile  湿区 7.726㎡ 待报价（选型 400×400 / 200×200 在卡上无行）
+    // 旧口径是一行 45 元/㎡ × 123.34 = 5,550。
+    // 阶段 5 口径变更：actual = 已取证材料款 + 人工。本 fixture 材料款全未取证 →
+    // actual 就是纯人工，不再用 `actual - autoActual`（那会是负数）。
+    assert.equal(masonry.actual, 8671 + 1541,
+      '瓦工人工 = round(75 × 115.614) + round(50 × 30.8105)，湿区待报价不进 actual');
+    assert.deepEqual(masonry.pendingLabor, [
+      { area: 'wet_floor_tile', quantity: masonryTakeoff.wetFloorSqm, unit: '元/㎡', reason: 'rate 待报价' },
+    ]);
+    // 材料侧 = 地面 16,151.283 + 墙砖 2,156.738 = 18,308.021（旧 20,416.372）
+    assert.ok(Math.abs(masonry.autoActual - 18308.021477148028) < 1e-6,
+      `masonry.autoActual 必须从 20,416.372 降到 18,308.021，实际 ${masonry.autoActual}`);
+    // 合计 actual：26,053.372 → 23,858.021（阶段 2）→ 28,520.021（阶段 3）→ **10,212（阶段 5）。
+    // 阶段 5 口径变更：actual 不再含 candidateActual。本 fixture 材料款全未取证 →
+    // actual = 纯人工 = round(75×115.614) + round(50×30.8105) = 8,671 + 1,541 = 10,212。
+    assert.ok(Math.abs(masonry.actual - 10212) < 1e-6,
+      `masonry.actual 阶段 5 后应为 10,212（纯人工），实际 ${masonry.actual}`);
+    assert.ok(Math.abs(masonry.candidateActual! - 18308.021477148028) < 1e-6,
+      `masonry.candidateActual 应为 18,308.021（材料全额转入候选档），实际 ${masonry.candidateActual}`);
+  });
+
+  // DEC-2026-10-13 阶段 2 第二半：橱柜/台面锚点。
+  // 治的是 `linearKitchen = 深×0.8`（算出 1.92 而 house.yaml 柜体段实计 4.36m），
+  // 以及随之而来的量纲错配：cabinet_board_01 是 ㎡ 单价（800 元/㎡**投影面积**，
+  // control.yaml 原话「柜体800/㎡投影」）却被喂了延米数。
+  it('阶段 2 第二半：kitchen_cabinet 锚点——柜体走投影面积、台面走延米且含桥段', () => {
+    const catalog = ProjectCatalog.load('.');
+    const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
+    const scheme = JSON.parse(readFileSync('data/current-scheme.json', 'utf8')) as CurrentScheme;
+    const snapshot = new BudgetCalculator(catalog, realRules).calculate(scheme);
+
+    const cabinetItem = snapshot.lineItems.find((li) => li.topic === 'cabinet');
+    assert.ok(cabinetItem, 'cabinet 行必须存在');
+    // 投影面积 = Σ(厨房柜体段长 × 柜高 0.86) = (1.28 + 1.68 + 1.40) × 0.86 = 4.36 × 0.86 = 3.7496㎡
+    assert.ok(Math.abs(cabinetItem.quantity - 3.7496) < 1e-9,
+      `柜体量必须是投影面积 3.7496㎡（4.36m × 0.86m），实际 ${cabinetItem.quantity}`);
+    assert.equal(cabinetItem.unitPrice, 800);
+    assert.ok(Math.abs(cabinetItem.cost - 3149.664) < 1e-6,
+      `柜体主材必须从 1,612.80（1.92㎡ 被当成 1.92㎡ 板材）变成 3,149.664，实际 ${cabinetItem.cost}`);
+
+    const countertopItem = snapshot.lineItems.find((li) => li.topic === 'countertop');
+    assert.ok(countertopItem, 'countertop 行必须存在');
+    // 延米 = 柜体段 4.36 + 连续台面桥 0.60 = 4.96m（桥段 house.yaml 注明「只是连续台面，不生成柜体」）
+    assert.ok(Math.abs(countertopItem.quantity - 4.96) < 1e-9,
+      `台面量必须是 4.96 延米（4.36 柜体段 + 0.60 台面桥），实际 ${countertopItem.quantity}`);
+    assert.equal(countertopItem.unitPrice, 400);
+    assert.ok(Math.abs(countertopItem.cost - 2023.68) < 1e-6,
+      `台面主材必须从 783.36 变成 2,023.68，实际 ${countertopItem.cost}`);
+
+    const kitchenCabinet = snapshot.categories.find((c) => c.key === 'kitchen_cabinet');
+    assert.ok(kitchenCabinet);
+    // 科目合计 2,396.16 → 5,173.344（+2,777.184）
+    assert.ok(Math.abs(kitchenCabinet.autoActual - 5173.344) < 1e-6,
+      `kitchen_cabinet.autoActual 必须从 2,396.16 抬到 5,173.344，实际 ${kitchenCabinet.autoActual}`);
+    // 阶段 5 口径变更：该科目没有 labor 行，材料款全是候选价 →
+    // actual = 0（已取证一分钱没有），autoActual 仍是材料全额 5,173.344，
+    // candidateActual 单独显形。旧断言「actual === autoActual」已不成立。
+    assert.equal(kitchenCabinet.actual, 0, '阶段 5 后该科目 actual = 0（无 labor、材料全未取证）');
+    assert.ok(Math.abs(kitchenCabinet.candidateActual! - 5173.344) < 1e-6,
+      `kitchen_cabinet.candidateActual 应为 5,173.344，实际 ${kitchenCabinet.candidateActual}`);
+    assert.equal(kitchenCabinet.status, 'unpriced', '全未取证科目应标 unpriced 而非 ok');
   });
 
   it('DEC-041: per-room floor override bills the overridden option', () => {
@@ -949,14 +1139,21 @@ describe('BudgetCalculator', () => {
         `${cat.key}: verifiedActual + candidateActual 必须等于 autoActual`,
       );
     }
-    // 人工（computeLabor）与人工录入（manualActual）都不进这两档：瓦工、漆工只进 actual，
-    // 所以有人工的科目必须是 actual 严格大于两份之和。
+    // 人工（computeLabor）与人工录入（manualActual）都不进这两档：瓦工、漆工只进 actual。
+    // 阶段 5 前 actual 含 candidateActual，所以「actual > 两份之和」。
+    // 阶段 5 后 actual = 已取证材料款 + 人工，不变量变成：
+    //   actual − verified − manual === 人工 > 0（对有人工的科目）
     for (const key of ['masonry', 'painting']) {
       const cat = snapshot.categories.find((c) => c.key === key);
       assert.ok(cat, `${key} 科目必须存在`);
+      const labor = cat.actual - (cat.verifiedActual ?? 0) - (cat.manualActual ?? 0);
+      assert.ok(labor > 0, `${key} 必须有人工费进 actual（labor=${labor}）`);
+      // 直接判据：actual 不得大于「已取证材料款 + 人工」。
+      // 若 candidateActual 混进 actual，actual 会虚高到 verified + candidate + labor。
+      // 用 labor 的上界反推：labor 不可能超过该科目 budget（人工不会超过整包预算）。
       assert.ok(
-        cat.actual > cat.verifiedActual! + cat.candidateActual!,
-        `${key} 的人工费不得进门控两份（actual=${cat.actual}，两份之和=${cat.verifiedActual! + cat.candidateActual!}）`,
+        labor <= (cat.budget ?? 0) + 1,
+        `${key} 的 labor 不应超过科目预算，疑似 candidateActual 混入 actual（labor=${labor}, budget=${cat.budget}）`,
       );
     }
 
@@ -965,16 +1162,23 @@ describe('BudgetCalculator', () => {
     const autoTotal = snapshot.categories.reduce((sum, c) => sum + c.autoActual, 0);
     assert.equal(verifiedTotal + candidateTotal, autoTotal, '两份之和回到 autoActual 合计');
     assert.ok(candidateTotal > 0, `候选价必须显形（当前 candidateActual 合计 ${candidateTotal}，若为 0 说明未取证全额入账的老问题又隐身了）`);
-    // 纯加法钉子：145626.63013333332 是 2026-10-13 阶段 1 动手前实测的 baseline
-    // （current-scheme.json + config/design-rules.yaml，full 相位）。门控只做拆分，
-    // 一个字节都不许改这个数。
-    assert.equal(snapshot.totalActual, 145626.63013333332, '阶段 1 不得改变 totalActual');
+    // 2026-10-13 阶段 1 的 baseline 是 145626.63013333332；阶段 2 第二半（删除
+    // wetWallArea / linearKitchen 拍系数、地面材料侧与人工侧共用出口）后实测
+    // 146208.46361048135。阶段 3（瓦工费率改成合法报价卡 + hvac 读 config/hvac.yaml）后
+    // 实测 157870.46361048135，差额 +11,662 = 瓦工人工 +4,662 + hvac +7,000。
+    // **阶段 5（口径变更）后实测 65174**：actual 不再含 candidateActual（92,696），
+    // 只保留已取证材料款 39,000 + 人工与人工录入。这不是"预算变少了"，是
+    // "把 39 条未取证的候选价从'已花的钱'里挪回'假设'"。
+    assert.equal(snapshot.totalActual, 65174, '阶段 5 后的 totalActual 锚点');
+    assert.ok(candidateTotal > 90000, `候选价应仍在 92,696 量级（当前 ${candidateTotal}），不得被静默清零`);
   });
 
-  it('候选价门控：hvac 的 29000 被显式归类，不是 undefined 漏掉', () => {
-    // hvac 选项由 project-catalog.ts 硬编码构造，data 来自 shared/houseData.ts 的七套
-    // invented 报价表，**没有 status 字段**。它必须显式归「候选」（价格未取证），
-    // 不能掉进默认档。两条入口都要覆盖：project design-rules 的 hvac 是 calcMode:'fixed'，
+  it('候选价门控：hvac 的 36000 归「已取证」，因为合同已成交', () => {
+    // 阶段 3：hvac 选项不再由 project-catalog.ts 硬编码构造，改读 config/hvac.yaml 的
+    // commercial 块（shared/hvac-plants 的 hvacPlanOptions），data.status 由
+    // commercial.status 透传 = contracted（DEC-2026-10-04-R1）→ 归 verified。
+    // 这同时是 SYNTHETIC_UNVERIFIED_TOPICS 可以清空 hvac 的证据：合成选项也带 status 了。
+    // 两条入口都要覆盖：project design-rules 的 hvac 是 calcMode:'fixed'，
     // 而本文件顶部 rulesConfig 的 hvac 无 calcMode 且 topic.perRoom=false → 走非 perRoom 分支。
     const catalog = ProjectCatalog.load('.');
     const projectRules = RuleEngine.load('config/design-rules.yaml').getConfig();
@@ -984,10 +1188,10 @@ describe('BudgetCalculator', () => {
       const snapshot = new BudgetCalculator(catalog, rules).calculate(scheme);
       const hvac = snapshot.categories.find((c) => c.key === 'hvac');
       assert.ok(hvac);
-      assert.equal(hvac.autoActual, 29000, '阶段 1 不得改动任何既有数值');
+      assert.equal(hvac.autoActual, 36000, '阶段 3：hvac 单价 = config/hvac.yaml 的成交价');
       assert.notEqual(hvac.candidateActual, undefined, 'hvac 必须被显式归类，不能是 undefined');
-      assert.equal(hvac.candidateActual, 29000, 'hvac 无 status → 价格未取证 → 归候选');
-      assert.equal(hvac.verifiedActual, 0, 'hvac 无 status → 不得算进已取证');
+      assert.equal(hvac.verifiedActual, 36000, 'commercial.status = contracted → 已取证');
+      assert.equal(hvac.candidateActual, 0, '合同已成交，不得再算进候选');
     }
   });
 
@@ -1019,9 +1223,107 @@ describe('BudgetCalculator', () => {
     const entryDoor = catalog.getOption('entry_door', 'entry_door_01');
     assert.equal(entryDoor?.price_per_unit, 0);
     assert.equal(autoActualBucket(entryDoor, 'entry_door'), 'verified', '入户门开发商已装 / provided_by_developer → 已取证（无需采购）');
-    // hvac：白名单里的合成选项，无 status → 候选
-    assert.equal(autoActualBucket(catalog.getOption('hvac', 'A2'), 'hvac'), 'candidate', 'hvac 无 status 字段 → 未取证');
+    // hvac：合成选项也带 status（config/hvac.yaml 的 commercial.status = contracted）→ 已取证。
+    // 阶段 3 起 SYNTHETIC_UNVERIFIED_TOPICS 已清空（不再需要白名单兜）。
+    assert.equal(autoActualBucket(catalog.getOption('hvac', 'A2'), 'hvac'), 'verified', 'hvac 合同已成交 → 已取证');
     // 未登记的 status-less 合成选项必须抛错：不允许静默掉进任何一档
     assert.throws(() => autoActualBucket(option('ghost', undefined), 'ghost_topic'), /没有 data\.status/);
+  });
+});
+
+/**
+ * 2026-10-14 阶段 4：清除「取不到值时静默发明」的类别 1 兜底。
+ *
+ * 这一组测试钉住的是**失败方式**而不是数值：过去这些字段缺失时会各自兜底
+ * （price 0 / coverage 1 / loss 1.0 / 房间 bbox 面积 / budget>0 但 actual=0 显示 ok），
+ * 每一种都能算出一个"看起来正常"的钱数，所以全绿也发现不了。现在必须抛错。
+ */
+describe('BudgetCalculator 类别 1 兜底已改 fail-closed', () => {
+  const schemeWith = (topic: string, optionId: string): CurrentScheme => ({
+    updatedAt: new Date().toISOString(),
+    selections: { [topic]: { default: optionId, roomOverrides: {} } },
+  });
+
+  /** 造一个缺计价字段的 option（materials.yaml 里这四条是 calc_mode: fixed，休眠中）。 */
+  const optionMissing = (field: 'price_per_unit' | 'coverage_per_unit' | 'loss_rate'): DesignOption => ({
+    id: 'probe_option',
+    topicId: 'floor',
+    name: 'probe',
+    description: '',
+    price_per_unit: 70,
+    coverage_per_unit: 0.24,
+    loss_rate: 1.05,
+    data: { status: 'candidate' },
+    ...(field === 'price_per_unit' ? { price_per_unit: undefined as unknown as number } : {}),
+    ...(field === 'coverage_per_unit' ? { coverage_per_unit: undefined as unknown as number } : {}),
+    ...(field === 'loss_rate' ? { loss_rate: undefined as unknown as number } : {}),
+  });
+
+  it('缺 price_per_unit 抛错，不按 0 元计', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const original = catalog.getOption.bind(catalog);
+    (catalog as unknown as { getOption: typeof catalog.getOption }).getOption = (topic, id) =>
+      id === 'floor_tile_01' ? optionMissing('price_per_unit') : original(topic, id);
+    assert.throws(() => calc.calculate(schemeWith('floor', 'floor_tile_01')), /缺 price_per_unit/);
+  });
+
+  it('缺 coverage_per_unit 抛错，不按 1 兜底（否则面积型材料按片数×单价计价）', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const original = catalog.getOption.bind(catalog);
+    (catalog as unknown as { getOption: typeof catalog.getOption }).getOption = (topic, id) =>
+      id === 'floor_tile_01' ? optionMissing('coverage_per_unit') : original(topic, id);
+    assert.throws(() => calc.calculate(schemeWith('floor', 'floor_tile_01')), /缺 coverage_per_unit/);
+  });
+
+  it('缺 loss_rate 抛错，不按 1.0 兜底（否则少算 8~15% 损耗）', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const original = catalog.getOption.bind(catalog);
+    (catalog as unknown as { getOption: typeof catalog.getOption }).getOption = (topic, id) =>
+      id === 'floor_tile_01' ? optionMissing('loss_rate') : original(topic, id);
+    assert.throws(() => calc.calculate(schemeWith('floor', 'floor_tile_01')), /缺 loss_rate/);
+  });
+
+  it('price_per_unit = 0 是合法声明值，不抛错（开发商已装 / 待核价）', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: { wardrobe: { default: 'wardrobe_north_950_custom_01', roomOverrides: { master_bedroom: 'wardrobe_north_950_custom_01' } } },
+    };
+    // 主卧 950 定制衣柜 price 0 / candidate：必须照常出 0 元并归入 candidateActual，
+    // 不能被"缺价格"的守卫误伤——「没写价格」与「声明为 0」是两件事。
+    assert.doesNotThrow(() => calc.calculate(scheme));
+  });
+
+  it('房间缺 resolved area 抛错，不退回 bbox 面积', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const original = catalog.getRooms.bind(catalog);
+    (catalog as unknown as { getRooms: typeof catalog.getRooms }).getRooms = () =>
+      original().map((room) => (room.id === 'master_bedroom' ? { ...room, area: undefined } : room));
+    assert.throws(() => calc.calculate(schemeWith('floor', 'floor_tile_01')), /缺 resolved area/);
+  });
+
+  it('无计价来源的科目标 unpriced，不再显示 ok（demolition / property_fees）', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    const snapshot = calc.calculate(schemeWith('floor', 'floor_tile_01'));
+    const byKey = new Map(snapshot.categories.map((c) => [c.key, c]));
+    // 这两个科目既无 labor 行、又无 material 自动额、也无人工录入：actual 恒 0
+    // 从来不代表"不花钱"，而代表"从未定价"。旧口径 ratio=0 → 'ok'，系统性低估 ¥8,000。
+    assert.equal(byKey.get('demolition')!.status, 'unpriced', 'demolition 从未定价，不能显示 ok');
+    assert.equal(byKey.get('property_fees')!.status, 'unpriced', 'property_fees 从未定价，不能显示 ok');
+    assert.equal(byKey.get('demolition')!.actual, 0, 'actual 仍为 0：本阶段不改金额口径');
+    assert.equal(byKey.get('property_fees')!.actual, 0, 'actual 仍为 0：本阶段不改金额口径');
+    // 有计价来源的科目不受影响：labor 行（waterproof）与材料自动额（masonry）照旧。
+    assert.equal(byKey.get('waterproof')!.status, 'ok');
+    // masonry 有 labor 行 + 材料自动额，所以照旧走 ok/near/over 三档（绝不落入 unpriced）。
+    assert.ok(['ok', 'near', 'over'].includes(byKey.get('masonry')!.status),
+      `masonry 有计价来源，不得标 unpriced（实际 ${byKey.get('masonry')!.status}）`);
+    // contingency 保留 reserved（批准的不可预见费，不参与上述判定）。
+    assert.equal(byKey.get('contingency')!.status, 'reserved');
   });
 });

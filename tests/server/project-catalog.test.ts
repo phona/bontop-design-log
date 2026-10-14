@@ -55,8 +55,12 @@ describe('ProjectCatalog', () => {
     const topics = catalog.getTopics();
     assert.ok(topics.some((t) => t.id === 'floor'));
     assert.ok(topics.some((t) => t.id === 'hvac'));
-    assert.ok(catalog.getOptions('hvac').some((o) => o.id === 'A2'));
-    assert.equal(catalog.getOption('hvac', 'A2')?.price_per_unit, 29000);
+    // 2026-10-13 阶段 3：hvac 选项来自 config/hvac.yaml（不再是 shared/houseData.ts 的七套
+    // invented 报价表），单价是 DEC-2026-10-04-R1 的成交价 36,000，status 透传 contracted。
+    assert.deepEqual(
+      catalog.getOptions('hvac').map((o) => [o.id, o.price_per_unit, (o.data as { status?: string }).status]),
+      [['A2', 36000, 'contracted']],
+    );
   });
 
   it('validates topics, options, and rooms from the real config directory', () => {

@@ -1,48 +1,44 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('@shared/houseData', () => ({
-  hvacSchemes: [
-    {
-      id: 'A1',
-      name: 'A1 Test',
-      price_per_unit: 30000,
-      price_range: '2.9–3.2 万',
-      desc: 'Test scheme',
-      outdoorUnits: [{ location: 'platform', w: 0.95, d: 0.35, h: 0.72 }],
-      indoorUnits: [
-        { roomId: 'living_dining', type: 'ceiling' },
-        { roomId: 'master_bedroom', type: 'wall' },
-      ],
-      pros: ['pro1'],
-      cons: ['con1'],
-    },
-    {
-      id: 'E1',
-      name: 'E1 Test',
-      price_per_unit: 15000,
-      price_range: '1.2–1.8 万',
-      desc: 'Stacked scheme',
-      outdoorUnits: [
-        { location: 'platform', w: 0.85, d: 0.35, h: 0.6 },
-        { location: 'platform', w: 0.85, d: 0.35, h: 0.6 },
-      ],
-      indoorUnits: [{ roomId: 'living_dining', type: 'cabinet' }],
-      pros: ['cheap'],
-      cons: ['risky'],
-    },
-    {
-      id: 'F2',
-      name: 'F2 Test',
-      price_per_unit: 31500,
-      price_range: '2.8–3.5 万',
-      desc: 'Garden scheme',
-      outdoorUnits: [{ location: 'entry_garden', w: 0.9, d: 0.35, h: 0.7 }],
-      indoorUnits: [{ roomId: 'living_dining', type: 'ceiling' }],
-      pros: ['pro'],
-      cons: ['con'],
-    },
-  ],
-}));
+/**
+ * 2026-10-13 阶段 3：HvacTopic 的选项改从 config/hvac.yaml 读（?raw + shared/hvac-plants 的
+ * 纯映射），与 server/project-catalog.ts 同一个文件、同一个函数——原先这里 mock 的是
+ * shared/houseData.ts 的七套 invented 报价表（A1 30,500 / A2 29,000 / …）。
+ *
+ * 两个层次都要钉：
+ *   ① **真实 config**：app 看到的方案/单价必须与预算同源（A2 = 36,000，合同已成交）；
+ *   ② **合成 fixture**：平台多台外机超宽的告警分支用注入的 raw YAML 驱动（真实配置只有一台）。
+ */
+const REAL_PLAN_COUNT = 1;
+
+const FIXTURE_YAML = vi.hoisted(() => [
+  'plans:',
+  '  - id: A2',
+  '    kind: vrf_ducted',
+  '    name: 单外机方案',
+  '    summary: fixture',
+  '    commercial: { status: contracted, price_cny: 36000 }',
+  '    outdoor: { platform: west_platform, width: 0.99, depth: 0.40, height: 0.81 }',
+  '    diagram: { anchors: [], terminals: [], routes: [], reference_constraints: [] }',
+  '  - id: E1',
+  '    kind: vrf_ducted',
+  '    name: 多外机方案',
+  '    commercial: { status: candidate, price_cny: 15000 }',
+  '    outdoor: { platform: west_platform, width: 0.85, depth: 0.35, height: 0.6 }',
+  '    outdoors:',
+  '      - { platform: west_platform, width: 0.85, depth: 0.35, height: 0.6 }',
+  '      - { platform: west_platform, width: 0.85, depth: 0.35, height: 0.6 }',
+  '    diagram: { anchors: [], terminals: [], routes: [], reference_constraints: [] }',
+  '  - id: F2',
+  '    kind: vrf_ducted',
+  '    name: 花园方案',
+  '    commercial: { status: candidate, price_cny: 31500 }',
+  '    outdoor: { location: entry_garden, width: 0.9, depth: 0.35, height: 0.7 }',
+  '    diagram: { anchors: [], terminals: [], routes: [], reference_constraints: [] }',
+  '',
+].join('\n'));
+
+vi.mock('../../../config/hvac.yaml?raw', () => ({ default: FIXTURE_YAML }));
 
 vi.mock('../data/designData.js', () => ({
   floorOptions: [
@@ -170,15 +166,17 @@ describe('HvacTopic', () => {
     expect(topic.name).toBe('空调方案');
   });
 
-  it('should have options from hvacSchemes', () => {
+  it('should have options from config/hvac.yaml (fixture above)', () => {
     expect(topic.options.length).toBe(3);
-    expect(topic.options[0].id).toBe('A1');
-    expect(topic.options[0].name).toBe('A1 Test');
+    expect(topic.options[0].id).toBe('A2');
+    expect(topic.options[0].name).toBe('单外机方案');
+    // 单价随配置透传，不再有 invented 区间
+    expect(topic.options[0].price).toBe(36000);
   });
 
   it('clears obsolete topic objects but delegates all HVAC geometry to render facts', () => {
     const mock = createMockSceneApi();
-    const ids = topic.apply(mock.api as any, 'A1');
+    const ids = topic.apply(mock.api as any, 'A2');
 
     expect(ids).toEqual([]);
     expect(mock.api.clearTopicObjects).toHaveBeenCalledWith('hvac');
@@ -193,7 +191,7 @@ describe('HvacTopic', () => {
 
   it('should clear previous objects before applying new scheme', () => {
     const mock = createMockSceneApi();
-    topic.apply(mock.api as any, 'A1');
+    topic.apply(mock.api as any, 'A2');
     const countAfterA1 = mock.addedObjects.size;
 
     topic.apply(mock.api as any, 'E1');
@@ -203,8 +201,24 @@ describe('HvacTopic', () => {
   it('does not use room availability to fabricate geometry', () => {
     const mock = createMockSceneApi();
     (mock.api.getRoom as any).mockReturnValue(undefined);
-    expect(topic.apply(mock.api as any, 'A1')).toEqual([]);
+    expect(topic.apply(mock.api as any, 'A2')).toEqual([]);
     expect(mock.api.addObject).not.toHaveBeenCalled();
+  });
+
+  it('reads the real config/hvac.yaml: exactly the contracted plan at the contract price', async () => {
+    // 不经过上面的 fixture mock：直接解析真实配置，钉住「app 与预算同源」。
+    // 真实配置 2026-10-13 阶段 3 起只有成交方案 A2（36,000 / contracted）。
+    const { readFileSync } = await import('node:fs');
+    const { load } = await import('js-yaml');
+    const { hvacPlanOptions } = await import('@shared/hvac-plans');
+    // vitest 的 cwd 不保证是 app/，import.meta.url 又带 /@fs 前缀——两步都避开，直接定位仓库根。
+    const here = import.meta.url.replace(/^\/@fs/, '');
+    const repoRoot = new URL('../../../', here).pathname;
+    const doc = load(readFileSync(`${repoRoot}config/hvac.yaml`, 'utf8'));
+    const options = hvacPlanOptions(doc);
+    expect(options.length).toBe(REAL_PLAN_COUNT);
+    expect(options.map((o) => [o.id, o.price_per_unit, (o.data as { status: string }).status]))
+      .toEqual([['A2', 36000, 'contracted']]);
   });
 });
 
@@ -215,22 +229,22 @@ describe('HvacTopic.validate', () => {
     topic = new HvacTopic();
   });
 
-  it('should return empty warnings for valid scheme A1', () => {
+  it('should return empty warnings for valid scheme A2', () => {
     const mock = createMockSceneApi();
-    const warnings = topic.validate!(mock.api as any, 'A1');
+    const warnings = topic.validate!(mock.api as any, 'A2');
     expect(warnings).toEqual([]);
   });
 
-  it('should warn about E1 stacked units', () => {
+  it('should warn if platform units total width exceeds platform', () => {
     const mock = createMockSceneApi();
     const warnings = topic.validate!(mock.api as any, 'E1');
-    expect(warnings.some((w) => w.includes('叠叠乐'))).toBe(true);
+    expect(warnings.some((w) => w.includes('宽度'))).toBe(true);
   });
 
-  it('should warn about F2 garden placement', () => {
+  it('should not warn for a plan whose outdoor sits outside the platform', () => {
     const mock = createMockSceneApi();
     const warnings = topic.validate!(mock.api as any, 'F2');
-    expect(warnings.some((w) => w.includes('入户花园'))).toBe(true);
+    expect(warnings).toEqual([]);
   });
 
   it('should return warning for unknown scheme', () => {

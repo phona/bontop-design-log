@@ -24,7 +24,9 @@ const rulesConfig: DesignRulesConfig = {
     furnishingTypeToTopic: { robot_dock_gbath: 'robot_vacuum' },
     lineItems: [
       { topic: 'floor', quantityField: 'floorArea' },
-      { topic: 'wall', quantityField: 'wetWallArea' },
+      // DEC-2026-10-13 阶段 2 第二半：wetWallArea 拍系数已删除，墙砖量改由
+      // shared/masonry-takeoff.ts 从 overlay 声明实算（字段名 masonryTileArea）。
+      { topic: 'wall', quantityField: 'masonryTileArea' },
       { topic: 'paint', quantityField: 'paintWallArea' },
       { topic: 'hvac' },
       { topic: 'robot_vacuum', calcMode: 'count' },
@@ -204,7 +206,7 @@ describe('Budget + Risks + Schemes API', () => {
   it('POST /api/schemes/:id/restore restores scheme', async () => {
     await request(app)
       .patch('/api/scheme/current')
-      .send({ selections: [{ topic: 'hvac', optionId: 'A1' }] })
+      .send({ selections: [{ topic: 'hvac', optionId: 'A2' }] })
       .expect(200);
 
     const listRes = await request(app).get('/api/schemes').expect(200);

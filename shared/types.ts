@@ -60,19 +60,15 @@ export interface OutdoorUnit {
   h: number;
 }
 
-export interface HvacScheme {
-  id: string;
-  name: string;
-  /** 预算用一口价（CNY），与 `materials.yaml` 的 `price_per_unit` 语义一致 */
-  price_per_unit: number;
-  /** 展示用的价格区间文本，如 "2.8–3.0 万" */
-  price_range?: string;
-  desc: string;
-  outdoorUnits: OutdoorUnit[];
-  indoorUnits: IndoorUnit[];
-  pros: string[];
-  cons: string[];
-}
+/**
+ * HVAC 方案常量（2026-10-13 阶段 3 删除）。
+ *
+ * 原 `HvacScheme` 带 `price_per_unit` / `price_range` 两个字段，值来自 shared/houseData.ts 的
+ * 七套 invented 报价表（A1 30,500 / A2 29,000 / … / F2 31,500 + 七个 invented 区间），
+ * 与 DEC-2026-10-04-R1 的合同成交价 36,000 并存。现在选型/单价/取证态一律读
+ * config/hvac.yaml 的 `commercial` 块（shared/hvac-plans.ts 做纯映射），类型里不再留价格字段，
+ * 免得下次又有人往代码里写一口价。
+ */
 
 export interface TopicOption {
   id: string;
@@ -428,10 +424,21 @@ export interface BudgetCategory {
   actual: number;
   manualActual: number;
   autoActual: number;
-  status: 'draft' | 'ok' | 'near' | 'over' | 'reserved';
+  status: 'draft' | 'ok' | 'near' | 'over' | 'reserved' | 'unpriced';
   notes: string;
-  /** 待报价的人工计价行：数量已实算，rate 未定，因此未计入 actual（显形而非静默归零）。 */
+  /**
+   * 待报价的人工计价行：数量已实算，rate 未定，因此未计入 actual（显形而非静默归零）。
+   */
   pendingLabor?: Array<{ area: string; quantity: number; unit: string; reason: string }>;
+  /**
+   * 有实算量但**没有计价归属**的材料条目（DEC-2026-10-13 阶段 2 第二半，瓦工科目专用）。
+   *
+   * 与 `pendingLabor` 的分工：pendingLabor 是「rate 待报价」，这里是「量算出来了但不知道该按哪档
+   * 计价」——例如生活阳台地面（control.yaml 记其口径未裁）、反边/海棠角/底盒开孔/壁龛
+   * （overlay 无声明源，`shared/masonry-takeoff.ts` 不派生）。数量为 null 表示连量都无从派生。
+   * 这些条目一律**不计入 actual**，但必须显形：静默不计就是静默归零，与静默发明同一类病。
+   */
+  pendingQuantity?: Array<{ id: string; quantity: number | null; unit: string; reason: string }>;
   /**
    * 候选价门控（2026-10-13 阶段 1，**纯加法**）：`autoActual` 中 status 属于
    * measured / confirmed / quoted_sheet / contracted / provided_by_developer /
@@ -844,7 +851,8 @@ export type SceneElement =
   // floor_region 的算量口径（DEC-2026-10-09-P16）：**默认计入**，标了 `excluded: true` 才排除。
   // 与旧 `costed` 相反——旧标志要求每条都手工 opt-in，等于把「这块地是不是已被某个 applyRooms
   // 房间算过」这件几何已知的事再手抄一遍（改一处忘另一处即双计/漏计）。现在「整块落在已计费
-  // 房间内」由 server/budget-calculator.ts 的 loadExtraFloorRegionArea 按几何自动跳过，
+  // 房间内」由 shared/masonry-takeoff.ts 的 floorRegionInsideCostedRoom 按几何自动跳过
+  // （DEC-2026-10-13 阶段 2 第二半起唯一实现，server/budget-calculator.ts 只负责装配输入）；
   // `excluded` 只保留给几何说不清的例外（开发商已铺 / 业主裁定不铺），且必须带 reason。
   | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string; excluded?: boolean }
   | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[]; along?: [number, number] }

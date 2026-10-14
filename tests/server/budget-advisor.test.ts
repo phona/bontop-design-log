@@ -80,11 +80,15 @@ describe('BudgetAdvisor', () => {
     const { advisor, calc } = loadAdvisor();
     const scheme = currentScheme();
     const total = calc.calculate(scheme).totalActual;
-    // target 在理论最大可省范围内（~16.7k），确保可达
-    const result = advisor.suggest(scheme, total - 15000);
+    // 2026-10-13 阶段 2 第二半：floor 的材料量从 121.51㎡ 变成 123.34㎡（含主走廊 extra），
+    // 单是 floor 换砖的最大可省就从 ~14k 抬到 15,088。
+    // 2026-10-13 阶段 3：hvac 只剩成交方案 A2（七套 invented 方案已删），原本「hvac 换便宜方案
+    // 省 14,000」这条降级路径消失，全库最大可省从 ~44k 降到 27,387.627——所以缺口取 20k：
+    // 仍需 2 个 topic（floor 15,087.627 + dresser 6,600），足以检验「同一 topic 不出两条互斥建议」。
+    const result = advisor.suggest(scheme, total - 20000);
     const topics = result.suggestions.map((s) => s.topic);
     assert.equal(new Set(topics).size, topics.length, 'no duplicate topics');
-    assert.ok(result.suggestions.length >= 2, 'needs 2+ topics to cover 15k (hvac max 14k)');
+    assert.ok(result.suggestions.length >= 2, `needs 2+ topics to cover 20k (got ${result.suggestions.length})`);
     assert.ok(result.feasible);
     assert.ok(result.resultingTotal <= result.target);
   });

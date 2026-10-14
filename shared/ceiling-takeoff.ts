@@ -327,6 +327,15 @@ export function computeCeilingTakeoff(zones: CeilingZone[], rooms?: CeilingTakeo
       rollup.expandedAreaM2 += entry.expandedAreaM2;
       rollup.perimeterM += treatment.perimeterM;
       rollup.linearM += entry.longSideM;
+      // 铝扣板的计价单位是**板块数**（pricingUnit: 'panel'）：缺 buckle_panel.module 时
+      // panelCount 为 undefined，旧代码 `?? 0` 会让厨卫铝扣板整片按 0 块计价——金额静默归零，
+      // 而同一张表上的㎡ 行照样在算，看不出任何异常（"看起来合理"的老毛病）。
+      // 石膏板 / 窗帘盒 / 晾衣架没有板块计价行，0 对它们是正确值，所以只对铝扣板 fail-closed。
+      if (trade === 'aluminum_buckle' && entry.panelCount === undefined) {
+        throw new Error(
+          `吊顶分区 ${zone.id} 的 trade 是 aluminum_buckle，但缺 buckle_panel.module（或 module 不是正数）：铝扣板按板块数计价，不能按 0 块算。请到 config/ceiling.yaml 补 buckle_panel.module（本案厨卫均为 300×300 → 0.3）`,
+        );
+      }
       rollup.panelCount += entry.panelCount ?? 0;
       // 计价形态汇总：边吊按米（长边）、满吊按㎡（净面积）
       if (pricingForm === 'edge_drop') {

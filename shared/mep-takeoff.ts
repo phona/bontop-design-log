@@ -63,6 +63,12 @@ export interface MepTakeoffRules {
     /** 弱点位额外芯数（如 net_gateway 需 2 根 Cat6：WAN 上联 + LAN 回弱电箱）。 */
     weak_extra_cores?: Record<string, number>;
     loss: { wire: number; pipe: number };
+    /**
+     * 管件系数（个/m）：管材按米计价、管件按个计价，两者之间只允许这一个换算系数。
+     * 缺失即抛错——过去它硬编码在 server/mep-quotes.ts 里（0.35 / 0.27），
+     * 依据只写在报价卡 scope_note 的散文里，代码与散文无法对账。
+     */
+    fitting_per_meter: { ppr: number; pvc: number };
   };
   trunk_wire_size: string | null;
   /** 是否把路由终点到点位安装高度的竖向下引段计入管长（纯算术：to_height − point.height）。 */
@@ -154,6 +160,12 @@ export interface MepTakeoff {
     totalWaterM: number;
     totalDrainageM: number;
     lossApplied: number;
+    /**
+     * 管件数量（个）：按 `units.fitting_per_meter` 从管长派生的**量**，报价层只读不读系数。
+     * PPR 给水管件随给水管长、PVC 排水管件随排水管长。缺失系数时整个 takeoff 抛错，
+     * 不会退化成"管件 0 个"或"管件按 1.0 个/m"——那分别是静默漏计与静默多计。
+     */
+    fittings: { ppr: number; pvc: number };
   };
   devices: {
     boxes: number;
@@ -217,6 +229,51 @@ function validFinite(value: unknown, minimum = 0): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= minimum;
 }
 
+/**
+ * 算量规则取值：**缺失/非法即抛错**（2026-10-14 阶段 4：清除会算错钱的静默兜底）。
+ *
+ * 这些值过去都写成 `validFinite(x) ? x : <兜底>`（导线/管材损耗 1.0、双控附加 0 芯、
+ * 主开关 0 极、SPD 0 模、余量 0）。`validateTakeoffRules` 会把缺项记进
+ * `unresolved(kind: 'error')`，下游据此把 `feasibleForQuote` 置 false——但**数字照样按
+ * 兜底值算出来**：任何忽略 feasibleForQuote 的消费方（报价卡、采购单、budget）都会拿到
+ * 一份"结构完整、其实少了 5%~8% 损耗"的量。
+ *
+ * 「不可报价」与「数字是错的」必须同时成立，不能用前者代替后者。所以这里在动手算之前
+ * 先 fail-closed：宁可整表不出，也不出一份错表。错误信息直接指去哪补。
+ */
+function requireRule(value: unknown, key: string, minimum = Number.EPSILON): number {
+  if (!validFinite(value, minimum)) {
+    throw new Error(
+      `config/mep-takeoff.yaml 的 ${key} 必须是有限数值且 >= ${minimum}（实际 ${String(value)}）：算量规则缺失时不按兜底值继续算——那会让管长/导线/模数静默偏离声明，请补该字段`,
+    );
+  }
+  return value as number;
+}
+
+/** 折线点最小形状（mepRoutePoints 的产出 / route.via 的声明）。 */
+type RoutePoint = { x: number; z: number; y?: number };
+
+/**
+ * 折线点的标高：**缺 y 即抛错**（2026-10-14 阶段 4）。
+ *
+ * 旧代码 `(b.y ?? 0) - (a.y ?? 0)` 把「没声明标高」当成「标高 0」，于是吊顶内 2.55m 的
+ * 一段水平管会被算成 2.55m 的竖直段——管长凭空多出一大截，而 `byCircuit` 诊断表上看不出
+ * 任何异常（它只显示管长，不显示标高）。标高是算量输入，不是可以默认的观感参数。
+ */
+function requirePointY(point: RoutePoint, label: string): number {
+  if (point.y === undefined) {
+    throw new Error(
+      `${label} 的折线点 (${point.x}, ${point.z}) 缺 y 标高：不能按 0 计算，否则吊顶内的水平段会被算成竖直段、管长凭空变长。请到 config/mep-hvac-coordination.yaml 补该点的 y（或该路由的 from_height/to_height）`,
+    );
+  }
+  return point.y;
+}
+
+/** 折线边长（含竖向分量）；任一端点缺 y 即抛错（见 requirePointY）。 */
+function routeSegmentLength(a: RoutePoint, b: RoutePoint, label: string): number {
+  return Math.hypot(b.x - a.x, requirePointY(b, label) - requirePointY(a, label), b.z - a.z);
+}
+
 function validateTakeoffRules(rules: MepTakeoffRules): Array<{ id: string; reason: string }> {
   const issues: Array<{ id: string; reason: string }> = [];
   const check = (id: string, value: unknown, minimum = 0): void => {
@@ -249,12 +306,10 @@ function pipeKeysForWater(temp: 'hot' | 'cold' | 'mixed', dn: 20 | 25 | 32): str
   return temp === 'mixed' ? [`mixed/${dn}`, `cold/${dn}`] : [`${temp}/${dn}`];
 }
 
-function routePointDistance(points: Array<{ x: number; z: number; y?: number }>, fromIndex: number, toIndex: number): number {
+function routePointDistance(points: Array<{ x: number; z: number; y?: number }>, fromIndex: number, toIndex: number, label: string): number {
   let length = 0;
   for (let i = fromIndex + 1; i <= toIndex; i += 1) {
-    const a = points[i - 1];
-    const b = points[i];
-    length += Math.hypot(b.x - a.x, (b.y ?? 0) - (a.y ?? 0), b.z - a.z);
+    length += routeSegmentLength(points[i - 1], points[i], label);
   }
   return length;
 }
@@ -263,7 +318,7 @@ function routeLength(route: MepRoute, from?: { x: number; z: number; y?: number 
   const points = mepRoutePoints(route, from, to);
   let length = 0;
   for (let i = 1; i < points.length; i += 1) {
-    length += Math.hypot(points[i].x - points[i - 1].x, (points[i].y ?? 0) - (points[i - 1].y ?? 0), points[i].z - points[i - 1].z);
+    length += routeSegmentLength(points[i - 1], points[i], `路由 ${route.id}`);
   }
   return length;
 }
@@ -283,7 +338,20 @@ function terminalDrop(
   const point = points.get(route.to);
   const pointHeight = point?.height;
   if (to === undefined || pointHeight === undefined) return 0;
-  const endY = route.to_height ?? to.y ?? 0;
+  // 竖向下引段的终点标高：路由自己声明的 to_height 优先，其次才是解析出的端点 y。
+  // 两者都缺 → 旧代码取 0，于是 `Math.max(0, 0 − pointHeight)` 恒为 0，**整段下引管消失**
+  // （已画线点位因此系统性少算约 2.2m/个）。标高不可默认：缺声明就抛错。
+  // 注：routeLength 的 requirePointY 已经先对同一个表达式 fail-closed（它用的就是
+  // `mepRoutePoints` 的 `to_height ?? to.y`），所以这个分支今天不可达——保留它是为了让
+  // terminalDrop 自身自洽，将来若有人在新路径上先调它，不会静默退回 0。
+  let endY: number;
+  if (route.to_height !== undefined) endY = route.to_height;
+  else if (to.y !== undefined) endY = to.y;
+  else {
+    throw new Error(
+      `路由 ${route.id} 的终点标高无法确定（to_height 与端点 y 均未声明）：竖向下引段会整段消失，已画线点位将少算约 2.2m/个管。请到 config/mep-hvac-coordination.yaml 补 to_height`,
+    );
+  }
   return Math.max(0, endY - pointHeight);
 }
 
@@ -317,6 +385,20 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   const { electrical, plumbing, circuits, controls = [], routes, resolution, rules } = input;
   const covered = new Set(rules.covered_layers);
   const unresolved: MepTakeoff['unresolved'] = validateTakeoffRules(rules).map((item) => ({ ...item, kind: 'error' }));
+  // 2026-10-14 阶段 4：规则层的三个"参与乘法"的值在动手算之前先取值，缺了就抛错。
+  // validateTakeoffRules（上面一行）已把它们记进 unresolved，但那只是"不可报价"的标记；
+  // 少了这一行，数字仍会按 1.0 / 0 芯 / 0 模算出来并被下游当成有效量使用。
+  // 三个都不可能是 0：零损耗等于"施工不用余料"，零附加芯等于"双控不用控制线"，
+  // 零模数等于"配电箱不占位"——都是物理上不成立的口径。
+  const wireLoss = requireRule(rules.units.loss?.wire, 'units.loss.wire');
+  const pipeLoss = requireRule(rules.units.loss?.pipe, 'units.loss.pipe');
+  const dualControlExtraCores = requireRule(rules.units.dual_control_extra_cores, 'units.dual_control_extra_cores', 0);
+  // 管件系数：>0 才合理（0 个/m 的管件在物理上不成立）。缺失即抛错，不兜底成 1.0。
+  const fittingPerMeterPpr = requireRule(rules.units.fitting_per_meter?.ppr, 'units.fitting_per_meter.ppr');
+  const fittingPerMeterPvc = requireRule(rules.units.fitting_per_meter?.pvc, 'units.fitting_per_meter.pvc');
+  const mainSwitchPoles = requireRule(rules.panel?.main_switch_poles, 'panel.main_switch_poles');
+  const spdModules = requireRule(rules.panel?.spd_modules, 'panel.spd_modules');
+  const spareRatio = requireRule(rules.panel?.spare_ratio, 'panel.spare_ratio', 0);
   const deferred: MepTakeoff['deferred'] = [];
   const excluded: MepTakeoff['excluded'] = rules.excluded_layers.map((item) => ({ layer: item.layer, reason: item.reason, routes: 0 }));
   const excludedIndex = new Map(rules.excluded_layers.map((item, index) => [item.layer, index]));
@@ -523,11 +605,10 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   let dualControlExtraM = 0;
   for (const [pointId, length] of switch2WayLength) {
     if (elecById.get(pointId)?.type !== 'switch_2way') continue;
-    const extraCores = validFinite(rules.units.dual_control_extra_cores) ? rules.units.dual_control_extra_cores : 0;
-    dualControlExtraM += length * extraCores;
+    dualControlExtraM += length * dualControlExtraCores;
   }
-  const wireLoss = validFinite(rules.units.loss.wire, Number.EPSILON) ? rules.units.loss.wire : 1;
-  const pipeLoss = validFinite(rules.units.loss.pipe, Number.EPSILON) ? rules.units.loss.pipe : 1;
+  // 损耗系数在上方 requireRule 已取值（缺失即抛错），此处直接乘。
+  // 旧代码 `validFinite(...) ? ... : 1` 会让缺失损耗的导线按"零损耗"计价——少买 5%~8% 的线。
   for (const bucket of buckets.values()) bucket.wireM *= wireLoss;
   const totalWireM = [...buckets.values()].reduce((sum, bucket) => sum + bucket.wireM, 0) + dualControlExtraM * wireLoss;
   if (trunkConduitM > EPS && !rules.trunk_wire_size) {
@@ -590,7 +671,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       return [];
     }
     return segments.map((segment, index) => ({
-      length: routePointDistance(points, segment.fromIndex, segment.toIndex)
+      length: routePointDistance(points, segment.fromIndex, segment.toIndex, `路由 ${route.id}`)
         + (index === segments.length - 1 && rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to) : 0),
       spec: segment,
     }));
@@ -662,10 +743,18 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
 
   // ---------- 5. 设备量 ----------
   const boxes = electrical.filter((point) => BOX_TYPES.has(point.type) && !isDeferredElectricalPoint(point)).length;
-  const withRcd = circuits.filter((circuit) => /漏保/.test(circuit.breaker ?? '')).length;
-  const mainSwitchPoles = validFinite(rules.panel.main_switch_poles) ? rules.panel.main_switch_poles : 0;
-  const spdModules = validFinite(rules.panel.spd_modules) ? rules.panel.spd_modules : 0;
-  const spareRatio = validFinite(rules.panel.spare_ratio) ? rules.panel.spare_ratio : 0;
+  // 漏保判定只认 breaker 声明。**缺 breaker 即抛错**（2026-10-14 阶段 4）：
+  // 旧代码 `/漏保/.test(circuit.breaker ?? '')` 把「没声明保护电器」当成「没有漏保」，
+  // 于是漏电断路器数量静默少算、GB 55038 7.4.3-1 的合规结论建立在漏数上。
+  // 现在由 config/electrical-topology.yaml 的每条回路显式表态（本案 20 条回路全部已声明）。
+  const withRcd = circuits.map((circuit) => {
+    if (circuit.breaker === undefined) {
+      throw new Error(
+        `回路 ${circuit.id} 缺 breaker 声明：无法判定是否带漏电保护，漏保数量会静默少算（GB 55038 7.4.3-1 要求电源插座回路 ≤30mA RCBO）。请到 config/electrical-topology.yaml 补 breaker`,
+      );
+    }
+    return /漏保/.test(circuit.breaker);
+  }).filter(Boolean).length;
   const rawModules = circuits.length + mainSwitchPoles + spdModules;
   const panelModules = rules.panel.round_up
     ? Math.ceil(rawModules * (1 + spareRatio) - EPS)
@@ -713,6 +802,10 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       totalWaterM: [...water.values()].reduce((sum, bucket) => sum + bucket.meters, 0),
       totalDrainageM: [...drainage.values()].reduce((sum, bucket) => sum + bucket.meters, 0),
       lossApplied: pipeLoss,
+      fittings: {
+        ppr: [...water.values()].reduce((sum, bucket) => sum + bucket.meters, 0) * fittingPerMeterPpr,
+        pvc: [...drainage.values()].reduce((sum, bucket) => sum + bucket.meters, 0) * fittingPerMeterPvc,
+      },
     },
     devices: {
       boxes,
@@ -738,7 +831,9 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         wireSize: bucket?.wireSize ?? '未解析',
         conduitM: conduit,
         cores: bucket?.cores ?? 0,
-        wireM: conduit * (bucket?.cores ?? 0) * rules.units.loss.wire,
+        // 用同一个已校验的 wireLoss：旧代码这里直接乘 rules.units.loss.wire，
+        // 缺失时整列 wireM 变 NaN（诊断表上一片 NaN，看不出是缺配置）。
+        wireM: conduit * (bucket?.cores ?? 0) * wireLoss,
       };
     }).sort((a, b) => b.conduitM - a.conduitM),
     requirementRoutes,

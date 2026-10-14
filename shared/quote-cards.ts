@@ -11,13 +11,50 @@
  *     杜绝「换个报价把活儿变没」。
  *  3. `out_of_scope` = 这家不报这项（≠ 待报价）：总额照算，该行只显形，并提示"别以为总额已含"。
  *  4. 未声明的行回落到 fallback（如 base.json 费率），并标 `rate_source`，不许隐形替换。
- *  5. `comparable:false`：缺 scope_note、有待报价行、有超范围行——不同口径不可直接比较。
+ *  5. `comparable:false`：缺 scope_note、有待报价行、有超范围行、**空卡**、**证据级别不是书面报价**——不同口径不可直接比较。
  *  6. 全部候选并排对比 + `deltaVsActive`：多家报价一眼看数，量永远不变。
+ *
+ * 2026-10-13「预算计算架构根治」阶段 3 补的三个机制缺口（都是被吊顶验证过之前就存在的洞）：
+ *  A. `comparable` 原先只判三个信号，`status` / `quoted_at` / 证据字段一概不参与 → 一张**带
+ *     scope_note 的照片级费率卡**会被判成 `comparable: true`。现在证据分级进 `evidence.kind`，
+ *     非 `written_quote` 一律追加不可比 note。
+ *  B. 空卡漏洞：`rates: {}` + fallback 全非 null → 无 pending / 无 out_of_scope / 无 missingScope
+ *     → `comparable: true`，"完全没报价"被当成"已报价且可比"。现在 `declaredCount === 0` 即追加 note。
+ *  C. 身份字段被静默吞掉：parser 原先只保留 7 个字段，`source` / `observed_at` /
+ *     `quote_status` / `currency` 写进卡里就消失。现在它们必须写在 `evidence{...}` 里
+ *    （parser 显式校验并透传）；**仍旧把这四个字段平写在卡根上的，直接抛错**——静默吞掉
+ *     比报错更危险：业主以为登记了出处，其实谁都没登记。
  */
 import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 
 export type QuoteCardStatus = 'baseline' | 'candidate' | 'quoted' | 'contracted' | 'rejected';
+
+/**
+ * 证据分级。**这是「能不能直接比价」的判据，不是装饰字段**：
+ *   - `written_quote`   施工方/商家的书面报价单（可签字、可追溯）→ 唯一可以放心比价的一级；
+ *   - `owner_reported`  业主转述的口头/微信报价，无书面分项 → 比价前必须补书面件；
+ *   - `photo`           照片级费率表/手写单，无施工方名称/日期/签章/总价 → 只能当假设层。
+ * 缺 `evidence` 的卡不因此被判不可比（历史卡没有这个字段），但**一旦声明就必须如实**。
+ */
+export type QuoteCardEvidenceKind = 'photo' | 'owner_reported' | 'written_quote';
+
+/**
+ * 报价卡的身份字段。2026-10-13 阶段 3 之前它们被平写在卡根上、然后被 parser 静默丢掉
+ * （`source` / `observed_at` / `quote_status` / `currency` 四项全丢），所以现在只认这一个入口。
+ */
+export interface QuoteCardEvidence {
+  kind: QuoteCardEvidenceKind;
+  /** 证据态文案，如 `preliminary_labor_rate_card` / `contract_attachment_itemized`。 */
+  status: string;
+  /** 出处（照片路径、合同附件名、链接）。 */
+  source?: string;
+  /** 观察/取得时间（可与 quoted_at 不同：quoted_at 是报价日期，observed_at 是我们看到它的日期）。 */
+  observed_at?: string;
+  /** 原始 quote_status 文案（域层自解释，parser 不解释）。 */
+  quote_status?: string;
+  currency?: string;
+}
 
 export interface QuoteCardRate {
   /** 单价（元/单位）。null = 待报价：数量显形、金额不编。 */
@@ -36,6 +73,14 @@ export interface QuoteCard<Key extends string> {
   rates: Partial<Record<Key, QuoteCardRate>>;
   /** 不在本家报价范围内的计价行（≠ per_unit:null 的待报价）。 */
   out_of_scope?: Key[];
+  /** 证据分级 + 身份字段（source / observed_at / quote_status / currency）。 */
+  evidence?: QuoteCardEvidence;
+  /**
+   * 域层附加数据（如瓦工的「按规格费率表 / conditional_addons / extras / notes」）。
+   * quote-cards 只负责**搬运与保留**，不解释其内容；域层自己校验形状（fail closed）。
+   * 没有这个字段时，卡根上的任何额外键都会被静默忽略——所以域层数据必须显式放进这里。
+   */
+  domain?: Record<string, unknown>;
   note?: string;
 }
 
@@ -64,6 +109,8 @@ export interface QuoteCardComparison<Key extends string> {
   active: boolean;
   comparable: boolean;
   comparability_notes: string[];
+  /** 证据分级（原样透传）：消费者据此知道这家是书面报价还是照片级假设。 */
+  evidence?: QuoteCardEvidence;
   rows: QuoteCardRow<Key>[];
   total: number | null;
   pendingRows: Key[];
@@ -82,6 +129,36 @@ export interface QuoteCardSpec<Key extends string> {
 
 function fail(message: string): never {
   throw new Error(`quote-cards: ${message}`);
+}
+
+const EVIDENCE_KINDS: readonly QuoteCardEvidenceKind[] = ['photo', 'owner_reported', 'written_quote'];
+
+/** 卡根上不再允许出现的身份字段（已改由 `evidence{...}` 承载，见文件头缺口 C）。 */
+const LEGACY_IDENTITY_FIELDS = ['source', 'observed_at', 'quote_status', 'currency'] as const;
+
+function optionalString(record: Record<string, unknown>, field: string, quoteId: string): string | undefined {
+  const value = record[field];
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string' || !value) fail(`${quoteId}.evidence.${field} 必须是非空字符串`);
+  return value;
+}
+
+/** 解析 `evidence{...}`：kind 必须在三级枚举里，status 必填，四个身份字段透传不解释。 */
+function parseEvidence(value: unknown, quoteId: string): QuoteCardEvidence {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) fail(`${quoteId}.evidence 必须是对象`);
+  const record = value as Record<string, unknown>;
+  if (typeof record.kind !== 'string' || !EVIDENCE_KINDS.includes(record.kind as QuoteCardEvidenceKind)) {
+    fail(`${quoteId}.evidence.kind 必须是 ${EVIDENCE_KINDS.join('/')}`);
+  }
+  if (typeof record.status !== 'string' || !record.status) fail(`${quoteId}.evidence.status 必须是非空字符串`);
+  return {
+    kind: record.kind as QuoteCardEvidenceKind,
+    status: record.status,
+    ...(optionalString(record, 'source', quoteId) !== undefined ? { source: optionalString(record, 'source', quoteId) } : {}),
+    ...(optionalString(record, 'observed_at', quoteId) !== undefined ? { observed_at: optionalString(record, 'observed_at', quoteId) } : {}),
+    ...(optionalString(record, 'quote_status', quoteId) !== undefined ? { quote_status: optionalString(record, 'quote_status', quoteId) } : {}),
+    ...(optionalString(record, 'currency', quoteId) !== undefined ? { currency: optionalString(record, 'currency', quoteId) } : {}),
+  };
 }
 
 function parseRate(value: unknown, quoteId: string, key: string): QuoteCardRate {
@@ -145,6 +222,20 @@ export function parseQuoteCards<Key extends string>(raw: string, spec: QuoteCard
     for (const key of Object.keys(ratesRaw)) {
       if (!spec.keys.includes(key as Key)) fail(`${id}.rates.${key} 不是已知计价行`);
     }
+    // 身份字段平写在卡根上 → 抛错。阶段 3 之前这里是静默丢弃：卡上看着登记了 source /
+    // observed_at / quote_status / currency，parser 一个都不留，「已登记出处」是假的。
+    for (const field of LEGACY_IDENTITY_FIELDS) {
+      if (record[field] !== undefined) {
+        fail(`${id}.${field} 必须写进 evidence{...}（身份字段不再平写在卡根上，也不再被静默丢弃）`);
+      }
+    }
+    let domain: Record<string, unknown> | undefined;
+    if (record.domain !== undefined) {
+      if (typeof record.domain !== 'object' || record.domain === null || Array.isArray(record.domain)) {
+        fail(`${id}.domain 必须是对象`);
+      }
+      domain = { ...(record.domain as Record<string, unknown>) };
+    }
     const rates: Partial<Record<Key, QuoteCardRate>> = {};
     for (const key of spec.keys) {
       if (ratesRaw[key] !== undefined) rates[key] = parseRate(ratesRaw[key], id, String(key));
@@ -156,6 +247,8 @@ export function parseQuoteCards<Key extends string>(raw: string, spec: QuoteCard
       status: record.status as QuoteCardStatus,
       rates,
       ...(outOfScope !== undefined ? { out_of_scope: outOfScope } : {}),
+      ...(record.evidence !== undefined ? { evidence: parseEvidence(record.evidence, id) } : {}),
+      ...(domain !== undefined ? { domain } : {}),
       ...(record.note !== undefined ? { note: record.note as string } : {}),
     });
   }
@@ -188,6 +281,59 @@ export function setActiveQuoteCard<Key extends string>(id: string, path: string,
 export interface QuoteCardFallback<Key extends string> {
   per_unit: number | null;
   unit: string;
+}
+
+/**
+ * 一个计价行解析出来的单价。`source` 恒为 `'quote'`（卡里声明过）或回落源名
+ * （`spec.fallbackLabel ?? 'fallback'`）——**回落必须看得见**，不许隐形替换。
+ *
+ * 2026-10-13 阶段 3：从 `server/ceiling-quotes.ts` 上提并参数化（原 `ResolvedCeilingRate`，
+ * 那里把回落源硬编码成 `'base.json'`，瓦工接进来时会凭空多出第三种写字）。
+ */
+export type ResolvedQuoteRate = {
+  per_unit: number | null;
+  unit: string;
+  source: 'quote' | string;
+  scope_note?: string;
+};
+
+export type ResolvedQuoteRates<Key extends string> = Record<Key, ResolvedQuoteRate>;
+
+/**
+ * 解析生效报价的各计价行单价；未声明的行回落到 fallback 并标 `source`。
+ *
+ * `file` 为 null = 「没有报价文件」（调用方已把读取失败记进日志）。此时按无报价处理：
+ * **全部**计价行走 fallback，`source` 恒为回落源名。
+ * 为什么不在这里合成一张空卡：伪造 `{ active: 'base.json', quotes: [] }` 会让
+ * `file.quotes.find(...)` 返回 undefined → 抛错（旧 budget-calculator 正是这么 500 的）；
+ * 而伪造 `{ active: '__none__', quotes: [...] }` 又把「完全没报价」伪装成一张真卡，
+ * 会流进报价对比面板。null 才是「无报价」的诚实形状。
+ */
+export function resolveActiveQuoteRates<Key extends string>(
+  file: QuoteCardsFile<Key> | null,
+  fallback: Record<Key, QuoteCardFallback<Key>>,
+  spec: QuoteCardSpec<Key>,
+): ResolvedQuoteRates<Key> {
+  // 文件在（哪怕 active 指向不存在的卡片）→ 照旧抛错：那是真的配错了，不能悄悄回落。
+  const active = file ? file.quotes.find((quote) => quote.id === file.active) : undefined;
+  if (file && !active) throw new Error(`active「${file.active}」不存在`);
+  const fallbackLabel = spec.fallbackLabel ?? 'fallback';
+  const resolve = (key: Key): ResolvedQuoteRate => {
+    const fromQuote = active?.rates[key];
+    if (fromQuote) {
+      return {
+        per_unit: fromQuote.per_unit,
+        unit: fromQuote.unit,
+        source: 'quote',
+        ...(fromQuote.scope_note !== undefined ? { scope_note: fromQuote.scope_note } : {}),
+      };
+    }
+    return { per_unit: fallback[key].per_unit, unit: fallback[key].unit, source: fallbackLabel };
+  };
+  return spec.keys.reduce((acc, key) => {
+    acc[key] = resolve(key);
+    return acc;
+  }, {} as ResolvedQuoteRates<Key>);
 }
 
 /** 全部报价并排对比（含未生效的），用于「多家报价一眼看数」。量由调用方的 takeoff 提供，永不变。 */
@@ -230,6 +376,18 @@ export function compareQuoteCards<Key extends string>(
     }
     const missingScope = pricedRows.filter((row) => row.rate_source === 'quote' && !quote.rates[row.key]?.scope_note);
     if (missingScope.length > 0) comparabilityNotes.push('报价未声明含项范围（辅材/安装/损耗/税费），与声明过的候选不可直接比较');
+    // 缺口 B：一张 rates 为空的卡 + 全非 null 的 fallback = 「完全没报价」，却因为没有任何
+    // pending / out_of_scope / missingScope 而 comparable:true。空卡必须显形。
+    const declaredCount = spec.keys.filter((key) => quote.rates[key] !== undefined).length;
+    if (declaredCount === 0) comparabilityNotes.push('该卡未声明任何计价行（全部单价来自 fallback，不是报价）');
+    // 缺口 A：证据级别不是书面报价 → 不可直接比价。照片级费率卡（无施工方名称/日期/签章/总价）
+    // 与业主转述都只是假设层，把它们和书面报价并排比价就是伪造可比性。
+    if (quote.evidence && quote.evidence.kind !== 'written_quote') {
+      const kindLabel = quote.evidence.kind === 'photo' ? '照片级费率表' : '业主转述';
+      comparabilityNotes.push(
+        `证据级别为${kindLabel}（${quote.evidence.status}），非施工方书面报价单，与书面报价候选不可直接比较`,
+      );
+    }
     const coveredScope = pricedRows.filter((row) => row.per_unit !== null).map((row) => spec.labels[row.key]).join('、');
     return {
       id: quote.id,
@@ -239,6 +397,7 @@ export function compareQuoteCards<Key extends string>(
       active: quote.id === file.active,
       comparable: comparabilityNotes.length === 0,
       comparability_notes: comparabilityNotes,
+      ...(quote.evidence !== undefined ? { evidence: quote.evidence } : {}),
       rows,
       total,
       pendingRows,

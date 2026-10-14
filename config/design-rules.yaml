@@ -101,16 +101,29 @@ budget:
   # applyRooms：限定算量范围，避免材料满铺到不施工的房间（电梯井等）。
   # DEC-041：地砖统一为单一 floor topic + 分房覆盖（roomOverrides）。
   # floor=全屋铺地房间；入户花园 entry_garden 开发商已铺 → 移出算量（渲染仍可视化但不计费，见 DEC-041）。
-  # 显式房间覆盖（roomOverrides）始终尊重并计费，applyRooms 仅约束 default 满铺。wall=仅湿区贴砖；cabinet/countertop=仅厨房。
+  # 显式房间覆盖（roomOverrides）始终尊重并计费，applyRooms 仅约束 default 满铺。
+  # 2026-10-13 阶段 2 第二半：floor 的**数量**改由 shared/masonry-takeoff.ts 实算（干/湿区房 +
+  # floor_region extra），wall 的数量改由 overlay 贴砖声明实算且不再有 applyRooms，
+  # cabinet/countertop 的数量改由 house.yaml 柜体段实算。拍系数公式（0.7 / 0.8）已全部删除。
   lineItems:
     - topic: floor
+      # 数量唯一来源：shared/masonry-takeoff.ts 实算（干/湿区房间 footprint + floor_region extra）。
+      # 房间划分见 config/tile-comparison.yaml 的 dry_room_ids / wet_room_ids；
+      # 材料侧与人工侧（base.json masonry.labor 的 floor 行）共用同一个出口，不再各算一遍。
+      # applyRooms 只做「默认满铺范围」的二次闸门；被它排除的房间若在干/湿区清单里，
+      # 由 tests/server/budget-calculator.test.ts 的房间集对账断言捕获，不会静默漏计。
       quantityField: floorArea
       calcMode: area
       applyRooms: [master_bath, guest_bath, kitchen, balcony, living_dining, master_bedroom, study, bedroom_nw, bedroom_se]
     - topic: wall
-      quantityField: wetWallArea
+      # 数量唯一来源：overlay.yaml 的 wall_region + sill_region 声明（shared/masonry-takeoff.ts 实算）。
+      # DEC-2026-10-13 阶段 2 第二半：废除 `wetWallArea = (宽+深)×2×高×0.7`——那个 0.7 全库无依据，
+      # 算出 65.699㎡，而 overlay 声明实算只有它的一半不到（按 wall_tile_01 单价多算两千余元）。
+      # **不再有 applyRooms**：贴砖范围由声明自身决定（DEC-2026-10-07-R11 起 wall_region 就带 room
+      # 字段，「预算与审计按 (wall, room) 去重」）。再列一份房间表就是同一个事实存两处——
+      # 新增一个贴砖房却忘了改表，那间房的墙砖会静默消失。
+      quantityField: masonryTileArea
       calcMode: area
-      applyRooms: [master_bath, guest_bath, kitchen, balcony]
     - topic: paint
       # 数量唯一来源：overlay.yaml 的 paint_region 声明（见 server/budget-calculator.ts 的
       # loadPaintScopeAreaByRoom）。墙+顶，不扣门窗洞口，只对 wall_finish=paint 的房间算量。
@@ -119,11 +132,17 @@ budget:
     - topic: hvac
       calcMode: fixed
     - topic: cabinet
-      quantityField: linearKitchen
-      calcMode: length
+      # 数量唯一来源：config/house.yaml 的 kitchen_cabinet_run 几何（长 × cabinetHeight = 投影面积）。
+      # DEC-2026-10-13 阶段 2 第二半：废除 `linearKitchen = 深×0.8`——算出 1.92 而柜体段实计 4.36m。
+      # cabinet_board_01 的 800 元/㎡ 是**投影面积**价（control.yaml「柜体800/㎡投影」），
+      # 所以保持 ㎡ 计价、换成正确的面积口径，而不是把单价改成全库没有的 元/延米。
+      quantityField: cabinetProjectedArea
+      calcMode: area
       applyRooms: [kitchen]
     - topic: countertop
-      quantityField: linearKitchen
+      # 数量唯一来源：house.yaml 的 kitchen_cabinet_run + kitchen_countertop_bridge 长度求和（延米）。
+      # 桥段必须算进台面（house.yaml 注释：「只是连续台面，不生成柜体」）——柜体量不含它，台面量含它。
+      quantityField: countertopRunLength
       calcMode: length
       applyRooms: [kitchen]
     - topic: interior_door

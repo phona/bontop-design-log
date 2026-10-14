@@ -89,6 +89,24 @@
 #              有交叠 → error，message 给出两个 id 与交叠面积。
 #              最小示例：{ id: c.s, kind: overlap,
 #                          datasets: ['layout.floor_regions', 'layout.rooms'] }
+#    quantity_parity
+#              **同一个物理量在所有出现处必须相等**（2026-10-14 第一道强制对账）。
+#              `compare[]` 列两侧以上，每侧一个 value：
+#                `dataset:<点分键>`     入口脚本预算的机器源（`budget.masonry` 等）
+#                `yaml:<路径>#<id>.<点分路径>`  在文件里递归找 `id == <id>` 的对象再取值
+#              （`#<id>` **不可省略**：省了会让 `config/x.yaml` 的点号在「文件名边界」与
+#               「路径分隔」之间歧义，歧义写法正是静默取错值的入口）
+#              任一侧取不到有限数 → parity_unresolvable（error）；两侧差超 `tolerance`
+#              （默认 0.005）→ parity_mismatch（error），message 列出全部两侧的值。
+#              最小示例：{ id: c.t, kind: quantity_parity, unit: ㎡, tolerance: 0.005,
+#                          compare: [{ label: '实算', value: 'dataset:budget.masonry.totalTileSqm' },
+#                                    { label: '登记', value: 'yaml:schedule/phase-1/control.yaml#COST-060-08.quantity_declared.total_tile_sqm' }] }
+#    single_source
+#              **同一张费率表/常量表在全仓只许出现一次**（第二道）。`patterns[]` 每个正则
+#              在 `scope`（前缀列表，来自 contract.files）内的命中数必须恰好 `expect` 次
+#              （默认 1）；多出来的一份连位置一起报。`exclude` 排除 tests/ 等夹具目录。
+#              最小示例：{ id: c.u, kind: single_source, scope: [server/], exclude: [tests/],
+#                          patterns: ['gypsum_flat_sqm:\\s*\\{\\s*per_unit:\\s*null'] }
 #
 # T4 `coverage`（覆盖层）
 #    1. 对 `config/*.yaml`、`config/layout/*.yaml`、`config/render/*.yaml`、`data/*.json`
@@ -1300,6 +1318,12 @@ contracts:
     ref_scope: [README.md, docs/, schedule/, config/, shared/, server/]
     exclude: [docs/decision_log.md, docs/decisions/, docs/design-iterations/, docs/superpowers/, tmp/, node_modules/, config/facts.yaml]
     path_pattern: '((?:config|docs|schedule|shared|server|scripts|app|tests|assets|cad|survey|renders)/[A-Za-z0-9_\-./]+\.(?:yaml|json|md|ts|tsx|py))'
+    # 2026-10-13 阶段 3：shared/houseData.ts（七套 invented HVAC 报价表）已删除，选型/单价/
+    # 取证态改读 config/hvac.yaml（映射见 shared/hvac-plans.ts）。仓里多处注释要写清
+    # 「原来错在哪」，所以显式豁免这条已删路径——不留理由的豁免会被 pointer_allow_without_reason 拦下。
+    allow:
+      - path: shared/houseData.ts
+        reason: 阶段 3 已删除的文件：invented HVAC 报价表（A1 30,500 / A2 29,000 / … / F2 31,500 + FLOOR_HEIGHT 3.0）与合同成交价 36,000 并存，业主端长期看到 29,000。注释保留该路径是为了写明被推翻的旧结论（决策铁律 3），不是引用活代码
 
   # ④ 规则引用的家具 type 必须存在于 house.yaml furnishings。固化上一轮手修成果
   # （tv_stand / wardrobe_240 / master_freestanding_wardrobe_062 三类已补齐），
@@ -1568,6 +1592,91 @@ contracts:
     kind: overlap
     datasets: ['layout.floor_regions', 'layout.rooms']
 
+  # ══ 2026-10-14「预算计算架构根治」三道强制对账 ══════════════════════════════
+  #
+  # 背景（为什么需要这三条）：前几个阶段治住了三个根因——量层单一实现、价层 quote-cards、
+  # 门控 verified/candidate、静默兜底清除——但**没有任何机制防止未来重新漂移**。
+  # 已实测的漂移历史：
+  #   墙砖面积五套值   65.699（拍系数 0.7）/ 30.64（overlay 实算）/ 28.78 / 25.651 / 15.33（陈账）
+  #   橱柜周长三套值   1.92（拍系数 0.8）/ 4.36（柜体段实算）/ 5.8（house.yaml 旧注释）
+  #   地面材料 vs 人工  121.510 vs 125.260（差 3.75㎡ 正是主走廊，人工收了钱、主材没收）
+  # 每一次都是「总额看起来合理」掩盖了内部两个反向大错（masonry 池同时背着 +3,113 与
+  # −3,356，净差只 ¥129）。所以对账必须由门禁做，不能靠人记得。
+  #
+  # 契约形状见 shared/facts-lint.ts 的 runQuantityParity / runSingleSource 头部注释。
+  # 机器源（dataset:）由 scripts/verify/facts/verify-facts.ts 预算：
+  #   budget.masonry     shared/masonry-takeoff.ts 实算（瓦工算量唯一实现）
+  #   budget.line_items  真实 BudgetCalculator 快照的各 topic 计价量（**不是复算**）
+  #   budget.cabinet     config/house.yaml 已放置柜体段几何（独立解析）
+  # 登记侧（yaml:）读 schedule/phase-1/control.yaml 的 `quantity_declared` 结构化字段——
+  # 该字段是 2026-10-14 新增的，**不替代也不删除**原有 quantity_basis 散文（决策铁律 5：
+  # 改写必须 diff 出删了什么；这里只做加法，散文作为历史叙述留档并在结构化字段里注明口径轮次）。
+
+  # ① 墙砖+防水台贴砖面积：overlay 声明实算 == control.yaml 登记 == 预算实际计价量。
+  #    能抓到：拍系数复活（(宽+深)×2×高×0.7 → 65.699）、把延米当㎡喂给单价、
+  #    control.yaml 的 quantity_basis 散文停在旧轮次没人同步、applyRooms 漏掉一间贴砖房。
+  - id: c.masonry_tile_area_parity
+    kind: quantity_parity
+    unit: ㎡
+    tolerance: 0.005
+    compare:
+      - { label: 'overlay 声明实算（shared/masonry-takeoff.ts，wall_region + sill_region）', value: 'dataset:budget.masonry.totalTileSqm' }
+      - { label: 'control.yaml COST-060-08 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-060-08.quantity_declared.total_tile_sqm' }
+      - { label: '预算实际计价量（快照 lineItems topic=wall）', value: 'dataset:budget.line_items.wall' }
+
+  # ② 地面面积：材料侧（预算 lineItems）== 人工侧（takeoff 干+湿）== control.yaml 登记。
+  #    能抓到：材料侧与人工侧重新分叉（旧口径差 3.75㎡ 主走廊）、干/湿区房表改了一处
+  #    另一处没改、把 bbox 面积塞回异形房（每间最多多算 0.6㎡）。
+  - id: c.floor_quantity_parity
+    kind: quantity_parity
+    unit: ㎡
+    tolerance: 0.005
+    compare:
+      - { label: '材料侧（预算快照 lineItems topic=floor，含主走廊 extra 单列的 roomId:null 行）', value: 'dataset:budget.line_items.floor' }
+      - { label: '人工侧（base.json masonry.labor 的 floor + wet_floor_tile 两行取量之和 = takeoff 干区+湿区）', value: 'dataset:budget.masonry.totalFloorSqm' }
+      - { label: 'control.yaml COST-060-01 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-060-01.quantity_declared.total_floor_sqm' }
+
+  # ③ 橱柜台面延米：house.yaml 柜体段+桥段实算 == control.yaml 登记 == 预算实际计价量。
+  #    能抓到：台面漏算 kitchen_countertop_bridge（少 0.60m）、柜体量把延米当㎡、
+  #    house.yaml 的 count-only 注释又写回一个与几何不符的米数。
+  - id: c.cabinet_length_parity
+    kind: quantity_parity
+    unit: m
+    tolerance: 0.005
+    compare:
+      - { label: 'house.yaml 柜体段几何（kitchen_cabinet_run 4.36m + kitchen_countertop_bridge 0.60m）', value: 'dataset:budget.cabinet.countertopLengthM' }
+      - { label: 'control.yaml COST-110-03 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-110-03.quantity_declared.countertop_length_m' }
+      - { label: '预算实际计价量（快照 lineItems topic=countertop）', value: 'dataset:budget.line_items.countertop' }
+
+  # ④ 橱柜柜体投影面积：house.yaml 柜体段几何（长×柜高）== control.yaml 登记 == 预算实际计价量。
+  #    与 ③ 分开，因为两者**单位与口径都不同**（延米 vs ㎡），混在一条契约里会让人
+  #    以为改一个另一个也必须变——实际上 house.yaml 自己就把「生成柜体」与「只是连续台面」
+  # 分成了两类构件。
+  - id: c.cabinet_area_parity
+    kind: quantity_parity
+    unit: ㎡
+    tolerance: 0.005
+    compare:
+      - { label: 'house.yaml 柜体段几何（3 段 length 求和 × cabinetHeight 0.86）', value: 'dataset:budget.cabinet.projectedAreaSqm' }
+      - { label: 'control.yaml COST-110-01 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-110-01.quantity_declared.projected_area_sqm' }
+      - { label: '预算实际计价量（快照 lineItems topic=cabinet）', value: 'dataset:budget.line_items.cabinet' }
+
+  # ⑤ 价单一源：base.json 兜底吊顶费率表在全仓只许有一份实现。
+  #    已实测：该表在 server/routes.ts、server/mcp-server.ts、server/budget-calculator.ts 里
+  #    逐字复制三份（前两份 md5 一致），三条硬编码 null 也各抄一遍。三份复制时改一处漏两处
+  #    不会有任何机制发现——「同一份费率」可以静默分成两个值，而两边都跑得通。
+  #    2026-10-14 已合并到 server/ceiling-quotes.ts 的 baseJsonCeilingRates(FromBase)。
+  #    scope 不含 tests/：测试里写同样的字面量是**断言夹具**，不是第二份实现。
+  - id: c.ceiling_rate_fallback_single_source
+    kind: single_source
+    scope: [server/, shared/]
+    exclude: [tests/, node_modules/]
+    patterns:
+      - 'gypsum_edge_drop_linear:\s*\{\s*per_unit:\s*null'
+      - 'gypsum_flat_sqm:\s*\{\s*per_unit:\s*null'
+      - 'aluminum_buckle_sqm:\s*\{\s*per_unit:\s*null'
+      - 'function baseJsonCeilingRates\b'
+
 # ─── T4 覆盖层 ───────────────────────────────────────────────────────────────
 
 coverage:
@@ -1601,6 +1710,12 @@ coverage:
   # 检测到内联 masonry_rate_card 即 fail-loud；tests/server/tile-cost-comparison.test.ts
   # 断言本字段存在且内联卡不存在。
   - { file: config/tile-comparison.yaml, field: "masonry_rate_card_ref", readers: [] }
+  # DEC-2026-10-13 阶段 2 第二半：干/湿区**地面**房划分升级为预算算量输入（不再是仅喂预览的面积口径）。
+  # dry_room_ids 原为干区净铺面积 111.864㎡ 的权威源；wet_room_ids 本次新增，两表共同作为
+  # shared/masonry-takeoff.ts 的 dryRoomIds / wetRoomIds 唯一源，server/budget-calculator.ts 的
+  # floor 材料量与 base.json masonry.labor 的 floor 人工行都读它——「地面面积」从此只有一处口径。
+  - { file: config/tile-comparison.yaml, field: "dry_room_ids", readers: ["server/budget-calculator.ts", "server/tile-cost-comparison.ts"] }
+  - { file: config/tile-comparison.yaml, field: "wet_room_ids", readers: ["server/budget-calculator.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "active", readers: ["server/ceiling-quotes.ts", "server/budget-calculator.ts", "server/routes.ts", "server/mcp-server.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "quotes", readers: ["server/ceiling-quotes.ts", "server/routes.ts", "server/mcp-server.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "version", readers: [] }
@@ -1646,7 +1761,7 @@ coverage:
   - { file: config/electrical-topology.yaml, field: "pending_parameters", readers: ["shared/electrical-lint.ts", "shared/project-render-facts-schema.ts"] }
   - { file: config/electrical.yaml, field: "*", readers: [] }
   - { file: config/environment.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
-  - { file: config/environment.yaml, field: "location", readers: ["shared/environment-schema.ts", "shared/houseData.ts"] }
+  - { file: config/environment.yaml, field: "location", readers: ["shared/environment-schema.ts", "shared/hvac-plans.ts"] }
   - { file: config/environment.yaml, field: "horizon", readers: ["shared/environment-schema.ts"] }
   - { file: config/environment.yaml, field: "climate", readers: ["shared/environment-schema.ts"] }
   - { file: config/environment.yaml, field: "humidity", readers: ["shared/environment-schema.ts"] }
@@ -1680,7 +1795,7 @@ coverage:
   - { file: config/layout/model-geometry.yaml, field: "export_date", readers: ["shared/types.ts"] }
   - { file: config/layout/model-geometry.yaml, field: "vertices", readers: ["shared/types.ts", "scripts/verify/data/verify-data-consistency.ts"] }
   - { file: config/layout/model-geometry.yaml, field: "rooms", readers: ["shared/environment-schema.ts", "shared/glazing.ts"] }
-  - { file: config/layout/model-geometry.yaml, field: "platform", readers: ["shared/houseData.ts", "shared/project-render-facts-schema.ts"] }
+  - { file: config/layout/model-geometry.yaml, field: "platform", readers: ["shared/project-render-facts-schema.ts"] }
   - { file: config/layout/model-geometry.yaml, field: "walls", readers: ["shared/electrical-lint.ts", "shared/glazing.ts"] }
   - { file: config/layout/overlay.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/layout/overlay.yaml, field: "suppress", readers: ["shared/spatial-validation.ts", "scripts/verify/collision/verify-collision-coverage.ts"] }
@@ -1690,7 +1805,7 @@ coverage:
   - { file: config/materials.yaml, field: "materials", readers: ["shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
   - { file: config/mep-hvac-coordination.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/mep-hvac-coordination.yaml, field: "status", readers: ["shared/electrical-lint.ts", "shared/mep-hvac-coordination-schema.ts"] }
-  - { file: config/mep-hvac-coordination.yaml, field: "note", readers: ["shared/houseData.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/mep-hvac-coordination.yaml, field: "note", readers: ["shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/mep-hvac-coordination.yaml, field: "layers", readers: ["shared/mep-hvac-coordination-schema.ts", "shared/mep-hvac-lint.ts"] }
   - { file: config/mep-hvac-coordination.yaml, field: "routes", readers: ["shared/mep-hvac-coordination-schema.ts", "shared/mep-hvac-lint.ts"] }
   - { file: config/plumbing.yaml, field: "*", readers: [] }
@@ -1750,7 +1865,7 @@ coverage:
   - { file: data/project-render-facts.json, field: "lighting", readers: ["shared/electrical-lint.ts", "shared/project-render-facts-projection.ts"] }
   - { file: data/project-render-facts.json, field: "lightingFixtures", readers: ["shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
   - { file: data/project-render-facts.json, field: "plumbing", readers: ["shared/mep-hvac-coordination-schema.ts", "shared/mep-hvac-lint.ts"] }
-  - { file: data/project-render-facts.json, field: "ceiling", readers: ["shared/houseData.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: data/project-render-facts.json, field: "ceiling", readers: ["shared/mep-hvac-coordination-schema.ts"] }
   - { file: data/project-render-facts.json, field: "hvac", readers: ["shared/mep-hvac-coordination-schema.ts", "shared/mep-hvac-lint.ts"] }
   - { file: data/project-render-facts.json, field: "materials", readers: ["shared/project-render-facts-projection.ts", "shared/project-render-facts-schema.ts"] }
   - { file: data/project-render-facts.json, field: "presentation", readers: ["shared/curtain-projection.ts", "shared/project-render-facts-projection.ts"] }

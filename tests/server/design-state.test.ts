@@ -23,10 +23,12 @@ describe('DesignState', () => {
   it('applies selection and writes decision log', () => {
     const catalog = ProjectCatalog.load('.');
     const state = DesignState.load(catalog, TEST_DATA_DIR);
-    const result = state.applySelections([{ topic: 'hvac', optionId: 'A2' }], 'cheaper', 'user');
+    // 2026-10-13 阶段 3：hvac 只剩成交方案 A2（与 catalog 默认值相同，选了不产生变更），
+    // 「换一个选项」改用 floor topic。
+    const result = state.applySelections([{ topic: 'floor', optionId: 'floor_tile_herringbone_01' }], 'cheaper', 'user');
     assert.equal(result.updated, true);
     assert.equal(result.entries.length, 1);
-    assert.equal(state.getCurrentScheme().selections.hvac.default, 'A2');
+    assert.equal(state.getCurrentScheme().selections.floor.default, 'floor_tile_herringbone_01');
     assert.equal(state.getDecisionLog().length, 1);
   });
 
@@ -46,18 +48,18 @@ describe('DesignState', () => {
     const catalog = ProjectCatalog.load('.');
     const state = DesignState.load(catalog, TEST_DATA_DIR);
     const result = state.applySelections([
-      { topic: 'hvac', optionId: 'A1' },
-      { topic: 'hvac', optionId: 'A2' },
+      { topic: 'floor', optionId: 'floor_tile_herringbone_01' },
+      { topic: 'floor', optionId: 'floor_tile_herringbone_01' },
     ]);
     assert.equal(result.entries.length, 1);
-    assert.equal(state.getCurrentScheme().selections.hvac.default, 'A2');
+    assert.equal(state.getCurrentScheme().selections.floor.default, 'floor_tile_herringbone_01');
   });
 
   it('detects expectedUpdatedAt conflict', () => {
     const catalog = ProjectCatalog.load('.');
     const state = DesignState.load(catalog, TEST_DATA_DIR);
     const result = state.applySelections(
-      [{ topic: 'hvac', optionId: 'A1' }],
+      [{ topic: 'hvac', optionId: 'A2' }],
       undefined,
       'user',
       '2000-01-01T00:00:00Z'
@@ -78,20 +80,22 @@ describe('DesignState', () => {
   it('returns previousScheme snapshot before mutation', () => {
     const catalog = ProjectCatalog.load('.');
     const state = DesignState.load(catalog, TEST_DATA_DIR);
-    const before = state.getCurrentScheme().selections.hvac.default;
-    const result = state.applySelections([{ topic: 'hvac', optionId: 'A3' }], 'test', 'user');
+    // 2026-10-13 阶段 3：hvac 只剩成交方案 A2 一个选项（七套 invented 报价表已删），
+    // 「换成另一个选项」改用 floor topic 验证——选型仍可换，只是空调已经成交。
+    const before = state.getCurrentScheme().selections.floor.default;
+    const result = state.applySelections([{ topic: 'floor', optionId: 'floor_tile_herringbone_01' }], 'test', 'user');
     assert.ok(result.previousScheme);
-    assert.equal(result.previousScheme.selections.hvac.default, before);
-    assert.equal(state.getCurrentScheme().selections.hvac.default, 'A3');
+    assert.equal(result.previousScheme.selections.floor.default, before);
+    assert.equal(state.getCurrentScheme().selections.floor.default, 'floor_tile_herringbone_01');
     // previousScheme must be a deep copy, not a live reference
-    assert.notEqual(result.previousScheme.selections.hvac.default, state.getCurrentScheme().selections.hvac.default);
+    assert.notEqual(result.previousScheme.selections.floor.default, state.getCurrentScheme().selections.floor.default);
   });
 
   it('returns previousScheme even on conflict', () => {
     const catalog = ProjectCatalog.load('.');
     const state = DesignState.load(catalog, TEST_DATA_DIR);
     const result = state.applySelections(
-      [{ topic: 'hvac', optionId: 'A1' }],
+      [{ topic: 'hvac', optionId: 'A2' }],
       undefined,
       'user',
       '2000-01-01T00:00:00Z'

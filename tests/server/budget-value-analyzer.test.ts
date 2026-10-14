@@ -70,3 +70,22 @@ describe('BudgetValueAnalyzer', () => {
     assert.equal(analyzer.analyzeCategory(currentScheme(), 'nonexistent'), undefined);
   });
 });
+
+describe('BudgetValueAnalyzer 计价字段 fail-closed（2026-10-14 阶段 4）', () => {
+  it('候选选项缺 coverage_per_unit 即抛错，不按 1 兜底', () => {
+    // 缺 coverage 时候选成本被除小约 100 倍，于是"换这个能省一大笔"是假结论——
+    // 替代建议整体失去意义，而界面上只看得到一个漂亮的 savings 数字。
+    const { analyzer } = loadAnalyzer();
+    const scheme = currentScheme();
+    const original = (analyzer as unknown as { catalog: { getOptions: (t: string) => unknown[] } }).catalog.getOptions.bind(
+      (analyzer as unknown as { catalog: { getOptions: (t: string) => unknown[] } }).catalog,
+    );
+    (analyzer as unknown as { catalog: { getOptions: (t: string) => unknown[] } }).catalog.getOptions = (topic: string) =>
+      original(topic).map((option) => (
+        topic === 'wall' && (option as { id: string }).id === 'wall_tile_01'
+          ? { ...(option as object), coverage_per_unit: undefined }
+          : option
+      ));
+    assert.throws(() => analyzer.analyzeCategory(scheme, 'masonry'), /缺 coverage_per_unit/);
+  });
+});

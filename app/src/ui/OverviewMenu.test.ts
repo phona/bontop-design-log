@@ -312,4 +312,114 @@ describe('OverviewMenu', () => {
       .map(([child]) => String(child.textContent ?? child.innerHTML ?? '')).join('\n');
     expect(rendered).not.toContain('瓷砖方案对比');
   });
+
+  /**
+   * 把 budget 容器收到的子节点拉平成一段文本。必须同时取 innerHTML 和 textContent：
+   * `appendBudgetRow` 与逐科行是 innerHTML 赋值，而说明行是 textContent 赋值，
+   * 只取一个会漏掉另一半（`'' ?? x` 不会回落到 x）。
+   */
+  function renderedBudget() {
+    return (elements.budget.appendChild as ReturnType<typeof vi.fn>).mock.calls
+      .map(([child]) => `${child.innerHTML ?? ''}\n${child.textContent ?? ''}`)
+      .join('\n');
+  }
+
+  // 阶段 1.5（候选价门控可见性）：阶段 1 已把每科 autoActual 拆成 verifiedActual /
+  // candidateActual，但 OverviewMenu 从来没读过——数据躺在那儿没人消费。这里钉住
+  // 「业主一眼能看到多少预算还没拿到报价」，并钉住展示层不改任何金额。
+  it('surfaces the candidate-price gate in the summary and per category without changing any amount', () => {
+    const menu = new OverviewMenu();
+    menu.setBudget({
+      totalBudget: 200000,
+      totalActual: 145627,
+      categories: [
+        // appliances：已取证 3,000（云鲸 J6，业主确认预算）+ 未取证 11,300
+        { key: 'appliances', budget: 14000, actual: 14300, manualActual: 0, autoActual: 14300, status: 'over', notes: '', verifiedActual: 3000, candidateActual: 11300 },
+        // hvac：无 status 的合成选项 → 整笔未取证
+        { key: 'hvac', budget: 29000, actual: 29000, manualActual: 0, autoActual: 29000, status: 'ok', notes: '', verifiedActual: 0, candidateActual: 29000 },
+        // 全科已取证的科目不出拆分行
+        { key: 'entry_door', budget: 12000, actual: 1100, manualActual: 0, autoActual: 1100, status: 'ok', notes: '', verifiedActual: 1100, candidateActual: 0 },
+      ],
+      lineItems: [],
+    });
+    menu.show();
+
+    const rendered = renderedBudget();
+
+    // 汇总行：已取证 4,100 / 未取证 40,300，未取证占材料款 90.8%
+    expect(rendered).toContain('已取证 / 未取证候选价');
+    expect(rendered).toContain('¥4,100 / ¥40,300');
+    expect(rendered).toContain('未取证候选价占材料款 90.8%');
+    expect(rendered).toContain('已用 ¥145,627 = 材料款 ¥44,400 + 人工与人工录入 ¥101,227');
+
+    // 逐科拆分：verified>0 显示两段，verified===0 显示「全部为未取证」
+    expect(rendered).toContain('已取证 ¥3,000 + 未取证 ¥11,300');
+    expect(rendered).toContain('全部 ¥29,000 为未取证候选价');
+    // 全科已取证的 entry_door 不出拆分行，但科目本身照常渲染
+    expect(rendered).toContain('entry_door');
+    expect(rendered.match(/└ 其中/g) ?? []).toHaveLength(2);
+
+    // 纯展示层：原有数值一个都不能动
+    expect(rendered).toContain('¥14,300 / ¥14,000');
+    expect(rendered).toContain('¥29,000 / ¥29,000');
+  });
+
+  it('shows the gate summary under the phase-ceiling branch too', () => {
+    const menu = new OverviewMenu();
+    menu.setBudget({
+      totalBudget: 208000,
+      phaseCeiling: 200000,
+      phaseAllocated: 200000,
+      phaseUnallocated: 0,
+      totalActual: 30000,
+      categories: [
+        { key: 'hvac', budget: 29000, actual: 29000, manualActual: 0, autoActual: 29000, status: 'ok', notes: '', verifiedActual: 0, candidateActual: 29000 },
+      ],
+      lineItems: [],
+    } as any);
+    menu.show();
+
+    const rendered = renderedBudget();
+    // 一期相位下汇总行同样必须在场，否则业主在 phase_1 看不到门控
+    expect(rendered).toContain('场景动态估算');
+    expect(rendered).toContain('已取证 / 未取证候选价');
+    expect(rendered).toContain('场景动态估算 ¥30,000 = 材料款 ¥29,000 + 人工与人工录入 ¥1,000');
+  });
+
+  it('omits the gate rows when every material amount is verified', () => {
+    const menu = new OverviewMenu();
+    menu.setBudget({
+      totalBudget: 200000,
+      totalActual: 30000,
+      categories: [
+        { key: 'appliances', budget: 14000, actual: 14300, manualActual: 0, autoActual: 14300, status: 'over', notes: '', verifiedActual: 14300, candidateActual: 0 },
+      ],
+      lineItems: [],
+    });
+    menu.show();
+
+    const rendered = renderedBudget();
+    expect(rendered).not.toContain('未取证');
+    // 但科目本身照常渲染，不能因为没拆分行就消失
+    expect(rendered).toContain('¥14,300 / ¥14,000');
+  });
+
+  it('does not skip a category whose actual is zero but whose candidate price is not', () => {
+    const menu = new OverviewMenu();
+    menu.setBudget({
+      totalBudget: 200000,
+      totalActual: 12000,
+      categories: [
+        // R1 的 doors_windows 修好之后的形状：actual=0、budget>0、候选价>0。
+        // 旧跳过条件会把整行静默丢掉——「静默归零」和「静默发明」是同一种病。
+        { key: 'doors_windows', budget: 12000, actual: 0, manualActual: 0, autoActual: 0, status: 'draft', notes: '', verifiedActual: 0, candidateActual: 12000 },
+      ],
+      lineItems: [],
+    });
+    menu.show();
+
+    const rendered = renderedBudget();
+    expect(rendered).toContain('doors_windows');
+    expect(rendered).toContain('全部 ¥12,000 为未取证候选价');
+  });
 });

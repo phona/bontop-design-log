@@ -193,3 +193,25 @@ test('渲染侧会拒绝的几何，算量同样拒绝', () => {
   assert.equal(result.zones.length, 0);
   assert.equal(result.totalNetAreaM2, 0);
 });
+
+test('铝扣板缺 buckle_panel.module 即抛错，不按 0 块计价', () => {
+  // 2026-10-14 阶段 4：铝扣板的计价单位是板块数（pricingUnit: 'panel'）。
+  // 旧代码 `entry.panelCount ?? 0` 会让缺分格模块的分区整片按 0 块计价——金额静默归零，
+  // 而同一张表上的㎡ 行照样在算，看不出任何异常。
+  const stripped = zones.map((zone) => (
+    zone.id === 'ceiling_kitchen' ? { ...zone, buckle_panel: undefined } : zone
+  ));
+  assert.throws(
+    () => computeCeilingTakeoff(stripped as any, rooms),
+    /缺 buckle_panel\.module/,
+  );
+  // 对照组：module 非正数同样抛错（不是只有"整个字段缺失"才拦）
+  const zeroModule = zones.map((zone) => (
+    zone.id === 'ceiling_kitchen' ? { ...zone, buckle_panel: { module: 0 } } : zone
+  ));
+  assert.throws(() => computeCeilingTakeoff(zeroModule as any, rooms), /缺 buckle_panel\.module/);
+  // 非铝扣板 trade 没有板块计价行，0 是正确值，不受影响
+  const gypsum = computeCeilingTakeoff(zones, rooms);
+  assert.equal(gypsum.byClass.gypsum_board.panelCount, 0);
+  assert.ok(gypsum.aluminumBucklePanelCount > 0, '对照组：声明完整时板块数照常算出');
+});

@@ -99,20 +99,37 @@ export function mepQuoteQuantities(takeoff: MepTakeoff, areaSqm: number): Record
   const wire = (size: string): number => takeoff.wire.bySize.find((bucket) => bucket.wireSize === size)?.wireM ?? 0;
   const water = (key: string): number => takeoff.pipe.water.find((bucket) => bucket.key === key)?.meters ?? 0;
   const drain = (key: string): number => takeoff.pipe.drainage.find((bucket) => bucket.key === key)?.meters ?? 0;
-  const declared = (name: string): number => takeoff.devices.declared[name]?.count ?? 0;
   const hot = takeoff.pipe.water.filter((bucket) => bucket.key.startsWith('hot') || bucket.key.startsWith('mixed'))
     .reduce((sum, bucket) => sum + bucket.meters, 0);
+  /**
+   * 取 declared_devices 里声明的器件数量；**没声明即抛错**（2026-10-14 阶段 4）。
+   *
+   * 旧代码 `takeoff.devices.declared[name]?.count ?? 0` 把「config/mep-takeoff.yaml 漏登记」
+   * 当成「这个项目没有该器件」——于是 leb_kits / spd / 打压次数 / 辅材包干会静默按 0 出价，
+   * 或少算一笔包干费，而报价总额看起来完全正常。量层声明缺失是配置漏洞，不是业务事实。
+   */
+  const declaredRequired = (name: string): number => {
+    const entry = takeoff.devices.declared[name];
+    if (!entry) {
+      throw new Error(
+        `计价行 ${name} 的数量来自 config/mep-takeoff.yaml 的 declared_devices.${name}，但该声明缺失：不按 0 计价（那等于静默漏计一整项）。请补 count + basis（basis 须指到 config/acceptance.yaml 的具体验收项或 config/mep-labor.yaml 的具体行）`,
+      );
+    }
+    return entry.count;
+  };
   return {
     water_cold_20: water('cold/20'),
     water_cold_25: water('cold/25'),
     water_hot_20: water('hot/20'),
     water_hot_25: water('hot/25'),
     water_mixed_20: water('mixed/20'),
-    fitting_ppr: takeoff.pipe.totalWaterM * 0.35,
+    // 管件数量由 takeoff 按 config/mep-takeoff.yaml 的 units.fitting_per_meter 派生
+    // （2026-10-14 阶段 4：0.35 / 0.27 原先硬编码在这里，依据只在报价卡 scope_note 的散文里）。
+    fitting_ppr: takeoff.pipe.fittings.ppr,
     drain_50: drain('de50'),
     drain_75: drain('de75'),
     drain_110: drain('de110'),
-    fitting_pvc: takeoff.pipe.totalDrainageM * 0.27,
+    fitting_pvc: takeoff.pipe.fittings.pvc,
     conduit_20: takeoff.conduit.strongPowerTotalM,
     conduit_25: takeoff.conduit.weakPowerTotalM,
     wire_1_5: wire('1.5'),
@@ -121,20 +138,20 @@ export function mepQuoteQuantities(takeoff: MepTakeoff, areaSqm: number): Record
     wire_trunk: takeoff.trunkConduitM,
     breaker_mcb: takeoff.devices.breakers.mcbOnly,
     breaker_rcd: takeoff.devices.breakers.withRcd,
-    spd: 1,
+    spd: declaredRequired('spd'),
     panel: takeoff.devices.panelModules,
     box86: takeoff.devices.boxes,
-    leb_kit: declared('leb_kits'),
-    entry_valve_kit: declared('entry_valve_kit'),
-    gas_alarm_kit: declared('gas_alarm_kit'),
-    exhaust_duct_kit: declared('exhaust_duct_kit'),
+    leb_kit: declaredRequired('leb_kits'),
+    entry_valve_kit: declaredRequired('entry_valve_kit'),
+    gas_alarm_kit: declaredRequired('gas_alarm_kit'),
+    exhaust_duct_kit: declaredRequired('exhaust_duct_kit'),
     hot_pipe_insulation: hot,
     cat6: takeoff.cable.cat6M,
     labor_by_area: areaSqm,
     extra_penetration: takeoff.devices.penetrations,
-    extra_leb_install: declared('leb_kits'),
-    extra_pressure_test: 1,
-    aux_lump: 1,
+    extra_leb_install: declaredRequired('leb_kits'),
+    extra_pressure_test: declaredRequired('pressure_test'),
+    aux_lump: declaredRequired('aux_lump'),
   };
 }
 

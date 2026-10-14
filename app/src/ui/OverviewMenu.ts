@@ -3,6 +3,7 @@ import type {
   CurrentScheme,
   DecisionLogEntry,
   BudgetSnapshot,
+  BudgetCategory,
   DesignCheckResult,
   ArchivedScheme,
   Risk,
@@ -281,6 +282,9 @@ export class OverviewMenu {
       this.appendBudgetRow('已用', this.budget.totalActual);
       this.appendBudgetRow('剩余', this.budget.totalBudget - this.budget.totalActual);
     }
+    // 候选价门控汇总放在逐科列表之前，且**两个分支之后**：phaseCeiling 分支（一期相位）
+    // 与旧口径分支都必须看得到，否则一期相位下业主根本看不到「这个预算数有多少是未取证的」。
+    this.renderBudgetGateSummary(phaseCeiling !== undefined ? '场景动态估算' : '已用');
     this.renderBudgetCategories();
     this.renderTileBudgetPreview();
     this.renderPaintBudgetPreview();
@@ -441,20 +445,91 @@ export class OverviewMenu {
     this.budgetEl.appendChild(note);
   }
 
-  private appendBudgetRow(label: string, value: number | undefined): void {
+  /**
+   * 预算汇总行。`opts.valueText` 让调用方给一段自定义文本（如「¥3,000 / ¥121,028」这种
+   * 两段式金额），`opts.className` 给整行换色（候选价门控用琥珀色，见 style.css）。
+   */
+  private appendBudgetRow(
+    label: string,
+    value: number | undefined,
+    opts: { className?: string; valueText?: string } = {},
+  ): void {
     const row = document.createElement('div');
-    row.className = 'overview-row';
+    row.className = opts.className ? `overview-row ${opts.className}` : 'overview-row';
+    const labelClass = opts.className ? `overview-label ${opts.className}-label` : 'overview-label';
+    const valueClass = opts.className ? `overview-value ${opts.className}-value` : 'overview-value';
+    const shown = opts.valueText ?? (value === undefined ? '—' : `¥${value.toLocaleString()}`);
     row.innerHTML = `
-      <span class="overview-label">${label}</span>
-      <span class="overview-value">${value === undefined ? '—' : `¥${value.toLocaleString()}`}</span>
+      <span class="${labelClass}">${label}</span>
+      <span class="${valueClass}">${shown}</span>
     `;
     this.budgetEl.appendChild(row);
+  }
+
+  /**
+   * 候选价门控的两档合计（2026-10-13 阶段 1.5：**只读展示，一个数字都不改**）。
+   *
+   * 阶段 1（`a50d2f2`）已把每科 `autoActual`（材料款）按材料 status 拆成
+   * `verifiedActual` / `candidateActual`，但 OverviewMenu 与 MCP 都没有读它——数据躺在
+   * 那儿没人消费，业主看到的「已用」仍是一条把 39 条未取证候选价全额计入的数。
+   * 这里第一次消费它，让「这个预算数不可信」变成一眼可见。
+   *
+   * 口径与 `server/budget-calculator.ts` 的 `autoActualBucket` 同源：
+   * - 已取证：status 属于 measured / confirmed / quoted_sheet / contracted /
+   *   provided_by_developer / user_budget_confirmed；
+   * - 未取证候选价：其余（candidate / pending_verification / estimated /
+   *   owner_reported / rejected），以及没有 status 字段的合成选项（当前只有 hvac）；
+   * - 人工（computeLabor）与人工录入（manualActual）两档都不进门控，只进 `actual`。
+   */
+  private budgetGateTotals(): {
+    verified: number;
+    candidate: number;
+    gated: number;
+    total: number;
+    residual: number;
+  } {
+    let verified = 0;
+    let candidate = 0;
+    for (const category of this.budget?.categories ?? []) {
+      verified += category.verifiedActual ?? 0;
+      candidate += category.candidateActual ?? 0;
+    }
+    const total = this.budget?.totalActual ?? 0;
+    const gated = verified + candidate;
+    // residual = 人工 + 人工录入。门控两档只覆盖材料款，所以它是 totalActual 与 gated 的差，
+    // 而不是某个单独字段——这样即使将来 manualActual 非零，文案里的加法依然自洽。
+    return { verified, candidate, gated, total, residual: total - gated };
+  }
+
+  /** 候选价门控汇总行：整包装配里有多少钱其实还没拿到报价。 */
+  private renderBudgetGateSummary(totalLabel: string): void {
+    const { verified, candidate, gated, total, residual } = this.budgetGateTotals();
+    // 全科已取证时不再占版面——那时「未取证 ¥0」是噪音而不是信息。
+    if (candidate <= 0) return;
+
+    this.appendBudgetRow('已取证 / 未取证候选价', undefined, {
+      className: 'overview-budget-gate',
+      valueText: `¥${verified.toLocaleString()} / ¥${candidate.toLocaleString()}`,
+    });
+
+    const ratio = gated > 0 ? (candidate / gated) * 100 : 0;
+    const note = document.createElement('div');
+    note.className = 'overview-empty overview-budget-gate-note';
+    note.textContent =
+      `未取证候选价占材料款 ${ratio.toFixed(1)}%（¥${candidate.toLocaleString()} / ¥${gated.toLocaleString()}）：` +
+      `这些金额来自 materials.yaml 里的 candidate / pending_verification / estimated，或没有 status 的合成选项（如 hvac），` +
+      `尚未拿到报价单或现场核验，成交价可能变。` +
+      `${totalLabel} ¥${total.toLocaleString()} = 材料款 ¥${gated.toLocaleString()} + 人工与人工录入 ¥${residual.toLocaleString()}（后两者不进门控两档）。`;
+    this.budgetEl.appendChild(note);
   }
 
   private renderBudgetCategories(): void {
     if (!this.budget) return;
     for (const category of this.budget.categories) {
-      if (category.actual === 0 && category.budget === 0) continue;
+      // 跳过条件必须带上 candidateActual：否则一旦出现「actual=0 但候选价>0」的科目
+      // （例如 R1 的 doors_windows 修好之后），未取证的候选价会被整行静默跳过——
+      // 「静默归零」与「静默发明」是同一种病，只是方向相反。
+      if (category.actual === 0 && category.budget === 0 && (category.candidateActual ?? 0) === 0) continue;
       const row = document.createElement('div');
       row.className = 'overview-row';
       row.innerHTML = `
@@ -462,7 +537,26 @@ export class OverviewMenu {
         <span class="overview-value">¥${category.actual.toLocaleString()} / ¥${category.budget.toLocaleString()}</span>
       `;
       this.budgetEl.appendChild(row);
+
+      this.appendBudgetGateSplit(category);
     }
+  }
+
+  /**
+   * 逐科的候选价拆分行。只在 `candidateActual > 0` 时出现，全科已取证的科目不占版面。
+   * 纯展示：不改 `actual`，也不改任何计算输入——把 candidate 剔出 actual 是阶段 5 的事。
+   */
+  private appendBudgetGateSplit(category: BudgetCategory): void {
+    const candidate = category.candidateActual ?? 0;
+    if (candidate <= 0) return;
+    const verified = category.verifiedActual ?? 0;
+    const valueText = verified > 0
+      ? `已取证 ¥${verified.toLocaleString()} + 未取证 ¥${candidate.toLocaleString()}`
+      : `全部 ¥${candidate.toLocaleString()} 为未取证候选价`;
+    this.appendBudgetRow('  └ 其中', undefined, {
+      className: 'overview-budget-gate-split',
+      valueText,
+    });
   }
 
   private renderRisks() {

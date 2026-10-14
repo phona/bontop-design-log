@@ -175,9 +175,9 @@ elements:
   it('PATCH /api/scheme/current changes selection', async () => {
     const res = await request(app)
       .patch('/api/scheme/current')
-      .send({ selections: [{ topic: 'hvac', optionId: 'A1' }], source: 'user' })
+      .send({ selections: [{ topic: 'hvac', optionId: 'A2' }], source: 'user' })
       .expect(200);
-    assert.equal(res.body.scheme.selections.hvac.default, 'A1');
+    assert.equal(res.body.scheme.selections.hvac.default, 'A2');
   });
 
   it('GET/PATCH presentation state persists room and whole-house curtain states', async () => {
@@ -216,7 +216,7 @@ elements:
   it('POST /api/decisions records a decision', async () => {
     const res = await request(app)
       .post('/api/decisions')
-      .send({ topic: 'hvac', optionId: 'A1', reason: 'test' })
+      .send({ topic: 'hvac', optionId: 'A2', reason: 'test' })
       .expect(201);
     assert.equal(res.body.topic, 'hvac');
   });

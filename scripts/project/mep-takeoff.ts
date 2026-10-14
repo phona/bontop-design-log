@@ -39,6 +39,22 @@ const control = parseYaml(readFileSync('schedule/phase-1/control.yaml', 'utf8'))
 const pkg040 = control.work_packages.find((pkg) => pkg.id === 'PKG-040');
 const rooms = ProjectCatalog.load('.').getRooms();
 
+/**
+ * 清包人工的计价面积（㎡）：读 `config/house.yaml` 的 `project.usable_area`。
+ *
+ * 2026-10-14 阶段 4：这里原先硬编码 `const AREA_SQM = 94.76`，违反本文件开头自己写的
+ * 「脚本内不写任何米数/金额」铁律——量房日改 house.yaml 的 usable_area 时，本脚本会继续
+ * 按旧值出人工总额，而没有任何地方会报错（94.76 与任何修正值都能算出一个"看起来正常"的钱数）。
+ * `config/facts.yaml` 的 `fact.usable_area` 已把 `@config/house.yaml:project.usable_area`
+ * 登记为唯一权威源（口径：合同净面积；与 rooms 多边形毛口径、gift_areas bbox 毛口径、
+ * building_area 预测建面**不可直接相加**，见 facts.yaml 的口径分歧登记），此处只读不推。
+ */
+const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { project?: { usable_area?: number } };
+const AREA_SQM = house.project?.usable_area;
+if (typeof AREA_SQM !== 'number' || !(AREA_SQM > 0)) {
+  throw new Error(`config/house.yaml 的 project.usable_area 必须是正数（实际 ${String(AREA_SQM)}）：水电清包人工按㎡计价，面积缺失时不猜`);
+}
+
 const sources = endpointSourcesFromFacts({
   electrical,
   plumbing,
@@ -58,7 +74,6 @@ const takeoff = computeMepTakeoff({
   rules,
 });
 
-const AREA_SQM = 94.76;
 const comparisons = compareMepQuotes(quotes, takeoff, AREA_SQM, mepQuoteFallback(labor));
 const cost = comparisons.find((entry) => entry.active) ?? comparisons[0];
 

@@ -57,6 +57,19 @@ units:
   loss:
     wire: 1.05
     pipe: 1.08
+  # 管件系数（个/m）：管材按米买、管件按个买，两者之间只能有一个换算系数，且必须在这里声明。
+  # 2026-10-14 阶段 4：这两个数原先硬编码在 server/mep-quotes.ts 的 mepQuoteQuantities 里
+  # （fitting_ppr = totalWaterM * 0.35 / fitting_pvc = totalDrainageM * 0.27），依据只写在
+  # config/mep-quotes.yaml 对应行的 scope_note 散文里——代码改不了、也没法跟散文对账。
+  # 现提升为机器可读声明，派生出的**管件数量**由 shared/mep-takeoff.ts 算出并随 takeoff 输出
+  # （pipe.fittings.ppr / pipe.fittings.pvc），报价层只读量、不读系数。
+  # 口径来源（均为 derived_estimate，量房后按实际管件清单复核）：
+  #   ppr 0.35 个/m：config/mep-quotes.yaml fitting_ppr 行「普通件三款均价 ¥6.53/个 × 管件系数 0.35 个/m」；
+  #                 不含内丝件（内丝弯头/活接按实际点位另立一行）。
+  #   pvc 0.27 个/m：config/mep-quotes.yaml fitting_pvc 行「管件系数 0.27 个/m × 普通件均价约 ¥6.5/个」。
+  fitting_per_meter:
+    ppr: 0.35
+    pvc: 0.27
 
 # 主干（physical route 中端点不带 circuit 的段，如强电箱→走廊枢纽）归属：
 # null = 不猜线径，进 unresolved，由业主/设计指定后回填。这是刻意的"显形"而非缺陷。
@@ -93,6 +106,18 @@ declared_devices:
   exhaust_duct_kit:
     count: 2
     basis: 'config/acceptance.yaml check_hvac_exhaust_outlet：两卫浴霸排风管出外墙 φ100 防火止回阀 + 套管'
+  # 2026-10-14 阶段 4：下面三条过去在 server/mep-quotes.ts 里硬编码为 `数量恒 1`
+  # （spd / extra_pressure_test / aux_lump），有费率就出钱、没声明也不报错。
+  # 现在按本文件既有 declared_devices 机制显式登记，缺任一条 → mepQuoteQuantities 抛错。
+  spd:
+    count: 1
+    basis: 'config/mep-takeoff.yaml panel.spd_modules：二级浪涌保护器占 1 模（GB 55038 7.4.3 进线侧 SPD），全屋 1 只'
+  pressure_test:
+    count: 1
+    basis: 'config/acceptance.yaml check_plumb_pressure：水路打压 0.8MPa 保压 30min 一次（含绝缘/等电位/漏保试合记录，口径见 config/mep-labor.yaml extras.pressure_and_test）'
+  aux_lump:
+    count: 1
+    basis: 'config/mep-labor.yaml aux_material_lump：端子/管卡/胀塞/胶水/胶带/生料带/黄腊管/封槽料/网格布/套管/防火泥全屋一次包干'
 
 # 不属于水电包的设施：显式排除并记 reason，防止施工方把活儿算进来或我们漏算
 non_mep_items:

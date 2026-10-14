@@ -1,5 +1,4 @@
 import { Router, type Request, type Response } from 'express';
-import { readFileSync } from 'node:fs';
 import { ProjectCatalog } from './project-catalog.js';
 import type { DesignState } from './design-state.js';
 import type { RuleEngine } from './rule-engine.js';
@@ -26,6 +25,7 @@ import {
   resolveActiveCeilingRates,
   compareCeilingQuotes,
   ceilingQuoteQuantities,
+  baseJsonCeilingRates,
   type CeilingQuoteRateKey,
 } from './ceiling-quotes.js';
 import {
@@ -34,26 +34,6 @@ import {
 } from './ceiling-material-cost.js';
 import type { ElementStatePayload } from './element-state-service.js';
 
-/**
- * base.json 的兜底吊顶费率：生效报价未声明的计价行回落到它。
- * C12 新增的两行（边吊按米 / 满吊平顶按㎡）在 base.json 里没有对应 labor 行，
- * 回落值就是 null（待报价）——不编金额，只在报价面板显形。
- */
-function baseJsonCeilingRates(): Record<CeilingQuoteRateKey, { per_unit: number | null; unit: string }> {
-  const raw = JSON.parse(readFileSync('config/budget/base.json', 'utf8')) as {
-    categories: Record<string, { labor?: { rate: number | null; unit: string; area: string } | Array<{ rate: number | null; unit: string; area: string }> }>;
-  };
-  const carpentry = raw.categories.carpentry;
-  const entries = carpentry?.labor ? (Array.isArray(carpentry.labor) ? carpentry.labor : [carpentry.labor]) : [];
-  const byArea = new Map(entries.map((entry) => [entry.area, entry]));
-  return {
-    ceiling_zones: { per_unit: byArea.get('ceiling_zones')?.rate ?? null, unit: byArea.get('ceiling_zones')?.unit ?? '元/㎡' },
-    curtain_box_linear: { per_unit: byArea.get('curtain_box_linear')?.rate ?? null, unit: byArea.get('curtain_box_linear')?.unit ?? '元/m' },
-    gypsum_edge_drop_linear: { per_unit: null, unit: '元/m' },
-    gypsum_flat_sqm: { per_unit: null, unit: '元/㎡' },
-    aluminum_buckle_sqm: { per_unit: null, unit: '元/㎡' },
-  };
-}
 import type { ResolvedLayout } from '../shared/types.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {

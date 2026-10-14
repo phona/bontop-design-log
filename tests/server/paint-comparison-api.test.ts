@@ -222,7 +222,10 @@ describe('GET /api/budget paint preview overlay', () => {
     // （= 净面积 267.337 − 湿区窗台 4.193；旧值 270.865 把湿区窗台也算进普通口径）
     const painting = body.categories.find((category: any) => category.key === 'painting');
     assert.ok(Math.abs(painting.autoActual - 1566.912) <= 1, `painting autoActual=${painting.autoActual}`);
-    assert.ok(Math.abs(painting.actual - 8936.098) <= 1, `painting actual=${painting.actual}`);
+    // 阶段 5 口径变更：actual 只计已取证款 + 人工。
+    // painting 的材料款（1,566.912）是候选价 → 不进 actual；人工 7,369 进。
+    assert.ok(Math.abs(painting.actual - 7369) <= 1, `painting actual=${painting.actual}`);
+    assert.ok(Math.abs(painting.candidateActual! - 1566.912) <= 1, `painting candidateActual=${painting.candidateActual}`);
     assert.equal(painting.status, 'ok');
   });
 

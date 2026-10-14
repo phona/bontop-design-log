@@ -183,7 +183,36 @@ export const HvacLoadDesignSchema = z.object({
   connection_ratio: nonEmpty, diversity_note: z.string().optional(), budget_impact: z.string().optional(),
   rooms: z.array(HvacLoadDesignRoomSchema),
 }).strict();
-export const ProjectHvacFactsSchema = z.object({ plans: z.array(z.object({ id: nonEmpty, kind: z.literal('vrf_ducted'), outdoor: VrfOutdoorUnitSchema, load_design: HvacLoadDesignSchema.optional(), diagram: HvacDiagramSchema }).strict()) }).strict();
+/**
+ * 商务口径块（2026-10-13 阶段 3 新增）：单价与取证态的唯一机器可读入口。
+ *
+ * 与 shared/hvac-plans.ts 的分工：那份 loader 面向**预算**，`commercial` 必填（没有价格的
+ * 方案进预算就是静默归零）；本 schema 面向 3D/render-facts，所以是 optional——几何方案可以
+ * 先于商务落定存在。两处都 strict：多写一个键就是配置错误，不许静默忽略。
+ */
+export const HvacCommercialSchema = z.object({
+  status: z.enum(['contracted', 'quoted', 'candidate', 'rejected']),
+  price_cny: finiteNumber.nonnegative(),
+  currency: z.string().optional(),
+  decided_at: z.string().optional(),
+  decision_ref: z.string().optional(),
+  vendor: z.string().optional(),
+  price_basis: z.string().optional(),
+  scope_note: z.string().optional(),
+  source_refs: z.array(nonEmpty).optional(),
+}).strict();
+export const ProjectHvacFactsSchema = z.object({
+  plans: z.array(z.object({
+    id: nonEmpty,
+    kind: z.literal('vrf_ducted'),
+    name: nonEmpty.optional(),
+    summary: z.string().optional(),
+    commercial: HvacCommercialSchema.optional(),
+    outdoor: VrfOutdoorUnitSchema,
+    load_design: HvacLoadDesignSchema.optional(),
+    diagram: HvacDiagramSchema,
+  }).strict()),
+}).strict();
 
 export const ElectricalPointsSchema = z.array(ElectricalPointSchema);
 const ElectricalTopologyStatusSchema = z.enum(['confirmed', 'proposed', 'pending']);

@@ -1,15 +1,22 @@
 # 瓦工人工费率卡（项目级唯一机器可读源）
 #
-# 2026-10-13 从 config/tile-comparison.yaml 的 masonry_rate_card 原样搬迁（字段与值一字未改），
-# 提为项目级文件。搬迁理由：该卡原先只喂 /api/tiles/comparison，而 server/budget-calculator.ts
-# 的 computeLabor 另读 config/budget/base.json 的 masonry.labor（45 元/㎡，area: floor），
-# 同一件事两处定价、互不对账。本文件是瓦工费率的唯一源。
+# 2026-10-13「预算计算架构根治」阶段 3：本文件从「专用形状」改成**合法 quote-cards**
+# （shared/quote-cards.ts 的 parseQuoteCards 可直接解析）。改之前卡内是
+# `floor_rates_yuan_per_sqm` / `wall_rates_yuan_per_sqm` 平写在卡根上，parseQuoteCards
+# 会在 `rates 必须是对象` 处抛错，于是 server/tile-cost-comparison.ts 只能另写一个专用
+# loader（loadMasonryRateCard）绕过通用机制——同一件事两套读法，正是本次要治的根因。
 #
 # ⚠️ 身份声明（不可删）：
-#   本文件是**费率假设层**，不是成交价。quote_status 为 preliminary_labor_rate_card，
-#   来源是一张业主上传的瓦工《常规铺砖工费明细表》照片——无施工方名称、无报价日期、
-#   无签章、无总价。shared/quote-cards.ts 的 comparable:false 机制会自动把它标为不可比。
+#   本文件是**费率假设层**，不是成交价。evidence.kind = photo：来源是一张业主上传的瓦工
+#   《常规铺砖工费明细表》照片——无施工方名称、无报价日期、无签章、无总价。
+#   shared/quote-cards.ts 的 comparable:false 机制会自动把它标为不可比（阶段 3 新增：
+#   证据级别不是 written_quote 一律不可比，与 status/quoted_at 无关）。
 #   取得施工方书面报价后，在本文件同结构新增报价卡，并更新 active 指向；不要覆盖本卡。
+#
+# 计价行（一个 surface 一个 key，规格表留在卡内由域层 resolver 按选型规格取行）：
+#   floor      干区主地面（㎡）  当前选型 200×1200 木纹砖 → 卡上「木纹砖200x1200或150x900」行
+#   wet_floor  湿区主地面（㎡）  当前选型 400×400 / 200×200 → **卡上无行** → 待报价
+#   wall_tile  墙砖 + 防水台（㎡）当前选型 300×600 → 卡上「300x600」行
 version: 1
 active: rate_card_photo
 
@@ -18,89 +25,116 @@ quotes:
     contractor: "费率卡照片（非施工方报价）"
     quoted_at: '2026-10-06'
     status: baseline
-    source: docs/design-iterations/tile-plank-comparison-20261006/evidence/mason-labor-rate-card.jpg
-    observed_at: received in this conversation 2026-10-06; date printed on card unknown
-    quote_status: preliminary_labor_rate_card; extras_and_work_scopes_require_confirmation
-    currency: CNY
+    # 阶段 3：身份字段只走 evidence{...}。平写在卡根上的 source/observed_at/
+    # quote_status/currency 会被 parseQuoteCards 直接抛错（原先它们是静默丢弃）。
+    evidence:
+      kind: photo
+      status: preliminary_labor_rate_card
+      source: docs/design-iterations/tile-plank-comparison-20261006/evidence/mason-labor-rate-card.jpg
+      observed_at: "received in this conversation 2026-10-06; date printed on card unknown"
+      quote_status: "preliminary_labor_rate_card; extras_and_work_scopes_require_confirmation"
+      currency: CNY
 
-    floor_rates_yuan_per_sqm:
-      - { specification: 800x800, price: 40 }
-      - { specification: 600x600, price: 45 }
-      - { specification: 600x1200, price: 55 }
-      - { specification: 750x1500, price: 60 }
-      - { specification: 900x1800, price: 80 }
-      - { specification: 木纹砖200x1200或150x900, price: 75 }
-
-    wall_rates_yuan_per_sqm:
-      - { specification: 400x800, price: 45 }
-      - { specification: 300x600, price: 50 }
-      - { specification: 800x800, price: 55 }
-      - { specification: 600x1200, price: 65 }
-      - { specification: 750x1500, price: 75 }
-      - { specification: 900x1800, price: 100 }
-
-    conditional_addons:
-      - id: wood_plank_fishbone_premium
-        label: 木纹砖鱼骨/人字铺贴加价
-        price: 50
+    # 单价一律待报价：真实单价由 domain 里的规格表按 data/current-scheme.json 的选型解析。
+    # 这里写 null 是**特性不是缺陷**——「按规格计价」意味着不先看选型就没有单一单价，
+    # 而湿区规格（400×400 / 200×200）在卡上确实无行，必须显形为待报价，
+    # 不许用 base.json 的 45 元/㎡（那只是 600×600 行）冒充。
+    rates:
+      floor:
+        per_unit: null
         unit: 元/㎡
-        status: conditional
-      - id: bathroom_floor_room_charge
-        label: 卫生间地面按间计价（面积不计）
-        price: 300
-        unit: 元/间
-        scope_status: ambiguous; image says area not counted, so flat-only and additive interpretations must remain separate
-        status: conditional
-      - id: aluminum_skirting_full_house
-        label: 全屋铝合金踢脚线关联地砖加价
-        price: 5
+        scope_note: "干区主地面铺砖人工，按选型规格取 domain.floor_rates_yuan_per_sqm 的行；常规半干水泥砂浆铺贴，密缝与薄贴工艺另议"
+      wet_floor:
+        per_unit: null
         unit: 元/㎡
-        scope_status: only if selected for whole house; bathroom and balcony floor area excluded
-        status: conditional
-      - id: floor_protection_film
-        label: 地面贴砖保护膜
-        price: 5
+        scope_note: "湿区主地面铺砖人工；当前选型 400×400 / 200×200 在费率卡上无行，且卡上另有「卫生间地面按间计价 300 元/间（面积不计）」的歧义读法（见 domain.bathroom_floor_charge_interpretations，selection_status: unresolved），因此本行待报价"
+      wall_tile:
+        per_unit: null
         unit: 元/㎡
-        status: optional
+        scope_note: "墙砖与防水台贴砖人工，按选型规格取 domain.wall_rates_yuan_per_sqm 的行；窗口面积不减，门口双包边减洞口面积、单包边不减"
 
-    extras:
-      - { label: 嵌入式地脚线、窗边台贴小砖条, price: 20, unit: 元/m }
-      - { label: 飘窗台面贴砖, price: 100, unit: 元/m }
-      - { label: 反边, price: 60, unit: 元/m, note: 含海棠角；阳台带围栏另加20元/m }
-      - { label: 海棠角, price: 20, unit: 元/m }
-      - { label: 插座底盒圆弧开孔, price: 20, unit: 元/个, note: 如不需要需提前告知；否则默认包含 }
-      - { label: 卫生间贴砖灌砂浆包管, price: 200, unit: 元/条, note: 单管200元/条，双管300元/条 }
-      - { label: 壁龛, price: 400, unit: 元/个, note: 单层250元/个，双层400元/个 }
-      - { label: 便盆安装, price: 150, unit: 元/个 }
-      - { label: 瓷砖背面刷双组分背胶, price: 5, unit: 元/㎡, note: 单组分背胶不另收费；地砖刷双组分背胶为10元/㎡ }
-      - { label: 墙面拉毛（滚涂双组分背胶）, price: 150, unit: 元/间, note: 厨房、卫生间、阳台如用单组分背胶墙面收100元/间 }
-      - { label: 清理瓷砖背面脱磨剂, price: 10, unit: 元/㎡, note: 使用半干毛巾用力擦瓷砖背面，降低荷珠效果 }
-      - { label: 卫生间淋浴区做下沉式, price: 200, unit: 元/间 }
-      - { label: 卫生间做隔断预埋玻璃卡槽, price: 200, unit: 元/间 }
+    # 卡内域层数据：quote-cards 只搬运不解释，形状由 server/masonry-quotes.ts 校验（fail closed）。
+    domain:
+      floor_rates_yuan_per_sqm:
+        - { specification: 800x800, price: 40 }
+        - { specification: 600x600, price: 45 }
+        - { specification: 600x1200, price: 55 }
+        - { specification: 750x1500, price: 60 }
+        - { specification: 900x1800, price: 80 }
+        - { specification: 木纹砖200x1200或150x900, price: 75 }
 
-    notes:
-      - 转角统一做圆弧工艺不另外收费。
-      - 密缝以及薄贴工艺单价另议。
-      - 阳台贴墙砖另加5元/㎡。
-      - 墙砖丈量方式：窗口面积不减；门口双包边减洞口面积，单包边不减面积。
-      - 厨房大砖搭配杂砖铺贴时以大砖单价为准，具体可再议。
-      - 常规地砖铺贴方式为半干水泥砂浆铺贴；本表为初步报价，特殊情况特殊报价。
+      wall_rates_yuan_per_sqm:
+        - { specification: 400x800, price: 45 }
+        - { specification: 300x600, price: 50 }
+        - { specification: 800x800, price: 55 }
+        - { specification: 600x1200, price: 65 }
+        - { specification: 750x1500, price: 75 }
+        - { specification: 900x1800, price: 100 }
 
-    bathroom_floor_charge_interpretations:
-      source_text: 卫生间地面300元/间（面积不计）
-      selection_status: unresolved
-      options:
-        - id: flat_per_room_replaces_area_rate
-          mode: flat_replaces_area_rate
-          note: "Literal reading: 300元/间 covers the bathroom floor labor; do not add 600x600 area rate."
-        - id: flat_per_room_added_to_area_rate_if_confirmed
-          mode: additive_only_if_mason_confirms
-          note: "Alternate reading requiring mason confirmation: add the 300元/间 to the 600x600 area-rate amount."
+      conditional_addons:
+        - id: wood_plank_fishbone_premium
+          label: 木纹砖鱼骨/人字铺贴加价
+          price: 50
+          unit: 元/㎡
+          status: conditional
+        - id: bathroom_floor_room_charge
+          label: 卫生间地面按间计价（面积不计）
+          price: 300
+          unit: 元/间
+          scope_status: ambiguous; image says area not counted, so flat-only and additive interpretations must remain separate
+          status: conditional
+        - id: aluminum_skirting_full_house
+          label: 全屋铝合金踢脚线关联地砖加价
+          price: 5
+          unit: 元/㎡
+          scope_status: only if selected for whole house; bathroom and balcony floor area excluded
+          status: conditional
+        - id: floor_protection_film
+          label: 地面贴砖保护膜
+          price: 5
+          unit: 元/㎡
+          status: optional
+
+      extras:
+        - { label: 嵌入式地脚线、窗边台贴小砖条, price: 20, unit: 元/m }
+        - { label: 飘窗台面贴砖, price: 100, unit: 元/m }
+        - { label: 反边, price: 60, unit: 元/m, note: 含海棠角；阳台带围栏另加20元/m }
+        - { label: 海棠角, price: 20, unit: 元/m }
+        - { label: 插座底盒圆弧开孔, price: 20, unit: 元/个, note: 如不需要需提前告知；否则默认包含 }
+        - { label: 卫生间贴砖灌砂浆包管, price: 200, unit: 元/条, note: 单管200元/条，双管300元/条 }
+        - { label: 壁龛, price: 400, unit: 元/个, note: 单层250元/个，双层400元/个 }
+        - { label: 便盆安装, price: 150, unit: 元/个 }
+        - { label: 瓷砖背面刷双组分背胶, price: 5, unit: 元/㎡, note: 单组分背胶不另收费；地砖刷双组分背胶为10元/㎡ }
+        - { label: 墙面拉毛（滚涂双组分背胶）, price: 150, unit: 元/间, note: 厨房、卫生间、阳台如用单组分背胶墙面收100元/间 }
+        - { label: 清理瓷砖背面脱磨剂, price: 10, unit: 元/㎡, note: 使用半干毛巾用力擦瓷砖背面，降低荷珠效果 }
+        - { label: 卫生间淋浴区做下沉式, price: 200, unit: 元/间 }
+        - { label: 卫生间做隔断预埋玻璃卡槽, price: 200, unit: 元/间 }
+
+      notes:
+        - 转角统一做圆弧工艺不另外收费。
+        - 密缝以及薄贴工艺单价另议。
+        - 阳台贴墙砖另加5元/㎡。
+        - 墙砖丈量方式：窗口面积不减；门口双包边减洞口面积，单包边不减面积。
+        - 厨房大砖搭配杂砖铺贴时以大砖单价为准，具体可再议。
+        - 常规地砖铺贴方式为半干水泥砂浆铺贴；本表为初步报价，特殊情况特殊报价。
+
+      bathroom_floor_charge_interpretations:
+        source_text: 卫生间地面300元/间（面积不计）
+        selection_status: unresolved
+        options:
+          - id: flat_per_room_replaces_area_rate
+            mode: flat_replaces_area_rate
+            note: "Literal reading: 300元/间 covers the bathroom floor labor; do not add 600x600 area rate."
+          - id: flat_per_room_added_to_area_rate_if_confirmed
+            mode: additive_only_if_mason_confirms
+            note: "Alternate reading requiring mason confirmation: add the 300元/间 to the 600x600 area-rate amount."
 
 # 历史参考：config/budget/base.json 的 categories.masonry.labor 原为 computeLabor 的活源。
-# 该值 45 元/㎡ 对应本卡 600x600 行，但**不对应本卡任何其它规格行**，且 base.json 文件头
-# 已声明 status: superseded（作废契约 config/facts.yaml c.base_json_superseded 只覆盖
-# total_budget / project_ceiling，未覆盖 categories）。保留为回落参考，不作为基准。
+# 2026-10-13 阶段 3 起它降为 fallback（masonryQuoteFallback），且该行已拆成
+# floor / wet_floor_tile / wall_tile 三条。45 元/㎡ 只对应本卡 600x600 行，**不对应本卡任何
+# 其它规格行**，且 base.json 文件头已声明 status: superseded（作废契约 config/facts.yaml
+# c.base_json_superseded 只覆盖 total_budget / project_ceiling，未覆盖 categories）。
+# 保留为回落参考，不作为基准；湿区必须显形为待报价，不得用 45 冒充。
 historical_reference:
   - id: base_json_masonry_labor
     source: config/budget/base.json

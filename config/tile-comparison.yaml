@@ -8,6 +8,15 @@ dry_room_ids:
   - study
   - bedroom_nw
   - bedroom_se
+# 湿区主地面房（DEC-2026-10-13 阶段 2 第二半新增）：与 dry_room_ids 同处一份，作为
+# shared/masonry-takeoff.ts 的 dryRoomIds / wetRoomIds 唯一源，server 预算与瓦工费率卡
+# （干区木纹砖 75 元/㎡ / 湿区 600×600 45 元/㎡）据此分档，不再各自另列房间表。
+# 厨房 needs_waterproof: true 但地面走干区木纹砖档，故在 dry_room_ids 而不在此表。
+# 生活阳台（balcony）两表都不列：control.yaml 记其「湿区小砖、按间包干口径未裁」，
+# 因此它的地面量进 takeoff 的 unpriced 显形清单，不静默计入任何一档。
+wet_room_ids:
+  - master_bath
+  - guest_bath
 planning:
   loss_multiplier: 1.08
   loss_multiplier_status: aligned with current floor-tile material estimate (8% allowance in config/materials.yaml)

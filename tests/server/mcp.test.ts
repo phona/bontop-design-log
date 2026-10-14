@@ -108,7 +108,7 @@ elements:
 
     const result = await client.callTool({
       name: 'set_selection',
-      arguments: { topic: 'hvac', optionId: 'A2', reason: 'test' },
+      arguments: { topic: 'floor', optionId: 'floor_tile_herringbone_01', reason: 'test' },
     });
     const text = (result.content as { text: string }[])[0].text;
     const parsed = JSON.parse(text);
@@ -162,7 +162,7 @@ elements:
   it('set_selection returns error for invalid topic', async () => {
     const result = await client.callTool({
       name: 'set_selection',
-      arguments: { topic: 'nonexistent_topic', optionId: 'A1' },
+      arguments: { topic: 'nonexistent_topic', optionId: 'A2' },
     });
     assert.ok(result.isError);
   });
@@ -178,7 +178,7 @@ elements:
   it('set_selection returns budgetImpact with deltas', async () => {
     const result = await client.callTool({
       name: 'set_selection',
-      arguments: { topic: 'hvac', optionId: 'A1', reason: 'budget impact test' },
+      arguments: { topic: 'floor', optionId: 'floor_tile_02', reason: 'budget impact test' },
     });
     const text = (result.content as { text: string }[])[0].text;
     const parsed = JSON.parse(text);
@@ -195,7 +195,7 @@ elements:
     const result = await client.callTool({
       name: 'batch_set_selections',
       arguments: {
-        selections: [{ topic: 'hvac', optionId: 'A2' }],
+        selections: [{ topic: 'floor', optionId: 'floor_tile_03' }],
         reason: 'batch impact test',
       },
     });
@@ -211,7 +211,7 @@ elements:
       name: 'batch_set_selections',
       arguments: {
         selections: [
-          { topic: 'hvac', optionId: 'A1', reason: 'batch test' },
+          { topic: 'floor', optionId: 'floor_tile_04', reason: 'batch test' },
         ],
         reason: 'batch test',
       },
@@ -222,12 +222,91 @@ elements:
     assert.ok(Array.isArray(parsed.entries));
   });
 
+  // 阶段 1.5（候选价门控可见性）。两个坑都钉在这里：
+  // ① categoryDeltas 有 `.filter(d => d.delta !== 0)`，只挂条目会漏掉「本次选型没让
+  //    actual 变、但 candidateActual 一直 > 0」的科目 → 必须有一份不受 filter 影响的汇总；
+  // ② 分母必须是材料款（verified + candidate），不是 totalActual——人工本来就不进门控两档，
+  //    拿 totalActual 当分母会把未取证占比从 97.6% 压到 83.1%。
+  it('set_selection budgetImpact carries an unfiltered candidate-price gate rollup', async () => {
+    const result = await client.callTool({
+      name: 'set_selection',
+      arguments: { topic: 'floor', optionId: 'floor_pbr_tile_612', reason: 'gate visibility test' },
+    });
+    const parsed = JSON.parse((result.content as { text: string }[])[0].text);
+
+    const dc = parsed.budgetImpact.dataConfidence;
+    assert.ok(dc, 'budgetImpact 必须带 dataConfidence：categoryDeltas 被 delta!==0 过滤，只挂条目会漏');
+    assert.equal(typeof dc.verifiedActual, 'number');
+    assert.equal(typeof dc.candidateActual, 'number');
+    assert.ok(dc.candidateActual > 0, '当前选型下必然有未取证候选价，否则门控白做了');
+    assert.equal(dc.gatedActual, dc.verifiedActual + dc.candidateActual);
+    assert.ok(dc.unverifiedRatio > 0 && dc.unverifiedRatio < 1, '未取证占比应在 (0,1) 之间');
+    // 阶段 1 实测 0.976；阶段 3（hvac 读 config/hvac.yaml 的成交合同，36,000 归「已取证」）
+    // 后实测 0.741——分母是材料款合计，分子少了 hvac 这一整笔。占比下降来自**取证**，
+    // 不是门控失效；仍应占七成以上。
+    assert.ok(dc.unverifiedRatio > 0.7, `当前选型下未取证应占材料款七成以上（实测 ${dc.unverifiedRatio}）`);
+
+    // 全量清单：2026-10-13 阶段 3 起 hvac 也带 status 了（config/hvac.yaml 的
+    // commercial.status = contracted，DEC-2026-10-04-R1 已成交）→ 整笔归「已取证」，
+    // **不再**出现在未取证清单里。清单改由 masonry 等未取证材料科目领衔。
+    assert.ok(Array.isArray(dc.unverifiedCategories) && dc.unverifiedCategories.length > 0);
+    assert.ok(
+      !dc.unverifiedCategories.some((c: { key: string }) => c.key === 'hvac'),
+      'hvac 合同已成交 → 归已取证，不得再显形在未取证清单里',
+    );
+    const amounts = dc.unverifiedCategories.map((c: { candidateActual: number }) => c.candidateActual);
+    assert.deepEqual(amounts, [...amounts].sort((a, b) => b - a), '未取证清单按金额降序，「该先去核谁」才是直接答案');
+
+    // 逐科条目带门控两份变化量；过滤条件放宽后，只变门控不变金额的科目也不会被丢掉
+    for (const d of parsed.budgetImpact.categoryDeltas) {
+      assert.equal(typeof d.verifiedDelta, 'number', `${d.key} 必须带 verifiedDelta`);
+      assert.equal(typeof d.candidateDelta, 'number', `${d.key} 必须带 candidateDelta`);
+    }
+  });
+
+  it('get_budget exposes the candidate-price gate rollup and keeps every snapshot field', async () => {
+    const result = await client.callTool({ name: 'get_budget', arguments: {} });
+    const parsed = JSON.parse((result.content as { text: string }[])[0].text);
+
+    // 纯加法：快照原有字段一个都不能少
+    assert.equal(typeof parsed.totalActual, 'number');
+    assert.equal(typeof parsed.totalBudget, 'number');
+    assert.ok(Array.isArray(parsed.categories));
+    assert.ok(Array.isArray(parsed.lineItems));
+    for (const c of parsed.categories) {
+      assert.equal(typeof c.verifiedActual, 'number', `${c.key} 必须显式给出 verifiedActual`);
+      assert.equal(typeof c.candidateActual, 'number', `${c.key} 必须显式给出 candidateActual`);
+      assert.equal(c.verifiedActual + c.candidateActual, c.autoActual, `${c.key} 的门控两份之和必须等于 autoActual`);
+    }
+
+    assert.ok(parsed.dataConfidence, 'get_budget 必须带 dataConfidence，客户端不该自己加 19 个科目');
+    assert.equal(
+      parsed.dataConfidence.gatedActual,
+      parsed.categories.reduce((sum: number, c: { autoActual: number }) => sum + c.autoActual, 0),
+      '汇总必须与逐科之和一致',
+    );
+  });
+
+  it('what_if delta carries the candidate-price gate', async () => {
+    const result = await client.callTool({
+      name: 'what_if',
+      arguments: { changes: [{ topic: 'floor', optionId: 'floor_tile_herringbone_01' }] },
+    });
+    const parsed = JSON.parse((result.content as { text: string }[])[0].text);
+    assert.ok(parsed.delta.dataConfidence, 'what_if 的 delta 必须带 dataConfidence');
+    assert.ok(parsed.delta.dataConfidence.candidateActual > 0);
+    for (const d of parsed.delta.categoryDeltas ?? []) {
+      assert.equal(typeof d.verifiedDelta, 'number', `${d.key} 必须带 verifiedDelta`);
+      assert.equal(typeof d.candidateDelta, 'number', `${d.key} 必须带 candidateDelta`);
+    }
+  });
+
   it('batch_set_selections returns error for invalid topic', async () => {
     const result = await client.callTool({
       name: 'batch_set_selections',
       arguments: {
         selections: [
-          { topic: 'nonexistent_topic', optionId: 'A1' },
+          { topic: 'nonexistent_topic', optionId: 'A2' },
         ],
       },
     });
@@ -237,11 +316,13 @@ elements:
   it('what_if simulates changes without persisting', async () => {
     const before = await client.callTool({ name: 'get_current_scheme', arguments: {} });
     const beforeScheme = JSON.parse((before.content as { text: string }[])[0].text);
-    const beforeHvac = beforeScheme.selections.hvac.default;
+    // 2026-10-13 阶段 3：hvac 只剩成交方案 A2（七套 invented 方案已删），
+    // 「模拟换一个选项」改用 floor topic。
+    const beforeFloor = beforeScheme.selections.floor.default;
 
     const result = await client.callTool({
       name: 'what_if',
-      arguments: { changes: [{ topic: 'hvac', optionId: 'B1' }] },
+      arguments: { changes: [{ topic: 'floor', optionId: 'floor_tile_herringbone_01' }] },
     });
     const text = (result.content as { text: string }[])[0].text;
     const parsed = JSON.parse(text);
@@ -254,7 +335,7 @@ elements:
 
     const after = await client.callTool({ name: 'get_current_scheme', arguments: {} });
     const afterScheme = JSON.parse((after.content as { text: string }[])[0].text);
-    assert.equal(afterScheme.selections.hvac.default, beforeHvac, 'what_if must not persist');
+    assert.equal(afterScheme.selections.floor.default, beforeFloor, 'what_if must not persist');
   });
 
   it('what_if supports room override simulation', async () => {
@@ -286,7 +367,7 @@ elements:
   it('what_if rejects invalid topic', async () => {
     const result = await client.callTool({
       name: 'what_if',
-      arguments: { changes: [{ topic: 'nonexistent', optionId: 'A1' }] },
+      arguments: { changes: [{ topic: 'nonexistent', optionId: 'A2' }] },
     });
     const text = (result.content as { text: string }[])[0].text;
     const parsed = JSON.parse(text);

@@ -976,6 +976,9 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
 
       // 门窗洞按实扣除（DEC-2026-10-08-C06）：一段声明拆成多块实刷矩形
       // （门洞 → 左条 + 右条 + 门楣条；窗洞同理）。面积自动变净，3D 与成本从此同源。
+      // openings 必填：与 server/paint-cost-comparison.ts 的 toPaintWalls 同为
+      // 「model-geometry 不写 openings 键 = 无洞」这一声明约定的落地处（两处适配器，
+      // 不含第三处）。少了它，3D 里不扣洞而预算里扣，两侧面积分叉。
       const wallInput: PaintWallInput = {
         id: wall.id ?? element.wall,
         x1: wall.x1,
@@ -984,7 +987,7 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         z2: wall.z2,
         ...(wall.segments ? { segments: wall.segments } : {}),
         ...(wall.height !== undefined ? { height: wall.height } : {}),
-        ...(wall.openings ? { openings: wall.openings } : {}),
+        openings: wall.openings ?? [],
       };
       const scope = computePaintScope([wallInput], [{ id, wall: element.wall, room: element.room, along: [from, to], bottom, height }], paintWindows);
       const rects = scope.regions[0]?.rects ?? [];

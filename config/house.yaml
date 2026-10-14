@@ -517,7 +517,7 @@ furnishings:
     - { type: dishwasher, x: 8.80, z: 0.30, rotation: 0 }  # 北墙地柜台下（DEC-2026-08-02-013，水槽柜西侧紧邻；⚠️坐标待量房）
     # 灶台开孔位置由现有 gas_stove@10.50,1.18 与本 run 中心@10.48,1.00 换算为世界偏移，再按 rotation=90 逆变换为 run-local offset。
     - { type: kitchen_cabinet_run, x: 10.48, z: 1.00, rotation: 90, length: 1.40, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [{ kind: cooktop, id: kitchen-cooktop, offset: [-0.18, 0.02], size: [0.45, 0.75] }] }
-    - { type: cabinet_base, count: 5.0 }      # 预算/库存：北墙3.6+东墙2.2 L型
+    - { type: cabinet_base, count: 5.0 }      # 预算/库存：count-only 件数（5 组地柜）。柜体段**延米**以本文件 kitchen_cabinet_run 已放置段为准 = 北墙 2.96（1.28+1.68）+ 东墙 1.40 = 4.36m；台面另加北墙桥段 0.60m = 4.96m。2026-10-14 修正：原注释「北墙3.6+东墙2.2 = 5.8m」与几何不符（东墙 run 实为 1.40m），已按 c.cabinet_length_parity 对账改写
     - { type: cabinet_wall, count: 2.0 }
     - { type: countertop_quartz, count: 5.0 } # DEC-014 同地柜
     - { type: fridge, x: 10.45, z: 2.05, rotation: 90 }     # DEC-021 东墙南端高柜位（厨房缩至 z=2.4）

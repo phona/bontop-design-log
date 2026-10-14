@@ -1,5 +1,10 @@
 import type { ProjectCatalog } from './project-catalog.js';
 import type { BudgetCalculator } from './budget-calculator.js';
+// 计价字段的 fail-closed 取值：与 budget-calculator 共用同一个守卫（2026-10-14 阶段 4）。
+// 本文件过去也有一份 `price_per_unit ?? 0` / `coverage_per_unit ?? 1` / `loss_rate ?? 1`，
+// 后果是「换成这个选项能省 ¥X」里的 X 可能建立在兜底值上——缺 coverage 时候选成本被除小了
+// 100 倍，于是任何选项都"更便宜"，替代建议整体失去意义。同一守卫写两份必然漂移。
+import { pricingOf } from './budget-calculator.js';
 import type {
   CurrentScheme,
   DesignRulesConfig,
@@ -7,6 +12,7 @@ import type {
   ValueBreakdownItem,
   ValueAlternative,
   BudgetLineItem,
+  DesignOption,
 } from '../shared/types.js';
 
 // 把预算 lineItems 聚合成"价值叙事"：每个超支科目买到了什么（房间×材料×档次），
@@ -88,11 +94,10 @@ export class BudgetValueAnalyzer {
 
       for (const option of options) {
         if (option.id === currentOptionId) continue;
-        const price = option.price_per_unit ?? 0;
-        const coveragePerUnit = option.coverage_per_unit ?? 1;
-        const lossRate = option.loss_rate ?? 1;
+        // 缺计价字段即抛错（与 budget-calculator 同一守卫）：否则「省多少」建立在兜底值上。
+        const { pricePerUnit, coveragePerUnit, lossRate } = pricingOf(option, `topic ${topic} 的选项 ${option.id}`);
         const candidateCost = topicItems.reduce(
-          (sum, li) => sum + price * li.quantity / coveragePerUnit * lossRate,
+          (sum, li) => sum + pricePerUnit * li.quantity / coveragePerUnit * lossRate,
           0,
         );
         // Compare the fully calculated topic cost. A cheaper unit price can still

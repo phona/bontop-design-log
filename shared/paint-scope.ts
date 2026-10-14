@@ -21,9 +21,29 @@ export interface PaintWallInput {
   x2: number;
   z2: number;
   segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>;
+  /**
+   * **已废弃且不再参与计算**（2026-10-14 阶段 4）。
+   *
+   * 曾经 `computePaintScope` 在 region 没写 height 时回落到 `wall.height ?? 2.8`，而
+   * `WallSegment`（`catalog.getWalls()`，预算侧走这条路）**根本没有 height 字段**、
+   * `ResolvedWall`（`layout.walls`，/api/paint/comparison 走这条路）却有——同一条声明在
+   * 两条路径上会落到不同的顶标高，正是「同一个量两处算法」的病。预算侧那条路实际恒为
+   * `?? 2.8`，而 base.json 的 painting 备注写的是「层高 3.0m，墙面面积比 2.8m 高约 7%」：
+   * 漏写一条 height 就静默少算 7% 涂装面积，无任何报错。现改为 height 缺失即抛错，
+   * 本字段保留只为兼容既有调用方传值，**不再被读取**。
+   */
   height?: number;
-  /** model-geometry 的 openings（门/窗洞），坐标为洞口中心绝对值。 */
-  openings?: Array<{
+  /**
+   * model-geometry 的 openings（门/窗洞），坐标为洞口中心绝对值。
+   *
+   * **必填**（2026-10-14 阶段 4）：缺了这个字段就等于「这堵墙没有洞」，而涂装面积会
+   * 因此多算——多算的钱没有任何地方会喊。旧代码 `wall.openings ?? []` 把「调用方忘了传」
+   * 和「墙上真的没有洞」混成同一个值，所以现在由类型系统强制每个调用方表态；
+   * 「model-geometry 没写 openings 键 = 无洞」这一约定只在
+   * `server/paint-cost-comparison.ts` 的 `toPaintWalls` 与 `SceneBuilder` 两处
+   * model-geometry 适配器里显式成立，并各带注释。
+   */
+  openings: Array<{
     id: string;
     type: string;
     x: number;
@@ -53,7 +73,15 @@ export interface PaintRegionInput {
   room: string;
   along: [number, number];
   bottom?: number;
-  height?: number;
+  /**
+   * 涂装带**顶标高**（不是带高；带高 = height − bottom）。
+   *
+   * **必填**（2026-10-14 阶段 4）：旧代码 `region.height ?? wall.height ?? 2.8` 在两条
+   * 路径上给出不同答案（见 `PaintWallInput.height` 的说明），且预算侧实际恒为 2.8m。
+   * base.json 的 painting 备注写「层高 3.0m，墙面面积比 2.8m 高约 7%」——漏写一条 height
+   * 即静默少算 7% 涂装面积。现在缺失直接抛错：层高是算量输入，不是可以默认的观感参数。
+   */
+  height: number;
 }
 
 /** 一个待刷矩形（沿墙区间 × 竖向带）。 */
@@ -125,6 +153,27 @@ export interface PaintScopeResult {
 const EPS = 1e-9;
 const r3 = (n: number): number => Math.round((n + Number.EPSILON) * 1000) / 1000;
 
+/**
+ * 门洞的洞底标高 = 完成面（0m）。
+ *
+ * 这是**唯一被保留的默认值**，且它有物理依据而不是"猜一个数"：门从完成面起算，
+ * model-geometry.yaml 的 9 条 openings 全部是 door 且全部不写 sill（写了反而冗余）。
+ * 非门的洞口（窗/垭口）**不享受这个默认**——窗台高是算量输入，缺了就必须抛错，
+ * 否则会按"落地窗"扣掉一整面墙的涂装面积。
+ */
+const DOOR_SILL_M = 0;
+
+/** 洞口洞底标高：门取完成面，其余缺声明即抛错（不能按落地算，那会多扣面积）。 */
+function openingSill(opening: { id: string; type: string; sill?: number }): number {
+  if (opening.type === 'door') return DOOR_SILL_M;
+  if (opening.sill === undefined) {
+    throw new Error(
+      `洞口 ${opening.id}（type=${opening.type}）缺 sill：非门洞口的洞底标高无法推断，按 0 算会把整段墙面当落地洞口扣掉（涂装面积凭空变小）`,
+    );
+  }
+  return opening.sill;
+}
+
 /** 墙的折线总长（segments 优先，否则单段）。 */
 export function paintWallLength(wall: PaintWallInput): number {
   const segments = wall.segments?.length
@@ -146,7 +195,9 @@ export function doorGapsOnWall(wall: PaintWallInput): PaintGap[] {
     ? wall.segments
     : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
   const gaps: PaintGap[] = [];
-  for (const opening of wall.openings ?? []) {
+  // openings 必填（见 PaintWallInput.openings）：这里不再做 `?? []` 兜底——
+  // 「调用方忘了传洞口」与「墙上真的没有洞」曾被混成同一个值，后果是涂装面积静默多算。
+  for (const opening of wall.openings) {
     // 在折线上找到离洞口中心最近的投影点（墙在当前模型里均为单段，保留折线通用性）。
     const total = paintWallLength(wall);
     let remaining = total;
@@ -169,7 +220,7 @@ export function doorGapsOnWall(wall: PaintWallInput): PaintGap[] {
     }
     if (along < 0 || segLength <= EPS) continue;
     const half = opening.width / 2;
-    const bottom = opening.sill ?? 0;
+    const bottom = openingSill(opening);
     const top = bottom + opening.height;
     gaps.push({
       id: opening.id,
@@ -267,7 +318,17 @@ export function computePaintScope(
       throw new Error(`paint_region ${region.id}: along [${from}, ${to}] is outside wall ${region.wall} (length ${wallLength})`);
     }
     const bottom = region.bottom ?? 0;
-    const top = region.height ?? wall.height ?? 2.8;
+    // 顶标高必须由声明给出（2026-10-14 阶段 4）。旧兜底 `region.height ?? wall.height ?? 2.8`
+    // 在预算侧（catalog.getWalls() → WallSegment 无 height 字段）恒等于 2.8m，而
+    // base.json 的 painting 备注写的是「层高 3.0m，墙面面积比 2.8m 高约 7%」——
+    // 漏写一条 height 就静默少算 7% 涂装面积，且 /api/paint/comparison（走 ResolvedWall，
+    // 有 height）与预算侧会因此给出不同答案。错误信息直接指去哪补。
+    if (region.height === undefined) {
+      throw new Error(
+        `paint_region ${region.id} 缺 height（涂装带顶标高，不是带高）：请到 config/layout/overlay.yaml 补 height（本案层高 2.8m，窗台/防水台带另有 0.77m 一档）。缺失时不许回落默认层高——那会让涂装面积静默偏离声明`,
+      );
+    }
+    const top = region.height;
     if (!(top > bottom)) throw new Error(`paint_region ${region.id}: height ${top} must exceed bottom ${bottom}`);
 
     const rect: PaintRect = { from, to, bottom, top };
@@ -296,7 +357,14 @@ export function computePaintScope(
       }
       const wFrom = Math.min(window.along[0], window.along[1]);
       const wTo = Math.max(window.along[0], window.along[1]);
-      const wBottom = window.sill ?? 0;
+      // 窗台高同样是算量输入：缺了它就只能按"落地"扣洞，把涂装面积凭空扣小。
+      // 与门洞不同，窗**不享受** DOOR_SILL_M 那个有物理依据的默认。
+      if (window.sill === undefined) {
+        throw new Error(
+          `${window.id}（挂在墙 ${region.wall} 上）缺 sill：窗台高无法推断，按 0 算会把整段墙面当落地窗洞扣掉（涂装面积凭空变小）`,
+        );
+      }
+      const wBottom = window.sill;
       const wTop = wBottom + window.height;
       const clippedFrom = Math.max(wFrom, from);
       const clippedTo = Math.min(wTo, to);

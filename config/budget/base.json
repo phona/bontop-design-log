@@ -43,11 +43,26 @@
     "masonry": {
       "budget": 18500,
       "material": 0,
-      "labor": {
-        "rate": 45,
-        "unit": "元/㎡",
-        "area": "floor"
-      },
+      "labor": [
+        {
+          "rate": 45,
+          "unit": "元/㎡",
+          "area": "floor",
+          "note": "干区主地面贴砖人工。DEC-2026-10-13 阶段 3：单对象拆成三行，本行只对应 config/masonry-labor.yaml 费率卡的 600x600 行；当前干区选型 200x1200 木纹砖在卡上有行，正常路径由卡片解析，45 仅在卡片不可读时兜底"
+        },
+        {
+          "rate": null,
+          "unit": "元/㎡",
+          "area": "wet_floor_tile",
+          "note": "湿区主地面贴砖人工。湿区选型 400x400 / 200x200 在瓦工费率卡上无行，且卡上「卫生间地面 300 元/间（面积不计）」读法未裁（selection_status: unresolved）→ 待报价显形，不得用 45 冒充"
+        },
+        {
+          "rate": null,
+          "unit": "元/㎡",
+          "area": "wall_tile",
+          "note": "墙砖与防水台贴砖人工。base.json 原先没有这一行（旧口径墙砖人工整体未计价）；费率由瓦工费率卡的墙砖规格表按选型规格解析"
+        }
+      ],
       "actual": 0,
       "status": "draft",
       "notes": "客餐厅木纹砖通铺，墙砖厨卫；按 94.76㎡ 套内 + 部分赠送面积估算"

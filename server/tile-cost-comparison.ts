@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import type { ResolvedLayout } from '../shared/types.js';
 import type { ProjectCatalog } from './project-catalog.js';
+import { loadMasonryQuotesBundle, MASONRY_QUOTES_PATH } from './masonry-quotes.js';
 
 export interface TileQuoteLine {
   label: string;
@@ -336,64 +337,36 @@ function requiredPositiveNumber(value: number, label: string): void {
   if (!Number.isFinite(value) || value <= 0) throw new Error(`${label} must be a positive finite number`);
 }
 
-/** 瓦工费率卡文件（config/masonry-labor.yaml）的形状：active 指向的一张报价卡。 */
-interface MasonryLaborQuote {
-  id: string;
-  contractor?: string;
-  quoted_at?: string;
-  status?: string;
-  source: string;
-  observed_at: string;
-  quote_status: string;
-  currency: string;
-  floor_rates_yuan_per_sqm: MasonryRateCard['floor_rates_yuan_per_sqm'];
-  wall_rates_yuan_per_sqm: MasonryRateCard['wall_rates_yuan_per_sqm'];
-  conditional_addons: MasonryRateCard['conditional_addons'];
-  extras: MasonryRateCard['extras'];
-  notes: string[];
-  bathroom_floor_charge_interpretations: MasonryRateCard['bathroom_floor_charge_interpretations'];
-}
-
-interface MasonryLaborFile {
-  version: number;
-  active: string;
-  quotes: MasonryLaborQuote[];
-}
-
 /**
- * 瓦工费率的唯一机器可读源（2026-10-13 起）。
+ * 瓦工费率卡（config/masonry-labor.yaml 的 active 卡）的唯一读取入口。
  *
  * 历史：该卡原为 config/tile-comparison.yaml 的 masonry_rate_card，只喂 /api/tiles/comparison；
  * 而 server/budget-calculator.ts 的 computeLabor 另读 config/budget/base.json 的
  * categories.masonry.labor（45 元/㎡），同一件事两处定价、互不对账。
- * 提为项目级文件后，本函数是读取它的唯一入口。
+ * 2026-10-13 提为项目级文件，并改成**合法 quote-cards**（阶段 3）：这里不再有专用 loader，
+ * 改走 server/masonry-quotes.ts 的 parseMasonryQuotes + masonryCardDomain，
+ * 与预算侧（computeLabor）读同一个文件、同一张卡。
  *
- * 身份：返回的是**费率假设层**，不是成交价——quote_status 为 preliminary_labor_rate_card，
+ * 身份：返回的是**费率假设层**，不是成交价——evidence.kind = photo，
  * 来源是业主上传的瓦工费率表照片，无施工方名称/日期/签章/总价。
  */
-export function loadMasonryRateCard(path = 'config/masonry-labor.yaml'): MasonryRateCard {
-  const file = load(readFileSync(path, 'utf8')) as MasonryLaborFile;
-  if (!Array.isArray(file.quotes) || file.quotes.length === 0) {
-    throw new Error(`${path}: quotes 不能为空`);
-  }
-  const quote = file.quotes.find(item => item.id === file.active);
-  if (!quote) {
-    throw new Error(`${path}: active="${file.active}" 在 quotes 中不存在（可用：${file.quotes.map(q => q.id).join(', ')}）`);
-  }
-  for (const field of ['source', 'observed_at', 'quote_status', 'currency'] as const) {
-    if (!quote[field]) throw new Error(`${path}: active 卡缺少必填字段 ${field}`);
+export function loadMasonryRateCard(path = MASONRY_QUOTES_PATH): MasonryRateCard {
+  const { card, domain } = loadMasonryQuotesBundle(path);
+  const evidence = card.evidence;
+  if (!evidence) {
+    throw new Error(`${path}: active 卡 ${card.id} 缺 evidence{...}（身份字段唯一入口，不猜）`);
   }
   return {
-    source: quote.source,
-    observed_at: quote.observed_at,
-    quote_status: quote.quote_status,
-    currency: quote.currency,
-    floor_rates_yuan_per_sqm: quote.floor_rates_yuan_per_sqm,
-    wall_rates_yuan_per_sqm: quote.wall_rates_yuan_per_sqm,
-    conditional_addons: quote.conditional_addons,
-    extras: quote.extras,
-    notes: quote.notes,
-    bathroom_floor_charge_interpretations: quote.bathroom_floor_charge_interpretations,
+    source: evidence.source ?? '',
+    observed_at: evidence.observed_at ?? '',
+    quote_status: evidence.quote_status ?? evidence.status,
+    currency: evidence.currency ?? 'CNY',
+    floor_rates_yuan_per_sqm: domain.floor_rates_yuan_per_sqm,
+    wall_rates_yuan_per_sqm: domain.wall_rates_yuan_per_sqm,
+    conditional_addons: domain.conditional_addons,
+    extras: domain.extras,
+    notes: domain.notes,
+    bathroom_floor_charge_interpretations: domain.bathroom_floor_charge_interpretations,
   };
 }
 

@@ -238,7 +238,11 @@ export function loadPaintScopeInputs(path = 'config/layout/overlay.yaml'): Paint
   const windows: PaintWindowInput[] = (overlay.elements ?? [])
     .filter((element) => element?.type === 'bay_sill' || element?.type === 'glass_infill')
     .flatMap((element) => {
-      const sill = (element.sill as number | undefined) ?? 0;
+      // 窗台高**原样透传，不补 0**（2026-10-14 阶段 4）：这里若写 `sill ?? 0`，
+      // 缺声明的窗洞会被静默当成"落地窗"扣掉整段墙面，而 shared/paint-scope.ts 的
+      // fail-closed 守卫永远等不到那个 undefined——兜底发生在更上游，比没有守卫更糟。
+      // 本案 12 条 bay_sill / glass_infill 全部显式写了 sill，所以生产路径不受影响。
+      const sill = element.sill as number | undefined;
       const height = element.height as number;
       const along = element.along as [number, number] | undefined;
       const wallIds = element.type === 'bay_sill'
@@ -251,7 +255,14 @@ export function loadPaintScopeInputs(path = 'config/layout/overlay.yaml'): Paint
   return { regions, sillRegions, ceilingRooms, suppressedWallIds, windows };
 }
 
-/** buildScene 的墙 / catalog 的墙 / resolved layout 的墙 → 共享算法的输入形状。 */
+/**
+ * buildScene 的墙 / catalog 的墙 / resolved layout 的墙 → 共享算法的输入形状。
+ *
+ * `openings: wall.openings ?? []` 是全仓**唯一**允许的「无 openings 键 → 无洞」转换点：
+ * model-geometry.yaml 的约定就是「不写 openings 键的墙没有洞口」（9 条开口全部显式声明），
+ * 所以这里是声明约定的落地处，而不是静默兜底。`PaintWallInput.openings` 已改为必填，
+ * 任何其它调用方再想省略这个字段都过不了类型检查——「忘了传洞口」不再等于「墙上没有洞」。
+ */
 function toPaintWalls(walls: Array<Record<string, any>>): PaintWallInput[] {
   return walls.map((wall) => ({
     id: String(wall.id),
@@ -261,7 +272,7 @@ function toPaintWalls(walls: Array<Record<string, any>>): PaintWallInput[] {
     z2: Number(wall.z2),
     ...(wall.segments ? { segments: wall.segments } : {}),
     ...(wall.height !== undefined ? { height: Number(wall.height) } : {}),
-    ...(wall.openings ? { openings: wall.openings } : {}),
+    openings: wall.openings ?? [],
   }));
 }
 

@@ -221,3 +221,106 @@ test('未四舍五入：数量保留原始浮点', () => {
   assert.ok(!Number.isInteger(takeoff.conduit.strongPowerM));
   assert.ok(!Number.isInteger(takeoff.wire.totalWireM));
 });
+
+/**
+ * 2026-10-14 阶段 4：算量规则/坐标缺失一律 fail-closed，不按兜底值继续算。
+ *
+ * 这一组钉的是失败方式：过去这些值缺失时会各自兜底（损耗 1.0、双控附加 0 芯、
+ * 折线点标高 0、终点标高 0、无 breaker 不算漏保、管件系数硬编码在报价层），
+ * 每一种都仍会产出一份"结构完整"的量表——`unresolved` 里也确实有记录，
+ * 但忽略 `feasibleForQuote` 的下游拿到的是错数，不是"待定"。
+ */
+const cloneRules = (): MepTakeoffRules => JSON.parse(JSON.stringify(rules)) as MepTakeoffRules;
+
+/** 与文件顶部同一套 as 断言：本文件的 electrical/plumbing 是 Record 视图，只喂测试。 */
+const elec = electrical as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'];
+const plumb = plumbing as unknown as Parameters<typeof computeMepTakeoff>[0]['plumbing'];
+
+test('算量规则缺失即抛错：损耗 / 双控附加芯 / 管件系数都不兜底', () => {
+  const base = {
+    electrical: elec, plumbing: plumb,
+    circuits: topology.circuits,
+    controls: topology.controls ?? [],
+    routes: coordination.routes,
+    resolution,
+  };
+  const withoutLoss = cloneRules();
+  delete (withoutLoss.units as { loss?: unknown }).loss;
+  assert.throws(() => computeMepTakeoff({ ...base, rules: withoutLoss }), /units\.loss\.wire/);
+
+  const zeroLoss = cloneRules();
+  zeroLoss.units.loss = { wire: 0, pipe: 1.08 };
+  assert.throws(() => computeMepTakeoff({ ...base, rules: zeroLoss }), /units\.loss\.wire/,
+    '零损耗等于"施工不用余料"，物理上不成立');
+
+  const withoutFittings = cloneRules();
+  delete (withoutFittings.units as { fitting_per_meter?: unknown }).fitting_per_meter;
+  assert.throws(() => computeMepTakeoff({ ...base, rules: withoutFittings }), /units\.fitting_per_meter\.ppr/,
+    '管件系数过去硬编码在 server/mep-quotes.ts（0.35 / 0.27），依据只在报价卡 scope_note 散文里');
+
+  const withoutDual = cloneRules();
+  delete (withoutDual.units as { dual_control_extra_cores?: unknown }).dual_control_extra_cores;
+  assert.throws(() => computeMepTakeoff({ ...base, rules: withoutDual }), /units\.dual_control_extra_cores/);
+});
+
+test('管件数量由声明的 fitting_per_meter 派生，并随 takeoff 输出（报价层只读量）', () => {
+  const water = takeoff.pipe.water.reduce((sum, bucket) => sum + bucket.meters, 0);
+  const drainage = takeoff.pipe.drainage.reduce((sum, bucket) => sum + bucket.meters, 0);
+  assert.ok(Math.abs(takeoff.pipe.fittings.ppr - water * rules.units.fitting_per_meter.ppr) < 1e-9);
+  assert.ok(Math.abs(takeoff.pipe.fittings.pvc - drainage * rules.units.fitting_per_meter.pvc) < 1e-9);
+  assert.ok(takeoff.pipe.fittings.ppr > 0 && takeoff.pipe.fittings.pvc > 0, '管件数必须是正数（0 = 静默漏计）');
+});
+
+test('回路缺 breaker 声明即抛错：漏保数量不能靠"没声明=没有"少算', () => {
+  const stripped = topology.circuits.map((circuit, index) => (
+    index === 0 ? { ...circuit, breaker: undefined } : circuit
+  )) as TakeoffCircuit[];
+  assert.throws(() => computeMepTakeoff({
+    electrical: elec, plumbing: plumb,
+    circuits: stripped,
+    controls: topology.controls ?? [],
+    routes: coordination.routes,
+    resolution,
+    rules,
+  }), /缺 breaker 声明/);
+});
+
+test('折线点缺 y 标高即抛错：不按 0 算（否则吊顶内的水平段变成竖直段）', () => {
+  const broken = coordination.routes.map((route) => (
+    route.id === 'strong-main'
+      ? { ...route, via: route.via.map((point) => ({ x: point.x, z: point.z })) }
+      : route
+  ));
+  const brokenResolution = resolveMepRoutes({ ...coordination, routes: broken } as typeof coordination, sources);
+  assert.throws(() => computeMepTakeoff({
+    electrical: elec, plumbing: plumb,
+    circuits: topology.circuits,
+    controls: topology.controls ?? [],
+    routes: broken,
+    resolution: brokenResolution,
+    rules,
+  }), /缺 y 标高/);
+});
+
+test('竖向下引段的终点标高与折线标高同一个表达式：缺声明时先由折线守卫 fail-closed', () => {
+  // terminalDrop 用的是 `to_height ?? to.y`，与 mepRoutePoints 给折线点的赋值同源。
+  // 所以"终点标高缺失"今天由 requirePointY 先拦下（错误信息指到同一个 config 字段），
+  // 竖向下引段不可能静默按 0 消失。这里把这条不变量钉住：抽掉 to_height 后，
+  // 整条 takeoff 抛错而不是产出一份少了 2.2m/个管长的量表。
+  const stripped = coordination.routes.map((route) => {
+    if (route.to_height === undefined) return route;
+    const { to_height: _dropped, ...rest } = route as Record<string, unknown>;
+    return rest as typeof route;
+  });
+  const strippedResolution = resolveMepRoutes({ ...coordination, routes: stripped } as typeof coordination, sources);
+  assert.throws(() => computeMepTakeoff({
+    electrical: elec, plumbing: plumb,
+    circuits: topology.circuits,
+    controls: topology.controls ?? [],
+    routes: stripped,
+    resolution: strippedResolution,
+    rules,
+  }), /标高/);
+  // 对照组：原样规则下竖向下引段确实被算出来（不是 0），否则上面的断言只是"什么都没算"。
+  assert.ok(takeoff.conduit.terminalDropM > 0, `竖向下引段应为正（实际 ${takeoff.conduit.terminalDropM}m）`);
+});

@@ -119,9 +119,9 @@ vi.mock('./render/annotations/AnnotationRenderer.js', () => ({
   },
 }));
 
-vi.mock('@shared/houseData', () => ({
-  hvacSchemes: [],
-}));
+// 2026-10-13 阶段 3：原先这里 mock `@shared/houseData`（七套 invented HVAC 报价表）。
+// 该文件已删除，HvacTopic 改读 config/hvac.yaml?raw——真实配置只有一个成交方案，
+// 不需要 mock（HvacTopic.apply 不清几何，见 TopicRegistry.test.ts 的同源断言）。
 
 vi.mock('./data/designData.js', () => ({
   floorOptions: [],

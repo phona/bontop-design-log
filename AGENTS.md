@@ -119,6 +119,37 @@
 - 第一人称 pitch 限制 ±80°，旋转带平滑阻尼。禁止移除 clamp 或改为无平滑直接赋值。
 - `CameraAnimator.interrupt()` 必须停在当前位置，禁止跳到动画终点。
 
+## 预算计算三层架构（2026-10-14 建立）
+
+> 由来：2026-10-13 两个扫描代理共报 55+ 项「拍脑袋数据」，其中 11 项直接算错钱。逐条 patch 是错的——它们是 3 个根因的产物：① 同一个量有多处算法、互不对账；② 取不到值时静默发明（`?? default`）；③ 估算和事实没有门控。
+>
+> **最该记住的一条**：masonry 池曾同时背着方向相反的两个 ±¥3,000 大错（墙砖 +3,113 / 瓦工 −3,356），**净差只 ¥129**。所以「总额看起来合理」被当成了口径正确的证据——这正是全绿还错那么多的机制。
+
+**三层，每层单一实现：**
+
+- **L1 量** —— 每一类量在 `shared/` 只有一个 `*_takeoff.ts`：`masonry-takeoff.ts`（墙砖/地面/防水台）、`ceiling-takeoff.ts`、`mep-takeoff.ts`、`paint-scope.ts`。**禁止在 `server/` 写第二套算法。** 已废除的拍系数：`wetWallArea = (宽+深)×2×高×0.7`（算出 65.699㎡，权威是声明实算 30.8105㎡）、`linearKitchen = 深×0.8`（算出 1.92，house.yaml 柜体段实计 4.36m）。
+- **L2 价** —— 每个 trade 一张 `shared/quote-cards.ts` 报价卡（`masonry-labor.yaml` / `ceiling-quotes.yaml` / `mep-quotes.yaml`）。`per_unit: null` = 待报价：**数量显形、金额不编**。`comparable: false` 由机制自动判定（缺 `scope_note` / 有待报价行 / 空卡 / `evidence.kind !== 'written_quote'`），不靠人记得。
+- **L3 额** —— `planned_cny`（批准额）与算出值分离。`estimated_need_cny` **不是组件和**（是业主询价轮次目标），改成派生会静默关掉 PKG-110 的 ¥2,000 缺口。
+
+**口径（2026-10-14 阶段 5 起）**：`actual` 只计**已取证**材料款 + 人工，不再含 `candidateActual`。`autoActual = verifiedActual + candidateActual`（材料全额）保持不变，这个不变量由测试对全部科目逐条断言。`totalActual` 因此从 157,870 降到 65,174——**不是预算变少，是把 39 条未取证候选价从「已花的钱」挪回「假设」**。
+
+**铁律：**
+- 改任何量之前，先确认它是否已有 `shared/*-takeoff.ts`；有就读它，**不许新写公式**。
+- `option.price_per_unit` / `coverage_per_unit` / `loss_rate` 缺失一律 throw（`pricingOf()`），不许 `?? 0` / `?? 1` / `?? 1.0`——那会让面积型材料按"片数×单价"计价，量级错 100 倍。
+- `0` 是合法声明值（开发商已装 / 尚未定价），「缺字段」与「声明为 0」是两件事，不许混为一谈。
+- 「不写 `openings` 键 = 墙上没有洞」是 `model-geometry.yaml` 的既有约定，`PaintWallInput.openings` 已提为类型必填；全仓只保留两处适配器显式落地它。
+- 新增 config 文件必须在 `config/facts.yaml` 的 coverage 矩阵登记，并在 `readers` 里点名真实读者——否则 `declared_reader_does_not_read`（error）。
+
+**三道对账契约（防复发，`config/facts.yaml`）**：`c.*_parity`（量在 overlay 实算 / control.yaml `quantity_declared` / 预算 lineItems 三处必须相等）、`c.*_single_source`（费率表全仓只出现一次）、`verify-model-package-links`（死引用——`/api/project` 500 那次，`assertSelector` 早在代码里，只是没人在 verify 时调它）。
+
+**改预算链后必须跑**：
+```bash
+npm run typecheck
+npm run test:server
+npm run test:app
+npm run verify:all
+```
+
 ## 渲染性能铁律
 
 - 玻璃材质默认禁用 `transmission`（会触发 three.js 全场景二次渲染，draw call 翻倍），走 `transparent + opacity` 快路径；高保真仅在导出/取证时经工具栏「玻璃质感」开关临时开启。新增玻璃类材质必须走 `BrowserSceneMaterials.registerGlass` 注册，禁止直接写死 `transmission > 0`。

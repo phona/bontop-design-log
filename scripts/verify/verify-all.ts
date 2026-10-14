@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import * as path from 'node:path';
 
 /**
- * 全量门禁编排器：依次跑完 15 个 verifier，**不短路**，汇总退出码。
+ * 全量门禁编排器：依次跑完 16 个 verifier，**不短路**，汇总退出码。
  *
  * 为什么存在：原 `verify:all` 是 `&&` 链，任何一步非零就中止——一个「等外部输入」的
  * 待决项（如 `sock_child_ac` 卡空调厂家深化图）会让后面 7 个 verifier 根本不执行，
@@ -42,6 +42,7 @@ const VERIFIERS: VerifierSpec[] = [
   { name: 'verify-project-render-facts', script: 'scripts/verify/project/verify-project-render-facts.ts' },
   { name: 'verify-lighting-config', script: 'scripts/verify/project/verify-lighting-config.ts' },
   { name: 'verify-facts', script: 'scripts/verify/facts/verify-facts.ts' },
+  { name: 'verify-model-package-links', script: 'scripts/verify/model/verify-model-package-links.ts' },
   { name: 'verify-mep-takeoff', script: 'scripts/verify/mep/verify-mep-takeoff.ts' },
   { name: 'verify-schedule', script: 'scripts/schedule/control.ts' },
 ];

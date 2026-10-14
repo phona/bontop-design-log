@@ -147,7 +147,7 @@ test('基线卡 = 现状口径：carpentry 金额与未引入报价时完全一�
   const scheme: CurrentScheme = {
     updatedAt: new Date().toISOString(),
     selections: {
-      hvac: { default: 'A1', roomOverrides: {} },
+      hvac: { default: 'A2', roomOverrides: {} },
       floor: { default: 'floor_tile_01', roomOverrides: {} },
       wall: { default: 'wall_tile_01', roomOverrides: {} },
       paint: { default: 'latex_paint_01', roomOverrides: {} },

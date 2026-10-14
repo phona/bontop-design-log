@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { load } from 'js-yaml';
 import type {
   CurrentScheme,
   BudgetSnapshot,
@@ -13,15 +14,73 @@ import type {
   DesignOption,
 } from '../shared/types.js';
 import { computeCeilingTakeoff, type CeilingTakeoff } from '../shared/ceiling-takeoff.js';
+import {
+  computeMasonryTakeoff,
+  type MasonryFloorRegionInput,
+  type MasonryTakeoffInput,
+  type MasonryTakeoffResult,
+} from '../shared/masonry-takeoff.js';
 import { loadCeilingConfig } from './config-loader.js';
 import { parseOverlay } from './overlay-merge.js';
-import { loadCeilingQuotes, type CeilingQuotesFile } from './ceiling-quotes.js';
-import { resolveActiveCeilingRates, compareCeilingQuotes, type CeilingQuoteRateKey, type ResolvedCeilingRates } from './ceiling-quotes.js';
+import { loadCeilingQuotes, baseJsonCeilingRatesFromBase, type CeilingQuotesFile } from './ceiling-quotes.js';
+import { resolveActiveCeilingRates, compareCeilingQuotes, type CeilingQuoteRateKey } from './ceiling-quotes.js';
+import {
+  loadMasonryQuotes,
+  masonryQuoteFallback,
+  masonrySpecSelection,
+  resolveActiveMasonryRates,
+  MASONRY_LABOR_AREAS,
+  type MasonryQuoteRateKey,
+  type MasonryQuotesFile,
+} from './masonry-quotes.js';
 import type { ProjectCatalog } from './project-catalog.js';
 import type { ResolvedLayout } from '../shared/types.js';
+import type { ResolvedQuoteRate } from '../shared/quote-cards.js';
 import { isBudgetTopicIncluded, loadPhaseScopes } from './phase-scope.js';
 import { controlPathForPhase, loadPhaseControlAuthority } from './phase-control.js';
 import { computePaintScopeForLayout, loadPaintScopeInputs } from './paint-cost-comparison.js';
+
+/**
+ * 计价字段取值：**缺失即抛错**（2026-10-14 阶段 4：清除会算错钱的静默兜底）。
+ *
+ * 三个字段过去全写成 `option.X ?? <兜底>`：
+ *   - `price_per_unit ?? 0`     → 金额静默归零（已实际发生 2 次：entry_door_01 开发商已装、
+ *                                 wardrobe_north_950_custom_01 定制衣柜——两者在 materials.yaml
+ *                                 里显式写了 0，所以兜底没触发，但"缺字段"与"声明为 0"曾被混为一谈）
+ *   - `coverage_per_unit ?? 1`  → 面积型材料按"片数×单价"计价，量级错 100 倍
+ *   - `loss_rate ?? 1.0`        → 主公式损耗变 1.0，少算 8~15%
+ * 注意 0 是**合法声明值**（开发商已装 / pending 未定价），所以价格只要求"是有限数"，
+ * 不要求为正；覆盖率与损耗则必须为正（0 覆盖率会除零，0 损耗等于"施工不用余料"）。
+ *
+ * 与 server/tile-cost-comparison.ts / server/paint-cost-comparison.ts 的
+ * `requiredPositiveNumber` 同一风格：fail-closed，错误信息指去哪补。
+ */
+function requiredPrice(value: unknown, label: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(
+      `${label} 缺 price_per_unit（或不是有限数）：不计 0 元——「没写价格」与「声明为 0」是两件事，前者是配置漏洞。请到 config/materials.yaml 补 price_per_unit（开发商已装 / 待核价可显式写 0）`,
+    );
+  }
+  return value;
+}
+
+function requiredPositiveOption(value: unknown, label: string, field: 'coverage_per_unit' | 'loss_rate'): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    throw new Error(
+      `${label} 缺 ${field}（或不是正数）：不按 1 兜底——那会让面积型材料按"片数×单价"计价、或让损耗凭空消失。请到 config/materials.yaml 补 ${field}`,
+    );
+  }
+  return value;
+}
+
+/** 一条计价行的三个字段一次取齐（缺任何一个都抛错，不会半套兜底半套真值）。 */
+export function pricingOf(option: DesignOption, label: string): { pricePerUnit: number; coveragePerUnit: number; lossRate: number } {
+  return {
+    pricePerUnit: requiredPrice(option.price_per_unit, label),
+    coveragePerUnit: requiredPositiveOption(option.coverage_per_unit, label, 'coverage_per_unit'),
+    lossRate: requiredPositiveOption(option.loss_rate, label, 'loss_rate'),
+  };
+}
 
 /**
  * 涂装**净**面积（净墙 + 顶 + 普通漆窗台）逐房间表：唯一来源是 overlay.yaml 的 paint_region 声明 +
@@ -31,26 +90,186 @@ import { computePaintScopeForLayout, loadPaintScopeInputs } from './paint-cost-c
  * 由调用方降级——绝不退化成一个拍系数公式。
  */
 /**
- * DEC-2026-10-09-P16：非房间地面的算量入口（几何驱动，取代 DEC-2026-10-09-P12 的 `costed` opt-in）。
+ * 干区 / 湿区**地面**房划分：瓦工算量把地面拆成「干区主地面」与「湿区主地面」两档计价
+ * （费率不同：木纹砖 75 元/㎡ vs 600×600 卫生间砖 45 元/㎡，见 config/masonry-labor.yaml），
+ * 所以这个划分是算量输入而不是展示信息。
  *
- * floor 算量口径：
- *   Σ(applyRooms 房间 footprint)
- *   + Σ(floor_region 面积，且该 region **不整块落在任何 applyRooms 房间内**)
- *   − Σ(显式 excluded 的 region 面积)
- * 默认该算就算；只有例外才标 `excluded: true` 并带 reason。
- *
- * 为什么废掉 `costed`：那个手工布尔量**重复了几何已知的信息**（这块地是不是已经被某个
- * applyRooms 房间算过）。同一个事实存两处，改一处忘另一处就是双计/漏计，而且从任何单处
- * 都看不出来——业主 2026-10-09 判「太反直觉」。现在「落在已计费房间内」由几何判定，
- * 双计路径从根上消失；`excluded` 只留给几何说不清的例外（开发商已铺、业主裁定不铺）。
+ * 唯一来源是 `config/tile-comparison.yaml` 的 `dry_room_ids` + `wet_room_ids`——
+ * `dry_room_ids` 早已在该文件里声明（干区净铺面积 111.864㎡ 的权威源），湿区 counterpart
+ * 放在同一处，避免「同一事实存两处」。两表必须非空且不交叠（模块自身也会复核交叠）。
  */
-export interface FloorRegionTakeoff {
-  /** 不在任何已计费房间内、也未声明 excluded 的 floor_region 面积合计——要加进 floor 算量。 */
-  extraArea: number;
-  /** 显式 `excluded: true` 的面积合计（留档：这部分是有意不算的，不是漏算）。 */
-  excludedArea: number;
-  /** 整块落在某个已计费房间内而被跳过的面积合计（留档：已被房间 footprint 算过，再算即双计）。 */
-  skippedInsideRoomArea: number;
+function loadFloorRoomSplit(): { dryRoomIds: string[]; wetRoomIds: string[] } {
+  const config = load(readFileSync('config/tile-comparison.yaml', 'utf8')) as {
+    dry_room_ids?: unknown;
+    wet_room_ids?: unknown;
+  };
+  const asIdList = (value: unknown, field: string): string[] => {
+    if (!Array.isArray(value) || value.length === 0 || value.some((id) => typeof id !== 'string')) {
+      throw new Error(`config/tile-comparison.yaml 的 ${field} 必须是非空字符串数组（干/湿区地面房划分是算量输入，不猜）`);
+    }
+    return value as string[];
+  };
+  const dryRoomIds = asIdList(config.dry_room_ids, 'dry_room_ids');
+  const wetRoomIds = asIdList(config.wet_room_ids, 'wet_room_ids');
+  return { dryRoomIds, wetRoomIds };
+}
+
+/**
+ * DEC-2026-10-13「预算计算架构根治」阶段 2 第二半：**瓦工算量（量层）唯一入口**。
+ *
+ * 为什么不再有 `loadExtraFloorRegionArea` / `wetWallArea` / `linearKitchen`：
+ * 同一个量在仓区里有多套算法、互不对账，是 2026-10-13 扫描出的 55+ 项拍脑袋数据的共同根因。
+ * 现在墙砖、防水台贴砖、地面（干/湿区 + 非房间 floor_region extra）全部由
+ * `shared/masonry-takeoff.ts` 一个函数从 overlay.yaml 声明实算，server / scripts / tests 共用；
+ * 本函数只负责「config → 模块输入」的装载，不写任何算法。
+ *
+ * 地面口径（DEC-2026-10-09-P16，模块内同款实现）：
+ *   Σ(dryRoomIds ∪ wetRoomIds 房间 footprint)
+ *   + Σ(floor_region 面积，且该 region **不整块落在任何已计费房间内**)
+ *   − Σ(显式 excluded 的 region 面积)
+ * 默认该算就算；只有例外才标 `excluded: true` 并带 reason。废掉 `costed` opt-in 的理由见
+ * shared/types.ts 的 floor_region 注释：那个手工布尔量重复了几何已知的信息，改一处忘另一处
+ * 就是双计/漏计，且从任何单处都看不出来。
+ *
+ * `elements` 是测试缝：缺省读 `config/layout/overlay.yaml`（生产唯一入口），
+ * 显式传入则可对同一套分派规则做合成复算（改标志/加区域），避免为跑负例去改配置文件。
+ */
+export function loadMasonryTakeoff(
+  catalog: ProjectCatalog,
+  elements?: unknown[]
+): MasonryTakeoffResult {
+  const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const overlayElements = (elements ?? overlay.elements ?? []) as Array<Record<string, any>>;
+
+  // overlay.suppress 压制的墙（玻璃幕墙 / 实体已删除）：wall_region 引用即抛错，
+  // sill_region 允许（防水台本就落在幕墙根）但要留名。
+  // 三种声明形式都要认（与 server/overlay-merge.ts 的 mergeSceneElements 同口径）：
+  // `wall` 单墙 / `walls` 多墙 / `region` 按墙段中心点的包围盒。漏认任何一种，
+  // 被压制墙上的贴砖声明就不会被拦住。
+  const suppressedWallIds = new Set<string>();
+  for (const entry of overlay.suppress ?? []) {
+    if (entry.wall) suppressedWallIds.add(String(entry.wall));
+    for (const wallId of entry.walls ?? []) suppressedWallIds.add(String(wallId));
+    if (entry.region) {
+      const minX = Math.min(entry.region.x1, entry.region.x2);
+      const maxX = Math.max(entry.region.x1, entry.region.x2);
+      const minZ = Math.min(entry.region.z1, entry.region.z2);
+      const maxZ = Math.max(entry.region.z1, entry.region.z2);
+      for (const wall of catalog.getWalls()) {
+        const mx = (wall.x1 + wall.x2) / 2;
+        const mz = (wall.z1 + wall.z2) / 2;
+        if (mx >= minX && mx <= maxX && mz >= minZ && mz <= maxZ && wall.id) {
+          suppressedWallIds.add(wall.id);
+        }
+      }
+    }
+  }
+
+  const walls: MasonryTakeoffInput['walls'] = catalog.getWalls().map((wall) => ({
+    id: wall.id ?? '',
+    x1: wall.x1,
+    z1: wall.z1,
+    x2: wall.x2,
+    z2: wall.z2,
+    ...(wall.segments?.length ? { segments: wall.segments } : {}),
+    ...(wall.openings?.length ? { openings: wall.openings } : {}),
+    suppressed: suppressedWallIds.has(wall.id ?? ''),
+  }));
+  const wallById = new Map(walls.map((wall) => [wall.id, wall]));
+
+  const sillRegions = overlayElements
+    .filter((element) => element.type === 'sill_region')
+    .map((element) => ({
+      id: String(element.id),
+      element: String(element.element),
+      room: String(element.room),
+      face: element.face as MasonryTakeoffInput['sillRegions'][number]['face'],
+      along: element.along as [number, number] | undefined,
+      zone: element.zone as string | undefined,
+    }));
+
+  const baySills = overlayElements
+    .filter((element) => element.type === 'bay_sill')
+    .map((element) => {
+      const wallIds: string[] = element.walls ?? (element.wall ? [element.wall] : []);
+      if (wallIds.length === 0) {
+        throw new Error(`bay_sill ${element.id} 既没有 wall 也没有 walls，构件无法定位到墙`);
+      }
+      const referencedBySill = sillRegions.some((region) => region.element === String(element.id));
+      if (wallIds.length > 1 && referencedBySill) {
+        // 模块契约是「一个构件一条 run」。跨墙构件若被 sill_region 引用，只取第一条墙会
+        // 静默漏算其余墙上的贴砖面——fail-closed，逼着把声明拆成逐墙构件。
+        throw new Error(
+          `bay_sill ${element.id} 横跨 ${wallIds.length} 面墙（${wallIds.join(', ')}），却被 sill_region 引用；`
+          + 'shared/masonry-takeoff.ts 只接受单墙构件，请把该构件拆成逐墙声明',
+        );
+      }
+      const wall = wallById.get(wallIds[0]);
+      return {
+        id: String(element.id),
+        wall: wallIds[0],
+        height: Number(element.height),
+        depth: Number(element.depth),
+        sill: Number(element.sill ?? 0),
+        ...(wall?.segments ? { segments: wall.segments } : {}),
+      };
+    });
+
+  const rooms: MasonryTakeoffInput['rooms'] = catalog.getRooms().map((room) => ({
+    id: room.id,
+    // 只认 resolved 多边形面积（2026-10-14 阶段 4）：异形房退回 bbox 会让墙砖/地面
+    // 每间多算最多 0.6㎡，而这条路直接进 masonry 的材料与人工两侧金额。
+    areaSqm: roomArea(room),
+    // 异形房给 boundary 折线；轴对齐矩形房给包围盒（resolveRoom 的 x/z/width/depth 口径）。
+    ...((room.points ?? []).length
+      ? { points: room.points!.map((point) => ({ x: point.x, z: point.z })) }
+      : { rect: { x: room.x, z: room.z, width: room.width, depth: room.depth } }),
+  }));
+
+  const floorRegions: MasonryFloorRegionInput[] = overlayElements
+    .filter((element) => element.type === 'floor_region')
+    .map((element) => {
+      const points = (element.points ?? []) as CurtainPoint[];
+      // schema 已挡 points min(3)；这里 fail-closed 而不是当 0 混进去——一条坏轮廓声明
+      // 应该让预算算不出来，而不是悄悄少算一块地。
+      if (points.length < 3) {
+        throw new Error(`floor_region ${element.id} 的轮廓少于 3 点，算不出面积`);
+      }
+      return {
+        id: String(element.id),
+        // 面积为调用方责任（圆角闭式解见本文件 roundedPolygonArea）——模块不读文件系统。
+        areaSqm: roundedPolygonArea(points),
+        points: points.map((point) => ({ x: point.x, z: point.z })),
+        excluded: element.excluded === true,
+        follow: element.follow as string | undefined,
+      };
+    });
+
+  const floorRoomSplit = loadFloorRoomSplit();
+
+  return computeMasonryTakeoff({
+    walls,
+    wallRegions: overlayElements
+      .filter((element) => element.type === 'wall_region')
+      .map((element) => ({
+        id: String(element.id),
+        wall: String(element.wall),
+        room: String(element.room),
+        along: element.along as [number, number],
+        bottom: Number(element.bottom ?? 0),
+        height: Number(element.height),
+        zone: element.zone as string | undefined,
+      })),
+    sillRegions,
+    baySills,
+    rooms,
+    dryRoomIds: floorRoomSplit.dryRoomIds,
+    wetRoomIds: floorRoomSplit.wetRoomIds,
+    floorRegions,
+    // 厨卫铝扣板完成面（config/ceiling.yaml 的 ceiling_kitchen / ceiling_master_bath /
+    // ceiling_guest_bath，均「完成面 2.65m」）= 贴砖带顶标高上限。必填、不设默认值。
+    clearHeight: 2.65,
+  });
 }
 
 /** 几何容差：声明坐标只到 0.01m，边界贴合判定用 1e-6 足够，又不至于把隔壁区域吞进来。 */
@@ -130,109 +349,6 @@ function tangentPointOnEdge(
   return point;
 }
 
-/** 点是否在多边形内或边上。边界算「内」：`corridor_floor` 的四角正压在 study 的南/东/西边上。 */
-function pointInPolygonOrOnEdge(point: { x: number; z: number }, polygon: Array<{ x: number; z: number }>): boolean {
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const a = polygon[j];
-    const b = polygon[i];
-    const len = Math.hypot(b.x - a.x, b.z - a.z);
-    if (len <= GEO_EPS) continue;
-    const cross = (b.x - a.x) * (point.z - a.z) - (b.z - a.z) * (point.x - a.x);
-    if (Math.abs(cross) / len > GEO_EPS) continue;
-    const dot = (point.x - a.x) * (b.x - a.x) + (point.z - a.z) * (b.z - a.z);
-    if (dot >= -GEO_EPS && dot <= len * len + GEO_EPS) return true;
-  }
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const a = polygon[j];
-    const b = polygon[i];
-    if ((a.z > point.z) !== (b.z > point.z)) {
-      const x = a.x + ((point.z - a.z) / (b.z - a.z)) * (b.x - a.x);
-      if (x > point.x) inside = !inside;
-    }
-  }
-  return inside;
-}
-
-/**
- * 轴对齐包围盒是否整块落在某个房间内。
- *
- * 房间有 `points`（非矩形/带圆角的异形房）走**多边形包含**——四角全在多边形内或边上才算；
- * 否则回落到 `x/z/width/depth` 包围盒（`resolveRoom` 的 x/z 是 bbox 中心，见
- * server/layout-resolver.ts）。注意回落分支只对轴对齐矩形是精确的：当前 11 间房里
- * 6 间带 points（master_bedroom/living_dining/master_bath/guest_bath/kitchen/balcony），
- * 剩下 5 间都是轴对齐矩形，所以两条分支在现行数据上都精确。
- */
-function boxInsideRoom(
-  box: { minX: number; maxX: number; minZ: number; maxZ: number },
-  room: RoomLayout
-): boolean {
-  const polygon = room.points;
-  if (polygon && polygon.length >= 3) {
-    const outline = polygon.map((p) => ({ x: p.x, z: p.z }));
-    return (
-      pointInPolygonOrOnEdge({ x: box.minX, z: box.minZ }, outline)
-      && pointInPolygonOrOnEdge({ x: box.maxX, z: box.minZ }, outline)
-      && pointInPolygonOrOnEdge({ x: box.minX, z: box.maxZ }, outline)
-      && pointInPolygonOrOnEdge({ x: box.maxX, z: box.maxZ }, outline)
-    );
-  }
-  const minX = room.x - room.width / 2;
-  const maxX = room.x + room.width / 2;
-  const minZ = room.z - room.depth / 2;
-  const maxZ = room.z + room.depth / 2;
-  return box.minX >= minX - GEO_EPS && box.maxX <= maxX + GEO_EPS
-    && box.minZ >= minZ - GEO_EPS && box.maxZ <= maxZ + GEO_EPS;
-}
-
-/**
- * 非房间地面算量：overlay 的 floor_region 逐条按几何分派（默认计入，例外才排除）。
- * `rooms` 是 catalog 全量房间，`applyRoomIds` 是 floor lineItem 的 applyRooms——
- * 只有后者的 footprint 已经进了 `roomArea`，所以「整块落在其内」才等于双计。
- *
- * `elements` 是测试缝：缺省读 `config/layout/overlay.yaml`（生产唯一入口），
- * 显式传入则可对同一套分派规则做合成复算（改标志/加区域），避免为跑负例去改配置文件。
- */
-export function loadExtraFloorRegionArea(
-  rooms: RoomLayout[],
-  applyRoomIds: Iterable<string>,
-  elements?: unknown[]
-): FloorRegionTakeoff {
-  const overlay = elements ?? parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
-  const countedRoomIds = new Set(applyRoomIds);
-  const countedRooms = rooms.filter((room) => countedRoomIds.has(room.id));
-  let extraArea = 0;
-  let excludedArea = 0;
-  let skippedInsideRoomArea = 0;
-  for (const element of overlay as Array<Record<string, any>>) {
-    if (element?.type !== 'floor_region') continue;
-    const points = (element.points ?? []) as CurtainPoint[];
-    // schema 已挡（points min(3)），这里双保险：少于 3 点算不出面积，不当 0 混进去
-    if (points.length < 3) continue;
-    const area = roundedPolygonArea(points);
-    if (element.excluded === true) {
-      // 显式排除：只留给几何说不清的例外（开发商已铺 / 业主裁定不铺），reason 必须写为什么
-      excludedArea += area;
-      continue;
-    }
-    const xs = points.map((p) => p.x);
-    const zs = points.map((p) => p.z);
-    const box = {
-      minX: Math.min(...xs),
-      maxX: Math.max(...xs),
-      minZ: Math.min(...zs),
-      maxZ: Math.max(...zs),
-    };
-    if (countedRooms.some((room) => boxInsideRoom(box, room))) {
-      // 整块落在某个已计费房间内 → 这块地已经由房间 footprint 算过，再算就是双计
-      skippedInsideRoomArea += area;
-      continue;
-    }
-    extraArea += area;
-  }
-  return { extraArea, excludedArea, skippedInsideRoomArea };
-}
-
 function loadPaintScopeAreaByRoom(catalog: ProjectCatalog): Map<string, number> {
   const areaByRoom = new Map<string, number>();
   const inputs = loadPaintScopeInputs();
@@ -264,35 +380,133 @@ function ceilingTakeoff(catalog: ProjectCatalog): CeilingTakeoff {
   return computeCeilingTakeoff(loadCeilingConfig(), catalog.getRooms().map((room) => ({ id: room.id, height: room.height })));
 }
 
-/** base.json 的兜底费率：生效报价没声明的计价行回落到它（回落必须看得见）。 */
 /**
  * base.json 的兜底吊顶费率。C12 新增的两行（边吊按米 / 满吊平顶按㎡）base.json 没有对应
  * labor 行 → 回落 null（待报价）：不进预算 actual，只在报价面板显形。
+ *
+ * 2026-10-14「三道对账」第二道：这张表原先在这里、`server/routes.ts`、
+ * `server/mcp-server.ts` 各抄一份（三份逐字相同），已合并到
+ * `server/ceiling-quotes.ts` 的 `baseJsonCeilingRatesFromBase`。本函数只保留
+ * 「把已解析的 baseRaw 喂进去」这个薄封装——费率本身不再有第二份实现，
+ * 由 `c.ceiling_rate_fallback_single_source`（config/facts.yaml）grep 全仓盯住。
  */
 function fallbackCeilingRates(baseRaw: Record<string, BudgetCategoryRaw>): Record<CeilingQuoteRateKey, { per_unit: number | null; unit: string }> {
-  const carpentry = baseRaw.carpentry;
-  const entries = carpentry?.labor ? (Array.isArray(carpentry.labor) ? carpentry.labor : [carpentry.labor]) : [];
-  const byArea = new Map(entries.map((entry) => [entry.area, entry]));
-  return {
-    ceiling_zones: { per_unit: byArea.get('ceiling_zones')?.rate ?? null, unit: byArea.get('ceiling_zones')?.unit ?? '元/㎡' },
-    curtain_box_linear: { per_unit: byArea.get('curtain_box_linear')?.rate ?? null, unit: byArea.get('curtain_box_linear')?.unit ?? '元/m' },
-    gypsum_edge_drop_linear: { per_unit: null, unit: '元/m' },
-    gypsum_flat_sqm: { per_unit: null, unit: '元/㎡' },
-    // C13：厨卫铝扣板（归 QR-2026-10-03-08，不在木工 labor 行里）
-    aluminum_buckle_sqm: { per_unit: null, unit: '元/㎡' },
-  };
+  return baseJsonCeilingRatesFromBase(baseRaw);
 }
 
+/**
+ * 房间面积：**只认 resolved 多边形面积**（2026-10-14 阶段 4）。
+ *
+ * 旧代码 `room.area ?? room.width * room.depth` 在异形房上退回 bbox 面积——本案 11 房里
+ * 6 房带 `points`（主卧 L 形、客房南向凹口…），bbox 与多边形面积最大差 0.6㎡/间，
+ * 而 `RoomLayout.area` 是 optional 所以类型系统不拦。`resolveLayout` 恒给 `area`
+ * （server/layout-resolver.ts 的 polygonArea），所以生产路径不会缺；缺了就是数据漏洞，
+ * 必须抛错而不是悄悄换一个更大的数——那会让"少算/多算"看不出是口径问题。
+ */
+function roomArea(room: RoomLayout): number {
+  if (typeof room.area !== 'number' || !Number.isFinite(room.area)) {
+    throw new Error(
+      `房间 ${room.id} 缺 resolved area（RoomLayout.area）：异形房不能用 width×depth 的 bbox 面积代替。请检查 model-geometry.yaml 的 boundary 与 server/layout-resolver.ts 的解算结果`,
+    );
+  }
+  return room.area;
+}
+
+/**
+ * 仍按房间公式取量的 quantityField（count 制与遗留别名）。
+ *
+ * DEC-2026-10-13 阶段 2 第二半起，**三个拍系数已全部删除**，它们的量改由
+ * `shared/masonry-takeoff.ts` 从 overlay.yaml / house.yaml 声明实算：
+ *   `wetWallArea`  (宽+深)×2×高×0.7 → `masonryTileArea`（wall_region + sill_region 声明）
+ *   `linearKitchen` 深×0.8          → `cabinetProjectedArea` / `countertopRunLength`（house.yaml 柜体段）
+ *   `floorArea`    房间面积         → `floorArea` 走声明表（干/湿区房 + floor_region extra）
+ * 0.7 与 0.8 这两个系数全库无依据：0.7 算出 65.699㎡ 而 overlay 实算 30.81㎡（按
+ * wall_tile_01 的 70 元/㎡ 多算约 ¥2,442）；0.8 算出 1.92 而 house.yaml 柜体段实计 4.36m。
+ * 任何新量都不许再往这里加公式——要加就先有 `shared/*_takeoff.ts` 声明源。
+ */
 const QUANTITY_FORMULAS: Record<string, (room: RoomLayout) => number> = {
-  floorArea: (room) => room.area ?? room.width * room.depth,
-  wetWallArea: (room) => (room.width + room.depth) * 2 * room.height * 0.7,
   // 已废弃：吊顶算量请用 shared/ceiling-takeoff.ts 的逐分区实算（见 computeLabor 的 ceiling_zones）。
   // 这个房间面积别名会把没有吊顶的平顶也计费，仅为兼容旧 lineItem 声明而保留。
-  ceilingArea: (room) => room.area ?? room.width * room.depth,
-  linearKitchen: (room) => room.depth * 0.8,
+  // 2026-10-14 阶段 4：面积缺失即抛错（不再退回 bbox），见 roomArea。
+  ceilingArea: (room) => roomArea(room),
   doorCount: () => 1,
   fixtureCount: () => 1,
 };
+
+/**
+ * 由声明源（`shared/masonry-takeoff.ts` / `config/house.yaml` 柜体段）供数的 quantityField
+ * → 逐房数量表 + 不属于任何房间的余量。
+ *
+ * 四个字段，两个声明源：
+ *   `masonryTileArea`       overlay wall_region + sill_region 实算（㎡）
+ *   `floorArea`             overlay/房间干湿区地面实算（㎡）
+ *   `cabinetProjectedArea`  house.yaml kitchen_cabinet_run 的 长×柜高（㎡，投影面积口径）
+ *   `countertopRunLength`   house.yaml kitchen_cabinet_run + kitchen_countertop_bridge 的 长（延米）
+ *
+ * `floorArea` 的余量（`floor_region extra`，现行只有主走廊 3.75㎡）无法归属到某个房间，
+ * 因此单列一行 `roomId: null` 显式计费——摊进任一房间就是伪造归属，静默丢掉就是漏计。
+ */
+const DECLARED_QUANTITY_FIELDS = [
+  'masonryTileArea',
+  'floorArea',
+  'cabinetProjectedArea',
+  'countertopRunLength',
+] as const;
+type DeclaredQuantityField = (typeof DECLARED_QUANTITY_FIELDS)[number];
+
+function isDeclaredQuantityField(field: string | undefined): field is DeclaredQuantityField {
+  return field !== undefined && (DECLARED_QUANTITY_FIELDS as readonly string[]).includes(field);
+}
+
+/**
+ * 橱柜 / 台面算量：读 `config/house.yaml` 的**已放置**柜体段几何，取代 `room.depth * 0.8`。
+ *
+ * 两个量分开，因为 house.yaml 把两件事分开了：
+ *   - `kitchen_cabinet_run` 生成柜体（北墙两段 1.28 + 1.68 留洗碗机位，东墙 1.40）→ 柜体 4.36m；
+ *   - `kitchen_countertop_bridge` 注释写明「只是连续台面，不生成柜体」→ 只进台面，不进柜体。
+ * 柜体按**投影面积**计价（长 × cabinetHeight 0.86），台面按**延米**计价。
+ * 投影面积口径的来源：schedule/phase-1/control.yaml 记「柜体 800/㎡投影」，即 materials.yaml 的
+ * `cabinet_board_01` 800 元/㎡ 本来就是投影面积价——旧代码把延米公式喂给 ㎡ 单价才是量纲错配，
+ * 所以修法是给正确的面积，不是把单价改成延米（改延米就要发明一个全库没有的 元/延米 价）。
+ */
+function loadCabinetRunTakeoff(catalog: ProjectCatalog): Map<string, { projectedAreaSqm: number; runLengthM: number; countertopLengthM: number }> {
+  const byRoom = new Map<string, { projectedAreaSqm: number; runLengthM: number; countertopLengthM: number }>();
+  const bucketFor = (roomId: string) => {
+    const existing = byRoom.get(roomId);
+    if (existing) return existing;
+    const created = { projectedAreaSqm: 0, runLengthM: 0, countertopLengthM: 0 };
+    byRoom.set(roomId, created);
+    return created;
+  };
+  for (const [roomId, items] of Object.entries(catalog.getFurnishings())) {
+    for (const item of items) {
+      if (item.x === undefined || item.z === undefined) continue; // count-only 条目不带几何
+      if (item.type === 'kitchen_cabinet_run') {
+        const length = item.length;
+        const cabinetHeight = item.cabinetHeight;
+        if (!(Number.isFinite(length) && (length as number) > 0)) {
+          throw new Error(`house.yaml ${roomId} 的 kitchen_cabinet_run 缺 length（柜体算量的唯一几何源）`);
+        }
+        if (!(Number.isFinite(cabinetHeight) && (cabinetHeight as number) > 0)) {
+          throw new Error(`house.yaml ${roomId} 的 kitchen_cabinet_run 缺 cabinetHeight（投影面积 = 长 × 柜高，不回落默认值）`);
+        }
+        const bucket = bucketFor(roomId);
+        bucket.runLengthM += length as number;
+        bucket.projectedAreaSqm += (length as number) * (cabinetHeight as number);
+        bucket.countertopLengthM += length as number;
+        continue;
+      }
+      if (item.type === 'kitchen_countertop_bridge') {
+        const length = item.length;
+        if (!(Number.isFinite(length) && (length as number) > 0)) {
+          throw new Error(`house.yaml ${roomId} 的 kitchen_countertop_bridge 缺 length（台面算量的唯一几何源）`);
+        }
+        bucketFor(roomId).countertopLengthM += length as number;
+      }
+    }
+  }
+  return byRoom;
+}
 
 /**
  * 候选价门控（2026-10-13 阶段 1：**纯加法，零行为变化**）。
@@ -323,14 +537,14 @@ const VERIFIED_MATERIAL_STATUSES: ReadonlySet<string> = new Set([
 
 /**
  * 合成选项白名单：这些 topic 的 option 不是 materials.yaml 条目，`data` 里**没有** status。
- * 当前只有 `hvac`——price 来自 project-catalog.ts 的硬编码构造 +
- * shared/houseData.ts 的七套 invented 报价表（阶段 2/3 换成 config/hvac.yaml）。
  *
- * 没有取证态字段 = 价格未取证 → 一律归「候选」。这里必须**显式留名**：新增合成选项得
- * 先在这里表态，否则 `autoActualBucket()` 抛错——绝不静默掉进默认档，那会让「已取证」
- * 的口径被悄悄注水。
+ * 2026-10-13 阶段 3 起**为空**：唯一一个合成 topic `hvac` 已改成读 config/hvac.yaml 的
+ * `commercial` 块（shared/hvac-plans.ts），`data.status` 由 commercial.status 透传
+ * （现行 = contracted，DEC-2026-10-04-R1 已成交）→ 走上面的 status 分支，不再需要白名单兜。
+ * 白名单保留为**显式登记处**：将来再加合成选项（不从 materials.yaml 来的 topic）必须先在这里
+ * 表态，否则 `autoActualBucket()` 抛错——绝不静默掉进默认档，那会让「已取证」的口径被悄悄注水。
  */
-const SYNTHETIC_UNVERIFIED_TOPICS: ReadonlySet<string> = new Set(['hvac']);
+const SYNTHETIC_UNVERIFIED_TOPICS: ReadonlySet<string> = new Set();
 
 /** 一条材料金额的门控归属：verified（已取证）/ candidate（候选、待核验或无 status）。 */
 export function autoActualBucket(option: DesignOption | undefined, topicId: string): 'verified' | 'candidate' {
@@ -346,6 +560,8 @@ export function autoActualBucket(option: DesignOption | undefined, topicId: stri
 
 export class BudgetCalculator {
   private paintScopeCache: Map<string, number> | null = null;
+  private masonryTakeoffCache: MasonryTakeoffResult | null = null;
+  private declaredQuantityCache: { byField: Map<DeclaredQuantityField, Map<string, number>>; remainder: Map<DeclaredQuantityField, number> } | null = null;
 
   constructor(
     private catalog: ProjectCatalog,
@@ -361,11 +577,99 @@ export class BudgetCalculator {
   }
 
   /**
+   * 瓦工算量（墙砖/防水台贴砖/地面干湿区）进程内缓存。
+   * 与 paintScopeCache 同理由：同一次 `calculate()` 里**材料侧与人工侧必须读到同一份口径**——
+   * 「±658 双轨」的病灶正是两边各算一遍（材料侧只走 applyRooms 房间，人工侧另加 floor_region extra）。
+   */
+  private masonryTakeoff(): MasonryTakeoffResult {
+    if (!this.masonryTakeoffCache) {
+      this.masonryTakeoffCache = loadMasonryTakeoff(this.catalog);
+    }
+    return this.masonryTakeoffCache;
+  }
+
+  /**
+   * 声明驱动的逐房数量表 + 无归属余量，带**量对账**（self-check）。
+   *
+   * 对账不是装饰：逐房表是 `takeoff.byRoom` / `dryRoomIds`/`wetRoomIds` 的**投影**，
+   * 一旦投影漏了房间（例如某房有声明却没进干/湿区清单），总数与逐房和就会分叉，
+   * 而分叉的表现是「预算少算一间接一间」——正是本次要根治的静默漏计。所以这里直接 throw。
+   */
+  private declaredQuantities(): { byField: Map<DeclaredQuantityField, Map<string, number>>; remainder: Map<DeclaredQuantityField, number> } {
+    if (this.declaredQuantityCache) return this.declaredQuantityCache;
+
+    const takeoff = this.masonryTakeoff();
+    const cabinetRuns = loadCabinetRunTakeoff(this.catalog);
+
+    const tileByRoom = new Map<string, number>();
+    for (const [roomId, room] of Object.entries(takeoff.byRoom)) {
+      tileByRoom.set(roomId, room.tileSqm);
+    }
+    const tileSum = [...tileByRoom.values()].reduce((sum, value) => sum + value, 0);
+    if (Math.abs(tileSum - takeoff.totalTileSqm) > 1e-6) {
+      throw new Error(`[budget-calculator] 贴砖量对账失败：逐房和 ${tileSum} ≠ takeoff.totalTileSqm ${takeoff.totalTileSqm}`);
+    }
+
+    const floorByRoom = new Map<string, number>();
+    const floorRoomSplit = loadFloorRoomSplit();
+    for (const room of this.catalog.getRooms()) {
+      if (floorRoomSplit.dryRoomIds.includes(room.id) || floorRoomSplit.wetRoomIds.includes(room.id)) {
+        // 只认 resolved 多边形面积（2026-10-14 阶段 4）：异形房退回 bbox 会让地面面积
+        // 每间多算最多 0.6㎡，而这条路径直接进 masonry 的材料与人工两侧金额。
+        floorByRoom.set(room.id, roomArea(room));
+      }
+    }
+    const floorRoomSum = [...floorByRoom.values()].reduce((sum, value) => sum + value, 0);
+    if (Math.abs(floorRoomSum - takeoff.totalRoomFloorSqm) > 1e-6) {
+      throw new Error(`[budget-calculator] 地面房间量对账失败：逐房和 ${floorRoomSum} ≠ takeoff.totalRoomFloorSqm ${takeoff.totalRoomFloorSqm}`);
+    }
+
+    const cabinetProjectedByRoom = new Map<string, number>();
+    const countertopByRoom = new Map<string, number>();
+    for (const [roomId, run] of cabinetRuns) {
+      cabinetProjectedByRoom.set(roomId, run.projectedAreaSqm);
+      countertopByRoom.set(roomId, run.countertopLengthM);
+    }
+
+    this.declaredQuantityCache = {
+      byField: new Map([
+        ['masonryTileArea', tileByRoom],
+        ['floorArea', floorByRoom],
+        ['cabinetProjectedArea', cabinetProjectedByRoom],
+        ['countertopRunLength', countertopByRoom],
+      ]),
+      // 只有 floorArea 有余量：非房间 floor_region extra（现行 = 主走廊 3.75㎡）。
+      remainder: new Map([
+        ['masonryTileArea', 0],
+        ['floorArea', takeoff.floorRegionExtraSqm],
+        ['cabinetProjectedArea', 0],
+        ['countertopRunLength', 0],
+      ]),
+    };
+    return this.declaredQuantityCache;
+  }
+
+  /** 瓦工算量的显形清单（有量无计价归属 / 无法派生）：进 `BudgetCategory.pendingQuantity`。 */
+  private masonryPendingQuantity(): MasonryTakeoffResult['unpriced'] {
+    const takeoff = this.masonryTakeoff();
+    return [
+      ...takeoff.unpriced,
+      ...takeoff.unresolved.map((item) => ({ id: item.id, quantity: null, unit: '—', reason: item.reason })),
+    ];
+  }
+
+  /**
    * 一个人工费分类可以有多条计价行（DEC-2026-10-08-C02：窗帘盒从吊顶 40 元/㎡ 里拆出来，
    * 改按延长米单列——README「没有合并项报价」）。`raw.labor` 兼容两种写法：
-   * 单对象（既有各分类）或数组（carpentry）。
+   * 单对象（既有各分类）或数组（carpentry / 阶段 3 起的 masonry）。
    * rate 为 null = 待报价：**不计入 actual，但数量必须显形**（cat.pendingLabor），
    * 否则「拆分」会变成「悄悄少算一笔钱」。
+   *
+   * `quoteRates` 按 **labor area 名**索引的生效报价费率表，由调用方把各 trade 的报价卡展开进来
+   * （DEC-2026-10-13 阶段 3：原先只对 ceiling_zones / curtain_box_linear 两个 area 特判读报价卡，
+   * 其余全部走 base.json；现在吊顶与瓦工两张卡走同一条路，吊顶特判随之删除）。
+   * 查不到的行照旧走 base.json 的 labor.rate——「没有这个 trade 的报价卡」与「这行没报价」
+   * 是两件事，前者不是错误。
    */
   private computeLabor(
     categories: BudgetCategory[],
@@ -373,7 +677,7 @@ export class BudgetCalculator {
     rooms: RoomLayout[],
     phase: PhaseId,
     takeoff: CeilingTakeoff,
-    quoteRates: ResolvedCeilingRates
+    quoteRates: Partial<Record<string, ResolvedQuoteRate>>
   ): void {
     for (const cat of categories) {
       const raw = baseRaw[cat.key];
@@ -382,8 +686,8 @@ export class BudgetCalculator {
 
       for (const labor of laborEntries) {
       const { area } = labor;
-      // 吊顶两条计价行的单价以生效报价为准（DEC-2026-10-08-C03）；未声明则回落 base.json。
-      const quoted = area === 'ceiling_zones' || area === 'curtain_box_linear' ? quoteRates[area] : undefined;
+      // 生效报价优先（吊顶 + 瓦工），未声明则回落 base.json 的 labor.rate。
+      const quoted = quoteRates[area];
       const rate = quoted ? quoted.per_unit : labor.rate;
       const unit = quoted ? quoted.unit : labor.unit;
       let quantity = 0;
@@ -391,20 +695,26 @@ export class BudgetCalculator {
       switch (area) {
         case 'floor':
           {
-            const floorApplyRooms = this.rulesConfig.budget?.lineItems
-              ?.find((item) => item.topic === 'floor' && item.quantityField === 'floorArea')
-              ?.applyRooms ?? [];
-            const allowedRoomIds = new Set(floorApplyRooms);
-            const roomArea = rooms
-              .filter((room) => allowedRoomIds.has(room.id))
-              .reduce((sum, room) => sum + (room.area ?? room.width * room.depth), 0);
-            // DEC-2026-10-09-P16：非房间地面**默认**进算量。只有两种例外退出——
-            // ① 整块落在某个已计费房间内（几何判定，双计路径从根上消失）；
-            // ② 显式 `excluded: true` 且带 reason（开发商已铺 / 业主裁定不铺）。
-            // 取代 P12 的 `costed: true` opt-in：那个手工布尔量重复了几何已知的信息。
-            const { extraArea } = loadExtraFloorRegionArea(rooms, allowedRoomIds);
-            quantity = roomArea + extraArea;
+            // DEC-2026-10-13 阶段 2 第二半：与材料侧**同一个出口**（this.masonryTakeoff()）。
+            // 旧口径材料侧只加 applyRooms 房间 footprint（121.510㎡）、人工侧另加
+            // loadExtraFloorRegionArea()（125.260㎡），差 3.75㎡ 正是主走廊
+            // main_corridor_floor——DEC-2026-10-09-P16 裁定「走廊需要铺砖」，结果
+            // 人工收了钱、主材没收。现在两边都读 takeoff。
+            // 阶段 3：`floor` 只算**干区**地面（湿区拆到 wet_floor_tile 独立计价），
+            // 两档费率不同（木纹砖 vs 湿区小砖），混在一行里必然有一档被另一档的单价代表。
+            const masonry = this.masonryTakeoff();
+            quantity = masonry.dryFloorSqm;
           }
+          break;
+        // 湿区地面贴砖（阶段 3 新增行）：量同样来自 takeoff，与 `floor` 同一出口。
+        // 命名必须是 wet_floor_tile 而不是 wet_floor——后者已被 base.json 的 waterproof
+        // 分类占用（20 元/㎡ 防水工），同名会让瓦工费率盖到防水工头上。
+        case 'wet_floor_tile':
+          quantity = this.masonryTakeoff().wetFloorSqm;
+          break;
+        // 墙砖 + 防水台贴砖（阶段 3 新增行）：与材料侧 wall topic 的 masonryTileArea 同一出口。
+        case 'wall_tile':
+          quantity = this.masonryTakeoff().totalTileSqm;
           break;
         // 已废弃：按房间面积近似吊顶人工量（把无吊顶平顶/电梯井/入户花园都计了费）。
         // 保留分支只为兜底，新口径一律用 ceiling_zones；删除前须确认没有分类再引用它。
@@ -427,6 +737,9 @@ export class BudgetCalculator {
           // 与材料侧同源：overlay.yaml 的 paint_region 声明 + resolved 房间面积（墙+顶）。
           quantity = rooms.reduce((sum, r) => sum + (this.paintScopeAreaByRoom().get(r.id) ?? 0), 0);
           break;
+        // 防水工（base.json 的 waterproof 分类）按 needs_waterproof 房间计。
+        // 与瓦工的 `wet_floor_tile` 是两件事：防水 ≠ 贴砖，且口径不同（这里含厨房，
+        // 而厨房地面走干区木纹砖档，见 config/tile-comparison.yaml 的 dry_room_ids）。
         case 'wet_floor': {
           const wetRooms = rooms.filter((r) => r.needs_waterproof === true);
           quantity = wetRooms.reduce((sum, r) => sum + r.width * r.depth, 0);
@@ -519,17 +832,18 @@ export class BudgetCalculator {
         const option = this.catalog.getOption(li.topic, optionId);
         if (!option) continue;
 
+        const pricePerUnit = requiredPrice(option.price_per_unit, `topic ${li.topic} 的选项 ${optionId}`);
         allLineItems.push({
           topic: li.topic,
           roomId: null,
           optionId,
           quantity: 1,
-          unitPrice: option.price_per_unit,
+          unitPrice: pricePerUnit,
           coveragePerUnit: 1,
           lossRate: 1,
-          cost: option.price_per_unit,
+          cost: pricePerUnit,
         });
-        addAutoActual(categoryKey, li.topic, option.price_per_unit, option);
+        addAutoActual(categoryKey, li.topic, pricePerUnit, option);
         continue;
       }
 
@@ -549,7 +863,7 @@ export class BudgetCalculator {
           const option = this.catalog.getOption(li.topic, optionId);
           if (!option) continue;
 
-          const cost = option.price_per_unit * qty;
+          const cost = requiredPrice(option.price_per_unit, `topic ${li.topic} 的选项 ${optionId}（房间 ${roomId}）`) * qty;
           allLineItems.push({
             topic: li.topic, roomId, optionId,
             quantity: qty, unitPrice: option.price_per_unit,
@@ -570,8 +884,11 @@ export class BudgetCalculator {
         const paintScope = li.quantityField === 'paintScopeArea'
           ? this.paintScopeAreaByRoom()
           : null;
+        // 瓦工/橱柜量走 shared/masonry-takeoff.ts 与 house.yaml 柜体段的声明表（阶段 2 第二半）。
+        const declaredField = isDeclaredQuantityField(li.quantityField) ? li.quantityField : null;
+        const declared = declaredField ? this.declaredQuantities() : null;
         const quantityFn = li.quantityField ? QUANTITY_FORMULAS[li.quantityField] : null;
-        if (!paintScope && !quantityFn) continue;
+        if (!paintScope && !declared && !quantityFn) continue;
 
         for (const room of rooms) {
           const overrideOptionId = scheme.selections[li.topic]?.roomOverrides?.[room.id];
@@ -586,10 +903,15 @@ export class BudgetCalculator {
 
           const quantity = paintScope
             ? (paintScope.get(room.id) ?? 0)
-            : quantityFn!(room);
-          const pricePerUnit = option.price_per_unit ?? 0;
-          const coveragePerUnit = option.coverage_per_unit ?? 1;
-          const lossRate = option.loss_rate ?? 1.0;
+            : declared
+              ? (declared.byField.get(declaredField!)!.get(room.id) ?? 0)
+              : quantityFn!(room);
+          // 三个计价字段一次取齐：缺任何一个都抛错，不会出现"价格兜底成 0、损耗用真值"
+          // 这种半套兜底半套真值的中间态（那种状态下连对账都看不出少了什么）。
+          const { pricePerUnit, coveragePerUnit, lossRate } = pricingOf(
+            option,
+            `topic ${li.topic} 的选项 ${optionId}（房间 ${room.id}）`,
+          );
           const cost = pricePerUnit * quantity / coveragePerUnit * lossRate;
 
           allLineItems.push({
@@ -600,6 +922,34 @@ export class BudgetCalculator {
 
           addAutoActual(categoryKey, li.topic, cost, option);
         }
+
+        // 不属于任何房间的量（现行只有 floor_region extra = 主走廊 3.75㎡）单列一行显式计费。
+        // 摊进任一房间 = 伪造归属；直接丢掉 = 静默漏计（旧口径人工侧就是加了、材料侧就是没加）。
+        if (declared) {
+          const remainder = declared.remainder.get(declaredField!) ?? 0;
+          const remainderOptionId = scheme.selections[li.topic]?.default;
+          if (remainder > 0 && remainderOptionId) {
+            const option = this.catalog.getOption(li.topic, remainderOptionId);
+            if (option) {
+              const { pricePerUnit, coveragePerUnit, lossRate } = pricingOf(
+                option,
+                `topic ${li.topic} 的选项 ${remainderOptionId}（非房间余量 ${remainder}）`,
+              );
+              const cost = pricePerUnit * remainder / coveragePerUnit * lossRate;
+              allLineItems.push({
+                topic: li.topic,
+                roomId: null,
+                optionId: remainderOptionId,
+                quantity: remainder,
+                unitPrice: pricePerUnit,
+                coveragePerUnit,
+                lossRate,
+                cost,
+              });
+              addAutoActual(categoryKey, li.topic, cost, option);
+            }
+          }
+        }
       } else {
         const optionId = scheme.selections[li.topic]?.default;
         if (!optionId) continue;
@@ -607,7 +957,7 @@ export class BudgetCalculator {
         const option = this.catalog.getOption(li.topic, optionId);
         if (!option) continue;
 
-        const pricePerUnit = option.price_per_unit ?? 0;
+        const pricePerUnit = requiredPrice(option.price_per_unit, `topic ${li.topic} 的选项 ${optionId}`);
         const cost = pricePerUnit;
 
         allLineItems.push({
@@ -629,6 +979,7 @@ export class BudgetCalculator {
       readFileSync('config/budget/base.json', 'utf8')
     ) as { categories: Record<string, BudgetCategoryRaw>; project_ceiling?: number; status?: string };
 
+    const masonryPendingQuantity = this.masonryPendingQuantity();
     const categories: BudgetCategory[] = baseCategories.map((bc) => {
       const split = categoryAutoActual.get(bc.key);
       const verifiedActual = split?.verified ?? 0;
@@ -636,13 +987,25 @@ export class BudgetCalculator {
       return {
         key: bc.key,
         budget: bc.budget,
-        actual: bc.actual + verifiedActual + candidateActual,
+        // 口径变更（2026-10-14，方案阶段 5）：actual 只计**已取证**的材料款 + 人工。
+        // 旧口径把 candidateActual（到店未确认的候选价）也全额计进 actual，于是
+        // totalActual ¥157,870 里有 ¥92,696 是"如果候选价全部属实"的假设值。
+        // candidateActual 继续在快照里单独输出——不是删数据，是换口径：
+        // 业主要同时看到"已取证花多少"和"若候选价属实还会多花多少"。
+        // autoActual 保持 verified+candidate（材料全额概念，阶段 1 起的不变量）。
+        actual: bc.actual + verifiedActual,
         manualActual: bc.actual,
         // autoActual 由两份相加得出，使 `verifiedActual + candidateActual === autoActual`
         // 成为结构性不变量（而非恰好凑上的巧合），下游可以无条件断言它。
         autoActual: verifiedActual + candidateActual,
         verifiedActual,
         candidateActual,
+        // 瓦工有量但**没有计价归属**的条目（生活阳台地面、反边/开孔 extras）挂在 masonry 上：
+        // 阶段 2 把 floor/wall 的量改成声明实算后，不在干/湿区清单里的房间不再被默认计费，
+        // 但「不计费」必须看得见，否则就是静默归零（R1 那类病的镜像）。
+        ...(bc.key === 'masonry' && masonryPendingQuantity.length
+          ? { pendingQuantity: masonryPendingQuantity }
+          : {}),
         status: bc.status as BudgetCategory['status'],
         notes: bc.notes,
       };
@@ -661,7 +1024,31 @@ export class BudgetCalculator {
       // 回落必须看得见：这条日志 + 每行 source='base.json' 是「配置坏了」的唯一痕迹。
       console.error('[budget-calculator] ceiling-quotes.yaml 不可用，全部计价行回落 base.json 费率：', err instanceof Error ? err.message : String(err));
     }
-    const quoteRates = resolveActiveCeilingRates(quotes, fallbackCeilingRates(budgetRaw.categories));
+    // 瓦工报价卡（阶段 3）：与吊顶同一条路——文件坏了按「无报价」处理，不冻结预算。
+    let masonryQuotes: MasonryQuotesFile | null = null;
+    try {
+      masonryQuotes = loadMasonryQuotes();
+    } catch (err) {
+      console.error('[budget-calculator] masonry-labor.yaml 不可用，全部计价行回落 base.json 费率：', err instanceof Error ? err.message : String(err));
+    }
+
+    const ceilingRates = resolveActiveCeilingRates(quotes, fallbackCeilingRates(budgetRaw.categories));
+    // 瓦工的解析多一步「按选型规格取行」：卡上按规格分行，项目按 data/current-scheme.json 的
+    // 选型取行；规格表里没有的那一档（湿区 400×400 / 200×200）自然落到 fallback，
+    // 而 fallback 也是 null → 待报价显形。
+    const masonryRates = resolveActiveMasonryRates(
+      masonryQuotes,
+      masonryQuoteFallback(budgetRaw.categories),
+      masonrySpecSelection(this.catalog, scheme, loadFloorRoomSplit()),
+    );
+
+    // computeLabor 的费率表按 **labor area 名**索引，由调用方把各 trade 的卡展开进来。
+    // 吊顶的 key 本身就是 area 名；瓦工的 key 要经 MASONRY_LABOR_AREAS 转一道
+    // （wet_floor → wet_floor_tile，避开 base.json 里 waterproof 分类已占用的 wet_floor）。
+    const quoteRates: Partial<Record<string, ResolvedQuoteRate>> = { ...ceilingRates };
+    for (const [key, rate] of Object.entries(masonryRates)) {
+      quoteRates[MASONRY_LABOR_AREAS[key as MasonryQuoteRateKey]] = rate;
+    }
 
     this.computeLabor(categories, budgetRaw.categories, this.catalog.getRooms(), phase, takeoff, quoteRates);
 
@@ -669,7 +1056,7 @@ export class BudgetCalculator {
     const ceilingQuotes = quotes
       ? {
           activeId: quotes.active,
-          source: quoteRates.ceiling_zones.source === 'quote' ? 'quote' as const : 'base.json' as const,
+          source: ceilingRates.ceiling_zones.source === 'quote' ? 'quote' as const : 'base.json' as const,
           comparison: compareCeilingQuotes(quotes, takeoff, fallbackCeilingRates(budgetRaw.categories)),
         }
       : undefined;
@@ -677,6 +1064,39 @@ export class BudgetCalculator {
     // Status computed AFTER computeLabor: labor can push a category over budget.
     for (const cat of categories) {
       if (cat.status === 'reserved') continue;
+      // 「没有计价来源」≠「不花钱」（2026-10-14 阶段 4）。
+      //
+      // 旧口径 `ratio = budget > 0 ? actual / budget : 0` → actual 为 0 时 ratio=0 → 'ok'。
+      // 于是 `demolition`(¥5,000，拆改+清运) 与 `property_fees`(¥3,000，押金/垃圾清运/管理费)
+      // 这两个既无 labor 行、又无 material 自动额、也无人工录入的科目，长期显示为健康状态，
+      // 而它们的 actual 恒为 0——**系统性低估 ¥8,000，且仪表盘上一片绿灯**。
+      // 这正是「总额看起来合理被当成口径正确的证据」的又一例：这两个科目从未有过任何报价，
+      // 只是从来没人在预算里给它们一个"未定价"的位置。
+      //
+      // 判据必须是"有没有计价来源"，而不是"actual 是不是 0"：
+      // 有 labor 行 / 有材料自动额 / 有人工录入 / 有待报价或待定量显形清单 → 有来源，
+      // actual 为 0 只说明"该科目本期确实不花钱"；四样都没有 → 从未定价，标 'unpriced'。
+      const raw = budgetRaw.categories[cat.key];
+      const hasLaborRow = raw?.labor !== undefined;
+      const hasCostBasis = hasLaborRow
+        || cat.autoActual > 0
+        || cat.manualActual > 0
+        || (cat.pendingLabor?.length ?? 0) > 0
+        || (cat.pendingQuantity?.length ?? 0) > 0;
+      if (!hasCostBasis) {
+        cat.status = 'unpriced';
+        continue;
+      }
+      // 阶段 5 口径变更后的补判：actual 只计已取证款后，一个科目可能
+      // 「有材料全额（autoActual>0）但已取证一分钱没有（actual=0、全在 candidateActual）」。
+      // 此时 ratio=0 → 'ok'，而真相是"这个科目本期一个报价都没拿到"。
+      // 判据：本期已取证款为 0 且全部金额都在候选档 → 'unpriced'（不是 ok）。
+      // 有 labor 的科目（water_electric / masonry / painting）actual 含人工，不受影响。
+      const allUnverified = cat.actual === 0 && (cat.candidateActual ?? 0) > 0 && (cat.verifiedActual ?? 0) === 0;
+      if (allUnverified) {
+        cat.status = 'unpriced';
+        continue;
+      }
       const ratio = cat.budget > 0 ? cat.actual / cat.budget : 0;
       cat.status = ratio > 1.0 ? 'over' : ratio > 0.9 ? 'near' : 'ok';
     }

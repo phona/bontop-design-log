@@ -22,36 +22,69 @@ import {
   loadCeilingQuotes,
   setActiveCeilingQuote,
   resolveActiveCeilingRates,
+  baseJsonCeilingRates,
   type CeilingQuoteRateKey,
   compareCeilingQuotes,
   ceilingQuoteQuantities,
 } from './ceiling-quotes.js';
-import { readFileSync } from 'node:fs';
-
-/** base.json 的兜底吊顶费率：生效报价未声明的计价行回落到它（与 budget-calculator 同源）。 */
-function baseJsonCeilingRates(): Record<CeilingQuoteRateKey, { per_unit: number | null; unit: string }> {
-  const raw = JSON.parse(readFileSync('config/budget/base.json', 'utf8')) as {
-    categories: Record<string, { labor?: { rate: number | null; unit: string; area: string } | Array<{ rate: number | null; unit: string; area: string }> }>;
-  };
-  const carpentry = raw.categories.carpentry;
-  const entries = carpentry?.labor ? (Array.isArray(carpentry.labor) ? carpentry.labor : [carpentry.labor]) : [];
-  const byArea = new Map(entries.map((entry) => [entry.area, entry]));
-  return {
-    ceiling_zones: { per_unit: byArea.get('ceiling_zones')?.rate ?? null, unit: byArea.get('ceiling_zones')?.unit ?? '元/㎡' },
-    curtain_box_linear: { per_unit: byArea.get('curtain_box_linear')?.rate ?? null, unit: byArea.get('curtain_box_linear')?.unit ?? '元/m' },
-    gypsum_edge_drop_linear: { per_unit: null, unit: '元/m' },
-    gypsum_flat_sqm: { per_unit: null, unit: '元/㎡' },
-    aluminum_buckle_sqm: { per_unit: null, unit: '元/㎡' },
-  };
-}
 import { parseSpecDimensions } from './spec-parser.js';
 
 function text(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
 }
 
-function prevActualByKey(categories: BudgetCategory[]): Map<string, number> {
-  return new Map(categories.map((c) => [c.key, c.actual]));
+/**
+ * 上一次快照的逐科锚点。`actual` 给变化量用；`verified` / `candidate` 是候选价门控两档，
+ * 用来算「这次选型变化挪动了多少未取证金额」——只看 actual 会把「价格没变、只是从候选
+ * 变成已取证（或反过来）」的科目整条丢掉，而那正是业主最该看到的一次变化。
+ */
+function prevByKey(
+  categories: BudgetCategory[]
+): Map<string, { actual: number; verified: number; candidate: number }> {
+  return new Map(
+    categories.map((c) => [
+      c.key,
+      { actual: c.actual, verified: c.verifiedActual ?? 0, candidate: c.candidateActual ?? 0 },
+    ])
+  );
+}
+
+/**
+ * 候选价门控汇总（2026-10-13 阶段 1.5，**纯加法**）。
+ *
+ * 为什么需要它：`categoryDeltas` 带 `.filter(d => d.delta !== 0)`，只返回 actual 发生变化的
+ * 科目，于是「某科 candidateActual > 0 但本次选型没让它变」的科目根本不出现——把
+ * verifiedActual / candidateActual 只挂在条目上，未取证信息就漏了。所以这里给一份
+ * **全量、不受 filter 影响**的汇总，MCP 客户端真正该读的是这个数。
+ *
+ * `unverifiedRatio` 的分母是材料款（verified + candidate）而不是 totalActual：人工
+ * （computeLabor）与人工录入（manualActual）本来就不进门控两档，拿 totalActual 当分母会把
+ * 「未取证占比」人为压低（当前选型下是 97.6% vs 83.1%，差 14 个百分点）。
+ */
+function dataConfidenceOf(categories: BudgetCategory[], totalActual: number) {
+  let verifiedActual = 0;
+  let candidateActual = 0;
+  for (const c of categories) {
+    verifiedActual += c.verifiedActual ?? 0;
+    candidateActual += c.candidateActual ?? 0;
+  }
+  const gatedActual = verifiedActual + candidateActual;
+  return {
+    verifiedActual,
+    candidateActual,
+    gatedActual,
+    unverifiedRatio: gatedActual > 0 ? candidateActual / gatedActual : 0,
+    totalActual,
+    /** candidateActual > 0 的科目，按未取证金额降序——「该先去核谁」的直接答案。 */
+    unverifiedCategories: categories
+      .filter((c) => (c.candidateActual ?? 0) > 0)
+      .map((c) => ({
+        key: c.key,
+        verifiedActual: c.verifiedActual ?? 0,
+        candidateActual: c.candidateActual ?? 0,
+      }))
+      .sort((a, b) => b.candidateActual - a.candidateActual),
+  };
 }
 
 function findMaterialByFurnitureType(
@@ -194,14 +227,20 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const prevBudget = calc.calculate(result.previousScheme);
       const newBudget = calc.calculate(newScheme);
       const newRisks = engine.evaluate(newScheme, deps.catalog);
-      const prevMap = prevActualByKey(prevBudget.categories);
+      const prevMap = prevByKey(prevBudget.categories);
       const categoryDeltas = newBudget.categories
-        .map((c, i) => ({
-          key: c.key,
-          delta: c.actual - (prevMap.get(c.key) ?? 0),
-          status: c.status,
-        }))
-        .filter((d) => d.delta !== 0);
+        .map((c) => {
+          const prev = prevMap.get(c.key);
+          return {
+            key: c.key,
+            delta: c.actual - (prev?.actual ?? 0),
+            verifiedDelta: (c.verifiedActual ?? 0) - (prev?.verified ?? 0),
+            candidateDelta: (c.candidateActual ?? 0) - (prev?.candidate ?? 0),
+            status: c.status,
+          };
+        })
+        // 过滤条件加上门控两份：只看 actual 会漏掉「金额没变、只是从未取证变成已取证」的科目。
+        .filter((d) => d.delta !== 0 || d.verifiedDelta !== 0 || d.candidateDelta !== 0);
       return text({
         updated: result.updated,
         entries: result.entries,
@@ -210,6 +249,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
           totalActual: newBudget.totalActual,
           totalBudget: newBudget.totalBudget,
           categoryDeltas,
+          dataConfidence: dataConfidenceOf(newBudget.categories, newBudget.totalActual),
           overCategories: newBudget.categories.filter((c) => c.status === 'over'),
           risks: newRisks.risks,
         },
@@ -243,14 +283,19 @@ export function createMcpServer(deps: McpDeps): McpServer {
       const prevBudget = calc.calculate(result.previousScheme);
       const newBudget = calc.calculate(newScheme);
       const newRisks = engine.evaluate(newScheme, deps.catalog);
-      const prevMap = prevActualByKey(prevBudget.categories);
+      const prevMap = prevByKey(prevBudget.categories);
       const categoryDeltas = newBudget.categories
-        .map((c, i) => ({
-          key: c.key,
-          delta: c.actual - (prevMap.get(c.key) ?? 0),
-          status: c.status,
-        }))
-        .filter((d) => d.delta !== 0);
+        .map((c) => {
+          const prev = prevMap.get(c.key);
+          return {
+            key: c.key,
+            delta: c.actual - (prev?.actual ?? 0),
+            verifiedDelta: (c.verifiedActual ?? 0) - (prev?.verified ?? 0),
+            candidateDelta: (c.candidateActual ?? 0) - (prev?.candidate ?? 0),
+            status: c.status,
+          };
+        })
+        .filter((d) => d.delta !== 0 || d.verifiedDelta !== 0 || d.candidateDelta !== 0);
       return text({
         updated: result.updated,
         entries: result.entries,
@@ -259,6 +304,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
           totalActual: newBudget.totalActual,
           totalBudget: newBudget.totalBudget,
           categoryDeltas,
+          dataConfidence: dataConfidenceOf(newBudget.categories, newBudget.totalActual),
           overCategories: newBudget.categories.filter((c) => c.status === 'over'),
           risks: newRisks.risks,
         },
@@ -348,12 +394,17 @@ export function createMcpServer(deps: McpDeps): McpServer {
     'get_budget',
     {
       title: 'Get budget',
-      description: 'Return budget breakdown with categories and line items.',
+      description:
+        'Return budget breakdown with categories and line items. Every category carries the candidate-price gate split (verifiedActual / candidateActual); dataConfidence is the same split rolled up, so callers do not have to sum 19 categories to answer "how much of this budget is actually quoted?".',
     },
     async () => {
       const scheme = state.getCurrentScheme();
       const calc = getBudgetCalculator();
-      return text(calc.calculate(scheme));
+      const snapshot = calc.calculate(scheme);
+      return text({
+        ...snapshot,
+        dataConfidence: dataConfidenceOf(snapshot.categories, snapshot.totalActual),
+      });
     }
   );
 
@@ -603,7 +654,8 @@ export function createMcpServer(deps: McpDeps): McpServer {
     'what_if',
     {
       title: 'What-if analysis',
-      description: 'Simulate selection changes without persisting. Returns full budget snapshot, risks, and diff vs current scheme.',
+      description:
+        'Simulate selection changes without persisting. Returns full budget snapshot, risks, and diff vs current scheme. The diff carries per-category verified/candidate deltas plus a full dataConfidence rollup (unaffected by the delta filter), so callers can see how much of a simulated change is still unquoted.',
       inputSchema: z.object({
         changes: z.array(
           z.object({
@@ -671,17 +723,23 @@ export function createMcpServer(deps: McpDeps): McpServer {
         delta: {
           totalDelta: simBudget.totalActual - currentBudget.totalActual,
           categoryDeltas: (() => {
-            const curMap = prevActualByKey(currentBudget.categories);
+            const curMap = prevByKey(currentBudget.categories);
             return simBudget.categories
-              .map((c) => ({
-                key: c.key,
-                currentActual: curMap.get(c.key) ?? 0,
-                simulatedActual: c.actual,
-                delta: c.actual - (curMap.get(c.key) ?? 0),
-                status: c.status,
-              }))
-              .filter((d) => d.delta !== 0);
+              .map((c) => {
+                const prev = curMap.get(c.key);
+                return {
+                  key: c.key,
+                  currentActual: prev?.actual ?? 0,
+                  simulatedActual: c.actual,
+                  delta: c.actual - (prev?.actual ?? 0),
+                  verifiedDelta: (c.verifiedActual ?? 0) - (prev?.verified ?? 0),
+                  candidateDelta: (c.candidateActual ?? 0) - (prev?.candidate ?? 0),
+                  status: c.status,
+                };
+              })
+              .filter((d) => d.delta !== 0 || d.verifiedDelta !== 0 || d.candidateDelta !== 0);
           })(),
+          dataConfidence: dataConfidenceOf(simBudget.categories, simBudget.totalActual),
           risksAdded: simRisks.risks.filter((r) => !currentRiskIds.has(r.id)),
           risksRemoved: currentRisks.risks.filter((r) => !simRiskIds.has(r.id)),
         },

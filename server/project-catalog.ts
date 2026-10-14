@@ -18,7 +18,7 @@ import type {
   WallSegment,
   DataConfidence,
 } from '../shared/types.js';
-import { hvacSchemes } from '../shared/houseData.js';
+import { hvacPlanOptions, type HvacPlanOption } from '../shared/hvac-plans.js';
 import { resolveLayout } from './layout-resolver.js';
 import type { VertexLayoutYaml, ResolvedRoom, WallDef, RoomDef, ResolvedOpening } from '../shared/types.js';
 import type { PhaseId } from '../shared/types.js';
@@ -35,6 +35,19 @@ export interface BudgetCategory {
   actual: number;
   status: string;
   notes: string;
+}
+
+/**
+ * 读 config/hvac.yaml 的 plans → HVAC 选项（2026-10-13 阶段 3）。
+ *
+ * 取代 shared/houseData.ts 的七套 invented 报价表：那七套表里 A2 一口价 29,000，
+ * 而 DEC-2026-10-04-R1 的合同成交价是 36,000——业主端与合同长期不一致，且七套都没有
+ * `status`，候选价门控只能整体把它们归「未取证」。
+ * 现在选型/单价/取证态都从 config/hvac.yaml 读，`data.status` 由 commercial.status 透传。
+ */
+export function loadHvacPlans(configDir = '.'): HvacPlanOption[] {
+  const raw = readFileSync(`${configDir}/config/hvac.yaml`, 'utf8');
+  return hvacPlanOptions(load(raw));
 }
 
 function materialToOption(m: MaterialItem): DesignOption | null {
@@ -115,7 +128,8 @@ export class ProjectCatalog {
     },
     layout: CadLayoutYaml,
     houseMeta?: HouseYaml,
-    layoutSource?: string
+    layoutSource?: string,
+    hvacPlans?: HvacPlanOption[]
   ) {
     this.rawMaterials = materials.materials;
     this.dataPrecision = (houseMeta?.project?.data_precision as Record<string, unknown>) ?? {};
@@ -135,19 +149,23 @@ export class ProjectCatalog {
       topic.options.push(opt);
     }
 
+    // HVAC 选项来自 config/hvac.yaml（阶段 3）。注意它会**覆盖** materials.yaml 里
+    // topic_id: hvac 的条目（hvac_01 / hvac_02）——那两条是采购台账镜像，不是选型清单；
+    // 单价与 status 以 config/hvac.yaml 的 commercial 块为准，两边由
+    // config/facts.yaml 的 fact.hvac_contract_cny 对账。
     this.topics.set('hvac', {
       id: 'hvac',
       name: '空调方案',
       perRoom: false,
-      options: hvacSchemes.map((s) => ({
-        id: s.id,
+      options: (hvacPlans ?? loadHvacPlans()).map((plan): DesignOption => ({
+        id: plan.id,
         topicId: 'hvac',
-        name: s.name,
-        description: s.desc,
-        price_per_unit: s.price_per_unit,
-        coverage_per_unit: 1,
-        loss_rate: 1,
-        data: s,
+        name: plan.name,
+        description: plan.description,
+        price_per_unit: plan.price_per_unit,
+        coverage_per_unit: plan.coverage_per_unit,
+        loss_rate: plan.loss_rate,
+        data: plan.data,
       })),
     });
 
@@ -267,7 +285,7 @@ export class ProjectCatalog {
     }
     const layout = load(readFileSync(layoutPath, 'utf8')) as CadLayoutYaml;
     const houseMeta = load(readFileSync(`${configDir}/config/house.yaml`, 'utf8')) as HouseYaml;
-    return new ProjectCatalog(materials, budgetBase, layout, houseMeta, basename(layoutPath, '.yaml'));
+    return new ProjectCatalog(materials, budgetBase, layout, houseMeta, basename(layoutPath, '.yaml'), loadHvacPlans(configDir));
   }
 
   static fromMaterials(

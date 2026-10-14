@@ -368,6 +368,29 @@ body:has(.toolbar-popover:not([hidden])) #right-panel-stack {
   color: #fff;
 }
 
+/*
+ * 候选价门控（2026-10-13 阶段 1.5）：未取证金额统一用琥珀色，与 .mep-status.inferred
+ * 同色系——「未确认」这件事在面板里各处应该长得一样，业主才能一次学会这个颜色。
+ */
+.overview-budget-gate-label,
+.overview-budget-gate-split-label {
+  color: #fbbf24;
+}
+
+.overview-budget-gate-value,
+.overview-budget-gate-split-value {
+  color: #fcd34d;
+}
+
+.overview-budget-gate-split {
+  font-size: 12px;
+}
+
+.overview-budget-gate-note {
+  color: #fbbf24;
+  line-height: 1.45;
+}
+
 .overview-placeholder {
   font-size: 12px;
   color: #666;
