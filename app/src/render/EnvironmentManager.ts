@@ -19,6 +19,7 @@ export class EnvironmentManager {
   private envMap: THREE.Texture | null = null;
   private iblEnabled = true;
   private sunlightEnabled = false;
+  private interiorOnlyNightPreview = false;
   private lastState: { altitudeDeg: number; azimuthDeg: number; isNight: boolean } = {
     altitudeDeg: 60,
     azimuthDeg: 180,
@@ -95,19 +96,22 @@ export class EnvironmentManager {
   setSolarState(pos: SolarStateInput): void {
     const light = computeLightState(pos.altitudeDeg);
     this.lastState = { altitudeDeg: pos.altitudeDeg, azimuthDeg: pos.azimuthDeg, isNight: light.isNight };
-    if (!this.sunlightEnabled) return;
-    this.applySolarState();
+    this.applyCurrentState();
     this.requestShadowUpdate();
   }
 
   setSunlightEnabled(enabled: boolean): void {
     if (this.sunlightEnabled === enabled) return;
     this.sunlightEnabled = enabled;
-    if (enabled) {
-      this.applySolarState();
-    } else {
-      this.applyStaticPreset();
-    }
+    this.applyCurrentState();
+    this.requestShadowUpdate();
+  }
+
+  /** Manual night lighting preview: disable all global illumination, even when solar simulation is off. */
+  setInteriorOnlyNightPreview(enabled: boolean): void {
+    if (this.interiorOnlyNightPreview === enabled) return;
+    this.interiorOnlyNightPreview = enabled;
+    this.applyCurrentState();
     this.requestShadowUpdate();
   }
 
@@ -127,20 +131,38 @@ export class EnvironmentManager {
     this.dirLight.intensity = light.sunIntensity;
     this.dirLight.color.setHex(light.sunColorHex);
     this.dirLight.position.set(dir.x * SUN_RADIUS, Math.max(dir.y * SUN_RADIUS, 0.5), dir.z * SUN_RADIUS);
-    this.ambientLight.intensity = light.ambientIntensity;
     if (light.isNight) {
-      // Night preview isolates configured indoor luminaires from all global illumination.
-      this.scene.environment = null;
-      this.fillLight.color.setHex(0x7f8ab0);
-      this.fillLight.intensity = 0;
-      this.ambientLight.color.setHex(0x9aa6cf);
+      this.applyNightOnlyState();
     } else {
+      this.ambientLight.intensity = light.ambientIntensity;
       this.scene.environment = this.iblEnabled ? this.envMap : null;
       this.fillLight.color.setHex(0xffffff);
       this.fillLight.intensity = 0.3;
       this.ambientLight.color.setHex(0xffffff);
     }
     this.scene.background = light.isNight ? NIGHT_BACKGROUND : DAY_BACKGROUND;
+  }
+
+  private applyCurrentState(): void {
+    if (this.interiorOnlyNightPreview || this.lastState.isNight) {
+      this.applyNightOnlyState();
+    } else if (this.sunlightEnabled) {
+      this.applySolarState();
+    } else {
+      this.applyStaticPreset();
+    }
+  }
+
+  private applyNightOnlyState(): void {
+    // This includes both real solar night and the explicit manual night preview.
+    this.dirLight.visible = false;
+    this.dirLight.intensity = 0;
+    this.ambientLight.intensity = 0;
+    this.ambientLight.color.setHex(0x9aa6cf);
+    this.fillLight.color.setHex(0x7f8ab0);
+    this.fillLight.intensity = 0;
+    this.scene.environment = null;
+    this.scene.background = NIGHT_BACKGROUND;
   }
 
   private applyStaticPreset(): void {
@@ -158,7 +180,7 @@ export class EnvironmentManager {
 
   toggleIBL(enabled: boolean): void {
     this.iblEnabled = enabled;
-    const night = this.sunlightEnabled && this.lastState.isNight;
+    const night = this.interiorOnlyNightPreview || this.lastState.isNight;
     this.scene.environment = enabled && !night ? this.envMap : null;
   }
 

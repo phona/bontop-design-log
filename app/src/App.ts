@@ -474,14 +474,13 @@ export class App {
     if (enabled) {
       this.sunlightPanel.show();
       this.sunlightSystem?.showTrajectory();
-      const st = this.houseScene.getEnvironmentManager().getLightingState();
-      this.interiorLighting?.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
     } else {
       this.sunlightPanel.hide();
       this.sunlightSystem?.hideTrajectory();
-      // 静态日光预设：室内灯回落到关闭
-      this.interiorLighting?.syncSolar({ isNight: false, altitudeDeg: 90 });
     }
+    const st = this.houseScene.getEnvironmentManager().getLightingState();
+    // Closing the solar controls preserves the selected day/night state; an actual night keeps interior lights on.
+    this.interiorLighting?.syncSolar({ isNight: st.isNight, altitudeDeg: st.altitudeDeg });
     this.previewWorkbench.focusSunlight();
     this.syncLightingPreviewPanel();
     this.houseScene.requestShadowUpdate();
@@ -496,6 +495,8 @@ export class App {
     this.lightingPreviewPanel = new LightingPreviewPanel(host, {
       onModeChange: (mode) => {
         this.interiorLighting?.setPreviewMode(mode);
+        this.houseScene.getEnvironmentManager().setInteriorOnlyNightPreview(mode === 'manual');
+        this.houseScene.requestShadowUpdate();
         this.syncLightingPreviewPanel();
         this.requestRender();
       },
@@ -522,6 +523,7 @@ export class App {
       },
       onReset: () => {
         this.interiorLighting?.clearPreviewOverrides();
+        this.houseScene.getEnvironmentManager().setInteriorOnlyNightPreview(false);
         this.syncLightingPreviewPanel();
         this.houseScene.requestShadowUpdate();
         this.requestRender();
@@ -690,6 +692,7 @@ export class App {
     if (!lights) return;
     lights.clearPreviewOverrides();
     lights.setPreviewMode(state.mode, state.manualOn);
+    this.houseScene.getEnvironmentManager().setInteriorOnlyNightPreview(state.mode === 'manual');
     lights.setPreviewTemperature(state.temperatureK);
     lights.setPreviewBrightness(state.brightness);
     const enabledByRoom = new Map(state.rooms.map((room) => [room.id, room.enabled]));
@@ -703,6 +706,7 @@ export class App {
   private finishVisualPreview(): void {
     this.visualPreviewActive = false;
     this.interiorLighting?.clearPreviewOverrides();
+    this.houseScene.getEnvironmentManager().setInteriorOnlyNightPreview(false);
     if (this.officialScheme) this.applyScheme(this.officialScheme);
     this.materialPreviewState = this.officialScheme ? this.makeMaterialPreviewState(this.officialScheme) : null;
     if (this.materialPreviewState) this.syncMaterialPreviewPanel();

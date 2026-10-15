@@ -1,0 +1,186 @@
+{
+  "camera": {
+    "mode": "轨道模式 · 按 V 切换第一人称",
+    "position": [
+      12.599999999999998,
+      1.7999999999999998,
+      8.6
+    ],
+    "target": [
+      10.599999999999998,
+      0.4999999999999999,
+      7.3
+    ]
+  },
+  "captured_at": "2026-10-15T03:30:12.507Z",
+  "configErrorBanner": "",
+  "environment": "null",
+  "globalLights": [
+    {
+      "castShadow": false,
+      "intensity": 0,
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "type": "AmbientLight",
+      "visible": true
+    },
+    {
+      "castShadow": true,
+      "intensity": 0,
+      "position": [
+        12,
+        20,
+        8
+      ],
+      "type": "DirectionalLight",
+      "visible": false
+    },
+    {
+      "castShadow": false,
+      "intensity": 0,
+      "position": [
+        -10,
+        8,
+        -10
+      ],
+      "type": "DirectionalLight",
+      "visible": true
+    }
+  ],
+  "hour": 21,
+  "interiorLights": [
+    {
+      "intensity": 15,
+      "objectId": "light_dining_pendant",
+      "room": "living_dining",
+      "type": "SpotLight",
+      "visible": true
+    },
+    {
+      "intensity": 4.8,
+      "objectId": "light_living_dome",
+      "room": "living_dining",
+      "type": "PointLight",
+      "visible": true
+    },
+    {
+      "intensity": 4.8,
+      "objectId": "light_master_dome",
+      "room": "master_bedroom",
+      "type": "PointLight",
+      "visible": true
+    },
+    {
+      "intensity": 4.8,
+      "objectId": "light_parent_dome",
+      "room": "study",
+      "type": "PointLight",
+      "visible": true
+    },
+    {
+      "intensity": 4.8,
+      "objectId": "light_child_dome",
+      "room": "bedroom_nw",
+      "type": "PointLight",
+      "visible": true
+    },
+    {
+      "intensity": 4.8,
+      "objectId": "light_study_dome",
+      "room": "bedroom_se",
+      "type": "PointLight",
+      "visible": true
+    },
+    {
+      "intensity": 6,
+      "objectId": "light_corridor_1",
+      "room": "living_dining",
+      "type": "SpotLight",
+      "visible": true
+    },
+    {
+      "intensity": 6,
+      "objectId": "light_entry_down",
+      "room": "entry_garden",
+      "type": "SpotLight",
+      "visible": true
+    },
+    {
+      "intensity": 6,
+      "objectId": "light_entry_foyer",
+      "room": "living_dining",
+      "type": "SpotLight",
+      "visible": true
+    },
+    {
+      "intensity": 4.8,
+      "objectId": "light_kitchen_panel",
+      "room": "kitchen",
+      "type": "PointLight",
+      "visible": true
+    },
+    {
+      "intensity": 0.108,
+      "objectId": "night_guest_bed_side",
+      "room": "bedroom_se",
+      "type": "SpotLight",
+      "visible": true
+    },
+    {
+      "intensity": 0.108,
+      "objectId": "night_guest_head",
+      "room": "bedroom_se",
+      "type": "SpotLight",
+      "visible": true
+    },
+    {
+      "intensity": 0.108,
+      "objectId": "night_guest_door",
+      "room": "living_dining",
+      "type": "SpotLight",
+      "visible": true
+    },
+    {
+      "intensity": 0.108,
+      "objectId": "night_living_north",
+      "room": "living_dining",
+      "type": "SpotLight",
+      "visible": true
+    },
+    {
+      "intensity": 0.108,
+      "objectId": "night_corridor",
+      "room": "living_dining",
+      "type": "SpotLight",
+      "visible": true
+    }
+  ],
+  "modeLabel": "日照自动",
+  "offline": "none",
+  "preview": {
+    "brightness": 1,
+    "manualOn": true,
+    "mode": "auto",
+    "temperatureK": null
+  },
+  "ready": true,
+  "solar": {
+    "altitudeDeg": -38.39897603786577,
+    "azimuthDeg": 257.46303848486315,
+    "iblEnabled": true,
+    "isNight": true
+  },
+  "sunlightEnabled": false,
+  "targetObjects": [
+    {
+      "objectId": "floor:living_dining",
+      "roomId": "living_dining",
+      "type": "floor"
+    }
+  ],
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://127.0.0.1:5173/"
+}

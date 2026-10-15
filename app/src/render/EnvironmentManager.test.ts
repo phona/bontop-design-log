@@ -107,22 +107,41 @@ describe('EnvironmentManager', () => {
     expect((scene.background as unknown as { hex: string }).hex).toBe('#0a0a18');
   });
 
-  it('日照关闭（默认）：setSolarState 只更新状态，不改场景', () => {
+  it('关闭日照模拟：夜间时刻和手动夜景都关闭全局照明', () => {
     const { mgr, scene } = makeManager();
     mgr.setSolarState({ altitudeDeg: -10, azimuthDeg: 0 });
     expect(mgr.getLightingState().isNight).toBe(true);
 
     const dirLight = findDirLight(scene);
+    expect(dirLight.visible).toBe(false);
+    expect(dirLight.intensity).toBe(0);
+    const ambient = addedObjects(scene).find((o) => o instanceof THREE.AmbientLight)!;
+    expect(ambient.intensity).toBe(0);
+    const fillLight = addedObjects(scene).find((o) => o instanceof THREE.DirectionalLight && !o.castShadow)!;
+    expect(fillLight.intensity).toBe(0);
+    expect(scene.environment).toBeNull();
+    expect((scene.background as unknown as { hex: string }).hex).toBe('#0a0a18');
+
+    mgr.setSolarState({ altitudeDeg: 45, azimuthDeg: 180 });
     expect(dirLight.visible).toBe(true);
-    expect(dirLight.position.x).toBe(12);
-    expect(dirLight.position.y).toBe(20);
-    expect(scene.background).toBeNull();
+    expect(dirLight.intensity).toBe(0.9);
+    expect(ambient.intensity).toBe(0.55);
+
+    mgr.setInteriorOnlyNightPreview(true);
+    expect(dirLight.visible).toBe(false);
+    expect(dirLight.intensity).toBe(0);
+    expect(ambient.intensity).toBe(0);
+    expect(fillLight.intensity).toBe(0);
+    expect(scene.environment).toBeNull();
+    mgr.setInteriorOnlyNightPreview(false);
+    expect(dirLight.visible).toBe(true);
+    expect(dirLight.intensity).toBe(0.9);
   });
 
   it('关闭日照：恢复静态预设', () => {
     const { mgr, scene } = makeManager();
     mgr.setSunlightEnabled(true);
-    mgr.setSolarState({ altitudeDeg: -10, azimuthDeg: 0 });
+    mgr.setSolarState({ altitudeDeg: 45, azimuthDeg: 180 });
     mgr.setSunlightEnabled(false);
 
     const dirLight = findDirLight(scene);

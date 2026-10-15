@@ -39,9 +39,10 @@ export class LightingPreviewPanel {
         <label class="lighting-preview-row">控制方式
           <select data-control="mode">
             <option value="auto">日照自动</option>
-            <option value="manual">夜景手动</option>
+            <option value="manual">夜景手动（仅室内灯）</option>
           </select>
         </label>
+        <p class="preview-note">夜景手动会关闭全局日光、环境光和 IBL，只保留室内灯具。</p>
         <label class="lighting-preview-row"><input data-control="manual-on" type="checkbox"> 手动总开关</label>
         <label class="lighting-preview-row">色温
           <select data-control="temperature">
