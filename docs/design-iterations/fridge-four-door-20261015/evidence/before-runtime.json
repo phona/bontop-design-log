@@ -1,0 +1,33 @@
+{
+  "bounds": {
+    "max": {
+      "x": 11.240000011920928,
+      "y": 1.9099999833106995,
+      "z": 3.896500002145767
+    },
+    "min": {
+      "x": 10.63999998807907,
+      "y": 1.6689300497141346e-8,
+      "z": 3.0634999978542328
+    }
+  },
+  "camera": {
+    "position": {
+      "x": 8,
+      "y": 2.05,
+      "z": 4.25
+    },
+    "target": {
+      "x": 10.64,
+      "y": 0.98,
+      "z": 3.48
+    }
+  },
+  "configError": "",
+  "meshCount": 4,
+  "mode": "orbit",
+  "ready": true,
+  "targetId": "furniture:living_dining:fridge:13",
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://localhost:5173/"
+}

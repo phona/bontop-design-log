@@ -87,13 +87,13 @@
 | [`11-tile-finish.md`](./11-tile-finish.md) | 贴砖与饰面终裁 | 13 | 50 KB | `DEC-2026-10-06-TILE-01` … `DEC-2026-10-08-C19` |
 | [`12-plumbing.md`](./12-plumbing.md) | 给排水 | 5 | 24 KB | `DEC-2026-10-07-F03` … `DEC-2026-10-09-W04` |
 | [`13-mep-integration.md`](./13-mep-integration.md) | MEP 标高/路由/水电主材基线 | 3 | 8 KB | `DEC-2026-10-06-R1` … `DEC-2026-10-07-M01` |
-| [`14-style-furniture.md`](./14-style-furniture.md) | 风格/家具/地面 | 7 | 16 KB | `DEC-2026-08-20-024` … `DEC-2026-08-21-042` |
+| [`14-style-furniture.md`](./14-style-furniture.md) | 风格/家具/地面 | 8 | 18 KB | `DEC-2026-08-20-024` … `DEC-2026-10-15-R01` |
 | [`15-penetration-lint.md`](./15-penetration-lint.md) | 防穿模 linter（实体互撞/净距） | 1 | 6 KB | `DEC-2026-10-09-P01` |
 | [`16-verify-gate.md`](./16-verify-gate.md) | 门禁编排与工程状态 | 1 | 3 KB | `DEC-2026-10-09-G01` |
 | [`17-paint-scope-extension.md`](./17-paint-scope-extension.md) | 涂装范围扩展（显式顶面/上飘窗外露面/全飘窗入算/面层核查层） | 15 | 67 KB | `DEC-2026-10-09-P02` … `DEC-2026-10-09-P16` |
 | [`18-engineering-state.md`](./18-engineering-state.md) | 工程状态投影（逐构件确认度） | 1 | 12 KB | `DEC-2026-10-09-S01` |
 
-合计 197 条 DEC（177 条迁移 + DEC-2026-10-09-S01 拆分登记 + DEC-2026-10-09-P01 防穿模 linter + DEC-2026-10-09-G01 门禁编排器 + DEC-2026-10-09-P02…P16 涂装范围扩展 + DEC-2026-10-09-E01 工程状态投影）。
+合计 198 条 DEC（177 条迁移 + DEC-2026-10-09-S01 拆分登记 + DEC-2026-10-09-P01 防穿模 linter + DEC-2026-10-09-G01 门禁编排器 + DEC-2026-10-09-P02…P16 涂装范围扩展 + DEC-2026-10-09-E01 工程状态投影 + DEC-2026-10-15-R01 冰箱外观预演）。
 
 ## 归档纪律（新增条目前必读）
 

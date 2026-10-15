@@ -1,0 +1,63 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: fridge-four-door-20261015
+subject: 客餐厅试位冰箱改为法式四门外观
+priority:
+  user_goal: 将当前冰箱模型改成参考图式法式四门外观，并查看客餐厅效果
+  ranked: [四门结构一眼可辨, 接近参考图的暖白与深色细分缝, 保持当前试位包络与场景关系]
+  non_negotiables: [只做外观概念, 不声称与图片SKU完全一致, 不改中心坐标/朝向/外包络/开门假设, 不加入广告文字贴纸人物或宠物]
+  tradeoffs_accepted: [下部抽屉只做关闭态外观, 不模拟真实铰链/抽拉, 使用通用哑光暖白而非厂家实物色号]
+frozen: true
+freeze_record:
+  alignment_id: user-image-french-four-door-20261015
+  original_user_response: "冰箱的建模我想调整成这种法式四门的，看看你的方案"
+  normalized_decisions: [上部左右双开门加下部上下两只整宽抽屉, 暖白低光泽门面和浅灰侧板, 窄深色阴影表达门缝/暗槽, 保留当前试位和0.833×0.600×1.910m外包络, 不改产品SKU/安装/电气/碰撞配置]
+  confirmed_by_user: true
+  confirmed_at: "2026-10-15T09:43:42+08:00"
+  evidence_refs: ["user_message.image_1", evidence/before.png, evidence/before-runtime.json]
+allowed_scope:
+  files: [shared/render/FixtureFactory.ts, tests/server/shared/scene-builder.test.ts, docs/design-iterations/fridge-four-door-20261015, docs/decisions/14-style-furniture.md, docs/decisions/README.md]
+  objects: ["furniture:living_dining:fridge:13"]
+  archetypes: [freestanding_appliance_visual]
+  views: [fridge_front_west, living_dining_context]
+  changes: [分拆上部门板与下部抽屉正面, 暖白低光泽门面与浅灰侧板, 暗色窄缝和低矮底部阴影线]
+forbidden:
+  files: [config/layout/model-geometry.yaml, config/layout/overlay.yaml, config/anti-penetration.yaml, config/electrical.yaml, config/electrical-topology.yaml, config/mep-hvac-coordination.yaml]
+  objects: [fridge_position, refrigerator_open_envelope, kitchen_door_and_furniture, fridge_power_route]
+  assumptions: [参考图型号与现有HR-518WUFIPZ为同一SKU, 参考图机身尺寸等于当前试位尺寸, 上门铰链与下抽屉行程已确认]
+  out_of_scope_changes: [采购选型, 施工定位, 实际开门动画, 插座或线路迁改, 门头柜/推拉门/餐桌椅调整]
+supersession_review:
+  - prior_decision: DEC-2026-10-14-R01
+    prior_conclusion: HR-518WUFIPZ作为living_dining的3D试位候选，中心(10.94,3.48)、rotation=90、trial机身833×600×1910mm，非施工定位。
+    proposed_supersession: 不推翻产品候选、坐标、朝向或包络；只替换FixtureFactory中未声明产品特征的银灰单面板占位外观。
+    reason: 业主本轮要求法式四门视觉表现，未要求确认参考图SKU或改变尺寸。
+    status: preserved_except_generic_visual_treatment
+open_questions:
+  - id: exact-reference-product
+    status: site_pending
+    question: 本轮参考图型号HR-518WUFNDIGZ是否要在采购层替换当前trial记录的HR-518WUFIPZ？
+    required_for: [manufacturer_fidelity, purchase_decision, construction_freeze]
+    interim: 当前只作外观参考；保持既有试位包络，不把图中型号当作设备选型结论。
+    owner: 业主/厂家/橱柜方
+    trigger: 实际设备下单或橱柜深化前
+  - id: actual-door-behavior
+    status: site_pending
+    question: 真实型号上部门开启方向、下抽屉拉出行程及安装净空是什么？
+    required_for: [functional_clearance_review, construction_freeze]
+    interim: 本轮关闭态外观沿用现有0.60m西向活动假设，不新增动态行为。
+    owner: 业主/厂家/橱柜方
+    trigger: 实际设备下单或橱柜深化前
+alignment:
+  records: [业主在本会话明确要求以图片作为法式四门外观参考并查看方案]
+  unresolved: [参考图具体SKU与项目现行trial型号的关系, 实际门扇/抽屉开启数据]
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run gate:visual, npm run test:app, npm run test:server, npm run typecheck, npm run verify:all]
+  browser_evidence_required: true
+  required_views: [冰箱朝西正面近景同机位改前改后, 客餐厅包含推拉门和门头柜的关系视图]
+  aesthetic_review: PASS required
+  functional_review: PASS required_for_unchanged_trial_envelope
+  construction_review: not_applicable_to_visual_study
+  blocking_issues: []
+  done_when: [上部双门和下部两只整宽抽屉清楚可辨, 门面与侧板颜色层次接近参考图, 运行时AABB不超过当前trial包络, visual gate CLEAR且配置错误横幅为空, 同版本运行时证据和独立审查完成, 未把SKU或厂家净空未知写成事实]
+  delivery_notes_required: true

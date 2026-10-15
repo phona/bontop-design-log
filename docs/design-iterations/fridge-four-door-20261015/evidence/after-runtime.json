@@ -1,0 +1,46 @@
+{
+  "bounds": {
+    "max": {
+      "x": 11.240000007867812,
+      "y": 1.9099999833106995,
+      "z": 3.896500002145767
+    },
+    "min": {
+      "x": 10.63999998807907,
+      "y": 1.4901161207725444e-10,
+      "z": 3.0634999978542328
+    }
+  },
+  "camera": {
+    "position": {
+      "x": 8,
+      "y": 2.05,
+      "z": 4.25
+    },
+    "target": {
+      "x": 10.64,
+      "y": 0.98,
+      "z": 3.48
+    }
+  },
+  "configError": "",
+  "groups": [
+    {
+      "children": [
+        "furniture:living_dining:fridge:13:part=fridge-case-core-640a6a",
+        "furniture:living_dining:fridge:13:part=fridge-front-shad-b53581",
+        "furniture:living_dining:fridge:13:part=fridge-base-shado-291c4e",
+        "furniture:living_dining:fridge:13:merged:0",
+        "furniture:living_dining:fridge:13:merged:1",
+        "furniture:living_dining:fridge:13:merged:2"
+      ],
+      "name": "furniture:living_dining:fridge:13"
+    }
+  ],
+  "meshCount": 6,
+  "mode": "orbit",
+  "ready": true,
+  "targetId": "furniture:living_dining:fridge:13",
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://localhost:5173/"
+}

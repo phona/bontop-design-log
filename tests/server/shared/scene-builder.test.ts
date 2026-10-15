@@ -357,7 +357,7 @@ test('FixtureFactory assigns stable material roles to kitchen appliance surfaces
   }
 });
 
-test('FixtureFactory fridge body footprint/height and generic front treatment match the HR-518WUFIPZ 3D trial datum', () => {
+test('FixtureFactory fridge four-door faces preserve the HR-518WUFIPZ 3D trial envelope', () => {
   const fixture = buildFixture('fridge');
   assert.ok(fixture);
   fixture.updateMatrixWorld(true);
@@ -368,8 +368,18 @@ test('FixtureFactory fridge body footprint/height and generic front treatment ma
   assert.ok(Math.abs(bounds.max.x - bounds.min.x - 0.833) < 1e-6, 'local fridge width must match the declared body width');
   assert.ok(Math.abs(bounds.max.y - bounds.min.y - 1.910) < 1e-6, 'fridge body height must match the declared body height');
   assert.ok(Math.abs(bounds.max.z - bounds.min.z - 0.600) < 1e-6, 'local fridge depth must match the declared body depth');
-  assert.ok(parts.has('fridge-front-panel'), 'the generic visual trial must distinguish the door face from the case');
-  assert.ok(parts.has('fridge-recessed-pull'), 'the generic visual trial must show an inset pull without expanding the body envelope');
+  assert.deepEqual([...parts].sort(), [
+    'fridge-base-shadow-plinth',
+    'fridge-case-core',
+    'fridge-front-shadow-back',
+    'fridge-lower-drawer-lower',
+    'fridge-lower-drawer-upper',
+    'fridge-side-skin-north',
+    'fridge-side-skin-south',
+    'fridge-upper-door-left',
+    'fridge-upper-door-right',
+  ].sort(), 'the visual recipe must expose two upper doors and two full-width drawer faces');
+  assert.ok(!parts.has('fridge-recessed-pull'), 'the new visual treatment uses shadow seams instead of an exposed vertical pull');
   assert.ok(parts.has('fridge-side-skin-south') && parts.has('fridge-side-skin-north'), 'the room-facing case sides must read as finished appliance panels without adding cabinet wrap');
 });
 

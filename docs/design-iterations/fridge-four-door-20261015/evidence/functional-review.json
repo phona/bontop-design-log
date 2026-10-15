@@ -1,0 +1,30 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "运行时确认只有一个冰箱实例；meshCount=6 是静态合批后的子网格数量，不代表新增或丢失冰箱对象。",
+    "改后世界AABB为x[10.64,11.24]、y[0,1.91]、z[3.0635,3.8965]，与既有0.833×0.600×1.910m试位包络一致。",
+    "rotation=90°下，FixtureFactory局部-z正面映射为世界西向；与半高柜模型侧缝约65mm，与推拉门开启态最南缘间距约0.5435m，均为当前模型关系。",
+    "env.fridge.door的west/0.60m是shadow-only视觉假设，未验证真实铰链、门扇或抽屉运动，也不是厂家净空结论。",
+    "sock_kitchen_fridge仍是厨房旧端点；客餐厅试位的新电源、可及性和线路路径待电工/橱柜方确认。"
+  ],
+  "evidence_refs": [
+    "evidence/after-runtime.json",
+    "evidence/after-room-context-runtime.json",
+    "evidence/after-room-context.png",
+    "object-manifest.yaml",
+    "shared/render/FixtureFactory.ts",
+    "shared/render/SceneBuilder.ts",
+    "shared/types.ts",
+    "config/anti-penetration.yaml",
+    "config/house.yaml",
+    "config/layout/overlay.yaml"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "confirmed_for_visual_trial: 当前只有一个placed fridge，objectId为furniture:living_dining:fridge:13。",
+    "inferred: 正面朝西由FixtureFactory局部-z面板位置与placed rotation=90°共同推导。",
+    "site_pending: 参考图HR-518WUFNDIGZ与项目试位HR-518WUFIPZ是否同一SKU、真实外廓、散热缝、铰链方向和抽屉行程。",
+    "site_pending: 客餐厅试位的专用回路、插座可及性及检修空间。"
+  ]
+}

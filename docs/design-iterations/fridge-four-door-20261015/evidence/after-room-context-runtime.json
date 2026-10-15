@@ -1,0 +1,21 @@
+{
+  "camera": {
+    "position": {
+      "x": 7.9999999999999964,
+      "y": 1.8000000000000005,
+      "z": 5.499999999999998
+    },
+    "target": {
+      "x": 10.639999999999995,
+      "y": 0.9499999999999998,
+      "z": 3.479999999999999
+    }
+  },
+  "configError": "",
+  "mode": "orbit",
+  "objectFound": true,
+  "ready": true,
+  "targetId": "furniture:living_dining:fridge:13",
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://localhost:5173/"
+}

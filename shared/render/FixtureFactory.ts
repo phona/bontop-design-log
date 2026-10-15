@@ -474,14 +474,22 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     type: 'fridge',
     parts: [
-      // 0.827m case core + two 3mm side skins = the declared 0.833m exterior width.
-      { shape: 'box', size: [0.827, 1.910, 0.600], position: [0, 0.955, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.3 }, // HR-518WUFIPZ exterior dimensions for visual trial; manufacturer installation clearances remain site_pending
-      // Generic west-opening visual treatment (not a manufacturer-fidelity model): inset side skins finish the exposed room-facing case;
-      // a shallow front panel and pull distinguish the appliance face while keeping the total declared body envelope exact.
-      { shape: 'box', size: [0.006, 1.820, 0.540], position: [-0.4135, 0.955, 0], color: '#cbd0d4', metalness: 0.36, roughness: 0.30, part: 'fridge-side-skin-south', materialRole: 'appliance_case' },
-      { shape: 'box', size: [0.006, 1.820, 0.540], position: [0.4135, 0.955, 0], color: '#cbd0d4', metalness: 0.36, roughness: 0.30, part: 'fridge-side-skin-north', materialRole: 'appliance_case' },
-      { shape: 'box', size: [0.803, 1.800, 0.001], position: [0, 0.955, -0.2995], color: '#d4d8dc', metalness: 0.38, roughness: 0.28, part: 'fridge-front-panel', materialRole: 'appliance_front' },
-      { shape: 'box', size: [0.028, 0.800, 0.001], position: [0.350, 0.970, -0.2995], color: '#747b82', metalness: 0.55, roughness: 0.24, part: 'fridge-recessed-pull', materialRole: 'fixture_metal' },
+      // Keep the existing 0.833 × 0.600 × 1.910m trial envelope. The user image
+      // supplies a French-door visual reference, not a confirmed replacement SKU.
+      // The 0.827m case core plus 3mm side skins retains the declared exterior width.
+      { shape: 'box', size: [0.827, 1.910, 0.596], position: [0, 0.955, 0.002], color: '#dedfdd', metalness: 0.08, roughness: 0.55, part: 'fridge-case-core', materialRole: 'appliance_case' },
+      // Inset side skins and a dark backing plane create restrained shadow gaps
+      // without extending the declared body envelope.
+      { shape: 'box', size: [0.006, 1.820, 0.540], position: [-0.4135, 0.955, 0], color: '#d9dbd9', metalness: 0.04, roughness: 0.54, part: 'fridge-side-skin-south', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.006, 1.820, 0.540], position: [0.4135, 0.955, 0], color: '#d9dbd9', metalness: 0.04, roughness: 0.54, part: 'fridge-side-skin-north', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.803, 1.800, 0.002], position: [0, 0.955, -0.296], color: '#3b3d3e', metalness: 0.08, roughness: 0.52, part: 'fridge-front-shadow-back', materialRole: 'appliance_case' },
+      // Four closed faces: paired upper doors and two full-width lower drawers.
+      // Narrow dark gaps stand in for recessed pulls; no projecting handles are modeled.
+      { shape: 'box', size: [0.3905, 1.080, 0.002], position: [-0.19825, 1.315, -0.299], color: '#f4f3ef', metalness: 0.02, roughness: 0.48, part: 'fridge-upper-door-left', materialRole: 'appliance_front' },
+      { shape: 'box', size: [0.3905, 1.080, 0.002], position: [0.19825, 1.315, -0.299], color: '#f4f3ef', metalness: 0.02, roughness: 0.48, part: 'fridge-upper-door-right', materialRole: 'appliance_front' },
+      { shape: 'box', size: [0.787, 0.352, 0.002], position: [0, 0.591, -0.299], color: '#f2f1ed', metalness: 0.02, roughness: 0.49, part: 'fridge-lower-drawer-upper', materialRole: 'appliance_front' },
+      { shape: 'box', size: [0.787, 0.352, 0.002], position: [0, 0.231, -0.299], color: '#f2f1ed', metalness: 0.02, roughness: 0.49, part: 'fridge-lower-drawer-lower', materialRole: 'appliance_front' },
+      { shape: 'box', size: [0.803, 0.055, 0.014], position: [0, 0.0275, -0.292], color: '#36383a', metalness: 0.08, roughness: 0.55, part: 'fridge-base-shadow-plinth', materialRole: 'appliance_case' },
     ],
   },
   {

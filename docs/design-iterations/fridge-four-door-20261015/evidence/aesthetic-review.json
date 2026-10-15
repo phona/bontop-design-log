@@ -1,0 +1,23 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "审美实质内容：保留原空间、试位、坐标、朝向和包络，更新为上部双门与下部两只整宽抽屉。",
+    "近景中四门分区清楚；中央竖缝、两条横向暗缝和底部深色阴影线形成接近参考图的层次比例。",
+    "客餐厅关系视图中，冰箱与推拉门、半高柜关系协调，体量没有破坏门洞和柜体层次。",
+    "默认冷白环境下，暖白门面与白墙反差偏弱，远景细缝可能变淡；可留作后续灯光/材质微调。",
+    "新增视觉层的静默失效边界是当前关闭态和当前光照；更换机位、灯光或真实SKU后，门缝、把手和色号需复核。"
+  ],
+  "evidence_refs": [
+    "evidence/after.png",
+    "evidence/after-room-context.png",
+    "evidence/after-runtime.json",
+    "decision-brief.yaml",
+    "shared/render/FixtureFactory.ts"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "inferred: 参考图按可见外观读取为上部左右双门、下部两只整宽抽屉。",
+    "site_pending: HR-518WUFNDIGZ 与项目 HR-518WUFIPZ 的真实门体比例、材质色号和五金细节尚未核验；本审查仅判断视觉接近度。"
+  ]
+}
