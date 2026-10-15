@@ -129,10 +129,10 @@ export class EnvironmentManager {
     this.dirLight.position.set(dir.x * SUN_RADIUS, Math.max(dir.y * SUN_RADIUS, 0.5), dir.z * SUN_RADIUS);
     this.ambientLight.intensity = light.ambientIntensity;
     if (light.isNight) {
-      // The day-gradient environment map and fill light remain visible after sunset unless reduced explicitly.
+      // Night preview isolates configured indoor luminaires from all global illumination.
       this.scene.environment = null;
       this.fillLight.color.setHex(0x7f8ab0);
-      this.fillLight.intensity = 0.06;
+      this.fillLight.intensity = 0;
       this.ambientLight.color.setHex(0x9aa6cf);
     } else {
       this.scene.environment = this.iblEnabled ? this.envMap : null;

@@ -87,7 +87,7 @@ describe('EnvironmentManager', () => {
     expect(renderer.shadowMap.needsUpdate).toBe(true);
   });
 
-  it('日照开启：夜间主光关闭，ambient 降至 0.15', () => {
+  it('日照开启：夜间关闭全局光，只保留室内照明', () => {
     const { mgr, scene } = makeManager();
     mgr.setSunlightEnabled(true);
     mgr.setSolarState({ altitudeDeg: -10, azimuthDeg: 0 });
@@ -96,9 +96,14 @@ describe('EnvironmentManager', () => {
     const dirLight = findDirLight(scene);
     expect(dirLight).toBeDefined();
     expect(dirLight.visible).toBe(false);
+    expect(dirLight.intensity).toBe(0);
     const ambient = addedObjects(scene).find((o) => o instanceof THREE.AmbientLight)!;
     expect(ambient).toBeDefined();
-    expect(ambient.intensity).toBe(0.15);
+    expect(ambient.intensity).toBe(0);
+    const fillLight = addedObjects(scene).find((o) => o instanceof THREE.DirectionalLight && !o.castShadow)!;
+    expect(fillLight).toBeDefined();
+    expect(fillLight.intensity).toBe(0);
+    expect(scene.environment).toBeNull();
     expect((scene.background as unknown as { hex: string }).hex).toBe('#0a0a18');
   });
 

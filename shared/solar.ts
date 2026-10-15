@@ -87,7 +87,7 @@ export function getSunriseSunset(
 
 export function computeLightState(altitudeDeg: number): LightState {
   if (altitudeDeg <= 0) {
-    return { sunIntensity: 0, ambientIntensity: 0.15, sunColorHex: 0x334466, isNight: true };
+    return { sunIntensity: 0, ambientIntensity: 0, sunColorHex: 0x334466, isNight: true };
   }
   const s = Math.sin(altitudeDeg * DEG);
   const t = clamp((altitudeDeg - 5) / 55, 0, 1);

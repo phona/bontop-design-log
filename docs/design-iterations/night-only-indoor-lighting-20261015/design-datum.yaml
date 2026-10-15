@@ -1,0 +1,60 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: night-only-indoor-lighting-20261015
+subject: 场景级夜间光照状态（非几何对象）
+units: m
+coordinate_system: "Three.js 右手坐标系；此迭代不移动或旋转场景对象，视点只用于固定机位证据。"
+status: frozen
+datums:
+  - id: night_render_state
+    name: 夜间场景级光照状态
+    anchor:
+      kind: free_position
+      ref: app/src/render/EnvironmentManager.ts#applySolarState
+      wall_side: null
+      service_ref: null
+    source_refs:
+      fact_refs: [current_night_sun_off, pre_change_night_residual_fill, night_global_illumination_zero, indoor_fixtures_auto_night]
+      decision_refs: [user-message-20261015-night-only]
+    views:
+      plan:
+        required: false
+        origin: ""
+        axes: ""
+        direction: ""
+        position: {x: null, z: null}
+        rotation: null
+        dimensions: {length: null, width: null, depth: null, offset: null}
+        dimension_semantics: not_applicable
+      elevation:
+        required: false
+        viewing_side: ""
+        vertical_axis: y
+        height: null
+        dimensions: {width: null, height: null, sill: null, datum_offset: null}
+        dimension_semantics: not_applicable
+      section:
+        required: false
+        cut_direction: ""
+        depth_axis: ""
+        clearances: {front: null, rear: null, top: null, bottom: null}
+        thickness: null
+        dimension_semantics: not_applicable
+    geometry:
+      x: null
+      y: null
+      z: null
+      width: null
+      depth: null
+      height: null
+      length: null
+      rotation: null
+      along: null
+    constraints:
+      - 夜间太阳高度角小于或等于零时，全局直射光、环境光、辅助补光及 IBL 关闭。
+      - 室内灯具配置和房间开关继续控制各自灯光。
+    interfaces: [solar_state, indoor_lighting_preview]
+    validation_refs: ["app/src/render/EnvironmentManager.test.ts", "evidence/night-after-room.png"]
+    status: confirmed
+notes:
+  - 地砖方向为本迭代的旁支观察，不建立或修改地砖设计基准。

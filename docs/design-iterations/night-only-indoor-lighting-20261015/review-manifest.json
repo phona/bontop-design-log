@@ -1,0 +1,98 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "night-only-indoor-lighting-20261015",
+  "subject": "夜间只保留室内照明",
+  "state": "delivery_ready",
+  "source_version": {
+    "config_refs": ["config/render/lighting.yaml", "config/layout/overlay.yaml"],
+    "asset_refs": ["config/materials.yaml"],
+    "render_facts_ref": "server/generated/project-render-facts.json",
+    "source_digest": "shared/solar.ts:35a24086fa8d4a20f5c49d6b1770d622912b20f94c7c2b6ac868ff6f5732bcbf; app/src/render/EnvironmentManager.ts:a4505c5c5c7b4897a3d7ca381e970306e13e37d2c88ce7dd8fcc2209eeab6a0c; app/src/render/EnvironmentManager.test.ts:e1b85872a06fd81b48a5b6697d932e71890c74a8f83d3c5252098f3e48e91986; config/render/lighting.yaml:84327754b3d973426a1f3890fd83b87bb525257055fb0d9cd996b20e067f3d36; config/layout/overlay.yaml:a306df94db59b8a6bfd37e1f4c4d07de1be61c275edca98a8d54c344a8e81595; config/materials.yaml:66966ff6a73af806d4fe8178c2839af6992474d6b786dee5cadb9802ab9ed2f2",
+    "generated_at": "2026-10-15T02:54:24Z"
+  },
+  "validation": {
+    "commands": ["npm run typecheck", "VISUAL_GATE_API=http://127.0.0.1:5174 npm run gate:visual"],
+    "results": [
+      {"command": "VISUAL_GATE_API=http://127.0.0.1:5174 npm run gate:visual", "result": "CLEAR", "time": "2026-10-15T02:31:07Z", "output_ref": "conversation:pre-change-gate"},
+      {"command": "npm run typecheck", "result": "PASS", "time": "2026-10-15T02:53Z", "output_ref": "conversation:post-change-typecheck"},
+      {"command": "VISUAL_GATE_API=http://127.0.0.1:5174 npm run gate:visual", "result": "CLEAR", "time": "2026-10-15T02:53Z", "output_ref": "conversation:post-change-gate"}
+    ],
+    "config_status": "PASS",
+    "geometry_status": "NOT_APPLICABLE",
+    "consistency_status": "NOT_APPLICABLE",
+    "functional_checks_status": "PASS",
+    "application_status": "PASS",
+    "typecheck_status": "PASS",
+    "generated_files_touched_directly": false
+  },
+  "evidence": [
+    {
+      "id": "night_before_room",
+      "url": "http://127.0.0.1:5174/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T02:41:48Z",
+      "config_error_banner": "",
+      "target_objects": ["客餐厅地面与已配置室内灯具"],
+      "target_object_ids": ["floor:living_dining", "light_living_dome", "light_dining_pendant"],
+      "runtime_query_refs": ["snapshot shows date=12-22 and hour=21:00; app ready=true; solar altitude=-38.4°, azimuth=257.5°, isNight=true; sunlight-enabled value was not captured before edit"],
+      "camera": {"mode": "orbit perspective interior", "is_overview": false, "position": [9, 1.65, 5.2], "target": [9, 1.15, 9.8], "view_type": "perspective"},
+      "snapshot_path": "evidence/night-before-snapshot.txt",
+      "screenshot_path": "evidence/night-before-room.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["pre-change app/src/render/EnvironmentManager.ts night fill=0.06", "pre-change shared/solar.ts night ambient=0.15"],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "night_after_room",
+      "url": "http://127.0.0.1:5174/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T02:54:24Z",
+      "config_error_banner": "",
+      "target_objects": ["客餐厅地面与已配置室内灯具"],
+      "target_object_ids": ["floor:living_dining", "light_living_dome", "light_dining_pendant"],
+      "runtime_query_refs": ["evidence/night-after-runtime.json"],
+      "camera": {"mode": "orbit perspective interior", "is_overview": false, "position": [9, 1.65, 5.2], "target": [9, 1.15, 9.8], "view_type": "perspective"},
+      "snapshot_path": "evidence/night-after-snapshot.txt",
+      "screenshot_path": "evidence/night-after-room.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["source_version.source_digest", "evidence/night-after-runtime.json"],
+      "status": "valid",
+      "invalid_reason": null
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": [
+      "固定机位夜景仍可辨认沙发、电视墙、电视柜、植物、地面边界和木纹板缝；未被室内灯直接照射的区域变暗，画面没有整体陷入黑场。",
+      "客餐厅砖长边与南窗平行，向窗面的视觉引导较弱；这项已记录为后续 0°/90° A/B 比较，本轮未修改。"
+    ],
+    "evidence_refs": ["evidence/night-after-room.png", "evidence/night-after-runtime.json", "evidence/night-after-snapshot.txt"],
+    "requested_changes": [],
+    "assumptions": ["本次审美评审仅覆盖夜间全局光隔离效果。"]
+  },
+  "functional_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": [
+      "运行时确认 AmbientLight=0、两个全局 DirectionalLight=0、太阳方向光隐藏、scene.environment=null；室内配置灯具仍 visible=true。",
+      "房间级显隐逻辑保留；本次截图覆盖房间灯全开的夜间状态，没有额外截图单房间关闭状态。"
+    ],
+    "evidence_refs": ["evidence/night-after-runtime.json", "app/src/render/EnvironmentManager.ts:122-144", "app/src/render/InteriorLightingSystem.ts:345-383", "app/src/App.ts:468-490"],
+    "requested_changes": [],
+    "assumptions": ["夜间仅室内灯适用于日照模拟开启且太阳高度角小于等于零；关闭日照模拟恢复现有静态日间预设。"]
+  },
+  "risks": ["未运行 test:app；已按仓库测试文件更新既有夜间光照断言。", "渲染器强度是显示参数，不代表实测照度或灯具流明。"],
+  "retrospective": {"triggered": false, "triggers": [], "records": [], "rebaselined": false},
+  "delivery": {"status": "complete", "blocking_issues": [], "completion_conditions": ["夜间全局照明关闭，室内配置灯具保留。", "类型检查与变更后视觉门禁通过。", "同机位浏览器证据有效，独立审美和功能评审 PASS。"], "follow_up_site_pending": [], "delivery_ready": true}
+}
