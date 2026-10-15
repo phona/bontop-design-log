@@ -186,6 +186,7 @@ export class HouseScene implements SceneApi {
   private onClickCallback?: (target: HoverTarget) => void;
   private onRenderRequested?: () => void;
   private boundOnWindowResize: () => void;
+  private canvasResizeObserver: ResizeObserver;
   private _mode: 'orbit' | 'first-person' | 'top-down' = 'orbit';
   private compareSchemeData?: CurrentScheme;
   private roomMeta = new Map<string, { wall_finish?: string; wallOpenings?: ResolvedOpening[] }>();
@@ -229,14 +230,14 @@ export class HouseScene implements SceneApi {
 
     this.camera = new THREE.PerspectiveCamera(
       55,
-      window.innerWidth / window.innerHeight,
+      Math.max(1, canvas.clientWidth || window.innerWidth) / Math.max(1, canvas.clientHeight || window.innerHeight),
       0.1,
       200
     );
     this.camera.position.copy(this.ORBIT_POSITION);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setSize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight, false);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -285,12 +286,15 @@ export class HouseScene implements SceneApi {
 
     this.boundOnWindowResize = () => this.onResize();
     window.addEventListener('resize', this.boundOnWindowResize);
+    this.canvasResizeObserver = new ResizeObserver(() => this.onResize());
+    this.canvasResizeObserver.observe(canvas);
     canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
     canvas.addEventListener('pointermove', (e) => {
       if (document.pointerLockElement) return;
+      const rect = canvas.getBoundingClientRect();
       this.lastPointer.set(
-        (e.clientX / window.innerWidth) * 2 - 1,
-        -(e.clientY / window.innerHeight) * 2 + 1,
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1,
       );
     });
   }
@@ -2831,9 +2835,12 @@ export class HouseScene implements SceneApi {
   }
 
   private onResize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
+    const rect = this.canvas.getBoundingClientRect();
+    const width = Math.max(1, rect.width);
+    const height = Math.max(1, rect.height);
+    this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setSize(width, height, false);
     this.requestRender();
   }
 
@@ -2848,9 +2855,10 @@ export class HouseScene implements SceneApi {
   }
 
   getRoomIdAt(clientX: number, clientY: number): string | null {
+    const rect = this.canvas.getBoundingClientRect();
     const pointer = new THREE.Vector2(
-      (clientX / window.innerWidth) * 2 - 1,
-      -(clientY / window.innerHeight) * 2 + 1,
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
     );
     this.raycaster.setFromCamera(pointer, this.camera);
     const intersects = this.raycaster.intersectObjects(this.scene.children, true);
@@ -2861,8 +2869,9 @@ export class HouseScene implements SceneApi {
   }
 
   private onPointerDown(event: PointerEvent) {
-    this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    const rect = this.canvas.getBoundingClientRect();
+    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const target = this.targetFromIntersects(
       this.raycaster.intersectObjects(this.scene.children, true),
@@ -2913,8 +2922,9 @@ export class HouseScene implements SceneApi {
 
   private updateCompassLabels() {
     this.initCompassLabels();
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    const rect = this.canvas.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height;
     for (const key of ['n', 's', 'e', 'w'] as const) {
       const el = this.compassEls[key];
       if (!el) continue;
@@ -2924,8 +2934,8 @@ export class HouseScene implements SceneApi {
         el.style.opacity = '0';
         continue;
       }
-      const x = (projected.x + 1) * 0.5 * w;
-      const y = (1 - projected.y) * 0.5 * h;
+      const x = rect.left + (projected.x + 1) * 0.5 * w;
+      const y = rect.top + (1 - projected.y) * 0.5 * h;
       el.style.left = `${x}px`;
       el.style.top = `${y}px`;
       el.style.opacity = '0.95';
@@ -2933,10 +2943,11 @@ export class HouseScene implements SceneApi {
   }
 
   getGroundPosition(clientX: number, clientY: number): { x: number; z: number } | null {
+    const rect = this.canvas.getBoundingClientRect();
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2(
-      (clientX / window.innerWidth) * 2 - 1,
-      -(clientY / window.innerHeight) * 2 + 1,
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1,
     );
     raycaster.setFromCamera(mouse, this.camera);
     const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -2974,6 +2985,7 @@ export class HouseScene implements SceneApi {
 
   dispose(): void {
     window.removeEventListener('resize', this.boundOnWindowResize);
+    this.canvasResizeObserver.disconnect();
     this.hvacRenderer.dispose();
     this.mepRenderer.dispose();
     this.electricalTopologyRenderer.dispose();

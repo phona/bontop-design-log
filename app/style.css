@@ -23,6 +23,7 @@ html, body {
   display: block;
   width: 100%;
   height: 100%;
+  transition: width 0.25s ease;
 }
 
 .panel {
@@ -158,56 +159,148 @@ html, body {
 
 :root {
   --right-panel-top: 105px;
+  --workbench-width: 390px;
 }
 
 #right-panel-stack {
   position: fixed;
-  top: var(--right-panel-top);
-  right: 16px;
-  width: clamp(300px, 30vw, 420px);
-  max-height: calc(100vh - var(--right-panel-top) - 16px);
+  inset: 0 0 0 auto;
+  width: var(--workbench-width);
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
   align-items: stretch;
+  padding: 12px;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  z-index: 100;
+  background: rgba(16, 18, 25, 0.98);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.28);
+  transition: transform 0.25s ease;
+}
+
+body.workbench-open #gl {
+  width: calc(100vw - var(--workbench-width));
+}
+
+body.workbench-open #crosshair,
+body.workbench-open #hover-tooltip {
+  left: calc((100vw - var(--workbench-width)) / 2);
+}
+
+body.workbench-open #mode-indicator { right: calc(var(--workbench-width) + 16px); }
+body.workbench-open #phase-indicator { right: calc(var(--workbench-width) + 16px); }
+body.workbench-open #toolbar { right: calc(var(--workbench-width) + 16px); }
+body.workbench-open .toolbar-popover { right: calc(var(--workbench-width) + 16px); }
+
+body.workbench-closed #right-panel-stack {
+  transform: translateX(100%);
+  pointer-events: none;
+}
+
+.workbench-header {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px 10px;
+  color: #f1f2f5;
+}
+
+.workbench-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
   padding: 4px;
+  background: rgba(255, 255, 255, 0.045);
+  border-radius: 8px;
+}
+
+.workbench-tabs button {
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #bfc4d0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.workbench-tabs button:hover { background: rgba(255, 255, 255, 0.08); }
+.workbench-tabs button.active {
+  color: #fff;
+  background: rgba(59, 130, 246, 0.24);
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
+.workbench-pages {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  padding-top: 10px;
+}
+
+.workbench-page {
+  height: 100%;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  z-index: 90;
-  pointer-events: none;
-  transition: right 0.25s ease;
 }
 
-/* 任一顶栏弹出面板（图层抽屉/环境/告警/设置）打开时，右侧信息栈整体左移让位；
-   面板关闭后滑回原位。宽度 300 + 右距 16 + 间隙 16 = 332px。 */
-body:has(.toolbar-popover:not([hidden])) #right-panel-stack {
-  right: 332px;
+.workbench-page[hidden] { display: none; }
+
+.workbench-sunlight-section {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
 }
 
-#right-panel-stack > * {
-  position: static;
+.workbench-sunlight-section > summary {
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.workbench-sunlight-section[open] > summary { margin-bottom: 4px; }
+
+.workbench-page > * {
   width: 100%;
   min-width: 0;
-  max-height: none;
-  min-height: 0;
-  flex: 0 0 auto;
-  pointer-events: auto;
 }
 
-/* class 里的 display:flex 会覆盖 hidden 属性的 display:none，需显式兜底 */
-#right-panel-stack > [hidden] {
+#workbench-reopen {
   display: none;
+  position: fixed;
+  z-index: 101;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  padding: 12px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-right: 0;
+  border-radius: 8px 0 0 8px;
+  background: rgba(25, 29, 40, 0.96);
+  color: #eee;
+  cursor: pointer;
+  writing-mode: vertical-rl;
 }
+
+body.workbench-closed #workbench-reopen { display: block; }
 
 #right-panel-stack .dynamic-panel,
 #right-panel-stack #info-panel,
 #right-panel-stack .mep-controls {
-  overflow-y: auto;
+  overflow: visible;
   overscroll-behavior: contain;
 }
 
 #right-panel-stack .dynamic-panel {
-  max-height: min(360px, calc(100vh - var(--right-panel-top) - 16px));
+  max-height: none;
 }
 
 .lighting-preview-panel,
@@ -219,6 +312,47 @@ body:has(.toolbar-popover:not([hidden])) #right-panel-stack {
   color: #e0e0e0;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   font-size: 13px;
+}
+
+#workbench-page-material #material-preview-host {
+  height: 100%;
+  min-height: 0;
+}
+
+.material-preview-panel {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.material-preview-panel > .dynamic-panel-heading { flex: 0 0 auto; }
+
+.material-preview-content {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 2px 10px 0;
+}
+
+.material-preview-footer {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  display: grid;
+  gap: 7px;
+  margin: 0 -16px -14px;
+  padding: 9px 16px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(26, 26, 46, 0.97), #1a1a2e 32%);
+}
+
+.material-preview-footer .preview-preset-row { margin: 0; }
+
+.material-preview-footer .preview-reset {
+  min-height: 34px;
 }
 
 .lighting-preview-content,
@@ -336,13 +470,13 @@ body:has(.toolbar-popover:not([hidden])) #right-panel-stack {
   background: #373754;
 }
 
-#right-panel-stack .mep-controls {
-  max-height: min(260px, calc(100vh - var(--right-panel-top) - 16px));
-}
-
 #info-panel {
   display: none;
-  max-height: min(360px, calc(100vh - var(--right-panel-top) - 16px));
+  max-height: none;
+  border: 0;
+  padding: 4px;
+  background: transparent;
+  box-shadow: none;
 }
 
 #info-panel-header {
@@ -1068,30 +1202,65 @@ body:has(.toolbar-popover:not([hidden])) #right-panel-stack {
 
 @media (max-width: 700px) {
   :root {
-    --right-panel-top: 96px;
+    --workbench-width: 100vw;
+    --workbench-height: min(48vh, 430px);
   }
 
   #right-panel-stack {
-    right: 8px;
-    width: min(420px, calc(100vw - 16px));
-    max-height: calc(100vh - var(--right-panel-top) - 8px);
-    gap: 12px;
-    padding: 2px;
+    inset: auto 0 0;
+    width: 100vw;
+    height: var(--workbench-height);
+    padding: 10px;
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.28);
   }
 
-  /* 窄屏下弹出面板已近全宽，让位无意义，保持原位（重叠与改版前一致） */
-  body:has(.toolbar-popover:not([hidden])) #right-panel-stack {
-    right: 8px;
+  body.workbench-closed #right-panel-stack { transform: translateY(100%); }
+
+  /* 底部 dock 占用自身布局高度，模型视口保持可见且不被抽屉盖住。 */
+  body.workbench-open #gl {
+    width: 100vw;
+    height: calc(100vh - var(--workbench-height));
+  }
+  body.workbench-open #crosshair,
+  body.workbench-open #hover-tooltip { left: 50%; }
+  body.workbench-open #crosshair { top: calc((100vh - var(--workbench-height)) / 2); }
+  body.workbench-open #hover-tooltip { top: calc((100vh - var(--workbench-height)) / 2 + 24px); }
+  body.workbench-open #mode-indicator { right: 16px; }
+  body.workbench-open #phase-indicator { right: 16px; bottom: calc(var(--workbench-height) + 16px); }
+  body.workbench-open #toolbar { right: 16px; }
+  body.workbench-open .toolbar-popover { right: 16px; }
+
+  body.workbench-closed #workbench-reopen {
+    top: auto;
+    right: 16px;
+    bottom: 0;
+    transform: none;
+    padding: 8px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    writing-mode: horizontal-tb;
   }
 
   #right-panel-stack .dynamic-panel,
   #right-panel-stack #info-panel {
-    max-height: min(320px, calc(100vh - var(--right-panel-top) - 8px));
+    max-height: none;
   }
 
   #right-panel-stack .mep-controls {
-    max-height: min(220px, calc(100vh - var(--right-panel-top) - 8px));
+    max-height: min(220px, 45vh);
   }
+}
+
+@media (max-height: 650px) and (min-width: 701px) {
+  #right-panel-stack { padding: 8px; }
+  .workbench-header { min-height: 30px; padding-bottom: 6px; }
+  .workbench-tabs button { min-height: 30px; }
+  .workbench-pages { padding-top: 6px; }
+  .lighting-preview-content,
+  .material-preview-content { gap: 6px; margin-top: 6px; }
 }
 
 #config-error-banner {

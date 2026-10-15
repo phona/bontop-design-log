@@ -1,5 +1,3 @@
-import { setupCollapsiblePanel } from './CollapsiblePanel.js';
-
 export type PreviewFloorMode = 'procedural' | 'manufacturer_atlas';
 export type PreviewSlot = 'A' | 'B';
 
@@ -56,7 +54,6 @@ export class MaterialPreviewPanel {
     this.root.innerHTML = `
       <div class="dynamic-panel-heading">
         <strong>材质预演</strong>
-        <button class="panel-collapse-toggle" type="button" aria-label="材质预演面板折叠" title="折叠">−</button>
       </div>
       <div class="material-preview-content">
         <p class="preview-note">临时预览，不写入正式方案。厂家拼版图用于看纹理变化，不代表已确认具体 SKU。</p>
@@ -86,6 +83,9 @@ export class MaterialPreviewPanel {
           <code data-control="paint-hex"></code>
         </label>
         <p class="preview-note">墙色预演只改变可涂漆墙面，不改天花和正式方案。色号是备注；HEX 是屏幕预览值，需色样校准后才能代表实物。</p>
+        <p class="preview-note">恢复会还原正式材料与灯光；当前日照日期和时刻会保留，方便同光照比较。</p>
+      </div>
+      <div class="material-preview-footer">
         <div class="preview-preset-row">
           <button type="button" data-save="A">保存 A</button>
           <button type="button" data-load="A">查看 A</button>
@@ -93,14 +93,8 @@ export class MaterialPreviewPanel {
           <button type="button" data-load="B">查看 B</button>
         </div>
         <button class="preview-reset" type="button" data-control="reset">恢复正式材料与灯光</button>
-        <p class="preview-note">重置保留当前日照日期和时刻，方便在相同光照下比较材质。</p>
       </div>`;
     host.appendChild(this.root);
-
-    const toggle = this.root.querySelector('.panel-collapse-toggle') as HTMLButtonElement;
-    const content = this.root.querySelector('.material-preview-content') as HTMLElement;
-    content.id = `material-preview-content-${Math.random().toString(36).slice(2)}`;
-    setupCollapsiblePanel(toggle, content, false);
 
     this.root.querySelector<HTMLSelectElement>('[data-control="floor"]')!.onchange = (event) => {
       this.state.floorId = (event.currentTarget as HTMLSelectElement).value;

@@ -1,5 +1,3 @@
-import { setupCollapsiblePanel } from './CollapsiblePanel.js';
-
 export interface LightingPreviewRoom {
   id: string;
   label?: string;
@@ -39,7 +37,6 @@ export class LightingPreviewPanel {
     this.root.innerHTML = `
       <div class="panel-heading">
         <strong>灯光预演</strong>
-        <button class="panel-collapse-toggle" type="button" aria-label="灯光预演面板折叠"></button>
       </div>
       <div class="lighting-preview-content" id="lighting-preview-content">
         <label class="lighting-preview-row">控制方式
@@ -65,11 +62,6 @@ export class LightingPreviewPanel {
         <button data-control="reset" type="button">恢复配置基线</button>
       </div>`;
     this.host.appendChild(this.root);
-    const toggle = this.root.querySelector('.panel-collapse-toggle') as HTMLButtonElement;
-    const content = this.root.querySelector('.lighting-preview-content') as HTMLElement;
-    content.id = `lighting-preview-content-${Math.random().toString(36).slice(2)}`;
-    setupCollapsiblePanel(toggle, content, false);
-
     this.root.querySelector<HTMLSelectElement>('[data-control="mode"]')!.onchange = (event) => {
       const mode = (event.currentTarget as HTMLSelectElement).value as 'auto' | 'manual';
       this.callbacks.onModeChange(mode);

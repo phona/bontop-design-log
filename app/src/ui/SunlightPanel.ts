@@ -5,8 +5,6 @@ const SEASONS: Array<{ key: string; label: string; month: number; day: number }>
   { key: 'autumn', label: '秋分', month: 9, day: 23 },
 ];
 
-import { setupCollapsiblePanel } from './CollapsiblePanel.js';
-
 const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 function dayIndexToDate(index: number): { month: number; day: number } {
@@ -26,6 +24,8 @@ function dateToIndex(month: number, day: number): number {
 
 export class SunlightPanel {
   private el: HTMLDivElement | null = null;
+  private host: HTMLElement | null = null;
+  private onActivate?: () => void;
   private visible = false;
   private selectedDate = { month: 12, day: 22 };
   private selectedHour = 12;
@@ -34,14 +34,22 @@ export class SunlightPanel {
   private playCb?: () => void;
   private heatmapCb?: () => void;
 
+  mount(host: HTMLElement, onActivate?: () => void): void {
+    this.host = host;
+    this.onActivate = onActivate;
+    if (!this.el) this.build();
+    if (this.el) this.el.style.display = 'block';
+  }
+
   show(): void {
     if (!this.el) this.build();
     this.el!.style.display = 'block';
     this.visible = true;
+    this.onActivate?.();
   }
 
   hide(): void {
-    if (this.el) this.el.style.display = 'none';
+    // Controls remain available in the workbench when solar simulation is off.
     this.visible = false;
   }
 
@@ -107,17 +115,14 @@ export class SunlightPanel {
     el.id = 'sunlight-panel';
     el.className = 'dynamic-panel';
     el.style.cssText = `
-      background: #1a1a2e; color: #e0e0e0; border-radius: 10px; padding: 14px 16px;
+      background: transparent; color: #e0e0e0; border-radius: 0; padding: 8px 0 0;
       font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none;
+      box-shadow: none; display: none;
     `;
 
     el.innerHTML = `
-      <div class="dynamic-panel-heading">
-        <strong>日照模拟</strong>
-        <button id="sunlight-panel-toggle" class="panel-collapse-toggle" type="button" aria-controls="sunlight-panel-content" aria-expanded="true" aria-label="日照面板折叠" title="折叠">−</button>
-      </div>
-      <div id="sunlight-panel-content">
+      <div class="dynamic-panel-heading"><strong>日照模拟</strong></div>
+      <div>
       <div id="sunlight-huinan-hint" style="display:none; background:#5b3a1a; color:#ffd591; border-radius:6px; padding:6px 8px; margin-bottom:10px; font-size:12px;">当前处于回南天窗口</div>
       <label style="display:block; margin-bottom:4px;">日期 <span id="sunlight-date-label">${String(this.selectedDate.month).padStart(2, '0')}-${String(this.selectedDate.day).padStart(2, '0')}</span></label>
       <input id="sunlight-date" type="range" min="0" max="364" value="${dateToIndex(this.selectedDate.month, this.selectedDate.day)}" style="width:100%;" />
@@ -134,11 +139,7 @@ export class SunlightPanel {
       </div>
     `;
 
-    const stack = document.getElementById('right-panel-stack');
-    (stack ?? document.body).appendChild(el);
-    const toggle = el.querySelector('#sunlight-panel-toggle') as HTMLButtonElement | null;
-    const content = el.querySelector('#sunlight-panel-content') as HTMLElement | null;
-    if (toggle && content) setupCollapsiblePanel(toggle, content);
+    (this.host ?? document.getElementById('sunlight-preview-host') ?? document.body).appendChild(el);
     this.el = el;
 
     const dateSlider = el.querySelector('#sunlight-date') as HTMLInputElement;

@@ -37,6 +37,7 @@ import { SunlightPanel } from './ui/SunlightPanel.js';
 import { SunlightButton } from './ui/SunlightButton.js';
 import { LightingPreviewPanel, type LightingPreviewRoom, type LightingPreviewState } from './ui/LightingPreviewPanel.js';
 import { MaterialPreviewPanel, type MaterialPreviewOption, type MaterialPreviewPanelState, type PreviewSlot } from './ui/MaterialPreviewPanel.js';
+import { PreviewWorkbench } from './ui/PreviewWorkbench.js';
 import { resolvePreviewAtlas, type MaterialPreviewAtlas } from './data/materialPreviewAtlas.js';
 import { GlassFidelityButton } from './ui/GlassFidelityButton.js';
 import { Popover } from './ui/Popover.js';
@@ -70,6 +71,7 @@ export class App {
   private houseScene: HouseScene;
   private schemePanel: SchemePanel;
   private infoPanel: InfoPanel;
+  private previewWorkbench: PreviewWorkbench;
   private offlineIndicator: OfflineIndicator;
   private crosshair: Crosshair;
   private sensitivitySlider: SensitivitySlider;
@@ -190,6 +192,7 @@ export class App {
       schemeCons: document.getElementById('scheme-cons')!,
       warnings: document.getElementById('warnings')!,
     });
+    this.previewWorkbench = new PreviewWorkbench(document.getElementById('right-panel-stack')!);
     this.infoPanel = new InfoPanel({
       onSelectOption: (topicId, optionId, roomId) => {
         void this.handleOptionSelect(topicId, optionId, roomId);
@@ -246,10 +249,12 @@ export class App {
     this.houseScene.cameraAnimator.setOnComplete((mode) => {
       this.houseScene.setMode(mode);
       if (mode === 'first-person') {
+        this.previewWorkbench.setFirstPerson(true);
         this.fpController.syncFromCamera();
         this.crosshair.show();
         this.sensitivitySlider.show();
       } else {
+        this.previewWorkbench.setFirstPerson(false);
         this.crosshair.hide();
         this.sensitivitySlider.hide();
         this.hoverTooltip.clear();
@@ -404,6 +409,8 @@ export class App {
   }
 
   private setupSunlight(): void {
+    const sunlightHost = document.getElementById('sunlight-preview-host');
+    if (sunlightHost) this.sunlightPanel.mount(sunlightHost, () => this.previewWorkbench.focusSunlight());
     const env = this.projectData?.environment;
     if (!env) return;
 
@@ -450,7 +457,10 @@ export class App {
     });
 
     this.sunlightButton = new SunlightButton({
-      onToggle: () => this.setSunlightEnabled(!this.sunlightEnabled),
+      onToggle: () => {
+        this.envPopover?.close();
+        this.setSunlightEnabled(!this.sunlightEnabled);
+      },
       getActive: () => this.sunlightEnabled,
     });
   }
@@ -472,6 +482,7 @@ export class App {
       // 静态日光预设：室内灯回落到关闭
       this.interiorLighting?.syncSolar({ isNight: false, altitudeDeg: 90 });
     }
+    this.previewWorkbench.focusSunlight();
     this.syncLightingPreviewPanel();
     this.houseScene.requestShadowUpdate();
     this.sunlightButton?.sync();
@@ -480,7 +491,7 @@ export class App {
 
   private setupLightingPreviewPanel(): void {
     if (!this.interiorLighting || this.lightingPreviewPanel) return;
-    const host = document.getElementById('right-panel-stack');
+    const host = document.getElementById('lighting-preview-host');
     if (!host) return;
     this.lightingPreviewPanel = new LightingPreviewPanel(host, {
       onModeChange: (mode) => {
@@ -543,7 +554,7 @@ export class App {
 
   private setupMaterialPreviewPanel(scheme: CurrentScheme): void {
     if (this.materialPreviewPanel) return;
-    const host = document.getElementById('right-panel-stack');
+    const host = document.getElementById('material-preview-host');
     const floorTopic = this.topics.find((topic) => topic.id === 'floor');
     if (!host || !floorTopic) return;
     const options: MaterialPreviewOption[] = floorTopic.options.map((option) => {
@@ -741,8 +752,7 @@ export class App {
     this.furniturePanel.onSelect((type) => {
       this.furniturePanel.hide();
       this.furniturePlaceMode = { type };
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
+      const { x: centerX, y: centerY } = this.getCanvasCenter();
       const pos = this.houseScene.getGroundPosition(centerX, centerY);
       if (pos) {
         this.houseScene.showGhost(pos.x, pos.z, 0, type);
@@ -1345,8 +1355,7 @@ export class App {
     this.placementPanel.onSelect((category, type) => {
       this.placementPanel.hide();
       this.infrastructurePlaceMode = { category, type };
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
+      const { x: centerX, y: centerY } = this.getCanvasCenter();
       const pos = this.houseScene.getGroundPosition(centerX, centerY);
       if (pos) {
         this.houseScene.showGhost(pos.x, pos.z, 0, 'dining_chair');
@@ -1470,6 +1479,7 @@ export class App {
         return;
       }
       this.infoPanel.showObject(target);
+      this.previewWorkbench.activate('object');
       if (target.type === 'mep_coordination_route' && target.mep?.routeId) {
         this.houseScene.highlightMepRoute(String(target.mep.routeId));
       }
@@ -1816,8 +1826,7 @@ export class App {
     }
 
     if (this.infrastructurePlaceMode) {
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
+      const { x: centerX, y: centerY } = this.getCanvasCenter();
       const pos = this.houseScene.getGroundPosition(centerX, centerY);
       if (pos) {
         const { category, type } = this.infrastructurePlaceMode;
@@ -1845,8 +1854,7 @@ export class App {
     }
 
     if (this.furniturePlaceMode) {
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
+      const { x: centerX, y: centerY } = this.getCanvasCenter();
       const pos = this.houseScene.getGroundPosition(centerX, centerY);
       if (pos) {
         const type = this.furniturePlaceMode.type;
@@ -1872,6 +1880,7 @@ export class App {
     if (!target) return;
 
     this.infoPanel.showObject(target);
+    this.previewWorkbench.activate('object');
     if (target.type === 'mep_coordination_route' && target.mep?.routeId) {
       this.houseScene.highlightMepRoute(String(target.mep.routeId));
     }
@@ -2269,6 +2278,11 @@ export class App {
     }, 3000);
   }
 
+  private getCanvasCenter(): { x: number; y: number } {
+    const rect = this.canvas.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }
+
   private showConfigErrorBanner(errors: Array<{ path: string; error: string }>): void {
     let banner = document.getElementById('config-error-banner') as HTMLDivElement | null;
     if (!banner) {
@@ -2316,8 +2330,7 @@ export class App {
       this.fpController.update(dt);
 
       if (this.furniturePlaceMode) {
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
+        const { x: centerX, y: centerY } = this.getCanvasCenter();
         const pos = this.houseScene.getGroundPosition(centerX, centerY);
         if (pos) {
           this.houseScene.updateGhostPosition(pos.x, pos.z);
@@ -2325,8 +2338,7 @@ export class App {
       }
 
       if (this.infrastructurePlaceMode) {
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
+        const { x: centerX, y: centerY } = this.getCanvasCenter();
         const pos = this.houseScene.getGroundPosition(centerX, centerY);
         if (pos) {
           this.houseScene.updateGhostPosition(pos.x, pos.z);
