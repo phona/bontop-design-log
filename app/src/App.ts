@@ -572,7 +572,7 @@ export class App {
       onReset: () => this.finishVisualPreview(),
       onSavePreset: (slot) => this.saveVisualPreviewPreset(slot),
       onRecallPreset: (slot) => this.recallVisualPreviewPreset(slot),
-    }, this.materialPreviewState);
+    }, this.materialPreviewState, document.getElementById('material-preview-actions') ?? undefined);
     this.syncMaterialPreviewPanel();
   }
 

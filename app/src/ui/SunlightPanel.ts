@@ -121,7 +121,6 @@ export class SunlightPanel {
     `;
 
     el.innerHTML = `
-      <div class="dynamic-panel-heading"><strong>日照模拟</strong></div>
       <div>
       <div id="sunlight-huinan-hint" style="display:none; background:#5b3a1a; color:#ffd591; border-radius:6px; padding:6px 8px; margin-bottom:10px; font-size:12px;">当前处于回南天窗口</div>
       <label style="display:block; margin-bottom:4px;">日期 <span id="sunlight-date-label">${String(this.selectedDate.month).padStart(2, '0')}-${String(this.selectedDate.day).padStart(2, '0')}</span></label>

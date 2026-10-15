@@ -35,9 +35,6 @@ export class LightingPreviewPanel {
     this.root = document.createElement('section');
     this.root.className = 'dynamic-panel lighting-preview-panel';
     this.root.innerHTML = `
-      <div class="panel-heading">
-        <strong>灯光预演</strong>
-      </div>
       <div class="lighting-preview-content" id="lighting-preview-content">
         <label class="lighting-preview-row">控制方式
           <select data-control="mode">
@@ -58,6 +55,7 @@ export class LightingPreviewPanel {
         <label class="lighting-preview-row">亮度 <output data-control="brightness-label"></output>
           <input data-control="brightness" type="range" min="0" max="150" step="5">
         </label>
+        <p class="preview-note">相对渲染亮度，用于视觉预演；不代表实际照度（lux）。</p>
         <div class="lighting-preview-rooms" data-control="rooms"></div>
         <button data-control="reset" type="button">恢复配置基线</button>
       </div>`;

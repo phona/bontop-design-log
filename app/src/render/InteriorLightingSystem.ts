@@ -12,6 +12,12 @@ import { buildNightLightVisual, getNightLightMountNormal } from '@shared/render/
 
 const MAX_SHADOW_LIGHTS = 2;
 
+/**
+ * 浏览器渲染显示校准：当前灯具能量是人为设定的 Three.js intensity，
+ * 不是灯具流明值。统一压低到 60% 以收敛夜景亮斑，不能用于反推照度或选型。
+ */
+const LIGHTING_ENERGY_VISUAL_SCALE = 0.6;
+
 interface LightEntry {
   id: string;
   room: string;
@@ -25,7 +31,7 @@ interface LightEntry {
 
 // Keep every ceiling-mounted visual and its light source below the ceiling bottom.
 const CEILING_VISUAL_CLEARANCE = 0.05;
-const FIXTURE_EMISSIVE_ON = 1.4;
+const FIXTURE_EMISSIVE_ON = 1.4 * LIGHTING_ENERGY_VISUAL_SCALE;
 const FIXTURE_EMISSIVE_OFF = 0.05;
 
 function kelvinToColor(temperatureK: number): THREE.Color {
@@ -44,11 +50,14 @@ function kelvinToColor(temperatureK: number): THREE.Color {
     blue = 255;
   }
 
+  // The approximation above produces display/sRGB channel values. Three.js r166
+  // stores working colors as Linear-sRGB, so convert before passing the color to
+  // lights or StandardMaterial emissive channels.
   return new THREE.Color(
     Math.max(0, Math.min(255, red)) / 255,
     Math.max(0, Math.min(255, green)) / 255,
     Math.max(0, Math.min(255, blue)) / 255,
-  );
+  ).convertSRGBToLinear();
 }
 
 export class InteriorLightingSystem {
@@ -71,6 +80,8 @@ export class InteriorLightingSystem {
       if (fixture.enabled) this.addLight(fixture);
     }
     this.scene.add(this.group);
+    // Apply the renderer calibration before the first solar sync as well.
+    this.applyAppearance();
     this.applyVisibility();
   }
 
@@ -234,9 +245,11 @@ export class InteriorLightingSystem {
 
   private emissiveMat(color: THREE.Color): THREE.MeshStandardMaterial {
     return new THREE.MeshStandardMaterial({
-      color: 0xfff5e0,
-      emissive: color,
-      emissiveIntensity: 1.4,
+      // Keep the fixture diffuser in the same Kelvin-derived color as the light.
+      // A fixed warm-white base made 4000K sources look falsely warm and bright.
+      color: color.clone(),
+      emissive: color.clone(),
+      emissiveIntensity: FIXTURE_EMISSIVE_ON,
       roughness: 0.6,
     });
   }
@@ -337,7 +350,11 @@ export class InteriorLightingSystem {
       for (const fixtureLight of entry.lights) fixtureLight.visible = visible;
       entry.light.visible = visible;
       entry.visual.visible = true;
-      for (const material of entry.fixtureMats) material.emissiveIntensity = visible ? FIXTURE_EMISSIVE_ON : FIXTURE_EMISSIVE_OFF;
+      for (const material of entry.fixtureMats) {
+        material.emissiveIntensity = visible
+          ? FIXTURE_EMISSIVE_ON * this.brightnessMultiplier
+          : FIXTURE_EMISSIVE_OFF;
+      }
     }
   }
 
@@ -415,10 +432,15 @@ export class InteriorLightingSystem {
         : kelvinToColor(this.temperatureOverrideK);
       entry.lights.forEach((light, index) => {
         light.color.copy(this.temperatureOverrideK === null ? entry.baseColors[index] : color);
-        light.intensity = entry.baseEnergies[index] * this.brightnessMultiplier;
+        light.intensity = entry.baseEnergies[index] * LIGHTING_ENERGY_VISUAL_SCALE * this.brightnessMultiplier;
       });
       for (const material of entry.fixtureMats) {
+        material.color.copy(color);
         material.emissive.copy(color);
+        const roomOn = this.roomOverrides.get(entry.room) ?? true;
+        material.emissiveIntensity = this.on && roomOn
+          ? FIXTURE_EMISSIVE_ON * this.brightnessMultiplier
+          : FIXTURE_EMISSIVE_OFF;
       }
     }
   }

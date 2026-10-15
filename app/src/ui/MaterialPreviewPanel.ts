@@ -32,6 +32,7 @@ export interface MaterialPreviewPanelCallbacks {
 /** Temporary material controls. All persistence and scene application stays with App. */
 export class MaterialPreviewPanel {
   private root: HTMLElement;
+  private footer: HTMLElement;
   private callbacks: MaterialPreviewPanelCallbacks;
   private options: MaterialPreviewOption[];
   private atlases: MaterialPreviewAtlasOption[];
@@ -44,6 +45,7 @@ export class MaterialPreviewPanel {
     atlases: MaterialPreviewAtlasOption[],
     callbacks: MaterialPreviewPanelCallbacks,
     initial: MaterialPreviewPanelState,
+    actionsHost?: HTMLElement,
   ) {
     this.options = options;
     this.atlases = atlases;
@@ -52,9 +54,6 @@ export class MaterialPreviewPanel {
     this.root = document.createElement('section');
     this.root.className = 'dynamic-panel material-preview-panel';
     this.root.innerHTML = `
-      <div class="dynamic-panel-heading">
-        <strong>材质预演</strong>
-      </div>
       <div class="material-preview-content">
         <p class="preview-note">临时预览，不写入正式方案。厂家拼版图用于看纹理变化，不代表已确认具体 SKU。</p>
         <label class="preview-control">地砖方案
@@ -84,8 +83,12 @@ export class MaterialPreviewPanel {
         </label>
         <p class="preview-note">墙色预演只改变可涂漆墙面，不改天花和正式方案。色号是备注；HEX 是屏幕预览值，需色样校准后才能代表实物。</p>
         <p class="preview-note">恢复会还原正式材料与灯光；当前日照日期和时刻会保留，方便同光照比较。</p>
-      </div>
-      <div class="material-preview-footer">
+      </div>`;
+    host.appendChild(this.root);
+
+    this.footer = document.createElement('div');
+    this.footer.className = 'material-preview-footer';
+    this.footer.innerHTML = `
         <div class="preview-preset-row">
           <button type="button" data-save="A">保存 A</button>
           <button type="button" data-load="A">查看 A</button>
@@ -94,7 +97,7 @@ export class MaterialPreviewPanel {
         </div>
         <button class="preview-reset" type="button" data-control="reset">恢复正式材料与灯光</button>
       </div>`;
-    host.appendChild(this.root);
+    (actionsHost ?? host).appendChild(this.footer);
 
     this.root.querySelector<HTMLSelectElement>('[data-control="floor"]')!.onchange = (event) => {
       this.state.floorId = (event.currentTarget as HTMLSelectElement).value;
@@ -125,10 +128,10 @@ export class MaterialPreviewPanel {
       this.syncPaintReadout();
       this.emit();
     };
-    this.root.querySelector<HTMLButtonElement>('[data-control="reset"]')!.onclick = () => this.callbacks.onReset();
+    this.footer.querySelector<HTMLButtonElement>('[data-control="reset"]')!.onclick = () => this.callbacks.onReset();
     for (const slot of ['A', 'B'] as const) {
-      this.root.querySelector<HTMLButtonElement>(`[data-save="${slot}"]`)!.onclick = () => this.callbacks.onSavePreset(slot);
-      this.root.querySelector<HTMLButtonElement>(`[data-load="${slot}"]`)!.onclick = () => this.callbacks.onRecallPreset(slot);
+      this.footer.querySelector<HTMLButtonElement>(`[data-save="${slot}"]`)!.onclick = () => this.callbacks.onSavePreset(slot);
+      this.footer.querySelector<HTMLButtonElement>(`[data-load="${slot}"]`)!.onclick = () => this.callbacks.onRecallPreset(slot);
     }
     this.syncControls();
   }
@@ -144,6 +147,7 @@ export class MaterialPreviewPanel {
 
   destroy(): void {
     this.root.remove();
+    this.footer.remove();
   }
 
   private emit(): void {
@@ -184,7 +188,7 @@ export class MaterialPreviewPanel {
     this.root.querySelector<HTMLInputElement>('[data-control="paint-label"]')!.value = this.state.paintLabel;
     this.root.querySelector<HTMLInputElement>('[data-control="paint-color"]')!.value = this.state.paintColor;
     for (const slot of ['A', 'B'] as const) {
-      this.root.querySelector<HTMLButtonElement>(`[data-load="${slot}"]`)!.disabled = !this.availableSlots[slot];
+      this.footer.querySelector<HTMLButtonElement>(`[data-load="${slot}"]`)!.disabled = !this.availableSlots[slot];
     }
     this.syncMatteReadout();
     this.syncPaintReadout();

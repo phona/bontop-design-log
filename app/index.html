@@ -32,39 +32,45 @@
         <strong>预演工作台</strong>
         <button class="panel-collapse-toggle" type="button" data-workbench-close aria-label="收起预演工作台" title="收起工作台">−</button>
       </div>
-      <nav class="workbench-tabs" role="tablist" aria-label="工作台页面">
-        <button type="button" role="tab" data-workbench-tab="object" aria-controls="workbench-page-object">对象</button>
-        <button type="button" role="tab" data-workbench-tab="material" aria-controls="workbench-page-material">材质</button>
-        <button type="button" role="tab" data-workbench-tab="lighting" aria-controls="workbench-page-lighting">灯光</button>
-      </nav>
-      <div class="workbench-pages">
-        <section id="workbench-page-object" class="workbench-page" data-workbench-page="object" role="tabpanel" hidden>
-          <div id="info-panel" class="panel">
-        <div class="panel-heading" id="info-panel-heading">
-          <span id="info-panel-title"></span>
-          <button id="info-panel-toggle" class="panel-collapse-toggle" type="button" aria-controls="info-panel-content" aria-expanded="false" aria-label="对象信息面板折叠" title="展开">+</button>
-        </div>
-        <div id="info-panel-content">
-          <div id="info-panel-header">
-            <span id="info-panel-object-id"></span>
-            <span id="info-panel-type"></span>
-            <span id="info-panel-room"></span>
+      <div class="workbench-accordion" role="group" aria-label="工作台折叠区">
+        <button type="button" class="workbench-accordion-header" data-workbench-toggle="object" aria-controls="workbench-page-object" aria-expanded="false">对象信息</button>
+        <button type="button" class="workbench-accordion-header" data-workbench-toggle="material" aria-controls="workbench-page-material" aria-expanded="true">材质预演</button>
+        <button type="button" class="workbench-accordion-header" data-workbench-toggle="lighting" aria-controls="workbench-page-lighting" aria-expanded="false">灯光预演</button>
+      </div>
+      <div id="workbench-scroll">
+        <section id="workbench-page-object" class="workbench-content-panel" data-workbench-content="object" hidden>
+          <div class="workbench-section-content">
+            <div id="info-panel" class="panel">
+              <div class="panel-heading" id="info-panel-heading">
+                <span id="info-panel-title"></span>
+              </div>
+              <div id="info-panel-content">
+                <div id="info-panel-header">
+                  <span id="info-panel-object-id"></span>
+                  <span id="info-panel-type"></span>
+                  <span id="info-panel-room"></span>
+                </div>
+                <div id="info-panel-topics"></div>
+              </div>
+            </div>
           </div>
-          <div id="info-panel-topics"></div>
-        </div>
+        </section>
+        <section id="workbench-page-material" class="workbench-content-panel" data-workbench-content="material">
+          <div class="workbench-section-content">
+            <div id="material-preview-host"></div>
+          </div>
+        </section>
+        <section id="workbench-page-lighting" class="workbench-content-panel" data-workbench-content="lighting" hidden>
+          <div class="workbench-section-content">
+            <div id="lighting-preview-host"></div>
+            <details id="lighting-sunlight-section" class="workbench-sunlight-section">
+              <summary>日照与时刻</summary>
+              <div id="sunlight-preview-host"></div>
+            </details>
+          </div>
+        </section>
       </div>
-        </section>
-        <section id="workbench-page-material" class="workbench-page" data-workbench-page="material" role="tabpanel">
-          <div id="material-preview-host"></div>
-        </section>
-        <section id="workbench-page-lighting" class="workbench-page" data-workbench-page="lighting" role="tabpanel" hidden>
-          <div id="lighting-preview-host"></div>
-          <details id="lighting-sunlight-section" class="workbench-sunlight-section">
-            <summary>日照与时刻</summary>
-            <div id="sunlight-preview-host"></div>
-          </details>
-        </section>
-      </div>
+      <div id="material-preview-actions"></div>
     </aside>
     <button id="workbench-reopen" type="button" aria-label="打开预演工作台">预演</button>
 
