@@ -1,0 +1,140 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: entry-cabinet-700-20261015
+subject: 玄关半高柜700mm落物区与1420mm南段屏体
+units: m
+coordinate_system: Three.js右手系；Y向上；+X东、−X西、+Z南、−Z北
+status: frozen_for_shop_drawing_development_site_install_pending
+datums:
+  - id: cabinet_placement
+    name: 半高柜当前空间锚点和主体平面
+    anchor: {kind: free_position, ref: config/house.yaml#living_dining.furnishings.entry_half_height_cabinet}
+    source_refs: {fact_refs: [active-cabinet-placement, frozen-entry-cabinet-geometry-and-scope], decision_refs: [DEC-2026-10-15-R02]}
+    views:
+      plan:
+        required: true
+        origin: body center
+        axes: {length_axis: z, depth_axis: x, north: "-z", entry_side: "+x", dining_side: "-x"}
+        position: {x_m: 11.50, z_m: 4.00, rotation_y_deg: 90}
+        dimensions: {body_length_z_mm: 2000, body_depth_x_mm: 350, body_outer_z_m: [3.00, 5.00], body_outer_x_m: [11.325, 11.675]}
+        dimension_semantics: "主体名义外廓；正式runtime外包络含台面/装饰件，约x[11.305,11.698]、z[2.98,5.02]。"
+      elevation:
+        required: true
+        viewing_side: east/entry
+        vertical_axis: y
+        position: {floor_finished_y_m: 0}
+        dimensions: {carcass_top_y_mm: 880, countertop_top_y_mm: 920, drawer_front_y_mm: [700, 860], entry_top_rail_y_mm: [860, 880], upper_backboard_y_mm: [920, 1380], cap_top_y_mm: 1420}
+        dimension_semantics: "高度从最终完成地面量；18mm顶承托横档同浅橡木齐平，40mm台面为预演厚度，芯层构造待柜商剖面确认。"
+      section:
+        required: true
+        cut_direction: east-west across cabinet depth
+        depth_axis: x
+        viewing_side: dining_west_toward_entry_east
+        dimensions: {body_depth_mm: 350, countertop_depth_mm: 393, east_overhang_mm: 21.5, west_overhang_mm: 21.5}
+        dimension_semantics: "双面完成后内腔名义深314mm；实际值由饰面厚度和封边构造复核。"
+    geometry: {center_m: [11.50, 0, 4.00], rotation_y_deg: 90}
+    constraints:
+      - 保持当前中心/朝向及2000×350mm主体范围，不迁移柜体
+      - 不挂载于玻璃幕墙或未确认墙体
+      - 地面锚固前扫描隐蔽水电并确认楼板基层
+    interfaces: [fridge_body_and_service_envelope, d_ent_door_swing, dining_lower_door_swing, entry_drawer_pullout]
+    validation_refs: [round7-preview-manifest.json, runtime-trial-after-v004.json, docs/pending-site-data.md-items-33-64]
+    status: frozen_for_shop_drawing
+
+  - id: north_700_lower_zone
+    name: 北端局部降低落物区
+    anchor: {kind: room_anchor, ref: cabinet_placement, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [prior-preview-is-view-only, landing-clear-area-and-representative-fit, frozen-entry-cabinet-geometry-and-scope], decision_refs: [DEC-2026-10-15-R02]}
+    views:
+      plan:
+        required: true
+        origin: cabinet north body end z=3.00m
+        axes: {length_axis: "+z south", depth_axis: x east/west}
+        position: {start_z_m: 3.00, upper_step_z_m: 3.70}
+        dimensions: {lowered_run_mm: 700, nominal_counter_area_m2: 0.245, clear_counter_with_north_overhang_mm: 720, clear_counter_area_m2: 0.283}
+        dimension_semantics: "700mm指主体分段；台面北端有20mm外挑，裸露台面约720mm。"
+      elevation:
+        required: true
+        viewing_side: east/entry
+        vertical_axis: y
+        dimensions: {counter_top_y_mm: 920, low_segment_upper_structure: none}
+        dimension_semantics: "北端700mm不设台面以上背板、端板或压顶。"
+      section:
+        required: true
+        cut_direction: east-west across the landing zone
+        depth_axis: x
+        dimensions: {body_depth_mm: 350, countertop_depth_mm: 393}
+        dimension_semantics: "落物面平整连续，无高挡边或冰箱侧板。"
+    geometry: {low_zone_z_m: [3.00, 3.70], nominal_run_mm: 700, counter_top_y_mm: 920}
+    constraints:
+      - 保证落物台面可放常见背包、纸箱和购物袋
+      - 不移动冰箱；低区与冰箱的z投影重叠属于可见关系，仍须保持实体无碰撞
+    interfaces: [countertop, upper_transition_return, fridge_back_clearance]
+    validation_refs: [round7_entry_lower_700.png, round7-preview-manifest.json]
+    status: frozen_for_shop_drawing
+
+  - id: southern_high_screen
+    name: 南段1420mm浅橡木界面及暖白帽板
+    anchor: {kind: cabinet_anchor, ref: cabinet_placement, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [prior-preview-is-view-only, frozen-entry-cabinet-geometry-and-scope], decision_refs: [DEC-2026-10-15-R02]}
+    views:
+      plan:
+        required: true
+        origin: transition return north edge
+        axes: {length_axis: z, depth_axis: x}
+        position: {cap_start_z_m: 3.70, cap_end_z_m: 5.02, panel_start_z_m: 3.718, panel_end_z_m: 4.982}
+        dimensions: {cap_run_mm: 1320, oak_panel_clear_run_mm: 1264, cap_depth_mm: 393, panel_thickness_mm: 18}
+        dimension_semantics: "帽板南端20mm外挑；木纹板净长扣转折/南端各18mm收口。"
+      elevation:
+        required: true
+        viewing_side: east/entry
+        vertical_axis: y
+        dimensions: {oak_panel_height_mm: 460, panel_y_mm: [920, 1380], cap_thickness_mm: 40, top_y_mm: 1420}
+        dimension_semantics: "餐厅侧开放龛位以920mm台面为底，不增中间展示层板。"
+      section:
+        required: true
+        cut_direction: east-west through southern high module
+        depth_axis: x
+        dimensions: {upper_niche_nominal_depth_mm: 350, backing_thickness_mm: 18, return_thickness_mm: 18}
+        dimension_semantics: "高位开放深度保持350mm名义值，内净深按柜商完成面核算。"
+    geometry: {transition_return_z_m: [3.700, 3.718], south_return_z_m: [4.982, 5.000]}
+    constraints:
+      - 入户东面浅橡木连续；不新增格栅、灯带或装饰木条
+      - 40mm帽板须有连续前后承托，不得形成无支撑悬挑
+      - 转折端板入户面贴同纹饰面，边口封严
+    interfaces: [countertop, lower_carcass, high_module_support_rail]
+    validation_refs: [round7_entry_lower_700.png, round7_dining_lower_700.png]
+    status: frozen_for_shop_drawing
+
+  - id: dining_front_and_storage
+    name: 餐厅西面北固定/低频区与南平开门
+    anchor: {kind: cabinet_anchor, ref: cabinet_placement, wall_side: null, service_ref: null}
+    source_refs: {fact_refs: [lower-storage-theoretical-volume-and-north-share, assumed-door-and-drawer-sweeps, two-sided-storage-and-facade], decision_refs: [DEC-2026-10-15-R02]}
+    views:
+      plan:
+        required: true
+        origin: north inner body edge z=3.018m
+        axes: {length_axis: z, depth_axis: x, dining_face: "-x"}
+        position: {door_hinge_south_z_m: 4.872}
+        dimensions: {inside_run_mm: 1964, north_fixed_mm: 970, center_stile_mm: 24, south_door_mm: 860, south_filler_mm: 110, end_panels_mm: [18, 18]}
+        dimension_semantics: "970+24+860+110=1964mm内长，端板各18mm后闭合2000mm；门宽为深化候选。"
+      elevation:
+        required: true
+        viewing_side: west/dining
+        vertical_axis: y
+        dimensions: {front_y_mm: [80, 840], door_leaf_height_mm: 760}
+        dimension_semantics: "南门门轴位于南端，向西打开；五金最大角度待样本和扫掠图确认。"
+      section:
+        required: true
+        cut_direction: east-west through lower storage
+        depth_axis: x
+        dimensions: {inner_depth_mm: 314, storage_y_mm: [98, 682], adjustable_shelf_thickness_mm: 18}
+        dimension_semantics: "18mm双面板口径下的名义内深；层板段长约655mm。"
+    geometry: {north_zone: low_frequency_fixed_front, south_zone: hinged_door, north_south_full_height_partition: false}
+    constraints:
+      - 北低频腔体与南门后空间连续
+      - 层板段可经南门装入/取出
+      - 不用复杂拉篮或旋转五金
+    interfaces: [fridge_body, dining_route, adjustable_shelves, cabinet_support_rails]
+    validation_refs: [cabinet_geometry_review, round5-storage-sweep-preview, actual_hardware_sweep_pending]
+    status: vendor_detail_candidate

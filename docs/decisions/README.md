@@ -75,13 +75,13 @@
 | 文件 | 主题 | 条数 | 大小 | 编号区间 |
 |------|------|-----|------|---------|
 | [`01-control-budget.md`](./01-control-budget.md) | 控制 · 预算 · 阶段边界 | 18 | 34 KB | `DEC-2026-07-03-001` … `DEC-2026-10-09-S01` |
-| [`02-layout-public.md`](./02-layout-public.md) | 布局 · 公共区 | 27 | 39 KB | `DEC-2026-07-05-002` … `DEC-2026-10-05-R20` |
+| [`02-layout-public.md`](./02-layout-public.md) | 布局 · 公共区 | 28 | 50 KB | `DEC-2026-07-05-002` … `DEC-2026-10-15-R02` |
 | [`03-master-bedroom.md`](./03-master-bedroom.md) | 主卧 | 21 | 43 KB | `DEC-2026-08-26-045` … `DEC-2026-09-07-R10` |
 | [`04-bathrooms.md`](./04-bathrooms.md) | 主卫 + 客卫 | 19 | 38 KB | `DEC-2026-08-21-036` … `DEC-2026-10-07-R02` |
 | [`05-hvac.md`](./05-hvac.md) | 中央空调 | 12 | 36 KB | `DEC-2026-09-07-055` … `DEC-2026-10-07-R03` |
 | [`06-electrical.md`](./06-electrical.md) | 电气回路/走线/审计 | 21 | 47 KB | `DEC-2026-08-05-017` … `DEC-2026-10-07-M05` |
 | [`07-lighting.md`](./07-lighting.md) | 照明与起夜灯 | 7 | 13 KB | `DEC-2026-10-05-R15` … `DEC-2026-10-07-R16` |
-| [`08-ceiling-form.md`](./08-ceiling-form.md) | 吊顶造型（弧面返工全链） | 13 | 27 KB | `DEC-2026-10-07-R01` … `DEC-2026-10-08-R05` |
+| [`08-ceiling-form.md`](./08-ceiling-form.md) | 吊顶造型（弧面返工全链） | 15 | 29 KB | `DEC-2026-10-07-R01` … `DEC-2026-10-15-C02` |
 | [`09-ceiling-takeoff.md`](./09-ceiling-takeoff.md) | 吊顶算量与报价 | 10 | 48 KB | `DEC-2026-10-08-C01` … `DEC-2026-10-08-C13` |
 | [`10-paint.md`](./10-paint.md) | 涂漆 | 3 | 18 KB | `DEC-2026-10-08-C05` … `DEC-2026-10-08-C07` |
 | [`11-tile-finish.md`](./11-tile-finish.md) | 贴砖与饰面终裁 | 13 | 50 KB | `DEC-2026-10-06-TILE-01` … `DEC-2026-10-08-C19` |
@@ -90,10 +90,10 @@
 | [`14-style-furniture.md`](./14-style-furniture.md) | 风格/家具/地面 | 8 | 18 KB | `DEC-2026-08-20-024` … `DEC-2026-10-15-R01` |
 | [`15-penetration-lint.md`](./15-penetration-lint.md) | 防穿模 linter（实体互撞/净距） | 1 | 6 KB | `DEC-2026-10-09-P01` |
 | [`16-verify-gate.md`](./16-verify-gate.md) | 门禁编排与工程状态 | 1 | 3 KB | `DEC-2026-10-09-G01` |
-| [`17-paint-scope-extension.md`](./17-paint-scope-extension.md) | 涂装范围扩展（显式顶面/上飘窗外露面/全飘窗入算/面层核查层/墙顶独立选择） | 16 | 68 KB | `DEC-2026-10-09-P02` … `DEC-2026-10-15-P17` |
+| [`17-paint-scope-extension.md`](./17-paint-scope-extension.md) | 涂装范围扩展（显式顶面/上飘窗外露面/全飘窗入算/面层核查层/墙顶独立选择） | 16 | 72 KB | `DEC-2026-10-09-P02` … `DEC-2026-10-15-P17` |
 | [`18-engineering-state.md`](./18-engineering-state.md) | 工程状态投影（逐构件确认度） | 1 | 12 KB | `DEC-2026-10-09-S01` |
 
-合计 199 条 DEC（177 条迁移 + DEC-2026-10-09-S01 拆分登记 + DEC-2026-10-09-P01 防穿模 linter + DEC-2026-10-09-G01 门禁编排器 + DEC-2026-10-09-P02…P17 涂装范围扩展 + DEC-2026-10-09-E01 工程状态投影 + DEC-2026-10-15-R01 冰箱外观预演）。
+合计 200 条 DEC（177 条迁移 + DEC-2026-10-09-S01 拆分登记 + DEC-2026-10-09-P01 防穿模 linter + DEC-2026-10-09-G01 门禁编排器 + DEC-2026-10-09-P02…P17 涂装范围扩展 + DEC-2026-10-09-E01 工程状态投影 + DEC-2026-10-15-R01 冰箱外观预演 + DEC-2026-10-15-C02 1.25m连续吊顶带预演 + DEC-2026-10-15-R02 玄关半高柜700mm结构基线）。
 
 ## 归档纪律（新增条目前必读）
 

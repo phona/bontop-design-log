@@ -675,7 +675,7 @@
   - `shared/finish/rules.ts` / `config/finish-lint.yaml` 移除旧 F05 `finish.ceiling_finish_unaccounted`。F05 过去从「有墙面漆」推导「必须登记顶面漆」，现在这种推导属于错误约束。顶面选择仍由 F08 校验是否有可附着的 ceiling 几何；F06 继续检查铝扣板投影是否越出房间。
   - `server/budget-calculator.ts` 移除“没有墙面区间就返回空表”的早退，并把顶面房间集合纳入预算房间合并。否则独立顶面虽然能在 comparison API 算出，却会在预算中静默变成 0。
 - **重算与当前范围**：保留当前选中的 3 段主走廊墙面及 3.75㎡顶面后，当前声明为 32 段墙面、8 间顶面、8 段窗台；涂装净面积为墙 168.035㎡ + 顶 106.974㎡ + 窗台 37.198㎡ = **312.207㎡**，普通漆计价面积 **308.652㎡**。相较于不含主走廊涂面的上一快照，主走廊选择增加墙净面积 10.150㎡ 和顶面 3.750㎡；独立选择改造本身不改变这组已选声明的计量值。
-- **覆盖与验证**：增加墙-only、顶-only、全局 ceiling-only、重复顶面选择拒绝及 finish-lint 不推断漏顶用例；预算层增加 ceiling-only 房间面积回归。`paint-scope`、`paint-comparison-api`、`budget-calculator` 与 `finish-scope` 的定向测试均需通过。
+- **覆盖与验证**：增加墙-only、顶-only、全局 ceiling-only、重复顶面选择拒绝及 finish-lint 不推断漏顶用例；预算层增加 ceiling-only 房间面积回归。专项测试：`paint-scope` 27/27、`paint-comparison-api` 5/5、`budget-calculator` 47/47、`finish-scope` 26/26；`typecheck` PASS、`verify:all` 17/17、`gate:visual` CLEAR。完整 `test:server` 为 1005/1008；余 3 项与本轮无关：夜间 `solar.test` 的 ambient 期望差异 1 项、`TextureManager` Node 环境 `document is not defined` 2 项。浏览器运行时 ready、后端在线、配置错误横幅为空，paint comparison 与预算回归对账通过。
 - **被推翻的旧结论**：
   1. 旧校验 `paint_ceiling_region` 房间集合必须等于 `paint_region` 房间集合；本裁定废止该耦合。
   2. 旧 F05 “房间有墙漆、且有非铝扣板吊顶就必须有顶面漆声明”；本裁定废止从墙面意图推导顶面选择的规则。

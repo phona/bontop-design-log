@@ -1,0 +1,97 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: entry-cabinet-700-20261015
+subject: 玄关双面半高柜700mm北端落物区结构深化
+priority:
+  user_goal: 冻结1420mm上部结构与700mm北端920mm落物区，形成柜商深化输入
+  ranked:
+    - 920mm落物面承接背包、快递和购物袋
+    - 冰箱、柜体、餐桌、吊顶、门洞和玻璃门的位置不变
+    - 保留南段约1300mm高位界面及浅橡木入户立面
+    - 餐厅侧保留低频北段和南段普通平开门，内部保持可达
+    - 结构简单、常规维护，不采用复杂机构
+  non_negotiables:
+    - 半高柜主体中心(11.50,4.00)、Y旋转90度和2000×350mm主体平面范围不迁移
+    - 台面完成面标高920mm；上部最高点1420mm
+    - 柜体北端700mm局部降低；南段保留高位木纹界面
+    - 入户东侧上部浅抽屉带、下部完整浅橡木面；不设下部入户侧平开门
+    - 餐厅西侧北段固定低频收纳，南段普通平开门
+    - 不加冰箱侧板，不增通顶高柜
+    - 冰箱厂家净空不能用模型侧缝替代
+  tradeoffs_accepted:
+    - 700mm台面按主体分段名义面积0.245平方米；393mm实体深度对应约0.275平方米
+    - 台面本身北端外挑20mm，因此裸露白台面最长约720mm
+    - 南段名义高位模块1300mm；扣除两个18mm端板后净木纹背板约1264mm
+    - 北段为低频区，只有在连续腔体和层板可拆路径成立时才保留储物功能
+    - 餐厅南门面板开启时会暂占用柜体西侧局部通行空间
+frozen: true
+freeze_record:
+  alignment_id: user-confirmed-entry-cabinet-700-20261015
+  confirmed_at: "2026-10-15"
+  original_user_response: |
+    冻结玄关方案：不移动冰箱、半高柜、餐桌、吊顶、门洞或玻璃门；保留1.42m上部；北端局部降低700mm形成920mm落物区；入户侧浅橡木立面、上部浅抽屉、下部无入户平开门；餐厅北段低频、南段可开门；不加冰箱侧板或通顶高柜。下一阶段只做结构深化和施工可行性确认，不再开新概念方案。
+  normalized_decisions:
+    - 现有活跃柜体坐标(11.50,4.00)、方向与主体范围原位冻结
+    - 低区按主体北端z=3.00–3.70m；台面顶920mm
+    - 高位模块从z=3.70m延至主体南端；最高标高1420mm
+    - 北固定/低频、南平开门的餐厅面按vendor-handoff.md尺寸链深化
+    - 现有Round7 view-only图作为已选比例/视线参考，不当作正式源模型
+  confirmed_by_user: true
+  evidence_refs:
+    - conversation:user-confirmed-entry-cabinet-freeze
+    - tmp/screenshots/entry-round4/round7-preview-manifest.json
+allowed_scope:
+  - docs/design-iterations/entry-cabinet-700-20261015
+  - docs/decisions/02-layout-public.md: append DEC-2026-10-15-R02
+  - docs/decisions/README.md: update index row and count
+  - object: furniture:living_dining:entry_half_height_cabinet:7
+forbidden:
+  - 移动冰箱、半高柜、餐桌、吊顶、入户门、门洞或玻璃推拉门
+  - 恢复100mm浅条、600/800mm落物段、通顶高柜或冰箱侧板
+  - 把65/85mm模型几何间距宣称为冰箱厂家安装净空
+  - 把柜商深化输入单当作生产下料或施工放线图
+  - 未经业主确认改变已展示的两片浅抽面立面为三片
+supersession_review:
+  - prior_decision: DEC-2026-08-20-032
+    prior_conclusion: "entry_half_height_cabinet 2.0×0.35×1.5m，中心(11.50,4.10)，餐厅侧0.9–1.5m开放格。"
+    superseded_scope: "本轮明确替换1.50m旧上部高度、旧餐厅开口/门板方向与收纳分配；保留落地双面柜概念、主体平面规格及不挂玻璃墙的约束。中心采用当前活动模型(11.50,4.00)，由业主要求现位保留。"
+    reason: "业主现已冻结1420mm总顶、700mm北段落物区、入户浅橡木与浅抽屉、餐厅北低频/南平开门。旧决议记录中心4.10m而活动源为4.00m，本轮不再移动，旧中心差100mm的历史原因未追溯。"
+    status: superseded_for_structural_development
+  - prior_option: round6_setback_100
+    status: rejected_by_user
+    reason: "100mm深连续条不适合背包、快递和购物袋。"
+  - prior_options: [round7_lower_600, round7_lower_800]
+    status: not_selected
+    reason: "业主选择700mm；600mm多件并置余量不足，800mm削减高位木纹更多。"
+open_questions:
+  - id: fridge_installation_envelope
+    status: site_pending
+    question: "HR-518WUFIPZ实际SKU的背/侧/顶净空、散热方向、铰链侧、最大开门角、抽屉抽出及更换空间要求是什么？"
+    owner: 业主/家电厂家/量房/柜商
+    trigger: 橱柜加工图签认和家电下单前
+  - id: cabinet_field_dimensions_and_fixing
+    status: site_pending
+    question: "完成面复尺、墙地基层和暗管确认后，柜体中心及锚固点能否按本 brief 落地？"
+    owner: 量房/柜商/水电
+    trigger: 柜体固定节点签认及地面封闭前
+  - id: drawer_and_door_hardware
+    status: cabinet_shop_pending
+    question: "两只约981mm抽面对应的箱宽、导轨间隙/承载/行程，南门铰链角度/数量和实际净开口是多少？"
+    owner: 柜商
+    trigger: 五金表和活动包络回图后、生产下料前
+  - id: low_frequency_north_access
+    status: cabinet_shop_pending
+    question: "北固定面后的低频腔体，是否能经南门放入/取出收纳盒并拆装层板？"
+    owner: 柜商/业主
+    trigger: shop drawing审签前
+  - id: fridge_power
+    status: site_pending
+    question: "新冰箱位置可及的专用插座和线路末段如何落位？"
+    owner: 业主/电工/柜商
+    trigger: 水电交底及电气冻结前
+acceptance:
+  - 柜商图明确2000×350主体、台面393mm深、台面顶920mm、总顶1420mm及北端700mm降低段的尺寸语义
+  - 入户侧下部整面浅橡木、两片浅抽面、无下部平开门
+  - 餐厅固定北段与860mm名义南门尺寸链闭合，北低频腔体可由南门到达
+  - 南门和两只抽屉活动包络与冰箱、入户门、走道及开关面板复核
+  - 冰箱厂家净空、电源、柜体固定基层和暗管现场核验后，才可生产/安装放行

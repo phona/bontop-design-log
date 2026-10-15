@@ -256,4 +256,4 @@ facts:
     affected_views: [corridor_to_living]
     owner: owner
     status: resolved
-    verification_method: wall-only and ceiling-only cost comparison tests
+    verification_method: wall-only/ceiling-only comparison tests + ceiling-only budget regression + finish-scope no-inferred-top test

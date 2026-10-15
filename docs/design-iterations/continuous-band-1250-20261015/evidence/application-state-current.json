@@ -1,6 +1,6 @@
 {
   "captured_at": "2026-10-15T08:53:21.002Z",
-  "status": "current_workspace_scope_check; not final design evidence",
+  "status": "superseded_previous_source_runtime_check; not final design evidence",
   "source_digest": "1491e49da4c372c772be7e02fc8d3280b030bb82f6d120c7a21c9e83a0d53567",
   "url": "http://127.0.0.1:5177/?view=continuous-band-final-20261015",
   "title": "和萃 701 - 3D 装修设计",
@@ -77,5 +77,5 @@
     "config/layout/overlay.yaml#paint_ceiling_main_corridor",
     "config/ceiling.yaml#ceiling_main_corridor"
   ],
-  "note": "源和当前运行时均包含走廊独立涂装声明；其是否属于本轮批准范围等待业主答复。"
+  "note": "历史运行时检查记录：当时墙/顶选择是否保留尚待业主回复。业主随后确认独立选择并保留当前声明；最新source_digest绑定证据见 corridor-to-living-independent-paint-runtime.json 及相邻独立paint视角runtime文件。"
 }
