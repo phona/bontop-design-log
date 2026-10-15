@@ -1,0 +1,157 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: living-ceiling-underpanel-20261015
+subject: 客厅设备边吊底板与空调风口职责
+created_at: "2026-10-15T09:39:11+08:00"
+object_policy:
+  fixed_count_required: false
+  split_by: [function, owner, material, collision, maintenance, interface, review]
+  visual_relationship_required: true
+objects:
+  - id: OBJ-CEILING-LIVING
+    type: rounded_ceiling_solid
+    archetypes: [drop, pure_convex_round]
+    owner: project
+    function: 按 ceiling_living 声明生成完整下方板面与边缘实体。
+    material: COLOR_DROP
+    geometry_source: [config/ceiling.yaml#ceiling_living, shared/render/CeilingZoneBuilder.ts]
+    datum_refs: [D1]
+    fact_refs: [F1, F2]
+    decision_refs: [align-2026-10-15-ceiling-underpanel-01]
+    dependencies: []
+    interfaces:
+      - id: IF-CEILING-SUPPLY
+        target_object_id: OBJ-HVAC-SUPPLY-LIVING
+        kind: hvac
+        requirement: 下出风构件保持在边吊底面位置并可见。
+        status: confirmed
+      - id: IF-CEILING-RETURN
+        target_object_id: OBJ-HVAC-RETURN-LIVING
+        kind: hvac
+        requirement: 回风/检修构件保持在边吊底面位置并可见。
+        status: confirmed
+    collision:
+      policy: none
+      geometry_ref: null
+      review_ref: null
+    maintenance:
+      boundary: 本轮只涉及渲染实体，不修改实际检修构造。
+      access_clearance: site_pending
+      replaceable_parts: []
+      inspection_requirements: [实际检修尺寸仍按厂家安装图深化]
+    parts:
+      - id: PART-ROUNDED-SOLID
+        role: 圆角板面及吊顶厚度实体
+        independent: false
+        owner: project
+        material: COLOR_DROP
+        geometry_source: shared/render/CeilingZoneBuilder.ts
+        datum_refs: [D1]
+        dependencies: []
+        collision: none
+        maintenance_boundary: 不改变施工检修边界。
+        validation_refs: [evidence/after-runtime.json, evidence/after-hvac-batches.json, evidence/after.png]
+    visual_relationships:
+      - target_object_id: OBJ-HVAC-SUPPLY-LIVING
+        relation: adjacent
+        requirement: 格栅贴合连续底板且仍可辨认。
+        evidence_refs: [evidence/after.png]
+      - target_object_id: OBJ-HVAC-RETURN-LIVING
+        relation: adjacent
+        requirement: 回风/检修格栅不被实体遮蔽。
+        evidence_refs: [evidence/after.png]
+    validation_refs: [evidence/after-runtime.json, evidence/after-hvac-batches.json, evidence/after.png]
+    status: verified
+  - id: OBJ-HVAC-SUPPLY-LIVING
+    type: hvac_terminal
+    archetypes: [bottom_linear_supply]
+    owner: project
+    function: 客厅 71T2 下出风口示意渲染；不改通风规格或位置。
+    material: matte_black
+    geometry_source: [config/hvac.yaml#supply_living_bottom, shared/render/HvacGeometryBuilder.ts]
+    datum_refs: [D1]
+    fact_refs: [F3]
+    decision_refs: []
+    dependencies: [OBJ-CEILING-LIVING]
+    interfaces:
+      - id: IF-SUPPLY-CEILING
+        target_object_id: OBJ-CEILING-LIVING
+        kind: visual
+        requirement: 风口位于边吊底面并从室内可见。
+        status: confirmed
+    collision:
+      policy: none
+      geometry_ref: null
+      review_ref: null
+    maintenance:
+      boundary: 实际风口维护与风量按厂家安装图；本轮只检查渲染可见性。
+      access_clearance: site_pending
+      replaceable_parts: []
+      inspection_requirements: [运行时检查未被 ceiling:ceiling_living 隐藏]
+    parts:
+      - id: PART-SUPPLY-LOUVER
+        role: 线性送风叶片
+        independent: true
+        owner: project
+        material: matte_black
+        geometry_source: shared/render/HvacGeometryBuilder.ts
+        datum_refs: [D1]
+        dependencies: [OBJ-CEILING-LIVING]
+        collision: none
+        maintenance_boundary: 只作渲染表达。
+        validation_refs: [evidence/after-runtime.json, evidence/after-hvac-batches.json, evidence/after.png]
+    visual_relationships:
+      - target_object_id: OBJ-CEILING-LIVING
+        relation: adjacent
+        requirement: 格栅附着于连续底板并可辨识。
+        evidence_refs: [evidence/after.png]
+    validation_refs: [evidence/after-runtime.json, evidence/after-hvac-batches.json]
+    status: verified
+  - id: OBJ-HVAC-RETURN-LIVING
+    type: hvac_terminal
+    archetypes: [bottom_linear_return_access]
+    owner: project
+    function: 客厅 71T2 回风/检修格栅示意渲染；不改尺寸或位置。
+    material: matte_black
+    geometry_source: [config/hvac.yaml#return_living, shared/render/HvacGeometryBuilder.ts]
+    datum_refs: [D1]
+    fact_refs: [F3]
+    decision_refs: []
+    dependencies: [OBJ-CEILING-LIVING]
+    interfaces:
+      - id: IF-RETURN-CEILING
+        target_object_id: OBJ-CEILING-LIVING
+        kind: maintenance
+        requirement: 格栅保持可见；实际检修空间由厂家图核对。
+        status: confirmed
+    collision:
+      policy: none
+      geometry_ref: null
+      review_ref: null
+    maintenance:
+      boundary: 实际滤网和铰接检修由施工深化；本轮只检查渲染可见性。
+      access_clearance: site_pending
+      replaceable_parts: [滤网（施工深化确认）]
+      inspection_requirements: [运行时检查未被 ceiling:ceiling_living 隐藏]
+    parts:
+      - id: PART-RETURN-LOUVER
+        role: 线性回风/检修格栅
+        independent: true
+        owner: project
+        material: matte_black
+        geometry_source: shared/render/HvacGeometryBuilder.ts
+        datum_refs: [D1]
+        dependencies: [OBJ-CEILING-LIVING]
+        collision: none
+        maintenance_boundary: 实际维修方式按厂家安装图。
+        validation_refs: [evidence/after-runtime.json, evidence/after-hvac-batches.json, evidence/after.png]
+    visual_relationships:
+      - target_object_id: OBJ-CEILING-LIVING
+        relation: adjacent
+        requirement: 格栅附着于连续底板并可辨认。
+        evidence_refs: [evidence/after.png]
+    validation_refs: [evidence/after-runtime.json, evidence/after-hvac-batches.json]
+    status: verified
+shared_visual_datum: HVAC 底装格栅仍按 config/hvac.yaml 与吊顶完成面的关系显示；不合并 HVAC 与吊顶的对象责任。
+notes:
+  - 同一纯圆角 builder 分支也为 ceiling_master_ac 生成几何；修复后同步补回该区完整实体底面。

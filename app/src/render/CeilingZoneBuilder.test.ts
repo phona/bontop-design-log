@@ -50,6 +50,30 @@ describe('buildCeilingZone', () => {
     expect(box.max.z).toBeCloseTo(5.60, 5);
   });
 
+  it('rounded drop: solid extrusion fills the underside center instead of a hollow perimeter ring', () => {
+    const g = buildCeilingZone({
+      ...dropZone,
+      id: 'ceiling_living',
+      area: [7.20, 4.30, 13.40, 5.20],
+      thickness: 0.30,
+      corner_radius: 0.10,
+    })!;
+    const slab = g.children.find((child) => child.userData.part === 'slab') as THREE.Mesh;
+    const solid = g.children.find((child) => child.userData.part === 'rounded-perimeter') as THREE.Mesh;
+    const shape = (solid.geometry as THREE.ExtrudeGeometry).parameters.shapes as THREE.Shape;
+
+    expect(slab.visible).toBe(false);
+    expect(shape.holes).toHaveLength(0);
+    g.updateMatrixWorld(true);
+    const raycaster = new THREE.Raycaster(
+      new THREE.Vector3(10.30, 2.49, 4.75),
+      new THREE.Vector3(0, 1, 0),
+    );
+    const centerHits = raycaster.intersectObject(solid, false);
+    expect(centerHits.length).toBeGreaterThan(0);
+    expect(centerHits[0].point.y).toBeCloseTo(2.502, 5);
+  });
+
   it('corner_radii: only the declared corners are rounded; butt/coplanar corners stay square', () => {
     // area 3.0×3.0 centred on (1.5,1.5) → local half extents ±1.5. The shape is built in
     // local XY and rotated -90° about X, so local (+1.5,-1.5) is the world SE corner and

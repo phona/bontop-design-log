@@ -1,0 +1,84 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: living-ceiling-underpanel-20261015
+subject: 修复圆角边吊下方整板缺失
+priority:
+  user_goal: 客厅中央空调设备边吊呈现完整下方板面，同时保留已声明的圆角轮廓和空调风口。
+  ranked:
+    - 圆角边吊下方覆盖完整，不再只显示边缘环。
+    - 保持 config 中面积、厚度、R100 和 HVAC 风口坐标不变。
+    - 不改变混合凹角轮廓、吊顶分区高亮及其他构件职责。
+  non_negotiables:
+    - 几何继续由 config/ceiling.yaml 声明，代码只按声明生成。
+    - 客厅中央空调的底装风口和回风检修格栅保持可见。
+    - 不改 HVAC 设计、预算、材料、施工状态或生成数据。
+  tradeoffs_accepted:
+    - 纯凸圆角下挂区使用完整实体挤出，代替只有 20mm 边缘宽度的空心外圈。
+    - 共享 builder 的相同纯圆角分支同时修复 ceiling_master_ac。
+frozen: true
+freeze_record:
+  alignment_id: align-2026-10-15-ceiling-underpanel-01
+  original_user_response: "go"
+  normalized_decisions:
+    - 保留 ceiling_living 的 0.30m 厚度、R0.10m 圆角和现有下出风/回风坐标。
+    - 将纯凸圆角分支的环形挤出改为覆盖完整轮廓的封闭实体挤出。
+    - 混合凹角轮廓分支与所有设计配置保持不变。
+  confirmed_by_user: true
+  confirmed_at: "2026-10-15"
+  evidence_refs: [conversation:2026-10-15:user-go, evidence/before-runtime.json]
+allowed_scope:
+  files:
+    - shared/render/CeilingZoneBuilder.ts
+    - app/src/render/CeilingZoneBuilder.test.ts
+    - docs/decisions/08-ceiling-form.md
+    - docs/design-iterations/living-ceiling-underpanel-20261015/
+  objects: [ceiling:ceiling_living, ceiling:ceiling_master_ac, hvac:A2:terminal:supply_living_bottom, hvac:A2:terminal:return_living]
+  archetypes: [pure-convex-rounded-drop-zone]
+  views: [perspective, section]
+  changes:
+    - 修复纯凸圆角挤出体，补回其覆盖区域的下方整板。
+    - 通过运行时检查确认客厅风口未被隐藏。
+forbidden:
+  files:
+    - config/ceiling.yaml
+    - config/hvac.yaml
+    - config/layout/model-geometry.yaml
+    - config/layout/overlay.yaml
+    - data/project-render-facts.json
+  objects: [HVAC 内机位置、风口位置及送回风分区, 吊顶范围、标高、圆角半径、凹角/cove 声明]
+  assumptions:
+    - 不推断施工尺寸或实际安装接口。
+    - 不把渲染修复提升为现场施工确认。
+  out_of_scope_changes: [设计配置、坐标、造价或采购决策, 混合凹角分支和非圆角吊顶生成, HVAC 风口规格或气流性能]
+open_questions: []
+alignment:
+  records:
+    - alignment_id: align-2026-10-15-ceiling-underpanel-01
+      question: 是否按具体建议修复圆角边吊的完整下方面板，并保留 R100 与风口位置？
+      answer: "go"
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands:
+    - npm run typecheck
+    - npm run verify:all
+    - VISUAL_GATE_API=http://127.0.0.1:43729 npm run gate:visual
+    - npm run test:app
+    - npm run test:server
+    - npm run test:app -- src/render/CeilingZoneBuilder.test.ts
+    - node --import tsx --test tests/server/ceiling-cove.test.ts
+  browser_evidence_required: true
+  required_views: [living-device-band-underside]
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: not_applicable
+  blocking_issues:
+    - 全量 test:app 与 test:server 当前未通过；focused ceiling regressions 通过，full-suite failures 仍需环境/存量排障后才能标记 delivery_ready。
+  done_when:
+    - 改后 ceiling:ceiling_living 的圆角挤出体完整覆盖边吊底面。
+    - 下出风、回风及连续装饰格栅保留且与板面可见关系正确。
+    - 原 R100 外轮廓、尺寸和标高不变；混合凹角分支保持原语义。
+    - typecheck、verify:all 和 visual gate 通过。
+    - app 与 server 全量测试通过后方可标记 delivery_ready。
+    - 同机位 before/after 有效截图、运行时查询与两项独立评审均已记录。
+  delivery_notes_required: true

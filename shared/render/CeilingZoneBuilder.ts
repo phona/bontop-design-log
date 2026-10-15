@@ -108,18 +108,6 @@ function roundedRectangleShape(width: number, depth: number, radii: Record<Ceili
   return shape;
 }
 
-function roundedPerimeterShape(width: number, depth: number, radii: Record<CeilingCorner, number>, wallThickness: number): THREE.Shape {
-  const outer = roundedRectangleShape(width, depth, radii);
-  const innerWidth = Math.max(0.001, width - wallThickness * 2);
-  const innerDepth = Math.max(0.001, depth - wallThickness * 2);
-  const innerRadii = { nw: 0, ne: 0, se: 0, sw: 0 } as Record<CeilingCorner, number>;
-  for (const corner of CORNERS) {
-    innerRadii[corner] = Math.max(0.001, Math.min(radii[corner] - wallThickness, innerWidth / 2, innerDepth / 2));
-  }
-  outer.holes.push(roundedRectangleShape(innerWidth, innerDepth, innerRadii));
-  return outer;
-}
-
 /**
  * Resolve per-corner radii. Returns null when any declared radius is invalid
  * (non-finite, negative or larger than half of the smaller footprint side) —
@@ -657,9 +645,12 @@ export function buildCeilingZone(zone: CeilingZoneSpec, ceilingHeight = 2.8): TH
     };
   } else if (radius > 0) {
     slabGeo = new THREE.ShapeGeometry(roundedRectangleShape(w, d, radii));
-    const perimeterGeo = new THREE.ExtrudeGeometry(roundedPerimeterShape(w, d, radii, SKIRT_THICKNESS), { depth: zone.thickness, bevelEnabled: false, steps: 1 });
-    perimeterGeo.translate(0, 0, -zone.thickness);
-    perimeter = new THREE.Mesh(perimeterGeo, slabMat);
+    // A rounded drop is a closed solid: extrude the full footprint so the
+    // underside remains filled. The former inner-hole perimeter left only a
+    // 20mm rim after `slab.visible` was disabled.
+    const roundedSolidGeo = new THREE.ExtrudeGeometry(roundedRectangleShape(w, d, radii), { depth: zone.thickness, bevelEnabled: false, steps: 1 });
+    roundedSolidGeo.translate(0, 0, -zone.thickness);
+    perimeter = new THREE.Mesh(roundedSolidGeo, slabMat);
     perimeter.rotation.x = -Math.PI / 2;
     perimeter.position.set(cx, ceilingHeight + SLAB_EPS, cz);
     perimeter.userData = {

@@ -1,0 +1,139 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "living-ceiling-underpanel-20261015",
+  "subject": "修复纯圆角边吊下方整板缺失",
+  "state": "incomplete",
+  "source_version": {
+    "config_refs": ["config/ceiling.yaml", "config/hvac.yaml"],
+    "asset_refs": [],
+    "render_facts_ref": "data/project-render-facts.json",
+    "source_digest": "after: builder=809c9bc94671e02fbe366d735430338c44b756d9be2ff039e39c70193647370a; ceiling=34b4357c2fcd977bf1fe1eae5829c98cb4e71958b1e83a90c3513b0148e69af7; hvac=9bbee64e7cc5a6d17db093f27772581ba57c3f4e4cbd85b0ffd08a323737eab2; render_facts=39469f961b952015732f560581bdc896939fb3205226170d8251a214421c7424",
+    "generated_at": "2026-10-15T09:50:34+08:00"
+  },
+  "validation": {
+    "commands": [
+      "npm run typecheck",
+      "npm run verify:all",
+      "VISUAL_GATE_API=http://127.0.0.1:43729 npm run gate:visual",
+      "npm run test:app",
+      "npm run test:server",
+      "npm run test:app -- src/render/CeilingZoneBuilder.test.ts",
+      "node --import tsx --test tests/server/ceiling-cove.test.ts"
+    ],
+    "results": [
+      "npm run typecheck: PASS after the regression test was added.",
+      "npm run verify:all: PASS, 17/17 verifiers.",
+      "gate:visual: baseline and after CLEAR for ceiling/electrical/plumbing/materials.",
+      "Focused app ceiling builder tests: PASS, 18/18; focused server ceiling-cove tests: PASS, 4/4.",
+      "Full test:app FAILED: 42 test files failed / 26 passed, 68 tests failed / 205 passed. Failures include missing ResizeObserver in jsdom and Unknown system error -122 writes; the focused CeilingZoneBuilder suite passes.",
+      "Full test:server FAILED: temporary writes report Unknown system error -122; the penetration CLI integration and TextureManager wall-face tests also fail outside the changed builder. Focused ceiling-cove tests pass."
+    ],
+    "config_status": "PASS",
+    "geometry_status": "PASS",
+    "consistency_status": "PASS",
+    "functional_checks_status": "PASS",
+    "application_status": "PASS",
+    "typecheck_status": "PASS",
+    "generated_files_touched_directly": false
+  },
+  "evidence": [
+    {
+      "id": "baseline-living-device-band-underside",
+      "url": "http://127.0.0.1:45178/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T09:39:11+08:00",
+      "config_error_banner": "",
+      "target_objects": ["ceiling_living 下方面板与客厅 HVAC 底装风口"],
+      "target_object_ids": ["ceiling:ceiling_living", "hvac:A2:terminal:supply_living_bottom", "hvac:A2:terminal:return_living", "hvac:A2:terminal:LD-deco-supply-mid"],
+      "runtime_query_refs": ["evidence/before-runtime.json"],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [11.0, 1.9, 9.5],
+        "target": [10.3, 2.5, 4.75],
+        "view_type": "perspective"
+      },
+      "snapshot_path": "evidence/before-snapshot.txt",
+      "screenshot_path": "evidence/before.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["config/ceiling.yaml", "config/hvac.yaml", "shared/render/CeilingZoneBuilder.ts@c5cce6895e7a7601"],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "after-living-device-band-underside",
+      "url": "http://127.0.0.1:45178/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T09:50:34+08:00",
+      "config_error_banner": "",
+      "target_objects": ["ceiling_living 完整底板与客厅 HVAC 底装风口"],
+      "target_object_ids": ["ceiling:ceiling_living", "hvac:A2:terminal:supply_living_bottom", "hvac:A2:terminal:return_living", "hvac:A2:terminal:LD-deco-supply-mid"],
+      "runtime_query_refs": ["evidence/after-runtime.json", "evidence/after-hvac-batches.json"],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [11.0, 1.9, 9.5],
+        "target": [10.3, 2.5, 4.75],
+        "view_type": "perspective"
+      },
+      "snapshot_path": "evidence/after-snapshot.txt",
+      "screenshot_path": "evidence/after.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["config/ceiling.yaml", "config/hvac.yaml", "shared/render/CeilingZoneBuilder.ts@809c9bc94671e02f"],
+      "status": "valid",
+      "invalid_reason": null
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": ["同机位画面显示完整连续底面与清楚的深色线性格栅层次；设备带两端未完整入镜，R100 由运行时圆角数据确认。"],
+    "evidence_refs": ["evidence/before.png", "evidence/after.png", "evidence/after-runtime.json"],
+    "requested_changes": [],
+    "assumptions": []
+  },
+  "functional_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": ["运行时确认 supply_living_bottom、return_living 批次实例均可见；HVAC 尺寸、风量、静压、安装净距和检修方式仍待厂家图/现场核实。"],
+    "evidence_refs": ["evidence/after-runtime.json", "evidence/after-hvac-batches.json", "evidence/after.png"],
+    "requested_changes": [],
+    "assumptions": []
+  },
+  "substance_review": {
+    "deleted": "移除了只生成空心 20mm 外圈的 roundedPerimeterShape helper；未删除既有设计决议、候选、证据或数值依据。",
+    "overturned": "没有推翻既有设计结论；DEC-2026-10-05-R18 的边吊范围、R100 圆角和 HVAC 位置均保留。仅纠正旧实现注释把带孔挤出体误称完整实体的假设。",
+    "silent_failure_conditions": [
+      "若未来在 slab.visible=false 时重新传入带内孔的挤出轮廓，中央下板会再次缺失。",
+      "若浏览器加载旧 render-facts 或旧 bundle，页面不会显示本次修复。",
+      "若 HVAC projection 未加载或合批实例被隐藏，风口仍可能缺失；这与圆角板面生成分属不同对象链路。"
+    ]
+  },
+  "risks": [
+    "全量 app/server 测试目前未通过；失败发生在 ResizeObserver、临时文件写入配额和无 DOM 的 TextureManager 测试路径，focused ceiling suites 通过。",
+    "ceiling_master_ac 使用同一纯圆角分支，也会恢复其完整实体底面。"
+  ],
+  "retrospective": {"triggered": false, "triggers": [], "records": [], "rebaselined": false},
+  "delivery": {
+    "status": "incomplete",
+    "blocking_issues": ["全量 test:app 和 test:server 未通过，不能按项目流程标记 delivery_ready；失败路径与本次吊顶 builder 不同。"],
+    "completion_conditions": [
+      "完整纯圆角挤出体取代带内孔的环形挤出体。",
+      "下出风与回风格栅在目标视角仍可辨认。",
+      "typecheck、verify:all、gate:visual 与浏览器运行时证据完成。",
+      "独立审美和功能评审均 PASS。",
+      "全量 test:app 与 test:server 通过，或另行解决其当前非本次改动失败。"
+    ],
+    "follow_up_site_pending": [],
+    "delivery_ready": false
+  }
+}

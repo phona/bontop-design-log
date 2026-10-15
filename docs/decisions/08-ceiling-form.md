@@ -19,6 +19,7 @@
 - `DEC-2026-10-08-R03` 弧面回归 + 东南角接门厅平吊（废止 R02 弧面取消部分）
 - `DEC-2026-10-08-R04` 东南角逐回 R150 圆角 + 弧面半程包裹（重开 R01 补记六正交终裁）
 - `DEC-2026-10-08-R05` 东南角逐改镜像凹弧 + 垂面弧全拆（废止 R03/R04 的 cove 与阳角圆）
+- `DEC-2026-10-15-C01` 修复纯圆角边吊缺失的下方面板（不改 R100 或 HVAC 配置）
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -135,3 +136,14 @@
 - **遗留**：门厅西缘自 (10.80,3.15) 起与凹弧相切相接——该 0.25m 段（z[2.90,3.15]）与门头盒东缘背靠背藏于墙垛/裙边后，不可见；Web 三人称实见待业主确认“弧从南面相切转到门厅西面”的观感。
 - **关联文件**：`config/ceiling.yaml`（三区）、`shared/render/CeilingZoneBuilder.ts`、`shared/project-render-facts-schema.ts`、`tests/server/ceiling-cove.test.ts`（重写）、`tests/server/cli-glb-export.test.ts`、`tests/server/ceiling-takeoff.test.ts`、`tests/server/ceiling-material-cost.test.ts`、`data/project-render-facts.json`、`tmp/probe-r05.mts`。
 - **决策人**：业主（Web 实见后裁定：路线 2 builder 级根治 + 垂面弧全拆）。
+
+### DEC-2026-10-15-C01 修复纯圆角边吊缺失的下方面板（不改 R100 或 HVAC 配置）
+
+- **触发**：业主指出客厅中央空调边吊下方缺挡板。浏览器基线运行时查询 `ceiling:ceiling_living`：完整 `slab` 被设为不可见；`rounded-perimeter` 挤出体有 1 个内孔。几何因而只有约 20mm 宽的边缘环，中央下方面板缺失。基线浏览器 ready=true、配置横幅为空，`gate:visual` 的 ceiling/electrical/plumbing/materials 四域均 CLEAR；证据见 `docs/design-iterations/living-ceiling-underpanel-20261015/evidence/`。
+- **既有结论核对**：不推翻 DEC-2026-10-05-R18 对客餐厅设备带尺寸、机位、三层风口和 R100 圆角的结论；也不改 DEC-2026-10-04-R1 的 HVAC 成交映射。本轮纠正的是 renderer 将环形挤出体误当成完整实体的实现缺陷。旧代码注释“extrusion is already a closed solid”对纯凸圆角分支不成立；混合凹角分支的无孔 extrusion 则仍是完整实体。
+- **决策**：纯凸圆角下挂区改用完整 `roundedRectangleShape` 轮廓挤出 0.30m 厚实体，保留圆角外形、上下板面和侧边；不再用带内孔的 `roundedPerimeterShape` 生成边缘环。`slab` 仍隐藏以免与实体挤出共面重叠。设计配置、R100、吊顶范围与风口坐标不变。
+- **影响范围**：共享纯圆角分支修复 `ceiling_living` 和 `ceiling_master_ac`；凹角混合轮廓分支、含圆角与凹弧的 `ceiling_dining_west_band` 不变。下出风、回风和装饰格栅仍由 `config/hvac.yaml` 独立生成，改后须在同机位检查其可见性。
+- **删除/取舍审计**：本轮未删除旧决议、候选、证据或数值依据；代码移除了只用于生成空心 20mm 环的 `roundedPerimeterShape` helper，以完整圆角实体替代。没有既有设计决策被废止。
+- **静默失效条件**：若未来又将 `slab.visible=false` 用在含内孔的挤出几何上，中央板面会再次消失；若 HVAC render-facts/projection 未加载，风口仍可能缺失，但不属于本次板面修复；若浏览器未加载同一配置版本，改动不会反映到画面。
+- **验证与证据**：改后纯圆角 extrusion 孔数为 0，包络 x[7.20,13.40]、z[4.30,5.20]、y[2.502,2.802]，四角仍 R0.10；HVAC 下出风/回风批次实例均 visible。`typecheck` 通过，`verify:all` 17/17，`gate:visual` 四域 CLEAR；focused `CeilingZoneBuilder.test.ts` 18/18、`ceiling-cove.test.ts` 4/4 通过。全量 `test:app` 仍因 JSDOM 缺 `ResizeObserver` 与 `-122` 写入错误失败；全量 `test:server` 有临时文件 `-122` 写入错误及不相关的 penetration CLI/TextureManager 测试失败，因此迭代状态记为 incomplete。before/after runtime、截图和 gate 输出见 `docs/design-iterations/living-ceiling-underpanel-20261015/`。设计未施工冻结，不把 renderer 修复当作厂家接口或现场尺寸确认。
+- **决策人**：业主以“go”批准本轮具体修复范围。

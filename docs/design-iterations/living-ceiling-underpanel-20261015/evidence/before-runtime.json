@@ -1,0 +1,103 @@
+{
+  "camera": {
+    "is_overview": false,
+    "mode": "orbit",
+    "position": [
+      11,
+      1.8999999999999997,
+      9.5
+    ],
+    "target": [
+      10.3,
+      2.5,
+      4.75
+    ],
+    "view_type": "perspective"
+  },
+  "configErrorBanner": "",
+  "objects": [
+    {
+      "objectId": "ceiling:ceiling_living",
+      "parts": [
+        {
+          "bbox": {
+            "max": [
+              13.399999904632567,
+              2.502,
+              5.199999988079071
+            ],
+            "min": [
+              7.200000095367432,
+              2.502,
+              4.300000011920929
+            ]
+          },
+          "holes": 0,
+          "part": "slab",
+          "visible": false
+        },
+        {
+          "bbox": {
+            "max": [
+              13.399999904632567,
+              2.8020000119209287,
+              5.199999988079071
+            ],
+            "min": [
+              7.200000095367432,
+              2.50199998807907,
+              4.300000011920929
+            ]
+          },
+          "holes": 1,
+          "part": "rounded-perimeter",
+          "visible": true
+        }
+      ],
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "type": "ceiling_zone",
+      "visible": true
+    },
+    {
+      "objectId": "hvac:A2:terminal:return_living",
+      "parts": [],
+      "position": [
+        12.6,
+        2.49,
+        4.45
+      ],
+      "type": "hvac_terminal",
+      "visible": true
+    },
+    {
+      "objectId": "hvac:A2:terminal:supply_living_bottom",
+      "parts": [],
+      "position": [
+        10.3,
+        2.5,
+        4.85
+      ],
+      "type": "hvac_terminal",
+      "visible": true
+    },
+    {
+      "objectId": "hvac:A2:terminal:LD-deco-supply-mid",
+      "parts": [],
+      "position": [
+        9.15,
+        2.5,
+        4.85
+      ],
+      "type": "hvac_terminal",
+      "visible": true
+    }
+  ],
+  "ready": true,
+  "sceneReady": true,
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://127.0.0.1:45178/"
+}

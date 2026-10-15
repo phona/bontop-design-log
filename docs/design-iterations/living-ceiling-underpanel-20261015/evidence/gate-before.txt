@@ -1,0 +1,11 @@
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> bontop-design-log@0.0.1 gate:visual
+> tsx scripts/gate/visual-state-gate.ts
+
+CLEAR  ceiling    bd9dd7b0743d  config/ceiling.yaml
+CLEAR  electrical 01bf1db01b27  config/electrical.yaml
+CLEAR  plumbing   7f1513d14f27  config/plumbing.yaml
+CLEAR  materials  64176f576326  config/materials.yaml + preview atlas assets
+gate:visual → CLEAR：浏览器渲染的就是当前 config，可以叫业主看了。

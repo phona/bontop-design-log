@@ -1,0 +1,119 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: living-ceiling-underpanel-20261015
+subject: 修复圆角边吊下方整板缺失
+created_at: "2026-10-15T09:39:11+08:00"
+status: frozen
+source_policy:
+  authority_refs: [config/ceiling.yaml, config/hvac.yaml, shared/render/CeilingZoneBuilder.ts]
+  observation_refs: [evidence/before.png]
+  measurement_refs: []
+  runtime_refs: [evidence/before-runtime.json, evidence/after-runtime.json, evidence/after-hvac-batches.json]
+  evidence_refs: [evidence/gate-before.txt, evidence/before-snapshot.txt]
+facts:
+  confirmed:
+    - id: F1
+      category: confirmed
+      statement: 客厅设备边吊范围 x[7.20,13.40]、z[4.30,5.20]，厚度 0.30m，四角 R0.10m，完成面约 y=2.50m。
+      value: {area: [7.20, 4.30, 13.40, 5.20], thickness: 0.30, corner_radius: 0.10, finish_y: 2.50}
+      source_refs: [config/ceiling.yaml#ceiling_living]
+      basis: 权威吊顶配置直接声明。
+      confidence: high
+      impact: material
+      affected_objects: [ceiling:ceiling_living]
+      affected_views: [perspective, section]
+      owner: project
+      status: resolved
+      verification_method: 配置解析与浏览器运行时对象查询。
+      user_confirmation_ref: null
+    - id: F2
+      category: confirmed
+      statement: 基线运行时把 slab 设为不可见；圆角挤出体含一个内孔，因此没有覆盖中央的下方整板。
+      value: {slab_visible: false, rounded_perimeter_holes: 1}
+      source_refs: [shared/render/CeilingZoneBuilder.ts#658, shared/render/CeilingZoneBuilder.ts#680, evidence/before-runtime.json]
+      basis: 代码分支与客户端对象树查询一致。
+      confidence: high
+      impact: blocking
+      affected_objects: [ceiling:ceiling_living]
+      affected_views: [perspective, section]
+      owner: agent
+      status: resolved
+      verification_method: 目标对象的几何参数、可见性和包围盒运行时查询。
+      user_confirmation_ref: null
+    - id: F3
+      category: confirmed
+      statement: 客厅下出风口、回风口和装饰格栅均在 HVAC 配置中声明，且在基线场景树中存在。
+      value: [hvac:A2:terminal:supply_living_bottom, hvac:A2:terminal:return_living, hvac:A2:terminal:LD-deco-supply-mid]
+      source_refs: [config/hvac.yaml, evidence/before-runtime.json]
+      basis: 权威配置与浏览器运行时对象查询。
+      confidence: high
+      impact: material
+      affected_objects: [hvac:A2:terminal:supply_living_bottom, hvac:A2:terminal:return_living]
+      affected_views: [perspective]
+      owner: project
+      status: resolved
+      verification_method: 改后同机位检查运行时对象与包围盒。
+      user_confirmation_ref: null
+    - id: F4
+      category: confirmed
+      statement: 基线应用业务就绪，配置错误横幅为空，视觉状态门禁的四个域均 CLEAR。
+      value: {ready: true, config_error_banner: "", gate: CLEAR}
+      source_refs: [evidence/before-runtime.json, evidence/gate-before.txt]
+      basis: 应用就绪信号、配置横幅和 gate 输出。
+      confidence: high
+      impact: material
+      affected_objects: [ceiling:ceiling_living]
+      affected_views: [perspective]
+      owner: agent
+      status: resolved
+      verification_method: 隔离应用 gate 与浏览器状态查询。
+      user_confirmation_ref: null
+    - id: F5
+      category: confirmed
+      statement: 改后圆角实体包络覆盖整个客厅边吊区域且没有内孔；下出风和回风终端的合批实例均可见。
+      value: {holes: 0, bbox: {x: [7.20, 13.40], y: [2.502, 2.802], z: [4.30, 5.20]}, hvac_batch_instances_visible: true}
+      source_refs: [evidence/after-runtime.json, evidence/after-hvac-batches.json]
+      basis: 改后浏览器运行时查询；独立功能评审确认批次元数据和显隐。
+      confidence: high
+      impact: material
+      affected_objects: [ceiling:ceiling_living, hvac:A2:terminal:supply_living_bottom, hvac:A2:terminal:return_living]
+      affected_views: [perspective, section]
+      owner: agent
+      status: resolved
+      verification_method: 场景对象包围盒、shape hole 数、HVAC batchUserData 和同机位截图复核。
+      user_confirmation_ref: null
+  inferred:
+    - id: I1
+      category: inferred
+      statement: 圆角边吊下方整板缺失是 builder 隐藏 slab、但纯圆角挤出体实际只有带孔外圈所致。
+      value: full roundedRectangleShape extrusion
+      source_refs: [F1, F2]
+      basis: 将纯圆角分支改为无孔完整轮廓挤出，可填满声明区域并保留圆角。
+      confidence: high
+      impact: blocking
+      affected_objects: [ceiling:ceiling_living, ceiling:ceiling_master_ac]
+      affected_views: [perspective, section]
+      owner: agent
+      status: resolved
+      verification_method: 改后浏览器对象树、包围盒和目标视角复核。
+      user_confirmation_ref: null
+  user_decision:
+    - id: U1
+      category: user_decision
+      statement: 用户以“go”批准按此前具体修复建议纠正圆角吊顶渲染，保留 R100 与现有风口位置。
+      value: 保持声明几何，修复纯圆角 builder 的整板生成。
+      source_refs: [conversation:2026-10-15:user-go]
+      basis: 对具体修复建议的明确批准。
+      confidence: high
+      impact: blocking
+      affected_objects: [ceiling:ceiling_living]
+      affected_views: [perspective, section]
+      owner: user
+      status: resolved
+      verification_method: 按批准范围实现并使用同版本浏览器验收。
+      user_confirmation_ref: conversation:2026-10-15:user-go
+  site_pending: []
+unknowns_requiring_alignment: []
+notes:
+  - 本轮只纠正共享渲染器；不改 ceiling.yaml、hvac.yaml 的设计意图或坐标。
+  - ceiling_master_ac 也使用同一纯圆角分支，会一并恢复完整底面；含凹角的混合轮廓分支不在修改范围。
