@@ -1,0 +1,48 @@
+{
+  "captured_at": "2026-10-15T08:51:11.849Z",
+  "url": "http://127.0.0.1:5173/",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "project_api_status": 200,
+  "config_error_banner_present": false,
+  "offline_banner_present": false,
+  "camera": {
+    "mode": "orbit",
+    "position": [12.6, 1.8, 8.6],
+    "target": [10.6, 0.5, 7.3]
+  },
+  "preview": {
+    "mode": "manual",
+    "manual_on": true,
+    "temperature_k": 4000,
+    "color_appearance": "eye-adapted",
+    "brightness_relative": 0.6,
+    "all_rooms_enabled": true
+  },
+  "renderer": {
+    "output_color_space": "srgb",
+    "tone_mapping_constant": 7,
+    "tone_mapping": "THREE.NeutralToneMapping",
+    "tone_mapping_exposure": 1
+  },
+  "environment": null,
+  "global_lights": [
+    { "type": "AmbientLight", "visible": true, "intensity": 0 },
+    { "type": "DirectionalLight", "visible": false, "intensity": 0 },
+    { "type": "DirectionalLight", "visible": true, "intensity": 0 }
+  ],
+  "interior_light_count": 15,
+  "light_living_dome": {
+    "visible": true,
+    "intensity": 2.88,
+    "linear_srgb_hex": "fff3e9"
+  },
+  "floor_count": 15,
+  "floor_rotation_deg": 0,
+  "main_corridor_paint_mesh_count": 8,
+  "main_corridor_ceiling_solid_count": 5,
+  "main_corridor_ceiling_room": "main_corridor",
+  "official_floor_selection_unchanged": true,
+  "screenshot_path": "evidence/night-4000k-eye-adapted-current.png",
+  "snapshot_path": "evidence/night-4000k-eye-adapted-current-snapshot.txt"
+}

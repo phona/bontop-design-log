@@ -1,0 +1,76 @@
+{
+  "captured_at": "2026-10-15T08:03:26.395Z",
+  "source_digest": "935a66890bc5fd8df345fc0bd90d3773ddf828db9540995b9585efb68cf1bb1a",
+  "url": "http://localhost:5175/?view=east-end-r100-20261015",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "config_error_banner": "",
+  "view": "east-end-R100-northeast-close",
+  "is_overview": false,
+  "camera_mode": "orbit",
+  "camera": {
+    "position": {
+      "x": 13.98,
+      "y": 4.15,
+      "z": 3.68
+    },
+    "target": {
+      "x": 13.28,
+      "y": 2.74,
+      "z": 4.38
+    }
+  },
+  "target_object_ids": [
+    "ceiling:ceiling_living"
+  ],
+  "target_zone": {
+    "room": "living_dining",
+    "area": [
+      7.2,
+      4.3,
+      13.4,
+      5.55
+    ],
+    "corner_radii": {
+      "nw": 0,
+      "ne": 0.1,
+      "se": 0.1,
+      "sw": 0
+    },
+    "underside_y": 2.5,
+    "thickness": 0.3,
+    "netAreaM2": 7.745707963267948,
+    "meshCount": 3
+  },
+  "visible_meshes": [
+    {
+      "name": "ceiling:ceiling_living:slab:0",
+      "type": "ShapeGeometry",
+      "vertices": 44
+    },
+    {
+      "name": "ceiling:ceiling_living:rounded-perimeter:1",
+      "type": "ExtrudeGeometry",
+      "vertices": 438
+    },
+    {
+      "name": "",
+      "type": "PlaneGeometry",
+      "vertices": 4
+    }
+  ],
+  "presentation_overrides": {
+    "geometry_only": true,
+    "visible_object_ids": [
+      "ceiling:ceiling_living"
+    ],
+    "non_target_meshes_hidden": true,
+    "orbit_controls_enabled": false
+  },
+  "viewport": {
+    "width": 1600,
+    "height": 1000
+  },
+  "png_path": "docs/design-iterations/continuous-band-1250-20261015/evidence/east-end-R100-northeast-close.png",
+  "snapshot_path": "docs/design-iterations/continuous-band-1250-20261015/evidence/east-end-R100-northeast-snapshot.txt"
+}

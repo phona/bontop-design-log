@@ -2,8 +2,9 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
-import { BudgetCalculator, autoActualBucket, loadMasonryTakeoff } from '../../server/budget-calculator.js';
+import { BudgetCalculator, autoActualBucket, loadMasonryTakeoff, loadPaintScopeAreaByRoom } from '../../server/budget-calculator.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
+import { loadPaintScopeInputs } from '../../server/paint-cost-comparison.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import type { CurrentScheme, DesignOption, DesignRulesConfig, FurnishingsYaml } from '../../shared/types.js';
 import { parseOverlay } from '../../server/overlay-merge.js';
@@ -40,6 +41,22 @@ const rulesConfig: DesignRulesConfig = {
 };
 
 describe('BudgetCalculator', () => {
+  it('keeps a ceiling-only paint selection in the budget area map', () => {
+    const baseCatalog = ProjectCatalog.load('.');
+    const catalog = Object.create(baseCatalog) as ProjectCatalog;
+    catalog.getRooms = () => baseCatalog.getRooms().map((room) => ({ ...room, wall_finish: 'unpainted' }));
+    const inputs = loadPaintScopeInputs();
+
+    const ceilingOnly = loadPaintScopeAreaByRoom(catalog, {
+      ...inputs,
+      regions: [],
+      sillRegions: [],
+    });
+
+    assert.equal(ceilingOnly.get('main_corridor'), 3.75);
+    assert.ok(Math.abs([...ceilingOnly.values()].reduce((sum, area) => sum + area, 0) - 106.974) < 0.01);
+  });
+
   it('uses resolved floor polygon areas only for the floor topic applyRooms', () => {
     const catalog = ProjectCatalog.load('.');
     const projectRules = load(readFileSync('config/design-rules.yaml', 'utf8')) as DesignRulesConfig;
@@ -455,12 +472,12 @@ describe('BudgetCalculator', () => {
     const snapshot = calc.calculate(scheme);
     const carpentry = snapshot.categories.find((c) => c.key === 'carpentry');
     assert.ok(carpentry);
-    // area: 'ceiling_zones' → shared/ceiling-takeoff.ts 的吊顶板面净面积（总净面积 45.130 − 窗帘盒 4.463 = 40.667㎡）× 40 元/㎡。
+    // area: 'ceiling_zones' → shared/ceiling-takeoff.ts 的吊顶板面净面积（总净面积 47.314 − 窗帘盒 4.463 = 42.851㎡）× 40 元/㎡。
     // 旧口径按房间面积合计 142.92㎡（¥5,717），把无吊顶平顶/电梯井/入户花园都计了费。
     // 注意：人工费进 cat.actual（不是 autoActual），与 computeLabor 既有口径一致。
     assert.ok(
-      Math.abs(carpentry.actual - Math.round(40 * (45.13 - 4.463))) <= 2,
-      `carpentry 板面人工应为 ~1627（40 元/㎡ × 40.667㎡），实际 ${carpentry.actual}`
+      Math.abs(carpentry.actual - Math.round(40 * (47.314 - 4.463))) <= 2,
+      `carpentry 板面人工应为 ~1714（40 元/㎡ × 42.851㎡），实际 ${carpentry.actual}`
     );
     assert.ok(carpentry.actual < carpentry.budget, '按分区实算后木工板面人工应低于预算');
     assert.ok(!('ceiling' in JSON.parse(readFileSync('config/budget/base.json', 'utf8')).categories.carpentry.labor), 'base.json 不应再引用废弃的 ceiling 键');
@@ -1168,10 +1185,9 @@ describe('BudgetCalculator', () => {
     // wetWallArea / linearKitchen 拍系数、地面材料侧与人工侧共用出口）后实测
     // 146208.46361048135。阶段 3（瓦工费率改成合法报价卡 + hvac 读 config/hvac.yaml）后
     // 实测 157870.46361048135，差额 +11,662 = 瓦工人工 +4,662 + hvac +7,000。
-    // **阶段 5（口径变更）后实测 65174**：actual 不再含 candidateActual（92,696），
-    // 只保留已取证材料款 39,000 + 人工与人工录入。这不是"预算变少了"，是
-    // "把 39 条未取证的候选价从'已花的钱'里挪回'假设'"。
-    assert.equal(snapshot.totalActual, 65174, '阶段 5 后的 totalActual 锚点');
+    // **阶段 5 后实测 65,608**：actual 不再含 candidateActual（92,696），只保留已取证材料款
+    // 与人工/人工录入。此锚点还包含1.25m扩深新增板面人工87元，以及当前明确选择的主走廊墙顶涂装量。
+    assert.equal(snapshot.totalActual, 65608, '阶段 5 后的 totalActual 锚点（含扩深人工与主走廊已选涂装量）');
     assert.ok(candidateTotal > 90000, `候选价应仍在 92,696 量级（当前 ${candidateTotal}），不得被静默清零`);
   });
 

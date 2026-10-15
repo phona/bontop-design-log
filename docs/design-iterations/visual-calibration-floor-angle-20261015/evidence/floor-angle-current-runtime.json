@@ -1,0 +1,46 @@
+{
+  "captured_at": "2026-10-15T08:58:19.055Z",
+  "url": "http://127.0.0.1:5173/",
+  "ready": true,
+  "control": { "min_deg": 0, "max_deg": 90, "step_deg": 5 },
+  "surfaces": {
+    "total_count": 15,
+    "at_0_deg": {
+      "color_map_rotation_radians": 0,
+      "color_maps": 15,
+      "normal_map_rotation_radians": 0,
+      "normal_maps": 15,
+      "roughness_map_rotation_radians": 0,
+      "roughness_maps": 11
+    },
+    "at_90_deg": {
+      "color_map_rotation_radians": 1.5707963267948966,
+      "color_maps": 15,
+      "normal_map_rotation_radians": 1.5707963267948966,
+      "normal_maps": 15,
+      "roughness_map_rotation_radians": 1.5707963267948966,
+      "roughness_maps": 11
+    }
+  },
+  "ab_presets": {
+    "A_floor_rotation_deg": 0,
+    "B_floor_rotation_deg": 90,
+    "lighting_mode": "manual",
+    "lighting_temperature_k": 4000,
+    "lighting_appearance": "eye-adapted",
+    "lighting_brightness_relative": 0.6
+  },
+  "official_floor_selection_unchanged": {
+    "default": "floor_tile_kt_200x1200_01",
+    "roomOverrides": {
+      "master_bath": "floor_tile_antislip_400",
+      "guest_bath": "floor_tile_deco_small",
+      "balcony": "floor_tile_antislip_400"
+    }
+  },
+  "evidence_pngs": [
+    "floor-rotation-0deg-current.png",
+    "floor-rotation-90deg-current.png",
+    "night-4000k-eye-adapted-current.png"
+  ]
+}

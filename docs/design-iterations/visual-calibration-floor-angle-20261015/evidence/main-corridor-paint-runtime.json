@@ -1,0 +1,39 @@
+{
+  "captured_at": "2026-10-15T09:27:43.256Z",
+  "ready": true,
+  "project_api_status": 200,
+  "budget_api_status": 200,
+  "config_error_banner_present": false,
+  "room": "main_corridor",
+  "room_boundary": { "x": [4.2, 7.2], "z": [4.3, 5.55] },
+  "wall_declarations": [
+    { "id": "paint_main_corridor_w_strip_east", "wall": "w_strip_east", "along": [0, 1.25], "door_cut": "d_mb", "room_side": "east" },
+    { "id": "paint_main_corridor_w_st_north", "wall": "w_st_north", "along": [0, 3], "door_cut": "d_study", "room_side": "south" },
+    { "id": "paint_main_corridor_w_nw_south", "wall": "w_nw_south", "along": [1.6, 3], "door_cut": "d_bnw", "room_side": "north" }
+  ],
+  "generated_paint_mesh_count": 8,
+  "generated_paint_meshes_are_inspection_hidden_initially": true,
+  "inspection_layer_visible_after_toggle": true,
+  "all_generated_paint_meshes_visible_after_toggle": true,
+  "camera": { "mode": "orbit", "position": [7.4, 14, 19.2], "target": [7.4, 0, 3.65] },
+  "budget_api_status": 200,
+  "paint_scope": {
+    "net_wall_area_sqm": 10.15,
+    "ceiling_area_sqm": 3.75,
+    "total_declared_area_sqm": 13.9,
+    "preview_status": "comparison_overlay_only",
+    "included_in_budget_totals": false
+  },
+  "ceiling": {
+    "id": "ceiling_main_corridor",
+    "room": "main_corridor",
+    "area_sqm": 3.75,
+    "projection": [4.2, 4.3, 7.2, 5.55],
+    "solid_mesh_count": 5
+  },
+  "finish_scope": { "errors": 0, "warnings": 0 },
+  "verification_refs": [
+    "npm run verify:finish-scope",
+    "npm run verify:all"
+  ]
+}

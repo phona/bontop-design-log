@@ -8,6 +8,7 @@ export interface LightingPreviewState {
   mode: 'auto' | 'manual';
   manualOn: boolean;
   temperatureK: number | null;
+  colorAppearance: 'eye-adapted' | 'raw-cct';
   brightness: number;
   rooms: LightingPreviewRoom[];
 }
@@ -16,6 +17,7 @@ export interface LightingPreviewCallbacks {
   onModeChange: (mode: 'auto' | 'manual') => void;
   onManualOnChange: (on: boolean) => void;
   onTemperatureChange: (temperatureK: number | null) => void;
+  onColorAppearanceChange: (mode: LightingPreviewState['colorAppearance']) => void;
   onBrightnessChange: (multiplier: number) => void;
   onRoomChange: (roomId: string, enabled: boolean) => void;
   onReset: () => void;
@@ -31,7 +33,7 @@ export class LightingPreviewPanel {
   constructor(host: HTMLElement, callbacks: LightingPreviewCallbacks, initial: LightingPreviewState) {
     this.host = host;
     this.callbacks = callbacks;
-    this.state = initial;
+    this.state = { ...initial, colorAppearance: initial.colorAppearance ?? 'eye-adapted' };
     this.root = document.createElement('section');
     this.root.className = 'dynamic-panel lighting-preview-panel';
     this.root.innerHTML = `
@@ -53,6 +55,13 @@ export class LightingPreviewPanel {
             <option value="4000">4000 K</option>
           </select>
         </label>
+        <label class="lighting-preview-row">颜色呈现
+          <select data-control="color-appearance">
+            <option value="eye-adapted">肉眼适应（默认）</option>
+            <option value="raw-cct">原始 CCT 色度</option>
+          </select>
+        </label>
+        <p class="preview-note">肉眼适应是屏幕视觉近似；原始 CCT 色度保留色温映射结果。</p>
         <label class="lighting-preview-row">亮度 <output data-control="brightness-label"></output>
           <input data-control="brightness" type="range" min="0" max="150" step="5">
         </label>
@@ -74,6 +83,11 @@ export class LightingPreviewPanel {
       this.callbacks.onTemperatureChange(value === 'config' ? null : Number(value));
       this.state.temperatureK = value === 'config' ? null : Number(value);
     };
+    this.root.querySelector<HTMLSelectElement>('[data-control="color-appearance"]')!.onchange = (event) => {
+      const mode = (event.currentTarget as HTMLSelectElement).value as LightingPreviewState['colorAppearance'];
+      this.callbacks.onColorAppearanceChange(mode);
+      this.state.colorAppearance = mode;
+    };
     this.root.querySelector<HTMLInputElement>('[data-control="brightness"]')!.oninput = (event) => {
       const multiplier = Number((event.currentTarget as HTMLInputElement).value) / 100;
       this.callbacks.onBrightnessChange(multiplier);
@@ -82,7 +96,14 @@ export class LightingPreviewPanel {
     };
     this.root.querySelector<HTMLButtonElement>('[data-control="reset"]')!.onclick = () => {
       this.callbacks.onReset();
-      this.state = { mode: 'auto', manualOn: false, temperatureK: null, brightness: 1, rooms: this.state.rooms.map((room) => ({ ...room, enabled: true })) };
+      this.state = {
+        mode: 'auto',
+        manualOn: false,
+        temperatureK: null,
+        colorAppearance: 'eye-adapted',
+        brightness: 1,
+        rooms: this.state.rooms.map((room) => ({ ...room, enabled: true })),
+      };
       this.renderRooms();
       this.syncControls();
     };
@@ -91,7 +112,11 @@ export class LightingPreviewPanel {
   }
 
   update(state: LightingPreviewState): void {
-    this.state = { ...state, rooms: state.rooms.map((room) => ({ ...room })) };
+    this.state = {
+      ...state,
+      colorAppearance: state.colorAppearance ?? 'eye-adapted',
+      rooms: state.rooms.map((room) => ({ ...room })),
+    };
     this.renderRooms();
     this.syncControls();
   }
@@ -124,6 +149,7 @@ export class LightingPreviewPanel {
     this.root.querySelector<HTMLInputElement>('[data-control="manual-on"]')!.checked = this.state.manualOn;
     this.root.querySelector<HTMLInputElement>('[data-control="manual-on"]')!.disabled = this.state.mode !== 'manual';
     this.root.querySelector<HTMLSelectElement>('[data-control="temperature"]')!.value = this.state.temperatureK === null ? 'config' : String(this.state.temperatureK);
+    this.root.querySelector<HTMLSelectElement>('[data-control="color-appearance"]')!.value = this.state.colorAppearance;
     this.root.querySelector<HTMLInputElement>('[data-control="brightness"]')!.value = String(Math.round(this.state.brightness * 100));
     this.syncBrightnessLabel();
   }

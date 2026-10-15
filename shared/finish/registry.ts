@@ -64,14 +64,6 @@ export const IMPLEMENTED_RULES: FinishRuleSpec[] = [
     note: 'along 端点须落在声明房间的 boundary 多边形上；挂 suppress 墙或定位失败显形。',
   },
   {
-    id: 'finish.ceiling_unaccounted',
-    codes: ['finish.ceiling_finish_unaccounted'],
-    kinds: 'paint_ceiling_region vs ceiling zone',
-    severity: 'error',
-    enabled: true,
-    note: '在涂装范围内（有 paint_region）且有非铝扣板吊顶的房间必须有 paint_ceiling_region；铝扣板整间豁免（业主确认铝扣板不刷漆）。失败模式是静默少算：computePaintScope 只对有声明的房间建 ceilingAreaByRoom。',
-  },
-  {
     id: 'finish.buckle_zone_bounds',
     codes: ['finish.buckle_zone_outside_room', 'finish.buckle_zone_room_unknown'],
     kinds: 'aluminum_buckle zone vs room rect',

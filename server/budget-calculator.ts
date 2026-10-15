@@ -215,7 +215,7 @@ export function loadMasonryTakeoff(
       };
     });
 
-  const rooms: MasonryTakeoffInput['rooms'] = catalog.getRooms().map((room) => ({
+  const rooms: MasonryTakeoffInput['rooms'] = catalog.getRooms().filter((room) => !room.semantic_only).map((room) => ({
     id: room.id,
     // 只认 resolved 多边形面积（2026-10-14 阶段 4）：异形房退回 bbox 会让墙砖/地面
     // 每间多算最多 0.6㎡，而这条路直接进 masonry 的材料与人工两侧金额。
@@ -349,10 +349,11 @@ function tangentPointOnEdge(
   return point;
 }
 
-function loadPaintScopeAreaByRoom(catalog: ProjectCatalog): Map<string, number> {
+export function loadPaintScopeAreaByRoom(
+  catalog: ProjectCatalog,
+  inputs = loadPaintScopeInputs(),
+): Map<string, number> {
   const areaByRoom = new Map<string, number>();
-  const inputs = loadPaintScopeInputs();
-  if (!inputs.regions.length) return areaByRoom;
   const rooms = catalog.getRooms();
   // 墙几何（x/z/segments/openings）+ 房间 footprint 都取 catalog，与 /api/paint/comparison 的
   // resolved layout 版本是同一批数据的两个入口；算不出直接抛，由调用方处理。
@@ -364,7 +365,11 @@ function loadPaintScopeAreaByRoom(catalog: ProjectCatalog): Map<string, number> 
   // 普通漆计价面积 = 净墙 + 顶面 + **普通漆窗台**（主卫上飘窗走防霉漆、单独计价，不进本行）。
   // 2026-10-09 补：此前只加墙+顶，8 处新声明的上飘窗普通漆面积（43.097㎡）没进预算，
   // 与 /api/paint/comparison 的 ordinaryAreaSqm 对不上——预算侧少算即说谎。
-  const roomIds = new Set([...Object.keys(scope.wallAreaByRoom), ...Object.keys(scope.ordinarySillAreaByRoom)]);
+  const roomIds = new Set([
+    ...Object.keys(scope.wallAreaByRoom),
+    ...Object.keys(scope.ceilingAreaByRoom),
+    ...Object.keys(scope.ordinarySillAreaByRoom),
+  ]);
   for (const roomId of roomIds) {
     const wallArea = scope.wallAreaByRoom[roomId] ?? 0;
     areaByRoom.set(roomId, wallArea + (scope.ceilingAreaByRoom[roomId] ?? 0) + (scope.ordinarySillAreaByRoom[roomId] ?? 0));

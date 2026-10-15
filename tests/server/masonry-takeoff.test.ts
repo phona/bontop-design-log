@@ -75,7 +75,7 @@ function buildInput(): MasonryTakeoffInput {
       };
     });
 
-  const rooms = (layout.rooms as any[]).map((room) => ({
+  const rooms = (layout.rooms as any[]).filter((room) => !room.semantic_only).map((room) => ({
     id: room.id,
     areaSqm: room.area ?? room.width * room.depth,
     // 异形房给 boundary 折线；轴对齐矩形房给包围盒（resolveRoom 的 x/z/width/depth 口径）。
@@ -253,6 +253,8 @@ test('L2 独立推导：可贴墙长 vs 声明 union（厨房 4.80 / 主卫 4.36
 test('生活阳台地面 1.92㎡ 既不在干区也不在湿区 → 显形，不静默计入任何一档', () => {
   const result = computeMasonryTakeoff(buildInput());
   assert.deepEqual(result.unresolvedRoomIds, ['balcony', 'entry_garden', 'elevator_shaft']);
+  assert.ok(!result.unresolvedRoomIds.includes('main_corridor'), 'semantic-only 走廊不作为独立房间地面计量');
+  assert.ok(Math.abs(result.floorRegionExtraSqm - 3.75) < 1e-9, '主走廊地面仅由 main_corridor_floor 显式计量');
   const balcony = result.unpriced.find((item) => item.id === 'balcony')!;
   close(balcony.quantity!, 1.92);
   // 反边/开孔/壁龛在 overlay 无声明源，必须显形（COST-060-05 锚点待报价轮）

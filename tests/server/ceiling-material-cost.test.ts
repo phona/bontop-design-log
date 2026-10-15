@@ -57,16 +57,16 @@ test('龙骨按「米价 × 用量」逐构件折算，用量可复核', () => {
   assert.equal(sub.rateYuanPerMetre, 6.34);
   assert.deepEqual(sub.metresPerSqm, [2.5, 3.33]); // 间距 400–300mm
   assert.deepEqual(sub.perSqm, [16, 21]);
-  // 边龙骨由 takeoff 周长实算：71.55m ÷ 23.231㎡ = 3.08，不许手抄（R05 镜像凹弧后基数：北带两阴角加料，gypsum 23.222→23.231）
+  // 边龙骨由 takeoff 周长实算：72.335m ÷ 25.4055㎡ = 2.85，不许手抄（扩深后面积和周长都按现行分区重算）
   const edge = frame.derivedComponents.find((c) => c.component === '边龙骨')!;
   assert.equal(edge.rateYuanPerMetre, 4.1);
-  assert.deepEqual(edge.metresPerSqm, [3.08, 3.08]);
-  assert.deepEqual(edge.perSqm, [13, 13]);
+  assert.deepEqual(edge.metresPerSqm, [2.85, 2.85]);
+  assert.deepEqual(edge.perSqm, [12, 12]);
   assert.equal(edge.usageStatus, 'model_derived_upper_bound');
-  assert.equal(frame.perSqm!.min, 36); // 7 + 16 + 13
-  assert.equal(frame.perSqm!.max, 45); // 11 + 21 + 13
+  assert.equal(frame.perSqm!.min, 35); // 7 + 16 + 12
+  assert.equal(frame.perSqm!.max, 44); // 11 + 21 + 12
   assert.ok(frame.derivation!.includes('8.5元/米'));
-  assert.ok(frame.derivation!.includes('3.08米每平米'));
+  assert.ok(frame.derivation!.includes('2.85米每平米'));
   assert.equal(frame.basisUsed, 'comparable', '米价是可耐福普通/卡式系列，蓝臻本身无公开价');
 });
 
@@ -80,15 +80,15 @@ test('分区碎是本案的结构性成本：边龙骨上界是经验值的 7.7 
 
 test('材料合计区间与金额区间 = 各项相加 × takeoff 面积', () => {
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
-  // 27+26+36+5+4 = 98；29+30+45+8+8 = 120
-  assert.equal(result.materialPerSqm.min, 98);
-  assert.equal(result.materialPerSqm.max, 120);
+  // 27+26+35+5+4 = 97；29+30+44+8+8 = 119
+  assert.equal(result.materialPerSqm.min, 97);
+  assert.equal(result.materialPerSqm.max, 119);
   assert.equal(result.areaSqm, takeoff.gypsumBoardM2);
   const sumMin = Math.round(result.items.reduce((sum, item) => sum + (item.totalRange?.min ?? 0), 0) * 100) / 100;
   assert.equal(result.materialTotal.min, sumMin);
 });
 
-test('材料额度按施工方分形态口径算：122.66 元/㎡，判定 above_range（C12 修正 C11；R05 后基数 23.231㎡）', () => {
+test('材料额度按施工方分形态口径算：112.16 元/㎡，判定 within_range（C12 修正 C11；扩深后基数 25.406㎡）', () => {
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
   assert.equal(result.contractor.basis, 'forms');
   // 边吊 21.48m×160 + 平顶 7.39㎡×155 = 4,581.45；纯人工 21.48×60 + 7.39×60 = 1,731.90
@@ -100,11 +100,11 @@ test('材料额度按施工方分形态口径算：122.66 元/㎡，判定 above
   assert.equal(breakdown[0].materialYuan, 2147.5);
   assert.equal(breakdown[1].form, 'flat');
   assert.equal(breakdown[1].turnkeyYuan, 1145.45);
-  // 4,581.45 − 1,731.90 = 2,849.55 → ÷ 23.231 = 122.66 元/㎡（R05 镜像凹弧使 gypsum 23.222→23.231，钉盘随基数走）
-  assert.equal(result.contractor.allowancePerSqm, 122.66);
-  // 98～120 → 122.66 略高于上限 2.66
-  assert.equal(result.verdict, 'above_range');
-  assert.equal(result.slackVsMaxYuanPerSqm, 2.66);
+  // 4,581.45 − 1,731.90 = 2,849.55 → ÷ 25.4055 = 112.16 元/㎡；扩深改变面积基数，不改变报价总额
+  assert.equal(result.contractor.allowancePerSqm, 112.16);
+  // 97～119 → 112.16 落在参考区间内
+  assert.equal(result.verdict, 'within_range');
+  assert.equal(result.slackVsMaxYuanPerSqm, -6.84);
 });
 
 test('C11 的「低于下限」是旧口径的假象：全按 155 元/㎡ 算额度只有 95', () => {
@@ -127,7 +127,7 @@ test('三态判定随单价变化，证明结论对单价敏感', () => {
   });
   assert.equal(computeCeilingMaterialCost(clamp(140, 135), takeoff).verdict, 'below_range');
   assert.equal(computeCeilingMaterialCost(clamp(150, 145), takeoff).verdict, 'within_range');
-  assert.equal(computeCeilingMaterialCost(clamp(160, 155), takeoff).verdict, 'above_range');
+  assert.equal(computeCeilingMaterialCost(clamp(170, 165), takeoff).verdict, 'above_range');
 });
 
 test('证据分级显形：verified / comparable / owner_reported 各自点名', () => {
@@ -144,7 +144,7 @@ test('敏感性：业主口径与可核实口径并列，差多少就是未核�
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
   assert.deepEqual(result.ownerOnlyPerSqm, { min: 70, max: 115 });
   assert.deepEqual(result.ownerOnlyCoverage.missing, []);
-  // 分形态口径下额度 122.66 已高于业主口径上限 115，两个口径不再给出相反结论；
+  // 分形态口径下额度 112.16 落在业主口径区间内；
   // 未核实数据的影响改由 ownerOnly(70～115) 与 materialPerSqm(98～120) 的差体现
   assert.ok(result.warnings.some((note) => note.includes('两个口径') || note.includes('业主转述')));
 });

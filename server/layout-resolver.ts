@@ -140,7 +140,7 @@ function isAxisAlignedRectangle(pts: Pt[]): boolean {
 }
 
 function resolveRoom(
-  def: RoomDef | { id: string; name: string; boundary: string[]; height: number; type?: string },
+  def: RoomDef | { id: string; name: string; boundary: string[]; height: number; type?: string; semantic_only?: boolean },
   vmap: Map<string, VMap>,
   openEdges: ResolvedLayout['openEdges']
 ): ResolvedRoom {
@@ -191,6 +191,7 @@ function resolveRoom(
     depth,
     height: def.height,
     type: rawType,
+    ...(def.semantic_only === true ? { semantic_only: true } : {}),
     points: isRect ? undefined : ccw,
     area,
     boundary_count: def.boundary.length,

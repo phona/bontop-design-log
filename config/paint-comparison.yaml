@@ -4,8 +4,10 @@
 # unregistered_fact_occurrence 扫描。
 version: 1
 
-# 面积来源：overlay.yaml 的 paint_region 声明（3D 涂漆检视态高亮的同一批声明）。
-# 顶面 footprint 另取 model-geometry.yaml 的 resolved room area。
+# 墙面选择与面积来源：overlay.yaml 的 paint_region 声明（3D 涂漆检视态高亮的同一批声明）。
+# 顶面是独立选择：仅 overlay.yaml 中的 paint_ceiling_region 房间纳入顶面面积，
+# footprint 取 model-geometry.yaml 的 resolved room area；缺少该声明表示该房间顶面未选涂装。
+# room_finish_source 只校验墙面 room intent，不推导或要求顶面涂装集合与墙面集合一致。
 # 门窗洞口一律按实扣除，扣除量由 shared/paint-scope.ts 从声明与 openings 几何相交实算——
 # **禁止在这里手写洞口面积常量**（C05 曾手写一个自算的洞口面积，口径漏了 3 樘门且不可复核，已废）。
 area_source: config/layout/overlay.yaml#paint_region

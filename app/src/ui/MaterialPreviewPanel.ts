@@ -18,6 +18,7 @@ export interface MaterialPreviewPanelState {
   floorMode: PreviewFloorMode;
   atlasId: string | null;
   floorMattePercent: number;
+  floorRotationDeg: number;
   paintColor: string;
   paintLabel: string;
 }
@@ -74,6 +75,11 @@ export class MaterialPreviewPanel {
           <input data-control="matte" type="range" min="30" max="100" step="5" />
         </label>
         <p class="preview-note">厂家拼版图不包含真实表面光泽数据；此项只调预演中的反光程度。</p>
+        <label class="preview-control">地砖铺向
+          <output data-control="floor-rotation-label"></output>
+          <input data-control="floor-rotation" type="range" min="0" max="90" step="5" />
+        </label>
+        <p class="preview-note">仅临时预演角度：0° 长边东西向；90° 长边转到世界 Z 轴、垂直南窗。中间角度用于比较斜向引导，不写入正式方案。</p>
         <label class="preview-control">墙漆色号/名称
           <input data-control="paint-label" type="text" placeholder="例如：斯托白 45YY 83/062" />
         </label>
@@ -119,6 +125,12 @@ export class MaterialPreviewPanel {
       this.syncMatteReadout();
       this.emit();
     };
+    this.root.querySelector<HTMLInputElement>('[data-control="floor-rotation"]')!.oninput = (event) => {
+      const value = Number((event.currentTarget as HTMLInputElement).value);
+      this.state.floorRotationDeg = Number.isFinite(value) ? Math.min(90, Math.max(0, value)) : 0;
+      this.syncFloorRotationReadout();
+      this.emit();
+    };
     this.root.querySelector<HTMLInputElement>('[data-control="paint-label"]')!.oninput = (event) => {
       this.state.paintLabel = (event.currentTarget as HTMLInputElement).value;
       this.emit();
@@ -155,6 +167,10 @@ export class MaterialPreviewPanel {
   }
 
   private syncControls(): void {
+    const normalizedRotation = Number.isFinite(this.state.floorRotationDeg)
+      ? Math.min(90, Math.max(0, this.state.floorRotationDeg))
+      : 0;
+    this.state.floorRotationDeg = normalizedRotation;
     const floor = this.root.querySelector<HTMLSelectElement>('[data-control="floor"]')!;
     floor.replaceChildren();
     for (const option of this.options) {
@@ -185,17 +201,24 @@ export class MaterialPreviewPanel {
     this.root.querySelector<HTMLElement>('[data-control="atlas-note"]')!.textContent = this.atlases.find((item) => item.id === atlas.value)?.note ?? '';
 
     this.root.querySelector<HTMLInputElement>('[data-control="matte"]')!.value = String(this.state.floorMattePercent);
+    this.root.querySelector<HTMLInputElement>('[data-control="floor-rotation"]')!.value = String(normalizedRotation);
     this.root.querySelector<HTMLInputElement>('[data-control="paint-label"]')!.value = this.state.paintLabel;
     this.root.querySelector<HTMLInputElement>('[data-control="paint-color"]')!.value = this.state.paintColor;
     for (const slot of ['A', 'B'] as const) {
       this.footer.querySelector<HTMLButtonElement>(`[data-load="${slot}"]`)!.disabled = !this.availableSlots[slot];
     }
     this.syncMatteReadout();
+    this.syncFloorRotationReadout();
     this.syncPaintReadout();
   }
 
   private syncMatteReadout(): void {
     this.root.querySelector<HTMLOutputElement>('[data-control="matte-label"]')!.textContent = `${this.state.floorMattePercent}%`;
+  }
+
+  private syncFloorRotationReadout(): void {
+    const value = Math.min(90, Math.max(0, Number.isFinite(this.state.floorRotationDeg) ? this.state.floorRotationDeg : 0));
+    this.root.querySelector<HTMLOutputElement>('[data-control="floor-rotation-label"]')!.textContent = `${Math.round(value)}°`;
   }
 
   private syncPaintReadout(): void {

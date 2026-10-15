@@ -1,0 +1,7 @@
+Page title: 和萃 701 - 3D 装修设计
+URL: http://localhost:5175/?view=east-end-r100-20261015
+Browser session: bontop-c17d56d4-9bf1-4a23-91ef-2331af59a2b7
+Ready: true; config-error-banner: empty
+View: close-up perspective, non-overview; target objectId ceiling:ceiling_living
+Presentation override: geometry-only, only target ceiling zone shown; orbit controls disabled.
+Accessibility snapshot summary from agent-browser snapshot -i -c: heading 方案; buttons 方案面板折叠, 收起预演工作台, 对象信息, 材质预演, 灯光预演, 打开预演工作台, 俯视, 图层, 环境, ⚠180, ⚙.

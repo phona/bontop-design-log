@@ -212,12 +212,12 @@ plans:
         - id: supply_living
           status: inferred
           system: supply_air
-          position: { x: 11.45, y: 2.65, z: 5.21 }
+          position: { x: 11.45, y: 2.65, z: 5.56 }
           mount_face: south
           length: 3.5
           finish: matte_black
           render_style: linear_slot
-          reason: "DEC-2026-10-07-R03 三层线语言：侧立面层南向上出风功能段，只属 71T2（ac_living，x=10.30；与 42T2 反向安装、水平送风朝南），有效段 x[9.70,13.20]（3.5m 通长风槽 matte_black，linear_slot 满长叶片无外框）。段外同面 x[7.20,9.70] 由 LD-deco-side-south 封闭装饰段同款延续（背板封闭、无风道、不得误读为共用风道）。合同附件出风名义尺寸 1000×150、通长加长 100 元/米另计；有效面积/静压/风速按 71T2 实际风量与厂家安装图核算，叶片可调避直吹，施工未冻结。"
+          reason: "DEC-2026-10-07-R03 三层线语言：侧立面层南向上出风功能段，只属 71T2（ac_living，x=10.30；与 42T2 反向安装、水平送风朝南），有效段 x[9.70,13.20]（3.5m 通长风槽 matte_black，linear_slot 满长叶片无外框）。段外同面 x[7.20,9.70] 由 LD-deco-side-south 封闭装饰段同款延续（背板封闭、无风道、不得误读为共用风道）。合同附件出风名义尺寸 1000×150、通长加长 100 元/米另计；有效面积/静压/风速按 71T2 实际风量与厂家安装图核算，叶片可调避直吹，施工未冻结。；DEC-2026-10-15-C02：随新南边界z=5.55外移至中心z=5.56，保留x范围和3.5m长度；有效面积、风量和静压待厂家复核。"
         - id: return_living
           status: inferred
           system: return_air
@@ -270,12 +270,12 @@ plans:
           render_interior: true
           render_coordination: false
           system: decorative
-          position: { x: 8.45, y: 2.65, z: 5.21 }
+          position: { x: 8.45, y: 2.65, z: 5.56 }
           mount_face: south
           length: 2.5
           finish: matte_black
           render_style: linear_slot
-          reason: "DEC-2026-10-07-R03 装饰延续段（封闭）：南立面 z=5.20 上出风层 x[7.20,9.70]，与 supply_living 功能段同面、同高、同款 matte_black linear_slot，把侧立面上出风层连成整条线。背板封闭、无风道连接、不得并入任何 MEP route、不得与 71T2/42T2 共用送回风；有效通风面积由相邻功能段承担，装饰段本身不通气；长度/高度与厂家槽口规格待安装图终核，施工未冻结。"
+          reason: "DEC-2026-10-07-R03 装饰延续段（封闭）：南立面新边界 z=5.55（原z=5.20），百叶中心z=5.56 x[7.20,9.70]，与 supply_living 功能段同面、同高、同款 matte_black linear_slot，把侧立面上出风层连成整条线。背板封闭、无风道连接、不得并入任何 MEP route、不得与 71T2/42T2 共用送回风；有效通风面积由相邻功能段承担，装饰段本身不通气；长度/高度与厂家槽口规格待安装图终核，施工未冻结。；DEC-2026-10-15-C02：随新南边界z=5.55移至中心z=5.56，保留x范围和2.5m长度；此段仍是封闭装饰槽，不接风道。"
         - id: LD-deco-side-north
           kind: decorative_louver
           status: pending

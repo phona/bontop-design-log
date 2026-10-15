@@ -74,8 +74,8 @@ test('逐分区净面积与声明一致（含圆角/阴角修正）', () => {
   assert.ok(Math.abs(byId.get('ceiling_kitchen')!.netAreaM2 - 8.64) < 1e-9);
   assert.ok(Math.abs(byId.get('ceiling_guest_bath')!.netAreaM2 - 3.15) < 1e-9);
   assert.ok(Math.abs(byId.get('ceiling_main_corridor')!.netAreaM2 - 3.75) < 1e-9);
-  // 客厅北缘边吊：6.20×0.90 − 4×(0.10²(1−π/4))
-  assert.ok(Math.abs(byId.get('ceiling_living')!.netAreaM2 - (5.58 - 4 * 0.01 * (1 - Math.PI / 4))) < 1e-9);
+  // 客厅北缘边吊：6.20×1.25 − 两个外露东角 R100；走廊共边保持方正
+  assert.ok(Math.abs(byId.get('ceiling_living')!.netAreaM2 - (7.75 - 2 * 0.01 * (1 - Math.PI / 4))) < 1e-9);
   // 主卧门头盒：1.275×1.05 − 4×(0.10²(1−π/4))
   assert.ok(Math.abs(byId.get('ceiling_master_ac')!.netAreaM2 - (1.33875 - 4 * 0.01 * (1 - Math.PI / 4))) < 1e-9);
   // 餐厅服务带：一阳角 R150 配一阴角 R150，净面积回到外框
@@ -102,7 +102,7 @@ test('解析化面积与渲染轮廓（buildMixedRectangleOutline + shoelace）�
 test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   const { byClass } = takeoff;
   assert.equal(byClass.gypsum_board.zones, 10);
-  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 23.231) < 0.01);
+  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 25.406) < 0.01);
   assert.equal(byClass.aluminum_buckle.zones, 3);
   assert.ok(Math.abs(byClass.aluminum_buckle.netAreaM2 - 16.366) < 0.01);
   assert.equal(byClass.aluminum_buckle.panelCount, 185);
@@ -113,8 +113,8 @@ test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   assert.equal(byClass.curtain_box.pricingUnit, 'linear_m');
   assert.equal(byClass.drying_rack.zones, 1);
   assert.ok(Math.abs(byClass.drying_rack.netAreaM2 - 1.08) < 1e-9);
-  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 45.14) < 0.01);
-  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 77.242) < 0.05);
+  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 47.314) < 0.01);
+  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 79.653) < 0.05);
 });
 
 test('窗帘盒逐个点名：5 个都在，且都是显式声明的 trade', () => {
@@ -142,8 +142,9 @@ test('铝扣板板块数：eps-ceil，浮点不会多算一块板', () => {
 test('完成面标高与房间对照：原顶房间显形，不静默跳过', () => {
   assert.ok(Math.abs(byId.get('ceiling_living')!.bottomY - (2.8 - 0.3)) < 1e-9);
   assert.ok(Math.abs(byId.get('ceiling_kitchen')!.bottomY - (2.8 - 0.15)) < 1e-9);
-  // 26 个房间里只有 9 个房间声明了吊顶，其余一律列出（电梯井/原顶都在这里）
-  assert.equal(takeoff.roomIdsWithCeiling.length, 9);
+  // 走廊语义区与其实际降板分别归属；语义区不生成默认房间顶面，但会计入吊顶分区归属。
+  assert.equal(takeoff.roomIdsWithCeiling.length, 10);
+  assert.ok(takeoff.roomIdsWithCeiling.includes('main_corridor'), '走廊实际降板归属走廊语义区域');
   assert.ok(takeoff.roomIdsWithoutCeiling.includes('elevator_shaft'));
   assert.ok(takeoff.roomIdsWithoutCeiling.includes('master_bedroom') === false, '主卧有门头盒吊顶');
   assert.deepEqual(takeoff.unknownRoomZoneIds, []);

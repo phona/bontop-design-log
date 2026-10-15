@@ -297,22 +297,28 @@ function rectangleUnionArea(rectangles: Array<[number, number, number, number]>)
 }
 
 /**
- * 计算涂装范围并做三道一致性校验：
- *   ① 引用的墙存在且未被 suppress；
- *   ② along 落在墙长内、同 (墙, 房间) 不重叠；
- *   ③ 有 paint_region 声明的房间集合 == catalog 里 `wall_finish==='paint'` 的房间集合。
- * 第③条是防声明腐烂的锚：house.yaml 改意图而 overlay 没跟着改（或反过来）就在这里炸掉。
+ * 计算涂装范围：paint_region 独立选择墙面，paint_ceiling_region 独立选择顶面。
+ * 各自只对其声明面积计量；墙面声明仍须与 house.yaml 的 wall_finish 房间集合对账。
+ * 顶面声明不得再从墙面范围推导，缺少 paint_ceiling_region 表示该房间顶面未选择涂装。
  */
 export function computePaintScopeForLayout(
   layout: ResolvedLayout,
   catalog: ProjectCatalog,
   inputs: PaintScopeInputs = loadPaintScopeInputs(),
 ): PaintScopeResult {
-  if (!inputs.regions.length) throw new Error('overlay.yaml declares no paint_region elements');
+  if (!inputs.regions.length && !inputs.ceilingRooms.length && !inputs.sillRegions.length) {
+    throw new Error('overlay.yaml declares no paint surfaces');
+  }
   const ceilingAreaByRoom: Record<string, number> = {};
   const roomById = new Map(layout.rooms.map((room) => [room.id, room]));
   const declaredRooms = new Set(inputs.regions.map((region) => region.room));
-  const ceilingRoomIds = new Set(inputs.ceilingRooms.map((region) => region.room));
+  const ceilingRoomIds = new Set<string>();
+  for (const region of inputs.ceilingRooms) {
+    if (ceilingRoomIds.has(region.room)) {
+      throw new Error(`multiple paint_ceiling_region declarations for room ${region.room}; current selector supports one full-room ceiling footprint`);
+    }
+    ceilingRoomIds.add(region.room);
+  }
   const ceilingZones = loadCeilingConfig();
   for (const roomId of ceilingRoomIds) {
     const room = roomById.get(roomId);
@@ -368,9 +374,6 @@ export function computePaintScopeForLayout(
       `paint_region declarations diverge from house.yaml wall_finish: declared-without-finish=[${drift.join(', ')}]; finish-without-declaration=[${undeclared.join(', ')}]`,
     );
   }
-  const ceilingMissing = [...declaredRooms].filter((id) => !ceilingRoomIds.has(id));
-  const ceilingExtra = [...ceilingRoomIds].filter((id) => !declaredRooms.has(id));
-  if (ceilingMissing.length || ceilingExtra.length) throw new Error(`paint_ceiling_region declarations diverge from paint rooms: missing=[${ceilingMissing.join(', ')}]; extra=[${ceilingExtra.join(', ')}]`);
   return scope;
 }
 

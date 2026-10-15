@@ -17,6 +17,12 @@ const MAX_SHADOW_LIGHTS = 2;
  * 不是灯具流明值。统一压低到 60% 以收敛夜景亮斑，不能用于反推照度或选型。
  */
 const LIGHTING_ENERGY_VISUAL_SCALE = 0.6;
+export type ColorAppearanceMode = 'eye-adapted' | 'raw-cct';
+const DEFAULT_COLOR_APPEARANCE: ColorAppearanceMode = 'eye-adapted';
+// A partial adaptation is deliberately used for preview: it moves the source
+// white point 70% toward D65 in Linear-sRGB, while retaining some CCT character.
+const EYE_ADAPTATION_D65_MIX = 0.7;
+const D65_LINEAR_WHITE = new THREE.Color().setRGB(1, 1, 1, THREE.LinearSRGBColorSpace);
 
 interface LightEntry {
   id: string;
@@ -31,33 +37,64 @@ interface LightEntry {
 
 // Keep every ceiling-mounted visual and its light source below the ceiling bottom.
 const CEILING_VISUAL_CLEARANCE = 0.05;
-const FIXTURE_EMISSIVE_ON = 1.4 * LIGHTING_ENERGY_VISUAL_SCALE;
+// The point/spot light is the illumination source. The visible diffuser only
+// needs a restrained glow; making it emit the full Kelvin color as well causes
+// the fixture mesh to add a second, warm light source to the scene.
+const FIXTURE_EMISSIVE_ON = 0.35 * LIGHTING_ENERGY_VISUAL_SCALE;
 const FIXTURE_EMISSIVE_OFF = 0.05;
+const FIXTURE_DIFFUSER_COLOR = 0xf7f7f2;
 
+/**
+ * Approximate the blackbody/Planckian locus in CIE 1931 xy, then convert the
+ * chromaticity to the renderer's Linear-sRGB working space.
+ *
+ * The xy polynomials are the standard Planckian-locus approximation over the
+ * range used by this preview (roughly 1667K–25000K). The historical
+ * 1000K–40000K input clamp is retained for API compatibility; values outside
+ * that useful range are extrapolated and gamut-clipped rather than presented as
+ * spectrally exact. The 3000/3500/4000K presets retain their existing meaning.
+ */
 function kelvinToColor(temperatureK: number): THREE.Color {
-  const temperature = Math.max(1000, Math.min(40000, temperatureK)) / 100;
-  let red: number;
-  let green: number;
-  let blue: number;
-
-  if (temperature <= 66) {
-    red = 255;
-    green = 99.4708025861 * Math.log(temperature) - 161.1195681661;
-    blue = temperature <= 19 ? 0 : 138.5177312231 * Math.log(temperature - 10) - 305.0447927307;
+  const temperature = Math.max(1000, Math.min(40000, temperatureK));
+  let x: number;
+  if (temperature <= 4000) {
+    x = -0.2661239e9 / temperature ** 3
+      - 0.2343580e6 / temperature ** 2
+      + 0.8776956e3 / temperature
+      + 0.179910;
   } else {
-    red = 329.698727446 * Math.pow(temperature - 60, -0.1332047592);
-    green = 288.1221695283 * Math.pow(temperature - 60, -0.0755148492);
-    blue = 255;
+    x = -3.0258469e9 / temperature ** 3
+      + 2.1070379e6 / temperature ** 2
+      + 0.2226347e3 / temperature
+      + 0.240390;
   }
 
-  // The approximation above produces display/sRGB channel values. Three.js r166
-  // stores working colors as Linear-sRGB, so convert before passing the color to
-  // lights or StandardMaterial emissive channels.
-  return new THREE.Color(
-    Math.max(0, Math.min(255, red)) / 255,
-    Math.max(0, Math.min(255, green)) / 255,
-    Math.max(0, Math.min(255, blue)) / 255,
-  ).convertSRGBToLinear();
+  const y = temperature < 2222
+    ? -1.1063814 * x ** 3 - 1.34811020 * x ** 2 + 2.18555832 * x - 0.20219683
+    : temperature < 4000
+      ? -0.9549476 * x ** 3 - 1.37418593 * x ** 2 + 2.09137015 * x - 0.16748867
+      : 3.0817580 * x ** 3 - 5.87338670 * x ** 2 + 3.75112997 * x - 0.37001483;
+
+  // XYZ with Y=1, followed by the CIE XYZ (D65) → Linear-sRGB matrix.
+  const X = x / y;
+  const Y = 1;
+  const Z = (1 - x - y) / y;
+  const red = 3.2406 * X - 1.5372 * Y - 0.4986 * Z;
+  const green = -0.9689 * X + 1.8758 * Y + 0.0415 * Z;
+  const blue = 0.0557 * X - 0.2040 * Y + 1.0570 * Z;
+  const scale = Math.max(red, green, blue, 1e-6);
+
+  return new THREE.Color().setRGB(
+    Math.max(0, red) / scale,
+    Math.max(0, green) / scale,
+    Math.max(0, blue) / scale,
+    THREE.LinearSRGBColorSpace,
+  );
+}
+
+function applyColorAppearance(color: THREE.Color, mode: ColorAppearanceMode): THREE.Color {
+  if (mode === 'raw-cct') return color.clone();
+  return color.clone().lerp(D65_LINEAR_WHITE, EYE_ADAPTATION_D65_MIX);
 }
 
 export class InteriorLightingSystem {
@@ -68,6 +105,7 @@ export class InteriorLightingSystem {
   private mode: 'auto' | 'manual' = 'auto';
   private temperatureOverrideK: number | null = null;
   private brightnessMultiplier = 1;
+  private colorAppearanceMode: ColorAppearanceMode = DEFAULT_COLOR_APPEARANCE;
   private roomOverrides = new Map<string, boolean>();
   private shadowCount = 0;
 
@@ -86,7 +124,8 @@ export class InteriorLightingSystem {
   }
 
   private addLight(fixture: RenderLightingFixture): void {
-    const color = kelvinToColor(fixture.temperatureK);
+    const rawColor = kelvinToColor(fixture.temperatureK);
+    const color = applyColorAppearance(rawColor, this.colorAppearanceMode);
     const { x, y, z } = fixture.position;
     let light: THREE.Light;
     let lights: THREE.Light[];
@@ -237,7 +276,9 @@ export class InteriorLightingSystem {
       visual,
       fixtureMats,
       baseEnergies: lights.map((item) => item.intensity),
-      baseColors: lights.map((item) => item.color.clone()),
+      // Keep the configured CCT in raw Linear-sRGB so changing appearance mode
+      // can re-derive both the light and the visible diffuser without rebuilding.
+      baseColors: lights.map(() => rawColor.clone()),
     });
   }
 
@@ -245,9 +286,9 @@ export class InteriorLightingSystem {
 
   private emissiveMat(color: THREE.Color): THREE.MeshStandardMaterial {
     return new THREE.MeshStandardMaterial({
-      // Keep the fixture diffuser in the same Kelvin-derived color as the light.
-      // A fixed warm-white base made 4000K sources look falsely warm and bright.
-      color: color.clone(),
+      // The diffuser is a neutral visible surface; only its restrained emissive
+      // channel carries the light's CCT. The light object does the actual lighting.
+      color: new THREE.Color(FIXTURE_DIFFUSER_COLOR),
       emissive: color.clone(),
       emissiveIntensity: FIXTURE_EMISSIVE_ON,
       roughness: 0.6,
@@ -405,10 +446,16 @@ export class InteriorLightingSystem {
     this.applyAppearance();
   }
 
+  setPreviewColorAppearanceMode(mode: ColorAppearanceMode): void {
+    this.colorAppearanceMode = mode === 'raw-cct' ? 'raw-cct' : DEFAULT_COLOR_APPEARANCE;
+    this.applyAppearance();
+  }
+
   /** Restore fixture temperatures and intensities from the active render config. */
   clearPreviewOverrides(): void {
     this.temperatureOverrideK = null;
     this.brightnessMultiplier = 1;
+    this.colorAppearanceMode = DEFAULT_COLOR_APPEARANCE;
     this.roomOverrides.clear();
     this.mode = 'auto';
     this.applyAppearance();
@@ -421,21 +468,30 @@ export class InteriorLightingSystem {
       .map((id) => ({ id, enabled: this.roomOverrides.get(id) ?? true }));
   }
 
-  getPreviewState(): { mode: 'auto' | 'manual'; manualOn: boolean; temperatureK: number | null; brightness: number } {
-    return { mode: this.mode, manualOn: this.on, temperatureK: this.temperatureOverrideK, brightness: this.brightnessMultiplier };
+  getPreviewState(): { mode: 'auto' | 'manual'; manualOn: boolean; temperatureK: number | null; brightness: number; colorAppearance: ColorAppearanceMode } {
+    return {
+      mode: this.mode,
+      manualOn: this.on,
+      temperatureK: this.temperatureOverrideK,
+      brightness: this.brightnessMultiplier,
+      colorAppearance: this.colorAppearanceMode,
+    };
   }
 
   private applyAppearance(): void {
     for (const entry of this.entries) {
-      const color = this.temperatureOverrideK === null
-        ? entry.baseColors[0]
-        : kelvinToColor(this.temperatureOverrideK);
+      const color = applyColorAppearance(
+        this.temperatureOverrideK === null ? entry.baseColors[0] : kelvinToColor(this.temperatureOverrideK),
+        this.colorAppearanceMode,
+      );
       entry.lights.forEach((light, index) => {
-        light.color.copy(this.temperatureOverrideK === null ? entry.baseColors[index] : color);
+        light.color.copy(this.temperatureOverrideK === null
+          ? applyColorAppearance(entry.baseColors[index], this.colorAppearanceMode)
+          : color);
         light.intensity = entry.baseEnergies[index] * LIGHTING_ENERGY_VISUAL_SCALE * this.brightnessMultiplier;
       });
       for (const material of entry.fixtureMats) {
-        material.color.copy(color);
+        material.color.setHex(FIXTURE_DIFFUSER_COLOR);
         material.emissive.copy(color);
         const roomOn = this.roomOverrides.get(entry.room) ?? true;
         material.emissiveIntensity = this.on && roomOn

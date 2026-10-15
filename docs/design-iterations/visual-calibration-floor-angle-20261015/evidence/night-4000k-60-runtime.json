@@ -1,0 +1,57 @@
+{
+  "status": "diagnostic_pre_eye_adaptation_mode",
+  "superseded_by": ["night-4000k-eye-adapted-runtime.json", "night-4000k-raw-cct-runtime.json"],
+  "captured_at": "2026-10-15T04:59:37.381Z",
+  "url": "http://127.0.0.1:5173/",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "config_error_banner_present": false,
+  "offline_banner_present": false,
+  "camera": {
+    "mode": "orbit",
+    "position": [12.6, 1.8, 8.6],
+    "target": [10.6, 0.5, 7.3]
+  },
+  "preview": {
+    "mode": "manual",
+    "manual_on": true,
+    "temperature_k": 4000,
+    "brightness_relative": 0.6,
+    "all_rooms_enabled": true,
+    "floor_rotation_deg": 0
+  },
+  "renderer": {
+    "output_color_space": "srgb",
+    "tone_mapping_constant": 7,
+    "tone_mapping": "THREE.NeutralToneMapping",
+    "tone_mapping_exposure": 1
+  },
+  "environment": null,
+  "global_lights": [
+    { "type": "AmbientLight", "visible": true, "intensity": 0 },
+    { "type": "DirectionalLight", "visible": false, "intensity": 0 },
+    { "type": "DirectionalLight", "visible": true, "intensity": 0 }
+  ],
+  "interior_light_count": 15,
+  "interior_lights": [
+    { "object_id": "light_dining_pendant", "room": "living_dining", "type": "SpotLight", "visible": true, "intensity": 9, "color": "ffd3a5" },
+    { "object_id": "light_living_dome", "room": "living_dining", "type": "PointLight", "visible": true, "intensity": 2.88, "color": "ffd3a5" },
+    { "object_id": "light_master_dome", "room": "master_bedroom", "type": "PointLight", "visible": true, "intensity": 2.88, "color": "ffd3a5" },
+    { "object_id": "light_parent_dome", "room": "study", "type": "PointLight", "visible": true, "intensity": 2.88, "color": "ffd3a5" },
+    { "object_id": "light_child_dome", "room": "bedroom_nw", "type": "PointLight", "visible": true, "intensity": 2.88, "color": "ffd3a5" },
+    { "object_id": "light_study_dome", "room": "bedroom_se", "type": "PointLight", "visible": true, "intensity": 2.88, "color": "ffd3a5" },
+    { "object_id": "light_corridor_1", "room": "living_dining", "type": "SpotLight", "visible": true, "intensity": 3.6, "color": "ffd3a5" },
+    { "object_id": "light_entry_down", "room": "entry_garden", "type": "SpotLight", "visible": true, "intensity": 3.6, "color": "ffd3a5" },
+    { "object_id": "light_entry_foyer", "room": "living_dining", "type": "SpotLight", "visible": true, "intensity": 3.6, "color": "ffd3a5" },
+    { "object_id": "light_kitchen_panel", "room": "kitchen", "type": "PointLight", "visible": true, "intensity": 2.88, "color": "ffd3a5" },
+    { "object_id": "night_guest_bed_side", "room": "bedroom_se", "type": "SpotLight", "visible": true, "intensity": 0.0648, "color": "ffd3a5" },
+    { "object_id": "night_guest_head", "room": "bedroom_se", "type": "SpotLight", "visible": true, "intensity": 0.0648, "color": "ffd3a5" },
+    { "object_id": "night_guest_door", "room": "living_dining", "type": "SpotLight", "visible": true, "intensity": 0.0648, "color": "ffd3a5" },
+    { "object_id": "night_living_north", "room": "living_dining", "type": "SpotLight", "visible": true, "intensity": 0.0648, "color": "ffd3a5" },
+    { "object_id": "night_corridor", "room": "living_dining", "type": "SpotLight", "visible": true, "intensity": 0.0648, "color": "ffd3a5" }
+  ],
+  "target_objects": [
+    { "object_id": "floor:living_dining", "type": "floor", "room_id": "living_dining" }
+  ],
+  "observation": "All global light intensities are zero and the environment is null; the 4000K/60% warm appearance is produced by the interior-only preview and current material/light approximation."
+}

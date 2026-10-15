@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { Box3 } from 'three';
+import { loadCeilingConfig } from '../../server/config-loader.js';
 import { parseOverlay, mergeSceneElements } from '../../server/overlay-merge.js';
 import { buildScene } from '../render/SceneBuilder.js';
 import { buildBaySillGeometry } from '../render/BaySillGeometry.js';
@@ -52,7 +53,13 @@ export interface FinishSceneMeshes {
 export function collectFinishSceneMeshes(layout: { walls: unknown[]; rooms: unknown[] }): FinishSceneMeshes {
   const overlay = parseOverlay(readFileSync(path.join(ROOT, 'config/layout/overlay.yaml'), 'utf8'));
   const elements = mergeSceneElements(layout.walls as any, overlay);
-  const scene = buildScene({ walls: layout.walls, rooms: layout.rooms, elements: elements as any, furnishings: {} } as any);
+  const scene = buildScene({
+    walls: layout.walls,
+    rooms: layout.rooms,
+    elements: elements as any,
+    ceilingZones: loadCeilingConfig(),
+    furnishings: {},
+  } as any);
   const root: any = (scene as any).exportRoot ?? (scene as any).root ?? scene;
   const meshIds = new Set<string>();
   const ceilingRooms = new Set<string>();
@@ -61,10 +68,15 @@ export function collectFinishSceneMeshes(layout: { walls: unknown[]; rooms: unkn
   root.traverse((object: any) => {
     const objectId = object?.userData?.objectId as string | undefined;
     if (objectId) meshIds.add(objectId);
-    if (object?.userData?.type === 'ceiling' && objectId?.startsWith('ceiling:')) {
-      ceilingRooms.add(objectId.slice('ceiling:'.length));
-    }
     const type = object?.userData?.type as string | undefined;
+    if (type === 'ceiling' && objectId?.startsWith('ceiling:')) {
+      ceilingRooms.add(String(object.userData.roomId ?? objectId.slice('ceiling:'.length)));
+    } else if (type === 'ceiling_zone_solid' && typeof object.userData.roomId === 'string') {
+      // Explicit ceiling zones (including zones owned by semantic_only rooms) are real
+      // ceiling geometry too. Include them so paint_ceiling_region checks do not infer
+      // an unattached surface merely because no default room ceiling was generated.
+      ceilingRooms.add(object.userData.roomId);
+    }
     if (!objectId || !type || !(FINISH_MESH_TYPES as readonly string[]).includes(type)) return;
     // 包围盒中心：Box3.setFromObject 用 geometry.boundingBox 过 matrixWorld，
     // 对面层网格这种 PlaneGeometry/ShapeGeometry 是精确的（盒的 8 个角就是平面的 4 个角）。

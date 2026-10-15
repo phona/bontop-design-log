@@ -119,7 +119,7 @@ interface CurtainRegistryEntry {
 
 interface ProjectData {
   house: {
-    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; wall_finish?: string; wallOpenings?: ResolvedOpening[]; points?: import('@shared/types').CurtainPoint[] }>;
+    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; semantic_only?: boolean; wall_finish?: string; wallOpenings?: ResolvedOpening[]; points?: import('@shared/types').CurtainPoint[] }>;
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
     ceilingZones?: import('@shared/types').CeilingZone[];
     furnishings?: FurnishingsYaml;
@@ -237,6 +237,14 @@ export class HouseScene implements SceneApi {
     this.camera.position.copy(this.ORBIT_POSITION);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    // Keep the browser preview on an explicit, stable display pipeline. Scene and
+    // material colors are evaluated in Linear-sRGB; the canvas is encoded as sRGB
+    // once at the renderer boundary. NeutralToneMapping keeps bright fixtures from
+    // clipping individual channels as aggressively as NoToneMapping while keeping
+    // material comparisons more neutral than a cinematic curve.
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.NeutralToneMapping;
+    this.renderer.toneMappingExposure = 1;
     this.renderer.setSize(canvas.clientWidth || window.innerWidth, canvas.clientHeight || window.innerHeight, false);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;

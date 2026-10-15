@@ -223,6 +223,9 @@ function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door
 }
 
 function addRoomGeometry(root: THREE.Group, room: ResolvedRoom, report: SceneBuildReport): void {
+  // semantic_only boundaries define ownership/adjacency for points and walls;
+  // their explicit floor_region / ceiling-zone declarations own the visible surfaces.
+  if (room.semantic_only) return;
   // ResolvedRoom.points are world/layout coordinates. Room meshes use a group-local
   // contour, then the mesh is translated back to the room center. In particular,
   // rounded-vertex cx/cz are converted together with x/z; never mix absolute and

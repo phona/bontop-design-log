@@ -50,14 +50,12 @@ function buildInput(tolerance = 0.01): FinishScopeInput {
   const ceilings: FinishScopeInput['ceilings'] = [];
   const roomRects: FinishScopeInput['roomRects'] = [];
   const ceilingPaintRooms = new Set<string>();
-  const wallPaintRooms = new Set<string>();
   const openings: FinishScopeInput['openings'] = [];
   for (const element of elements) {
     if (element.type === 'paint_ceiling_region') ceilingPaintRooms.add(element.room);
-    if (element.type === 'paint_region') wallPaintRooms.add(element.room);
   }
   const scene = collectFinishSceneMeshes(layout);
-  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, sceneMeshes: scene.meshes, sceneBayOutlines: scene.bayOutlines, tolerance };
+  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, sceneMeshes: scene.meshes, sceneBayOutlines: scene.bayOutlines, tolerance };
 }
 
 const TODAY = '2026-10-09';
@@ -178,7 +176,7 @@ test('finish-scope：豁免命中后降为 info（用合成输入，不依赖真
   assert.equal(noWaiver.issues[0].level, 'error', '砖漆互斥裁定后 F01 是 error');
 });
 
-// ── F05 顶面面层归属 ──────────────────────────────────────────────────────
+// ── 顶面涂装选择独立于墙面 ───────────────────────────────────────────────
 const withCeilings = (over: Partial<FinishScopeInput>): FinishScopeInput => ({
   ...buildInput(),
   walls: [], sills: [],
@@ -193,28 +191,19 @@ const withCeilings = (over: Partial<FinishScopeInput>): FinishScopeInput => ({
     { id: 'roomC', x: 1, z: 1, width: 2, depth: 2 },
   ],
   ceilingPaintRooms: new Set(['roomA']),
-  wallPaintRooms: new Set(['roomA', 'roomB', 'roomC']),
   ...over,
 });
 
-test('finish-scope F05：涂装范围内有石膏板吊顶却没登记顶面 → error（静默少算）', () => {
-  const issues = validateFinishScope(withCeilings({}));
-  const hits = issues.filter((i) => i.code === 'finish.ceiling_finish_unaccounted');
-  assert.equal(hits.length, 1, `只应报 roomC，实际 ${hits.map((h) => h.entity).join(',')}`);
-  assert.equal(hits[0].entity, 'roomC');
-  assert.equal(hits[0].level, 'error');
-  assert.equal((hits[0].evidence as any).footprintSqm, 4);
-});
-
-test('finish-scope F05：铝扣板整间的房间豁免（业主确认铝扣板不用刷漆）', () => {
-  const issues = validateFinishScope(withCeilings({}));
-  const roomB = issues.filter((i) => i.entity === 'roomB' && i.code === 'finish.ceiling_finish_unaccounted');
-  assert.equal(roomB.length, 0, 'roomB 整间铝扣板，顶面本就不刷漆，不该报');
-});
-
-test('finish-scope F05：完全不在涂装范围的房间豁免（如入户花园开发商已做好）', () => {
-  const issues = validateFinishScope(withCeilings({ wallPaintRooms: new Set(['roomA', 'roomB']) }));
-  assert.equal(issues.filter((i) => i.code === 'finish.ceiling_finish_unaccounted').length, 0, 'roomC 无 paint_region → 不在涂装范围，不查');
+test('有墙面漆而缺少 paint_ceiling_region 仍表示顶面未选，不推导为漏项', () => {
+  const input = buildInput();
+  assert.ok(input.walls.some((wall) => wall.room === 'main_corridor'), 'fixture 必须保留走廊墙面涂装');
+  input.ceilingPaintRooms?.delete('main_corridor');
+  assert.ok(!input.ceilingPaintRooms?.has('main_corridor'), 'fixture 必须移除走廊顶面涂装选择');
+  const issues = validateFinishScope(input);
+  assert.ok(
+    !issues.some((issue) => issue.code === 'finish.ceiling_finish_unaccounted'),
+    '墙面是否有 paint_region 不决定顶面是否涂装',
+  );
 });
 
 test('finish-scope F06：铝扣板矩形越出房间 → error（扣减口径错）', () => {

@@ -27,11 +27,11 @@ FONT = next((path for path in FONT_CANDIDATES if Path(path).exists()), '')
 PROP = fm.FontProperties(fname=FONT) if Path(FONT).exists() else None
 plt.rcParams['axes.unicode_minus'] = False
 
-BAND = {'x1': 7.20, 'x2': 13.40, 'z1': 4.30, 'z2': 5.20, 'bottom': 2.50, 'top': 2.80}
+BAND = {'x1': 7.20, 'x2': 13.40, 'z1': 4.30, 'z2': 5.55, 'bottom': 2.50, 'top': 2.80}
 MACHINES = {'ac_living': {'x': 10.30, 'model': '71T2 MJV-71T2/P-SS'}, 'ac_dining': {'x': 8.00, 'model': '42T2 MJV-42T2/P-SS'}}
 FUNCTIONAL = {'supply_living', 'return_living', 'supply_dining', 'return_dining', 'supply_living_bottom', 'supply_dining_bottom'}
 
-LAYER_Z = {'side_south': 5.19, 'side_north': 4.31, 'supply_bottom': 4.85, 'return_bottom': 4.45}
+LAYER_Z = {'side_south': 5.54, 'side_north': 4.31, 'supply_bottom': 4.85, 'return_bottom': 4.45}
 
 
 def load(relative):
@@ -40,7 +40,7 @@ def load(relative):
 
 
 def segments(hvac):
-    """返回 [(id, layer_key, x1, x2, functional)]。仅取客餐厅设备带（x[7.20,13.40] × z[4.30,5.20]）内的风口。"""
+    """返回 [(id, layer_key, x1, x2, functional)]。仅取客餐厅设备带（x[7.20,13.40] × z[4.30,5.55]）内的风口。"""
     out = []
     for terminal in hvac['plans'][0]['diagram']['terminals']:
         tid = terminal['id']
@@ -89,12 +89,12 @@ def draw_plan(ax, segs):
     ax.set_aspect('equal')
     ax.add_patch(patches.Rectangle((BAND['x1'], BAND['z1']), BAND['x2'] - BAND['x1'], BAND['z2'] - BAND['z1'],
                                    facecolor='#f8fafc', edgecolor='#0f172a', linewidth=1.4, zorder=1))
-    text(ax, (BAND['x1'] + BAND['x2']) / 2, BAND['z2'] + 0.12, '设备带 ceiling_living  x[7.20,13.40] × z[4.30,5.20]，完成面 2.50（本轮几何未动）',
+    text(ax, (BAND['x1'] + BAND['x2']) / 2, BAND['z2'] + 0.12, '设备带 ceiling_living  x[7.20,13.40] × z[4.30,5.55]，完成面 2.50（深度 1.25）',
          ha='center', fontsize=8.5, color='#0f172a')
     text(ax, BAND['x2'] + 0.12, (BAND['z1'] + BAND['z2']) / 2, '客厅侧（南）', fontsize=8, rotation=90, va='center', color='#475569')
     text(ax, BAND['x1'] - 0.12, (BAND['z1'] + BAND['z2']) / 2, '餐厅侧（北）', fontsize=8, rotation=90, va='center', color='#475569')
     layer_label = {
-        'side_south': '① 侧立面上出风层（南立面 z=5.20，y=2.65）',
+        'side_south': '① 侧立面上出风层（新南边界 z=5.55；百叶中心 z=5.56，y=2.65）',
         'side_north': '① 侧立面上出风层（北立面 z=4.30，y=2.65）',
         'supply_bottom': '② 底面前侧下出风层（z=4.85，y=2.50）',
         'return_bottom': '③ 底面后侧回风/检修层（z=4.45，y=2.49）',
@@ -143,7 +143,7 @@ def draw_plan(ax, segs):
 def draw_section(ax, cut_x, title, tags):
     """沿 z 向剖面（固定 x=cut_x）：横轴 z（北->南），纵轴 y 标高。
     表达设备带深度上的三层线：北/南立面侧出风、底面后侧回风/检修、底面前侧下出风。"""
-    z1, z2 = BAND['z1'], BAND['z2']  # 4.30 北（餐厅侧）-> 5.20 南（客厅侧）
+    z1, z2 = BAND['z1'], BAND['z2']  # 4.30 北（餐厅侧）-> 5.55 南（客厅侧）
     ax.set_aspect('equal')
     ax.add_patch(patches.Rectangle((z1 - 0.25, BAND['top']), (z2 - z1) + 0.5, 0.18, facecolor='#cbd5e1', edgecolor='#475569', linewidth=0.8, hatch='\\\\', zorder=2))
     text(ax, (z1 + z2) / 2, BAND['top'] + 0.09, '原顶/楼板 2.80', ha='center', va='center', fontsize=7.5, color='#1e293b')
@@ -156,7 +156,7 @@ def draw_section(ax, cut_x, title, tags):
     ax.add_patch(patches.Rectangle((z1 - 0.03, 2.60), 0.06, 0.12, facecolor='#111827', zorder=6))
     annotate(ax, tags['north'], xy=(z1, 2.66), xytext=(z1 - 0.30, 2.97), fontsize=6.4, ha='left',
              arrowprops=dict(arrowstyle='->', color='#111827', lw=0.7, connectionstyle='arc3,rad=-0.15'), color='#111827')
-    # 南立面（z=5.20）侧出风口
+    # 南立面（边界z=5.55，风口中心z=5.56）侧出风口
     ax.add_patch(patches.Rectangle((z2 - 0.03, 2.60), 0.06, 0.12, facecolor='#111827', zorder=6))
     annotate(ax, tags['south'], xy=(z2, 2.66), xytext=(z2 + 0.30, 2.97), fontsize=6.4, ha='left',
              arrowprops=dict(arrowstyle='->', color='#111827', lw=0.7, connectionstyle='arc3,rad=0.15'), color='#111827')
@@ -174,7 +174,7 @@ def draw_section(ax, cut_x, title, tags):
     annotate(ax, '', xy=(z2 + 0.62, 2.50), xytext=(z2 + 0.62, 2.35), arrowprops=dict(arrowstyle='<->', color='#475569', lw=0.7))
     text(ax, z2 + 0.67, 2.425, '净高\n2.50', fontsize=6.0, color='#475569', ha='left', va='center')
     annotate(ax, '', xy=(z1, BAND['top'] + 0.22), xytext=(z2, BAND['top'] + 0.22), arrowprops=dict(arrowstyle='<->', color='#475569', lw=0.7))
-    text(ax, (z1 + z2) / 2, BAND['top'] + 0.19, '设备带进深 0.90（z=4.30 -> 5.20）', fontsize=6.2, color='#475569', ha='center')
+    text(ax, (z1 + z2) / 2, BAND['top'] + 0.19, '设备带进深 1.25（z=4.30 -> 5.55）', fontsize=6.2, color='#475569', ha='center')
     text(ax, z1 - 0.10, 2.40, '北（餐厅侧）', fontsize=6.2, color='#475569', ha='right', va='center')
     text(ax, z2 + 0.10, 2.40, '南（客厅侧）', fontsize=6.2, color='#475569', ha='left', va='center')
     ax.set_xlim(z1 - 1.2, z2 + 1.9)

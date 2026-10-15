@@ -1,0 +1,166 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: visual-calibration-floor-angle-20261015
+subject: renderer颜色参考与全屋地面纹理旋转
+units: m
+coordinate_system: "Three.js 右手系；x 东西、z 南北、y 垂直。地面 UV 当前 U=x、V=-z。"
+status: frozen
+datums:
+  - id: global_floor_preview_angle
+    name: 全屋预演铺设角度
+    anchor:
+      kind: free_position
+      ref: "current world-aligned floor UV (U=x,V=-z)"
+      wall_side: null
+      service_ref: null
+    source_refs:
+      fact_refs: [floor_uv_axis]
+      decision_refs: [all_floor_angle_preview]
+    views:
+      plan:
+        required: true
+        origin: "local house origin"
+        axes: "x=east-west; z=north-south"
+        direction: "north=-z, south=+z"
+        position: {x: null, z: null}
+        rotation: 0
+        dimensions: {length: null, width: null, depth: null, offset: null}
+        dimension_semantics: not_applicable
+      elevation:
+        required: false
+        viewing_side: ""
+        vertical_axis: y
+        height: null
+        dimensions: {width: null, height: null, sill: null, datum_offset: null}
+        dimension_semantics: not_applicable
+      section:
+        required: false
+        cut_direction: ""
+        depth_axis: ""
+        clearances: {front: null, rear: null, top: null, bottom: null}
+        thickness: null
+        dimension_semantics: not_applicable
+    geometry:
+      x: null
+      y: null
+      z: null
+      width: null
+      depth: null
+      height: null
+      length: null
+      rotation: null
+      along: null
+    constraints:
+      - 0°重现目前全屋木纹长边东西向。
+      - 90°使长边转向南北向、垂直客厅南窗。
+      - 预演角度作用于全屋地面纹理，不改地面轮廓、砖缝施工排版或正式材料。
+    interfaces: [material_preview_state, TextureManager, all_floor_meshes]
+    validation_refs: ["evidence/floor-rotation-0deg-current.png", "evidence/floor-rotation-90deg-current.png", "evidence/floor-angle-current-runtime.json"]
+    status: verified
+  - id: display_reference
+    name: 4000K夜景显示校准
+    anchor:
+      kind: free_position
+      ref: "living_dining fixed camera / wall and floor material comparison"
+      wall_side: null
+      service_ref: null
+    source_refs:
+      fact_refs: [renderer_defaults, kelvin_is_rgb_approximation]
+      decision_refs: [visual_closer_to_eye]
+    views:
+      plan:
+        required: false
+        origin: ""
+        axes: ""
+        direction: ""
+        position: {x: null, z: null}
+        rotation: null
+        dimensions: {length: null, width: null, depth: null, offset: null}
+        dimension_semantics: not_applicable
+      elevation:
+        required: false
+        viewing_side: ""
+        vertical_axis: y
+        height: null
+        dimensions: {width: null, height: null, sill: null, datum_offset: null}
+        dimension_semantics: not_applicable
+      section:
+        required: false
+        cut_direction: ""
+        depth_axis: ""
+        clearances: {front: null, rear: null, top: null, bottom: null}
+        thickness: null
+        dimension_semantics: not_applicable
+    geometry:
+      x: null
+      y: null
+      z: null
+      width: null
+      depth: null
+      height: null
+      length: null
+      rotation: null
+      along: null
+    constraints:
+      - 夜景 global light 保持关闭。
+      - 机位、亮度倍率、材料与显示输出设置在色温 A/B 间保持固定。
+      - 默认肉眼适应显示与原始CCT色度显示必须能切换，并通过同机位截图对照。
+      - 结果仅为屏幕预演，不表示光谱或照度测量。
+    interfaces: [renderer_tone_mapping, cct_to_linear_srgb, eye_adaptation_mode, indoor_fixture_colors]
+    validation_refs: ["evidence/night-4000k-eye-adapted-current.png", "evidence/night-4000k-eye-adapted-current-runtime.json", "evidence/night-4000k-raw-cct-current.png", "evidence/night-4000k-raw-cct-current-runtime.json"]
+    status: verified
+  - id: main_corridor_paint_faces
+    name: 主走廊独立涂装面
+    anchor:
+      kind: room_anchor
+      ref: main_corridor
+      wall_side: null
+      service_ref: null
+    source_refs:
+      fact_refs: [main_corridor_actual_boundary_and_walls]
+      decision_refs: [main_corridor_independent_paint]
+    views:
+      plan:
+        required: true
+        origin: "主走廊西南角 (4.20, 4.30)"
+        axes: "x 东西向，z 南北向"
+        direction: "房间内部侧；只声明与 main_corridor footprint 相交的实体墙段"
+        position: {x: 5.70, z: 4.925}
+        rotation: 0
+        dimensions: {length: 3.0, width: 1.25, depth: null, offset: 0}
+        dimension_semantics: "平面语义范围；length 为东西向，width 为南北向；不开边不生成墙面声明"
+      elevation:
+        required: true
+        viewing_side: "main_corridor 房间侧"
+        vertical_axis: y
+        height: 2.8
+        dimensions: {width: null, height: 2.8, sill: 0, datum_offset: 0}
+        dimension_semantics: "沿 overlay paint_region 的物理墙段及门洞裁切，墙高取 model-geometry 声明"
+      section:
+        required: true
+        cut_direction: "沿主走廊南北向剖切，核对西/北/南三面实体墙与吊顶投影"
+        depth_axis: z
+        clearances: {front: null, rear: null, top: 0, bottom: 0}
+        thickness: null
+        dimension_semantics: "只核面层归属，不新增实体构件或改变墙体/门洞"
+    geometry:
+      x: 5.7
+      y: 0
+      z: 4.925
+      width: 3.0
+      depth: 1.25
+      height: 2.8
+      length: 3.0
+      rotation: 0
+      along: null
+    constraints:
+      - "w_strip_east: along[0.00,1.25]，房间在墙东侧。"
+      - "w_st_north: along[0.00,3.00]，房间在墙南侧；Study 门洞由现有 openings 扣除。"
+      - "w_nw_south: along[1.60,3.00]，仅覆盖 x[4.20,5.60] 的实体重叠段；Bedroom NW 门洞由现有 openings 扣除。"
+      - "东侧至 living_dining 开放贯通；南侧 x[5.60,7.20] 为开放洗漱/通行边；不得声明 paint_region。"
+      - "paint_ceiling_region footprint 与 main_corridor 房间同范围 3.75㎡；ceiling_main_corridor 的 room owner 改为 main_corridor，几何投影/厚度/标高保持不变。"
+    interfaces: [paint_region, paint_ceiling_region, paint_scope, room_wall_face_offset]
+    validation_refs: ["config/house.yaml", "config/layout/overlay.yaml", "shared/finish/scene.ts", "npm run verify:finish-scope", "npm run verify:all"]
+    status: verified
+notes:
+  - 本迭代不更改施工坐标或正式灯光/材料选择。

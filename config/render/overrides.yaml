@@ -49,9 +49,9 @@
   reason: "已审计 Blender 基线：书房吸顶灯为避免嵌入顶面，最终渲染锚点为 2.30m。"
   applies_to: [web, blender]
 - id: light_corridor_1
-  anchorY_offset: -0.3
-  basis: "走廊口筒灯嵌入既有 ceiling_living 边吊，挂点低于安装完成面 30cm 以落在边吊饰面内"
-  reason: "走廊口筒灯嵌入既有 ceiling_living 边吊，不新增吊顶；坐标由原 (7.9,5.75) 调整至既有边吊合法范围。"
+  anchorY_offset: 0
+  basis: "筒灯嵌入 ceiling_main_corridor 吊底，渲染锚点与安装完成面 y=2.50m 齐平"
+  reason: "灯位已移至主走廊 (5.70,4.90)，匹配 ceiling_main_corridor 吊底 y=2.50m；灯具嵌入吊底，不应再下沉 0.30m。"
   applies_to: [web, blender]
 - id: light_entry_down
   anchorY_offset: 0

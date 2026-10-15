@@ -84,7 +84,8 @@ function buildInput(): FinishScopeInput {
     };
   }
 
-  // 吊顶：zone 清单 + 房间外接矩形 + 两组房间集合（供 F05/F06 判定「在不在涂装范围」）
+  // 顶面：仅收集显式 paint_ceiling_region 选择；不从墙面涂装房间集合推导顶面范围。
+  // 吊顶 zone 清单仍供 F06 检查铝扣板扣减边界，F08 检查已选顶面是否有可附着实体。
   const ceilings: FinishScopeInput['ceilings'] = [];
   for (const zone of loadCeilingConfig() as any[]) {
     if (!zone.room) continue;
@@ -92,7 +93,6 @@ function buildInput(): FinishScopeInput {
   }
   const roomRects: FinishScopeInput['roomRects'] = (layout.rooms as any[]).map((room) => ({ id: room.id, x: room.x, z: room.z, width: room.width ?? 0, depth: room.depth ?? 0 }));
   const ceilingPaintRooms = new Set(elements.filter((e) => e.type === 'paint_ceiling_region').map((e) => e.room));
-  const wallPaintRooms = new Set(elements.filter((e) => e.type === 'paint_region').map((e) => e.room));
 
   // 门/窗洞：resolved layout 的 openings 带世界坐标 x/z/width，按 doorGapsOnWall 同款
   // 投影换算成沿墙区间（本模型墙均为单段，保留折线通用性）。
@@ -126,7 +126,7 @@ function buildInput(): FinishScopeInput {
   const scene = collectFinishSceneMeshes(layout as any);
 
   const config = loadFinishLintConfig();
-  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, wallPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, sceneMeshes: scene.meshes, sceneBayOutlines: scene.bayOutlines, tolerance: config.tolerance ?? 0.01, source: SOURCE };
+  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, sceneMeshes: scene.meshes, sceneBayOutlines: scene.bayOutlines, tolerance: config.tolerance ?? 0.01, source: SOURCE };
 }
 
 /**

@@ -576,6 +576,30 @@ test('shared track fixture applies local z offsets and rail rotation to geometry
   assert.equal(rail.rotation.y, Math.PI / 2);
 });
 
+test('semantic-only room resolves ownership without implicit surfaces or synthesized walls', () => {
+  const rooms = [{
+    id: 'main_corridor', name: '主走廊', x: 5.7, z: 4.925, width: 3, depth: 1.25,
+    height: 2.8, type: 'public' as const, semantic_only: true, boundary_count: 4,
+  }];
+  const noImplicitSurfaces = buildScene({ rooms, walls: [], elements: [] });
+  assert.equal(noImplicitSurfaces.index.rooms.main_corridor.id, 'main_corridor');
+  assert.equal(noImplicitSurfaces.exportRoot.getObjectByName('floor:main_corridor'), undefined);
+  assert.equal(noImplicitSurfaces.exportRoot.getObjectByName('ceiling:main_corridor'), undefined);
+  assert.equal(noImplicitSurfaces.report.rooms, 0);
+  assert.equal(noImplicitSurfaces.report.ceilings, 0);
+  assert.equal(noImplicitSurfaces.report.walls, 0);
+
+  const explicitFloor = buildScene({
+    rooms,
+    walls: [],
+    elements: [{
+      type: 'floor_region', id: 'main_corridor_floor',
+      points: [{ x: 4.2, z: 4.3 }, { x: 7.2, z: 4.3 }, { x: 7.2, z: 5.55 }, { x: 4.2, z: 5.55 }],
+    }],
+  });
+  assert.ok(explicitFloor.index.floorMeshes.some((mesh) => mesh.userData.objectId === 'main_corridor_floor'));
+});
+
 test('shared SceneBuilder uses meter UVs and stable floor metadata for rooms and floor regions', () => {
   const rooms = [
     { id: 'master_bedroom', name: '主卧', x: 2, z: 2, width: 4, depth: 4, height: 2.8, type: 'private' as const, boundary_count: 4 },

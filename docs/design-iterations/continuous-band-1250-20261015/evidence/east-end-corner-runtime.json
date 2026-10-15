@@ -1,0 +1,96 @@
+{
+  "config_error_banner": "",
+  "corridor_ceiling": {
+    "area": [
+      4.2,
+      4.3,
+      7.2,
+      5.55
+    ],
+    "id": "ceiling_main_corridor",
+    "note": "主走廊吊顶（藏多联机风管），净高约2.50m",
+    "pricing_form": "flat",
+    "room": "main_corridor",
+    "thickness": 0.3,
+    "type": "drop"
+  },
+  "corridor_light": {
+    "circuit": "entry_base",
+    "height": 2.5,
+    "id": "light_corridor_1",
+    "note": "历史旧位：坐标由原(7.9,5.75)调整至既有ceiling_living范围(7.9,5.0)，避开电视高柜x≤7.55并靠近走廊口；原点嵌入既有边吊、不新增吊顶；这些旧位理由和坐标由DEC-2026-10-15-C02覆盖。当前点：因距餐厅下出风槽投影边约75mm，迁至主走廊中段(5.70,4.90)，嵌入ceiling_main_corridor吊底y=2.50；归入lighting_entry_base的回路与开关控制拓扑保持，线路同步协调。开孔、上方风管/梁/冷媒/冷凝水/桥架与龙骨净距待现场复核；坐标是设计候选值，未实测。状态依据：lighting_entry_base回路confirmed，当前灯位为业主明确确认的预演位置。",
+    "recessed": true,
+    "room": "main_corridor",
+    "status": "inferred",
+    "temp": 3000,
+    "type": "downlight",
+    "x": 5.7,
+    "z": 4.9
+  },
+  "forward": [
+    0.5844618569909458,
+    0.4174727549935324,
+    -0.6957879249892206
+  ],
+  "living_ceiling": {
+    "area": [
+      7.2,
+      4.3,
+      13.4,
+      5.55
+    ],
+    "corner_radii": {
+      "ne": 0.1,
+      "nw": 0,
+      "se": 0.1,
+      "sw": 0
+    },
+    "id": "ceiling_living",
+    "note": "客厅北缘边吊（藏风管机+衔接走廊/门厅吊顶管线，侧送下回）；客厅中部保持原顶 2.80m（DEC-2026-10-13-R4 定案：不做石膏板平吊——原 note「原顶/石膏板平吊」是二选一的悬空表述，同时 strong-light-living 的 reason 写「平吊板上方敷设」、weak-ap 写「保持原顶」，控制源自相矛盾；定原顶后客厅中部无降板，电路走板面明装线槽，见 mep-hvac-coordination.yaml strong-light-living）；ac_living 为 71T2，ac_dining 为 42T2（业主确认房间型号映射）；两台机位沿同一边吊布置，中心距 2.3m。42T2 实际机身尺寸待核，边吊内净空及风口位置尚未按实机复核；本模型为设计预演，机位与吊顶均未施工冻结。2026-10-05 DEC-2026-10-05-R18 分区重构：两台内机安装方向相反——ac_living（71T2）水平送风朝南（客厅侧立面连续百叶）、ac_dining（42T2）整机旋转 180° 水平送风朝北（餐厅侧立面连续百叶，餐桌 x=7.90/z=3.45 在北侧）；两台的第二出风口均下出风至边吊底面 (10.30/8.00, 2.50, 4.85)，同一几何轴线、等宽 0.9m、同收口语言成组；回风口移至底面东西两端 (12.60/7.40, 2.49, 4.62) 避让下出风轴线；立面百叶有效段外以同规格装饰百叶延续线条。风口尺寸/下出风位置/回风与检修以实际机型与厂家安装图为约束。2026-10-05 R18 附则（业主审定细节语言）：设备带与餐厅侧交接保持正交几何，禁止斜切、喇叭口、渐变扩宽与多层台阶；仅外露转角小半径圆角 R100（corner_radius 0.10，与主卧门头盒同语言）；黑槽内部风道不做渐变/斜口，槽端正交收口、端头最多同语言小倒角，黑色内衬贴至圆角最深处不外露石膏；餐厅平顶与吊带北立面只做一次正交交接（当前餐厅无圈吊）。2026-10-07 DEC-2026-10-07-R03 三层线修正（只改风口表达与施工节点、不动吊顶几何/标高/梁体）：设备带读作三层水平线——侧立面上出风层（南 supply_living x[9.70,13.20] / 北 supply_dining x[7.70,9.70]，matte_black linear_slot）、底面前侧下出风层（z=4.85，supply_living_bottom x=10.30 / supply_dining_bottom x=8.00，各 0.9m）、底面后侧回风/检修层（z=4.45，return_living x=12.60 1.0m / return_dining x=7.90 0.9m，回风自此改 matte_black 与三层同语言）；非功能区以 8 个 LD-deco-* 封闭装饰段同款延续（背板封闭、无风道、不进 MEP 路线），两台内机送回风各自独立、不共用风道。；DEC-2026-10-15-C02：客厅边吊扩深至z=5.55，与主走廊同1.25m深、同吊底和石膏板可视面；西侧共边NW/SW方正，东侧外露NE/SE保留R100；南侧百叶中心移至z=5.56。仅作预演，实机净空待核。",
+    "pricing_form": "edge_drop",
+    "room": "living_dining",
+    "thickness": 0.3,
+    "type": "drop"
+  },
+  "mode": "first-person",
+  "position": [
+    12.2,
+    1.65,
+    6.8
+  ],
+  "presentation_overrides": {
+    "electrical_markers_hidden": 85,
+    "hvac_equipment_anchors_hidden": 19,
+    "hvac_status_lines_hidden": 14,
+    "mep_and_inspection_layers_hidden": true,
+    "plumbing_markers_hidden": 23,
+    "retained_electrical_fixture": "light_corridor_1"
+  },
+  "rotation": [
+    0.5404195002705843,
+    -0.6242166887762867,
+    0.3372779117570011,
+    "XYZ"
+  ],
+  "semantic_room": {
+    "area": 3.75,
+    "boundary_count": 4,
+    "depth": 1.25,
+    "height": 2.8,
+    "id": "main_corridor",
+    "name": "主走廊",
+    "needs_waterproof": false,
+    "semantic_only": true,
+    "type": "public",
+    "width": 3,
+    "x": 5.7,
+    "z": 4.925
+  },
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://127.0.0.1:5174/",
+  "view": "east-end-corner",
+  "viewport": {
+    "height": 577,
+    "width": 1280
+  }
+}

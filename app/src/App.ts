@@ -511,6 +511,11 @@ export class App {
         this.syncLightingPreviewPanel();
         this.requestRender();
       },
+      onColorAppearanceChange: (mode) => {
+        this.interiorLighting?.setPreviewColorAppearanceMode(mode);
+        this.syncLightingPreviewPanel();
+        this.requestRender();
+      },
       onBrightnessChange: (multiplier) => {
         this.interiorLighting?.setPreviewBrightness(multiplier);
         this.syncLightingPreviewPanel();
@@ -545,6 +550,7 @@ export class App {
       mode: systemState?.mode ?? 'auto',
       manualOn: systemState?.manualOn ?? false,
       temperatureK: systemState?.temperatureK ?? null,
+      colorAppearance: systemState?.colorAppearance ?? 'eye-adapted',
       brightness: systemState?.brightness ?? 1,
       rooms,
     };
@@ -595,6 +601,7 @@ export class App {
       floorMode: 'procedural',
       atlasId: this.materialPreviewAtlases[0]?.id ?? null,
       floorMattePercent: Math.round(floorRoughness * 100),
+      floorRotationDeg: 0,
       paintColor: paintAppearance?.color ?? '#f7f5ef',
       paintLabel: paintOption?.name ?? '自定义预演色',
     };
@@ -608,12 +615,17 @@ export class App {
 
   private getPreviewFloorAppearance(optionId: string, state?: MaterialPreviewPanelState): MaterialAppearance | undefined {
     const base = this.getFloorAppearance(optionId);
-    if (!base || !state || optionId !== state.floorId) return base;
+    if (!base || !state) return base;
+    const rotationDeg = Number.isFinite(state.floorRotationDeg)
+      ? Math.min(90, Math.max(0, state.floorRotationDeg))
+      : 0;
+    if (optionId !== state.floorId) return { ...base, rotationDeg };
     const atlas = state.atlasId ? this.materialPreviewAtlases.find((candidate) => candidate.id === state.atlasId) : undefined;
     return {
       ...base,
       mode: state.floorMode,
       roughness: state.floorMattePercent / 100,
+      rotationDeg,
       ...(state.floorMode === 'manufacturer_atlas' && atlas ? { manufacturerAtlas: atlas.atlas } : {}),
     };
   }
@@ -651,7 +663,7 @@ export class App {
   private captureVisualPreviewSnapshot(): VisualPreviewSnapshot {
     const scheme = this.officialScheme;
     const material = this.materialPreviewState ?? (scheme ? this.makeMaterialPreviewState(scheme) : {
-      floorId: '', floorMode: 'procedural' as const, atlasId: null, floorMattePercent: 85, paintColor: '#f7f5ef', paintLabel: '自定义预演色',
+      floorId: '', floorMode: 'procedural' as const, atlasId: null, floorMattePercent: 85, floorRotationDeg: 0, paintColor: '#f7f5ef', paintLabel: '自定义预演色',
     });
     return {
       material: { ...material },
@@ -694,6 +706,7 @@ export class App {
     lights.setPreviewMode(state.mode, state.manualOn);
     this.houseScene.getEnvironmentManager().setInteriorOnlyNightPreview(state.mode === 'manual');
     lights.setPreviewTemperature(state.temperatureK);
+    lights.setPreviewColorAppearanceMode(state.colorAppearance ?? 'eye-adapted');
     lights.setPreviewBrightness(state.brightness);
     const enabledByRoom = new Map(state.rooms.map((room) => [room.id, room.enabled]));
     for (const room of lights.getPreviewRooms()) {

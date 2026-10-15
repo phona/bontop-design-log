@@ -1,0 +1,234 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "visual-calibration-floor-angle-20261015",
+  "subject": "4000K夜景显示校准、全屋地面角度预演与主走廊独立涂装",
+  "state": "delivery_ready",
+  "source_version": {
+    "config_refs": [
+      "config/house.yaml",
+      "config/layout/overlay.yaml",
+      "config/ceiling.yaml",
+      "config/layout/model-geometry.yaml",
+      "config/mep-hvac-coordination.yaml"
+    ],
+    "asset_refs": ["config/materials.yaml", "data/current-scheme.json"],
+    "render_facts_ref": "data/project-render-facts.json",
+    "source_digest": "app/src/render/HouseScene.ts:f7cd64db2580c18b593c860219f8b9788e0f3fdec78937a177da6d1535fd595d; app/src/render/InteriorLightingSystem.ts:415039199d79b215eed073387cdbf52323018a590458525eb6c6b553296a0cc7; app/src/ui/LightingPreviewPanel.ts:768c218edac49881704f58c8a16bfffe6575c015591bdce6a97e2f52ded238ef; app/src/render/TextureManager.ts:3412f73065dd1d0da1c8100566c2a784a66b49f958e401ccd5795d9c42f91619; app/src/ui/MaterialPreviewPanel.ts:14dff8e2de686f8c74e247a3e07c24843dccca350ae0bc2d763cba7643fb46de; app/src/App.ts:179a8f7b142a9e295fc890d66cd68789bc069348152991203c4f58463893eb3e; shared/types.ts:872543da0cf7f7c02d8ea15781435f82a57c2e04ec2c7813195d0af568f12ef8; shared/finish/scene.ts:c7b1d7a5db4c483490ddda13b750caa982dec017026f8c20ca684eb92c621896; config/house.yaml:f9e940c20293e98a94602a33ce3ffea6a6f06d391e748ffdf18954f90f778566; config/layout/overlay.yaml:cc75d470c5cee67ac8af33c5ed01b14885b3bb6e864146f59abbda8dbeb6eb67; config/ceiling.yaml:9ba9ba68919becbf6df64313c3d63f7f8284db741af328dff79e5d414cdba4b9; config/layout/model-geometry.yaml:585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f; config/mep-hvac-coordination.yaml:1198752efc2443c8c10e7859a22925d2e1f4a1c95b1d4b0bbf9fdfc8080ebb4d; data/project-render-facts.json:5a55313f9585c8047f1bc3637ded960ca3e8488a6ae5963c485199eac81dce08",
+    "generated_at": "2026-10-15T09:10:11Z"
+  },
+  "validation": {
+    "commands": [
+      "npm run generate:project-render-facts",
+      "npm run verify:mep",
+      "npm run verify:all (includes finish-scope)",
+      "npm run typecheck",
+      "VISUAL_GATE_API=http://127.0.0.1:5173 npm run gate:visual"
+    ],
+    "results": [
+      { "command": "npm run generate:project-render-facts", "result": "PASS", "time": "2026-10-15T08:43:01Z", "output_ref": "data/project-render-facts.json" },
+      { "command": "npm run verify:mep", "result": "PASS: 0 errors, 129 warnings", "time": "2026-10-15T09:15:46Z", "output_ref": "conversation:final-verify-mep" },
+      { "command": "verify:finish-scope (via npm run verify:all)", "result": "PASS: 0 errors, 0 warnings", "time": "2026-10-15T09:10:11Z", "output_ref": "conversation:final-verify-all" },
+      { "command": "npm run verify:all", "result": "PASS: 17/17; MEP 0 errors", "time": "2026-10-15T09:25:08Z", "output_ref": "conversation:post-fact-table-verify-all" },
+      { "command": "npm run typecheck", "result": "PASS", "time": "2026-10-15T09:10:11Z", "output_ref": "conversation:final-typecheck" },
+      { "command": "VISUAL_GATE_API=http://127.0.0.1:5173 npm run gate:visual", "result": "CLEAR", "time": "2026-10-15T09:10:11Z", "output_ref": "conversation:final-visual-gate" }
+    ],
+    "config_status": "PASS",
+    "geometry_status": "NOT_APPLICABLE",
+    "consistency_status": "PASS",
+    "functional_checks_status": "PASS",
+    "application_status": "PASS",
+    "typecheck_status": "PASS",
+    "generated_files_touched_directly": false
+  },
+  "evidence": [
+    {
+      "id": "night_4000k_eye_adapted",
+      "url": "http://127.0.0.1:5173/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T08:51:11Z",
+      "config_error_banner": "",
+      "target_objects": ["客餐厅地面、家具和室内灯具"],
+      "target_object_ids": ["floor:living_dining", "light_living_dome", "light_dining_pendant"],
+      "runtime_query_refs": ["evidence/night-4000k-eye-adapted-current-runtime.json"],
+      "camera": { "mode": "orbit perspective interior", "is_overview": false, "position": [12.6, 1.8, 8.6], "target": [10.6, 0.5, 7.3], "view_type": "perspective" },
+      "snapshot_path": "evidence/night-4000k-eye-adapted-current-snapshot.txt",
+      "screenshot_path": "evidence/night-4000k-eye-adapted-current.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "night_4000k_raw_cct",
+      "url": "http://127.0.0.1:5173/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T08:52:08Z",
+      "config_error_banner": "",
+      "target_objects": ["客餐厅地面、家具和室内灯具"],
+      "target_object_ids": ["floor:living_dining", "light_living_dome", "light_dining_pendant"],
+      "runtime_query_refs": ["evidence/night-4000k-raw-cct-current-runtime.json"],
+      "camera": { "mode": "orbit perspective interior", "is_overview": false, "position": [12.6, 1.8, 8.6], "target": [10.6, 0.5, 7.3], "view_type": "perspective" },
+      "snapshot_path": "evidence/night-4000k-raw-cct-current-snapshot.txt",
+      "screenshot_path": "evidence/night-4000k-raw-cct-current.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "floor_rotation_0deg",
+      "url": "http://127.0.0.1:5173/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T08:58:19Z",
+      "config_error_banner": "",
+      "target_objects": ["全屋地面纹理"],
+      "target_object_ids": ["floor:living_dining", "main_corridor_floor"],
+      "runtime_query_refs": ["evidence/floor-angle-current-runtime.json"],
+      "camera": { "mode": "orbit perspective interior", "is_overview": false, "position": [12.6, 1.8, 8.6], "target": [10.6, 0.5, 7.3], "view_type": "perspective" },
+      "snapshot_path": "evidence/floor-rotation-0deg-current-snapshot.txt",
+      "screenshot_path": "evidence/floor-rotation-0deg-current.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "floor_rotation_90deg",
+      "url": "http://127.0.0.1:5173/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T08:58:19Z",
+      "config_error_banner": "",
+      "target_objects": ["全屋地面纹理"],
+      "target_object_ids": ["floor:living_dining", "main_corridor_floor"],
+      "runtime_query_refs": ["evidence/floor-angle-current-runtime.json"],
+      "camera": { "mode": "orbit perspective interior", "is_overview": false, "position": [12.6, 1.8, 8.6], "target": [10.6, 0.5, 7.3], "view_type": "perspective" },
+      "snapshot_path": "evidence/floor-rotation-90deg-current-snapshot.txt",
+      "screenshot_path": "evidence/floor-rotation-90deg-current.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "main_corridor_paint_runtime",
+      "url": "http://127.0.0.1:5173/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T09:27:43Z",
+      "config_error_banner": "",
+      "target_objects": ["主走廊三段涂漆墙脸、吊顶实体"],
+      "target_object_ids": ["paint_main_corridor_w_strip_east", "paint_main_corridor_w_st_north", "paint_main_corridor_w_nw_south", "ceiling:ceiling_main_corridor"],
+      "runtime_query_refs": ["evidence/main-corridor-paint-runtime.json"],
+      "camera": { "mode": "orbit top-down for room/mesh inventory", "is_overview": true, "position": [7.4, 14, 19.2], "target": [7.4, 0, 3.65], "view_type": "plan" },
+      "screenshot_path": null,
+      "png_exists": false,
+      "png_readable": false,
+      "non_empty_screenshot": false,
+      "status": "valid_runtime_only",
+      "invalid_reason": null,
+      "note": "涂装图层默认隐藏；runtime 记录开关前后状态、8 个可见墙漆网格、5 个吊顶实体及 finish-scope 0/0。/api/project 与 /api/budget 均为 200；paint comparison preview 为墙面 10.15㎡、顶面 3.75㎡，但当前不并入预算总额。涂装层打开时会全屋显示，因此不把遮挡视野的诊断截图作为有效证据。"
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": [
+      "默认 eye-adapted 明显降低 raw CCT 的橙黄，地面变为较自然的浅木色；墙面、餐桌、电视柜和沙发仍有可辨的颜色层次，没有冷白漂移。",
+      "raw CCT 仍显暖，但作为对照模式符合预期。0°/90°木纹板缝方向差异清楚，可用于铺向预演。",
+      "只有当前具备 roughness map 的 11 个表面会同步旋转粗糙度贴图；其余表面仍旋转颜色和法线贴图。"
+    ],
+    "evidence_refs": [
+      "evidence/night-4000k-eye-adapted-current.png",
+      "evidence/night-4000k-raw-cct-current.png",
+      "evidence/floor-rotation-0deg-current.png",
+      "evidence/floor-rotation-90deg-current.png",
+      "evidence/floor-angle-current-runtime.json"
+    ],
+    "requested_changes": [],
+    "assumptions": ["审美结论覆盖屏幕预演；没有灯具 SPD/IES、材料实测 Lab/反射率，不代表物理光谱或照度。"]
+  },
+  "functional_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": [
+      "main_corridor 的三面墙、门洞区间、房间侧和 3.75㎡ 顶面与运行时网格一致；开放边未补墙。",
+      "paint comparison preview 暴露主走廊净墙面 10.15㎡ + 顶面 3.75㎡；该范围仅用于比较，不并入 totalActual 或分类合计。",
+      "finish scene collector 加载 ceiling config 并识别 ceiling_zone_solid.roomId，不会把顶面实体加入墙面 finish mesh 清单。",
+      "raw CCT/eye-adapted 色温状态进入 A/B 快照；角度预设 A=0°、B=90°；正式 current-scheme 未变。",
+      "验证结果：finish-scope 0 errors/0 warnings，verify:all 17/17，typecheck PASS，gate:visual CLEAR。",
+      "MEP YAML 语法验证为 0 errors、129 warnings；其中 26 条仍被分桶为交底前必须清除，82 条依赖量房复判，21 条属于包络/近似警告。"
+    ],
+    "evidence_refs": [
+      "config/house.yaml:193-204",
+      "config/layout/overlay.yaml:688-709,852-855",
+      "config/ceiling.yaml:137-143",
+      "shared/finish/scene.ts:53-80",
+      "evidence/main-corridor-paint-runtime.json",
+      "evidence/floor-angle-current-runtime.json",
+      "evidence/night-4000k-eye-adapted-current-runtime.json",
+      "evidence/night-4000k-raw-cct-current-runtime.json"
+    ],
+    "requested_changes": [],
+    "assumptions": ["未绑定实物灯具光谱与材料色样，涉及照度/色差的结论仍为 site_pending。"]
+  },
+  "substantive_content_review": {
+    "deleted": [
+      "没有删除墙体、门洞、灯位、家具、几何坐标、正式墙漆色号、正式地砖选择或灯具 SKU。",
+      "界面默认显示由 raw CCT 切换为 eye-adapted；raw CCT 对照功能仍保留。",
+      "fact-table 的旧 present-tense renderer/Kelvin 实现描述已改写为历史基线，并记录当前实现；对应旧截图与数值依据保留。",
+      "work-record 旧的“等待涂装决策”段落已替换为业主恢复决定与当前验收结果；并发回退事件仍作为历史审计保留。"
+    ],
+    "superseded": [
+      "业主最新决定 supersede 历史 continuous-band 轮次中“主走廊 semantic_only、不独立涂装”的结论；本轮恢复 wall_finish、三面和一顶。",
+      "默认 eye-adapted 证据推翻了“4000K/60%默认画面仍明显琥珀”的旧判断；该判断仍适用于 raw CCT 对照模式。"
+    ],
+    "silent_failure_conditions": [
+      "main_corridor footprint、墙线、door opening、room side 或 ceiling owner/projection 变化而未重算沿程和重跑 finish-scope。",
+      "新增 ceiling geometry 类型却未纳入 finish scene collector 的 ceilingRooms 采集。",
+      "服务端配置/生成 render facts 与浏览器缓存不一致时，旧运行时截图可能对应过期 source version；需重载并检查 ready/config error/source digest。",
+      "真实灯具 SPD/IES、实物墙/地反射率或亮度明显超出当前预演时，eye-adapted 显示不能保证实景同色。",
+      "某材质缺少 roughness map 时，该通道不会随铺向旋转。"
+    ]
+  },
+  "risks": [
+    "屏幕灯光预演不是照度、流明、SPD/IES 或显色指数测量。",
+    "地面纹理旋转不等于施工砖缝排版。",
+    "MEP lint 仍有 129 warnings（26 条交底前必须清除、82 条量房后复判、21 条包络/近似）；与本轮渲染预演无关，但交底前仍需处理。",
+    "没有运行测试套件；已按当前任务授权运行验证脚本、typecheck 与视觉门禁。"
+  ],
+  "retrospective": {
+    "triggered": true,
+    "triggers": ["业主确认后，工作区并发修改曾再次移除独立涂装声明"],
+    "records": ["当前 work-record 明确记录恢复决定、历史版本处理和重新生成的同源证据"],
+    "rebaselined": true
+  },
+  "delivery": {
+    "status": "complete",
+    "blocking_issues": [],
+    "completion_conditions": [
+      "4000K 默认 eye-adapted、raw CCT 可切换；浏览器两态同机位 4000K/60% 均可复现。",
+      "全屋角度 0–90°同步纹理，A/B 预设有效，正式地材选择不变。",
+      "主走廊独立墙顶范围与现有物理墙、门洞、吊顶投影一致且通过 finish-scope。",
+      "typecheck、verify:all、视觉门禁通过；审美和功能独立复核均 PASS。"
+    ],
+    "follow_up_site_pending": [
+      "获取灯具最终 SKU、SPD/IES、安装高度和配光数据，以校准实际照度与暖色外观。",
+      "获得斯托白实刷样和候选砖实物色样的测色/光泽数据，复核墙地夜景色彩。"
+    ],
+    "delivery_ready": true
+  }
+}

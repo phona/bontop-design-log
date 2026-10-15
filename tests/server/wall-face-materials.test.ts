@@ -61,15 +61,15 @@ test('异 finish 共墙用材质数组且左右面归属正确（w_gbath_west）
   assert.equal(materials[0], materials[1], '两端头槽位共用基础材质');
 });
 
-test('同房间两脸与单侧临空墙保持单材质（w_gbath_south / w_st_north）', () => {
+test('同房间两脸保持单材质，走廊语义侧归属到主走廊（w_gbath_south / w_st_north）', () => {
   const scene = sceneWithFaces();
   for (const mesh of meshesOfWall(scene.exportRoot, 'w_gbath_south')) {
     assert.ok(!Array.isArray(mesh.material), '客卫南墙两侧同为 guest_bath，应保持单材质');
     assert.equal(mesh.userData.faceRooms, undefined);
   }
   for (const mesh of meshesOfWall(scene.exportRoot, 'w_st_north')) {
-    assert.ok(!Array.isArray(mesh.material), '书房北墙北侧临走廊（无房间），应保持单材质');
-    assert.equal(mesh.userData.faceRooms, undefined);
+    assert.ok(Array.isArray(mesh.material), '书房北墙两侧分别是 study 与 semantic-only main_corridor，应按面归属');
+    assert.deepEqual(mesh.userData.faceRooms, { left: 'study', right: 'main_corridor' });
   }
 });
 

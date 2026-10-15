@@ -136,8 +136,6 @@ export interface FinishScopeInput {
   sceneBayOutlines?: Map<string, Array<{ x: number; z: number }>>;
   /** 有 paint_ceiling_region 声明的房间（顶面已登记）。 */
   ceilingPaintRooms?: Set<string>;
-  /** 有 paint_region 声明的房间（在涂装范围内）。 */
-  wallPaintRooms?: Set<string>;
   tolerance?: number;
   source?: string;
 }
@@ -368,43 +366,6 @@ export function checkPaintOutsideRoom(input: FinishScopeInput): FinishIssue[] {
         evidence: { wall: span.wall, room: span.room, distanceFromM: +dFrom.toFixed(3), distanceToM: +dTo.toFixed(3), from: { x: +from.x.toFixed(3), z: +from.z.toFixed(3) }, to: { x: +to.x.toFixed(3), z: +to.z.toFixed(3) } },
       });
     }
-  }
-  return issues;
-}
-
-/**
- * F05 顶面面层归属未登记：房间**在涂装范围内**（有 paint_region）、吊顶里有**非铝扣板**
- * zone（= 石膏板，要刷漆），却没有 paint_ceiling_region 声明。
- *
- * 失败模式是**静默少算**：`computePaintScope` 的 ceilingAreaByRoom 只对有
- * paint_ceiling_region 的房间建项，漏声明的房间顶面一律按 0 计，不报错也不告警。
- *
- * 铝扣板整间的房间豁免（业主 2026-10-09 确认「铝扣板不用刷漆」）——那种房间顶面
- * 本来就不该有漆面，声明与否都记 0。完全不在涂装范围的房间也豁免。
- */
-export function checkCeilingFinishUnaccounted(input: FinishScopeInput): FinishIssue[] {
-  const issues: FinishIssue[] = [];
-  const ceilings = input.ceilings ?? [];
-  const roomRects = new Map((input.roomRects ?? []).map((room) => [room.id, room]));
-  const declared = input.ceilingPaintRooms ?? new Set<string>();
-  const inPaintScope = input.wallPaintRooms ?? new Set<string>();
-  const paintableByRoom = new Map<string, FinishCeilingZone[]>();
-  for (const zone of ceilings) {
-    if (zone.type === 'aluminum_buckle') continue;
-    if (!paintableByRoom.has(zone.room)) paintableByRoom.set(zone.room, []);
-    paintableByRoom.get(zone.room)!.push(zone);
-  }
-  for (const [roomId, zones] of paintableByRoom) {
-    if (declared.has(roomId)) continue;
-    if (!inPaintScope.has(roomId)) continue;   // 整间不在涂装范围（如入户花园开发商已做好）
-    const room = roomRects.get(roomId);
-    issues.push({
-      level: 'error',
-      code: 'finish.ceiling_finish_unaccounted',
-      entity: roomId,
-      message: `房间 ${roomId} 在涂装范围内（有 paint_region）且有 ${zones.length} 段非铝扣板吊顶（${[...new Set(zones.map((z) => z.type))].join('/')}），但没有 paint_ceiling_region——顶面漆面会按 0 静默少算`,
-      evidence: { room: roomId, paintableZones: zones.map((z) => z.id), types: [...new Set(zones.map((z) => z.type))], footprintSqm: room ? +(room.width * room.depth).toFixed(3) : null },
-    });
   }
   return issues;
 }
@@ -697,7 +658,6 @@ export function validateFinishScope(input: FinishScopeInput): FinishIssue[] {
     ...checkSillFinishDuplicate(input),
     ...checkPaintDuplicateSameSide(input),
     ...checkPaintOutsideRoom(input),
-    ...checkCeilingFinishUnaccounted(input),
     ...checkBuckleZoneOutsideRoom(input),
     ...checkFinishOverOpening(input),
     ...checkDeclarationAttached(input),

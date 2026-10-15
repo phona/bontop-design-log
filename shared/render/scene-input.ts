@@ -19,6 +19,7 @@ export interface SceneInputSource {
     depth: number;
     height: number;
     type?: string;
+    semantic_only?: boolean;
     boundary_count?: number;
     points?: ResolvedRoom['points'];
     wallOpenings?: ResolvedRoom['wallOpenings'];
@@ -114,7 +115,9 @@ export function parseSceneInput(source: SceneInputSource): SceneInput {
         ...(element.rooms ? { rooms: [...element.rooms] } : {}),
       }));
   }
-  if (walls.length === 0 && suppliedElements.length === 0) walls = rectangleWalls(rooms);
+  if (walls.length === 0 && suppliedElements.length === 0) {
+    walls = rectangleWalls(rooms.filter((room) => !room.semantic_only));
+  }
 
   const suppliedWallElements = suppliedElements.filter((element) => element.type === 'wall');
   const elementWallIds = new Set(suppliedWallElements.map((element) => element.id));

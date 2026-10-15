@@ -190,6 +190,22 @@ rooms:
       - "餐桌 1.6m × 0.8m"
       - "电视柜 / 投影幕布位"
 
+  - name: "主走廊"
+    id: "main_corridor"
+    type: "public"
+    wall_finish: "paint"
+    needs_waterproof: false
+    width: 3.00
+    length: 1.25
+    height: 2.8
+    area: 3.75
+    status: "design"
+    orientation: "东西向"
+    notes: "开放式 semantic_only 主走廊区域，与model-geometry边界和ceiling_main_corridor投影一致；按实际存在的三段实体墙脸及对应吊顶独立计涂装，东侧开放接客餐厅且南侧部分开放，不新增实体隔墙。"
+    windows: []
+    doors: []
+    furniture_concept: []
+
   - name: "厨房"
     id: "kitchen"
     type: "service"

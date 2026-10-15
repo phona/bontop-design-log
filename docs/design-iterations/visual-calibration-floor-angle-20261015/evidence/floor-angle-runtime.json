@@ -1,0 +1,53 @@
+{
+  "captured_at": "2026-10-15T05:01:08.835Z",
+  "url": "http://127.0.0.1:5173/",
+  "ready": true,
+  "control": { "min_deg": 0, "max_deg": 90, "step_deg": 5 },
+  "surfaces": {
+    "room_floor_count": 10,
+    "transition_floor_region_count": 5,
+    "total_count": 15,
+    "ids": [
+      "floor:master_bedroom",
+      "floor:study",
+      "floor:living_dining",
+      "floor:master_bath",
+      "floor:bedroom_nw",
+      "floor:guest_bath",
+      "floor:kitchen",
+      "floor:balcony",
+      "floor:entry_garden",
+      "floor:bedroom_se",
+      "entry_garden_floor",
+      "entry_foyer_floor",
+      "corridor_floor",
+      "main_corridor_floor",
+      "north_platform_floor"
+    ],
+    "at_0_deg": { "all_color_maps_deg": 0, "all_normal_maps_deg": 0 },
+    "at_90_deg": {
+      "all_color_maps_deg": 90,
+      "all_normal_maps_deg": 90,
+      "roughness_maps_with_texture_count": 11,
+      "all_present_roughness_maps_deg": 90
+    }
+  },
+  "ab_presets": { "A_floor_rotation_deg": 0, "B_floor_rotation_deg": 90 },
+  "current_preview_angle_deg": 0,
+  "official_floor_selection_unchanged": {
+    "default": "floor_tile_kt_200x1200_01",
+    "roomOverrides": {
+      "master_bath": "floor_tile_antislip_400",
+      "guest_bath": "floor_tile_deco_small",
+      "balcony": "floor_tile_antislip_400"
+    }
+  },
+  "evidence_pngs": [
+    "floor-detail-rotation-0deg.png",
+    "floor-detail-rotation-90deg.png",
+    "floor-plan-rotation-0deg.png",
+    "floor-plan-rotation-90deg.png",
+    "floor-rotation-0deg-panel.png",
+    "floor-rotation-90deg-panel.png"
+  ]
+}

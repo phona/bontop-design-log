@@ -1,0 +1,81 @@
+{
+  "captured_at": "2026-10-15T08:53:21.002Z",
+  "status": "current_workspace_scope_check; not final design evidence",
+  "source_digest": "1491e49da4c372c772be7e02fc8d3280b030bb82f6d120c7a21c9e83a0d53567",
+  "url": "http://127.0.0.1:5177/?view=continuous-band-final-20261015",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "backend_online": true,
+  "config_error_banner": "",
+  "camera_mode": "orbit",
+  "camera": {
+    "position": {
+      "x": 7.400000000000001,
+      "y": 14,
+      "z": 19.2
+    },
+    "target": {
+      "x": 7.4,
+      "y": 0,
+      "z": 3.65
+    }
+  },
+  "main_corridor": {
+    "id": "main_corridor",
+    "semantic_only": true,
+    "wall_finish": "paint",
+    "paint_wall_regions": [
+      "paint_main_corridor_w_strip_east",
+      "paint_main_corridor_w_st_north",
+      "paint_main_corridor_w_nw_south"
+    ],
+    "paint_ceiling_region": "paint_ceiling_main_corridor"
+  },
+  "light_corridor_1": {
+    "id": "light_corridor_1",
+    "x": 5.7,
+    "z": 4.9,
+    "height": 2.5,
+    "room": "main_corridor",
+    "circuit": "entry_base"
+  },
+  "ceiling_zones": [
+    {
+      "id": "ceiling_main_corridor",
+      "room": "main_corridor",
+      "area": [
+        4.2,
+        4.3,
+        7.2,
+        5.55
+      ],
+      "bottomY": 2.5,
+      "netAreaM2": 3.75
+    },
+    {
+      "id": "ceiling_living",
+      "room": "living_dining",
+      "area": [
+        7.2,
+        4.3,
+        13.4,
+        5.55
+      ],
+      "bottomY": 2.5,
+      "netAreaM2": 7.745707963267948,
+      "corner_radii": {
+        "nw": 0,
+        "ne": 0.1,
+        "se": 0.1,
+        "sw": 0
+      }
+    }
+  ],
+  "source_files": [
+    "config/house.yaml#rooms.main_corridor",
+    "config/layout/overlay.yaml#paint_main_corridor_*",
+    "config/layout/overlay.yaml#paint_ceiling_main_corridor",
+    "config/ceiling.yaml#ceiling_main_corridor"
+  ],
+  "note": "源和当前运行时均包含走廊独立涂装声明；其是否属于本轮批准范围等待业主答复。"
+}

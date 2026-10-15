@@ -685,6 +685,29 @@ elements:
     height: 2.80
     reason: "客餐厅墙面涂装（w_st_east，书房侧另有一段见下）"
 
+  # ── 主走廊：只声明边界上实际存在的三段墙脸；门洞由实际墙洞裁切，开放边不补墙。 ──
+  - id: paint_main_corridor_w_strip_east
+    type: paint_region
+    wall: w_strip_east
+    room: main_corridor
+    along: [0.00, 1.25]
+    height: 2.80
+    reason: "主走廊西侧墙面，沿 w_strip_east 全段；主卫门洞 d_mb 按实际扣除，涂装朝主走廊东侧墙脸"
+  - id: paint_main_corridor_w_st_north
+    type: paint_region
+    wall: w_st_north
+    room: main_corridor
+    along: [0.00, 3.00]
+    height: 2.80
+    reason: "主走廊北侧墙面，沿 w_st_north 全段；书房门洞 d_study 按实际扣除，涂装朝主走廊南侧墙脸"
+  - id: paint_main_corridor_w_nw_south
+    type: paint_region
+    wall: w_nw_south
+    room: main_corridor
+    along: [1.60, 3.00]
+    height: 2.80
+    reason: "主走廊南侧与西北次卧共墙的实体段，仅 x[4.20,5.60]（墙沿[1.60,3.00]）；西北次卧门洞 d_bnw 按实际扣除，涂装朝主走廊北侧墙脸；其余南侧保持开放"
+
   # ── 主卧 11.14m / 31.19㎡ ──
   - id: paint_master_bedroom_w_mb_east
     type: paint_region
@@ -826,6 +849,10 @@ elements:
     type: paint_ceiling_region
     room: living_dining
     reason: "沿用现有原顶涂装口径；明示排除已声明的非涂漆顶面投影"
+  - id: paint_ceiling_main_corridor
+    type: paint_ceiling_region
+    room: main_corridor
+    reason: "主走廊对应吊顶独立计涂装；ceiling_main_corridor 投影与主走廊边界一致，面积3.75㎡，沿用其已声明的完成面"
   - id: paint_ceiling_master_bedroom
     type: paint_ceiling_region
     room: master_bedroom

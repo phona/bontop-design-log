@@ -901,7 +901,7 @@
   x: 8.60
   z: 4.75
   height: 2.50
-  note: "DEC-2026-10-04-R2 客厅/走廊吊顶 PoE AP 预留网线点：点位由原位 (8.60,5.80) 移入 ceiling_living 北缘边吊空腔 (8.60,4.75)（边吊 x[7.20,13.40]×z[4.30,5.20]）——原位 z=5.80 落在所有已声明吊顶之外（客厅中部为原顶 2.80m），原 note「网线藏吊顶空腔」不成立；备选方案为走廊吊顶位（如 (6.50,5.00)，落在 ceiling_main_corridor x[4.20,7.20]×z[4.30,5.55]），二者待网络方案定标后冻结；polygon 校验落在 living_dining；与强电分管敷设"
+  note: "DEC-2026-10-04-R2 客厅/走廊吊顶 PoE AP 预留网线点：点位由原位 (8.60,5.80) 移入 ceiling_living 北缘边吊空腔 (8.60,4.75)（边吊 x[7.20,13.40]×z[4.30,5.55]）——原位 z=5.80 落在所有已声明吊顶之外（客厅中部为原顶 2.80m），原 note「网线藏吊顶空腔」不成立；备选方案为走廊吊顶位（如 (6.50,5.00)，落在 ceiling_main_corridor x[4.20,7.20]×z[4.30,5.55]），二者待网络方案定标后冻结；polygon 校验落在 living_dining；与强电分管敷设"
 
 # === 新增点位（DEC-2026-08-02-013 设计审查：全屋布局深化 + 水电交底清单） ===
 
@@ -978,15 +978,15 @@
   note: "客房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中；2026-10-05 功能互换，id/位置不变）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），客房吸顶灯为设计声明→inferred；位置随房间南缘凹进取居中，为设计值未实测"
   status: inferred
 - id: light_corridor_1
-  room: living_dining
+  room: main_corridor
   type: downlight
-  x: 7.90
-  z: 5.00
-  height: 2.8
+  x: 5.70
+  z: 4.90
+  height: 2.50
   temp: 3000
   circuit: entry_base
   recessed: true
-  note: "走廊口筒灯嵌入既有 ceiling_living 边吊，不新增吊顶；坐标由原 (7.9,5.75) 调整至既有边吊合法范围 (7.9,5.0)，避开电视高柜 x≤7.55，并仍靠近原走廊口；状态依据：归入 topology 回路 lighting_entry_base（confirmed），走廊口筒灯嵌入既有边吊为设计声明→inferred；坐标由原位移至边吊合法范围避电视高柜，位置为设计值未实测"
+  note: "历史旧位：坐标由原(7.9,5.75)调整至既有ceiling_living范围(7.9,5.0)，避开电视高柜x≤7.55并靠近走廊口；原点嵌入既有边吊、不新增吊顶；这些旧位理由和坐标由DEC-2026-10-15-C02覆盖。当前点：因距餐厅下出风槽投影边约75mm，迁至主走廊中段(5.70,4.90)，嵌入ceiling_main_corridor吊底y=2.50；归入lighting_entry_base的回路与开关控制拓扑保持，线路同步协调。开孔、上方风管/梁/冷媒/冷凝水/桥架与龙骨净距待现场复核；坐标是设计候选值，未实测。状态依据：lighting_entry_base回路confirmed，当前灯位为业主明确确认的预演位置。"
   status: inferred
 - id: light_entry_down
   room: entry_garden

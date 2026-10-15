@@ -1,0 +1,302 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: visual-calibration-floor-angle-20261015
+subject: 夜景色温显示校准与全屋地砖角度预演
+created_at: "2026-10-15T03:40:00Z"
+status: frozen
+source_policy:
+  authority_refs:
+    - app/src/render/HouseScene.ts
+    - app/src/render/InteriorLightingSystem.ts
+    - app/src/render/EnvironmentManager.ts
+    - config/electrical.yaml
+    - config/materials.yaml
+    - data/current-scheme.json
+  observation_refs:
+    - "用户截图显示手动选择 4000K、亮度 60%，画面仍偏黄。"
+    - "用户已选择全屋统一铺设角度预演。"
+  measurement_refs: []
+  runtime_refs:
+    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/night-4000k-eye-adapted-current-runtime.json
+    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/night-4000k-raw-cct-current-runtime.json
+    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/floor-angle-current-runtime.json
+    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/main-corridor-paint-runtime.json
+  evidence_refs:
+    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/night-4000k-eye-adapted-current.png
+    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/night-4000k-raw-cct-current.png
+    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/floor-rotation-0deg-current.png
+    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/floor-rotation-90deg-current.png
+entry_shape:
+  id: ""
+  category: confirmed
+  statement: ""
+  value: null
+  source_refs: []
+  basis: ""
+  confidence: high
+  impact: material
+  affected_objects: []
+  affected_views: []
+  owner: codex
+  status: resolved
+  verification_method: ""
+  user_confirmation_ref: null
+facts:
+  confirmed:
+    - id: renderer_defaults
+      category: confirmed
+      statement: 改动前 HouseScene 依赖 Three.js 默认色彩输出；当前显式设置 sRGB output、NeutralToneMapping 与 exposure=1。
+      value: "before: renderer defaults; current: outputColorSpace=THREE.SRGBColorSpace, toneMapping=THREE.NeutralToneMapping, toneMappingExposure=1"
+      source_refs: ["app/src/render/HouseScene.ts:239-247", "evidence/night-4000k-eye-adapted-current-runtime.json"]
+      basis: 对照变更前运行时基线与当前源码/浏览器 runtime。
+      confidence: high
+      impact: material
+      affected_objects: [renderer_color_pipeline]
+      affected_views: [perspective]
+      owner: codex
+      status: resolved
+      verification_method: 源码检查并在浏览器读取 renderer.outputColorSpace、toneMapping 和 toneMappingExposure。
+      user_confirmation_ref: null
+    - id: kelvin_is_rgb_approximation
+      category: confirmed
+      statement: 当前灯具 Kelvin 值以 Planckian/CIE 1931 色度近似映射到 Linear-sRGB；原始 CCT 模式显示该光源色，肉眼适应模式再向 D65 做 70% 线性混合。
+      value: "4000K raw CCT display ≈ #ffd3a5; eye-adapted interior dome ≈ #fff3e9 in current runtime"
+      source_refs: ["app/src/render/InteriorLightingSystem.ts:20-98,449-502", "evidence/night-4000k-eye-adapted-current-runtime.json", "evidence/night-4000k-raw-cct-current-runtime.json"]
+      basis: 当前 CIE 色度转换代码与同机位浏览器 A/B runtime。
+      confidence: high
+      impact: material
+      affected_objects: [configured_indoor_fixtures]
+      affected_views: [perspective]
+      owner: codex
+      status: resolved
+      verification_method: 固定机位、4000K、60% 下读取 light color 并比较 eye-adapted/raw-CCT 截图。
+      user_confirmation_ref: null
+    - id: screenshot_4000_preview
+      category: confirmed
+      statement: 用户提供的基准截图显示 4000K 和 60% 相对亮度；本轮浏览器按同一状态采集 eye-adapted 与 raw-CCT A/B。
+      value: "user reference: 4000K / 60%; current runtime: 4000K / 60%, manual interior-only night"
+      source_refs: ["user-message-image-10", "evidence/night-4000k-eye-adapted-current-runtime.json", "evidence/night-4000k-raw-cct-current-runtime.json"]
+      basis: 用户截图、两份 runtime 与 UI snapshot 字段交叉核对。
+      confidence: high
+      impact: material
+      affected_objects: [lighting_preview]
+      affected_views: [perspective]
+      owner: codex
+      status: resolved
+      verification_method: 后续 A/B 每张图均保存 runtime temperatureK/brightness。
+      user_confirmation_ref: null
+    - id: active_lighting_has_no_photometry
+      category: confirmed
+      statement: 在役灯位保存温度和类型，但实时投影器使用人为 intensity/distance 参数；亮度滑块只表示相对渲染倍率，不是照度或流明。
+      value: "pendant intensity=25, dome=8, downlight=10; visual scale=0.6"
+      source_refs: ["config/electrical.yaml:922-1019", "config/render/lighting.yaml:1-12", "app/src/render/InteriorLightingSystem.ts:15-19,96-138,428-443"]
+      basis: 当前配置与实时光源构建代码。
+      confidence: high
+      impact: material
+      affected_objects: [configured_indoor_fixtures]
+      affected_views: [perspective]
+      owner: codex
+      status: resolved
+      verification_method: 检查电气投影、render-only fixture config 和灯光 builder。
+      user_confirmation_ref: null
+    - id: floor_uv_axis
+      category: confirmed
+      statement: 当前 KT 200×1200 木纹砖长边沿世界 X；0° 是现有方向，90° 将长边转至世界 Z，垂直南侧落地窗。
+      value: "U=X, V=-Z; south window runs X; default tile color #d8bd93"
+      source_refs: ["config/materials.yaml:748-771", "app/src/render/TextureFactory.ts:737-877", "app/src/render/TextureManager.ts:121-139", "config/layout/model-geometry.yaml:12-14,134"]
+      basis: 纹理板长沿 U 生成，楼板 UV 依世界坐标标定，南窗墙沿 x 轴。
+      confidence: high
+      impact: material
+      affected_objects: [floor:all]
+      affected_views: [perspective, plan]
+      owner: codex
+      status: resolved
+      verification_method: 坐标、UV和纹理生成方向交叉核对。
+      user_confirmation_ref: null
+    - id: main_corridor_actual_boundary_and_walls
+      category: confirmed
+      statement: main_corridor 是边界 x[4.20,7.20]、z[4.30,5.55] 的开放语义房间；其三段真实墙脸为西侧 w_strip_east、北侧 w_st_north、南侧与 bedroom_nw 共墙的 w_nw_south 局部，东侧及南侧余段开放。
+      value:
+        boundary: [4.2, 4.3, 7.2, 5.55]
+        paint_faces:
+          - { wall: w_strip_east, along: [0.0, 1.25], room_side: east }
+          - { wall: w_st_north, along: [0.0, 3.0], room_side: south }
+          - { wall: w_nw_south, along: [1.6, 3.0], room_side: north }
+        open_edges: [east, south_remaining]
+        matched_ceiling_area: [4.2, 4.3, 7.2, 5.55]
+        ceiling_zone_room_before_owner_decision: living_dining
+        ceiling_zone_room_current: main_corridor
+        net_wall_paint_area_sqm: 10.15
+        ceiling_paint_area_sqm: 3.75
+        total_declared_paint_area_sqm: 13.9
+        paint_preview_status: comparison_overlay_only
+      source_refs: ["config/layout/model-geometry.yaml:75-80,183-208", "config/layout/overlay.yaml:688-709,852-855", "config/ceiling.yaml:137-143", "evidence/main-corridor-paint-runtime.json"]
+      basis: 房间顶点边界与墙体端点逐段求交；w_nw_south 的 x=4.20 起点对应 along=1.60，东侧 w_liv_west 已声明删除为开放贯通；吊顶矩形与房间 footprint 完全相同。paintBudgetPreview runtime 显示门洞裁切后墙面净面积 10.15㎡、顶面 3.75㎡；该量目前仅在 comparison overlay 展示，不入预算总额。
+      confidence: high
+      impact: material
+      affected_objects: [main_corridor, paint_scope]
+      affected_views: [perspective, plan]
+      owner: codex
+      status: resolved
+      verification_method: paint-scope / finish-scope 检查声明墙段范围、房间侧与顶面范围对账。
+      user_confirmation_ref: null
+  inferred:
+    - id: warmth_from_pipeline_and_surfaces
+      category: inferred
+      statement: 适应模式上线前，原始CCT色度视图与暖色占位材料叠加后在固定机位仍显琥珀色；该结果是历史基线，不代表当前默认显示。
+      value: "pre-adaptation raw CCT baseline; current renderer uses NeutralToneMapping and eye-adapted default"
+      source_refs: [renderer_defaults, kelvin_is_rgb_approximation, screenshot_4000_preview]
+      basis: 三个因素在代码/配置中同时存在，并与用户图像观察相符。
+      confidence: medium
+      impact: material
+      affected_objects: [renderer_color_pipeline, configured_indoor_fixtures, floor:all, wall:paint]
+      affected_views: [perspective]
+      owner: codex
+      status: resolved
+      verification_method: 固定机位/材料/亮度，对色温映射和 tone mapping 分别做 A/B。
+      user_confirmation_ref: null
+    - id: raw_cct_not_eye_adapted
+      category: inferred
+      statement: 原始Planckian光源色度通过 sRGB 显示后仍显明显琥珀色；屏幕预演需要单独表达观察者对白点的适应。
+      value: "4000K / 60% / night-only screenshot remains visibly amber"
+      source_refs: ["evidence/night-4000k-60.png", "evidence/night-4000k-60-runtime.json"]
+      basis: 独立审美审查判定固定机位 4000K/60% 仍明显偏琥珀；Three.js场景没有视锥白点适应。
+      confidence: high
+      impact: material
+      affected_objects: [renderer_color_pipeline, configured_indoor_fixtures]
+      affected_views: [perspective]
+      owner: codex
+      status: resolved
+      verification_method: 对照原始CCT与默认肉眼适应两种固定机位截图。
+      user_confirmation_ref: null
+    - id: main_corridor_external_config_conflict
+      category: inferred
+      statement: 工作区曾暂时把主走廊回退为 semantic_only 且无独立涂装；业主明确选择恢复墙顶独立涂装后，已按其决定恢复配置。
+      value: "历史冲突已通过用户答复解决；当前 house.yaml 声明 wall_finish=paint，overlay.yaml 声明三段墙面与一段顶面"
+      source_refs: ["config/house.yaml:193-205", "config/layout/overlay.yaml:650-690", "用户答复：按刚才决定，恢复独立涂装"]
+      basis: 用户最后明确选择恢复独立涂装；配置已按此决定复原，finish-scope 验证为 0 errors。
+      confidence: high
+      impact: material
+      affected_objects: [main_corridor, paint_scope]
+      affected_views: [perspective, plan]
+      owner: user
+      status: resolved
+      verification_method: 对照最终 house/overlay 配置及 finish-scope 输出。
+      user_confirmation_ref: user-message-restore-main-corridor-independent-paint-20261015
+  user_decision:
+    - id: visual_closer_to_eye
+      category: user_decision
+      statement: 先研究并实现接近肉眼观感的夜景色温预演。
+      value: "稳定可比较的显示预演；不宣称实物照度认证"
+      source_refs: ["用户消息：好，先帮我预研一下。看看能做吗", "用户消息：可以。出方案，给subagent并行落地吧。"]
+      basis: 用户明确同意预研后并行落地。
+      confidence: high
+      impact: material
+      affected_objects: [renderer_color_pipeline, configured_indoor_fixtures]
+      affected_views: [perspective]
+      owner: codex
+      status: resolved
+      verification_method: 固定机位 3000/3500/4000K A/B 和运行时记录。
+      user_confirmation_ref: user-message-visual-calibration-20261015
+    - id: all_floor_angle_preview
+      category: user_decision
+      statement: 地砖铺设角度预演采用全屋统一角度。
+      value: "one preview angle applied to all floor materials"
+      source_refs: ["用户答复：全屋统一"]
+      basis: 用户对范围的明确选择。
+      confidence: high
+      impact: material
+      affected_objects: [floor:all]
+      affected_views: [perspective, plan]
+      owner: codex
+      status: resolved
+      verification_method: 浏览器操作 slider 0°/90°，读取15个地面 mesh 的 map/normalMap/roughnessMap rotation，并核对 A=0°、B=90°。
+      user_confirmation_ref: user-message-all-floor-angle
+    - id: eye_adaptation_display_mode
+      category: user_decision
+      statement: 同时保留原始CCT色度与肉眼适应显示，并默认使用肉眼适应。
+      value: "eye-adapted default; raw CCT remains selectable"
+      source_refs: ["用户答复：两种都保留，默认肉眼适应"]
+      basis: 用户明确选择同时保留两种视图并指定默认模式。
+      confidence: high
+      impact: material
+      affected_objects: [renderer_color_pipeline, configured_indoor_fixtures, lighting_preview]
+      affected_views: [perspective]
+      owner: codex
+      status: resolved
+      verification_method: 浏览器确认默认选项、切换效果与A/B状态恢复。
+      user_confirmation_ref: user-message-eye-adaptation-mode-20261015
+    - id: main_corridor_independent_paint
+      category: user_decision
+      statement: 主走廊需要独立涂装声明。
+      value: "add declarations only to physical wall faces intersecting the main_corridor boundary; preserve open edges"
+      source_refs: ["用户答复：主走廊需要独立涂装声明"]
+      basis: 用户明确要求独立涂装范围；几何权威源确认该语义房间是开放区，不能沿整个 footprint 假设四面墙。
+      confidence: high
+      impact: material
+      affected_objects: [main_corridor, paint_scope]
+      affected_views: [perspective, plan]
+      owner: codex
+      status: resolved
+      verification_method: 核对 wall/room/along 声明、开放边不声明，并通过 finish-scope 与 paint-scope 一致性验证。
+      user_confirmation_ref: user-message-main-corridor-independent-paint-20261015
+    - id: main_corridor_ceiling_owner
+      category: user_decision
+      statement: ceiling_main_corridor 顶面归主走廊独立计量。
+      value: "room owner main_corridor; preserve the existing 3.0m×1.25m projection, area, thickness and height"
+      source_refs: ["用户答复：吊顶也归主走廊，独立计墙顶涂装"]
+      basis: 用户明确选择独立计墙顶涂装；现有 ceiling polygon 与 main_corridor footprint 完全相同。
+      confidence: high
+      impact: material
+      affected_objects: [main_corridor, ceiling_main_corridor, paint_scope]
+      affected_views: [perspective, plan]
+      owner: codex
+      status: resolved
+      verification_method: 对账 ceiling zone room owner 与 model-geometry room footprint，且重跑 finish-scope。
+      user_confirmation_ref: user-message-main-corridor-ceiling-owner-20261015
+    - id: restore_main_corridor_independent_paint
+      category: user_decision
+      statement: 工作区短暂回退后，业主明确选择恢复主走廊独立墙面和吊顶涂装。
+      value: "house.yaml wall_finish=paint; overlay 三段实体墙脸 + 匹配的 3.75㎡ 顶面声明"
+      source_refs: ["用户答复：按刚才决定，恢复独立涂装", "config/house.yaml:193-205", "config/layout/overlay.yaml:650-690"]
+      basis: 业主直接选择恢复；沿用其此前已确认的实际墙脸、开放边与顶面归属。
+      confidence: high
+      impact: material
+      affected_objects: [main_corridor, paint_scope, ceiling_main_corridor]
+      affected_views: [perspective, plan]
+      owner: codex
+      status: resolved
+      verification_method: npm run verify:finish-scope、npm run verify:all 与浏览器 runtime。
+      user_confirmation_ref: user-message-restore-main-corridor-independent-paint-20261015
+  site_pending:
+    - id: real_fixture_photometry
+      category: site_pending
+      statement: 最终灯具 SKU、流明、IES/LDT配光和真实安装高度待确认。
+      value: null
+      source_refs: ["config/render/lighting.yaml:1-12", "docs/pending-site-data.md"]
+      basis: 在役配置暂未绑定到具体灯具 SKU/IES。
+      confidence: high
+      impact: material
+      affected_objects: [configured_indoor_fixtures]
+      affected_views: [perspective]
+      owner: 业主/采购
+      status: open
+      verification_method: 获得最终灯具规格书、IES/LDT及实测色坐标。
+      user_confirmation_ref: null
+    - id: measured_surface_colors
+      category: site_pending
+      statement: 斯托白实刷样和地砖实物色样的测色/光泽数据待取得。
+      value: null
+      source_refs: ["config/materials.yaml:748-771", "config/materials.yaml:163-180"]
+      basis: 当前墙/地是屏幕占位值，具体SKU和色号待实物复核。
+      confidence: high
+      impact: material
+      affected_objects: [floor:all, wall:paint]
+      affected_views: [perspective]
+      owner: 业主/采购
+      status: open
+      verification_method: 中性光环境下拍摄灰卡/色卡或获取Lab/反射数据。
+      user_confirmation_ref: null
+unknowns_requiring_alignment: []
+notes:
+  - 预览阶段使用CIE色度近似与固定显示变换，目标是改善相对视觉比较；未绑定实物光谱/灯具流明时不承诺物理照度或完整显色还原。

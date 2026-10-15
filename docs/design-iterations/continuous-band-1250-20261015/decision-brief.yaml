@@ -1,0 +1,218 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: continuous-band-1250-20261015
+subject: 走廊与客餐厅设备带1.25m同宽、同饰面连续带预演
+priority:
+  user_goal: 深化并预览客厅空调边吊扩至与走廊同宽1.25m、同饰面的连续带；墙面与吊顶涂装范围独立选择
+  ranked:
+    - 涂装范围以各自显式面层声明选择；paint_region 与 paint_ceiling_region 分开计算、分开纳入范围
+    - 从走廊进入客餐厅时，吊顶读作同一条1.25m深的连续带
+    - 南侧送风百叶随新边界外移，功能段与装饰段保持一条线
+    - 两段下出风、两段回风/检修与两台内机保持现位
+    - 消除现有走廊口筒灯与空调下出风槽的近距冲突
+  non_negotiables:
+    - 主走廊和客厅设备带吊底均为y=2.50m、厚度0.30m
+    - 连续范围x[4.20,13.40]、z[4.30,5.55]；保留两个职责独立的吊顶分区
+    - ceiling_living南边界由z=5.20延至z=5.55，客厅中央原顶2.80m不变
+    - 南侧功能送风与同面装饰延续段中心移至z=5.56，原长度、x范围、朝向不变
+    - 两台内机、下出风z=4.85、回风/检修z=4.45不动
+    - light_corridor_1移至(5.70,4.90)，安装面与主走廊吊底y=2.50m一致，线路同步调整
+    - 将主走廊按现有ceiling_main_corridor边界x[4.20,7.20]、z[4.30,5.55]补为semantic_only开放语义区域；不新增实体隔墙，不生成默认房间地/顶面
+    - 不在客餐厅设备带底面风口/检修线区域新增筒灯
+    - 冰箱、柜体与家具不属于本轮范围
+    - 当前只做真实三维模型预演，不作为施工定稿
+    - 当前三段走廊墙面 paint_region 与 paint_ceiling_main_corridor 的声明先保留；这次只解除二者的房间集合耦合
+  tradeoffs_accepted:
+    - 客厅区净面积比原0.90m方案增加2.1743㎡，吊顶全房石膏板净面积更新为25.4055㎡
+    - 两区继续以独立功能分区表达，共边正交相接、同色同饰面
+    - 送风有效面积、风量、静压、梁底与安装净空待厂家/现场核验
+    - 2026-10-08施工方单价口径尚未按1.25m深度重新询价；本轮不冻结造价
+frozen: true
+freeze_record:
+  alignment_id: user-confirmed-independent-wall-ceiling-paint-20261015
+  original_user_responses:
+    - 帮我深化“1.25m 同宽、同饰面”的连续带方案给我看看
+    - 随新边界移到 z=5.56（推荐）
+    - 移到走廊中段（推荐）
+    - 不用管冰箱，之前是我发错了
+    - 补主走廊语义区域（推荐）
+    - 独立选择。架构上应该是支持的吧？
+  normalized_decisions:
+    - 客厅设备带南边界由z=5.20扩至z=5.55，深度与主走廊统一为1.25m
+    - 两吊顶分区保持同标高与相同石膏板面层，形成连续可视面
+    - 南侧功能百叶与装饰延续段随边界由z=5.21移至z=5.56
+    - 走廊筒灯移至主走廊中段(5.70,4.90)，灯具标高随吊底取2.50m，线路同步调整
+    - 客厅南地插A的供电分叉沿用原插座位置；导线从新南边界外1cm离开吊顶投影后再下引
+    - 主走廊语义区边界与现有吊顶区一致，不新增实体墙，house.yaml同步3.00m×1.25m×3.75㎡镜像
+    - 语义区只负责点位归属与邻接校验；现有main_corridor_floor是唯一地面渲染/算量来源，ceiling_main_corridor是唯一吊顶实体来源
+    - 内机、下出风、回风/检修口保持现位；冰箱柜体排除
+    - 本轮是视觉/机电协调预演，不是施工定稿
+    - 墙面涂装由 overlay.paint_region 逐墙段选择；吊顶涂装由 overlay.paint_ceiling_region 单独选择。没有顶面声明表示该房间顶面不纳入涂装范围。
+    - 当前走廊三段墙面与吊顶涂装声明均保留；移除“涂装墙房间集合必须等于涂装顶房间集合”校验。
+  confirmed_by_user: true
+  confirmed_at: "2026-10-15T17:00:00+08:00"
+  evidence_refs: [docs/design-iterations/continuous-band-1250-20261015/fact-table.yaml, docs/decisions/17-paint-scope-extension.md, conversation:user-confirmed-band-louver-light-scope]
+allowed_scope:
+  files:
+    - config/ceiling.yaml
+    - config/hvac.yaml
+    - config/electrical.yaml
+    - config/mep-hvac-coordination.yaml
+    - config/layout/model-geometry.yaml
+    - config/house.yaml
+    - config/ceiling-material-cost.yaml
+    - config/ceiling-quotes.yaml
+    - config/facts.yaml
+    - scripts/render/diagrams/draw-hvac-ld-threeline.py
+    - docs/design-iterations/continuous-band-1250-20261015
+    - docs/ceiling-scheme-20261008.md
+    - docs/decisions/08-ceiling-form.md
+    - docs/decisions/09-ceiling-takeoff.md
+    - docs/decisions/README.md
+    - README.md
+    - tests/server/ceiling-takeoff.test.ts
+    - tests/server/ceiling-material-cost.test.ts
+    - config/paint-comparison.yaml
+    - config/finish-lint.yaml
+    - server/paint-cost-comparison.ts
+    - server/budget-calculator.ts
+    - shared/finish/rules.ts
+    - shared/finish/registry.ts
+    - shared/finish/scene.ts
+    - scripts/verify/finish/verify-finish-scope.ts
+    - tests/server/paint-scope.test.ts
+    - tests/server/paint-comparison-api.test.ts
+    - tests/server/budget-calculator.test.ts
+    - tests/server/finish-scope.test.ts
+    - docs/decisions/10-paint.md
+    - docs/decisions/17-paint-scope-extension.md
+  objects:
+    - ceiling:ceiling_main_corridor
+    - ceiling:ceiling_living
+    - room:main_corridor
+    - hvac:supply_living
+    - hvac:LD-deco-side-south
+    - electrical:light_corridor_1
+    - mep:supply-air-living
+    - mep:strong-light-corridor
+    - mep:strong-light-entry-switch-corridor
+    - mep:strong-light-entry-night-corridor
+    - mep:strong-light-living
+    - mep:strong-power-living
+    - mep:strong-power-living-west-wall
+    - mep:strong-power-living-sofa-l
+    - affected-route-descriptions
+  archetypes: [continuous_drop_ceiling, hvac_linear_slot, recessed_corridor_downlight]
+  views: [corridor_to_living, living_south_hvac_face, junction_x7_20, east_end_corner]
+  changes:
+    - 客厅设备带扩深0.35m，和走廊同为1.25m；吊底与可视面连续
+    - 共边保持正交，东侧外露R100语言保留；底面风口/检修位置不动
+    - 客厅南侧送风和装饰百叶随新边界外移0.35m
+    - 走廊口筒灯移至(5.70,4.90)，安装面改为吊底2.50m
+    - 在model-geometry增加与主走廊吊顶同边界的开放语义区域，并在house.yaml同步3.00m×1.25m、3.75㎡镜像；不新增实体隔墙
+    - 同步改动相关送风、照明与边界出线坐标和说明
+    - 解开墙面与吊顶涂装房间集合的校验耦合；保留当前实际涂面声明，并新增墙/顶独立计量回归用例
+forbidden:
+  files:
+    - config/layout/overlay.yaml
+    - shared/render/CeilingZoneBuilder.ts
+    - app/src/render
+    - data/project-render-facts.json
+  objects: [fridge, entry_half_height_cabinet, dining_table_and_chairs, ac_living_position, ac_dining_position, bottom_supply_and_return_positions]
+  assumptions:
+    - MJV/P-SS内机外廓、检修空间及风口接口已由现场确认
+    - z=5.56新送风位置已由厂家确认有效面积、风量、静压与叶片方向
+    - 新扩深区域梁、风管、冷媒、冷凝水、电路净空已实测
+    - 默认渲染颜色等于真实油漆色号
+    - 将语义走廊区解释成新增实体隔墙或封闭房间
+  out_of_scope_changes:
+    - 冰箱、半高柜、柜体结构和餐桌关系
+    - 吊顶系统改为蜂窝板
+    - 新增空调内机之间的筒灯
+    - 施工定稿、厂家下单或现场放线
+supersession_review:
+  - prior_decision: DEC-2026-10-05-R18及ceiling_living原0.90m深度配置
+    prior_conclusion: 客厅设备带范围x[7.20,13.40]、z[4.30,5.20]；两台内机、三层风口关系和R100外露圆角已有声明。
+    proposed_supersession: 仅将南边界z=5.20改至z=5.55；保留内机、底面送回风轴线和外露转角语言；x=7.20共边两角改直角以避免分区退缩。
+    reason: 业主要求与已知主走廊同宽1.25m并同饰面连续。
+    status: superseded_only_for_band_depth_and_shared_edge_corner_treatment
+  - prior_decision: living-ceiling-underpanel-20261015
+    prior_conclusion: 修复纯圆角边吊下方面板缺失；该迭代冻结时禁止改吊顶/HVAC几何。
+    proposed_supersession: 保留实体下方面板渲染修复；仅对本轮批准的带深、南侧百叶和走廊照明开放配置修改。
+    reason: 业主本轮明确批准1.25m连续带、风口随边界外移及筒灯迁入走廊中段。
+    status: geometry_scope_superseded_for_this_iteration; renderer_fix_preserved
+  - prior_decision: light_corridor_1旧位置决定
+    prior_conclusion: 现点位(7.90,5.00)作为客厅边吊上的走廊口筒灯。
+    proposed_supersession: 移至主走廊中段(5.70,4.90)，安装面随主走廊吊底取2.50m，并调整照明线路。
+    reason: 原位距空调下出风槽投影边约75mm；业主明确批准迁入走廊中段。
+    status: user_decision_supersedes_placement
+  - prior_decision: DEC-2026-10-08-C05 / DEC-2026-10-09-P02 及 finish-scope F05 的墙顶涂装房间集合耦合
+    prior_conclusion: 有墙面 paint_region 的房间必须同时有 paint_ceiling_region；paint_ceiling_region 房间集合必须与 paint_region 一致。
+    proposed_supersession: 墙面范围继续由 paint_region 与 wall_finish 校验；吊顶范围仅由 paint_ceiling_region 选择并独立按房间 footprint 扣除铝扣板。未声明的墙或顶不纳入该类涂装面积。
+    reason: 业主明确要求墙面与吊顶涂面可以独立选择；现有实现已独立计算两类面积，只需解除两者的集合校验与 F05 漏顶推断。
+    status: superseded_only_for_wall_ceiling_selection_coupling
+open_questions:
+  - id: actual-hvac-clearance
+    status: site_pending
+    question: 实际内机、风管、梁底和检修口能否在扩深后的吊顶空腔内满足厂家净空？
+    required_for: [construction_freeze, equipment_order]
+    interim: 本轮只核对设计模型范围与风口相对位置，不声称安装净空已确认。
+    owner: 业主/空调厂家/吊顶施工方
+    trigger: 空调与吊顶施工深化前
+  - id: relocated-supply-performance
+    status: site_pending
+    question: 南侧送风移到z=5.56后是否满足有效面积、风量、静压、风速和防直吹要求？
+    required_for: [construction_freeze, grille_order]
+    interim: 保留原3.5m长度、x范围与可调叶片假设，需厂家复核。
+    owner: 空调厂家
+    trigger: 风口下单前
+  - id: edge-drop-depth-quote
+    status: site_pending
+    question: 2026-10-08转述的边吊每米报价是否适用于1.25m深度，新增面层/骨架是否另计？
+    required_for: [budget_update, construction_freeze]
+    interim: 本轮只同步模型算量，不把旧报价推导成施工总价。
+    owner: 业主/吊顶施工方
+    trigger: 吊顶书面报价更新前
+  - id: corridor-light-services
+    status: site_pending
+    question: 筒灯(5.70,4.90)是否避开风管、梁、冷媒、冷凝水、桥架和龙骨？
+    required_for: [construction_freeze]
+    interim: 该点作为设计候选，仍需现场综合排布核实。
+    owner: 业主/水电/空调/吊顶施工方
+    trigger: 龙骨放线与开孔前
+alignment:
+  records:
+    - id: user-confirmed-band-louver-light-scope
+      original_responses: [1.25m同宽同饰面连续带, 南侧百叶移至z=5.56, 走廊灯移到中段, 排除冰箱]
+      normalized_decision: 按decision brief执行；仅作视觉/机电协调预演。
+      affected_refs: [config/ceiling.yaml, config/hvac.yaml, config/electrical.yaml, config/mep-hvac-coordination.yaml]
+      timestamp: "2026-10-15T13:20:52+08:00"
+    - id: corridor-semantic-area
+      original_response: 补主走廊语义区域（推荐）
+      normalized_decision: 在model-geometry增加与主走廊吊顶同边界的开放语义区，house.yaml同步房间镜像，不新增墙体。
+      affected_refs: [config/layout/model-geometry.yaml, config/house.yaml, config/ceiling.yaml, config/electrical.yaml]
+      timestamp: "2026-10-15T15:01:32+08:00"
+    - id: independent-wall-ceiling-paint-selection
+      original_response: 独立选择。架构上应该是支持的吧？
+      normalized_decision: paint_region 与 paint_ceiling_region 是两个独立的涂面选择；保留当前三段走廊墙面与当前顶面声明，不再强制二者房间集合一致。
+      affected_refs: [server/paint-cost-comparison.ts, shared/finish/rules.ts, config/layout/overlay.yaml#paint_region, config/layout/overlay.yaml#paint_ceiling_region]
+      timestamp: "2026-10-15T17:00:00+08:00"
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run takeoff:ceiling, VISUAL_GATE_API=http://127.0.0.1:5174 npm run gate:visual, npm run verify:all, npm run test:server, npm run typecheck]
+  browser_evidence_required: true
+  required_views: [corridor_to_living, living_south_hvac_face, junction_x7_20]
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: site_pending_not_required_for_visual_trial
+  blocking_issues: []
+  done_when:
+    - 客厅设备带深度与走廊同为1.25m，吊底与饰面连续
+    - 南侧功能/装饰线中心位于z=5.56，下出风和回风/检修位置保持原位
+    - light_corridor_1位于(5.70,4.90)、高度2.50m，且运行时不侵占空调风口
+    - visual gate CLEAR、运行时ready且配置错误横幅为空
+    - 固定视角截图/快照和runtime查询绑定同一源版本
+    - 独立审美与功能评审完成；现场/厂家未知保留site_pending
+    - paint_region 与 paint_ceiling_region 可分别选择且面积独立；墙-only 与顶-only用例在comparison及预算链路均通过，对方面积保持为零或不变
+  delivery_notes_required: true

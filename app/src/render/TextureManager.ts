@@ -130,6 +130,7 @@ export class TextureManager {
       for (const t of [result.map, result.normalMap, result.roughnessMap]) {
         if (!t) continue;
         t.repeat.set(repeat[0], repeat[1]);
+        this.applyPreviewRotation(t, appearance.rotationDeg);
         t.anisotropy = 8; // 掠射角清晰度（如掉帧降至 4）
       }
       const mat = new THREE.MeshStandardMaterial({
@@ -154,6 +155,7 @@ export class TextureManager {
       this.cache.set(key, mat);
       return mat;
     }
+    this.applyPreviewRotation(result, appearance.rotationDeg);
     result.repeat.set(2, 2);
     const mat = new THREE.MeshStandardMaterial({ map: result });
     const ready = result.userData.ready as Promise<void> | undefined;
@@ -175,6 +177,13 @@ export class TextureManager {
         window.dispatchEvent(new CustomEvent('material-texture-error', { detail: { message, material } }));
       }
     });
+  }
+
+  private applyPreviewRotation(texture: THREE.Texture, rotationDeg: number | undefined): void {
+    const normalized = Number.isFinite(rotationDeg) ? Math.min(90, Math.max(0, rotationDeg!)) : 0;
+    texture.center.set(0.5, 0.5);
+    texture.rotation = (normalized * Math.PI) / 180;
+    texture.needsUpdate = true;
   }
 
   private copyToMesh(mesh: THREE.Mesh, mat: THREE.MeshStandardMaterial): void {

@@ -1,0 +1,259 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: continuous-band-1250-20261015
+subject: 走廊与客餐厅设备带1.25m同宽、同饰面连续带预演
+units: m
+facts:
+  - id: corridor-zone
+    category: confirmed
+    statement: 主走廊吊顶范围x[4.20,7.20]、z[4.30,5.55]，深度1.25m，吊底约2.50m。
+    value: {area: [4.20, 4.30, 7.20, 5.55], thickness: 0.30, underside_y: 2.50}
+    source_refs: [config/ceiling.yaml#ceiling_main_corridor]
+    basis: 当前吊顶权威配置
+    confidence: high
+    impact: geometry
+    affected_objects: [ceiling_main_corridor, ceiling_living]
+    affected_views: [corridor_to_living, living_south_hvac_face, junction_x7_20]
+    owner: project
+    status: resolved
+    verification_method: gate:visual + runtime ceiling bounds
+  - id: corridor-room-gap
+    category: confirmed
+    statement: 现有model-geometry未声明主走廊房间；候选点(5.70,4.90)不在任何现有房间多边形内，因此light_corridor_1若仍标room=living_dining会触发bounds错误。
+    value: {point: [5.70, 4.90], existing_room_contains_point: false}
+    source_refs: [config/layout/model-geometry.yaml#rooms, config/electrical.yaml#light_corridor_1, verify:rules]
+    basis: 现有边界与verify:rules运行结果
+    confidence: high
+    impact: electrical_point_validity
+    affected_objects: [light_corridor_1, main_corridor]
+    affected_views: [corridor_to_living, junction_x7_20]
+    owner: project
+    status: resolved_by_corridor_semantic_region
+    verification_method: verify:all + point-in-room check
+  - id: corridor-semantic-region-user-decision
+    category: user_decision
+    statement: 为保留确认的走廊筒灯点位，补主走廊开放语义区域，边界沿用现有ceiling_main_corridor范围，不新增实体隔墙。
+    value: {room_id: main_corridor, area: [4.20, 4.30, 7.20, 5.55], width: 3.00, length: 1.25, area_m2: 3.75, semantic_only: true, physical_walls_added: false, explicit_surface_sources: [main_corridor_floor, ceiling_main_corridor]}
+    source_refs: [user_reply:补主走廊语义区域]
+    basis: 业主明确批准补主走廊语义区域
+    confidence: high
+    impact: geometry_and_room_mirror
+    affected_objects: [main_corridor, ceiling_main_corridor, light_corridor_1]
+    affected_views: [corridor_to_living, junction_x7_20]
+    owner: owner
+    status: resolved
+    verification_method: verify:topology + verify:all + runtime room bounds
+  - id: living-zone-baseline
+    category: confirmed
+    statement: 客厅北缘设备带现范围x[7.20,13.40]、z[4.30,5.20]，深度0.90m，吊底约2.50m。
+    value: {area: [7.20, 4.30, 13.40, 5.20], thickness: 0.30, underside_y: 2.50}
+    source_refs: [config/ceiling.yaml#ceiling_living]
+    basis: 当前吊顶权威配置
+    confidence: high
+    impact: geometry
+    affected_objects: [ceiling_living]
+    affected_views: [corridor_to_living, living_south_hvac_face, junction_x7_20]
+    owner: project
+    status: resolved
+    verification_method: gate:visual + runtime ceiling bounds
+  - id: same-width-user-decision
+    category: user_decision
+    statement: 客厅空调边吊加深到与走廊同宽1.25m，并采用同饰面连续表达。
+    value: {living_south_edge_z: 5.55, corridor_depth: 1.25, same_finish: true}
+    source_refs: [user_message:2026-10-15-1.25m-continuous-band]
+    basis: 业主明确选择1.25m同宽、同饰面连续带方案
+    confidence: high
+    impact: geometry_and_finish
+    affected_objects: [ceiling_living, ceiling_main_corridor]
+    affected_views: [corridor_to_living, living_south_hvac_face, junction_x7_20]
+    owner: owner
+    status: resolved
+    verification_method: same-version fixed-view browser evidence
+  - id: ceiling-finish-baseline
+    category: confirmed
+    statement: 两个区域均为drop吊顶，沿用项目既有轻钢龙骨、OSB基层、C7石膏板面层方案；渲染使用同一默认顶面材质。
+    value: {ceiling_type: drop, visible_finish: gypsum_board, shared_finish: true}
+    source_refs: [config/ceiling.yaml#ceiling_main_corridor, config/ceiling.yaml#ceiling_living, docs/ceiling-scheme-20261008.md#2.1]
+    basis: 两分区同类型配置及项目吊顶方案
+    confidence: high
+    impact: finish
+    affected_objects: [ceiling_main_corridor, ceiling_living]
+    affected_views: [corridor_to_living, living_south_hvac_face]
+    owner: project
+    status: resolved
+    verification_method: runtime material query + fixed-view review
+  - id: south-louver-baseline
+    category: confirmed
+    statement: 客厅南侧功能送风和装饰延续百叶目前均位于z=5.21，功能段长3.5m，装饰段长2.5m。
+    value:
+      supply_living: {center: [11.45, 2.65, 5.21], mount_face: south, length: 3.50, span_x: [9.70, 13.20]}
+      LD-deco-side-south: {center: [8.45, 2.65, 5.21], mount_face: south, length: 2.50, span_x: [7.20, 9.70]}
+    source_refs: [config/hvac.yaml#supply_living, config/hvac.yaml#LD-deco-side-south]
+    basis: 当前HVAC端点权威配置
+    confidence: high
+    impact: hvac_geometry
+    affected_objects: [supply_living, LD-deco-side-south, ceiling_living]
+    affected_views: [living_south_hvac_face]
+    owner: project
+    status: resolved
+    verification_method: runtime endpoint query + fixed-view evidence
+  - id: south-louver-relocation
+    category: user_decision
+    statement: 扩宽后南侧功能百叶与装饰延续段随新边界外移到z=5.56，保留长度、x范围与方向。
+    value: {center_z: 5.56, boundary_z: 5.55, outward_offset: 0.01, preserve_length_and_direction: true}
+    source_refs: [user_reply:随新边界移到z=5.56]
+    basis: 业主明确批准随新边界外移
+    confidence: high
+    impact: hvac_geometry
+    affected_objects: [supply_living, LD-deco-side-south, supply-air-living]
+    affected_views: [living_south_hvac_face]
+    owner: owner
+    status: resolved
+    verification_method: runtime terminal query + verify:mep
+  - id: internal-hvac-lines
+    category: confirmed
+    statement: 两台内机、底面下出风z=4.85、回风/检修z=4.45本轮保持。
+    value: {indoor_centers: [[8.00, 4.75], [10.30, 4.75]], bottom_supply_z: 4.85, return_service_z: 4.45}
+    source_refs: [config/ceiling.yaml#ac_dining, config/ceiling.yaml#ac_living, config/hvac.yaml]
+    basis: 当前内机及HVAC端点配置
+    confidence: high
+    impact: hvac_and_maintenance
+    affected_objects: [ac_dining, ac_living, supply_living_bottom, supply_dining_bottom, return_living, return_dining]
+    affected_views: [living_south_hvac_face]
+    owner: project
+    status: resolved
+    verification_method: before/after runtime positions
+  - id: approved-geometry-takeoff
+    category: confirmed
+    statement: 使用官方ceiling takeoff按新面积和逐角圆角声明重算后，客厅设备带净面积为7.7457㎡，全屋石膏板净面积25.4055㎡；按原geometry重算的对比值为23.2312㎡，本轮净增2.1743㎡。
+    value: {living_net_area_m2: 7.7457079633, gypsum_net_area_m2: 25.4055309725, previous_geometry_gypsum_net_m2: 23.2312389357, delta_m2: 2.1742920367}
+    source_refs: [npm run takeoff:ceiling, shared/ceiling-takeoff.ts, config/ceiling.yaml#ceiling_living]
+    basis: 同一takeoff函数对现配置与本轮前区域几何/圆角声明分别计算
+    confidence: high
+    impact: quantity_and_cost_scope
+    affected_objects: [ceiling_living]
+    affected_views: [all]
+    owner: project
+    status: resolved
+    verification_method: npm run takeoff:ceiling
+  - id: corridor-light-baseline
+    category: confirmed
+    statement: light_corridor_1现位于(7.90,5.00)，处在客厅设备带，距餐厅下出风槽投影边约75mm。
+    value: {x: 7.90, z: 5.00, height: 2.80, projected_outlet_edge_clearance: 0.075}
+    source_refs: [config/electrical.yaml#light_corridor_1, config/hvac.yaml#supply_dining_bottom]
+    basis: 点位与槽口配置平面估算
+    confidence: high
+    impact: collision_and_lighting
+    affected_objects: [light_corridor_1, supply_dining_bottom, ceiling_living]
+    affected_views: [junction_x7_20, living_south_hvac_face]
+    owner: project
+    status: resolved
+    verification_method: runtime bounds + verify:all
+  - id: corridor-light-relocation
+    category: user_decision
+    statement: 将现有走廊口筒灯移至主走廊中段(5.70,4.90)，并同步调整供电线路。
+    value: {x: 5.70, z: 4.90, room: main_corridor, mounting_ceiling: ceiling_main_corridor, finished_plane_y: 2.50}
+    source_refs: [user_reply:移到走廊中段]
+    basis: 业主明确批准候选点与线路调整
+    confidence: high
+    impact: electrical_and_lighting
+    affected_objects: [light_corridor_1, strong-light-corridor, strong-light-entry-switch-corridor, strong-light-entry-night-corridor]
+    affected_views: [corridor_to_living, junction_x7_20]
+    owner: owner
+    status: resolved
+    verification_method: runtime point bounds + verify:electrical + verify:mep
+  - id: living-sofa-floor-branch-edge-exit
+    category: engineering_adjustment
+    statement: 客厅南地插A支路从新边吊南缘外侧出线，避免低位垫层支路落入新增吊顶投影；插座坐标不变。
+    value: {route_id: strong-power-living-sofa-l, trunk_branch: [11.0, 5.55, 2.70], ceiling_exit: [11.0, 5.56], endpoint: sock_living_sofa_l, endpoint_position_changed: false}
+    source_refs: [config/mep-hvac-coordination.yaml#strong-power-living-sofa-l, config/hvac.yaml#supply_living]
+    basis: 新南边界z=5.55；边吊完成面y=2.50；线路在z=5.56离开投影后再竖向下引
+    confidence: high
+    impact: mep_route_geometry
+    affected_objects: [ceiling_living, strong-power-living, strong-power-living-sofa-l, sock_living_sofa_l]
+    affected_views: [living_south_hvac_face]
+    owner: project
+    status: resolved
+    verification_method: verify:all + route-footprint inspection
+  - id: project-stage
+    category: confirmed
+    statement: 项目尚未交房，硬装、水电、吊顶和空调均未施工；本轮只做视觉/机电协调预演。
+    value: {construction_status: not_started, preview_only: true}
+    source_refs: [AGENTS.md#当前施工状态, user_request:真实三维预演]
+    basis: 项目控制源与业主要求
+    confidence: high
+    impact: decision_scope
+    affected_objects: [ceiling_living, ceiling_main_corridor, hvac_terminals, light_corridor_1]
+    affected_views: [all]
+    owner: owner
+    status: resolved
+    verification_method: project status declaration
+  - id: vendor-site-pending
+    category: site_pending
+    statement: 实际内机与检修尺寸、送风有效面积/风量/静压、新增区域梁底与综合管线净空仍需厂家图和现场复核。
+    value: {machine_clearance: pending, supply_performance: pending, beam_and_services: pending}
+    source_refs: [config/ceiling.yaml#ceiling_living, config/hvac.yaml#supply_living, docs/pending-site-data.md]
+    basis: 当前配置已声明厂家与现场数据未核
+    confidence: high
+    impact: construction_and_airflow
+    affected_objects: [ceiling_living, supply_living, supply-air-living]
+    affected_views: [living_south_hvac_face]
+    owner: 业主/空调厂家/吊顶施工方
+    status: pending
+    verification_method: MJV/P-SS厂家安装图、梁底实测和综合机电复核
+    trigger: 施工深化和风口下单前
+  - id: excluded-fridge-cabinet
+    category: user_decision
+    statement: 业主澄清冰箱/半高柜消息误发；本轮不处理冰箱或柜体。
+    value: {included: false}
+    source_refs: [user_message:不用管冰箱，之前是我发错了]
+    basis: 业主明确更正任务范围
+    confidence: high
+    impact: scope
+    affected_objects: [fridge, entry_half_height_cabinet]
+    affected_views: []
+    owner: owner
+    status: excluded
+    verification_method: scope audit
+  - id: corridor-paint-current-surface-selection
+    category: confirmed
+    statement: 当前主走廊涂装源声明三段实际墙脸与一条整间吊顶涂装范围；墙洞按墙面几何扣除，吊顶铝扣板投影按独立顶面算法扣除。
+    value:
+      wall_regions: [paint_main_corridor_w_strip_east, paint_main_corridor_w_st_north, paint_main_corridor_w_nw_south]
+      ceiling_region: paint_ceiling_main_corridor
+      ceiling_area_m2: 3.75
+    source_refs: [config/layout/overlay.yaml#paint_region, config/layout/overlay.yaml#paint_ceiling_region, config/ceiling.yaml#ceiling_main_corridor]
+    basis: 当前overlay实际声明与吊顶配置footprint
+    confidence: high
+    impact: paint_scope_and_budget
+    affected_objects: [main_corridor, ceiling_main_corridor]
+    affected_views: [corridor_to_living]
+    owner: project
+    status: resolved
+    verification_method: paint comparison area breakdown
+  - id: paint-wall-ceiling-coupling-baseline
+    category: confirmed
+    statement: 当前涂装核算分别计算paint_region墙面净面积与paint_ceiling_region顶面积，但服务端和finish F05还强制两者的房间集合相同，因此不能独立选择只刷墙或只刷顶。
+    value: {wall_area_source: overlay.paint_region, ceiling_area_source: overlay.paint_ceiling_region, coupled_room_sets: true}
+    source_refs: [server/paint-cost-comparison.ts#computePaintScopeForLayout, shared/finish/rules.ts#checkCeilingFinishUnaccounted, config/finish-lint.yaml#finish.ceiling_unaccounted]
+    basis: 当前集合校验与F05实现
+    confidence: high
+    impact: paint_scope_architecture
+    affected_objects: [paint-region-selection, ceiling-paint-selection]
+    affected_views: []
+    owner: project
+    status: superseded_by_independent_surface_selection
+    verification_method: focused paint-scope regression tests
+  - id: independent-wall-ceiling-paint-selection
+    category: user_decision
+    statement: 墙面和吊顶涂面应可独立选择；各自只从自己的显式声明计算，不因另一类表面是否选中而自动增加面积。
+    value: {wall_scope_selector: overlay.paint_region, ceiling_scope_selector: overlay.paint_ceiling_region, absent_selector_area_m2: 0}
+    source_refs: [user_reply:独立选择。架构上应该是支持的吧？]
+    basis: 业主明确要求墙面与吊顶独立选择
+    confidence: high
+    impact: paint_scope_architecture_and_budget
+    affected_objects: [paint-region-selection, ceiling-paint-selection]
+    affected_views: [corridor_to_living]
+    owner: owner
+    status: resolved
+    verification_method: wall-only and ceiling-only cost comparison tests

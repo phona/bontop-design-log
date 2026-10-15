@@ -38,6 +38,8 @@ export interface RoomLayout {
   depth: number;
   height: number;
   type: 'public' | 'private' | 'service';
+  /** Boundary participates in location/adjacency checks but has no implicit room floor/ceiling or room-level takeoff. */
+  semantic_only?: boolean;
   needs_waterproof?: boolean;
   area?: number;
   wallOpenings?: ResolvedOpening[];
@@ -235,6 +237,8 @@ export interface MaterialAppearance {
   tone_var?: number;
   grain_var?: number;
   seam?: number;
+  /** Temporary preview rotation in degrees; 0 preserves the current world-X plank direction. */
+  rotationDeg?: number;
   [key: string]: unknown;
 }
 
@@ -978,6 +982,8 @@ export interface RoomDef {
   boundary: string[];
   height: number;
   type?: string;
+  /** Semantic boundary only; visible surfaces and quantities must come from explicit overlay/config declarations. */
+  semantic_only?: boolean;
 }
 
 export interface PlatformDef {

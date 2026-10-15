@@ -72,6 +72,15 @@ rooms:
     boundary: [v_kit_s2, v_ent_kit2, v_ent_sw, v_foyer_se, v_be_se_s, v_step_t]
     height: 2.8
     type: public
+  - id: main_corridor
+    name: 主走廊
+    # 仅用于点位归属、空间校验和墙面邻接；显式跳过默认房间地/顶面与房间级瓦工算量。
+    # 实际地面由 overlay.main_corridor_floor 渲染/计量，实际吊顶由 ceiling_main_corridor 渲染/计量。
+    # 东侧开放接客餐厅，不新增隔墙。
+    boundary: [v_strip_ne, v_kit_s, v_st_ne, v_mb_ne]
+    height: 2.8
+    type: public
+    semantic_only: true
   - id: master_bath
     name: 主卫
     boundary: [v_bath_nw, v_bath_ne, v_mbath_se, v_mb_sw]  # 2026-08-25 台盆外移条带，隔墙再北移 z=2.86，主卫进深 1.76m（西淋浴湿区/东马桶）；马桶 z=1.5 与门扇扫掠 z≥2.06 不冲突，净空待量房复核

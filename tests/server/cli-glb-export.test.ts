@@ -137,9 +137,12 @@ test('CLI builder creates core geometry with export metadata', () => {
   assert.ok(splitWall);
   assert.equal(splitWall.userData.exportName, 'w_ent_south_w:0');
   assert.equal(splitWall.name, splitWall.userData.exportName);
-  // 电梯井不生成地面/天花（HEAD 语义）：11 个房间但只有 10 个 floor/ceiling
+  // 12 个 layout rooms 中，电梯井与 semantic-only 主走廊不生成默认地面/天花。
   assert.equal(report.rooms, 10);
   assert.equal(report.ceilings, 10);
+  assert.equal(exportRoot.getObjectByName('floor:main_corridor'), undefined, 'semantic-only 主走廊不应重复 main_corridor_floor');
+  assert.equal(exportRoot.getObjectByName('ceiling:main_corridor'), undefined, 'semantic-only 主走廊不应生成 2.80m 默认顶面');
+  assert.ok(exportRoot.getObjectByName('ceiling:ceiling_main_corridor'), '显式走廊降板仍由 ceiling zone 渲染');
   assert.ok(report.ceilingZones > 0);
   assert.ok(report.walls > 0);
   assert.ok(report.furniture > 0);
