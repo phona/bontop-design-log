@@ -60,32 +60,32 @@ const PARITY_CONTRACT: FactsRegistry['contracts'] = [{
 
 test('quantity_parity：两侧一致时通过，并留下「几处一致」的 INFO', () => {
   const ws = workspaceOf({
-    'schedule/phase-1/control.yaml': 'work_packages:\n  - budget:\n      components:\n        - id: COST-060-08\n          quantity_declared: { total_tile_sqm: 30.8105 }\n',
+    'schedule/phase-1/control.yaml': 'work_packages:\n  - budget:\n      components:\n        - id: COST-060-08\n          quantity_declared: { total_tile_sqm: 36.7236 }\n',
   }, {
-    'budget.masonry': { totalTileSqm: 30.81054967354321 },
+    'budget.masonry': { totalTileSqm: 36.72359934704321 },
   });
   const result = lintFacts({ ...emptyRegistry, contracts: PARITY_CONTRACT }, ws);
   assert.equal(result.errors.length, 0);
-  assert.match(result.notes?.join('\n') ?? '', /c\.x_parity：2 处一致 = 30\.8105/);
+  assert.match(result.notes?.join('\n') ?? '', /c\.x_parity：2 处一致 = 36\.72359934704321/);
 });
 
 test('quantity_parity：登记侧漂移即 error，且 message 同时列出两侧的值', () => {
   const ws = workspaceOf({
     'schedule/phase-1/control.yaml': 'work_packages:\n  - budget:\n      components:\n        - id: COST-060-08\n          quantity_declared: { total_tile_sqm: 15.33 }\n',
   }, {
-    'budget.masonry': { totalTileSqm: 30.81054967354321 },
+    'budget.masonry': { totalTileSqm: 36.72359934704321 },
   });
   const result = lintFacts({ ...emptyRegistry, contracts: PARITY_CONTRACT }, ws);
   assert.equal(result.errors.length, 1);
   assert.equal(result.errors[0].code, 'parity_mismatch');
   // 必须两边都印出来：只印「不一致」没法判断该改哪边。
-  assert.match(result.errors[0].message, /实算 = 30\.81054967354321/);
+  assert.match(result.errors[0].message, /实算 = 36\.72359934704321/);
   assert.match(result.errors[0].message, /登记 = 15\.33/);
 });
 
 test('quantity_parity：任一侧取不到有限数值即 error，不许静默跳过', () => {
   const missingDataset = workspaceOf({
-    'schedule/phase-1/control.yaml': 'work_packages:\n  - budget:\n      components:\n        - id: COST-060-08\n          quantity_declared: { total_tile_sqm: 30.8105 }\n',
+    'schedule/phase-1/control.yaml': 'work_packages:\n  - budget:\n      components:\n        - id: COST-060-08\n          quantity_declared: { total_tile_sqm: 36.7236 }\n',
   }, {});
   const missingDatasetResult = lintFacts({ ...emptyRegistry, contracts: PARITY_CONTRACT }, missingDataset);
   assert.equal(missingDatasetResult.errors.length, 1);
@@ -94,11 +94,11 @@ test('quantity_parity：任一侧取不到有限数值即 error，不许静默�
   // yaml 侧：条目 id 不存在、文件不可读、点分路径指空——三种都必须是 error。
   const noComponent = workspaceOf({
     'schedule/phase-1/control.yaml': 'work_packages: []\n',
-  }, { 'budget.masonry': { totalTileSqm: 30.8105 } });
+  }, { 'budget.masonry': { totalTileSqm: 36.7236 } });
   assert.equal(lintFacts({ ...emptyRegistry, contracts: PARITY_CONTRACT }, noComponent).errors[0].code, 'parity_unresolvable');
 
   const badPath = workspaceOf({
-    'schedule/phase-1/control.yaml': 'work_packages:\n  - budget:\n      components:\n        - id: COST-060-08\n          quantity_declared: { total_tile_sqm: 30.8105 }\n',
+    'schedule/phase-1/control.yaml': 'work_packages:\n  - budget:\n      components:\n        - id: COST-060-08\n          quantity_declared: { total_tile_sqm: 36.7236 }\n',
   }, { 'budget.masonry': {} });
   assert.equal(lintFacts({ ...emptyRegistry, contracts: PARITY_CONTRACT }, badPath).errors[0].code, 'parity_unresolvable');
 });
@@ -113,8 +113,8 @@ test('quantity_parity：dataset 点分扁平键与逐段下钻两种写法都认
     ],
   }];
   const ws = workspaceOf({}, {
-    'budget.masonry': { totalTileSqm: 30.8105, wallTileSqm: 30.8105 },
-    budget: { masonry: { totalTileSqm: 30.8105 } },
+    'budget.masonry': { totalTileSqm: 36.7236, wallTileSqm: 36.7236 },
+    budget: { masonry: { totalTileSqm: 36.7236 } },
   });
   assert.equal(lintFacts({ ...emptyRegistry, contracts: contract }, ws).errors.length, 0);
 });
@@ -125,7 +125,7 @@ test('quantity_parity：少于两侧 = 契约本身没写对，报 error 而不�
     kind: 'quantity_parity',
     compare: [{ label: '只有一侧', value: 'dataset:budget.masonry.totalTileSqm' }],
   }];
-  const ws = workspaceOf({}, { 'budget.masonry': { totalTileSqm: 30.8105 } });
+  const ws = workspaceOf({}, { 'budget.masonry': { totalTileSqm: 36.7236 } });
   const result = lintFacts({ ...emptyRegistry, contracts: contract }, ws);
   assert.equal(result.errors.length, 1);
   assert.equal(result.errors[0].code, 'parity_unresolvable');
@@ -142,7 +142,7 @@ test('quantity_parity：yaml: 侧省略 #<id> 即报错（歧义写法不许静�
   }];
   const ws = workspaceOf({
     'config/tile-comparison.yaml': 'dry_room_ids: [kitchen]\n',
-  }, { 'budget.masonry': { totalTileSqm: 30.8105 } });
+  }, { 'budget.masonry': { totalTileSqm: 36.7236 } });
   const result = lintFacts({ ...emptyRegistry, contracts: contract }, ws);
   assert.equal(result.errors.length, 1);
   assert.equal(result.errors[0].code, 'parity_unresolvable');
@@ -207,11 +207,11 @@ test('真实仓：五条对账契约已登记，且 verify-facts 全绿', () => 
   }
 });
 
-test('真实仓：墙砖面积三处一致（30.8105㎡），橱柜/地面两处口径各自闭合', () => {
+test('真实仓：墙砖面积三处一致（36.7236㎡），橱柜/地面两处口径各自闭合', () => {
   // 直接跑入口脚本：契约 + 机器源 + 登记侧三方一起验，任何一侧坏都红。
   const run = spawnSync('npx', ['tsx', 'scripts/verify/facts/verify-facts.ts'], { encoding: 'utf8' });
   assert.equal(run.status, 0, `verify-facts 必须退出 0。stderr: ${run.stderr}\nstdout: ${run.stdout}`);
-  assert.match(run.stdout, /c\.masonry_tile_area_parity：3 处一致 = 30\.8105/);
+  assert.match(run.stdout, /c\.masonry_tile_area_parity：3 处一致 = 36\.72359934708642/);
   assert.match(run.stdout, /c\.floor_quantity_parity：3 处一致 = 123\.34/);
   assert.match(run.stdout, /c\.cabinet_length_parity：3 处一致 = 5\.51/);
   assert.match(run.stdout, /c\.cabinet_area_parity：3 处一致 = 4\.2226/);
@@ -236,14 +236,14 @@ test('真实仓负例：control.yaml 登记值改坏，verify-facts 必须报 pa
     },
     grep: () => [],
     datasets: {
-      'budget.masonry': { totalTileSqm: 30.81054967354321 },
-      'budget.line_items': { floor: 123.34, wall: 30.81054967354321, cabinet: 3.7496, countertop: 4.96 },
+      'budget.masonry': { totalTileSqm: 36.72359934704321 },
+      'budget.line_items': { floor: 123.34, wall: 36.72359934704321, cabinet: 3.7496, countertop: 4.96 },
       'budget.cabinet': { countertopLengthM: 4.96, projectedAreaSqm: 3.7496 },
     },
   };
   const result = lintFacts(registry, ws);
   const mismatch = result.errors.find((issue) => issue.code === 'parity_mismatch' && issue.message.includes('c.masonry_tile_area_parity'));
   assert.ok(mismatch, '登记值改坏必须被 c.masonry_tile_area_parity 抓到');
-  assert.match(mismatch!.message, /30\.81054967354321/);
+  assert.match(mismatch!.message, /36\.72359934704321/);
   assert.match(mismatch!.message, /15\.33/);
 });

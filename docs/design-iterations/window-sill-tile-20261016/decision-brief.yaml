@@ -1,0 +1,120 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: window-sill-tile-20261016
+subject: 卧室与书房落地窗防水台统一贴砖
+priority:
+  user_goal: 所有卧室和书房落地窗根部防水台贴砖，延续客厅/主卫低反坎的L型收口，统一视觉语言。
+  ranked: [全部卧室/书房落地窗根部覆盖, 同一墙砖并覆盖front与top两面, 先采用统一估算并在量房后修正]
+  non_negotiables:
+    - 新增反坎采用height=0.15m、depth=0.15m、sill=0m的现行估算。
+    - 每段反坎贴front竖面和top台面，材料跟随当前wall_tile_01候选。
+    - 当前尺寸明确标待量房复核；不得表述为实测。
+  tradeoffs_accepted:
+    - 按resolved窗台路径19.7102m估算，新增贴砖5.91305㎡；曲角终点、完成面和现场构造可能改变最终量和费用。
+    - 当前候选价用于估算，不是成交价。
+frozen: true
+freeze_record:
+  alignment_id: alignment-user-20261016-01
+  original_user_response: 先改进去，防水台尺寸都一样的。到时候量完房，改下尺寸就行了。
+  normalized_decisions:
+    - 范围为master_bedroom、bedroom_nw、bedroom_se、study的全部六段落地窗。
+    - 新增6座bay_sill，每座挂front和top两条sill_region。
+    - 六座均暂按height=0.15m、depth=0.15m、sill=0m；量房后回写实际尺寸。
+    - 新贴砖面沿用当前wall selection，保持同一视觉语言。
+    - 量房后同步更新构件、贴砖面积、成本估算和验收记录。
+  confirmed_by_user: true
+  confirmed_at: 2026-10-16T09:54:37+08:00
+  evidence_refs: [conversation: 用户原话]
+allowed_scope:
+  files:
+    - config/layout/overlay.yaml
+    - config/acceptance.yaml
+    - config/budget-pitfalls.yaml
+    - config/materials.yaml
+    - schedule/phase-1/control.yaml
+    - schedule/phase-1/budget.md
+    - schedule/phase-1/checklist.md
+    - schedule/procurement.md
+    - docs/pending-site-data.md
+    - docs/decisions/11-tile-finish.md
+    - docs/decisions/README.md
+    - tests/server/masonry-takeoff.test.ts
+    - tests/server/masonry-quotes.test.ts
+    - tests/server/budget-calculator.test.ts
+    - tests/server/budget-parity-contracts.test.ts
+    - tests/server/wall-tile-inspection.test.ts
+    - app/src/scene/HouseScene.test.ts
+    - docs/design-iterations/window-sill-tile-20261016/*
+  objects: [master_bedroom_west_upper_ledge, master_bedroom_west_mid_ledge, master_bedroom_south_ledge, study_south_ledge, bedroom_nw_north_ledge, bedroom_se_south_ledge]
+  archetypes: [bay_sill, sill_region]
+  views: [plan, elevation, perspective]
+  changes:
+    - 6个bay_sill构件和12条front/top贴砖声明
+    - 新增估算面积5.91305㎡，全屋墙砖与窗台贴砖总量36.72360㎡
+    - 对齐PKG-060/COST-060-08数量和估算，特殊工艺人工仍待书面报价
+    - 同步验收标准、量房待办、决策记录及采购入口
+forbidden:
+  files: [config/layout/model-geometry.yaml, config/electrical.yaml, config/plumbing.yaml, config/hvac.yaml, config/house.yaml]
+  objects: [entry_garden_floor, existing_high_bay_sills]
+  assumptions:
+    - 不把现有sill=2.07m的高位bay_sill当成低反坎尺寸。
+    - 不把150×150mm估算标成实测值。
+    - 不把特殊工艺人工重复加进已含常规铺贴的18,500元预算池。
+  out_of_scope_changes:
+    - 不修改model-geometry房间/墙体坐标或既有高位bay_sill几何。
+    - 不更改地面材料、其他房间墙面方案或入户花园预算。
+    - 不替业主批准预算来源或商家成交价。
+open_questions:
+  - id: Q-site-dimensions
+    category: geometry
+    question: 量房复核六段反坎高度、内出檐、圆角终点与完成面尺寸。
+    fact_refs: [F01, F05, F06]
+    options: [按实测更新bay_sill与算量]
+    selected: 量房后处理
+    user_response: 到时候量完房，改下尺寸就行了。
+    status: site_pending
+  - id: Q-curtain-clearance
+    category: interface
+    question: 当前帘面偏移0.12m，比150mm暂估反坎出檐0.15m少约0.03m；量房/窗帘深化时要采用什么轨道偏移或反坎净距？
+    fact_refs: [F02, F07]
+    options: [现场确认净距后调窗帘轨道, 现场确认净距后调整低反坎出檐]
+    selected: 量房与窗帘深化时处理；处理前功能评审保持BLOCKED
+    user_response: 用户已确认尺寸量房后修正，未授权现在移动窗帘轨道。
+    status: site_pending
+  - id: Q-window-drainage
+    category: interface
+    question: 门窗方确认窗框泄水孔、top坡向/滴水边和连续打胶接口，确保贴砖/胶不封排水。
+    fact_refs: [F06, F08]
+    options: [量房及门窗交底时确认]
+    selected: 现场前保持site_pending
+    user_response: null
+    status: site_pending
+alignment:
+  records:
+    - alignment_id: alignment-user-20261016-01
+      original_response: 先改进去，防水台尺寸都一样的。到时候量完房，改下尺寸就行了。
+      normalized_decisions: [六段统一150×150mm估算, front+top贴砖, 量房后修正尺寸和成本]
+      affected_refs: [F01, F02, F05, F06]
+      confirmed_at: 2026-10-16T09:54:37+08:00
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands: [npm run verify:all, npm run test:server, npm run test:app, npm run typecheck, npm run verify:schedule, npm run gate:visual]
+  browser_evidence_required: true
+  required_views:
+    - 主卧西墙与南墙窗根部front/top连续性
+    - 书房南窗根部front/top贴砖
+    - 西北次卧北窗根部front/top贴砖
+    - 东南客房南窗根部front/top贴砖
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: pending
+  blocking_issues: [六段反坎尺寸待量房, 默认窗帘净距存在约30mm模型交叠待窗帘深化, 窗框top坡向和泄水孔接口待门窗方确认]
+  done_when:
+    - 六段玻璃墙根各有bay_sill，且每座均声明front+top贴砖面。
+    - masonry-takeoff、测试与预算记录对齐新增5.91305㎡、总贴砖量36.72360㎡。
+    - 新旧声明无重复，材质一致且无静默漏算。
+    - 当前渲染有ready信号、运行时对象、指定机位截图及独立审美/功能复核。
+    - 窗帘净距不再与反坎top面相交；门窗排水、top坡向、泄水孔与打胶收口有明确做法。
+    - 量房任务有owner、触发条件和配置回写位置；当前值标为估算。
+  delivery_notes_required: true

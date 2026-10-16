@@ -18,13 +18,13 @@ materials:
     notes: ["可选替代"]
 
   - id: wall_tile_01
-    name: "厨卫白色釉面砖"
+    name: "白色釉面墙砖/窗台砖候选"
     room: null
     category: wall_tile
     current_stage: selection
     waste_rate: 1.05
     unit: sqm
-    notes: ["厨房+卫生间通用"]
+    notes: ["当前wall默认候选；统一用于厨卫贴砖及客厅/卧室/书房落地窗防水台front+top；精确型号/色号/样板/全安装价待门店确认"]
 
   - id: latex_paint_01
     name: "金装净味五合一"

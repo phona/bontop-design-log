@@ -84,7 +84,7 @@
 | [`08-ceiling-form.md`](./08-ceiling-form.md) | 吊顶造型（弧面返工全链） | 15 | 29 KB | `DEC-2026-10-07-R01` … `DEC-2026-10-15-C02` |
 | [`09-ceiling-takeoff.md`](./09-ceiling-takeoff.md) | 吊顶算量与报价 | 10 | 48 KB | `DEC-2026-10-08-C01` … `DEC-2026-10-08-C13` |
 | [`10-paint.md`](./10-paint.md) | 涂漆 | 3 | 18 KB | `DEC-2026-10-08-C05` … `DEC-2026-10-08-C07` |
-| [`11-tile-finish.md`](./11-tile-finish.md) | 贴砖与饰面终裁 | 13 | 50 KB | `DEC-2026-10-06-TILE-01` … `DEC-2026-10-08-C19` |
+| [`11-tile-finish.md`](./11-tile-finish.md) | 贴砖与饰面终裁 | 14 | 56 KB | `DEC-2026-10-06-TILE-01` … `DEC-2026-10-16-TILE-01` |
 | [`12-plumbing.md`](./12-plumbing.md) | 给排水 | 5 | 24 KB | `DEC-2026-10-07-F03` … `DEC-2026-10-09-W04` |
 | [`13-mep-integration.md`](./13-mep-integration.md) | MEP 标高/路由/水电主材基线 | 3 | 8 KB | `DEC-2026-10-06-R1` … `DEC-2026-10-07-M01` |
 | [`14-style-furniture.md`](./14-style-furniture.md) | 风格/家具/地面 | 8 | 18 KB | `DEC-2026-08-20-024` … `DEC-2026-10-15-R01` |

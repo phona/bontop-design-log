@@ -142,11 +142,11 @@ const close = (actual: number, expected: number, note?: string, tolerance = 1e-6
 
 // ── ① L2 几何交叉层：现行声明必须全部通过（不抛错）────────────────────────────
 
-test('overlay 的 25 段贴砖声明全部通过 L2 几何交叉层', () => {
+test('overlay 的 37 段贴砖声明全部通过 L2 几何交叉层', () => {
   const result = computeMasonryTakeoff(buildInput());
-  assert.equal(result.regions.length, 25, 'wall_region 17 + sill_region 8');
+  assert.equal(result.regions.length, 37, 'wall_region 17 + sill_region 20');
   assert.equal(result.regions.filter((region) => region.kind === 'wall').length, 17);
-  assert.equal(result.regions.filter((region) => region.kind === 'sill').length, 8);
+  assert.equal(result.regions.filter((region) => region.kind === 'sill').length, 20);
   assert.deepEqual(result.unknownRoomZoneIds, [], '所有声明的 room 都在房间表里');
   assert.deepEqual(result.unknownDryRoomIds, []);
   assert.deepEqual(result.unknownWetRoomIds, []);
@@ -166,12 +166,16 @@ test('wall_region 17 段实算 21.256㎡，逐房拆分', () => {
   close(result.byRoom.living_dining.wallTileSqm, 0, '客厅只有 sill_region（防水台），没有 wall_region');
 });
 
-test('sill_region 8 段实算 9.555㎡（含厨房上飘窗 front+underside）', () => {
+test('sill_region 20 段实算 15.468㎡（含卧室/书房防水台 front+top）', () => {
   const result = computeMasonryTakeoff(buildInput());
-  close(result.sillTileSqm, 9.55505, undefined, 1e-4);
+  close(result.sillTileSqm, 15.468099347, undefined, 1e-4);
   close(result.byRoom.kitchen.sillTileSqm, 6.516, 'kitchen_north_bay front 3.60×0.71 + underside 3.60×1.10');
   close(result.byRoom.master_bath.sillTileSqm, 1.17905, undefined, 1e-4);
   close(result.byRoom.living_dining.sillTileSqm, 1.86, '客厅防水台 front 6.20×0.15 + top 6.20×0.15');
+  close(result.byRoom.master_bedroom.sillTileSqm, 3.2130496735, '主卧 west_upper 3.25m + west_mid 2.69m + south 4.770165578m，front+top 各 0.15m');
+  close(result.byRoom.study.sillTileSqm, 0.9, '书房 south 3.00m，front+top 各 0.15m');
+  close(result.byRoom.bedroom_nw.sillTileSqm, 0.9, '西北次卧 north 3.00m，front+top 各 0.15m');
+  close(result.byRoom.bedroom_se.sillTileSqm, 0.9, '东南客房 south 3.00m，front+top 各 0.15m');
   // 单条最大的一块：厨房上飘窗底面（DEC-2026-10-09-P09 业主裁定「底面肯定要的」）
   const underside = result.regions.find((region) => region.id === 'silltile_kitchen_north_bay_underside')!;
   close(underside.areaSqm, 3.96);
@@ -183,9 +187,9 @@ test('sill_region 8 段实算 9.555㎡（含厨房上飘窗 front+underside）',
   close(front.top, 2.83, 'front 是竖面，top = sill + height');
 });
 
-test('全部贴砖 30.811㎡ = wall_region + sill_region', () => {
+test('全部贴砖 36.853㎡ = wall_region + sill_region', () => {
   const result = computeMasonryTakeoff(buildInput());
-  close(result.totalTileSqm, 30.81055, undefined, 1e-4);
+  close(result.totalTileSqm, 36.723599347, undefined, 1e-4);
   close(result.totalTileSqm, result.wallTileSqm + result.sillTileSqm);
   assert.deepEqual(Object.keys(result.byZone), ['visible'], 'C18 废止杂砖后全部 zone=visible');
 });
@@ -221,14 +225,18 @@ test('floor_region：走廊 3.75㎡ 计入，落在已计费房内的 10.39㎡ �
   assert.deepEqual(result.excludedFloorRegionIds, ['entry_garden_floor', 'north_platform_floor']);
 });
 
-test('防水台延长米 13.730m（按构件对 run 取并集，一条矮台只算一次台长）', () => {
+test('防水台延长米 33.440m（按构件对 run 取并集，一条矮台只算一次台长）', () => {
   const result = computeMasonryTakeoff(buildInput());
-  close(result.extrasLinearM, 13.730165578477376);
+  close(result.extrasLinearM, 33.440331156477376);
   close(result.byRoom.living_dining.extrasLinearM, 6.2, 'COST-060-05 的「20 元/米 × 6.20m ≈ 124 元」同口径');
   close(result.byRoom.kitchen.extrasLinearM, 3.6);
   close(result.byRoom.master_bath.extrasLinearM, 0.76 + 3.170165578477376);
+  close(result.byRoom.master_bedroom.extrasLinearM, 10.710165578, '主卧 west_upper + west_mid + south 防水台取构件并集');
+  close(result.byRoom.study.extrasLinearM, 3.0);
+  close(result.byRoom.bedroom_nw.extrasLinearM, 3.0);
+  close(result.byRoom.bedroom_se.extrasLinearM, 3.0);
   // 逐面 run 之和（front/top 各算各的）与去重后台长必须分开显形，否则 20 元/米会被双计
-  close(result.sillFaceLinearM, 27.460331156954755);
+  close(result.sillFaceLinearM, 66.88066231295475);
   assert.ok(result.sillFaceLinearM > result.extrasLinearM * 1.9, 'front+top 两条面 ≈ 2× 台长');
 });
 
@@ -266,13 +274,17 @@ test('生活阳台地面 1.92㎡ 既不在干区也不在湿区 → 显形，不
 test('sill_region 贴附 suppress 幕墙合法但留名；弧墙缺 along 的口径分叉必须告警', () => {
   const result = computeMasonryTakeoff(buildInput());
   const suppressed = result.regions.filter((region) => region.kind === 'sill' && region.suppressedWall);
-  assert.equal(suppressed.length, 8, '8 条 sill_region 全部落在玻璃幕墙根部（防水台/上飘窗）');
+  assert.equal(suppressed.length, 20, '20 条 sill_region 全部落在玻璃幕墙根部（防水台/上飘窗）');
   const arcWarnings = result.warnings.filter((warning) => warning.includes('是弧墙'));
-  assert.equal(arcWarnings.length, 2, 'mbath_north 防水台的 front/top 未声明 along');
+  assert.equal(arcWarnings.length, 4, 'mbath_north 与 master_bedroom_south 两座弧墙防水台的 front/top 未声明 along');
   assert.ok(
     arcWarnings[0].includes('3.1702') && arcWarnings[0].includes('2.7857'),
     '告警必须同时给出折线全长与弦长，业主才能判断补哪个 along',
   );
+  assert.ok(arcWarnings.some((warning) => warning.includes('silltile_master_bedroom_south_front')),
+    '主卧南墙弧墙防水台 front 的折线/弦长分叉必须显形');
+  assert.ok(arcWarnings.some((warning) => warning.includes('silltile_master_bedroom_south_top')),
+    '主卧南墙弧墙防水台 top 的折线/弦长分叉必须显形');
 });
 
 // ── ③ fail-closed：坏输入必须抛错 ────────────────────────────────────────────

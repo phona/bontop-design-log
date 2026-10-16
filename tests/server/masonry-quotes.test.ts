@@ -51,10 +51,10 @@ test('量只有一份：masonryQuoteQuantities 全部来自 shared/masonry-takeo
   assert.ok(Math.abs(quantities.floor - takeoff.dryFloorSqm) < 1e-12, '干区地面 = dryFloorSqm');
   assert.ok(Math.abs(quantities.wet_floor - takeoff.wetFloorSqm) < 1e-12, '湿区地面 = wetFloorSqm');
   assert.ok(Math.abs(quantities.wall_tile - takeoff.totalTileSqm) < 1e-12, '墙砖+防水台 = totalTileSqm');
-  // 权威值（阶段 2.1）：干区 115.614 / 湿区 7.726 / 贴砖 30.8105
+  // 权威值（卧室/书房防水台纳入后）：干区 115.614 / 湿区 7.726 / 贴砖 36.7236
   assert.ok(Math.abs(quantities.floor - 115.614) < 1e-6, `干区地面实测 ${quantities.floor}`);
   assert.ok(Math.abs(quantities.wet_floor - 7.726) < 1e-6, `湿区地面实测 ${quantities.wet_floor}`);
-  assert.ok(Math.abs(quantities.wall_tile - 30.81054967354321) < 1e-6, `贴砖实测 ${quantities.wall_tile}`);
+  assert.ok(Math.abs(quantities.wall_tile - 36.72359934704321) < 1e-6, `贴砖实测 ${quantities.wall_tile}`);
 });
 
 test('文件是合法 quote-cards：parseQuoteCards 不再抛「rates 必须是对象」', () => {
@@ -137,10 +137,10 @@ test('computeLabor 按三行计价：干区 75、墙砖 50、湿区待报价', (
   const snapshot = new BudgetCalculator(catalog, realRules).calculate(scheme);
   const masonry = snapshot.categories.find((c) => c.key === 'masonry');
   assert.ok(masonry);
-  // round(75 × 115.614) + round(50 × 30.81054967354321) = 8671 + 1541
+  // round(75 × 115.614) + round(50 × 36.72359934704321) = 8671 + 1836
   // 阶段 5 口径变更：actual = 已取证材料款 + 人工（不含 candidateActual）。
   // 本 fixture 材料款全未取证 → actual 就是纯人工。
-  assert.equal(masonry.actual, 8671 + 1541, '瓦工人工按费率卡解析价逐行计价');
+  assert.equal(masonry.actual, 8671 + 1836, '瓦工人工按费率卡解析价逐行计价');
   assert.deepEqual(masonry.pendingLabor, [
     { area: 'wet_floor_tile', quantity: takeoff.wetFloorSqm, unit: '元/㎡', reason: 'rate 待报价' },
   ], '湿区必须显形为待报价，而不是按 45 元/㎡ 悄悄计入');

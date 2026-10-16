@@ -84,6 +84,32 @@ function sourceWallIdOf(objectId: string): string {
   const colon = objectId.indexOf(':');
   return colon === -1 ? objectId : objectId.slice(0, colon);
 }
+
+/**
+ * Area of a flat inspection mesh, including ShapeGeometry (which has no
+ * PlaneGeometry `parameters.width/height`). Kept local to each inspection
+ * path so one inspection layer cannot affect another layer's behavior.
+ */
+function geometrySurfaceAreaSqm(geometry: THREE.BufferGeometry): number {
+  const positions = geometry.getAttribute('position');
+  if (!positions || positions.count < 3) return 0;
+  const index = geometry.getIndex();
+  let area = 0;
+  const triangleCount = index ? index.count / 3 : positions.count / 3;
+  for (let triangle = 0; triangle < triangleCount; triangle += 1) {
+    const ia = index ? index.getX(triangle * 3) : triangle * 3;
+    const ib = index ? index.getX(triangle * 3 + 1) : triangle * 3 + 1;
+    const ic = index ? index.getX(triangle * 3 + 2) : triangle * 3 + 2;
+    const ax = positions.getX(ia); const ay = positions.getY(ia); const az = positions.getZ(ia);
+    const abx = positions.getX(ib) - ax; const aby = positions.getY(ib) - ay; const abz = positions.getZ(ib) - az;
+    const acx = positions.getX(ic) - ax; const acy = positions.getY(ic) - ay; const acz = positions.getZ(ic) - az;
+    const crossX = aby * acz - abz * acy;
+    const crossY = abz * acx - abx * acz;
+    const crossZ = abx * acy - aby * acx;
+    area += Math.hypot(crossX, crossY, crossZ) / 2;
+  }
+  return area;
+}
 /** 吊顶分区高亮的显示参数（DEC-2026-10-08-C01）：不透明度高于贴砖检视态——分区是"面"不是"带"。 */
 const CEILING_ZONE_HIGHLIGHT_OPACITY = 0.92;
 const CEILING_ZONE_SOLO_DIM_OPACITY = 0.14;
@@ -1002,21 +1028,34 @@ export class HouseScene implements SceneApi {
     });
     const roomOf = (id: string, roomId: unknown): string => {
       if (typeof roomId === 'string' && roomId.length > 0) {
-        return ({ kitchen: '厨房', master_bath: '主卫', guest_bath: '客卫', balcony: '阳台', living_dining: '客厅' } as Record<string, string>)[roomId] ?? roomId;
+        return ({
+          kitchen: '厨房', master_bath: '主卫', guest_bath: '客卫', balcony: '阳台',
+          living_dining: '客厅', master_bedroom: '主卧', study: '书房',
+          bedroom_nw: '西北次卧', bedroom_se: '东南客房',
+        } as Record<string, string>)[roomId] ?? roomId;
       }
       return id.startsWith('walltile_kitchen') ? '厨房' : id.startsWith('walltile_mbath') ? '主卫' : id.startsWith('walltile_balc') ? '阳台' : '客卫';
     };
     const regions = meshes.map((mesh) => {
-      const geometry = mesh.geometry as unknown as { parameters: { width: number; height: number } };
+      const geometry = mesh.geometry as THREE.BufferGeometry & { parameters?: { width?: number; height?: number } };
       const along = (mesh.userData.along as [number, number]) ?? [0, 0];
-      const height = +geometry.parameters.height.toFixed(4);
-      const lengthM = +geometry.parameters.width.toFixed(4);
+      const width = Number(geometry.parameters?.width);
+      const geometryHeight = Number(geometry.parameters?.height);
+      const hasRectangularDimensions = Number.isFinite(width) && width > 0
+        && Number.isFinite(geometryHeight) && geometryHeight > 0;
+      // sill_region underside uses ShapeGeometry for its resolved footprint.
+      // Its exact area comes from triangles; it has no width/height parameters.
+      const lengthM = +(hasRectangularDimensions ? width : 0).toFixed(4);
+      const height = +(hasRectangularDimensions ? geometryHeight : 0).toFixed(4);
+      const areaSqm = +(hasRectangularDimensions
+        ? width * geometryHeight
+        : geometrySurfaceAreaSqm(geometry)).toFixed(4);
       const id = String(mesh.userData.objectId ?? '');
       return {
         id, objectId: id, wall: String(mesh.userData.wallId ?? ''),
         room: roomOf(id, mesh.userData.roomId),
         along, bottom: +(((mesh.userData.bottom as number | undefined) ?? (mesh.userData.inspectionInitial as any)?.bottom ?? 0)).toFixed(4),
-        height, lengthM, areaSqm: +(lengthM * height).toFixed(4),
+        height, lengthM, areaSqm,
         zone: (mesh.userData.zone ?? 'visible') as 'visible' | 'covered',
       };
     }).sort((a, b) => a.id.localeCompare(b.id));

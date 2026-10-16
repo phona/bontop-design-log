@@ -559,6 +559,35 @@ describe('HouseScene', () => {
     expect(scene.getWallTileInspectionStatus().byRoom['客厅'].areaSqm).toBeCloseTo(0.93 + 0.93, 4);
   });
 
+  it('wall-tile audit reads ShapeGeometry underside area without requiring plane parameters', () => {
+    const scene = Object.create(HouseScene.prototype) as any;
+    scene.exportRoot = new THREE.Group();
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.lineTo(3, 0);
+    shape.lineTo(3, 2);
+    shape.lineTo(0, 2);
+    shape.closePath();
+    const underside = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshStandardMaterial());
+    underside.userData = {
+      objectId: 'silltile_bedroom_nw_north_underside',
+      wallId: 'w_nw_north',
+      roomId: 'bedroom_nw',
+      kind: 'sill-underside',
+      along: [0, 3],
+      bottom: 2.12,
+      zone: 'visible',
+      inspectionLayer: 'wall-tile',
+      inspectionInitial: { bottom: 2.12 },
+    };
+    scene.exportRoot.add(underside);
+
+    const status = scene.getWallTileInspectionStatus();
+    expect(status.byRoom['西北次卧'].lengthM).toBe(0);
+    expect(status.byRoom['西北次卧'].areaSqm).toBeCloseTo(6, 5);
+    expect(status.totalAreaSqm).toBeCloseTo(6, 5);
+  });
+
   it('makes only inspection-declared ceiling covers translucent during HVAC inspection', () => {
     const scene = Object.create(HouseScene.prototype) as any;
     const inspected = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());

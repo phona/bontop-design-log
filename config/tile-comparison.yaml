@@ -175,7 +175,7 @@ selection_baseline:
     - "carton_size：KT 与金意陶均 unknown，箱规未知前不能按 516/970 片下单"
     - "KT 报价单分房墙砖量与模型不符（主卫超约25%、客卫超约14%、厨房少约5.52㎡），选 KT 须重算墙砖量"
     - "瓦工工费书面报价（费率卡为 preliminary），并明确按净面积还是实铺面积计价"
-    - "PKG-060 need 仍按诺贝尔 cap 20,000 记账，应改为 KT 实价 14,964（缺口 14,296 → 约 9,264）"
+    - "历史候选对比：KT报价¥14,964仍非成交价；原PKG-060缺口¥14,296→约¥9,264口径已被DEC-2026-10-16-TILE-01当前墙砖范围推翻。现行资金口径以schedule/phase-1/control.yaml及其生成budget.md为准；不得沿用旧资金差额"
     - "卫生间地面 300 元/间「面积不计」两读未裁（config/masonry-labor.yaml 的 bathroom_floor_charge_interpretations）"
 
 wet_baseline:

@@ -1,0 +1,80 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: window-sill-tile-20261016
+subject: 六段卧室/书房落地窗低反坎
+object_policy: {fixed_count_required: true, split_by: [function, owner, material, collision, maintenance, interface, review], visual_relationship_required: true}
+objects:
+  - &ledge
+    id: master_bedroom_west_upper_ledge
+    type: bay_sill + sill_region pair
+    archetypes: [bay_sill, sill_region]
+    owner: 业主（设计决策）/瓦工（施工）
+    function: 主卧窗根低反坎，front与top贴砖并做连续收口。
+    material: current wall selection wall_tile_01
+    geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_west_upper
+    datum_refs: [D01]
+    fact_refs: [F01, F02, F05, F06]
+    decision_refs: [DEC-2026-10-16-TILE-01]
+    dependencies: [w_west_upper幕墙, master_bedroom房间侧]
+    interfaces: [{id: top-face-room-normal, target_object_id: master_bedroom, kind: visual, requirement: top面朝房间侧, status: confirmed}]
+    collision: {policy: none, geometry_ref: bay_sill, review_ref: 项目碰撞豁免类型}
+    maintenance: {boundary: 窗框下沿防水胶与窗台砖交界, access_clearance: 窗台可擦洗, replaceable_parts: [front砖, top砖], inspection_requirements: [倒水检查窗框下沿渗漏, 复核出檐和转角收口]}
+    parts:
+      - {id: front, role: 竖直前脸, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=front, datum_refs: [D01], dependencies: [master_bedroom_west_upper_ledge], collision: none, maintenance_boundary: 窗框下沿打胶, validation_refs: [masonry-takeoff, browser-runtime]}
+      - {id: top, role: 向室内出檐台面, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=top, datum_refs: [D01], dependencies: [master_bedroom_west_upper_ledge], collision: none, maintenance_boundary: 台面可擦洗, validation_refs: [masonry-takeoff, browser-runtime]}
+    visual_relationships: [{target_object_id: existing_living_and_master_bath_low_ledges, relation: aligned, requirement: 同150×150mm估算、同front+top、同墙砖候选, evidence_refs: []}]
+    validation_refs: [masonry-takeoff, verify:all, agent-browser]
+    status: planned
+  - <<: *ledge
+    id: master_bedroom_west_mid_ledge
+    function: 主卧西墙中段窗根低反坎；避让现有百叶与窗帘完成面，front与top统一贴砖。
+    geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_west_mid
+    datum_refs: [D02]
+    dependencies: [w_west_mid幕墙, master_bedroom房间侧, 百叶/窗帘完成面待量房]
+    interfaces: [{id: top-face-room-normal, target_object_id: master_bedroom, kind: visual, requirement: top面朝房间侧；窗帘净距待量房/窗帘深化, status: site_pending}]
+    parts:
+      - {id: front, role: 竖直前脸, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=front, datum_refs: [D02], dependencies: [master_bedroom_west_mid_ledge], collision: none, maintenance_boundary: 窗框下沿打胶, validation_refs: [masonry-takeoff, browser-runtime]}
+      - {id: top, role: 向室内出檐台面, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=top, datum_refs: [D02], dependencies: [master_bedroom_west_mid_ledge], collision: none, maintenance_boundary: 台面可擦洗, validation_refs: [masonry-takeoff, browser-runtime]}
+  - <<: *ledge
+    id: master_bedroom_south_ledge
+    function: 主卧南墙窗根低反坎；front与top统一贴砖并做连续收口。
+    geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_mb_south
+    datum_refs: [D03]
+    dependencies: [w_mb_south幕墙, master_bedroom房间侧]
+    interfaces: [{id: top-face-room-normal, target_object_id: master_bedroom, kind: visual, requirement: top面朝房间侧, status: confirmed}]
+    parts:
+      - {id: front, role: 竖直前脸, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=front, datum_refs: [D03], dependencies: [master_bedroom_south_ledge], collision: none, maintenance_boundary: 窗框下沿打胶, validation_refs: [masonry-takeoff, browser-runtime]}
+      - {id: top, role: 向室内出檐台面, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=top, datum_refs: [D03], dependencies: [master_bedroom_south_ledge], collision: none, maintenance_boundary: 台面可擦洗, validation_refs: [masonry-takeoff, browser-runtime]}
+  - <<: *ledge
+    id: study_south_ledge
+    function: 书房南墙窗根低反坎；front与top统一贴砖并做连续收口。
+    geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_st_south
+    datum_refs: [D04]
+    dependencies: [w_st_south幕墙, study房间侧]
+    interfaces: [{id: top-face-room-normal, target_object_id: study, kind: visual, requirement: top面朝房间侧, status: confirmed}]
+    parts:
+      - {id: front, role: 竖直前脸, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=front, datum_refs: [D04], dependencies: [study_south_ledge], collision: none, maintenance_boundary: 窗框下沿打胶, validation_refs: [masonry-takeoff, browser-runtime]}
+      - {id: top, role: 向室内出檐台面, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=top, datum_refs: [D04], dependencies: [study_south_ledge], collision: none, maintenance_boundary: 台面可擦洗, validation_refs: [masonry-takeoff, browser-runtime]}
+  - <<: *ledge
+    id: bedroom_nw_north_ledge
+    function: 西北次卧北墙窗根低反坎；front与top统一贴砖并做连续收口。
+    geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_nw_north
+    datum_refs: [D05]
+    dependencies: [w_nw_north幕墙, bedroom_nw房间侧]
+    interfaces: [{id: top-face-room-normal, target_object_id: bedroom_nw, kind: visual, requirement: top面朝房间侧, status: confirmed}]
+    parts:
+      - {id: front, role: 竖直前脸, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=front, datum_refs: [D05], dependencies: [bedroom_nw_north_ledge], collision: none, maintenance_boundary: 窗框下沿打胶, validation_refs: [masonry-takeoff, browser-runtime]}
+      - {id: top, role: 向室内出檐台面, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=top, datum_refs: [D05], dependencies: [bedroom_nw_north_ledge], collision: none, maintenance_boundary: 台面可擦洗, validation_refs: [masonry-takeoff, browser-runtime]}
+  - <<: *ledge
+    id: bedroom_se_south_ledge
+    function: 东南客房南墙窗根低反坎；front与top统一贴砖并做连续收口。
+    geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_be_south
+    datum_refs: [D06]
+    dependencies: [w_be_south幕墙, bedroom_se房间侧]
+    interfaces: [{id: top-face-room-normal, target_object_id: bedroom_se, kind: visual, requirement: top面朝房间侧, status: confirmed}]
+    parts:
+      - {id: front, role: 竖直前脸, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=front, datum_refs: [D06], dependencies: [bedroom_se_south_ledge], collision: none, maintenance_boundary: 窗框下沿打胶, validation_refs: [masonry-takeoff, browser-runtime]}
+      - {id: top, role: 向室内出檐台面, independent: true, owner: 瓦工, material: wall_tile_01, geometry_source: sill_region face=top, datum_refs: [D06], dependencies: [bedroom_se_south_ledge], collision: none, maintenance_boundary: 台面可擦洗, validation_refs: [masonry-takeoff, browser-runtime]}
+notes:
+  - 每座反坎主体独立建模，front与top是同一主体的独立贴砖声明；不引用wall_region，不加入碰撞集合。
+  - 现场接口未闭环：默认窗帘帘面偏移0.12m，低反坎暂估出檐0.15m，平面存在约0.03m交叠；六处需由窗帘商/设计在量房后确认轨道偏移或反坎出檐，未确认前功能评审BLOCKED。窗框由门窗方确认top坡向、泄水孔与连续打胶，瓷砖胶/密封胶不得封堵泄水孔。

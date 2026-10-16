@@ -1,0 +1,174 @@
+{
+  "url": "http://localhost:5173/",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "tileLayerVisible": true,
+  "alerts": [],
+  "camera": {
+    "mode": "orbit",
+    "isOverview": false,
+    "position": [
+      1.1000000000000005,
+      0.7199999999999998,
+      8.62
+    ],
+    "target": [
+      0.05,
+      0.08,
+      9.55
+    ]
+  },
+  "tileStatus": {
+    "totalAreaSqm": 36.722,
+    "byRoom": {
+      "西北次卧": {
+        "lengthM": 6,
+        "areaSqm": 0.9
+      },
+      "东南客房": {
+        "lengthM": 6,
+        "areaSqm": 0.9
+      },
+      "厨房": {
+        "lengthM": 7.6,
+        "areaSqm": 16.416
+      },
+      "客厅": {
+        "lengthM": 12.4,
+        "areaSqm": 1.86
+      },
+      "主卧": {
+        "lengthM": 21.4192,
+        "areaSqm": 3.2124
+      },
+      "主卫": {
+        "lengthM": 11.4192,
+        "areaSqm": 4.9489
+      },
+      "书房": {
+        "lengthM": 6,
+        "areaSqm": 0.9
+      },
+      "阳台": {
+        "lengthM": 2.7,
+        "areaSqm": 0.81
+      },
+      "客卫": {
+        "lengthM": 6.45,
+        "areaSqm": 6.775
+      }
+    }
+  },
+  "newLedgerFaces": [
+    {
+      "elementId": "master_bedroom_west_upper_waterproof_ledge",
+      "kind": "sill-front",
+      "roomId": "master_bedroom",
+      "meshCount": 1,
+      "objectIds": [
+        "silltile_master_bedroom_west_upper_front"
+      ]
+    },
+    {
+      "elementId": "master_bedroom_west_upper_waterproof_ledge",
+      "kind": "sill-top",
+      "roomId": "master_bedroom",
+      "meshCount": 1,
+      "objectIds": [
+        "silltile_master_bedroom_west_upper_top"
+      ]
+    },
+    {
+      "elementId": "master_bedroom_west_mid_waterproof_ledge",
+      "kind": "sill-front",
+      "roomId": "master_bedroom",
+      "meshCount": 1,
+      "objectIds": [
+        "silltile_master_bedroom_west_mid_front"
+      ]
+    },
+    {
+      "elementId": "master_bedroom_west_mid_waterproof_ledge",
+      "kind": "sill-top",
+      "roomId": "master_bedroom",
+      "meshCount": 1,
+      "objectIds": [
+        "silltile_master_bedroom_west_mid_top"
+      ]
+    },
+    {
+      "elementId": "master_bedroom_south_waterproof_ledge",
+      "kind": "sill-front",
+      "roomId": "master_bedroom",
+      "meshCount": 17,
+      "objectIds": [
+        "silltile_master_bedroom_south_front:s0",
+        "silltile_master_bedroom_south_front:s1"
+      ]
+    },
+    {
+      "elementId": "master_bedroom_south_waterproof_ledge",
+      "kind": "sill-top",
+      "roomId": "master_bedroom",
+      "meshCount": 17,
+      "objectIds": [
+        "silltile_master_bedroom_south_top:s0",
+        "silltile_master_bedroom_south_top:s1"
+      ]
+    },
+    {
+      "elementId": "study_south_waterproof_ledge",
+      "kind": "sill-front",
+      "roomId": "study",
+      "meshCount": 1,
+      "objectIds": [
+        "silltile_study_south_front"
+      ]
+    },
+    {
+      "elementId": "study_south_waterproof_ledge",
+      "kind": "sill-top",
+      "roomId": "study",
+      "meshCount": 1,
+      "objectIds": [
+        "silltile_study_south_top"
+      ]
+    },
+    {
+      "elementId": "bedroom_nw_north_waterproof_ledge",
+      "kind": "sill-front",
+      "roomId": "bedroom_nw",
+      "meshCount": 1,
+      "objectIds": [
+        "silltile_bedroom_nw_north_front"
+      ]
+    },
+    {
+      "elementId": "bedroom_nw_north_waterproof_ledge",
+      "kind": "sill-top",
+      "roomId": "bedroom_nw",
+      "meshCount": 1,
+      "objectIds": [
+        "silltile_bedroom_nw_north_top"
+      ]
+    },
+    {
+      "elementId": "bedroom_se_south_waterproof_ledge",
+      "kind": "sill-front",
+      "roomId": "bedroom_se",
+      "meshCount": 1,
+      "objectIds": [
+        "silltile_bedroom_se_south_front"
+      ]
+    },
+    {
+      "elementId": "bedroom_se_south_waterproof_ledge",
+      "kind": "sill-top",
+      "roomId": "bedroom_se",
+      "meshCount": 1,
+      "objectIds": [
+        "silltile_bedroom_se_south_top"
+      ]
+    }
+  ]
+}

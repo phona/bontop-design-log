@@ -172,9 +172,10 @@ elements:
   # 尺寸为业界常规口径的估算（业主 2026-10-07 指示"开发商已做、按标准估"）：搜索口径——
   # 落地窗窗台常规留 100–200mm 高出地面（防外力撞击玻璃、做内侧防水收口），取中值 150，
   # 且与 300×600 墙砖模数合；出檐（向室内伸进）同取 150。**量级待量房核实**。
-  # 范围核对（R11 附则）：当时判「全宅仅 w_liv_south 齐地」。2026-10-07 C17 业主实地断言推翻
-  # 「飘窗台 2.07 系」推断——幕墙玻璃均为落地窗，玻璃根都有防水台；贴砖挂湿区（主卫），
-  # 干区（卧室/书房/厨房）防水台存在但不挂贴砖，见各 bay_sill 与 #20/#54。
+  # 范围历史：R11/C17 当时把干区防水台排除在贴砖范围外。DEC-2026-10-16-TILE-01
+  # 已推翻卧室/书房「有台但不贴」这一范围结论：新增低反坎构件与 front/top 声明，
+  # 统一沿用150×150mm估算并待量房。既有 sill≈2.07m 的 bay_sill 仍是独立 site-pending 模型，
+  # 不可拿来代替低反坎尺寸，详见 docs/pending-site-data.md #20。
   - id: living_south_waterproof_ledge
     type: bay_sill
     wall: w_liv_south
@@ -201,6 +202,51 @@ elements:
     sill: 0.00
     height: 0.15
     reason: "主卫北墙（x[0,2.60]，西段在淋浴湿区内）根部防水台，D4=L 同款"
+
+  # ── 卧室/书房落地窗根部低反坎（DEC-2026-10-16-TILE-01）──
+  # 用户裁定统一按150高×150出檐先建模；量房后按实际完成尺寸更新。
+  - id: master_bedroom_west_upper_waterproof_ledge
+    type: bay_sill
+    wall: w_west_upper
+    depth: 0.15
+    sill: 0.00
+    height: 0.15
+    reason: "主卧西墙上段落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+  - id: master_bedroom_west_mid_waterproof_ledge
+    type: bay_sill
+    wall: w_west_mid
+    depth: 0.15
+    sill: 0.00
+    height: 0.15
+    reason: "主卧西墙中段落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+  - id: master_bedroom_south_waterproof_ledge
+    type: bay_sill
+    wall: w_mb_south
+    depth: 0.15
+    sill: 0.00
+    height: 0.15
+    reason: "主卧南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+  - id: study_south_waterproof_ledge
+    type: bay_sill
+    wall: w_st_south
+    depth: 0.15
+    sill: 0.00
+    height: 0.15
+    reason: "书房南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+  - id: bedroom_nw_north_waterproof_ledge
+    type: bay_sill
+    wall: w_nw_north
+    depth: 0.15
+    sill: 0.00
+    height: 0.15
+    reason: "西北次卧北墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+  - id: bedroom_se_south_waterproof_ledge
+    type: bay_sill
+    wall: w_be_south
+    depth: 0.15
+    sill: 0.00
+    height: 0.15
+    reason: "东南客房南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
 
   # 地板补区
   - id: entry_garden_floor
@@ -966,3 +1012,89 @@ elements:
     zone: visible
     room: kitchen
     reason: "厨房上飘窗底面贴砖（业主 2026-10-09：「底面肯定要的，以现实使用的合理度为准」）；标高 2.12m 朝下、抬头可见，只贴竖面会留 3.96㎡ 没人管的面"
+
+  # ── 卧室/书房低反坎 L 型贴砖：与客厅/主卫使用同一wall-tile层、同一材料选择 ──
+  - id: silltile_master_bedroom_west_upper_front
+    type: sill_region
+    element: master_bedroom_west_upper_waterproof_ledge
+    face: front
+    zone: visible
+    room: master_bedroom
+    reason: "主卧西墙上段低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+  - id: silltile_master_bedroom_west_upper_top
+    type: sill_region
+    element: master_bedroom_west_upper_waterproof_ledge
+    face: top
+    zone: visible
+    room: master_bedroom
+    reason: "主卧西墙上段低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+  - id: silltile_master_bedroom_west_mid_front
+    type: sill_region
+    element: master_bedroom_west_mid_waterproof_ledge
+    face: front
+    zone: visible
+    room: master_bedroom
+    reason: "主卧西墙中段低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+  - id: silltile_master_bedroom_west_mid_top
+    type: sill_region
+    element: master_bedroom_west_mid_waterproof_ledge
+    face: top
+    zone: visible
+    room: master_bedroom
+    reason: "主卧西墙中段低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+  - id: silltile_master_bedroom_south_front
+    type: sill_region
+    element: master_bedroom_south_waterproof_ledge
+    face: front
+    zone: visible
+    room: master_bedroom
+    reason: "主卧南墙低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+  - id: silltile_master_bedroom_south_top
+    type: sill_region
+    element: master_bedroom_south_waterproof_ledge
+    face: top
+    zone: visible
+    room: master_bedroom
+    reason: "主卧南墙低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+  - id: silltile_study_south_front
+    type: sill_region
+    element: study_south_waterproof_ledge
+    face: front
+    zone: visible
+    room: study
+    reason: "书房南墙低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+  - id: silltile_study_south_top
+    type: sill_region
+    element: study_south_waterproof_ledge
+    face: top
+    zone: visible
+    room: study
+    reason: "书房南墙低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+  - id: silltile_bedroom_nw_north_front
+    type: sill_region
+    element: bedroom_nw_north_waterproof_ledge
+    face: front
+    zone: visible
+    room: bedroom_nw
+    reason: "西北次卧北墙低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+  - id: silltile_bedroom_nw_north_top
+    type: sill_region
+    element: bedroom_nw_north_waterproof_ledge
+    face: top
+    zone: visible
+    room: bedroom_nw
+    reason: "西北次卧北墙低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+  - id: silltile_bedroom_se_south_front
+    type: sill_region
+    element: bedroom_se_south_waterproof_ledge
+    face: front
+    zone: visible
+    room: bedroom_se
+    reason: "东南客房南墙低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+  - id: silltile_bedroom_se_south_top
+    type: sill_region
+    element: bedroom_se_south_waterproof_ledge
+    face: top
+    zone: visible
+    room: bedroom_se
+    reason: "东南客房南墙低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"

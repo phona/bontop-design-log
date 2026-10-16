@@ -19,7 +19,7 @@
 | 30 | PKG-030 | 中央空调第一次安装 | 在吊顶封闭前安装空调室内机、铜管、保温层、冷凝水排水管、风管和控制线，并完成压力保持、排水和检修空间检查。 | 4—7天 | PKG-020 | blocked | not_started | BLK-STRUCTURE、BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-SURVEY-DATA-FREEZE | ¥36,000 |
 | 40 | PKG-040 | 水电改造 | 根据家具和设备位置铺设电线、网线、给水管、排水管和热水回水管，设置插座、开关及专用电路；封墙封地前必须测试并拍照定位。 | 7—12天 | PKG-020 | blocked | not_started | BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-CABINET-FREEZE-FOR-MEP、BLK-SURVEY-DATA-FREEZE | ¥15,000 |
 | 50 | PKG-050 | 防水及闭水 | 在卫生间、厨房和北阳台等需要防水的位置处理基层、涂刷防水材料并蓄水检查，确认本层和楼下都不渗漏后才能覆盖。 | 4—6天 | PKG-040 | blocked | not_started | 无 | ¥5,000 |
-| 60 | PKG-060 | 泥瓦与铺贴 | 修正墙地面高低差，铺贴地砖和厨卫墙砖，处理门槛、地漏坡度、砖缝及边角；重点检查空响、平整和排水积水。 | 12—18天 | PKG-050 | blocked | not_started | BLK-SOUTH-BALCONY | ¥30,000 |
+| 60 | PKG-060 | 泥瓦与铺贴 | 修正墙地面高低差，铺贴地砖、全屋已声明墙砖与窗边防水台砖，处理门槛、地漏坡度、砖缝及边角；重点检查空响、平整和排水积水。 | 12—18天 | PKG-050 | blocked | not_started | BLK-SOUTH-BALCONY | ¥30,000 |
 | 70 | PKG-070 | 吊顶龙骨、隐蔽复验与封板 | 先搭建吊顶内部支撑骨架，再联合检查吊顶里面的空调和水电；确认压力、排水、开口和检修条件全部合格后，才用石膏板或吊顶板封闭。 | 8—12天 | PKG-030、PKG-040、PKG-050 | blocked | not_started | BLK-HVAC-DEEPENING | ¥6,000 |
 | 80 | PKG-080 | 墙顶面基层与涂装 | 修补墙顶面、批刮腻子、打磨并涂刷底漆和面漆；正式大面积施工前先做真实墙面颜色样板，完工后检查裂缝、色差和表面缺陷。 | 12—18天 | PKG-060、PKG-070 | blocked | not_started | 无 | ¥11,500 |
 | 90 | PKG-090 | 室内门及厨房门 | 在墙面和地面厚度确定后重新测量门洞，生产并安装卧室门、卫生间门及厨房玻璃门；厨房门还要满足燃气单位确认的分隔要求。 | 3—5天 | PKG-060、PKG-080 | blocked | not_started | BLK-GAS-DOOR | ¥9,000 |

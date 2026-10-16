@@ -140,7 +140,7 @@ materials:
     topic_id: "wall"
     alternative_group: "wall_tile"
     category: "墙砖"
-    name: "厨卫白色釉面砖"
+    name: "白色釉面墙砖/窗台砖候选"
     brand: "东鹏"
     model: "300x600 白色釉面砖"
     spec: "300x600mm"
@@ -157,7 +157,7 @@ materials:
     pros: ["品牌稳", "性价比高", "易采购"]
     cons: []
     price_source: "快环建材市场 / 东鹏门店报价"
-    notes: "厨房用亮面好擦洗，卫生间可选哑光防滑；具体型号待门店确认"
+    notes: "当前wall默认候选，统一用于厨卫贴砖及客厅/卧室/书房落地窗防水台front+top；厨房可选亮面好擦洗、卫生间按湿区另核哑光防滑；精确型号/色号/样板与成交价待门店确认"
     appearance: { type: "ceramic_tile_v2", color: "#f5f5f5", pattern: "basket" }
 
   - id: "latex_paint_01"

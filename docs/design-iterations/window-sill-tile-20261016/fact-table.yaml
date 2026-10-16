@@ -1,0 +1,133 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: window-sill-tile-20261016
+subject: 卧室与书房落地窗防水台贴砖
+created_at: 2026-10-16T09:54:37+08:00
+status: frozen
+source_policy:
+  authority_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml, config/materials.yaml, data/current-scheme.json, config/acceptance.yaml, schedule/phase-1/control.yaml]
+  observation_refs: [用户明确表示卧室、书房落地窗边均有防水台且需要贴砖以统一视觉语言]
+  measurement_refs: []
+  runtime_refs: [gate:visual baseline CLEAR 2026-10-16]
+  evidence_refs: []
+facts:
+  confirmed:
+    - id: F01
+      category: confirmed
+      statement: 房间与幕墙配置覆盖主卧、西北次卧、东南客房和书房；六段长度按resolved bay_sill墙路径实算。
+      value: {lengths_m: {w_west_upper: 3.25, w_west_mid: 2.69, w_mb_south: 4.770165578, w_st_south: 3.00, w_nw_north: 3.00, w_be_south: 3.00}, total_length_m: 19.710165578}
+      source_refs: [config/layout/model-geometry.yaml:137-174, config/layout/overlay.yaml:9-93, config/layout/overlay.yaml:99-161]
+      basis: 墙段端点及 curtain_run / bay_sill 声明；当前长度是模型值，待量房校正。
+      confidence: high
+      impact: material
+      affected_objects: [master_bedroom_west_upper_ledge, master_bedroom_west_mid_ledge, master_bedroom_south_ledge, study_south_ledge, bedroom_nw_north_ledge, bedroom_se_south_ledge]
+      affected_views: [plan, elevation, perspective]
+      owner: 业主/设计
+      status: resolved
+      verification_method: shared/masonry-takeoff.ts 实算并与墙线复核
+      user_confirmation_ref: null
+    - id: F02
+      category: confirmed
+      statement: 现有低反坎示例为sill=0、height=0.15m、depth=0.15m；旧高位bay_sill的2.07m标高不是低反坎尺寸。
+      value: {low_ledge_height_m: 0.15, low_ledge_depth_m: 0.15, high_bay_sill_m: 2.07, high_bay_height_m: 0.76, high_bay_depth_m: 1.1}
+      source_refs: [config/layout/overlay.yaml:99-169, config/layout/overlay.yaml:171-203, docs/pending-site-data.md:95]
+      basis: 当前配置及历史量房待办。
+      confidence: high
+      impact: material
+      affected_objects: [existing_high_bay_sills, existing_living_master_bath_low_ledges]
+      affected_views: [elevation, section, perspective]
+      owner: 业主/设计
+      status: resolved
+      verification_method: 对照overlay bay_sill声明与待量房项
+      user_confirmation_ref: null
+    - id: F03
+      category: confirmed
+      statement: 当前方案墙砖选择为wall_tile_01候选；单片¥12、覆盖0.18㎡、损耗率1.05，非成交价。
+      value: {option_id: wall_tile_01, unit_price_cny: 12, coverage_sqm: 0.18, loss_multiplier: 1.05, status: candidate}
+      source_refs: [data/current-scheme.json:12-15, config/materials.yaml:139-160]
+      basis: 当前方案默认wall selection与材料候选记录。
+      confidence: high
+      impact: material
+      affected_objects: [wall_tile_regions]
+      affected_views: [perspective]
+      owner: 业主/采购
+      status: resolved
+      verification_method: 对照current-scheme与materials配置
+      user_confirmation_ref: null
+  inferred:
+    - id: F04
+      category: inferred
+      statement: 按高0.15m、内出檐0.15m，六段front与top贴砖面积为5.91305㎡。
+      value: {formula: "19.710165578m × (0.15m + 0.15m)", area_sqm: 5.9130496735}
+      source_refs: [config/layout/model-geometry.yaml:137-174, config/layout/overlay.yaml:421-468]
+      basis: 墙长乘竖面和台面带宽；圆角与完成面尺寸待量房复核。
+      confidence: medium
+      impact: material
+      affected_objects: [six_new_low_ledges]
+      affected_views: [plan, elevation, perspective]
+      owner: 设计/瓦工
+      status: resolved
+      verification_method: masonry-takeoff逐面实算
+      user_confirmation_ref: null
+  user_decision:
+    - id: F05
+      category: user_decision
+      statement: 所有卧室和书房落地窗边防水台都贴砖，尺寸统一，量房后按实测修正。
+      value: {rooms: [master_bedroom, bedroom_nw, bedroom_se, study], nominal_height_m: 0.15, nominal_depth_m: 0.15, tiled_faces: [front, top]}
+      source_refs: [conversation: 用户“先改进去，防水台尺寸都一样的。到时候量完房，改下尺寸就行了。”]
+      basis: 前一轮已给出150×150mm现行口径，用户确认统一沿用并后续复尺。
+      confidence: high
+      impact: material
+      affected_objects: [six_new_low_ledges]
+      affected_views: [plan, elevation, perspective]
+      owner: 业主
+      status: resolved
+      verification_method: 配置审查、量房复核、贴砖检视态运行时检查
+      user_confirmation_ref: alignment-user-20261016-01
+  site_pending:
+    - id: F06
+      category: site_pending
+      statement: 六段反坎的实际高度、向室内出檐、圆角切线及完成面关系待交房量房确认。
+      value: {current_nominal_height_m: 0.15, current_nominal_depth_m: 0.15, status: estimated_pending_measurement}
+      source_refs: [docs/pending-site-data.md:95, docs/decisions/11-tile-finish.md:68-73]
+      basis: 用户明确先使用统一估算，现场复尺后更新。
+      confidence: not_applicable
+      impact: material
+      affected_objects: [six_new_low_ledges]
+      affected_views: [plan, elevation, section]
+      owner: 业主/量房
+      status: open
+      verification_method: 量每段高度、出檐、起止、圆角与窗框密封/排水做法
+      user_confirmation_ref: alignment-user-20261016-01
+    - id: F07
+      category: site_pending
+      statement: 六处落地窗默认帘面偏移0.12m，小于150mm暂估反坎出檐0.15m约0.03m；帘布/百叶与窗台top面有模型交叠风险。
+      value: {curtain_plane_offset_m: 0.12, estimated_ledge_depth_m: 0.15, nominal_overlap_m: 0.03, status: site_interface_conflict}
+      source_refs: [config/layout/overlay.yaml:307-327, config/layout/overlay.yaml:208-249, shared/render/SceneBuilder.ts:556-557]
+      basis: 暂估出檐减当前帘面偏移；实际窗框、轨道及帘型完成面尚未实测。
+      confidence: high
+      impact: operation
+      affected_objects: [six_new_low_ledges, related_window_curtains]
+      affected_views: [plan, section, perspective]
+      owner: 业主/量房/设计/窗帘商
+      status: open
+      verification_method: 量窗框/轨道/帘布实际偏移，确认调轨道或调低反坎出檐；最小净距达成前保持site_pending
+      user_confirmation_ref: null
+    - id: F08
+      category: site_pending
+      statement: 六段反坎top的实际坡向、窗框泄水孔、滴水边及打胶收口仍未核；瓷砖胶或密封胶不能封堵泄水孔。
+      value: {slope_direction: unknown, weep_hole_clearance: unknown, sealant_interface: unknown, status: site_pending}
+      source_refs: [config/acceptance.yaml:128-136, docs/pending-site-data.md:95]
+      basis: 设计按front+top贴砖，当前模型没有窗框排水构造和坡度实测信息。
+      confidence: not_applicable
+      impact: water_management
+      affected_objects: [six_new_low_ledges]
+      affected_views: [section, perspective]
+      owner: 门窗方/瓦工/量房
+      status: open
+      verification_method: 门窗方交底泄水孔位置、top坡向与滴水边，瓦工确认连续打胶且排水孔未封
+      user_confirmation_ref: null
+unknowns_requiring_alignment: []
+notes:
+  - “卧室”范围明确为主卧、西北次卧和东南客房；不含入户花园或阳台。
+  - 旧记录的“干区反坎存在但不贴砖”由本轮业主决定推翻；历史原文保留并说明被替代。
