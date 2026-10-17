@@ -707,7 +707,7 @@
 - **照明影响**：灯心离桌心0.585m；R12 关于桌心正上方“贴顶与下垂灯照度约1/4”的高度简化估计不适用于R9偏心布置，保留历史但不再作为本位置结论。采购前仍需按固定 SKU 的3000K配光核验桌面150 lx目标（100 lx备选）；不得以3200lm标称值或模型自发光代替实测/配光计算。
 - **布线和现场条件**：路线保持 `strong-light-dining` / `lighting_dining`，总点位及墙控关系不变；原顶板底明装线槽z=3.00→3.65约0.65m，仍是 proposed/pending。业主+电工在水电交底、封顶前复核梁位、板底平整度、线槽收口及 2.80m 吊点盒位置；若支撑/外观不成立，先调整路由敷设方案，不能把该段默认为吊顶暗管。
 - **静默失效条件**：①若餐厅平顶范围边界改变，灯心仍按旧边界计算，须同步重算；②若只移动电气点位而不更新 `strong-light-dining` 的 via，末段会形成斜跨或失去支撑；③若 SKU 实际总高、重量、固定、防坠或维护与预演不同，几何模型不代表实物；④偏心后的桌面照度不可沿用 R12 旧桌心估计。
-- **证据与验证状态**：R8四视图仅作旧位置历史证据；R9同版 `context/closeup/elevation/topdown` runtime、snapshot和PNG已采集，目标对象ready=true、错误横幅为空、AABB为x[9.00,9.50]/y[2.314,2.800]/z[3.40,3.90]m。`gate:visual` CLEAR（electrical 92dae5d27ff3）、`verify:lighting-config`、`typecheck`通过；两次 `verify:all` 均为16/17，唯一失败是共享 `verify:mep` 聚合（前次222错误/173警告，最终224错误/171警告），两次均无 `strong-light-dining` 诊断；`verify:facts`与`verify:electrical`通过。R9功能复核PASS；审美首轮FAIL：0.585m灯桌偏移使灯具读为餐厅空间中心氛围灯，与“餐桌重点灯”语义存在冲突。用户随后接受空间中心氛围灯定位，DEC-R10后同版R9四视图复审PASS。SKU光度/维修/安装及线槽现场条件仍按#65和路由pending，不作为采购或施工定案。
+- **证据与验证状态**：R8四视图仅作旧位置历史证据；R9同版 `context/closeup/elevation/topdown` runtime、snapshot和PNG已采集，目标对象ready=true、错误横幅为空、AABB为x[9.00,9.50]/y[2.314,2.800]/z[3.40,3.90]m。`gate:visual` CLEAR（electrical 92dae5d27ff3）、`verify:lighting-config`、`typecheck`通过；两次 `verify:all` 均为16/17，唯一失败是共享 `verify:mep` 聚合（前次222错误/173警告，最终224错误/171警告），两次均无 `strong-light-dining` 诊断；`verify:facts`与`verify:electrical`通过。R9功能复核PASS；审美首轮FAIL：0.585m灯桌偏移使灯具读为餐厅空间中心氛围灯，与“餐桌重点灯”语义存在冲突。用户随后接受空间中心氛围灯定位，DEC-2026-10-17-R10后同版R9四视图复审PASS。SKU光度/维修/安装及线槽现场条件仍按#65和路由pending，不作为采购或施工定案。
 - **决策人**：位置由业主明确选择；route 的正交via与0.65m顶板底线槽由设计侧按新终点同步，施工敷设仍待量房/电工核实。
 
 ### DEC-2026-10-17-R10 餐厅灯明确为平顶中心氛围灯
@@ -718,5 +718,18 @@
 - **被本条解决的待决项**：R9 `off-center-fixture-role` 从“待业主确认”关闭为“保持中心、空间中心氛围灯”。没有修改灯位去追求桌心重叠，也没有新增灯具或灯位；如需实际桌面重点灯照度，按整体灯光方案和SKU配光另核。
 - **实质内容 / 删除审计**：活动几何、点位坐标、route、回路、控制关系均未删除或改动。更新的是对象功能描述、采购行和#65待核口径：删除“默认由该灯单独承担桌面150 lx”的含义；R9旧审美FAIL和四视图证据保留作复核历史，R8/R12桌心估算继续标为历史，不删除商品候选或光度证据。
 - **静默失效条件**：①若采购文件仍把该灯描述成唯一桌面重点灯，可能在偏心位置无法满足150 lx；须按最终照明组合核验；②若之后重新要求桌面重点照明，R9的空间氛围灯定位不再满足该优先级，需要重新选点并复审；③真实SKU配光、色温档、重量、固定、防坠和维护未知，仍按 #65 核验。
-- **验证与审查**：R9功能复核PASS；DEC-R10后同版R9四视图按空间中心氛围灯目标复审PASS，首轮FAIL保留为历史并注明其桌面重点灯语义前提。`gate:visual` CLEAR、typecheck和照明配置校验通过；`verify:all` 16/17，唯一失败是全局 `verify:mep`（两次汇总分别222/173和224/171，均无 `strong-light-dining` 诊断），当前不据此声称MEP全屋通过。本条不作为商品采购、照度达标或施工定案。
+- **验证与审查**：R9功能复核PASS；DEC-2026-10-17-R10后同版R9四视图按空间中心氛围灯目标复审PASS，首轮FAIL保留为历史并注明其桌面重点灯语义前提。`gate:visual` CLEAR、typecheck和照明配置校验通过；`verify:all` 16/17，唯一失败是全局 `verify:mep`（两次汇总分别222/173和224/171，均无 `strong-light-dining` 诊断），当前不据此声称MEP全屋通过。本条不作为商品采购、照度达标或施工定案。
 - **决策人**：业主确认空间中心氛围灯语义；整体桌面照度由设计/供应商在SKU确定和灯光组合核验时负责验证。
+
+### DEC-2026-10-17-R12 吸顶灯渲染锚点统一贴安装完成面：5 盏遗留 Blender 基线 offset 归零
+
+- **日期/来源**：2026-10-17。工作区新增的 `verify-spatial` 检查 `lighting_ceiling_mount_detached`（吸顶类灯具可见实体顶部须在宿主吊顶完成面容差内）抓出 5 盏灯：`light_master_dome`/`light_parent_dome`/`light_child_dome`/`light_kitchen_panel`（各 `anchorY_offset: -0.25`）与 `light_study_dome`（`-0.5`），渲染实体悬在宿主完成面下方 0.10–0.50m。
+- **问题定位**：5 条 offset 的 basis 均为「已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m」（书房为「避免嵌入顶面压到 2.30m」）。这是 Blender 时代的表达手法——当时灯具锚点下移以表现灯罩下缘；而 `DEC-2026-10-16-R2`（客厅主灯）与 `DEC-2026-10-17-R8/R9`（餐厅灯）已确立现行口径：**渲染锚点 = 施工安装完成面，视觉下垂由共享几何表达**。Blender 主线已冷归档（`scripts/archive/blender-pipeline/`），基线失去权威来源。
+- **本轮决定**：①`config/render/overrides.yaml` 中 5 条 `anchorY_offset` 归零，basis 改写为引用本条 + 宿主面口径（4 卧室 dome 点位均落在原顶 2.80m 平顶区，不在任何吊顶分区 footprint 内；厨房平板灯宿主为 `ceiling_kitchen` 铝扣板完成面 2.65m）；②`config/electrical.yaml` 仅 `light_kitchen_panel` 的 `height` 由 2.8 改为 2.65（安装完成面本就应是铝扣板底，原 2.8 与吊顶分区声明矛盾），其余 4 盏 `height: 2.8` 不动；③普通 dome 分支（`LightingFixtureBuilder.addDome` 默认半球，翻转后包围盒顶恰在锚点）归零后顶部即贴宿主面，几何零改动；④`data/project-render-facts.json` 按 `generate:project-render-facts` 重生成。
+- **被本条推翻的旧结论**：逐条列出——master/parent/child/kitchen 四条「已审计 Blender 基线：…最终渲染高度 2.55m」、study 一条「书房吸顶灯嵌入顶面…最终渲染锚点为 2.30m」。可推翻理由： Blender 基线所服务的渲染主线已冷归档，且同文件内 `light_living_dome`、`light_dining_pendant` 已按新口径迁移并通过验证，证明「锚点贴面 + 几何表达垂坠」在当前管线成立；书房「避免穿出吊顶完成面」的风险对象不存在（点位 (14.9,7.125) 不在任何吊顶 footprint 内，属原顶平顶区，不存在可穿出的完成面）。`DEC-2026-10-16-R2`/`R8/R9` 本身不被推翻，本条是其口径向剩余 5 盏灯的补全。
+- **实质内容 / 删除审计**：删除的旧表述为上述 5 条 basis/reason 全文（含「表现灯罩厚度与出光半球」「已审计 Blender 基线」措辞），逐条替换为引用本条的新 basis/reason；`electrical.yaml` kitchen 点位 note 同步改写。没有删除任何灯具点位、回路归属（`lighting_bedrooms_bath` 成员不变）、控制拓扑（三控绑定不变）、MEP 路线（`to_height` 为声明值，`endpoint_elevation_mismatch` 只查 switch 类，不涉及灯具）或历史证据。
+- **「X 不工作时」**：吸顶灯故障检修时，渲染锚点与施工安装面一致意味着检修口径（拆罩、换驱动、底盒接线）直接对应模型高度，无需先心算渲染偏移；kitchen 平板灯安装面 2.65m 与铝扣板检修口同面。残存未知：4 间卧室「原顶平顶区」的判断来自模型吊顶分区推演，未经现场核对。
+- **静默失效条件**：①`addDome` 默认分支几何若再改动（不再是「包围盒顶=锚点」），本检查与渲染会再次脱钩——由本轮新增的回归测试钉住；②`ceiling_kitchen` 完成面若再调整，kitchen 点位 `height: 2.65` 必须同步；③若未来某盏灯需要真实垂坠造型（如云朵灯），应走 `config/render/lighting.yaml` 样式声明，禁止回退到 `anchorY_offset` 下移手法。
+- **下一步责任**：量房时核对 4 间卧室灯位确在原顶平顶区（owner=业主/量房方，触发=量房日）；若实测存在局部吊顶，按实测完成面重设 `height` 并复跑本检查。
+- **验证**：`gate:visual` 前后 CLEAR；`generate:project-render-facts` → `verify:lighting-config` → `typecheck` → `test:server` → `verify:all`（预期 verify-spatial 5 error → 0）；5 灯派生锚点与 bbox 钉子测试见 `tests/server/lighting-anchor-migration.test.ts`。
+- **决策人**：设计侧按已确立口径补全迁移；灯具选型/造型另案，本条不改任何灯的外观样式。

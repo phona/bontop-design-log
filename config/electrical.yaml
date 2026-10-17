@@ -1016,9 +1016,9 @@
   type: dome
   x: 9.0
   z: 1.2
-  height: 2.8
+  height: 2.65
   temp: 4000
-  note: "厨房平板灯（4000K 工作区例外）；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），厨卫 4000K 平板灯为设计声明→inferred；位置为设计值未实测"
+  note: "厨房平板灯（4000K 工作区例外）；height=2.65 对齐 ceiling_kitchen 铝扣板吊顶完成面（DEC-2026-10-17-R12：安装完成面即吊顶底，原 2.8 与吊顶分区声明矛盾）；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），厨卫 4000K 平板灯为设计声明→inferred；位置为设计值未实测"
   status: inferred
 - id: sock_master_projector
   room: master_bedroom

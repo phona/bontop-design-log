@@ -1,8 +1,11 @@
 import type {
+  CeilingZone,
   ElectricalPoint,
   RenderLightingFixture,
   RenderLightingOverride,
+  ResolvedRoom,
 } from './types.js';
+import { ceilingFootprint, ceilingSurfaceY, isSolidCeilingZone, pointInFootprint } from './mep-hvac-lint.js';
 
 /**
  * 灯具渲染派生：**唯一实现**。
@@ -127,4 +130,59 @@ export function buildRenderLightingFixtureHeights(
     heights.set(override.id, deriveAnchorY(point.height, override));
   }
   return heights;
+}
+
+/**
+ * 吸顶类灯具（渲染实体顶部应贴宿主吊顶完成面）的类型集。
+ * wall_lamp / night_light / led_strip 不在此列——它们不挂顶。
+ */
+export const CEILING_MOUNTED_LIGHT_TYPES = new Set<ElectricalPoint['type']>([
+  'ceiling_light',
+  'pendant',
+  'dome',
+  'downlight',
+  'track_light',
+]);
+
+/**
+ * 吸顶类灯具可见实体顶部相对宿主完成面的允许落差（米）。
+ * downlight/track 的渲染器把可见灯体放在电气安装面之下（明装筒灯/轨道灯固有落差），
+ * 其余类型（含 dome/ceiling_light）按 DEC-2026-10-17-R12 口径：锚点即安装完成面，
+ * 灯体贴顶，只留几何公差。
+ */
+export function ceilingMountGapTolerance(point: ElectricalPoint): number {
+  if (point.type === 'downlight') return point.recessed ? 0.02 : 0.055;
+  if (point.type === 'track_light') return 0.05;
+  return 0.02;
+}
+
+export interface CeilingHost {
+  zone: CeilingZone;
+  surfaceY: number;
+}
+
+/**
+ * 点位平面所落的最低**实心**吊顶完成面（可见宿主面）；无分区覆盖时返回 undefined，
+ * 调用方回退房间原顶。吊顶分区可以登记在邻室名下却横跨本点平面位置（门厅跨
+ * entry_garden/living_dining 过渡带），所以按与渲染吊顶同一份圆角 footprint 判定，
+ * 并取最低覆盖面——那是看得见的宿主面。
+ */
+export function selectCeilingHost(
+  point: { x: number; z: number },
+  ceilingZones: CeilingZone[],
+  rooms: ResolvedRoom[],
+): CeilingHost | undefined {
+  const ceilingHosts = ceilingZones.flatMap<CeilingHost>((candidate) => {
+    if (!isSolidCeilingZone(candidate)) return [];
+    const footprint = ceilingFootprint(candidate);
+    if (!footprint || !pointInFootprint({ x: point.x, z: point.z }, footprint)) return [];
+    const hostRoom = rooms.find((candidateRoom) => candidateRoom.id === candidate.room);
+    if (!hostRoom) return [];
+    const surfaceY = ceilingSurfaceY(candidate, hostRoom.height);
+    return surfaceY === undefined ? [] : [{ zone: candidate, surfaceY }];
+  });
+  return ceilingHosts.reduce<CeilingHost | undefined>(
+    (lowest, candidate) => !lowest || candidate.surfaceY < lowest.surfaceY ? candidate : lowest,
+    undefined,
+  );
 }

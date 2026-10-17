@@ -1,0 +1,43 @@
+{
+  "schema": "bontop-threejs-runtime-evidence/v1",
+  "capturedAtUtc": "2026-10-17T09:18:36.575Z",
+  "url": "http://localhost:5173/",
+  "ready": true,
+  "readySignal": "window.__APP__.isReady() === true",
+  "viewport": [
+    1600,
+    900
+  ],
+  "decision_ref": "DEC-2026-10-17-R12",
+  "fixture": "light_parent_dome",
+  "camera": {
+    "position": [
+      7.0,
+      2.91,
+      9.0
+    ],
+    "target": [
+      5.7,
+      2.8,
+      7.675
+    ],
+    "mode": "orbit (maxPolarAngle clamped)"
+  },
+  "fixtureAabbM": {
+    "min": [
+      5.5,
+      2.72,
+      7.475
+    ],
+    "max": [
+      5.9,
+      2.8,
+      7.875
+    ]
+  },
+  "fixtureTopY": 2.8,
+  "hostSurfaceY": 2.8,
+  "flushDeltaM": 0.0,
+  "doneWhen": "fixture bbox max.y == host ceiling surface (gap 0.000 <= tolerance 0.02)",
+  "screenshot": "parent-room-after.png"
+}

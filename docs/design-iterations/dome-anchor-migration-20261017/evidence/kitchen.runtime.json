@@ -1,0 +1,43 @@
+{
+  "schema": "bontop-threejs-runtime-evidence/v1",
+  "capturedAtUtc": "2026-10-17T09:18:36.575Z",
+  "url": "http://localhost:5173/",
+  "ready": true,
+  "readySignal": "window.__APP__.isReady() === true",
+  "viewport": [
+    1600,
+    900
+  ],
+  "decision_ref": "DEC-2026-10-17-R12",
+  "fixture": "light_kitchen_panel",
+  "camera": {
+    "position": [
+      7.66,
+      2.74,
+      2.27
+    ],
+    "target": [
+      9.0,
+      2.65,
+      1.2
+    ],
+    "mode": "orbit (maxPolarAngle clamped)"
+  },
+  "fixtureAabbM": {
+    "min": [
+      8.8,
+      2.57,
+      1.0
+    ],
+    "max": [
+      9.2,
+      2.65,
+      1.4
+    ]
+  },
+  "fixtureTopY": 2.65,
+  "hostSurfaceY": 2.65,
+  "flushDeltaM": 0.0,
+  "doneWhen": "fixture bbox max.y == host ceiling surface (gap 0.000 <= tolerance 0.02)",
+  "screenshot": "kitchen-after.png"
+}

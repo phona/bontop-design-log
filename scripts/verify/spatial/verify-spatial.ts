@@ -40,7 +40,7 @@ import {
   type SceneInputs,
   type SpatialConfig,
 } from '../../../shared/penetration/scene.js';
-import { buildRenderLightingFixtureHeights, isLightingFixtureType } from '../../../shared/lighting-fixtures.js';
+import { buildRenderLightingFixtureHeights, CEILING_MOUNTED_LIGHT_TYPES, ceilingMountGapTolerance, isLightingFixtureType, selectCeilingHost } from '../../../shared/lighting-fixtures.js';
 import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
 import { loadAntiPenetrationConfig, relationshipSpecsFromWaivers } from '../../../shared/penetration/registry.js';
 
@@ -143,19 +143,39 @@ function validateLighting(
         issues.push({ level: 'error', code: 'lighting_room_unknown', entity: point.id, source, message: `lighting point ${point.id} references unknown room ${point.room}`, evidence: { room: point.room } });
         continue;
       }
-      const zone = ceilingZones.find((candidate) => candidate.room === point.room && candidate.area && point.x >= candidate.area[0] && point.x <= candidate.area[2] && point.z >= candidate.area[1] && point.z <= candidate.area[3]);
+      const ceilingHost = selectCeilingHost(point, ceilingZones, rooms);
       const anchorY = heights.get(point.id) ?? point.height ?? room.height;
-      const hostBottom = zone?.thickness !== undefined ? room.height - zone.thickness : room.height;
+      const hostSurfaceY = ceilingHost?.surfaceY ?? room.height;
       if (runtime) {
         const runtimeBox = objectBox(runtime);
         if (runtimeBox && (runtimeBox.minY < -0.02 || runtimeBox.maxY > room.height + 0.02)) {
           issues.push({ level: 'error', code: 'lighting_runtime_vertical_collision', entity: point.id, source, message: `runtime ceiling fixture ${point.id} lies outside room vertical envelope`, evidence: { runtime_box: runtimeBox, room_height: room.height, room: room.id } });
         }
+        if (runtimeBox && CEILING_MOUNTED_LIGHT_TYPES.has(point.type)) {
+          const gap = hostSurfaceY - runtimeBox.maxY;
+          const tolerance = ceilingMountGapTolerance(point);
+          if (gap > tolerance) {
+            issues.push({
+              level: 'error',
+              code: 'lighting_ceiling_mount_detached',
+              entity: point.id,
+              source,
+              message: `ceiling fixture ${point.id} is ${gap.toFixed(3)}m below its host ceiling surface`,
+              evidence: {
+                host_zone: ceilingHost?.zone.id,
+                host_surface_y: hostSurfaceY,
+                fixture_top_y: runtimeBox.maxY,
+                gap_m: gap,
+                tolerance_m: tolerance,
+              },
+            });
+          }
+        }
       }
       if (anchorY > room.height + 0.02 || anchorY < 0) {
         issues.push({ level: 'error', code: 'lighting_ceiling_host_invalid', entity: point.id, source, message: `ceiling fixture ${point.id} anchorY=${anchorY.toFixed(3)} is outside room vertical range`, evidence: { room: room.id, anchor_y: anchorY, ceiling_height: room.height } });
-      } else if (zone && anchorY > hostBottom + 0.10) {
-        issues.push({ level: 'warning', code: 'lighting_ceiling_host_clearance', entity: point.id, source, message: `ceiling fixture ${point.id} is below the declared ceiling zone bottom by ${(anchorY - hostBottom).toFixed(3)}m`, evidence: { zone: zone.id, anchor_y: anchorY, zone_bottom: hostBottom } });
+      } else if (ceilingHost && anchorY > hostSurfaceY + 0.10) {
+        issues.push({ level: 'warning', code: 'lighting_ceiling_host_clearance', entity: point.id, source, message: `ceiling fixture ${point.id} is below the declared ceiling zone bottom by ${(anchorY - hostSurfaceY).toFixed(3)}m`, evidence: { zone: ceilingHost.zone.id, anchor_y: anchorY, zone_bottom: hostSurfaceY } });
       }
     }
   }

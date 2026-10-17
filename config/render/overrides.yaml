@@ -29,24 +29,24 @@
   reason: "DEC-2026-10-13-R1曾将挂点从顶板面降25cm以表现通用灯罩下缘；DEC-2026-10-16-R1/R2均将锚点恢复到安装面2.80m，灯体外形高度只由共享几何控制。"
   applies_to: [web, blender]
 - id: light_master_dome
-  anchorY_offset: -0.25
-  basis: "吸顶筒灯贴吊顶完成面下 25cm，用于表现灯罩厚度与出光半球（安装完成面 2.8m 为底盒/接线高度）"
-  reason: "已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m。"
+  anchorY_offset: 0
+  basis: "DEC-2026-10-17-R12：渲染锚点即安装完成面（主卧灯位落在原顶 2.80m 平顶区，不在任何吊顶分区 footprint 内）；吸顶灯体下垂由共享几何表达，不再沿用 Blender 基线的锚点下移手法"
+  reason: "原 -0.25（已审计 Blender 基线：最终渲染高度 2.55m）随 Blender 主线冷归档废弃；verify-spatial 的 lighting_ceiling_mount_detached 检查抓出实体悬离宿主完成面 0.25m。"
   applies_to: [web, blender]
 - id: light_parent_dome
-  anchorY_offset: -0.25
-  basis: "父母房吸顶筒灯贴吊顶完成面下 25cm，用于表现灯罩厚度与出光半球"
-  reason: "已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m。"
+  anchorY_offset: 0
+  basis: "DEC-2026-10-17-R12：渲染锚点即安装完成面（父母房灯位落在原顶 2.80m 平顶区）；吸顶灯体下垂由共享几何表达"
+  reason: "原 -0.25（已审计 Blender 基线：最终渲染高度 2.55m）废弃，理由同主卧条。"
   applies_to: [web, blender]
 - id: light_child_dome
-  anchorY_offset: -0.25
-  basis: "儿童房吸顶筒灯贴吊顶完成面下 25cm，用于表现灯罩厚度与出光半球"
-  reason: "已审计 Blender 基线：普通吸顶灯使用最终渲染高度 2.55m。"
+  anchorY_offset: 0
+  basis: "DEC-2026-10-17-R12：渲染锚点即安装完成面（儿童房灯位落在原顶 2.80m 平顶区）；吸顶灯体下垂由共享几何表达"
+  reason: "原 -0.25（已审计 Blender 基线：最终渲染高度 2.55m）废弃，理由同主卧条。"
   applies_to: [web, blender]
 - id: light_study_dome
-  anchorY_offset: -0.5
-  basis: "书房吸顶灯嵌入顶面，渲染锚点压到 2.3m（低于安装完成面 50cm）以避免灯具形体穿出吊顶完成面"
-  reason: "已审计 Blender 基线：书房吸顶灯为避免嵌入顶面，最终渲染锚点为 2.30m。"
+  anchorY_offset: 0
+  basis: "DEC-2026-10-17-R12：渲染锚点即安装完成面（客房灯位 (14.9,7.125) 不在任何吊顶分区 footprint 内，属原顶 2.80m 平顶区，原 basis 所指「避免穿出吊顶完成面」的风险对象不存在）；灯体下垂由共享几何表达"
+  reason: "原 -0.5（已审计 Blender 基线：书房吸顶灯为避免嵌入顶面压到 2.30m）废弃：该处无吊顶分区可穿出，且 Blender 基线失去权威来源。"
   applies_to: [web, blender]
 - id: light_corridor_1
   anchorY_offset: 0
@@ -64,9 +64,9 @@
   reason: "2026-08-26 灯光整改：light_entry_foyer 按既有玄关吊顶内嵌安装表现，饰圈贴完成面；沿用 anchorY=2.5，不改吊顶。"
   applies_to: [web, blender]
 - id: light_kitchen_panel
-  anchorY_offset: -0.25
-  basis: "厨房平板灯贴铝扣板吊顶完成面下 25cm，用于表现灯体厚度与出光面"
-  reason: "已审计 Blender 基线：普通吸顶/平板灯使用最终渲染高度 2.55m。"
+  anchorY_offset: 0
+  basis: "DEC-2026-10-17-R12：厨房平板灯安装完成面即 ceiling_kitchen 铝扣板吊顶完成面 2.65m（electrical.height 已同步改为 2.65），渲染锚点不再下移"
+  reason: "原 -0.25（已审计 Blender 基线：最终渲染高度 2.55m）废弃；原锚点 2.55m 悬在 2.65m 宿主面下方 0.10m，被 lighting_ceiling_mount_detached 抓出。"
   applies_to: [web, blender]
 - id: night_guest_bed_side
   anchorY_offset: 0
