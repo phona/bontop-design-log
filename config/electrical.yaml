@@ -68,11 +68,11 @@
 - id: sock_living_table
   room: living_dining
   type: floor_socket
-  x: 7.90
+  x: 9.80
   z: 3.45
   height: 0.02
   count: 1
-  note: "餐桌旁地插: 电磁炉/火锅（DEC-021 随餐桌入扩大的餐厅带，DEC-034 餐桌靠客卫东墙后随移至桌心）；状态依据：DEC-021/DEC-034 餐桌地插，归入 topology 回路 ordinary_power_living→inferred；随餐桌移至桌心为设计值未实测"
+  note: "餐桌旁地插：电磁炉/火锅；2026-10-16随业主确认的南北向日常四人餐桌迁至桌心 x=9.80,z=3.45，归入 ordinary_power_living。位置为设计概念值，地插现场定位和临时六人南移时的可达性待复核。"
   status: inferred
 
 - id: sock_living_curtain
@@ -490,7 +490,8 @@
   height: 0.3
   count: 1
   position_status: pending
-  note: "冰箱专用回路旧点位占位（原东墙高柜位 (10.80,2.05)，historical DEC-014/021）；旧方案要求在高柜侧板/顶格设置可及检修口，不得靠拉整台冰箱取电。2026-10-14 3D candidate moved fridge to living_dining (10.94,3.48), and the old wall point will fall behind the extended cooktop cabinet. This old endpoint is not an accessible supply point for the trial fridge. Outlet form/position and route must be redesigned with electrician/cabinet shop before electrical freeze; do not assume this point feeds the trial candidate."
+  serviceability_status: superseded
+  note: "冰箱专用回路历史点位占位（原厨房 x=10.80,z=2.05）。2026-10-16业主确认冰箱的空间概念位改为客餐厅西侧(7.5025,2.9865)，本点不构成该位置的可及供电；新专用插座/线路位置、后部防护和检修方式待电工与家电厂家确认，禁止假定旧点供电。"
 
 - id: sock_kitchen_hood
   room: kitchen
@@ -629,6 +630,7 @@
   height: 1.2
   count: 1
   position_status: pending
+  serviceability_status: blocked
   note: "洗衣机插座（DEC-2026-10-03-R1：坐标保留但标 pending——h=1.2 落在洗烘叠放体内部（叠放后总高约 1.70m），生活阳台实测仅 1.60×1.20m 且东墙门洞 d_kit_balc 占 z[1.20,2.00]，无侧置检修带可放。SKU 冻结后改机器顶部以上可及位或侧柜管井检修口；排水可继续藏后。见 pending-site-data #33）"
 
 - id: sock_balcony_dryer
@@ -745,7 +747,7 @@
   z: 3.98
   height: 1.3
   neutral: true
-  note: "餐桌吊灯墙控开关（DEC-2026-09-08-R1：落实 light_dining_pendant 原注释'开关在餐桌旁墙上h1.3'；距桌心 (7.90,3.45) 0.88m，与 switch_corridor 相邻组联）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
+  note: "餐桌灯墙控开关（DEC-2026-09-08-R1：落实 light_dining_pendant 原注释'开关在餐桌旁墙上h1.3'；当时距桌心 (7.90,3.45) 0.88m，与 switch_corridor 相邻组联）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）；DEC-2026-10-16-R12：受控灯由吊灯改半吸顶、灯位迁至新桌心 (9.80,3.45)（现距约2.7m，仍在餐桌旁走廊墙），开关位置/高度不变"
 
 # === 新增点位（2026-07-25 基线补齐） ===
 

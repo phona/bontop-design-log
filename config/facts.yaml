@@ -1091,7 +1091,7 @@ facts:
   # 量房待确认项条数：文档编号数是「还有什么没量」的账面。新增/关闭条目必须同步。
   - id: fact.pending_site_data_count
     kind: derived
-    value: "@docs/pending-site-data.md:量表共 65 条"
+    value: "@docs/pending-site-data.md:量表共 66 条"
     unit: 条
     mirrors:
       - path: docs/pending-site-data.md
@@ -1547,10 +1547,11 @@ contracts:
     room_heights_key: mep.room_heights
     default_room_height: 2.8
     tolerance: 0.005
-    registered_conflicts: 52
+    registered_conflicts: 51
     # 2026-10-12 DEC-2026-10-12-R1：删主卧两盏明装床头壁灯改小米床头灯插电，删 2 条照明路由，55→54。
     # 2026-10-12 DEC-2026-10-12-R2：业主裁定两卫照明用浴霸三合一自带、删 4 条卫浴照明路由，54→52。
     # 均为设计侧删灯具导致的真实减少，非消音。授权来源：docs/decisions/06-electrical.md §DEC-2026-10-12-R1 / R2。
+    # 2026-10-17 DEC-2026-10-17-R4：承载层 floor_branch(_candidate) 且有 route point 进入 y≤0.35m 垫层带时退出吊顶完成面比较；高位误标仍被计入。开放起降继续由 unsupported_span 检查。事实引擎复用 MEP footprint/段相交逻辑，纳入 strong-power-master × curtain_box_master_south 段内穿越项；最终双引擎同为 51/42 条路线/14 区，本轮较旧登记少 1 处，无路线被删除。
     prose:
       - path: docs/mep-construction-guidance.md
         extract: '低于降板完成面的既有冲突\s*(\d+)\s*处'
@@ -1559,16 +1560,14 @@ contracts:
     #   「配套口径修正：c.mep_layer_below_drop_bottom 的检查范围收窄为吊顶承载层（强电/弱电/冷媒/冷凝水/送风/回风）；
     #    走地给排水分层（water_supply 0.18 / drainage 0.10）不参与"低于吊顶完成面"比较——地面管与吊顶完成面无可比性，
     #    原口径把 13 处地面管计入冲突、稀释真信号。该口径变化按契约修正通道登记（附本 DEC 全引 + 4 文件同步），不是消音。」
-    # 落地现状（2026-10-06 本轮，双引擎同口径）：shared/mep-hvac-lint.ts 的 ceiling_clearance_unverified 与
-    #   shared/facts-lint.ts 的 T3.11 均已按此口径收窄为吊顶承载层 6 类（CEILING_CARRIED_LAYERS /
-    #   CEILING_CARRIED_LAYERS_FACTS），两侧实算一致 = **55 处**；20 处走地给排水按 DEC 裁定退出比较。
-    #   verify:mep 与 verify:facts 对同一条路线给出同一结论，不存在两套口径。
+    # 历史快照（2026-10-07 M04/M05 后、后续 R1/R2/R4 变更前）：两引擎吊顶承载层口径实算 **55 处**；
+    #   走地给排水 20 处按 DEC 裁定退出比较。该 55 不是当前值；当前双引擎基数见下方 engine_note。
     check_scope:
       compared_layers: [strong_power, weak_power, refrigerant, condensate, supply_air, return_air]
       exempt_layers: [water_supply, drainage]
       exemption_basis: 'DEC-2026-10-06-R5（docs/decisions/13-mep-integration.md「#41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m」配套口径修正）'
       exemption_count_in_current_engine: 20
-      engine_note: '双引擎均已收窄：shared/mep-hvac-lint.ts（CEILING_CARRIED_LAYERS）与 shared/facts-lint.ts（CEILING_CARRIED_LAYERS_FACTS）实算一致 = 24；registered_conflicts 登记 24'
+      engine_note: '比较范围同为吊顶承载层 6 类；只有 floor_branch / floor_branch_candidate 且 route points 至少有一点落入 y≤0.35m 垫层带的路线退出吊顶面比较。缺少垫层点的误标路线由 verify:mep floor_branch_missing_floor_band 报出，空间起降依托仍由 3D unsupported_span 检查。两引擎共享 ceiling footprint 与 segment 相交算法，当前 verify:facts = registered_conflicts = verify:mep ceiling_clearance_unverified = 51（42 条路线/14 个分区）。修正记录见 DEC-2026-10-17-R4：移除有地面点路线的低于吊顶平面误报，并补上此前 facts 点检查漏掉的 strong-power-master × curtain_box_master_south 段内穿越。历史 24 处基线见 DEC-2026-10-06-R5。'
     # ⑦ 修正通道（repair_channel）：本契约抓的既有冲突只能由**设计侧裁定**消解
     # （分层标高升入降板空腔 2.50–3.00m or 调整降板厚度/范围），而此前引擎只告诉人
     # 「不许静默消音」，没告诉人「正当修正长什么样」——于是任何一次几何改动都像消音。

@@ -69,9 +69,9 @@ export class MepCoordinationRenderer {
       const fromPoint: Extract<MepRoute['from'], object> | undefined = typeof route.from === 'object' ? route.from : undefined;
       const toPoint: Extract<MepRoute['to'], object> | undefined = typeof route.to === 'object' ? route.to : undefined;
       const rawPoints = [
-        { ...from, y: heightOf(fromPoint ?? {}, layer.height, route.from_height) },
+        { ...from, y: heightOf(from, layer.height, route.from_height) },
         ...route.via,
-        { ...to, y: heightOf(toPoint ?? {}, layer.height, route.to_height) },
+        { ...to, y: heightOf(to, layer.height, route.to_height) },
       ];
       const points = rawPoints.map((point) => new THREE.Vector3(point.x, point.y ?? layer.height, point.z));
       const group = new THREE.Group();

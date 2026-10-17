@@ -969,12 +969,12 @@ test('带 pending 的豁免与契约在 INFO 里露面，不退化成静默待�
 
 // ─── 2026-10-04 A1/A7 新增的两个契约 kind ──────────────────────────────────
 
-test('ceiling_clearance：点位低于所经吊顶完成面即计冲突；同一批点必须同时满足两个条件', () => {
+test('ceiling_clearance：按共享 footprint 核点与穿越线段；走地分支不与吊顶面比较', () => {
   const contract = {
     id: 'c.probe_ceiling', kind: 'ceiling_clearance' as const, severity: 'error' as const,
     source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/ceiling.yaml',
     endpoints_key: 'mep.endpoints', room_heights_key: 'mep.room_heights',
-    default_room_height: 2.8, tolerance: 0.005, registered_conflicts: 1,
+    default_room_height: 2.8, tolerance: 0.005, registered_conflicts: 3,
     prose: [{ path: 'docs/guidance.md', extract: '冲突\\s*(\\d+)\\s*处', expect_matches: 1 }],
   };
   const files = {
@@ -988,6 +988,12 @@ test('ceiling_clearance：点位低于所经吊顶完成面即计冲突；同一
       '    to_height: 2.45',
       '    via: [{x: 8.0, z: 4.6, y: 2.45}]',
       '    to: {x: 8.5, z: 4.6}',
+      '  - id: crossing_only',
+      '    layer: strong_power',
+      '    from_height: 2.45',
+      '    to_height: 2.45',
+      '    from: {x: 7.0, z: 4.6}',
+      '    to: {x: 14.0, z: 4.6}',
       '  - id: ok_above',
       '    layer: strong_power',
       '    from_height: 2.55',
@@ -1001,6 +1007,22 @@ test('ceiling_clearance：点位低于所经吊顶完成面即计冲突；同一
       '    to_height: 2.55',
       '    via: [{x: 8.0, z: 4.6, y: 2.55}, {x: 0.5, z: 7.0, y: 0.3}]',
       '    to: {x: 8.5, z: 4.6}',
+      '  - id: floor_candidate',
+      '    layer: strong_power',
+      '    method: floor_branch_candidate',
+      '    from_height: 0.30',
+      '    to_height: 0.30',
+      '    from: {x: 7.5, z: 4.6}',
+      '    via: [{x: 8.0, z: 4.6, y: 0.30}]',
+      '    to: {x: 8.5, z: 4.6}',
+      '  - id: mislabeled_floor_candidate',
+      '    layer: strong_power',
+      '    method: floor_branch_candidate',
+      '    from_height: 2.45',
+      '    to_height: 2.45',
+      '    from: {x: 7.5, z: 4.6}',
+      '    via: [{x: 8.0, z: 4.6, y: 2.45}]',
+      '    to: {x: 8.5, z: 4.6}',
     ].join('\n'),
     'config/ceiling.yaml': [
       '- id: drop_a',
@@ -1009,7 +1031,7 @@ test('ceiling_clearance：点位低于所经吊顶完成面即计冲突；同一
       '  thickness: 0.30',
       '  area: [7.20, 4.30, 13.40, 5.20]',
     ].join('\n'),
-    'docs/guidance.md': '冲突 1 处\n',
+    'docs/guidance.md': '冲突 3 处\n',
   };
   const datasets = {
     'mep.endpoints': {},
@@ -1017,10 +1039,10 @@ test('ceiling_clearance：点位低于所经吊顶完成面即计冲突；同一
   };
   const result = lintFacts({ ...emptyRegistry, contracts: [contract] }, workspaceOf(files, datasets));
   assert.equal(result.errors.length, 0, result.errors.map((e) => e.message).join('\n'));
-  assert.match((result.notes ?? []).join('\n'), /实算 1 处/);
+  assert.match((result.notes ?? []).join('\n'), /实算 3 处/);
 
   // 登记基数写得比实算多 → baseline_drift（两个方向都报：多了=乱加路线，少了=改数据消音）
-  const drift = lintFacts({ ...emptyRegistry, contracts: [{ ...contract, registered_conflicts: 2 }] }, workspaceOf(files, datasets));
+  const drift = lintFacts({ ...emptyRegistry, contracts: [{ ...contract, registered_conflicts: 4 }] }, workspaceOf(files, datasets));
   assert.equal(drift.errors.filter((i) => i.code === 'ceiling_clearance_baseline_drift').length, 1);
 
   // prose 计数与实算不符 → count_mismatch

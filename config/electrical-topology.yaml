@@ -110,7 +110,7 @@ circuits:
     capacity: "≤0.3kW"
     wire_size: "2.5mm²(φ16)"
     breaker: "C16A+漏保"
-    note: "冰箱独立回路（外出不断电）；DEC-2026-10-03-R1 按 GB 55038 7.4.3-1 补 ≤30mA 漏保；原点位在东墙高柜内，旧方案要求侧板/顶格可及检修口（不得靠拉冰箱取电）。2026-10-14 trial moved the appliance to living_dining: sock_kitchen_fridge and strong-ded-fridge remain old-point topology placeholders only, not a confirmed supply connection for the trial unit; outlet form/position and route are electrician/cabinet-shop pending before electrical freeze."
+    note: "冰箱独立回路（外出不断电）；DEC-2026-10-03-R1 按 GB 55038 7.4.3-1 补 ≤30mA 漏保。2026-10-16空间概念位移至客餐厅西侧中心(7.5025,2.9865)，sock_kitchen_fridge 与本拓扑仍指厨房历史点位，不代表新位置已有供电；新可及插座、线路路由、后部防护和厂家安装净空须在电气/施工冻结前另行确认。"
   - id: dedicated_kitchen_dishwasher
     panel_id: panel_strong
     purpose: dedicated_load

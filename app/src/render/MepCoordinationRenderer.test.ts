@@ -27,6 +27,25 @@ describe('MepCoordinationRenderer', () => {
     renderer.dispose();
   });
 
+  it('uses resolved electrical endpoint heights when route height overrides are omitted', () => {
+    const renderer = new MepCoordinationRenderer(new THREE.Scene());
+    const layers = Object.fromEntries(['strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant', 'condensate', 'supply_air', 'return_air'].map((layer) => [layer, { label: layer, color: '#f00', height: 2.55 }]));
+    renderer.render({ version: '1', status: 'preliminary', layers, routes: [
+      { id: 'panel-to-floor', layer: 'strong_power', status: 'inferred', from: 'panel', to: 'floor_socket', via: [] },
+    ] } as unknown as MepCoordination, {
+      electrical: [
+        { id: 'panel', room: 'living', type: 'strong_panel', x: 13.4, z: 3.6, mount_height: 1.65 },
+        { id: 'floor_socket', room: 'living', type: 'floor_socket', x: 11, z: 9.35, height: 0.02 },
+      ],
+      plumbing: [], ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [],
+    });
+    expect(renderer.getRouteObject('panel-to-floor')?.userData.points).toEqual([
+      { x: 13.4, z: 3.6, y: 1.65 },
+      { x: 11, z: 9.35, y: 0.02 },
+    ]);
+    renderer.dispose();
+  });
+
   it('keeps confirmed, inferred, and pending opacity distinct under a neutral multiplier', () => {
     const renderer = new MepCoordinationRenderer(new THREE.Scene());
     const layers = Object.fromEntries(['strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant', 'condensate', 'supply_air', 'return_air'].map((layer) => [layer, { label: layer, color: '#f00', height: 2 }]));

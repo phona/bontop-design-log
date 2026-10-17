@@ -1,5 +1,15 @@
 // shared/facts-lint.ts
 // 非几何数据对账引擎（`npm run verify:facts` 的核心）。
+import {
+  ceilingFootprint,
+  ceilingSurfaceY,
+  isSolidCeilingZone,
+  pointInFootprint,
+  routeTouchesFootprint,
+  SUPPORT_FLOOR_BAND_MAX,
+  type FootprintPoint,
+} from './mep-hvac-lint.js';
+import type { CeilingZone } from './types.js';
 //
 // 本层防线解决什么问题
 // ───────────────────
@@ -1544,24 +1554,20 @@ function collectExemptions(registry: FactsRegistry): Exemption[] {
 //     冲突清单由引擎以 INFO 逐条列出，配 contract.pending 在报告里露面——
 //     「0 命中」和「有冲突」都不可能悄悄腐烂。
 
-const SOLID_CEILING_TYPES_FACTS = new Set(['drop', 'integrated', 'aluminum_buckle']);
-
 // 2026-10-06 DEC-2026-10-06-R5：比较范围收窄为「吊顶承载层」。走地给排水分层
 // （water_supply 0.18 / drainage 0.10）退出本比较——地面管与吊顶完成面无可比性，
 // 原口径把 20 处地面管计入冲突、稀释真信号。授权来源与豁免量见
 // config/facts.yaml c.mep_layer_below_drop_bottom.check_scope；其坡度/正交/禁直插
 // 仍由 verify:mep 的 gravity_slope_geometry_mismatch / route_not_orthogonal 独立负责。
+// 吊顶承载层的 floor_branch(_candidate) 只有声明点实际进入 y≤0.35m 垫层带时才不与吊顶面比较；
+// 高位误标仍计入本契约，verify:mep 另报 floor_branch_missing_floor_band，其开放空间起降依托由
+// unsupported_span 检查。两引擎共用吊顶 footprint 与线段相交算法，避免点/段口径漂移。
 const CEILING_CARRIED_LAYERS_FACTS = new Set([
   'strong_power', 'weak_power', 'refrigerant', 'condensate', 'supply_air', 'return_air',
 ]);
 
-interface CeilingClearanceZone { id: string; area: [number, number, number, number]; surface: number }
+interface CeilingClearanceZone { id: string; footprint: FootprintPoint[]; surface: number }
 interface ClearancePoint { x: number; z: number; y?: number }
-
-function inFootprintFacts(p: ClearancePoint, area: [number, number, number, number]): boolean {
-  const [x1, z1, x2, z2] = area;
-  return p.x >= Math.min(x1, x2) && p.x <= Math.max(x1, x2) && p.z >= Math.min(z1, z2) && p.z <= Math.max(z1, z2);
-}
 
 /** 复刻 shared/mep-hvac-coordination-schema.ts 的 mepRoutePoints：from + via + to，y 取 *route 的高度字段。 */
 function clearanceRoutePoints(route: Record<string, unknown>, endpoints: Record<string, { x: number; z: number; y?: number }>): ClearancePoint[] {
@@ -1627,13 +1633,14 @@ function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines:
   const zones: CeilingClearanceZone[] = [];
   for (const raw of ceiling) {
     if (!isRecord(raw)) continue;
-    const type = str(raw.type);
-    if (!SOLID_CEILING_TYPES_FACTS.has(type)) continue;
-    const thickness = raw.thickness;
-    const area = raw.area;
-    if (typeof thickness !== 'number' || thickness <= 0 || !Array.isArray(area) || area.length !== 4) continue;
+    const zone = raw as unknown as CeilingZone;
+    if (!isSolidCeilingZone(zone)) continue;
+    const footprint = ceilingFootprint(zone);
+    if (!footprint) continue;
     const roomHeight = roomHeights[str(raw.room)] ?? defaultRoomHeight;
-    zones.push({ id: str(raw.id), area: area as [number, number, number, number], surface: roomHeight - thickness });
+    const surface = ceilingSurfaceY(zone, roomHeight);
+    if (surface === undefined) continue;
+    zones.push({ id: str(raw.id), footprint, surface });
   }
 
   const conflicts: string[] = [];
@@ -1644,12 +1651,15 @@ function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines:
     if (!points.length) continue;
     const layerHeight = typeof route.layer === 'string' ? layerHeights.get(route.layer) : undefined;
     const yOf = (p: ClearancePoint): number => p.y ?? layerHeight ?? 0;
+    const isFloorBranch = route.method === 'floor_branch' || route.method === 'floor_branch_candidate';
+    if (isFloorBranch && points.some((point) => yOf(point) <= SUPPORT_FLOOR_BAND_MAX)) continue;
     for (const zone of zones) {
-      if (!points.some((p) => inFootprintFacts(p, zone.area))) continue;
-      // 同一个点必须**同时**满足「在 footprint 内」和「低于完成面」。
-      // 曾经的写法把两条 some 分开扫，于是路线末端沿墙下引到 0.3m 插座的那一段
-      // （坐标不在任何吊顶分区里）也被算成吊顶冲突——凭空多出 27 处假冲突。
-      if (points.some((p) => inFootprintFacts(p, zone.area) && yOf(p) < zone.surface - tol)) conflicts.push(`${str(route.id)}@${zone.id}`);
+      const pointConflict = points.some((p) => pointInFootprint(p, zone.footprint) && yOf(p) < zone.surface - tol);
+      const segmentConflict = points.some((a, index) => index > 0
+        && yOf(a) < zone.surface - tol
+        && yOf(points[index - 1]) < zone.surface - tol
+        && routeTouchesFootprint(points[index - 1], a, zone.footprint));
+      if (pointConflict || segmentConflict) conflicts.push(`${str(route.id)}@${zone.id}`);
     }
   }
   const actual = conflicts.length;
