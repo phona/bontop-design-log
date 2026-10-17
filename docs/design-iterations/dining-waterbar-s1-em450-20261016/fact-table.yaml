@@ -196,10 +196,10 @@ facts:
       user_confirmation_ref: null
     - id: I-APPLIANCE-GAP
       category: inferred
-      statement: S1南端与EM450北端沿柜长方向间隔约94mm，属于静态几何间距，不等于完整操作台宽度或维护净空。
-      value: {gap_m: 0.094, s1_north_end_margin_m: 0.014, em450_south_end_margin_m: 0.160}
-      source_refs: [docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query.json]
-      basis: 对运行时AABB的z坐标相减。
+      statement: V6后S1北缘与EM450南缘沿柜长方向间隔约197mm（V5时为94mm；S1的z向厚度由312变为106），属于静态几何间距，不等于完整操作台宽度或维护净空。
+      value: {gap_m: 0.197, s1_north_end_margin_m: 0.117, em450_south_end_margin_m: 0.160, v5_gap_m: 0.094}
+      source_refs: [docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v6.json]
+      basis: 对V6运行时AABB的z坐标相减（DEC-2026-10-17-R11 摆位联动）。
       confidence: high
       impact: material
       affected_objects: [furniture:living_dining:mijia_instant_dispenser_s1_preview:15, furniture:living_dining:coffee_machine_em450:16, furniture:living_dining:waterbar_low_cabinet_800_preview:14]
@@ -225,7 +225,7 @@ facts:
       user_confirmation_ref: conversation:2026-10-16-s1-v4-visual-feedback
     - id: I-S1-SHAPE-V5
       category: inferred
-      statement: V5把设备局部+z定义为东侧前出水区、局部-z定义为西侧后置水箱区；该轴向重排遵从业主指向。水箱壳体具体占深/内部结构仍是外观代理推断，因为当前只有单张透视图、无厂家背视图或剖面。
+      statement: V5把设备局部+z定义为东侧前出水区、局部-z定义为西侧后置水箱区；该轴向重排遵从业主指向。水箱壳体具体占深/内部结构仍是外观代理推断，因为当前只有单张透视图、无厂家背视图或剖面。V5后业主提供官方三视尺寸图，显示出水腔在106mm窄面、312mm长面是带把手槽的侧面，形体由V6覆盖。
       value: {tank_shell_local_z_m: [-0.053, -0.006], front_bay_local_z_m: [-0.004, 0.053], outlet_local_z_m: 0.032, tray_local_z_m: 0.031, level_indicator_local_z_m: -0.005, envelope_changed: false}
       source_refs: [conversation:2026-10-16-s1-v5-east-west-direction, docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/s1-form-v5-close.png, docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v5.json, shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v5]
       basis: rotationY=90°将局部+z映射到世界+x东、局部-z映射到世界-x西；V5部件局部坐标与当前Three.js截图/运行时包络相符。水箱实际容量、拆取结构和维护路径未被建模。
@@ -234,9 +234,24 @@ facts:
       affected_objects: [furniture:living_dining:mijia_instant_dispenser_s1_preview:15]
       affected_views: [plan, elevation, perspective]
       owner: 设计预演
-      status: resolved
+      status: superseded
+      superseded_by: I-S1-SHAPE-V6
       verification_method: 检查局部+z/-z部件范围、运行时AABB与台面接触，并复核东侧近景和水吧总览。
       user_confirmation_ref: conversation:2026-10-16-s1-v5-east-west-direction
+    - id: I-S1-SHAPE-V6
+      category: inferred
+      statement: V6按业主提供的官方三视尺寸图重排形体——出水腔在106mm窄面（局部+z仍朝东）、312mm长轴转为局部z（世界东西向、西端为水箱端）、双侧面板近西端各一道100mm深色把手槽、顶面一道横向水箱盖分缝、实心机身+南柱/北柱承托通长悬挑机头、踏台接水盘前伸至包络东缘。出水腔凹入42mm、腔宽55mm、把手槽与顶盖分缝位置仍是营销图估读的外观代理，非CAD实测。
+      value: {aabb_m: [0.312, 0.2803, 0.106], body_front_plane_local_z_m: 0.126, bay_back_wall_local_z_m: 0.084, bay_opening_local_x_m: [-0.015, 0.04], tray_front_local_z_m: 0.156, side_slot_local_z_m: -0.075, side_slot_y_m: [0.085, 0.185], top_lid_seam_local_z_m: -0.026, center_x: 7.47, envelope_changed: false}
+      source_refs: [conversation:2026-10-17-s1-v6-official-render, docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v6.json, docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/s1-form-v6-close.png, docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/s1-form-v6-east-face.png, shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6]
+      basis: 官方三视图106mm/312mm尺寸箭头分别对应出水腔窄面与带槽长面底边；rotationY=90°下局部+z仍映射世界+x东，故312长轴沿局部z、106沿局部x；运行时AABB 0.312×0.2803×0.106m（+0.3mm为顶盖分缝浮雕线），底面接触台面y=0.85，整机XY在台面范围内。水箱容量、补水/拆取路径、腔体真实深度未建模。
+      confidence: medium
+      impact: material
+      affected_objects: [furniture:living_dining:mijia_instant_dispenser_s1_preview:15]
+      affected_views: [plan, elevation, perspective]
+      owner: 设计预演
+      status: resolved
+      verification_method: 三个固定机位截图（水吧总览/东南近景/东面正视）+ 运行时逐件AABB与局部范围查询；FURNITURE_DIMS轴向对换后verify:furniture通过。
+      user_confirmation_ref: conversation:2026-10-17-s1-v6-official-render
   user_decision:
     - id: U-S1-ON-WATERBAR
       category: user_decision
@@ -280,6 +295,20 @@ facts:
       status: resolved
       verification_method: 运行时检查父级rotationY与前后部件局部z范围；外廓/位置不变。
       user_confirmation_ref: conversation:2026-10-16-s1-v5-east-west-direction
+    - id: U-S1-V6-OFFICIAL-FORM
+      category: user_decision
+      statement: 业主提供米家即热饮水机S1官方三视尺寸图（312×106×280mm），确认出水腔在106mm窄面、312mm长面是带把手槽的侧面；出水口朝东、水箱端朝西的房间指向保持，摆位中心x 7.50→7.47（保台面包含），z与rotation=90°不变。
+      value: {bay_face_width_mm: 106, tank_direction: west, length_axis_world: east_west, new_center: [7.47, 3.64], preserve_rotation: true, dims_axis_swap: true}
+      source_refs: [conversation:2026-10-17-s1-v6-official-render]
+      basis: 业主附官方三视尺寸图并要求“调整对小米S1的程序化建模”；尺寸标注箭头与两面底边一一对应。
+      confidence: high
+      impact: material
+      affected_objects: [furniture:living_dining:mijia_instant_dispenser_s1_preview:15, furniture:living_dining:waterbar_low_cabinet_800_preview:14]
+      affected_views: [plan, elevation, perspective]
+      owner: 业主
+      status: resolved
+      verification_method: V6三机位截图+运行时AABB查询（evidence/runtime-query-s1-form-v6.json）；verify:furniture通过。
+      user_confirmation_ref: conversation:2026-10-17-s1-v6-official-render
     - id: U-EM450-MOVE
       category: user_decision
       statement: 同一台EM450从厨房移至餐厅水吧，不在厨房保留副本。

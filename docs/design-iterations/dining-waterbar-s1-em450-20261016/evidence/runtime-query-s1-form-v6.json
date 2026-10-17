@@ -1,0 +1,477 @@
+{
+  "schema": "bontop-threejs-runtime-evidence/v1",
+  "capturedAtUtc": "2026-10-17T08:46:46.590Z",
+  "url": "http://localhost:5174/",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "readySignal": "window.__APP__.isReady() === true",
+  "configErrorBanner": "",
+  "coordinateSystem": "Three.js right-handed; Y up; +x east, +z south; rotationY=90° maps local +z to world +x east and local +x to world -z north.",
+  "viewport": [
+    1280,
+    577
+  ],
+  "objects": {
+    "dining_table": {
+      "objectId": "furniture:living_dining:dining_table:8",
+      "position": [
+        9.8,
+        0,
+        3.45
+      ],
+      "rotationY": 1.5707963267948966,
+      "meshCount": 2,
+      "partCount": 1,
+      "parts": [
+        "part-0"
+      ],
+      "aabbM": {
+        "min": [
+          9.4,
+          0,
+          2.75
+        ],
+        "max": [
+          10.2,
+          0.77,
+          4.15
+        ],
+        "size": [
+          0.8,
+          0.77,
+          1.4
+        ]
+      }
+    },
+    "fridge": {
+      "objectId": "furniture:living_dining:fridge:13",
+      "position": [
+        7.5025,
+        0,
+        2.9865
+      ],
+      "rotationY": 4.71238898038469,
+      "meshCount": 6,
+      "partCount": 3,
+      "parts": [
+        "fridge-base-shadow-plinth",
+        "fridge-case-core",
+        "fridge-front-shadow-back"
+      ],
+      "aabbM": {
+        "min": [
+          7.2025,
+          0,
+          2.57
+        ],
+        "max": [
+          7.8025,
+          1.91,
+          3.403
+        ],
+        "size": [
+          0.6,
+          1.91,
+          0.833
+        ]
+      }
+    },
+    "waterbar_low_cabinet_800_preview": {
+      "objectId": "furniture:living_dining:waterbar_low_cabinet_800_preview:14",
+      "position": [
+        7.43,
+        0,
+        3.87
+      ],
+      "rotationY": 1.5707963267948966,
+      "meshCount": 7,
+      "partCount": 6,
+      "parts": [
+        "waterbar-800-carcass",
+        "waterbar-800-door-seam",
+        "waterbar-800-drawer-pull",
+        "waterbar-800-light-oak-top",
+        "waterbar-800-plinth",
+        "waterbar-800-shallow-drawer-front"
+      ],
+      "aabbM": {
+        "min": [
+          7.22,
+          0,
+          3.47
+        ],
+        "max": [
+          7.64,
+          0.85,
+          4.27
+        ],
+        "size": [
+          0.42,
+          0.85,
+          0.8
+        ]
+      }
+    },
+    "mijia_instant_dispenser_s1_preview": {
+      "objectId": "furniture:living_dining:mijia_instant_dispenser_s1_preview:15",
+      "position": [
+        7.47,
+        0,
+        3.64
+      ],
+      "rotationY": 1.5707963267948966,
+      "meshCount": 15,
+      "partCount": 12,
+      "parts": [
+        "dispenser-base-plinth",
+        "dispenser-bay-back-panel",
+        "dispenser-bay-badge-mark",
+        "dispenser-body-rear-block",
+        "dispenser-drip-tray",
+        "dispenser-front-cup-stage",
+        "dispenser-head-full-length",
+        "dispenser-spout-collar",
+        "dispenser-spout-tube",
+        "dispenser-top-lid-seam",
+        "dispenser-tray-drain-well",
+        "dispenser-tray-grate"
+      ],
+      "aabbM": {
+        "min": [
+          7.314,
+          0.85,
+          3.587
+        ],
+        "max": [
+          7.626,
+          1.1303,
+          3.693
+        ],
+        "size": [
+          0.312,
+          0.2803,
+          0.106
+        ]
+      },
+      "localPartRangesM": {
+        "dispenser-base-plinth": [
+          [
+            -0.052,
+            0.052
+          ],
+          [
+            0.85,
+            0.864
+          ],
+          [
+            -0.156,
+            0.156
+          ]
+        ],
+        "dispenser-body-rear-block": [
+          [
+            -0.052,
+            0.052
+          ],
+          [
+            0.864,
+            1.072
+          ],
+          [
+            -0.156,
+            0.081
+          ]
+        ],
+        "dispenser-bay-back-panel": [
+          [
+            -0.011,
+            0.036
+          ],
+          [
+            0.874,
+            1.042
+          ],
+          [
+            0.084,
+            0.086
+          ]
+        ],
+        "dispenser-bay-badge-mark": [
+          [
+            0.006,
+            0.019
+          ],
+          [
+            0.9255,
+            0.9385
+          ],
+          [
+            0.086,
+            0.0876
+          ]
+        ],
+        "dispenser-head-full-length": [
+          [
+            -0.053,
+            0.053
+          ],
+          [
+            1.072,
+            1.13
+          ],
+          [
+            -0.156,
+            0.126
+          ]
+        ],
+        "dispenser-top-lid-seam": [
+          [
+            -0.05,
+            0.05
+          ],
+          [
+            1.1295,
+            1.1303
+          ],
+          [
+            -0.0271,
+            -0.0249
+          ]
+        ],
+        "dispenser-spout-collar": [
+          [
+            0.005,
+            0.02
+          ],
+          [
+            1.069,
+            1.072
+          ],
+          [
+            0.1135,
+            0.1285
+          ]
+        ],
+        "dispenser-spout-tube": [
+          [
+            0.008,
+            0.017
+          ],
+          [
+            1.048,
+            1.07
+          ],
+          [
+            0.1165,
+            0.1255
+          ]
+        ],
+        "dispenser-front-cup-stage": [
+          [
+            -0.049,
+            0.049
+          ],
+          [
+            0.854,
+            0.886
+          ],
+          [
+            0.084,
+            0.156
+          ]
+        ],
+        "dispenser-drip-tray": [
+          [
+            -0.047,
+            0.047
+          ],
+          [
+            0.894,
+            0.91
+          ],
+          [
+            0.1,
+            0.156
+          ]
+        ],
+        "dispenser-tray-grate": [
+          [
+            -0.043,
+            0.043
+          ],
+          [
+            0.91,
+            0.912
+          ],
+          [
+            0.103,
+            0.153
+          ]
+        ],
+        "dispenser-tray-drain-well": [
+          [
+            -0.01,
+            0.01
+          ],
+          [
+            0.9115,
+            0.9135
+          ],
+          [
+            0.121,
+            0.135
+          ]
+        ]
+      }
+    },
+    "coffee_machine_em450": {
+      "objectId": "furniture:living_dining:coffee_machine_em450:16",
+      "position": [
+        7.37,
+        0,
+        4
+      ],
+      "rotationY": 1.5707963267948966,
+      "meshCount": 24,
+      "partCount": 18,
+      "parts": [
+        "espresso-brew-group",
+        "espresso-control-panel",
+        "espresso-cup-warmer",
+        "espresso-drip-grate",
+        "espresso-drip-tray",
+        "espresso-drip-tray-front-lip",
+        "espresso-lower-front-fascia",
+        "espresso-portafilter-collar",
+        "espresso-portafilter-handle",
+        "espresso-portafilter-handle-end",
+        "espresso-pressure-gauge-bezel",
+        "espresso-pressure-gauge-face",
+        "espresso-pressure-gauge-needle",
+        "espresso-rear-lower-service-skirt",
+        "espresso-rear-water-tank-window",
+        "espresso-stainless-body",
+        "espresso-steam-selector-knob",
+        "espresso-steam-wand-tip"
+      ],
+      "aabbM": {
+        "min": [
+          7.2275,
+          0.85,
+          3.89
+        ],
+        "max": [
+          7.5125,
+          1.155,
+          4.11
+        ],
+        "size": [
+          0.285,
+          0.305,
+          0.22
+        ]
+      }
+    }
+  },
+  "relationships": {
+    "countertopTopY_M": 0.85,
+    "s1BottomY_M": 0.85,
+    "s1TopY_M": 1.1303,
+    "s1AabbDimensions_M": [
+      0.312,
+      0.2803,
+      0.106
+    ],
+    "s1ToEm450GapAlongZ_M": 0.197,
+    "s1InsideCabinetTopXY": true,
+    "s1FrontDirection": "east (+x world); dispensing bay on the 106mm narrow face",
+    "s1RearTankDirection": "west (-x world); dark tank-handle slots near the rear on both 312mm side panels",
+    "localAxisMapping": {
+      "localPlusZ": "east (bay face, front plane local z=+0.156)",
+      "localMinusZ": "west (tank end, local z=-0.156)",
+      "localPlusX": "north (side panel)",
+      "localMinusX": "south (side panel)"
+    },
+    "bayGeometry_M": {
+      "bayOpeningLocalX": [
+        -0.015,
+        0.04
+      ],
+      "bayBackWallLocalZ": 0.084,
+      "bayDepthMm": 42,
+      "bodyFrontPlaneLocalZ": 0.126,
+      "trayFrontLocalZ": 0.156
+    },
+    "mergeNote": "同材质细件（南柱/北柱、8条栅格缝、双侧把手槽）运行时合并渲染，partCount/meshCount 为合并后节点口径，与V5证据一致；合并件包络均在声明值内，几何存在性以三张截图为准。"
+  },
+  "fixedCameras": {
+    "waterbar_overview": {
+      "position": [
+        9.55,
+        1.7,
+        3.98
+      ],
+      "target": [
+        7.75,
+        0.88,
+        3.74
+      ],
+      "fovDeg": 58,
+      "snapshot": "evidence/s1-form-v6-overview.snapshot.txt",
+      "screenshot": "evidence/s1-form-v6-overview.png",
+      "screenshotSha256": "sha256:bd839cd6070dcc3dbcb5751036d862095acf86937b30081714046fb63eb5400d"
+    },
+    "waterbar_close": {
+      "position": [
+        8.28,
+        1.4,
+        4.1
+      ],
+      "target": [
+        7.47,
+        0.99,
+        3.64
+      ],
+      "fovDeg": 42,
+      "snapshot": "evidence/s1-form-v6-close.snapshot.txt",
+      "screenshot": "evidence/s1-form-v6-close.png",
+      "screenshotSha256": "sha256:d0b952a49c3ad6bb8904b5fa838bd94cc8facd8b84f33039f6df8a5a76638d4c"
+    },
+    "s1_east_face": {
+      "position": [
+        8.3,
+        1.02,
+        3.665
+      ],
+      "target": [
+        7.47,
+        0.99,
+        3.64
+      ],
+      "fovDeg": 30,
+      "snapshot": "evidence/s1-form-v6-east-face.snapshot.txt",
+      "screenshot": "evidence/s1-form-v6-east-face.png",
+      "screenshotSha256": "sha256:832b9347da0a6ca1c915c39ea3c9ca5cb2981312895ba3b5b2913ff73968112d"
+    }
+  },
+  "sourceDigestMethod": "SHA-256 over file bytes for the sourceFiles keys below",
+  "sourceFiles": {
+    "config/house.yaml": "sha256:4dd3eec9acc912b304dcfbe6ac26ddb1e7aec34360dc622e9d8b6d076416d751",
+    "config/spatial-validation.yaml": "sha256:5974bbafe86092e614fce308fb7dacd9b6a1991db1e56f346111e1812870d7f7",
+    "config/anti-penetration.yaml": "sha256:b1e08f76a0a1347ea146ed375accd3ffb92e3075ef43bb22b175dc0c90578399",
+    "shared/types.ts": "sha256:dca220183158347f5c987472fadec861e7a877216af60b8074e94702a7ab4fbf",
+    "shared/render/FixtureFactory.ts": "sha256:215b8d79d4d8e189c255af618d6a100b353c4c87eb332f6955094a2f08b904fb",
+    "shared/render/SceneBuilder.ts": "sha256:10829303d0a1c259851a3a03a6baba48bd42e8c3cc76295f9f482371a35da729",
+    "app/src/render/HouseScene.ts": "sha256:59580a009ed429a64d052f9ad6eeb4420f9b84ad2a8b513f6c18a8b26b6ffcaa",
+    "app/src/App.ts": "sha256:5db2f89a7c8af7fed099db97ebc33202f1d9c478cecca20452ca4efdf8dafda9",
+    "data/project-render-facts.json": "sha256:eef71e284d9a5a22880bf3038109ae6132a490950e2c86202045d7b1c7e0df95",
+    "scripts/verify/placement/verify-furniture-placement.ts": "sha256:4e5d0fb408c4887ac1e317a2f954f0f2f24b4a265d54bf1d98b7055756e9f8f5"
+  },
+  "checks": {
+    "gateVisual": {
+      "status": "CLEAR",
+      "command": "npm run gate:visual"
+    },
+    "note": "verifyAll/typecheck/testServer/testApp 结果记录于 DEC-2026-10-17-R11；verify-facts 中唯一由本轮引入的 dangling_reference（house.yaml:532 引 DEC-2026-10-17-R11）在 DEC 落档后复核通过。"
+  }
+}

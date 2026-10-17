@@ -46,32 +46,33 @@ objects:
     owner: 家电
     function: 餐厅日常即热饮水
     material: 白色机身外观代理
-    geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v5 + owner supplied 312×106×280mm
+    geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6 + owner supplied official 312×106×280mm render (2026-10-17)
     datum_refs: [D-S1-COUNTERTOP]
-    fact_refs: [F-S1-DIMS-USER, F-RUNTIME-S1, U-S1-ON-WATERBAR, U-S1-V5-DIRECTION, I-S1-SHAPE-V5]
-    decision_refs: [chat-2026-10-16-waterbar-appliance-placement, chat-2026-10-16-s1-v4-visual-feedback, chat-2026-10-16-s1-v5-east-west-direction]
+    fact_refs: [F-S1-DIMS-USER, F-RUNTIME-S1, U-S1-ON-WATERBAR, U-S1-V6-OFFICIAL-FORM, U-S1-V5-DIRECTION, I-S1-SHAPE-V6, I-S1-SHAPE-V5]
+    decision_refs: [chat-2026-10-16-waterbar-appliance-placement, chat-2026-10-16-s1-v4-visual-feedback, chat-2026-10-16-s1-v5-east-west-direction, chat-2026-10-17-s1-v6-official-render]
     dependencies: [furniture:living_dining:waterbar_low_cabinet_800_preview:14]
     interfaces:
       - {id: power, target_object_id: config/electrical.yaml, kind: electrical, requirement: 核对具体SKU铭牌/插头/回路和电源可及位置, status: blocked}
       - {id: water-refill, target_object_id: user, kind: maintenance, requirement: 需核实水箱取放、人工接水补水与清洁动作, status: open}
     collision:
       policy: reviewed
-      geometry_ref: evidence/runtime-query-s1-form-v5.json#objects.mijia_instant_dispenser_s1_preview
+      geometry_ref: evidence/runtime-query-s1-form-v6.json#objects.mijia_instant_dispenser_s1_preview
       review_ref: review-manifest.json
     maintenance:
-      boundary: 西侧后置水箱壳体和东侧接水盘是方向外观代理，未建真实内部水箱/水路；实际补水、拆洗和散热要求按最终SKU说明书核对。
-      access_clearance: 东侧出水、接水盘；西侧后置水箱。顶盖/水箱实际取出方向、后部可达空间和前方接水/清洁站位待核。
+      boundary: V6按官方三视图表达可见形体：出水腔在106mm窄面、西端为水箱端、双侧面板近西端把手槽；未建真实内部水箱/水路；实际补水、拆洗和散热要求按最终SKU说明书核对。
+      access_clearance: 东侧106窄面出水腔与接水盘（前缘与包络东缘平齐，距台面东缘14mm）；水箱在机身内后段，顶盖取放方向、后方可达空间和前方接水/清洁站位待核。
       replaceable_parts: [水箱, 接水盘, 滤件若有]
       inspection_requirements: [中国SKU, 铭牌功率, 插头/插座, 水箱拆装, 定期清洗]
     parts:
-      - {id: west-rear-tank-shell, role: 西侧后置水箱外壳与贴在其东侧面的水位标识, independent: true, owner: 家电外形代理, material: 柔圆白色机壳/深色水位标识, geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v5, datum_refs: [D-S1-COUNTERTOP], dependencies: [], collision: reviewed, maintenance_boundary: 不表示内部水箱容量/拆取方向/服务接口, validation_refs: [evidence/runtime-query-s1-form-v5.json, evidence/s1-form-v5-close.png]}
-      - {id: east-front-dispensing-bay, role: 东侧前置高位开放接水仓与向下出水口, independent: true, owner: 家电外形代理, material: 圆角白色机壳/浅灰腔体/金属小件, geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v5, datum_refs: [D-S1-COUNTERTOP], dependencies: [west-rear-tank-shell, fore-aft-head], collision: reviewed, maintenance_boundary: 杯具与喷嘴操作尺度待SKU核验, validation_refs: [evidence/runtime-query-s1-form-v5.json, evidence/s1-form-v5-close.png]}
-      - {id: fore-aft-head, role: 横跨312mm宽度的机头，顶盖沿东西深度分为西侧水箱盖和东侧出水头盖, independent: true, owner: 家电外形代理, material: 白色圆角机壳, geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v5, datum_refs: [D-S1-COUNTERTOP], dependencies: [west-rear-tank-shell], collision: reviewed, maintenance_boundary: 顶盖/水箱真实拆取路径未建模, validation_refs: [evidence/s1-form-v5-close.png]}
-      - {id: base-and-east-drip-tray, role: 薄底座及东侧前置、带栅格/排水凹位的接水盘, independent: true, owner: 家电外形代理, material: 白色圆角机壳/灰色金属栅格, geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v5, datum_refs: [D-S1-COUNTERTOP], dependencies: [east-front-dispensing-bay], collision: reviewed, maintenance_boundary: 接水盘拆洗方式和真实容量未建模, validation_refs: [evidence/s1-form-v5-close.png]}
+      - {id: chassis, role: 实心机身块与南柱/北柱承托结构（出水腔即挖在前脸两柱之间）, independent: true, owner: 家电外形代理, material: 柔圆白色机壳, geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6, datum_refs: [D-S1-COUNTERTOP], dependencies: [], collision: reviewed, maintenance_boundary: 不表示内部水箱容量/隔腔/服务接口, validation_refs: [evidence/runtime-query-s1-form-v6.json, evidence/s1-form-v6-close.png]}
+      - {id: head, role: 通长悬挑机头与顶面横向水箱盖分缝, independent: true, owner: 家电外形代理, material: 白色圆角机壳, geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6, datum_refs: [D-S1-COUNTERTOP], dependencies: [chassis], collision: reviewed, maintenance_boundary: 顶盖/水箱真实拆取路径未建模, validation_refs: [evidence/s1-form-v6-close.png]}
+      - {id: east-bay, role: 东侧106窄面出水腔（腔底板、徽标点、下向出水口）, independent: true, owner: 家电外形代理, material: 圆角白色机壳/浅灰腔底/金属小件, geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6, datum_refs: [D-S1-COUNTERTOP], dependencies: [chassis, head], collision: reviewed, maintenance_boundary: 杯具与喷嘴操作尺度、腔体真实深度待SKU核验, validation_refs: [evidence/runtime-query-s1-form-v6.json, evidence/s1-form-v6-east-face.png]}
+      - {id: stage-and-tray, role: 前伸置杯踏台与带栅格/排水凹位的接水盘（前缘与包络东缘平齐）, independent: true, owner: 家电外形代理, material: 白色圆角机壳/灰色金属栅格, geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6, datum_refs: [D-S1-COUNTERTOP], dependencies: [east-bay], collision: reviewed, maintenance_boundary: 接水盘拆洗方式和真实容量未建模, validation_refs: [evidence/s1-form-v6-close.png]}
+      - {id: side-tank-slots, role: 南北双侧面板近西端的深色把手槽外观代理, independent: true, owner: 家电外形代理, material: 深色胶囊凹槽读法, geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6, datum_refs: [D-S1-COUNTERTOP], dependencies: [chassis], collision: reviewed, maintenance_boundary: 把手槽是否双侧对称、是否为水箱提手以实机为准, validation_refs: [evidence/s1-form-v6-close.png, evidence/runtime-query-s1-form-v6.json]}
     visual_relationships:
-      - {target_object_id: furniture:living_dining:waterbar_low_cabinet_800_preview:14, relation: supported, requirement: 底面y=0.85m与柜面相切, evidence_refs: [evidence/s1-form-v5-close.png]}
-      - {target_object_id: furniture:living_dining:coffee_machine_em450:16, relation: spaced, requirement: 沿z方向留0.094m静态间距；不是操作宽度保证, evidence_refs: [evidence/s1-form-v5-close.png]}
-    validation_refs: [evidence/runtime-query-s1-form-v5.json, evidence/s1-form-v5-overview.png, evidence/s1-form-v5-close.png, evidence/runtime-query-s1-form-v4.json]
+      - {target_object_id: furniture:living_dining:waterbar_low_cabinet_800_preview:14, relation: supported, requirement: 底面y=0.85m与柜面相切，整机XY在台面范围内, evidence_refs: [evidence/runtime-query-s1-form-v6.json, evidence/s1-form-v6-overview.png]}
+      - {target_object_id: furniture:living_dining:coffee_machine_em450:16, relation: spaced, requirement: 沿z方向留0.197m静态间距（V6转轴后由0.094m增大）；不是操作宽度保证, evidence_refs: [evidence/runtime-query-s1-form-v6.json, evidence/s1-form-v6-overview.png]}
+    validation_refs: [evidence/runtime-query-s1-form-v6.json, evidence/s1-form-v6-overview.png, evidence/s1-form-v6-close.png, evidence/s1-form-v6-east-face.png, evidence/runtime-query-s1-form-v5.json]
     status: implemented
   - id: furniture:living_dining:coffee_machine_em450:16
     type: coffee_machine_em450

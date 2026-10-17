@@ -48,36 +48,36 @@ datums:
     name: 米家S1台式即热饮水机预演位置
     anchor: {kind: free_position, ref: D-WATERBAR-CABINET, wall_side: null, service_ref: null}
     source_refs:
-      fact_refs: [F-S1-DIMS-USER, F-RUNTIME-S1, I-S1-SHAPE-V5]
-      decision_refs: [U-S1-ON-WATERBAR, U-S1-V5-DIRECTION]
+      fact_refs: [F-S1-DIMS-USER, F-RUNTIME-S1, I-S1-SHAPE-V6, I-S1-SHAPE-V5]
+      decision_refs: [U-S1-ON-WATERBAR, U-S1-V6-OFFICIAL-FORM, U-S1-V5-DIRECTION]
     views:
       plan:
         required: true
         origin: 设备中心
         axes: x为柜深，z为柜长
-        direction: 局部+z为东侧前出水区、局部-z为西侧后置水箱区；rotationY=90°保持不变
-        position: {x: 7.50, z: 3.64}
+        direction: V6（DEC-2026-10-17-R11）：出水腔在106mm窄面，局部+z=世界东=出水腔正面；312mm长轴沿局部z（世界东西向），西端为水箱端；rotationY=90°保持不变
+        position: {x: 7.47, z: 3.64}
         rotation: 90
-        dimensions: {length: 0.312, width: 0.106, depth: 0.106, offset: 0}
+        dimensions: {length: 0.106, width: 0.106, depth: 0.312, offset: 0}
         dimension_semantics: overall
       elevation:
         required: true
         viewing_side: 东侧正面
         vertical_axis: y
         height: 0.28
-        dimensions: {width: 0.312, height: 0.28, sill: 0.85, datum_offset: 0.85}
+        dimensions: {width: 0.106, height: 0.28, sill: 0.85, datum_offset: 0.85}
         dimension_semantics: above_floor
       section:
         required: true
         cut_direction: x轴东西向
         depth_axis: x
-        clearances: {front: 0.087, rear: 0.227, top: null, bottom: 0}
+        clearances: {front: 0.014, rear: 0.094, top: null, bottom: 0}
         thickness: null
         dimension_semantics: service_clearance
-    geometry: {x: 7.50, y: 0.85, z: 3.64, width: 0.106, depth: 0.106, height: 0.28, length: 0.312, rotation: 90, along: 0.312}
-    constraints: ["设备底面与矮柜台面y=0.85m接触；东侧为出水正面，西侧为后置水箱方向。", "V5水箱壳体是方向外观代理，不代表厂家内部结构或真实拆取路径。", "机身补水、顶部水箱取放、接水盘清洁和墙控操作包络未验证。"]
+    geometry: {x: 7.47, y: 0.85, z: 3.64, width: 0.312, depth: 0.106, height: 0.28, length: 0.106, rotation: 90, along: 0.106}
+    constraints: ["设备底面与矮柜台面y=0.85m接触；东侧106窄面为出水正面，西端为水箱端，南北312长面带近西端把手槽。", "V6形体按官方三视尺寸图（营销图）估读：出水腔深42mm、把手槽/顶盖分缝位置是外观代理，不代表厂家内部结构或真实拆取路径。", "机身补水、顶部水箱取放、接水盘清洁和墙控操作包络未验证。"]
     interfaces: [S-DINING-POWER]
-    validation_refs: [evidence/runtime-query-s1-form-v5.json#objects.mijia_instant_dispenser_s1_preview, evidence/runtime-query-s1-form-v5.json#fixedCameras.waterbar_close, evidence/runtime-query-s1-form-v4.json#scene.objects.mijia_instant_dispenser_s1_preview]
+    validation_refs: [evidence/runtime-query-s1-form-v6.json#objects.mijia_instant_dispenser_s1_preview, evidence/runtime-query-s1-form-v6.json#fixedCameras.waterbar_close, evidence/runtime-query-s1-form-v5.json#objects.mijia_instant_dispenser_s1_preview]
     status: confirmed
   - id: D-EM450-WATERBAR
     name: 同一台德龙EM450餐厅水吧预演位置

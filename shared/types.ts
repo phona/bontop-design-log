@@ -1863,7 +1863,9 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   mijia_tea_bar_pro: { width: 0.310, depth: 0.315 }, // User-supplied Mijia Tea Bar Pro dimensions; height is rendered by FixtureFactory (1.155m)
   waterbar_low_sideboard_400_preview: { width: 0.390, depth: 0.400 }, // Freestanding modular low cabinet candidate; top height 0.92m is rendered by FixtureFactory
   waterbar_low_cabinet_800_preview: { width: 0.800, depth: 0.420 }, // 800mm wall run ×420mm depth; total height 0.85m in FixtureFactory
-  mijia_instant_dispenser_s1_preview: { width: 0.312, depth: 0.106 }, // User-supplied S1 countertop dispenser dimensions; height 0.28m
+  // V6 (2026-10-17): bay is on the 106mm narrow face, so local width=0.106 (local +x → world north
+  // after rotationY=90°) and local depth=0.312 (local +z → world east). Height 0.28m.
+  mijia_instant_dispenser_s1_preview: { width: 0.106, depth: 0.312 }, // User-supplied S1 countertop dispenser dimensions; height 0.28m
   mijia_ro_purifier_1400g_under_sink_preview: { width: 0.163, depth: 0.445 }, // User-supplied purifier body footprint; height 0.379m
   gas_stove: { width: 0.75, depth: 0.6 },
   range_hood: { width: 0.9, depth: 0.5 },

@@ -546,40 +546,53 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // Xiaomi Mijia Instant Hot Water Dispenser S1: 312W×106D×280H mm supplied
-    // by the user. This is a countertop dispenser preview; no logo or hidden
-    // water/electrical connection is implied.
+    // Xiaomi Mijia Instant Hot Water Dispenser S1: 312×106×280 mm from the
+    // owner's dimensioned official render (2026-10-17). V6 follows that render:
+    // the dispensing bay sits on the 106 mm narrow face, so with rotationY=90°
+    // the 312 mm length runs along local z (local +z faces east = bay face,
+    // local -z = west rear tank end) and local ±x are the two long side panels.
+    // Solid monolith body: full-height south column + north pillar carry the
+    // overhanging head; the bay is recessed 30 mm between them. Dark tank-handle
+    // slots sit near the rear on both side panels, the top carries a transverse
+    // tank-lid seam, and the cup stage/drip tray advances to the declared front
+    // envelope edge. Countertop preview only; no internal water path is implied.
     type: 'mijia_instant_dispenser_s1_preview',
     offsetY: 0.85,
     parts: [
-      // V5 makes the appliance's depth axis readable: local +z faces east and
-      // holds the dispensing bay/tray; local -z faces west and holds the rear
-      // tank shell. The 312W×106D×280H mm envelope is unchanged.
-      { shape: 'rounded_box', size: [0.300, 0.014, 0.098], cornerRadius: 0.006, position: [0, 0.007, 0], color: '#dcddda', roughness: 0.58, part: 'dispenser-base', materialRole: 'appliance_case' },
-      { shape: 'rounded_box', size: [0.245, 0.238, 0.047], cornerRadius: 0.010, position: [0.015, 0.133, -0.0295], color: '#eeeeea', roughness: 0.54, part: 'dispenser-west-rear-tank-shell', materialRole: 'appliance_case' },
-      { shape: 'rounded_box', size: [0.104, 0.184, 0.006], cornerRadius: 0.003, position: [-0.045, 0.124, -0.001], color: '#f0f0ec', roughness: 0.55, part: 'dispenser-east-front-bay-rear-wall', materialRole: 'appliance_case' },
-      { shape: 'rounded_box', size: [0.012, 0.184, 0.057], cornerRadius: 0.003, position: [-0.107, 0.124, 0.0245], color: '#f1f1ed', roughness: 0.54, part: 'dispenser-east-front-bay-south-cheek', materialRole: 'appliance_case' },
-      { shape: 'rounded_box', size: [0.012, 0.184, 0.057], cornerRadius: 0.003, position: [0.017, 0.124, 0.0245], color: '#f1f1ed', roughness: 0.54, part: 'dispenser-east-front-bay-north-divider', materialRole: 'appliance_case' },
-      { shape: 'box', size: [0.096, 0.144, 0.002], position: [-0.045, 0.124, 0.008], color: '#d2d4d1', roughness: 0.58, part: 'dispenser-east-front-cavity-shadow', materialRole: 'appliance_front' },
-      { shape: 'rounded_box', size: [0.312, 0.062, 0.106], cornerRadius: 0.010, position: [0, 0.247, 0], color: '#f5f5f1', roughness: 0.50, part: 'dispenser-full-width-head', materialRole: 'appliance_case' },
-      { shape: 'box', size: [0.296, 0.002, 0.046], position: [0, 0.279, -0.029], color: '#ebebe8', roughness: 0.50, part: 'dispenser-west-rear-tank-lid', materialRole: 'appliance_case' },
-      { shape: 'box', size: [0.296, 0.002, 0.046], position: [0, 0.279, 0.029], color: '#f0f0ed', roughness: 0.50, part: 'dispenser-east-front-head-lid', materialRole: 'appliance_case' },
-      { shape: 'box', size: [0.252, 0.002, 0.004], position: [0.018, 0.214, 0.050], color: '#d9dad7', roughness: 0.50, part: 'dispenser-head-underside-seam', materialRole: 'appliance_front' },
-      { shape: 'cylinder', size: [0.005, 0.024, 0.005], position: [-0.045, 0.198, 0.032], color: '#919696', metalness: 0.55, roughness: 0.32, part: 'dispenser-east-front-downward-spout', materialRole: 'hardware' },
-      { shape: 'capsule', size: [0.008, 0.154, 0.002], position: [0.120, 0.136, -0.005], color: '#71645a', roughness: 0.54, part: 'dispenser-east-facing-tank-level-indicator', materialRole: 'appliance_front' },
-      { shape: 'rounded_box', size: [0.176, 0.018, 0.044], cornerRadius: 0.007, position: [-0.045, 0.023, 0.031], color: '#dcddda', roughness: 0.55, part: 'dispenser-east-front-drip-tray', materialRole: 'appliance_case' },
-      { shape: 'box', size: [0.166, 0.002, 0.038], position: [-0.045, 0.033, 0.031], color: '#b9bcba', metalness: 0.18, roughness: 0.56, part: 'dispenser-east-front-tray-grate', materialRole: 'hardware' },
+      { shape: 'rounded_box', size: [0.104, 0.014, 0.312], cornerRadius: 0.005, position: [0, 0.007, 0], color: '#dcddda', roughness: 0.58, part: 'dispenser-base-plinth', materialRole: 'appliance_case' },
+      { shape: 'rounded_box', size: [0.104, 0.208, 0.237], cornerRadius: 0.004, position: [0, 0.118, -0.0375], color: '#efefeb', roughness: 0.54, part: 'dispenser-body-rear-block', materialRole: 'appliance_case' },
+      { shape: 'rounded_box', size: [0.037, 0.208, 0.042], cornerRadius: 0.005, position: [-0.0335, 0.118, 0.105], color: '#f0f0ec', roughness: 0.54, part: 'dispenser-front-column-south', materialRole: 'appliance_case' },
+      { shape: 'rounded_box', size: [0.012, 0.208, 0.042], cornerRadius: 0.004, position: [0.046, 0.118, 0.105], color: '#f0f0ec', roughness: 0.54, part: 'dispenser-front-pillar-north', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.047, 0.168, 0.002], position: [0.0125, 0.108, 0.085], color: '#d4d6d2', roughness: 0.60, part: 'dispenser-bay-back-panel', materialRole: 'appliance_front' },
+      { shape: 'rounded_box', size: [0.013, 0.013, 0.0015], cornerRadius: 0.003, position: [0.0125, 0.082, 0.0868], color: '#3f4446', roughness: 0.50, part: 'dispenser-bay-badge-mark', materialRole: 'appliance_front' },
+      { shape: 'rounded_box', size: [0.106, 0.058, 0.282], cornerRadius: 0.014, position: [0, 0.251, -0.015], color: '#f4f4f0', roughness: 0.50, part: 'dispenser-head-full-length', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.100, 0.0008, 0.0022], position: [0, 0.2799, -0.026], color: '#d5d6d2', roughness: 0.52, part: 'dispenser-top-lid-seam', materialRole: 'appliance_front' },
+      { shape: 'cylinder', size: [0.0075, 0.003, 0.0075], position: [0.0125, 0.2205, 0.121], color: '#cfd2d0', metalness: 0.70, roughness: 0.28, part: 'dispenser-spout-collar', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.0045, 0.022, 0.0045], position: [0.0125, 0.209, 0.121], color: '#b9bdbd', metalness: 0.80, roughness: 0.25, part: 'dispenser-spout-tube', materialRole: 'hardware' },
+      { shape: 'rounded_box', size: [0.098, 0.032, 0.072], cornerRadius: 0.006, position: [0, 0.020, 0.120], color: '#dcddda', roughness: 0.56, part: 'dispenser-front-cup-stage', materialRole: 'appliance_case' },
+      { shape: 'rounded_box', size: [0.094, 0.016, 0.056], cornerRadius: 0.006, position: [0, 0.052, 0.128], color: '#d8d9d5', roughness: 0.55, part: 'dispenser-drip-tray', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.086, 0.002, 0.050], position: [0, 0.061, 0.128], color: '#b9bcba', metalness: 0.18, roughness: 0.56, part: 'dispenser-tray-grate', materialRole: 'hardware' },
       ...Array.from({ length: 8 }, (_, index) => ({
         shape: 'box' as const,
-        size: [0.152, 0.0015, 0.002] as [number, number, number],
-        position: [-0.045, 0.035, 0.014 + index * 0.0045] as [number, number, number],
-        color: '#555b5b',
+        size: [0.082, 0.0015, 0.0026] as [number, number, number],
+        position: [0, 0.0625, 0.106 + index * 0.006286] as [number, number, number],
+        color: '#565c5c',
         metalness: 0.24,
         roughness: 0.42,
-        part: `dispenser-east-front-tray-drain-slot-${index + 1}`,
+        part: `dispenser-tray-drain-slot-${index + 1}`,
         materialRole: 'hardware',
       })),
-      { shape: 'rounded_box', size: [0.020, 0.002, 0.014], cornerRadius: 0.004, position: [-0.045, 0.036, 0.032], color: '#515657', roughness: 0.52, part: 'dispenser-east-front-tray-drain-well', materialRole: 'hardware' },
+      { shape: 'rounded_box', size: [0.020, 0.002, 0.014], cornerRadius: 0.004, position: [0, 0.0625, 0.128], color: '#515657', roughness: 0.52, part: 'dispenser-tray-drain-well', materialRole: 'hardware' },
+      ...([-1, 1] as const).map((side) => ({
+        shape: 'capsule' as const,
+        size: [0.006, 0.100, 0.002] as [number, number, number],
+        position: [side * 0.052, 0.135, -0.075] as [number, number, number],
+        rotation: [0, Math.PI / 2, 0] as [number, number, number],
+        color: '#6d655d',
+        roughness: 0.50,
+        part: side === -1 ? 'dispenser-side-tank-slot-south' : 'dispenser-side-tank-slot-north',
+        materialRole: 'appliance_front',
+      })),
     ],
   },
   {
