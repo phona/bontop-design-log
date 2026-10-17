@@ -92,3 +92,4 @@
 - **下一步责任**：枢纽盒共槽声明通道 + 交叉错层批量（owner：设计侧下一轮 P3；触发=交底排期前）。给排水汇流对由量房日立管实测后一并终核。
 - **验证**：`verify:mep` 191→186；overlap 85→80（refrigerant×weak 长距共跑段清零）。
 - **决策人**：弱电让轴方向业主已裁定（平面错距方案）；枢纽盒错层/共槽通道设计属下一轮。
+- **附注（suppressed_wall_crossing ×8 的本轮核查结论）**：lint 的 `wallCrosses`/`routeTouchesWall` 均已弧感知（走 `wall.segments` 弦段），「弧墙弦线误报」的假设**不成立**——5 处 w_bath_north 触碰是 v1 排水估算线真实贴近圆角弧线（±0.3m 口径），3 处 recirc 回水管是真实幕墙触碰（z=1.00 恰为三段圆角切点线）。本轮试将回水管平移 z 1.00→1.05，结果落入 w_balc_west/w_balc_east 墙带新增 2 处穿墙，已回退。结论：这 8 处的正当出路是**量房日按实测重画 v1 水路**（连同 water-v1 penetration_missing ×6、suppressed 桶保持 must_fix 不挪桶——真实穿幕墙是交底禁区），不是 lint 改动。此前 R13「5 处弧墙弦线误报需 lint 级修复」的判断据此修正。
