@@ -1693,6 +1693,10 @@ coverage:
   - { file: config/finish-lint.yaml, field: "waivers", readers: ["shared/finish/types.ts", "shared/finish/registry.ts"] }
   - { file: config/finish-lint.yaml, field: "tolerance", readers: ["shared/finish/types.ts", "shared/finish/rules.ts", "scripts/verify/finish/verify-finish-scope.ts"] }
   - { file: config/finish-lint.yaml, field: "note", readers: [] }
+  # MEP lint warning 交付表态登记册（DEC-2026-10-17-R19）：每个存活的 warning 类
+  # 必须登记 accepted(dec_ref+owner+trigger)，未表态的类本身是 must_fix error。
+  - { file: config/mep-warning-adjudication.yaml, field: "version", readers: ["shared/mep-warning-adjudication.ts"] }
+  - { file: config/mep-warning-adjudication.yaml, field: "adjudications", readers: ["shared/mep-warning-adjudication.ts"] }
   - { file: config/ceiling.yaml, field: "*", readers: [] }
   # 瓦工人工费率卡（2026-10-13 从 config/tile-comparison.yaml 的 masonry_rate_card 提为项目级）。
   # 搬迁理由：该卡原先只喂 /api/tiles/comparison，而 server/budget-calculator.ts 的 computeLabor
