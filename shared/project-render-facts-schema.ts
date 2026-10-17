@@ -316,7 +316,148 @@ export const WallLampConfigSchema = z.object({
   if (value.adjustability.yawDeg[0] >= value.adjustability.yawDeg[1]) ctx.addIssue({ code: 'custom', message: 'yawDeg range must increase', path: ['adjustability', 'yawDeg'] });
   if (value.adjustability.tiltDeg[0] >= value.adjustability.tiltDeg[1]) ctx.addIssue({ code: 'custom', message: 'tiltDeg range must increase', path: ['adjustability', 'tiltDeg'] });
 });
-export const LightingRenderConfigSchema = z.object({ fixtures: z.array(z.discriminatedUnion('type', [TrackLightConfigSchema, WallLampConfigSchema])) }).strict();
+export const MultiGlobeChandelierConfigSchema = z.object({
+  id: nonEmpty,
+  type: z.literal('dome'),
+  style: z.literal('multi_globe_semi_flush_chandelier'),
+  finish: z.enum(['chrome_black_opal', 'antique_wood_copper_opal']),
+  outerWidth: finiteNumber.positive(),
+  outerDepth: finiteNumber.positive(),
+  totalThickness: finiteNumber.positive(),
+  canopyDiameter: finiteNumber.positive(),
+  canopyThickness: finiteNumber.positive(),
+  stemRadius: finiteNumber.positive(),
+  stemLength: finiteNumber.positive(),
+  jointBallDiameter: finiteNumber.positive(),
+  hubUpperDiscDiameter: finiteNumber.positive(),
+  hubUpperDiscThickness: finiteNumber.positive(),
+  hubUpperDiscCenterOffsetY: finiteNumber.negative(),
+  hubDiscGap: finiteNumber.nonnegative(),
+  hubLowerDiscDiameter: finiteNumber.positive(),
+  hubLowerDiscThickness: finiteNumber.positive(),
+  hubLowerDiscCenterOffsetY: finiteNumber.negative(),
+  hubFinialDiameter: finiteNumber.positive(),
+  armTubeRadius: finiteNumber.positive(),
+  armBow: finiteNumber.nonnegative(),
+  socketDiameter: finiteNumber.positive(),
+  socketHeight: finiteNumber.positive(),
+  globeDiameter: finiteNumber.positive(),
+  globeHeight: finiteNumber.positive().optional(),
+  armTiers: z.array(z.object({
+    count: z.number().int().positive(),
+    angularOffsetDeg: finiteNumber,
+    globeRadius: finiteNumber.positive(),
+    globeCenterOffsetY: finiteNumber.negative(),
+    hubAttachment: z.enum(['upper_disc', 'lower_disc']),
+    armStartRadius: finiteNumber.positive(),
+    armStartOffsetY: finiteNumber.negative(),
+    sweep: z.enum(['rise', 'droop']),
+    /** Ring tilt about the east-west axis; positive droops the near (south) side. */
+    tiltDeg: finiteNumber,
+  }).strict()).min(1),
+}).strict().superRefine((value, ctx) => {
+  const envelope = Math.min(value.outerWidth, value.outerDepth) / 2;
+  const globeHalfHeight = (value.globeHeight ?? value.globeDiameter) / 2;
+  if (value.canopyDiameter >= Math.min(value.outerWidth, value.outerDepth)) {
+    ctx.addIssue({ code: 'custom', message: 'ceiling canopy must fit inside the fixture envelope', path: ['canopyDiameter'] });
+  }
+  if (value.canopyThickness >= value.totalThickness) {
+    ctx.addIssue({ code: 'custom', message: 'canopy exceeds the total fixture drop', path: ['canopyThickness'] });
+  }
+  if (value.stemLength + value.jointBallDiameter / 2 >= value.totalThickness) {
+    ctx.addIssue({ code: 'custom', message: 'stem and joint ball exceed the total fixture drop', path: ['stemLength'] });
+  }
+  if (value.hubLowerDiscDiameter >= value.hubUpperDiscDiameter) {
+    ctx.addIssue({ code: 'custom', message: 'stacked hub discs must taper from the upper disc to the lower disc', path: ['hubLowerDiscDiameter'] });
+  }
+  if (value.hubFinialDiameter >= value.hubLowerDiscDiameter) {
+    ctx.addIssue({ code: 'custom', message: 'hub finial must be smaller than the lower disc', path: ['hubFinialDiameter'] });
+  }
+  const hubTop = value.hubUpperDiscCenterOffsetY + value.hubUpperDiscThickness / 2;
+  const hubUpperBottom = value.hubUpperDiscCenterOffsetY - value.hubUpperDiscThickness / 2;
+  const hubLowerTop = value.hubLowerDiscCenterOffsetY + value.hubLowerDiscThickness / 2;
+  const actualHubGap = hubUpperBottom - hubLowerTop;
+  // The declared finial profile occupies hubFinialDiameter vertically and is
+  // centered one radius below the lower disc's bottom face.
+  const hubBottom = value.hubLowerDiscCenterOffsetY - value.hubLowerDiscThickness / 2 - value.hubFinialDiameter;
+  if (Math.abs(actualHubGap - value.hubDiscGap) > 0.002) {
+    ctx.addIssue({ code: 'custom', message: 'hubDiscGap does not match the declared upper/lower disc clearance', path: ['hubDiscGap'] });
+  }
+  if (hubTop >= 0) {
+    ctx.addIssue({ code: 'custom', message: 'hub must hang below the ceiling anchor', path: ['hubUpperDiscCenterOffsetY'] });
+  }
+  if (hubBottom < -value.totalThickness - 1e-9) {
+    ctx.addIssue({ code: 'custom', message: 'hub finial exceeds the total fixture drop', path: ['hubLowerDiscCenterOffsetY'] });
+  }
+  const arms = value.armTiers.flatMap((tier, tierIndex) =>
+    Array.from({ length: tier.count }, (_, index) => ({
+      tierIndex,
+      angleDeg: tier.angularOffsetDeg + (360 / tier.count) * index,
+      tier,
+    })),
+  );
+  const positions = arms.map((arm) => {
+    const radians = (arm.angleDeg * Math.PI) / 180;
+    const tilt = (arm.tier.tiltDeg * Math.PI) / 180;
+    return {
+      ...arm,
+      x: arm.tier.globeRadius * Math.sin(radians),
+      z: arm.tier.globeRadius * Math.cos(radians) * Math.cos(tilt),
+      y: arm.tier.globeCenterOffsetY - arm.tier.globeRadius * Math.cos(radians) * Math.sin(tilt),
+    };
+  });
+  for (const arm of arms) {
+    const hubDiscRadius = arm.tier.hubAttachment === 'upper_disc'
+      ? value.hubUpperDiscDiameter / 2
+      : value.hubLowerDiscDiameter / 2;
+    if (arm.tier.armStartRadius > hubDiscRadius + 1e-9) {
+      ctx.addIssue({ code: 'custom', message: 'arm start radius exceeds the attached hub disc', path: ['armTiers', arm.tierIndex, 'armStartRadius'] });
+    }
+    const discCenter = arm.tier.hubAttachment === 'upper_disc'
+      ? value.hubUpperDiscCenterOffsetY
+      : value.hubLowerDiscCenterOffsetY;
+    const discThickness = arm.tier.hubAttachment === 'upper_disc'
+      ? value.hubUpperDiscThickness
+      : value.hubLowerDiscThickness;
+    if (Math.abs(arm.tier.armStartOffsetY - discCenter) > discThickness / 2 + 1e-9) {
+      ctx.addIssue({ code: 'custom', message: 'arm start height falls outside the attached hub disc', path: ['armTiers', arm.tierIndex, 'armStartOffsetY'] });
+    }
+    const radialInner = arm.tier.globeRadius - value.globeDiameter / 2;
+    if (radialInner <= hubDiscRadius) {
+      ctx.addIssue({ code: 'custom', message: 'globe intersects the hub stack', path: ['armTiers', arm.tierIndex, 'globeRadius'] });
+    }
+    if (arm.tier.globeRadius + value.globeDiameter / 2 > envelope) {
+      ctx.addIssue({ code: 'custom', message: 'globe exceeds the fixture envelope', path: ['armTiers', arm.tierIndex, 'globeRadius'] });
+    }
+    // 倾斜后每球高度不同：按该臂实际方位算球心 offset，不能用 tier 基准值。
+    const armRadians = (arm.angleDeg * Math.PI) / 180;
+    const armTilt = (arm.tier.tiltDeg * Math.PI) / 180;
+    const globeOffsetY = arm.tier.globeCenterOffsetY
+      - arm.tier.globeRadius * Math.cos(armRadians) * Math.sin(armTilt);
+    if (Math.abs(globeOffsetY) + globeHalfHeight > value.totalThickness) {
+      ctx.addIssue({ code: 'custom', message: 'globe exceeds the total fixture drop', path: ['armTiers', arm.tierIndex, 'globeCenterOffsetY'] });
+    }
+    // `sweep` selects the signed Bézier bow relative to the straight chord from
+    // hub attachment to socket base; the endpoint may be above or below the hub.
+    // A high shared arm-root plane can arch upward, then descend to a common-height globe.
+  }
+  for (let i = 0; i < positions.length; i += 1) {
+    for (let j = i + 1; j < positions.length; j += 1) {
+      const a = positions[i];
+      const b = positions[j];
+      const separation = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+      if (separation < value.globeDiameter) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `globes ${i + 1} and ${j + 1} intersect (separation ${separation.toFixed(3)}m < globe diameter ${value.globeDiameter}m)`,
+          path: ['armTiers'],
+        });
+      }
+    }
+  }
+});
+/** The multi-globe model is a render style for the existing electrical type 'dome'. */
+export const LightingRenderConfigSchema = z.object({ fixtures: z.array(z.discriminatedUnion('type', [TrackLightConfigSchema, WallLampConfigSchema, MultiGlobeChandelierConfigSchema])) }).strict();
 export function parseLightingRenderConfig(raw: string): LightingRenderConfig {
   const config = LightingRenderConfigSchema.parse(parseYaml(raw));
   const ids = new Set<string>();

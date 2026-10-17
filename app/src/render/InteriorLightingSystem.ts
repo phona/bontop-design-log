@@ -3,6 +3,7 @@ import type { LightingRenderConfig, RenderLightingFixture } from '@shared/types'
 import { getResolvedTrackLightHeads, getTrackLightConfig } from '@shared/render/TrackLightLayout';
 import { buildWallLampVisual, getWallLampConfig, getWallLampLensPosition, wallSideNormal } from '@shared/render/WallLampGeometry';
 import { buildNightLightVisual, getNightLightMountNormal } from '@shared/render/NightLightGeometry';
+import { buildMultiGlobeChandelierVisual, getMultiGlobeChandelierConfig, getMultiGlobeGlobeCenters } from '@shared/render/MultiGlobeChandelierGeometry';
 
 /**
  * 室内灯光系统（spec: 2026-08-12-interior-lighting-design.md）
@@ -43,6 +44,10 @@ const CEILING_VISUAL_CLEARANCE = 0.05;
 const FIXTURE_EMISSIVE_ON = 0.35 * LIGHTING_ENERGY_VISUAL_SCALE;
 const FIXTURE_EMISSIVE_OFF = 0.05;
 const FIXTURE_DIFFUSER_COLOR = 0xf7f7f2;
+// 多头球泡按每个球罩一个 PointLight，光源位置与可见球罩共用同一中心计算。
+// 每头强度只是夜景预演参数，不代表灯具流明或照度。
+const MULTI_GLOBE_PER_HEAD_ENERGY = 1.2;
+const MULTI_GLOBE_PER_HEAD_DISTANCE = 3.5;
 
 /**
  * Approximate the blackbody/Planckian locus in CIE 1931 xy, then convert the
@@ -218,10 +223,20 @@ export class InteriorLightingSystem {
       case 'dome':
       case 'ceiling_light':
       default: {
-        const point = new THREE.PointLight(color, 8, 7, 1.5);
-        point.position.set(x, y, z);
-        light = point;
-        lights = [point];
+        const multiGlobeConfig = getMultiGlobeChandelierConfig(this.lighting, fixture.id);
+        if (multiGlobeConfig) {
+          lights = getMultiGlobeGlobeCenters(fixture, multiGlobeConfig).map((center) => {
+            const point = new THREE.PointLight(color, MULTI_GLOBE_PER_HEAD_ENERGY, MULTI_GLOBE_PER_HEAD_DISTANCE, 1.5);
+            point.position.copy(center);
+            return point;
+          });
+          light = lights[0];
+        } else {
+          const point = new THREE.PointLight(color, 8, 7, 1.5);
+          point.position.set(x, y, z);
+          light = point;
+          lights = [point];
+        }
         visual = this.makeDomeFixture(fixture, color);
         break;
       }
@@ -337,6 +352,9 @@ export class InteriorLightingSystem {
   }
 
   private makeDomeFixture(fixture: RenderLightingFixture, color: THREE.Color): THREE.Group {
+    const multiGlobeConfig = getMultiGlobeChandelierConfig(this.lighting, fixture.id);
+    if (multiGlobeConfig) return buildMultiGlobeChandelierVisual(fixture, multiGlobeConfig, color);
+
     const group = new THREE.Group();
     const dome = new THREE.Mesh(
       new THREE.SphereGeometry(0.2, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2),

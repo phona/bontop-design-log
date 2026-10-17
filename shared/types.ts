@@ -1467,7 +1467,66 @@ export interface WallLampConfig {
   };
 }
 
-export type DetailedLightingFixtureConfig = TrackLightConfig | WallLampConfig;
+/**
+ * 2026-10-17 DEC-2026-10-17-R1：客厅主灯改 8 头古铜木色弧臂灯，仅用于视觉预演。
+ * 以 style 字面量标记该 dome 外观；详细灯具配置仍是纯渲染数据，不改电气点位。
+ */
+export interface MultiGlobeChandelierConfig {
+  id: string;
+  type: 'dome';
+  style: 'multi_globe_semi_flush_chandelier';
+  finish: 'chrome_black_opal' | 'antique_wood_copper_opal';
+  /** Fixture envelope diameter along x. */
+  outerWidth: number;
+  /** Fixture envelope diameter along z. */
+  outerDepth: number;
+  /** Ceiling anchor plane to the lowest visible point. */
+  totalThickness: number;
+  canopyDiameter: number;
+  canopyThickness: number;
+  stemRadius: number;
+  stemLength: number;
+  jointBallDiameter: number;
+  hubUpperDiscDiameter: number;
+  hubUpperDiscThickness: number;
+  hubUpperDiscCenterOffsetY: number;
+  hubDiscGap: number;
+  hubLowerDiscDiameter: number;
+  hubLowerDiscThickness: number;
+  hubLowerDiscCenterOffsetY: number;
+  hubFinialDiameter: number;
+  armTubeRadius: number;
+  /** Control-point bow of the swept arm, metres; direction follows the tier sweep. */
+  armBow: number;
+  socketDiameter: number;
+  socketHeight: number;
+  globeDiameter: number;
+  /** Optional vertical globe dimension; omitted means a spherical globe. */
+  globeHeight?: number;
+  armTiers: Array<{
+    count: number;
+    /** Rotation of this tier's first arm, degrees. */
+    angularOffsetDeg: number;
+    globeRadius: number;
+    /** Globe centre height relative to the ceiling anchor (negative below the ceiling). */
+    globeCenterOffsetY: number;
+    hubAttachment: 'upper_disc' | 'lower_disc';
+    /** Radial distance from the fixture axis where the arm meets the hub disc. */
+    armStartRadius: number;
+    /** Height of the hub attachment relative to the ceiling anchor. */
+    armStartOffsetY: number;
+    /** Vertical Bézier bow direction relative to the root-to-socket chord; endpoints may be at either height. */
+    sweep: 'rise' | 'droop';
+    /**
+     * Ring tilt in degrees about the east-west axis: positive droops the
+     * south (near) side and lifts the north (far) side. 0 = flat ring.
+     * Reproduces the product's varied globe depths instead of a flat ring.
+     */
+    tiltDeg: number;
+  }>;
+}
+
+export type DetailedLightingFixtureConfig = TrackLightConfig | WallLampConfig | MultiGlobeChandelierConfig;
 
 export interface LightingRenderConfig {
   fixtures: DetailedLightingFixtureConfig[];

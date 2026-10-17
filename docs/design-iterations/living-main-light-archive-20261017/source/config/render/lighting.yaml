@@ -1,0 +1,94 @@
+# Render-only detailed lighting configuration.
+#
+# 2026-10-13 DEC-2026-10-13-R1：当时 detailed fixtures 列表清空。
+# 原唯一条目是 living_track_main（明装轨道灯，4 灯头 + 各自 target），随客厅主灯改吸顶灯
+# 一并作废；旧版 dome 没有 detailed 配置，渲染直接走 makeDomeFixture。
+# 2026-10-16 DEC-2026-10-16-R1/R2：沿用现有 dome 电气锚点；R2 以约300mm悬垂和前伸3D拱弧替代R1浅吸顶外形。
+# 2026-10-16 DEC-2026-10-16-R5：R4 深钟形侧架垂吊造型由业主参考图改判为 10 头球泡半吸顶造型
+#（黑灯盘+镀铬臂+乳白球泡，Ø1000mm×总下垂450mm）；R1–R4 造型与配置保留为历史能力，不再在役。
+# 只为 light_living_dome 描述外观；不改电气点位、照明回路、墙控或 MEP 路由。
+#
+# Track offsets and target x/z are local to the fixture anchor; target.y is relative unless target_y_mode: absolute is set.
+# 保留 TrackLightConfig / WallLampConfig / SculpturalDomeConfig 类型作通用能力：DEC-2026-10-12-R1 删主卧两盏壁灯、
+# DEC-2026-10-13-R1 删客厅轨道灯、DEC-2026-10-16-R5 改客厅主灯造型后，track_light / wall_lamp 与
+# suspended_offset_side_arch_opal_lantern 在 config/electrical.yaml 中已无在役点位，
+# makeTrackFixture / makeWallLampFixture / buildSculpturalDomeVisual 代码保留但当前无调用方。
+fixtures:
+  - id: light_living_dome
+    type: dome
+    style: multi_globe_semi_flush_chandelier
+    finish: chrome_black_opal
+    # 外包络Ø1.0m、总下垂0.45m（业主2026-10-16按商品规格1000*450mm确认，超出R4的350mm上限）；
+    # 锚点仍贴原顶2.80m，最低球泡底约2.35m。
+    outerWidth: 1.0
+    outerDepth: 1.0
+    totalThickness: 0.45
+    # 吸顶盘Φ120×H25（浅碟盘）→吊杆约120mm→黑色球形关节Ø50→带台阶单灯盘（上盘Ø200×28/下盘Ø155×22/盘隙5mm+finial Ø18）。
+    # 2026-10-16 R6修正（依据业主提供的产品参数图 image-2.png 标注值）：球泡Ø140→130mm；吸顶盘高20→25mm；
+    # 灯盘由R5b的Ø270×30/Ø190×45厚双盘（总90mm）改为参数图的台阶单盘Ø200/Ø155（总约50mm）；
+    # 上层球心由高于上盘75mm的上挑环改为贴顶紧凑冠（球心与球关节同高，仅高于上盘中心约39mm）；
+    # 下层球泡半径0.434m使下层环标称外径=1.00m；实测AABB x向0.956m、z向0.916m，内切于Ø1.0m包络。
+    # 2026-10-16 R7修正（业主反馈"还是像八爪鱼"）：上层 globeRadius 0.38→0.22m——R6 双层环接近等宽，
+    # 任意角度都读成双宽平环放射；参数图实测上层球泡距中心约±162mm（贴 hub 紧内环），宽环仅下层。
+    # 改后读成贴顶紧冠+下层垂环的喷泉形；DEC-2026-10-16-R6/R7 记录依据与代价。
+    # 2026-10-16 R11修正（业主要求"每个都是一样的曲度弧线长度"）：R7~R10 上层短臂/下层长臂+tilt 的
+    # 双臂不同几何是八爪鱼读法根源。改为单臂模板用10次：两层同 globeRadius 0.434m、同臂根
+    # （下盘檐 r0.0775m, y2.517m）、同 armBow，仅球心对称 ±0.10m（上2.617m/下2.417m）；
+    # 吊杆0.12→0.165m下移灯盘给臂根让位；tiltDeg 归零；最低球泡底2.352m≈450mm总高不变。
+    canopyDiameter: 0.12
+    canopyThickness: 0.025
+    stemRadius: 0.008
+    stemLength: 0.165
+    jointBallDiameter: 0.05
+    hubUpperDiscDiameter: 0.20
+    hubUpperDiscThickness: 0.028
+    hubUpperDiscCenterOffsetY: -0.254
+    hubDiscGap: 0.005
+    hubLowerDiscDiameter: 0.155
+    hubLowerDiscThickness: 0.022
+    hubLowerDiscCenterOffsetY: -0.284
+    hubFinialDiameter: 0.018
+    # 10根镀铬弯臂为同一条臂模板：均起于下盘檐（半径0.0775m, y2.517m），36°均布、上下交替
+    # （azimuth 0/72/144/216/288 上挑，36/108/180/252/324 下垂），弧长与曲度完全一致。
+    armTubeRadius: 0.008
+    armBow: 0.06
+    socketDiameter: 0.045
+    socketHeight: 0.028
+    globeDiameter: 0.13
+    armTiers:
+      - count: 5
+        angularOffsetDeg: 0
+        globeRadius: 0.434
+        globeCenterOffsetY: -0.183
+        hubAttachment: lower_disc
+        armStartRadius: 0.0775
+        armStartOffsetY: -0.283
+        sweep: rise
+        tiltDeg: 0
+      - count: 5
+        angularOffsetDeg: 36
+        globeRadius: 0.434
+        globeCenterOffsetY: -0.383
+        hubAttachment: lower_disc
+        armStartRadius: 0.0775
+        armStartOffsetY: -0.283
+        sweep: droop
+        tiltDeg: 0
+  # DEC-2026-10-16-R12：餐厅灯由线性吊灯改半吸顶（贴顶无扇叶浅漫射罩），点位移至新桌心 (9.80,3.45)。
+  # 造型=镀铬吸顶盘 Ø120×18 + 短杆 160 + 浅穹顶乳白漫射罩（上口Ø520/下口Ø470/深120）+ 细金属收边，总下垂 280mm。
+  # 与客厅主灯同家族配色（黑/镀铬/乳白）以避免 §十一「两三个不同风格吊灯同时出现」；尺寸为设计预演值，非 SKU。
+  - id: light_dining_pendant
+    type: ceiling_light
+    style: semi_flush_ceiling_light
+    finish: chrome_opal
+    outerWidth: 0.52
+    outerDepth: 0.52
+    totalThickness: 0.28
+    canopyDiameter: 0.12
+    canopyThickness: 0.018
+    stemLength: 0.14
+    stemRadius: 0.008
+    diffuserTopDiameter: 0.52
+    diffuserBottomDiameter: 0.47
+    diffuserDepth: 0.12
+    rimTubeRadius: 0.006

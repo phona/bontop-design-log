@@ -20,7 +20,7 @@
       "type": "dome",
       "position": {
         "x": 10.8,
-        "y": 2.55,
+        "y": 2.8,
         "z": 7.15
       },
       "temperatureK": 3000,
@@ -2058,5 +2058,61 @@
       ],
       "snapshotSha256": "f52993186c91eb034fe90bbd4fde4860d5b2f9ce243cd4dc2ba30f4fe59e6f3f"
     }
+  },
+  "lighting": {
+    "fixtures": [
+      {
+        "id": "light_living_dome",
+        "type": "dome",
+        "style": "multi_globe_semi_flush_chandelier",
+        "finish": "antique_wood_copper_opal",
+        "outerWidth": 0.88,
+        "outerDepth": 0.88,
+        "totalThickness": 0.445,
+        "canopyDiameter": 0.13,
+        "canopyThickness": 0.035,
+        "stemRadius": 0.006,
+        "stemLength": 0.1,
+        "jointBallDiameter": 0.05,
+        "hubUpperDiscDiameter": 0.16,
+        "hubUpperDiscThickness": 0.04,
+        "hubUpperDiscCenterOffsetY": -0.215,
+        "hubDiscGap": 0.1045,
+        "hubLowerDiscDiameter": 0.13,
+        "hubLowerDiscThickness": 0.04,
+        "hubLowerDiscCenterOffsetY": -0.3595,
+        "hubFinialDiameter": 0.065,
+        "armTubeRadius": 0.007,
+        "armBow": 0.1,
+        "socketDiameter": 0.04,
+        "socketHeight": 0.05,
+        "globeDiameter": 0.15,
+        "globeHeight": 0.14,
+        "armTiers": [
+          {
+            "count": 4,
+            "angularOffsetDeg": 0,
+            "globeRadius": 0.365,
+            "globeCenterOffsetY": -0.375,
+            "hubAttachment": "lower_disc",
+            "armStartRadius": 0.058,
+            "armStartOffsetY": -0.3595,
+            "sweep": "rise",
+            "tiltDeg": 0
+          },
+          {
+            "count": 4,
+            "angularOffsetDeg": 45,
+            "globeRadius": 0.365,
+            "globeCenterOffsetY": -0.375,
+            "hubAttachment": "lower_disc",
+            "armStartRadius": 0.058,
+            "armStartOffsetY": -0.3595,
+            "sweep": "rise",
+            "tiltDeg": 0
+          }
+        ]
+      }
+    ]
   }
 }

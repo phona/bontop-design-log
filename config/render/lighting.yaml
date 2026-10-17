@@ -1,12 +1,61 @@
 # Render-only detailed lighting configuration.
 #
-# 2026-10-13 DEC-2026-10-13-R1：detailed fixtures 列表清空。
+# 2026-10-13 DEC-2026-10-13-R1：当时 detailed fixtures 列表清空。
 # 原唯一条目是 living_track_main（明装轨道灯，4 灯头 + 各自 target），随客厅主灯改吸顶灯
-# 一并作废——dome 类型没有 detailed 配置，渲染直接走 projection 的 lightingFixtures
-# （app/src/render/InteriorLightingSystem.ts 的 case 'dome' → makeDomeFixture）。
+# 一并作废；旧版 dome 没有 detailed 配置，渲染直接走 makeDomeFixture。
+# 2026-10-16 DEC-2026-10-16-R1/R2：沿用现有 dome 电气锚点；R2 以约300mm悬垂和前伸3D拱弧替代R1浅吸顶外形。
+# 2026-10-17 DEC-2026-10-17-R1：业主要求试换为8头复古吊灯外观（木棕吸顶盘+古铜弯臂+乳白球罩），
+# 仅作为同一 light_living_dome 锚点的视觉候选；不改电气点位、照明回路、墙控、吊顶或 MEP 路由。
+# 旧10头灯源配置和历史图像已归档；当前活动参数以本条字段为准。
 #
 # Track offsets and target x/z are local to the fixture anchor; target.y is relative unless target_y_mode: absolute is set.
-# 保留本文件与 TrackLightConfig / WallLampConfig 类型作通用能力：DEC-2026-10-12-R1 删主卧两盏壁灯、
-# DEC-2026-10-13-R1 删客厅轨道灯后，track_light 与 wall_lamp 两类在 config/electrical.yaml 中
-# 已无在役点位，makeTrackFixture / makeWallLampFixture 代码保留但当前无调用方。
-fixtures: []
+# TrackLightConfig / WallLampConfig remain available as generic render configuration types.
+fixtures:
+  - id: light_living_dome
+    type: dome
+    style: multi_globe_semi_flush_chandelier
+    finish: antique_wood_copper_opal
+    # DEC-2026-10-17-R1当前视觉候选：厂商图标注外径Ø880mm、总高445mm；总高按顶面锚点至最低点解释。
+    outerWidth: 0.88
+    outerDepth: 0.88
+    totalThickness: 0.445
+    # 图示吸顶盘Φ130×35mm、单杆100mm；中心台阶盘与球形关节未标尺寸，按画面比例作造型预演拟合。
+    canopyDiameter: 0.13
+    canopyThickness: 0.035
+    stemRadius: 0.006
+    stemLength: 0.1
+    jointBallDiameter: 0.05
+    hubUpperDiscDiameter: 0.16
+    hubUpperDiscThickness: 0.04
+    hubUpperDiscCenterOffsetY: -0.215
+    hubDiscGap: 0.1045
+    hubLowerDiscDiameter: 0.13
+    hubLowerDiscThickness: 0.04
+    hubLowerDiscCenterOffsetY: -0.3595
+    hubFinialDiameter: 0.065
+    # 当前8根古铜弧臂从下杯同一台面起弧，统一rise曲线接至同高灯座；45°水平错位是预演假设。
+    armTubeRadius: 0.007
+    armBow: 0.1
+    socketDiameter: 0.04
+    socketHeight: 0.05
+    globeDiameter: 0.15
+    globeHeight: 0.14
+    armTiers:
+      - count: 4
+        angularOffsetDeg: 0
+        globeRadius: 0.365
+        globeCenterOffsetY: -0.375
+        hubAttachment: lower_disc
+        armStartRadius: 0.058
+        armStartOffsetY: -0.3595
+        sweep: rise
+        tiltDeg: 0
+      - count: 4
+        angularOffsetDeg: 45
+        globeRadius: 0.365
+        globeCenterOffsetY: -0.375
+        hubAttachment: lower_disc
+        armStartRadius: 0.058
+        armStartOffsetY: -0.3595
+        sweep: rise
+        tiltDeg: 0

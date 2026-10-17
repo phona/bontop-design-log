@@ -1,0 +1,86 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: living-antique-eight-globe-light-20261017
+subject: 客厅主灯8头古铜木色吊灯R6预演
+units: m
+coordinate_system: Three.js右手系；Y向上；x东西、z南北；+z为南；俯视北朝上(-z)。
+status: frozen
+datums:
+  - id: living-main-fixture-antique-8
+    name: 客厅主灯天花锚点与8头同高吊灯预演包络
+    anchor: {kind: ceiling_anchor, ref: light_living_dome, wall_side: null, service_ref: strong-light-living}
+    source_refs:
+      fact_refs: [fact-table.yaml#existing-anchor, fact-table.yaml#reference-dimensions, fact-table.yaml#user-height-selection, fact-table.yaml#user-arm-layout, fact-table.yaml#user-globe-plane-selection, fact-table.yaml#user-arm-root-plane-selection, fact-table.yaml#user-arm-root-support-selection, fact-table.yaml#radial-layout-proposal, fact-table.yaml#total-height-datum]
+      decision_refs: [decision-brief.yaml#alignment]
+    views:
+      plan:
+        required: true
+        origin: 以客厅主灯现有中心线为平面原点，使用项目局部坐标。
+        axes: x东西；z南北
+        direction: 北朝上(-z)
+        position: {x: 10.8, z: 7.15}
+        rotation: 0
+        dimensions: {length: 0.88, width: 0.88, depth: 0.88, offset: 0}
+        dimension_semantics: overall
+      elevation:
+        required: true
+        viewing_side: 从客厅起居区仰视；天花锚点保持y=2.80m。
+        vertical_axis: y
+        height: 2.8
+        dimensions: {width: 0.88, height: 0.445, sill: null, datum_offset: 0}
+        dimension_semantics: overall
+      section:
+        required: true
+        cut_direction: 沿z方向剖过吸顶盘、100mm吊杆、中心装饰件和同高球罩平面。
+        depth_axis: z方向；8个球罩同高，两个4头平面组按45°错位环绕中心；R6八根臂根共用下杯台面。
+        clearances: {front: null, rear: null, top: 0, bottom: 0.445}
+        thickness: 0.445
+        dimension_semantics: overall
+    geometry:
+      x: 10.8
+      y: 2.8
+      z: 7.15
+      width: 0.88
+      depth: 0.88
+      height: 0.445
+      length: 0.88
+      rotation: 0
+      along: null
+    constraints:
+      - 商品图标注外径Ø880mm；预演采用横向球罩直径150mm，球心半径0.365m，使 0.365+0.075=0.440m，符合Ø880mm概念外包络。
+      - 商品图标注球罩150×140mm；渲染使用椭球近似，垂直方向140mm。
+      - 商品图吸顶盘Ø130×35mm；杆长只装100mm长杆；用户选择总高445mm。
+      - R4按业主澄清：8个球罩中心统一在y=2.425m，两个4头组只在平面中错45°；不再做垂直灯罩层差。
+      - R5历史：8根弧臂曾共用上盘台面y=2.585m、半径0.07m。
+      - R6按业主进一步澄清：8根弧臂根部共用下杯台面y=2.4405m、半径0.058m，均以`rise`和0.10m拱高起弧；t=0.25处中心线y=2.492625m（高于根平面52mm），再连接球罩顶部灯座底部。
+      - R4的上下分层臂根及R5的上盘臂根均留作历史版本，当前R6全部从下杯台起弧。
+      - 单张正视图没有厂家俯视结构；45°平面方位与0.365m球心半径仍是满足外包络的预演拟合值。
+      - 最低点按天花锚点至球罩下缘解释：y≈2.355m；商品图未明示精确测量基准，视为模型假设。
+      - R3中心车削尾饰最低点y=2.3555m，与低层球罩y=2.355m相差0.5mm，均在445mm活动包络内；schema按尾饰轮廓声明总高校验。历史R2球形尾饰最低点同为y=2.3555m，详见runtime-r2与work-record。
+      - R4八个同高球罩下缘均为y=2.355m；尾饰底y=2.3555m，与原445mm总高包络保持一致。
+      - R3球罩顶部阶纹灯座竖直放置（Ø40×50mm），8根弧臂终点接灯座底部；两层臂根分别位于上盘/下杯，均向外上扬。该连接形式是根据厂家正视图对R2“侧插灯座”错误的修正，不代表厂商结构图。
+      - 木纹棕、古铜棕、乳白玻璃为图片视觉取色，不是材质或商品工艺确认。
+      - 灯体、球罩、灯臂仅表示造型关系，不代表实际承重、安装、换泡或配光。
+    interfaces:
+      - 保留light_living_dome (10.80,7.15,h=2.80)、living_base回路、双控和strong-light-living路由。
+      - 不改变客厅吊顶、HVAC、家具或其他灯具。
+      - 当前照明渲染不代表真实流明、照度或光斑。
+    validation_refs:
+      - evidence/manufacturer-reference.png
+      - docs/design-iterations/living-main-light-archive-20261017/evidence/user-context.png
+      - evidence/user-feedback-r2-underside.png
+      - evidence/runtime-r3.json
+      - evidence/closeup-r3-v002.png
+      - evidence/elevation-r3-v002.png
+      - evidence/runtime-r4.json
+      - evidence/elevation-r4-v002.png
+      - evidence/runtime-r5.json
+      - evidence/closeup-r5-v001.png
+      - evidence/elevation-r5-v001.png
+      - evidence/runtime-r6.json
+      - evidence/closeup-r6-v001.png
+      - evidence/elevation-r6-v001.png
+    status: frozen_proposal
+notes:
+  - 高度/内部分解是预演，具体SKU尺寸仍以厂商完整安装图为准。
+  - 当前10头灯原样归档于 docs/design-iterations/living-main-light-archive-20261017/。

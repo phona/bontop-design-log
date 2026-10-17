@@ -271,11 +271,23 @@ test('CLI facts projection exports lighting fixture geometry and no-facts CLI do
     assert.ok(fixture.userData.roomId);
   }
   // DEC-2026-10-13-R1：客厅主灯 light_living_dome 由明装轨道灯改吸顶灯。
-  // dome 无 detailed 配置、无 part 子件，导出的节点名就是 electrical:<id>（与 light_dining_pendant 同型）。
+  // DEC-2026-10-17-R1：该 dome 走 multi_globe_semi_flush_chandelier 声明式8头几何，
+  // 导出节点保留 electrical:<id> 组名，子件为 part=canopy/stem/arm/globe-socket/globe 等。
   const livingDome = fixtures.find((fixture) => fixture.userData.objectId === 'electrical:light_living_dome')!;
   assert.ok(livingDome, 'missing electrical:light_living_dome fixture');
   assert.equal(livingDome.userData.fixtureType, 'dome');
   assert.equal(livingDome.userData.roomId, 'living_dining');
+  assert.equal(livingDome.userData.style, 'multi_globe_semi_flush_chandelier');
+  const livingDomePartNames: string[] = [];
+  livingDome.traverse((child) => {
+    if (child.name) livingDomePartNames.push(child.name);
+  });
+  assert.equal(livingDomePartNames.filter((name) => /:part=globe-\d+:role=/.test(name)).length, 8, '8头候选应导出8个球罩');
+  assert.equal(livingDomePartNames.filter((name) => /:part=arm-\d+:role=/.test(name)).length, 8, '8根单头弧臂');
+  assert.equal(livingDomePartNames.filter((name) => /:part=globe-socket-\d+:role=/.test(name)).length, 8, '8个灯头座');
+  assert.ok(livingDomePartNames.some((name) => name.includes(':part=hub-drop-spindle')), '古铜中心下垂装饰杆');
+  assert.ok(livingDomePartNames.some((name) => name.includes(':part=hub-upper-disc')), '中心上灯盘');
+  assert.ok(livingDomePartNames.some((name) => name.includes(':part=ceiling-mounting-canopy')), '贴顶吸顶盘');
   installNodeFileReader();
   const data = await exportSceneToGlbData(withFacts.exportRoot);
   const directory = mkdtempSync(join(tmpdir(), 'lighting-glb-'));

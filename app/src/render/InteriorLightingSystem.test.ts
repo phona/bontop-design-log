@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { InteriorLightingSystem } from './InteriorLightingSystem';
-import type { RenderLightingFixture } from '@shared/types';
+import type { MultiGlobeChandelierConfig, RenderLightingFixture } from '@shared/types';
 
 const FIXTURES: RenderLightingFixture[] = [
   { id: 'p1', room: 'living_dining', type: 'pendant', position: { x: 8.5, y: 2.8, z: 3.35 }, temperatureK: 3000, enabled: true },
@@ -197,5 +197,64 @@ describe('InteriorLightingSystem', () => {
     expect(sys.isOn).toBe(true);
     sys.dispose();
     expect(scene.children).toHaveLength(0);
+  });
+
+  // 2026-10-17 R1-R6：8头古铜木色候选每个球泡一个 PointLight；球罩同高，8根弧臂共用下杯平面并同向上拱。
+  it('builds one PointLight per globe at the shared globe centres for the 8-head chandelier', () => {
+    const fixture: RenderLightingFixture = { id: 'mg1', room: 'living_dining', type: 'dome', position: { x: 10.8, y: 2.8, z: 7.15 }, temperatureK: 3000, enabled: true };
+    const multiGlobeConfig: MultiGlobeChandelierConfig = {
+      id: 'mg1', type: 'dome', style: 'multi_globe_semi_flush_chandelier', finish: 'antique_wood_copper_opal',
+      outerWidth: 0.88, outerDepth: 0.88, totalThickness: 0.445,
+      canopyDiameter: 0.13, canopyThickness: 0.035, stemRadius: 0.006, stemLength: 0.1, jointBallDiameter: 0.05,
+      hubUpperDiscDiameter: 0.16, hubUpperDiscThickness: 0.04, hubUpperDiscCenterOffsetY: -0.215,
+      hubDiscGap: 0.1045, hubLowerDiscDiameter: 0.13, hubLowerDiscThickness: 0.04, hubLowerDiscCenterOffsetY: -0.3595,
+      hubFinialDiameter: 0.065, armTubeRadius: 0.007, armBow: 0.1, socketDiameter: 0.04, socketHeight: 0.05,
+      globeDiameter: 0.15, globeHeight: 0.14,
+      armTiers: [
+        { count: 4, angularOffsetDeg: 0, globeRadius: 0.365, globeCenterOffsetY: -0.375, hubAttachment: 'lower_disc', armStartRadius: 0.058, armStartOffsetY: -0.3595, sweep: 'rise', tiltDeg: 0 },
+        { count: 4, angularOffsetDeg: 45, globeRadius: 0.365, globeCenterOffsetY: -0.375, hubAttachment: 'lower_disc', armStartRadius: 0.058, armStartOffsetY: -0.3595, sweep: 'rise', tiltDeg: 0 },
+      ],
+    };
+    const scene = new THREE.Scene();
+    new InteriorLightingSystem(scene, [fixture], { fixtures: [multiGlobeConfig] });
+    const pointLights = lights(scene).filter((light) => light instanceof THREE.PointLight) as THREE.PointLight[];
+    expect(pointLights).toHaveLength(8);
+    // R4两组各4头，平面方位相差45°；八头同高、同半径0.365m，球罩横向150mm、垂向140mm。
+    const radii = pointLights.map((light) => Math.hypot(light.position.x - 10.8, light.position.z - 7.15));
+    expect(radii.every((radius) => Math.abs(radius - 0.365) < 1e-6)).toBe(true);
+    expect(pointLights.every((light) => Math.abs(light.position.y - 2.425) < 1e-6)).toBe(true);
+    // 构造时 applyAppearance 即按 LIGHTING_ENERGY_VISUAL_SCALE(0.6) 缩放：1.2×0.6=0.72/头。
+    expect(pointLights.every((light) => Math.abs(light.intensity - 0.72) < 1e-9)).toBe(true);
+
+    const socket = scene.getObjectByName('electrical:mg1:part=globe-socket-01:role=fixture_metal') as THREE.Mesh;
+    const globe = scene.getObjectByName('electrical:mg1:part=globe-01:role=fixture_diffuser') as THREE.Mesh;
+    expect(socket).toBeDefined();
+    expect(globe).toBeDefined();
+    expect(socket.geometry).toBeInstanceOf(THREE.LatheGeometry);
+    expect(new THREE.Vector3(0, 1, 0).applyQuaternion(socket.quaternion).y).toBeCloseTo(1);
+    expect(socket.position.y - globe.position.y).toBeCloseTo(0.095); // 70mm globe half-height + 25mm socket half-height.
+
+    const arms: THREE.Mesh[] = [];
+    scene.traverse((object) => {
+      if (object instanceof THREE.Mesh && object.name.includes(':part=arm-')) arms.push(object);
+    });
+    expect(arms).toHaveLength(8);
+    for (const arm of arms) {
+      const path = (arm.geometry as THREE.TubeGeometry).parameters.path;
+      expect(path.getPoint(0).y).toBeCloseTo(2.4405); // All arm roots share the lower bowl plane.
+      expect(path.getPoint(0.25).y).toBeGreaterThan(2.4405); // Each arm rises from the lower bowl plane toward its socket.
+      expect(path.getPoint(1).y).toBeCloseTo(2.499); // Same-height globe top plus the 4mm arm/socket overlap.
+    }
+  });
+
+  // 无 multi-globe 配置的 dome 保持原单灯近似，不因 R9 改动回归。
+  it('keeps the single anchor PointLight for plain dome fixtures', () => {
+    const fixture: RenderLightingFixture = { id: 'plain-dome', room: 'room', type: 'dome', position: { x: 2.6, y: 2.55, z: 7.6 }, temperatureK: 3000, enabled: true };
+    const scene = new THREE.Scene();
+    new InteriorLightingSystem(scene, [fixture]);
+    const pointLights = lights(scene).filter((light) => light instanceof THREE.PointLight) as THREE.PointLight[];
+    expect(pointLights).toHaveLength(1);
+    expect(pointLights[0].position.x).toBeCloseTo(2.6);
+    expect(pointLights[0].intensity).toBeCloseTo(8 * 0.6);
   });
 });

@@ -3,6 +3,7 @@ import type { LightingRenderConfig, RenderLightingFixture, TrackLightConfig } fr
 import { getResolvedTrackLightHeads, getTrackLightConfig } from './TrackLightLayout.js';
 import { buildWallLampVisual, getWallLampConfig, wallSideNormal } from './WallLampGeometry.js';
 import { buildNightLightVisual } from './NightLightGeometry.js';
+import { buildMultiGlobeChandelierVisual, getMultiGlobeChandelierConfig } from './MultiGlobeChandelierGeometry.js';
 
 export interface LightingFixtureBuildResult {
   group: THREE.Group;
@@ -71,7 +72,14 @@ function addTrack(group: THREE.Group, fixture: RenderLightingFixture, glow: THRE
   return 1 + config.heads.length * 3;
 }
 
-function addDome(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE.Color): number {
+function addDome(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE.Color, lighting?: LightingRenderConfig): number {
+  const multiGlobeConfig = getMultiGlobeChandelierConfig(lighting, fixture.id);
+  if (multiGlobeConfig) {
+    const visual = buildMultiGlobeChandelierVisual(fixture, multiGlobeConfig, glow);
+    group.userData = { ...group.userData, ...visual.userData };
+    group.add(visual);
+    return visual.children.length;
+  }
   const dome = part(new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), emissive(glow)), fixture, 'dome', 'fixture_diffuser');
   dome.scale.y = 0.4;
   dome.rotation.x = Math.PI;
@@ -148,7 +156,7 @@ function buildFixture(fixture: RenderLightingFixture, lighting?: LightingRenderC
     case 'night_light': return { group, parts: addNightLight(group, fixture, glow) };
     case 'dome':
     case 'ceiling_light':
-    default: return { group, parts: addDome(group, fixture, glow) };
+    default: return { group, parts: addDome(group, fixture, glow, lighting) };
   }
 }
 

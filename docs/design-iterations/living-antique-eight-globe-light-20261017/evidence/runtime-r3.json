@@ -1,0 +1,94 @@
+{
+  "url": "http://localhost:5173/?v=20261017-antique8-r3",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "errorBanner": "",
+  "visualPreviewActive": false,
+  "lightingPreview": {
+    "mode": "manual",
+    "manualOn": true,
+    "temperatureK": null,
+    "brightness": 1,
+    "colorAppearance": "eye-adapted"
+  },
+  "fixture": {
+    "objectId": "electrical:light_living_dome",
+    "type": "lighting_fixture",
+    "fixtureType": "dome",
+    "roomId": "living_dining",
+    "style": "multi_globe_semi_flush_chandelier",
+    "finish": "antique_wood_copper_opal",
+    "dimensions": {
+      "outerWidth": 0.88,
+      "outerDepth": 0.88,
+      "totalThickness": 0.445,
+      "canopyDiameter": 0.13,
+      "canopyThickness": 0.035,
+      "stemLength": 0.1,
+      "globeDiameter": 0.15,
+      "globeHeight": 0.14,
+      "hubLowerDiscDiameter": 0.13,
+      "hubLowerDiscThickness": 0.04,
+      "hubLowerDiscCenterOffsetY": -0.3595,
+      "hubDiscGap": 0.1045,
+      "socketDiameter": 0.04,
+      "socketHeight": 0.05,
+      "armBow": 0.055,
+      "armCount": 8,
+      "armTiers": [
+        {"count": 4, "angularOffsetDeg": 0, "globeRadius": 0.365, "globeCenterOffsetY": -0.195, "hubAttachment": "upper_disc", "armStartRadius": 0.07, "armStartOffsetY": -0.215, "sweep": "rise"},
+        {"count": 4, "angularOffsetDeg": 45, "globeRadius": 0.365, "globeCenterOffsetY": -0.375, "hubAttachment": "lower_disc", "armStartRadius": 0.058, "armStartOffsetY": -0.3595, "sweep": "rise"}
+      ]
+    },
+    "runtimeParts": {"globes": 8, "arms": 8, "sockets": 8},
+    "fixturePointLights": 8,
+    "actualLowestPointY": 2.355,
+    "finialLowestPointY": 2.3555,
+    "boundsFromDeclaredGeometry": {
+      "x": [10.36, 11.24],
+      "y": [2.355, 2.8],
+      "z": [6.71, 7.59]
+    }
+  },
+  "views": {
+    "context": {
+      "screenshot": "context-r3-v002.png",
+      "mode": "orbit",
+      "cameraPosition": [9, 1.7, 9.5],
+      "target": [10.8, 2.55, 7.15],
+      "viewport": [1280, 577]
+    },
+    "closeup": {
+      "screenshot": "closeup-r3-v002.png",
+      "mode": "orbit",
+      "cameraPosition": [10.3, 1.7, 8.4],
+      "target": [10.8, 2.55, 7.15],
+      "viewport": [1280, 577]
+    },
+    "underside": {
+      "screenshot": "underside-r3-v002.png",
+      "mode": "orbit",
+      "cameraPosition": [10.8, 1.55, 7.16],
+      "target": [10.8, 2.55, 7.15],
+      "viewport": [1280, 577]
+    },
+    "topdown-envelope": {
+      "screenshot": "topdown-envelope-r3-v002.png",
+      "mode": "orbit",
+      "cameraPosition": [10.8, 4.6, 7.15],
+      "target": [10.8, 2.6, 7.15]
+    },
+    "elevation": {
+      "screenshot": "elevation-r3-v002.png",
+      "mode": "orbit",
+      "cameraPosition": [12.6, 3.2, 7.15],
+      "target": [10.8, 2.55, 7.15]
+    }
+  },
+  "notes": [
+    "R3 corrects R2's sideways globe sockets and side-entry arm tips: ribbed copper sockets are vertical above each globe, and each arm terminates at the socket base.",
+    "The upper four arms attach at the upper hub disc; the lower four attach at the lower bowl. Both use the same rising sweep profile.",
+    "The 45-degree 4+4 plan and 0.365m radius remain a visual inference because the supplier reference only shows a front view; they are not confirmed 3D product geometry.",
+    "The rendered glow remains a lighting approximation, not measured flux, lux, or product light distribution."
+  ]
+}
