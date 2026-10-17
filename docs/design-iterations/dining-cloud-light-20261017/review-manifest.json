@@ -34,7 +34,7 @@
     "generated_files": ["data/project-render-facts.json"]
   },
   "state": "incomplete",
-  "state_note": "R9几何与证据机位未因DEC-R10变化；业主接受(9.25,3.65)为空间中心氛围灯，审美与功能复核均PASS。桌面150lx仍由全场照明组合验证。全局verify:all因verify:mep汇总失败，暂不标delivery_ready。",
+  "state_note": "R9几何与证据机位未因DEC-2026-10-17-R10变化；业主接受(9.25,3.65)为空间中心氛围灯，审美与功能复核均PASS。桌面150lx仍由全场照明组合验证。全局verify:all因verify:mep汇总失败，暂不标delivery_ready。",
   "validation": {
     "commands": [
       {"command": "npm run generate:project-render-facts", "result": "PASS", "output_ref": "work-record.md"},
@@ -149,7 +149,7 @@
     "verdict": "PASS",
     "blocking_issues": [],
     "non_blocking_notes": [
-      "R9四视图按DEC-R10的空间中心氛围灯目标通过；同版runtime ready=true、错误横幅为空、目标对象存在且isOverview=false。",
+      "R9四视图按DEC-2026-10-17-R10的空间中心氛围灯目标通过；同版runtime ready=true、错误横幅为空、目标对象存在且isOverview=false。",
       "空间中心定位在topdown/context中成立；主体比例、三球层次、木色底盘和乳白云泡关系清晰，和客厅主灯的材质及体量层级协调。",
       "乳白略偏冷、木色略深属于预演材质近似，不影响本轮造型与构图审美通过。"
     ],
@@ -205,7 +205,7 @@
     {
       "source_version": "dining-cloud-r2 / DEC-2026-10-17-R9",
       "aesthetic_verdict": "FAIL",
-      "reason": "首轮R9审美认为偏心灯位与桌面重点灯语义冲突；业主后续以DEC-R10接受空间中心氛围灯语义，原FAIL仅作历史。",
+      "reason": "首轮R9审美认为偏心灯位与桌面重点灯语义冲突；业主后续以DEC-2026-10-17-R10接受空间中心氛围灯语义，原FAIL仅作历史。",
       "evidence_ref": "evidence/aesthetic-review-r9.json"
     },
     {
@@ -228,7 +228,7 @@
     "what_was_superseded": [
       "R8灯心与桌心同心的关系被业主最新选择的餐厅平顶范围中心取代；R8几何/商品参考与历史证据保留。",
       "R12约1/4照度估计只属于旧桌心布置，不再适用于R9偏心灯位；旧值保留作历史。",
-      "R9首轮审美假设本灯需承担桌面重点照明；DEC-R10用户确认定位为空间中心氛围灯，坐标与网格均未更改。"
+      "R9首轮审美假设本灯需承担桌面重点照明；DEC-2026-10-17-R10用户确认定位为空间中心氛围灯，坐标与网格均未更改。"
     ],
     "silent_failure_conditions": [
       "若平顶范围x/z边界变化但未重算灯心，中心坐标失效。",

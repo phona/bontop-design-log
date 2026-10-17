@@ -39,6 +39,6 @@ R9四张浏览器图及runtime/snapshot均在 `evidence/r9/`：ready=true、错�
 
 全量 `npm run test:server` 为 995 passed / 14 failed；失败分布在既有 browser-boundary、预算锚点、MEP/穿墙登记、太阳能有效值和 DOM 环境依赖，与本轮灯具构造器测试不重叠。全量 `npm run test:app` 为 503 passed / 56 failed，失败在既有 HouseScene `ResizeObserver`、TextureManager Canvas/Three mock 与 DOM 渲染环境；本轮 `InteriorLightingSystem` 相关 18 项通过。该结果已登记为仓库级既有失败，未扩改其他模块。
 
-R8审美复核PASS；R8功能复核曾因manifest未绑定截图而BLOCKED，维护条目随后已补齐责任人与触发条件并明确维持未知。R9功能复核PASS：所选区域、静态碰撞、电气控制和对象级布线均兼容；桌面照度、商品服务性和现场线槽条件仍pending。R9审美首轮FAIL：灯心相对桌心偏移0.585m、灯体与桌面投影仅重叠约0.10m、三球落在桌外。业主随后接受空间中心氛围灯语义并作DEC-R10；同版R9四视图按新目标复审PASS（`evidence/aesthetic-review-r10.json`），几何不变。全局`verify:all`仍因共享`verify:mep`失败而不标delivery_ready。
+R8审美复核PASS；R8功能复核曾因manifest未绑定截图而BLOCKED，维护条目随后已补齐责任人与触发条件并明确维持未知。R9功能复核PASS：所选区域、静态碰撞、电气控制和对象级布线均兼容；桌面照度、商品服务性和现场线槽条件仍pending。R9审美首轮FAIL：灯心相对桌心偏移0.585m、灯体与桌面投影仅重叠约0.10m、三球落在桌外。业主随后接受空间中心氛围灯语义并作DEC-2026-10-17-R10；同版R9四视图按新目标复审PASS（`evidence/aesthetic-review-r10.json`），几何不变。全局`verify:all`仍因共享`verify:mep`失败而不标delivery_ready。
 
 验证范围：本轮更新灯位 x/z 与照明路由末段；点位 id、高度、3000K声明、回路与墙控保持。商品实际SKU、偏心后桌面3000K光度、维修路径和安装条件留在 `docs/pending-site-data.md #65`；不将预演当采购或施工结论。
