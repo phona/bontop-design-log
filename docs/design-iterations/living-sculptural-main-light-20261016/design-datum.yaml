@@ -1,0 +1,69 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: living-sculptural-main-light-20261016
+subject: 客厅浅吸顶雕塑主灯
+units: m
+coordinate_system: "Three.js 右手系，Y向上；水平面x东西、z南北；+x东、+z南；见 AGENTS.md。"
+status: frozen
+datums:
+  - id: living-main-fixture
+    name: "客厅主灯现有天花锚点"
+    anchor:
+      kind: ceiling_anchor
+      ref: light_living_dome
+      wall_side: null
+      service_ref: null
+    source_refs:
+      fact_refs: [fact-table.yaml#fact-existing-anchor, fact-table.yaml#fact-ceiling-plane]
+      decision_refs: [docs/decisions/06-electrical.md#DEC-2026-10-13-R1, docs/decisions/06-electrical.md#DEC-2026-10-16-R1]
+    views:
+      plan:
+        required: true
+        origin: "原点以该点灯具中心线为基准；全局坐标仍沿项目局部坐标。"
+        axes: "x东西，z南北"
+        direction: "俯视北朝上(-z)，南朝下(+z)"
+        position: {x: 10.8, z: 7.15}
+        rotation: 0
+        dimensions: {length: 1.0, width: 1.0, depth: 0.12, offset: 0}
+        dimension_semantics: overall
+      elevation:
+        required: true
+        viewing_side: "客厅起居区向上看；固定锚点对应原顶2.80m"
+        vertical_axis: y
+        height: 2.8
+        dimensions: {width: 1.0, height: 0.12, sill: null, datum_offset: 0}
+        dimension_semantics: install_height
+      section:
+        required: true
+        cut_direction: "沿x方向剖过弧线最高点与灯具中心，展示偏心暖铜弧的浅拱和乳白盘厚度"
+        depth_axis: "z轴；弧线相对灯具中心向南偏置"
+        clearances: {front: null, rear: null, top: 0, bottom: 0.12}
+        thickness: 0.12
+        dimension_semantics: overall
+    geometry:
+      x: 10.8
+      y: 2.8
+      z: 7.15
+      width: 1.0
+      depth: 1.0
+      height: 0.12
+      length: 1.0
+      rotation: 0
+      along: null
+    constraints:
+      - "沿用现有 light_living_dome 点位，避免变更电气/MEP路由。"
+      - "灯体贴原顶、不得落入客厅北缘边吊包络；灯位位于边吊南缘z=5.55以南。"
+      - "乳白漫射盘为主发光面；弧线为次要雕塑部件。"
+      - "不以该概念模型代替实际梁位、固定承重或配光文件。"
+    interfaces:
+      - "现有 strong-light-living 终点/高度保持；灯具外轮廓不得改变线路锚点。"
+      - "光学目标3000K、Ra≥90、宽面漫射；流明 target unresolved。"
+    validation_refs:
+      - "tmp/screenshots/living-main-light/living_main_light_before_v001.png"
+      - "tmp/screenshots/living-main-light/living_main_light_after_context_view_v010.png"
+      - "tmp/screenshots/living-main-light/living_main_light_after_top_down_v008.png"
+      - "tmp/screenshots/living-main-light/living_main_light_after_elevation_profile_v002.png"
+    status: frozen
+notes:
+  - "外轮廓由业主确认1000×1000×120mm；弧线内部比例为本轮设计造型，随同机位审阅。"
+  - "该尺寸是视觉模型包络，不是已选SKU或施工尺寸；现场承重/净距仍待量房和厂家资料。"

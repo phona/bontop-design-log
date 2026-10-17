@@ -1,0 +1,184 @@
+{
+  "schema": "interior-design-runtime-evidence/v1",
+  "iteration_id": "restaurant-fridge-waterbar-x980-acceptance-20261015",
+  "captured_at": "2026-10-15T22:32:55+08:00",
+  "browser": {
+    "wrapper": "/home/tao/.local/bin/agent-browser",
+    "version": "0.36.0",
+    "session": "bontop-accept-20261015",
+    "url": "http://127.0.0.1:5175/",
+    "title": "和萃 701 - 3D 装修设计",
+    "ready_signal": "window.__APP__.isReady()",
+    "ready": true,
+    "config_error_banner": "",
+    "viewport_px": [1600, 1000],
+    "fov_deg": 55,
+    "camera_mode": "orbit",
+    "formal_scene_reloaded_after_preview": true,
+    "browser_closed_after_review": true
+  },
+  "source_version": {
+    "source_digest": "sha256:6674229e4f2a3a1edab1e002050506465f5a67c9a13624fa8720dce4f58a5041 (config files in listed order; path + NUL + bytes + NUL)",
+    "visual_gate": {
+      "command": "npm run gate:visual",
+      "final_status": "CLEAR",
+      "digests": {
+        "ceiling": "50c1c81f9ec8",
+        "electrical": "be159cfd0c4c",
+        "plumbing": "7f1513d14f27",
+        "materials": "64176f576326"
+      }
+    },
+    "sha256": {
+      "config/house.yaml": "f9e940c20293e98a94602a33ce3ffea6a6f06d391e748ffdf18954f90f778566",
+      "config/layout/model-geometry.yaml": "585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f",
+      "config/layout/overlay.yaml": "cc75d470c5cee67ac8af33c5ed01b14885b3bb6e864146f59abbda8dbeb6eb67",
+      "config/ceiling.yaml": "9ba9ba68919becbf6df64313c3d63f7f8284db741af328dff79e5d414cdba4b9",
+      "config/electrical.yaml": "296888aa11a8451bb2b31f419822a901727178b3d6c4a3c77c07857091640549",
+      "config/plumbing.yaml": "b52eaa39cdac2f0e90ec23ee52dcac3c3665b156de84a1cb4d572ba7dabddcd8",
+      "config/materials.yaml": "66966ff6a73af806d4fe8178c2839af6992474d6b786dee5cadb9802ab9ed2f2"
+    },
+    "formal_config_modified": false,
+    "formal_fixture_modified": false,
+    "generated_files_touched_directly": false
+  },
+  "method": "Existing Three.js scene only. Furniture group transforms were changed in the browser; the stale formal half-cabinet was hidden only in the browser and replaced by simple boxes at the same footprint to show the already frozen 1420mm/700mm cabinet datum. A dry-bar and generic small-appliance placeholder were added under HOUSE_VIEW_ONLY. No config, FixtureFactory, generated output, or formal model source was written. Reload removed all temporary objects and transforms.",
+  "objects": {
+    "table": {
+      "objectId": "furniture:living_dining:dining_table:8",
+      "position_m": [9.8, 0, 3.45],
+      "rotation_y_deg": 90,
+      "dimensions_m": [1.4, 0.8],
+      "aabb_m": {"x": [9.4, 10.2], "y": [0, 0.77], "z": [2.75, 4.15]}
+    },
+    "chairs": [
+      {"objectId": "furniture:living_dining:dining_chair:9", "position_m": [9.125, 0, 3.0], "rotation_y_deg": 90, "aabb_m": {"x": [8.9, 9.35], "y": [0, 0.85], "z": [2.775, 3.225]}},
+      {"objectId": "furniture:living_dining:dining_chair:10", "position_m": [10.475, 0, 3.0], "rotation_y_deg": 270, "aabb_m": {"x": [10.25, 10.7], "y": [0, 0.85], "z": [2.775, 3.225]}},
+      {"objectId": "furniture:living_dining:dining_chair:11", "position_m": [9.125, 0, 3.9], "rotation_y_deg": 90, "aabb_m": {"x": [8.9, 9.35], "y": [0, 0.85], "z": [3.675, 4.125]}},
+      {"objectId": "furniture:living_dining:dining_chair:12", "position_m": [10.475, 0, 3.9], "rotation_y_deg": 270, "aabb_m": {"x": [10.25, 10.7], "y": [0, 0.85], "z": [3.675, 4.125]}}
+    ],
+    "fridge": {
+      "objectId": "furniture:living_dining:fridge:13",
+      "position_m": [7.5025, 0, 2.9865],
+      "rotation_y_deg": 270,
+      "front": "+x east",
+      "product_dimensions_mm_user_supplied": [833, 595, 1910],
+      "scale": [1.0072551391, 1, 0.9983221477],
+      "aabb_m": {"x": [7.203, 7.802], "y": [0, 1.91], "z": [2.567, 3.406]},
+      "open_boundary_reference_x_m": 7.2,
+      "aabb_to_open_boundary_line_gap_mm": 3,
+      "nearest_physical_wall": {"objectId": "w_gbath_east", "east_face_x_m": 7.16, "aabb_gap_mm": 43},
+      "installation_clearance_status": "unverified; 3mm is distance to the open room-edge coordinate and 43mm is runtime AABB gap to the adjacent guest-bath wall face; neither is a manufacturer clearance"
+    },
+    "dry_bar": {
+      "objectId": "view-only:dry-waterbar-x980",
+      "type": "dry bar, no sink or plumbing",
+      "body_front_x_m": 7.85,
+      "run_z_m": [3.443, 4.293],
+      "body_depth_mm": 600,
+      "counter_depth_mm": 650,
+      "countertop_top_y_m": 0.925,
+      "overall_preview_aabb_m": {"x": [7.2, 7.85], "y": [0, 1.225], "z": [3.443, 4.293]},
+      "parts": [
+        {"objectId": "view-only:dry-waterbar-body", "dimensions_m": [0.6, 0.9, 0.85]},
+        {"objectId": "view-only:dry-waterbar-top", "dimensions_m": [0.65, 0.025, 0.85]},
+        {"objectId": "view-only:generic-coffee-machine", "dimensions_m": [0.28, 0.3, 0.25], "status": "generic visual placeholder; not a selected SKU"}
+      ]
+    },
+    "cabinet_proxy": {
+      "formal_objectId": "furniture:living_dining:entry_half_height_cabinet:7",
+      "formal_position_m": [11.5, 0, 4.0],
+      "formal_rotation_y_deg": 90,
+      "formal_object_hidden_in_browser_only": true,
+      "preview_objectId": "view-only:entry-cabinet-1420-north700",
+      "preview_aabb_m": {"x": [11.3035, 11.6965], "y": [0, 1.42], "z": [2.98, 5.02]},
+      "north_low_zone_z_m": [2.98, 3.7],
+      "north_counter_y_m": 0.92,
+      "south_oak_backboard_y_m": [0.92, 1.38],
+      "south_cap_y_m": [1.38, 1.42],
+      "geometry_status": "simple visual proxy; drawer, carcass, shelves, dining door, fixings and real material not reconstructed"
+    }
+  },
+  "camera_views": {
+    "entry_axis": {
+      "position_m": [12.3, 1.6, 2.05],
+      "target_m": [12.3, 0.95, 7.2],
+      "viewport_px": [1600, 1000],
+      "fov_deg": 55,
+      "is_overview": false,
+      "ready": true,
+      "config_error_banner": "",
+      "snapshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/snapshot-entry-axis-v2.txt",
+      "screenshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/entry-axis-x980-v2.png",
+      "screenshot_sha256": "b967c7687f1f7bd58641c8018db650ff262d8e41a79c4ebabc5e6bfe27d1c9f6"
+    },
+    "service_wall": {
+      "position_m": [9.25, 1.6, 5.1],
+      "target_m": [7.5, 0.95, 3.4],
+      "viewport_px": [1600, 1000],
+      "fov_deg": 55,
+      "is_overview": false,
+      "ready": true,
+      "config_error_banner": "",
+      "snapshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/snapshot-service-wall-v2.txt",
+      "screenshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/service-wall-x980-v2.png",
+      "screenshot_sha256": "970ac78e51b8f5b6f9c27bb4bb8253b0657243de9e2a8a09bc55e12f2ede44a4"
+    },
+    "kitchen_to_dining": {
+      "position_m": [9.0, 1.6, 1.45],
+      "target_m": [9.5, 0.95, 4.35],
+      "viewport_px": [1600, 1000],
+      "fov_deg": 55,
+      "is_overview": false,
+      "ready": true,
+      "config_error_banner": "",
+      "snapshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/snapshot-kitchen-view-v2.txt",
+      "screenshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/kitchen-to-dining-x980-v2.png",
+      "screenshot_sha256": "a4823d3f35752b58e3c50b7f475368d7491ba45a86664741b1905070a06f5297"
+    }
+  },
+  "sliding_door_runtime_aabbs_from_existing_preview_manifest_m": {
+    "open": [
+      {"id": "panel:0", "x": [9.69, 10.53], "y": [0, 2.55], "z": [2.33, 2.37]},
+      {"id": "panel:1", "x": [9.77, 10.61], "y": [0, 2.55], "z": [2.38, 2.42]},
+      {"id": "panel:2", "x": [9.85, 10.69], "y": [0, 2.55], "z": [2.43, 2.47]},
+      {"id": "panel:3", "x": [9.93, 10.77], "y": [0, 2.55], "z": [2.48, 2.52]}
+    ],
+    "closed": [
+      {"id": "panel:0", "x": [7.23, 8.07], "y": [0, 2.55], "z": [2.33, 2.37]},
+      {"id": "panel:1", "x": [8.13, 8.97], "y": [0, 2.55], "z": [2.38, 2.42]},
+      {"id": "panel:2", "x": [9.03, 9.87], "y": [0, 2.55], "z": [2.43, 2.47]},
+      {"id": "panel:3", "x": [9.93, 10.77], "y": [0, 2.55], "z": [2.48, 2.52]}
+    ],
+    "relation": "All four current chair AABBs start at z >= 2.775, so their parked envelopes are 255mm south of the highest slider panel edge. This is AABB-only and excludes movement/person envelopes."
+  },
+  "derived_clearances": {
+    "kitchen_path_parked_mm": 1050,
+    "fridge_open_assumption": {"door_extent_x_m": [7.802, 8.402], "sweep_mm": 600, "status": "not manufacturer verified"},
+    "parked_west_chair_to_open_fridge_door_mm": 498,
+    "pulled_west_north_chair_aabb_m": {"x": [8.45, 8.9], "z": [2.775, 3.225]},
+    "pulled_west_north_chair_to_assumed_fridge_door_mm": 48,
+    "pulled_west_south_chair_to_dry_bar_front_mm": 600,
+    "pulled_east_chair_aabb_m": {"x": [10.7, 11.15]},
+    "pulled_east_chair_to_cabinet_west_edge_mm": 153.5,
+    "parked_east_chair_to_cabinet_west_edge_mm": 603.5,
+    "table_west_edge_to_dry_bar_front_mm": 1550,
+    "table_east_edge_to_cabinet_west_edge_mm": 1103.5,
+    "cabinet_dining_door_sweep": "not modeled; hinge and opening direction require confirmation"
+  },
+  "formal_post_reload": {
+    "ready": true,
+    "config_error_banner": "",
+    "table": {"position_m": [7.9, 0, 3.45], "rotation_y_deg": 0},
+    "fridge": {"position_m": [10.94, 0, 3.48], "rotation_y_deg": 90, "scale": [1, 1, 1]},
+    "cabinet": {"position_m": [11.5, 0, 4.0], "rotation_y_deg": 90, "visible": true},
+    "view_only_waterbar_present": false,
+    "view_only_1420_700_cabinet_present": false
+  },
+  "limitations": [
+    "600mm reserve depth and 600mm fridge door sweep are unverified assumptions, not manufacturer facts.",
+    "Three.js fridge/body, waterbar, coffee appliance and 1420/700 cabinet are visual models or simple view-only proxy geometry, not shop drawings.",
+    "No true person stance, door handle/hinge path, drawer extraction, cabinet door operation, electrical connection, structural fixing, maintenance or delivery route was simulated.",
+    "Future six-seat candidate has not passed visual and functional acceptance."
+  ]
+}

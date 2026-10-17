@@ -1,0 +1,38 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "整体构图成立：800mm低柜形成低位服务基座，浅木色台面把暖色地面与冷白背景墙分开；深色EM450提供视觉锚点，白色S1作为轻量设备，邻接冰箱提供竖向尺度和独立体块。",
+    "比例关系基本协调：低柜运行时外廓为420×800×850mm，S1和EM450均与850mm台面接触；S1、两台设备间距和台面端部余量在总览中形成一组连续的水吧操作带。",
+    "近景中S1与EM450没有视觉相交，约94mm静态间距可读；S1的东侧出水区、西侧后置水箱语义与EM450朝东的操作面一致，设备组合方向统一。",
+    "材料和色彩关系清楚：暖白柜体、浅木台面、浅木地面与冷白墙面形成温差；EM450的黑色控制面和深色底部阴影与柜体深色底座相互呼应；S1的白色机身与墙面接近，但棕色水位标识和灰色接水盘保留了识别度。",
+    "总览中低柜北端与冰箱之间约67mm静态间隔，S1距柜体对应端部约14mm，而另一端EM450余量约160mm，设备组存在明显端部偏置。当前属于候选柜体和未完成操作验证下的构图风险，不足以作为审美阻塞项；最终柜体定尺时应复核端部平衡。",
+    "白色S1、白色柜体、白色墙面和冰箱在远景中对比偏弱；近景仍可辨识，整体没有失去层级。若最终材质继续采用高亮白，S1可能进一步融入背景。",
+    "冰箱1.91m高体块明显高于850mm水吧柜，但作为邻接独立设备形成尺度参照，没有压倒水吧组；总览中的空间关系协调。",
+    "实质内容审计：V5只替换S1内部主机身/出水仓的方向表达，没有删除水吧柜、S1、EM450或冰箱对象，也没有推翻低柜与冰箱的场景关系。V5的东西向设备角色会在最终柜体外廓、台面深度或设备朝向改变时失效，届时须重新生成总览与近景证据。"
+  ],
+  "evidence_refs": [
+    "evidence/s1-form-v5-overview.png",
+    "evidence/s1-form-v5-close.png",
+    "evidence/runtime-query-s1-form-v5.json#sourceDigest",
+    "evidence/runtime-query-s1-form-v5.json#objects",
+    "evidence/runtime-query-s1-form-v5.json#relationships",
+    "fact-table.yaml#F-RUNTIME-WATERBAR",
+    "fact-table.yaml#F-RUNTIME-S1",
+    "fact-table.yaml#F-RUNTIME-EM450",
+    "fact-table.yaml#F-PROTECTED-OBJECTS",
+    "fact-table.yaml#I-APPLIANCE-GAP",
+    "object-manifest.yaml#furniture:living_dining:waterbar_low_cabinet_800_preview:14",
+    "object-manifest.yaml#furniture:living_dining:mijia_instant_dispenser_s1_preview:15",
+    "object-manifest.yaml#furniture:living_dining:coffee_machine_em450:16",
+    "review-manifest.json#source_version"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "800×420×850mm低柜仍是视觉候选，不是业主冻结的正式柜体尺寸；其端部余量和与冰箱的67mm间隔只代表当前预演状态。",
+    "94mm设备间距、14mm端部余量和160mm另一端余量是静态几何事实，不代表同时操作、维护、散热或取件净空。",
+    "S1东侧出水、西侧水箱依据业主方向确认和runtime局部z范围判定；商品图没有提供背视图或厂家CAD，水箱内部结构仍是外观代理。",
+    "EM450、S1、柜体和冰箱的材料均为程序化视觉代理；本审查不把它们写成最终SKU材质、颜色或施工完成面。",
+    "本次审查只覆盖餐厅水吧的整体审美与空间构图；操作维护、供电、墙控和RO柜内安装不由审美PASS证明。"
+  ]
+}

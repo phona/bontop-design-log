@@ -1,0 +1,99 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: living-sculptural-main-light-r4-20261016
+subject: 客厅主灯深钟形侧架垂吊造型R4
+priority:
+  user_goal: "保留客厅视觉焦点，但从仰视和空间视角都明确读成悬挂灯，而不是浅吸顶盘。"
+  ranked:
+    - "解决R3同机位仍像浅盘灯的问题：收窄底部发光面、加深钟形灯体，并让三根外置支撑完整露出。"
+    - "保留约1m平面尺度、250–350mm总下垂范围和客厅原锚点。"
+    - "乳白宽面漫射仍是主发光面；暖铜弧与吊杆必须在灯体外侧成为可见结构，不能藏在灯壳投影内。"
+    - "灯位不按餐桌位置决定。"
+  non_negotiables:
+    - "不改电气锚点、高度、回路、双控、strong-light-living路由、HVAC或吊顶。"
+    - "不把渲染强度作为真实光度或承重证明。"
+    - "350mm只作为本轮模型预演值，不是商品或施工尺寸。"
+  tradeoffs_accepted:
+    - "R3的Ø900/720mm、深200mm灯体仍像浅盘，且下端支撑被灯壳遮挡。R4改为上口Ø780mm、下口Ø520mm、深280mm，并加可见径向连接脚；仍在已批准1m×1m与350mm包络内。"
+frozen: true
+freeze_record:
+  alignment_id: align-r4-correct-pendant-silhouette-20261016
+  original_user_response: "我发错了，你应该继续处理灯具的模型构建。[Image #1]，看起来还是像吸顶灯。"
+  normalized_decisions:
+    - "继续重做客厅主灯造型，仰视必须能明确看出垂吊关系；R3截图未达标，R4继续修正。"
+    - "沿用此前批准的约1m平面尺度、250–350mm总下垂、乳白宽面漫射和现有客厅主灯锚点。"
+    - "R3轮廓未通过用户视觉反馈；R4造型提案：下垂取350mm，上口Ø780mm、下口Ø520mm、深280mm，并让支撑杆及连接脚在壳体外显露。"
+  confirmed_by_user: true
+  confirmation_scope: "用户确认继续构建一个明显呈垂吊关系的客厅主灯模型，并沿用约1m外框/250–350mm下垂范围/现有锚点；R4内部灯体比例是设计提案，未由用户逐项确认。"
+  confirmed_at: "2026-10-16"
+  evidence_refs: ["fact-table.yaml#user-r3-direction", "fact-table.yaml#fact-r3-failed-silhouette"]
+allowed_scope:
+  files:
+    - shared/types.ts
+    - shared/project-render-facts-schema.ts
+    - shared/render/SculpturalDomeGeometry.ts
+    - config/render/lighting.yaml
+    - data/project-render-facts.json
+    - docs/decisions/06-electrical.md
+    - docs/style-guide.md
+    - schedule/procurement.md
+    - docs/design-iterations/living-sculptural-main-light-r4-20261016/
+  objects: [light_living_dome]
+  archetypes: [deep_opal_pendant, visible_outer_side_arch, side_attached_suspension_rods]
+  views: [underside, perspective, elevation, section, plan]
+  changes:
+    - "把R3浅宽体改为更窄、更深的宽面乳白灯体，形成明显锥收侧壁。"
+    - "修正R3支撑端点落入灯体的问题；吊杆外置并以短径向连接脚接壳体。"
+    - "只改灯具可见几何与相关记录，不改建筑、电气、家具或机电路由。"
+forbidden:
+  files: [config/electrical.yaml, config/electrical-topology.yaml, config/mep-hvac-coordination.yaml, config/ceiling.yaml, config/house.yaml, config/layout/model-geometry.yaml]
+  objects: [light_dining_pendant, dining_table, ceiling_living]
+  assumptions:
+    - "不得用3D吊杆、弧脚或顶盘证明真实承重。"
+    - "不得将预演尺寸写成已选SKU、施工尺寸或实际光度。"
+    - "不得为造型效果擅自移灯位、超过350mm最大下垂或修改餐桌。"
+  out_of_scope_changes:
+    - "移动灯位或改变电气/回路/墙控/MEP、吊顶/HVAC。"
+    - "选择SKU、锁采购价或形成施工放样尺寸。"
+open_questions:
+  - id: fixture-installation-and-service
+    category: construction
+    question: "量房梁位、承重、风口与厂家安装图是否支持R4造型？"
+    fact_refs: ["fact-table.yaml#pending-installation"]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+  - id: photometry
+    category: function
+    question: "具体SKU能否满足3000K/Ra≥90、客厅照度和均匀度目标？"
+    fact_refs: ["fact-table.yaml#pending-photometry"]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+alignment:
+  records:
+    - alignment_id: align-r4-correct-pendant-silhouette-20261016
+      original_user_response: "我发错了，你应该继续处理灯具的模型构建。[Image #1]，看起来还是像吸顶灯。"
+      normalized_decision: "继续迭代，优先修正悬挂语义；保留1m尺度、250–350mm总下垂范围和现有锚点。"
+      fact_refs: ["fact-table.yaml#fact-r2-failed-silhouette", "fact-table.yaml#user-r3-direction", "fact-table.yaml#fact-r3-failed-silhouette"]
+      timestamp: "2026-10-16"
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands: ["npm run generate:project-render-facts", "npm run typecheck", "npm run verify:lighting-config", "npm run verify:all", "npm run gate:visual"]
+  browser_evidence_required: true
+  required_views: [underside_same_user_feedback_view, three_quarter_living_context, closeup_side_frame, elevation, top_down_envelope]
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: pending
+  blocking_issues:
+    - "现场梁位、安装承重、风口射流、真实光度和维修方式未核实；不可施工或采购定案。"
+  done_when:
+    - "R4同版仰视与空间图显示灯体由外露支撑悬挂，且不再读成浅盘吸顶灯。"
+    - "外形保持1m×1m，最大下垂350mm；电气锚点与所有接口不变。"
+    - "浏览器与GLB共享声明式几何；目标视图具有ready状态、runtime、snapshot和有效PNG。"
+    - "独立审美/功能复核对R4最终证据按固定JSON契约通过。"
+    - "安装与光度风险作为site_pending保留。"
+  delivery_notes_required: true

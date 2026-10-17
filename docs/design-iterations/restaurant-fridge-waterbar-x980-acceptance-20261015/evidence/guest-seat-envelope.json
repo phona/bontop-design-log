@@ -1,0 +1,52 @@
+{
+  "schema": "view-only-guest-seat-envelope/v1",
+  "iteration_id": "restaurant-fridge-waterbar-x980-acceptance-20261015",
+  "basis": "真实Three.js候选四座AABB + 真实推拉门开闭态panel AABB；新增椅子按现有450×450mm模型尺寸估算。仅为平面几何筛查，不是人体工学验收或正式家具摆位。",
+  "daily_four": {
+    "status": "owner-confirmed",
+    "table_center_m": [9.8, 3.45],
+    "table_rotation_y_deg": 90,
+    "chairs": 4,
+    "layout_source": "evidence/runtime-candidate-v2.json#objects"
+  },
+  "temporary_five_no_table_move": {
+    "status": "static AABB candidate",
+    "added_chair": {"position_xz_m": [9.8, 4.425], "rotation_y_deg": 180, "aabb_m": {"x": [9.575, 10.025], "z": [4.2, 4.65]}},
+    "table_position_unchanged": true,
+    "table_end_to_added_chair_gap_mm": 50,
+    "sliding_door_aabb_intersection": false,
+    "fridge_body_or_600mm_swing_assumption_intersection": false,
+    "dry_bar_aabb_intersection": false,
+    "half_cabinet_proxy_aabb_intersection": false,
+    "notes": [
+      "5人临时使用优先试加南端椅；北端加椅在固定桌位下会与厨房推拉门开启和关闭态panel AABB相交。",
+      "静态无碰撞不等于已证明人体通行、起身、端菜、冰箱开门或水吧站人可以同时进行。"
+    ]
+  },
+  "temporary_six_with_south_shift": {
+    "status": "static AABB candidate; visual/electrical review pending",
+    "recommended_group_translation_m": [0, 0.32],
+    "table_center_after_translation_m": [9.8, 3.77],
+    "table_aabb_after_translation_m": {"x": [9.4, 10.2], "z": [3.07, 4.47]},
+    "four_side_chairs_shift_with_table": true,
+    "added_north_chair": {"position_xz_m": [9.8, 2.795], "aabb_m": {"x": [9.575, 10.025], "z": [2.57, 3.02]}},
+    "added_south_chair": {"position_xz_m": [9.8, 4.745], "aabb_m": {"x": [9.575, 10.025], "z": [4.52, 4.97]}},
+    "north_chair_to_slider_panel_edge_mm": 50,
+    "slider_aabb_intersection": false,
+    "fixed_electrical_alignment": "unverified: temporary south shift changes table center relative to pendant and floor outlet",
+    "operational_status": "unverified: entry route, human stance, table carrying, refrigerator and bar concurrent operation"
+  },
+  "historical_six_permanent_side_seat_trials": {
+    "status": "superseded as daily-seat acceptance criterion by owner response; numeric evidence retained",
+    "table_1_4m_three_chairs_each_side_gap_mm": 25,
+    "table_1_6m_three_chairs_each_side_to_slider_edge_mm": 55,
+    "note": "These prior variants remain reference evidence but do not define the current daily-four requirement."
+  },
+  "clearance_assumptions": {
+    "chair_envelope_m": [0.45, 0.45],
+    "door_open_closed_aabbs_ref": "evidence/runtime-candidate-v2.json#sliding_door_runtime_aabbs_from_existing_preview_manifest_m",
+    "fridge_door_sweep_x_m": [7.802, 8.402],
+    "fridge_door_sweep_status": "600mm hypothesis; manufacturer unverified",
+    "cabinet_door_sweep": "not modeled"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "findings": [
+    "旧 unsupported_span 直接跳过纯竖直段，并用平面长度采样其余段；长开放竖降和陡斜短平面段因此漏报。现按真实 3D 长度检查水平、斜向和垂直段。",
+    "吊顶承载层的 floor_branch(_candidate) 只有在 route point 实际进入 y≤0.35m 垫层带时才退出 ceiling_clearance_unverified；高位误标会触发 floor_branch_missing_floor_band，开放段仍由 unsupported_span 检查。",
+    "facts lint 与 MEP lint 共用渲染 footprint 与段相交逻辑；当前两引擎均为 51 处 / 42 条路线 / 14 个吊顶分区。",
+    "当前 sofa-r route runtime lintCodes 为空，没有 ceiling_clearance_unverified 或 unsupported_span。"
+  ],
+  "validation": {
+    "focused_tests": "tests/server/mep-hvac-lint.test.ts + tests/server/facts-lint.test.ts: 75/75 passed",
+    "verify_mep": "0 errors / 133 warnings; unsupported_span 13; survey_dependent 80",
+    "verify_facts": "51 conflicts / 42 routes / 14 zones; OK"
+  },
+  "evidence_refs": [
+    "shared/mep-hvac-lint.ts",
+    "shared/facts-lint.ts",
+    "tests/server/mep-hvac-lint.test.ts",
+    "tests/server/facts-lint.test.ts",
+    "evidence/after-runtime.json"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "verdict": "BLOCKED",
+  "blocking_issues": [
+    {
+      "object": "S1 / EM450 水吧操作与维护",
+      "fact": "V4证据已正确绑定当前sourceDigest，且静态AABB、台面接触和94mm间距已核实；但S1补水/取杯/接水盘清洁、EM450操作/蒸汽棒/散热、两台设备同时使用空间仍未验证。S1距柜体北端仅14mm，EM450后侧余量约7.5mm。",
+      "evidence": ["evidence/runtime-query-s1-form-v4.json#objects", "fact-table.yaml#I-APPLIANCE-GAP", "object-manifest.yaml#S1", "object-manifest.yaml#EM450"],
+      "required_change": "按最终SKU说明书或实机补做操作、补水、清洁、拆卸、散热和维护包络验证。"
+    },
+    {
+      "object": "餐厅电源与墙控",
+      "fact": "V4只证明家具和设备静态位置；餐厅可及接地插座、回路容量、同时使用负荷、漏保和墙控操作可达性仍未落实。墙控带z=3.98–4.10m与EM450 z=3.89–4.11m相交。",
+      "evidence": ["fact-table.yaml#S-DINING-POWER", "fact-table.yaml#S-WALL-CONTROL-ACCESS", "object-manifest.yaml#waterbar_low_cabinet_800_preview"],
+      "required_change": "核对两台设备铭牌和回路，确认插座/断电位置，并按真实面板、柜体剖面和真人站位验证墙控可达性。"
+    },
+    {
+      "object": "furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9",
+      "fact": "RO机身AABB被简化柜体包络包含，但有效内腔、隔板、存水弯、进排水、电源、独立龙头和滤芯/整机抽取路径未验证。",
+      "evidence": ["fact-table.yaml#S-RO-INTERNAL-FIT", "fact-table.yaml#S-RO-INTERFACES", "object-manifest.yaml#furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9"],
+      "required_change": "按最终RO SKU和柜体实测内腔建立剖面及维护包络，确认给排水、电源、龙头开孔和滤芯更换路径。"
+    }
+  ],
+  "non_blocking_notes": [
+    "V4 overview/close、snapshot、runtime query、对象ID、相机、ready状态、空错误横幅、PNG哈希和当前sourceDigest均已登记并相互匹配。",
+    "S1运行时外廓对应312×106×280mm，EM450运行时外廓对应220×285×305mm；两者底面均与0.85m台面接触。",
+    "gate:visual、verify:all和typecheck通过；test:server仍有document未定义的环境失败，但不改变本次功能审查仍被现场条件阻断的结论。",
+    "V4新增的出水仓、接水盘栅格、水位窗和圆角只改善外观代理，不证明真实出水、排水、清洁或维护能力。"
+  ],
+  "evidence_refs": [
+    "review-manifest.json#evidence.s1-form-v4-overview",
+    "review-manifest.json#evidence.s1-form-v4-close",
+    "evidence/runtime-query-s1-form-v4.json",
+    "evidence/s1-form-v4-overview.png",
+    "evidence/s1-form-v4-close.png",
+    "fact-table.yaml",
+    "object-manifest.yaml"
+  ],
+  "requested_changes": [
+    "补齐S1/EM450现场操作、维护、清洁、散热和补水验证。",
+    "落实餐厅电源、同时负荷、漏保、插座可达性和墙控操作验证。",
+    "补齐RO柜内有效空间、进排水、电源、独立龙头和滤芯维护路径验证。"
+  ],
+  "assumptions": [
+    "当前AABB和台面接触仅作为静态视觉预演事实。",
+    "V4外观形体仍是基于单张参考图的程序化代理，不代表厂家CAD或内部结构。",
+    "RO contained结果不代表柜内安装通过。"
+  ]
+}

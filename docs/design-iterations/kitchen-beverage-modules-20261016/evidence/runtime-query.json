@@ -1,0 +1,106 @@
+{
+  "schema": "bontop-threejs-runtime-evidence/v1",
+  "capturedAtUtc": "2026-10-16T08:39:12Z",
+  "url": "http://localhost:5174/",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "readySignal": "window.__APP__.isReady() === true",
+  "configErrorBanner": "",
+  "coordinateSystem": "Three.js right-handed: Y up, X east-west, Z north-south; rotationY in radians",
+  "scene": {
+    "objects": {
+      "fridge": {
+        "objectId": "furniture:living_dining:fridge:13",
+        "position": [7.5025, 0, 2.9865],
+        "rotationY": 4.712389,
+        "declaredDimensionsM": {"width": 0.833, "depth": 0.6},
+        "meshCount": 6,
+        "aabbM": {"min": [7.2025, 0, 2.57], "max": [7.8025, 1.91, 3.403], "size": [0.6, 1.91, 0.833]}
+      },
+      "mijia_tea_bar_pro": {
+        "objectId": "furniture:living_dining:mijia_tea_bar_pro:14",
+        "position": [7.38, 0, 3.72],
+        "rotationY": 1.570796,
+        "declaredDimensionsM": {"width": 0.31, "depth": 0.315},
+        "meshCount": 13,
+        "aabbM": {"min": [7.2225, 0, 3.565], "max": [7.5375, 1.155, 3.875], "size": [0.315, 1.155, 0.31]}
+      },
+      "waterbar_low_sideboard_400_preview": {
+        "objectId": "furniture:living_dining:waterbar_low_sideboard_400_preview:15",
+        "position": [7.4225, 0, 4.098],
+        "rotationY": 1.570796,
+        "declaredDimensionsM": {"width": 0.39, "depth": 0.4},
+        "meshCount": 5,
+        "aabbM": {"min": [7.2225, 0, 3.903], "max": [7.6225, 0.92, 4.293], "size": [0.4, 0.92, 0.39]}
+      },
+      "dining_table": {
+        "objectId": "furniture:living_dining:dining_table:8",
+        "position": [9.8, 0, 3.45],
+        "rotationY": 1.570796,
+        "declaredDimensionsM": {"width": 1.4, "depth": 0.8},
+        "meshCount": 2,
+        "aabbM": {"min": [9.4, 0, 2.75], "max": [10.2, 0.77, 4.15], "size": [0.8, 0.77, 1.4]}
+      },
+      "entry_half_height_cabinet": {
+        "objectId": "furniture:living_dining:entry_half_height_cabinet:7",
+        "position": [11.5, 0, 4],
+        "rotationY": 1.570796,
+        "declaredDimensionsM": {"width": 2, "depth": 0.35},
+        "meshCount": 5,
+        "aabbM": {"min": [11.305, 0, 2.98], "max": [11.698, 1.5, 5.02], "size": [0.393, 1.5, 2.04]}
+      },
+      "coffee_machine_em450": {
+        "objectId": "furniture:kitchen:coffee_machine_em450:9",
+        "position": [7.62, 0, 0.22],
+        "rotationY": 0,
+        "declaredDimensionsM": {"width": 0.22, "depth": 0.285},
+        "meshCount": 24,
+        "aabbM": {"min": [7.51, 0.89, 0.0775], "max": [7.73, 1.195, 0.3625], "size": [0.22, 0.305, 0.285]}
+      }
+    },
+    "fixedCameras": {
+      "dining_overview": {
+        "mode": "orbit-perspective",
+        "position": [9.55, 1.7, 3.86],
+        "target": [7.75, 0.88, 3.62],
+        "fovDeg": 58,
+        "isOverview": false,
+        "snapshot": "evidence/beverage-modules-overview.snapshot.txt",
+        "screenshot": "evidence/beverage-modules-overview.png"
+      },
+      "waterbar_close": {
+        "mode": "orbit-perspective",
+        "position": [9.25, 1.75, 3.82],
+        "target": [7.45, 0.68, 3.84],
+        "fovDeg": 38,
+        "isOverview": false,
+        "snapshot": "evidence/waterbar-module-close.snapshot.txt",
+        "screenshot": "evidence/waterbar-module-close.png"
+      }
+    }
+  },
+  "relationships": {
+    "fridgeToTeaBodyGapAlongZ_M": 0.162,
+    "teaToSideboardGapAlongZ_M": 0.028,
+    "teaRearPlaneX_M": 7.2225,
+    "sideboardRearPlaneX_M": 7.2225,
+    "sideboardFrontStepBeyondTea_M": 0.085,
+    "sideboardToWallAirGap_M": 0.0625,
+    "wallSurfaceX_M": 7.16,
+    "wallControlBandAlongZ_M": [3.98, 4.1],
+    "wallControlHeight_M": 1.3,
+    "sideboardTopHeight_M": 0.92,
+    "interpretation": "The 62.5mm rear wall gap is geometric air space only; it is not a service aisle or manufacturer clearance. The wall control band overlaps the cabinet's z range, but the model control points are above the cabinet top; hand access remains unverified. Static fridge-to-tea gap excludes door/drawer swing and user stance."
+  },
+  "checks": {
+    "verifyFurniture": {"status": "PASS", "warnings": 2, "notes": ["south_balcony furnishing check skipped because room is absent and has zero placed entries", "existing master-bedroom curtain-envelope warning"]},
+    "verifyAll": {"status": "PASS", "passed": 17, "failed": 0, "warningSummary": "Project-wide pre-existing warnings remain; verify:all reports all verifiers passed."},
+    "gateVisual": {"status": "CLEAR", "detail": "Browser renders current config; gate run after final model coordinates."},
+    "typecheck": {"status": "PASS", "source": "Prior check after implementation; final change altered only cabinet x coordinate and a source comment."}
+  },
+  "scope": {
+    "added": ["furniture:living_dining:waterbar_low_sideboard_400_preview:15"],
+    "unchanged": ["fridge:13", "mijia_tea_bar_pro:14", "dining_table:8", "entry_half_height_cabinet:7", "coffee_machine_em450:9", "walls", "doors", "glass", "ceiling"],
+    "notAdded": ["power outlet", "circuit", "water supply", "drain", "custom built-in enclosure", "restaurant duplicate EM450"]
+  }
+}

@@ -1,0 +1,181 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: living-sculptural-main-light-r4-20261016
+subject: 客厅主灯从浅盘式改为深钟形、侧架外露的垂吊灯体
+created_at: 2026-10-16
+status: frozen
+source_policy:
+  authority_refs: [config/electrical.yaml, config/electrical-topology.yaml, config/ceiling.yaml, config/mep-hvac-coordination.yaml, config/render/lighting.yaml, config/render/overrides.yaml, shared/render/SculpturalDomeGeometry.ts, shared/project-render-facts-schema.ts, docs/decisions/06-electrical.md]
+  observation_refs:
+    - /home/tao/.shellboard/uploads/s_EAmoN0mKnwA/image-13.png
+    - /home/tao/.shellboard/uploads/s_EAmoN0mKnwA/image-14.png
+    - tmp/screenshots/living-main-light/living_main_light_after_context_view_v014.png
+    - tmp/screenshots/living-main-light/living_main_light_after_r2_closeup_v005.png
+    - tmp/screenshots/living-main-light/living_main_light_after_r2_side_view_v004.png
+    - tmp/screenshots/living-main-light/living_main_light_after_r3_underside_v002.png
+    - tmp/screenshots/living-main-light/living_main_light_after_r3_side_view_v002.png
+  measurement_refs: []
+  runtime_refs:
+    - docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/underside.runtime.json
+    - docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/elevation-profile.runtime.json
+    - docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json
+    - docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.runtime.json
+  evidence_refs:
+    - "R2 R6 runtime ready=true; empty config-error banner; visualPreviewActive=false; target electrical:light_living_dome."
+    - "R4 R10五视图runtime ready=true、配置错误横幅为空、visualPreviewActive=false；目标electrical:light_living_dome；AABB约0.811×0.350×0.894m，三根侧撑均在灯壳外。"
+    - "npm run gate:visual before R3 => CLEAR; ceiling=50c1c81f9ec8; electrical=f2b49b7bcdb3; plumbing=7f1513d14f27; materials=64176f576326."
+entry_shape: {id: "", category: confirmed, statement: "", value: null, source_refs: [], basis: "", confidence: high, impact: material, affected_objects: [], affected_views: [perspective, elevation], owner: "", status: open, verification_method: "", user_confirmation_ref: null}
+facts:
+  confirmed:
+    - id: fact-anchor-and-room
+      category: confirmed
+      statement: "客厅灯 light_living_dome 锚点(10.80,7.15,h=2.80m)不变；餐桌中心(9.80,3.45)m，客厅主灯不由餐桌定位。"
+      value: {x: 10.8, z: 7.15, ceiling_y_m: 2.8, dining_table_center: [9.8, 3.45]}
+      source_refs: [config/electrical.yaml, config/house.yaml]
+      basis: 当前权威配置
+      confidence: high
+      impact: material
+      affected_objects: [light_living_dome, dining_table]
+      affected_views: [plan, perspective]
+      owner: project
+      status: resolved
+      verification_method: runtime stable objectId与配置坐标核对
+      user_confirmation_ref: null
+    - id: fact-r2-failed-silhouette
+      category: confirmed
+      statement: "业主在R2 R6仰视图中指出灯仍像吸顶灯；盘体Ø0.90×0.07m，铜弧在盘上方，三根细杆落在盘顶。"
+      value: {total_drop_m: 0.30, diffuser_diameter_m: 0.90, diffuser_thickness_m: 0.07, arch_position: above_diffuser}
+      source_refs: [/home/tao/.shellboard/uploads/s_EAmoN0mKnwA/image-13.png, docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json]
+      basis: R2声明几何、runtime尺寸和用户反馈
+      confidence: high
+      impact: blocking
+      affected_objects: [light_living_dome]
+      affected_views: [underside, perspective]
+      owner: owner
+      status: superseded
+      verification_method: 保留R2原图并在R3同仰视机位复核
+      user_confirmation_ref: "用户反馈：看起来还是像吸顶灯"
+    - id: fact-r3-failed-silhouette
+      category: confirmed
+      statement: "R3同机位截图里，乳白圆形底面仍占据主体轮廓，铜弧和吊杆主要从灯体边缘露出；运行几何显示三根杆末端半径约0.38m，而距灯底60mm处锥形灯体半径约0.387m，杆件落在壳体内。"
+      value: {drop_m: 0.35, diffuser_top_diameter_m: 0.90, diffuser_bottom_diameter_m: 0.72, diffuser_depth_m: 0.20, support_endpoint_radius_m: 0.38, body_radius_at_mount_m: 0.387}
+      source_refs: [tmp/screenshots/living-main-light/living_main_light_after_r3_underside_v002.png, tmp/screenshots/living-main-light/living_main_light_after_r3_side_view_v002.png, docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/underside.runtime.json, config/render/lighting.yaml, shared/project-render-facts-schema.ts]
+      basis: R3运行时配置、灯体尺寸和同机位截图；代码检查发现schema要求杆端落在上口半径内，不能保证杆在锥壳外。
+      confidence: high
+      impact: blocking
+      affected_objects: [light_living_dome]
+      affected_views: [underside, elevation, perspective]
+      owner: design
+      status: superseded
+      verification_method: 保留R3截图；R4同机位运行时检查支撑杆外置和壳体截面关系
+      user_confirmation_ref: "用户问R3截图是否符合预期；由设计复核后判为仍未实现明显垂吊语义"
+    - id: fact-lighting-target
+      category: confirmed
+      statement: "宽面漫射、3000K、Ra≥90、客厅约100lx/U0≥0.7和餐桌约150lx照明目标保留；渲染不证明光度。"
+      value: {cct_k: 3000, cri_min: 90, living_lux: 100, uniformity_u0_min: 0.7, dining_lux: 150}
+      source_refs: [docs/decisions/06-electrical.md#DEC-2026-10-16-R2, schedule/procurement.md]
+      basis: 既有项目照明要求
+      confidence: high
+      impact: material
+      affected_objects: [light_living_dome, light_dining_pendant]
+      affected_views: [plan, perspective]
+      owner: project
+      status: resolved
+      verification_method: SKU阶段核厂家IES/LDT或等效数据
+      user_confirmation_ref: null
+    - id: user-r3-direction
+      category: user_decision
+      statement: "业主要求继续建模并指出R2仍像吸顶灯；保留约1m尺度、250–350mm总下垂范围、宽面乳白主光和客厅原锚点。"
+      value: {footprint_m: 1.0, allowed_drop_m: [0.25, 0.35], diffuser: broad_opal, must_read_as: pendant, anchor_unchanged: true}
+      source_refs: [conversation-2026-10-16-R3, docs/decisions/06-electrical.md#DEC-2026-10-16-R2]
+      basis: 用户最新原话“继续处理灯具的模型构建……看起来还是像吸顶灯”及此前范围确认
+      confidence: high
+      impact: material
+      affected_objects: [light_living_dome]
+      affected_views: [underside, elevation, perspective]
+      owner: owner
+      status: resolved
+      verification_method: 相同仰视、三分之四、侧视相机复核
+      user_confirmation_ref: "用户回复：继续处理灯具的模型构建"
+  inferred:
+    - id: inference-r2-root-cause
+      category: inferred
+      statement: "主要失败来自平盘占据仰视主轮廓：铜弧像盘上装饰，细杆接到盘顶后被遮挡；不是灯位或餐桌关系导致。"
+      value: {root_cause: hidden_suspension_and_flat_diffuser}
+      source_refs: [fact-r2-failed-silhouette, shared/render/SculpturalDomeGeometry.ts]
+      basis: 两位独立审美/功能审查者均指出盘薄、弧高置、吊杆贴顶且仰视被遮
+      confidence: high
+      impact: material
+      affected_objects: [light_living_dome]
+      affected_views: [underside, elevation, perspective]
+      owner: design
+      status: resolved
+      verification_method: R3仰视同机位证据保留；后续轮次已确认该方案仍有视觉缺陷
+      user_confirmation_ref: null
+    - id: inference-r3-proposal
+      category: inferred
+      statement: "R3预演提案：总下垂350mm；乳白钟形体上口Ø0.90m、下口Ø0.72m、深0.20m；三根外露侧向支撑杆沿锥形外壳下行，单条暖铜弧从下缘绕出。"
+      value: {drop_m: 0.35, diffuser_top_diameter_m: 0.90, diffuser_bottom_diameter_m: 0.72, diffuser_depth_m: 0.20, housing_band_offset_m: 0.004, suspension_route: bent_external_side_braces, arch_attachment: lower_side_shell}
+      source_refs: [inference-r2-root-cause, user-r3-direction]
+      basis: 在已批准平面与下垂范围内，通过改变可见连接关系强化垂吊识别度
+      confidence: medium
+      impact: material
+      affected_objects: [light_living_dome]
+      affected_views: [underside, elevation, perspective]
+      owner: design
+      status: superseded
+      verification_method: R3同版浏览器证据；仰视仍像浅盘，且杆端在壳体投影内
+      user_confirmation_ref: null
+    - id: inference-r4-proposal
+      category: inferred
+      statement: "R4造型提案：保持1m×1m外包络、350mm总下垂和现有锚点；乳白钟形体上口Ø780mm、下口Ø520mm、深280mm；三根暖铜支撑杆外置并用短径向脚接壳，铜弧缩至两侧下缘连接后向南前凸。"
+      value: {drop_m: 0.35, diffuser_top_diameter_m: 0.78, diffuser_bottom_diameter_m: 0.52, diffuser_depth_m: 0.28, suspension_route: external_bent_braces_with_radial_feet, arch_span_m: 0.48, arch_foot_diameter_m: 0.04}
+      source_refs: [fact-r3-failed-silhouette, user-r3-direction, shared/render/SculpturalDomeGeometry.ts]
+      basis: 加深并收窄发光体可改变浅盘比例；支撑杆保持在灯壳外侧后，悬挂连接关系可从底部仰视看见。
+      confidence: medium
+      impact: material
+      affected_objects: [light_living_dome]
+      affected_views: [underside, elevation, perspective]
+      owner: design
+      status: resolved
+      verification_method: R4同版五视图与浏览器runtime；独立审美/功能双评审均PASS
+      user_confirmation_ref: null
+  site_pending:
+    - id: pending-installation
+      category: site_pending
+      statement: "梁位、顶板/底盒承重、灯体重量、厂家吊装底盘/侧架连接、风口气流和检修路径未现场核实。"
+      value: null
+      source_refs: [docs/pending-site-data.md, docs/decisions/06-electrical.md#DEC-2026-10-16-R2]
+      basis: 未交房且无R4商品安装图
+      confidence: high
+      impact: blocking
+      affected_objects: [light_living_dome]
+      affected_views: [section, elevation]
+      owner: 业主+量房/施工方+电工+灯具供应商
+      status: open
+      verification_method: 量房确认梁/顶板；厂家提供底盘、吊杆、侧架与检修安装图
+      user_confirmation_ref: null
+    - id: pending-photometry
+      category: site_pending
+      statement: "真实候选在3000K/Ra≥90时的光通量、配光、眩光和U0未验证；R4缩小底部发光面后，须用厂家配光资料确认宽面出光；客厅7,100–8,500lm与复算约9,287.5lm仍有冲突。"
+      value: {lumen_target_status: conflicting}
+      source_refs: [schedule/procurement.md, docs/decisions/06-electrical.md#DEC-2026-10-16-R4]
+      basis: 本轮只验证外形
+      confidence: high
+      impact: blocking
+      affected_objects: [light_living_dome]
+      affected_views: [all]
+      owner: 业主+照明设计+灯具供应商
+      status: open
+      verification_method: SKU阶段统一算量并核厂家配光文件
+      user_confirmation_ref: null
+retrospective:
+  trigger_id: repeated-same-kind-aesthetic-failure
+  trigger_text: "R1、R2被业主指出仍像吸顶灯；R3同机位预演也保留大圆盘轮廓，且外置杆配置实际被灯体遮挡，重复的垂吊语义失败触发R4回顾。"
+  failure_evidence: [tmp/screenshots/living-main-light/living_main_light_after_r3_underside_v002.png, tmp/screenshots/living-main-light/living_main_light_after_r3_side_view_v002.png, docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/underside.runtime.json]
+  last_change: "R3用Ø900/720mm、深200mm的浅钟形灯体；吊杆端点落在上口半径以内，沿锥面被遮挡。"
+  root_cause: "高置信：宽度/深度比例仍像大圆盘；配置/schema和构建器对杆端的语义约束相反，导致吊杆虽然被命名为外置，却进入灯体轮廓。"
+  status: rebaselined_for_r4_preview
+notes:
+  - "R4只作为造型预演，不是SKU或施工尺寸。"
+  - "保留R1/R2/R3旧图、DEC、审查和尺寸作为历史，不覆盖失败证据。"

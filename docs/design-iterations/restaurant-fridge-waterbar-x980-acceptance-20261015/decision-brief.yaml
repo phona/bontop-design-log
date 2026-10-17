@@ -1,0 +1,163 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: restaurant-fridge-waterbar-x980-acceptance-20261015
+subject: 西侧冰箱与南北向餐桌正式日常落位、干水吧临时预演验收
+priority:
+  user_goal: 将已确认的日常四人家具布局写入当前设计模型，保留六人临时预演，并继续明示冰箱机电、水吧墙控与施工阻塞。
+  ranked:
+    - 日常四人使用，并保留来客时临时扩座的可能。
+    - 保留入户半高柜与吊顶共同形成的压缩—释放节奏。
+    - 让冰箱和水吧在餐厅形成清楚、克制的功能界面。
+    - 保持厨房通道、餐桌使用和后续家电维护可行。
+  non_negotiables:
+    - 日常座位数为四人；来客六人时采用临时桌椅组南移约320mm的状态。
+    - 墙体、门洞、玻璃推拉门、吊顶和空调位置不动。
+    - 半高柜位置不动；其设计基线为 1.42m 上部、北端 700mm 降至 920mm。
+    - 不增加冰箱侧板或通顶高柜。
+    - 将已确认的日常餐桌、四把餐椅、冰箱位置及餐桌地插/冰箱门向写入正式设计配置；不据此放行施工。
+    - 六人临时摆位、水吧柜体和1420/700半高柜外形仍为view-only，直到操作净空、控制点和算量/结构接口收口。
+  tradeoffs_accepted:
+    - 用户接受四人日常使用；额外来客时希望能临时增加座位。
+    - 用户接受临时六人模式下桌椅组南移约320mm；吊灯/地插关系和机电条件仍须核验。
+frozen: true
+freeze_record:
+  alignment_id: ALN-2026-10-15-GUEST6-01
+  original_user_response: 日常四人，但是希望能扩展多人；询问六人是否堵厨房入口后，业主回复“那就先这样定稿吧”。
+  normalized_decisions:
+    - 本轮候选按餐桌中心 x=9.80m、1.40×0.80m、旋转90°、四座进行审查。
+    - 日常四人和来客临时六人均已由业主确认。
+    - 临时六人状态以日常四座位置为基准，桌椅组整体南移约320mm，南北两端各增加一把椅子；日常桌位不变。
+    - 冰箱+干水吧与餐桌布局已冻结为条件性概念基线；准确机型安装净空、电气、开关可达、后部防护、灯具/地插对位及真人并用仍是后续实施核验条件。
+    - 冰箱西侧位置已于2026-10-16写入正式日常家具配置；干水吧柜体仍为view-only。家具位置写入不代表厂家安装或施工批准。
+    - 半高柜采用已冻结的 1.42m 上部与北端700mm低区视图。
+    - 2026-10-16更新：日常四人桌椅、冰箱、餐桌地插及冰箱门向已写入正式家具/电气/防碰撞配置；冰箱新专用电源和干吧柜体没有写入。
+  confirmed_by_user: true
+  confirmed_at: 2026-10-15
+  evidence_refs: [当前会话业主回复, evidence/guest-seat-envelope.json, docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml]
+allowed_scope:
+  files: [config/house.yaml#living_dining.furnishings, config/electrical.yaml#sock_living_table, config/electrical-topology.yaml#dedicated_kitchen_fridge.note, config/anti-penetration.yaml#env.fridge.door, tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/*, tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/*, docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/*]
+  objects:
+    - furniture:living_dining:fridge:13
+    - furniture:living_dining:dining_table:8
+    - furniture:living_dining:dining_chair:9-12
+    - furniture:living_dining:entry_half_height_cabinet:7
+    - electrical:sock_living_table
+    - anti_penetration:env.fridge.door
+    - view-only:dry-waterbar-x980
+    - view-only:entry-cabinet-1420-north700
+  archetypes: [formal daily furniture placement, view-only temporary guest/waterbar/cabinet preview]
+  views: [plan, perspective]
+  changes:
+    - 正式写入日常四人桌椅与冰箱位置；六人临时布局、水吧和冻结半高柜外形只在浏览器运行时重建预演。
+    - 餐桌地插跟随日常桌心移动，并把冰箱开门方向研究包络更新为朝东。
+    - 捕获入户、服务墙、厨房看餐厅三个固定人眼视角。
+scope_extension_2026_10_16:
+  trigger: 业主指出“你没执行修改？”；纠正前一轮只改记录、未把已确认的日常家具布局写入模型。
+  interpretation: 不新增设计选择，按已确认的概念基线提交日常四人餐桌/椅、冰箱、餐桌地插与冰箱门向；保留客卫墙体、控制点、吊顶、门洞和半高柜位置。
+  applied_files: [config/house.yaml, config/electrical.yaml#sock_living_table, config/electrical-topology.yaml#dedicated_kitchen_fridge.note, config/anti-penetration.yaml#env.fridge.door]
+  remains_view_only: [六人临时状态, 西侧干水吧柜体, 1.42m/北端700mm半高柜替代体]
+  remains_forbidden: [墙体/门洞/推拉门/吊顶/空调移动, 冰箱新专用电源点位, 三处西墙控制点迁移, 采购或施工放行]
+  reason: 水吧当前柜体范围会覆盖 switch_dining、switch_corridor、ac_panel_dining；复用 kitchen_cabinet_run 还会计入厨房柜体算量。冰箱后距和新电源需厂家/电工核准。
+forbidden:
+  files:
+    - config/layout/model-geometry.yaml
+    - config/layout/overlay.yaml
+    - config/plumbing.yaml
+    - config/ceiling.yaml
+    - shared/render/FixtureFactory.ts
+  objects:
+    - 墙体、门洞、推拉门、吊顶、空调、冰箱新专用电源、墙控迁移和未获授权的机电点位
+  assumptions:
+    - 把 600mm 预留深度解释为确定的厂家安装净深。
+    - 把 600mm 冰箱门扇扫掠解释为厂家实测。
+    - 把视图 PASS 当作功能或施工 PASS。
+  out_of_scope_changes:
+    - 冰箱新专用电源/线路、干吧正式柜体与预算新增、墙控点迁移、采购和施工放行
+open_questions:
+  - id: seat-count
+    category: function
+    question: 验收基线是日常四座，还是现在就必须保证六人同时就坐？
+    fact_refs: [current-four-seat-candidate, future-six-seat-clearance-trial]
+    options:
+      - label: 四座日常使用；多人时临时加座
+        benefit: 保留当前通道和视觉纵深；代价是不能把六座视作日常功能。
+      - label: 六座必须长期可用
+        benefit: 满足多人日常就坐；代价是当前1.40m方案椅间隙约25mm，1.60m方案推拉门余量约55mm，需重新核验。
+      - label: 暂不决定
+        benefit: 保留现候选为视觉研究，不冻结座位数。
+    selected: 日常四人；来客时临时扩座
+    user_response: 日常四人。但是希望能扩展多人
+    status: answered
+  - id: guest-expansion-capacity
+    category: function
+    question: 来客时希望保证扩展到几人？
+    fact_refs: [daily-four-expandable, temporary-five-no-table-move, temporary-six-with-south-shift]
+    options:
+      - label: 临时5人即可
+        benefit: 当前桌位不动，只需在南端临时加一把椅子；代价是不能保证6人同时就坐。
+      - label: 临时6人也要能坐
+        benefit: 可验证四侧座位加两端椅；代价是现有AABB试排需整组南移约320mm，并核对吊灯、地插和动线。
+      - label: 先看5人与6人预演
+        benefit: 对照真实固定视角再决定人数；代价是暂不冻结扩座容量。
+    selected: 临时6人；桌椅组南移约320mm
+    user_response: 那就先这样定稿吧（承接六人临时布局与厨房入口净距说明）
+    status: answered
+  - id: fridge-model-confirmation
+    category: construction
+    question: 实际计划/已购冰箱是否为项目配置候选华凌 HR-518WUFIPZ？
+    fact_refs: [appliance-install-manual, user-fridge-dimensions]
+    options:
+      - label: 是 HR-518WUFIPZ
+        benefit: 可继续向美的/华凌索取准确型号安装图；代价是用户参数表595mm深度仍需和官方口径核对。
+      - label: 不是，按铭牌型号核查
+        benefit: 避免用错型号安装净空；需要实际完整型号或铭牌照片。
+      - label: 暂未确定
+        benefit: 保留冰箱西墙方案为条件性空间预演，不冻结安装尺寸。
+    selected: null
+    user_response: null
+    status: site_pending
+  - id: fridge-depth-basis
+    category: geometry
+    question: 表中的600mm预留深度量尺基准是什么，是否有该精确型号的官方安装图？
+    fact_refs: [user-fridge-dimension-table, fridge-runtime-aabb]
+    options:
+      - label: 完成墙面至冰箱正面总深度
+        benefit: 可明确西墙定位；当前到实体墙约43mm、到房间开放边界线约3mm，两个模型尺寸都须由厂家与现场确认，不能视作可安装结论。
+      - label: 机身后方另有安装净空
+        benefit: 更符合可检修、散热的空间判断；代价是候选西墙深度需重算。
+      - label: 暂不决定
+        benefit: 等待型号铭牌和安装图，不冻结冰箱位置。
+    selected: null
+    user_response: null
+    status: site_pending
+alignment:
+  records:
+    - alignment_id: ALN-2026-10-15-SEATS-01
+      original_user_response: 日常四人。但是希望能扩展多人
+      normalized_decision: 当时确认日常四座并希望来客扩座，最大人数待核；该问题后由 GUEST6-01 确认为六人临时模式、桌椅南移约320mm。
+      affected_refs: [decision-brief.yaml#priority.ranked, fact-table.yaml#facts.user_decision.daily-four-expandable]
+      timestamp: 2026-10-15T22:49:30+08:00
+    - alignment_id: ALN-2026-10-15-GUEST6-01
+      original_user_response: 那就先这样定稿吧
+      normalized_decision: 日常四座；来客临时六座时，桌椅组整体南移约320mm并增加两端椅，维持x中心9.80m。
+      affected_refs: [decision-brief.yaml#priority, evidence/guest-seat-envelope.json#temporary_six_with_south_shift]
+      timestamp: 2026-10-15
+  unresolved: [fridge-model-confirmation, fridge-depth-basis, fridge-manufacturer-clearances, west-wall-electrical, dry-bar-appliances, waterbar-wall-control-access-and-budget, dining-cabinet-door-sweep, guest-mode-light-and-outlet-alignment]
+  re_alignment_required: false
+  re_alignment_trigger: 若准确型号、现场复尺或机电操作验证证明当前概念基线无法实现，再向业主提交需要改变布局的具体问题。
+acceptance:
+  validation_commands: [npm run gate:visual]
+  browser_evidence_required: true
+  required_views: [入户门内人眼视角, 西墙冰箱与干水吧, 厨房看向餐厅]
+  aesthetic_review: PASS
+  functional_review: BLOCKED
+  construction_review: BLOCKED
+  blocking_issues: [冰箱43mm实体墙后距的厂家散热/防护要求, 冰箱门扇与检修包络, 东侧椅与半高柜门操作, 干吧设备/电气/墙控可达, 六人临时南移后的吊灯/地插和真人操作]
+  done_when:
+    - 日常四座家具基线按已确认坐标保持；来客六座时桌椅组南移约320mm仍是临时预演；墙体和建筑配置保持不动。
+    - 入口、厨房看餐厅和服务墙固定视角审美复审通过；厨房入口静态 AABB 无直接阻挡。
+    - 确认实际冰箱型号后，取得准确型号安装图和净空要求；若43mm后距不满足规范则重开冰箱位置。
+    - 厂家确认冰箱安装、散热、门扇、抽屉、检修及更换要求。
+    - 完成柜门、椅子、冰箱和干吧真人操作包络及西墙电气方案。
+    - 若工程核验要求改变已确认的概念布局，先提交具体反转条件和影响，再由业主复核。
+  delivery_notes_required: true

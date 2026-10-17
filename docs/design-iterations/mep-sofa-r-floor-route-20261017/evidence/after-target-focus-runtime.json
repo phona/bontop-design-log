@@ -1,0 +1,116 @@
+{
+  "camera": {
+    "position": {
+      "x": 7.5,
+      "y": 5,
+      "z": 6.4
+    },
+    "target": {
+      "x": 13.2,
+      "y": 0.8,
+      "z": 6.4
+    }
+  },
+  "cameraMode": "orbit",
+  "mepReady": true,
+  "mepVisible": true,
+  "ready": true,
+  "route": {
+    "construction_status": "pending",
+    "lintCodes": [],
+    "lintWarnings": [],
+    "method": "floor_branch_candidate",
+    "points": [
+      {
+        "x": 13.4,
+        "y": 1.65,
+        "z": 3.6
+      },
+      {
+        "x": 13.34,
+        "y": 1.65,
+        "z": 3.6
+      },
+      {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 3.6
+      },
+      {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 9.35
+      },
+      {
+        "x": 11,
+        "y": 0.02,
+        "z": 9.35
+      }
+    ],
+    "routeId": "strong-power-living-sofa-r",
+    "status": "inferred"
+  },
+  "segments": [
+    {
+      "end": {
+        "x": 13.34,
+        "y": 1.65,
+        "z": 3.6
+      },
+      "index": 0,
+      "start": {
+        "x": 13.4,
+        "y": 1.65,
+        "z": 3.6
+      },
+      "visible": true
+    },
+    {
+      "end": {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 3.6
+      },
+      "index": 1,
+      "start": {
+        "x": 13.34,
+        "y": 1.65,
+        "z": 3.6
+      },
+      "visible": true
+    },
+    {
+      "end": {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 9.35
+      },
+      "index": 2,
+      "start": {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 3.6
+      },
+      "visible": true
+    },
+    {
+      "end": {
+        "x": 11,
+        "y": 0.02,
+        "z": 9.35
+      },
+      "index": 3,
+      "start": {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 9.35
+      },
+      "visible": true
+    }
+  ],
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://127.0.0.1:5173/",
+  "visibleRouteGroups": [
+    "strong-power-living-sofa-r"
+  ]
+}

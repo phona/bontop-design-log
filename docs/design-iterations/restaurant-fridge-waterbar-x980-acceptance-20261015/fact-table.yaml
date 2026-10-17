@@ -1,0 +1,334 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: restaurant-fridge-waterbar-x980-acceptance-20261015
+subject: 西侧冰箱/南北向日常桌正式落位及水吧/六人临时预演事实
+created_at: 2026-10-15T22:32:55+08:00
+status: blocked
+source_policy:
+  authority_refs:
+    - config/layout/model-geometry.yaml
+    - config/layout/overlay.yaml
+    - config/house.yaml
+    - config/electrical.yaml
+    - config/ceiling.yaml
+    - config/anti-penetration.yaml
+  observation_refs:
+    - tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/entry-axis-x980-v2.png
+    - tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/service-wall-x980-v2.png
+    - tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/kitchen-to-dining-x980-v2.png
+  measurement_refs:
+    - 业主提供冰箱参数表：产品833×595×1910mm，预留837×600×1918mm，220V，110kg。
+  runtime_refs:
+    - evidence/runtime-candidate-v2.json
+    - tmp/screenshots/restaurant-fridge-waterbar-20261015/preview-manifest.json#runtime_dynamic_clearance
+  evidence_refs:
+    - review-manifest.json
+facts:
+  confirmed:
+    - id: formal-furniture-source
+      category: confirmed
+      statement: 正式日常家具布局已更新为南北向四人桌和西侧冰箱；四把餐椅、桌餐地插随日常桌位，半高柜仍保持原位。
+      value: {table: [9.80, 3.45, 90deg], chairs: [[9.125, 3.00, 90deg], [10.475, 3.00, 270deg], [9.125, 3.90, 90deg], [10.475, 3.90, 270deg]], fridge: [7.5025, 2.9865, 270deg], cabinet: [11.50, 4.00, 90deg]}
+      source_refs: [config/house.yaml:517-530, config/electrical.yaml:sock_living_table, evidence/formal-layout-runtime-20261016.json#formal_runtime]
+      basis: 配置写入后重载 Three.js，运行时对象坐标与权威配置一致；半高柜和建筑构件没有移动。
+      confidence: high
+      impact: material
+      affected_objects: [dining_table, fridge, entry_half_height_cabinet]
+      affected_views: [plan, perspective]
+      owner: project
+      status: resolved
+      verification_method: 浏览器重载后查询 furniture stable objectId 的 position/rotation 与 AABB。
+      user_confirmation_ref: DEC-2026-10-16-R01（承接业主2026-10-15概念确认）
+    - id: candidate-runtime-geometry
+      category: confirmed
+      statement: 正式日常餐桌中心 x=9.80m、z=3.45m，1.40×0.80m，旋转90°，四椅随桌；冰箱中心 x=7.5025m、z=2.9865m，正面朝东；干吧继续用 view-only 预演，位于西墙 x[7.20,7.85]、z[3.443,4.293]。
+      value: {table_aabb_m: {x: [9.40, 10.20], z: [2.75, 4.15]}, fridge_aabb_m: {x: [7.203, 7.802], y: [0, 1.91], z: [2.567, 3.406]}, dry_bar_aabb_m: {x: [7.20, 7.85], y: [0, 1.225], z: [3.443, 4.293]}}
+      source_refs: [evidence/runtime-candidate-v2.json#objects]
+      basis: 正式 table/chairs/fridge transforms 来自 Three.js 当前配置场景；干吧 transform 来自浏览器临时对象。AABB按已登记尺寸/运行时查询记录。
+      confidence: high
+      impact: material
+      affected_objects: [fridge, dry_waterbar, dining_table, dining_chairs]
+      affected_views: [plan, perspective]
+      owner: project
+      status: resolved
+      verification_method: 运行时查询 stable objectId、transform 和 Box3。
+      user_confirmation_ref: DEC-2026-10-16-R01；干吧只确认概念表达，未确认正式柜体位置/电气施工。
+    - id: entry-cabinet-baseline
+      category: user_decision
+      statement: 半高柜基线为保持原位置、上部到1.42m、北端700mm降低到920mm；本轮用临时几何展示该基线。
+      value: {center_m: [11.50, 4.00], body_depth_m: 0.35, overall_z_m: [2.98, 5.02], north_low_zone_z_m: [2.98, 3.70], low_counter_y_m: 0.92, upper_cap_y_m: 1.42}
+      source_refs: [docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml, evidence/runtime-candidate-v2.json#objects]
+      basis: 业主此前冻结结构深化基线；正式FixtureFactory尚未更新。
+      confidence: high
+      impact: material
+      affected_objects: [entry_half_height_cabinet]
+      affected_views: [entry, dining, perspective]
+      owner: owner
+      status: resolved
+      verification_method: 运行时 view-only 替代体核对坐标、占地及上缘标高。
+      user_confirmation_ref: docs/design-iterations/entry-cabinet-700-20261015/decision-brief.yaml
+    - id: visual-gate
+      category: confirmed
+      statement: 本轮结束时视觉状态门 CLEAR，当前浏览器渲染数据与权威配置哈希一致。
+      value: {status: CLEAR, digests: {ceiling: 50c1c81f9ec8, electrical: f2b49b7bcdb3, plumbing: 7f1513d14f27, materials: 64176f576326}}
+      source_refs: [review-manifest.json#validation]
+      basis: 最终场景恢复后运行项目 visual-state-gate 脚本，并通过当前只读 API 实例核对；所有 digest 与权威 config 一致。
+      confidence: high
+      impact: material
+      affected_objects: [scene]
+      affected_views: [perspective]
+      owner: project
+      status: resolved
+      verification_method: npm run gate:visual
+      user_confirmation_ref: null
+    - id: user-fridge-dimensions
+      category: confirmed
+      statement: 用户提供产品尺寸833×595×1910mm与预留837×600×1918mm；其量尺基准和具体型号对应仍未证实。
+      value: {product_mm: [833, 595, 1910], reserve_mm: [837, 600, 1918], voltage: 220V, weight_kg: 110}
+      source_refs: [业主当前会话冰箱参数表]
+      basis: 直接来自业主提供的参数表；本轮不将预留尺寸解释成安装净距。
+      confidence: high
+      impact: material
+      affected_objects: [fridge]
+      affected_views: [plan, section, perspective]
+      owner: owner
+      status: resolved
+      verification_method: 与产品铭牌和厂家安装图比对。
+      user_confirmation_ref: 业主当前会话
+    - id: guest-six-concept-accepted
+      category: user_decision
+      statement: 业主接受日常四人正式布局；来客六人时桌椅整体南移约320mm并在南北两端各增加一椅。六人状态仍是临时预演，不加入正式家具数量。
+      value: {daily_seats: 4, guest_seats: 6, south_shift_mm: 320, daily_center_m: [9.8, 3.45], guest_center_m: [9.8, 3.77]}
+      source_refs: [当前会话2026-10-15用户回复“那就先这样定稿吧”, evidence/guest-seat-envelope.json#temporary_six_with_south_shift]
+      basis: 业主在询问六人是否堵厨房入口后接受临时六人方案；静态几何筛查显示无直接AABB阻挡，约50mm推拉门边缘余量仍偏紧。
+      confidence: high
+      impact: material
+      affected_objects: [dining_table, dining_chairs, kitchen_sliding_door]
+      affected_views: [entry, kitchen_to_dining, plan]
+      owner: owner
+      status: resolved
+      verification_method: 业主概念确认；静态几何与独立审美复审另行记录，灯具/地插和真人操作仍待核验。
+      user_confirmation_ref: 当前会话2026-10-15
+    - id: adjacent-guest-bath-wall-runtime
+      category: confirmed
+      statement: 运行时存在未被suppress的客卫东墙 w_gbath_east 与 w_gbath_east_open_vanity，墙AABB x[7.04,7.16]、z[2.20,4.30]；客餐厅开放边x=7.20以西40mm为该墙东面。
+      value: {wall_objects: [w_gbath_east, w_gbath_east_open_vanity], east_face_x_m: 7.16, aabb_z_m: [2.2, 4.3], overlay_suppressed: false}
+      source_refs: [config/layout/model-geometry.yaml:245-246, config/layout/overlay.yaml:suppress, evidence/service-edge-wall-audit.json]
+      basis: Three.js运行时对象可见且Box3实测；墙的客卫/客餐厅两侧关系由房间模型与墙段位置确认。
+      confidence: high
+      impact: material
+      affected_objects: [fridge, dry_waterbar, guest_bath_wall]
+      affected_views: [plan, section, perspective]
+      owner: project
+      status: resolved
+      verification_method: 当前场景wall objectId遍历及AABB查询。
+      user_confirmation_ref: null
+  inferred:
+    - id: fridge-west-wall-nominal-gap
+      category: inferred
+      statement: 历史3mm数值是冰箱AABB到客餐厅开放边界x=7.20的距离，并非到实体墙；最新runtime墙面核验为客卫东墙东面x=7.16，冰箱后距约43mm。
+      value: {open_boundary_line_gap_m: 0.003, physical_wall_aabb_gap_m: 0.043}
+      source_refs: [evidence/runtime-candidate-v2.json#objects, evidence/service-edge-wall-audit.json, config/layout/model-geometry.yaml:w_gbath_east]
+      basis: 保留旧open-edge参考值并重新标注；物理墙距由wall/furniture world AABB相减。
+      confidence: medium
+      impact: blocking
+      affected_objects: [fridge, west_wall]
+      affected_views: [plan, section]
+      owner: project
+      status: superseded
+      verification_method: 将43mm物理墙距继续按厂家安装说明和现场完成面复尺；保留3mm历史值仅作为开放边界距离。
+    - id: kitchen-path-width
+      category: inferred
+      statement: 椅子停放时，水吧前沿至西侧椅最近边约1050mm；西椅向西拉出450mm后至水吧约600mm。
+      value: {parked_mm: 1050, pulled_mm: 600}
+      source_refs: [evidence/runtime-candidate-v2.json#derived_clearances]
+      basis: 7.85m水吧前沿减候选椅子AABB边界；椅拉出量450mm为预演输入。
+      confidence: medium
+      impact: material
+      affected_objects: [dry_waterbar, dining_chairs, circulation]
+      affected_views: [plan]
+      owner: project
+      status: open
+      verification_method: 现场复尺并加入真人站位及设备操作包络。
+    - id: east-chair-cabinet-gap
+      category: inferred
+      statement: 东侧椅外拉450mm后至半高柜西缘约153.5mm，餐厅柜门与坐人取物可能冲突。
+      value: 0.1535m
+      source_refs: [evidence/runtime-candidate-v2.json#derived_clearances]
+      basis: 半高柜西缘11.3035m减椅外拉最大x约11.15m。
+      confidence: medium
+      impact: blocking
+      affected_objects: [dining_chairs, entry_half_height_cabinet]
+      affected_views: [plan]
+      owner: project
+      status: open
+      verification_method: 用冻结柜门铰链和实测扫掠验证停放、坐人、取物组合。
+    - id: guest-six-kitchen-entry-static-envelope
+      category: inferred
+      statement: 临时六人桌椅组南移320mm后，模型静态包围盒未与厨房推拉门或冰箱开门假设包络直接相交；北端椅到推拉门面板约50mm，到未核实的600mm冰箱开门假设外缘约1.173m。不能把这些值当作真人通行净宽或同时操作保证。
+      value: {slider_gap_mm: 50, assumed_fridge_door_gap_mm: 1173, aabb_intersection: false}
+      source_refs: [evidence/guest-seat-envelope.json#temporary_six_with_south_shift, evidence/guest6-runtime-preview.json#kitchen_entry_clearance]
+      basis: 桌椅、真实运行时推拉门面板及假设冰箱开门AABB的静态几何核对；冰箱门扇宽度/把手和人体均未建模。
+      confidence: medium
+      impact: blocking
+      affected_objects: [dining_table, dining_chairs, kitchen_sliding_door, fridge]
+      affected_views: [plan, perspective]
+      owner: project / owner
+      status: open
+      verification_method: 取得冰箱门扇数据并检查真人坐姿、拉椅、开门、推拉门和通行并用。
+  user_decision:
+    - id: dry-bar-concept
+      category: user_decision
+      statement: 用户提出冰箱移到另一侧并与水吧在餐厅形成统一表达，餐桌改南北向后要求出定稿效果；日常四人/西侧冰箱摆位现已写入正式家具配置，水吧柜体仍为view-only。
+      value: 正式日常桌心(9.80,3.45,r90)及四椅、正式冰箱西侧摆位(7.5025,2.9865,r270)，旁设view-only干水吧预演
+      source_refs: [当前会话历史]
+      basis: 用户确认概念方向并要求定稿效果；2026-10-16补做正式日常家具落位。厂家安装净空、冰箱新电源和水吧墙控/预算仍待核。
+      confidence: high
+      impact: material
+      affected_objects: [fridge, dry_waterbar, dining_table]
+      affected_views: [plan, perspective]
+      owner: owner
+      status: resolved
+      verification_method: 当前正式配置和同源 Three.js 视图供业主复核；水吧继续用view-only代理。
+      user_confirmation_ref: 当前会话历史
+    - id: daily-four-expandable
+      category: user_decision
+      statement: 业主确认日常四人；来客六人时采用桌椅组整体南移约320mm并加两端椅的临时状态。
+      value: {daily_seats: 4, temporary_guest_seats: 6, temporary_group_south_shift_mm: 320, x_center_m: 9.8}
+      source_refs: [当前会话2026-10-15用户回复, evidence/guest-seat-envelope.json#temporary_six_with_south_shift]
+      basis: 用户先说明日常四人但要可扩展，查看六人不会封死厨房入口的几何答复后确认“那就先这样定稿吧”。
+      confidence: high
+      impact: material
+      affected_objects: [dining_table, dining_chairs, circulation]
+      affected_views: [plan, perspective]
+      owner: owner
+      status: resolved
+      verification_method: 正式配置体现日常四人坐标；六人临时位的灯具/地插、真人操作与现场动线仍须验证。
+      user_confirmation_ref: 当前会话2026-10-15
+  site_pending:
+    - id: appliance-install-manual
+      category: site_pending
+      statement: 项目配置暂候选 HR-518WUFIPZ；美的官方公开到一份华凌518系列通用说明书及说明书查询入口，但未找到能直接确认该准确型号安装净空的官方图纸。背部防护、侧后上净空、开门角度、抽屉、检修与整体更换要求仍未核实。
+      value: {project_candidate_model: HR-518WUFIPZ, model_confirmed_by_owner: false, exact_official_install_clearances: null}
+      source_refs: ["docs/pending-site-data.md:#22,#33,#64", "业主参数表", "https://assets.midea.com/ImageStore/192549/instructions/d5bebb39018f82ccec8b3441680d60e1.pdf", "https://www.midea.com.cn/zh/midea-service"]
+      basis: 官方PDF为华凌518系列通用说明书；美的服务页提供按准确型号查询说明书/客服的入口，但网页未公开提取出HR-518WUFIPZ的精确门扇或安装净空数值。用户参数表的595mm机身深度与项目候选公开参数口径可能不同，600mm预留基准未证明。
+      confidence: not_applicable
+      impact: blocking
+      affected_objects: [fridge, west_wall, dry_waterbar]
+      affected_views: [plan, section, perspective]
+      owner: owner / appliance service
+      status: open
+      verification_method: 业主确认实际型号；由项目核对准确型号安装图或向美的/华凌服务确认侧后顶净距、开门、抽屉、检修与更换要求。
+    - id: fridge-electrical
+      category: site_pending
+      statement: 旧厨房冰箱专用插座不能证明西墙候选位有可及专用插座和可维护末端。
+      value: null
+      source_refs: [config/electrical.yaml:sock_kitchen_fridge, config/electrical-topology.yaml:dedicated_kitchen_fridge]
+      basis: 新位置尚无声明点位和路线。
+      confidence: not_applicable
+      impact: blocking
+      affected_objects: [fridge, electrical]
+      affected_views: [plan, elevation]
+      owner: owner / electrician
+      status: open
+      verification_method: 完成电气点位、回路和可检修位置核对。
+    - id: bar-appliance-power-and-access
+      category: site_pending
+      statement: 干吧实际小家电、同时使用负载、插座、线缆及开关/空调面板手部操作空间未验证。
+      value: null
+      source_refs: [config/electrical.yaml:switch_corridor,switch_dining,ac_panel_dining, config/electrical-topology.yaml:ordinary_power_living]
+      basis: 预演黑色设备块只是通用占位物。
+      confidence: not_applicable
+      impact: blocking
+      affected_objects: [dry_waterbar, electrical, ac_panel]
+      affected_views: [elevation, perspective]
+      owner: owner / electrician
+      status: open
+      verification_method: 设备清单、功率和剖面/手部操作包络核对。
+    - id: six-seat-requirement
+      category: site_pending
+      statement: 历史待确认项曾以日常四人为标准并将来客扩座上限另列待核；该人数问题随后由业主确认：日常四人，来客临时六人、桌椅南移约320mm。六人灯具/地插和真人操作仍待核。
+      value: {previously_unresolved: six_daily, current_daily_seats: 4, status: superseded_by_owner_response}
+      source_refs: [当前会话关于人数增长与桌椅的问答]
+      basis: 用户2026-10-15确认日常四人，希望来客临时扩座。
+      confidence: not_applicable
+      impact: material
+      affected_objects: [dining_table, dining_chairs, circulation]
+      affected_views: [plan, perspective]
+      owner: owner
+      status: superseded
+      verification_method: 保留原记录；日常人数已由业主确认，最大临时扩座人数仍由新事实跟踪。
+    - id: guest-expansion-capacity
+      category: site_pending
+      statement: 历史待确认项已由业主接受为临时六人、桌椅组南移约320mm；该位置与固定灯具/地插对齐及现实操作尚未完成验证。
+      value: {temporary_guest_seats: 6, group_south_shift_mm: 320, status: concept_accepted_operational_review_pending}
+      source_refs: [当前会话2026-10-15用户回复, evidence/guest-seat-envelope.json]
+      basis: 用户回复“那就先这样定稿吧”承接六人临时布局；静态筛查显示门扇AABB不相交并约有50mm z向边距。
+      confidence: medium
+      impact: blocking
+      affected_objects: [dining_table, dining_chairs, dining_light, floor_outlet, kitchen_sliding_door]
+      affected_views: [plan, perspective]
+      owner: project / electrician
+      status: open
+      verification_method: 检查临时南移约320mm后灯具与地插使用、六人真人坐姿、厨房入口及服务带并用。
+    - id: service-edge-wall-and-appliance-rear
+      category: site_pending
+      statement: 客卫东侧实体墙东面x=7.16与候选冰箱背面相距约43mm；这能遮挡从墙西侧对冰箱后部的直接视线，但不能据此确认后罩防护、散热或检修合格。
+      value: {wall_aabb_m: {x: [7.04, 7.16], z: [2.2, 4.3]}, fridge_back_gap_mm: 43, bar_body_back_gap_mm: 90, bar_counter_back_gap_mm: 40}
+      source_refs: [evidence/service-edge-wall-audit.json]
+      basis: Three.js墙体与家电/水吧runtime AABB相减；型号安装说明未确认，40–90mm不代表厂家散热或清洁要求。
+      confidence: high
+      impact: blocking
+      affected_objects: [fridge, w_gbath_east, w_gbath_east_open_vanity, dry_waterbar]
+      affected_views: [plan, section, perspective]
+      owner: owner / appliance service / cabinet vendor
+      status: open
+      verification_method: 核实实物后罩、厂家侧后净距/底部散热、干吧墙后缝的可清洁收口及检修路径。
+    - id: cabinet-door-and-human-envelope
+      category: site_pending
+      statement: 半高柜餐厅侧门开启、真人站位和东侧椅拉出组合没有验证。
+      value: null
+      source_refs: [docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml:dining_front_and_storage]
+      basis: 柜门铰链与开启角度尚未建立在本轮运行时几何中。
+      confidence: not_applicable
+      impact: blocking
+      affected_objects: [entry_half_height_cabinet, dining_chairs]
+      affected_views: [plan, perspective]
+      owner: cabinet vendor / owner
+      status: open
+      verification_method: 柜商门扇扫掠图与真人/椅子包络同版本复核。
+unknowns_requiring_alignment:
+  - id: seat-count
+    question: 日常座位数是否为四人？
+    reason_result_changes: 该项已由业主回答；记录用于保留先前的对齐问题链。
+    fact_refs: [six-seat-requirement]
+    option_refs: [decision-brief.yaml#open_questions.seat-count]
+    status: answered
+  - id: guest-expansion-capacity
+    question: 来客时希望保证扩展到几人，且是否接受6人时临时将桌椅组南移约320mm？
+    reason_result_changes: 5人可固定桌位加南端椅；6人当前几何候选需临时南移并复核吊灯、地插和动线。
+    fact_refs: [daily-four-expandable, guest-expansion-capacity]
+    option_refs: [decision-brief.yaml#open_questions.guest-expansion-capacity]
+    status: answered
+  - id: guest-mode-light-and-outlet-alignment
+    question: 临时六人时整体南移约320mm，是否会影响吊灯/地插使用及日常搬动动线？
+    reason_result_changes: 该临时偏移与推拉门模型面板约留50mm静态边距，但固定电气点位不随桌椅移动，且未纳入真人动作。
+    fact_refs: [guest-expansion-capacity]
+    option_refs: [evidence/guest-seat-envelope.json#temporary_six_with_south_shift]
+    status: site_pending
+  - id: fridge-model-confirmation
+    question: 实际计划/已购冰箱是否为项目配置候选HR-518WUFIPZ？
+    reason_result_changes: 准确型号决定安装净空、门扇扫掠、抽屉行程和后罩防护；用户参数表深度595mm尚未与准确型号官方资料对齐。
+    fact_refs: [appliance-install-manual, user-fridge-dimensions]
+    option_refs: [decision-brief.yaml#open_questions.fridge-model-confirmation]
+    status: asked
+  - id: fridge-depth-basis
+    question: 600mm预留深度的起止面是什么，且是否来自当前准确型号的安装说明？
+    reason_result_changes: 冰箱到客餐厅开放边界线约3mm，到相邻客卫东墙实体面约43mm；两者都不是厂家散热和检修结论，准确量尺基准仍未知。
+    fact_refs: [user-fridge-dimensions, appliance-install-manual]
+    option_refs: [decision-brief.yaml#open_questions.fridge-depth-basis]
+    status: asked
+notes:
+  - 正式日常桌椅/冰箱位置来自 house.yaml；水吧、guest-six和1420/700柜体几何由浏览器内部创建view-only目标，不视作正式配置事实。
+  - 正式柜体模型仍为旧1.50m状态；本轮新图使用冻结设计的简化1.42m/北700mm立面替代体。
+  - 本轮更新保留了原“六人日常”未确认记录并标记为被业主新回复 supersede；原1.4m/1.6m六座数字继续保存在 review-manifest 的历史说明中。来客临时六人的方案现已由业主接受，固定灯具/地插与真人并用仍是功能核验项。

@@ -1,0 +1,55 @@
+{
+  "schema": "runtime-service-edge-wall-audit/v1",
+  "iteration_id": "restaurant-fridge-waterbar-x980-acceptance-20261015",
+  "source": "Three.js runtime traversal of wall objectIds w_gbath_east and w_gbath_east_open_vanity; no model source change.",
+  "runtime": {
+    "url": "http://127.0.0.1:5175/",
+    "title": "和萃 701 - 3D 装修设计",
+    "ready": true,
+    "config_error_banner": "",
+    "target_wall_objects": [
+      {"objectId": "w_gbath_east", "type": "wall", "visible": true, "aabb_m": {"x": [7.04, 7.16], "y": [0, 2.8], "z": [2.2, 3.55]}},
+      {"objectId": "w_gbath_east_open_vanity", "type": "wall", "visible": true, "aabb_m": {"x": [7.04, 7.16], "y": [0, 2.8], "z": [3.55, 4.3]}}
+    ],
+    "overlay_suppressed": false,
+    "wall_side": "east face toward living_dining; guest bath is west of wall"
+  },
+  "room_edge_relation": {
+    "living_dining_west_boundary_x_m": 7.2,
+    "w_liv_west": "deleted; living room and main corridor are open there",
+    "physical_wall_east_face_x_m": 7.16,
+    "interpretation": "The room edge x=7.20 is open, but a real guest-bath east wall stands 40mm west of that edge from z=2.20 to4.30. It is a nearby backing wall for this service run, not an unobstructed open corridor behind the fridge."
+  },
+  "candidate_clearances_mm": {
+    "fridge": {
+      "candidate_aabb_x_m": [7.203, 7.802],
+      "back_face_to_guest_bath_wall_east_face": 43,
+      "north_south_overlap_with_wall": [2.567, 3.406]
+    },
+    "dry_bar_body": {
+      "candidate_aabb_x_m": [7.25, 7.85],
+      "back_face_to_guest_bath_wall_east_face": 90,
+      "run_z_m": [3.443, 4.293],
+      "overlaps_w_gbath_east_by_mm": 107,
+      "overlaps_w_gbath_east_open_vanity_by_mm": 743
+    },
+    "dry_bar_countertop": {
+      "candidate_aabb_x_m": [7.2, 7.85],
+      "back_edge_to_guest_bath_wall_east_face": 40
+    }
+  },
+  "interpretation_and_limits": [
+    "The previous 3mm figure is the fridge AABB to the open room-boundary coordinate x=7.20; it is not a gap to a physical wall.",
+    "The nearest physical wall east face is x=7.16, giving about43mm behind the fridge model, about90mm behind the bar body and about40mm behind its countertop edge.",
+    "This nearby wall shields the appliance back from a broad walkable opening in plan, but the 43mm gap is not a manufacturer ventilation, electrical-protection, finger-access or service clearance.",
+    "The generic Three.js fridge mesh does not encode the real HR-518WUFIPZ rear cover/components. Confirm the exact appliance back panel and allowed rear/top/side airflow with the manufacturer.",
+    "The bathroom wall substrate, finish/waterproofing, buried services and whether the bar gap needs a cleanable removable filler are not field-confirmed."
+  ],
+  "evidence_refs": [
+    "config/layout/model-geometry.yaml:w_gbath_east,w_gbath_east_open_vanity",
+    "config/layout/model-geometry.yaml:w_liv_west deletion note",
+    "config/layout/overlay.yaml:suppress list",
+    "docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/evidence/runtime-candidate-v2.json#objects",
+    "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-service-wall.png"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "after.png shows the drop aligned with the living-side wall face and the floor run continuing to the sofa-side socket.",
+    "after-plan-route.png makes the wall-side landing, screed run and west turn readable in plan.",
+    "after-east-side-full.png has all MEP routes on screen and is supplemental context; after.png and after-plan-route.png are the primary route-reading views."
+  ],
+  "evidence_refs": [
+    "evidence/after.png",
+    "evidence/after-plan-route.png",
+    "evidence/after-east-side-full.png",
+    "evidence/after-runtime.json",
+    "evidence/after-target-focus-runtime.json"
+  ]
+}

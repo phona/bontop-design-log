@@ -1,0 +1,595 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "living-sculptural-main-light-r4-20261016",
+  "subject": "客厅主灯R4深钟形灯体与外露侧架垂吊造型",
+  "status": "incomplete",
+  "delivery_scope": "完成客厅主灯概念模型的声明式外形、浏览器/GLB共享几何和同版审图；不冻结SKU、真实光度、安装承重或施工。",
+  "source_version": {
+    "url": "http://localhost:5175/?v=20261016-r10",
+    "title": "和萃 701 - 3D 装修设计",
+    "captured_on": "2026-10-16",
+    "visual_gate": "CLEAR",
+    "ceiling": "50c1c81f9ec8",
+    "electrical": "f2b49b7bcdb3",
+    "plumbing": "7f1513d14f27",
+    "materials": "64176f576326",
+    "source_sha256": {
+      "shared/render/SculpturalDomeGeometry.ts": "cc8c157dc4d66dffa1a3c0fa9c5763e7dade81ead30eabe81a0512fd68d5c4cf",
+      "shared/render/LightingFixtureBuilder.ts": "1350b9f24f9f75b21765cee1f8b4a8ce8949f568a33f35df6d06cb2cdfb560bc",
+      "app/src/render/InteriorLightingSystem.ts": "fd98d5354d890e8fc3495099e172b72fcbd3efd69111e708e7a315128ed31047",
+      "config/render/lighting.yaml": "c26b9111f23608fa5fd7210b8f756b7fa9fce048cefde1868ba2132abc75f59b",
+      "config/render/overrides.yaml": "800e56c2f4c43393418e97140b70f92ed1a679c653e5481255766c6458402b01",
+      "shared/types.ts": "d5e023411ff1ab38ca2fc8d84f28216290e2315cc32cdab3aa65acd4e87124ef",
+      "shared/project-render-facts-schema.ts": "fbdb76dc913a96e63ab25a5038f82a4bcb3e8d70d3855d129219686046b73fe1",
+      "data/project-render-facts.json": "c0490acb055e81dc9401a58c996be88c114a91b4313ef7ef7e4c022f9f6ea04f",
+      "docs/decisions/06-electrical.md": "a5ea38601343704ef300d1c0edb9d112300b54ae4670153538f238ced37ebdf2",
+      "docs/style-guide.md": "1a056ec1bfc1ea8988edb3a8d1f34fbc05ab193462103546bf09ab9d41674f0b",
+      "schedule/procurement.md": "5af61632b818fb2c66eb36752b88791819caf8f5a4ced40e3c847c79c8ad994d",
+      "config/electrical.yaml": "36af13da088029c3066bbb0282cd2e35464731b6b6d15016a7c8c5f95d645767",
+      "config/electrical-topology.yaml": "e314e7dacba1543e4585a8c39a4279f38a18a2aa6aa47df28959efee35ba3923",
+      "config/mep-hvac-coordination.yaml": "1198752efc2443c8c10e7859a22925d2e1f4a1c95b1d4b0bbf9fdfc8080ebb4d",
+      "config/ceiling.yaml": "9ba9ba68919becbf6df64313c3d63f7f8284db741af328dff79e5d414cdba4b9",
+      "docs/design-iterations/living-sculptural-main-light-r4-20261016/fact-table.yaml": "9e62d4f1076484ba31010a6f1ccfadab3cd851a54ee13917b00e50844cae7800",
+      "docs/design-iterations/living-sculptural-main-light-r4-20261016/decision-brief.yaml": "6dbcd26e4a105340c3fe2b02d50975b875c32051a8933f739cc45f236bb5f1be",
+      "docs/design-iterations/living-sculptural-main-light-r4-20261016/design-datum.yaml": "74471c0d9c056e37a163332729a42a1640e3f1520a65987e5398ea3198c2a85e",
+      "docs/design-iterations/living-sculptural-main-light-r4-20261016/object-manifest.yaml": "7e78e05a58f5d1655e3d668fad5e23c30fc1360a61dbc3549dc04c394d05ae2b",
+      "docs/design-iterations/living-sculptural-main-light-r4-20261016/work-record.md": "e5903e31cd465a9050e4d8ee388c6e491756b344b46654a47bcce15f35a62e0d"
+    }
+  },
+  "baseline_evidence": {
+    "description": "R3同机位仰视仍以薄盘轮廓为主，吊杆端点进入锥形灯体；该失败证据保留，不用于R4 PASS。",
+    "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r3_underside_v002.png",
+    "runtime": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/underside.runtime.json",
+    "snapshot": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/underside.snapshot.txt"
+  },
+  "final_evidence": [
+    {
+      "id": "same-user-feedback-underside",
+      "ready": true,
+      "config_error_banner": "",
+      "visual_preview_active": false,
+      "is_overview": false,
+      "tooltip_hidden_for_evidence": true,
+      "camera_mode": "first-person",
+      "camera_position": [
+        10.9,
+        1.55,
+        8.1
+      ],
+      "camera_target": [
+        10.8,
+        2.53,
+        7.15
+      ],
+      "camera_direction": [
+        -0.07307060533690221,
+        0.7160919323016438,
+        -0.6941707507005729
+      ],
+      "camera_fov_deg": 55,
+      "viewport": [
+        1600,
+        1000
+      ],
+      "target_object_id": "electrical:light_living_dome",
+      "object_exists": true,
+      "runtime_dimensions": {
+        "outer_width_m": 1,
+        "outer_depth_m": 1,
+        "total_drop_m": 0.35,
+        "diffuser_top_diameter_m": 0.78,
+        "diffuser_bottom_diameter_m": 0.52,
+        "diffuser_depth_m": 0.28
+      },
+      "runtime_aabb_m": {
+        "min": [
+          10.394555255249703,
+          2.4499999994039534,
+          6.7307692328095445
+        ],
+        "max": [
+          11.205444744750299,
+          2.7999999996125697,
+          7.624537944793701
+        ]
+      },
+      "suspension_clearance_m": [
+        {
+          "endpointRadius": 0.31048349392520047,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.018626351068057604,
+          "physicalGapAfterRodRadius": 0.008626351068057604
+        },
+        {
+          "endpointRadius": 0.31048349392520047,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.018626351068057604,
+          "physicalGapAfterRodRadius": 0.008626351068057604
+        },
+        {
+          "endpointRadius": 0.31,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.01814285714285713,
+          "physicalGapAfterRodRadius": 0.00814285714285713
+        }
+      ],
+      "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r4_underside_v001.png",
+      "snapshot": "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/underside.snapshot.txt",
+      "runtime": "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/underside.runtime.json",
+      "status": "valid"
+    },
+    {
+      "id": "closeup-side-frame",
+      "ready": true,
+      "config_error_banner": "",
+      "visual_preview_active": false,
+      "is_overview": false,
+      "tooltip_hidden_for_evidence": true,
+      "camera_mode": "first-person",
+      "camera_position": [
+        11.3,
+        1.7,
+        9.5
+      ],
+      "camera_target": [
+        10.8,
+        2.55,
+        7.15
+      ],
+      "camera_direction": [
+        -0.19619160796573765,
+        0.3335257335417541,
+        -0.9221005574389667
+      ],
+      "camera_fov_deg": 50,
+      "viewport": [
+        1600,
+        1000
+      ],
+      "target_object_id": "electrical:light_living_dome",
+      "object_exists": true,
+      "runtime_dimensions": {
+        "outer_width_m": 1,
+        "outer_depth_m": 1,
+        "total_drop_m": 0.35,
+        "diffuser_top_diameter_m": 0.78,
+        "diffuser_bottom_diameter_m": 0.52,
+        "diffuser_depth_m": 0.28
+      },
+      "runtime_aabb_m": {
+        "min": [
+          10.394555255249703,
+          2.4499999994039534,
+          6.7307692328095445
+        ],
+        "max": [
+          11.205444744750299,
+          2.7999999996125697,
+          7.624537944793701
+        ]
+      },
+      "suspension_clearance_m": [
+        {
+          "endpointRadius": 0.31048349392520047,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.018626351068057604,
+          "physicalGapAfterRodRadius": 0.008626351068057604
+        },
+        {
+          "endpointRadius": 0.31048349392520047,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.018626351068057604,
+          "physicalGapAfterRodRadius": 0.008626351068057604
+        },
+        {
+          "endpointRadius": 0.31,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.01814285714285713,
+          "physicalGapAfterRodRadius": 0.00814285714285713
+        }
+      ],
+      "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r4_closeup_v001.png",
+      "snapshot": "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/closeup.snapshot.txt",
+      "runtime": "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/closeup.runtime.json",
+      "status": "valid"
+    },
+    {
+      "id": "side-elevation",
+      "ready": true,
+      "config_error_banner": "",
+      "visual_preview_active": false,
+      "is_overview": false,
+      "tooltip_hidden_for_evidence": true,
+      "camera_mode": "first-person",
+      "camera_position": [
+        8.8,
+        2.35,
+        7.15
+      ],
+      "camera_target": [
+        10.8,
+        2.55,
+        7.15
+      ],
+      "camera_direction": [
+        0.9950371902099892,
+        0.09950371902099878,
+        0
+      ],
+      "camera_fov_deg": 45,
+      "viewport": [
+        1600,
+        1000
+      ],
+      "target_object_id": "electrical:light_living_dome",
+      "object_exists": true,
+      "runtime_dimensions": {
+        "outer_width_m": 1,
+        "outer_depth_m": 1,
+        "total_drop_m": 0.35,
+        "diffuser_top_diameter_m": 0.78,
+        "diffuser_bottom_diameter_m": 0.52,
+        "diffuser_depth_m": 0.28
+      },
+      "runtime_aabb_m": {
+        "min": [
+          10.394555255249703,
+          2.4499999994039534,
+          6.7307692328095445
+        ],
+        "max": [
+          11.205444744750299,
+          2.7999999996125697,
+          7.624537944793701
+        ]
+      },
+      "suspension_clearance_m": [
+        {
+          "endpointRadius": 0.31048349392520047,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.018626351068057604,
+          "physicalGapAfterRodRadius": 0.008626351068057604
+        },
+        {
+          "endpointRadius": 0.31048349392520047,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.018626351068057604,
+          "physicalGapAfterRodRadius": 0.008626351068057604
+        },
+        {
+          "endpointRadius": 0.31,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.01814285714285713,
+          "physicalGapAfterRodRadius": 0.00814285714285713
+        }
+      ],
+      "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r4_side_view_v001.png",
+      "snapshot": "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/elevation-profile.snapshot.txt",
+      "runtime": "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/elevation-profile.runtime.json",
+      "status": "valid"
+    },
+    {
+      "id": "three-quarter-living-context",
+      "ready": true,
+      "config_error_banner": "",
+      "visual_preview_active": false,
+      "is_overview": false,
+      "tooltip_hidden_for_evidence": true,
+      "camera_mode": "first-person",
+      "camera_position": [
+        9,
+        1.7,
+        9.5
+      ],
+      "camera_target": [
+        10.9,
+        1.7,
+        5.5
+      ],
+      "camera_direction": [
+        0.4290568145682878,
+        0,
+        -0.9032775043542898
+      ],
+      "camera_fov_deg": 70,
+      "viewport": [
+        1600,
+        1000
+      ],
+      "target_object_id": "electrical:light_living_dome",
+      "object_exists": true,
+      "runtime_dimensions": {
+        "outer_width_m": 1,
+        "outer_depth_m": 1,
+        "total_drop_m": 0.35,
+        "diffuser_top_diameter_m": 0.78,
+        "diffuser_bottom_diameter_m": 0.52,
+        "diffuser_depth_m": 0.28
+      },
+      "runtime_aabb_m": {
+        "min": [
+          10.394555255249703,
+          2.4499999994039534,
+          6.7307692328095445
+        ],
+        "max": [
+          11.205444744750299,
+          2.7999999996125697,
+          7.624537944793701
+        ]
+      },
+      "suspension_clearance_m": [
+        {
+          "endpointRadius": 0.31048349392520047,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.018626351068057604,
+          "physicalGapAfterRodRadius": 0.008626351068057604
+        },
+        {
+          "endpointRadius": 0.31048349392520047,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.018626351068057604,
+          "physicalGapAfterRodRadius": 0.008626351068057604
+        },
+        {
+          "endpointRadius": 0.31,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.01814285714285713,
+          "physicalGapAfterRodRadius": 0.00814285714285713
+        }
+      ],
+      "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r4_context_v001.png",
+      "snapshot": "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/context.snapshot.txt",
+      "runtime": "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/context.runtime.json",
+      "status": "valid"
+    },
+    {
+      "id": "top-down-envelope",
+      "ready": true,
+      "config_error_banner": "",
+      "visual_preview_active": false,
+      "is_overview": false,
+      "tooltip_hidden_for_evidence": true,
+      "camera_mode": "orbit",
+      "camera_position": [
+        10.300000000000002,
+        29.999999999985,
+        6.100029999999999
+      ],
+      "camera_target": [
+        10.3,
+        0,
+        6.1
+      ],
+      "camera_direction": [
+        0,
+        -0.9999999999995001,
+        -1.0000000000287559e-06
+      ],
+      "camera_fov_deg": 45,
+      "viewport": [
+        1600,
+        1000
+      ],
+      "target_object_id": "electrical:light_living_dome",
+      "object_exists": true,
+      "runtime_dimensions": {
+        "outer_width_m": 1,
+        "outer_depth_m": 1,
+        "total_drop_m": 0.35,
+        "diffuser_top_diameter_m": 0.78,
+        "diffuser_bottom_diameter_m": 0.52,
+        "diffuser_depth_m": 0.28
+      },
+      "runtime_aabb_m": {
+        "min": [
+          10.394555255249703,
+          2.4499999994039534,
+          6.7307692328095445
+        ],
+        "max": [
+          11.205444744750299,
+          2.7999999996125697,
+          7.624537944793701
+        ]
+      },
+      "suspension_clearance_m": [
+        {
+          "endpointRadius": 0.31048349392520047,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.018626351068057604,
+          "physicalGapAfterRodRadius": 0.008626351068057604
+        },
+        {
+          "endpointRadius": 0.31048349392520047,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.018626351068057604,
+          "physicalGapAfterRodRadius": 0.008626351068057604
+        },
+        {
+          "endpointRadius": 0.31,
+          "bodyRadiusAtMount": 0.28785714285714287,
+          "housingOffset": 0.004,
+          "centerlineClearance": 0.01814285714285713,
+          "physicalGapAfterRodRadius": 0.00814285714285713
+        }
+      ],
+      "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r4_topdown_v001.png",
+      "snapshot": "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/topdown.snapshot.txt",
+      "runtime": "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/topdown.runtime.json",
+      "status": "valid"
+    }
+  ],
+  "validation": {
+    "commands": [
+      {
+        "command": "npm run generate:project-render-facts",
+        "result": "PASS",
+        "summary": "generated 15 lighting fixtures"
+      },
+      {
+        "command": "npm run typecheck",
+        "result": "PASS"
+      },
+      {
+        "command": "npm run verify:lighting-config",
+        "result": "PASS",
+        "summary": "1 detailed fixture"
+      },
+      {
+        "command": "npm run verify:all",
+        "result": "PASS",
+        "summary": "17/17 verifiers, 0 failed; warnings remain in furniture, rules, penetration, consistency, MEP, electrical, and facts summaries"
+      },
+      {
+        "command": "npm run gate:visual",
+        "result": "CLEAR",
+        "hashes": {
+          "ceiling": "50c1c81f9ec8",
+          "electrical": "f2b49b7bcdb3",
+          "plumbing": "7f1513d14f27",
+          "materials": "64176f576326"
+        }
+      }
+    ],
+    "tests_run": false,
+    "note": "没有运行测试套件。"
+  },
+  "reviewers": {
+    "aesthetic": {
+      "verdict": "PASS",
+      "blocking_issues": [],
+      "non_blocking_notes": [
+        "R4 no longer reads as a flat ceiling disk in the underside view. The 280mm deep tapered opal body, smaller lower opening, external bronze arch, and separate side supports establish a clear hanging lantern silhouette.",
+        "The single side arch reads as an external structural element rather than a handle sitting on a flat diffuser. Its attachment points and outward separation are visible in the underside, closeup, and side views.",
+        "The conical body gives the fixture a stronger vertical profile while preserving a broad 780mm upper diffuser opening and a 520mm lower opening. This creates a clear light-mid-century proportion at the approximately 1m overall scale.",
+        "The context view shows the fixture as a distinct living-room focal point above the seating zone. It remains visually independent from the dining table and does not create a table-centered composition.",
+        "The three bronze support rods and side arch introduce a mild lantern/cage character. The current version remains controlled because the structure uses one arch and limited supports, but the rods should remain thin and matte in any product interpretation.",
+        "The white tapered body is visually substantial, but the 350mm drop and open lower profile prevent it from feeling like a heavy ceiling box. The black HVAC band remains a separate linear layer beneath it."
+      ],
+      "evidence_refs": [
+        "tmp/screenshots/living-main-light/living_main_light_after_r4_underside_v001.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r4_closeup_v001.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r4_side_view_v001.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r4_context_v001.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r4_topdown_v001.png",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/underside.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/closeup.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/elevation-profile.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/context.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/topdown.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/underside.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/closeup.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/elevation-profile.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/context.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/topdown.snapshot.txt"
+      ],
+      "requested_changes": [],
+      "assumptions": [
+        "This is an aesthetic review only; actual lumen output, 3000K performance, glare, ceiling anchorage, structural capacity, and maintenance access remain separate functional or construction checks.",
+        "The five runtime records are same-version R10 evidence with ready=true, empty error banners, visualPreviewActive=false, and target electrical:light_living_dome.",
+        "The approximately 1m overall envelope, living-zone anchor, and dining-table position remain unchanged.",
+        "R4 dimensions are treated as a design proposal for visual review, not as individually user-frozen product dimensions."
+      ]
+    },
+    "functional": {
+      "verdict": "PASS",
+      "blocking_issues": [],
+      "non_blocking_notes": [
+        "R4 runtime 全部来自同一版本 ?v=20261016-r10，ready=true、errorBanner为空、visualPreviewActive=false，目标对象均为 electrical:light_living_dome；本次复核未引用R3/R8几何结论。",
+        "当前R4实际声明为上口直径0.78m、下口直径0.52m、灯体深度0.28m、总下垂0.35m；这与历史R3的上口0.90m、下口0.72m、深度0.20m不同，应以R4 runtime为准。",
+        "运行时AABB为 x[10.3946,11.2054]、y[2.45,2.80]、z[6.7308,7.6245]，实际包络约0.811×0.350×0.894m，处于1.0×1.0×0.35m声明包络内。",
+        "三根吊杆的运行时 supportClearance 均为正：扣除杆半径后的实体间隙约8.14–8.63mm，说明吊杆中心线和杆体均位于外壳外侧，没有穿入灯体的几何证据。",
+        "R4的灯体由上口直径0.78m收至下口0.52m；侧向乳白壳体增加了出光侧面积，但底部正投影发光面相对此前盘面明显减少。真实光通量、配光、眩光、U0、Ra和3000K实际输出仍不能由渲染证明。",
+        "arc-foot 与弧线使用同一侧向安装位置，runtime parts 中明确存在 arch-foot-west/east；schema 同时检查弧脚能到达壳体周边。近景、仰视和侧视截图未见明显悬空或弧脚脱离壳体。",
+        "1m水平包络下，弧线的arcOffset、arcDepthExtension和管径仍受schema限制；当前运行AABB没有触及水平边界。",
+        "浏览器与GLB/export继续共用 shared/render/SculpturalDomeGeometry.ts；当前R4部件列表包含同一套 diffuser、housing、canopy、arc、arc-foot和suspension-rod。",
+        "light_living_dome的电气锚点、living_base回路、双控关系和strong-light-living路由保持不变；造型下沉没有被写成电气点位或MEP路线迁移。",
+        "当前灯具中心和1m包络仍位于客厅原顶平顶区域，远离ceiling_living北缘HVAC设备带；模型没有显示与设备带或既有送回风口直接重叠。气流扰动、灯体侧壳对出风/回风的实际影响仍待厂家图和现场确认。"
+      ],
+      "evidence_refs": [
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/underside.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/closeup.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/elevation-profile.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/context.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/topdown.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/underside.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/closeup.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/elevation-profile.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/context.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/topdown.snapshot.txt",
+        "tmp/screenshots/living-main-light/living_main_light_after_r4_underside_v001.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r4_closeup_v001.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r4_side_view_v001.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r4_context_v001.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r4_topdown_v001.png",
+        "shared/render/SculpturalDomeGeometry.ts",
+        "config/render/lighting.yaml",
+        "shared/project-render-facts-schema.ts",
+        "config/electrical.yaml",
+        "config/electrical-topology.yaml",
+        "config/mep-hvac-coordination.yaml",
+        "config/ceiling.yaml"
+      ],
+      "requested_changes": [],
+      "assumptions": [
+        "R4 runtime AABB与supportClearance是当前几何验证依据；未将旧R3/R8截图或结论混入本次判断。",
+        "功能PASS仅表示当前概念几何、接口保持、包络和静态层位有证据；不代表渲染可以替代承重、安装、气流或光度证明。",
+        "侧架、弧脚、canopy和三根吊杆的实际固定方式、灯具重量、顶板/梁位和厂家安装件仍属site_pending。",
+        "候选SKU需提供3000K、Ra、光通量、配光、眩光、驱动/LED板更换和漫射盘拆装资料；R4底面发光面积缩小后尤其需要重新核对宽面出光和照度目标。",
+        "实际安装前仍需复尺主灯周边HVAC、梁、检修空间及灯具与家具的视线关系；当前判断基于现有模型坐标。"
+      ]
+    }
+  },
+  "substantive_content_audit": {
+    "replaced": [
+      "R3当前模型比例Ø900/720mm、深200mm被R4的Ø780/520mm、深280mm替换。",
+      "R3杆端隐入灯壳的路径被外置支撑和短径向连接脚替换；schema从“杆端在上口半径内”改为外壳净距/包络约束。",
+      "侧弧跨度0.72m改为0.48m，脚径0.06m改为0.04m。"
+    ],
+    "reversed": [
+      "R3“仅靠350mm总下垂与Ø900/720mm浅钟形比例即可读成吊灯”判定撤回，因为同机位图仍像浅盘。",
+      "R3“杆配置为外置即可形成可见支撑”判定撤回，因为运行时杆端半径0.38m小于该高度的壳体半径约0.387m。"
+    ],
+    "preserved": "R1/R2/R3历史截图、DEC、候选商品、价格口径、光度冲突、轨道淘汰证据、电气/家具/HVAC配置均保留。",
+    "silent_failure_conditions": [
+      "若未来端点回到灯壳内，或构建器不再按同一半径剖面计算，杆会重新被遮挡；R4 schema 检查外壳/支撑净距与总包络。",
+      "若浏览器和GLB/export改走不同几何，导出与审图可能静默分叉；两者当前共用 SculpturalDomeGeometry.ts。",
+      "渲染不验证真实灯具侧壁透光、总光通量、配光、承重、风口气流、安装和维修路径。"
+    ]
+  },
+  "delivery": {
+    "model_scope_complete": true,
+    "delivery_ready": false,
+    "blocking_open_questions": [
+      {
+        "id": "pending-installation",
+        "owner": "业主+量房/施工方+电工+灯具供应商",
+        "trigger": "SKU冻结/安装图确认前",
+        "question": "核实梁/顶板固定、灯重、吊杆/弧脚连接、风口射流、维修与最低净高。"
+      },
+      {
+        "id": "pending-photometry",
+        "owner": "业主+照明设计+灯具供应商",
+        "trigger": "SKU比选/下单前",
+        "question": "统一流明口径并拿到3000K、Ra≥90与IES/LDT等配光数据，复核宽面配光、照度、U0和眩光。"
+      }
+    ],
+    "reason": "R4模型审美和功能双PASS；商品与现场施工条件仍未验证，故不标记delivery_ready。"
+  }
+}

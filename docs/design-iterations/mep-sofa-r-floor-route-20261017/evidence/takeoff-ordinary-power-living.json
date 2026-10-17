@@ -1,0 +1,65 @@
+{
+  "source": "shared/mep-takeoff.ts computeMepTakeoff; current electrical/topology/rules and all routes held constant except sofa-r route geometry",
+  "circuit_id": "ordinary_power_living",
+  "baseline_route": {
+    "points": [
+      {
+        "x": 11,
+        "z": 9.65,
+        "y": 2.7
+      },
+      {
+        "x": 11,
+        "z": 9.65,
+        "y": 0.02
+      },
+      {
+        "x": 11,
+        "z": 9.35,
+        "y": 0.02
+      }
+    ],
+    "route_length_3d_m": 2.980000000000001
+  },
+  "current_route": {
+    "points": [
+      {
+        "x": 13.4,
+        "z": 3.6,
+        "y": 1.65
+      },
+      {
+        "x": 13.34,
+        "z": 3.6,
+        "y": 1.65
+      },
+      {
+        "x": 13.34,
+        "z": 3.6,
+        "y": 0.02
+      },
+      {
+        "x": 13.34,
+        "z": 9.35,
+        "y": 0.02
+      },
+      {
+        "x": 11,
+        "z": 9.35,
+        "y": 0.02
+      }
+    ],
+    "route_length_3d_m": 9.780000000000001
+  },
+  "by_circuit_union": {
+    "baseline_conduit_m": 24.650000000000002,
+    "current_conduit_m": 31.85,
+    "delta_conduit_m": 7.199999999999999,
+    "baseline_wire_m": 77.64750000000001,
+    "current_wire_m": 100.32750000000001,
+    "delta_wire_m": 22.680000000000007,
+    "wire_size_mm2": "2.5",
+    "cores": 3
+  },
+  "note": "The route 3D length and by-circuit takeoff union are different measures. The takeoff union is computed from the declared plan paths and existing same-circuit paths; verify this figure again after site dimensions and route elevation are frozen."
+}

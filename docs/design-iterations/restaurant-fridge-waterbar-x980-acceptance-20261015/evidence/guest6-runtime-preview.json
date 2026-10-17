@@ -1,0 +1,104 @@
+{
+  "schema": "interior-design-runtime-guest-preview/v1",
+  "iteration_id": "restaurant-fridge-waterbar-x980-acceptance-20261015",
+  "captured_at": "2026-10-15T23:11:03+08:00",
+  "owner_decision": {
+    "daily_seats": 4,
+    "temporary_guest_seats": 6,
+    "accepted_reply": "那就先这样定稿吧",
+    "temporary_group_move_m": {"x": 0, "z": 0.32},
+    "daily_table_position_remains_m": [9.8, 3.45]
+  },
+  "browser": {
+    "wrapper": "/home/tao/.local/bin/agent-browser",
+    "version": "0.36.0",
+    "session": "bontop-guest-expansion-20261015",
+    "url": "http://127.0.0.1:5175/",
+    "title": "和萃 701 - 3D 装修设计",
+    "ready_signal": "window.__APP__.isReady()",
+    "ready": true,
+    "config_error_banner": "",
+    "viewport_px": [1600, 1000],
+    "fov_deg": 55,
+    "camera_mode": "orbit",
+    "formal_config_modified": false,
+    "formal_fixture_modified": false,
+    "render_gate_before_preview": "CLEAR",
+    "render_gate_after_restore": "CLEAR",
+    "final_restore_verification": {
+      "verified_at": "2026-10-15T23:26:15+08:00",
+      "url": "http://127.0.0.1:5176/",
+      "title": "和萃 701 - 3D 装修设计",
+      "app_ready": true,
+      "formal_positions": {
+        "dining_table": [7.9, 0, 3.45],
+        "fridge": [10.94, 0, 3.48],
+        "entry_half_height_cabinet": [11.5, 0, 4]
+      },
+      "temporary_guest_chairs_present": false,
+      "result": "formal scene restored; no project config or fixture source was modified"
+    },
+    "final_visual_gate": {
+      "status": "CLEAR",
+      "api_origin": "http://127.0.0.1:4100",
+      "digests": {"ceiling": "50c1c81f9ec8", "electrical": "be159cfd0c4c", "plumbing": "7f1513d14f27", "materials": "64176f576326"}
+    }
+  },
+  "geometry": {
+    "table": {"objectId": "furniture:living_dining:dining_table:8", "position_m": [9.8, 0, 3.77], "rotation_y_deg": 90, "dimensions_m": [1.4, 0.8], "aabb_m": {"x": [9.4, 10.2], "z": [3.07, 4.47]}},
+    "daily_four_side_chairs_shifted_with_table": [
+      {"objectId": "furniture:living_dining:dining_chair:9", "position_m": [9.125, 0, 3.32], "rotation_y_deg": 90, "aabb_m": {"x": [8.9, 9.35], "z": [3.095, 3.545]}},
+      {"objectId": "furniture:living_dining:dining_chair:10", "position_m": [10.475, 0, 3.32], "rotation_y_deg": 270, "aabb_m": {"x": [10.25, 10.7], "z": [3.095, 3.545]}},
+      {"objectId": "furniture:living_dining:dining_chair:11", "position_m": [9.125, 0, 4.22], "rotation_y_deg": 90, "aabb_m": {"x": [8.9, 9.35], "z": [3.995, 4.445]}},
+      {"objectId": "furniture:living_dining:dining_chair:12", "position_m": [10.475, 0, 4.22], "rotation_y_deg": 270, "aabb_m": {"x": [10.25, 10.7], "z": [3.995, 4.445]}}
+    ],
+    "temporary_head_chairs": [
+      {"objectId": "view-only:guest-chair-north", "position_m": [9.8, 0, 2.795], "rotation_y_deg": 0, "aabb_m": {"x": [9.575, 10.025], "z": [2.57, 3.02]}},
+      {"objectId": "view-only:guest-chair-south", "position_m": [9.8, 0, 4.745], "rotation_y_deg": 180, "aabb_m": {"x": [9.575, 10.025], "z": [4.52, 4.97]}}
+    ],
+    "fridge": {"objectId": "furniture:living_dining:fridge:13", "position_m": [7.5025, 0, 2.9865], "rotation_y_deg": 270, "front": "+x east", "aabb_m": {"x": [7.203, 7.802], "y": [0, 1.91], "z": [2.567, 3.406]}},
+    "dry_bar": {"objectId": "view-only:dry-waterbar-x980", "aabb_m": {"x": [7.2, 7.85], "y": [0, 1.225], "z": [3.443, 4.293]}},
+    "entry_cabinet_proxy": {"objectId": "view-only:entry-cabinet-1420-north700", "aabb_m": {"x": [11.3035, 11.6965], "y": [0, 1.42], "z": [2.98, 5.02]}}
+  },
+  "adjacent_wall_runtime": {
+    "objectIds": ["w_gbath_east", "w_gbath_east_open_vanity"],
+    "aabbs_m": [
+      {"id": "w_gbath_east", "x": [7.04, 7.16], "y": [0, 2.8], "z": [2.2, 3.55]},
+      {"id": "w_gbath_east_open_vanity", "x": [7.04, 7.16], "y": [0, 2.8], "z": [3.55, 4.3]}
+    ],
+    "visibility": "visible; not suppressed",
+    "fridge_back_to_wall_face_mm": 43,
+    "bar_body_back_to_wall_face_mm": 90,
+    "countertop_back_to_wall_face_mm": 40,
+    "interpretation": "x=7.20 is an open room-edge coordinate, not a wall. A real guest-bath wall's east face is x=7.16. The service items are not facing a broad open corridor, but the 40–90mm gaps do not prove ventilation, safety cover, cleaning or service adequacy."
+  },
+  "kitchen_entry_clearance": {
+    "slider_open_panel_aabbs_ref": "evidence/runtime-candidate-v2.json#sliding_door_runtime_aabbs_from_existing_preview_manifest_m.open",
+    "highest_slider_panel_south_edge_z_m": 2.52,
+    "north_guest_chair_north_edge_z_m": 2.57,
+    "static_z_gap_mm": 50,
+    "fridge_door_sweep_assumption_x_m": [7.802, 8.402],
+    "fridge_door_sweep_assumption_status": "600mm; not manufacturer verified",
+    "north_guest_chair_west_edge_x_m": 9.575,
+    "clear_x_gap_from_assumed_open_fridge_door_to_head_chair_mm": 1173,
+    "interpretation": "No modeled AABB intersection; an approximately1.17m lateral gap remains between the assumed open fridge door and north guest chair. This is not an occupied-human/door-handle simultaneous-use guarantee."
+  },
+  "camera_views": {
+    "kitchen_to_dining": {"position_m": [9.0, 1.6, 1.45], "target_m": [9.5, 0.95, 4.35], "fov_deg": 55, "is_overview": false, "snapshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/snapshot-guest6-kitchen.txt", "screenshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-kitchen-to-dining.png"},
+    "entry_axis": {"position_m": [12.3, 1.6, 2.05], "target_m": [12.3, 0.95, 7.2], "fov_deg": 55, "is_overview": false, "snapshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/snapshot-guest6-entry.txt", "screenshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-entry.png"},
+    "service_wall": {"position_m": [9.25, 1.6, 5.1], "target_m": [7.5, 0.95, 3.4], "fov_deg": 55, "is_overview": false, "snapshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/snapshot-guest6-service-wall.txt", "screenshot": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-service-wall.png"}
+  },
+  "formal_scene_restore": {
+    "status": "PASS",
+    "verified_at": "2026-10-15T23:26:15+08:00",
+    "formal_furniture_positions_m": {"table": [7.9, 0, 3.45], "fridge": [10.94, 0, 3.48], "cabinet": [11.5, 0, 4]},
+    "temporary_guest_chairs_present": false,
+    "view_only_objects_expected_to_disappear": ["view-only:guest-chair-north", "view-only:guest-chair-south", "view-only:dry-waterbar-x980", "view-only:entry-cabinet-1420-north700"]
+  },
+  "limitations": [
+    "The 6-person mode is a temporary browser transform; formal furniture positions remain unchanged.",
+    "The new 3D screenshots are view-only proxies and not final material, cabinet shop drawings, or a formal model update.",
+    "The refrigerator is a generic Three.js model; 43mm to the adjacent wall and the assumed 600mm door swing do not substitute for manufacturer installation data.",
+    "The six-seat scenario has not been reviewed for occupied human posture, door handles, bar use, cabinet door operation, fixed light/outlet alignment, or safe moving procedure."
+  ]
+}

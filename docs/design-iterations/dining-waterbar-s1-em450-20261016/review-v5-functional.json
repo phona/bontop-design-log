@@ -1,0 +1,68 @@
+{
+  "verdict": "BLOCKED",
+  "blocking_issues": [
+    {
+      "object": "S1 / EM450 waterbar operation and maintenance",
+      "fact": "V5 confirms the same placement, countertop contact, outer envelope, and 94mm static gap as V4. S1 refill, cup placement, drip-tray cleaning, tank removal, EM450 operation/steam-wand clearance, heat dissipation, and simultaneous-use space remain unverified. S1 remains 14mm from the cabinet north edge; EM450 rear model margin remains about 7.5mm.",
+      "evidence": [
+        "evidence/runtime-query-s1-form-v5.json#objects",
+        "evidence/runtime-query-s1-form-v5.json#relationships",
+        "fact-table.yaml#I-APPLIANCE-GAP",
+        "object-manifest.yaml#S1",
+        "object-manifest.yaml#EM450"
+      ],
+      "required_change": "按最终SKU说明书或实机补做操作、补水、清洁、拆卸、散热和维护包络验证。"
+    },
+    {
+      "object": "Dining power and wall-control interfaces",
+      "fact": "V5 does not move the cabinet, S1, EM450, or wall-control band. Accessible grounded outlets, circuit capacity, simultaneous load, protection, and wall-control reachability remain unresolved.",
+      "evidence": [
+        "fact-table.yaml#S-DINING-POWER",
+        "fact-table.yaml#S-WALL-CONTROL-ACCESS",
+        "evidence/runtime-query-s1-form-v5.json#objects"
+      ],
+      "required_change": "按实际面板、柜体剖面、设备铭牌和回路资料验证墙控与供电。"
+    },
+    {
+      "object": "RO under-sink preview",
+      "fact": "V5 only changes S1. The RO internal cabinet cavity, partitions, trap, feed/drain, power, faucet, and filter/device extraction path remain unverified.",
+      "evidence": [
+        "fact-table.yaml#S-RO-INTERNAL-FIT",
+        "fact-table.yaml#S-RO-INTERFACES",
+        "object-manifest.yaml#furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9"
+      ],
+      "required_change": "按最终RO SKU和水槽柜实测内腔建立维护剖面并确认全部接口。"
+    }
+  ],
+  "non_blocking_notes": [
+    "V5 runtime确认ready=true、configErrorBanner为空，S1 AABB为0.106×0.280×0.312m，底面仍与0.85m台面接触，EM450静态间距仍为0.094m。",
+    "水位标识local z范围[-0.006,-0.004]m，水箱壳体范围[-0.053,-0.006]m；指标贴在壳体东/前表面并向局部+z凸出2mm。局部+z映射世界东侧，所以没有发现它位于西侧或新增遮挡。",
+    "V5没有新增静态AABB碰撞；水箱壳体、盖板、水位标识和东侧出水结构仍是程序化外观代理，不能证明真实流路、容量、排水或维修路径。",
+    "V5 runtime、close/overview snapshots、截图哈希和sourceDigest已登记到review-manifest；被墙体完全遮挡的west-camera试拍单独标为invalid，不作为当前模型证据。",
+    "V5 test-server结果含既有worktree失败，没有报告S1几何本身失败；verify:all最新结果16/17，唯一失败是另一份电气决策文档的重复DEC编号。"
+  ],
+  "evidence_refs": [
+    "evidence/runtime-query-s1-form-v5.json",
+    "evidence/s1-form-v5-close.png",
+    "evidence/s1-form-v5-close.snapshot.txt",
+    "evidence/s1-form-v5-overview.png",
+    "evidence/s1-form-v5-overview.snapshot.txt",
+    "fact-table.yaml",
+    "object-manifest.yaml"
+  ],
+  "requested_changes": [
+    "继续核验S1/EM450现场操作、维护、清洁、散热、供电和墙控。",
+    "继续核验RO柜内有效空间、给排水、电源、独立龙头和滤芯维护路径。"
+  ],
+  "assumptions": [
+    "V5 runtime AABB和静态间距可以作为预演几何事实，但不能替代SKU功能净空。",
+    "水位标识的东侧定位依据runtime directionalPartRangesLocalM和坐标映射确认；其真实产品结构仍未核验。",
+    "新增水箱壳体、顶盖、出水仓和接水盘仍是程序化外观代理。",
+    "RO contained结果不代表柜内安装通过。"
+  ],
+  "substantive_review": {
+    "deleted": "V4当前几何中的通用右侧主机身、横向分置凹腔及70mm深接水盘表达被V5形体替换；V1–V4历史文件全部保留。",
+    "overturned": "V4的当前空间语义由左出水腔/右主机身改为东侧前出水区/西侧后置水箱区；对象中心、朝向、外廓、台面接触、静态间距结论未被推翻。",
+    "silent_failure_conditions": "真实SKU水箱不在西侧、顶盖拆取方向不同、出水仓/水位标识朝向不同、接水盘深度/容量/拆洗方式不符，或后续改变旋转却沿用V5证据。"
+  }
+}

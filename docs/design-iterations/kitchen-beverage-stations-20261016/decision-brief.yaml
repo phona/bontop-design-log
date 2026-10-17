@@ -1,0 +1,132 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: kitchen-beverage-stations-20261016
+subject: 厨房EM450咖啡机与餐厅米家茶吧机分区预演
+priority:
+  user_goal: 将意式咖啡机留在厨房，把独立饮水/茶吧机放回餐厅水吧候选区，查看两台设备的正式模型关系。
+  ranked:
+    - 厨房 EM450 与餐厅饮水机分区，既有家具/建筑位置不变
+    - 饮水机使用业主给定310×315×1155mm实物尺寸
+    - 仅落饮水机本体，不把水吧柜体或电气接口假装已定
+  non_negotiables:
+    - 不移动冰箱、餐桌、餐椅、半高柜、厨房柜体、门洞、墙体、玻璃或吊顶
+    - 不新增墙控迁移、插座、回路、给排水或固定柜体
+    - 将设备位置标为预演候选，不当作施工定位
+  tradeoffs_accepted:
+    - 饮水机先作为独立落地设备；水吧收纳柜和插座还要另外深化
+frozen: true
+freeze_record:
+  alignment_id: chat-2026-10-16-tea-dispenser-in-model
+  original_user_response: "饮水机呢？"
+  normalized_decisions:
+    - "在已授权的正式模型预演中补入米家茶吧机Pro，沿用用户此前给定的外形尺寸。"
+    - "使用西侧水吧候选区北段的独立落地位；位置暂为(7.38,3.72)，供业主看图调整。"
+    - "不新增水吧柜体或假设插座/控制面板已解决。"
+  confirmed_by_user: true
+  confirmed_at: 2026-10-16
+  evidence_refs:
+    - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/design-datum.yaml#west-dry-bar
+    - docs/design-iterations/kitchen-beverage-stations-20261016/fact-table.yaml
+allowed_scope:
+  files:
+    - config/house.yaml
+    - shared/types.ts
+    - shared/render/FixtureFactory.ts
+    - config/spatial-validation.yaml
+    - docs/decisions/02-layout-public.md
+    - docs/decisions/README.md
+    - docs/design-iterations/kitchen-beverage-stations-20261016/
+    - docs/dressing-map.md (generated from declared sources)
+  objects:
+    - furniture:living_dining:mijia_tea_bar_pro
+    - furniture:living_dining:fridge:13 (existing; read-only)
+    - furniture:kitchen:coffee_machine_em450:9 (existing; read-only)
+  archetypes: [freestanding_appliance, beverage_station]
+  views: [plan, perspective]
+  changes:
+    - 程序化添加米家茶吧机Pro立式机身，按用户三围控制包络
+    - 在living_dining新增独立落地设备预演对象
+    - 登记freestanding空间校验角色
+forbidden:
+  files:
+    - config/layout/model-geometry.yaml
+    - config/layout/overlay.yaml
+    - config/electrical.yaml
+    - config/electrical-topology.yaml
+    - config/plumbing.yaml
+    - config/ceiling.yaml
+  objects:
+    - fridge
+    - dining_table
+    - dining_chair
+    - entry_half_height_cabinet
+    - kitchen_cabinet_run
+    - kitchen_countertop_bridge
+    - wall controls and all architecture
+  assumptions:
+    - 不将预演AABB净距等同厂家散热/检修距离
+    - 不把现有墙控点附近自动解释成饮水机插座
+    - 不把view-only水吧柜代理当作正式柜体
+  out_of_scope_changes:
+    - 水吧低柜、台面、抽屉和储物结构
+    - 墙控、空调面板、冰箱插座、电气回路或给排水修改
+    - 购买决策、价格、安装和施工定位
+open_questions:
+  - id: OQ-TEA-POWER
+    category: mep
+    question: 饮水机实际额定功率、插头/插座可及位置和回路负荷待实物铭牌与电气深化确认。
+    fact_refs: [S-TEA-POWER]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+  - id: OQ-TEA-CONTROLS
+    category: maintenance
+    question: 设备本体到既有墙控最近约107mm平面距离；须核对开关面板外廓和手指操作空间。
+    fact_refs: [I-TEA-LOCATION, S-WALL-CONTROLS]
+    options: []
+    selected: null
+    user_response: null
+    status: open
+  - id: OQ-TEA-WATERBAR-CABINET
+    category: construction
+    question: 这次只加入落地设备，水吧柜/储物仍未定；若后续增加下柜，须为北端机器位及南端墙控检修留开口。
+    fact_refs: [F-OLD-WATERBAR-PREVIEW]
+    options: []
+    selected: null
+    user_response: null
+    status: open
+alignment:
+  records:
+    - id: chat-2026-10-16-tea-dispenser-in-model
+      user_response: "饮水机呢？"
+      normalized_decision: "补入此前指定的米家茶吧机Pro尺寸，在餐厅西侧水吧候选区做独立落地预演。"
+      fact_refs: [F-TEA-DIMS, F-OLD-WATERBAR-PREVIEW]
+      status: frozen_for_preview
+  unresolved:
+    - 实际插座、电源负荷和墙控外廓
+    - 水吧柜体是否分段以及设备维护路径
+    - 实物SKU说明书中的上方补水和侧后维修净空
+  re_alignment_required: false
+acceptance:
+  validation_commands:
+    - npm run verify:furniture
+    - npm run verify:all
+    - npm run typecheck
+    - npm run gate:visual
+  browser_evidence_required: true
+  required_views:
+    - 餐厅看向西墙，展示饮水机与冰箱、餐桌关系
+    - 饮水机近景，核对尺度、墙控关系和站立位置
+    - 俯视局部，核对冰箱间距与现有水吧候选范围
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: pending
+  blocking_issues:
+    - 插座、铭牌功率、墙控可及性、水吧柜体和厂家净空未闭合
+  done_when:
+    - Three.js运行时对象存在，尺寸约310×315×1155mm
+    - 冰箱、餐桌及既有建筑物坐标保持不变
+    - 固定机位截图和运行时对象查询绑定当前源版本
+    - 审美与功能评审均针对同一版图证据完成
+  delivery_notes_required: true

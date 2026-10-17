@@ -1,0 +1,180 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: dining-waterbar-s1-em450-20261016
+subject: 餐厅水吧并置米家S1与德龙EM450，厨房水槽柜内放RO机身的真实模型预演
+priority:
+  user_goal: 按业主给定的设备尺寸，把台式即热饮水机与同一台EM450并置到餐厅水吧，在真实Three.js模型中查看效果；1400G净水器机身预演放在厨房水槽柜下。
+  ranked:
+    - 遵从业主最新指向表达东侧前出水、西侧后置水箱；保留312×106×280mm外廓、中心、rotationY=90°与台面接触，水箱内部结构仍不作真实性承诺
+    - 保留S1高位开放出水仓、圆角主机身/水位标识、柔圆全宽机头和带栅格接水盘等可见细节
+    - 保持冰箱、800mm水吧柜候选位、餐桌、玄关半高柜、吊顶、墙体、门洞和玻璃门的现有位置
+    - 同一台EM450从厨房移至餐厅，不复制设备
+    - 按业主尺寸建模米家S1及RO净水器机身
+    - 保持设备、家具与基础设施松耦合，不新增跨房间供水或设备包覆
+    - 用真实运行时外包络和固定视角确认空间关系
+  non_negotiables:
+    - 不移动冰箱、餐桌、玄关半高柜、吊顶、门洞、墙体和玻璃门
+    - 不增加冰箱侧板或通顶柜
+    - 不新增餐厅给排水、插座、回路或墙控迁改
+    - 不把家具柜壳AABB包含关系当成RO机身实际安装通过
+    - 不把候选低柜尺寸、设备外观代理或设备SKU写成施工定稿/采购结论
+    - 不把V5西侧水箱壳体解释为厂家真实水箱容积、盖板拆取方向或维护结构
+  tradeoffs_accepted:
+    - 本轮水吧低柜以800W×420D×850H mm作为视觉预演代理，尺寸尚未由业主确认
+    - RO图片中独立出水龙头本轮不建模，因缺准确SKU外廓与点位
+    - 磨豆机没有SKU/尺寸，不建模；本轮只看EM450机身与S1的并置
+frozen: true
+freeze_record:
+  alignment_id: chat-2026-10-16-waterbar-s1-em450-under-sink-preview
+  original_user_response: "那就调整模型吧；S1尺寸312×106×280mm，1400G净水器机身尺寸163×445×379mm。随后确认净水器机身放厨下、同一台EM450移到水吧。"
+  normalized_decisions:
+    - 餐厅预演放入用户给定尺寸的米家S1，并把既有同一台EM450从厨房移到水吧，不新增第二台。
+    - 1400G净水器机身按用户给定尺寸放在厨房水槽地柜内预演。
+    - 冰箱、餐桌、水吧柜候选、玄关半高柜及建筑/吊顶对象保持现有位置。
+    - 800×420×850mm水吧低柜只作为当前效果图代理，最终柜体尺寸待业主看图确认。
+    - 不修改电气、给排水或墙控配置；设备安装和使用条件继续待现场/机电核验。
+  confirmed_by_user: true
+  confirmed_at: 2026-10-16
+  evidence_refs:
+    - conversation:2026-10-16-waterbar-appliance-placement
+    - docs/design-iterations/dining-waterbar-s1-em450-20261016/fact-table.yaml
+allowed_scope:
+  files:
+    - config/house.yaml
+    - shared/types.ts
+    - shared/render/FixtureFactory.ts
+    - config/spatial-validation.yaml
+    - config/anti-penetration.yaml
+    - scripts/verify/placement/verify-furniture-placement.ts
+    - docs/dressing-map.md (generated from declared sources)
+    - docs/decisions/02-layout-public.md
+    - docs/decisions/README.md
+    - docs/design-iterations/dining-waterbar-s1-em450-20261016/
+  objects:
+    - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+    - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+    - furniture:living_dining:coffee_machine_em450:16
+    - furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+    - furniture:living_dining:fridge:13 (read-only)
+    - furniture:living_dining:dining_table:8 (read-only)
+    - furniture:living_dining:entry_half_height_cabinet:7 (read-only)
+  archetypes: [freestanding_appliance, movable_cabinet, under_sink_appliance]
+  views: [perspective, plan]
+  changes:
+    - 把米家S1、同一台EM450放在既有水吧带候选低柜台面上，程序化外廓按业主尺寸表达。
+    - 把米家1400G净水器机身作为柜内包络对象，放在厨房水槽柜组东侧相邻格。
+    - 删除当前餐厅已放置的立式茶吧机与旧390×400×920mm低边柜候选；替换为800×420×850mm水吧柜几何代理。
+    - 把EM450的唯一放置实例从厨房移到餐厅，不复制。
+    - 按业主“出水口朝东，水箱朝西”将S1几何部件从局部宽轴分排改为沿局部深度前后分层；外廓、位置和rotation不变。
+forbidden:
+  files:
+    - config/layout/model-geometry.yaml
+    - config/layout/overlay.yaml
+    - config/electrical.yaml
+    - config/electrical-topology.yaml
+    - config/plumbing.yaml
+    - config/ceiling.yaml
+    - config/hvac.yaml
+  objects:
+    - 冰箱、餐桌、餐椅、玄关半高柜、吊顶、墙体、门洞、玻璃门、墙控和既有机电点位
+  assumptions:
+    - 不将水吧柜代理尺寸解释为业主确认的家具尺寸或施工尺寸
+    - 不将RO机身位于简化柜壳AABB内解释为隔板/存水弯/滤芯维护已通过
+    - 不将没有建模的独立净水龙头、电源、磨豆机或设备操作空间解释为已经落实
+    - 不将静态冰箱与水吧间距解释为冰箱门、抽屉、取水和站人动态净距
+  out_of_scope_changes:
+    - 新增餐厅专用回路/插座或迁移墙控
+    - 新增餐厅供水、排水、管线机或跨房间RO水路
+    - 确认水吧定制柜施工尺寸或内部结构
+    - 确认RO产品完整SKU、出水龙头型号、滤芯维护空间或采购价格
+    - 建模磨豆机、粉锤、压粉区及完整咖啡工作流
+open_questions:
+  - id: OQ-CABINET-DIMENSIONS
+    category: preference
+    question: 800×420×850mm候选低柜的外形比例与材质方向看图是否接受？
+    fact_refs: [I-CABINET-PREVIEW-DATUM]
+    options: []
+    selected: null
+    user_response: null
+    status: open
+  - id: OQ-DINING-POWER
+    category: mep
+    question: S1与EM450的中国SKU铭牌功率、同时使用负荷及餐厅可及接地插座/回路尚未落实。
+    fact_refs: [S-DINING-POWER]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+  - id: OQ-WALL-CONTROL-ACCESS
+    category: function
+    question: 水吧柜体z范围与既有墙控带重叠；实际面板外廓及从柜前伸手操作尚未验证。
+    fact_refs: [S-WALL-CONTROL-ACCESS]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+  - id: OQ-RO-CABINET-INTERNALS
+    category: maintenance
+    question: 水槽柜内部隔板、下水器/存水弯、滤芯或滤瓶抽取、进排水、电源与独立出水龙头点位尚未建立真实净空。
+    fact_refs: [S-RO-INTERNAL-FIT]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+alignment:
+  records:
+    - id: chat-2026-10-16-waterbar-appliance-placement
+      user_response: "净水器机身放厨下；同一台EM450移到水吧。"
+      normalized_decision: "RO机身按给定外廓置于水槽柜下；餐厅水吧并置S1与原EM450，不增加第二台。"
+      fact_refs: [F-RO-DIMS-USER, F-S1-DIMS-USER, F-EM450-DIMS-USER]
+      status: frozen_for_visual_preview
+    - id: chat-2026-10-16-s1-reference-shape-correction
+      user_response: "建模不对，偏离效果图了。"
+      normalized_decision: "S1可见轮廓按最新参考图改为左侧偏置出水凹腔、右侧连续主机身/水位窗和跨宽上盖；保留312×106×280mm尺寸、中心、正面朝东与台面位置。"
+      fact_refs: [F-S1-DIMS-USER, F-S1-SHAPE-V3]
+      status: frozen_for_visual_preview
+    - id: chat-2026-10-16-s1-v4-visual-feedback
+      user_response: "哦，我填错了，mijia_instant_dispenser_s1_preview，这个才对吧；那为什么这个模型那么奇怪？"
+      normalized_decision: "继续修正S1外观代理：打开较高的左侧出水仓至接水盘，移除不准确的下方面板/方块标记，做出更厚的栅格接水盘、贴合机身的圆头水位窗和柔圆外壳；保留312×106×280mm包络、中心、朝向和台面位置。"
+      fact_refs: [F-S1-DIMS-USER, F-RUNTIME-S1, I-S1-SHAPE-V4]
+      status: frozen_for_visual_preview
+    - id: chat-2026-10-16-s1-v5-east-west-direction
+      user_response: "出水口朝东，水箱朝西。"
+      normalized_decision: "保留S1父级rotationY=90°，将局部+z设为东侧前出水区、局部-z设为西侧后水箱区；以程序化几何表达方向，不推断水箱内部或拆取结构。"
+      fact_refs: [F-S1-DIMS-USER, F-RUNTIME-S1, U-S1-V5-DIRECTION, I-S1-SHAPE-V5]
+      status: frozen_for_visual_preview
+  unresolved:
+    - 水吧柜候选外廓/颜色是否接受
+    - 两台餐厅电器的插座、回路负荷及墙控操作可达性
+    - RO柜内真实净空、排水方式、滤芯维护及独立净水龙头
+    - 磨豆机SKU和完整咖啡工作流程
+  re_alignment_required: false
+acceptance:
+  validation_commands:
+    - npm run verify:furniture
+    - npm run verify:all
+    - npm run test:server
+    - npm run typecheck
+    - npm run gate:visual
+  browser_evidence_required: true
+  required_views:
+    - 餐厅人眼总览：S1、EM450、低柜和冰箱关系
+    - 水吧设备近景：柜体台面、S1与EM450的真实尺度及间距
+    - Three.js运行时对象坐标与AABB：含厨房RO机身及受保护对象
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: pending
+  blocking_issues:
+    - 水吧低柜尺寸是视觉代理，尚未由业主冻结
+    - 餐厅设备供电、墙控操作、补水与清洁净空未通过工程核验
+    - RO机身柜内位置未验证隔板、存水弯和滤芯维护空间
+  done_when:
+    - 当前Three.js页面ready且配置错误横幅为空。
+    - 同一台EM450只存在一个放置实例，位于餐厅水吧。
+    - S1与RO机身的运行时外廓分别符合业主给定尺寸。
+    - S1近景能读出东侧前置高位出水仓/喷嘴/接水盘与西侧后置机身的前后层级，顶盖分区沿设备深度轴；细部比例仍标记为图像估读。
+    - V5近景能读出东侧出水仓/喷嘴/接水盘与西侧后置机身的前后分层；水箱细部仍标记为外观代理推断。
+    - 冰箱、餐桌、半高柜和建筑坐标与保护基线一致。
+    - 总览、近景截图与当前配置版本一致且非默认总览相机。
+    - 工程待核事项明确保留，不误写为施工通过。
+  delivery_notes_required: true

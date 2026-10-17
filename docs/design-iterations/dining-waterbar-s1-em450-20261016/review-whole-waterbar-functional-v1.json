@@ -1,0 +1,75 @@
+{
+  "verdict": "BLOCKED",
+  "blocking_issues": [
+    {
+      "object": "800mm水吧柜/台面",
+      "fact": "柜体运行时外廓为800×420×850mm，但仍是未冻结的视觉代理；柜门/抽屉扫掠、内部结构、防倾倒、台面耐水耐热和设备承托条件未验证。",
+      "evidence": [
+        "evidence/runtime-query-s1-form-v5.json#objects.waterbar_low_cabinet_800_preview",
+        "fact-table.yaml#I-CABINET-PREVIEW-DATUM",
+        "object-manifest.yaml#waterbar_low_cabinet_800_preview"
+      ],
+      "required_change": "确认柜体外廓与内部结构，补做柜门/抽屉扫掠、防倾倒、台面承托和柜体移动/检修路径验证。"
+    },
+    {
+      "object": "S1与EM450双机操作维护",
+      "fact": "两机沿z方向静态间距为94mm；S1距柜体北端14mm，EM450后侧模型余量约7.5mm。静态间距不证明取杯、补水、蒸汽棒、散热、接水盘清洁和双机同时操作成立。",
+      "evidence": [
+        "evidence/runtime-query-s1-form-v5.json#objects",
+        "evidence/runtime-query-s1-form-v5.json#relationships",
+        "fact-table.yaml#I-APPLIANCE-GAP",
+        "object-manifest.yaml#S1",
+        "object-manifest.yaml#EM450"
+      ],
+      "required_change": "按最终SKU说明书或实机补做两台设备的操作、补水、蒸汽棒、散热、清洁、拆卸和同时使用包络。"
+    },
+    {
+      "object": "水吧与邻接冰箱",
+      "fact": "冰箱AABB约为x[7.2025,7.8025]、z[2.57,3.403]；低柜北缘约z=3.47，静态间距约67mm；S1与冰箱静态间距约81mm。模型没有冰箱门扇、抽屉、拉手、人员站位和搬运更换动态包络。",
+      "evidence": [
+        "evidence/runtime-query-s1-form-v5.json#objects.fridge",
+        "evidence/runtime-query-s1-form-v5.json#objects.waterbar_low_cabinet_800_preview",
+        "fact-table.yaml#F-PROTECTED-OBJECTS",
+        "review-manifest.json#delivery.follow_up_site_pending"
+      ],
+      "required_change": "叠加冰箱厂家门扇/抽屉开启包络，验证冰箱开启、取水、咖啡操作、人员站位及整机更换路径。"
+    },
+    {
+      "object": "现有墙控与供电关系",
+      "fact": "墙控带约z[3.98,4.10]、安装高1.30m，位于低柜z[3.47,4.27]范围内且与EM450 z[3.89,4.11]重叠。餐厅可及接地插座、回路容量、两机同时负荷、漏保和断电检修位置未落实。",
+      "evidence": [
+        "fact-table.yaml#S-WALL-CONTROL-ACCESS",
+        "fact-table.yaml#S-DINING-POWER",
+        "object-manifest.yaml#waterbar_low_cabinet_800_preview",
+        "object-manifest.yaml#S1",
+        "object-manifest.yaml#EM450"
+      ],
+      "required_change": "按真实面板外廓、柜体剖面和真人站位验证墙控可达性；按最终SKU铭牌落实插座、回路、同时负荷、漏保和检修断电位置。"
+    }
+  ],
+  "non_blocking_notes": [
+    "V5 runtime ready=true，错误横幅为空；S1 AABB为0.106×0.280×0.312m，EM450 AABB为0.285×0.305×0.220m。",
+    "S1与EM450均与0.85m台面接触，当前柜体、S1、EM450和冰箱之间没有静态AABB重叠。",
+    "水吧柜与冰箱静态z间距约67mm，S1与冰箱约81mm，S1与EM450约94mm；这些数值不能升级为动态使用净空。",
+    "V5将S1局部+z定义为东侧出水、局部-z定义为西侧后置水箱，未改变水吧摆位或静态碰撞结论。"
+  ],
+  "evidence_refs": [
+    "evidence/runtime-query-s1-form-v5.json",
+    "evidence/s1-form-v5-close.png",
+    "evidence/s1-form-v5-overview.png",
+    "fact-table.yaml",
+    "object-manifest.yaml"
+  ],
+  "requested_changes": [
+    "冻结并深化800×420×850mm水吧柜的外廓、内部结构、柜门/抽屉和承托条件。",
+    "补齐S1与EM450的真实操作、维护、清洁、散热和同时使用包络。",
+    "补齐冰箱门扇/抽屉动态净距、人员站位和搬运更换路径。",
+    "落实墙控可达性、餐厅插座、回路、同时负荷、漏保和检修断电位置。"
+  ],
+  "assumptions": [
+    "S1和EM450当前尺寸来自业主输入，runtime AABB只支持视觉预演。",
+    "冰箱AABB代表静态机身，不代表门扇、抽屉、拉手或人员动态范围。",
+    "静态无碰撞不代表水吧能够施工、操作或维护通过。",
+    "本次评审范围不包含厨房RO。"
+  ]
+}

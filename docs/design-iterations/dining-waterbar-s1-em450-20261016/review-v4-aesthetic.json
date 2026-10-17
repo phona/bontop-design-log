@@ -1,0 +1,26 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "V3 的主要审美问题已实际修正：左侧出水仓从矮小方洞变为贯穿上盖至接水盘的高凹腔；接水盘由薄条变为有深度的圆角托盘，并加入 8 条排水槽和中央排水孔；主机身与机头增加圆角；水位窗改为圆角胶囊形。",
+    "V4 保持产品整体比例和场景尺度：参考图标注的 312×106×280mm 与 runtime AABB 的 0.312×0.106×0.280m 一致；台面高度关系和设备间距未改变。",
+    "V4 close 中 S1 与 EM450 的并置层级清楚，S1 的左凹腔、上盖、右侧水位窗和下方托盘已经能被一眼识别；overview 中设备虽较小，但与低柜比例协调。",
+    "仍有两点属于近似表达而非阻塞问题：机头顶部中央分缝比参考图更规整、对称；参考图的米家标志没有建模。两者不破坏轮廓识别，且代码明确不虚构 logo。",
+    "本轮没有删除已摆放对象，也没有推翻 S1 的中心、旋转、包围盒或场景位置；新增的 rounded_box/capsule、凹腔和托盘细节已在当前截图中可见，因此没有发现新增几何在当前渲染链路中静默失效。",
+    "test:server 仍因 Node 环境 document 未定义而失败；这是独立验证层问题，不改变本次视觉审查结论。"
+  ],
+  "evidence_refs": [
+    "evidence/s1-form-v4-close.png",
+    "evidence/s1-form-v4-overview.png",
+    "evidence/s1-form-v4-close.snapshot.txt",
+    "evidence/s1-form-v4-overview.snapshot.txt",
+    "evidence/runtime-query-s1-form-v4.json",
+    "shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v4"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "用户首张产品图作为 S1 外观轮廓和细节的唯一视觉参考；没有额外厂家 CAD 或多角度照片用于判断背面和内部结构。",
+    "本次 verdict 只覆盖独立审美审查；尺寸包围盒、摆位、碰撞和施工接口仍以 runtime 与其他验证层为准。",
+    "截图中 tooltip 显示 hvac:A2:terminal:supply_dining，但 runtime-query-s1-form-v4.json 已明确该命中提示不等于 S1 家具对象；本审查按家具对象 mijia_instant_dispenser_s1_preview 进行。"
+  ]
+}

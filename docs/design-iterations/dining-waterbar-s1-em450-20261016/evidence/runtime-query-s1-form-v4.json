@@ -1,0 +1,106 @@
+{
+  "schema": "bontop-threejs-runtime-evidence/v1",
+  "capturedAtUtc": "2026-10-16T12:21:03.154Z",
+  "url": "http://127.0.0.1:5174/",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "readySignal": "window.__APP__.isReady() === true",
+  "configErrorBanner": "",
+  "coordinateSystem": "Three.js right-handed: Y up, X east-west, Z north-south; +x east, +z south",
+  "sourceDigest": "sha256:db09b17a97b6938de31bf9ddc50494c5cb0f29e41baff750e477c78f5d32bd62",
+  "sourceDigestMethod": "SHA-256 over ordered concatenation of path + NUL + file bytes + NUL for the sourceFiles keys below",
+  "sourceFiles": {
+    "config/house.yaml": "87d83644ebbad9b7710fbe3671b45d0b41b89505b1155973a5da6571723cadc8",
+    "config/spatial-validation.yaml": "5974bbafe86092e614fce308fb7dacd9b6a1991db1e56f346111e1812870d7f7",
+    "config/anti-penetration.yaml": "b1e08f76a0a1347ea146ed375accd3ffb92e3075ef43bb22b175dc0c90578399",
+    "shared/types.ts": "a71843df16a8188c64571555929cdd2efa34eb33d1d3e6324c0681afd6fdd351",
+    "shared/render/FixtureFactory.ts": "49091a28efaa9636364145b06fd5f9ea8ba99307b5e7fb7a31a08cf8d27ae200",
+    "shared/render/SceneBuilder.ts": "10829303d0a1c259851a3a03a6baba48bd42e8c3cc76295f9f482371a35da729",
+    "app/src/render/HouseScene.ts": "59580a009ed429a64d052f9ad6eeb4420f9b84ad2a8b513f6c18a8b26b6ffcaa",
+    "app/src/App.ts": "179a8f7b142a9e295fc890d66cd68789bc069348152991203c4f58463893eb3e",
+    "data/project-render-facts.json": "ba6f11f6d2665996efbfef296e6f3d800debab274d0cbab378edcf7bfc65788a",
+    "scripts/verify/placement/verify-furniture-placement.ts": "4e5d0fb408c4887ac1e317a2f954f0f2f24b4a265d54bf1d98b7055756e9f8f5"
+  },
+  "camera": {
+    "mode": "orbit",
+    "position": [8.28, 1.4, 4.18],
+    "target": [7.47, 0.99, 3.72],
+    "fovDeg": 42,
+    "isOverview": false,
+    "viewType": "perspective"
+  },
+  "objects": {
+    "mijia_instant_dispenser_s1_preview": {
+      "objectId": "furniture:living_dining:mijia_instant_dispenser_s1_preview:15",
+      "type": "furniture",
+      "position": [7.5, 0, 3.64],
+      "rotationY": 1.5707963267948966,
+      "meshCount": 15,
+      "aabbM": {
+        "min": [7.447000000625849, 0.8499999997839331, 3.4839999967813493],
+        "max": [7.553000000149011, 1.1300000000474977, 3.796000003218651],
+        "size": [0.10599999952316264, 0.2800000002635643, 0.31200000643730164]
+      }
+    },
+    "waterbar_low_cabinet_800_preview": {
+      "objectId": "furniture:living_dining:waterbar_low_cabinet_800_preview:14",
+      "position": [7.43, 0, 3.87],
+      "rotationY": 1.5707963267948966,
+      "aabbM": {"min": [7.220000006556511, -0.00000000014901161, 3.4699999940395356], "max": [7.64000000018999, 0.850000000372529, 4.270000005960465], "size": [0.4199999936334793, 0.8500000005215406, 0.800000011920929]}
+    },
+    "coffee_machine_em450": {
+      "objectId": "furniture:living_dining:coffee_machine_em450:16",
+      "position": [7.37, 0, 4],
+      "rotationY": 1.5707963267948966,
+      "meshCount": 24,
+      "aabbM": {"min": [7.227500000167638, 0.8500000238418579, 3.8900000005960464], "max": [7.512500000189989, 1.1550000004321337, 4.1099999994039536], "size": [0.28500000002235115, 0.3049999765902758, 0.2199999988079071]}
+    },
+    "fridge": {
+      "objectId": "furniture:living_dining:fridge:13",
+      "position": [7.5025, 0, 2.9865],
+      "rotationY": 4.71238898038469,
+      "meshCount": 6,
+      "aabbM": {"min": [7.2024999921321875, 0.00000000014901161, 2.5699999978542327], "max": [7.802500011920929, 1.9099999833106995, 3.403000002145767], "size": [0.6000000197887418, 1.909999983161688, 0.8330000042915344]}
+    },
+    "dining_table": {
+      "objectId": "furniture:living_dining:dining_table:8",
+      "position": [9.8, 0, 3.45],
+      "rotationY": 1.5707963267948966,
+      "aabbM": {"min": [9.399999994039536, -0.00000000953674295, 2.750000011920929], "max": [10.200000005960463, 0.7699999995529652, 4.149999988079071], "size": [0.800000011920929, 0.7700000090897081, 1.399999976158142]}
+    },
+    "entry_half_height_cabinet": {
+      "objectId": "furniture:living_dining:entry_half_height_cabinet:7",
+      "position": [11.5, 0, 4],
+      "rotationY": 1.5707963267948966,
+      "aabbM": {"min": [11.305000007152556, 0.00000000089406965, 2.9800000190734863], "max": [11.698000000052154, 1.5, 5.019999980926514], "size": [0.39299999289959686, 1.4999999991059303, 2.0399999618530273]}
+    },
+    "mijia_ro_purifier_1400g_under_sink_preview": {
+      "objectId": "furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9",
+      "position": [10.05, 0, 0.32],
+      "rotationY": 0,
+      "meshCount": 5,
+      "aabbM": {"min": [9.968499998748303, 0.07999999821186066, 0.0975000035762787], "max": [10.131500001251698, 0.4589999997764826, 0.5425000000130386], "size": [0.16300000250339508, 0.37900000156462194, 0.44499999643675986]}
+    }
+  },
+  "relationships": {
+    "countertopTopY_M": 0.850000000372529,
+    "s1BottomY_M": 0.8499999997839331,
+    "s1TopY_M": 1.1300000000474977,
+    "s1ToEm450GapAlongZ_M": 0.0939999973773955,
+    "s1AabbDimensions_M": [0.10599999952316264, 0.2800000002635643, 0.31200000643730164],
+    "s1FurnitureObjectId": "furniture:living_dining:mijia_instant_dispenser_s1_preview:15",
+    "tooltipInUserScreenshotId": "hvac:A2:terminal:supply_dining",
+    "tooltipExplanation": "First-person tooltip reads the center-ray hit; it does not replace the S1 furniture objectId."
+  },
+  "fixedCameras": {
+    "waterbar_overview": {"position": [9.55, 1.7, 3.98], "target": [7.75, 0.88, 3.74], "fovDeg": 58, "snapshot": "evidence/s1-form-v4-overview.snapshot.txt", "screenshot": "evidence/s1-form-v4-overview.png", "screenshotSha256": "5d39b15bad6219015bc36f508eebde023f72c49d713a261d80a85fe7f7ea6ad1"},
+    "waterbar_close": {"position": [8.28, 1.4, 4.18], "target": [7.47, 0.99, 3.72], "fovDeg": 42, "snapshot": "evidence/s1-form-v4-close.snapshot.txt", "screenshot": "evidence/s1-form-v4-close.png", "screenshotSha256": "5519817516ed4c4ecdf7723e62b6f2f1755ebbec2eb2d2758d7474888044d471"}
+  },
+  "checks": {
+    "gateVisual": {"status": "CLEAR", "command": "npm run gate:visual"},
+    "verifyAll": {"status": "PASS", "passed": 17, "failed": 0, "command": "npm run verify:all"},
+    "typecheck": {"status": "PASS", "command": "npm run typecheck"},
+    "testServer": {"status": "FAIL", "command": "npm run test:server", "detail": "wall-face-materials.test.ts invokes TextureFactory in Node where document is undefined; see review-manifest.validation.results."}
+  },
+  "protectedObjectsUnchanged": ["fridge:13", "dining_table:8", "entry_half_height_cabinet:7", "ceiling", "walls", "doors", "glass"]
+}

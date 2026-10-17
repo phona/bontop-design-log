@@ -1,0 +1,125 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: living-sculptural-main-light-r2-20261016
+subject: 客厅主灯由浅吸顶改为悬垂雕塑灯
+priority:
+  user_goal: "解决R1仍像普通吸顶灯、客厅缺少视觉重心的问题；用独立于餐桌位置的客厅主灯承接现代轻中古风格。"
+  ranked:
+    - "灯具远景能明确读成悬垂雕塑主灯，而不是贴顶圆盘。"
+    - "保留乳白宽面漫射作为主发光面；暖铜立体弧只负责造型层次。"
+    - "保持约1m平面体量并沿用客厅原主灯锚点，不由餐桌位置牵引。"
+    - "300mm作为已同意250–350mm区间的本轮模型预演值，避免把预演参数写成SKU或施工结论。"
+  non_negotiables:
+    - "不改 light_living_dome 电气点位、回路、墙控和 strong-light-living 路由。"
+    - "不移动餐桌、不改餐厅吊灯，不以餐桌中心确定客厅主灯位置。"
+    - "不恢复已因配光均匀度被否决的集中窄束轨道灯作为客厅唯一基础光。"
+    - "不把渲染发光强度当作实际流明、照度、U0或眩光证据。"
+  tradeoffs_accepted:
+    - "概念模型会在客厅视线中形成可见的约300mm下垂体量；最终是否保留该下垂量仍须结合固定沙发视线和现场净高确认。"
+frozen: true
+freeze_record:
+  alignment_id: align-r2-suspended-form-20261016
+  original_user_response: "要"
+  normalized_decisions:
+    - "在用户指出R1仍像吸顶灯后，改为明显悬垂的雕塑灯方向。"
+    - "保留约1m平面尺度、乳白漫射盘、偏心立体暖铜弧及客厅现有锚点。"
+    - "以250–350mm为允许的模型下垂范围；本轮按300mm中点预演。"
+  confirmed_by_user: true
+  confirmed_at: "2026-10-16"
+  evidence_refs:
+    - "fact-table.yaml#fact-r1-visual-rejection"
+    - "fact-table.yaml#fact-approved-suspension-range"
+allowed_scope:
+  files:
+    - shared/types.ts
+    - shared/project-render-facts-schema.ts
+    - shared/render/LightingFixtureBuilder.ts
+    - shared/render/SculpturalDomeGeometry.ts
+    - app/src/render/InteriorLightingSystem.ts
+    - config/render/lighting.yaml
+    - config/render/overrides.yaml
+    - data/project-render-facts.json # generator output; update only through its declared generator
+    - docs/decisions/06-electrical.md
+    - docs/style-guide.md
+    - schedule/procurement.md
+    - docs/design-iterations/living-sculptural-main-light-r2-20261016/
+  objects: [light_living_dome]
+  archetypes: [broad_opal_diffuser, three_slender_suspension_rods, offset_three_dimensional_warm_bronze_arch]
+  views: [plan, elevation, section, perspective]
+  changes:
+    - "将客厅主灯从R1浅吸顶外观改为约1m平面、总下垂300mm的悬垂雕塑概念灯。"
+    - "保证浏览器和GLB/export共用同一声明式几何。"
+    - "更新造型决策、风格说明和采购入口中的当前外形，同时保留历史尺寸、候选及淘汰依据。"
+forbidden:
+  files:
+    - config/electrical.yaml
+    - config/electrical-topology.yaml
+    - config/mep-hvac-coordination.yaml
+    - config/ceiling.yaml
+    - config/house.yaml
+    - config/layout/model-geometry.yaml
+  objects: [light_dining_pendant, dining_table, ceiling_living]
+  assumptions:
+    - "不得把3D吊杆、弧脚或顶盘当作真实承重结构证明。"
+    - "不得把300mm预演下垂、灯盘尺寸或材料外观当作已选SKU/施工尺寸。"
+    - "不得宣称渲染已证明流明、Ra、照度、均匀度、风口气流、眩光、梁位或维修性能。"
+  out_of_scope_changes:
+    - "移动任何电气点位，改变回路/墙控/MEP终点或重画客厅线槽。"
+    - "调整餐桌、餐吊、客厅吊顶、空调和现场结构。"
+    - "选定灯具SKU、冻结采购价或形成施工放样尺寸。"
+open_questions:
+  - id: site-structure-and-installation
+    category: construction
+    question: "量房梁位、顶板/接线盒承重、灯具重量和厂家底盘固定要求能否支持该模型外形？"
+    fact_refs: ["fact-table.yaml#pending-mounting"]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+  - id: site-airflow-and-sightline
+    category: function
+    question: "实测送风射流是否直吹灯体；固定沙发视线下，灯具是否压住电视上缘或造成压迫？"
+    fact_refs: ["fact-table.yaml#pending-airflow-and-sightline"]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+  - id: sku-photometry-and-maintenance
+    category: maintenance
+    question: "候选灯具能否在3000K/Ra≥90条件下提供合格配光，并说明灯盘、LED板、驱动器及连接件的拆换维护方式？"
+    fact_refs: ["fact-table.yaml#fact-light-requirements", "fact-table.yaml#pending-serviceability"]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+alignment:
+  records:
+    - alignment_id: align-r2-suspended-form-20261016
+      original_user_response: "要"
+      normalized_decision: "确认按前文描述的悬垂雕塑灯方向继续预演：约1m平面尺度、乳白漫射盘、偏心立体暖铜弧、沿用客厅原锚点；本轮总下垂取300mm模型值。"
+      fact_refs: ["fact-table.yaml#fact-r1-visual-rejection", "fact-table.yaml#fact-approved-suspension-range"]
+      timestamp: "2026-10-16"
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands:
+    - "npm run generate:project-render-facts"
+    - "npm run gate:visual (before and after)"
+    - "npm run typecheck"
+    - "npm run verify:lighting-config"
+    - "npm run verify:all"
+  browser_evidence_required: true
+  required_views: [context_living_light, closeup_arch_and_diffuser, side_elevation_projection, top_down_fixture_envelope]
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: pending
+  blocking_issues:
+    - "现场梁位、固定承重、风口射流、固定沙发视线和检修路径仍未核实；不能把本轮概念升级为安装/采购定案。"
+    - "客厅流明目标仍有7,100–8,500lm与复算约9,287.5lm的口径冲突，SKU与光度未冻结。"
+  done_when:
+    - "R6同版画面明确显示约300mm悬垂、三根吊杆、宽面漫射盘与前伸立体暖铜弧。"
+    - "客厅锚点与餐桌分离，电气、控制、HVAC及吊顶权威源保持原值。"
+    - "浏览器与GLB共享几何；同版runtime、snapshot和可读PNG覆盖规定视图。"
+    - "配置/类型/项目校验通过，审美与功能审查按固定JSON契约通过。"
+    - "实际安装和SKU风险保持显式site_pending并给出负责人及触发条件。"
+  delivery_notes_required: true

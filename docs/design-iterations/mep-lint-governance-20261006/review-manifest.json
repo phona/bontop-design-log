@@ -7,7 +7,7 @@
     "docs/pending-site-data.md",
     "config/facts.yaml 契约 c.mep_layer_below_drop_bottom / c.leb_point_requires_bond_schedule"
   ],
-  "state_note": "所有 count 为 2026-10-06 实跑口径（DEC-2026-10-06-R5 执行后：verify:mep 0 error / 83 warning，ceiling_clearance_unverified 160→24）：npm run verify:mep（shared/mep-hvac-lint.ts，result.categories 三桶）与 npm run verify:electrical（shared/electrical-lint.ts，result.counts.byCode）的 JSON 输出即权威；本台账由 tests/server/mep-guidance-baseline.test.ts 逐条与实算对账——台账数字必须与实时 lint 完全一致，任何一侧漂移（lint 新规则加入、台账未同步）测试即 fail。台账本身是「某一轮实测快照」，必须写实测数；而 docs/mep-construction-guidance.md 里凡出现 warning 总数处只写「与实算一致」的语义（不写死 215 / 53），由测试实时回抽比对。⚠️ 2026-10-06 同步口径：MEP 侧 DEC-2026-10-06-R1 已清 gravity_slope_geometry_mismatch（14→0）与 route_not_orthogonal（3→0），penetration_door_clearance 按「过门头穿梁→survey_dependent / 门洞内贴门垛→must_fix」细分类别（15 拆 2+13）；电气侧 R2 已兑现 switch_neutral↦中性线预埋、bath_socket_splash_box↦防溅盒（两类归零），本台账据实删去这两条 reject 项并把 point_uncovered 29→30。 ｜2026-10-07 v1 水路估算后口径：verify:mep 0 error / 83 warning；新增 code penetration_missing ×7（全部来自 water-v1-* 估算干管，量房日补 penetration 后归零），must_fix_before_briefing 桶 10→17（其中 7 条为 v1 估算待补）。 ｜2026-10-07 声明式补客餐厅 ordinary_power_living 十条路由（含 3 条纯竖直段）+ isMepPhysicalRoute/lint 同口径放行 route_kind=physical 竖直段：ceiling_clearance_unverified 25→32（新增 7 条均为路由下行至声明设备点位的竖直段，属已登记残留同类），nonphysical_route 维持 2。 ｜2026-10-07 DEC-2026-10-07-M05 声明式补 23 条路由（书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）：总 warning 90→125。新增集中于 ceiling_clearance_unverified 32→56（全部为\"路由下行至声明设备点位的竖直末段\"，§0 已登记①类残留同源）与 shear_wall_parallel_route 8→14（贴剪力墙竖槽，已在各条 reason 声明扫筋/量房）；未新增 penetration_missing。 ｜ 2026-10-08 DEC-2026-10-08-W02：登记 inline_endpoint_without_point_anchor ×5（survey_dependent，端点绑定兜底的量房判读清单）与 unsupported_span ×33（并行会话未提交规则，代为登记）。 ｜2026-10-12 新增登记未修复缺陷：ceiling_clearance_unverified 在 verify:mep 与 verify:facts 两个引擎间相差 1 处/1 条路线（R2 删 4 条卫浴照明路由后显形），owner=主会话，修复前两个引擎各自登记、不得互相迁就。｜2026-10-13 DEC-2026-10-13-R3 主卧吸顶灯移位（DEC-2026-10-13-R1/R3/R4 批次）后两条主卧照明路由重画：shear_wall_parallel_route 13→11、must_fix_before_briefing 桶 28→26。原因是 strong-light-master 与 strong-light-bedrooms-master-bed-north 原贴 w_mb_east 长距离平行（3.0m / 1.31m）改为走 ceiling_master_ac 门头盒空腔，**不再需要剪力墙竖槽+扫筋——属改善，不是消音**；unsupported_span 维持 7（一度因灯位移位未同步路由几何而升至 9，随路由重画回落）。",
+  "state_note": "所有 count 为 2026-10-06 实跑口径（DEC-2026-10-06-R5 执行后：verify:mep 0 error / 83 warning，ceiling_clearance_unverified 160→24）：npm run verify:mep（shared/mep-hvac-lint.ts，result.categories 三桶）与 npm run verify:electrical（shared/electrical-lint.ts，result.counts.byCode）的 JSON 输出即权威；本台账由 tests/server/mep-guidance-baseline.test.ts 逐条与实算对账——台账数字必须与实时 lint 完全一致，任何一侧漂移（lint 新规则加入、台账未同步）测试即 fail。台账本身是「某一轮实测快照」，必须写实测数；而 docs/mep-construction-guidance.md 里凡出现 warning 总数处只写「与实算一致」的语义（不写死 215 / 53），由测试实时回抽比对。⚠️ 2026-10-06 同步口径：MEP 侧 DEC-2026-10-06-R1 已清 gravity_slope_geometry_mismatch（14→0）与 route_not_orthogonal（3→0），penetration_door_clearance 按「过门头穿梁→survey_dependent / 门洞内贴门垛→must_fix」细分类别（15 拆 2+13）；电气侧 R2 已兑现 switch_neutral↦中性线预埋、bath_socket_splash_box↦防溅盒（两类归零），本台账据实删去这两条 reject 项并把 point_uncovered 29→30。 ｜2026-10-07 v1 水路估算后口径：verify:mep 0 error / 83 warning；新增 code penetration_missing ×7（全部来自 water-v1-* 估算干管，量房日补 penetration 后归零），must_fix_before_briefing 桶 10→17（其中 7 条为 v1 估算待补）。 ｜2026-10-07 声明式补客餐厅 ordinary_power_living 十条路由（含 3 条纯竖直段）+ isMepPhysicalRoute/lint 同口径放行 route_kind=physical 竖直段：ceiling_clearance_unverified 25→32（新增 7 条均为路由下行至声明设备点位的竖直段，属已登记残留同类），nonphysical_route 维持 2。 ｜2026-10-07 DEC-2026-10-07-M05 声明式补 23 条路由（书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）：总 warning 90→125。新增集中于 ceiling_clearance_unverified 32→56（全部为\"路由下行至声明设备点位的竖直末段\"，§0 已登记①类残留同源）与 shear_wall_parallel_route 8→14（贴剪力墙竖槽，已在各条 reason 声明扫筋/量房）；未新增 penetration_missing。 ｜ 2026-10-08 DEC-2026-10-08-W02：登记 inline_endpoint_without_point_anchor ×5（survey_dependent，端点绑定兜底的量房判读清单）与 unsupported_span ×33（并行会话未提交规则，代为登记）。 ｜2026-10-12 新增登记未修复缺陷：ceiling_clearance_unverified 在 verify:mep 与 verify:facts 两个引擎间相差 1 处/1 条路线（R2 删 4 条卫浴照明路由后显形），owner=主会话，修复前两个引擎各自登记、不得互相迁就。｜2026-10-13 DEC-2026-10-13-R3 主卧吸顶灯移位（DEC-2026-10-13-R1/R3/R4 批次）后两条主卧照明路由重画：shear_wall_parallel_route 13→11、must_fix_before_briefing 桶 28→26。原因是 strong-light-master 与 strong-light-bedrooms-master-bed-north 原贴 w_mb_east 长距离平行（3.0m / 1.31m）改为走 ceiling_master_ac 门头盒空腔，**不再需要剪力墙竖槽+扫筋——属改善，不是消音**；unsupported_span 维持 7（一度因灯位移位未同步路由几何而升至 9，随路由重画回落）。｜2026-10-17 DEC-2026-10-17-R4：原规则跳过纯竖直段和短平面陡斜段，改为按 3D 长度采样；unsupported_span 8→13，新增 strong-ded-dishwasher / strong-power-living-sofa-l / strong-power-living-table / strong-power-child / strong-power-kitchen；sofa-r 新箱体侧垫层路线无 unsupported_span。另将吊顶承载层中有实际 y≤0.35m 垫层点的 floor_branch(_candidate) 排除出完成面比较；高位误标由 floor_branch_missing_floor_band 哨兵捕获。事实引擎复用 MEP footprint/segment 算法；此前漏掉的 strong-power-master × curtain_box_master_south 已计入，sofa-r/sofa-l 垫层线的净空误报移除。当前两引擎均为 51 处 / 42 条路线 / 14 区，注册数与实算一致。",
   "verification_commands": [
     "npm run verify:mep",
     "npm run verify:electrical",
@@ -109,13 +109,13 @@
     },
     {
       "code": "ceiling_clearance_unverified",
-      "count": 53,
+      "count": 51,
       "category": "survey_dependent",
       "disposition": "pending_adjudication",
-      "basis": "24 处（DEC-2026-10-06-R5 前为 160 处）= §0 契约 c.mep_layer_below_drop_bottom 的吊顶承载层实算数：#41 分层标高已按 A 区（完成面 2.50：强电 2.55/弱电 2.60/冷凝水 2.65/冷媒 2.60，上限 2.75）+ B 区铝扣板（完成面 2.65：进入段 2.70–2.76）分区抬入降板空腔，参考梁约束带内 ≤ 梁底−0.05；同时走地给排水（water_supply/drainage）按 DEC 配套口径修正退出本比较（授权全引见 shared/mep-hvac-lint.ts 的 CEILING_CARRIED_LAYERS 与 config/facts.yaml 的 check_scope）。残留 24 处全部显式登记：① 竖直下引至设备点位的末点（to_height 0.02–1.60m）8 处；② 贴完成面的设备开口（回风格栅 2.49）6 处；③ 窗帘盒内电动窗帘电源（0.7m）1 处；④ weak-gateway 走廊下引末点 1 处；⑤ condensate-living / condensate-dining 绕不开走廊服务带梁带的候选路线各 3 处共 6 处；⑥ condensate-master / condensate-child 立管竖直下引末点 2 处。契约侧 registered_conflicts 登记 44（facts T3.11 引擎仍统计全部分层，含 20 处已豁免的走地给排水）。",
+      "basis": "历史基线（2026-10-06 DEC-2026-10-06-R5）：160 处收敛为 24 处残留；旧项分类与现场复核条件见 docs/pending-site-data.md #41。当前快照（2026-10-17 R4）：verify:mep 与 verify:facts 均为 51 处 / 42 条路线 / 14 个吊顶分区。承载层 floor_branch(_candidate) 仅在至少一个 route point 落入 y≤0.35m 垫层带时退出完成面比较；无垫层点的误标路线由 floor_branch_missing_floor_band 提醒，开放起降仍由 3D unsupported_span 检查。facts 与 MEP 共用渲染 footprint 与 segment 相交逻辑。点/段差异已定位并修复：strong-power-master 在未声明 route vertex 之间穿过 curtain_box_master_south；sofa-r 与 sofa-l 的垫层路线不再产生吊顶面误报。registered_conflicts 52→51 是规则口径修正，无路线删除。",
       "owner": "业主 + 设计侧（裁定降板/标高）",
-      "clearing_condition": "①③④⑥ 为设备末点/立管竖直下引段，随量房后设备定位与吊顶收口做法一并复判（必要时把下引点移到吊顶分区外）；② 回风格栅面板贴完成面属设备开口，待厂家风口深化图；⑤ condensate-living / condensate-dining 待量房实测走廊服务带（x[6.9,7.5] z[3.6,8.0]）梁底——若实测无梁或梁底高于 2.80m，即可按 A/B 口径抬升；裁决记录见 docs/pending-site-data.md #41（已改写为「已裁定 + 残留」）",
-      "superseded_note": "R1 56→55；R2 55→54（删四条卫浴照明路由）｜2026-10-12 DEC-2026-10-12-R2 删 4 条卫浴照明路由后 54→53"
+      "clearing_condition": "按 route id × ceiling zone 复核现有 warning：真实设备末端低位、完成面开口、窗帘盒电源与绕梁冷凝水路线仍按现场事实复判。承载层 floor_branch(_candidate) 只有实际 route point 落入 y≤0.35m 垫层带时才退出完成面比较；无此点的误标由 floor_branch_missing_floor_band 显形，全部开放起降继续经过 3D unsupported_span。owner=业主 + 设计侧（裁定降板/标高）；触发=量房与水电交底前。",
+      "superseded_note": "历史：R1 56→55；R2 删 4 条卫浴照明路由后 55→53（facts 登记 52 的旧口径仍有 1 条路线差异）。｜2026-10-17 DEC-2026-10-17-R4：floor_branch(_candidate) 仅对有实际垫层点的承载层路线豁免完成面比较，且高位误标新增 floor_branch_missing_floor_band 哨兵；事实引擎改为共享 footprint/segment 相交算法。两引擎从旧登记 52 / MEP 54 收敛到 51 处、42 条路线、14 个分区；未删除路线，开放竖降另由 unsupported_span 报警。"
     },
     {
       "code": "shear_wall_penetration",
@@ -138,20 +138,20 @@
     },
     {
       "code": "unsupported_span",
-      "count": 7,
+      "count": 13,
       "category": "must_fix_before_briefing",
       "disposition": "reject",
-      "basis": "DEC-2026-10-07-F01/F02 飞线依托检查落地：六类依托（吊顶空腔/贴墙≤0.25m/穿墙/纯竖直/垫层≤0.35m/首末段设备接线段 ≤2m 且 y∈[2.66,2.85] 原顶暗敷带）。首扫 33 条，F01 改线批清至 8 条显式保留（condensate-living/dining R5 梁带残留、condensate-master 衣柜顶隐藏、mbath 条带×3 模型缺条带南墙、switch-garden 开发商花园明敷、refrigerant-trunk 外机平台设备连接段），每条 reason 带 DEC 归因；渲染得出、现场做不出，保留项均登记为模型包络缺口，量房复核。",
+      "basis": "DEC-2026-10-07-F01/F02 首轮将纯竖直段豁免；F01 首扫33条后清至8条历史残留（R5梁带、衣柜顶、条带缺墙、花园明敷、外机连接段）。DEC-2026-10-17-R4 将 unsupported_span 扩展为3D依托采样：水平/斜向/竖直段都须在吊顶空腔、≤0.25m实体墙、穿墙或≤0.35m垫层内获得依托；旧8条增至当前13条。新增5条开放竖/斜段显形；强电箱侧垫层路线 sofa-r 本身不在新增项内。",
       "owner": "设计侧（该规则所属会话）",
-      "clearing_condition": "逐条补依托（改平面贴墙/入吊顶空腔/声明穿墙）或将该段降为 requirement；归零后从 dispositions 移除",
-      "superseded_note": "2026-10-12 DEC-2026-10-12-R2 删 4 条卫浴照明路由后 8→7"
+      "clearing_condition": "逐条使3D采样区间落在吊顶空腔、≤0.25m实体墙/明确穿墙段或≤0.35m垫层；垂直/斜段没有依托时改路径。只有可证实的特定构件承载才可恢复，不得仅加 route_kind 或 reason 文字消音；非施工候选若降为 requirement 须单独裁定；归零后从 dispositions 移除。",
+      "superseded_note": "2026-10-12 DEC-2026-10-12-R2 删 4 条卫浴照明路由后 8→7；2026-10-16 DEC-2026-10-16-R12 餐厅灯迁桌心后 strong-light-dining 末段 0.38m 明装线槽（餐桌平顶无吊顶区，DEC-2026-10-13-R6 先例的显式登记例外），7→8；2026-10-17 DEC-2026-10-17-R4 将依托检查扩展到开放竖段/陡斜段，8→13（新增五条均保留为交底前待清项）"
     }
   ],
   "summary": {
-    "mep_total_warnings": 129,
+    "mep_total_warnings": 133,
     "mep_buckets": {
-      "must_fix_before_briefing": 26,
-      "survey_dependent": 82,
+      "must_fix_before_briefing": 32,
+      "survey_dependent": 80,
       "envelope_approximation": 21
     },
     "electrical_total_warnings": 51,

@@ -1,0 +1,34 @@
+{
+  "verdict": {
+    "status": "conditional_pass",
+    "construction_status": "pending",
+    "summary": "最终 x=13.34 客厅侧墙面候选与房间、玻璃幕墙、d_bese 门洞、sofa-r 终点及 ordinary_power_living 回路相容；施工冻结仍需现场核实。",
+    "substance_audit": {
+      "deleted": "旧 sofa-r 吊顶缘垂降折点已从在役配置替换；旧配置证据、M04/F01 文字和改前 runtime 保留。",
+      "overturned": "只推翻 sofa-r 的吊顶下引分支；sofa-l、普通电源主干、插座点位和回路成员未变。",
+      "silent_failure": "墙厚、箱位或箱体出线面改变时 x=13.34 需重定位；垫层封闭后管路不可见，故障维修取决于检修照片和现场开地面条件。"
+    }
+  },
+  "blocking_issues": [
+    {
+      "id": "site_verification_required",
+      "severity": "construction_blocker",
+      "finding": "x=13.34 按模型默认 0.12m 墙厚推导，尚未实测；强电箱客厅侧出线、w_foyer_east 剪力墙表面固定、垫层厚度、暗埋水电及 d_bese 门槛净距仍待确认。",
+      "owner_trigger": "业主 + 电工；量房和水电交底前。",
+      "closure": "核对箱体出线面、真实墙厚与表面保护管、φ20 垫层可用空间、门槛/门套收口；任一条件不满足时重画同回路支路。"
+    }
+  ],
+  "non_blocking_notes": [
+    "最终折点为 (13.40,3.60,1.65) → (13.34,3.60,1.65) → (13.34,3.60,0.02) → (13.34,9.35,0.02) → (11.00,9.35,0.02)，3D 长度约 9.78m。",
+    "d_bese 门洞范围的水平段依赖垫层承载，不依赖门垛/墙体固定，也不穿门洞墙体。",
+    "普通电源回路与插座点位不变，未新增断路器；同回路 takeoff 已复算。",
+    "待机/停机时导管留在垫层内；故障先断路器隔离并测箱端/地插端，封闭地面后抽换失败时需局部开地面或重画备用支路。"
+  ],
+  "evidence_refs": [
+    "config/mep-hvac-coordination.yaml#strong-power-living-sofa-r",
+    "docs/pending-site-data.md#65",
+    "docs/decisions/06-electrical.md#DEC-2026-10-17-R4",
+    "evidence/after-runtime.json",
+    "evidence/takeoff-ordinary-power-living.json"
+  ]
+}

@@ -1,8 +1,8 @@
 # 装扮映射表（Twinmotion 云渲染用）
 
-生成：2026-10-14，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-10-16，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
-数据规模：house.yaml furnishings 共 87 件（与 `fact.furnishings_count` 对账）。
+数据规模：house.yaml furnishings 共 91 件（与 `fact.furnishings_count` 对账）。
 
 用法：glb 导入 Twinmotion 后按本表替换材质/家具/灯光；reimport 同名 glb 时材质覆盖按节点名保留。
 
@@ -13,7 +13,7 @@
 | floor | floor_tile_kt_200x1200_01 | KT 200×1200木纹长条砖（当前选型基准 2026-10-12） | KT / 200×1200mm 木纹砖（具体系列、型号、色号待门店确认） | 200x1200mm | 底色 #d8bd93，木纹·直铺，条板 200x1200mm，光泽 soft |
 | floor | floor_tile_antislip_400 | 中性灰哑光防滑砖（主卫/阳台） | 马可波罗 / 快环同档 / 400x400 中性灰哑光防滑砖（防滑等级 R10+，型号待门店确认） | 400x400mm | 底色 #90949a |
 | floor | floor_tile_deco_small | 复古小花砖（客卫点缀） | 快环建材市场花砖档口 / 200x200 复古釉面小花砖（花色到店选样） | 200x200mm | 底色 #b58a6f |
-| wall | wall_tile_01 | 厨卫白色釉面砖 | 东鹏 / 300x600 白色釉面砖 | 300x600mm | 底色 #f5f5f5 |
+| wall | wall_tile_01 | 白色釉面墙砖/窗台砖候选 | 东鹏 / 300x600 白色釉面砖 | 300x600mm | 底色 #f5f5f5 |
 | paint | latex_paint_01 | 金装净味五合一 | 多乐士 / 18L 大桶（具体型号如 A750/A8188，到店确认） | 18L | 底色 #f7f5ef |
 | cabinet | cabinet_board_01 | 多层实木板柜体 + PET 肤感柜门 | 本地全屋定制工厂 / 兔宝宝 / 千年舟 / ENF/E0 级多层实木 18mm | 18mm | 底色 #f2ede2，光泽 soft |
 | countertop | quartz_stone_01 | 石英石台面 | 本地石材厂 / 赛凯隆 / 中迅 / 20mm 厚单色/小颗粒 | 20mm | 底色 #e8e6e0，光泽 glossy |
@@ -105,18 +105,22 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | living_dining | sofa_3seat | 1 | 2.8×0.9 | (11, 7.7) / 270° |
 | living_dining | coffee_table | 1 | 0.7×0.7 | (9.7, 7.7) / 0° |
 | living_dining | entry_half_height_cabinet | 1 | 2×0.35 | (11.5, 4) / 90° |
-| living_dining | dining_table | 1 | 1.4×0.8 | (7.9, 3.45) / 0° |
-| living_dining | dining_chair | 4 | 0.45×0.45 | (7.55, 2.75) / 0°；(8.25, 2.75) / 0°；(7.55, 4.15) / 180°；(8.25, 4.15) / 180° |
-| living_dining | fridge | 1 | 0.833×0.6 | (10.94, 3.48) / 90° |
+| living_dining | dining_table | 1 | 1.4×0.8 | (9.8, 3.45) / 90° |
+| living_dining | dining_chair | 4 | 0.45×0.45 | (9.125, 3) / 90°；(10.475, 3) / 270°；(9.125, 3.9) / 90°；(10.475, 3.9) / 270° |
+| living_dining | fridge | 1 | 0.833×0.6 | (7.5025, 2.9865) / 270° |
+| living_dining | waterbar_low_cabinet_800_preview | 1 | 0.8×0.42 | (7.43, 3.87) / 90° |
+| living_dining | mijia_instant_dispenser_s1_preview | 1 | 0.312×0.106 | (7.5, 3.64) / 90° |
+| living_dining | coffee_machine_em450 | 1 | 0.22×0.285 | (7.37, 4) / 90° |
 | living_dining | curtain_set | 2 | — | count-only（不在 glb，按实物补摆） |
 | living_dining | ceiling_light | 2 | — | count-only（不在 glb，按实物补摆） |
-| kitchen | kitchen_cabinet_run | 3 | （体块无尺寸记录） | (7.86, 0.32) / 0°；(9.94, 0.32) / 0°；(10.48, 1.325) / 90° |
+| kitchen | kitchen_cabinet_run | 3 | （体块无尺寸记录） | (7.86, 0.32) / 0°；(9.94, 0.32) / 0°；(10.48, 1.275) / 90° |
 | kitchen | kitchen_countertop_bridge | 1 | 0.6×0.6 | (8.8, 0.32) / 0° |
 | kitchen | dishwasher | 1 | 0.6×0.6 | (8.8, 0.3) / 0° |
 | kitchen | gas_stove | 1 | 0.75×0.6 | (10.5, 1.5) / 90° |
 | kitchen | range_hood | 1 | 0.9×0.5 | (10.5, 1.5) / 90° |
 | kitchen | sink | 1 | 0.8×0.6 | (9.5, 0.3) / 0° |
 | kitchen | water_heater | 1 | 0.36×0.16 | (7.3, 1) / 270° |
+| kitchen | mijia_ro_purifier_1400g_under_sink_preview | 1 | 0.163×0.445 | (10.05, 0.32) / 0° |
 | kitchen | cabinet_base | 5 | — | count-only（不在 glb，按实物补摆） |
 | kitchen | cabinet_wall | 2 | — | count-only（不在 glb，按实物补摆） |
 | kitchen | countertop_quartz | 5 | — | count-only（不在 glb，按实物补摆） |
@@ -152,7 +156,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | light_parent_dome | study | 吸顶灯 | (5.7, 7.675) | 2.8 | 3000 | — | 书房吸顶灯（2026-10-05 功能互换，id/位置不变）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），书房吸顶灯为设计声明→inferred；2026-10-05 功能互换位置不变，为设计值未实测 |
 | light_child_dome | bedroom_nw | 吸顶灯 | (4.1, 2.7) | 2.8 | 3000 | — | 西北次卧吸顶灯；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），每室一吸顶灯为设计声明→inferred；位置为房间设计值未实测 |
 | light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.8 | 3000 | — | 客房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中；2026-10-05 功能互换，id/位置不变）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），客房吸顶灯为设计声明→inferred；位置随房间南缘凹进取居中，为设计值未实测 |
-| light_corridor_1 | living_dining | 筒灯 | (7.9, 5) | 2.8 | 3000 | entry_base | 走廊口筒灯嵌入既有 ceiling_living 边吊，不新增吊顶；坐标由原 (7.9,5.75) 调整至既有边吊合法范围 (7.9,5.0)，避开电视高柜 x≤7.55，并仍靠近原走廊口；状态依据：归入 topology 回路 lighting_entry_base（confirmed），走廊口筒灯嵌入既有边吊为设计声明→inferred；坐标由原位移至边吊合法范围避电视高柜，位置为设计值未实测 |
+| light_corridor_1 | main_corridor | 筒灯 | (5.7, 4.9) | 2.5 | 3000 | entry_base | 历史旧位：坐标由原(7.9,5.75)调整至既有ceiling_living范围(7.9,5.0)，避开电视高柜x≤7.55并靠近走廊口；原点嵌入既有边吊、不新增吊顶；这些旧位理由和坐标由DEC-2026-10-15-C02覆盖。当前点：因距餐厅下出风槽投影边约75mm，迁至主走廊中段(5.70,4.90)，嵌入ceiling_main_corridor吊底y=2.50；归入lighting_entry_base的回路与开关控制拓扑保持，线路同步协调。开孔、上方风管/梁/冷媒/冷凝水/桥架与龙骨净距待现场复核；坐标是设计候选值，未实测。状态依据：lighting_entry_base回路confirmed，当前灯位为业主明确确认的预演位置。 |
 | light_entry_down | entry_garden | 筒灯 | (13, 1.45) | 2.8 | 3000 | entry_base | 玄关筒灯；状态依据：归入 topology 回路 lighting_entry_base（confirmed），玄关筒灯为设计声明→inferred；位置为设计值未实测 |
 | light_entry_foyer | living_dining | 筒灯 | (12.4, 3.35) | 2.5 | 3000 | entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区；状态依据：归入 topology 回路 lighting_entry_base（confirmed），门厅筒灯利用既有吊顶为设计声明→inferred；取红框中心避让半高柜与入户门，位置为设计值未实测 |
 | light_kitchen_panel | kitchen | 吸顶灯 | (9, 1.2) | 2.8 | 4000 | — | 厨房平板灯（4000K 工作区例外）；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），厨卫 4000K 平板灯为设计声明→inferred；位置为设计值未实测 |
@@ -183,6 +187,12 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | living_south_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 客厅落地幕墙根部防水台（150 高 × 150 出檐常规口径，量级待量房核实）；竖面与水平台面由 sill_region 挂贴砖 |
 | mbath_west_lower_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 主卫西墙淋浴段（z[2.10,2.86] 直段）根部防水台，D4=L 同款 150×150 |
 | mbath_north_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 主卫北墙（x[0,2.60]，西段在淋浴湿区内）根部防水台，D4=L 同款 |
+| master_bedroom_west_upper_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 主卧西墙上段落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01） |
+| master_bedroom_west_mid_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 主卧西墙中段落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01） |
+| master_bedroom_south_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 主卧南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01） |
+| study_south_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 书房南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01） |
+| bedroom_nw_north_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 西北次卧北墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01） |
+| bedroom_se_south_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 东南客房南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01） |
 
 ## 5. 太阳定位参数
 

@@ -1,0 +1,37 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: mep-sofa-r-floor-route-20261017
+subject: 客厅南臂地插右位的强电箱侧落地候选路线
+object_policy:
+  fixed_count_required: true
+  split_by: [function, circuit, construction_review]
+  visual_relationship_required: true
+objects:
+  - id: mep:route:strong-power-living-sofa-r
+    type: mep_coordination_route
+    archetypes: [strong_power, panel_to_floor_socket_branch]
+    owner: project_model / electrician for site verification
+    function: 为 sock_living_sofa_r 表达 ordinary_power_living 同回路候选导管路径；不是施工放线图
+    material: φ20 强电管候选
+    geometry_source: config/mep-hvac-coordination.yaml:63
+    datum_refs: [panel-to-sofa-r-floor-branch]
+    fact_refs: [strong-panel-anchor, sofa-r-endpoint, panel-wall-structure, south-wall-is-glass, panel-floor-route-length, panel-exit-and-screed]
+    decision_refs: [DEC-2026-10-17-R4]
+    dependencies: [config/electrical.yaml, config/electrical-topology.yaml, config/layout/model-geometry.yaml, config/layout/overlay.yaml, config/mep-hvac-coordination.yaml, shared/mep-hvac-lint.ts, app/src/render/MepCoordinationRenderer.ts]
+    interfaces:
+      - { id: source-panel, target_object_id: panel_strong_entry_left, kind: electrical_source, requirement: 强电箱客厅侧出线，实际箱底出线口待现场确认, status: site_pending }
+      - { id: destination-floor-socket, target_object_id: sock_living_sofa_r, kind: electrical_endpoint, requirement: 保持坐标(11.00,9.35)、高度0.02和ordinary_power_living成员关系, status: confirmed_in_config }
+      - { id: panel-wall, target_object_id: w_foyer_east, kind: structure, requirement: shear/inferred；使用客厅侧表面保护管，不开槽, status: inferred_constraint }
+      - { id: screed-and-threshold, target_object_id: d_bese, kind: floor_route, requirement: 地面空间/垫层厚度/门槛净距需实测, status: site_pending }
+    collision: { policy: route_support_by_wall_and_screed, geometry_ref: config/layout/model-geometry.yaml + config/layout/overlay.yaml, review_ref: evidence/after-runtime.json }
+    maintenance:
+      boundary: 本轮只表达固定导管候选，不增加设备/接头/可活动部件
+      access_clearance: 垫层封闭前完成穿线和连续性验收，现场留照片/坐标记录
+      replaceable_parts: [panel_to_floor_conduit_candidate]
+      inspection_requirements: [确认强电箱出线方向, 确认垫层和既有暗埋水电, 确认d_bese门槛净距]
+    parts: [panel_face_offset, wall_side_vertical_drop, screed_south_run, westbound_socket_run]
+    visual_relationships:
+      - { target_object_id: panel_strong_entry_left, relation: source, requirement: 路线从箱体客厅侧接出并沿墙面落地, evidence_refs: [evidence/after.png, evidence/after-runtime.json] }
+      - { target_object_id: sock_living_sofa_r, relation: destination, requirement: 地面支路终止于原地插位置, evidence_refs: [evidence/after.png, evidence/after-runtime.json] }
+    validation_refs: [npm run gate:visual, npm run verify:all, npm run test:server, npm run test:app, npm run typecheck, evidence/after-runtime.json]
+    status: candidate_verified_for_model_only

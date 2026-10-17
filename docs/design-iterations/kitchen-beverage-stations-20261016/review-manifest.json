@@ -1,0 +1,185 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "kitchen-beverage-stations-20261016",
+  "subject": "厨房EM450咖啡机与餐厅米家茶吧机分区预演",
+  "state": "evidence_review",
+  "source_version": {
+    "config_refs": [
+      "config/house.yaml",
+      "shared/types.ts",
+      "shared/render/FixtureFactory.ts",
+      "config/spatial-validation.yaml",
+      "scripts/verify/placement/verify-furniture-placement.ts"
+    ],
+    "asset_refs": [],
+    "render_facts_ref": "current local app runtime; see evidence/runtime-query.json",
+    "source_digest": "Per-file SHA256 values recorded in evidence/runtime-query.json",
+    "generated_at": "2026-10-16T04:25:14Z"
+  },
+  "validation": {
+    "commands": [
+      "node --import tsx scripts/generate-dressing-map.ts",
+      "node --import tsx scripts/verify/placement/verify-furniture-placement.ts",
+      "npm run verify:all",
+      "npm run typecheck",
+      "npm run gate:visual"
+    ],
+    "results": [
+      {"command": "node --import tsx scripts/generate-dressing-map.ts", "result": "PASS", "details": "docs/dressing-map.md regenerated from formal furnishings and dimensions."},
+      {"command": "node --import tsx scripts/verify/placement/verify-furniture-placement.ts", "result": "PASS", "details": "0 placement errors; 2 existing warnings related to count-only south_balcony and master-bedroom curtain envelope."},
+      {"command": "npm run verify:all", "result": "PASS", "details": "17/17 verifiers passed, 0 failed; existing warning groups remain."},
+      {"command": "npm run typecheck", "result": "PASS", "details": "Shared and app TypeScript noEmit checks passed."},
+      {"command": "npm run gate:visual", "result": "PASS", "details": "CLEAR for ceiling/electrical/plumbing/materials; app runtime separately confirmed ready, banner empty, and both appliances present."}
+    ],
+    "config_status": "PASS",
+    "geometry_status": "PASS",
+    "consistency_status": "PASS",
+    "functional_checks_status": "BLOCKED",
+    "application_status": "PASS",
+    "typecheck_status": "PASS",
+    "generated_files_touched_directly": false
+  },
+  "evidence": [
+    {
+      "id": "beverage-zones-overview",
+      "url": "http://localhost:5174/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-16T04:25:14Z",
+      "config_error_banner": "",
+      "target_objects": ["mijia_tea_bar_pro", "coffee_machine_em450", "fridge", "dining_table"],
+      "target_object_ids": ["furniture:living_dining:mijia_tea_bar_pro:14", "furniture:kitchen:coffee_machine_em450:9", "furniture:living_dining:fridge:13", "furniture:living_dining:dining_table:8"],
+      "runtime_query_refs": ["evidence/runtime-query.json"],
+      "camera": {"mode": "orbit", "is_overview": false, "position": [9, 1.6, 5], "target": [7.5, 1, 1.6], "view_type": "perspective"},
+      "snapshot_path": "evidence/beverage-zones-overview.snapshot.txt",
+      "screenshot_path": "evidence/beverage-zones-overview.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["evidence/runtime-query.json#source_sha256"],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "dining-tea-bar-close",
+      "url": "http://localhost:5174/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-16T04:25:14Z",
+      "config_error_banner": "",
+      "target_objects": ["mijia_tea_bar_pro", "fridge", "wall controls"],
+      "target_object_ids": ["furniture:living_dining:mijia_tea_bar_pro:14", "furniture:living_dining:fridge:13"],
+      "runtime_query_refs": ["evidence/runtime-query.json#scene"],
+      "camera": {"mode": "orbit", "is_overview": false, "position": [8.5, 1.58, 4], "target": [7.38, 0.7, 3.72], "view_type": "perspective"},
+      "snapshot_path": "evidence/dining-tea-bar-close.snapshot.txt",
+      "screenshot_path": "evidence/dining-tea-bar-close.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["evidence/runtime-query.json#source_sha256"],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "tea-bar-plan",
+      "url": "http://localhost:5174/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-16T04:25:14Z",
+      "config_error_banner": "",
+      "target_objects": ["mijia_tea_bar_pro", "fridge", "wall controls"],
+      "target_object_ids": ["furniture:living_dining:mijia_tea_bar_pro:14", "furniture:living_dining:fridge:13"],
+      "runtime_query_refs": ["evidence/runtime-query.json#scene.derived_plan_relations"],
+      "camera": {"mode": "orbit", "is_overview": false, "position": [7.38, 2.1, 3.72], "target": [7.38, 0.9, 3.72], "view_type": "perspective"},
+      "snapshot_path": "evidence/tea-bar-plan.snapshot.txt",
+      "screenshot_path": "evidence/tea-bar-plan.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["evidence/runtime-query.json#source_sha256"],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "kitchen-coffee-close",
+      "url": "http://localhost:5174/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-16T04:25:14Z",
+      "config_error_banner": "",
+      "target_objects": ["coffee_machine_em450", "kitchen_cabinet_run"],
+      "target_object_ids": ["furniture:kitchen:coffee_machine_em450:9", "furniture:kitchen:kitchen_cabinet_run:0"],
+      "runtime_query_refs": ["evidence/runtime-query.json#scene.coffee_machine"],
+      "camera": {"mode": "orbit", "is_overview": false, "position": [7.95, 1.58, 1.55], "target": [7.62, 1.04, 0.22], "view_type": "perspective"},
+      "snapshot_path": "evidence/kitchen-coffee-close.snapshot.txt",
+      "screenshot_path": "evidence/kitchen-coffee-close.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["evidence/runtime-query.json#source_sha256"],
+      "status": "valid",
+      "invalid_reason": null
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": [
+      "茶吧机外形约310×315×1155mm，与冰箱形成清晰高低层级；白色机身协调，触控屏和出水部件提供细节对比。",
+      "总览中厨房EM450与餐厅立式茶吧机形成两个分开的饮品节点，没有堆成一排家电；近景中茶吧机因未配柜体，读作独立落地设备。",
+      "本轮没有删除或移动冰箱、餐桌、餐椅、半高柜、厨房柜体、吊顶、玻璃门或建筑对象；只新增茶吧机候选对象。"
+    ],
+    "evidence_refs": ["evidence/beverage-zones-overview.png", "evidence/dining-tea-bar-close.png", "evidence/tea-bar-plan.png", "evidence/kitchen-coffee-close.png", "evidence/runtime-query.json"],
+    "requested_changes": [],
+    "assumptions": [
+      "设备位置(7.38,3.72)、朝东是预演候选，不是施工冻结坐标。",
+      "茶吧机外形按业主尺寸和公开产品图作低细节近似，不等同厂家CAD；水吧柜体、插座、给排水仍未加入。",
+      "审美评审不覆盖开门、取壶、补水、墙控操作或施工净空。"
+    ]
+  },
+  "functional_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": [
+      {"id": "tea_power_missing", "object": "furniture:living_dining:mijia_tea_bar_pro", "fact": "S-TEA-POWER", "issue": "没有确认可及插座、额定功率、插头/回路/漏保条件。", "required_change": "核对中国SKU铭牌并落实可徒手插拔的接地插座和回路容量。"},
+      {"id": "wall_control_access_unverified", "object": "switch_dining/switch_corridor/ac_panel_dining", "fact": "F-WALL-CONTROLS", "issue": "最近声明控制点距机身约107mm，但不含面板外廓、底盒和操作手部空间。", "required_change": "现场按面板尺寸和真人站位复核操作可达性。"},
+      {"id": "tea_service_envelope_unverified", "object": "furniture:living_dining:mijia_tea_bar_pro", "fact": "S-TEA-MAINTENANCE", "issue": "62.5mm模型后距不是安装净距；顶部补水、取壶、清洁和侧后维修包络未验证。", "required_change": "取得准确SKU说明书并复核前/后/上/侧操作净空。"},
+      {"id": "fridge_operation_unverified", "object": "furniture:living_dining:fridge:13", "fact": "F-FRIDGE-LOCATION", "issue": "162mm机身间距不代表冰箱门扇/抽屉和茶吧站人操作互不干涉。", "required_change": "叠加厂家门扇/抽屉包络并现场验证两设备并用。"}
+    ],
+    "non_blocking_notes": [
+      "运行时对象ID furniture:living_dining:mijia_tea_bar_pro:14 存在，AABB约310×315×1155mm；与冰箱、餐桌及现有建筑AABB不重叠。",
+      "当前落地茶吧机独立于view-only水吧柜候选，未增加柜体、插座或给排水；配置校验通过只证明静态几何，不代表功能或施工放行。"
+    ],
+    "evidence_refs": ["evidence/runtime-query.json", "evidence/dining-tea-bar-close.png", "evidence/beverage-zones-overview.png", "evidence/tea-bar-plan.png", "fact-table.yaml", "design-datum.yaml", "object-manifest.yaml"],
+    "requested_changes": [
+      "确认准确SKU、铭牌功率、插头和说明书。",
+      "落实独立可及插座与回路负荷。",
+      "按真实墙控外廓、手部和设备维修包络复核107mm点距。",
+      "验证冰箱门扇/抽屉与茶吧操作共存。"
+    ],
+    "assumptions": [
+      "当前模型只确认310×315×1155mm机身落位候选，不确认安装净空。",
+      "预演中心(7.38,3.72)、朝东；改变位置或加入水吧柜体会使冰箱与墙控关系重算。",
+      "62.5mm墙距、162mm冰箱机身间距和107mm墙控点距离均为模型坐标推算，不含实物外廓/操作包络。"
+    ]
+  },
+  "risks": [
+    {"id": "R-TEA-POWER", "status": "site_pending", "owner": "owner/electrician", "trigger": "before electrical freeze or dispenser purchase"},
+    {"id": "R-TEA-CONTROLS", "status": "site_pending", "owner": "surveyor/owner", "trigger": "when actual switch panels and control access can be measured"},
+    {"id": "R-TEA-MAINTENANCE", "status": "site_pending", "owner": "owner/appliance supplier", "trigger": "before cabinet/shop drawing and appliance purchase"},
+    {"id": "R-TEA-FRIDGE", "status": "site_pending", "owner": "owner/appliance supplier", "trigger": "when fridge door/drawer swing data is available"},
+    {"id": "R-TEA-BAR", "status": "open", "owner": "owner/cabinet shop", "trigger": "if water-bar cabinetry is resumed, split it around the appliance and preserve control access"}
+  ],
+  "retrospective": {"triggered": false, "triggers": [], "records": [], "rebaselined": false},
+  "delivery": {
+    "status": "incomplete",
+    "blocking_issues": ["Functional review is BLOCKED for power, wall-control access, appliance maintenance and fridge operation envelopes.", "Tea-bar position is a candidate pending user review.", "The 850mm water-bar cabinet is still view-only and not included."],
+    "completion_conditions": ["Owner confirms or moves the tea-bar candidate after viewing fixed images.", "Verify the product manual, socket/circuit, wall controls and fridge operation before construction-ready status."],
+    "follow_up_site_pending": ["China-market SKU power/manual", "accessible power point and circuit", "wall control plate and hand envelope", "tea bar refill/tea-pot/maintenance clearances", "fridge door/drawer movement", "future cabinet split and service access"],
+    "delivery_ready": false
+  }
+}

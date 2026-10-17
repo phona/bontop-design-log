@@ -1,0 +1,138 @@
+{
+  "camera": {
+    "position": {
+      "x": 8.399999999999999,
+      "y": 6,
+      "z": 3.9999999999999982
+    },
+    "target": {
+      "x": 12.5,
+      "y": 1.1999999999999995,
+      "z": 6.799999999999998
+    }
+  },
+  "cameraMode": "orbit",
+  "configErrorBanner": "",
+  "mepReady": true,
+  "mepVisible": true,
+  "ready": true,
+  "readySignal": "window.__APP__.isReady()",
+  "route": {
+    "construction_status": "pending",
+    "diameter": 0.02,
+    "endpointMeta": {
+      "from": {
+        "ref": "panel_strong_entry_left"
+      },
+      "to": {
+        "ref": "sock_living_sofa_r"
+      }
+    },
+    "from_height": 1.65,
+    "label": "客厅南臂地插B（ordinary_power_living）",
+    "layer": "strong_power",
+    "lintCodes": [],
+    "lintLevel": "ok",
+    "lintWarnings": [],
+    "method": "floor_branch_candidate",
+    "name": "客厅南臂地插B（ordinary_power_living）",
+    "objectId": "mep:route:strong-power-living-sofa-r",
+    "physicalRoute": true,
+    "points": [
+      {
+        "x": 13.4,
+        "y": 1.65,
+        "z": 3.6
+      },
+      {
+        "x": 13.34,
+        "y": 1.65,
+        "z": 3.6
+      },
+      {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 3.6
+      },
+      {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 9.35
+      },
+      {
+        "x": 11,
+        "y": 0.02,
+        "z": 9.35
+      }
+    ],
+    "reason": "DEC-2026-10-17-R4 替代“南侧窗帘盒吊顶缘直接垂降”候选：从强电箱 panel_strong_entry_left 的客厅侧出线，协调锚点 (13.40,3.60)、箱底标高 1.65m；先偏入客厅至 x=13.34（按模型默认 0.12m 墙厚取 w_foyer_east 客厅侧表面），再沿墙面保护管垂直落至完成地面 y=0.02m， 实际墙厚/箱体出线面待量房复核；不在 w_foyer_east（剪力墙，结构 inferred）开槽。随后在垫层内沿客厅侧 x=13.34 南行至 z=9.35，再西行至 sock_living_sofa_r (11.00,9.35)。正交展开长度约 9.78m（0.06+1.63+5.75+2.34）；同属 ordinary_power_living，不新增断路器。 路径不穿墙、不跨客厅南侧玻璃幕墙；d_bese 门洞范围的水平段由垫层承载，不依赖 w_be_west 门垛/墙体固定，也不穿门洞墙体。强电箱实际出线方向、箱底落地方式、 d_bese 门槛净距、垫层厚度及既有埋管均待量房核实，construction_status 保持 pending，不作为放线依据。",
+    "reviewLabel": "待现场确认",
+    "routeId": "strong-power-living-sofa-r",
+    "source_status": "proposed",
+    "status": "inferred",
+    "to_height": 0.02,
+    "type": "mep_coordination_route",
+    "visualMode": "inferred",
+    "visualStyle": "dashed-marker"
+  },
+  "segments": [
+    {
+      "end": {
+        "x": 13.34,
+        "y": 1.65,
+        "z": 3.6
+      },
+      "index": 0,
+      "start": {
+        "x": 13.4,
+        "y": 1.65,
+        "z": 3.6
+      },
+      "visible": true
+    },
+    {
+      "end": {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 3.6
+      },
+      "index": 1,
+      "start": {
+        "x": 13.34,
+        "y": 1.65,
+        "z": 3.6
+      },
+      "visible": true
+    },
+    {
+      "end": {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 9.35
+      },
+      "index": 2,
+      "start": {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 3.6
+      },
+      "visible": true
+    },
+    {
+      "end": {
+        "x": 11,
+        "y": 0.02,
+        "z": 9.35
+      },
+      "index": 3,
+      "start": {
+        "x": 13.34,
+        "y": 0.02,
+        "z": 9.35
+      },
+      "visible": true
+    }
+  ],
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://127.0.0.1:5173/"
+}

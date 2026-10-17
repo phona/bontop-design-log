@@ -1,0 +1,122 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: kitchen-beverage-modules-20261016
+subject: 餐厅独立边柜与落地茶吧机的软耦合组合预演
+units: m
+coordinate_system: Three.js右手坐标；Y向上，X向东，Z向南；rotationY为弧度，正面朝东对应90°。
+status: draft
+datums:
+  - id: tea-bar-existing
+    name: 米家茶吧机独立落地基准（本轮只读）
+    anchor:
+      kind: free_position
+      ref: furniture:living_dining:mijia_tea_bar_pro:14
+      wall_side: null
+      service_ref: null
+    source_refs:
+      fact_refs: [F-TEA-DIMS, F-TEA-RUNTIME]
+      decision_refs: [DEC-2026-10-16-R03]
+    views:
+      plan:
+        required: true
+        origin: 机身中心
+        axes: X东/西，Z南/北
+        direction: 正面朝东（+x）
+        position: {x: 7.38, z: 3.72}
+        rotation: 1.570796
+        dimensions: {length: 0.31, width: 0.315, depth: 0.315, offset: null}
+        dimension_semantics: total
+      elevation:
+        required: true
+        viewing_side: east
+        vertical_axis: y
+        height: 1.155
+        dimensions: {width: 0.31, height: 1.155, sill: 0, datum_offset: 0}
+        dimension_semantics: overall
+      section:
+        required: true
+        cut_direction: east-west
+        depth_axis: x
+        clearances: {front: null, rear: 0.0625, top: null, bottom: 0}
+        thickness: null
+        dimension_semantics: overall
+    geometry:
+      x: 7.38
+      y: 0
+      z: 3.72
+      width: 0.31
+      depth: 0.315
+      height: 1.155
+      length: 0.31
+      rotation: 1.570796
+      along: z
+    constraints:
+      - 保持既有位置；本轮只读。
+      - 散热、补水、清洁、检修及整体搬出空间待厂家说明书和现场动作验证。
+    interfaces:
+      - 与冰箱静态机身沿z约留0.162m；不代表动态操作净空。
+      - 独立电源和可及插座未确认。
+    validation_refs: [evidence/runtime-query.json#scene.objects.mijia_tea_bar_pro, evidence/waterbar-module-close.png]
+    status: confirmed
+  - id: movable-sideboard-preview
+    name: 可移动低边柜候选（不固定、不包覆家电）
+    anchor:
+      kind: free_position
+      ref: 与tea-bar-existing共享后缘标高的自由放置候选
+      wall_side: null
+      service_ref: null
+    source_refs:
+      fact_refs: [F-SIDEBOARD-RUNTIME, I-SIDEBOARD-PROXY, I-RELATIONSHIPS]
+      decision_refs: [DEC-2026-10-16-R04]
+    views:
+      plan:
+        required: true
+        origin: 柜体中心
+        axes: X东西向深度，Z南北向长度
+        direction: 正面朝东（+x）；后缘与茶吧机后缘对齐
+        position: {x: 7.4225, z: 4.098}
+        rotation: 1.570796
+        dimensions: {length: 0.39, width: 0.4, depth: 0.4, offset: 0}
+        dimension_semantics: total
+      elevation:
+        required: true
+        viewing_side: east
+        vertical_axis: y
+        height: 0.92
+        dimensions: {width: 0.39, height: 0.92, sill: 0, datum_offset: 0}
+        dimension_semantics: overall
+      section:
+        required: true
+        cut_direction: east-west
+        depth_axis: x
+        clearances: {front: null, rear: 0.0625, top: null, bottom: 0}
+        thickness: 0.02
+        dimension_semantics: overall
+    geometry:
+      x: 7.4225
+      y: 0
+      z: 4.098
+      width: 0.39
+      depth: 0.4
+      height: 0.92
+      length: 0.39
+      rotation: 1.570796
+      along: z
+    constraints:
+      - 独立成品家具代理，不挂墙、不与茶吧机或冰箱连接。
+      - 后缘x=7.2225m对齐茶吧机后缘；沿z方向与茶吧机留0.028m缝。
+      - 后方0.0625m为空气缝，不作为人员通道、检修通道或厂家净距。
+      - 前沿比茶吧机前沿多出约0.085m，形成低柜台面和轻微深度台阶。
+      - 当前台面不放置EM450；咖啡机仍只在厨房建模。
+    interfaces:
+      - 茶吧机：沿z相邻，28mm分缝，无物理固定连接。
+      - 墙控：点位位于柜体后方区间且高于柜面，柜前操作舒适度未验证。
+      - 电源：本轮未新增插座、回路或线缆。
+    validation_refs:
+      - evidence/runtime-query.json#scene.objects.waterbar_low_sideboard_400_preview
+      - evidence/waterbar-module-close.png
+      - scripts/verify/placement/verify-furniture-placement.ts
+    status: open
+notes:
+  - 此datum只定义一次可视预演坐标和外廓，不是采购或施工冻结尺寸。
+  - 静态模型不证明真人取物、墙控操作、家电开门、散热或维护净空。

@@ -1,0 +1,73 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: living-sculptural-main-light-r2-20261016
+subject: 客厅悬垂雕塑主灯
+units: m
+coordinate_system: "Three.js右手系，Y向上；水平面x东西、z南北；+x东、+z南；俯视北朝上(-z)。"
+status: frozen
+datums:
+  - id: living-main-fixture-r2
+    name: 客厅主灯现有天花锚点与悬垂外形
+    anchor:
+      kind: ceiling_anchor
+      ref: light_living_dome
+      wall_side: null
+      service_ref: strong-light-living
+    source_refs:
+      fact_refs: ["fact-table.yaml#fact-existing-anchor", "fact-table.yaml#fact-ceiling-and-hvac", "fact-table.yaml#fact-approved-suspension-range"]
+      decision_refs: ["docs/decisions/06-electrical.md#DEC-2026-10-16-R2"]
+    views:
+      plan:
+        required: true
+        origin: "局部坐标原点沿用项目坐标；灯具中心线落在客厅主灯电气锚点。"
+        axes: "x东西、z南北"
+        direction: "俯视北朝上(-z)，南朝下(+z)"
+        position: {x: 10.8, z: 7.15}
+        rotation: 0
+        dimensions: {length: 1.0, width: 1.0, depth: 1.0, offset: 0}
+        dimension_semantics: overall
+      elevation:
+        required: true
+        viewing_side: "从客厅起居区向灯具仰视；安装锚点保持原顶完成面y=2.80m。"
+        vertical_axis: y
+        height: 2.8
+        dimensions: {width: 1.0, height: 0.30, sill: null, datum_offset: 0}
+        dimension_semantics: overall
+      section:
+        required: true
+        cut_direction: "沿x方向剖过拱弧和乳白盘，显示盘底、顶面安装盘、吊杆与拱弧最高点。"
+        depth_axis: "z轴；弧线中心相对锚点向南(+z)偏置0.10m，弧顶进一步前伸0.38m。"
+        clearances: {front: null, rear: null, top: 0, bottom: 0.30}
+        thickness: 0.30
+        dimension_semantics: overall
+    geometry:
+      x: 10.8
+      y: 2.8
+      z: 7.15
+      width: 1.0
+      depth: 1.0
+      height: 0.30
+      length: 1.0
+      rotation: 0
+      along: null
+    constraints:
+      - "外包络约1.0×1.0m，顶面与安装天花锚点齐平；乳白盘底在概念模型中位于y=2.50m。"
+      - "最终乳白盘Ø0.90×0.07m；单条暖铜弧跨0.88m，管径0.02m、拱高0.18m，弧顶向南外伸0.38m。"
+      - "沿用现有客厅主灯坐标，不以餐桌移动或桌心确定灯位。"
+      - "总下垂300mm为本轮模型预演值；不得当成商品安装总高、结构承载或照明性能结论。"
+      - "声明包络位于客厅北缘HVAC设备带z=5.55m以南；气流和梁位需现场核实。"
+    interfaces:
+      - "保留 light_living_dome 电气锚点(10.80,7.15,h=2.80)、living_base回路、双控及 strong-light-living 路由。"
+      - "保持宽面漫射、3000K、Ra≥90、客厅一般活动约100lx/U0≥0.7；光通量冲突留待SKU冻结前解决。"
+      - "安装重量、顶板/接线盒固定、风口射流、电视视线与检修方式属于site_pending。"
+    validation_refs:
+      - "tmp/screenshots/living-main-light/living_main_light_after_context_view_v014.png"
+      - "tmp/screenshots/living-main-light/living_main_light_after_r2_closeup_v005.png"
+      - "tmp/screenshots/living-main-light/living_main_light_after_r2_side_view_v004.png"
+      - "tmp/screenshots/living-main-light/living_main_light_after_top_down_v011.png"
+      - "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json"
+      - "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json"
+    status: confirmed
+notes:
+  - "实算模型平面可见轮廓约0.90×0.94m，未超1.0×1.0m声明包络。"
+  - "front/rear clearance没有现场测值；section中的bottom=0.30m指外形总下垂尺寸，不是通行净空。"

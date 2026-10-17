@@ -1,0 +1,816 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "restaurant-fridge-waterbar-x980-acceptance-20261015",
+  "subject": "西墙冰箱+干水吧、x=9.80m日常四座及临时扩座候选验收",
+  "state": "blocked",
+  "state_note": "日常四人餐桌/椅与西侧冰箱摆位已写入正式家具配置，审美PASS；六人模式、水吧柜体和1420/700半高柜仍为view-only。冰箱安装/电源、墙控可达、真实并用与施工状态仍BLOCKED。",
+  "source_version": {
+    "config_refs": [
+      "config/house.yaml sha256 f9e940c20293e98a94602a33ce3ffea6a6f06d391e748ffdf18954f90f778566",
+      "config/layout/model-geometry.yaml sha256 585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f",
+      "config/layout/overlay.yaml sha256 cc75d470c5cee67ac8af33c5ed01b14885b3bb6e864146f59abbda8dbeb6eb67",
+      "config/ceiling.yaml sha256 9ba9ba68919becbf6df64313c3d63f7f8284db741af328dff79e5d414cdba4b9",
+      "config/electrical.yaml sha256 296888aa11a8451bb2b31f419822a901727178b3d6c4a3c77c07857091640549",
+      "config/plumbing.yaml sha256 b52eaa39cdac2f0e90ec23ee52dcac3c3665b156de84a1cb4d572ba7dabddcd8",
+      "config/materials.yaml sha256 66966ff6a73af806d4fe8178c2839af6992474d6b786dee5cadb9802ab9ed2f2"
+    ],
+    "asset_refs": [
+      "current formal furniture runtime; view-only browser transformations"
+    ],
+    "render_facts_ref": "latest gate:visual digests ceiling 50c1c81f9ec8, electrical f2b49b7bcdb3, plumbing 7f1513d14f27, materials 64176f576326",
+    "source_digest": "sha256:6674229e4f2a3a1edab1e002050506465f5a67c9a13624fa8720dce4f58a5041",
+    "generated_at": "2026-10-15T22:32:55+08:00"
+  },
+  "validation": {
+    "commands": [
+      "npm run gate:visual",
+      "/home/tao/.local/bin/agent-browser --session bontop-accept-20261015 open http://127.0.0.1:5175/",
+      "agent-browser wait --load networkidle; poll window.__APP__.isReady(); inspect URL/title/banner/objectIds/camera; snapshot -i -c; screenshot; validate; reload formal scene; close",
+      "file <three final PNGs>; wc -c <three PNGs and three snapshots>",
+      "VISUAL_GATE_API=http://127.0.0.1:4100 node --import tsx scripts/gate/visual-state-gate.ts (after formal scene reload)",
+      "agent-browser bontop-guest-expansion-20261015 reload at http://127.0.0.1:5176; verify app ready, formal transforms, and temporary-chair absence",
+      "node --import tsx scripts/verify/placement/verify-furniture-placement.ts",
+      "npm run verify:all",
+      "VISUAL_GATE_API=http://127.0.0.1:4100 node --import tsx scripts/gate/visual-state-gate.ts (after final scene reload)",
+      "agent-browser --session bontop-guest-expansion-20261015 open http://127.0.0.1:5176/; wait networkidle; verify app ready and formal object positions; capture three 1600x1000 fixed views; reload; verify formal positions and view-only cleanup; close"
+    ],
+    "results": [
+      {
+        "check": "visual state gate before and after capture/restoration",
+        "status": "CLEAR",
+        "output": "gate:visual digests match current project config",
+        "output_ref": "evidence/runtime-candidate-v2.json#source_version.visual_gate"
+      },
+      {
+        "check": "application readiness",
+        "status": "PASS",
+        "output": "window.__APP__.isReady() true; config error banner empty in all three views",
+        "output_ref": "evidence/runtime-candidate-v2.json#camera_views"
+      },
+      {
+        "check": "target object existence and transforms",
+        "status": "PASS_FORMAL_DAILY_LAYOUT_AND_VIEWONLY_PROXIES",
+        "output": "正式table/chairs/fridge位置从当前config加载；干水吧与1420/700半高柜仅为view-only；新runtime positions/AABB见formal-layout evidence。",
+        "output_ref": "evidence/formal-layout-runtime-20261016.json#formal_furniture_runtime"
+      },
+      {
+        "check": "static sliding-door AABB clearance",
+        "status": "PASS_FOR_DAILY_FOUR_AABBS",
+        "output": "正式日常四椅静态AABB北缘z=2.775m，与实际滑门面板最南z=2.52m约留255mm；guest6临时北椅约留50mm，见临时模式预筛。",
+        "output_ref": "evidence/formal-layout-runtime-20261016.json#assumed_clearances"
+      },
+      {
+        "check": "temporary guest seating static envelopes",
+        "status": "GUEST6_STATIC_AABB_PASS_WITH_TIGHT_SLIDER_MARGIN",
+        "output": "业主已接受临时六人桌椅组南移约320mm；未与推拉门/冰箱门假设AABB直接相交，北椅至推拉门面板约50mm，至600mm冰箱开门假设外缘约1173mm。灯具/地插及真人并用待核",
+        "output_ref": "evidence/guest-seat-envelope.json#temporary_six_with_south_shift"
+      },
+      {
+        "check": "dynamic use, appliance install, MEP and cabinet door operation",
+        "status": "BLOCKED",
+        "output": "manufacturer and operational envelopes unresolved; see functional and construction reviews",
+        "output_ref": "review-manifest.json#functional_review"
+      },
+      {
+        "check": "formal scene restoration",
+        "status": "PASS_NEW_FORMAL_LAYOUT",
+        "output": "最终重载保留table(9.80,3.45,r90)、chairs 9–12新坐标、fridge(7.5025,2.9865,r270)；guest chair/bar/cabinet view-only对象消失。",
+        "output_ref": "evidence/formal-layout-runtime-20261016.json#browser"
+      },
+      {
+        "check": "PNG and snapshot validation",
+        "status": "PASS",
+        "output": "2026-10-16三张新PNG为1600x1000 RGB，三个对应accessibility snapshots非空。",
+        "output_ref": "evidence/formal-layout-runtime-20261016.json#camera_views"
+      },
+      {
+        "check": "typecheck/tests/build",
+        "status": "NOT_RUN_NO_CODE_CHANGE",
+        "output": "仅改配置与文档，没有改渲染/类型代码；本轮未运行测试或类型检查。",
+        "output_ref": "evidence/formal-layout-runtime-20261016.json#validation"
+      },
+      {
+        "check": "guest-six aesthetic review",
+        "status": "PASS",
+        "output": "入口真实机位桌椅被门洞/半高柜遮挡，入口构图未改变；厨房到餐厅视角完整显示六人桌椅，服务墙层次稳定。",
+        "output_ref": "review-manifest.json#aesthetic_review"
+      },
+      {
+        "check": "visual state gate after restoration",
+        "status": "CLEAR",
+        "output": "最终场景重载后，ceiling/electrical/plumbing/material digests 均与当前配置一致。",
+        "output_ref": "evidence/guest6-runtime-preview.json#browser.render_gate_after_restore"
+      },
+      {
+        "check": "verify:furniture",
+        "status": "PASS",
+        "output": "furniture placement OK；2条既有warning（南阳台缺失房间条目跳过、主卧帘软包络说明）。",
+        "output_ref": "evidence/formal-layout-runtime-20261016.json#validation.verify_furniture"
+      },
+      {
+        "check": "verify:all",
+        "status": "PASS_17_OF_17",
+        "output": "17个校验器全部通过，0 failed。",
+        "output_ref": "evidence/formal-layout-runtime-20261016.json#validation.verify_all"
+      },
+      {
+        "check": "visual state gate after formal update and final restore",
+        "status": "CLEAR",
+        "output": "ceiling/electrical/plumbing/material digests match；electric digest f2b49b7bcdb3。",
+        "output_ref": "evidence/formal-layout-runtime-20261016.json#validation.visual_gate"
+      }
+    ],
+    "config_status": "PASS_FORMAL_DAILY_FURNITURE_UPDATED_AND_GATE_CLEAR",
+    "geometry_status": "BLOCKED_DYNAMIC_AND_INSTALLATION_ENVELOPES",
+    "consistency_status": "PASS_NEW_FORMAL_LAYOUT_RELOADED; VIEW_ONLY_OBJECTS_CLEARED",
+    "functional_checks_status": "BLOCKED",
+    "application_status": "PASS_READY_BANNER_EMPTY",
+    "typecheck_status": "NOT_RUN_NO_CODE_CHANGE",
+    "generated_files_touched_directly": false
+  },
+  "evidence": [
+    {
+      "id": "entry-axis-v2",
+      "url": "http://127.0.0.1:5175/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T22:32:55+08:00",
+      "config_error_banner": "",
+      "target_objects": [
+        "four-seat north-south table",
+        "west-wall fridge",
+        "dry bar",
+        "frozen 1420mm/700mm cabinet proxy"
+      ],
+      "target_object_ids": [
+        "furniture:living_dining:dining_table:8",
+        "furniture:living_dining:dining_chair:9",
+        "furniture:living_dining:dining_chair:10",
+        "furniture:living_dining:dining_chair:11",
+        "furniture:living_dining:dining_chair:12",
+        "furniture:living_dining:fridge:13",
+        "view-only:dry-waterbar-x980",
+        "view-only:entry-cabinet-1420-north700"
+      ],
+      "runtime_query_refs": [
+        "evidence/runtime-candidate-v2.json#objects",
+        "evidence/runtime-candidate-v2.json#camera_views.entry_axis"
+      ],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [
+          12.3,
+          1.6,
+          2.05
+        ],
+        "target": [
+          12.3,
+          0.95,
+          7.2
+        ],
+        "view_type": "perspective",
+        "fov_deg": 55,
+        "viewport_px": [
+          1600,
+          1000
+        ]
+      },
+      "snapshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/snapshot-entry-axis-v2.txt",
+      "screenshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/entry-axis-x980-v2.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": [
+        "evidence/runtime-candidate-v2.json#source_version",
+        "config/house.yaml",
+        "config/layout/model-geometry.yaml",
+        "config/layout/overlay.yaml",
+        "config/ceiling.yaml",
+        "config/electrical.yaml",
+        "config/plumbing.yaml",
+        "config/materials.yaml"
+      ],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "service-wall-v2",
+      "url": "http://127.0.0.1:5175/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T22:32:55+08:00",
+      "config_error_banner": "",
+      "target_objects": [
+        "fridge front east",
+        "dry bar",
+        "dining table edge",
+        "half-height cabinet relationship"
+      ],
+      "target_object_ids": [
+        "furniture:living_dining:dining_table:8",
+        "furniture:living_dining:fridge:13",
+        "view-only:dry-waterbar-x980",
+        "view-only:entry-cabinet-1420-north700"
+      ],
+      "runtime_query_refs": [
+        "evidence/runtime-candidate-v2.json#objects",
+        "evidence/runtime-candidate-v2.json#camera_views.service_wall"
+      ],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [
+          9.25,
+          1.6,
+          5.1
+        ],
+        "target": [
+          7.5,
+          0.95,
+          3.4
+        ],
+        "view_type": "perspective",
+        "fov_deg": 55,
+        "viewport_px": [
+          1600,
+          1000
+        ]
+      },
+      "snapshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/snapshot-service-wall-v2.txt",
+      "screenshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/service-wall-x980-v2.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": [
+        "evidence/runtime-candidate-v2.json#source_version",
+        "config/house.yaml",
+        "config/layout/model-geometry.yaml",
+        "config/layout/overlay.yaml",
+        "config/ceiling.yaml",
+        "config/electrical.yaml",
+        "config/plumbing.yaml",
+        "config/materials.yaml"
+      ],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "kitchen-to-dining-v2",
+      "url": "http://127.0.0.1:5175/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-15T22:32:55+08:00",
+      "config_error_banner": "",
+      "target_objects": [
+        "kitchen entrance",
+        "dining table sightline",
+        "living-room depth",
+        "service wall context"
+      ],
+      "target_object_ids": [
+        "furniture:living_dining:dining_table:8",
+        "furniture:living_dining:dining_chair:9",
+        "furniture:living_dining:dining_chair:10",
+        "furniture:living_dining:dining_chair:11",
+        "furniture:living_dining:dining_chair:12",
+        "furniture:living_dining:fridge:13",
+        "view-only:dry-waterbar-x980"
+      ],
+      "runtime_query_refs": [
+        "evidence/runtime-candidate-v2.json#objects",
+        "evidence/runtime-candidate-v2.json#camera_views.kitchen_to_dining"
+      ],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [
+          9.0,
+          1.6,
+          1.45
+        ],
+        "target": [
+          9.5,
+          0.95,
+          4.35
+        ],
+        "view_type": "perspective",
+        "fov_deg": 55,
+        "viewport_px": [
+          1600,
+          1000
+        ]
+      },
+      "snapshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/snapshot-kitchen-view-v2.txt",
+      "screenshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/kitchen-to-dining-x980-v2.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": [
+        "evidence/runtime-candidate-v2.json#source_version",
+        "config/house.yaml",
+        "config/layout/model-geometry.yaml",
+        "config/layout/overlay.yaml",
+        "config/ceiling.yaml",
+        "config/electrical.yaml",
+        "config/plumbing.yaml",
+        "config/materials.yaml"
+      ],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "guest6-entry-axis",
+      "url": "http://127.0.0.1:5175/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "config_error_banner": "",
+      "target_objects": [
+        "入口门内轴线；餐桌因墙体/门洞和半高柜遮挡而不进入画面",
+        "guest6 temporary table/chair transforms",
+        "view-only west fridge/dry bar and 1420/700 cabinet proxy"
+      ],
+      "runtime_query_refs": [
+        "evidence/guest6-runtime-preview.json#geometry",
+        "evidence/guest6-runtime-preview.json#camera_views"
+      ],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [
+          12.3,
+          1.6,
+          2.05
+        ],
+        "target": [
+          12.3,
+          0.95,
+          7.2
+        ],
+        "view_type": "perspective",
+        "fov_deg": 55,
+        "viewport_px": [
+          1600,
+          1000
+        ]
+      },
+      "snapshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/snapshot-guest6-entry.txt",
+      "screenshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-entry.png",
+      "png_exists": true,
+      "png_readable": true,
+      "version_refs": [
+        "evidence/runtime-candidate-v2.json#source_version",
+        "evidence/guest6-runtime-preview.json#owner_decision"
+      ],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "guest6-kitchen-to-dining",
+      "url": "http://127.0.0.1:5175/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "config_error_banner": "",
+      "target_objects": [
+        "厨房看向餐厅；显示完整六人临时桌椅",
+        "guest6 temporary table/chair transforms",
+        "view-only west fridge/dry bar and 1420/700 cabinet proxy"
+      ],
+      "runtime_query_refs": [
+        "evidence/guest6-runtime-preview.json#geometry",
+        "evidence/guest6-runtime-preview.json#camera_views"
+      ],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [
+          9.0,
+          1.6,
+          1.45
+        ],
+        "target": [
+          9.5,
+          0.95,
+          4.35
+        ],
+        "view_type": "perspective",
+        "fov_deg": 55,
+        "viewport_px": [
+          1600,
+          1000
+        ]
+      },
+      "snapshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/snapshot-guest6-kitchen.txt",
+      "screenshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-kitchen-to-dining.png",
+      "png_exists": true,
+      "png_readable": true,
+      "version_refs": [
+        "evidence/runtime-candidate-v2.json#source_version",
+        "evidence/guest6-runtime-preview.json#owner_decision"
+      ],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "guest6-service-wall",
+      "url": "http://127.0.0.1:5175/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "config_error_banner": "",
+      "target_objects": [
+        "冰箱、干水吧、半高柜关系",
+        "guest6 temporary table/chair transforms",
+        "view-only west fridge/dry bar and 1420/700 cabinet proxy"
+      ],
+      "runtime_query_refs": [
+        "evidence/guest6-runtime-preview.json#geometry",
+        "evidence/guest6-runtime-preview.json#camera_views"
+      ],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [
+          9.25,
+          1.6,
+          5.1
+        ],
+        "target": [
+          7.5,
+          0.95,
+          3.4
+        ],
+        "view_type": "perspective",
+        "fov_deg": 55,
+        "viewport_px": [
+          1600,
+          1000
+        ]
+      },
+      "snapshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/snapshot-guest6-service-wall.txt",
+      "screenshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-service-wall.png",
+      "png_exists": true,
+      "png_readable": true,
+      "version_refs": [
+        "evidence/runtime-candidate-v2.json#source_version",
+        "evidence/guest6-runtime-preview.json#owner_decision"
+      ],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "formal-entry-daily-four",
+      "url": "http://127.0.0.1:5176/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "config_error_banner": "",
+      "target_objects": [
+        "入户门内日常四人视角；半高柜为1420/700 view-only proxy",
+        "furniture:living_dining:dining_table:8",
+        "furniture:living_dining:dining_chair:9-12",
+        "furniture:living_dining:fridge:13",
+        "view-only:dry-waterbar-x980",
+        "view-only:entry-cabinet-1420-north700"
+      ],
+      "runtime_query_refs": [
+        "evidence/formal-layout-runtime-20261016.json#formal_furniture_runtime",
+        "evidence/formal-layout-runtime-20261016.json#source_sha256"
+      ],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [
+          12.3,
+          1.6,
+          2.05
+        ],
+        "target": [
+          12.3,
+          0.95,
+          7.2
+        ],
+        "view_type": "perspective",
+        "fov_deg": 55,
+        "viewport_px": [
+          1600,
+          1000
+        ]
+      },
+      "snapshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/snapshot-entry-daily-four.txt",
+      "screenshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/entry-daily-four.png",
+      "png_exists": true,
+      "png_readable": true,
+      "sha256": "3b7a20fd59f26c424a04e25b4f848a9c68f2f1a7d31909b27a35f20f0acdd7d0",
+      "version_refs": [
+        "evidence/formal-layout-runtime-20261016.json#source_sha256",
+        "config/house.yaml",
+        "config/electrical.yaml",
+        "config/anti-penetration.yaml"
+      ],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "formal-kitchen-to-dining-daily-four",
+      "url": "http://127.0.0.1:5176/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "config_error_banner": "",
+      "target_objects": [
+        "厨房看向正式南北向日常四人桌；水吧和半高柜为view-only proxies",
+        "furniture:living_dining:dining_table:8",
+        "furniture:living_dining:dining_chair:9-12",
+        "furniture:living_dining:fridge:13",
+        "view-only:dry-waterbar-x980",
+        "view-only:entry-cabinet-1420-north700"
+      ],
+      "runtime_query_refs": [
+        "evidence/formal-layout-runtime-20261016.json#formal_furniture_runtime",
+        "evidence/formal-layout-runtime-20261016.json#source_sha256"
+      ],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [
+          9.0,
+          1.6,
+          1.45
+        ],
+        "target": [
+          9.5,
+          0.95,
+          4.35
+        ],
+        "view_type": "perspective",
+        "fov_deg": 55,
+        "viewport_px": [
+          1600,
+          1000
+        ]
+      },
+      "snapshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/snapshot-kitchen-to-dining-daily-four.txt",
+      "screenshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/kitchen-to-dining-daily-four.png",
+      "png_exists": true,
+      "png_readable": true,
+      "sha256": "c56b639edd59400327ea944115ef0b8912d755cb5a40bac4d5488e1a428f981e",
+      "version_refs": [
+        "evidence/formal-layout-runtime-20261016.json#source_sha256",
+        "config/house.yaml",
+        "config/electrical.yaml",
+        "config/anti-penetration.yaml"
+      ],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "formal-service-wall-daily-four",
+      "url": "http://127.0.0.1:5176/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "config_error_banner": "",
+      "target_objects": [
+        "正式西侧冰箱 + view-only干水吧 + view-only半高柜关系",
+        "furniture:living_dining:dining_table:8",
+        "furniture:living_dining:dining_chair:9-12",
+        "furniture:living_dining:fridge:13",
+        "view-only:dry-waterbar-x980",
+        "view-only:entry-cabinet-1420-north700"
+      ],
+      "runtime_query_refs": [
+        "evidence/formal-layout-runtime-20261016.json#formal_furniture_runtime",
+        "evidence/formal-layout-runtime-20261016.json#source_sha256"
+      ],
+      "camera": {
+        "mode": "orbit",
+        "is_overview": false,
+        "position": [
+          9.25,
+          1.6,
+          5.1
+        ],
+        "target": [
+          7.5,
+          0.95,
+          3.4
+        ],
+        "view_type": "perspective",
+        "fov_deg": 55,
+        "viewport_px": [
+          1600,
+          1000
+        ]
+      },
+      "snapshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/snapshot-service-wall-daily-four.txt",
+      "screenshot_path": "tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/service-wall-daily-four-preview-bar.png",
+      "png_exists": true,
+      "png_readable": true,
+      "sha256": "48e6c6072deec23deb3bcd38964e65ef2a8f73707607071d0b82ec63dc903e8b",
+      "version_refs": [
+        "evidence/formal-layout-runtime-20261016.json#source_sha256",
+        "config/house.yaml",
+        "config/electrical.yaml",
+        "config/anti-penetration.yaml"
+      ],
+      "status": "valid",
+      "invalid_reason": null
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": [
+      "入口固定机位看不到餐桌，是门洞、半高柜与视线方向形成的真实遮挡；guest6没有进入入口主构图，压缩—释放逻辑未变。",
+      "厨房看餐厅视角完整显示南移320mm后的六人桌椅；前景密度高于日常四人，但客厅纵深仍连续，作为临时来客状态可接受。",
+      "服务墙视角中冰箱、浅木干水吧与半高柜保持稳定；guest6桌椅未切断其主要构图。",
+      "独立审查只覆盖概念视觉；材质、家电、柜体和临时端椅仍是view-only代理。"
+    ],
+    "evidence_refs": [
+      "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-entry.png",
+      "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-kitchen-to-dining.png",
+      "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-service-wall.png"
+    ],
+    "requested_changes": [],
+    "assumptions": [
+      "入口机位为[12.30,1.60,2.05]→[12.30,0.95,7.20]，FOV55、1600×1000；桌椅未入画符合实际墙体和门洞遮挡。",
+      "本审查仅评价概念比例、视线、层次和入口影响，不评价碰撞、家电安装、电气或真人并用。",
+      "临时guest6为view-only南移320mm；日常四人位置仍是主要构图。"
+    ]
+  },
+  "functional_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": [
+      "东侧椅外拉450mm后包围盒约x[10.70,11.15]，至柜体西缘约153.5mm；柜门开启、站人取物和坐人同时操作未验证。",
+      "冰箱AABB到客餐厅开放边界x=7.20约3mm，到客卫东墙实体东面x=7.16约43mm。实际机型后罩、散热、开门/抽屉、检修和换机空间未获厂家确认；600mm门扇外探仍是假设。",
+      "干吧椅外拉后估算操作净距约600mm；无真人站位、真实设备操作/插拔和维护包络。",
+      "六人临时状态静态AABB没有直接挡住厨房入口；北端椅至推拉门面板约50mm，至600mm冰箱开门假设外缘约1173mm。人体、门把手、搬桌、拉椅、开门和同时通行未核。",
+      "西墙新位置没有已确认的冰箱专用插座；干吧设备和回路未定义，现有开关与餐区空调面板的手部可达性未验证；六人模式还未核灯具/地插关系。",
+      "冰箱与水吧沿z方向约37mm，干吧主体距实体墙约90mm、台面距墙约40mm；未扣收口和安装公差，清洁、检修及结构条件未知。"
+    ],
+    "non_blocking_notes": [
+      "日常四人桌中心(9.80,3.45)及西侧冰箱位置已写入正式家具配置；六人guest mode仍为临时view-only中心(9.80,3.77)，未加入正式家具数量。",
+      "北椅与滑门面板、冰箱机身、假设开门包络、干吧和半高柜均无静态AABB相交；厨房口静态几何筛查通过，但50mm边距较紧。",
+      "入口固定视角下桌椅被真实门洞/墙体关系遮挡，因此六人状态没有进入玄关主构图。",
+      "最终重载后正式桌、椅和冰箱保持新坐标；临时端椅、水吧和1420/700柜体proxy已从场景清除。"
+    ],
+    "evidence_refs": [
+      "evidence/runtime-candidate-v2.json#objects",
+      "evidence/runtime-candidate-v2.json#derived_clearances",
+      "evidence/runtime-candidate-v2.json#sliding_door_runtime_aabbs_from_existing_preview_manifest_m",
+      "evidence/guest-seat-envelope.json",
+      "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/entry-axis-x980-v2.png",
+      "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/service-wall-x980-v2.png",
+      "tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/kitchen-to-dining-x980-v2.png",
+      "config/electrical.yaml",
+      "config/electrical-topology.yaml",
+      "docs/pending-site-data.md:#22,#33,#64",
+      "https://assets.midea.com/ImageStore/192549/instructions/d5bebb39018f82ccec8b3441680d60e1.pdf",
+      "https://www.midea.com.cn/zh/midea-service",
+      "evidence/guest6-runtime-preview.json#kitchen_entry_clearance",
+      "evidence/service-edge-wall-audit.json#candidate_clearances_mm",
+      "evidence/guest-seat-envelope.json#temporary_six_with_south_shift",
+      "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-kitchen-to-dining.png",
+      "tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-entry.png"
+    ],
+    "requested_changes": [
+      "取得实际冰箱铭牌和准确型号安装图，确认43mm实体墙后距、侧顶散热、门扇、抽屉、检修与换机空间。",
+      "为西墙冰箱确定可及专用电源和检修路径；列明干吧设备、同时使用功率、回路及墙控件可达性。",
+      "复核六人临时南移320mm对固定吊灯/地插、搬动路径、真人坐姿和厨房门口同时通行的影响。",
+      "建立餐厅侧柜门扫掠并验证椅子停放/拉出、坐人和取物组合。"
+    ],
+    "assumptions": [
+      "冰箱的600mm预留深度和600mm开门范围仍是未核实假设。",
+      "椅子外拉450mm为预演输入；AABB没有人体、把手、铰链、安装公差或操作姿势。",
+      "黑色咖啡机块是通用示意，不是已选SKU；水吧没有水槽与给排水。",
+      "半高柜结构只按冻结立面做了简化代理，内部层板、抽屉、门扇和承托未建模。",
+      "六人模式已由业主确认概念；其运行时静态包络和视觉已审查，灯具/地插和动态人体操作仍未验证。"
+    ]
+  },
+  "construction_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": [
+      "项目配置候选为HR-518WUFIPZ，但业主尚未确认铭牌。已找到美的/华凌518系列通用说明书和官方说明书查询入口，尚未取得准确型号净空/门扇图；到开放边界x=7.20约3mm、到真实客卫墙面x=7.16约43mm，均不能代替厂家安装确认。",
+      "西墙冰箱专用电源点位、安装高度和检修插拔方式未定义；sock_kitchen_fridge与strong-ded-fridge仍是厨房历史endpoint，不为新位置供电。",
+      "水吧设备功率、独立回路、插座、防溅、台面走线以及现有开关/空调面板的操作空间未核。",
+      "柜体与冰箱间约37mm沿z方向的名义间隔未扣除封板、踢脚、安装公差和可拆维护边。"
+    ],
+    "required_follow_up": [
+      "先确认实物铭牌是否为HR-518WUFIPZ；再通过美的官方说明书查询或客服取得该准确型号安装图/售后净空书面确认。",
+      "电工给出西墙冰箱专用电源和干吧负载方案。",
+      "柜商提供餐厅柜门开启图、墙地固定剖面、可拆收口和现场复尺清单。"
+    ],
+    "evidence_refs": [
+      "config/electrical.yaml",
+      "config/electrical-topology.yaml",
+      "config/mep-hvac-coordination.yaml",
+      "docs/pending-site-data.md:#22,#33,#64",
+      "https://assets.midea.com/ImageStore/192549/instructions/d5bebb39018f82ccec8b3441680d60e1.pdf",
+      "https://www.midea.com.cn/zh/midea-service",
+      "evidence/service-edge-wall-audit.json"
+    ]
+  },
+  "risks": [
+    "若把600mm预留误当成厂家安装总深，候选冰箱到实体墙约43mm的后距可能不满足安装、散热、维护要求；3mm只是到开放边界线的距离。",
+    "临时六人组南移约320mm后推拉门面板静态余量约50mm；固定灯具/地插和真人操作未核，不能据静态AABB保证复合动作可用。",
+    "若东侧椅与柜门需要同时打开，153.5mm动态余量不足以预先确认可用。",
+    "如果把预演材质和简单柜体代理当作正式立面，真实饰面、封边、把手和灯位会产生明显外观差异。"
+  ],
+  "retrospective": {
+    "triggered": true,
+    "triggers": [
+      "正式runtime仍显示1.50m旧柜体，而已冻结的设计基线为1.42m/北端700mm；旧入口截图不能用于当前验收。"
+    ],
+    "records": [
+      "回到entry-cabinet-700-20261015 authority，核对冻结柜体中心、占地、920mm低区与1420mm高段。",
+      "在view-only runtime中隐藏旧柜体并以简化1420/700体块替代，三张v2截图均在替换后重捕；旧图不纳入review。",
+      "formal scene reload 后恢复原家具坐标；正式FixtureFactory保持未更新，未将视图代理误作正式实现。",
+      "ALN-2026-10-15-SEATS-01：业主确认日常四人，并希望来客临时扩座；原日常六座待确认项标记为superseded，临时最大人数另列新问题。",
+      "保留原1.40m三椅/侧25mm和1.60m北侧离推拉门55mm的历史数字，改为历史日常六座试算，不再作为当前日常四座验收标准。",
+      "根据新对齐补做临时5/6人AABB预筛：固定桌位+南端椅的5人状态静态不相交；6人候选南移约320mm，待业主选择后再做截图和机电复核。",
+      "ALN-2026-10-15-GUEST6-01：业主接受日常四人、来客六人时桌椅组南移320mm的概念基线；独立审美复审PASS，功能/施工条件继续阻塞。",
+      "墙体复核保留原3mm数值并明确其是冰箱到客餐厅开放边界x=7.20的距离；运行时物理墙面x=7.16，冰箱到墙为43mm。没有删除旧数字或把模型间距升级为厂家净空。",
+      "六人入口审美复审确认真实入口视角看不到餐桌是门洞/半高柜遮挡结果；厨房看餐厅和服务墙视角用于评估临时六人和服务区层次。",
+      "文档变更审计：将“来客人数未确认”更新为业主已接受六人临时模式；将“guest6尚无视觉复审”更新为独立审美PASS；将“冰箱距西墙3mm”拆分为到开放边界3mm、到客卫实体墙43mm；将最终重载/视觉门pending更新为PASS/CLEAR。旧试算数字、历史3mm边界值、原候选和既有截图均保留；这些替换源于本轮业主确认和运行时复核，没有静默删除设计依据。",
+      "DEC-2026-10-16-R01：正式写入日常桌心(9.80,3.45,r90)、四把餐椅和西侧冰箱(7.5025,2.9865,r270)；sock_living_table随桌移位，env.fridge.door改为east。墙/门/吊顶/空调/半高柜位置未动。",
+      "2026-10-16 scope correction：首轮“正式配置未改写”仅描述2026-10-15的概念预演阶段。业主指出遗漏后，已把既有确认的日常家具位置落入config；水吧、六人临时模式和1420/700柜体结构仍保持view-only。旧冰箱坐标、开门方向与旧评审截图保留在历史DEC/evidence中。"
+    ],
+    "rebaselined": true
+  },
+  "delivery": {
+    "status": "blocked",
+    "blocking_issues": [
+      "准确冰箱型号、厂家后距/散热与门扇/维修数据未核；西墙专用电源和干吧设备回路未定。",
+      "六人模式灯具/地插、真人并用、推拉门紧边距和临时搬动尚未通过；半高柜门扫掠与椅子并用待核。",
+      "当前正式模型已写入日常四人桌椅与西侧冰箱布局；水吧柜体、六人临时模式和1420/700柜体结构仍为view-only。审美概念PASS，功能与施工仍BLOCKED。"
+    ],
+    "completion_conditions": [
+      "确认准确冰箱型号和600mm预留深度量尺基准，并取得厂家安装/门扇/维护资料。",
+      "确认西墙冰箱专用电源、干吧设备回路、现有墙控件可达和后部可维护做法。",
+      "复核六人临时南移与灯具/地插、真人坐姿、搬动路径、厨房门口及服务操作并用。",
+      "验证东侧椅、柜门、冰箱和干吧人体操作状态。",
+      "若上述工程事实迫使布局偏离概念基线，先交业主确认，再更新正式模型与配置。"
+    ],
+    "follow_up_site_pending": [
+      "准确家电铭牌/厂家安装图",
+      "西墙完成面复尺",
+      "电源及回路",
+      "柜门五金与人体操作",
+      "临时扩座摆位与吊灯/地插对齐",
+      "客卫东墙完成面/基层/暗管复核",
+      "干吧后缝清洁与检修节点",
+      "水吧覆盖范围内三处西墙控制件的可达/迁位决策",
+      "水吧独立柜体成本口径与报价"
+    ],
+    "delivery_ready": false
+  },
+  "formal_layout_update": {
+    "alignment_id": "DEC-2026-10-16-R01",
+    "trigger": "业主指出“你没执行修改？”；前一轮仅更新文档/临时预演，没有写入正式日常布局。",
+    "interpretation": "按此前业主确认的概念基线，将日常四人桌椅、西侧冰箱及桌餐地插落入当前设计模型。该更新不代表工程安装放行。",
+    "changed_files": [
+      "config/house.yaml",
+      "config/electrical.yaml",
+      "config/electrical-topology.yaml",
+      "config/anti-penetration.yaml"
+    ],
+    "changed_objects": [
+      "dining_table:8",
+      "dining_chair:9-12",
+      "fridge:13",
+      "sock_living_table",
+      "env.fridge.door"
+    ],
+    "unchanged_objects": [
+      "w_gbath_east",
+      "w_gbath_east_open_vanity",
+      "entry_half_height_cabinet:7 position",
+      "doors",
+      "sliding door",
+      "ceiling",
+      "air-conditioning"
+    ],
+    "still_view_only": [
+      "temporary guest-six mode",
+      "west dry-waterbar cabinet",
+      "1420/700 half-cabinet geometry"
+    ],
+    "checks": {
+      "verify_furniture": "PASS",
+      "verify_all": "17/17 PASS",
+      "visual_gate": "CLEAR"
+    },
+    "limitations": [
+      "sock_kitchen_fridge remains historical kitchen endpoint; west-side dedicated outlet not defined",
+      "waterbar geometry covers switch_dining/switch_corridor/ac_panel_dining zone and would be counted as kitchen_cabinet_run if reused; keep view-only pending access and budget resolution",
+      "formal half-cabinet recipe remains 1.5m, while accepted 1.42/700 geometry is only a preview proxy"
+    ]
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "evidence_status": "valid_baseline_from_serial_agent_browser_queries",
+  "source_version_ref": "source-before.sha256",
+  "browser": {
+    "url": "http://127.0.0.1:5173/",
+    "title": "和萃 701 - 3D 装修设计",
+    "ready": true,
+    "ready_signal": "window.__APP__.isReady() === true",
+    "mep_ready": true,
+    "config_error_banner": ""
+  },
+  "route_query": {
+    "object_id": "mep:route:strong-power-living-sofa-r",
+    "route_id": "strong-power-living-sofa-r",
+    "status": "inferred",
+    "source_status": "proposed",
+    "construction_status": "pending",
+    "method": "floor_branch_candidate",
+    "route_kind": null,
+    "lint_codes": ["ceiling_clearance_unverified"],
+    "endpoint_from": { "x": 11.0, "z": 9.65, "y": 2.7 },
+    "endpoint_to_ref": "sock_living_sofa_r",
+    "rendered_points": [
+      { "x": 11.0, "z": 9.65, "y": 2.7 },
+      { "x": 11.0, "z": 9.65, "y": 0.02 },
+      { "x": 11.0, "z": 9.35, "y": 2.55 }
+    ],
+    "rendered_segments": [
+      { "index": 0, "start": { "x": 11.0, "z": 9.65, "y": 2.7 }, "end": { "x": 11.0, "z": 9.65, "y": 0.02 } },
+      { "index": 1, "start": { "x": 11.0, "z": 9.65, "y": 0.02 }, "end": { "x": 11.0, "z": 9.35, "y": 2.55 } }
+    ],
+    "lint_warnings": [
+      "Route strong-power-living-sofa-r dips below the finished ceiling surface of curtain_box_living (2.65m) inside its footprint"
+    ]
+  },
+  "presentation_query": {
+    "target_object_ids": ["mep:route:strong-power-living-sofa-r"],
+    "mep_parent_visible": true,
+    "route_visible": true,
+    "isolated_route_only": true,
+    "camera_mode": "orbit",
+    "camera_position": [10.0, 3.2, 5.2],
+    "camera_target": [11.0, 1.1, 9.3],
+    "snapshot_ref": "before-snapshot.txt",
+    "screenshot_ref": "before.png"
+  }
+}

@@ -1,0 +1,106 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: living-sculptural-main-light-r2-20261016
+subject: 客厅悬垂雕塑主灯
+object_policy:
+  fixed_count_required: true
+  split_by: [function, owner, material, collision, maintenance, interface, review]
+  visual_relationship_required: true
+objects:
+  - id: light_living_dome
+    type: suspended_sculptural_opal_disc_fixture
+    archetypes: [broad_opal_diffuser, three_slender_suspension_rods, offset_three_dimensional_warm_bronze_arch]
+    owner: 业主
+    function: "客厅宽面基础光的灯体候选造型与单一视觉焦点；真实配光仍待SKU核验。"
+    material: "乳白漫射盘与暖铜/青铜哑光或缎面金属表达；渲染颜色不是商品工艺确认。"
+    geometry_source: "config/render/lighting.yaml声明参数 + shared/render/SculpturalDomeGeometry.ts；浏览器与GLB/export共用。"
+    datum_refs: ["design-datum.yaml#living-main-fixture-r2"]
+    fact_refs: ["fact-table.yaml#fact-existing-anchor", "fact-table.yaml#fact-approved-suspension-range", "fact-table.yaml#fact-r2-implemented-envelope"]
+    decision_refs: ["docs/decisions/06-electrical.md#DEC-2026-10-16-R2"]
+    dependencies: ["electrical:light_living_dome", "circuit:living_base", "control_living_entrance_corridor", "strong-light-living"]
+    interfaces:
+      - id: electrical-anchor
+        target_object_id: light_living_dome
+        kind: electrical
+        requirement: "保持现有安装锚点、回路、墙控和MEP终点；渲染层只替换灯具外形。"
+        status: confirmed
+      - id: hvac-airflow
+        target_object_id: ceiling_living
+        kind: hvac
+        requirement: "模型包络不进入北缘边吊设备带；现场核实实际送风射程、风速、摆动和积灰。"
+        status: open
+      - id: structural-mount
+        target_object_id: ceiling_living
+        kind: structural
+        requirement: "供应商和电工确认灯重、顶板/梁承载、底盘和吊杆固定构造；3D杆件不构成承载证明。"
+        status: open
+      - id: maintenance-access
+        target_object_id: light_living_dome
+        kind: maintenance
+        requirement: "核实乳白盘、LED板、驱动器、吊杆连接和弧脚紧固件的拆换、清洁与保修方式。"
+        status: open
+    collision:
+      policy: reviewed
+      geometry_ref: "顶面安装灯具；核对1.0×1.0×0.30m概念包络、吊顶/HVAC层位和视线，不作为地面可行走碰撞体。"
+      review_ref: "review-manifest.json#reviewers.functional"
+    maintenance:
+      boundary: "灯具供应商/电工负责安装与检修；业主清洁乳白漫射盘。实际可拆结构待SKU说明书和安装图核对。"
+      access_clearance: null
+      replaceable_parts: [opal_diffuser, LED_board, driver, suspension_rods, arch_fasteners]
+      inspection_requirements:
+        - "SKU冻结前要求供应商说明LED板和驱动器能否单独更换、是否需整灯拆下及保修责任。"
+        - "现场量房确认梁位、净高、风口气流、固定底盘和吊杆真实受力路径。"
+    parts:
+      - id: opal-diffuser
+        role: "承担宽面漫射的主要可见发光面，模型Ø0.90×0.07m。"
+        independent: true
+        owner: 灯具供应商
+        material: "乳白扩散材料；材质、光通量、眩光和可更换性待SKU资料。"
+        geometry_source: "shared/render/SculpturalDomeGeometry.ts"
+        datum_refs: ["design-datum.yaml#living-main-fixture-r2"]
+        dependencies: [driver, light_source, fixture_body]
+        collision: reviewed
+        maintenance_boundary: "要求从灯具侧拆卸、清洁和更换；具体结构待核。"
+        validation_refs: ["evidence/closeup.runtime.json", "tmp/screenshots/living-main-light/living_main_light_after_r2_closeup_v005.png"]
+      - id: offset-bronze-arch
+        role: "单条偏心3D拱弧，跨0.88m、向南前伸0.38m；只承担视觉表达，不承担主照度。"
+        independent: true
+        owner: 灯具供应商
+        material: "渲染为低反光暖铜色；实际表面工艺、紧固和结构强度待核。"
+        geometry_source: "shared/render/SculpturalDomeGeometry.ts"
+        datum_refs: ["design-datum.yaml#living-main-fixture-r2"]
+        dependencies: [arch_feet, diffuser_rim]
+        collision: reviewed
+        maintenance_boundary: "按供应商说明清洁表面并检查弧脚紧固；不得将模型脚座当作实际连接件规格。"
+        validation_refs: ["evidence/closeup.runtime.json", "evidence/elevation-profile.runtime.json"]
+      - id: suspension-and-canopy
+        role: "三根细吊杆、顶面装饰盘及两个弧脚组成可见悬挂关系。"
+        independent: true
+        owner: 灯具供应商
+        material: "渲染为暖铜；半径4mm是视觉模型参数，不是承载选型。"
+        geometry_source: "shared/render/SculpturalDomeGeometry.ts"
+        datum_refs: ["design-datum.yaml#living-main-fixture-r2"]
+        dependencies: [ceiling_anchor, diffuser_body, offset-bronze-arch]
+        collision: reviewed
+        maintenance_boundary: "实际吊点数量、吊杆规格、弧脚连接与底盘检修方式待安装图。"
+        validation_refs: ["evidence/elevation-profile.runtime.json", "evidence/context.runtime.json"]
+    visual_relationships:
+      - target_object_id: dining_table
+        relation: spaced
+        requirement: "客厅灯锚点距当前餐桌中心约3.83m；餐桌移动或旋转不决定本灯位置。"
+        evidence_refs: ["fact-table.yaml#fact-dining-separation", "evidence/topdown.runtime.json"]
+      - target_object_id: sofa_3seat
+        relation: adjacent
+        requirement: "在起居区形成焦点；暖铜弧应可读但不压过乳白主发光面或沙发主体。"
+        evidence_refs: ["evidence/context.runtime.json", "tmp/screenshots/living-main-light/living_main_light_after_context_view_v014.png"]
+    validation_refs:
+      - "review-manifest.json#reviewers.aesthetic"
+      - "review-manifest.json#reviewers.functional"
+      - "evidence/context.runtime.json"
+      - "evidence/closeup.runtime.json"
+      - "evidence/elevation-profile.runtime.json"
+      - "evidence/topdown.runtime.json"
+    status: implemented
+notes:
+  - "圆盘承担主光、暖铜弧承担造型；渲染外观未证明实际光通量、Ra、照度或均匀度。"
+  - "现场承重、风口射流、视线和维修路径保持待核，不能作为施工或采购冻结依据。"

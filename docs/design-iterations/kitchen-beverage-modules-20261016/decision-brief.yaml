@@ -1,0 +1,143 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: kitchen-beverage-modules-20261016
+subject: 餐厅独立边柜与落地茶吧机的软耦合组合预演
+priority:
+  user_goal: 用真实三维模型解释“不定制柜台时，活动边柜如何与落地茶吧机形成水吧组合”，并展示空间效果。
+  ranked:
+    - 不移动冰箱、茶吧机、餐桌、半高柜、吊顶、门洞、玻璃门和墙体
+    - 茶吧机独立落地；边柜独立可移动，不包覆家电
+    - 用尺度、背线对齐和相邻关系建立视觉联系
+    - 当前EM450仍留在厨房；餐厅只保留未来搬放的可能
+  non_negotiables:
+    - 不新增通顶柜、冰箱侧板或固定包边
+    - 不改既有家具或建筑坐标
+    - 不假设插座、回路、给排水和墙控迁移已解决
+    - 不把候选尺寸写成成品商品或施工尺寸
+  tradeoffs_accepted:
+    - 接受边柜与茶吧机留28mm分缝，以保持可拆可移
+    - 接受边柜前沿比茶吧机前沿多出约85mm，获得约400mm台面深度
+    - 本轮不把EM450复制到餐厅，避免把未来选项误作当前状态
+frozen: true
+freeze_record:
+  alignment_id: chat-2026-10-16-movable-waterbar-module-preview
+  original_user_response: "没太听懂，你改一下模型给我看看效果。"
+  normalized_decisions:
+    - 用一件不固定、可搬动的低边柜紧邻落地茶吧机，做一个真实模型预演例子。
+    - 边柜为通用几何代理，尺寸、位置和材质仍可看图后调整，不代表已选成品SKU。
+    - 茶吧机、冰箱、餐桌和既有建筑位置保持不变；EM450继续留在厨房。
+    - 通过边柜与茶吧机背线对齐、沿墙留28mm分缝，展示“有关联但不固定”的模块关系。
+  confirmed_by_user: true
+  confirmed_at: 2026-10-16
+  evidence_refs:
+    - docs/design-iterations/kitchen-beverage-stations-20261016/decision-brief.yaml
+    - docs/design-iterations/kitchen-beverage-modules-20261016/evidence/runtime-query.json
+allowed_scope:
+  files:
+    - config/house.yaml
+    - shared/types.ts
+    - shared/render/FixtureFactory.ts
+    - config/spatial-validation.yaml
+    - scripts/verify/placement/verify-furniture-placement.ts
+    - docs/dressing-map.md (generated from declared sources)
+    - docs/decisions/02-layout-public.md
+    - docs/decisions/README.md
+    - docs/design-iterations/kitchen-beverage-modules-20261016/
+  objects:
+    - furniture:living_dining:waterbar_low_sideboard_400_preview:15
+    - furniture:living_dining:mijia_tea_bar_pro:14 (read-only)
+    - furniture:living_dining:fridge:13 (read-only)
+    - furniture:living_dining:dining_table:8 (read-only)
+    - furniture:kitchen:coffee_machine_em450:9 (read-only)
+  archetypes: [freestanding_appliance, movable_sideboard, beverage_station]
+  views: [perspective, plan]
+  changes:
+    - 在living_dining增加390×400×920mm独立边柜候选对象。
+    - 边柜后缘与茶吧机后缘对齐，沿z方向留28mm分缝。
+    - 使用真实Three.js固定视角截图和运行时对象查询展示相邻关系。
+forbidden:
+  files:
+    - config/layout/model-geometry.yaml
+    - config/layout/overlay.yaml
+    - config/electrical.yaml
+    - config/electrical-topology.yaml
+    - config/plumbing.yaml
+    - config/ceiling.yaml
+  objects:
+    - 冰箱、茶吧机、EM450、餐桌、餐椅、玄关半高柜
+    - 吊顶、墙体、门洞、玻璃门和既有墙控
+  assumptions:
+    - 不把62.5mm后墙空气缝解释为检修通道或厂家安装净距
+    - 不把机身间距解释成冰箱门扇、抽屉或人员操作净距
+    - 不把模型边柜尺寸解释成已选商品、报价或施工图
+  out_of_scope_changes:
+    - 定制柜、固定台面、连续背板、墙面挂装或封闭茶吧机
+    - 新增电源、回路、线缆路径、给排水或墙控迁改
+    - 将咖啡机移入餐厅或在餐厅复制第二台
+open_questions:
+  - id: OQ-SIDEBOARD-SKU
+    category: preference
+    question: 能否找到尺寸和颜色合适的成品边柜，需另行选品核实。
+    fact_refs: [I-SIDEBOARD-PROXY]
+    options: []
+    selected: null
+    user_response: null
+    status: open
+  - id: OQ-WALL-CONTROLS
+    category: mep
+    question: 墙控点位在边柜后方z范围上方，柜前是否能自然操作需按面板和真人动作验证。
+    fact_refs: [S-WALL-CONTROLS, I-RELATIONSHIPS]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+  - id: OQ-POWER
+    category: mep
+    question: 茶吧机候选位没有已确认可及插座和回路资料；咖啡机若未来搬来，也需核对负荷。
+    fact_refs: [S-TEA-POWER]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+  - id: OQ-SERVICE
+    category: maintenance
+    question: 茶吧机补水、取壶、滴水盘清洁、侧后检修与冰箱动态开门范围未按真实SKU核验。
+    fact_refs: [S-TEA-SERVICE, S-FRIDGE-OPERATION]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+alignment:
+  records:
+    - id: chat-2026-10-16-movable-waterbar-module-preview
+      user_response: "没太听懂，你改一下模型给我看看效果。"
+      normalized_decision: "用一件不固定、可移动的低边柜紧邻落地茶吧机，在真实模型中演示水吧组合。"
+      fact_refs: [F-TEA-RUNTIME, F-SOFT-COUPLING]
+      status: frozen_for_visual_preview
+  unresolved:
+    - 成品边柜SKU、材料色差、报价和可获得性
+    - 墙控操作、电源、茶吧机维护和冰箱动态开门范围
+  re_alignment_required: false
+acceptance:
+  validation_commands:
+    - node --import tsx scripts/verify/placement/verify-furniture-placement.ts
+    - node --import tsx scripts/verify/verify-all.ts
+    - npm run typecheck (previous pass; no TypeScript behavior changed in the final alignment adjustment)
+    - node --import tsx scripts/gate/visual-state-gate.ts
+  browser_evidence_required: true
+  required_views:
+    - 餐厅人眼总览：显示边柜、茶吧机和冰箱关系
+    - 茶吧机与边柜近景：显示背线、分缝和台面高度层级
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: pending
+  blocking_issues:
+    - 边柜SKU与真实尺寸未确定，预演不是采购推荐
+    - 墙控、电源、茶吧维护及冰箱开门/抽屉操作未验证
+  done_when:
+    - Three.js运行时边柜对象存在，外包络约400×390×920mm。
+    - 茶吧机、冰箱、餐桌及其他固定对象坐标未改变。
+    - 总览和近景截图与当前配置版本一致。
+    - 清楚呈现边柜为独立活动家具，不与茶吧机或墙体固定连接。
+    - 业主看图后再决定是否选成品边柜或调整尺寸。
+  delivery_notes_required: true

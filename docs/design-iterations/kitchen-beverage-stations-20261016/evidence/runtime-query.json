@@ -1,0 +1,83 @@
+{
+  "captured_at_utc": "2026-10-16T04:25:14Z",
+  "browser": {
+    "url": "http://localhost:5174/",
+    "title": "和萃 701 - 3D 装修设计",
+    "ready_signal": "window.__APP__.isReady()",
+    "ready": true,
+    "config_error_banner": ""
+  },
+  "scene": {
+    "renderer": "project Three.js client",
+    "tea_bar": {
+      "object_id": "furniture:living_dining:mijia_tea_bar_pro:14",
+      "type": "mijia_tea_bar_pro",
+      "position": [7.38, 0, 3.72],
+      "rotation_y_rad": 1.5707963267948966,
+      "declared_dimensions_m": {"width": 0.31, "depth": 0.315},
+      "mesh_part_count": 13,
+      "world_aabb_m": {
+        "min": [7.222500001192093, -0.0000000004321336743301485, 3.5649999988079073],
+        "max": [7.537499998807907, 1.1550000000745058, 3.875000001192093],
+        "size": [0.3149999976158142, 1.1550000005066394, 0.3100000023841858]
+      }
+    },
+    "coffee_machine": {
+      "object_id": "furniture:kitchen:coffee_machine_em450:9",
+      "type": "coffee_machine_em450",
+      "position": [7.62, 0, 0.22],
+      "rotation_y_rad": 0,
+      "declared_dimensions_m": {"width": 0.22, "depth": 0.285},
+      "mesh_part_count": 24,
+      "world_aabb_m": {
+        "min": [7.5100000005960466, 0.8899999856948853, 0.07750000016763806],
+        "max": [7.729999999403954, 1.1950000004321337, 0.36250000018998985],
+        "size": [0.2199999988079071, 0.30500001473724847, 0.2850000000223518]
+      }
+    },
+    "protected_existing_objects": [
+      {"object_id": "furniture:living_dining:fridge:13", "type": "fridge", "position": [7.5025, 0, 2.9865], "rotation_y_rad": 4.71238898038469, "aabb_x": [7.2025, 7.8025], "aabb_z": [2.57, 3.403], "aabb_y": [0, 1.91]},
+      {"object_id": "furniture:living_dining:dining_table:8", "type": "dining_table", "position": [9.8, 0, 3.45], "rotation_y_rad": 1.5707963267948966},
+      {"object_id": "furniture:living_dining:dining_chair:9", "type": "dining_chair", "position": [9.125, 0, 3.0], "rotation_y_rad": 1.5707963267948966},
+      {"object_id": "furniture:living_dining:dining_chair:10", "type": "dining_chair", "position": [10.475, 0, 3.0], "rotation_y_rad": 4.71238898038469},
+      {"object_id": "furniture:living_dining:dining_chair:11", "type": "dining_chair", "position": [9.125, 0, 3.9], "rotation_y_rad": 1.5707963267948966},
+      {"object_id": "furniture:living_dining:dining_chair:12", "type": "dining_chair", "position": [10.475, 0, 3.9], "rotation_y_rad": 4.71238898038469},
+      {"object_id": "furniture:living_dining:entry_half_height_cabinet:7", "type": "entry_half_height_cabinet", "position": [11.5, 0, 4.0], "rotation_y_rad": 1.5707963267948966},
+      {"object_id": "furniture:kitchen:kitchen_cabinet_run:0", "type": "kitchen_cabinet_run", "position": [7.86, 0, 0.32], "rotation_y_rad": 0},
+      {"object_id": "furniture:kitchen:kitchen_countertop_bridge:1", "type": "kitchen_countertop_bridge", "position": [8.8, 0, 0.32], "rotation_y_rad": 0},
+      {"object_id": "furniture:kitchen:water_heater:8", "type": "water_heater", "position": [7.3, 0, 1.0], "rotation_y_rad": 4.71238898038469}
+    ],
+    "derived_plan_relations": {
+      "tea_bar_to_fridge_body_gap_m": 0.162,
+      "tea_bar_to_guest_bath_east_wall_face_gap_m": 0.0625,
+      "tea_bar_to_switch_dining_point_plan_distance_m": 0.1074,
+      "tea_bar_to_switch_corridor_and_ac_panel_plan_distance_m": 0.2261,
+      "note": "Point distances are computed from declared point coordinates and tea-bar body AABB; they do not include actual plate/plug/service envelopes."
+    }
+  },
+  "fixed_cameras": {
+    "dining-tea-bar-close.png": {"mode": "orbit", "position": [8.5, 1.58, 4.0], "target": [7.38, 0.7, 3.72], "fov": 55},
+    "beverage-zones-overview.png": {"mode": "orbit", "position": [9.0, 1.6, 5.0], "target": [7.5, 1.0, 1.6], "fov": 65},
+    "tea-bar-plan.png": {"mode": "orbit", "position": [7.38, 2.1, 3.72], "target": [7.38, 0.9, 3.72], "up": [0, 0, -1], "fov": 55},
+    "kitchen-coffee-close.png": {"mode": "orbit", "position": [7.95, 1.58, 1.55], "target": [7.62, 1.04, 0.22], "fov": 55}
+  },
+  "source_sha256": {
+    "config/house.yaml": "449c69d53574813c3e383092b58f46ac922b5fd44621c23168edf1d369f4132e",
+    "shared/types.ts": "f9c8d74589a0259e8fe6ecc9c9f9ebc37a4bb09c9da7a4e6a293992789d54c94",
+    "shared/render/FixtureFactory.ts": "6d8d68a2fc282ea6fbd4c40501cb7d91674d3d189b3223dc18b6d1c9b5e942be",
+    "config/spatial-validation.yaml": "458dda4f2801ad55b8f24c3dc819ec9f81a83b0cf9b1d4683e11ed769ec842e2",
+    "scripts/verify/placement/verify-furniture-placement.ts": "01cee730f07be5c91e59044c2a52d7ef5aa8381196a66dc16141bd811b7e5acb",
+    "docs/decisions/02-layout-public.md": "c64b0716f36ed93fd8b7f07f20c7d97c64c7ac48ab8ee1ac4581ed9a26b5d482",
+    "docs/decisions/README.md": "b41297098e8ca5095d64ca2148311b1eacaca7292eb58fc546df5ede83015f33"
+  },
+  "evidence_files": [
+    "dining-tea-bar-close.png",
+    "dining-tea-bar-close.snapshot.txt",
+    "beverage-zones-overview.png",
+    "beverage-zones-overview.snapshot.txt",
+    "tea-bar-plan.png",
+    "tea-bar-plan.snapshot.txt",
+    "kitchen-coffee-close.png",
+    "kitchen-coffee-close.snapshot.txt"
+  ]
+}

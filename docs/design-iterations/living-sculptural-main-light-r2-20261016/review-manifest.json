@@ -1,0 +1,249 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "living-sculptural-main-light-r2-20261016",
+  "subject": "客厅主灯悬垂雕塑造型",
+  "status": "incomplete",
+  "delivery_scope": "项目模型中的客厅主灯造型、共享浏览器/GLB几何和概念审美/功能复核；不冻结SKU、真实光度、安装或施工。",
+  "source_version": {
+    "url": "http://localhost:5175/?v=20261016-r6",
+    "title": "和萃 701 - 3D 装修设计",
+    "visual_gate": "CLEAR",
+    "ceiling": "50c1c81f9ec8",
+    "electrical": "f2b49b7bcdb3",
+    "plumbing": "7f1513d14f27",
+    "materials": "64176f576326",
+    "source_sha256": {
+      "shared/render/SculpturalDomeGeometry.ts": "27c21a61cacbee784035c4396ac6d41d5faa1fdb3ff5998913bcfe118520a2fe",
+      "shared/render/LightingFixtureBuilder.ts": "1350b9f24f9f75b21765cee1f8b4a8ce8949f568a33f35df6d06cb2cdfb560bc",
+      "app/src/render/InteriorLightingSystem.ts": "fd98d5354d890e8fc3495099e172b72fcbd3efd69111e708e7a315128ed31047",
+      "config/render/lighting.yaml": "846684e14fec8a6387dfa8ccc07ea2dc3923da10333e05dd84c2ddd4d09b7beb",
+      "config/render/overrides.yaml": "800e56c2f4c43393418e97140b70f92ed1a679c653e5481255766c6458402b01",
+      "shared/types.ts": "5c5abc2fb877395341b888062209dad8c650fc1bb91964b6a4562030f93d9c05",
+      "shared/project-render-facts-schema.ts": "c283bda76dca807ba9df87f43df1ec7abb389d13b51e8e4917b580b3c588ffa8",
+      "data/project-render-facts.json": "7911e93ddbc09ad59d11a2335a3aba78ee41d9047237d9e0b95d309fffff5df0",
+      "docs/decisions/06-electrical.md": "2b1ee2d144959be0931dea7a87a9e4ee505945b9c2475a1447b0d0b1e563ee35",
+      "docs/style-guide.md": "0827e84b9654263644a60b901cb960f5166d3444860905f6e1f2d97e222e9071",
+      "schedule/procurement.md": "e67ad8e84f6024f9fbdb136a2752ccbf658a77c2eac9762d20ce178ad8b4ea54"
+    }
+  },
+  "baseline_evidence": {
+    "description": "R1业主反馈仍像普通吸顶灯之前的同机位参考。",
+    "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_context_view_v010.png",
+    "runtime": "docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_context_runtime.json",
+    "snapshot": "docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_context.snapshot.txt"
+  },
+  "final_evidence": [
+    {
+      "id": "context-living-light",
+      "ready": true,
+      "config_error_banner": "",
+      "visual_preview_active": false,
+      "tooltip_hidden_for_evidence": true,
+      "camera_mode": "first-person",
+      "camera_position": [9, 1.7, 9.5],
+      "camera_target": [10.9, 1.7, 5.5],
+      "camera_fov_deg": 70,
+      "viewport": [1600, 1000],
+      "target_object_id": "electrical:light_living_dome",
+      "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_context_view_v014.png",
+      "snapshot": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt",
+      "runtime": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json",
+      "status": "valid"
+    },
+    {
+      "id": "closeup-arch-and-diffuser",
+      "ready": true,
+      "config_error_banner": "",
+      "visual_preview_active": false,
+      "tooltip_hidden_for_evidence": true,
+      "camera_mode": "first-person",
+      "camera_position": [11.3, 1.7, 9.5],
+      "camera_target": [10.8, 2.45, 7.15],
+      "camera_fov_deg": 50,
+      "viewport": [1600, 1000],
+      "target_object_id": "electrical:light_living_dome",
+      "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r2_closeup_v005.png",
+      "snapshot": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.snapshot.txt",
+      "runtime": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.runtime.json",
+      "status": "valid"
+    },
+    {
+      "id": "side-elevation-projection",
+      "ready": true,
+      "config_error_banner": "",
+      "visual_preview_active": false,
+      "tooltip_hidden_for_evidence": true,
+      "camera_mode": "first-person",
+      "camera_position": [8.8, 2.35, 7.15],
+      "camera_target": [10.8, 2.35, 7.15],
+      "camera_fov_deg": 45,
+      "viewport": [1600, 1000],
+      "target_object_id": "electrical:light_living_dome",
+      "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r2_side_view_v004.png",
+      "snapshot": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.snapshot.txt",
+      "runtime": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json",
+      "status": "valid"
+    },
+    {
+      "id": "top-down-envelope-and-room-relation",
+      "ready": true,
+      "config_error_banner": "",
+      "visual_preview_active": false,
+      "tooltip_hidden_for_evidence": true,
+      "camera_mode": "top-down",
+      "camera_position": [10.3, 30, 6.1],
+      "camera_target": [10.3, 0, 6.1],
+      "camera_fov_deg": 45,
+      "camera_zoom": 3.2,
+      "viewport": [1600, 1000],
+      "target_object_id": "electrical:light_living_dome",
+      "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_top_down_v011.png",
+      "snapshot": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.snapshot.txt",
+      "runtime": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.runtime.json",
+      "status": "valid"
+    }
+  ],
+  "validation": {
+    "commands": [
+      "npm run generate:project-render-facts",
+      "npm run typecheck",
+      "npm run verify:lighting-config",
+      "npm run verify:all",
+      "npm run gate:visual"
+    ],
+    "results": [
+      "generate:project-render-facts PASS; generated 15 lighting fixtures",
+      "typecheck PASS",
+      "verify:lighting-config PASS; 1 detailed fixture",
+      "verify:all PASS; 17/17 verifiers, 0 failed",
+      "gate:visual CLEAR; ceiling 50c1c81f9ec8; electrical f2b49b7bcdb3; plumbing 7f1513d14f27; materials 64176f576326"
+    ],
+    "test_suites": "未运行测试套件；本轮按任务范围执行类型、配置、全项目验证与视觉门禁。"
+  },
+  "reviewers": {
+    "aesthetic": {
+      "status": "passed",
+      "verdict": "PASS",
+      "blocking_issues": [],
+      "non_blocking_notes": [
+        "R6清楚呈现为悬垂雕塑灯，而非吸顶灯：300mm下垂、三根吊杆、顶盘、抬高的暖铜弧和独立漫射盘共同形成悬挂结构。",
+        "Ø0.90m乳白盘与0.88m单条铜弧比例合适；弧线能形成焦点，又保持单一克制的造型。",
+        "380mm前伸使暖铜弧在三分之四空间视角中有真实纵深，不再像盘面上的平面线条。",
+        "暖铜弧和白色漫射盘适配现代轻中古胡桃木方向，造型有辨识度，没有变成多臂或繁复灯具。",
+        "客厅关系图显示灯具落在起居区焦点位置；沙发、HVAC边吊和餐桌仍可辨认，餐桌没有决定灯位。",
+        "俯视确认约1m平面包络及与餐桌分离；侧视确认悬挂侧面和300mm总下垂。",
+        "黑色HVAC长带仍明显，但与白色圆盘和暖铜弧形成平衡，不再与模糊的贴顶圆盘竞争。"
+      ],
+      "evidence_refs": [
+        "tmp/screenshots/living-main-light/living_main_light_after_context_view_v014.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r2_closeup_v005.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r2_side_view_v004.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_top_down_v011.png",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.snapshot.txt"
+      ],
+      "requested_changes": [],
+      "assumptions": [
+        "该审查只判断审美；真实光通量、3000K表现、眩光、顶面锚固、结构承载和维护仍属独立的功能/施工核验。",
+        "四份runtime均为同版R6证据，ready=true、配置错误横幅为空、visualPreviewActive=false，target为electrical:light_living_dome。",
+        "客厅锚点、约1m平面包络和餐桌位置保持不变。"
+      ]
+    },
+    "functional": {
+      "status": "passed",
+      "verdict": "PASS",
+      "blocking_issues": [],
+      "non_blocking_notes": [
+        "四份runtime来自同一版R6，ready=true、errorBanner为空、visualPreviewActive=false，target均为electrical:light_living_dome。",
+        "runtime确认外包络1.0×1.0×0.30m，漫射盘直径0.90m、厚0.07m，arcSpan 0.88m、arcRise 0.18m、arcDepthExtension 0.38m、arcTubeRadius 0.01m。",
+        "按共享几何公式，竖向范围约y=2.50–2.80；吊杆上端约2.785m，盘底约2.50m，未超300mm下垂包络。",
+        "水平构件范围均在1m×1m内：盘半径0.45m，弧线约x±0.45m、z方向最大约0.49m；吊杆和弧脚未越界。",
+        "弧脚与弧管端点x/z位置一致，吊杆上端接顶盘、下端接漫射盘上表面；近景和侧视未见明显断开或严重穿插。",
+        "灯中心仍是现有点位(10.8,7.15)，包络z约6.65–7.65m；北缘HVAC设备带止于z=5.55m，模型没有直接重叠。",
+        "浏览器与GLB/export共用shared/render/SculpturalDomeGeometry.ts；runtime包含漫射盘、顶盘、弧、弧脚和三根吊杆。",
+        "schema覆盖包络、弧线深度、弧脚可达性和吊杆端点；仍未自动计算TubeGeometry swept AABB、杆/弧实体相交或真实气流扰动。",
+        "runtime暖铜rim、canopy、arch、arch-foot和吊杆均为color=9a6948、emissiveIntensity=0；预演发光只作用于opal-diffuser。"
+      ],
+      "evidence_refs": [
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.runtime.json",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.snapshot.txt",
+        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.snapshot.txt",
+        "tmp/screenshots/living-main-light/living_main_light_after_context_view_v014.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r2_closeup_v005.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_r2_side_view_v004.png",
+        "tmp/screenshots/living-main-light/living_main_light_after_top_down_v011.png",
+        "shared/render/SculpturalDomeGeometry.ts:40-216",
+        "config/render/lighting.yaml:13-42",
+        "shared/project-render-facts-schema.ts:319-395",
+        "app/src/render/InteriorLightingSystem.ts:261-264,338-353,485-505",
+        "shared/render/LightingFixtureBuilder.ts:75-89,129-159",
+        "config/electrical.yaml:934-943",
+        "config/electrical-topology.yaml:39-48,239-244",
+        "config/mep-hvac-coordination.yaml:42",
+        "config/ceiling.yaml:1-20"
+      ],
+      "requested_changes": [],
+      "assumptions": [
+        "功能PASS覆盖当前几何包络、接口保留、层位和渲染路径；不代表真实照度、气流、重量、承重或维护性能已经确认。",
+        "当前无独立runtime AABB或水平HVAC/家具碰撞输出；相关判断依据共享几何公式、配置坐标和同版视图。",
+        "施工前由电工、灯具供应商和现场量房共同确认梁位、顶板固定、接线盒承重、吊杆承载、弧脚连接、驱动检修和漫射盘维护。"
+      ]
+    },
+    "construction": {"status": "site_pending", "verdict": null, "blocking_issues": [], "non_blocking_notes": ["现场梁位、承重、风口射流、净高和SKU维修方式无证据。"], "evidence_refs": ["fact-table.yaml#pending-mounting", "fact-table.yaml#pending-airflow-and-sightline", "fact-table.yaml#pending-serviceability"], "requested_changes": [], "assumptions": ["当前尚未交房，概念渲染不能代替量房和安装图。"]}
+  },
+  "approved_envelope_m": {"width": 1.0, "depth": 1.0, "ceiling_to_bottom": 0.3},
+  "blocking_issues": [
+    "现场结构/固定方式、风口射流、固定沙发视线和维护路径待实测或厂家资料。",
+    "SKU真实光度未核；客厅流明目标仍有7,100–8,500lm与复算约9,287.5lm冲突。"
+  ],
+  "follow_up_site_pending": [
+    {"item": "量房梁位、净高、顶板/接线盒承重；厂家提供灯重、底盘与吊杆安装图。", "owner": "业主+量房/施工方+电工+供应商", "trigger": "SKU冻结及安装图确认前"},
+    {"item": "核实风口方向/射程/风速，并从固定沙发位置复核电视上缘遮挡和视线压迫。", "owner": "业主+HVAC施工方", "trigger": "量房及安装方案阶段"},
+    {"item": "统一流明算量；取得3000K/Ra≥90配光、照度依据、驱动/灯板/灯罩检修和保修说明。", "owner": "业主+照明设计+灯具供应商", "trigger": "SKU冻结前"}
+  ],
+  "deletions_and_reversals": {
+    "deleted": [
+      "R1的浅吸顶造型退出当前模型；R1 DEC、审查和截图仍作历史基线保留。",
+      "R2预演参数从盘径0.88m/弧跨0.84m调整为0.90m/0.88m；没有删采购候选、证据、价格口径或淘汰理由。"
+    ],
+    "reopened": [
+      "推翻DEC-2026-10-16-R1贴顶低矮造型，因为业主看图后指出仍像吸顶灯；保留R1的宽面漫射和光学约束。"
+    ],
+    "preserved": [
+      "灯位、电气回路、双控、MEP终点、客厅吊顶/HVAC、餐桌与餐吊配置。",
+      "3000K、Ra≥90、宽面漫射、照度/均匀度目标、流明冲突及轨道灯淘汰证据。"
+    ],
+    "silent_failure_conditions": [
+      "实际候选光通量或配光不足时，渲染仍会显示完整灯具但真实房间可能偏暗或不均匀。",
+      "梁位、承重或真实风口射流不适配时，模型外形不会自动报警。",
+      "驱动/LED板不能维护或维修需拆顶时，现有模型不会揭示生命周期成本。",
+      "浏览器或GLB绕过共享SculpturalDomeGeometry会造成两种交付外观分叉。",
+      "移动电气锚点却不更新拓扑及MEP会造成安装关系失配。"
+    ]
+  },
+  "delivery": {
+    "status": "incomplete",
+    "model_scope_complete": true,
+    "delivery_ready": false,
+    "completion_conditions": [
+      "已按用户确认方向完成R2模型并采集R6同版四视图证据。",
+      "浏览器/GLB共享几何，现有灯位和照明接口保持不变。",
+      "typecheck、lighting-config、verify:all与gate:visual通过。"
+    ],
+    "remaining_conditions": [
+      "按follow_up_site_pending完成结构/气流/视线验证、统一光度口径并核对SKU检修资料；在这些事实核实前不冻结安装尺寸或采购SKU。"
+    ]
+  }
+}

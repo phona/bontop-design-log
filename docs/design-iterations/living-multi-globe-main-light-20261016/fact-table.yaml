@@ -1,0 +1,164 @@
+schema: interior-design-fact-table/v3
+project: bontop-design-log
+iteration_id: living-multi-globe-main-light-20261016
+subject: 客厅主灯10头球泡半吸顶造型R5
+created_at: 2026-10-16
+status: frozen
+source_policy:
+  authority_refs: [config/electrical.yaml, config/electrical-topology.yaml, config/ceiling.yaml, config/mep-hvac-coordination.yaml, config/render/lighting.yaml, shared/render/MultiGlobeChandelierGeometry.ts, shared/render/LightingFixtureBuilder.ts, app/src/render/InteriorLightingSystem.ts, docs/decisions/06-electrical.md, schedule/procurement.md]
+  observation_refs:
+    - /home/tao/.shellboard/uploads/s_LZ63XlvICjQ/image.png
+    - /home/tao/.shellboard/uploads/s_LZ63XlvICjQ/image-2.png
+  measurement_refs:
+    - "对 image.png 产品图做像素连通域分析：前视可见6个乳白球泡（上2/中2/下2），球泡宽约195–241px；黑色灯盘暗像素集中于 y≈3450–3630；规格行文字 10头/1000*450mm/G9*10/适用18-25M²。"
+    - "对 image-2.png 产品参数图（10头版）做尺寸线与中轴剖面测量：制造商标注 Φ120mm 吸顶盘 / H25mm / 球泡Φ130mm / 整高450mm / Φ1000mm；中轴剖面读出的结构链=吸顶盘→吊杆→黑色关节球→台阶黑盘→双层10臂；横纵标尺不一致（横 531px=1000mm、纵 328px≈450mm，纵向压缩约1.6×），故未标注的方位/角度量（臂3D方位、上层环俯仰）按设计提案处理，不按像素反推。"
+  runtime_refs:
+    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/underside.runtime.json
+    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/context.runtime.json
+    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/closeup.runtime.json
+    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/elevation-profile.runtime.json
+    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/topdown.runtime.json
+    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/topdown-envelope.runtime.json
+  evidence_refs:
+    - "npm run gate:visual before R5 => CLEAR; ceiling=50c1c81f9ec8; electrical=f2b49b7bcdb3; plumbing=7f1513d14f27; materials=64176f576326."
+entry_shape: {id: "", category: confirmed, statement: "", value: null, source_refs: [], basis: "", confidence: high, impact: material, affected_objects: [], affected_views: [perspective, elevation], owner: "", status: open, verification_method: "", user_confirmation_ref: null}
+facts:
+  confirmed:
+    - id: fact-anchor-and-room
+      category: confirmed
+      statement: "客厅灯 light_living_dome 锚点(10.80,7.15,h=2.80m)不变；客厅主灯不由餐桌定位；客餐厅房间 x∈[7.20,13.40] z∈[2.40,9.80]、净面积44.58㎡。"
+      value: {x: 10.8, z: 7.15, ceiling_y_m: 2.8, living_dining_area_m2: 44.58}
+      source_refs: [config/electrical.yaml, config/house.yaml]
+      basis: 当前权威配置
+      confidence: high
+      impact: material
+      affected_objects: [light_living_dome]
+      affected_views: [plan, perspective]
+      owner: project
+      status: resolved
+      verification_method: runtime stable objectId与配置坐标核对
+      user_confirmation_ref: null
+    - id: fact-reference-product
+      category: confirmed
+      statement: "参考图为10头半吸顶球泡灯：镀铬小吸顶盘贴顶，短吊杆带黑色球形关节，黑色两叠圆盘灯体，10根镀铬弯臂分上下两层（上排5根上挑、下排5根下垂，每36°交替），臂端镀铬灯头座+乳白玻壳球泡；商品规格行标注 10头 / 1000*450mm / G9*10 / 适用18-25㎡。"
+      value: {heads: 10, bulb: G9, diameter_mm: 1000, height_mm: 450, coverage_m2: "18-25", globe_diameter_px: "195-241", hub_disc_dark: true, arm_finish: chrome, globe_finish: opal_white}
+      source_refs: [/home/tao/.shellboard/uploads/s_LZ63XlvICjQ/image.png]
+      basis: 参考图直接观测+连通域测量；商品尺寸为页面印刷值，非实测
+      confidence: high
+      impact: material
+      affected_objects: [light_living_dome]
+      affected_views: [underside, elevation, perspective, plan]
+      owner: design
+      status: resolved
+      verification_method: R5同版五视图复核；建模后与参考图并排核对
+      user_confirmation_ref: "用户提供参考图并要求按图建模"
+    - id: fact-parameter-diagram
+      category: confirmed
+      statement: "业主2026-10-16提供产品参数图（image-2.png，10头版），带制造商标注：吸顶盘Φ120mm/H25mm、球泡Φ130mm、整高450mm、Φ1000mm；结构链为吸顶盘→吊杆→黑色关节球→台阶黑盘（上宽下窄两层）→双层10臂。参数图权威级高于此前依据目测建模的商品场景照（image.png），R6 内部分解以本图标注值为准。"
+      value: {canopy_diameter_mm: 120, canopy_height_mm: 25, globe_diameter_mm: 130, total_height_mm: 450, overall_diameter_mm: 1000, heads: 10, hub_structure: stepped_single_disc, upper_tier_reading: near_ring_compact_crown}
+      source_refs: [/home/tao/.shellboard/uploads/s_LZ63XlvICjQ/image-2.png]
+      basis: 制造商标注值（页面印刷）；图中未标注的臂3D方位与上层环俯仰不可测量，按设计提案处理
+      confidence: high
+      impact: material
+      affected_objects: [light_living_dome]
+      affected_views: [underside, elevation, perspective, plan]
+      owner: owner
+      status: resolved
+      verification_method: R6同版六视图runtime与参数图标注逐项核对（AABB/36部件/dimensions）
+      user_confirmation_ref: "用户反馈'感觉不太一样吧？'并提供参数图要求按此修正"
+    - id: fact-r4-superseded
+      category: confirmed
+      statement: "R4深钟形侧架垂吊造型（上口Ø780/下口Ø520×深280mm、暖铜吊杆与单弧、总下垂350mm）由本轮替换为10头球泡半吸顶造型；R4模型、截图、评审与DEC保留为历史，不删除。"
+      value: {superseded_style: suspended_offset_side_arch_opal_lantern, superseded_drop_m: 0.35}
+      source_refs: [docs/design-iterations/living-sculptural-main-light-r4-20261016/work-record.md, docs/decisions/06-electrical.md#DEC-2026-10-16-R4]
+      basis: 用户2026-10-16提供新参考图并确认三项选择
+      confidence: high
+      impact: material
+      affected_objects: [light_living_dome]
+      affected_views: [all]
+      owner: owner
+      status: superseded
+      verification_method: R5同版五视图证据；R4证据保留在R4迭代目录
+      user_confirmation_ref: "用户确认按图建模/配色/包络三项"
+    - id: fact-lighting-target
+      category: confirmed
+      statement: "项目现口径：客厅主灯7,100–8,500lm（客餐厅44.58㎡×100lx÷(UF0.6×MF0.8)，复算约9,287.5lm）、3000K、Ra≥90、U0≥0.7；该口径与10×G9（估约2,800–4,000lm）存在结构性缺口。"
+      value: {lumen_target: "7100-8500", lumen_recalc: 9287.5, cct_k: 3000, cri_min: 90, u0_min: 0.7, g9_10_estimated_lm: "2800-4000"}
+      source_refs: [schedule/procurement.md, docs/decisions/06-electrical.md#DEC-2026-10-13-R1]
+      basis: 既有项目照明要求+参考图规格行推断
+      confidence: high
+      impact: material
+      affected_objects: [light_living_dome]
+      affected_views: [plan]
+      owner: project
+      status: open
+      verification_method: SKU阶段核厂家IES/LDT或等效数据；缺口收口方案另案
+      user_confirmation_ref: "用户裁定：光度缺口登记待SKU核验，补光层另算"
+    - id: user-r5-decisions
+      category: user_decision
+      statement: "业主2026-10-16三项选择：①按图建模，光度缺口登记待SKU核验、补光层另算；②配色按图（黑灯盘+镀铬臂+乳白球泡）；③包络按商品规格（直径1000mm+总下垂450mm，超出R4的350mm上限）。"
+      value: {photometry: model_first_gap_registered, finish: black_hub_chrome_arms_opal_globes, envelope: {diameter_m: 1.0, total_drop_m: 0.45}}
+      source_refs: [conversation-2026-10-16-R5, /home/tao/.shellboard/uploads/s_LZ63XlvICjQ/image.png]
+      basis: 用户对三项alignment问题的明确答复
+      confidence: high
+      impact: material
+      affected_objects: [light_living_dome]
+      affected_views: [all]
+      owner: owner
+      status: resolved
+      verification_method: 实现与同版证据对照三项选择逐条核对
+      user_confirmation_ref: "用户答复：按图建模/按图配色/按商品规格包络"
+  inferred:
+    - id: inference-r11-proposal
+      category: inferred
+      statement: "R11造型提案（业主要求等曲度等长，取代R7~R10双层异几何）：R7~R10 上层5臂（臂根上盘檐r0.10m→球泡r0.20~0.22m 短臂微挑）与下层5臂（臂根下盘檐r0.0775m→球泡r0.434m 长臂下垂+tilt12°）是两套不同臂几何，任意角度读出参差触手。R11 单臂模板用10次：均起于下盘檐（r0.0775m, y2.517m），36°均布上下交替（上5 az 0/72/144/216/288 挑至球心2.617m，下5 az 36/108/180/252/324 垂至球心2.417m），同 globeRadius 0.434m、同臂弓0.06m、tiltDeg 0；吊杆0.165m、灯盘上盘中心-0.254/下盘中心-0.284随臂根下移。当前全量口径：吸顶盘Φ120×H25mm贴顶2.80m；吊杆165mm；黑色球形关节Ø50mm；台阶单灯盘上盘Ø200×28mm、下盘Ø155×22mm、盘隙5mm、finial Ø18mm；10球泡Ø130mm同半径0.434m（环标称外径0.998m≈Φ1000mm），最低球泡底2.352m；实测AABB x向0.956m、z向0.998m、y[2.352,2.800]；每球泡一个PointLight（0.72/头有效值，distance 3.5，decay 1.5，球心坐标与视觉共用 getMultiGlobeGlobeCenters）。config/render/lighting.yaml 与 DEC-2026-10-16-R6~R11 为权威口径。"
+      value: {canopy_diameter_m: 0.12, canopy_thickness_m: 0.025, stem_length_m: 0.165, joint_ball_diameter_m: 0.05, hub_upper_disc: {diameter_m: 0.20, thickness_m: 0.028, center_offset_y_m: -0.254}, hub_lower_disc: {diameter_m: 0.155, thickness_m: 0.022, center_offset_y_m: -0.284}, hub_disc_gap_m: 0.005, hub_finial_diameter_m: 0.018, arm_template: {count: 10, globe_center_radius_m: 0.434, arm_start_radius_m: 0.0775, arm_start_y_m: 2.517, arm_bow_m: 0.06, tilt_deg: 0, arc_length_identical: true, upper_globe_center_y_m: 2.617, lower_globe_center_y_m: 2.417, azimuths_upper_deg: [0, 72, 144, 216, 288], azimuths_lower_deg: [36, 108, 180, 252, 324]}, globe_diameter_m: 0.13, total_drop_m: 0.448, lowest_point_y_m: 2.352, per_globe_light: {count: 10, raw_energy: 1.2, effective_energy: 0.72, distance: 3.5, decay: 1.5}, aabb: {x_span_m: 0.956, z_span_m: 0.998}}
+      source_refs: [fact-reference-product, user-r5-decisions, fact-parameter-diagram]
+      basis: 产品参数图（image-2.png）制造商标注值：Φ120mm盘、H25mm、球泡Φ130mm、整高450mm、Φ1000mm；业主2026-10-16明确「每个都是一样的曲度弧线长度」——等长约束下双层观感由球心对称±0.10m+上下交替实现；±0.10m与臂根2.517m为设计取值（参考图上层球≈2.62m/下层球≈2.40m的自洽解）
+      confidence: high
+      impact: material
+      affected_objects: [light_living_dome]
+      affected_views: [underside, elevation, perspective, plan]
+      owner: design
+      status: resolved
+      verification_method: R11同版前视/仰视runtime+目检（10臂等长对称环）；InteriorLightingSystem 17/17 测试（含等长断言：10灯同半径0.434m、5盏y2.617/5盏y2.417）
+      user_confirmation_ref: "用户反馈'造型应该是每个都是一样的曲度弧线长度，而不是像八爪鱼'并驱动 R11 等长臂重建"
+  site_pending:
+    - id: pending-installation
+      category: site_pending
+      statement: "梁位、顶板/底盒承重、10球泡灯体估计重量（数量级6–10kg）、吸顶盘与臂座连接、换泡路径、风口气流与检修未现场核实。"
+      value: null
+      source_refs: [docs/pending-site-data.md, docs/decisions/06-electrical.md#DEC-2026-10-16-R4]
+      basis: 未交房且无该商品安装图
+      confidence: high
+      impact: blocking
+      affected_objects: [light_living_dome]
+      affected_views: [section, elevation]
+      owner: 业主+量房/施工方+电工+灯具供应商
+      status: open
+      verification_method: 量房确认梁/顶板；厂家提供吸顶盘、臂座与换泡安装图
+      user_confirmation_ref: null
+    - id: pending-photometry
+      category: site_pending
+      statement: "真实SKU在3000K/Ra≥90下的总光通量、配光、眩光与U0未验证；整厅7,100–8,500lm与10×G9的缺口收口（补光层/换SKU/缩小服务范围）未定。"
+      value: {lumen_gap_status: registered_pending_sku}
+      source_refs: [schedule/procurement.md, fact-lighting-target]
+      basis: 本轮只做造型
+      confidence: high
+      impact: blocking
+      affected_objects: [light_living_dome]
+      affected_views: [all]
+      owner: 业主+照明设计+灯具供应商
+      status: open
+      verification_method: SKU阶段统一算量并核厂家配光文件；补光层另案
+      user_confirmation_ref: "用户裁定：缺口登记待SKU核验，补光层另算"
+retrospective:
+  trigger_id: style-direction-change-by-owner
+  trigger_text: "业主提供新参考图，主动更换主灯造型语言（单件深钟形→10头球泡半吸顶），并推翻R4暖铜配色与350mm下垂上限；非同类失败重试，属方向变更，不触发失败回顾，但要求显式记录被推翻条款。"
+  failure_evidence: []
+  last_change: "R4：深钟形灯体+暖铜外置侧架，总下垂350mm。"
+  root_cause: "业主审美方向变更；R4无未解决的同类缺陷（R4独立双评审PASS）。"
+  status: direction_change_recorded
+notes:
+  - "R5只作为造型预演，不是SKU或施工尺寸。"
+  - "R1/R2/R3/R4历史决定、截图、评审、候选与价格口径全部保留，不因本轮删除。"

@@ -1,0 +1,25 @@
+{
+  "camera": {
+    "position": {
+      "x": 7.400000000000001,
+      "y": 13.999999999999998,
+      "z": 19.2
+    },
+    "target": {
+      "x": 7.4,
+      "y": 0,
+      "z": 3.65
+    }
+  },
+  "cameraMode": "orbit",
+  "configErrorBanner": "",
+  "mepReady": false,
+  "mepVisible": true,
+  "ready": false,
+  "readySignal": "window.__APP__.isReady()",
+  "targetObjectIds": [
+    null
+  ],
+  "title": "和萃 701 - 3D 装修设计",
+  "url": "http://127.0.0.1:5173/"
+}

@@ -1,0 +1,67 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: kitchen-beverage-stations-20261016
+subject: 厨房EM450咖啡机与餐厅米家茶吧机分区预演
+units: m
+coordinate_system: Three.js right-handed x east-west, y up, z north-south; +x east, +z south.
+status: draft
+datums:
+  - id: DAT-TEA-BAR-DINING-WEST
+    name: Mijia Tea Bar Pro free-standing preview near west wall
+    anchor: {kind: free_position, ref: prior west dry-bar candidate north end, wall_side: null, service_ref: null}
+    source_refs:
+      fact_refs: [F-TEA-DIMS, F-FRIDGE-LOCATION, F-OLD-WATERBAR-PREVIEW, F-WALL-CONTROLS, I-TEA-LOCATION]
+      decision_refs: [DEC-2026-10-16-R03]
+    views:
+      plan:
+        required: true
+        origin: living_dining local coordinates
+        axes: x east-west; z north-south
+        direction: top view, north up (-z)
+        position: {x: 7.38, z: 3.72}
+        rotation: 90
+        dimensions: {length: 0.31, width: 0.31, depth: 0.315, offset: 0.16}
+        dimension_semantics: total
+      elevation:
+        required: true
+        viewing_side: east looking west at appliance front
+        vertical_axis: y
+        height: 1.155
+        dimensions: {width: 0.31, height: 1.155, sill: 0, datum_offset: 0}
+        dimension_semantics: overall
+      section:
+        required: true
+        cut_direction: east-west through appliance center
+        depth_axis: x
+        clearances: {front: null, rear: 0.0625, top: null, bottom: 0}
+        thickness: 0.315
+        dimension_semantics: service_clearance
+    geometry:
+      x: 7.38
+      y: 0
+      z: 3.72
+      width: 0.31
+      depth: 0.315
+      height: 1.155
+      length: null
+      rotation: 90
+      along: null
+    constraints:
+      - Candidate world footprint x[7.2225,7.5375], z[3.565,3.875]; body faces east (+x).
+      - Nearest guest-bath east wall face is x≈7.16; preview rear gap is approximately62.5mm, not a manufacturer installation allowance.
+      - Runtime fridge southern edge is z≈3.403; preview plan gap is approximately162mm, not a maintenance aisle.
+      - Nearest declared switch point is around (7.20,3.98); body-to-point plan distance is approximately107mm, but switch plate size and hand access are not modelled.
+      - Keep the original fridge, dining table, dining chairs, half-height cabinet and architecture in place.
+      - Do not add the water-bar cabinet, socket or plumbing in this iteration.
+    interfaces:
+      - Existing floor support.
+      - Electrical point and circuit remain unassigned.
+      - Top fill, tea-pot extraction, ventilation and servicing remain pending actual SKU manual.
+    validation_refs:
+      - runtime object query and AABB
+      - npm run verify:furniture
+      - npm run verify:all
+      - npm run gate:visual
+    status: open
+notes:
+  - The body occupies the north end of the view-only 850mm dry-bar region; the 850mm cabinet itself remains unmodelled.

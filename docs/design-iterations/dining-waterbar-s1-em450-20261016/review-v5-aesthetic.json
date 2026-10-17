@@ -1,0 +1,32 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "V5已把V4沿设备宽度排开的主机身/出水仓改成前后层叠：局部+z为东侧出水仓、喷嘴与接水盘，局部-z为西侧后置机身/水箱代理；主机身和出水仓的宽轴范围重叠，当前不再是V4那种南北两块并排。",
+    "保留312×106×280mm运行时外廓、父级位置(7.50,3.64)、rotationY=90°和0.85m台面接触；S1近景与总览图绑定当前sourceDigest。",
+    "近景从东南侧观察，可读出东侧出水/接水区；水箱后部被前部结构遮住一部分，需要理解为外观代理的前后关系，单张截图无法展示实际水箱内腔。",
+    "参考商品图把出水仓与主机身呈现为沿产品长向的左右关系；业主随后明确要求东侧出水、西侧水箱，V5按该方向重排，因此空间语义服从业主指示，不能据此断言真实SKU内部水箱位于后部。",
+    "当前没有删除设备实例或场景对象；FixtureFactory中V4主机身/腔体/盖板布局被V5深度分层替换，旧V1–V4图片、快照、runtime和审查结论仍保留。",
+    "V5推翻了V4的当前形体基线与审美PASS，因为业主仍读成横置；V4的圆角、开口、栅格盘和水位标识等细节继续保留并在V5截图中可见。",
+    "新增几何若静默失效，最可能原因是后续改rotation却沿用旧证据、真实SKU背面结构不同、或实际水箱开盖/补水方向与模型推断不同。"
+  ],
+  "evidence_refs": [
+    "evidence/s1-form-v5-close.png",
+    "evidence/s1-form-v5-overview.png",
+    "evidence/s1-form-v5-close.snapshot.txt",
+    "evidence/s1-form-v5-overview.snapshot.txt",
+    "evidence/runtime-query-s1-form-v5.json",
+    "shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v5"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "商品图仍是唯一的产品外观参照图；没有厂家CAD、背视图或剖面图证明真实水箱内部位置。",
+    "当前审查是独立外观审查，不证明补水、出水、清洁、散热、维护、电源或施工条件。",
+    "V5几何的东/西语义来自业主明确指示；后置壳体比例只是在用户外廓内建立的程序化表达。"
+  ],
+  "substantive_review": {
+    "deleted": "V4中居中跨深度的主机身和沿局部x横向分开的出水仓/左右顶盖表达；历史模型和证据未删。",
+    "overturned": "V4审美PASS作为当前可接受形体基线；业主反馈说明其仍读成横置。",
+    "silent_failure_conditions": "真实SKU的水箱方位/盖板/出水腔与用户单张参考图和方向指示不同，或后续旋转改变但仍沿用V5证据。"
+  }
+}

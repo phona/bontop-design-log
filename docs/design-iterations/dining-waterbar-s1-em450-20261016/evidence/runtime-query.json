@@ -1,0 +1,64 @@
+{
+  "schema": "bontop-threejs-runtime-evidence/v1",
+  "capturedAtUtc": "2026-10-16T11:00:28Z",
+  "url": "http://localhost:5174/",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "readySignal": "window.__APP__.isReady() === true",
+  "configErrorBanner": "",
+  "canvasPixels": [1280, 577],
+  "coordinateSystem": "Three.js right-handed: Y up, X east-west, Z north-south; +x east, +z south",
+  "sourceDigest": "ed812dd63d4169e27207498edcb3ef4cf452b6b3d52075005a7dc06a1f22af63",
+  "sourceFiles": {
+    "config/house.yaml": "87d83644ebbad9b7710fbe3671b45d0b41b89505b1155973a5da6571723cadc8",
+    "shared/render/FixtureFactory.ts": "25768d0a77a7c413e68498b1b48a420a8e5114bc6f7b1f78e4500dea8c13070e",
+    "shared/types.ts": "a71843df16a8188c64571555929cdd2efa34eb33d1d3e6324c0681afd6fdd351",
+    "config/spatial-validation.yaml": "5974bbafe86092e614fce308fb7dacd9b6a1991db1e56f346111e1812870d7f7",
+    "config/anti-penetration.yaml": "b1e08f76a0a1347ea146ed375accd3ffb92e3075ef43bb22b175dc0c90578399",
+    "scripts/verify/placement/verify-furniture-placement.ts": "4e5d0fb408c4887ac1e317a2f954f0f2f24b4a265d54bf1d98b7055756e9f8f5"
+  },
+  "scene": {
+    "objects": {
+      "fridge": {"objectId": "furniture:living_dining:fridge:13", "position": [7.5025, 0, 2.9865], "rotationY": 4.712389, "meshCount": 6, "aabbM": {"min": [7.2025, 0, 2.57], "max": [7.8025, 1.91, 3.403], "size": [0.6, 1.91, 0.833]}},
+      "dining_table": {"objectId": "furniture:living_dining:dining_table:8", "position": [9.8, 0, 3.45], "rotationY": 1.570796, "meshCount": 2, "aabbM": {"min": [9.4, 0, 2.75], "max": [10.2, 0.77, 4.15], "size": [0.8, 0.77, 1.4]}},
+      "entry_half_height_cabinet": {"objectId": "furniture:living_dining:entry_half_height_cabinet:7", "position": [11.5, 0, 4], "rotationY": 1.570796, "meshCount": 5, "aabbM": {"min": [11.305, 0, 2.98], "max": [11.698, 1.5, 5.02], "size": [0.393, 1.5, 2.04]}},
+      "waterbar_low_cabinet_800_preview": {"objectId": "furniture:living_dining:waterbar_low_cabinet_800_preview:14", "position": [7.43, 0, 3.87], "rotationY": 1.570796, "meshCount": 7, "aabbM": {"min": [7.22, 0, 3.47], "max": [7.64, 0.85, 4.27], "size": [0.42, 0.85, 0.8]}},
+      "mijia_instant_dispenser_s1_preview": {"objectId": "furniture:living_dining:mijia_instant_dispenser_s1_preview:15", "position": [7.5, 0, 3.64], "rotationY": 1.570796, "meshCount": 8, "aabbM": {"min": [7.447, 0.85, 3.484], "max": [7.553, 1.13, 3.796], "size": [0.106, 0.28, 0.312]}},
+      "coffee_machine_em450": {"objectId": "furniture:living_dining:coffee_machine_em450:16", "position": [7.37, 0, 4], "rotationY": 1.570796, "meshCount": 24, "aabbM": {"min": [7.2275, 0.85, 3.89], "max": [7.5125, 1.155, 4.11], "size": [0.285, 0.305, 0.22]}},
+      "mijia_ro_purifier_1400g_under_sink_preview": {"objectId": "furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9", "position": [10.05, 0, 0.32], "rotationY": 0, "meshCount": 5, "aabbM": {"min": [9.9685, 0.08, 0.0975], "max": [10.1315, 0.459, 0.5425], "size": [0.163, 0.379, 0.445]}}
+    },
+    "protectedObjectsUnchanged": ["fridge:13", "dining_table:8", "entry_half_height_cabinet:7", "walls", "doors", "glass", "ceiling"],
+    "coffeeMachinePlacedInstanceCount": 1,
+    "fixedCameras": {
+      "waterbar_overview": {"mode": "orbit", "position": [9.55, 1.7, 3.98], "target": [7.75, 0.88, 3.74], "fovDeg": 58, "isOverview": false, "snapshot": "evidence/waterbar-overview.snapshot.txt", "screenshot": "evidence/waterbar-overview.png"},
+      "waterbar_close": {"mode": "orbit", "position": [8.95, 1.55, 4.62], "target": [7.43, 0.93, 3.88], "fovDeg": 45, "isOverview": false, "snapshot": "evidence/waterbar-close.snapshot.txt", "screenshot": "evidence/waterbar-close.png"}
+    }
+  },
+  "relationships": {
+    "countertopTopY_M": 0.85,
+    "s1BottomY_M": 0.85,
+    "em450BottomY_M": 0.85,
+    "s1ToEm450GapAlongZ_M": 0.094,
+    "s1NorthEndMarginOnCabinet_M": 0.014,
+    "em450SouthEndMarginOnCabinet_M": 0.160,
+    "fridgeSouthEdgeToCabinetNorthEdgeGapAlongZ_M": 0.067,
+    "countertopEastFrontEdgeX_M": 7.64,
+    "s1FrontEdgeX_M": 7.553,
+    "em450FrontEdgeX_M": 7.5125,
+    "interpretation": "静态包围盒证明两台设备落在台面且互不相交；14mm端部余量、设备间距和台面空余都不等于实际取水/冲煮/维护操作空间。"
+  },
+  "checks": {
+    "verifyFurniture": {"status": "PASS", "warnings": 2, "warningNotes": ["south_balcony furnishing check skipped because room is absent and has zero placed entries", "existing master-bedroom curtain-envelope warning"]},
+    "verifyAll": {"status": "PASS", "passed": 17, "failed": 0, "warningCountsReported": {"rules": 6, "penetration": 8, "consistency": 5, "mep": 129, "electrical": 51, "facts": 93}},
+    "typecheck": {"status": "PASS", "command": "npm run typecheck"},
+    "gateVisual": {"status": "CLEAR", "command": "npm run gate:visual", "detail": "浏览器渲染当前config"}
+  },
+  "scopeAudit": {
+    "deletedPlacedObjects": ["mijia_tea_bar_pro", "waterbar_low_sideboard_400_preview", "kitchen placement of coffee_machine_em450"],
+    "addedPlacedObjects": ["waterbar_low_cabinet_800_preview", "mijia_instant_dispenser_s1_preview", "mijia_ro_purifier_1400g_under_sink_preview"],
+    "movedObjects": ["same coffee_machine_em450: kitchen -> living_dining; count remains one"],
+    "superseded": ["DEC-2026-10-16-R02 kitchen-only placement of EM450", "DEC-2026-10-16-R03 floor-standing tea-bar appliance at dining", "DEC-2026-10-16-R04 390×400×920mm sideboard candidate"],
+    "unchanged": ["fridge", "dining table and chairs", "entry half-height cabinet", "ceiling", "walls", "doors", "glass", "electrical points", "plumbing points"],
+    "notAdded": ["dining outlet/circuit", "dining water/drain pipe", "separate RO faucet", "grinder", "full coffee-workflow props"]
+  }
+}

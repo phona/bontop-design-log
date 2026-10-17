@@ -1,0 +1,154 @@
+{
+  "url": "http://localhost:5175/?v=20261016-r10",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "appReadyState": "ready",
+  "errorBanner": "",
+  "visualPreviewActive": false,
+  "targetObjectId": "electrical:light_living_dome",
+  "style": "suspended_offset_side_arch_opal_lantern",
+  "dimensions": {
+    "id": "light_living_dome",
+    "type": "dome",
+    "style": "suspended_offset_side_arch_opal_lantern",
+    "finish": "satin_warm_bronze",
+    "outerWidth": 1,
+    "outerDepth": 1,
+    "totalThickness": 0.35,
+    "diffuserDrop": 0.35,
+    "diffuserDiameter": 0.78,
+    "diffuserBottomDiameter": 0.52,
+    "diffuserThickness": 0.28,
+    "housingBandHeight": 0.2,
+    "housingBandOffset": 0.004,
+    "canopyDiameter": 0.22,
+    "canopyThickness": 0.018,
+    "suspensionRodRadius": 0.01,
+    "suspensionRods": [
+      {
+        "ceiling": {
+          "x": -0.05,
+          "z": 0
+        },
+        "diffuser": {
+          "x": -0.3,
+          "z": 0.08,
+          "heightFromBottom": 0.06
+        }
+      },
+      {
+        "ceiling": {
+          "x": 0.05,
+          "z": 0
+        },
+        "diffuser": {
+          "x": 0.3,
+          "z": 0.08,
+          "heightFromBottom": 0.06
+        }
+      },
+      {
+        "ceiling": {
+          "x": 0,
+          "z": 0.05
+        },
+        "diffuser": {
+          "x": 0,
+          "z": -0.31,
+          "heightFromBottom": 0.06
+        }
+      }
+    ],
+    "arcSpan": 0.48,
+    "arcRise": 0.15,
+    "arcDepthExtension": 0.34,
+    "arcTubeRadius": 0.015,
+    "arcFootDiameter": 0.04,
+    "arcFootHeight": 0.03,
+    "arcOffset": {
+      "x": 0,
+      "z": 0.12
+    }
+  },
+  "cameraMode": "first-person",
+  "cameraPosition": [
+    9,
+    1.7,
+    9.5
+  ],
+  "cameraTarget": [
+    10.9,
+    1.7,
+    5.5
+  ],
+  "cameraDirection": [
+    0.4290568145682878,
+    0,
+    -0.9032775043542898
+  ],
+  "cameraFov": 70,
+  "cameraUp": [
+    0,
+    1,
+    0
+  ],
+  "viewport": {
+    "width": 1600,
+    "height": 1000
+  },
+  "parts": [
+    "electrical:light_living_dome:part=diffuser-edge-housing:role=fixture_body",
+    "electrical:light_living_dome:part=opal-diffuser:role=fixture_diffuser",
+    "electrical:light_living_dome:part=thin-bronze-diffuser-rim:role=fixture_metal",
+    "electrical:light_living_dome:part=ceiling-mounting-canopy:role=fixture_metal",
+    "electrical:light_living_dome:part=offset-bronze-three-dimensional-arch:role=fixture_metal",
+    "electrical:light_living_dome:part=arch-foot-west:role=fixture_metal",
+    "electrical:light_living_dome:part=arch-foot-east:role=fixture_metal",
+    "electrical:light_living_dome:part=suspension-rod-01:role=fixture_metal",
+    "electrical:light_living_dome:part=suspension-rod-02:role=fixture_metal",
+    "electrical:light_living_dome:part=suspension-rod-03:role=fixture_metal"
+  ],
+  "objectExists": true,
+  "aabb": {
+    "min": [
+      10.394555255249703,
+      2.4499999994039534,
+      6.7307692328095445
+    ],
+    "max": [
+      11.205444744750299,
+      2.7999999996125697,
+      7.624537944793701
+    ]
+  },
+  "supportClearance": [
+    {
+      "endpointRadius": 0.31048349392520047,
+      "bodyRadiusAtMount": 0.28785714285714287,
+      "housingOffset": 0.004,
+      "centerlineClearance": 0.018626351068057604,
+      "physicalGapAfterRodRadius": 0.008626351068057604
+    },
+    {
+      "endpointRadius": 0.31048349392520047,
+      "bodyRadiusAtMount": 0.28785714285714287,
+      "housingOffset": 0.004,
+      "centerlineClearance": 0.018626351068057604,
+      "physicalGapAfterRodRadius": 0.008626351068057604
+    },
+    {
+      "endpointRadius": 0.31,
+      "bodyRadiusAtMount": 0.28785714285714287,
+      "housingOffset": 0.004,
+      "centerlineClearance": 0.01814285714285713,
+      "physicalGapAfterRodRadius": 0.00814285714285713
+    }
+  ],
+  "tooltipHidden": true,
+  "tooltipSuppressedForEvidence": true,
+  "isOverview": false,
+  "snapshotPath": "docs/design-iterations/living-sculptural-main-light-r4-20261016/evidence/r4/context.snapshot.txt",
+  "screenshotPath": "tmp/screenshots/living-main-light/living_main_light_after_r4_context_v001.png",
+  "evidenceStatus": "valid",
+  "sourceVersion": "R4 R10 / 2026-10-16"
+}

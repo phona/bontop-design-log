@@ -1,0 +1,103 @@
+{
+  "cameraDirection": [
+    1,
+    0,
+    0
+  ],
+  "cameraFov": 45,
+  "cameraMode": "first-person",
+  "cameraPosition": [
+    8.8,
+    2.35,
+    7.15
+  ],
+  "cameraTarget": [
+    10.8,
+    2.35,
+    7.15
+  ],
+  "cameraUp": [
+    0,
+    1,
+    0
+  ],
+  "dimensions": {
+    "arcDepthExtension": 0.38,
+    "arcFootDiameter": 0.036,
+    "arcFootHeight": 0.025,
+    "arcOffset": {
+      "x": 0,
+      "z": 0.1
+    },
+    "arcRise": 0.18,
+    "arcSpan": 0.88,
+    "arcTubeRadius": 0.01,
+    "canopyDiameter": 0.2,
+    "canopyThickness": 0.015,
+    "diffuserDiameter": 0.9,
+    "diffuserDrop": 0.3,
+    "diffuserThickness": 0.07,
+    "housingBandHeight": 0.04,
+    "outerDepth": 1,
+    "outerWidth": 1,
+    "suspensionRodRadius": 0.004,
+    "suspensionRods": [
+      {
+        "ceiling": {
+          "x": -0.04,
+          "z": 0
+        },
+        "diffuser": {
+          "x": -0.3,
+          "z": -0.15
+        }
+      },
+      {
+        "ceiling": {
+          "x": 0.04,
+          "z": 0
+        },
+        "diffuser": {
+          "x": 0.3,
+          "z": -0.15
+        }
+      },
+      {
+        "ceiling": {
+          "x": 0,
+          "z": 0.04
+        },
+        "diffuser": {
+          "x": 0,
+          "z": -0.32
+        }
+      }
+    ],
+    "totalThickness": 0.3
+  },
+  "errorBanner": "",
+  "parts": [
+    "diffuser-edge-housing",
+    "opal-diffuser",
+    "thin-bronze-diffuser-rim",
+    "ceiling-mounting-canopy",
+    "offset-bronze-three-dimensional-arch",
+    "arch-foot-west",
+    "arch-foot-east",
+    "suspension-rod-01",
+    "suspension-rod-02",
+    "suspension-rod-03"
+  ],
+  "ready": true,
+  "style": "suspended_offset_arch_opal_disc",
+  "targetObjectId": "electrical:light_living_dome",
+  "title": "和萃 701 - 3D 装修设计",
+  "tooltipHidden": true,
+  "tooltipSuppressedForEvidence": true,
+  "url": "http://localhost:5175/?v=20261016-r6",
+  "viewport": {
+    "height": 1000,
+    "width": 1600
+  },
+  "visualPreviewActive": false
+}

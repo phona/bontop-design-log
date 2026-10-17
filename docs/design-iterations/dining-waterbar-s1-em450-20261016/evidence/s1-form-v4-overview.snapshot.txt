@@ -1,0 +1,38 @@
+- heading "方案" [level=3, ref=e2]
+- button "方案面板折叠" [expanded=false, ref=e3]
+- button "收起预演工作台" [ref=e4]
+- button "› 对象信息" [expanded=false, ref=e5]
+- button "› 材质预演" [expanded=true, ref=e6]
+- button "› 灯光预演" [expanded=false, ref=e7]
+- combobox "地砖方案" [expanded=false, ref=e18]: KT 200×1200木纹长条砖（当前选型基准 2026-10-12）
+  - option "浅胡桃木纹砖" [ref=e24]
+  - option "长条木纹砖人字拼（客餐厅+走廊，DEC 待决）" [ref=e25]
+  - option "600x1200木纹砖·步步高错缝（DEC-040 定案，2026-10-12 起不再是选型基准）" [ref=e26]
+  - option "灰色柔光砖" [ref=e27]
+  - option "浅灰亮光砖" [ref=e28]
+  - option "诺贝尔瓷砖（业主 2026-10-03 看中方向，型号待门店确认）" [ref=e29]
+  - option "KT 200×1200木纹长条砖（当前选型基准 2026-10-12）" [selected, ref=e30]
+  - option "金意陶约900×150木纹长条砖（方案比较候选）" [ref=e31]
+  - option "中性灰哑光防滑砖（主卫/阳台）" [ref=e32]
+  - option "复古小花砖（客卫点缀）" [ref=e33]
+  - option "KT 600×600地砖（主/客卫报价候选）" [ref=e34]
+  - option "实木复合地板（任意房间可选）" [ref=e35]
+- combobox "木纹表现" [expanded=false, ref=e19]: 程序化纹理
+  - option "程序化纹理" [selected, ref=e36]
+  - option "厂家面图库" [ref=e37]
+- combobox "面图库" [expanded=false, disabled, ref=e20]: 厂家多板面样图（44/54 面，参考预览）
+  - option "厂家多板面样图（44/54 面，参考预览）" [disabled, ref=e38]
+- slider [ref=e21]: 40
+- slider [ref=e22]: 0
+- textbox "墙漆色号/名称" [ref=e23]: 金装净味五合一
+- button "保存 A" [ref=e13]
+- button "查看 A" [disabled, ref=e14]
+- button "保存 B" [ref=e15]
+- button "查看 B" [disabled, ref=e16]
+- button "恢复正式材料与灯光" [ref=e17]
+- button "打开预演工作台" [ref=e1]
+- button "俯视" [ref=e8]
+- button "图层" [expanded=false, ref=e9]
+- button "环境" [expanded=false, ref=e10]
+- button "⚠180" [expanded=false, ref=e11]
+- button "⚙" [expanded=false, ref=e12]

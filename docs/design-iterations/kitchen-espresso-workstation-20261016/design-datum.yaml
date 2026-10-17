@@ -1,0 +1,72 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: kitchen-espresso-workstation-20261016
+subject: 厨房北侧台面 EM450 咖啡工作站程序化模型预演
+units: m
+coordinate_system: Three.js right-handed x east-west, y up, z north-south; +z is south.
+status: draft
+datums:
+  - id: DAT-EM450-KITCHEN-NORTH
+    name: EM450 on existing north counter
+    anchor:
+      kind: free_position
+      ref: existing kitchen north counter, furniture:kitchen:kitchen_cabinet_run:0
+      wall_side: null
+      service_ref: null
+    source_refs:
+      fact_refs: [F-NORTH-RUN, F-EM450-USER-DIMS, I-COFFEE-SEGMENT, S-GLASS-CLEARANCE]
+      decision_refs: [DEC-2026-10-16-R02]
+    views:
+      plan:
+        required: true
+        origin: kitchen local coordinates
+        axes: x east-west; z north-south
+        direction: top view, north up (-z)
+        position: {x: 7.62, z: 0.22}
+        rotation: 0
+        dimensions: {length: 0.80, width: 0.22, depth: 0.285, offset: 0.40}
+        dimension_semantics: along_wall
+      elevation:
+        required: true
+        viewing_side: south looking north toward appliance front
+        vertical_axis: y
+        height: 0.305
+        dimensions: {width: 0.22, height: 0.305, sill: 0.89, datum_offset: 0}
+        dimension_semantics: overall
+      section:
+        required: true
+        cut_direction: north-south through appliance center
+        depth_axis: z
+        clearances: {front: 0.2575, rear: 0.0775, top: null, bottom: 0}
+        thickness: 0.285
+        dimension_semantics: service_clearance
+    geometry:
+      x: 7.62
+      y: 0.89
+      z: 0.22
+      width: 0.22
+      depth: 0.285
+      height: 0.305
+      length: null
+      rotation: 0
+      along: null
+    constraints:
+      - Machine body footprint is x[7.51,7.73], z[0.0775,0.3625].
+      - Machine body envelope is y[0.89,1.195]; support surface top is y=0.89.
+      - Machine front faces +z toward the kitchen operator.
+      - 800mm working segment is x[7.22,8.02]; it is an intent zone, not a cabinet modification.
+      - Keep north glass, inferred gas point, water heater, counter run, sink, dishwasher bridge and all other scene objects in their existing positions.
+      - Do not model or dimension an unselected grinder.
+    interfaces:
+      - Existing countertop support; contact only, no penetration.
+      - Electrical access is pending; this fixture does not declare a socket or circuit.
+      - Gas meter actual service envelope is pending site measurement.
+    validation_refs:
+      - runtime AABB query
+      - npm run verify:furniture
+      - npm run verify:all
+      - npm run gate:visual
+    status: open
+notes:
+  - The recipe pins the base to y=0.89m; if countertop height changes, update the fixture recipe and re-verify.
+  - Dimensions are the user's listing dimensions, not a manufacturer CAD file.

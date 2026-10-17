@@ -1,0 +1,55 @@
+{
+  "captured_at_utc": "2026-10-16T04:09:49Z",
+  "browser": {
+    "url": "http://localhost:5174/",
+    "title": "和萃 701 - 3D 装修设计",
+    "ready_signal": "window.__APP__.isReady()",
+    "ready": true,
+    "config_error_banner": ""
+  },
+  "scene": {
+    "renderer": "project Three.js client",
+    "coffee_machine": {
+      "object_id": "furniture:kitchen:coffee_machine_em450:9",
+      "type": "coffee_machine_em450",
+      "position": [7.62, 0, 0.22],
+      "rotation_y_rad": 0,
+      "declared_dimensions_m": {"width": 0.22, "depth": 0.285},
+      "mesh_part_count": 24,
+      "world_aabb_m": {
+        "min": [7.5100000005960466, 0.8899999856948853, 0.07750000016763806],
+        "max": [7.729999999403954, 1.1950000004321337, 0.36250000018998985],
+        "size": [0.2199999988079071, 0.30500001473724847, 0.2850000000223518]
+      }
+    },
+    "protected_existing_objects": [
+      {"object_id": "furniture:living_dining:dining_table:8", "type": "dining_table", "position": [9.8, 0, 3.45], "rotation_y_rad": 1.5707963267948966},
+      {"object_id": "furniture:living_dining:fridge:13", "type": "fridge", "position": [7.5025, 0, 2.9865], "rotation_y_rad": 4.71238898038469},
+      {"object_id": "furniture:kitchen:kitchen_cabinet_run:0", "type": "kitchen_cabinet_run", "position": [7.86, 0, 0.32], "rotation_y_rad": 0},
+      {"object_id": "furniture:kitchen:kitchen_countertop_bridge:1", "type": "kitchen_countertop_bridge", "position": [8.8, 0, 0.32], "rotation_y_rad": 0},
+      {"object_id": "furniture:kitchen:sink:7", "type": "sink", "position": [9.5, 0, 0.3], "rotation_y_rad": 0},
+      {"object_id": "furniture:kitchen:water_heater:8", "type": "water_heater", "position": [7.3, 0, 1], "rotation_y_rad": 4.71238898038469}
+    ]
+  },
+  "fixed_cameras": {
+    "kitchen-human-eye.png": {"mode": "orbit", "position": [8.3, 1.62, 2.55], "target": [8.12, 1.02, 0.32], "fov": 55},
+    "kitchen-station-close.png": {"mode": "orbit", "position": [7.95, 1.58, 1.55], "target": [7.62, 1.04, 0.22], "fov": 55},
+    "kitchen-station-plan.png": {"mode": "orbit", "position": [7.62, 2.1, 0.22], "target": [7.62, 0.89, 0.22], "up": [0, 0, -1], "fov": 55}
+  },
+  "source_sha256": {
+    "config/house.yaml": "e7995813bab52a74b6624f6466851b4902d112ed623fc284ff9cf5193854460d",
+    "shared/types.ts": "5c5abc2fb877395341b888062209dad8c650fc1bb91964b6a4562030f93d9c05",
+    "shared/render/FixtureFactory.ts": "6fb7aac96063da4c55be9621570dbc0b10516df4697ba5e69dd69f5bb1d4aa82",
+    "config/spatial-validation.yaml": "9ea7a109ce7ef808c00b8a3b101da8291bacf83b5550f11b6bbedc9eabec9b01",
+    "scripts/verify/placement/verify-furniture-placement.ts": "01cee730f07be5c91e59044c2a52d7ef5aa8381196a66dc16141bd811b7e5acb",
+    "docs/decisions/02-layout-public.md": "e23fafc7fbdac8409e10aff43f25633ef33b3e350cb92fed3ca6fa84b59622fa"
+  },
+  "evidence_files": [
+    "kitchen-human-eye.png",
+    "kitchen-human-eye.snapshot.txt",
+    "kitchen-station-close.png",
+    "kitchen-station-close.snapshot.txt",
+    "kitchen-station-plan.png",
+    "kitchen-station-plan.snapshot.txt"
+  ]
+}

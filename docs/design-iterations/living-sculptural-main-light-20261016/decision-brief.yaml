@@ -1,0 +1,106 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: living-sculptural-main-light-20261016
+subject: 客厅浅吸顶雕塑主灯
+priority:
+  user_goal: "在现代轻中古胡桃风格中为客厅建立视觉重心，同时保留宽面主光并避免由餐桌决定灯位。"
+  ranked:
+    - 视觉造型能成为客厅起居区焦点
+    - 宽面漫射、3000K、Ra≥90 的功能要求仍可验证
+    - 保留现有客厅电气锚点，餐桌摆位独立
+    - 灯具低矮、适配原顶2.80m
+  non_negotiables:
+    - "不恢复集中窄束轨道灯作为客厅唯一基础光"
+    - "不新增一圈灯槽来替代功能照明"
+    - "不暗中修改餐桌、餐厅吊灯、电气回路、墙控或吊顶几何"
+  tradeoffs_accepted: []
+frozen: true
+freeze_record:
+  alignment_id: align-envelope-20261016
+  original_user_response: "好，开始；模型外轮廓选择1000×1000×120mm（沿用参考灯的1m体量）。"
+  normalized_decisions:
+    - "客厅主灯采用浅吸顶、偏心暖铜弧+乳白漫射盘造型。"
+    - "视觉锚定现有客厅主灯位，不按餐桌桌心定位。"
+  confirmed_by_user: true
+  confirmed_at: "2026-10-16"
+  evidence_refs: [fact-table.yaml#decision-focal-lamp, fact-table.yaml#decision-envelope]
+allowed_scope:
+  files:
+    - app/src/render/InteriorLightingSystem.ts
+    - shared/render/LightingFixtureBuilder.ts
+    - shared/render/SculpturalDomeGeometry.ts
+    - shared/types.ts
+    - config/render/lighting.yaml
+    - config/render/overrides.yaml
+    - shared/project-render-facts-schema.ts
+    - shared/project-render-facts-projection.ts
+    - docs/style-guide.md
+    - docs/decisions/06-electrical.md
+    - schedule/procurement.md
+    - docs/design-iterations/living-sculptural-main-light-20261016/
+  objects: [light_living_dome]
+  archetypes: [broad_opal_diffuser, offset_warm_bronze_arc]
+  views: [plan, elevation, perspective]
+  changes:
+    - "在现有客厅主灯视觉锚点实现单个浅吸顶雕塑灯，浏览器与 GLB 共用几何。"
+    - "更新决策记录，列明重开的旧结论、保留的照明约束及未知。"
+forbidden:
+  files:
+    - config/electrical.yaml
+    - config/electrical-topology.yaml
+    - config/mep-hvac-coordination.yaml
+    - config/ceiling.yaml
+    - config/house.yaml
+    - config/layout/model-geometry.yaml
+    - data/project-render-facts.json
+  objects:
+    - light_dining_pendant
+    - dining_table
+    - ceiling_living
+  assumptions:
+    - "不得把商品参数、真实光通量或 U0 写成已验证事实。"
+    - "不得以当前概念造型代替现场承重、梁位或安装资料。"
+  out_of_scope_changes:
+    - "删除餐桌吊灯点、回路、开关绑定或强电路由。"
+    - "改动客厅吊顶、照明点位/回路/控制或采购 SKU。"
+open_questions:
+  - id: overall-envelope
+    category: geometry
+    question: "外轮廓宽×深×离顶总厚度选择？"
+    fact_refs: [fact-table.yaml#overall-envelope]
+    options: ["800×800×100mm", "1000×1000×120mm", "先比较两个外轮廓"]
+    selected: "1000×1000×120mm"
+    user_response: "1000×1000×120mm（推荐）：沿用参考灯的1m体量，焦点明确；客厅灯具包络较大，需复核风口/梁净距。"
+    status: answered
+alignment:
+  records:
+    - alignment_id: align-form-20261016
+      original_user_response: "好，开始"
+      normalized_decision: "同意浅吸顶、偏心暖铜弧+乳白漫射盘，锚定客厅起居区现有主灯位。"
+      fact_refs: [fact-table.yaml#decision-focal-lamp, fact-table.yaml#fact-existing-anchor]
+      timestamp: "2026-10-16"
+    - alignment_id: align-envelope-20261016
+      original_user_response: "1000×1000×120mm（推荐）：沿用参考灯的1m体量，焦点明确；客厅灯具包络较大，需复核风口/梁净距。"
+      normalized_decision: "灯具总外轮廓为外宽1.0m、外深1.0m、离顶总厚度0.12m。"
+      fact_refs: [fact-table.yaml#decision-envelope, fact-table.yaml#fact-ceiling-plane]
+      timestamp: "2026-10-16"
+  unresolved: []
+  re_alignment_required: false
+acceptance:
+  validation_commands:
+    - "npm run gate:visual (before and after)"
+    - "npm run typecheck"
+  browser_evidence_required: true
+  required_views: [perspective_living_light, elevation_living_light, top_down_fixture_envelope]
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: pending
+  blocking_issues:
+    - "客厅总光通量口径在 procurement.md 中存在算术冲突；SKU/照度结论保持未冻结。"
+    - "实际承重和灯具检修方式待现场/候选 SKU 核验。"
+  done_when:
+    - "用户选定的1000×1000×120mm外轮廓在模型中按原顶锚点表达。"
+    - "浏览器和 GLB 使用同一声明式灯具几何。"
+    - "same-version runtime views show target fixture and empty config-error banner."
+    - "独立审美/功能审查通过；不宣称未验证的真实照度。"
+  delivery_notes_required: true

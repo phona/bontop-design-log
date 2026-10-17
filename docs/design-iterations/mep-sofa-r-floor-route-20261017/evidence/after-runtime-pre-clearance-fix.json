@@ -1,0 +1,43 @@
+{
+  "evidence_status": "historical diagnostic only; superseded by after-runtime.json after the floor-branch clearance correction",
+  "captured_context": "R4 floor-route geometry after the target route was changed, before the final clearance-scope fix",
+  "ready": true,
+  "configErrorBanner": "",
+  "routeId": "strong-power-living-sofa-r",
+  "points": [
+    {
+      "x": 13.4,
+      "y": 1.65,
+      "z": 3.6
+    },
+    {
+      "x": 13.2,
+      "y": 1.65,
+      "z": 3.6
+    },
+    {
+      "x": 13.2,
+      "y": 0.02,
+      "z": 3.6
+    },
+    {
+      "x": 13.2,
+      "y": 0.02,
+      "z": 9.35
+    },
+    {
+      "x": 11,
+      "y": 0.02,
+      "z": 9.35
+    }
+  ],
+  "priorLintCodes": [
+    "ceiling_clearance_unverified",
+    "ceiling_clearance_unverified"
+  ],
+  "priorLintWarnings": [
+    "Route strong-power-living-sofa-r dips below the finished ceiling surface of ceiling_living (2.50m) inside its footprint",
+    "Route strong-power-living-sofa-r dips below the finished ceiling surface of ceiling_entry_foyer (2.50m) inside its footprint"
+  ],
+  "diagnosis": "Both warnings were generated because the ceiling-completion check compared an intended floor-branch route with ceiling planes; the floor-segment support and 3D unsupported-span check are recorded separately in the current runtime evidence."
+}

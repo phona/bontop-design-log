@@ -1,0 +1,97 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: kitchen-espresso-workstation-20261016
+subject: 厨房北侧台面 EM450 咖啡工作站程序化模型预演
+object_policy:
+  fixed_count_required: true
+  split_by: [function, owner, material, collision, maintenance, interface, review]
+  visual_relationship_required: true
+objects:
+  - id: furniture:kitchen:coffee_machine_em450
+    type: coffee_machine_em450
+    archetypes: [kitchen_appliance, countertop_appliance]
+    owner: owner
+    function: espresso extraction and steam milk, as a permanently placed but removable countertop appliance
+    material: stainless-steel body, dark polymer tray/panel, chrome controls and group
+    geometry_source: shared/render/FixtureFactory.ts coffee_machine_em450 recipe; dimensions from user-provided SKU listing
+    datum_refs: [DAT-EM450-KITCHEN-NORTH]
+    fact_refs: [F-EM450-USER-DIMS, F-EM450-OFFICIAL-REGIONAL, F-NORTH-RUN]
+    decision_refs: [DEC-2026-10-16-R02]
+    dependencies:
+      - furniture:kitchen:kitchen_cabinet_run:0
+      - config/spatial-validation.yaml#furniture_profiles.coffee_machine_em450
+    interfaces:
+      - id: EM450-support
+        target_object_id: furniture:kitchen:kitchen_cabinet_run:0
+        kind: structural
+        requirement: bottom y=0.89m contacts, but does not penetrate, the existing countertop top surface
+        status: confirmed
+      - id: EM450-power
+        target_object_id: config/electrical.yaml#sock_kitchen_counter
+        kind: electrical
+        requirement: Provide a reachable outlet after confirming exact machine plug and total load.
+        status: open
+      - id: EM450-gas-service-clearance
+        target_object_id: config/plumbing.yaml#gas_meter_kitchen
+        kind: maintenance
+        requirement: Keep inferred meter and valve visible/reachable; verify actual position and service envelope on site.
+        status: blocked
+    collision:
+      policy: reviewed
+      geometry_ref: footprint 0.220×0.285m; vertical contact at y=0.89m
+      review_ref: scripts/verify/placement/verify-furniture-placement.ts stacked pair with kitchen_cabinet_run
+    maintenance:
+      boundary: Removable appliance. Keep water tank, portafilter, steam wand and drip tray accessible from above, front and right side.
+      access_clearance: {front: 0.2575, rear: 0.0775, top: null}
+      replaceable_parts: [water tank, drip tray, portafilter, steam wand]
+      inspection_requirements:
+        - Verify exact China-market SKU, plug and product dimensions before fixing socket location.
+        - Confirm the actual gas meter/valve can be inspected without moving the appliance or blocking the station.
+        - Verify rear spacing to finished glass/frame and countertop edge after handover.
+    parts:
+      - id: EM450-shell
+        role: stainless appliance body and rear water-tank window
+        independent: true
+        owner: owner
+        material: brushed stainless steel with smoked polymer detail
+        geometry_source: FixtureFactory recipe; all bounds inside 0.220×0.305×0.285m
+        datum_refs: [DAT-EM450-KITCHEN-NORTH]
+        dependencies: []
+        collision: reviewed
+        maintenance_boundary: visual shell approximation; not a manufacturer CAD model
+        validation_refs: [runtime bounding box]
+      - id: EM450-front-controls
+        role: pressure gauge, four buttons, selector knob and brew group
+        independent: true
+        owner: owner
+        material: dark control fascia, metallic fittings
+        geometry_source: FixtureFactory recipe based on manufacturer feature description
+        datum_refs: [DAT-EM450-KITCHEN-NORTH]
+        dependencies: [EM450-shell]
+        collision: none
+        maintenance_boundary: controls face +z toward operator
+        validation_refs: [fixed kitchen perspective screenshot]
+      - id: EM450-service-parts
+        role: drip tray, portafilter and steam wand
+        independent: true
+        owner: owner
+        material: dark tray and chrome accessories
+        geometry_source: FixtureFactory recipe within the declared appliance envelope
+        datum_refs: [DAT-EM450-KITCHEN-NORTH]
+        dependencies: [EM450-shell]
+        collision: none
+        maintenance_boundary: represent removable/operated parts, but not their full extraction sweep
+        validation_refs: [fixed kitchen perspective screenshot]
+    visual_relationships:
+      - target_object_id: furniture:kitchen:kitchen_cabinet_run:0
+        relation: supported
+        requirement: Machine sits on the existing white countertop without a new platform, side panel or wall backboard.
+        evidence_refs: []
+    validation_refs:
+      - npm run verify:furniture
+      - npm run verify:all
+      - runtime scene object lookup and AABB
+    status: implemented
+notes:
+  - No grinder, accessories, new electrical point, plumbing point, countertop or cabinet geometry is introduced.
+  - The 800mm workstation segment is a design intention in the existing worktop, not a modeled partition.

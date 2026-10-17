@@ -1,0 +1,364 @@
+{
+  "schema": "bontop-threejs-runtime-evidence/v1",
+  "capturedAtUtc": "2026-10-16T14:50:05.918Z",
+  "url": "http://127.0.0.1:5174/",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "readySignal": "window.__APP__.isReady() === true",
+  "configErrorBanner": "",
+  "coordinateSystem": "Three.js right-handed; Y up; +x east, +z south; rotationY=90° maps local +z to world +x east, and local -z to world -x west.",
+  "sourceDigest": "sha256:a3553ac682129410753b1daa97997ce1a6baf55707c96ac291cd32c1f7b8eb0e",
+  "sourceDigestMethod": "SHA-256 over ordered concatenation of path + NUL + file bytes + NUL for the sourceFiles keys below",
+  "sourceFiles": {
+    "config/house.yaml": "87d83644ebbad9b7710fbe3671b45d0b41b89505b1155973a5da6571723cadc8",
+    "config/spatial-validation.yaml": "5974bbafe86092e614fce308fb7dacd9b6a1991db1e56f346111e1812870d7f7",
+    "config/anti-penetration.yaml": "b1e08f76a0a1347ea146ed375accd3ffb92e3075ef43bb22b175dc0c90578399",
+    "shared/types.ts": "8804b01c5ab920a5a07a406db00d8fd2e32ce6c191714d0101e9e725e8fdf7fa",
+    "shared/render/FixtureFactory.ts": "b3ebdd392f4706f9d5df2bb51bcbd86aa6e3406cc8b3be7ae2b174cdcd15dcf1",
+    "shared/render/SceneBuilder.ts": "10829303d0a1c259851a3a03a6baba48bd42e8c3cc76295f9f482371a35da729",
+    "app/src/render/HouseScene.ts": "59580a009ed429a64d052f9ad6eeb4420f9b84ad2a8b513f6c18a8b26b6ffcaa",
+    "app/src/App.ts": "5db2f89a7c8af7fed099db97ebc33202f1d9c478cecca20452ca4efdf8dafda9",
+    "data/project-render-facts.json": "f15ffcbbf8637b3050d3e5e9df5395bee25cd984edb5c76e2776f5924ad0d2d6",
+    "scripts/verify/placement/verify-furniture-placement.ts": "4e5d0fb408c4887ac1e317a2f954f0f2f24b4a265d54bf1d98b7055756e9f8f5"
+  },
+  "camera": {
+    "mode": "orbit",
+    "position": [
+      9.55,
+      1.7,
+      3.98
+    ],
+    "target": [
+      7.75,
+      0.88,
+      3.74
+    ],
+    "fovDeg": 58,
+    "isOverview": false,
+    "viewType": "perspective"
+  },
+  "objects": {
+    "mijia_instant_dispenser_s1_preview": {
+      "objectId": "furniture:living_dining:mijia_instant_dispenser_s1_preview:15",
+      "type": "furniture",
+      "position": [
+        7.5,
+        0,
+        3.64
+      ],
+      "rotationY": 1.5707963267948966,
+      "meshCount": 15,
+      "partCount": 13,
+      "parts": [
+        "dispenser-base",
+        "dispenser-west-rear-tank-shell",
+        "dispenser-east-front-bay-rear-wall",
+        "dispenser-east-front-cavity-shadow",
+        "dispenser-full-width-head",
+        "dispenser-west-rear-tank-lid",
+        "dispenser-east-front-head-lid",
+        "dispenser-head-underside-seam",
+        "dispenser-east-front-downward-spout",
+        "dispenser-east-facing-tank-level-indicator",
+        "dispenser-east-front-drip-tray",
+        "dispenser-east-front-tray-grate",
+        "dispenser-east-front-tray-drain-well"
+      ],
+      "aabbM": {
+        "min": [
+          7.447000000625849,
+          0.8499999997839331,
+          3.4839999967813493
+        ],
+        "max": [
+          7.55299999988079,
+          1.1300000000474977,
+          3.796000003218651
+        ],
+        "size": [
+          0.10599999925494163,
+          0.2800000002635643,
+          0.31200000643730164
+        ]
+      },
+      "directionalPartRangesLocalM": {
+        "westRearTankShellZ": [
+          -0.053,
+          -0.006
+        ],
+        "eastFrontBayCheeksZ": [
+          -0.004,
+          0.053
+        ],
+        "outletNozzleZ": [
+          0.0295,
+          0.0345
+        ],
+        "dripTrayZ": [
+          0.009,
+          0.053
+        ],
+        "tankLevelIndicatorZ": [
+          -0.006,
+          -0.004
+        ]
+      }
+    },
+    "waterbar_low_cabinet_800_preview": {
+      "objectId": "furniture:living_dining:waterbar_low_cabinet_800_preview:14",
+      "position": [
+        7.43,
+        0,
+        3.87
+      ],
+      "rotationY": 1.5707963267948966,
+      "aabbM": {
+        "min": [
+          7.220000006556511,
+          -1.4901161e-10,
+          3.4699999940395356
+        ],
+        "max": [
+          7.64000000018999,
+          0.850000000372529,
+          4.270000005960465
+        ],
+        "size": [
+          0.4199999936334793,
+          0.8500000005215406,
+          0.800000011920929
+        ]
+      }
+    },
+    "coffee_machine_em450": {
+      "objectId": "furniture:living_dining:coffee_machine_em450:16",
+      "position": [
+        7.37,
+        0,
+        4
+      ],
+      "rotationY": 1.5707963267948966,
+      "meshCount": 24,
+      "aabbM": {
+        "min": [
+          7.227500000167638,
+          0.8500000238418579,
+          3.8900000005960464
+        ],
+        "max": [
+          7.512500000189989,
+          1.1550000004321337,
+          4.1099999994039536
+        ],
+        "size": [
+          0.28500000002235115,
+          0.3049999765902758,
+          0.2199999988079071
+        ]
+      }
+    },
+    "fridge": {
+      "objectId": "furniture:living_dining:fridge:13",
+      "position": [
+        7.5025,
+        0,
+        2.9865
+      ],
+      "rotationY": 4.71238898038469,
+      "meshCount": 6,
+      "aabbM": {
+        "min": [
+          7.2024999921321875,
+          1.4901161e-10,
+          2.5699999978542327
+        ],
+        "max": [
+          7.802500011920929,
+          1.9099999833106995,
+          3.403000002145767
+        ],
+        "size": [
+          0.6000000197887418,
+          1.909999983161688,
+          0.8330000042915344
+        ]
+      }
+    },
+    "dining_table": {
+      "objectId": "furniture:living_dining:dining_table:8",
+      "position": [
+        9.8,
+        0,
+        3.45
+      ],
+      "rotationY": 1.5707963267948966,
+      "aabbM": {
+        "min": [
+          9.399999994039536,
+          -9.53674295e-09,
+          2.750000011920929
+        ],
+        "max": [
+          10.200000005960463,
+          0.7699999995529652,
+          4.149999988079071
+        ],
+        "size": [
+          0.800000011920929,
+          0.7700000090897081,
+          1.399999976158142
+        ]
+      }
+    },
+    "entry_half_height_cabinet": {
+      "objectId": "furniture:living_dining:entry_half_height_cabinet:7",
+      "position": [
+        11.5,
+        0,
+        4
+      ],
+      "rotationY": 1.5707963267948966,
+      "aabbM": {
+        "min": [
+          11.305000007152556,
+          8.9406965e-10,
+          2.9800000190734863
+        ],
+        "max": [
+          11.698000000052154,
+          1.5,
+          5.019999980926514
+        ],
+        "size": [
+          0.39299999289959686,
+          1.4999999991059303,
+          2.0399999618530273
+        ]
+      }
+    },
+    "mijia_ro_purifier_1400g_under_sink_preview": {
+      "objectId": "furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9",
+      "position": [
+        10.05,
+        0,
+        0.32
+      ],
+      "rotationY": 0,
+      "meshCount": 5,
+      "aabbM": {
+        "min": [
+          9.968499998748303,
+          0.07999999821186066,
+          0.0975000035762787
+        ],
+        "max": [
+          10.131500001251698,
+          0.4589999997764826,
+          0.5425000000130386
+        ],
+        "size": [
+          0.16300000250339508,
+          0.37900000156462194,
+          0.44499999643675986
+        ]
+      }
+    }
+  },
+  "relationships": {
+    "countertopTopY_M": 0.850000000372529,
+    "s1BottomY_M": 0.8499999997839331,
+    "s1TopY_M": 1.1300000000474977,
+    "s1ToEm450GapAlongZ_M": 0.0939999973773955,
+    "s1AabbDimensions_M": [
+      0.10599999925494163,
+      0.2800000002635643,
+      0.31200000643730164
+    ],
+    "s1FurnitureObjectId": "furniture:living_dining:mijia_instant_dispenser_s1_preview:15",
+    "tooltipInUserScreenshotId": "hvac:A2:terminal:supply_dining",
+    "tooltipExplanation": "First-person tooltip reads the center-ray hit; it does not replace the S1 furniture objectId.",
+    "s1FrontDirection": "east (+x world)",
+    "s1RearTankDirection": "west (-x world)",
+    "localDepthMapping": {
+      "localPlusZ": "east",
+      "localMinusZ": "west"
+    }
+  },
+  "fixedCameras": {
+    "waterbar_overview": {
+      "position": [
+        9.55,
+        1.7,
+        3.98
+      ],
+      "target": [
+        7.75,
+        0.88,
+        3.74
+      ],
+      "fovDeg": 58,
+      "snapshot": "evidence/s1-form-v5-overview.snapshot.txt",
+      "screenshot": "evidence/s1-form-v5-overview.png",
+      "screenshotSha256": "e85c582534e8af27749b284b413be6424396cf8fce63838db752836b358b5c58"
+    },
+    "waterbar_close": {
+      "position": [
+        8.28,
+        1.4,
+        4.18
+      ],
+      "target": [
+        7.47,
+        0.99,
+        3.72
+      ],
+      "fovDeg": 42,
+      "snapshot": "evidence/s1-form-v5-close.snapshot.txt",
+      "screenshot": "evidence/s1-form-v5-close.png",
+      "screenshotSha256": "866c69870240d54ade4a477051554de237e3eceeb300ef2b06cf213a2412117b"
+    }
+  },
+  "checks": {
+    "gateVisual": {
+      "status": "CLEAR",
+      "command": "node --import=tsx scripts/gate/visual-state-gate.ts",
+      "api": "http://127.0.0.1:4010"
+    },
+    "verifyAll": {
+      "status": "FAIL",
+      "passed": 16,
+      "failed": 1,
+      "command": "npm run verify:all",
+      "detail": "唯一失败为 verify-facts 对 docs/decisions/06-electrical.md 中 DEC-2026-10-16-R7 重号的检查；verify-furniture及几何相关检查通过。"
+    },
+    "typecheck": {
+      "status": "PASS",
+      "command": "npm run typecheck"
+    },
+    "testServer": {
+      "status": "FAIL",
+      "passed": 998,
+      "failed": 10,
+      "command": "npm run test:server",
+      "detail": "既有预算/算量、MEP/关系断言、computeLightState、浏览器边界静态词条扫描和Node纹理document环境问题；未报告S1局部几何测试失败。"
+    }
+  },
+  "protectedObjectsUnchanged": [
+    "fridge:13",
+    "dining_table:8",
+    "entry_half_height_cabinet:7",
+    "ceiling",
+    "walls",
+    "doors",
+    "glass"
+  ],
+  "application": {
+    "ready": true,
+    "readyState": "ready",
+    "viewport": [
+      1280,
+      577
+    ],
+    "configErrorBanner": ""
+  }
+}

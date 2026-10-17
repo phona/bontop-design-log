@@ -1,0 +1,173 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "kitchen-beverage-modules-20261016",
+  "subject": "餐厅独立边柜与落地茶吧机的软耦合组合预演",
+  "state": "blocked",
+  "source_version": {
+    "config_refs": [
+      "config/house.yaml",
+      "config/spatial-validation.yaml",
+      "shared/types.ts",
+      "shared/render/FixtureFactory.ts",
+      "scripts/verify/placement/verify-furniture-placement.ts",
+      "docs/dressing-map.md"
+    ],
+    "asset_refs": [],
+    "render_facts_ref": "data/project-render-facts.json",
+    "source_digest": "sha256:2c231c6d086bc63bb01b2a05ec4b8a3543f0a1225841dce73679838839e52e68",
+    "generated_at": "2026-10-16T08:39:12Z"
+  },
+  "validation": {
+    "commands": [
+      "node --import tsx scripts/verify/placement/verify-furniture-placement.ts",
+      "node --import tsx scripts/verify/verify-all.ts",
+      "npm run typecheck",
+      "node --import tsx scripts/gate/visual-state-gate.ts"
+    ],
+    "results": [
+      {"command": "verify-furniture-placement", "status": "PASS", "details": "OK; 2 existing warnings unrelated to this dining furniture placement."},
+      {"command": "verify:all", "status": "PASS", "details": "17/17 verifiers passed, 0 failed; project-wide warnings remain."},
+      {"command": "typecheck", "status": "PASS", "details": "Passed after model implementation; final edit changed only the cabinet x position in config and a source comment."},
+      {"command": "gate:visual", "status": "CLEAR", "details": "Gate ran after final cabinet coordinates; client and config agree."}
+    ],
+    "config_status": "PASS",
+    "geometry_status": "PASS",
+    "consistency_status": "PASS",
+    "functional_checks_status": "BLOCKED",
+    "application_status": "PASS",
+    "typecheck_status": "PASS",
+    "generated_files_touched_directly": false
+  },
+  "evidence": [
+    {
+      "id": "dining-overview",
+      "url": "http://localhost:5174/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-16T08:39:12Z",
+      "config_error_banner": "",
+      "target_objects": ["餐厅边柜、米家茶吧机、冰箱、餐桌"],
+      "target_object_ids": [
+        "furniture:living_dining:waterbar_low_sideboard_400_preview:15",
+        "furniture:living_dining:mijia_tea_bar_pro:14",
+        "furniture:living_dining:fridge:13",
+        "furniture:living_dining:dining_table:8"
+      ],
+      "runtime_query_refs": ["evidence/runtime-query.json#scene.objects", "evidence/runtime-query.json#relationships"],
+      "camera": {
+        "mode": "orbit-perspective",
+        "is_overview": false,
+        "position": [9.55, 1.7, 3.86],
+        "target": [7.75, 0.88, 3.62],
+        "view_type": "perspective"
+      },
+      "snapshot_path": "evidence/beverage-modules-overview.snapshot.txt",
+      "screenshot_path": "evidence/beverage-modules-overview.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["config/house.yaml", "source_digest:sha256:2c231c6d086bc63bb01b2a05ec4b8a3543f0a1225841dce73679838839e52e68"],
+      "status": "valid",
+      "invalid_reason": null
+    },
+    {
+      "id": "waterbar-module-close",
+      "url": "http://localhost:5174/",
+      "title": "和萃 701 - 3D 装修设计",
+      "ready": true,
+      "ready_signal": "window.__APP__.isReady()",
+      "ready_checked_at": "2026-10-16T08:39:12Z",
+      "config_error_banner": "",
+      "target_objects": ["米家茶吧机与独立可移动低边柜"],
+      "target_object_ids": [
+        "furniture:living_dining:mijia_tea_bar_pro:14",
+        "furniture:living_dining:waterbar_low_sideboard_400_preview:15"
+      ],
+      "runtime_query_refs": ["evidence/runtime-query.json#scene.objects", "evidence/runtime-query.json#relationships"],
+      "camera": {
+        "mode": "orbit-perspective",
+        "is_overview": false,
+        "position": [9.25, 1.75, 3.82],
+        "target": [7.45, 0.68, 3.84],
+        "view_type": "perspective"
+      },
+      "snapshot_path": "evidence/waterbar-module-close.snapshot.txt",
+      "screenshot_path": "evidence/waterbar-module-close.png",
+      "png_exists": true,
+      "png_readable": true,
+      "non_empty_screenshot": true,
+      "version_refs": ["config/house.yaml", "source_digest:sha256:2c231c6d086bc63bb01b2a05ec4b8a3543f0a1225841dce73679838839e52e68"],
+      "status": "valid",
+      "invalid_reason": null
+    }
+  ],
+  "aesthetic_review": {
+    "verdict": "PASS",
+    "blocking_issues": [],
+    "non_blocking_notes": [
+      "边柜后缘与茶吧机后缘对齐后，两个白色体块构成一个可读的饮品模块；茶吧机仍能识别为独立落地设备。",
+      "低柜约920mm、茶吧机1155mm、冰箱1910mm形成自然的三级高度关系；28mm分缝读作受控的阴影缝，前沿约85mm的深度台阶可接受。",
+      "白色机身、台面和冰箱保持同一色系，屏幕和底部踢脚留下少量对比，画面没有靠装饰造型堆叠。",
+      "删除内容：无。被覆盖的旧表达：DEC-2026-10-16-R03中‘水吧柜体仍不入模’的预演范围，本轮仅添加活动边柜；茶吧机保持独立、不被包覆这一结论没有推翻。",
+      "静默失效条件：成品边柜深度、后缘或颜色与代理不同；固定填死28mm缝；增加背板/高柜或挡水条；冰箱门、墙控或设备维修要求迫使移动模块。"
+    ],
+    "evidence_refs": ["evidence/waterbar-module-close.png", "evidence/beverage-modules-overview.png", "evidence/runtime-query.json"],
+    "requested_changes": [],
+    "assumptions": [
+      "本审查判断的是当前几何代理的比例和层次，不代表成品柜SKU或施工材料。",
+      "审美通过不覆盖墙控、电源、冰箱开门、茶吧机服务净空等功能条件。"
+    ]
+  },
+  "functional_review": {
+    "verdict": "BLOCKED",
+    "blocking_issues": [
+      {"id": "wall_control_access_unverified", "status": "site_pending", "issue": "墙控点的z范围与边柜重叠，虽然点位高于0.92m柜面，仍缺面板外廓和真人伸手操作验证。", "required_change": "按真实面板外廓和边柜剖面验证可达；柜上方和前方保持开放。"},
+      {"id": "tea_power_missing", "status": "site_pending", "issue": "茶吧机没有已确认可及插座、铭牌功率和回路负荷。", "required_change": "核对中国SKU并落实可达接地插座、线缆路径和回路负荷。"},
+      {"id": "tea_maintenance_unverified", "status": "site_pending", "issue": "62.5mm后墙间隙仅是几何空气缝，不是检修通道；补水、取壶、清洁和搬出包络未按说明书核实。", "required_change": "取得真实SKU说明书并验证顶部、前方、侧后维护动作。"},
+      {"id": "fridge_operation_unverified", "status": "site_pending", "issue": "冰箱至茶吧机162mm是机身间距，不含门扇、抽屉及站人操作包络。", "required_change": "叠加冰箱厂家门扇/抽屉包络并模拟设备并用。"},
+      {"id": "sideboard_door_sweep_unmodeled", "status": "site_pending", "issue": "模型有静态双门门面，但未建铰链位置、开启方向或扫掠体。", "required_change": "按最终成品柜结构复核门扇/抽屉与设备、墙控和站位的关系。"}
+    ],
+    "non_blocking_notes": [
+      "此前提出的runtime_evidence_mismatch已由本迭代当前页运行时对象、AABB查询和同源截图解除；静态几何没有直接碰撞。",
+      "本轮删除对象：无；移动既有对象：无。只新增一个独立边柜候选。",
+      "预演会在以下条件下失效：成品尺寸变动、墙体完成面不同、墙控/插座被遮挡、茶吧机说明书需要更大净空、冰箱动态开门进入设备区。"
+    ],
+    "evidence_refs": ["evidence/runtime-query.json", "evidence/waterbar-module-close.png", "evidence/beverage-modules-overview.png"],
+    "requested_changes": [
+      "完成成品边柜选型后验证真实尺寸、柜门开启和内部收纳。",
+      "现场核对墙控操作、电源、茶吧服务净空和冰箱动态包络。"
+    ],
+    "assumptions": [
+      "边柜AABB为当前配置版本：x[7.2225,7.6225]、y[0,0.92]、z[3.903,4.293]。",
+      "28mm分缝只表示当前静态不重叠，不代表安装公差、清洁缝或搬出空间。"
+    ]
+  },
+  "scope_audit": {
+    "deleted": [],
+    "added": ["one freestanding 390×400×920mm low-sideboard preview object"],
+    "superseded": ["The prior R03 preview scope left the waterbar cabinet view-only; R04 adds a movable sideboard for visual evaluation."],
+    "unchanged": ["fridge", "tea bar", "dining table and chairs", "entry half-height cabinet", "ceiling", "walls", "doors", "glass", "kitchen EM450"],
+    "silent_failure_conditions": [
+      "The off-the-shelf sideboard SKU differs from this proxy in depth, height or back construction.",
+      "The 28mm visual gap is filled or changed without rechecking movement and maintenance.",
+      "Wall controls, power, tea-bar maintenance, fridge opening or replacement require a different furniture position."
+    ]
+  },
+  "risks": [
+    {"id": "sideboard-product-not-selected", "status": "open", "owner": "业主/选品", "trigger": "购买成品家具前"},
+    {"id": "power-wall-controls-and-appliance-clearances", "status": "site_pending", "owner": "业主/电工/家电方", "trigger": "电气及家具定型前"}
+  ],
+  "retrospective": {"triggered": false, "triggers": [], "records": [], "rebaselined": false},
+  "delivery": {
+    "status": "blocked",
+    "blocking_issues": ["功能审查尚未通过；本次只完成可视预演。"],
+    "completion_conditions": [
+      "业主看图确认边柜体块关系和尺寸是否值得保留。",
+      "若进入深化，选定成品边柜并现场核实控制点、电源、设备维护与冰箱动态净空。"
+    ],
+    "follow_up_site_pending": ["真实边柜尺寸/材料", "墙控手部可达", "茶吧机电源与维护", "冰箱门扇/抽屉/站位"],
+    "delivery_ready": false
+  }
+}

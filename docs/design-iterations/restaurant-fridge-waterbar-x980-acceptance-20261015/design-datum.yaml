@@ -1,0 +1,193 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: restaurant-fridge-waterbar-x980-acceptance-20261015
+subject: 西墙冰箱+干水吧与x=9.80m南北向餐桌候选
+units: m
+coordinate_system: Three.js右手系；Y向上；+X东、−X西；+Z南、−Z北
+status: blocked
+datums:
+  - id: dining-table-x980
+    name: 四座南北向桌候选
+    anchor: {kind: free_position, ref: config/house.yaml#living_dining.furnishings.dining_table}
+    source_refs: {fact_refs: [candidate-runtime-geometry, daily-four-expandable, guest-expansion-capacity], decision_refs: [decision-brief.yaml#normalized_decisions]}
+    views:
+      plan:
+        required: true
+        origin: table center
+        axes: {long_axis: z, short_axis: x, north: "-z", south: "+z"}
+        position: {x_m: 9.80, z_m: 3.45, rotation_y_deg: 90}
+        dimensions: {length_m: 1.40, width_m: 0.80}
+        dimension_semantics: table top nominal dimensions; runtime AABB x[9.40,10.20], z[2.75,4.15]
+      elevation:
+        required: false
+        viewing_side: dining
+        vertical_axis: y
+        height: null
+        dimensions: {width_m: 0.80, height_m: null}
+        dimension_semantics: table/chair model geometry; not a fabrication drawing
+      section:
+        required: false
+        cut_direction: east-west through table center
+        depth_axis: x
+        clearances: {front: null, rear: null, top: null, bottom: null}
+        thickness: null
+        dimension_semantics: not_applicable
+    geometry: {x: 9.80, y: 0, z: 3.45, width: 0.80, length: 1.40, rotation: 90}
+    constraints:
+      - 仅四把侧椅作为当前候选；六人标准未确认。
+      - 椅子外拉450mm仅为包络输入，不是人体测量结论。
+    interfaces: [kitchen_route, west_fridge_door, west_dry_bar, east_cabinet]
+    validation_refs: [evidence/runtime-candidate-v2.json#objects, evidence/runtime-candidate-v2.json#derived_clearances]
+    status: blocked
+  - id: temporary-guest-six-south320
+    name: 来客临时六人状态（不作为日常桌位）
+    anchor: {kind: free_position, ref: dining-table-x980}
+    source_refs: {fact_refs: [daily-four-expandable, guest-expansion-capacity, guest-mode-light-and-outlet-alignment], decision_refs: [decision-brief.yaml#alignment.records.ALN-2026-10-15-GUEST6-01]}
+    views:
+      plan:
+        required: true
+        origin: daily table center translated 320mm south
+        axes: {long_axis: z, short_axis: x, north: "-z", south: "+z"}
+        position: {x_m: 9.80, z_m: 3.77, rotation_y_deg: 90}
+        dimensions: {length_m: 1.40, width_m: 0.80, group_south_translation_m: 0.32}
+        dimension_semantics: 4 side chairs move with table; add one head chair at each short end
+      elevation:
+        required: false
+        viewing_side: dining
+        vertical_axis: y
+        height: null
+        dimensions: {seat_count: 6}
+        dimension_semantics: temporary guest seating candidate, not daily layout
+      section:
+        required: false
+        cut_direction: east-west through table center
+        depth_axis: x
+        clearances: {north_chair_to_open_slider_panel: 0.05, west_fridge_swing_to_head_chair: 1.173}
+        thickness: null
+        dimension_semantics: panel edge and fridge swing are conditional runtime/design assumptions; no human envelope
+    geometry: {x: 9.80, y: 0, z: 3.77, width: 0.80, length: 1.40, rotation: 90}
+    constraints:
+      - 日常桌位继续为x=9.80m、z=3.45m；此对象只表达来客状态。
+      - 临时六座时桌椅组南移约320mm，北端椅与推拉门模型面板约留50mm。
+      - 临时偏移后的吊灯/地插相对位置、真人端椅占位和搬动路径待复核。
+    interfaces: [kitchen_sliding_door, fridge, west_dry_bar, dining_light, floor_outlet, entry_cabinet]
+    validation_refs: [evidence/guest-seat-envelope.json, tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-kitchen-to-dining.png]
+    status: blocked
+  - id: west-fridge
+    name: 冰箱西墙候选
+    anchor: {kind: wall_anchor, ref: config/layout/model-geometry.yaml#w_gbath_east, wall_side: east}
+    source_refs: {fact_refs: [candidate-runtime-geometry, user-fridge-dimensions, appliance-install-manual], decision_refs: [decision-brief.yaml#normalized_decisions]}
+    views:
+      plan:
+        required: true
+        origin: appliance group center
+        axes: {front: "+x east", rear: "-x west", width_axis: z}
+        position: {x_m: 7.5025, z_m: 2.9865, rotation_y_deg: 270}
+        dimensions: {width_m: 0.833, depth_m: 0.595, open_boundary_x_m: 7.20, adjacent_wall_east_face_x_m: 7.16, runtime_rear_gap_m: 0.043}
+        dimension_semantics: user product dimensions; wall-face gap from runtime AABB only; 600mm reserve basis unresolved
+      elevation:
+        required: true
+        viewing_side: east/front
+        vertical_axis: y
+        height: 1.91
+        dimensions: {width_m: 0.833, height_m: 1.91}
+        dimension_semantics: user product dimensions, exact SKU/manual pending
+      section:
+        required: true
+        cut_direction: east-west through body
+        depth_axis: x
+        clearances: {front: null, rear: 0.043, top: null, bottom: null}
+        thickness: null
+        dimension_semantics: nearest physical wall is guest-bath east wall x=7.16; 43mm AABB gap is not manufacturer install clearance. Earlier 3mm was only to the open boundary x=7.20.
+    geometry: {x: 7.5025, y: 0, z: 2.9865, width: 0.833, depth: 0.595, height: 1.91, rotation: 270}
+    constraints:
+      - 前面朝东；背面邻近客卫东墙，运行时墙面间距约43mm；不得凭该几何值判定可安装。
+      - 600mm门扇外探是预演假设，待厂家门铰链/门板/把手/抽屉数据替换。
+      - 新位置须有独立可维护电源点位和换机通道。
+    interfaces: [w_gbath_east, electrical, dry_water_bar, table_chair_sweep, maintenance]
+    validation_refs: [evidence/runtime-candidate-v2.json#objects, evidence/runtime-candidate-v2.json#derived_clearances]
+    status: blocked
+  - id: west-dry-bar
+    name: 西墙干水吧占位候选
+    anchor: {kind: free_position, ref: "run parallel to w_gbath_east and w_gbath_east_open_vanity"}
+    source_refs: {fact_refs: [candidate-runtime-geometry, bar-appliance-power-and-access], decision_refs: [decision-brief.yaml#normalized_decisions]}
+    views:
+      plan:
+        required: true
+        origin: body center
+        axes: {depth_axis: x, run_axis: z, wall: "-x"}
+        position: {x_m: 7.55, z_m: 3.868, rotation_y_deg: 0}
+        dimensions: {body_depth_m: 0.60, countertop_depth_m: 0.65, run_m: 0.85}
+        dimension_semantics: view-only cabinet and warm-white top; east edge approximately7.85m; nearby wall east face x=7.16
+      elevation:
+        required: true
+        viewing_side: east/dining
+        vertical_axis: y
+        height: 0.92
+        dimensions: {counter_height_m: 0.92, placeholder_appliance_top_m: 1.225}
+        dimension_semantics: countertop top is candidate; black appliance cube is generic placeholder
+      section:
+        required: true
+        cut_direction: east-west across bar
+        depth_axis: x
+        clearances: {front: 0.60, rear: 0.09, top: null, bottom: 0}
+        thickness: null
+        dimension_semantics: body rear to adjacent wall AABB about90mm; countertop rear gap about40mm; 600mm front is chair-distance estimate only, no human/device envelope
+    geometry: {x: 7.55, y: 0, z: 3.868, width: 0.60, depth: 0.85, height: 0.90, along: [3.443, 4.293]}
+    constraints:
+      - 客餐厅边界x=7.20本身开放，但西侧客卫东墙面x=7.16实际可见，运行时干吧主体离墙约90mm、台面离墙约40mm。
+      - 干吧不设水槽；没有声明给排水。
+      - 实际小家电、插座、回路、线缆和墙控件可达性未验证。
+    interfaces: [west_wall, electrical, fridge, dining_chair_pullout]
+    validation_refs: [evidence/runtime-candidate-v2.json#objects, tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/service-wall-x980-v2.png]
+    status: blocked
+  - id: entry-cabinet-1420-low700
+    name: 冻结半高柜预演几何
+    anchor: {kind: free_position, ref: config/house.yaml#living_dining.furnishings.entry_half_height_cabinet}
+    source_refs: {fact_refs: [entry-cabinet-baseline, east-chair-cabinet-gap], decision_refs: [docs/design-iterations/entry-cabinet-700-20261015/decision-brief.yaml]}
+    views:
+      plan:
+        required: true
+        origin: body center
+        axes: {depth_axis: x, length_axis: z, entry_side: "+x", dining_side: "-x"}
+        position: {x_m: 11.50, z_m: 4.00, rotation_y_deg: 90}
+        dimensions: {body_depth_m: 0.35, body_run_m: 2.00, countertop_run_m: 2.04}
+        dimension_semantics: same center and footprint; cap/counter overhang included in runtime AABB
+      elevation:
+        required: true
+        viewing_side: east/entry
+        vertical_axis: y
+        height: 1.42
+        dimensions: {low_north_run_m: 0.70, low_counter_y_m: 0.92, oak_panel_top_y_m: 1.38, cap_top_y_m: 1.42}
+        dimension_semantics: frozen concept geometry, shown as simple view-only boxes
+      section:
+        required: true
+        cut_direction: east-west through cabinet
+        depth_axis: x
+        clearances: {front: null, rear: null, top: null, bottom: 0}
+        thickness: null
+        dimension_semantics: internal storage, drawer hardware and restaurant door swings are not modeled
+    geometry: {x: 11.50, y: 0, z: 4.00, width: 0.35, length: 2.00, height: 1.42, rotation: 90}
+    constraints:
+      - 正式柜体对象只在预演里隐藏；替代体维持同位置和占地。
+      - 北端z[2.98,3.70]上方不设高位背板，南段保留浅木纹面板到1.38m和暖白帽板到1.42m。
+      - 餐厅侧柜门实际结构与开启包络待柜商核实。
+    interfaces: [dining_chair_pullout, fridge, entry_view, dining_storage]
+    validation_refs: [evidence/runtime-candidate-v2.json#objects, docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml]
+    status: blocked
+  - id: fixed-architecture
+    name: 既有墙体、门洞、推拉门、吊顶和空调
+    anchor: {kind: room_anchor, ref: config/layout/model-geometry.yaml#rooms.living_dining}
+    source_refs: {fact_refs: [formal-furniture-source], decision_refs: [decision-brief.yaml#priority.non_negotiables]}
+    views:
+      plan: {required: true, origin: model local axes, axes: {x: east-west, z: north-south}, direction: unchanged, position: {x: null, z: null}, rotation: null, dimensions: {length: null, width: null, depth: null, offset: null}, dimension_semantics: not_applicable}
+      elevation: {required: false, viewing_side: room, vertical_axis: y, height: null, dimensions: {width: null, height: null, sill: null, datum_offset: null}, dimension_semantics: not_applicable}
+      section: {required: false, cut_direction: null, depth_axis: null, clearances: {front: null, rear: null, top: null, bottom: null}, thickness: null, dimension_semantics: not_applicable}
+    geometry: {status: unchanged}
+    constraints: [本轮不移动或重建建筑构件。]
+    interfaces: [kitchen_entry, dining, circulation]
+    validation_refs: [config/layout/model-geometry.yaml, config/layout/overlay.yaml, review-manifest.json#validation]
+    status: verified
+notes:
+  - 固定相机：入户门轴 [12.30,1.60,2.05]→[12.30,0.95,7.20]；服务墙 [9.25,1.60,5.10]→[7.50,0.95,3.40]；厨房看餐厅 [9.00,1.60,1.45]→[9.50,0.95,4.35]；均FOV55、1600×1000。
+  - 所有临时几何重载页面即清除，不代表正式模型对象。

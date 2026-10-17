@@ -1,0 +1,92 @@
+{
+  "schema": "interior-design-formal-layout-update/v1",
+  "iteration_id": "restaurant-fridge-waterbar-x980-acceptance-20261015",
+  "verified_at": "2026-10-16T09:43:51+08:00",
+  "browser": {
+    "url": "http://127.0.0.1:5176/",
+    "title": "和萃 701 - 3D 装修设计",
+    "ready": true,
+    "config_error_banner": "",
+    "viewport_px": [1600, 1000],
+    "formal_scene_reloaded_after_capture": true,
+    "view_only_guest_chairs_after_reload": 0,
+    "view_only_waterbar_proxy_after_reload": 0,
+    "view_only_cabinet_proxy_after_reload": 0
+  },
+  "owner_decision_ref": "DEC-2026-10-16-R01",
+  "formal_furniture_runtime": {
+    "table": {
+      "objectId": "furniture:living_dining:dining_table:8",
+      "position_m": [9.8, 0, 3.45],
+      "rotation_y_deg": 90,
+      "dimensions_m": [1.4, 0.8],
+      "aabb_m": {"x": [9.4, 10.2], "z": [2.75, 4.15]}
+    },
+    "chairs": [
+      {"objectId": "furniture:living_dining:dining_chair:9", "position_m": [9.125, 0, 3.0], "rotation_y_deg": 90, "aabb_m": {"x": [8.9, 9.35], "z": [2.775, 3.225]}},
+      {"objectId": "furniture:living_dining:dining_chair:10", "position_m": [10.475, 0, 3.0], "rotation_y_deg": 270, "aabb_m": {"x": [10.25, 10.7], "z": [2.775, 3.225]}},
+      {"objectId": "furniture:living_dining:dining_chair:11", "position_m": [9.125, 0, 3.9], "rotation_y_deg": 90, "aabb_m": {"x": [8.9, 9.35], "z": [3.675, 4.125]}},
+      {"objectId": "furniture:living_dining:dining_chair:12", "position_m": [10.475, 0, 3.9], "rotation_y_deg": 270, "aabb_m": {"x": [10.25, 10.7], "z": [3.675, 4.125]}}
+    ],
+    "fridge": {
+      "objectId": "furniture:living_dining:fridge:13",
+      "position_m": [7.5025, 0, 2.9865],
+      "rotation_y_deg": 270,
+      "front": "+x east",
+      "aabb_m": {"x": [7.203, 7.802], "y": [0, 1.91], "z": [2.567, 3.406]},
+      "guest_bath_wall_east_face_x_m": 7.16,
+      "rear_model_gap_mm": 43,
+      "manufacturer_installation_clearance_status": "unverified"
+    },
+    "cabinet": {
+      "objectId": "furniture:living_dining:entry_half_height_cabinet:7",
+      "position_m": [11.5, 0, 4],
+      "rotation_y_deg": 90,
+      "formal_recipe_height_m": 1.5,
+      "accepted_1420_700_geometry": "still view-only; not yet implemented in FixtureFactory"
+    }
+  },
+  "electrical_runtime_alignment": {
+    "sock_living_table": {"position_m": [9.8, 3.45], "status": "moved with daily table; field location pending"},
+    "sock_kitchen_fridge": {"position_m": [10.8, 2.05], "status": "historical kitchen endpoint; does not supply new west-side fridge position"}
+  },
+  "assumed_clearances": {
+    "fridge_door_open_face": "east",
+    "fridge_door_swing_m": 0.6,
+    "fridge_door_envelope_status": "visual study assumption only; manufacturer not confirmed",
+    "daily_west_chair_to_fridge_open_envelope_gap_m": 0.498,
+    "guest_six_north_chair_to_open_slider_panel_gap_m": 0.05,
+    "guest_six_north_chair_to_assumed_open_fridge_door_gap_m": 1.173
+  },
+  "view_only_geometry": {
+    "dry_waterbar": {"aabb_m": {"x": [7.2, 7.85], "y": [0, 1.225], "z": [3.443, 4.293]}, "status": "preview proxy only; formal cabinet excluded pending wall-control and budget resolution"},
+    "temporary_guest_six": {"table_center_m": [9.8, 3.77], "group_south_shift_m": 0.32, "end_chairs": 2, "status": "browser-only preview; daily four-seat formal layout unchanged"},
+    "entry_cabinet_1420_700": {"status": "view-only simplified proxy; formal source remains 1.5m recipe"}
+  },
+  "camera_views": {
+    "entry_daily_four": {"position_m": [12.3, 1.6, 2.05], "target_m": [12.3, 0.95, 7.2], "fov_deg": 55, "screenshot": "tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/entry-daily-four.png"},
+    "kitchen_to_dining_daily_four": {"position_m": [9.0, 1.6, 1.45], "target_m": [9.5, 0.95, 4.35], "fov_deg": 55, "screenshot": "tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/kitchen-to-dining-daily-four.png"},
+    "service_wall_daily_four_with_view_only_bar": {"position_m": [9.25, 1.6, 5.1], "target_m": [7.5, 0.95, 3.4], "fov_deg": 55, "screenshot": "tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/service-wall-daily-four-preview-bar.png"}
+  },
+  "validation": {
+    "verify_furniture": {"status": "PASS", "summary": "furniture placement OK; 2 pre-existing warnings"},
+    "verify_all": {"status": "PASS", "passed": 17, "failed": 0},
+    "visual_gate": {"status": "CLEAR", "digests": {"ceiling": "50c1c81f9ec8", "electrical": "f2b49b7bcdb3", "plumbing": "7f1513d14f27", "materials": "64176f576326"}},
+    "test_server": "NOT_RUN_NO_CODE_CHANGE",
+    "typecheck": "NOT_RUN_NO_CODE_CHANGE"
+  },
+  "source_sha256": {
+    "config/house.yaml": "8c38472d0bc2b806ca0b544fa6c7db13f61584d83ae4d62ffd9fa9b1474c4d8d",
+    "config/electrical.yaml": "36af13da088029c3066bbb0282cd2e35464731b6b6d15016a7c8c5f95d645767",
+    "config/electrical-topology.yaml": "e314e7dacba1543e4585a8c39a4279f38a18a2aa6aa47df28959efee35ba3923",
+    "config/anti-penetration.yaml": "80d8c115631133b982601383d95b2d80c51f2ec1fb0ec1a80d92634bd7a698cd",
+    "config/layout/model-geometry.yaml": "585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f",
+    "config/layout/overlay.yaml": "cc75d470c5cee67ac8af33c5ed01b14885b3bb6e864146f59abbda8dbeb6eb67"
+  },
+  "source_and_change_audit": {
+    "changed_objects": ["dining_table", "dining_chair:9-12", "fridge", "sock_living_table", "env.fridge.door"],
+    "unchanged_objects": ["walls", "doors", "kitchen_dining_sliding_door", "ceiling", "air_conditioning", "entry_half_height_cabinet_position"],
+    "not_formalized": ["west dry-waterbar cabinet", "temporary six-seat chair count", "1420/700 entry-cabinet recipe", "new refrigerator electrical endpoint"],
+    "historical_values_preserved": ["fridge trial (10.94,3.48,r90)", "fridge-to-open-boundary 3mm", "fridge-to-physical-wall 43mm", "old east-west dining table trial"]
+  }
+}
