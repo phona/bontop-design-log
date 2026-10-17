@@ -918,16 +918,16 @@
   note: "电视墙灯带变压器电源（西墙电视柜上方）；状态依据：电视墙灯带变压器电源归入 topology 回路 ordinary_power_living→inferred；电视柜上方为设计值未实测"
   status: inferred
 
-# 餐桌吊灯（天花出线，非墙面插座）
+# 餐厅灯（天花出线，非墙面插座）
 - id: light_dining_pendant
   room: living_dining
-  type: pendant
-  x: 7.90
-  z: 3.45
+  type: ceiling_light
+  x: 9.25
+  z: 3.65
   height: 2.8
   temp: 3000
   circuit: dining
-  note: "餐桌吊灯天花出线（DEC-2026-08-02-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1 落实），距桌面75cm"
+  note: "餐厅灯天花出线（DEC-2026-08-02-013、DEC-021、DEC-034 为历史随餐桌灯位）。DEC-2026-10-16-R12 曾将灯位修正至桌心 (9.80,3.45) 并将 type 改为 ceiling_light；DEC-2026-10-17-R8 按业主奶油云团灯参考图替换造型；DEC-2026-10-17-R9 按业主选择移至餐厅平顶范围几何中心 (9.25,3.65)，餐桌保持 (9.80,3.45)。主体尺寸取用户参数图，木球/吊线为主图比例视觉估值；电气安装高度仍为2.80m。点位 id、dining 单独回路、墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1）和拓扑成员关系不变。灯到餐桌中心的水平偏移约0.585m；桌面照度目标150 lx/3000K/Ra≥90（100 lx为备选）须按实际 SKU 的3000K档光通量与配光核验，不能由商品标称3200lm或5–10㎡推定，见 schedule/procurement.md。"
 
 # === 室内灯光方案（2026-08-12 灯光渲染系统；全屋 3000K 暖光，厨卫 4000K）===
 # 点位即水电交底单；type: pendant吊灯/dome吸顶/downlight筒灯/night_light夜灯（2026-10-13：led_strip / track_light / wall_lamp 三类已无在役点位——DEC-2026-10-13-R5 删电视墙灯带（最后一个 led_strip）、DEC-2026-10-13-R1 删客厅明装轨道灯（最后一个 track_light）、DEC-2026-10-12-R1 删主卧两盏壁灯（最后两个 wall_lamp）；渲染端 makeStripFixture/makeTrackFixture/makeWallLampFixture 代码保留作通用能力，config/render/lighting.yaml 的 detailed fixtures 列表已清空）

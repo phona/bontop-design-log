@@ -457,7 +457,47 @@ export const MultiGlobeChandelierConfigSchema = z.object({
   }
 });
 /** The multi-globe model is a render style for the existing electrical type 'dome'. */
-export const LightingRenderConfigSchema = z.object({ fixtures: z.array(z.discriminatedUnion('type', [TrackLightConfigSchema, WallLampConfigSchema, MultiGlobeChandelierConfigSchema])) }).strict();
+/** R8餐厅奶油云团灯；未标商品尺寸的吊线/球体明确是主图比例预演值。 */
+export const CloudOrbCeilingLightConfigSchema = z.object({
+  id: nonEmpty,
+  type: z.literal('ceiling_light'),
+  style: z.literal('antique_cloud_orb_ceiling_light'),
+  finish: z.literal('walnut_pe_opal'),
+  outerDiameter: finiteNumber.positive(),
+  canopyThickness: finiteNumber.positive(),
+  diffuserDepth: finiteNumber.positive(),
+  cloudRingRadius: finiteNumber.positive(),
+  lobeLayers: z.literal(2),
+  lobesPerLayer: z.number().int().min(6).max(16),
+  layerOffsetDeg: finiteNumber,
+  lobeTangentialDiameter: finiteNumber.positive(),
+  lobeRadialDiameter: finiteNumber.positive(),
+  lobeHeight: finiteNumber.positive(),
+  wireRadius: finiteNumber.positive(),
+  hangingBalls: z.array(z.object({
+    id: nonEmpty,
+    xOffset: finiteNumber,
+    zOffset: finiteNumber,
+    cordLength: finiteNumber.positive(),
+    diameter: finiteNumber.positive(),
+  }).strict()).length(3),
+}).strict().superRefine((value, ctx) => {
+  if (value.cloudRingRadius + Math.max(value.lobeRadialDiameter, value.lobeTangentialDiameter) / 2 > value.outerDiameter / 2 + 1e-9) {
+    ctx.addIssue({ code: 'custom', message: 'cloud lobes must stay inside the declared body diameter', path: ['cloudRingRadius'] });
+  }
+  if (value.canopyThickness + value.diffuserDepth <= 0) {
+    ctx.addIssue({ code: 'custom', message: 'cloud body must have a positive drop', path: ['diffuserDepth'] });
+  }
+  const ids = new Set<string>();
+  for (const [index, ball] of value.hangingBalls.entries()) {
+    if (ids.has(ball.id)) ctx.addIssue({ code: 'custom', message: `duplicate hanging ball id: ${ball.id}`, path: ['hangingBalls', index, 'id'] });
+    ids.add(ball.id);
+    if (Math.hypot(ball.xOffset, ball.zOffset) + ball.diameter / 2 > value.outerDiameter / 2 + 1e-9) {
+      ctx.addIssue({ code: 'custom', message: 'hanging ball must stay inside the declared body footprint', path: ['hangingBalls', index] });
+    }
+  }
+});
+export const LightingRenderConfigSchema = z.object({ fixtures: z.array(z.union([TrackLightConfigSchema, WallLampConfigSchema, MultiGlobeChandelierConfigSchema, CloudOrbCeilingLightConfigSchema])) }).strict();
 export function parseLightingRenderConfig(raw: string): LightingRenderConfig {
   const config = LightingRenderConfigSchema.parse(parseYaml(raw));
   const ids = new Set<string>();

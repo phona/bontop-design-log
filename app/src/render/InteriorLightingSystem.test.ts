@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { InteriorLightingSystem } from './InteriorLightingSystem';
-import type { MultiGlobeChandelierConfig, RenderLightingFixture } from '@shared/types';
+import type { CloudOrbCeilingLightConfig, MultiGlobeChandelierConfig, RenderLightingFixture } from '@shared/types';
 
 const FIXTURES: RenderLightingFixture[] = [
   { id: 'p1', room: 'living_dining', type: 'pendant', position: { x: 8.5, y: 2.8, z: 3.35 }, temperatureK: 3000, enabled: true },
@@ -256,5 +256,37 @@ describe('InteriorLightingSystem', () => {
     expect(pointLights).toHaveLength(1);
     expect(pointLights[0].position.x).toBeCloseTo(2.6);
     expect(pointLights[0].intensity).toBeCloseTo(8 * 0.6);
+  });
+
+  it('uses the shared cloud-orb geometry for the dining visual preview', () => {
+    const fixture: RenderLightingFixture = {
+      id: 'cloud-dining', room: 'living_dining', type: 'ceiling_light',
+      position: { x: 9.25, y: 2.8, z: 3.65 }, temperatureK: 3000, enabled: true,
+    };
+    const cloudConfig: CloudOrbCeilingLightConfig = {
+      id: 'cloud-dining', type: 'ceiling_light', style: 'antique_cloud_orb_ceiling_light', finish: 'walnut_pe_opal',
+      outerDiameter: 0.5, canopyThickness: 0.026, diffuserDepth: 0.11,
+      cloudRingRadius: 0.15, lobeLayers: 2, lobesPerLayer: 10, layerOffsetDeg: 18, lobeTangentialDiameter: 0.14,
+      lobeRadialDiameter: 0.15, lobeHeight: 0.065, wireRadius: 0.0025,
+      hangingBalls: [
+        { id: 'left', xOffset: -0.07, zOffset: 0, cordLength: 0.23, diameter: 0.06 },
+        { id: 'right', xOffset: 0.07, zOffset: 0, cordLength: 0.28, diameter: 0.06 },
+        { id: 'center', xOffset: 0, zOffset: 0.07, cordLength: 0.4, diameter: 0.06 },
+      ],
+    };
+    const scene = new THREE.Scene();
+    new InteriorLightingSystem(scene, [fixture], { fixtures: [cloudConfig] });
+
+    const partNames: string[] = [];
+    scene.traverse((object) => { if (typeof object.userData.part === 'string') partNames.push(object.userData.part); });
+    expect(partNames.filter((part) => part.startsWith('pe-cloud-lobe-'))).toHaveLength(20);
+    expect(partNames.filter((part) => part.startsWith('hanging-wood-orb-'))).toHaveLength(3);
+    expect(lights(scene).filter((light) => light instanceof THREE.PointLight)).toHaveLength(1);
+    const walnutBase = scene.getObjectByName('electrical:cloud-dining:part=walnut-ceiling-base:role=fixture_wood') as THREE.Mesh;
+    const walnutOrb = scene.getObjectByName('electrical:cloud-dining:part=hanging-wood-orb-center:role=fixture_wood') as THREE.Mesh;
+    expect(walnutBase).toBeDefined();
+    expect(walnutOrb).toBeDefined();
+    expect((walnutBase.material as THREE.MeshStandardMaterial).color.getHex()).toBe(0x4c2d1c);
+    expect((walnutOrb.material as THREE.MeshStandardMaterial).emissiveIntensity).toBe(0);
   });
 });

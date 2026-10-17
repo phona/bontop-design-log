@@ -259,7 +259,7 @@ controls:
     status: proposed
     switch_point_ids: [switch_dining]
     target_point_ids: [light_dining_pendant]
-    note: "餐桌吊灯墙控单控（DEC-2026-09-08-R1 落实原'餐桌旁墙上开关'口径，待交底确认）"
+    note: "餐厅灯墙控单控（DEC-2026-09-08-R1 落实原'餐桌旁墙上开关'口径，待交底确认）。DEC-2026-10-16-R12 将受控对象改为 ceiling_light 并曾随桌心迁至 (9.80,3.45)；DEC-2026-10-17-R9 再按业主选择移至餐厅平顶范围中心 (9.25,3.65)，开关位置/高度 h1.3 与 target_point_ids 均不变。"
   - id: control_corridor_downlight
     kind: switch
     status: proposed

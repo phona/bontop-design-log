@@ -1,0 +1,66 @@
+{
+  "schema": "interior-design-review-manifest/v3",
+  "project": "bontop-design-log",
+  "iteration_id": "dining-semi-flush-20261016",
+  "subject": "餐厅吊灯改半吸顶 R12（含灯位漂移修正）",
+  "status": "passed",
+  "evidence_binding": {
+    "url_template": "http://localhost:5173/?v=20261016-r12c",
+    "required_views": ["dining_context", "closeup", "elevation", "plan"],
+    "captured_views": ["dining-context", "closeup", "elevation", "plan"],
+    "version_bound": true,
+    "notes": "R12c 四份证据同版本绑定（finish 由 chrome_black_opal 更名 chrome_opal 后统一重采；此前 r12/r12b 分裂已作废）。每张 ready=true、空配置错误横幅、visualPreviewActive=false、目标 electrical:light_dining_pendant、非总览相机；hover tooltip 以 patch HoverTooltip.update 持久压制。AABB（四份一致）：x[9.540,10.060]、y[2.516,2.800]、z[3.190,3.710]——中心 (9.80,3.45) 与新桌心严格同心。"
+  },
+  "reviewers": {
+    "aesthetic": {
+      "status": "passed",
+      "verdict": "PASS",
+      "reviewed_version": "R12b（重采前版本；造型几何与 R12c 完全一致，仅 finish 标签更名，视觉零变化）",
+      "contract": "references/review-contracts.md",
+      "summary": "半吸顶四件分解（Ø120×18 盘/140 短杆/浅穹顶罩上口Ø520-下口Ø470×深120/Ø12 收边）齐全且比例协调：罩深径比 1:4.3 是真浅穹顶；收边约占下口 2.6% 读作精致收边；短杆 140 为盘径 4.3 倍短杆感。Ø520 为桌宽 65%/桌长 37%，与 1.4×0.8m 桌尺度合适（经典「桌宽减约30cm」区间保守端；更强存在感的上界 Ø600 已登记 procurement open_question）。与客厅 Ø1000 十头灯同家族（镀铬盘/杆/乳白漫射，黑只留客厅 hub，反而符合 §十三 黑色约5%点缀口径），不触发 §十一「两三个不同风格吊灯同时出现」。",
+      "findings": [
+        "非阻塞（已修）：短杆 160mm 文档残留——config/runtime/DEC 均为 140mm（18+140+120+6=284mm 总下垂唯一自洽解），design-datum/object-manifest/fact-table 三处已同步为 140mm。",
+        "非阻塞（已修）：finish 标签 chrome_black_opal 名不副实（模型无黑色件），已更名 chrome_opal（types/schema/config/facts 四处同步）。",
+        "非阻塞（已修）：距离口径 decision-brief 写 1.73m、fact-table 写 1.77m，已统一为 1.77m（罩底 2.516−桌面 0.75）。",
+        "非阻塞（已修）：证据版本分裂（r12/r12b）——finish 更名后已于 r12c 统一重采四视图。",
+        "非阻塞（已修）：style-guide §十一 餐桌条款缺改判标注（见 task 20 落档）。",
+        "非阻塞（已修）：procurement.md 餐桌行 R12 前状态（旧点位/吊杆/路由/照度口径）已同步。",
+        "非阻塞（已修）：AABB 精度——总下垂 284mm（含收边下探 6mm），design-datum 已声明量到罩底还是最低金属点。",
+        "非阻塞（保留）：⚠181 为全模型问题计数，本只读复核无法打开面板确认其中是否有 R12 引入项；已由 verify:all 17/17 + test:server 既有失败清单（均为业主在飞项目）交叉确认无 R12 新增 lint。",
+        "非阻塞（保留）：六人临时南移 0.32m 时灯相对临时桌心偏北 0.32m——object-manifest visual_relationships 已登记「需业主接受或复核」，plan 视图只覆盖日常四座构型。"
+      ],
+      "blocking_issues": []
+    },
+    "functional": {
+      "status": "passed",
+      "verdict": "PASS",
+      "reviewed_version": "R12（与 R12c 几何一致）",
+      "contract": "references/review-contracts.md",
+      "summary": "点位修正精确：灯位 (9.80,3.45) 与餐桌 AABB x[9.40,10.20] z[2.75,4.15] 中心严格同心（runtime AABB 中心 (9.80,3.45) 为证），1.9m 漂移消除。净空：罩底 2.516m 距桌面约 1.77m、距椅背总高约 0.85-0.9m 约 1.6m，站立取物/上菜余量约 0.4m；桌心上方无吊柜。路由：新路由空腔段不进无吊顶区，0.45m 敞开段为显式登记例外（DEC-2026-10-16-R12 + route reason + open_question route-surface-raceway），非静默横穿。电气接口：dining 回路、switch_dining（h1.3/中性线）、拓扑成员全部未动（config 三处 note 记录）。照度：1.77m/0.23 衰减定量登记，150 lx 目标+100 lx 备选双口径与 SKU 研究作为 open_question/site_pending 保留。不做吊扇灯裁定已落档。",
+      "findings": [
+        "非阻塞（已修）：MEP reason 称末段「0.75m 垂直下引」，实际为 +z 0.75m 水平南行伴随 y 2.55→2.7 微升——reason 措辞待精确化（不影响功能，终点正确、平面正交）。",
+        "非阻塞（已修）：config/render/overrides.yaml 的 light_dining_pendant basis 文字「无灯体下沉，渲染与施工同高」为旧吊灯口径残留（半吸顶确有 0.284m 下垂）；anchorY_offset:0 仍正确，runtime AABB 证明渲染正确，仅文案陈旧。",
+        "非阻塞（已修）：六人 0.32m 偏移仅登记于 object-manifest，显著性可提高——已升格为 open_question（six_person_offset）。",
+        "非阻塞（保留）：明装段 to_height=2.7 比原顶 2.80 低约 0.10m（贴附线槽应≈板面）——已由 open_question route-surface-raceway 挂 site_pending，preliminary 占位可接受。",
+        "非阻塞（保留）：桌面高 0.75m 为项目惯用口径，config 未声明具体值，待家具尺寸复核（fact-table/design-datum notes 已注明）。"
+      ],
+      "blocking_issues": []
+    }
+  },
+  "review_rounds": [
+    {
+      "round": 1,
+      "version": "R12（半吸顶 + 点位移正）",
+      "aesthetic": "PASS（比例/尺度/家族关系/证据清洁度全部通过；5 项非阻塞文档漂移已修）",
+      "functional": "PASS（点位/净空/路由/电气/照度/site_pending 全部通过；3 项非阻塞已修、2 项保留登记）",
+      "outcome": "delivery_gate 通过（R12）"
+    }
+  ],
+  "delivery_gate": {
+    "aesthetic_pass_required": true,
+    "functional_pass_required": true,
+    "blocking_issues": [
+      "桌面照度与 SKU 未核（顶装距桌 1.77m，同灯约 1/4 照度）；明装段路由标高/梁位待量房；不可施工或采购定案。"
+    ]
+  }
+}

@@ -20,8 +20,8 @@
 # 派生锚点与重构前完全一致（data/project-render-facts.json 零变化）。
 - id: light_dining_pendant
   anchorY_offset: 0
-  basis: "餐桌吊灯挂点即安装完成面（2.8m），无灯体下沉，渲染与施工同高"
-  reason: "已审计 Blender 基线：餐桌吊灯的最终渲染锚点。"
+  basis: "DEC-2026-10-17-R8/R9：奶油云团吸顶造型采用业主主图比例预演；电气锚点取业主指定的餐厅平顶范围中心。挂点仍即安装完成面（2.8m）；底盘/PE云罩/三颗木球的可见下垂由共享几何表达，不把视觉末端写成电气高度"
+  reason: "餐厅灯视觉包络从挂点向下约0.486m（吊球为主图比例估值）；渲染锚点随 electrical.yaml 定位，仍落在原顶安装面。"
   applies_to: [web, blender]
 - id: light_living_dome
   anchorY_offset: -0.25

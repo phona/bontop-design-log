@@ -1,0 +1,9 @@
+- heading "方案" [level=3, ref=e2]
+- button "方案面板折叠" [expanded=false, ref=e3]
+- button "打开预演工作台" [ref=e1]
+- button "俯视" [ref=e5]
+- button "图层" [expanded=false, ref=e6]
+- button "环境" [expanded=false, ref=e7]
+- button "⚠446" [expanded=false, ref=e8]
+- button "⚙" [expanded=false, ref=e9]
+- slider [ref=e4]: 50

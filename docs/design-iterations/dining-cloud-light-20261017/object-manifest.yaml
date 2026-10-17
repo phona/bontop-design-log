@@ -1,0 +1,86 @@
+schema: interior-design-object-manifest/v3
+project: bontop-design-log
+iteration_id: dining-cloud-light-20261017
+subject: 餐厅云团吸顶灯视觉预演
+object_policy: {fixed_count_required: true, split_by: [function, owner, material, collision, maintenance, interface, review], visual_relationship_required: true}
+objects:
+  - id: light_dining_pendant
+    type: cloud_orb_ceiling_light
+    archetypes: [wood_ceiling_base, opal_pe_cloud_ring, three_wood_orbs]
+    owner: 业主
+    function: "餐厅空间中心氛围灯外形预演；R9灯心按业主选择落在(9.25,3.65)，餐桌中心为(9.80,3.45)。业主接受其不与桌心同轴；实际光度和灯具SKU未核，桌面150lx目标由最终照明组合验证。"
+    material: "深木色顶盘与木球、乳白 PE 泡罩、细暖金属吊线；颜色为图像取样方向，非材质工艺确认。"
+    geometry_source: "config/render/lighting.yaml + shared/render/CloudOrbCeilingLightGeometry.ts；浏览器/GLB 共用。"
+    datum_refs: ["design-datum.yaml#dining-cloud-orb-ceiling-light"]
+    fact_refs: ["fact-table.yaml#fixture-anchor-and-circuit", "fact-table.yaml#user-supplied-body-dimensions", "fact-table.yaml#proportional-envelope"]
+    decision_refs: ["decision-brief.yaml#freeze_record"]
+    dependencies: ["electrical:light_dining_pendant", "circuit:dining", "control_dining", "strong-light-dining"]
+    interfaces:
+      - {id: electrical-anchor, target_object_id: light_dining_pendant, kind: electrical, requirement: "灯位按业主选择为餐厅平顶范围中心(9.25,3.65)；保留安装完成面2.80m、3000K、dining回路、switch_dining和拓扑ID。", status: confirmed}
+      - {id: source-preview, target_object_id: dining_table, kind: function, requirement: "灯外径Φ500mm，三球最长总下垂约486mm（图像比例估值）；不据模型判断照度。", status: inferred}
+      - {id: install-review, target_object_id: ceiling_dining_north_band, kind: construction, requirement: "点位仍在原顶，底盘固定、净空/总高、重量与现有走线须在采购/安装前核实。", status: open}
+    collision:
+      policy: reviewed
+      geometry_ref: "R9 runtime包络 x[9.00,9.50]、z[3.40,3.90]、y[2.314,2.80]。与餐桌/餐椅无三维AABB碰撞；按程序化桌面y≈0.77m推定，灯底到桌面约1.54m，非人体/施工验收。灯心离桌心约0.585m，业主已接受其空间中心氛围灯语义。"
+      review_ref: "review-manifest.json#/functional_review"
+    maintenance:
+      boundary: "业主负责日常清洁；供应商提供拆洗与备件资料；电工负责断电后的检修和安装。当前没有证据证明下列部件能独立拆换，也没有假定检修净距。"
+      access_clearance: "unknown；供应商须在 SKU 下单前提供拆装方向、工具和所需净距。"
+      service_candidates: [cloud_diffuser, driver, led_module, wood_canopy, suspension_cords, wood_orbs]
+      replaceability: "unknown；须由供应商书面说明哪些部件可更换，以及是否需要整灯拆下。"
+      inspection_requirements:
+        - item: "PE 云罩日常清洁和拆卸：确认能否单独取下、清洁剂/工具、拆卸方向和所需检修净距；不根据当前模型假定可拆。"
+          owner: "供应商；业主记录"
+          trigger: "SKU 下单前"
+          verification: "取得该 SKU 的书面维护/拆装说明；未知项继续标为未知，不纳入施工图。"
+        - item: "LED 模组/驱动故障：确认部件是否可替换、是否需要整灯拆下、由谁提供备件及断电检修步骤。"
+          owner: "供应商+电工；业主确认"
+          trigger: "SKU 下单前，安装前复核"
+          verification: "取得维修说明和备件责任口径；没有说明时按不可独立检修处理并重新评估。"
+        - item: "底盘重量、固定件、顶面适配及三颗木球/吊线防坠连接。"
+          owner: "供应商+电工"
+          trigger: "采购前取得安装图；安装前现场复核"
+          verification: "核对整灯重量、固定节点/防坠构造与实际底盒和顶面条件；目前不作承重结论。"
+        - item: "木球和吊线损坏后的替换方式与连接端检查。"
+          owner: "供应商；电工安装时复核"
+          trigger: "SKU 下单前及首次安装前"
+          verification: "取得零件图或书面维修口径；没有证据时不得把球体/吊线作为可替换件宣传。"
+    parts:
+      - id: walnut-canopy
+        role: "Φ500×26mm 木色圆底盘；按业主参数图尺寸。"
+        independent: true
+        owner: 灯具供应商
+        material: "深胡桃木色预演材质；实木/木纹膜/表面工艺未知。"
+        geometry_source: shared/render/CloudOrbCeilingLightGeometry.ts
+        datum_refs: ["design-datum.yaml#dining-cloud-orb-ceiling-light"]
+        dependencies: []
+        collision: reviewed
+        maintenance_boundary: "底盘固定和表面保养由厂家资料核验"
+        validation_refs: ["evidence/parameter-reference.png"]
+      - id: pe-cloud-ring
+        role: "Φ500×110mm 双层错位 PE 圆泡云罩；两圈20个程序化圆润泡体。"
+        independent: true
+        owner: 灯具供应商
+        material: "乳白高漫射预演材质；泡体排布/透光率为未核内容。"
+        geometry_source: shared/render/CloudOrbCeilingLightGeometry.ts
+        datum_refs: ["design-datum.yaml#dining-cloud-orb-ceiling-light"]
+        dependencies: [walnut-canopy]
+        collision: reviewed
+        maintenance_boundary: "拆罩、清洁、驱动检修方式待厂家说明"
+        validation_refs: ["evidence/closeup.png", "evidence/parameter-reference.png"]
+      - id: three-walnut-orbs
+        role: "三根细暖色吊线与三颗深木色球体；Φ60mm 球径、230/280/400mm 线长为主图比例估值。"
+        independent: true
+        owner: 灯具供应商
+        material: "木色球与暖金线为视觉推断，绳材、球体重量和端部防坠未知。"
+        geometry_source: shared/render/CloudOrbCeilingLightGeometry.ts
+        datum_refs: ["design-datum.yaml#dining-cloud-orb-ceiling-light"]
+        dependencies: [walnut-canopy]
+        collision: reviewed
+        maintenance_boundary: "球体、吊线固定和更换方式待厂家资料"
+        validation_refs: ["evidence/elevation.png", "evidence/closeup.png"]
+    visual_relationships:
+      - {target_object_id: dining_table, relation: above, requirement: "灯作为空间中心氛围灯，中心(9.25,3.65)，桌心保持(9.80,3.45)，灯心偏移(-0.55,+0.20)m；业主接受不与桌心同轴。最终桌面150lx由整体照明组合与SKU配光核验。", evidence_refs: ["evidence/r9/topdown.png", "evidence/r9/context.png"]}
+      - {target_object_id: light_living_dome, relation: sibling, requirement: "木色与乳白漫射建立同一温暖材质线索；餐厅云团圈罩与客厅八头弧臂保留形体层级。", evidence_refs: ["evidence/r9/context.png", "evidence/r9/closeup.png"]}
+    validation_refs: ["review-manifest.json#/aesthetic_review", "review-manifest.json#/functional_review"]
+    status: preview_implemented

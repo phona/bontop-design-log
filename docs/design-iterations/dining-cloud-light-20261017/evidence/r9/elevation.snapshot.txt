@@ -1,0 +1,27 @@
+- generic
+  - Canvas
+  - heading "方案" [level=3, ref=e2]
+  - button "方案面板折叠" [expanded=false, ref=e3]
+    - StaticText "+"
+  - button "打开预演工作台" [ref=e1]
+    - StaticText "预演"
+  - StaticText "北"
+  - StaticText "东"
+  - StaticText "南"
+  - StaticText "西"
+  - StaticText "FULL DESIGN"
+  - StaticText "第一人称 · WASD 移动 · [ ] 灵敏度 · 按 V 切换轨道 · 按 M 总览"
+  - generic
+    - group "视角"
+      - button "俯视" [ref=e5]
+    - group "图层与工具"
+      - button "图层" [expanded=false, ref=e6]
+      - button "环境" [expanded=false, ref=e7]
+      - button "⚠446" [expanded=false, ref=e8]
+        - StaticText "⚠"
+        - StaticText "446"
+      - button "⚙" [expanded=false, ref=e9]
+  - generic
+    - StaticText "灵敏度"
+    - slider [ref=e4]: 50
+    - StaticText "50"

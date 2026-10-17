@@ -59,3 +59,24 @@ fixtures:
         armStartOffsetY: -0.3595
         sweep: rise
         tiltDeg: 0
+  # DEC-2026-10-17-R8：按业主提供的“奶油云团吸顶灯”主图替换R12浅穹顶造型；R9 将电气锚点移到业主指定的餐厅平顶范围中心，回路与墙控不变。
+  # 主体按业主参数图：深木色底盘Φ500×26mm + 乳白 PE 云罩Φ500×110mm；三球/吊线按主图比例估值，非SKU尺寸。
+  - id: light_dining_pendant
+    type: ceiling_light
+    style: antique_cloud_orb_ceiling_light
+    finish: walnut_pe_opal
+    outerDiameter: 0.50
+    canopyThickness: 0.026
+    diffuserDepth: 0.11
+    cloudRingRadius: 0.15
+    lobeLayers: 2
+    lobesPerLayer: 10
+    layerOffsetDeg: 18
+    lobeTangentialDiameter: 0.14
+    lobeRadialDiameter: 0.15
+    lobeHeight: 0.065
+    wireRadius: 0.0025
+    hangingBalls:
+      - {id: short_left, xOffset: -0.07, zOffset: 0.0, cordLength: 0.23, diameter: 0.06}
+      - {id: medium_right, xOffset: 0.07, zOffset: 0.0, cordLength: 0.28, diameter: 0.06}
+      - {id: long_center, xOffset: 0.0, zOffset: 0.07, cordLength: 0.40, diameter: 0.06}

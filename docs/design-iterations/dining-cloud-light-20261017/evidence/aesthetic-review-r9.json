@@ -1,0 +1,32 @@
+{
+  "verdict": "FAIL",
+  "blocking_issues": [
+    "R9灯心为(9.25,3.65)，餐桌中心为(9.80,3.45)，水平偏移约0.585m。按餐桌1.40×0.80m、rotation=90推得桌面x范围约[9.40,10.20]；灯体运行时x范围为[9.00,9.50]，主体仅约0.10m与桌面投影重叠，三颗木球均落在桌面西侧。topdown.png显示灯体偏在餐桌左侧，context.png显示灯与桌组没有形成正上方构图；当前更像“餐厅平顶中心的装饰灯”，不能直接通过为“餐桌灯”的审美关系。",
+    "业主已明确选择平顶中心，但尚未明确接受“灯心偏离餐桌、作为空间中心氛围灯”的功能语义。不能自动改回桌心；需业主确认该语义，或重新选择折中位置。确认前不得标审美PASS或delivery_ready。"
+  ],
+  "non_blocking_notes": [
+    "四张R9证据均绑定同一sourceVersion，runtime ready=true、errorBanner为空、目标对象存在；R9包络为x[9.00,9.50]、y[2.314,2.800]、z[3.40,3.90]。",
+    "closeup.png中木色圆盘、乳白云泡、三根吊线和三颗分层木球均清楚可辨；三球短/中/长关系与产品参考图一致。",
+    "主体Φ500×136mm的比例稳定，20个云泡形成连续环形；乳白材质略偏冷、木色略深，但仍保持参考图的木色/乳白层级。",
+    "context.png同时看到客厅八头木色灯；两者共享木色、暖金属和乳白漫射材质，餐厅灯体量较小，家族关系和层级基本成立。"
+  ],
+  "evidence_refs": [
+    "evidence/r9/context.png",
+    "evidence/r9/closeup.png",
+    "evidence/r9/elevation.png",
+    "evidence/r9/topdown.png",
+    "evidence/r9/context.runtime.json",
+    "evidence/r9/topdown.runtime.json",
+    "fact-table.yaml#user-selected-dining-plane-center",
+    "design-datum.yaml#dining-cloud-orb-ceiling-light"
+  ],
+  "requested_changes": [
+    "先完成“平顶几何中心”与“餐桌关系”的业主取舍确认：保留R9时明确接受偏心空间氛围灯语义；若要求灯具兼顾餐桌照明，选择桌心或折中坐标后重新生成四视图并复审。",
+    "未完成该取舍前，不把R9标记为审美PASS或delivery_ready。"
+  ],
+  "assumptions": [
+    "餐桌尺寸1.40×0.80m、中心(9.80,3.45)、rotation=90的AABB按当前house.yaml和家具类型尺寸计算。",
+    "主体Φ500×136mm来自业主参数图；486mm总下垂、60mm球径及230/280/400mm吊线长度是业主授权的低置信比例预演，不是商品或施工尺寸。",
+    "本审查只评价位置构图、比例、材质和视觉协调，不判断实际照度、承重、安装或维护条件。"
+  ]
+}

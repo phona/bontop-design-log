@@ -1,0 +1,117 @@
+schema: interior-design-decision-brief/v3
+project: bontop-design-log
+iteration_id: dining-cloud-light-20261017
+subject: 餐厅灯替换为中古风奶油云团灯（视觉预演）
+priority:
+  user_goal: "按业主提供的奶油云团灯商品主图与尺寸图，替换当前餐厅灯的 3D 造型。"
+  ranked:
+    - "按业主最新选择，把 light_dining_pendant 放到餐厅平顶范围 x[7.70,10.80]×z[3.00,4.30] 的中心 (9.25,3.65)，不要求在餐桌几何中心上方；保留2.80m顶面安装高度、3000K与dining回路/墙控。"
+    - "主体按业主尺寸：Φ500mm 木色底盘厚26mm，Φ500mm 云罩深110mm。"
+    - "三颗不同垂长的深木色球体与云朵 PE 泡罩按主图比例作可修改视觉代理。"
+    - "浏览器与 GLB/export 使用同一声明式几何。"
+  non_negotiables:
+    - "电气点位 id、type、安装高度、temp、circuit、拓扑和 switch_dining 不变；x/z 按业主明确选择改至 (9.25,3.65)，strong-light-dining 路由末段同步调整。餐桌、吊顶和客厅灯不动。"
+    - "不把按主图比例推定的总下垂/木球尺寸写成 SKU 或施工尺寸。"
+    - "不以模型自发光、商品标称3200lm或5–10㎡面积宣传证明桌面照度达标。"
+    - "图片/用户提供参数没有独立商品页核验；本轮不作购买推荐、承重或维修结论。"
+  tradeoffs_accepted:
+    - "业主明确接受吊球总高和吊线长度按主图比例预演；当前约486mm总下垂，实际 SKU 总高待核。"
+    - "R12 旧版 284mm 半吸顶高度与镀铬浅穹顶造型被本轮业主参考图替换；旧配置、截图和决策记录保留为历史。"
+    - "外观主色改为深木色+乳白 PE，和客厅木色/乳白多球灯形成共同材质线索；不伪造真实木纹或 PE 透光率。"
+    - "R9 以用户明确选择的餐厅平顶范围中心 (9.25,3.65) 定灯位，较桌心 (9.80,3.45) 偏移约0.585m；桌面照度分布因此必须按真实 SKU 配光复核。"
+    - "R10业主接受该偏心构图作为餐厅空间中心氛围灯；不要求这盏灯单独承担桌面150lx，整体餐桌照度仍作为采购前组合验证目标。"
+frozen: true
+freeze_record:
+  alignment_id: align-dining-cloud-light-center-and-proportional-preview-20261017
+  original_user_response: "按主图比例预演；按餐厅平顶范围中心(9.25,3.65)放置，不用在餐桌几何中心上方；接受空间中心氛围灯语义"
+  normalized_decisions:
+    - "灯罩 Φ500×H110mm、底盘 Φ500×H26mm 采用业主商品参数图的尺寸。"
+    - "三颗木球、吊线和总下垂按主图比例预演；总下垂只作为视觉代理。"
+    - "灯位采用餐厅平顶范围中心 (9.25,3.65)，餐桌仍在(9.80,3.45)；灯点 id/安装高度2.80m/3000K/dining回路/墙控保持。"
+    - "业主接受灯具作为餐厅空间中心氛围灯，不视为桌面150lx任务灯；全场餐桌照度仍待实际组合验证。"
+  confirmed_by_user: true
+  confirmation_scope: "明确授权按主图比例建模、灯具位于餐厅平顶范围中心且接受空间中心氛围灯语义；桌面150lx为整体照明组合目标，不由本灯单独保证；吊线长度/木球大小仍为可修改推断，不是商品实测。"
+  confirmed_at: "2026-10-17"
+  evidence_refs: ["evidence/product-reference.png", "evidence/parameter-reference.png"]
+allowed_scope:
+  files:
+    - config/render/lighting.yaml
+    - config/electrical.yaml
+    - config/electrical-topology.yaml
+    - config/mep-hvac-coordination.yaml
+    - config/render/overrides.yaml
+    - shared/types.ts
+    - shared/project-render-facts-schema.ts
+    - shared/render/CloudOrbCeilingLightGeometry.ts
+    - shared/render/LightingFixtureBuilder.ts
+    - app/src/render/InteriorLightingSystem.ts
+    - data/project-render-facts.json
+    - tests/server/cloud-orb-ceiling-light.test.ts
+    - app/src/render/InteriorLightingSystem.test.ts
+    - docs/decisions/06-electrical.md
+    - docs/style-guide.md
+    - schedule/procurement.md
+    - docs/pending-site-data.md
+    - docs/design-iterations/dining-cloud-light-20261017/
+  objects: [light_dining_pendant]
+  archetypes: [wood_ceiling_base, opal_pe_cloud_ring, three_wood_orbs]
+  views: [dining_context, closeup, elevation, topdown]
+  changes:
+    - "将活动 render style 从 semi_flush_ceiling_light 改为 antique_cloud_orb_ceiling_light；删除当前活动配置中的浅穹顶/短杆/镀铬收边参数。"
+    - "按 DEC-2026-10-17-R9 将灯点从桌心(9.80,3.45)移至餐厅平顶范围中心(9.25,3.65)，并把 strong-light-dining via 与明敷末段说明同步到新坐标。"
+    - "新增共享声明式云团罩/三木球几何，浏览器与 GLB 同源。"
+    - "同步更新灯具外形 note、渲染 override 说明、风格记录、采购口径注记和现场待核条目。"
+forbidden:
+  files:
+    - config/layout/model-geometry.yaml
+    - config/layout/overlay.yaml
+    - config/house.yaml
+    - config/ceiling.yaml
+  objects: [dining_table, light_living_dome, ceiling_dining_north_band, ceiling_dining_west_band]
+  assumptions:
+    - "总下垂约486mm、吊球直径约60mm、线长230/280/400mm、泡罩数与平面排布均为主图比例预演。"
+    - "模型不能证明简顿商品具体 SKU、色温档、流明/配光、安装重量、承重、拆洗或售后。"
+    - "R9采用业主选定的餐厅平顶范围中心坐标；该范围不是 model-geometry 中的独立房间 polygon。"
+  out_of_scope_changes:
+    - "购买/锁定 SKU、价格比较、施工定位、底盒承重、量房尺寸和光度达标结论。"
+open_questions:
+  - id: off-center-fixture-role
+    category: design_alignment
+    question: "R9灯心偏离桌心约0.585m，主体与桌面投影仅重叠约0.10m；用户确认接受空间中心氛围灯语义。该选择不代表桌面照度已满足，仍待SKU和最终照明组合核验。"
+    fact_refs: ["fact-table.yaml#user-selected-dining-plane-center", "evidence/aesthetic-review-r9.json"]
+    options: ["保持当前中心，按空间氛围灯呈现", "重新选择兼顾桌面照明的折中位置"]
+    selected: "保持当前中心，按空间氛围灯呈现；桌面150lx由最终照明组合验证"
+    user_response: "可以，提交你的改动吧。"
+    status: resolved
+  - id: sku-photometry-and-service
+    category: procurement
+    question: "采购前需复核固定 SKU 的 3000K 档、实际光通量与配光、整灯总高/重量、驱动更换、PE 云罩拆洗及底盘安装图。"
+    fact_refs: ["fact-table.yaml#purchase-and-maintenance-verification"]
+    options: []
+    selected: null
+    user_response: null
+    status: site_pending
+acceptance:
+  validation_commands:
+    - "npm run generate:project-render-facts"
+    - "npm run verify:lighting-config"
+    - "npm run typecheck"
+    - "npm run test:server"
+    - "npm run test:app"
+    - "npm run verify:all"
+    - "npm run gate:visual"
+  browser_evidence_required: true
+  required_views: [dining_context, closeup, elevation, topdown]
+  aesthetic_review: PASS required
+  functional_review: PASS required
+  construction_review: pending
+  blocking_issues:
+    - "商品真实整灯总高、重量、照度和安装资料未核；模型范围可供审看，不可转施工或采购定案。"
+  done_when:
+    - "运行时出现 stable object id electrical:light_dining_pendant，锚点位于业主选择的平顶区域中心(9.25,3.65)，餐桌保持原位，三球与云圈均可见。"
+    - "实际网格 AABB 中心 x/z=(9.25,3.65)、宽深为0.50m，锚点顶面y=2.80m，最低木球底约y=2.314m（视觉比例估值）。"
+    - "浏览器与 GLB/export 共享同一几何构造器；电气/MEP/家具配置不漂移。"
+    - "目标视图 ready=true、错误横幅为空、快照/runtime/PNG 同版本绑定。"
+    - "审美与功能 reviewer 按固定 JSON 契约给 PASS；所有未核项目和旧结论替换原因写清。"
+    - "照明路由无非预期斜段；明装末段长度和现场核验责任仍显式登记。"
+  delivery_notes_required: true

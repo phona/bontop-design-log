@@ -1,0 +1,65 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: dining-cloud-light-20261017
+subject: 餐厅云团灯天花锚点与主图比例外形
+units: m
+coordinate_system: "Three.js 右手系；Y 向上；x 东西、z 南北；+z 为南；俯视北朝上(-z)。"
+status: frozen
+datums:
+  - id: dining-cloud-orb-ceiling-light
+    name: 餐厅平顶范围中心的灯体和三枚木球预演包络
+    anchor: {kind: ceiling_anchor, ref: light_dining_pendant, wall_side: null, service_ref: strong-light-dining}
+    source_refs:
+      fact_refs: ["fact-table.yaml#fixture-anchor-and-circuit", "fact-table.yaml#user-supplied-body-dimensions", "fact-table.yaml#user-approved-proportional-preview", "fact-table.yaml#proportional-envelope"]
+      decision_refs: ["decision-brief.yaml#freeze_record"]
+    views:
+      plan:
+        required: true
+        origin: "以业主选定的餐厅平顶范围中心 (9.25,3.65) 为平面原点；桌心 (9.80,3.45) 仅作独立参照。"
+        axes: "x东西，z南北"
+        direction: "北朝上(-z)"
+        position: {x: 9.25, z: 3.65}
+        rotation: 0
+        dimensions: {length: 0.5, width: 0.5, depth: 0.5, offset: 0}
+        dimension_semantics: overall
+      elevation:
+        required: true
+        viewing_side: "从灯具南侧(+z)查看，顶面锚点 y=2.80m。"
+        vertical_axis: y
+        height: 2.8
+        dimensions: {width: 0.5, height: 0.486, sill: null, datum_offset: 0}
+        dimension_semantics: overall
+      section:
+        required: true
+        cut_direction: "竖剖经过底盘中心与最长吊球。"
+        depth_axis: "z方向；三球平面偏移为主图预演值。"
+        clearances: {front: null, rear: null, top: 0, bottom: 0.486}
+        thickness: 0.486
+        dimension_semantics: overall
+    geometry:
+      x: 9.25
+      y: 2.8
+      z: 3.65
+      width: 0.5
+      depth: 0.5
+      height: 0.486
+      length: 0.5
+      rotation: 0
+      along: null
+    constraints:
+      - "锚点为业主选择的餐厅平顶范围中心 (9.25,2.80,3.65)；选择范围 x[7.70,10.80]×z[3.00,4.30]，与餐桌中心 (9.80,3.45) 水平偏移约0.585m。餐桌不移动。"
+      - "底盘外径0.50m、厚0.026m；PE 云罩外径0.50m、深0.11m；主体叠加总深0.136m。"
+      - "主图比例预演：三枚木球直径0.06m，底盘下表面至球顶的吊线长度0.23/0.28/0.40m，木球平面偏移(-0.07,0)/(0.07,0)/(0,0.07)m；最长总下垂0.026+0.40+0.06=0.486m。以上未标尺寸均为视觉估值。"
+      - "云朵 PE 泡体为两层各10枚、平面错位半步；泡径/泡数为造型拟合，不声称商品内构。"
+      - "R9总包络预计 x[9.00,9.50]、z[3.40,3.90]，顶部2.80m，最低木球底约2.314m；餐桌中心仍为(9.80,3.45)。桌面高度约0.75m仅为家具模型推定，垂直分离约1.564m不构成人体/安装验收。"
+    interfaces:
+      - "电气点位 id/type/height/3000K/dining 回路及 switch_dining 拓扑关系保持；R9 将 x/z 从 (9.80,3.45) 改到 (9.25,3.65)。"
+      - "strong-light-dining 末端 via 同步移至 x=9.25；餐厅平顶 z=3.00→3.65 的0.65m明装线槽仍为 site_pending，service bands 与墙控点位不改。"
+      - "灯具偏离桌心约0.585m；模型灯罩发光不证明实际 3000K 档色温、桌面3200lm分布或150lx照度，须按 SKU 配光核验。"
+    validation_refs:
+      - "fact-table.yaml#fixture-anchor-and-circuit"
+      - "fact-table.yaml#proportional-envelope"
+    status: frozen_preview
+notes:
+  - "0.486m 总下垂是用户授权的主图比例视觉代理，不是商品尺寸或放样值。"
+  - "不含安装承重、PE 透光、球体固定/防坠、检修或换件证明。"

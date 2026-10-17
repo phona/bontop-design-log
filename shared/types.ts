@@ -1526,7 +1526,36 @@ export interface MultiGlobeChandelierConfig {
   }>;
 }
 
-export type DetailedLightingFixtureConfig = TrackLightConfig | WallLampConfig | MultiGlobeChandelierConfig;
+/** 2026-10-17 R8：餐厅奶油云团灯主图比例预演；具体泡数/吊球长度是视觉估值。 */
+export interface CloudOrbCeilingLightConfig {
+  id: string;
+  type: 'ceiling_light';
+  style: 'antique_cloud_orb_ceiling_light';
+  finish: 'walnut_pe_opal';
+  /** Known body envelope from the owner-provided parameter image. */
+  outerDiameter: number;
+  canopyThickness: number;
+  diffuserDepth: number;
+  /** Decorative PE lobes are a visual approximation from the product image. */
+  cloudRingRadius: number;
+  lobeLayers: 2;
+  lobesPerLayer: number;
+  layerOffsetDeg: number;
+  lobeTangentialDiameter: number;
+  lobeRadialDiameter: number;
+  lobeHeight: number;
+  wireRadius: number;
+  /** Cord length is measured from the canopy underside to the wood-orb top. */
+  hangingBalls: Array<{
+    id: string;
+    xOffset: number;
+    zOffset: number;
+    cordLength: number;
+    diameter: number;
+  }>;
+}
+
+export type DetailedLightingFixtureConfig = TrackLightConfig | WallLampConfig | MultiGlobeChandelierConfig | CloudOrbCeilingLightConfig;
 
 export interface LightingRenderConfig {
   fixtures: DetailedLightingFixtureConfig[];

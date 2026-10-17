@@ -4,6 +4,7 @@ import { getResolvedTrackLightHeads, getTrackLightConfig } from './TrackLightLay
 import { buildWallLampVisual, getWallLampConfig, wallSideNormal } from './WallLampGeometry.js';
 import { buildNightLightVisual } from './NightLightGeometry.js';
 import { buildMultiGlobeChandelierVisual, getMultiGlobeChandelierConfig } from './MultiGlobeChandelierGeometry.js';
+import { buildCloudOrbCeilingLightVisual, getCloudOrbCeilingLightConfig } from './CloudOrbCeilingLightGeometry.js';
 
 export interface LightingFixtureBuildResult {
   group: THREE.Group;
@@ -76,6 +77,14 @@ function addDome(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE
   const multiGlobeConfig = getMultiGlobeChandelierConfig(lighting, fixture.id);
   if (multiGlobeConfig) {
     const visual = buildMultiGlobeChandelierVisual(fixture, multiGlobeConfig, glow);
+    group.userData = { ...group.userData, ...visual.userData };
+    group.add(visual);
+    return visual.children.length;
+  }
+  // DEC-2026-10-17-R8：餐厅中古风奶油云团灯，主图比例预演；与浏览器共用同一几何。
+  const cloudOrbConfig = getCloudOrbCeilingLightConfig(lighting, fixture.id);
+  if (cloudOrbConfig) {
+    const visual = buildCloudOrbCeilingLightVisual(fixture, cloudOrbConfig, glow);
     group.userData = { ...group.userData, ...visual.userData };
     group.add(visual);
     return visual.children.length;

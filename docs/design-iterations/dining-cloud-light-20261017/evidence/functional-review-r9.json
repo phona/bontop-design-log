@@ -1,0 +1,61 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    {
+      "fact": "R9灯心(9.25,3.65)位于业主选定的餐厅平顶范围x[7.70,10.80]、z[3.00,4.30]内；灯具包络x[9.00,9.50]、z[3.40,3.90]也完全在范围内。",
+      "evidence": ["fact-table.yaml#user-selected-dining-plane-center", "design-datum.yaml:49-54", "evidence/r9/context.runtime.json#aabb", "evidence/r9/topdown.runtime.json#aabb"]
+    },
+    {
+      "fact": "灯心相对餐桌中心(9.80,3.45)偏移(-0.55,+0.20)m，约0.585m；这是业主本轮明确选择，不能继续要求灯必须在桌心上方。",
+      "evidence": ["fact-table.yaml#user-selected-dining-plane-center", "fact-table.yaml#table-and-ceiling", "object-manifest.yaml:82-84", "evidence/r9/topdown.png"]
+    },
+    {
+      "fact": "静态三维净空通过：灯具最低点y=2.314m，餐桌模型台面顶部约y=0.77m，竖向间距约1.54m；灯具与餐桌、餐椅没有三维AABB重叠。",
+      "evidence": ["evidence/r9/context.runtime.json#aabb", "evidence/r9/elevation.runtime.json#aabb", "config/house.yaml:518-523", "object-manifest.yaml#collision"]
+    },
+    {
+      "fact": "四视图同版，ready=true、objectExists=true、errorBanner为空、isOverview=false，稳定对象ID为electrical:light_dining_pendant。",
+      "evidence": ["review-manifest.json#/evidence", "evidence/r9/context.runtime.json", "evidence/r9/closeup.runtime.json", "evidence/r9/elevation.runtime.json", "evidence/r9/topdown.runtime.json"]
+    },
+    {
+      "fact": "照明控制关系保持：ceiling_light、3000K、dining回路；lighting_dining成员、control_dining、switch_dining目标点位未漂移。",
+      "evidence": ["config/electrical.yaml:923-932", "config/electrical-topology.yaml:29-38", "config/electrical-topology.yaml:257-262"]
+    },
+    {
+      "fact": "strong-light-dining已将via同步到新终点，路径正交；末段由z=3.00、y=2.70接入0.65m板底明装灯具尾段。最终verify:mep没有报告strong-light-dining诊断。",
+      "evidence": ["config/mep-hvac-coordination.yaml:41", "design-datum.yaml:55-58", "/tmp/dining-cloud-light-r9-verify-all.log"]
+    },
+    {
+      "fact": "verify:all 16/17中唯一失败是全局verify:mep汇总222个错误和173个警告、覆盖130条路线；日志没有strong-light-dining诊断。全局失败不是本灯具的对象级失败证据。",
+      "evidence": ["review-manifest.json#/validation", "work-record.md", "/tmp/dining-cloud-light-r9-verify-all.log"]
+    },
+    {
+      "fact": "0.65m明装尾段的梁位、板底平整度、线槽收口仍site_pending；SKU偏心后的桌面照度、整灯重量、固定、防坠及维护资料仍待核。",
+      "evidence": ["config/mep-hvac-coordination.yaml:41", "docs/pending-site-data.md#65", "review-manifest.json#/risks"]
+    }
+  ],
+  "evidence_refs": [
+    "review-manifest.json",
+    "fact-table.yaml",
+    "design-datum.yaml",
+    "object-manifest.yaml",
+    "work-record.md",
+    "evidence/r9/context.png",
+    "evidence/r9/closeup.png",
+    "evidence/r9/elevation.png",
+    "evidence/r9/topdown.png",
+    "config/electrical.yaml:923-932",
+    "config/electrical-topology.yaml:29-38",
+    "config/electrical-topology.yaml:257-262",
+    "config/mep-hvac-coordination.yaml:41",
+    "/tmp/dining-cloud-light-r9-verify-all.log"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "餐桌台面顶部约y=0.77m采用当前程序化dining_table recipe，仅为模型静态几何，不是现场家具测量。",
+    "静态AABB和约1.54m竖向间距不替代人体动态、安装承重、防坠、检修或现场施工验收。",
+    "R9 0.65m明装尾段按显式声明的灯具接线尾段处理；梁位、板底和收口仍需水电交底/封顶前现场复核。",
+    "本次PASS仅覆盖灯具位置、静态空间关系、电气控制和对象级路线连续性；不确认实际SKU配光、偏心后的桌面照度或安装服务性。"
+  ]
+}

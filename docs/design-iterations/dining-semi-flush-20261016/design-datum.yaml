@@ -1,0 +1,63 @@
+schema: interior-design-datum/v3
+project: bontop-design-log
+iteration_id: dining-semi-flush-20261016
+subject: 餐厅半吸顶主灯（桌心上方）
+units: m
+coordinate_system: "Three.js右手系；Y向上；x东西、z南北；+z为南；俯视北朝上(-z)。"
+status: frozen
+datums:
+  - id: dining-semi-flush-fixture
+    name: 餐厅半吸顶灯天花锚点与外形
+    anchor: {kind: ceiling_anchor, ref: light_dining_pendant, wall_side: null, service_ref: strong-light-dining}
+    source_refs:
+      fact_refs: ["fact-table.yaml#fact-anchor-and-table", "fact-table.yaml#inference-r12-proposal", "fact-table.yaml#user-r12-decision"]
+      decision_refs: ["docs/decisions/06-electrical.md#DEC-2026-10-16-R12"]
+    views:
+      plan:
+        required: true
+        origin: "以桌心 (9.80,3.45) 为平面锚点，使用项目局部坐标。"
+        axes: "x东西；z南北"
+        direction: "北朝上(-z)"
+        position: {x: 9.8, z: 3.45}
+        rotation: 0
+        dimensions: {length: 0.52, width: 0.52, depth: 0.28, offset: 0}
+        dimension_semantics: overall
+      elevation:
+        required: true
+        viewing_side: "从餐厅内侧（北/西）仰视；天花锚点 y=2.80m。"
+        vertical_axis: y
+        height: 2.8
+        dimensions: {width: 0.52, height: 0.28, sill: null, datum_offset: 0}
+        dimension_semantics: overall
+      section:
+        required: true
+        cut_direction: "沿z方向剖过吸顶盘、短杆、漫射罩与桌面。"
+        depth_axis: "z方向；无单向偏心凸出。"
+        clearances: {front: null, rear: null, top: 0, bottom: 0.28}
+        thickness: 0.28
+        dimension_semantics: overall
+    geometry:
+      x: 9.8
+      y: 2.8
+      z: 3.45
+      width: 0.52
+      depth: 0.52
+      height: 0.28
+      length: 0.52
+      rotation: 0
+      along: null
+    constraints:
+      - "锚点为新桌心 (9.80,3.45)（修正 2026-10-16 餐桌东移后灯位未随动的 1.9m 漂移）；type=ceiling_light；点位 id light_dining_pendant、dining 回路、switch_dining 墙控不变。"
+      - "半吸顶外形：镀铬吸顶盘 Ø120×18mm 贴顶 y=2.80m；短杆 140mm；浅穹顶乳白漫射罩上口 Ø520mm/下口 Ø470mm/深 120mm，罩底约 y=2.516m（含收边最低点）；细金属收边。总下垂 284mm（18+140+120+6 收边下探，业主认可 10~30cm 区间；DEC/文案口径 280mm 量到罩底）。"
+      - "电路由 strong-light-dining：西带空腔→北带空腔东行至 x=9.80→南行 0.45m 至桌心点；0.45m 敞开天花开段按 DEC-2026-10-13-R6 先例明装线槽（site_pending：量房梁位/板底）。"
+      - "配色与客厅主灯同家族（黑/镀铬/乳白漫射），避免 §十一「两三个不同风格吊灯同时出现」。"
+    interfaces:
+      - "保留 dining 回路、switch_dining（餐桌旁走廊墙 h1.3）、电气拓扑 member 关系；只改点位坐标、type 与外观。"
+      - "照度口径：餐桌 150 lx/3000K/Ra≥90 目标保留，但顶装距桌 1.77m，同灯桌面照度约为原吊灯 1/4——需 SKU 核验或业主裁定降标（open_question）。"
+      - "餐桌 AABB x[9.40,10.20] z[2.75,4.15] 不动；灯位只跟随桌心。"
+    validation_refs:
+      - "旧灯位漂移事实：fact-table.yaml#fact-anchor-and-table"
+    status: frozen_proposal
+notes:
+  - "height=0.28m 为模型总下垂，不是商品或安装尺寸；Ø520mm 漫射罩为设计提案。"
+  - "桌面高度 0.75m 为惯用口径，config 未声明具体值，照度估算精度待家具尺寸复核。"

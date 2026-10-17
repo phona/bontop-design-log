@@ -4,6 +4,7 @@ import { getResolvedTrackLightHeads, getTrackLightConfig } from '@shared/render/
 import { buildWallLampVisual, getWallLampConfig, getWallLampLensPosition, wallSideNormal } from '@shared/render/WallLampGeometry';
 import { buildNightLightVisual, getNightLightMountNormal } from '@shared/render/NightLightGeometry';
 import { buildMultiGlobeChandelierVisual, getMultiGlobeChandelierConfig, getMultiGlobeGlobeCenters } from '@shared/render/MultiGlobeChandelierGeometry';
+import { buildCloudOrbCeilingLightVisual, getCloudOrbCeilingLightConfig } from '@shared/render/CloudOrbCeilingLightGeometry';
 
 /**
  * 室内灯光系统（spec: 2026-08-12-interior-lighting-design.md）
@@ -354,6 +355,9 @@ export class InteriorLightingSystem {
   private makeDomeFixture(fixture: RenderLightingFixture, color: THREE.Color): THREE.Group {
     const multiGlobeConfig = getMultiGlobeChandelierConfig(this.lighting, fixture.id);
     if (multiGlobeConfig) return buildMultiGlobeChandelierVisual(fixture, multiGlobeConfig, color);
+
+    const cloudOrbConfig = getCloudOrbCeilingLightConfig(this.lighting, fixture.id);
+    if (cloudOrbConfig) return buildCloudOrbCeilingLightVisual(fixture, cloudOrbConfig, color);
 
     const group = new THREE.Group();
     const dome = new THREE.Mesh(

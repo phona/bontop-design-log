@@ -205,7 +205,7 @@ test('§0 规模表：路由/层/电点/给排水点/吊顶分区与机器条目
   assert.equal(Number(docChains![2]), Number(info![3]), `§0 吊顶分区数 ${docChains![2]} ≠ verify:facts 实算 ${info![3]}`);
 });
 
-// ─── pending-site-data：表头计数口径（62 个编号 + #3a 子项 = 63 行） ────────
+// ─── pending-site-data：表头计数口径（65 个编号 + #3a 子项 = 66 行） ────────
 
 test('pending-site-data 表头口径：「量表共 N 条」= 编号数，实际行数 = 编号数 + 子项数', () => {
   const header = pending.match(/量表共\s*(\d+)\s*条/);
@@ -226,7 +226,7 @@ test('pending-site-data 表头口径：「量表共 N 条」= 编号数，实际
   assert.equal(claimed, numbered.length, `表头声称 ${claimed} 个编号，实际编号行 ${numbered.length}`);
   assert.deepEqual(subItems, ['3a'], '子项行应恰为 #3a（#3 的 A2 HVAC 子项）');
   assert.equal(rows.length, claimed + subItems.length, '表格行数必须 = 编号数 + 子项数');
-  assert.equal(rows.length, 65, '当前口径：64 个编号 + #3a = 65 行'); // 2026-10-14 冰箱迁位增加 #64 新可及专用电源/路由待定
+  assert.equal(rows.length, 66, '当前口径：65 个编号 + #3a = 66 行'); // 2026-10-17 DEC-2026-10-17-R8 新增餐厅云团灯SKU/维护待核 #65
 });
 
 // ─── 治理台账：逐条与实算一致，且覆盖全部实算 code ───────────────────────
