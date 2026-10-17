@@ -46,7 +46,7 @@ const ElectricalFixtureAppearanceSchema = z.object({
 
 export const ElectricalPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['socket', 'switch', 'switch_2way', 'network', 'usb', 'floor_socket', 'strong_panel', 'weak_panel', 'ac_controller', 'ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light', 'night_light']),
-  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), mount_anchor: FurnitureFaceMountAnchorConfigSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), neutral: z.boolean().optional(),
+  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), mount_anchor: FurnitureFaceMountAnchorConfigSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), serviceability_status: z.enum(['usable', 'blocked', 'superseded']).optional(), neutral: z.boolean().optional(),
 }).strict();
 export const PlumbingPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor', 'leb', 'drain_riser', 'gas_meter', 'duct', 'water_supply', 'water_heater']),
@@ -316,6 +316,105 @@ export const WallLampConfigSchema = z.object({
   if (value.adjustability.yawDeg[0] >= value.adjustability.yawDeg[1]) ctx.addIssue({ code: 'custom', message: 'yawDeg range must increase', path: ['adjustability', 'yawDeg'] });
   if (value.adjustability.tiltDeg[0] >= value.adjustability.tiltDeg[1]) ctx.addIssue({ code: 'custom', message: 'tiltDeg range must increase', path: ['adjustability', 'tiltDeg'] });
 });
+export const SculpturalDomeConfigSchema = z.object({
+  id: nonEmpty,
+  type: z.literal('dome'),
+  style: z.literal('suspended_offset_side_arch_opal_lantern'),
+  finish: z.literal('satin_warm_bronze'),
+  outerWidth: finiteNumber.positive(),
+  outerDepth: finiteNumber.positive(),
+  totalThickness: finiteNumber.positive(),
+  diffuserDrop: finiteNumber.positive(),
+  diffuserDiameter: finiteNumber.positive(),
+  diffuserBottomDiameter: finiteNumber.positive(),
+  diffuserThickness: finiteNumber.positive(),
+  housingBandHeight: finiteNumber.positive(),
+  housingBandOffset: finiteNumber.nonnegative(),
+  canopyDiameter: finiteNumber.positive(),
+  canopyThickness: finiteNumber.positive(),
+  suspensionRodRadius: finiteNumber.positive(),
+  suspensionRods: z.array(z.object({
+    ceiling: z.object({ x: finiteNumber, z: finiteNumber }).strict(),
+    diffuser: z.object({ x: finiteNumber, z: finiteNumber, heightFromBottom: finiteNumber.nonnegative() }).strict(),
+  }).strict()).min(3),
+  arcSpan: finiteNumber.positive(),
+  arcRise: finiteNumber.positive(),
+  arcDepthExtension: finiteNumber.positive(),
+  arcTubeRadius: finiteNumber.positive(),
+  arcFootDiameter: finiteNumber.positive(),
+  arcFootHeight: finiteNumber.positive(),
+  arcOffset: z.object({ x: finiteNumber, z: finiteNumber }).strict(),
+}).strict().superRefine((value, ctx) => {
+  if (value.diffuserDiameter >= Math.min(value.outerWidth, value.outerDepth)) {
+    ctx.addIssue({ code: 'custom', message: 'diffuser must fit inside the outer fixture envelope', path: ['diffuserDiameter'] });
+  }
+  if (value.diffuserBottomDiameter >= value.diffuserDiameter) {
+    ctx.addIssue({ code: 'custom', message: 'pendant lower diffuser face must taper inside the upper rim', path: ['diffuserBottomDiameter'] });
+  }
+  if (value.diffuserDrop > value.totalThickness) {
+    ctx.addIssue({ code: 'custom', message: 'diffuser bottom exceeds the total fixture drop', path: ['diffuserDrop'] });
+  }
+  if (value.diffuserThickness >= value.diffuserDrop) {
+    ctx.addIssue({ code: 'custom', message: 'diffuser top must remain below the ceiling plane', path: ['diffuserThickness'] });
+  }
+  if (value.housingBandHeight > value.diffuserThickness) {
+    ctx.addIssue({ code: 'custom', message: 'housing band must fit within the diffuser body depth', path: ['housingBandHeight'] });
+  }
+  if (value.diffuserDiameter + value.housingBandOffset * 2 >= Math.min(value.outerWidth, value.outerDepth)) {
+    ctx.addIssue({ code: 'custom', message: 'side housing exceeds the outer fixture envelope', path: ['housingBandOffset'] });
+  }
+  if (value.canopyThickness >= value.totalThickness || value.canopyDiameter >= Math.min(value.outerWidth, value.outerDepth)) {
+    ctx.addIssue({ code: 'custom', message: 'ceiling canopy must fit inside the fixture envelope', path: ['canopyDiameter'] });
+  }
+  if (value.diffuserDrop <= value.diffuserThickness + value.canopyThickness) {
+    ctx.addIssue({ code: 'custom', message: 'suspension rods need positive vertical clearance', path: ['suspensionRods'] });
+  }
+  if (value.arcSpan + Math.abs(value.arcOffset.x) * 2 + value.arcTubeRadius * 2 > value.outerWidth) {
+    ctx.addIssue({ code: 'custom', message: 'arc span exceeds the outer width', path: ['arcSpan'] });
+  }
+  if (value.arcFootHeight / 2 + value.arcRise + value.arcTubeRadius >= value.diffuserThickness) {
+    ctx.addIssue({ code: 'custom', message: 'side arch must remain within the declared diffuser side depth', path: ['arcRise'] });
+  }
+  if (value.arcOffset.z - value.arcTubeRadius < -value.outerDepth / 2
+    || value.arcOffset.z + value.arcDepthExtension + value.arcTubeRadius > value.outerDepth / 2) {
+    ctx.addIssue({ code: 'custom', message: 'three-dimensional arch depth exceeds the fixture envelope', path: ['arcDepthExtension'] });
+  }
+  const archFootRadius = value.arcFootDiameter / 2;
+  const archEndpointRadius = Math.hypot(value.arcSpan / 2 + value.arcOffset.x, value.arcOffset.z);
+  if (archEndpointRadius - archFootRadius > value.diffuserDiameter / 2) {
+    ctx.addIssue({ code: 'custom', message: 'arch feet do not reach the diffuser perimeter', path: ['arcFootDiameter'] });
+  }
+  if (Math.abs(value.arcOffset.x) + value.arcSpan / 2 + Math.max(value.arcTubeRadius, archFootRadius) > value.outerWidth / 2
+    || Math.abs(value.arcOffset.z) + archFootRadius > value.outerDepth / 2) {
+    ctx.addIssue({ code: 'custom', message: 'arc offset exceeds the fixture envelope', path: ['arcOffset'] });
+  }
+  value.suspensionRods.forEach((rod, index) => {
+    if (Math.hypot(rod.ceiling.x, rod.ceiling.z) + value.suspensionRodRadius > value.canopyDiameter / 2) {
+      ctx.addIssue({ code: 'custom', message: 'suspension ceiling endpoint exceeds the canopy', path: ['suspensionRods', index, 'ceiling'] });
+    }
+    if (rod.diffuser.heightFromBottom > value.housingBandHeight) {
+      ctx.addIssue({ code: 'custom', message: 'side-shell suspension endpoint exceeds the declared housing band', path: ['suspensionRods', index, 'diffuser', 'heightFromBottom'] });
+    }
+    const endpointRadius = Math.hypot(rod.diffuser.x, rod.diffuser.z);
+    const sideRadiusAtMount = value.diffuserBottomDiameter / 2
+      + (value.diffuserDiameter - value.diffuserBottomDiameter) / 2
+        * (rod.diffuser.heightFromBottom / value.diffuserThickness);
+    const sideHousingRadiusAtMount = sideRadiusAtMount + value.housingBandOffset;
+    if (endpointRadius < sideHousingRadiusAtMount + value.suspensionRodRadius) {
+      ctx.addIssue({ code: 'custom', message: 'side support endpoint must remain outside the tapered diffuser and housing', path: ['suspensionRods', index, 'diffuser'] });
+    }
+    if (endpointRadius + value.suspensionRodRadius > Math.min(value.outerWidth, value.outerDepth) / 2) {
+      ctx.addIssue({ code: 'custom', message: 'side support exceeds the fixture envelope', path: ['suspensionRods', index, 'diffuser'] });
+    }
+    const elbowHeight = value.diffuserThickness + value.suspensionRodRadius * 2;
+    const radialAtShellTop = value.diffuserDiameter / 2 + value.suspensionRodRadius * 2
+      + (endpointRadius - (value.diffuserDiameter / 2 + value.suspensionRodRadius * 2))
+        * ((elbowHeight - value.diffuserThickness) / (elbowHeight - rod.diffuser.heightFromBottom));
+    if (radialAtShellTop < value.diffuserDiameter / 2 + value.suspensionRodRadius) {
+      ctx.addIssue({ code: 'custom', message: 'bent side support intersects the diffuser near its upper rim', path: ['suspensionRods', index, 'diffuser'] });
+    }
+  });
+});
 export const MultiGlobeChandelierConfigSchema = z.object({
   id: nonEmpty,
   type: z.literal('dome'),
@@ -456,7 +555,50 @@ export const MultiGlobeChandelierConfigSchema = z.object({
     }
   }
 });
-/** The multi-globe model is a render style for the existing electrical type 'dome'. */
+/** Both dome render styles share electrical type 'dome'; the style literal discriminates the geometry. */
+export const SemiFlushDomeConfigSchema = z.object({
+  id: nonEmpty,
+  type: z.literal('ceiling_light'),
+  style: z.literal('semi_flush_ceiling_light'),
+  finish: z.literal('chrome_opal'),
+  outerWidth: finiteNumber.positive(),
+  outerDepth: finiteNumber.positive(),
+  totalThickness: finiteNumber.positive(),
+  canopyDiameter: finiteNumber.positive(),
+  canopyThickness: finiteNumber.positive(),
+  stemLength: finiteNumber.positive(),
+  stemRadius: finiteNumber.positive(),
+  diffuserTopDiameter: finiteNumber.positive(),
+  diffuserBottomDiameter: finiteNumber.positive(),
+  diffuserDepth: finiteNumber.positive(),
+  rimTubeRadius: finiteNumber.positive(),
+}).strict().superRefine((value, ctx) => {
+  if (value.canopyDiameter >= Math.min(value.outerWidth, value.outerDepth)) {
+    ctx.addIssue({ code: 'custom', message: 'ceiling canopy must fit inside the fixture envelope', path: ['canopyDiameter'] });
+  }
+  if (value.diffuserTopDiameter > Math.min(value.outerWidth, value.outerDepth)) {
+    ctx.addIssue({ code: 'custom', message: 'diffuser must fit inside the fixture envelope', path: ['diffuserTopDiameter'] });
+  }
+  if (value.diffuserBottomDiameter >= value.diffuserTopDiameter) {
+    ctx.addIssue({ code: 'custom', message: 'shallow dome lower face must be narrower than the upper rim', path: ['diffuserBottomDiameter'] });
+  }
+  const totalDrop = value.canopyThickness + value.stemLength + value.diffuserDepth;
+  if (totalDrop > value.totalThickness + 1e-9) {
+    ctx.addIssue({ code: 'custom', message: 'canopy + stem + diffuser exceed the total fixture drop', path: ['totalThickness'] });
+  }
+  if (value.diffuserDepth >= value.totalThickness) {
+    ctx.addIssue({ code: 'custom', message: 'diffuser depth exceeds the total fixture drop', path: ['diffuserDepth'] });
+  }
+  if (value.stemLength + value.canopyThickness >= value.totalThickness) {
+    ctx.addIssue({ code: 'custom', message: 'stem needs positive vertical clearance', path: ['stemLength'] });
+  }
+  if (value.stemRadius >= value.canopyDiameter / 2) {
+    ctx.addIssue({ code: 'custom', message: 'stem radius must be smaller than the canopy radius', path: ['stemRadius'] });
+  }
+  if (value.rimTubeRadius >= value.diffuserBottomDiameter / 2) {
+    ctx.addIssue({ code: 'custom', message: 'rim tube radius must be smaller than the diffuser lower radius', path: ['rimTubeRadius'] });
+  }
+});
 /** R8餐厅奶油云团灯；未标商品尺寸的吊线/球体明确是主图比例预演值。 */
 export const CloudOrbCeilingLightConfigSchema = z.object({
   id: nonEmpty,
@@ -497,7 +639,11 @@ export const CloudOrbCeilingLightConfigSchema = z.object({
     }
   }
 });
-export const LightingRenderConfigSchema = z.object({ fixtures: z.array(z.union([TrackLightConfigSchema, WallLampConfigSchema, MultiGlobeChandelierConfigSchema, CloudOrbCeilingLightConfigSchema])) }).strict();
+/** Dome render styles share electrical type 'dome'/'ceiling_light'; the style literal discriminates the geometry. */
+export const DomeFixtureConfigSchema = z.discriminatedUnion('style', [SculpturalDomeConfigSchema, MultiGlobeChandelierConfigSchema, SemiFlushDomeConfigSchema, CloudOrbCeilingLightConfigSchema]);
+export const LightingRenderConfigSchema = z.object({
+  fixtures: z.array(z.discriminatedUnion('type', [TrackLightConfigSchema, WallLampConfigSchema, DomeFixtureConfigSchema])),
+}).strict();
 export function parseLightingRenderConfig(raw: string): LightingRenderConfig {
   const config = LightingRenderConfigSchema.parse(parseYaml(raw));
   const ids = new Set<string>();

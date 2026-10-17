@@ -264,7 +264,7 @@ test('CLI facts projection exports lighting fixture geometry and no-facts CLI do
   const fixtures = [...withFacts.index.lightingFixtures.values()];
   assert.equal(fixtures.length, 15); // R15 起夜灯 - R12 客卫 3 灯 - R15 NP-4b（24→20）；DEC-2026-10-12-R1 删主卧两盏明装床头壁灯（20→18）；DEC-2026-10-12-R2 删两卫平板灯（18→16）；DEC-2026-10-13-R5 删电视墙灯带（16→15）
   assert.equal(withFacts.report.lightingFixtures, fixtures.length);
-  assert.deepEqual(new Set(fixtures.map((fixture) => fixture.userData.fixtureType)), new Set(['pendant', 'dome', 'downlight', 'night_light'])); // 2026-10-05 R15：+night_light；DEC-2026-10-12-R1：-wall_lamp；DEC-2026-10-13-R1：客厅主灯由 track_light 改 dome；DEC-2026-10-13-R5：删电视墙灯带，led_strip 亦无在役点位
+  assert.deepEqual(new Set(fixtures.map((fixture) => fixture.userData.fixtureType)), new Set(['ceiling_light', 'dome', 'downlight', 'night_light'])); // 2026-10-05 R15：+night_light；DEC-2026-10-12-R1：-wall_lamp；DEC-2026-10-13-R1：客厅主灯由 track_light 改 dome；DEC-2026-10-13-R5：删电视墙灯带，led_strip 亦无在役点位；DEC-2026-10-16-R12：餐厅灯由 pendant 改 ceiling_light（半吸顶），config 内已无 pendant 类型点位
   for (const fixture of fixtures) {
     assert.equal(fixture.userData.type, 'lighting_fixture');
     assert.match(String(fixture.userData.objectId), /^electrical:/);

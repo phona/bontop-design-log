@@ -3,7 +3,9 @@ import type { LightingRenderConfig, RenderLightingFixture } from '@shared/types'
 import { getResolvedTrackLightHeads, getTrackLightConfig } from '@shared/render/TrackLightLayout';
 import { buildWallLampVisual, getWallLampConfig, getWallLampLensPosition, wallSideNormal } from '@shared/render/WallLampGeometry';
 import { buildNightLightVisual, getNightLightMountNormal } from '@shared/render/NightLightGeometry';
+import { buildSculpturalDomeVisual, getSculpturalDomeConfig } from '@shared/render/SculpturalDomeGeometry';
 import { buildMultiGlobeChandelierVisual, getMultiGlobeChandelierConfig, getMultiGlobeGlobeCenters } from '@shared/render/MultiGlobeChandelierGeometry';
+import { buildSemiFlushDomeVisual, getSemiFlushDomeConfig } from '@shared/render/SemiFlushDomeGeometry';
 import { buildCloudOrbCeilingLightVisual, getCloudOrbCeilingLightConfig } from '@shared/render/CloudOrbCeilingLightGeometry';
 
 /**
@@ -45,8 +47,8 @@ const CEILING_VISUAL_CLEARANCE = 0.05;
 const FIXTURE_EMISSIVE_ON = 0.35 * LIGHTING_ENERGY_VISUAL_SCALE;
 const FIXTURE_EMISSIVE_OFF = 0.05;
 const FIXTURE_DIFFUSER_COLOR = 0xf7f7f2;
-// 多头球泡按每个球罩一个 PointLight，光源位置与可见球罩共用同一中心计算。
-// 每头强度只是夜景预演参数，不代表灯具流明或照度。
+// 多头球泡按每个球罩一个 PointLight 建灯，球心坐标与视觉共用同一计算；
+// 强度和距离仅用于3D夜景预演，不代表实物流明或照度。
 const MULTI_GLOBE_PER_HEAD_ENERGY = 1.2;
 const MULTI_GLOBE_PER_HEAD_DISTANCE = 3.5;
 
@@ -353,11 +355,19 @@ export class InteriorLightingSystem {
   }
 
   private makeDomeFixture(fixture: RenderLightingFixture, color: THREE.Color): THREE.Group {
-    const multiGlobeConfig = getMultiGlobeChandelierConfig(this.lighting, fixture.id);
-    if (multiGlobeConfig) return buildMultiGlobeChandelierVisual(fixture, multiGlobeConfig, color);
+    const sculpturalConfig = getSculpturalDomeConfig(this.lighting, fixture.id);
+    if (sculpturalConfig) return buildSculpturalDomeVisual(fixture, sculpturalConfig, color);
 
     const cloudOrbConfig = getCloudOrbCeilingLightConfig(this.lighting, fixture.id);
     if (cloudOrbConfig) return buildCloudOrbCeilingLightVisual(fixture, cloudOrbConfig, color);
+
+    // 客厅八头灯的可见几何与 LightingFixtureBuilder/GLB 共用同一构造器。
+    const multiGlobeConfig = getMultiGlobeChandelierConfig(this.lighting, fixture.id);
+    if (multiGlobeConfig) return buildMultiGlobeChandelierVisual(fixture, multiGlobeConfig, color);
+
+    // 保留 R12 半吸顶样式的通用几何；当前餐厅灯使用上面的云团灯分支。
+    const semiFlushConfig = getSemiFlushDomeConfig(this.lighting, fixture.id);
+    if (semiFlushConfig) return buildSemiFlushDomeVisual(fixture, semiFlushConfig, color);
 
     const group = new THREE.Group();
     const dome = new THREE.Mesh(

@@ -494,7 +494,9 @@ export class App {
     if (!host) return;
     this.lightingPreviewPanel = new LightingPreviewPanel(host, {
       onModeChange: (mode) => {
-        this.interiorLighting?.setPreviewMode(mode);
+        // 进入手动夜预演必须同时开灯：该模式的目的就是看室内照明，
+        // 而白天 auto 状态 carried over 会让全屋灯具在一片夜态场景里保持全灭。
+        this.interiorLighting?.setPreviewMode(mode, mode === 'manual');
         this.houseScene.getEnvironmentManager().setInteriorOnlyNightPreview(mode === 'manual');
         this.houseScene.requestShadowUpdate();
         this.syncLightingPreviewPanel();

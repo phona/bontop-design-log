@@ -199,6 +199,24 @@ describe('InteriorLightingSystem', () => {
     expect(scene.children).toHaveLength(0);
   });
 
+  // 2026-10-16 R8 回归：App.ts onModeChange 曾以 setPreviewMode(mode) 进入手动夜预演，  // manualOn 默认取当前 this.on——白天 auto 下为 false，导致场景被 setInteriorOnlyNightPreview
+  // 变暗而全屋灯具保持全灭（球泡 emissive 停在 FIXTURE_EMISSIVE_OFF，业主截图全黑）。
+  // 修复为进入 manual 时显式传 true；本测试锁定该语义。
+  it('turns interior lights on when entering the manual night preview from a dark auto state', () => {
+    const { scene, sys } = makeSystem();
+    sys.syncSolar({ isNight: false, altitudeDeg: 45 });
+    expect(sys.isOn).toBe(false);
+    expect(lights(scene).every((light) => !light.visible)).toBe(true);
+
+    sys.setPreviewMode('manual', true);
+    expect(sys.isOn).toBe(true);
+    expect(lights(scene).every((light) => light.visible)).toBe(true);
+
+    sys.setPreviewMode('auto');
+    expect(sys.isOn).toBe(false);
+    expect(lights(scene).every((light) => !light.visible)).toBe(true);
+  });
+
   // 2026-10-17 R1-R6：8头古铜木色候选每个球泡一个 PointLight；球罩同高，8根弧臂共用下杯平面并同向上拱。
   it('builds one PointLight per globe at the shared globe centres for the 8-head chandelier', () => {
     const fixture: RenderLightingFixture = { id: 'mg1', room: 'living_dining', type: 'dome', position: { x: 10.8, y: 2.8, z: 7.15 }, temperatureK: 3000, enabled: true };
@@ -261,7 +279,7 @@ describe('InteriorLightingSystem', () => {
   it('uses the shared cloud-orb geometry for the dining visual preview', () => {
     const fixture: RenderLightingFixture = {
       id: 'cloud-dining', room: 'living_dining', type: 'ceiling_light',
-      position: { x: 9.25, y: 2.8, z: 3.65 }, temperatureK: 3000, enabled: true,
+      position: { x: 9.8, y: 2.8, z: 3.45 }, temperatureK: 3000, enabled: true,
     };
     const cloudConfig: CloudOrbCeilingLightConfig = {
       id: 'cloud-dining', type: 'ceiling_light', style: 'antique_cloud_orb_ceiling_light', finish: 'walnut_pe_opal',

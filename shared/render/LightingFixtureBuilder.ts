@@ -3,7 +3,9 @@ import type { LightingRenderConfig, RenderLightingFixture, TrackLightConfig } fr
 import { getResolvedTrackLightHeads, getTrackLightConfig } from './TrackLightLayout.js';
 import { buildWallLampVisual, getWallLampConfig, wallSideNormal } from './WallLampGeometry.js';
 import { buildNightLightVisual } from './NightLightGeometry.js';
+import { buildSculpturalDomeVisual, getSculpturalDomeConfig } from './SculpturalDomeGeometry.js';
 import { buildMultiGlobeChandelierVisual, getMultiGlobeChandelierConfig } from './MultiGlobeChandelierGeometry.js';
+import { buildSemiFlushDomeVisual, getSemiFlushDomeConfig } from './SemiFlushDomeGeometry.js';
 import { buildCloudOrbCeilingLightVisual, getCloudOrbCeilingLightConfig } from './CloudOrbCeilingLightGeometry.js';
 
 export interface LightingFixtureBuildResult {
@@ -74,6 +76,14 @@ function addTrack(group: THREE.Group, fixture: RenderLightingFixture, glow: THRE
 }
 
 function addDome(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE.Color, lighting?: LightingRenderConfig): number {
+  const sculpturalConfig = getSculpturalDomeConfig(lighting, fixture.id);
+  if (sculpturalConfig) {
+    const visual = buildSculpturalDomeVisual(fixture, sculpturalConfig, glow);
+    group.userData = { ...group.userData, ...visual.userData };
+    group.add(visual);
+    return visual.children.length;
+  }
+  // 客厅八头灯的可见几何与浏览器渲染共用同一构造器。
   const multiGlobeConfig = getMultiGlobeChandelierConfig(lighting, fixture.id);
   if (multiGlobeConfig) {
     const visual = buildMultiGlobeChandelierVisual(fixture, multiGlobeConfig, glow);
@@ -85,6 +95,14 @@ function addDome(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE
   const cloudOrbConfig = getCloudOrbCeilingLightConfig(lighting, fixture.id);
   if (cloudOrbConfig) {
     const visual = buildCloudOrbCeilingLightVisual(fixture, cloudOrbConfig, glow);
+    group.userData = { ...group.userData, ...visual.userData };
+    group.add(visual);
+    return visual.children.length;
+  }
+  // 保留 R12 半吸顶样式的通用几何；当前餐厅灯已由 R8 云团灯样式接管。
+  const semiFlushConfig = getSemiFlushDomeConfig(lighting, fixture.id);
+  if (semiFlushConfig) {
+    const visual = buildSemiFlushDomeVisual(fixture, semiFlushConfig, glow);
     group.userData = { ...group.userData, ...visual.userData };
     group.add(visual);
     return visual.children.length;
