@@ -722,3 +722,29 @@ test('shared_trunk_with 声明对跳过 overlap；未声明的同线汇入仍报
     '声明 shared_trunk_with 后该对应跳过',
   );
 });
+
+test('sill_crossings 声明跳过台体碰撞；未声明仍报（DEC-2026-10-17-R17）', () => {
+  const route = {
+    id: 'drop-through-sill', layer: 'strong_power', status: 'inferred', source_status: 'proposed',
+    construction_status: 'pending', method: 'conduit', diameter: 0.02,
+    from_height: 2.7, to_height: 0.3, from: { x: 3, z: 0.5, y: 2.7 },
+    via: [{ x: 3, z: 0.5, y: 2.4 }], to: { x: 3, z: 0.5, y: 0.3 },
+  };
+  const bay = { id: 'test_bay', outline: [{ x: 2.5, z: 0 }, { x: 3.5, z: 0 }, { x: 3.5, z: 1 }, { x: 2.5, z: 1 }], sill: 2.12, height: 0.71 };
+  const build = (routes: Array<Record<string, unknown>>) =>
+    MepCoordinationSchema.parse({ version: '1', status: 'preliminary', layers, routes });
+  const context = { baySills: [bay] };
+
+  const undeclared = lintMepCoordination(build([route]), sources, context);
+  assert.ok(undeclared.errors.some((i) => i.code === 'bay_sill_collision'), '未声明的台体穿越必须显形');
+
+  const declared = lintMepCoordination(
+    build([{ ...route, sill_crossings: ['test_bay'] }]),
+    sources,
+    context,
+  );
+  assert.ok(
+    ![...declared.errors, ...declared.warnings].some((i) => i.code === 'bay_sill_collision'),
+    '声明 sill_crossings 后跳过台体体碰撞',
+  );
+});

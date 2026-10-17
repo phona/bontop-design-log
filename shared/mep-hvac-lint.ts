@@ -1160,8 +1160,12 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     // both the exact rendered plan polygon and its sill..sill+height interval;
     // testing only route vertices would miss segments that pass through.
     if (context.baySills?.length && points.length >= 2) {
+      // DEC-2026-10-17-R17：声明 sill_crossings 的路线按「套管穿越台体」处理，跳过体碰撞
+      // （端点位于台体覆盖区内时穿越不可避免；声明对是否属实由量房与施工方判定）。
+      const declaredSills = new Set(route.sill_crossings ?? []);
       const fallbackY = layer?.height ?? 0;
       for (const bay of context.baySills) {
+        if (declaredSills.has(bay.id)) continue;
         let intersectingSegment: { index: number; a: Point; b: Point } | undefined;
         for (let index = 1; index < points.length; index += 1) {
           const a = points[index - 1], b = points[index];
