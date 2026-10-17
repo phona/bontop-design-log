@@ -689,3 +689,36 @@ test('fixture tail/head runs (≤2m at soffit band, endpoint on a point) count a
   }), sources, supportContext([FAR_WALL]));
   assert.ok(inlineEnd.warnings.some((i) => i.code === 'unsupported_span'));
 });
+
+// ── (e) DEC-2026-10-17-R16 共槽/汇流声明通道 ──
+
+test('shared_trunk_with 声明对跳过 overlap；未声明的同线汇入仍报', () => {
+  const base = {
+    layer: 'drainage', status: 'inferred', source_status: 'plan_supported', construction_status: 'pending',
+    method: 'gravity_floor_drain', diameter: 0.05, from_height: 0.02, to_height: 0.02,
+    flow_direction: 'down', slope: 0.01,
+  };
+  // 干管沿 z=1（x 1→4）；支管沿 x=2 北来汇入 (2,1)——物理上是三通合流，不是碰撞。
+  const trunk = { ...base, id: 'trunk-a', from: { x: 1, z: 1, y: 0.02 }, to: { x: 4, z: 1, y: 0.02 } };
+  const branch = {
+    ...base, id: 'branch-b', from: { x: 2, z: 2, y: 0.02 },
+    via: [{ x: 2, z: 1.2, y: 0.016 }], to: { x: 2, z: 1, y: 0.012 },
+  };
+  const build = (routes: Array<Record<string, unknown>>) =>
+    MepCoordinationSchema.parse({ version: '1', status: 'preliminary', layers, routes });
+
+  const undeclared = lintMepCoordination(build([trunk, branch]), sources);
+  assert.ok(
+    [...undeclared.errors, ...undeclared.warnings].some((i) => i.code === 'route_overlap'),
+    '未声明的同线汇入必须保持显形',
+  );
+
+  const declared = lintMepCoordination(build([
+    trunk,
+    { ...branch, shared_trunk_with: ['trunk-a'], reason: '支管经三通汇入干管（DEC-2026-10-17-R16 口径）' },
+  ]), sources);
+  assert.ok(
+    ![...declared.errors, ...declared.warnings].some((i) => i.code === 'route_overlap'),
+    '声明 shared_trunk_with 后该对应跳过',
+  );
+});

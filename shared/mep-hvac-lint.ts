@@ -1494,6 +1494,11 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     // Same-layer cable/conduit runs may intentionally share a declared tray or trunk;
     // gravity water runs remain checked because coincident drains can obstruct each other.
     if (a.route.layer === b.route.layer && !['water_supply', 'drainage'].includes(a.route.layer)) continue;
+    // DEC-2026-10-17-R16 共槽/汇流声明：任一侧声明 shared_trunk_with 即视为同一根管的
+    // 合并段（三通/同立管），不是碰撞。声明对是否属实由 review 与量房判定。
+    const declaredSharedTrunk = (a.route.shared_trunk_with ?? []).includes(b.route.id)
+      || (b.route.shared_trunk_with ?? []).includes(a.route.id);
+    if (declaredSharedTrunk) continue;
     const sharedEndpointIds = [a.route.from, a.route.to].filter((endpoint): endpoint is string => typeof endpoint === 'string'
       && (b.route.from === endpoint || b.route.to === endpoint));
     let collision: { aSegment: number; bSegment: number; distance: number; approximate: boolean; clearanceOnly: boolean } | undefined;

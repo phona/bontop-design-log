@@ -93,3 +93,17 @@
 - **验证**：`verify:mep` 191→186；overlap 85→80（refrigerant×weak 长距共跑段清零）。
 - **决策人**：弱电让轴方向业主已裁定（平面错距方案）；枢纽盒错层/共槽通道设计属下一轮。
 - **附注（suppressed_wall_crossing ×8 的本轮核查结论）**：lint 的 `wallCrosses`/`routeTouchesWall` 均已弧感知（走 `wall.segments` 弦段），「弧墙弦线误报」的假设**不成立**——5 处 w_bath_north 触碰是 v1 排水估算线真实贴近圆角弧线（±0.3m 口径），3 处 recirc 回水管是真实幕墙触碰（z=1.00 恰为三段圆角切点线）。本轮试将回水管平移 z 1.00→1.05，结果落入 w_balc_west/w_balc_east 墙带新增 2 处穿墙，已回退。结论：这 8 处的正当出路是**量房日按实测重画 v1 水路**（连同 water-v1 penetration_missing ×6、suppressed 桶保持 must_fix 不挪桶——真实穿幕墙是交底禁区），不是 lint 改动。此前 R13「5 处弧墙弦线误报需 lint 级修复」的判断据此修正。
+
+### DEC-2026-10-17-R16 共槽/汇流声明通道 shared_trunk_with（给排水 overlap 清零）
+
+- **日期/来源**：2026-10-17。触发：P3-2 剩余 80 对 overlap 中的给排水簇（water×water ×10、drain×drain ×8）——逐对核查后主体是**物理上合法的汇流**：多支管经三通合并进同一立管（drain-mbath 系×4、drain-guest-bath×1、drain-kitchen×1）、冷/热干管同源共 prefix（热水器两路、进水阀两路 ×2）、净水器/洗碗机支路自主管开三通（×2）、热水器进水恰在冷水干管上取水（×2）。
+- **本轮决定**：
+  1. `MepRouteSchema` 新增可选字段 `shared_trunk_with: string[]`——列出与本路线共享干管合并段的 route id；声明双向生效（任一侧声明即跳过该对的 route_overlap）。
+  2. `shared/mep-hvac-lint.ts` overlap 检查在 shared-endpoint 局部豁免之后增加声明对跳过。**只在声明时生效**：lint 不做语义猜测，配对是否属实由 review 与量房判定。
+  3. 8 条路线落声明（drain-mbath-toilet/floor-to-riser、drain-gbath-floor-to-riser、drain-kitchen-dishwasher-to-riser、water-v1-heater-to-gbath-hot、water-v1-entry-to-gbath-cold、water-kitchen-dishwasher-branch、water-water-heater-inlet-requirement），覆盖 11 对。
+  4. 钉子测试：`tests/server/mep-hvac-lint.test.ts`「shared_trunk_with 声明对跳过 overlap；未声明的同线汇入仍报」。
+- **被本条推翻的旧结论**：无——R15 已把给排水汇流对登记为「建议按同立管共点申请豁免声明通道」，本条是该通道的落地。
+- **实质内容/删除审计**：schema/lint 为新增能力，无删除；8 条路线 reason 各追加一条 R16 注记。
+- **需要避免的静默失效**：①声明是**人工断言**——若两条路线实为并行两根管却误声明为汇流，真实碰撞会被静默跳过（owner：量房日对 8 条声明逐条复核管位）；②跨专业对（drain×water 回水管×排水管 ×2）**未声明**、保持显形——回水管与排水管并行走线是真实间距需求，量房时定间距。
+- **验证**：`verify:mep` 186→175（route_overlap 80→69，给排水 overlap error 清零）；钉子测试过；`verify:facts` OK。
+- **决策人**：通道设计为设计侧提案；8 条声明的管位属实性由量房+施工方终核。

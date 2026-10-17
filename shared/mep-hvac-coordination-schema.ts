@@ -26,6 +26,10 @@ export const MepRouteSchema = z.object({
   construction_status: MepStatusSchema.default('pending'),
   method: z.string().min(1).optional(),
   route_kind: z.enum(['physical', 'requirement', 'candidate']).optional(),
+  // DEC-2026-10-17-R16 共槽/汇流声明：列出与本路线经声明共享干管段（三通合流、同立管汇入）
+  // 的 route id。lint 对声明对跳过 route_overlap——物理上就是同一根管的合并段，不是碰撞；
+  // 声明是双向的（任一侧声明即生效），配对是否属实由 review 而非 schema 判定。
+  shared_trunk_with: z.array(z.string().min(1)).optional(),
   flow_direction: z.string().min(1).optional(), slope: z.number().finite().optional(), penetration: z.unknown().optional(),
   diameter: DimensionSchema.optional(), width: DimensionSchema.optional(), depth: DimensionSchema.optional(), height: DimensionSchema.optional(),
   from_height: z.number().finite().optional(), to_height: z.number().finite().optional(),
