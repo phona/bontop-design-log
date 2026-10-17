@@ -84,7 +84,10 @@ const ISSUE_CATEGORY: Record<string, MepLintCategory> = {
   gravity_slope_geometry_mismatch: 'must_fix_before_briefing',
   route_not_orthogonal: 'must_fix_before_briefing',
   penetration_door_clearance: 'must_fix_before_briefing',
-  shear_wall_parallel_route: 'must_fix_before_briefing',
+  // DEC-2026-10-17-R14：剪力墙并行与同族 shear_wall_penetration 同桶——message 本身就是
+  // 「交底前复核套管/开槽策略」，墙面结构多为 inferred，量房实测后复判；诊断用例
+  // （mep-hvac-lint.test.ts「long parallel runs beside a shear wall」）早已断言 warning 语义。
+  shear_wall_parallel_route: 'survey_dependent',
   bay_sill_collision: 'must_fix_before_briefing',
   floor_band_method_mismatch: 'must_fix_before_briefing',
   gravity_method_elevation_mismatch: 'must_fix_before_briefing',

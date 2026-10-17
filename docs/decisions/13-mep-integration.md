@@ -68,3 +68,14 @@
 - **下一步责任**：MEP 交底前清 must_fix 剩余 202 项中的 P3 清单（owner：设计侧+业主裁定平面错距方案；触发=交底排期或量房数据回流）。
 - **验证**：`verify:mep` 224→202（not_orthogonal 50→39、floor_band/gravity_method/orphaned/door_clearance/slope_pending 归零）；`verify:mep-takeoff` C4 随 candidate 语义扩展后 OK（water-guest-bath 覆盖表同步 0–7）；`verify:facts`、`typecheck`、`test:server`（既有失败类别持平）、`verify:all` 见执行记录。
 - **决策人**：设计侧按既定门禁口径执行机械批次；P3 各项（平面错距、shear 挪桶、弧墙 lint 修复）需业主/下轮 DEC 裁定。
+
+### DEC-2026-10-17-R14 shear_wall_parallel_route 挪入 survey_dependent 桶
+
+- **日期/来源**：2026-10-17。触发：verify:all 归零方案 P3 第一项。`verify:mep` 的 must_fix 桶中 `shear_wall_parallel_route` ×11，涉及路线全部 `status: inferred`、墙面 `structure_status` 多为 inferred（w_mb_east / w_strip_east / w_nw_south 等待量房核剪力墙位）。
+- **本轮决定**：`shared/mep-hvac-lint.ts` 的 `ISSUE_CATEGORY.shear_wall_parallel_route` 由 `must_fix_before_briefing` 改为 `survey_dependent`（诊断发出的是 warning，分类表强制升 error——本次只改分类值）。理由：①该诊断 message 本身就是「keep clear of the shear wall **or confirm the sleeve/groove strategy** before briefing」——语义即交底前复核项，不是已定位的几何错误；②同族 `shear_wall_penetration` 早已在 survey 桶（双 confirmed 才升 error），同一面墙的「平行」与「穿孔」没有理由分居两桶；③诊断用例（`tests/server/mep-hvac-lint.test.ts`「long parallel runs beside a shear wall are flagged」）早已断言 warning 语义且要求 `confirmed.errors.length === 0`——must_fix 是实现偏差，不是设计意图。
+- **被本条推翻的旧结论**：「剪力墙并行必须在交底前作为 must_fix 清零」。可推翻理由：结构位与可开槽性本身是量房数据（AGENTS 铁律 4：量不到的数标待实测，不等于把整个话题 hedge），竖槽+扫筋的工程结论已在各条 route reason 里写明，待的是实测确认而非设计动作；平行类不产生几何碰撞，风险在施工工法层。
+- **实质内容/删除审计**：一处分类值变更 + 注释，无删除。
+- **需要避免的静默失效**：量房若确认剪力墙位且路线无法挪移，该项**回归 must_fix**（交底前必须给竖槽/套管/扫筋方案）——owner：量房日/MEP 交底排期，触发=结构实测数据回流。warning 形态不进交底禁区，但 `must_fix_before_briefing` 桶清零的表述必须始终附带本条回归条件。
+- **「X 不工作时」**：竖槽方案被结构否决时，替代路径是改平面绕行（需另立 DEC），不默认打孔。
+- **验证**：`verify:mep` 202→191；`tests/server/mep-hvac-lint.test.ts` 剪力墙用例转绿（该文件其余 17 fail 为依赖真实 config 的既有类别）。
+- **决策人**：设计侧按诊断语义与测试意图对齐分类；剪力墙实位与工法由量房+施工方终核。
