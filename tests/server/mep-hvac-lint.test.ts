@@ -715,11 +715,16 @@ test('shared_trunk_with 声明对跳过 overlap；未声明的同线汇入仍报
 
   const declared = lintMepCoordination(build([
     trunk,
-    { ...branch, shared_trunk_with: ['trunk-a'], reason: '支管经三通汇入干管（DEC-2026-10-17-R16 口径）' },
+    { ...branch, shared_trunk_with: ['trunk-a'], reason: '支管经三通汇入干管（DEC-2026-10-17-R16/R18 口径）' },
   ]), sources);
+  assert.equal(
+    declared.errors.filter((i) => i.code === 'route_overlap').length, 0,
+    '声明 shared_trunk_with 后不再阻断',
+  );
+  // R18（业主裁定「不怕红,怕静默」）：声明不等于消失——以显形 warning 留在报告里供量房复核
   assert.ok(
-    ![...declared.errors, ...declared.warnings].some((i) => i.code === 'route_overlap'),
-    '声明 shared_trunk_with 后该对应跳过',
+    declared.warnings.some((i) => i.code === 'route_overlap_declared_trunk' && /DECLARED shared trunk/.test(i.message)),
+    '声明对必须以 route_overlap_declared_trunk warning 显形',
   );
 });
 
@@ -743,8 +748,13 @@ test('sill_crossings 声明跳过台体碰撞；未声明仍报（DEC-2026-10-17
     sources,
     context,
   );
+  assert.equal(
+    declared.errors.filter((i) => i.code === 'bay_sill_collision').length, 0,
+    '声明 sill_crossings 后不再阻断',
+  );
+  // R18：声明以 bay_sill_crossing_declared warning 显形,不静默
   assert.ok(
-    ![...declared.errors, ...declared.warnings].some((i) => i.code === 'bay_sill_collision'),
-    '声明 sill_crossings 后跳过台体体碰撞',
+    declared.warnings.some((i) => i.code === 'bay_sill_crossing_declared' && /DECLARED bay_sill/.test(i.message)),
+    '声明穿越必须以 bay_sill_crossing_declared warning 显形',
   );
 });

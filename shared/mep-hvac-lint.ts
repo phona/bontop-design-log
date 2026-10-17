@@ -110,6 +110,10 @@ const ISSUE_CATEGORY: Record<string, MepLintCategory> = {
   supply_return_overlap: 'envelope_approximation',
   reference_constraint_uncertain: 'envelope_approximation',
   suppressed_wall_crossing: 'must_fix_before_briefing',
+  // DEC-2026-10-17-R18（业主裁定「不怕红,怕静默」）：声明通道（shared_trunk_with /
+  // sill_crossings）一律显形降级为 warning,不做静默跳过——声明是否属实由量房逐条复核。
+  route_overlap_declared_trunk: 'envelope_approximation',
+  bay_sill_crossing_declared: 'envelope_approximation',
   nonphysical_route: 'envelope_approximation',
   // (g) DEC-2026-10-08-W02 端点绑定兜底：重合未绑现在就能改（交底前必须清）；
   //     给排水无锚点端点要量房人工判读（量房后复判）。
@@ -1165,7 +1169,6 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
       const declaredSills = new Set(route.sill_crossings ?? []);
       const fallbackY = layer?.height ?? 0;
       for (const bay of context.baySills) {
-        if (declaredSills.has(bay.id)) continue;
         let intersectingSegment: { index: number; a: Point; b: Point } | undefined;
         for (let index = 1; index < points.length; index += 1) {
           const a = points[index - 1], b = points[index];
@@ -1175,6 +1178,13 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         }
         if (!intersectingSegment) continue;
         const { index, a, b } = intersectingSegment;
+        if (declaredSills.has(bay.id)) {
+          add(result, {
+            ...issue('warning', 'bay_sill_crossing_declared', `Route ${route.id} crosses DECLARED bay_sill ${bay.id} on segment #${index}; sleeve pass must be verified on survey day`, route.id),
+            category: 'envelope_approximation' as const,
+          });
+          continue;
+        }
         const aY = (a.y ?? fallbackY).toFixed(2), bY = (b.y ?? fallbackY).toFixed(2);
         const level: MepLintLevel = route.status === 'confirmed' ? 'error' : 'warning';
         add(result, issue(level, 'bay_sill_collision',
@@ -1502,7 +1512,6 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     // 合并段（三通/同立管），不是碰撞。声明对是否属实由 review 与量房判定。
     const declaredSharedTrunk = (a.route.shared_trunk_with ?? []).includes(b.route.id)
       || (b.route.shared_trunk_with ?? []).includes(a.route.id);
-    if (declaredSharedTrunk) continue;
     const sharedEndpointIds = [a.route.from, a.route.to].filter((endpoint): endpoint is string => typeof endpoint === 'string'
       && (b.route.from === endpoint || b.route.to === endpoint));
     let collision: { aSegment: number; bSegment: number; distance: number; approximate: boolean; clearanceOnly: boolean } | undefined;
@@ -1523,6 +1532,13 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
           && distanceAlongRouteFromEndpoint(b.points, bi, nearest.t, bEndpointIndex) <= 0.20;
       });
       if (sharedConnectionIsLocal) continue;
+      if (declaredSharedTrunk) {
+        add(result, {
+          ...issue('warning', 'route_overlap_declared_trunk', `MEP route envelopes overlap on a DECLARED shared trunk: ${a.route.id} segment #${ai} / ${b.route.id} segment #${bi} (centerline distance ${nearest.distance.toFixed(3)}m); merge pairing must be verified on survey day`, a.route.id, b.route.id),
+          category: 'envelope_approximation' as const,
+        });
+        break;
+      }
       collision = { aSegment: ai, bSegment: bi, distance: nearest.distance, approximate: relation.approximate, clearanceOnly };
       break;
     }
