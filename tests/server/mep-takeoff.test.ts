@@ -170,14 +170,23 @@ test('显形项契约：unresolved 只允许"主干线径未裁定"这一条', (
   assert.equal(takeoff.feasibleForQuote, false, '主干线径未裁定前不得进入报价');
 });
 
-test('requirement 路由只显形不计量：2 条待决（入户花园 #48）', () => {
+test('requirement/candidate 路由只显形不计量：5 条待决（入户花园 #48 + DEC-2026-10-17-R13）', () => {
   // 2026-10-07 v1：6 条给水 + 1 条排水 requirement 已按推断锚点提升为 physical（uncertainty ±0.3m、
   // construction_status 恒 pending），剩余 2 条属 pending-site-data 第48项"入户花园去留未决"——未决不计量的。
-  assert.equal(takeoff.requirementRoutes.length, 2);
-  assert.deepEqual(takeoff.requirementRoutes.map((item) => item.id).sort(), ['drain-garden-requirement', 'water-garden-requirement']);
-  assert.ok(takeoff.requirementRoutes.every((item) => item.routeKind === 'requirement'));
+  // DEC-2026-10-17-R13：3 条 v1 估算水路（kitchen / hot-mbath / hot-gbath）显式声明 route_kind: candidate
+  //（reason 载明 ±0.3m 估算、量房日按实重画），与 garden 两条同样只显形、不进管长——
+  // 与 C8「臆测数据不进量」业主裁定同向；量房实测重画为 physical 后长度自然回归。
+  assert.equal(takeoff.requirementRoutes.length, 5);
+  assert.deepEqual(takeoff.requirementRoutes.map((item) => item.id).sort(), [
+    'drain-garden-requirement',
+    'water-garden-requirement',
+    'water-hot-water-gbath-requirement',
+    'water-hot-water-mbath-requirement',
+    'water-kitchen-requirement',
+  ]);
+  assert.ok(takeoff.requirementRoutes.every((item) => item.routeKind === 'requirement' || item.routeKind === 'candidate'));
   for (const item of takeoff.requirementRoutes) {
-    assert.ok(!takeoff.coverage.routedPointIds.includes(item.id), 'requirement 路由不算覆盖');
+    assert.ok(!takeoff.coverage.routedPointIds.includes(item.id), 'requirement/candidate 路由不算覆盖');
   }
 });
 

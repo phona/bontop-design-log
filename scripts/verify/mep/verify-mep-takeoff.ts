@@ -98,7 +98,10 @@ const unrouted = new Set(takeoff.coverage.unroutedPointIds);
 const duplicateCoverage = [...routed].filter((id) => unrouted.has(id));
 const missingCoverage = [...activeElectricalIds, ...activePlumbingIds].filter((id) => !routed.has(id) && !unrouted.has(id));
 const requirementCoverageLeak = takeoff.requirementRoutes.filter((item) => routed.has(item.id) || unrouted.has(item.id));
-const malformedRequirementRoutes = takeoff.requirementRoutes.filter((item) => item.routeKind !== 'requirement');
+// DEC-2026-10-17-R13：schema 允许 route_kind: requirement|candidate 两种非物理语义
+// （isMepPhysicalRoute 对两者都返回 false），覆盖度排除对两者一致；C4 只要求
+// 「显式声明了非物理 kind」，不再强制必须是 requirement。
+const malformedRequirementRoutes = takeoff.requirementRoutes.filter((item) => item.routeKind !== 'requirement' && item.routeKind !== 'candidate');
 const pendingUnresolved = takeoff.unresolved.filter((item) => item.kind === 'pending');
 const dataErrors = takeoff.unresolved.filter((item) => item.kind !== 'pending');
 
@@ -109,7 +112,7 @@ const contracts: Contract[] = [
   { id: 'C1', label: '路由端点全部解析', expected: coordination.routes.length, actual: resolution.resolved, decRef: '新增/修改路由必须保持端点可解析' },
   { id: 'C2', label: '覆盖度分区总数与有效点位对齐', expected: activePointCount, actual: routed.size + unrouted.size, decRef: '每个有效点位必须落入 routed 或 unrouted' },
   { id: 'C3', label: '覆盖度无重复/无遗漏', expected: 0, actual: duplicateCoverage.length + missingCoverage.length, decRef: '修改点位/路线后同步覆盖分区' },
-  { id: 'C4', label: 'requirement 路由不进入覆盖度', expected: 0, actual: requirementCoverageLeak.length + malformedRequirementRoutes.length, decRef: '要求路由必须显式 routeKind=requirement 且不计 physical route' },
+  { id: 'C4', label: 'requirement 路由不进入覆盖度', expected: 0, actual: requirementCoverageLeak.length + malformedRequirementRoutes.length, decRef: '非物理路由必须显式 routeKind=requirement|candidate 且不计 physical route（DEC-2026-10-17-R13）' },
   {
     id: 'C6',
     label: '配电箱模数',
