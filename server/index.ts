@@ -24,6 +24,7 @@ import { ProjectRenderFactsLoader } from './project-render-facts-loader.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
 import { parseOverlay } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
+import { buildMepBaySillCollisionVolumes, buildMepFurnitureCollisionVolumes, invalidateMepFurnitureCollisionVolumes } from './mep-lint-context.js';
 import { parseEnvironment } from '../shared/environment-schema.js';
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import { createAnalysisRouter } from './analysis-routes.js';
@@ -116,6 +117,7 @@ const layoutLoader = new ConfigLoader<CadLayoutYaml>(
   'config/layout/model-geometry.yaml',
   (raw) => load(raw) as CadLayoutYaml,
   () => {
+    invalidateMepFurnitureCollisionVolumes();
     rebuildDerived();
     console.log('[server] config/layout/model-geometry.yaml reloaded');
   }
@@ -126,6 +128,7 @@ const houseMetaLoader = new ConfigLoader<HouseYaml>(
   'config/house.yaml',
   (raw) => load(raw) as HouseYaml,
   () => {
+    invalidateMepFurnitureCollisionVolumes();
     rebuildDerived();
     console.log('[server] config/house.yaml reloaded');
   }
@@ -150,6 +153,7 @@ const overlayLoader = new ConfigLoader<OverlayConfig>(
   'config/layout/overlay.yaml',
   (raw) => parseOverlay(raw),
   () => {
+    invalidateMepFurnitureCollisionVolumes();
     console.log('[server] config/layout/overlay.yaml reloaded');
   }
 );
@@ -204,8 +208,13 @@ const apiDeps = {
     const facts = projectRenderFactsLoader.getFacts();
     const overlay = overlayLoader.getConfig();
     const layout = layoutLoader.getConfig();
+    const resolvedLayout = layout ? resolveLayout(layout as unknown as VertexLayoutYaml) : undefined;
     return {
-      ...(layout ? { layout: resolveLayout(layout as unknown as VertexLayoutYaml) } : {}),
+      ...(resolvedLayout ? {
+        layout: resolvedLayout,
+        baySills: buildMepBaySillCollisionVolumes(resolvedLayout, overlay),
+        furnitureVolumes: buildMepFurnitureCollisionVolumes(),
+      } : {}),
       ...(facts ? { ceiling: facts.ceiling, referenceConstraints: facts.hvac.plans[0]?.diagram.reference_constraints } : {}),
       suppressedWallIds: (overlay?.suppress ?? []).flatMap((item) => item.walls ?? (item.wall ? [item.wall] : [])),
     };

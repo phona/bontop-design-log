@@ -16,7 +16,7 @@ export interface MepLintIssue {
   message: string;
   routeId?: string;
   relatedRouteId?: string;
-  /** (e) warning 分桶：交底前必须清 / 量房后复判 / 模型包络近似。既有字段语义不变，只新增。 */
+  /** Finding 分类：硬门禁 / 量房后复判 / 模型包络近似；must_fix_before_briefing 会被 add() 提升为 error。 */
   category?: MepLintCategory;
 }
 export interface MepLintCounts { errors: number; warnings: number; routes: number; resolvedRoutes: number; }
@@ -32,9 +32,27 @@ export interface MepLintCategoryBucket { count: number; codes: Array<{ code: str
 export type MepLintCategorySummary = Record<MepLintCategory, MepLintCategoryBucket>;
 export interface MepLintResult { errors: MepLintIssue[]; warnings: MepLintIssue[]; counts: MepLintCounts; /** (e) 分桶汇总；可选是为了让只构造 errors/warnings/counts 的调用方（渲染器/徽标的 fixture）不必补桶。 */ categories?: MepLintCategorySummary; }
 
+export interface MepBaySillCollisionVolume {
+  id: string;
+  outline: FootprintPoint[];
+  sill: number;
+  height: number;
+}
+
+export interface MepFurnitureCollisionVolume {
+  id: string;
+  type: string;
+  room?: string;
+  bounds: { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
+}
+
 export interface MepLintLayoutContext {
   layout?: ResolvedLayout;
   ceiling?: CeilingZone[];
+  /** Resolved bay_sill extrusions; outline must match the rendered footprint. */
+  baySills?: MepBaySillCollisionVolume[];
+  /** Runtime bounds for fixed casework and service appliances, excluding declared MEP placeholders. */
+  furnitureVolumes?: MepFurnitureCollisionVolume[];
   suppressedWallIds?: Set<string> | string[];
   referenceConstraints?: Array<{ id: string; range: { x1: number; x2: number; z1: number; z2: number }; reason?: string; status?: string; reference_beam_bottom_y?: number }>;
 }
@@ -67,9 +85,20 @@ const ISSUE_CATEGORY: Record<string, MepLintCategory> = {
   route_not_orthogonal: 'must_fix_before_briefing',
   penetration_door_clearance: 'must_fix_before_briefing',
   shear_wall_parallel_route: 'must_fix_before_briefing',
-  // (f) 2026-10-07 飞线依托检查：吊顶承载层的水平段全程无依托（吊顶空腔/贴墙/穿墙/竖直下引/垫层）= 悬空飞线，
+  bay_sill_collision: 'must_fix_before_briefing',
+  floor_band_method_mismatch: 'must_fix_before_briefing',
+  gravity_method_elevation_mismatch: 'must_fix_before_briefing',
+  endpoint_elevation_mismatch: 'must_fix_before_briefing',
+  mep_endpoint_service_conflict: 'must_fix_before_briefing',
+  route_furniture_collision: 'must_fix_before_briefing',
+  endpoint_inaccessible: 'must_fix_before_briefing',
+  route_endpoint_unusable: 'must_fix_before_briefing',
+  route_overlap: 'must_fix_before_briefing',
+  route_clearance_unverified: 'envelope_approximation',
+  // (f) 2026-10-07 飞线依托检查：吊顶承载层路线的水平/斜向/垂直段全程无依托（吊顶空腔/贴墙/穿墙/垫层）= 悬空飞线，
   // 渲染得出、现场做不出；requirement/candidate 路线由 issue 处按实例改判 envelope_approximation。
   unsupported_span: 'must_fix_before_briefing',
+  floor_branch_missing_floor_band: 'must_fix_before_briefing',
   // 量房后自然消或需复判
   ceiling_clearance_unverified: 'survey_dependent',
   shear_wall_penetration: 'survey_dependent',
@@ -77,7 +106,7 @@ const ISSUE_CATEGORY: Record<string, MepLintCategory> = {
   // 模型包络近似 / 非物理需求路线
   supply_return_overlap: 'envelope_approximation',
   reference_constraint_uncertain: 'envelope_approximation',
-  suppressed_wall_crossing: 'envelope_approximation',
+  suppressed_wall_crossing: 'must_fix_before_briefing',
   nonphysical_route: 'envelope_approximation',
   // (g) DEC-2026-10-08-W02 端点绑定兜底：重合未绑现在就能改（交底前必须清）；
   //     给排水无锚点端点要量房人工判读（量房后复判）。
@@ -96,6 +125,8 @@ const ENDPOINT_BIND_TOLERANCE = 0.02;
 const ENDPOINT_BIND_LAYERS = new Set(['water_supply', 'drainage', 'strong_power', 'weak_power']);
 const PLUMBING_SUPPLY_TYPES = new Set(['faucet', 'toilet', 'shower', 'washer', 'faucet_outdoor', 'water_supply']);
 const PLUMBING_DRAIN_TYPES = new Set(['drain', 'drain_riser']);
+/** Objects that can cover a plug or service point; ordinary movable furniture is handled by route collision, not assumed to block access. */
+const FURNITURE_ENDPOINT_ACCESS_TYPES = new Set(['wall_cabinet_tall', 'washer', 'dryer', 'dishwasher', 'fridge', 'water_heater', 'robot_dock_gbath']);
 
 /** 端点绑定兜底用的"同专业点位池"：给水只对给水类点位比、排水只对 drain/drain_riser 比，避免把龙头算成排水锚点。 */
 function endpointBindPool(route: MepRoute, sources: MepEndpointSources): Array<{ id: string; x: number; z: number }> {
@@ -138,12 +169,17 @@ const GRAVITY_SLOPE_TOLERANCE = 0.5;
 const GRAVITY_MIN_RUN = 0.3;
 /** (a) 墙排（gravity_wall_drain）允许柜内大落差，故按全线汇总落差/水平长度判定，不逐段判。 */
 const WALL_DRAIN_METHOD = 'wall_drain';
-/** (b) 斜线段阈值：Δx 与 Δz 同时超过 2cm 即算斜线（小于放线/取整公差）。 */
+/** (b) 斜线段阈值：Δx 与 Δz 同时超过 2cm 即算平面斜线（小于放线/取整公差）。 */
 const ORTHOGONAL_TOLERANCE = 0.02;
-/** (b) 只覆盖地埋/垫层给排水层：顶面强电/弱电/冷媒/风管在本项目数据里存在示意性斜线 */
-/** （如 bend_corridor 按吊顶走向示意、端点±0.1m 就位 jog），属包络近似；给排水斜线直接影响 */
-/** 连续坡度、放线正交约定与存水弯，故本轮只抓给排水两层。 */
-const ORTHOGONAL_LAYERS = new Set(['water_supply', 'drainage']);
+/** 项目走线按正交折线表达；全部 MEP 专业检查平面斜线。 */
+const ORTHOGONAL_LAYERS = new Set(['strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant', 'condensate', 'supply_air', 'return_air']);
+/** 非重力专业不能把平面位移和升降合并成一根 3D 斜线；重力水管的 y 坡度另由坡度规则负责。 */
+const ORTHOGONAL_ELEVATION_LAYERS = new Set(['strong_power', 'weak_power', 'water_supply', 'refrigerant', 'supply_air', 'return_air']);
+const ORTHOGONAL_STRICT_PLAN_LAYERS = new Set(['water_supply', 'drainage']);
+const ORTHOGONAL_MIN_PLAN_RUN = 0.3;
+const ORTHOGONAL_MIN_ELEVATION_PLAN_RUN = 0.12;
+const ORTHOGONAL_MIN_ELEVATION_CHANGE = 0.05;
+const ORTHOGONAL_LONG_DROP_PLAN_DRIFT = 0.12;
 /** (c) 穿点与同墙门洞的最小净距。 */
 const DOOR_CLEARANCE_MIN = 0.15;
 /** (d) 与剪力墙平行距离阈值 / 最小并行持续长度。 */
@@ -153,14 +189,14 @@ const SHEAR_PARALLEL_MIN_RUN = 1.0;
  * (f) 飞线依托检查阈值：
  *   - 贴墙距离 0.25m：与 penetration_point_mismatch 的 0.25m 同族容差——路由坐标两位小数（±0.1m 级包络近似）、
  *     墙线与墙完成面本身差半个墙厚，0.15m 会把 weak-study（0.20m）这类真实"贴墙敷管"刷成误报；
- *   - 纯竖直段平面位移 ≤0.05m：下引/上引到点位是必然动作，依托判定不管竖直段落点（那由点位规则管）；
+ *   - 垂直段按高度采样；只有楼板底/吊顶空腔、实体墙或垫层能提供依托，长段悬空下引/上引必须显形；
  *   - 垫层带 ≤0.35m：floor_branch_candidate 进垫层后的水平段、走地给排水分层（0.18/0.10）都靠它豁免；
  *   - 采样步长 0.1m：无依托连续长度按「首末无依托样本间距」取严格下界（两侧过渡半区间不计），
  *     0.3m 阈值与 GRAVITY_MIN_RUN 同族——端点就位 jog（≤0.3m）不报。
  */
 const SUPPORT_HUG_DISTANCE = 0.25;
 const SUPPORT_VERTICAL_PLANAR = 0.05;
-const SUPPORT_FLOOR_BAND_MAX = 0.35;
+export const SUPPORT_FLOOR_BAND_MAX = 0.35;
 const SUPPORT_SAMPLE_STEP = 0.1;
 const SUPPORT_MIN_UNSUPPORTED_RUN = 0.3;
 /**
@@ -177,6 +213,19 @@ const SUPPORT_MIN_UNSUPPORTED_RUN = 0.3;
 const SUPPORT_FIXTURE_TAIL_MAX = 2.0;
 const SUPPORT_SOFFIT_BAND_MIN = 2.66;
 const SUPPORT_SOFFIT_BAND_MAX = 2.85;
+
+/** DEC-2026-10-07-F02 permits only short, bound-device connections in the
+ * original-soffit band to use a diagonal terminal jog. */
+function isFixtureConnectionSegment(route: MepRoute, points: Point[], index: number): boolean {
+  const planarOf = (segment: number): number => Math.hypot(points[segment].x - points[segment - 1].x, points[segment].z - points[segment - 1].z);
+  let tailIndex = points.length - 1;
+  if (tailIndex >= 2 && planarOf(tailIndex) <= 0.3) tailIndex -= 1;
+  const atBoundDevice = (index === tailIndex && typeof route.to === 'string') || (index === 1 && typeof route.from === 'string');
+  if (!atBoundDevice) return false;
+  const a = points[index - 1], b = points[index];
+  const meanY = ((a.y ?? 0) + (b.y ?? 0)) / 2;
+  return planarOf(index) <= SUPPORT_FIXTURE_TAIL_MAX && meanY >= SUPPORT_SOFFIT_BAND_MIN && meanY <= SUPPORT_SOFFIT_BAND_MAX;
+}
 
 /**
  * 吊顶「完成面」标高——即从房间内看到的吊顶表面高度。
@@ -209,7 +258,7 @@ export function isSolidCeilingZone(zone: CeilingZone): boolean {
 
 type CeilingCorner = 'nw' | 'ne' | 'se' | 'sw';
 const CEILING_CORNERS: readonly CeilingCorner[] = ['nw', 'ne', 'se', 'sw'];
-type FootprintPoint = { x: number; z: number };
+export type FootprintPoint = { x: number; z: number };
 
 function footprintArcSamples(center: FootprintPoint, start: FootprintPoint, end: FootprintPoint): FootprintPoint[] {
   const radius = Math.hypot(start.x - center.x, start.z - center.z);
@@ -231,7 +280,7 @@ function footprintArcSamples(center: FootprintPoint, start: FootprintPoint, end:
 /** Same mixed rounded/concave rectangle outline used by CeilingZoneBuilder,
  * kept dependency-free so the lint follows the rendered footprint without
  * importing the Three.js renderer into server-side validation. */
-function ceilingFootprint(zone: CeilingZone): FootprintPoint[] | undefined {
+export function ceilingFootprint(zone: CeilingZone): FootprintPoint[] | undefined {
   if (!zone.area) return undefined;
   const [rawX1, rawZ1, rawX2, rawZ2] = zone.area;
   const x1 = Math.min(rawX1, rawX2), x2 = Math.max(rawX1, rawX2);
@@ -294,7 +343,7 @@ function pointOnSegment(point: FootprintPoint, a: FootprintPoint, b: FootprintPo
     && point.z >= Math.min(a.z, b.z) - 1e-8 && point.z <= Math.max(a.z, b.z) + 1e-8;
 }
 
-function pointInFootprint(point: FootprintPoint, outline: FootprintPoint[]): boolean {
+export function pointInFootprint(point: FootprintPoint, outline: FootprintPoint[]): boolean {
   let inside = false;
   for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
     const a = outline[i], b = outline[j];
@@ -304,7 +353,7 @@ function pointInFootprint(point: FootprintPoint, outline: FootprintPoint[]): boo
   return inside;
 }
 
-function routeTouchesFootprint(a: FootprintPoint, b: FootprintPoint, outline: FootprintPoint[]): boolean {
+export function routeTouchesFootprint(a: FootprintPoint, b: FootprintPoint, outline: FootprintPoint[]): boolean {
   if (pointInFootprint(a, outline) || pointInFootprint(b, outline)) return true;
   for (let i = 0; i < outline.length; i += 1) {
     const c = outline[i], d = outline[(i + 1) % outline.length];
@@ -316,12 +365,90 @@ function routeTouchesFootprint(a: FootprintPoint, b: FootprintPoint, outline: Fo
 type Point = { x: number; y?: number; z: number };
 type Box = { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
 
+/** Strict interior check for solid-volume intersections. Edge-only contact
+ * and routes following the bay sill boundary are not treated as penetration. */
+function pointStrictlyInsideFootprint(point: FootprintPoint, outline: FootprintPoint[]): boolean {
+  let inside = false;
+  for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
+    const a = outline[i], b = outline[j];
+    if (pointOnSegment(point, a, b)) return false;
+    if ((a.z > point.z) !== (b.z > point.z) && point.x < ((b.x - a.x) * (point.z - a.z)) / (b.z - a.z) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
+/** Find route-parameter intervals whose plan projection is strictly inside a
+ * polygon. This catches segments that enter and leave between route vertices. */
+function segmentInteriorIntervals(a: FootprintPoint, b: FootprintPoint, outline: FootprintPoint[]): Array<[number, number]> {
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const lengthSquared = dx * dx + dz * dz;
+  if (lengthSquared < 1e-16) return pointStrictlyInsideFootprint(a, outline) ? [[0, 1]] : [];
+  const cross2 = (x1: number, z1: number, x2: number, z2: number): number => x1 * z2 - z1 * x2;
+  const cuts = [0, 1];
+  const epsilon = 1e-9;
+  for (let i = 0; i < outline.length; i += 1) {
+    const c = outline[i], d = outline[(i + 1) % outline.length];
+    const ex = d.x - c.x, ez = d.z - c.z;
+    const qx = c.x - a.x, qz = c.z - a.z;
+    const denominator = cross2(dx, dz, ex, ez);
+    if (Math.abs(denominator) < epsilon) {
+      if (Math.abs(cross2(qx, qz, dx, dz)) >= epsilon) continue;
+      // Split collinear overlaps at their endpoints. The strict midpoint test
+      // below excludes the boundary interval itself but retains an adjoining
+      // interval that enters the polygon interior.
+      for (const point of [c, d]) {
+        const t = ((point.x - a.x) * dx + (point.z - a.z) * dz) / lengthSquared;
+        if (t >= -epsilon && t <= 1 + epsilon) cuts.push(Math.max(0, Math.min(1, t)));
+      }
+      continue;
+    }
+    const t = cross2(qx, qz, ex, ez) / denominator;
+    const u = cross2(qx, qz, dx, dz) / denominator;
+    if (t >= -epsilon && t <= 1 + epsilon && u >= -epsilon && u <= 1 + epsilon) cuts.push(Math.max(0, Math.min(1, t)));
+  }
+  cuts.sort((left, right) => left - right);
+  const unique = cuts.filter((value, index) => index === 0 || Math.abs(value - cuts[index - 1]) > epsilon);
+  const intervals: Array<[number, number]> = [];
+  for (let i = 1; i < unique.length; i += 1) {
+    const low = unique[i - 1], high = unique[i];
+    if (high - low <= epsilon) continue;
+    const mid = (low + high) / 2;
+    if (pointStrictlyInsideFootprint({ x: a.x + dx * mid, z: a.z + dz * mid }, outline)) intervals.push([low, high]);
+  }
+  return intervals;
+}
+
+function segmentEntersBaySillVolume(a: Point, b: Point, fallbackY: number, sill: MepBaySillCollisionVolume): boolean {
+  if (sill.outline.length < 3 || !(sill.height > 0)) return false;
+  const ay = a.y ?? fallbackY, by = b.y ?? fallbackY;
+  const top = sill.sill + sill.height;
+  const dy = by - ay;
+  const epsilon = 1e-8;
+  let vertical: [number, number];
+  if (Math.abs(dy) < epsilon) {
+    if (ay <= sill.sill + epsilon || ay >= top - epsilon) return false;
+    vertical = [0, 1];
+  } else {
+    const t0 = (sill.sill - ay) / dy;
+    const t1 = (top - ay) / dy;
+    const low = Math.max(0, Math.min(t0, t1));
+    const high = Math.min(1, Math.max(t0, t1));
+    if (high - low <= epsilon) return false;
+    vertical = [low, high];
+  }
+  const planIntervals = segmentInteriorIntervals(a, b, sill.outline);
+  return planIntervals.some(([low, high]) => Math.min(high, vertical[1]) - Math.max(low, vertical[0]) > epsilon);
+}
+
 function issue(level: MepLintLevel, code: string, message: string, routeId?: string, relatedRouteId?: string): MepLintIssue {
   return { level, code, message, ...(routeId ? { routeId } : {}), ...(relatedRouteId ? { relatedRouteId } : {}) };
 }
 function add(result: MepLintResult, item: MepLintIssue): void {
-  // 每条 finding 都带 category：默认按 categoryOf(code) 分桶；若调用方显式给了 category（如 penetration_door_clearance 按过门头/门洞内细分），以显式值为准。
-  result[item.level === 'error' ? 'errors' : 'warnings'].push({ ...item, category: item.category ?? categoryOf(item.code) });
+  // must_fix_before_briefing 是阻断级规则，不再只作为报表分桶：该桶所有 finding 均必须进入 errors，
+  // 否则 verify:mep 会以 0 错误通过，和「交底前必须清」的契约矛盾。survey / envelope 继续保持 warning。
+  const category = item.category ?? categoryOf(item.code);
+  const level = category === 'must_fix_before_briefing' ? 'error' : item.level;
+  result[level === 'error' ? 'errors' : 'warnings'].push({ ...item, level, category });
 }
 function pointEqual(a: Point, b: Point): boolean { return a.x === b.x && a.z === b.z; }
 function segmentsCross(a: Point, b: Point, c: Point, d: Point): boolean {
@@ -372,13 +499,136 @@ function airRouteBox(route: MepRoute, points: Point[]): { box?: Box; heightConfi
 function isPhysicalBoxRoute(route: MepRoute, points: Point[]): boolean {
   return isMepPhysicalRoute(route, points);
 }
-function sharesNormalConnection(a: MepRoute, b: MepRoute, aPoints: Point[], bPoints: Point[]): boolean {
-  if (!isPhysicalBoxRoute(a, aPoints) || !isPhysicalBoxRoute(b, bPoints)) return true;
-  if (a.layer !== b.layer) return false;
-  return [a.from, a.to].some((endpoint) => typeof endpoint === 'string' && routeHasEndpoint(b, endpoint));
-}
 function boxesOverlap(a: Box, b: Box): boolean {
   return a.minX < b.maxX && a.maxX > b.minX && a.minY < b.maxY && a.maxY > b.minY && a.minZ < b.maxZ && a.maxZ > b.minZ;
+}
+function segmentBoxInterval(a: Point, b: Point, box: Box, padding = 0): [number, number] | undefined {
+  let low = 0, high = 1;
+  const axes: Array<[number, number, number, number]> = [
+    [a.x, b.x - a.x, box.minX - padding, box.maxX + padding],
+    [a.y ?? 0, (b.y ?? 0) - (a.y ?? 0), box.minY - padding, box.maxY + padding],
+    [a.z, b.z - a.z, box.minZ - padding, box.maxZ + padding],
+  ];
+  for (const [origin, delta, min, max] of axes) {
+    if (Math.abs(delta) < 1e-12) {
+      if (origin <= min || origin >= max) return undefined;
+      continue;
+    }
+    const t0 = (min - origin) / delta, t1 = (max - origin) / delta;
+    low = Math.max(low, Math.min(t0, t1));
+    high = Math.min(high, Math.max(t0, t1));
+    if (low > high) return undefined;
+  }
+  return high - low > 1e-8 ? [low, high] : undefined;
+}
+function routeEnvelopeRadius(route: MepRoute): number {
+  if (route.diameter !== undefined) return route.diameter / 2;
+  if (route.width !== undefined || route.depth !== undefined || route.height !== undefined) {
+    return Math.max((route.width ?? 0) / 2, (route.depth ?? 0) / 2, (route.height ?? route.depth ?? 0) / 2);
+  }
+  return 0.01;
+}
+function routeIsRectangular(route: MepRoute): boolean {
+  return route.diameter === undefined && (route.width !== undefined || route.depth !== undefined || route.height !== undefined || route.method === 'rectangular');
+}
+function routeHalfExtents(route: MepRoute): { x: number; y: number; z: number } {
+  if (route.diameter !== undefined) return { x: route.diameter / 2, y: route.diameter / 2, z: route.diameter / 2 };
+  const fallback = routeEnvelopeRadius(route);
+  return {
+    x: route.width !== undefined ? route.width / 2 : fallback,
+    y: route.height !== undefined ? route.height / 2 : route.depth !== undefined ? route.depth / 2 : fallback,
+    z: route.depth !== undefined ? route.depth / 2 : fallback,
+  };
+}
+function routeSegmentEnvelope(route: MepRoute, a: Point, b: Point): Box {
+  const half = routeHalfExtents(route);
+  return {
+    minX: Math.min(a.x, b.x) - half.x, maxX: Math.max(a.x, b.x) + half.x,
+    minY: Math.min(a.y ?? 0, b.y ?? 0) - half.y, maxY: Math.max(a.y ?? 0, b.y ?? 0) + half.y,
+    minZ: Math.min(a.z, b.z) - half.z, maxZ: Math.max(a.z, b.z) + half.z,
+  };
+}
+function boxClearance(a: Box, b: Box): number {
+  const dx = Math.max(0, a.minX - b.maxX, b.minX - a.maxX);
+  const dy = Math.max(0, a.minY - b.maxY, b.minY - a.maxY);
+  const dz = Math.max(0, a.minZ - b.maxZ, b.minZ - a.maxZ);
+  return Math.hypot(dx, dy, dz);
+}
+function pointBoxDistance(point: Point, box: Box): number {
+  const dx = Math.max(box.minX - point.x, 0, point.x - box.maxX);
+  const dy = Math.max(box.minY - (point.y ?? 0), 0, (point.y ?? 0) - box.maxY);
+  const dz = Math.max(box.minZ - point.z, 0, point.z - box.maxZ);
+  return Math.hypot(dx, dy, dz);
+}
+function segmentEnvelopeRelation(aRoute: MepRoute, a0: Point, a1: Point, bRoute: MepRoute, b0: Point, b1: Point): { overlap: boolean; clearance: number; approximate: boolean } {
+  const aBox = routeSegmentEnvelope(aRoute, a0, a1), bBox = routeSegmentEnvelope(bRoute, b0, b1);
+  const centerline = closestSegmentDistance3d(a0, a1, b0, b1).distance;
+  const aRect = routeIsRectangular(aRoute), bRect = routeIsRectangular(bRoute);
+  const aAirHeightKnown = !['supply_air', 'return_air'].includes(aRoute.layer) || aRoute.height !== undefined;
+  const bAirHeightKnown = !['supply_air', 'return_air'].includes(bRoute.layer) || bRoute.height !== undefined;
+  const axisAligned = (a: Point, b: Point) => [Math.abs(a.x - b.x), Math.abs((a.y ?? 0) - (b.y ?? 0)), Math.abs(a.z - b.z)].filter((delta) => delta > 0.02).length <= 1;
+  const approximate = !aAirHeightKnown || !bAirHeightKnown
+    || aRect !== bRect
+    || (aRect && !axisAligned(a0, a1)) || (bRect && !axisAligned(b0, b1))
+    || (aRect && aRoute.height === undefined) || (bRect && bRoute.height === undefined);
+  if (!aRect && !bRect) {
+    const radiusSum = routeEnvelopeRadius(aRoute) + routeEnvelopeRadius(bRoute);
+    const clearance = Math.max(0, centerline - radiusSum);
+    return { overlap: centerline < radiusSum - 1e-8, clearance, approximate };
+  }
+  const overlaps = boxesOverlap(aBox, bBox);
+  return { overlap: overlaps, clearance: boxClearance(aBox, bBox), approximate };
+}
+function closestSegmentDistance3d(a0: Point, a1: Point, b0: Point, b1: Point): { distance: number; s: number; t: number } {
+  const av = [a1.x - a0.x, (a1.y ?? 0) - (a0.y ?? 0), a1.z - a0.z];
+  const bv = [b1.x - b0.x, (b1.y ?? 0) - (b0.y ?? 0), b1.z - b0.z];
+  const w = [a0.x - b0.x, (a0.y ?? 0) - (b0.y ?? 0), a0.z - b0.z];
+  const dot = (x: number[], y: number[]) => x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
+  const aa = dot(av, av), bb = dot(av, bv), cc = dot(bv, bv), dd = dot(av, w), ee = dot(bv, w);
+  const denom = aa * cc - bb * bb;
+  let sN = denom, sD = denom, tN = denom, tD = denom;
+  if (aa < 1e-12 && cc < 1e-12) return { distance: Math.hypot(...w), s: 0, t: 0 };
+  if (aa < 1e-12) {
+    const t = Math.max(0, Math.min(1, -ee / cc));
+    return { distance: Math.hypot(w[0] - t * bv[0], w[1] - t * bv[1], w[2] - t * bv[2]), s: 0, t };
+  }
+  if (cc < 1e-12) {
+    const s = Math.max(0, Math.min(1, -dd / aa));
+    return { distance: Math.hypot(w[0] + s * av[0], w[1] + s * av[1], w[2] + s * av[2]), s, t: 0 };
+  }
+  if (denom < 1e-12) {
+    sN = 0; sD = 1; tN = ee; tD = cc;
+  } else {
+    sN = bb * ee - cc * dd;
+    tN = aa * ee - bb * dd;
+    if (sN < 0) { sN = 0; tN = ee; tD = cc; }
+    else if (sN > sD) { sN = sD; tN = ee + bb; tD = cc; }
+  }
+  if (tN < 0) {
+    tN = 0;
+    if (-dd < 0) sN = 0;
+    else if (-dd > aa) sN = sD;
+    else { sN = -dd; sD = aa; }
+  } else if (tN > tD) {
+    tN = tD;
+    if (-dd + bb < 0) sN = 0;
+    else if (-dd + bb > aa) sN = sD;
+    else { sN = -dd + bb; sD = aa; }
+  }
+  const s = Math.abs(sN) < 1e-12 ? 0 : sN / sD;
+  const t = Math.abs(tN) < 1e-12 ? 0 : tN / tD;
+  const delta = [w[0] + s * av[0] - t * bv[0], w[1] + s * av[1] - t * bv[1], w[2] + s * av[2] - t * bv[2]];
+  return { distance: Math.hypot(...delta), s, t };
+}
+function distanceAlongRouteFromEndpoint(points: Point[], segmentIndex: number, fraction: number, endpointIndex: 0 | 1): number {
+  const lengths = points.slice(1).map((point, index) => Math.hypot(
+    point.x - points[index].x,
+    (point.y ?? 0) - (points[index].y ?? 0),
+    point.z - points[index].z,
+  ));
+  const before = lengths.slice(0, segmentIndex - 1).reduce((sum, length) => sum + length, 0);
+  const position = before + lengths[segmentIndex - 1] * fraction;
+  return endpointIndex === 0 ? position : lengths.reduce((sum, length) => sum + length, 0) - position;
 }
 function sourceIds(sources: MepEndpointSources): Set<string> {
   return new Set([...sources.electrical, ...sources.plumbing, ...sources.ceiling, ...sources.hvacAnchors, ...sources.hvacTerminals, ...sources.outdoor].map((x) => x.id));
@@ -424,6 +674,30 @@ function wallCrosses(points: Point[], wall: WallGeometry): boolean {
     }
   }
   return false;
+}
+function routeTouchesWall(points: Point[], wall: WallGeometry, clearance: number): boolean {
+  for (const chord of wallSegments(wall)) {
+    const wallStart = { x: chord.x1, z: chord.z1 }, wallEnd = { x: chord.x2, z: chord.z2 };
+    for (let index = 1; index < points.length; index += 1) {
+      const a = points[index - 1], b = points[index];
+      if (segmentsCross(a, b, wallStart, wallEnd)) return true;
+      const distance = Math.min(
+        pointSegmentDistance(a, chord), pointSegmentDistance(b, chord),
+        pointSegmentDistance(wallStart, { x1: a.x, z1: a.z, x2: b.x, z2: b.z }),
+        pointSegmentDistance(wallEnd, { x1: a.x, z1: a.z, x2: b.x, z2: b.z }),
+      );
+      if (distance <= clearance + 1e-8) return true;
+    }
+  }
+  return false;
+}
+function penetrationPointOnRoute(point: Point, points: Point[], wall: WallGeometry): boolean {
+  const routeDistance = points.length === 1
+    ? Math.hypot(point.x - points[0].x, point.z - points[0].z)
+    : Math.min(...points.slice(1).map((current, index) => pointSegmentDistance(point, {
+      x1: points[index].x, z1: points[index].z, x2: current.x, z2: current.z,
+    })));
+  return routeDistance <= 0.25 && wallSegments(wall).some((segment) => pointSegmentDistance(point, segment) <= 0.25);
 }
 function segmentIntersection(a: Point, b: Point, c: Point, d: Point): { x: number; z: number } | undefined {
   const d1x = b.x - a.x, d1z = b.z - a.z, d2x = d.x - c.x, d2z = d.z - c.z;
@@ -538,6 +812,60 @@ function doorClearance(point: Point, span: DoorSpan): number {
   if (position > span.to) return position - span.to;
   return 0;
 }
+function routeInDoorOpening(points: Point[], wall: ResolvedWall, span: DoorSpan, fallbackY: number): { segment: number; run: number } | undefined {
+  if (span.top === undefined) return undefined;
+  const axis = wallAxis(wall);
+  let best: { segment: number; run: number } | undefined;
+  for (let index = 1; index < points.length; index += 1) {
+    const a = points[index - 1], b = points[index];
+    const length = Math.hypot(b.x - a.x, (b.y ?? fallbackY) - (a.y ?? fallbackY), b.z - a.z);
+    if (length < 0.15) continue;
+    const steps = Math.ceil(length / 0.05);
+    let run = 0;
+    const midpointIsInOpening = (t: number): boolean => {
+      const point = {
+        x: a.x + (b.x - a.x) * t,
+        z: a.z + (b.z - a.z) * t,
+        y: (a.y ?? fallbackY) + ((b.y ?? fallbackY) - (a.y ?? fallbackY)) * t,
+      };
+      return point.y >= 0 && point.y < span.top! - 1e-6
+        && alongValue(point, axis) >= span.from && alongValue(point, axis) <= span.to
+        && perpendicularDistance(point, wall) <= 0.15;
+    };
+    for (let step = 0; step < steps; step += 1) {
+      if (midpointIsInOpening((step + 0.5) / steps)) {
+        run += length / steps;
+      } else {
+        if (run >= 0.15 && (!best || run > best.run)) best = { segment: index, run };
+        run = 0;
+      }
+    }
+    if (run >= 0.15 && (!best || run > best.run)) best = { segment: index, run };
+  }
+  return best;
+}
+function segmentHugsWallOutsideOpening(a: Point, b: Point, y: number, layout: ResolvedLayout | undefined, suppressed: Set<string>): boolean {
+  if (!layout) return false;
+  for (const wall of layout.walls) {
+    if (suppressed.has(wall.id) || y > wall.height + 1e-9) continue;
+    const axis = wallAxis(wall);
+    const aAlong = alongValue(a, axis), bAlong = alongValue(b, axis);
+    const routePerpendicularDelta = axis === 'x' ? Math.abs(a.z - b.z) : Math.abs(a.x - b.x);
+    if (routePerpendicularDelta > 0.05) continue;
+    for (const chord of wallSegments(wall)) {
+      const span = wallSpan(chord, axis);
+      const overlap = Math.max(0, Math.min(Math.max(aAlong, bAlong), span.hi) - Math.max(Math.min(aAlong, bAlong), span.lo));
+      if (overlap < 0.25) continue;
+      if (perpendicularDistance(a, chord) > SUPPORT_HUG_DISTANCE || perpendicularDistance(b, chord) > SUPPORT_HUG_DISTANCE) continue;
+      const hasDoorOpening = doorSpans(wall, layout.vertices).some((opening) => {
+        if (opening.top !== undefined && y >= opening.top) return false;
+        return Math.min(Math.max(aAlong, bAlong), opening.to) - Math.max(Math.min(aAlong, bAlong), opening.from) > 0.02;
+      });
+      if (!hasDoorOpening) return true;
+    }
+  }
+  return false;
+}
 /**
  * (a) 声明坡度 vs 实际落差比。墙排（wall drain）按全线汇总落差/水平长度判定——
  * 柜内转 90° 会吃掉大部分落差，逐段判会把正常墙排全刷成告警；其它重力管逐段判，
@@ -600,7 +928,7 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
   const ids = sourceIds(sources);
   const resolved = resolveMepRoutes(config, sources);
   result.counts.resolvedRoutes = resolved.resolved;
-  const boxes: Array<{ route: MepRoute; box?: Box; points: Point[]; airHeightConfirmed?: boolean }> = [];
+  const boxes: Array<{ route: MepRoute; box?: Box; points: Point[]; airHeightConfirmed?: boolean; complete: boolean; centerlineComplete: boolean }> = [];
   const ceiling = context.ceiling ?? sources.ceiling;
   const suppressed = new Set(context.suppressedWallIds ?? []);
   // (f) 飞线依托检查的两类依托缓存：实心吊顶分区（空腔依托，footprint/完成面与渲染同源）与非 suppressed
@@ -608,7 +936,7 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
   // 由 suppressed_wall_crossing 独立负责。仅在有 layout 上下文时启用本规则（无 layout 时贴墙依托不可判，
   // 强行评估会把 strong-light-tv 这类贴墙段刷成误报）。
   const supportCeilingZones: Array<{ footprint: FootprintPoint[]; surfaceY: number }> = [];
-  const supportWallChords: Array<{ x1: number; z1: number; x2: number; z2: number }> = [];
+  const supportWallChords: Array<{ x1: number; z1: number; x2: number; z2: number; axis: 'x' | 'z'; height: number; openings: DoorSpan[] }> = [];
   if (context.layout) {
     const supportRoomHeights = new Map(context.layout.rooms.map((room) => [room.id, room.height]));
     for (const zone of ceiling) {
@@ -621,7 +949,9 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     }
     for (const wall of context.layout.walls) {
       if (suppressed.has(wall.id)) continue;
-      for (const chord of wallSegments(wall)) supportWallChords.push({ x1: chord.x1, z1: chord.z1, x2: chord.x2, z2: chord.z2 });
+      const axis = wallAxis(wall);
+      const openings = doorSpans(wall, context.layout.vertices);
+      for (const chord of wallSegments(wall)) supportWallChords.push({ x1: chord.x1, z1: chord.z1, x2: chord.x2, z2: chord.z2, axis, height: wall.height, openings });
     }
   }
 
@@ -633,6 +963,50 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     for (const side of item.unresolved) add(result, issue('error', 'endpoint_unresolved', `MEP route ${route.id} ${side} endpoint is unresolved`, route.id));
     const points = mepRoutePoints(route, from, to);
     const isRequirementLike = route.source_status === 'design_requirement' || route.route_kind === 'requirement' || route.route_kind === 'candidate';
+    for (const side of ['from', 'to'] as const) {
+      const endpoint = route[side];
+      if (typeof endpoint !== 'string') continue;
+      const electrical = sources.electrical.find((point) => point.id === endpoint);
+      if (electrical?.serviceability_status && electrical.serviceability_status !== 'usable') {
+        add(result, issue('warning', 'route_endpoint_unusable', `Route ${route.id} terminates at electrical point ${endpoint}, marked ${electrical.serviceability_status}; this endpoint is not a serviceable connection`, route.id));
+      }
+      const endpointHeight = (side === 'from' ? route.from_height : route.to_height) ?? electrical?.height ?? electrical?.mount_height;
+      if (electrical && endpointHeight !== undefined && !electrical.serviceability_status && context.furnitureVolumes?.length) {
+        const blockingFurniture = context.furnitureVolumes.find((volume) => FURNITURE_ENDPOINT_ACCESS_TYPES.has(volume.type)
+          && (!volume.room || volume.room === electrical.room)
+          && electrical.mountAnchor?.furnitureId !== volume.id
+          && electrical.x >= volume.bounds.minX && electrical.x <= volume.bounds.maxX
+          && electrical.z >= volume.bounds.minZ && electrical.z <= volume.bounds.maxZ
+          && endpointHeight >= volume.bounds.minY && endpointHeight <= volume.bounds.maxY);
+        if (blockingFurniture) add(result, issue('warning', 'endpoint_inaccessible', `Electrical endpoint ${endpoint} of ${route.id} lies inside furnishing ${blockingFurniture.id}; confirm an exposed face, service niche or access opening`, route.id));
+      }
+      const declaredHeight = side === 'from' ? route.from_height : route.to_height;
+      const pointHeight = electrical?.height ?? electrical?.mount_height;
+      if (electrical && ['switch', 'switch_2way'].includes(electrical.type)
+        && declaredHeight !== undefined && pointHeight !== undefined && Math.abs(declaredHeight - pointHeight) > 0.15) {
+        add(result, issue('warning', 'endpoint_elevation_mismatch', `Route ${route.id} ${side} height ${declaredHeight.toFixed(2)}m disagrees with switch point ${endpoint} height ${pointHeight.toFixed(2)}m`, route.id));
+      }
+      if (electrical && (route.layer === 'strong_power' || route.layer === 'weak_power')) {
+        for (const plumbing of sources.plumbing) {
+          const plumbingHeight = plumbing.height;
+          const electricalHeight = declaredHeight ?? pointHeight;
+          if (plumbingHeight === undefined || electricalHeight === undefined) continue;
+          const planDistance = Math.hypot(electrical.x - plumbing.x, electrical.z - plumbing.z);
+          if (planDistance <= 0.02 && Math.abs(electricalHeight - plumbingHeight) < 0.15) {
+            add(result, issue('warning', 'mep_endpoint_service_conflict', `Electrical endpoint ${endpoint} of ${route.id} coincides with plumbing point ${plumbing.id} at the same service height; separate the electrical and plumbing connections`, route.id));
+          }
+        }
+      }
+    }
+    if (context.layout && route.method !== 'floor_branch' && route.method !== 'floor_branch_candidate'
+      && route.layer !== 'water_supply' && route.layer !== 'drainage' && points.length >= 2) {
+      const fallbackY = config.layers[route.layer]?.height ?? 0;
+      for (const wall of context.layout.walls) for (const span of doorSpans(wall, context.layout.vertices)) {
+        const hit = routeInDoorOpening(points, wall, span, fallbackY);
+        if (!hit) continue;
+        add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', 'door_opening_collision', `Route ${route.id} runs through door opening ${span.id} below its ${span.top!.toFixed(2)}m head for ${hit.run.toFixed(2)}m (segment #${hit.segment}); reroute above the head or outside the opening`, route.id));
+      }
+    }
     // 首末平面点重合 ≠ 假路由：纯竖直段（同墙不同安装高度，如电视墙 0.30/1.70/2.00m）是真实管段。
     // 只有显式声明 route_kind: physical 且确有高度差才算，判定权在声明不在算法（与 isMepPhysicalRoute 同口径）。
     const verticalPhysical = route.route_kind === 'physical'
@@ -682,11 +1056,20 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     if (!isDuct && (route.width !== undefined || route.depth !== undefined || route.height !== undefined)) add(result, issue('warning', 'rectangular_size_not_for_round', `MEP route ${route.id} uses rectangular dimensions on a round route; use diameter`, route.id));
     if (isDuct && (route.width === undefined || route.depth === undefined || route.height === undefined)) add(result, issue('warning', 'duct_dimension_incomplete', `MEP route ${route.id} lacks complete width/depth/height`, route.id));
     if (!isDuct && route.diameter === undefined) add(result, issue('warning', 'round_dimension_missing', `MEP route ${route.id} lacks diameter`, route.id));
-    const gravity = (route.layer === 'drainage' || route.layer === 'condensate') && route.method?.includes('gravity');
+    const gravity = (route.layer === 'drainage' || route.layer === 'condensate')
+      && (route.method?.includes('gravity') || Boolean(route.flow_direction) || route.slope !== undefined);
     if (gravity) {
       const explicitDirection = route.flow_direction;
       const slope = route.slope;
-      if (!explicitDirection && slope === undefined) add(result, issue('warning', 'gravity_slope_pending', `Gravity route ${route.id} lacks explicit flow_direction or slope; elevation alone is not sufficient`, route.id));
+      const totalPlanRun = points.slice(1).reduce((sum, point, index) => sum + Math.hypot(point.x - points[index].x, point.z - points[index].z), 0);
+      const hasGravityRun = totalPlanRun >= GRAVITY_MIN_RUN;
+      if (hasGravityRun && (!explicitDirection || slope === undefined)) {
+        const missing = [!explicitDirection ? 'flow_direction' : undefined, slope === undefined ? 'slope' : undefined].filter(Boolean).join(' and ');
+        add(result, issue('warning', 'gravity_slope_pending', `Gravity route ${route.id} has ${totalPlanRun.toFixed(2)}m of plan run but lacks ${missing}; elevation alone is not a slope contract`, route.id));
+      }
+      if (explicitDirection && !/down|降|低|drain|up|升|高/i.test(explicitDirection)) {
+        add(result, issue('warning', 'gravity_direction_unrecognized', `Gravity route ${route.id} has unrecognized flow_direction "${explicitDirection}"`, route.id));
+      }
       if (explicitDirection && route.from_height !== undefined && route.to_height !== undefined) {
         const lowToHigh = route.to_height > route.from_height;
         const down = /down|降|低|drain/i.test(explicitDirection);
@@ -704,15 +1087,47 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         const deviation = gravitySlopeDeviation(points, slope, route.method?.includes(WALL_DRAIN_METHOD) ?? false);
         if (deviation) add(result, issue('warning', 'gravity_slope_geometry_mismatch', `Gravity route ${route.id} ${deviation.detail} develops ${(deviation.ratio * 100).toFixed(2)}% against declared slope ${(slope * 100).toFixed(2)}% (${deviation.multiple.toFixed(2)}× the declared slope, tolerance ±50%)`, route.id));
       }
+      if (route.method === 'gravity_floor_drain' && points.slice(1).some((point, index) => {
+        const previous = points[index];
+        const run = Math.hypot(point.x - previous.x, point.z - previous.z);
+        return run >= GRAVITY_MIN_RUN && (previous.y ?? 0) > SUPPORT_FLOOR_BAND_MAX && (point.y ?? 0) > SUPPORT_FLOOR_BAND_MAX;
+      })) {
+        add(result, issue('warning', 'gravity_method_elevation_mismatch', `Route ${route.id} uses gravity_floor_drain but has a horizontal run above the floor support band (y>${SUPPORT_FLOOR_BAND_MAX.toFixed(2)}m); confirm the intended wall-drain method and connection`, route.id));
+      }
     }
-    // (b) 相邻点斜线段（只覆盖给排水层，见 ORTHOGONAL_LAYERS 说明）
+    // (b) 物理路由按正交折线表达。给排水检查平面斜段；非重力承载层还检查
+    // 「平面位移 + 高度变化」是否被压成单段斜线。F02 的短设备尾段是唯一按明确工艺豁免的斜接线。
     if (ORTHOGONAL_LAYERS.has(route.layer)) {
-      const diagonal = points.findIndex((point, index) => index > 0
-        && Math.abs(point.x - points[index - 1].x) > ORTHOGONAL_TOLERANCE
-        && Math.abs(point.z - points[index - 1].z) > ORTHOGONAL_TOLERANCE);
+      const fallbackY = config.layers[route.layer]?.height ?? 0;
+      const diagonal = points.findIndex((point, index) => {
+        if (index === 0 || isFixtureConnectionSegment(route, points, index)) return false;
+        const previous = points[index - 1];
+        const dx = Math.abs(point.x - previous.x), dz = Math.abs(point.z - previous.z);
+        const planar = Math.hypot(dx, dz);
+        const strictPlan = ORTHOGONAL_STRICT_PLAN_LAYERS.has(route.layer);
+        // 工程路线不应因“不到 1.5m”或落在墙边而静默接受斜线；只留下小于 2cm 的坐标取整公差。
+        const axisTolerance = ORTHOGONAL_TOLERANCE;
+        const minPlanRun = strictPlan ? GRAVITY_MIN_RUN : ORTHOGONAL_MIN_PLAN_RUN;
+        const planDiagonal = dx > axisTolerance && dz > axisTolerance && planar >= minPlanRun;
+        const dy = Math.abs((point.y ?? fallbackY) - (previous.y ?? fallbackY));
+        const planAndElevation = ORTHOGONAL_ELEVATION_LAYERS.has(route.layer)
+          && planar > ORTHOGONAL_TOLERANCE
+          && (planar >= ORTHOGONAL_MIN_ELEVATION_PLAN_RUN
+            || (planar >= ORTHOGONAL_LONG_DROP_PLAN_DRIFT && dy >= 0.5))
+          && dy >= ORTHOGONAL_MIN_ELEVATION_CHANGE;
+        return planDiagonal || planAndElevation;
+      });
       if (diagonal > 0) {
         const previous = points[diagonal - 1], current = points[diagonal];
-        add(result, issue('warning', 'route_not_orthogonal', `Route ${route.id} segment #${diagonal} (${previous.x},${previous.z})→(${current.x},${current.z}) moves Δx=${Math.abs(current.x - previous.x).toFixed(2)}m and Δz=${Math.abs(current.z - previous.z).toFixed(2)}m at once; plumbing runs must stay orthogonal (Manhattan) polylines`, route.id));
+        const dx = Math.abs(current.x - previous.x), dz = Math.abs(current.z - previous.z);
+        const dy = Math.abs((current.y ?? fallbackY) - (previous.y ?? fallbackY));
+        const detail = dx > ORTHOGONAL_TOLERANCE && dz > ORTHOGONAL_TOLERANCE
+          ? `moves Δx=${dx.toFixed(2)}m and Δz=${dz.toFixed(2)}m at once`
+          : `combines ${Math.hypot(dx, dz).toFixed(2)}m of plan travel with Δy=${dy.toFixed(2)}m of height change`;
+        add(result, {
+          ...issue('warning', 'route_not_orthogonal', `Route ${route.id} segment #${diagonal} (${previous.x},${(previous.y ?? fallbackY).toFixed(2)},${previous.z})→(${current.x},${(current.y ?? fallbackY).toFixed(2)},${current.z}) ${detail}; split the run into explicit orthogonal legs`, route.id),
+          category: isRequirementLike ? 'envelope_approximation' : 'must_fix_before_briefing',
+        });
       }
     }
     if (route.source_status === 'design_requirement' && route.status === 'confirmed') add(result, issue('error', 'evidence_status_conflict', `Design requirement route ${route.id} cannot be confirmed`, route.id));
@@ -722,9 +1137,44 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
 
     const layer = config.layers[route.layer];
     const air = route.layer === 'supply_air' || route.layer === 'return_air';
-    const airEnvelope = air && isPhysicalBoxRoute(route, points) ? airRouteBox(route, points) : undefined;
-    const box = layer && isPhysicalBoxRoute(route, points) ? (air ? airEnvelope?.box : routeBox(route, points)) : undefined;
-    boxes.push({ route, box, points, airHeightConfirmed: airEnvelope?.heightConfirmed });
+    const overlapPoints = points.map((point) => ({ ...point, y: point.y ?? layer?.height ?? 0 }));
+    const airEnvelope = air && route.width !== undefined && route.depth !== undefined ? airRouteBox(route, overlapPoints) : undefined;
+    let box = layer ? (air ? airEnvelope?.box : routeBox(route, overlapPoints)) : undefined;
+    if (!box && layer && overlapPoints.length >= 2) {
+      const pad = routeEnvelopeRadius(route);
+      box = {
+        minX: Math.min(...overlapPoints.map((point) => point.x)) - pad,
+        maxX: Math.max(...overlapPoints.map((point) => point.x)) + pad,
+        minY: Math.min(...overlapPoints.map((point) => point.y ?? 0)) - pad,
+        maxY: Math.max(...overlapPoints.map((point) => point.y ?? 0)) + pad,
+        minZ: Math.min(...overlapPoints.map((point) => point.z)) - pad,
+        maxZ: Math.max(...overlapPoints.map((point) => point.z)) + pad,
+      };
+    }
+    const dimensionsComplete = route.diameter !== undefined || (route.width !== undefined && route.depth !== undefined && route.height !== undefined);
+    boxes.push({ route, box, points: overlapPoints, airHeightConfirmed: airEnvelope?.heightConfirmed, complete: dimensionsComplete && points.every((point) => point.y !== undefined) && (!air || airEnvelope?.heightConfirmed === true), centerlineComplete: points.every((point) => point.y !== undefined) });
+    // Bay sills render as solid extrusions. Check the route centerline against
+    // both the exact rendered plan polygon and its sill..sill+height interval;
+    // testing only route vertices would miss segments that pass through.
+    if (context.baySills?.length && points.length >= 2) {
+      const fallbackY = layer?.height ?? 0;
+      for (const bay of context.baySills) {
+        let intersectingSegment: { index: number; a: Point; b: Point } | undefined;
+        for (let index = 1; index < points.length; index += 1) {
+          const a = points[index - 1], b = points[index];
+          if (!segmentEntersBaySillVolume(a, b, fallbackY, bay)) continue;
+          intersectingSegment = { index, a, b };
+          break;
+        }
+        if (!intersectingSegment) continue;
+        const { index, a, b } = intersectingSegment;
+        const aY = (a.y ?? fallbackY).toFixed(2), bY = (b.y ?? fallbackY).toFixed(2);
+        const level: MepLintLevel = route.status === 'confirmed' ? 'error' : 'warning';
+        add(result, issue(level, 'bay_sill_collision',
+          `Route ${route.id} enters solid bay_sill ${bay.id} on segment #${index} (${a.x.toFixed(2)},${aY},${a.z.toFixed(2)})→(${b.x.toFixed(2)},${bY},${b.z.toFixed(2)}); route passes through the modeled sill volume`,
+          route.id));
+      }
+    }
     if (context.layout) {
       const penetrations = penetrationsOf(route);
       // (c) 穿点与同墙门洞净距：门垛 <0.15m 的穿孔现场做不出套管/盒，交底前必须清。
@@ -762,13 +1212,26 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     }
     if (context.layout && from && to) {
       const penetrations = penetrationsOf(route);
-      for (const wall of context.layout.walls) {
-        const crosses = wallCrosses(points, wall);
-        if (!crosses) continue;
-        if (suppressed.has(wall.id)) {
-          add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', 'suppressed_wall_crossing', `Route ${route.id} enters suppressed/curtain wall ${wall.id}`, route.id));
+      for (const declared of penetrations) {
+        const wall = declared.wall ? context.layout.walls.find((candidate) => candidate.id === declared.wall) : undefined;
+        if (!wall) {
+          add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', 'penetration_wall_unknown', `Route ${route.id} declares a penetration on unknown wall ${declared.wall ?? '(missing wall id)'}`, route.id));
           continue;
         }
+        if (!wallCrosses(points, wall) && !(declared.at && penetrationPointOnRoute(declared.at, points, wall))) {
+          add(result, issue('warning', 'penetration_declaration_orphaned', `Route ${route.id} declares penetration on ${wall.id}, but its current geometry does not cross that wall`, route.id));
+        } else if (!declared.at || declared.height === undefined) {
+          add(result, issue('warning', 'penetration_declaration_incomplete', `Route ${route.id} crosses ${wall.id} but its penetration declaration lacks ${!declared.at ? 'at' : 'height'}; record the actual sleeve center and elevation`, route.id));
+        }
+      }
+      for (const wall of context.layout.walls) {
+        const crosses = wallCrosses(points, wall);
+        if (suppressed.has(wall.id)) {
+          if (!crosses && !routeTouchesWall(points, wall, routeEnvelopeRadius(route))) continue;
+          add(result, issue('error', 'suppressed_wall_crossing', `Route ${route.id} crosses or touches suppressed/curtain wall ${wall.id}; do not attach or route through glazing`, route.id));
+          continue;
+        }
+        if (!crosses) continue;
         const declared = penetrations.find((p) => p.wall === wall.id);
         if (!declared) {
           add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', 'penetration_missing', `Route ${route.id} crosses entity wall ${wall.id} without penetration information`, route.id));
@@ -784,9 +1247,81 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         }
       }
     }
-    if (ceiling.length && CEILING_CARRIED_LAYERS.has(route.layer)) {
+    const isFloorBranch = route.method === 'floor_branch' || route.method === 'floor_branch_candidate';
+    if (CEILING_CARRIED_LAYERS.has(route.layer) && !isFloorBranch) {
+      const layerHeight = layer?.height ?? 0;
+      const floorRun = points.slice(1).findIndex((point, index) => {
+        const previous = points[index];
+        const y = Math.max(point.y ?? layerHeight, previous.y ?? layerHeight);
+        return Math.hypot(point.x - previous.x, point.z - previous.z) >= GRAVITY_MIN_RUN
+          && y <= SUPPORT_FLOOR_BAND_MAX
+          && !segmentHugsWallOutsideOpening(previous, point, y, context.layout, suppressed);
+      });
+      if (floorRun >= 0) {
+        const previous = points[floorRun], current = points[floorRun + 1];
+        add(result, issue('warning', 'floor_band_method_mismatch', `Route ${route.id} has a ${(Math.hypot(current.x - previous.x, current.z - previous.z)).toFixed(2)}m horizontal run in the floor support band but uses ${route.method ?? 'no method'}; declare floor_branch or floor_branch_candidate if this is a floor path`, route.id));
+      }
+    }
+    if (isFloorBranch && CEILING_CARRIED_LAYERS.has(route.layer)) {
+      const layerHeight = layer?.height ?? 0;
+      const entersScreed = points.some((point) => (point.y ?? layerHeight) <= SUPPORT_FLOOR_BAND_MAX);
+      if (!entersScreed) {
+        add(result, issue(
+          route.status === 'confirmed' ? 'error' : 'warning',
+          'floor_branch_missing_floor_band',
+          `Route ${route.id} uses ${route.method} but has no point in the floor support band (y≤${SUPPORT_FLOOR_BAND_MAX.toFixed(2)}m); check the method or add the declared floor path`,
+          route.id,
+        ));
+      }
+    }
+    if (context.furnitureVolumes?.length && points.length >= 2) {
+      const radius = routeEnvelopeRadius(route);
+      const collisions = new Map<string, number>();
+      for (const volume of context.furnitureVolumes) {
+        const attachedEndpoint = [route.from, route.to].some((endpoint) => typeof endpoint === 'string'
+          && sources.electrical.find((point) => point.id === endpoint)?.mountAnchor?.furnitureId === volume.id);
+        if (attachedEndpoint) continue;
+        let insideRun = 0;
+        for (let index = 1; index < points.length; index += 1) {
+          const a = points[index - 1], b = points[index];
+          const aY = a.y ?? layer?.height ?? 0, bY = b.y ?? layer?.height ?? 0;
+          // Buried conduit and water/drain services below the support plane are
+          // allowed to pass below casework and appliances.
+          const lowServiceRun = (isFloorBranch || route.layer === 'water_supply' || route.layer === 'drainage')
+            && aY <= SUPPORT_FLOOR_BAND_MAX && bY <= SUPPORT_FLOOR_BAND_MAX;
+          if (lowServiceRun) continue;
+          const interval = segmentBoxInterval({ ...a, y: aY }, { ...b, y: bY }, volume.bounds, radius);
+          if (!interval) continue;
+          const segmentLength = Math.hypot(b.x - a.x, bY - aY, b.z - a.z);
+          insideRun += (interval[1] - interval[0]) * segmentLength;
+        }
+        if (route.layer === 'water_supply' || route.layer === 'drainage') {
+          const terminalInside = ([route.from, route.to] as const).filter((endpoint, endpointIndex) => {
+            if (typeof endpoint !== 'string') return false;
+            const point = sources.plumbing.find((candidate) => candidate.id === endpoint);
+            if (!point || (volume.room && point.room !== volume.room)) return false;
+            const y = (endpointIndex === 0 ? route.from_height : route.to_height) ?? point.height ?? layer?.height ?? 0;
+            return pointBoxDistance({ x: point.x, z: point.z, y }, volume.bounds) <= 0.45;
+          }).length;
+          insideRun = Math.max(0, insideRun - 0.45 * terminalInside);
+        }
+        // Ignore a brief device termination into a furnishing; a route spending
+        // at least 0.25m inside casework/appliance requires an explicit service path.
+        if (insideRun >= 0.25) collisions.set(volume.id, insideRun);
+      }
+      for (const [furnitureId, insideRun] of collisions) {
+        add(result, {
+          ...issue(route.status === 'confirmed' ? 'error' : 'warning', 'route_furniture_collision', `Route ${route.id} envelope runs ${insideRun.toFixed(2)}m inside furnishing ${furnitureId}; declare a service chase/open niche or reroute outside the furnishing`, route.id),
+          ...(isRequirementLike ? { category: 'envelope_approximation' as const } : {}),
+        });
+      }
+    }
+    if (ceiling.length && CEILING_CARRIED_LAYERS.has(route.layer)
+      && !(isFloorBranch && points.some((point) => (point.y ?? layer?.height ?? 0) <= SUPPORT_FLOOR_BAND_MAX))) {
       // (D) DEC-2026-10-06-R5：只有吊顶承载层参与「低于吊顶完成面」比较；
       // water_supply / drainage 走地面垫层，与吊顶完成面无可比性，整体退出本比较（见 CEILING_CARRIED_LAYERS 注释的授权全引）。
+      // floor_branch(_candidate) 只有实际落入地面支持带时才退出本比较；缺少地面点的误标路线仍走正常检查。
+      // 起降及空间段仍由下方 3D unsupported_span 依托检查，不能因此获得开放空间豁免。
       const roomHeights = new Map((context.layout?.rooms ?? []).map((room) => [room.id, room.height]));
       // 同一「路线 × 吊顶分区」只报一次：否则一条 8 段的路线能刷出 8 条同文告警，
       // 把真正需要看的信号淹掉。去重不降级——severity 仍是 warning，条数只是汇报口径。
@@ -842,9 +1377,9 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         ));
       }
     }
-    // (f) 飞线依托检查：吊顶承载层的每个非竖直段按 0.1m 步长采样，样本必须落在至少一类依托上——
+    // (f) 飞线依托检查：吊顶承载层的每段按 0.1m 的实际3D长度采样，样本必须落在至少一类依托上——
     // 吊顶空腔内（实心分区 footprint 且 ≥ 完成面）、贴墙 ≤0.25m（含穿墙段：穿墙样本到墙段距离≈0，
-    // 声明缺口由 penetration_missing 独立负责，不在此重复计费）、垫层内 ≤0.35m。纯竖直下引/上引段豁免。
+    // 声明缺口由 penetration_missing 独立负责，不在此重复计费）、垫层内 ≤0.35m。长竖降必须贴实体墙/在吊顶腔或垫层中。
     // 无依托连续 ≥0.3m（与 GRAVITY_MIN_RUN 同族的端点就位 jog 容差）即报；每条路线只报最长一段 + 缺口统计。
     if (context.layout && CEILING_CARRIED_LAYERS.has(route.layer) && points.length >= 2) {
       const layerHeight = layer?.height ?? 0;
@@ -855,11 +1390,16 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
           if (y >= zone.surfaceY - 1e-9 && pointInFootprint(p, zone.footprint)) return true;
         }
         for (const chord of supportWallChords) {
-          if (pointSegmentDistance(p, chord) <= SUPPORT_HUG_DISTANCE) return true;
+          if (y > chord.height + 1e-9) continue;
+          if (pointSegmentDistance(p, chord) > SUPPORT_HUG_DISTANCE) continue;
+          const along = alongValue(p, chord.axis);
+          const opening = chord.openings.find((span) => along >= span.from - 1e-8 && along <= span.to + 1e-8);
+          if (opening && (opening.top === undefined || y <= opening.top + 1e-9)) continue;
+          return true;
         }
         return false;
       };
-      let worst: { run: number; from: Point; to: Point; y: number } | undefined;
+      let worst: { run: number; from: Point; to: Point; y: number; kind: 'horizontal' | 'diagonal' | 'vertical' } | undefined;
       let gapCount = 0;
       let totalUnsupported = 0;
       // (f) 设备接线段位次：默认末段（points 最后一段）；若末段是纯竖直/短 jog（≤0.3m 的到位步），
@@ -869,41 +1409,48 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
       if (tailIdx >= 2 && planarOf(tailIdx) <= 0.3) tailIdx -= 1;
       // 记一个连续无依托区间：run 取「首末无依托样本间距」（严格下界，两侧过渡半步不计），
       // 遇到有依托样本即收口——否则墙/吊顶中段的依托会被首末两端并成一个大缺口，把真依托也计成飞线。
-      const closeGap = (from: Point, to: Point, run: number): void => {
+      const closeGap = (from: Point, to: Point, run: number, kind: 'horizontal' | 'diagonal' | 'vertical'): void => {
         if (run < SUPPORT_MIN_UNSUPPORTED_RUN) return;
         gapCount += 1;
         totalUnsupported += run;
-        if (!worst || run > worst.run) worst = { run, from, to, y: ((from.y ?? 0) + (to.y ?? 0)) / 2 };
+        if (!worst || run > worst.run) worst = { run, from, to, y: ((from.y ?? 0) + (to.y ?? 0)) / 2, kind };
       };
       for (let i = 1; i < points.length; i += 1) {
         const a = points[i - 1], b = points[i];
         const planar = Math.hypot(b.x - a.x, b.z - a.z);
-        if (planar <= SUPPORT_VERTICAL_PLANAR) continue; // 纯竖直下引/上引段
         const aY = a.y ?? layerHeight, bY = b.y ?? layerHeight;
+        const vertical = Math.abs(bY - aY);
+        const isVertical = planar <= SUPPORT_VERTICAL_PLANAR;
+        const segmentLength = isVertical ? vertical : Math.hypot(planar, vertical);
+        if (segmentLength <= 1e-9) continue;
         // (f) 首末段设备接线段：见 SUPPORT_FIXTURE_TAIL_MAX 注释的口径与三重约束
         const meanY = (aY + bY) / 2;
-        if (planar <= SUPPORT_FIXTURE_TAIL_MAX
+        if (!isVertical && planar <= SUPPORT_FIXTURE_TAIL_MAX
           && meanY >= SUPPORT_SOFFIT_BAND_MIN && meanY <= SUPPORT_SOFFIT_BAND_MAX
           && ((i === tailIdx && typeof route.to === 'string') || (i === 1 && typeof route.from === 'string'))) continue;
-        const steps = Math.max(1, Math.ceil(planar / SUPPORT_SAMPLE_STEP));
+        const steps = Math.max(1, Math.ceil(segmentLength / SUPPORT_SAMPLE_STEP));
         const at = (t: number): Point => ({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, y: aY + (bY - aY) * t });
         let runStart = -1;
-        const stepLen = planar / steps;
+        const stepLen = segmentLength / steps;
+        const kind = isVertical ? 'vertical' : vertical > 1e-6 ? 'diagonal' : 'horizontal';
         for (let s = 0; s <= steps; s += 1) {
           if (!supportedAt(at(s / steps))) {
             if (runStart < 0) runStart = s;
           } else if (runStart >= 0) {
-            closeGap(at(runStart / steps), at((s - 1) / steps), (s - 1 - runStart) * stepLen);
+            closeGap(at(runStart / steps), at((s - 1) / steps), (s - 1 - runStart) * stepLen, kind);
             runStart = -1;
           }
         }
-        if (runStart >= 0) closeGap(at(runStart / steps), at(steps / steps), (steps - runStart) * stepLen);
+        if (runStart >= 0) closeGap(at(runStart / steps), at(steps / steps), (steps - runStart) * stepLen, kind);
       }
       if (worst) {
         const gapNote = gapCount > 1 ? `; ${gapCount} unsupported gaps totalling ${totalUnsupported.toFixed(2)}m` : '';
+        const span = worst.kind === 'horizontal'
+          ? `from (${worst.from.x.toFixed(2)},${worst.from.z.toFixed(2)}) to (${worst.to.x.toFixed(2)},${worst.to.z.toFixed(2)}) at ${worst.y.toFixed(2)}m`
+          : `${worst.kind} segment from (${worst.from.x.toFixed(2)},${(worst.from.y ?? 0).toFixed(2)},${worst.from.z.toFixed(2)}) to (${worst.to.x.toFixed(2)},${(worst.to.y ?? 0).toFixed(2)},${worst.to.z.toFixed(2)})`;
         add(result, {
           ...issue(route.status === 'confirmed' ? 'error' : 'warning', 'unsupported_span',
-            `Route ${route.id} flies unsupported for ${worst.run.toFixed(2)}m from (${worst.from.x.toFixed(2)},${worst.from.z.toFixed(2)}) to (${worst.to.x.toFixed(2)},${worst.to.z.toFixed(2)}) at ${worst.y.toFixed(2)}m; ceiling-carried runs must stay inside a ceiling cavity, hug a wall, pass through a wall, drop vertically, or lie in the floor screed${gapNote}`,
+            `Route ${route.id} flies unsupported for ${worst.run.toFixed(2)}m ${span}; runs must stay inside a ceiling cavity, hug a wall, pass through a wall, or lie in the floor screed${gapNote}`,
             route.id),
           category: isRequirementLike ? 'envelope_approximation' : 'must_fix_before_briefing',
         });
@@ -916,16 +1463,22 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         const beamBottom = ref.reference_beam_bottom_y;
         const minX = Math.min(ref.range.x1, ref.range.x2), maxX = Math.max(ref.range.x1, ref.range.x2);
         const minZ = Math.min(ref.range.z1, ref.range.z2), maxZ = Math.max(ref.range.z1, ref.range.z2);
-        const inRange = (p: Point) => p.x >= minX && p.x <= maxX && p.z >= minZ && p.z <= maxZ;
-        const corners: Point[] = [{ x: minX, z: minZ }, { x: maxX, z: minZ }, { x: maxX, z: maxZ }, { x: minX, z: maxZ }];
-        const hitsBeam = points.some((p, i) => {
-          const height = p.y ?? layer?.height ?? 0;
-          if (height <= beamBottom) return false;
-          if (inRange(p)) return true;
-          const next = points[i + 1];
-          if (!next) return false;
-          // 顶点都在约束带外时，线段仍可能横穿约束带（如直线穿梁）：检测与带边界的相交
-          return corners.some((c, ci) => segmentsCross(p, next, c, corners[(ci + 1) % corners.length]));
+        const half = routeHalfExtents(route);
+        const inRange = (p: Point) => p.x + half.x >= minX && p.x - half.x <= maxX && p.z + half.z >= minZ && p.z - half.z <= maxZ;
+        const hitsBeam = points.slice(1).some((next, index) => {
+          const previous = points[index];
+          const length = Math.hypot(next.x - previous.x, (next.y ?? layer?.height ?? 0) - (previous.y ?? layer?.height ?? 0), next.z - previous.z);
+          const steps = Math.max(1, Math.ceil(length / 0.05));
+          for (let step = 0; step <= steps; step += 1) {
+            const t = step / steps;
+            const point = {
+              x: previous.x + (next.x - previous.x) * t,
+              z: previous.z + (next.z - previous.z) * t,
+              y: (previous.y ?? layer?.height ?? 0) + ((next.y ?? layer?.height ?? 0) - (previous.y ?? layer?.height ?? 0)) * t,
+            };
+            if (point.y + half.y > beamBottom && inRange(point)) return true;
+          }
+          return false;
         });
         if (hitsBeam) add(result, issue('error', 'beam_collision', `Route ${route.id} passes above confirmed beam bottom ${beamBottom}m within reference constraint ${ref.id}`, route.id));
       }
@@ -934,20 +1487,48 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
 
   for (let i = 0; i < boxes.length; i += 1) for (let j = i + 1; j < boxes.length; j += 1) {
     const a = boxes[i], b = boxes[j];
-    if (!a.box || !b.box || !boxesOverlap(a.box, b.box)) continue;
-    if (sharesNormalConnection(a.route, b.route, a.points, b.points)) continue;
+    if (!a.box || !b.box || !boxesOverlap(a.box, b.box) || a.points.length < 2 || b.points.length < 2) continue;
+    // Same-layer cable/conduit runs may intentionally share a declared tray or trunk;
+    // gravity water runs remain checked because coincident drains can obstruct each other.
+    if (a.route.layer === b.route.layer && !['water_supply', 'drainage'].includes(a.route.layer)) continue;
+    const sharedEndpointIds = [a.route.from, a.route.to].filter((endpoint): endpoint is string => typeof endpoint === 'string'
+      && (b.route.from === endpoint || b.route.to === endpoint));
+    let collision: { aSegment: number; bSegment: number; distance: number; approximate: boolean; clearanceOnly: boolean } | undefined;
+    for (let ai = 1; ai < a.points.length && !collision; ai += 1) for (let bi = 1; bi < b.points.length; bi += 1) {
+      const nearest = closestSegmentDistance3d(a.points[ai - 1], a.points[ai], b.points[bi - 1], b.points[bi]);
+      const envelopeRelation = segmentEnvelopeRelation(a.route, a.points[ai - 1], a.points[ai], b.route, b.points[bi - 1], b.points[bi]);
+      // A round pipe touching/intersecting another route's declared centerline
+      // is a real clash even when that duct's full height is still pending.
+      const roundRadius = Math.max(a.route.diameter ?? 0, b.route.diameter ?? 0) / 2;
+      const definiteCenterlineCollision = nearest.distance <= Math.max(0.001, roundRadius) && a.centerlineComplete && b.centerlineComplete;
+      const relation = definiteCenterlineCollision ? { overlap: true, clearance: 0, approximate: false } : envelopeRelation;
+      const clearanceOnly = !relation.overlap && relation.approximate && relation.clearance < 0.03;
+      if (!relation.overlap && !clearanceOnly) continue;
+      const sharedConnectionIsLocal = sharedEndpointIds.some((id) => {
+        const aEndpointIndex = a.route.from === id ? 0 : 1;
+        const bEndpointIndex = b.route.from === id ? 0 : 1;
+        return distanceAlongRouteFromEndpoint(a.points, ai, nearest.s, aEndpointIndex) <= 0.20
+          && distanceAlongRouteFromEndpoint(b.points, bi, nearest.t, bEndpointIndex) <= 0.20;
+      });
+      if (sharedConnectionIsLocal) continue;
+      collision = { aSegment: ai, bSegment: bi, distance: nearest.distance, approximate: relation.approximate, clearanceOnly };
+      break;
+    }
+    if (!collision) continue;
     const bothAir = (a.route.layer === 'supply_air' && b.route.layer === 'return_air') || (a.route.layer === 'return_air' && b.route.layer === 'supply_air');
     const sameIndoorAnchor = bothAir && typeof a.route.from === 'string' && a.route.from === b.route.from && a.route.from.startsWith('indoor_');
-    if (sameIndoorAnchor) {
-      const bothConfirmed = a.route.status === 'confirmed' && b.route.status === 'confirmed';
-      const level = bothConfirmed && a.route.source_status !== 'design_requirement' && b.route.source_status !== 'design_requirement' && a.airHeightConfirmed && b.airHeightConfirmed ? 'error' : 'warning';
-      add(result, issue(level, 'supply_return_overlap', `Supply/return air envelopes overlap at ${a.route.from}: ${a.route.id} / ${b.route.id}`, a.route.id, b.route.id));
-      continue;
-    }
-    const bothConfirmed = a.route.status === 'confirmed' && b.route.status === 'confirmed';
-    const complete = Boolean(a.box && b.box && a.points.every((p) => p.y !== undefined) && b.points.every((p) => p.y !== undefined));
-    if (!bothConfirmed || !complete) continue;
-    add(result, issue(a.route.source_status !== 'design_requirement' && b.route.source_status !== 'design_requirement' ? 'error' : 'warning', 'route_overlap', `MEP route envelopes overlap: ${a.route.id} / ${b.route.id}`, a.route.id, b.route.id));
+    const requirementLike = [a.route, b.route].some((route) => route.source_status === 'design_requirement' || route.route_kind === 'requirement' || route.route_kind === 'candidate');
+    const bothConfirmed = a.route.status === 'confirmed' && b.route.status === 'confirmed' && a.complete && b.complete && !requirementLike && !collision.approximate && !collision.clearanceOnly;
+    const level = bothConfirmed ? 'error' : 'warning';
+    const code = sameIndoorAnchor && !collision.clearanceOnly ? 'supply_return_overlap' : collision.clearanceOnly ? 'route_clearance_unverified' : 'route_overlap';
+    add(result, {
+      ...issue(level, code,
+        collision.clearanceOnly
+          ? `MEP route envelopes have an approximate clearance below 0.03m: ${a.route.id} segment #${collision.aSegment} / ${b.route.id} segment #${collision.bSegment}; verify the duct section and install elevation`
+          : `MEP route envelopes ${collision.approximate ? 'may overlap (section/elevation is approximate)' : 'overlap'}: ${a.route.id} segment #${collision.aSegment} / ${b.route.id} segment #${collision.bSegment} (centerline distance ${collision.distance.toFixed(3)}m)`,
+        a.route.id, b.route.id),
+      ...(requirementLike || sameIndoorAnchor || collision.approximate ? { category: 'envelope_approximation' as const } : {}),
+    });
   }
 
   for (const ref of context.referenceConstraints ?? []) {
