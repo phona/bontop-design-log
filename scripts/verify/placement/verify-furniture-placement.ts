@@ -120,6 +120,9 @@ const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['kitchen_cabinet_run', 'range_hood'],
   ['kitchen_cabinet_run', 'fridge'],
   ['kitchen_cabinet_run', 'dishwasher'], // 2026-08-23 洗碗机嵌柜段留位（run +0.04 容差与机位边缘相接）
+  ['kitchen_cabinet_run', 'mijia_ro_purifier_1400g_under_sink_preview'], // Under-sink purifier body is intentionally contained by the sink-base run.
+  ['waterbar_low_cabinet_800_preview', 'mijia_instant_dispenser_s1_preview'], // Countertop appliance rests on the dining waterbar top.
+  ['waterbar_low_cabinet_800_preview', 'coffee_machine_em450'], // EM450 is moved to the dining waterbar top in this preview.
   ['kitchen_countertop_bridge', 'kitchen_cabinet_run'], // bridge intentionally overlaps both run ends to make one continuous countertop
   ['kitchen_countertop_bridge', 'dishwasher'], // bridge is the declared countertop over the dishwasher reservation
   ['master_dressing_table', 'dressing_stool'], // 专用凳明确收进梳妆台台下，平面 footprint 可重叠但高度不冲突

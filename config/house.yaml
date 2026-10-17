@@ -512,19 +512,26 @@ furnishings:
     # 门内右手定制半高柜：从门内向客厅延伸，柜高 1.5m；玄关侧封闭，餐厅侧开放，柜顶以上可见餐厅。
     # footprint x=11.325-11.675、z=3.00-5.00；北缘脱 w_ent_south_w 外侧完成面约 20mm；距入户门洞西缘 x=11.80 仍留 0.125m，东侧主通道 1.725m。
     - { type: entry_half_height_cabinet, x: 11.50, z: 4.00, rotation: 90 }
-    # 横置西北角，西缘齐西墙 x=7.2；桌体南移让出北侧两椅（椅背让开推拉门叠扇 z≥2.5）。
-    # 南北各两椅；东侧主通道（x>8.6）释放客厅→厨房入口。
-    - { type: dining_table, x: 7.90, z: 3.45, rotation: 0 }
-    - { type: dining_chair, x: 7.55, z: 2.75, rotation: 0 }
-    - { type: dining_chair, x: 8.25, z: 2.75, rotation: 0 }
-    - { type: dining_chair, x: 7.55, z: 4.15, rotation: 180 }
-    - { type: dining_chair, x: 8.25, z: 4.15, rotation: 180 }
+    # 2026-10-16 概念布局更新：餐桌改南北向、日常四座中心 (9.80,3.45)；来客六人时桌椅组仅作临时预演整体南移0.32m并加两端椅，不写入日常家具数量。
+    # 冰箱改到客餐厅西侧候选位，正面朝东；机身后到客卫东墙运行时约43mm。厂家净空、后罩/散热、电源与检修条件仍 site_pending。
+    # 2026-10-16 水吧V2模型预演：用800×420×850mm独立低柜候选替换落地茶吧机+390mm边柜候选；S1与同一台EM450均上台面，磨豆机未定SKU不建模。此为摆位预演，不含墙控/电源/门扇/检修通过结论。
+    - { type: dining_table, x: 9.80, z: 3.45, rotation: 90 }
+    - { type: dining_chair, x: 9.125, z: 3.00, rotation: 90 }
+    - { type: dining_chair, x: 10.475, z: 3.00, rotation: 270 }
+    - { type: dining_chair, x: 9.125, z: 3.90, rotation: 90 }
+    - { type: dining_chair, x: 10.475, z: 3.90, rotation: 270 }
     - { type: curtain_set, count: 2 }
     - { type: ceiling_light, count: 2 }
-    # 2026-10-14 fridge/kitchen trial (not a construction position): user area is south of kitchen_dining_sliding_door and west of d_ent.
-    # Agent-selected center (10.94,3.48), rot90 => world footprint x[10.64,11.24] / z[3.0635,3.8965]; 65mm runtime reveal to entry_half_height_cabinet.
-    # Manufacturer clearances + a directly accessible dedicated-circuit outlet remain site_pending (docs/pending-site-data.md #22/#33/#64).
-    - { type: fridge, x: 10.94, z: 3.48, rotation: 90 }
+    # 2026-10-16 业主确认的西侧概念位（非施工定位）：中心(7.5025,2.9865)、rotation=270，机门朝东；world footprint x[7.203,7.802] / z[2.567,3.406]。
+    # 客卫东墙实体东面 x=7.16，模型后距约43mm；厂家安装净空/背部防护/检修换机路径未确认。sock_kitchen_fridge 仍是厨房历史点位，未给新位置供电。
+    - { type: fridge, x: 7.5025, z: 2.9865, rotation: 270 }
+    # 2026-10-16 水吧V2候选柜：独立低柜800W×420D×850H，中心(7.43,3.87)，rotation=90、正面朝东；AABB x[7.22,7.64]/z[3.47,4.27]。
+    # 以当前850mm名义带复核后收为800mm外宽，给冰箱南缘和墙段端部留几何缓冲；这些不是厂家安装净距。
+    - { type: waterbar_low_cabinet_800_preview, x: 7.43, z: 3.87, rotation: 90 }
+    # 米家即热饮水机S1按业主尺寸312×106×280mm落台，面朝东；顶部y=1.13m。候选中心(7.50,3.64)，设备脚下台面y=0.85m。
+    - { type: mijia_instant_dispenser_s1_preview, x: 7.50, z: 3.64, rotation: 90 }
+    # 同一台EM450从厨房移至餐厅候选位，按220×285×305mm，面朝东；底面y=0.85m、顶面y=1.155m。未新增第二台。
+    - { type: coffee_machine_em450, x: 7.37, z: 4.00, rotation: 90 }
   kitchen:
     # 3D 用显式柜体段：北墙玻璃幕只做落地柜+台面；东墙实体墙承载灶台与烟机；冰箱已移至客餐厅候选位。
     # 北墙 run 拆两段留洗碗机位 x∈[8.50,9.10]（2026-08-23；紧贴水槽柜 x≥9.10 西侧，上下水就近；
@@ -548,6 +555,9 @@ furnishings:
     # 热水器挂厨房西侧、靠生活阳台玻璃幕墙的 w_vrv_east 实体墙厨房侧，避开阳台门洞和北墙地柜；燃气路由/CO 安全红线待物业/燃气公司确认
     - { type: water_heater, x: 7.30, z: 1.00, rotation: 270 }
     - { type: ceiling_light }
+    # 2026-10-16 水吧V2净水器机身预演：按业主图示尺寸163W×445D×379Hmm，置于水槽柜组东侧相邻格、避开水槽开孔和东墙柜段，中心(10.05,0.32)，底面y=0.08。
+    # 台面独立净水龙头位置、RO给排水、电源与检修空间不在本次配置中修改；机身为图示尺寸代理、SKU及内部格局待核。
+    - { type: mijia_ro_purifier_1400g_under_sink_preview, x: 10.05, z: 0.32, rotation: 0 }
   master_bath:
     - { type: toilet, x: 2.275, z: 1.50, rotation: 270 }  # 2026-09-08：西移25mm，使马桶东缘与 w_mbath_east 中心线齐平且不跨入实体墙
     - { type: shower_set }

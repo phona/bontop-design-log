@@ -94,6 +94,7 @@ furniture_profiles:
   bench_adjustable: { profile: freestanding }
   chair: { profile: freestanding }
   coffee_table: { profile: freestanding }
+  coffee_machine_em450: { profile: freestanding }
   desk: { profile: freestanding }
   dining_chair: { profile: freestanding }
   dining_table: { profile: freestanding }
@@ -103,6 +104,11 @@ furniture_profiles:
   floor_lamp: { profile: freestanding }
   fridge: { profile: freestanding }
   garden_entry_station: { profile: freestanding }
+  mijia_tea_bar_pro: { profile: freestanding }
+  waterbar_low_sideboard_400_preview: { profile: freestanding }
+  waterbar_low_cabinet_800_preview: { profile: freestanding }
+  mijia_instant_dispenser_s1_preview: { profile: freestanding }
+  mijia_ro_purifier_1400g_under_sink_preview: { profile: freestanding }
   gas_stove: { profile: freestanding }
   master_bedside_cabinet_350_north: { profile: freestanding }
   master_bedside_cabinet_350_south: { profile: freestanding }

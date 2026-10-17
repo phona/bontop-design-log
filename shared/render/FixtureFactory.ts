@@ -1,9 +1,11 @@
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import type { FurnishingCutout } from '../types.js';
 
 interface FixturePart {
-  shape: 'box' | 'cylinder';
+  shape: 'box' | 'rounded_box' | 'capsule' | 'cylinder';
   size: [number, number, number];
+  cornerRadius?: number;
   position?: [number, number, number];
   rotation?: [number, number, number];
   color: string;
@@ -20,6 +22,8 @@ interface FixturePart {
 interface FixtureRecipe {
   type: string;
   parts: FixturePart[];
+  /** Vertical translation for a countertop appliance relative to the room floor. */
+  offsetY?: number;
 }
 
 // 洞洞板孔阵：9 列 × 8 行、间距 0.12m 的深色小凸点，在浅色板面上读出孔洞感。
@@ -490,6 +494,160 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [0.787, 0.352, 0.002], position: [0, 0.591, -0.299], color: '#f2f1ed', metalness: 0.02, roughness: 0.49, part: 'fridge-lower-drawer-upper', materialRole: 'appliance_front' },
       { shape: 'box', size: [0.787, 0.352, 0.002], position: [0, 0.231, -0.299], color: '#f2f1ed', metalness: 0.02, roughness: 0.49, part: 'fridge-lower-drawer-lower', materialRole: 'appliance_front' },
       { shape: 'box', size: [0.803, 0.055, 0.014], position: [0, 0.0275, -0.292], color: '#36383a', metalness: 0.08, roughness: 0.55, part: 'fridge-base-shadow-plinth', materialRole: 'appliance_case' },
+    ],
+  },
+  {
+    // De'Longhi EM450 counter model: overall envelope 220W×285D×305H mm from
+    // the user's China-market listing. It is moved to the dining waterbar
+    // countertop (top y=0.85m); offset the existing 0.89m appliance geometry
+    // by 40mm and keep the controls toward local +z.
+    type: 'coffee_machine_em450',
+    offsetY: -0.04,
+    parts: [
+      // Four small feet and the lower drip tray establish the appliance base.
+      { shape: 'box', size: [0.010, 0.008, 0.012], position: [-0.083, 0.894, -0.105], color: '#45494b', metalness: 0.45, roughness: 0.45, part: 'espresso-foot-back-left', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.010, 0.008, 0.012], position: [0.083, 0.894, -0.105], color: '#45494b', metalness: 0.45, roughness: 0.45, part: 'espresso-foot-back-right', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.010, 0.008, 0.012], position: [-0.083, 0.894, 0.090], color: '#45494b', metalness: 0.45, roughness: 0.45, part: 'espresso-foot-front-left', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.010, 0.008, 0.012], position: [0.083, 0.894, 0.090], color: '#45494b', metalness: 0.45, roughness: 0.45, part: 'espresso-foot-front-right', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.008, 0.220, 0.232], position: [-0.106, 1.025, -0.014], color: '#c2c4c3', metalness: 0.74, roughness: 0.32, part: 'espresso-left-side-skin', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.008, 0.220, 0.232], position: [0.106, 1.025, -0.014], color: '#c2c4c3', metalness: 0.74, roughness: 0.32, part: 'espresso-right-side-skin', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.170, 0.052, 0.015], position: [0, 0.965, -0.135], color: '#707577', metalness: 0.45, roughness: 0.42, part: 'espresso-rear-lower-service-skirt', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.190, 0.017, 0.074], position: [0, 0.916, 0.093], color: '#242729', metalness: 0.45, roughness: 0.38, part: 'espresso-drip-tray', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.184, 0.003, 0.068], position: [0, 0.926, 0.094], color: '#73797b', metalness: 0.78, roughness: 0.31, part: 'espresso-drip-grate', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.178, 0.008, 0.008], position: [0, 0.935, 0.1385], color: '#414547', metalness: 0.56, roughness: 0.34, part: 'espresso-drip-tray-front-lip', materialRole: 'appliance_case' },
+      // Stainless-steel body, with a dark lower fascia and a smoked rear tank window.
+      { shape: 'box', size: [0.204, 0.244, 0.235], position: [0, 1.027, -0.014], color: '#b8bbbc', metalness: 0.72, roughness: 0.34, part: 'espresso-stainless-body', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.190, 0.031, 0.006], position: [0, 0.951, 0.107], color: '#2d3032', metalness: 0.22, roughness: 0.32, part: 'espresso-lower-front-fascia', materialRole: 'appliance_front' },
+      { shape: 'box', size: [0.168, 0.178, 0.004], position: [0, 1.029, -0.133], color: '#51585a', metalness: 0.20, roughness: 0.42, part: 'espresso-rear-water-tank-window', materialRole: 'appliance_case' },
+      // Cup-warming plate and two restrained chrome rails on the top.
+      { shape: 'box', size: [0.190, 0.014, 0.258], position: [0, 1.166, -0.004], color: '#c7c9c8', metalness: 0.78, roughness: 0.30, part: 'espresso-cup-warmer', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.006, 0.008, 0.232], position: [-0.076, 1.181, -0.004], color: '#73797b', metalness: 0.82, roughness: 0.28, part: 'espresso-cup-rail-left', materialRole: 'hardware' },
+      { shape: 'box', size: [0.006, 0.008, 0.232], position: [0.076, 1.181, -0.004], color: '#73797b', metalness: 0.82, roughness: 0.28, part: 'espresso-cup-rail-right', materialRole: 'hardware' },
+      // Front control fascia: pressure gauge, four small buttons, and one selector knob.
+      { shape: 'box', size: [0.190, 0.076, 0.006], position: [0, 1.108, 0.107], color: '#303436', metalness: 0.30, roughness: 0.35, part: 'espresso-control-panel', materialRole: 'appliance_front' },
+      { shape: 'cylinder', size: [0.020, 0.006, 0.020], position: [-0.053, 1.114, 0.113], rotation: [Math.PI / 2, 0, 0], color: '#25282a', metalness: 0.55, roughness: 0.28, part: 'espresso-pressure-gauge-bezel', materialRole: 'appliance_front' },
+      { shape: 'cylinder', size: [0.016, 0.002, 0.016], position: [-0.053, 1.114, 0.117], rotation: [Math.PI / 2, 0, 0], color: '#e5e3dc', metalness: 0.12, roughness: 0.42, part: 'espresso-pressure-gauge-face', materialRole: 'appliance_front' },
+      { shape: 'box', size: [0.0015, 0.012, 0.0015], position: [-0.050, 1.114, 0.119], rotation: [0, 0, -0.48], color: '#343638', roughness: 0.45, part: 'espresso-pressure-gauge-needle', materialRole: 'appliance_front' },
+      { shape: 'cylinder', size: [0.0055, 0.007, 0.0055], position: [-0.008, 1.119, 0.114], rotation: [Math.PI / 2, 0, 0], color: '#d8dad8', metalness: 0.80, roughness: 0.26, part: 'espresso-button-one', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.0055, 0.007, 0.0055], position: [0.018, 1.119, 0.114], rotation: [Math.PI / 2, 0, 0], color: '#d8dad8', metalness: 0.80, roughness: 0.26, part: 'espresso-button-two', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.0055, 0.007, 0.0055], position: [0.044, 1.119, 0.114], rotation: [Math.PI / 2, 0, 0], color: '#d8dad8', metalness: 0.80, roughness: 0.26, part: 'espresso-button-three', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.0055, 0.007, 0.0055], position: [0.070, 1.119, 0.114], rotation: [Math.PI / 2, 0, 0], color: '#d8dad8', metalness: 0.80, roughness: 0.26, part: 'espresso-button-four', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.010, 0.028, 0.010], position: [0.080, 1.181, 0.090], color: '#34383a', metalness: 0.42, roughness: 0.31, part: 'espresso-steam-selector-knob', materialRole: 'hardware' },
+      // Brew group, portafilter and right-side steam wand are modeled as separate serviceable pieces.
+      { shape: 'cylinder', size: [0.035, 0.027, 0.035], position: [0, 0.994, 0.112], rotation: [Math.PI / 2, 0, 0], color: '#777c7d', metalness: 0.84, roughness: 0.25, part: 'espresso-brew-group', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.022, 0.006, 0.022], position: [0, 0.994, 0.130], rotation: [Math.PI / 2, 0, 0], color: '#c7c9c8', metalness: 0.86, roughness: 0.23, part: 'espresso-portafilter-collar', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.008, 0.082, 0.008], position: [0.055, 0.993, 0.132], rotation: [0, 0, Math.PI / 2], color: '#363a3c', metalness: 0.52, roughness: 0.30, part: 'espresso-portafilter-handle', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.004, 0.016, 0.004], position: [0.095, 0.993, 0.132], rotation: [0, 0, Math.PI / 2], color: '#9b7650', metalness: 0.35, roughness: 0.52, part: 'espresso-portafilter-handle-end', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.0025, 0.024, 0.0025], position: [-0.012, 0.967, 0.135], color: '#9a9d9d', metalness: 0.78, roughness: 0.25, part: 'espresso-coffee-outlet-left', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.0025, 0.024, 0.0025], position: [0.012, 0.967, 0.135], color: '#9a9d9d', metalness: 0.78, roughness: 0.25, part: 'espresso-coffee-outlet-right', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.004, 0.105, 0.004], position: [0.099, 0.995, 0.060], color: '#c4c7c7', metalness: 0.88, roughness: 0.21, part: 'espresso-steam-wand', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.0035, 0.035, 0.0035], position: [0.099, 1.046, 0.071], rotation: [Math.PI / 2, 0, 0], color: '#c4c7c7', metalness: 0.88, roughness: 0.21, part: 'espresso-steam-wand-joint', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.004, 0.018, 0.004], position: [0.099, 0.945, 0.060], color: '#83898a', metalness: 0.76, roughness: 0.27, part: 'espresso-steam-wand-tip', materialRole: 'hardware' },
+    ],
+  },
+  {
+    // Xiaomi Mijia Instant Hot Water Dispenser S1: 312W×106D×280H mm supplied
+    // by the user. This is a countertop dispenser preview; no logo or hidden
+    // water/electrical connection is implied.
+    type: 'mijia_instant_dispenser_s1_preview',
+    offsetY: 0.85,
+    parts: [
+      // V5 makes the appliance's depth axis readable: local +z faces east and
+      // holds the dispensing bay/tray; local -z faces west and holds the rear
+      // tank shell. The 312W×106D×280H mm envelope is unchanged.
+      { shape: 'rounded_box', size: [0.300, 0.014, 0.098], cornerRadius: 0.006, position: [0, 0.007, 0], color: '#dcddda', roughness: 0.58, part: 'dispenser-base', materialRole: 'appliance_case' },
+      { shape: 'rounded_box', size: [0.245, 0.238, 0.047], cornerRadius: 0.010, position: [0.015, 0.133, -0.0295], color: '#eeeeea', roughness: 0.54, part: 'dispenser-west-rear-tank-shell', materialRole: 'appliance_case' },
+      { shape: 'rounded_box', size: [0.104, 0.184, 0.006], cornerRadius: 0.003, position: [-0.045, 0.124, -0.001], color: '#f0f0ec', roughness: 0.55, part: 'dispenser-east-front-bay-rear-wall', materialRole: 'appliance_case' },
+      { shape: 'rounded_box', size: [0.012, 0.184, 0.057], cornerRadius: 0.003, position: [-0.107, 0.124, 0.0245], color: '#f1f1ed', roughness: 0.54, part: 'dispenser-east-front-bay-south-cheek', materialRole: 'appliance_case' },
+      { shape: 'rounded_box', size: [0.012, 0.184, 0.057], cornerRadius: 0.003, position: [0.017, 0.124, 0.0245], color: '#f1f1ed', roughness: 0.54, part: 'dispenser-east-front-bay-north-divider', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.096, 0.144, 0.002], position: [-0.045, 0.124, 0.008], color: '#d2d4d1', roughness: 0.58, part: 'dispenser-east-front-cavity-shadow', materialRole: 'appliance_front' },
+      { shape: 'rounded_box', size: [0.312, 0.062, 0.106], cornerRadius: 0.010, position: [0, 0.247, 0], color: '#f5f5f1', roughness: 0.50, part: 'dispenser-full-width-head', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.296, 0.002, 0.046], position: [0, 0.279, -0.029], color: '#ebebe8', roughness: 0.50, part: 'dispenser-west-rear-tank-lid', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.296, 0.002, 0.046], position: [0, 0.279, 0.029], color: '#f0f0ed', roughness: 0.50, part: 'dispenser-east-front-head-lid', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.252, 0.002, 0.004], position: [0.018, 0.214, 0.050], color: '#d9dad7', roughness: 0.50, part: 'dispenser-head-underside-seam', materialRole: 'appliance_front' },
+      { shape: 'cylinder', size: [0.005, 0.024, 0.005], position: [-0.045, 0.198, 0.032], color: '#919696', metalness: 0.55, roughness: 0.32, part: 'dispenser-east-front-downward-spout', materialRole: 'hardware' },
+      { shape: 'capsule', size: [0.008, 0.154, 0.002], position: [0.120, 0.136, -0.005], color: '#71645a', roughness: 0.54, part: 'dispenser-east-facing-tank-level-indicator', materialRole: 'appliance_front' },
+      { shape: 'rounded_box', size: [0.176, 0.018, 0.044], cornerRadius: 0.007, position: [-0.045, 0.023, 0.031], color: '#dcddda', roughness: 0.55, part: 'dispenser-east-front-drip-tray', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.166, 0.002, 0.038], position: [-0.045, 0.033, 0.031], color: '#b9bcba', metalness: 0.18, roughness: 0.56, part: 'dispenser-east-front-tray-grate', materialRole: 'hardware' },
+      ...Array.from({ length: 8 }, (_, index) => ({
+        shape: 'box' as const,
+        size: [0.152, 0.0015, 0.002] as [number, number, number],
+        position: [-0.045, 0.035, 0.014 + index * 0.0045] as [number, number, number],
+        color: '#555b5b',
+        metalness: 0.24,
+        roughness: 0.42,
+        part: `dispenser-east-front-tray-drain-slot-${index + 1}`,
+        materialRole: 'hardware',
+      })),
+      { shape: 'rounded_box', size: [0.020, 0.002, 0.014], cornerRadius: 0.004, position: [-0.045, 0.036, 0.032], color: '#515657', roughness: 0.52, part: 'dispenser-east-front-tray-drain-well', materialRole: 'hardware' },
+    ],
+  },
+  {
+    // Xiaomi Mijia Smart Tea Bar Pro: 310W×315D×1155H mm from the user's SKU listing.
+    // This is a floor-standing, removable appliance preview, not built-in furniture.
+    // White upright body, top touch panel and two dispensing heads follow the
+    // published product silhouette; no logo, glass pot or installation fittings are invented.
+    type: 'mijia_tea_bar_pro',
+    parts: [
+      { shape: 'box', size: [0.302, 0.028, 0.304], position: [0, 0.014, 0], color: '#e8e8e4', roughness: 0.55, part: 'tea-bar-base-plinth', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.300, 1.082, 0.300], position: [0, 0.567, -0.001], color: '#f3f3ef', roughness: 0.52, part: 'tea-bar-white-tower-body', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.005, 1.045, 0.268], position: [-0.1525, 0.568, -0.004], color: '#e5e6e2', roughness: 0.56, part: 'tea-bar-left-side-skin', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.005, 1.045, 0.268], position: [0.1525, 0.568, -0.004], color: '#e5e6e2', roughness: 0.56, part: 'tea-bar-right-side-skin', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.310, 0.035, 0.315], position: [0, 1.1375, 0], color: '#f5f5f1', roughness: 0.48, part: 'tea-bar-top-cap', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.116, 0.075, 0.006], position: [0, 1.036, 0.152], color: '#24282b', metalness: 0.18, roughness: 0.28, part: 'tea-bar-touchscreen-bezel', materialRole: 'appliance_front' },
+      { shape: 'box', size: [0.098, 0.058, 0.002], position: [0, 1.037, 0.156], color: '#34404a', metalness: 0.08, roughness: 0.22, part: 'tea-bar-touchscreen', materialRole: 'appliance_front' },
+      { shape: 'box', size: [0.232, 0.012, 0.006], position: [0, 0.905, 0.152], color: '#e1e1dd', roughness: 0.60, part: 'tea-bar-outlet-panel', materialRole: 'appliance_front' },
+      { shape: 'cylinder', size: [0.009, 0.026, 0.009], position: [-0.065, 0.866, 0.139], rotation: [Math.PI / 2, 0, 0], color: '#888d8f', metalness: 0.72, roughness: 0.32, part: 'tea-bar-water-spout', materialRole: 'hardware' },
+      { shape: 'cylinder', size: [0.009, 0.026, 0.009], position: [0.065, 0.866, 0.139], rotation: [Math.PI / 2, 0, 0], color: '#888d8f', metalness: 0.72, roughness: 0.32, part: 'tea-bar-tea-spout', materialRole: 'hardware' },
+      { shape: 'box', size: [0.220, 0.016, 0.078], position: [0, 0.817, 0.1165], color: '#d5d6d2', roughness: 0.48, part: 'tea-bar-cup-drip-tray', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.212, 0.003, 0.070], position: [0, 0.827, 0.1165], color: '#83898b', metalness: 0.72, roughness: 0.32, part: 'tea-bar-tray-grid', materialRole: 'hardware' },
+      { shape: 'box', size: [0.250, 0.010, 0.004], position: [0, 0.355, 0.151], color: '#d9dad6', roughness: 0.60, part: 'tea-bar-lower-door-seam', materialRole: 'appliance_front' },
+      { shape: 'box', size: [0.006, 0.170, 0.003], position: [0.108, 0.275, 0.152], color: '#b6b9b7', roughness: 0.62, part: 'tea-bar-lower-door-pull', materialRole: 'hardware' },
+      { shape: 'box', size: [0.112, 0.005, 0.055], position: [0, 1.119, 0.112], color: '#e0e1dd', roughness: 0.50, part: 'tea-bar-upper-cup-rest', materialRole: 'appliance_case' },
+    ],
+  },
+  {
+    // Dining waterbar low cabinet preview: 800W along the wall ×420D×850H.
+    // Independent furniture with a single shallow top drawer and closed lower doors.
+    type: 'waterbar_low_cabinet_800_preview',
+    parts: [
+      { shape: 'box', size: [0.776, 0.070, 0.396], position: [0, 0.035, 0], color: '#65584b', roughness: 0.60, part: 'waterbar-800-plinth', materialRole: 'plinth' },
+      { shape: 'box', size: [0.800, 0.730, 0.420], position: [0, 0.435, 0], color: '#ece9e2', roughness: 0.63, part: 'waterbar-800-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.800, 0.050, 0.420], position: [0, 0.825, 0], color: '#c8aa86', roughness: 0.48, part: 'waterbar-800-light-oak-top', materialRole: 'countertop' },
+      { shape: 'box', size: [0.760, 0.112, 0.008], position: [0, 0.742, 0.206], color: '#f3f0e9', roughness: 0.55, part: 'waterbar-800-shallow-drawer-front', materialRole: 'drawer_front' },
+      { shape: 'box', size: [0.376, 0.548, 0.008], position: [-0.198, 0.354, 0.206], color: '#f0ede6', roughness: 0.58, part: 'waterbar-800-lower-door-left', materialRole: 'door_front' },
+      { shape: 'box', size: [0.376, 0.548, 0.008], position: [0.198, 0.354, 0.206], color: '#f0ede6', roughness: 0.58, part: 'waterbar-800-lower-door-right', materialRole: 'door_front' },
+      { shape: 'box', size: [0.008, 0.548, 0.006], position: [0, 0.354, 0.207], color: '#c8c0b4', roughness: 0.62, part: 'waterbar-800-door-seam', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.070, 0.010, 0.006], position: [0, 0.752, 0.207], color: '#756957', roughness: 0.44, part: 'waterbar-800-drawer-pull', materialRole: 'hardware' },
+    ],
+  },
+  {
+    // Freestanding water-bar storage module preview: 390mm run × 400mm depth,
+    // 920mm finished top. It is a separate movable cabinet beside the floor-standing
+    // tea bar, not an appliance enclosure. The rear wall gap is geometric only, not a service aisle.
+    type: 'waterbar_low_sideboard_400_preview',
+    parts: [
+      { shape: 'box', size: [0.376, 0.060, 0.386], position: [0, 0.030, 0], color: '#77695b', roughness: 0.58, part: 'waterbar-module-recessed-plinth', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.390, 0.820, 0.400], position: [0, 0.470, 0], color: '#e8e4dc', roughness: 0.66, part: 'waterbar-module-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.390, 0.040, 0.400], position: [0, 0.900, 0], color: '#eeeae2', roughness: 0.48, part: 'waterbar-module-countertop', materialRole: 'countertop' },
+      { shape: 'box', size: [0.180, 0.690, 0.004], position: [-0.099, 0.485, 0.198], color: '#f0ece4', roughness: 0.60, part: 'waterbar-module-door-left', materialRole: 'door_front' },
+      { shape: 'box', size: [0.180, 0.690, 0.004], position: [0.099, 0.485, 0.198], color: '#f0ece4', roughness: 0.60, part: 'waterbar-module-door-right', materialRole: 'door_front' },
+      { shape: 'box', size: [0.006, 0.692, 0.003], position: [0, 0.485, 0.1985], color: '#c9c2b7', roughness: 0.62, part: 'waterbar-module-door-seam', materialRole: 'door_seam' },
+    ],
+  },
+  {
+    // Xiaomi Mijia 2-series 1400G purifier body: user supplied 163W×445D×379H mm.
+    // Previewed as an under-counter body in the sink-base run; feed, drain, tap,
+    // filter-service space and the internal cabinet partition remain unverified.
+    type: 'mijia_ro_purifier_1400g_under_sink_preview',
+    offsetY: 0.08,
+    parts: [
+      { shape: 'box', size: [0.163, 0.340, 0.445], position: [0, 0.189, 0], color: '#f0f0ec', roughness: 0.58, part: 'ro-purifier-main-body', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.155, 0.020, 0.432], position: [0, 0.369, 0], color: '#e3e4df', roughness: 0.54, part: 'ro-purifier-top-cap', materialRole: 'appliance_case' },
+      { shape: 'box', size: [0.002, 0.245, 0.055], position: [0.0805, 0.205, 0.134], color: '#555c5d', roughness: 0.36, part: 'ro-purifier-side-window', materialRole: 'appliance_front' },
+      { shape: 'box', size: [0.045, 0.018, 0.003], position: [0, 0.315, 0.221], color: '#d7d9d6', roughness: 0.46, part: 'ro-purifier-service-indicator', materialRole: 'appliance_front' },
+      { shape: 'cylinder', size: [0.008, 0.050, 0.008], position: [-0.048, 0.025, -0.180], color: '#50575a', roughness: 0.50, part: 'ro-purifier-foot-left', materialRole: 'appliance_case' },
+      { shape: 'cylinder', size: [0.008, 0.050, 0.008], position: [0.048, 0.025, -0.180], color: '#50575a', roughness: 0.50, part: 'ro-purifier-foot-right', materialRole: 'appliance_case' },
     ],
   },
   {
@@ -1050,7 +1208,11 @@ function addPart(
 ): THREE.Mesh {
   const geo = part.shape === 'cylinder'
     ? new THREE.CylinderGeometry(part.size[0], part.size[0], part.size[1], 12)
-    : new THREE.BoxGeometry(...part.size);
+    : part.shape === 'rounded_box'
+      ? new RoundedBoxGeometry(...part.size, 3, part.cornerRadius ?? 0.004)
+      : part.shape === 'capsule'
+        ? capsuleGeometry(part.size)
+        : new THREE.BoxGeometry(...part.size);
   const materialRole = part.materialRole ?? (surface ?? 'body');
   const isOverlaySurface = materialRole === 'door_front'
     || materialRole === 'drawer_front'
@@ -1091,6 +1253,26 @@ function addPart(
   if (surface) mesh.userData.surface = surface;
   group.add(mesh);
   return mesh;
+}
+
+function capsuleGeometry([width, height, depth]: [number, number, number]): THREE.ExtrudeGeometry {
+  const radius = width / 2;
+  const straightHalf = Math.max(0, height / 2 - radius);
+  const shape = new THREE.Shape();
+  shape.moveTo(-radius, -straightHalf);
+  shape.lineTo(-radius, straightHalf);
+  shape.absarc(0, straightHalf, radius, Math.PI, 0, true);
+  shape.lineTo(radius, -straightHalf);
+  shape.absarc(0, -straightHalf, radius, 0, -Math.PI, true);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: false,
+    steps: 1,
+    curveSegments: 12,
+  });
+  geometry.translate(0, 0, -depth / 2);
+  return geometry;
 }
 
 function addBox(group: THREE.Group, fixtureType: string, index: number, size: [number, number, number], position: [number, number, number], color: string, options: Partial<FixturePart> = {}, surface?: string): THREE.Mesh {
@@ -1368,7 +1550,14 @@ export function buildFixture(type: string): THREE.Group | null {
   const recipe = FIXTURE_RECIPES.find((r) => r.type === type);
   if (!recipe) return null;
   const group = new THREE.Group();
-  recipe.parts.forEach((part, index) => addPart(group, type, index, part));
+  recipe.parts.forEach((part, index) => {
+    if (recipe.offsetY === undefined) {
+      addPart(group, type, index, part);
+      return;
+    }
+    const [x, y, z] = part.position ?? [0, 0, 0];
+    addPart(group, type, index, { ...part, position: [x, y + recipe.offsetY, z] });
+  });
   return group;
 }
 

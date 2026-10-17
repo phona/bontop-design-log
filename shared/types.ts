@@ -1077,6 +1077,7 @@ export type ElectricalPointType =
   | 'night_light';
 
 export type ElectricalPointStatus = 'measured' | 'likely' | 'inferred' | 'pending';
+export type ElectricalPointServiceability = 'usable' | 'blocked' | 'superseded';
 export type WallSide = 'north' | 'south' | 'east' | 'west';
 export interface FurnitureFaceMountAnchor {
   kind: 'furniture_face';
@@ -1121,6 +1122,8 @@ export interface ElectricalPoint {
   body_height?: number;
   status?: ElectricalPointStatus;
   position_status?: ElectricalPointStatus;
+  /** Machine-readable endpoint usability; point geometry may remain for history/rendering after it stops being serviceable. */
+  serviceability_status?: ElectricalPointServiceability;
   /**
    * 智能开关零线口径（2026-10 电气 lint (c) `switch_neutral_policy_undeclared` 的落点）：
    * `true` = 底盒已预留零线（智能开关可回零线供电）、`false` = 单火线方案不回零。
@@ -1467,9 +1470,45 @@ export interface WallLampConfig {
   };
 }
 
+export interface SculpturalDomeConfig {
+  id: string;
+  type: 'dome';
+  style: 'suspended_offset_side_arch_opal_lantern';
+  finish: 'satin_warm_bronze';
+  outerWidth: number;
+  outerDepth: number;
+  totalThickness: number;
+  /** Ceiling to the diffuser's lower face. */
+  diffuserDrop: number;
+  /** Maximum diffuser diameter at the ceiling-facing rim. */
+  diffuserDiameter: number;
+  /** Diffuser diameter at the lower emitting face. */
+  diffuserBottomDiameter: number;
+  diffuserThickness: number;
+  housingBandHeight: number;
+  /** Radial stand-off for the side shell so it does not z-fight with the diffuser surface. */
+  housingBandOffset: number;
+  canopyDiameter: number;
+  canopyThickness: number;
+  suspensionRodRadius: number;
+  suspensionRods: Array<{
+    ceiling: { x: number; z: number };
+    /** Side-shell attachment measured upward from the diffuser's bottom face. */
+    diffuser: { x: number; z: number; heightFromBottom: number };
+  }>;
+  arcSpan: number;
+  arcRise: number;
+  arcDepthExtension: number;
+  arcTubeRadius: number;
+  arcFootDiameter: number;
+  arcFootHeight: number;
+  arcOffset: { x: number; z: number };
+}
+
 /**
- * 2026-10-17 DEC-2026-10-17-R1：客厅主灯改 8 头古铜木色弧臂灯，仅用于视觉预演。
- * 以 style 字面量标记该 dome 外观；详细灯具配置仍是纯渲染数据，不改电气点位。
+ * 2026-10-16 DEC-2026-10-16-R5：客厅主灯改 10 头球泡半吸顶造型。
+ * 与 SculpturalDomeConfig 同属 type 'dome'，用 style 字面量区分；
+ * 两者都保留作通用能力（同 track_light / wall_lamp 的处理）。
  */
 export interface MultiGlobeChandelierConfig {
   id: string;
@@ -1526,6 +1565,35 @@ export interface MultiGlobeChandelierConfig {
   }>;
 }
 
+/**
+ * 2026-10-16 R12：餐厅吊灯改半吸顶（DEC-2026-10-16-R12）。
+ * 与其它 dome 变体同属 type 'dome'/'ceiling_light'，用 style 字面量区分。
+ */
+export interface SemiFlushDomeConfig {
+  id: string;
+  type: 'ceiling_light';
+  style: 'semi_flush_ceiling_light';
+  /** 餐厅半吸顶无黑色件（黑只留在客厅主灯 hub），标签须与 SemiFlushDomeGeometry 实际材质一致。 */
+  finish: 'chrome_opal';
+  /** Fixture envelope diameter along x. */
+  outerWidth: number;
+  /** Fixture envelope diameter along z. */
+  outerDepth: number;
+  /** Ceiling anchor plane to the lowest visible point. */
+  totalThickness: number;
+  canopyDiameter: number;
+  canopyThickness: number;
+  /** Stem length between the canopy bottom and the diffuser top. */
+  stemLength: number;
+  stemRadius: number;
+  /** Shallow dome diffuser: wider upper rim, narrower lower face. */
+  diffuserTopDiameter: number;
+  diffuserBottomDiameter: number;
+  diffuserDepth: number;
+  /** Thin metal rim at the diffuser lower face. */
+  rimTubeRadius: number;
+}
+
 /** 2026-10-17 R8：餐厅奶油云团灯主图比例预演；具体泡数/吊球长度是视觉估值。 */
 export interface CloudOrbCeilingLightConfig {
   id: string;
@@ -1555,8 +1623,7 @@ export interface CloudOrbCeilingLightConfig {
   }>;
 }
 
-export type DetailedLightingFixtureConfig = TrackLightConfig | WallLampConfig | MultiGlobeChandelierConfig | CloudOrbCeilingLightConfig;
-
+export type DetailedLightingFixtureConfig = TrackLightConfig | WallLampConfig | SculpturalDomeConfig | MultiGlobeChandelierConfig | SemiFlushDomeConfig | CloudOrbCeilingLightConfig;
 export interface LightingRenderConfig {
   fixtures: DetailedLightingFixtureConfig[];
 }
@@ -1792,6 +1859,12 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   low_room_cabinet: { width: 0.40, depth: 1.20 }, // 2026-08-26 书房东墙低柜，世界 footprint 0.40×1.20m；配置 rotation=0 沿东墙南北向展开，柜门朝西，不是健身器材收纳
   chair: { width: 0.5, depth: 0.5 },
   fridge: { width: 0.833, depth: 0.600 }, // HR-518WUFIPZ visual-trial body footprint; height is rendered by FixtureFactory (1.910m)
+  coffee_machine_em450: { width: 0.220, depth: 0.285 }, // User-supplied EM450 SKU dimensions; height is rendered by FixtureFactory (0.305m)
+  mijia_tea_bar_pro: { width: 0.310, depth: 0.315 }, // User-supplied Mijia Tea Bar Pro dimensions; height is rendered by FixtureFactory (1.155m)
+  waterbar_low_sideboard_400_preview: { width: 0.390, depth: 0.400 }, // Freestanding modular low cabinet candidate; top height 0.92m is rendered by FixtureFactory
+  waterbar_low_cabinet_800_preview: { width: 0.800, depth: 0.420 }, // 800mm wall run ×420mm depth; total height 0.85m in FixtureFactory
+  mijia_instant_dispenser_s1_preview: { width: 0.312, depth: 0.106 }, // User-supplied S1 countertop dispenser dimensions; height 0.28m
+  mijia_ro_purifier_1400g_under_sink_preview: { width: 0.163, depth: 0.445 }, // User-supplied purifier body footprint; height 0.379m
   gas_stove: { width: 0.75, depth: 0.6 },
   range_hood: { width: 0.9, depth: 0.5 },
   sink: { width: 0.8, depth: 0.6 },

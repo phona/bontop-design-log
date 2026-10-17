@@ -172,6 +172,14 @@ waivers:
     owner: 业主
     expires: 2027-06-30
 
+  - id: kitchen_ro_purifier_inside_sink_base
+    rule: pen.furniture.furniture
+    pair: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9]
+    kind: contained
+    reason: "净水器机身作为业主给定尺寸的台下包络预演，位于北墙水槽柜组东侧收纳格内；当前橱柜运行时carcass是占满内部的简化外形盒，豁免仅表达‘设备收在柜内’的预期包含关系。真实隔板、存水弯、滤芯抽取、进排水和插座位置仍待橱柜/RO SKU/现场复尺核验，现场结论回来前不得把此豁免解释为施工通过。"
+    owner: 业主
+    expires: 2027-06-30
+
   - id: kitchen_cooktop_cutout
     rule: pen.furniture.furniture
     pair: [furniture:kitchen:kitchen_cabinet_run:4, furniture:kitchen:gas_stove:5]
@@ -241,9 +249,9 @@ envelopes:
     - id: env.fridge.door
       type: fridge
       kind: appliance_door
-      open_face: west
+      open_face: east
       swing_m: 0.6
-      declared_basis: "2026-10-14 HR-518WUFIPZ 3D trial candidate in living_dining (10.94,3.48), rotation=90, modeled door faces west into dining circulation; 0.60m opening envelope is a visual study assumption, not confirmed hinge/reversible-door or manufacturer installation data. Check both slider states; keep final opening/installation clearance site_pending."
+      declared_basis: "2026-10-16 owner-approved west-side layout concept in living_dining (7.5025,2.9865), rotation=270, modeled front/door faces east into dining circulation; 0.60m opening envelope remains a visual study assumption, not confirmed hinge/reversible-door or manufacturer installation data. Check both slider states; keep final opening/installation clearance site_pending."
     - id: env.dishwasher.door
       type: dishwasher
       kind: appliance_door
