@@ -5,6 +5,7 @@ import { buildMepBaySillCollisionVolumes, buildMepFurnitureCollisionVolumes } fr
 import type { OverlayConfig } from '../../../server/overlay-merge.js';
 import { endpointSourcesFromFacts, parseMepCoordination, validateMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
 import { lintLevel, lintMepCoordination, MEP_LINT_CATEGORIES, type MepLintResult } from '../../../shared/mep-hvac-lint.js';
+import { appendUnadjudicatedWarningFindings, parseMepWarningAdjudication } from '../../../shared/mep-warning-adjudication.js';
 import { parseElectricalPoints, parsePlumbingPoints } from '../../../shared/project-render-facts-schema.js';
 import type { ProjectRenderFacts } from '../../../shared/types.js';
 
@@ -54,6 +55,12 @@ if (jsonOutput) {
 let result: MepLintResult;
 try {
   result = runMepLint();
+  // DEC-2026-10-17-R19 交付契约：must_fix 清零之外，报告里存活的每个 warning 类
+  // 必须在 config/mep-warning-adjudication.yaml 表态（accepted + DEC 全引 + 复核
+  // owner/trigger）；未表态的类本身成为 must_fix error——「全绿」才等价于「可交出
+  // 人工检验并落地」，而不是还挂着一堆低级问题。
+  const registry = parseMepWarningAdjudication(readFileSync('config/mep-warning-adjudication.yaml', 'utf8'));
+  appendUnadjudicatedWarningFindings(result, registry);
 } finally {
   console.log = originalLog;
   console.warn = originalWarn;

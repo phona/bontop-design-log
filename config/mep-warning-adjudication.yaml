@@ -1,0 +1,24 @@
+version: '1'
+# ─── MEP lint warning 交付表态登记册（DEC-2026-10-17-R19） ──────────────────────
+# 交付判据：verify:mep 全绿 = must_fix 清零 + 报告里存活的每个 warning 类在下方
+# 登记 accepted（dec_ref 必须是 DEC 全引，owner/trigger 写明由谁、何时复核）。
+# 未登记的 warning 类会被 verify:mep 判为 warning_class_unadjudicated error。
+#
+# 表态纪律：
+#   - accepted 是人工断言——「接受为已知近似/显形声明，等登记的 trigger 复核」，
+#     不是「忽略」；owner 在 trigger 时必须逐条复核并更新本表或清掉该类。
+#   - 正确处置是「修掉」的类不要来这里登记——修掉后类自然消失。
+#   - 撤销表态 = 删除条目 = 该类回到未表态 error。
+adjudications:
+  - code: route_overlap_declared_trunk
+    verdict: accepted
+    dec_ref: DEC-2026-10-17-R18
+    scope: "R16 shared_trunk_with 汇流声明对：物理上同一根管的三通/同立管合并段，lint 显形供复核"
+    owner: "量房 + 施工方"
+    trigger: "量房日逐条复核管位与合并关系；不实者删除声明并重画"
+  - code: bay_sill_crossing_declared
+    verdict: accepted
+    dec_ref: DEC-2026-10-17-R18
+    scope: "R17 sill_crossings 台体穿越声明对：端点位于台体覆盖区内、沿墙脸套管穿越"
+    owner: "量房 + 施工方"
+    trigger: "量房日复核穿越位置与套管方案；不实者删除声明并重画"
