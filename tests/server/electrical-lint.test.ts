@@ -34,16 +34,16 @@ test('real electrical topology parses and lints', () => {
   const result = lintElectricalTopology(topology, points, layoutContext());
   assert.equal(topology.circuits.length, 20); // DEC-2026-10-03-R1：25 路合并至 19 路；DEC-2026-10-04-R2：+外机专用回路；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）；DEC-2026-10-13-R5：删电视墙灯带整条 lighting_tv_ambient 回路（21→20）
   assert.equal(topology.controls.length, 9); // DEC-2026-10-12-R2 删 control_mbath_light / control_gbath_light 后 11→9
-  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 15); // R15 起夜灯并入照明回路；R12 删除客卫 3 灯、R15 删除 NP-4b（24→20）；R1 删主卧两盏壁灯（20→18）；R2 删两卫平板灯（18→16）；DEC-2026-10-13-R5 删电视墙灯带（16→15）板灯（18→16）
-  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 41); // 2026-10-05 R15 客房床头插座 ×2 并入 ordinary_power_parent_child（39→41） // DEC-2026-10-03-R1：+sock_living_tv_high +sock_kitchen_counter_east
-  assert.equal(result.counts.coveredPoints, 70); // R15 增起夜点与床头插座；R12 删除客卫 3 灯、R15 删除 NP-4b 后 79→75；R1 删两盏壁灯后 75→73；R2 删两卫平板灯后 73→71；DEC-2026-10-13-R5 删电视墙灯带后 71→70（switch 点不计 covered，故删 switch_mbath/switch_gbath 不影响本数）。床头双控 switch_guest_bed 非负载点，仍计未覆盖
+  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 17); // R15 起夜灯并入照明回路；R12 删除客卫 3 灯、R15 删除 NP-4b（24→20）；R1 删主卧两盏壁灯（20→18）；R2 删两卫平板灯（18→16）；DEC-2026-10-13-R5 删电视墙灯带（16→15）；DEC-2026-10-17-R20 照明两回路 +light_balcony_dome/+night_living_mid（15→17）
+  assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 43); // 2026-10-05 R15 客房床头插座 ×2 并入 ordinary_power_parent_child（39→41）；DEC-2026-10-03-R1：+sock_living_tv_high +sock_kitchen_counter_east；DEC-2026-10-17-R20 +sock_waterbar/+sock_weakbox/+sock_kitchen_east_counter、−sock_parent_bed_l（41→43）
+  assert.equal(result.counts.coveredPoints, 74); // R15 增起夜点与床头插座；R12 删除客卫 3 灯、R15 删除 NP-4b 后 79→75；R1 删两盏壁灯后 75→73；R2 删两卫平板灯后 73→71；DEC-2026-10-13-R5 删电视墙灯带后 71→70（switch 点不计 covered，故删 switch_mbath/switch_gbath 不影响本数）。床头双控 switch_guest_bed 非负载点，仍计未覆盖；DEC-2026-10-17-R20 −sock_kitchen_fridge/−sock_parent_bed_l、+6 新点入回路（fridge 换绑 sock_fridge_living、sock_waterbar、sock_weakbox、sock_kitchen_east_counter、light_balcony_dome、night_living_mid）70→74
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.length > 0);
   // 2026-10 三条规范规则（全部 warning）落地后的新计数：原 52 warnings = 9 dedicated + 29 uncovered + 14 pending
   // +2 卫浴防溅 +17 开关零线口径 +0 插座回路 RCD（现有 16 路均已声明"漏保"）= 71
   // DEC-2026-10-06-R2 电气兜底轮：17 个开关补 neutral: true、2 个浴霸插座补防溅盒 note → 两类归零（-19）；
   // 新增微蒸烤预留点位 sock_kitchen_oven（未激活、不进 topology 回路）→ point_uncovered +1（29→30）→ 71-19+1=53
-  assert.equal(result.warnings.length, 51); // R1/R2 删点后由 53 降为 51（point_uncovered 30→28）
+  assert.equal(result.warnings.length, 54); // R1/R2 删点后由 53 降为 51（point_uncovered 30→28）；DEC-2026-10-17-R20 +3：point_uncovered +1（net_master_ap 未入回路）、circuit_member_dangling_or_superseded +1（sock_balcony_washer blocked 显形）、pending_parameter +1（dedicated_kitchen_fridge 改绑后参数待定）51→54
   assert.equal(result.counts.byCode.rcd_missing_on_socket_circuit ?? 0, 0); // 命中 0：16 路含 socket 成员的回路 breaker 均已声明"漏保"
   assert.equal(result.counts.byCode.bath_socket_splash_box_undeclared ?? 0, 0); // DEC-2026-10-06-R2：两卫浴霸插座 note 已补防溅盒声明（2→0）
   assert.equal(result.counts.byCode.switch_neutral_policy_undeclared ?? 0, 0); // DEC-2026-10-06-R2：17 个 switch/switch_2way 已补 neutral: true（17→0）
@@ -99,7 +99,7 @@ test('lint keeps historical uncovered points as warnings and maps circuit facts'
   assert.equal(result.warnings.filter((i) => i.code === 'declared_circuit_uncovered').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered'));
   assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 0);
-  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 28); // 2026-10-05 R15：+switch_guest_bed（床头双控开关非负载点，28→29）// DEC-2026-10-06-R2：+sock_kitchen_oven（29→30）；DEC-2026-10-12-R1 删两盏壁灯（30→28）；R2 删 switch_mbath/switch_gbath 两个非负载开关点（28→26）→ 当前 26 // 外机点位已入回路，不增未覆盖
+  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 29); // 2026-10-05 R15：+switch_guest_bed（床头双控开关非负载点，28→29）// DEC-2026-10-06-R2：+sock_kitchen_oven（29→30）；DEC-2026-10-12-R1 删两盏壁灯（30→28）；R2 删 switch_mbath/switch_gbath 两个非负载开关点（28→26）→ 当前 26 // 外机点位已入回路，不增未覆盖；DEC-2026-10-17-R20：+net_master_ap 未入回路（28→29）
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'switch_master_bed_l'));
 });
 

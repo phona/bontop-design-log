@@ -10,6 +10,8 @@
 - `DEC-2026-10-08-W01` 上下水按最佳实践推断落库：water_entry / 阳台立管 落点 + 13 条路线端点绑定
 - `DEC-2026-10-08-W02` 端点绑定兜底：linter 两条新规则 + 10 处内联端点焊死 + water_heater 管道锚点
 - `DEC-2026-10-08-W03` 上下水补齐（除入户花园）：客卫热水孤岛改绑 + 两卫 4 处地漏重力排水
+- `DEC-2026-10-09-W04` 厨房烟道迁东墙冰箱旁 + 两卫浴霸排气道 infer
+- `DEC-2026-10-17-W05` 洗碗机给水补建模：faucet_kitchen_dishwasher 落库（deferred 标记）
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -86,3 +88,15 @@
 - **关联文件**：`config/plumbing.yaml`、`config/facts.yaml`、`docs/mep-construction-guidance.md`、`docs/pending-site-data.md`、`data/project-render-facts.json`、`tests/server/mep-guidance-baseline.test.ts`、`docs/decisions/12-plumbing.md`（本条）。
 - **决策人**：业主。
 
+
+### DEC-2026-10-17-W05 洗碗机给水补建模：faucet_kitchen_dishwasher 落库（deferred 标记）
+
+- **日期/来源**：2026-10-17 水电点位深度 review（DEC-2026-10-17-R20 配套）发现全模型未声明洗碗机给水——`drain_kitchen_dishwasher` 有排水点、`sock_kitchen_dishwasher` 有电位，唯独没有给水点，水电交底单会漏项。
+- **本轮决定**：新增 `faucet_kitchen_dishwasher` (9.30,0.30,h0.3,cold,DN20)，status: inferred / construction_status: pending / not_for_construction: true，自带「**本轮不画 MEP route**」deferred 标记（口径同 shower_mbath/shower_gbath）：给水自水槽下角阀三通引出，给水入户点（pending #8）与洗碗机 SKU（排水泵/接管方式）未定前画线等于编路由（pending #44 跟踪）。与 sock_kitchen_dishwasher (9.30) 同位不同系统、与 drain_kitchen_dishwasher (9.00) 同区。
+- **被本条推翻的旧结论**：无（此前是缺失而非相反结论）；同步登记机电侧 `sock_kitchen_dishwasher` x9.00→9.30 迁位（移出机身投影，见 06-electrical R20）。
+- **实质内容 / 删除审计**：纯新增 1 水路点位（32→33），无删除。
+- **「X 不工作时」**：该点位不激活→洗碗机无给水（设备未采购，本就是预留）；三通占用角阀→水槽供水仍独立。
+- **静默失效条件**：洗碗机 SKU 若为上排水泵型→接管方式与高度需复核；量房实测水槽柜角阀位与 (9.30) 偏差大则点位随移。
+- **下一步责任**：走线专项给水路线（owner=设计侧，触发=交底前排期）；SKU/量房终核（owner=业主/量房方）。
+- **验证**：verify:facts 契约 `c.plumbing_point_route_or_marked` 通过（deferred 标记生效）；fact.plumbing_points_count=33 三处镜像（facts 派生值 / mep-construction-guidance / pending-site-data #44）已同步。
+- **决策人**：设计侧执行；业主知悉（含在 R20 批次拍板范围内）。

@@ -39,10 +39,11 @@ describe('pending ledger parsing', () => {
   });
 
   it('takes every id listed after one file path', () => {
-    // 台账写法：electrical.yaml `sock_balcony_washer`/`sock_balcony_dryer`/`sock_kitchen_fridge`
-    const targets = extractTargets('electrical.yaml `sock_balcony_washer`/`sock_balcony_dryer`/`sock_kitchen_fridge`；house.yaml');
+    // 台账写法：electrical.yaml `sock_balcony_washer`/`sock_balcony_dryer`/`sock_fridge_living`
+    // （第三位原为 sock_kitchen_fridge，该点位已于 DEC-2026-10-17-R20 删除并由 sock_fridge_living 接替）
+    const targets = extractTargets('electrical.yaml `sock_balcony_washer`/`sock_balcony_dryer`/`sock_fridge_living`；house.yaml');
     // 三个 id 都要取到；末尾的 house.yaml 没有反引号 id，作为无 id 的 target 保留（不丢文件引用）
-    assert.deepEqual(targets.filter((target) => target.id).map((target) => target.id), ['sock_balcony_washer', 'sock_balcony_dryer', 'sock_kitchen_fridge']);
+    assert.deepEqual(targets.filter((target) => target.id).map((target) => target.id), ['sock_balcony_washer', 'sock_balcony_dryer', 'sock_fridge_living']);
     assert.equal(targets[0].file, 'config/electrical.yaml');
     assert.ok(targets.some((target) => target.file === 'config/house.yaml' && !target.id));
   });
@@ -222,7 +223,7 @@ describe('element census snapshot', () => {
   it('pins the element census so undeclared elements cannot slip in silently', () => {
     const elements = collectElements();
     const result = deriveElementStates({ elements, ledger: { entries: [] }, issues: [] });
-    assert.equal(result.summary.total, 157, '构件总数（电气 100 + 给排水 32 + 吊顶/HVAC 25；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100）');
+    assert.equal(result.summary.total, 163, '构件总数（电气 105 + 给排水 33 + 吊顶/HVAC 25；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33）');
     // 申报缺口的历史：b0c425c 基线 74 → 电气 46 项按依据补申报 → hvac anchor 接入 6 项
     // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15 → 吊顶分区补 DEC 溯源 10 项 → 5。
     // 本轮将烟机插座试位 (z=1.50) 显式标为 pending，故空台账快照仍留下 5 个未知：
@@ -235,10 +236,11 @@ describe('element census snapshot', () => {
     const elements = collectElements();
     const ledger = parsePendingLedger(LEDGER);
     const result = deriveElementStates({ elements, ledger, issues: [] });
-    // 接上真实台账后，#64 将冰箱旧端点显式绑为 pending；烟机插座本身亦由 config 标 pending。
+    // 接上真实台账后，#64 原绑定的冰箱旧端点 sock_kitchen_fridge 已删除（DEC-2026-10-17-R20），
+    // 其台账条目留存历史、不再绑元素；新端点 sock_fridge_living 由 config position_status 标 pending。
     // 吊顶两个分区仍无出处，不因其他 pending 项而静默归类。
     assert.equal(result.summary.undeclared, 2, '真实台账下只剩 2 个无出处的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
-    assert.equal(result.summary.pending, 28); // 包括 #61/#64 与本轮 position_status: pending 的 sock_kitchen_hood 试位
+    assert.equal(result.summary.pending, 32); // 包括 #61/#64 与本轮 position_status: pending 的 sock_kitchen_hood 试位；DEC-2026-10-17-R20 净 +4（sock_fridge_living / sock_kitchen_east_counter / sock_weakbox 新增未路由点位与 sock_gbath_towel 换墙迁移复核均落 pending，28→32，实测 derive 值）
     assert.ok((result.summary.byStatus.confirmed ?? 0) > 0, 'DEC 引用必须把构件绑成 confirmed');
   });
 });

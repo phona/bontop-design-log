@@ -176,7 +176,7 @@ links:
     mapping_status: partial
     scope:
       - {source: furnishings, select: {types: [fridge, washer, gas_stove, range_hood, water_heater, dishwasher, robot_dock_gbath]}}
-      - {source: electrical, select: {ids: [sock_kitchen_fridge, sock_kitchen_hood, sock_kitchen_gas, sock_kitchen_oven, sock_balcony_washer, sock_balcony_dryer, sock_balcony_waterheater, sock_gbath_robot]}}
+      - {source: electrical, select: {ids: [sock_fridge_living, sock_kitchen_hood, sock_kitchen_gas, sock_kitchen_oven, sock_balcony_washer, sock_balcony_dryer, sock_balcony_waterheater, sock_gbath_robot]}} # sock_kitchen_fridge → sock_fridge_living（DEC-2026-10-17-R20 冰箱点位迁客餐厅西侧重绑）
       - {source: plumbing, select: {ids: [faucet_balcony_washer, drain_balcony_washer, faucet_gbath_vanity, drain_gbath_vanity]}}
   - id: MODEL-PKG-170
     phase_id: phase_1_basic_occupancy

@@ -54,8 +54,8 @@ test('线径解析只认显式字符串，猜不了', () => {
   assert.equal(parseWireSizeMm2('待厂家铭牌核验'), null);
 });
 
-test('端点全部可解析：130 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
-  assert.equal(resolution.total, 130); // R1 删两条照明路由 137→135；R2 删四条卫浴照明路由 135→131；DEC-2026-10-13-R5 删电视墙灯带路由 131→130
+test('端点全部可解析：135 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
+  assert.equal(resolution.total, 135); // R1 删两条照明路由 137→135；R2 删四条卫浴照明路由 135→131；DEC-2026-10-13-R5 删电视墙灯带路由 131→130；DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由 130→128；同批走线专项为 7 个新点位补 7 条路线 128→135
   assert.equal(resolution.unresolved, 0);
 });
 
@@ -124,9 +124,11 @@ test('导线按 topology wire_size 分桶，不按 id 猜', () => {
   assert.deepEqual([...bySize.keys()].sort(), ['1.5', '2.5', '4.0']);
   // 20 回路 = 1.5mm²×4（照明）+ 2.5mm²×14 + 4.0mm²×2（外机/厨房）。
   // 删除 allowance 后（DEC-2026-10-07-M03），**只有画了路由的回路才进导线量**：
-  // 某个回路的点位全部未路由时该回路不出现在桶里（无管长即无导线），故 2.5mm² 现为 13 个。
+  // 某个回路的点位全部未路由时该回路不出现在桶里（无管长即无导线），故 2.5mm² 先降为 13 个；
+  // DEC-2026-10-17-R20：strong-ded-fridge 路由删除、专用冰箱回路由 sock_kitchen_fridge 改绑
+  // sock_fridge_living 且暂未画路由 → dedicated_kitchen_fridge 整路退出桶，2.5mm² 13→12。
   assert.equal(bySize.get('1.5')!.circuits.length, 4); // DEC-2026-10-13-R5 删 lighting_tv_ambient（1.5mm² 照明回路）后 5→4
-  assert.equal(bySize.get('2.5')!.circuits.length, 13);
+  assert.equal(bySize.get('2.5')!.circuits.length, 13); // DEC-2026-10-17-R20：dedicated_kitchen_fridge 无路由退出桶 13→12；同批走线专项 strong-ded-fridge-living 落地后重新入桶 12→13
   assert.equal(bySize.get('4.0')!.circuits.length, 2);
   // 未路由点位必须显形，且不得进任何采购量
   assert.equal(takeoff.coverage.unroutedPoints.length, takeoff.coverage.unroutedPointIds.length);
@@ -147,8 +149,11 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   // DEC-2026-10-08-W01 给排水 15 条路线端点由内联坐标改绑点位 id + 新增 2 条路线，97→103。
   // 新增 routed 六点：shower_mbath / shower_gbath（v1 干管本来就画到它们，只是端点是内联坐标）、
   //   faucet_kitchen_purifier / drain_balcony_floor（本轮新支路）、water_entry / drain_riser_balcony（本轮新点位）。
-  assert.equal(takeoff.coverage.routedPointIds.length, 97); // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删 strong-light-gbath/-mbath-panel/-mbath-switch/-gbath-switch 四条卫浴照明路由后 102→98；DEC-2026-10-13-R5 删 strong-light-tv 后 98→97
-  assert.equal(takeoff.coverage.byType.socket?.routed, 34);
+  // DEC-2026-10-17-R20：删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由，
+  //   sock_kitchen_fridge / sock_parent_bed_l 两点随之退出 routed（97→95）；本轮新增 7 电气点 +
+  //   faucet_kitchen_dishwasher 均未画路由，全部落在 unrouted 侧显形（routed 不增）。
+  assert.equal(takeoff.coverage.routedPointIds.length, 102); // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删四条卫浴照明路由后 102→98；DEC-2026-10-13-R5 删 strong-light-tv 后 98→97；DEC-2026-10-17-R20 删两条电源路由后 97→95；同批走线专项 7 条新路线覆盖 7 个新点位 95→102
+  assert.equal(takeoff.coverage.byType.socket?.routed, 36); // DEC-2026-10-17-R20：删 sock_kitchen_fridge / sock_parent_bed_l（原 routed）后 34→32；同批走线专项 sock_fridge_living / sock_waterbar / sock_weakbox / sock_kitchen_east_counter 四个插座点位随新路线进入 routed 32→36
   assert.equal(takeoff.coverage.byType.faucet?.routed, 5);
   assert.equal(takeoff.coverage.byType.shower?.routed, 2);
   assert.equal(takeoff.coverage.byType.drain?.routed, 11);
@@ -159,7 +164,7 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   assert.equal(takeoff.coverage.byType.drain_riser?.routed, 4);
   assert.equal(takeoff.coverage.byType.water_supply?.routed, 1);
   assert.equal(takeoff.coverage.byType.water_heater?.routed, 1);
-  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 97); // R1：电气点位 107→105、已路由 104→102；R2：电气点位 105→101、已路由 102→98；DEC-2026-10-13-R5 电气点位 101→100、已路由 98→97
+  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 102); // R1：电气点位 107→105、已路由 104→102；R2：电气点位 105→101、已路由 102→98；DEC-2026-10-13-R5 电气点位 101→100、已路由 98→97；DEC-2026-10-17-R20 已路由 97→95（+8 新点全部未路由：7 电气 + faucet_kitchen_dishwasher）；同批走线专项 7 条新路线后已路由 95→102
   // 未路由点位逐条显形，不进采购量
   assert.equal(takeoff.coverage.unroutedPoints.length, takeoff.coverage.unroutedPointIds.length);
 });
@@ -200,7 +205,7 @@ test('空调层与非水电设施被排除并带 reason', () => {
 });
 
 test('设备量：底盒/模数/断路器/穿墙孔', () => {
-  assert.equal(takeoff.devices.boxes, 75); // DEC-2026-10-12-R2 删 switch_mbath/switch_gbath 两个开关底盒后 77→75
+  assert.equal(takeoff.devices.boxes, 78); // DEC-2026-10-12-R2 删 switch_mbath/switch_gbath 两个开关底盒后 77→75；DEC-2026-10-17-R20 +sock_waterbar/+sock_weakbox/+sock_kitchen_east_counter 三个强电底盒（sock_fridge_living 换位 sock_kitchen_fridge 净 0；弱电 net_master_ap 与灯具点位不占强电底盒）75→78
   // 28 = ceil((20 回路 + 2P 进线 + 1 SPD) × 1.2)；DEC-2026-10-13-R5 删电视墙灯带整条照明回路后 21→20 路，模数 29→28、断路器 21→20
   assert.equal(takeoff.devices.panelModules, Math.ceil((20 + 2 + 1) * 1.2));
   assert.equal(takeoff.devices.breakers.total, 20);

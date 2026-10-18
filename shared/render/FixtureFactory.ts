@@ -753,6 +753,27 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
+    // DEC-2026-10-17-R20 客卫电热毛巾架（SKU 未选型，图示代理尺寸）：梯式 0.55(沿墙)×0.10(凸出)×0.75H，挂墙 y[1.05,1.80]。
+    // 朝向验证：w_gbath_west_open_vanity 为南北向墙（v_nw_s(5.60,3.55)→v_gbath_west_s(5.60,4.30)），
+    // house.yaml 用 wall_side=east（本体中心沿墙法向 +x 偏移）+ rotation=90。R_y(90°) 把 local +x 转到世界 −z、
+    // local +z 转到世界 +x：0.55 长边贴墙、凸出面朝东入房。几何跟随 mirror_cabinet_gbath 挂墙约定
+    // （长轴沿 local x、进深沿 local z、凸出脸朝 +z），任务规格中的 local z 轴向已整体转置 z↔x。
+    // 包络核对：x[−0.275,0.275]=0.55、y[1.05,1.80]、z[−0.04,0.05]=0.09（声明深 0.10±0.02）。
+    type: 'heated_towel_rack',
+    parts: [
+      // 两根竖轨：y[1.05,1.80]，靠墙半区（z −0.04~−0.01），给前脸挂巾留出凸出空间。
+      { shape: 'box', size: [0.03, 0.75, 0.03], position: [-0.26, 1.425, -0.025], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'rail-1', materialRole: 'hardware' },
+      { shape: 'box', size: [0.03, 0.75, 0.03], position: [0.26, 1.425, -0.025], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'rail-2', materialRole: 'hardware' },
+      // 四根横杆（加热杆）：沿 local x 连接两轨，y 在 1.15~1.70 均布（间距 0.55/3）。
+      { shape: 'box', size: [0.52, 0.03, 0.03], position: [0, 1.15, -0.025], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'rung-1', materialRole: 'hardware' },
+      { shape: 'box', size: [0.52, 0.03, 0.03], position: [0, 1.3333, -0.025], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'rung-2', materialRole: 'hardware' },
+      { shape: 'box', size: [0.52, 0.03, 0.03], position: [0, 1.5167, -0.025], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'rung-3', materialRole: 'hardware' },
+      { shape: 'box', size: [0.52, 0.03, 0.03], position: [0, 1.7, -0.025], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'rung-4', materialRole: 'hardware' },
+      // 搭巾：搭在 rung-2（y=1.3333 落在巾 y[1.125,1.475] 内）上，向凸出侧（local +z）偏移，前脸与声明包络齐平。
+      { shape: 'box', size: [0.30, 0.35, 0.05], position: [0, 1.3, 0.025], color: '#e8e1d6', roughness: 0.9, part: 'towel', materialRole: 'fabric' },
+    ],
+  },
+  {
     // 卫浴侧柜：封闭高柜 h2.0，门板朝+z（2026-08-21 主卫干区柜带）
     type: 'bath_side_cabinet',
     parts: [

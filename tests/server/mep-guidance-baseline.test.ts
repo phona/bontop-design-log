@@ -41,7 +41,7 @@ const section0 = guidance.slice(guidance.indexOf('## 0. 规模口径'), guidance
 // ─── 实算源 ──────────────────────────────────────────────────────────────────
 
 type MepLintJson = {
-  errors: Array<{ code: string }>;
+  errors: Array<{ code: string; category?: string }>;
   warnings: Array<{ code: string }>;
   counts: { errors: number; warnings: number; routes: number; resolvedRoutes: number };
   categories: Record<string, { count: number; codes: Array<{ code: string; count: number }> }>;
@@ -52,14 +52,17 @@ type ElectricalLintJson = {
   counts: { errors: number; warnings: number; byCode: Record<string, number> };
 };
 
-function runJson(script: string): unknown {
+/** DEC-2026-10-17-R20：must_fix 硬门禁未清时 verify:mep 以 exit=1 退出（severity 口径见
+ *  docs/mep-construction-guidance.md §6「2026-10-17」）。expectedStatus 把退出码契约显形：
+ *  mep 钉 1（166 项 must_fix 在册），electrical 钉 0。 */
+function runJson(script: string, expectedStatus: number): unknown {
   const run = spawnSync('npx', ['tsx', script, '--json'], { encoding: 'utf8' });
-  assert.ok(run.status === 0, `${script} --json 退出码 ${run.status}：${run.stderr ?? ''}`);
+  assert.equal(run.status, expectedStatus, `${script} --json 退出码 ${run.status}（期望 ${expectedStatus}）：${run.stderr ?? ''}`);
   return JSON.parse(run.stdout!) as unknown;
 }
 
-const mep = runJson('scripts/verify/mep/verify-mep-lint.ts') as MepLintJson;
-const electrical = runJson('scripts/verify/electrical/verify-electrical-lint.ts') as ElectricalLintJson;
+const mep = runJson('scripts/verify/mep/verify-mep-lint.ts', 1) as MepLintJson; // DEC-2026-10-17-R20：must_fix 166 在册 → exit=1 是契约，不是脚手架坏了
+const electrical = runJson('scripts/verify/electrical/verify-electrical-lint.ts', 0) as ElectricalLintJson;
 const registry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as {
   contracts: Array<{ id: string; registered_conflicts?: number; prose?: Array<{ extract: string; expect_matches?: number }> }>;
   facts: Array<{ id: string; value?: string }>;
@@ -102,8 +105,10 @@ for (const [bucket, bucketSummary] of Object.entries(mep.categories ?? {})) {
 // ─── §6：三桶 + 电气规则组与实算逐项相等（不写死总数） ─────────────────────
 
 test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必须等于实算（不写死 warning 总数）', () => {
-  // ① 0 error 契约
-  assert.equal(mep.counts.errors, 0, `verify:mep 应 0 error，实际 ${mep.counts.errors}：${JSON.stringify(mep.errors)}`);
+  // ① error 契约：DEC-2026-10-17-R20 起 must_fix 桶统一进 errors（8aef523 硬门禁），
+  //    verify:mep 的 errors = must_fix 实算 166（route_overlap 70 等）；electrical 仍 0 error。
+  assert.equal(mep.counts.errors, 166, `verify:mep must_fix errors 应为 166，实际 ${mep.counts.errors}`);
+  assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 
   // ② 文档不写死总数，只写「与实算一致」的语义；一旦有人把总数抄回来，这里立刻炸
@@ -127,7 +132,8 @@ test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必�
 
   // ④ 三桶之和 = verify:mep 总 warning（新规则落入既有桶 → 桶计数变 → 文档必须同步）
   const bucketSum = grouped.reduce((acc, r) => acc + r.count, 0);
-  assert.equal(bucketSum, mep.counts.warnings, `§6 三桶之和 ${bucketSum} ≠ verify:mep 实算 ${mep.counts.warnings}`);
+  // DEC-2026-10-17-R20：R19 硬门禁后 must_fix 桶计入 errors，三桶之和应对齐总 findings（errors+warnings=381），不再等于 warnings 单值
+  assert.equal(bucketSum, mep.counts.errors + mep.counts.warnings, `§6 三桶之和 ${bucketSum} ≠ verify:mep 总 findings ${mep.counts.errors + mep.counts.warnings}`);
 
   // ⑤ 电气：文档的「电气」行合并起来必须覆盖 byCode 全部键，且逐 code 计数一致
   assert.ok(electricRows.length >= 1, '§6 分桶表必须含电气规则组行');
@@ -143,7 +149,8 @@ test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必�
   // ⑥ MEP 侧：文档声称出现的每个 code 必须真实存在于本次 lint 输出里（防写死历史 code）
   for (const row of grouped) {
     for (const [code] of row.codes) {
-      assert.ok(code in mepPerCode, `§6 提到 ${code}，但本次 verify:mep 没有该 warning（要么漏登、要么已过时）`);
+      // DEC-2026-10-17-R20：R19 硬门禁后 must_fix 桶 code 在 error 侧，双侧注册表都算数
+      assert.ok(code in mepPerCode || code in mepErrorPerCode, `§6 提到 ${code}，但本次 verify:mep 的 warning/error 侧都没有该 code（要么漏登、要么已过时）`);
     }
   }
   // 反向：must_fix 桶与 envelope 桶里出现的 code 必须都在 §6 规则清单里有登记
@@ -226,7 +233,7 @@ test('pending-site-data 表头口径：「量表共 N 条」= 编号数，实际
   assert.equal(claimed, numbered.length, `表头声称 ${claimed} 个编号，实际编号行 ${numbered.length}`);
   assert.deepEqual(subItems, ['3a'], '子项行应恰为 #3a（#3 的 A2 HVAC 子项）');
   assert.equal(rows.length, claimed + subItems.length, '表格行数必须 = 编号数 + 子项数');
-  assert.equal(rows.length, 67, '当前口径：66 个编号 + #3a = 67 行'); // 2026-10-17 DEC-2026-10-17-R8 新增餐厅云团灯SKU/维护待核 #66；R4 新增 sofa-r #65
+  assert.equal(rows.length, 73, '当前口径：72 个编号 + #3a = 73 行'); // 2026-10-17 DEC-2026-10-17-R8 新增餐厅云团灯SKU/维护待核 #66；R4 新增 sofa-r #65；DEC-2026-10-17-R20 水电点位 review 落地批新增 #67–#72（67→73）
 });
 
 // ─── 治理台账：逐条与实算一致，且覆盖全部实算 code ───────────────────────
@@ -299,7 +306,19 @@ test('文档不许再把 2026-09-07 的快照当现行基线', () => {
 // ─── MEP error 侧：LINT 一侧的硬门禁必须仍然为空 ─────────────────────────
 
 test('verify:mep / verify:electrical 的 error 侧必须为空，且 error code 与台账一致', () => {
-  assert.deepEqual(Object.keys(mepErrorPerCode), [], 'verify:mep 不允许出现 error（出现即分桶与台账都要重审）');
+  // DEC-2026-10-17-R20 口径：verify:mep 的 error 侧不再为空（must_fix 硬门禁 166 项显形），
+  // 但 error 必须全部落在 must_fix 桶——出现 must_fix 之外的 error 仍然禁止（分桶契约不破）。
+  // R19 裁决通道的 13 条以 warning_class_unadjudicated 为 code 挂 must_fix 桶，
+  // 桶代码明细里保留的是原 warning 类 code，故这两套 code 都算合法。
+  const mustFixBucketCodes = new Set((mep.categories.must_fix_before_briefing?.codes ?? []).map((c) => c.code));
+  assert.ok(mep.counts.errors > 0, 'must_fix 硬门禁清零前 error 侧不得为空（清零后本断言随 166 一起改）');
+  for (const error of mep.errors) {
+    assert.equal(error.category, 'must_fix_before_briefing', `error ${error.code} 必须属 must_fix_before_briefing 桶，实际 ${error.category}`);
+    assert.ok(
+      mustFixBucketCodes.has(error.code) || error.code === 'warning_class_unadjudicated',
+      `error code ${error.code} 必须在 must_fix 桶代码明细里（或为 R19 裁决通道 warning_class_unadjudicated）`,
+    );
+  }
   assert.deepEqual(Object.keys(perCode(electrical.errors)), [], 'verify:electrical 不允许出现 error');
   assert.ok(factsRun.status === 0, `verify:facts 应为 0 fail，实际退出码 ${factsRun.status}`);
 });

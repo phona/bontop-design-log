@@ -285,6 +285,26 @@ describe('bathroom fixtures', () => {
     ]);
     expect(towelSet!.children.every((child) => child.position.x <= 0.01 && child.position.x >= -0.04)).toBe(true);
   });
+
+  it('builds the guest-bath heated towel rack as a ladder hugging its wall (DEC-2026-10-17-R14)', () => {
+    const rack = buildFixture('heated_towel_rack');
+    expect(rack).not.toBeNull();
+    // 2 rails + 4 rungs + 1 towel.
+    expect(rack!.children.length).toBeGreaterThanOrEqual(7);
+    expect(rack!.children.some((child) => child.userData.materialRole === 'hardware')).toBe(true);
+    expect(rack!.children.some((child) => child.userData.materialRole === 'fabric')).toBe(true);
+    expect(['rail-1', 'rail-2', 'rung-1', 'rung-2', 'rung-3', 'rung-4', 'towel'].every(
+      (part) => rack!.children.some((child) => child.userData.part === part),
+    )).toBe(true);
+    rack!.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(rack!);
+    const size = box.getSize(new THREE.Vector3());
+    expect(Math.abs(box.max.y - 1.80)).toBeLessThanOrEqual(0.02);
+    expect(Math.abs(size.z - 0.10)).toBeLessThanOrEqual(0.02);
+    // 挂墙长轴沿 local x（rotation=90 后贴南北向的 w_gbath_west_open_vanity），凸出进深沿 local z 朝 +x。
+    expect(size.x).toBeCloseTo(0.55, 2);
+    expect(size.x).toBeGreaterThan(size.z);
+  });
 });
 
 describe('plumbing fixtures', () => {

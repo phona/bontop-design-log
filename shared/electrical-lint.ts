@@ -27,6 +27,19 @@ const SPLASH_BOX_DECLARATION = /防溅|防水盒/;
 //     （`neutral: true/false`，或 note 里写"零线/中性线/neutral"）。
 const SWITCH_TYPES = new Set(['switch', 'switch_2way']);
 const NEUTRAL_DECLARATION = /零线|中性线|neutral/i;
+// (d) 2026-10-17 review 盲区加固：同坐标强电点位重叠（曾漏检 ac_panel_dining 与 switch_corridor
+//     同落 (7.20,4.10) h1.3）。判据：同 room、平面距离 <0.05m、|height 差| <0.15m、双方均为强电类型。
+//     豁免：① 弱电（network/weak_panel）与强电同位双联是既有设计口径（强电集合本就不含弱电，此处双保险）；
+//     ② appearance.panel_group.id 相同 = 已声明的 86mm 双联面板（同组两位不是重叠错误）。
+const STRONG_POWER_TYPES = new Set(['socket', 'switch', 'switch_2way', 'ac_controller', 'night_light', 'floor_socket']);
+const WEAK_COLOCATION_TYPES = new Set(['network', 'weak_panel']);
+const POINT_COLLISION_PLANAR_M = 0.05;
+const POINT_COLLISION_HEIGHT_M = 0.15;
+// (e) 2026-10-17 review 盲区加固："furnishings 有 ceiling_light 预算行、electrical.yaml 无该房间任何
+//     照明点位"（生活阳台复发过一次）。count>0 的 ceiling_light 行（count 缺省=1，与
+//     ProjectCatalog.getFurnishingCounts 的 `count ?? 1` 同口径）要求该房间至少一个照明类点位。
+//     照明集合取五类常用顶面/低位照明；wall_lamp/led_strip/track_light 不满足本检查（按 review 规格收敛）。
+const FURNISHING_LIGHT_POINT_TYPES = new Set(['dome', 'downlight', 'pendant', 'ceiling_light', 'night_light']);
 
 function distanceToSegment(point: { x: number; z: number }, segment: { x1: number; z1: number; x2: number; z2: number }): number {
   const dx = segment.x2 - segment.x1;
@@ -93,6 +106,12 @@ export function lintElectricalTopology(
       if (point && !POWERABLE_TYPES.has(point.type)) issue('error', 'member_not_powerable', `Circuit ${circuit.id} member ${id} (${point.type}) is not a powerable load point`, id);
       if (circuit.purpose === 'lighting' && point && !LIGHT_TYPES.has(point.type)) issue('error', 'lighting_member_not_light', `Lighting circuit ${circuit.id} includes non-light point ${id}`, id);
       if (circuit.purpose === 'ordinary_power' && point && !ORDINARY_POWER_TYPES.has(point.type)) issue('error', 'ordinary_member_not_socket', `Ordinary power circuit ${circuit.id} includes non-socket point ${id} (${point.type})`, id);
+      // (f) 2026-10-17 review 盲区加固：删除/停用点位与回路成员联动。悬空引用与 superseded 成员
+      //     是 error（回路不能再挂已废弃点位）；blocked 是 warning——blocked 属"位置待改"口径
+      //     （如 sock_balcony_washer），回路仍服务该电器，不该拦交底。
+      if (!point) issue('error', 'circuit_member_dangling_or_superseded', `Circuit ${circuit.id} member ${id} does not exist in config/electrical.yaml (dangling member reference; remove it from member_point_ids or recreate the point)`, id);
+      else if (point.serviceability_status === 'superseded') issue('error', 'circuit_member_dangling_or_superseded', `Circuit ${circuit.id} member ${id} is serviceability_status=superseded but still listed as a circuit member; rebind the circuit to the replacement point or drop the member`, id);
+      else if (point.serviceability_status === 'blocked') issue('warning', 'circuit_member_dangling_or_superseded', `Circuit ${circuit.id} member ${id} is serviceability_status=blocked (position pending relocation); circuit still serves the appliance — carry into 交底 instead of silently dropping`, id);
     }
     if (circuit.purpose === 'dedicated_load' || circuit.dedicated_load) issue('warning', 'dedicated_parameters_pending', `Dedicated load candidate ${circuit.id} needs explicit load parameters and field confirmation`, circuit.id);
     if (!circuit.capacity || !circuit.wire_size || !circuit.breaker) issue('warning', 'electrical_parameters_pending', `Circuit ${circuit.id} has no declared capacity, wire size, or breaker`, circuit.id);
@@ -134,6 +153,17 @@ export function lintElectricalTopology(
       issue('warning', 'tv_socket_near_tv_stand', `TV socket ${tvSocket.id} is ${separation.toFixed(2)}m from tv_wall_low; expected <= 1.50m`, tvSocket.id);
     }
   }
+  // (e) 防生活阳台式复发：ceiling_light 预算行（count>0，缺省=1）所在房间必须有至少一个照明类点位。
+  const roomsWithCeilingLightBudget = new Set<string>();
+  for (const [roomId, items] of Object.entries(context.furnishings ?? {})) {
+    if (items.some((item) => item.type === 'ceiling_light' && (item.count ?? 1) > 0)) roomsWithCeilingLightBudget.add(roomId);
+  }
+  for (const roomId of roomsWithCeilingLightBudget) {
+    const hasLightingPoint = points.some((point) => point.room === roomId && FURNISHING_LIGHT_POINT_TYPES.has(point.type));
+    if (!hasLightingPoint) {
+      issue('error', 'furnishing_light_without_point', `Furnishings declare ceiling_light (count>0) for room ${roomId}, but config/electrical.yaml has no lighting point (dome/downlight/pendant/ceiling_light/night_light) in that room; the ceiling_light budget row will install a lamp with nowhere to wire`, roomId);
+    }
+  }
   const curtainWalls = (context.layout?.walls ?? []).filter((wall) => context.suppressedWallIds?.includes(wall.id));
   for (const point of points) {
     if (!/窗帘/.test(point.note ?? '') || typeof point.x !== 'number' || typeof point.z !== 'number') continue;
@@ -155,6 +185,24 @@ export function lintElectricalTopology(
     }
     if (SWITCH_TYPES.has(point.type) && point.neutral === undefined && !NEUTRAL_DECLARATION.test(point.note ?? '')) {
       issue('warning', 'switch_neutral_policy_undeclared', `Switch point ${point.id} (${point.type}) declares no neutral policy (no explicit neutral field, note without 零线/中性线/neutral) while config/house.yaml smart_home promises 智能开关零线`, point.id);
+    }
+  }
+  // (d) 同坐标强电重叠：两个强电点位同 room、平面 <0.05m、高差 <0.15m 即视为同一底盒被两处声明。
+  //     只对双方都在 STRONG_POWER_TYPES 的组合报错；弱电同位与已声明的 panel_group 双联均豁免。
+  const collisionCandidates = points.filter((point) => STRONG_POWER_TYPES.has(point.type) && typeof point.x === 'number' && typeof point.z === 'number');
+  for (let i = 0; i < collisionCandidates.length; i++) {
+    for (let j = i + 1; j < collisionCandidates.length; j++) {
+      const a = collisionCandidates[i]!;
+      const b = collisionCandidates[j]!;
+      if (a.room !== b.room) continue;
+      if (WEAK_COLOCATION_TYPES.has(a.type) || WEAK_COLOCATION_TYPES.has(b.type)) continue;
+      const panelGroupA = a.appearance?.panel_group?.id;
+      if (panelGroupA !== undefined && panelGroupA === b.appearance?.panel_group?.id) continue;
+      const planar = Math.hypot(a.x - b.x, a.z - b.z);
+      if (planar >= POINT_COLLISION_PLANAR_M) continue;
+      const heightDiff = Math.abs((a.height ?? 0) - (b.height ?? 0));
+      if (heightDiff >= POINT_COLLISION_HEIGHT_M) continue;
+      issue('error', 'point_coordinate_collision', `Strong-power points ${a.id} (${a.type}) and ${b.id} (${b.type}) overlap in room ${a.room} at (${a.x.toFixed(2)}, ${a.z.toFixed(2)}): planar ${planar.toFixed(3)}m < ${POINT_COLLISION_PLANAR_M.toFixed(2)}m and |height diff| ${heightDiff.toFixed(2)}m < ${POINT_COLLISION_HEIGHT_M.toFixed(2)}m — one back box cannot host both declarations`, a.id);
     }
   }
   const controlIds = new Set<string>();

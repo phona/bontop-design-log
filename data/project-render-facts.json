@@ -98,6 +98,18 @@
   },
   "lightingFixtures": [
     {
+      "id": "light_balcony_dome",
+      "room": "balcony",
+      "type": "dome",
+      "position": {
+        "x": 6.6,
+        "y": 2.8,
+        "z": 1.15
+      },
+      "temperatureK": 4000,
+      "enabled": true
+    },
+    {
       "id": "light_dining_pendant",
       "room": "living_dining",
       "type": "ceiling_light",
@@ -283,6 +295,25 @@
       "circuit": "entry_base",
       "wallId": "w_liv_east",
       "wallSide": "west"
+    },
+    {
+      "id": "night_living_mid",
+      "room": "living_dining",
+      "type": "night_light",
+      "position": {
+        "x": 11.68,
+        "y": 0.3,
+        "z": 4.8
+      },
+      "temperatureK": 3000,
+      "enabled": true,
+      "circuit": "entry_base",
+      "mountAnchor": {
+        "kind": "furniture_face",
+        "furnitureId": "furniture:living_dining:entry_half_height_cabinet:7",
+        "face": "east",
+        "surfaceGap": 0.003
+      }
     },
     {
       "id": "night_corridor",
@@ -476,6 +507,20 @@
       "z": 0.3,
       "note": "厨房净水器给水（DEC-2026-08-02-013 北墙落地柜台下，与水槽同侧）；DEC-2026-10-06-R1 RO 浓水排放：净水器浓水不得直插密封下水，须接水槽排水三通或专用排污点（接管高度/水气分离/防虹吸做法），接管方式随 RO 净水器 SKU 冻结后定（pending-site-data #52）。DEC-2026-10-08-W01：给水侧已画 MEP 路线 `water-purifier-branch`（自 faucet_kitchen_sink 共支路、同平面纯竖向 0.50m，status inferred / construction_status pending / not_for_construction，route_kind physical 不计 candidate）；上游给水入户点 pending #8 已于 W01 落推断点位 water_entry。**仍待定**：RO 净水器 SKU（是否带泵/压力桶决定管径与走向）与量房，故本点管径走向未冻结（pending #44）",
       "height": 0.3,
+      "water_temp": "cold",
+      "water_dn": 20
+    },
+    {
+      "id": "faucet_kitchen_dishwasher",
+      "room": "kitchen",
+      "type": "faucet",
+      "x": 9.3,
+      "z": 0.3,
+      "note": "洗碗机给水（DEC-2026-10-17-R20 补建模：此前全模型未声明洗碗机给水，水电交底单会漏项；给水自水槽下角阀三通引出，与 drain_kitchen_dishwasher (9.00) 同区、与 sock_kitchen_dishwasher (9.30) 同位不同系统；随洗碗机 SKU（排水泵/接管方式）与量房终核。给水路线待走线专项与 water-purifier-branch 同批深化；**本轮不画 MEP route**：给水入户点 pending #8 与洗碗机 SKU 未选型，量房前画线等于编路由（pending #44，口径同 shower_mbath/shower_gbath））",
+      "height": 0.3,
+      "status": "inferred",
+      "construction_status": "pending",
+      "not_for_construction": true,
       "water_temp": "cold",
       "water_dn": 20
     },

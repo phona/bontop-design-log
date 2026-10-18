@@ -62,7 +62,7 @@
   z: 8.40
   height: 0.3
   count: 1
-  note: "饮水机位（2026-09-07 修正：原挂 w_liv_east @z=9.0，投影超出该墙段 3.45m——w_liv_east 仅到 z=5.55，且 z>8.70 段为东南室外凹口无墙可挂；改挂客房西墙 w_be_west 客厅侧南段，距墙段南端 0.30m、避客房门洞区（z≤6.55），紧邻沙发区角落）；状态依据：饮水机位归入 topology 回路 ordinary_power_living，2026-09-07 修正挂 w_be_west 客厅侧→inferred；距墙段南端避门洞为设计值未实测"
+  note: "客厅东南通用 utility 位（2026-10-17 语义重写，DEC-2026-10-17-R20）：原『饮水机位』服务对象已迁水吧（sock_waterbar），本点改服务回南天除湿机/吸尘器充电——南宁回南天为项目已登记需求（同客卫电热毛巾架动机）；东墙整条 run 仅此一个低位墙插，地插不适合除湿机常插。坐标不变，归 ordinary_power_living"
   status: inferred
 
 - id: sock_living_table
@@ -74,6 +74,29 @@
   count: 1
   note: "餐桌旁地插：电磁炉/火锅；2026-10-16随业主确认的南北向日常四人餐桌迁至桌心 x=9.80,z=3.45，归入 ordinary_power_living。位置为设计概念值，地插现场定位和临时六人南移时的可达性待复核。"
   status: inferred
+
+- id: sock_fridge_living
+  room: living_dining
+  wall: w_gbath_east
+  wall_side: east
+  type: socket
+  x: 7.20
+  z: 3.30
+  height: 0.5
+  count: 1
+  position_status: pending
+  note: "冰箱专用插座·客餐厅西侧概念位（2026-10-16 业主确认冰箱概念位 (7.5025,2.9865) 后补齐供电，DEC-2026-10-17-R20）；x=7.20 系墙线 7.10 东脸 0.10m 惯用偏移（同 ac_panel_dining 越墙 warning 口径）。挂 w_gbath_east 东脸，落冰箱机身 z[2.567,3.406] 北四分之一带，机身前拉约 0.10m 可插拔，禁止正中藏机背（同 sock_kitchen_oven 可及性口径）。position_status: pending——随冰箱 SKU 厂家净空/后部防护/检修方式终核（见 docs/pending-site-data.md 新条目）；若厂家要求硬接线则重定义本点 type 与回路口径。由 dedicated_kitchen_fridge 回路供电（id 保留历史名，成员已重绑；历史点位 sock_kitchen_fridge 已删除）"
+
+- id: sock_waterbar
+  room: living_dining
+  wall: w_gbath_east_open_vanity
+  wall_side: east
+  type: socket
+  x: 7.20
+  z: 3.90
+  height: 1.1
+  count: 3
+  note: "水吧取电区（2026-10-17 水吧V2 台面双电器补电位，DEC-2026-10-17-R20；x=7.20 系东脸 0.10m 惯用偏移）：S1 即热饮水机 (7.47,3.64)+EM450 咖啡机 (7.37,4.00) 台面常插 + 1 预留；h1.10 在 0.85 台面上方 0.25m、器物背后，徒手前拉可插拔；与 ac_panel_dining (z4.10,h1.3) 横向 0.20m/竖向 0.20m 无撞；归 ordinary_power_living"
 
 - id: sock_living_curtain
   room: living_dining
@@ -242,19 +265,16 @@
   note: "主卧空调内机电源（2026-09-06 R7：门头盒东端空腔内，近走廊穿孔 z≈4.6；内机吊顶内供电常规做法，随冷媒管进盒）；状态依据：归入 topology 回路 hvac_power_bedrooms，主卧空调内机电源随冷媒管进门头盒为设计声明→inferred；盒内近走廊穿孔位置为设计值未实测"
   status: inferred
 
-# 西南次卧（书房，2026-10-05 功能互换：原父母房）
-- id: sock_parent_bed_l
-  room: study
-  wall: w_mb_east
-  wall_side: east
-  type: socket
-  x: 4.20
-  z: 6.60
-  height: 0.7
-  count: 1
-  note: "西南次卧床左侧（DEC-017 随床头改西墙）；状态依据：DEC-017 床头插座归入 topology 回路 ordinary_power_parent_child→inferred；随床头西墙为设计值未实测"
-  status: inferred
+- id: net_master_ap
+  room: master_bedroom
+  type: network
+  x: 2.80
+  z: 6.00
+  height: 2.8
+  note: "主卧吊顶 PoE AP 预留（DEC-2026-10-17-R20）：主卧是唯一无有线网络的卧室，全屋唯一 AP 点在客厅边吊（net_ap_corridor），主卧套房隔 2~3 墙覆盖存疑；网线预埋近零成本（net_gateway 同口径）。φ25 独立管与强电分管；弱电点位不进强电回路；落原顶平顶区（同 light_master_dome 口径）"
 
+# 西南次卧（书房，2026-10-05 功能互换：原父母房）
+# sock_parent_bed_l 已删除（DEC-2026-10-17-R20：床头左位锚点随 2026-10-05 功能互换（床迁客房）消失；其供电职责并入书桌下设备位——sock_parent_bed_r 语义改『书桌下设备位』）
 - id: sock_parent_bed_r
   room: study
   wall: w_mb_east
@@ -264,7 +284,7 @@
   z: 8.90
   height: 0.7
   count: 1
-  note: "西南次卧床右侧（DEC-017 随床头改西墙）；状态依据：DEC-017 床头插座归入 topology 回路 ordinary_power_parent_child→inferred；随床头西墙为设计值未实测"
+  note: "西南次卧床右侧（DEC-017 随床头改西墙）；状态依据：DEC-017 床头插座归入 topology 回路 ordinary_power_parent_child→inferred；随床头西墙为设计值未实测；DEC-2026-10-17-R20 语义改『书桌下设备位（主机/盘位）』——原床头右位锚点已随功能互换消失；sock_parent_bed_l 已删除（删除审计见 DEC-2026-10-17-R20）"
   status: inferred
 
 - id: switch_parent_bed
@@ -273,10 +293,10 @@
   wall_side: east
   type: switch_2way
   x: 4.20
-  z: 6.40
-  height: 0.7
+  z: 8.80
+  height: 1.3
   neutral: true
-  note: "西南次卧灯光双控（床头，DEC-017 随床头改西墙）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
+  note: "西南次卧灯光双控（床头，DEC-017 随床头改西墙）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）；DEC-2026-10-17-R20 迁书桌区——原『床头 h0.7』锚点随 2026-10-05 功能互换（床迁客房）消失，西墙中段 h0.7 无使用场景；门口侧 switch_parent_door 保留，双控第二站落书桌区上方"
 
 - id: switch_parent_door
   room: study
@@ -295,9 +315,9 @@
   wall_side: east
   type: ac_controller
   x: 4.20
-  z: 6.314
-  height: 0.7
-  note: "书房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：床头东墙，（2026-10-05 功能互换：原父母房，点位原位保留）与 switch_parent_bed（z=6.40）/sock_parent_bed_l（z=6.60）组床头三联 h=0.7（取证发现门口门垛 x[6.00,6.15] 仅容一板且 switch_parent_door 西半已被衣柜侧板遮挡，线控器无处落位，改床头同主卧口径）；品牌中立，定标后按厂商线控规格终核，site_pending"
+  z: 9.15
+  height: 1.3
+  note: "书房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：床头东墙，（2026-10-05 功能互换：原父母房，点位原位保留）与 switch_parent_bed（z=6.40）/sock_parent_bed_l（z=6.60）组床头三联 h=0.7（取证发现门口门垛 x[6.00,6.15] 仅容一板且 switch_parent_door 西半已被衣柜侧板遮挡，线控器无处落位，改床头同主卧口径）；品牌中立，定标后按厂商线控规格终核，site_pending；DEC-2026-10-17-R20 随书桌区重锚（原床头锚点已随功能互换消失）；线控器服务真实内机 ac_parent，位置本就自由"
 
 - id: sock_parent_desk
   room: study
@@ -480,18 +500,17 @@
   position_status: pending
   note: "DEC-2026-10-03-R1 灶台段第二取电区（落点在地柜侧板/端板，不在灶具背后）：与 sock_kitchen_counter(8.60,0.30) 构成两个真正可插取的取电分区，同属 ordinary_power_kitchen。取电形式随橱柜深化定，优先级：柜下/端板翻盖 > 侧板电力轨道 > 升降插座（水油环境，最多 1 个，不作为唯一方案）；2026-10-14 东墙柜候选延长至 z=2.35 后，(10.80,1.70) 点位位于扩展 run 范围内，不能再默认可从旧侧板位置插取；保留 position_status: pending，橱柜方需在深化时落实可及端板/侧板点位。；2026-10-14 东墙run试版延长至 z=2.35 后，现 (10.80,1.70) 落在扩展柜段，不再视为已可及取电点；point remains position_status: pending，柜体深化时另定外露端板/侧板位置。"
 
-- id: sock_kitchen_fridge
+- id: sock_kitchen_east_counter
   room: kitchen
   wall: w_ent_west
   wall_side: west
   type: socket
   x: 10.80
-  z: 2.05
-  height: 0.3
-  count: 1
+  z: 0.65
+  height: 1.15
+  count: 2
   position_status: pending
-  serviceability_status: superseded
-  note: "冰箱专用回路历史点位占位（原厨房 x=10.80,z=2.05）。2026-10-16业主确认冰箱的空间概念位改为客餐厅西侧(7.5025,2.9865)，本点不构成该位置的可及供电；新专用插座/线路位置、后部防护和检修方式待电工与家电厂家确认，禁止假定旧点供电。"
+  note: "东墙台面以上保底取电区（DEC-2026-10-17-R20）：北墙全为玻璃幕、台面插座全在柜内 h0.3（取电形式押橱柜深化），本点是实体墙台面以上的 guaranteed 取电——灶/烟机机体占 z[1.05,1.95]、微蒸烤预留占南侧 z≈1.95，北段 z[0.30,1.05] 为唯一空档，双联带开关；与 switch_kitchen (z1.0,h1.3) 横向 0.35m 无撞。position_status: pending——与橱柜深化核对北段高柜/烟管走向占用"
 
 - id: sock_kitchen_hood
   room: kitchen
@@ -508,11 +527,12 @@
 - id: sock_kitchen_purifier
   room: kitchen
   type: socket
-  x: 9.50
+  x: 10.05
   z: 0.30
-  height: 0.3
+  height: 0.4
   count: 1
-  note: "净水器插座（DEC-2026-08-02-013 北墙落地柜台下，上下水走地面非挂墙，⚠️坐标待量房确认立管）"
+  position_status: pending
+  note: "净水器插座（DEC-2026-10-17-R20 随 RO 机身预演位 (10.05,0.32) 同柜对齐——原点 (9.50,0.30) 与净水支路水柱 faucet_kitchen_purifier 同柱同高 0m 撞位且未登记，迁后距水柱 0.55m）；position_status: pending 随 RO SKU 冻结（机身 163×445×379 预演尺寸，SKU 及柜内格局待核）"
 
 - id: sock_kitchen_gas
   room: kitchen
@@ -593,10 +613,10 @@
   wall_side: west
   type: socket
   x: 7.05
-  z: 3.882
+  z: 4.06
   height: 1.0
   count: 1
-  note: "客卫开放洗漱区 vanity 插座·双联北位（DEC-2026-09-08-R1：由 z=3.55 墙角端点移至 z=3.882，与 sock_gbath_vanity_2 组双联、并集中心对齐 vanity 轴线 3.925；h=1.2→1.0 避镜面下缘 y=1.10（镜面 z[3.615,4.235]×y[1.10,2.00] 占满墙段），距台面 0.21m，带防溅盒；墙体挂载与给电按现场复核）"
+  note: "客卫开放洗漱区 vanity 插座·双联北位（DEC-2026-09-08-R1：由 z=3.55 墙角端点移至 z=3.882，与 sock_gbath_vanity_2 组双联、并集中心对齐 vanity 轴线 3.925；h=1.2→1.0 避镜面下缘 y=1.10（镜面 z[3.615,4.235]×y[1.10,2.00] 占满墙段），距台面 0.21m，带防溅盒；墙体挂载与给电按现场复核）；DEC-2026-10-17-R20 双联北移——与 faucet_gbath_vanity (3.90) 横向拉开至 0.16/0.246m（≥0.15 达标，原 0.018/0.068 未达自有口径）；北板距段端 0.154m 贴角无 warning"
 
 - id: sock_gbath_vanity_2
   room: guest_bath
@@ -604,10 +624,10 @@
   wall_side: west
   type: socket
   x: 7.05
-  z: 3.968
+  z: 4.146
   height: 1.0
   count: 1
-  note: "客卫开放洗漱区 vanity 插座·双联南位（DEC-2026-09-08-R1 业主拍板+1 位：吹风机/电动牙刷/剃须刀同用）；h=1.0 镜面下缘以下，带防溅盒；ordinary_power_service 回路成员；墙体挂载与给电按现场复核"
+  note: "客卫开放洗漱区 vanity 插座·双联南位（DEC-2026-09-08-R1 业主拍板+1 位：吹风机/电动牙刷/剃须刀同用）；h=1.0 镜面下缘以下，带防溅盒；ordinary_power_service 回路成员；墙体挂载与给电按现场复核；DEC-2026-10-17-R20 双联北移——与 faucet_gbath_vanity (3.90) 横向拉开至 0.16/0.246m（≥0.15 达标，原 0.018/0.068 未达自有口径）；北板距段端 0.154m 贴角无 warning"
 
 - id: sock_gbath_batheheater
   room: guest_bath
@@ -702,6 +722,17 @@
   position_status: inferred
   note: "弱电箱：开发商预留嵌墙箱，协调定位至 living_dining 的 w_foyer_east 西侧，x=13.40/z=3.60；底部离地 0.50m；本体高度暂按 0.40m 占位，待现场复测；箱体宽400mm×深300mm，入户线路待确认"
 
+- id: sock_weakbox
+  room: living_dining
+  wall: w_foyer_east
+  wall_side: west
+  type: socket
+  x: 13.40
+  z: 3.15
+  height: 0.4
+  count: 1
+  note: "弱电箱供电/服务位（DEC-2026-10-17-R20 补齐）：弱电箱 panel_weak_entry_left 本体占 z[3.40,3.80]×y[0.50,0.90]，本点在其正下方偏南——光猫/交换机若按运营商定案放弱电箱则必需（现方案放客厅高柜走 sock_gateway，该分工仍待定，两侧都要有电位才不返工）"
+
 # 入户花园
 - id: sock_garden
   room: entry_garden
@@ -712,7 +743,7 @@
   z: 2.20
   height: 1.3
   count: 1
-  note: "入户花园插座（远离水龙头）；状态依据：入户花园插座归入 topology 回路 ordinary_power_garden→inferred；远离水龙头为设计值未实测"
+  note: "入户花园插座（远离水龙头）；状态依据：入户花园插座归入 topology 回路 ordinary_power_garden→inferred；远离水龙头为设计值未实测；⚠️ 入户花园为开发商完成区，墙面开孔/暗管需物业确认（同 faucet_garden 口径），若禁止则本点改明装或删除"
   status: inferred
 
 - id: switch_garden
@@ -724,7 +755,7 @@
   z: 0.5
   height: 1.3
   neutral: true
-  note: "入户花园灯光开关；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
+  note: "入户花园灯光开关；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）；⚠️ 入户花园为开发商完成区，墙面开孔/暗管需物业确认（同 faucet_garden 口径），若禁止则本点改明装或删除"
 
 # 走廊
 - id: switch_corridor
@@ -733,10 +764,10 @@
   wall_side: east
   type: switch
   x: 7.20
-  z: 4.10
+  z: 4.22
   height: 1.3
   neutral: true
-  note: "走廊灯光开关（DEC-2026-09-08-R1：改挂 w_gbath_east_open_vanity 归位意图坐标 (7.20,4.10)——原挂 w_gbath_east 但 z=4.10 超出该墙段 z[2.20,3.55]，渲染被钳至南端墙角偏移 0.55m；补声明 wall_side east 走廊面）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
+  note: "走廊灯光开关（DEC-2026-09-08-R1：改挂 w_gbath_east_open_vanity 归位意图坐标 (7.20,4.10)——原挂 w_gbath_east 但 z=4.10 超出该墙段 z[2.20,3.55]，渲染被钳至南端墙角偏移 0.55m；补声明 wall_side east 走廊面）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）；DEC-2026-10-17-R20 由 z=4.10 南移 0.12m——为 ac_panel_dining 让位（两者原同坐标重叠，DEC 修正），三板行 3.98/4.10/4.22，距段南端 0.08m 贴角 warning 登记（同 ac_panel_child 口径）"
 
 - id: switch_dining
   room: living_dining
@@ -755,11 +786,11 @@
 - id: sock_kitchen_dishwasher
   room: kitchen
   type: socket
-  x: 9.00
+  x: 9.30
   z: 0.30
   height: 0.3
   count: 1
-  note: "洗碗机插座（DEC-2026-08-02-013 北墙落地柜台下，单独回路，⚠️坐标待量房）"
+  note: "洗碗机插座（DEC-2026-08-02-013 北墙落地柜台下，单独回路，⚠️坐标待量房）；DEC-2026-10-17-R20 由 x=9.00 移至水槽柜内 x=9.30——原点落在洗碗机舱位 x[8.50,9.10] 机身投影内，违反『可徒手插拔、禁止藏机器背后』口径；移后距排水点 0.30m、距净水支路水柱 0.20m，均≥0.15m"
 
 # 主卧电动窗帘
 # DEC-2026-10-06-R2：原位 (4.20,9.50) 偏离 curtain_box_master_south（z[8.70,8.95]）0.55m
@@ -858,6 +889,16 @@
   count: 1
   note: "电动晾衣架电源（吊顶内）；状态依据：电动晾衣架电源归入 topology 回路 ordinary_power_service→inferred；吊顶内为设计值未实测"
   status: inferred
+
+- id: light_balcony_dome
+  room: balcony
+  type: dome
+  x: 6.60
+  z: 1.15
+  height: 2.8
+  temp: 4000
+  status: inferred
+  note: "生活阳台感应吸顶灯（DEC-2026-10-17-R20 补齐：阳台此前无任何灯具/开关，furnishings 预算行无对应点位）：光控+人体感应双模、带常亮档，无墙面开关——东墙门洞 d_kit_balc 占 z[1.20,2.00]，剩余墙垛 0.30/0.10m 容不下 86 底盒；点位避晾衣架主机 (6.40,1.60) 吊顶占用；归 lighting_bedrooms_bath。height=2.8 判定依据：config/ceiling.yaml 与 config/layout/overlay.yaml 均未声明 balcony 吊顶分区（2026-10-17 复核），按原顶完成面落点。若后续阳台做铝扣板吊顶，height 随完成面同步下调"
 
 # 客厅隐藏式晾衣架
 - id: sock_living_drying
@@ -1034,14 +1075,14 @@
 # 客卫电热毛巾架
 - id: sock_gbath_towel
   room: guest_bath
-  wall: w_gbath_east
-  wall_side: west
+  wall: w_gbath_west_open_vanity
+  wall_side: east
   type: socket
-  x: 7.10
-  z: 3.05
+  x: 5.60
+  z: 3.925
   height: 1.2
   count: 1
-  note: "客卫电热毛巾架插座（DEC-2026-09-09-R3：由西墙 (5.60,3.20) 迁东墙马桶上方——原位被 d_gbath 门扇铰链西移后的贴墙门叶盖住；马桶上方 h=1.2 带防溅盒，与 sock_gbath_toilet（h0.3）同柱竖向错开；回南天刚需，位置待量房确认）"
+  note: "客卫电热毛巾架插座（2026-10-17 C 方案，DEC-2026-10-17-R20：由东墙马桶上方 (7.10,3.05) 迁开放洗漱区西墙东脸，对齐台盆轴 3.925——推翻 DEC-2026-09-09-R3 落位，业主卫生观感否决『马桶上方挂毛巾』，且原位距淋浴区边界仅 0.25m 处 IEC 2 区临界口径，迁后距马桶 AABB 1.1m、距玻璃屏 1.7m 口径整体消失；h1.2 在架体背后常插口径不变，带防溅盒（GB 55038 7.4.5）；w_gbath_west_open_vanity 跨度 z[3.55,4.30]，点位居中距两端各 0.375m；毛巾架 SKU 未选型（宽>0.65m 装不下 0.75m 墙段、接线端子直连式则本点口径重定义，均以采购定标为触发）；家电本体由 furnishings heated_towel_rack 渲染"
 
 # === 新增点位（2026-09-09 DEC-2026-09-09-R1 扫地机器人基站预留） ===
 
@@ -1055,7 +1096,7 @@
   z: 4.10
   height: 0.3
   count: 1
-  note: "扫地机基站电源（DEC-2026-09-09-R1：主位客卫台盆下，东墙低位常插，带防溅盒；进水由 faucet_gbath_vanity 三通、排水接入台盆下水；台盆柜须改悬空/无底开放格藏基站（≥0.5m 净高），家具深化落实；客卫洗漱区南缘开放无门，机器人自由进出；基站尺寸待机型定标+量房核实）"
+  note: "扫地机基站电源（DEC-2026-09-09-R1：主位客卫台盆下，东墙低位常插，带防溅盒；进水由 faucet_gbath_vanity 三通、排水接入台盆下水；台盆柜须改悬空/无底开放格藏基站（≥0.5m 净高），家具深化落实；客卫洗漱区南缘开放无门，机器人自由进出；基站尺寸待机型定标+量房核实）；DEC-2026-10-17-R20 补登记：本点 z=4.10 与基站包络 z[3.71,4.14] 存在重叠，常插可接受，可检修性（拔插需移出基站）随台盆柜深化确认"
 
 # 客厅电视柜北段高柜底格（备用手动换水版路线：美观隐藏位，只用电）
 - id: sock_living_robot
@@ -1164,6 +1205,21 @@
   circuit: entry_base
   note: "起夜 NP-4a 客厅北段灯（R15）：w_liv_east 客厅侧，补客房门与走廊之间的北线引导；状态依据：归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-4a 客厅北段灯为设计声明→inferred；挂 w_liv_east 客厅侧，位置为设计值未实测"
   status: inferred
+
+- id: night_living_mid
+  room: living_dining
+  type: night_light
+  mount_anchor:
+    kind: furniture_face
+    furniture_id: "furniture:living_dining:entry_half_height_cabinet:7"
+    face: east
+    surface_gap: 0.003
+  x: 11.68
+  z: 4.80
+  height: 0.30
+  circuit: entry_base
+  note: "起夜链中位补点（DEC-2026-10-17-R20）：night_living_north (13.40,5.10)→night_corridor (7.45,5.55) 之间约 6m 无低位引导，起夜主路径（客房门→走廊口）断链；吸附 entry_half_height_cabinet 东脸北端（面朝东侧主通道），仿 night_corridor (NP-5) 口径；固定方式/暗藏供电/感应朝向待柜体深化，site_pending。furniture_id 序号须与 SceneBuilder placed 顺序一致（该房 placed 顺序：wall_cabinet_tall:0/tv_wall_low:1/tv_65:2/floor_lamp:3/plant_fiddle:4/sofa_3seat:5/coffee_table:6/entry_half_height_cabinet:7，未放置对象不占序号）——已按 config/house.yaml（living_dining furnishings 第 8 个 placed 条目）与 shared/render/SceneBuilder.ts addFurniture 的 per-room placed 序号逻辑复核为 7"
+
 # 起夜路径 NP-5（主走廊）
 - id: night_corridor
   room: living_dining

@@ -93,3 +93,13 @@
   basis: "吸附到 wall_cabinet_tall 北端板，低位灯体与柜面完成面保留 3mm 渲染缝；安装高度 0.30m"
   reason: "起夜路径 NP-5：锚定 furniture:living_dining:wall_cabinet_tall:0 的 north 面，点位 (7.45,5.55)，灯体朝走廊；不在通行线上立落地柱。柜端板固定与暗藏供电待柜体/水电深化。"
   applies_to: [web, blender]
+- id: light_balcony_dome
+  anchorY_offset: 0
+  basis: "DEC-2026-10-17-R20：渲染锚点即安装完成面——balcony 无任何吊顶分区声明（ceiling.yaml/overlay 已复核），按原顶 2.80m 落点；感应吸顶灯体下垂由共享几何表达，沿用 R12 口径不用 anchorY_offset 下移"
+  reason: "新增点位（DEC-2026-10-17-R20）：生活阳台感应吸顶灯，补齐『furnishings 有 ceiling_light 预算行、electrical 无灯具点位』缺口；后续阳台若做铝扣板吊顶，height 随完成面同步。"
+  applies_to: [web, blender]
+- id: night_living_mid
+  anchorY_offset: 0
+  basis: "DEC-2026-10-17-R20：吸附 entry_half_height_cabinet 东脸北端的低位灯，安装完成面 0.30m，灯体贴面表达；仿 night_corridor (NP-5) 的家具面锚定口径"
+  reason: "起夜链中位补点：night_living_north→night_corridor 之间约 6m 断链补灯；柜端板固定与暗藏供电待柜体/水电深化（site_pending）。"
+  applies_to: [web, blender]

@@ -89,11 +89,11 @@
 | [`13-mep-integration.md`](./13-mep-integration.md) | MEP 标高/路由/水电主材基线 | 9 | 24 KB | `DEC-2026-10-06-R1` … `DEC-2026-10-17-R18` |
 | [`14-style-furniture.md`](./14-style-furniture.md) | 风格/家具/地面 | 8 | 19 KB | `DEC-2026-08-20-024` … `DEC-2026-10-15-R01` |
 | [`15-penetration-lint.md`](./15-penetration-lint.md) | 防穿模 linter（实体互撞/净距） | 1 | 9 KB | `DEC-2026-10-09-P01` |
-| [`16-verify-gate.md`](./16-verify-gate.md) | 门禁编排与工程状态 | 1 | 5 KB | `DEC-2026-10-09-G01` |
+| [`16-verify-gate.md`](./16-verify-gate.md) | 门禁编排与工程状态 | 2 | 8 KB | `DEC-2026-10-09-G01` … `DEC-2026-10-17-R19` |
 | [`17-paint-scope-extension.md`](./17-paint-scope-extension.md) | 涂装范围扩展（显式顶面/上飘窗外露面/全飘窗入算/面层核查层/墙顶独立选择） | 16 | 72 KB | `DEC-2026-10-09-P02` … `DEC-2026-10-15-P17` |
 | [`18-engineering-state.md`](./18-engineering-state.md) | 工程状态投影（逐构件确认度） | 1 | 9 KB | `DEC-2026-10-09-E01` |
 
-合计 251 条 DEC，按上方 18 个专题文件中的标题逐条统计（177 条为原始拆分迁移记录，其余为拆分后新增记录）。既有 DEC 正文均保留；2026-10-17 同步：`02-layout-public.md` 追加 R11（米家S1官方三视图V6改型）至39条，`06-electrical.md` 补记 R10（餐厅灯明确为平顶中心氛围灯）与 R12（5 盏吸顶灯渲染锚点贴安装完成面）至52条，`13-mep-integration.md` 追加 R13（bend_corridor 干线正交化 + MEP 机械批次）至4条；同轮将 11 处 R10 裸短引(缺日期前缀、契约拒绝猜测)改写为全引 `DEC-2026-10-17-R10`,没有删除历史 DEC。
+合计 252 条 DEC，按上方 18 个专题文件中的标题逐条统计（177 条为原始拆分迁移记录，其余为拆分后新增记录）。既有 DEC 正文均保留；2026-10-17 同步：`02-layout-public.md` 追加 R11（米家S1官方三视图V6改型）至39条，`06-electrical.md` 补记 R10（餐厅灯明确为平顶中心氛围灯）与 R12（5 盏吸顶灯渲染锚点贴安装完成面）至52条，`13-mep-integration.md` 追加 R13（bend_corridor 干线正交化 + MEP 机械批次）至4条；同轮将 11 处 R10 裸短引(缺日期前缀、契约拒绝猜测)改写为全引 `DEC-2026-10-17-R10`,没有删除历史 DEC。
 
 ## 归档纪律（新增条目前必读）
 
@@ -114,3 +114,4 @@
 - `DEC-2026-10-06-R5`（13-mep-integration）：MEP 分层标高裁定，是 08-ceiling-form 全部弧面返工的净高前提。
 - `DEC-2026-08-01-011` / `DEC-2026-08-21-035`：数据置信度机制与邻户图校准，横跨控制层与多个主题文件。
 - `DEC-2026-10-08-R01`~`R05`（08-ceiling-form）：六轮业主评审子记录，视觉改动全链见 `docs/visual-change-playbook.md`。
+- `DEC-2026-10-17-R20`（06-electrical）：水电点位 review 落地批（冰箱/水吧供电、撞位修正、阳台照明、毛巾架迁位与 heated_towel_rack 建模）——跨 12-plumbing 的 W05 洗碗机给水与 14-style-furniture 侧的新家具类型渲染。

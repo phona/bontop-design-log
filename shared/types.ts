@@ -1809,6 +1809,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   // wall anchor 是自身中心，local y 才是高度层次；柜体与悬浮板沿墙同轴组成一套墙面家具。
   mb_vanity_base_cabinet: { width: 1.38, depth: 0.565 }, // 2026-09-07：1.38m×0.565m×0.62m；AABB x[1.975,2.54] z[2.92,4.30]，同时避开东墙与主卫南墙
   mirror_cabinet_gbath: { width: 0.70, depth: 0.14 }, // DEC-2026-09-09-R2 客卫镜柜（y[1.10,2.00] 挂墙，沿墙 0.70m）
+  heated_towel_rack: { width: 0.55, depth: 0.10 }, // DEC-2026-10-17-R20 客卫电热毛巾架：梯式 0.55W(沿墙)×0.10D(凸出)×0.75H，挂墙 y[1.05,1.80]；SKU 未选型，图示代理尺寸
   robot_dock_gbath: { width: 0.41, depth: 0.4335 }, // DEC-2026-09-09-R6 客卫扫地机基站（藏悬空台盆柜下；云鲸 J6 上下水版实尺寸）
   mb_vanity_lower_board: { width: 1.38, depth: 0.565 }, // 下部悬浮板与底柜同包络，北端贴主卫南墙卧室侧完成面 z=2.92
   mb_vanity_main_board: { width: 1.38, depth: 0.565 }, // 主板与下板同宽同深，同轴止于 z[2.92,4.30]

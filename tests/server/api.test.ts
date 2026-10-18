@@ -78,7 +78,7 @@ elements:
     assert.ok(!res.body.house.furnishings.living_dining.some((i: { type: string }) => i.type === 'tv_65'));
     const phaseJ6 = res.body.house.furnishings.guest_bath.find((i: { type: string }) => i.type === 'robot_dock_gbath');
     assert.ok(phaseJ6, 'J6 remains visible in the一期 scene payload');
-    assert.equal(phaseJ6.sourceIndex, 8, 'phase filtering exposes the authored house.yaml source index');
+    assert.equal(phaseJ6.sourceIndex, 6, 'phase filtering exposes the authored house.yaml source index'); // DEC-2026-10-17-R20：guest_bath 删 count-only towel_set 与 ceiling_light 预算行、新增 placed heated_towel_rack 后，robot_dock_gbath 在 house.yaml guest_bath 段的下标 8→6
     assert.deepEqual(
       res.body.house.furnishings.bedroom_nw.filter((i: { type: string }) => i.type === 'mattress_150'),
       [],

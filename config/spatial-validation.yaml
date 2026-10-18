@@ -74,6 +74,7 @@ tolerance_profiles:
 furniture_profiles:
   # ── built_in_casework：固定安装 / 嵌墙 / 通顶定制（衣柜、橱柜、台面、浴室柜、护墙板类）──
   entry_half_height_cabinet: { profile: built_in_casework }
+  heated_towel_rack: { profile: built_in_casework }
   kitchen_cabinet_run: { profile: built_in_casework }
   kitchen_countertop_bridge: { profile: built_in_casework }
   master_north_wall_wardrobe_950: { profile: built_in_casework }

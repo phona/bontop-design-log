@@ -235,8 +235,8 @@ test('CLI builds shower plumbing fixtures from plumbing.yaml without replacing s
     assert.equal(object.parent, exportRoot);
     return object;
   });
-  assert.equal(report.plumbing, 21);
-  assert.equal(index.plumbing.size, 21); // DEC-2026-10-03-R1：+drain_mbath_toilet 主卫马桶排污口；DEC-2026-10-08-W01：+water_entry 给水入户点（新增 water_supply 渲染配方，drain_riser_balcony 暂不渲染，与既有 3 处 drain_riser 同口径）
+  assert.equal(report.plumbing, 22);
+  assert.equal(index.plumbing.size, 22); // DEC-2026-10-03-R1：+drain_mbath_toilet 主卫马桶排污口；DEC-2026-10-08-W01：+water_entry 给水入户点（新增 water_supply 渲染配方，drain_riser_balcony 暂不渲染，与既有 3 处 drain_riser 同口径）；DEC-2026-10-17-R20：+faucet_kitchen_dishwasher 洗碗机进水口（plumbing 32→33，21→22）
   assert.ok(Math.abs(showers[0].position.x - 0.5) < 1e-6);
   assert.ok(Math.abs(showers[0].position.y) < 1e-6);
   assert.ok(Math.abs(showers[0].position.z - 2.785) < 1e-6, `master shower z=${showers[0].position.z}`);
@@ -262,7 +262,7 @@ test('CLI facts projection exports lighting fixture geometry and no-facts CLI do
   assert.equal(withoutFacts.exportRoot.getObjectByName('LIGHTING_FIXTURES'), undefined);
   const withFacts = buildCliHouseScene(undefined, undefined, undefined, undefined, 'data/project-render-facts.json');
   const fixtures = [...withFacts.index.lightingFixtures.values()];
-  assert.equal(fixtures.length, 15); // R15 起夜灯 - R12 客卫 3 灯 - R15 NP-4b（24→20）；DEC-2026-10-12-R1 删主卧两盏明装床头壁灯（20→18）；DEC-2026-10-12-R2 删两卫平板灯（18→16）；DEC-2026-10-13-R5 删电视墙灯带（16→15）
+  assert.equal(fixtures.length, 17); // R15 起夜灯 - R12 客卫 3 灯 - R15 NP-4b（24→20）；DEC-2026-10-12-R1 删主卧两盏明装床头壁灯（20→18）；DEC-2026-10-12-R2 删两卫平板灯（18→16）；DEC-2026-10-13-R5 删电视墙灯带（16→15）；DEC-2026-10-17-R20 +light_balcony_dome/+night_living_mid（15→17）
   assert.equal(withFacts.report.lightingFixtures, fixtures.length);
   assert.deepEqual(new Set(fixtures.map((fixture) => fixture.userData.fixtureType)), new Set(['ceiling_light', 'dome', 'downlight', 'night_light'])); // 2026-10-05 R15：+night_light；DEC-2026-10-12-R1：-wall_lamp；DEC-2026-10-13-R1：客厅主灯由 track_light 改 dome；DEC-2026-10-13-R5：删电视墙灯带，led_strip 亦无在役点位；DEC-2026-10-16-R12：餐厅灯由 pendant 改 ceiling_light（半吸顶），config 内已无 pendant 类型点位
   for (const fixture of fixtures) {
