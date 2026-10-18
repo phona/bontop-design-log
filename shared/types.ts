@@ -932,8 +932,10 @@ export type SceneElement =
   // floor_region 的算量口径（DEC-2026-10-09-P16）：**默认计入**，标了 `excluded: true` 才排除。
   // 与旧 `costed` 相反——旧标志要求每条都手工 opt-in，等于把「这块地是不是已被某个 applyRooms
   // 房间算过」这件几何已知的事再手抄一遍（改一处忘另一处即双计/漏计）。现在「整块落在已计费
-  // 房间内」由 shared/masonry-takeoff.ts 的 floorRegionInsideCostedRoom 按几何自动跳过
+  // 房间内」由 shared/masonry-takeoff.ts 的 floorRegionInsideCostedRoom 按几何处理：普通过渡区跳过
   // （DEC-2026-10-13 阶段 2 第二半起唯一实现，server/budget-calculator.ts 只负责装配输入）；
+  // `room + follow` 同时声明时表示已计费房间内部的独立地面材料区：从宿主房间面积扣出，
+  // 再按 follow 房间的有效材质和干/湿费率计量；单独的 follow 仍表示外部过渡区。
   // `excluded` 只保留给几何说不清的例外（开发商已铺 / 业主裁定不铺），且必须带 reason。
   | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string; excluded?: boolean }
   | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[]; along?: [number, number] }

@@ -3,6 +3,7 @@ import { ProjectCatalog } from './project-catalog.js';
 import type { DesignState } from './design-state.js';
 import type { RuleEngine } from './rule-engine.js';
 import type { BudgetCalculator } from './budget-calculator.js';
+import { loadMasonryTakeoff } from './budget-calculator.js';
 import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { ConfigRegistry } from './config-loader.js';
 import { loadElectricalConfig, loadElectricalTopologyConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
@@ -130,7 +131,13 @@ export function createApiRouter(deps: ApiDeps): Router {
         return;
       }
       const config = loadTileComparisonConfig();
-      const comparison = buildTileCostComparison(layout, config, deps.catalog);
+      const comparison = buildTileCostComparison(
+        layout,
+        config,
+        deps.catalog,
+        loadMasonryTakeoff(deps.catalog),
+        deps.state.getCurrentScheme(),
+      );
       res.json({
         ...comparison,
         interpretation: {
@@ -675,7 +682,13 @@ export function createApiRouter(deps: ApiDeps): Router {
     try {
       const layout = deps.getResolvedLayout?.();
       if (layout) {
-        const comparison = buildTileCostComparison(layout, loadTileComparisonConfig(), deps.catalog);
+        const comparison = buildTileCostComparison(
+          layout,
+          loadTileComparisonConfig(),
+          deps.catalog,
+          loadMasonryTakeoff(deps.catalog),
+          scheme,
+        );
         const displayNames = new Map(comparison.candidates.map(candidate => [candidate.id, candidate.productDescription]));
         tileBudgetPreview = {
           status: 'comparison_overlay_only' as const,

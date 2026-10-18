@@ -75,6 +75,9 @@ export class TextureManager {
     }
     if (meshType === undefined || meshType === 'all' || meshType === 'floor') {
       for (const mesh of this.floorMeshes) {
+        // Internal floor regions may carry a host roomId for accounting and inspection, but their
+        // finish is resolved only by applyToFloorRegions from `follow`.
+        if (mesh.userData.type === 'floor_region') continue;
         if (mesh.userData.roomId === roomId) {
           this.copyToMesh(mesh, mat);
         }
@@ -90,7 +93,7 @@ export class TextureManager {
     }
   }
 
-  // floor_region（走廊/过渡带，roomId 为空）不参与按房匹配；DEC-011 跟随 floor topic 整体换材。
+  // floor_region（过渡带或房间内材质分区）始终由 follow 解析；不走宿主roomId覆盖。
   // DEC-041：带 follow 的过渡带跟随目标房间的有效地材（分房覆盖感知），其余跟随 default。
   applyToFloorRegions(
     defaultAppearance: MaterialAppearance,
@@ -188,7 +191,18 @@ export class TextureManager {
 
   private copyToMesh(mesh: THREE.Mesh, mat: THREE.MeshStandardMaterial): void {
     const m = mesh.material as THREE.MeshStandardMaterial;
+    const keepPolygonOffset = mesh.userData.type === 'floor_region';
+    const polygonOffset = m.polygonOffset;
+    const polygonOffsetFactor = m.polygonOffsetFactor;
+    const polygonOffsetUnits = m.polygonOffsetUnits;
     m.copy(mat);
+    if (keepPolygonOffset) {
+      // SceneBuilder raises floor_region over a room floor to avoid z-fighting. Material.copy()
+      // resets these render-order fields, so preserve the declared overlay depth across scheme changes.
+      m.polygonOffset = polygonOffset;
+      m.polygonOffsetFactor = polygonOffsetFactor;
+      m.polygonOffsetUnits = polygonOffsetUnits;
+    }
     m.needsUpdate = true;
   }
 

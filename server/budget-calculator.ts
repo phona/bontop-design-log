@@ -242,6 +242,7 @@ export function loadMasonryTakeoff(
         points: points.map((point) => ({ x: point.x, z: point.z })),
         excluded: element.excluded === true,
         follow: element.follow as string | undefined,
+        room: element.room as string | undefined,
       };
     });
 
@@ -566,7 +567,11 @@ export function autoActualBucket(option: DesignOption | undefined, topicId: stri
 export class BudgetCalculator {
   private paintScopeCache: Map<string, number> | null = null;
   private masonryTakeoffCache: MasonryTakeoffResult | null = null;
-  private declaredQuantityCache: { byField: Map<DeclaredQuantityField, Map<string, number>>; remainder: Map<DeclaredQuantityField, number> } | null = null;
+  private declaredQuantityCache: {
+    byField: Map<DeclaredQuantityField, Map<string, number>>;
+    remainder: Map<DeclaredQuantityField, number>;
+    floorMaterialRegions: MasonryTakeoffResult['floorMaterialRegions'];
+  } | null = null;
 
   constructor(
     private catalog: ProjectCatalog,
@@ -600,7 +605,11 @@ export class BudgetCalculator {
    * 一旦投影漏了房间（例如某房有声明却没进干/湿区清单），总数与逐房和就会分叉，
    * 而分叉的表现是「预算少算一间接一间」——正是本次要根治的静默漏计。所以这里直接 throw。
    */
-  private declaredQuantities(): { byField: Map<DeclaredQuantityField, Map<string, number>>; remainder: Map<DeclaredQuantityField, number> } {
+  private declaredQuantities(): {
+    byField: Map<DeclaredQuantityField, Map<string, number>>;
+    remainder: Map<DeclaredQuantityField, number>;
+    floorMaterialRegions: MasonryTakeoffResult['floorMaterialRegions'];
+  } {
     if (this.declaredQuantityCache) return this.declaredQuantityCache;
 
     const takeoff = this.masonryTakeoff();
@@ -616,17 +625,26 @@ export class BudgetCalculator {
     }
 
     const floorByRoom = new Map<string, number>();
+    const floorMaterialAreaByRoom = new Map<string, number>();
+    for (const region of takeoff.floorMaterialRegions) {
+      floorMaterialAreaByRoom.set(region.roomId, (floorMaterialAreaByRoom.get(region.roomId) ?? 0) + region.areaSqm);
+    }
     const floorRoomSplit = loadFloorRoomSplit();
     for (const room of this.catalog.getRooms()) {
       if (floorRoomSplit.dryRoomIds.includes(room.id) || floorRoomSplit.wetRoomIds.includes(room.id)) {
         // 只认 resolved 多边形面积（2026-10-14 阶段 4）：异形房退回 bbox 会让地面面积
         // 每间多算最多 0.6㎡，而这条路径直接进 masonry 的材料与人工两侧金额。
-        floorByRoom.set(room.id, roomArea(room));
+        const netRoomMaterialArea = roomArea(room) - (floorMaterialAreaByRoom.get(room.id) ?? 0);
+        if (netRoomMaterialArea < -1e-6) {
+          throw new Error(`[budget-calculator] 房间 ${room.id} 内部地面分区超过房间面积：${floorMaterialAreaByRoom.get(room.id)}㎡ > ${roomArea(room)}㎡`);
+        }
+        floorByRoom.set(room.id, Math.max(0, netRoomMaterialArea));
       }
     }
     const floorRoomSum = [...floorByRoom.values()].reduce((sum, value) => sum + value, 0);
-    if (Math.abs(floorRoomSum - takeoff.totalRoomFloorSqm) > 1e-6) {
-      throw new Error(`[budget-calculator] 地面房间量对账失败：逐房和 ${floorRoomSum} ≠ takeoff.totalRoomFloorSqm ${takeoff.totalRoomFloorSqm}`);
+    const floorMaterialRegionSum = takeoff.floorMaterialRegions.reduce((sum, region) => sum + region.areaSqm, 0);
+    if (Math.abs(floorRoomSum + floorMaterialRegionSum - takeoff.totalRoomFloorSqm) > 1e-6) {
+      throw new Error(`[budget-calculator] 地面房间分材质量对账失败：房间余量 ${floorRoomSum} + 内部分区 ${floorMaterialRegionSum} ≠ takeoff.totalRoomFloorSqm ${takeoff.totalRoomFloorSqm}`);
     }
 
     const cabinetProjectedByRoom = new Map<string, number>();
@@ -650,6 +668,7 @@ export class BudgetCalculator {
         ['cabinetProjectedArea', 0],
         ['countertopRunLength', 0],
       ]),
+      floorMaterialRegions: takeoff.floorMaterialRegions,
     };
     return this.declaredQuantityCache;
   }
@@ -926,6 +945,42 @@ export class BudgetCalculator {
           });
 
           addAutoActual(categoryKey, li.topic, cost, option);
+        }
+
+        // 内部 floor_region（room + follow）从宿主房间的材质余量中扣出后，按 follow 房间的
+        // 有效选材生成独立材料行。这样 guest_bath 可以保留小花砖基材，同时把开放洗漱区
+        // 1.125㎡ 计入 living_dining 当前木纹砖；面积不会被丢进非房间 extra 或重复计算。
+        if (declared && declaredField === 'floorArea' && li.topic === 'floor') {
+          const floorSelection = scheme.selections.floor;
+          for (const region of declared.floorMaterialRegions) {
+            // A deliberately sparse synthetic scheme with no floor topic behaves like the room loop
+            // above (no floor rows). Once floor selection exists, an unresolved follow is fail-closed.
+            if (!floorSelection) continue;
+            const optionId = floorSelection.roomOverrides?.[region.follow] ?? floorSelection.default;
+            if (!optionId) {
+              throw new Error(`[budget-calculator] 内部地面分区 ${region.id} follow=${region.follow}，但 floor selection 没有有效 default`);
+            }
+            const option = this.catalog.getOption('floor', optionId);
+            if (!option) {
+              throw new Error(`[budget-calculator] 内部地面分区 ${region.id} follow=${region.follow} 的选材 ${optionId} 不存在`);
+            }
+            const { pricePerUnit, coveragePerUnit, lossRate } = pricingOf(
+              option,
+              `topic floor 的选项 ${optionId}（地面分区 ${region.id}，宿主房间 ${region.roomId}）`,
+            );
+            const cost = pricePerUnit * region.areaSqm / coveragePerUnit * lossRate;
+            allLineItems.push({
+              topic: 'floor',
+              roomId: region.roomId,
+              optionId,
+              quantity: region.areaSqm,
+              unitPrice: pricePerUnit,
+              coveragePerUnit,
+              lossRate,
+              cost,
+            });
+            addAutoActual(categoryKey, 'floor', cost, option);
+          }
         }
 
         // 不属于任何房间的量（现行只有 floor_region extra = 主走廊 3.75㎡）单列一行显式计费。

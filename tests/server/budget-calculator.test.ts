@@ -132,12 +132,13 @@ describe('BudgetCalculator', () => {
     assert.ok(Math.abs(takeoff.floorRegionExtraSqm - extra) < 1e-6,
       `生产 takeoff 的 floorRegionExtraSqm ${takeoff.floorRegionExtraSqm} 必须等于独立复算 ${extra}`);
 
-    // 新口径：干区房 111.864 + 湿区房 7.726 + floor_region extra 3.75 = 123.34㎡。
+    // 新口径：room base dry 111.864 + wet 7.726 + floor_region extra 3.75 = 123.34㎡；
+    // 内部开放洗漱区1.125㎡只从湿区转入干区，不改变总面积。
     // 与旧口径 125.26㎡ 的差是**生活阳台 1.92㎡**：它既不在 dry_room_ids 也不在 wet_room_ids
     // （control.yaml 记其「湿区小砖、按间包干口径未裁」），因此不再默认计费，转进
     // `pendingQuantity` 显形——「不计费」必须看得见，否则就是静默归零。
     const floorQuantity = takeoff.dryFloorSqm + takeoff.wetFloorSqm;
-    assert.equal(Math.round(floorQuantity * 100) / 100, 123.34, 'floor 算量 = 干区 115.614 + 湿区 7.726');
+    assert.equal(Math.round(floorQuantity * 100) / 100, 123.34, 'floor 算量 = 干区 116.739 + 湿区 6.601');
     assert.ok(Math.abs(floorQuantity - (125.26 - 1.92)) < 1e-6,
       `新口径必须恰好比旧口径少生活阳台 1.92㎡（${floorQuantity} vs 125.26）`);
     assert.ok(takeoff.unpriced.some(item => item.id === 'balcony' && Math.abs((item.quantity ?? 0) - 1.92) < 1e-6),
@@ -830,28 +831,34 @@ describe('BudgetCalculator', () => {
     const floorQuantity = snapshot.lineItems.filter((li) => li.topic === 'floor').reduce((sum, li) => sum + li.quantity, 0);
     assert.ok(Math.abs(floorQuantity - 123.34) < 1e-6,
       `floor 算量必须是 123.34㎡（旧口径材料侧 121.510 / 人工侧 125.260），实际 ${floorQuantity}`);
+    const guestFloorLines = snapshot.lineItems.filter((li) => li.topic === 'floor' && li.roomId === 'guest_bath');
+    assert.deepEqual(guestFloorLines.map((li) => [li.optionId, Number(li.quantity.toFixed(3))]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))), [
+      ['floor_tile_deco_small', 2.025],
+      ['floor_tile_kt_200x1200_01', 1.125],
+    ]);
     // 阶段 3 起人工按三行计价，单价取费率卡里**匹配当前选型规格**的行：
-    //   floor           干区 115.614㎡ × 75（选型 KT 200×1200 木纹砖）
+    //   floor           干区合计 116.739㎡ × 75（原115.614 + 客卫开放洗漱区1.125㎡）
     //   wall_tile       贴砖 36.7236㎡ × 50（选型 wall_tile_01 300×600）
-    //   wet_floor_tile  湿区 7.726㎡ 待报价（选型 400×400 / 200×200 在卡上无行）
+    //   wet_floor_tile  湿区 6.601㎡ 待报价（客卫小花砖余区 + 主卫）
     // 旧口径是一行 45 元/㎡ × 123.34 = 5,550。
     // 阶段 5 口径变更：actual = 已取证材料款 + 人工。本 fixture 材料款全未取证 →
     // actual 就是纯人工，不再用 `actual - autoActual`（那会是负数）。
-    assert.equal(masonry.actual, 8671 + 1836,
-      '瓦工人工 = round(75 × 115.614) + round(50 × 36.7236)，湿区待报价不进 actual');
+    assert.equal(masonry.actual, 8755 + 1836,
+      '瓦工人工 = round(75 × 116.739) + round(50 × 36.7236)，湿区待报价不进 actual');
     assert.deepEqual(masonry.pendingLabor, [
       { area: 'wet_floor_tile', quantity: masonryTakeoff.wetFloorSqm, unit: '元/㎡', reason: 'rate 待报价' },
     ]);
-    // 材料侧 = 地面 16,151.283 + 墙砖 2,570.652 = 18,721.935（旧 20,416.372）
-    assert.ok(Math.abs(masonry.autoActual - 18721.934954293025) < 1e-6,
-      `masonry.autoActual 必须从 20,416.372 降到 18,721.935，实际 ${masonry.autoActual}`);
-    // 合计 actual：26,053.372 → 23,858.021（阶段 2）→ 28,520.021（阶段 3）→ **10,507（阶段 5）。
+    // 材料侧：开放洗漱区1.125㎡从花砖转木纹砖，主材候选金额净减100.688；墙砖范围不变。
+    assert.ok(Math.abs(masonry.autoActual - 18621.247454293025) < 1e-6,
+      `masonry.autoActual 应反映客卫1.125㎡面层拆分，实际 ${masonry.autoActual}`);
+    // 合计 actual：stage-5旧基准65,608需重算：DEC-2026-10-16-TILE-01低反坎墙砖人工+295，
+    // 本次开放洗漱区木纹砖人工+84，现行锚点65,987。材料候选金额不进actual，不能抵消人工。
     // 阶段 5 口径变更：actual 不再含 candidateActual。本 fixture 材料款全未取证 →
-    // actual = 纯人工 = round(75×115.614) + round(50×36.7236) = 8,671 + 1,836 = 10,507。
-    assert.ok(Math.abs(masonry.actual - 10507) < 1e-6,
-      `masonry.actual 阶段 5 后应为 10,507（纯人工），实际 ${masonry.actual}`);
-    assert.ok(Math.abs(masonry.candidateActual! - 18721.934954293025) < 1e-6,
-      `masonry.candidateActual 应为 18,721.935（材料全额转入候选档），实际 ${masonry.candidateActual}`);
+    // actual = 纯人工 = round(75×116.739) + round(50×36.7236) = 8,755 + 1,836 = 10,591。
+    assert.ok(Math.abs(masonry.actual - 10591) < 1e-6,
+      `masonry.actual 应为10,591（纯人工），实际 ${masonry.actual}`);
+    assert.ok(Math.abs(masonry.candidateActual! - 18621.247454293025) < 1e-6,
+      `masonry.candidateActual 应为18,621.247（材料全额转入候选档），实际 ${masonry.candidateActual}`);
   });
 
   // DEC-2026-10-13 阶段 2 第二半：橱柜/台面锚点。
@@ -1195,9 +1202,9 @@ describe('BudgetCalculator', () => {
     // wetWallArea / linearKitchen 拍系数、地面材料侧与人工侧共用出口）后实测
     // 146208.46361048135。阶段 3（瓦工费率改成合法报价卡 + hvac 读 config/hvac.yaml）后
     // 实测 157870.46361048135，差额 +11,662 = 瓦工人工 +4,662 + hvac +7,000。
-    // **阶段 5 后实测 65,608**：actual 不再含 candidateActual（92,696），只保留已取证材料款
-    // 与人工/人工录入。此锚点还包含1.25m扩深新增板面人工87元，以及当前明确选择的主走廊墙顶涂装量。
-    assert.equal(snapshot.totalActual, 65608, '阶段 5 后的 totalActual 锚点（含扩深人工与主走廊已选涂装量）');
+    // **当前实测 65,987**：旧阶段5锚点65,608 + 2026-10-16六段低反坎人工295 + 本次开放洗漱区木纹砖人工84；
+    // actual 不含candidateActual材料款，只保留已取证款、人工/人工录入与其他明确来源。
+    assert.equal(snapshot.totalActual, 65987, '现行 totalActual 锚点（已含两轮瓦工地面/墙面面积变化）');
     assert.ok(candidateTotal > 90000, `候选价应仍在 92,696 量级（当前 ${candidateTotal}），不得被静默清零`);
   });
 

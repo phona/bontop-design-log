@@ -129,7 +129,7 @@ export interface MasonryRoomInput {
   rect?: { x: number; z: number; width: number; depth: number };
 }
 
-/** overlay 的 floor_region 声明（非房间地面：走廊 / 过渡地面 / 设备平台）。 */
+/** overlay 的 floor_region 声明（房间外补区，或 room + follow 声明的房间内材质区）。 */
 export interface MasonryFloorRegionInput {
   id: string;
   /**
@@ -146,6 +146,19 @@ export interface MasonryFloorRegionInput {
   insideCostedRoom?: boolean;
   /** 地材归属（follow）：指向湿区房的 extra 才进湿区，其余进干区。 */
   follow?: string;
+  /**
+   * 内部面层分区所属房间。与 follow 同时声明时，region 是该房间 footprint 内的独立材质区：
+   * 从宿主房间材质量中扣除，再按 follow 房间的有效选材计量；单有 room 不足以声明材质分区。
+   */
+  room?: string;
+}
+
+/** 房间 footprint 内独立声明的地面材料区；几何及面积仍来自 overlay.floor_region。 */
+export interface MasonryFloorMaterialRegion {
+  id: string;
+  roomId: string;
+  follow: string;
+  areaSqm: number;
 }
 
 export interface MasonryTakeoffInput {
@@ -242,11 +255,12 @@ export interface MasonryTakeoffResult {
   regions: MasonryRegionResult[];
   // ── 量 ──
   /**
-   * 干区主地面铺砖面积（㎡）= dryRoomIds 房间 footprint 之和 + 归属干区的 floor_region extra。
+   * 干区主地面铺砖面积（㎡）= dryRoomIds 房间 footprint + 内部材质转入量 + 外部干区floor_region extra
+   * − 转入湿区的内部材质量。
    * 不含 extra 的纯房间口径见 `dryRoomFloorSqm`。
    */
   dryFloorSqm: number;
-  /** 湿区地面铺砖面积（㎡）= wetRoomIds 房间 footprint 之和 + 归属湿区的 floor_region extra。 */
+  /** 湿区地面铺砖面积（㎡）= wetRoomIds 房间 footprint + 内部材质转入量 + 外部湿区floor_region extra − 转入干区的内部材质量。 */
   wetFloorSqm: number;
   /** 仅 dryRoomIds 房间 footprint 之和（与 `config/tile-comparison.yaml` 的 netDryAreaSqm 同口径）。 */
   dryRoomFloorSqm: number;
@@ -265,8 +279,12 @@ export interface MasonryTakeoffResult {
   sillFaceLinearM: number;
   /** dry + wet 房间 footprint（不含任何 floor_region extra）。 */
   totalRoomFloorSqm: number;
-  /** floor_region 里**要加进**算量的面积（不在任何已计费房间内、也未 excluded）。 */
+  /** floor_region 里**要加进**算量的房间外面积（不在任何已计费房间内、也未 excluded）。 */
   floorRegionExtraSqm: number;
+  /** 房间 footprint 内由内部面层分区转移出的面积；它不是额外面积，不改变全屋总量。 */
+  floorRegionInternalSqm: number;
+  /** 内部面层分区，budget/material comparison按region.follow解析选材。 */
+  floorMaterialRegions: MasonryFloorMaterialRegion[];
   /** 显式 `excluded: true` 的面积合计（留档：有意不算，不是漏算）。 */
   floorRegionExcludedSqm: number;
   /** 整块落在已计费房间内而被跳过的面积合计（留档：再算即双计）。 */
@@ -513,6 +531,8 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
     sillFaceLinearM: 0,
     totalRoomFloorSqm: 0,
     floorRegionExtraSqm: 0,
+    floorRegionInternalSqm: 0,
+    floorMaterialRegions: [],
     floorRegionExcludedSqm: 0,
     floorRegionSkippedInsideRoomSqm: 0,
     totalTileSqm: 0,
@@ -757,11 +777,75 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
     }
   }
 
-  // ── 6. 地面：干区 / 湿区 / floor_region extra ─────────────────────────────
+  // ── 6. 地面：干区 / 湿区 / 房间内面层分区 / floor_region extra ─────────────
   const dryRoomIds = new Set(input.dryRoomIds);
   const wetRoomIds = new Set(input.wetRoomIds);
   const overlap = [...dryRoomIds].filter((id) => wetRoomIds.has(id));
   if (overlap.length) throw new Error(`dryRoomIds 与 wetRoomIds 交叠：${overlap.join(', ')}`);
+
+  const costedRooms = input.rooms.filter((room) => room.id && (dryRoomIds.has(room.id) || wetRoomIds.has(room.id)));
+  const internalRegions = (input.floorRegions ?? []).filter((region) =>
+    region.excluded !== true && (region.room !== undefined || region.follow !== undefined),
+  );
+  const internalByRoom = new Map<string, MasonryFloorMaterialRegion[]>();
+  let externalDryExtra = 0;
+  let externalWetExtra = 0;
+
+  for (const region of internalRegions) {
+    if (!region.room) {
+      // Existing exterior/transition floor regions may follow a material room without being inside it.
+      continue;
+    }
+    if (!region.follow) {
+      throw new Error(`floor_region ${region.id} declares room ${region.room} without follow; an internal material zone must specify both`);
+    }
+    const host = roomById.get(region.room);
+    if (!host) throw new Error(`floor_region ${region.id} references unknown host room ${region.room}`);
+    if (!dryRoomIds.has(host.id) && !wetRoomIds.has(host.id)) {
+      throw new Error(`floor_region ${region.id} host room ${host.id} has no dry/wet floor classification`);
+    }
+    if (!roomById.has(region.follow)) throw new Error(`floor_region ${region.id} follows unknown material room ${region.follow}`);
+    if (!dryRoomIds.has(region.follow) && !wetRoomIds.has(region.follow)) {
+      throw new Error(`floor_region ${region.id} follows ${region.follow}, which has no dry/wet floor classification`);
+    }
+    if (!Number.isFinite(region.areaSqm) || region.areaSqm <= 0) {
+      throw new Error(`floor_region ${region.id} internal material area must be a positive finite number`);
+    }
+    if (!region.points?.length || region.points.length < 3) {
+      throw new Error(`floor_region ${region.id} declares host room ${host.id} but has no usable points`);
+    }
+    const insideHost = floorRegionInsideCostedRoom(region, [host]);
+    if (!insideHost) {
+      throw new Error(`floor_region ${region.id} is not wholly inside declared host room ${host.id}`);
+    }
+    const entry: MasonryFloorMaterialRegion = {
+      id: region.id,
+      roomId: host.id,
+      follow: region.follow,
+      areaSqm: region.areaSqm,
+    };
+    const existing = internalByRoom.get(host.id) ?? [];
+    // Conservative overlap guard: disjoint interior finish zones must have disjoint bounding boxes.
+    // This avoids double-subtraction without adding a second polygon-clipping implementation here.
+    for (const other of existing) {
+      const otherRegion = (input.floorRegions ?? []).find((candidate) => candidate.id === other.id)!;
+      if (floorRegionBoundsOverlap(region, otherRegion)) {
+        throw new Error(`internal floor material regions ${other.id} and ${region.id} have overlapping bounds in ${host.id}`);
+      }
+    }
+    existing.push(entry);
+    internalByRoom.set(host.id, existing);
+    result.floorMaterialRegions.push(entry);
+    result.floorRegionInternalSqm += region.areaSqm;
+  }
+
+  for (const [roomId, regions] of internalByRoom) {
+    const host = roomById.get(roomId)!;
+    const area = regions.reduce((sum, region) => sum + region.areaSqm, 0);
+    if (host.areaSqm === undefined || area > host.areaSqm + 1e-6) {
+      throw new Error(`internal floor material regions in ${roomId} total ${area}㎡, exceeding host room area ${host.areaSqm ?? 'unresolved'}㎡`);
+    }
+  }
 
   for (const room of input.rooms) {
     if (room.areaSqm === undefined) {
@@ -786,11 +870,15 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
   for (const id of input.dryRoomIds) if (!roomById.has(id)) result.unknownDryRoomIds.push(id);
   for (const id of input.wetRoomIds) if (!roomById.has(id)) result.unknownWetRoomIds.push(id);
 
-  const costedRooms = input.rooms.filter((room) => room.id && (dryRoomIds.has(room.id) || wetRoomIds.has(room.id)));
   for (const region of input.floorRegions ?? []) {
     if (region.excluded === true) {
       result.floorRegionExcludedSqm += region.areaSqm;
       result.excludedFloorRegionIds.push(region.id);
+      continue;
+    }
+    if (region.room && region.follow) {
+      // This region is not an extra floor area. Its area is transferred out of the host room
+      // footprint into the material/labor bucket selected by follow.
       continue;
     }
     // 整块落在某个已计费房间内 → 这块地已经由房间 footprint 算过（DEC-2026-10-09-P16：默认计入，
@@ -810,11 +898,19 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
       continue;
     }
     result.floorRegionExtraSqm += region.areaSqm;
-    if (region.follow && wetRoomIds.has(region.follow)) result.wetFloorSqm += region.areaSqm;
-    else result.dryFloorSqm += region.areaSqm;
+    if (region.follow && wetRoomIds.has(region.follow)) externalWetExtra += region.areaSqm;
+    else externalDryExtra += region.areaSqm;
   }
-  result.dryFloorSqm += result.dryRoomFloorSqm;
-  result.wetFloorSqm += result.wetRoomFloorSqm;
+  let transferWetToDry = 0;
+  let transferDryToWet = 0;
+  for (const region of result.floorMaterialRegions) {
+    const hostIsWet = wetRoomIds.has(region.roomId);
+    const targetIsWet = wetRoomIds.has(region.follow);
+    if (hostIsWet && !targetIsWet) transferWetToDry += region.areaSqm;
+    if (!hostIsWet && targetIsWet) transferDryToWet += region.areaSqm;
+  }
+  result.dryFloorSqm = result.dryRoomFloorSqm + externalDryExtra + transferWetToDry - transferDryToWet;
+  result.wetFloorSqm = result.wetRoomFloorSqm + externalWetExtra + transferDryToWet - transferWetToDry;
   result.totalRoomFloorSqm = result.dryRoomFloorSqm + result.wetRoomFloorSqm;
 
   // ── 7. 汇总：逐房 + 总数 + 独立推导对账 ─────────────────────────────────
@@ -845,10 +941,25 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
   }
   result.extrasLinearM = [...extrasByRoom.values()].reduce((sum, value) => sum + value, 0);
   for (const room of input.rooms) {
-    const bucket = result.byRoom[room.id];
-    if (!bucket) continue;
-    if (dryRoomIds.has(room.id)) bucket.dryFloorSqm += room.areaSqm ?? 0;
-    if (wetRoomIds.has(room.id)) bucket.wetFloorSqm += room.areaSqm ?? 0;
+    const bucket = (result.byRoom[room.id] ??= {
+      dryFloorSqm: 0,
+      wetFloorSqm: 0,
+      wallTileSqm: 0,
+      sillTileSqm: 0,
+      tileSqm: 0,
+      declaredLinearM: 0,
+      extrasLinearM: 0,
+    });
+    let dryRoomArea = dryRoomIds.has(room.id) ? room.areaSqm ?? 0 : 0;
+    let wetRoomArea = wetRoomIds.has(room.id) ? room.areaSqm ?? 0 : 0;
+    for (const region of internalByRoom.get(room.id) ?? []) {
+      if (dryRoomIds.has(room.id)) dryRoomArea -= region.areaSqm;
+      if (wetRoomIds.has(room.id)) wetRoomArea -= region.areaSqm;
+      if (wetRoomIds.has(region.follow)) wetRoomArea += region.areaSqm;
+      else dryRoomArea += region.areaSqm;
+    }
+    bucket.dryFloorSqm += dryRoomArea;
+    bucket.wetFloorSqm += wetRoomArea;
     bucket.extrasLinearM = extrasByRoom.get(room.id) ?? 0;
   }
 
@@ -894,11 +1005,29 @@ function floorRegionInsideCostedRoom(
 ): boolean {
   const points = region.points ?? [];
   if (points.length < 3) return false;
-  return costedRooms.some((room) => {
+  const candidates = region.room ? costedRooms.filter((room) => room.id === region.room) : costedRooms;
+  return candidates.some((room) => {
     const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
     if (!roomPoints) return false;
     return points.every((point) => masonryPointInPolygonOrOnEdge(point, roomPoints, 1e-6));
   });
+}
+
+/** Conservative internal-zone overlap guard; shared bounding area means the zones need separate review. */
+function floorRegionBoundsOverlap(a: MasonryFloorRegionInput, b: MasonryFloorRegionInput): boolean {
+  const pointsA = a.points ?? [];
+  const pointsB = b.points ?? [];
+  if (pointsA.length < 3 || pointsB.length < 3) return true;
+  const minAx = Math.min(...pointsA.map((point) => point.x));
+  const maxAx = Math.max(...pointsA.map((point) => point.x));
+  const minAz = Math.min(...pointsA.map((point) => point.z));
+  const maxAz = Math.max(...pointsA.map((point) => point.z));
+  const minBx = Math.min(...pointsB.map((point) => point.x));
+  const maxBx = Math.max(...pointsB.map((point) => point.x));
+  const minBz = Math.min(...pointsB.map((point) => point.z));
+  const maxBz = Math.max(...pointsB.map((point) => point.z));
+  return Math.min(maxAx, maxBx) - Math.max(minAx, minBx) > EPS
+    && Math.min(maxAz, maxBz) - Math.max(minAz, minBz) > EPS;
 }
 
 /** `resolveRoom` 的 x/z/width/depth（中心 + 尺寸）→ 四角折线。 */

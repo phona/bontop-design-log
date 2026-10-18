@@ -152,6 +152,17 @@ elements:
     );
   });
 
+  it('requires follow when floor_region declares an internal host room', () => {
+    assert.throws(() => parseOverlay(`
+version: 1
+elements:
+  - id: internal_floor_without_material
+    type: floor_region
+    points: [{x: 0, z: 0}, {x: 2, z: 0}, {x: 2, z: 1}, {x: 0, z: 1}]
+    room: guest_bath
+`), /must be paired with follow/);
+  });
+
   it('rejects bay_sill with fewer than 2 points', () => {
     assert.throws(() =>
       parseOverlay(`
@@ -384,6 +395,7 @@ elements:
       - {x: 2, z: 1}
       - {x: 0, z: 1}
     room: living_dining
+    follow: living_dining
   - id: master_bay
     type: bay_sill
     points:

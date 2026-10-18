@@ -20,6 +20,7 @@
 - `DEC-2026-10-08-C18` 废止杂砖概念：D2「遮蔽面走杂砖」条款撤销，全屋贴砖统一正砖
 - `DEC-2026-10-08-C19` 下架「墙砖方案」贴图预览：贴砖的唯一视觉口径为贴砖检视态
 - `DEC-2026-10-16-TILE-01` 卧室/书房落地窗防水台统一贴砖
+- `DEC-2026-10-18-TILE-02` 客卫门外开放洗漱区改随木纹砖，内卫保留小花砖
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -247,4 +248,16 @@
 - **量房闭环**：更新docs/pending-site-data.md #20；业主/量房在交房后、瓷砖排版/下单前复测六段高度、内出檐、曲角终点、窗框完成面与打胶排水做法；同步改overlay bay_sill/sill_region、takeoff数量、COST-060-08与check_sill_tile验收范围。旧2.07m高位bay_sill保持独立待核，不能当作低反坎尺寸。
 - **验证范围**：overlay声明层、共享masonry takeoff、budget lineItems、瓷砖验收项和schedule控制量一致；以贴砖检视态从主卧/书房/两次卧逐房查看front+top。样式/函数review以浏览器运行时证据为准，实际尺寸仍保留量房待办。
 - **关联文件**：`config/layout/overlay.yaml`、`config/acceptance.yaml`、`config/budget-pitfalls.yaml`、`config/materials.yaml`、`config/procurement.yaml`、`schedule/phase-1/control.yaml`、`schedule/procurement.md`、`docs/pending-site-data.md`、相关takeoff/budget/inspection tests、`docs/design-iterations/window-sill-tile-20261016/`。
+- **决策人**：业主。
+
+### DEC-2026-10-18-TILE-02 客卫门外开放洗漱区改随木纹砖，内卫保留小花砖
+
+- **日期**：2026-10-18。触发：业主询问客卫干区为何没有木纹砖；确认目标为“开放洗漱干区木纹砖、内卫小花砖”后要求落地。
+- **本轮推翻的旧结论与范围差异**：① `DEC-2026-08-21-042` 将整间约3.1㎡客卫登记为 `floor_tile_deco_small`；现在只保留内卫约2.025㎡小花砖，南侧开放洗漱区1.125㎡改木纹砖。小花砖风格意图保留，整房覆盖范围废止。② `data/current-scheme.json` 的 `guest_bath` room override 仍保留小花砖，但其表达粒度被限定为房间地面基底；内部木纹区由overlay显式覆盖，不能把整个override删掉。③ `schedule/procurement.md` 的“客卫小花砖局部点缀、约3㎡”没有指出分界线，改为按现行边界分项。④ `config/tile-comparison.yaml` 不能继续把guest_bath 3.15㎡整间算入小花砖湿区基线；共享算量与comparison均已按overlay内部区扣减。上述原始决定与手写报价事实继续保留为历史，不静默删除。
+- **几何和材质范围**：`guest_bath`仍是单一语义房间，不改`model-geometry.yaml`。新增 `guest_bath_open_vanity_floor`：点位 `(5.60,3.55) → (7.10,3.55) → (7.10,4.30) → (5.60,4.30)`，面积 **1.125㎡**，`room: guest_bath`、`follow: living_dining`。门洞墙线 `z=3.55` 是材质转换边界，门外地面随客餐厅当前有效选材；当前是KT 200×1200木纹砖。内卫余区 **2.025㎡** 继续走 `floor_tile_deco_small`。房间面积与全屋floor数量不变。
+- **设计判断**：台盆在内卫门外、向走廊开放。以门洞为界，开放洗漱区延续公共空间地面、门内保留卫浴地材，令材质边界对应实际的开闭边界；小花砖仍是内卫内部的点缀，不扩散到开放走廊一侧。该分区是室内预演，具体样品与防滑性能仍待供应商核验。
+- **算量与价差**：共享takeoff将干/湿区数量从原 **115.614/7.726㎡** 调整为 **116.739/6.601㎡**，二者加走廊extra总量仍 **123.34㎡**。按当前候选参数，旧客卫整间小花砖材料预算估值为 `3.15×¥200×1.10=¥693`；新分项预算口径为小花砖 `2.025×¥200×1.10=¥445.50`、木纹砖 `1.125×¥29÷0.24×1.08=¥146.81`，合计 **¥592.31**，材料候选估值约减少 **¥100.69**。采购片数向上取整时，木纹砖区为 **6片/¥174**，故整套按下单单位估算与预算连续面积金额不同；均非成交价。木纹砖费率卡初步¥75/㎡对应本区约¥84.38，湿区费率仍待报价；卫生间按间¥300的口径不随此决策擅自追加或取消。
+- **反转条件与责任**：业主/量房在交房后、排砖和下单前复核门洞完成面、台盆外置区边界与面积；若边界变化，更新overlay、材料分区算量、comparison和验收。业主/瓷砖供应商在下单前核验KT具体SKU、表面和湿态防滑资料；若样品不适用于台盆溅水环境，再决定更换为有证据支持的防滑木纹砖或延续卫浴砖。瓦工在取得书面报价时确认木纹区人工与卫生间按间费用范围，owner不明时保持待报价。
+- **静默失效条件**：若只新增渲染floor_region而不拆takeoff，画面会显示木纹但预算仍按3.15㎡小花砖计；若region越出guest_bath、与同房其他内部区重叠、follow材质选项失效，算量必须fail closed；若材质复制抹去floor_region polygonOffset，会与房间基底共面闪烁。本轮分别用内部区域包含/面积守恒、材质行分拆和polygonOffset回归测试封住。
+- **验证**：`npm run typecheck`、`npm run test:server`、`npm run test:app`、`npm run verify:all`、`npm run gate:visual`；浏览器证据、runtime、配置与面积对账及独立审美/功能review见 `docs/design-iterations/guest-bath-open-vanity-floor-split-20261018/`。
 - **决策人**：业主。

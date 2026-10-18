@@ -127,6 +127,7 @@ function buildInput(): MasonryTakeoffInput {
         points: (element.points ?? []).map((point: any) => ({ x: point.x, z: point.z })),
         excluded: element.excluded === true,
         follow: element.follow,
+        room: element.room,
       })),
     // 厨卫铝扣板完成面。必填、不设默认值（阶段 4 要清掉的正是 `?? 2.65` 这类兜底）。
     clearHeight: 2.65,
@@ -212,7 +213,36 @@ test('干区地面 111.864㎡ / 湿区 7.726㎡ / 合计 119.59㎡', () => {
   close(result.byRoom.living_dining.dryFloorSqm, 44.58);
   close(result.byRoom.kitchen.dryFloorSqm, 8.64, '厨房归干区主地面（KT 200×1200 木纹砖）');
   close(result.byRoom.master_bath.wetFloorSqm, 4.576);
-  close(result.byRoom.guest_bath.wetFloorSqm, 3.15);
+  close(result.byRoom.guest_bath.wetFloorSqm, 2.025, '内卫小花砖余区');
+  close(result.byRoom.guest_bath.dryFloorSqm, 1.125, '开放洗漱区跟随客餐厅木纹砖');
+});
+
+test('房间内floor_region按follow转移干湿材质量且不改变全屋地面总量', () => {
+  const result = computeMasonryTakeoff(buildInput());
+  close(result.floorRegionInternalSqm, 1.125);
+  assert.deepEqual(result.floorMaterialRegions, [{
+    id: 'guest_bath_open_vanity_floor',
+    roomId: 'guest_bath',
+    follow: 'living_dining',
+    areaSqm: 1.125,
+  }]);
+  close(result.dryFloorSqm, 116.739, '干区总量包含客卫门外开放洗漱区');
+  close(result.wetFloorSqm, 6.601, '湿区总量扣除客卫门外开放洗漱区');
+  close(result.dryFloorSqm + result.wetFloorSqm, 123.34, '内部材质区转桶不改变包含走廊extra的全屋面积');
+  close(result.totalRoomFloorSqm, 119.59, '房间footprint总量不变');
+});
+
+test('内部地面材质分区若越出声明宿主房间则fail closed', () => {
+  const input = buildInput();
+  const region = input.floorRegions!.find((item) => item.id === 'guest_bath_open_vanity_floor')!;
+  region.points = [
+    { x: 5.6, z: 3.55 },
+    { x: 7.1, z: 3.55 },
+    { x: 7.1, z: 4.6 },
+    { x: 5.6, z: 4.6 },
+  ];
+  region.areaSqm = 1.575;
+  assert.throws(() => computeMasonryTakeoff(input), /not wholly inside declared host room guest_bath/);
 });
 
 test('floor_region：走廊 3.75㎡ 计入，落在已计费房内的 10.39㎡ 跳过，14.505㎡ 显式排除', () => {
@@ -220,7 +250,7 @@ test('floor_region：走廊 3.75㎡ 计入，落在已计费房内的 10.39㎡ �
   close(result.floorRegionExtraSqm, 3.75, 'main_corridor_floor（DEC-2026-10-09-P16）');
   close(result.floorRegionSkippedInsideRoomSqm, 10.39, 'corridor_floor 6.75（整块在 study 内）+ entry_foyer_floor 3.64（整块在 living_dining 内）');
   close(result.floorRegionExcludedSqm, 14.505, 'entry_garden_floor 12.905 + north_platform_floor 1.60（圆角真实面积 1.3854 由调用方给）');
-  close(result.dryFloorSqm, 111.864 + 3.75, '干区含走廊 extra');
+  close(result.dryFloorSqm, 111.864 + 3.75 + 1.125, '干区含主走廊extra和客卫内部木纹区');
   assert.deepEqual(result.skippedInsideRoomFloorRegionIds, ['entry_foyer_floor', 'corridor_floor']);
   assert.deepEqual(result.excludedFloorRegionIds, ['entry_garden_floor', 'north_platform_floor']);
 });

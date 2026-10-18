@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
-import type { ResolvedLayout } from '../shared/types.js';
+import type { CurrentScheme, ResolvedLayout } from '../shared/types.js';
+import type { MasonryTakeoffResult } from '../shared/masonry-takeoff.js';
 import type { ProjectCatalog } from './project-catalog.js';
 import { loadMasonryQuotesBundle, MASONRY_QUOTES_PATH } from './masonry-quotes.js';
 
@@ -217,6 +218,23 @@ export interface WetBaselineItemResult {
   cartonStatus: 'unknown';
 }
 
+export interface CurrentFloorMaterialRegionResult {
+  regionId: string;
+  roomId: string;
+  roomName: string;
+  follow: string;
+  materialId: string;
+  materialSpec: string;
+  unit: string;
+  netAreaSqm: number;
+  unitPriceYuan: number;
+  coveragePerUnitSqm: number;
+  lossMultiplier: number;
+  modeledQuantity: number;
+  modeledCoverageSqm: number;
+  materialCostYuan: number;
+}
+
 export interface TileCostComparison {
   area: {
     source: string;
@@ -233,12 +251,19 @@ export interface TileCostComparison {
     netAreaSqm: number;
     materialCostYuan: number;
   };
+  currentInternalFloorRegions: {
+    source: string;
+    items: CurrentFloorMaterialRegionResult[];
+    netAreaSqm: number;
+    materialCostYuan: number;
+  };
   scenarioTotals: Array<{
     candidateId: string;
     dryMainFloorMaterialYuan: number;
     wetBaselineMaterialYuan: number;
+    currentInternalFloorRegionsMaterialYuan: number;
     totalProvisionalFloorMaterialsYuan: number;
-    scopeStatus: 'dry_main_floor_plus_current_wet_baseline_not_full_store_scheme_total';
+    scopeStatus: 'dry_main_floor_plus_wet_baseline_plus_current_internal_floor_regions_not_full_store_scheme_total';
     fullStoreSchemeComparable: false;
   }>;
   ktBathFloorModel: {
@@ -258,6 +283,8 @@ export interface TileCostComparison {
       quotedMaterialTotalYuan: number;
       quoteVsModelPieceDelta: number;
       quoteVsModelCostDeltaYuan: number;
+      scopeComparable: boolean;
+      scopeNote: string;
     }>;
     modeledTotalPieces: number;
     modeledMaterialCostYuan: number;
@@ -268,8 +295,10 @@ export interface TileCostComparison {
     dryMainFloorMaterialYuan: number;
     ktBathroomFloorMaterialYuan: number;
     unchangedBalconyBaselineMaterialYuan: number;
+    currentInternalFloorRegionsMaterialYuan: number;
     totalProvisionalFloorMaterialsYuan: number;
     currentBaselineRoomIdsIncluded: string[];
+    currentBaselineFloorRegionIdsIncluded: string[];
     supersededBathroomBaselineIncluded: false;
     includesWallTileQuotes: false;
   };
@@ -317,6 +346,13 @@ export interface TileCostComparison {
         note: string;
       }>;
       selectedInterpretation: null;
+    };
+    currentInternalFloorRegions: {
+      netAreaSqm: number;
+      roomIds: string[];
+      rateYuanPerSqm: number;
+      subtotalYuan: number;
+      sourceStatus: string;
     };
     fullEstimateStatus: 'labor_rate_estimate_only_excludes_material_and_unpriced_extras';
     includedInOwnerLaborBudgetPool: false;
@@ -384,12 +420,18 @@ export function buildTileCostComparison(
   layout: ResolvedLayout,
   config: TileComparisonConfig,
   catalog: ProjectCatalog,
+  takeoff: MasonryTakeoffResult,
+  currentScheme: CurrentScheme,
 ): TileCostComparison {
   if (!config.dry_room_ids.length) throw new Error('dry_room_ids must include at least one room');
   if (!Number.isFinite(config.planning.loss_multiplier) || config.planning.loss_multiplier < 1) {
     throw new Error('planning.loss_multiplier must be a finite number >= 1');
   }
   const roomById = new Map(layout.rooms.map(room => [room.id, room]));
+  const internalFloorAreaByRoom = new Map<string, number>();
+  for (const region of takeoff.floorMaterialRegions) {
+    internalFloorAreaByRoom.set(region.roomId, (internalFloorAreaByRoom.get(region.roomId) ?? 0) + region.areaSqm);
+  }
   const rooms = config.dry_room_ids.map(id => {
     const room = roomById.get(id);
     if (!room) throw new Error(`Dry floor room not found in resolved layout: ${id}`);
@@ -481,7 +523,8 @@ export function buildTileCostComparison(
     const option = catalog.getOption('floor', item.material_id);
     if (!option) throw new Error(`Wet baseline floor material not found: ${item.material_id}`);
     const material = option.data as { spec?: string; unit?: string };
-    const netAreaSqm = room.area ?? room.width * room.depth;
+    const roomAreaSqm = room.area ?? room.width * room.depth;
+    const netAreaSqm = roomAreaSqm - (internalFloorAreaByRoom.get(item.room_id) ?? 0);
     requiredPositiveNumber(netAreaSqm, `Resolved area for ${item.room_id}`);
     requiredPositiveNumber(option.coverage_per_unit, `${item.material_id} coverage per unit`);
     const rawQuantity = netAreaSqm * option.loss_rate / option.coverage_per_unit;
@@ -509,6 +552,43 @@ export function buildTileCostComparison(
   const wetNetAreaSqm = round3(wetBaselineItems.reduce((sum, item) => sum + item.netAreaSqm, 0));
   const wetBaselineMaterialYuan = round2(wetBaselineItems.reduce((sum, item) => sum + item.materialCostYuan, 0));
 
+  const floorSelection = currentScheme.selections.floor;
+  if (!floorSelection?.default) throw new Error('Current floor scheme has no default material selection');
+  const currentInternalFloorRegions = takeoff.floorMaterialRegions.map((region): CurrentFloorMaterialRegionResult => {
+    const room = roomById.get(region.roomId);
+    if (!room) throw new Error(`Internal floor material region host room not found in resolved layout: ${region.roomId}`);
+    const materialId = floorSelection.roomOverrides[region.follow] ?? floorSelection.default;
+    const option = catalog.getOption('floor', materialId);
+    if (!option) throw new Error(`Internal floor material region ${region.id} selected unknown material ${materialId}`);
+    const material = option.data as { spec?: string; unit?: string };
+    const unit = material.unit ?? 'unit';
+    if (typeof option.price_per_unit !== 'number' || !Number.isFinite(option.price_per_unit) || option.price_per_unit < 0) {
+      throw new Error(`${materialId} price per unit must be a finite non-negative number`);
+    }
+    requiredPositiveNumber(option.coverage_per_unit, `${materialId} coverage per unit`);
+    requiredPositiveNumber(option.loss_rate, `${materialId} loss rate`);
+    const rawQuantity = region.areaSqm * option.loss_rate / option.coverage_per_unit;
+    const modeledQuantity = unit === '片' ? Math.ceil(rawQuantity) : Math.ceil(rawQuantity * 100 - 1e-9) / 100;
+    return {
+      regionId: region.id,
+      roomId: region.roomId,
+      roomName: room.name,
+      follow: region.follow,
+      materialId,
+      materialSpec: material.spec ?? '',
+      unit,
+      netAreaSqm: round3(region.areaSqm),
+      unitPriceYuan: option.price_per_unit,
+      coveragePerUnitSqm: option.coverage_per_unit,
+      lossMultiplier: option.loss_rate,
+      modeledQuantity,
+      modeledCoverageSqm: round2(modeledQuantity * option.coverage_per_unit),
+      materialCostYuan: round2(modeledQuantity * option.price_per_unit),
+    };
+  });
+  const currentInternalFloorRegionsAreaSqm = round3(currentInternalFloorRegions.reduce((sum, item) => sum + item.netAreaSqm, 0));
+  const currentInternalFloorRegionsMaterialYuan = round2(currentInternalFloorRegions.reduce((sum, item) => sum + item.materialCostYuan, 0));
+
   const ktBathMaterial = catalog.getOption('floor', config.kt_bath_floor_model.material_id);
   if (!ktBathMaterial) throw new Error(`KT bath floor material not found: ${config.kt_bath_floor_model.material_id}`);
   if (ktBathMaterial.loss_rate !== config.planning.loss_multiplier) {
@@ -524,7 +604,10 @@ export function buildTileCostComparison(
     if (line.material_id !== config.kt_bath_floor_model.material_id) {
       throw new Error(`KT bathroom floor line material mismatch for ${roomId}`);
     }
-    const netAreaSqm = room.area ?? room.width * room.depth;
+    const roomAreaSqm = room.area ?? room.width * room.depth;
+    const internalRegionAreaSqm = internalFloorAreaByRoom.get(roomId) ?? 0;
+    const netAreaSqm = roomAreaSqm - internalRegionAreaSqm;
+    requiredPositiveNumber(netAreaSqm, `Interior bathroom area for ${roomId}`);
     const modeledPieces = Math.ceil(netAreaSqm * ktBathMaterial.loss_rate / ktBathMaterial.coverage_per_unit);
     const modeledMaterialCostYuan = round2(modeledPieces * ktBathMaterial.price_per_unit);
     return {
@@ -537,6 +620,10 @@ export function buildTileCostComparison(
       quotedMaterialTotalYuan: line.quoted_total_yuan,
       quoteVsModelPieceDelta: line.piece_count - modeledPieces,
       quoteVsModelCostDeltaYuan: round2(line.quoted_total_yuan - modeledMaterialCostYuan),
+      scopeComparable: internalRegionAreaSqm <= 1e-9,
+      scopeNote: internalRegionAreaSqm > 1e-9
+        ? `raw store line is room-mapped to ${roomId}, while current modeled bathroom zone excludes ${round3(internalRegionAreaSqm)}㎡ of internal floor material regions; re-quote by zone before comparing`
+        : 'raw room quote and current modeled bathroom room scope align',
     };
   });
   const ktBathFloorModeledPieces = ktBathFloorRooms.reduce((sum, room) => sum + room.modeledPieces, 0);
@@ -552,6 +639,7 @@ export function buildTileCostComparison(
   if (!woodPlankLaborRate || !bathroomTileLaborRate || !bathroomRoomCharge) {
     throw new Error('Masonry rate card is missing a required wood plank or bathroom floor rate');
   }
+  const currentInternalFloorRegionsLaborYuan = round2(currentInternalFloorRegionsAreaSqm * woodPlankLaborRate.price);
   const ktBathroomNetAreaSqm = round3(ktBathFloorRooms.reduce((sum, room) => sum + room.netAreaSqm, 0));
   const dryFloorLaborSubtotalYuan = round2(netDryAreaSqm * woodPlankLaborRate.price);
   const bathroomFloorAreaRateSubtotalYuan = round2(ktBathroomNetAreaSqm * bathroomTileLaborRate.price);
@@ -694,12 +782,19 @@ export function buildTileCostComparison(
       netAreaSqm: wetNetAreaSqm,
       materialCostYuan: wetBaselineMaterialYuan,
     },
+    currentInternalFloorRegions: {
+      source: 'config/layout/overlay.yaml internal floor_region geometry + data/current-scheme.json effective floor selection',
+      items: currentInternalFloorRegions,
+      netAreaSqm: currentInternalFloorRegionsAreaSqm,
+      materialCostYuan: currentInternalFloorRegionsMaterialYuan,
+    },
     scenarioTotals: candidates.map(candidate => ({
       candidateId: candidate.id,
       dryMainFloorMaterialYuan: candidate.modeled.materialCostYuan,
       wetBaselineMaterialYuan: wetBaselineMaterialYuan,
-      totalProvisionalFloorMaterialsYuan: round2(candidate.modeled.materialCostYuan + wetBaselineMaterialYuan),
-      scopeStatus: 'dry_main_floor_plus_current_wet_baseline_not_full_store_scheme_total',
+      currentInternalFloorRegionsMaterialYuan,
+      totalProvisionalFloorMaterialsYuan: round2(candidate.modeled.materialCostYuan + wetBaselineMaterialYuan + currentInternalFloorRegionsMaterialYuan),
+      scopeStatus: 'dry_main_floor_plus_wet_baseline_plus_current_internal_floor_regions_not_full_store_scheme_total',
       fullStoreSchemeComparable: false,
     })),
     ktBathFloorModel: {
@@ -719,8 +814,10 @@ export function buildTileCostComparison(
       dryMainFloorMaterialYuan: ktDryMainFloorCost,
       ktBathroomFloorMaterialYuan: ktBathFloorModeledCost,
       unchangedBalconyBaselineMaterialYuan: unchangedBalconyBaseline.materialCostYuan,
-      totalProvisionalFloorMaterialsYuan: round2(ktDryMainFloorCost + ktBathFloorModeledCost + unchangedBalconyBaseline.materialCostYuan),
+      currentInternalFloorRegionsMaterialYuan,
+      totalProvisionalFloorMaterialsYuan: round2(ktDryMainFloorCost + ktBathFloorModeledCost + unchangedBalconyBaseline.materialCostYuan + currentInternalFloorRegionsMaterialYuan),
       currentBaselineRoomIdsIncluded: ['balcony'],
+      currentBaselineFloorRegionIdsIncluded: currentInternalFloorRegions.map(item => item.regionId),
       supersededBathroomBaselineIncluded: false,
       includesWallTileQuotes: false,
     },
@@ -762,6 +859,13 @@ export function buildTileCostComparison(
         additiveIfConfirmedInterpretationYuan: additiveInterpretation.bathroomLaborYuan,
         interpretations: bathroomLaborInterpretations,
         selectedInterpretation: null,
+      },
+      currentInternalFloorRegions: {
+        netAreaSqm: currentInternalFloorRegionsAreaSqm,
+        roomIds: [...new Set(currentInternalFloorRegions.map(item => item.roomId))],
+        rateYuanPerSqm: woodPlankLaborRate.price,
+        subtotalYuan: currentInternalFloorRegionsLaborYuan,
+        sourceStatus: 'preliminary_rate_card_not_written_quote; region labor remains separate from dry main floor quote scope',
       },
       fullEstimateStatus: 'labor_rate_estimate_only_excludes_material_and_unpriced_extras',
       includedInOwnerLaborBudgetPool: false,

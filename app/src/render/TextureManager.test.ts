@@ -27,10 +27,12 @@ vi.mock('three', () => ({
   CanvasTexture: class {
     wrapS = 0; wrapT = 0; colorSpace = ''; anisotropy = 0;
     repeat = { set: vi.fn() };
+    center = { set: vi.fn() };
+    userData: Record<string, unknown> = {};
     constructor(_canvas: HTMLCanvasElement) { createdTextures.push(this); }
   },
-  Texture: class { wrapS = 0; wrapT = 0; repeat = { set: vi.fn() }; },
-  TextureLoader: class { load() { return { wrapS: 0, wrapT: 0, repeat: { set: vi.fn() } }; } },
+  Texture: class { wrapS = 0; wrapT = 0; repeat = { set: vi.fn() }; center = { set: vi.fn() }; userData: Record<string, unknown> = {}; },
+  TextureLoader: class { load() { return { wrapS: 0, wrapT: 0, repeat: { set: vi.fn() }, center: { set: vi.fn() }, userData: {} }; } },
   MeshStandardMaterial: class {
     needsUpdate = false;
     normalScale = { set: vi.fn() };
@@ -96,6 +98,34 @@ describe('TextureManager（PBR 升级）', () => {
     tm.applyToFloorRegions({ type: 'wood_plank', color: '#c49a6c', pattern: 'straight', plank_mm: [800, 800], seed: 42 });
     expect((region.material as unknown as Record<string, unknown>).map).toBeDefined();
     expect((roomFloor.material as unknown as Record<string, unknown>).map).toBeUndefined();
+  });
+
+  it('房间内 floor_region 按 follow 换材并保留 polygon offset', async () => {
+    const THREE = await import('three');
+    const tm = new TextureManager();
+    const region = {
+      userData: { type: 'floor_region', roomId: 'guest_bath', follow: 'living_dining', objectId: 'guest_bath_open_vanity_floor' },
+      material: new THREE.MeshStandardMaterial({ polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    };
+    const roomFloor = {
+      userData: { type: 'floor', roomId: 'guest_bath', objectId: 'floor:guest_bath' },
+      material: new THREE.MeshStandardMaterial(),
+    };
+    tm.setMeshes([region as never, roomFloor as never], []);
+
+    tm.applyToRoom('guest_bath', { type: 'ceramic_tile_v2', color: '#b58a6f' }, 'floor');
+    tm.applyToFloorRegions(
+      { type: 'ceramic_tile_v2', color: '#b58a6f' },
+      (roomId) => roomId === 'living_dining'
+        ? { type: 'wood_plank', color: '#d8bd93', pattern: 'straight', plank_mm: [200, 1200] }
+        : null,
+    );
+
+    expect(region.material.map).toBeDefined();
+    expect(region.material.map).not.toBe(roomFloor.material.map);
+    expect(region.material.polygonOffset).toBe(true);
+    expect(region.material.polygonOffsetFactor).toBe(-1);
+    expect(region.material.polygonOffsetUnits).toBe(-1);
   });
 
   it('applyToFloorRegions 与 applyToRoom 同色同参共用缓存材质', async () => {

@@ -1,4 +1,4 @@
-import { readFileSync, mkdirSync, rmSync } from 'node:fs';
+import { readFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Request, Response } from 'express';
@@ -22,6 +22,7 @@ describe('GET /api/tiles/comparison', () => {
   before(() => {
     rmSync(TEST_DATA_DIR, { recursive: true, force: true });
     mkdirSync(TEST_DATA_DIR, { recursive: true });
+    writeFileSync(`${TEST_DATA_DIR}/current-scheme.json`, readFileSync('data/current-scheme.json'));
     const catalog = ProjectCatalog.load('.');
     const geometry = load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml;
     const resolvedLayout = resolveLayout(geometry);
@@ -87,7 +88,9 @@ describe('GET /api/tiles/comparison', () => {
     assert.deepEqual(body.wetBaseline.items.map((item: { materialId: string }) => item.materialId), [
       'floor_tile_antislip_400', 'floor_tile_antislip_400', 'floor_tile_deco_small',
     ]);
-    assert.equal(body.wetBaseline.materialCostYuan, 1222);
+    assert.equal(body.wetBaseline.materialCostYuan, 974);
+    assert.equal(body.currentInternalFloorRegions.netAreaSqm, 1.125);
+    assert.equal(body.currentInternalFloorRegions.materialCostYuan, 174);
     assert.equal(body.storeQuotes[0].summary.reportedFullMaterialTotalYuan, 21108);
     assert.equal(body.storeQuotes[0].additionalLines.length, 7);
     assert.equal(body.storeQuotes[0].additionalLines[1].nominalCoverageSqm, 7.2);
@@ -107,30 +110,32 @@ describe('GET /api/tiles/comparison', () => {
     assert.equal(body.storeQuotes[1].additionalLines[3].roomId, null);
     assert.deepEqual(
       body.scenarioTotals.map((item: { totalProvisionalFloorMaterialsYuan: number }) => item.totalProvisionalFloorMaterialsYuan),
-      [15838, 17153],
+      [15764, 17079],
     );
     assert.equal(body.scenarioTotals[1].fullStoreSchemeComparable, false);
     assert.match(body.scenarioTotals[1].scopeStatus, /not_full_store_scheme_total/);
     assert.deepEqual(
-      body.ktBathFloorModel.rooms.map((room: { roomId: string; modeledPieces: number; quotedPieces: number; quoteVsModelPieceDelta: number }) => [
-        room.roomId, room.modeledPieces, room.quotedPieces, room.quoteVsModelPieceDelta,
+      body.ktBathFloorModel.rooms.map((room: { roomId: string; modeledPieces: number; quotedPieces: number; quoteVsModelPieceDelta: number; scopeComparable: boolean }) => [
+        room.roomId, room.modeledPieces, room.quotedPieces, room.quoteVsModelPieceDelta, room.scopeComparable,
       ]),
-      [['guest_bath', 10, 10, 0], ['master_bath', 14, 20, 6]],
+      [['guest_bath', 7, 10, 3, false], ['master_bath', 14, 20, 6, true]],
     );
-    assert.equal(body.ktBathFloorModel.modeledMaterialCostYuan, 672);
+    assert.equal(body.ktBathFloorModel.modeledMaterialCostYuan, 588);
     assert.equal(body.ktBathFloorModel.quotedMaterialTotalYuan, 840);
     assert.equal(body.ktNewSchemeFloorMaterials.unchangedBalconyBaselineMaterialYuan, 156);
-    assert.equal(body.ktNewSchemeFloorMaterials.totalProvisionalFloorMaterialsYuan, 15444);
+    assert.equal(body.ktNewSchemeFloorMaterials.totalProvisionalFloorMaterialsYuan, 15534);
     assert.deepEqual(body.ktNewSchemeFloorMaterials.currentBaselineRoomIdsIncluded, ['balcony']);
+    assert.deepEqual(body.ktNewSchemeFloorMaterials.currentBaselineFloorRegionIdsIncluded, ['guest_bath_open_vanity_floor']);
     assert.equal(body.ktNewSchemeFloorMaterials.supersededBathroomBaselineIncluded, false);
     assert.equal(body.ktNewSchemeFloorMaterials.includesWallTileQuotes, false);
-    assert.equal(body.wetBaseline.materialCostYuan, 1222);
+    assert.equal(body.wetBaseline.materialCostYuan, 974);
     assert.equal(body.feeStatus.installation.status, 'unknown');
     assert.equal(body.masonryRateCard.floor_rates_yuan_per_sqm.find((rate: { specification: string }) => rate.specification.includes('木纹砖'))?.price, 75);
     assert.equal(body.masonryRateCard.extras.length, 13);
     assert.equal(body.masonryLaborEstimate.mainDryFloor.laborSubtotalYuan, 8389.8);
     assert.equal(body.masonryLaborEstimate.ktBathroomFloors.flatOnlyInterpretationYuan, 600);
-    assert.equal(body.masonryLaborEstimate.ktBathroomFloors.additiveIfConfirmedInterpretationYuan, 947.67);
+    assert.equal(body.masonryLaborEstimate.ktBathroomFloors.additiveIfConfirmedInterpretationYuan, 897.05);
+    assert.equal(body.masonryLaborEstimate.currentInternalFloorRegions.subtotalYuan, 84.38);
     assert.equal(body.masonryLaborEstimate.ktBathroomFloors.selectedInterpretation, null);
     assert.equal(body.masonryLaborEstimate.includedInOwnerLaborBudgetPool, false);
     assert.deepEqual(

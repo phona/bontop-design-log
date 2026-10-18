@@ -85,7 +85,7 @@ candidates:
       - { label: 厨房墙砖约40片, piece_count: 40, unit_price_yuan: 36, quoted_total_yuan: 1440, dimensions_status: unspecified, estimated_area_sqm: 10, estimated_area_status: approximate_store_estimate, room_id: kitchen, room_mapping_status: explicit, surface: wall, surface_mapping_status: explicit, visible_discount_status: no_discount_visible }
       - { label: 卫生间砖①约400×600, piece_count: 30, unit_price_yuan: 11.8, quoted_total_yuan: 354, dimensions_mm: { length: 600, width: 400 }, dimensions_status: approximate, visible_discounted_unit_price_yuan: 10.6, visible_discount_status: visible_on_uploaded_photo }
       - { label: 卫生间砖②手写规格不清, piece_count: 68, unit_price_yuan: 36, quoted_total_yuan: 2448, dimensions_status: unreadable, visible_discounted_unit_price_yuan: 32, visible_discount_status: visible_on_uploaded_photo, hypothesized_group: possible_bathroom_wall_quote, hypothesis_confidence: low, hypothesized_surface: wall, hypothesis_rationale: quantity and price could be a bathroom wall line; room, dimensions, and grouping with line ④ are not confirmed from the photo }
-      - { label: 卫生间砖③约400×400, piece_count: 48, unit_price_yuan: 11.8, quoted_total_yuan: 566, dimensions_mm: { length: 400, width: 400 }, dimensions_status: approximate, visible_discounted_unit_price_yuan: 10.6, visible_discount_status: visible_on_uploaded_photo, hypothesized_group: possible_both_baths_floor, hypothesis_confidence: low_to_medium, hypothesized_room_ids: [master_bath, guest_bath], hypothesized_surface: floor, hypothesis_rationale: nominal 48×0.4×0.4=7.68㎡ is close to current combined bathroom net area 7.726㎡, leaving effectively no allowance; dimensions are approximate and mapping is unconfirmed }
+      - { label: 卫生间砖③约400×400, piece_count: 48, unit_price_yuan: 11.8, quoted_total_yuan: 566, dimensions_mm: { length: 400, width: 400 }, dimensions_status: approximate, visible_discounted_unit_price_yuan: 10.6, visible_discount_status: visible_on_uploaded_photo, hypothesized_group: possible_both_baths_floor, hypothesis_confidence: low_to_medium, hypothesized_room_ids: [master_bath, guest_bath], hypothesized_surface: floor, hypothesis_rationale: "2026-10-06原始推演：名义48×0.4×0.4=7.68㎡接近当时两卫完整room footprint 7.726㎡，当时被用作两卫整房地面假设；DEC-2026-10-18-TILE-02现将客卫门外开放洗漱区1.125㎡转为木纹砖，当前内卫湿区面层为6.601㎡。原报价归属/分区未被店家确认，保留为历史低至中置信度推断，不能当作当前地面范围或成交数量。" }
       - { label: 卫生间砖④手写规格不清, piece_count: 72, unit_price_yuan: 36, quoted_total_yuan: 2592, dimensions_status: unreadable, visible_discounted_unit_price_yuan: 32, visible_discount_status: visible_on_uploaded_photo, hypothesized_group: possible_bathroom_wall_quote, hypothesis_confidence: low, hypothesized_surface: wall, hypothesis_rationale: quantity and price could be a bathroom wall line; room, dimensions, and grouping with line ② are not confirmed from the photo }
     user_derived_additional_quote_discounted_total_yuan: 6660
     user_derived_discount_status: user_derived_90_percent_assumption_not_confirmed_on_uploaded_photo
@@ -179,7 +179,7 @@ selection_baseline:
     - "卫生间地面 300 元/间「面积不计」两读未裁（config/masonry-labor.yaml 的 bathroom_floor_charge_interpretations）"
 
 wet_baseline:
-  source: current wet-zone project material candidates; not part of either store wood-plank quote
+  source: current wet-room and balcony material candidates; guest_bath area is its room footprint minus declared internal floor material regions; not part of either store wood-plank quote
   items:
     - room_id: master_bath
       material_id: floor_tile_antislip_400
@@ -189,11 +189,11 @@ wet_baseline:
       description: 生活阳台 400×400 防滑砖
     - room_id: guest_bath
       material_id: floor_tile_deco_small
-      description: 客卫小花砖，按材料目录的每平方米单价
+      description: 客卫内卫小花砖；开放洗漱区单独按overlay内部地面分区计木纹砖
 kt_bath_floor_model:
   material_id: floor_tile_kt_600x600_01
   room_ids: [guest_bath, master_bath]
-  note: KT full scheme bathroom floor alternative; separate from current 400x400 wet-zone baseline
+  note: KT 600x600 alternative for the enclosed bathroom floor areas; current open vanity material regions are excluded. Raw room-scoped store quote lines remain unchanged and are not a like-for-like quantity comparison after this split.
 # 瓦工人工费率卡 2026-10-13 已搬迁至 config/masonry-labor.yaml（项目级唯一机器可读源）。
 # 此处不得再内联 masonry_rate_card——server/tile-cost-comparison.ts 的 loadTileComparisonConfig
 # 检测到内联卡会 fail-loud。搬迁理由：该卡原先只喂 /api/tiles/comparison，而

@@ -290,6 +290,17 @@ elements:
     follow: living_dining
     reason: "主走廊连接左翼和右翼（x[0,4.2] 段已并入主卫套间）。2026-10-09 业主裁定「走廊需要铺砖」：补 follow: living_dining（DEC-040 走廊与客餐厅通铺同材，600×1200 木纹砖 75 元/㎡）。DEC-2026-10-09-P16 起不再需要任何手工标志——本区域 3.75㎡ 不在任何 applyRooms 房间内，新口径（默认计入、整块落在已计费房间内才跳过）自动把它算进 floor 算量，原 costed: true 已删"
 
+  - id: guest_bath_open_vanity_floor
+    type: floor_region
+    points:
+      - { x: 5.60, z: 3.55 }
+      - { x: 7.10, z: 3.55 }
+      - { x: 7.10, z: 4.30 }
+      - { x: 5.60, z: 4.30 }
+    room: guest_bath
+    follow: living_dining
+    reason: "客卫南侧门外开放洗漱区，1.125㎡；地面跟随客餐厅当前有效木纹砖。该内部分区从 guest_bath 小花砖范围中扣出，门内余区继续小花砖（DEC-2026-10-18-TILE-02）。门洞线z=3.55为材质转换边界；交房后按完成面复尺。"
+
   - id: north_platform_floor
     type: floor_region
     points:

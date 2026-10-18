@@ -1,0 +1,37 @@
+{
+  "capturedAt": "2026-10-18T15:29:00+08:00",
+  "url": "http://localhost:5173/",
+  "title": "和萃 701 - 3D 装修设计",
+  "appReady": true,
+  "readyState": "ready",
+  "configErrorBanner": "",
+  "gateVisual": "CLEAR before implementation",
+  "currentFloorSelection": {
+    "default": "floor_tile_kt_200x1200_01",
+    "roomOverrides": {
+      "master_bath": "floor_tile_antislip_400",
+      "guest_bath": "floor_tile_deco_small",
+      "balcony": "floor_tile_antislip_400"
+    }
+  },
+  "camera": {
+    "mode": "orbit",
+    "topDown": false,
+    "position": {"x": 6.5, "y": 4.7, "z": 5.45},
+    "target": {"x": 6.35, "y": 0, "z": 3.25}
+  },
+  "targetObjects": [
+    {
+      "objectId": "floor:guest_bath",
+      "type": "floor",
+      "roomId": "guest_bath",
+      "visible": true,
+      "position": [6.35, 0.005, 3.25]
+    }
+  ],
+  "layoutFact": {
+    "roomAreaSqm": 3.15,
+    "openVanityBounds": {"x": [5.6, 7.1], "z": [3.55, 4.3]},
+    "openVanityAreaSqm": 1.125
+  }
+}

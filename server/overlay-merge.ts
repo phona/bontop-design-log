@@ -226,12 +226,15 @@ const FloorRegionSchema = z
     // DEC-2026-10-09-P16：**默认计入** floor 算量，标了才排除（opt-out）。
     // 取代 P12 的 costed opt-in——那个手工布尔量重复了几何已知的信息（这块地是不是已被某个
     // 已计费房间算过），同一事实存两处必致双计/漏计。现在「整块落在已计费房间内」由
-    // shared/masonry-takeoff.ts 的 floorRegionInsideCostedRoom 按几何自动跳过（2026-10-13
-    // 阶段 2 第二半起为唯一实现，server/budget-calculator.ts 只装配输入）；
+    // shared/masonry-takeoff.ts 的 floorRegionInsideCostedRoom 按几何处理：普通过渡区跳过，
+    // room + follow 内部材质区从宿主面积转入follow材质桶；server/budget-calculator.ts只装配输入。
     // excluded 只留给几何说不清的例外（开发商已铺 / 业主裁定不铺），配 reason 写清为什么。
     excluded: z.boolean().optional(),
   })
-  .strict();
+  .strict()
+  .refine((region) => !region.room || Boolean(region.follow), {
+    message: 'floor_region.room marks an internal material zone and must be paired with follow',
+  });
 
 const BaySillSchema = z
   .object({
