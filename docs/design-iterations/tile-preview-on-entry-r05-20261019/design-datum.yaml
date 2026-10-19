@@ -1,0 +1,23 @@
+# Design Datum — 首屏地砖方向预演
+schema: interior-design-design-datum/v1
+iteration_id: tile-preview-on-entry-r05-20261019
+coordinate_system: Three.js右手系；+x=东、-x=西；+z=南、-z=北；单位m。
+datums:
+  - id: startup-floor-preview
+    object: all-floor-and-floor-region-preview-meshes
+    plan:
+      ui_direction_deg: 0
+      plank_axis: world_z
+      direction: 南北向
+      texture_rotation_deg: 90
+    elevation: 仅临时UV材质预演，不改变几何/标高/施工布局。
+    basis: [DEC-2026-10-19-R04, user feedback R05]
+  - id: target-view
+    object: browser-evidence-camera
+    plan:
+      room: living_dining
+      camera_position: {x: 12.6, y: 2.6, z: 6.0}
+      target: {x: 10.3, y: 0.4, z: 9.3}
+    basis: [resolved living_dining bounds, R04 evidence view]
+non_datums:
+  - 正式地面砖方向、墙漆颜色、窗帘/家具/几何状态。

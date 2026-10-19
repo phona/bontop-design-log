@@ -1,0 +1,36 @@
+# Fact Table — 首屏应用默认地砖预演（DEC-2026-10-19-R05）
+schema: interior-design-fact-table/v1
+iteration_id: tile-preview-on-entry-r05-20261019
+facts:
+  - id: f_visible_mismatch
+    status: confirmed
+    statement: R04后slider默认0°，但首次加载时visualPreviewActive=false；正式纹理rotation仍为0（东西向），故画面与滑块目标南北向不一致。
+    source_refs: [app/src/App.ts, docs/design-iterations/tile-preview-axis-r04-20261019/evidence/runtime-verification.json]
+    impact: 仅改slider初值并不能让首次进入画面显示南北向。
+    affected_objects: [material-preview-floor-rotation, floor-material-preview]
+    owner: design
+    verification: 重新加载浏览器并比较slider、visualPreviewActive及floor mesh贴图rotation。
+  - id: f_floor_preview_scope
+    status: confirmed
+    statement: 地面预演入口会覆盖房间floor和floor_region材质；full material preview还会调用setPaintColor。
+    source_refs: [app/src/App.ts, app/src/render/HouseScene.ts, data/current-scheme.json]
+    impact: 首屏默认方向只应用地面层，保持墙漆和正式选材不变。
+    affected_objects: [room-floor-meshes, floor-region-meshes, paint-wall-meshes]
+    owner: design
+    verification: runtime visualPreviewPaintActive=false；官方paint selection未变。
+  - id: f_user_goal
+    status: user_decision
+    statement: 业主反馈“怎么进来还是东西向”，要求首次进入画面呈现地砖预演默认0°南北向。
+    source_refs: [user message 2026-10-19]
+    impact: 首屏应立即应用临时南北预演，而不是只显示默认slider值。
+    affected_objects: [initial-floor-preview]
+    owner: homeowner
+    verification: 首屏runtime及同机位截图。
+  - id: f_formal_scheme
+    status: confirmed
+    statement: 当前正式floor selection为KT 200x1200默认砖及三间房override；paint与窗帘状态均不因首屏预演改变。
+    source_refs: [data/current-scheme.json, data/presentation-state.json, data/project-render-facts.json]
+    impact: 首屏临时预演只改变内存场景，恢复后回到正式纹理和原状态。
+    affected_objects: [official-floor-selection, paint-selection, curtains]
+    owner: design
+    verification: browser runtime after reset。

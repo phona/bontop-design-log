@@ -1,0 +1,24 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "首屏截图中slider为0°，地砖长边沿画面南北方向延伸，和南向标识、R04的world_z约定一致；runtime同时确认16个floor/floor_region贴图rotation=π/2。",
+    "场景构图稳定：客餐厅近景中沙发、茶几、电视柜和南窗关系正常，地面纹理连续，板缝尺度、颜色和哑光度未因首屏应用预演而跳变。",
+    "首屏runtime确认visualPreviewActive=true、paintPreviewActive=false；正式floor/paint selection与窗帘default=open保持不变。恢复后正式地面rotation=0，预演边界清楚。",
+    "截图中的告警计数为407，但runtime configErrors为空，未见影响本轮地材显示的证据。"
+  ],
+  "evidence_refs": [
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/decision-brief.yaml",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/design-datum.yaml",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/evidence/runtime-verification.json",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/evidence/startup-page.snapshot.txt",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/evidence/restored-page.snapshot.txt",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/evidence/startup-north-south.png"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "没有删除地面区域、正式材料、墙漆选择、窗帘、几何、历史证据或历史决策；首屏只新增内存中的地面预演状态。",
+    "R05只推翻R04中“首次加载时slider为0但场景仍保持正式东西向直到手动触发”的隐含行为；R04的0°/90°方向映射、R03的窗帘open和正式floor scheme继续有效。",
+    "若首屏只初始化slider而未应用floor preview，界面会再次显示0°但场景仍为正式东西向；若初始化调用setPaintColor，未来paint roomOverrides可能被覆盖；若归档恢复前不执行finishVisualPreview，旧preview floorId可能遮住恢复后的正式材料。"
+  ]
+}

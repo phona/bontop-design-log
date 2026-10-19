@@ -16,6 +16,7 @@
 - `DEC-2026-10-15-R01` 法式四门冰箱外观预演（保留 10-14 试位）
 - `DEC-2026-10-19-R03` 全屋窗帘默认收起；地砖预演默认90°
 - `DEC-2026-10-19-R04` 地砖预演0°南北向、90°东西向，默认0°
+- `DEC-2026-10-19-R05` 初次进入时自动显示地砖默认南北向预演
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -191,6 +192,18 @@
 - **静默失效条件**：①若只改slider文案却不做`90 - directionDeg`转换，读数与画面铺向会相反；②若漏改初始化或无scheme兜底，首屏值可能不是0°；③未触发预演时正式场景仍显示正式材质，预演角度不会写入正式scheme。
 - **验证与探针**：`typecheck`通过；浏览器`isReady=true`且配置错误横幅为空。运行时0°→texture rotation π/2、90°→rotation 0；恢复后previewActive=false、slider回0、正式floor selection与覆盖不变、正式rotation为0。客餐厅南窗同机位两张预演截图及运行时查询见`docs/design-iterations/tile-preview-axis-r04-20261019/`。
 - **责任/触发**：决策人为业主；本轮没有施工或现场待办。今后如要调整正式铺贴方向，另行以正式方案决策落地。
+
+---
+
+### DEC-2026-10-19-R05 初次进入时自动显示地砖默认南北向预演
+
+- **日期/来源**：2026-10-19。业主反馈重载进入后画面仍是东西向。运行态确认R04滑块虽显示0°，但`visualPreviewActive=false`，场景继续显示正式材质的东西向贴图。
+- **选定行为**：首次加载正式scheme并创建地砖预演面板后，立即把默认0°预演应用到地面与`floor_region`，使首屏即为南北向。该状态只改内存场景，不写`current-scheme`。首屏初始化不应用墙漆预演；`paintPreviewActive=false`。点击“恢复正式材料与灯光”仍还原正式地面。
+- **结论保留**：R04方向定义继续有效（0°南北、90°东西）；R03窗帘默认`open`、正式材料SKU/房间覆盖和正式铺贴方向均不变。恢复归档方案前先退出预演，避免旧`floorId`覆盖归档选材。
+- **实质内容/删除审计**：未删除几何、地面区域、材料候选、家具、窗帘或既有决策/证据。只改变首屏临时展示方式。
+- **静默失效条件**：① 若setup只同步slider而未应用floor preview，画面会与默认0°读数不一致；② 若初始化套用完整材料预演，墙漆roomOverrides未来可能被默认墙漆色覆盖，因此首屏路径只应用地面，墙漆预演保持关闭；③ 若恢复归档前未退出预演，旧预览材质可能覆盖新scheme。
+- **验证与探针**：改后首屏`isReady=true`、slider=0、`visualPreviewActive=true`、`paintPreviewActive=false`；所有地面贴图rotation=π/2。恢复后`visualPreviewActive=false`、slider回0、正式floor选择与roomOverrides不变、正式texture rotation=0、窗帘仍open。typecheck、gate:visual和同机位浏览器取证通过；独立审美/功能review PASS。
+- **责任/触发**：决策人为业主；这是预演首屏显示行为，不产生现场或采购待办。
 
 ---
 

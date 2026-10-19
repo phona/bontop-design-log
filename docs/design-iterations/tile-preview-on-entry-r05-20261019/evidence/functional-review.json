@@ -1,0 +1,37 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "删除了什么：未删除地面区域、材料候选、正式选材、墙漆、窗帘、几何、历史决定或既有证据。",
+    "推翻了什么：R05只推翻R04中“首屏只显示slider默认值、场景仍保持正式东西向纹理”的行为；R04的0°南北向、90°东西向映射，R03的窗帘open和正式scheme均保留。",
+    "首屏验证通过：slider=0、visualPreviewActive=true、paintPreviewActive=false，16个floor/floor_region采样贴图rotation为π/2，截图与南北向说明一致。",
+    "恢复验证通过：visualPreviewActive=false、paintPreviewActive=false、slider回0，正式纹理rotation=0；official floor selection、paint selection及curtain default=open均保持不变。",
+    "gate:visual与typecheck已通过；tests未运行。"
+  ],
+  "evidence_refs": [
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/decision-brief.yaml",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/fact-table.yaml",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/work-record.md",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/review-manifest.json",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/evidence/runtime-verification.json",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/evidence/startup-page.snapshot.txt",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/evidence/restored-page.snapshot.txt",
+    "docs/design-iterations/tile-preview-on-entry-r05-20261019/evidence/startup-north-south.png",
+    "app/src/App.ts:581",
+    "app/src/App.ts:591",
+    "app/src/App.ts:643",
+    "app/src/App.ts:649",
+    "app/src/App.ts:739",
+    "app/src/App.ts:1982",
+    "app/src/App.ts:2267",
+    "data/current-scheme.json",
+    "data/presentation-state.json",
+    "data/project-render-facts.json"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "以R05 source_sha256与浏览器runtime证据作为源码、正式数据和截图属于同一版本的依据。",
+    "首屏调用applyMaterialPreviewState(initialPreviewState, false)只覆盖floor与floor_region；paintPreviewActive=false证明未调用墙漆预览覆盖。",
+    "若setupMaterialPreviewPanel只初始化slider而不应用floor preview，首屏会再次出现读数0但画面东西向；若后续调用applyMaterialPreviewState误传applyPaint=true，可能覆盖墙漆roomOverrides；若恢复scheme前不调用finishVisualPreview，旧preview floorId可能遮住归档材料。"
+  ]
+}

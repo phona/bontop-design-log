@@ -1,0 +1,35 @@
+# Decision Brief — 首屏默认南北向预演
+schema: interior-design-decision-brief/v1
+iteration_id: tile-preview-on-entry-r05-20261019
+decision_ref: DEC-2026-10-19-R05
+frozen: true
+frozen_at: 2026-10-19
+owner: 业主
+priority:
+  - 第一次进入应用时，0°南北向地砖预演必须实际显示在场景中。
+  - 地砖默认0°=南北向、90°=东西向的R04映射保持不变。
+  - 首屏预演只作用于地面；paint、正式scheme和窗帘不变。
+allowed_scope:
+  - app/src/App.ts 的地砖预演初始化/恢复逻辑。
+  - DEC-2026-10-19-R05 与对应运行时证据。
+forbidden:
+  - 修改正式floor material配置、current-scheme、render facts或几何。
+  - 首屏将墙漆覆盖为全屋同色。
+  - 推翻R04角度映射或R03窗帘open决定。
+alignment:
+  id: owner-alignment-2026-10-19-entry-preview
+  original_feedback: “怎么进来还是东西向”
+  normalized_decision: setupMaterialPreviewPanel创建后立即应用默认floor preview，使首屏画面为南北向；paint preview不激活；恢复按钮仍可退出到正式材质。
+  retained: DEC-2026-10-19-R04 direction mapping；正式floor和paint selection；DEC-2026-10-19-R03窗帘open。
+  site_pending: []
+acceptance:
+  checks:
+    - reload后ready=true、slider=0、visualPreviewActive=true、visualPreviewPaintActive=false。
+    - 首屏room floor和floor_region贴图rotation均为π/2，方向为南北。
+    - 官方floor/paint selection和窗帘default不变。
+    - 恢复正式材料后visualPreviewActive=false，正式贴图rotation=0，slider仍回到默认0。
+  evidence_refs:
+    - evidence/startup-page.snapshot.txt
+    - evidence/restored-page.snapshot.txt
+    - evidence/runtime-verification.json
+    - evidence/startup-north-south.png

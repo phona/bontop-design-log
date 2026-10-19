@@ -1,0 +1,43 @@
+{
+  "url": "http://localhost:5173/?v=20261019-r05",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "configErrors": [],
+  "startup": {
+    "slider": "0",
+    "previewActive": true,
+    "paintPreviewActive": false,
+    "floorTextureRotationRadians": 1.5707963267948966,
+    "sampledFloorMeshCount": 16,
+    "officialFloorSelection": {
+      "default": "floor_tile_kt_200x1200_01",
+      "roomOverrides": {
+        "master_bath": "floor_tile_antislip_400",
+        "guest_bath": "floor_tile_deco_small",
+        "balcony": "floor_tile_antislip_400"
+      }
+    },
+    "officialPaint": {"default": "latex_paint_01", "roomOverrides": {}},
+    "curtainDefault": "open"
+  },
+  "afterRestore": {
+    "slider": "0",
+    "previewActive": false,
+    "paintPreviewActive": false,
+    "officialFloorTextureRotationRadians": 0,
+    "officialFloorSelection": {
+      "default": "floor_tile_kt_200x1200_01",
+      "roomOverrides": {
+        "master_bath": "floor_tile_antislip_400",
+        "guest_bath": "floor_tile_deco_small",
+        "balcony": "floor_tile_antislip_400"
+      }
+    },
+    "officialPaint": {"default": "latex_paint_01", "roomOverrides": {}},
+    "curtainDefault": "open"
+  },
+  "camera": {
+    "position": [12.6, 2.6, 6.0],
+    "target": [10.3, 0.4, 9.3]
+  }
+}

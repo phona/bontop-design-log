@@ -62,6 +62,7 @@ const ORBIT_DISTANCE = 15;
 
 interface VisualPreviewSnapshot {
   material: MaterialPreviewPanelState;
+  paintPreviewActive: boolean;
   lighting: LightingPreviewState;
   sunlight: { enabled: boolean; month: number; day: number; hour: number };
 }
@@ -146,6 +147,7 @@ export class App {
   private officialScheme: CurrentScheme | null = null;
   private materialPreviewState: MaterialPreviewPanelState | null = null;
   private visualPreviewActive = false;
+  private visualPreviewPaintActive = false;
   private visualPreviewSlots: Record<PreviewSlot, VisualPreviewSnapshot | null> = { A: null, B: null };
   private sunlightButton: SunlightButton | null = null;
   private glassFidelityButton: GlassFidelityButton | null = null;
@@ -576,14 +578,17 @@ export class App {
       };
     });
     const atlases = this.materialPreviewAtlases.map((atlas) => ({ id: atlas.id, label: atlas.label, note: atlas.note }));
-    this.materialPreviewState = this.makeMaterialPreviewState(scheme);
+    const initialPreviewState = this.makeMaterialPreviewState(scheme);
+    this.materialPreviewState = initialPreviewState;
     this.materialPreviewPanel = new MaterialPreviewPanel(host, options, atlases, {
-      onStateChange: (state) => this.applyMaterialPreviewState(state),
+      onStateChange: (state) => this.handleMaterialPreviewChange(state),
       onReset: () => this.finishVisualPreview(),
       onSavePreset: (slot) => this.saveVisualPreviewPreset(slot),
       onRecallPreset: (slot) => this.recallVisualPreviewPreset(slot),
     }, this.materialPreviewState, document.getElementById('material-preview-actions') ?? undefined);
-    this.syncMaterialPreviewPanel();
+    // The preview workbench opens with the default floor direction visible in the scene.
+    // This remains an in-memory preview; finishVisualPreview() restores the official scheme.
+    this.applyMaterialPreviewState(initialPreviewState, false);
   }
 
   private makeMaterialPreviewState(scheme: CurrentScheme): MaterialPreviewPanelState {
@@ -635,9 +640,14 @@ export class App {
     };
   }
 
-  private applyMaterialPreviewState(state: MaterialPreviewPanelState): void {
+  private handleMaterialPreviewChange(state: MaterialPreviewPanelState): void {
+    const paintChanged = this.materialPreviewState !== null
+      && state.paintColor !== this.materialPreviewState.paintColor;
+    this.applyMaterialPreviewState(state, this.visualPreviewPaintActive || paintChanged);
+  }
+
+  private applyMaterialPreviewState(state: MaterialPreviewPanelState, applyPaint: boolean): void {
     this.materialPreviewState = { ...state };
-    this.visualPreviewActive = true;
     const floorSelection = this.officialScheme?.selections.floor;
     const roomOverrides = floorSelection?.roomOverrides ?? {};
     const defaultAppearance = this.getPreviewFloorAppearance(state.floorId, state);
@@ -652,8 +662,10 @@ export class App {
         const roomOptionId = roomOverrides[roomId];
         return roomOptionId ? this.getPreviewFloorAppearance(roomOptionId, state) ?? null : null;
       });
-      // setPaintColor targets only non-tile wall faces; ceilings and the saved paint selection are untouched.
-      this.houseScene.setPaintColor(state.paintColor);
+      if (applyPaint) {
+        // setPaintColor targets only non-tile wall faces; ceilings and the saved paint selection are untouched.
+        this.houseScene.setPaintColor(state.paintColor);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error('[material preview] failed', error);
@@ -661,6 +673,8 @@ export class App {
       this.showToast(`材料预演不可用：${message}`);
       return;
     }
+    this.visualPreviewActive = true;
+    this.visualPreviewPaintActive = applyPaint;
     this.syncMaterialPreviewPanel();
     this.requestRender();
   }
@@ -672,6 +686,7 @@ export class App {
     });
     return {
       material: { ...material },
+      paintPreviewActive: this.visualPreviewPaintActive,
       lighting: this.getLightingPreviewState(),
       sunlight: {
         enabled: this.sunlightEnabled,
@@ -691,7 +706,7 @@ export class App {
     const snapshot = this.visualPreviewSlots[slot];
     if (!snapshot) return;
     this.applySunlightPreviewState(snapshot.sunlight);
-    this.applyMaterialPreviewState(snapshot.material);
+    this.applyMaterialPreviewState(snapshot.material, snapshot.paintPreviewActive);
     this.applyLightingPreviewState(snapshot.lighting);
   }
 
@@ -723,6 +738,7 @@ export class App {
 
   private finishVisualPreview(): void {
     this.visualPreviewActive = false;
+    this.visualPreviewPaintActive = false;
     this.interiorLighting?.clearPreviewOverrides();
     this.houseScene.getEnvironmentManager().setInteriorOnlyNightPreview(false);
     if (this.officialScheme) this.applyScheme(this.officialScheme);
@@ -1964,6 +1980,7 @@ export class App {
   }
 
   private async handleRestore(id: string): Promise<void> {
+    this.finishVisualPreview();
     await this.stateSync.restoreScheme(id);
     const scheme = await this.stateSync.fetchScheme();
     if (scheme) {
@@ -2170,7 +2187,7 @@ export class App {
         this.interiorLighting = nextInteriorLighting;
         if (carriedPreview) {
           this.applyLightingPreviewState(carriedPreview.lighting);
-          this.applyMaterialPreviewState(carriedPreview.material);
+          this.applyMaterialPreviewState(carriedPreview.material, carriedPreview.paintPreviewActive);
         } else {
           this.syncLightingPreviewPanel();
         }
@@ -2258,7 +2275,7 @@ export class App {
       }
     }
     if (this.visualPreviewActive && this.materialPreviewState) {
-      this.applyMaterialPreviewState(this.materialPreviewState);
+      this.applyMaterialPreviewState(this.materialPreviewState, this.visualPreviewPaintActive);
     } else if (this.materialPreviewPanel) {
       this.materialPreviewState = this.makeMaterialPreviewState(scheme);
       this.syncMaterialPreviewPanel();
