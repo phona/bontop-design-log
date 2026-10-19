@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="640" viewBox="0 0 1080 640" role="img" aria-labelledby="title desc">
+  <title id="title">R25 冷凝水剖面与客卫末端竖管</title>
+  <desc id="desc">上图对比自然重力候选在2.50m完成面以下的外包络与内机泵提升后隐藏在吊顶空腔的候选；下图显示共用立管在现有vanity投影内，需确认既有检修服务空间。</desc>
+  <defs>
+    <pattern id="beamHatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#fed7aa"/><line x1="0" y1="0" x2="0" y2="8" stroke="#ea580c" stroke-width="2"/>
+    </pattern>
+    <pattern id="cabHatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#fef3c7"/><line x1="0" y1="0" x2="0" y2="8" stroke="#b45309" stroke-width="1.5"/>
+    </pattern>
+    <marker id="arrowDown" markerWidth="8" markerHeight="8" refX="4" refY="6" orient="auto"><path d="M0 0L8 0L4 8Z" fill="#1f2937"/></marker>
+    <style>
+      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#1f2937}
+      .title{font-size:19px;font-weight:700}.head{font-size:15px;font-weight:700}.body{font-size:12px}.tiny{font-size:11px}
+      .finish{stroke:#111827;stroke-width:2.2;stroke-dasharray:8 4}.slab{stroke:#64748b;stroke-width:2;stroke-dasharray:4 4}
+      .gravity{stroke:#c2410c;stroke-width:4;fill:none}.pump{stroke:#2563eb;stroke-width:4;fill:none;stroke-dasharray:10 6}
+      .trunk{stroke:#111827;stroke-width:6;fill:none}.cab{fill:url(#cabHatch);stroke:#92400e;stroke-width:2}
+      .clearance{stroke:#64748b;stroke-width:1.2;stroke-dasharray:3 3}.beam{fill:url(#beamHatch);stroke:#c2410c;stroke-width:1.4}
+    </style>
+  </defs>
+  <rect width="1080" height="640" fill="#fff"/>
+  <text x="28" y="32" class="title">R25｜冷凝水候选剖面（协调示意，不是施工定位）</text>
+
+  <!-- A-A: living branch along x at plan z=4.50 -->
+  <text x="70" y="61" class="head">A–A｜客厅支管与走廊梁带（平面 z=4.50）</text>
+  <rect x="60" y="76" width="960" height="280" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <g stroke="#e2e8f0" stroke-width="1">
+    <path d="M140 120H960M140 160H960M140 200H960M140 240H960M140 280H960M140 320H960"/>
+    <path d="M200 100V340M335 100V340M470 100V340M605 100V340M740 100V340M875 100V340"/>
+  </g>
+  <!-- x reference: x=6.0 at 140; 135 px per metre. y reference: 2.80 at 135, 2.50 at 285. -->
+  <rect class="beam" x="261.5" y="135" width="81" height="75" opacity=".65"/>
+  <text x="267" y="151" class="tiny">参考梁带</text><text x="267" y="167" class="tiny">x[6.9,7.5]</text>
+  <line class="slab" x1="140" y1="135" x2="965" y2="135"/>
+  <text x="870" y="127" class="tiny">假设结构板底2.80m</text>
+  <line class="finish" x1="140" y1="285" x2="965" y2="285"/>
+  <text x="875" y="279" class="tiny">走廊/客厅完成面2.50m</text>
+  <line x1="261.5" y1="210" x2="342.5" y2="210" stroke="#c2410c" stroke-width="2" stroke-dasharray="3 3"/>
+  <text x="350" y="214" class="tiny">梁底参考2.65m（未实测；带内上限2.60m）</text>
+
+  <!-- Envelope bands: low gravity candidate below finish; pump candidate held above it. -->
+  <path d="M842 279.25 L842 260.75 L207.5 284.25 L207.5 302.75 Z" fill="#fb923c" fill-opacity=".18" stroke="#c2410c" stroke-width="1"/>
+  <path class="gravity" d="M842 288.5 L207.5 312"/>
+  <text x="590" y="326" class="body" fill="#9a3412">当前自然重力候选中心线 y=2.493→2.446；φ25+6mm外包络，沿段约65–74mm低于完成面</text>
+  <path class="pump" d="M842 164.75 L842 167 L207.5 190.5 L207.5 194.5 L248 196"/>
+  <text x="390" y="108" class="body" fill="#1d4ed8">备选：P-SS出口局部提升至2.75m，之后连续重力至节点2.6825m</text>
+  <text x="390" y="125" class="tiny" fill="#1d4ed8">外包络顶约2.7685m；距板底约31.5mm，需实测吊架净空</text>
+  <line x1="207.5" y1="285" x2="207.5" y2="312" class="clearance"/>
+  <text x="112" y="306" class="tiny">节点支管中心</text>
+  <text x="140" y="344" class="tiny">x=6.0</text><text x="258" y="344" class="tiny">6.9</text><text x="336" y="344" class="tiny">7.5</text><text x="735" y="344" class="tiny">10.4</text><text x="825" y="344" class="tiny">11.2</text>
+  <text x="76" y="139" class="tiny">2.80</text><text x="76" y="213" class="tiny">2.65</text><text x="76" y="289" class="tiny">2.50</text><text x="76" y="326" class="tiny">2.43</text>
+  <rect x="795" y="104" width="16" height="4" class="gravity"/><text x="818" y="110" class="tiny">重力候选</text>
+  <line x1="900" y1="106" x2="920" y2="106" class="pump"/><text x="926" y="110" class="tiny">泵后隐藏候选</text>
+
+  <!-- B-B: x section through the fixed drain point and current vanity projection -->
+  <text x="70" y="391" class="head">B–B｜客卫汇流竖管与现有vanity（平面 z=3.70）</text>
+  <rect x="60" y="405" width="960" height="210" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <line x1="130" y1="562" x2="940" y2="562" stroke="#334155" stroke-width="2"/>
+  <text x="135" y="582" class="tiny">地面</text>
+  <!-- Vanity carcass physical AABB at this slice: x 6.54–7.04, y 0.30–0.79. -->
+  <rect class="cab" x="404" y="452" width="300" height="64"/>
+  <text x="415" y="474" class="body">现有vanity柜体</text><text x="415" y="493" class="tiny">AABB y=0.30–0.79m；保持不改</text>
+  <rect x="656" y="418" width="92" height="28" fill="#e2e8f0" stroke="#475569" stroke-width="2"/>
+  <text x="664" y="436" class="tiny">既有镜柜</text>
+  <!-- Current vanity candidate trunk: explicitly intersects the projected casework volume. -->
+  <line class="trunk" x1="560" y1="425" x2="560" y2="480"/>
+  <line class="trunk" x1="560" y1="499" x2="560" y2="548"/>
+  <path d="M553 481L560 486L553 492L560 498" stroke="#111827" stroke-width="2" fill="none"/>
+  <circle cx="560" cy="425" r="7" fill="#111827"/>
+  <path d="M560 548H500" stroke="#111827" stroke-width="6" marker-end="url(#arrowDown)"/>
+  <circle cx="500" cy="548" r="6" fill="#166534"/>
+  <text x="765" y="424" class="body">节点 (6.80,3.70,2.435)</text>
+  <text x="765" y="443" class="tiny">DN32共用竖管约2.335m（断轴示意）</text>
+  <text x="765" y="464" class="tiny" fill="#9a3412">柜内服务空腔/清扫可达性未核</text>
+  <text x="160" y="541" class="tiny" fill="#166534">固定候选排水点 (6.70,3.70,0.10)</text>
+  <text x="392" y="600" class="tiny">x=6.54</text><text x="548" y="600" class="tiny">6.80</text><text x="700" y="600" class="tiny">7.04</text><text x="842" y="600" class="tiny">7.28</text>
+  <line x1="404" y1="537" x2="404" y2="557" class="clearance"/><line x1="704" y1="537" x2="704" y2="557" class="clearance"/>
+  <text x="765" y="485" class="body" fill="#9a3412">若没有现成检修服务空腔，</text>
+  <text x="765" y="504" class="body" fill="#9a3412">柜内竖管候选不成立；不得</text>
+  <text x="765" y="523" class="body" fill="#9a3412">直接切柜或扩大镜柜。</text>
+  <text x="765" y="546" class="tiny">改包管/饰面须业主另审。</text>
+</svg>

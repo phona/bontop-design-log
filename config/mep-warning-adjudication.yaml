@@ -104,3 +104,9 @@ adjudications:
     scope: "仅 envelope_approximation 桶实例（candidate 估算线的无依托段）；物理路线飞线必须改道，不适用本表态"
     owner: "业主"
     trigger: "对应回路从估算升施工口径时改贴墙/垫层重画"
+  - code: route_insulation_unverified
+    verdict: accepted
+    dec_ref: DEC-2026-10-19-R25
+    scope: "冷凝水外包络中6mm保温仅为候选假设；不得按裸管净空视为可施工"
+    owner: "空调厂家 + 安装方"
+    trigger: "厂家确认保温材质/厚度及泵型排水附件、现场确认安装外径后复核碰撞与吊顶净空"

@@ -1054,6 +1054,42 @@ test('ceiling_clearance：按共享 footprint 核点与穿越线段；走地分�
   assert.equal(gone.errors.filter((i) => i.code === 'count_mirror_unresolvable').length, 1);
 });
 
+test('ceiling_clearance：管线保温外包络穿出完成面时计入登记数', () => {
+  const contract = {
+    id: 'c.probe_insulated_ceiling', kind: 'ceiling_clearance' as const, severity: 'error' as const,
+    source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/ceiling.yaml',
+    endpoints_key: 'mep.endpoints', room_heights_key: 'mep.room_heights',
+    default_room_height: 2.8, tolerance: 0, registered_conflicts: 1,
+    prose: [{ path: 'docs/guidance.md', extract: '冲突\\s*(\\d+)\\s*处', expect_matches: 1 }],
+  };
+  const files = {
+    'config/mep.yaml': [
+      'layers:',
+      '  condensate: { height: 2.5 }',
+      'routes:',
+      '  - id: insulated-pipe',
+      '    layer: condensate',
+      '    method: gravity_condensate_candidate',
+      '    diameter: 0.025',
+      '    insulation_thickness: 0.006',
+      '    insulation_status: assumed',
+      '    from_height: 2.515',
+      '    to_height: 2.515',
+      '    from: {x: 0.5, z: 1, y: 2.515}',
+      '    to: {x: 1.5, z: 1, y: 2.515}',
+    ].join('\n'),
+    'config/ceiling.yaml': '- id: drop_test\n  room: living_dining\n  type: drop\n  thickness: 0.30\n  area: [0, 0, 2, 2]\n',
+    'docs/guidance.md': '冲突 1 处\n',
+  };
+  const datasets = {
+    'mep.endpoints': {},
+    'mep.room_heights': { living_dining: 2.8 },
+  };
+  const result = lintFacts({ ...emptyRegistry, contracts: [contract] }, workspaceOf(files, datasets));
+  assert.equal(result.errors.length, 0, result.errors.map((issue) => issue.message).join('\n'));
+  assert.match((result.notes ?? []).join('\n'), /实算 1 处/);
+});
+
 test('covered_or_marked：点位要么被 route 引用，要么 note 含显式 deferred 标记', () => {
   const contract = {
     id: 'c.probe_covered', kind: 'covered_or_marked' as const, severity: 'error' as const,

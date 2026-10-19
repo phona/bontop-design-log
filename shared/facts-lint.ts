@@ -5,7 +5,7 @@ import {
   ceilingSurfaceY,
   isSolidCeilingZone,
   pointInFootprint,
-  routeTouchesFootprint,
+  routeHalfExtents,
   SUPPORT_FLOOR_BAND_MAX,
   type FootprintPoint,
 } from './mep-hvac-lint.js';
@@ -1653,13 +1653,28 @@ function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines:
     const yOf = (p: ClearancePoint): number => p.y ?? layerHeight ?? 0;
     const isFloorBranch = route.method === 'floor_branch' || route.method === 'floor_branch_candidate';
     if (isFloorBranch && points.some((point) => yOf(point) <= SUPPORT_FLOOR_BAND_MAX)) continue;
+    const outerHalfHeight = routeHalfExtents(route as unknown as import('./mep-hvac-coordination-schema.js').MepRoute).y;
     for (const zone of zones) {
-      const pointConflict = points.some((p) => pointInFootprint(p, zone.footprint) && yOf(p) < zone.surface - tol);
-      const segmentConflict = points.some((a, index) => index > 0
-        && yOf(a) < zone.surface - tol
-        && yOf(points[index - 1]) < zone.surface - tol
-        && routeTouchesFootprint(points[index - 1], a, zone.footprint));
-      if (pointConflict || segmentConflict) conflicts.push(`${str(route.id)}@${zone.id}`);
+      // Match verify:mep's physical ceiling envelope: a pipe can breach the
+      // finished plane while its centerline still sits above it. The half
+      // height includes diameter and any declared insulation.
+      const breaches = (point: ClearancePoint): boolean => pointInFootprint(point, zone.footprint)
+        && yOf(point) - outerHalfHeight < zone.surface - tol;
+      let conflict = points.some(breaches);
+      for (let index = 1; index < points.length && !conflict; index += 1) {
+        const a = points[index - 1], b = points[index];
+        const ay = yOf(a), by = yOf(b);
+        const length = Math.hypot(b.x - a.x, by - ay, b.z - a.z);
+        const steps = Math.max(1, Math.ceil(length / 0.05));
+        for (let step = 1; step < steps; step += 1) {
+          const t = step / steps;
+          if (breaches({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, y: ay + (by - ay) * t })) {
+            conflict = true;
+            break;
+          }
+        }
+      }
+      if (conflict) conflicts.push(`${str(route.id)}@${zone.id}`);
     }
   }
   const actual = conflicts.length;

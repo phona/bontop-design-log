@@ -20,21 +20,36 @@ const CoordinateSchema = z.object({
 }).strict();
 const EndpointSchema = z.union([z.string().min(1), CoordinateSchema]);
 const DimensionSchema = z.number().finite().positive();
+const JunctionPositionSchema = z.object({ x: z.number().finite(), z: z.number().finite(), y: z.number().finite() }).strict();
+export const MepJunctionSchema = z.object({
+  id: z.string().min(1),
+  layer: z.literal('condensate'),
+  kind: z.literal('merge'),
+  position: JunctionPositionSchema,
+  inlet_routes: z.array(z.string().min(1)).min(2),
+  outlet_route: z.string().min(1),
+  fitting: z.literal('wye'),
+  /** Maximum centerline distance from the node allowed inside the physical fitting envelope. */
+  fitting_overlap_m: z.number().finite().positive().max(0.1),
+  reason: z.string().min(1),
+}).strict();
 export const MepRouteSchema = z.object({
   id: z.string().min(1), layer: MepLayerSchema, status: MepStatusSchema,
   source_status: MepSourceStatusSchema.default('preliminary'),
   construction_status: MepStatusSchema.default('pending'),
   method: z.string().min(1).optional(),
   route_kind: z.enum(['physical', 'requirement', 'candidate']).optional(),
-  // DEC-2026-10-17-R16 共槽/汇流声明：列出与本路线经声明共享干管段（三通合流、同立管汇入）
-  // 的 route id。lint 对声明对跳过 route_overlap——物理上就是同一根管的合并段，不是碰撞；
-  // 声明是双向的（任一侧声明即生效），配对是否属实由 review 而非 schema 判定。
+  // DEC-2026-10-17-R16 legacy 共槽声明：列出共享干管段 route id；重叠仍以 warning 显形。
+  // condensate 合流必须使用下方 junctions 的节点、入口、出口与局部接头包络，不靠此 route-id 声明放行。
   shared_trunk_with: z.array(z.string().min(1)).optional(),
   // DEC-2026-10-17-R17 台体穿越声明：端点/目标位于 bay_sill 覆盖区内时，管线以套管形式
   // 穿越建模实心台体（模型无台体开洞概念）。列出穿越的 bay_sill id，lint 跳过该对碰撞。
   sill_crossings: z.array(z.string().min(1)).optional(),
   flow_direction: z.string().min(1).optional(), slope: z.number().finite().optional(), penetration: z.unknown().optional(),
+  served_indoor: z.string().min(1).optional(),
   diameter: DimensionSchema.optional(), width: DimensionSchema.optional(), depth: DimensionSchema.optional(), height: DimensionSchema.optional(),
+  insulation_thickness: z.number().finite().nonnegative().optional(),
+  insulation_status: z.enum(['assumed', 'confirmed']).optional(),
   from_height: z.number().finite().optional(), to_height: z.number().finite().optional(),
   from: EndpointSchema, to: EndpointSchema, via: z.array(CoordinateSchema).default([]),
   label: z.string().min(1).optional(), reason: z.string().min(1).optional(),
@@ -45,8 +60,10 @@ export const MepCoordinationSchema = z.object({
   // so a missing layer fails at load time instead of crashing the renderer later.
   layers: z.record(MepLayerSchema, z.object({ label: z.string(), color: z.string(), height: z.number().finite() }).strict()),
   routes: z.array(MepRouteSchema),
+  junctions: z.array(MepJunctionSchema).default([]),
 }).strict();
 export type MepRoute = z.infer<typeof MepRouteSchema>;
+export type MepJunction = z.infer<typeof MepJunctionSchema>;
 export type MepCoordination = z.infer<typeof MepCoordinationSchema>;
 
 export interface MepEndpointSources {
@@ -126,8 +143,8 @@ function routeMetadata(route: MepRoute, from?: { x: number; z: number }, to?: { 
 
 export function resolveMepRoutes(config: MepCoordination, sources: MepEndpointSources): MepRouteResolutionReport {
   const routes = config.routes.map((route) => {
-    const from = resolveMepEndpoint(route.from, sources);
-    const to = resolveMepEndpoint(route.to, sources);
+    const from = resolveMepEndpoint(route.from, sources, config.junctions);
+    const to = resolveMepEndpoint(route.to, sources, config.junctions);
     return {
       route, from, to,
       unresolved: [from ? undefined : 'from', to ? undefined : 'to'].filter((value): value is 'from' | 'to' => value !== undefined),
@@ -141,6 +158,7 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
   const ids = new Set<string>();
   const sourceKinds = new Map<string, string>();
   const plumbingIds = new Set(sources.plumbing.map((item) => item.id));
+  const indoorAnchorIds = new Set(sources.hvacAnchors.filter((item) => item.id.startsWith('indoor_')).map((item) => item.id));
   const registerSources = (kind: string, items: Array<{ id: string }>): void => {
     for (const item of items) {
       const previous = sourceKinds.get(item.id);
@@ -154,16 +172,18 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
   registerSources('hvac anchor', sources.hvacAnchors);
   registerSources('hvac terminal', sources.hvacTerminals);
   registerSources('VRF outdoor', sources.outdoor);
+  const junctionIds = new Set(config.junctions.map((junction) => junction.id));
+  if (junctionIds.size !== config.junctions.length) throw new Error('Duplicate MEP junction id');
   const routeIds = new Set<string>();
   for (const route of config.routes) {
     if (routeIds.has(route.id)) throw new Error(`Duplicate MEP route id: ${route.id}`);
     routeIds.add(route.id);
     for (const endpoint of [route.from, route.to]) {
-      if (typeof endpoint === 'string' && !ids.has(endpoint)) throw new Error(`MEP route ${route.id} references unknown endpoint: ${endpoint}`);
-      if (typeof endpoint === 'string' && !resolveMepEndpoint(endpoint, sources)) throw new Error(`MEP route ${route.id} endpoint is unresolved: ${endpoint} (missing position or resolvable ref)`);
+      if (typeof endpoint === 'string' && !ids.has(endpoint) && !junctionIds.has(endpoint)) throw new Error(`MEP route ${route.id} references unknown endpoint: ${endpoint}`);
+      if (typeof endpoint === 'string' && !resolveMepEndpoint(endpoint, sources, config.junctions)) throw new Error(`MEP route ${route.id} endpoint is unresolved: ${endpoint} (missing position or resolvable ref)`);
     }
-    const from = resolveMepEndpoint(route.from, sources);
-    const to = resolveMepEndpoint(route.to, sources);
+    const from = resolveMepEndpoint(route.from, sources, config.junctions);
+    const to = resolveMepEndpoint(route.to, sources, config.junctions);
     const requirementRoute = route.route_kind === 'requirement' || route.source_status === 'design_requirement';
     const candidateRoute = route.route_kind === 'candidate';
     if (from && to && samePlanPoint(from, to) && route.status === 'confirmed') {
@@ -174,6 +194,13 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
     }
     for (const [name, value] of [['diameter', route.diameter], ['width', route.width], ['depth', route.depth], ['height', route.height]] as const) {
       if (value !== undefined && (!Number.isFinite(value) || value <= 0)) throw new Error(`MEP route ${route.id} ${name} must be positive`);
+    }
+    if (route.insulation_status !== undefined && route.insulation_thickness === undefined) {
+      throw new Error(`MEP route ${route.id} insulation_status requires insulation_thickness`);
+    }
+    if (route.served_indoor !== undefined) {
+      if (route.layer !== 'condensate') throw new Error(`MEP route ${route.id} served_indoor is only valid for condensate routes`);
+      if (!indoorAnchorIds.has(route.served_indoor)) throw new Error(`MEP route ${route.id} references unknown indoor anchor: ${route.served_indoor}`);
     }
     if ((route.layer === 'water_supply' || route.layer === 'drainage') && route.construction_status !== 'pending') {
       throw new Error(`Plumbing route ${route.id} must remain construction_status: pending`);
@@ -189,10 +216,57 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
       }
     }
   }
+
+  const routesById = new Map(config.routes.map((route) => [route.id, route]));
+  for (const junction of config.junctions) {
+    if (routeIds.has(junction.id)) throw new Error(`MEP junction id collides with route id: ${junction.id}`);
+    const sourceKind = sourceKinds.get(junction.id);
+    if (sourceKind && sourceKind !== 'hvac anchor') {
+      throw new Error(`MEP junction ${junction.id} collides with ${sourceKind} endpoint`);
+    }
+    // The render-facts anchor is the cross-file 2D reference for diagrams and
+    // operations; it must describe the same 3D node as the MEP topology.
+    const anchorPosition = sourceKind === 'hvac anchor' ? resolveMepEndpoint(junction.id, sources) : undefined;
+    if (anchorPosition && Math.hypot(
+      anchorPosition.x - junction.position.x,
+      anchorPosition.z - junction.position.z,
+      (anchorPosition.y ?? junction.position.y) - junction.position.y,
+    ) > 1e-6) {
+      throw new Error(`MEP junction ${junction.id} position does not match its HVAC anchor`);
+    }
+    const inlets = junction.inlet_routes.map((id) => routesById.get(id));
+    const outlet = routesById.get(junction.outlet_route);
+    if (inlets.some((route) => !route) || !outlet) throw new Error(`MEP junction ${junction.id} references an unknown route`);
+    if (new Set(junction.inlet_routes).size !== junction.inlet_routes.length || junction.inlet_routes.includes(junction.outlet_route)) {
+      throw new Error(`MEP junction ${junction.id} has duplicate inlet/outlet route references`);
+    }
+    for (const route of inlets) {
+      if (route!.layer !== junction.layer || route!.to !== junction.id) throw new Error(`MEP junction ${junction.id} inlet ${route!.id} must end at the junction on ${junction.layer}`);
+      const endpoint = resolveMepEndpoint(route!.to, sources, config.junctions)!;
+      const y = route!.to_height ?? endpoint.y;
+      if (Math.hypot(endpoint.x - junction.position.x, endpoint.z - junction.position.z, (y ?? 0) - junction.position.y) > 1e-6) {
+        throw new Error(`MEP junction ${junction.id} inlet ${route!.id} geometry does not meet the declared position`);
+      }
+    }
+    if (outlet!.layer !== junction.layer || outlet!.from !== junction.id) throw new Error(`MEP junction ${junction.id} outlet ${outlet!.id} must start at the junction on ${junction.layer}`);
+    const outletEndpoint = resolveMepEndpoint(outlet!.from, sources, config.junctions)!;
+    const outletY = outlet!.from_height ?? outletEndpoint.y;
+    if (Math.hypot(outletEndpoint.x - junction.position.x, outletEndpoint.z - junction.position.z, (outletY ?? 0) - junction.position.y) > 1e-6) {
+      throw new Error(`MEP junction ${junction.id} outlet ${outlet!.id} geometry does not meet the declared position`);
+    }
+    const declaredConnections = new Set([...junction.inlet_routes, junction.outlet_route]);
+    for (const route of config.routes) {
+      if ((route.from === junction.id || route.to === junction.id) && !declaredConnections.has(route.id)) {
+        throw new Error(`MEP route ${route.id} attaches to undeclared junction ${junction.id}`);
+      }
+    }
+  }
 }
 
-export function resolveMepEndpoint(endpoint: string | { x: number; z: number; y?: number }, sources: MepEndpointSources): { x: number; z: number; y?: number } | undefined {
+export function resolveMepEndpoint(endpoint: string | { x: number; z: number; y?: number }, sources: MepEndpointSources, junctions: MepJunction[] = []): { x: number; z: number; y?: number } | undefined {
   if (typeof endpoint !== 'string') return endpoint;
+  const junction = junctions.find((item) => item.id === endpoint);
+  if (junction) return junction.position;
   const electrical = sources.electrical.find((item) => item.id === endpoint);
   if (electrical) return { x: electrical.x, z: electrical.z, y: electrical.height ?? electrical.mount_height };
   const plumbing = sources.plumbing.find((item) => item.id === endpoint);
