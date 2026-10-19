@@ -1,0 +1,24 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "0°截图中木纹砖长边沿南北方向，90°截图中长边转为东西方向；两张截图使用同一机位，方向变化在画面中清晰可辨，与运行时rotation π/2和0的记录一致。",
+    "两种方向下客餐厅地面纹理连续，板缝尺度、颜色、哑光度、家具比例和相机取景保持稳定，未见因转换产生的断纹、跳色或比例异常。",
+    "两张截图都显示预演面板与方向说明，且运行时configErrors为空、ready=true；改后gate:visual也已CLEAR。"
+  ],
+  "evidence_refs": [
+    "docs/design-iterations/tile-preview-axis-r04-20261019/decision-brief.yaml",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/design-datum.yaml",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/runtime-verification.json",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/default-page.snapshot.txt",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/restored-page.snapshot.txt",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/north-south-preview-0.png",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/east-west-preview-90.png"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "没有删除房间几何、地面区域、正式材料、家具、窗帘对象、证据或历史决策；只替换了R03中地砖预演角度的语义与默认值。",
+    "R04仅推翻R03的“默认90°、0°东西向/90°南北向”部分；R03窗帘default=open和正式floor scheme继续有效。",
+    "若只修改UI文案而漏掉App的90°减slider转换，控件语义会与画面方向相反；若只修改转换而遗漏初始值或无方案兜底，首屏状态会不一致；预演未激活时继续显示正式材质方向属于预期行为。"
+  ]
+}

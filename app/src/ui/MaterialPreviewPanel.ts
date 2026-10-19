@@ -79,7 +79,7 @@ export class MaterialPreviewPanel {
           <output data-control="floor-rotation-label"></output>
           <input data-control="floor-rotation" type="range" min="0" max="90" step="5" />
         </label>
-        <p class="preview-note">仅临时预演角度：0° 长边东西向；90° 长边转到世界 Z 轴、垂直南窗。中间角度用于比较斜向引导，不写入正式方案。</p>
+        <p class="preview-note">仅临时预演角度：0° 长边沿世界 Z 轴（南北向）；90° 长边沿世界 X 轴（东西向）。中间角度用于比较斜向引导，不写入正式方案。</p>
         <label class="preview-control">墙漆色号/名称
           <input data-control="paint-label" type="text" placeholder="例如：斯托白 45YY 83/062" />
         </label>

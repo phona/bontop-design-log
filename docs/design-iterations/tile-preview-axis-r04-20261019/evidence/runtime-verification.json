@@ -1,0 +1,56 @@
+{
+  "url": "http://localhost:5173/?v=20261019-axis-r04",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "configErrors": [],
+  "camera": {
+    "position": [12.6, 2.6, 6.0],
+    "target": [10.3, 0.4, 9.3],
+    "mode": "轨道模式 · 按 V 切换第一人称"
+  },
+  "default_after_reload": {
+    "slider": "0",
+    "label": "0°",
+    "previewStateFloorRotationDeg": 0,
+    "previewActive": false
+  },
+  "north_south_preview_at_slider_0": {
+    "previewActive": true,
+    "sliderDeg": 0,
+    "textureRotationRadians": 1.5707963267948966,
+    "sampledFloorMeshCount": 16,
+    "sampledMeshes": [
+      "floor:living_dining",
+      "floor:master_bath",
+      "floor:balcony",
+      "guest_bath_open_vanity_floor"
+    ]
+  },
+  "east_west_preview_at_slider_90": {
+    "previewActive": true,
+    "sliderDeg": 90,
+    "textureRotationRadians": 0,
+    "sampledFloorMeshCount": 12,
+    "sampledMeshes": [
+      "floor:living_dining",
+      "floor:master_bath",
+      "floor:balcony",
+      "floor:guest_bath",
+      "entry_foyer_floor"
+    ]
+  },
+  "after_restore": {
+    "slider": "0",
+    "previewActive": false,
+    "officialFloorSelection": {
+      "default": "floor_tile_kt_200x1200_01",
+      "roomOverrides": {
+        "master_bath": "floor_tile_antislip_400",
+        "guest_bath": "floor_tile_deco_small",
+        "balcony": "floor_tile_antislip_400"
+      }
+    },
+    "officialFloorTextureRotationRadians": 0,
+    "curtainDefault": "open"
+  }
+}

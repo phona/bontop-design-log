@@ -1,0 +1,24 @@
+# Design Datum — 临时地砖铺向控制
+schema: interior-design-design-datum/v1
+iteration_id: tile-preview-axis-r04-20261019
+coordinate_system: Three.js右手系；+x=东，-x=西；+z=南，-z=北；Y向上；单位m。
+datums:
+  - id: floor-preview-direction
+    object: material-preview-floor-rotation
+    plan:
+      slider_degrees:
+        0: { plank_axis: world_z, direction: 南北向, texture_rotation_deg: 90 }
+        90: { plank_axis: world_x, direction: 东西向, texture_rotation_deg: 0 }
+      conversion: texture_rotation_deg = 90 - slider_degrees
+    elevation: 仅贴图UV预演；不改变楼板/砖块几何、标高或施工放样。
+    basis: [user decision R04, TextureManager.applyPreviewRotation]
+  - id: browser-review-camera
+    object: browser-evidence-camera
+    plan:
+      room: living_dining
+      camera_position: {x: 12.6, y: 2.6, z: 6.0}
+      target: {x: 10.3, y: 0.4, z: 9.3}
+    basis: [resolved living_dining bounds, R03 evidence camera]
+non_datums:
+  - 正式地面材料方向和施工排砖。
+  - 墙砖、立面贴砖或正式材料SKU。

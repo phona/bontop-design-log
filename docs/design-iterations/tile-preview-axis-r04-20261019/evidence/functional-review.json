@@ -1,0 +1,36 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "删除了什么：未删除正式地面对象、floor_region、材料候选、current-scheme、窗帘对象、R03决定、历史证据或几何配置。",
+    "推翻了什么：R04只推翻R03中地砖预演的默认90°及0/90方向映射；R03的窗帘默认open和正式地面选材继续保留。",
+    "当前变换链一致：App默认slider=0；slider 0经90-directionDeg转换为纹理π/2；slider 90转换为纹理0；TextureManager再把该值应用到map、normalMap和roughnessMap。",
+    "运行时恢复证据显示previewActive=false、slider回0、正式floor selection与roomOverrides保持原值、正式纹理rotation为0；R03窗帘default仍为open，九组投影状态均为open且无可见节点。",
+    "typecheck与改后gate:visual通过；tests未运行。"
+  ],
+  "evidence_refs": [
+    "docs/design-iterations/tile-preview-axis-r04-20261019/decision-brief.yaml",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/fact-table.yaml",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/work-record.md",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/runtime-verification.json",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/default-page.snapshot.txt",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/restored-page.snapshot.txt",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/north-south-preview-0.png",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/east-west-preview-90.png",
+    "app/src/App.ts:606",
+    "app/src/App.ts:621",
+    "app/src/App.ts:626",
+    "app/src/App.ts:671",
+    "app/src/ui/MaterialPreviewPanel.ts:82",
+    "app/src/render/TextureManager.ts:185",
+    "data/current-scheme.json",
+    "data/presentation-state.json",
+    "data/project-render-facts.json"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "以R04浏览器运行时证据作为当前App源码与运行客户端一致的依据。",
+    "current-scheme未变依据为恢复后的完整运行时floor selection、当前源文件内容及R04 source_sha256记录。",
+    "静默失效条件：若只改UI文案而遗漏App的90-directionDeg转换，控件语义会与贴图方向相反；若客户端未重新加载最新App bundle，浏览器可能继续显示R03映射；若预演未激活，正式场景继续使用正式材质的0°纹理方向，这是预演限定语义。"
+  ]
+}

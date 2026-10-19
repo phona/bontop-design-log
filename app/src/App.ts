@@ -603,7 +603,7 @@ export class App {
       floorMode: 'procedural',
       atlasId: this.materialPreviewAtlases[0]?.id ?? null,
       floorMattePercent: Math.round(floorRoughness * 100),
-      floorRotationDeg: 90,
+      floorRotationDeg: 0,
       paintColor: paintAppearance?.color ?? '#f7f5ef',
       paintLabel: paintOption?.name ?? '自定义预演色',
     };
@@ -618,16 +618,19 @@ export class App {
   private getPreviewFloorAppearance(optionId: string, state?: MaterialPreviewPanelState): MaterialAppearance | undefined {
     const base = this.getFloorAppearance(optionId);
     if (!base || !state) return base;
-    const rotationDeg = Number.isFinite(state.floorRotationDeg)
+    const directionDeg = Number.isFinite(state.floorRotationDeg)
       ? Math.min(90, Math.max(0, state.floorRotationDeg))
       : 0;
-    if (optionId !== state.floorId) return { ...base, rotationDeg };
+    // The preview control is direction-oriented: 0° means north-south, while
+    // TextureManager's UV rotation 0° keeps planks east-west.
+    const textureRotationDeg = 90 - directionDeg;
+    if (optionId !== state.floorId) return { ...base, rotationDeg: textureRotationDeg };
     const atlas = state.atlasId ? this.materialPreviewAtlases.find((candidate) => candidate.id === state.atlasId) : undefined;
     return {
       ...base,
       mode: state.floorMode,
       roughness: state.floorMattePercent / 100,
-      rotationDeg,
+      rotationDeg: textureRotationDeg,
       ...(state.floorMode === 'manufacturer_atlas' && atlas ? { manufacturerAtlas: atlas.atlas } : {}),
     };
   }
@@ -665,7 +668,7 @@ export class App {
   private captureVisualPreviewSnapshot(): VisualPreviewSnapshot {
     const scheme = this.officialScheme;
     const material = this.materialPreviewState ?? (scheme ? this.makeMaterialPreviewState(scheme) : {
-      floorId: '', floorMode: 'procedural' as const, atlasId: null, floorMattePercent: 85, floorRotationDeg: 90, paintColor: '#f7f5ef', paintLabel: '自定义预演色',
+      floorId: '', floorMode: 'procedural' as const, atlasId: null, floorMattePercent: 85, floorRotationDeg: 0, paintColor: '#f7f5ef', paintLabel: '自定义预演色',
     });
     return {
       material: { ...material },
