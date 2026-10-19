@@ -603,7 +603,7 @@ export class App {
       floorMode: 'procedural',
       atlasId: this.materialPreviewAtlases[0]?.id ?? null,
       floorMattePercent: Math.round(floorRoughness * 100),
-      floorRotationDeg: 0,
+      floorRotationDeg: 90,
       paintColor: paintAppearance?.color ?? '#f7f5ef',
       paintLabel: paintOption?.name ?? '自定义预演色',
     };
@@ -665,7 +665,7 @@ export class App {
   private captureVisualPreviewSnapshot(): VisualPreviewSnapshot {
     const scheme = this.officialScheme;
     const material = this.materialPreviewState ?? (scheme ? this.makeMaterialPreviewState(scheme) : {
-      floorId: '', floorMode: 'procedural' as const, atlasId: null, floorMattePercent: 85, floorRotationDeg: 0, paintColor: '#f7f5ef', paintLabel: '自定义预演色',
+      floorId: '', floorMode: 'procedural' as const, atlasId: null, floorMattePercent: 85, floorRotationDeg: 90, paintColor: '#f7f5ef', paintLabel: '自定义预演色',
     });
     return {
       material: { ...material },

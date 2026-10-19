@@ -1,0 +1,26 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "删了什么：未删除窗帘对象、地面区域、材料候选、历史证据或历史结论；open投影按预期将九组窗帘的expectedVisibleNodes置为空。",
+    "推翻了什么：本轮将原展示默认privacy推翻为open；没有推翻正式地砖选材、正式铺贴方向、分房覆盖或施工结论。",
+    "两张PNG与运行时证据一致：窗帘默认不显示；客餐厅近景中木纹砖长边沿南北方向表达，符合90°对应世界Z的设计基准。",
+    "地砖颜色、哑光度、木纹材质和场景内家具材质保持一致，未见因旋转造成的材质断裂或明显构图失衡。全景图用于确认默认面板状态，近景图用于确认地面方向与材质观感。",
+    "截图中的告警计数为407，但运行时configErrors为空，且本审查范围没有证据表明它影响本轮展示结果。"
+  ],
+  "evidence_refs": [
+    "docs/design-iterations/presentation-defaults-20261019/decision-brief.yaml",
+    "docs/design-iterations/presentation-defaults-20261019/design-datum.yaml",
+    "docs/design-iterations/presentation-defaults-20261019/evidence/default-state-runtime.json",
+    "docs/design-iterations/presentation-defaults-20261019/evidence/preview-applied-runtime.json",
+    "docs/design-iterations/presentation-defaults-20261019/evidence/final-page.snapshot.txt",
+    "docs/design-iterations/presentation-defaults-20261019/evidence/preview-default-90.png",
+    "docs/design-iterations/presentation-defaults-20261019/evidence/living-dining-south-closeup-preview-90.png"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "运行时URL所对应的源版本与review-manifest中记录的SHA-256一致。",
+    "90°仅用于临时地砖预演；恢复正式材料后rotation=0的证据可信。",
+    "若未重新生成data/project-render-facts.json或服务继续读取旧快照，窗帘可能仍显示privacy；仅显示90°滑块但未触发预演事件时，场景保持正式材质，90°不会自动成为正式铺贴结论。"
+  ]
+}

@@ -1,0 +1,45 @@
+# Decision Brief — 全屋窗帘收起默认态与地砖预演90°
+schema: interior-design-decision-brief/v1
+iteration_id: presentation-defaults-20261019
+decision_ref: DEC-2026-10-19-R03
+frozen: true
+frozen_at: 2026-10-19
+owner: 业主
+priority:
+  - 全屋九组窗帘的展示默认态设为收起（open）。
+  - 地砖材料预演面板初始角度设为90°。
+  - 90°只影响临时地砖预演，不改正式选材、正式纹理或施工铺贴方向。
+allowed_scope:
+  - data/presentation-state.json 的全屋 default 状态。
+  - 由 presentation-state.json 生成的 data/project-render-facts.json 投影。
+  - app/src/App.ts 的地砖预演初始角度及无方案兜底值。
+  - 本轮设计迭代证据和一条 owner decision 记录。
+forbidden:
+  - 改 data/current-scheme.json、config/materials.yaml 或任何 floor room override。
+  - 改 config/layout/model-geometry.yaml、overlay.yaml、墙砖方向或实际施工布局。
+  - 将临时预演读数宣称为正式选型或施工结论。
+alignment:
+  id: owner-alignment-2026-10-19-presentation-defaults
+  original_request: “帮我改成默认收起，并且瓷砖默认旋转90°”
+  clarified_answer: “仅地砖预演默认90°（推荐）”
+  normalized_decision: 全屋窗帘设为open；地砖预演slider默认90°；正式地面方案保持不变。
+  affected_refs: [data/presentation-state.json, data/project-render-facts.json, app/src/App.ts]
+  site_pending: []
+decisions:
+  - id: DEC-2026-10-19-R03
+    content: 窗帘展示默认收起；地砖预演初始角度90°，仅作临时比较。
+    status: owner_directed_presentation_default
+acceptance:
+  checks:
+    - 数据源为open且roomOverrides为空；生成投影中九组窗帘均为open、expectedVisibleNodes为空。
+    - app ready后地砖铺向控件显示90°，materialPreviewState.floorRotationDeg为90。
+    - 触发预演后纹理rotation为π/2；恢复正式材料后previewActive=false且正式地面纹理rotation为0。
+    - 不修改正式floor selection、materials或几何配置。
+  browser_view: 客餐厅朝南窗近景；resolved room center=(10.3,6.1)，相机位置=(12.6,2.6,6.0)，target=(10.3,0.4,9.3)。
+  evidence_refs:
+    - evidence/final-page.snapshot.txt
+    - evidence/default-state-runtime.json
+    - evidence/preview-applied-runtime.json
+    - evidence/preview-default-90.png
+    - evidence/living-dining-south-closeup-preview-90.png
+  residual_note: 初始90°是预演面板默认值；scene未激活临时预演时仍显示正式纹理，触发任一预演控件后才应用90°。

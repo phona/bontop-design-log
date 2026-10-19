@@ -1,0 +1,31 @@
+{
+  "verdict": "PASS",
+  "blocking_issues": [],
+  "non_blocking_notes": [
+    "删除了什么：未删除窗帘对象、地面区域、材料候选、正式选材、几何、历史结论或既有证据；open投影为空的expectedVisibleNodes是预期状态结果。",
+    "推翻了什么：仅将窗帘展示默认值privacy改为open；未推翻正式地面SKU、房间覆盖、墙砖方案、正式纹理或施工铺贴方向。",
+    "新增内容的静默失效条件：若未从data/presentation-state.json重新生成data/project-render-facts.json，旧服务可能继续提供privacy；若只显示预演滑块而未触发预演事件，正式场景仍保持0°纹理；恢复正式材料后滑块仍显示90°，但正式纹理已回到0°，这是当前临时预演语义。",
+    "测试未运行；work-record记录generate/verify project-render-facts、typecheck、gate:visual通过，浏览器运行时证据覆盖默认态、预演态和恢复态。"
+  ],
+  "evidence_refs": [
+    "docs/design-iterations/presentation-defaults-20261019/decision-brief.yaml",
+    "docs/design-iterations/presentation-defaults-20261019/fact-table.yaml",
+    "docs/design-iterations/presentation-defaults-20261019/work-record.md",
+    "docs/design-iterations/presentation-defaults-20261019/evidence/default-state-runtime.json",
+    "docs/design-iterations/presentation-defaults-20261019/evidence/preview-applied-runtime.json",
+    "docs/design-iterations/presentation-defaults-20261019/evidence/final-page.snapshot.txt",
+    "data/presentation-state.json",
+    "data/project-render-facts.json",
+    "app/src/App.ts:601",
+    "app/src/App.ts:618",
+    "app/src/App.ts:721",
+    "shared/project-render-facts-projection.ts:61",
+    "shared/curtain-projection.ts:62"
+  ],
+  "requested_changes": [],
+  "assumptions": [
+    "以iteration归档中的source_sha256、生成校验记录和当前运行时证据作为本轮源与派生文件一致性的审查依据。",
+    "当前正式地面选择仍为floor_tile_kt_200x1200_01，master_bath、guest_bath、balcony的覆盖仍按data/current-scheme.json；运行时floorId与恢复后的正式纹理状态支持该结论。",
+    "data/project-render-facts.json的curtain snapshotSha256与其当前投影内容一致；九组窗帘均为open，六个含窗帘房间的effectiveByRoom也均为open。"
+  ]
+}

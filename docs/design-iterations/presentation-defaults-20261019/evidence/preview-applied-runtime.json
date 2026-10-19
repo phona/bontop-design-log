@@ -1,0 +1,25 @@
+{
+  "url": "http://localhost:5173/?v=20261019-preview90",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "configErrors": [],
+  "action": "Dispatch input on the default floor rotation control at value 90 to apply the temporary preview; no source state is written by this action.",
+  "materialPreview": {
+    "floorId": "floor_tile_kt_200x1200_01",
+    "floorRotationDeg": 90,
+    "visualPreviewActive": true
+  },
+  "sampledFloorTextures": [
+    {"roomId": "master_bedroom", "radians": 1.5707963267948966},
+    {"roomId": "study", "radians": 1.5707963267948966},
+    {"roomId": "living_dining", "radians": 1.5707963267948966},
+    {"roomId": "master_bath", "radians": 1.5707963267948966},
+    {"roomId": "bedroom_nw", "radians": 1.5707963267948966},
+    {"roomId": "guest_bath", "radians": 1.5707963267948966},
+    {"roomId": "kitchen", "radians": 1.5707963267948966},
+    {"roomId": "balcony", "radians": 1.5707963267948966},
+    {"roomId": "entry_garden", "radians": 1.5707963267948966},
+    {"roomId": "bedroom_se", "radians": 1.5707963267948966}
+  ],
+  "verification_note": "After clicking 恢复正式材料与灯光, the UI retained slider=90 and floorRotationDeg=90, visualPreviewActive returned to false, and all sampled official floor texture rotations returned to 0 radians."
+}

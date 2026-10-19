@@ -1,0 +1,44 @@
+# Fact Table — 全屋窗帘收起默认态与地砖预演90°（DEC-2026-10-19-R03）
+schema: interior-design-fact-table/v1
+iteration_id: presentation-defaults-20261019
+facts:
+  - id: f_curtain_authority
+    status: confirmed
+    statement: data/presentation-state.json 是窗帘展示状态源；状态 open 在 3D 中隐藏窗帘，privacy 显示展开纱帘，blackout 显示遮光帘。
+    source_refs: [data/presentation-state.json, docs/curtain-design.md]
+    impact: 默认收起应由 source.default=open 表达，并重新生成 project-render-facts。
+    affected_objects: [curtain_living_south, curtain_master_south, curtain_master_strip_fabric, curtain_master_west, curtain_mb_washbasin_blinds, curtain_mbath_corner, curtain_nw_north, curtain_parent_south, curtain_study_south]
+    owner: design
+    verification: npm run verify:project-render-facts；运行时逐条查询 CurtainRegistry。
+  - id: f_floor_preview
+    status: confirmed
+    statement: MaterialPreviewPanel 的地砖铺向范围为0–90°；0°长边沿世界X，90°长边转到世界Z。旋转只注入临时预演 MaterialAppearance，不写入正式 current-scheme。
+    source_refs: [app/src/ui/MaterialPreviewPanel.ts, app/src/App.ts, shared/types.ts, app/src/render/TextureManager.ts]
+    impact: 改动预演初始角度不会改正式选材或施工铺贴结论。
+    affected_objects: [material-preview-floor-rotation, floor-material-preview]
+    owner: design
+    verification: 首屏滑块值、materialPreviewState.floorRotationDeg、预演生效时纹理rotation及恢复后的正式材质状态。
+  - id: f_official_floor_selection
+    status: confirmed
+    statement: 当前正式地面默认材料仍为floor_tile_kt_200x1200_01，房间覆盖仍由data/current-scheme.json控制。
+    source_refs: [data/current-scheme.json, config/materials.yaml]
+    impact: 本轮不修改任何正式材料选择和墙砖方案。
+    affected_objects: [floor-default-selection, floor-room-overrides]
+    owner: design
+    verification: 对照正式scheme文件与恢复后的运行时材质状态。
+  - id: d_owner_scope
+    status: user_decision
+    statement: 业主选择全屋窗帘默认收起，并确认“仅地砖预演默认90°”；不把90°写入正式铺贴方案。
+    source_refs: [user message 2026-10-19, user clarification “仅地砖预演默认90°”]
+    impact: 限定本轮只改展示状态源和预演面板默认值。
+    affected_objects: [all-declared-curtains, material-preview-floor-rotation]
+    owner: homeowner
+    verification: user instruction and clarification.
+  - id: f_preview_activation
+    status: confirmed
+    statement: 页面加载时预演面板的默认读数是90°，但正式场景保持原材质；预演角度在控件事件触发后应用，恢复正式材料后纹理rotation回到0。
+    source_refs: [app/src/App.ts, docs/design-iterations/presentation-defaults-20261019/evidence/default-state-runtime.json, docs/design-iterations/presentation-defaults-20261019/evidence/preview-applied-runtime.json]
+    impact: 90°属于临时预演默认参数，不表示正式铺贴已改向。
+    affected_objects: [material-preview-floor-rotation, floor-material-preview]
+    owner: design
+    verification: 同版本浏览器运行时分别查询未激活、激活和恢复三种状态。
