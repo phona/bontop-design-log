@@ -1,0 +1,52 @@
+# Fact Table — 客餐厅两排风口分别居中（DEC-2026-10-19-R01）
+schema: interior-design-fact-table/v1
+iteration_id: hvac-airflow-row-centering-20261019
+facts:
+  - id: f_band
+    status: confirmed
+    statement: ceiling_living 东西范围 x[7.20,13.40]，中心 x=10.30。
+    source_refs: [config/ceiling.yaml:1-8]
+    impact: 下出风排与回风排分别以该中心为基准。
+    affected_objects: [ceiling_living, supply_dining_bottom, supply_living_bottom, return_dining, return_living]
+    owner: design
+    verification: 权威吊顶配置。
+  - id: f_r02_row_centers
+    status: confirmed
+    statement: R02 四口平均值为10.30，但下出风排中心为9.75、回风排中心为10.85，分别偏西/偏东0.55m。
+    source_refs: [docs/design-iterations/hvac-airflow-centering-20261018/evidence/runtime-query.json, docs/decisions/05-hvac.md:197-207]
+    impact: 总组中心对齐不代表两排分别居中。
+    affected_objects: [supply_dining_bottom, supply_living_bottom, return_dining, return_living]
+    owner: design
+    verification: 根据 R02 运行坐标计算。
+  - id: f_terminal_dimensions
+    status: confirmed
+    statement: 下出风长度0.90/0.90m；餐厅/客厅回风长度0.90/1.00m；供风行z=4.85，回风行z=4.45。
+    source_refs: [config/hvac.yaml:221-265]
+    impact: 口位调整时保留开口尺寸和分行标高。
+    affected_objects: [supply_dining_bottom, supply_living_bottom, return_dining, return_living]
+    owner: design
+    verification: 权威 HVAC 配置。
+  - id: i_row_centering
+    status: inferred
+    statement: 下出风 centers x=8.60/12.00，回风 centers x=9.65/10.95；两排平均值分别为10.30。四口西向东间距1.05/1.30/1.05m，功能开口外缘x[8.15,12.45]，两侧余量各0.95m。
+    source_refs: [user instruction 2026-10-19, f_band, f_r02_row_centers, f_terminal_dimensions]
+    impact: 同时居中供风排和回风排，端部对称，维持各供回风口不在同一x中心。
+    affected_objects: [supply_dining_bottom, supply_living_bottom, return_dining, return_living]
+    owner: design
+    verification: 坐标审计、MEP lint、同版本运行态。
+  - id: f_side_supply_clearance
+    status: confirmed
+    statement: 餐厅侧送风有效段伸至x=9.70；新餐厅回风中心x=9.65，MEP lint 可能报侧送风—回风近似包络警告。
+    source_refs: [config/hvac.yaml:230-265, config/mep-hvac-coordination.yaml:177]
+    impact: 需要按实际射流方向判断是否短路；仍先完成业主要求的预演居中。
+    affected_objects: [supply_dining, return_dining, return-air-dining]
+    owner: HVAC coordinator
+    verification: lint 警告 + 现场风量/厂家射流参数复核。
+  - id: f_airflow_pending
+    status: site_pending
+    statement: 实际型号风量分配、外静压、射程、自由面积、噪声及滤网/水盘/泵/电控检修净空未核实。
+    source_refs: [config/hvac.yaml:42-52, docs/pending-site-data.md]
+    impact: R03 是当前设计预演，不等于施工定位。
+    affected_objects: [ac_dining, ac_living, supply_dining_bottom, supply_living_bottom, return_dining, return_living]
+    owner: 业主/空调厂家
+    verification: 后续实际机型深化与现场校核。

@@ -1,0 +1,86 @@
+{
+  "captured_at_utc": "2026-10-19T01:33:32Z",
+  "url": "http://127.0.0.1:5175/",
+  "api_origin": "http://localhost:4111",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "config_error_banner": false,
+  "visual_state_gate": "CLEAR",
+  "gate_output": [
+    "ceiling 4469b08f84ab",
+    "electrical c541506a0427",
+    "plumbing 81c5778c1239",
+    "materials 64176f576326"
+  ],
+  "source_hashes_sha256": {
+    "config/hvac.yaml": "7b4acceb71b4e2fa39ca8c7d09b52ba2ecf069bd76cad60c3fa30cf6fa1ecf05",
+    "config/ceiling.yaml": "4469b08f84abf2442eb2df64ddec205bd78da9d646480056d5683c163fa8c899",
+    "config/mep-hvac-coordination.yaml": "b47644ff4efabd513d6393cbbde37dda8dd7a1c9843060a9040d42e52fc1abf2",
+    "data/project-render-facts.json": "b776fa8a11ba78f91a52831d79ebb9034fa1da26f7a8635a5a2e27de4ccb244c"
+  },
+  "runtime_objects": [
+    {
+      "objectId": "hvac:A2:terminal:supply_dining_bottom",
+      "position": {
+        "x": 8.6,
+        "y": 2.5,
+        "z": 5.125
+      },
+      "visible": true
+    },
+    {
+      "objectId": "hvac:A2:terminal:supply_living_bottom",
+      "position": {
+        "x": 12.0,
+        "y": 2.5,
+        "z": 5.125
+      },
+      "visible": true
+    },
+    {
+      "objectId": "hvac:A2:terminal:return_dining",
+      "position": {
+        "x": 9.65,
+        "y": 2.49,
+        "z": 4.725
+      },
+      "visible": true
+    },
+    {
+      "objectId": "hvac:A2:terminal:return_living",
+      "position": {
+        "x": 10.95,
+        "y": 2.49,
+        "z": 4.725
+      },
+      "visible": true
+    }
+  ],
+  "row_centers_z": {
+    "supply": 5.125,
+    "return": 4.725
+  },
+  "combined_center_z": 4.925,
+  "row_spacing_z": 0.4,
+  "shift_south_from_R03_m": 0.275,
+  "views": [
+    {
+      "id": "view1-north-south-centered",
+      "camera_position": {
+        "x": 10.3,
+        "y": 1.7,
+        "z": 9.0
+      },
+      "mode": "first-person",
+      "yaw": 0.0,
+      "pitch": 0.2,
+      "screenshot": "view1-north-south-centered.png"
+    },
+    {
+      "id": "centered-plan-diagram",
+      "kind": "scaled_coordinate_diagram",
+      "svg": "centered-plan.svg",
+      "basis": "runtime terminal coordinates and ceiling_living bounds"
+    }
+  ]
+}

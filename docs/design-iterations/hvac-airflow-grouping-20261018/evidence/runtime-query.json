@@ -1,0 +1,38 @@
+{
+  "captured_at_utc": "2026-10-18T08:08:51Z",
+  "url": "http://127.0.0.1:5175/",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "config_error_banner": "",
+  "visual_state_gate": "CLEAR",
+  "visual_state_gate_output": [
+    "ceiling cfff3deb0ba3",
+    "electrical c541506a0427",
+    "plumbing 81c5778c1239",
+    "materials 64176f576326"
+  ],
+  "source_hashes_sha256": {
+    "config/hvac.yaml": "1c7cb4650df9331be077d7bae7b22129fd31d57aef1831968f21469add2e6702",
+    "config/ceiling.yaml": "ecd6b0147125c10a4e80ee6500fc41f2d6b1d10cb8215028dc81722282e149aa",
+    "config/mep-hvac-coordination.yaml": "b6b46bef21de3c71213c4e52458517ed5d8a278fce6211096c728346e012da16",
+    "data/project-render-facts.json": "b694e94b1603c779c78492126c29717dbe7c24b35eb00e3aa8cf1c0dd64610a8"
+  },
+  "runtime_objects": [
+    {"objectId":"hvac:A2:terminal:supply_dining_bottom","system":"supply_air","position":{"x":8.0,"y":2.5,"z":4.85},"render_style":"linear_slot","decorative":false},
+    {"objectId":"hvac:A2:terminal:return_dining","system":"return_air","position":{"x":9.1,"y":2.49,"z":4.45},"render_style":"linear_slot","decorative":false},
+    {"objectId":"hvac:A2:terminal:supply_living_bottom","system":"supply_air","position":{"x":10.3,"y":2.5,"z":4.85},"render_style":"linear_slot","decorative":false},
+    {"objectId":"hvac:A2:terminal:return_living","system":"return_air","position":{"x":11.4,"y":2.49,"z":4.45},"render_style":"linear_slot","decorative":false},
+    {"objectId":"hvac:A2:terminal:LD-deco-return-west","system":"decorative","position":{"x":7.925,"y":2.49,"z":4.45},"length":1.45,"decorative":true},
+    {"objectId":"hvac:A2:terminal:LD-deco-return-mid","system":"decorative","position":{"x":10.225,"y":2.49,"z":4.45},"length":1.35,"decorative":true},
+    {"objectId":"hvac:A2:terminal:LD-deco-return-east","system":"decorative","position":{"x":12.65,"y":2.49,"z":4.45},"length":1.5,"decorative":true}
+  ],
+  "views": [
+    {"id":"view1-living-band-main","is_overview":false,"camera_position":{"x":9.9,"y":1.6,"z":7.7},"camera_target":{"x":10.4,"y":2.42,"z":5.0},"hvac_coordination_visible":false,"snapshot":"view1-living-band-main.snapshot.txt","png":"view1-living-band-main.png"},
+    {"id":"view2-from-living-to-dining","is_overview":false,"camera_position":{"x":12.9,"y":1.58,"z":7.2},"camera_target":{"x":7.8,"y":2.25,"z":3.4},"hvac_coordination_visible":false,"snapshot":"view2-from-living-to-dining.snapshot.txt","png":"view2-from-living-to-dining.png"},
+    {"id":"view3-from-dining-to-living","is_overview":false,"camera_position":{"x":7.9,"y":1.52,"z":3.6},"camera_target":{"x":12.9,"y":2.42,"z":5.6},"hvac_coordination_visible":false,"snapshot":"view3-from-dining-to-living.snapshot.txt","png":"view3-from-dining-to-living.png"},
+    {"id":"view4-band-clean","is_overview":false,"camera_position":{"x":9.5,"y":1.42,"z":6.5},"camera_target":{"x":10.2,"y":2.5,"z":4.9},"hvac_coordination_visible":false,"snapshot":"view4-band-clean.snapshot.txt","png":"view4-band-clean.png"},
+    {"id":"view4b-band-underside","is_overview":false,"camera_position":{"x":10.3,"y":1.3,"z":7.55},"camera_target":{"x":10.15,"y":2.56,"z":5.15},"hvac_coordination_visible":false,"snapshot":"view4b-band-underside.snapshot.txt","png":"view4b-band-underside.png"},
+    {"id":"view4-band-closeup","is_overview":false,"camera_position":{"x":9.5,"y":1.42,"z":6.5},"camera_target":{"x":10.2,"y":2.5,"z":4.9},"hvac_coordination_visible":true,"snapshot":"view4-band-closeup.snapshot.txt","png":"view4-band-closeup.png"}
+  ],
+  "png_validation": {"all_screenshots_readable":true,"format":"PNG","resolution":"1280x577","nonempty":true}
+}

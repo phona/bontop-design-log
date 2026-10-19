@@ -1,0 +1,24 @@
+# Object Manifest — 客餐厅回风位置候选
+schema: interior-design-object-manifest/v1
+iteration_id: hvac-airflow-grouping-20261018
+objects:
+  - id: ac_dining_air_group
+    owner: HVAC
+    unit: ac_dining / MJV-42T2/P-SS
+    parts: [supply_dining, supply_dining_bottom, return_dining, return-air-dining]
+    function: 独立服务餐区；双出风模式与风量分配待厂家图。
+    relationships: 回风候选 x=9.10，与下出风中心 x=8.00 向东错开 1.10m；须核实不截获任何送风射流。
+    maintenance: 回风格栅铰接并兼检修；滤网和机组须经此可达，开口尺寸待厂家图。
+    validation_refs: [f_vendor_data_pending, q1, q2, q3]
+  - id: ac_living_air_group
+    owner: HVAC
+    unit: ac_living / MJV-71T2/P-SS
+    parts: [supply_living, supply_living_bottom, return_living, return-air-living]
+    function: 独立服务客厅区；双出风模式与风量分配待厂家图。
+    relationships: 回风候选 x=11.40，与下出风中心 x=10.30 向东错开 1.10m；须核实不截获任何送风射流。
+    maintenance: 回风格栅铰接并兼检修；滤网和机组须经此可达，开口尺寸待厂家图。
+    validation_refs: [f_vendor_data_pending, q1, q2, q3]
+constraints:
+  - 两台机组送回风独立；LD-deco-* 仍为封闭装饰段，无风道、滤网或检修功能。
+  - 保留两条下出风轴线 x=8.00/10.30；厂家资料确认前不改送风端口。
+  - 候选坐标不得标为厂家确认或施工定位。

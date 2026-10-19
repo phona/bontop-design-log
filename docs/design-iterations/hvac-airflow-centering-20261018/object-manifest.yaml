@@ -1,0 +1,28 @@
+# Object Manifest — 客餐厅底面功能口整体居中
+schema: interior-design-object-manifest/v1
+iteration_id: hvac-airflow-centering-20261018
+objects:
+  - id: ac_dining_air_group
+    owner: HVAC
+    unit: ac_dining / MJV-42T2/P-SS
+    parts: [supply_dining_bottom, return_dining, return-air-dining, supply-air-dining-bottom]
+    function: 餐厅独立服务组；本轮下出风 x=8.60、回风 x=9.70。
+    relationships: 送回风中心距1.10m；该组相对机身 x=8.00 同向东移0.60/1.70m；送风覆盖和回风短路待核。
+    maintenance: 回风格栅兼检修的开口净空仍需工程确认。
+    validation_refs: [f_airflow_pending, i_centered_group]
+  - id: ac_living_air_group
+    owner: HVAC
+    unit: ac_living / MJV-71T2/P-SS
+    parts: [supply_living_bottom, return_living, return-air-living, supply-air-living-bottom]
+    function: 客厅独立服务组；本轮下出风 x=10.90、回风 x=12.00。
+    relationships: 送回风中心距1.10m；该组相对机身 x=10.30 同向东移0.60/1.70m；送风覆盖和回风短路待核。
+    maintenance: 回风格栅兼检修的开口净空仍需工程确认。
+  - id: closed_decorative_runs
+    owner: interior
+    parts: [LD-deco-supply-west, LD-deco-supply-mid, LD-deco-supply-east, LD-deco-return-west, LD-deco-return-mid, LD-deco-return-east]
+    function: 仅延续三层黑槽的视觉线条，不形成有效风口。
+    relationships: 各封闭段按 R02 新功能段端点填充；无风道、滤网或检修功能。
+constraints:
+  - 不移动两台室内机或其侧送风口。
+  - 两台机组送回风保持独立。
+  - R02 是居中设计候选；不以本轮预演替代施工前风量与检修校核。

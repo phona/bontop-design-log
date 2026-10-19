@@ -1,0 +1,75 @@
+{
+  "captured_at_utc": "2026-10-18T15:10:59Z",
+  "url": "http://127.0.0.1:5175/",
+  "api_origin": "http://localhost:4111",
+  "title": "和萃 701 - 3D 装修设计",
+  "ready": true,
+  "config_error_banner": false,
+  "visual_state_gate": "CLEAR",
+  "source_hashes_sha256": {
+    "config/hvac.yaml": "1c7cb4650df9331be077d7bae7b22129fd31d57aef1831968f21469add2e6702",
+    "config/ceiling.yaml": "ecd6b0147125c10a4e80ee6500fc41f2d6b1d10cb8215028dc81722282e149aa",
+    "config/mep-hvac-coordination.yaml": "b6b46bef21de3c71213c4e52458517ed5d8a278fce6211096c728346e012da16",
+    "data/project-render-facts.json": "b694e94b1603c779c78492126c29717dbe7c24b35eb00e3aa8cf1c0dd64610a8"
+  },
+  "rendered_objects": [
+    {
+      "objectId": "hvac:A2:terminal:supply_dining_bottom",
+      "position": {
+        "x": 8.0,
+        "y": 2.5,
+        "z": 4.85
+      }
+    },
+    {
+      "objectId": "hvac:A2:terminal:return_dining",
+      "position": {
+        "x": 9.1,
+        "y": 2.49,
+        "z": 4.45
+      }
+    },
+    {
+      "objectId": "hvac:A2:terminal:supply_living_bottom",
+      "position": {
+        "x": 10.3,
+        "y": 2.5,
+        "z": 4.85
+      }
+    },
+    {
+      "objectId": "hvac:A2:terminal:return_living",
+      "position": {
+        "x": 11.4,
+        "y": 2.49,
+        "z": 4.45
+      }
+    },
+    {
+      "objectId": "hvac:A2:terminal:LD-deco-return-west",
+      "position": {
+        "x": 7.925,
+        "y": 2.49,
+        "z": 4.45
+      }
+    },
+    {
+      "objectId": "hvac:A2:terminal:LD-deco-return-mid",
+      "position": {
+        "x": 10.225,
+        "y": 2.49,
+        "z": 4.45
+      }
+    },
+    {
+      "objectId": "hvac:A2:terminal:LD-deco-return-east",
+      "position": {
+        "x": 12.65,
+        "y": 2.49,
+        "z": 4.45
+      }
+    }
+  ],
+  "screenshot": "view5-current-render.png",
+  "observation": "This live renderer loaded the candidate positions. The user-supplied frame has supply_living_bottom selected; that supply stays at x=10.30, so the screenshot does not directly demonstrate the moved return_living at x=11.40. The continuous black decorative grille also makes functional segment boundaries subtle."
+}

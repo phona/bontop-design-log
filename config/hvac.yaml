@@ -221,12 +221,12 @@ plans:
         - id: return_living
           status: inferred
           system: return_air
-          position: { x: 12.60, y: 2.49, z: 4.45 }
+          position: { x: 10.95, y: 2.49, z: 4.725 }
           mount_face: bottom
           length: 1.0
           render_style: linear_slot
           finish: matte_black
-          reason: "DEC-2026-10-07-R03 三层线语言：底面后侧回风/滤网/检修一体格栅功能段，只属 71T2，位于边吊底面东端 x=12.60（长 1.0m，linear_slot，与下出风行 z=4.85 分列、与 supply_living_bottom 同层语言同款收口；R16'回风暂标准白'自此按业主三层同语言指令改 matte_black，回退可选项登记于 decision-brief）。合同附件回风名义 1000×300/1300×300（模型示意高度 0.25 与名义 300mm 的差、段长与名义的差均 site_pending，以厂家安装图为约束）。仍为铰接回检一体、滤网及内机经格栅维护；回风支管见 MEP return-air-living，施工未冻结。"
+          reason: "DEC-2026-10-07-R03 历史位置 x=12.60；DEC-2026-10-18-R01/R02 历史候选 x=11.40/12.00；DEC-2026-10-19-R01 将回风行独立居中调整至 x=10.95，回风排两中心平均 x=10.30。底面后侧回风/滤网/检修一体格栅仅属 71T2，长度 1.0m，linear_slot；R03历史下出风行z=4.85，R04当前下出风/回风行z=5.125/4.725。历史材质：R16 标准白回风按 R03 业主指令改 matte_black，回退选项保留在原 brief。回风名义尺寸 1000×300/1300×300 的具体映射、模型高度 0.25 与名义 300mm 的差、有效面积、风量/静压、回风底回/侧回接口及检修尺寸均 site_pending；铰接回检一体，滤网及内机经格栅维护。此位置仅为设计预演，不是施工定位。；DEC-2026-10-19-R02 R04 回风行居中至 z=4.725。"
         - id: supply_dining
           status: inferred
           system: supply_air
@@ -239,30 +239,30 @@ plans:
         - id: supply_living_bottom
           status: inferred
           system: supply_air
-          position: { x: 10.30, y: 2.50, z: 4.85 }
+          position: { x: 12.00, y: 2.50, z: 5.125 }
           mount_face: bottom
           length: 0.9
           finish: matte_black
           render_style: linear_slot
-          reason: "DEC-2026-10-07-R03 三层线语言：底面前侧下出风功能段，只属 71T2 双出风第二出口（与 ac_living 机身轴 x=10.30 对齐，y=2.50 边吊底面，与回风行 z=4.45 分列、0.9m 等宽与餐厅下出风同 z=4.85 轴线成组）。段间与段端由 LD-deco-supply-* 封闭装饰段同款延续，形成整条连续线而非孤立矩形。合同附件出风名义 1000×150；有效面积/静压/风速按厂家安装图与风量核算，施工未冻结。"
+          reason: "DEC-2026-10-07-R03 历史下出风位置与 ac_living 机身轴 x=10.30 对齐；DEC-2026-10-18-R02 历史候选 x=10.90。DEC-2026-10-19-R01 按业主纠正将下出风排独立居中，当前 x=12.00；餐厅/客厅两下出风中心平均 x=10.30，与回风排各自居中。与R03历史回风行z=4.45分列；R04当前供/回风行z=5.125/4.725，长度0.90m。段间与段端由 LD-deco-supply-* 封闭装饰段同款延续。合同附件出风名义 1000×150；有效面积/静压/风速按风量核算，施工未冻结。；DEC-2026-10-19-R02 R04 下出风行居中至 z=5.125。"
         - id: supply_dining_bottom
           status: inferred
           system: supply_air
-          position: { x: 8.00, y: 2.50, z: 4.85 }
+          position: { x: 8.60, y: 2.50, z: 5.125 }
           mount_face: bottom
           length: 0.9
           finish: matte_black
           render_style: linear_slot
-          reason: "DEC-2026-10-07-R03 三层线语言：底面前侧下出风功能段，只属 42T2（旋转 180°）双出风第二出口（与 ac_dining 机身轴 x=8.00 对齐，y=2.50 边吊底面，与客厅下出风同 z=4.85 轴线、等宽 0.9m、同款 linear_slot 收口成组）。段间与段端由 LD-deco-supply-* 封闭装饰段延续成整条连续线。合同附件出风名义 750×150；有效面积/静压/风速与旋转 180° 允许性以厂家安装图为约束，施工未冻结。"
+          reason: "DEC-2026-10-07-R03 三层线语言：底面前侧下出风功能段，只属 42T2（旋转 180°）双出风第二出口（历史位置与 ac_dining 机身轴 x=8.00 对齐；y=2.50 边吊底面，与客厅下出风同z=4.85轴线、等宽0.9m为R03历史；R04当前下出风行z=5.125）。DEC-2026-10-18-R02 候选 x=8.60；DEC-2026-10-19-R01 保持餐厅端子 x=8.60，并将下出风排与回风排分别居中于 x=10.30。段间与段端由 LD-deco-supply-* 封闭装饰段延续。合同附件出风名义 750×150；有效面积/静压/风速与旋转 180° 允许性按厂家图核算，施工未冻结。；DEC-2026-10-19-R02 R04 下出风行居中至 z=5.125。"
         - id: return_dining
           status: inferred
           system: return_air
-          position: { x: 7.90, y: 2.49, z: 4.45 }
+          position: { x: 9.65, y: 2.49, z: 4.725 }
           mount_face: bottom
           length: 0.9
           render_style: linear_slot
           finish: matte_black
-          reason: "DEC-2026-10-07-R03 三层线语言：底面后侧回风/滤网/检修一体格栅功能段，只属 42T2，中心 x=7.90（R20 修复值，段域 x[7.45,8.35] 全落 ceiling_living 设备带内、与 42T2 机身轴 x=8.00 对齐），linear_slot 与 return_living 同排同款同宽。合同附件回风名义 1000×300/1300×300（模型示意高度 0.25 与名义 300mm 的差 site_pending，以厂家安装图为约束）；R16'回风暂标准白'按业主三层同语言指令改 matte_black（回退项见 decision-brief）。仍为铰接回检一体，滤网及内机经格栅维护，施工未冻结。"
+          reason: "DEC-2026-10-05-R20/DEC-2026-10-07-R03 历史位置中心 x=7.90（R20 从 7.40 东移以消除越带跨缝并避免走廊侧部分回风）；DEC-2026-10-18-R01/R02 历史候选中心 x=9.10/9.70；DEC-2026-10-19-R01 将回风行独立居中调整至 x=9.65，与客厅回风 x=10.95 的中心平均 x=10.30。当前段域 x[9.20,10.10]，西缘距冷媒主管轴 x=7.45 约 1.75m。长度 0.9m，linear_slot；与 living 回风同排同语言、同回风开口高度。历史材质：R16 标准白回风按 R03 业主指令改 matte_black，回退选项保留在原 brief。回风名义尺寸 1000×300/1300×300 的具体映射、模型高度 0.25 与名义 300mm 的差、有效面积、风量/静压及检修尺寸仍需工程深化；铰接回检一体。此位置仅为设计预演，不是施工定位。；DEC-2026-10-19-R02 R04 回风行居中至 z=4.725。"
         - id: LD-deco-side-south
           kind: decorative_louver
           status: pending
@@ -296,13 +296,13 @@ plans:
           render_interior: true
           render_coordination: false
           system: decorative
-          position: { x: 7.375, y: 2.50, z: 4.85 }
+          position: { x: 7.675, y: 2.50, z: 5.125 }
           mount_face: bottom
-          length: 0.35
+          length: 0.95
           grille_height: 0.15
           finish: matte_black
           render_style: linear_slot
-          reason: "DEC-2026-10-07-R03 装饰延续段（封闭）：底面前侧下出风层 z=4.85 西段 x[7.20,7.55]，填补 supply_dining_bottom（x=8.00±0.45）以西的缺口，与两个功能段同轴同宽同款。背板封闭、无风道连接、不进 MEP route、不得误做共用送风道。施工未冻结。"
+          reason: "DEC-2026-10-07-R03 历史西段 x[7.20,7.55]；DEC-2026-10-18-R02 调整为封闭装饰段 x[7.20,8.15]，承接新 supply_dining_bottom 西缘。背板封闭、无风道连接、不进 MEP route、不得误做共用送风道。；DEC-2026-10-19-R02 R04 当前下出风装饰行 z=5.125。"
         - id: LD-deco-supply-mid
           kind: decorative_louver
           status: pending
@@ -310,13 +310,13 @@ plans:
           render_interior: true
           render_coordination: false
           system: decorative
-          position: { x: 9.15, y: 2.50, z: 4.85 }
+          position: { x: 10.30, y: 2.50, z: 5.125 }
           mount_face: bottom
-          length: 1.4
+          length: 2.5
           grille_height: 0.15
           finish: matte_black
           render_style: linear_slot
-          reason: "DEC-2026-10-07-R03 装饰延续段（封闭）：底面前侧下出风层 z=4.85 中段 x[8.45,9.85]，填补 42T2 下出风（西）与 71T2 下出风（东）两台机器之间的非功能区；两台机器的送风仍各自独立（supply_dining_bottom / supply_living_bottom + 各自 MEP 支路），本段仅视觉延续。背板封闭、无风道连接、不进 MEP route。施工未冻结。"
+          reason: "DEC-2026-10-07-R03/R02 历史中段 x[8.45,9.85]/[9.05,10.45]；DEC-2026-10-19-R01 调整为封闭装饰段 x[9.05,11.55]，填补独立居中后的两处下出风之间。两台机器送风仍独立，本段仅视觉延续。背板封闭、无风道连接、不进 MEP route。；DEC-2026-10-19-R02 R04 当前下出风装饰行 z=5.125。"
         - id: LD-deco-supply-east
           kind: decorative_louver
           status: pending
@@ -324,13 +324,13 @@ plans:
           render_interior: true
           render_coordination: false
           system: decorative
-          position: { x: 12.075, y: 2.50, z: 4.85 }
+          position: { x: 12.925, y: 2.50, z: 5.125 }
           mount_face: bottom
-          length: 2.65
+          length: 0.95
           grille_height: 0.15
           finish: matte_black
           render_style: linear_slot
-          reason: "DEC-2026-10-07-R03 装饰延续段（封闭）：底面前侧下出风层 z=4.85 东段 x[10.75,13.40]，自 supply_living_bottom 东缘延续至设备带东端 x=13.40（与走廊/门厅满吊 2.50 完成面同标高正交交接）。背板封闭、无风道连接、不进 MEP route。施工未冻结。"
+          reason: "DEC-2026-10-07-R03/R02 历史东段 x[10.75,13.40]/[11.35,13.40]；DEC-2026-10-19-R01 调整为封闭装饰段 x[12.45,13.40]，自新 supply_living_bottom 东缘延续至设备带东端。背板封闭、无风道连接、不进 MEP route。；DEC-2026-10-19-R02 R04 当前下出风装饰行 z=5.125。"
         - id: LD-deco-return-west
           kind: decorative_louver
           status: pending
@@ -338,13 +338,13 @@ plans:
           render_interior: true
           render_coordination: false
           system: decorative
-          position: { x: 7.325, y: 2.49, z: 4.45 }
+          position: { x: 8.20, y: 2.49, z: 4.725 }
           mount_face: bottom
-          length: 0.25
+          length: 2.0
           grille_height: 0.25
           finish: matte_black
           render_style: linear_slot
-          reason: "DEC-2026-10-07-R03 装饰延续段（封闭）：底面后侧回风/检修层 z=4.45 西段 x[7.20,7.45]，与 return_dining 同排同款。背板封闭、无风道连接、不开滤网/检修口，维护仍走 return_dining 铰接回检一体格栅。施工未冻结。"
+          reason: "DEC-2026-10-19-R01 装饰延续段（封闭）：R03历史底面后侧回风/检修层 z=4.45 西段 x[7.20,9.20]，填补至新 return_dining 西缘；背板封闭、无风道连接、不开滤网/检修口。；DEC-2026-10-19-R02 R04 当前回风装饰行 z=4.725。"
         - id: LD-deco-return-mid
           kind: decorative_louver
           status: pending
@@ -352,13 +352,13 @@ plans:
           render_interior: true
           render_coordination: false
           system: decorative
-          position: { x: 10.225, y: 2.49, z: 4.45 }
+          position: { x: 10.275, y: 2.49, z: 4.725 }
           mount_face: bottom
-          length: 3.75
           grille_height: 0.25
           finish: matte_black
           render_style: linear_slot
-          reason: "DEC-2026-10-07-R03 装饰延续段（封闭）：底面后侧回风/检修层 z=4.45 中段 x[8.35,12.10]，填补 return_dining 与 return_living 两台机器独立回风口之间的非功能区；两台回风/检修各自独立，本段仅视觉延续。背板封闭、无风道连接、不开滤网/检修口。施工未冻结。"
+          length: 0.35
+          reason: "DEC-2026-10-19-R01 装饰延续段（封闭）：R03历史底面后侧回风/检修层 z=4.45 中段 x[10.10,10.45]，填补两处独立居中回风功能段之间的非功能区；本段仅视觉延续。背板封闭、无风道连接、不开滤网/检修口。；DEC-2026-10-19-R02 R04 当前回风装饰行 z=4.725。"
         - id: LD-deco-return-east
           kind: decorative_louver
           status: pending
@@ -366,13 +366,13 @@ plans:
           render_interior: true
           render_coordination: false
           system: decorative
-          position: { x: 13.25, y: 2.49, z: 4.45 }
+          position: { x: 12.425, y: 2.49, z: 4.725 }
           mount_face: bottom
-          length: 0.3
+          length: 1.95
           grille_height: 0.25
           finish: matte_black
           render_style: linear_slot
-          reason: "DEC-2026-10-07-R03 装饰延续段（封闭）：底面后侧回风/检修层 z=4.45 东段 x[13.10,13.40]，自 return_living 东缘延续至设备带东端。背板封闭、无风道连接、不开滤网/检修口。施工未冻结。"
+          reason: "DEC-2026-10-19-R01 装饰延续段（封闭）：R03历史底面后侧回风/检修层 z=4.45 东段 x[11.45,13.40]，自新 return_living 东缘延续至设备带东端。背板封闭、无风道连接、不开滤网/检修口。；DEC-2026-10-19-R02 R04 当前回风装饰行 z=4.725。"
         - id: condensate_living_candidate
           kind: condensate_drain_candidate
           status: pending

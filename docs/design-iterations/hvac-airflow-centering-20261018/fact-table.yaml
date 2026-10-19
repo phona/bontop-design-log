@@ -1,0 +1,63 @@
+# Fact Table — 客餐厅底面四口整体居中（DEC-2026-10-18-R02）
+schema: interior-design-fact-table/v1
+iteration_id: hvac-airflow-centering-20261018
+facts:
+  - id: f_band
+    status: confirmed
+    statement: ceiling_living 东西范围 x[7.20,13.40]，中心 x=10.30。
+    source_refs: [config/ceiling.yaml:1-8]
+    impact: 本轮以整条边吊中心作为四个底面功能口组的居中基准。
+    affected_objects: [ceiling_living, supply_dining_bottom, return_dining, supply_living_bottom, return_living]
+    owner: design
+    verification: 读取当前权威吊顶配置。
+  - id: f_units
+    status: confirmed
+    statement: ac_dining/ac_living 中心 x=8.00/10.30；下出风长度各 0.90m；回风长度餐厅0.90m、客厅1.00m；供应/回风仍在 z=4.85/4.45 两行。
+    source_refs: [config/ceiling.yaml:10-28, config/hvac.yaml:221-265]
+    impact: 保留两台机位、端子长度和前后两排，不改吊顶几何。
+    affected_objects: [ac_dining, ac_living, supply_dining_bottom, return_dining, supply_living_bottom, return_living]
+    owner: design
+    verification: 当前配置声明。
+  - id: f_r01_baseline
+    status: confirmed
+    statement: R01 候选四口中心为 x=8.00/9.10/10.30/11.40，四口中心值平均 x=9.70，比边吊中心偏西0.60m。
+    source_refs: [docs/design-iterations/hvac-airflow-grouping-20261018/review-manifest.json, docs/decisions/05-hvac.md:185-195]
+    impact: 说明本轮向东整体调整0.60m的来源及被覆盖的坐标。
+    affected_objects: [supply_dining_bottom, return_dining, supply_living_bottom, return_living]
+    owner: design
+    verification: 由四个端子中心坐标计算。
+  - id: f_clearance
+    status: confirmed
+    statement: R20 曾指出旧餐厅回风西缘与冷媒主管轴相切；本轮新餐厅回风西缘 x=9.25，距主管轴 x=7.45 为1.80m。
+    source_refs: [docs/decisions/02-layout-public.md:435, config/hvac.yaml:257-265]
+    impact: 继续远离已记录的主管轴相切风险。
+    affected_objects: [return_dining, refrigerant-trunk]
+    owner: HVAC coordinator
+    verification: 由终端长度与中心坐标计算；主管实际截面仍待深化。
+  - id: f_standard
+    status: confirmed
+    statement: 规范/指南要求按送风射流、人员区覆盖和维护校核回风；未规定四个装饰口必须按几何中线等距。
+    source_refs:
+      - GB 50736-2012:7.4.12
+      - https://jst.nx.gov.cn/zzb/gzwj_72355/202304/P020230424583759484309.pdf
+      - https://handbook.ashrae.org/Handbooks/A23/SI/a23_ch58/a23_ch58_si.aspx
+    impact: 本轮居中处理解决视觉基准，气流功能仍需工程复核。
+    affected_objects: [supply_dining_bottom, return_dining, supply_living_bottom, return_living]
+    owner: HVAC designer
+    verification: 现有标准依据；不替代实测或厂家性能数据。
+  - id: i_centered_group
+    status: inferred
+    statement: 四个功能口中心 x=8.60/9.70/10.90/12.00，中心值平均 x=10.30；相邻中心距1.10/1.20/1.10m；由R01整体向东平移0.60m。
+    source_refs: [user instruction 2026-10-18, f_band, f_r01_baseline]
+    impact: 让四口作为一组居中于边吊，同时保留间距节奏和送回风分行。
+    affected_objects: [supply_dining_bottom, return_dining, supply_living_bottom, return_living]
+    owner: design
+    verification: 配置几何计算、MEP lint、同版本 Three.js 运行时复核。
+  - id: f_airflow_pending
+    status: site_pending
+    statement: 精确 P-SS 型号出回风接口、风量分配、射程、静压、噪声、检修净空仍未由厂家图或计算确认。
+    source_refs: [config/hvac.yaml:42-52, docs/pending-site-data.md]
+    impact: R02 可用于设计预演；实际施工前如风量短路或检修不满足须改位。
+    affected_objects: [ac_dining, ac_living, supply_dining_bottom, return_dining, supply_living_bottom, return_living]
+    owner: 业主/空调厂家
+    verification: 后续按实际机型参数和现场调试复核。

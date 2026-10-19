@@ -1,0 +1,42 @@
+# Decision Brief — 客餐厅底面四口整体居中
+schema: interior-design-decision-brief/v1
+iteration_id: hvac-airflow-centering-20261018
+decision_ref: DEC-2026-10-18-R02
+frozen: true
+frozen_at: 2026-10-18
+owner: 业主
+priority:
+  - 四个底面功能口的中心值平均对齐 ceiling_living 中心 x=10.30。
+  - 保留相邻中心距1.10/1.20/1.10m与供回风分行，避免只调一排造成整体偏心。
+  - 保持两台机组回风/下出风独立，装饰段继续封闭。
+allowed_scope:
+  - config/hvac.yaml 的两处下出风、两处回风和底面封闭装饰段。
+  - config/mep-hvac-coordination.yaml 的四条对应支路终点及正交预演路径。
+  - 直接相关 DEC、渲染数据和本轮取证。
+forbidden:
+  - 改动内机位置、侧送风口、冷媒干管、吊顶边界或吊顶标高。
+  - 把四个端子中心重叠在一条线上或把装饰段接入风道。
+  - 将预演结果标成已完成气流计算或施工定位。
+decisions:
+  - id: DEC-2026-10-18-R02
+    content: 四个底面功能口整体从 R01 坐标向东平移0.60m，中心值平均 x=10.30；新中心为8.60/9.70/10.90/12.00。
+    status: owner_directed_design_candidate
+open_questions:
+  - 精确机型的双出风风量分配及推荐接风方式。
+  - 回风自由面积、风量、外静压、噪声及过滤/检修净空。
+  - 实际支管、风箱和梁底净空是否支持所示正交路径。
+acceptance:
+  datum: ceiling_living center_x=10.30
+  terminals_west_to_east:
+    - { id: supply_dining_bottom, x: 8.60, z: 4.85, length: 0.90 }
+    - { id: return_dining, x: 9.70, z: 4.45, length: 0.90 }
+    - { id: supply_living_bottom, x: 10.90, z: 4.85, length: 0.90 }
+    - { id: return_living, x: 12.00, z: 4.45, length: 1.00 }
+  center_mean_x: 10.30
+  center_spacing_x: [1.10, 1.20, 1.10]
+  checks:
+    - 四个端子不越出 ceiling_living x[7.20,13.40]。
+    - 各功能口与封闭装饰段不重叠，装饰段不连接风道。
+    - MEP路线端点与HVAC端子一致，转折保持正交表达。
+    - 同版本3D场景实际坐标匹配配置。
+    - 气流、静压、噪声和检修仍为施工前工程复核项。

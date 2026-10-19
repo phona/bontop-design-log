@@ -1,0 +1,25 @@
+# Object Manifest — 客餐厅底面两排南北向居中
+schema: interior-design-object-manifest/v1
+iteration_id: hvac-airflow-north-south-centering-20261019
+objects:
+  - id: supply_row
+    owner: HVAC
+    parts: [supply_dining_bottom, supply_living_bottom, supply-air-dining-bottom, supply-air-living-bottom, LD-deco-supply-west, LD-deco-supply-mid, LD-deco-supply-east]
+    function: 下出风排整体南移0.275m至 z=5.125；x向两口中心8.60/12.00不变。
+    relationships: 该排中心z=5.125，与边吊中心z=4.925相对南偏0.20m；与回风排中心距0.40m。
+    validation_refs: [f_band_z, i_rows_centered_z, f_airflow_pending]
+  - id: return_row
+    owner: HVAC
+    parts: [return_dining, return_living, return-air-dining, return-air-living, LD-deco-return-west, LD-deco-return-mid, LD-deco-return-east]
+    function: 回风排整体南移0.275m至 z=4.725；x向两口中心9.65/10.95不变。
+    relationships: 该排中心z=4.725，与边吊中心z=4.925相对北偏0.20m；两排中值为4.925。
+    maintenance: 真实滤网、水盘、泵与电控检修路径仍待复核。
+    validation_refs: [f_band_z, i_rows_centered_z, f_airflow_pending]
+  - id: closed_decorative_runs
+    owner: interior
+    parts: [LD-deco-supply-west, LD-deco-supply-mid, LD-deco-supply-east, LD-deco-return-west, LD-deco-return-mid, LD-deco-return-east]
+    function: 封闭装饰线条，仅视觉延续，不通风、不承担检修。
+constraints:
+  - R03 的 x 向两排分别居中保持不变。
+  - 不改室内机、侧送口、吊顶几何或主干路线。
+  - 该 z 向调整是业主授权的设计预演，不自动构成施工定位。

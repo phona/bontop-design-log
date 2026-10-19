@@ -1,0 +1,38 @@
+# Decision Brief — 客餐厅下出风排与回风排分别居中
+schema: interior-design-decision-brief/v1
+iteration_id: hvac-airflow-row-centering-20261019
+decision_ref: DEC-2026-10-19-R01
+frozen: true
+frozen_at: 2026-10-19
+owner: 业主
+priority:
+  - 下出风排和回风排分别以 ceiling_living 中心 x=10.30 居中。
+  - 保留两排错位与口位间距，避免供风和回风中心完全叠在一处。
+  - 两台机组送回风独立，封闭装饰段不接入风道。
+allowed_scope:
+  - config/hvac.yaml 的四个底面功能端子、对应封闭装饰段。
+  - config/mep-hvac-coordination.yaml 中四条对应支路终点及正交示意路径。
+  - 当前直接相关的决策/迭代证据和 project-render-facts。
+forbidden:
+  - 改两台室内机、侧送口、吊顶几何/标高、冷媒/冷凝水主路由。
+  - 把本轮预演标成施工定位或厂家确认。
+  - 装饰段接入风道、滤网或检修功能。
+decisions:
+  - id: DEC-2026-10-19-R01
+    content: 下出风行 centres x=8.60/12.00、回风行 centres x=9.65/10.95，两排分别居中于10.30。
+    status: owner_directed_design_preview
+acceptance:
+  datum: ceiling_living center_x=10.30
+  terminals_west_to_east:
+    - { id: supply_dining_bottom, x: 8.60, z: 4.85, length: 0.90 }
+    - { id: return_dining, x: 9.65, z: 4.45, length: 0.90 }
+    - { id: return_living, x: 10.95, z: 4.45, length: 1.00 }
+    - { id: supply_living_bottom, x: 12.00, z: 4.85, length: 0.90 }
+  row_centers_x: { supply: 10.30, return: 10.30 }
+  center_spacing_x: [1.05, 1.30, 1.05]
+  opening_outer_edges_x: [8.15, 12.45]
+  end_margins_m: { west: 0.95, east: 0.95 }
+open_questions:
+  - 餐厅侧送风端部与餐厅回风是否发生实际射流短路。
+  - 实际接口、风量/静压、噪声、自由面积及维护净空。
+  - 吊顶空腔、支路截面与机组服务空间是否满足现场安装。

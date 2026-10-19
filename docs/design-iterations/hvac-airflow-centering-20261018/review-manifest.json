@@ -1,0 +1,89 @@
+{
+  "schema": "interior-design-review-manifest/v1",
+  "iteration_id": "hvac-airflow-centering-20261018",
+  "decision_ref": "DEC-2026-10-18-R02",
+  "subject": "客餐厅下出风与回风整体居中至边吊中心 x=10.30",
+  "state": "superseded",
+  "implementation": {
+    "state": "superseded_by_DEC-2026-10-19-R01",
+    "changed_objects": [
+      "supply_dining_bottom",
+      "return_dining",
+      "supply_living_bottom",
+      "return_living",
+      "supply-air-dining-bottom",
+      "return-air-dining",
+      "supply-air-living-bottom",
+      "return-air-living",
+      "LD-deco-supply-west",
+      "LD-deco-supply-mid",
+      "LD-deco-supply-east",
+      "LD-deco-return-west",
+      "LD-deco-return-mid",
+      "LD-deco-return-east"
+    ],
+    "not_changed": [
+      "ac_dining",
+      "ac_living",
+      "supply_dining",
+      "supply_living",
+      "ceiling_living",
+      "refrigerant-trunk",
+      "condensate routes"
+    ]
+  },
+  "evidence": {
+    "prior_candidate": "DEC-2026-10-18-R01, preserved in docs/design-iterations/hvac-airflow-grouping-20261018/",
+    "current_browser": "reloaded 2026-10-18T15:52:21Z: http://127.0.0.1:5175/ via API http://localhost:4111; isReady=true, no config error, visual gate CLEAR",
+    "candidate_runtime": "confirmed in current Three.js scene at evidence/runtime-query.json; four live HVAC groups match x=8.60/9.70/10.90/12.00",
+    "manufacturer_drawings": "not required to create this owner-directed preview; still required before construction airflow/interface verification",
+    "screenshots": [
+      "view1-centered-band.png",
+      "centered-plan.svg"
+    ]
+  },
+  "checks": {
+    "yaml_parse": "passed for config/hvac.yaml, config/mep-hvac-coordination.yaml, config/ceiling.yaml",
+    "verify_project_render_facts": "passed: electrical=17, plumbing=33, ceiling=25",
+    "verify_mep_candidate": "139 errors / 215 warnings (repository-wide existing error set); approximate supply_return_overlap remains between side supply-air-dining and return-air-dining at 0.035m; no down-supply/return pair overlap reported",
+    "gate_visual": "CLEAR: ceiling 754f3847a058; electrical c541506a0427; plumbing 81c5778c1239; materials 64176f576326",
+    "typecheck": "passed",
+    "tests": "not run",
+    "runtime_reconnect": "passed: scene ready and all four terminal transforms match candidate; see evidence/runtime-query.json",
+    "terminal_and_decorative_geometry": "passed: supply row and return row each cover x[7.20,13.40] without gaps or overlaps; terminal centers average x=10.30; center gaps 1.10/1.20/1.10m",
+    "verify_all": "15/17 passed; verify-mep fails with repository-wide errors; verify-facts reports one dangling decision reference at untouched docs/pending-site-data.md:3, unrelated to this iteration"
+  },
+  "review": {
+    "aesthetic": {
+      "status": "passed",
+      "verdict": "PASS",
+      "note": "独立审美复评确认全长设备带与比例平面图支持四口整体居中；端部余量0.95/0.90m，回风长度差与0.20/0.30/0.15m开口间隙在连续黑槽中未形成明显失衡。",
+      "evidence_refs": [
+        "evidence/view1-centered-band.png",
+        "evidence/centered-plan.svg",
+        "evidence/runtime-query.json"
+      ],
+      "deleted": "仅删除本轮R02中间视图 view2-centered-plan.png，因为其全屋/吊顶状态遮挡风口；既有R01/R03/R18/R20决策与证据均保留。",
+      "overturned": "R02覆盖R01四口中心8.00/9.10/10.30/11.40；保留1.10/1.20/1.10m中心节奏。",
+      "silent_failure_conditions": "若实测边吊中心/边界、端子长度、装饰段长度或材质线条改变，当前居中和视觉结论需重算、复评。"
+    },
+    "functional": {
+      "status": "blocked",
+      "verdict": "BLOCKED_FOR_CONSTRUCTION_ONLY",
+      "note": "R02预演坐标与Three.js运行态一致；MEP lint为139 errors/215 warnings，仍有餐厅侧送风—回风 0.035m 近似包络警告，且风量、射流、静压、噪声和维护净空未证实。",
+      "evidence_refs": [
+        "evidence/runtime-query.json",
+        "config/mep-hvac-coordination.yaml:162,177,179-180",
+        "evidence/evidence-notes.md"
+      ],
+      "deleted": "未删除既有工程结论或历史证据；仅剔除了本轮一张遮挡风口的中间调试图。",
+      "overturned": "R02按业主指令覆盖R01四口中心；不据此推翻既有独立机组、侧送方向或其他气流事实。",
+      "silent_failure_conditions": "若侧送射流进入餐厅回风、自由面积/静压/风量不达标、噪声超限、机组接口不支持或滤网/水盘/泵/电控无法维护，施工位置必须调整。"
+    }
+  },
+  "verdict": {
+    "deleted": "Only the R02 intermediate view2-centered-plan.png was removed because it showed an obstructed whole-house/ceiling view; no prior R01/R03/R18/R20 decisions or historical evidence were deleted.",
+    "overturned": "DEC-2026-10-19-R01 replaces R02 combined-only centering: R02 row means were supply x=9.75 and return x=10.85; R03 moves the rows so each center is x=10.30. No earlier history removed.",
+    "silent_failure_conditions": "If the site datum changes, actual ceiling band differs, outlets exceed clearances, supply jets enter returns, or manufacturer flow/service conditions fail, this preview must be revised before construction. R02 visual evidence is historical and is not a runtime proof of the current R03 coordinates."
+  }
+}

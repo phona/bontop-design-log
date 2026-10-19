@@ -1,0 +1,29 @@
+# Design Datum — 客餐厅两排各自居中
+schema: interior-design-design-datum/v1
+iteration_id: hvac-airflow-row-centering-20261019
+coordinate_system: Three.js 右手系；+x=东、+z=南；俯视北朝上；单位 m
+datums:
+  - id: datum-band
+    object: ceiling_living
+    plan: { x_range: [7.20, 13.40], z_range: [4.30, 5.55], center_x: 10.30 }
+    elevation: bottom_y=2.50
+    basis: [f_band]
+  - id: datum-supply-row
+    object: [supply_dining_bottom, supply_living_bottom]
+    plan:
+      supply_dining_bottom: { center: {x: 8.60, z: 4.85}, length: 0.90, x_range: [8.15, 9.05] }
+      supply_living_bottom: { center: {x: 12.00, z: 4.85}, length: 0.90, x_range: [11.55, 12.45] }
+      row_center_x: 10.30
+    elevation: y=2.50
+    basis: [i_row_centering, f_band]
+  - id: datum-return-row
+    object: [return_dining, return_living]
+    plan:
+      return_dining: { center: {x: 9.65, z: 4.45}, length: 0.90, x_range: [9.20, 10.10] }
+      return_living: { center: {x: 10.95, z: 4.45}, length: 1.00, x_range: [10.45, 11.45] }
+      row_center_x: 10.30
+    elevation: y=2.49
+    basis: [i_row_centering, f_band]
+non_datums:
+  - 实际出回风接口、射程、风量、外静压、噪声和自由面积。
+  - 支路箱体截面、吊顶空腔及滤网/水盘/泵/电控检修空间。
