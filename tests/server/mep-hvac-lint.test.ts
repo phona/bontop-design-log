@@ -164,10 +164,10 @@ test('verify:mep JSON has stable result and exit contract', () => {
   assert.ok(Array.isArray(result.errors));
   assert.ok(Array.isArray(result.warnings));
   assert.equal(result.counts.routes, 136); // DEC-2026-10-18-R21 补画 strong-power-living-water 后 135→136
-  assert.equal(result.counts.errors, 140); // DEC-2026-10-18-R21 实跑口径：must_fix 140（含 route_overlap 70、route_not_orthogonal 33、route_furniture_collision 12、unsupported_span 7、suppressed_wall_crossing 8 等）；R20 口径 166 中的 warning_class_unadjudicated 13 已随 R21 表态登记清零
-  assert.equal(result.counts.warnings, 215); // survey_dependent 93 + envelope_approximation 122（DEC-2026-10-18-R21：六条路线修复 + kitchen 两根 sill_crossings 撤销后 survey/envelope 桶项回落）
+  assert.equal(result.counts.errors, 139); // DEC-2026-10-18-R21 实跑口径：must_fix 140（含 route_overlap 70、route_not_orthogonal 33、route_furniture_collision 12、unsupported_span 7、suppressed_wall_crossing 8 等）；R20 口径 166 中的 warning_class_unadjudicated 13 已随 R21 表态登记清零
+  assert.equal(result.counts.warnings, 214); // survey_dependent 93 + envelope_approximation 122（DEC-2026-10-18-R21：六条路线修复 + kitchen 两根 sill_crossings 撤销后 survey/envelope 桶项回落）
   assert.equal(result.categories.survey_dependent?.count, 93); // DEC-2026-10-18-R21：ceiling_clearance_unverified 52（kitchen 两根竖井落地后 54→52）+ 门洞 16 + 剪力墙并行 11 + 剪力墙穿墙 10 + 内联端点 4
-  assert.equal(result.categories.envelope_approximation?.count, 122); // DEC-2026-10-18-R21：route_overlap 43 + route_clearance_unverified 31 + bay_sill_crossing_declared 13（kitchen 两根 sill_crossings 撤销）+ route_overlap_declared_trunk 12 + 其余见 §6 表
+  assert.equal(result.categories.envelope_approximation?.count, 121); // DEC-2026-10-18-R21：route_overlap 43 + route_clearance_unverified 31 + bay_sill_crossing_declared 13（kitchen 两根 sill_crossings 撤销）+ route_overlap_declared_trunk 12 + 其余见 §6 表
 });
 
 // ── 结构墙 / 梁碰撞规则（2026-09-01）──
