@@ -172,7 +172,7 @@ export const HvacReferenceConstraintSchema = z.object({
     ctx.addIssue({ code: 'custom', message: 'reference constraint requires bottom drop or beam bottom reference' });
   }
 });
-export const HvacRouteSchema = reasonForUnconfirmed(z.object({ id: nonEmpty, status: HvacStatusSchema, system: HvacSystemSchema, from: nonEmpty, to: nonEmpty, via: z.array(nonEmpty).optional(), constraint_refs: z.array(nonEmpty).optional(), reason: z.string().optional() }).strict());
+export const HvacRouteSchema = reasonForUnconfirmed(z.object({ id: nonEmpty, status: HvacStatusSchema, system: HvacSystemSchema, from: nonEmpty, to: nonEmpty, via: z.array(nonEmpty).optional(), topology_role: z.enum(['equipment_outlet', 'branch', 'shared_trunk']).optional(), constraint_refs: z.array(nonEmpty).optional(), reason: z.string().optional() }).strict());
 export const HvacDiagramSchema = z.object({ anchors: z.array(HvacAnchorSchema), terminals: z.array(HvacTerminalSchema), routes: z.array(HvacRouteSchema), reference_constraints: z.array(HvacReferenceConstraintSchema) }).strict();
 export const HvacLoadDesignRoomSchema = z.object({
   room: nonEmpty, basis: nonEmpty, load_kw: finiteNumber, indoor: nonEmpty, note: z.string().optional(),
@@ -715,6 +715,21 @@ export function validateProjectHvacFacts(hvac: ProjectHvacFacts, facts: Pick<Pro
         for (const ref of route.constraint_refs) if (!constraintIds.has(ref)) throw new Error(`HVAC route ${route.id} references unknown constraint: ${ref}`);
       }
       if (route.system === 'condensate') {
+        if (route.topology_role === 'equipment_outlet') {
+          const source = plan.diagram.anchors.find((anchor) => anchor.id === route.from && anchor.id.startsWith('indoor_'));
+          const outlet = plan.diagram.anchors.find((anchor) => anchor.id === route.to && anchor.system === 'condensate');
+          if (!source || !outlet) throw new Error(`HVAC condensate equipment outlet ${route.id} must link an indoor anchor to a condensate outlet anchor`);
+          continue;
+        }
+        if (route.topology_role === 'branch') {
+          const junction = plan.diagram.anchors.find((anchor) => anchor.id === route.to && anchor.system === 'condensate');
+          if (!junction) throw new Error(`HVAC condensate branch ${route.id} must end at a condensate junction anchor`);
+          continue;
+        }
+        if (route.topology_role === 'shared_trunk') {
+          const junction = plan.diagram.anchors.find((anchor) => anchor.id === route.from && anchor.system === 'condensate');
+          if (!junction) throw new Error(`HVAC condensate shared trunk ${route.id} must start at a condensate junction anchor`);
+        }
         const candidate = plan.diagram.terminals.find((terminal) => terminal.id === route.to);
         if (!candidate || candidate.status !== 'pending' || candidate.kind !== 'condensate_drain_candidate') {
           throw new Error(`HVAC condensate route ${route.id} must end at a pending condensate drain candidate`);

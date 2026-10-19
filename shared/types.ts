@@ -1371,6 +1371,7 @@ export interface HvacRoute {
   from: string;
   to: string;
   via?: string[];
+  topology_role?: 'equipment_outlet' | 'branch' | 'shared_trunk';
   constraint_refs?: string[];
   reason?: string;
 }

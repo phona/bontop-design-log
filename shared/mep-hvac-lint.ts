@@ -5,8 +5,8 @@ import {
   resolveMepEndpoint,
   resolveMepRoutes,
   type MepCoordination,
-  type MepEndpointSources,
   type MepRoute,
+  type MepEndpointSources,
 } from './mep-hvac-coordination-schema.js';
 
 export type MepLintLevel = 'error' | 'warning';
@@ -82,6 +82,7 @@ const CEILING_CARRIED_LAYERS = new Set(['strong_power', 'weak_power', 'refrigera
 const ISSUE_CATEGORY: Record<string, MepLintCategory> = {
   // 本轮新规则 (a)(b)(c)(d)：交底前必须清
   gravity_slope_geometry_mismatch: 'must_fix_before_briefing',
+  gravity_slope_below_design_target: 'must_fix_before_briefing',
   route_not_orthogonal: 'must_fix_before_briefing',
   penetration_door_clearance: 'must_fix_before_briefing',
   // DEC-2026-10-17-R14：剪力墙并行与同族 shear_wall_penetration 同桶——message 本身就是
@@ -104,6 +105,7 @@ const ISSUE_CATEGORY: Record<string, MepLintCategory> = {
   floor_branch_missing_floor_band: 'must_fix_before_briefing',
   // 量房后自然消或需复判
   ceiling_clearance_unverified: 'survey_dependent',
+  route_insulation_unverified: 'survey_dependent',
   shear_wall_penetration: 'survey_dependent',
   beam_collision: 'survey_dependent',
   // 模型包络近似 / 非物理需求路线
@@ -169,13 +171,10 @@ function summarizeCategories(issues: MepLintIssue[]): MepLintCategorySummary {
 }
 
 // ── (a)(b) 平面/竖向几何检查的共用阈值 ──
-/** (a) 与声明坡度允许的相对偏差：±50%（规范只定最小坡度；过小流不动、过大冲刷管壁与存水弯）。 */
-const GRAVITY_SLOPE_TOLERANCE = 0.5;
-/** (a) 水平长度不足 30cm 的段不参与坡度判定：1–2% 坡度在 0.3m 上只有 3–6mm 落差，低于 y 取值精度， */
-/** 逐段判会把示意性 vertex 刷成告警（墙排柜内大落差同理，另见 WALL_DRAIN_METHOD）。 */
+/** 设计坡度按最低值解释；1mm 只覆盖配置标高的毫米级数值取整，不代表施工允许偏差。 */
+const GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M = 0.001;
+/** 缺失坡度合同与楼板方法检查使用的最短整路线/平段长度；分段坡度按 1mm 标高数值精度独立判定。 */
 const GRAVITY_MIN_RUN = 0.3;
-/** (a) 墙排（gravity_wall_drain）允许柜内大落差，故按全线汇总落差/水平长度判定，不逐段判。 */
-const WALL_DRAIN_METHOD = 'wall_drain';
 /** (b) 斜线段阈值：Δx 与 Δz 同时超过 2cm 即算平面斜线（小于放线/取整公差）。 */
 const ORTHOGONAL_TOLERANCE = 0.02;
 /** 项目走线按正交折线表达；全部 MEP 专业检查平面斜线。 */
@@ -468,9 +467,10 @@ function routeBox(route: MepRoute, points: Point[]): Box | undefined {
   const heights = points.map((p) => p.y).filter((y): y is number => typeof y === 'number');
   if (heights.length !== points.length) return undefined;
   const isRectangular = route.width !== undefined || route.depth !== undefined || route.height !== undefined || route.method === 'rectangular';
-  const halfX = isRectangular ? (route.width ?? 0) / 2 : (route.diameter ?? 0) / 2;
-  const halfZ = isRectangular ? (route.depth ?? 0) / 2 : (route.diameter ?? 0) / 2;
-  const halfY = isRectangular ? (route.height ?? 0) / 2 : (route.diameter ?? 0) / 2;
+  const insulation = route.insulation_thickness ?? 0;
+  const halfX = (isRectangular ? (route.width ?? 0) / 2 : (route.diameter ?? 0) / 2) + insulation;
+  const halfZ = (isRectangular ? (route.depth ?? 0) / 2 : (route.diameter ?? 0) / 2) + insulation;
+  const halfY = (isRectangular ? (route.height ?? 0) / 2 : (route.diameter ?? 0) / 2) + insulation;
   if (halfX <= 0 || halfZ <= 0 || halfY <= 0) return undefined;
   return {
     minX: Math.min(...points.map((p) => p.x)) - halfX,
@@ -529,22 +529,27 @@ function segmentBoxInterval(a: Point, b: Point, box: Box, padding = 0): [number,
   return high - low > 1e-8 ? [low, high] : undefined;
 }
 function routeEnvelopeRadius(route: MepRoute): number {
-  if (route.diameter !== undefined) return route.diameter / 2;
+  if (route.diameter !== undefined) return route.diameter / 2 + (route.insulation_thickness ?? 0);
   if (route.width !== undefined || route.depth !== undefined || route.height !== undefined) {
-    return Math.max((route.width ?? 0) / 2, (route.depth ?? 0) / 2, (route.height ?? route.depth ?? 0) / 2);
+    return Math.max((route.width ?? 0) / 2, (route.depth ?? 0) / 2, (route.height ?? route.depth ?? 0) / 2) + (route.insulation_thickness ?? 0);
   }
-  return 0.01;
+  return 0.01 + (route.insulation_thickness ?? 0);
 }
 function routeIsRectangular(route: MepRoute): boolean {
   return route.diameter === undefined && (route.width !== undefined || route.depth !== undefined || route.height !== undefined || route.method === 'rectangular');
 }
-function routeHalfExtents(route: MepRoute): { x: number; y: number; z: number } {
-  if (route.diameter !== undefined) return { x: route.diameter / 2, y: route.diameter / 2, z: route.diameter / 2 };
+/** Physical half extents used by route collision and finish-plane checks, including declared insulation. */
+export function routeHalfExtents(route: MepRoute): { x: number; y: number; z: number } {
+  if (route.diameter !== undefined) {
+    const radius = route.diameter / 2 + (route.insulation_thickness ?? 0);
+    return { x: radius, y: radius, z: radius };
+  }
   const fallback = routeEnvelopeRadius(route);
+  const insulation = route.insulation_thickness ?? 0;
   return {
-    x: route.width !== undefined ? route.width / 2 : fallback,
-    y: route.height !== undefined ? route.height / 2 : route.depth !== undefined ? route.depth / 2 : fallback,
-    z: route.depth !== undefined ? route.depth / 2 : fallback,
+    x: route.width !== undefined ? route.width / 2 + insulation : fallback,
+    y: route.height !== undefined ? route.height / 2 + insulation : route.depth !== undefined ? route.depth / 2 + insulation : fallback,
+    z: route.depth !== undefined ? route.depth / 2 + insulation : fallback,
   };
 }
 function routeSegmentEnvelope(route: MepRoute, a: Point, b: Point): Box {
@@ -636,6 +641,62 @@ function distanceAlongRouteFromEndpoint(points: Point[], segmentIndex: number, f
   const before = lengths.slice(0, segmentIndex - 1).reduce((sum, length) => sum + length, 0);
   const position = before + lengths[segmentIndex - 1] * fraction;
   return endpointIndex === 0 ? position : lengths.reduce((sum, length) => sum + length, 0) - position;
+}
+function closestPointOnSegment3d(point: Point, a: Point, b: Point): { point: Point; fraction: number } {
+  const ax = a.x, ay = a.y ?? 0, az = a.z;
+  const dx = b.x - ax, dy = (b.y ?? 0) - ay, dz = b.z - az;
+  const lengthSq = dx * dx + dy * dy + dz * dz;
+  const fraction = lengthSq < 1e-12 ? 0 : Math.max(0, Math.min(1, ((point.x - ax) * dx + ((point.y ?? 0) - ay) * dy + (point.z - az) * dz) / lengthSq));
+  return { point: { x: ax + fraction * dx, y: ay + fraction * dy, z: az + fraction * dz }, fraction };
+}
+function pointDistance3d(a: Point, b: Point): number {
+  return Math.hypot(a.x - b.x, (a.y ?? 0) - (b.y ?? 0), a.z - b.z);
+}
+function routeEndpointAtJunction(route: MepRoute, junctionId: string): 0 | 1 | undefined {
+  if (route.from === junctionId) return 0;
+  if (route.to === junctionId) return 1;
+  return undefined;
+}
+function explicitJunctionConnection(config: MepCoordination, a: MepRoute, b: MepRoute): { junction: MepCoordination['junctions'][number]; aEndpoint: 0 | 1; bEndpoint: 0 | 1 } | undefined {
+  for (const junction of config.junctions) {
+    const aConnected = junction.inlet_routes.includes(a.id) || junction.outlet_route === a.id;
+    const bConnected = junction.inlet_routes.includes(b.id) || junction.outlet_route === b.id;
+    if (!aConnected || !bConnected) continue;
+    const aEndpoint = routeEndpointAtJunction(a, junction.id);
+    const bEndpoint = routeEndpointAtJunction(b, junction.id);
+    if (aEndpoint !== undefined && bEndpoint !== undefined) return { junction, aEndpoint, bEndpoint };
+  }
+  return undefined;
+}
+/** True only when every overlapping centerline sample for this segment pair stays in the declared fitting envelope. */
+function overlapConfinedToJunction(
+  aRoute: MepRoute, a0: Point, a1: Point,
+  bRoute: MepRoute, b0: Point, b1: Point,
+  junction: MepCoordination['junctions'][number],
+): boolean {
+  const collisionRadius = routeEnvelopeRadius(aRoute) + routeEnvelopeRadius(bRoute);
+  const insideFitting = (a: Point, b: Point): boolean =>
+    pointDistance3d(a, junction.position) <= junction.fitting_overlap_m + 1e-8
+    && pointDistance3d(b, junction.position) <= junction.fitting_overlap_m + 1e-8;
+  let foundOverlap = false;
+  const inspect = (start: Point, end: Point, otherStart: Point, otherEnd: Point): boolean => {
+    const length = Math.hypot(end.x - start.x, (end.y ?? 0) - (start.y ?? 0), end.z - start.z);
+    const steps = Math.max(1, Math.ceil(length / 0.01));
+    for (let step = 0; step <= steps; step += 1) {
+      const t = step / steps;
+      const sample = {
+        x: start.x + (end.x - start.x) * t,
+        y: (start.y ?? 0) + ((end.y ?? 0) - (start.y ?? 0)) * t,
+        z: start.z + (end.z - start.z) * t,
+      };
+      const nearest = closestPointOnSegment3d(sample, otherStart, otherEnd).point;
+      if (pointDistance3d(sample, nearest) > collisionRadius + 1e-8) continue;
+      foundOverlap = true;
+      if (!insideFitting(sample, nearest)) return false;
+    }
+    return true;
+  };
+  return inspect(a0, a1, b0, b1) && inspect(b0, b1, a0, a1) && foundOverlap;
 }
 function sourceIds(sources: MepEndpointSources): Set<string> {
   return new Set([...sources.electrical, ...sources.plumbing, ...sources.ceiling, ...sources.hvacAnchors, ...sources.hvacTerminals, ...sources.outdoor].map((x) => x.id));
@@ -874,31 +935,24 @@ function segmentHugsWallOutsideOpening(a: Point, b: Point, y: number, layout: Re
   return false;
 }
 /**
- * (a) 声明坡度 vs 实际落差比。墙排（wall drain）按全线汇总落差/水平长度判定——
- * 柜内转 90° 会吃掉大部分落差，逐段判会把正常墙排全刷成告警；其它重力管逐段判，
- * 水平长度 <GRAVITY_MIN_RUN 的竖降段跳过。返回偏差最大的那一处（每路线只报一次）。
+ * Gravity slope is a per-horizontal-segment minimum. Segments whose designed fall is at most
+ * the 1mm coordinate resolution are not numerically distinguishable; installation tolerance
+ * is a separate field/vendor standard and is deliberately not inferred here.
  */
-function gravitySlopeDeviation(points: Point[], slope: number, wallDrain: boolean): { ratio: number; multiple: number; detail: string } | undefined {
-  if (wallDrain) {
-    const drop = Math.abs((points[points.length - 1].y as number) - (points[0].y as number));
-    const length = points.slice(1).reduce((sum, point, index) => sum + Math.hypot(point.x - points[index].x, point.z - points[index].z), 0);
-    if (length < 1e-6) return undefined;
-    const ratio = drop / length;
-    if (Math.abs(ratio / slope - 1) <= GRAVITY_SLOPE_TOLERANCE) return undefined;
-    return { ratio, multiple: ratio / slope, detail: `wall drain drops ${drop.toFixed(3)}m over ${length.toFixed(2)}m of horizontal run` };
-  }
-  let worst: { ratio: number; multiple: number; detail: string } | undefined;
+function gravitySlopeDeficits(points: Point[], slope: number): Array<{ index: number; length: number; drop: number; ratio: number }> {
+  const deficits: Array<{ index: number; length: number; drop: number; ratio: number }> = [];
   for (let i = 1; i < points.length; i += 1) {
     const a = points[i - 1], b = points[i];
     const length = Math.hypot(b.x - a.x, b.z - a.z);
-    if (length < GRAVITY_MIN_RUN) continue; // 竖降/柜内接管/示意性 vertex，不参与坡度判定
-    const ratio = Math.abs((b.y as number) - (a.y as number)) / length;
-    if (Math.abs(ratio / slope - 1) <= GRAVITY_SLOPE_TOLERANCE) continue;
-    if (!worst || Math.abs(ratio / slope - 1) > Math.abs(worst.multiple - 1)) {
-      worst = { ratio, multiple: ratio / slope, detail: `segment #${i} (${a.x},${a.z})→(${b.x},${b.z}) over ${length.toFixed(2)}m` };
+    if (length < 1e-6) continue; // vertical riser has no horizontal slope
+    const requiredDrop = slope * length;
+    if (requiredDrop <= GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M) continue;
+    const drop = (a.y as number) - (b.y as number);
+    if (drop + GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M < requiredDrop) {
+      deficits.push({ index: i, length, drop, ratio: drop / length });
     }
   }
-  return worst;
+  return deficits;
 }
 /** (d) 折线中与剪力墙平行且垂直距离 <0.15m 的最长「持续」长度（相邻合格段累加，遇非平行/超距段断开）。 */
 function shearParallelRun(points: Point[], wall: ResolvedWall): { run: number; distance: number } {
@@ -933,6 +987,7 @@ function shearParallelRun(points: Point[], wall: ResolvedWall): { run: number; d
 export function lintMepCoordination(config: MepCoordination, sources: MepEndpointSources, context: MepLintLayoutContext = {}): MepLintResult {
   const result: MepLintResult = { errors: [], warnings: [], counts: { errors: 0, warnings: 0, routes: config.routes.length, resolvedRoutes: 0 }, categories: emptyCategoryBuckets() };
   const ids = sourceIds(sources);
+  for (const junction of config.junctions) ids.add(junction.id);
   const resolved = resolveMepRoutes(config, sources);
   result.counts.resolvedRoutes = resolved.resolved;
   const boxes: Array<{ route: MepRoute; box?: Box; points: Point[]; airHeightConfirmed?: boolean; complete: boolean; centerlineComplete: boolean }> = [];
@@ -1063,6 +1118,15 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     if (!isDuct && (route.width !== undefined || route.depth !== undefined || route.height !== undefined)) add(result, issue('warning', 'rectangular_size_not_for_round', `MEP route ${route.id} uses rectangular dimensions on a round route; use diameter`, route.id));
     if (isDuct && (route.width === undefined || route.depth === undefined || route.height === undefined)) add(result, issue('warning', 'duct_dimension_incomplete', `MEP route ${route.id} lacks complete width/depth/height`, route.id));
     if (!isDuct && route.diameter === undefined) add(result, issue('warning', 'round_dimension_missing', `MEP route ${route.id} lacks diameter`, route.id));
+    if (route.layer === 'condensate' && route.diameter !== undefined && route.insulation_status !== 'confirmed') {
+      const detail = route.insulation_thickness === undefined
+        ? 'no insulation thickness is declared'
+        : `${(route.insulation_thickness * 1000).toFixed(0)}mm insulation is an unconfirmed assumption`;
+      add(result, {
+        ...issue('warning', 'route_insulation_unverified', `Route ${route.id} outer envelope uses ${detail}; verify the installed insulation before freezing clearance`, route.id),
+        category: 'survey_dependent',
+      });
+    }
     const gravity = (route.layer === 'drainage' || route.layer === 'condensate')
       && (route.method?.includes('gravity') || Boolean(route.flow_direction) || route.slope !== undefined);
     if (gravity) {
@@ -1083,7 +1147,7 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         const up = /up|升|高/i.test(explicitDirection);
         if ((down && lowToHigh) || (up && !lowToHigh && route.to_height !== route.from_height)) add(result, issue('error', 'gravity_direction_height_conflict', `Gravity route ${route.id} explicit direction conflicts with heights`, route.id));
       }
-      // (a) 现有重力检查只比 from/to 两个端点，折线中段的上升段与「声明坡度 vs 实际落差比」都不看。
+      // (a) 每段分别检查倒坡与设计最低坡度；毫米级数值容差与施工允许偏差分开。
       const headingDown = /down|降|低|drain/i.test(route.flow_direction ?? '');
       if (slope !== undefined && points.length >= 2 && points.every((p) => p.y !== undefined)) {
         const rise = points.findIndex((point, index) => index > 0 && (point.y as number) > (points[index - 1].y as number) + 1e-9);
@@ -1091,8 +1155,10 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
           const previous = points[rise - 1], current = points[rise];
           add(result, issue('warning', 'gravity_slope_geometry_mismatch', `Gravity route ${route.id} segment #${rise} (${previous.x},${previous.z})→(${current.x},${current.z}) rises ${(previous.y as number).toFixed(3)}m → ${(current.y as number).toFixed(3)}m; flow_direction down requires non-increasing via heights`, route.id));
         }
-        const deviation = gravitySlopeDeviation(points, slope, route.method?.includes(WALL_DRAIN_METHOD) ?? false);
-        if (deviation) add(result, issue('warning', 'gravity_slope_geometry_mismatch', `Gravity route ${route.id} ${deviation.detail} develops ${(deviation.ratio * 100).toFixed(2)}% against declared slope ${(slope * 100).toFixed(2)}% (${deviation.multiple.toFixed(2)}× the declared slope, tolerance ±50%)`, route.id));
+        for (const deficit of gravitySlopeDeficits(points, slope)) {
+          add(result, issue('error', 'gravity_slope_below_design_target',
+            `Gravity route ${route.id} segment #${deficit.index} has ${(deficit.drop * 1000).toFixed(1)}mm fall over ${deficit.length.toFixed(2)}m (${(deficit.ratio * 100).toFixed(2)}%); the declared minimum is ${(slope * 100).toFixed(2)}%, with ${GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M * 1000}mm geometry-only tolerance and no construction tolerance declared`, route.id));
+        }
       }
       if (route.method === 'gravity_floor_drain' && points.slice(1).some((point, index) => {
         const previous = points[index];
@@ -1357,29 +1423,29 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         const surfaceY = ceilingSurfaceY(zone, roomHeights.get(zone.room) ?? 2.8);
         if (surfaceY === undefined) continue;
         const solid = isSolidCeilingZone(zone);
-        const violating = (point: Point): boolean => {
-          if (!pointInFootprint(point, footprint)) return false;
-          const y = point.y ?? layer?.height ?? 0;
-          return solid ? y < surfaceY - 1e-9 : y > surfaceY + 1e-9;
+        const outerHalfHeight = routeHalfExtents(route).y;
+        let breachDepth = 0;
+        let aboveDepth = 0;
+        const measurePoint = (point: Point): void => {
+          if (!pointInFootprint(point, footprint)) return;
+          const centerY = point.y ?? layer?.height ?? 0;
+          if (solid) breachDepth = Math.max(breachDepth, surfaceY - (centerY - outerHalfHeight));
+          else aboveDepth = Math.max(aboveDepth, centerY + outerHalfHeight - surfaceY);
         };
-        let below = false;
-        let above = false;
-        for (const point of points) {
-          if (!violating(point)) continue;
-          if (solid) below = true;
-          else above = true;
-        }
-        // A straight run can cross a ceiling footprint between two route
-        // vertices. Preserve the per-route/per-zone de-duplication while
-        // checking those segments too.
+        for (const point of points) measurePoint(point);
+        // Sample the full centerline through a ceiling footprint. The outside
+        // envelope includes pipe diameter and any declared insulation.
         for (let i = 1; i < points.length; i += 1) {
-          if (!routeTouchesFootprint(points[i - 1], points[i], footprint)) continue;
-          const aY = points[i - 1].y ?? layer?.height ?? 0;
-          const bY = points[i].y ?? layer?.height ?? 0;
-          if (solid && aY < surfaceY - 1e-9 && bY < surfaceY - 1e-9) below = true;
-          if (!solid && aY > surfaceY + 1e-9 && bY > surfaceY + 1e-9) above = true;
+          const a = points[i - 1], b = points[i];
+          const aY = a.y ?? layer?.height ?? 0, bY = b.y ?? layer?.height ?? 0;
+          const length = Math.hypot(b.x - a.x, bY - aY, b.z - a.z);
+          const steps = Math.max(1, Math.ceil(length / 0.05));
+          for (let step = 1; step < steps; step += 1) {
+            const t = step / steps;
+            measurePoint({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, y: aY + (bY - aY) * t });
+          }
         }
-        const violationKind = solid && below ? 'below' : !solid && above ? 'above' : undefined;
+        const violationKind = solid && breachDepth > 1e-9 ? 'below' : !solid && aboveDepth > 1e-9 ? 'above' : undefined;
         if (!violationKind) continue;
         const key = `${zone.id}:${violationKind}`;
         if (reportedZones.has(key)) continue;
@@ -1388,8 +1454,8 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
           'warning',
           'ceiling_clearance_unverified',
           solid
-            ? `Route ${route.id} dips below the finished ceiling surface of ${zone.id} (${surfaceY.toFixed(2)}m) inside its footprint`
-            : `Route ${route.id} enters ceiling zone ${zone.id} above its declared height (${surfaceY.toFixed(2)}m)`,
+            ? `Route ${route.id} outside envelope extends ${(breachDepth * 1000).toFixed(0)}mm below the finished ceiling surface of ${zone.id} (${surfaceY.toFixed(2)}m) inside its footprint`
+            : `Route ${route.id} outside envelope extends ${(aboveDepth * 1000).toFixed(0)}mm above ceiling zone ${zone.id} (${surfaceY.toFixed(2)}m)`,
           route.id,
         ));
       }
@@ -1506,26 +1572,41 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     const a = boxes[i], b = boxes[j];
     if (!a.box || !b.box || !boxesOverlap(a.box, b.box) || a.points.length < 2 || b.points.length < 2) continue;
     // Same-layer cable/conduit runs may intentionally share a declared tray or trunk;
-    // gravity water runs remain checked because coincident drains can obstruct each other.
-    if (a.route.layer === b.route.layer && !['water_supply', 'drainage'].includes(a.route.layer)) continue;
+    // gravity water and condensate runs remain checked against each other.
+    if (a.route.layer === b.route.layer && !['water_supply', 'drainage', 'condensate'].includes(a.route.layer)) continue;
     // DEC-2026-10-17-R16 共槽/汇流声明：任一侧声明 shared_trunk_with 即视为同一根管的
     // 合并段（三通/同立管），不是碰撞。声明对是否属实由 review 与量房判定。
-    const declaredSharedTrunk = (a.route.shared_trunk_with ?? []).includes(b.route.id)
-      || (b.route.shared_trunk_with ?? []).includes(a.route.id);
+    const hasCondensate = a.route.layer === 'condensate' || b.route.layer === 'condensate';
+    const condensatePair = a.route.layer === 'condensate' && b.route.layer === 'condensate';
+    const declaredSharedTrunk = !hasCondensate && ((a.route.shared_trunk_with ?? []).includes(b.route.id)
+      || (b.route.shared_trunk_with ?? []).includes(a.route.id));
+    const junctionConnection = condensatePair ? explicitJunctionConnection(config, a.route, b.route) : undefined;
     const sharedEndpointIds = [a.route.from, a.route.to].filter((endpoint): endpoint is string => typeof endpoint === 'string'
       && (b.route.from === endpoint || b.route.to === endpoint));
     let collision: { aSegment: number; bSegment: number; distance: number; approximate: boolean; clearanceOnly: boolean } | undefined;
+    let junctionOverlap: { aSegment: number; bSegment: number; distance: number; id: string } | undefined;
+    let declaredOverlap: { aSegment: number; bSegment: number; distance: number } | undefined;
     for (let ai = 1; ai < a.points.length && !collision; ai += 1) for (let bi = 1; bi < b.points.length; bi += 1) {
       const nearest = closestSegmentDistance3d(a.points[ai - 1], a.points[ai], b.points[bi - 1], b.points[bi]);
       const envelopeRelation = segmentEnvelopeRelation(a.route, a.points[ai - 1], a.points[ai], b.route, b.points[bi - 1], b.points[bi]);
-      // A round pipe touching/intersecting another route's declared centerline
-      // is a real clash even when that duct's full height is still pending.
-      const roundRadius = Math.max(a.route.diameter ?? 0, b.route.diameter ?? 0) / 2;
-      const definiteCenterlineCollision = nearest.distance <= Math.max(0.001, roundRadius) && a.centerlineComplete && b.centerlineComplete;
+      // Round-to-round centerline contact is definitive. Round-to-duct contact
+      // uses the duct's actual axis-aligned outside envelope below; a spherical
+      // maximum-radius proxy creates false clashes near duct corners.
+      const bothRound = !routeIsRectangular(a.route) && !routeIsRectangular(b.route);
+      const roundRadius = routeEnvelopeRadius(a.route) + routeEnvelopeRadius(b.route);
+      const definiteCenterlineCollision = bothRound && nearest.distance <= Math.max(0.001, roundRadius) && a.centerlineComplete && b.centerlineComplete;
       const relation = definiteCenterlineCollision ? { overlap: true, clearance: 0, approximate: false } : envelopeRelation;
       const clearanceOnly = !relation.overlap && relation.approximate && relation.clearance < 0.03;
       if (!relation.overlap && !clearanceOnly) continue;
-      const sharedConnectionIsLocal = sharedEndpointIds.some((id) => {
+      if (junctionConnection && overlapConfinedToJunction(
+        a.route, a.points[ai - 1], a.points[ai],
+        b.route, b.points[bi - 1], b.points[bi],
+        junctionConnection.junction,
+      )) {
+        junctionOverlap ??= { aSegment: ai, bSegment: bi, distance: nearest.distance, id: junctionConnection.junction.id };
+        continue;
+      }
+      const sharedConnectionIsLocal = !hasCondensate && sharedEndpointIds.some((id) => {
         const aEndpointIndex = a.route.from === id ? 0 : 1;
         const bEndpointIndex = b.route.from === id ? 0 : 1;
         return distanceAlongRouteFromEndpoint(a.points, ai, nearest.s, aEndpointIndex) <= 0.20
@@ -1533,16 +1614,23 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
       });
       if (sharedConnectionIsLocal) continue;
       if (declaredSharedTrunk) {
-        add(result, {
-          ...issue('warning', 'route_overlap_declared_trunk', `MEP route envelopes overlap on a DECLARED shared trunk: ${a.route.id} segment #${ai} / ${b.route.id} segment #${bi} (centerline distance ${nearest.distance.toFixed(3)}m); merge pairing must be verified on survey day`, a.route.id, b.route.id),
-          category: 'envelope_approximation' as const,
-        });
+        declaredOverlap ??= { aSegment: ai, bSegment: bi, distance: nearest.distance };
         break;
       }
       collision = { aSegment: ai, bSegment: bi, distance: nearest.distance, approximate: relation.approximate, clearanceOnly };
       break;
     }
-    if (!collision) continue;
+    if (!collision) {
+      if (junctionOverlap) add(result, {
+        ...issue('warning', 'route_overlap_declared_trunk', `MEP route envelopes overlap only inside declared condensate wye ${junctionOverlap.id}: ${a.route.id} segment #${junctionOverlap.aSegment} / ${b.route.id} segment #${junctionOverlap.bSegment} (centerline distance ${junctionOverlap.distance.toFixed(3)}m); verify fitting and access on survey day`, a.route.id, b.route.id),
+        category: 'envelope_approximation' as const,
+      });
+      else if (declaredOverlap) add(result, {
+        ...issue('warning', 'route_overlap_declared_trunk', `MEP route envelopes overlap on a DECLARED shared trunk: ${a.route.id} segment #${declaredOverlap.aSegment} / ${b.route.id} segment #${declaredOverlap.bSegment} (centerline distance ${declaredOverlap.distance.toFixed(3)}m); merge pairing must be verified on survey day`, a.route.id, b.route.id),
+        category: 'envelope_approximation' as const,
+      });
+      continue;
+    }
     const bothAir = (a.route.layer === 'supply_air' && b.route.layer === 'return_air') || (a.route.layer === 'return_air' && b.route.layer === 'supply_air');
     const sameIndoorAnchor = bothAir && typeof a.route.from === 'string' && a.route.from === b.route.from && a.route.from.startsWith('indoor_');
     const requirementLike = [a.route, b.route].some((route) => route.source_status === 'design_requirement' || route.route_kind === 'requirement' || route.route_kind === 'candidate');
@@ -1571,7 +1659,7 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
       const layer = system === 'power' ? 'strong_power' : system;
       const powerId = `power_${anchor.id.slice('indoor_'.length)}`;
       const powerEndpoint = powerEndpointEquivalents.get(powerId);
-      const present = config.routes.some((route) => (route.layer === layer && routeHasEndpoint(route, anchor.id)) || (
+      const present = config.routes.some((route) => (route.layer === layer && (routeHasEndpoint(route, anchor.id) || route.served_indoor === anchor.id)) || (
         system === 'power' && route.layer === 'strong_power' && (
           routeHasEndpoint(route, powerId) || (powerEndpoint !== undefined && routeHasEndpoint(route, powerEndpoint))
         )

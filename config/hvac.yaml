@@ -138,6 +138,21 @@ plans:
           status: confirmed
           system: refrigerant
           ref: { source: ceiling, id: ac_dining }
+        - id: condensate_living_dining_merge
+          status: pending
+          system: condensate
+          position: { x: 6.8, y: 2.435, z: 3.7 }
+          reason: "R25 显式Y型汇流节点位于 (6.80,3.70,2.435)：客厅/餐厅φ25支管独立到节点，之后一根DN32主管接固定候选点。6cm局部接头包络为初步假设；节点落在既有vanity投影内，柜内竖管须确认现有服务空间与检修可达性，不改镜柜/柜体。"
+        - id: condensate_living_outlet_candidate
+          status: pending
+          system: condensate
+          position: { x: 10.70, y: 2.52, z: 4.95 }
+          reason: "R25 为避让 DEC-2026-10-19-R02 客厅下出风支管临时放在机位中心东侧0.40m、南侧0.20m；2.52m自然排水口及坐标均为路由假设，不代表 MJV-71T2/P-SS 的真实接管方向/高度，须用厂家安装图确认。"
+        - id: condensate_dining_outlet_candidate
+          status: pending
+          system: condensate
+          position: { x: 7.6, y: 2.52, z: 4.34 }
+          reason: "R25 为避让 DEC-2026-10-19-R02 餐厅下出风支管临时放在机位中心西侧0.40m、南侧0.41m；2.52m自然排水口及坐标均为路由假设，不代表 MJV-42T2/P-SS 的真实接管方向/高度，须用厂家安装图确认。"
         - id: indoor_master
           status: confirmed
           system: refrigerant
@@ -551,16 +566,38 @@ plans:
         - id: condensate_dining_candidate_route
           status: pending
           system: condensate
-          from: indoor_dining
-          to: condensate_living_candidate
-          reason: "对应 MEP condensate-dining 显式路线：2026-10-05 业主裁定改线，自内机 (8.00,4.75) 在北缘边吊内 1% 坡正交西行（z=4.6 轴线）→开放边界（w_liv_west 已删除）入走廊吊顶→正交北折进客卫开放洗漱区吊顶，与客厅共用候选竖管 (6.70,3.70)；不再经 (8.00,5.05)→(10.00,5.05)→(10.00,6.10) 横穿客餐厅平顶。泵出口、扬程、允许接法、连续坡度、存水弯、立管接点与检修条件均待厂家/现场核实；此候选不证明重力排水成立、不代表施工，禁止默认接入现有地漏。"
+          from: condensate_dining_outlet_candidate
+          to: condensate_living_dining_merge
+          topology_role: branch
+          reason: "对应 MEP condensate-dining 独立φ25支管，R25 路径为出口候选 (7.60,4.34,2.52)→(6.60,4.34)→(6.60,3.90)→(6.80,3.70,2.435)；各段坡度约4.93%，末段45°进入vanity内显式汇流点。厂家出口/保温、柜内接头与清扫可达性待核；不改吊顶及家具。"
         - id: condensate_living_candidate_route
           status: pending
           system: condensate
+          from: condensate_living_outlet_candidate
+          to: condensate_living_dining_merge
+          topology_role: branch
+          reason: "对应 MEP condensate-living 独立φ25支管，R25 路径为出口候选 (10.70,4.95,2.52)→(11.20,4.95)→(11.20,4.50)→(6.50,4.50)→(6.50,3.70)→vanity 内汇流点 (6.80,3.70,2.435)；逐段坡度约1%–3%。避让最新送回风支路与强电主干；出口/保温是假设，柜内竖管须现场核现有服务空间，不变更家具。"
+        - id: condensate_living_equipment_outlet
+          status: pending
+          system: condensate
           from: indoor_living
+          to: condensate_living_outlet_candidate
+          topology_role: equipment_outlet
+          reason: "R25 明确客厅机位到冷凝水出口候选锚点的设备内短接关系；出口位置与机内走管待 MJV-71T2/P-SS 厂家图确认。"
+        - id: condensate_dining_equipment_outlet
+          status: pending
+          system: condensate
+          from: indoor_dining
+          to: condensate_dining_outlet_candidate
+          topology_role: equipment_outlet
+          reason: "R25 明确餐厅机位到冷凝水出口候选锚点的设备内短接关系；出口位置与机内走管待 MJV-42T2/P-SS 厂家图确认。"
+        - id: condensate_living_dining_shared_trunk
+          status: pending
+          system: condensate
+          from: condensate_living_dining_merge
           to: condensate_living_candidate
-          constraint_refs: [ref_south_window_band_ld100]
-          reason: "冷凝水 2026-10-05 业主裁定改线：自内机 (10.30,4.75) 在北缘边吊内 1% 坡正交西行（z=4.6 轴线，与冷媒主管同轴）→开放边界（w_liv_west 已删除）入走廊吊顶→正交北折进客卫开放洗漱区吊顶→候选竖管 (6.70,3.70)；不再横穿客餐厅平顶。坡度、存水弯和立管接点待现场确认；不得默认穿梁、开孔或接入现有地漏。"
+          topology_role: shared_trunk
+          reason: "R25 唯一DN32共用主管：自vanity投影内节点 (6.80,3.70,2.435) 垂直下引至y=0.101，再以0.10m水平段按1%坡度连接固定候选点 (6.70,3.70,0.10)。接点不动；管径、6mm保温、防倒灌、清扫口及柜内检修空间待厂家/量房确认。"
         - id: condensate_master_candidate_route
           status: pending
           system: condensate

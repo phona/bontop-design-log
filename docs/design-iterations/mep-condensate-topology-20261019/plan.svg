@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-labelledby="title desc">
+  <title id="title">R25 客餐厅冷凝水平面候选</title>
+  <desc id="desc">客厅与餐厅φ25支管分别到达客卫开放洗漱区的显式Y汇流点，之后一根DN32主管接固定排水候选点。图中同时标出当前送回风管、强电主干、参考梁带和现有vanity投影。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#25354a"/></marker>
+    <marker id="arrowLiving" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#c2410c"/></marker>
+    <marker id="arrowDining" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#7c3aed"/></marker>
+    <style>
+      text{font-family:"Noto Sans CJK SC","Microsoft YaHei",sans-serif;fill:#1f2937}
+      .small{font-size:12px}.label{font-size:14px;font-weight:600}.title{font-size:19px;font-weight:700}
+      .axis{stroke:#64748b;stroke-width:1.3}.living{stroke:#c2410c;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+      .dining{stroke:#7c3aed;stroke-width:5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+      .power{stroke:#334155;stroke-width:4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+      .duct{fill:#dbeafe;stroke:#2563eb;stroke-width:1.5}.return{fill:#e0e7ff;stroke:#4f46e5;stroke-width:1.5}
+      .vanity{fill:#fef3c7;stroke:#b45309;stroke-width:2;stroke-dasharray:6 4}.beam{fill:#fb923c;fill-opacity:.10;stroke:#ea580c;stroke-width:1.5;stroke-dasharray:7 5}
+      .wall{stroke:#64748b;stroke-width:5}.fixed{fill:#166534;stroke:#fff;stroke-width:2}.node{fill:#fff;stroke:#111827;stroke-width:3}
+    </style>
+  </defs>
+  <rect width="960" height="420" fill="#fff"/>
+  <text x="28" y="32" class="title">R25｜客餐厅冷凝水汇流平面（协调候选，米）</text>
+  <text x="28" y="54" class="small">x向东；z向南。自然重力出口 y=2.52m、两支管6mm保温、DN32与Y接头均为假设，不是厂家确认。</text>
+
+  <!-- local plan grid and axes -->
+  <g opacity=".35" stroke="#cbd5e1" stroke-width="1">
+    <path d="M100 106H900M100 154H900M100 202H900M100 250H900M100 298H900"/>
+    <path d="M160 80V320M280 80V320M400 80V320M520 80V320M640 80V320M760 80V320M880 80V320"/>
+  </g>
+  <path class="axis" d="M100 340H860" marker-end="url(#arrow)"/>
+  <text x="868" y="345" class="label">+x 东</text>
+  <path class="axis" d="M84 86V310" marker-end="url(#arrow)"/>
+  <text x="59" y="78" class="label">+z 南</text>
+  <text x="150" y="359" class="small">x=6.5</text><text x="270" y="359" class="small">7.5</text><text x="390" y="359" class="small">8.5</text><text x="630" y="359" class="small">10.5</text><text x="750" y="359" class="small">11.5</text>
+  <text x="44" y="153" class="small">z=4.0</text><text x="44" y="201" class="small">4.4</text><text x="44" y="249" class="small">4.8</text><text x="44" y="297" class="small">5.2</text>
+
+  <!-- reference beam band in plan -->
+  <rect class="beam" x="208" y="106" width="72" height="214"/>
+  <text x="590" y="327" class="small" fill="#9a3412">ref corridor beam band x[6.9,7.5]；梁底2.65m仅参考，须实测</text>
+
+  <!-- current air ducts; cross-sections shown as their plan envelopes -->
+  <rect class="return" x="322" y="229" width="234" height="24" rx="3"/>
+  <text x="330" y="246" class="small">餐厅回风 z=4.725</text>
+  <rect class="return" x="592" y="229" width="114" height="24" rx="3"/>
+  <text x="596" y="246" class="small">客厅回风</text>
+  <rect class="duct" x="325" y="278" width="102" height="24" rx="3"/>
+  <text x="330" y="295" class="small">餐厅下送风 z=5.125</text>
+  <rect class="duct" x="592" y="278" width="228" height="24" rx="3"/>
+  <text x="613" y="295" class="small">客厅下送风</text>
+
+  <!-- existing vanity and the east partition ending at the open north edge -->
+  <rect class="vanity" x="165" y="103" width="60" height="84" rx="3"/>
+  <text x="168" y="176" class="small">vanity投影</text>
+  <path class="wall" d="M232 104V194"/>
+  <text x="239" y="176" class="small">墙端 z=4.30；北侧开放</text>
+
+  <!-- strong main, with its R25 bend moved east -->
+  <path class="power" d="M900 178H760V226H262H244V190"/>
+  <text x="525" y="260" class="small">strong-main z=4.60，转折x=11.50</text>
+
+  <!-- condensate branches in R25 current candidate geometry -->
+  <path class="living" d="M664 268H724V214H160V118H196" marker-end="url(#arrowLiving)"/>
+  <circle cx="664" cy="268" r="7" fill="#c2410c"/>
+
+  <path class="dining" d="M292 195H172V142L196 118" marker-end="url(#arrowDining)"/>
+  <circle cx="292" cy="195" r="7" fill="#7c3aed"/>
+
+  <circle class="node" cx="196" cy="118" r="10"/>
+  <path d="M203 112L245 92" stroke="#111827" stroke-width="1.2"/>
+  <rect x="244" y="70" width="217" height="44" rx="5" fill="#fff" stroke="#64748b"/>
+  <text x="254" y="89" class="label">显式45°Y节点</text>
+  <text x="254" y="105" class="small">(6.80,3.70,2.435)</text>
+  <path d="M196 118V84" stroke="#111827" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="464" y="91" class="small">DN32共用主管垂直下引</text>
+  <circle class="fixed" cx="184" cy="118" r="6"/>
+  <text x="102" y="327" class="small" fill="#166534">固定候选排水点(6.70,3.70,0.10)</text>
+  <path d="M190 118H196" stroke="#166534" stroke-width="2" stroke-dasharray="3 2"/>
+
+  <rect x="100" y="378" width="18" height="5" class="living"/>
+  <text x="125" y="386" class="small">客厅71T2 φ25；出口假设(10.70,4.95)</text>
+  <rect x="300" y="378" width="18" height="5" class="dining"/>
+  <text x="325" y="386" class="small">餐厅42T2 φ25；出口假设(7.60,4.34)</text>
+  <rect x="530" y="378" width="18" height="5" class="power"/>
+  <text x="555" y="386" class="small">强电主干（折点移至x=11.50）</text>
+  <rect x="100" y="399" width="18" height="10" class="vanity"/>
+  <text x="125" y="408" class="small">vanity为现有几何；节点/竖管服务空间需量房，未获家具变更批准</text>
+</svg>
