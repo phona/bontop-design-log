@@ -61,7 +61,7 @@ function runJson(script: string, expectedStatus: number): unknown {
   return JSON.parse(run.stdout!) as unknown;
 }
 
-const mep = runJson('scripts/verify/mep/verify-mep-lint.ts', 1) as MepLintJson; // DEC-2026-10-17-R20：must_fix 166 在册 → exit=1 是契约，不是脚手架坏了
+const mep = runJson('scripts/verify/mep/verify-mep-lint.ts', 1) as MepLintJson; // DEC-2026-10-18-R21：must_fix 140 在册 → exit=1 是契约，不是脚手架坏了
 const electrical = runJson('scripts/verify/electrical/verify-electrical-lint.ts', 0) as ElectricalLintJson;
 const registry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as {
   contracts: Array<{ id: string; registered_conflicts?: number; prose?: Array<{ extract: string; expect_matches?: number }> }>;
@@ -106,8 +106,8 @@ for (const [bucket, bucketSummary] of Object.entries(mep.categories ?? {})) {
 
 test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必须等于实算（不写死 warning 总数）', () => {
   // ① error 契约：DEC-2026-10-17-R20 起 must_fix 桶统一进 errors（8aef523 硬门禁），
-  //    verify:mep 的 errors = must_fix 实算 166（route_overlap 70 等）；electrical 仍 0 error。
-  assert.equal(mep.counts.errors, 166, `verify:mep must_fix errors 应为 166，实际 ${mep.counts.errors}`);
+  //    verify:mep 的 errors = must_fix 实算 140（route_overlap 70 等）；electrical 仍 0 error。
+  assert.equal(mep.counts.errors, 140, `verify:mep must_fix errors 应为 140，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 
@@ -233,7 +233,7 @@ test('pending-site-data 表头口径：「量表共 N 条」= 编号数，实际
   assert.equal(claimed, numbered.length, `表头声称 ${claimed} 个编号，实际编号行 ${numbered.length}`);
   assert.deepEqual(subItems, ['3a'], '子项行应恰为 #3a（#3 的 A2 HVAC 子项）');
   assert.equal(rows.length, claimed + subItems.length, '表格行数必须 = 编号数 + 子项数');
-  assert.equal(rows.length, 73, '当前口径：72 个编号 + #3a = 73 行'); // 2026-10-17 DEC-2026-10-17-R8 新增餐厅云团灯SKU/维护待核 #66；R4 新增 sofa-r #65；DEC-2026-10-17-R20 水电点位 review 落地批新增 #67–#72（67→73）
+  assert.equal(rows.length, 74, '当前口径：73 个编号 + #3a = 74 行'); // 2026-10-18 DEC-2026-10-18-R22 审查结论新增 #73 吊顶构造包络（阻塞 Z 表下探与 B 区净距判定）；前史：R20 批新增 #67–#72（67→73）
 });
 
 // ─── 治理台账：逐条与实算一致，且覆盖全部实算 code ───────────────────────
@@ -306,12 +306,12 @@ test('文档不许再把 2026-09-07 的快照当现行基线', () => {
 // ─── MEP error 侧：LINT 一侧的硬门禁必须仍然为空 ─────────────────────────
 
 test('verify:mep / verify:electrical 的 error 侧必须为空，且 error code 与台账一致', () => {
-  // DEC-2026-10-17-R20 口径：verify:mep 的 error 侧不再为空（must_fix 硬门禁 166 项显形），
+  // DEC-2026-10-17-R20 口径：verify:mep 的 error 侧不再为空（must_fix 硬门禁显形（R21 时点 140 项）），
   // 但 error 必须全部落在 must_fix 桶——出现 must_fix 之外的 error 仍然禁止（分桶契约不破）。
   // R19 裁决通道的 13 条以 warning_class_unadjudicated 为 code 挂 must_fix 桶，
   // 桶代码明细里保留的是原 warning 类 code，故这两套 code 都算合法。
   const mustFixBucketCodes = new Set((mep.categories.must_fix_before_briefing?.codes ?? []).map((c) => c.code));
-  assert.ok(mep.counts.errors > 0, 'must_fix 硬门禁清零前 error 侧不得为空（清零后本断言随 166 一起改）');
+  assert.ok(mep.counts.errors > 0, 'must_fix 硬门禁清零前 error 侧不得为空（清零后本断言随 140 一起改）');
   for (const error of mep.errors) {
     assert.equal(error.category, 'must_fix_before_briefing', `error ${error.code} 必须属 must_fix_before_briefing 桶，实际 ${error.category}`);
     assert.ok(

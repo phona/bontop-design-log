@@ -112,9 +112,9 @@ test('real render facts resolve all configured MEP routes through HVAC ceiling a
   const facts = { electrical, plumbing, ceiling, hvac };
   const factSources = endpointSourcesFromFacts(facts);
   const report = resolveMepRoutes(config, factSources);
-  assert.equal(report.total, 135); // 80→87（DEC-2026-10-06-R1 给排水兜底）→92（2026-10-07 v1 水路估算：6 条要求提升 + 5 条干管）→102（2026-10-07 DEC-2026-10-07-M04 声明式补客客厅 ordinary_power_living 十条路由）→137（2026-10-07 之后 config/mep-hvac-coordination.yaml 继续补路由）→135（DEC-2026-10-12-R1 删 strong-light-bedrooms-master-wall-l/-r 两条路由）→131（DEC-2026-10-12-R2 业主裁定两卫照明用浴霸三合一自带，删 strong-light-gbath / -mbath-panel / -mbath-switch / -gbath-switch 四条卫浴照明路由）→130（DEC-2026-10-13-R5 删 strong-light-tv）→128（DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l，冰箱改由 sock_fridge_living 就近取电）→135（DEC-2026-10-17-R20 走线专项为 7 个新点位补 7 条路线）
-  // 路线数随 config/mep-hvac-coordination.yaml 增长；改这个数之前先跑 `npm run verify:mep` 确认 resolved/unresolved 结构没变（resolved=135/unresolved=0 才算健康）
-  assert.equal(report.resolved, 135); // 与 total 同步：135 条全部解析成功，无 unresolved
+  assert.equal(report.total, 136); // 80→87（DEC-2026-10-06-R1 给排水兜底）→92（2026-10-07 v1 水路估算：6 条要求提升 + 5 条干管）→102（2026-10-07 DEC-2026-10-07-M04 声明式补客客厅 ordinary_power_living 十条路由）→137（2026-10-07 之后 config/mep-hvac-coordination.yaml 继续补路由）→135（DEC-2026-10-12-R1 删 strong-light-bedrooms-master-wall-l/-r 两条路由）→131（DEC-2026-10-12-R2 业主裁定两卫照明用浴霸三合一自带，删 strong-light-gbath / -mbath-panel / -mbath-switch / -gbath-switch 四条卫浴照明路由）→130（DEC-2026-10-13-R5 删 strong-light-tv）→128（DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l，冰箱改由 sock_fridge_living 就近取电）→135（DEC-2026-10-17-R20 走线专项为 7 个新点位补 7 条路线）→136（DEC-2026-10-18-R21 补画 strong-power-living-water 下引 1 条）
+  // 路线数随 config/mep-hvac-coordination.yaml 增长；改这个数之前先跑 `npm run verify:mep` 确认 resolved/unresolved 结构没变（resolved=136/unresolved=0 才算健康）
+  assert.equal(report.resolved, 136); // 与 total 同步：136 条全部解析成功，无 unresolved
   assert.equal(report.unresolved, 0);
   const expectedAirRoutes = ['supply-air-study', 'return-air-study', 'supply-air-parent', 'return-air-parent', 'supply-air-child', 'return-air-child'];
   const expectedCondensateRoutes = ['condensate-living', 'condensate-master', 'condensate-study', 'condensate-parent', 'condensate-child'];

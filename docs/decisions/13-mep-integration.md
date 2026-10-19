@@ -9,6 +9,8 @@
 - `DEC-2026-10-06-R1` 水电工程口径兜底轮：几何自洽 + 给排水缺项建模
 - `DEC-2026-10-06-R5` #41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m
 - `DEC-2026-10-07-M01` 归档水电主材选型基线（业主锁死项 + 成本目标 + 反转条件）
+- `DEC-2026-10-18-R21` 走线修复批：R13 误序回归还原 + 六条飞线/斜线/穿幕墙路线重画 + F01 下引漏计回补
+- `DEC-2026-10-18-R23` R22-v0.5 迭代批：冷凝水柜内隐藏 + 弱电走廊轴北移（首批配置迭代，分支 mep-iter-r23）
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -131,3 +133,34 @@
 - **下一步责任**：量房日对 26 条 DECLARED warning 逐条复核管位（owner：量房+施工方；触发=量房/交底）。
 - **验证**：errors 155 不变；warnings 192→218（+26 显形声明）；钉子测试双向过；typecheck OK。
 - **决策人**：业主（原话裁定）；实现为设计侧执行。
+
+### DEC-2026-10-18-R21 走线修复批：R13 误序回归还原 + 六条飞线/斜线/穿幕墙路线重画 + F01 下引漏计回补
+
+- **日期/来源**：2026-10-18。触发：业主看渲染逐条点名六条路线异常（`strong-power-living-table` 飞线、`strong-power-living-curtain` 斜线且无强电箱溯源、`strong-power-kitchen`/`strong-ded-dishwasher` 贴玻璃幕墙、`strong-light-bedrooms-master-door`/`strong-power-living-sofa-l` 飞线），并质疑「这些问题不是修复过 linter 跟走线配置吗」。复查结论：lint 全部有报（verify:mep 自 R13 起持续红：9e0df36 时 224 error → R13 202 → R20 166），「修复过」的各批次只处理了各自点名范围，红门禁带着落地贯穿 R13→R20。
+- **本轮决定**（七条路线）：
+  1. `strong-power-kitchen` / `strong-ded-dishwasher`：还原 R13 误序——R13 插 `(8.6,3,2.55)` 时误插到 `(7.45,3)` 之前，把原本正交的 via 变成对角线往返（route_not_orthogonal 回归即源于此）；尾段按点位声明「北墙玻璃幕不可挂载、柜内预留、电源走地面」重画：吊顶段 x=8.6 南下 z=2.35 东行至 `w_ent_west` 西脸 (10.8,2.35) 垂直落地进垫层（灶台柜带 z[0.30,2.25] 以南 0.10m），垫层走柜前 z≥0.7 走道带到位。method conduit→floor_branch_candidate。两稿弃案：西侧 (7.3,2.1) 竖井与 x=7.45 冷媒干线轴 / x=7.30 热水器热水立管 / w_balc_east 门洞带三重冲突；(10.8,0.7) 竖井穿灶台柜高度带（route_furniture_collision 显形）。
+  2. `strong-power-living-table`：点位 2026-10-16 随餐桌迁 (9.8,3.45) 而路线未跟随（旧 from (7.9,3.0) 造成 1.9m 垫层斜线 + 2.0m 吊顶缘无依托竖降）。改按 `strong-power-living-sofa-r` 同款（R4 先例）自 `panel_strong_entry_left` 客厅侧 (13.34,3.6) 落地走垫层，全程地面依托。
+  3. `strong-power-living-sofa-l`：同理废除「吊顶缘 2.28m 悬空竖降」——客厅中部 x[7.2,13.4] 无任何可依托实体墙，竖降无解；改 panel 落地垫层支路（与 sofa-r 共竖井）。
+  4. `strong-power-living-curtain`：首末斜拉一段拆为贴 `w_be_west` 西脸正交折线，北行轴取墙面 x=13.34（避开 `w_be_south` 图元 (13.4,8.7) 墙角顶点）。
+  5. 新增 `strong-power-living-water`：sock_living_water 下引 2.4m 补画回实体路线（纯竖直段按 M04 口径 route_kind: physical），路线计数 135→136。
+  6. `strong-light-bedrooms-master-door`：0.75m 单段横穿主卧门洞 d_mb（旧 reason 只论证端点未查路径），改自北床头开关位竖升 2.20m（门楣 2.10 以上）过洞后下引；to_height 0.75→1.30 对齐点位。
+  7. `config/mep-warning-adjudication.yaml` 补登记 13 个存活 warning 类（每条附已落地 DEC 全引 + owner/trigger；仅覆盖 survey/envelope 桶实例，must_fix 不适用）。
+- **被本条推翻的旧结论**：① R13「干线正交化」对厨房两根的实现——插序错误构成回归，本轮还原；② F01「sock_living_water 下引量由 takeoff terminalDrop 派生」——terminalDrop 只对路线 to 端点计，撤并后无任何路线以该点为端点，2.4m 下引从未进量且渲染溯源断链，本轮补画回实体路线（takeoff 随画线计数，不再依赖派生口径）；③ 旧 sofa-l/table「吊顶缘下引进垫层」的做法——客厅中部无依托竖降被 unsupported_span 显形为不可施工，panel 落地是唯一全程依托解。
+- **实质内容/删除审计**：新增路线 1 条；删除字段仅 `sill_crossings` ×2（kitchen 两根的新路径 z≥2.35/y≤0.3 不再进入任何台体体积，声明失实故撤销，理由写入 reason）；`config/facts.yaml` registered_conflicts 54→52、engine_note/`docs/mep-construction-guidance.md` §0/§6、路线计数 135→136 均按修正通道同步；adjudication +13 条。无既有候选/证据/淘汰理由被删除。
+- **明确遗留（不在本轮范围，属点位审查）**：`sock_kitchen_dishwasher` 与 `faucet_kitchen_dishwasher` 同点位（mep_endpoint_service_conflict + dishwasher×水路 0.000m overlap 的共同根源）；`sock_kitchen_counter` (8.6,0.3) 落在洗碗机家具体积内（endpoint_inaccessible）。两条均为 R20 点位审查批遗留，下一轮点位批处理。
+- **需要避免的静默失效**：① 垫层段与 z=0.3 给水线/z≤0.5 排水线的平面错位是人工断言（owner：量房日复核柜前走道带实际管位）；② kitchen 两根与 R20 `strong-power-kitchen-east` 的共走廊/共竖井以 shared_trunk_with 声明显形，量房逐条复核；③ (10.8,2.35) 竖井与灶台柜带南缘的 0.10m 间距待橱柜深化复核对位。
+- **验证**：verify:mep 166→140（本批六条路线的 route_not_orthogonal/unsupported_span/door_opening_collision/endpoint_elevation_mismatch/suppressed_wall_crossing 全部清零；剩余 140 为其他路线存量 overlap 山等，下一批）；13 条 warning_class_unadjudicated 清零；verify:facts 7 fail→0（计数镜像/DEC 引用/52 基数全部按通道闭合）；verify-mep-takeoff 通过（垫层加长已进量）。
+- **决策人**：业主点名问题并授权修复（「修」）；改线路径为设计侧按点位既有声明推导，量房日复核。
+
+### DEC-2026-10-18-R23 R22-v0.5 迭代批：冷凝水柜内隐藏 + 弱电走廊轴北移（首批配置迭代）
+
+- **日期/来源**：2026-10-18。触发：业主 R22-v0.5 目标重定义——项目处于方案设计阶段，目标改为「有依据、可解释、可调整、可经 Linter 持续验证的初版管综方案」，解除「B1/B2/B3 全关才能改配置」冻结，允许带显式标注的暂定参数迭代；禁止纯审计循环。
+- **本轮决定**：
+  1. condensate-living / condensate-dining：S3/S4 竖管自客卫室中 (6.70,3.70) 改贴 w_gbath_east_open_vanity 柜内 (7.00,3.70)（两根 φ25 并管），末端 0.30m 以 0.10m 高接原排水点——**排水接点不动**（R5 固定断言保留）；客卫明露立管（B2a 视觉项）改柜内隐藏。
+  2. 弱电 5 条（master/parent/gateway/ap/main-living）走廊主轴 z=4.55→4.38：并行会话 return-air-living 新回风行（z=4.45，管体 y2.59–2.81）与旧轴包络相交（6 warning），新轴北移出管体投影，同时避开送风竖段（z≥4.75）与冷媒/强电 4.60 轴（平面距 0.22m）。weak-master 西尾段 x[4.05,4.60] 保持 4.55（master_ac 分区覆盖下限）+ 0.17m 正交过渡；weak-study 经回归验证不经 x≈10.30 风管区，不移轴（移轴曾引入 entry-night-living-north 新交叉，已回退）。
+  3. 新增 design-intent.md（冷凝水/走廊干线/客厅西墙服务带三组的目标/红线/可调参数/依赖/替代序）。
+- **被本条推翻的旧结论**：R22 v0.2–v0.4 的「B1/B2/B3 全部解除前不得修改走线配置」冻结——被业主 v0.5 目标重定义（§三 允许进入配置修改）推翻；「弱电走廊轴 4.55」作废（新轴 4.38，旧轴与新回风行包络相交）。
+- **实质内容/删除审计**：无路线增删；via 坐标改动 + reason R23 注记（含一次 YAML 单引号转义错误即改）；weak-study 移轴尝试回退（过程留存分支历史）。无既有候选/证据被删除。
+- **静默失效风险**：①柜内隐藏依赖开放洗漱柜体实际深化——柜体取消即回到明露（owner：业主+木工，柜体深化节点）；②弱电 4.38 与回风行净距 0.07m 为暂定值——回风行/龙骨定版后复判（owner：并行 HVAC 批+施工方）。
+- **验证**：verify:mep before 139 errors/215 warnings → after 139/218（overlap 70 对集合零变化——交叉类按优先级留待后续；weak×风管中心距 0.100→0.122 且出管体投影；condensate unsupported_span 3.60→约 3.1m）；typecheck ✓。design-intent.md 与 R22-v0.5-iteration.md 载全量对比与交底问题清单。
+- **决策人**：业主（R22-v0.5 目标重定义 + 迭代授权）；改线路径为设计侧按 design-intent 推导，交底后按现场反馈迭代。

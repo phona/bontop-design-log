@@ -22,3 +22,85 @@ adjudications:
     scope: "R17 sill_crossings 台体穿越声明对：端点位于台体覆盖区内、沿墙脸套管穿越"
     owner: "量房 + 施工方"
     trigger: "量房日复核穿越位置与套管方案；不实者删除声明并重画"
+  # ── DEC-2026-10-18-R21 走线修复批补登记：以下类在 lint 分桶表（shared/mep-hvac-lint.ts
+  #    ISSUE_CATEGORY）里已归类 survey_dependent / envelope_approximation，语义由所引 DEC
+  #    建立；本表把既有归类落成 R19 要求的显性表态。仅覆盖 warnings（survey/envelope 桶
+  #    实例）；同 code 的 must_fix error 不受本表影响，仍须清零。
+  - code: ceiling_clearance_unverified
+    verdict: accepted
+    dec_ref: DEC-2026-10-06-R5
+    scope: "吊顶承载层在吊顶分区内低于完成面的机判警告（A/B 区标高口径 v1）；量房复核完成面与管线标高"
+    owner: "量房 + 施工方"
+    trigger: "量房日实测吊顶完成面与管线标高；不符者改管线标高或吊顶分区"
+  - code: penetration_door_clearance
+    verdict: accepted
+    dec_ref: DEC-2026-10-06-R1
+    scope: "声明穿点距同墙门洞净距的机判警告（(c) 检查 survey 桶实例）；门垛实测后复判"
+    owner: "量房 + 施工方"
+    trigger: "量房日实测门垛与穿点净距；不实者移穿点"
+  - code: shear_wall_parallel_route
+    verdict: accepted
+    dec_ref: DEC-2026-10-17-R14
+    scope: "沿剪力墙平行敷设 ≥1.0m 的开槽策略提醒（R14 归入 survey 桶：墙体结构多为 inferred）"
+    owner: "量房 + 施工方"
+    trigger: "量房日确认墙体结构后复核竖槽/扫筋方案"
+  - code: shear_wall_penetration
+    verdict: accepted
+    dec_ref: DEC-2026-10-17-R14
+    scope: "剪力墙穿孔提醒（结构 confirmed 前为 warning；R14 同族归 survey 桶）"
+    owner: "量房 + 施工方"
+    trigger: "量房日结构确认后复核套管/钻孔分散方案"
+  - code: inline_endpoint_without_point_anchor
+    verdict: accepted
+    dec_ref: DEC-2026-10-08-W02
+    scope: "给排水无锚点内联端点（最近点位 >0.02m）：W02 口径为量房人工判读项"
+    owner: "量房 + 施工方"
+    trigger: "量房日实测后绑定点位或改坐标"
+  - code: route_overlap
+    verdict: accepted
+    dec_ref: DEC-2026-10-17-R13
+    scope: "仅 envelope_approximation 桶实例（v1 估算口径、标高 ±0.3m 近似下的 may-overlap）；must_fix 桶硬 overlap 不适用本表态"
+    owner: "量房 + 施工方"
+    trigger: "量房日实测标高后重画；升 confirmed 前必须清零硬 overlap"
+  - code: route_clearance_unverified
+    verdict: accepted
+    dec_ref: DEC-2026-10-17-R13
+    scope: "近似净距 <0.03m 提醒（标高近似口径）；量房实测后复判"
+    owner: "量房 + 施工方"
+    trigger: "量房日实测风管/管线截面与安装标高"
+  - code: nonphysical_route
+    verdict: accepted
+    dec_ref: DEC-2026-10-17-R13
+    scope: "requirement/candidate 路线不按物理路由计（v1 需求表达口径，同 water-kitchen-requirement 声明语义位）"
+    owner: "业主"
+    trigger: "量房日或对应回路深化时升级为 physical 并画实线"
+  - code: reference_constraint_uncertain
+    verdict: accepted
+    dec_ref: DEC-2026-10-06-R5
+    scope: "邻户结构图解读出的参考梁/梁带（LD/LH 标注）不构成硬碰撞，仅比例映射参考"
+    owner: "量房 + 施工方"
+    trigger: "量房日实测自家梁位后升级 confirmed 或删除"
+  - code: route_not_orthogonal
+    verdict: accepted
+    dec_ref: DEC-2026-10-17-R13
+    scope: "仅 envelope_approximation 桶实例（requirement/candidate 估算线的斜段）；物理路线斜线必须修，不适用本表态"
+    owner: "业主"
+    trigger: "对应回路从估算升施工口径时正交化重画"
+  - code: route_furniture_collision
+    verdict: accepted
+    dec_ref: DEC-2026-10-17-R13
+    scope: "仅 envelope_approximation 桶实例（candidate 路线穿家具的估算口径）；物理路线必须声明 chase 或改道"
+    owner: "业主"
+    trigger: "橱柜/家具深化时按实际柜体改线"
+  - code: supply_return_overlap
+    verdict: accepted
+    dec_ref: DEC-2026-10-07-R03
+    scope: "同室内机锚点的送/回风支路在锚点附近的包络近似重叠（R03：两台内机 supply/return 各自独立、不共用风道）"
+    owner: "暖通深化 + 施工方"
+    trigger: "空调深化图落地时复核送回风开口间距"
+  - code: unsupported_span
+    verdict: accepted
+    dec_ref: DEC-2026-10-17-R13
+    scope: "仅 envelope_approximation 桶实例（candidate 估算线的无依托段）；物理路线飞线必须改道，不适用本表态"
+    owner: "业主"
+    trigger: "对应回路从估算升施工口径时改贴墙/垫层重画"
