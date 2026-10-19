@@ -18,7 +18,7 @@
   "dispositions": [
     {
       "code": "ceiling_clearance_unverified",
-      "count": 52,
+      "count": 50,
       "category": "survey_dependent",
       "disposition": "pending_adjudication",
       "basis": "历史基线（2026-10-06 DEC-2026-10-06-R5）：160 处收敛为 24 处残留；旧项分类与现场复核条件见 docs/pending-site-data.md #41。当前快照（2026-10-17 R4）：verify:mep 与 verify:facts 均为 51 处 / 42 条路线 / 14 个吊顶分区。承载层 floor_branch(_candidate) 仅在至少一个 route point 落入 y≤0.35m 垫层带时退出完成面比较；无垫层点的误标路线由 floor_branch_missing_floor_band 提醒，开放起降仍由 3D unsupported_span 检查。facts 与 MEP 共用渲染 footprint 与 segment 相交逻辑。点/段差异已定位并修复：strong-power-master 在未声明 route vertex 之间穿过 curtain_box_master_south；sofa-r 与 sofa-l 的垫层路线不再产生吊顶面误报。registered_conflicts 52→51 是规则口径修正，无路线删除。｜DEC-2026-10-17-R20：删 2 条旧位路线 −1（51→50），同批走线专项 4 条新路线终点即设备点位（①类同类残留）+4（50→54，44 条路线/15 分区，ceiling_entry_foyer 新增涉及）；registered_conflicts 已同步 54。",
@@ -67,7 +67,7 @@
     },
     {
       "code": "route_overlap",
-      "count": 32,
+      "count": 35,
       "category": "envelope_approximation",
       "disposition": "pending_adjudication",
       "basis": "DEC-2026-10-17-R20 登记为 warning 侧新条目（此前该 code 主在 must_fix 桶，不经本台账）；现值含 weak-ap-master 与送/回风干管近似包络 +2。"
@@ -136,7 +136,7 @@
     },
     {
       "code": "unsupported_span",
-      "count": 2,
+      "count": 1,
       "category": "envelope_approximation",
       "disposition": "pending_adjudication",
       "basis": "DEC-2026-10-07-F01/F02 首轮将纯竖直段豁免；F01 首扫33条后清至8条历史残留（R5梁带、衣柜顶、条带缺墙、花园明敷、外机连接段）。DEC-2026-10-17-R4 将 unsupported_span 扩展为3D依托采样：水平/斜向/竖直段都须在吊顶空腔、≤0.25m实体墙、穿墙或≤0.35m垫层内获得依托；旧8条增至当前13条。新增5条开放竖/斜段显形；强电箱侧垫层路线 sofa-r 本身不在新增项内。｜DEC-2026-10-17-R20：R19 硬门禁后该 code 主桶迁 must_fix（error 侧 13，由验收断言锁定），warning 侧余 2 条包络项；旧 must_fix/reject 13 裁决随迁移失效。",
@@ -184,8 +184,8 @@
     "mep_total_warnings": 214,
     "mep_buckets": {
       "must_fix_before_briefing": 139,
-      "survey_dependent": 93,
-      "envelope_approximation": 121
+      "survey_dependent": 91,
+      "envelope_approximation": 123
     },
     "electrical_total_warnings": 54,
     "electrical_by_disposition": {
