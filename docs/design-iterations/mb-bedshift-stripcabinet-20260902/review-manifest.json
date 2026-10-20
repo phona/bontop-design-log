@@ -31,7 +31,7 @@
   "evidence": [
     {
       "view": "view-a",
-      "file": "docs/renders/mb-bedshift-stripcabinet-20260902/view-a_bed-south-gap_wardrobe-north-face_after_20260902.png",
+      "file": "docs/design-iterations/mb-bedshift-stripcabinet-20260902/evidence/view-a_bed-south-gap_wardrobe-north-face_after_20260902.png",
       "url": "http://localhost:5173/",
       "title": "和萃 701 - 3D 装修设计",
       "captured_at": "2026-09-02T20:06:05+08:00",
@@ -45,14 +45,14 @@
         "master_wardrobe_tall_240": {"min": {"x": 1.8, "y": 0, "z": 8.072}, "max": {"x": 4.2, "y": 2.7, "z": 8.7}}
       },
       "verification": "床南缘 z=7.500 与高柜北脸（含门板）z=8.072 净距 0.572m；与声明构造面 z=8.10 净距 0.600m，符合迭代意图 0.60m；高柜北脸门板在画面内",
-      "snapshot": "docs/renders/mb-bedshift-stripcabinet-20260902/snapshot-ready.txt",
+      "snapshot": "docs/design-iterations/mb-bedshift-stripcabinet-20260902/evidence/snapshot-ready.txt",
       "png_bytes": 228881,
       "source_digest": "2026-09-02 mb-bedshift-stripcabinet",
       "status": "valid"
     },
     {
       "view": "view-b",
-      "file": "docs/renders/mb-bedshift-stripcabinet-20260902/view-b_strip-entry_d-mb-door_bed-ne-corner_after_20260902.png",
+      "file": "docs/design-iterations/mb-bedshift-stripcabinet-20260902/evidence/view-b_strip-entry_d-mb-door_bed-ne-corner_after_20260902.png",
       "url": "http://localhost:5173/",
       "title": "和萃 701 - 3D 装修设计",
       "captured_at": "2026-09-02T20:07:04+08:00",
@@ -65,14 +65,14 @@
         "bed_180": {"min": {"x": 2.2, "y": 0, "z": 5.7}, "max": {"x": 4.2, "y": 0.8, "z": 7.5}}
       },
       "verification": "d_mb 门扇（内开、南端合页）与床东北角关系在画面内；床北缘 z=5.70 与门洞南缘 z=5.55 间距 0.15m，门扇扫掠不碰床",
-      "snapshot": "docs/renders/mb-bedshift-stripcabinet-20260902/snapshot-ready.txt",
+      "snapshot": "docs/design-iterations/mb-bedshift-stripcabinet-20260902/evidence/snapshot-ready.txt",
       "png_bytes": 138736,
       "source_digest": "2026-09-02 mb-bedshift-stripcabinet",
       "status": "valid"
     },
     {
       "view": "view-c",
-      "file": "docs/renders/mb-bedshift-stripcabinet-20260902/view-c_strip-east-wall_tall-cab_base-cab_pvc-box_after_20260902.png",
+      "file": "docs/design-iterations/mb-bedshift-stripcabinet-20260902/evidence/view-c_strip-east-wall_tall-cab_base-cab_pvc-box_after_20260902.png",
       "url": "http://localhost:5173/",
       "title": "和萃 701 - 3D 装修设计",
       "captured_at": "2026-09-02T20:43:46+08:00",
@@ -89,14 +89,14 @@
         "mb_washbasin_cabinet": {"min": {"x": 0.05, "y": 0, "z": 2.91}, "max": {"x": 1.1, "y": 1.79, "z": 3.41}}
       },
       "verification": "悬浮板恢复后口径：下板 y[0.965,1.035]、主板 y[1.515,1.585]，两板 x[2.28,2.60] z[2.60,4.10] 贴 w_mbath_east 西脸，与底柜 y[0,0.62]、顶部 PVC 盒 y[2.559,2.80] 四层关系与 DEC-045 基线一致；场景中不存在 mb_vanity_tall_cabinet 节点（全场景遍历无残留）；洗手柜在西侧、隔 d_mbath 门洞与条带柜组相对",
-      "snapshot": "docs/renders/mb-bedshift-stripcabinet-20260902/snapshot-ready.txt",
+      "snapshot": "docs/design-iterations/mb-bedshift-stripcabinet-20260902/evidence/snapshot-ready.txt",
       "png_bytes": 107817,
       "source_digest": "2026-09-02 mb-bedshift-stripcabinet-rollback-boards",
       "status": "valid"
     },
     {
       "view": "view-d",
-      "file": "docs/renders/mb-bedshift-stripcabinet-20260902/view-d_master-bedroom_oblique-zoning_after_20260902.png",
+      "file": "docs/design-iterations/mb-bedshift-stripcabinet-20260902/evidence/view-d_master-bedroom_oblique-zoning_after_20260902.png",
       "url": "http://localhost:5173/",
       "title": "和萃 701 - 3D 装修设计",
       "captured_at": "2026-09-02T20:44:08+08:00",
@@ -113,13 +113,13 @@
         "mb_vanity_main_board": {"min": {"x": 2.28, "y": 1.515, "z": 2.6}, "max": {"x": 2.6, "y": 1.585, "z": 4.1}}
       },
       "verification": "分区关系：床（北）—0.60m 缝—通顶高柜（中）—0.025m—梳妆台（南，x[3.45,3.85] z[8.725,9.575] 贴飘窗下）；条带可见恢复后的两块悬浮板（y≈1.00/1.55，z[2.60,4.10]）+底柜，无 tall_cabinet；四区同帧可见",
-      "snapshot": "docs/renders/mb-bedshift-stripcabinet-20260902/snapshot-ready.txt",
+      "snapshot": "docs/design-iterations/mb-bedshift-stripcabinet-20260902/evidence/snapshot-ready.txt",
       "png_bytes": 231723,
       "source_digest": "2026-09-02 mb-bedshift-stripcabinet-rollback-boards",
       "status": "valid"
     }
   ],
-  "aesthetic_review": {"verdict": "PASS", "blocking_issues": [], "non_blocking_notes": ["AES-01 高柜北脸为整面素板正对床，最终材质须浅色 PET 或竖向细分割，深色有压迫风险", "AES-02 薄高柜顶 2.40 与 PVC 盒底 2.58 的 0.18m 夹层在最终材质阶段留意色差显性化", "AES-03 隔断高柜（棕）与薄高柜（白）为占位色，材质定稿需明确统一或有意双色策略", "AES-05 view-d 分区清晰，寝区与梳妆条带切断关系成立"], "evidence_refs": ["docs/renders/mb-bedshift-stripcabinet-20260902/view-a_bed-south-gap_wardrobe-north-face_after_20260902.png", "docs/renders/mb-bedshift-stripcabinet-20260902/view-d_master-bedroom_oblique-zoning_after_20260902.png"], "requested_changes": [], "assumptions": ["程序化体块渲染仅评审比例与空间关系，不评审贴图质感", "门板压线 0.572m vs 构造面 0.600m 不算缺陷"]},
+  "aesthetic_review": {"verdict": "PASS", "blocking_issues": [], "non_blocking_notes": ["AES-01 高柜北脸为整面素板正对床，最终材质须浅色 PET 或竖向细分割，深色有压迫风险", "AES-02 薄高柜顶 2.40 与 PVC 盒底 2.58 的 0.18m 夹层在最终材质阶段留意色差显性化", "AES-03 隔断高柜（棕）与薄高柜（白）为占位色，材质定稿需明确统一或有意双色策略", "AES-05 view-d 分区清晰，寝区与梳妆条带切断关系成立"], "evidence_refs": ["docs/design-iterations/mb-bedshift-stripcabinet-20260902/evidence/view-a_bed-south-gap_wardrobe-north-face_after_20260902.png", "docs/design-iterations/mb-bedshift-stripcabinet-20260902/evidence/view-d_master-bedroom_oblique-zoning_after_20260902.png"], "requested_changes": [], "assumptions": ["程序化体块渲染仅评审比例与空间关系，不评审贴图质感", "门板压线 0.572m vs 构造面 0.600m 不算缺陷"]},
   "functional_review": {"verdict": "PASS", "blocking_issues": [], "non_blocking_notes": ["FN-01 0.60m 缝为推拉门操作下限，侧身/斜站操作，业主已确认取舍", "FN-02 薄高柜开门与洗漱站位为时序性互扰，向业主明示使用约定", "FN-03 密闭 PET 柜放脏衣有霉变风险，深化拦截：透气缝/网面篮/湿毛巾不入柜", "FN-04 switch_master_door @z=4.45 距门套约 0.15m 完成面余量，水电交底注意", "FN-05 冷凝水管径/坡度/存水弯/管井角待深化", "FN-06 底柜北端 0.26m 探入主卫为存量瑕疵，本轮未放大，量房复核裁决"], "evidence_refs": ["config/house.yaml:416", "config/house.yaml:424-426", "config/electrical.yaml:96-146", "shared/render/FixtureFactory.ts:107-116", "npm run verify:all exit=0"], "requested_changes": [], "assumptions": ["量房终核未完成，几何以 model-geometry.yaml 为准", "五金安装余量按典型做法推断"]},
   "risks": ["底柜北端 0.26m 探入主卫体积的存量瑕疵待量房复核", "w_strip_east 墙垛开槽条件待现场复核", "sill≈2.07 仍 site_pending"],
   "retrospective": {"triggered": false, "triggers": [], "records": [], "rebaselined": false},
