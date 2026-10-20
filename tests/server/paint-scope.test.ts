@@ -725,7 +725,7 @@ test('paint inspection overlay is excluded from GLB export by default visibility
  * 三个最危险的休眠兜底：
  *   - `region.height ?? wall.height ?? 2.8`：`WallSegment`（预算侧）没有 height 字段、
  *     `ResolvedWall`（对比侧）有，同一条声明在两条路径上会落到不同顶标高；预算侧实际恒为
- *     2.8m，而 base.json 的 painting 备注写「层高 3.0m，墙面面积比 2.8m 高约 7%」——
+ *     2.8m，而 base.json 的 painting 备注写的层高与 2.8m 净高不一致——
  *     漏写一条 height 即静默少算 7% 涂装面积。
  *   - `window.sill ?? 0`：缺窗台高的窗按落地扣洞，涂装面积凭空变小。
  *   - `opening.sill ?? 0`：门取完成面（0m）是有物理依据的默认；非门洞口不享受。

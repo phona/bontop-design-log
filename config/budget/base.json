@@ -86,7 +86,7 @@
       ],
       "actual": 0,
       "status": "draft",
-      "notes": "厨卫铝扣板吊顶 + 客餐厅局部吊顶，层高 3.0m。人工量按 config/ceiling.yaml 逐分区实算（shared/ceiling-takeoff.ts），不再按房间面积近似；板面按㎡、窗帘盒按延长米分行，数量见 GET /api/ceiling/takeoff，报价时须逐项列（没有合并项报价）。"
+      "notes": "厨卫铝扣板吊顶 + 客餐厅局部吊顶，层高 2.8m。人工量按 config/ceiling.yaml 逐分区实算（shared/ceiling-takeoff.ts），不再按房间面积近似；板面按㎡、窗帘盒按延长米分行，数量见 GET /api/ceiling/takeoff，报价时须逐项列（没有合并项报价）。"
     },
     "painting": {
       "budget": 11500,
@@ -98,7 +98,7 @@
       },
       "actual": 0,
       "status": "draft",
-      "notes": "大白墙为主，局部跳色；层高 3.0m，墙面面积比 2.8m 高约 7%"
+      "notes": "大白墙为主，局部跳色；层高 2.8m，墙面面积按 2.8m 净高实算"
     },
     "doors_windows": {
       "budget": 12000,

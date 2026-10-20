@@ -1,8 +1,8 @@
 # 装扮映射表（Twinmotion 云渲染用）
 
-生成：2026-10-16，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-10-20，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
-数据规模：house.yaml furnishings 共 91 件（与 `fact.furnishings_count` 对账）。
+数据规模：house.yaml furnishings 共 89 件（与 `fact.furnishings_count` 对账）。
 
 用法：glb 导入 Twinmotion 后按本表替换材质/家具/灯光；reimport 同名 glb 时材质覆盖按节点名保留。
 
@@ -109,7 +109,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | living_dining | dining_chair | 4 | 0.45×0.45 | (9.125, 3) / 90°；(10.475, 3) / 270°；(9.125, 3.9) / 90°；(10.475, 3.9) / 270° |
 | living_dining | fridge | 1 | 0.833×0.6 | (7.5025, 2.9865) / 270° |
 | living_dining | waterbar_low_cabinet_800_preview | 1 | 0.8×0.42 | (7.43, 3.87) / 90° |
-| living_dining | mijia_instant_dispenser_s1_preview | 1 | 0.312×0.106 | (7.5, 3.64) / 90° |
+| living_dining | mijia_instant_dispenser_s1_preview | 1 | 0.106×0.312 | (7.47, 3.64) / 90° |
 | living_dining | coffee_machine_em450 | 1 | 0.22×0.285 | (7.37, 4) / 90° |
 | living_dining | curtain_set | 2 | — | count-only（不在 glb，按实物补摆） |
 | living_dining | ceiling_light | 2 | — | count-only（不在 glb，按实物补摆） |
@@ -129,16 +129,14 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | master_bath | towel_set | 1 | 0.04×0.28 | (0.24, 2.23) / 0° |
 | master_bath | exhaust_fan | 1 | 0.3×0.3 | (1, 2.7) |
 | master_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bath | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | guest_bath | vanity | 1 | 0.7×0.5 | (6.79, 3.925) / 270° |
 | guest_bath | toilet | 1 | 0.4×0.6 | (6.75, 3.05) / 270° |
 | guest_bath | exhaust_fan | 1 | 0.3×0.3 | (6.35, 2.45) |
 | guest_bath | robot_dock_gbath | 1 | 0.41×0.4335 | (6.823, 3.925) / 270° |
 | guest_bath | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
 | guest_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | towel_set | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | guest_bath | mirror_cabinet_gbath | 1 | — | count-only（不在 glb，按实物补摆） |
+| guest_bath | heated_towel_rack | 1 | — | count-only（不在 glb，按实物补摆） |
 | balcony | washer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
 | balcony | dryer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
 | balcony | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
@@ -146,11 +144,12 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | entry_garden | shoe_cabinet | 1 | — | count-only（不在 glb，按实物补摆） |
 | entry_garden | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 
-## 3. 灯光点位（10 个）→ 灯具与光源摆放单
+## 3. 灯光点位（11 个）→ 灯具与光源摆放单
 
 | id | 房间 | 类型 | 位置 (x, z) | 高度 (m) | 色温 (K) | 回路 | 备注 |
 |---|---|---|---|---|---|---|---|
-| light_dining_pendant | living_dining | 吊灯 | (9.25, 3.65) | 2.8 | 3000 | dining | 餐桌吊灯天花出线（DEC-2026-08-02-013，DEC-021 随餐桌，DEC-034 餐桌靠客卫东墙后随移至桌心），单独回路，墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1 落实），距桌面75cm。坐标修正（2026-10-20，DEC-2026-10-20-F01）：DEC-2026-10-16-R12 曾随桌心改至 (9.80,3.45) 并把 type 改为 ceiling_light，DEC-2026-10-17-R8 按业主奶油云团灯参考图改至餐厅平顶范围中心 (9.25,3.65)，餐桌保持 (9.80,3.45)；权威 config/electrical.yaml:965-969、config/electrical-topology.yaml:262。本行为手工修正：本文件由 scripts/generate-dressing-map.ts 生成，其 LIGHT_TYPES 未含 ceiling_light，重新生成会丢失本行——补生成器前勿跑 npm run export:dressing-map |
+| light_balcony_dome | balcony | 吸顶灯 | (6.6, 1.15) | 2.8 | 4000 | — | 生活阳台感应吸顶灯（DEC-2026-10-17-R20 补齐：阳台此前无任何灯具/开关，furnishings 预算行无对应点位）：光控+人体感应双模、带常亮档，无墙面开关——东墙门洞 d_kit_balc 占 z[1.20,2.00]，剩余墙垛 0.30/0.10m 容不下 86 底盒；点位避晾衣架主机 (6.40,1.60) 吊顶占用；归 lighting_bedrooms_bath。height=2.8 判定依据：config/ceiling.yaml 与 config/layout/overlay.yaml 均未声明 balcony 吊顶分区（2026-10-17 复核），按原顶完成面落点。若后续阳台做铝扣板吊顶，height 随完成面同步下调 |
+| light_dining_pendant | living_dining | 天花灯 | (9.25, 3.65) | 2.8 | 3000 | dining | 餐厅灯天花出线（DEC-2026-08-02-013、DEC-021、DEC-034 为历史随餐桌灯位）。DEC-2026-10-16-R12 曾将灯位修正至桌心 (9.80,3.45) 并将 type 改为 ceiling_light；DEC-2026-10-17-R8 按业主奶油云团灯参考图替换造型；DEC-2026-10-17-R9 按业主选择移至餐厅平顶范围几何中心 (9.25,3.65)，餐桌保持 (9.80,3.45)。主体尺寸取用户参数图，木球/吊线为主图比例视觉估值；电气安装高度仍为2.80m。点位 id、dining 单独回路、墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1）和拓扑成员关系不变。灯到餐桌中心的水平偏移约0.585m；桌面照度目标150 lx/3000K/Ra≥90（100 lx为备选）须按实际 SKU 的3000K档光通量与配光核验，不能由商品标称3200lm或5–10㎡推定，见 schedule/procurement.md。 |
 | light_living_dome | living_dining | 吸顶灯 | (10.8, 7.15) | 2.8 | 3000 | living_base | 客厅基础光吸顶灯（DEC-2026-10-13-R1 推翻 DEC-2026-08-26-043 的明装轨道灯：原顶条件下明装轨道①无吊顶可藏 1.95m 走线，只能明装线槽外露；②4 个可调灯头是点状配光，实测口径 U₀≈0，客厅一般活动 100 lx 要求 U₀≥0.7，原理上不满足；③轨道+加固板+可调头是三重可调冗余，业主从未要求过重点照明。改为贴原顶 2.80 安装的宽配光吸顶灯，光通量按 7,100–8,500 lm 选型）。出线沿用 strong-light-living 既有路由，出 ceiling_living 边吊后明装线槽沿原顶板面敷设至灯位（见 config/mep-hvac-coordination.yaml）。状态依据：归入 topology 回路 lighting_living_base（confirmed），客厅基础光吸顶灯为设计声明→inferred；位置为设计值未实测 |
 | light_master_dome | master_bedroom | 吸顶灯 | (1.7, 6) | 2.8 | 3000 | — | 主卧吸顶灯（DEC-2026-10-13-R3 移位：原 (2.60,7.60) 落在 bed_180 平面投影内（床 AABB x[2.30,4.10]×z[6.47,8.33]），既正压床头眩光，又把房间最远的条带洗漱区甩到 3.91m/入射角 57°、照度仅灯正下方 1/6。移位至 (1.70,6.00)：房间开敞中部、避床/衣柜/梳妆桌/窗帘盒，到条带台盆 3.05m、到通顶衣柜 1.60m、到梳妆桌 1.28m；牺牲的是床面环境光，但 DEC-2026-10-12-R1 已把两盏床头壁灯改为小米床头灯插电，床头阅读/起夜本就不再依赖吸顶灯——三个功能缺口各有专属光源，吸顶灯只管一般照明，居中才是正确分工）。状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），主卧吸顶灯为设计声明→inferred；位置为设计值未实测 |
 | light_parent_dome | study | 吸顶灯 | (5.7, 7.675) | 2.8 | 3000 | — | 书房吸顶灯（2026-10-05 功能互换，id/位置不变）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），书房吸顶灯为设计声明→inferred；2026-10-05 功能互换位置不变，为设计值未实测 |
@@ -159,7 +158,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | light_corridor_1 | main_corridor | 筒灯 | (5.7, 4.9) | 2.5 | 3000 | entry_base | 历史旧位：坐标由原(7.9,5.75)调整至既有ceiling_living范围(7.9,5.0)，避开电视高柜x≤7.55并靠近走廊口；原点嵌入既有边吊、不新增吊顶；这些旧位理由和坐标由DEC-2026-10-15-C02覆盖。当前点：因距餐厅下出风槽投影边约75mm，迁至主走廊中段(5.70,4.90)，嵌入ceiling_main_corridor吊底y=2.50；归入lighting_entry_base的回路与开关控制拓扑保持，线路同步协调。开孔、上方风管/梁/冷媒/冷凝水/桥架与龙骨净距待现场复核；坐标是设计候选值，未实测。状态依据：lighting_entry_base回路confirmed，当前灯位为业主明确确认的预演位置。 |
 | light_entry_down | entry_garden | 筒灯 | (13, 1.45) | 2.8 | 3000 | entry_base | 玄关筒灯；状态依据：归入 topology 回路 lighting_entry_base（confirmed），玄关筒灯为设计声明→inferred；位置为设计值未实测 |
 | light_entry_foyer | living_dining | 筒灯 | (12.4, 3.35) | 2.5 | 3000 | entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区；状态依据：归入 topology 回路 lighting_entry_base（confirmed），门厅筒灯利用既有吊顶为设计声明→inferred；取红框中心避让半高柜与入户门，位置为设计值未实测 |
-| light_kitchen_panel | kitchen | 吸顶灯 | (9, 1.2) | 2.8 | 4000 | — | 厨房平板灯（4000K 工作区例外）；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），厨卫 4000K 平板灯为设计声明→inferred；位置为设计值未实测 |
+| light_kitchen_panel | kitchen | 吸顶灯 | (9, 1.2) | 2.65 | 4000 | — | 厨房平板灯（4000K 工作区例外）；height=2.65 对齐 ceiling_kitchen 铝扣板吊顶完成面（DEC-2026-10-17-R12：安装完成面即吊顶底，原 2.8 与吊顶分区声明矛盾）；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），厨卫 4000K 平板灯为设计声明→inferred；位置为设计值未实测 |
 
 ### 后续深化预留（当前未实施点位）
 厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。主卧南床头梳妆台的镜前灯为家具插接式部件，复用 `sock_master_bed_r`，不新增墙内灯位。

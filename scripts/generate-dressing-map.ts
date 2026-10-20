@@ -43,7 +43,7 @@ interface OverlayElement {
   reason?: string;
 }
 
-const LIGHT_TYPES = new Set(['pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light']);
+const LIGHT_TYPES = new Set(['pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light', 'ceiling_light']);
 const LIGHT_TYPE_LABEL: Record<string, string> = {
   pendant: '吊灯',
   dome: '吸顶灯',
@@ -51,6 +51,7 @@ const LIGHT_TYPE_LABEL: Record<string, string> = {
   downlight: '筒灯',
   led_strip: '灯带',
   track_light: '明装轨道灯',
+  ceiling_light: '天花灯',
 };
 
 function loadYaml<T>(path: string): T {

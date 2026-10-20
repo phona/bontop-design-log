@@ -28,7 +28,7 @@ export interface PaintWallInput {
    * `WallSegment`（`catalog.getWalls()`，预算侧走这条路）**根本没有 height 字段**、
    * `ResolvedWall`（`layout.walls`，/api/paint/comparison 走这条路）却有——同一条声明在
    * 两条路径上会落到不同的顶标高，正是「同一个量两处算法」的病。预算侧那条路实际恒为
-   * `?? 2.8`，而 base.json 的 painting 备注写的是「层高 3.0m，墙面面积比 2.8m 高约 7%」：
+   * `?? 2.8`，而 base.json 的 painting 备注写的层高与 2.8m 净高不一致：
    * 漏写一条 height 就静默少算 7% 涂装面积，无任何报错。现改为 height 缺失即抛错，
    * 本字段保留只为兼容既有调用方传值，**不再被读取**。
    */
@@ -78,7 +78,7 @@ export interface PaintRegionInput {
    *
    * **必填**（2026-10-14 阶段 4）：旧代码 `region.height ?? wall.height ?? 2.8` 在两条
    * 路径上给出不同答案（见 `PaintWallInput.height` 的说明），且预算侧实际恒为 2.8m。
-   * base.json 的 painting 备注写「层高 3.0m，墙面面积比 2.8m 高约 7%」——漏写一条 height
+   * base.json 的 painting 备注写的层高与 2.8m 净高不一致——漏写一条 height
    * 即静默少算 7% 涂装面积。现在缺失直接抛错：层高是算量输入，不是可以默认的观感参数。
    */
   height: number;
@@ -320,7 +320,7 @@ export function computePaintScope(
     const bottom = region.bottom ?? 0;
     // 顶标高必须由声明给出（2026-10-14 阶段 4）。旧兜底 `region.height ?? wall.height ?? 2.8`
     // 在预算侧（catalog.getWalls() → WallSegment 无 height 字段）恒等于 2.8m，而
-    // base.json 的 painting 备注写的是「层高 3.0m，墙面面积比 2.8m 高约 7%」——
+    // base.json 的 painting 备注写的层高与 2.8m 净高不一致——
     // 漏写一条 height 就静默少算 7% 涂装面积，且 /api/paint/comparison（走 ResolvedWall，
     // 有 height）与预算侧会因此给出不同答案。错误信息直接指去哪补。
     if (region.height === undefined) {

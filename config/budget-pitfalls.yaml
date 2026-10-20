@@ -536,7 +536,7 @@ templates:
   - id: pragmatic
     name: "务实档(11 万)"
     total: 110000
-    description: "保证基础质量,非豪华装修;套内 94.76㎡、层高 3.0m"
+    description: "保证基础质量,非豪华装修;套内 94.76㎡、层高 2.8m"
     allocation:
       demolition: 5000
       water_electric: 8500

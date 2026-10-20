@@ -1732,6 +1732,34 @@ contracts:
       - 'aluminum_buckle_sqm:\s*\{\s*per_unit:\s*null'
       - 'function baseJsonCeilingRates\b'
 
+  # ⑥ 层高禁用值：3.0m 这个错值在全仓不许再出现。
+  #    已实测（2026-10-20 全文审计）：3.0m 曾在 11 处手写副本里散落——README.md:14、
+  #    config/house.yaml:46,617、config/materials.yaml:3,465、
+  #    docs/material_selection_log.md:127,272、docs/hvac/hvac_options_analysis.md:16,71、
+  #    config/budget/base.json:89,101、config/budget-pitfalls.yaml:539。
+  #    其中 README.md:14 还自称「结构 3.0m / 室内净高 2.8m 两个口径都真实」，而
+  #    fact.floor_height_net 的 mirror 用「室内净高」具名口径抽取，恰好保护了这个 3.0m
+  #    不被门禁发现——这是本次整改中最危险的一处。
+  #    根因：层高的权威源只有 config/house.yaml:7 的 floor_height: 2.8，其余 11 处都是
+  #    手写副本，没有机制保证它们与权威一致。
+  #    本契约用 single_source 的 expect: 0 语义做「禁用值」检查：凡在 scope 内写出
+  #    层高 3.0m（含「结构层高 3.0m」「层高 3.0m」「3.0m 层高」等写法），
+  #    立刻报 single_source_count_mismatch 并带出位置，直接跳过去改。
+  #    与 fact.floor_height_net 的 mirror 互补：mirror 保证已登记位置的值正确，
+  #    本契约保证错值不在任何位置新生。
+  #    exclude 不含 docs/decisions/：DEC 是历史台账，「旧值」必须在 DEC 里可查
+  #    （铁律 5 要求 diff 出删了什么），故 DEC 与 CURRENT-VALUES 的旧值说明不在此禁。
+  - id: c.floor_height_3m_forbidden
+    kind: single_source
+    expect: 0
+    scope: [README.md, config/, docs/, schedule/, shared/, server/, app/, scripts/, tests/, contracts/, renders/, survey/, cad/, assets/, data/]
+    exclude: [docs/decisions/, docs/CURRENT-VALUES.md, docs/README.md, tmp/, node_modules/]
+    patterns:
+      - '结构层高\s*3\.0\s*m'
+      - '层高\s*[|：:\s]*3\.0\s*m'
+      - '3\.0\s*m\s*层高'
+      - '层高为?\s*3\.0\s*m'
+
 # ─── T4 覆盖层 ───────────────────────────────────────────────────────────────
 
 coverage:

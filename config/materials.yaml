@@ -1,6 +1,6 @@
 notes:
   - "外立面玻璃幕墙已由开发商安装完成，装修阶段无需采购封窗，只需核对门窗口位置及幕墙保护"
-  - "本清单以套内 94.76㎡、层高 3.0m 为基数估算"
+  - "本清单以套内 94.76㎡、层高 2.8m 为基数估算"
   - "本清单共 74 条材料项（2026-10-05 复核：删除 home_fitness_light_set_01 轻训练套，iteration parent-room-study-swap-20261005；与 fact.materials_count / c.materials_count_matches_note 对账：增删条目必须同步此数）"
 
 # 临时 3D 预演素材，不属于采购候选，不进入 materials 数量或预算。
@@ -462,7 +462,7 @@ materials:
     pros: ["套餐省心", "品牌可靠"]
     cons: ["款式选择有限"]
     price_source: "京东 / 天猫灯具套餐价"
-    notes: "层高 3.0m，不建议复杂吊灯；客厅选大灯或超薄吸顶灯"
+    notes: "层高 2.8m，不建议复杂吊灯；客厅选大灯或超薄吸顶灯"
 
   - id: "switch_socket_01"
     topic_id: "switch_socket"
