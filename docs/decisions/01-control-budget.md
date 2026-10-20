@@ -316,3 +316,45 @@
 - **一次性工具**：`tmp/split-decision-log.py`（tmp/ 按约定不入库）是迁移工具，输入是已删除的
   `docs/decision_log.md`；**不得重跑**——重跑会按旧映射表重建 14 个文件，抹掉本条及之后新增的条目。
   条目级映射已固化为本条的「拆分结果」表与各文件头部的本文件目录。
+
+### DEC-2026-10-20-F01 修正四处「自称现行」的过期口径（docs 层 P0 整改第一批）
+
+- **日期**：2026-10-20
+- **决策事项**：修正 `docs/` 层四处被审计定为 P0（照字面采信会误导人）的过期口径。全部依据铁律 5 执行：逐条列明旧值、新值、权威源与理由；不静默删改。
+- **背景**：全文审计（25 个根/hvac 文件 + 264 条 DEC + 迭代记录）发现 11 个 P0，其中 4 个会直接导致错误施工或采购。本条登记这 4 处。
+
+#### 1. `docs/designer_brief.md:9` 结构层高 3.0m → 2.8m
+
+- **旧值**：`- **层高**：结构层高 3.0m，室内净高 2.8m`
+- **新值**：原顶（结构板底）约 2.8m（邻户图 +2830 佐证），室内净高 2.8m（推断值，量房后实测确认）
+- **权威源**：`docs/mep-construction-guidance.md:76`（+2830 与我们模型层高 2.8m 一致）、`docs/pending-site-data.md:18` #3、`docs/decisions/06-electrical.md:418-426`（DEC-2026-10-13-R4 定案原顶 2.80m）
+- **理由**：3.0m 无现场依据；该件是对外交付件，层高错直接传导吊顶/柜体设计。
+- **同源待修（本轮不动，避免范围蔓延）**：`config/materials.yaml:465`、`docs/material_selection_log.md:125,270`、`docs/hvac/hvac_options_analysis.md:16,71`、`README.md:14`、`config/house.yaml:46,617`、`config/budget/base.json:89,101`、`config/budget-pitfalls.yaml:539`。注意 `README.md:14` 自称「结构 3.0m / 室内净高 2.8m 两个口径都真实」，且 `config/facts.yaml:640-660` 的 `fact.floor_height_net` mirror 只抽「室内净高」具名口径，恰好保护了 3.0m 不被门禁发现——建议下一轮以 README 为先。
+
+#### 2. `docs/material_selection_log.md:79-85` 墙砖面积 60–65㎡ → 21.2555㎡
+
+- **旧值**：厨房+两卫墙面积约 60–65㎡，约需 350–380 片；费用表 4,320 / 5,760 / 2,700 元
+- **新值**：实算 21.2555㎡（厨房 9.9 + 生活阳台 0.81 + 主卫 3.7705 + 客卫 6.775），约需 124 片；费用表同步为 1,488 / 1,984 / 930 元
+- **权威源**：`shared/masonry-takeoff.ts:269-270`、`tests/server/masonry-takeoff.test.ts:160-168`、`schedule/phase-1/control.yaml:1086`（COST-060-08 `quantity_declared.wall_tile_sqm`）
+- **理由**：60–65㎡ 正是 AGENTS.md 点名的已废除拍系数 `wetWallArea=(宽+深)×2×高×0.7`（曾算 65.699㎡），采购量夸大约 3 倍。费用表是片数下游，只改片数会留矛盾文档，故同步重算并登记。
+- **预算影响**：墙砖主材估算由约 4,320–5,760 元降至约 930–1,984 元，与 COST-060-08 的 ¥70/㎡ 口径一致；不动任何 `planned_cny`。
+
+#### 3. `docs/dressing-map.md:153` 餐桌吊灯坐标 (7.9, 3.45) → (9.25, 3.65)
+
+- **旧值**：`light_dining_pendant` 位于 (7.9, 3.45)
+- **新值**：(9.25, 3.65)，并备注完整坐标链
+- **权威源**：`config/electrical.yaml:965-969`、`config/electrical-topology.yaml:262`
+- **理由**：DEC-2026-10-16-R12 曾随桌心改至 (9.80,3.45) 并把 type 改为 ceiling_light，DEC-2026-10-17-R8 按业主奶油云团灯参考图改至餐厅平顶范围中心 (9.25,3.65)，餐桌保持 (9.80,3.45)。7.9 是 R20 时代旧值；该表是 Twinmotion 摆灯单，差 2m 会把灯摆离餐桌。
+- **⚠️ 静默失效条件（重要）**：本文件由 `scripts/generate-dressing-map.ts` 生成，其 `LIGHT_TYPES`（:46）不含 `ceiling_light`，而 `light_dining_pendant` 的 type 已被 R12 改为 `ceiling_light`（全库唯一该类型点位）。**现在跑 `npm run export:dressing-map` 会把餐桌灯整行丢掉**，本次手工修正被静默回滚。补 `LIGHT_TYPES`/`LIGHT_TYPE_LABEL` 前不得重新生成。
+
+#### 4. `docs/ceiling-scheme-20261008.md` 材料钱结论方向反了（只加注记，不改正文数字）
+
+- **旧结论**：122.71 元/㎡、`verdict: above_range`、余量 +2.71 元/㎡（2%），并以此作为验收重心
+- **现行实算**：112.16 元/㎡、`verdict: within_range`、`slackVsMax: -6.84`（低于上限）
+- **权威源**：`tests/server/ceiling-material-cost.test.ts:91-107`、`tests/server/api.test.ts:110-118`
+- **理由**：文件 :3 只更新了扩深后面积（25.406㎡），材料钱判定方向没跟着改；「余量只有 2.71、一次超标就吃光」与现行相反，被当验收重心会按错误松紧度验材料。
+- **修法**：正文是 2026-10-08 历史快照，按铁律 5 **不改写数字**，在 §0 结论、§2.4 材料区间账、§4.1 代码判定、验收重心段共 4 处加醒目注记，指明现行值与出处。连带修正边龙骨 3.06 → 2.85 米/㎡、龙骨 36–45 → 35–44 元/㎡、材料区间 98–120 → 97–119。
+
+- **关联文件**：上述四个文件；`docs/CURRENT-VALUES.md`（措施 1 建的速查表已收录这些现行值）；`config/facts.yaml`
+- **决策人**：业主（授权整改 docs 层 P0）
+- **回滚**：全部改动收敛在一个提交，`git revert` 即恢复。

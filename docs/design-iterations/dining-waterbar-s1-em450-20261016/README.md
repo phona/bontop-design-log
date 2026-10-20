@@ -6,6 +6,12 @@
 
 ## 当前固定视角（S1形体V5）
 
+> ⚠️ **V5 已被 V6 取代**（DEC-2026-10-17-R11）：官方三视图确认出水腔在 106mm 窄面、312mm 长轴转东西向。以下为 2026-10-16 时点留档，不作为现行外形依据。
+>
+> - 取代依据：本目录 `fact-table.yaml` 的 `I-S1-SHAPE-V5`（`status: superseded`，`superseded_by: I-S1-SHAPE-V6`）、`design-datum.yaml:47-81`、`object-manifest.yaml:49,67-71` 均已到 V6 口径。
+> - **V6 结论**：出水腔开在 106mm 窄面（非 V5 推断的 312mm 宽面），312mm 长轴转为东西向；rotation=90；中心 x=7.47/z=3.64（见 `config/house.yaml:535`）；AABB 0.312×0.2803×0.106m、底面 y=0.85；与 EM450 的 z 向静态间距由 94mm 增至 197mm。
+> - V6 仅有证据图（`evidence/s1-form-v6-*.png`、`evidence/runtime-query-s1-form-v6.json`）与 DEC 记载，尚无独立文字记录（无 s1-shape-correction-v6.md）。
+
 - [餐厅人眼总览](evidence/s1-form-v5-overview.png)：显示低柜、两台设备和冰箱关系。
 - [水吧设备近景](evidence/s1-form-v5-close.png)：S1局部`+z`对应东侧出水区，局部`-z`对应西侧后置机身；总外廓和台面关系不变。
 - [V5运行时坐标/AABB与校验结果](evidence/runtime-query-s1-form-v5.json)：浏览器ready=true、错误横幅为空，AABB仍为312×106×280mm。

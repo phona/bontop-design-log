@@ -101,6 +101,7 @@ entries:
     review_state: delivery_ready
     supersedes: none
     external_refs: 2
+    note: "manifest 自称 delivery_ready/19 路，但同目录 decision-brief.yaml:127-149 已登记 supersession.status: superseded（19 路 -> 20 -> 21）；2026-10-20 已在 manifest 加 superseded 字段回标"
   - dir: mep-routing-20260901
     topic: mep
     review_state: none
@@ -278,6 +279,7 @@ entries:
     review_state: blocked
     supersedes: none
     external_refs: 1
+    note: "摆位已被 DEC-2026-10-17-R11 取代（水吧改放 living_dining，立式茶吧机与 390 低边柜代理退出）；2026-10-20 已建 README 加状态块，现行摆位见 config/house.yaml:530,535,537"
   - dir: kitchen-beverage-stations-20261016
     topic: kitchen-dining-equipment
     review_state: evidence_review
@@ -330,11 +332,13 @@ entries:
     review_state: implemented_runtime_review_pending
     supersedes: none
     external_refs: 3
+    note: "brief 冻结于 R03 态，但同目录 fact-table/design-datum/object-manifest 已到 R05 终态（垂面弧全拆 + concave_fillets_open），以 R05 为准；2026-10-20 已在 brief 顶部加状态块"
   - dir: dining-ceiling-no-cove-20261008
     topic: dining
     review_state: implementation
     supersedes: none
     external_refs: 2
+    note: "「取消 cove_fillets」部分已被 R03 废止（见 cove-restore/fact-table.yaml 的 f_r02_superseded），R05 以镜像凹弧达成硬相交；2026-10-20 已建 README 加状态块"
   - dir: dining-cloud-light-20261017
     topic: dining
     review_state: incomplete
@@ -345,6 +349,7 @@ entries:
     review_state: blocked
     supersedes: none
     external_refs: 1
+    note: "README 与 s1-shape-correction-v5.md 止于 V5，但 fact-table 已标 I-S1-SHAPE-V5 superseded_by V6（DEC-2026-10-17-R11，出水腔改 106mm 窄面）；2026-10-20 已在 README 与 v5 文档加 V5->V6 标注并补 V6 结论段"
   - dir: archive/dining-semi-flush-20261016
     topic: dining
     review_state: none

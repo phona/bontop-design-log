@@ -475,6 +475,9 @@ scan:
     - path: docs/hvac/hvac-vendor-confirmation-sheet.md
       pattern: '.'
       reason: 汇总视图：数字/型号均为已登记权威值的转抄（config/hvac.yaml、DEC-2026-10-04-R1、#39/#42、合同附件），用于上门逐条核对；不构成第二份数字真相，单子内已声明权威优先
+    - path: docs/CURRENT-VALUES.md
+      pattern: '.'
+      reason: 现行值速查表（汇总视图）：数值/型号/口径均为已登记权威值的转抄，权威源在各行「权威源」列指向的 config/docs 原文；关键口径另由 fact mirror 逐条对账，不构成第二份数字真相
 # ─── T2 对账层 ───────────────────────────────────────────────────────────────
 
 facts:
@@ -549,6 +552,11 @@ facts:
         extract: '(\d+)\s*条走线'
         severity: error
         expect_matches: 1
+      # 2026-10-20 措施 1：现行值速查表 mirror。
+      - path: docs/CURRENT-VALUES.md
+        extract: '^\| MEP 路线总数 \| (\d+) 条 \|'
+        severity: error
+        expect_matches: 1
 
   - id: fact.hvac_contract_cny
     kind: narrative
@@ -570,6 +578,11 @@ facts:
         expect_matches: 1
       - path: config/house.yaml
         extract: '2026-10-04 成交\s*¥([\d,]+)'
+        severity: error
+        expect_matches: 1
+      # 2026-10-20 措施 1：现行值速查表 mirror。
+      - path: docs/CURRENT-VALUES.md
+        extract: '^\| 合同成交价 \| (\d+) 元 \|'
         severity: error
         expect_matches: 1
 
@@ -606,6 +619,11 @@ facts:
         extract: '最终预测不超过\s*¥?([\d,]+)'
         severity: error
         expect_matches: 1
+      # 2026-10-20 措施 1：现行值速查表 mirror。
+      - path: docs/CURRENT-VALUES.md
+        extract: '^\| 一期执行上限 \| (\d+) 元 \|'
+        severity: error
+        expect_matches: 1
     exempt:
       # 与上面 mirror 的 warning 是同一件事：这里把它显式登记为**待决豁免**，
       # 让「挂着等裁决」在报告的 INFO 里露面，而不是混在 warning 里刷存在感。
@@ -636,6 +654,12 @@ facts:
         extract: '套内\s*([\d.]+)\s*㎡'
         severity: error
         expect_matches: 2
+      # 2026-10-20 措施 1：现行值速查表登记为 mirror。速查表是汇总视图，其数值
+      # 均为本 fact 等权威值的转抄；在此建 mirror 让速查表与权威漂移时立刻暴露。
+      - path: docs/CURRENT-VALUES.md
+        extract: '^\| 套内面积 \| ([\d.]+) ㎡ \|'
+        severity: error
+        expect_matches: 1
 
   - id: fact.floor_height_net
     kind: derived
@@ -819,6 +843,26 @@ facts:
     mirrors:
       - path: config/house.yaml
         extract: 'bbox 口径\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+
+  # 客餐厅 polygon 实测面积：44.58㎡（bbox 45.88㎡ 含 1.3㎡ 凹口，见
+  # fact.living_dining_bbox_area）。两者是**不同口径**，不可互相对账。
+  # 2026-10-20 措施 1 新建：此前 44.58 只在 config/hvac.yaml load_design.basis 与
+  # docs/pending-site-data.md #39 以 prose 出现，无机器对账；建本条让
+  # hvac.yaml 的叙述与速查表都不会静默漂移。
+  - id: fact.living_dining_area
+    kind: derived
+    value: "@config/layout/model-geometry.yaml:rooms#find:id=living_dining.boundary#shoelace"
+    unit: ㎡
+    mirrors:
+      - path: config/hvac.yaml
+        extract: '实际\s*([\d.]+)\s*㎡'
+        severity: error
+        expect_matches: 1
+      # 2026-10-20 措施 1：现行值速查表 mirror。
+      - path: docs/CURRENT-VALUES.md
+        extract: '^\| 客餐厅面积 \| ([\d.]+) ㎡ \|'
         severity: error
         expect_matches: 1
 
@@ -1034,6 +1078,11 @@ facts:
         extract: 'electrical\.yaml[^0-9]{0,12}共\s*(\d+)\s*个点位'
         severity: error
         expect_matches: 1
+      # 2026-10-20 措施 1：现行值速查表 mirror。
+      - path: docs/CURRENT-VALUES.md
+        extract: '^\| 电气点位数 \| (\d+) 个 \|'
+        severity: error
+        expect_matches: 1
 
   # 给排水点位 / 吊顶分区：分别决定防水范围与吊顶工程量。
   - id: fact.plumbing_points_count
@@ -1096,6 +1145,11 @@ facts:
     mirrors:
       - path: docs/pending-site-data.md
         extract: '量表共\s*(\d+)\s*条'
+        severity: error
+        expect_matches: 1
+      # 2026-10-20 措施 1：现行值速查表 mirror。
+      - path: docs/CURRENT-VALUES.md
+        extract: '^\| 待决台账条数 \| (\d+) 条编号 \|'
         severity: error
         expect_matches: 1
 

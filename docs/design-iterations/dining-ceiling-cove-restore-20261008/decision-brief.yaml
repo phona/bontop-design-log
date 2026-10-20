@@ -1,4 +1,11 @@
 schema: interior-design-decision-brief/v3
+# ⚠️ 状态（2026-10-20 登记，未改写下方正文）：
+# 本 brief 冻结于 R03 态（「SE 角保持正交；不改 builder」）。同目录的
+# fact-table.yaml:77,90-97、design-datum.yaml:40-58、object-manifest.json:8-10
+# 已记载 R05 终态：垂面弧全拆（门头盒 cove_fillets {south,west}、西带 {east}、
+# 门厅 {west} 全部移除）+ concave_fillets_open 新机制。**以 R05 为准。**
+# 另有一处不一致：同目录 review-manifest.json:7 的 state_note 自述「R05 实施完成」，
+# 与本 brief 的 R03 冻结态相反；按 R05 记载为准。
 project: bontop-design-log
 iteration_id: dining-ceiling-cove-restore-20261008
 subject: 餐厅吊顶弧面回归 + 东南角接门厅平吊（DEC-2026-10-08-R03，废止 R02 弧面取消部分）

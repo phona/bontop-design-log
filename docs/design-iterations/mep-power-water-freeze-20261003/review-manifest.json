@@ -3,6 +3,8 @@
   "project": "bontop-design-log",
   "iteration_id": "mep-power-water-freeze-20261003",
   "subject": "水电施工冻结前最后一轮收口（25 路→19 路、补漏保、燃气报警器合规位、验收扩 9 项）",
+  "superseded": true,
+  "superseded_note": "本 manifest 的「19 路」为 2026-10-03 时点口径，已被 DEC-2026-10-04-R2 / DEC-2026-10-05-R3 / DEC-2026-10-06-R2 取代为 20 → 21 路；现行回路数以 config/electrical-topology.yaml 为准（当前 circuits.length=20，DEC-2026-10-13-R5 删电视墙灯带后回到 20）。同目录 decision-brief.yaml:127-149 已登记 supersession.status: superseded。",
   "source_version": {
     "config_refs": [
       "config/electrical.yaml",
