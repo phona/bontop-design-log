@@ -49,16 +49,20 @@ interior-design-project/
 │   ├── blender/
 │   └── web/
 ├── docs/                      # 文档
+│   ├── README.md              #   文档索引（21 个根文档的角色/状态/权威指向）
 │   ├── designer_brief.md
 │   ├── acceptance_checklist.md
 │   ├── material_selection_log.md
-│   └── decisions/             # 决策日志（按主题拆分为 14 个文件）
-│       ├── README.md          #   索引 + 模板 + 待决策事项
-│       ├── 01-control-budget.md
-│       └── …
-├── audit/                     # 审计日志
-│   ├── audit.log
-│   └── git_tags.md
+│   ├── decisions/             # 决策日志（18 个主题文件 + README 索引）
+│   │   ├── README.md          #   索引 + 模板 + 待决策事项
+│   │   ├── 01-control-budget.md
+│   │   └── …
+│   ├── design-iterations/     # 迭代记录（INDEX.yaml 为机读索引）
+│   │   ├── INDEX.yaml         #   65 条：主题/状态/引用数/权威去处
+│   │   ├── archive/           #   20 个已归档轮次
+│   │   └── <45 个现役轮次目录>/
+│   ├── renders/               # 渲染架构留档
+│   └── standards/             # 起夜路径照明标准
 ├── scripts/                   # Python工具脚本
 └── schedule/                  # 进度计划
 ```
@@ -93,8 +97,8 @@ cat config/layout/model-geometry.yaml
 # 查看当前预算
 cat config/budget/base.json
 
-# 查看审计日志
-cat audit/audit.log
+# 查看文档地图（21 个根文档的角色/状态/权威指向）
+cat docs/README.md
 
 # 查看待决策事项（决策日志入口：索引 + 模板 + 待决）
 cat docs/decisions/README.md
