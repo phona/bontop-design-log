@@ -22,7 +22,7 @@ priority:
 frozen: true
 freeze_record:
   alignment_id: align-dining-semi-flush-20261016
-  original_user_response: "餐厅吊灯我想换成吸顶灯，可行吗" → 四选项选择「换半吸顶（下垂10-30cm）」；业主发吊扇灯图（IMG_2665.jpg）澄清「你说的半吸灯我以为是这个」——语义对齐：半吸顶=贴顶无扇叶浅漫射罩，非风扇灯。追加两项裁定：① 风的需求用独立循环扇/台扇解决，不做进天花；② 桌面照度先按 150 lx 建模与询价，同时备 100 lx 口径，SKU 数据回来后再定。
+  original_user_response: '餐厅吊灯我想换成吸顶灯，可行吗" → 四选项选择「换半吸顶（下垂10-30cm）」；业主发吊扇灯图（IMG_2665.jpg）澄清「你说的半吸灯我以为是这个」——语义对齐：半吸顶=贴顶无扇叶浅漫射罩，非风扇灯。追加两项裁定：① 风的需求用独立循环扇/台扇解决，不做进天花；② 桌面照度先按 150 lx 建模与询价，同时备 100 lx 口径，SKU 数据回来后再定。'
   normalized_decisions:
     - "方向=半吸顶（无扇叶），下垂取 0.28m（10~30cm 区间内，含 0.12m 漫射罩高度）。"
     - "点位移至新桌心 (9.80,3.45) 与造型改动同轮完成。"
@@ -104,7 +104,7 @@ open_questions:
 alignment:
   records:
     - alignment_id: align-dining-semi-flush-20261016
-      original_user_response: "餐厅吊灯我想换成吸顶灯，可行吗"（随后在半吸顶/全吸顶/只修漂移/先看图 四选项中选择半吸顶）
+      original_user_response: '餐厅吊灯我想换成吸顶灯，可行吗"（随后在半吸顶/全吸顶/只修漂移/先看图 四选项中选择半吸顶）'
       normalized_decision: "换半吸顶（下垂10~30cm）；点位移至新桌心 (9.80,3.45)；风格基准改判；选型重开登记。"
       fact_refs: ["fact-table.yaml#fact-anchor-and-table", "fact-table.yaml#fact-photometry-cost"]
       timestamp: "2026-10-16"

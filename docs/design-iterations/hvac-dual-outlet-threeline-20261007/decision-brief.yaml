@@ -60,7 +60,7 @@ acceptance:
     - 三层风口全部平行、对齐、同一设计语言
     - 不改变现有客餐厅吊顶总体结构
     - 图纸能直接给空调施工方和木工讨论深化尺寸
-  review_required: [aesthetic, functional]（双 PASS 才 delivery_ready）
+  review_required: [aesthetic, functional]  # （双 PASS 才 delivery_ready）
 
 alignment:
   - id: align1

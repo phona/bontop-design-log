@@ -30,7 +30,7 @@ objects:
     files: [app/src/render/analysis/ElementStatePanel.ts, app/src/ui/ElementStateButton.ts, app/src/App.ts]
     owner: agent
     depends_on: [OBJ1, OBJ2]
-    interfaces: [onToggle, data-solo-status, tr[data-solo-id]]
+    interfaces: [onToggle, data-solo-status, "tr[data-solo-id]"]
     maintenance_boundary: 只读展示；不改状态
     collision_policy: 不适用
     validation_refs: [app/src/render/ElementStateHighlight.test.ts]

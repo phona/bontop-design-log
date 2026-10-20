@@ -15,7 +15,7 @@ datums:
       elevation: { required: true, viewing_side: north, vertical_axis: y, height: 2.70, dimensions: {width: 2.40, height: 2.70, sill: 0, datum_offset: 0}, dimension_semantics: overall }
       section: { required: true, cut_direction: north-south, depth_axis: z, clearances: {front: 0.60, rear: 0.0, top: 0.10, bottom: 0}, thickness: 0.60, dimension_semantics: overall }
     geometry: {x: 3.00, y: 0, z: 8.40, width: 2.40, depth: 0.60, height: 2.70, length: 2.40, rotation: 0, along: null}
-    constraints: [实体柜体AABB x[1.80,4.20] z[8.10,8.70]，南缘贴南上飘窗北缘且不进入z>8.70带, 与床AABB z[5.95,7.75]不重叠, 床南缘至柜体北门操作净距约0.35m并列为功能风险待验证, 东端贴w_mb_east, 柜门操作区向北]
+    constraints: ["实体柜体AABB x[1.80,4.20] z[8.10,8.70]，南缘贴南上飘窗北缘且不进入z>8.70带", "与床AABB z[5.95,7.75]不重叠", "床南缘至柜体北门操作净距约0.35m并列为功能风险待验证", "东端贴w_mb_east", "柜门操作区向北"]
     interfaces: [master_dressing_table, bed_180]
     validation_refs: [verify:furniture, config-regression-test, visual-wardrobe]
     status: inferred
@@ -41,7 +41,7 @@ datums:
       elevation: { required: true, viewing_side: west, vertical_axis: y, height: 0.75, dimensions: {width: 0.85, height: 0.75, sill: 0, datum_offset: 0}, dimension_semantics: overall }
       section: { required: true, cut_direction: east-west, depth_axis: x, clearances: {front: 0.25, rear: 0.0, top: null, bottom: 0}, thickness: 0.40, dimension_semantics: overall }
     geometry: {x: 3.65, y: 0, z: 9.15, width: 0.85, depth: 0.40, height: 0.75, length: 0.85, rotation: 270, along: null}
-    constraints: [世界AABB x[3.45,3.85] z[8.725,9.575], 与床AABB不重叠, 靠南侧形成衣帽间端部, 南帘窗扇堆叠待现场确认, 不挂墙]
+    constraints: ["世界AABB x[3.45,3.85] z[8.725,9.575]", "与床AABB不重叠", "靠南侧形成衣帽间端部", "南帘窗扇堆叠待现场确认", "不挂墙"]
     interfaces: [sock_master_bed_r中心距0.55m, 桌面支撑镜, 插接式镜前灯]
     validation_refs: [verify:furniture, config-regression-test, visual-east-wall]
     status: confirmed

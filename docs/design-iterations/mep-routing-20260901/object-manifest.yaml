@@ -27,7 +27,7 @@ objects:
     routes: [water-master-bath, water-guest-bath, water-balcony, water-kitchen-requirement, water-garden-requirement]
     responsibility: 给水支路（卫生间 plan_supported；厨房/阳台/花园需求级候选）
     interfaces: [faucet_mbath_vanity, toilet_mbath, faucet_gbath_vanity, toilet_gbath, faucet_balcony_washer]
-    maintenance: 垫层/沉箱/墙面敷设，全部 construction_status: pending
+    maintenance: "垫层/沉箱/墙面敷设，全部 construction_status: pending"
     collision_policy: 不参与场景碰撞
     validation_refs: [verify:mep]
   - id: drain-routes

@@ -59,7 +59,7 @@ open_questions:
     status: site_pending
     question: 客厅垫层是否有约φ20线管所需空间，且与 d_bese 门槛和既有水电管线无冲突？
     required_for: [施工放线]
-    interim: 地面路由保持 construction_status: pending。
+    interim: "地面路由保持 construction_status: pending。"
     owner: 电工 + 业主
     trigger: 量房 / 水电交底前
 alignment:

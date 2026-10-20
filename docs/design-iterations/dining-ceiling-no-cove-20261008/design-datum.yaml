@@ -40,7 +40,7 @@ datums:
       - 垂面与顶面直接交接，不做上部翻弧
       - 平面 NW/SE R150 保留
     interfaces: [ceiling_kitchen, ceiling_main_corridor, ceiling_dining_north_band, ceiling_living]
-    validation_refs: [config/ceiling.yaml#ceiling_dining_west_band, 用户 Image #1]
+    validation_refs: [config/ceiling.yaml#ceiling_dining_west_band, "用户 Image #1"]
     status: confirmed
   - id: datum-north-band
     name: 餐厅北侧服务带/门头盒（保留平面 SW R150，移除上部翻弧）
@@ -77,7 +77,7 @@ datums:
       - 平面 SW R150 保留
       - 东端与 ceiling_entry_foyer 共边，不推断缺口
     interfaces: [ceiling_kitchen, ceiling_dining_west_band, ceiling_entry_foyer, 餐厅平顶]
-    validation_refs: [config/ceiling.yaml#ceiling_dining_north_band, config/ceiling.yaml#ceiling_entry_foyer, 用户 Image #2]
+    validation_refs: [config/ceiling.yaml#ceiling_dining_north_band, config/ceiling.yaml#ceiling_entry_foyer, "用户 Image #2"]
     status: confirmed
 notes:
   - 当前记录只冻结已授权造型变化；上部几何删除后的运行时显示待验收。

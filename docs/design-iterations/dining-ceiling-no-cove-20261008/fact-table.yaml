@@ -6,7 +6,7 @@ created_at: 2026-10-08
 status: frozen
 source_policy:
   authority_refs: [AGENTS.md, config/ceiling.yaml, shared/render/CeilingZoneBuilder.ts]
-  observation_refs: [会话图片 Image #1, 会话图片 Image #2]
+  observation_refs: ["会话图片 Image #1", "会话图片 Image #2"]
   measurement_refs: []
   runtime_refs: []
   evidence_refs: []
@@ -118,7 +118,7 @@ facts:
       category: site_pending
       statement: 配置修改后的运行时两机位观感、东北侧接缝及曲面残留尚待独立验收。
       value: null
-      source_refs: [会话图片 Image #1, 会话图片 Image #2]
+      source_refs: ["会话图片 Image #1", "会话图片 Image #2"]
       basis: 当前图片为变更前截图，不能证明变更后的运行时结果。
       confidence: high
       impact: blocking

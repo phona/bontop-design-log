@@ -152,7 +152,7 @@ objects:
       - { id: door-front, role: 双扇平开门正面, independent: false, owner: furniture, material: door_front, geometry_source: FixtureFactory, datum_refs: [], dependencies: [carcass], collision: reviewed, maintenance_boundary: 可更换, validation_refs: [recipe-test] }
       - { id: door-seam-center, role: 中门缝, independent: false, owner: furniture, material: door_seam, geometry_source: FixtureFactory, datum_refs: [], dependencies: [door-front], collision: reviewed, maintenance_boundary: 无, validation_refs: [recipe-test] }
       - { id: interior-shelf, role: 三块活动层板, independent: true, owner: furniture, material: shelf, geometry_source: FixtureFactory, datum_refs: [], dependencies: [carcass], collision: reviewed, maintenance_boundary: 可取下检修, validation_refs: [recipe-test] }
-    visual_relationships: [{ target_object_id: mb_vanity_base_cabinet, relation: stacked, requirement: 坐在底柜台面上方（y 0.65 起），z 范围缩至 [2.86,4.10] 避开 d_mbath 扫掠 }, { target_object_id: mb_vanity_pvc_box, relation: stacked, requirement: 顶部 0.18m 封板接 PVC 包管盒底 y=2.58 }]
+    visual_relationships: [{ target_object_id: mb_vanity_base_cabinet, relation: stacked, requirement: "坐在底柜台面上方（y 0.65 起），z 范围缩至 [2.86,4.10] 避开 d_mbath 扫掠" }, { target_object_id: mb_vanity_pvc_box, relation: stacked, requirement: 顶部 0.18m 封板接 PVC 包管盒底 y=2.58 }]
     validation_refs: [verify:furniture, recipe-test, config-regression-test]
     status: revoked # 2026-09-02 业主回滚（DEC-2026-09-02-052-补）：薄高柜方案撤销，悬浮板恢复
   - id: mb_vanity_base_cabinet

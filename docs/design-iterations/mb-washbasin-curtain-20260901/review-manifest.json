@@ -74,7 +74,7 @@
   "reviews": {
     "aesthetic": { "result": "PASS", "scope": "初版自审：盆/镜/龙头对中、柜体两侧 5cm 缝、百叶贴框位无干涉；效果图意向（GPT 3 组）业主已确认", "reviewer": "agent-self", "note": "正式独立双审待量房终核后执行" },
     "functional": { "result": "PASS", "scope": "初版自审：柜体 x[0.05,1.10] 与门洞 x[1.15,1.95] 留 5cm；百叶 x=0.03 与柜西脸 x=0.05 留 2cm；verify 全绿", "reviewer": "agent-self", "note": "同上" }
-  ],
+  },
   "blocking_issues": [
     "pending-mullion-layout：竖梃分格实测（决定是否直接借用竖梃、分段点 z=4.00 是否成立；无合适竖梃则保持无构件收口）",
     "pending-window-band：窗带标高（决定百叶高度与柜体是否需东移）",

@@ -32,9 +32,9 @@ penetrations:
   - { wall: w_be_west, at: {x: 13.4, z: 5.9}, height: 2.45~2.55, routes: [refrigerant-study, strong-ac-study], note: 门洞 d_bese 上方过门头，过梁关系待现场复核 }
   - { wall: w_be_west, at: {x: 13.4, z: 6.29}, height: 2.35, routes: [condensate-study], note: 冷凝水单独穿点，对齐折线交点，过梁关系待现场复核 }
   - { wall: w_mbath_south, at: {x: 0.26, z: 2.86}, height: 0.18, routes: [water-master-bath], note: 第三轮复审修正：穿点对齐盆心 x=0.26 正交穿墙（原 0.44 为斜穿实测交点偏差 6.4cm）；门洞 d_mbath 以西实体段，垫层/沉箱 }
-  - { wall: w_mbath_south, at: {x: 2.0, z: 2.86}, height: 2.27, routes: [condensate-master], note: 门洞以东实体段，避让参考梁头 x[1.2,1.9] }
+  - { wall: w_mbath_south, at: {x: 2.0, z: 2.86}, height: 2.27, routes: [condensate-master], note: "门洞以东实体段，避让参考梁头 x[1.2,1.9]" }
   - { wall: w_gbath_west_open_vanity, at: {x: 5.6, z: 3.87}, height: 2.27, routes: [condensate-child], note: 客卫开放洗漱区西隔墙 }
-  - { wall: w_gbath_south, at: {x: 5.9, z: 3.55}, height: 0.18, routes: [water-guest-bath], note: 沿墙线经门洞 d_gbath（x[5.6,6.3]）区间低位通过，垫层/门槛石下，非穿孔 }
+  - { wall: w_gbath_south, at: {x: 5.9, z: 3.55}, height: 0.18, routes: [water-guest-bath], note: "沿墙线经门洞 d_gbath（x[5.6,6.3]）区间低位通过，垫层/门槛石下，非穿孔" }
 datum_refs: [fact-ceiling-network, fact-door-openings, fact-master-intent, fact-outdoor-pos, fact-panel-pos]
 notes:
   - 所有标高为协调标高（吊顶空腔内），非放线标高；重力管 1% 坡（阳台排水 2%）为协调目标值。

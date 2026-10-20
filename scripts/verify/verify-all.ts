@@ -45,6 +45,7 @@ const VERIFIERS: VerifierSpec[] = [
   { name: 'verify-model-package-links', script: 'scripts/verify/model/verify-model-package-links.ts' },
   { name: 'verify-mep-takeoff', script: 'scripts/verify/mep/verify-mep-takeoff.ts' },
   { name: 'verify-schedule', script: 'scripts/schedule/control.ts' },
+  { name: 'verify-iteration-metadata', script: 'scripts/verify/iterations/verify-iteration-metadata.ts' },
 ];
 
 interface VerifierCounts {

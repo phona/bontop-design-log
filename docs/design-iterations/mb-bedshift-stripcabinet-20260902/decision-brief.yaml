@@ -11,7 +11,7 @@ frozen: true
 freeze_record:
   alignment_id: user-request-20260902-bedshift
   original_user_response: 业主拍板床北移 0.25m 解除 0.35m 风险；两块悬浮板改 1.24m 薄高柜补封闭收纳；门口双控随床位移贴 d_mb 门垛
-  normalized_decisions: [bed_180 z 6.85→6.60（AABB z[5.70,7.50]，保留）, 五个床头随床点位 z -0.25 平移（保留）, switch_master_door 改挂 w_strip_east 墙垛 z=4.45（保留）, 悬浮板 mb_vanity_lower_board/mb_vanity_main_board 恢复原位（along=3.35，四件同轴）, 薄高柜 mb_vanity_tall_cabinet 方案撤销（DEC-2026-09-02-052-补）]
+  normalized_decisions: ["bed_180 z 6.85→6.60（AABB z[5.70,7.50]，保留）", 五个床头随床点位 z -0.25 平移（保留）, switch_master_door 改挂 w_strip_east 墙垛 z=4.45（保留）, 悬浮板 mb_vanity_lower_board/mb_vanity_main_board 恢复原位（along=3.35，四件同轴）, 薄高柜 mb_vanity_tall_cabinet 方案撤销（DEC-2026-09-02-052-补）]
   confirmed_by_user: true
   confirmed_at: "2026-09-02T20:00:00+08:00"
   evidence_refs: [user-request-20260902-bedshift]

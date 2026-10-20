@@ -58,7 +58,7 @@ acceptance:
     - 设备带整体视角（含两条侧向百叶+底面两个下出风）
     - 餐厅第一人称视角（含北侧百叶、西侧服务带、餐桌吊灯）
     - 走廊→客卫洗漱区候选竖管路由视角
-  review_required: [aesthetic, functional]（fixed JSON contract，双 PASS 才 delivery_ready）
+  review_required: "[aesthetic, functional]（fixed JSON contract，双 PASS 才 delivery_ready）"
 
 alignment:
   - id: align1

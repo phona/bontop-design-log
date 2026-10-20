@@ -18,7 +18,6 @@ facts:
     - {id: fact-door-sweep-conflict, statement: "d_mb 开启门扇薄板带 x[3.30,4.20] z[4.63,4.67]：950 首版衣柜东缘 x=3.55 与该带干涉约 250mm；2026-09-06 收窄为 650 版，东缘退至 x=3.25（留 50mm 净距），干涉消除，verify 由 warning 改为 error 门槛（maxX≤3.25 强制）。未施工状态下未来若要恢复 950mm 宽，须另行评估改门向/门洞", source_refs: [scripts/verify/placement/verify-furniture-placement.ts], status: resolved}
   inferred:
     - {id: fact-r8-left-shift-infeasible, statement: "在保持950×580、三门、d_mb几何、DEC-045 bridge原位且不修改model-geometry/overlay的前提下，950衣柜不存在可行左移量：现状AABB x[2.60,3.55]；为避开d_mb需maxX≤3.30（至少左移0.25m），则minX≤2.35并越过北墙实体边界/侵入DEC-045 bridge；任意不越北墙边界的左移量仍与d_mb硬冲突", basis: "model-geometry w_mbath_east/x=2.60边界、DEC-045 bridge x[2.28,2.585]、d_mb sweep x[3.30,4.20]", status: resolved}
-  inferred:
     - {id: fact-r7-evidence-obsolete, statement: "R7/R7.1 650衣柜浏览器证据与 runtime AABB 仅为历史记录，因R8恢复950已过时，不得作为当前方案验收证据", basis: "R8 source_version 切换", status: resolved}
     - {id: fact-wardrobe-runtime, statement: "按 650 recipe，runtime closed AABB ≈ x[2.60,3.25] z[4.30,4.88]、高 2.45m；门扇开启后最大南向包络约 z≈5.17", basis: "FixtureFactory recipe 推导", status: resolved}
     - {id: fact-condensate-west-exposed, statement: "通长檐口取消后，冷凝水候选 x[2.0,3.45] 段无吊顶遮盖，需局部包管/管窿，已标 pending", basis: "mep-hvac-coordination.yaml condensate-master", status: open}

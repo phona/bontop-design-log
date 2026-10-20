@@ -56,7 +56,7 @@ alignment:
 acceptance:
   validation_commands: [npm run verify:all, npm run test:server, npm run typecheck]
   browser_evidence_required: true
-  required_views: [用户提供 Image #1 机位, 用户提供 Image #2 机位]
+  required_views: ["用户提供 Image #1 机位", "用户提供 Image #2 机位"]
   aesthetic_review: PENDING
   functional_review: PENDING
   construction_review: pending

@@ -39,4 +39,4 @@ acceptance:
     - npm run verify:all
     - npm run test:server
     - npm run typecheck
-    required: "synthetic and CLI integration fail-closed tests pass, including same-element path joins and shallow runtime wall-slab entry; current baseline must retain and report the two detected furniture-wall blockers rather than hiding them"
+  required: "synthetic and CLI integration fail-closed tests pass, including same-element path joins and shallow runtime wall-slab entry; current baseline must retain and report the two detected furniture-wall blockers rather than hiding them"

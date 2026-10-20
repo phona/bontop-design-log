@@ -117,7 +117,7 @@ objects:
     decision_refs: [user-confirmed-continuous-band-1250-20261015, DEC-2026-10-07-R03]
     dependencies: [config/hvac.yaml]
     interfaces:
-      - {id: same-face, target_object_id: hvac:supply_living, kind: visual, requirement: 同面同标高，x[7.20,9.70]接续功能段, status: confirmed_for_preview}
+      - {id: same-face, target_object_id: hvac:supply_living, kind: visual, requirement: "同面同标高，x[7.20,9.70]接续功能段", status: confirmed_for_preview}
     collision: {policy: decorative closed panel, geometry_ref: config/hvac.yaml#LD-deco-side-south, review_ref: evidence/living-south-hvac-face-runtime.json}
     maintenance:
       boundary: 无送风功能
@@ -186,7 +186,7 @@ objects:
     decision_refs: [DEC-2026-10-15-P17]
     dependencies: [config/layout/overlay.yaml, config/ceiling.yaml, config/layout/model-geometry.yaml, server/paint-cost-comparison.ts]
     interfaces:
-      - {id: ceiling-geometry, target_object_id: ceiling:ceiling_main_corridor, kind: ceiling_attachment, requirement: footprint为x[4.20,7.20]×z[4.30,5.55]，面积3.75㎡，扣除铝扣板投影, status: confirmed}
+      - {id: ceiling-geometry, target_object_id: ceiling:ceiling_main_corridor, kind: ceiling_attachment, requirement: "footprint为x[4.20,7.20]×z[4.30,5.55]，面积3.75㎡，扣除铝扣板投影", status: confirmed}
       - {id: independent-selector, target_object_id: finish:main-corridor-wall-paint-selection, kind: independent_scope, requirement: 可单独增删本顶面声明而不改变墙面量, status: user_decision}
     collision: {policy: paint ceiling selection attaches to declared ceiling zone, geometry_ref: config/layout/overlay.yaml#paint_ceiling_region, review_ref: verify:finish-scope}
     maintenance:
