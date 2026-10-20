@@ -13,12 +13,12 @@ source_policy:
     - "对 image.png 产品图做像素连通域分析：前视可见6个乳白球泡（上2/中2/下2），球泡宽约195–241px；黑色灯盘暗像素集中于 y≈3450–3630；规格行文字 10头/1000*450mm/G9*10/适用18-25M²。"
     - "对 image-2.png 产品参数图（10头版）做尺寸线与中轴剖面测量：制造商标注 Φ120mm 吸顶盘 / H25mm / 球泡Φ130mm / 整高450mm / Φ1000mm；中轴剖面读出的结构链=吸顶盘→吊杆→黑色关节球→台阶黑盘→双层10臂；横纵标尺不一致（横 531px=1000mm、纵 328px≈450mm，纵向压缩约1.6×），故未标注的方位/角度量（臂3D方位、上层环俯仰）按设计提案处理，不按像素反推。"
   runtime_refs:
-    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/underside.runtime.json
-    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/context.runtime.json
-    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/closeup.runtime.json
-    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/elevation-profile.runtime.json
-    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/topdown.runtime.json
-    - docs/design-iterations/living-multi-globe-main-light-20261016/evidence/r5/topdown-envelope.runtime.json
+    - docs/design-iterations/archive/living-multi-globe-main-light-20261016/evidence/r5/underside.runtime.json
+    - docs/design-iterations/archive/living-multi-globe-main-light-20261016/evidence/r5/context.runtime.json
+    - docs/design-iterations/archive/living-multi-globe-main-light-20261016/evidence/r5/closeup.runtime.json
+    - docs/design-iterations/archive/living-multi-globe-main-light-20261016/evidence/r5/elevation-profile.runtime.json
+    - docs/design-iterations/archive/living-multi-globe-main-light-20261016/evidence/r5/topdown.runtime.json
+    - docs/design-iterations/archive/living-multi-globe-main-light-20261016/evidence/r5/topdown-envelope.runtime.json
   evidence_refs:
     - "npm run gate:visual before R5 => CLEAR; ceiling=50c1c81f9ec8; electrical=f2b49b7bcdb3; plumbing=7f1513d14f27; materials=64176f576326."
 entry_shape: {id: "", category: confirmed, statement: "", value: null, source_refs: [], basis: "", confidence: high, impact: material, affected_objects: [], affected_views: [perspective, elevation], owner: "", status: open, verification_method: "", user_confirmation_ref: null}
@@ -70,7 +70,7 @@ facts:
       category: confirmed
       statement: "R4深钟形侧架垂吊造型（上口Ø780/下口Ø520×深280mm、暖铜吊杆与单弧、总下垂350mm）由本轮替换为10头球泡半吸顶造型；R4模型、截图、评审与DEC保留为历史，不删除。"
       value: {superseded_style: suspended_offset_side_arch_opal_lantern, superseded_drop_m: 0.35}
-      source_refs: [docs/design-iterations/living-sculptural-main-light-r4-20261016/work-record.md, docs/decisions/06-electrical.md#DEC-2026-10-16-R4]
+      source_refs: [docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/work-record.md, docs/decisions/06-electrical.md#DEC-2026-10-16-R4]
       basis: 用户2026-10-16提供新参考图并确认三项选择
       confidence: high
       impact: material

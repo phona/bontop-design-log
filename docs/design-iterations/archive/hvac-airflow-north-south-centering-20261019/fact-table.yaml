@@ -13,7 +13,7 @@ facts:
   - id: f_r03_rows
     status: confirmed
     statement: R03 下出风/回风行中心 z=4.85/4.45，行中心均值4.65，比边吊中心偏北0.275m。
-    source_refs: [docs/design-iterations/hvac-airflow-row-centering-20261019/evidence/runtime-query.json, docs/decisions/05-hvac.md:210-220]
+    source_refs: [docs/design-iterations/archive/hvac-airflow-row-centering-20261019/evidence/runtime-query.json, docs/decisions/05-hvac.md:210-220]
     impact: 两排之间仍保持0.40m，但作为一组偏北。
     affected_objects: [supply_dining_bottom, supply_living_bottom, return_dining, return_living]
     owner: design

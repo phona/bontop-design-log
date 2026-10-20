@@ -32,7 +32,7 @@
     ]
   },
   "evidence": {
-    "prior_candidate": "R01/R02 preserved in docs/design-iterations/hvac-airflow-grouping-20261018/ and hvac-airflow-centering-20261018/",
+    "prior_candidate": "R01/R02 preserved in docs/design-iterations/archive/hvac-airflow-grouping-20261018/ and archive/hvac-airflow-centering-20261018/",
     "current_browser": "reloaded 2026-10-19T01:16:07Z: http://127.0.0.1:5175/ via API http://localhost:4111; isReady=true, no config error, visual gate CLEAR",
     "candidate_runtime": "confirmed in current Three.js scene: supply row x=8.60/12.00 and return row x=9.65/10.95; each row center is x=10.30",
     "screenshots": [

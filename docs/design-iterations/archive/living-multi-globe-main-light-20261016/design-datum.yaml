@@ -59,7 +59,7 @@ datums:
       - "现场梁位、顶板承重、灯重、换泡路径、风口气流与坐姿视线属于site_pending。"
     validation_refs:
       - "参考图：/home/tao/.shellboard/uploads/s_LZ63XlvICjQ/image.png"
-      - "R4被替换造型历史：docs/design-iterations/living-sculptural-main-light-r4-20261016/"
+      - "R4被替换造型历史：docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/"
     status: frozen_proposal
 notes:
   - "height=0.45m仅表示模型总下垂，不是商品或安装尺寸。"

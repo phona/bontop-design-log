@@ -69,7 +69,7 @@ facts:
     - id: fact-wall-finish-face
       statement: "按 runtime 默认墙厚 0.12m，w_mb_east west finish face 约为 x=4.14；socket infrastructure AABB 后缘约 x=4.139。"
       basis: "SceneBuilder/InfrastructureBuilder runtime wall thickness and projection"
-      source_refs: [shared/render/InfrastructureBuilder.ts, docs/design-iterations/spatial-validation-20260908/fact-table.yaml]
+      source_refs: [shared/render/InfrastructureBuilder.ts, docs/design-iterations/archive/spatial-validation-20260908/fact-table.yaml]
       status: resolved
       confidence: medium
     - id: fact-scheme-a-clearance

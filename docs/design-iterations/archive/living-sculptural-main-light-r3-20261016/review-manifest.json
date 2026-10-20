@@ -34,8 +34,8 @@
   "baseline_evidence": {
     "description": "R2最新仰视仍被业主指出像吸顶灯；该图和源runtime保留作失败基线。",
     "screenshot": "/home/tao/.shellboard/uploads/s_EAmoN0mKnwA/image-13.png",
-    "runtime": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/underside.runtime.json",
-    "snapshot": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt"
+    "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/underside.runtime.json",
+    "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt"
   },
   "final_evidence": [
     {
@@ -62,8 +62,8 @@
       ],
       "target_object_id": "electrical:light_living_dome",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r3_underside_v001.png",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/underside.snapshot.txt",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/underside.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json",
       "status": "valid"
     },
     {
@@ -90,8 +90,8 @@
       ],
       "target_object_id": "electrical:light_living_dome",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r3_closeup_v001.png",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/closeup.snapshot.txt",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/closeup.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/closeup.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/closeup.runtime.json",
       "status": "valid"
     },
     {
@@ -118,8 +118,8 @@
       ],
       "target_object_id": "electrical:light_living_dome",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r3_side_view_v001.png",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.snapshot.txt",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.runtime.json",
       "status": "valid"
     },
     {
@@ -146,8 +146,8 @@
       ],
       "target_object_id": "electrical:light_living_dome",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_context_view_v015.png",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/context.snapshot.txt",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/context.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/context.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/context.runtime.json",
       "status": "valid"
     },
     {
@@ -175,8 +175,8 @@
       ],
       "target_object_id": "electrical:light_living_dome",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_top_down_v012.png",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/topdown.snapshot.txt",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/topdown.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/topdown.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/topdown.runtime.json",
       "status": "valid"
     }
   ],
@@ -214,11 +214,11 @@
         "tmp/screenshots/living-main-light/living_main_light_after_r3_side_view_v001.png",
         "tmp/screenshots/living-main-light/living_main_light_after_context_view_v015.png",
         "tmp/screenshots/living-main-light/living_main_light_after_top_down_v012.png",
-        "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/closeup.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/context.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/topdown.runtime.json"
+        "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/closeup.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/context.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/topdown.runtime.json"
       ],
       "requested_changes": [],
       "assumptions": [
@@ -239,11 +239,11 @@
         "现场梁/顶板承重、canopy固定、侧吊杆承载、弧脚连接、灯具重量、检修、光度和气流仍为site_pending。"
       ],
       "evidence_refs": [
-        "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/closeup.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/context.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/topdown.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/closeup.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/context.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/topdown.runtime.json",
         "shared/render/SculpturalDomeGeometry.ts",
         "shared/project-render-facts-schema.ts",
         "config/render/lighting.yaml",
@@ -333,7 +333,7 @@
       "完成follow_up_site_pending中的现场结构、气流、光度和维护资料后，方可讨论SKU或施工放行。"
     ]
   },
-  "superseded_by": "living-sculptural-main-light-r4-20261016",
+  "superseded_by": "archive/living-sculptural-main-light-r4-20261016",
   "supersession_note": "R8审美/功能PASS只针对R8几何；R9五视图随后显示支撑仍被灯体遮挡且仰视仍以圆盘为主。R9没有独立双审，且source_sha256仍绑定R8，因此只作为诊断证据。R3保持incomplete，由R4完成后续审图。",
   "evidence_state": {
     "r8": "historical_intermediate_review; reviewer PASS applies only to R8 geometry",
@@ -344,8 +344,8 @@
     {
       "id": "r9-underside",
       "url": "http://localhost:5175/?v=20261016-r9",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/underside.runtime.json",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/underside.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/underside.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/underside.snapshot.txt",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r3_underside_v002.png",
       "status": "diagnostic",
       "reason": "R3仍呈浅盘观感并暴露吊杆与锥壳相交/遮挡；该证据仅触发R4重构。"
@@ -353,8 +353,8 @@
     {
       "id": "r9-closeup",
       "url": "http://localhost:5175/?v=20261016-r9",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/closeup.runtime.json",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/closeup.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/closeup.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/closeup.snapshot.txt",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r3_closeup_v002.png",
       "status": "diagnostic",
       "reason": "R3仍呈浅盘观感并暴露吊杆与锥壳相交/遮挡；该证据仅触发R4重构。"
@@ -362,8 +362,8 @@
     {
       "id": "r9-side_view",
       "url": "http://localhost:5175/?v=20261016-r9",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/elevation-profile.runtime.json",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/elevation-profile.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/elevation-profile.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/elevation-profile.snapshot.txt",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r3_side_view_v002.png",
       "status": "diagnostic",
       "reason": "R3仍呈浅盘观感并暴露吊杆与锥壳相交/遮挡；该证据仅触发R4重构。"
@@ -371,8 +371,8 @@
     {
       "id": "r9-context",
       "url": "http://localhost:5175/?v=20261016-r9",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/context.runtime.json",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/context.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/context.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/context.snapshot.txt",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r3_context_v002.png",
       "status": "diagnostic",
       "reason": "R3仍呈浅盘观感并暴露吊杆与锥壳相交/遮挡；该证据仅触发R4重构。"
@@ -380,8 +380,8 @@
     {
       "id": "r9-topdown",
       "url": "http://localhost:5175/?v=20261016-r9",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/topdown.runtime.json",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/r9/topdown.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/topdown.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/topdown.snapshot.txt",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r3_topdown_v002.png",
       "status": "diagnostic",
       "reason": "R3仍呈浅盘观感并暴露吊杆与锥壳相交/遮挡；该证据仅触发R4重构。"

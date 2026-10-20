@@ -13,7 +13,7 @@ facts:
   - id: f_r02_row_centers
     status: confirmed
     statement: R02 四口平均值为10.30，但下出风排中心为9.75、回风排中心为10.85，分别偏西/偏东0.55m。
-    source_refs: [docs/design-iterations/hvac-airflow-centering-20261018/evidence/runtime-query.json, docs/decisions/05-hvac.md:197-207]
+    source_refs: [docs/design-iterations/archive/hvac-airflow-centering-20261018/evidence/runtime-query.json, docs/decisions/05-hvac.md:197-207]
     impact: 总组中心对齐不代表两排分别居中。
     affected_objects: [supply_dining_bottom, supply_living_bottom, return_dining, return_living]
     owner: design

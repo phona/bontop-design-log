@@ -33,7 +33,7 @@
     ]
   },
   "evidence": {
-    "prior_candidate": "DEC-2026-10-18-R01, preserved in docs/design-iterations/hvac-airflow-grouping-20261018/",
+    "prior_candidate": "DEC-2026-10-18-R01, preserved in docs/design-iterations/archive/hvac-airflow-grouping-20261018/",
     "current_browser": "reloaded 2026-10-18T15:52:21Z: http://127.0.0.1:5175/ via API http://localhost:4111; isReady=true, no config error, visual gate CLEAR",
     "candidate_runtime": "confirmed in current Three.js scene at evidence/runtime-query.json; four live HVAC groups match x=8.60/9.70/10.90/12.00",
     "manufacturer_drawings": "not required to create this owner-directed preview; still required before construction airflow/interface verification",

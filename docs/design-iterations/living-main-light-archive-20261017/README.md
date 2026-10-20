@@ -18,7 +18,7 @@
 
 本轮 `npm run gate:visual` 因 `tsx` 在沙箱中创建临时 IPC 管道时遇到 `EPERM` 未能启动；改用 `node --import tsx` 后，门禁报告本地渲染服务不可达。为避免启动服务时触发项目已记录的 `presentation-state.json` 持久化副作用，本轮没有启动 dev server。
 
-因此，这里保留的是当前工作区的源文件快照和已有截图；没有声称新截取的画面与源文件经过同版运行时核对。另，旧迭代目录 `living-multi-globe-main-light-20261016/evidence/r5/context.runtime.json` 实际记录的是 R7 参数（例如吊杆 120mm、上层半径 0.22m），不能作为当前 R11 的运行时证据。
+因此，这里保留的是当前工作区的源文件快照和已有截图；没有声称新截取的画面与源文件经过同版运行时核对。另，旧迭代目录 `archive/living-multi-globe-main-light-20261016/evidence/r5/context.runtime.json` 实际记录的是 R7 参数（例如吊杆 120mm、上层半径 0.22m），不能作为当前 R11 的运行时证据。
 
 ## 恢复提示
 

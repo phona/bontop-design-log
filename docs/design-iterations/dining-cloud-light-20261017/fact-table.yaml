@@ -23,7 +23,7 @@ source_policy:
     - "业主选择的餐厅平顶范围 x[7.70,10.80]×z[3.00,4.30] 中心为 (9.25,3.65)；这不是 model-geometry 中的独立房间边界。"
     - "商品参数图由业主提供：灯罩 Φ50×H11cm，底盘 Φ50×2.6cm；总垂挂高度未列。"
   runtime_refs:
-    - "R12c 有效基线：docs/design-iterations/dining-semi-flush-20261016/evidence/r12/dining-context.runtime.json；改前浏览器与配置一致，gate:visual CLEAR。"
+    - "R12c 有效基线：docs/design-iterations/archive/dining-semi-flush-20261016/evidence/r12/dining-context.runtime.json；改前浏览器与配置一致，gate:visual CLEAR。"
   evidence_refs:
     - evidence/product-reference.png
     - evidence/parameter-reference.png

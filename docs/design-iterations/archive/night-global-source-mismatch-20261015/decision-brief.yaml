@@ -24,7 +24,7 @@ freeze_record:
     - 静态日间光只在当前选定状态为白天且未启用夜景手动时恢复。
   confirmed_by_user: true
   confirmed_at: "2026-10-15"
-  evidence_refs: ["docs/design-iterations/night-only-indoor-lighting-20261015/decision-brief.yaml"]
+  evidence_refs: ["docs/design-iterations/archive/night-only-indoor-lighting-20261015/decision-brief.yaml"]
 allowed_scope:
   files:
     - app/src/render/EnvironmentManager.ts

@@ -21,7 +21,7 @@ facts:
   - id: f_r01_baseline
     status: confirmed
     statement: R01 候选四口中心为 x=8.00/9.10/10.30/11.40，四口中心值平均 x=9.70，比边吊中心偏西0.60m。
-    source_refs: [docs/design-iterations/hvac-airflow-grouping-20261018/review-manifest.json, docs/decisions/05-hvac.md:185-195]
+    source_refs: [docs/design-iterations/archive/hvac-airflow-grouping-20261018/review-manifest.json, docs/decisions/05-hvac.md:185-195]
     impact: 说明本轮向东整体调整0.60m的来源及被覆盖的坐标。
     affected_objects: [supply_dining_bottom, return_dining, supply_living_bottom, return_living]
     owner: design

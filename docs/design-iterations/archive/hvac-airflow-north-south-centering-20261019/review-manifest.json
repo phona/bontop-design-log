@@ -33,7 +33,7 @@
     ]
   },
   "evidence": {
-    "prior_candidate": "R03 x-centering preserved in docs/design-iterations/hvac-airflow-row-centering-20261019/",
+    "prior_candidate": "R03 x-centering preserved in docs/design-iterations/archive/hvac-airflow-row-centering-20261019/",
     "current_browser": "reloaded 2026-10-19T01:33:32Z: http://127.0.0.1:5175/ via API http://localhost:4111; isReady=true, no config error; runtime query reconfirmed all four R04 transforms",
     "candidate_runtime": "confirmed in current Three.js scene at evidence/runtime-query.json; supply z=5.125, return z=4.725, pair midpoint z=4.925",
     "screenshots": [

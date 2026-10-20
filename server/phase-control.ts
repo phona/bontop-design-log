@@ -14,7 +14,7 @@ import type { PhaseId, PhaseScope } from '../shared/types.js';
 // 并通过 budget API / MCP `overCeilingBy` 输出成 190,000——业主看到的一期上限长期是作废值。
 //
 // 现状（2026-10-04 重构后）：
-//   * 现行执行上限 = control.yaml `control.phase_ceiling_cny`（206,000），本模块是它的唯一读取入口；
+//   * 现行执行上限 = control.yaml `control.phase_ceiling_cny`（210,000），本模块是它的唯一读取入口；
 //   * 作废值只通过 control.yaml `budget_reconciliation.historical_baseline` 段露出
 //     （该段自带 source / status 标注），base.json **不再作为任何计算与接口的输入源**；
 //   * base.json 的 `categories` 仍是唯一的分科目预算明细，作为历史分科口径继续供 breakdown 使用。
