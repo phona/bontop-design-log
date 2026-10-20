@@ -34,9 +34,9 @@ allowed_scope:
     - app/src/render/FixtureFactory.test.ts
     - tests/server/cli-glb-export.test.ts
     - tests/server/shared/scene-builder.test.ts
-    - docs/hvac_options_analysis.md
-    - docs/hvac-deepening-20260907.md
-    - docs/hvac-rfq-brief-20261003.md
+    - docs/hvac/hvac_options_analysis.md
+    - docs/hvac/hvac-deepening-20260907.md
+    - docs/hvac/hvac-rfq-brief-20261003.md
     - docs/material_selection_log.md
     - docs/pending-site-data.md
     - docs/decisions/

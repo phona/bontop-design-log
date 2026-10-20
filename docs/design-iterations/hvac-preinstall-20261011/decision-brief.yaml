@@ -16,7 +16,7 @@ freeze_record:
   confirmed_at: 2026-10-11
   evidence_refs: [user:2026-10-11]
 allowed_scope:
-  files: [docs/hvac-pitfall-audit-20261011.md, app/src/render/MepCoordinationRenderer.ts, app/src/render/MepCoordinationRenderer.test.ts, app/src/render/HouseScene.ts, app/src/ui/InfoPanel.ts, app/src/ui/InfoPanel.test.ts]
+  files: [docs/hvac/hvac-pitfall-audit-20261011.md, app/src/render/MepCoordinationRenderer.ts, app/src/render/MepCoordinationRenderer.test.ts, app/src/render/HouseScene.ts, app/src/ui/InfoPanel.ts, app/src/ui/InfoPanel.test.ts]
   objects: [六条现有 condensate MEP 路线及候选终点]
   archetypes: [inspection_only]
   views: [plan, perspective]

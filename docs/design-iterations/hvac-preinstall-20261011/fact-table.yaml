@@ -9,7 +9,7 @@ source_policy:
   observation_refs: [docs/decisions/05-hvac.md, schedule/procurement.md]
   measurement_refs: []
   runtime_refs: [docs/design-iterations/hvac-preinstall-20261011/evidence/runtime-query.json]
-  evidence_refs: [docs/hvac-pitfall-audit-20261011.md]
+  evidence_refs: [docs/hvac/hvac-pitfall-audit-20261011.md]
 facts:
   confirmed:
     - id: contract-six-pumps

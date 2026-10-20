@@ -357,7 +357,7 @@ gift_areas:
     area: 1.60
     status: "design"
     orientation: "西"
-    notes: "701 唯一可用设备平台，赠送面积，面积约 1.60㎡（bbox 口径；含 r=1.0 西北圆角后可用约 1.39㎡，依据 model-geometry.yaml platform.boundary + overlay.yaml north_platform_floor）。因面积有限且西户专属，空调方案建议采用中央空调/多联机（一台外机），避免多台分体外机放不下。详见 docs/hvac_options_analysis.md（本区域未在当前效果图模型中渲染，以合同/物业图为准）"
+    notes: "701 唯一可用设备平台，赠送面积，面积约 1.60㎡（bbox 口径；含 r=1.0 西北圆角后可用约 1.39㎡，依据 model-geometry.yaml platform.boundary + overlay.yaml north_platform_floor）。因面积有限且西户专属，空调方案建议采用中央空调/多联机（一台外机），避免多台分体外机放不下。详见 docs/hvac/hvac_options_analysis.md（本区域未在当前效果图模型中渲染，以合同/物业图为准）"
 
 mechanical_electrical_plumbing:
   hvac:
@@ -382,7 +382,7 @@ mechanical_electrical_plumbing:
     notes:
       - "因仅有一个 1.60㎡ 设备平台（模型 bbox 口径；含 r=1.0 西北圆角可用约 1.39㎡），分体机外机位不足，多联机为唯一可行架构"
       - "现行合同配置六台均为 /P-SS 带泵双出风内机；更改内机形式或型号需另行确认，不沿用历史壁挂机备选。"
-      - "DEC-2026-09-07-055 深化（原选品为占位，未作真实研究）：内机标称合计 21.4kW，外机 6HP 连接率 138% 超行业上限（120-130%）出局，定为 7HP 级（≈18kW，连接率≈1.19，两人低同开可接受）；品牌未定，短名单与价格见 docs/hvac-deepening-20260907.md，预算差额约 0~+7k 待业主拍板"
+      - "DEC-2026-09-07-055 深化（原选品为占位，未作真实研究）：内机标称合计 21.4kW，外机 6HP 连接率 138% 超行业上限（120-130%）出局，定为 7HP 级（≈18kW，连接率≈1.19，两人低同开可接受）；品牌未定，短名单与价格见 docs/hvac/hvac-deepening-20260907.md，预算差额约 0~+7k 待业主拍板"
 
   hot_water:
     system: "燃气热水器"

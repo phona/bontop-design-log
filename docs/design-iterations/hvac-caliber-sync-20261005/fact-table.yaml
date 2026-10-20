@@ -18,7 +18,7 @@ facts:
       impact: material
     - id: F-deleted-old-caliber
       statement: 'docs/material_selection_log.md 的「6 匹一拖五」推荐块与三种配置候选对比表、以及把 R6 21.6kW/1.08 陈述为"现行配置"的段落已删除；config/facts.yaml 中指向已不存在内容的风管机豁免与旧现行型号串注释已更正/删除。'
-      source_refs: [docs/material_selection_log.md, docs/hvac_options_analysis.md, docs/hvac-deepening-20260907.md, config/facts.yaml]
+      source_refs: [docs/material_selection_log.md, docs/hvac/hvac_options_analysis.md, docs/hvac/hvac-deepening-20260907.md, config/facts.yaml]
       confidence: high
       impact: material
   superseded:

@@ -12,7 +12,7 @@
     ],
     "asset_refs": [],
     "render_facts_ref": null,
-    "source_digest": "docs/hvac-pitfall-audit-20261011.md sha256:511e3cfdf583b78cc2dbcbc2d348540e78adcf2de0869de0a51ae0eeedc21e98",
+    "source_digest": "docs/hvac/hvac-pitfall-audit-20261011.md sha256:511e3cfdf583b78cc2dbcbc2d348540e78adcf2de0869de0a51ae0eeedc21e98",
     "generated_at": "2026-10-11"
   },
   "validation": {
@@ -70,7 +70,7 @@
     "verdict": "PASS",
     "blocking_issues": [],
     "non_blocking_notes": ["既有 MEP lint 继续检查候选几何；真实排水受纳点仍需现场和厂家深化。", "独立路线复核未发现 v4.2 平面长度重大错算；新增厨卫路线只有平面下限，尚无可施工标高。"],
-    "evidence_refs": ["app/src/render/MepCoordinationRenderer.ts", "docs/hvac-pitfall-audit-20261011.md", "config/ceiling.yaml", "config/layout/model-geometry.yaml"],
+    "evidence_refs": ["app/src/render/MepCoordinationRenderer.ts", "docs/hvac/hvac-pitfall-audit-20261011.md", "config/ceiling.yaml", "config/layout/model-geometry.yaml"],
     "requested_changes": [],
     "assumptions": []
   },

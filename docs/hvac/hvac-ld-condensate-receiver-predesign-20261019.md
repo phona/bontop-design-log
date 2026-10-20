@@ -4,7 +4,7 @@
 - **状态**：预研稿，**未裁定**。本文不改任何 config、不替代任何 DEC；是否采用由业主拍板后另开 DEC 落地。
 - **审查记录**：v1 经两轮独立只读审查（codex，分别跑完整清单），verdict 均为「不能作为六台定案基线」。v2 按审查确认项修订，删除/改写处逐条列于 §9（项目铁律 5：diff 删了什么）。
 - **范围**：客餐厅两台内机（ac_living 71T2/P-SS @(10.30,4.75)、ac_dining 42T2/P-SS @(8.00,4.75)）为主；§8 附书房/儿童房；主卧、东南客房只登记方向与未闭环项。
-- **输入**：`config/hvac.yaml`（A2）、`config/mep-hvac-coordination.yaml`（condensate-* 路线，route_kind=candidate）、`config/plumbing.yaml`（排水立管推断锚点）、`config/layout/overlay.yaml`（kitchen_north_bay 等）、`docs/pending-site-data.md` #6/#7/#16/#39/#41、`docs/hvac-pitfall-audit-20261011.md` v4.4。
+- **输入**：`config/hvac.yaml`（A2）、`config/mep-hvac-coordination.yaml`（condensate-* 路线，route_kind=candidate）、`config/plumbing.yaml`（排水立管推断锚点）、`config/layout/overlay.yaml`（kitchen_north_bay 等）、`docs/pending-site-data.md` #6/#7/#16/#39/#41、`docs/hvac/hvac-pitfall-audit-20261011.md` v4.4。
 - **方法**：先查业界规范与厂家通行做法（§1 来源），再与项目硬约束对表；结构性判断直接给，测量类未知标 site_pending 并给反转条件。
 
 ## 1. 业界最佳实践要点（含来源与可信度标注）

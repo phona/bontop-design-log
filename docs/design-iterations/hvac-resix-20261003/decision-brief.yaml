@@ -37,7 +37,7 @@ allowed_scope:
     - docs/decision_log.md
     - docs/pending-site-data.md
     - docs/material_selection_log.md
-    - docs/hvac-rfq-brief-20261003.md
+    - docs/hvac/hvac-rfq-brief-20261003.md
     - docs/mep-construction-guidance.md
     - schedule/phase-1/control.yaml
     - schedule/procurement.md

@@ -34,9 +34,9 @@
 - **决策事项**：
   - **内机重选**（合计 21.4kW）：客餐厅+开放厨房 54.5㎡ → 10.0kW（5HP 级，行业口径 45-50㎡+开放厨房需 9-11kW）；主卧 7.1→4.5kW；父母房 5.6→2.5kW；儿童房 5.6→2.2kW；书房 5.6→2.2kW。
   - **外机容量**：6HP（15.5kW）对 21.4kW 内机连接率 138%，超行业上限（120-130%）**出局**；定为 **7HP 级（≈18kW，连接率≈1.19）**，两人低同开工况可接受；8HP 家用机型少见，作备选（预算 +3k-5k）。
-  - **品牌未定标**：短名单 A 美的 7匹（2.8-3.4万，主推）/ B 格力（3.2-3.8万）/ C 小米 6匹（连接率不合规，须内机 ≤20kW 配置单才可救活）/ D 大金日立（超预算不推荐）/ E 海尔（居中）。见 `docs/hvac-deepening-20260907.md`。
+  - **品牌未定标**：短名单 A 美的 7匹（2.8-3.4万，主推）/ B 格力（3.2-3.8万）/ C 小米 6匹（连接率不合规，须内机 ≤20kW 配置单才可救活）/ D 大金日立（超预算不推荐）/ E 海尔（居中）。见 `docs/hvac/hvac-deepening-20260907.md`。
 - **预算影响**：现预算 29000，A 档实际成交差额约 0~+7k；科目调整待业主拍板后再改 base.json。
-- **关联文件**：`config/hvac.yaml`（A2 outdoor + load_design）、`config/ceiling.yaml`（五台内机容量标注）、`config/house.yaml`（hvac 段与 pending_verification）、`config/tradeoffs.yaml`（hvac_brand 短名单）、`docs/hvac-deepening-20260907.md`（新增）、`docs/hvac_options_analysis.md`（头部口径更新）
+- **关联文件**：`config/hvac.yaml`（A2 outdoor + load_design）、`config/ceiling.yaml`（五台内机容量标注）、`config/house.yaml`（hvac 段与 pending_verification）、`config/tradeoffs.yaml`（hvac_brand 短名单）、`docs/hvac/hvac-deepening-20260907.md`（新增）、`docs/hvac/hvac_options_analysis.md`（头部口径更新）
 - **决策人**：业主（深化由 AI 助理完成，品牌待业主定标）
 
 ### DEC-2026-10-03-R3 中央空调定标方向：美的领航者四代 一拖六 200外机 / 36,000，一期上限 203,000→206,000
@@ -81,13 +81,13 @@
   - **状态拆分**：owner_selected（2026-10-03 业主定标配置）/ vendor_verification_pending（第二家分项报价、厂家冷负荷计算书、外机平台散热核算、厂家正式配电图、外机供电制式）/ construction_not_frozen（量房与水电交底前不施工冻结）
 - **现场待确认**：① 外机位 1.6×1.55m 能否容纳 200W 外机及其供电制式（220V/380V）；② 分项报价与风口加长、超长铜管计价；③ 主卧台盆/龙头、马桶 SKU 未定，相关给排水与插座维持 site_pending。
 - **current state 回写**：本决策已同步编译回 config/hvac.yaml（6 台 21.6kW / 20kW / 1.08）、config/ceiling.yaml（ac_dining @(8.00,4.75)）、config/electrical.yaml（sock_dining_ac）、config/electrical-topology.yaml（hvac_power_living 增成员、容量 ≤0.6kW）、config/mep-hvac-coordination.yaml（餐厅冷媒/冷凝水/送回风）、docs/pending-site-data.md #39、schedule/procurement.md §01，消除"同一问题多个当前答案"
-- **关联文件**：`docs/hvac-rfq-brief-20261003.md`（询价需求书，交第二家经销商）、`config/hvac.yaml`（本轮已回写，见 current state 回写）、同小区参考报价（.xlsx，业主提供）、`docs/pending-site-data.md` #39
+- **关联文件**：`docs/hvac/hvac-rfq-brief-20261003.md`（询价需求书，交第二家经销商）、`config/hvac.yaml`（本轮已回写，见 current state 回写）、同小区参考报价（.xlsx，业主提供）、`docs/pending-site-data.md` #39
 - **决策人**：业主（选配置与预算口径）；施工尺寸待量房与厂家冷负荷软件复核
 
 ### DEC-2026-10-04-R1 中央空调定标成交：36,000 元（领航者Ⅳ 200 主机 + 6 台双出风内机）
 
 - **日期**：2026-10-04
-- **成交事实**：业主持 `docs/hvac-rfq-brief-20261003.md` 完成第二家询价并定标。签约方为南宁长旺建材家居市场美的中央空调智慧空气馆长旺家中店；合同附件（第十二条）为分项报价清单与安装收费标准，辅材一览表 27 项。
+- **成交事实**：业主持 `docs/hvac/hvac-rfq-brief-20261003.md` 完成第二家询价并定标。签约方为南宁长旺建材家居市场美的中央空调智慧空气馆长旺家中店；合同附件（第十二条）为分项报价清单与安装收费标准，辅材一览表 27 项。
   - 外机 **美的领航者Ⅳ MJV-200W-E01-LHIV，20kW，14,124 元**（与 R6 指定一致）
   - 内机 **6 台全部为双出风内机 MJV-…/P-SS，6 台全带冷凝提升泵**；型号判读 **71T2 + 42T2 + 56T2 + 28T2×3 = 25.3kW**（**照片判读，房间映射与逐台型号以合同附图为准，核对后回写 config/hvac.yaml**）
   - 安装 1,400 元/台 × 6 = 8,400 元
@@ -108,7 +108,7 @@
 - **待核项（回写 config 的前置）**：① 合同房间映射与逐台容量表；② 外机实测尺寸与 1.6×1.55m 西平台散热核算（百叶有效通风面积、进排风净距、检修距离、热短路）；③ 厂家多台内机合并供电正式配电图（供电制式 220V 已确认）；④ 风口加长是否已含在 36,000 内（辅材表明细含 1300×300 长回风，倾向已含，需书面确认）。
 - **证据归档**：合同附件两页、美的内机参数表、比价报价、同小区参考报价、辅材与边界条款全文转录 → `docs/design-iterations/hvac-resix-20261003/evidence/`（含 sha256）
 - **更正（2026-10-04 归档合同附件时发现）**：初稿据辅材表明细含「复合风管」而记录为「36,000 含复合风管」，**该判断错误**。合同附件备注 2 明确：**不含复合风管费用、不含风口加长费用，加长另按 100 元/米收取**；备注 5：不含税。因此 36,000 **不是最终落地价**，实际会更高；且为「避开餐桌直吹」而西移/沿顶布置餐区出风口会拉长风管、产生加长费——签约前须让销售按图报加长与复合风管的金额上限。
-- **关联文件**：`config/hvac.yaml`（A2 load_design 已补采购事实）、`schedule/procurement.md` §01、`docs/pending-site-data.md` #39、`docs/hvac-rfq-brief-20261003.md`、`schedule/phase-1/control.yaml`（QR-2026-10-03-24）
+- **关联文件**：`config/hvac.yaml`（A2 load_design 已补采购事实）、`schedule/procurement.md` §01、`docs/pending-site-data.md` #39、`docs/hvac/hvac-rfq-brief-20261003.md`、`schedule/phase-1/control.yaml`（QR-2026-10-03-24）
 - **决策人**：业主（定标、容量偏差处置）；容量表与平台散热待合同与厂家资料
 
 ### DEC-2026-10-05-R1 成交内机逐房映射确认与主卧轴线修正
@@ -126,9 +126,9 @@
 - **坐标收口**：DEC-2026-10-05-R1 选定的主卧机身中心 x=3.70 此前只落到 `config/ceiling.yaml` 与 `config/hvac.yaml`。本轮推到其余四层——`config/house.yaml` 的 `condensate_pipe_ac_outlet` 锚点 3.80→3.70；`shared/render/FixtureFactory.ts` 的冷凝水横管由 0.30m 延长到 0.40m、柜内竖管中心 0.30→0.40，全链仍接到 x=4.10 墙完成面；`shared/types.ts` 该 fixture 包络 width 0.24→0.40；`app/src/render/HouseScene.ts` `inspectMasterBedroomCondensate` 的期望端点首段 3.80→3.70；`config/mep-hvac-coordination.yaml` 的 `supply-air-master`/`return-air-master` via 由 3.80/3.90 收到 3.70，与两个端子轴对齐。未移动任何机位、电气点位或墙体。
 - **测试收口**：`tests/server/cli-glb-export.test.ts` 的 HVAC 实体数 16→19、端子数 10→12，并按餐厅第六台补 `indoor_dining`/`power_dining`/`branch_dining`/`supply_dining`/`return_dining`（此前该文件随第六台入图而未更新，是 `test:server` 唯一红灯）。`tests/server/shared/scene-builder.test.ts`、`app/src/render/FixtureFactory.test.ts` 的夹具同步到 3.70。
 - **UI 收口**：`app/src/App.ts` 的 HVAC toast 原硬编码"一拖五"，与它自己算出的内机数（6）矛盾；改为不带台数的「空调协调已就绪：外机 n / 内机 n / 预深化路线 n」，`app/src/App.test.ts` 同步。
-- **旧口径清除**：按业主要求执行删除而非标注历史。`docs/material_selection_log.md` 的「6 匹一拖五」推荐块与三种配置候选对比表整段删除，材料设备费合计随之由 74,075 更正为 81,075（中央空调 29,000→36,000）；`docs/hvac_options_analysis.md` 头部两条 21.4kW/21.6kW 盖章合并为一行现行口径，架构对比表与坑点清单保留；`docs/hvac-deepening-20260907.md` 状态行里"现行配置 21.6kW/1.08"删除（文件本身因 `decision_log` 引用而保留）；`config/facts.yaml` 删掉指向已不存在内容的风管机豁免，并把"现行型号串"守卫改为 71T2/42T2/56T2/28T2×3。`config/materials.yaml` 的 `hvac_01` 由预研候选改写为成交口径（36,000/contracted），`hvac_02` 改判 rejected；两条都受 `config/procurement.yaml` 外键约束，不能删 id。
+- **旧口径清除**：按业主要求执行删除而非标注历史。`docs/material_selection_log.md` 的「6 匹一拖五」推荐块与三种配置候选对比表整段删除，材料设备费合计随之由 74,075 更正为 81,075（中央空调 29,000→36,000）；`docs/hvac/hvac_options_analysis.md` 头部两条 21.4kW/21.6kW 盖章合并为一行现行口径，架构对比表与坑点清单保留；`docs/hvac/hvac-deepening-20260907.md` 状态行里"现行配置 21.6kW/1.08"删除（文件本身因 `decision_log` 引用而保留）；`config/facts.yaml` 删掉指向已不存在内容的风管机豁免，并把"现行型号串"守卫改为 71T2/42T2/56T2/28T2×3。`config/materials.yaml` 的 `hvac_01` 由预研候选改写为成交口径（36,000/contracted），`hvac_02` 改判 rejected；两条都受 `config/procurement.yaml` 外键约束，不能删 id。
 - **新增待核**：合同附图与 CAD 的"次卧"标签数（DXF 各 3 个标注、转录"次卧×5"、空间模型三间次级卧室）此前无任何条目跟踪，新增 `docs/pending-site-data.md` #47，量表 46→47。
-- **未做**：`docs/decision_log.md` 历史正文、`docs/design-iterations/*` 既有迭代、`docs/hvac-rfq-brief-20261003.md`（询价请求原文）均未改写，仅 `docs/hvac-rfq-brief-20261003.md` 的"一句话结论"补了一行"询价口径，非成交配置"标注。
+- **未做**：`docs/decision_log.md` 历史正文、`docs/design-iterations/*` 既有迭代、`docs/hvac/hvac-rfq-brief-20261003.md`（询价请求原文）均未改写，仅 `docs/hvac/hvac-rfq-brief-20261003.md` 的"一句话结论"补了一行"询价口径，非成交配置"标注。
 - **发现的存量缺陷（不属本轮，未修）**：`app/src/render/HouseScene.ts` 的 `inspectMasterBedroomCondensate()` 在浏览器里返回 `ok=false`——`exportRoot` 只遍历到 3 个 `condensate-pipe-*` 零件（`mb_vanity_pvc_box` 与 `mb_vanity_pvc_wardrobe_entry` 各自产出的那几段），而同一份 config 在 CLI/Node 构建路径下有 13 个，`tests/server/shared/scene-builder.test.ts` 的十段连续性断言也全绿。用 `git stash` 回到本轮改动前的 HEAD 复测，浏览器侧同样 `ok=false`，确认与本轮 x=3.70 落地无关，是浏览器构建路径与 CLI 构建路径不一致造成的独立缺口。已记入 `hvac-caliber-sync-20261005/review-manifest.json` 的 `blocking_issues`。
 - **证据与实施记录**：`docs/design-iterations/hvac-caliber-sync-20261005/`；前置 `docs/design-iterations/hvac-contract-mapping-20261005/`（本轮在其 brief 上补了 `scope_addendum`，登记渲染层与测试层文件）。
 
