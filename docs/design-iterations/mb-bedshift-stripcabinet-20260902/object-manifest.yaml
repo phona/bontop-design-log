@@ -138,7 +138,7 @@ objects:
     archetypes: [tall_cabinet]
     owner: furniture
     function: 洗漱区封闭囤货收纳 + 冷凝水管检修遮蔽
-    material: 浅色柜体 #c9c1b5、门板 #e7e0d6、按压无把手
+    material: "浅色柜体 #c9c1b5、门板 #e7e0d6、按压无把手"
     geometry_source: shared/render/FixtureFactory.ts
     datum_refs: []
     fact_refs: [fact-tall-cabinet]
