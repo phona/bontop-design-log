@@ -28,23 +28,23 @@
 | 2026-10-20 | `docs/README.md` | 新建（本索引） |
 | 2026-10-20 | `docs/pending-site-data.md` | #39 挂 hvac-ld 门禁指针 |
 | 2026-10-20 | `docs/hvac/hvac-ld-condensate-receiver-predesign-20261019.md` | v2 预研稿新建（两轮独立审查修订） |
+| 2026-10-19 | `docs/mep-construction-guidance.md` | 机电指导更新 |
+| 2026-10-17 | `docs/style-guide.md` | 风格指南更新 |
+| 2026-10-17 | `docs/dressing-map.md` | 软装映射更新 |
+| 2026-10-15 | `docs/ceiling-scheme-20261008.md` | 10-15 几何修订提示（DEC-2026-10-15-C02） |
 | 2026-10-12 | `docs/hvac/hvac-pitfall-audit-20261011.md` | v4.4 实勘排水核对稿 |
 | 2026-10-09 | `docs/hvac/hvac-vendor-confirmation-sheet.md` | 厂家上门一页纸 |
-| 2026-10-15 | `ceiling-scheme-20261008.md` | 10-15 几何修订提示（DEC-2026-10-15-C02） |
+| 2026-10-09 | `docs/penetration-lint.md` | 防穿模规则 |
+| 2026-10-09 | `docs/visual-change-playbook.md` | 视觉改动流程 |
+| 2026-10-09 | `docs/twinmotion-acceptance.md` | Twinmotion 验收 |
+| 2026-10-07 | `docs/material_selection_log.md` | 选材日志（自述核对日 10-07） |
+| 2026-10-07 | `docs/designer_brief.md` | 对外交付件（预算口径待业主裁决） |
 | 2026-10-05 | `docs/hvac/hvac-rfq-brief-20261003.md` | 成交口径回写 |
 | 2026-10-05 | `docs/hvac/hvac_options_analysis.md` | 定标成交状态更新 |
 | 2026-10-05 | `docs/hvac/hvac-deepening-20260907.md` | 「已被 R6 取代」状态注记 |
-| 2026-10-19 | `mep-construction-guidance.md` | 机电指导更新 |
-| 2026-10-17 | `style-guide.md` | 风格指南更新 |
-| 2026-10-17 | `dressing-map.md` | 软装映射更新 |
-| 2026-10-09 | `penetration-lint.md` | 防穿模规则 |
-| 2026-10-09 | `visual-change-playbook.md` | 视觉改动流程 |
-| 2026-09-11 | `acceptance_checklist.md` | 已退场（口径收敛至 `config/acceptance.yaml`） |
-| 2026-09-02 | `curtain-design.md` | 窗帘设计定稿 |
-| 2026-09-01 | `render-tech-debt.md` | 已冻结（PAUSED/HISTORICAL） |
-| 2026-10-07 | `material_selection_log.md` | 选材日志（自述核对日 10-07） |
-| 2026-10-09 | `twinmotion-acceptance.md` | Twinmotion 验收 |
-| 2026-10-07 | `designer_brief.md` | 对外交付件（预算口径待业主裁决） |
+| 2026-09-11 | `docs/acceptance_checklist.md` | 已退场（口径收敛至 `config/acceptance.yaml`） |
+| 2026-09-02 | `docs/curtain-design.md` | 窗帘设计定稿 |
+| 2026-09-01 | `docs/render-tech-debt.md` | 已冻结（PAUSED/HISTORICAL） |
 
 > 深层的迭代记录见 `design-iterations/INDEX.yaml`；决策变更见 `decisions/` 各主题文件。
 
@@ -53,7 +53,7 @@
 | 目录 | 内容 | 性质 |
 |---|---|---|
 | `decisions/` | 18 个主题文件 + README，264 条 DEC | 决策日志。**正文只登记不改写**，索引与纪律见其 README |
-| `design-iterations/` | 45 个现役目录 + `archive/` 20 个 + `INDEX.yaml` | 迭代证据。机读索引见 `INDEX.yaml` |
+| `design-iterations/` | 44 个现役目录 + `archive/` 20 个 + `INDEX.yaml` | 迭代证据。机读索引见 `INDEX.yaml` |
 | `renders/` | 2 个 md | 渲染架构留档（Blender 已暂停，冷归档见 `scripts/archive/blender-pipeline/`） |
 | `standards/` | 1 个 md | 起夜路径照明标准 |
 | `hvac/` | 6 个 md | 暖通专题。2026-10-20 从根目录迁出，消除「一眼过去全是 hvac」的平铺噪声 |
@@ -62,13 +62,13 @@
 
 ## 根目录 16 个文档
 
-### A. `AGENTS.md` 点名、相关会话必读（4 个）
+### A. 核心控制与施工指南（4 个根目录文档）
 
 | 文档 | 角色 | 状态 | 引用 |
 |---|---|---|---|
 | `pending-site-data.md` | 55 条待决台账（量房/厂家/业主三类，逐条写卡在谁） | 现役，高频更新（末改 10-19） | 62 |
 | `mep-construction-guidance.md` | 机电施工指导：墙体结构分类、穿墙口径、分层标高 | 现役（末改 10-19） | 24 |
-| `hvac-pitfall-audit-20261011.md` | 空调安装前核对稿 v4.4；AGENTS.md 铁律 5 的反例物证 | 现役复核稿；量房+厂家资料回来后才能转施工图 | 2 |
+| `CURRENT-VALUES.md` | 现行值速查：预算、暖通、标高、面积与待决口径 | 汇总视图；权威回到各行列出的 config/docs 源，关键值由 verify:facts 对账 | 12 |
 | `visual-change-playbook.md` | 视觉反馈类迭代的标准流程 | 现役 | 4 |
 
 ### B. 现役业务文档（常驻名，12 个）
@@ -79,34 +79,41 @@
 | `dressing-map.md` | 软装/穿搭映射 | 现役（末改 10-17） | 13 |
 | `material_selection_log.md` | 选材日志；自述「当前核对日期 2026-10-07」 | 现役日志 | 10 |
 | `penetration-lint.md` | 防穿模 linter 规则 | 现役 | 8 |
-| `hvac_options_analysis.md` | 701 空调架构级比选（A1–F2 十一方案矩阵） | 现役；§八是渲染审视态契约与邻户梁参考出处，**搬不走删不得** | 6 |
+| `ceiling-scheme-20261008.md` | 吊顶材料与施工方案快照 | 现行优先方案**归档**，DEC-2026-10-08-C08；旧数量不代表当前几何 | 4 |
 | `designer_brief.md` | 对设计师简报 | 现役，但是**对外交付件**——预算口径更新需业主裁决（是否已外发、改哪一版），未裁决前不改数据 | 5 |
 | `curtain-design.md` | 窗帘设计 | 现役（末改 09-02，近一月未动） | 4 |
 | `style-guide.md` | 风格指南 | 现役（末改 10-17） | 3 |
 | `twinmotion-acceptance.md` | Twinmotion 验收 | 现役（末改 10-09） | 3 |
-| `hvac-vendor-confirmation-sheet.md` | 厂家上门一页纸：A 已定事实 / B 待答问题 / C 不接受答案 / D 必带纸面 | 现役操作工具。`config/facts.yaml` 已登记为豁免（「汇总视图，不得成为第二份数字真相」） | 1 |
+| `ceiling-style-extension-guide.md` | 新增吊顶造型种类的开发步骤与文件清单 | 现役开发指南；新增类型时按其流程修改与验证 | 1 |
 | `acceptance_checklist.md` | 验收清单 | **自述已退场**：「本文件不再单独维护验收条目，以避免施工、预算和验收状态出现多套口径」——口径已收敛至 `config/acceptance.yaml` | 1 |
 | `render-tech-debt.md` | 渲染技术债清单 | **自述已冻结**：「PAUSED / HISTORICAL — 2026-09-01，随 Blender 主线暂停而冻结，不再作为 active backlog」 | 1 |
 
+### 暖通专题常驻文档（2 个，均在 `docs/hvac/`）
+
+| 文档 | 现行路径 | 角色 | 状态 |
+|---|---|---|---|
+| `hvac_options_analysis.md` | `docs/hvac/hvac_options_analysis.md` | 701 空调架构级比选（A1–F2 十一方案矩阵） | 现役；§八是渲染审视态契约与邻户梁参考出处，保留正文 |
+| `hvac-vendor-confirmation-sheet.md` | `docs/hvac/hvac-vendor-confirmation-sheet.md` | 厂家上门一页纸：A 已定事实 / B 待答问题 / C 不接受答案 / D 必带纸面 | 现役操作工具；`config/facts.yaml` 登记为汇总视图，不是第二份数字真相 |
+
 ### C. 带日期的分析快照（5 个）——日期是快照标记，不是临时标记
 
-> **2026-10-20 结构变更**：其中 4 个 hvac-* 已迁入 `docs/hvac/`，本节保留其完整条目以便追溯；现行路径见「现行路径」列。
+> **2026-10-20 结构变更**：4 个 hvac-* 文档已迁入 `docs/hvac/`；下表保留其名称、状态与保留理由，路径列指向现址。
 
 这批文件看起来像临时产物，实际每个都有明确的状态行与保留理由。共性是「只登记不改写」纪律的产物：同一主题在新时点需要新分析时新建带日期文件，而非覆盖旧文件。
 
 | 文档 | 现行路径 | 自述状态 | 为什么保留 | 引用 |
 |---|---|---|---|---|
-| `hvac-ld-condensate-receiver-predesign-20261019.md` | `docs/hvac/` | **预研稿，未裁定**；不改 config、不替代 DEC，业主拍板后另开 DEC | 客餐厅冷凝水受纳系统预研；§10 是业主已裁定的红→绿门禁（量房日+#39 回来后 verify 必须全绿） | 2 |
-| `hvac-pitfall-audit-20261011.md` | `docs/hvac/` | 方案复核稿 v4.4 | 见 A 区 | 2 |
-| `hvac-rfq-brief-20261003.md` | `docs/hvac/` | 已完成询价并成交，本文是**询价要求与合同核对基准** | 合同核对需要「当时提出了什么」；§七 5 条谈判红线含 10-04 触发留档 | 4 |
+| `hvac-ld-condensate-receiver-predesign-20261019.md` | `docs/hvac/hvac-ld-condensate-receiver-predesign-20261019.md` | **预研稿，未裁定**；不改 config、不替代 DEC，业主拍板后另开 DEC | 客餐厅冷凝水受纳系统预研；§10 是业主已裁定的红→绿门禁（量房日+#39 回来后 verify 必须全绿） | 2 |
+| `hvac-pitfall-audit-20261011.md` | `docs/hvac/hvac-pitfall-audit-20261011.md` | 方案复核稿 v4.4 | 安装前复核；量房与厂家资料回来后再转施工图 | 2 |
+| `hvac-rfq-brief-20261003.md` | `docs/hvac/hvac-rfq-brief-20261003.md` | 已完成询价并成交，本文是**询价要求与合同核对基准** | 合同核对需要「当时提出了什么」；§七 5 条谈判红线含 10-04 触发留档 | 4 |
 | `ceiling-scheme-20261008.md` | 根目录 | 现行优先方案**归档**，DEC-2026-10-08-C08 | 吊顶材料与施工方案快照；10-15 已加几何修订提示，旧数量明确标注不代表当前几何 | 4 |
-| `hvac-deepening-20260907.md` | `docs/hvac/` | 设计推演过程**留档**，21.4kW/7HP 等口径已全部作废 | 负荷推演与品牌短名单 A–E 的唯一来源依据 | 8 |
+| `hvac-deepening-20260907.md` | `docs/hvac/hvac-deepening-20260907.md` | 设计推演过程**留档**，21.4kW/7HP 等口径已全部作废 | 负荷推演与品牌短名单 A–E 的唯一来源依据 | 8 |
 
 ### D. 曾零入链、现已登记（2 个）
 
 | 文档 | 现行路径 | 判定 | 说明 |
 |---|---|---|---|
-| `hvac-ld-condensate-receiver-predesign-20261019.md` | `docs/hvac/` | **活的、等拍板** | 曾全仓零引用。已在 `docs/pending-site-data.md` #39 挂指针，说明其 §10 红→绿门禁与 #39 ①–⑤ 项的对应关系（①–⑤ 即该门禁的关闭清单） |
+| `hvac-ld-condensate-receiver-predesign-20261019.md` | `docs/hvac/hvac-ld-condensate-receiver-predesign-20261019.md` | **活的、等拍板** | 曾全仓零引用。已在 `docs/pending-site-data.md` #39 挂指针，说明其 §10 红→绿门禁与 #39 ①–⑤ 项的对应关系（①–⑤ 即该门禁的关闭清单） |
 | `ceiling-style-extension-guide.md` | 根目录 | **活的开发指南** | 曾零入链。不是过期分析报告——内容是「为 `config/ceiling.yaml` 新增吊顶造型种类的标准步骤」，列明要改 `server/config-loader.ts`、`ProblemDetector.ts`、`AnnotationRenderer.ts` 等 4 处。这是**可复用的操作指引**，零入链意味着下次要加造型时没人知道它存在 |
 
 ---

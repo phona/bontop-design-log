@@ -9,7 +9,7 @@ try {
 
   const prompt = await client.session.prompt({
     path: { id: session.data.id },
-    body: { message: 'Read docs/hvac_options_analysis.md and tell me which HVAC scheme is recommended for a 94sqm apartment in Nanning.' },
+    body: { message: 'Read docs/hvac/hvac_options_analysis.md and tell me which HVAC scheme is recommended for a 94sqm apartment in Nanning.' },
   });
   console.log('prompt response', prompt.data);
 } catch (e) {

@@ -18,7 +18,7 @@ allowed_scope:
   - scripts/verify/spatial/verify-spatial.ts
   - tests/server/spatial-validation.test.ts
   - docs/spatial-validation.md
-  - docs/design-iterations/spatial-validation-20260908/*
+  - docs/design-iterations/archive/spatial-validation-20260908/*
 forbidden:
   - app/src
   - 3D UI panels

@@ -47,8 +47,8 @@
       "viewport": [1600, 1000],
       "target_object_id": "electrical:light_living_dome",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_context_view_v014.png",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json",
       "status": "valid"
     },
     {
@@ -64,8 +64,8 @@
       "viewport": [1600, 1000],
       "target_object_id": "electrical:light_living_dome",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r2_closeup_v005.png",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.snapshot.txt",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/closeup.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/closeup.runtime.json",
       "status": "valid"
     },
     {
@@ -81,8 +81,8 @@
       "viewport": [1600, 1000],
       "target_object_id": "electrical:light_living_dome",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_r2_side_view_v004.png",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.snapshot.txt",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json",
       "status": "valid"
     },
     {
@@ -99,8 +99,8 @@
       "viewport": [1600, 1000],
       "target_object_id": "electrical:light_living_dome",
       "screenshot": "tmp/screenshots/living-main-light/living_main_light_after_top_down_v011.png",
-      "snapshot": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.snapshot.txt",
-      "runtime": "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.runtime.json",
+      "snapshot": "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/topdown.snapshot.txt",
+      "runtime": "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/topdown.runtime.json",
       "status": "valid"
     }
   ],
@@ -140,14 +140,14 @@
         "tmp/screenshots/living-main-light/living_main_light_after_r2_closeup_v005.png",
         "tmp/screenshots/living-main-light/living_main_light_after_r2_side_view_v004.png",
         "tmp/screenshots/living-main-light/living_main_light_after_top_down_v011.png",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.snapshot.txt",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.snapshot.txt",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.snapshot.txt"
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/closeup.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/topdown.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/closeup.snapshot.txt",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.snapshot.txt",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/topdown.snapshot.txt"
       ],
       "requested_changes": [],
       "assumptions": [
@@ -172,14 +172,14 @@
         "runtime暖铜rim、canopy、arch、arch-foot和吊杆均为color=9a6948、emissiveIntensity=0；预演发光只作用于opal-diffuser。"
       ],
       "evidence_refs": [
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.runtime.json",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/closeup.snapshot.txt",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.snapshot.txt",
-        "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/topdown.snapshot.txt",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/closeup.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/topdown.runtime.json",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/closeup.snapshot.txt",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.snapshot.txt",
+        "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/topdown.snapshot.txt",
         "tmp/screenshots/living-main-light/living_main_light_after_context_view_v014.png",
         "tmp/screenshots/living-main-light/living_main_light_after_r2_closeup_v005.png",
         "tmp/screenshots/living-main-light/living_main_light_after_r2_side_view_v004.png",

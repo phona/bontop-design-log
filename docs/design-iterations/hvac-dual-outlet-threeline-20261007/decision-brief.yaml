@@ -61,6 +61,9 @@ acceptance:
     - 不改变现有客餐厅吊顶总体结构
     - 图纸能直接给空调施工方和木工讨论深化尺寸
   review_required: [aesthetic, functional]  # （双 PASS 才 delivery_ready）
+  delivery_gate:
+    all_required_reviews_must_pass: true
+    required_reviews: [aesthetic, functional]
 
 alignment:
   - id: align1

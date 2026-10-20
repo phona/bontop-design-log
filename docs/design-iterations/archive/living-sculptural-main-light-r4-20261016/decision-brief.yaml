@@ -37,7 +37,7 @@ allowed_scope:
     - docs/decisions/06-electrical.md
     - docs/style-guide.md
     - schedule/procurement.md
-    - docs/design-iterations/living-sculptural-main-light-r4-20261016/
+    - docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/
   objects: [light_living_dome]
   archetypes: [deep_opal_pendant, visible_outer_side_arch, side_attached_suspension_rods]
   views: [underside, perspective, elevation, section, plan]

@@ -65,8 +65,8 @@ datums:
       - "tmp/screenshots/living-main-light/living_main_light_after_r2_closeup_v005.png"
       - "tmp/screenshots/living-main-light/living_main_light_after_r2_side_view_v004.png"
       - "tmp/screenshots/living-main-light/living_main_light_after_top_down_v011.png"
-      - "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json"
-      - "docs/design-iterations/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json"
+      - "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json"
+      - "docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/elevation-profile.runtime.json"
     status: confirmed
 notes:
   - "实算模型平面可见轮廓约0.90×0.94m，未超1.0×1.0m声明包络。"

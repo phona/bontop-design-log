@@ -23,7 +23,7 @@ freeze_record:
     - 地砖方向不在本次代码改动范围。
   confirmed_by_user: true
   confirmed_at: "2026-10-15T02:39:08Z"
-  evidence_refs: ["docs/design-iterations/night-only-indoor-lighting-20261015/fact-table.yaml"]
+  evidence_refs: ["docs/design-iterations/archive/night-only-indoor-lighting-20261015/fact-table.yaml"]
 allowed_scope:
   files:
     - shared/solar.ts

@@ -57,7 +57,7 @@ datums:
       - "现场梁位、顶板承重、风口、沙发视线和维护路径属于site_pending。"
     validation_refs:
       - "用户R2反馈图：/home/tao/.shellboard/uploads/s_EAmoN0mKnwA/image-13.png"
-      - "docs/design-iterations/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json"
+      - "docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json"
     status: confirmed
 notes:
   - "bottom=0.35m仅表示模型总下垂，不是商品或安装尺寸。"

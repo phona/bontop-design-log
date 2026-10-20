@@ -63,7 +63,7 @@
   "tooltipHidden": true,
   "tooltipSuppressedForEvidence": true,
   "isOverview": false,
-  "snapshotPath": "docs/design-iterations/dining-semi-flush-20261016/evidence/r12/elevation.snapshot.txt",
+  "snapshotPath": "docs/design-iterations/archive/dining-semi-flush-20261016/evidence/r12/elevation.snapshot.txt",
   "screenshotPath": "tmp/screenshots/dining-semi-flush/living_main_light_r12_elevation_v001.png",
   "evidenceStatus": "valid",
   "sourceVersion": "R12c (dining semi-flush + drift fix + finish rename) / 2026-10-16"

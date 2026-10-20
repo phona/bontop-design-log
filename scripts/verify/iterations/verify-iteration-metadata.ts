@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { load as loadYaml } from 'js-yaml';
 
 /**
@@ -44,10 +45,24 @@ function classify(message: string): string {
   return 'unclassified';
 }
 
-/** 从错误信息里抽「N:M」行号，抽不到返回空串（不编）。 */
-function lineOf(message: string): string {
-  const m = message.match(/\((\d+:\d+)\)/);
-  return m ? m[1] : '';
+/** 从 YAML mark 或 JSON 字符偏移抽取行列；无法确定时返回空串。 */
+export function errorLocation(message: string, source: string, format: 'yaml' | 'json'): string {
+  if (format === 'yaml') {
+    const mark = message.match(/\((\d+):(\d+)\)/);
+    return mark ? `${mark[1]}:${mark[2]}` : '';
+  }
+  const position = message.match(/\bposition\s+(\d+)\b/i);
+  const unexpected = message.match(/Unexpected token ['"](.?)['"]/i);
+  const offset = position
+    ? Number(position[1])
+    : unexpected?.[1]
+      ? source.lastIndexOf(unexpected[1])
+      : -1;
+  if (offset < 0) return '';
+  const prefix = source.slice(0, offset);
+  const line = prefix.split('\n').length;
+  const column = offset - prefix.lastIndexOf('\n');
+  return `${line}:${column}`;
 }
 
 function walk(dir: string, out: string[]): void {
@@ -84,7 +99,7 @@ function main(): void {
     } catch (error) {
       const message = error instanceof Error ? error.message.split('\n')[0] : String(error);
       const code = classify(message);
-      const at = lineOf(message);
+      const at = errorLocation(message, src, file.endsWith('.json') ? 'json' : 'yaml');
       issues.push({
         level: 'error',
         code,
@@ -138,4 +153,4 @@ function main(): void {
   if (errors.length > 0) process.exitCode = 1;
 }
 
-main();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

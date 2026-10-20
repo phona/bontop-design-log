@@ -43,7 +43,7 @@ allowed_scope:
     - docs/decisions/06-electrical.md
     - docs/style-guide.md
     - schedule/procurement.md
-    - docs/design-iterations/living-multi-globe-main-light-20261016/
+    - docs/design-iterations/archive/living-multi-globe-main-light-20261016/
   objects: [light_living_dome]
   archetypes: [multi_globe_semi_flush_chandelier, black_stacked_disc_hub, chrome_curved_arms_double_tier, opal_globe_shades]
   views: [underside, perspective, elevation, section, plan]

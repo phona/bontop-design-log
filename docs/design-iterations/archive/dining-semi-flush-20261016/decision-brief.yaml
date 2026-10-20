@@ -48,7 +48,7 @@ allowed_scope:
     - docs/decisions/06-electrical.md
     - docs/style-guide.md
     - schedule/procurement.md
-    - docs/design-iterations/dining-semi-flush-20261016/
+    - docs/design-iterations/archive/dining-semi-flush-20261016/
   objects: [light_dining_pendant]
   archetypes: [semi_flush_ceiling_light, shallow_opal_dome_diffuser, short_stem_mount]
   views: [dining_context, closeup, elevation, plan]

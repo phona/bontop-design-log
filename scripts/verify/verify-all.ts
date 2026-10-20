@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import * as path from 'node:path';
 
 /**
- * 全量门禁编排器：依次跑完 16 个 verifier，**不短路**，汇总退出码。
+ * 全量门禁编排器：依次跑完全部登记 verifier，**不短路**，汇总退出码。
  *
  * 为什么存在：原 `verify:all` 是 `&&` 链，任何一步非零就中止——一个「等外部输入」的
  * 待决项（如 `sock_child_ac` 卡空调厂家深化图）会让后面 7 个 verifier 根本不执行，
@@ -46,6 +46,9 @@ const VERIFIERS: VerifierSpec[] = [
   { name: 'verify-mep-takeoff', script: 'scripts/verify/mep/verify-mep-takeoff.ts' },
   { name: 'verify-schedule', script: 'scripts/schedule/control.ts' },
   { name: 'verify-iteration-metadata', script: 'scripts/verify/iterations/verify-iteration-metadata.ts' },
+  { name: 'verify-document-references', script: 'scripts/verify/documents/verify-document-references.ts' },
+  { name: 'verify-doc-index', script: 'scripts/verify/documents/verify-doc-index.ts' },
+  { name: 'verify-yaml-hash', script: 'scripts/verify/yaml/verify-inline-comments.ts' },
 ];
 
 interface VerifierCounts {
@@ -125,7 +128,9 @@ function countFromText(output: string): VerifierCounts {
 }
 
 function runOne(spec: VerifierSpec): VerifierResult {
-  const result = spawnSync('npx', ['tsx', spec.script, '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+  // Launch tsx through Node's preload instead of the tsx CLI IPC broker. This
+  // keeps nested verifier runs deterministic in sandboxed/CI environments.
+  const result = spawnSync(process.execPath, ['--import', 'tsx', spec.script, '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
   const stdout = result.stdout ?? '';
   const stderr = result.stderr ?? '';
   let structured = false;

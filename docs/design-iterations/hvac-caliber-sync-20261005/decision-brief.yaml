@@ -48,7 +48,7 @@ allowed_scope:
     - 删除只承担 R6/一拖五旧口径的文档段落
     - materials.yaml hvac_01 改为成交口径、hvac_02 改判 rejected
     - facts.yaml 失效守卫注释更正与空转豁免删除
-    - 新增 pending-site-data #47 并同步计数
+    - "新增 pending-site-data #47 并同步计数"
     - 补齐第六台入 A2 diagram 时前一轮漏同步的投影产物与两处测试夹具
 scope_addendum_note: >-
   data/project-render-facts.json、tests/server/mep-hvac-coordination.test.ts 与

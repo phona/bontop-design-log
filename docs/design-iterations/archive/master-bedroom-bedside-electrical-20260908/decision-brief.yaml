@@ -46,7 +46,7 @@ allowed_scope:
     - app/src/render/InteriorLightingSystem.test.ts
     - scripts/verify/project/verify-lighting-config.ts
     - data/project-render-facts.json
-    - docs/design-iterations/master-bedroom-bedside-electrical-20260908/
+    - docs/design-iterations/archive/master-bedroom-bedside-electrical-20260908/
   objects:
     - sock_master_bed_l
     - light_master_wall_l

@@ -29,7 +29,7 @@
 #    - kind: narrative 权威值是一句人写的话，value 写 `@<file>:<字面定位串>`。
 #      引擎用后半段**逐字**在文件里定位，取其中第一个数字作为权威值。
 #      定位不到 → `authoritative_unresolvable`（error）。
-#      最小示例：`value: "@schedule/phase-1/control.yaml:phase_ceiling_cny: 206000"`
+#      最小示例：`value: "@schedule/phase-1/control.yaml:phase_ceiling_cny: 210000"`
 #    - `mirrors[]` 每个镜像：{ path, extract, severity, expect_matches, group, scale, tolerance }
 #        extract       在 path 全文做多行匹配（引擎统一加 g+m）
 #        expect_matches 期望命中数，默认 1。**命中数不符一律报 mirror_unresolvable
@@ -186,7 +186,7 @@ scan:
     - path: schedule/procurement.md
       scalars: [kw]
       pattern: 'kW'
-      reason: 暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由 docs/pending-site-data.md #39 跟踪收敛
+      reason: "暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由 docs/pending-site-data.md #39 跟踪收敛"
     - path: schedule/procurement.md
       scalars: [area_sqm]
       pattern: '㎡'
@@ -279,14 +279,14 @@ scan:
     - path: docs/pending-site-data.md
       scalars: [kw]
       pattern: 'kW'
-      reason: 量房清单 #39 复述成交判读容量（25.3kW）与厂家待核项；#39 已于 2026-10-05 重写，不再含设计口径 21.6kW，本豁免随该重写一并收窄
+      reason: "量房清单 #39 复述成交判读容量（25.3kW）与厂家待核项；#39 已于 2026-10-05 重写，不再含设计口径 21.6kW，本豁免随该重写一并收窄"
     # 2026-10-05 DEC-2026-10-05-R2 新增 #47：#47 引用 CAD 标注的次卧面积值作为
     # 「标签数/面积口径未裁决」这一冲突本身的证据。这些值是待裁决对象，不是现行面积口径，
     # 权威面积由 model-geometry 多边形实测与 fact.rooms_area_caliber / #40 承载。
     - path: docs/pending-site-data.md
       scalars: [area_sqm]
       pattern: '㎡'
-      reason: 量房清单 #47 引用 CAD 标注面积（8.39㎡/8.35㎡）作为未裁决冲突的证据，不是现行面积口径；权威以 model-geometry 多边形与 fact.rooms_area_caliber 为准，收敛由 #47 与 #40 跟踪
+      reason: "量房清单 #47 引用 CAD 标注面积（8.39㎡/8.35㎡）作为未裁决冲突的证据，不是现行面积口径；权威以 model-geometry 多边形与 fact.rooms_area_caliber 为准，收敛由 #47 与 #40 跟踪"
 
     # ─── 2026-10-04 新增标量的登记（T1 发现层的噪声归属） ─────────────────────
     # 原则：**不是把新标量一律关掉**，而是把每一处出现归到「谁是这个数的权威」。
@@ -461,11 +461,11 @@ scan:
     - path: docs/penetration-lint.md
       scalars: [dimension]
       pattern: '0\.94'
-      reason: 引用 pending-site-data #55 的 runtime 实测包络尺寸，权威在 #55（含完整坐标）；口径未裁定，不新建数字
+      reason: "引用 pending-site-data #55 的 runtime 实测包络尺寸，权威在 #55（含完整坐标）；口径未裁定，不新建数字"
     - path: docs/decisions/15-penetration-lint.md
       scalars: [dimension]
       pattern: '0\.94'
-      reason: DEC 历史条目（只登记不改写），引用 #55 的实测包络尺寸；权威在 #55
+      reason: "DEC 历史条目（只登记不改写），引用 #55 的实测包络尺寸；权威在 #55"
     # 空调厂家确认单是**汇总视图（rendered view）**：单子上的每个数字/型号都是从已登记的权威源
     # 抄来做面对面核对用的——价格与型号口径在 config/hvac.yaml + docs/decisions/05-hvac.md
     # （DEC-2026-10-04-R1）、现场几何在 config/ceiling.yaml / house.yaml / model-geometry.yaml、
@@ -533,7 +533,7 @@ facts:
         reason: house.yaml mep_strategy 复述 R2 结论（外机供电第 20 路），权威在 topology circuits
       - path: docs/pending-site-data.md
         pattern: '第\s*\d+\s*路'
-        reason: 量房清单 #39 复述 R2 结论；#30 的「20 路 + 2P」由上面的 mirror 单列校验（DEC-2026-10-05-R3 浴霸拆每卫一路 20→21）
+        reason: "量房清单 #39 复述 R2 结论；#30 的「20 路 + 2P」由上面的 mirror 单列校验（DEC-2026-10-05-R3 浴霸拆每卫一路 20→21）"
       - path: docs/mep-construction-guidance.md
         pattern: '合并至'
         reason: 施工指导表格复述历史合并口径（25 路合并至 20 路），权威在 topology
@@ -593,7 +593,7 @@ facts:
     as_of: DEC-2026-10-05-R4
     mirrors:
       # C1（2026-10-04 消解，不是豁免）——base.json 的 project_ceiling=190,000 与现行权威
-      # schedule/phase-1/control.yaml:phase_ceiling_cny=206,000 长期不一致。前两轮只能挂
+      # schedule/phase-1/control.yaml:phase_ceiling_cny=206,000（2026-10-04 当期值，后于 2026-10-05 调整为 210,000）长期不一致。前两轮只能挂
       # warning，因为 base.json 仍被 server/budget-calculator.ts 热更新输出 190,000。
       # 本轮做的是**改读取方而不是改档案**：
       #   ① config/budget/base.json 顶层加 status: superseded / superseded_by / note，
@@ -607,7 +607,7 @@ facts:
       #      档案身份由契约 c.base_json_superseded 强制自证。
       # A4（2026-10-04 挂豁免，待业主裁决）——designer_brief.md 第 23 行的
       # 「ceiling 190k / 四池 192k」是旧四池口径（config/budget/base.json v0.5-four-pool
-      # 快照），与现行权威 control.yaml 206,000 不一致。
+      # 快照），与当时（2026-10-04）的权威 control.yaml 206,000 不一致；现行值为 210,000。
       # 为什么不能自动修：该文件是对**外交付件**（设计师简报），预算口径更新需业主裁决
       # （是否已外发、改哪一版）；未裁决前改它可能让对外文件与业主手上的版本单向漂移。
       # 待谁裁决：业主（是否已把新版预算口径发给外部设计师；若要改，改哪一版）。
@@ -631,7 +631,7 @@ facts:
       - path: docs/designer_brief.md
         pattern: 'ceiling\s*\d+k'
         reason: "designer_brief 是对外交付件，预算口径更新需业主裁决（是否已外发、改哪一版）；待决跟踪 docs/designer_brief.md 第 7 条 + config/budget/base.json notes"
-        pending: "业主裁决 designer_brief 第 7/12 条的预算口径是否改为现行 control.yaml 206,000（涉及对外文件版本，未裁决前不改数据）"
+        pending: "业主裁决 designer_brief 第 7/12 条是否更新为现行 control.yaml 210,000（涉及对外文件版本，未裁决前不改对外交付件；206,000 为 2026-10-04 历史值）"
 
   - id: fact.usable_area
     kind: derived
@@ -1115,7 +1115,7 @@ facts:
         severity: error
         expect_matches: 1
 
-  # 家具条目数：92 件分布 11 个房间，是碰撞/净空门禁的输入规模。
+  # 家具条目数：89 件分布 11 个房间，是碰撞/净空门禁的输入规模。
   - id: fact.furnishings_count
     kind: derived
     value: "@config/house.yaml:furnishings#count_all"
@@ -1743,22 +1743,22 @@ contracts:
   #    根因：层高的权威源只有 config/house.yaml:7 的 floor_height: 2.8，其余 11 处都是
   #    手写副本，没有机制保证它们与权威一致。
   #    本契约用 single_source 的 expect: 0 语义做「禁用值」检查：凡在 scope 内写出
-  #    层高 3.0m（含「结构层高 3.0m」「层高 3.0m」「3.0m 层高」等写法），
+  #    层高 3.0m / 3.00m（含近似限定及「结构层高 3.0m」「层高约 3.00 米」等写法），
   #    立刻报 single_source_count_mismatch 并带出位置，直接跳过去改。
   #    与 fact.floor_height_net 的 mirror 互补：mirror 保证已登记位置的值正确，
   #    本契约保证错值不在任何位置新生。
-  #    exclude 不含 docs/decisions/：DEC 是历史台账，「旧值」必须在 DEC 里可查
-  #    （铁律 5 要求 diff 出删了什么），故 DEC 与 CURRENT-VALUES 的旧值说明不在此禁。
+  #    exclude 保留 DEC 与汇总视图中的历史值；tests/ 是负例夹具，app/dist/ 是构建产物，
+  #    二者不代表现行设计声明。其他 scope 路径均扫描。
   - id: c.floor_height_3m_forbidden
     kind: single_source
     expect: 0
     scope: [README.md, config/, docs/, schedule/, shared/, server/, app/, scripts/, tests/, contracts/, renders/, survey/, cad/, assets/, data/]
-    exclude: [docs/decisions/, docs/CURRENT-VALUES.md, docs/README.md, tmp/, node_modules/]
+    exclude: [docs/decisions/, docs/CURRENT-VALUES.md, docs/README.md, tests/, app/dist/, tmp/, node_modules/]
     patterns:
-      - '结构层高\s*3\.0\s*m'
-      - '层高\s*[|：:\s]*3\.0\s*m'
-      - '3\.0\s*m\s*层高'
-      - '层高为?\s*3\.0\s*m'
+      - '(?:结构)?层高\s*(?:约|大约|近)?\s*3(?:\.0+)?\s*(?:m|米)'
+      - '层高\s*[|：:\s]*3(?:\.0+)?\s*(?:m|米)'
+      - '3(?:\.0+)?\s*(?:m|米)\s*(?:左右|上下|约)?\s*层高'
+      - '层高为?\s*(?:约|大约|近)?\s*3(?:\.0+)?\s*(?:m|米)'
 
 # ─── T4 覆盖层 ───────────────────────────────────────────────────────────────
 

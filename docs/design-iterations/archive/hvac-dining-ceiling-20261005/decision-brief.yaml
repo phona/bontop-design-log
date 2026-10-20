@@ -15,7 +15,7 @@ allowed_scope:
   - config/ceiling.yaml、config/hvac.yaml、config/mep-hvac-coordination.yaml 的吊顶分区/终端/路线
   - config/facts.yaml 与 docs/* 的计数同步与决策记录
   - tests 中与上述计数绑定的硬编码断言（同步并注明 DEC 号）
-  - docs/design-iterations/hvac-dining-ceiling-20261005/ 本迭代五件套
+  - docs/design-iterations/archive/hvac-dining-ceiling-20261005/ 本迭代五件套
 
 forbidden:
   - 修改分层标高（layers.height）——#41 未裁定

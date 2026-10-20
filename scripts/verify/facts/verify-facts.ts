@@ -246,7 +246,7 @@ const workspace: FactsWorkspace = {
     // project identifiers; binary bytes can coincidentally match an ID.
     'scan.files': walk(['config', 'docs', 'schedule'], /^(node_modules|\.git)$/)
       .filter((f) => f !== REGISTRY && !/\.(?:png|jpe?g|webp|gif|pdf|glb|mp4)$/i.test(f)),
-    'contract.files': [...walk(['config', 'shared', 'docs', 'schedule', 'server', 'tests', 'data'], /^(node_modules|\.git)$/), 'README.md']
+    'contract.files': [...walk(['config', 'shared', 'docs', 'schedule', 'server', 'app', 'scripts', 'tests', 'contracts', 'renders', 'survey', 'cad', 'assets', 'data'], /^(node_modules|\.git)$/), 'README.md']
       .filter((f) => f !== REGISTRY && !/\.(?:png|jpe?g|webp|gif|pdf|glb|mp4)$/i.test(f)),
     'coverage.files': coverageFiles,
     'layout.rooms': layoutRooms,

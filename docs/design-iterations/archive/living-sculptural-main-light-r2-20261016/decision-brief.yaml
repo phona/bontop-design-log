@@ -42,7 +42,7 @@ allowed_scope:
     - docs/decisions/06-electrical.md
     - docs/style-guide.md
     - schedule/procurement.md
-    - docs/design-iterations/living-sculptural-main-light-r2-20261016/
+    - docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/
   objects: [light_living_dome]
   archetypes: [broad_opal_diffuser, three_slender_suspension_rods, offset_three_dimensional_warm_bronze_arch]
   views: [plan, elevation, section, perspective]

@@ -22,7 +22,7 @@ allowed_scope:
     - app/src/render/MepCoordinationRenderer.test.ts
     - shared/mep-hvac-lint.ts
     - tests/server/mep-hvac-lint.test.ts
-    - docs/design-iterations/mep-sofa-r-floor-route-20261017
+    - docs/design-iterations/archive/mep-sofa-r-floor-route-20261017
     - docs/decisions/06-electrical.md
     - docs/decisions/README.md
     - docs/pending-site-data.md

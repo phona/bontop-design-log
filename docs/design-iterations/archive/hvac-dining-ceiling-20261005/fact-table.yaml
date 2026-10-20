@@ -70,9 +70,9 @@ facts:
     affects: [餐厅天花视觉]
 
   - id: f_layer_drop_issue
-    statement: #41 系统性问题未裁定：强电 2.45/弱电 2.50/冷媒 2.55/冷凝水 2.35 分层标高 vs 0.30 降板完成面 2.50；本轮未改任何分层标高
+    statement: "#41 系统性问题未裁定：强电 2.45/弱电 2.50/冷媒 2.55/冷凝水 2.35 分层标高 vs 0.30 降板完成面 2.50；本轮未改任何分层标高"
     status: site_pending
-    source: docs/pending-site-data.md #41
+    source: "docs/pending-site-data.md #41"
 
   - id: f_kitchen_balcony_split
     statement: 厨房与生活阳台（z[1.0,2.2]）分界、烟管走向随量房终核

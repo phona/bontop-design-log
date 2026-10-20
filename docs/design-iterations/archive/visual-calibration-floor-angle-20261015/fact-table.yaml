@@ -17,15 +17,15 @@ source_policy:
     - "用户已选择全屋统一铺设角度预演。"
   measurement_refs: []
   runtime_refs:
-    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/night-4000k-eye-adapted-current-runtime.json
-    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/night-4000k-raw-cct-current-runtime.json
-    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/floor-angle-current-runtime.json
-    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/main-corridor-paint-runtime.json
+    - docs/design-iterations/archive/visual-calibration-floor-angle-20261015/evidence/night-4000k-eye-adapted-current-runtime.json
+    - docs/design-iterations/archive/visual-calibration-floor-angle-20261015/evidence/night-4000k-raw-cct-current-runtime.json
+    - docs/design-iterations/archive/visual-calibration-floor-angle-20261015/evidence/floor-angle-current-runtime.json
+    - docs/design-iterations/archive/visual-calibration-floor-angle-20261015/evidence/main-corridor-paint-runtime.json
   evidence_refs:
-    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/night-4000k-eye-adapted-current.png
-    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/night-4000k-raw-cct-current.png
-    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/floor-rotation-0deg-current.png
-    - docs/design-iterations/visual-calibration-floor-angle-20261015/evidence/floor-rotation-90deg-current.png
+    - docs/design-iterations/archive/visual-calibration-floor-angle-20261015/evidence/night-4000k-eye-adapted-current.png
+    - docs/design-iterations/archive/visual-calibration-floor-angle-20261015/evidence/night-4000k-raw-cct-current.png
+    - docs/design-iterations/archive/visual-calibration-floor-angle-20261015/evidence/floor-rotation-0deg-current.png
+    - docs/design-iterations/archive/visual-calibration-floor-angle-20261015/evidence/floor-rotation-90deg-current.png
 entry_shape:
   id: ""
   category: confirmed
