@@ -7,12 +7,15 @@
 | 路径 | 状态 | 用途 |
 |---|---|---|
 | `roadmap.yaml` | 维护源 | 跨阶段顺序、预算区间和启用条件 |
+| `checklist.md` | 自动生成 | 项目总入口：当前阶段、下一工作包、阶段门槛和项目数据版本 |
 | `phase-1/control.yaml` | 一期维护源 | 一期预算、施工、验收、证据、状态和付款门槛 |
 | `phase-1/budget.md` | 自动生成 | 一期预算计划、合同额、已付、预测和门槛状态 |
 | `phase-1/schedule.md` | 自动生成 | 一期工序、工期、依赖和阻塞项 |
-| `phase-1/checklist.md` | 自动生成 | 人与AI共同逐条检查、签字和挂证据的审计清单 |
+| `phase-1/checklist.md` | 自动生成 | 一期现场执行清单：当前工作包、checkpoint、验收证据和项目数据关联 |
 | `phase-2/control.yaml` | 规划源 | 二期增强设备和家具，尚未冻结 |
+| `phase-2/checklist.md` | 自动生成 | 二期启动门槛和候选项目数据关联；范围冻结后再扩成施工清单 |
 | `phase-3/control.yaml` | 规划源 | 三期入住后软装优化，尚未冻结 |
+| `phase-3/checklist.md` | 自动生成 | 三期入住观察和启动门槛；范围冻结后再扩成施工清单 |
 | `procurement.md` | 采购决策视图 | 按一期采购组汇总首选、备选、未选原因、反转条件、预算和最小证据；二、三期只保留预留边界 |
 
 `config/model-package-links.yaml` 是内部机器关联索引：按现有阶段/工作包粒度引用模型数据来源，不复制预算金额、成本组件说明、商品证据或几何；金额仍以各阶段 `control.yaml` 为准，不作为第二份业主采购矩阵。
@@ -45,6 +48,10 @@ not_started -> in_progress -> ready_for_inspection -> passed
 - `readiness: blocked`：依赖或现场条件不满足，不能开工；
 - `readiness: ready`：具备开工条件，但不代表已经施工；
 - `status: passed`：只能由验收记录和证据推出，不能凭口头描述填写。
+- 验证门禁会检查：工作包标为 `ready` 时，所有依赖包须有当前有效的 `passed` 或有证据的 `waived`，阻塞项须有关闭记录；施工中的包不能同时处于 blocked readiness。
+- 全局阻塞项关闭时填写 `status: resolved`、`resolved_by`、`resolved_at` 和 `resolution_evidence`；豁免时填写 `status: waived`、`waived_by`、`waiver_reason` 和 `resolution_evidence`。工作包豁免需在 `waiver.approved_by`、`waiver.reason` 和 `waiver.evidence` 保存批准人、理由和证据。
+- 工作包标为 `passed` 时，所有检查必须当前通过、项目数据指纹未过期、依赖和阻塞项仍满足；否则 `verify:schedule` 报错，清单按 blocked/stale 展示。
+- 个别检查可声明 `can_run_while_blocked: true`，仅代表交房前可做可逆的设计预演或资料准备；必须同时声明 `does_not_release_construction: true`，不得因此将工作包改为 ready。
 
 二、三期在业主确认范围和预算前保持 `proposed/alignment_required`，不得被AI自动升级为已批准采购。
 
@@ -58,16 +65,16 @@ not_started -> in_progress -> ready_for_inspection -> passed
 
 ## 5. 人工现场使用
 
-1. 打开或打印 `phase-1/checklist.md`。
-2. 按工作包逐项检查，不按施工方口头汇总跳项。
+1. 打开 `checklist.md` 找到当前阶段与下一工作包，再进入对应阶段清单；一期现场打印 `phase-1/checklist.md`。
+2. 按工作包和 checkpoint 逐项检查，不按施工方口头汇总跳项。
 3. 在“结果/签名/日期”栏记录现场结论，并同步拍摄要求的证据。
 4. 失败项建立整改记录；复验通过前不勾选工作包完成，也不释放对应付款。
-5. 将纸面结果和证据路径转录到 `phase-1/control.yaml` 的 `audit_log.records`。
-6. 重新生成视图，确认纸面结果与结构化台账一致。
+5. 将纸面结果和证据路径转录到当前阶段控制源的审计记录。通过记录须保存生成清单中的 `check_spec_sha256` 与 `project_data_sha256`。
+6. 运行 `npm run schedule:render` 更新所有阶段视图；再运行 `npm run verify:schedule` 检查视图和审计记录是否仍绑定当前数据。
 
 ## 6. AI更新办法
 
-AI必须读取 `roadmap.yaml`、当前阶段 `control.yaml` 和 `config/acceptance.yaml`；核对工作包ID、验收ID、依赖、阻塞项及证据文件；没有证据时保持 `pending/blocked`；在 `audit_log.records` 追加记录而不覆盖历史；复验用 `supersedes` 指向旧记录；最后重新生成并验证。
+AI必须读取 `roadmap.yaml`、当前阶段 `control.yaml`、`config/acceptance.yaml`、`config/model-package-links.yaml` 和工作包关联的项目数据源；核对工作包ID、验收ID、依赖、阻塞项及证据文件；没有证据时保持 `pending/blocked`；在审计记录中追加结果而不覆盖历史；复验用 `supersedes` 指向旧记录；最后重新生成视图。
 
 审计记录示例：
 
@@ -83,6 +90,8 @@ audit_log:
       evidence:
         - survey/photos/2026-10-18/hvac-pressure-gauge.jpg
         - survey/reports/2026-10-18/hvac-pressure-test.pdf
+      check_spec_sha256: "<复制当前 checklist 检查行中的指纹>"
+      project_data_sha256: "<复制当前工作包的项目数据指纹>"
       notes: 压力和时长见测试记录
 ```
 
@@ -97,6 +106,8 @@ audit_log:
       checked_by: 业主
       evidence:
         - survey/reports/2026-10-20/hvac-pressure-retest.pdf
+      check_spec_sha256: "<复制复验时 checklist 检查行中的指纹>"
+      project_data_sha256: "<复制复验时工作包的项目数据指纹>"
       supersedes: AUD-20261018-001
       notes: 整改后复验
 ```
@@ -129,6 +140,13 @@ audit_log:
 
 ## 9. 生成与验证
 
+项目配置与清单的联动：
+
+- `config/model-package-links.yaml` 把阶段工作包关联到几何、家具、机电、空调和吊顶等当前项目数据；阶段清单按这些关联生成可点击的数据源。
+- 每个生成视图头部有输入数据指纹；`verify:schedule` 比较输入文件和已生成视图。只要项目数据变化而视图未重新生成，就会列出变更文件并报 stale，不会自动覆盖文档。
+- 一期通过记录保存检查标准指纹和项目数据指纹。关联数据或验收标准改变后，旧 PASS 会显示 stale，付款门槛回到 pending；复验必须追加新记录。
+- 二、三期在仍为 `proposed/alignment_required` 时，清单只指导启动门槛。业主冻结范围后，先为选中的候选补齐工作包、施工顺序、项目数据引用、验收与证据要求，再授权落地。
+
 只修改维护源，然后执行：
 
 ```bash
@@ -136,6 +154,8 @@ npm run schedule:render
 npm run verify:schedule
 npm run typecheck
 ```
+
+`schedule:render` 是唯一写入生成视图的命令；`verify:schedule` 只读检查，不会替换旧视图。全量 `verify:all` 也会检查所有阶段清单是否过期。
 
 验证覆盖预算合计、ID唯一性、依赖、阻塞引用、验收引用、审计归属、通过证据、复验历史和付款门槛。
 

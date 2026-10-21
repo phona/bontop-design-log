@@ -1,8 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { createHash } from 'node:crypto';
 import * as yaml from 'js-yaml';
 import { computeGateStatus } from './gate-status.js';
+import { loadModelPackageLinks, MODEL_PACKAGE_LINKS_PATH } from '../../server/model-package-links.js';
 
 type AnyRecord = Record<string, any>;
 
@@ -11,15 +13,113 @@ const phaseDir = path.join(root, 'schedule/phase-1');
 const controlPath = path.join(phaseDir, 'control.yaml');
 const acceptancePath = path.join(root, 'config/acceptance.yaml');
 const roadmapPath = path.join(root, 'schedule/roadmap.yaml');
+const controlRelPath = 'schedule/phase-1/control.yaml';
+const acceptanceRelPath = 'config/acceptance.yaml';
+const roadmapRelPath = 'schedule/roadmap.yaml';
 const control = yaml.load(fs.readFileSync(controlPath, 'utf8')) as AnyRecord;
 const acceptance = yaml.load(fs.readFileSync(acceptancePath, 'utf8')) as AnyRecord;
 const roadmap = yaml.load(fs.readFileSync(roadmapPath, 'utf8')) as AnyRecord;
+const modelPackageLinks = loadModelPackageLinks(MODEL_PACKAGE_LINKS_PATH);
 
 const money = (value: number | null) => value == null ? '—' : `¥${value.toLocaleString('zh-CN')}`;
 const moneyOrPending = (value: number | null) => value == null ? '待报价/待算量' : money(value);
 const range = (value: AnyRecord) => value.min === value.max ? `${value.min}天` : `${value.min}—${value.max}天`;
 const list = (value: unknown[] | undefined) => value?.length ? value.join('、') : '无';
 const escapeCell = (value: unknown) => String(value ?? '—').replaceAll('|', '\\|').replaceAll('\n', '<br>');
+const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+const unique = <T>(values: T[]) => [...new Set(values)];
+
+function fileSnapshot(paths: string[]): Record<string, string> {
+  return Object.fromEntries(unique(paths).sort().map((file) => {
+    const absolute = path.resolve(root, file);
+    if (!fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) {
+      throw new Error(`schedule input is missing or not a file: ${file}`);
+    }
+    return [file, sha256(fs.readFileSync(absolute, 'utf8'))];
+  }));
+}
+
+function snapshotDigest(snapshot: Record<string, string>): string {
+  return sha256(JSON.stringify(Object.entries(snapshot).sort(([left], [right]) => left.localeCompare(right))));
+}
+
+function scopeSummary(selector: AnyRecord): string {
+  return Object.entries(selector)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}=${Array.isArray(value) ? value.join(',') : String(value)}`)
+    .join('; ');
+}
+
+function packageModelLinks(packageId: string): AnyRecord[] {
+  return modelPackageLinks.links.filter((link) => link.budget_ref.id === packageId) as AnyRecord[];
+}
+
+function packageProjectPaths(pkg: AnyRecord): string[] {
+  const links = packageModelLinks(pkg.id);
+  const paths = [MODEL_PACKAGE_LINKS_PATH, 'schedule/phase-scope.yaml', 'config/acceptance.yaml'];
+  for (const link of links) {
+    for (const scope of link.scope ?? []) {
+      const authorityPath = modelPackageLinks.authorities[scope.source];
+      if (authorityPath) paths.push(authorityPath);
+    }
+  }
+  if (pkg.include_site_data_ledger === true || (pkg.blockers ?? []).some((id: string) => ['BLK-HANDOVER', 'BLK-SURVEY-DATA-FREEZE'].includes(id))) {
+    paths.push('docs/pending-site-data.md');
+  }
+  return unique(paths).sort();
+}
+
+function packageProjectSnapshot(pkg: AnyRecord): Record<string, string> {
+  return fileSnapshot(packageProjectPaths(pkg));
+}
+
+function packageProjectFingerprint(pkg: AnyRecord): string {
+  return snapshotDigest(packageProjectSnapshot(pkg));
+}
+
+function phaseInputPaths(phaseId: string, phaseControlPath: string): string[] {
+  const links = modelPackageLinks.links.filter((link) => link.phase_id === phaseId);
+  const paths = [phaseControlPath, roadmapRelPath, 'schedule/phase-scope.yaml', MODEL_PACKAGE_LINKS_PATH, acceptanceRelPath];
+  if (phaseId === control.phase_id) paths.push('docs/pending-site-data.md');
+  if (phaseId === 'phase_2_function_upgrade' || phaseId === 'phase_3_styling') paths.push('schedule/phase-1/control.yaml');
+  if (phaseId === 'phase_3_styling') paths.push('schedule/phase-2/control.yaml');
+  for (const link of links) {
+    for (const scope of link.scope ?? []) {
+      const authorityPath = modelPackageLinks.authorities[scope.source];
+      if (authorityPath) paths.push(authorityPath);
+    }
+  }
+  return unique(paths).sort();
+}
+
+function phaseDataInputPaths(phaseId: string): string[] {
+  const links = modelPackageLinks.links.filter((link) => link.phase_id === phaseId);
+  const paths = ['schedule/phase-scope.yaml', MODEL_PACKAGE_LINKS_PATH, acceptanceRelPath];
+  if (phaseId === 'phase_2_function_upgrade' || phaseId === 'phase_3_styling') paths.push('schedule/phase-1/control.yaml');
+  if (phaseId === 'phase_3_styling') paths.push('schedule/phase-2/control.yaml');
+  for (const link of links) {
+    for (const scope of link.scope ?? []) {
+      const authorityPath = modelPackageLinks.authorities[scope.source];
+      if (authorityPath && !authorityPath.startsWith('schedule/phase-')) paths.push(authorityPath);
+    }
+  }
+  if (phaseId === control.phase_id) paths.push('docs/pending-site-data.md');
+  return unique(paths).sort();
+}
+
+const projectInputPaths = unique([
+  roadmapRelPath,
+  'schedule/phase-scope.yaml',
+  'schedule/phase-1/control.yaml',
+  'schedule/phase-2/control.yaml',
+  'schedule/phase-3/control.yaml',
+  'config/acceptance.yaml',
+  MODEL_PACKAGE_LINKS_PATH,
+  'docs/pending-site-data.md',
+  ...Object.values(modelPackageLinks.authorities),
+]).sort();
+
+const renderMode = process.argv.includes('--render');
 
 const errors: string[] = [];
 const roadmapPhaseIds = new Set<string>();
@@ -29,10 +129,15 @@ const componentIds = new Set<string>();
 const usedCheckIds = new Set<string>();
 const packageCheckKeys = new Set<string>();
 const quoteRecordIds = new Set<string>();
+const phaseControls = new Map<string, AnyRecord>();
 const hotWaterDecision = control.appliance_quote_register?.hot_water_decision;
 const acceptanceById = new Map<string, AnyRecord>();
 const blockerIds = new Set<string>((control.global_blockers ?? []).map((item: AnyRecord) => item.id));
 const poolIds = new Set<string>((control.budget_pools ?? []).map((item: AnyRecord) => item.id));
+const blockerStatusValues = new Set<string>(control.control.blocker_status_values ?? []);
+for (const blocker of control.global_blockers ?? []) {
+  if (!blockerStatusValues.has(blocker.status)) errors.push(`${blocker.id}: invalid blocker status ${blocker.status}`);
+}
 
 for (const phase of acceptance.phases ?? []) {
   for (const item of phase.items ?? []) {
@@ -55,7 +160,22 @@ for (const phase of roadmap.phases ?? []) {
     continue;
   }
   const phaseControl = yaml.load(fs.readFileSync(phaseControlPath, 'utf8')) as AnyRecord;
+  phaseControls.set(phase.id, phaseControl);
   if (phaseControl.phase_id !== phase.id) errors.push(`${phase.id}: control phase_id mismatch`);
+  const phaseGateIds = new Set<string>((phaseControl.activation_gates ?? []).map((gate: AnyRecord) => gate.id));
+  const phaseAuditIds = new Set<string>();
+  for (const record of phaseControl.audit?.records ?? []) {
+    if (phaseAuditIds.has(record.id)) errors.push(`${phase.id}: duplicate audit record id ${record.id}`);
+    phaseAuditIds.add(record.id);
+    if (!phaseGateIds.has(record.gate_id)) errors.push(`${phase.id}/${record.id}: unknown activation gate ${record.gate_id}`);
+    if (!(phaseControl.audit?.record_schema?.status_values ?? []).includes(record.status)) errors.push(`${phase.id}/${record.id}: invalid audit status ${record.status}`);
+    if (!record.checked_at || !record.checked_by) errors.push(`${phase.id}/${record.id}: missing checked_at or checked_by`);
+    if (!Array.isArray(record.evidence)) errors.push(`${phase.id}/${record.id}: evidence must be an array`);
+    if (record.status === 'passed' && (!record.evidence.length || !record.gate_spec_sha256 || !record.project_data_sha256)) {
+      errors.push(`${phase.id}/${record.id}: passed gate requires evidence and current gate/project data fingerprints`);
+    }
+    if (record.supersedes && !phaseAuditIds.has(record.supersedes)) errors.push(`${phase.id}/${record.id}: supersedes must reference an earlier audit record`);
+  }
   if (phase.id === control.phase_id) {
     if (phase.budget.ceiling_cny !== control.control.phase_ceiling_cny) errors.push(`${phase.id}: roadmap ceiling mismatch`);
     if (phase.budget.allocated_cny !== control.control.allocated_cny) errors.push(`${phase.id}: roadmap allocated mismatch`);
@@ -111,6 +231,9 @@ for (const pkg of control.work_packages ?? []) {
     usedCheckIds.add(check.id);
     packageCheckKeys.add(`${pkg.id}:${check.id}`);
     if (!check.evidence_required?.length) errors.push(`${check.id}: missing evidence_required`);
+    if (check.can_run_while_blocked && check.does_not_release_construction !== true) {
+      errors.push(`${check.id}: can_run_while_blocked requires does_not_release_construction: true`);
+    }
   }
 }
 
@@ -274,21 +397,77 @@ if (errors.length) {
   process.exit(1);
 }
 
-const header = (title: string) => `# ${title}\n\n> 自动生成：请勿直接编辑。唯一维护源：\`schedule/phase-1/control.yaml\`  \n> 生成日期：${control.updated_at}  \n> 当前阶段：${control.control.current_gate}；总体状态：${control.control.status}\n\n`;
+const snapshotComment = (snapshot: Record<string, string>) => `<!-- schedule-input-snapshot:${JSON.stringify(snapshot)} -->\n`;
+const fingerprintLine = (paths: string[]) => {
+  const snapshot = fileSnapshot(paths);
+  return {
+    snapshot,
+    text: `> 项目数据指纹：\`sha256:${snapshotDigest(snapshot)}\`（${Object.keys(snapshot).length} 个输入文件；验证时会检查本页是否过期）\n`,
+  };
+};
+const header = (title: string, sourcePath: string, inputPaths: string[]) => {
+  const {snapshot, text} = fingerprintLine(inputPaths);
+  const phaseStatus = title.startsWith('一期')
+    ? `当前阶段：${control.control.current_gate}；总体状态：${control.control.status}`
+    : `维护源：${sourcePath}`;
+  return `${snapshotComment(snapshot)}# ${title}\n\n> 自动生成：请勿直接编辑。维护源：\`${sourcePath}\`  \n${text}> 控制源声明更新日期：${control.updated_at}  \n> ${phaseStatus}\n\n`;
+};
 const packageChecks = (pkg: AnyRecord) => [
   ...(pkg.acceptance_refs ?? []).map((ref: string) => ({...acceptanceById.get(ref), id: ref, checkpoint: '引用', evidence_required: ['照片或检测记录']})),
   ...(pkg.checks ?? []),
 ];
+const packageGateLabel = (pkg: AnyRecord) => pkg.gate_label ?? '付款门槛';
+const checkSpecHash = (pkg: AnyRecord, checkId: string) => {
+  const check = packageChecks(pkg).find((item: AnyRecord) => item.id === checkId);
+  const blockerSpecs = (pkg.blockers ?? []).map((id: string) => {
+    const blocker = blockerById.get(id);
+    return blocker ? {id: blocker.id, item: blocker.item, clears_when: blocker.clears_when, trigger: blocker.trigger, owner_roles: blocker.owner_roles} : {id};
+  });
+  const packageSpec = {
+    id: pkg.id,
+    name: pkg.name,
+    description: pkg.description,
+    sequence: pkg.sequence,
+    dependencies: pkg.dependencies ?? [],
+    owner_roles: pkg.owner_roles ?? [],
+    blockerSpecs,
+  };
+  return check ? sha256(JSON.stringify({packageSpec, check})) : '';
+};
+const staleAuditReason = (pkg: AnyRecord, checkId: string, record: AnyRecord): string[] => {
+  const reasons: string[] = [];
+  const currentCheckHash = checkSpecHash(pkg, checkId);
+  if (!record.check_spec_sha256) reasons.push('验收记录缺少检查标准指纹');
+  else if (record.check_spec_sha256 !== currentCheckHash) reasons.push('检查标准已变化');
+  const currentProjectHash = packageProjectFingerprint(pkg);
+  if (!record.project_data_sha256) reasons.push('验收记录缺少项目数据指纹');
+  else if (record.project_data_sha256 !== currentProjectHash) reasons.push('项目数据已变化');
+  return reasons;
+};
+const auditStatusFor = (packageId: string, checkId: string) => {
+  const record = auditByCheckKey.get(`${packageId}:${checkId}`);
+  if (!record) return undefined;
+  if (record.status === 'passed') {
+    const pkg = control.work_packages.find((item: AnyRecord) => item.id === packageId);
+    if (pkg && staleAuditReason(pkg, checkId, record).length) return 'stale';
+  }
+  return record.status;
+};
 const gateStatus = (pkg: AnyRecord) => {
   return computeGateStatus(
     packageChecks(pkg),
-    (packageId, checkId) => auditByCheckKey.get(`${packageId}:${checkId}`)?.status,
+    auditStatusFor,
     pkg.id,
   );
 };
 const auditDisplay = (packageId: string, checkId: string) => {
   const record = auditByCheckKey.get(`${packageId}:${checkId}`);
   if (!record) return {box: '[ ]', result: 'pending'};
+  const pkg = control.work_packages.find((item: AnyRecord) => item.id === packageId);
+  if (record.status === 'passed' && pkg) {
+    const reasons = staleAuditReason(pkg, checkId, record);
+    if (reasons.length) return {box: '[~]', result: `stale；${reasons.join('、')}；须复验并追加记录`};
+  }
   const box = record.status === 'passed' ? '[x]' : record.status === 'failed' ? '[!]' : '[-]';
   const evidence = record.evidence?.length ? `；证据：${record.evidence.join('、')}` : '';
   return {box, result: `${record.status}；${record.checked_by}；${record.checked_at}${evidence}`};
@@ -301,7 +480,220 @@ const glossarySection = () => {
   return markdown;
 };
 
-let budgetMd = header('一期预算控制表');
+const blockerById = new Map<string, AnyRecord>((control.global_blockers ?? []).map((item: AnyRecord) => [item.id, item]));
+const orderedPackages = control.work_packages.filter((pkg: AnyRecord) => pkg.sequence < 900).sort((a: AnyRecord, b: AnyRecord) => a.sequence - b.sequence);
+
+function blockerIsClosed(blocker: AnyRecord | undefined): boolean {
+  if (!blocker) return false;
+  if (blocker.status === 'resolved') {
+    return Boolean(blocker.resolved_by && blocker.resolved_at && blocker.resolution_evidence?.length);
+  }
+  if (blocker.status === 'waived') {
+    return Boolean(blocker.waived_by && blocker.waiver_reason && blocker.resolution_evidence?.length);
+  }
+  return false;
+}
+
+function packageWaiverIsValid(pkg: AnyRecord): boolean {
+  return Boolean(pkg.waiver?.approved_by && pkg.waiver?.reason && pkg.waiver?.evidence?.length);
+}
+
+function packagePrerequisiteIssues(pkg: AnyRecord): string[] {
+  const issues: string[] = [];
+  for (const dependencyId of pkg.dependencies ?? []) {
+    const dependency = control.work_packages.find((item: AnyRecord) => item.id === dependencyId);
+    if (!dependency) {
+      issues.push(`缺少依赖包 ${dependencyId}`);
+      continue;
+    }
+    const complete = dependency.status === 'passed'
+      ? gateStatus(dependency) === 'passed' && (dependency.blockers ?? []).every((id: string) => blockerIsClosed(blockerById.get(id)))
+      : dependency.status === 'waived' && packageWaiverIsValid(dependency);
+    if (!complete) issues.push(`依赖包 ${dependencyId} 尚未通过当前验收或豁免`);
+  }
+  for (const blockerId of pkg.blockers ?? []) {
+    if (!blockerIsClosed(blockerById.get(blockerId))) issues.push(`阻塞项 ${blockerId} 尚未有证据关闭`);
+  }
+  return issues;
+}
+
+function effectiveReadiness(pkg: AnyRecord): string {
+  if (pkg.readiness === 'ready' && packagePrerequisiteIssues(pkg).length) return 'blocked';
+  return pkg.readiness;
+}
+
+function effectivePackageStatus(pkg: AnyRecord): string {
+  if (pkg.status === 'passed' && (effectiveReadiness(pkg) !== 'ready' || gateStatus(pkg) !== 'passed')) {
+    return gateStatus(pkg) === 'pending' ? 'stale_or_unverified' : 'blocked_by_precondition';
+  }
+  if (['in_progress', 'ready_for_inspection'].includes(pkg.status) && effectiveReadiness(pkg) === 'blocked') {
+    return 'blocked_by_precondition';
+  }
+  return pkg.status;
+}
+
+const packageGateIssues = control.work_packages.flatMap((pkg: AnyRecord) => {
+  const issues: string[] = [];
+  const prerequisiteIssues = packagePrerequisiteIssues(pkg);
+  if (pkg.readiness === 'ready' && prerequisiteIssues.length) {
+    issues.push(`${pkg.id}: readiness=ready 但${prerequisiteIssues.join('、')}`);
+  }
+  if (['in_progress', 'ready_for_inspection'].includes(pkg.status) && effectiveReadiness(pkg) !== 'ready') {
+    issues.push(`${pkg.id}: status=${pkg.status} 但开工前置条件未满足`);
+  }
+  if (pkg.status === 'passed' && (effectiveReadiness(pkg) !== 'ready' || gateStatus(pkg) !== 'passed')) {
+    issues.push(`${pkg.id}: status=passed 但依赖、阻塞项或当前验收门槛未通过`);
+  }
+  if (pkg.status === 'waived' && !packageWaiverIsValid(pkg)) {
+    issues.push(`${pkg.id}: status=waived 缺少批准人、原因或证据`);
+  }
+  return issues;
+});
+for (const blocker of control.global_blockers ?? []) {
+  if (['resolved', 'waived'].includes(blocker.status) && !blockerIsClosed(blocker)) {
+    packageGateIssues.push(`${blocker.id}: 已关闭状态缺少责任人、日期或证据`);
+  }
+}
+
+const currentPackage = orderedPackages.find((pkg: AnyRecord) => !(
+  (pkg.status === 'passed' && effectiveReadiness(pkg) === 'ready' && gateStatus(pkg) === 'passed')
+  || (pkg.status === 'waived' && packageWaiverIsValid(pkg))
+));
+
+function nextCheckpoint(pkg: AnyRecord): AnyRecord | undefined {
+  const pending = packageChecks(pkg).filter((check: AnyRecord) => auditStatusFor(pkg.id, check.id) !== 'passed');
+  if (effectiveReadiness(pkg) === 'blocked') {
+    return pending.find((check: AnyRecord) => check.can_run_while_blocked) ?? pending[0];
+  }
+  return pending[0];
+}
+
+function selectorLinkTable(packageId: string, outputPath: string): string {
+  const links = packageModelLinks(packageId);
+  let markdown = '### 关联项目数据\n\n| 数据文件 | 本工作包引用范围 | 映射状态 |\n|---|---|---|\n';
+  if (!links.length) markdown += '| — | 未登记项目模型映射 | 未映射 |\n';
+  for (const link of links) {
+    for (const scope of link.scope ?? []) {
+      const sourcePath = modelPackageLinks.authorities[scope.source] ?? scope.source;
+      const relativePath = path.posix.relative(path.posix.dirname(outputPath), sourcePath);
+      markdown += `| [${sourcePath}](${relativePath}) | ${escapeCell(scopeSummary(scope.select))} | ${link.mapping_status} |\n`;
+    }
+    if (!link.scope?.length && link.note) markdown += `| — | ${escapeCell(link.note)} | ${link.mapping_status} |\n`;
+  }
+  const packageRecord = control.work_packages.find((pkg: AnyRecord) => pkg.id === packageId);
+  if (packageRecord && (packageRecord.include_site_data_ledger === true || (packageRecord.blockers ?? []).some((id: string) => ['BLK-HANDOVER', 'BLK-SURVEY-DATA-FREEZE'].includes(id)))) {
+    const relativePath = path.posix.relative(path.posix.dirname(outputPath), 'docs/pending-site-data.md');
+    markdown += `| [docs/pending-site-data.md](${relativePath}) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |\n`;
+  }
+  const dataFingerprint = packageRecord ? packageProjectFingerprint(packageRecord) : 'unknown';
+  markdown += `\n当前项目数据指纹：\`sha256:${dataFingerprint}\`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。\n\n`;
+  return markdown;
+}
+
+function currentCheckpointSection(): string {
+  if (!currentPackage) return '## 当前推进位置\n\n一期所有施工工作包均已通过或豁免。\n\n';
+  const nextCheck = nextCheckpoint(currentPackage);
+  let markdown = '## 当前推进位置\n\n';
+  markdown += `- **当前工作包**：${currentPackage.id}｜${currentPackage.name}（执行：\`${effectivePackageStatus(currentPackage)}\`；就绪：\`${effectiveReadiness(currentPackage)}\`）。\n`;
+  markdown += `- **本包要做什么**：${escapeCell(currentPackage.description)}\n`;
+  if (effectiveReadiness(currentPackage) === 'blocked' || currentPackage.blockers?.length) {
+    markdown += '- **开工前先关闭**：\n';
+    for (const blockerId of currentPackage.blockers ?? []) {
+      const blocker = blockerById.get(blockerId);
+      markdown += `  - \`${blockerId}\` ${blocker ? `${escapeCell(blocker.item)}；解除条件：${escapeCell(blocker.clears_when)}` : '阻塞项引用待维护'}\n`;
+    }
+  } else {
+    markdown += '- **开工状态**：前置条件已满足，可按本包检查项执行。\n';
+  }
+  if (nextCheck) {
+    const nextLabel = nextCheck.can_run_while_blocked
+      ? '当前可推进的预交房检查点'
+      : effectiveReadiness(currentPackage) === 'blocked' ? '解除阻塞后的首个现场检查点' : '下一检查点';
+    markdown += `- **${nextLabel}**：${nextCheck.id}｜${escapeCell(nextCheck.item)}（${nextCheck.checkpoint ?? '验收'}）；按下表方法检查，通过标准是：${escapeCell(nextCheck.pass_condition ?? nextCheck.standard)}\n`;
+    if (nextCheck.can_run_while_blocked) {
+      markdown += '- **施工状态保持 blocked**：此项只推进初版设计或现场准备；通过它不会解除量房、专业会审、放线、采购或施工阻塞。\n';
+    }
+  } else {
+    markdown += '- **下一检查点**：本包检查项均有当前通过记录，等待更新工作包状态或进入下一依赖包。\n';
+  }
+  markdown += `- **参与责任角色**：${list(currentPackage.owner_roles)}。\n`;
+  const nextPackage = orderedPackages.find((pkg: AnyRecord) => pkg.sequence > currentPackage.sequence);
+  if (nextPackage) markdown += `- **通过后进入**：${nextPackage.id}｜${nextPackage.name}；仍须满足其依赖、阻塞项与开工门槛。\n`;
+  markdown += '\n### 工作包进度导航\n\n| 顺序 | 工作包 | 执行状态 | 开工条件 | 未通过检查数 | 付款/放行门槛 |\n|---:|---|---|---|---:|---|\n';
+  for (const pkg of orderedPackages) {
+    const pendingChecks = packageChecks(pkg).filter((check: AnyRecord) => auditStatusFor(pkg.id, check.id) !== 'passed').length;
+    markdown += `| ${pkg.sequence} | [${pkg.id}｜${escapeCell(pkg.name)}](#${pkg.id.toLowerCase()}) | ${effectivePackageStatus(pkg)} | ${effectiveReadiness(pkg)} | ${pendingChecks} | ${gateStatus(pkg)} |\n`;
+  }
+  return `${markdown}\n`;
+}
+
+const stalePhaseGateRecords: string[] = [];
+
+function phaseChecklist(phaseId: string, phaseControl: AnyRecord, phaseName: string, sourcePath: string): string {
+  const snapshot = fileSnapshot(phaseInputPaths(phaseId, sourcePath));
+  const projectDataFingerprint = snapshotDigest(fileSnapshot(phaseDataInputPaths(phaseId)));
+  const status = phaseControl.status ?? phaseControl.decision_state ?? 'unknown';
+  const gates = phaseControl.activation_gates ?? [];
+  const items = phaseControl.items ?? phaseControl.scope_candidates ?? [];
+  let markdown = `${snapshotComment(snapshot)}# ${phaseName}推进清单\n\n> 自动生成：请勿直接编辑。维护源：\`${sourcePath}\`  \n> 视图输入指纹：\`sha256:${snapshotDigest(snapshot)}\`（${Object.keys(snapshot).length} 个输入文件）  \n> Gate记录用项目数据指纹：\`sha256:${projectDataFingerprint}\`  \n> 阶段状态：\`${status}\`；决策状态：\`${phaseControl.decision_state ?? '未声明'}\`\n\n`;
+  markdown += '## 当前可执行范围\n\n';
+  if (status === 'proposed' || phaseControl.decision_state === 'alignment_required') {
+    markdown += '- 当前只执行启动条件核对、范围澄清和预算确认；不得将候选清单视为采购或施工授权。\n';
+    markdown += '- 启动门槛全部通过并由业主冻结范围后，须把选中的项目拆成有顺序、依赖、负责人、数据输入、验收标准、证据和验收/付款门槛的工作包，再生成实施清单。\n\n';
+  } else {
+    markdown += '- 按下方启动门槛和工作包状态推进；任何阻塞项未关闭时保持 blocked。\n\n';
+  }
+  markdown += '## 阶段启动 Checkpoint\n\n| ID | 当前状态 | 要完成什么 | 通过条件 | 责任角色 | 必需证据 | 当前验收指纹 |\n|---|---|---|---|---|---|---|\n';
+  for (const gate of gates) {
+    const gateSpec = {
+      id: gate.id,
+      item: gate.item,
+      owner_roles: gate.owner_roles ?? [],
+      pass_condition: gate.pass_condition ?? '',
+      evidence_required: gate.evidence_required ?? [],
+      ...(gate.id.endsWith('GATE-03') ? {scope_decision: {budget: phaseControl.budget, items}} : {}),
+    };
+    const gateSpecHash = sha256(JSON.stringify(gateSpec));
+    const gateRecord = [...(phaseControl.audit?.records ?? [])].reverse().find((record: AnyRecord) => record.gate_id === gate.id);
+    const reasons: string[] = [];
+    if (gateRecord?.status === 'passed') {
+      if (gateRecord.gate_spec_sha256 !== gateSpecHash) reasons.push('gate标准已变化');
+      if (gateRecord.project_data_sha256 !== projectDataFingerprint) reasons.push('项目数据已变化');
+      if (!gateRecord.evidence?.length) reasons.push('缺少通过证据');
+    } else if (!gateRecord && gate.status === 'passed') {
+      reasons.push('通过状态没有追加审计记录');
+    }
+    const gateStatus = reasons.length ? 'stale' : (gateRecord?.status ?? gate.status ?? 'pending');
+    if (reasons.length) stalePhaseGateRecords.push(`${gate.id}: ${reasons.join('、')}`);
+    const auditText = gateRecord
+      ? `${gateRecord.checked_by ?? '—'}；${gateRecord.checked_at ?? '—'}；${list(gateRecord.evidence)}`
+      : '尚无检查记录';
+    markdown += `| ${gate.id} | ${gateStatus} | ${escapeCell(gate.item)} | ${escapeCell(gate.pass_condition ?? '维护源尚未定义通过条件')} | ${list(gate.owner_roles)} | ${list(gate.evidence_required)} | \`${gateSpecHash}\`<br>${escapeCell(auditText)} |\n`;
+  }
+  markdown += '\n## 候选范围\n\n| ID | 项目 | 预算区间 | 状态 | 关联项目数据 |\n|---|---|---:|---|---|\n';
+  for (const item of items) {
+    const link = modelPackageLinks.links.find((candidate) => candidate.budget_ref.id === item.id);
+    const sourcePaths = link?.scope?.map((scope) => modelPackageLinks.authorities[scope.source]).filter(Boolean) ?? [];
+    const sourceText = unique(sourcePaths).map((itemPath) => {
+      const rel = path.posix.relative(path.posix.dirname(`${sourcePath.slice(0, sourcePath.lastIndexOf('/'))}/checklist.md`), itemPath);
+      const scopes = (link?.scope ?? []).filter((scope) => modelPackageLinks.authorities[scope.source] === itemPath).map((scope) => scopeSummary(scope.select));
+      return `[${itemPath}](${rel})${scopes.length ? ` — ${escapeCell(scopes.join('; '))}` : ''}`;
+    }).join('<br>');
+    const budget = item.estimate_min_cny == null ? '不预分配' : `¥${item.estimate_min_cny.toLocaleString('zh-CN')}—¥${item.estimate_max_cny.toLocaleString('zh-CN')}`;
+    markdown += `| ${item.id} | ${escapeCell(item.name)} | ${budget} | ${item.status} | ${sourceText || '待补数据映射'} |\n`;
+  }
+  if (phaseId === 'phase_3_styling' && phaseControl.observation_log_schema) {
+    markdown += '\n## 入住观察记录要求\n\n';
+    markdown += `每条记录保留：${(phaseControl.observation_log_schema.fields ?? []).join('、')}。观察周期由业主在启动时确认并记录，不用固定天数替代真实使用反馈。\n\n`;
+  }
+  markdown += '## 验收与记录\n\n';
+  markdown += '- 每个启动 Checkpoint 核对后，在阶段控制源的 `audit.records` 追加 `gate_id`、结果、检查人、日期、证据、`gate_spec_sha256` 和 `project_data_sha256`。复验追加记录，不覆盖历史。\n';
+  markdown += '- 未定义通过条件、责任角色或证据的 gate 不能标为 passed。\n';
+  markdown += '- 项目数据或本阶段范围变化后重新生成清单；旧的通过记录需按当前数据重新核对。\n';
+  return markdown;
+}
+
+let budgetMd = header('一期预算控制表', controlRelPath, [controlRelPath]);
 budgetMd += '## 总控\n\n| 项目 | 金额 |\n|---|---:|\n';
 for (const pool of control.budget_pools) budgetMd += `| ${escapeCell(pool.name)} | ${money(pool.planned_cny)} |\n`;
 budgetMd += `| **已分配** | **${money(allocated)}** |\n| 未分配额度 | ${money(control.control.unallocated_cny)} |\n| **一期总上限** | **${money(control.control.phase_ceiling_cny)}** |\n`;
@@ -318,10 +710,10 @@ if (hotWaterDecision) {
 if (appliancePackage?.budget?.public_reference_floor_cny != null) {
   budgetMd += `\n按目标规格筛选的家电候选公开参考价下限为 **${money(appliancePackage.budget.public_reference_floor_cny)}**，尚未包含安装和辅材；${escapeCell(appliancePackage.budget.public_reference_floor_note)}\n\n`;
 }
-budgetMd += '## 逐项预算与执行\n\n| 系统编号 | 费用项目 | 具体包括 | 预算池 | 计划 | 合同 | 已付 | 预测 | 状态 | 付款门槛 | 门槛状态 |\n|---|---|---|---|---:|---:|---:|---:|---|---|---|\n';
+budgetMd += '## 逐项预算与执行\n\n| 系统编号 | 费用项目 | 具体包括 | 预算池 | 计划 | 合同 | 已付 | 预测 | 状态 | 验收/付款门槛 | 门槛状态 |\n|---|---|---|---|---:|---:|---:|---:|---|---|---|\n';
 for (const pkg of control.work_packages) {
   const pool = control.budget_pools.find((item: AnyRecord) => item.id === pkg.budget_pool);
-  budgetMd += `| ${pkg.id} | ${escapeCell(pkg.name)} | ${escapeCell(pkg.description)} | ${escapeCell(pool.name)} | ${money(pkg.budget.planned_cny)} | ${money(pkg.budget.contracted_cny)} | ${money(pkg.budget.paid_cny)} | ${money(pkg.budget.forecast_cny)} | ${pkg.status} | ${pkg.payment_gate} | ${gateStatus(pkg)} |\n`;
+  budgetMd += `| ${pkg.id} | ${escapeCell(pkg.name)} | ${escapeCell(pkg.description)} | ${escapeCell(pool.name)} | ${money(pkg.budget.planned_cny)} | ${money(pkg.budget.contracted_cny)} | ${money(pkg.budget.paid_cny)} | ${money(pkg.budget.forecast_cny)} | ${effectivePackageStatus(pkg)} | ${pkg.gate_label ? `${pkg.gate_label}：` : ''}${pkg.payment_gate} | ${gateStatus(pkg)} |\n`;
 }
 budgetMd += '\n## 已知待分配预算缺口\n\n';
 if (pendingBudgetGaps.length) {
@@ -376,11 +768,11 @@ for (const pkg of control.work_packages.filter((item: AnyRecord) => item.budget?
 budgetMd += '\n## 预算审计规则\n\n';
 for (const rule of control.control.rules) budgetMd += `- [ ] ${rule}\n`;
 
-let scheduleMd = header('一期施工计划');
+let scheduleMd = header('一期施工计划', controlRelPath, [controlRelPath, roadmapRelPath]);
 scheduleMd += '## 状态说明\n\n`not_started → in_progress → ready_for_inspection → passed`；发现问题进入 `failed`，现场条件不满足时为 `blocked`。\n\n';
 scheduleMd += '## 施工顺序\n\n| 顺序 | 系统编号 | 施工项目 | 这一步具体做什么 | 参考工期 | 前一步必须完成 | 是否具备开工条件 | 当前进度 | 尚未解决的事项 | 预算 |\n|---:|---|---|---|---:|---|---|---|---|---:|\n';
 for (const pkg of control.work_packages.filter((item: AnyRecord) => item.sequence < 900)) {
-  scheduleMd += `| ${pkg.sequence} | ${pkg.id} | ${escapeCell(pkg.name)} | ${escapeCell(pkg.description)} | ${range(pkg.duration_workdays)} | ${list(pkg.dependencies)} | ${pkg.readiness} | ${pkg.status} | ${list(pkg.blockers)} | ${money(pkg.budget.planned_cny)} |\n`;
+  scheduleMd += `| ${pkg.sequence} | ${pkg.id} | ${escapeCell(pkg.name)} | ${escapeCell(pkg.description)} | ${range(pkg.duration_workdays)} | ${list(pkg.dependencies)} | ${effectiveReadiness(pkg)} | ${effectivePackageStatus(pkg)} | ${list(pkg.blockers)} | ${money(pkg.budget.planned_cny)} |\n`;
 }
 scheduleMd += '\n## 全局阻塞项\n\n| ID | 状态 | 事项 | 解除条件 |\n|---|---|---|---|\n';
 for (const blocker of control.global_blockers) scheduleMd += `| ${blocker.id} | ${blocker.status} | ${escapeCell(blocker.item)} | ${escapeCell(blocker.clears_when)} |\n`;
@@ -392,7 +784,14 @@ scheduleMd += '- [ ] 定制产品未取得复尺单和确认版深化图，不�
 scheduleMd += '- [ ] 工作包关键检查未通过或证据缺失，不得释放对应付款。\n';
 scheduleMd += `\n${glossarySection()}`;
 
-let checklistMd = header('一期施工、预算与验收统一审计清单');
+let checklistMd = header('一期施工、预算与验收统一审计清单', controlRelPath, phaseInputPaths(control.phase_id, controlRelPath));
+checklistMd += currentCheckpointSection();
+checklistMd += '## 使用规则与数据联动\n\n';
+checklistMd += '- 按“当前推进位置”找到工作包；被阻塞时先关闭列出的阻塞项，不跳过前置门槛。\n';
+checklistMd += '- 若检查项标注“可在 blocked 中推进，仅预演不放施工”，可继续做可逆设计和资料准备；该项通过不会解除施工 readiness。\n';
+checklistMd += '- 每项通过后记录检查人、时间、证据、`check_spec_sha256` 和 `project_data_sha256`；整改复验追加新记录并用 `supersedes` 指向旧记录。\n';
+checklistMd += '- 关联的项目配置变化后，旧 PASS 自动显示 stale、对应验收/放行/付款门槛回到 pending；重新验收后追加新记录。\n';
+checklistMd += '- 手写纸本只是现场记录；回填到 `control.yaml.audit_log.records` 后运行 `npm run schedule:render` 更新视图。\n\n';
 checklistMd += `## 项目总控\n\n- [ ] 一期已分配金额为 ${money(allocated)}，未分配 ${money(control.control.unallocated_cny)}，总上限 ${money(control.control.phase_ceiling_cny)}。\n- [ ] 基础硬装与中央空调合计 ${money(fixed)}，均属于一期固定工程。\n- [ ] 已量化但尚未分配的预算缺口为 ${money(knownPendingGap)}；未取得业主批准前保持待处理。\n- [ ] ${unpricedComponents.length}个待报价/待算量费用项已经逐项取得金额，并与父工作包控制额完成对账。\n- [ ] 所有现场未知项保持 blocked/site_pending，未以推测替代确认。\n\n`;
 checklistMd += '## 家电型号、公开报价与适配核对\n\n';
 checklistMd += '- [ ] 每台一期家电都取得含安装、辅材、送货、拆旧、发票和质保边界的书面报价；公开参考价不得直接当作合同价。\n';
@@ -422,13 +821,14 @@ for (const record of quoteRoundRecords) {
 checklistMd += '\n';
 
 for (const pkg of control.work_packages) {
-  checklistMd += `## ${pkg.id}｜${pkg.name}\n\n`;
+  checklistMd += `<a id="${pkg.id.toLowerCase()}"></a>\n## ${pkg.id}｜${pkg.name}\n\n`;
   checklistMd += `- 通俗说明：${pkg.description}\n`;
   checklistMd += `- 预算：${money(pkg.budget.planned_cny)}；合同：${money(pkg.budget.contracted_cny)}；已付：${money(pkg.budget.paid_cny)}；预测：${money(pkg.budget.forecast_cny)}\n`;
-  checklistMd += `- 依赖：${list(pkg.dependencies)}；就绪：\`${pkg.readiness}\`；执行：\`${pkg.status}\`\n`;
-  checklistMd += `- 责任角色：${list(pkg.owner_roles)}；付款门槛：\`${pkg.payment_gate}\`\n`;
-  checklistMd += `- 当前付款门槛状态：\`${gateStatus(pkg)}\`\n`;
+  checklistMd += `- 依赖：${list(pkg.dependencies)}；就绪：\`${effectiveReadiness(pkg)}\`；执行：\`${effectivePackageStatus(pkg)}\`\n`;
+  checklistMd += `- 责任角色：${list(pkg.owner_roles)}；${packageGateLabel(pkg)}：\`${pkg.payment_gate}\`\n`;
+  checklistMd += `- 当前${packageGateLabel(pkg)}状态：\`${gateStatus(pkg)}\`\n`;
   if (pkg.blockers?.length) checklistMd += `- 阻塞项：${list(pkg.blockers)}\n`;
+  checklistMd += `\n${selectorLinkTable(pkg.id, 'schedule/phase-1/checklist.md')}`;
   if (pkg.budget?.components?.length) {
     checklistMd += '\n### 预算拆分核对\n\n';
     if (pkg.budget.priority_policy?.length) {
@@ -444,26 +844,139 @@ for (const pkg of control.work_packages) {
     checklistMd += '\n- [ ] 每个费用项均有数量、单价、品牌型号或服务边界；“待报价/待算量”没有被当作0元。\n';
     checklistMd += '- [ ] 各项报价合计与父工作包合同额一致；重复费用和排除项已标明。\n';
   }
-  checklistMd += '\n| 勾选 | ID | 级别/节点 | 验收项 | 方法 | 通过标准 | 必需证据 | 结果/签名/日期 |\n|---|---|---|---|---|---|---|---|\n';
+  checklistMd += '\n| 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |\n|---|---|---|---|---|---|---|---|---|\n';
   for (const ref of pkg.acceptance_refs ?? []) {
     const item = acceptanceById.get(ref)!;
     const audit = auditDisplay(pkg.id, item.id);
-    checklistMd += `| ${audit.box} | ${item.id} | ${item.severity}/引用 | ${escapeCell(item.item)} | ${escapeCell(item.method)} | ${escapeCell(item.standard)} | 照片或检测记录 | ${escapeCell(audit.result)} |\n`;
+    checklistMd += `| ${audit.box} | ${item.id} | ${item.severity}/引用 | ${escapeCell(item.item)} | ${escapeCell(item.method)} | ${escapeCell(item.standard)} | 照片或检测记录 | \`${checkSpecHash(pkg, item.id)}\` | ${escapeCell(audit.result)} |\n`;
   }
   for (const item of pkg.checks ?? []) {
     const audit = auditDisplay(pkg.id, item.id);
-    checklistMd += `| ${audit.box} | ${item.id} | ${item.severity}/${item.checkpoint} | ${escapeCell(item.item)} | ${escapeCell(item.method)} | ${escapeCell(item.pass_condition)} | ${list(item.evidence_required)} | ${escapeCell(audit.result)} |\n`;
+    const executionWindow = item.can_run_while_blocked ? '可在 blocked 中推进，仅预演不放施工' : '阻塞解除后';
+    checklistMd += `| ${audit.box} | ${item.id} | ${item.severity}/${item.checkpoint}/${executionWindow} | ${escapeCell(item.item)} | ${escapeCell(item.method)} | ${escapeCell(item.pass_condition)} | ${list(item.evidence_required)} | \`${checkSpecHash(pkg, item.id)}\` | ${escapeCell(audit.result)} |\n`;
   }
   checklistMd += '\n- [ ] 所有 critical 检查通过；失败项已有整改和复验记录。\n';
   checklistMd += '- [ ] 必需证据路径已登记且文件可打开。\n';
-  checklistMd += `- [ ] 付款门槛 \`${pkg.payment_gate}\` 已由责任人确认。\n\n`;
+  checklistMd += `- [ ] ${packageGateLabel(pkg)} \`${pkg.payment_gate}\` 已由责任人确认。\n\n`;
 }
 checklistMd += glossarySection();
 
-fs.writeFileSync(path.join(phaseDir, 'budget.md'), budgetMd);
-fs.writeFileSync(path.join(phaseDir, 'schedule.md'), scheduleMd);
-fs.writeFileSync(path.join(phaseDir, 'checklist.md'), checklistMd);
+const phase2Control = phaseControls.get('phase_2_function_upgrade') ?? {};
+const phase3Control = phaseControls.get('phase_3_styling') ?? {};
+const phase2ChecklistPath = 'schedule/phase-2/checklist.md';
+const phase3ChecklistPath = 'schedule/phase-3/checklist.md';
+const phase2Checklist = phaseChecklist('phase_2_function_upgrade', phase2Control, '二期功能升级', 'schedule/phase-2/control.yaml');
+const phase3Checklist = phaseChecklist('phase_3_styling', phase3Control, '三期入住后优化', 'schedule/phase-3/control.yaml');
+
+const projectSnapshot = fileSnapshot(projectInputPaths);
+const pendingSiteText = fs.readFileSync(path.join(root, 'docs/pending-site-data.md'), 'utf8');
+const pendingSiteCount = Number(pendingSiteText.match(/量表共\s*(\d+)\s*条/)?.[1] ?? 0);
+let projectChecklist = `${snapshotComment(projectSnapshot)}# 项目进度与阶段 Checkpoint\n\n> 自动生成：请勿直接编辑。维护源为各阶段 control.yaml、roadmap.yaml、phase-scope.yaml、model-package-links.yaml、验收标准和已关联项目配置。  \n> 项目数据指纹：\`sha256:${snapshotDigest(projectSnapshot)}\`（${Object.keys(projectSnapshot).length} 个输入文件）  \n> 当前量房待确认台账：${pendingSiteCount} 个编号，详情见 [量房待填清单](../docs/pending-site-data.md)。\n\n`;
+projectChecklist += '## 怎么用这份清单\n\n';
+projectChecklist += '- 先看阶段表，按“当前状态”和“启动门槛”决定是否进入下一阶段。\n';
+projectChecklist += '- 一期按 [一期施工与验收清单](phase-1/checklist.md) 的当前工作包推进；每个包展示开始条件、检查方法、通过标准、证据和关联项目数据。\n';
+projectChecklist += '- 二期、三期目前仍是提案，只能核对启动门槛；选定范围后还要把每个项目拆成施工工作包，不能把候选清单当采购或施工指令。\n';
+projectChecklist += '- 更新了项目配置或现场台账后，运行 `npm run schedule:render`。`npm run verify:schedule` 只读检查生成文件是否过期，不会替你悄悄重写。\n\n';
+projectChecklist += '## 阶段路线与状态\n\n| 阶段 | 当前状态 | 当前预算口径 | 启动 / 下一步条件 | 执行清单 |\n|---|---|---:|---|---|\n';
+for (const phase of roadmap.phases ?? []) {
+  const phaseControl = phaseControls.get(phase.id) ?? {};
+  const isPhase1 = phase.id === control.phase_id;
+  const status = isPhase1 ? control.control.status : (phaseControl.status ?? 'unknown');
+  const budgetText = isPhase1
+    ? `${money(control.control.phase_ceiling_cny)} 上限`
+    : `${money(phaseControl.budget?.estimate_min_cny ?? null)}—${money(phaseControl.budget?.estimate_max_cny ?? null)}`;
+  const nextCondition = isPhase1
+    ? (phase.activation_gate ?? '按 PKG-000 的量房、图纸、报价和合同检查点推进')
+    : (phase.activation_gate ?? '查看本阶段启动门槛');
+  const checklistPath = isPhase1 ? 'phase-1/checklist.md' : phase.id === 'phase_2_function_upgrade' ? 'phase-2/checklist.md' : 'phase-3/checklist.md';
+  projectChecklist += `| ${escapeCell(phase.name)} | ${status} | ${budgetText} | ${escapeCell(nextCondition)} | [打开清单](${checklistPath}) |\n`;
+}
+projectChecklist += '\n## 当前应推进的工作包\n\n';
+if (currentPackage) {
+  const blockerNames = (currentPackage.blockers ?? []).map((id: string) => blockerById.get(id)?.item ?? id);
+  const nextCheck = nextCheckpoint(currentPackage);
+  const currentAction = nextCheck?.can_run_while_blocked
+    ? '施工就绪保持 blocked；当前可推进预交房设计/资料准备'
+    : effectiveReadiness(currentPackage) === 'blocked' ? '先解除开工阻塞' : `当前执行状态 ${effectivePackageStatus(currentPackage)}`;
+  projectChecklist += `- **${currentPackage.id}｜${currentPackage.name}**：${currentAction}。\n`;
+  projectChecklist += `- 要做：${escapeCell(currentPackage.description)}\n`;
+  projectChecklist += `- 等待：${list(blockerNames)}\n`;
+  projectChecklist += `- 下一检查点：${nextCheck ? `${nextCheck.id}｜${escapeCell(nextCheck.item)}（${nextCheck.can_run_while_blocked ? '预交房可推进，不放施工' : nextCheck.checkpoint ?? '验收'}）` : '当前包检查已通过，等待状态更新'}。\n`;
+  projectChecklist += `- 责任角色：${list(currentPackage.owner_roles)}。详情见 [${currentPackage.id} 现场检查点](phase-1/checklist.md#${currentPackage.id.toLowerCase()})。\n\n`;
+} else {
+  projectChecklist += '- 一期工作包均已通过或豁免。\n\n';
+}
+projectChecklist += '## 当前关联项目数据版本\n\n| 数据源 | 当前 SHA-256 |\n|---|---|\n';
+for (const [source, hash] of Object.entries(projectSnapshot)) projectChecklist += `| [${source}](../${source}) | \`${hash}\` |\n`;
+projectChecklist += '\n任何输入源变化都会使此清单的输入指纹变化；验证器会报告旧视图及变化文件。已通过的现场检查还会比较自身记录的项目数据指纹和验收标准指纹，变化后转为 stale 并阻止付款放行。\n';
+
+const outputViews: Array<{path: string; content: string}> = [
+  {path: 'schedule/phase-1/budget.md', content: budgetMd},
+  {path: 'schedule/phase-1/schedule.md', content: scheduleMd},
+  {path: 'schedule/phase-1/checklist.md', content: checklistMd},
+  {path: 'schedule/checklist.md', content: projectChecklist},
+  {path: phase2ChecklistPath, content: phase2Checklist},
+  {path: phase3ChecklistPath, content: phase3Checklist},
+];
+
+const staleViews: string[] = [];
+if (renderMode) {
+  for (const view of outputViews) fs.writeFileSync(path.join(root, view.path), view.content);
+} else {
+  for (const view of outputViews) {
+    const absolute = path.join(root, view.path);
+    if (!fs.existsSync(absolute)) {
+      staleViews.push(`${view.path}: missing; run npm run schedule:render`);
+      continue;
+    }
+    const current = fs.readFileSync(absolute, 'utf8');
+    if (current === view.content) continue;
+    const priorSnapshotMatch = current.match(/<!-- schedule-input-snapshot:(\{[^\n]*\}) -->/);
+    let priorSnapshot: Record<string, string> | undefined;
+    try {
+      priorSnapshot = priorSnapshotMatch ? JSON.parse(priorSnapshotMatch[1]) as Record<string, string> : undefined;
+    } catch {
+      priorSnapshot = undefined;
+    }
+    const currentSnapshot = fileSnapshot(view.path === 'schedule/phase-1/budget.md'
+      ? [controlRelPath]
+      : view.path === 'schedule/phase-1/schedule.md'
+        ? [controlRelPath, roadmapRelPath]
+        : view.path === 'schedule/phase-1/checklist.md'
+          ? phaseInputPaths(control.phase_id, controlRelPath)
+          : view.path === 'schedule/checklist.md'
+            ? projectInputPaths
+            : phaseInputPaths(view.path.includes('phase-2') ? 'phase_2_function_upgrade' : 'phase_3_styling', view.path.includes('phase-2') ? 'schedule/phase-2/control.yaml' : 'schedule/phase-3/control.yaml'));
+    const changedInputs = priorSnapshot
+      ? unique([...Object.keys(priorSnapshot), ...Object.keys(currentSnapshot)])
+          .filter((source) => priorSnapshot?.[source] !== currentSnapshot[source])
+      : [];
+    staleViews.push(`${view.path}: ${changedInputs.length ? `inputs changed: ${changedInputs.join(', ')}` : 'content differs or source snapshot missing'}; run npm run schedule:render`);
+  }
+}
+
+const staleAudits = control.audit_log.records.flatMap((record: AnyRecord) => {
+  if (record.status !== 'passed') return [];
+  const pkg = control.work_packages.find((item: AnyRecord) => item.id === record.package_id);
+  if (!pkg) return [];
+  const reasons = staleAuditReason(pkg, record.check_id, record);
+  return reasons.length ? [`${record.package_id}/${record.check_id}: ${reasons.join('、')}`] : [];
+});
+
+if (!renderMode && (staleViews.length || staleAudits.length || stalePhaseGateRecords.length || packageGateIssues.length)) {
+  console.error([
+    ...staleViews.map((issue) => `- ${issue}`),
+    ...staleAudits.map((issue) => `- stale audit: ${issue}; 复验后追加记录`),
+    ...stalePhaseGateRecords.map((issue) => `- stale phase gate: ${issue}; 复核后追加记录`),
+    ...packageGateIssues.map((issue) => `- package gate: ${issue}`),
+  ].join('\n'));
+  process.exitCode = 1;
+}
+
 console.log(`schedule control valid: ${roadmapPhaseIds.size} phases, ${control.work_packages.length} phase-1 packages, ${componentIds.size} cost components (${unpricedComponents.length} unpriced), ${usedCheckIds.size} auditable checks, ${money(allocated)} allocated, ${money(knownPendingGap)} known pending gap`);
+if (renderMode && (staleAudits.length || stalePhaseGateRecords.length || packageGateIssues.length)) {
+  console.warn(`stale or inconsistent gate state: ${[...staleAudits, ...stalePhaseGateRecords, ...packageGateIssues].join('; ')}`);
+}
 if (process.argv.includes('--audit')) {
   const lockedRoundItems = quoteRoundRecords.filter((record: AnyRecord) => record.status === 'locked');
   console.log([

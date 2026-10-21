@@ -1,8 +1,8 @@
 schema: schedule.phase-scope/v1
 project_id: bontop-design-log
 phase_id: phase_3_styling
-version: 0.1.0
-updated_at: 2026-09-11
+version: 0.2.0
+updated_at: 2026-10-20
 status: proposed
 decision_state: alignment_required
 depends_on: [phase_1_basic_occupancy]
@@ -13,9 +13,33 @@ budget:
   ceiling_cny: null
   approved_cny: null
 activation_gates:
-  - {id: P3-GATE-01, status: blocked, item: 一期完成并实际入住观察}
-  - {id: P3-GATE-02, status: blocked, item: 形成基于真实使用问题的缺口清单}
-  - {id: P3-GATE-03, status: blocked, item: 业主确认三期项目和预算上限}
+  - id: P3-GATE-01
+    status: blocked
+    item: 一期完成并开始真实入住观察
+    owner_roles: [业主]
+    pass_condition: 记录入住开始日期，并由业主确认观察周期的结束条件；不预设固定观察天数
+    evidence_required: [occupancy_start_record, owner_observation_window]
+  - id: P3-GATE-02
+    status: blocked
+    item: 形成基于真实使用问题的缺口清单
+    owner_roles: [业主]
+    pass_condition: 每条问题记录日期、房间、使用场景、发生频率、影响、照片或视频、临时解决办法，并区分安全/功能/体验/审美
+    evidence_required: [occupancy_observation_log, prioritized_gap_list]
+  - id: P3-GATE-03
+    status: blocked
+    item: 业主确认三期具体项目和预算上限
+    owner_roles: [业主, 设计师, 供应商]
+    pass_condition: 每个保留项目有尺寸、安装/摆放方式、维护条件、报价、验收标准和预算批准；固定灯位或电气变更已转为工程工作包
+    evidence_required: [approved_phase_scope, written_quotes, approved_work_package_plan]
+  - id: P3-GATE-04
+    status: blocked
+    item: 二期对三期涉及空间的影响已完成或冻结
+    owner_roles: [业主, 设计师]
+    pass_condition: 二期已完成，或其对墙面、窗帘、灯光、家具和动线的影响范围已有书面冻结基线
+    evidence_required: [phase_2_closeout_or_scope_freeze]
+observation_log_schema:
+  fields: [id, observed_at, room, use_scenario, problem, frequency, impact, evidence, temporary_solution, category, owner, status]
+  categories: [安全, 功能, 体验, 审美]
 scope_candidates:
   - {id: P3-010, name: 装饰画与墙面陈设, status: proposed}
   - {id: P3-020, name: 地毯靠垫及补充织物, status: proposed}
@@ -25,7 +49,8 @@ audit:
   status: not_started
   note: 不预分配单项金额，避免在入住反馈形成前制造虚假精度
   record_schema:
+    required: [id, gate_id, status, checked_at, checked_by, evidence, gate_spec_sha256, project_data_sha256]
     status_values: [pending, passed, failed, not_applicable]
-    note: 审计状态词汇与 schedule/phase-1/control.yaml 的 audit_log.record_schema 对齐：pending 表达「该条项目前尚未执行/尚未确认」——有登记、无结果，与「忘了登记」在机器上可区分；只有 passed 才算闭环。三期 items 逐项确认后追加记录，禁止覆盖历史
+    note: 每次核对启动 gate 后追加记录，禁止覆盖历史。passed 记录须带 gate_spec_sha256 与 project_data_sha256；项目数据或 gate 标准变化后视为 stale，重新核对并追加新记录
   records: []
 

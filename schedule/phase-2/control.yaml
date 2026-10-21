@@ -1,8 +1,8 @@
 schema: schedule.phase-scope/v1
 project_id: bontop-design-log
 phase_id: phase_2_function_upgrade
-version: 0.1.0
-updated_at: 2026-09-12
+version: 0.2.0
+updated_at: 2026-10-20
 status: proposed
 decision_state: alignment_required
 depends_on: [phase_1_basic_occupancy]
@@ -13,9 +13,24 @@ budget:
   ceiling_cny: null
   approved_cny: null
 activation_gates:
-  - {id: P2-GATE-01, status: blocked, item: 一期竣工结算完成}
-  - {id: P2-GATE-02, status: blocked, item: 根据一期实际结余重新确定二期总上限}
-  - {id: P2-GATE-03, status: blocked, item: 逐项确认采购必要性、尺寸、接口和保修条件}
+  - id: P2-GATE-01
+    status: blocked
+    item: 一期竣工结算和资料移交完成
+    owner_roles: [业主, 施工方]
+    pass_condition: PKG-170 通过；最终结算、缺陷清单和一期竣工资料已签收
+    evidence_required: [final_account_statement, closed_defect_register, signed_handover_index]
+  - id: P2-GATE-02
+    status: blocked
+    item: 根据一期实际结余重新确定二期总上限
+    owner_roles: [业主]
+    pass_condition: 一期实际支出、未付承诺和预备金结余已对账，业主书面批准二期预算上限
+    evidence_required: [phase_1_final_budget, owner_budget_approval]
+  - id: P2-GATE-03
+    status: blocked
+    item: 逐项确认采购必要性、尺寸、接口、保修和当前方案是否仍有效
+    owner_roles: [业主, 设计师, 设备供应商, 定制供应商]
+    pass_condition: 每个候选均明确保留/延期/取消；保留项有现场复尺、接口与书面报价，P2-100柜组边界和P2-160灯光范围已对齐当前项目数据，并已拆成可验收工作包
+    evidence_required: [approved_phase_scope, site_fit_records, written_quotes, approved_work_package_plan]
 items:
   - {id: P2-010, name: 电视及电视墙系统（含客厅低柜）, estimate_min_cny: 11000, estimate_max_cny: 14000, status: proposed}
   - {id: P2-020, name: 烘干机, estimate_min_cny: 2500, estimate_max_cny: 4500, status: proposed}
@@ -36,6 +51,7 @@ audit:
   status: not_started
   note: 明细合计为¥42,100—¥67,200；云鲸J6上下水版已按业主确认的3,000元移入一期，不在二期重复计费；范围未冻结前不得采购
   record_schema:
+    required: [id, gate_id, status, checked_at, checked_by, evidence, gate_spec_sha256, project_data_sha256]
     status_values: [pending, passed, failed, not_applicable]
-    note: 审计状态词汇与 schedule/phase-1/control.yaml 的 audit_log.record_schema 对齐：pending 表达「该条项目前尚未执行/尚未确认」——有登记、无结果，与「忘了登记」在机器上可区分；只有 passed 才算闭环。二期 items 逐项确认后追加记录，禁止覆盖历史
+    note: 每次核对启动 gate 后追加记录，禁止覆盖历史。passed 记录须带 gate_spec_sha256 与 project_data_sha256；项目数据或 gate 标准变化后视为 stale，重新核对并追加新记录
   records: []

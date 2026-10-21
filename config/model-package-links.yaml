@@ -157,6 +157,21 @@ links:
       - {source: hvac, select: {plan_ids: [A2]}}
       - {source: mep_routes, select: {layers: [refrigerant, condensate, supply_air, return_air]}}
       - {source: electrical, select: {ids: [sock_living_ac, sock_dining_ac, sock_master_ac, sock_parent_ac, sock_child_ac, sock_study_ac, sock_vrf_outdoor_a2, ac_panel_living, ac_panel_dining, ac_panel_master, ac_panel_parent, ac_panel_child, ac_panel_study]}}
+  - id: MODEL-PKG-142
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-142}
+    mapping_status: project_scope
+    # 临时入住是整屋放行检查：几何、机电、HVAC、固定设备或现场清单变化，都应使旧通过记录转为 stale。
+    scope:
+      - {source: model_geometry, select: {all: true}}
+      - {source: overlay, select: {all: true}}
+      - {source: furnishings, select: {all: true}}
+      - {source: electrical, select: {all: true}}
+      - {source: plumbing, select: {all: true}}
+      - {source: electrical_topology, select: {all: true}}
+      - {source: mep_routes, select: {all: true}}
+      - {source: hvac, select: {all: true}}
+      - {source: ceiling, select: {all: true}}
   - id: MODEL-PKG-145
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-145}

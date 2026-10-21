@@ -1,8 +1,8 @@
 schema: schedule.phase1-control/v1
 project_id: bontop-design-log
 phase_id: phase_1_basic_occupancy
-version: 1.1.0
-updated_at: 2026-10-07
+version: 1.2.0
+updated_at: 2026-10-20
 currency: CNY
 authority:
   execution: schedule/phase-1/control.yaml
@@ -23,10 +23,14 @@ control:
   status_values: [not_started, in_progress, blocked, ready_for_inspection, failed, passed, waived]
   readiness_values: [blocked, ready]
   check_status_values: [pending, passed, failed, not_applicable]
+  blocker_status_values: [site_pending, alignment_required, resolved, waived]
   rules:
     - 所有critical检查通过后，工作包才可标记为passed
     - 必需证据已登记且可访问，验收项才可标记为passed
     - 依赖工作包全部passed后，就绪状态才可变为ready
+    - readiness: ready 只允许在所有依赖包当前通过、所有阻塞项有证据关闭后生效
+    - status: passed 只允许在本包当前验收全部通过、开工条件仍有效后生效
+    - can_run_while_blocked 的检查只允许做预演或资料准备，不会解除阻塞、依赖或施工放行门槛
     - failed检查必须追加整改和复验记录，不得覆盖历史
     - 声明的付款门槛通过后，才可释放对应付款
     - 未分配预算未经业主批准不得承诺或支出
@@ -580,7 +584,7 @@ global_blockers:
     item: 尚未交房，无法完成现场量房及房屋查验
     clears_when: 交房查验完成并归档现场记录
     owner_roles: [业主, 施工方, 设计师]
-    trigger: 交房与现场查验必须在开工交底和水电放位之前完成；未闭环则量房待填清单 52 项无法清零，水电与中央空调点位只能停在暂记值，开工日期顺延且后续所有深化都缺现场依据
+    trigger: 交房与现场查验必须在开工交底和水电放位之前完成；未闭环则 docs/pending-site-data.md 中影响施工的现场数据仍为待确认，水电与中央空调点位只能停在暂记值，开工日期顺延且后续深化缺现场依据
   - id: BLK-STRUCTURE
     status: site_pending
     item: 墙体结构、梁底及允许打孔或穿墙条件未确认
@@ -613,10 +617,10 @@ global_blockers:
     trigger: 门扇、位置、高度与空调检修关系必须在二期深化图确认与定制柜下单前关闭；未闭环则一期成品衣架和斗柜的过渡占地白占，二期柜体还可能与空调冷凝水管槽和检修口冲突，定制柜返工不是零成本
   - id: BLK-CURTAIN-SCOPE
     status: alignment_required
-    item: 一期窗帘范围按2026-09-12压缩决策收窄为三个卧室（主卧/父母房/西北次卧）的遮光帘+纱帘，客厅和书房后移二期；各房遮光要求、布纱组合及轨道形式仍需逐房确认
-    clears_when: 形成逐房窗帘清单并确认一期采购范围和报价
+    item: "一期窗帘范围需要统一：本阻塞项写主卧/父母房/西北次卧，PKG-145写主卧/书房/西北次卧，schedule/phase-scope.yaml还包含两个卫生间；未统一前不冻结采购范围"
+    clears_when: 业主确认一期窗帘房间与产品范围，并同步本阻塞项、PKG-145、phase-scope.yaml 和预算
     owner_roles: [业主, 设计师, 窗帘供应商]
-    trigger: 逐房遮光要求、布纱组合与轨道形式必须在窗帘下单和轨道安装前冻结；未闭环则一期窗帘 5,000 元额度形成不了有效报价，卧室先住后改还要二次上门拆装轨道
+    trigger: 逐房遮光要求、布纱组合与轨道形式必须在窗帘下单和轨道安装前冻结；范围冲突未闭环时，一期窗帘 5,000 元额度无法形成有效报价，卧室先住后改还要二次上门拆装轨道
   - id: BLK-PHASE1-APPLIANCES
     status: alignment_required
     item: 一期家电额度在原9,000元下探组合基础上追加云鲸J6上下水版3,000元，2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤按4,000元进入一期后现按16,000元控制；J6型号和金额已由业主确认，客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结
@@ -632,7 +636,7 @@ global_blockers:
   - id: BLK-MEP-INTERFACE-FREEZE
     status: alignment_required
     item: 水电与中央空调的接口未联合冻结——点位与回路、吊顶内分层标高（#41 分区口径）、穿墙孔位高度、冷凝水接入点与立管、检修口与风口均未会签
-    clears_when: 水电、空调、设计、施工四方联合交底并签认点位回路标高孔位与冷凝水接点，签认记录归档
+    clears_when: 水电、空调、设计、施工四方联合交底并签认点位回路标高孔位与冷凝水接点；纪要明确 PKG-030 和 PKG-040 并行或先后施工，签认记录归档
     owner_roles: [水电施工, 空调商, 设计师, 施工方, 业主]
     trigger: 四方联合交底必须在吊顶封板之前、也就是水电隐蔽验收与空调第一次安装之前完成；未闭环则点位回路标高孔位与冷凝水接点没有会签依据，封板后任何调整都要拆吊顶，verify:mep 的穿墙与梁底判据也无从校验
   - id: BLK-CABINET-FREEZE-FOR-MEP
@@ -643,10 +647,10 @@ global_blockers:
     trigger: 橱柜深化图必须在水电放位（seq 40）之前冻结，而不是等橱柜安装（seq 110）；未闭环则微蒸烤预留点位 sock_kitchen_oven、厨房台面电位与扫地机基站柜格上下水只能按推测预留，柜体到场后对不上要凿墙改管并重贴砖
   - id: BLK-SURVEY-DATA-FREEZE
     status: site_pending
-    item: "量房待填清单 52 项未清零——给水入户点 #8、梁位 7 条、41 面墙结构类型、排水立管与燃气表与排烟道、强电箱开箱、沉箱深度与分界线"
+    item: "影响水电与中央空调施工的现场数据尚未全部实测、显式豁免或登记为阻塞；当前清单和数据状态见 docs/pending-site-data.md"
     clears_when: 影响水电与中央空调的条目逐项转为实测值或显式豁免，并回填 config 与 docs/pending-site-data.md
     owner_roles: [业主, 施工方, 设计师]
-    trigger: 影响水电与中央空调的待填项必须在水电放位与空调深化前逐项转为实测值或显式豁免；未闭环则给水入户点、梁位、41 面墙结构、排水立管与燃气表与排烟道、强电箱、沉箱深度全部停在暂记值，设计侧与施工侧会按不同猜测施工
+    trigger: 影响水电与中央空调的待填项必须在水电放位与空调深化前逐项转为实测值或显式豁免；未闭环的项目保持 blocked，设计侧与施工侧不得按不同暂定值放线施工
   - id: BLK-FRIDGE-FIT
     status: site_pending
     item: 设计模型把冰箱位暂记为约700毫米宽×700毫米深，当前收集到的501升候选有宽约833毫米者，冰箱型号不能在净开口复测前下单
@@ -762,7 +766,7 @@ work_packages:
   - id: PKG-000
     sequence: 0
     name: 设计、量房与开工准备
-    description: 交房后核对房屋实际尺寸和现状，把平面布局、拆改、水电、空调、吊顶、灯具、柜体等图纸协调完整，并用同一范围向多家单位询价后签订合同。
+    description: 交房前可先做有据可查的初版设计预演和现场资料准备；交房后再量房、回填配置、冻结专业图纸、同范围报价并签约。预演检查通过不代表具备施工放线或采购条件。
     budget_pool: design_preparation
     budget:
       planned_cny: 8000
@@ -784,27 +788,54 @@ work_packages:
     owner_roles: [业主, 设计师, 施工方, 空调商]
     payment_gate: GATE-000-COMPLETE
     checks:
+      - id: SCH-000-PRE-01
+        severity: major
+        checkpoint: pre_handover_design
+        can_run_while_blocked: true
+        does_not_release_construction: true
+        owner_roles: [业主, 设计师]
+        item: 建立交房前初版设计基线（仅预演，不作施工图）
+        method: 只使用当前权威配置、已有DEC和可追溯证据；逐项标记 confirmed、inferred、site_pending 或 user_decision。可并行比较平面、家具、吊顶/HVAC、照明和机电方案；尺寸依赖梁位、立管或现场净空的部分保留选项，不猜坐标或最终接口。
+        pass_condition: 初版基线写清目标、优先级、采用的事实及来源、未决现场变量、备选路径、什么实测结果会反转当前方案；明确标注“不可施工/不可放线/不可下单”。
+        evidence_required: [preliminary_design_baseline, fact_and_decision_register, reversal_conditions]
+      - id: SCH-000-PRE-02
+        severity: major
+        checkpoint: pre_handover_site_prep
+        can_run_while_blocked: true
+        does_not_release_construction: true
+        owner_roles: [业主, 设计师, 施工方]
+        item: 整理交房量房路线和现场资料责任表
+        method: 按 docs/pending-site-data.md 的编号把任务分为量房当日实测、深化冻结前关闭、下单前核验、供应商资料待补和业主决策；每项标出负责人、输入工具/资料、照片/记录方式、影响工作包与触发点。
+        pass_condition: 影响下一步水电、空调、结构和柜体接口的项目能按房间和现场路线执行；不能当日解决的项目有 owner、触发条件和保持 blocked 的工作包；本检查通过不关闭任何 site_pending blocker。
+        evidence_required: [survey_route, survey_record_template, site_data_owner_trigger_register]
       - id: SCH-000-01
         severity: critical
-        checkpoint: completion
-        item: 现场量房及房屋查验完成
-        method: 对照原始户型逐房复核净尺寸、梁柱、门窗、烟道、燃气、给排水、强弱电及设备平台
-        pass_condition: 形成带日期、测量人和照片索引的现场记录
-        evidence_required: [measurement_record, site_photos]
+        checkpoint: handover_survey
+        item: 交房查验和现场量房完成
+        method: 按 docs/pending-site-data.md 逐房走查并按顺序记录：①交房缺陷和现场保护边界；②房间净长宽、对角线、墙厚、门窗及开启方向；③梁柱、梁底、结构墙和可打孔边界；④强弱电箱、给排水、燃气表、排烟道、沉箱和外机平台；⑤家具家电接口、吊顶净空和检修条件。每条记录对应稳定编号、实测值/单位、测量人、日期、照片编号与精度；邻户或模型推断值不得写成实测。
+        pass_condition: 形成逐房测量记录和可定位照片索引；交房缺陷有责任方与处理状态；未能实测的项目保留原状态并登记负责人和触发条件。
+        evidence_required: [handover_defect_record, measurement_record, site_photo_index]
+      - id: SCH-000-04
+        severity: critical
+        checkpoint: data_backfill
+        item: 量房结果回填到项目权威配置并完成一致性复核
+        method: 先更新几何、结构、家具和机电权威配置，再同步 house.yaml 镜像字段与 pending-site-data.md 状态；运行适用的 layout、MEP、家具、facts 与 schedule 检查。任何影响吊顶、空调或水电放位的数据未解决时，维持对应 blocker。
+        pass_condition: 实测事实有来源和照片索引，模型推断没有被误标为 measured；影响当前施工的数据已实测或显式豁免；其他待决项有 owner、触发条件和下一步。
+        evidence_required: [updated_authority_config_refs, verification_report, updated_site_data_ledger, open_issue_register]
       - id: SCH-000-02
         severity: critical
-        checkpoint: completion
+        checkpoint: design_freeze
         item: 施工图与专业深化完成会审
-        method: 联合核对拆改、吊顶、灯位、水电、给排水、空调、橱柜和柜体图
-        pass_condition: 冲突清单已关闭；未确认事项明确标为阻塞而非猜测
-        evidence_required: [signed_drawing_set, coordination_record]
+        method: 业主、设计、施工、水电、空调和橱柜方逐版核对拆改、吊顶标高、灯位、回路、给排水、冷凝水、风口/检修口、柜体和家电接口；记录设计图编号、版本、日期及逐项冲突责任人。
+        pass_condition: 施工图和专业深化图有一致的冻结版本；影响近期工序的冲突已关闭；剩余 site_pending 项有负责人、触发节点和停工边界。
+        evidence_required: [signed_drawing_set, coordination_record, closed_conflict_register]
       - id: SCH-000-03
         severity: critical
         checkpoint: payment
         item: 报价和合同口径完整
         method: 比较至少三份同口径报价并核对数量、单价、辅材、安装、损耗、增项和付款节点
         pass_condition: 一期承诺额不超过总控且预备金未打包给施工方
-        evidence_required: [quote_comparison, signed_contract]
+        evidence_required: [quote_comparison, signed_contract, owner_budget_approval_if_overrun]
 
   - id: PKG-005
     sequence: 5
@@ -1458,6 +1489,49 @@ work_packages:
         pass_condition: 所有内机可控且运行、排水正常，问题完成整改复验
         evidence_required: [commissioning_record, operation_video]
 
+  - id: PKG-142
+    sequence: 142
+    name: 基础硬装后的临时入住放行
+    description: >-
+      在墙地顶、固定机电与洁具施工完成并验收后，单独判断是否具备临时入住条件。本关不要求一期家具、完整窗帘或全部家电先入场；业主签认的最低生活功能可以由已验收设备、现有物品或明确的临时替代满足。通过只表示可按已签认的临住清单暂住，不代表一期竣工验收、最终结算完成，也不代表剩余施工可在有人居住时无条件继续。
+    budget_pool: hard_finish
+    budget: {planned_cny: 0, contracted_cny: null, paid_cny: 0, forecast_cny: null, source_ref: temporary_occupancy_release}
+    duration_workdays: {min: 1, max: 1}
+    dependencies: [PKG-135, PKG-140]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [业主, 施工方, 水电施工, 空调商]
+    payment_gate: GATE-142-OCCUPANCY-RELEASE
+    gate_label: 临时入住放行门槛
+    include_site_data_ledger: true
+    checks:
+      - id: SCH-142-01
+        severity: critical
+        checkpoint: release
+        item: 最低生活功能与机电安全核验
+        method: >-
+          业主先签认最低生活功能清单，再逐项现场试用：照明与常用插座、供水和排水、厕所、洗浴与热水、通风和季节性温控；烹饪、食物储存、洗衣、睡眠与隐私按业主实际需要列入。每项记明正式设备或临时替代、测试人、结果和证据。由对应专业人员提供电气、燃气、给排水、空调等调试/安全记录；重点查裸露带电部位、漏水返水、燃气设备未验收启用、洁具或构件松动，以及影响逃生和检修的堆放。
+        pass_condition: >-
+          清单中每一项都已通过现场测试，或有业主签认的安全临时替代/明确不需要；不存在未关闭的 critical 缺陷、未验收即投入使用的燃气/电气设备、漏水返水或裸露带电部位；专业系统记录齐全。
+        evidence_required: [temporary_occupancy_function_matrix, professional_commissioning_records, critical_defect_register, room_walkthrough_photos]
+      - id: SCH-142-02
+        severity: critical
+        checkpoint: release
+        item: 临入住前室内环境检测
+        method: >-
+          与施工合同及检测机构确认本项目适用的现行标准、检测污染物、采样点位和采样条件；委托有资格的检测单位检测并归档原始报告。不得以“没有异味”替代检测结果，也不得把现有清单中的固定采样时长或单一限值未经核验直接套用到所有检测方法。
+        pass_condition: 检测报告满足本项目合同和适用标准要求，检测范围与当前已完成的装修材料相符；报告缺失或未通过时，不放行入住。
+        evidence_required: [indoor_air_test_report, applicable_standard_and_sampling_conditions]
+      - id: SCH-142-03
+        severity: major
+        checkpoint: release
+        item: 未完工程与有人居住期间施工安排签认
+        method: >-
+          逐项列出剩余窗帘、家具、家电和其他工程，标注是否产生钻孔切割粉尘、胶黏剂/涂料气味、噪声、动火或占用通道；优先安排入住前完成。确需入住后施工时，写明封闭隔离、清洁、停工时段和住户临时离场安排，并确认不会阻断消防/逃生、卫生间或检修通道。
+        pass_condition: 所有未完项目有负责人、日期和施工影响记录；所有有粉尘、挥发物、动火或通道风险的作业已有入住前完成或临时撤离/隔离方案，业主已签认临时入住清单和已知妥协。
+        evidence_required: [deferred_work_register, occupied_work_risk_plan, owner_temporary_occupancy_signoff]
+
   - id: PKG-145
     sequence: 145
     name: 一期窗帘、纱帘与手动轨道
@@ -1657,7 +1731,7 @@ work_packages:
 audit_log:
   status: empty
   record_schema:
-    required: [id, package_id, check_id, status, checked_at, checked_by, evidence]
+    required: [id, package_id, check_id, status, checked_at, checked_by, evidence, check_spec_sha256, project_data_sha256]
     status_values: [pending, passed, failed, not_applicable]
-    note: 状态词汇与 control.check_status_values 对齐。pending 的用途：表达「该检查尚未执行」——有登记、无结果，与「忘了登记」在机器上可区分。此前 89 个可审计检查（39 SCH + 50 acceptance）全部只能靠 records 缺席表达「没做」，而缺席既可能是未执行、也可能是漏登记，二者不可区分；补入 pending 后，未执行的检查可以被显式登记为 pending，缺席才唯一意味着漏登记。同一package_id与check_id组合复验时追加新记录，并用supersedes指向上一条记录；禁止覆盖历史
+    note: 状态词汇与 control.check_status_values 对齐。pending 表达「该检查尚未执行」；同一 package_id 与 check_id 复验时追加记录并用 supersedes 指向旧记录。每条记录还需保存当前验收定义指纹 check_spec_sha256 与关联项目配置指纹 project_data_sha256；数据或标准变化后旧 passed 自动标为 stale，付款门槛回到 pending。禁止覆盖历史
   records: []
