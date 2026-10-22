@@ -282,8 +282,18 @@ const SECTIONS: Section[] = [
             const model = r.indoor.match(/MJV-[0-9A-Z/-]+/)?.[0];
             const kw = r.indoor.match(/(\d+\.\d+)kW/)?.[1];
             if (!model || !kw) throw new Error(`逐房映射解析失败：${r.indoor.slice(0, 60)}`);
-            return { label: labelOf(r), model, kw };
+            const ac = r.indoor.match(/ac_\w+/)?.[0] ?? '';
+            return { ac, label: labelOf(r), model, kw };
           });
+          // 完整性断言（四审修复）：恰 6 条内机记录、锚点集合恰为预期六个且无重复——
+          // 锚点重复（如两个 ac_living）或整条记录缺失（如删 ac_study）必须报红，不得静默错置/漏房。
+          const EXPECTED = ['ac_living', 'ac_dining', 'ac_master', 'ac_parent', 'ac_child', 'ac_study'];
+          const got = parsed.map((p) => p.ac);
+          if (parsed.length !== EXPECTED.length || new Set(got).size !== EXPECTED.length || !EXPECTED.every((a) => got.includes(a))) {
+            throw new Error(`逐房映射不完整：应有锚点 ${EXPECTED.join('/')} 各一条，实际 ${got.join('/') || '（空）'}`);
+          }
+          // 展示顺序固定为锚点规范序，与配置中的记录顺序无关。
+          parsed.sort((a, b) => EXPECTED.indexOf(a.ac) - EXPECTED.indexOf(b.ac));
           const head = parsed.slice(0, 3).map((p) => `${p.label} ${p.model} ${p.kw}kW`);
           const tail = parsed.slice(3);
           const same = tail.every((p) => p.model === tail[0].model && p.kw === tail[0].kw);
