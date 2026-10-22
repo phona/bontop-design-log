@@ -257,27 +257,32 @@ const SECTIONS: Section[] = [
         value: (c) => {
           // 按房间逐条派生（批 4 审阅修复）：型号/容量从各房 indoor 串解析，
           // 房间标签由 ac 锚点映射，互换任一房间型号都会改变输出。
-          // 房间标签一律取结构化 rooms[].room（二审修复：不从 indoor 自由文本猜房间）；
-          // living_dining 两条按文件序为客厅、餐厅。型号/容量仍取 indoor 串（机型只在此登记）。
-          const LABELS: Record<string, string> = {
-            master_bedroom: '主卧', study: '书房', bedroom_nw: '儿童房', bedroom_se: '客房',
+          // 房间标签由 indoor 串内的 ac_* 锚点决定（三审修复：不依赖数组顺序——
+          // 两条 living_dining 仅靠顺序区分会把 71T2/42T2 静默标错房间），
+          // 并校验锚点与结构化 rooms[].room 一致，不一致即抛错。
+          const ANCHORS: Record<string, { room: string; label: string }> = {
+            ac_living: { room: 'living_dining', label: '客厅' },
+            ac_dining: { room: 'living_dining', label: '餐厅' },
+            ac_master: { room: 'master_bedroom', label: '主卧' },
+            ac_parent: { room: 'study', label: '书房' },
+            ac_child: { room: 'bedroom_nw', label: '儿童房' },
+            ac_study: { room: 'bedroom_se', label: '客房' },
           };
-          let livingDiningSeen = 0;
-          const labelOf = (room: string): string => {
-            if (room === 'living_dining') {
-              livingDiningSeen += 1;
-              return livingDiningSeen === 1 ? '客厅' : '餐厅';
+          const labelOf = (r: { room: string; indoor: string }): string => {
+            const ac = r.indoor.match(/ac_\w+/)?.[0];
+            if (!ac || !ANCHORS[ac]) throw new Error(`逐房映射：indoor 缺 ac_* 锚点：${r.indoor.slice(0, 60)}`);
+            const expected = ANCHORS[ac];
+            if (r.room !== expected.room) {
+              throw new Error(`逐房映射锚点与房间不一致：${ac} 应属 ${expected.room}，实际登记 ${r.room}`);
             }
-            const label = LABELS[room];
-            if (!label) throw new Error(`逐房映射：未知的 room id ${room}`);
-            return label;
+            return expected.label;
           };
           const rooms = plan(c).load_design.rooms as Array<{ room: string; indoor: string }>;
           const parsed = rooms.map((r) => {
             const model = r.indoor.match(/MJV-[0-9A-Z/-]+/)?.[0];
             const kw = r.indoor.match(/(\d+\.\d+)kW/)?.[1];
             if (!model || !kw) throw new Error(`逐房映射解析失败：${r.indoor.slice(0, 60)}`);
-            return { label: labelOf(r.room), model, kw };
+            return { label: labelOf(r), model, kw };
           });
           const head = parsed.slice(0, 3).map((p) => `${p.label} ${p.model} ${p.kw}kW`);
           const tail = parsed.slice(3);
