@@ -53,7 +53,7 @@ interior-design-project/
 │   ├── designer_brief.md
 │   ├── acceptance_checklist.md
 │   ├── material_selection_log.md
-│   ├── decisions/             # 决策日志（18 个主题文件 + README 索引）
+│   ├── decisions/             # 决策日志（18 个主题文件 + 2 个归档分册 + README 索引）
 │   │   ├── README.md          #   索引 + 模板 + 待决策事项
 │   │   ├── 01-control-budget.md
 │   │   └── …
