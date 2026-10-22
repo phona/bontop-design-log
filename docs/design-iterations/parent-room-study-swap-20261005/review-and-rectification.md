@@ -73,7 +73,7 @@ bedroom_se     → study_seasonal_wardrobe_170_01   ← 旧书房用柜，现在
 
 ### P3 证据缺口
 
-- 未采集同版本浏览器证据（客房门口/床/书房/起夜路径第一人称），`review-manifest.json` 的 aesthetic/functional review 仍 BLOCKED——这是铁律要求，不是遗漏计算。
+- 未采集同版本浏览器证据（客房门口/床/书房/起夜路径第一人称），`round.yaml（review 段）` 的 aesthetic/functional review 仍 BLOCKED——这是铁律要求，不是遗漏计算。
 
 ---
 
@@ -111,7 +111,7 @@ bedroom_se     → study_seasonal_wardrobe_170_01   ← 旧书房用柜，现在
 `lighting_night_path` 回路 + NP-1..NP-9 底盒 + 床头调光零线的 declaration；**回路总数 21→22**，交底时报双排箱。灯体与采购归二期。
 
 ### 批次 D — 证据采集（P3）
-起 dev server，按 `review-manifest.json` required_views 采同版本截图与 runtime AABB，回填 aesthetic/functional review。
+起 dev server，按 `round.yaml（review 段）` required_views 采同版本截图与 runtime AABB，回填 aesthetic/functional review。
 
 ### 需要你拍板的三件事
 1. **B5**：书房电脑专用回路——改道到书房，还是修订 DEC-2026-10-03-R1 接受共路？（决定批次 B/C 的回路归属）

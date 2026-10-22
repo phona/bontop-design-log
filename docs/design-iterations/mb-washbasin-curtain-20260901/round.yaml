@@ -1,5 +1,11 @@
 # 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
 # INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L10] frozen —— 阻塞：pending-mullion-layout / pending-window-band / pending-riser-position 未解锁
+# [decision-brief.yaml L15] confirmed_by_user —— 方向已确认；具体坐标待量房后终确认
+# [decision-brief.yaml L36] re_alignment_required —— 量房数据回来后需按组合情形最终拍板
+# [fact-table.yaml L6] status —— 待量房复尺，未冻结
+# ── 注释保全结束 ──
 schema: design-iteration-round/v1
 iteration_id: mb-washbasin-curtain-20260901
 index:

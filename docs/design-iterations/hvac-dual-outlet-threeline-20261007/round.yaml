@@ -1,5 +1,22 @@
 # 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
 # INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L1] Decision Brief — 客餐厅双出风风口三层线语言（frozen）
+# [decision-brief.yaml L63] review_required —— （双 PASS 才 delivery_ready）
+# [design-datum.yaml L1] Design Datum — 客餐厅双出风内机风口三层线语言（DEC-2026-10-07-R03）
+# [design-datum.yaml L22] supply_living —— 71T2 功能段
+# [design-datum.yaml L23] LD-deco-side-south —— 封闭装饰段
+# [design-datum.yaml L24] supply_dining —— 42T2 功能段
+# [design-datum.yaml L25] LD-deco-side-north —— 封闭装饰段；西端 [7.20,7.70] 保持与 ceiling_dining_west_band 正交交接不贴百叶
+# [design-datum.yaml L32] supply_living_bottom —— 71T2 第二出口（下出风）
+# [design-datum.yaml L33] supply_dining_bottom —— 42T2 第二出口（下出风）
+# [design-datum.yaml L35] LD-deco-supply-mid —— 两台机器之间非功能区
+# [design-datum.yaml L43] return_living —— 71T2 回风/检修
+# [design-datum.yaml L44] return_dining —— 42T2 回风/检修（R20 收界值）
+# [design-datum.yaml L46] LD-deco-return-mid —— 两台机器之间非功能区
+# [fact-table.yaml L1] Fact Table — 客餐厅三层线风口（DEC-2026-10-07-R03）
+# [object-manifest.yaml L1] Object Manifest — 客餐厅三层线风口（DEC-2026-10-07-R03）
+# ── 注释保全结束 ──
 schema: design-iteration-round/v1
 iteration_id: hvac-dual-outlet-threeline-20261007
 index:

@@ -17,8 +17,8 @@
     "evidence/r9/topdown.png",
     "evidence/r9/context.runtime.json",
     "evidence/r9/topdown.runtime.json",
-    "fact-table.yaml#user-selected-dining-plane-center",
-    "design-datum.yaml#dining-cloud-orb-ceiling-light"
+    "round.yaml（fact_table 段）#user-selected-dining-plane-center",
+    "round.yaml（datum 段）#dining-cloud-orb-ceiling-light"
   ],
   "requested_changes": [
     "先完成“平顶几何中心”与“餐桌关系”的业主取舍确认：保留R9时明确接受偏心空间氛围灯语义；若要求灯具兼顾餐桌照明，选择桌心或折中坐标后重新生成四视图并复审。",

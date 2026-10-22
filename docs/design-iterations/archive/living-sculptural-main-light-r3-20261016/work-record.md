@@ -38,7 +38,7 @@ R3改动涉及共享灯具几何、灯具类型/schema和`config/render/lighting
 
 ## 最终证据与审查
 
-R8为中间探针；对应审美/功能PASS只适用于R8旧几何，保存在`review-manifest-r8-intermediate.json`。R9五视图探针显示支撑仍被锥壳遮住、整体仍像浅盘；R9没有独立双审，且当前R3 manifest内的source hash仍绑定R8，因此R9只作为诊断证据，不能标为最终review。该失败触发R4深钟形与外置连接脚修正，R3保持`incomplete`并由R4替代；R3旧决定、R8/R9图像和审查均保留。实际施工/商品review仍为site_pending。细节见`review-manifest.json`及R4目录。
+R8为中间探针；对应审美/功能PASS只适用于R8旧几何，保存在`review-manifest-r8-intermediate.json`。R9五视图探针显示支撑仍被锥壳遮住、整体仍像浅盘；R9没有独立双审，且当前R3 manifest内的source hash仍绑定R8，因此R9只作为诊断证据，不能标为最终review。该失败触发R4深钟形与外置连接脚修正，R3保持`incomplete`并由R4替代；R3旧决定、R8/R9图像和审查均保留。实际施工/商品review仍为site_pending。细节见`round.yaml（review 段）`及R4目录。
 
 - R8中间证据：`tmp/screenshots/living-main-light/living_main_light_after_r3_underside_v001.png`及同目录closeup/side/context/top-down；runtime/snapshot保留在`evidence/`根目录。
 - R9诊断证据：`evidence/r9/`与`tmp/screenshots/living-main-light/living_main_light_after_r3_*_v002.png`；同机位帮助定位侧撑仍进入灯壳和大圆面占主轮廓，后由R4处理。

@@ -9,10 +9,10 @@
     "gate:visual与typecheck已通过；tests未运行。"
   ],
   "evidence_refs": [
-    "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/decision-brief.yaml",
-    "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/fact-table.yaml",
+    "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/round.yaml（brief 段）",
+    "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/round.yaml（fact_table 段）",
     "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/work-record.md",
-    "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/review-manifest.json",
+    "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/round.yaml（review 段）",
     "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/evidence/runtime-verification.json",
     "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/evidence/startup-page.snapshot.txt",
     "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/evidence/restored-page.snapshot.txt",

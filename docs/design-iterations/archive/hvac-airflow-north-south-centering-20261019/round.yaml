@@ -1,5 +1,11 @@
 # 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
 # INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L1] Decision Brief — 客餐厅两排风口南北向居中
+# [design-datum.yaml L1] Design Datum — 下出风与回风两排南北向中心
+# [fact-table.yaml L1] Fact Table — 下出风/回风两排南北向居中（DEC-2026-10-19-R02）
+# [object-manifest.yaml L1] Object Manifest — 客餐厅底面两排南北向居中
+# ── 注释保全结束 ──
 schema: design-iteration-round/v1
 iteration_id: hvac-airflow-north-south-centering-20261019
 index:

@@ -1,5 +1,19 @@
 # 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
 # INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L17] frozen —— 历史真值：2026-10-04 业主确认时点本 brief 确为 frozen。但其中的回路基数（外机供电单独成路 = 第 20 路、箱体结论按 20 路重算）已被下方 supersession 列出的 DEC 与 config 字段取代；frozen 标记保留作历史留档，不再代表现行回路/箱体口径。本 brief 的暖通成交选型与 ¥36,000 商务口径未被任何 DEC 反转，不在此列
+# [decision-brief.yaml L118] ---------------------------------------------------------------------------
+# [decision-brief.yaml L119] supersession：2026-10-11 业主审计登记。本 brief 冻结的回路基数（外机供电单独成路
+# [decision-brief.yaml L120] = 第 20 路、箱体结论按 20 路重算）已过期，但 scripts/ / server/ / tests/ /
+# [decision-brief.yaml L121] app/ 对 decision-brief.yaml 零引用（config/facts.yaml:150 亦把
+# [decision-brief.yaml L122] design-iterations 的 decision-brief 登记为「迭代过程留档，非现行事实源」），
+# [decision-brief.yaml L123] 故过期不会响——没有任何门禁会因为「brief 的回路数与
+# [decision-brief.yaml L124] config/electrical-topology.yaml 不一致」而失败。
+# [decision-brief.yaml L125] 上方 frozen: true 与下方 freeze_record / validation_record 一律不改写，保持历史真值。
+# [decision-brief.yaml L126] 范围限定：supersession 只覆盖「回路基数与箱体结论」；本 brief 的暖通成交选型、
+# [decision-brief.yaml L127] ¥36,000 商务口径、容量偏差不返工等结论未被任何 DEC 反转，仍为现行有效留档。
+# [decision-brief.yaml L128] ---------------------------------------------------------------------------
+# ── 注释保全结束 ──
 schema: design-iteration-round/v1
 iteration_id: hvac-resix-20261003
 index:

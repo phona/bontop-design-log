@@ -6,8 +6,8 @@
       "fact": "柜体运行时外廓为800×420×850mm，但仍是未冻结的视觉代理；柜门/抽屉扫掠、内部结构、防倾倒、台面耐水耐热和设备承托条件未验证。",
       "evidence": [
         "evidence/runtime-query-s1-form-v5.json#objects.waterbar_low_cabinet_800_preview",
-        "fact-table.yaml#I-CABINET-PREVIEW-DATUM",
-        "object-manifest.yaml#waterbar_low_cabinet_800_preview"
+        "round.yaml（fact_table 段）#I-CABINET-PREVIEW-DATUM",
+        "round.yaml（objects 段）#waterbar_low_cabinet_800_preview"
       ],
       "required_change": "确认柜体外廓与内部结构，补做柜门/抽屉扫掠、防倾倒、台面承托和柜体移动/检修路径验证。"
     },
@@ -17,9 +17,9 @@
       "evidence": [
         "evidence/runtime-query-s1-form-v5.json#objects",
         "evidence/runtime-query-s1-form-v5.json#relationships",
-        "fact-table.yaml#I-APPLIANCE-GAP",
-        "object-manifest.yaml#S1",
-        "object-manifest.yaml#EM450"
+        "round.yaml（fact_table 段）#I-APPLIANCE-GAP",
+        "round.yaml（objects 段）#S1",
+        "round.yaml（objects 段）#EM450"
       ],
       "required_change": "按最终SKU说明书或实机补做两台设备的操作、补水、蒸汽棒、散热、清洁、拆卸和同时使用包络。"
     },
@@ -29,8 +29,8 @@
       "evidence": [
         "evidence/runtime-query-s1-form-v5.json#objects.fridge",
         "evidence/runtime-query-s1-form-v5.json#objects.waterbar_low_cabinet_800_preview",
-        "fact-table.yaml#F-PROTECTED-OBJECTS",
-        "review-manifest.json#delivery.follow_up_site_pending"
+        "round.yaml（fact_table 段）#F-PROTECTED-OBJECTS",
+        "round.yaml（review 段）#delivery.follow_up_site_pending"
       ],
       "required_change": "叠加冰箱厂家门扇/抽屉开启包络，验证冰箱开启、取水、咖啡操作、人员站位及整机更换路径。"
     },
@@ -38,11 +38,11 @@
       "object": "现有墙控与供电关系",
       "fact": "墙控带约z[3.98,4.10]、安装高1.30m，位于低柜z[3.47,4.27]范围内且与EM450 z[3.89,4.11]重叠。餐厅可及接地插座、回路容量、两机同时负荷、漏保和断电检修位置未落实。",
       "evidence": [
-        "fact-table.yaml#S-WALL-CONTROL-ACCESS",
-        "fact-table.yaml#S-DINING-POWER",
-        "object-manifest.yaml#waterbar_low_cabinet_800_preview",
-        "object-manifest.yaml#S1",
-        "object-manifest.yaml#EM450"
+        "round.yaml（fact_table 段）#S-WALL-CONTROL-ACCESS",
+        "round.yaml（fact_table 段）#S-DINING-POWER",
+        "round.yaml（objects 段）#waterbar_low_cabinet_800_preview",
+        "round.yaml（objects 段）#S1",
+        "round.yaml（objects 段）#EM450"
       ],
       "required_change": "按真实面板外廓、柜体剖面和真人站位验证墙控可达性；按最终SKU铭牌落实插座、回路、同时负荷、漏保和检修断电位置。"
     }
@@ -57,8 +57,8 @@
     "evidence/runtime-query-s1-form-v5.json",
     "evidence/s1-form-v5-close.png",
     "evidence/s1-form-v5-overview.png",
-    "fact-table.yaml",
-    "object-manifest.yaml"
+    "round.yaml（fact_table 段）",
+    "round.yaml（objects 段）"
   ],
   "requested_changes": [
     "冻结并深化800×420×850mm水吧柜的外廓、内部结构、柜门/抽屉和承托条件。",

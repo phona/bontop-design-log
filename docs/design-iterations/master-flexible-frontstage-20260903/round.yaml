@@ -1,5 +1,23 @@
 # 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
 # INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L13] frozen —— R5 纠偏后仍 blocked：统一350mm、南帘0.30m与床侧硬净距存在不可同时满足项；site_pending与双评审阻塞禁止冻结
+# [design-datum.yaml L7] status —— R5 correction source version；统一350mm床头柜、横柜完整mesh与电气已更新；硬冲突/真实维护与产品事实未收口，禁止施工冻结
+# [fact-table.yaml L6] status —— R5 纠偏后统一350mm与床/南帘硬边界冲突；四门人体站位、HVAC维护、东墙结构与真实产品外廓仍site_pending
+# [object-manifest.yaml L85] ── 历史 R3 对象（仅追溯，不是 R5 placed 对象） ───────
+# [object-manifest.yaml L104] ── 主卧前台：R3 新增床头储物（历史） ───────────────
+# [object-manifest.yaml L141] ── 主卧前台：迁移/变更 ──────────────────────────
+# [object-manifest.yaml L196] ── 主卧前台：R1 新增 ─────────────────────────────
+# [object-manifest.yaml L215] ── 主卧前台：电气 ─────────────────────────────
+# [object-manifest.yaml L269] status —— 第一轮不冻结固定壁灯；若取消须同步 electrical/topology/render facts/测试
+# [object-manifest.yaml L270] ── 主卧：删除 ─────────────────────────────────
+# [object-manifest.yaml L307] ── DEC-045 责任边界（不动，仅登记）─────────────
+# [object-manifest.yaml L311] owner —— HVAC 责任不并入家具：冷凝水管/保温遮蔽与回风检修归 HVAC，柜组不承担
+# [object-manifest.yaml L326] ── 书房后台：新增 ──────────────────────────────
+# [object-manifest.yaml L345] ── 书房：轻训练三件 ────────────────────────────
+# [object-manifest.yaml L363] status —— 复用现有类型，禁止新增 movable_adjustable_bench 等同义类型
+# [object-manifest.yaml L436] ── 书房：删除 ─────────────────────────────────
+# ── 注释保全结束 ──
 schema: design-iteration-round/v1
 iteration_id: master-flexible-frontstage-20260903
 index:

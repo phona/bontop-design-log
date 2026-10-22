@@ -1,5 +1,9 @@
 # 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
 # INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L34] 2026-10-05 追加（scope_addendum）：x=3.70 这一已批准变更为机械落地，需同步渲染层与测试层，
+# [decision-brief.yaml L35] 这些文件不在上面的 allowed_scope.files 里，在此显式补登；本补登不引入任何新事实变更。
+# ── 注释保全结束 ──
 schema: design-iteration-round/v1
 iteration_id: hvac-contract-mapping-20261005
 index:

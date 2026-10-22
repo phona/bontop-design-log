@@ -8,8 +8,8 @@
     "测试未运行；work-record记录generate/verify project-render-facts、typecheck、gate:visual通过，浏览器运行时证据覆盖默认态、预演态和恢复态。"
   ],
   "evidence_refs": [
-    "docs/design-iterations/presentation-defaults-20261019/decision-brief.yaml",
-    "docs/design-iterations/presentation-defaults-20261019/fact-table.yaml",
+    "docs/design-iterations/presentation-defaults-20261019/round.yaml（brief 段）",
+    "docs/design-iterations/presentation-defaults-20261019/round.yaml（fact_table 段）",
     "docs/design-iterations/presentation-defaults-20261019/work-record.md",
     "docs/design-iterations/presentation-defaults-20261019/evidence/default-state-runtime.json",
     "docs/design-iterations/presentation-defaults-20261019/evidence/preview-applied-runtime.json",

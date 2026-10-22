@@ -43,4 +43,4 @@
 - 定向测试：`mep-hvac-lint.test.ts` + `facts-lint.test.ts` 75/75，`mep-guidance-baseline.test.ts` 6/6，`MepCoordinationRenderer.test.ts` 6/6 passed。MEP lint 当前 0 error / 133 warnings，其中 `unsupported_span` 13；survey bucket 80。其他历史全仓测试失败见最终 review manifest，属于其他既有工作流/运行时问题。
 - `shared/mep-takeoff.ts` 同回路 union 复算：`ordinary_power_living` 的 `conduitM` 24.65m → 31.85m（+7.20m），2.5mm² 三芯 `wireM` 77.65m → 100.33m（+22.68m）；3D 单路长度 2.98m → 9.78m（+6.80m）。takeoff 是基于平面路径的同回路 union；两种量的口径不同，不能相互替代。复算值与前次 x=13.20 预演不同，最终证据见 `evidence/takeoff-ordinary-power-living.json`。
 - 当前 close / wide / target-isolated browser runtime 与截图见 `evidence/after-runtime.json`、`after-east-side-runtime.json`、`after-target-focus-runtime.json`、`after.png`、`after-target-focus.png`、`after-east-side-full.png`、`after-plan-route.png`；运行时 ready=true、错误横幅空、目标 route lint 为空，施工状态仍 pending。
-- `review-manifest.json` 汇总验证、取舍、待量房边界、当前 runtime 与独立审查；施工冻结仍被箱体出线/墙厚/垫层/门槛现场事实阻塞。
+- `round.yaml（review 段）` 汇总验证、取舍、待量房边界、当前 runtime 与独立审查；施工冻结仍被箱体出线/墙厚/垫层/门槛现场事实阻塞。

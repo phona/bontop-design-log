@@ -8,8 +8,8 @@
     "截图中的告警计数为407，但runtime configErrors为空，未见影响本轮地材显示的证据。"
   ],
   "evidence_refs": [
-    "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/decision-brief.yaml",
-    "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/design-datum.yaml",
+    "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/round.yaml（brief 段）",
+    "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/round.yaml（datum 段）",
     "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/evidence/runtime-verification.json",
     "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/evidence/startup-page.snapshot.txt",
     "docs/design-iterations/archive/tile-preview-on-entry-r05-20261019/evidence/restored-page.snapshot.txt",

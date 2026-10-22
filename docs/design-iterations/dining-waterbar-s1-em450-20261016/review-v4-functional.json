@@ -4,19 +4,19 @@
     {
       "object": "S1 / EM450 水吧操作与维护",
       "fact": "V4证据已正确绑定当前sourceDigest，且静态AABB、台面接触和94mm间距已核实；但S1补水/取杯/接水盘清洁、EM450操作/蒸汽棒/散热、两台设备同时使用空间仍未验证。S1距柜体北端仅14mm，EM450后侧余量约7.5mm。",
-      "evidence": ["evidence/runtime-query-s1-form-v4.json#objects", "fact-table.yaml#I-APPLIANCE-GAP", "object-manifest.yaml#S1", "object-manifest.yaml#EM450"],
+      "evidence": ["evidence/runtime-query-s1-form-v4.json#objects", "round.yaml（fact_table 段）#I-APPLIANCE-GAP", "round.yaml（objects 段）#S1", "round.yaml（objects 段）#EM450"],
       "required_change": "按最终SKU说明书或实机补做操作、补水、清洁、拆卸、散热和维护包络验证。"
     },
     {
       "object": "餐厅电源与墙控",
       "fact": "V4只证明家具和设备静态位置；餐厅可及接地插座、回路容量、同时使用负荷、漏保和墙控操作可达性仍未落实。墙控带z=3.98–4.10m与EM450 z=3.89–4.11m相交。",
-      "evidence": ["fact-table.yaml#S-DINING-POWER", "fact-table.yaml#S-WALL-CONTROL-ACCESS", "object-manifest.yaml#waterbar_low_cabinet_800_preview"],
+      "evidence": ["round.yaml（fact_table 段）#S-DINING-POWER", "round.yaml（fact_table 段）#S-WALL-CONTROL-ACCESS", "round.yaml（objects 段）#waterbar_low_cabinet_800_preview"],
       "required_change": "核对两台设备铭牌和回路，确认插座/断电位置，并按真实面板、柜体剖面和真人站位验证墙控可达性。"
     },
     {
       "object": "furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9",
       "fact": "RO机身AABB被简化柜体包络包含，但有效内腔、隔板、存水弯、进排水、电源、独立龙头和滤芯/整机抽取路径未验证。",
-      "evidence": ["fact-table.yaml#S-RO-INTERNAL-FIT", "fact-table.yaml#S-RO-INTERFACES", "object-manifest.yaml#furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9"],
+      "evidence": ["round.yaml（fact_table 段）#S-RO-INTERNAL-FIT", "round.yaml（fact_table 段）#S-RO-INTERFACES", "round.yaml（objects 段）#furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9"],
       "required_change": "按最终RO SKU和柜体实测内腔建立剖面及维护包络，确认给排水、电源、龙头开孔和滤芯更换路径。"
     }
   ],
@@ -27,13 +27,13 @@
     "V4新增的出水仓、接水盘栅格、水位窗和圆角只改善外观代理，不证明真实出水、排水、清洁或维护能力。"
   ],
   "evidence_refs": [
-    "review-manifest.json#evidence.s1-form-v4-overview",
-    "review-manifest.json#evidence.s1-form-v4-close",
+    "round.yaml（review 段）#evidence.s1-form-v4-overview",
+    "round.yaml（review 段）#evidence.s1-form-v4-close",
     "evidence/runtime-query-s1-form-v4.json",
     "evidence/s1-form-v4-overview.png",
     "evidence/s1-form-v4-close.png",
-    "fact-table.yaml",
-    "object-manifest.yaml"
+    "round.yaml（fact_table 段）",
+    "round.yaml（objects 段）"
   ],
   "requested_changes": [
     "补齐S1/EM450现场操作、维护、清洁、散热和补水验证。",

@@ -19,8 +19,8 @@
     "evidence/r9/closeup.runtime.json",
     "evidence/r9/elevation.runtime.json",
     "evidence/r9/topdown.runtime.json",
-    "fact-table.yaml#user-accepted-ambient-role",
-    "review-manifest.json#source_version"
+    "round.yaml（fact_table 段）#user-accepted-ambient-role",
+    "round.yaml（review 段）#source_version"
   ],
   "requested_changes": [],
   "assumptions": [

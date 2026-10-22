@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { load as loadYaml } from 'js-yaml';
+import { buildIndexText } from '../../docs/generate-iteration-index.js';
 
 /**
  * iteration 元数据可解析性门禁（design-iterations round.yaml 一件套）。
@@ -135,6 +136,61 @@ function main(): void {
         message: `轮次目录缺少 round.yaml：${dir}`,
       });
     }
+  }
+
+  // 引用完整性（批 3 审阅修复）：design-iterations 内的文本文件不得再引用
+  // 已合并删除的五件套文件名（豁免轮次与 round.yaml/INDEX.yaml 自身除外）。
+  const PIECE_NAMES = ['decision-brief.yaml', 'design-datum.yaml', 'fact-table.yaml', 'object-manifest.yaml', 'review-manifest.json'];
+  const EXEMPT_DIRS = ['hvac-resix-20261003/', 'mep-lint-governance-20261006/'];
+  const textFiles: string[] = [];
+  const walkText = (dir: string) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walkText(full);
+      else if (/\.(md|json|yaml|yml|txt)$/i.test(e.name)) textFiles.push(full);
+    }
+  };
+  walkText(path.join(ROOT, SCOPE));
+  for (const file of textFiles) {
+    const rel = path.relative(ROOT, file);
+    if (rel.endsWith('round.yaml') || rel.endsWith('INDEX.yaml')) continue;
+    if (EXEMPT_DIRS.some((d) => rel.includes(d))) continue;
+    const src = fs.readFileSync(file, 'utf8');
+    for (const name of PIECE_NAMES) {
+      if (src.includes(name)) {
+        issues.push({
+          level: 'error',
+          code: 'legacy_piece_reference',
+          entity: rel,
+          source: rel,
+          message: `仍引用已合并删除的五件套文件 ${name}：请改指 round.yaml 对应段`,
+        });
+      }
+    }
+  }
+
+  // freshness 契约：INDEX.yaml 必须与生成器现算结果逐字节一致（批 3 修复补入：
+  // 首版生成器曾因 archive 扫描缺陷从未真正生成，INDEX 长期停留在手工版而无人察觉）。
+  try {
+    const expected = buildIndexText();
+    const actual = fs.readFileSync(path.join(ROOT, SCOPE, 'INDEX.yaml'), 'utf8');
+    if (actual !== expected) {
+      issues.push({
+        level: 'error',
+        code: 'index_stale',
+        entity: `${SCOPE}/INDEX.yaml`,
+        source: `${SCOPE}/INDEX.yaml`,
+        message: 'INDEX.yaml 与生成结果不一致：改 round.yaml 的 index 段后须重跑 npm run docs:generate-index',
+      });
+    }
+  } catch (error) {
+    issues.push({
+      level: 'error',
+      code: 'index_stale',
+      entity: `${SCOPE}/INDEX.yaml`,
+      source: `${SCOPE}/INDEX.yaml`,
+      message: `INDEX 生成器执行失败：${error instanceof Error ? error.message.split('\n')[0] : String(error)}`,
+    });
   }
 
   // scope 内一个文件都没有 = 目录被删空或路径写错，必须红而不是静默通过。

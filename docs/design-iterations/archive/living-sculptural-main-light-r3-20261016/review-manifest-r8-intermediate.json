@@ -208,7 +208,7 @@
       "verdict": null,
       "blocking_issues": [],
       "non_blocking_notes": ["项目尚未交房；无实际梁位、承重、商品安装图或维护证据。"],
-      "evidence_refs": ["fact-table.yaml#pending-installation", "fact-table.yaml#pending-photometry"],
+      "evidence_refs": ["round.yaml（fact_table 段）#pending-installation", "round.yaml（fact_table 段）#pending-photometry"],
       "requested_changes": [],
       "assumptions": ["模型外观不是施工节点或灯具SKU。"]
     }

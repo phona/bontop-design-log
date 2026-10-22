@@ -46,6 +46,21 @@ interface IndexEntry {
 }
 
 function main(): void {
+  // 幂等保护（批 3 审阅修复）：任一 round.yaml 已存在即中止——五件套删除后
+  // 重跑会把 round.yaml 覆盖成只有 index 段的空壳，属于毁数据操作。
+  const existing: string[] = [];
+  const walkFor = (dir: string) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) walkFor(path.join(dir, e.name));
+      else if (e.name === 'round.yaml') existing.push(path.relative(ROOT, path.join(dir, e.name)));
+    }
+  };
+  walkFor(ITER);
+  if (existing.length > 0) {
+    throw new Error(
+      `迁移已执行过（发现 ${existing.length} 个 round.yaml，如 ${existing[0]}）；拒绝重跑以免覆盖有效数据。如需重做，请先在干净的五件套状态下运行。`,
+    );
+  }
   const index = loadYaml(fs.readFileSync(path.join(ITER, 'INDEX.yaml'), 'utf8')) as {
     entries: IndexEntry[];
   };
