@@ -66,7 +66,7 @@
 
 | 口径 | 现行值 | 权威源（file:line） | 备注 |
 |---|---|---|---|
-| 待决台账条数 | 73 条编号 | docs/pending-site-data.md:3 | #1–#73 + #3a 子项 = 74 行；fact.pending_site_data_count 锚在表头，新增/关闭必须同步编号数 ※ |
+| 待决台账条数 | 74 条编号 | docs/pending-site-data.md:3 | #1–#74 + #3a 子项 = 75 行；fact.pending_site_data_count 锚在表头，新增/关闭必须同步编号数 ※ |
 | #30 强电箱规格 | pending（单/双排、回路数、进线截面） | docs/pending-site-data.md:105 | 20 路 + 2P + 浪涌需双排；1.65m 底边仅在双排时合规 |
 | #39 暖通待验证项 | pending（外机实测尺寸/平台散热/厂家配电图/风口加长计价/冷负荷计算书） | docs/pending-site-data.md:115 | 已成交 36000，但上述项闭环前不冻结施工 |
 

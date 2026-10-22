@@ -1140,7 +1140,7 @@ facts:
   # 量房待确认项条数：文档编号数是「还有什么没量」的账面。新增/关闭条目必须同步。
   - id: fact.pending_site_data_count
     kind: derived
-    value: "@docs/pending-site-data.md:量表共 73 条"
+    value: "@docs/pending-site-data.md:量表共 74 条"
     unit: 条
     mirrors:
       - path: docs/pending-site-data.md
@@ -1361,7 +1361,11 @@ contracts:
         # 新项已挂到 PKG-030/040/050/110 的 acceptance_refs 并 schedule:render 落 checklist。
         # 2026-10-08 新增 check_sill_tile（窗台/防水台面砖检查，D4 客厅落地幕墙根部防水台条带
         # 收口）→ 49 → 50；已 schedule:render 落 checklist。
-        expect_matches: 50
+        # 2026-10-22 DEC-2026-10-22-R02 卫生间 QA 门禁收口新增 3 项验收
+        # （主卫沉箱蓄水 check_plumb_master_bath_box_flood / 饰面层闭水 check_wp_finish_flood /
+        #   美缝前砖缝干燥确认 check_tile_grout_dry）→ 50 → 53；
+        # 新项已挂 PKG-050/130 的 acceptance_refs 并 schedule:render 落 checklist。
+        expect_matches: 53
         distinct: true
 
   # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写

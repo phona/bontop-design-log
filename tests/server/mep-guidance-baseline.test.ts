@@ -233,7 +233,7 @@ test('pending-site-data 表头口径：「量表共 N 条」= 编号数，实际
   assert.equal(claimed, numbered.length, `表头声称 ${claimed} 个编号，实际编号行 ${numbered.length}`);
   assert.deepEqual(subItems, ['3a'], '子项行应恰为 #3a（#3 的 A2 HVAC 子项）');
   assert.equal(rows.length, claimed + subItems.length, '表格行数必须 = 编号数 + 子项数');
-  assert.equal(rows.length, 74, '当前口径：73 个编号 + #3a = 74 行'); // 2026-10-18 DEC-2026-10-18-R22 审查结论新增 #73 吊顶构造包络（阻塞 Z 表下探与 B 区净距判定）；前史：R20 批新增 #67–#72（67→73）
+  assert.equal(rows.length, 75, '当前口径：74 个编号 + #3a = 75 行'); // 2026-10-22 DEC-2026-10-22-R02 新增 #74 客卫沉箱构造核实（74→75）；前史：2026-10-18 DEC-2026-10-18-R22 审查结论新增 #73 吊顶构造包络（阻塞 Z 表下探与 B 区净距判定）；R20 批新增 #67–#72（67→73）
 });
 
 // ─── 治理台账：逐条与实算一致，且覆盖全部实算 code ───────────────────────
