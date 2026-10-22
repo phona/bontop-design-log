@@ -187,7 +187,7 @@ def draw_section(ax, cut_x, title, tags):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--out', default='docs/design-iterations/hvac-dual-outlet-threeline-20261007/evidence')
+    parser.add_argument('--out', default='tmp/capture/hvac-dual-outlet-threeline-20261007')  # 默认落 tmp/capture，见 AGENTS.md 证据分级与退场铁律
     args = parser.parse_args()
     out_dir = ROOT / args.out
     out_dir.mkdir(parents=True, exist_ok=True)
