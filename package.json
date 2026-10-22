@@ -39,6 +39,7 @@
     "export:glb": "tsx scripts/render/glb/export-glb.ts",
     "compare:glb": "tsx scripts/render/glb/compare-glb.ts",
     "gate:visual": "tsx scripts/gate/visual-state-gate.ts",
+    "docs:generate-index": "tsx scripts/docs/generate-iteration-index.ts",
     "docs:generate-current-values": "tsx scripts/docs/generate-current-values.ts",
     "verify:current-values": "tsx scripts/verify/documents/verify-current-values.ts"
   },
