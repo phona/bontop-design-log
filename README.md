@@ -52,7 +52,7 @@ interior-design-project/
 │   ├── README.md              #   文档索引（13 个根文档的角色/状态/权威指向）
 │   ├── designer_brief.md
 │   ├── material_selection_log.md
-│   ├── decisions/             # 决策日志（18 个主题文件 + README 索引）
+│   ├── decisions/             # 决策日志（18 个主题文件 + 1 个归档分册 + README 索引）
 │   │   ├── README.md          #   索引 + 模板 + 待决策事项
 │   │   ├── 01-control-budget.md
 │   │   └── …

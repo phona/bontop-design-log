@@ -65,6 +65,7 @@
 - **关联文件**：`config/house.yaml`、`config/layout/overlay.yaml`、`tests/server/wall-tile-inspection.test.ts`、`tests/server/paint-scope.test.ts`、`tests/server/paint-comparison-api.test.ts`、`tmp/mbath-numbers.ts`、`docs/decisions/11-tile-finish.md`（本条）。
 - **决策人**：业主。
 
+
 ### DEC-2026-10-07-C17 全宅幕墙玻璃均为落地窗（业主实地断言）：主卫湿区补 3 座防水台贴砖，干区存在不贴
 
 - **日期**：2026-10-07。触发：业主三次申明「落地窗都有防水台」并在出示逐窗 sill 推断表后最终裁定「是落地窗，都是落地窗」。

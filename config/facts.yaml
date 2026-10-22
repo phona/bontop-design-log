@@ -183,6 +183,26 @@ scan:
       scalars: [money]
       pattern: '¥'
       reason: 采购决议书里的金额是阶段叙述与历史询价轮次留档，权威金额以 schedule/phase-1/control.yaml 的 planned_cny/contracted_cny 为准；§01 定标成交 36,000 已由 fact.hvac_contract_cny 镜像单列
+    - path: schedule/procurement-archive.md
+      scalars: [money]
+      pattern: '¥'
+      reason: 采购决议书里的金额是阶段叙述与历史询价轮次留档，权威金额以 schedule/phase-1/control.yaml 的 planned_cny/contracted_cny 为准；§01 定标成交 36,000 已由 fact.hvac_contract_cny 镜像单列
+    - path: schedule/procurement-archive.md
+      scalars: [kw]
+      pattern: 'kW'
+      reason: "暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由 docs/pending-site-data.md #39 跟踪收敛"
+    - path: schedule/procurement-archive.md
+      scalars: [area_sqm]
+      pattern: '㎡'
+      reason: 房间面积为气流覆盖分区口径（31㎡+14㎡=44.58㎡），权威以 config/house.yaml rooms 与 model-geometry 多边形为准
+    - path: schedule/procurement-archive.md
+      scalars: [model_string]
+      pattern: 'MJV-|JSQ|领航者|理想家'
+      reason: 采购决议书同时收录现行成交型号（MJV-200W-E01-LHIV）与历史轮次参照型号（三代 180W MJV-180W-E01-LX/LH，文档自述「不是本项目已选系列」）；现行型号权威在 config/hvac.yaml，历史型号属时间序留档，故不做 fk 对账
+    - path: schedule/procurement-archive.md
+      scalars: [dimension]
+      pattern: '[×x]'
+      reason: 采购决议书的尺寸为询价与合同附件叙述口径（外廓/风口/机身），权威在 config/hvac.yaml 与合同附图
     - path: schedule/procurement.md
       scalars: [kw]
       pattern: 'kW'
@@ -1164,6 +1184,7 @@ x_decision_files: &decision_files
   - docs/decisions/04-bathrooms.md
   - docs/decisions/05-hvac.md
   - docs/decisions/06-electrical.md
+  - docs/decisions/06-electrical-archive.md
   - docs/decisions/07-lighting.md
   - docs/decisions/08-ceiling-form.md
   - docs/decisions/09-ceiling-takeoff.md
