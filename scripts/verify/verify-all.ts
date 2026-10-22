@@ -48,6 +48,7 @@ const VERIFIERS: VerifierSpec[] = [
   { name: 'verify-iteration-metadata', script: 'scripts/verify/iterations/verify-iteration-metadata.ts' },
   { name: 'verify-document-references', script: 'scripts/verify/documents/verify-document-references.ts' },
   { name: 'verify-doc-index', script: 'scripts/verify/documents/verify-doc-index.ts' },
+  { name: 'verify-current-values', script: 'scripts/verify/documents/verify-current-values.ts' },
   { name: 'verify-yaml-hash', script: 'scripts/verify/yaml/verify-inline-comments.ts' },
 ];
 

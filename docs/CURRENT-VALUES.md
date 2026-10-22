@@ -1,5 +1,9 @@
 # 现行值速查表（CURRENT-VALUES）
 
+<!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
+     重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
+     inputs-fingerprint: sha256:ad37c6cc04bf3c291041441c5cdcc70ea17a7a1de42da83b429da91d1494d3eb -->
+
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
 > **权威声明**：本表是速查汇总，**权威仍在各 config / docs 原文**。本表与权威冲突时，**以权威为准，并立即修订本表**（连同「权威源」列里的 `file:line`）。本表不创设事实，只转抄；任何情况下不得为了让本表好看而反向改权威源。
@@ -9,6 +13,7 @@
 > - 「权威源」列为 `file:line`，可逐处跳转核对。
 > - 「备注」列写口径边界（含/不含、估算/实测、封顶/成交）。**引用本表必须连同边界一起引**，只引数字会丢口径。
 > - 标 ※ 的口径已由 `config/facts.yaml` 的 fact / 契约或 `tests/server/` 断言做机器对账；改这些数会先被门禁拦住，改完必须同步本表。
+> - **生成口径（批 4 起）**：可机械取值的行由渲染器从权威源现取；编辑判断行保留字面，但其全部权威源已纳入文件头指纹——源文件一变，`verify:current-values` 即报红，须逐行复核后重跑生成。
 
 ## 预算与阶段
 
@@ -75,6 +80,7 @@
 ## 维护纪律
 
 1. **新增口径**：先定位权威源（config 优先，docs 次之），在本表登记一行并写全 `file:line`；同时确认该数已被 `verify:facts` 的 fact / 契约或 `tests/server/` 覆盖。未被覆盖的高频数，按 `config/facts.yaml` 头部维护铁律补 mirror（必须写 `extract` + `expect_matches`，命中数不符即失败，不许静默跳过）。
-2. **改数顺序**：改权威源 → 跑 `npm run verify:facts` 与 `npm run test:server` → 同步本表。本表与权威冲突时，以权威为准并立即修本表；**不许反向改权威来迁就本表**。
+2. **改数顺序**：改权威源 → 跑 `npm run verify:facts` 与 `npm run test:server` → 重跑 `npm run docs:generate-current-values` 同步本表。本表与权威冲突时，以权威为准并立即修本表；**不许反向改权威来迁就本表**。
 3. **引用方纪律**：任何文档引用本表发现冲突，以权威源为准，并回来修本表；不得把本表当作第二权威，也不得因「本表已登记」就跳过权威源核对。
 4. **汇总视图身份**：本表已按汇总视图整文件登记进 `config/facts.yaml` 的 `scan.exempt_occurrences`（数值均为已登记权威值的转抄），关键行另由 fact mirror 逐条对账。该豁免只免 T1 发现层的重复报警，**不免权威源侧的对账**；不得以本表已豁免为由在权威源里放松登记。
+5. **生成纪律（批 4 起）**：本表禁止手改。新增/修改行请改 `scripts/docs/current-values-render.ts` 的行规约（取值器或字面行）后重跑生成；`verify:current-values` 以「渲染结果与文件逐字节一致」为契约，源文件变动而本表未复核重生成时必然报红。
