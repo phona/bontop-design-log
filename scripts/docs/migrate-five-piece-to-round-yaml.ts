@@ -71,6 +71,37 @@ function extractComments(src: string): Array<{ line: number; text: string }> {
   return out;
 }
 
+/**
+ * 值引用改指（与二审修复的提交内容一致，内建于迁移本身）：结构化字符串里指向
+ * 「将被删除的五件套文件」的引用改指 round.yaml 对应段；指向豁免保留文件的
+ * 引用（EXEMPT 清单）原样保留。带目录前缀的按前缀判定，裸文件名按本轮判定。
+ */
+const SECTION_OF: Record<string, string> = Object.fromEntries(PIECES);
+function isRetained(dirBase: string, file: string): boolean {
+  return (EXEMPT[dirBase] ?? []).includes(file);
+}
+function rewriteRefs(value: unknown, ownBase: string): unknown {
+  if (typeof value === 'string') {
+    return value.replace(
+      /(?:([\w.-]+(?:\/[\w.-]+)*)\/)?(decision-brief\.yaml|design-datum\.yaml|fact-table\.yaml|object-manifest\.yaml|review-manifest\.json)/g,
+      (m, prefix: string | undefined, name: string) => {
+        const targetBase = prefix ? prefix.split('/').pop()! : ownBase;
+        if (isRetained(targetBase, name)) return m;
+        const section = SECTION_OF[name];
+        return prefix ? `${prefix}/round.yaml（${section} 段）` : `round.yaml（${section} 段）`;
+      },
+    );
+  }
+  if (Array.isArray(value)) return value.map((v) => rewriteRefs(v, ownBase));
+  if (value && typeof value === 'object') {
+    // 键也改指：checksums 类映射以五件套路径为键（二审复现核对发现）。
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [rewriteRefs(k, ownBase) as string, rewriteRefs(v, ownBase)]),
+    );
+  }
+  return value;
+}
+
 function main(): void {
   // 幂等保护（批 3 审阅修复）：任一 round.yaml 已存在即中止——五件套删除后
   // 重跑会把 round.yaml 覆盖成只有 index 段的空壳，属于毁数据操作。
@@ -114,25 +145,38 @@ function main(): void {
     };
     if (exempt.length > 0) (merged.index as Record<string, unknown>).exempt_files = exempt;
 
+    const commentBlocks: Array<{ file: string; comments: Array<{ line: number; text: string }> }> = [];
     for (const [file, section] of PIECES) {
       const p = path.join(dirAbs, file);
       if (!fs.existsSync(p)) continue;
       const src = fs.readFileSync(p, 'utf8');
       const parsed = file.endsWith('.json') ? JSON.parse(src) : loadYaml(src);
       if (exempt.includes(file)) continue; // 保留原文件，不并入
+      const comments = extractComments(src);
+      if (comments.length > 0) commentBlocks.push({ file, comments });
       merged[section] = parsed;
       // 逐段保真校验：合并对象该段与原文解析结果 deep-equal。
       assert.deepStrictEqual(merged[section], parsed, `${entry.dir}/${file} 段保真失败`);
       removed.push(path.relative(ROOT, p));
     }
 
+    // 值引用改指作用于全部段（含 index.note），与提交版本一致。
+    const rewritten = rewriteRefs(merged, base) as Record<string, unknown>;
+    let preservation = '';
+    if (commentBlocks.length > 0) {
+      const lines = ['# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──'];
+      for (const b of commentBlocks) for (const c of b.comments) lines.push(`# [${b.file} L${c.line}] ${c.text}`);
+      lines.push('# ── 注释保全结束 ──');
+      preservation = lines.join('\n') + '\n';
+    }
     const text =
       '# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。\n' +
       '# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。\n' +
-      dumpYaml(merged, { lineWidth: -1 });
+      preservation +
+      dumpYaml(rewritten, { lineWidth: -1 });
     // 整文件回读校验。
     const reread = loadYaml(text) as Record<string, unknown>;
-    assert.deepStrictEqual(reread, merged, `${entry.dir}/round.yaml 回读不一致`);
+    assert.deepStrictEqual(reread, rewritten, `${entry.dir}/round.yaml 回读不一致`);
     fs.writeFileSync(path.join(dirAbs, 'round.yaml'), text, 'utf8');
     rounds += 1;
   });
