@@ -10,7 +10,7 @@ pitfalls:
     severity: high
     title: "防水常超 30%"
     description: "拆改后需修补防水层;老房水管老化易漏水,实际防水面积常比设计图大"
-    mitigation: "预算上浮 30%;拆改前做闭水试验;确认防水范围含墙面 1.8m"
+    mitigation: "预算上浮 30%;拆改前做闭水试验;确认防水范围含淋浴区墙面 2.00m(DEC-2026-10-22-R02)"
 
   - id: open_kitchen_hood
     type: budget
@@ -100,8 +100,8 @@ pitfalls:
     trigger: always
     severity: high
     title: "防水偷工减料重灾区"
-    description: "涂刷遍数不够(应 2-3 遍)、墙面高度不够(淋浴区应 1.8m)、防水层破损未修补、管根/阴角未做圆弧处理"
-    mitigation: "要求施工队:遍数≥2遍;淋浴区墙面≥1.8m;管根/阴角做圆弧+网格布;涂刷后做保护层"
+    description: "涂刷遍数不够(应 2-3 遍)、墙面高度不够(淋浴区应 2.00m 且不低于喷淋口)、防水层破损未修补、管根/阴角未做圆弧处理"
+    mitigation: "要求施工队:遍数≥2遍;淋浴区墙面≥2.00m;管根/阴角做圆弧+网格布;涂刷后做保护层"
 
   - id: electric_shortcut
     type: construction
@@ -442,11 +442,11 @@ pitfalls:
     trigger: always
     severity: high
     title: "防水验收要点"
-    description: "闭水试验:蓄水深度≥2cm,持续24-48小时,楼下无渗漏;墙面防水高度:淋浴区≥1.8m,其他≥0.3m"
+    description: "闭水试验:蓄水深度≥2cm,持续24-48小时,楼下无渗漏(防水层与饰面层各做一次,DEC-2026-10-22-R02);墙面防水高度:淋浴区≥2.00m,其他≥0.3m"
     mitigation: "工具:闭水试验;检查墙面高度;目测防水层无破损"
     checklist:
       - "闭水试验 24-48h 无渗漏"
-      - "淋浴区墙面防水 ≥1.8m"
+      - "淋浴区墙面防水 ≥2.00m"
       - "管根/阴角做圆弧处理"
       - "防水层无破损/气泡"
 
