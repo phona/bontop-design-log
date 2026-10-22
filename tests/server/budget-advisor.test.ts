@@ -5,7 +5,7 @@ import { ProjectCatalog } from '../../server/project-catalog.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { BudgetAdvisor } from '../../server/budget-advisor.js';
 import { RuleEngine } from '../../server/rule-engine.js';
-import type { CurrentScheme } from '../../shared/types.js';
+import type { BudgetSnapshot, CurrentScheme } from '../../shared/types.js';
 
 function loadAdvisor() {
   const catalog = ProjectCatalog.load('.');
@@ -148,5 +148,95 @@ describe('BudgetAdvisor', () => {
       Math.abs(moved - floor.savings) < 0.01,
       `floor 声称省 ${floor.savings}，真实应用后总盘只动了 ${moved}`
     );
+  });
+
+  /**
+   * 非加法联动场景（2026-10-23 独立评审 P1）：三个 topic 各自降档省 400，
+   * 且任一降档都触发同一笔共享节省 300（只计一次）。于是单项 savings 各 700、
+   * 单项之和 2,100，但真实组合节省只有 400×3 + 300 = 1,500。
+   * 旧实现用单项累减选取：取两条即「估算达标」停手，建议集真实重跑仍超标，
+   * 报 feasible:false——漏掉了三条全取的可行组合；maxSavings 也虚增为 2,100。
+   * 序贯边际贪心必须：按真实边际继续取第三条 → feasible:true，且 maxSavings
+   * 等于真实组合节省 1,500。
+   */
+  it('non-additive interaction: marginal greedy finds the feasible set, maxSavings is the true combined value', () => {
+    const topics = ['A', 'B', 'C'];
+    const fakeCatalog = {
+      getTopics: () => topics.map((id) => ({ id })),
+      getOptions: (topicId: string) => [
+        { id: `${topicId}-std`, name: `${topicId} 标准` },
+        { id: `${topicId}-down`, name: `${topicId} 降档`, data: { cons: ['测试降档代价'] } },
+      ],
+      getOption: (topicId: string, optionId: string) => ({
+        id: optionId,
+        name: optionId.endsWith('-down') ? `${topicId} 降档` : `${topicId} 标准`,
+      }),
+    };
+    const fakeCalc = {
+      calculate: (s: CurrentScheme): BudgetSnapshot => {
+        const down = topics.filter((t) => s.selections[t]?.default === `${t}-down`);
+        const lineItems = [
+          ...topics.map((t) => ({ topic: t, cost: down.includes(t) ? 600 : 1000 })),
+          // 共享行项：任一 topic 降档即从 500 降到 200，多个降档不叠加。
+          { topic: 'shared', cost: down.length > 0 ? 200 : 500 },
+        ];
+        return { lineItems } as unknown as BudgetSnapshot;
+      },
+    };
+    const fakeRules = { evaluate: () => ({ risks: [] }) };
+    const advisor = new BudgetAdvisor(
+      fakeCatalog as unknown as ProjectCatalog,
+      fakeCalc as unknown as BudgetCalculator,
+      fakeRules as unknown as RuleEngine
+    );
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: Object.fromEntries(
+        topics.map((t) => [t, { default: `${t}-std`, roomOverrides: {} }])
+      ),
+    };
+    const fakeFullTotal = (s: CurrentScheme): number =>
+      fakeCalc.calculate(s).lineItems.reduce((sum, li) => sum + li.cost, 0);
+    assert.equal(fakeFullTotal(scheme), 3500, '场景基线总盘');
+
+    // 目标 2,200（需省 ≥1,300）：两项组合真实只省 1,100（不可行），三项省 1,500（可行）。
+    const result = advisor.suggest(scheme, 2200);
+    assert.equal(result.feasible, true, '三条全取可行，不许因单项累减提前停手而误报 infeasible');
+    assert.equal(result.resultingTotal, 2000);
+    assert.deepEqual(
+      result.suggestions.map((s) => s.topic).sort(),
+      ['A', 'B', 'C'],
+      '建议集必须是三条全取'
+    );
+    // resultingTotal 必须与独立重跑一致。
+    assert.equal(fakeFullTotal(applySuggestions(scheme, result.suggestions)), result.resultingTotal);
+    // 每条 savings 是选入时的边际节省（700/400/400），不是单项 700×3：
+    // Σ suggestions.savings 恒等于 currentTotal − resultingTotal。
+    assert.deepEqual(
+      result.suggestions.map((s) => s.savings).sort((a, b) => b - a),
+      [700, 400, 400],
+      '边际 savings 应为 700/400/400（共享节省只在首条计一次）'
+    );
+    assert.equal(
+      result.suggestions.reduce((sum, s) => sum + s.savings, 0),
+      result.currentTotal - result.resultingTotal,
+      'Σ 边际 savings 必须等于总盘真实降幅'
+    );
+    // maxSavings = 真实组合节省 1,500，不是单项之和 2,100。
+    assert.equal(result.maxSavings, 1500, `maxSavings 应为真实组合节省 1500，实际 ${result.maxSavings}`);
+    // maxSavings 也必须等于「全部候选一并应用」的真实重跑总盘差。
+    const allDown: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: Object.fromEntries(
+        topics.map((t) => [t, { default: `${t}-down`, roomOverrides: {} }])
+      ),
+    };
+    assert.equal(result.maxSavings, result.currentTotal - fakeFullTotal(allDown));
+
+    // 不可达目标下同样不得虚增：maxSavings 仍是 1,500，resultingTotal 停在 2,000。
+    const impossible = advisor.suggest(scheme, 0);
+    assert.equal(impossible.feasible, false);
+    assert.equal(impossible.resultingTotal, 2000);
+    assert.equal(impossible.maxSavings, 1500);
   });
 });

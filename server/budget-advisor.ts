@@ -125,34 +125,62 @@ export class BudgetAdvisor {
 
     candidates.sort((a, b) => b.savings - a.savings);
 
-    // 贪心选取：用单项 savings 累减决定取到哪一条为止（估算，仅用于选取）。
-    const suggestions: BudgetSuggestion[] = [];
-    let runningTotal = currentTotal;
-    for (const cand of candidates) {
-      if (runningTotal <= resolvedTarget) break;
-      suggestions.push(cand);
-      runningTotal -= cand.savings;
-    }
-
-    const maxSavings = candidates.reduce((s, c) => s + c.savings, 0);
-
-    // 核定：把选中的建议全部应用后重跑 calculate()，resultingTotal / feasible
-    // 以重跑的全额总盘为准——单项 savings 相加只是估算（topic 间连带影响会让
-    // 组合结果偏离累减值），对外声称的数字必须与真实重跑一致，不许再用累减值冒充。
-    let resultingTotal = currentTotal;
-    if (suggestions.length > 0) {
+    // 在「原方案 + 给定建议集」上重跑 calculate() 的全额总盘。选取与核定共用
+    // 同一个重跑入口，保证对外声称的每个数字都来自真实重跑（见文件头注释）。
+    const totalWith = (extra: BudgetSuggestion[]): number => {
       const appliedScheme: CurrentScheme = {
         updatedAt: new Date().toISOString(),
         selections: JSON.parse(JSON.stringify(scheme.selections)),
       };
-      for (const s of suggestions) {
+      for (const s of extra) {
         if (!appliedScheme.selections[s.topic]) {
           appliedScheme.selections[s.topic] = { default: null, roomOverrides: {} };
         }
         appliedScheme.selections[s.topic].default = s.toOptionId;
       }
-      resultingTotal = fullTotal(this.calc.calculate(appliedScheme));
+      return fullTotal(this.calc.calculate(appliedScheme));
+    };
+
+    // 序贯边际贪心（2026-10-23 独立评审 P1 修订）：旧实现用单项 savings 累减
+    // runningTotal 决定取舍、maxSavings 取单项之和。topic 间有联动时组合节省
+    // ≠ 单项之和（共享节省被每个单项各计一次），累减值会先于真实总盘「达标」：
+    // 建议集真实重跑仍超标，又因以为选完而漏掉「再多选一条即可行」的组合，
+    // 还会把 feasible 误报为 false。现在每轮都在已选集（appliedScheme 的内存
+    // 形态即 suggestions）基础上逐个重跑剩余候选，边际节省 = 当前已选集总盘
+    // − 加入该候选后的总盘，取边际最大且为正的一条应用，重算下一轮，直到
+    // 达标或无正边际。suggestions 里每条的 savings 记为它被选入时的边际节省
+    // （候选阶段的单项 savings 只用于同 topic 内挑最优降档选项，不对外），
+    // 于是 Σ suggestions.savings 恒等于 currentTotal − resultingTotal。
+    // 语义边界：这是边际贪心而非穷举搜索，不保证全局最优组合；
+    // feasible / resultingTotal 描述的是所构造建议集的真实重跑结果，
+    // maxSavings 是全部候选一并应用的真实组合节省——不再有估算冒充核定值。
+    const suggestions: BudgetSuggestion[] = [];
+    const chosenTopics = new Set<string>();
+    let resultingTotal = currentTotal;
+    while (resultingTotal > resolvedTarget) {
+      let bestCand: BudgetSuggestion | null = null;
+      let bestTotal = resultingTotal;
+      for (const cand of candidates) {
+        if (chosenTopics.has(cand.topic)) continue;
+        const total = totalWith([...suggestions, cand]);
+        if (total < bestTotal) {
+          bestCand = cand;
+          bestTotal = total;
+        }
+      }
+      if (!bestCand) break;
+      // 边际节省覆写单项 savings 后入选（见上方注释的 Σ 恒等式）。
+      suggestions.push({ ...bestCand, savings: resultingTotal - bestTotal });
+      chosenTopics.add(bestCand.topic);
+      resultingTotal = bestTotal;
     }
+    // 展示顺序按边际 savings 降序：贪心每轮取最大边际，选入序本已大体降序，
+    // 排序只做展示稳定化，不改变集合与 Σ 恒等式。
+    suggestions.sort((a, b) => b.savings - a.savings);
+
+    // maxSavings = 全部候选一并应用的真实组合节省，不是单项之和：联动场景下
+    // 单项之和会把共享节省重复计入，虚增可省空间（评审实测可高估近一倍）。
+    const maxSavings = candidates.length > 0 ? currentTotal - totalWith(candidates) : 0;
 
     return {
       currentTotal,
