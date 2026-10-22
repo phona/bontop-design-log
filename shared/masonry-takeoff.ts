@@ -718,11 +718,18 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
   }
   for (const [key, group] of verticalByKey) {
     const sorted = [...group].sort((a, b) => a.from - b.from || a.bottom - b.bottom);
-    for (let i = 1; i < sorted.length; i += 1) {
-      const previous = sorted[i - 1];
-      const current = sorted[i];
-      if (current.from < previous.to - EPS && current.bottom < previous.top - EPS) {
-        throw new Error(`${key} 上 ${previous.id} 与 ${current.id} 二维重叠（双计风险）`);
+    // 全对两两检查 + 双轴完备判定（2026-10-23 审计修复）：旧实现只比排序后相邻对，
+    // 且判定式缺 current.top > previous.bottom 一半——非相邻真重叠会漏检（双算），
+    // 竖向完全分离的相邻对会被误报。接贴（任一轴相接）不算重叠，与 R11 口径一致。
+    for (let i = 0; i < sorted.length; i += 1) {
+      for (let j = i + 1; j < sorted.length; j += 1) {
+        const a = sorted[i];
+        const b = sorted[j];
+        const overlapAlong = a.from < b.to - EPS && b.from < a.to - EPS;
+        const overlapVertical = a.bottom < b.top - EPS && b.bottom < a.top - EPS;
+        if (overlapAlong && overlapVertical) {
+          throw new Error(`${key} 上 ${a.id} 与 ${b.id} 二维重叠（双计风险）`);
+        }
       }
     }
   }
