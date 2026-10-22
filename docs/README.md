@@ -1,6 +1,6 @@
 # docs/ 文档索引
 
-> 用途：`docs/` 根目录文档 + 5 个子目录的角色、状态与权威指向。
+> 用途：`docs/` 根目录文档 + 4 个子目录的角色、状态与权威指向。
 > 建立日：2026-10-20。**只登记事实，不派生结论**；状态列写明是文档自述还是本索引推断。
 > 与 `docs/decisions/README.md`（决策日志索引）、`docs/design-iterations/INDEX.yaml`（迭代记录索引）同级。
 
@@ -36,15 +36,12 @@
 | 2026-10-09 | `docs/hvac/hvac-vendor-confirmation-sheet.md` | 厂家上门一页纸 |
 | 2026-10-09 | `docs/penetration-lint.md` | 防穿模规则 |
 | 2026-10-09 | `docs/visual-change-playbook.md` | 视觉改动流程 |
-| 2026-10-09 | `docs/twinmotion-acceptance.md` | Twinmotion 验收 |
 | 2026-10-07 | `docs/material_selection_log.md` | 选材日志（自述核对日 10-07） |
 | 2026-10-07 | `docs/designer_brief.md` | 对外交付件（预算口径待业主裁决） |
 | 2026-10-05 | `docs/hvac/hvac-rfq-brief-20261003.md` | 成交口径回写 |
 | 2026-10-05 | `docs/hvac/hvac_options_analysis.md` | 定标成交状态更新 |
 | 2026-10-05 | `docs/hvac/hvac-deepening-20260907.md` | 「已被 R6 取代」状态注记 |
-| 2026-09-11 | `docs/acceptance_checklist.md` | 已退场（口径收敛至 `config/acceptance.yaml`） |
 | 2026-09-02 | `docs/curtain-design.md` | 窗帘设计定稿 |
-| 2026-09-01 | `docs/render-tech-debt.md` | 已冻结（PAUSED/HISTORICAL） |
 
 > 深层的迭代记录见 `design-iterations/INDEX.yaml`；决策变更见 `decisions/` 各主题文件。
 
@@ -54,13 +51,12 @@
 |---|---|---|
 | `decisions/` | 18 个主题文件 + README，264 条 DEC | 决策日志。**正文只登记不改写**，索引与纪律见其 README |
 | `design-iterations/` | 44 个现役目录 + `archive/` 20 个 + `INDEX.yaml` | 迭代证据。机读索引见 `INDEX.yaml` |
-| `renders/` | 2 个 md | 渲染架构留档（Blender 已暂停，冷归档见 `scripts/archive/blender-pipeline/`） |
 | `standards/` | 1 个 md | 起夜路径照明标准 |
 | `hvac/` | 6 个 md | 暖通专题。2026-10-20 从根目录迁出，消除「一眼过去全是 hvac」的平铺噪声 |
 
 ---
 
-## 根目录 16 个文档
+## 根目录 13 个文档
 
 ### A. 核心控制与施工指南（4 个根目录文档）
 
@@ -71,7 +67,7 @@
 | `CURRENT-VALUES.md` | 现行值速查：预算、暖通、标高、面积与待决口径 | 汇总视图；权威回到各行列出的 config/docs 源，关键值由 verify:facts 对账 | 12 |
 | `visual-change-playbook.md` | 视觉反馈类迭代的标准流程 | 现役 | 4 |
 
-### B. 现役业务文档（常驻名，12 个）
+### B. 现役业务文档（常驻名，9 个）
 
 | 文档 | 角色 | 状态 | 引用 |
 |---|---|---|---|
@@ -83,10 +79,7 @@
 | `designer_brief.md` | 对设计师简报 | 现役，但是**对外交付件**——预算口径更新需业主裁决（是否已外发、改哪一版），未裁决前不改数据 | 5 |
 | `curtain-design.md` | 窗帘设计 | 现役（末改 09-02，近一月未动） | 4 |
 | `style-guide.md` | 风格指南 | 现役（末改 10-17） | 3 |
-| `twinmotion-acceptance.md` | Twinmotion 验收 | 现役（末改 10-09） | 3 |
 | `ceiling-style-extension-guide.md` | 新增吊顶造型种类的开发步骤与文件清单 | 现役开发指南；新增类型时按其流程修改与验证 | 1 |
-| `acceptance_checklist.md` | 验收清单 | **自述已退场**：「本文件不再单独维护验收条目，以避免施工、预算和验收状态出现多套口径」——口径已收敛至 `config/acceptance.yaml` | 1 |
-| `render-tech-debt.md` | 渲染技术债清单 | **自述已冻结**：「PAUSED / HISTORICAL — 2026-09-01，随 Blender 主线暂停而冻结，不再作为 active backlog」 | 1 |
 
 ### 暖通专题常驻文档（2 个，均在 `docs/hvac/`）
 
@@ -118,10 +111,21 @@
 
 ---
 
+
+### 退场墓碑（已删除文档，原文自 git 历史取回）
+
+| 文档 | 删除日期 | 删除 commit | 关账结论 / 去向 |
+|---|---|---|---|
+| `acceptance_checklist.md` | 2026-10-22 | 46e9e0c | 已退役的指针页（自声明）；真正的交付验收清单在 `schedule/phase-1/` 的 render 产物 |
+| `render-tech-debt.md` | 2026-10-22 | 46e9e0c | 自声明 PAUSED/HISTORICAL 的技术债台账，已删 |
+| `twinmotion-acceptance.md` | 2026-10-22 | 46e9e0c | Twinmotion 线随 Blender 主线一同暂停，已删 |
+| `blender-render-architecture.md`（原 `renders` 目录） | 2026-10-22 | 46e9e0c | Blender 渲染管线已冷归档；原文自 git 历史取回——`scripts/archive/blender-pipeline/` 是管线代码的冷归档，不含本文档 |
+| `pipeline-acceptance.md`（原 `renders` 目录） | 2026-10-22 | 46e9e0c | 同上 |
+
 ## 维护纪律
 
 1. 新增根目录文档时，在本文件对应分区追加一行，四个字段填全（角色/状态/引用/为何保留）。
 2. 「引用」列为 `grep -rl` 排除 `node_modules`/`tmp`/`.venv`/`docs/design-iterations` 后的命中文件数，会随引用增减漂移，不设自动校验。
 3. **状态列必须区分「自述」与「推断」**：文档自己写了状态行的照抄；没有状态行的，本索引用末改日期+引用数推断，并标注为推断。
-4. 文档退场时**不要删文件**：在状态列写明退场理由与口径收敛去向（参照 `acceptance_checklist.md` 与 `render-tech-debt.md` 的做法）。
+4. 文档退场时**直接删文件**（2026-10-22 业主裁定，git 历史即归档），并在下方「退场墓碑」区留一行（文件名、删除日期、理由、收敛去向）；仍在状态列保留注记的做法已废止。
 5. 本索引不是第二份真相。文档内容的权威仍在各文件自身；本文件只回答「该读哪个、哪个还活着」。

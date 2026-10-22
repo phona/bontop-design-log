@@ -1,14 +1,14 @@
-# 装扮映射表（Twinmotion 云渲染用）
+# 装扮映射表（材质/家具/灯光的外观替换映射）
 
-生成：2026-10-20，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-10-22，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
 数据规模：house.yaml furnishings 共 89 件（与 `fact.furnishings_count` 对账）。
 
-用法：glb 导入 Twinmotion 后按本表替换材质/家具/灯光；reimport 同名 glb 时材质覆盖按节点名保留。
+用法：渲染时按本表替换材质/家具/灯光外观；节点名即映射键。渲染线现状（2026-10-22 批 2 审阅修复）：Twinmotion/Blender 线已退场（其验收文档已删除，历史见 git），现行定妆走 Web 渲染线（app/ Three.js）；本表只保留与渲染器无关的映射数据与外观意图，§6 为现行回传流程。
 
-## 1. 房间/地面材料 → Twinmotion 材质替换建议
+## 1. 房间/地面材料 → 渲染材质替换建议
 
-| 主题 | 当前选择 | 名称 | 品牌/型号 | 规格 | Twinmotion 替换建议 |
+| 主题 | 当前选择 | 名称 | 品牌/型号 | 规格 | 渲染替换建议 |
 |---|---|---|---|---|---|
 | floor | floor_tile_kt_200x1200_01 | KT 200×1200木纹长条砖（当前选型基准 2026-10-12） | KT / 200×1200mm 木纹砖（具体系列、型号、色号待门店确认） | 200x1200mm | 底色 #d8bd93，木纹·直铺，条板 200x1200mm，光泽 soft |
 | floor | floor_tile_antislip_400 | 中性灰哑光防滑砖（主卫/阳台） | 马可波罗 / 快环同档 / 400x400 中性灰哑光防滑砖（防滑等级 R10+，型号待门店确认） | 400x400mm | 底色 #90949a |
@@ -163,7 +163,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 ### 后续深化预留（当前未实施点位）
 厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。主卧南床头梳妆台的镜前灯为家具插接式部件，复用 `sock_master_bed_r`，不新增墙内灯位。
 
-**已取消、不再纳入装扮**：电视墙灯带（DEC-2026-10-13-R5，业主裁定「不搞了」）。点位与整条照明回路已从 config 删除，**不要**在 Twinmotion/云渲染里摆这条灯带。取电插座 `sock_living_tv_led` 保留在电视墙，后期想要氛围光走插电式灯带挂该插座即可，零预埋零开槽。
+**已取消、不再纳入装扮**：电视墙灯带（DEC-2026-10-13-R5，业主裁定「不搞了」）。点位与整条照明回路已从 config 删除，**不要**在渲染里摆这条灯带。取电插座 `sock_living_tv_led` 保留在电视墙，后期想要氛围光走插电式灯带挂该插座即可，零预埋零开槽。
 
 ## 4. 玻璃幕/飘窗清单 → 玻璃材质（Low-E 微反）
 
@@ -199,18 +199,18 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 - 建议工况 A：8 月 17:30 西晒（检验玻璃幕/西墙眩光与掠射光）
 - 建议工况 B：20:00 夜景（检验全屋 3000K 暖光氛围，厨卫 4000K）
 
-## 6. Twinmotion 云端操作指引
+## 6. 渲染与回传指引（现行）
 
 ### 地面（含人字拼 A/B）
-- glb 内嵌贴图仅打底（程序化生成，质感非最终）；Library > **Materials > Wood** 搜 `herringbone` 可得带多版面+倒角的真人字拼，拖到地面节点即替换
-- 直铺选浅胡桃色（#c49a6c 方向）柔光木地板款；替换后对比人字拼/直铺，作为 DEC-011 门店终审前的云端证据
+- glb 内嵌贴图仅打底（程序化生成，质感非最终）；人字拼须用带多版面+倒角的真人字拼材质，不得以直纹贴图冒充，拖到地面节点比对版面
+- 直铺选浅胡桃色（#c49a6c 方向）柔光木地板款；替换后对比人字拼/直铺，作为 DEC-011 门店终审前的证据
 
 ### 玻璃幕（5 段 curtain_run + 9 处飘窗）
-- Library > **Materials > Glass** 拖至 `west_curtain` 等节点；Properties 里 reflectance 微升、tint 微绿 ≈ Low-E 微反质感
-- 框料：导出为整片玻璃面，开发商幕墙的竖梃/横梁分格需手动补（Twinmotion 无自动分格），分格尺寸按现场照片
-- **外景必须配**：Library > **HDRI environments** 选城市/天空款，否则玻璃无反射内容显假（"镜子+灰片"观感的根因）
+- 玻璃节点（`west_curtain` 等）质感目标：反射率微升、微绿着色 ≈ Low-E 微反
+- 框料：导出为整片玻璃面，开发商幕墙的竖梃/横梁分格需手动补，分格尺寸按现场照片
+- **外景必须配**：城市/天空环境，否则玻璃无反射内容显假（"镜子+灰片"观感的根因）
 
 ### 回传审阅
-- 底部 **Media > Image** 创建 4K 静帧（建议两工况各一张：17:30 西晒 / 20:00 夜景）→ Export 导出 PNG
-- PNG 传回本地 `docs/renders/`（git 留档定妆历史），把文件路径发给 AI 逐张审阅并给调整建议
-- 备选：Publish to **Twinmotion Cloud** 生成链接发给 AI（省事但不留档）
+- 静帧建议两工况各一张：17:30 西晒 / 20:00 夜景（见 §5 太阳定位参数），4K 导出 PNG
+- PNG 先放本地 `tmp/capture/`（过程图不进 git，批 0 铁律）；定稿每视角 ≤1 张入对应 design-iterations 轮次的 evidence/final/ 留档，再把文件路径发给 AI 逐张审阅并给调整建议
+- 已退场的 Twinmotion Cloud 发布链路不再使用
