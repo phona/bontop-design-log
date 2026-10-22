@@ -414,18 +414,6 @@ scan:
       scalars: [dimension]
       pattern: '[×x]'
       reason: 采购决议书的尺寸为询价与合同附件叙述口径（外廓/风口/机身），权威在 config/hvac.yaml 与合同附图
-    - path: docs/render-tech-debt.md
-      scalars: [dimension]
-      pattern: '[×x]'
-      reason: 渲染技术债留档里的家具尺寸是当时场景规模快照，非现行事实源
-    - path: docs/twinmotion-acceptance.md
-      scalars: [dimension]
-      pattern: '[×x]'
-      reason: Twinmotion 云渲染验收留档，尺寸为渲染场景规模口径
-    - path: docs/renders/pipeline-acceptance.md
-      scalars: [dimension]
-      pattern: '[×x]'
-      reason: 渲染管线验收留档，尺寸为渲染场景规模口径
 
     # --- item_count：共 N 条 / N 个点位 / N 项验收 ---
     # 计数声明的权威值全部来自机器条目数，由 fact.*_count 与 contracts 的 count 类单列对账；

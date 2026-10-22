@@ -49,9 +49,8 @@ interior-design-project/
 │   ├── blender/
 │   └── web/
 ├── docs/                      # 文档
-│   ├── README.md              #   文档索引（16 个根文档的角色/状态/权威指向）
+│   ├── README.md              #   文档索引（13 个根文档的角色/状态/权威指向）
 │   ├── designer_brief.md
-│   ├── acceptance_checklist.md
 │   ├── material_selection_log.md
 │   ├── decisions/             # 决策日志（18 个主题文件 + README 索引）
 │   │   ├── README.md          #   索引 + 模板 + 待决策事项
@@ -61,7 +60,6 @@ interior-design-project/
 │   │   ├── INDEX.yaml         #   65 条：主题/状态/引用数/权威去处
 │   │   ├── archive/           #   20 个已归档轮次
 │   │   └── <44 个现役轮次目录>/
-│   ├── renders/               # 渲染架构留档
 │   ├── standards/             # 起夜路径照明标准
 │   └── hvac/                  # 暖通专题文档（6 个）
 ├── scripts/                   # Python工具脚本
