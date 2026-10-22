@@ -78,7 +78,10 @@ function masonryAreas(): { wall: number; sill: number } {
     suppressed: suppressed.has(wall.id),
   }));
   const wallById = new Map(walls.map((w) => [w.id, w]));
-  const elements: any[] = ov.elements ?? [];
+  if (!Array.isArray(ov.elements) || ov.elements.length === 0) {
+    throw new Error('overlay.yaml 缺少 elements 声明：拒绝静默生成 0 ㎡（字段改名/缺失必须报红）');
+  }
+  const elements: any[] = ov.elements;
   const baySills = elements.filter((e) => e.type === 'bay_sill').map((e) => {
     const wallIds: string[] = e.walls ?? (e.wall ? [e.wall] : []);
     const wall: any = wallById.get(wallIds[0]);
@@ -103,7 +106,18 @@ function masonryAreas(): { wall: number; sill: number } {
         const n = all[(i + 1) % all.length]; return sum + p.x * n.z - n.x * p.z; }, 0) / 2),
       points: (e.points ?? []).map((p: any) => ({ x: p.x, z: p.z })),
       excluded: e.excluded === true, follow: e.follow, room: e.room, zone: e.zone })),
-    clearHeight: 2.8,
+    clearHeight: (() => {
+      // 与 server/budget-calculator.ts 同口径：厨卫铝扣板完成面（floor_height − thickness），
+      // 取三区最大值；配置派生，禁止硬编码（二审修复：原误写 2.8 > takeoff 上限 2.65 而不自知）。
+      const floorH = yaml('config/house.yaml').project.floor_height as number;
+      const zones = yaml('config/ceiling.yaml') as any[];
+      const finishes = ['ceiling_kitchen', 'ceiling_master_bath', 'ceiling_guest_bath'].map((id) => {
+        const z = zones.find((x) => x.id === id);
+        if (!z) throw new Error(`ceiling.yaml 缺少 ${id} 区，无法派生贴砖净高上限`);
+        return floorH - (z.thickness as number);
+      });
+      return Math.max(...finishes);
+    })(),
   } as MasonryTakeoffInput;
   const result = computeMasonryTakeoff(input);
   return { wall: result.wallTileSqm, sill: result.sillTileSqm };
@@ -193,7 +207,7 @@ const SECTIONS: Section[] = [
       {
         label: '墙砖面积（wall_region 实算）',
         value: () => `${round4(masonryAreas().wall)} ㎡`,
-        source: 'shared/masonry-takeoff.ts；tests/server/masonry-takeoff.test.ts:160-168',
+        source: 'config/layout/overlay.yaml（wall/sill_region 声明）+ config/layout/model-geometry.yaml（几何）+ config/tile-comparison.yaml（干湿分区）+ config/ceiling.yaml（净高上限）→ shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts:160-168',
         note: () => {
           const a = masonryAreas();
           return `窗台/防水台 sill_region 另计 ${round3(a.sill)} ㎡；合计 ${round4(a.wall + a.sill)} ㎡由契约 c.masonry_tile_area_parity 三方对账 ※`;
@@ -243,17 +257,27 @@ const SECTIONS: Section[] = [
         value: (c) => {
           // 按房间逐条派生（批 4 审阅修复）：型号/容量从各房 indoor 串解析，
           // 房间标签由 ac 锚点映射，互换任一房间型号都会改变输出。
+          // 房间标签一律取结构化 rooms[].room（二审修复：不从 indoor 自由文本猜房间）；
+          // living_dining 两条按文件序为客厅、餐厅。型号/容量仍取 indoor 串（机型只在此登记）。
           const LABELS: Record<string, string> = {
-            ac_living: '客厅', ac_dining: '餐厅', ac_master: '主卧',
-            ac_parent: '书房', ac_child: '儿童房', ac_study: '客房',
+            master_bedroom: '主卧', study: '书房', bedroom_nw: '儿童房', bedroom_se: '客房',
           };
-          const rooms = plan(c).load_design.rooms as Array<{ indoor: string }>;
+          let livingDiningSeen = 0;
+          const labelOf = (room: string): string => {
+            if (room === 'living_dining') {
+              livingDiningSeen += 1;
+              return livingDiningSeen === 1 ? '客厅' : '餐厅';
+            }
+            const label = LABELS[room];
+            if (!label) throw new Error(`逐房映射：未知的 room id ${room}`);
+            return label;
+          };
+          const rooms = plan(c).load_design.rooms as Array<{ room: string; indoor: string }>;
           const parsed = rooms.map((r) => {
-            const ac = r.indoor.match(/ac_\w+/)?.[0] ?? '';
             const model = r.indoor.match(/MJV-[0-9A-Z/-]+/)?.[0];
             const kw = r.indoor.match(/(\d+\.\d+)kW/)?.[1];
-            if (!LABELS[ac] || !model || !kw) throw new Error(`逐房映射解析失败：${r.indoor.slice(0, 60)}`);
-            return { label: LABELS[ac], model, kw };
+            if (!model || !kw) throw new Error(`逐房映射解析失败：${r.indoor.slice(0, 60)}`);
+            return { label: labelOf(r.room), model, kw };
           });
           const head = parsed.slice(0, 3).map((p) => `${p.label} ${p.model} ${p.kw}kW`);
           const tail = parsed.slice(3);
@@ -318,6 +342,7 @@ const SECTIONS: Section[] = [
           const ids = (c.topology.circuits as any[])
             .map((x) => x.id as string)
             .filter((id) => id.includes('hvac_power_outdoor'));
+          if (ids.length === 0) throw new Error('topology 未找到 hvac 外机回路：拒绝输出 0 路');
           return `${ids.length} 路 ${ids.join(' + ')}`;
         },
         source: 'config/electrical-topology.yaml:94',
