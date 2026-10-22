@@ -329,21 +329,25 @@ function routeLength(route: MepRoute, from?: { x: number; z: number; y?: number 
  * 不猜：只对端点是有点位高度声明的电气/给排水点位计算，负值（灯在顶面上）取 0。
  * 不开这个开关 = 已画线点位系统性少算约 2.2m/个，比不画线点位的 allowance 口径不一致。
  */
-function terminalDrop(
+/**
+ * 竖向下引段的标高跨度：{ endY（路由终点标高）, pointHeight（点位安装高度） }。
+ * 不适用（终点非点位引用 / 端点未解析 / 点位无高度声明 / 终点不高于点位）返回 null。
+ * terminalDrop（诊断长度）与回路计价的下引 stub 共用同一判定，不许两处各算一套。
+ */
+function terminalDropSpan(
   route: MepRoute,
   points: Map<string, { height?: number }>,
   to: { x: number; z: number; y?: number } | undefined,
-): number {
-  if (typeof route.to !== 'string') return 0;
-  const point = points.get(route.to);
-  const pointHeight = point?.height;
-  if (to === undefined || pointHeight === undefined) return 0;
+): { endY: number; pointHeight: number } | null {
+  if (typeof route.to !== 'string') return null;
+  const pointHeight = points.get(route.to)?.height;
+  if (to === undefined || pointHeight === undefined) return null;
   // 竖向下引段的终点标高：路由自己声明的 to_height 优先，其次才是解析出的端点 y。
   // 两者都缺 → 旧代码取 0，于是 `Math.max(0, 0 − pointHeight)` 恒为 0，**整段下引管消失**
   // （已画线点位因此系统性少算约 2.2m/个）。标高不可默认：缺声明就抛错。
   // 注：routeLength 的 requirePointY 已经先对同一个表达式 fail-closed（它用的就是
   // `mepRoutePoints` 的 `to_height ?? to.y`），所以这个分支今天不可达——保留它是为了让
-  // terminalDrop 自身自洽，将来若有人在新路径上先调它，不会静默退回 0。
+  // 本函数自身自洽，将来若有人在新路径上先调它，不会静默退回 0。
   let endY: number;
   if (route.to_height !== undefined) endY = route.to_height;
   else if (to.y !== undefined) endY = to.y;
@@ -352,7 +356,17 @@ function terminalDrop(
       `路由 ${route.id} 的终点标高无法确定（to_height 与端点 y 均未声明）：竖向下引段会整段消失，已画线点位将少算约 2.2m/个管。请到 config/mep-hvac-coordination.yaml 补 to_height`,
     );
   }
-  return Math.max(0, endY - pointHeight);
+  if (endY <= pointHeight) return null;
+  return { endY, pointHeight };
+}
+
+function terminalDrop(
+  route: MepRoute,
+  points: Map<string, { height?: number }>,
+  to: { x: number; z: number; y?: number } | undefined,
+): number {
+  const span = terminalDropSpan(route, points, to);
+  return span ? span.endY - span.pointHeight : 0;
 }
 
 
@@ -391,24 +405,49 @@ export function unionPlanLength(paths: Array<Array<{ x: number; z: number }>>, c
  * 竖直段物理上每回路独占（各自的管、各自的线），不做跨回路去重；同一回路内多条
  * 路由共享同一根立管时（同 x,z 的纯竖直边），按 y 区间合并只计一次，与平面 union
  * 的去重哲学一致。带平面分量的斜边无法这样合并，其 |Δy| 按曼哈顿分量逐边计入。
- * y 缺失的点不产生竖直分量（生产路径的 y 由 mepRoutePoints 的 from/to_height
- * 与 via 保证，缺失时 routeLength 已先 fail-closed）。
+ * 终端下引（路由终点标高 → 点位安装高度，config include_terminal_drop 开启时）由
+ * computeMepTakeoff 以纯竖直 stub 路径并入本函数的入参，一并走区间合并计入。
+ *
+ * 2026-10-23 评审后修订（同 DEC 条目）：
+ * - 纯竖直路径的**平面分量恒为 0**：整条路径同 (x,z) 时送 union 前剔除——
+ *   unionPlanLength 的 5cm 网格会给退化路径也栅格化出一个 cell（0.05m），
+ *   生产约 34 个竖直位置曾因此累计多计约 1.70m。unionPlanLength 本体不改，
+ *   诊断口径（drawnRouteUnionM 等）保持原义。
+ * - **缺失标高 fail-closed**：任一点 y 缺失/非有限数即抛错。旧实现用 ?? 0 兜底，
+ *   缺标高的点被当成 y=0 静默出数。生产主路径的 y 由 mepRoutePoints 保证、
+ *   routeLength 已先 fail-closed；导出函数自身守同一口径，不许直接调用者绕过。
  */
 export function pricedCircuitLength(paths: Array<Array<{ x: number; z: number; y?: number }>>): number {
-  const plan = unionPlanLength(paths.map((points) => points.map((p) => ({ x: p.x, z: p.z }))));
+  for (let pi = 0; pi < paths.length; pi += 1) {
+    for (let i = 0; i < paths[pi].length; i += 1) {
+      const y = paths[pi][i].y;
+      if (y === undefined || !Number.isFinite(y)) {
+        throw new Error(
+          `pricedCircuitLength：第 ${pi} 条路径第 ${i} 个点缺失标高 y——计价基数不许默认标高（缺 y 曾被 ?? 0 静默当成 0 出数），请补 from/to_height 或 via 标高`,
+        );
+      }
+    }
+  }
+  const checked = paths.map((points) => points.map((p) => ({ x: p.x, z: p.z, y: p.y as number })));
+  // 平面分量：整条路径同 (x,z) 的退化路径（纯竖直/单点）贡献恒为 0，送 union 前剔除；
+  // 其竖直分量由下方区间逻辑计。全部路径都退化时平面分量为 0。
+  const planPaths = checked
+    .map((points) => points.map((p) => ({ x: p.x, z: p.z })))
+    .filter((points) => points.some((p) => Math.hypot(p.x - points[0].x, p.z - points[0].z) > 1e-9));
+  const plan = planPaths.length > 0 ? unionPlanLength(planPaths) : 0;
   const intervals = new Map<string, Array<[number, number]>>();
   let slantedDy = 0;
-  for (const points of paths) {
+  for (const points of checked) {
     for (let i = 1; i < points.length; i += 1) {
       const a = points[i - 1];
       const b = points[i];
-      const dy = Math.abs((b.y ?? a.y ?? 0) - (a.y ?? 0));
+      const dy = Math.abs(b.y - a.y);
       if (dy <= 1e-9) continue;
       const planD = Math.hypot(b.x - a.x, b.z - a.z);
       if (planD <= 1e-9) {
         const key = `${Math.round(a.x * 1000)},${Math.round(a.z * 1000)}`;
         const list = intervals.get(key) ?? [];
-        list.push([Math.min(a.y ?? 0, b.y ?? 0), Math.max(a.y ?? 0, b.y ?? 0)]);
+        list.push([Math.min(a.y, b.y), Math.max(a.y, b.y)]);
         intervals.set(key, list);
       } else {
         slantedDy += dy;
@@ -580,6 +619,20 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       // 回路路径保留 3D 点：计价基数 pricedCircuitLength 需要 via/端点的 y 算竖直段。
       const list = circuitPaths.get(circuitId) ?? [];
       list.push(points3d);
+      if (rules.include_terminal_drop) {
+        // 终端下引进计价（DEC-2026-10-23-R01 评审后修订）：下引此前只进 drawn/layer
+        // 诊断长度，circuitPaths 只有路由折线，报价卡从 strongPowerTotalM 取量时
+        // 这段已声明的管线不在基数内（评审实测强电 0.95m）。把下引作为终端点
+        // (x,z) 处的纯竖直 stub 两点路径并入本回路——pricedCircuitLength 的同
+        // (x,z) y 区间合并会与路由自身竖直边去重，同一根立管只计一次。
+        const span = terminalDropSpan(route, pointHeights, resolved.to);
+        if (span && resolved.to) {
+          list.push([
+            { x: resolved.to.x, z: resolved.to.z, y: span.endY },
+            { x: resolved.to.x, z: resolved.to.z, y: span.pointHeight },
+          ]);
+        }
+      }
       circuitPaths.set(circuitId, list);
     }
     const endRoom = typeof route.to === 'string' ? roomOf(route.to) : undefined;

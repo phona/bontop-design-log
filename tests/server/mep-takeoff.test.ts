@@ -239,19 +239,22 @@ test('未四舍五入：数量保留原始浮点', () => {
 /**
  * DEC-2026-10-23-R01：回路计价基数 pricedCircuitLength = 平面 union + 竖直段。
  * 修复前 unionPlanLength 只吃 {x,z}，竖直边整体归零（强电约 89m、导线低估约 36%）。
- * 竖直部分是精确算术（区间合并），平面部分走 5cm 网格——断言用「计价 − 平面 union」
- * 隔离竖直分量，避免把网格口径误差带进竖直断言。
+ * 断言一律写**绝对值**：竖直分量是精确算术（区间合并），平面分量是 5cm 网格量化
+ * （3m 直线段 = 61 个 cell = 3.05）——两个口径分别钉死。旧写法用「计价 − 平面 union」
+ * 差值隔离竖直分量，曾把纯竖直路径多出的一个网格 cell（0.05m）一并抵消，
+ * 掩盖了退化路径的平面分量偏差（2026-10-23 评审 P2），禁止再用差值断言。
  */
 test('pricedCircuitLength：纯竖直路径计入其高度', () => {
   const path = [{ x: 0, z: 0, y: 0.3 }, { x: 0, z: 0, y: 2.55 }];
-  const vertical = pricedCircuitLength([path]) - unionPlanLength([path]);
-  assert.ok(Math.abs(vertical - 2.25) < 1e-6, `竖直分量应为 2.25，实际 ${vertical}`);
+  assert.ok(Math.abs(pricedCircuitLength([path]) - 2.25) < 1e-6,
+    `纯竖直路径应精确等于 2.25（平面分量 0），实际 ${pricedCircuitLength([path])}`);
 });
 
 test('pricedCircuitLength：混合路径 = 平面 union + 竖直下引', () => {
   const path = [{ x: 0, z: 0, y: 2.55 }, { x: 3, z: 0, y: 2.55 }, { x: 3, z: 0, y: 0.3 }];
-  const vertical = pricedCircuitLength([path]) - unionPlanLength([path]);
-  assert.ok(Math.abs(vertical - 2.25) < 1e-6, `竖直分量应为 2.25，实际 ${vertical}`);
+  // 平面 3m 直线段经 5cm 网格 = 3.05；竖直下引 2.25（精确）→ 合计 5.30。
+  assert.ok(Math.abs(pricedCircuitLength([path]) - 5.3) < 1e-6,
+    `混合路径应为 5.30，实际 ${pricedCircuitLength([path])}`);
 });
 
 test('pricedCircuitLength：平面重叠仍去重，同回路共享立管只计一次', () => {
@@ -262,23 +265,100 @@ test('pricedCircuitLength：平面重叠仍去重，同回路共享立管只计�
 test('pricedCircuitLength：不同位置的下引各计一次', () => {
   const a = [{ x: 0, z: 0, y: 2.55 }, { x: 3, z: 0, y: 2.55 }, { x: 3, z: 0, y: 0.3 }];
   const b = [{ x: 0, z: 0, y: 2.55 }, { x: 5, z: 0, y: 2.55 }, { x: 5, z: 0, y: 0.3 }];
-  const vertical = pricedCircuitLength([a, b]) - unionPlanLength([a, b]);
-  assert.ok(Math.abs(vertical - 4.5) < 1e-6, `两处下引应共 4.5，实际 ${vertical}`);
+  // 平面 union：两条路径在 z=0 上 [0,3] 与 [0,5] 并集 = 5m → 101 cells = 5.05；
+  // 竖直：(3,0) 与 (5,0) 两处下引各 2.25 → 合计 9.55。
+  assert.ok(Math.abs(pricedCircuitLength([a, b]) - 9.55) < 1e-6,
+    `两处下引路径应为 9.55，实际 ${pricedCircuitLength([a, b])}`);
 });
 
 test('pricedCircuitLength：斜边的竖直分量逐边计入', () => {
   const path = [{ x: 0, z: 0, y: 0 }, { x: 1, z: 0, y: 1 }];
-  const vertical = pricedCircuitLength([path]) - unionPlanLength([path]);
-  assert.ok(Math.abs(vertical - 1) < 1e-6, `斜边 |Δy| 应为 1，实际 ${vertical}`);
+  // 平面 1m 经网格 = 21 cells = 1.05；斜边 |Δy| = 1 逐边计入 → 合计 2.05。
+  assert.ok(Math.abs(pricedCircuitLength([path]) - 2.05) < 1e-6,
+    `斜边路径应为 2.05，实际 ${pricedCircuitLength([path])}`);
+});
+
+test('pricedCircuitLength：点缺 y 标高即抛错，不许 ?? 0 兜底（评审 P2）', () => {
+  assert.throws(
+    () => pricedCircuitLength([[{ x: 0, z: 0 }, { x: 0, z: 0, y: 2 }]]),
+    /缺失标高 y/,
+    '缺 y 曾被 ?? 0 静默当成 0 出数（探针得 2.05 而非抛错）',
+  );
+  assert.throws(
+    () => pricedCircuitLength([[{ x: 0, z: 0, y: Number.NaN }, { x: 1, z: 0, y: 2 }]]),
+    /缺失标高 y/,
+  );
 });
 
 test('计价口径含竖直段：strongPowerTotalM 大于纯平面 union（DEC-2026-10-23-R01）', () => {
   const verticalPriced = takeoff.conduit.strongPowerTotalM - takeoff.conduit.strongPowerUnionPerCircuitM;
   // 2026-10-23 实算：计价管长 256.55 → 342.72（竖直 +86.17），导线 829.8 → 1101.21。
+  // 同日评审后修订：终端下引进回路计价（原始 0.95m、回路内同 (x,z) 区间合并后
+  // 净 +0.75）→ 计价管长 343.47（竖直分量 86.92），导线 1103.57；纯竖直路径的
+  // 0.05 网格多计在本配置下被同回路平面段端点 cell 覆盖，生产净影响为 0。
   // 路由增删会动这些数（走 DEC 时同步更新本断言的量级带），但「计价 > 纯平面 union」
   // 与竖直分量量级（数十米）是口径性质，不许回退到 0。
   assert.ok(verticalPriced > 50, `竖直计价分量应在数十米量级，实际 ${verticalPriced}`);
   assert.ok(takeoff.wire.totalWireM > 1000, `导线总量应已含竖直段，实际 ${takeoff.wire.totalWireM}`);
+});
+
+test('终端下引进回路计价：include_terminal_drop 开含下引、关不含（评审 P1）', () => {
+  // 合成场景：强电路由沿 2.55 标高走到插座正上方（平面 3m），插座安装高度 0.3，
+  // 终端下引 = 2.55 − 0.3 = 2.25m。此前下引只进 drawn/layer 诊断长度，
+  // circuitPaths 只有路由折线——报价卡从 strongPowerTotalM 取量，这段不在基数内。
+  const synthElectrical = [{ id: 'sock_test', type: 'socket', room: 'test_room', x: 3, z: 0, height: 0.3 }];
+  const synthCoordination = parseMepCoordination(`
+version: '1'
+status: synthetic-test
+layers:
+  strong_power: { label: 强电, color: '#000000', height: 2.55 }
+  weak_power: { label: 弱电, color: '#000000', height: 2.55 }
+  water_supply: { label: 给水, color: '#000000', height: 0.18 }
+  drainage: { label: 排水, color: '#000000', height: 0.1 }
+  refrigerant: { label: 冷媒, color: '#000000', height: 2.4 }
+  condensate: { label: 冷凝水, color: '#000000', height: 2.4 }
+  supply_air: { label: 送风, color: '#000000', height: 2.4 }
+  return_air: { label: 回风, color: '#000000', height: 2.4 }
+routes:
+  - id: test-drop-route
+    layer: strong_power
+    status: inferred
+    route_kind: physical
+    from: { x: 0, z: 0, y: 2.55 }
+    via: [{ x: 3, z: 0, y: 2.55 }]
+    to: sock_test
+    to_height: 2.55
+`);
+  const synthSources = endpointSourcesFromFacts({
+    electrical: synthElectrical as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['electrical'],
+    plumbing: [] as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['plumbing'],
+    ceiling: [] as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
+    hvac: { plans: [] } as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
+  });
+  const synthResolution = resolveMepRoutes(synthCoordination, synthSources);
+  const synthCircuits = [{
+    id: 'TEST-C1', purpose: 'ordinary_power', wire_size: '2.5mm²(φ20)',
+    breaker: 'C20', member_point_ids: ['sock_test'],
+  }] as TakeoffCircuit[];
+  const runSynth = (includeDrop: boolean) => computeMepTakeoff({
+    electrical: synthElectrical as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
+    plumbing: [] as unknown as Parameters<typeof computeMepTakeoff>[0]['plumbing'],
+    circuits: synthCircuits,
+    controls: [],
+    routes: synthCoordination.routes,
+    resolution: synthResolution,
+    rules: { ...cloneRules(), include_terminal_drop: includeDrop },
+  });
+  const off = runSynth(false);
+  const on = runSynth(true);
+  // 关：只有平面 union——3m 直线段经 5cm 网格 = 61 cells = 3.05，下引不在计价内。
+  assert.ok(Math.abs(off.conduit.strongPowerTotalM - 3.05) < 1e-6,
+    `关下引时计价应为 3.05，实际 ${off.conduit.strongPowerTotalM}`);
+  // 开：+ 下引 2.25（精确算术）= 5.30；导线增量 = 下引 × 3 芯 × 1.05 损耗。
+  assert.ok(Math.abs(on.conduit.strongPowerTotalM - 5.3) < 1e-6,
+    `开下引时计价应为 5.30，实际 ${on.conduit.strongPowerTotalM}`);
+  assert.ok(Math.abs((on.wire.totalWireM - off.wire.totalWireM) - 2.25 * 3 * 1.05) < 1e-6,
+    `导线增量应为 7.0875，实际 ${on.wire.totalWireM - off.wire.totalWireM}`);
 });
 
 /**
