@@ -1176,7 +1176,7 @@ work_packages:
     duration_workdays: {min: 1, max: 2}
     dependencies: [PKG-060]
     readiness: ready
-    status: failed
+    status: passed
     blockers: []
     owner_roles: [美缝施工, 业主]
     payment_gate: GATE-065-COMPLETE
@@ -2272,3 +2272,23 @@ audit_log:
       evidence: ["【模拟演示】饰面层闭水首验不合格：客卫地漏周边渗漏，须整改复验【模拟】"]
       check_spec_sha256: 2815a73d878ced391bf2822c8141cef9c52a9888fe04d75a2c60df7c762a5e6f
       project_data_sha256: 6c8d3e08bf400be22ae04f356d02f2ba2c7c7c42b3385049e97002193711875c
+    - id: AUD-SIM-052
+      package_id: PKG-065
+      check_id: check_wp_finish_flood
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】整改后复验：客卫地漏周边重做密封，重新蓄水 48h，水位无下降、楼下无渗漏【模拟】"]
+      check_spec_sha256: 8457026a6b6c65c91293681a1e853716c1b2e6f0a97e206f59f8c7e847942094
+      project_data_sha256: 6c8d3e08bf400be22ae04f356d02f2ba2c7c7c42b3385049e97002193711875c
+      supersedes: AUD-SIM-050
+    - id: AUD-SIM-053
+      package_id: PKG-065
+      check_id: SCH-065-03
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】整改后复验：客卫地漏周边重做密封，重新蓄水 48h，水位无下降、楼下无渗漏【模拟】"]
+      check_spec_sha256: 2815a73d878ced391bf2822c8141cef9c52a9888fe04d75a2c60df7c762a5e6f
+      project_data_sha256: 6c8d3e08bf400be22ae04f356d02f2ba2c7c7c42b3385049e97002193711875c
+      supersedes: AUD-SIM-051
