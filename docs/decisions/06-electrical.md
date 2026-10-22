@@ -27,6 +27,7 @@
 - `DEC-2026-10-07-M03` 删掉 allowance 臆测数据：没有路由的点位不进采购量
 - `DEC-2026-10-07-M04` 声明式补客餐厅电源回路路由 + 纯竖直段纳入物理路由口径
 - `DEC-2026-10-07-M05` 并行声明式补路由：书房/客房/儿童房 + 四卧两卫 + 走廊入户（三条回路 23 条）
+- `DEC-2026-10-23-R01` 回路计价基数补计竖直段：平面 union 保留、竖直下引/立管计入（修正 DEC-2026-10-07-M02 计价口径）
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -705,3 +706,15 @@
 - **下一步责任**：走线专项（owner=设计侧，触发=交底前排期，覆盖新 7 点 + must-fix 存量）；#67–#72 量房/定标触发项（owner=业主/量房方/橱柜方/运营商，各自触发条件见台账行）。
 - **验证**：`verify:furniture` OK、`verify:collision` OK、`verify:electrical` 0 error（新三检查上线，唯一命中为 sock_balcony_washer blocked warning 属预期口径）、`verify:consistency` 0 error/6 warning（新增 switch_corridor 贴角 warning 系登记口径）、`verify:rules` OK、`verify:spatial` 0 error、`gate:visual` CLEAR（重启 dev server 后四项哈希全对齐——旧 server config watch 失效静默，再证 playbook 先跑门禁的必要性）、`verify:mep` must_fix **166**（本批起点基线 224：其中 −58 为并行会话 R13–R19 走线清理与本批删线的合计效果，本批未新增 must-fix 类目）、`typecheck` 通过；`test:server`/`test:app` 基线既有环境性失败（jsdom ResizeObserver、three setRGB、TextureManager）与本批无关，本批相关的 pin/fixture 已同步（routes 128、census total 163/pending 30、mep-takeoff 计数）。
 - **决策人**：业主拍板 5 项取舍（见日期/来源）；设计侧执行、验收与本文登记。
+
+### DEC-2026-10-23-R01 回路计价基数补计竖直段：平面 union 保留、竖直下引/立管计入
+
+- **日期**：2026-10-23。触发：预算计算链三路审计（2026-10-22）L1 发现——`shared/mep-takeoff.ts` 的回路计价基数 `circuitUnion` 只由 `unionPlanLength` 的 {x,z} 平面点算出，竖直段整体归零。
+- **推翻/修正的旧结论**：`DEC-2026-10-07-M02` ①的计价口径「强电管 = Σ_回路 union(该回路画线路由)、导线 = union × 芯数 × 损耗」中 **union 的实现口径部分**。M02 的裁定本身（同回路平面去重、逻辑口径 Σ各条长度不得用于计价）**不推翻**；被修正的是实现把「平面并集」当成了「回路全长」：竖直下引与立管在平面投影是一个点，union 对它们不是去重、是删除。M04 已把纯竖直段纳入物理路由口径（声明层），但计价层未跟上，两层口径撕裂至今。
+- **实测证据**：现行强电 70 条路由的竖直行程约 89m（两路独立探针互证 89/93m）；计价基数 256.55m 全部为平面量，导线总量 829.8m 建在其上，系统性低估约三分之一。模块内按 3D 长度算出的 `circuitConduit` 中间量只写不读、诊断口径的下引修正从未进计价，属于「诊断知道、计价没跟」。
+- **新口径**：回路计价基数 = **平面 union + 竖直段**（`pricedCircuitLength`）。竖直段每回路独占、不跨回路去重；同一回路内多条路由共享同一根立管（同 x,z 纯竖直边）按 y 区间合并只计一次；带平面分量的斜边其 |Δy| 逐边计入。诊断字段保持原义：`strongPowerUnionPerCircuitM` / `strongPowerUnionAllM` / `drawnRouteUnionM` 仍为纯平面 union；`strongPowerTotalM`（报价卡 conduit_20 的取量）与 byCircuit 明细改按计价基数，与分桶一致。
+- **数字变化（可复算）**：回路计价管长 256.55m → **342.72m**（竖直 +86.17m，同 x,z 区间合并后）；分桶线管 1.5mm² 82.9→106.94m、2.5mm² 150.2→206.42m、4.0mm² 23.5→29.36m；导线总量 829.8m → **1101.21m**（+32.7%）。按现行基线卡价折算约 +¥1,300——金额不大，但采购量短缺约 300m 导线的施工风险才是本条要堵的。
+- **静默失效条件**：新路由的 via/端点缺 y（标高）时竖直分量静默为 0——生产路径由 `mepRoutePoints` 的 from/to_height 与 routeLength 的 fail-closed 保证 y 在位；若将来新增不经 routeLength 的路径装配，必须同步保证标高来源。
+- **验证**：`pricedCircuitLength` 新增 6 个单测（纯竖直计入、混合路径、平面重叠仍去重、共享立管只计一次、异位下引各计、斜边 |Δy|、总量口径断言）；mep-takeoff / mep-quotes / budget-calculator / budget-api 测试全绿；`verify:facts` OK（104 warnings 与基线一致）；`verify:schedule` 通过。
+- **关联文件**：`shared/mep-takeoff.ts`（pricedCircuitLength + 电路计价改基数）、`config/mep-takeoff.yaml`（计价口径注释同步）、`tests/server/mep-takeoff.test.ts`。
+- **决策人**：业主（2026-10-23 指示修 bug）；设计侧执行与登记。

@@ -7,7 +7,7 @@ import {
   parseMepCoordination,
   resolveMepRoutes,
 } from '../../shared/mep-hvac-coordination-schema.js';
-import { computeMepTakeoff, parseWireSizeMm2, type MepTakeoffRules, type TakeoffCircuit } from '../../shared/mep-takeoff.js';
+import { computeMepTakeoff, parseWireSizeMm2, pricedCircuitLength, unionPlanLength, type MepTakeoffRules, type TakeoffCircuit } from '../../shared/mep-takeoff.js';
 
 /**
  * 水电子系统算量（Phase 0）。四道防线：
@@ -234,6 +234,51 @@ test('deferred：未激活预留点位显形，不算错也不算漏', () => {
 test('未四舍五入：数量保留原始浮点', () => {
   assert.ok(!Number.isInteger(takeoff.conduit.strongPowerM));
   assert.ok(!Number.isInteger(takeoff.wire.totalWireM));
+});
+
+/**
+ * DEC-2026-10-23-R01：回路计价基数 pricedCircuitLength = 平面 union + 竖直段。
+ * 修复前 unionPlanLength 只吃 {x,z}，竖直边整体归零（强电约 89m、导线低估约 36%）。
+ * 竖直部分是精确算术（区间合并），平面部分走 5cm 网格——断言用「计价 − 平面 union」
+ * 隔离竖直分量，避免把网格口径误差带进竖直断言。
+ */
+test('pricedCircuitLength：纯竖直路径计入其高度', () => {
+  const path = [{ x: 0, z: 0, y: 0.3 }, { x: 0, z: 0, y: 2.55 }];
+  const vertical = pricedCircuitLength([path]) - unionPlanLength([path]);
+  assert.ok(Math.abs(vertical - 2.25) < 1e-6, `竖直分量应为 2.25，实际 ${vertical}`);
+});
+
+test('pricedCircuitLength：混合路径 = 平面 union + 竖直下引', () => {
+  const path = [{ x: 0, z: 0, y: 2.55 }, { x: 3, z: 0, y: 2.55 }, { x: 3, z: 0, y: 0.3 }];
+  const vertical = pricedCircuitLength([path]) - unionPlanLength([path]);
+  assert.ok(Math.abs(vertical - 2.25) < 1e-6, `竖直分量应为 2.25，实际 ${vertical}`);
+});
+
+test('pricedCircuitLength：平面重叠仍去重，同回路共享立管只计一次', () => {
+  const path = [{ x: 0, z: 0, y: 2.55 }, { x: 3, z: 0, y: 2.55 }, { x: 3, z: 0, y: 0.3 }];
+  assert.equal(pricedCircuitLength([path, path]), pricedCircuitLength([path]));
+});
+
+test('pricedCircuitLength：不同位置的下引各计一次', () => {
+  const a = [{ x: 0, z: 0, y: 2.55 }, { x: 3, z: 0, y: 2.55 }, { x: 3, z: 0, y: 0.3 }];
+  const b = [{ x: 0, z: 0, y: 2.55 }, { x: 5, z: 0, y: 2.55 }, { x: 5, z: 0, y: 0.3 }];
+  const vertical = pricedCircuitLength([a, b]) - unionPlanLength([a, b]);
+  assert.ok(Math.abs(vertical - 4.5) < 1e-6, `两处下引应共 4.5，实际 ${vertical}`);
+});
+
+test('pricedCircuitLength：斜边的竖直分量逐边计入', () => {
+  const path = [{ x: 0, z: 0, y: 0 }, { x: 1, z: 0, y: 1 }];
+  const vertical = pricedCircuitLength([path]) - unionPlanLength([path]);
+  assert.ok(Math.abs(vertical - 1) < 1e-6, `斜边 |Δy| 应为 1，实际 ${vertical}`);
+});
+
+test('计价口径含竖直段：strongPowerTotalM 大于纯平面 union（DEC-2026-10-23-R01）', () => {
+  const verticalPriced = takeoff.conduit.strongPowerTotalM - takeoff.conduit.strongPowerUnionPerCircuitM;
+  // 2026-10-23 实算：计价管长 256.55 → 342.72（竖直 +86.17），导线 829.8 → 1101.21。
+  // 路由增删会动这些数（走 DEC 时同步更新本断言的量级带），但「计价 > 纯平面 union」
+  // 与竖直分量量级（数十米）是口径性质，不许回退到 0。
+  assert.ok(verticalPriced > 50, `竖直计价分量应在数十米量级，实际 ${verticalPriced}`);
+  assert.ok(takeoff.wire.totalWireM > 1000, `导线总量应已含竖直段，实际 ${takeoff.wire.totalWireM}`);
 });
 
 /**
