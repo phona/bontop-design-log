@@ -25,6 +25,7 @@
 - `DEC-2026-10-05-R3` 浴霸设备锚点定案与卫浴回路拆分
 - `DEC-2026-10-05-R12` 卫浴洁具目标下调归档（花洒/客卫浴室柜）
 - `DEC-2026-10-07-R02` 卫浴 PKG-100 第二次收口：主卫柜先入账 1,500 + 花洒降档 + 玻璃屏归属定案 + 条带定制柜划归二期
+- `DEC-2026-10-22-R02` 卫生间施工与 QA 门禁收口（第一批）：防水高度改 2.00 + 双阶段闭水 + 主卫沉箱测试拆分 + 洁具门禁
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -258,3 +259,22 @@
 - **关联文件**：`schedule/phase-1/control.yaml`（PKG-100、`COST-100-01`~`05`、`COST-150-01`、`BLK-MASTER-VANITY-SKU`）、`schedule/phase-2/control.yaml`（`P2-100` 边界补注）、`docs/decisions/04-bathrooms.md`（本条）。
 - **决策人**：业主。
 
+
+### DEC-2026-10-22-R02 卫生间施工与 QA 门禁收口（第一批）：防水高度改 2.00 + 双阶段闭水 + 主卫沉箱测试拆分 + 洁具门禁
+
+- **日期**：2026-10-22。触发：外部审查（Bathroom Construction & QA Gate Audit）列出卫生间施工管理 5 个缺口，逐条以本地仓库复核属实（第二次闭水缺失、美缝被油工硬依赖、客卫沉箱无对等专项、防水高度旧口径与现行规范冲突、洁具安装未被饰面闭水阻塞）；业主 2026-10-22 批准《卫生间施工与 QA 门禁改进方案》并开工第一批（裁定取值按方案推荐值）。本条为第一批：标准与门禁收口，不动工序结构；美缝拆包与客卫沉箱建模属第二批（见遗留）。
+- **被推翻的旧结论**（逐条说明）：
+  1. **D1=A 档的防水高度部分**（DEC-2026-10-07-R05 登记、`config/budget-pitfalls.yaml` 同口径、验收 `check_wp_coats` 沿用）：淋浴区防水 1.8m 与 GB 55038-2025《住宅项目规范》（2025-05-01 实施）淋浴区 ≥2.00m 且不低于喷淋口高度的要求冲突，旧值作废。**仅推翻防水高度**；D1=A 的贴砖高度口径与两卫淋浴墙砖到顶 2.65m 的终裁（DEC-2026-10-07-C14/C16）不由本条改动，防水高度与贴砖高度自本条起分开登记。
+  2. **`docs/mep-construction-guidance.md` §3.4「主卫/客卫沉箱最低处设 DN50 二次排水」的无条件表述**：客卫沉箱构造（是否下沉、开发商是否已设二次排水）从未核实，且验收与建模历来只有主卫单例，该表述超前于事实，改为条件式（见裁定④）。
+  3. **PKG-100 不依赖美缝包的排期口径**：原 dependencies `[PKG-060, PKG-080, PKG-040]` 使洁具可在饰面层闭水未做时安装，与裁定③的双阶段闭水冲突， supersede 为追加 PKG-130（见裁定⑥）。
+- **裁定①（防水高度）**：淋浴区墙面防水改 **≥2.00m 且不低于喷淋口高度**。落点：`check_wp_coats` method 与 standard、`config/budget-pitfalls.yaml` 3 处旧口径（防水常超 mitigation / 防水偷工减料 description+mitigation / 防水验收要点 description+checklist）。洗面器区域 ≥1.20m 对两处外移台盆（主卧条带 + 客卫开放洗漱区）**适用**：`check_plumb_external_vanity_waterproof` 的台盆后墙面防水由 0.3–0.5m 提升为 ≥1.20m，其余墙面维持 0.3–0.5m，挡水坎与防水连体要求不变。本轮 `standard_ref` 只写规范号不写条号；条号（外部审查引 GB 55038-2025 相应条与 GB 55030-2022 蓄水试验条）由设计侧复核规范原文后另行细化，不阻断本批。
+- **裁定②（主卫沉箱测试拆分）**：`check_plumb_master_bath_secondary_drain` 原第 4 步把通球（排水通畅性）与 24h 闭水（防水完整性）混写一条记录，现拆分：原条目保留 id、只管找坡/通球/轻质回填；新增 `check_plumb_master_bath_box_flood` 专管回填前沉箱 24h 蓄水（水位线 + 楼下天花），挂 PKG-050 `acceptance_refs`。两条同为 `before_covering`，证据分开留存。
+- **裁定③（双阶段闭水）**：新增饰面层闭水验收 `check_wp_finish_flood`：时点 = 美缝完成且养护满后、洁具安装前；两卫分别记录；蓄水 3–5cm、**48h**（与第一次闭水 `check_wp_flood` 同口径）；失败定位整改后复验重新计时，记录追加不覆盖。第一次闭水（防水层后，PKG-050，`GATE-050-FLOOD-TEST`）语义不变，该付款门槛只管第一次闭水。
+- **裁定④（客卫沉箱）**：核实前不建模、不设专项验收、不照搬主卫坐标。新增量房待核项 `docs/pending-site-data.md` #74（客卫沉箱构造：是否下沉及深度、开发商二次排水有无及接口位、沉箱底防水现状），计数 73 → 74 同步 `fact.pending_site_data_count`。§3.4 口径改条件式：主卫按既有专项执行，客卫待 #74 核实后另行 DEC 定案。
+- **裁定⑤（美缝干燥前置）**：新增 `check_tile_grout_dry`（瓷砖铺贴验收阶段）：贴砖粘结层养护期满、缝内干燥无明水方可美缝，挂 PKG-130 `acceptance_refs` 并在 PKG-130 增设 precondition 检查。美缝拆包（卫生间先行）属第二批，本批不动 PKG-130 的 dependencies 与范围。
+- **裁定⑥（洁具门禁）**：`control.yaml` PKG-100 dependencies 追加 `PKG-130`（`[PKG-060, PKG-080, PKG-040, PKG-130]`），饰面闭水检查挂 PKG-130（`acceptance_refs` 增 `check_wp_finish_flood` + completion 前检查一条）。依赖自检：100 → 130 → {060, 080}，135 同时依赖 100 与 130，无环。全部 payment_gate 不动。
+- **金额/工期影响**：防水面积估增约 0.7㎡（淋浴墙面 +0.20m × 约 3.4m 墙长，估算非报价）；`COST-050-01` 本为「待量房后按面积高度涂刷遍数报价」，planned 与预算池结构不变。洁具包关键路径增加饰面闭水 48h 窗口（与油工收尾可并行），其余包工期不变。
+- **遗留**（均带 owner 与触发条件）：① 客卫沉箱建模与专项验收——owner 量房方/业主，触发 = #74 关闭后另行 DEC；② 美缝拆包（方案 A：新增卫生间先行美缝包）——owner 业主，触发 = 本批合入后启动第二批；③ 规范条号原文复核与 `standard_ref` 细化——owner 设计侧，触发 = 下次改动相关验收条目时一并完成；④ 两卫排风路径（#56）、LEB 位置（#43）等既有阻塞与本条无关，不在本批处理。
+- **验证**：worktree 分支 `feat/bathroom-qa-gates`（基线 = master `fcf1665` 干净树）落地。`schedule:render` 后可审计检查 95 → 100（+5 = 沉箱蓄水/饰面闭水/干燥确认三条 refs + SCH-130-02/03 两条包级检查）；`verify:schedule` 通过；`verify:facts` OK（104 warnings 与基线一致，期间修通两处计数契约同步：pending 权威锚 `量表共 74 条` 与验收计数契约 `expect_matches` 50 → 53，均按契约自身变更日志体例登记）；`verify:all` 19/21，失败仅 `verify-mep`（149 errors / 238 warnings）与 `verify-document-references`（9 errors），与基线干净树逐项同数，**零新增失败**（mep 红为 master 存量，由并行门禁修复线处理，不属本批）。`test:server` 全量 1009 个测试与基线对照：基线 37 个失败（MEP/几何存量红），改后失败集合与基线逐项相同，唯一差异为 pending 计数口径测试——已按该测试自身的变更日志体例把硬编码行数 74 → 75 同步（新增编号的既定同步点），复跑该条通过。自查：全仓 `1.8` 残留归类完毕（防水语境仅剩本条作废注释与历史 DEC，余为配电箱高度/家具尺寸等无关值）；客卫二次排水表述全仓统一为条件式。
+- **关联文件**：`config/acceptance.yaml`、`config/budget-pitfalls.yaml`、`schedule/phase-1/control.yaml`、`docs/pending-site-data.md`、`config/facts.yaml`、`docs/mep-construction-guidance.md`、生成文件 `schedule/phase-1/checklist.md`/`budget.md`/`schedule.md`（render 产生）。
+- **决策人**：业主。
