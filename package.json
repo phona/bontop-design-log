@@ -29,6 +29,8 @@
     "verify:finish-scope": "tsx scripts/verify/finish/verify-finish-scope.ts",
     "verify:document-references": "tsx scripts/verify/documents/verify-document-references.ts",
     "verify:doc-index": "tsx scripts/verify/documents/verify-doc-index.ts",
+    "docs:generate-current-values": "tsx scripts/docs/generate-current-values.ts",
+    "verify:current-values": "tsx scripts/verify/documents/verify-current-values.ts",
     "verify:yaml-hash": "tsx scripts/verify/yaml/verify-inline-comments.ts",
     "generate:project-render-facts": "tsx scripts/project/project-render-facts-projection.ts data/project-render-facts.json",
     "takeoff:ceiling": "tsx scripts/project/ceiling-takeoff.ts",
@@ -38,10 +40,7 @@
     "export:dressing-map": "tsx scripts/generate-dressing-map.ts",
     "export:glb": "tsx scripts/render/glb/export-glb.ts",
     "compare:glb": "tsx scripts/render/glb/compare-glb.ts",
-    "gate:visual": "tsx scripts/gate/visual-state-gate.ts",
-    "docs:generate-index": "tsx scripts/docs/generate-iteration-index.ts",
-    "docs:generate-current-values": "tsx scripts/docs/generate-current-values.ts",
-    "verify:current-values": "tsx scripts/verify/documents/verify-current-values.ts"
+    "gate:visual": "tsx scripts/gate/visual-state-gate.ts"
   },
   "dependencies": {
     "@opencode-ai/sdk": "^1.17.13",
