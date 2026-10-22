@@ -212,5 +212,5 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 
 ### 回传审阅
 - 静帧建议两工况各一张：17:30 西晒 / 20:00 夜景（见 §5 太阳定位参数），4K 导出 PNG
-- PNG 先放本地 `tmp/capture/`（过程图不进 git，批 0 铁律）；定稿每视角 ≤1 张随对应 design-iterations 轮次的 evidence 留档，再把文件路径发给 AI 逐张审阅并给调整建议
+- PNG 先放本地 `tmp/capture/`（过程图不进 git，批 0 铁律）；定稿每视角 ≤1 张入对应 design-iterations 轮次的 evidence/final/ 留档，再把文件路径发给 AI 逐张审阅并给调整建议
 - 已退场的 Twinmotion Cloud 发布链路不再使用

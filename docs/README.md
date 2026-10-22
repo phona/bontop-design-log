@@ -112,15 +112,15 @@
 ---
 
 
-### 退场墓碑（已删除文档，原文自 git 历史取回，删除 commit 均为 e91a6cc）
+### 退场墓碑（已删除文档，原文自 git 历史取回）
 
-| 文档 | 关账结论 | 去向 |
-|---|---|---|
-| `acceptance_checklist.md` | 已退役的指针页（自声明） | 已删（e91a6cc）；真正的交付验收清单在 `schedule/phase-1/` 的 render 产物 |
-| `render-tech-debt.md` | 自声明 PAUSED/HISTORICAL 的技术债台账 | 已删（e91a6cc） |
-| `twinmotion-acceptance.md` | Twinmotion 线随 Blender 主线一同暂停 | 已删（e91a6cc） |
-| `blender-render-architecture.md`（原 `renders` 目录） | Blender 渲染管线已冷归档 | 已删（e91a6cc）；原文自 git 历史取回——`scripts/archive/blender-pipeline/` 是管线代码的冷归档，不含本文档 |
-| `pipeline-acceptance.md`（原 `renders` 目录） | 同上 | 已删（e91a6cc）；原文自 git 历史取回 |
+| 文档 | 删除日期 | 删除 commit | 关账结论 / 去向 |
+|---|---|---|---|
+| `acceptance_checklist.md` | 2026-10-22 | 46e9e0c | 已退役的指针页（自声明）；真正的交付验收清单在 `schedule/phase-1/` 的 render 产物 |
+| `render-tech-debt.md` | 2026-10-22 | 46e9e0c | 自声明 PAUSED/HISTORICAL 的技术债台账，已删 |
+| `twinmotion-acceptance.md` | 2026-10-22 | 46e9e0c | Twinmotion 线随 Blender 主线一同暂停，已删 |
+| `blender-render-architecture.md`（原 `renders` 目录） | 2026-10-22 | 46e9e0c | Blender 渲染管线已冷归档；原文自 git 历史取回——`scripts/archive/blender-pipeline/` 是管线代码的冷归档，不含本文档 |
+| `pipeline-acceptance.md`（原 `renders` 目录） | 2026-10-22 | 46e9e0c | 同上 |
 
 ## 维护纪律
 
