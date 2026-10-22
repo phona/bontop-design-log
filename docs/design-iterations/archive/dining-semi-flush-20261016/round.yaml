@@ -44,9 +44,9 @@ brief:
     confirmation_scope: 用户确认方向为半吸顶；0.28m 下垂、漫射罩 Ø520/深120mm、金属收边等具体分解为设计提案，未经逐项确认。
     confirmed_at: '2026-10-16'
     evidence_refs:
-      - fact-table.yaml#fact-anchor-and-table
-      - fact-table.yaml#fact-photometry-cost
-      - fact-table.yaml#fact-style-baseline
+      - round.yaml（fact_table 段）#fact-anchor-and-table
+      - round.yaml（fact_table 段）#fact-photometry-cost
+      - round.yaml（fact_table 段）#fact-style-baseline
   allowed_scope:
     files:
       - shared/types.ts
@@ -103,7 +103,7 @@ brief:
       category: procurement
       question: 半吸顶餐厅灯候选竞品研究：需同时满足 3000K、Ra≥90、桌面 150 lx（顶装距桌 1.77m，按 1/4 衰减反推需原吊灯 4 倍输出或接受降低目标）、Ø≤600mm 级宽面漫射、与客厅主灯同金属色家族；分列裸价/安装/辅材/交期/保修。
       fact_refs:
-        - fact-table.yaml#fact-photometry-cost
+        - round.yaml（fact_table 段）#fact-photometry-cost
       options: []
       selected: null
       user_response: null
@@ -112,7 +112,7 @@ brief:
       category: function
       question: 顶装后桌面 150 lx 目标是否维持？若维持需高输出 SKU（流明/配光核验）；若下调（如 100 lx）需业主裁定并同步照度口径。
       fact_refs:
-        - fact-table.yaml#fact-photometry-cost
+        - round.yaml（fact_table 段）#fact-photometry-cost
       options: []
       selected: null
       user_response: null
@@ -121,7 +121,7 @@ brief:
       category: construction
       question: 桌心上方 0.45m 敞开天花开段（北带南缘 z=3.0 至灯位 z=3.45）明装线槽做法与量房梁位/板底平整度复核；另明装段 to_height=2.7 比原顶 2.80 低约 0.10m（贴附线槽应≈板面），标高以量房为准。
       fact_refs:
-        - fact-table.yaml#fact-route
+        - round.yaml（fact_table 段）#fact-route
       options: []
       selected: null
       user_response: null
@@ -130,7 +130,7 @@ brief:
       category: function
       question: 来客六人模式桌椅组整体南移 0.32m（中心 (9.80,3.77)）时，灯相对临时桌心偏北 0.32m——业主是否接受（日常四座居中、六人临时偏北），或六人模式需另配临时照明/接受偏北。
       fact_refs:
-        - fact-table.yaml#fact-anchor-and-table
+        - round.yaml（fact_table 段）#fact-anchor-and-table
       options: []
       selected: null
       user_response: null
@@ -141,8 +141,8 @@ brief:
         original_user_response: 餐厅吊灯我想换成吸顶灯，可行吗"（随后在半吸顶/全吸顶/只修漂移/先看图 四选项中选择半吸顶）
         normalized_decision: 换半吸顶（下垂10~30cm）；点位移至新桌心 (9.80,3.45)；风格基准改判；选型重开登记。
         fact_refs:
-          - fact-table.yaml#fact-anchor-and-table
-          - fact-table.yaml#fact-photometry-cost
+          - round.yaml（fact_table 段）#fact-anchor-and-table
+          - round.yaml（fact_table 段）#fact-photometry-cost
         timestamp: '2026-10-16'
     unresolved: []
     re_alignment_required: false
@@ -190,9 +190,9 @@ datum:
         service_ref: strong-light-dining
       source_refs:
         fact_refs:
-          - fact-table.yaml#fact-anchor-and-table
-          - fact-table.yaml#inference-r12-proposal
-          - fact-table.yaml#user-r12-decision
+          - round.yaml（fact_table 段）#fact-anchor-and-table
+          - round.yaml（fact_table 段）#inference-r12-proposal
+          - round.yaml（fact_table 段）#user-r12-decision
         decision_refs:
           - docs/decisions/06-electrical.md#DEC-2026-10-16-R12
       views:
@@ -253,7 +253,7 @@ datum:
         - 照度口径：餐桌 150 lx/3000K/Ra≥90 目标保留，但顶装距桌 1.77m，同灯桌面照度约为原吊灯 1/4——需 SKU 核验或业主裁定降标（open_question）。
         - 餐桌 AABB x[9.40,10.20] z[2.75,4.15] 不动；灯位只跟随桌心。
       validation_refs:
-        - 旧灯位漂移事实：fact-table.yaml#fact-anchor-and-table
+        - 旧灯位漂移事实：round.yaml（fact_table 段）#fact-anchor-and-table
       status: frozen_proposal
   notes:
     - height=0.28m 为模型总下垂，不是商品或安装尺寸；Ø520mm 漫射罩为设计提案。
@@ -317,7 +317,7 @@ fact_table:
         source_refs:
           - config/house.yaml
           - config/electrical.yaml
-          - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/fact-table.yaml
+          - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/round.yaml（fact_table 段）
         basis: 当前权威配置
         confidence: high
         impact: blocking
@@ -530,11 +530,11 @@ objects:
       material: 镀铬吸顶盘/短杆/收边 + 乳白漫射罩；渲染材质不是商品工艺确认。
       geometry_source: config/render/lighting.yaml + shared/render/SemiFlushDomeGeometry.ts；浏览器与 GLB/export 共用。
       datum_refs:
-        - design-datum.yaml#dining-semi-flush-fixture
+        - round.yaml（datum 段）#dining-semi-flush-fixture
       fact_refs:
-        - fact-table.yaml#fact-anchor-and-table
-        - fact-table.yaml#inference-r12-proposal
-        - fact-table.yaml#user-r12-decision
+        - round.yaml（fact_table 段）#fact-anchor-and-table
+        - round.yaml（fact_table 段）#inference-r12-proposal
+        - round.yaml（fact_table 段）#user-r12-decision
       decision_refs:
         - docs/decisions/06-electrical.md#DEC-2026-10-16-R12
       dependencies:
@@ -561,7 +561,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: 吊顶灯具；Ø0.52m×0.28m 包络位于桌心上方平顶 2.80m，最低点 y≈2.52m，距桌面 ≥1.7m；不作为地面碰撞物；与人体/椅背无干涉。
-        review_ref: review-manifest.json#reviewers.functional
+        review_ref: round.yaml（review 段）#reviewers.functional
       maintenance:
         boundary: 供应商/电工负责安装与检修；业主按说明清洁。漫射罩拆装、驱动器/光源更换路径待 SKU 说明书。
         access_clearance: null
@@ -582,7 +582,7 @@ objects:
           material: 镀铬渲染色；实际表面工艺与承载待核。
           geometry_source: shared/render/SemiFlushDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#dining-semi-flush-fixture
+            - round.yaml（datum 段）#dining-semi-flush-fixture
           dependencies: []
           collision: reviewed
           maintenance_boundary: 吸顶盘底盒固定与承重待厂家安装图
@@ -595,7 +595,7 @@ objects:
           material: 乳白扩散材料；透光率/眩光待核。
           geometry_source: shared/render/SemiFlushDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#dining-semi-flush-fixture
+            - round.yaml（datum 段）#dining-semi-flush-fixture
           dependencies:
             - ceiling-canopy-and-stem
           collision: reviewed
@@ -610,7 +610,7 @@ objects:
           material: 镀铬渲染色。
           geometry_source: shared/render/SemiFlushDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#dining-semi-flush-fixture
+            - round.yaml（datum 段）#dining-semi-flush-fixture
           dependencies:
             - shallow-opal-dome-diffuser
           collision: reviewed
@@ -629,8 +629,8 @@ objects:
           evidence_refs:
             - evidence/r12/dining-context.runtime.json
       validation_refs:
-        - review-manifest.json#reviewers.aesthetic
-        - review-manifest.json#reviewers.functional
+        - round.yaml（review 段）#reviewers.aesthetic
+        - round.yaml（review 段）#reviewers.functional
       status: implemented
   notes:
     - 半吸顶造型只表达视觉关系，不证明桌面照度、承重或可安装性。

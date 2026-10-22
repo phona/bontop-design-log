@@ -432,7 +432,7 @@ review:
       - test:app 470/470 pass（R16 轮）
       - verify:facts OK（c.mep_layer_below_drop_bottom 登记 153 与实算一致）
     config_status: PASS
-    geometry_status: PASS(config-driven geometry per design-datum.yaml; 家具/碰撞 verify:spatial 通过)
+    geometry_status: PASS(config-driven geometry per round.yaml（datum 段）; 家具/碰撞 verify:spatial 通过)
     consistency_status: PASS(routes 78→80 / zones 23→25 / clearance 154→153 登记同步)
     functional_checks_status: PARTIAL(结构/路由/坡度可查；风量/静压/旋转180°待厂家图)
     application_status: NOT_RUN(Web 运行时未验证——依赖 browser 证据)

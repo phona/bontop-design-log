@@ -202,7 +202,7 @@ fact_table:
       status: confirmed
       statement: R20 复评指出 return_dining 西缘 x=7.45 与冷媒主管轴 x=7.45 相切，曾建议向东移约 0.05m 或声明风箱西侧让距。
       source_refs:
-        - docs/design-iterations/archive/hvac-dining-ceiling-20261005/review-manifest.json:145
+        - docs/design-iterations/archive/hvac-dining-ceiling-20261005/round.yaml（review 段）:145
         - docs/decisions/02-layout-public.md:435
       impact: 新候选应远离 x=7.45 冷媒主管轴。
       affected_objects:
@@ -231,7 +231,7 @@ fact_table:
       status: site_pending
       statement: 未取得 MJV-71T2/P-SS 与 MJV-42T2/P-SS 专用安装 CAD、双出风风量分配、允许回风接法、有效开口面积、外静压和检修尺寸。
       source_refs:
-        - docs/design-iterations/hvac-dual-outlet-threeline-20261007/decision-brief.yaml:36-41
+        - docs/design-iterations/hvac-dual-outlet-threeline-20261007/round.yaml（brief 段）:36-41
         - config/hvac.yaml:42-52
       impact: 本轮仅形成预演坐标；厂家资料可能要求重调回风口、支管或检修关系。
       affected_objects:

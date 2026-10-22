@@ -201,7 +201,7 @@ review:
   state: superseded_by_hvac-caliber-sync-20261005
   state_note: 六台型号映射与主卧 x=3.70 轴线已由业主确认；/P-SS 外廓与厂家机电接口尚未冻结。坐标收口与旧口径清除由 hvac-caliber-sync-20261005 承接（DEC-2026-10-05-R2）。
   validation:
-    note: 本迭代的验收记录见 hvac-caliber-sync-20261005/review-manifest.json
+    note: 本迭代的验收记录见 hvac-caliber-sync-20261005/round.yaml（review 段）
   evidence:
     - id: contract-p1
       ready: true

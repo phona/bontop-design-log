@@ -689,7 +689,7 @@ review:
       - evidence/baseline.png
       - evidence/after.png
       - evidence/after-runtime.json
-      - decision-brief.yaml
+      - round.yaml（brief 段）
     requested_changes: []
     assumptions:
       - 按本轮同机位截图判断视觉效果；未把未核验SKU、色号、防滑等级或现场完成面尺寸当作事实。

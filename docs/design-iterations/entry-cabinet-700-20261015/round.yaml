@@ -49,7 +49,7 @@ brief:
     confirmed_by_user: true
     evidence_refs:
       - conversation:user-confirmed-entry-cabinet-freeze
-      - tmp/screenshots/entry-round4/round7-preview-manifest.json
+      - tmp/screenshots/entry-round4/round7-pround.yaml（review 段）
   allowed_scope:
     - docs/design-iterations/entry-cabinet-700-20261015
     - docs/decisions/02-layout-public.md: append DEC-2026-10-15-R02
@@ -198,7 +198,7 @@ datum:
         - dining_lower_door_swing
         - entry_drawer_pullout
       validation_refs:
-        - round7-preview-manifest.json
+        - round7-pround.yaml（review 段）
         - runtime-trial-after-v004.json
         - docs/pending-site-data.md-items-33-64
       status: frozen_for_shop_drawing
@@ -263,7 +263,7 @@ datum:
         - fridge_back_clearance
       validation_refs:
         - round7_entry_lower_700.png
-        - round7-preview-manifest.json
+        - round7-pround.yaml（review 段）
       status: frozen_for_shop_drawing
     - id: southern_high_screen
       name: 南段1420mm浅橡木界面及暖白帽板
@@ -423,13 +423,13 @@ fact_table:
       - shared/render/FixtureFactory.ts
       - docs/decisions/02-layout-public.md
       - docs/pending-site-data.md
-      - docs/design-iterations/entry-cabinet-700-20261015/decision-brief.yaml
+      - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（brief 段）
     observation_refs:
       - 业主冻结信息：conversation:user-confirmed-entry-cabinet-700-20261015
     measurement_refs: []
     runtime_refs:
       - docs/design-iterations/fridge-relocation-cooktop-reflow-20261014/evidence/runtime-trial-after-v004.json
-      - tmp/screenshots/entry-round4/round7-preview-manifest.json
+      - tmp/screenshots/entry-round4/round7-pround.yaml（review 段）
     evidence_refs:
       - tmp/screenshots/entry-round4/round7_entry_lower_700.png
       - tmp/screenshots/entry-round4/round7_dining_lower_700.png
@@ -543,7 +543,7 @@ fact_table:
           counter_top_m: 0.92
           preview_only: true
         source_refs:
-          - tmp/screenshots/entry-round4/round7-preview-manifest.json
+          - tmp/screenshots/entry-round4/round7-pround.yaml（review 段）
           - tmp/screenshots/entry-round4/round7_entry_lower_700.png
           - tmp/screenshots/entry-round4/round7_dining_lower_700.png
         basis: 预演清单明确标注formal_model_or_config_modified=false及临时克隆方法。
@@ -629,7 +629,7 @@ fact_table:
           decorative_grilles: false
         source_refs:
           - 业主冻结信息：conversation:user-confirmed-entry-cabinet-700-20261015
-          - docs/design-iterations/entry-cabinet-700-20261015/decision-brief.yaml
+          - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（brief 段）
         basis: 业主明确确认的两面功能与材质约束。
         confidence: high
         impact: material
@@ -654,7 +654,7 @@ fact_table:
           required_top_y_mm: 920
         source_refs:
           - 业主消息：conversation:user-confirmed-entry-cabinet-700-20261015
-          - tmp/screenshots/entry-round4/round7-preview-manifest.json
+          - tmp/screenshots/entry-round4/round7-pround.yaml（review 段）
         basis: 业主明确功能要求；预演中的代表性物品尺寸只是样例，不是业主物品实测。
         confidence: high
         impact: material
@@ -681,7 +681,7 @@ fact_table:
           sample_combo_run_mm: 640
           sample_items_are_standardized: false
         source_refs:
-          - tmp/screenshots/entry-round4/round7-preview-manifest.json
+          - tmp/screenshots/entry-round4/round7-pround.yaml（review 段）
           - docs/design-iterations/entry-cabinet-700-20261015/vendor-handoff.md
         basis: 台面外边界相乘；样例尺寸取自Round7比较清单，按业主真实物品要求作功能核对。
         confidence: medium
@@ -711,7 +711,7 @@ fact_table:
           north_share_percent: 49.4
         source_refs:
           - docs/design-iterations/entry-cabinet-700-20261015/vendor-handoff.md
-          - docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml
+          - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（datum 段）
         basis: 按名义板厚和尺寸链计算：1.964×0.314×(0.584−0.018)=0.349m³；北段按0.970×0.314×0.566=0.172m³。
         confidence: medium
         impact: material
@@ -734,7 +734,7 @@ fact_table:
           carcass_edge_gap_mm: 85
           installation_clearance_confirmed: false
         source_refs:
-          - tmp/screenshots/entry-round4/round7-preview-manifest.json
+          - tmp/screenshots/entry-round4/round7-pround.yaml（review 段）
           - docs/decisions/02-layout-public.md:456
         basis: 柜体台面/主体与冰箱runtime AABB沿X轴边缘差。
         confidence: high
@@ -863,7 +863,7 @@ fact_table:
           hardware_selected: false
         source_refs:
           - docs/design-iterations/entry-cabinet-700-20261015/vendor-handoff.md
-          - docs/design-iterations/entry-cabinet-700-20261015/object-manifest.yaml
+          - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（objects 段）
         basis: 柜商输入单把宽度/箱体/门扇声明为候选，五金型号未选。
         confidence: high
         impact: material
@@ -888,7 +888,7 @@ fact_table:
           route_demonstrated: false
         source_refs:
           - docs/design-iterations/entry-cabinet-700-20261015/vendor-handoff.md
-          - docs/design-iterations/entry-cabinet-700-20261015/review-manifest.json
+          - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（review 段）
         basis: 当前只有连续内腔/分段层板设计条件，没有实物样板演示或实际门净开口。
         confidence: high
         impact: material
@@ -991,7 +991,7 @@ objects:
           requirement: warm-white lower door
           350mm nominal upper depth: null
       validation_refs:
-        - round7-preview-manifest.json
+        - round7-pround.yaml（review 段）
         - vendor-handoff.md
         - DEC-2026-10-15-R02
     - id: entry_drawer_band
@@ -1166,7 +1166,7 @@ review:
       - shared/types.ts
       - docs/decisions/02-layout-public.md
       - docs/pending-site-data.md
-      - tmp/screenshots/entry-round4/round7-preview-manifest.json
+      - tmp/screenshots/entry-round4/round7-pround.yaml（review 段）
     round7_visual_source:
       status: prior_same-session_threejs_view_only_preview
       visual_gate: CLEAR
@@ -1194,12 +1194,12 @@ review:
       - 未重新渲染；Round7截图仍为view-only结构预演
       - 未取得HR-518WUFIPZ官方安装图或现场复尺结果
     files_added:
-      - docs/design-iterations/entry-cabinet-700-20261015/decision-brief.yaml
-      - docs/design-iterations/entry-cabinet-700-20261015/fact-table.yaml
-      - docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml
-      - docs/design-iterations/entry-cabinet-700-20261015/object-manifest.yaml
+      - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（brief 段）
+      - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（fact_table 段）
+      - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（datum 段）
+      - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（objects 段）
       - docs/design-iterations/entry-cabinet-700-20261015/vendor-handoff.md
-      - docs/design-iterations/entry-cabinet-700-20261015/review-manifest.json
+      - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（review 段）
       - 'docs/decisions/02-layout-public.md: DEC-2026-10-15-R02'
       - 'docs/decisions/README.md: updated layout index/count'
     files_removed_or_evidence_deleted: []
@@ -1266,7 +1266,7 @@ review:
         - Under a 300mm drawer-pull assumption, d_ent has 98mm model clearance and the eastern side lane retains about1.407m.
       evidence_refs:
         - docs/design-iterations/fridge-relocation-cooktop-reflow-20261014/evidence/runtime-trial-after-v004.json
-        - docs/design-iterations/entry-cabinet-700-20261015/fact-table.yaml
+        - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（fact_table 段）
         - 'docs/pending-site-data.md: items 33, 64'
       requested_changes:
         - Resolve the blocking items above before calling the cabinet construction-ready.

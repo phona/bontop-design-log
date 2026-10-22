@@ -90,17 +90,17 @@ datum:
         service_ref: strong-light-living
       source_refs:
         fact_refs:
-          - fact-table.yaml#existing-anchor
-          - fact-table.yaml#reference-dimensions
-          - fact-table.yaml#user-height-selection
-          - fact-table.yaml#user-arm-layout
-          - fact-table.yaml#user-globe-plane-selection
-          - fact-table.yaml#user-arm-root-plane-selection
-          - fact-table.yaml#user-arm-root-support-selection
-          - fact-table.yaml#radial-layout-proposal
-          - fact-table.yaml#total-height-datum
+          - round.yaml（fact_table 段）#existing-anchor
+          - round.yaml（fact_table 段）#reference-dimensions
+          - round.yaml（fact_table 段）#user-height-selection
+          - round.yaml（fact_table 段）#user-arm-layout
+          - round.yaml（fact_table 段）#user-globe-plane-selection
+          - round.yaml（fact_table 段）#user-arm-root-plane-selection
+          - round.yaml（fact_table 段）#user-arm-root-support-selection
+          - round.yaml（fact_table 段）#radial-layout-proposal
+          - round.yaml（fact_table 段）#total-height-datum
         decision_refs:
-          - decision-brief.yaml#alignment
+          - round.yaml（brief 段）#alignment
       views:
         plan:
           required: true
@@ -563,18 +563,18 @@ objects:
       material: 木色吸顶盘、古铜棕金属件、乳白球罩为商品图视觉近似。
       geometry_source: config/render/lighting.yaml + shared/render/MultiGlobeChandelierGeometry.ts；浏览器与GLB/export共用。
       datum_refs:
-        - design-datum.yaml#living-main-fixture-antique-8
+        - round.yaml（datum 段）#living-main-fixture-antique-8
       fact_refs:
-        - fact-table.yaml#reference-dimensions
-        - fact-table.yaml#user-height-selection
-        - fact-table.yaml#user-arm-layout
-        - fact-table.yaml#user-globe-plane-selection
-        - fact-table.yaml#user-arm-root-plane-selection
-        - fact-table.yaml#user-arm-root-support-selection
-        - fact-table.yaml#appearance-from-image
-        - fact-table.yaml#radial-layout-proposal
+        - round.yaml（fact_table 段）#reference-dimensions
+        - round.yaml（fact_table 段）#user-height-selection
+        - round.yaml（fact_table 段）#user-arm-layout
+        - round.yaml（fact_table 段）#user-globe-plane-selection
+        - round.yaml（fact_table 段）#user-arm-root-plane-selection
+        - round.yaml（fact_table 段）#user-arm-root-support-selection
+        - round.yaml（fact_table 段）#appearance-from-image
+        - round.yaml（fact_table 段）#radial-layout-proposal
       decision_refs:
-        - decision-brief.yaml#alignment
+        - round.yaml（brief 段）#alignment
       dependencies:
         - electrical:light_living_dome
         - circuit:living_base
@@ -593,7 +593,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: 吸顶灯具，不作为可行走场景碰撞墙；需复核概念Ø0.88m×0.445m包络位于现有灯位。
-        review_ref: review-manifest.json#reviewers.functional
+        review_ref: round.yaml（review 段）#reviewers.functional
       maintenance:
         boundary: 供应商/电工负责安装与检修；球罩固定与灯泡更换方式待完整商品资料。
         access_clearance: null
@@ -613,7 +613,7 @@ objects:
           material: 木色程序材质与古铜杆仅为屏幕近似。
           geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-antique-8
+            - round.yaml（datum 段）#living-main-fixture-antique-8
           dependencies: []
           collision: reviewed
           maintenance_boundary: 底盒固定与盘内电气待SKU安装图。
@@ -627,7 +627,7 @@ objects:
           material: 古铜棕金属色为视觉推断，不视为表面工艺。
           geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-antique-8
+            - round.yaml（datum 段）#living-main-fixture-antique-8
           dependencies:
             - canopy-and-stem
           collision: reviewed
@@ -642,7 +642,7 @@ objects:
           material: 古铜棕金属色为视觉近似；杆径、弧长和角度未由图纸标注。
           geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-antique-8
+            - round.yaml（datum 段）#living-main-fixture-antique-8
           dependencies:
             - center-hub-and-drop
           collision: reviewed
@@ -659,7 +659,7 @@ objects:
           material: 乳白球罩屏幕近似；实际透光率、眩光和色温未知。
           geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-antique-8
+            - round.yaml（datum 段）#living-main-fixture-antique-8
           dependencies:
             - eight-single-head-arms
           collision: reviewed
@@ -680,8 +680,8 @@ objects:
           evidence_refs:
             - evidence/context-r6-v001.png
       validation_refs:
-        - review-manifest.json#reviewers.aesthetic
-        - review-manifest.json#reviewers.functional
+        - round.yaml（review 段）#reviewers.aesthetic
+        - round.yaml（review 段）#reviewers.functional
       status: implemented_preview
   notes:
     - R6确认八个球罩同高、八根弧臂共用下杯台面起弧并同向上拱；水平角度组仍按45°错位预演。
@@ -730,7 +730,7 @@ review:
           - evidence/topdown-envelope-r2-v001.png
           - evidence/elevation-r2-v001.png
           - evidence/runtime-r2.json
-          - decision-brief.yaml
+          - round.yaml（brief 段）
       functional:
         status: passed
         verdict: PASS
@@ -749,9 +749,9 @@ review:
           - evidence/elevation-r2-v001.png
           - evidence/underside-r2-v001.png
           - evidence/topdown-envelope-r2-v001.png
-          - fact-table.yaml
-          - design-datum.yaml
-          - object-manifest.yaml
+          - round.yaml（fact_table 段）
+          - round.yaml（datum 段）
+          - round.yaml（objects 段）
     R3:
       aesthetic:
         status: passed

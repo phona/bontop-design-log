@@ -270,11 +270,11 @@ review:
   evidence:
     - id: frozen-brief
       ready: true
-      path: docs/design-iterations/hvac-contract-mapping-20261005/decision-brief.yaml
+      path: docs/design-iterations/hvac-contract-mapping-20261005/round.yaml（brief 段）
       note: x=3.70 与六台 /P-SS 映射的原始批准
     - id: scope-addendum
       ready: true
-      note: hvac-contract-mapping-20261005/decision-brief.yaml 的 scope_addendum 登记了渲染层与测试层文件
+      note: hvac-contract-mapping-20261005/round.yaml（brief 段） 的 scope_addendum 登记了渲染层与测试层文件
     - id: master-runtime
       ready: true
       path: docs/design-iterations/hvac-caliber-sync-20261005/evidence/master-runtime.png

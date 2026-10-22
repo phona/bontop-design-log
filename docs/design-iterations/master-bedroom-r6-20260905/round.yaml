@@ -577,10 +577,10 @@ review:
   construction_frozen: false
   delivery_frozen: false
   delivery_ready: false
-  fact_table: fact-table.yaml
-  decision_brief: decision-brief.yaml
-  design_datum: design-datum.yaml
-  object_manifest: object-manifest.yaml
+  fact_table: round.yaml（fact_table 段）
+  decision_brief: round.yaml（brief 段）
+  design_datum: round.yaml（datum 段）
+  object_manifest: round.yaml（objects 段）
   blocking_issues:
     - 南帘闭帘 0.12m 候选软包络为 inferred/site_pending；真实堆叠/下垂/开启扇未测，不形成地面硬禁区
     - d_mb 门套执手余量未测

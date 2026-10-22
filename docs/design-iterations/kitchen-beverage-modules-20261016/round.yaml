@@ -41,7 +41,7 @@ brief:
     confirmed_by_user: true
     confirmed_at: '2026-10-16'
     evidence_refs:
-      - docs/design-iterations/kitchen-beverage-stations-20261016/decision-brief.yaml
+      - docs/design-iterations/kitchen-beverage-stations-20261016/round.yaml（brief 段）
       - docs/design-iterations/kitchen-beverage-modules-20261016/evidence/runtime-query.json
   allowed_scope:
     files:
@@ -345,7 +345,7 @@ fact_table:
     runtime_refs:
       - docs/design-iterations/kitchen-beverage-modules-20261016/evidence/runtime-query.json
     evidence_refs:
-      - docs/design-iterations/kitchen-beverage-stations-20261016/decision-brief.yaml
+      - docs/design-iterations/kitchen-beverage-stations-20261016/round.yaml（brief 段）
   facts:
     confirmed:
       - id: F-TEA-DIMS
@@ -581,7 +581,7 @@ fact_table:
         statement: 当前EM450仍放厨房；未来如搬到餐厅，使用同一台设备，不应把第二台复制进模型。
         value: EM450_remains_in_kitchen
         source_refs:
-          - docs/design-iterations/kitchen-espresso-workstation-20261016/decision-brief.yaml
+          - docs/design-iterations/kitchen-espresso-workstation-20261016/round.yaml（brief 段）
           - 本对话的可逆摆放讨论
         basis: 既有用户决策与当前模型对象数量。
         confidence: high
@@ -604,7 +604,7 @@ fact_table:
           - config/electrical.yaml#switch_dining
           - switch_corridor
           - ac_panel_dining
-          - docs/design-iterations/kitchen-beverage-stations-20261016/review-manifest.json
+          - docs/design-iterations/kitchen-beverage-stations-20261016/round.yaml（review 段）
         basis: 模型控制点的高度关系不包含面板外廓和真人动作。
         confidence: medium
         impact: blocking
@@ -623,7 +623,7 @@ fact_table:
         value: null
         source_refs:
           - config/electrical.yaml
-          - docs/design-iterations/kitchen-beverage-stations-20261016/review-manifest.json
+          - docs/design-iterations/kitchen-beverage-stations-20261016/round.yaml（review 段）
         basis: 本轮只加家具与设备外形，不添加电气点位或给排水。
         confidence: high
         impact: blocking
@@ -644,7 +644,7 @@ fact_table:
           fridge_to_tea_body_gap_m: 0.162
         source_refs:
           - evidence/runtime-query.json#relationships
-          - docs/design-iterations/kitchen-beverage-stations-20261016/review-manifest.json
+          - docs/design-iterations/kitchen-beverage-stations-20261016/round.yaml（review 段）
         basis: AABB静态计算，不含厂家门扇和使用者动态操作包络。
         confidence: high
         impact: blocking
@@ -821,7 +821,7 @@ objects:
             - evidence/waterbar-module-close.png
       validation_refs:
         - evidence/runtime-query.json
-        - docs/design-iterations/kitchen-beverage-stations-20261016/review-manifest.json
+        - docs/design-iterations/kitchen-beverage-stations-20261016/round.yaml（review 段）
       status: implemented
     - id: furniture:kitchen:coffee_machine_em450:9
       type: protected_existing_countertop_appliance
@@ -848,7 +848,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: evidence/runtime-query.json#scene.objects.coffee_machine_em450.aabb
-        review_ref: docs/design-iterations/kitchen-espresso-workstation-20261016/review-manifest.json
+        review_ref: docs/design-iterations/kitchen-espresso-workstation-20261016/round.yaml（review 段）
       maintenance:
         boundary: 厨房摆位只读；本轮不迁移。
         access_clearance:
@@ -867,7 +867,7 @@ objects:
           evidence_refs:
             - evidence/runtime-query.json
       validation_refs:
-        - docs/design-iterations/kitchen-espresso-workstation-20261016/review-manifest.json
+        - docs/design-iterations/kitchen-espresso-workstation-20261016/round.yaml（review 段）
       status: verified
   notes:
     - 本轮只新增独立低边柜候选；茶吧机、冰箱、餐桌、餐椅、半高柜、吊顶及建筑构件均保持原位置。

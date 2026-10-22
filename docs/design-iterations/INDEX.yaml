@@ -90,7 +90,7 @@ entries:
     review_state: delivery_ready
     supersedes: none
     external_refs: 1
-    note: 'manifest 自称 delivery_ready/19 路，但同目录 decision-brief.yaml:127-149 已登记 supersession.status: superseded（19 路 -> 20 -> 21）；2026-10-20 已在 manifest 加 superseded 字段回标'
+    note: 'manifest 自称 delivery_ready/19 路，但同目录 round.yaml（brief 段）:127-149 已登记 supersession.status: superseded（19 路 -> 20 -> 21）；2026-10-20 已在 manifest 加 superseded 字段回标'
   - dir: mep-routing-20260901
     topic: mep
     review_state: none
@@ -318,7 +318,7 @@ entries:
     review_state: implementation
     supersedes: none
     external_refs: 4
-    note: 「取消 cove_fillets」部分已被 R03 废止（见 cove-restore/fact-table.yaml 的 f_r02_superseded），R05 以镜像凹弧达成硬相交；2026-10-20 已建 README 加状态块
+    note: 「取消 cove_fillets」部分已被 R03 废止（见 cove-restore/round.yaml（fact_table 段） 的 f_r02_superseded），R05 以镜像凹弧达成硬相交；2026-10-20 已建 README 加状态块
   - dir: dining-cloud-light-20261017
     topic: dining
     review_state: incomplete

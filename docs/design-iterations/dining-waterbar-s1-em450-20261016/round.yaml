@@ -48,7 +48,7 @@ brief:
     confirmed_at: '2026-10-16'
     evidence_refs:
       - conversation:2026-10-16-waterbar-appliance-placement
-      - docs/design-iterations/dining-waterbar-s1-em450-20261016/fact-table.yaml
+      - docs/design-iterations/dining-waterbar-s1-em450-20261016/round.yaml（fact_table 段）
   allowed_scope:
     files:
       - config/house.yaml
@@ -876,7 +876,7 @@ fact_table:
           height_m: 0.85
           design_status: visual_preview_only
         source_refs:
-          - docs/design-iterations/dining-waterbar-s1-em450-20261016/decision-brief.yaml
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/round.yaml（brief 段）
           - config/house.yaml#living_dining.furnishings
         basis: V1提出约800–850mm宽、400–450mm深、850–880mm高候选；本轮为便于看图取800×420×850mm。
         confidence: medium
@@ -1367,7 +1367,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: evidence/runtime-query-s1-form-v4.json#objects.waterbar_low_cabinet_800_preview
-        review_ref: review-manifest.json
+        review_ref: round.yaml（review 段）
       maintenance:
         boundary: 独立柜体；门/抽屉只做静态模型，内部储物和五金尚未深化。
         access_clearance: 需现场核实墙控面板、柜门扫掠及柜体移动通道。
@@ -1474,7 +1474,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: evidence/runtime-query-s1-form-v6.json#objects.mijia_instant_dispenser_s1_preview
-        review_ref: review-manifest.json
+        review_ref: round.yaml（review 段）
       maintenance:
         boundary: V6按官方三视图表达可见形体：出水腔在106mm窄面、西端为水箱端、双侧面板近西端把手槽；未建真实内部水箱/水路；实际补水、拆洗和散热要求按最终SKU说明书核对。
         access_clearance: 东侧106窄面出水腔与接水盘（前缘与包络东缘平齐，距台面东缘14mm）；水箱在机身内后段，顶盖取放方向、后方可达空间和前方接水/清洁站位待核。
@@ -1615,7 +1615,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: evidence/runtime-query-s1-form-v4.json#objects.coffee_machine_em450
-        review_ref: review-manifest.json
+        review_ref: round.yaml（review 段）
       maintenance:
         boundary: 当前外廓不含磨豆机、粉锤、牛奶/清洁物品及配件。
         access_clearance: 前方站位、蒸汽棒摆动、滴水盘和水箱抽取范围待真实SKU/说明书核对。
@@ -1695,7 +1695,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: evidence/runtime-query-s1-form-v4.json#objects.mijia_ro_purifier_1400g_under_sink_preview
-        review_ref: review-manifest.json
+        review_ref: round.yaml（review 段）
       maintenance:
         boundary: 柜壳为简化实心模型，RO机身以contained豁免表达预期柜内放置，不代表可安装。
         access_clearance: 滤芯更换/机身更换的竖向和前向抽取包络未知。
@@ -2283,9 +2283,9 @@ review:
       - evidence/s1-form-v3-overview.png
       - evidence/s1-form-v3-close.png
       - s1-shape-correction-v3.md
-      - fact-table.yaml
-      - design-datum.yaml
-      - object-manifest.yaml
+      - round.yaml（fact_table 段）
+      - round.yaml（datum 段）
+      - round.yaml（objects 段）
       - config/plumbing.yaml:faucet_kitchen_sink,faucet_kitchen_purifier,drain_kitchen_sink,drain_riser_kitchen
       - config/electrical.yaml:sock_kitchen_purifier,sock_kitchen_counter,switch_dining,switch_corridor,ac_panel_dining
       - config/electrical-topology.yaml:ordinary_power_kitchen,dedicated_kitchen_fridge
@@ -2336,15 +2336,15 @@ review:
       - evidence/runtime-query-s1-form-v5.json#sourceDigest
       - evidence/runtime-query-s1-form-v5.json#objects
       - evidence/runtime-query-s1-form-v5.json#relationships
-      - fact-table.yaml#F-RUNTIME-WATERBAR
-      - fact-table.yaml#F-RUNTIME-S1
-      - fact-table.yaml#F-RUNTIME-EM450
-      - fact-table.yaml#F-PROTECTED-OBJECTS
-      - fact-table.yaml#I-APPLIANCE-GAP
-      - object-manifest.yaml#furniture:living_dining:waterbar_low_cabinet_800_preview:14
-      - object-manifest.yaml#furniture:living_dining:mijia_instant_dispenser_s1_preview:15
-      - object-manifest.yaml#furniture:living_dining:coffee_machine_em450:16
-      - review-manifest.json#source_version
+      - round.yaml（fact_table 段）#F-RUNTIME-WATERBAR
+      - round.yaml（fact_table 段）#F-RUNTIME-S1
+      - round.yaml（fact_table 段）#F-RUNTIME-EM450
+      - round.yaml（fact_table 段）#F-PROTECTED-OBJECTS
+      - round.yaml（fact_table 段）#I-APPLIANCE-GAP
+      - round.yaml（objects 段）#furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      - round.yaml（objects 段）#furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+      - round.yaml（objects 段）#furniture:living_dining:coffee_machine_em450:16
+      - round.yaml（review 段）#source_version
     requested_changes: []
     assumptions:
       - 800×420×850mm低柜仍是视觉候选，不是业主冻结的正式柜体尺寸；其端部余量和与冰箱的67mm间隔只代表当前预演状态。
@@ -2359,34 +2359,34 @@ review:
         fact: 柜体运行时外廓为800×420×850mm，但仍是未冻结的视觉代理；柜门/抽屉扫掠、内部结构、防倾倒、台面耐水耐热和设备承托条件未验证。
         evidence:
           - evidence/runtime-query-s1-form-v5.json#objects.waterbar_low_cabinet_800_preview
-          - fact-table.yaml#I-CABINET-PREVIEW-DATUM
-          - object-manifest.yaml#waterbar_low_cabinet_800_preview
+          - round.yaml（fact_table 段）#I-CABINET-PREVIEW-DATUM
+          - round.yaml（objects 段）#waterbar_low_cabinet_800_preview
         required_change: 确认柜体外廓与内部结构，补做柜门/抽屉扫掠、防倾倒、台面承托和柜体移动/检修路径验证。
       - object: S1与EM450双机操作维护
         fact: 两机沿z方向静态间距为94mm；S1距柜体北端14mm，EM450后侧模型余量约7.5mm。静态间距不证明取杯、补水、蒸汽棒、散热、接水盘清洁和双机同时操作成立。
         evidence:
           - evidence/runtime-query-s1-form-v5.json#objects
           - evidence/runtime-query-s1-form-v5.json#relationships
-          - fact-table.yaml#I-APPLIANCE-GAP
-          - object-manifest.yaml#S1
-          - object-manifest.yaml#EM450
+          - round.yaml（fact_table 段）#I-APPLIANCE-GAP
+          - round.yaml（objects 段）#S1
+          - round.yaml（objects 段）#EM450
         required_change: 按最终SKU说明书或实机补做两台设备的操作、补水、蒸汽棒、散热、清洁、拆卸和同时使用包络。
       - object: 水吧与邻接冰箱
         fact: 冰箱AABB约为x[7.2025,7.8025]、z[2.57,3.403]；低柜北缘约z=3.47，静态间距约67mm；S1与冰箱静态间距约81mm。模型没有冰箱门扇、抽屉、拉手、人员站位和搬运更换动态包络。
         evidence:
           - evidence/runtime-query-s1-form-v5.json#objects.fridge
           - evidence/runtime-query-s1-form-v5.json#objects.waterbar_low_cabinet_800_preview
-          - fact-table.yaml#F-PROTECTED-OBJECTS
-          - review-manifest.json#delivery.follow_up_site_pending
+          - round.yaml（fact_table 段）#F-PROTECTED-OBJECTS
+          - round.yaml（review 段）#delivery.follow_up_site_pending
         required_change: 叠加冰箱厂家门扇/抽屉开启包络，验证冰箱开启、取水、咖啡操作、人员站位及整机更换路径。
       - object: 现有墙控与供电关系
         fact: 墙控带约z[3.98,4.10]、安装高1.30m，位于低柜z[3.47,4.27]范围内且与EM450 z[3.89,4.11]重叠。餐厅可及接地插座、回路容量、两机同时负荷、漏保和断电检修位置未落实。
         evidence:
-          - fact-table.yaml#S-WALL-CONTROL-ACCESS
-          - fact-table.yaml#S-DINING-POWER
-          - object-manifest.yaml#waterbar_low_cabinet_800_preview
-          - object-manifest.yaml#S1
-          - object-manifest.yaml#EM450
+          - round.yaml（fact_table 段）#S-WALL-CONTROL-ACCESS
+          - round.yaml（fact_table 段）#S-DINING-POWER
+          - round.yaml（objects 段）#waterbar_low_cabinet_800_preview
+          - round.yaml（objects 段）#S1
+          - round.yaml（objects 段）#EM450
         required_change: 按真实面板外廓、柜体剖面和真人站位验证墙控可达性；按最终SKU铭牌落实插座、回路、同时负荷、漏保和检修断电位置。
     non_blocking_notes:
       - V5 runtime ready=true，错误横幅为空；S1 AABB为0.106×0.280×0.312m，EM450 AABB为0.285×0.305×0.220m。
@@ -2397,8 +2397,8 @@ review:
       - evidence/runtime-query-s1-form-v5.json
       - evidence/s1-form-v5-close.png
       - evidence/s1-form-v5-overview.png
-      - fact-table.yaml
-      - object-manifest.yaml
+      - round.yaml（fact_table 段）
+      - round.yaml（objects 段）
     requested_changes:
       - 冻结并深化800×420×850mm水吧柜的外廓、内部结构、柜门/抽屉和承托条件。
       - 补齐S1与EM450的真实操作、维护、清洁、散热和同时使用包络。
@@ -2586,8 +2586,8 @@ review:
       - evidence/runtime-query-s1-form-v4.json
       - evidence/s1-form-v4-close.png
       - evidence/s1-form-v4-overview.png
-      - fact-table.yaml
-      - object-manifest.yaml
+      - round.yaml（fact_table 段）
+      - round.yaml（objects 段）
     requested_changes:
       - 补齐S1/EM450现场操作、维护、清洁、散热和补水验证。
       - 落实餐厅电源、同时负荷、漏保、插座可达性和墙控操作验证。
@@ -2631,23 +2631,23 @@ review:
         evidence:
           - evidence/runtime-query-s1-form-v5.json#objects
           - evidence/runtime-query-s1-form-v5.json#relationships
-          - fact-table.yaml#I-APPLIANCE-GAP
-          - object-manifest.yaml#S1
-          - object-manifest.yaml#EM450
+          - round.yaml（fact_table 段）#I-APPLIANCE-GAP
+          - round.yaml（objects 段）#S1
+          - round.yaml（objects 段）#EM450
         required_change: 按最终SKU说明书或实机补做操作、补水、清洁、拆卸、散热和维护包络验证。
       - object: Dining power and wall-control interfaces
         fact: V5 does not move the cabinet, S1, EM450, or wall-control band. Accessible grounded outlets, circuit capacity, simultaneous load, protection, and wall-control reachability remain unresolved.
         evidence:
-          - fact-table.yaml#S-DINING-POWER
-          - fact-table.yaml#S-WALL-CONTROL-ACCESS
+          - round.yaml（fact_table 段）#S-DINING-POWER
+          - round.yaml（fact_table 段）#S-WALL-CONTROL-ACCESS
           - evidence/runtime-query-s1-form-v5.json#objects
         required_change: 按实际面板、柜体剖面、设备铭牌和回路资料验证墙控与供电。
       - object: RO under-sink preview
         fact: V5 only changes S1. The RO internal cabinet cavity, partitions, trap, feed/drain, power, faucet, and filter/device extraction path remain unverified.
         evidence:
-          - fact-table.yaml#S-RO-INTERNAL-FIT
-          - fact-table.yaml#S-RO-INTERFACES
-          - object-manifest.yaml#furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+          - round.yaml（fact_table 段）#S-RO-INTERNAL-FIT
+          - round.yaml（fact_table 段）#S-RO-INTERFACES
+          - round.yaml（objects 段）#furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
         required_change: 按最终RO SKU和水槽柜实测内腔建立维护剖面并确认全部接口。
     non_blocking_notes:
       - V5 runtime确认ready=true、configErrorBanner为空，S1 AABB为0.106×0.280×0.312m，底面仍与0.85m台面接触，EM450静态间距仍为0.094m。
@@ -2661,8 +2661,8 @@ review:
       - evidence/s1-form-v5-close.snapshot.txt
       - evidence/s1-form-v5-overview.png
       - evidence/s1-form-v5-overview.snapshot.txt
-      - fact-table.yaml
-      - object-manifest.yaml
+      - round.yaml（fact_table 段）
+      - round.yaml（objects 段）
     requested_changes:
       - 继续核验S1/EM450现场操作、维护、清洁、散热、供电和墙控。
       - 继续核验RO柜内有效空间、给排水、电源、独立龙头和滤芯维护路径。

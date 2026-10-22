@@ -37,8 +37,8 @@ brief:
     confirmed_by_user: true
     confirmed_at: '2026-10-16'
     evidence_refs:
-      - fact-table.yaml#fact-user-r3-direction
-      - fact-table.yaml#fact-r2-failed-silhouette
+      - round.yaml（fact_table 段）#fact-user-r3-direction
+      - round.yaml（fact_table 段）#fact-r2-failed-silhouette
   allowed_scope:
     files:
       - shared/types.ts
@@ -90,7 +90,7 @@ brief:
       category: construction
       question: 量房梁位、承重、风口与厂家安装图是否支持R3造型？
       fact_refs:
-        - fact-table.yaml#pending-installation
+        - round.yaml（fact_table 段）#pending-installation
       options: []
       selected: null
       user_response: null
@@ -99,7 +99,7 @@ brief:
       category: function
       question: 具体SKU能否满足3000K/Ra≥90、客厅照度和均匀度目标？
       fact_refs:
-        - fact-table.yaml#pending-photometry
+        - round.yaml（fact_table 段）#pending-photometry
       options: []
       selected: null
       user_response: null
@@ -110,8 +110,8 @@ brief:
         original_user_response: '我发错了，你应该继续处理灯具的模型构建。[Image #1]，看起来还是像吸顶灯。'
         normalized_decision: 继续迭代，优先修正悬挂语义；保留1m尺度、250–350mm总下垂范围和现有锚点。
         fact_refs:
-          - fact-table.yaml#fact-r2-failed-silhouette
-          - fact-table.yaml#fact-user-r3-direction
+          - round.yaml（fact_table 段）#fact-r2-failed-silhouette
+          - round.yaml（fact_table 段）#fact-user-r3-direction
         timestamp: '2026-10-16'
     unresolved: []
     re_alignment_required: false
@@ -159,9 +159,9 @@ datum:
         service_ref: strong-light-living
       source_refs:
         fact_refs:
-          - fact-table.yaml#fact-anchor-and-room
-          - fact-table.yaml#fact-user-r3-direction
-          - fact-table.yaml#inference-r3-proposal
+          - round.yaml（fact_table 段）#fact-anchor-and-room
+          - round.yaml（fact_table 段）#fact-user-r3-direction
+          - round.yaml（fact_table 段）#inference-r3-proposal
         decision_refs:
           - docs/decisions/06-electrical.md#DEC-2026-10-16-R3
       views:
@@ -505,10 +505,10 @@ objects:
       material: 乳白灯体、缎面暖铜侧架与吊杆；渲染材质不是商品工艺确认。
       geometry_source: config/render/lighting.yaml + shared/render/SculpturalDomeGeometry.ts；浏览器与GLB/export共用。
       datum_refs:
-        - design-datum.yaml#living-main-fixture-r3
+        - round.yaml（datum 段）#living-main-fixture-r3
       fact_refs:
-        - fact-table.yaml#fact-user-r3-direction
-        - fact-table.yaml#inference-r3-proposal
+        - round.yaml（fact_table 段）#fact-user-r3-direction
+        - round.yaml（fact_table 段）#inference-r3-proposal
       decision_refs:
         - docs/decisions/06-electrical.md#DEC-2026-10-16-R3
       dependencies:
@@ -535,7 +535,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: 吊顶灯具；核对1m×1m×0.35m概念包络与房间/HVAC层位，不作为地面碰撞物。
-        review_ref: review-manifest.json#reviewers.functional
+        review_ref: round.yaml（review 段）#reviewers.functional
       maintenance:
         boundary: 供应商/电工负责安装与检修；业主按说明清洁。灯盘、驱动器和外架拆换方式待SKU说明书。
         access_clearance: null
@@ -557,7 +557,7 @@ objects:
           material: 乳白扩散材料；光通量/眩光/可更换性待SKU资料。
           geometry_source: shared/render/SculpturalDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r3
+            - round.yaml（datum 段）#living-main-fixture-r3
           dependencies:
             - driver
             - led_board
@@ -572,7 +572,7 @@ objects:
           material: 低反光暖铜渲染色；实际表面工艺与连接强度待核。
           geometry_source: shared/render/SculpturalDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r3
+            - round.yaml（datum 段）#living-main-fixture-r3
           dependencies:
             - arch_feet
           collision: reviewed
@@ -587,7 +587,7 @@ objects:
           material: 缎面暖铜；杆径是模型参数，不是承载选型。
           geometry_source: shared/render/SculpturalDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r3
+            - round.yaml（datum 段）#living-main-fixture-r3
           dependencies:
             - ceiling_canopy
             - deep-opal-body
@@ -608,8 +608,8 @@ objects:
           evidence_refs:
             - evidence/topdown.runtime.json
       validation_refs:
-        - review-manifest.json#reviewers.aesthetic
-        - review-manifest.json#reviewers.functional
+        - round.yaml（review 段）#reviewers.aesthetic
+        - round.yaml（review 段）#reviewers.functional
       status: implemented
   notes:
     - R3模型侧架和吊杆明确表达视觉悬挂关系，但不是承重证明。
@@ -841,8 +841,8 @@ review:
       non_blocking_notes:
         - 项目尚未交房；无实际梁位、承重、商品安装图或维护证据。
       evidence_refs:
-        - fact-table.yaml#pending-installation
-        - fact-table.yaml#pending-photometry
+        - round.yaml（fact_table 段）#pending-installation
+        - round.yaml（fact_table 段）#pending-photometry
       requested_changes: []
       assumptions:
         - 模型外观不是施工节点或灯具SKU。

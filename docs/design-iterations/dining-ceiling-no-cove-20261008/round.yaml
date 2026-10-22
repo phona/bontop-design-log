@@ -7,7 +7,7 @@ index:
   topic: dining
   review_state: implementation
   supersedes: none
-  note: 「取消 cove_fillets」部分已被 R03 废止（见 cove-restore/fact-table.yaml 的 f_r02_superseded），R05 以镜像凹弧达成硬相交；2026-10-20 已建 README 加状态块
+  note: 「取消 cove_fillets」部分已被 R03 废止（见 cove-restore/round.yaml（fact_table 段） 的 f_r02_superseded），R05 以镜像凹弧达成硬相交；2026-10-20 已建 README 加状态块
 brief:
   schema: interior-design-decision-brief/v3
   project: bontop-design-log
@@ -41,11 +41,11 @@ brief:
     files:
       - config/ceiling.yaml
       - tests/server/ceiling-cove.test.ts
-      - docs/design-iterations/dining-ceiling-no-cove-20261008/fact-table.yaml
-      - docs/design-iterations/dining-ceiling-no-cove-20261008/decision-brief.yaml
-      - docs/design-iterations/dining-ceiling-no-cove-20261008/design-datum.yaml
-      - docs/design-iterations/dining-ceiling-no-cove-20261008/object-manifest.yaml
-      - docs/design-iterations/dining-ceiling-no-cove-20261008/review-manifest.json
+      - docs/design-iterations/dining-ceiling-no-cove-20261008/round.yaml（fact_table 段）
+      - docs/design-iterations/dining-ceiling-no-cove-20261008/round.yaml（brief 段）
+      - docs/design-iterations/dining-ceiling-no-cove-20261008/round.yaml（datum 段）
+      - docs/design-iterations/dining-ceiling-no-cove-20261008/round.yaml（objects 段）
+      - docs/design-iterations/dining-ceiling-no-cove-20261008/round.yaml（review 段）
     objects:
       - ceiling_dining_west_band
       - ceiling_dining_north_band

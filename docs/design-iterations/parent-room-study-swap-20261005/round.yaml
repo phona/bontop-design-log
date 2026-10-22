@@ -1235,7 +1235,7 @@ fact_table:
           - config/materials.yaml:1389-1410
           - config/procurement.yaml:461-468
           - config/design-rules.yaml:90-93
-          - docs/design-iterations/master-flexible-frontstage-20260903/decision-brief.yaml
+          - docs/design-iterations/master-flexible-frontstage-20260903/round.yaml（brief 段）
         basis: 材料库/采购/规则三处交叉核对
         confidence: high
         impact: material
@@ -2644,7 +2644,7 @@ review:
     - 配置未改但文档（name/注释/facts 对账）已开始漂移
     - 删除健身释放预算可能被书房柜体增量吃掉，净值接近零
   runtime_aabb:
-    note: 本轮无新 AABB；候选坐标仅存在于 design-datum.yaml（datum-guest-layout-a/b、datum-study-*），未经 verify:furniture 验证
+    note: 本轮无新 AABB；候选坐标仅存在于 round.yaml（datum 段）（datum-guest-layout-a/b、datum-study-*），未经 verify:furniture 验证
   site_pending_preserved:
     - 电梯井夜间噪声
     - 客房北墙/西墙构造与厚度

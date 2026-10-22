@@ -35,7 +35,7 @@ brief:
     confirmed_by_user: true
     confirmed_at: '2026-10-16'
     evidence_refs:
-      - docs/design-iterations/kitchen-espresso-workstation-20261016/fact-table.yaml
+      - docs/design-iterations/kitchen-espresso-workstation-20261016/round.yaml（fact_table 段）
   allowed_scope:
     files:
       - config/house.yaml
@@ -849,13 +849,13 @@ review:
       - 德龙海外EM450.M规格为226×283×310mm，与用户提供值略有差异；中国销售SKU需核对后再定施工尺寸。
     evidence_refs:
       - evidence/runtime-query.json
-      - fact-table.yaml:F-EM450-RUNTIME
-      - fact-table.yaml:F-NORTH-RUN
+      - round.yaml（fact_table 段）:F-EM450-RUNTIME
+      - round.yaml（fact_table 段）:F-NORTH-RUN
       - evidence/kitchen-human-eye.png
       - evidence/kitchen-station-close.png
       - evidence/kitchen-station-plan.png
-      - design-datum.yaml
-      - object-manifest.yaml
+      - round.yaml（datum 段）
+      - round.yaml（objects 段）
       - config/house.yaml#kitchen
       - config/electrical.yaml#sock_kitchen_counter
       - config/plumbing.yaml#gas_meter_kitchen

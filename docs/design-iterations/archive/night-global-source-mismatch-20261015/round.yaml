@@ -36,7 +36,7 @@ brief:
     confirmed_by_user: true
     confirmed_at: '2026-10-15'
     evidence_refs:
-      - docs/design-iterations/archive/night-only-indoor-lighting-20261015/decision-brief.yaml
+      - docs/design-iterations/archive/night-only-indoor-lighting-20261015/round.yaml（brief 段）
   allowed_scope:
     files:
       - app/src/render/EnvironmentManager.ts

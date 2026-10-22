@@ -151,6 +151,39 @@ function main(): void {
     }
   };
   walkText(path.join(ROOT, SCOPE));
+  // round.yaml 单独按「结构化值」检查（二审修复）：解析后遍历所有字符串值，
+  // 其中的五件套文件名按存在性判定——指向仍存在的豁免文件合法，指向已删文件报错。
+  // （注释不在值内，round.yaml 头部的注释保全块不受影响。）
+  const PIECE_RE = /(?:([\w.-]+(?:\/[\w.-]+)*)\/)?(decision-brief\.yaml|design-datum\.yaml|fact-table\.yaml|object-manifest\.yaml|review-manifest\.json)/g;
+  for (const file of textFiles.filter((f) => f.endsWith('round.yaml'))) {
+    const rel = path.relative(ROOT, file);
+    let doc: unknown;
+    try { doc = loadYaml(fs.readFileSync(file, 'utf8')); } catch { continue; }
+    const bad = new Set<string>();
+    const walk = (v: unknown): void => {
+      if (typeof v === 'string') {
+        for (const m of v.matchAll(PIECE_RE)) {
+          const [, prefix, name] = m;
+          const target = prefix
+            ? (prefix.startsWith('docs/') ? path.join(ROOT, prefix, name) : path.join(ROOT, SCOPE, prefix, name))
+            : path.join(path.dirname(file), name);
+          if (!fs.existsSync(target)) bad.add(name);
+        }
+      } else if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') Object.values(v).forEach(walk);
+    };
+    walk(doc);
+    for (const name of bad) {
+      issues.push({
+        level: 'error',
+        code: 'legacy_piece_reference',
+        entity: rel,
+        source: rel,
+        message: `round.yaml 的结构化值仍引用已合并删除的五件套文件 ${name}：请改指 round.yaml 对应段`,
+      });
+    }
+  }
+
   for (const file of textFiles) {
     const rel = path.relative(ROOT, file);
     if (rel.endsWith('round.yaml') || rel.endsWith('INDEX.yaml')) continue;

@@ -45,6 +45,32 @@ interface IndexEntry {
   note?: string;
 }
 
+
+/** 提取 YAML 原文的实质注释（全行注释 + 引号外的行尾注释；引号内的 # 不算）。 */
+function extractComments(src: string): Array<{ line: number; text: string }> {
+  const out: Array<{ line: number; text: string }> = [];
+  const lines = src.split('\n');
+  lines.forEach((line, i) => {
+    const t = line.trim();
+    if (t.startsWith('#')) {
+      out.push({ line: i + 1, text: t.replace(/^#+\s?/, '') });
+      return;
+    }
+    let inS = false, inD = false, pos = -1;
+    for (let j = 0; j < line.length; j++) {
+      const ch = line[j];
+      if (ch === "'" && !inD) inS = !inS;
+      else if (ch === '"' && !inS) inD = !inD;
+      else if (ch === '#' && !inS && !inD && j > 0 && line[j - 1] === ' ') { pos = j; break; }
+    }
+    if (pos > 0) {
+      const key = line.slice(0, pos).trim().replace(/:$/, '').split(':')[0].slice(0, 40);
+      out.push({ line: i + 1, text: `${key} —— ${line.slice(pos + 1).trim()}` });
+    }
+  });
+  return out;
+}
+
 function main(): void {
   // 幂等保护（批 3 审阅修复）：任一 round.yaml 已存在即中止——五件套删除后
   // 重跑会把 round.yaml 覆盖成只有 index 段的空壳，属于毁数据操作。

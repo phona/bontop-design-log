@@ -2237,7 +2237,7 @@ fact_table:
         value: null
         source_refs:
           - config/house.yaml:424
-          - docs/design-iterations/mb-bedshift-stripcabinet-20260902/fact-table.yaml
+          - docs/design-iterations/mb-bedshift-stripcabinet-20260902/round.yaml（fact_table 段）
         basis: 上一轮已登记，本轮沿袭
         confidence: not_applicable
         impact: low

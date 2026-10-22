@@ -452,7 +452,7 @@ fact_table:
         basis: SceneBuilder/InfrastructureBuilder runtime wall thickness and projection
         source_refs:
           - shared/render/InfrastructureBuilder.ts
-          - docs/design-iterations/archive/spatial-validation-20260908/fact-table.yaml
+          - docs/design-iterations/archive/spatial-validation-20260908/round.yaml（fact_table 段）
         status: resolved
         confidence: medium
       - id: fact-scheme-a-clearance
@@ -672,10 +672,10 @@ review:
   construction_frozen: false
   delivery_frozen: false
   delivery_ready: false
-  fact_table: fact-table.yaml
-  decision_brief: decision-brief.yaml
-  design_datum: design-datum.yaml
-  object_manifest: object-manifest.yaml
+  fact_table: round.yaml（fact_table 段）
+  decision_brief: round.yaml（brief 段）
+  design_datum: round.yaml（datum 段）
+  object_manifest: round.yaml（objects 段）
   blocking_issues:
     - w_mb_east structure=shear/inferred，墙厚、暗管和可开槽/打孔性未现场确认
     - w_mb_win 疑似窗洞真伪未确认

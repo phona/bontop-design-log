@@ -41,8 +41,8 @@ brief:
     confirmed_by_user: true
     confirmed_at: '2026-10-16'
     evidence_refs:
-      - fact-table.yaml#fact-r1-visual-rejection
-      - fact-table.yaml#fact-approved-suspension-range
+      - round.yaml（fact_table 段）#fact-r1-visual-rejection
+      - round.yaml（fact_table 段）#fact-approved-suspension-range
   allowed_scope:
     files:
       - shared/types.ts
@@ -97,7 +97,7 @@ brief:
       category: construction
       question: 量房梁位、顶板/接线盒承重、灯具重量和厂家底盘固定要求能否支持该模型外形？
       fact_refs:
-        - fact-table.yaml#pending-mounting
+        - round.yaml（fact_table 段）#pending-mounting
       options: []
       selected: null
       user_response: null
@@ -106,7 +106,7 @@ brief:
       category: function
       question: 实测送风射流是否直吹灯体；固定沙发视线下，灯具是否压住电视上缘或造成压迫？
       fact_refs:
-        - fact-table.yaml#pending-airflow-and-sightline
+        - round.yaml（fact_table 段）#pending-airflow-and-sightline
       options: []
       selected: null
       user_response: null
@@ -115,8 +115,8 @@ brief:
       category: maintenance
       question: 候选灯具能否在3000K/Ra≥90条件下提供合格配光，并说明灯盘、LED板、驱动器及连接件的拆换维护方式？
       fact_refs:
-        - fact-table.yaml#fact-light-requirements
-        - fact-table.yaml#pending-serviceability
+        - round.yaml（fact_table 段）#fact-light-requirements
+        - round.yaml（fact_table 段）#pending-serviceability
       options: []
       selected: null
       user_response: null
@@ -127,8 +127,8 @@ brief:
         original_user_response: 要
         normalized_decision: 确认按前文描述的悬垂雕塑灯方向继续预演：约1m平面尺度、乳白漫射盘、偏心立体暖铜弧、沿用客厅原锚点；本轮总下垂取300mm模型值。
         fact_refs:
-          - fact-table.yaml#fact-r1-visual-rejection
-          - fact-table.yaml#fact-approved-suspension-range
+          - round.yaml（fact_table 段）#fact-r1-visual-rejection
+          - round.yaml（fact_table 段）#fact-approved-suspension-range
         timestamp: '2026-10-16'
     unresolved: []
     re_alignment_required: false
@@ -176,9 +176,9 @@ datum:
         service_ref: strong-light-living
       source_refs:
         fact_refs:
-          - fact-table.yaml#fact-existing-anchor
-          - fact-table.yaml#fact-ceiling-and-hvac
-          - fact-table.yaml#fact-approved-suspension-range
+          - round.yaml（fact_table 段）#fact-existing-anchor
+          - round.yaml（fact_table 段）#fact-ceiling-and-hvac
+          - round.yaml（fact_table 段）#fact-approved-suspension-range
         decision_refs:
           - docs/decisions/06-electrical.md#DEC-2026-10-16-R2
       views:
@@ -596,11 +596,11 @@ objects:
       material: 乳白漫射盘与暖铜/青铜哑光或缎面金属表达；渲染颜色不是商品工艺确认。
       geometry_source: config/render/lighting.yaml声明参数 + shared/render/SculpturalDomeGeometry.ts；浏览器与GLB/export共用。
       datum_refs:
-        - design-datum.yaml#living-main-fixture-r2
+        - round.yaml（datum 段）#living-main-fixture-r2
       fact_refs:
-        - fact-table.yaml#fact-existing-anchor
-        - fact-table.yaml#fact-approved-suspension-range
-        - fact-table.yaml#fact-r2-implemented-envelope
+        - round.yaml（fact_table 段）#fact-existing-anchor
+        - round.yaml（fact_table 段）#fact-approved-suspension-range
+        - round.yaml（fact_table 段）#fact-r2-implemented-envelope
       decision_refs:
         - docs/decisions/06-electrical.md#DEC-2026-10-16-R2
       dependencies:
@@ -632,7 +632,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: 顶面安装灯具；核对1.0×1.0×0.30m概念包络、吊顶/HVAC层位和视线，不作为地面可行走碰撞体。
-        review_ref: review-manifest.json#reviewers.functional
+        review_ref: round.yaml（review 段）#reviewers.functional
       maintenance:
         boundary: 灯具供应商/电工负责安装与检修；业主清洁乳白漫射盘。实际可拆结构待SKU说明书和安装图核对。
         access_clearance: null
@@ -653,7 +653,7 @@ objects:
           material: 乳白扩散材料；材质、光通量、眩光和可更换性待SKU资料。
           geometry_source: shared/render/SculpturalDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r2
+            - round.yaml（datum 段）#living-main-fixture-r2
           dependencies:
             - driver
             - light_source
@@ -670,7 +670,7 @@ objects:
           material: 渲染为低反光暖铜色；实际表面工艺、紧固和结构强度待核。
           geometry_source: shared/render/SculpturalDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r2
+            - round.yaml（datum 段）#living-main-fixture-r2
           dependencies:
             - arch_feet
             - diffuser_rim
@@ -686,7 +686,7 @@ objects:
           material: 渲染为暖铜；半径4mm是视觉模型参数，不是承载选型。
           geometry_source: shared/render/SculpturalDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r2
+            - round.yaml（datum 段）#living-main-fixture-r2
           dependencies:
             - ceiling_anchor
             - diffuser_body
@@ -701,7 +701,7 @@ objects:
           relation: spaced
           requirement: 客厅灯锚点距当前餐桌中心约3.83m；餐桌移动或旋转不决定本灯位置。
           evidence_refs:
-            - fact-table.yaml#fact-dining-separation
+            - round.yaml（fact_table 段）#fact-dining-separation
             - evidence/topdown.runtime.json
         - target_object_id: sofa_3seat
           relation: adjacent
@@ -710,8 +710,8 @@ objects:
             - evidence/context.runtime.json
             - tmp/screenshots/living-main-light/living_main_light_after_context_view_v014.png
       validation_refs:
-        - review-manifest.json#reviewers.aesthetic
-        - review-manifest.json#reviewers.functional
+        - round.yaml（review 段）#reviewers.aesthetic
+        - round.yaml（review 段）#reviewers.functional
         - evidence/context.runtime.json
         - evidence/closeup.runtime.json
         - evidence/elevation-profile.runtime.json
@@ -939,9 +939,9 @@ review:
       non_blocking_notes:
         - 现场梁位、承重、风口射流、净高和SKU维修方式无证据。
       evidence_refs:
-        - fact-table.yaml#pending-mounting
-        - fact-table.yaml#pending-airflow-and-sightline
-        - fact-table.yaml#pending-serviceability
+        - round.yaml（fact_table 段）#pending-mounting
+        - round.yaml（fact_table 段）#pending-airflow-and-sightline
+        - round.yaml（fact_table 段）#pending-serviceability
       requested_changes: []
       assumptions:
         - 当前尚未交房，概念渲染不能代替量房和安装图。

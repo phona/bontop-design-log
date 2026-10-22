@@ -38,8 +38,8 @@ brief:
     confirmation_scope: 用户确认继续构建一个明显呈垂吊关系的客厅主灯模型，并沿用约1m外框/250–350mm下垂范围/现有锚点；R4内部灯体比例是设计提案，未由用户逐项确认。
     confirmed_at: '2026-10-16'
     evidence_refs:
-      - fact-table.yaml#user-r3-direction
-      - fact-table.yaml#fact-r3-failed-silhouette
+      - round.yaml（fact_table 段）#user-r3-direction
+      - round.yaml（fact_table 段）#fact-r3-failed-silhouette
   allowed_scope:
     files:
       - shared/types.ts
@@ -91,7 +91,7 @@ brief:
       category: construction
       question: 量房梁位、承重、风口与厂家安装图是否支持R4造型？
       fact_refs:
-        - fact-table.yaml#pending-installation
+        - round.yaml（fact_table 段）#pending-installation
       options: []
       selected: null
       user_response: null
@@ -100,7 +100,7 @@ brief:
       category: function
       question: 具体SKU能否满足3000K/Ra≥90、客厅照度和均匀度目标？
       fact_refs:
-        - fact-table.yaml#pending-photometry
+        - round.yaml（fact_table 段）#pending-photometry
       options: []
       selected: null
       user_response: null
@@ -111,9 +111,9 @@ brief:
         original_user_response: '我发错了，你应该继续处理灯具的模型构建。[Image #1]，看起来还是像吸顶灯。'
         normalized_decision: 继续迭代，优先修正悬挂语义；保留1m尺度、250–350mm总下垂范围和现有锚点。
         fact_refs:
-          - fact-table.yaml#fact-r2-failed-silhouette
-          - fact-table.yaml#user-r3-direction
-          - fact-table.yaml#fact-r3-failed-silhouette
+          - round.yaml（fact_table 段）#fact-r2-failed-silhouette
+          - round.yaml（fact_table 段）#user-r3-direction
+          - round.yaml（fact_table 段）#fact-r3-failed-silhouette
         timestamp: '2026-10-16'
     unresolved: []
     re_alignment_required: false
@@ -161,9 +161,9 @@ datum:
         service_ref: strong-light-living
       source_refs:
         fact_refs:
-          - fact-table.yaml#fact-anchor-and-room
-          - fact-table.yaml#user-r3-direction
-          - fact-table.yaml#inference-r4-proposal
+          - round.yaml（fact_table 段）#fact-anchor-and-room
+          - round.yaml（fact_table 段）#user-r3-direction
+          - round.yaml（fact_table 段）#inference-r4-proposal
         decision_refs:
           - docs/decisions/06-electrical.md#DEC-2026-10-16-R4
       views:
@@ -571,10 +571,10 @@ objects:
       material: 乳白灯体、缎面暖铜侧架与吊杆；渲染材质不是商品工艺确认。
       geometry_source: config/render/lighting.yaml + shared/render/SculpturalDomeGeometry.ts；浏览器与GLB/export共用。
       datum_refs:
-        - design-datum.yaml#living-main-fixture-r4
+        - round.yaml（datum 段）#living-main-fixture-r4
       fact_refs:
-        - fact-table.yaml#user-r3-direction
-        - fact-table.yaml#inference-r4-proposal
+        - round.yaml（fact_table 段）#user-r3-direction
+        - round.yaml（fact_table 段）#inference-r4-proposal
       decision_refs:
         - docs/decisions/06-electrical.md#DEC-2026-10-16-R4
       dependencies:
@@ -601,7 +601,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: 吊顶灯具；核对1m×1m×0.35m概念包络与房间/HVAC层位，不作为地面碰撞物。
-        review_ref: review-manifest.json#reviewers.functional
+        review_ref: round.yaml（review 段）#reviewers.functional
       maintenance:
         boundary: 供应商/电工负责安装与检修；业主按说明清洁。灯盘、驱动器和外架拆换方式待SKU说明书。
         access_clearance: null
@@ -623,7 +623,7 @@ objects:
           material: 乳白扩散材料；光通量/眩光/可更换性待SKU资料。
           geometry_source: shared/render/SculpturalDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r4
+            - round.yaml（datum 段）#living-main-fixture-r4
           dependencies:
             - driver
             - led_board
@@ -638,7 +638,7 @@ objects:
           material: 低反光暖铜渲染色；实际表面工艺与连接强度待核。
           geometry_source: shared/render/SculpturalDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r4
+            - round.yaml（datum 段）#living-main-fixture-r4
           dependencies:
             - arch_feet
           collision: reviewed
@@ -653,7 +653,7 @@ objects:
           material: 缎面暖铜；杆径是模型参数，不是承载选型。
           geometry_source: shared/render/SculpturalDomeGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r4
+            - round.yaml（datum 段）#living-main-fixture-r4
           dependencies:
             - ceiling_canopy
             - deep-opal-body
@@ -674,8 +674,8 @@ objects:
           evidence_refs:
             - evidence/r4/topdown.runtime.json
       validation_refs:
-        - review-manifest.json#reviewers.aesthetic
-        - review-manifest.json#reviewers.functional
+        - round.yaml（review 段）#reviewers.aesthetic
+        - round.yaml（review 段）#reviewers.functional
       status: implemented
   notes:
     - R4模型侧架和吊杆明确表达视觉悬挂关系，但不是承重证明。
@@ -712,10 +712,10 @@ review:
       config/electrical-topology.yaml: e314e7dacba1543e4585a8c39a4279f38a18a2aa6aa47df28959efee35ba3923
       config/mep-hvac-coordination.yaml: 1198752efc2443c8c10e7859a22925d2e1f4a1c95b1d4b0bbf9fdfc8080ebb4d
       config/ceiling.yaml: 9ba9ba68919becbf6df64313c3d63f7f8284db741af328dff79e5d414cdba4b9
-      docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/fact-table.yaml: 9e62d4f1076484ba31010a6f1ccfadab3cd851a54ee13917b00e50844cae7800
-      docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/decision-brief.yaml: 6dbcd26e4a105340c3fe2b02d50975b875c32051a8933f739cc45f236bb5f1be
-      docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/design-datum.yaml: 74471c0d9c056e37a163332729a42a1640e3f1520a65987e5398ea3198c2a85e
-      docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/object-manifest.yaml: 7e78e05a58f5d1655e3d668fad5e23c30fc1360a61dbc3549dc04c394d05ae2b
+      docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/round.yaml（fact_table 段）: 9e62d4f1076484ba31010a6f1ccfadab3cd851a54ee13917b00e50844cae7800
+      docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/round.yaml（brief 段）: 6dbcd26e4a105340c3fe2b02d50975b875c32051a8933f739cc45f236bb5f1be
+      docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/round.yaml（datum 段）: 74471c0d9c056e37a163332729a42a1640e3f1520a65987e5398ea3198c2a85e
+      docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/round.yaml（objects 段）: 7e78e05a58f5d1655e3d668fad5e23c30fc1360a61dbc3549dc04c394d05ae2b
       docs/design-iterations/archive/living-sculptural-main-light-r4-20261016/work-record.md: e5903e31cd465a9050e4d8ee388c6e491756b344b46654a47bcce15f35a62e0d
   baseline_evidence:
     description: R3同机位仰视仍以薄盘轮廓为主，吊杆端点进入锥形灯体；该失败证据保留，不用于R4 PASS。

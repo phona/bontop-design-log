@@ -193,7 +193,7 @@ brief:
       - frozen: subject「中央空调重配：20kW 外机 + 双出风内机，36,000 成交」与 freeze_record.normalized_decisions 的选型/商务结论
         now: 该部分未过期，不构成 drift，仅登记范围边界：美的领航者Ⅳ MJV-200W-E01-LHIV 20kW + 6 台双出风内机、成交 36,000 仍为现行口径，无 DEC 反转
         verify_at: docs/decisions/05-hvac.md:38（DEC-2026-10-03-R3 定标）与 config/hvac.yaml 现行成交口径
-    reason: '根因是「没有任何代码读者」：scripts/、server/、tests/、app/ 对 decision-brief.yaml 零引用（grep 全库仅命中 docs/ 自身与 config/facts.yaml:150 的豁免说明），config/facts.yaml 的 include/exclude 也把 docs/design-iterations/ 整体排除在事实核验之外。事实核验只镜像 config 的回路数（fact.circuit_count），从不回读本 freeze_record，因此「冻 20 路 / 实际 21 路」可以无限期不响。本 brief 的回路演进（19→20→21，及 22 路的预留激活动作）全部只落在 docs/decisions/06-electrical.md、docs/decisions/04-bathrooms.md、config/electrical-topology.yaml 的注释与 docs/pending-site-data.md #30 里，无人回写该 freeze_record。现行回路与箱体口径的唯一权威是 config/electrical-topology.yaml 的 circuits.length 及其 :319 箱体结论。'
+    reason: '根因是「没有任何代码读者」：scripts/、server/、tests/、app/ 对 round.yaml（brief 段） 零引用（grep 全库仅命中 docs/ 自身与 config/facts.yaml:150 的豁免说明），config/facts.yaml 的 include/exclude 也把 docs/design-iterations/ 整体排除在事实核验之外。事实核验只镜像 config 的回路数（fact.circuit_count），从不回读本 freeze_record，因此「冻 20 路 / 实际 21 路」可以无限期不响。本 brief 的回路演进（19→20→21，及 22 路的预留激活动作）全部只落在 docs/decisions/06-electrical.md、docs/decisions/04-bathrooms.md、config/electrical-topology.yaml 的注释与 docs/pending-site-data.md #30 里，无人回写该 freeze_record。现行回路与箱体口径的唯一权威是 config/electrical-topology.yaml 的 circuits.length 及其 :319 箱体结论。'
 objects:
   iteration_id: hvac-resix-20261003
   object_policy:

@@ -34,8 +34,8 @@ brief:
     confirmed_by_user: true
     confirmed_at: '2026-10-16'
     evidence_refs:
-      - fact-table.yaml#decision-focal-lamp
-      - fact-table.yaml#decision-envelope
+      - round.yaml（fact_table 段）#decision-focal-lamp
+      - round.yaml（fact_table 段）#decision-envelope
   allowed_scope:
     files:
       - app/src/render/InteriorLightingSystem.ts
@@ -86,7 +86,7 @@ brief:
       category: geometry
       question: 外轮廓宽×深×离顶总厚度选择？
       fact_refs:
-        - fact-table.yaml#overall-envelope
+        - round.yaml（fact_table 段）#overall-envelope
       options:
         - 800×800×100mm
         - 1000×1000×120mm
@@ -100,15 +100,15 @@ brief:
         original_user_response: 好，开始
         normalized_decision: 同意浅吸顶、偏心暖铜弧+乳白漫射盘，锚定客厅起居区现有主灯位。
         fact_refs:
-          - fact-table.yaml#decision-focal-lamp
-          - fact-table.yaml#fact-existing-anchor
+          - round.yaml（fact_table 段）#decision-focal-lamp
+          - round.yaml（fact_table 段）#fact-existing-anchor
         timestamp: '2026-10-16'
       - alignment_id: align-envelope-20261016
         original_user_response: 1000×1000×120mm（推荐）：沿用参考灯的1m体量，焦点明确；客厅灯具包络较大，需复核风口/梁净距。
         normalized_decision: 灯具总外轮廓为外宽1.0m、外深1.0m、离顶总厚度0.12m。
         fact_refs:
-          - fact-table.yaml#decision-envelope
-          - fact-table.yaml#fact-ceiling-plane
+          - round.yaml（fact_table 段）#decision-envelope
+          - round.yaml（fact_table 段）#fact-ceiling-plane
         timestamp: '2026-10-16'
     unresolved: []
     re_alignment_required: false
@@ -151,8 +151,8 @@ datum:
         service_ref: null
       source_refs:
         fact_refs:
-          - fact-table.yaml#fact-existing-anchor
-          - fact-table.yaml#fact-ceiling-plane
+          - round.yaml（fact_table 段）#fact-existing-anchor
+          - round.yaml（fact_table 段）#fact-ceiling-plane
         decision_refs:
           - docs/decisions/06-electrical.md#DEC-2026-10-13-R1
           - docs/decisions/06-electrical.md#DEC-2026-10-16-R1
@@ -584,11 +584,11 @@ objects:
       material: 乳白漫射面；低反光暖铜/青铜弧线；具体表面光泽待验证
       geometry_source: config/render/lighting.yaml 声明 + shared/render/SculpturalDomeGeometry.ts，浏览器与GLB共用
       datum_refs:
-        - design-datum.yaml#living-main-fixture
+        - round.yaml（datum 段）#living-main-fixture
       fact_refs:
-        - fact-table.yaml#decision-focal-lamp
-        - fact-table.yaml#fact-existing-anchor
-        - fact-table.yaml#fact-light-requirements
+        - round.yaml（fact_table 段）#decision-focal-lamp
+        - round.yaml（fact_table 段）#fact-existing-anchor
+        - round.yaml（fact_table 段）#fact-light-requirements
       decision_refs:
         - docs/decisions/06-electrical.md#DEC-2026-10-13-R1
         - docs/decisions/06-electrical.md#DEC-2026-10-16-R1
@@ -615,7 +615,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: Ceiling-only object; no walkable collision requirement, but retain installation envelope/ceiling proximity review.
-        review_ref: review-manifest.json#reviewers.functional
+        review_ref: round.yaml（review 段）#reviewers.functional
       maintenance:
         boundary: 灯具本体由灯具供应商/电工安装维护；业主清洁漫射盘。
         access_clearance: null
@@ -635,7 +635,7 @@ objects:
           material: 乳白扩散材料；实物SKU待选
           geometry_source: shared lighting fixture geometry
           datum_refs:
-            - design-datum.yaml#living-main-fixture
+            - round.yaml（datum 段）#living-main-fixture
           dependencies:
             - light-driver
             - ceiling-anchor
@@ -649,7 +649,7 @@ objects:
           material: 低反光暖铜/青铜饰面；建模为哑光/缎面暖铜，工艺待SKU
           geometry_source: shared lighting fixture geometry
           datum_refs:
-            - design-datum.yaml#living-main-fixture
+            - round.yaml（datum 段）#living-main-fixture
           dependencies:
             - ceiling-anchor
           collision: reviewed
@@ -660,15 +660,15 @@ objects:
           relation: spaced
           requirement: 主灯锚定客厅起居区；餐桌移动或改向不驱动主灯位置。
           evidence_refs:
-            - fact-table.yaml#fact-table-offset
+            - round.yaml（fact_table 段）#fact-table-offset
         - target_object_id: sofa_3seat
           relation: adjacent
           requirement: 在起居区形成焦点；弧线视觉尺度不得压过乳白发光面或沙发主体。
           evidence_refs:
-            - fact-table.yaml#fact-existing-anchor
+            - round.yaml（fact_table 段）#fact-existing-anchor
       validation_refs:
-        - review-manifest.json#reviewers.aesthetic
-        - review-manifest.json#reviewers.functional
+        - round.yaml（review 段）#reviewers.aesthetic
+        - round.yaml（review 段）#reviewers.functional
         - tmp/screenshots/living-main-light/living_main_light_after_context_view_v010.png
         - tmp/screenshots/living-main-light/living_main_light_after_top_down_v008.png
         - tmp/screenshots/living-main-light/living_main_light_after_elevation_profile_v002.png
@@ -843,8 +843,8 @@ review:
         - 当前尚未交房和施工，现场梁位、顶板结构与实际安装净距无法测量；本轮不构成施工放样或采购冻结。
         - 灯具底盘/接线盒承重、重量、驱动与LED板更换、漫射盘拆装和保修仍需供应商资料及电工确认。
       evidence_refs:
-        - docs/design-iterations/living-sculptural-main-light-20261016/fact-table.yaml#pending-mounting
-        - docs/design-iterations/living-sculptural-main-light-20261016/fact-table.yaml#pending-serviceability
+        - docs/design-iterations/living-sculptural-main-light-20261016/round.yaml（fact_table 段）#pending-mounting
+        - docs/design-iterations/living-sculptural-main-light-20261016/round.yaml（fact_table 段）#pending-serviceability
       requested_changes: []
       assumptions:
         - 施工接口待交房量房、安装图和候选SKU资料核实。

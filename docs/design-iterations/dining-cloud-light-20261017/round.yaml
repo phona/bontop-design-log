@@ -103,7 +103,7 @@ brief:
       category: design_alignment
       question: R9灯心偏离桌心约0.585m，主体与桌面投影仅重叠约0.10m；用户确认接受空间中心氛围灯语义。该选择不代表桌面照度已满足，仍待SKU和最终照明组合核验。
       fact_refs:
-        - fact-table.yaml#user-selected-dining-plane-center
+        - round.yaml（fact_table 段）#user-selected-dining-plane-center
         - evidence/aesthetic-review-r9.json
       options:
         - 保持当前中心，按空间氛围灯呈现
@@ -115,7 +115,7 @@ brief:
       category: procurement
       question: 采购前需复核固定 SKU 的 3000K 档、实际光通量与配光、整灯总高/重量、驱动更换、PE 云罩拆洗及底盘安装图。
       fact_refs:
-        - fact-table.yaml#purchase-and-maintenance-verification
+        - round.yaml（fact_table 段）#purchase-and-maintenance-verification
       options: []
       selected: null
       user_response: null
@@ -166,12 +166,12 @@ datum:
         service_ref: strong-light-dining
       source_refs:
         fact_refs:
-          - fact-table.yaml#fixture-anchor-and-circuit
-          - fact-table.yaml#user-supplied-body-dimensions
-          - fact-table.yaml#user-approved-proportional-preview
-          - fact-table.yaml#proportional-envelope
+          - round.yaml（fact_table 段）#fixture-anchor-and-circuit
+          - round.yaml（fact_table 段）#user-supplied-body-dimensions
+          - round.yaml（fact_table 段）#user-approved-proportional-preview
+          - round.yaml（fact_table 段）#proportional-envelope
         decision_refs:
-          - decision-brief.yaml#freeze_record
+          - round.yaml（brief 段）#freeze_record
       views:
         plan:
           required: true
@@ -231,8 +231,8 @@ datum:
         - strong-light-dining 末端 via 同步移至 x=9.25；餐厅平顶 z=3.00→3.65 的0.65m明装线槽仍为 site_pending，service bands 与墙控点位不改。
         - 灯具偏离桌心约0.585m；模型灯罩发光不证明实际 3000K 档色温、桌面3200lm分布或150lx照度，须按 SKU 配光核验。
       validation_refs:
-        - fact-table.yaml#fixture-anchor-and-circuit
-        - fact-table.yaml#proportional-envelope
+        - round.yaml（fact_table 段）#fixture-anchor-and-circuit
+        - round.yaml（fact_table 段）#proportional-envelope
       status: frozen_preview
   notes:
     - 0.486m 总下垂是用户授权的主图比例视觉代理，不是商品尺寸或放样值。
@@ -381,7 +381,7 @@ fact_table:
           targetStatus: pending_combined_lighting_verification
         source_refs:
           - conversation-2026-10-17
-          - decision-brief.yaml#off-center-fixture-role
+          - round.yaml（brief 段）#off-center-fixture-role
           - evidence/aesthetic-review-r9.json
         basis: 业主回复「可以，提交你的改动吧」，确认接受当前平顶中心作为空间中心氛围灯；照度不因该确认自动通过。
         confidence: high
@@ -630,13 +630,13 @@ objects:
       material: 深木色顶盘与木球、乳白 PE 泡罩、细暖金属吊线；颜色为图像取样方向，非材质工艺确认。
       geometry_source: config/render/lighting.yaml + shared/render/CloudOrbCeilingLightGeometry.ts；浏览器/GLB 共用。
       datum_refs:
-        - design-datum.yaml#dining-cloud-orb-ceiling-light
+        - round.yaml（datum 段）#dining-cloud-orb-ceiling-light
       fact_refs:
-        - fact-table.yaml#fixture-anchor-and-circuit
-        - fact-table.yaml#user-supplied-body-dimensions
-        - fact-table.yaml#proportional-envelope
+        - round.yaml（fact_table 段）#fixture-anchor-and-circuit
+        - round.yaml（fact_table 段）#user-supplied-body-dimensions
+        - round.yaml（fact_table 段）#proportional-envelope
       decision_refs:
-        - decision-brief.yaml#freeze_record
+        - round.yaml（brief 段）#freeze_record
       dependencies:
         - electrical:light_dining_pendant
         - circuit:dining
@@ -661,7 +661,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: R9 runtime包络 x[9.00,9.50]、z[3.40,3.90]、y[2.314,2.80]。与餐桌/餐椅无三维AABB碰撞；按程序化桌面y≈0.77m推定，灯底到桌面约1.54m，非人体/施工验收。灯心离桌心约0.585m，业主已接受其空间中心氛围灯语义。
-        review_ref: review-manifest.json#/functional_review
+        review_ref: round.yaml（review 段）#/functional_review
       maintenance:
         boundary: 业主负责日常清洁；供应商提供拆洗与备件资料；电工负责断电后的检修和安装。当前没有证据证明下列部件能独立拆换，也没有假定检修净距。
         access_clearance: unknown；供应商须在 SKU 下单前提供拆装方向、工具和所需净距。
@@ -698,7 +698,7 @@ objects:
           material: 深胡桃木色预演材质；实木/木纹膜/表面工艺未知。
           geometry_source: shared/render/CloudOrbCeilingLightGeometry.ts
           datum_refs:
-            - design-datum.yaml#dining-cloud-orb-ceiling-light
+            - round.yaml（datum 段）#dining-cloud-orb-ceiling-light
           dependencies: []
           collision: reviewed
           maintenance_boundary: 底盘固定和表面保养由厂家资料核验
@@ -711,7 +711,7 @@ objects:
           material: 乳白高漫射预演材质；泡体排布/透光率为未核内容。
           geometry_source: shared/render/CloudOrbCeilingLightGeometry.ts
           datum_refs:
-            - design-datum.yaml#dining-cloud-orb-ceiling-light
+            - round.yaml（datum 段）#dining-cloud-orb-ceiling-light
           dependencies:
             - walnut-canopy
           collision: reviewed
@@ -726,7 +726,7 @@ objects:
           material: 木色球与暖金线为视觉推断，绳材、球体重量和端部防坠未知。
           geometry_source: shared/render/CloudOrbCeilingLightGeometry.ts
           datum_refs:
-            - design-datum.yaml#dining-cloud-orb-ceiling-light
+            - round.yaml（datum 段）#dining-cloud-orb-ceiling-light
           dependencies:
             - walnut-canopy
           collision: reviewed
@@ -748,8 +748,8 @@ objects:
             - evidence/r9/context.png
             - evidence/r9/closeup.png
       validation_refs:
-        - review-manifest.json#/aesthetic_review
-        - review-manifest.json#/functional_review
+        - round.yaml（review 段）#/aesthetic_review
+        - round.yaml（review 段）#/functional_review
       status: preview_implemented
 review:
   schema: interior-design-review-manifest/v3
@@ -1001,7 +1001,7 @@ review:
       - evidence/r9/closeup.png
       - evidence/r9/elevation.png
       - evidence/r9/topdown.png
-      - fact-table.yaml#user-selected-dining-plane-center
+      - round.yaml（fact_table 段）#user-selected-dining-plane-center
     requested_changes: []
     assumptions:
       - R10确认该灯为空间中心氛围灯；桌面150lx是全场照明组合目标，不由本灯单独保证。
@@ -1059,7 +1059,7 @@ review:
       fact: 云罩拆洗、驱动/LED更换、底盘固定/防坠与可替换性未知。
       owner: 业主+供应商；安装前增加电工
       trigger: 下单前及安装前
-      evidence_ref: docs/design-iterations/dining-cloud-light-20261017/object-manifest.yaml#maintenance
+      evidence_ref: docs/design-iterations/dining-cloud-light-20261017/round.yaml（objects 段）#maintenance
   substantive_review:
     what_was_deleted_or_replaced:
       - 活动灯点x/z从R8的(9.80,3.45)替换为R9的(9.25,3.65)。
@@ -1086,8 +1086,8 @@ review:
     records:
       - DEC-2026-10-17-R9
       - DEC-2026-10-17-R10
-      - fact-table.yaml#user-selected-dining-plane-center
-      - fact-table.yaml#user-accepted-ambient-role
+      - round.yaml（fact_table 段）#user-selected-dining-plane-center
+      - round.yaml（fact_table 段）#user-accepted-ambient-role
       - work-record.md#R9
       - evidence/aesthetic-review-r9.json
       - evidence/aesthetic-review-r10.json

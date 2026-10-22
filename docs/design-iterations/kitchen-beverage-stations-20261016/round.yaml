@@ -35,8 +35,8 @@ brief:
     confirmed_by_user: true
     confirmed_at: '2026-10-16'
     evidence_refs:
-      - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/design-datum.yaml#west-dry-bar
-      - docs/design-iterations/kitchen-beverage-stations-20261016/fact-table.yaml
+      - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/round.yaml（datum 段）#west-dry-bar
+      - docs/design-iterations/kitchen-beverage-stations-20261016/round.yaml（fact_table 段）
   allowed_scope:
     files:
       - config/house.yaml
@@ -341,7 +341,7 @@ fact_table:
             - 4.293
           status: view_only
         source_refs:
-          - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/design-datum.yaml#west-dry-bar
+          - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/round.yaml（datum 段）#west-dry-bar
           - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/evidence/runtime-candidate-v2.json#objects
         basis: Prior runtime candidate and datum; wall controls and electrical access remain blockers for cabinet.
         confidence: high
@@ -849,9 +849,9 @@ review:
       - evidence/dining-tea-bar-close.png
       - evidence/beverage-zones-overview.png
       - evidence/tea-bar-plan.png
-      - fact-table.yaml
-      - design-datum.yaml
-      - object-manifest.yaml
+      - round.yaml（fact_table 段）
+      - round.yaml（datum 段）
+      - round.yaml（objects 段）
     requested_changes:
       - 确认准确SKU、铭牌功率、插头和说明书。
       - 落实独立可及插座与回路负荷。

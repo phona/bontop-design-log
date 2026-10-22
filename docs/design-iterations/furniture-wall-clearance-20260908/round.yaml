@@ -405,7 +405,7 @@ fact_table:
       status: confirmed
       value: 最终 verify:furniture PASS（2 warnings）；verify:spatial 0 errors/10 unchanged warnings；verify:all PASS；test:server 540/540 PASS；typecheck PASS
       source_refs:
-        - docs/design-iterations/furniture-wall-clearance-20260908/review-manifest.json
+        - docs/design-iterations/furniture-wall-clearance-20260908/round.yaml（review 段）
       verification: 2026-09-08 final command run
 objects:
   iteration_id: furniture-wall-clearance-20260908

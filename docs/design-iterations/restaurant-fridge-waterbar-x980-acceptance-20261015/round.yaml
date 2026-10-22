@@ -46,7 +46,7 @@ brief:
     evidence_refs:
       - 当前会话业主回复
       - evidence/guest-seat-envelope.json
-      - docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml
+      - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（datum 段）
   allowed_scope:
     files:
       - config/house.yaml#living_dining.furnishings
@@ -180,14 +180,14 @@ brief:
         original_user_response: 日常四人。但是希望能扩展多人
         normalized_decision: 当时确认日常四座并希望来客扩座，最大人数待核；该问题后由 GUEST6-01 确认为六人临时模式、桌椅南移约320mm。
         affected_refs:
-          - decision-brief.yaml#priority.ranked
-          - fact-table.yaml#facts.user_decision.daily-four-expandable
+          - round.yaml（brief 段）#priority.ranked
+          - round.yaml（fact_table 段）#facts.user_decision.daily-four-expandable
         timestamp: '2026-10-15T22:49:30+08:00'
       - alignment_id: ALN-2026-10-15-GUEST6-01
         original_user_response: 那就先这样定稿吧
         normalized_decision: 日常四座；来客临时六座时，桌椅组整体南移约320mm并增加两端椅，维持x中心9.80m。
         affected_refs:
-          - decision-brief.yaml#priority
+          - round.yaml（brief 段）#priority
           - evidence/guest-seat-envelope.json#temporary_six_with_south_shift
         timestamp: '2026-10-15'
     unresolved:
@@ -246,7 +246,7 @@ datum:
           - daily-four-expandable
           - guest-expansion-capacity
         decision_refs:
-          - decision-brief.yaml#normalized_decisions
+          - round.yaml（brief 段）#normalized_decisions
       views:
         plan:
           required: true
@@ -314,7 +314,7 @@ datum:
           - guest-expansion-capacity
           - guest-mode-light-and-outlet-alignment
         decision_refs:
-          - decision-brief.yaml#alignment.records.ALN-2026-10-15-GUEST6-01
+          - round.yaml（brief 段）#alignment.records.ALN-2026-10-15-GUEST6-01
       views:
         plan:
           required: true
@@ -384,7 +384,7 @@ datum:
           - user-fridge-dimensions
           - appliance-install-manual
         decision_refs:
-          - decision-brief.yaml#normalized_decisions
+          - round.yaml（brief 段）#normalized_decisions
       views:
         plan:
           required: true
@@ -456,7 +456,7 @@ datum:
           - candidate-runtime-geometry
           - bar-appliance-power-and-access
         decision_refs:
-          - decision-brief.yaml#normalized_decisions
+          - round.yaml（brief 段）#normalized_decisions
       views:
         plan:
           required: true
@@ -527,7 +527,7 @@ datum:
           - entry-cabinet-baseline
           - east-chair-cabinet-gap
         decision_refs:
-          - docs/design-iterations/entry-cabinet-700-20261015/decision-brief.yaml
+          - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（brief 段）
       views:
         plan:
           required: true
@@ -587,7 +587,7 @@ datum:
         - dining_storage
       validation_refs:
         - evidence/runtime-candidate-v2.json#objects
-        - docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml
+        - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（datum 段）
       status: blocked
     - id: fixed-architecture
       name: 既有墙体、门洞、推拉门、吊顶和空调
@@ -598,7 +598,7 @@ datum:
         fact_refs:
           - formal-furniture-source
         decision_refs:
-          - decision-brief.yaml#priority.non_negotiables
+          - round.yaml（brief 段）#priority.non_negotiables
       views:
         plan:
           required: true
@@ -650,7 +650,7 @@ datum:
       validation_refs:
         - config/layout/model-geometry.yaml
         - config/layout/overlay.yaml
-        - review-manifest.json#validation
+        - round.yaml（review 段）#validation
       status: verified
   notes:
     - 固定相机：入户门轴 [12.30,1.60,2.05]→[12.30,0.95,7.20]；服务墙 [9.25,1.60,5.10]→[7.50,0.95,3.40]；厨房看餐厅 [9.00,1.60,1.45]→[9.50,0.95,4.35]；均FOV55、1600×1000。
@@ -678,9 +678,9 @@ fact_table:
       - 业主提供冰箱参数表：产品833×595×1910mm，预留837×600×1918mm，220V，110kg。
     runtime_refs:
       - evidence/runtime-candidate-v2.json
-      - tmp/screenshots/restaurant-fridge-waterbar-20261015/preview-manifest.json#runtime_dynamic_clearance
+      - tmp/screenshots/restaurant-fridge-waterbar-20261015/pround.yaml（review 段）#runtime_dynamic_clearance
     evidence_refs:
-      - review-manifest.json
+      - round.yaml（review 段）
   facts:
     confirmed:
       - id: formal-furniture-source
@@ -795,7 +795,7 @@ fact_table:
           low_counter_y_m: 0.92
           upper_cap_y_m: 1.42
         source_refs:
-          - docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml
+          - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（datum 段）
           - evidence/runtime-candidate-v2.json#objects
         basis: 业主此前冻结结构深化基线；正式FixtureFactory尚未更新。
         confidence: high
@@ -809,7 +809,7 @@ fact_table:
         owner: owner
         status: resolved
         verification_method: 运行时 view-only 替代体核对坐标、占地及上缘标高。
-        user_confirmation_ref: docs/design-iterations/entry-cabinet-700-20261015/decision-brief.yaml
+        user_confirmation_ref: docs/design-iterations/entry-cabinet-700-20261015/round.yaml（brief 段）
       - id: visual-gate
         category: confirmed
         statement: 本轮结束时视觉状态门 CLEAR，当前浏览器渲染数据与权威配置哈希一致。
@@ -821,7 +821,7 @@ fact_table:
             plumbing: 7f1513d14f27
             materials: 64176f576326
         source_refs:
-          - review-manifest.json#validation
+          - round.yaml（review 段）#validation
         basis: 最终场景恢复后运行项目 visual-state-gate 脚本，并通过当前只读 API 实例核对；所有 digest 与权威 config 一致。
         confidence: high
         impact: material
@@ -1205,7 +1205,7 @@ fact_table:
         statement: 半高柜餐厅侧门开启、真人站位和东侧椅拉出组合没有验证。
         value: null
         source_refs:
-          - docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml:dining_front_and_storage
+          - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（datum 段）:dining_front_and_storage
         basis: 柜门铰链与开启角度尚未建立在本轮运行时几何中。
         confidence: not_applicable
         impact: blocking
@@ -1225,7 +1225,7 @@ fact_table:
       fact_refs:
         - six-seat-requirement
       option_refs:
-        - decision-brief.yaml#open_questions.seat-count
+        - round.yaml（brief 段）#open_questions.seat-count
       status: answered
     - id: guest-expansion-capacity
       question: 来客时希望保证扩展到几人，且是否接受6人时临时将桌椅组南移约320mm？
@@ -1234,7 +1234,7 @@ fact_table:
         - daily-four-expandable
         - guest-expansion-capacity
       option_refs:
-        - decision-brief.yaml#open_questions.guest-expansion-capacity
+        - round.yaml（brief 段）#open_questions.guest-expansion-capacity
       status: answered
     - id: guest-mode-light-and-outlet-alignment
       question: 临时六人时整体南移约320mm，是否会影响吊灯/地插使用及日常搬动动线？
@@ -1251,7 +1251,7 @@ fact_table:
         - appliance-install-manual
         - user-fridge-dimensions
       option_refs:
-        - decision-brief.yaml#open_questions.fridge-model-confirmation
+        - round.yaml（brief 段）#open_questions.fridge-model-confirmation
       status: asked
     - id: fridge-depth-basis
       question: 600mm预留深度的起止面是什么，且是否来自当前准确型号的安装说明？
@@ -1260,7 +1260,7 @@ fact_table:
         - user-fridge-dimensions
         - appliance-install-manual
       option_refs:
-        - decision-brief.yaml#open_questions.fridge-depth-basis
+        - round.yaml（brief 段）#open_questions.fridge-depth-basis
       status: asked
   notes:
     - 正式日常桌椅/冰箱位置来自 house.yaml；水吧、guest-six和1420/700柜体几何由浏览器内部创建view-only目标，不视作正式配置事实。
@@ -1294,14 +1294,14 @@ objects:
       material: 白色冰箱外观占位；不代表准确型号饰面
       geometry_source: config/house.yaml#living_dining.fridge + 当前运行时 furniture:living_dining:fridge:13；实际安装仍未放行
       datum_refs:
-        - design-datum.yaml#west-fridge
+        - round.yaml（datum 段）#west-fridge
       fact_refs:
         - user-fridge-dimensions
         - fridge-west-wall-nominal-gap
         - appliance-install-manual
         - fridge-electrical
       decision_refs:
-        - decision-brief.yaml#normalized_decisions
+        - round.yaml（brief 段）#normalized_decisions
       dependencies:
         - west_wall
         - dedicated_outlet
@@ -1325,7 +1325,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: evidence/runtime-candidate-v2.json#objects.fridge
-        review_ref: review-manifest.json#functional_review
+        review_ref: round.yaml（review 段）#functional_review
       maintenance:
         boundary: 独立家电；周边收口不得封死或依赖拆柜才能检修
         access_clearance: 客卫东墙实体东面距机身约43mm；到房间开放边界线约3mm。两者均不是厂家安装/检修净空
@@ -1348,7 +1348,7 @@ objects:
           material: white appliance placeholder
           geometry_source: user dimensions and runtime mesh
           datum_refs:
-            - design-datum.yaml#west-fridge
+            - round.yaml（datum 段）#west-fridge
           dependencies: []
           collision: reviewed
           maintenance_boundary: 可独立前拉维护
@@ -1363,7 +1363,7 @@ objects:
             - tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/service-wall-x980-v2.png
       validation_refs:
         - evidence/runtime-candidate-v2.json
-        - review-manifest.json#construction_review
+        - round.yaml（review 段）#construction_review
       status: blocked
     - id: west-dry-bar
       type: view-only cabinet and counter candidate
@@ -1376,12 +1376,12 @@ objects:
       material: 浅橡木柜门占位 + 暖白台面占位
       geometry_source: 当前浏览器临时 Three.js boxes；正式写入前须解决西墙三个控制点可达性，并避免把非厨房水吧柜静默计入厨房柜体算量
       datum_refs:
-        - design-datum.yaml#west-dry-bar
+        - round.yaml（datum 段）#west-dry-bar
       fact_refs:
         - candidate-runtime-geometry
         - bar-appliance-power-and-access
       decision_refs:
-        - decision-brief.yaml#normalized_decisions
+        - round.yaml（brief 段）#normalized_decisions
       dependencies:
         - west_wall
         - actual_small_appliance_list
@@ -1405,7 +1405,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: evidence/runtime-candidate-v2.json#objects.dry_bar
-        review_ref: review-manifest.json#functional_review
+        review_ref: round.yaml（review 段）#functional_review
       maintenance:
         boundary: 水吧柜体与电器独立；水吧电器可从台面取下维修
         access_clearance: 椅拉出后到台面前沿约600mm，为模型距离，非真人操作验收
@@ -1426,7 +1426,7 @@ objects:
           material: pale oak placeholder
           geometry_source: view-only box
           datum_refs:
-            - design-datum.yaml#west-dry-bar
+            - round.yaml（datum 段）#west-dry-bar
           dependencies:
             - west_wall
           collision: reviewed
@@ -1440,7 +1440,7 @@ objects:
           material: warm white placeholder
           geometry_source: view-only box
           datum_refs:
-            - design-datum.yaml#west-dry-bar
+            - round.yaml（datum 段）#west-dry-bar
           dependencies:
             - cabinet-body
           collision: reviewed
@@ -1454,7 +1454,7 @@ objects:
           material: dark generic block
           geometry_source: view-only box 280×250×300mm
           datum_refs:
-            - design-datum.yaml#west-dry-bar
+            - round.yaml（datum 段）#west-dry-bar
           dependencies:
             - appliance-power
           collision: reviewed
@@ -1474,7 +1474,7 @@ objects:
             - tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/service-wall-x980-v2.png
       validation_refs:
         - runtime-candidate-v2.json
-        - review-manifest.json#construction_review
+        - round.yaml（review 段）#construction_review
       status: blocked
     - id: dining-table-and-chairs
       type: formal daily four-seat furniture placement
@@ -1487,7 +1487,7 @@ objects:
       material: 当前模型木桌与灰色椅占位；没有选型
       geometry_source: config/house.yaml#living_dining.furnishings current formal table/chairs; guest-six transformation remains browser-only
       datum_refs:
-        - design-datum.yaml#dining-table-x980
+        - round.yaml（datum 段）#dining-table-x980
       fact_refs:
         - candidate-runtime-geometry
         - kitchen-path-width
@@ -1497,7 +1497,7 @@ objects:
         - guest-mode-light-and-outlet-alignment
         - six-seat-requirement
       decision_refs:
-        - decision-brief.yaml#normalized_decisions
+        - round.yaml（brief 段）#normalized_decisions
       dependencies:
         - fridge-west
         - west-dry-bar
@@ -1517,7 +1517,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: evidence/runtime-candidate-v2.json#objects.table_and_chairs
-        review_ref: review-manifest.json#functional_review
+        review_ref: round.yaml（review 段）#functional_review
       maintenance:
         boundary: 可移动家具；日常四人位已写入正式设计配置
         access_clearance: 停放态约1050mm；西椅外拉至水吧约600mm；东椅外拉至柜体约153.5mm
@@ -1538,7 +1538,7 @@ objects:
           material: current model placeholder
           geometry_source: furniture:dining_table:8
           datum_refs:
-            - design-datum.yaml#dining-table-x980
+            - round.yaml（datum 段）#dining-table-x980
           dependencies: []
           collision: reviewed
           maintenance_boundary: movable furniture
@@ -1551,7 +1551,7 @@ objects:
           material: current model placeholder
           geometry_source: furniture:dining_chair:9-12
           datum_refs:
-            - design-datum.yaml#dining-table-x980
+            - round.yaml（datum 段）#dining-table-x980
           dependencies: []
           collision: reviewed
           maintenance_boundary: movable furniture
@@ -1565,7 +1565,7 @@ objects:
             - tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/kitchen-to-dining-x980-v2.png
       validation_refs:
         - runtime-candidate-v2.json#derived_clearances
-        - review-manifest.json#functional_review
+        - round.yaml（review 段）#functional_review
       status: blocked
     - id: dining-table-guest-six-mode
       type: view-only temporary seating mode
@@ -1579,13 +1579,13 @@ objects:
       material: 与日常模型桌椅相同的占位材质；两把端椅为克隆几何，不是采购选型
       geometry_source: browser-only Three.js temporary group translation and two clone chairs
       datum_refs:
-        - design-datum.yaml#temporary-guest-six-south320
+        - round.yaml（datum 段）#temporary-guest-six-south320
       fact_refs:
         - daily-four-expandable
         - guest-expansion-capacity
         - guest-mode-light-and-outlet-alignment
       decision_refs:
-        - decision-brief.yaml#alignment.records.ALN-2026-10-15-GUEST6-01
+        - round.yaml（brief 段）#alignment.records.ALN-2026-10-15-GUEST6-01
       dependencies:
         - dining-table-and-chairs
         - kitchen_sliding_door
@@ -1613,7 +1613,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: evidence/guest-seat-envelope.json#temporary_six_with_south_shift
-        review_ref: review-manifest.json#functional_review
+        review_ref: round.yaml（review 段）#functional_review
       maintenance:
         boundary: 临时模式需移动桌椅组；来客结束后恢复日常四座位置
         access_clearance: 六人模式北椅到滑门模型边约50mm；假设冰箱开门外缘到北椅西缘约1.173m
@@ -1634,7 +1634,7 @@ objects:
           material: model-clone placeholder
           geometry_source: view-only clone at x=9.80 z=2.795
           datum_refs:
-            - design-datum.yaml#temporary-guest-six-south320
+            - round.yaml（datum 段）#temporary-guest-six-south320
           dependencies:
             - table-south-shift-320
           collision: reviewed
@@ -1648,7 +1648,7 @@ objects:
           material: model-clone placeholder
           geometry_source: view-only clone at x=9.80 z=4.745
           datum_refs:
-            - design-datum.yaml#temporary-guest-six-south320
+            - round.yaml（datum 段）#temporary-guest-six-south320
           dependencies:
             - table-south-shift-320
           collision: reviewed
@@ -1664,7 +1664,7 @@ objects:
             - tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-entry.png
       validation_refs:
         - evidence/guest-seat-envelope.json
-        - review-manifest.json#functional_review
+        - round.yaml（review 段）#functional_review
       status: blocked
     - id: entry-cabinet-preview
       type: view-only rendering proxy of frozen cabinet baseline
@@ -1675,14 +1675,14 @@ objects:
       owner: owner / cabinet vendor
       function: 入口浅抽屉、餐厅侧储物、压缩—释放空间组织
       material: entry pale oak and warm-white cap placeholders
-      geometry_source: view-only Three.js geometry based on docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml
+      geometry_source: view-only Three.js geometry based on docs/design-iterations/entry-cabinet-700-20261015/round.yaml（datum 段）
       datum_refs:
-        - design-datum.yaml#entry-cabinet-1420-low700
+        - round.yaml（datum 段）#entry-cabinet-1420-low700
       fact_refs:
         - entry-cabinet-baseline
         - east-chair-cabinet-gap
       decision_refs:
-        - docs/design-iterations/entry-cabinet-700-20261015/decision-brief.yaml
+        - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（brief 段）
       dependencies:
         - dining-table-and-chairs
         - west-fridge
@@ -1700,7 +1700,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: evidence/runtime-candidate-v2.json#objects.cabinet_proxy
-        review_ref: review-manifest.json#functional_review
+        review_ref: round.yaml（review 段）#functional_review
       maintenance:
         boundary: 柜商独立提供可施工柜体与五金
         access_clearance: 餐厅南门开启、柜内取物、冰箱门和东侧椅组合待复核
@@ -1723,7 +1723,7 @@ objects:
           material: oak proxy
           geometry_source: view-only box
           datum_refs:
-            - design-datum.yaml#entry-cabinet-1420-low700
+            - round.yaml（datum 段）#entry-cabinet-1420-low700
           dependencies: []
           collision: reviewed
           maintenance_boundary: 内部储物结构未建模
@@ -1736,7 +1736,7 @@ objects:
           material: warm-white top and oak face proxy
           geometry_source: view-only boxes z[2.98,3.70]
           datum_refs:
-            - design-datum.yaml#entry-cabinet-1420-low700
+            - round.yaml（datum 段）#entry-cabinet-1420-low700
           dependencies:
             - lower-body
           collision: reviewed
@@ -1750,7 +1750,7 @@ objects:
           material: oak backboard and warm-white cap proxy
           geometry_source: view-only boxes z[3.70,5.02]
           datum_refs:
-            - design-datum.yaml#entry-cabinet-1420-low700
+            - round.yaml（datum 段）#entry-cabinet-1420-low700
           dependencies:
             - lower-body
           collision: reviewed
@@ -1770,7 +1770,7 @@ objects:
             - tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/service-wall-x980-v2.png
       validation_refs:
         - runtime-candidate-v2.json
-        - docs/design-iterations/entry-cabinet-700-20261015/design-datum.yaml
+        - docs/design-iterations/entry-cabinet-700-20261015/round.yaml（datum 段）
       status: blocked
     - id: fixed-architecture-and-ceiling
       type: authoritative fixed environment
@@ -1785,18 +1785,18 @@ objects:
       material: authoritative model and render configuration
       geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml + config/ceiling.yaml
       datum_refs:
-        - design-datum.yaml#fixed-architecture
+        - round.yaml（datum 段）#fixed-architecture
       fact_refs:
         - formal-furniture-source
         - visual-gate
       decision_refs:
-        - decision-brief.yaml#priority.non_negotiables
+        - round.yaml（brief 段）#priority.non_negotiables
       dependencies: []
       interfaces: []
       collision:
         policy: reviewed
-        geometry_ref: tmp/screenshots/restaurant-fridge-waterbar-20261015/preview-manifest.json#runtime_dynamic_clearance
-        review_ref: review-manifest.json#functional_review
+        geometry_ref: tmp/screenshots/restaurant-fridge-waterbar-20261015/pround.yaml（review 段）#runtime_dynamic_clearance
+        review_ref: round.yaml（review 段）#functional_review
       maintenance:
         boundary: 不属于本轮修改对象
         access_clearance: 保持原状
@@ -1806,7 +1806,7 @@ objects:
       parts: []
       visual_relationships: []
       validation_refs:
-        - review-manifest.json#validation
+        - round.yaml（review 段）#validation
         - runtime-candidate-v2.json#camera_views
       status: verified
   notes:
@@ -1869,7 +1869,7 @@ review:
       - check: dynamic use, appliance install, MEP and cabinet door operation
         status: BLOCKED
         output: manufacturer and operational envelopes unresolved; see functional and construction reviews
-        output_ref: review-manifest.json#functional_review
+        output_ref: round.yaml（review 段）#functional_review
       - check: formal scene restoration
         status: PASS_NEW_FORMAL_LAYOUT
         output: 最终重载保留table(9.80,3.45,r90)、chairs 9–12新坐标、fridge(7.5025,2.9865,r270)；guest chair/bar/cabinet view-only对象消失。
@@ -1885,7 +1885,7 @@ review:
       - check: guest-six aesthetic review
         status: PASS
         output: 入口真实机位桌椅被门洞/半高柜遮挡，入口构图未改变；厨房到餐厅视角完整显示六人桌椅，服务墙层次稳定。
-        output_ref: review-manifest.json#aesthetic_review
+        output_ref: round.yaml（review 段）#aesthetic_review
       - check: visual state gate after restoration
         status: CLEAR
         output: 最终场景重载后，ceiling/electrical/plumbing/material digests 均与当前配置一致。

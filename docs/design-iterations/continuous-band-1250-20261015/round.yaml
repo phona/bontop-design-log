@@ -63,7 +63,7 @@ brief:
     confirmed_by_user: true
     confirmed_at: '2026-10-15T17:00:00+08:00'
     evidence_refs:
-      - docs/design-iterations/continuous-band-1250-20261015/fact-table.yaml
+      - docs/design-iterations/continuous-band-1250-20261015/round.yaml（fact_table 段）
       - docs/decisions/17-paint-scope-extension.md
       - conversation:user-confirmed-band-louver-light-scope
   allowed_scope:

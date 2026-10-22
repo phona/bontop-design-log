@@ -41,8 +41,8 @@ brief:
     confirmation_scope: 用户确认造型方向、配色与包络三项选择；内部尺寸分解（灯盘Ø、球泡Ø、臂角、层高）为设计提案，未经用户逐项确认。
     confirmed_at: '2026-10-16'
     evidence_refs:
-      - fact-table.yaml#fact-reference-product
-      - fact-table.yaml#user-r5-decisions
+      - round.yaml（fact_table 段）#fact-reference-product
+      - round.yaml（fact_table 段）#user-r5-decisions
   allowed_scope:
     files:
       - shared/types.ts
@@ -99,7 +99,7 @@ brief:
       category: construction
       question: 量房梁位、顶板承重、10球泡灯体重量、厂家吸顶盘/臂座连接与换泡路径是否支持该造型？
       fact_refs:
-        - fact-table.yaml#pending-installation
+        - round.yaml（fact_table 段）#pending-installation
       options: []
       selected: null
       user_response: null
@@ -108,7 +108,7 @@ brief:
       category: function
       question: 具体SKU在3000K/Ra≥90下的总光通量、配光与U0能否满足起居区照度？整厅7,100–8,500lm口径与10×G9的缺口如何收口？
       fact_refs:
-        - fact-table.yaml#pending-photometry
+        - round.yaml（fact_table 段）#pending-photometry
       options: []
       selected: null
       user_response: null
@@ -117,7 +117,7 @@ brief:
       category: function
       question: 若SKU光通量不足，补光层（筒灯/灯带/落地灯）的形式、回路与控制如何落地？
       fact_refs:
-        - fact-table.yaml#user-r5-decisions
+        - round.yaml（fact_table 段）#user-r5-decisions
       options: []
       selected: null
       user_response: null
@@ -128,8 +128,8 @@ brief:
         original_user_response: '客厅的主灯建模帮我调整成这样，看看你的方案。[Image #1]'
         normalized_decision: 按参考图建10头球泡半吸顶灯；黑盘+镀铬臂+乳白球泡；Ø1000×450mm包络；光度缺口待SKU核验。
         fact_refs:
-          - fact-table.yaml#fact-reference-product
-          - fact-table.yaml#user-r5-decisions
+          - round.yaml（fact_table 段）#fact-reference-product
+          - round.yaml（fact_table 段）#user-r5-decisions
         timestamp: '2026-10-16'
     unresolved: []
     re_alignment_required: false
@@ -182,10 +182,10 @@ datum:
         service_ref: strong-light-living
       source_refs:
         fact_refs:
-          - fact-table.yaml#fact-anchor-and-room
-          - fact-table.yaml#fact-reference-product
-          - fact-table.yaml#user-r5-decisions
-          - fact-table.yaml#inference-r5-proposal
+          - round.yaml（fact_table 段）#fact-anchor-and-room
+          - round.yaml（fact_table 段）#fact-reference-product
+          - round.yaml（fact_table 段）#user-r5-decisions
+          - round.yaml（fact_table 段）#inference-r5-proposal
         decision_refs:
           - docs/decisions/06-electrical.md#DEC-2026-10-16-R5
       views:
@@ -604,11 +604,11 @@ objects:
       material: 黑色两叠圆盘灯体与球形关节、镀铬弯臂与灯头座、乳白玻壳球泡；渲染材质不是商品工艺确认。
       geometry_source: config/render/lighting.yaml + shared/render/MultiGlobeChandelierGeometry.ts；浏览器与GLB/export共用。
       datum_refs:
-        - design-datum.yaml#living-main-fixture-r5
+        - round.yaml（datum 段）#living-main-fixture-r5
       fact_refs:
-        - fact-table.yaml#fact-reference-product
-        - fact-table.yaml#user-r5-decisions
-        - fact-table.yaml#inference-r5-proposal
+        - round.yaml（fact_table 段）#fact-reference-product
+        - round.yaml（fact_table 段）#user-r5-decisions
+        - round.yaml（fact_table 段）#inference-r5-proposal
       decision_refs:
         - docs/decisions/06-electrical.md#DEC-2026-10-16-R5
       dependencies:
@@ -635,7 +635,7 @@ objects:
       collision:
         policy: reviewed
         geometry_ref: 吊顶灯具；核对Ø1.0m×0.45m概念包络与房间/HVAC层位，最低点约2.35m高于2.1m净高要求；不作为地面碰撞物。
-        review_ref: review-manifest.json#reviewers.functional
+        review_ref: round.yaml（review 段）#reviewers.functional
       maintenance:
         boundary: 供应商/电工负责安装与检修；业主按说明换泡与清洁。10个G9灯位的换泡路径待SKU说明书。
         access_clearance: null
@@ -657,7 +657,7 @@ objects:
           material: 镀铬渲染色+黑色关节；实际表面工艺与承载待核。
           geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r5
+            - round.yaml（datum 段）#living-main-fixture-r5
           dependencies: []
           collision: reviewed
           maintenance_boundary: 吸顶盘底盒固定与承重待厂家安装图
@@ -670,7 +670,7 @@ objects:
           material: 黑色低反光渲染色；实际工艺待核。
           geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r5
+            - round.yaml（datum 段）#living-main-fixture-r5
           dependencies:
             - ceiling-canopy-and-stem
           collision: reviewed
@@ -684,7 +684,7 @@ objects:
           material: 镀铬渲染色；杆径是模型参数，不是承载选型。
           geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r5
+            - round.yaml（datum 段）#living-main-fixture-r5
           dependencies:
             - black-stacked-disc-hub
           collision: reviewed
@@ -699,7 +699,7 @@ objects:
           material: 乳白玻壳渲染色；实际透光率与眩光待SKU资料。
           geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
           datum_refs:
-            - design-datum.yaml#living-main-fixture-r5
+            - round.yaml（datum 段）#living-main-fixture-r5
           dependencies:
             - chrome-curved-arms-double-tier
           collision: reviewed
@@ -724,8 +724,8 @@ objects:
           evidence_refs:
             - evidence/r5/context.runtime.json
       validation_refs:
-        - review-manifest.json#reviewers.aesthetic
-        - review-manifest.json#reviewers.functional
+        - round.yaml（review 段）#reviewers.aesthetic
+        - round.yaml（review 段）#reviewers.functional
       status: implemented
   notes:
     - 10球泡、镀铬臂与黑灯盘只表达视觉关系，不是承重证明。

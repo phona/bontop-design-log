@@ -219,11 +219,11 @@ brief:
         verify_at: schedule/phase-1/control.yaml:60-64 的 budget_reconciliation.explanation（三次抬升目前只存在于这段散文里，无独立 DEC 条目承载 206,000 一步的完整账目）
       - frozen: forbidden.files 含 config/house.yaml（本 brief 冻结期内禁止改动）
         now: config/house.yaml 家具段已于 2026-10-05 房间互换后整段重写：bedroom_se 由书房改客房（config/house.yaml:460-473），study 由父母房改书房（config/house.yaml:474-485）；原 brief 的 allowed_scope.objects 里 parent_bed / parent_mattress / parent_wardrobe / study_furniture / nw_furniture 在 house.yaml 中已无对应 type，仅 robot_dock_gbath 存活（config/house.yaml:547）
-        verify_at: 'config/house.yaml:462 与 config/house.yaml:476 的「2026-10-05 功能互换 v0」注释；互换依据 iteration docs/design-iterations/parent-room-study-swap-20261005/decision-brief.yaml（该轮 frozen: false）'
+        verify_at: 'config/house.yaml:462 与 config/house.yaml:476 的「2026-10-05 功能互换 v0」注释；互换依据 iteration docs/design-iterations/parent-room-study-swap-20261005/round.yaml（brief 段）（该轮 frozen: false）'
       - frozen: acceptance.done_when「未定尺寸衣架未进入config/house.yaml」
         now: 该条仍然成立（master_transitional_rack 至今未进 house.yaml），故不构成 drift，仅登记以免误判
         verify_at: config/house.yaml furnishings 段无 master_transitional_rack 条目
-    reason: 根因是「没有任何代码读者」：scripts/、server/、tests/、app/ 对 decision-brief.yaml 零引用（grep 全库仅命中 docs/ 自身与 config/facts.yaml:150 的豁免说明），config/facts.yaml 的 include/exclude 也把 docs/design-iterations/ 整体排除在事实核验之外。因此冻结值只能靠人工比对 config 才能发现漂移；本 brief 的三次抬升全部只落在 control.yaml 的 budget_reconciliation.explanation 散文段落里，没有任何门禁会因为「brief 与 config 不一致」而失败。修法不是改本文件，而是承认本 brief 已被 DEC 与 schedule/phase-1/control.yaml 取代，并把现行口径指向 schedule/roadmap.yaml:15。
+    reason: 根因是「没有任何代码读者」：scripts/、server/、tests/、app/ 对 round.yaml（brief 段） 零引用（grep 全库仅命中 docs/ 自身与 config/facts.yaml:150 的豁免说明），config/facts.yaml 的 include/exclude 也把 docs/design-iterations/ 整体排除在事实核验之外。因此冻结值只能靠人工比对 config 才能发现漂移；本 brief 的三次抬升全部只落在 control.yaml 的 budget_reconciliation.explanation 散文段落里，没有任何门禁会因为「brief 与 config 不一致」而失败。修法不是改本文件，而是承认本 brief 已被 DEC 与 schedule/phase-1/control.yaml 取代，并把现行口径指向 schedule/roadmap.yaml:15。
 datum:
   schema: interior-design-datum/v3
   project: bontop-design-log

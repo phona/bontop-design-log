@@ -778,10 +778,10 @@ review:
   construction_frozen: false
   delivery_frozen: false
   delivery_ready: false
-  fact_table: fact-table.yaml
-  decision_brief: decision-brief.yaml
-  design_datum: design-datum.yaml
-  object_manifest: object-manifest.yaml
+  fact_table: round.yaml（fact_table 段）
+  decision_brief: round.yaml（brief 段）
+  design_datum: round.yaml（datum 段）
+  object_manifest: round.yaml（objects 段）
   blocking_issues:
     - 950 衣柜防倾倒固定节点与墙体结构未确认（site/site_pending）
     - 950 左移核验失败：为避让 d_mb 至少需左移0.25m（maxX≤3.30），将使 minX≤2.35 越出北墙实体边界 x=2.60，并侵入原位 DEC-045 bridge；因此衣柜保持原位，d_mb硬冲突仍明确阻塞

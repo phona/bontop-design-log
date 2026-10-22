@@ -22,7 +22,7 @@ index:
   topic: mep
   review_state: delivery_ready
   supersedes: none
-  note: 'manifest 自称 delivery_ready/19 路，但同目录 decision-brief.yaml:127-149 已登记 supersession.status: superseded（19 路 -> 20 -> 21）；2026-10-20 已在 manifest 加 superseded 字段回标'
+  note: 'manifest 自称 delivery_ready/19 路，但同目录 round.yaml（brief 段）:127-149 已登记 supersession.status: superseded（19 路 -> 20 -> 21）；2026-10-20 已在 manifest 加 superseded 字段回标'
 brief:
   schema: interior-design-decision-brief/v3
   project: bontop-design-log
@@ -60,7 +60,7 @@ brief:
     confirmed_at: '2026-10-03T00:00:00+08:00'
     evidence_refs:
       - .stepcode/plans/session-01a0ff40-12f0-7993-a6f0-5f86ab25261f.md
-      - docs/design-iterations/mep-power-water-freeze-20261003/fact-table.yaml
+      - docs/design-iterations/mep-power-water-freeze-20261003/round.yaml（fact_table 段）
     reversal_cost: 若业主否决 4 项 critical，只改 config/acceptance.yaml 的 4 个 severity 字符串，不影响本迭代其余范围
   allowed_scope:
     files:
@@ -219,7 +219,7 @@ brief:
       - frozen: acceptance.validation_record.external_blockers「api.test.ts:74 / budget-api.test.ts:78 仍断言 phase_1 ceiling=203000」
         now: 该阻塞已由 DEC-2026-10-03-R3 / DEC-2026-10-05-R4 收口，测试断言与 schedule/phase-1/control.yaml 现均为 210000
         verify_at: docs/decisions/05-hvac.md:45；schedule/phase-1/control.yaml:62；tests/server/api.test.ts 与 tests/server/budget-api.test.ts 现行断言
-    reason: 根因是「没有任何代码读者」：scripts/、server/、tests/、app/ 对 decision-brief.yaml 零引用（grep 全库仅命中 docs/ 自身与 config/facts.yaml:150 的豁免说明），config/facts.yaml 的 include/exclude 也把 docs/design-iterations/ 整体排除在事实核验之外。事实核验只镜像 config 的回路数（fact.circuit_count），从不回读本 freeze_record，因此「冻 19 路 / 实际 21 路」可以无限期不响。本 brief 的四轮回路演进（19→20→21，及 22 路的预留激活动作）全部只落在 docs/decisions/06-electrical.md 与 config/electrical-topology.yaml 的注释里，无人回写该 freeze_record。现行回路口径唯一权威是 config/electrical-topology.yaml 的 circuits.length。
+    reason: 根因是「没有任何代码读者」：scripts/、server/、tests/、app/ 对 round.yaml（brief 段） 零引用（grep 全库仅命中 docs/ 自身与 config/facts.yaml:150 的豁免说明），config/facts.yaml 的 include/exclude 也把 docs/design-iterations/ 整体排除在事实核验之外。事实核验只镜像 config 的回路数（fact.circuit_count），从不回读本 freeze_record，因此「冻 19 路 / 实际 21 路」可以无限期不响。本 brief 的四轮回路演进（19→20→21，及 22 路的预留激活动作）全部只落在 docs/decisions/06-electrical.md 与 config/electrical-topology.yaml 的注释里，无人回写该 freeze_record。现行回路口径唯一权威是 config/electrical-topology.yaml 的 circuits.length。
 datum:
   iteration_id: mep-power-water-freeze-20261003
   anchor: wall_anchor
@@ -837,7 +837,7 @@ review:
   iteration_id: mep-power-water-freeze-20261003
   subject: 水电施工冻结前最后一轮收口（25 路→19 路、补漏保、燃气报警器合规位、验收扩 9 项）
   superseded: true
-  superseded_note: '本 manifest 的「19 路」为 2026-10-03 时点口径，已被 DEC-2026-10-04-R2 / DEC-2026-10-05-R3 / DEC-2026-10-06-R2 取代为 20 → 21 路；现行回路数以 config/electrical-topology.yaml 为准（当前 circuits.length=20，DEC-2026-10-13-R5 删电视墙灯带后回到 20）。同目录 decision-brief.yaml:127-149 已登记 supersession.status: superseded。'
+  superseded_note: '本 manifest 的「19 路」为 2026-10-03 时点口径，已被 DEC-2026-10-04-R2 / DEC-2026-10-05-R3 / DEC-2026-10-06-R2 取代为 20 → 21 路；现行回路数以 config/electrical-topology.yaml 为准（当前 circuits.length=20，DEC-2026-10-13-R5 删电视墙灯带后回到 20）。同目录 round.yaml（brief 段）:127-149 已登记 supersession.status: superseded。'
   source_version:
     config_refs:
       - config/electrical.yaml

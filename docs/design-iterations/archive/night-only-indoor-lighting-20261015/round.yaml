@@ -35,7 +35,7 @@ brief:
     confirmed_by_user: true
     confirmed_at: '2026-10-15T02:39:08Z'
     evidence_refs:
-      - docs/design-iterations/archive/night-only-indoor-lighting-20261015/fact-table.yaml
+      - docs/design-iterations/archive/night-only-indoor-lighting-20261015/round.yaml（fact_table 段）
   allowed_scope:
     files:
       - shared/solar.ts
