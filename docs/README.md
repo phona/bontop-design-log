@@ -52,7 +52,7 @@
 
 | 目录 | 内容 | 性质 |
 |---|---|---|
-| `decisions/` | 18 个主题文件 + 2 个归档分册 + README，264 条 DEC | 决策日志。**正文只登记不改写**，索引与纪律见其 README |
+| `decisions/` | 18 个主题文件 + 1 个归档分册 + README，268 条 DEC | 决策日志。**正文只登记不改写**，索引与纪律见其 README |
 | `design-iterations/` | 44 个现役目录 + `archive/` 20 个 + `INDEX.yaml` | 迭代证据。机读索引见 `INDEX.yaml` |
 | `renders/` | 2 个 md | 渲染架构留档（Blender 已暂停，冷归档见 `scripts/archive/blender-pipeline/`） |
 | `standards/` | 1 个 md | 起夜路径照明标准 |
