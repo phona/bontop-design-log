@@ -15,6 +15,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { load as loadYaml } from 'js-yaml';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import { computeMasonryTakeoff, type MasonryTakeoffInput } from '../../shared/masonry-takeoff.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 
@@ -25,6 +27,7 @@ export const CV_INPUTS = [
   'config/house.yaml',
   'config/hvac.yaml',
   'config/layout/model-geometry.yaml',
+  'config/layout/overlay.yaml',
   'config/materials.yaml',
   'config/mep-hvac-coordination.yaml',
   'config/tile-comparison.yaml',
@@ -50,6 +53,61 @@ function yaml(rel: string): any {
 }
 const fmt = (n: number): string => String(parseFloat(n.toFixed(3)));
 const fmt2 = (n: number): string => n.toFixed(2);
+const round4 = (n: number): string => String(parseFloat(n.toFixed(4)));
+const round3 = (n: number): string => String(parseFloat(n.toFixed(3)));
+
+function masonryAreas(): { wall: number; sill: number } {
+  // 与 tests/server/masonry-takeoff.test.ts 的 buildInput 同口径装配（config → 模块输入），
+  // 面积一律由 shared/masonry-takeoff 从 overlay 声明实算，禁止硬编码（批 4 审阅修复）。
+  const mg = yaml('config/layout/model-geometry.yaml');
+  const ov = yaml('config/layout/overlay.yaml');
+  const tile = yaml('config/tile-comparison.yaml');
+  const layout = resolveLayout(mg) as any;
+  const suppressed = new Set<string>();
+  for (const entry of ov.suppress ?? []) {
+    for (const key of ['wall', 'walls'] as const) {
+      const v = (entry as any)[key];
+      if (!v) continue;
+      for (const w of Array.isArray(v) ? v : [v]) suppressed.add(String(w));
+    }
+  }
+  const walls = (layout.walls as any[]).map((wall) => ({
+    id: wall.id, x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2,
+    ...(wall.segments?.length ? { segments: wall.segments.map((sg: any) => ({ x1: sg.x1, z1: sg.z1, x2: sg.x2, z2: sg.z2 })) } : {}),
+    ...(wall.openings?.length ? { openings: wall.openings } : {}),
+    suppressed: suppressed.has(wall.id),
+  }));
+  const wallById = new Map(walls.map((w) => [w.id, w]));
+  const elements: any[] = ov.elements ?? [];
+  const baySills = elements.filter((e) => e.type === 'bay_sill').map((e) => {
+    const wallIds: string[] = e.walls ?? (e.wall ? [e.wall] : []);
+    const wall: any = wallById.get(wallIds[0]);
+    return { id: e.id, wall: wallIds[0], height: e.height, depth: e.depth, sill: e.sill ?? 0,
+      ...(wall?.segments ? { segments: wall.segments } : {}) };
+  });
+  const rooms = (layout.rooms as any[]).filter((r) => !r.semantic_only).map((r) => ({
+    id: r.id, areaSqm: r.area ?? r.width * r.depth,
+    ...((r.points ?? []).length ? { points: r.points.map((p: any) => ({ x: p.x, z: p.z })) }
+      : { rect: { x: r.x, z: r.z, width: r.width, depth: r.depth } }),
+  }));
+  const input: MasonryTakeoffInput = {
+    walls, baySills, rooms,
+    wallRegions: elements.filter((e) => e.type === 'wall_region').map((e) => ({
+      id: e.id, wall: e.wall, room: e.room, along: e.along, bottom: e.bottom ?? 0, height: e.height, zone: e.zone })),
+    sillRegions: elements.filter((e) => e.type === 'sill_region').map((e) => ({
+      id: e.id, element: e.element, room: e.room, face: e.face, along: e.along, zone: e.zone })),
+    dryRoomIds: tile.dry_room_ids, wetRoomIds: tile.wet_room_ids,
+    floorRegions: elements.filter((e) => e.type === 'floor_region').map((e) => ({
+      id: e.id,
+      areaSqm: Math.abs((e.points ?? []).reduce((sum: number, p: any, i: number, all: any[]) => {
+        const n = all[(i + 1) % all.length]; return sum + p.x * n.z - n.x * p.z; }, 0) / 2),
+      points: (e.points ?? []).map((p: any) => ({ x: p.x, z: p.z })),
+      excluded: e.excluded === true, follow: e.follow, room: e.room, zone: e.zone })),
+    clearHeight: 2.8,
+  } as MasonryTakeoffInput;
+  const result = computeMasonryTakeoff(input);
+  return { wall: result.wallTileSqm, sill: result.sillTileSqm };
+}
 
 interface Ctx {
   control: any;
@@ -117,6 +175,7 @@ const SECTIONS: Section[] = [
         label: '暖通执行池',
         value: (c) => {
           const pool = (c.control.budget_pools as any[]).find((p) => p.id === 'hvac');
+          if (!pool) throw new Error('budget_pools 缺 hvac 池');
           return `${pool.planned_cny} 元`;
         },
         source: 'schedule/phase-1/control.yaml:40',
@@ -133,9 +192,12 @@ const SECTIONS: Section[] = [
       },
       {
         label: '墙砖面积（wall_region 实算）',
-        value: () => '21.2555 ㎡',
+        value: () => `${round4(masonryAreas().wall)} ㎡`,
         source: 'shared/masonry-takeoff.ts；tests/server/masonry-takeoff.test.ts:160-168',
-        note: '窗台/防水台 sill_region 另计 15.468 ㎡；合计 36.7236 ㎡由契约 c.masonry_tile_area_parity 三方对账 ※',
+        note: () => {
+          const a = masonryAreas();
+          return `窗台/防水台 sill_region 另计 ${round3(a.sill)} ㎡；合计 ${round4(a.wall + a.sill)} ㎡由契约 c.masonry_tile_area_parity 三方对账 ※`;
+        },
       },
     ],
   },
@@ -147,6 +209,7 @@ const SECTIONS: Section[] = [
         value: (c) => {
           const p = plan(c);
           const model = (p.outdoor.model as string).match(/MJV-[A-Z0-9-]+/)?.[0];
+          if (!model) throw new Error('外机型号串解析失败：hvac.yaml outdoor.model 格式已变');
           const kw = p.load_design.outdoor_nominal_kw;
           return `美的领航者Ⅳ ${model}，${fmt(kw)}kW / 大7匹 / 220V`;
         },
@@ -178,23 +241,27 @@ const SECTIONS: Section[] = [
       {
         label: '逐房内机映射',
         value: (c) => {
-          // 字面串是编辑口径（小房三间同型号合并表述）；此处断言六台型号
-          // 与字面串一致，型号一改即生成失败，防止映射表静默过期。
+          // 按房间逐条派生（批 4 审阅修复）：型号/容量从各房 indoor 串解析，
+          // 房间标签由 ac 锚点映射，互换任一房间型号都会改变输出。
+          const LABELS: Record<string, string> = {
+            ac_living: '客厅', ac_dining: '餐厅', ac_master: '主卧',
+            ac_parent: '书房', ac_child: '儿童房', ac_study: '客房',
+          };
           const rooms = plan(c).load_design.rooms as Array<{ indoor: string }>;
-          const tokens = rooms
-            .map((r) => (r.indoor.match(/MJV-[0-9A-Z/-]+/)?.[0] ?? ''))
-            .sort()
-            .join(',');
-          const expected = [
-            'MJV-28T2/P-SS',
-            'MJV-28T2/P-SS',
-            'MJV-28T2/P-SS',
-            'MJV-42T2/P-SS',
-            'MJV-56T2/P-SS',
-            'MJV-71T2/P-SS',
-          ].join(',');
-          if (tokens !== expected) throw new Error(`内机型号集合漂移：${tokens}`);
-          return '客厅 MJV-71T2/P-SS 7.1kW；餐厅 MJV-42T2/P-SS 4.2kW；主卧 MJV-56T2/P-SS 5.6kW；书房/儿童房/客房各 MJV-28T2/P-SS 2.8kW';
+          const parsed = rooms.map((r) => {
+            const ac = r.indoor.match(/ac_\w+/)?.[0] ?? '';
+            const model = r.indoor.match(/MJV-[0-9A-Z/-]+/)?.[0];
+            const kw = r.indoor.match(/(\d+\.\d+)kW/)?.[1];
+            if (!LABELS[ac] || !model || !kw) throw new Error(`逐房映射解析失败：${r.indoor.slice(0, 60)}`);
+            return { label: LABELS[ac], model, kw };
+          });
+          const head = parsed.slice(0, 3).map((p) => `${p.label} ${p.model} ${p.kw}kW`);
+          const tail = parsed.slice(3);
+          const same = tail.every((p) => p.model === tail[0].model && p.kw === tail[0].kw);
+          const tailText = same
+            ? `${tail.map((p) => p.label).join('/')}各 ${tail[0].model} ${tail[0].kw}kW`
+            : tail.map((p) => `${p.label} ${p.model} ${p.kw}kW`).join('；');
+          return [...head, tailText].join('；');
         },
         source: 'config/hvac.yaml:42-72',
         note: '2026-10-05 业主确认；机位/风口/吊顶净空仍待量房与厂家深化',
@@ -239,6 +306,7 @@ const SECTIONS: Section[] = [
           const ids = (c.topology.circuits as any[])
             .map((x) => x.id as string)
             .filter((id) => id.startsWith('hvac_power_') && !id.includes('outdoor'));
+          if (ids.length === 0) throw new Error('topology 未找到 hvac 内机回路');
           return `${ids.length} 路：${ids.join(' + ')}`;
         },
         source: 'config/electrical-topology.yaml:71,82',
@@ -265,6 +333,7 @@ const SECTIONS: Section[] = [
         label: '强电箱',
         value: (c) => {
           const p = (c.electrical as any[]).find((x) => x.id === 'panel_strong_entry_left');
+          if (!p) throw new Error('electrical.yaml 缺 panel_strong_entry_left 点位');
           const mm = (n: number) => Math.round(n * 1000);
           return `底边离地 ${fmt(p.mount_height)}m；箱体 ${mm(p.width)}×${mm(p.body_height)}×${mm(p.depth)}mm`;
         },
@@ -359,12 +428,14 @@ const SECTIONS: Section[] = [
         label: '待决台账条数',
         value: (c) => {
           const numbered = (c.pendingText.match(/^\| \d+ \|/gm) ?? []).length;
+          if (numbered === 0) throw new Error('pending 台账编号行匹配为 0：表格格式已变，拒绝静默输出 0 条');
           const sub = (c.pendingText.match(/^\| \d+[a-z] \|/gm) ?? []).length;
           return `${numbered} 条编号`;
         },
         source: 'docs/pending-site-data.md:3',
         note: (c) => {
           const numbered = (c.pendingText.match(/^\| \d+ \|/gm) ?? []).length;
+          if (numbered === 0) throw new Error('pending 台账编号行匹配为 0：表格格式已变，拒绝静默输出 0 条');
           const sub = (c.pendingText.match(/^\| (\d+[a-z]) \|/gm) ?? []).length;
           const subNames = [...c.pendingText.matchAll(/^\| (\d+[a-z]) \|/gm)].map((m) => `#${m[1]}`);
           return `#1–#${numbered}${sub ? ` + ${subNames.join('、')} 子项` : ''} = ${numbered + sub} 行；fact.pending_site_data_count 锚在表头，新增/关闭必须同步编号数 ※`;

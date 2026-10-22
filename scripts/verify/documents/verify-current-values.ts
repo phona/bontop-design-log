@@ -7,7 +7,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { renderCurrentValues } from '../../docs/current-values-render.ts';
+import { renderCurrentValues } from '../../docs/current-values-render.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 const target = path.join(ROOT, 'docs/CURRENT-VALUES.md');
