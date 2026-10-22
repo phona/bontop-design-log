@@ -10,17 +10,17 @@
 
 ## 固定视角
 
-- 入户沿门内方向：[entry-axis-x980-v2.png](../../../tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/entry-axis-x980-v2.png)
-- 餐厅服务墙：[service-wall-x980-v2.png](../../../tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/service-wall-x980-v2.png)
-- 厨房看向餐厅：[kitchen-to-dining-x980-v2.png](../../../tmp/screenshots/restaurant-fridge-waterbar-20261015/acceptance/kitchen-to-dining-x980-v2.png)
+- 入户沿门内方向：`entry-axis-x980-v2.png`
+- 餐厅服务墙：`service-wall-x980-v2.png`
+- 厨房看向餐厅：`kitchen-to-dining-x980-v2.png`
 
-三张图是 2026-10-15 的概念预演记录，来自项目现有 Three.js 场景，1600 × 1000，FOV 55，眼高 1.60m；相机位置、朝向见 review-manifest.json。无障碍快照、PNG 验证、运行时对象及 AABB 见 evidence/runtime-candidate-v2.json 和同目录 snapshot 文件。
+三张图是 2026-10-15 的概念预演记录，来自项目现有 Three.js 场景，1600 × 1000，FOV 55，眼高 1.60m；相机位置、朝向见 review-manifest.json。注：本轮全部视角截图当时只落在 git 忽略的 `tmp/screenshots/` 下、从未入仓，现已不可考（正是批 0「证据分级与退场铁律」要杜绝的形态）；文件名保留作机位索引，本轮若复启验收，按新规矩重拍并入仓 `evidence/final/`。无障碍快照、PNG 验证、运行时对象及 AABB 见 evidence/runtime-candidate-v2.json 和同目录 snapshot 文件。
 
 六人临时模式固定视角：
 
-- 入户门内轴线：[guest6-south320-entry.png](../../../tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-entry.png)
-- 厨房看向餐厅：[guest6-south320-kitchen-to-dining.png](../../../tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-kitchen-to-dining.png)
-- 冰箱、水吧与半高柜：[guest6-south320-service-wall.png](../../../tmp/screenshots/restaurant-fridge-waterbar-20261015/guest-expansion/guest6-south320-service-wall.png)
+- 入户门内轴线：`guest6-south320-entry.png`
+- 厨房看向餐厅：`guest6-south320-kitchen-to-dining.png`
+- 冰箱、水吧与半高柜：`guest6-south320-service-wall.png`
 
 审美复审结论：真实入户机位看不到餐桌，是门洞、半高柜与朝向形成的视线结果；临时六人桌椅未进入入口主构图，没有改变玄关压缩—释放关系。厨房看餐厅机位完整显示六人桌椅，家具密度增加但未封闭客厅纵深；服务墙构图仍稳定。以上均是同一真实 Three.js 场景的 view-only 代理预演。
 
@@ -28,9 +28,9 @@
 
 2026-10-16正式日常家具布局的当前固定视角：
 
-- 入户：[entry-daily-four.png](../../../tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/entry-daily-four.png)
-- 厨房看餐厅：[kitchen-to-dining-daily-four.png](../../../tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/kitchen-to-dining-daily-four.png)
-- 服务墙（含水吧/半高柜 view-only 几何）：[service-wall-daily-four-preview-bar.png](../../../tmp/screenshots/restaurant-fridge-waterbar-20261016/formal-layout/service-wall-daily-four-preview-bar.png)
+- 入户：`entry-daily-four.png`
+- 厨房看餐厅：`kitchen-to-dining-daily-four.png`
+- 服务墙（含水吧/半高柜 view-only 几何）：`service-wall-daily-four-preview-bar.png`
 
 本组为真实正式桌椅/冰箱配置加两个临时几何代理：水吧和1420/700半高柜不属于正式家具源。临时六人图仍引用上面的2026-10-15同机位审查图，其桌椅坐标与正式日常四人布局相差明确的+320mm南移。
 

@@ -178,3 +178,15 @@
 - **静默失效风险与负责人**：①自然排水出口高度/方位和 P-SS 是否允许泵旁通主重力——空调厂家，取得逐台深化图时确认；②两支泵能否共接、DN32并发能力与止回/通气/清扫做法——厂家+安装方，排水管封闭前确认；③走廊梁底、结构板底、最新送回风管外包络、吊架空间——量房+暖通，放线前复核；④vanity 柜体净空与清扫检修空间——木作/安装方现场复核，禁止先改柜/镜柜迁就管线。任一项不满足时，不移动固定排水点、不降低吊顶，提交备选给业主。
 - **验证**：R25 定向回归测试覆盖无节点同位管碰撞、合法Y节点、节点外长平行碰撞、0.67%坡段、1mm数值容差、保温外包络及吊顶参数变化。验证结果见 R25 设计迭代记录。
 - **决策人**：设计侧根据业主 R25 授权提出推荐拓扑；厂家参数、现场尺寸及任何建筑/家具/增项变更均未获确认。
+
+### DEC-2026-10-22-R01 R25 登记收尾：逐段坡度短段链门槛、4 条路线建真坡度与三登记全量对账
+
+- **日期/来源**：2026-10-22。触发：业主复查 verify 门禁红灯——mep-guidance-baseline 自 DEC-2026-10-19-R25 后持续 fail，被后续会话以「存量基线」放行三日。R25 已在决策日志记录 139→149 的回归快照，但治理台账、施工指导 §6 基线表与 tests/server/mep-guidance-baseline.test.ts 钉死值未同步；本条为 R25 的登记收尾，只做规则口径修正、按既有声明的几何修复与对账，不新增设计结论。
+- **本轮决定**：
+  1. 逐段坡度检查 `gravitySlopeDeficits`（shared/mep-hvac-lint.ts）补短段链门槛：单段 < `GRAVITY_MIN_RUN`（0.3m）的接头/折点短段不逐段判（与 `gravity_slope_pending` 的最小长度口径对齐）；连续短段成链且链总长 ≥0.3m 时按链总落差判一次（防切段规避）；近竖直下行段（落差 > 平面长）不为短段链提供落差。旧口径 11 条中 7 条为 <0.3m 短段（客卫地漏折点 2、主卫台盆汇流支段 1、冷凝水主卧末折 1、儿童房边吊折点 3）：新口径下孤立短段 4 条不再命中，儿童房 3 段折点合并为 1 条链判（0.53m 全平），经第 2 条几何建坡后清零。
+  2. 4 条路线按各自声明的 1% 坡度改建几何（数值均出自路线 reason 的原始坡度分布或声明回算）：`condensate-child` via 平段（DEC-2026-10-06-R5 占位恒值 2.70）→ 2.697/2.6954/2.6936/2.6906 逐点建坡，穿墙 height 2.70→2.694 对齐实际交点；`condensate-master` 衣柜顶段 via y 2.726→2.7245（落差 3.0→4.5mm，达声明 1%）；`drain-mbath-vanity-to-riser` to_height 0.33→0.315（末段 1.40m 落差 0→15mm）；`drain-gbath-vanity-to-riser` 原 DEC-2026-10-06-R1「全线平均 1%」分布改为逐段建坡（via 0.30/0.285→0.2885/0.277、to_height 0.2775→0.2695）。两条台盆墙排的立管接点均为推断值（pending #19 / #6，±0.3m），接点高度在容差内调整，量房终核。`gravity_slope_below_design_target` 11→0。
+  3. `route_insulation_unverified` ×7 补登治理台账（survey_dependent / pending_adjudication）：3 条未声明 `insulation_thickness` + 4 条已声明但 `insulation_status` 未确认；随厂家选型（pending #39）与量房逐条消解，不改数据消音。
+  4. 三登记全量对账（实算为唯一口径）：must_fix 钉死值 149→138（gravity −11；route_overlap 70→69 的 −1 为 R25 后续批实修未销账，本条一并销账）；warning 总数 238 不变，逐 code 按 R25 外包络口径对齐台账——ceiling_clearance_unverified 50→62、route_overlap 35→39、route_overlap_declared_trunk 12→14、nonphysical_route 7→8、route_furniture_collision 5→2、unsupported_span 1→2，新增 route_insulation_unverified ×7；施工指导 §6 三桶行与 §0 完成面口径（62 处 / 50 条路线 / 15 个吊顶分区，与 facts 契约 `c.mep_layer_below_drop_bottom` 的 registered_conflicts 62 双引擎一致）同步。
+  5. tests/server/facts-lint.test.ts 合成夹具 `c.probe_ceiling` 期望 3→4：R25 包络/每 50mm 采样口径下，夹具中 mixed 路线的斜降段实际穿过吊顶 footprint 且低于完成面，属真实命中而非误报；夹具期望系旧点位口径遗留，drift 子案登记数同步 4→5。
+- **验证**：verify:mep 138 errors / 238 warnings（gravity 清零；warning 逐 code 与对账前一致、零新增）；verify:facts OK；tests/server/mep-guidance-baseline.test.ts 与 facts-lint 测试转绿。verify:mep 仍按契约 exit 1（must_fix 138 未清零）——这是交底前待清清单的健康红，不是故障。
+- **决策人**：业主授权处理（「帮我处理」）；几何改动为设计侧按各路线既有声明推导，量房日复核。

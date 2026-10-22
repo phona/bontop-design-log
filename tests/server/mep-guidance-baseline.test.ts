@@ -106,8 +106,8 @@ for (const [bucket, bucketSummary] of Object.entries(mep.categories ?? {})) {
 
 test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必须等于实算（不写死 warning 总数）', () => {
   // ① error 契约：DEC-2026-10-17-R20 起 must_fix 桶统一进 errors（8aef523 硬门禁），
-  //    verify:mep 的 errors = must_fix 实算 139（route_overlap 70 等）；electrical 仍 0 error。
-  assert.equal(mep.counts.errors, 139, `verify:mep must_fix errors 应为 140，实际 ${mep.counts.errors}`);
+  //    verify:mep 的 errors = must_fix 实算 138（route_overlap 69 等；DEC-2026-10-22-R01 对账）；electrical 仍 0 error。
+  assert.equal(mep.counts.errors, 138, `verify:mep must_fix errors 应为 138，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 
@@ -306,12 +306,12 @@ test('文档不许再把 2026-09-07 的快照当现行基线', () => {
 // ─── MEP error 侧：LINT 一侧的硬门禁必须仍然为空 ─────────────────────────
 
 test('verify:mep / verify:electrical 的 error 侧必须为空，且 error code 与台账一致', () => {
-  // DEC-2026-10-17-R20 口径：verify:mep 的 error 侧不再为空（must_fix 硬门禁显形（R23 时点 139 项）），
+  // DEC-2026-10-17-R20 口径：verify:mep 的 error 侧不再为空（must_fix 硬门禁显形（DEC-2026-10-22-R01 对账时点 138 项）），
   // 但 error 必须全部落在 must_fix 桶——出现 must_fix 之外的 error 仍然禁止（分桶契约不破）。
   // R19 裁决通道的 13 条以 warning_class_unadjudicated 为 code 挂 must_fix 桶，
   // 桶代码明细里保留的是原 warning 类 code，故这两套 code 都算合法。
   const mustFixBucketCodes = new Set((mep.categories.must_fix_before_briefing?.codes ?? []).map((c) => c.code));
-  assert.ok(mep.counts.errors > 0, 'must_fix 硬门禁清零前 error 侧不得为空（清零后本断言随 139 一起改）');
+  assert.ok(mep.counts.errors > 0, 'must_fix 硬门禁清零前 error 侧不得为空（清零后本断言随 138 一起改）');
   for (const error of mep.errors) {
     assert.equal(error.category, 'must_fix_before_briefing', `error ${error.code} 必须属 must_fix_before_briefing 桶，实际 ${error.category}`);
     assert.ok(
