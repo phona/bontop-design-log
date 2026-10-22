@@ -1176,7 +1176,7 @@ work_packages:
     duration_workdays: {min: 1, max: 2}
     dependencies: [PKG-060]
     readiness: ready
-    status: in_progress
+    status: failed
     blockers: []
     owner_roles: [美缝施工, 业主]
     payment_gate: GATE-065-COMPLETE
@@ -2227,3 +2227,48 @@ audit_log:
       evidence: ["【模拟演示】PKG-060 检查项 check_sill_tile 现场验收通过，照片与记录已归档"]
       check_spec_sha256: 2e8bc11fbaa08bc185dd74b08873aac09427c1c329cef64557fa294d7864c92b
       project_data_sha256: 739a7c00a4ac517e5b94b33d7b6dc9d0949b33f5297cf89802838ca6b4cbb4ed
+    - id: AUD-SIM-047
+      package_id: PKG-065
+      check_id: SCH-065-01
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】两卫砖缝干燥确认：养护期满、缝内无明水，倒水后晾置 48h 复查合格"]
+      check_spec_sha256: b215ecd1635fc01832bf636b8a33e8c3674da01ef0a679b273bb76ef73216bb7
+      project_data_sha256: 6c8d3e08bf400be22ae04f356d02f2ba2c7c7c42b3385049e97002193711875c
+    - id: AUD-SIM-048
+      package_id: PKG-065
+      check_id: check_tile_grout_dry
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】砖缝干燥确认通过（验收引用项）"]
+      check_spec_sha256: 87324ac9dd297b83de55f0b1d4583aa8f5c1119b9fb0d6ff520f833fb3e72e37
+      project_data_sha256: 6c8d3e08bf400be22ae04f356d02f2ba2c7c7c42b3385049e97002193711875c
+    - id: AUD-SIM-049
+      package_id: PKG-065
+      check_id: SCH-065-02
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】两卫美缝逐段检查：饱满连续、颜色对样板、无污染"]
+      check_spec_sha256: 24bc194bc931b19157be34a5165e3c0dcddf156e873e91de5cf6bac0c45fa777
+      project_data_sha256: 6c8d3e08bf400be22ae04f356d02f2ba2c7c7c42b3385049e97002193711875c
+    - id: AUD-SIM-050
+      package_id: PKG-065
+      check_id: check_wp_finish_flood
+      status: failed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】饰面闭水 48h：客卫地漏周边渗漏，楼下天花见湿痕【模拟】"]
+      check_spec_sha256: 8457026a6b6c65c91293681a1e853716c1b2e6f0a97e206f59f8c7e847942094
+      project_data_sha256: 6c8d3e08bf400be22ae04f356d02f2ba2c7c7c42b3385049e97002193711875c
+    - id: AUD-SIM-051
+      package_id: PKG-065
+      check_id: SCH-065-03
+      status: failed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】饰面层闭水首验不合格：客卫地漏周边渗漏，须整改复验【模拟】"]
+      check_spec_sha256: 2815a73d878ced391bf2822c8141cef9c52a9888fe04d75a2c60df7c762a5e6f
+      project_data_sha256: 6c8d3e08bf400be22ae04f356d02f2ba2c7c7c42b3385049e97002193711875c

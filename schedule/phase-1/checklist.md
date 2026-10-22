@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"d63ea5272fae3c11b575df541c8fb0c473c00945c0f6916e04628b1c1e2069c7","config/ceiling.yaml":"4469b08f84abf2442eb2df64ddec205bd78da9d646480056d5683c163fa8c899","config/electrical-topology.yaml":"112be80a82973e59b3dac07790042bc3d9b46086cc38268f298947be0feb5c00","config/electrical.yaml":"5ccf809f2c1134e0c0e3c1c5afaf7c6f71c916280f0e662de88fa20f1173fca7","config/house.yaml":"52b1b8ade6969ddf9d17fbe45bb3c2ec4bafed65545225600a1735d91d788f5e","config/hvac.yaml":"ab93cb47ff04083f7d8cb8bb2a5cdcd7d2e3e62d8357aef0fb7914897e30871c","config/layout/model-geometry.yaml":"585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f","config/layout/overlay.yaml":"69bd817f08391ef7cbb19f9b9cf85c1014809ea296406f3bae678a6620a47dbc","config/mep-hvac-coordination.yaml":"5090867df2224edcfafee8c66d8be50e228dda5dbde790559826e0a76dde3206","config/model-package-links.yaml":"6f351ff5231cc650de48e5ef89c8f2fa13650b81312badd9ed6c525373e04f7e","config/plumbing.yaml":"8f501540a5ea8e739c1c95171fd09c178245915270efe9a76e0a46afc130473b","docs/pending-site-data.md":"e480707ecfc9779dcba50c6dc45b1108f67df9ec5b892a5fad6023cc5e34d946","schedule/phase-1/control.yaml":"f8a9439b7c16ff58be77f801912eb63780d7cd326da7a3a4711dafd4e794b749","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"d63ea5272fae3c11b575df541c8fb0c473c00945c0f6916e04628b1c1e2069c7","config/ceiling.yaml":"4469b08f84abf2442eb2df64ddec205bd78da9d646480056d5683c163fa8c899","config/electrical-topology.yaml":"112be80a82973e59b3dac07790042bc3d9b46086cc38268f298947be0feb5c00","config/electrical.yaml":"5ccf809f2c1134e0c0e3c1c5afaf7c6f71c916280f0e662de88fa20f1173fca7","config/house.yaml":"52b1b8ade6969ddf9d17fbe45bb3c2ec4bafed65545225600a1735d91d788f5e","config/hvac.yaml":"ab93cb47ff04083f7d8cb8bb2a5cdcd7d2e3e62d8357aef0fb7914897e30871c","config/layout/model-geometry.yaml":"585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f","config/layout/overlay.yaml":"69bd817f08391ef7cbb19f9b9cf85c1014809ea296406f3bae678a6620a47dbc","config/mep-hvac-coordination.yaml":"5090867df2224edcfafee8c66d8be50e228dda5dbde790559826e0a76dde3206","config/model-package-links.yaml":"6f351ff5231cc650de48e5ef89c8f2fa13650b81312badd9ed6c525373e04f7e","config/plumbing.yaml":"8f501540a5ea8e739c1c95171fd09c178245915270efe9a76e0a46afc130473b","docs/pending-site-data.md":"e480707ecfc9779dcba50c6dc45b1108f67df9ec5b892a5fad6023cc5e34d946","schedule/phase-1/control.yaml":"722d92ccae25c050534c65ce939c75e84a7744b0465f5ae5f4b79e9068439d38","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:f3b655109cd68c583e7ee73160109896e0b72bfd059c45273d80a080b52bc47e`（15 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:b813bd0879011cd102fc6fa82fc577ea2d29ab0e8de2e2bfe48b847c5f621e28`（15 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -31,7 +31,7 @@
 | 40 | [PKG-040｜水电改造](#pkg-040) | passed | ready | 0 | passed |
 | 50 | [PKG-050｜防水及闭水](#pkg-050) | passed | ready | 0 | passed |
 | 60 | [PKG-060｜泥瓦与铺贴](#pkg-060) | passed | ready | 0 | passed |
-| 65 | [PKG-065｜卫生间美缝（先行）](#pkg-065) | in_progress | ready | 5 | pending |
+| 65 | [PKG-065｜卫生间美缝（先行）](#pkg-065) | failed | ready | 2 | failed |
 | 70 | [PKG-070｜吊顶龙骨、隐蔽复验与封板](#pkg-070) | not_started | blocked | 4 | pending |
 | 80 | [PKG-080｜墙顶面基层与涂装](#pkg-080) | not_started | blocked | 4 | pending |
 | 90 | [PKG-090｜室内门及厨房门](#pkg-090) | not_started | blocked | 3 | pending |
@@ -510,9 +510,9 @@
 
 - 通俗说明：两卫及客卫开放洗漱区的瓷砖美缝，先行于其余区域（DEC-2026-10-22-R03 自 PKG-130 拆出）：清理并填充主卫、客卫确认范围内的墙地砖缝，砖缝干燥确认后施工；完成后做饰面层闭水，通过后放行洁具安装（PKG-100）。其余区域美缝见 PKG-130。
 - 预算：¥500；合同：—；已付：¥0；预测：—
-- 依赖：PKG-060；就绪：`ready`；执行：`in_progress`
+- 依赖：PKG-060；就绪：`ready`；执行：`failed`
 - 责任角色：美缝施工、业主；付款门槛：`GATE-065-COMPLETE`
-- 当前付款门槛状态：`pending`
+- 当前付款门槛状态：`failed`
 
 ### 关联项目数据
 
@@ -535,11 +535,11 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | check_tile_grout_dry | major/引用 | 美缝前砖缝干燥确认 | 1. 贴砖完成且粘结层养护期满（按所用粘结材料说明，不早于铺贴后 7 天）后方可确认。<br>2. 逐区查砖缝：缝内干燥、无明水、无返潮发暗；卫生间坡度倒水试验后至少晾置 48h 再复查。<br>3. 确认后至美缝完成期间，卫生间不得淋水、不得用水冲洗地面；其他区域同此口径。<br> | 缝内干燥无明水，粘结层养护期满，有确认日期记录 | 照片或检测记录 | `87324ac9dd297b83de55f0b1d4583aa8f5c1119b9fb0d6ff520f833fb3e72e37` | pending |
-| [ ] | check_wp_finish_flood | critical/引用 | 饰面层闭水试验（美缝后、洁具安装前，两卫分别记录） | 1. 美缝完成且养护满后、洁具安装前进行；主卫、客卫分别堵地漏蓄水并分别记录，不得合并成一条。<br>2. 蓄水 3–5cm，标记水位线，等待 48 小时。<br>3. 查水位无明显下降，去楼下看对应天花无渗水、无湿痕。<br>4. 发现渗漏先定位整改（砖缝、地漏周边、管根优先），整改后重新蓄水 48h 复验，记录追加不覆盖。<br> | 48h 后水位无明显下降，楼下无渗水 | 照片或检测记录 | `8457026a6b6c65c91293681a1e853716c1b2e6f0a97e206f59f8c7e847942094` | pending |
-| [ ] | SCH-065-01 | major/before_start/阻塞解除后 | 美缝前砖缝干燥确认（卫生间，DEC-2026-10-22-R02/R03） | 按 config/acceptance.yaml 的 check_tile_grout_dry 确认两卫范围：粘结层养护期满、缝内干燥无明水，倒水试验后晾置满 48h 复查 | 两卫砖缝干燥确认记录齐全，确认日期不早于铺贴完成 7 天 | dimensioned_photos、defect_list | `b215ecd1635fc01832bf636b8a33e8c3674da01ef0a679b273bb76ef73216bb7` | pending |
-| [ ] | SCH-065-02 | major/completion/阻塞解除后 | 卫生间美缝范围、颜色和成品质量逐段检查 | 按两卫沿每条砖缝检查漏做、断缝、气泡、凹陷、色差和瓷砖污染 | 两卫确认范围内无漏项，填充连续饱满，颜色符合样板，瓷砖表面清洁 | signed_sample_photos、room_completion_photos、defect_list | `24bc194bc931b19157be34a5165e3c0dcddf156e873e91de5cf6bac0c45fa777` | pending |
-| [ ] | SCH-065-03 | critical/completion/阻塞解除后 | 饰面层闭水试验（DEC-2026-10-22-R02，洁具安装前置门禁；原 SCH-130-03 随拆包迁入） | 按 config/acceptance.yaml 的 check_wp_finish_flood 执行：美缝养护满后两卫分别蓄水 3–5cm、48h，查水位与楼下天花；不合格整改后重新计时复验 | 两卫饰面闭水 48h 水位无明显下降、楼下无渗漏，记录齐全 | dimensioned_photos、completion_photos | `2815a73d878ced391bf2822c8141cef9c52a9888fe04d75a2c60df7c762a5e6f` | pending |
+| [x] | check_tile_grout_dry | major/引用 | 美缝前砖缝干燥确认 | 1. 贴砖完成且粘结层养护期满（按所用粘结材料说明，不早于铺贴后 7 天）后方可确认。<br>2. 逐区查砖缝：缝内干燥、无明水、无返潮发暗；卫生间坡度倒水试验后至少晾置 48h 再复查。<br>3. 确认后至美缝完成期间，卫生间不得淋水、不得用水冲洗地面；其他区域同此口径。<br> | 缝内干燥无明水，粘结层养护期满，有确认日期记录 | 照片或检测记录 | `87324ac9dd297b83de55f0b1d4583aa8f5c1119b9fb0d6ff520f833fb3e72e37` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】砖缝干燥确认通过（验收引用项） |
+| [!] | check_wp_finish_flood | critical/引用 | 饰面层闭水试验（美缝后、洁具安装前，两卫分别记录） | 1. 美缝完成且养护满后、洁具安装前进行；主卫、客卫分别堵地漏蓄水并分别记录，不得合并成一条。<br>2. 蓄水 3–5cm，标记水位线，等待 48 小时。<br>3. 查水位无明显下降，去楼下看对应天花无渗水、无湿痕。<br>4. 发现渗漏先定位整改（砖缝、地漏周边、管根优先），整改后重新蓄水 48h 复验，记录追加不覆盖。<br> | 48h 后水位无明显下降，楼下无渗水 | 照片或检测记录 | `8457026a6b6c65c91293681a1e853716c1b2e6f0a97e206f59f8c7e847942094` | failed；模拟演示（业主）；2026-10-22；证据：【模拟演示】饰面闭水 48h：客卫地漏周边渗漏，楼下天花见湿痕【模拟】 |
+| [x] | SCH-065-01 | major/before_start/阻塞解除后 | 美缝前砖缝干燥确认（卫生间，DEC-2026-10-22-R02/R03） | 按 config/acceptance.yaml 的 check_tile_grout_dry 确认两卫范围：粘结层养护期满、缝内干燥无明水，倒水试验后晾置满 48h 复查 | 两卫砖缝干燥确认记录齐全，确认日期不早于铺贴完成 7 天 | dimensioned_photos、defect_list | `b215ecd1635fc01832bf636b8a33e8c3674da01ef0a679b273bb76ef73216bb7` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】两卫砖缝干燥确认：养护期满、缝内无明水，倒水后晾置 48h 复查合格 |
+| [x] | SCH-065-02 | major/completion/阻塞解除后 | 卫生间美缝范围、颜色和成品质量逐段检查 | 按两卫沿每条砖缝检查漏做、断缝、气泡、凹陷、色差和瓷砖污染 | 两卫确认范围内无漏项，填充连续饱满，颜色符合样板，瓷砖表面清洁 | signed_sample_photos、room_completion_photos、defect_list | `24bc194bc931b19157be34a5165e3c0dcddf156e873e91de5cf6bac0c45fa777` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】两卫美缝逐段检查：饱满连续、颜色对样板、无污染 |
+| [!] | SCH-065-03 | critical/completion/阻塞解除后 | 饰面层闭水试验（DEC-2026-10-22-R02，洁具安装前置门禁；原 SCH-130-03 随拆包迁入） | 按 config/acceptance.yaml 的 check_wp_finish_flood 执行：美缝养护满后两卫分别蓄水 3–5cm、48h，查水位与楼下天花；不合格整改后重新计时复验 | 两卫饰面闭水 48h 水位无明显下降、楼下无渗漏，记录齐全 | dimensioned_photos、completion_photos | `2815a73d878ced391bf2822c8141cef9c52a9888fe04d75a2c60df7c762a5e6f` | failed；模拟演示（业主）；2026-10-22；证据：【模拟演示】饰面层闭水首验不合格：客卫地漏周边渗漏，须整改复验【模拟】 |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
