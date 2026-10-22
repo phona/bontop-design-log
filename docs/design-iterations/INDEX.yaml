@@ -224,9 +224,10 @@ entries:
     external_refs: 2
   - dir: living-antique-eight-globe-light-20261017
     topic: living
-    review_state: none
+    review_state: delivery_ready
     supersedes: none
     external_refs: 1
+    note: "2026-10-22 更正——本轮 review-manifest 状态键为 status、值 delivery_ready（R6 双评审 PASS，业主 2026-10-17 确认）；INDEX 原按 state 键回抽误记 none；同日按关账规则清理 evidence，仅留 R6 五视角终稿"
   - dir: living-ceiling-underpanel-20261015
     topic: living
     review_state: incomplete
