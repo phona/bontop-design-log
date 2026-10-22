@@ -6,7 +6,7 @@
  * **不允许自带米数/面积**——否则 A 家按毛量、B 家按净量，数字永远对不上。
  *
  * 一张卡 = 一个可执行方案（品牌档位 + 人工口径）。切方案只改 `config/mep-quotes.yaml`
- * 的 `active:` 一行，`POST /api/mep/quotes/active` 与 MCP `set_mep_quote` 也只改这一行
+ * 的 `active:` 一行，切换只改这一行
  * （留 .bak、保留注释），量永远不变。
  *
  * 计价行分两类：

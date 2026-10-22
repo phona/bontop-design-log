@@ -121,7 +121,7 @@ export function compareCeilingQuotes(
 // ─── base.json 兜底费率表（**全仓唯一一份**）──────────────────────────────────
 //
 // DEC-2026-10-13「预算计算架构根治」第二道对账（价单一源）。这张表此前在
-// `server/routes.ts`、`server/mcp-server.ts`、`server/budget-calculator.ts` 里
+// `server/routes.ts`、已删除的 MCP 服务端、`server/budget-calculator.ts` 里
 // **逐字复制了三份**（前两份连缩进都一致），连三条硬编码 null
 // （`gypsum_edge_drop_linear` / `gypsum_flat_sqm` / `aluminum_buckle_sqm`）也各抄一遍。
 //
@@ -156,7 +156,7 @@ export function baseJsonCeilingRatesFromBase(baseRaw: {
 }
 
 /**
- * 读 `config/budget/base.json` 取兜底吊顶费率（`routes.ts` / `mcp-server.ts` 用）。
+ * 读 `config/budget/base.json` 取兜底吊顶费率（`routes.ts` 用）。
  *
  * C12 新增的两行（边吊按米 / 满吊平顶按㎡）在 base.json 里没有对应 labor 行，
  * 回落值就是 null（待报价）——不编金额，只在报价面板显形。

@@ -1,3 +1,5 @@
+import { escapeHtml } from './escape-html.js';
+
 const SEASONS: Array<{ key: string; label: string; month: number; day: number }> = [
   { key: 'winter', label: '冬至', month: 12, day: 22 },
   { key: 'summer', label: '夏至', month: 6, day: 22 },
@@ -126,7 +128,7 @@ export class SunlightPanel {
       <label style="display:block; margin-bottom:4px;">日期 <span id="sunlight-date-label">${String(this.selectedDate.month).padStart(2, '0')}-${String(this.selectedDate.day).padStart(2, '0')}</span></label>
       <input id="sunlight-date" type="range" min="0" max="364" value="${dateToIndex(this.selectedDate.month, this.selectedDate.day)}" style="width:100%;" />
       <div style="display:flex; gap:6px; margin:8px 0;">
-        ${SEASONS.map((s) => `<button data-season="${s.key}" style="flex:1; background:#2a2a3e; color:#ccd; border:1px solid #3a3a5e; border-radius:6px; padding:4px 0; cursor:pointer;">${s.label}</button>`).join('')}
+        ${SEASONS.map((s) => `<button data-season="${escapeHtml(s.key)}" style="flex:1; background:#2a2a3e; color:#ccd; border:1px solid #3a3a5e; border-radius:6px; padding:4px 0; cursor:pointer;">${escapeHtml(s.label)}</button>`).join('')}
       </div>
       <label style="display:block; margin-bottom:4px;">时刻 <span id="sunlight-hour-label">${formatHour(this.selectedHour)}</span></label>
       <input id="sunlight-hour" type="range" min="0" max="96" value="${Math.round(this.selectedHour * 4)}" style="width:100%;" />

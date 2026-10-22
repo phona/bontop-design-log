@@ -2071,7 +2071,7 @@ function runQuantityParity(ws: FactsWorkspace, result: FactsLintResult, lines: L
 // 2026-10-14「预算计算架构根治」第二道强制对账（价单一源）。
 //
 // 治的失效模式（已实测）：base.json 的兜底吊顶费率表在 server/routes.ts、
-// server/mcp-server.ts、server/budget-calculator.ts 里**逐字复制了三份**（前两份连缩进
+// 已删除的 MCP 服务端、server/budget-calculator.ts 里**逐字复制了三份**（前两份连缩进
 // 都一致，md5 相同），连三条硬编码 null 也各抄一遍。三份复制时改一处漏两处不会有任何
 // 机制发现——「同一份费率」可以静默分成两个值，而两边都跑得通。
 //

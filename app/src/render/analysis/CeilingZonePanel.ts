@@ -11,6 +11,7 @@
 import type { HouseScene } from '../HouseScene.js';
 import { setupCollapsiblePanel } from '../../ui/CollapsiblePanel.js';
 import { ceilingZoneColor, TRADE_LABEL, type CeilingZoneColorMode } from './ceiling-zone-colors.js';
+import { escapeHtml } from '../../ui/escape-html.js';
 
 const TRADE_ORDER = ['gypsum_board', 'aluminum_buckle', 'curtain_box', 'drying_rack'] as const;
 
@@ -56,10 +57,10 @@ export class CeilingZonePanel {
       const quantity = zone.trade === 'curtain_box'
         ? `${zone.netAreaM2.toFixed(3)}㎡ · ${zone.longSideM.toFixed(2)}m`
         : `${zone.netAreaM2.toFixed(3)}㎡${zone.panelCount !== undefined ? ` · ${zone.panelCount}块` : ''}`;
-      return `<tr data-zone="${zone.id}" data-active="${active}" style="cursor:pointer;${dim ? ' opacity:0.45;' : ''}">
+      return `<tr data-zone="${escapeHtml(zone.id)}" data-active="${active}" style="cursor:pointer;${dim ? ' opacity:0.45;' : ''}">
         <td style="width:18px;"><span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:${color}; border:1px solid rgba(255,255,255,.25);"></span></td>
-        <td title="${zone.id}">${zone.id}</td>
-        <td>${zone.roomName}</td>
+        <td title="${escapeHtml(zone.id)}">${escapeHtml(zone.id)}</td>
+        <td>${escapeHtml(zone.roomName)}</td>
         <td>${zone.thickness.toFixed(2)} / ${zone.bottomY.toFixed(2)}</td>
         <td style="text-align:right;">${quantity}</td>
       </tr>`;
@@ -76,7 +77,7 @@ export class CeilingZonePanel {
         return `<tbody>
           <tr class="ceiling-zone-group">
             <td><span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:${ceilingZoneColor('', trade, 'trade')}; border:1px solid rgba(255,255,255,.25);"></span></td>
-            <td><strong>${TRADE_LABEL[trade]}</strong></td>
+            <td><strong>${escapeHtml(TRADE_LABEL[trade])}</strong></td>
             <td>${rollup.zones} 区</td>
             <td>展开 ${rollup.expandedAreaM2.toFixed(2)}㎡</td>
             <td style="text-align:right;"><strong>${subtotal}</strong></td>
@@ -93,12 +94,12 @@ export class CeilingZonePanel {
       </tr></thead>
       ${groups}
       ${unclassified.length > 0
-        ? `<tbody><tr class="ceiling-zone-group"><td colspan="5" style="color:#e63946;">⚠ 未归类分区（trade 缺失/非法）：${unclassified.map((zone) => zone.id).join('、')}</td></tr></tbody>`
+        ? `<tbody><tr class="ceiling-zone-group"><td colspan="5" style="color:#e63946;">⚠ 未归类分区（trade 缺失/非法）：${escapeHtml(unclassified.map((zone) => zone.id).join('、'))}</td></tr></tbody>`
         : ''}
     </table>
     <div style="margin-top:8px; color:#9aa4b2; font-size:11px;">
       合计净 ${takeoff.totalNetAreaM2.toFixed(3)}㎡ · 展开 ${takeoff.totalExpandedAreaM2.toFixed(3)}㎡ · 周长 ${takeoff.totalPerimeterM.toFixed(2)}m
-      ${takeoff.overlaps.length > 0 ? `<br><span style="color:#e9c46a;">⚠ 平面重叠 ${takeoff.overlapAreaM2.toFixed(3)}㎡：${takeoff.overlaps.join('；')}（业主裁定分区边界前不计入 resolved）</span>` : ''}
+      ${takeoff.overlaps.length > 0 ? `<br><span style="color:#e9c46a;">⚠ 平面重叠 ${takeoff.overlapAreaM2.toFixed(3)}㎡：${escapeHtml(takeoff.overlaps.join('；'))}（业主裁定分区边界前不计入 resolved）</span>` : ''}
       <br>报价口径：<code>npm run takeoff:ceiling</code> / <code>GET /api/ceiling/takeoff</code>；显示层不作出料依据。
     </div>`;
 

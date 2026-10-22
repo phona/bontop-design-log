@@ -110,11 +110,11 @@ grep -rn "DEC-2026-10-08-R01" docs/decisions/
 
 ### 日照模拟
 
-点击右下角“日照”按钮打开面板：日期/时刻滑杆实时驱动太阳位置与光影（真实天文算法，南宁经纬度），季节预设（冬至/夏至/春分/秋分）、延时播放、俯视日照时长热力图（冬至默认）。分析数据：`GET /api/analysis/sunlight?date=MM-DD`，MCP 工具 `get_sunlight_analysis`。配置见 `config/environment.yaml`。
+点击右下角“日照”按钮打开面板：日期/时刻滑杆实时驱动太阳位置与光影（真实天文算法，南宁经纬度），季节预设（冬至/夏至/春分/秋分）、延时播放、俯视日照时长热力图（冬至默认）。分析数据：`GET /api/analysis/sunlight?date=MM-DD`。配置见 `config/environment.yaml`。
 
 ### 湿度风险评估
 
-点击“湿度”按钮：各房间按结露/发霉风险等级着色（绿低/黄中/红高），高风险重点表面（回南天地面、朝北外墙、热桥角部）以脉冲标记显示，点击房间查看因子拆解。回南天窗口（02-15~04-15）内冷表面因子自动生效，日照面板会显示提示条。分析数据：`GET /api/analysis/humidity?date=MM-DD`，MCP 工具 `get_humidity_risks`。湿度因子声明见 `config/environment.yaml` 的 `humidity:` 段。
+点击“湿度”按钮：各房间按结露/发霉风险等级着色（绿低/黄中/红高），高风险重点表面（回南天地面、朝北外墙、热桥角部）以脉冲标记显示，点击房间查看因子拆解。回南天窗口（02-15~04-15）内冷表面因子自动生效，日照面板会显示提示条。分析数据：`GET /api/analysis/humidity?date=MM-DD`。湿度因子声明见 `config/environment.yaml` 的 `humidity:` 段。
 
 ### 吊顶分区高亮与算量（DEC-2026-10-08-C01）
 
@@ -127,11 +127,11 @@ npm run takeoff:ceiling            # 分区表 + 工艺小计 + 显形项（重�
 npm run takeoff:ceiling -- --json  # 机器可读
 ```
 
-当前声明快照：19 个实心分区，净 **45.130㎡** / 展开 **77.053㎡**；石膏板吊顶 10 区 23.222㎡、铝扣板 3 区 16.366㎡（185 块 300×300）、窗帘盒 5 区 4.463㎡（**17.85 延长米**）、隐藏晾衣架吊顶 1 区 1.080㎡。查询出口：`GET /api/ceiling/takeoff`、MCP `get_ceiling_takeoff`；木工人工量已从"房间面积近似（142.92㎡）"改为分区实算。显形项（平面重叠、未归类、未计量分区）见 `computeCeilingTakeoff()` 的 `overlaps` / `unclassifiedZoneIds` / `excludedIds`，未裁定前不当作 resolved。
+当前声明快照：19 个实心分区，净 **45.130㎡** / 展开 **77.053㎡**；石膏板吊顶 10 区 23.222㎡、铝扣板 3 区 16.366㎡（185 块 300×300）、窗帘盒 5 区 4.463㎡（**17.85 延长米**）、隐藏晾衣架吊顶 1 区 1.080㎡。查询出口：`GET /api/ceiling/takeoff`；木工人工量已从"房间面积近似（142.92㎡）"改为分区实算。显形项（平面重叠、未归类、未计量分区）见 `computeCeilingTakeoff()` 的 `overlaps` / `unclassifiedZoneIds` / `excludedIds`，未裁定前不当作 resolved。
 
 计价口径（DEC-2026-10-08-C02）：木工人工分两行——**板面**（石膏板+铝扣板+晾衣架吊顶）40 元/㎡ × 40.667㎡，**窗帘盒**按延长米 17.85m 单列，费率待报价（数量已显形在预算快照的 `pendingLabor`，取到报价后只填 `config/budget/base.json` 的 `rate`，不改代码）。
 
-多家报价切换（DEC-2026-10-08-C03）：`config/ceiling-quotes.yaml` 一卡一家，卡里**只写单价和含项范围、禁止自带面积**（量永远来自 takeoff）。`GET /api/ceiling/quotes` 并排看全部候选（逐行 subtotal、总额、与生效卡差额、可比性标记）；`POST /api/ceiling/quotes/active` 或 MCP `set_ceiling_quote` 切换——只改写 `active:` 一行（留 `.bak`，Git diff 只有一行）。没写 `scope_note` 的候选会标 `comparable: false`；`per_unit: null` 的行数量显形、总额不编；配置文件坏掉时预算自动回落 `base.json` 费率，不冻结。
+多家报价切换（DEC-2026-10-08-C03）：`config/ceiling-quotes.yaml` 一卡一家，卡里**只写单价和含项范围、禁止自带面积**（量永远来自 takeoff）。`GET /api/ceiling/quotes` 并排看全部候选（逐行 subtotal、总额、与生效卡差额、可比性标记）；`POST /api/ceiling/quotes/active` 切换——只改写 `active:` 一行（留 `.bak`，Git diff 只有一行）。没写 `scope_note` 的候选会标 `comparable: false`；`per_unit: null` 的行数量显形、总额不编；配置文件坏掉时预算自动回落 `base.json` 费率，不冻结。
 
 ### 涂漆（墙顶面独立选择）一键高亮与成本核算（DEC-2026-10-08-C05、DEC-2026-10-15-P17）
 
@@ -150,7 +150,7 @@ npx tsx --test tests/server/paint-sill-scope.test.ts  # 上飘窗外露面几何
 
 外部报价登记（DEC-2026-10-08-C07）：`config/paint-comparison.yaml` 的 `quotes[]` 收包工包料类报价，按声明的净计费面积折算总额，并给出「vs PKG-080 计划额 / vs 业主目标 / vs 自下而上涂刷模型」三方对照。当前登记：多乐士包工包料 55 元/㎡ × 308.652㎡ = **¥16,975.86**（高于计划 ¥5,475.86；与默认情景差 ¥4,039.56 = 折合 13.09 元/㎡，即基层/腻子/样品成品保护的隐含额度）。覆盖范围与遍数未确认，只对照、不与计划额划等号。
 
-成本核算：`config/paint-comparison.yaml` 是唯一口径文件（遍数、底漆假设、扣减开关、人工费率、对账基准），`server/paint-cost-comparison.ts` 与 `materials.yaml` / `config/budget/base.json` / `schedule/phase-1/control.yaml` 逐项对账，算不出就 503。查询出口：`GET /api/paint/comparison`、`GET /api/budget` 的 `paintBudgetPreview`（`status: 'comparison_overlay_only'`，不进总额），MCP 同源。四个情景并列（面漆 1/2 遍 × 扣/不扣门窗洞），`selectedScenarioId` 恒为 null——遍数拍板前不给单一数字：默认（2 遍、扣洞）面漆 6 桶 + 底漆 3 桶，材料 ¥5,220 + 人工 ¥7,716.30 = **¥12,936.30**，高于 PKG-080 计划 ¥11,500 约 ¥1,436.30；1 遍口径 ¥11,196.30。不含基层修补、找平批刮腻子、颜色样板与成品保护（COST-080-01/02/04）。
+成本核算：`config/paint-comparison.yaml` 是唯一口径文件（遍数、底漆假设、扣减开关、人工费率、对账基准），`server/paint-cost-comparison.ts` 与 `materials.yaml` / `config/budget/base.json` / `schedule/phase-1/control.yaml` 逐项对账，算不出就 503。查询出口：`GET /api/paint/comparison`、`GET /api/budget` 的 `paintBudgetPreview`（`status: 'comparison_overlay_only'`，不进总额）。四个情景并列（面漆 1/2 遍 × 扣/不扣门窗洞），`selectedScenarioId` 恒为 null——遍数拍板前不给单一数字：默认（2 遍、扣洞）面漆 6 桶 + 底漆 3 桶，材料 ¥5,220 + 人工 ¥7,716.30 = **¥12,936.30**，高于 PKG-080 计划 ¥11,500 约 ¥1,436.30；1 遍口径 ¥11,196.30。不含基层修补、找平批刮腻子、颜色样板与成品保护（COST-080-01/02/04）。
 
 ### 防穿模校验（DEC-2026-10-09-P01）
 
@@ -190,7 +190,7 @@ npm run state:project -- --json      # 机器可读：每构件一条 {status, s
 
 回答一个问题：**每个构件确认到什么程度、卡在谁、和谁冲突。** 状态只派生不存储——权威仍在 `config/*.yaml` 的 `status`/`position_status`、`docs/pending-site-data.md` 的 55 条待决、179 条 DEC 与各 verifier 结论；本命令产出的是视图。优先级：门禁 error(`conflicted`) > config 字段 > 待决台账(`pending`) > DEC 引用(`confirmed`) > **`undeclared`（派生不出来，显形而不是默认已确认）**。规则顺序与状态词映射在 `config/state-model.yaml`，可评审。
 
-当前快照：**164 个构件** = confirmed 73 / undeclared 68 / pending 21 / inferred 2（`tests/server/element-state.test.ts` 钉住总数与申报缺口，数字变化必须是有意的）。`sock_child_ac` 可答：「pending，卡在空调厂家深化图（#42）」。不需要 MCP——agent 读配置、跑这条命令、curl 既有 API 已足够。
+当前快照：**164 个构件** = confirmed 73 / undeclared 68 / pending 21 / inferred 2（`tests/server/element-state.test.ts` 钉住总数与申报缺口，数字变化必须是有意的）。`sock_child_ac` 可答：「pending，卡在空调厂家深化图（#42）」。不需要 MCP——agent 读配置、跑这条命令、curl 既有 API 已足够。（2026-10-22 起 MCP 服务端已整体删除，本地 AI 直接拉文件 / 跑 CLI / curl API。）
 
 ## 核心原则
 

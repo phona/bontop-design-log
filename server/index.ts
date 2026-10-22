@@ -7,17 +7,8 @@ import { createApiRouter } from './routes.js';
 import { createFurnishingsRouter } from './routes-furnishings.js';
 import { createElectricalRouter } from './routes-electrical.js';
 import { createPlumbingRouter } from './routes-plumbing.js';
-import { createMcpServer } from './mcp-server.js';
-import { attachMcpTransports } from './mcp-transports.js';
 import { RuleEngine } from './rule-engine.js';
 import { BudgetCalculator } from './budget-calculator.js';
-import { BudgetAdvisor } from './budget-advisor.js';
-import { BudgetValueAnalyzer } from './budget-value-analyzer.js';
-import { PitfallEngine } from './pitfall-engine.js';
-import type { PitfallConfig } from './pitfall-engine.js';
-import { LifecycleEngine } from './lifecycle-engine.js';
-import { TradeoffEngine } from './tradeoff-engine.js';
-import { AcceptanceEngine } from './acceptance-engine.js';
 import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
 import { ProjectRenderFactsLoader } from './project-render-facts-loader.js';
@@ -59,13 +50,7 @@ let catalog = ProjectCatalog.fromMaterials(
 );
 let ruleEngine = new RuleEngine({ version: '1.0', risks: [], constraints: [] });
 let budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
-let budgetAdvisor = new BudgetAdvisor(catalog, budgetCalculator, ruleEngine);
-let budgetValueAnalyzer = new BudgetValueAnalyzer(catalog, budgetCalculator, ruleEngine.getConfig());
-let pitfallEngine = new PitfallEngine({ version: '1.0', pitfalls: [], templates: [] });
 let state: DesignState | undefined;
-const lifecycleEngine = new LifecycleEngine();
-const tradeoffEngine = new TradeoffEngine();
-const acceptanceEngine = new AcceptanceEngine();
 
 function rebuildDerived(): void {
   const materials = materialsLoader.getConfig() ?? { materials: [] };
@@ -74,12 +59,8 @@ function rebuildDerived(): void {
   const houseMeta = houseMetaLoader.getConfig();
   catalog = ProjectCatalog.fromMaterials(materials, budgetBase, layout, houseMeta, 'model-geometry');
   const rulesConfig = designRulesLoader.getConfig() ?? { version: '1.0', risks: [], constraints: [] };
-    ruleEngine = new RuleEngine(rulesConfig);
-    budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
-    budgetAdvisor = new BudgetAdvisor(catalog, budgetCalculator, ruleEngine);
-    budgetValueAnalyzer = new BudgetValueAnalyzer(catalog, budgetCalculator, ruleEngine.getConfig());
-  const pitfallConfig = pitfallsLoader.getConfig() ?? { version: '1.0', pitfalls: [], templates: [] };
-  pitfallEngine = new PitfallEngine(pitfallConfig);
+  ruleEngine = new RuleEngine(rulesConfig);
+  budgetCalculator = new BudgetCalculator(catalog, ruleEngine.getConfig());
   state?.updateCatalog(catalog);
 }
 
@@ -135,16 +116,6 @@ const houseMetaLoader = new ConfigLoader<HouseYaml>(
 );
 registry.register(houseMetaLoader);
 
-const pitfallsLoader = new ConfigLoader<PitfallConfig>(
-  'config/budget-pitfalls.yaml',
-  (raw) => load(raw) as PitfallConfig,
-  () => {
-    rebuildDerived();
-    console.log('[server] config/budget-pitfalls.yaml reloaded');
-  }
-);
-registry.register(pitfallsLoader);
-
 designRulesLoader.load();
 materialsLoader.load();
 budgetBaseLoader.load();
@@ -170,7 +141,6 @@ registry.register(environmentLoader);
 environmentLoader.load();
 
 houseMetaLoader.load();
-pitfallsLoader.load();
 overlayLoader.load();
 projectRenderFactsLoader.load();
 
@@ -192,12 +162,6 @@ const apiDeps = {
   },
   getRuleEngine: () => ruleEngine,
   getBudgetCalculator: () => budgetCalculator,
-  getPitfallEngine: () => pitfallEngine,
-  getLifecycleEngine: () => lifecycleEngine,
-  getTradeoffEngine: () => tradeoffEngine,
-  getAcceptanceEngine: () => acceptanceEngine,
-  getBudgetAdvisor: () => budgetAdvisor,
-  getBudgetValueAnalyzer: () => budgetValueAnalyzer,
   archiveStore,
   presentationState,
   getConfigRegistry: () => registry,
@@ -257,7 +221,7 @@ app.use((req, res, next) => {
   }
   next();
 });
-// All API and MCP requests use small structured payloads.  Keep malformed or
+// All API requests use small structured payloads.  Keep malformed or
 // oversized JSON from consuming the server before route-level validation runs.
 app.use(express.json({ limit: '1mb', strict: true }));
 app.use('/api', createApiRouter(apiDeps));
@@ -273,26 +237,23 @@ app.use('/api/furnishings', createFurnishingsRouter('config/house.yaml'));
 app.use('/api/electrical', createElectricalRouter('config/electrical.yaml'));
 app.use('/api/plumbing', createPlumbingRouter('config/plumbing.yaml'));
 
-attachMcpTransports(app, () => createMcpServer(apiDeps)).then(() => {
-  const server = app.listen(PORT, HOST, () => {
-    console.log(`Bontop design server listening on http://${HOST}:${PORT}`);
-  });
-
-  designRulesLoader.startWatching();
-  materialsLoader.startWatching();
-  budgetBaseLoader.startWatching();
-  layoutLoader.startWatching();
-  houseMetaLoader.startWatching();
-  pitfallsLoader.startWatching();
-  overlayLoader.startWatching();
-  environmentLoader.startWatching();
-  projectRenderFactsLoader.startWatching();
-
-  const shutdown = async () => {
-    await registry.stopAll();
-    server.close(() => process.exit(0));
-  };
-
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+const server = app.listen(PORT, HOST, () => {
+  console.log(`Bontop design server listening on http://${HOST}:${PORT}`);
 });
+
+designRulesLoader.startWatching();
+materialsLoader.startWatching();
+budgetBaseLoader.startWatching();
+layoutLoader.startWatching();
+houseMetaLoader.startWatching();
+overlayLoader.startWatching();
+environmentLoader.startWatching();
+projectRenderFactsLoader.startWatching();
+
+const shutdown = async () => {
+  await registry.stopAll();
+  server.close(() => process.exit(0));
+};
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

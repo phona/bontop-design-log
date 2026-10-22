@@ -6,8 +6,6 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': process.env.BONTOP_API_ORIGIN ?? 'http://localhost:4000',
-      '/mcp': process.env.BONTOP_API_ORIGIN ?? 'http://localhost:4000',
-      '/sse': process.env.BONTOP_API_ORIGIN ?? 'http://localhost:4000',
     },
     fs: {
       allow: [path.resolve(__dirname), path.resolve(__dirname, '../config')],

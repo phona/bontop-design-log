@@ -1,4 +1,5 @@
 import { KEY_BINDINGS, type KeyBinding } from './keybindings.js';
+import { escapeHtml } from './escape-html.js';
 
 export class CommandPalette {
   private container: HTMLDivElement;
@@ -31,12 +32,12 @@ export class CommandPalette {
       <h2 style="margin:0 0 16px; font-size:18px; color:#fff;">快捷键</h2>`;
 
     for (const [cat, bindings] of groups) {
-      html += `<h3 style="margin:12px 0 6px; font-size:13px; color:#8888aa; text-transform:uppercase;">${cat}</h3>`;
+      html += `<h3 style="margin:12px 0 6px; font-size:13px; color:#8888aa; text-transform:uppercase;">${escapeHtml(cat)}</h3>`;
       for (const b of bindings) {
-        const modeTag = b.mode && b.mode !== 'all' ? `<span style="font-size:11px; color:#666; margin-left:8px;">${b.mode}</span>` : '';
+        const modeTag = b.mode && b.mode !== 'all' ? `<span style="font-size:11px; color:#666; margin-left:8px;">${escapeHtml(b.mode)}</span>` : '';
         html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid #2a2a3e;">
-          <span style="font-size:14px;">${b.description}</span>
-          <span><kbd style="background:#2a2a3e; border:1px solid #3a3a5e; border-radius:4px; padding:2px 8px; font-size:13px; font-family:monospace; color:#aad;">${b.key}</kbd>${modeTag}</span>
+          <span style="font-size:14px;">${escapeHtml(b.description)}</span>
+          <span><kbd style="background:#2a2a3e; border:1px solid #3a3a5e; border-radius:4px; padding:2px 8px; font-size:13px; font-family:monospace; color:#aad;">${escapeHtml(b.key)}</kbd>${modeTag}</span>
         </div>`;
       }
     }

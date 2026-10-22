@@ -1,3 +1,5 @@
+import { escapeHtml } from './escape-html.js';
+
 export class PlacementPanel {
   private container: HTMLDivElement;
   private visible = false;
@@ -34,17 +36,17 @@ export class PlacementPanel {
     let html = '';
     for (const cat of this.categories) {
       html += `<div style="margin-bottom:10px;">`;
-      html += `<div style="color:#888; font-size:12px; margin-bottom:6px; padding-left:4px;">${cat.label}</div>`;
+      html += `<div style="color:#888; font-size:12px; margin-bottom:6px; padding-left:4px;">${escapeHtml(cat.label)}</div>`;
       html += `<div style="display:flex; flex-wrap:wrap; gap:6px;">`;
       for (const item of cat.items) {
-        html += `<button data-category="${cat.category}" data-type="${item.type}" style="
+        html += `<button data-category="${escapeHtml(cat.category)}" data-type="${escapeHtml(item.type)}" style="
           background:#2a2a3e; border:1px solid #3a3a5e; border-radius:8px;
           padding:8px 12px; color:#e0e0e0; cursor:pointer; font-size:13px;
           display:flex; flex-direction:column; align-items:center; gap:2px;
           min-width:68px;
         ">
-          <span style="font-size:18px;">${item.icon}</span>
-          <span>${item.label}</span>
+          <span style="font-size:18px;">${escapeHtml(item.icon)}</span>
+          <span>${escapeHtml(item.label)}</span>
         </button>`;
       }
       html += `</div></div>`;

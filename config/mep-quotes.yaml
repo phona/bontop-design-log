@@ -5,8 +5,7 @@
 # mep-hvac-coordination.yaml 实算，报价方只报单价 + 含项范围，不允许自带米数/面积。
 #
 # 铁律：
-#  1. `active:` 指向生效卡片；切换只改这一行（POST /api/mep/quotes/active 或 MCP set_mep_quote，
-#     都会留 .bak、保留注释），Git diff 只有一行。
+#  1. `active:` 指向生效卡片；切换只改这一行（手改这一行即可，留 .bak、保留注释），Git diff 只有一行。
 #  2. `per_unit: null` = 待报价：数量照样显形、金额不编，杜绝「换个报价把活儿变没」。
 #  3. 未声明的行回落到 config/mep-labor.yaml（server/mep-quotes.ts 的 mepQuoteFallback() 读取），
 #     并标 rate_source: mep-labor.yaml——回落必须看得见，不悄悄替换。人工五行的费率在那里维护。

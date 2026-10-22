@@ -1717,7 +1717,7 @@ contracts:
       - { label: '预算实际计价量（快照 lineItems topic=cabinet）', value: 'dataset:budget.line_items.cabinet' }
 
   # ⑤ 价单一源：base.json 兜底吊顶费率表在全仓只许有一份实现。
-  #    已实测：该表在 server/routes.ts、server/mcp-server.ts、server/budget-calculator.ts 里
+  #    已实测：该表在 server/routes.ts、已删除的 MCP 服务端、server/budget-calculator.ts 里
   #    逐字复制三份（前两份 md5 一致），三条硬编码 null 也各抄一遍。三份复制时改一处漏两处
   #    不会有任何机制发现——「同一份费率」可以静默分成两个值，而两边都跑得通。
   #    2026-10-14 已合并到 server/ceiling-quotes.ts 的 baseJsonCeilingRates(FromBase)。
@@ -1803,8 +1803,8 @@ coverage:
   # floor 材料量与 base.json masonry.labor 的 floor 人工行都读它——「地面面积」从此只有一处口径。
   - { file: config/tile-comparison.yaml, field: "dry_room_ids", readers: ["server/budget-calculator.ts", "server/tile-cost-comparison.ts"] }
   - { file: config/tile-comparison.yaml, field: "wet_room_ids", readers: ["server/budget-calculator.ts"] }
-  - { file: config/ceiling-quotes.yaml, field: "active", readers: ["server/ceiling-quotes.ts", "server/budget-calculator.ts", "server/routes.ts", "server/mcp-server.ts"] }
-  - { file: config/ceiling-quotes.yaml, field: "quotes", readers: ["server/ceiling-quotes.ts", "server/routes.ts", "server/mcp-server.ts"] }
+  - { file: config/ceiling-quotes.yaml, field: "active", readers: ["server/ceiling-quotes.ts", "server/budget-calculator.ts", "server/routes.ts"] }
+  - { file: config/ceiling-quotes.yaml, field: "quotes", readers: ["server/ceiling-quotes.ts", "server/routes.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "version", readers: [] }
   # DEC-2026-10-08-C09 建立、C10 改证据台账：吊顶主材参考成本区间。area_basis 决定对账面积
   # 取 takeoff 的哪个工艺类别；items[] 是材料清单，每条带 observations[] 价格证据台账

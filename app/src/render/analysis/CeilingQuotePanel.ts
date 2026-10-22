@@ -1,4 +1,5 @@
 import { setupCollapsiblePanel } from '../../ui/CollapsiblePanel.js';
+import { escapeHtml } from '../../ui/escape-html.js';
 
 /**
  * 吊顶报价面板（DEC-2026-10-08-C03）。
@@ -102,7 +103,7 @@ export class CeilingQuotePanel {
   private render(): void {
     const body = this.el?.querySelector('#ceiling-quote-list') as HTMLElement | null;
     if (!body) return;
-    const error = this.errorMessage ? `<div class="ceiling-quote-error">${this.errorMessage}</div>` : '';
+    const error = this.errorMessage ? `<div class="ceiling-quote-error">${escapeHtml(this.errorMessage)}</div>` : '';
     if (!this.payload) {
       body.innerHTML = `${error}<div class="ceiling-quote-foot">未取得报价数据。</div>`;
       return;
@@ -116,32 +117,32 @@ export class CeilingQuotePanel {
         // 超出范围的行：金额不编、不参与合计，明确写「不在本家范围」而不是「待报价」
         if (row.out_of_scope) {
           const unit = LINEAR_ROW_KEYS.has(row.key) ? `${qty(row.quantity)} m` : `${qty(row.quantity, 3)} ㎡`;
-          return `<div class="ceiling-quote-row ceiling-quote-row-out">${row.label}：${unit} · <span class="ceiling-quote-tag">不在本家报价范围</span></div>`;
+          return `<div class="ceiling-quote-row ceiling-quote-row-out">${escapeHtml(row.label)}：${unit} · <span class="ceiling-quote-tag">不在本家报价范围</span></div>`;
         }
-        const rate = row.per_unit === null ? '待报价' : `${row.per_unit} ${row.unit}`;
+        const rate = row.per_unit === null ? '待报价' : `${row.per_unit} ${escapeHtml(row.unit)}`;
         const subtotal = row.subtotal === null ? '待报价' : money(row.subtotal);
         const fallback = row.rate_source === 'base.json' ? '<span class="ceiling-quote-tag">回落 base.json</span>' : '';
         const quantity = LINEAR_ROW_KEYS.has(row.key) ? `${qty(row.quantity)} m` : `${qty(row.quantity, 3)} ㎡`;
-        return `<div class="ceiling-quote-row">${row.label}：${quantity} × ${rate} = <strong>${subtotal}</strong>${fallback}</div>`;
+        return `<div class="ceiling-quote-row">${escapeHtml(row.label)}：${quantity} × ${rate} = <strong>${subtotal}</strong>${fallback}</div>`;
       }).join('');
 
       const total = card.total === null
         ? '<span class="ceiling-quote-pending">总额待报价（不编金额）</span>'
         : `<strong>${money(card.total)}</strong>${card.deltaVsActive !== null ? ` <span class="${card.deltaVsActive > 0 ? 'ceiling-quote-up' : 'ceiling-quote-down'}">${card.deltaVsActive > 0 ? '+' : ''}${money(card.deltaVsActive)} vs 生效</span>` : ''}`;
       const scope = card.coveredScope
-        ? `<div class="ceiling-quote-scope">本家覆盖：${card.coveredScope}${card.outOfScopeRows.length > 0 ? '；不含项见下行' : ''}</div>`
+        ? `<div class="ceiling-quote-scope">本家覆盖：${escapeHtml(card.coveredScope)}${card.outOfScopeRows.length > 0 ? '；不含项见下行' : ''}</div>`
         : '';
       const notes = card.comparability_notes.length > 0
-        ? `<div class="ceiling-quote-warn">${card.comparability_notes.join('；')}</div>`
+        ? `<div class="ceiling-quote-warn">${escapeHtml(card.comparability_notes.join('；'))}</div>`
         : '';
       const action = card.active
         ? '<span class="ceiling-quote-tag ceiling-quote-tag-active">生效中</span>'
-        : `<button class="ceiling-quote-switch" data-quote="${card.id}" ${this.switching === card.id ? 'disabled' : ''}>${this.switching === card.id ? '切换中…' : '切换为生效'}</button>`;
+        : `<button class="ceiling-quote-switch" data-quote="${escapeHtml(card.id)}" ${this.switching === card.id ? 'disabled' : ''}>${this.switching === card.id ? '切换中…' : '切换为生效'}</button>`;
 
       return `<div class="ceiling-quote-card${card.active ? ' is-active' : ''}">
         <div class="ceiling-quote-head">
-          <strong>${card.contractor}</strong>
-          <span class="ceiling-quote-meta">${STATUS_LABEL[card.status] ?? card.status}${card.quoted_at ? ` · ${card.quoted_at}` : ''}</span>
+          <strong>${escapeHtml(card.contractor)}</strong>
+          <span class="ceiling-quote-meta">${escapeHtml(STATUS_LABEL[card.status] ?? card.status)}${card.quoted_at ? ` · ${escapeHtml(card.quoted_at)}` : ''}</span>
           ${action}
         </div>
         ${rows}

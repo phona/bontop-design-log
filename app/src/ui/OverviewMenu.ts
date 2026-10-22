@@ -12,6 +12,7 @@ import type {
   CurtainState,
 } from '@shared/types';
 import type { PhaseId } from '../state/StateSync.js';
+import { escapeHtml } from './escape-html.js';
 
 export interface OverviewMenuOptions {
   onArchive?: (name: string, reason?: string) => void;
@@ -129,7 +130,7 @@ export class OverviewMenu {
 
   setLayouts(layouts: Array<{ name: string; path: string }>): void {
     if (!this.layoutSelect) return;
-    this.layoutSelect.innerHTML = layouts.map((l) => `<option value="${l.name}">${l.name}</option>`).join('');
+    this.layoutSelect.innerHTML = layouts.map((l) => `<option value="${escapeHtml(l.name)}">${escapeHtml(l.name)}</option>`).join('');
   }
 
   setActiveLayout(name: string): void {
@@ -460,8 +461,8 @@ export class OverviewMenu {
     const valueClass = opts.className ? `overview-value ${opts.className}-value` : 'overview-value';
     const shown = opts.valueText ?? (value === undefined ? '—' : `¥${value.toLocaleString()}`);
     row.innerHTML = `
-      <span class="${labelClass}">${label}</span>
-      <span class="${valueClass}">${shown}</span>
+      <span class="${labelClass}">${escapeHtml(label)}</span>
+      <span class="${valueClass}">${escapeHtml(shown)}</span>
     `;
     this.budgetEl.appendChild(row);
   }
@@ -470,7 +471,7 @@ export class OverviewMenu {
    * 候选价门控的两档合计（2026-10-13 阶段 1.5：**只读展示，一个数字都不改**）。
    *
    * 阶段 1（`a50d2f2`）已把每科 `autoActual`（材料款）按材料 status 拆成
-   * `verifiedActual` / `candidateActual`，但 OverviewMenu 与 MCP 都没有读它——数据躺在
+   * `verifiedActual` / `candidateActual`，但 OverviewMenu 一直没有读它——数据躺在
    * 那儿没人消费，业主看到的「已用」仍是一条把 39 条未取证候选价全额计入的数。
    * 这里第一次消费它，让「这个预算数不可信」变成一眼可见。
    *
@@ -533,7 +534,7 @@ export class OverviewMenu {
       const row = document.createElement('div');
       row.className = 'overview-row';
       row.innerHTML = `
-        <span class="overview-label">${category.key}</span>
+        <span class="overview-label">${escapeHtml(category.key)}</span>
         <span class="overview-value">¥${category.actual.toLocaleString()} / ¥${category.budget.toLocaleString()}</span>
       `;
       this.budgetEl.appendChild(row);

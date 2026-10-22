@@ -1,4 +1,5 @@
 import { FURNITURE_DIMS } from '@shared/types';
+import { escapeHtml } from './escape-html.js';
 
 export class FurniturePanel {
   private container: HTMLDivElement;
@@ -36,15 +37,15 @@ export class FurniturePanel {
     for (const ft of this.furnitureTypes) {
       const dims = FURNITURE_DIMS[ft.type];
       const dimLabel = dims ? `${dims.width}m × ${dims.depth}m` : '';
-      html += `<button data-type="${ft.type}" style="
+      html += `<button data-type="${escapeHtml(ft.type)}" style="
         background:#2a2a3e; border:1px solid #3a3a5e; border-radius:8px;
         padding:8px 14px; color:#e0e0e0; cursor:pointer; font-size:14px;
         display:flex; flex-direction:column; align-items:center; gap:4px;
         min-width:80px;
       ">
-        <span style="font-size:20px;">${ft.icon}</span>
-        <span>${ft.label}</span>
-        <span style="font-size:10px; color:#888;">${dimLabel}</span>
+        <span style="font-size:20px;">${escapeHtml(ft.icon)}</span>
+        <span>${escapeHtml(ft.label)}</span>
+        <span style="font-size:10px; color:#888;">${escapeHtml(dimLabel)}</span>
       </button>`;
     }
     html += `</div>`;

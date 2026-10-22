@@ -1,5 +1,6 @@
 import type { Topic, TopicOption, SchemeDiff, BudgetSnapshot } from '@shared/types';
 import { setupCollapsiblePanel } from './CollapsiblePanel.js';
+import { escapeHtml } from './escape-html.js';
 
 export interface SchemePanelElements {
   topicTabs: HTMLElement;
@@ -83,7 +84,7 @@ export class SchemePanel {
     for (const option of topic.options) {
       const btn = document.createElement('button');
       btn.className = `scheme-btn${option.id === this.activeOptionId ? ' active' : ''}`;
-      btn.innerHTML = `<strong>${option.name}</strong><br><small>${option.description ?? ''}</small>`;
+      btn.innerHTML = `<strong>${escapeHtml(option.name)}</strong><br><small>${escapeHtml(option.description ?? '')}</small>`;
       btn.onclick = () => this.onSelect?.(topic.id, option.id);
       this.els.topicOptions.appendChild(btn);
     }
@@ -163,21 +164,21 @@ export class SchemePanel {
   private renderCompare(diff: SchemeDiff): void {
     const rowsHtml = diff.selections.map((s) => `
           <div class="compare-row">
-            <span>${s.current ?? '—'}</span>
-            <span>${s.compare ?? '—'}</span>
+            <span>${escapeHtml(s.current ?? '—')}</span>
+            <span>${escapeHtml(s.compare ?? '—')}</span>
             <span class="${s.priceDelta > 0 ? 'up' : 'down'}">${s.priceDelta > 0 ? '+' : ''}${s.priceDelta} 元</span>
           </div>
         `).join('');
 
-    const risksAdded = diff.risks.added.map((r) => `<div class="risk-added">${r.id} (${r.severity})</div>`).join('');
-    const risksRemoved = diff.risks.removed.map((r) => `<div class="risk-removed">${r.id} (${r.severity})</div>`).join('');
+    const risksAdded = diff.risks.added.map((r) => `<div class="risk-added">${escapeHtml(r.id)} (${escapeHtml(r.severity)})</div>`).join('');
+    const risksRemoved = diff.risks.removed.map((r) => `<div class="risk-removed">${escapeHtml(r.id)} (${escapeHtml(r.severity)})</div>`).join('');
 
     if (!this.els.comparePanel) return;
     this.els.comparePanel.innerHTML = `
       <div class="compare-header">
         <span>当前方案</span>
         <span>vs</span>
-        <span>${this.compareArchiveName}</span>
+        <span>${escapeHtml(this.compareArchiveName)}</span>
       </div>
       <div class="compare-budget">
         预算差异: ${diff.budget > 0 ? '+' + diff.budget : diff.budget} 元

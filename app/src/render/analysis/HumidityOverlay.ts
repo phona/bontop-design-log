@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { setupCollapsiblePanel } from '../../ui/CollapsiblePanel.js';
+import { escapeHtml } from '../../ui/escape-html.js';
 import type { HouseScene } from '../HouseScene.js';
 
 const TIER_COLORS: Record<string, string> = {
@@ -175,11 +176,11 @@ export class HumidityOverlay {
     }
     const tierLabel: Record<string, string> = { low: '低风险', medium: '中风险', high: '高风险' };
     const factors = room.factors.length > 0
-      ? room.factors.map((f) => `<div class="humidity-factor"><span>${f.label}</span><span>${f.delta > 0 ? '+' : ''}${f.delta}</span></div>`).join('')
+      ? room.factors.map((f) => `<div class="humidity-factor"><span>${escapeHtml(f.label)}</span><span>${f.delta > 0 ? '+' : ''}${f.delta}</span></div>`).join('')
       : '<div class="humidity-factor"><span>无显著风险因子</span><span>0</span></div>';
     this.panel.innerHTML = `
       <div class="humidity-info-header">
-        <span>${room.name} · ${tierLabel[room.tier] ?? room.tier} · ${room.score} 分</span>
+        <span>${escapeHtml(room.name)} · ${escapeHtml(tierLabel[room.tier] ?? room.tier)} · ${room.score} 分</span>
         <span class="humidity-info-actions">
           <button id="humidity-info-toggle" class="panel-collapse-toggle" type="button" aria-controls="humidity-info-content" aria-expanded="true" aria-label="湿度信息面板折叠" title="折叠">−</button>
           <button id="humidity-info-close" type="button" aria-label="关闭">×</button>

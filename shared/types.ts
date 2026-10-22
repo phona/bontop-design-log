@@ -1,7 +1,7 @@
 /**
  * Shared types for the 3D roaming + AI co-design system.
  * Keep this file dependency-free so it can be imported by both
- * the browser app and the Node.js MCP server.
+ * the browser app and the Node.js server.
  */
 
 export interface Vec3 {

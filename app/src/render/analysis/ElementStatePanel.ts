@@ -12,6 +12,7 @@
 //  - 顶部一键「取消隔离」。
 import type { HouseScene } from '../HouseScene.js';
 import { setupCollapsiblePanel } from '../../ui/CollapsiblePanel.js';
+import { escapeHtml } from '../../ui/escape-html.js';
 import {
   ELEMENT_STATUS_ORDER,
   ELEMENT_STATUS_LABEL,
@@ -64,9 +65,7 @@ export class ElementStatePanel {
     const { summary, byStatus, byKind, elements } = this.houseScene.inspectElementStates();
     this.solo = this.houseScene.getElementStateSolo() ?? this.solo;
 
-    const escape = (value: string): string => value.replace(/[&<>"']/g, (c) => (
-      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c
-    ));
+    const escape = escapeHtml;
 
     // 状态图例：只列出现过的 status；点击 solo 该状态
     const legend = ELEMENT_STATUS_ORDER
@@ -75,14 +74,14 @@ export class ElementStatePanel {
         if (count === 0) return '';
         const color = elementStatusColorHex(status);
         const active = this.solo === status;
-        return `<button type="button" data-solo-status="${status}" data-active="${active}"
+        return `<button type="button" data-solo-status="${escape(status)}" data-active="${active}"
           title="solo「${ELEMENT_STATUS_LABEL[status]}」" style="cursor:pointer;margin:2px 4px 2px 0;padding:3px 8px;border-radius:6px;border:1px solid ${active ? color : 'rgba(255,255,255,.18)'};background:${active ? color : '#2a2a3e'};color:${active ? '#10131a' : '#ccd'};font-size:12px;">
           <span style="display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;background:${color};border:1px solid rgba(255,255,255,.25);"></span>${ELEMENT_STATUS_LABEL[status]} ${count}
         </button>`;
       })
       .join('');
 
-    const kindSummary = byKind.map((entry) => `${KIND_LABEL[entry.kind] ?? entry.kind} ${entry.count}`).join(' · ');
+    const kindSummary = byKind.map((entry) => `${escapeHtml(KIND_LABEL[entry.kind] ?? entry.kind)} ${entry.count}`).join(' · ');
 
     const rows = elements
       .slice()
@@ -98,7 +97,7 @@ export class ElementStatePanel {
           <td title="${escape(element.id)}">${escape(element.label || element.id)}</td>
           <td>${escape(KIND_LABEL[element.kind] ?? element.kind)}</td>
           <td>${escape(element.room ?? '')}</td>
-          <td>${ELEMENT_STATUS_LABEL[element.status] ?? element.status}</td>
+          <td>${escape(ELEMENT_STATUS_LABEL[element.status] ?? element.status)}</td>
           <td title="${escape(blockedBy)}">${escape(blockedBy)}</td>
           <td title="${escape(conflicts)}">${escape(conflicts)}</td>
         </tr>`;

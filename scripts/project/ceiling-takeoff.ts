@@ -6,7 +6,7 @@
  *   npm run takeoff:ceiling -- --json    # 机器可读（与 GET /api/ceiling/takeoff 同口径）
  *
  * 为什么要有 CLI：PKG-070 的「待报价/待算量」条目需要一份能贴进 decision_log / control.yaml
- * 的确定性数字；API/MCP 面向查询，CLI 面向留档（README：没有事后失忆）。
+ * 的确定性数字；API 面向查询，CLI 面向留档（README：没有事后失忆）。
  */
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';

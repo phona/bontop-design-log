@@ -2,8 +2,6 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import { createApiRouter } from '../../server/routes.js';
-import { attachMcpTransports } from '../../server/mcp-transports.js';
-import { createMcpServer } from '../../server/mcp-server.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { DesignState } from '../../server/design-state.js';
 import { RuleEngine } from '../../server/rule-engine.js';
@@ -72,7 +70,6 @@ describe('server startup resilience', () => {
     const app = express();
     app.use(express.json());
     app.use('/api', createApiRouter(deps));
-    await attachMcpTransports(app, () => createMcpServer(deps));
 
     const response = await new Promise<any>((resolve, reject) => {
       const server = app.listen(0, async () => {

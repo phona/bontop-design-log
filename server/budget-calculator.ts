@@ -391,7 +391,7 @@ function ceilingTakeoff(catalog: ProjectCatalog): CeilingTakeoff {
  * labor 行 → 回落 null（待报价）：不进预算 actual，只在报价面板显形。
  *
  * 2026-10-14「三道对账」第二道：这张表原先在这里、`server/routes.ts`、
- * `server/mcp-server.ts` 各抄一份（三份逐字相同），已合并到
+ * 已删除的 MCP 服务端各抄一份（三份逐字相同），已合并到
  * `server/ceiling-quotes.ts` 的 `baseJsonCeilingRatesFromBase`。本函数只保留
  * 「把已解析的 baseRaw 喂进去」这个薄封装——费率本身不再有第二份实现，
  * 由 `c.ceiling_rate_fallback_single_source`（config/facts.yaml）grep 全仓盯住。

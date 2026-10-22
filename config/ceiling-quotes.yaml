@@ -5,7 +5,7 @@ version: 1
 #  1. **量不在这里**。工程量一律由 shared/ceiling-takeoff.ts 从 config/ceiling.yaml 实算
 #     （板面 ㎡、窗帘盒 延长米、铝扣板块数）。报价方只报单价 + 含项范围，
 #     不允许自带面积——否则 A 家按毛面积、B 家按展开面积，两边永远对不上。
-#  2. `active:` 指向生效卡片；切换只改这一行（API / MCP / 手改都一样），
+#  2. `active:` 指向生效卡片；切换只改这一行（API / 手改都一样），
 #     改动走 Git（README「没有口头变更」），改写前自动留 .bak。
 #  3. `per_unit: null` = 待报价：数量照样显形、金额不编，杜绝「换个报价把活儿变没」。
 #  4. 未写的计价行回落到 config/budget/base.json 的对应 labor rate，
