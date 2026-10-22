@@ -941,17 +941,40 @@ function segmentHugsWallOutsideOpening(a: Point, b: Point, y: number, layout: Re
  */
 function gravitySlopeDeficits(points: Point[], slope: number): Array<{ index: number; length: number; drop: number; ratio: number }> {
   const deficits: Array<{ index: number; length: number; drop: number; ratio: number }> = [];
+  // DEC-2026-10-22-R01：短段链口径——单段 < GRAVITY_MIN_RUN 的接头/折点短段不逐段判坡度
+  // （0.15m 段按 1% 仅需 1.5mm 落差，物理上是噪音；与 gravity_slope_pending 的最小
+  // 长度门槛对齐）。但连续短段组成的链若总长 ≥ GRAVITY_MIN_RUN，按链总落差判一次，
+  // 防止把长平段切成短段规避检查。长段（≥ GRAVITY_MIN_RUN）仍逐段判。
+  let chainStart = -1; // 当前短段链的起始 segment index（points 下标 i）
+  let chainLength = 0;
+  let chainDrop = 0;
+  const flushChain = (endIndex: number) => {
+    if (chainStart < 0 || chainLength < GRAVITY_MIN_RUN) { chainStart = -1; chainLength = 0; chainDrop = 0; return; }
+    const requiredDrop = slope * chainLength;
+    if (requiredDrop > GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M && chainDrop + GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M < requiredDrop) {
+      deficits.push({ index: chainStart, length: chainLength, drop: chainDrop, ratio: chainDrop / chainLength });
+    }
+    chainStart = -1; chainLength = 0; chainDrop = 0;
+  };
   for (let i = 1; i < points.length; i += 1) {
     const a = points[i - 1], b = points[i];
     const length = Math.hypot(b.x - a.x, b.z - a.z);
-    if (length < 1e-6) continue; // vertical riser has no horizontal slope
+    if (length < 1e-6) { flushChain(i - 1); continue; } // vertical riser has no horizontal slope
+    const drop = (a.y as number) - (b.y as number);
+    if (drop > length) { flushChain(i - 1); continue; } // 近竖直下行段（坡度 >45°）：是落水不是横管，不为短段链提供落差
+    if (length < GRAVITY_MIN_RUN) {
+      if (chainStart < 0) { chainStart = i; chainLength = 0; chainDrop = 0; }
+      chainLength += length; chainDrop += drop;
+      continue;
+    }
+    flushChain(i - 1);
     const requiredDrop = slope * length;
     if (requiredDrop <= GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M) continue;
-    const drop = (a.y as number) - (b.y as number);
     if (drop + GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M < requiredDrop) {
       deficits.push({ index: i, length, drop, ratio: drop / length });
     }
   }
+  flushChain(points.length - 1);
   return deficits;
 }
 /** (d) 折线中与剪力墙平行且垂直距离 <0.15m 的最长「持续」长度（相邻合格段累加，遇非平行/超距段断开）。 */

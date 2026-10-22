@@ -974,7 +974,7 @@ test('ceiling_clearance：按共享 footprint 核点与穿越线段；走地分�
     id: 'c.probe_ceiling', kind: 'ceiling_clearance' as const, severity: 'error' as const,
     source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/ceiling.yaml',
     endpoints_key: 'mep.endpoints', room_heights_key: 'mep.room_heights',
-    default_room_height: 2.8, tolerance: 0.005, registered_conflicts: 3,
+    default_room_height: 2.8, tolerance: 0.005, registered_conflicts: 4,
     prose: [{ path: 'docs/guidance.md', extract: '冲突\\s*(\\d+)\\s*处', expect_matches: 1 }],
   };
   const files = {
@@ -1031,7 +1031,7 @@ test('ceiling_clearance：按共享 footprint 核点与穿越线段；走地分�
       '  thickness: 0.30',
       '  area: [7.20, 4.30, 13.40, 5.20]',
     ].join('\n'),
-    'docs/guidance.md': '冲突 3 处\n',
+    'docs/guidance.md': '冲突 4 处\n',
   };
   const datasets = {
     'mep.endpoints': {},
@@ -1039,10 +1039,10 @@ test('ceiling_clearance：按共享 footprint 核点与穿越线段；走地分�
   };
   const result = lintFacts({ ...emptyRegistry, contracts: [contract] }, workspaceOf(files, datasets));
   assert.equal(result.errors.length, 0, result.errors.map((e) => e.message).join('\n'));
-  assert.match((result.notes ?? []).join('\n'), /实算 3 处/);
+  assert.match((result.notes ?? []).join('\n'), /实算 4 处/);
 
   // 登记基数写得比实算多 → baseline_drift（两个方向都报：多了=乱加路线，少了=改数据消音）
-  const drift = lintFacts({ ...emptyRegistry, contracts: [{ ...contract, registered_conflicts: 4 }] }, workspaceOf(files, datasets));
+  const drift = lintFacts({ ...emptyRegistry, contracts: [{ ...contract, registered_conflicts: 5 }] }, workspaceOf(files, datasets));
   assert.equal(drift.errors.filter((i) => i.code === 'ceiling_clearance_baseline_drift').length, 1);
 
   // prose 计数与实算不符 → count_mismatch
