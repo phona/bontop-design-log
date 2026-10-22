@@ -83,3 +83,7 @@ opencode.json.openchamber.backup
 
 # AI 工具会话状态（本地计划底稿，不进版本库）
 .stepcode/
+
+# 迭代过程物：渲染转储不进版本库（见 AGENTS.md「证据分级与退场铁律」）
+*.snapshot.txt
+*.runtime.json

@@ -163,3 +163,12 @@ npm run verify:all
   npm run test:app
   npm run typecheck
   ```
+
+## 证据分级与退场铁律（2026-10-22 增补）
+
+> 由来：`docs/design-iterations` 65 轮攒下约 88MB 截图，95% 是可由 config 重演的过程图；2026-10-22 全仓复扫确认关账后的 evidence 图只有 19/385 还被仓外文件引用，AI 必读清单也从不含 evidence。过程证据只有当轮价值，永久进 git 是把日志当资产。以下四条堵「只生不死」，与「文档改写必须 diff 出删了什么」并行不悖：删除走登记通道即合法，静默删除仍禁止。
+
+- **过程物不进 git**：中间版截图（v1/v2/before 等过程版本）、`*.snapshot.txt`、`*.runtime.json` 等运行转储一律写入 `tmp/capture/` 或当轮删除；抓图/绘图脚本默认输出 `tmp/capture/`，禁止再把任何一轮的 evidence 目录硬编码为默认输出（终稿入仓走关账挑选，不走脚本直写）。
+- **进仓的只有终稿与外部原件**：一轮关账时每个视角至多留 1 张终稿图，置于该轮 evidence 的 final 子目录；外部原件（合同、报价、厂家资料、业主提供图，不可再生）正常进仓，并在该轮 brief 登记来源。
+- **关账即瘦身**：review_state 转为 delivery_ready、superseded 或移入 archive 时，收尾动作必须包含把本轮 evidence 压缩到终稿集；删了什么逐条写进 commit message。
+- **一题一文档，退场不建归档目录**：新认知写入既有主题文档，禁止新开散稿；文档退场 = 直接删除 + 在索引留一行墓碑（名称 + 关账结论 + 删除 commit），git 历史即归档，不另建 legacy/archive 目录。新轮次的结构化文件收敛为单个 round.yaml 一件套，随五件套合并批次与 verify-iteration-metadata 门禁同步落地；在此之前仍用五件套，但不得另加 work-record、evidence-notes 等附属散件。

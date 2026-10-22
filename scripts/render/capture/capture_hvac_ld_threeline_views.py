@@ -16,7 +16,8 @@ from websocket import create_connection
 
 CDP = 'http://localhost:9222/json'
 APP_URL = 'http://localhost:5175'
-OUT = Path(__file__).resolve().parents[2] / 'docs/design-iterations/hvac-dual-outlet-threeline-20261007/evidence'
+# 过程截图默认落 tmp/capture（AGENTS.md 证据分级与退场铁律）；终稿由关账步骤挑选入仓
+OUT = Path(__file__).resolve().parents[2] / 'tmp' / 'capture' / 'hvac-dual-outlet-threeline-20261007'
 OUT.mkdir(parents=True, exist_ok=True)
 
 # name, camera pos, controls target, note
