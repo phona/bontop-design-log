@@ -127,7 +127,7 @@ if ($dataUrl -match '^data:image/png;base64,(.+)$') {
     $pngBytes = [Convert]::FromBase64String($base64Data)
     
     # Save to PNG file
-    $outputPath = "C:\temp\floorplan-701-v9.png"
+    $outputPath = "C:\temp\floorplan-v9.png"
     [System.IO.File]::WriteAllBytes($outputPath, $pngBytes)
     
     Write-Host "PNG saved to $outputPath"

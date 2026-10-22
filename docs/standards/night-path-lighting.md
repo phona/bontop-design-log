@@ -1,7 +1,7 @@
 # 起夜路径照明标准（Night-Path Lighting Standard）v1
 
 > 定位：**可复用标准**，不绑定任何户型坐标。任何住宅只需填入“夜路径”点位即可落地。
-> 来源：和萃 701 迭代 `parent-room-study-swap-20261005`（2026-10-05 业主立项：父母房/客房与主人区隔开后，起夜动线变长，要求"人接近即自动亮起地面灯"）。
+> 来源：本项目迭代 `parent-room-study-swap-20261005`（2026-10-05 业主立项：父母房/客房与主人区隔开后，起夜动线变长，要求"人接近即自动亮起地面灯"）。
 > 状态：v1.1（2026-10-05 修订回路规则；其余规则待在本户实施中验证，回改后升 v2）。
 
 ---
@@ -85,4 +85,4 @@
 
 ---
 
-*本标准的第一个实施实例见 `docs/design-iterations/parent-room-study-swap-20261005/night-path-lighting-instance.md`（和萃 701）。*
+*本标准的第一个实施实例见 `docs/design-iterations/parent-room-study-swap-20261005/night-path-lighting-instance.md`（本项目）。*

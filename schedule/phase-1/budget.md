@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"865e794d1291690115b551b58a4fe34a6140193deef66c43ffffcf0f6d1ac804"} -->
+<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"3045d94c8b383dd76669254cf1230a85908894afd2452d8b85c799deaa958144"} -->
 # 一期预算控制表
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:383a91ca94ba5017b8a20267cfc855aeb245efd8051371caba6dec36815465f1`（1 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:f668ba1b0a3770b2324b6a2c7fedea125aec1b6d87f810b226e5e0a250d4329c`（1 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -105,7 +105,7 @@
 
 ## 询价轮次回填与父包对账
 
-> 业主提供的《和萃701｜全硬装预算与待采购决策（2026-10-03）》工作簿；原件未入库，内容已按本 schema 转录，报价单与截图原件另存 contracts/  
+> 业主提供的《全硬装预算与待采购决策（2026-10-03）》工作簿；原件未入库，内容已按本 schema 转录，报价单与截图原件另存 contracts/  
 > 本轮金额只有 quoted_sheet（当前仅厨卫铝扣板套件 9,537 元）是报价单；owner_budget_pool 是业主给定的预算池；cap 是业主选品时定的封顶价；candidate 是候选价或待询价目标。四者都不是合同承诺价，不得相加后当作已锁价，也不得覆盖 schedule/phase-1/control.yaml 的预算池与父包控制额。
 
 | 轮次记录 | 项目 | 归属工作包 | 轮次目标 | 轮次当前价 | 价格类型 | 状态 | 去重与边界 |

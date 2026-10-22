@@ -202,7 +202,7 @@ appliance_quote_register:
 hard_finish_quote_rounds:
   collected_at: 2026-10-03
   status: owner_provided_reference_only
-  source: 业主提供的《和萃701｜全硬装预算与待采购决策（2026-10-03）》工作簿；原件未入库，内容已按本 schema 转录，报价单与截图原件另存 contracts/
+  source: 业主提供的《全硬装预算与待采购决策（2026-10-03）》工作簿；原件未入库，内容已按本 schema 转录，报价单与截图原件另存 contracts/
   pricing_note: 本轮金额只有 quoted_sheet（当前仅厨卫铝扣板套件 9,537 元）是报价单；owner_budget_pool 是业主给定的预算池；cap 是业主选品时定的封顶价；candidate 是候选价或待询价目标。四者都不是合同承诺价，不得相加后当作已锁价，也不得覆盖 schedule/phase-1/control.yaml 的预算池与父包控制额。
   round_summary:
     core_hard_finish_target_cny: 187098

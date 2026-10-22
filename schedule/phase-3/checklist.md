@@ -1,9 +1,9 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"b8c457bf236b25bb0c346c1377ca9aefb5cd94efcf22c4a5d875645ffa1a3687","config/electrical.yaml":"5ccf809f2c1134e0c0e3c1c5afaf7c6f71c916280f0e662de88fa20f1173fca7","config/house.yaml":"7ba719f914d134d560cdc6d218e183a7aadb538854f80fddedcc8ab77c29444c","config/model-package-links.yaml":"049f1e45f2d3e397e32dbceb7cd91ea4a6af7f1dde261409134b8da55fe2980b","schedule/phase-1/control.yaml":"865e794d1291690115b551b58a4fe34a6140193deef66c43ffffcf0f6d1ac804","schedule/phase-2/control.yaml":"2010dab825bedb8e00b7aafc43ba908378fba5422709d94d3812a122a3a5590f","schedule/phase-3/control.yaml":"e784a1e8e5295f1322d8d346abaded152b2308d85de9cd0f8a4355d4fcec943e","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"b8c457bf236b25bb0c346c1377ca9aefb5cd94efcf22c4a5d875645ffa1a3687","config/electrical.yaml":"5ccf809f2c1134e0c0e3c1c5afaf7c6f71c916280f0e662de88fa20f1173fca7","config/house.yaml":"52b1b8ade6969ddf9d17fbe45bb3c2ec4bafed65545225600a1735d91d788f5e","config/model-package-links.yaml":"049f1e45f2d3e397e32dbceb7cd91ea4a6af7f1dde261409134b8da55fe2980b","schedule/phase-1/control.yaml":"3045d94c8b383dd76669254cf1230a85908894afd2452d8b85c799deaa958144","schedule/phase-2/control.yaml":"2010dab825bedb8e00b7aafc43ba908378fba5422709d94d3812a122a3a5590f","schedule/phase-3/control.yaml":"e784a1e8e5295f1322d8d346abaded152b2308d85de9cd0f8a4355d4fcec943e","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
 # 三期入住后优化推进清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-3/control.yaml`  
-> 视图输入指纹：`sha256:fe15e49bed42350ddc3e56ce70418a50576a910119cfca6e1090ffb2a4677e8c`（9 个输入文件）  
-> Gate记录用项目数据指纹：`sha256:69d71f549c9a28b11cb18add16feb587e3761651614309627ebf2faba75adcf4`  
+> 视图输入指纹：`sha256:502618d07ecb73dfea980b73a574e3fa1524157a48abc6ff8e665eac864f83fa`（9 个输入文件）  
+> Gate记录用项目数据指纹：`sha256:33f406fce45dba6a99cc3fa5d36af489f1de821c20511392ac9ce3731ac5e819`  
 > 阶段状态：`proposed`；决策状态：`alignment_required`
 
 ## 当前可执行范围

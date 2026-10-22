@@ -114,7 +114,7 @@ def main():
     ax.annotate('北', xy=(0.035, 0.93), xycoords='axes fraction', fontsize=15, fontweight='bold', ha='center', fontproperties=PROP)
     ax.arrow(0.035, 0.88, 0, 0.045, transform=ax.transAxes, width=0.002, head_width=0.018, head_length=0.018, color='#0f172a')
     ax.set_xlabel('x (m) — +x 东', fontproperties=PROP); ax.set_ylabel('z (m) — +z 南', fontproperties=PROP)
-    ax.set_title('701 综合水电 + 中央空调走线协调图', fontproperties=PROP, fontsize=15)
+    ax.set_title('综合水电 + 中央空调走线协调图', fontproperties=PROP, fontsize=15)
     text(ax, 0.5, 0.51, '初步协调示意\n非施工图', transform=ax.transAxes, ha='center', va='center', fontsize=28, color='#64748b', alpha=0.16, rotation=25, fontproperties=PROP, zorder=20)
     text(ax, 0.01, -0.08, '数据源：model-geometry.yaml / electrical.yaml / plumbing.yaml / hvac.yaml；路线来自独立 proposal，可后续按现场实测调整。', transform=ax.transAxes, fontsize=6.5, color='#475569', fontproperties=PROP)
     ax.invert_yaxis(); ax.grid(True, linewidth=0.25, alpha=0.25); ax.set_xlim(-1.2, 17.5); ax.set_ylim(11.2, -1.2)

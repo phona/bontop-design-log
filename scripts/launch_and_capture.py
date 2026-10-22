@@ -16,7 +16,7 @@ from capture_floor_plan_screenshot import (
     save_data_url,
 )
 
-OUTPUT_PATH = "/home/tao/projects/bontop-design-log/screenshots/floorplan-701-v9.png"
+OUTPUT_PATH = "/home/tao/projects/bontop-design-log/screenshots/floorplan-v9.png"
 EDGE_PATH = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
 APP_URL = "http://localhost:5173"
 CDP_PORT = 9222

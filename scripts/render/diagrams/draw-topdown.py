@@ -53,7 +53,7 @@ for w in cfg['walls']:
 ax.annotate('北', xy=(0.05, 0.95), xycoords='axes fraction', fontsize=14, fontweight='bold', fontproperties=prop)
 ax.set_xlabel('x (m) — +x 东', fontproperties=prop)
 ax.set_ylabel('z (m) — +z 南', fontproperties=prop)
-ax.set_title('701 户型俯视验证图（基于 model-geometry.yaml）', fontproperties=prop)
+ax.set_title('户型俯视验证图（基于 model-geometry.yaml）', fontproperties=prop)
 ax.invert_yaxis()
 
 plt.tight_layout()
