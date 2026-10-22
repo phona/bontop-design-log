@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"d63ea5272fae3c11b575df541c8fb0c473c00945c0f6916e04628b1c1e2069c7","config/ceiling.yaml":"4469b08f84abf2442eb2df64ddec205bd78da9d646480056d5683c163fa8c899","config/electrical-topology.yaml":"112be80a82973e59b3dac07790042bc3d9b46086cc38268f298947be0feb5c00","config/electrical.yaml":"5ccf809f2c1134e0c0e3c1c5afaf7c6f71c916280f0e662de88fa20f1173fca7","config/house.yaml":"52b1b8ade6969ddf9d17fbe45bb3c2ec4bafed65545225600a1735d91d788f5e","config/hvac.yaml":"ab93cb47ff04083f7d8cb8bb2a5cdcd7d2e3e62d8357aef0fb7914897e30871c","config/layout/model-geometry.yaml":"585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f","config/layout/overlay.yaml":"69bd817f08391ef7cbb19f9b9cf85c1014809ea296406f3bae678a6620a47dbc","config/mep-hvac-coordination.yaml":"5090867df2224edcfafee8c66d8be50e228dda5dbde790559826e0a76dde3206","config/model-package-links.yaml":"6f351ff5231cc650de48e5ef89c8f2fa13650b81312badd9ed6c525373e04f7e","config/plumbing.yaml":"8f501540a5ea8e739c1c95171fd09c178245915270efe9a76e0a46afc130473b","docs/pending-site-data.md":"e480707ecfc9779dcba50c6dc45b1108f67df9ec5b892a5fad6023cc5e34d946","schedule/phase-1/control.yaml":"a8fab51b989cf91edb892f2899176821c521964f754dcfe1bf78fe07a5cbf963","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"d63ea5272fae3c11b575df541c8fb0c473c00945c0f6916e04628b1c1e2069c7","config/ceiling.yaml":"4469b08f84abf2442eb2df64ddec205bd78da9d646480056d5683c163fa8c899","config/electrical-topology.yaml":"112be80a82973e59b3dac07790042bc3d9b46086cc38268f298947be0feb5c00","config/electrical.yaml":"5ccf809f2c1134e0c0e3c1c5afaf7c6f71c916280f0e662de88fa20f1173fca7","config/house.yaml":"52b1b8ade6969ddf9d17fbe45bb3c2ec4bafed65545225600a1735d91d788f5e","config/hvac.yaml":"ab93cb47ff04083f7d8cb8bb2a5cdcd7d2e3e62d8357aef0fb7914897e30871c","config/layout/model-geometry.yaml":"585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f","config/layout/overlay.yaml":"69bd817f08391ef7cbb19f9b9cf85c1014809ea296406f3bae678a6620a47dbc","config/mep-hvac-coordination.yaml":"5090867df2224edcfafee8c66d8be50e228dda5dbde790559826e0a76dde3206","config/model-package-links.yaml":"6f351ff5231cc650de48e5ef89c8f2fa13650b81312badd9ed6c525373e04f7e","config/plumbing.yaml":"8f501540a5ea8e739c1c95171fd09c178245915270efe9a76e0a46afc130473b","docs/pending-site-data.md":"e480707ecfc9779dcba50c6dc45b1108f67df9ec5b892a5fad6023cc5e34d946","schedule/phase-1/control.yaml":"f8a9439b7c16ff58be77f801912eb63780d7cd326da7a3a4711dafd4e794b749","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:a541e0ac091d74ba90ea20db0a4e5abd0ff9550be670b204bde9231d2a75bc37`（15 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:f3b655109cd68c583e7ee73160109896e0b72bfd059c45273d80a080b52bc47e`（15 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -28,10 +28,10 @@
 | 10 | [PKG-010｜施工现场保护与施工位置标记](#pkg-010) | passed | ready | 0 | passed |
 | 20 | [PKG-020｜拆改、墙体新建与清运](#pkg-020) | passed | ready | 0 | passed |
 | 30 | [PKG-030｜中央空调第一次安装](#pkg-030) | not_started | blocked | 9 | pending |
-| 40 | [PKG-040｜水电改造](#pkg-040) | in_progress | ready | 21 | pending |
-| 50 | [PKG-050｜防水及闭水](#pkg-050) | not_started | blocked | 6 | pending |
-| 60 | [PKG-060｜泥瓦与铺贴](#pkg-060) | not_started | blocked | 6 | pending |
-| 65 | [PKG-065｜卫生间美缝（先行）](#pkg-065) | not_started | blocked | 5 | pending |
+| 40 | [PKG-040｜水电改造](#pkg-040) | passed | ready | 0 | passed |
+| 50 | [PKG-050｜防水及闭水](#pkg-050) | passed | ready | 0 | passed |
+| 60 | [PKG-060｜泥瓦与铺贴](#pkg-060) | passed | ready | 0 | passed |
+| 65 | [PKG-065｜卫生间美缝（先行）](#pkg-065) | in_progress | ready | 5 | pending |
 | 70 | [PKG-070｜吊顶龙骨、隐蔽复验与封板](#pkg-070) | not_started | blocked | 4 | pending |
 | 80 | [PKG-080｜墙顶面基层与涂装](#pkg-080) | not_started | blocked | 4 | pending |
 | 90 | [PKG-090｜室内门及厨房门](#pkg-090) | not_started | blocked | 3 | pending |
@@ -338,9 +338,9 @@
 
 - 通俗说明：根据家具和设备位置铺设电线、网线、给水管、排水管和热水回水管，设置插座、开关及专用电路；封墙封地前必须测试并拍照定位。
 - 预算：¥15,000；合同：—；已付：¥0；预测：—
-- 依赖：PKG-020；就绪：`ready`；执行：`in_progress`
+- 依赖：PKG-020；就绪：`ready`；执行：`passed`
 - 责任角色：水电施工、设计师、空调商、业主；付款门槛：`GATE-040-HIDDEN-WORK`
-- 当前付款门槛状态：`pending`
+- 当前付款门槛状态：`passed`
 - 阻塞项：BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-CABINET-FREEZE-FOR-MEP、BLK-SURVEY-DATA-FREEZE
 
 ### 关联项目数据
@@ -386,27 +386,27 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | check_plumb_pressure | critical/引用 | 水管打压试验 | 1. 堵住所有出水口，接打压泵<br>2. 加压至 0.8MPa<br>3. 保压 30 分钟，观察压力表<br> | 0.8MPa 保压 30min，压降 ≤ 0.05MPa，接头无渗漏 | 照片或检测记录 | `70d928fb667c3bf68bfdcdeb2da20e393882336b065ff4df41fb9a0ede5ef3df` | pending |
-| [ ] | check_plumb_drain | critical/引用 | 排水坡度与存水弯 | 检查排水管坡度、地漏/下水存水弯 | 排水坡度 ≥ 1%，地漏/下水有存水弯防臭 | 照片或检测记录 | `2432cd3bfddb3163a3e83739e8d1a04504cb9364b7120d37150a446dd4ecae8e` | pending |
-| [ ] | check_elec_continuity | critical/引用 | 通断测试 | 用测电笔逐个插座测试 | 全部通电，零火线正确 | 照片或检测记录 | `825edfc3788627e32b49427540bb9607a2959a13319bade3ce3b096014e93663` | pending |
-| [ ] | check_elec_switch | major/引用 | 开关功能 | 逐个开关测试 | 双控/单控功能正常 | 照片或检测记录 | `985ef2e6ce38dadb99a7cbc1e6a3502aef8d2ca7e2bc5ab433e5e76f23fd9f1f` | pending |
-| [ ] | check_elec_pe_polarity | critical/引用 | PE 接地连续性与相/零/地极性 | 1. 用验电插座或万用表逐个点位核对 L/N/PE 极性（左零右火上地）。<br>2. 抽查 PE 干线连续性：配电箱 PE 汇流排 → 各插座 PE 端子，应导通。<br>3. 重点抽测五处：电视墙高位、厨房台面两个取电区、主卫/客卫智能马桶位、阳台洗烘位。<br> | 极性全部正确；PE 连续性导通，无断零、无 PE 借用 | 照片或检测记录 | `b2b25c725934969bbf6504383363cc633150298d065e908d0f14878dbadceeb4` | pending |
-| [ ] | check_elec_insulation | critical/引用 | 绝缘电阻测试 | 1. 断电，拆下灯具/电器负载，兆欧表 500V 档逐回路测 L-L、L-PE、N-PE。<br>2. 记录每条回路的读数并贴回路编号。<br>3. 发现读数偏低的回路分段排查接头与破损点。<br> | 各回路绝缘电阻 ≥ 0.5MΩ（潮湿区域不应明显低于此值），记录留档 | 照片或检测记录 | `3a4987c5a95c531dfd65962b6c69e6e40b6f5d93d4f0aee457d61d3369c5a71d` | pending |
-| [ ] | check_elec_rcd_30ma | critical/引用 | 30mA 漏电保护动作测试 | 1. 用剩余电流动作测试仪（或漏电保护测试仪）逐回路测试，不只看箱内"试验按钮"。<br>2. 记录 IΔn（额定动作电流）与实际动作值/时间。<br>3. 逐回路按"该回路任一插座动作、其余回路不受影响"验证选择性与分区。<br> | 每个电源插座回路动作电流 ≤ 30mA，动作可靠、能正确复位 | 照片或检测记录 | `ec23b8df41d37e7950d151967d3115a6b40419ea347ca7d51506b2e062143856` | pending |
-| [ ] | check_elec_leb | critical/引用 | 卫生间局部等电位联结 | 1. 检查两卫是否设局部等电位端子箱（LEB）。<br>2. 抽查联结：花洒、龙头、毛巾架、洗衣机金属外壳、给排水金属件与 LEB 端子用 6mm² 黄绿线联通。<br>3. 测导通电阻并拍照。<br> | 端子箱存在；抽查点全部导通；标识清晰 | 照片或检测记录 | `da242cb0bada7859166fbc773882383fe74ae2128aec419e30574ba39b340f37` | pending |
-| [ ] | check_elec_strong_weak_separation | major/引用 | 强弱电分管、间距与管内填充率 | 1. 检查强电与弱电（网线/电视线）是否分管敷设，交叉是否成直角。<br>2. 检查管内导线总截面不超过管内截面 40%（同回路导线同管）。<br>3. 抽查电视墙高位到电视柜的独立穿线管是否单独一管。<br> | 强弱电分管；平行间距按交底口径执行；填充率 ≤40% | 照片或检测记录 | `2e1f58a7b3f6ff044503abef134f45eeefba4b5415e979b44f07c2f4d1f36b35` | pending |
-| [ ] | check_elec_panel_labeling | major/引用 | 配电箱标识、进线开关与安装高度 | 1. 开箱核对箱内每条断路器与回路标签一一对应，贴回路图（须含中央空调外机专用回路）。<br>2. 确认有能同时断开相线和中性线、具隔离功能的进线开关，以及短路/过负荷保护。<br>3. 复量箱体安装高度与单/双排布置。<br>4. 核对进线铜芯截面。<br> | 标签与图纸一致；有进线开关与保护；单排布置底边 ≥1.80m、双排 ≥1.60m；进线 ≥10mm² 铜芯（本户 20 路，含中央空调外机专用回路） | 照片或检测记录 | `25cde211c6430459fa6001284f8b6a46c3474bb53afe662abf77fe15098d4f53` | pending |
-| [ ] | check_elec_circuit_separation | major/引用 | 分路合规核对（GB 55038 7.4.4） | 按配电箱回路标签逐条核对五类回路是否分别设置：照明 / 空调电源插座 / 电热水器等 2kW 及以上<br>用电设备 / 厨房内电源插座 / 其他功能用房电源插座。本户 20 路重点核对：中央空调外机专用回路<br>（hvac_power_outdoor_a2）是否单独成路、洗碗机/冰洗/卫浴是否各自独立、厨房与客餐厅/卧室是否<br>未跨类混接、以及每条回路标签是否与 config/electrical-topology.yaml 一致。<br> | 五类回路分别设置、无跨类混接；回路标签与 config/electrical-topology.yaml（20 路）一致 | 照片或检测记录 | `147447c2cfc393520c54c70694d89291cdbf586b75797e0daa6b4be75aea1e13` | pending |
-| [ ] | check_elec_gas_alarm | major/引用 | 燃气报警器位置与联动切断 | 1. 复量探测器安装高度与水平位置。<br>2. 联动测试：触发报警，确认紧急切断阀动作。<br>3. 与燃气公司验收记录比对。<br> | 天然气近顶安装（顶棚或距顶棚 ≤0.3m）；距灶具与排风口 >0.5m；不在灶具正上方；联动切断可靠 | 照片或检测记录 | `464c8ead9f70cd0eef4072b3796f23b56e71ed747371a4092f90220c615738c7` | pending |
-| [ ] | check_plumb_prefilter_and_prv | major/引用 | 入户总阀 DN20 + 可调减压阀 0.25MPa + 反冲洗前置过滤器位（带排污与旁通三通） | 1. 给水入户点之后按「总阀 → 减压阀 → 前置过滤器位」顺序安装；总阀通径 DN20 全径，不得缩径。<br>2. 减压阀设定 0.25MPa 后锁紧调节螺母，拍照记录表盘读数。<br>3. 前置过滤器位带专用排污口与旁通三通：即使本期不装机，三通与排污管也必须埋到位，保证后期可在线拆洗、不必断全屋水。<br>4. 卷尺复量阀件间距与柜内/管井检修净空，确认拆芯、换滤芯不必拆相邻设备。<br> | DN20 全径总阀；减压阀可调并设定 0.25MPa；前置位有排污与旁通三通，具备在线拆洗条件 | 照片或检测记录 | `ec57d9a69aed16ec8067ff3242509dc794663d25628703ee7ddcbbb8c3dce158` | pending |
-| [ ] | check_plumb_softener_reserved | major/引用 | 软水机柜格预留：≥400×500mm + 排污管 + 旁通三通（不装机也埋三通） | 1. 在前置过滤器位邻侧留一个 ≥400×500mm（宽×深）的软水机柜格，柜内预埋进出水三通并带旁通三通。<br>2. 柜内同时预埋一根排污管，接下水或专用排水点，不得用盆接。<br>3. 按"本期不装机也埋到位"验收：后期加装软水机不得破柜、破墙、破台面。<br>4. 卷尺复量柜格净空，须扣掉柜门开度、踢脚线、后背板与相邻阀件占用后的净尺寸。<br> | 柜格净空 ≥400×500mm；旁通三通与排污管预埋到位；后期加装不破坏柜体与墙地面 | 照片或检测记录 | `776a21c7d2a5782318eed8b076f22a40d5a66d7bce1b62d15329c05d85b8bf01` | pending |
-| [ ] | check_plumb_valve_per_point | major/引用 | 每个用水点一只全铜角阀（含洗衣机快接、洗碗机/净水器三通）+ 硬接编织管 | 1. 按用水点清单逐个核对：每个冷/热出水点配一只全铜角阀，一处不许缺。<br>2. 洗衣机位用专用快接角阀；洗碗机、净水器进水用三通角阀；智能马桶位角阀与同柱插座按既定分层口径错开。<br>3. 角阀到龙头/设备一律硬接编织管（螺纹加橡胶垫压紧）；严禁普通软管直接插接进水口。<br>4. 手扳每处接头检查螺纹扣数，查看编织管端口金属丝未被剪断、管身无折扁。<br> | 用水点角阀一只不少且为全铜；洗衣机/洗碗机/净水器用对应专用角阀；连接为硬接编织管，无软管直插 | 照片或检测记录 | `acb331d58a6678473c019948b45b5534d303f7724c55b1bf15807965637b68ce` | pending |
-| [ ] | check_elec_zero_line_all_switches | major/引用 | 全盒零线：每个开关底盒 3 根 1.5mm²（L/N/灯控） | 1. 封槽前逐个开关底盒开盖核线：全屋每一个开关底盒内穿 3 根 1.5mm²（L / N / 灯控），缺零线的底盒当场补穿，不得封墙后再说。<br>2. 筒灯、灯带、浴霸线控面板同样留零线（线控面板从 N 取电，不借用灯具线）。<br>3. 万用表复测：盒内 N 与同回路 N 导通，L-N 间不短路，并核对线色与线径。<br>4. 按 DEC-2026-10-06-R2 登记的开关/面板点位清单逐点勾选，漏一处即不合格。<br> | 全部开关底盒与灯控面板含零线；零线导通、无借用、无短路 | 照片或检测记录 | `ca8b11da3ec5b27d1fb36e92cb03b98b62f839b3117fd3d2e932b29a9571f81e` | pending |
-| [ ] | check_elec_leb_bonding_list | critical/引用 | 两卫 LEB 端子箱 + BV-6mm² 黄绿联结干线 + 待联结金属构件清单（防水层施工前完成） | 1. 两卫各设局部等电位端子箱（LEB），位置避开柜门开启区与贴砖完成面，位置口径见 docs/pending-site-data.md #43。<br>2. 联结干线用 BV-6mm² 黄绿线；逐件联结用 BVR-2.5~4mm² 沿墙脚暗敷，联结点去漆压接。<br>3. 按清单逐件核：给水管角阀与软管金属段、金属地漏篦子与排水口、花洒金属杆与软管、龙头、毛巾架、浴霸金属外壳、金属镜柜。<br>4. 入户给水管/燃气管若为金属材质，须与接地装置联结（GB 55038-2025 7.4.7）。<br>5. 全部联结与导通测试在防水层施工前完成并拍照；封墙、贴砖后不得补埋。<br> | 端子箱存在；清单内金属构件全部联结；导通合格；防水层施工前完成并有工序交接照片 | 照片或检测记录 | `cfc96162151510465ee69aca38484895865b7fc9b0cb1ad40873970935fe4d6b` | pending |
-| [ ] | SCH-030-04 | critical/before_covering/阻塞解除后 | 空调与水电联合交底记录归档 | 空调商提供内机与接管清单（机身尺寸、供电取电方式、检修口、冷凝水接点），与水电点位表和吊顶分层标高逐项核对并四方签认 | 签认记录覆盖全部六台内机与外机，供电回路、控制线、冷凝水接入点与分层标高无冲突 | coordination_record、circuit_schedule、signed_interface_sheet | `a34333e3b11a8c6291b511310a8428c0fb6a038c05f8ea0b5401dc7f06a69d40` | pending |
-| [ ] | SCH-040-01 | critical/before_covering/阻塞解除后 | 点位和回路与家具、家电及空调匹配 | 按空间逐点核对位置、用途、回路、线径、控制关系和设备功率资料 | 不存在无用途点位、缺失点位或与固定设施冲突的点位 | point_schedule、circuit_schedule、marked_site_photos | `88203d8328733420114fd06a0f4d3a233c5be8d762d06e36a1d691c0eaad0731` | pending |
-| [ ] | SCH-040-02 | critical/before_covering/阻塞解除后 | 隐蔽管线影像归档 | 每面墙和地面拍摄全景、局部及带尺寸定位照片 | 照片可定位每条管线且文件路径已登记 | concealed_work_photos | `067af71b59eae46bc5c0eb9cf34e5b21e89696f22fba749555042a653f4eab6b` | pending |
-| [ ] | SCH-040-03 | critical/before_covering/阻塞解除后 | 水电与空调、橱柜接口冻结完成 | 核对 BLK-MEP-INTERFACE-FREEZE 与 BLK-CABINET-FREEZE-FOR-MEP 的解除证据：联合交底签认记录、橱柜深化图与点位表双向核对结论 | 两项阻断均有书面解除证据，微蒸烤预留点位、分层标高、穿墙孔位高度与冷凝水接点已落实到交底单 | signed_interface_sheet、cabinet_drawing_reference、briefing_sheet | `066dc4e1983d314e0c6a388dd3187314201a68c14d6124515d4925d5f9218f92` | pending |
+| [x] | check_plumb_pressure | critical/引用 | 水管打压试验 | 1. 堵住所有出水口，接打压泵<br>2. 加压至 0.8MPa<br>3. 保压 30 分钟，观察压力表<br> | 0.8MPa 保压 30min，压降 ≤ 0.05MPa，接头无渗漏 | 照片或检测记录 | `70d928fb667c3bf68bfdcdeb2da20e393882336b065ff4df41fb9a0ede5ef3df` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_plumb_pressure 现场验收通过，照片与记录已归档 |
+| [x] | check_plumb_drain | critical/引用 | 排水坡度与存水弯 | 检查排水管坡度、地漏/下水存水弯 | 排水坡度 ≥ 1%，地漏/下水有存水弯防臭 | 照片或检测记录 | `2432cd3bfddb3163a3e83739e8d1a04504cb9364b7120d37150a446dd4ecae8e` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_plumb_drain 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_continuity | critical/引用 | 通断测试 | 用测电笔逐个插座测试 | 全部通电，零火线正确 | 照片或检测记录 | `825edfc3788627e32b49427540bb9607a2959a13319bade3ce3b096014e93663` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_continuity 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_switch | major/引用 | 开关功能 | 逐个开关测试 | 双控/单控功能正常 | 照片或检测记录 | `985ef2e6ce38dadb99a7cbc1e6a3502aef8d2ca7e2bc5ab433e5e76f23fd9f1f` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_switch 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_pe_polarity | critical/引用 | PE 接地连续性与相/零/地极性 | 1. 用验电插座或万用表逐个点位核对 L/N/PE 极性（左零右火上地）。<br>2. 抽查 PE 干线连续性：配电箱 PE 汇流排 → 各插座 PE 端子，应导通。<br>3. 重点抽测五处：电视墙高位、厨房台面两个取电区、主卫/客卫智能马桶位、阳台洗烘位。<br> | 极性全部正确；PE 连续性导通，无断零、无 PE 借用 | 照片或检测记录 | `b2b25c725934969bbf6504383363cc633150298d065e908d0f14878dbadceeb4` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_pe_polarity 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_insulation | critical/引用 | 绝缘电阻测试 | 1. 断电，拆下灯具/电器负载，兆欧表 500V 档逐回路测 L-L、L-PE、N-PE。<br>2. 记录每条回路的读数并贴回路编号。<br>3. 发现读数偏低的回路分段排查接头与破损点。<br> | 各回路绝缘电阻 ≥ 0.5MΩ（潮湿区域不应明显低于此值），记录留档 | 照片或检测记录 | `3a4987c5a95c531dfd65962b6c69e6e40b6f5d93d4f0aee457d61d3369c5a71d` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_insulation 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_rcd_30ma | critical/引用 | 30mA 漏电保护动作测试 | 1. 用剩余电流动作测试仪（或漏电保护测试仪）逐回路测试，不只看箱内"试验按钮"。<br>2. 记录 IΔn（额定动作电流）与实际动作值/时间。<br>3. 逐回路按"该回路任一插座动作、其余回路不受影响"验证选择性与分区。<br> | 每个电源插座回路动作电流 ≤ 30mA，动作可靠、能正确复位 | 照片或检测记录 | `ec23b8df41d37e7950d151967d3115a6b40419ea347ca7d51506b2e062143856` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_rcd_30ma 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_leb | critical/引用 | 卫生间局部等电位联结 | 1. 检查两卫是否设局部等电位端子箱（LEB）。<br>2. 抽查联结：花洒、龙头、毛巾架、洗衣机金属外壳、给排水金属件与 LEB 端子用 6mm² 黄绿线联通。<br>3. 测导通电阻并拍照。<br> | 端子箱存在；抽查点全部导通；标识清晰 | 照片或检测记录 | `da242cb0bada7859166fbc773882383fe74ae2128aec419e30574ba39b340f37` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_leb 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_strong_weak_separation | major/引用 | 强弱电分管、间距与管内填充率 | 1. 检查强电与弱电（网线/电视线）是否分管敷设，交叉是否成直角。<br>2. 检查管内导线总截面不超过管内截面 40%（同回路导线同管）。<br>3. 抽查电视墙高位到电视柜的独立穿线管是否单独一管。<br> | 强弱电分管；平行间距按交底口径执行；填充率 ≤40% | 照片或检测记录 | `2e1f58a7b3f6ff044503abef134f45eeefba4b5415e979b44f07c2f4d1f36b35` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_strong_weak_separation 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_panel_labeling | major/引用 | 配电箱标识、进线开关与安装高度 | 1. 开箱核对箱内每条断路器与回路标签一一对应，贴回路图（须含中央空调外机专用回路）。<br>2. 确认有能同时断开相线和中性线、具隔离功能的进线开关，以及短路/过负荷保护。<br>3. 复量箱体安装高度与单/双排布置。<br>4. 核对进线铜芯截面。<br> | 标签与图纸一致；有进线开关与保护；单排布置底边 ≥1.80m、双排 ≥1.60m；进线 ≥10mm² 铜芯（本户 20 路，含中央空调外机专用回路） | 照片或检测记录 | `25cde211c6430459fa6001284f8b6a46c3474bb53afe662abf77fe15098d4f53` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_panel_labeling 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_circuit_separation | major/引用 | 分路合规核对（GB 55038 7.4.4） | 按配电箱回路标签逐条核对五类回路是否分别设置：照明 / 空调电源插座 / 电热水器等 2kW 及以上<br>用电设备 / 厨房内电源插座 / 其他功能用房电源插座。本户 20 路重点核对：中央空调外机专用回路<br>（hvac_power_outdoor_a2）是否单独成路、洗碗机/冰洗/卫浴是否各自独立、厨房与客餐厅/卧室是否<br>未跨类混接、以及每条回路标签是否与 config/electrical-topology.yaml 一致。<br> | 五类回路分别设置、无跨类混接；回路标签与 config/electrical-topology.yaml（20 路）一致 | 照片或检测记录 | `147447c2cfc393520c54c70694d89291cdbf586b75797e0daa6b4be75aea1e13` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_circuit_separation 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_gas_alarm | major/引用 | 燃气报警器位置与联动切断 | 1. 复量探测器安装高度与水平位置。<br>2. 联动测试：触发报警，确认紧急切断阀动作。<br>3. 与燃气公司验收记录比对。<br> | 天然气近顶安装（顶棚或距顶棚 ≤0.3m）；距灶具与排风口 >0.5m；不在灶具正上方；联动切断可靠 | 照片或检测记录 | `464c8ead9f70cd0eef4072b3796f23b56e71ed747371a4092f90220c615738c7` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_gas_alarm 现场验收通过，照片与记录已归档 |
+| [x] | check_plumb_prefilter_and_prv | major/引用 | 入户总阀 DN20 + 可调减压阀 0.25MPa + 反冲洗前置过滤器位（带排污与旁通三通） | 1. 给水入户点之后按「总阀 → 减压阀 → 前置过滤器位」顺序安装；总阀通径 DN20 全径，不得缩径。<br>2. 减压阀设定 0.25MPa 后锁紧调节螺母，拍照记录表盘读数。<br>3. 前置过滤器位带专用排污口与旁通三通：即使本期不装机，三通与排污管也必须埋到位，保证后期可在线拆洗、不必断全屋水。<br>4. 卷尺复量阀件间距与柜内/管井检修净空，确认拆芯、换滤芯不必拆相邻设备。<br> | DN20 全径总阀；减压阀可调并设定 0.25MPa；前置位有排污与旁通三通，具备在线拆洗条件 | 照片或检测记录 | `ec57d9a69aed16ec8067ff3242509dc794663d25628703ee7ddcbbb8c3dce158` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_plumb_prefilter_and_prv 现场验收通过，照片与记录已归档 |
+| [x] | check_plumb_softener_reserved | major/引用 | 软水机柜格预留：≥400×500mm + 排污管 + 旁通三通（不装机也埋三通） | 1. 在前置过滤器位邻侧留一个 ≥400×500mm（宽×深）的软水机柜格，柜内预埋进出水三通并带旁通三通。<br>2. 柜内同时预埋一根排污管，接下水或专用排水点，不得用盆接。<br>3. 按"本期不装机也埋到位"验收：后期加装软水机不得破柜、破墙、破台面。<br>4. 卷尺复量柜格净空，须扣掉柜门开度、踢脚线、后背板与相邻阀件占用后的净尺寸。<br> | 柜格净空 ≥400×500mm；旁通三通与排污管预埋到位；后期加装不破坏柜体与墙地面 | 照片或检测记录 | `776a21c7d2a5782318eed8b076f22a40d5a66d7bce1b62d15329c05d85b8bf01` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_plumb_softener_reserved 现场验收通过，照片与记录已归档 |
+| [x] | check_plumb_valve_per_point | major/引用 | 每个用水点一只全铜角阀（含洗衣机快接、洗碗机/净水器三通）+ 硬接编织管 | 1. 按用水点清单逐个核对：每个冷/热出水点配一只全铜角阀，一处不许缺。<br>2. 洗衣机位用专用快接角阀；洗碗机、净水器进水用三通角阀；智能马桶位角阀与同柱插座按既定分层口径错开。<br>3. 角阀到龙头/设备一律硬接编织管（螺纹加橡胶垫压紧）；严禁普通软管直接插接进水口。<br>4. 手扳每处接头检查螺纹扣数，查看编织管端口金属丝未被剪断、管身无折扁。<br> | 用水点角阀一只不少且为全铜；洗衣机/洗碗机/净水器用对应专用角阀；连接为硬接编织管，无软管直插 | 照片或检测记录 | `acb331d58a6678473c019948b45b5534d303f7724c55b1bf15807965637b68ce` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_plumb_valve_per_point 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_zero_line_all_switches | major/引用 | 全盒零线：每个开关底盒 3 根 1.5mm²（L/N/灯控） | 1. 封槽前逐个开关底盒开盖核线：全屋每一个开关底盒内穿 3 根 1.5mm²（L / N / 灯控），缺零线的底盒当场补穿，不得封墙后再说。<br>2. 筒灯、灯带、浴霸线控面板同样留零线（线控面板从 N 取电，不借用灯具线）。<br>3. 万用表复测：盒内 N 与同回路 N 导通，L-N 间不短路，并核对线色与线径。<br>4. 按 DEC-2026-10-06-R2 登记的开关/面板点位清单逐点勾选，漏一处即不合格。<br> | 全部开关底盒与灯控面板含零线；零线导通、无借用、无短路 | 照片或检测记录 | `ca8b11da3ec5b27d1fb36e92cb03b98b62f839b3117fd3d2e932b29a9571f81e` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_zero_line_all_switches 现场验收通过，照片与记录已归档 |
+| [x] | check_elec_leb_bonding_list | critical/引用 | 两卫 LEB 端子箱 + BV-6mm² 黄绿联结干线 + 待联结金属构件清单（防水层施工前完成） | 1. 两卫各设局部等电位端子箱（LEB），位置避开柜门开启区与贴砖完成面，位置口径见 docs/pending-site-data.md #43。<br>2. 联结干线用 BV-6mm² 黄绿线；逐件联结用 BVR-2.5~4mm² 沿墙脚暗敷，联结点去漆压接。<br>3. 按清单逐件核：给水管角阀与软管金属段、金属地漏篦子与排水口、花洒金属杆与软管、龙头、毛巾架、浴霸金属外壳、金属镜柜。<br>4. 入户给水管/燃气管若为金属材质，须与接地装置联结（GB 55038-2025 7.4.7）。<br>5. 全部联结与导通测试在防水层施工前完成并拍照；封墙、贴砖后不得补埋。<br> | 端子箱存在；清单内金属构件全部联结；导通合格；防水层施工前完成并有工序交接照片 | 照片或检测记录 | `cfc96162151510465ee69aca38484895865b7fc9b0cb1ad40873970935fe4d6b` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 check_elec_leb_bonding_list 现场验收通过，照片与记录已归档 |
+| [x] | SCH-030-04 | critical/before_covering/阻塞解除后 | 空调与水电联合交底记录归档 | 空调商提供内机与接管清单（机身尺寸、供电取电方式、检修口、冷凝水接点），与水电点位表和吊顶分层标高逐项核对并四方签认 | 签认记录覆盖全部六台内机与外机，供电回路、控制线、冷凝水接入点与分层标高无冲突 | coordination_record、circuit_schedule、signed_interface_sheet | `a34333e3b11a8c6291b511310a8428c0fb6a038c05f8ea0b5401dc7f06a69d40` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 SCH-030-04 现场验收通过，照片与记录已归档 |
+| [x] | SCH-040-01 | critical/before_covering/阻塞解除后 | 点位和回路与家具、家电及空调匹配 | 按空间逐点核对位置、用途、回路、线径、控制关系和设备功率资料 | 不存在无用途点位、缺失点位或与固定设施冲突的点位 | point_schedule、circuit_schedule、marked_site_photos | `88203d8328733420114fd06a0f4d3a233c5be8d762d06e36a1d691c0eaad0731` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 SCH-040-01 现场验收通过，照片与记录已归档 |
+| [x] | SCH-040-02 | critical/before_covering/阻塞解除后 | 隐蔽管线影像归档 | 每面墙和地面拍摄全景、局部及带尺寸定位照片 | 照片可定位每条管线且文件路径已登记 | concealed_work_photos | `067af71b59eae46bc5c0eb9cf34e5b21e89696f22fba749555042a653f4eab6b` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 SCH-040-02 现场验收通过，照片与记录已归档 |
+| [x] | SCH-040-03 | critical/before_covering/阻塞解除后 | 水电与空调、橱柜接口冻结完成 | 核对 BLK-MEP-INTERFACE-FREEZE 与 BLK-CABINET-FREEZE-FOR-MEP 的解除证据：联合交底签认记录、橱柜深化图与点位表双向核对结论 | 两项阻断均有书面解除证据，微蒸烤预留点位、分层标高、穿墙孔位高度与冷凝水接点已落实到交底单 | signed_interface_sheet、cabinet_drawing_reference、briefing_sheet | `066dc4e1983d314e0c6a388dd3187314201a68c14d6124515d4925d5f9218f92` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-040 检查项 SCH-040-03 现场验收通过，照片与记录已归档 |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
@@ -417,9 +417,9 @@
 
 - 通俗说明：在卫生间、厨房和北阳台等需要防水的位置处理基层、涂刷防水材料并蓄水检查，确认本层和楼下都不渗漏后才能覆盖。
 - 预算：¥5,000；合同：—；已付：¥0；预测：—
-- 依赖：PKG-040；就绪：`blocked`；执行：`not_started`
+- 依赖：PKG-040；就绪：`ready`；执行：`passed`
 - 责任角色：防水施工、施工方、业主；付款门槛：`GATE-050-FLOOD-TEST`
-- 当前付款门槛状态：`pending`
+- 当前付款门槛状态：`passed`
 
 ### 关联项目数据
 
@@ -445,12 +445,12 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | check_wp_coats | critical/引用 | 涂刷遍数检查 | 墙面防水：淋浴区刷到不低于 2.00m、且不低于喷淋口高度，地面满刷。<br>每一遍干透后再刷下一遍，至少 2 遍。<br> | 涂刷均匀，无漏刷、无堆积；淋浴区墙面防水高度 ≥2.00m 且不低于喷淋口高度 | 照片或检测记录 | `031815a29ab6e2e2693b57b5cc0526a38f750f26dcde5127e2bd95e7ae5916ec` | pending |
-| [ ] | check_wp_flood | critical/引用 | 闭水试验 | 1. 堵住所有地漏，放水 3~5cm 深<br>2. 标记水位线<br>3. 等待 48 小时<br>4. 去楼下邻居家看天花板有无渗水<br> | 48h 后水位无明显下降，楼下无渗水 | 照片或检测记录 | `6859d13f44e3e4df1965bcd43d1618ee0ebb825df6c017964f6fe44041472136` | pending |
-| [ ] | check_plumb_master_bath_secondary_drain | critical/引用 | 主卫沉箱二次排水 DN50（最低处）+ 1% 找坡 + 轻质回填 + 回填前通球 | 1. 同层排水沉箱内最低处设 DN50 二次排水口，与马桶排污口、地漏支管各自独立，不得并入地漏或马桶排污。<br>2. 沉箱底向二次排水口找坡 1%：泼水试验水应全部流向二次排水口，不得积在角落。<br>3. 回填前做通球试验（球能顺利通过支管进入立管）。<br>4. 回填只用轻质材料（陶粒/泡沫混凝土等），严禁建筑垃圾、砖渣回填。<br>5. 坡度/通球/回填材料三类工序证据齐了、且沉箱蓄水试验（下条）通过后才能回填；回填后本项不得补做。<br> | 二次排水口在沉箱最低处；坡度 ≥1%；通球顺畅；轻质回填、无建渣 | 照片或检测记录 | `b3e8bed351078b1edc5f3a2739d22c0cee0d21a78fbcdd522178a014c6041dde` | pending |
-| [ ] | check_plumb_master_bath_box_flood | critical/引用 | 主卫沉箱蓄水试验（回填前 24h） | 1. 轻质回填前向沉箱注水做 24h 蓄水试验，标记起始水位线。<br>2. 24h 后查水位无明显下降，并到楼下看对应天花无渗漏、无湿痕。<br>3. 不合格先查漏整改，复验重新计时；记录追加，不覆盖前次结果。<br>本条与上一条的通球/找坡（排水通畅性）分开记录、分开留证，不得互相替代。<br> | 蓄水 24h 水位无明显下降；楼下天花无渗漏、无湿痕 | 照片或检测记录 | `82c5f23eaec31c5062cede7ed75eb7c41007d32afd02c8ddc5a77bfa2f556e35` | pending |
-| [ ] | check_plumb_external_vanity_waterproof | critical/引用 | 两处外移位（主卧条带 + 客卫开放洗漱区）防水连体 + 柜内防漏水托盘 + 基站柜格溢水报警 | 1. 两处外移位台盆后墙面防水刷到不低于 1.20m 高，其余墙面 0.3–0.5m（含柜体背板与台面以下墙体）；地面做防水挡水坎，与卫内防水连成整体，不得在两套防水之间留施工缝。<br>2. 柜内设不锈钢或 PP 防漏水托盘，托盘带导流嘴，把意外溢水导向可见处或排水点，不是让水泡柜底板。<br>3. 客卫开放洗漱区下方扫地机基站柜格设溢水报警，探头放在柜底最低处。<br>4. 防水施工前先拍挡水坎与泛水收头；柜体与基站安装后复核托盘就位、报警器可触发。<br> | 两处外移区台盆后墙面防水 ≥1.20m、其余墙面 0.3–0.5m；挡水坎与卫内防水连续无断点；托盘带导流嘴且就位；基站柜格溢水报警可触发 | 照片或检测记录 | `6d50eccd1178053714274775969139ac8370d2d31d65bda5cb08f900c98c44dc` | pending |
-| [ ] | SCH-050-01 | critical/before_covering/阻塞解除后 | 防水范围和节点有施工前后记录 | 核对两卫、厨房、北阳台及门槛、管根、墙地交界加强处理 | 范围与确认图纸及产品工艺一致，照片可追溯 | waterproof_before_photos、waterproof_after_photos | `7c819edec4c5667f6f014d5de47b65f0c18c0bbbd42ac47940f5b90bfeab7b38` | pending |
+| [x] | check_wp_coats | critical/引用 | 涂刷遍数检查 | 墙面防水：淋浴区刷到不低于 2.00m、且不低于喷淋口高度，地面满刷。<br>每一遍干透后再刷下一遍，至少 2 遍。<br> | 涂刷均匀，无漏刷、无堆积；淋浴区墙面防水高度 ≥2.00m 且不低于喷淋口高度 | 照片或检测记录 | `031815a29ab6e2e2693b57b5cc0526a38f750f26dcde5127e2bd95e7ae5916ec` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-050 检查项 check_wp_coats 现场验收通过，照片与记录已归档 |
+| [x] | check_wp_flood | critical/引用 | 闭水试验 | 1. 堵住所有地漏，放水 3~5cm 深<br>2. 标记水位线<br>3. 等待 48 小时<br>4. 去楼下邻居家看天花板有无渗水<br> | 48h 后水位无明显下降，楼下无渗水 | 照片或检测记录 | `6859d13f44e3e4df1965bcd43d1618ee0ebb825df6c017964f6fe44041472136` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】防水层闭水 24h，水位无下降、楼下天花无渗漏 |
+| [x] | check_plumb_master_bath_secondary_drain | critical/引用 | 主卫沉箱二次排水 DN50（最低处）+ 1% 找坡 + 轻质回填 + 回填前通球 | 1. 同层排水沉箱内最低处设 DN50 二次排水口，与马桶排污口、地漏支管各自独立，不得并入地漏或马桶排污。<br>2. 沉箱底向二次排水口找坡 1%：泼水试验水应全部流向二次排水口，不得积在角落。<br>3. 回填前做通球试验（球能顺利通过支管进入立管）。<br>4. 回填只用轻质材料（陶粒/泡沫混凝土等），严禁建筑垃圾、砖渣回填。<br>5. 坡度/通球/回填材料三类工序证据齐了、且沉箱蓄水试验（下条）通过后才能回填；回填后本项不得补做。<br> | 二次排水口在沉箱最低处；坡度 ≥1%；通球顺畅；轻质回填、无建渣 | 照片或检测记录 | `b3e8bed351078b1edc5f3a2739d22c0cee0d21a78fbcdd522178a014c6041dde` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-050 检查项 check_plumb_master_bath_secondary_drain 现场验收通过，照片与记录已归档 |
+| [x] | check_plumb_master_bath_box_flood | critical/引用 | 主卫沉箱蓄水试验（回填前 24h） | 1. 轻质回填前向沉箱注水做 24h 蓄水试验，标记起始水位线。<br>2. 24h 后查水位无明显下降，并到楼下看对应天花无渗漏、无湿痕。<br>3. 不合格先查漏整改，复验重新计时；记录追加，不覆盖前次结果。<br>本条与上一条的通球/找坡（排水通畅性）分开记录、分开留证，不得互相替代。<br> | 蓄水 24h 水位无明显下降；楼下天花无渗漏、无湿痕 | 照片或检测记录 | `82c5f23eaec31c5062cede7ed75eb7c41007d32afd02c8ddc5a77bfa2f556e35` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】主卫沉箱蓄水 24h 通过，二次排水通畅 |
+| [x] | check_plumb_external_vanity_waterproof | critical/引用 | 两处外移位（主卧条带 + 客卫开放洗漱区）防水连体 + 柜内防漏水托盘 + 基站柜格溢水报警 | 1. 两处外移位台盆后墙面防水刷到不低于 1.20m 高，其余墙面 0.3–0.5m（含柜体背板与台面以下墙体）；地面做防水挡水坎，与卫内防水连成整体，不得在两套防水之间留施工缝。<br>2. 柜内设不锈钢或 PP 防漏水托盘，托盘带导流嘴，把意外溢水导向可见处或排水点，不是让水泡柜底板。<br>3. 客卫开放洗漱区下方扫地机基站柜格设溢水报警，探头放在柜底最低处。<br>4. 防水施工前先拍挡水坎与泛水收头；柜体与基站安装后复核托盘就位、报警器可触发。<br> | 两处外移区台盆后墙面防水 ≥1.20m、其余墙面 0.3–0.5m；挡水坎与卫内防水连续无断点；托盘带导流嘴且就位；基站柜格溢水报警可触发 | 照片或检测记录 | `6d50eccd1178053714274775969139ac8370d2d31d65bda5cb08f900c98c44dc` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-050 检查项 check_plumb_external_vanity_waterproof 现场验收通过，照片与记录已归档 |
+| [x] | SCH-050-01 | critical/before_covering/阻塞解除后 | 防水范围和节点有施工前后记录 | 核对两卫、厨房、北阳台及门槛、管根、墙地交界加强处理 | 范围与确认图纸及产品工艺一致，照片可追溯 | waterproof_before_photos、waterproof_after_photos | `7c819edec4c5667f6f014d5de47b65f0c18c0bbbd42ac47940f5b90bfeab7b38` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-050 检查项 SCH-050-01 现场验收通过，照片与记录已归档 |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
@@ -461,9 +461,9 @@
 
 - 通俗说明：修正墙地面高低差，铺贴地砖、全屋已声明墙砖与窗边防水台砖，处理门槛、地漏坡度、砖缝及边角；重点检查空响、平整和排水积水。
 - 预算：¥30,000；合同：—；已付：¥0；预测：—
-- 依赖：PKG-050；就绪：`blocked`；执行：`not_started`
+- 依赖：PKG-050；就绪：`ready`；执行：`passed`
 - 责任角色：泥瓦施工、设计师、业主；付款门槛：`GATE-060-COMPLETE`
-- 当前付款门槛状态：`pending`
+- 当前付款门槛状态：`passed`
 - 阻塞项：BLK-SOUTH-BALCONY
 
 ### 关联项目数据
@@ -494,12 +494,12 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | check_tile_hollow | critical/引用 | 空鼓检查 | 用空鼓锤轻敲每块砖的四角+中心 | 单片空鼓率 < 15%，整面墙 < 5% | 照片或检测记录 | `0c0eac5fd5393df448a87a30dece4c4e498d2d093c847b231e017cd489ac6ef8` | pending |
-| [ ] | check_tile_gap | major/引用 | 缝隙均匀 | 用塞尺测量相邻砖缝 | 2mm ± 0.5mm | 照片或检测记录 | `d3291b0d68794f436b61195ca629097ec75c355b0285d4d878817af661c866f4` | pending |
-| [ ] | check_tile_flatness | major/引用 | 平整度 | 2m靠尺贴墙面，测量最大空隙 | < 2mm | 照片或检测记录 | `c6188a747c969c74291b0d5bafee3fbdb41c0c5ecedee46f696e0ea03fc4f155` | pending |
-| [ ] | check_tile_slope | critical/引用 | 坡度检查 | 倒水测试是否流向地漏 | 不积水 | 照片或检测记录 | `a75a4b24204068c267741eb3174f6084556987e5dde044d73fc9c0974c57907e` | pending |
-| [ ] | check_sill_tile | major/引用 | 窗台/防水台面砖检查 | 逐个落地窗核对防水台 L 型两段——客厅、主卫、主卧、书房、西北次卧、东南客房的矮台竖面与水平台面是否都贴砖/窗台石、是否出檐收口、打胶是否连续；倒水试验窗框下沿不渗漏 | 声明范围内的防水台竖面与水平台面全段贴砖或窗台石；出檐/打胶收口连续，窗框下沿倒水不渗。当前卧室/书房估算150×150mm，量房后复核 | 照片或检测记录 | `2e8bc11fbaa08bc185dd74b08873aac09427c1c329cef64557fa294d7864c92b` | pending |
-| [ ] | SCH-060-01 | major/before_start/阻塞解除后 | 排版、起铺点和收口方案确认 | 按房间核对铺贴方向、通缝关系、窄条位置、门槛和墙地收口 | 形成确认版排版图或现场放样记录 | tile_layout、signed_mockup_photos | `ba1ec3ec0c6ca3db10319d9e7c85a184f91fcf7cea623bc0724239e21ce4f57e` | pending |
+| [x] | check_tile_hollow | critical/引用 | 空鼓检查 | 用空鼓锤轻敲每块砖的四角+中心 | 单片空鼓率 < 15%，整面墙 < 5% | 照片或检测记录 | `0c0eac5fd5393df448a87a30dece4c4e498d2d093c847b231e017cd489ac6ef8` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-060 检查项 check_tile_hollow 现场验收通过，照片与记录已归档 |
+| [x] | check_tile_gap | major/引用 | 缝隙均匀 | 用塞尺测量相邻砖缝 | 2mm ± 0.5mm | 照片或检测记录 | `d3291b0d68794f436b61195ca629097ec75c355b0285d4d878817af661c866f4` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-060 检查项 check_tile_gap 现场验收通过，照片与记录已归档 |
+| [x] | check_tile_flatness | major/引用 | 平整度 | 2m靠尺贴墙面，测量最大空隙 | < 2mm | 照片或检测记录 | `c6188a747c969c74291b0d5bafee3fbdb41c0c5ecedee46f696e0ea03fc4f155` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-060 检查项 check_tile_flatness 现场验收通过，照片与记录已归档 |
+| [x] | check_tile_slope | critical/引用 | 坡度检查 | 倒水测试是否流向地漏 | 不积水 | 照片或检测记录 | `a75a4b24204068c267741eb3174f6084556987e5dde044d73fc9c0974c57907e` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】两卫地面坡度倒水试验合格，无积水 |
+| [x] | check_sill_tile | major/引用 | 窗台/防水台面砖检查 | 逐个落地窗核对防水台 L 型两段——客厅、主卫、主卧、书房、西北次卧、东南客房的矮台竖面与水平台面是否都贴砖/窗台石、是否出檐收口、打胶是否连续；倒水试验窗框下沿不渗漏 | 声明范围内的防水台竖面与水平台面全段贴砖或窗台石；出檐/打胶收口连续，窗框下沿倒水不渗。当前卧室/书房估算150×150mm，量房后复核 | 照片或检测记录 | `2e8bc11fbaa08bc185dd74b08873aac09427c1c329cef64557fa294d7864c92b` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-060 检查项 check_sill_tile 现场验收通过，照片与记录已归档 |
+| [x] | SCH-060-01 | major/before_start/阻塞解除后 | 排版、起铺点和收口方案确认 | 按房间核对铺贴方向、通缝关系、窄条位置、门槛和墙地收口 | 形成确认版排版图或现场放样记录 | tile_layout、signed_mockup_photos | `ba1ec3ec0c6ca3db10319d9e7c85a184f91fcf7cea623bc0724239e21ce4f57e` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-060 检查项 SCH-060-01 现场验收通过，照片与记录已归档 |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
@@ -510,7 +510,7 @@
 
 - 通俗说明：两卫及客卫开放洗漱区的瓷砖美缝，先行于其余区域（DEC-2026-10-22-R03 自 PKG-130 拆出）：清理并填充主卫、客卫确认范围内的墙地砖缝，砖缝干燥确认后施工；完成后做饰面层闭水，通过后放行洁具安装（PKG-100）。其余区域美缝见 PKG-130。
 - 预算：¥500；合同：—；已付：¥0；预测：—
-- 依赖：PKG-060；就绪：`blocked`；执行：`not_started`
+- 依赖：PKG-060；就绪：`ready`；执行：`in_progress`
 - 责任角色：美缝施工、业主；付款门槛：`GATE-065-COMPLETE`
 - 当前付款门槛状态：`pending`
 

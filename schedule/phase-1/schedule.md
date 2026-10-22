@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"a8fab51b989cf91edb892f2899176821c521964f754dcfe1bf78fe07a5cbf963","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
+<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"f8a9439b7c16ff58be77f801912eb63780d7cd326da7a3a4711dafd4e794b749","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
 # 一期施工计划
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:7c047525466ad303b4c98722fb238e526674f235361c012a31b6930d722af224`（2 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:2b7deabfac802c45ee0f8eb8c9817ab96d24537a8c1dd1cc69c115f9e541769c`（2 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -19,10 +19,10 @@
 | 10 | PKG-010 | 施工现场保护与施工位置标记 | 施工方进场后先保护电梯、公区、入户门、窗户和已有成品，再把图纸上的墙体、门洞、柜体、水电、空调和吊顶位置标到现场；各方核对无误后才开始拆改。该项暂列0元，优先要求包含在施工合同中。 | 2—3天 | PKG-005 | ready | passed | BLK-HANDOVER | ¥0 |
 | 20 | PKG-020 | 拆改、墙体新建与清运 | 按确认图纸拆除允许拆除的墙体或构件，新建隔墙和门洞，并把施工垃圾运走；任何墙体性质未确认时都不能先拆再说。参考同户型半包实付（拆砌人工6,000元+物业垃圾清运1,059元），本包由5,000元上调至7,000元，差额2,000元经业主批准从未分配额度划拨。 | 5—8天 | PKG-010 | ready | passed | BLK-STRUCTURE | ¥7,000 |
 | 30 | PKG-030 | 中央空调第一次安装 | 在吊顶封闭前安装空调室内机、铜管、保温层、冷凝水排水管、风管和控制线，并完成压力保持、排水和检修空间检查。 | 4—7天 | PKG-020 | blocked | not_started | BLK-STRUCTURE、BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-SURVEY-DATA-FREEZE | ¥36,000 |
-| 40 | PKG-040 | 水电改造 | 根据家具和设备位置铺设电线、网线、给水管、排水管和热水回水管，设置插座、开关及专用电路；封墙封地前必须测试并拍照定位。 | 7—12天 | PKG-020 | ready | in_progress | BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-CABINET-FREEZE-FOR-MEP、BLK-SURVEY-DATA-FREEZE | ¥15,000 |
-| 50 | PKG-050 | 防水及闭水 | 在卫生间、厨房和北阳台等需要防水的位置处理基层、涂刷防水材料并蓄水检查，确认本层和楼下都不渗漏后才能覆盖。 | 4—6天 | PKG-040 | blocked | not_started | 无 | ¥5,000 |
-| 60 | PKG-060 | 泥瓦与铺贴 | 修正墙地面高低差，铺贴地砖、全屋已声明墙砖与窗边防水台砖，处理门槛、地漏坡度、砖缝及边角；重点检查空响、平整和排水积水。 | 12—18天 | PKG-050 | blocked | not_started | BLK-SOUTH-BALCONY | ¥30,000 |
-| 65 | PKG-065 | 卫生间美缝（先行） | 两卫及客卫开放洗漱区的瓷砖美缝，先行于其余区域（DEC-2026-10-22-R03 自 PKG-130 拆出）：清理并填充主卫、客卫确认范围内的墙地砖缝，砖缝干燥确认后施工；完成后做饰面层闭水，通过后放行洁具安装（PKG-100）。其余区域美缝见 PKG-130。 | 1—2天 | PKG-060 | blocked | not_started | 无 | ¥500 |
+| 40 | PKG-040 | 水电改造 | 根据家具和设备位置铺设电线、网线、给水管、排水管和热水回水管，设置插座、开关及专用电路；封墙封地前必须测试并拍照定位。 | 7—12天 | PKG-020 | ready | passed | BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-CABINET-FREEZE-FOR-MEP、BLK-SURVEY-DATA-FREEZE | ¥15,000 |
+| 50 | PKG-050 | 防水及闭水 | 在卫生间、厨房和北阳台等需要防水的位置处理基层、涂刷防水材料并蓄水检查，确认本层和楼下都不渗漏后才能覆盖。 | 4—6天 | PKG-040 | ready | passed | 无 | ¥5,000 |
+| 60 | PKG-060 | 泥瓦与铺贴 | 修正墙地面高低差，铺贴地砖、全屋已声明墙砖与窗边防水台砖，处理门槛、地漏坡度、砖缝及边角；重点检查空响、平整和排水积水。 | 12—18天 | PKG-050 | ready | passed | BLK-SOUTH-BALCONY | ¥30,000 |
+| 65 | PKG-065 | 卫生间美缝（先行） | 两卫及客卫开放洗漱区的瓷砖美缝，先行于其余区域（DEC-2026-10-22-R03 自 PKG-130 拆出）：清理并填充主卫、客卫确认范围内的墙地砖缝，砖缝干燥确认后施工；完成后做饰面层闭水，通过后放行洁具安装（PKG-100）。其余区域美缝见 PKG-130。 | 1—2天 | PKG-060 | ready | in_progress | 无 | ¥500 |
 | 70 | PKG-070 | 吊顶龙骨、隐蔽复验与封板 | 先搭建吊顶内部支撑骨架，再联合检查吊顶里面的空调和水电；确认压力、排水、开口和检修条件全部合格后，才用石膏板或吊顶板封闭。 | 8—12天 | PKG-030、PKG-040、PKG-050 | blocked | not_started | BLK-HVAC-DEEPENING | ¥6,000 |
 | 80 | PKG-080 | 墙顶面基层与涂装 | 修补墙顶面、批刮腻子、打磨并涂刷底漆和面漆；正式大面积施工前先做真实墙面颜色样板，完工后检查裂缝、色差和表面缺陷。 | 12—18天 | PKG-060、PKG-070 | blocked | not_started | 无 | ¥11,500 |
 | 90 | PKG-090 | 室内门及厨房门 | 在墙面和地面厚度确定后重新测量门洞，生产并安装卧室门、卫生间门及厨房玻璃门；厨房门还要满足燃气单位确认的分隔要求。 | 3—5天 | PKG-060、PKG-080 | blocked | not_started | BLK-GAS-DOOR | ¥9,000 |
@@ -46,7 +46,7 @@
 | BLK-HANDOVER | resolved | 尚未交房，无法完成现场量房及房屋查验 | 交房查验完成并归档现场记录 |
 | BLK-STRUCTURE | resolved | 墙体结构、梁底及允许打孔或穿墙条件未确认 | 结构资料与现场复核结果完成会签 |
 | BLK-HVAC-DEEPENING | resolved | 中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审 | 空调、设计和施工三方签认深化图 |
-| BLK-SOUTH-BALCONY | alignment_required | 南阳台使用方式、地面和预算边界未冻结 | 业主确认范围并同步预算及施工图 |
+| BLK-SOUTH-BALCONY | resolved | 南阳台使用方式、地面和预算边界未冻结 | 业主确认范围并同步预算及施工图 |
 | BLK-GAS-DOOR | resolved | 燃气厨房门的现场验收要求未确认 | 燃气单位或物业书面确认厨房分隔要求 |
 | BLK-MASTER-WARDROBE | alignment_required | 主卧北墙通顶定制衣柜（藏空调冷凝水管槽，必须定制）随2026-09-12压缩决策整体后移至二期，一期用成品衣架和斗柜过渡；门扇、位置、高度及空调检修关系仍未关闭 | 二期启动前深化图经业主、设计和厂家共同确认 |
 | BLK-CURTAIN-SCOPE | alignment_required | 一期窗帘范围需要统一：本阻塞项写主卧/父母房/西北次卧，PKG-145写主卧/书房/西北次卧，schedule/phase-scope.yaml还包含两个卫生间；未统一前不冻结采购范围 | 业主确认一期窗帘房间与产品范围，并同步本阻塞项、PKG-145、phase-scope.yaml 和预算 |

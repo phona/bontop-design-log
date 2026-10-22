@@ -607,7 +607,10 @@ global_blockers:
     owner_roles: [空调商, 设计师, 施工方, 业主]
     trigger: 三方会审与深化图签认必须在中央空调内机下单之前完成；本次审计确认装修期内换机只补差价、而内机下单后返工不是零成本——未闭环则风口、检修口与冷凝水管位只能按暂记值施工，封板后调整要拆吊顶并重新下单
   - id: BLK-SOUTH-BALCONY
-    status: alignment_required
+    status: resolved
+    resolved_by: 模拟演示（业主）
+    resolved_at: "2026-10-22"
+    resolution_evidence: ["【模拟演示】南阳台使用方式与地面边界已冻结（模拟）"]
     item: 南阳台使用方式、地面和预算边界未冻结
     clears_when: 业主确认范围并同步预算及施工图
     owner_roles: [业主, 设计师, 施工方]
@@ -1046,7 +1049,7 @@ work_packages:
     duration_workdays: {min: 7, max: 12}
     dependencies: [PKG-020]
     readiness: ready
-    status: in_progress
+    status: passed
     blockers: [BLK-HVAC-DEEPENING, BLK-MEP-INTERFACE-FREEZE, BLK-CABINET-FREEZE-FOR-MEP, BLK-SURVEY-DATA-FREEZE]
     owner_roles: [水电施工, 设计师, 空调商, 业主]
     payment_gate: GATE-040-HIDDEN-WORK
@@ -1099,8 +1102,8 @@ work_packages:
         - {id: COST-050-03, name: 闭水试验及问题重做责任, description: 写清测试时长、楼下检查和不合格后的返工责任, quantity_basis: 包含在防水合同中, planned_cny: null, status: contract_scope_pending}
     duration_workdays: {min: 4, max: 6}
     dependencies: [PKG-040]
-    readiness: blocked
-    status: not_started
+    readiness: ready
+    status: passed
     blockers: []
     owner_roles: [防水施工, 施工方, 业主]
     payment_gate: GATE-050-FLOOD-TEST
@@ -1140,8 +1143,8 @@ work_packages:
         - {id: COST-060-07, name: 南阳台铺贴范围, description: 南阳台方案未冻结，本项目前不得计入已确定工程量, quantity_basis: 待业主确认, planned_cny: null, status: alignment_required}
     duration_workdays: {min: 12, max: 18}
     dependencies: [PKG-050]
-    readiness: blocked
-    status: not_started
+    readiness: ready
+    status: passed
     blockers: [BLK-SOUTH-BALCONY]
     owner_roles: [泥瓦施工, 设计师, 业主]
     payment_gate: GATE-060-COMPLETE
@@ -1172,8 +1175,8 @@ work_packages:
         - {id: COST-065-02, name: 清缝填缝和清理人工（卫生间）, description: 包含施工前清缝、填充、压缝和完工清理, quantity_basis: 明确按面积、长度或包干计价, planned_cny: null, status: quote_pending}
     duration_workdays: {min: 1, max: 2}
     dependencies: [PKG-060]
-    readiness: blocked
-    status: not_started
+    readiness: ready
+    status: in_progress
     blockers: []
     owner_roles: [美缝施工, 业主]
     payment_gate: GATE-065-COMPLETE
@@ -1927,3 +1930,300 @@ audit_log:
       evidence: ["【模拟演示】PKG-020 检查项 check_demo_structure 现场验收通过，照片与记录已归档"]
       check_spec_sha256: 5d9420ac7365b8aeabbcf344d6400ecd47624dbdd010f6cb152dfef672ab23bb
       project_data_sha256: a8de12cc38f70b0f0b0effdf85c3039e5ba289fed4924f71acb59e7893b7b167
+    - id: AUD-SIM-014
+      package_id: PKG-040
+      check_id: SCH-030-04
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 SCH-030-04 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: a34333e3b11a8c6291b511310a8428c0fb6a038c05f8ea0b5401dc7f06a69d40
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-015
+      package_id: PKG-040
+      check_id: SCH-040-01
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 SCH-040-01 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 88203d8328733420114fd06a0f4d3a233c5be8d762d06e36a1d691c0eaad0731
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-016
+      package_id: PKG-040
+      check_id: SCH-040-02
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 SCH-040-02 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 067af71b59eae46bc5c0eb9cf34e5b21e89696f22fba749555042a653f4eab6b
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-017
+      package_id: PKG-040
+      check_id: SCH-040-03
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 SCH-040-03 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 066dc4e1983d314e0c6a388dd3187314201a68c14d6124515d4925d5f9218f92
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-018
+      package_id: PKG-040
+      check_id: check_plumb_pressure
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_plumb_pressure 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 70d928fb667c3bf68bfdcdeb2da20e393882336b065ff4df41fb9a0ede5ef3df
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-019
+      package_id: PKG-040
+      check_id: check_plumb_drain
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_plumb_drain 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 2432cd3bfddb3163a3e83739e8d1a04504cb9364b7120d37150a446dd4ecae8e
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-020
+      package_id: PKG-040
+      check_id: check_elec_continuity
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_continuity 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 825edfc3788627e32b49427540bb9607a2959a13319bade3ce3b096014e93663
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-021
+      package_id: PKG-040
+      check_id: check_elec_switch
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_switch 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 985ef2e6ce38dadb99a7cbc1e6a3502aef8d2ca7e2bc5ab433e5e76f23fd9f1f
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-022
+      package_id: PKG-040
+      check_id: check_elec_pe_polarity
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_pe_polarity 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: b2b25c725934969bbf6504383363cc633150298d065e908d0f14878dbadceeb4
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-023
+      package_id: PKG-040
+      check_id: check_elec_insulation
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_insulation 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 3a4987c5a95c531dfd65962b6c69e6e40b6f5d93d4f0aee457d61d3369c5a71d
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-024
+      package_id: PKG-040
+      check_id: check_elec_rcd_30ma
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_rcd_30ma 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: ec23b8df41d37e7950d151967d3115a6b40419ea347ca7d51506b2e062143856
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-025
+      package_id: PKG-040
+      check_id: check_elec_leb
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_leb 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: da242cb0bada7859166fbc773882383fe74ae2128aec419e30574ba39b340f37
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-026
+      package_id: PKG-040
+      check_id: check_elec_strong_weak_separation
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_strong_weak_separation 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 2e1f58a7b3f6ff044503abef134f45eeefba4b5415e979b44f07c2f4d1f36b35
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-027
+      package_id: PKG-040
+      check_id: check_elec_panel_labeling
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_panel_labeling 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 25cde211c6430459fa6001284f8b6a46c3474bb53afe662abf77fe15098d4f53
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-028
+      package_id: PKG-040
+      check_id: check_elec_circuit_separation
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_circuit_separation 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 147447c2cfc393520c54c70694d89291cdbf586b75797e0daa6b4be75aea1e13
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-029
+      package_id: PKG-040
+      check_id: check_elec_gas_alarm
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_gas_alarm 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 464c8ead9f70cd0eef4072b3796f23b56e71ed747371a4092f90220c615738c7
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-030
+      package_id: PKG-040
+      check_id: check_plumb_prefilter_and_prv
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_plumb_prefilter_and_prv 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: ec57d9a69aed16ec8067ff3242509dc794663d25628703ee7ddcbbb8c3dce158
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-031
+      package_id: PKG-040
+      check_id: check_plumb_softener_reserved
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_plumb_softener_reserved 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 776a21c7d2a5782318eed8b076f22a40d5a66d7bce1b62d15329c05d85b8bf01
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-032
+      package_id: PKG-040
+      check_id: check_plumb_valve_per_point
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_plumb_valve_per_point 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: acb331d58a6678473c019948b45b5534d303f7724c55b1bf15807965637b68ce
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-033
+      package_id: PKG-040
+      check_id: check_elec_zero_line_all_switches
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_zero_line_all_switches 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: ca8b11da3ec5b27d1fb36e92cb03b98b62f839b3117fd3d2e932b29a9571f81e
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-034
+      package_id: PKG-040
+      check_id: check_elec_leb_bonding_list
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-040 检查项 check_elec_leb_bonding_list 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: cfc96162151510465ee69aca38484895865b7fc9b0cb1ad40873970935fe4d6b
+      project_data_sha256: 4eb553a3c736b8a409e1d726b149d9249c81a4ead998a0a89fce2b114781fdbc
+    - id: AUD-SIM-035
+      package_id: PKG-050
+      check_id: SCH-050-01
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-050 检查项 SCH-050-01 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 7c819edec4c5667f6f014d5de47b65f0c18c0bbbd42ac47940f5b90bfeab7b38
+      project_data_sha256: c9103dba790dd6dc34372a27ef1d9bc90d259d98fa21ce05f997d30cbc90f591
+    - id: AUD-SIM-036
+      package_id: PKG-050
+      check_id: check_wp_coats
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-050 检查项 check_wp_coats 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 031815a29ab6e2e2693b57b5cc0526a38f750f26dcde5127e2bd95e7ae5916ec
+      project_data_sha256: c9103dba790dd6dc34372a27ef1d9bc90d259d98fa21ce05f997d30cbc90f591
+    - id: AUD-SIM-037
+      package_id: PKG-050
+      check_id: check_wp_flood
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】防水层闭水 24h，水位无下降、楼下天花无渗漏"]
+      check_spec_sha256: 6859d13f44e3e4df1965bcd43d1618ee0ebb825df6c017964f6fe44041472136
+      project_data_sha256: c9103dba790dd6dc34372a27ef1d9bc90d259d98fa21ce05f997d30cbc90f591
+    - id: AUD-SIM-038
+      package_id: PKG-050
+      check_id: check_plumb_master_bath_secondary_drain
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-050 检查项 check_plumb_master_bath_secondary_drain 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: b3e8bed351078b1edc5f3a2739d22c0cee0d21a78fbcdd522178a014c6041dde
+      project_data_sha256: c9103dba790dd6dc34372a27ef1d9bc90d259d98fa21ce05f997d30cbc90f591
+    - id: AUD-SIM-039
+      package_id: PKG-050
+      check_id: check_plumb_master_bath_box_flood
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】主卫沉箱蓄水 24h 通过，二次排水通畅"]
+      check_spec_sha256: 82c5f23eaec31c5062cede7ed75eb7c41007d32afd02c8ddc5a77bfa2f556e35
+      project_data_sha256: c9103dba790dd6dc34372a27ef1d9bc90d259d98fa21ce05f997d30cbc90f591
+    - id: AUD-SIM-040
+      package_id: PKG-050
+      check_id: check_plumb_external_vanity_waterproof
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-050 检查项 check_plumb_external_vanity_waterproof 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 6d50eccd1178053714274775969139ac8370d2d31d65bda5cb08f900c98c44dc
+      project_data_sha256: c9103dba790dd6dc34372a27ef1d9bc90d259d98fa21ce05f997d30cbc90f591
+    - id: AUD-SIM-041
+      package_id: PKG-060
+      check_id: SCH-060-01
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-060 检查项 SCH-060-01 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: ba1ec3ec0c6ca3db10319d9e7c85a184f91fcf7cea623bc0724239e21ce4f57e
+      project_data_sha256: 739a7c00a4ac517e5b94b33d7b6dc9d0949b33f5297cf89802838ca6b4cbb4ed
+    - id: AUD-SIM-042
+      package_id: PKG-060
+      check_id: check_tile_hollow
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-060 检查项 check_tile_hollow 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 0c0eac5fd5393df448a87a30dece4c4e498d2d093c847b231e017cd489ac6ef8
+      project_data_sha256: 739a7c00a4ac517e5b94b33d7b6dc9d0949b33f5297cf89802838ca6b4cbb4ed
+    - id: AUD-SIM-043
+      package_id: PKG-060
+      check_id: check_tile_gap
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-060 检查项 check_tile_gap 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: d3291b0d68794f436b61195ca629097ec75c355b0285d4d878817af661c866f4
+      project_data_sha256: 739a7c00a4ac517e5b94b33d7b6dc9d0949b33f5297cf89802838ca6b4cbb4ed
+    - id: AUD-SIM-044
+      package_id: PKG-060
+      check_id: check_tile_flatness
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-060 检查项 check_tile_flatness 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: c6188a747c969c74291b0d5bafee3fbdb41c0c5ecedee46f696e0ea03fc4f155
+      project_data_sha256: 739a7c00a4ac517e5b94b33d7b6dc9d0949b33f5297cf89802838ca6b4cbb4ed
+    - id: AUD-SIM-045
+      package_id: PKG-060
+      check_id: check_tile_slope
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】两卫地面坡度倒水试验合格，无积水"]
+      check_spec_sha256: a75a4b24204068c267741eb3174f6084556987e5dde044d73fc9c0974c57907e
+      project_data_sha256: 739a7c00a4ac517e5b94b33d7b6dc9d0949b33f5297cf89802838ca6b4cbb4ed
+    - id: AUD-SIM-046
+      package_id: PKG-060
+      check_id: check_sill_tile
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-060 检查项 check_sill_tile 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 2e8bc11fbaa08bc185dd74b08873aac09427c1c329cef64557fa294d7864c92b
+      project_data_sha256: 739a7c00a4ac517e5b94b33d7b6dc9d0949b33f5297cf89802838ca6b4cbb4ed
